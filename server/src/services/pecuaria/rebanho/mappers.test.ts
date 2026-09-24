@@ -35,6 +35,21 @@ describe("mapearAnimalResumo", () => {
     expect(resumo.situacao).toBe("ATIVO");
   });
 
+  it("mantém a situação BAIXADO repassada", () => {
+    const resumo = mapearAnimalResumo({
+      animal: { ...animalBase, dataNascimento: new Date("2022-01-01") },
+      categoria: { categoria: { id: "c-vaca", nome: "Vaca" }, origem: "AUTOMATICA", calculada: { id: "c-vaca", nome: "Vaca" } },
+      hoje: new Date("2024-11-15"),
+      propriedade: null,
+      lote: null,
+      destino: null,
+      composicao: [],
+      ultimoPeso: null,
+      situacao: "BAIXADO",
+    });
+    expect(resumo.situacao).toBe("BAIXADO");
+  });
+
   it("repassa categoria manual e a calculada lado a lado", () => {
     const resumo = mapearAnimalResumo({
       animal: { ...animalBase, dataNascimento: new Date("2022-01-01") },
@@ -45,7 +60,7 @@ describe("mapearAnimalResumo", () => {
       destino: null,
       composicao: [],
       ultimoPeso: null,
-      situacao: "SAIU",
+      situacao: "BAIXADO",
     });
 
     expect(resumo.categoria).toEqual({ id: "c-vaca", nome: "Vaca" });
@@ -55,7 +70,7 @@ describe("mapearAnimalResumo", () => {
     expect(resumo.aptidao).toBeNull();
     expect(resumo.composicaoRotulo).toBe("Desconhecida");
     expect(resumo.ultimoPeso).toBeNull();
-    expect(resumo.situacao).toBe("SAIU");
+    expect(resumo.situacao).toBe("BAIXADO");
   });
 });
 
@@ -74,7 +89,7 @@ describe("agregarPainel", () => {
       base({ id: "1", papelReprodutivo: "RECEPTORA", propriedade: { id: 2, nome: "Mexicana" } }),
       base({ id: "2", categoria: EC_F }),
       base({ id: "3", sexo: "M", categoria: REPRODUTOR }),
-      base({ id: "4", situacao: "SAIU" }),
+      base({ id: "4", situacao: "BAIXADO" }),
       base({ id: "5", sexo: "M", categoria: null, categoriaOrigem: "SEM_CATEGORIA" }),
     ], new Map([["c-vaca", 10], ["c-ecf", 20], ["c-rep", 50]]));
     expect(p.totalAtivos).toBe(4);
@@ -88,8 +103,10 @@ describe("agregarPainel", () => {
 describe("resumoAuditoria", () => {
   it("traduz combinações conhecidas de entidade + ação", () => {
     expect(resumoAuditoria("Animal", "CADASTRO")).toBe("Cadastro do animal");
-    expect(resumoAuditoria("SaidaAnimal", "SAIDA")).toBe("Saída registrada");
-    expect(resumoAuditoria("SaidaAnimal", "ESTORNO")).toBe("Saída estornada");
+    expect(resumoAuditoria("BaixaAnimal", "BAIXA")).toBe("Baixa registrada");
+    expect(resumoAuditoria("BaixaAnimal", "ESTORNO")).toBe("Baixa estornada");
+    expect(resumoAuditoria("MotivoBaixa", "CADASTRO")).toBe("Motivo de baixa cadastrado");
+    expect(resumoAuditoria("MotivoBaixa", "EDICAO")).toBe("Motivo de baixa editado");
     expect(resumoAuditoria("Pesagem", "EXCLUSAO")).toBe("Pesagem excluída");
   });
 

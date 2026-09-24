@@ -12,6 +12,8 @@ const mocks = vi.hoisted(() => ({
   listarMovimentacoes: vi.fn(),
   buscarMovimentacao: vi.fn(),
   leitura: vi.fn(),
+  darBaixa: vi.fn(),
+  estornarBaixa: vi.fn(),
 }));
 
 vi.mock("../../services/propriedade.js", () => ({
@@ -22,6 +24,8 @@ vi.mock("../../services/pecuaria/rebanho/animais.js", () => ({
   listar: mocks.listar,
   desfazerLocalizacao: mocks.desfazerLocalizacao,
   desfazerMovimentacao: mocks.desfazerMovimentacao,
+  darBaixa: mocks.darBaixa,
+  estornarBaixa: mocks.estornarBaixa,
 }));
 vi.mock("../../services/pecuaria/rebanho/categorias.js", () => ({
   listarCategorias: vi.fn(),
@@ -47,9 +51,9 @@ vi.mock("../../services/pecuaria/rebanho/racas.js", () => ({
   editarRaca: vi.fn(),
 }));
 vi.mock("../../services/pecuaria/rebanho/motivos.js", () => ({
-  listarMotivosSaida: vi.fn(),
-  criarMotivoSaida: vi.fn(),
-  editarMotivoSaida: vi.fn(),
+  listarMotivosBaixa: vi.fn(),
+  criarMotivoBaixa: vi.fn(),
+  editarMotivoBaixa: vi.fn(),
 }));
 vi.mock("../../services/pecuaria/rebanho/painel.js", () => ({
   buscarPainelGeral: vi.fn(),
@@ -116,15 +120,32 @@ describe("rebanhoRouter — gate de permissão `lancar` (achado 2)", () => {
   it.each([
     ["lotes", () => app(usuario({ flags: [] })).request(`/lotes/${ID}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: "{}" })],
     ["raças", () => app(usuario({ flags: [] })).request("/racas", jsonBody({}))],
-    ["motivos de saída", () => app(usuario({ flags: [] })).request("/motivos-saida", jsonBody({}))],
+    ["motivos de baixa", () => app(usuario({ flags: [] })).request("/motivos-baixa", jsonBody({}))],
     ["categorias", () => app(usuario({ flags: [] })).request("/categorias", jsonBody({ nome: "Boi", sexo: "M" }))],
     ["restaurar padrões", () => app(usuario({ flags: [] })).request("/categorias/restaurar-padroes", jsonBody({}))],
     ["categoria manual", () => app(usuario({ flags: [] })).request(`/animais/${ID}/categoria`, jsonBody({ categoriaId: ID, data: "2026-09-01", motivo: "x" }))],
     ["desfazer movimentação", () => app(usuario({ flags: [] })).request(`/movimentacoes/${ID}/desfazer`, jsonBody({ motivo: "engano" }))],
+    ["baixa de animal", () => app(usuario({ flags: [] })).request(`/animais/${ID}/baixa`, jsonBody({ data: "2026-09-01", tipo: "VENDA" }))],
+    ["estorno de baixa", () => app(usuario({ flags: [] })).request(`/animais/${ID}/baixa/estorno`, jsonBody({ motivo: "engano" }))],
   ])("também bloqueia escrita em %s sem `lancar`", async (_nome, fazerRequisicao) => {
     const res = await fazerRequisicao();
     expect(res.status).toBe(403);
     expect(await res.json()).toEqual({ error: "sem permissão" });
+  });
+});
+
+describe("rebanhoRouter — baixa de animal", () => {
+  it("com `lancar`, registra a baixa e devolve a ficha", async () => {
+    mocks.darBaixa.mockResolvedValue({ id: ID, situacao: "BAIXADO" });
+    const res = await app(usuario({ id: 7, flags: ["lancar"] })).request(`/animais/${ID}/baixa`, jsonBody({ data: "2026-09-01", tipo: "VENDA" }));
+    expect(res.status).toBe(200);
+    expect(mocks.darBaixa).toHaveBeenCalledWith({ data: "2026-09-01", tipo: "VENDA", animalId: ID }, 7, 1);
+  });
+
+  it("estornar baixa exige motivo", async () => {
+    const res = await app(usuario({ flags: ["lancar"] })).request(`/animais/${ID}/baixa/estorno`, jsonBody({}));
+    expect(res.status).toBe(422);
+    expect(mocks.estornarBaixa).not.toHaveBeenCalled();
   });
 });
 

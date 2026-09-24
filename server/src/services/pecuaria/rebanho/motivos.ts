@@ -1,62 +1,82 @@
+import type { ClasseMotivoBaixa } from "@prisma/client";
 import { prisma } from "../../../db.js";
 import { auditar, RebanhoError, type DbPecuaria } from "./regras.js";
-import type { CriarMotivoSaidaInput, EditarMotivoSaidaInput } from "./schemas.js";
+import { motivoAceito } from "./baixa.calc.js";
+import type { CriarMotivoBaixaInput, EditarMotivoBaixaInput } from "./schemas.js";
 
-export interface MotivoSaidaDTO {
+export interface MotivoBaixaDTO {
   id: string;
   nome: string;
-  tipo: string;
+  classe: ClasseMotivoBaixa;
   ativo: boolean;
 }
 
-const dto = (m: { id: string; nome: string; tipo: string; ativo: boolean }): MotivoSaidaDTO => ({
+const dto = (m: { id: string; nome: string; classe: ClasseMotivoBaixa; ativo: boolean }): MotivoBaixaDTO => ({
   id: m.id,
   nome: m.nome,
-  tipo: m.tipo,
+  classe: m.classe,
   ativo: m.ativo,
 });
 
-export async function listarMotivosSaida(incluirInativos = false): Promise<MotivoSaidaDTO[]> {
-  const motivos = await prisma.motivoSaida.findMany({
+// A ordem por `classe` segue a declaração do enum no schema (descarte voluntário, involuntário, morte).
+export async function listarMotivosBaixa(incluirInativos = false): Promise<MotivoBaixaDTO[]> {
+  const motivos = await prisma.motivoBaixa.findMany({
     where: incluirInativos ? {} : { ativo: true },
-    orderBy: { nome: "asc" },
+    orderBy: [{ classe: "asc" }, { nome: "asc" }],
   });
   return motivos.map(dto);
 }
 
-// Sem @@unique no schema: duplicidade (mesmo nome + tipo) é checada aqui.
-async function exigirNomeTipoLivre(db: DbPecuaria, nome: string, tipo: string, ignorarId?: string) {
-  const existente = await db.motivoSaida.findFirst({
-    where: { nome: { equals: nome, mode: "insensitive" }, tipo: tipo as never, ...(ignorarId ? { id: { not: ignorarId } } : {}) },
+// Sem @@unique no schema: o nome é único no catálogo inteiro (não só dentro da classe).
+async function exigirNomeLivre(db: DbPecuaria, nome: string, ignorarId?: string) {
+  const existente = await db.motivoBaixa.findFirst({
+    where: { nome: { equals: nome.trim(), mode: "insensitive" }, ...(ignorarId ? { id: { not: ignorarId } } : {}) },
   });
-  if (existente) throw new RebanhoError("CONFLITO", `Já existe um motivo "${nome}" para esse tipo de saída`, "nome");
+  if (existente) throw new RebanhoError("CONFLITO", "Já existe um motivo de baixa com esse nome", "nome");
 }
 
-export async function criarMotivoSaida(input: CriarMotivoSaidaInput, usuarioId: number | null): Promise<MotivoSaidaDTO> {
+export async function criarMotivoBaixa(input: CriarMotivoBaixaInput, usuarioId: number | null): Promise<MotivoBaixaDTO> {
   const criado = await prisma.$transaction(async (tx) => {
-    await exigirNomeTipoLivre(tx, input.nome, input.tipo);
-    const motivo = await tx.motivoSaida.create({
-      data: { nome: input.nome, tipo: input.tipo, criadoPorId: usuarioId },
+    await exigirNomeLivre(tx, input.nome);
+    const motivo = await tx.motivoBaixa.create({
+      data: { nome: input.nome, classe: input.classe, criadoPorId: usuarioId },
     });
-    await auditar(tx, { entidade: "MotivoSaida", entidadeId: motivo.id, acao: "CADASTRO", usuarioId, depois: motivo });
+    await auditar(tx, { entidade: "MotivoBaixa", entidadeId: motivo.id, acao: "CADASTRO", usuarioId, depois: motivo });
     return motivo;
   });
   return dto(criado);
 }
 
-export async function editarMotivoSaida(id: string, input: EditarMotivoSaidaInput, usuarioId: number | null): Promise<MotivoSaidaDTO> {
-  const existente = await prisma.motivoSaida.findUnique({ where: { id } });
-  if (!existente) throw new RebanhoError("NAO_ENCONTRADO", "Motivo de saída não encontrado");
+export async function editarMotivoBaixa(id: string, input: EditarMotivoBaixaInput, usuarioId: number | null): Promise<MotivoBaixaDTO> {
+  const existente = await prisma.motivoBaixa.findUnique({ where: { id } });
+  if (!existente) throw new RebanhoError("NAO_ENCONTRADO", "Motivo de baixa não encontrado");
 
   const atualizado = await prisma.$transaction(async (tx) => {
-    if (input.nome != null || input.tipo != null) {
-      await exigirNomeTipoLivre(tx, input.nome ?? existente.nome, input.tipo ?? existente.tipo, id);
+    if (input.nome != null) {
+      await exigirNomeLivre(tx, input.nome, id);
     }
-    const salvo = await tx.motivoSaida.update({
+
+    // trocar a classe pode deixar de servir para baixas já registradas com esse motivo
+    if (input.classe != null && input.classe !== existente.classe) {
+      const baixasDoMotivo = await tx.baixaAnimal.findMany({
+        where: { motivoId: id, estornadaEm: null },
+        select: { tipo: true },
+      });
+      const bloqueadas = baixasDoMotivo.filter((b) => !motivoAceito(b.tipo, input.classe!));
+      if (bloqueadas.length > 0) {
+        throw new RebanhoError(
+          "CONFLITO",
+          `${bloqueadas.length} baixa(s) já registradas com esse motivo não aceitam a nova classe`,
+          "classe",
+        );
+      }
+    }
+
+    const salvo = await tx.motivoBaixa.update({
       where: { id },
-      data: { nome: input.nome ?? undefined, tipo: input.tipo ?? undefined, ativo: input.ativo ?? undefined },
+      data: { nome: input.nome ?? undefined, classe: input.classe ?? undefined, ativo: input.ativo ?? undefined },
     });
-    await auditar(tx, { entidade: "MotivoSaida", entidadeId: id, acao: "EDICAO", usuarioId, antes: existente, depois: salvo });
+    await auditar(tx, { entidade: "MotivoBaixa", entidadeId: id, acao: "EDICAO", usuarioId, antes: existente, depois: salvo });
     return salvo;
   });
 

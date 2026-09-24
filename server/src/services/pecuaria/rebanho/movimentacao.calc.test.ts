@@ -202,7 +202,7 @@ describe("planejarDesfazerMovimentacao", () => {
   ];
   const base = {
     animaisInativos: new Set<string>(),
-    linhasUsadasEmSaida: new Set<string>(),
+    linhasUsadasEmBaixa: new Set<string>(),
   };
 
   it("caso feliz: remove a linha da movimentação e reabre a anterior de cada animal", () => {
@@ -230,14 +230,14 @@ describe("planejarDesfazerMovimentacao", () => {
     expect(plano.erros).toEqual([{ animalId: "a2", brinco: "20", mensagem: "o animal já foi movimentado de novo" }]);
   });
 
-  it("animal que saiu ou linha usada numa saída bloqueiam", () => {
+  it("animal que saiu ou linha usada numa baixa bloqueiam", () => {
     const plano = planejarDesfazerMovimentacao({
       linhas: [{ id: "a1-1", animalId: "a1", brinco: "10" }, { id: "a2-1", animalId: "a2", brinco: "20" }],
       historicoPorAnimal: new Map([["a1", historico("a1", "a1-1")], ["a2", historico("a2", "a2-1")]]),
       animaisInativos: new Set(["a1"]),
-      linhasUsadasEmSaida: new Set(["a2-1"]),
+      linhasUsadasEmBaixa: new Set(["a2-1"]),
     });
-    expect(plano.erros.map((e) => e.mensagem)).toEqual(["o animal saiu do rebanho depois", "essa localização já foi usada numa saída"]);
+    expect(plano.erros.map((e) => e.mensagem)).toEqual(["o animal saiu do rebanho depois", "essa localização já foi usada numa baixa"]);
   });
 
   it("sem linha anterior (só a da movimentação) bloqueia", () => {

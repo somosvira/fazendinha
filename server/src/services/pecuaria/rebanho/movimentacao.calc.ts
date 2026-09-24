@@ -95,7 +95,7 @@ export interface PlanoDesfazer {
 /**
  * Remove a linha aberta mais recente e reabre a linha imediatamente anterior (por `desde`).
  * Exige ao menos duas linhas e uma delas aberta — quem chama garante o resto (animal ativo,
- * a linha removida não referenciada por uma saída).
+ * a linha removida não referenciada por uma baixa).
  */
 export function planejarDesfazer(linhas: LinhaHistorico[]): PlanoDesfazer {
   if (linhas.length < 2) {
@@ -172,7 +172,7 @@ export function planejarMovimentacaoEmMassa(input: {
   for (const animal of animais) {
     const erro = (mensagem: string) => plano.erros.push({ animalId: animal.id, brinco: animal.brinco, mensagem });
     if (!animal.noEscopo) { erro("não encontrado nesse sítio"); continue; }
-    if (!animal.ativo) { erro("animal inativo (saída não estornada)"); continue; }
+    if (!animal.ativo) { erro("animal inativo (baixa não estornada)"); continue; }
     if (paraTempo(data) < paraTempo(animal.dataEntrada)) { erro("data anterior à entrada do animal"); continue; }
     if (animal.atual && paraTempo(data) < paraTempo(animal.atual.desde)) { erro("data anterior ao início da localização atual"); continue; }
 
@@ -211,20 +211,20 @@ export interface PlanoDesfazerMovimentacao {
 /**
  * Desfazer a movimentação só é seguro se, para cada animal, a linha que ela abriu ainda
  * for a localização atual (nada aconteceu depois), houver uma linha anterior para reabrir,
- * o animal estiver ativo e nenhuma saída tiver usado essa linha. Um animal bloqueado
+ * o animal estiver ativo e nenhuma baixa tiver usado essa linha. Um animal bloqueado
  * bloqueia a movimentação inteira — quem chama não grava nada se houver erro.
  */
 export function planejarDesfazerMovimentacao(input: {
   linhas: LinhaDaMovimentacao[];
   historicoPorAnimal: Map<string, LinhaHistorico[]>;
   animaisInativos: Set<string>;
-  linhasUsadasEmSaida: Set<string>;
+  linhasUsadasEmBaixa: Set<string>;
 }): PlanoDesfazerMovimentacao {
   const plano: PlanoDesfazerMovimentacao = { erros: [], passos: [] };
   for (const linha of input.linhas) {
     const erro = (mensagem: string) => plano.erros.push({ animalId: linha.animalId, brinco: linha.brinco, mensagem });
     if (input.animaisInativos.has(linha.animalId)) { erro("o animal saiu do rebanho depois"); continue; }
-    if (input.linhasUsadasEmSaida.has(linha.id)) { erro("essa localização já foi usada numa saída"); continue; }
+    if (input.linhasUsadasEmBaixa.has(linha.id)) { erro("essa localização já foi usada numa baixa"); continue; }
     let passo: PlanoDesfazer;
     try {
       passo = planejarDesfazer(input.historicoPorAnimal.get(linha.animalId) ?? []);

@@ -1719,8 +1719,8 @@ model Usuario {
   pecCategoriasCriadas        CategoriaAnimal[]       @relation("CategoriaAnimalCriadoPor")
   pecCategoriasManuaisCriadas CategoriaManualAnimal[] @relation("CategoriaManualAnimalCriadoPor")
   pecDestinosCriados          DestinoAnimal[]         @relation("DestinoAnimalCriadoPor")
-  pecSaidasCriadas            SaidaAnimal[]           @relation("SaidaAnimalCriadoPor")
-  pecMotivosSaidaCriados      MotivoSaida[]           @relation("MotivoSaidaCriadoPor")
+  pecBaixasCriadas            BaixaAnimal[]           @relation("BaixaAnimalCriadoPor")
+  pecMotivosBaixaCriados      MotivoBaixa[]           @relation("MotivoBaixaCriadoPor")
   pecPesagensCriadas          Pesagem[]               @relation("PesagemCriadoPor")
   pecAuditoriasCriadas        AuditoriaPecuaria[]     @relation("AuditoriaPecuariaCriadoPor")
   pecAuditoriasAutor          AuditoriaPecuaria[]     @relation("AuditoriaPecuariaUsuario")
@@ -1791,13 +1791,25 @@ enum PapelReprodutivo {
   @@schema("pecuaria")
 }
 
-enum TipoSaidaAnimal {
+// O que aconteceu com o animal (fixo). O porquê fica no MotivoBaixa, classificado por ClasseMotivoBaixa.
+// CADASTRO_INDEVIDO é interno: só o "excluir cadastro" usa.
+enum TipoBaixa {
   VENDA
   ABATE
   MORTE
   DOACAO
+  EXTRAVIO
   CADASTRO_INDEVIDO
-  OUTRO
+
+  @@schema("pecuaria")
+}
+
+// Classe do motivo de baixa (equivale ao TIPOBAIXA do IDEAGRI). Venda/abate/doação aceitam os
+// descartes; morte aceita MORTE; extravio e cadastro indevido não aceitam motivo (baixa.calc.ts).
+enum ClasseMotivoBaixa {
+  DESCARTE_VOLUNTARIO
+  DESCARTE_INVOLUNTARIO
+  MORTE
 
   @@schema("pecuaria")
 }
@@ -1835,8 +1847,8 @@ enum OrigemComposicao {
   @@schema("pecuaria")
 }
 
-// Quem o animal é: identidade estável. Onde está, para que serve e se saiu
-// vivem em tabelas de histórico próprias (Localizacao/Destino/Saida).
+// Quem o animal é: identidade estável. Onde está, para que serve e se teve baixa
+// vivem em tabelas de histórico próprias (Localizacao/Destino/Baixa).
 model Animal {
   id                   String       @id @default(uuid())
   ideagriId            Int?         @unique
@@ -1860,7 +1872,7 @@ model Animal {
   composicao        ComposicaoRacial[]
   localizacoes      LocalizacaoAnimal[]
   destinos          DestinoAnimal[]
-  saidas            SaidaAnimal[]
+  baixas            BaixaAnimal[]
   pesagens          Pesagem[]
   movimentacoes     MovimentacaoAnimal[]
   categoriasManuais CategoriaManualAnimal[]
@@ -1999,7 +2011,7 @@ model LocalizacaoAnimal {
   criadoPorId       Int?
   criadoPor         Usuario?            @relation("LocalizacaoAnimalCriadoPor", fields: [criadoPorId], references: [id])
   atualizadoEm      DateTime            @updatedAt
-  saidasQueFecharam SaidaAnimal[]       @relation("SaidaLocalizacaoFechada")
+  baixasQueFecharam BaixaAnimal[]       @relation("BaixaLocalizacaoFechada")
   itemMovimentacao  MovimentacaoAnimal?
 
   @@index([animalId, ate])
@@ -2078,34 +2090,34 @@ model DestinoAnimal {
   criadoPor        Usuario?         @relation("DestinoAnimalCriadoPor", fields: [criadoPorId], references: [id])
   atualizadoEm     DateTime         @updatedAt
 
-  saidasQueFecharam SaidaAnimal[] @relation("SaidaDestinoFechado")
+  baixasQueFecharam BaixaAnimal[] @relation("BaixaDestinoFechado")
 
   @@index([animalId, ate])
   @@schema("pecuaria")
 }
 
-// Saída do rebanho. Saída não estornada = animal inativo; estorno preserva a linha.
-model SaidaAnimal {
+// Baixa do rebanho. Baixa não estornada = animal inativo; estorno preserva a linha.
+model BaixaAnimal {
   id                   String             @id @default(uuid())
   ideagriId            Int?               @unique
   animalId             String
   animal               Animal             @relation(fields: [animalId], references: [id], onDelete: Restrict)
   data                 DateTime           @db.Date
-  tipo                 TipoSaidaAnimal
+  tipo                 TipoBaixa
   motivoId             String?
-  motivo               MotivoSaida?       @relation(fields: [motivoId], references: [id], onDelete: Restrict)
+  motivo               MotivoBaixa?       @relation(fields: [motivoId], references: [id], onDelete: Restrict)
   observacao           String?
   estornadaEm          DateTime?
   estornoMotivo        String?
-  // linhas de histórico que ESTA saída fechou — o estorno reabre exatamente essas
+  // linhas de histórico que ESTA baixa fechou — o estorno reabre exatamente essas
   // (não dá para deduzir pela data: uma movimentação no mesmo dia também fecha linha com o mesmo `ate`)
   localizacaoFechadaId String?
-  localizacaoFechada   LocalizacaoAnimal? @relation("SaidaLocalizacaoFechada", fields: [localizacaoFechadaId], references: [id], onDelete: Restrict)
+  localizacaoFechada   LocalizacaoAnimal? @relation("BaixaLocalizacaoFechada", fields: [localizacaoFechadaId], references: [id], onDelete: Restrict)
   destinoFechadoId     String?
-  destinoFechado       DestinoAnimal?     @relation("SaidaDestinoFechado", fields: [destinoFechadoId], references: [id], onDelete: Restrict)
+  destinoFechado       DestinoAnimal?     @relation("BaixaDestinoFechado", fields: [destinoFechadoId], references: [id], onDelete: Restrict)
   criadoEm             DateTime           @default(now())
   criadoPorId          Int?
-  criadoPor            Usuario?           @relation("SaidaAnimalCriadoPor", fields: [criadoPorId], references: [id])
+  criadoPor            Usuario?           @relation("BaixaAnimalCriadoPor", fields: [criadoPorId], references: [id])
   atualizadoEm         DateTime           @updatedAt
 
   @@index([animalId])
@@ -2115,19 +2127,20 @@ model SaidaAnimal {
   @@schema("pecuaria")
 }
 
-// Catálogo de motivos de saída, por tipo.
-model MotivoSaida {
-  id           String          @id @default(uuid())
-  ideagriId    Int?            @unique
+// Catálogo de motivos de baixa (o porquê), classificado por classe — não por tipo:
+// o mesmo motivo de descarte serve para venda, abate ou doação.
+model MotivoBaixa {
+  id           String            @id @default(uuid())
+  ideagriId    Int?              @unique
   nome         String
-  tipo         TipoSaidaAnimal
-  ativo        Boolean         @default(true)
-  criadoEm     DateTime        @default(now())
+  classe       ClasseMotivoBaixa
+  ativo        Boolean           @default(true)
+  criadoEm     DateTime          @default(now())
   criadoPorId  Int?
-  criadoPor    Usuario?        @relation("MotivoSaidaCriadoPor", fields: [criadoPorId], references: [id])
-  atualizadoEm DateTime        @updatedAt
+  criadoPor    Usuario?          @relation("MotivoBaixaCriadoPor", fields: [criadoPorId], references: [id])
+  atualizadoEm DateTime          @updatedAt
 
-  saidas SaidaAnimal[]
+  baixas BaixaAnimal[]
 
   @@schema("pecuaria")
 }

@@ -81,8 +81,8 @@ async function calcularPodeDesfazer(movs: MovComItens[]): Promise<Set<string>> {
   const animalIds = [...new Set(ativos.map((a) => a.animalId))];
   const linhas = ativos.map((a) => a.localizacaoId).filter((v): v is string => v != null);
   const [inativos, usadas] = await Promise.all([
-    animalIds.length ? prisma.saidaAnimal.findMany({ where: { animalId: { in: animalIds }, estornadaEm: null }, select: { animalId: true } }) : [],
-    linhas.length ? prisma.saidaAnimal.findMany({ where: { localizacaoFechadaId: { in: linhas } }, select: { localizacaoFechadaId: true } }) : [],
+    animalIds.length ? prisma.baixaAnimal.findMany({ where: { animalId: { in: animalIds }, estornadaEm: null }, select: { animalId: true } }) : [],
+    linhas.length ? prisma.baixaAnimal.findMany({ where: { localizacaoFechadaId: { in: linhas } }, select: { localizacaoFechadaId: true } }) : [],
   ]);
   const inativosSet = new Set(inativos.map((s) => s.animalId));
   const usadasSet = new Set(usadas.map((s) => s.localizacaoFechadaId));

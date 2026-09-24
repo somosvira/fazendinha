@@ -22,7 +22,7 @@ export interface AnimalResumo {
   papelReprodutivo: "NENHUM" | "RECEPTORA" | "DOADORA" | null;
   composicaoRotulo: string;
   ultimoPeso: { kg: number; data: string } | null;
-  situacao: "ATIVO" | "SAIU";
+  situacao: "ATIVO" | "BAIXADO";
 }
 
 type AnimalBase = {
@@ -44,7 +44,7 @@ export function mapearAnimalResumo(input: {
   destino: { aptidao: "LEITE" | "CORTE"; papelReprodutivo: "NENHUM" | "RECEPTORA" | "DOADORA" } | null;
   composicao: FracaoRaca[];
   ultimoPeso: { pesoKg: number; data: Date } | null;
-  situacao: "ATIVO" | "SAIU";
+  situacao: "ATIVO" | "BAIXADO";
 }): AnimalResumo {
   const { animal } = input;
   return {
@@ -87,7 +87,7 @@ export interface AnimalFicha extends AnimalResumo {
   historicoDestinos: Array<{ id: string; aptidao: "LEITE" | "CORTE"; papelReprodutivo: "NENHUM" | "RECEPTORA" | "DOADORA"; desde: string; ate: string | null }>;
   historicoPesagens: Array<{ id: string; data: string; pesoKg: number; tipo: string; origem: string }>;
   historicoCategoriasManuais: Array<{ id: string; categoria: CategoriaRef; desde: string; ate: string | null; motivo: string; motivoEncerramento: string | null }>;
-  saida: { id: string; data: string; tipo: string; motivo: string | null; observacao: string | null; estornadaEm: string | null; estornoMotivo: string | null } | null;
+  baixa: { id: string; data: string; tipo: string; motivo: { nome: string; classe: string } | null; observacao: string | null; estornadaEm: string | null; estornoMotivo: string | null } | null;
 }
 
 export interface PainelRebanho {
@@ -140,8 +140,10 @@ const RESUMOS_AUDITORIA: Record<string, string> = {
   "Movimentacao:DESFAZER": "Movimentação desfeita",
   "DestinoAnimal:MUDANCA_DESTINO": "Mudança de destino/aptidão",
   "DestinoAnimal:DESFAZER": "Mudança de destino desfeita",
-  "SaidaAnimal:SAIDA": "Saída registrada",
-  "SaidaAnimal:ESTORNO": "Saída estornada",
+  "BaixaAnimal:BAIXA": "Baixa registrada",
+  "BaixaAnimal:ESTORNO": "Baixa estornada",
+  "MotivoBaixa:CADASTRO": "Motivo de baixa cadastrado",
+  "MotivoBaixa:EDICAO": "Motivo de baixa editado",
   "Pesagem:REGISTRO": "Pesagem registrada",
   "Pesagem:EDICAO": "Pesagem editada",
   "Pesagem:EXCLUSAO": "Pesagem excluída",

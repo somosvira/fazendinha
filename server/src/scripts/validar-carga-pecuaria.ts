@@ -29,11 +29,11 @@ async function main() {
 
   // ---- 1) total de animais e ativos ----------------------------------------
   const totalAnimais = await prisma.animal.count();
-  const totalSaidasAbertas = await prisma.saidaAnimal.count({ where: { estornadaEm: null } });
-  const ativos = totalAnimais - totalSaidasAbertas;
+  const totalBaixasAbertas = await prisma.baixaAnimal.count({ where: { estornadaEm: null } });
+  const ativos = totalAnimais - totalBaixasAbertas;
   console.log(`1) Contagem`);
   info(`total de animais: ${totalAnimais}`);
-  info(`ativos: ${ativos} / inativos (saída não estornada): ${totalSaidasAbertas}`);
+  info(`ativos: ${ativos} / inativos (baixa não estornada): ${totalBaixasAbertas}`);
 
   // ---- 2) nenhum texto com "Ã" (encoding quebrado) ---------------------------
   console.log(`\n2) Encoding`);
@@ -42,7 +42,7 @@ async function main() {
     select: { id: true, brinco: true, nome: true },
   });
   const lotesComMojibake = await prisma.lote.findMany({ where: { nome: { contains: "Ã" } }, select: { id: true, nome: true } });
-  const motivosComMojibake = await prisma.motivoSaida.findMany({ where: { nome: { contains: "Ã" } }, select: { id: true, nome: true } });
+  const motivosComMojibake = await prisma.motivoBaixa.findMany({ where: { nome: { contains: "Ã" } }, select: { id: true, nome: true } });
   const totalMojibake = animaisComMojibake.length + lotesComMojibake.length + motivosComMojibake.length;
   if (totalMojibake === 0) {
     ok(`nenhum "Ã" em nome/brinco de animal, lote ou motivo`);
@@ -54,7 +54,7 @@ async function main() {
   // ---- 3) todo animal ativo com exatamente 1 localização/destino aberto -----
   console.log(`\n3) Localização e destino abertos (animais ativos)`);
   const animaisAtivos = await prisma.animal.findMany({
-    where: { saidas: { none: { estornadaEm: null } } },
+    where: { baixas: { none: { estornadaEm: null } } },
     select: {
       id: true,
       brinco: true,
@@ -111,12 +111,12 @@ async function main() {
     where: { ate: null },
     select: { propriedadeId: true, propriedade: { select: { nome: true } }, animal: { select: { id: true, brinco: true } } },
   });
-  const saidasAbertasIds = new Set(
-    (await prisma.saidaAnimal.findMany({ where: { estornadaEm: null }, select: { animalId: true } })).map((s) => s.animalId),
+  const baixasAbertasIds = new Set(
+    (await prisma.baixaAnimal.findMany({ where: { estornadaEm: null }, select: { animalId: true } })).map((s) => s.animalId),
   );
   const porChave = new Map<string, { propriedadeNome: string; brinco: string; count: number }>();
   for (const l of localizacoesAbertas) {
-    if (saidasAbertasIds.has(l.animal.id)) continue;
+    if (baixasAbertasIds.has(l.animal.id)) continue;
     const chave = `${l.propriedadeId}\u0000${l.animal.brinco.trim().toUpperCase()}`;
     const atual = porChave.get(chave);
     if (atual) atual.count++;
@@ -134,7 +134,7 @@ async function main() {
   // ---- 7) distribuição de categorias calculadas + novilhas sem partos -------
   console.log(`\n7) Categorias (regras da fazenda + trocas manuais, informativo)`);
   const todosAtivosDetalhe = await prisma.animal.findMany({
-    where: { saidas: { none: { estornadaEm: null } } },
+    where: { baixas: { none: { estornadaEm: null } } },
     select: { sexo: true, dataNascimento: true, partosAntesDaEntrada: true, categoriasManuais: SELECT_MANUAL_ABERTA },
   });
   const hoje = new Date();
@@ -166,13 +166,47 @@ async function main() {
     for (const s of acimaDe64.slice(0, 10)) console.log(`       animalId ${s.animalId}: soma ${s._sum.fracao64}`);
   }
 
-  // ---- 9) saídas ativas apontam a linha que fecharam (base do estorno) ------
-  console.log(`\n9) Saídas ativas com localização fechada registrada`);
-  const saidasSemLinha = await prisma.saidaAnimal.count({
+  // ---- 9) baixas ativas apontam a linha que fecharam (base do estorno) ------
+  console.log(`\n9) Baixas ativas com localização fechada registrada`);
+  const baixasSemLinha = await prisma.baixaAnimal.count({
     where: { estornadaEm: null, localizacaoFechadaId: null, animal: { localizacoes: { some: {} } } },
   });
-  if (saidasSemLinha === 0) ok(`toda saída ativa registra a localização que fechou`);
-  else falha(`${saidasSemLinha} saídas ativas sem localizacaoFechadaId (o estorno não saberia o que reabrir)`);
+  if (baixasSemLinha === 0) ok(`toda baixa ativa registra a localização que fechou`);
+  else falha(`${baixasSemLinha} baixas ativas sem localizacaoFechadaId (o estorno não saberia o que reabrir)`);
+
+  // ---- 10) baixas ativas por tipo e motivos por classe (informativo) --------
+  console.log(`\n10) Baixas ativas por tipo, motivos por classe`);
+  const baixasPorTipo = await prisma.baixaAnimal.groupBy({
+    by: ["tipo"],
+    where: { estornadaEm: null },
+    _count: { _all: true },
+  });
+  for (const b of baixasPorTipo.sort((x, y) => y._count._all - x._count._all)) {
+    info(`baixas ${b.tipo}: ${b._count._all}`);
+  }
+  const motivosPorClasse = await prisma.motivoBaixa.groupBy({
+    by: ["classe"],
+    _count: { _all: true },
+  });
+  for (const m of motivosPorClasse.sort((x, y) => y._count._all - x._count._all)) {
+    info(`motivos de classe ${m.classe}: ${m._count._all}`);
+  }
+
+  // ---- 11) baixas sem motivo, por tipo (informativo) -------------------------
+  console.log(`\n11) Baixas ativas sem motivo resolvido, por tipo`);
+  const baixasSemMotivoPorTipo = await prisma.baixaAnimal.groupBy({
+    by: ["tipo"],
+    where: { estornadaEm: null, motivoId: null },
+    _count: { _all: true },
+  });
+  const totalSemMotivo = baixasSemMotivoPorTipo.reduce((t, b) => t + b._count._all, 0);
+  if (totalSemMotivo === 0) {
+    info(`nenhuma baixa ativa sem motivo`);
+  } else {
+    for (const b of baixasSemMotivoPorTipo.sort((x, y) => y._count._all - x._count._all)) {
+      info(`sem motivo — ${b.tipo}: ${b._count._all}`);
+    }
+  }
 
   console.log(`\n=== ${falhas === 0 ? "Validação OK" : `${falhas} checagem(ns) crítica(s) com FALHA`} ===`);
   await prisma.$disconnect();

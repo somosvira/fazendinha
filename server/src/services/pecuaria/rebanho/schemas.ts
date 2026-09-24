@@ -65,19 +65,22 @@ export const mudarDestinoSchema = z.object({
 });
 export type MudarDestinoInput = z.infer<typeof mudarDestinoSchema>;
 
-export const saidaSchema = z.object({
+export const tipoBaixaSchema = z.enum(["VENDA", "ABATE", "MORTE", "DOACAO", "EXTRAVIO", "CADASTRO_INDEVIDO"]);
+export const classeMotivoBaixaSchema = z.enum(["DESCARTE_VOLUNTARIO", "DESCARTE_INVOLUNTARIO", "MORTE"]);
+
+export const baixaSchema = z.object({
   animalId: z.string().uuid().optional(),
   data: dataISO,
-  tipo: z.enum(["VENDA", "ABATE", "MORTE", "DOACAO", "CADASTRO_INDEVIDO", "OUTRO"]),
+  tipo: tipoBaixaSchema,
   motivoId: z.string().uuid().nullable().optional(),
   observacao: z.string().trim().max(500).nullable().optional(),
 });
-export type SaidaInput = z.infer<typeof saidaSchema>;
+export type BaixaInput = z.infer<typeof baixaSchema>;
 
-export const estornoSaidaSchema = z.object({
+export const estornoBaixaSchema = z.object({
   motivo: z.string().trim().min(1).max(300),
 });
-export type EstornoSaidaInput = z.infer<typeof estornoSaidaSchema>;
+export type EstornoBaixaInput = z.infer<typeof estornoBaixaSchema>;
 
 export const desfazerMovimentacaoSchema = z.object({
   motivo: z.string().trim().min(1).max(300),
@@ -124,7 +127,7 @@ export const listarFiltrosSchema = z.object({
   categoriaId: z.string().uuid().optional(),
   aptidao: z.enum(["LEITE", "CORTE"]).optional(),
   papelReprodutivo: z.enum(["NENHUM", "RECEPTORA", "DOADORA"]).optional(),
-  situacao: z.enum(["ATIVO", "SAIU", "TODOS"]).optional().default("ATIVO"),
+  situacao: z.enum(["ATIVO", "BAIXADO", "TODOS"]).optional().default("ATIVO"),
   busca: z.string().trim().max(120).optional(),
   page: z.coerce.number().int().min(1).optional().default(1),
   pageSize: z.coerce.number().int().min(1).max(200).optional().default(20),
@@ -145,7 +148,7 @@ export const editarLoteSchema = z.object({
 });
 export type EditarLoteInput = z.infer<typeof editarLoteSchema>;
 
-/** Query comum a listagens de cadastro (lotes, raças, motivos de saída) com "mostrar inativos". */
+/** Query comum a listagens de cadastro (lotes, raças, motivos de baixa) com "mostrar inativos". */
 export const incluirInativosQuerySchema = z.object({
   incluirInativos: z.enum(["true", "false"]).optional().transform((v) => v === "true"),
 });
@@ -172,20 +175,18 @@ export const editarRacaSchema = z.object({
 });
 export type EditarRacaInput = z.infer<typeof editarRacaSchema>;
 
-const tipoSaidaAnimal = z.enum(["VENDA", "ABATE", "MORTE", "DOACAO", "CADASTRO_INDEVIDO", "OUTRO"]);
-
-export const criarMotivoSaidaSchema = z.object({
+export const criarMotivoBaixaSchema = z.object({
   nome: z.string().trim().min(1).max(80),
-  tipo: tipoSaidaAnimal,
+  classe: classeMotivoBaixaSchema,
 });
-export type CriarMotivoSaidaInput = z.infer<typeof criarMotivoSaidaSchema>;
+export type CriarMotivoBaixaInput = z.infer<typeof criarMotivoBaixaSchema>;
 
-export const editarMotivoSaidaSchema = z.object({
+export const editarMotivoBaixaSchema = z.object({
   nome: z.string().trim().min(1).max(80).optional(),
-  tipo: tipoSaidaAnimal.optional(),
+  classe: classeMotivoBaixaSchema.optional(),
   ativo: z.boolean().optional(),
 });
-export type EditarMotivoSaidaInput = z.infer<typeof editarMotivoSaidaSchema>;
+export type EditarMotivoBaixaInput = z.infer<typeof editarMotivoBaixaSchema>;
 
 // ---------- categorias configuráveis ----------
 

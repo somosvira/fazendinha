@@ -81,7 +81,7 @@ interface AnimalAtivoCategoria {
 
 async function animaisAtivos(db: DbPecuaria = prisma): Promise<AnimalAtivoCategoria[]> {
   const animais = await db.animal.findMany({
-    where: { saidas: { none: { estornadaEm: null } } },
+    where: { baixas: { none: { estornadaEm: null } } },
     select: { id: true, sexo: true, dataNascimento: true, partosAntesDaEntrada: true, categoriasManuais: SELECT_MANUAL_ABERTA },
   });
   return animais.map((a) => ({ id: a.id, sexo: a.sexo, dataNascimento: a.dataNascimento, partos: a.partosAntesDaEntrada, manual: manualDe(a.categoriasManuais) }));

@@ -35,19 +35,19 @@ export function validarDatasAnimal(input: {
   return erros;
 }
 
-export function validarDataSaida(input: {
+export function validarDataBaixa(input: {
   dataEntrada: Date | string;
-  dataSaida: Date | string;
+  dataBaixa: Date | string;
 }): ErroValidacao[] {
-  if (antes(input.dataSaida, input.dataEntrada)) {
-    return [{ campo: "data", mensagem: "Data de saída não pode ser anterior à data de entrada" }];
+  if (antes(input.dataBaixa, input.dataEntrada)) {
+    return [{ campo: "data", mensagem: "Data da baixa não pode ser anterior à data de entrada" }];
   }
   return [];
 }
 
 export function validarDataPesagem(input: {
   dataNascimento: Date | string;
-  dataSaida?: Date | string | null;
+  dataBaixa?: Date | string | null;
   dataPesagem: Date | string;
 }): ErroValidacao[] {
   const erros: ErroValidacao[] = [];
@@ -56,8 +56,8 @@ export function validarDataPesagem(input: {
     erros.push({ campo: "data", mensagem: "Data da pesagem não pode ser anterior ao nascimento" });
   }
 
-  if (input.dataSaida != null && antes(input.dataSaida, input.dataPesagem)) {
-    erros.push({ campo: "data", mensagem: "Data da pesagem não pode ser posterior à saída do animal" });
+  if (input.dataBaixa != null && antes(input.dataBaixa, input.dataPesagem)) {
+    erros.push({ campo: "data", mensagem: "Data da pesagem não pode ser posterior à baixa do animal" });
   }
 
   return erros;
@@ -65,7 +65,7 @@ export function validarDataPesagem(input: {
 
 export function validarDataLocalizacao(input: {
   dataEntrada: Date | string;
-  dataSaida?: Date | string | null;
+  dataBaixa?: Date | string | null;
   desde: Date | string;
 }): ErroValidacao[] {
   const erros: ErroValidacao[] = [];
@@ -74,8 +74,8 @@ export function validarDataLocalizacao(input: {
     erros.push({ campo: "data", mensagem: "Localização não pode começar antes da entrada do animal" });
   }
 
-  if (input.dataSaida != null && antes(input.dataSaida, input.desde)) {
-    erros.push({ campo: "data", mensagem: "Localização não pode começar depois da saída do animal" });
+  if (input.dataBaixa != null && antes(input.dataBaixa, input.desde)) {
+    erros.push({ campo: "data", mensagem: "Localização não pode começar depois da baixa do animal" });
   }
 
   return erros;
@@ -95,7 +95,7 @@ export function validarDataDestino(input: {
  * Valida a edição dos campos fixos de um animal (sexo, nascimento, origem, entrada,
  * partos antes da entrada) contra o histórico já registrado: a entrada não pode ficar
  * depois do início da primeira localização/destino, o nascimento não pode ficar depois
- * da primeira pesagem, a entrada não pode ficar depois da primeira saída, e um animal
+ * da primeira pesagem, a entrada não pode ficar depois da primeira baixa, e um animal
  * NASCIDO sempre tem entrada === nascimento.
  */
 export function validarEdicaoAnimal(input: {
@@ -107,7 +107,7 @@ export function validarEdicaoAnimal(input: {
   primeiraLocalizacaoDesde: Date | string | null;
   primeiroDestinoDesde: Date | string | null;
   primeiraPesagemData: Date | string | null;
-  primeiraSaidaData: Date | string | null;
+  primeiraBaixaData: Date | string | null;
 }): ErroValidacao[] {
   const erros: ErroValidacao[] = [];
 
@@ -131,8 +131,8 @@ export function validarEdicaoAnimal(input: {
     erros.push({ campo: "dataNascimento", mensagem: "Data de nascimento não pode ser posterior à primeira pesagem registrada" });
   }
 
-  if (input.primeiraSaidaData != null && antes(input.primeiraSaidaData, input.dataEntrada)) {
-    erros.push({ campo: "dataEntrada", mensagem: "Data de entrada não pode ser posterior à saída do animal" });
+  if (input.primeiraBaixaData != null && antes(input.primeiraBaixaData, input.dataEntrada)) {
+    erros.push({ campo: "dataEntrada", mensagem: "Data de entrada não pode ser posterior à baixa do animal" });
   }
 
   return erros;
@@ -165,7 +165,7 @@ export interface PlanoAjusteEntrada {
  * Quem começa exatamente na entrada antiga acompanha a nova: a 1ª localização, o 1º destino e a
  * pesagem ENTRADA; a pesagem NASCIMENTO acompanha o nascimento. A validação é feita contra o
  * histórico já ajustado — a nova entrada não pode passar do fim da 1ª linha, de outra pesagem,
- * nem da saída.
+ * nem da baixa.
  */
 export function planejarAjusteEntrada(input: {
   entradaAntiga: Date | string;
@@ -175,7 +175,7 @@ export function planejarAjusteEntrada(input: {
   localizacoes: LinhaInicio[];
   destinos: LinhaInicio[];
   pesagens: PesagemData[];
-  primeiraSaidaData: Date | string | null;
+  primeiraBaixaData: Date | string | null;
 }): PlanoAjusteEntrada {
   const t = (v: Date | string) => paraData(v).getTime();
   const primeira = (linhas: LinhaInicio[]) => [...linhas].sort((a, b) => t(a.desde) - t(b.desde))[0] ?? null;
@@ -214,8 +214,8 @@ export function planejarAjusteEntrada(input: {
     }
   }
 
-  if (input.primeiraSaidaData != null && t(input.primeiraSaidaData) < entradaNova) {
-    erros.push({ campo: "dataEntrada", mensagem: "Data de entrada não pode ser posterior à saída do animal" });
+  if (input.primeiraBaixaData != null && t(input.primeiraBaixaData) < entradaNova) {
+    erros.push({ campo: "dataEntrada", mensagem: "Data de entrada não pode ser posterior à baixa do animal" });
   }
 
   const unicos = erros.filter((e, i) => erros.findIndex((x) => x.mensagem === e.mensagem) === i);

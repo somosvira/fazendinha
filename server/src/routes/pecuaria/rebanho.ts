@@ -14,10 +14,10 @@ import * as movimentacoes from "../../services/pecuaria/rebanho/movimentacoes.js
 import * as categorias from "../../services/pecuaria/rebanho/categorias.js";
 import {
   cadastrarAnimalSchema, editarAnimalSchema, movimentarSchema, mudarDestinoSchema,
-  saidaSchema, estornoSaidaSchema, pesagemSchema, editarPesagemSchema, listarFiltrosSchema,
+  baixaSchema, estornoBaixaSchema, pesagemSchema, editarPesagemSchema, listarFiltrosSchema,
   criarLoteSchema, editarLoteSchema, incluirInativosQuerySchema,
   substituirComposicaoSchema, criarRacaSchema, editarRacaSchema,
-  criarMotivoSaidaSchema, editarMotivoSaidaSchema, desfazerMovimentacaoSchema, paginaQuerySchema, listarMovimentacoesSchema,
+  criarMotivoBaixaSchema, editarMotivoBaixaSchema, desfazerMovimentacaoSchema, paginaQuerySchema, listarMovimentacoesSchema,
   criarCategoriaSchema, editarCategoriaSchema, simularCategoriasSchema, reordenarCategoriasSchema, restaurarPadroesSchema,
   categoriaManualSchema, removerCategoriaManualSchema,
 } from "../../services/pecuaria/rebanho/schemas.js";
@@ -60,7 +60,7 @@ function validarQuery<T extends z.ZodTypeAny>(schema: T) {
 
 /**
  * Toda escrita no rebanho (qualquer método != GET — cadastro, edição, movimentação,
- * saída, pesagem, lotes, raças, motivos de saída) exige a flag `lancar`. Leitura só
+ * baixa, pesagem, lotes, raças, motivos de baixa) exige a flag `lancar`. Leitura só
  * depende do gate de área (`exigeArea("pecuaria")` em app.ts).
  */
 const exigirLancarParaEscrita: MiddlewareHandler = async (c, next) => {
@@ -136,16 +136,16 @@ export const rebanhoRouter = new Hono()
       return c.json(await animais.desfazerDestino(c.req.valid("param").id, usuarioId(c), await resolverEscopoLeitura(c)));
     } catch (e) { return falha(c, e); }
   })
-  .post("/animais/:id/saida", idParam, validar(saidaSchema), async (c) => {
+  .post("/animais/:id/baixa", idParam, validar(baixaSchema), async (c) => {
     const body = c.req.valid("json");
     try {
-      return c.json(await animais.darSaida({ ...body, animalId: c.req.valid("param").id }, usuarioId(c), await resolverEscopoLeitura(c)));
+      return c.json(await animais.darBaixa({ ...body, animalId: c.req.valid("param").id }, usuarioId(c), await resolverEscopoLeitura(c)));
     } catch (e) { return falha(c, e); }
   })
-  .post("/animais/:id/saida/estorno", idParam, validar(estornoSaidaSchema), async (c) => {
+  .post("/animais/:id/baixa/estorno", idParam, validar(estornoBaixaSchema), async (c) => {
     const escopo = await resolverEscopoLeitura(c);
     try {
-      return c.json(await animais.estornarSaida(c.req.valid("param").id, c.req.valid("json"), usuarioId(c), escopo));
+      return c.json(await animais.estornarBaixa(c.req.valid("param").id, c.req.valid("json"), usuarioId(c), escopo));
     } catch (e) { return falha(c, e); }
   })
   .post("/animais/:id/categoria", idParam, validar(categoriaManualSchema), async (c) => {
@@ -268,17 +268,17 @@ export const rebanhoRouter = new Hono()
       return c.json(await racas.editarRaca(c.req.valid("param").id, c.req.valid("json"), usuarioId(c)));
     } catch (e) { return falha(c, e); }
   })
-  .get("/motivos-saida", validarQuery(incluirInativosQuerySchema), async (c) => {
-    return c.json(await motivos.listarMotivosSaida(c.req.valid("query").incluirInativos));
+  .get("/motivos-baixa", validarQuery(incluirInativosQuerySchema), async (c) => {
+    return c.json(await motivos.listarMotivosBaixa(c.req.valid("query").incluirInativos));
   })
-  .post("/motivos-saida", validar(criarMotivoSaidaSchema), async (c) => {
+  .post("/motivos-baixa", validar(criarMotivoBaixaSchema), async (c) => {
     try {
-      return c.json(await motivos.criarMotivoSaida(c.req.valid("json"), usuarioId(c)), 201);
+      return c.json(await motivos.criarMotivoBaixa(c.req.valid("json"), usuarioId(c)), 201);
     } catch (e) { return falha(c, e); }
   })
-  .patch("/motivos-saida/:id", idParam, validar(editarMotivoSaidaSchema), async (c) => {
+  .patch("/motivos-baixa/:id", idParam, validar(editarMotivoBaixaSchema), async (c) => {
     try {
-      return c.json(await motivos.editarMotivoSaida(c.req.valid("param").id, c.req.valid("json"), usuarioId(c)));
+      return c.json(await motivos.editarMotivoBaixa(c.req.valid("param").id, c.req.valid("json"), usuarioId(c)));
     } catch (e) { return falha(c, e); }
   })
   .get("/painel", async (c) => {
@@ -288,15 +288,15 @@ export const rebanhoRouter = new Hono()
     } catch (e) { return falha(c, e); }
   })
   .get("/catalogos", async (c) => {
-    const [racasAtivas, motivosSaida, propriedades, lotesAtivos] = await Promise.all([
+    const [racasAtivas, motivosBaixa, propriedades, lotesAtivos] = await Promise.all([
       prisma.raca.findMany({ where: { ativo: true }, orderBy: { nome: "asc" } }),
-      prisma.motivoSaida.findMany({ where: { ativo: true }, orderBy: { nome: "asc" } }),
+      prisma.motivoBaixa.findMany({ where: { ativo: true }, orderBy: [{ classe: "asc" }, { nome: "asc" }] }),
       prisma.propriedade.findMany({ where: { ativo: true }, orderBy: [{ ordem: "asc" }, { id: "asc" }] }),
       prisma.lote.findMany({ where: { ativo: true }, orderBy: { nome: "asc" } }),
     ]);
     return c.json({
       racas: racasAtivas.map((r) => ({ id: r.id, nome: r.nome, sigla: r.sigla, base: r.base })),
-      motivosSaida: motivosSaida.map((m) => ({ id: m.id, nome: m.nome, tipo: m.tipo })),
+      motivosBaixa: motivosBaixa.map((m) => ({ id: m.id, nome: m.nome, classe: m.classe })),
       propriedades: propriedades.map((p) => ({ id: p.id, nome: p.nome, apelido: p.apelido })),
       lotes: lotesAtivos.map((l) => ({ id: l.id, nome: l.nome, propriedadeId: l.propriedadeId })),
     });

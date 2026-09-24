@@ -19,11 +19,11 @@ async function contarAnimaisAtivosPorLote(db: DbPecuaria, loteIds: string[]): Pr
     where: { ate: null, loteId: { in: loteIds } },
     select: { loteId: true, animalId: true },
   });
-  const saidasAbertas = await db.saidaAnimal.findMany({
+  const baixasAbertas = await db.baixaAnimal.findMany({
     where: { estornadaEm: null, animalId: { in: localizacoesAbertas.map((l) => l.animalId) } },
     select: { animalId: true },
   });
-  const inativos = new Set(saidasAbertas.map((s) => s.animalId));
+  const inativos = new Set(baixasAbertas.map((s) => s.animalId));
   const contagem = new Map<string, number>();
   for (const loc of localizacoesAbertas) {
     if (!loc.loteId || inativos.has(loc.animalId)) continue;
