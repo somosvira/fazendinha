@@ -49,7 +49,8 @@ export function returnToInterna(raw: string | null | undefined): string | null {
 
 export function podeAcessarTab(usuario: UsuarioSessao, tab: Tab): boolean {
   const dono = !!usuario.dono;
-  if (tab === "acessos") return dono || usuario.flags.includes("gerenciarAcessos");
+  // Sítios é estrutura da fazenda (raramente muda): mesmo público de Acessos.
+  if (tab === "acessos" || tab === "sitios") return dono || usuario.flags.includes("gerenciarAcessos");
   if (tab === "config") return true;
 
   const area = areaDaTab(tab);

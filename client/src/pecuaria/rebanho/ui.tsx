@@ -50,7 +50,7 @@ export function Paginacao({ paginaAtual, totalPaginas, totalItens, itensPorPagin
 /** Sub-abas sublinhadas genéricas — mesmo visual das abas de Configurações
  *  financeiras e da navegação principal do Rebanho (`NavRebanho`), mas
  *  parametrizadas para uso local dentro de uma tela (ex.: Lotes · Raças ·
- *  Motivos de saída · Sítios em Cadastros). */
+ *  Motivos de saída em Cadastros). */
 export function SubAbas<T extends string>({ abas, ativa, onSelecionar }: {
   abas: { valor: T; rotulo: string; icon?: LucideIcon }[];
   ativa: T;

@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
+import { exigePermissao } from "../middleware/permissao.js";
 import * as svc from "../services/propriedade.js";
 import { propriedadeSchema } from "../services/propriedade.js";
 
@@ -14,8 +15,10 @@ function fail(e: unknown): { status: Status; body: { error: string } } {
 }
 
 // Multi-propriedade (Fatia 1): lista + cadastro dos sítios. O front só mostra o
-// seletor quando há ≥2 — com 1 propriedade a camada fica invisível.
+// seletor quando há ≥2 — com 1 propriedade a camada fica invisível. Ler é livre
+// para quem está logado; criar e editar é de quem administra a fazenda (mesma
+// permissão de Acessos), como a tela Configurações > Sítios.
 export const propriedadeRouter = new Hono()
   .get("/propriedades", async (c) => c.json(await svc.listarPropriedades(c.req.query("incluirInativos") === "true")))
-  .post("/propriedades", zValidator("json", propriedadeSchema), async (c) => { try { return c.json(await svc.criarPropriedade(c.req.valid("json")), 201); } catch (e) { const { status, body } = fail(e); return c.json(body, status); } })
-  .patch("/propriedades/:id", zValidator("json", propriedadeSchema), async (c) => { try { return c.json(await svc.editarPropriedade(Number(c.req.param("id")), c.req.valid("json"))); } catch (e) { const { status, body } = fail(e); return c.json(body, status); } });
+  .post("/propriedades", exigePermissao("gerenciarAcessos"), zValidator("json", propriedadeSchema), async (c) => { try { return c.json(await svc.criarPropriedade(c.req.valid("json")), 201); } catch (e) { const { status, body } = fail(e); return c.json(body, status); } })
+  .patch("/propriedades/:id", exigePermissao("gerenciarAcessos"), zValidator("json", propriedadeSchema), async (c) => { try { return c.json(await svc.editarPropriedade(Number(c.req.param("id")), c.req.valid("json"))); } catch (e) { const { status, body } = fail(e); return c.json(body, status); } });

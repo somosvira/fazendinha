@@ -61,4 +61,11 @@ describe("returnTo", () => {
     const usuarioLegado = { ...usuarioPecuaria, areas: undefined } as unknown as UsuarioSessao;
     expect(podeAcessarTab(usuarioLegado, "pec-rebanho")).toBe(true);
   });
+
+  it("Configurações > Sítios é só de quem administra a fazenda", () => {
+    expect(podeAcessarTab(usuarioPecuaria, "sitios")).toBe(false);
+    expect(podeAcessarTab({ ...usuarioPecuaria, flags: ["gerenciarAcessos"] }, "sitios")).toBe(true);
+    expect(podeAcessarTab({ ...usuarioPecuaria, dono: true }, "sitios")).toBe(true);
+    expect(destinoDepoisDoLogin("/configuracoes/sitios", usuarioPecuaria)).toBe("/pecuaria/rebanho");
+  });
 });

@@ -20,12 +20,21 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json();
 }
 
+// Toda escrita avisa as listas abertas (seletor da sidebar, formulários de lote…)
+// para recarregarem: o cadastro mora em Configurações, longe de quem exibe os sítios.
+const EVENTO_MUDOU = "terrano:propriedades-mudaram";
+async function escrever<T>(fn: () => Promise<T>): Promise<T> {
+  const r = await fn();
+  window.dispatchEvent(new Event(EVENTO_MUDOU));
+  return r;
+}
+
 export const listarPropriedades = (opts?: { incluirInativos?: boolean }) =>
   req<PropriedadeDTO[]>(`/propriedades${opts?.incluirInativos ? "?incluirInativos=true" : ""}`);
-export const criarPropriedade = (p: PropriedadeInput) => req<PropriedadeDTO>(`/propriedades`, { method: "POST", body: JSON.stringify(p) });
-export const editarPropriedade = (id: number, p: PropriedadeInput) => req<PropriedadeDTO>(`/propriedades/${id}`, { method: "PATCH", body: JSON.stringify(p) });
+export const criarPropriedade = (p: PropriedadeInput) => escrever(() => req<PropriedadeDTO>(`/propriedades`, { method: "POST", body: JSON.stringify(p) }));
+export const editarPropriedade = (id: number, p: PropriedadeInput) => escrever(() => req<PropriedadeDTO>(`/propriedades/${id}`, { method: "PATCH", body: JSON.stringify(p) }));
 
-/** `incluirInativos`: usado pela tela de Cadastros > Sítios, que precisa listar e
+/** `incluirInativos`: usado por Configurações > Sítios, que precisa listar e
  *  reativar sítios desativados. O seletor global (FarmPicker) chama sem opções e
  *  continua vendo só os ativos. */
 export function usePropriedades(opts?: { incluirInativos?: boolean }) {
@@ -34,5 +43,9 @@ export function usePropriedades(opts?: { incluirInativos?: boolean }) {
   const [loading, setLoading] = useState(true);
   const recarregar = useCallback(() => { setLoading(true); listarPropriedades({ incluirInativos }).then(setData).catch(() => setData([])).finally(() => setLoading(false)); }, [incluirInativos]);
   useEffect(() => { recarregar(); }, [recarregar]);
+  useEffect(() => {
+    window.addEventListener(EVENTO_MUDOU, recarregar);
+    return () => window.removeEventListener(EVENTO_MUDOU, recarregar);
+  }, [recarregar]);
   return { data, loading, recarregar };
 }

@@ -517,8 +517,8 @@ export function App() {
     : (
       <>
         {ASSISTENTE_ATIVO && tab === "ia" && (canSee("ia") ? <IA /> : <GatedTab user={effectiveUser} abaLabel="IA" />)}
-        {/* Configurações mantém somente setup global, categorias e acessos. */}
-        {(tab === "config" || tab === "acessos") && (
+        {/* Configurações mantém somente setup global: categorias, sítios e acessos. */}
+        {(tab === "config" || tab === "acessos" || tab === "sitios") && (
           <ConfiguracoesHub
             tab={tab}
             onNav={setTab}

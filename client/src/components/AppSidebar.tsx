@@ -456,7 +456,7 @@ export function AppSidebar({
           </div>
         </div>
         <div className="mt-3.5 min-[901px]:max-[1100px]:mt-1.5 [.side-collapsed_&]:mt-1.5">
-          <SidebarFarmPicker propAtiva={propAtiva} onTrocarProp={onTrocarProp} />
+          <SidebarFarmPicker propAtiva={propAtiva} onTrocarProp={onTrocarProp} onGerenciar={isAdmin ? () => nav("sitios") : undefined} />
         </div>
       </div>
     </div>
@@ -527,7 +527,7 @@ export function AppSidebar({
       })}
 
       <div className="mt-3 flex flex-col gap-px border-t border-dashed border-[rgba(232,220,196,0.16)] pt-3">
-        <Item id="config" label="Configurações" current={current} onNav={nav} chevron activeWhen={[...(isAdmin ? (["acessos"] as Tab[]) : [])]} />
+        <Item id="config" label="Configurações" current={current} onNav={nav} chevron activeWhen={[...(isAdmin ? (["sitios", "acessos"] as Tab[]) : [])]} />
       </div>
     </div>
   );
