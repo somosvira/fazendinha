@@ -1,9 +1,10 @@
 /* Rio Novo — navegação global (rail persistente no desktop + drawer no mobile).
  *
  * A sidebar é organizada por ÁREAS DE TRABALHO, não pela estrutura interna dos
- * módulos. As rotinas mais frequentes ficam sempre em um clique (Reprodução,
- * Sanidade, Controle leiteiro, Animais e Agronomia); recursos de configuração ou
- * análise menos frequentes ficam em "Mais opções" dentro da área correspondente.
+ * módulos. Pecuária hoje é só a v1 Rebanho (Animais · Lotes · Cadastros, uma
+ * área com um único ponto de entrada); Agronomia reúne Plantio e Milho com
+ * várias rotinas em um clique. Recursos de configuração ou análise menos
+ * frequentes ficam em "Mais opções" dentro da área correspondente.
  * A marca Terrano e o seletor de fazenda/sítio vivem no topo da sidebar.
  *
  * DESKTOP: trilho fixo sempre visível; entre 901–1100px vira ícone-only e expande
@@ -47,7 +48,6 @@ const ICON: Partial<Record<Tab, JSX.Element>> = {
   "pla-planejamento": <><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 3v4M16 3v4M4 9h16M9 14l2 2 4-4"/></>,
   "pla-estoque": <><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M3 8l9 5 9-5"/></>,
   "pla-custo": <><path d="M12 2v20"/><path d="M17 6.5a4 4 0 0 0-4-2.5h-2a3.5 3.5 0 0 0 0 7h2a3.5 3.5 0 0 1 0 7h-2a4 4 0 0 1-4-2.5"/></>,
-  // — Corte (gado de corte) — ícones simbólicos.
   // — Milho (cultivo) — ícones simbólicos.
   "mil-dashboard": <><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></>,
   "mil-safras": <><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 11h18"/></>,

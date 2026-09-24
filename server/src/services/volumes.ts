@@ -1,5 +1,5 @@
 /* Agregação de volume físico (café) a partir dos módulos operacionais,
- * para cruzar com o financeiro (R$/L, R$/saca). I/O Prisma isolado; o cálculo
+ * para cruzar com o financeiro (R$/saca). I/O Prisma isolado; o cálculo
  * puro vive em volumes.calc.ts. Espelha os filtros usados em
  * plantio/custo.ts. */
 import { prisma } from "../db.js";

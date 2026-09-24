@@ -75,7 +75,7 @@
 | **Onde aparece** | KPI "Pagamentos" na Visão geral financeira |
 | **Interpretação** | Dinheiro **que saiu de fato** das contas no período |
 
-> **Atenção (comportamento real do código):** `obterDashboard` **não filtra `transacao.status`**. Uma transação estornada continua somando, e o `REVERSAO` gerado soma na direção oposta. O **resultado (2.3) fica correto**, mas entradas e saídas ficam infladas pelo par estorno/reversão. Motores que precisam do valor limpo filtram `status = "CONFIRMADA"` explicitamente — é o que fazem `services/consulta/registro/financeiro.ts`, `services/rebanho/custo-producao.ts` e `custo-sanidade.ts`.
+> **Atenção (comportamento real do código):** `obterDashboard` **não filtra `transacao.status`**. Uma transação estornada continua somando, e o `REVERSAO` gerado soma na direção oposta. O **resultado (2.3) fica correto**, mas entradas e saídas ficam infladas pelo par estorno/reversão. Motores que precisam do valor limpo filtram `status = "CONFIRMADA"` explicitamente — é o que faz `services/consulta/registro/financeiro.ts`.
 
 ### 2.3 Resultado do período
 
@@ -147,7 +147,7 @@ Chamado em `services/financeiro/operacoes.ts` por:
 | Transferência entre contas | `data` da transferência |
 | Estorno de transação e cancelamento de operação | **data de hoje** |
 
-O mesmo `PeriodoFinanceiro` é consultado fora do financeiro por `services/rebanho/estoque.ts`, `services/rebanho/nutricao.consumo.ts` e `services/plantio/timeline.ts`.
+O mesmo `PeriodoFinanceiro` é consultado fora do financeiro por `services/plantio/timeline.ts` (a pecuária v1 ainda não o usa — não tem nutrição/sanidade que baixem estoque).
 
 > **Sem endpoint.** Não existe rota HTTP para fechar ou reabrir período — os registros só nascem via banco/seed. A trava funciona; a operação de fechamento ainda não tem UI nem API.
 
@@ -170,7 +170,7 @@ Estavam neste documento sobre o modelo antigo (`Lancamento`/`FechamentoMensal`) 
 
 | Métrica antiga | Situação | O que existe no lugar |
 |---|---|---|
-| **DRE simplificado** (Receita Leite, Custeio Leite Puro, Animal Aquisição, RN Caminhão, Investimento Leite, Custeio BPO) | Sem implementação | Nenhuma. O único recorte por centro de custo que sobrou é o custeio da Atividade Leiteira em `services/rebanho/custo-producao.ts` (§7.2). |
+| **DRE simplificado** (Receita Leite, Custeio Leite Puro, Animal Aquisição, RN Caminhão, Investimento Leite, Custeio BPO) | Sem implementação | Nenhuma. O recorte por centro de custo da Atividade Leiteira (§7.2) também foi removido em set/2026 junto com o resto do módulo antigo. |
 | **Timeline de 23 meses** e **delta YoY** de categorias | Sem implementação | `despesasPorCategoria` (§2.6), de um único período, sem comparação. |
 | **Projeção de fluxo / a vencer** | Sem implementação | Saldo pendente dos compromissos (§2.5) — total, não distribuído no tempo. |
 | **Cards de inconsistência contábil** (Animal Aquisição não classificado, RN Caminhão grande, Atv Plantio, Sem CCusto) | Sem implementação | Só sobrou o override de classificação da categoria: `PATCH /api/categorias/:id/classificacao` (`server/src/routes/categorias.ts`, grava `Categoria.classificacao ∈ CUSTEIO/INVESTIMENTO`). Nada calcula nem exibe os cards. |
@@ -179,6 +179,8 @@ Estavam neste documento sobre o modelo antigo (`Lancamento`/`FechamentoMensal`) 
 ---
 
 ## 3. Métricas de rebanho
+
+> **Histórico:** as seções 3–8 (rebanho, reprodução, sanidade, produção, custo, score/insights) descrevem os indicadores do módulo de pecuária leiteira/corte **removido em set/2026** (`ResumoAnimal`, `services/rebanho/*`, `EventoSanitario`, `ControleLeiteiro`... não existem mais — ver `CLAUDE.md`, seção Domínio). Ficam como **referência de fórmula** para quando os domínios de produção/reprodução/sanidade entrarem na v1 Rebanho (v2–v5). O que existe **hoje** no painel da v1 (`services/pecuaria/rebanho/painel.ts`, `GET /api/pecuaria/rebanho/painel`) é bem mais simples: ativos por categoria/sítio, `%` de receptoras, baixas dos últimos 30 dias e últimos eventos (cadastro/baixa/estorno) — nada de CCS, score, custo/litro ou worklists reprodutivas.
 
 ### 3.1 Rebanho ativo
 
@@ -507,7 +509,7 @@ Cada insight tem `tom: "pos" | "warn" | "neg"`.
 
 ## 10. Alertas
 
-Alertas aparecem no Dashboard Rebanho e em cards das telas de domínio. Regras em `services/rebanho/dashboard.agg.ts`:
+> As linhas de reprodução/sanidade abaixo (secagem, vazia atrasada, CCS, carência) são do módulo removido em set/2026 (`services/rebanho/dashboard.agg.ts` não existe mais) — mantidas como referência para quando esses domínios voltarem. "Estoque mínimo" e "Período fechado" seguem válidas hoje, fora da pecuária (`services/plantio/estoque.ts`, `services/financeiro/regras.ts`); o painel da v1 Rebanho ainda não tem alertas.
 
 | Alerta | Condição | Tom | Ação sugerida |
 |---|---|---|---|
@@ -555,8 +557,4 @@ Alertas aparecem no Dashboard Rebanho e em cards das telas de domínio. Regras e
 - `server/src/services/financeiro/regras.ts` — trava de `PeriodoFinanceiro` e auditoria.
 - `server/src/services/financeiro/operacoes.ts` — operações, compromissos, liquidações, transferências, estorno.
 - `server/src/services/consulta/registro/financeiro.ts` — fatos financeiros expostos à IA.
-- `server/src/services/rebanho/insights.ts` — score + financeiro por animal.
-- `server/src/services/rebanho/custo-producao.ts` — R$/litro.
-- `server/src/services/rebanho/estoque.calc.ts` — custo vaca/dia.
-- `server/src/services/rebanho/producao.recompute.ts` — média móvel e P305.
-- `server/src/services/rebanho/dashboard.agg.ts` — KPIs do dashboard rebanho.
+- `server/src/services/pecuaria/rebanho/painel.ts` — KPIs do painel da pecuária v1 (ativos, categoria, sítio, baixas, eventos — bem mais simples que o §3–8 histórico acima).

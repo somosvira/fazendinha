@@ -1,5 +1,7 @@
 # DOMAIN.md — Conhecimento de Pecuária Leiteira
 
+> **Histórico:** este documento descreve o domínio do módulo de pecuária leiteira/corte **removido em set/2026** (`EventoReprodutivo`, `EventoSanitario`, `ControleLeiteiro`, `ResumoAnimal`, IATF, caprinos etc. não existem mais no schema — ver `CLAUDE.md`, seção Domínio). O que está implementado hoje é a **v1 Rebanho** (`Animal`, `Lote`, `Movimentacao`, `CategoriaAnimal` configurável, `BaixaAnimal`, `Pesagem`, schema Postgres `pecuaria`), que cobre só identidade, localização/lote, categoria e baixa — sem lactação, reprodução, sanidade ou nutrição. Este texto fica como **referência de domínio** para quando esses eixos entrarem em cascata (v2–v5): as definições de DEL, IEP, P305, carência etc. continuam corretas conceitualmente, só não correspondem a nenhum model ou rota hoje.
+
 > **Documento obrigatório antes de codar qualquer coisa do rebanho.**
 > O objetivo é ensinar um desenvolvedor que nunca esteve numa fazenda de leite a entender o domínio bem o suficiente para tomar decisões de implementação sensatas.
 
