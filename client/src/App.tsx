@@ -342,7 +342,9 @@ export function App() {
       ? `${tabToPath(tab)}?${new URLSearchParams(deepLinkFiltros.filtros).toString()}`
       : null;
     const subrotaUrl = (isSubrotaFinanceira(tab, window.location.pathname) || isSubrotaRebanho(tab, window.location.pathname)) ? window.location.pathname + window.location.search : null;
-    const alvo = filtrosUrl ?? subrotaUrl ?? tabToPath(tab);
+    // sub-rota (ex.: /pecuaria/rebanho/animais?situacao=…) já traz a própria query:
+    // tem prioridade, senão os filtros do deep-link reescreveriam o caminho para a raiz da aba
+    const alvo = subrotaUrl ?? filtrosUrl ?? tabToPath(tab);
     if (window.location.pathname + window.location.search !== alvo) {
       if (firstSync.current) window.history.replaceState(null, "", alvo);
       else window.history.pushState(null, "", alvo);
