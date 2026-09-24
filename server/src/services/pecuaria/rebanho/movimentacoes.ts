@@ -5,7 +5,8 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../../../db.js";
 import { RebanhoError } from "./regras.js";
-import { calcularCategoria, type CategoriaCalculada } from "./categoria.calc.js";
+import { avaliarCategoria, type CategoriaRef } from "./categoria.calc.js";
+import { carregarRegras, manualDe, SELECT_MANUAL_ABERTA } from "./categorias.js";
 import { direcaoNoLote, resumirOrigens } from "./movimentacao.calc.js";
 import type { ListarMovimentacoesInput } from "./schemas.js";
 
@@ -34,7 +35,7 @@ export interface AnimalDaMovimentacaoDTO {
   animalId: string;
   brinco: string;
   nome: string | null;
-  categoria: CategoriaCalculada;
+  categoria: CategoriaRef | null;
   origem: string | null;
   /** NO_DESTINO: a linha aberta pela movimentação ainda é a atual · SAIU_DO_DESTINO: moveu de novo ou saiu do rebanho · DESFEITO */
   situacao: "NO_DESTINO" | "SAIU_DO_DESTINO" | "DESFEITO";
@@ -155,10 +156,10 @@ export async function buscarMovimentacao(id: string, escopo: number | null): Pro
 
   const animais = await prisma.animal.findMany({
     where: { id: { in: mov.animais.map((a) => a.animalId) } },
-    select: { id: true, brinco: true, nome: true, sexo: true, dataNascimento: true, partosAntesDaEntrada: true },
+    select: { id: true, brinco: true, nome: true, sexo: true, dataNascimento: true, partosAntesDaEntrada: true, categoriasManuais: SELECT_MANUAL_ABERTA },
   });
   const porId = new Map(animais.map((a) => [a.id, a]));
-  const pode = await calcularPodeDesfazer([mov]);
+  const [pode, regras] = await Promise.all([calcularPodeDesfazer([mov]), carregarRegras()]);
   const hoje = new Date();
 
   return {
@@ -169,7 +170,7 @@ export async function buscarMovimentacao(id: string, escopo: number | null): Pro
         animalId: a.id,
         brinco: a.brinco,
         nome: a.nome,
-        categoria: calcularCategoria({ sexo: a.sexo, dataNascimento: a.dataNascimento, partos: a.partosAntesDaEntrada, hoje }),
+        categoria: avaliarCategoria({ sexo: a.sexo, dataNascimento: a.dataNascimento, partos: a.partosAntesDaEntrada }, regras, manualDe(a.categoriasManuais), hoje).categoria,
         origem: rotuloLocal(item.origemPropriedade, item.origemLote),
         situacao: item.desfeitoEm ? "DESFEITO" : item.localizacao && item.localizacao.ate == null ? "NO_DESTINO" : "SAIU_DO_DESTINO",
         desfeitoEm: item.desfeitoEm ? item.desfeitoEm.toISOString() : null,

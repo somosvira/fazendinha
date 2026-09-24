@@ -6,7 +6,8 @@
 //   pnpm --filter rionovo-server run validar:pecuaria
 
 import { prisma } from "../db.js";
-import { calcularCategoria } from "../services/pecuaria/rebanho/categoria.calc.js";
+import { avaliarCategoria } from "../services/pecuaria/rebanho/categoria.calc.js";
+import { carregarRegras, manualDe, SELECT_MANUAL_ABERTA } from "../services/pecuaria/rebanho/categorias.js";
 
 let falhas = 0;
 
@@ -131,23 +132,25 @@ async function main() {
   }
 
   // ---- 7) distribuição de categorias calculadas + novilhas sem partos -------
-  console.log(`\n7) Categorias calculadas (informativo)`);
+  console.log(`\n7) Categorias (regras da fazenda + trocas manuais, informativo)`);
   const todosAtivosDetalhe = await prisma.animal.findMany({
     where: { saidas: { none: { estornadaEm: null } } },
-    select: { sexo: true, dataNascimento: true, partosAntesDaEntrada: true },
+    select: { sexo: true, dataNascimento: true, partosAntesDaEntrada: true, categoriasManuais: SELECT_MANUAL_ABERTA },
   });
   const hoje = new Date();
+  const regras = await carregarRegras();
   const distribuicao = new Map<string, number>();
-  let novilhasSemParto = 0;
+  let manuais = 0;
   for (const a of todosAtivosDetalhe) {
-    const categoria = calcularCategoria({ sexo: a.sexo, dataNascimento: a.dataNascimento, partos: a.partosAntesDaEntrada, hoje });
-    distribuicao.set(categoria, (distribuicao.get(categoria) ?? 0) + 1);
-    if (categoria === "NOVILHA" && a.partosAntesDaEntrada === 0) novilhasSemParto++;
+    const av = avaliarCategoria({ sexo: a.sexo, dataNascimento: a.dataNascimento, partos: a.partosAntesDaEntrada }, regras, manualDe(a.categoriasManuais), hoje);
+    const rotulo = av.categoria ? `${av.categoria.nome} (${a.sexo})` : "Sem categoria";
+    distribuicao.set(rotulo, (distribuicao.get(rotulo) ?? 0) + 1);
+    if (av.origem === "MANUAL") manuais++;
   }
   for (const [categoria, count] of [...distribuicao.entries()].sort((x, y) => y[1] - x[1])) {
     info(`${categoria}: ${count}`);
   }
-  info(`fêmeas ≥12 meses sem partos (novilhas): ${novilhasSemParto}`);
+  info(`com categoria manual: ${manuais}`);
 
   // ---- 8) composição: soma ≤ 64 para todos -----------------------------------
   console.log(`\n8) Composição racial (soma ≤ 64)`);

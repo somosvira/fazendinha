@@ -31,6 +31,8 @@ import { readFileSync } from "node:fs";
 import { Prisma, type TipoSaidaAnimal } from "@prisma/client";
 import { prisma } from "../src/db.js";
 import { parseGrauSangue, normalizarComposicao, type FracaoRaca } from "../src/services/pecuaria/rebanho/composicao.calc.js";
+import { avaliarCategoria } from "../src/services/pecuaria/rebanho/categoria.calc.js";
+import { carregarRegras } from "../src/services/pecuaria/rebanho/categorias.js";
 
 // ---- Contrato do JSON (scripts/build-pecuaria-json.mjs) -------------------
 
@@ -62,6 +64,8 @@ interface AnimalJson {
   origem: "NASCIDO" | "COMPRADO";
   dataEntrada: string;
   partosAntesDaEntrada: number;
+  /** ANIMAL.CDCATEGORIA (1–7); vira categoria manual quando diverge do cálculo */
+  ideagriCategoria?: number | null;
   propriedadeNome: string;
   loteNome: string | null;
   papelReprodutivo: "NENHUM" | "RECEPTORA" | "DOADORA";
@@ -257,6 +261,14 @@ async function main() {
 
   // brinco duplicado entre ativos do mesmo sítio: calculado no fim, sobre o estado final do banco.
 
+  // categorias configuráveis: regras para o cálculo e mapa CDCATEGORIA → categoria (itens de fábrica)
+  const regrasCategoria = await carregarRegras();
+  const categoriaPorIdeagri = new Map(
+    (await prisma.categoriaAnimal.findMany({ where: { ideagriId: { not: null } }, select: { id: true, nome: true, sexo: true, ideagriId: true } }))
+      .map((c) => [c.ideagriId!, c]),
+  );
+  let categoriasManuaisCriadas = 0;
+
   for (const a of dados.animais) {
     try {
       const resultado = await prisma.$transaction<ResultadoAnimal>(async (tx) => {
@@ -354,6 +366,18 @@ async function main() {
           pesagensCriadas++;
         }
 
+        // ---- Categoria do IDEAGRI: manual quando diverge do cálculo pelas regras da fazenda ----
+        const categoriaIdeagri = a.ideagriCategoria != null ? categoriaPorIdeagri.get(a.ideagriCategoria) : undefined;
+        if (categoriaIdeagri && categoriaIdeagri.sexo === a.sexo) {
+          const calculada = avaliarCategoria({ sexo: a.sexo, dataNascimento: d(a.dataNascimento), partos: a.partosAntesDaEntrada }, regrasCategoria, null, new Date()).calculada;
+          if (calculada?.id !== categoriaIdeagri.id) {
+            await tx.categoriaManualAnimal.create({
+              data: { animalId: animal.id, categoriaId: categoriaIdeagri.id, desde: d(a.dataEntrada), motivo: "Categoria do IDEAGRI na carga" },
+            });
+            categoriasManuaisCriadas++;
+          }
+        }
+
         await tx.auditoriaPecuaria.create({
           data: { entidade: "Animal", entidadeId: animal.id, animalId: animal.id, acao: "IMPORTACAO", depois: JSON.parse(JSON.stringify(animal)) },
         });
@@ -414,6 +438,7 @@ async function main() {
   console.log(`Saídas        — criadas: ${cSaida.criadas}, ignoradas: ${cSaida.ignoradas}`);
   console.log(`Pesagens      — criadas: ${cPesagem.criadas}, ignoradas: ${cPesagem.ignoradas}`);
   console.log(`Animais sem composição racial: ${semComposicao}`);
+  console.log(`Categorias manuais (categoria do IDEAGRI diferente da calculada): ${categoriasManuaisCriadas}`);
 
   if (avisos.length) {
     console.log(`\nAvisos (${avisos.length}):`);

@@ -23,6 +23,14 @@ vi.mock("../../services/pecuaria/rebanho/animais.js", () => ({
   desfazerLocalizacao: mocks.desfazerLocalizacao,
   desfazerMovimentacao: mocks.desfazerMovimentacao,
 }));
+vi.mock("../../services/pecuaria/rebanho/categorias.js", () => ({
+  listarCategorias: vi.fn(),
+  criarCategoria: vi.fn(),
+  editarCategoria: vi.fn(),
+  simularCategorias: vi.fn(),
+  reordenarCategorias: vi.fn(),
+  restaurarPadroes: vi.fn(),
+}));
 vi.mock("../../services/pecuaria/rebanho/movimentacoes.js", () => ({
   listarMovimentacoesDoLote: mocks.movimentacoesDoLote,
   listarMovimentacoes: mocks.listarMovimentacoes,
@@ -109,6 +117,9 @@ describe("rebanhoRouter — gate de permissão `lancar` (achado 2)", () => {
     ["lotes", () => app(usuario({ flags: [] })).request(`/lotes/${ID}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: "{}" })],
     ["raças", () => app(usuario({ flags: [] })).request("/racas", jsonBody({}))],
     ["motivos de saída", () => app(usuario({ flags: [] })).request("/motivos-saida", jsonBody({}))],
+    ["categorias", () => app(usuario({ flags: [] })).request("/categorias", jsonBody({ nome: "Boi", sexo: "M" }))],
+    ["restaurar padrões", () => app(usuario({ flags: [] })).request("/categorias/restaurar-padroes", jsonBody({}))],
+    ["categoria manual", () => app(usuario({ flags: [] })).request(`/animais/${ID}/categoria`, jsonBody({ categoriaId: ID, data: "2026-09-01", motivo: "x" }))],
     ["desfazer movimentação", () => app(usuario({ flags: [] })).request(`/movimentacoes/${ID}/desfazer`, jsonBody({ motivo: "engano" }))],
   ])("também bloqueia escrita em %s sem `lancar`", async (_nome, fazerRequisicao) => {
     const res = await fazerRequisicao();

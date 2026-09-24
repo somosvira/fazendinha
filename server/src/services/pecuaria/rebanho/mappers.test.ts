@@ -15,7 +15,7 @@ describe("mapearAnimalResumo", () => {
   it("calcula categoria, idade e rótulo de composição a partir dos dados brutos", () => {
     const resumo = mapearAnimalResumo({
       animal: animalBase,
-      partos: 0,
+      categoria: { categoria: { id: "c-ec", nome: "Em crescimento" }, origem: "AUTOMATICA", calculada: { id: "c-ec", nome: "Em crescimento" } },
       hoje: new Date("2024-11-15"),
       propriedade: { id: 1, nome: "Mexicana" },
       lote: { id: "l1", nome: "Bezerreiro" },
@@ -25,7 +25,8 @@ describe("mapearAnimalResumo", () => {
       situacao: "ATIVO",
     });
 
-    expect(resumo.categoria).toBe("BEZERRA");
+    expect(resumo.categoria).toEqual({ id: "c-ec", nome: "Em crescimento" });
+    expect(resumo.categoriaOrigem).toBe("AUTOMATICA");
     expect(resumo.idadeMeses).toBe(10);
     expect(resumo.propriedade).toEqual({ id: 1, nome: "Mexicana" });
     expect(resumo.lote).toEqual({ id: "l1", nome: "Bezerreiro" });
@@ -34,10 +35,10 @@ describe("mapearAnimalResumo", () => {
     expect(resumo.situacao).toBe("ATIVO");
   });
 
-  it("vaca com pelo menos um parto, mesmo jovem por idade", () => {
+  it("repassa categoria manual e a calculada lado a lado", () => {
     const resumo = mapearAnimalResumo({
       animal: { ...animalBase, dataNascimento: new Date("2022-01-01") },
-      partos: 1,
+      categoria: { categoria: { id: "c-vaca", nome: "Vaca" }, origem: "MANUAL", calculada: { id: "c-nov", nome: "Novilha" } },
       hoje: new Date("2024-11-15"),
       propriedade: null,
       lote: null,
@@ -47,7 +48,9 @@ describe("mapearAnimalResumo", () => {
       situacao: "SAIU",
     });
 
-    expect(resumo.categoria).toBe("VACA");
+    expect(resumo.categoria).toEqual({ id: "c-vaca", nome: "Vaca" });
+    expect(resumo.categoriaOrigem).toBe("MANUAL");
+    expect(resumo.categoriaCalculada).toEqual({ id: "c-nov", nome: "Novilha" });
     expect(resumo.propriedade).toBeNull();
     expect(resumo.aptidao).toBeNull();
     expect(resumo.composicaoRotulo).toBe("Desconhecida");
@@ -57,22 +60,26 @@ describe("mapearAnimalResumo", () => {
 });
 
 describe("agregarPainel", () => {
+  const VACA = { id: "c-vaca", nome: "Vaca" };
+  const EC_F = { id: "c-ecf", nome: "Em crescimento" };
+  const REPRODUTOR = { id: "c-rep", nome: "Reprodutor" };
   const base = (over: Partial<AnimalResumo>): AnimalResumo => ({
-    id: "x", brinco: "1", nome: null, sexo: "F", categoria: "VACA", idadeMeses: 40, dataNascimento: "2023-01-01",
+    id: "x", brinco: "1", nome: null, sexo: "F", categoria: VACA, categoriaOrigem: "AUTOMATICA", categoriaCalculada: VACA, idadeMeses: 40, dataNascimento: "2023-01-01",
     dataEntrada: "2023-01-01", origem: "NASCIDO", propriedade: { id: 1, nome: "Principal" }, lote: null,
     aptidao: "LEITE", papelReprodutivo: "NENHUM", composicaoRotulo: "", ultimoPeso: null, situacao: "ATIVO", ...over,
   });
 
-  it("conta só ativos, por categoria (ordem fixa) e por sítio, e receptoras entre fêmeas", () => {
+  it("conta só ativos, por categoria (na ordem da configuração, sem categoria por último) e por sítio, e receptoras entre fêmeas", () => {
     const p = agregarPainel([
       base({ id: "1", papelReprodutivo: "RECEPTORA", propriedade: { id: 2, nome: "Mexicana" } }),
-      base({ id: "2", categoria: "BEZERRA" }),
-      base({ id: "3", sexo: "M", categoria: "TOURO" }),
+      base({ id: "2", categoria: EC_F }),
+      base({ id: "3", sexo: "M", categoria: REPRODUTOR }),
       base({ id: "4", situacao: "SAIU" }),
-    ]);
-    expect(p.totalAtivos).toBe(3);
-    expect(p.porCategoria).toEqual([{ categoria: "BEZERRA", total: 1 }, { categoria: "VACA", total: 1 }, { categoria: "TOURO", total: 1 }]);
-    expect(p.porSitio).toEqual([{ propriedadeId: 1, nome: "Principal", total: 2 }, { propriedadeId: 2, nome: "Mexicana", total: 1 }]);
+      base({ id: "5", sexo: "M", categoria: null, categoriaOrigem: "SEM_CATEGORIA" }),
+    ], new Map([["c-vaca", 10], ["c-ecf", 20], ["c-rep", 50]]));
+    expect(p.totalAtivos).toBe(4);
+    expect(p.porCategoria).toEqual([{ categoria: VACA, total: 1 }, { categoria: EC_F, total: 1 }, { categoria: REPRODUTOR, total: 1 }, { categoria: null, total: 1 }]);
+    expect(p.porSitio).toEqual([{ propriedadeId: 1, nome: "Principal", total: 3 }, { propriedadeId: 2, nome: "Mexicana", total: 1 }]);
     expect(p.femeasAtivas).toBe(2);
     expect(p.receptorasAtivas).toBe(1);
   });

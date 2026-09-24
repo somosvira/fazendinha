@@ -24,8 +24,10 @@ SET WIDTH LINHA 2000;
 
 /* ── ANIMAIS ───────────────────────────────────────────────────────────────────
  * @A@ cdanimal | numero | nome | sexo | dtNascimento | dtEntFazenda | brincoEletronico |
- *     sisbov | numPartoEntrada | dtBaixa | cdMotivoBaixa | motivoBaixa | setor | grupo | racaTexto
+ *     sisbov | numPartoEntrada | dtBaixa | cdMotivoBaixa | motivoBaixa | setor | grupo | racaTexto | cdCategoria
  * racaTexto (ANIMALINFO_CADASTRO.RACA, ex. "3/4 HO, GL") é só fallback p/ quem não tem ANIMALRACA.
+ * cdCategoria (ANIMAL.CDCATEGORIA, 1–7 da tabela CATEGORIA) vira categoria manual no import
+ * quando diverge da calculada pelas regras (ex.: reprodutor, vaca sem parto importado).
  */
 SELECT '@A@' || CAST(a.CDANIMAL AS VARCHAR(12))
   || '~|~' || COALESCE(a.NUMERO,'')
@@ -42,6 +44,7 @@ SELECT '@A@' || CAST(a.CDANIMAL AS VARCHAR(12))
   || '~|~' || COALESCE(c.SETOR,'')
   || '~|~' || COALESCE(c.GRUPO,'')
   || '~|~' || COALESCE(c.RACA,'')
+  || '~|~' || COALESCE(CAST(a.CDCATEGORIA AS VARCHAR(4)),'')
   AS "LINHA"
 FROM ANIMAL a
   LEFT JOIN MOTIVOBAIXA mb ON mb.CDMOTIVOBAIXA = a.CDMOTIVOBAIXA

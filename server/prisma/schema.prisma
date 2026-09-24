@@ -1710,18 +1710,20 @@ model Usuario {
   updatedAt                DateTime                      @updatedAt
 
   // Pecuária v1 (schema pecuaria)
-  pecAnimaisCriados       Animal[]            @relation("AnimalCriadoPor")
-  pecRacasCriadas         Raca[]              @relation("RacaCriadoPor")
-  pecComposicoesCriadas   ComposicaoRacial[]  @relation("ComposicaoRacialCriadoPor")
-  pecLotesCriados         Lote[]              @relation("LoteCriadoPor")
-  pecLocalizacoesCriadas  LocalizacaoAnimal[] @relation("LocalizacaoAnimalCriadoPor")
-  pecMovimentacoesCriadas Movimentacao[]      @relation("MovimentacaoCriadoPor")
-  pecDestinosCriados      DestinoAnimal[]     @relation("DestinoAnimalCriadoPor")
-  pecSaidasCriadas        SaidaAnimal[]       @relation("SaidaAnimalCriadoPor")
-  pecMotivosSaidaCriados  MotivoSaida[]       @relation("MotivoSaidaCriadoPor")
-  pecPesagensCriadas      Pesagem[]           @relation("PesagemCriadoPor")
-  pecAuditoriasCriadas    AuditoriaPecuaria[] @relation("AuditoriaPecuariaCriadoPor")
-  pecAuditoriasAutor      AuditoriaPecuaria[] @relation("AuditoriaPecuariaUsuario")
+  pecAnimaisCriados           Animal[]                @relation("AnimalCriadoPor")
+  pecRacasCriadas             Raca[]                  @relation("RacaCriadoPor")
+  pecComposicoesCriadas       ComposicaoRacial[]      @relation("ComposicaoRacialCriadoPor")
+  pecLotesCriados             Lote[]                  @relation("LoteCriadoPor")
+  pecLocalizacoesCriadas      LocalizacaoAnimal[]     @relation("LocalizacaoAnimalCriadoPor")
+  pecMovimentacoesCriadas     Movimentacao[]          @relation("MovimentacaoCriadoPor")
+  pecCategoriasCriadas        CategoriaAnimal[]       @relation("CategoriaAnimalCriadoPor")
+  pecCategoriasManuaisCriadas CategoriaManualAnimal[] @relation("CategoriaManualAnimalCriadoPor")
+  pecDestinosCriados          DestinoAnimal[]         @relation("DestinoAnimalCriadoPor")
+  pecSaidasCriadas            SaidaAnimal[]           @relation("SaidaAnimalCriadoPor")
+  pecMotivosSaidaCriados      MotivoSaida[]           @relation("MotivoSaidaCriadoPor")
+  pecPesagensCriadas          Pesagem[]               @relation("PesagemCriadoPor")
+  pecAuditoriasCriadas        AuditoriaPecuaria[]     @relation("AuditoriaPecuariaCriadoPor")
+  pecAuditoriasAutor          AuditoriaPecuaria[]     @relation("AuditoriaPecuariaUsuario")
 
   @@schema("public")
 }
@@ -1817,6 +1819,15 @@ enum OrigemPesagem {
   @@schema("pecuaria")
 }
 
+// Critério de partos de uma regra de categoria.
+enum CriterioPartos {
+  QUALQUER
+  SEM
+  COM
+
+  @@schema("pecuaria")
+}
+
 enum OrigemComposicao {
   INFORMADA
   CALCULADA
@@ -1846,14 +1857,66 @@ model Animal {
   criadoPor            Usuario?     @relation("AnimalCriadoPor", fields: [criadoPorId], references: [id])
   atualizadoEm         DateTime     @updatedAt
 
-  composicao    ComposicaoRacial[]
-  localizacoes  LocalizacaoAnimal[]
-  destinos      DestinoAnimal[]
-  saidas        SaidaAnimal[]
-  pesagens      Pesagem[]
-  movimentacoes MovimentacaoAnimal[]
+  composicao        ComposicaoRacial[]
+  localizacoes      LocalizacaoAnimal[]
+  destinos          DestinoAnimal[]
+  saidas            SaidaAnimal[]
+  pesagens          Pesagem[]
+  movimentacoes     MovimentacaoAnimal[]
+  categoriasManuais CategoriaManualAnimal[]
 
   @@index([brinco])
+  @@schema("pecuaria")
+}
+
+// Categoria do animal, configurável pela fazenda. Uma categoria "automática" tem regra
+// (sexo + faixa de idade + partos) avaliada em `ordem` — a primeira que casa vence; uma não
+// automática só é atribuída manualmente (CategoriaManualAnimal). Os itens de fábrica são as
+// categorias do IDEAGRI (`ideagriId` 1–7) e guardam `chavePadrao` para "Restaurar padrões".
+// A categoria nunca é gravada no Animal — ver categoria.calc.ts (inclui a nota das dimensões futuras).
+model CategoriaAnimal {
+  id            String         @id @default(uuid())
+  ideagriId     Int?           @unique
+  chavePadrao   String?        @unique
+  nome          String
+  sexo          SexoBovino
+  automatica    Boolean        @default(true)
+  idadeMinMeses Int?
+  // exclusivo: idade < idadeMaxMeses
+  idadeMaxMeses Int?
+  partos        CriterioPartos @default(QUALQUER)
+  ordem         Int            @default(0)
+  ativo         Boolean        @default(true)
+  criadoEm      DateTime       @default(now())
+  criadoPorId   Int?
+  criadoPor     Usuario?       @relation("CategoriaAnimalCriadoPor", fields: [criadoPorId], references: [id])
+  atualizadoEm  DateTime       @updatedAt
+
+  manuais CategoriaManualAnimal[]
+
+  @@unique([sexo, nome])
+  @@schema("pecuaria")
+}
+
+// Categoria forçada manualmente, com histórico: a linha com `ate` nulo vale sobre o cálculo
+// (no máximo uma aberta por animal — índice parcial na migration). Voltar ao automático fecha a linha.
+model CategoriaManualAnimal {
+  id                 String          @id @default(uuid())
+  animalId           String
+  animal             Animal          @relation(fields: [animalId], references: [id], onDelete: Restrict)
+  categoriaId        String
+  categoria          CategoriaAnimal @relation(fields: [categoriaId], references: [id], onDelete: Restrict)
+  desde              DateTime        @db.Date
+  ate                DateTime?       @db.Date
+  motivo             String
+  motivoEncerramento String?
+  criadoEm           DateTime        @default(now())
+  criadoPorId        Int?
+  criadoPor          Usuario?        @relation("CategoriaManualAnimalCriadoPor", fields: [criadoPorId], references: [id])
+  atualizadoEm       DateTime        @updatedAt
+
+  @@index([animalId, ate])
+  @@index([categoriaId, ate])
   @@schema("pecuaria")
 }
 

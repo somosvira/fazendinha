@@ -1,20 +1,61 @@
-// Categoria do animal: calculada a partir de sexo, idade e partos (nunca gravada em Animal).
+// Categoria do animal: calculada na leitura pelas regras da fazenda (CategoriaAnimal), nunca
+// gravada em Animal. Uma troca manual aberta (CategoriaManualAnimal) vale sobre o cálculo.
+//
+// ─── NOTA: DIMENSÕES FUTURAS ────────────────────────────────────────────────────────────────
+// O IDEAGRI classifica o animal em VÁRIAS dimensões ao mesmo tempo (procedure SP_CATEGORIA,
+// retornos em paralelo), e só a primeira é gravada no animal (ANIMAL.CDCATEGORIA):
+//   - básica      (CBASICA)      Em crescimento, Novilha, Vaca, Reprodutor, Boi carreiro, Rufião
+//   - produtiva   (CPRODUTIVA)   Mamando, Desmamado(a) [SP_CATEGORIABEZERRO, pela desmama],
+//                                Seca, Em lactação     [SP_CATEGORIAPRODUTIVA, pela lactação aberta]
+//   - reprodutiva (CREPRODUTIVA) Inseminada/Coberta, Implantada, Gestante, Vazia [SP_REGISTROREPRODUTIVO]
+//   - situação da vazia (SREPRODUTIVA) Liberada, Em atraso, Em PEV [SP_SITUACAOREPRODUTIVA]
+//   - associação  (CASSOCIACAO)  Doadora, Receptora, Descarte [ANIMALPERIODO] — aqui é o DestinoAnimal
+//   - protocolada (CPROTOCOLADA) em protocolo de IATF
+//   - lote        (LOTE)         faixa por dias após a desmama, configurável (CATEGORIALOTE)
+// Hoje o Terrano tem SÓ a dimensão básica, de propósito: as outras dependem de fatos que ainda
+// não existem (desmama, lactação, eventos reprodutivos), e uma segunda dimensão só por idade
+// seria redundante com esta. Quando Reprodução e Leite chegarem, cada eixo deve entrar como
+// DIMENSÃO SEPARADA — calculada pelos próprios fatos, com seu tipo e seu filtro — e não como
+// mais regras desta categoria. (Ex.: uma vaca é "Vaca" + "Em lactação" + "Gestante" + "Receptora".)
+// ────────────────────────────────────────────────────────────────────────────────────────────
 
-export type CategoriaCalculada = "BEZERRA" | "NOVILHA" | "VACA" | "BEZERRO" | "GARROTE" | "TOURO";
+export type Sexo = "F" | "M";
+export type CriterioPartos = "QUALQUER" | "SEM" | "COM";
 
-export interface FaixasCategoria {
-  mesesBezerro: number;
-  mesesGarrote: number;
+export interface RegraCategoria {
+  id: string;
+  nome: string;
+  sexo: Sexo;
+  /** false = só atribuída manualmente (sem regra) */
+  automatica: boolean;
+  ativo: boolean;
+  ordem: number;
+  idadeMinMeses: number | null;
+  /** exclusivo: idade < idadeMaxMeses */
+  idadeMaxMeses: number | null;
+  partos: CriterioPartos;
 }
 
-export const FAIXAS_PADRAO: FaixasCategoria = { mesesBezerro: 12, mesesGarrote: 24 };
+export interface CategoriaRef {
+  id: string;
+  nome: string;
+}
 
-export interface CalcularCategoriaInput {
-  sexo: "F" | "M";
+export type OrigemCategoria = "AUTOMATICA" | "MANUAL" | "SEM_CATEGORIA";
+
+export interface AvaliacaoCategoria {
+  /** a categoria que vale (manual, se houver; senão a calculada) */
+  categoria: CategoriaRef | null;
+  origem: OrigemCategoria;
+  /** o que as regras dariam (útil quando a manual diverge) */
+  calculada: CategoriaRef | null;
+}
+
+export interface AnimalParaCategoria {
+  sexo: Sexo;
   dataNascimento: Date | string;
+  /** hoje: partosAntesDaEntrada; depois, partos registrados */
   partos: number;
-  hoje: Date | string;
-  faixas?: FaixasCategoria;
 }
 
 /** Diferença de calendário em meses completos (não é (hoje-nasc)/30). */
@@ -28,18 +69,65 @@ export function idadeEmMeses(nasc: Date | string, hoje: Date | string): number {
   return Math.max(0, meses);
 }
 
-export function calcularCategoria(input: CalcularCategoriaInput): CategoriaCalculada {
-  const faixas = input.faixas ?? FAIXAS_PADRAO;
-  const meses = idadeEmMeses(input.dataNascimento, input.hoje);
+/** Regras que concorrem no cálculo automático de um sexo, na ordem de avaliação. */
+export function regrasAutomaticas(regras: RegraCategoria[], sexo: Sexo): RegraCategoria[] {
+  return regras
+    .filter((r) => r.ativo && r.automatica && r.sexo === sexo)
+    .sort((a, b) => a.ordem - b.ordem || a.nome.localeCompare(b.nome));
+}
 
-  if (input.sexo === "F") {
-    if (input.partos >= 1) return "VACA";
-    return meses < faixas.mesesBezerro ? "BEZERRA" : "NOVILHA";
+export function regraCasa(regra: RegraCategoria, animal: AnimalParaCategoria, hoje: Date | string): boolean {
+  if (regra.sexo !== animal.sexo) return false;
+  if (regra.partos === "SEM" && animal.partos > 0) return false;
+  if (regra.partos === "COM" && animal.partos < 1) return false;
+  const meses = idadeEmMeses(animal.dataNascimento, hoje);
+  if (regra.idadeMinMeses != null && meses < regra.idadeMinMeses) return false;
+  if (regra.idadeMaxMeses != null && meses >= regra.idadeMaxMeses) return false;
+  return true;
+}
+
+/** Primeira regra automática ativa do sexo que casa (em `ordem`), ou null. */
+export function calcularCategoriaAutomatica(animal: AnimalParaCategoria, regras: RegraCategoria[], hoje: Date | string): CategoriaRef | null {
+  const regra = regrasAutomaticas(regras, animal.sexo).find((r) => regraCasa(r, animal, hoje));
+  return regra ? { id: regra.id, nome: regra.nome } : null;
+}
+
+export function avaliarCategoria(animal: AnimalParaCategoria, regras: RegraCategoria[], manual: CategoriaRef | null, hoje: Date | string): AvaliacaoCategoria {
+  const calculada = calcularCategoriaAutomatica(animal, regras, hoje);
+  if (manual) return { categoria: manual, origem: "MANUAL", calculada };
+  return { categoria: calculada, origem: calculada ? "AUTOMATICA" : "SEM_CATEGORIA", calculada };
+}
+
+// ---------- validação de uma regra ----------
+
+export interface ErroRegra {
+  campo: string;
+  mensagem: string;
+}
+
+export function validarRegra(regra: Pick<RegraCategoria, "nome" | "automatica" | "idadeMinMeses" | "idadeMaxMeses">): ErroRegra[] {
+  const erros: ErroRegra[] = [];
+  if (!regra.nome.trim()) erros.push({ campo: "nome", mensagem: "Informe o nome da categoria" });
+  if (!regra.automatica) return erros;
+  if (regra.idadeMinMeses != null && regra.idadeMinMeses < 0) erros.push({ campo: "idadeMinMeses", mensagem: "Idade mínima não pode ser negativa" });
+  if (regra.idadeMaxMeses != null && regra.idadeMaxMeses <= 0) erros.push({ campo: "idadeMaxMeses", mensagem: "Idade máxima deve ser maior que zero" });
+  if (regra.idadeMinMeses != null && regra.idadeMaxMeses != null && regra.idadeMinMeses >= regra.idadeMaxMeses) {
+    erros.push({ campo: "idadeMaxMeses", mensagem: "A idade máxima deve ser maior que a mínima" });
   }
+  return erros;
+}
 
-  if (meses < faixas.mesesBezerro) return "BEZERRO";
-  if (meses < faixas.mesesGarrote) return "GARROTE";
-  return "TOURO";
+/** Texto curto da regra, ex.: "12 meses ou mais · sem parto", "menos de 12 meses", "manual". */
+export function descreverRegra(regra: Pick<RegraCategoria, "automatica" | "idadeMinMeses" | "idadeMaxMeses" | "partos">): string {
+  if (!regra.automatica) return "só manual";
+  const partes: string[] = [];
+  const { idadeMinMeses: min, idadeMaxMeses: max } = regra;
+  if (min != null && max != null) partes.push(`${min} a ${max - 1} meses`);
+  else if (min != null) partes.push(`${min} meses ou mais`);
+  else if (max != null) partes.push(`menos de ${max} meses`);
+  if (regra.partos === "SEM") partes.push("sem parto");
+  if (regra.partos === "COM") partes.push("com parto");
+  return partes.length ? partes.join(" · ") : "qualquer idade";
 }
 
 // ---------- categoria como filtro de banco (listagem paginada no Postgres) ----------
@@ -49,7 +137,7 @@ const DIA_MS = 86_400_000;
 /**
  * Nascimento mais recente com idade ≥ `meses` em `hoje` (UTC, meia-noite). Idade é monótona no
  * nascimento, então parte da data "mesmo dia, `meses` antes" e ajusta usando a própria
- * `idadeEmMeses` — bordas de fim de mês e 29/02 ficam idênticas às de `calcularCategoria`.
+ * `idadeEmMeses` — bordas de fim de mês e 29/02 ficam idênticas às do cálculo.
  */
 export function nascimentoLimiteParaIdade(hoje: Date | string, meses: number): Date {
   const h = typeof hoje === "string" ? new Date(hoje) : hoje;
@@ -58,26 +146,47 @@ export function nascimentoLimiteParaIdade(hoje: Date | string, meses: number): D
   return new Date(candidato);
 }
 
-export interface FiltroCategoria {
-  sexo: "F" | "M";
+/** Condição de uma regra em termos de colunas do Animal. */
+export interface CondicaoRegra {
+  sexo: Sexo;
   /** true: sem partos; false: ao menos um parto; ausente: indiferente */
   semPartos?: boolean;
-  /** nascimento ≤ esta data */
+  /** nascimento ≤ esta data (idade mínima) */
   nascidoAte?: Date;
-  /** nascimento > esta data */
+  /** nascimento > esta data (idade máxima, exclusiva) */
   nascidoApos?: Date;
 }
 
-/** Condições equivalentes a `calcularCategoria(...) === categoria`, para virar `where` no Prisma. */
-export function filtroCategoria(categoria: CategoriaCalculada, hoje: Date | string, faixas: FaixasCategoria = FAIXAS_PADRAO): FiltroCategoria {
-  const limiteBezerro = nascimentoLimiteParaIdade(hoje, faixas.mesesBezerro);
-  const limiteGarrote = nascimentoLimiteParaIdade(hoje, faixas.mesesGarrote);
-  switch (categoria) {
-    case "VACA": return { sexo: "F", semPartos: false };
-    case "BEZERRA": return { sexo: "F", semPartos: true, nascidoApos: limiteBezerro };
-    case "NOVILHA": return { sexo: "F", semPartos: true, nascidoAte: limiteBezerro };
-    case "BEZERRO": return { sexo: "M", nascidoApos: limiteBezerro };
-    case "GARROTE": return { sexo: "M", nascidoApos: limiteGarrote, nascidoAte: limiteBezerro };
-    case "TOURO": return { sexo: "M", nascidoAte: limiteGarrote };
-  }
+export function condicaoDaRegra(regra: RegraCategoria, hoje: Date | string): CondicaoRegra {
+  return {
+    sexo: regra.sexo,
+    ...(regra.partos === "SEM" ? { semPartos: true } : regra.partos === "COM" ? { semPartos: false } : {}),
+    ...(regra.idadeMinMeses != null ? { nascidoAte: nascimentoLimiteParaIdade(hoje, regra.idadeMinMeses) } : {}),
+    ...(regra.idadeMaxMeses != null ? { nascidoApos: nascimentoLimiteParaIdade(hoje, regra.idadeMaxMeses) } : {}),
+  };
+}
+
+/** Condição sem nenhum critério além do sexo: casa com todo animal daquele sexo. */
+export function condicaoTotal(c: CondicaoRegra): boolean {
+  return c.semPartos === undefined && !c.nascidoAte && !c.nascidoApos;
+}
+
+/**
+ * Filtro equivalente a "a categoria que vale é X":
+ *   manual aberta = X, OU (sem manual aberta E a regra de X casa E nenhuma regra anterior do sexo casa).
+ * `automatica` é null quando X não é calculável (inativa, só manual) ou quando uma regra anterior
+ * sem critério já captura todo o sexo.
+ */
+export interface FiltroCategoria {
+  categoriaId: string;
+  automatica: { incluir: CondicaoRegra; excluir: CondicaoRegra[] } | null;
+}
+
+export function filtroCategoria(categoriaId: string, regras: RegraCategoria[], hoje: Date | string): FiltroCategoria {
+  const alvo = regras.find((r) => r.id === categoriaId);
+  if (!alvo || !alvo.ativo || !alvo.automatica) return { categoriaId, automatica: null };
+  const ordenadas = regrasAutomaticas(regras, alvo.sexo);
+  const anteriores = ordenadas.slice(0, ordenadas.findIndex((r) => r.id === alvo.id)).map((r) => condicaoDaRegra(r, hoje));
+  if (anteriores.some(condicaoTotal)) return { categoriaId, automatica: null };
+  return { categoriaId, automatica: { incluir: condicaoDaRegra(alvo, hoje), excluir: anteriores } };
 }

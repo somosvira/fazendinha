@@ -5,13 +5,14 @@ import { brincoDisponivel, normalizarBrinco } from "./brinco.calc.js";
 import { validarDatasAnimal, validarDataSaida, validarDataPesagem, validarDataDestino, planejarAjusteEntrada } from "./datas.calc.js";
 import { validarComposicao } from "./composicao.calc.js";
 import { planejarDestino, planejarDesfazer, planejarDesfazerMovimentacao, planejarMovimentacaoEmMassa, MovimentacaoError } from "./movimentacao.calc.js";
-import { filtroCategoria } from "./categoria.calc.js";
+import { avaliarCategoria, type RegraCategoria } from "./categoria.calc.js";
+import { carregarRegras, manualDe, SELECT_MANUAL_ABERTA, whereCategoria } from "./categorias.js";
 import { planejarSaida, planejarEstornoSaida, SaidaError } from "./saida.calc.js";
 import { agregarPainel, mapearAnimalResumo, resumoAuditoria, type AnimalResumo, type AnimalFicha, type ItemComposicaoFicha, type PainelRebanho } from "./mappers.js";
 import type {
   CadastrarAnimalInput, EditarAnimalInput, MovimentarInput, MudarDestinoInput,
   SaidaInput, EstornoSaidaInput, PesagemInput, EditarPesagemInput, ListarFiltrosInput,
-  SubstituirComposicaoInput,
+  SubstituirComposicaoInput, CategoriaManualInput, RemoverCategoriaManualInput,
 } from "./schemas.js";
 
 // ---------- helpers de leitura (escopados por propriedade quando informado) ----------
@@ -206,6 +207,14 @@ export async function editar(id: string, input: EditarAnimalInput, usuarioId: nu
       if (ajuste.erros.length) throw new RebanhoError("VALIDACAO", ajuste.erros[0].mensagem, ajuste.erros[0].campo);
     }
 
+    // a categoria manual tem sexo: trocar o sexo do animal exige voltar ao automático antes
+    if (input.sexo && input.sexo !== animal.sexo) {
+      const manual = await tx.categoriaManualAnimal.findFirst({ where: { animalId: id, ate: null }, include: { categoria: true } });
+      if (manual && manual.categoria.sexo !== input.sexo) {
+        throw new RebanhoError("VALIDACAO", `A categoria manual "${manual.categoria.nome}" é de outro sexo; volte ao cálculo automático antes de trocar o sexo`, "sexo");
+      }
+    }
+
     if (input.brinco != null && normalizarBrinco(input.brinco) !== normalizarBrinco(animal.brinco)) {
       const loc = await localizacaoAberta(tx, id);
       if (loc) await exigirBrincoLivre(tx, input.brinco, loc.propriedadeId, id);
@@ -292,18 +301,55 @@ export async function substituirComposicao(
     .sort((a, b) => b.fracao64 - a.fracao64);
 }
 
+// ---------- categoria manual (vale sobre o cálculo até ser removida) ----------
+
+export async function definirCategoriaManual(animalId: string, input: CategoriaManualInput, usuarioId: number | null, escopo: number | null = null): Promise<AnimalResumo> {
+  const animal = await exigirNoEscopo(prisma, animalId, escopo);
+  const categoria = await prisma.categoriaAnimal.findUnique({ where: { id: input.categoriaId } });
+  if (!categoria || !categoria.ativo) throw new RebanhoError("NAO_ENCONTRADO", "Categoria não encontrada ou inativa", "categoriaId");
+  if (categoria.sexo !== animal.sexo) throw new RebanhoError("VALIDACAO", "A categoria é de outro sexo", "categoriaId");
+  const data = new Date(input.data);
+  if (data.getTime() < animal.dataEntrada.getTime()) throw new RebanhoError("VALIDACAO", "A data não pode ser anterior à entrada do animal", "data");
+
+  await prisma.$transaction(async (tx) => {
+    await exigirAnimalAtivo(tx, animalId);
+    const aberta = await tx.categoriaManualAnimal.findFirst({ where: { animalId, ate: null } });
+    if (aberta?.categoriaId === input.categoriaId) throw new RebanhoError("CONFLITO", `O animal já está como "${categoria.nome}"`, "categoriaId");
+    if (aberta && data.getTime() < aberta.desde.getTime()) throw new RebanhoError("VALIDACAO", "A data não pode ser anterior à troca manual atual", "data");
+    if (aberta) await tx.categoriaManualAnimal.update({ where: { id: aberta.id }, data: { ate: data, motivoEncerramento: `Trocada por "${categoria.nome}"` } });
+    const nova = await tx.categoriaManualAnimal.create({ data: { animalId, categoriaId: input.categoriaId, desde: data, motivo: input.motivo, criadoPorId: usuarioId } });
+    await auditar(tx, { entidade: "CategoriaManualAnimal", entidadeId: nova.id, animalId, acao: "DEFINICAO", usuarioId, antes: aberta, depois: nova });
+  });
+  return buscarFicha(animalId, null).then((f) => f as AnimalResumo);
+}
+
+export async function removerCategoriaManual(animalId: string, input: RemoverCategoriaManualInput, usuarioId: number | null, escopo: number | null = null): Promise<AnimalResumo> {
+  await exigirNoEscopo(prisma, animalId, escopo);
+  await prisma.$transaction(async (tx) => {
+    const aberta = await tx.categoriaManualAnimal.findFirst({ where: { animalId, ate: null } });
+    if (!aberta) throw new RebanhoError("CONFLITO", "O animal já está no cálculo automático");
+    const hoje = new Date();
+    const ate = hoje.getTime() < aberta.desde.getTime() ? aberta.desde : hoje;
+    const fechada = await tx.categoriaManualAnimal.update({ where: { id: aberta.id }, data: { ate, motivoEncerramento: input.motivo } });
+    await auditar(tx, { entidade: "CategoriaManualAnimal", entidadeId: aberta.id, animalId, acao: "REMOCAO", usuarioId, antes: aberta, depois: fechada });
+  });
+  return buscarFicha(animalId, null).then((f) => f as AnimalResumo);
+}
+
 // ---------- ficha ----------
 
 export async function buscarFicha(id: string, propriedadeEscopo: number | null): Promise<AnimalFicha> {
   const animal = await prisma.animal.findUnique({ where: { id } });
   if (!animal) throw new RebanhoError("NAO_ENCONTRADO", "Animal não encontrado");
 
-  const [localizacoes, destinos, pesagens, saidas, composicao] = await Promise.all([
+  const [localizacoes, destinos, pesagens, saidas, composicao, manuais, regras] = await Promise.all([
     prisma.localizacaoAnimal.findMany({ where: { animalId: id }, include: { propriedade: true, lote: true, movimentacao: { select: { motivo: true } } }, orderBy: [{ desde: "desc" }, { criadoEm: "desc" }] }),
     prisma.destinoAnimal.findMany({ where: { animalId: id }, orderBy: [{ desde: "desc" }, { criadoEm: "desc" }] }),
     prisma.pesagem.findMany({ where: { animalId: id }, orderBy: { data: "desc" } }),
     prisma.saidaAnimal.findMany({ where: { animalId: id }, include: { motivo: true }, orderBy: { data: "desc" } }),
     composicaoDaFicha(prisma, id),
+    prisma.categoriaManualAnimal.findMany({ where: { animalId: id }, include: { categoria: { select: { id: true, nome: true } } }, orderBy: [{ desde: "desc" }, { criadoEm: "desc" }] }),
+    carregarRegras(),
   ]);
 
   const locAtual = localizacoes.find((l) => l.ate == null) ?? null;
@@ -315,13 +361,14 @@ export async function buscarFicha(id: string, propriedadeEscopo: number | null):
 
   const destinoAtual = destinos.find((d) => d.ate == null) ?? null;
   const saidaAtual = saidas.find((s) => s.estornadaEm == null) ?? null;
-  const partos = animal.partosAntesDaEntrada;
   const ultimoPeso = pesagens[0] ? { pesoKg: Number(pesagens[0].pesoKg), data: pesagens[0].data } : null;
+  const hoje = new Date();
+  const manualAberta = manuais.find((m) => m.ate == null)?.categoria ?? null;
 
   const resumo = mapearAnimalResumo({
     animal,
-    partos,
-    hoje: new Date(),
+    categoria: avaliarCategoria({ sexo: animal.sexo, dataNascimento: animal.dataNascimento, partos: animal.partosAntesDaEntrada }, regras, manualAberta, hoje),
+    hoje,
     propriedade: locAtual ? { id: locAtual.propriedade.id, nome: locAtual.propriedade.nome } : null,
     lote: locAtual?.lote ? { id: locAtual.lote.id, nome: locAtual.lote.nome } : null,
     destino: destinoAtual ? { aptidao: destinoAtual.aptidao, papelReprodutivo: destinoAtual.papelReprodutivo } : null,
@@ -350,6 +397,10 @@ export async function buscarFicha(id: string, propriedadeEscopo: number | null):
     historicoDestinos: destinos.map((d) => ({
       id: d.id, aptidao: d.aptidao, papelReprodutivo: d.papelReprodutivo,
       desde: d.desde.toISOString().slice(0, 10), ate: d.ate ? d.ate.toISOString().slice(0, 10) : null,
+    })),
+    historicoCategoriasManuais: manuais.map((m) => ({
+      id: m.id, categoria: m.categoria, desde: m.desde.toISOString().slice(0, 10), ate: m.ate ? m.ate.toISOString().slice(0, 10) : null,
+      motivo: m.motivo, motivoEncerramento: m.motivoEncerramento,
     })),
     historicoPesagens: pesagens.map((p) => ({ id: p.id, data: p.data.toISOString().slice(0, 10), pesoKg: Number(p.pesoKg), tipo: p.tipo, origem: p.origem })),
     saida: saidaAtual ? {
@@ -407,15 +458,6 @@ export function whereSituacao(input: {
   return { OR: [ativo, saiu] };
 }
 
-function whereCategoria(categoria: ListarFiltrosInput["categoria"], hoje: Date): Prisma.AnimalWhereInput {
-  if (!categoria) return {};
-  const f = filtroCategoria(categoria, hoje);
-  return {
-    sexo: f.sexo,
-    ...(f.semPartos === undefined ? {} : { partosAntesDaEntrada: f.semPartos ? 0 : { gt: 0 } }),
-    ...(f.nascidoAte || f.nascidoApos ? { dataNascimento: { ...(f.nascidoAte ? { lte: f.nascidoAte } : {}), ...(f.nascidoApos ? { gt: f.nascidoApos } : {}) } } : {}),
-  };
-}
 
 const ORDEM_HISTORICO = [{ desde: "desc" as const }, { criadoEm: "desc" as const }];
 
@@ -425,16 +467,17 @@ const INCLUDE_RESUMO = {
   saidas: { where: { estornadaEm: null }, take: 1, select: { id: true } },
   composicao: { include: { raca: true } },
   pesagens: { orderBy: { data: "desc" as const }, take: 1 },
+  categoriasManuais: SELECT_MANUAL_ABERTA,
 } satisfies Prisma.AnimalInclude;
 
 type AnimalComResumo = Prisma.AnimalGetPayload<{ include: typeof INCLUDE_RESUMO }>;
 
-function resumoDe(animal: AnimalComResumo, hoje: Date): AnimalResumo {
+function resumoDe(animal: AnimalComResumo, regras: RegraCategoria[], hoje: Date): AnimalResumo {
   const loc = animal.localizacoes[0] ?? null;
   const destino = animal.destinos[0] ?? null;
   return mapearAnimalResumo({
     animal,
-    partos: animal.partosAntesDaEntrada,
+    categoria: avaliarCategoria({ sexo: animal.sexo, dataNascimento: animal.dataNascimento, partos: animal.partosAntesDaEntrada }, regras, manualDe(animal.categoriasManuais), hoje),
     hoje,
     propriedade: loc ? { id: loc.propriedade.id, nome: loc.propriedade.nome } : null,
     lote: loc?.lote ? { id: loc.lote.id, nome: loc.lote.nome } : null,
@@ -451,6 +494,8 @@ export async function listar(filtros: ListarFiltrosInput, propriedadeEscopo: num
     return { itens: [], total: 0, painel: agregarPainel([]) };
   }
   const hoje = new Date();
+  const regras = await carregarRegras();
+  const ordem = new Map(regras.map((r) => [r.id, r.ordem]));
   const where: Prisma.AnimalWhereInput = {
     AND: [
       whereSituacao({
@@ -460,7 +505,7 @@ export async function listar(filtros: ListarFiltrosInput, propriedadeEscopo: num
         aptidao: filtros.aptidao ?? null,
         papelReprodutivo: filtros.papelReprodutivo ?? null,
       }),
-      whereCategoria(filtros.categoria, hoje),
+      whereCategoria(filtros.categoriaId, regras, hoje),
       filtros.busca ? { OR: [
         { brinco: { contains: filtros.busca, mode: "insensitive" } },
         { nome: { contains: filtros.busca, mode: "insensitive" } },
@@ -485,13 +530,14 @@ export async function listar(filtros: ListarFiltrosInput, propriedadeEscopo: num
         localizacoes: { orderBy: ORDEM_HISTORICO, take: 1, select: { propriedade: { select: { id: true, nome: true } } } },
         destinos: { orderBy: ORDEM_HISTORICO, take: 1, select: { aptidao: true, papelReprodutivo: true } },
         saidas: { where: { estornadaEm: null }, take: 1, select: { id: true } },
+        categoriasManuais: SELECT_MANUAL_ABERTA,
       },
     }),
   ]);
 
   const leves = paraPainel.map((a) => mapearAnimalResumo({
     animal: a,
-    partos: a.partosAntesDaEntrada,
+    categoria: avaliarCategoria({ sexo: a.sexo, dataNascimento: a.dataNascimento, partos: a.partosAntesDaEntrada }, regras, manualDe(a.categoriasManuais), hoje),
     hoje,
     propriedade: a.localizacoes[0]?.propriedade ?? null,
     lote: null,
@@ -501,7 +547,7 @@ export async function listar(filtros: ListarFiltrosInput, propriedadeEscopo: num
     situacao: a.saidas.length ? "SAIU" : "ATIVO",
   }));
 
-  return { itens: pagina.map((a) => resumoDe(a, hoje)), total, painel: agregarPainel(leves) };
+  return { itens: pagina.map((a) => resumoDe(a, regras, hoje)), total, painel: agregarPainel(leves, ordem) };
 }
 
 // ---------- movimentar (individual ou em massa) ----------

@@ -1,4 +1,4 @@
-import { calcularCategoria, idadeEmMeses, type CategoriaCalculada } from "./categoria.calc.js";
+import { idadeEmMeses, type AvaliacaoCategoria, type CategoriaRef, type OrigemCategoria } from "./categoria.calc.js";
 import { normalizarComposicao, rotuloComposicao, type FracaoRaca } from "./composicao.calc.js";
 
 export interface AnimalResumo {
@@ -6,7 +6,12 @@ export interface AnimalResumo {
   brinco: string;
   nome: string | null;
   sexo: "F" | "M";
-  categoria: CategoriaCalculada;
+  // Dimensão básica apenas; as demais (produtiva, reprodutiva…) entram como campos próprios —
+  // ver a nota "DIMENSÕES FUTURAS" em categoria.calc.ts.
+  categoria: CategoriaRef | null;
+  categoriaOrigem: OrigemCategoria;
+  /** o que as regras dariam — difere de `categoria` quando há troca manual */
+  categoriaCalculada: CategoriaRef | null;
   idadeMeses: number;
   dataNascimento: string;
   dataEntrada: string;
@@ -32,7 +37,7 @@ type AnimalBase = {
 
 export function mapearAnimalResumo(input: {
   animal: AnimalBase;
-  partos: number;
+  categoria: AvaliacaoCategoria;
   hoje: Date;
   propriedade: { id: number; nome: string } | null;
   lote: { id: string; nome: string } | null;
@@ -47,7 +52,9 @@ export function mapearAnimalResumo(input: {
     brinco: animal.brinco,
     nome: animal.nome,
     sexo: animal.sexo,
-    categoria: calcularCategoria({ sexo: animal.sexo, dataNascimento: animal.dataNascimento, partos: input.partos, hoje: input.hoje }),
+    categoria: input.categoria.categoria,
+    categoriaOrigem: input.categoria.origem,
+    categoriaCalculada: input.categoria.calculada,
     idadeMeses: idadeEmMeses(animal.dataNascimento, input.hoje),
     dataNascimento: animal.dataNascimento.toISOString().slice(0, 10),
     dataEntrada: animal.dataEntrada.toISOString().slice(0, 10),
@@ -79,31 +86,32 @@ export interface AnimalFicha extends AnimalResumo {
   historicoLocalizacoes: Array<{ id: string; propriedade: { id: number; nome: string } | null; lote: { id: string; nome: string } | null; desde: string; ate: string | null; motivo: string | null; movimentacaoId: string | null }>;
   historicoDestinos: Array<{ id: string; aptidao: "LEITE" | "CORTE"; papelReprodutivo: "NENHUM" | "RECEPTORA" | "DOADORA"; desde: string; ate: string | null }>;
   historicoPesagens: Array<{ id: string; data: string; pesoKg: number; tipo: string; origem: string }>;
+  historicoCategoriasManuais: Array<{ id: string; categoria: CategoriaRef; desde: string; ate: string | null; motivo: string; motivoEncerramento: string | null }>;
   saida: { id: string; data: string; tipo: string; motivo: string | null; observacao: string | null; estornadaEm: string | null; estornoMotivo: string | null } | null;
 }
 
 export interface PainelRebanho {
   totalAtivos: number;
-  porCategoria: Array<{ categoria: CategoriaCalculada; total: number }>;
+  /** `categoria` nulo = animais sem categoria (nenhuma regra casou) */
+  porCategoria: Array<{ categoria: CategoriaRef | null; total: number }>;
   porSitio: Array<{ propriedadeId: number | null; nome: string; total: number }>;
   femeasAtivas: number;
   receptorasAtivas: number;
 }
 
-const ORDEM_CATEGORIA: CategoriaCalculada[] = ["BEZERRA", "NOVILHA", "VACA", "BEZERRO", "GARROTE", "TOURO"];
-
-/** Contagens do painel sobre TODO o conjunto filtrado (antes da paginação). */
-export function agregarPainel(resumos: AnimalResumo[]): PainelRebanho {
+/** Contagens do painel sobre TODO o conjunto filtrado (antes da paginação). `ordem` = posição de cada categoria na configuração. */
+export function agregarPainel(resumos: AnimalResumo[], ordem: Map<string, number> = new Map()): PainelRebanho {
   const ativos = resumos.filter((r) => r.situacao === "ATIVO");
-  const cat = new Map<CategoriaCalculada, number>();
+  const cat = new Map<string, { categoria: CategoriaRef | null; total: number }>();
   const sitio = new Map<number | null, { nome: string; total: number }>();
   let femeas = 0;
   let receptoras = 0;
   for (const a of ativos) {
-    cat.set(a.categoria, (cat.get(a.categoria) ?? 0) + 1);
-    const chave = a.propriedade?.id ?? null;
-    const atual = sitio.get(chave);
-    sitio.set(chave, { nome: a.propriedade?.nome ?? "Sem sítio", total: (atual?.total ?? 0) + 1 });
+    const chave = a.categoria?.id ?? "";
+    cat.set(chave, { categoria: a.categoria, total: (cat.get(chave)?.total ?? 0) + 1 });
+    const sitioId = a.propriedade?.id ?? null;
+    const atual = sitio.get(sitioId);
+    sitio.set(sitioId, { nome: a.propriedade?.nome ?? "Sem sítio", total: (atual?.total ?? 0) + 1 });
     if (a.sexo === "F") {
       femeas += 1;
       if (a.papelReprodutivo === "RECEPTORA") receptoras += 1;
@@ -111,7 +119,8 @@ export function agregarPainel(resumos: AnimalResumo[]): PainelRebanho {
   }
   return {
     totalAtivos: ativos.length,
-    porCategoria: ORDEM_CATEGORIA.filter((c) => cat.has(c)).map((categoria) => ({ categoria, total: cat.get(categoria)! })),
+    // na ordem da configuração; "sem categoria" por último
+    porCategoria: [...cat.values()].sort((x, y) => (x.categoria ? ordem.get(x.categoria.id) ?? 1e9 : 2e9) - (y.categoria ? ordem.get(y.categoria.id) ?? 1e9 : 2e9)),
     porSitio: Array.from(sitio, ([propriedadeId, v]) => ({ propriedadeId, ...v })).sort((a, b) => b.total - a.total),
     femeasAtivas: femeas,
     receptorasAtivas: receptoras,
@@ -136,6 +145,8 @@ const RESUMOS_AUDITORIA: Record<string, string> = {
   "Pesagem:REGISTRO": "Pesagem registrada",
   "Pesagem:EDICAO": "Pesagem editada",
   "Pesagem:EXCLUSAO": "Pesagem excluída",
+  "CategoriaManualAnimal:DEFINICAO": "Categoria alterada manualmente",
+  "CategoriaManualAnimal:REMOCAO": "Categoria voltou ao cálculo automático",
 };
 
 /** Resumo legível em PT-BR de uma entrada de auditoria; cai num rótulo genérico para combinações não mapeadas. */

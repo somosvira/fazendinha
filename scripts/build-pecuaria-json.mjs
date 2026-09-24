@@ -169,6 +169,7 @@ export function parseLinhaAnimal(linha) {
     setor: txt(f[12]),
     grupo: txt(f[13]),
     racaTexto: txt(f[14]),
+    ideagriCategoria: num(f[15]),
   };
 }
 
@@ -187,6 +188,7 @@ export function montarAnimal(a, racasDoAnimal, pesagens) {
     origem: nascimentoEstimado ? "COMPRADO" : origemDe(a.dataNascimento, a.dataEntrada),
     dataEntrada: a.dataEntrada ?? dataNascimento,
     partosAntesDaEntrada: a.partosAntesDaEntrada,
+    ideagriCategoria: a.ideagriCategoria ?? null,
     propriedadeNome,
     loteNome: a.grupo,
     papelReprodutivo: papelReprodutivoDe(a.setor),

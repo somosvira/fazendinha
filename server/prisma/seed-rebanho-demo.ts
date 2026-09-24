@@ -3,7 +3,8 @@
 // Passa pelos próprios services (cadastrar, movimentar, mudarDestino, darSaida...), então
 // histórico, auditoria e categoria saem exatamente como sairiam pela tela. Cobre todas as
 // entidades do schema `pecuaria`: Raca, ComposicaoRacial, Lote, Animal, LocalizacaoAnimal,
-// DestinoAnimal, Movimentacao (com desfazer), SaidaAnimal (com estorno), MotivoSaida, Pesagem e AuditoriaPecuaria.
+// DestinoAnimal, Movimentacao (com desfazer), SaidaAnimal (com estorno), MotivoSaida, Pesagem,
+// CategoriaManualAnimal (troca manual sobre as categorias padrão) e AuditoriaPecuaria.
 //
 // Datas relativas a hoje, para as categorias (bezerra/novilha/garrote...) não envelhecerem.
 // Pré-requisito: `seed:pecuaria` (raças, motivos e sítios). Não roda duas vezes (checa o brinco V101).
@@ -12,7 +13,7 @@ import { prisma } from "../src/db.js";
 import { RebanhoError } from "../src/services/pecuaria/rebanho/regras.js";
 import {
   cadastrar, movimentar, mudarDestino, desfazerLocalizacao, desfazerDestino, desfazerMovimentacao,
-  darSaida, estornarSaida, registrarPesagem, editarPesagem, excluirPesagem,
+  darSaida, estornarSaida, registrarPesagem, editarPesagem, excluirPesagem, definirCategoriaManual,
 } from "../src/services/pecuaria/rebanho/animais.js";
 import { criarLote, editarLote } from "../src/services/pecuaria/rebanho/lotes.js";
 import { criarRaca, editarRaca } from "../src/services/pecuaria/rebanho/racas.js";
@@ -219,6 +220,18 @@ async function main() {
   await darSaida({ animalId: b403Errado, data: atras(0), tipo: "CADASTRO_INDEVIDO", motivoId: motivo("Cadastro indevido"), observacao: "Data de nascimento errada, recadastrado" }, USUARIO);
   await novo({ brinco: "B403", sexo: "F", dataNascimento: atras(2), origem: "NASCIDO", dataEntrada: atras(2),
     propriedadeId: P, loteId: bezerreiro, aptidao: "LEITE", composicao: comp(["HO", 48], ["GO", 16]) });
+
+  // ---------- categorias manuais (sobre os padrões do IDEAGRI da migration) ----------
+  const categoria = async (nome: string, sexo: "F" | "M") => {
+    const c = await prisma.categoriaAnimal.findFirst({ where: { nome, sexo } });
+    if (!c) throw new Error(`Categoria "${nome}" (${sexo}) não existe — rode as migrations antes`);
+    return c.id;
+  };
+  const reprodutor = await categoria("Reprodutor", "M");
+  await definirCategoriaManual(ids.T601, { categoriaId: reprodutor, data: atras(12), motivo: "Touro de monta da fazenda" }, USUARIO);
+  await definirCategoriaManual(ids.T602, { categoriaId: reprodutor, data: atras(6), motivo: "Touro de repasse" }, USUARIO);
+  // novilha tratada como vaca antes de o parto ser registrado (a ficha mostra "cálculo: Novilha")
+  await definirCategoriaManual(ids.R303, { categoriaId: await categoria("Vaca", "F"), data: atras(0, 3), motivo: "Pariu na semana passada; parto ainda não lançado" }, USUARIO);
 
   // ---------- resumo ----------
   const [animais, saidasAtivas, pesagens, auditoria] = await Promise.all([

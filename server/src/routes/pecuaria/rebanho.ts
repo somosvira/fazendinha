@@ -11,12 +11,15 @@ import * as racas from "../../services/pecuaria/rebanho/racas.js";
 import * as motivos from "../../services/pecuaria/rebanho/motivos.js";
 import * as painel from "../../services/pecuaria/rebanho/painel.js";
 import * as movimentacoes from "../../services/pecuaria/rebanho/movimentacoes.js";
+import * as categorias from "../../services/pecuaria/rebanho/categorias.js";
 import {
   cadastrarAnimalSchema, editarAnimalSchema, movimentarSchema, mudarDestinoSchema,
   saidaSchema, estornoSaidaSchema, pesagemSchema, editarPesagemSchema, listarFiltrosSchema,
   criarLoteSchema, editarLoteSchema, incluirInativosQuerySchema,
   substituirComposicaoSchema, criarRacaSchema, editarRacaSchema,
   criarMotivoSaidaSchema, editarMotivoSaidaSchema, desfazerMovimentacaoSchema, paginaQuerySchema, listarMovimentacoesSchema,
+  criarCategoriaSchema, editarCategoriaSchema, simularCategoriasSchema, reordenarCategoriasSchema, restaurarPadroesSchema,
+  categoriaManualSchema, removerCategoriaManualSchema,
 } from "../../services/pecuaria/rebanho/schemas.js";
 
 function usuarioId(c: Context): number | null {
@@ -145,6 +148,18 @@ export const rebanhoRouter = new Hono()
       return c.json(await animais.estornarSaida(c.req.valid("param").id, c.req.valid("json"), usuarioId(c), escopo));
     } catch (e) { return falha(c, e); }
   })
+  .post("/animais/:id/categoria", idParam, validar(categoriaManualSchema), async (c) => {
+    const escopo = await resolverEscopoLeitura(c);
+    try {
+      return c.json(await animais.definirCategoriaManual(c.req.valid("param").id, c.req.valid("json"), usuarioId(c), escopo));
+    } catch (e) { return falha(c, e); }
+  })
+  .post("/animais/:id/categoria/remover", idParam, validar(removerCategoriaManualSchema), async (c) => {
+    const escopo = await resolverEscopoLeitura(c);
+    try {
+      return c.json(await animais.removerCategoriaManual(c.req.valid("param").id, c.req.valid("json"), usuarioId(c), escopo));
+    } catch (e) { return falha(c, e); }
+  })
   .post("/animais/:id/pesagens", idParam, validar(pesagemSchema), async (c) => {
     const body = c.req.valid("json");
     try {
@@ -209,6 +224,35 @@ export const rebanhoRouter = new Hono()
     const escopo = await resolverEscopoLeitura(c);
     try {
       return c.json(await lotes.editarLote(c.req.valid("param").id, c.req.valid("json"), usuarioId(c), escopo));
+    } catch (e) { return falha(c, e); }
+  })
+  .get("/categorias", validarQuery(incluirInativosQuerySchema), async (c) => {
+    return c.json(await categorias.listarCategorias(c.req.valid("query").incluirInativos));
+  })
+  .post("/categorias", validar(criarCategoriaSchema), async (c) => {
+    try {
+      return c.json(await categorias.criarCategoria(c.req.valid("json"), usuarioId(c)), 201);
+    } catch (e) { return falha(c, e); }
+  })
+  .post("/categorias/simular", validar(simularCategoriasSchema), async (c) => {
+    try {
+      return c.json(await categorias.simularCategorias(c.req.valid("json").regras));
+    } catch (e) { return falha(c, e); }
+  })
+  .post("/categorias/ordem", validar(reordenarCategoriasSchema), async (c) => {
+    try {
+      await categorias.reordenarCategorias(c.req.valid("json").ids, usuarioId(c));
+      return c.json({ ok: true });
+    } catch (e) { return falha(c, e); }
+  })
+  .post("/categorias/restaurar-padroes", validar(restaurarPadroesSchema), async (c) => {
+    try {
+      return c.json(await categorias.restaurarPadroes(c.req.valid("json").simular, usuarioId(c)));
+    } catch (e) { return falha(c, e); }
+  })
+  .patch("/categorias/:id", idParam, validar(editarCategoriaSchema), async (c) => {
+    try {
+      return c.json(await categorias.editarCategoria(c.req.valid("param").id, c.req.valid("json"), usuarioId(c)));
     } catch (e) { return falha(c, e); }
   })
   .get("/racas", validarQuery(incluirInativosQuerySchema), async (c) => {

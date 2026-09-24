@@ -121,7 +121,7 @@ export type EditarPesagemInput = z.infer<typeof editarPesagemSchema>;
 export const listarFiltrosSchema = z.object({
   propriedadeId: z.coerce.number().int().positive().optional(),
   loteId: z.string().uuid().optional(),
-  categoria: z.enum(["BEZERRA", "NOVILHA", "VACA", "BEZERRO", "GARROTE", "TOURO"]).optional(),
+  categoriaId: z.string().uuid().optional(),
   aptidao: z.enum(["LEITE", "CORTE"]).optional(),
   papelReprodutivo: z.enum(["NENHUM", "RECEPTORA", "DOADORA"]).optional(),
   situacao: z.enum(["ATIVO", "SAIU", "TODOS"]).optional().default("ATIVO"),
@@ -186,3 +186,63 @@ export const editarMotivoSaidaSchema = z.object({
   ativo: z.boolean().optional(),
 });
 export type EditarMotivoSaidaInput = z.infer<typeof editarMotivoSaidaSchema>;
+
+// ---------- categorias configuráveis ----------
+
+const sexoBovino = z.enum(["F", "M"]);
+const criterioPartos = z.enum(["QUALQUER", "SEM", "COM"]);
+const meses = z.number().int().min(0).max(600);
+
+export const criarCategoriaSchema = z.object({
+  nome: z.string().trim().min(1).max(60),
+  sexo: sexoBovino,
+  automatica: z.boolean().optional().default(true),
+  idadeMinMeses: meses.nullable().optional(),
+  idadeMaxMeses: meses.nullable().optional(),
+  partos: criterioPartos.optional().default("QUALQUER"),
+  ordem: z.number().int().optional(),
+});
+export type CriarCategoriaInput = z.infer<typeof criarCategoriaSchema>;
+
+export const editarCategoriaSchema = z.object({
+  nome: z.string().trim().min(1).max(60).optional(),
+  sexo: sexoBovino.optional(),
+  automatica: z.boolean().optional(),
+  idadeMinMeses: meses.nullable().optional(),
+  idadeMaxMeses: meses.nullable().optional(),
+  partos: criterioPartos.optional(),
+  ordem: z.number().int().optional(),
+  ativo: z.boolean().optional(),
+});
+export type EditarCategoriaInput = z.infer<typeof editarCategoriaSchema>;
+
+/** Uma regra na simulação: a lista inteira como ficaria (id ausente = categoria nova). */
+export const regraPropostaSchema = z.object({
+  id: z.string().optional(),
+  nome: z.string().trim().min(1).max(60),
+  sexo: sexoBovino,
+  automatica: z.boolean(),
+  ativo: z.boolean(),
+  ordem: z.number().int(),
+  idadeMinMeses: meses.nullable().optional(),
+  idadeMaxMeses: meses.nullable().optional(),
+  partos: criterioPartos,
+});
+export type RegraPropostaInput = z.infer<typeof regraPropostaSchema>;
+
+export const simularCategoriasSchema = z.object({ regras: z.array(regraPropostaSchema).max(200) });
+export const reordenarCategoriasSchema = z.object({ ids: z.array(z.string().uuid()).min(1) });
+export const restaurarPadroesSchema = z.object({ simular: z.boolean().optional().default(false) });
+
+export const categoriaManualSchema = z.object({
+  categoriaId: z.string().uuid(),
+  data: z.string().date(),
+  motivo: z.string().trim().min(1).max(300),
+});
+export type CategoriaManualInput = z.infer<typeof categoriaManualSchema>;
+
+export const removerCategoriaManualSchema = z.object({
+  motivo: z.string().trim().min(1).max(300),
+});
+export type RemoverCategoriaManualInput = z.infer<typeof removerCategoriaManualSchema>;
+

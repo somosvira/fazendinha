@@ -11,7 +11,8 @@ export interface EventoPainel {
 
 export interface PainelGeralDTO {
   ativos: number;
-  porCategoria: Array<{ categoria: string; qtd: number }>;
+  /** `categoriaId` nulo = sem categoria */
+  porCategoria: Array<{ categoriaId: string | null; categoria: string; qtd: number }>;
   porSitio: Array<{ propriedadeId: number | null; nome: string; qtd: number }>;
   receptorasPct: number;
   saidas30d: number;
@@ -49,7 +50,7 @@ export async function buscarPainelGeral(escopo: number | null): Promise<PainelGe
 
   return {
     ativos: painel.totalAtivos,
-    porCategoria: painel.porCategoria.map((c) => ({ categoria: c.categoria, qtd: c.total })),
+    porCategoria: painel.porCategoria.map((c) => ({ categoriaId: c.categoria?.id ?? null, categoria: c.categoria?.nome ?? "Sem categoria", qtd: c.total })),
     porSitio: painel.porSitio.map((s) => ({ propriedadeId: s.propriedadeId, nome: s.nome, qtd: s.total })),
     receptorasPct,
     saidas30d,
