@@ -182,7 +182,8 @@ export async function criarCategoria(input: CriarCategoriaInput, usuarioId: numb
         nome: input.nome, sexo: input.sexo, automatica: input.automatica,
         idadeMinMeses: input.automatica ? input.idadeMinMeses ?? null : null,
         idadeMaxMeses: input.automatica ? input.idadeMaxMeses ?? null : null,
-        partos: input.automatica ? input.partos : "QUALQUER",
+        // partos só faz sentido para fêmea
+        partos: input.automatica && input.sexo === "F" ? input.partos : "QUALQUER",
         ordem: input.ordem ?? (ultima?.ordem ?? 0) + 10,
         criadoPorId: usuarioId,
       },
@@ -216,7 +217,7 @@ export async function editarCategoria(id: string, input: EditarCategoriaInput, u
         nome, sexo: input.sexo ?? undefined, automatica, ativo: input.ativo ?? undefined, ordem: input.ordem ?? undefined,
         idadeMinMeses: automatica ? idadeMinMeses : null,
         idadeMaxMeses: automatica ? idadeMaxMeses : null,
-        partos: automatica ? input.partos ?? existente.partos : "QUALQUER",
+        partos: automatica && (input.sexo ?? existente.sexo) === "F" ? input.partos ?? existente.partos : "QUALQUER",
       },
     }).catch((e) => traduzirConflitoUnico(e, { nome: NOME_DUPLICADO }));
     await auditar(tx, { entidade: "CategoriaAnimal", entidadeId: id, acao: "EDICAO", usuarioId, antes: existente, depois: c });

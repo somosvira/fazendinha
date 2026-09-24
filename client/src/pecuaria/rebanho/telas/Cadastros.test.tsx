@@ -84,6 +84,37 @@ describe("Cadastros do rebanho — categorias", () => {
     expect(screen.getByText(/3 animais ativos sem categoria — nenhuma regra casou/)).toBeTruthy();
   });
 
+  it("editar abre o formulário com as idades e o critério de partos atuais", async () => {
+    await montarCategorias();
+    fireEvent.click(primeiro("button", "Editar Em crescimento"));
+    const painel = await screen.findByRole("dialog");
+    expect((within(painel).getByLabelText("Idade mínima (meses)") as HTMLInputElement).value).toBe("");
+    expect((within(painel).getByLabelText("Idade máxima (meses)") as HTMLInputElement).value).toBe("12");
+    expect((within(painel).getByLabelText("Partos") as HTMLSelectElement).value).toBe("SEM");
+  });
+
+  it("idade sem limite aparece como \"Sem mínimo\" / \"Sem máximo\"", async () => {
+    await montarCategorias();
+    fireEvent.click(primeiro("button", "Editar Vaca"));
+    const painel = await screen.findByRole("dialog");
+    expect(within(painel).getByPlaceholderText("Sem mínimo")).toBeTruthy();
+    expect(within(painel).getByPlaceholderText("Sem máximo")).toBeTruthy();
+  });
+
+  it("partos só aparece para fêmea; categoria de macho é criada com partos QUALQUER", async () => {
+    vi.mocked(criarCategoria).mockResolvedValue({ id: "boi", nome: "Boi" });
+    await montarCategorias();
+    fireEvent.click(screen.getByRole("button", { name: /Nova categoria/ }));
+    const painel = await screen.findByRole("dialog");
+    fireEvent.change(within(painel).getByLabelText("Partos"), { target: { value: "COM" } });
+    fireEvent.change(within(painel).getByLabelText("Sexo"), { target: { value: "M" } });
+    expect(within(painel).queryByLabelText("Partos")).toBeNull();
+    fireEvent.change(within(painel).getByLabelText("Nome da categoria"), { target: { value: "Boi" } });
+    fireEvent.change(within(painel).getByLabelText("Idade mínima (meses)"), { target: { value: "24" } });
+    fireEvent.click(within(painel).getByRole("button", { name: "Criar categoria" }));
+    await waitFor(() => expect(criarCategoria).toHaveBeenCalledWith({ nome: "Boi", sexo: "M", automatica: true, idadeMinMeses: 24, idadeMaxMeses: null, partos: "QUALQUER" }));
+  });
+
   it("criar categoria sem impacto aplica direto, sem diálogo de confirmação", async () => {
     vi.mocked(criarCategoria).mockResolvedValue({ id: "nova", nome: "Nova" });
     await montarCategorias();
