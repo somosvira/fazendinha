@@ -26,7 +26,7 @@ vi.mock("./movimentacao.js", () => ({ registrarMovimentacoes: vi.fn() }));
 
 import { substituirItensDieta } from "./nutricao.js";
 
-const racao = { id: 4, nome: "Ração", unidade: "KG" };
+const racao = { id: 4, nome: "Ração", unidade: "KG", ativo: true };
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -57,5 +57,22 @@ describe("substituirItensDieta — produto precisa ter estoque no sítio", () =>
     mocks.movimentoGroupBy.mockResolvedValue([{ produtoId: 4 }]);
     await substituirItensDieta(2, { itens: [{ produtoId: 4, qtdPorCabecaDia: 2 }] }, 7);
     expect(mocks.dietaItemCreateMany).toHaveBeenCalledWith({ data: [{ dietaId: 2, produtoId: 4, qtdPorCabecaDia: 2, unidade: "KG", ordem: 0 }] });
+  });
+});
+
+describe("substituirItensDieta — produto inativo", () => {
+  it("não entra em composição nova", async () => {
+    mocks.produtoFindMany.mockResolvedValue([{ ...racao, ativo: false }]);
+    mocks.movimentoGroupBy.mockResolvedValue([{ produtoId: 4 }]);
+    await expect(substituirItensDieta(2, { itens: [{ produtoId: 4, qtdPorCabecaDia: 2 }] } as never)).rejects.toMatchObject({ code: "EM_USO", message: expect.stringContaining("inativo") });
+    expect(mocks.dietaItemCreateMany).not.toHaveBeenCalled();
+  });
+
+  it("pode continuar na dieta que já o usava", async () => {
+    mocks.produtoFindMany.mockResolvedValue([{ ...racao, ativo: false }]);
+    mocks.movimentoGroupBy.mockResolvedValue([{ produtoId: 4 }]);
+    mocks.dietaItemFindMany.mockResolvedValue([{ produtoId: 4 }]);
+    await substituirItensDieta(2, { itens: [{ produtoId: 4, qtdPorCabecaDia: 3 }] } as never).catch(() => undefined);
+    expect(mocks.dietaItemCreateMany).toHaveBeenCalled();
   });
 });

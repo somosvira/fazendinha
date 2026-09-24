@@ -100,7 +100,7 @@ describe("eventos de sanidade — mês fechado só bloqueia quando há efeito de
 
   it("rejeita uma APLICACAO (com produto) em mês fechado", async () => {
     mocks.animalFindFirst.mockResolvedValue({ id: 1, propriedadeId: 5, grupo: null });
-    mocks.produtoFindUnique.mockResolvedValue({ id: 3, centrosCusto: [] });
+    mocks.produtoFindUnique.mockResolvedValue({ id: 3, ativo: true, centrosCusto: [] });
     mocks.periodoFindUnique.mockResolvedValue({ status: "FECHADO" });
 
     await expect(
@@ -116,7 +116,7 @@ describe("eventos de sanidade — mês fechado só bloqueia quando há efeito de
       movimentoEstoqueId: 77, produtoId: 3, quantidadeUsada: 2,
       animal: { propriedadeId: 5, grupo: null },
     });
-    mocks.produtoFindUnique.mockResolvedValue({ id: 3, centrosCusto: [] });
+    mocks.produtoFindUnique.mockResolvedValue({ id: 3, ativo: true, centrosCusto: [] });
     // Mês novo (fevereiro) aberto, mas mês antigo (janeiro) fechado.
     mocks.periodoFindUnique.mockImplementation(async ({ where }: any) => {
       return where.propriedadeId_ano_mes.mes === 1 ? { status: "FECHADO" } : null;
@@ -154,7 +154,7 @@ describe("eventos de sanidade — baixa pelo custo médio e estorno em vez de ed
 
   it("registrar APLICACAO grava SAIDA com o custo médio do sítio", async () => {
     mocks.animalFindFirst.mockResolvedValue({ id: 1, propriedadeId: 5, grupo: null });
-    mocks.produtoFindUnique.mockResolvedValue({ id: 3, centrosCusto: [] });
+    mocks.produtoFindUnique.mockResolvedValue({ id: 3, ativo: true, centrosCusto: [] });
     mocks.eventoCreate.mockResolvedValue({ id: 100, animalId: 1, tipo: "APLICACAO", data: new Date("2026-02-05") });
 
     await registrarSanidade(1, aplicacao(3));
@@ -167,7 +167,7 @@ describe("eventos de sanidade — baixa pelo custo médio e estorno em vez de ed
 
   it("consulta o estoque do produto no sítio do animal (entrada/ajuste confirmado, sem estorno)", async () => {
     mocks.animalFindFirst.mockResolvedValue({ id: 1, propriedadeId: 5, grupo: null });
-    mocks.produtoFindUnique.mockResolvedValue({ id: 3, centrosCusto: [] });
+    mocks.produtoFindUnique.mockResolvedValue({ id: 3, ativo: true, centrosCusto: [] });
     mocks.eventoCreate.mockResolvedValue({ id: 100, animalId: 1, tipo: "APLICACAO", data: new Date("2026-02-05") });
 
     await registrarSanidade(1, aplicacao(3));
@@ -184,7 +184,7 @@ describe("eventos de sanidade — baixa pelo custo médio e estorno em vez de ed
 
   it("registrar APLICACAO de produto sem estoque no sítio grava o evento sem baixa", async () => {
     mocks.animalFindFirst.mockResolvedValue({ id: 1, propriedadeId: 5, grupo: null });
-    mocks.produtoFindUnique.mockResolvedValue({ id: 3, centrosCusto: [] });
+    mocks.produtoFindUnique.mockResolvedValue({ id: 3, ativo: true, centrosCusto: [] });
     mocks.movimentoTemEstoque.mockResolvedValue(null);
     mocks.eventoCreate.mockResolvedValue({ id: 100, animalId: 1, tipo: "APLICACAO", data: new Date("2026-02-05") });
 
@@ -196,7 +196,7 @@ describe("eventos de sanidade — baixa pelo custo médio e estorno em vez de ed
 
   it("editar quantidade estorna o movimento antigo e cria outro — nunca update in-place", async () => {
     mocks.eventoFindFirst.mockResolvedValue(eventoComBaixa);
-    mocks.produtoFindUnique.mockResolvedValue({ id: 3, centrosCusto: [] });
+    mocks.produtoFindUnique.mockResolvedValue({ id: 3, ativo: true, centrosCusto: [] });
     mocks.eventoUpdate.mockResolvedValue({ id: 50, animalId: 1, tipo: "APLICACAO", data: new Date("2026-02-05") });
 
     await editarSanidade(50, aplicacao(4));
@@ -214,7 +214,7 @@ describe("eventos de sanidade — baixa pelo custo médio e estorno em vez de ed
 
   it("editar sem mudar a baixa mantém o movimento existente", async () => {
     mocks.eventoFindFirst.mockResolvedValue(eventoComBaixa);
-    mocks.produtoFindUnique.mockResolvedValue({ id: 3, centrosCusto: [] });
+    mocks.produtoFindUnique.mockResolvedValue({ id: 3, ativo: true, centrosCusto: [] });
     mocks.eventoUpdate.mockResolvedValue({ id: 50, animalId: 1, tipo: "APLICACAO", data: new Date("2026-02-05") });
 
     await editarSanidade(50, { ...aplicacao(2), observacao: "reforço" });
@@ -249,7 +249,7 @@ describe("eventos de sanidade — baixa pelo custo médio e estorno em vez de ed
 
   it("registrar APLICACAO sem estoque no sítio devolve aviso; com baixa não devolve", async () => {
     mocks.animalFindFirst.mockResolvedValue({ id: 1, propriedadeId: 5, grupo: null });
-    mocks.produtoFindUnique.mockResolvedValue({ id: 3, centrosCusto: [] });
+    mocks.produtoFindUnique.mockResolvedValue({ id: 3, ativo: true, centrosCusto: [] });
     mocks.eventoCreate.mockResolvedValue({ id: 100, animalId: 1, tipo: "APLICACAO", data: new Date("2026-02-05") });
 
     mocks.movimentoTemEstoque.mockResolvedValue(null);
@@ -275,7 +275,7 @@ describe("editarSanidade — decisão de baixa estável (não segue o estado atu
   });
 
   beforeEach(() => {
-    mocks.produtoFindUnique.mockResolvedValue({ id: 3, centrosCusto: [] });
+    mocks.produtoFindUnique.mockResolvedValue({ id: 3, ativo: true, centrosCusto: [] });
     mocks.eventoUpdate.mockResolvedValue({ id: 50, animalId: 1, tipo: "APLICACAO", data: new Date("2026-02-05") });
   });
 
@@ -327,7 +327,7 @@ describe("editarSanidade — decisão de baixa estável (não segue o estado atu
 
   it("trocar para produto sem estoque no sítio estorna a baixa antiga e avisa", async () => {
     mocks.eventoFindFirst.mockResolvedValue(evento(77));
-    mocks.produtoFindUnique.mockResolvedValue({ id: 8, centrosCusto: [] });
+    mocks.produtoFindUnique.mockResolvedValue({ id: 8, ativo: true, centrosCusto: [] });
     mocks.movimentoTemEstoque.mockResolvedValue(null);
 
     const r = await editarSanidade(50, aplicacao(2, { produtoId: 8 }));
@@ -339,3 +339,20 @@ describe("editarSanidade — decisão de baixa estável (não segue o estado atu
   });
 });
 
+
+describe("produto inativo na sanidade", () => {
+  const aplicacao = { tipo: "APLICACAO", data: "2026-02-05", produto: "Vermífugo", produtoId: 3, quantidadeUsada: 2 } as any;
+  it("não entra em evento novo", async () => {
+    mocks.animalFindFirst.mockResolvedValue({ id: 1, propriedadeId: 5, grupo: null });
+    mocks.produtoFindUnique.mockResolvedValue({ id: 3, ativo: false, centrosCusto: [] });
+    await expect(registrarSanidade(1, aplicacao)).rejects.toMatchObject({ code: "CONFLITO", message: expect.stringContaining("inativo") });
+    expect(mocks.movimentoCreate).not.toHaveBeenCalled();
+    expect(mocks.eventoCreate).not.toHaveBeenCalled();
+  });
+
+  it("trocar um evento existente para um produto inativo é recusado", async () => {
+    mocks.eventoFindFirst.mockResolvedValue({ id: 50, animalId: 1, tipo: "APLICACAO", data: new Date("2026-02-05"), movimentoEstoqueId: null, produtoId: 8, quantidadeUsada: null, animal: { propriedadeId: 5, grupo: null } });
+    mocks.produtoFindUnique.mockResolvedValue({ id: 3, ativo: false, centrosCusto: [] });
+    await expect(editarSanidade(50, aplicacao)).rejects.toMatchObject({ code: "CONFLITO" });
+  });
+});

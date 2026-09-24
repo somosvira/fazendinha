@@ -61,7 +61,7 @@ const movimentoExistente = {
   propriedadeId: 5, operacaoId: null, reversaoDeId: null, revertidoPor: null, centroCustoId: null, consumoPeriodoId: null,
 };
 
-const produtoUreia = { id: 3, nome: "Ureia", unidade: "KG", centrosCusto: [] };
+const produtoUreia = { id: 3, nome: "Ureia", unidade: "KG", ativo: true, centrosCusto: [] };
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -93,7 +93,7 @@ describe("criarOperacao", () => {
   it("cria SAIDA de estoque com quantidade = dose × área e grava movimentoEstoqueId", async () => {
     mocks.talhaoFindUnique.mockResolvedValue(talhaoBase);
     mocks.produtoFindUnique.mockResolvedValue({
-      id: 3, nome: "Ureia", unidade: "KG", centrosCusto: [],
+      id: 3, nome: "Ureia", unidade: "KG", ativo: true, centrosCusto: [],
     });
     mocks.movimentoCreate.mockResolvedValue({ id: 88, quantidade: new Prisma.Decimal(20) });
     mocks.operacaoCreate.mockResolvedValue({
@@ -201,7 +201,7 @@ describe("criarOperacao", () => {
   it("rejeita centroCustoId inexistente", async () => {
     mocks.talhaoFindUnique.mockResolvedValue(talhaoBase);
     mocks.produtoFindUnique.mockResolvedValue({
-      id: 3, nome: "Ureia", unidade: "KG", centrosCusto: [],
+      id: 3, nome: "Ureia", unidade: "KG", ativo: true, centrosCusto: [],
     });
     mocks.centroCustoFindFirst.mockResolvedValue(null);
 
@@ -362,7 +362,7 @@ describe("editarOperacao", () => {
       operacaoId: null, reversaoDeId: null, revertidoPor: null, consumoPeriodoId: null,
     };
     const produtoDoisCentros = {
-      id: 3, nome: "Ureia", unidade: "KG",
+      id: 3, nome: "Ureia", unidade: "KG", ativo: true,
       centrosCusto: [{ centroCustoId: 10 }, { centroCustoId: 20 }],
     };
 
@@ -401,7 +401,7 @@ describe("editarOperacao", () => {
     });
 
     it("PATCH { produtoId: B } sem centroCustoId não herda o centro do produto A — resolve o centro único de B", async () => {
-      const produtoB = { id: 7, nome: "Boro", unidade: "KG", centrosCusto: [{ centroCustoId: 42 }] };
+      const produtoB = { id: 7, nome: "Boro", unidade: "KG", ativo: true, centrosCusto: [{ centroCustoId: 42 }] };
       mocks.operacaoFindUnique.mockResolvedValue(existenteBase);
       mocks.produtoFindUnique.mockResolvedValue(produtoB);
       mocks.operacaoUpdate.mockResolvedValue({ id: 10, talhaoId: 1, tipo: "ADUBACAO_SOLO", data: new Date("2026-01-10") });
@@ -514,7 +514,7 @@ describe("editarOperacao — decisão de baixa estável (não segue o estado atu
 
   it("trocar para produto sem estoque no sítio estorna a baixa antiga e avisa", async () => {
     mocks.operacaoFindUnique.mockResolvedValue(existente(88));
-    mocks.produtoFindUnique.mockResolvedValue({ id: 7, nome: "Boro", unidade: "KG", centrosCusto: [] });
+    mocks.produtoFindUnique.mockResolvedValue({ id: 7, nome: "Boro", unidade: "KG", ativo: true, centrosCusto: [] });
     estoqueAtual(false);
 
     const r = await editarOperacao(10, { produtoId: 7 } as any);
@@ -549,5 +549,25 @@ describe("excluirOperacao", () => {
     mocks.periodoFindUnique.mockResolvedValue({ status: "FECHADO" });
     await expect(excluirOperacao(10)).rejects.toEqual(expect.objectContaining({ code: "MES_FECHADO" }));
     expect(mocks.operacaoDelete).not.toHaveBeenCalled();
+  });
+});
+
+describe("produto inativo na aplicação agrícola", () => {
+  it("não entra em operação nova", async () => {
+    mocks.talhaoFindUnique.mockResolvedValue(talhaoBase);
+    mocks.produtoFindUnique.mockResolvedValue({ id: 3, nome: "Ureia", unidade: "KG", ativo: false, centrosCusto: [] });
+    await expect(criarOperacao(1, { dominio: "NUTRICAO", tipo: "ADUBACAO_SOLO", data: "2026-01-10", doseValor: 2, doseUnidade: "kg/ha", produtoId: 3 } as any))
+      .rejects.toMatchObject({ code: "VALIDACAO", message: expect.stringContaining("inativo") });
+    expect(mocks.movimentoCreate).not.toHaveBeenCalled();
+  });
+
+  it("a operação que já usava o produto continua editável", async () => {
+    mocks.operacaoFindUnique.mockResolvedValue({
+      id: 10, talhaoId: 1, tipo: "ADUBACAO_SOLO", data: new Date("2026-01-10"), responsavel: null, produto: "Ureia", observacao: null,
+      doseValor: new Prisma.Decimal(2), doseUnidade: "kg/ha", pragaAlvo: null, produtoId: 3, quantidadeTotal: null, movimentoEstoqueId: null, talhao: talhaoBase,
+    });
+    mocks.produtoFindUnique.mockResolvedValue({ id: 3, nome: "Ureia", unidade: "KG", ativo: false, centrosCusto: [] });
+    mocks.operacaoUpdate.mockResolvedValue({ id: 10, talhaoId: 1, tipo: "ADUBACAO_SOLO", data: new Date("2026-01-10") });
+    await expect(editarOperacao(10, { observacao: "revisado" } as any)).resolves.toBeTruthy();
   });
 });

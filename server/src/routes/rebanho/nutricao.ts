@@ -6,6 +6,7 @@ import * as svc from "../../services/rebanho/nutricao.js";
 import { consumoSchema } from "../../services/rebanho/nutricao.consumo.js";
 import * as consumo from "../../services/rebanho/nutricao.consumo.js";
 import { resolverEscopoLeitura, resolverEscopoEscrita } from "../../services/propriedade.js";
+import { getUsuario } from "../../middleware/permissao.js";
 
 type Status = 404 | 409 | 500;
 function fail(e: unknown): { status: Status; body: { error: string } } {
@@ -33,6 +34,6 @@ export const nutricaoRouter = new Hono()
   .get("/rebanho/animais-disponiveis", async (c) => c.json(await svc.listarAnimaisDisponiveis(await resolverEscopoLeitura(c))))
   // ── Consumo de dieta → baixa de estoque (Fatia 2) ──────────────────────────
   .get("/rebanho/lotes/:id/consumo/previsao", async (c) => { try { const di = c.req.query("dataInicio") ?? ""; const df = c.req.query("dataFim") ?? ""; return c.json(await consumo.previsaoConsumo(Number(c.req.param("id")), di, df, await resolverEscopoLeitura(c))); } catch (e) { const { status, body } = fail(e); return c.json(body, status); } })
-  .post("/rebanho/lotes/:id/consumo/fechar", zValidator("json", consumoSchema), async (c) => { try { return c.json(await consumo.fecharConsumoPeriodo(Number(c.req.param("id")), c.req.valid("json"), await resolverEscopoEscrita(c)), 201); } catch (e) { const { status, body } = fail(e); return c.json(body, status); } })
+  .post("/rebanho/lotes/:id/consumo/fechar", zValidator("json", consumoSchema), async (c) => { try { return c.json(await consumo.fecharConsumoPeriodo(Number(c.req.param("id")), c.req.valid("json"), await resolverEscopoEscrita(c), getUsuario(c)?.id ?? null), 201); } catch (e) { const { status, body } = fail(e); return c.json(body, status); } })
   .get("/rebanho/lotes/:id/consumo", async (c) => { try { return c.json(await consumo.listarConsumosPeriodo(Number(c.req.param("id")), await resolverEscopoLeitura(c))); } catch (e) { const { status, body } = fail(e); return c.json(body, status); } })
-  .delete("/rebanho/consumo/:id", async (c) => { try { await consumo.reabrirConsumoPeriodo(Number(c.req.param("id")), await resolverEscopoEscrita(c)); return c.json({ ok: true }); } catch (e) { const { status, body } = fail(e); return c.json(body, status); } });
+  .delete("/rebanho/consumo/:id", async (c) => { try { await consumo.reabrirConsumoPeriodo(Number(c.req.param("id")), await resolverEscopoEscrita(c), getUsuario(c)?.id ?? null); return c.json({ ok: true }); } catch (e) { const { status, body } = fail(e); return c.json(body, status); } });

@@ -29,6 +29,11 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("ContasFinanceiras — cadastros ativos", () => {
+  it("sem permissão de lançar, não oferece a transferência", async () => {
+    render(<ContasFinanceiras onNav={vi.fn()} podeLancar={false} />);
+    expect((await screen.findAllByText("Banco principal")).length).toBeGreaterThan(0);
+    expect(screen.queryByRole("button", { name: "Transferir" })).toBeNull();
+  });
   it("não oferece conta inativa na transferência", async () => {
     render(<ContasFinanceiras onNav={vi.fn()} />);
 

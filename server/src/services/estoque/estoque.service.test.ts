@@ -193,10 +193,12 @@ describe("estornarMovimentoTx", () => {
 });
 
 describe("ajustarContagem — produto sem atributo de estoque", () => {
-  it("aceita qualquer produto ativo e lê o saldo no escopo do sítio (principal inclui movimento sem propriedade)", async () => {
+  it("aceita qualquer produto, inclusive inativo (é assim que se zera o que sobrou), e lê o saldo no escopo do sítio", async () => {
     mocks.movFindMany.mockResolvedValue([{ tipo: "ENTRADA", quantidade: new Prisma.Decimal(10) }]);
+    mocks.produtoFindFirst.mockResolvedValue({ ...produto, ativo: false });
     await ajustarContagem({ produtoId: 3, quantidadeContada: 8, saldoEsperado: 10, observacao: "Contagem física", propriedadeId: 1, usuarioId: 7 });
-    expect(mocks.produtoFindFirst).toHaveBeenCalledWith({ where: { id: 3, ativo: true } });
+    expect(mocks.produtoFindFirst).toHaveBeenCalledWith({ where: { id: 3 } });
+    expect(mocks.movCreate).toHaveBeenCalled();
     expect(mocks.movFindMany).toHaveBeenCalledWith(expect.objectContaining({
       where: { produtoId: 3, status: { in: ["CONFIRMADO", "REVERTIDO"] }, OR: [{ propriedadeId: 1 }, { propriedadeId: null }] },
     }));
@@ -278,10 +280,10 @@ describe("produtoTemEstoque / produtosComEstoque", () => {
 });
 
 describe("listarSaldos", () => {
-  it("lista só produtos ativos com algum movimento no sítio (sem filtro de estocável)", async () => {
+  it("lista produtos com algum movimento no sítio (sem filtro de estocável nem de ativo na consulta)", async () => {
     mocks.produtoFindMany.mockResolvedValue([]);
     await listarSaldos({ propriedadeId: 2 });
-    expect(mocks.produtoFindMany.mock.calls[0][0].where).toEqual({ ativo: true, movimentos: { some: { propriedadeId: 2 } } });
+    expect(mocks.produtoFindMany.mock.calls[0][0].where).toEqual({ movimentos: { some: { propriedadeId: 2 } } });
     expect(mocks.produtoFindMany.mock.calls[0][0].include.movimentos.where).toEqual({ status: { in: ["CONFIRMADO", "REVERTIDO"] }, propriedadeId: 2 });
   });
 
@@ -289,14 +291,25 @@ describe("listarSaldos", () => {
     mocks.produtoFindMany.mockResolvedValue([]);
     await listarSaldos({ propriedadeId: 1 });
     const principal = { OR: [{ propriedadeId: 1 }, { propriedadeId: null }] };
-    expect(mocks.produtoFindMany.mock.calls[0][0].where).toEqual({ ativo: true, movimentos: { some: principal } });
+    expect(mocks.produtoFindMany.mock.calls[0][0].where).toEqual({ movimentos: { some: principal } });
     expect(mocks.produtoFindMany.mock.calls[0][0].include.movimentos.where).toEqual({ status: { in: ["CONFIRMADO", "REVERTIDO"] }, ...principal });
   });
 
   it("consolidado lista produto com movimento em qualquer sítio e mantém o filtro de uso", async () => {
     mocks.produtoFindMany.mockResolvedValue([]);
     await listarSaldos({ propriedadeId: null, uso: "agricola" });
-    expect(mocks.produtoFindMany.mock.calls[0][0].where).toEqual({ ativo: true, movimentos: { some: {} }, categoria: { usoAgricola: true } });
+    expect(mocks.produtoFindMany.mock.calls[0][0].where).toEqual({ movimentos: { some: {} }, categoria: { usoAgricola: true } });
+  });
+
+  it("produto inativo aparece enquanto tiver saldo (marcado) e some com saldo zero", async () => {
+    const m = (tipo: string, quantidade: string) => ({ tipo, quantidade: new Prisma.Decimal(quantidade), valorTotal: new Prisma.Decimal(0), data: new Date("2026-01-10"), propriedadeId: 1 });
+    mocks.produtoFindMany.mockResolvedValue([
+      { id: 3, nome: "Adubo", unidade: "KG", ativo: false, minimoEstoque: null, categoria: null, centrosCusto: [], movimentos: [m("ENTRADA", "10")] },
+      { id: 4, nome: "Zerado", unidade: "KG", ativo: false, minimoEstoque: null, categoria: null, centrosCusto: [], movimentos: [m("ENTRADA", "5"), m("SAIDA", "5")] },
+      { id: 5, nome: "Ativo zerado", unidade: "KG", ativo: true, minimoEstoque: null, categoria: null, centrosCusto: [], movimentos: [m("ENTRADA", "5"), m("SAIDA", "5")] },
+    ]);
+    const linhas = await listarSaldos({ propriedadeId: 1 });
+    expect(linhas.map((l) => [l.nome, l.ativo, l.saldo])).toEqual([["Adubo", false, 10], ["Ativo zerado", true, 0]]);
   });
 
   const mov = (tipo: string, quantidade: string, valorTotal: string) => ({ tipo, quantidade: new Prisma.Decimal(quantidade), valorTotal: new Prisma.Decimal(valorTotal), data: new Date("2026-01-10") });

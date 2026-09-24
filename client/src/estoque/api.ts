@@ -38,7 +38,9 @@ export interface CentrosAtividadeDTO { leite: number | null; cafe: number | null
 export const obterCentrosAtividade = () => req<CentrosAtividadeDTO>("/estoque/centros-atividade");
 
 // ── Estoque: saldos + movimentos ───────────────────────────
-export interface SaldoDTO { produtoId: number; nome: string; categoria: { id: number; nome: string; usoSanitario: boolean; usoNutricional: boolean; usoAgricola: boolean } | null; unidade: UnidadeMedida; centrosCusto: { id: number; nome: string }[]; saldo: number;
+export interface SaldoDTO { produtoId: number; nome: string;
+  /** false = produto inativo que ainda tem saldo (só aparece enquanto o saldo não é zero). */
+  ativo: boolean; categoria: { id: number; nome: string; usoSanitario: boolean; usoNutricional: boolean; usoAgricola: boolean } | null; unidade: UnidadeMedida; centrosCusto: { id: number; nome: string }[]; saldo: number;
   /** Média ponderada das entradas valorizadas no sítio; null sem base (nenhuma compra/inventário com valor) ou sem a flag verValores. */
   custoMedio: number | null;
   /** saldo × custo médio de cada sítio, somado na visão consolidada (0 sem base; null sem a flag verValores). */

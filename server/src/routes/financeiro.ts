@@ -167,7 +167,7 @@ export const financeiroRouter = new Hono()
     try { await rascunhos.descartarRascunho(await resolverEscopoEscrita(c), exigirUsuarioId(c)); return c.body(null, 204); }
     catch (e) { return falha(c, e); }
   })
-  .post("/financeiro/operacoes/rascunho/confirmacao", zValidator("json", z.object({ versao: z.number().int().positive().optional() })), async (c) => {
+  .post("/financeiro/operacoes/rascunho/confirmacao", exigePermissao("lancar"), zValidator("json", z.object({ versao: z.number().int().positive().optional() })), async (c) => {
     try { return c.json(await rascunhos.confirmarRascunho(await resolverEscopoEscrita(c), exigirUsuarioId(c), c.req.valid("json").versao), 201); }
     catch (e) { return falha(c, e); }
   })
@@ -208,7 +208,7 @@ export const financeiroRouter = new Hono()
     try { return c.json(await operacoes.obterOperacao(Number(c.req.param("id")), await resolverEscopoLeitura(c))); }
     catch (e) { return falha(c, e); }
   })
-  .post("/financeiro/operacoes", zValidator("json", operacaoSchema), async (c) => {
+  .post("/financeiro/operacoes", exigePermissao("lancar"), zValidator("json", operacaoSchema), async (c) => {
     try {
       const input = c.req.valid("json");
       const propriedadeId = await resolverEscopoEscrita(c, input.propriedadeId ?? null);
@@ -222,11 +222,11 @@ export const financeiroRouter = new Hono()
     }
     catch (e) { return falha(c, e); }
   })
-  .post("/financeiro/operacoes/:id/documentos/intencao", zValidator("json", uploadIntentSchema), async (c) => {
+  .post("/financeiro/operacoes/:id/documentos/intencao", exigePermissao("lancar"), zValidator("json", uploadIntentSchema), async (c) => {
     try { return c.json(await documentos.solicitarUploadOperacao(Number(c.req.param("id")), await resolverEscopoEscrita(c), usuarioId(c), c.req.valid("json")), 201); }
     catch (e) { return falha(c, e); }
   })
-  .post("/financeiro/operacoes/:id/documentos/confirmacao-upload", zValidator("json", uploadConfirmacaoSchema), async (c) => {
+  .post("/financeiro/operacoes/:id/documentos/confirmacao-upload", exigePermissao("lancar"), zValidator("json", uploadConfirmacaoSchema), async (c) => {
     try { return c.json(await documentos.confirmarUpload(c.req.valid("json").uploadToken, await resolverEscopoEscrita(c), usuarioId(c)), 201); }
     catch (e) { return falha(c, e); }
   })
@@ -241,18 +241,18 @@ export const financeiroRouter = new Hono()
     const periodo = c.req.valid("query");
     return c.json(await operacoes.listarCompromissos(await resolverEscopoLeitura(c), periodo.inicio && periodo.fim ? { inicio: new Date(`${periodo.inicio}T00:00:00Z`), fim: new Date(`${periodo.fim}T23:59:59.999Z`) } : undefined));
   })
-  .post("/financeiro/compromissos/:id/liquidacoes", zValidator("json", liquidacaoSchema), async (c) => {
+  .post("/financeiro/compromissos/:id/liquidacoes", exigePermissao("lancar"), zValidator("json", liquidacaoSchema), async (c) => {
     try { return c.json(await operacoes.liquidarCompromisso(Number(c.req.param("id")), { ...c.req.valid("json"), usuarioId: usuarioId(c) }), 201); }
     catch (e) { return falha(c, e); }
   })
-  .post("/financeiro/transferencias", zValidator("json", transferenciaSchema), async (c) => {
+  .post("/financeiro/transferencias", exigePermissao("lancar"), zValidator("json", transferenciaSchema), async (c) => {
     try {
       const input = c.req.valid("json");
       const propriedadeId = await resolverEscopoEscrita(c, input.propriedadeId ?? null);
       return c.json(await operacoes.transferir({ ...input, propriedadeId, usuarioId: usuarioId(c) }), 201);
     } catch (e) { return falha(c, e); }
   })
-  .post("/financeiro/transacoes", zValidator("json", transacaoAvulsaSchema), async (c) => {
+  .post("/financeiro/transacoes", exigePermissao("lancar"), zValidator("json", transacaoAvulsaSchema), async (c) => {
     try {
       const input = c.req.valid("json");
       const propriedadeId = await resolverEscopoEscrita(c, input.propriedadeId ?? null);

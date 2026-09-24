@@ -1961,7 +1961,9 @@ model MovimentoEstoque {
   reversaoDeId     Int?                   @unique
   revertidoPor     MovimentoEstoque?      @relation("ReversaoEstoque")
   // Fechamento de consumo (Fatia 2) que gerou esta SAIDA, se automática.
-  consumoPeriodo   ConsumoPeriodo?        @relation(fields: [consumoPeriodoId], references: [id], onDelete: Cascade)
+  // SetNull: movimento confirmado nunca some por cascata — reabrir o fechamento
+  // estorna as SAIDAs antes de remover o cabeçalho.
+  consumoPeriodo   ConsumoPeriodo?        @relation(fields: [consumoPeriodoId], references: [id], onDelete: SetNull)
   consumoPeriodoId Int?
   // Evento sanitário que gerou esta SAIDA (origem SANIDADE), se automática. Back-ref da FK
   // EventoSanitario.movimentoEstoqueId.

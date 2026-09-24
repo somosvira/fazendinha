@@ -2,7 +2,8 @@ import { prisma } from "../../db.js";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { saldoProduto, valorSaidaDaBase, type MovIn } from "../estoque/estoque.calc.js";
-import { filtroSitioCusto, obterBasesCusto, produtosComEstoque, statusSaldoEstoque } from "../estoque/estoque.js";
+import { EstoqueError, estornarMovimentoTx, filtroSitioCusto, obterBasesCusto, produtosComEstoque, statusSaldoEstoque } from "../estoque/estoque.js";
+import { auditar } from "../financeiro/regras.js";
 import { consumoEsperado, diasNoPeriodo } from "./nutricao.consumo.calc.js";
 import { NutricaoError } from "./nutricao.js";
 import { propriedadePrincipalId } from "../propriedade.js";
@@ -127,7 +128,7 @@ export async function previsaoConsumo(grupoId: number, dataInicio: string, dataF
 // Idempotente por (lote, janela). Saldo insuficiente NÃO bloqueia (a vaca comeu)
 // — a previsão já sinaliza o negativo ao usuário. Não gera Lançamento: o caixa
 // já saiu na compra (ENTRADA).
-export async function fecharConsumoPeriodo(grupoId: number, input: ConsumoInput, propriedadeId: number | null = null) {
+export async function fecharConsumoPeriodo(grupoId: number, input: ConsumoInput, propriedadeId: number | null = null, usuarioId: number | null = null) {
   const prev = await resolverConsumo(grupoId, input.dataInicio, input.dataFim, propriedadeId);
   const dataMov = new Date(input.dataFim + "T00:00:00Z");
   const propriedadeMovimentoId = prev.propriedadeId ?? (await propriedadePrincipalId()); // escopo das SAIDAs
@@ -171,12 +172,16 @@ export async function fecharConsumoPeriodo(grupoId: number, input: ConsumoInput,
             propriedadeId: propriedadeMovimentoId,
             consumoPeriodoId: cp.id,
             centroCustoId: l.centroCustoId,
+            criadoPorId: usuarioId && usuarioId > 0 ? usuarioId : null,
             observacao: `Consumo dieta ${prev.dietaNome} — ${input.dataInicio} a ${input.dataFim}`,
           },
         });
       }
 
-      return tx.consumoPeriodo.update({ where: { id: cp.id }, data: { custoTotal } });
+      const fechado = await tx.consumoPeriodo.update({ where: { id: cp.id }, data: { custoTotal } });
+      await auditar(tx, { entidade: "ConsumoPeriodo", entidadeId: cp.id, acao: "FECHADO", usuarioId,
+        depois: { grupoId, dataInicio: input.dataInicio, dataFim: input.dataFim, numCabecas: prev.numCabecas, custoTotal: custoTotal.toNumber() } });
+      return fechado;
     });
 
     return { id: periodo.id, grupoId, dataInicio: input.dataInicio, dataFim: input.dataFim, numCabecas: prev.numCabecas, dias: prev.dias, custoTotal: Number(periodo.custoTotal), movimentos: prev.linhas.filter((l) => l.quantidade > 0 && !l.semEstoque).length, temInsuficiencia: prev.temInsuficiencia };
@@ -188,13 +193,34 @@ export async function fecharConsumoPeriodo(grupoId: number, input: ConsumoInput,
   }
 }
 
-// Estorna um período fechado: apaga as SAIDAs geradas (cascade) e o cabeçalho.
-export async function reabrirConsumoPeriodo(id: number, propriedadeId: number | null = null) {
+// Reabre um período fechado. As SAIDAs de estoque confirmadas não são apagadas:
+// cada uma é estornada (inverso + original REVERTIDO + auditoria, como no resto
+// do estoque) e desvinculada do cabeçalho, que é removido para liberar a mesma
+// janela para um novo fechamento. O lote continua no movimento (grupoId), então
+// o histórico segue apontando para ele.
+export async function reabrirConsumoPeriodo(id: number, propriedadeId: number | null = null, usuarioId: number | null = null) {
   const cp = await prisma.consumoPeriodo.findFirst({ where: { id, ...(propriedadeId != null ? { grupo: { propriedadeId } } : {}) }, include: { grupo: true } });
   if (!cp) throw new NutricaoError("NAO_ENCONTRADO", "fechamento de consumo não encontrado");
   await assertPeriodoAberto(cp.grupo.propriedadeId ?? await propriedadePrincipalId(), cp.dataFim);
-  // onDelete: Cascade nas SAIDAs (consumoPeriodoId) apaga os movimentos junto.
-  await prisma.consumoPeriodo.delete({ where: { id } });
+  const janela = `${iso(cp.dataInicio)} a ${iso(cp.dataFim)}`;
+  try {
+    await prisma.$transaction(async (tx) => {
+      const movimentos = await tx.movimentoEstoque.findMany({
+        where: { consumoPeriodoId: id, status: "CONFIRMADO", reversaoDeId: null },
+        select: { id: true }, orderBy: { id: "asc" },
+      });
+      for (const m of movimentos) {
+        await estornarMovimentoTx(tx, m.id, { usuarioId, observacao: `Estorno: consumo da dieta reaberto (${cp.grupo.nome}, ${janela})` });
+      }
+      await tx.movimentoEstoque.updateMany({ where: { consumoPeriodoId: id }, data: { consumoPeriodoId: null } });
+      await tx.consumoPeriodo.delete({ where: { id } });
+      await auditar(tx, { entidade: "ConsumoPeriodo", entidadeId: id, acao: "REABERTO", usuarioId,
+        antes: { grupoId: cp.grupoId, dataInicio: iso(cp.dataInicio), dataFim: iso(cp.dataFim), numCabecas: cp.numCabecas, custoTotal: Number(cp.custoTotal), movimentosEstornados: movimentos.map((m) => m.id) } });
+    });
+  } catch (e) {
+    if (e instanceof EstoqueError && e.code === "MES_FECHADO") throw new NutricaoError("MES_FECHADO", "mês financeiro fechado");
+    throw e;
+  }
 }
 
 // Fechamentos já feitos para um lote (para exibir e permitir estorno).

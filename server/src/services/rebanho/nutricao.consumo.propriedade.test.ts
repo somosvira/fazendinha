@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -14,6 +15,13 @@ const mocks = vi.hoisted(() => ({
   consumoCreate: vi.fn(),
   consumoUpdate: vi.fn(),
   movimentoCreate: vi.fn(),
+  auditoriaCreate: vi.fn(),
+  txMovFindMany: vi.fn(),
+  txMovFindFirst: vi.fn(),
+  txMovUpdate: vi.fn(),
+  txMovUpdateMany: vi.fn(),
+  txConsumoDelete: vi.fn(),
+  queryRaw: vi.fn(),
   transaction: vi.fn(),
 }));
 
@@ -136,6 +144,7 @@ describe("consumo de dieta por propriedade", () => {
       mocks.transaction.mockImplementation(async (fn: (tx: unknown) => unknown) => fn({
         consumoPeriodo: { create: mocks.consumoCreate, update: mocks.consumoUpdate },
         movimentoEstoque: { create: mocks.movimentoCreate },
+        auditoriaFinanceira: { create: mocks.auditoriaCreate },
       }));
       mocks.consumoCreate.mockResolvedValue({ id: 70 });
       mocks.consumoUpdate.mockImplementation(async ({ data }: { data: { custoTotal: unknown } }) => ({ id: 70, custoTotal: data.custoTotal }));
@@ -166,6 +175,12 @@ describe("consumo de dieta por propriedade", () => {
       expect(mocks.movimentoCreate.mock.calls[0][0].data).toMatchObject({ produtoId: 4, tipo: "SAIDA", origem: "NUTRICAO", propriedadeId: 7 });
       expect(r.movimentos).toBe(1);
     });
+
+    it("o fechamento grava o autor na SAIDA e audita", async () => {
+      await fecharConsumoPeriodo(10, { dataInicio: "2026-07-01", dataFim: "2026-07-02" }, 7, 9);
+      expect(mocks.movimentoCreate.mock.calls[0][0].data.criadoPorId).toBe(9);
+      expect(mocks.auditoriaCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ entidade: "ConsumoPeriodo", entidadeId: "70", acao: "FECHADO", usuarioId: 9 }) });
+    });
   });
 
   it("não lista consumo de lote de outro sítio", async () => {
@@ -184,5 +199,45 @@ describe("consumo de dieta por propriedade", () => {
       include: { grupo: true },
     });
     expect(mocks.consumoDelete).not.toHaveBeenCalled();
+  });
+});
+
+describe("reabrir o fechamento de consumo", () => {
+  const cp = { id: 44, grupoId: 10, grupo: { id: 10, nome: "Alta", propriedadeId: 7 }, dataInicio: new Date("2026-07-01"), dataFim: new Date("2026-07-02"), numCabecas: 3, custoTotal: 36 };
+  beforeEach(() => {
+    mocks.consumoFindFirst.mockResolvedValue(cp);
+    mocks.periodoFindUnique.mockResolvedValue(null);
+    mocks.txMovFindMany.mockResolvedValue([{ id: 501 }, { id: 502 }]);
+    mocks.txMovFindFirst.mockImplementation(async ({ where }: { where: { id: number } }) => ({
+      id: where.id, produtoId: 4, tipo: "SAIDA", origem: "NUTRICAO", status: "CONFIRMADO", quantidade: new Prisma.Decimal(6), custoUnitario: new Prisma.Decimal(3), valorTotal: new Prisma.Decimal(18),
+      propriedadeId: 7, operacaoId: null, reversaoDeId: null, revertidoPor: null, centroCustoId: null, grupoId: 10, animalId: null, talhaoId: null,
+    }));
+    mocks.movimentoCreate.mockImplementation(async ({ data }: { data: { reversaoDeId: number } }) => ({ id: data.reversaoDeId + 1000 }));
+    mocks.transaction.mockImplementation(async (fn: (tx: unknown) => unknown) => fn({
+      movimentoEstoque: { findMany: mocks.txMovFindMany, findFirst: mocks.txMovFindFirst, create: mocks.movimentoCreate, update: mocks.txMovUpdate, updateMany: mocks.txMovUpdateMany },
+      consumoPeriodo: { delete: mocks.txConsumoDelete },
+      periodoFinanceiro: { findUnique: mocks.periodoFindUnique },
+      auditoriaFinanceira: { create: mocks.auditoriaCreate },
+      $queryRaw: mocks.queryRaw,
+    }));
+  });
+
+  it("estorna cada SAIDA (nunca apaga), desvincula do cabeçalho e audita", async () => {
+    await reabrirConsumoPeriodo(44, 7, 9);
+    // Um inverso (ENTRADA) por SAIDA confirmada, mantendo o lote.
+    expect(mocks.movimentoCreate).toHaveBeenCalledTimes(2);
+    expect(mocks.movimentoCreate.mock.calls[0][0].data).toMatchObject({ tipo: "ENTRADA", reversaoDeId: 501, grupoId: 10, criadoPorId: 9 });
+    expect(mocks.txMovUpdate).toHaveBeenCalledWith({ where: { id: 501 }, data: { status: "REVERTIDO" } });
+    // As SAIDAs saem do cabeçalho antes de ele ser removido (nada cai em cascata).
+    expect(mocks.txMovUpdateMany).toHaveBeenCalledWith({ where: { consumoPeriodoId: 44 }, data: { consumoPeriodoId: null } });
+    expect(mocks.txMovUpdateMany.mock.invocationCallOrder[0]).toBeLessThan(mocks.txConsumoDelete.mock.invocationCallOrder[0]);
+    expect(mocks.consumoDelete).not.toHaveBeenCalled();
+    expect(mocks.auditoriaCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ entidade: "ConsumoPeriodo", entidadeId: "44", acao: "REABERTO", usuarioId: 9 }) });
+  });
+
+  it("mês fechado bloqueia a reabertura", async () => {
+    mocks.periodoFindUnique.mockResolvedValue({ status: "FECHADO" });
+    await expect(reabrirConsumoPeriodo(44, 7, 9)).rejects.toMatchObject({ code: "MES_FECHADO" });
+    expect(mocks.movimentoCreate).not.toHaveBeenCalled();
   });
 });

@@ -23,7 +23,7 @@ function mockFetch(d: Dados = {}) {
 }
 
 const categoria = { id: 1, nome: "Alimentação", usoSanitario: false, usoNutricional: true, usoAgricola: false };
-const saldo = (o: Record<string, unknown>) => ({ produtoId: 1, nome: "Ração", categoria, unidade: "KG", centrosCusto: [], saldo: 15, custoMedio: 6, valor: 90, minimoEstoque: null, abaixoMinimo: false, ...o });
+const saldo = (o: Record<string, unknown>) => ({ produtoId: 1, nome: "Ração", ativo: true, categoria, unidade: "KG", centrosCusto: [], saldo: 15, custoMedio: 6, valor: 90, minimoEstoque: null, abaixoMinimo: false, ...o });
 const mov = (o: Record<string, unknown>) => ({ id: 1, produtoId: 1, produto: "Ração", centrosCusto: [], tipo: "ENTRADA", origem: "COMPRA", status: "CONFIRMADO", reversaoDeId: null, data: "2026-09-10", quantidade: 10, custoUnitario: 6, valorTotal: 60, fornecedor: null, grupo: null, observacao: null, operacaoId: null, vinculo: null, ...o });
 
 function sessao(areas: string[], flags: string[] = [], dono = false) {
@@ -406,5 +406,14 @@ describe("EstoqueContent — sem a flag verValores", () => {
     expect(screen.queryByRole("option", { name: "Ordenar por maior valor" })).toBeNull();
     const historico = within(await screen.findByRole("table", { name: "Histórico de movimentos" }));
     expect(historico.queryByText("Valor")).toBeNull();
+  });
+});
+
+describe("EstoqueContent — produto inativo com saldo", () => {
+  it("aparece na lista marcado como Inativo", async () => {
+    vi.stubGlobal("fetch", mockFetch({ saldos: [saldo({ ativo: false })] }));
+    render(<EstoqueContent />);
+    const tabela = within(await screen.findByRole("table", { name: "Saldos de estoque" }));
+    expect(tabela.getByText("Inativo")).toBeTruthy();
   });
 });

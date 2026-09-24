@@ -10,7 +10,7 @@ export function FinanceiroContent({ tab, onNav, podeEditarCadastros = true, pode
   if (tab === "dashboard") return <VisaoGeralFinanceira onNav={onNav} podeLancar={podeLancar} />;
   if (tab === "lancar") return <OperacoesFinanceiras podeLancar={podeLancar} />;
   if (tab === "gastos") return <CompromissosFinanceiros onNav={onNav} podeLancar={podeLancar} />;
-  if (tab === "caixinha") return <ContasFinanceiras onNav={onNav} />;
+  if (tab === "caixinha") return <ContasFinanceiras onNav={onNav} podeLancar={podeLancar} />;
   if (tab === "cadastros" || tab === "plano") return <ConfiguracoesFinanceiras abaInicial={tab === "plano" ? "categorias" : "contas"} podeEditar={podeEditarCadastros} />;
   return <RelatoriosFinanceiros podeExportar={podeExportar} />;
 }

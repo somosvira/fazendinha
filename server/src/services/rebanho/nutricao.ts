@@ -220,9 +220,12 @@ export async function substituirItensDieta(dietaId: number, input: DietaItensInp
   // A dieta consome do estoque: só entra produto que já tem entrada no sítio
   // (null = consolidado, qualquer sítio). O cadastro não diz se é estocado.
   const comEstoque = await produtosComEstoque(prisma, ids, propriedadeId);
+  // Produto inativo só permanece se já estava na composição (salvar a dieta sem mexer nele).
+  const atuais = new Set((await prisma.dietaItem.findMany({ where: { dietaId }, select: { produtoId: true } })).map((i) => i.produtoId));
   for (const it of input.itens) {
     const p = porId.get(it.produtoId);
     if (!p) throw new NutricaoError("NAO_ENCONTRADO", `produto ${it.produtoId} não encontrado`);
+    if (!p.ativo && !atuais.has(p.id)) throw new NutricaoError("EM_USO", `produto "${p.nome}" está inativo — reative no cadastro para usar na dieta`);
     if (!comEstoque.has(p.id)) throw new NutricaoError("EM_USO", `produto "${p.nome}" sem estoque neste sítio — registre uma compra para estoque antes de usar na dieta`);
   }
 

@@ -175,13 +175,15 @@ export async function obterCustoMedio(db: DbCusto, produtoId: number, propriedad
 const USO_CAMPO = { sanitario: "usoSanitario", nutricional: "usoNutricional", agricola: "usoAgricola" } as const;
 
 export async function listarSaldos(f?: { centroCustoId?: number; propriedadeId?: number | null; uso?: "sanitario" | "nutricional" | "agricola" }) {
-  // O estoque lista os produtos ativos que já tiveram movimento no sítio (qualquer
+  // O estoque lista os produtos que já tiveram movimento no sítio (qualquer
   // status) — o produto entra no estoque pela operação, não pelo cadastro.
+  // Inativo só aparece enquanto tiver saldo: o físico existe e precisa ser
+  // visto (e zerado por ajuste); com saldo zero ele sai da lista.
   // Movimento sem propriedade conta como da principal (mesmo escopo do custo médio).
   const propriedadeId = f?.propriedadeId ?? null;
   const sitio = await filtroSitioCusto(propriedadeId);
   const produtos = await prisma.produto.findMany({
-    where: { ativo: true, movimentos: { some: sitio }, ...(f?.uso ? { categoria: { [USO_CAMPO[f.uso]]: true } } : {}) },
+    where: { movimentos: { some: sitio }, ...(f?.uso ? { categoria: { [USO_CAMPO[f.uso]]: true } } : {}) },
     orderBy: { nome: "asc" },
     // Saldo por sítio: com filtro, só os movimentos daquela propriedade contam.
     include: {
@@ -216,6 +218,7 @@ export async function listarSaldos(f?: { centroCustoId?: number; propriedadeId?:
     return {
       produtoId: p.id,
       nome: p.nome,
+      ativo: p.ativo,
       categoria: p.categoria
         ? { id: p.categoria.id, nome: p.categoria.nome, usoSanitario: p.categoria.usoSanitario, usoNutricional: p.categoria.usoNutricional, usoAgricola: p.categoria.usoAgricola }
         : null,
@@ -228,9 +231,10 @@ export async function listarSaldos(f?: { centroCustoId?: number; propriedadeId?:
       abaixoMinimo: minimo != null && saldo < minimo,
     };
   });
-  if (f?.centroCustoId === 0) return linhas.filter((l) => l.centrosCusto.length === 0);
-  if (f?.centroCustoId) return linhas.filter((l) => l.centrosCusto.some((cc) => cc.id === f.centroCustoId));
-  return linhas;
+  const visiveis = linhas.filter((l) => l.ativo || l.saldo !== 0);
+  if (f?.centroCustoId === 0) return visiveis.filter((l) => l.centrosCusto.length === 0);
+  if (f?.centroCustoId) return visiveis.filter((l) => l.centrosCusto.some((cc) => cc.id === f.centroCustoId));
+  return visiveis;
 }
 
 /** Para onde levar o usuário quando o movimento NÃO nasceu de uma operação financeira (saídas automáticas). */
@@ -311,8 +315,13 @@ export async function listarMovimentos(f?: FiltroMovimentos) {
     // agricultura) não sai: nem o vínculo, nem a observação gerada pela saída
     // automática (que cita animal/talhão).
     let oculto = false;
-    if (m.consumoPeriodo) {
-      if (visiveis.pecuaria) vinculo = { tipo: "LOTE", id: m.consumoPeriodo.grupoId, nome: m.consumoPeriodo.grupo.nome };
+    // Lote da dieta: pelo fechamento ou, depois de reaberto (cabeçalho removido),
+    // pelo grupoId que a SAIDA e o estorno carregam.
+    const loteDieta = m.consumoPeriodo
+      ? { id: m.consumoPeriodo.grupoId, nome: m.consumoPeriodo.grupo.nome }
+      : m.grupo && (m.origem === "NUTRICAO" || m.reversaoDe?.origem === "NUTRICAO") ? { id: m.grupo.id, nome: m.grupo.nome } : null;
+    if (loteDieta) {
+      if (visiveis.pecuaria) vinculo = { tipo: "LOTE", ...loteDieta };
       else oculto = true;
     } else if (m.animal) {
       if (visiveis.pecuaria) vinculo = { tipo: "ANIMAL", id: m.animal.id, numero: m.animal.numero, nome: m.animal.nome };
@@ -430,8 +439,9 @@ export async function ajustarContagem(input: z.infer<typeof ajusteContagemSchema
   if (propriedadeId == null) throw new EstoqueError("VALIDACAO", "Selecione uma fazenda para ajustar o estoque.");
   try {
     return await prisma.$transaction(async tx => {
-      const produto = await tx.produto.findFirst({ where: { id: input.produtoId, ativo: true } });
-      if (!produto) throw new EstoqueError("NAO_ENCONTRADO", "Produto ativo não encontrado");
+      // Produto inativo também pode ser contado: é assim que se zera o que sobrou.
+      const produto = await tx.produto.findFirst({ where: { id: input.produtoId } });
+      if (!produto) throw new EstoqueError("NAO_ENCONTRADO", "Produto não encontrado");
       // Mesmo escopo de sítio de listarSaldos (sem propriedade = principal), senão o saldo esperado da tela nunca casaria.
       const movimentos = await tx.movimentoEstoque.findMany({ where: { produtoId: input.produtoId, status: statusSaldoEstoque, ...(await filtroSitioCusto(propriedadeId)) }, select: { tipo: true, quantidade: true } });
       const saldo = movimentos.reduce((total, m) => m.tipo === "SAIDA" ? total.minus(m.quantidade) : total.plus(m.quantidade), new Prisma.Decimal(0)).toDecimalPlaces(3);

@@ -10,6 +10,7 @@ import { resolverCentroSaida } from "../estoque/centro.calc.js";
 import { estornarMovimentoTx, obterBaseCusto, produtoTemEstoque } from "../estoque/estoque.js";
 
 export class EventoSanError extends Error { constructor(public code: "NAO_ENCONTRADO" | "CONFLITO" | "MES_FECHADO", message: string) { super(message); } }
+const PRODUTO_INATIVO = "Produto inativo: não pode ser usado em novos lançamentos (reative o produto no cadastro)";
 const iso = (x: Date | null) => (x ? new Date(x).toISOString().slice(0, 10) : null);
 
 async function assertPeriodoAberto(tx: Prisma.TransactionClient, propriedadeId: number, data: Date) {
@@ -63,8 +64,9 @@ export async function registrarSanidade(animalId: number, input: CriarEventoSani
   // Baixa automática de estoque quando a APLICACAO/VACINA consome um produto vinculado
   // que tem estoque no sítio do animal (sem entrada no sítio → registra o evento sem baixa).
   // O produto precisa existir; custo unitário = custo médio do sítio (0 se sem base).
-  const produto = produtoId != null ? await prisma.produto.findUnique({ where: { id: produtoId }, select: { id: true, centrosCusto: { select: { centroCustoId: true } } } }) : null;
+  const produto = produtoId != null ? await prisma.produto.findUnique({ where: { id: produtoId }, select: { id: true, ativo: true, centrosCusto: { select: { centroCustoId: true } } } }) : null;
   if (produtoId != null && !produto) throw new EventoSanError("NAO_ENCONTRADO", "produto do estoque não encontrado");
+  if (produto && !produto.ativo) throw new EventoSanError("CONFLITO", PRODUTO_INATIVO);
   const propriedadeMovimentoId = animal.propriedadeId ?? (await propriedadePrincipalId());
   const temEstoque = produtoId != null && await produtoTemEstoque(prisma, produtoId, propriedadeMovimentoId);
   const consome = planejarBaixaSanidade({ tipo: input.tipo, produtoId, temEstoque, quantidadeUsada, baseCusto: null }) != null;
@@ -111,8 +113,10 @@ export async function editarSanidade(eventoId: number, input: CriarEventoSanitar
 
   const produtoId = (input as any).produtoId ?? null;
   const quantidadeUsada = (input as any).quantidadeUsada ?? null;
-  const produto = produtoId != null ? await prisma.produto.findUnique({ where: { id: produtoId }, select: { id: true, centrosCusto: { select: { centroCustoId: true } } } }) : null;
+  const produto = produtoId != null ? await prisma.produto.findUnique({ where: { id: produtoId }, select: { id: true, ativo: true, centrosCusto: { select: { centroCustoId: true } } } }) : null;
   if (produtoId != null && !produto) throw new EventoSanError("NAO_ENCONTRADO", "produto do estoque não encontrado");
+  // Editar um evento que já usava o produto (agora inativo) continua permitido; trocar para um inativo, não.
+  if (produto && !produto.ativo && produto.id !== existente.produtoId) throw new EventoSanError("CONFLITO", PRODUTO_INATIVO);
   const propriedadeMovimentoId = existente.animal.propriedadeId ?? (await propriedadePrincipalId());
   // Decisão de baixa ESTÁVEL na edição: não pode mudar só porque o estoque do
   // sítio mudou depois do registro. Já havia baixa do mesmo produto → mantém

@@ -172,11 +172,15 @@ async function planejarMovimento(
   talhao: { id?: number; areaHa: Prisma.Decimal | number | null; codigo?: string },
   data: Date,
   propriedadeId: number,
-  opts: { validarCentroAtivo?: boolean; temEstoque?: boolean } = {},
+  opts: { validarCentroAtivo?: boolean; temEstoque?: boolean; produtoAnteriorId?: number | null } = {},
 ) {
   if (input.produtoId == null) return null;
-  const produto = await tx.produto.findUnique({ where: { id: input.produtoId }, select: { id: true, nome: true, unidade: true, centrosCusto: { select: { centroCustoId: true } } } });
+  const produto = await tx.produto.findUnique({ where: { id: input.produtoId }, select: { id: true, nome: true, unidade: true, ativo: true, centrosCusto: { select: { centroCustoId: true } } } });
   if (!produto) throw new PlantioEventoError("NAO_ENCONTRADO", "produto do estoque não encontrado");
+  // Produto inativo não entra em lançamento novo; a operação que já o usava pode ser editada.
+  if (!produto.ativo && produto.id !== opts.produtoAnteriorId) {
+    throw new PlantioEventoError("VALIDACAO", "Produto inativo: não pode ser usado em novos lançamentos (reative o produto no cadastro)");
+  }
   // Só baixa produto com estoque (entrada/ajuste positivo confirmado) no sítio
   // do talhão. Na edição, quem chama pode fixar a decisão (baixa estável).
   const temEstoque = opts.temEstoque ?? await produtoTemEstoque(tx, produto.id, propriedadeId);
@@ -360,7 +364,7 @@ export async function editarOperacao(operacaoId: number, input: EditarOperacaoIn
     const decisaoEstavel = anterior != null && anterior.produtoId === produtoIdMerged ? true
       : anterior == null && existente.movimentoEstoqueId == null && existente.produtoId === produtoIdMerged && quantidadeInalterada ? false
         : undefined;
-    const movimento = await planejarMovimento(tx, merged, existente.talhao, data, propriedadeId, { validarCentroAtivo: centroVeioDoInput, temEstoque: decisaoEstavel });
+    const movimento = await planejarMovimento(tx, merged, existente.talhao, data, propriedadeId, { validarCentroAtivo: centroVeioDoInput, temEstoque: decisaoEstavel, produtoAnteriorId: existente.produtoId });
     // Só avisa quando a falta de estoque foi apurada agora (produto/quantidade mudaram).
     semEstoque = decisaoEstavel === undefined && (movimento?.semEstoque ?? false);
     let movimentoEstoqueId = existente.movimentoEstoqueId;
