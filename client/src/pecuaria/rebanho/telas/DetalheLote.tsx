@@ -1,29 +1,38 @@
-// Página do lote — animais do lote (com movimentação individual/em massa e
-// "trazer animais" de outros lotes) e histórico de movimentações, no padrão
-// de OperacaoFinanceiraDetalhe.tsx/DetalheAnimal.tsx. PageHeader por pedido
-// explícito do plano (em vez do cabeçalho bg-[#f4f2e9] das outras fichas).
+// Página do lote — resumo (efetivo, peso, GMD, idade), animais do lote (com
+// movimentação individual/em massa e "trazer animais" de outros lotes),
+// animais que saíram por baixa, histórico de movimentações e alterações do
+// cadastro do lote, no padrão de OperacaoFinanceiraDetalhe.tsx/DetalheAnimal.tsx.
+// PageHeader por pedido explícito do plano (em vez do cabeçalho bg-[#f4f2e9]
+// das outras fichas).
 
 import { useCallback, useEffect, useState } from "react";
-import { ArrowLeft, ArrowRightLeft } from "lucide-react";
+import { ArrowLeft, ArrowRightLeft, Calendar, TrendingUp, Users, Weight } from "lucide-react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Loader } from "@/components/Loading";
 import {
-  buscarLote, editarLote, listarAnimais, listarMovimentacoesDoLote, obterCatalogos, RebanhoApiError,
+  buscarLote, buscarResumoLote, editarLote, listarAnimais, listarMovimentacoesDoLote, obterCatalogos, RebanhoApiError,
 } from "../api";
-import type { AnimalResumo, Catalogos, Lote, PainelServidor } from "../types";
-import { formatarDataBR } from "../lib/rotulos";
+import type { AnimalResumo, Catalogos, Lote, PeriodoGmd, ResumoLote as ResumoLoteDTO } from "../types";
+import { formatarDataBR, formatarIdade, rotuloAptidao, rotuloPapelReprodutivo, rotuloSexo, rotuloTipoBaixa } from "../lib/rotulos";
+import { formatarGmd, formatarKg, PERIODO_GMD_PADRAO } from "../lib/peso";
 import { navegarPara } from "../../../router";
-import { Button, type ColunaTabela, Empty, ErrorBox, PageHeader, PaginaFinanceira, Panel, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
+import { Button, type ColunaTabela, Empty, ErrorBox, Metric, PageHeader, PaginaFinanceira, Panel, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
 import { CategoriaPill, Paginacao, useAoMovimentarComToast } from "../ui";
 import { NavRebanho } from "./NavRebanho";
 import { mensagemDesativar } from "./ListaLotes";
 import { FormLote } from "../cadastros/FormLote";
 import { FormMovimentar } from "../forms/FormMovimentar";
 import { SeletorAnimais } from "../components/SeletorAnimais";
+import { SeletorPeriodoGmd } from "../components/SeletorPeriodoGmd";
 import { HistoricoMovimentacoes } from "../components/HistoricoMovimentacoes";
+import { AlteracoesCadastro } from "../components/AlteracoesCadastro";
 import { DetalheMovimentacao } from "../components/DetalheMovimentacao";
 
 const ITENS_POR_PAGINA = 20;
+
+function mensagemErro(e: unknown): string {
+  return e instanceof RebanhoApiError ? e.message : e instanceof Error ? e.message : String(e);
+}
 
 type Movimentando = {
   animais: AnimalResumo[];
@@ -38,11 +47,17 @@ export function DetalheLote({ id, podeLancar = true, onVoltar }: { id: string; p
   const [catalogos, setCatalogos] = useState<Catalogos | null>(null);
   const [erro, setErro] = useState<string | null>(null);
 
+  const [periodoGmd, setPeriodoGmd] = useState<PeriodoGmd>(PERIODO_GMD_PADRAO);
+  const [resumo, setResumo] = useState<ResumoLoteDTO | null>(null);
+
   const [animais, setAnimais] = useState<AnimalResumo[]>([]);
   const [totalAnimais, setTotalAnimais] = useState(0);
-  const [painelLote, setPainelLote] = useState<PainelServidor | null>(null);
   const [paginaAnimais, setPaginaAnimais] = useState(1);
   const [selecionados, setSelecionados] = useState<Map<string, AnimalResumo>>(new Map());
+
+  const [baixados, setBaixados] = useState<AnimalResumo[]>([]);
+  const [totalBaixados, setTotalBaixados] = useState(0);
+  const [paginaBaixados, setPaginaBaixados] = useState(1);
 
   /* muda a cada recarregarTudo() para o HistoricoMovimentacoes voltar à página 1 e recarregar */
   const [historicoToken, setHistoricoToken] = useState(0);
@@ -57,29 +72,42 @@ export function DetalheLote({ id, podeLancar = true, onVoltar }: { id: string; p
   const [movimentando, setMovimentando] = useState<Movimentando>(null);
 
   const carregarLote = useCallback(async () => { setLote(await buscarLote(id)); }, [id]);
+  const carregarResumo = useCallback(async (periodo: PeriodoGmd) => { setResumo(await buscarResumoLote(id, { periodoDias: periodo })); }, [id]);
   const carregarAnimais = useCallback(async (pagina: number) => {
     const resultado = await listarAnimais({ loteId: id, situacao: "ATIVO", page: pagina, pageSize: ITENS_POR_PAGINA });
-    setAnimais(resultado.itens); setTotalAnimais(resultado.total); setPainelLote(resultado.painel);
+    setAnimais(resultado.itens); setTotalAnimais(resultado.total);
+  }, [id]);
+  const carregarBaixados = useCallback(async (pagina: number) => {
+    const resultado = await listarAnimais({ loteId: id, situacao: "BAIXADO", page: pagina, pageSize: ITENS_POR_PAGINA });
+    setBaixados(resultado.itens); setTotalBaixados(resultado.total);
   }, [id]);
   /** carregador do histórico deste lote — repassado direto ao HistoricoMovimentacoes */
   const carregarHistorico = useCallback((pagina: number) => listarMovimentacoesDoLote(id, pagina), [id]);
 
   const carregar = useCallback(async () => {
     try { setErro(null); await carregarLote(); }
-    catch (e) { setErro(e instanceof RebanhoApiError ? e.message : e instanceof Error ? e.message : String(e)); }
+    catch (e) { setErro(mensagemErro(e)); }
   }, [carregarLote]);
   useEffect(() => { void carregar(); }, [carregar]);
   useEffect(() => { obterCatalogos().then(setCatalogos).catch(() => undefined); }, []);
 
-  useEffect(() => { void carregarAnimais(paginaAnimais).catch((e) => setErro(e instanceof RebanhoApiError ? e.message : e instanceof Error ? e.message : String(e))); }, [carregarAnimais, paginaAnimais]);
+  useEffect(() => { void carregarAnimais(paginaAnimais).catch((e) => setErro(mensagemErro(e))); }, [carregarAnimais, paginaAnimais]);
+  useEffect(() => { void carregarResumo(periodoGmd).catch((e) => setErro(mensagemErro(e))); }, [carregarResumo, periodoGmd]);
+  useEffect(() => { void carregarBaixados(paginaBaixados).catch((e) => setErro(mensagemErro(e))); }, [carregarBaixados, paginaBaixados]);
 
-  /** Depois de qualquer movimentação/desfazer: recarrega lote, animais, painel e histórico (voltando à página 1). */
+  /** Depois de qualquer mutação de lote/movimentação: recarrega resumo e a página 1 de "Saíram por baixa". */
+  const recarregarResumoEBaixados = useCallback(async () => {
+    setPaginaBaixados(1);
+    await Promise.all([carregarResumo(periodoGmd), carregarBaixados(1)]);
+  }, [carregarResumo, carregarBaixados, periodoGmd]);
+
+  /** Depois de qualquer movimentação/desfazer: recarrega lote, animais, resumo, baixados e histórico (voltando à página 1). */
   const recarregarTudo = useCallback(async () => {
     setSelecionados(new Map());
     setPaginaAnimais(1);
     setHistoricoToken((t) => t + 1);
-    await Promise.all([carregarLote(), carregarAnimais(1)]);
-  }, [carregarLote, carregarAnimais]);
+    await Promise.all([carregarLote(), carregarAnimais(1), recarregarResumoEBaixados()]);
+  }, [carregarLote, carregarAnimais, recarregarResumoEBaixados]);
 
   const aoMovimentarComToast = useAoMovimentarComToast(recarregarTudo);
   const aoMovimentar = async (resultado: { movimentacaoId: string; movidos: number }) => {
@@ -99,23 +127,35 @@ export function DetalheLote({ id, podeLancar = true, onVoltar }: { id: string; p
   const executarAcaoLote = async (acao: () => Promise<unknown>, aoTerminar: () => void) => {
     if (processandoLote) return;
     setProcessandoLote(true); setErroLote(null);
-    try { await acao(); await carregarLote(); aoTerminar(); }
-    catch (e) { setErroLote(e instanceof RebanhoApiError ? e.message : e instanceof Error ? e.message : String(e)); }
+    try { await acao(); await Promise.all([carregarLote(), recarregarResumoEBaixados()]); aoTerminar(); }
+    catch (e) { setErroLote(mensagemErro(e)); }
     finally { setProcessandoLote(false); }
   };
 
   if (!lote) return <div className="shell-wide pagina-carregando"><button onClick={onVoltar} className="mt-6 mb-5 inline-flex shrink-0 items-center gap-2 self-start text-sm font-semibold text-ink-2"><ArrowLeft size={17} /> Voltar para lotes</button><ErrorBox erro={erro} />{!erro && <Loader label="Carregando lote" full />}</div>;
 
   const totalPaginasAnimais = Math.max(1, Math.ceil(totalAnimais / ITENS_POR_PAGINA));
+  const totalPaginasBaixados = Math.max(1, Math.ceil(totalBaixados / ITENS_POR_PAGINA));
 
   const COLUNAS_ANIMAIS: ColunaTabela<AnimalResumo>[] = [
     ...(podeLancar ? [{ chave: "selecionar", titulo: "", larguraMinima: 44, acoes: true, celula: (item: AnimalResumo) => <label className="flex items-center" onClick={(e: React.MouseEvent) => e.stopPropagation()}><input type="checkbox" aria-label={`Selecionar ${item.brinco}`} checked={selecionados.has(item.id)} onChange={() => alternarSelecao(item)} /></label> }] as ColunaTabela<AnimalResumo>[] : []),
     { chave: "brinco", titulo: "Brinco", larguraMinima: 140, principal: true, celula: (item) => <><strong className="break-words">{item.brinco}</strong>{item.nome && <div className="mt-1 text-xs text-ink-3">{item.nome}</div>}</> },
+    { chave: "sexo", titulo: "Sexo", larguraMinima: 70, celula: (item) => rotuloSexo(item.sexo) },
     { chave: "categoria", titulo: "Categoria", larguraMinima: 110, celula: (item) => <CategoriaPill categoria={item.categoria} categoriaOrigem={item.categoriaOrigem} categoriaCalculada={item.categoriaCalculada} /> },
+    { chave: "idade", titulo: "Idade", larguraMinima: 80, celula: (item) => formatarIdade(item.idadeMeses) },
+    { chave: "papel", titulo: "Aptidão/Papel", larguraMinima: 140, celula: (item) => <>{rotuloAptidao(item.aptidao)}{item.papelReprodutivo && item.papelReprodutivo !== "NENHUM" ? ` · ${rotuloPapelReprodutivo(item.papelReprodutivo)}` : ""}</> },
     { chave: "peso", titulo: "Último peso", larguraMinima: 130, celula: (item) => item.ultimoPeso ? <>{item.ultimoPeso.kg.toLocaleString("pt-BR")} kg<div className="text-xs text-ink-3">{formatarDataBR(item.ultimoPeso.data)}</div></> : "—" },
+    { chave: "gmd", titulo: "GMD", larguraMinima: 110, celula: (item) => formatarGmd(item.gmdRecente) },
+    { chave: "noLote", titulo: "No lote desde", larguraMinima: 130, celula: (item) => formatarDataBR(item.noLocalDesde) },
     ...(podeLancar ? [{ chave: "acoes", titulo: "Ações", alinhamento: "direita" as const, larguraMinima: 96, acoes: true, celula: (item: AnimalResumo) => <div className="flex justify-end" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
       <button type="button" className="rounded-lg p-2 text-ink-2 hover:bg-surface-2 hover:text-ink" aria-label={`Movimentar ${item.brinco}`} title="Movimentar" onClick={() => setMovimentando({ animais: [item], usarLoteAtual: true })}><ArrowRightLeft size={16} /></button>
     </div> }] as ColunaTabela<AnimalResumo>[] : []),
+  ];
+
+  const COLUNAS_BAIXADOS: ColunaTabela<AnimalResumo>[] = [
+    { chave: "brinco", titulo: "Brinco", larguraMinima: 140, principal: true, celula: (item) => <><strong className="break-words">{item.brinco}</strong>{item.nome && <div className="mt-1 text-xs text-ink-3">{item.nome}</div>}</> },
+    { chave: "baixa", titulo: "Baixa", larguraMinima: 170, celula: (item) => item.baixa ? <>{rotuloTipoBaixa(item.baixa.tipo)} <span className="text-ink-3">· {formatarDataBR(item.baixa.data)}</span></> : "—" },
+    { chave: "categoria", titulo: "Categoria", larguraMinima: 110, celula: (item) => <CategoriaPill categoria={item.categoria} categoriaOrigem={item.categoriaOrigem} categoriaCalculada={item.categoriaCalculada} /> },
   ];
 
   return <PaginaFinanceira>
@@ -135,10 +175,21 @@ export function DetalheLote({ id, podeLancar = true, onVoltar }: { id: string; p
     <NavRebanho ativa="lotes" />
     <ErrorBox erro={erro ?? erroLote} />
 
-    {painelLote && <div className="mt-6 flex flex-wrap items-center gap-2 rounded-xl border border-border bg-white p-4 text-sm">
-      <strong>{painelLote.totalAtivos} {painelLote.totalAtivos === 1 ? "animal ativo" : "animais ativos"}</strong>
-      {painelLote.porCategoria.map((c) => <Pill key={c.categoria?.id ?? "sem-categoria"}>{c.categoria?.nome ?? "Sem categoria"}: {c.total}</Pill>)}
-    </div>}
+    {resumo && <>
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+        <h2 className="font-serif text-xl">Resumo do lote</h2>
+        <SeletorPeriodoGmd id="periodo-gmd-lote" valor={periodoGmd} onChange={setPeriodoGmd} />
+      </div>
+      <div className="mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <Metric label="Animais ativos" valor={resumo.ativos.toLocaleString("pt-BR")} detalhe={`${resumo.porSexo.F} fêmeas · ${resumo.porSexo.M} machos`} icon={Users} />
+        <Metric label="Peso médio" valor={formatarKg(resumo.peso.medioKg)} detalhe={`${formatarKg(resumo.peso.minKg)} – ${formatarKg(resumo.peso.maxKg)} · ${resumo.peso.semPeso} sem peso`} icon={Weight} />
+        <Metric label="GMD do período" valor={formatarGmd(resumo.gmd.medio)} detalhe={`${resumo.gmd.comGmd} de ${resumo.ativos} animais com pesagem suficiente`} icon={TrendingUp} />
+        <Metric label="Idade média" valor={resumo.idadeMediaMeses != null ? formatarIdade(resumo.idadeMediaMeses) : "—"} detalhe="Média dos animais ativos no lote" icon={Calendar} />
+      </div>
+      {resumo.porCategoria.length > 0 && <div className="mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-border bg-white p-4 text-sm">
+        {resumo.porCategoria.map((c) => <Pill key={c.categoriaId ?? "sem-categoria"}>{c.categoria}: {c.qtd}</Pill>)}
+      </div>}
+    </>}
 
     <Panel className="mt-6 overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-5"><h2 className="font-serif text-xl">Animais no lote</h2></div>
@@ -150,9 +201,17 @@ export function DetalheLote({ id, podeLancar = true, onVoltar }: { id: string; p
         </>}
       </div>}
       {animais.length ? <>
-        <TabelaFinanceira rotulo="Animais do lote" itens={animais} colunas={COLUNAS_ANIMAIS} chaveDe={(item) => item.id} onAbrir={(item) => navegarPara(`/pecuaria/rebanho/animais/${item.id}`)} />
+        <TabelaFinanceira rotulo="Animais do lote" itens={animais} colunas={COLUNAS_ANIMAIS} chaveDe={(item) => item.id} onAbrir={(item) => navegarPara(`/pecuaria/rebanho/animais/${item.id}`)} barraRolagemSuperior />
         <Paginacao paginaAtual={paginaAnimais} totalPaginas={totalPaginasAnimais} totalItens={totalAnimais} itensPorPagina={ITENS_POR_PAGINA} onPaginaChange={setPaginaAnimais} rotulo="animais" idSelect="pagina-animais-lote" />
       </> : <Empty>Nenhum animal ativo neste lote.</Empty>}
+    </Panel>
+
+    <Panel className="mt-6 overflow-hidden">
+      <div className="border-b border-border p-5"><h2 className="font-serif text-xl">Saíram por baixa</h2></div>
+      {baixados.length ? <>
+        <TabelaFinanceira rotulo="Animais que saíram por baixa" itens={baixados} colunas={COLUNAS_BAIXADOS} chaveDe={(item) => item.id} onAbrir={(item) => navegarPara(`/pecuaria/rebanho/animais/${item.id}`)} />
+        <Paginacao paginaAtual={paginaBaixados} totalPaginas={totalPaginasBaixados} totalItens={totalBaixados} itensPorPagina={ITENS_POR_PAGINA} onPaginaChange={setPaginaBaixados} rotulo="animais baixados" idSelect="pagina-baixados-lote" />
+      </> : <Empty>Nenhum animal deste lote saiu por baixa.</Empty>}
     </Panel>
 
     <Panel className="mt-6 overflow-hidden">
@@ -167,7 +226,12 @@ export function DetalheLote({ id, podeLancar = true, onVoltar }: { id: string; p
       />
     </Panel>
 
-    {editando && <FormLote lote={lote} propriedades={[]} onSalvo={async () => { setEditando(false); await carregarLote(); }} onFechar={() => setEditando(false)} />}
+    <Panel className="mt-6 overflow-hidden">
+      <div className="border-b border-border p-5"><h2 className="font-serif text-xl">Alterações do lote</h2></div>
+      <AlteracoesCadastro entidade="Lote" entidadeId={lote.id} />
+    </Panel>
+
+    {editando && <FormLote lote={lote} propriedades={[]} onSalvo={async () => { setEditando(false); await Promise.all([carregarLote(), recarregarResumoEBaixados()]); }} onFechar={() => setEditando(false)} />}
 
     {trazendo && <SeletorAnimais
       excluirLoteId={lote.id}

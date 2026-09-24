@@ -18,6 +18,7 @@ import { Loader } from "@/components/Loading";
 import { AcoesLinha, Button, type ColunaTabela, ErrorBox, PageHeader, PaginaFinanceira, Panel, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
 import { BarraFiltros, SubAbas } from "../ui";
 import { NavRebanho } from "./NavRebanho";
+import { AlteracoesCadastro } from "../components/AlteracoesCadastro";
 import {
   criarCategoria, editarCategoria, editarMotivoBaixa, editarRaca, listarCategorias, listarMotivosBaixa, listarRacas,
   reordenarCategorias, restaurarPadroesCategorias, simularCategorias, RebanhoApiError,
@@ -57,6 +58,7 @@ const colunasCategorias = (
   { chave: "sexo", titulo: "Sexo", larguraMinima: 90, celula: (c) => rotuloSexo(c.sexo) },
   { chave: "regra", titulo: "Regra", larguraMinima: 220, celula: (c) => <span className="break-words text-ink-3">{c.regra}</span> },
   { chave: "animais", titulo: "Animais ativos", alinhamento: "centro", larguraMinima: 120, celula: (c) => c.animaisAtivos },
+  { chave: "forcadas", titulo: "Forçadas", alinhamento: "centro", larguraMinima: 100, celula: (c) => c.manuaisAbertas },
   { chave: "padrao", titulo: "Padrão", alinhamento: "centro", larguraMinima: 90, celula: (c) => c.padrao ? <Pill tone="blue">Padrão</Pill> : "—" },
   { chave: "situacao", titulo: "Situação", alinhamento: "direita", larguraMinima: 100, celula: (c) => <Pill tone={c.ativo ? "green" : "neutral"}>{c.ativo ? "Ativa" : "Inativa"}</Pill> },
   { chave: "acoes", titulo: "Ações", alinhamento: "direita", larguraMinima: 150, acoes: true, celula: (c) => {
@@ -69,6 +71,7 @@ const colunasRacas = (editar: (r: Raca) => void, alternar: (r: Raca) => void): C
   { chave: "raca", titulo: "Raça", larguraMinima: 180, principal: true, celula: (r) => <strong className="break-words">{r.nome}</strong> },
   { chave: "sigla", titulo: "Sigla", alinhamento: "centro", larguraMinima: 90, celula: (r) => <span className="font-mono">{r.sigla}</span> },
   { chave: "tipo", titulo: "Tipo", alinhamento: "centro", larguraMinima: 110, celula: (r) => r.base ? "Base" : "Composta" },
+  { chave: "animais", titulo: "Animais ativos", alinhamento: "centro", larguraMinima: 120, celula: (r) => r.animaisAtivos },
   { chave: "situacao", titulo: "Situação", alinhamento: "direita", larguraMinima: 100, celula: (r) => <Pill tone={r.ativo ? "green" : "neutral"}>{r.ativo ? "Ativa" : "Inativa"}</Pill> },
   { chave: "acoes", titulo: "Ações", alinhamento: "direita", larguraMinima: 110, acoes: true, celula: (r) => <AcoesLinha nome={r.nome} ativo={r.ativo} onEditar={() => editar(r)} onAlternar={() => alternar(r)} /> },
 ];
@@ -76,6 +79,7 @@ const colunasRacas = (editar: (r: Raca) => void, alternar: (r: Raca) => void): C
 const colunasMotivos = (editar: (m: MotivoBaixa) => void, alternar: (m: MotivoBaixa) => void): ColunaTabela<MotivoBaixa>[] => [
   { chave: "motivo", titulo: "Motivo", larguraMinima: 210, principal: true, celula: (m) => <strong className="break-words">{m.nome}</strong> },
   { chave: "classe", titulo: "Classe", larguraMinima: 150, celula: (m) => rotuloClasseMotivo(m.classe) },
+  { chave: "baixas", titulo: "Baixas", alinhamento: "centro", larguraMinima: 90, celula: (m) => m.baixasValendo },
   { chave: "situacao", titulo: "Situação", alinhamento: "direita", larguraMinima: 100, celula: (m) => <Pill tone={m.ativo ? "green" : "neutral"}>{m.ativo ? "Ativo" : "Inativo"}</Pill> },
   { chave: "acoes", titulo: "Ações", alinhamento: "direita", larguraMinima: 110, acoes: true, celula: (m) => <AcoesLinha nome={m.nome} ativo={m.ativo} onEditar={() => editar(m)} onAlternar={() => alternar(m)} /> },
 ];
@@ -266,21 +270,37 @@ export function Cadastros({ podeLancar = true }: { podeLancar?: boolean }) {
               <TabelaFinanceira rotulo="Categorias" itens={categoriasExibidas} colunas={colunasCategorias(categoriasExibidas, (c) => setPainelCategoria({ modo: "editar", categoria: c }), alternarCategoria, moverCategoria)} chaveDe={(c) => c.id} onAbrir={podeLancar ? (c) => setPainelCategoria({ modo: "editar", categoria: c }) : undefined} classeLinha={(c) => !c.ativo ? "opacity-55" : ""} />
             </fieldset>
           </Panel>
+          <Panel className="mt-6 overflow-hidden">
+            <div className="border-b border-border p-5"><h2 className="font-serif text-xl">Histórico de alterações</h2></div>
+            <AlteracoesCadastro entidade="CategoriaAnimal" />
+          </Panel>
         </>}
 
-        {aba === "racas" && <Panel className="mt-5 overflow-hidden">
-          <BarraFiltros><label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" disabled={bloqueado} checked={mostrarInativos} onChange={(e) => setMostrarInativos(e.target.checked)} />Mostrar inativos</label></BarraFiltros>
-          <fieldset disabled={bloqueado || !podeLancar} aria-busy={bloqueado} className="min-w-0">
-            <TabelaFinanceira rotulo="Raças" itens={racas ?? []} colunas={colunasRacas((r) => editar("raca", r), alternarRaca)} chaveDe={(r) => r.id} onAbrir={podeLancar ? (r) => editar("raca", r) : undefined} classeLinha={(r) => !r.ativo ? "opacity-55" : ""} />
-          </fieldset>
-        </Panel>}
+        {aba === "racas" && <>
+          <Panel className="mt-5 overflow-hidden">
+            <BarraFiltros><label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" disabled={bloqueado} checked={mostrarInativos} onChange={(e) => setMostrarInativos(e.target.checked)} />Mostrar inativos</label></BarraFiltros>
+            <fieldset disabled={bloqueado || !podeLancar} aria-busy={bloqueado} className="min-w-0">
+              <TabelaFinanceira rotulo="Raças" itens={racas ?? []} colunas={colunasRacas((r) => editar("raca", r), alternarRaca)} chaveDe={(r) => r.id} onAbrir={podeLancar ? (r) => editar("raca", r) : undefined} classeLinha={(r) => !r.ativo ? "opacity-55" : ""} />
+            </fieldset>
+          </Panel>
+          <Panel className="mt-6 overflow-hidden">
+            <div className="border-b border-border p-5"><h2 className="font-serif text-xl">Histórico de alterações</h2></div>
+            <AlteracoesCadastro entidade="Raca" />
+          </Panel>
+        </>}
 
-        {aba === "motivos" && <Panel className="mt-5 overflow-hidden">
-          <BarraFiltros><label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" disabled={bloqueado} checked={mostrarInativos} onChange={(e) => setMostrarInativos(e.target.checked)} />Mostrar inativos</label></BarraFiltros>
-          <fieldset disabled={bloqueado || !podeLancar} aria-busy={bloqueado} className="min-w-0">
-            <TabelaFinanceira rotulo="Motivos de baixa" itens={motivosExibidos} colunas={colunasMotivos((m) => editar("motivo", m), alternarMotivo)} chaveDe={(m) => m.id} onAbrir={podeLancar ? (m) => editar("motivo", m) : undefined} classeLinha={(m) => !m.ativo ? "opacity-55" : ""} />
-          </fieldset>
-        </Panel>}
+        {aba === "motivos" && <>
+          <Panel className="mt-5 overflow-hidden">
+            <BarraFiltros><label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" disabled={bloqueado} checked={mostrarInativos} onChange={(e) => setMostrarInativos(e.target.checked)} />Mostrar inativos</label></BarraFiltros>
+            <fieldset disabled={bloqueado || !podeLancar} aria-busy={bloqueado} className="min-w-0">
+              <TabelaFinanceira rotulo="Motivos de baixa" itens={motivosExibidos} colunas={colunasMotivos((m) => editar("motivo", m), alternarMotivo)} chaveDe={(m) => m.id} onAbrir={podeLancar ? (m) => editar("motivo", m) : undefined} classeLinha={(m) => !m.ativo ? "opacity-55" : ""} />
+            </fieldset>
+          </Panel>
+          <Panel className="mt-6 overflow-hidden">
+            <div className="border-b border-border p-5"><h2 className="font-serif text-xl">Histórico de alterações</h2></div>
+            <AlteracoesCadastro entidade="MotivoBaixa" />
+          </Panel>
+        </>}
       </>}
 
     {painel?.entidade === "raca" && <FormRaca key={chavePainel} raca={racaSelecionada} onSalvo={aoSalvar} onFechar={() => setPainel(null)} />}

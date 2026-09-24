@@ -17,8 +17,12 @@ const animal: AnimalFicha = {
   id: "animal-1", brinco: "1234", nome: "Mimosa", sexo: "F", categoria: null, categoriaOrigem: "SEM_CATEGORIA", categoriaCalculada: null, idadeMeses: 40, idadeNaBaixa: false,
   dataNascimento: "2022-01-01", dataEntrada: "2022-01-01", origem: "NASCIDO", propriedade: { id: 1, nome: "Sede" },
   lote: null, aptidao: null, papelReprodutivo: null, composicaoRotulo: "", ultimoPeso: null, situacao: "ATIVO",
+  gmdRecente: null, noLocalDesde: null,
   brincoEletronico: null, sisbov: null, nascimentoEstimado: false, partosAntesDaEntrada: 0, observacao: null,
-  composicao: [], historicoLocalizacoes: [], historicoDestinos: [], historicoPesagens: [], historicoCategoriasManuais: [], baixa: null,
+  composicao: [], historicoLocalizacoes: [], historicoDestinos: [], historicoPesagens: [], historicoCategoriasManuais: [],
+  baixa: null,
+  peso: { ultimo: null, gmdRecente: null, gmdDesdeEntrada: null, gmdPeriodo: { dias: null, valor: null, pesagens: 0 } },
+  historicoBaixas: [],
 };
 
 const motivos: CatalogoMotivoBaixa[] = [

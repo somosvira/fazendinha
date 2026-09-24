@@ -5,7 +5,7 @@ import { ToastProvider } from "@/components/Toast";
 import { DetalheAnimal } from "./DetalheAnimal";
 import {
   buscarAuditoriaAnimal, buscarFichaAnimal, definirCategoriaManual, desfazerMovimentacao, editarAnimal, editarPesagem, listarCategorias,
-  movimentarAnimais, obterCatalogos, removerCategoriaManual,
+  listarMovimentacoes, movimentarAnimais, obterCatalogos, removerCategoriaManual,
 } from "../api";
 import type { AnimalFicha, CategoriaDTO, Catalogos } from "../types";
 
@@ -15,6 +15,7 @@ vi.mock("../api", async (importOriginal) => ({
   buscarAuditoriaAnimal: vi.fn(),
   obterCatalogos: vi.fn(),
   listarCategorias: vi.fn(),
+  listarMovimentacoes: vi.fn(),
   definirCategoriaManual: vi.fn(),
   removerCategoriaManual: vi.fn(),
   editarAnimal: vi.fn(),
@@ -33,19 +34,24 @@ const categoriasMock: CategoriaDTO[] = [
 afterEach(cleanup);
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.mocked(buscarAuditoriaAnimal).mockResolvedValue([]);
+  vi.mocked(buscarAuditoriaAnimal).mockResolvedValue({ itens: [], total: 0 });
   vi.mocked(obterCatalogos).mockResolvedValue({ racas: [], motivosBaixa: [], propriedades: [], lotes: [] } as Catalogos);
   vi.mocked(listarCategorias).mockResolvedValue({ itens: categoriasMock, semCategoria: 0 });
+  vi.mocked(listarMovimentacoes).mockResolvedValue({ itens: [], total: 0 });
 });
 
 const base: AnimalFicha = {
   id: "animal-1", brinco: "1234", nome: "Mimosa", sexo: "F", categoria: catVaca, categoriaOrigem: "AUTOMATICA", categoriaCalculada: catVaca, idadeMeses: 40, idadeNaBaixa: false,
   dataNascimento: "2022-01-01", dataEntrada: "2022-01-01", origem: "NASCIDO", propriedade: { id: 1, nome: "Sede" },
   lote: null, aptidao: "LEITE", papelReprodutivo: "RECEPTORA", composicaoRotulo: "", ultimoPeso: null, situacao: "ATIVO",
+  gmdRecente: null, noLocalDesde: null,
   brincoEletronico: null, sisbov: null, nascimentoEstimado: false, partosAntesDaEntrada: 1, observacao: null,
   composicao: [], historicoLocalizacoes: [{ id: "loc-1", propriedade: { id: 1, nome: "Sede" }, lote: null, desde: "2022-01-01", ate: null, motivo: null, movimentacaoId: null }],
   historicoDestinos: [{ id: "dest-1", aptidao: "LEITE", papelReprodutivo: "RECEPTORA", desde: "2022-01-01", ate: null }],
-  historicoPesagens: [], historicoCategoriasManuais: [], baixa: null,
+  historicoPesagens: [], historicoCategoriasManuais: [],
+  baixa: null,
+  peso: { ultimo: null, gmdRecente: null, gmdDesdeEntrada: null, gmdPeriodo: { dias: null, valor: null, pesagens: 0 } },
+  historicoBaixas: [],
 };
 
 function Wrapper({ children }: { children: React.ReactNode }) {
@@ -77,14 +83,18 @@ describe("DetalheAnimal — ações conforme situação", () => {
     }
   });
 
-  it("mostra tipo, data e motivo (com classe) da baixa registrada", async () => {
+  it("mostra tipo, data e motivo (com classe) da baixa registrada no histórico de baixas", async () => {
     const baixado: AnimalFicha = {
       ...base, situacao: "BAIXADO",
       baixa: { id: "baixa-1", data: "2026-09-12", tipo: "VENDA", motivo: { nome: "Baixa produção", classe: "DESCARTE_VOLUNTARIO" }, observacao: null, estornadaEm: null, estornoMotivo: null },
+      historicoBaixas: [{ id: "baixa-1", data: "2026-09-12", tipo: "VENDA", motivo: { nome: "Baixa produção", classe: "DESCARTE_VOLUNTARIO" }, observacao: null, estornadaEm: null, estornoMotivo: null, criadoPor: "Ana" }],
     };
     await montar(baixado);
     expect(screen.getByText("Venda")).toBeTruthy();
-    expect(screen.getByText(/em 12\/09\/2026 · Baixa produção \(descarte voluntário\)/)).toBeTruthy();
+    expect(screen.getByText("12/09/2026")).toBeTruthy();
+    expect(screen.getByText("Baixa produção (descarte voluntário)")).toBeTruthy();
+    expect(screen.getByText("Valendo")).toBeTruthy();
+    expect(screen.getByText("Ana")).toBeTruthy();
   });
 
   it("só oferece desfazer localização/destino quando há pelo menos duas linhas de histórico", async () => {
@@ -271,5 +281,54 @@ describe("DetalheAnimal — movimentar (K8)", () => {
     await screen.findByText("1 animal movimentado");
     fireEvent.click(screen.getByRole("button", { name: "Desfazer" }));
     await waitFor(() => expect(desfazerMovimentacao).toHaveBeenCalledWith("mov-1", "Desfeito logo após a movimentação"));
+  });
+});
+
+describe("DetalheAnimal — peso e GMD no cabeçalho", () => {
+  it("com pesagem, mostra o peso atual e o GMD recente ao lado da idade", async () => {
+    await montar({ ...base, peso: { ultimo: { kg: 262, data: "2026-09-01" }, gmdRecente: 0.51, gmdDesdeEntrada: null, gmdPeriodo: { dias: null, valor: null, pesagens: 0 } } });
+    expect(screen.getByText((_, el) => el?.tagName === "P" && /Peso atual 262 kg · \+0,510 kg\/dia/.test(el.textContent ?? ""))).toBeTruthy();
+  });
+
+  it("sem pesagem, mostra 'Sem pesagem' no lugar do peso", async () => {
+    await montar(base);
+    expect(screen.getByText((_, el) => el?.tagName === "P" && /Sem pesagem/.test(el.textContent ?? ""))).toBeTruthy();
+  });
+});
+
+describe("DetalheAnimal — seletor de período do GMD", () => {
+  it("trocar o período refaz a busca da ficha com o periodoDias escolhido", async () => {
+    await montar(base);
+    expect(buscarFichaAnimal).toHaveBeenLastCalledWith("animal-1", { periodoDias: 90 });
+
+    fireEvent.change(screen.getByLabelText("Período do GMD"), { target: { value: "30" } });
+    await waitFor(() => expect(buscarFichaAnimal).toHaveBeenLastCalledWith("animal-1", { periodoDias: 30 }));
+  });
+
+  it("'Desde a entrada' busca com periodoDias=entrada (sem o parâmetro o servidor usa 90 dias)", async () => {
+    await montar(base);
+    fireEvent.change(screen.getByLabelText("Período do GMD"), { target: { value: "entrada" } });
+    await waitFor(() => expect(buscarFichaAnimal).toHaveBeenLastCalledWith("animal-1", { periodoDias: "entrada" }));
+  });
+});
+
+describe("DetalheAnimal — localização com motivo", () => {
+  it("mostra o motivo de cada linha do histórico de localização, ou travessão quando não há", async () => {
+    await montar({
+      ...base,
+      historicoLocalizacoes: [
+        { id: "loc-2", propriedade: { id: 1, nome: "Sede" }, lote: { id: "l1", nome: "Lote 1" }, desde: "2026-01-01", ate: null, motivo: "Movido para engorda", movimentacaoId: "mov-1" },
+        { id: "loc-1", propriedade: { id: 1, nome: "Sede" }, lote: null, desde: "2022-01-01", ate: "2026-01-01", motivo: null, movimentacaoId: null },
+      ],
+    });
+    expect(screen.getByText("Motivo")).toBeTruthy();
+    expect(screen.getByText("Movido para engorda")).toBeTruthy();
+  });
+});
+
+describe("DetalheAnimal — movimentações", () => {
+  it("busca as movimentações filtradas pelo animal, incluindo as desfeitas", async () => {
+    await montar(base);
+    await waitFor(() => expect(listarMovimentacoes).toHaveBeenCalledWith(expect.objectContaining({ animalId: "animal-1", incluirDesfeitas: true })));
   });
 });

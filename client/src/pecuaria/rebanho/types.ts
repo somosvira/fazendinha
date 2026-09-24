@@ -11,6 +11,7 @@ export type Origem = "NASCIDO" | "COMPRADO";
 export type Situacao = "ATIVO" | "BAIXADO";
 export type TipoBaixa = "VENDA" | "ABATE" | "MORTE" | "DOACAO" | "EXTRAVIO" | "CADASTRO_INDEVIDO";
 export type ClasseMotivoBaixa = "DESCARTE_VOLUNTARIO" | "DESCARTE_INVOLUNTARIO" | "MORTE";
+export type PeriodoGmd = 30 | 90 | 180 | 365 | "entrada";
 export type TipoPesagem = "NASCIMENTO" | "ENTRADA" | "DESMAMA" | "ROTINA" | "SAIDA";
 export type OrigemPesagem = "MANUAL" | "BALANCA";
 
@@ -40,6 +41,9 @@ export type AnimalResumo = {
   composicaoRotulo: string;
   ultimoPeso: { kg: number; data: string } | null;
   situacao: Situacao;
+  gmdRecente: number | null;
+  noLocalDesde: string | null;
+  baixa: { data: string; tipo: TipoBaixa } | null;
 };
 
 export type FracaoRaca = { sigla: string; fracao64: number };
@@ -96,6 +100,22 @@ export type AnimalFicha = AnimalResumo & {
   /** trocas manuais de categoria, mais recente primeiro */
   historicoCategoriasManuais: HistoricoCategoriaManual[];
   baixa: BaixaAnimalResumo | null;
+  peso: {
+    ultimo: { kg: number; data: string } | null;
+    gmdRecente: number | null;
+    gmdDesdeEntrada: number | null;
+    gmdPeriodo: { dias: number | null; valor: number | null; pesagens: number };
+  };
+  historicoBaixas: Array<{
+    id: string;
+    data: string;
+    tipo: TipoBaixa;
+    motivo: { nome: string; classe: ClasseMotivoBaixa } | null;
+    observacao: string | null;
+    estornadaEm: string | null;
+    estornoMotivo: string | null;
+    criadoPor: string | null;
+  }>;
 };
 
 export type ComposicaoItemInput = { racaId: string; fracao64: number };
@@ -200,6 +220,18 @@ export type ListarFiltros = {
   papelReprodutivo?: PapelReprodutivo;
   situacao?: Situacao | "TODOS";
   busca?: string;
+  sexo?: "F" | "M";
+  origem?: Origem;
+  racaId?: string;
+  idadeMinMeses?: number;
+  idadeMaxMeses?: number;
+  categoriaOrigem?: "MANUAL";
+  semCategoria?: boolean;
+  tipoBaixa?: TipoBaixa;
+  baixaDe?: string;
+  baixaAte?: string;
+  ordenar?: "brinco" | "nascimento" | "entrada";
+  direcao?: "asc" | "desc";
   page?: number;
   pageSize?: number;
 };
@@ -223,7 +255,11 @@ export type EntradaAuditoria = {
   entidade: string;
   usuarioNome: string | null;
   resumo: string;
+  entidadeId: string;
+  alteracoes: Array<{ campo: string; rotulo: string; antes: string | null; depois: string | null }>;
 };
+
+export type EntidadeCadastro = "Lote" | "Raca" | "MotivoBaixa" | "CategoriaAnimal";
 
 export type Lote = {
   id: string;
@@ -233,6 +269,15 @@ export type Lote = {
   ativo: boolean;
   observacao: string | null;
   animaisAtivos: number;
+};
+
+export type ResumoLote = {
+  ativos: number;
+  porSexo: { F: number; M: number };
+  porCategoria: Array<{ categoriaId: string | null; categoria: string; qtd: number }>;
+  idadeMediaMeses: number | null;
+  peso: { medioKg: number | null; minKg: number | null; maxKg: number | null; semPeso: number };
+  gmd: { medio: number | null; comGmd: number; periodoDias: number | null };
 };
 export type CriarLoteInput = { nome: string; propriedadeId: number; observacao?: string | null };
 export type EditarLoteInput = Partial<{ nome: string; ativo: boolean; observacao: string | null }>;
@@ -269,6 +314,7 @@ export type FiltrosMovimentacoes = {
   propriedadeId?: number;
   dataDe?: string;
   dataAte?: string;
+  animalId?: string;
   /** default true no servidor */
   incluirDesfeitas?: boolean;
   page?: number;
@@ -291,11 +337,11 @@ export type AnimalDaMovimentacao = {
 
 export type MovimentacaoDetalhe = MovimentacaoResumo & { animais: AnimalDaMovimentacao[] };
 
-export type Raca = { id: string; nome: string; sigla: string; base: boolean; ativo: boolean };
+export type Raca = { id: string; nome: string; sigla: string; base: boolean; ativo: boolean; animaisAtivos: number };
 export type CriarRacaInput = { nome: string; sigla: string; base?: boolean };
 export type EditarRacaInput = Partial<{ nome: string; sigla: string; base: boolean; ativo: boolean }>;
 
-export type MotivoBaixa = { id: string; nome: string; classe: ClasseMotivoBaixa; ativo: boolean };
+export type MotivoBaixa = { id: string; nome: string; classe: ClasseMotivoBaixa; ativo: boolean; baixasValendo: number };
 export type CriarMotivoBaixaInput = { nome: string; classe: ClasseMotivoBaixa };
 export type EditarMotivoBaixaInput = Partial<{ nome: string; classe: ClasseMotivoBaixa; ativo: boolean }>;
 
@@ -324,6 +370,9 @@ export type PainelGeral = {
   receptorasPct: number;
   baixas30d: number;
   ultimosEventos: EventoPainel[];
+  baixasPorTipo: Array<{ tipo: TipoBaixa; qtd: number }>;
+  baixasPorClasse: Array<{ classe: ClasseMotivoBaixa | "SEM_MOTIVO"; qtd: number }>;
+  periodoDias: number;
 };
 
 // ---------- categorias configuráveis (Cadastros > Categorias) ----------

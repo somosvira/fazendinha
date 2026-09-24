@@ -19,6 +19,7 @@ import type {
   EditarMotivoBaixaInput,
   EditarPesagemInput,
   EditarRacaInput,
+  EntidadeCadastro,
   EntradaAuditoria,
   EstornoBaixaInput,
   FiltrosMovimentacoes,
@@ -33,11 +34,13 @@ import type {
   MovimentarInput,
   MudarDestinoInput,
   PainelGeral,
+  PeriodoGmd,
   Pesagem,
   PesagemInput,
   Raca,
   RegraCategoriaProposta,
   RemoverCategoriaManualInput,
+  ResumoLote,
   ResultadoSimulacaoCategorias,
   SubstituirComposicaoInput,
 } from "./types";
@@ -83,7 +86,14 @@ export const listarAnimais = (filtros: ListarFiltros) => {
 export const cadastrarAnimal = (input: CadastrarAnimalInput) =>
   req<AnimalFicha>("/animais", { method: "POST", body: JSON.stringify(input) });
 
-export const buscarFichaAnimal = (id: string) => req<AnimalFicha>(`/animais/${id}`);
+export const buscarFichaAnimal = (id: string, opts?: { periodoDias?: PeriodoGmd }) => {
+  const params = new URLSearchParams();
+  if (opts?.periodoDias !== undefined) {
+    params.set("periodoDias", String(opts.periodoDias));
+  }
+  const query = params.toString();
+  return req<AnimalFicha>(`/animais/${id}${query ? `?${query}` : ""}`);
+};
 
 export const editarAnimal = (id: string, input: EditarAnimalInput) =>
   req<AnimalFicha>(`/animais/${id}`, { method: "PATCH", body: JSON.stringify(input) });
@@ -91,7 +101,13 @@ export const editarAnimal = (id: string, input: EditarAnimalInput) =>
 export const substituirComposicaoAnimal = (id: string, input: SubstituirComposicaoInput) =>
   req<ItemComposicao[]>(`/animais/${id}/composicao`, { method: "PUT", body: JSON.stringify(input) });
 
-export const buscarAuditoriaAnimal = (id: string) => req<EntradaAuditoria[]>(`/animais/${id}/auditoria`);
+export const buscarAuditoriaAnimal = (id: string, opts?: { page?: number; pageSize?: number }) => {
+  const params = new URLSearchParams();
+  if (opts?.page !== undefined) params.set("page", String(opts.page));
+  if (opts?.pageSize !== undefined) params.set("pageSize", String(opts.pageSize));
+  const query = params.toString();
+  return req<{ itens: EntradaAuditoria[]; total: number }>(`/animais/${id}/auditoria${query ? `?${query}` : ""}`);
+};
 
 export const movimentarAnimais = (input: MovimentarInput) =>
   req<{ movimentacaoId: string; movidos: number }>("/animais/movimentar", { method: "POST", body: JSON.stringify(input) });
@@ -136,6 +152,15 @@ export const listarLotes = (opts?: { incluirInativos?: boolean }) =>
 
 export const buscarLote = (id: string) => req<Lote>(`/lotes/${id}`);
 
+export const buscarResumoLote = (id: string, opts?: { periodoDias?: PeriodoGmd }) => {
+  const params = new URLSearchParams();
+  if (opts?.periodoDias !== undefined) {
+    params.set("periodoDias", String(opts.periodoDias));
+  }
+  const query = params.toString();
+  return req<ResumoLote>(`/lotes/${id}/resumo${query ? `?${query}` : ""}`);
+};
+
 export const criarLote = (input: CriarLoteInput) => req<Lote>("/lotes", { method: "POST", body: JSON.stringify(input) });
 
 export const editarLote = (id: string, input: EditarLoteInput) =>
@@ -159,6 +184,16 @@ export const listarMovimentacoes = (filtros: FiltrosMovimentacoes = {}) => {
 };
 
 export const buscarMovimentacao = (id: string) => req<MovimentacaoDetalhe>(`/movimentacoes/${id}`);
+
+export const listarAuditoriaCadastro = (entidade: EntidadeCadastro, opts?: { entidadeId?: string; page?: number; pageSize?: number }) => {
+  const params = new URLSearchParams();
+  params.set("entidade", entidade);
+  if (opts?.entidadeId !== undefined) params.set("entidadeId", opts.entidadeId);
+  if (opts?.page !== undefined) params.set("page", String(opts.page));
+  if (opts?.pageSize !== undefined) params.set("pageSize", String(opts.pageSize));
+  const query = params.toString();
+  return req<{ itens: EntradaAuditoria[]; total: number }>(`/auditoria${query ? `?${query}` : ""}`);
+};
 
 // ---------- raças ----------
 
@@ -203,6 +238,11 @@ export const restaurarPadroesCategorias = (opts?: { simular?: boolean }) =>
 
 // ---------- visão geral e catálogos ----------
 
-export const obterPainelRebanho = () => req<PainelGeral>("/painel");
+export const obterPainelRebanho = (opts?: { periodoDias?: number }) => {
+  const params = new URLSearchParams();
+  if (opts?.periodoDias !== undefined) params.set("periodoDias", String(opts.periodoDias));
+  const query = params.toString();
+  return req<PainelGeral>(`/painel${query ? `?${query}` : ""}`);
+};
 
 export const obterCatalogos = () => req<Catalogos>("/catalogos");

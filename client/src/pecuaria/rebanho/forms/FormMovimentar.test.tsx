@@ -24,6 +24,7 @@ function criarAnimal(overrides: Partial<AnimalResumo>): AnimalResumo {
     dataNascimento: "2023-01-01", dataEntrada: "2023-01-01", origem: "NASCIDO",
     propriedade: { id: 1, nome: "Sede" }, lote: { id: "lote-1", nome: "Lote A" }, aptidao: "LEITE", papelReprodutivo: "NENHUM",
     composicaoRotulo: "", ultimoPeso: null, situacao: "ATIVO",
+    gmdRecente: null, noLocalDesde: null, baixa: null,
     ...overrides,
   };
 }

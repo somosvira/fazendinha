@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { Cadastros } from "./Cadastros";
 import {
-  criarCategoria, criarMotivoBaixa, criarRaca, editarMotivoBaixa, editarRaca, listarCategorias, listarMotivosBaixa, listarRacas,
+  criarCategoria, criarMotivoBaixa, criarRaca, editarMotivoBaixa, editarRaca, listarAuditoriaCadastro, listarCategorias, listarMotivosBaixa, listarRacas,
   reordenarCategorias, restaurarPadroesCategorias, simularCategorias,
 } from "../api";
 import type { CategoriaDTO, MotivoBaixa, Raca } from "../types";
@@ -23,17 +23,18 @@ vi.mock("../api", async (importOriginal) => ({
   reordenarCategorias: vi.fn(),
   simularCategorias: vi.fn(),
   restaurarPadroesCategorias: vi.fn(),
+  listarAuditoriaCadastro: vi.fn(),
 }));
 
 const racasMock: Raca[] = [
-  { id: "r1", nome: "Holandesa", sigla: "HOL", base: true, ativo: true },
-  { id: "r2", nome: "Gir", sigla: "GIR", base: false, ativo: false },
+  { id: "r1", nome: "Holandesa", sigla: "HOL", base: true, ativo: true, animaisAtivos: 5 },
+  { id: "r2", nome: "Gir", sigla: "GIR", base: false, ativo: false, animaisAtivos: 0 },
 ];
 
 const motivosMock: MotivoBaixa[] = [
-  { id: "m1", nome: "Morte por doença", classe: "MORTE", ativo: true },
-  { id: "m2", nome: "Baixa produção", classe: "DESCARTE_VOLUNTARIO", ativo: true },
-  { id: "m3", nome: "Problema locomotor", classe: "DESCARTE_INVOLUNTARIO", ativo: false },
+  { id: "m1", nome: "Morte por doença", classe: "MORTE", ativo: true, baixasValendo: 3 },
+  { id: "m2", nome: "Baixa produção", classe: "DESCARTE_VOLUNTARIO", ativo: true, baixasValendo: 8 },
+  { id: "m3", nome: "Problema locomotor", classe: "DESCARTE_INVOLUNTARIO", ativo: false, baixasValendo: 0 },
 ];
 
 const categoriasMock: CategoriaDTO[] = [
@@ -55,6 +56,7 @@ beforeEach(() => {
   vi.mocked(listarCategorias).mockResolvedValue({ itens: categoriasMock, semCategoria: 0 });
   vi.mocked(simularCategorias).mockResolvedValue({ afetados: 0, mudancas: [], semCategoria: 0 });
   vi.mocked(editarRaca).mockImplementation((id, patch) => Promise.resolve({ ...racasMock.find((r) => r.id === id)!, ...patch }));
+  vi.mocked(listarAuditoriaCadastro).mockResolvedValue({ itens: [], total: 0 });
 });
 afterEach(cleanup);
 
@@ -109,6 +111,16 @@ describe("Cadastros do rebanho — categorias", () => {
 
     fireEvent.click(screen.getByRole("checkbox", { name: "Mostrar inativas" }));
     await waitFor(() => expect(within(screen.getByRole("table", { name: "Categorias" })).getByText("Reprodutor")).toBeTruthy());
+  });
+
+  it("mostra quantas categorias têm troca manual forçada", async () => {
+    vi.mocked(listarCategorias).mockResolvedValue({
+      itens: categoriasMock.map((c) => (c.id === "c-vaca" ? { ...c, manuaisAbertas: 4 } : c)),
+      semCategoria: 0,
+    });
+    await montarCategorias();
+    const linhaVaca = within(screen.getByRole("table", { name: "Categorias" })).getByText("Vaca").closest("tr")!;
+    expect(within(linhaVaca).getByText("4")).toBeTruthy();
   });
 
   it("avisa quando há animais ativos sem categoria", async () => {
@@ -215,6 +227,13 @@ describe("Cadastros do rebanho — raças", () => {
     expect(within(linha2).getByText("Inativa")).toBeTruthy();
   });
 
+  it("mostra quantos animais ativos usam cada raça", async () => {
+    await montarRacas();
+    const tabela = screen.getByRole("table", { name: "Raças" });
+    expect(within(within(tabela).getByText("Holandesa").closest("tr")!).getByText("5")).toBeTruthy();
+    expect(within(within(tabela).getByText("Gir").closest("tr")!).getByText("0")).toBeTruthy();
+  });
+
   it("cria raça com sigla em maiúsculas e base marcada por padrão", async () => {
     vi.mocked(criarRaca).mockResolvedValue(racasMock[0]);
     await montarRacas();
@@ -264,6 +283,13 @@ describe("Cadastros do rebanho — motivos de baixa", () => {
     expect(within(within(tabela).getByText("Problema locomotor").closest("tr")!).getByText("Inativo")).toBeTruthy();
   });
 
+  it("mostra quantas baixas em vigor usam cada motivo", async () => {
+    await montarMotivos();
+    const tabela = screen.getByRole("table", { name: "Motivos de baixa" });
+    expect(within(within(tabela).getByText("Baixa produção").closest("tr")!).getByText("8")).toBeTruthy();
+    expect(within(within(tabela).getByText("Morte por doença").closest("tr")!).getByText("3")).toBeTruthy();
+  });
+
   it("cria motivo de baixa enviando nome e classe", async () => {
     vi.mocked(criarMotivoBaixa).mockResolvedValue(motivosMock[0]);
     await montarMotivos();
@@ -293,5 +319,63 @@ describe("Cadastros do rebanho — motivos de baixa", () => {
     expect(await screen.findByRole("heading", { name: "Desativar Baixa produção?" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Desativar" }));
     await waitFor(() => expect(editarMotivoBaixa).toHaveBeenCalledWith("m2", { ativo: false }));
+  });
+});
+
+describe("Cadastros do rebanho — histórico de alterações", () => {
+  it("busca o histórico da entidade certa em cada sub-aba", async () => {
+    await montarCategorias();
+    await waitFor(() => expect(listarAuditoriaCadastro).toHaveBeenCalledWith("CategoriaAnimal", { entidadeId: undefined, page: 1, pageSize: 10 }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Raças" }));
+    await screen.findAllByText("Holandesa");
+    await waitFor(() => expect(listarAuditoriaCadastro).toHaveBeenCalledWith("Raca", { entidadeId: undefined, page: 1, pageSize: 10 }));
+
+    vi.mocked(listarMotivosBaixa).mockResolvedValue(motivosMock);
+    fireEvent.click(screen.getByRole("button", { name: "Motivos de baixa" }));
+    await screen.findAllByText("Morte por doença");
+    await waitFor(() => expect(listarAuditoriaCadastro).toHaveBeenCalledWith("MotivoBaixa", { entidadeId: undefined, page: 1, pageSize: 10 }));
+  });
+
+  it("mostra as entradas do histórico, expande as alterações e pagina com Carregar mais", async () => {
+    vi.mocked(listarAuditoriaCadastro).mockResolvedValueOnce({
+      itens: [{
+        em: "2026-03-10T14:32:00.000Z",
+        acao: "EDITAR",
+        entidade: "CategoriaAnimal",
+        usuarioNome: "Ana",
+        resumo: 'Categoria "Vaca" editada',
+        entidadeId: "c-vaca",
+        alteracoes: [{ campo: "idadeMinMeses", rotulo: "Idade mínima (meses)", antes: "12", depois: "24" }],
+      }],
+      total: 2,
+    });
+    await montarCategorias();
+
+    const entrada = await screen.findByRole("button", { name: /Categoria "Vaca" editada/ });
+    expect(within(entrada).getByText(/Ana/)).toBeTruthy();
+    expect(within(entrada).getByText(/10\/03\/2026/)).toBeTruthy();
+    expect(within(entrada).getByText(/\d{2}:\d{2}/)).toBeTruthy();
+    expect(screen.queryByText("Idade mínima (meses)")).toBeNull();
+
+    fireEvent.click(entrada);
+    expect(screen.getByText("Idade mínima (meses)")).toBeTruthy();
+    const linha = screen.getByText("Idade mínima (meses)").closest("tr")!;
+    expect(within(linha).getByText("12")).toBeTruthy();
+    expect(within(linha).getByText("24")).toBeTruthy();
+
+    vi.mocked(listarAuditoriaCadastro).mockResolvedValueOnce({
+      itens: [{ em: "2026-03-09T10:00:00.000Z", acao: "EDITAR", entidade: "CategoriaAnimal", usuarioNome: null, resumo: "Categoria \"Em crescimento\" editada", entidadeId: "c-crescimento-f", alteracoes: [] }],
+      total: 2,
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Carregar mais" }));
+    await waitFor(() => expect(listarAuditoriaCadastro).toHaveBeenLastCalledWith("CategoriaAnimal", { entidadeId: undefined, page: 2, pageSize: 10 }));
+    expect(await screen.findByText('Categoria "Em crescimento" editada')).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Carregar mais" })).toBeNull();
+  });
+
+  it("sem alterações registradas mostra o estado vazio", async () => {
+    await montarCategorias();
+    expect(await screen.findByText("Nenhuma alteração registrada.")).toBeTruthy();
   });
 });

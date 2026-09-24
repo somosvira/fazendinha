@@ -3,14 +3,15 @@
 // grid (dados, composição, localização, destino, pesagens, baixa, auditoria).
 
 import { useCallback, useEffect, useState } from "react";
-import { ArrowLeft, Pencil, Trash2 } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { fracaoReduzida } from "../lib/composicao";
 import {
-  buscarAuditoriaAnimal, buscarFichaAnimal, darBaixaAnimal, desfazerDestinoAnimal, desfazerLocalizacaoAnimal,
-  estornarBaixaAnimal, excluirPesagem, listarCategorias, obterCatalogos, RebanhoApiError, removerCategoriaManual,
+  buscarFichaAnimal, darBaixaAnimal, desfazerDestinoAnimal, desfazerLocalizacaoAnimal,
+  estornarBaixaAnimal, excluirPesagem, listarCategorias, listarMovimentacoes, obterCatalogos, RebanhoApiError, removerCategoriaManual,
 } from "../api";
-import type { AnimalFicha, CategoriaDTO, Catalogos, EntradaAuditoria, Pesagem } from "../types";
-import { formatarDataBR, formatarIdade, rotuloAptidao, rotuloClasseMotivo, rotuloPapelReprodutivo, rotuloSituacao, rotuloTipoBaixa } from "../lib/rotulos";
+import type { AnimalFicha, CategoriaDTO, Catalogos, PeriodoGmd, Pesagem } from "../types";
+import { formatarDataBR, formatarIdade, rotuloAptidao, rotuloPapelReprodutivo, rotuloSituacao } from "../lib/rotulos";
+import { formatarGmd, formatarKg, PERIODO_GMD_PADRAO } from "../lib/peso";
 import { CategoriaPill, ModalMotivo, useAoMovimentarComToast } from "../ui";
 import { FormDadosAnimal } from "../forms/FormDadosAnimal";
 import { FormComposicao } from "../forms/FormComposicao";
@@ -24,6 +25,11 @@ import { Loader } from "../../../components/Loading";
 import { Button, ErrorBox, hoje, Panel, Pill } from "../../../financeiro/financeiro-ui";
 import { navegarPara } from "../../../router";
 import { NavRebanho } from "./NavRebanho";
+import { PesoEGanho } from "../components/PesoEGanho";
+import { HistoricoBaixas } from "../components/HistoricoBaixas";
+import { AuditoriaAnimal } from "../components/AuditoriaAnimal";
+import { HistoricoMovimentacoes } from "../components/HistoricoMovimentacoes";
+import { DetalheMovimentacao } from "../components/DetalheMovimentacao";
 
 /** Nome do lote como link para a página do lote — usado no cabeçalho e no histórico de localização.
  *  Nenhuma das duas linhas onde aparece tem `onClick` no `<tr>`/container, então não precisa de stopPropagation. */
@@ -31,20 +37,15 @@ function LinkLote({ id, nome }: { id: string; nome: string }) {
   return <button type="button" onClick={() => navegarPara(`/pecuaria/rebanho/lotes/${id}`)} className="break-words font-semibold text-mast hover:underline">{nome}</button>;
 }
 
-const ROTULO_TIPO_PESAGEM: Record<string, string> = { NASCIMENTO: "Nascimento", ENTRADA: "Entrada", DESMAMA: "Desmama", ROTINA: "Rotina", SAIDA: "Saída" };
-
-function gmdEntre(atual: { pesoKg: number; data: string }, anterior: { pesoKg: number; data: string } | undefined): string {
-  if (!anterior) return "—";
-  const dias = (new Date(atual.data).getTime() - new Date(anterior.data).getTime()) / 86_400_000;
-  if (dias <= 0) return "—";
-  return `${((atual.pesoKg - anterior.pesoKg) / dias).toFixed(3)} kg/dia`;
-}
-
 export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string; onVoltar: () => void; podeLancar?: boolean }) {
   const [animal, setAnimal] = useState<AnimalFicha | null>(null);
   const [catalogos, setCatalogos] = useState<Catalogos | null>(null);
   const [categorias, setCategorias] = useState<CategoriaDTO[]>([]);
-  const [auditoria, setAuditoria] = useState<EntradaAuditoria[] | null>(null);
+  const [periodoGmd, setPeriodoGmd] = useState<PeriodoGmd>(PERIODO_GMD_PADRAO);
+  /* sobe a cada carregar()/ação bem-sucedida — recomeça a paginação da auditoria e do
+   * histórico de movimentações (ambos buscam a própria página, ver components/) */
+  const [refreshToken, setRefreshToken] = useState(0);
+  const [movimentacaoAbertaId, setMovimentacaoAbertaId] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
 
   const [editandoDados, setEditandoDados] = useState(false);
@@ -63,21 +64,21 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
   const [emAcao, setEmAcao] = useState(false);
   const [erroAcao, setErroAcao] = useState<string | null>(null);
 
-  const recarregarAuditoria = useCallback(async () => {
-    setAuditoria(await buscarAuditoriaAnimal(id).catch(() => []));
-  }, [id]);
-  // ficha e auditoria andam juntas: toda ação que muda o animal também gera entrada de auditoria
+  const tocar = useCallback(() => setRefreshToken((t) => t + 1), []);
+  // periodoGmd entra na busca da ficha: trocar o seletor da seção "Peso e ganho" refaz este fetch
   const carregar = useCallback(async () => {
     try {
       setErro(null);
-      const [ficha] = await Promise.all([buscarFichaAnimal(id), recarregarAuditoria()]);
+      const ficha = await buscarFichaAnimal(id, { periodoDias: periodoGmd });
       setAnimal(ficha);
+      tocar();
     } catch (e) { setErro(e instanceof RebanhoApiError ? e.message : e instanceof Error ? e.message : String(e)); }
-  }, [id, recarregarAuditoria]);
+  }, [id, periodoGmd, tocar]);
   useEffect(() => { void carregar(); }, [carregar]);
   useEffect(() => { obterCatalogos().then(setCatalogos).catch(() => undefined); }, []);
   useEffect(() => { listarCategorias().then((r) => setCategorias(r.itens)).catch(() => undefined); }, []);
   const aoMovimentar = useAoMovimentarComToast(carregar);
+  const carregarMovimentacoes = useCallback((pagina: number) => listarMovimentacoes({ animalId: id, incluirDesfeitas: true, page: pagina, pageSize: 20 }), [id]);
 
   if (!animal) return <div className="shell-wide pagina-carregando"><button onClick={onVoltar} className="mt-6 mb-5 inline-flex shrink-0 items-center gap-2 self-start text-sm font-semibold text-ink-2"><ArrowLeft size={17} /> Voltar para animais</button><ErrorBox erro={erro} />{!erro && <Loader label="Carregando animal" full />}</div>;
 
@@ -85,13 +86,16 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
   // a atual é a linha aberta; para quem saiu, a última fechada
   const localizacaoAtual = animal.historicoLocalizacoes.find((l) => l.ate == null) ?? animal.historicoLocalizacoes[0] ?? null;
   const destinoAtual = animal.historicoDestinos.find((d) => d.ate == null) ?? animal.historicoDestinos[0] ?? null;
+  const pesoHeader = animal.peso.ultimo
+    ? `Peso atual ${formatarKg(animal.peso.ultimo.kg)}${animal.peso.gmdRecente != null ? ` · ${formatarGmd(animal.peso.gmdRecente)}` : ""}`
+    : "Sem pesagem";
 
   const executar = async (fn: () => Promise<AnimalFicha | void>, aoTerminar: () => void) => {
     if (emAcao) return;
     setEmAcao(true); setErroAcao(null);
     try {
       const atualizado = await fn();
-      if (atualizado) { setAnimal(atualizado); await recarregarAuditoria(); }
+      if (atualizado) { setAnimal(atualizado); tocar(); }
       else await carregar();
       aoTerminar();
     } catch (e) { setErroAcao(e instanceof RebanhoApiError ? e.message : e instanceof Error ? e.message : String(e)); }
@@ -119,7 +123,7 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
           </div>
           <h1 className="mt-2 break-words font-serif text-[clamp(22px,5vw,30px)] leading-tight">{animal.nome || animal.brinco}</h1>
           <p className="mt-2 break-words text-sm text-ink-3">
-            {formatarIdade(animal.idadeMeses)}{animal.idadeNaBaixa ? " na baixa" : ""} · {!ativo && "último sítio: "}{animal.propriedade?.nome ?? "Sem sítio"}
+            {formatarIdade(animal.idadeMeses)}{animal.idadeNaBaixa ? " na baixa" : ""} · {pesoHeader} · {!ativo && "último sítio: "}{animal.propriedade?.nome ?? "Sem sítio"}
             {animal.lote && <> · {!ativo && "último lote: "}<LinkLote id={animal.lote.id} nome={animal.lote.nome} /></>}
           </p>
           {animal.categoriaOrigem === "MANUAL" && animal.categoriaCalculada?.id === animal.categoria?.id && <p className="mt-2 text-xs text-ink-3">O cálculo já concorda — pode voltar ao automático.</p>}
@@ -162,7 +166,7 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
         <section>
           <div className="flex items-center justify-between gap-3"><h2 className="text-xs font-semibold uppercase tracking-wider text-ink-3">Localização</h2>{podeLancar && ativo && animal.historicoLocalizacoes.length >= 2 && <button className="text-xs font-semibold text-green-800" onClick={() => { setErroAcao(null); setDesfazendoLocalizacao(true); }}>Desfazer última movimentação</button>}</div>
           <p className="mt-4 text-sm">{localizacaoAtual ? <>{localizacaoAtual.propriedade?.nome ?? "Sem sítio"}{localizacaoAtual.lote ? ` · ${localizacaoAtual.lote.nome}` : ""} <span className="text-ink-3">desde {formatarDataBR(localizacaoAtual.desde)}</span></> : "Sem localização registrada."}</p>
-          {animal.historicoLocalizacoes.length > 0 && <div className="mt-3 overflow-x-auto"><table className="w-full text-left text-xs"><thead className="text-ink-3"><tr><th className="py-1 pr-3 font-semibold">Sítio</th><th className="py-1 pr-3 font-semibold">Lote</th><th className="py-1 pr-3 font-semibold">Desde</th><th className="py-1 pr-3 font-semibold">Até</th></tr></thead><tbody className="divide-y divide-border">{animal.historicoLocalizacoes.map((loc) => <tr key={loc.id}><td className="py-1.5 pr-3">{loc.propriedade?.nome ?? "—"}</td><td className="py-1.5 pr-3">{loc.lote ? <LinkLote id={loc.lote.id} nome={loc.lote.nome} /> : "—"}</td><td className="py-1.5 pr-3">{formatarDataBR(loc.desde)}</td><td className="py-1.5 pr-3">{loc.ate ? formatarDataBR(loc.ate) : "—"}</td></tr>)}</tbody></table></div>}
+          {animal.historicoLocalizacoes.length > 0 && <div className="mt-3 overflow-x-auto"><table className="w-full text-left text-xs"><thead className="text-ink-3"><tr><th className="py-1 pr-3 font-semibold">Sítio</th><th className="py-1 pr-3 font-semibold">Lote</th><th className="py-1 pr-3 font-semibold">Desde</th><th className="py-1 pr-3 font-semibold">Até</th><th className="py-1 pr-3 font-semibold">Motivo</th></tr></thead><tbody className="divide-y divide-border">{animal.historicoLocalizacoes.map((loc) => <tr key={loc.id}><td className="py-1.5 pr-3">{loc.propriedade?.nome ?? "—"}</td><td className="py-1.5 pr-3">{loc.lote ? <LinkLote id={loc.lote.id} nome={loc.lote.nome} /> : "—"}</td><td className="py-1.5 pr-3">{formatarDataBR(loc.desde)}</td><td className="py-1.5 pr-3">{loc.ate ? formatarDataBR(loc.ate) : "—"}</td><td className="py-1.5 pr-3 break-words">{loc.motivo ?? "—"}</td></tr>)}</tbody></table></div>}
         </section>
 
         <section>
@@ -177,34 +181,49 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
         </section>
       </div>
 
-      <section className="border-t border-border p-6">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-3">Pesagens</h2>
-        {animal.historicoPesagens.length ? <div className="mt-4 overflow-x-auto"><table className="w-full text-left text-sm"><thead className="text-xs text-ink-3"><tr><th className="py-1.5 pr-3 font-semibold">Data</th><th className="py-1.5 pr-3 font-semibold">Peso</th><th className="py-1.5 pr-3 font-semibold">Tipo</th><th className="py-1.5 pr-3 font-semibold">GMD desde a anterior</th><th className="py-1.5 pr-3 font-semibold">Origem</th><th className="py-1.5 pr-3 font-semibold" /></tr></thead><tbody className="divide-y divide-border">{animal.historicoPesagens.map((pesagem, indice) => <tr key={pesagem.id}><td className="py-2 pr-3">{formatarDataBR(pesagem.data)}</td><td className="py-2 pr-3">{pesagem.pesoKg.toLocaleString("pt-BR")} kg</td><td className="py-2 pr-3">{ROTULO_TIPO_PESAGEM[pesagem.tipo] ?? pesagem.tipo}{pesagem.observacao && <div className="mt-0.5 break-words text-xs text-ink-3">{pesagem.observacao}</div>}</td><td className="py-2 pr-3">{gmdEntre(pesagem, animal.historicoPesagens[indice + 1])}</td><td className="py-2 pr-3">{pesagem.origem === "BALANCA" ? "Balança" : "Manual"}</td><td className="py-2 pr-3 text-right">{podeLancar && <div className="flex justify-end gap-1"><button type="button" className="rounded-lg p-2 text-ink-2 hover:bg-surface-2 hover:text-ink" aria-label={`Editar pesagem de ${formatarDataBR(pesagem.data)}`} title="Editar pesagem" onClick={() => setPesagemForm({ modo: "editar", pesagem: { id: pesagem.id, animalId: animal.id, data: pesagem.data, pesoKg: pesagem.pesoKg, tipo: pesagem.tipo as Pesagem["tipo"], origem: pesagem.origem as Pesagem["origem"], observacao: pesagem.observacao } })}><Pencil size={16} /></button><button type="button" className="rounded-lg p-2 text-ink-2 hover:bg-red-50 hover:text-red-800" aria-label={`Excluir pesagem de ${formatarDataBR(pesagem.data)}`} title="Excluir pesagem" onClick={() => { setErroAcao(null); setExcluindoPesagem({ id: pesagem.id, animalId: animal.id, data: pesagem.data, pesoKg: pesagem.pesoKg, tipo: pesagem.tipo as Pesagem["tipo"], origem: pesagem.origem as Pesagem["origem"] }); }}><Trash2 size={16} /></button></div>}</td></tr>)}</tbody></table></div> : <p className="mt-4 text-sm text-ink-3">Nenhuma pesagem registrada.</p>}
-      </section>
+      <PesoEGanho
+        animal={animal}
+        periodo={periodoGmd}
+        onPeriodoChange={setPeriodoGmd}
+        podeLancar={podeLancar}
+        onEditarPesagem={(pesagem) => setPesagemForm({ modo: "editar", pesagem })}
+        onExcluirPesagem={(pesagem) => { setErroAcao(null); setExcluindoPesagem(pesagem); }}
+      />
+
+      <HistoricoBaixas historicoBaixas={animal.historicoBaixas} />
 
       <section className="border-t border-border p-6">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-3">Baixa</h2>
-        {animal.baixa ? <div className="mt-4 space-y-1 text-sm"><p><strong>{rotuloTipoBaixa(animal.baixa.tipo)}</strong> em {formatarDataBR(animal.baixa.data)}{animal.baixa.motivo ? ` · ${animal.baixa.motivo.nome} (${rotuloClasseMotivo(animal.baixa.motivo.classe).toLowerCase()})` : ""}</p>{animal.baixa.observacao && <p className="text-ink-3">{animal.baixa.observacao}</p>}{animal.baixa.estornadaEm && <p className="text-ink-3">Estornada em {formatarDataBR(animal.baixa.estornadaEm)}{animal.baixa.estornoMotivo ? ` · ${animal.baixa.estornoMotivo}` : ""}</p>}</div> : <p className="mt-4 text-sm text-ink-3">Nenhuma baixa registrada.</p>}
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-3">Movimentações</h2>
+        <div className="mt-4 overflow-hidden rounded-lg border border-border">
+          <HistoricoMovimentacoes
+            carregar={carregarMovimentacoes}
+            mostrarDirecao
+            podeLancar={podeLancar}
+            recarregarToken={refreshToken}
+            onAbrir={(mov) => setMovimentacaoAbertaId(mov.id)}
+            onMudou={() => { void carregar(); }}
+          />
+        </div>
       </section>
 
       <section className="border-t border-border p-6">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-3">Auditoria</h2>
-        {auditoria === null ? <p className="mt-4 text-sm text-ink-3">Carregando…</p> : auditoria.length ? <div className="mt-4 divide-y divide-border rounded-lg border border-border">{auditoria.map((entrada, indice) => <div key={indice} className="flex flex-wrap items-center justify-between gap-3 p-3 text-sm"><div className="min-w-0"><strong className="break-words">{entrada.resumo}</strong><div className="mt-0.5 text-xs text-ink-3">{entrada.usuarioNome ?? "Sistema"}</div></div><span className="shrink-0 text-xs text-ink-3">{formatarDataBR(entrada.em)}</span></div>)}</div> : <p className="mt-4 text-sm text-ink-3">Nenhum registro de auditoria.</p>}
+        <AuditoriaAnimal id={animal.id} recarregarToken={refreshToken} />
       </section>
     </Panel>
 
-    {editandoDados && <FormDadosAnimal animal={animal} onFechar={() => setEditandoDados(false)} onSalvo={async (atualizado) => { setAnimal(atualizado); await recarregarAuditoria(); setEditandoDados(false); }} />}
+    {editandoDados && <FormDadosAnimal animal={animal} onFechar={() => setEditandoDados(false)} onSalvo={async (atualizado) => { setAnimal(atualizado); tocar(); setEditandoDados(false); }} />}
     {editandoComposicao && catalogos && <FormComposicao animal={animal} racas={catalogos.racas} onFechar={() => setEditandoComposicao(false)} onSalvo={async () => { setEditandoComposicao(false); await carregar(); }} />}
     {movimentando && catalogos && <FormMovimentar animais={[animal]} propriedades={catalogos.propriedades} lotes={catalogos.lotes} propriedadeInicial={animal.propriedade?.id} loteInicial={animal.lote?.id} onFechar={() => setMovimentando(false)} onSalvo={async (resultado) => { setMovimentando(false); await aoMovimentar(resultado); }} />}
-    {mudandoDestino && <FormDestino animal={animal} onFechar={() => setMudandoDestino(false)} onSalvo={async (atualizado) => { setAnimal(atualizado); await recarregarAuditoria(); setMudandoDestino(false); }} />}
+    {mudandoDestino && <FormDestino animal={animal} onFechar={() => setMudandoDestino(false)} onSalvo={async (atualizado) => { setAnimal(atualizado); tocar(); setMudandoDestino(false); }} />}
     {alterandoCategoria && <FormAlterarCategoria
       animal={animal}
       categorias={categorias.filter((c) => c.ativo && c.sexo === animal.sexo && c.id !== animal.categoria?.id)}
       onFechar={() => setAlterandoCategoria(false)}
-      onSalvo={async (atualizado) => { setAnimal(atualizado); await recarregarAuditoria(); setAlterandoCategoria(false); }}
+      onSalvo={async (atualizado) => { setAnimal(atualizado); tocar(); setAlterandoCategoria(false); }}
     />}
     {pesagemForm && <FormPesagem animalId={animal.id} pesagem={pesagemForm.modo === "editar" ? pesagemForm.pesagem : null} onFechar={() => setPesagemForm(null)} onSalvo={async () => { setPesagemForm(null); await carregar(); }} />}
-    {dandoBaixa && catalogos && <FormBaixa animal={animal} motivos={catalogos.motivosBaixa} onFechar={() => setDandoBaixa(false)} onSalvo={async (atualizado) => { setAnimal(atualizado); await recarregarAuditoria(); setDandoBaixa(false); }} />}
+    {dandoBaixa && catalogos && <FormBaixa animal={animal} motivos={catalogos.motivosBaixa} onFechar={() => setDandoBaixa(false)} onSalvo={async (atualizado) => { setAnimal(atualizado); tocar(); setDandoBaixa(false); }} />}
 
     {voltandoAutomatico && <ModalMotivo titulo="Voltar ao automático" eyebrow={`Animal ${animal.brinco}`} impacto={<p>O animal passa a ser {animal.categoriaCalculada?.nome ?? "Sem categoria"} pelo cálculo.</p>} labelManter="Manter categoria" labelConfirmar="Confirmar" confirmando={emAcao} erro={erroAcao} onFechar={() => setVoltandoAutomatico(false)} onConfirmar={(motivo) => { void executar(() => removerCategoriaManual(animal.id, { motivo }), () => setVoltandoAutomatico(false)); }} />}
     {estornandoBaixa && <ModalMotivo titulo="Estornar baixa" eyebrow={`Animal ${animal.brinco}`} labelManter="Manter baixa" labelConfirmar="Confirmar estorno" confirmando={emAcao} erro={erroAcao} onFechar={() => setEstornandoBaixa(false)} onConfirmar={(motivo) => { void executar(() => estornarBaixaAnimal(animal.id, { motivo }), () => setEstornandoBaixa(false)); }} />}
@@ -213,5 +232,7 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
     <ConfirmDialog open={desfazendoLocalizacao} title="Desfazer última movimentação?" message={<>{erroAcao && <p className="mb-2 text-red-700">{erroAcao}</p>}<p>A localização atual será removida e a anterior será reaberta.</p></>} confirmLabel="Desfazer movimentação" cancelLabel="Manter" tone="danger" processando={emAcao} onCancel={() => setDesfazendoLocalizacao(false)} onConfirm={() => { void executar(() => desfazerLocalizacaoAnimal(animal.id), () => setDesfazendoLocalizacao(false)); }} />
     <ConfirmDialog open={desfazendoDestino} title="Desfazer última mudança de destino?" message={<>{erroAcao && <p className="mb-2 text-red-700">{erroAcao}</p>}<p>O destino atual será removido e o anterior será reaberto.</p></>} confirmLabel="Desfazer mudança" cancelLabel="Manter" tone="danger" processando={emAcao} onCancel={() => setDesfazendoDestino(false)} onConfirm={() => { void executar(() => desfazerDestinoAnimal(animal.id), () => setDesfazendoDestino(false)); }} />
     <ConfirmDialog open={!!excluindoPesagem} title="Excluir pesagem?" message={<>{erroAcao && <p className="mb-2 text-red-700">{erroAcao}</p>}<p>Esta pesagem será removida permanentemente do histórico do animal.</p></>} confirmLabel="Excluir pesagem" cancelLabel="Manter" tone="danger" processando={emAcao} onCancel={() => setExcluindoPesagem(null)} onConfirm={() => { void excluirPesagemConfirmada(); }} />
+
+    {movimentacaoAbertaId && <DetalheMovimentacao id={movimentacaoAbertaId} podeLancar={podeLancar} onFechar={() => setMovimentacaoAbertaId(null)} onMudou={() => { void carregar(); }} />}
   </div>;
 }
