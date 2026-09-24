@@ -22,8 +22,8 @@ function criarDetalhe(overrides: Partial<MovimentacaoDetalhe> = {}): Movimentaca
     origens: ["Sede, Lote Antigo"], destino: { propriedade: { id: 1, nome: "Sede" }, lote: { id: "lote-1", nome: "Lote 1" } },
     motivo: "Reagrupamento", criadoPor: "Fulano", criadoEm: "2026-01-10T12:00:00Z", desfeitaEm: null, desfeitaMotivo: null, podeDesfazer: true,
     animais: [
-      { animalId: "a1", brinco: "0001", nome: "Mimosa", categoria: "VACA", origem: "Lote Antigo (Sede)", situacao: "NO_DESTINO", desfeitoEm: null },
-      { animalId: "a2", brinco: "0002", nome: null, categoria: "BEZERRA", origem: null, situacao: "SAIU_DO_DESTINO", desfeitoEm: null },
+      { animalId: "a1", brinco: "0001", nome: "Mimosa", categoria: { id: "cat-vaca", nome: "Vaca" }, origem: "Lote Antigo (Sede)", situacao: "NO_DESTINO", desfeitoEm: null },
+      { animalId: "a2", brinco: "0002", nome: null, categoria: { id: "cat-crescimento", nome: "Em crescimento" }, origem: null, situacao: "SAIU_DO_DESTINO", desfeitoEm: null },
     ],
     ...overrides,
   };
@@ -53,7 +53,7 @@ describe("DetalheMovimentacao", () => {
   it("uma movimentação desfeita continua listando os animais, marcados como Desfeito", async () => {
     vi.mocked(buscarMovimentacao).mockResolvedValue(criarDetalhe({
       desfeitaEm: "2026-01-11T00:00:00Z", desfeitaMotivo: "Engano no lote", podeDesfazer: false,
-      animais: [{ animalId: "a1", brinco: "0001", nome: "Mimosa", categoria: "VACA", origem: "Lote Antigo (Sede)", situacao: "DESFEITO", desfeitoEm: "2026-01-11T00:00:00Z" }],
+      animais: [{ animalId: "a1", brinco: "0001", nome: "Mimosa", categoria: { id: "cat-vaca", nome: "Vaca" }, origem: "Lote Antigo (Sede)", situacao: "DESFEITO", desfeitoEm: "2026-01-11T00:00:00Z" }],
     }));
     await montar();
     expect(screen.getByText("0001 · Mimosa")).toBeTruthy();

@@ -7,10 +7,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { Loader } from "../../../components/Loading";
 import { Button, Empty, Pill } from "../../../financeiro/financeiro-ui";
-import { desfazerMovimentacao, RebanhoApiError } from "../api";
+import { RebanhoApiError } from "../api";
 import type { MovimentacaoResumo } from "../types";
 import { formatarDataBR } from "../lib/rotulos";
-import { ModalMotivo, Paginacao } from "../ui";
+import { Paginacao } from "../ui";
+import { ConfirmarDesfazerMovimentacao } from "./ConfirmarDesfazerMovimentacao";
 
 const ITENS_POR_PAGINA = 20;
 
@@ -44,9 +45,7 @@ export function HistoricoMovimentacoes({
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
 
-  const [desfazendo, setDesfazendo] = useState<MovimentacaoResumo | null>(null);
-  const [processandoDesfazer, setProcessandoDesfazer] = useState(false);
-  const [erroDesfazer, setErroDesfazer] = useState<string | null>(null);
+  const [desfazendoId, setDesfazendoId] = useState<string | null>(null);
 
   // filtros mudaram (recarregarToken) — volta para a primeira página
   useEffect(() => { setPagina(1); }, [recarregarToken]);
@@ -64,15 +63,6 @@ export function HistoricoMovimentacoes({
 
   const totalPaginas = Math.max(1, Math.ceil(total / ITENS_POR_PAGINA));
 
-  const confirmarDesfazer = (motivo: string) => {
-    if (!desfazendo || processandoDesfazer) return;
-    setProcessandoDesfazer(true); setErroDesfazer(null);
-    desfazerMovimentacao(desfazendo.id, motivo)
-      .then(() => { setDesfazendo(null); onMudou?.(); })
-      .catch((e) => setErroDesfazer(mensagemErro(e)))
-      .finally(() => setProcessandoDesfazer(false));
-  };
-
   if (carregando && !itens.length) return <div className="p-6"><Loader label="Carregando histórico" /></div>;
 
   return <>
@@ -84,21 +74,15 @@ export function HistoricoMovimentacoes({
             <ConteudoMovimentacao mov={mov} mostrarDirecao={mostrarDirecao} />
           </button>
           : <div className="min-w-0 flex-1"><ConteudoMovimentacao mov={mov} mostrarDirecao={mostrarDirecao} /></div>}
-        {podeLancar && mov.podeDesfazer && <Button secondary onClick={() => { setErroDesfazer(null); setDesfazendo(mov); }}>Desfazer</Button>}
+        {podeLancar && mov.podeDesfazer && <Button secondary onClick={() => setDesfazendoId(mov.id)}>Desfazer</Button>}
       </div>)}
     </div> : !erro && <Empty>Nenhuma movimentação registrada.</Empty>}
     {itens.length > 0 && <Paginacao paginaAtual={pagina} totalPaginas={totalPaginas} totalItens={total} itensPorPagina={ITENS_POR_PAGINA} onPaginaChange={setPagina} rotulo="movimentações" idSelect="pagina-historico-movimentacoes" />}
 
-    {desfazendo && <ModalMotivo
-      titulo="Desfazer movimentação?"
-      eyebrow={`Movimentação de ${formatarDataBR(desfazendo.data)}`}
-      impacto={<p>Os {desfazendo.quantidadeTotal} animais desta movimentação voltam para a localização anterior.</p>}
-      labelManter="Manter"
-      labelConfirmar="Desfazer movimentação"
-      confirmando={processandoDesfazer}
-      erro={erroDesfazer}
-      onFechar={() => setDesfazendo(null)}
-      onConfirmar={confirmarDesfazer}
+    {desfazendoId && <ConfirmarDesfazerMovimentacao
+      movimentacaoId={desfazendoId}
+      onFechar={() => setDesfazendoId(null)}
+      onConfirmado={() => { setDesfazendoId(null); onMudou?.(); }}
     />}
   </>;
 }

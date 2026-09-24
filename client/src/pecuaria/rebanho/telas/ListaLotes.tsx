@@ -1,7 +1,7 @@
-// Lista de lotes — BarraFiltros (inativos + sítio) + TabelaFinanceira + form de
-// criação/edição, no padrão de ConfiguracoesFinanceiras.tsx (mesmo de onde essa
-// tela foi desmembrada, ver Cadastros.tsx). Clicar na linha abre a página do
-// lote; o lápis de Ações continua abrindo o formulário de editar.
+// Lista de lotes — duas seções empilhadas (Lotes · Histórico de movimentações),
+// no padrão das seções de DetalheLote.tsx (Panel com cabeçalho <h2 className=
+// "font-serif text-xl">). Antes eram sub-abas; agora o histórico fica sempre
+// visível, então mover/desfazer precisa recarregar as duas seções.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRightLeft, Plus } from "lucide-react";
@@ -10,7 +10,7 @@ import { Loader } from "@/components/Loading";
 import { usePropriedades } from "../../../api/propriedades";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import { AcoesLinha, Button, type ColunaTabela, ErrorBox, PageHeader, PaginaFinanceira, Panel, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
-import { BarraFiltros, SubAbas } from "../ui";
+import { BarraFiltros } from "../ui";
 import { NavRebanho } from "./NavRebanho";
 import { editarLote, listarLotes, listarMovimentacoes, obterCatalogos } from "../api";
 import type { AnimalResumo, Catalogos, Lote } from "../types";
@@ -20,7 +20,6 @@ import { SeletorAnimais } from "../components/SeletorAnimais";
 import { HistoricoMovimentacoes } from "../components/HistoricoMovimentacoes";
 import { DetalheMovimentacao } from "../components/DetalheMovimentacao";
 
-type Aba = "lotes" | "historico";
 type Painel = { modo: "novo" } | { modo: "editar"; id: string } | null;
 
 const colunasLotes = (editar: (l: Lote) => void, alternar: (l: Lote) => void): ColunaTabela<Lote>[] => [
@@ -39,7 +38,6 @@ export function mensagemDesativar(lote: Lote): string {
 }
 
 export function ListaLotes({ podeLancar = true, onAbrirLote }: { podeLancar?: boolean; onAbrirLote: (id: string) => void }) {
-  const [aba, setAba] = useState<Aba>("lotes");
   const [mostrarInativos, setMostrarInativos] = useState(false);
   const [filtroSitio, setFiltroSitio] = useState("");
   const [lotes, setLotes] = useState<Lote[] | null>(null);
@@ -61,8 +59,9 @@ export function ListaLotes({ podeLancar = true, onAbrirLote }: { podeLancar?: bo
   const [dataDeHistorico, setDataDeHistorico] = useState("");
   const [dataAteHistorico, setDataAteHistorico] = useState("");
   const [mostrarDesfeitas, setMostrarDesfeitas] = useState(true);
-  /* bump manual: um desfazer feito de dentro de DetalheMovimentacao não passa pelo próprio
-   * HistoricoMovimentacoes, então precisa forçar o recarregamento por fora */
+  /* bump manual: um desfazer/mover feito de dentro de DetalheMovimentacao ou do formulário
+   * de movimentação não passa pelo próprio HistoricoMovimentacoes, então precisa forçar o
+   * recarregamento por fora */
   const [historicoRefresh, setHistoricoRefresh] = useState(0);
   const [movimentacaoAbertaId, setMovimentacaoAbertaId] = useState<string | null>(null);
 
@@ -86,6 +85,12 @@ export function ListaLotes({ podeLancar = true, onAbrirLote }: { podeLancar?: bo
   const carregarLotes = useCallback(() => listarLotes({ incluirInativos: mostrarInativos }).then(setLotes).catch((e) => setErro(e.message)), [mostrarInativos]);
 
   useEffect(() => { void carregarLotes(); }, [carregarLotes]);
+
+  /** Recarrega as duas seções — usado depois de mover animais ou desfazer uma movimentação. */
+  const recarregarAmbos = useCallback(async () => {
+    setHistoricoRefresh((t) => t + 1);
+    await carregarLotes();
+  }, [carregarLotes]);
 
   const executar = async (acao: () => Promise<unknown>) => {
     if (emCurso.current) return;
@@ -117,32 +122,33 @@ export function ListaLotes({ podeLancar = true, onAbrirLote }: { podeLancar?: bo
   const propriedadeInicial = getPropriedadeAtiva() ?? sitiosAtivos[0]?.id ?? null;
 
   return <PaginaFinanceira>
-    <PageHeader eyebrow="Pecuária" titulo="Lotes" descricao="Grupos de animais por sítio, usados na movimentação e nos filtros do rebanho." acao={podeLancar && aba === "lotes" ? <div className="flex flex-wrap gap-2">
+    <PageHeader eyebrow="Pecuária" titulo="Lotes" descricao="Grupos de animais por sítio, usados na movimentação e nos filtros do rebanho." acao={podeLancar ? <div className="flex flex-wrap gap-2">
       <Button secondary onClick={() => setSelecionandoAnimais(true)}><ArrowRightLeft size={16} /> Movimentar animais</Button>
       <Button onClick={abrirNovo}><Plus size={16} /> Novo lote</Button>
     </div> : undefined} />
     <NavRebanho ativa="lotes" />
     <ErrorBox erro={erro} />
-    <SubAbas abas={[{ valor: "lotes", rotulo: "Lotes" }, { valor: "historico", rotulo: "Histórico" }]} ativa={aba} onSelecionar={setAba} />
 
-    {aba === "lotes" && <fieldset disabled={processando || !podeLancar} aria-busy={processando} className="min-w-0">
-      {lotes === null
-        ? <div className="mt-5"><Loader label="Carregando lotes" /></div>
-        : <Panel className="mt-5 overflow-hidden">
-          <BarraFiltros>
-            <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={mostrarInativos} onChange={(e) => setMostrarInativos(e.target.checked)} />Mostrar inativos</label>
-            <label className="flex items-center gap-2 text-sm font-medium">Sítio
-              <select aria-label="Filtrar por sítio" value={filtroSitio} onChange={(e) => setFiltroSitio(e.target.value)} className="rounded-lg border border-border bg-white p-2 text-sm font-normal">
-                <option value="">Todos</option>
-                {sitiosAtivos.map((s) => <option key={s.id} value={s.id}>{s.apelido || s.nome}</option>)}
-              </select>
-            </label>
-          </BarraFiltros>
-          <TabelaFinanceira rotulo="Lotes" itens={lotesFiltrados} colunas={colunasLotes(editar, alternar)} chaveDe={(l) => l.id} onAbrir={(l) => onAbrirLote(l.id)} classeLinha={(l) => !l.ativo ? "opacity-55" : ""} />
-        </Panel>}
-    </fieldset>}
+    <Panel className="mt-5 overflow-hidden">
+      <div className="border-b border-border p-5"><h2 className="font-serif text-xl">Lotes</h2></div>
+      <fieldset disabled={processando || !podeLancar} aria-busy={processando} className="min-w-0">
+        <BarraFiltros>
+          <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={mostrarInativos} onChange={(e) => setMostrarInativos(e.target.checked)} />Mostrar inativos</label>
+          <label className="flex items-center gap-2 text-sm font-medium">Sítio
+            <select aria-label="Filtrar por sítio" value={filtroSitio} onChange={(e) => setFiltroSitio(e.target.value)} className="rounded-lg border border-border bg-white p-2 text-sm font-normal">
+              <option value="">Todos</option>
+              {sitiosAtivos.map((s) => <option key={s.id} value={s.id}>{s.apelido || s.nome}</option>)}
+            </select>
+          </label>
+        </BarraFiltros>
+        {lotes === null
+          ? <div className="p-6"><Loader label="Carregando lotes" /></div>
+          : <TabelaFinanceira rotulo="Lotes" itens={lotesFiltrados} colunas={colunasLotes(editar, alternar)} chaveDe={(l) => l.id} onAbrir={(l) => onAbrirLote(l.id)} classeLinha={(l) => !l.ativo ? "opacity-55" : ""} />}
+      </fieldset>
+    </Panel>
 
-    {aba === "historico" && <Panel className="mt-5 overflow-hidden">
+    <Panel className="mt-5 overflow-hidden">
+      <div className="border-b border-border p-5"><h2 className="font-serif text-xl">Histórico de movimentações</h2></div>
       <BarraFiltros>
         <label className="flex items-center gap-2 text-sm font-medium">Sítio
           <select aria-label="Filtrar histórico por sítio" value={filtroSitioHistorico} onChange={(e) => { setFiltroSitioHistorico(e.target.value); setFiltroLoteHistorico(""); }} className="rounded-lg border border-border bg-white p-2 text-sm font-normal">
@@ -170,9 +176,9 @@ export function ListaLotes({ podeLancar = true, onAbrirLote }: { podeLancar?: bo
         podeLancar={podeLancar}
         recarregarToken={recarregarTokenHistorico}
         onAbrir={(mov) => setMovimentacaoAbertaId(mov.id)}
-        onMudou={() => setHistoricoRefresh((t) => t + 1)}
+        onMudou={() => void recarregarAmbos()}
       />
-    </Panel>}
+    </Panel>
 
     {painel && <FormLote key={chavePainel} lote={loteSelecionado} propriedades={sitiosAtivos} propriedadeInicialId={propriedadeInicial} onSalvo={aoSalvar} onFechar={() => setPainel(null)} />}
 
@@ -193,18 +199,18 @@ export function ListaLotes({ podeLancar = true, onAbrirLote }: { podeLancar?: bo
       onConfirmar={(animais) => { setSelecionandoAnimais(false); setMovimentando(animais); }}
     />}
     {movimentando && catalogos && <FormMovimentar
-      animalIds={movimentando.map((a) => a.id)}
+      animais={movimentando}
       propriedades={catalogos.propriedades}
       lotes={catalogos.lotes}
       onFechar={() => setMovimentando(null)}
-      onSalvo={async () => { setMovimentando(null); await carregarLotes(); }}
+      onSalvo={async () => { setMovimentando(null); await recarregarAmbos(); }}
     />}
 
     {movimentacaoAbertaId && <DetalheMovimentacao
       id={movimentacaoAbertaId}
       podeLancar={podeLancar}
       onFechar={() => setMovimentacaoAbertaId(null)}
-      onMudou={() => setHistoricoRefresh((t) => t + 1)}
+      onMudou={() => void recarregarAmbos()}
     />}
   </PaginaFinanceira>;
 }

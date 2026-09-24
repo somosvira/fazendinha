@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { ChevronRight, MapPin, Plus, TrendingDown, Users } from "lucide-react";
 import { obterPainelRebanho } from "../api";
 import type { PainelGeral } from "../types";
-import { formatarDataBR, rotuloCategoria } from "../lib/rotulos";
+import { formatarDataBR } from "../lib/rotulos";
 import { navegarPara } from "../../../router";
 import { Button, Empty, ErrorBox, Metric, PageHeader, PaginaCarregando, PaginaFinanceira, Panel } from "../../../financeiro/financeiro-ui";
 import { NavRebanho } from "./NavRebanho";
@@ -55,7 +55,7 @@ export function VisaoGeral({ podeLancar = true }: { podeLancar?: boolean }) {
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <Panel className="overflow-hidden">
           <div className="border-b border-border p-5"><h2 className="font-serif text-xl">Por categoria</h2></div>
-          {painel.porCategoria.length ? <div className="divide-y divide-border">{painel.porCategoria.map((c) => <div key={c.categoria} className="px-5 py-4"><div className="flex items-center justify-between gap-3 text-sm"><span>{rotuloCategoria(c.categoria)}</span><strong>{c.qtd}</strong></div><BarraProporcional valor={c.qtd} maximo={maxCategoria} /></div>)}</div> : <Empty>Nenhum animal ativo.</Empty>}
+          {painel.porCategoria.length ? <div className="divide-y divide-border">{painel.porCategoria.map((c) => <div key={c.categoriaId ?? "sem-categoria"} className="px-5 py-4"><div className="flex items-center justify-between gap-3 text-sm"><span>{c.categoria}</span><strong>{c.qtd}</strong></div><BarraProporcional valor={c.qtd} maximo={maxCategoria} /></div>)}</div> : <Empty>Nenhum animal ativo.</Empty>}
         </Panel>
         <Panel className="overflow-hidden">
           <div className="border-b border-border p-5"><h2 className="font-serif text-xl">Por sítio</h2></div>

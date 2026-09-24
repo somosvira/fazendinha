@@ -7,10 +7,25 @@
 import { useState, type ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { X } from "lucide-react";
-import { Button, ErrorBox, Modal } from "../../financeiro/financeiro-ui";
+import { Button, ErrorBox, Modal, Pill } from "../../financeiro/financeiro-ui";
 import { classeInput } from "../../financeiro/PainelCadastro";
 import { PRESETS_FRACAO, somaFracoes } from "./lib/composicao";
-import type { CatalogoRaca, ComposicaoItemInput } from "./types";
+import type { CatalogoRaca, CategoriaOrigem, CategoriaRef, ComposicaoItemInput } from "./types";
+
+/** Pill de categoria do animal: nome calculado/manual + selo "Manual" quando há troca manual
+ *  aberta, com o cálculo automático no `title` (tooltip) para comparação rápida. */
+export function CategoriaPill({ categoria, categoriaOrigem, categoriaCalculada }: {
+  categoria: CategoriaRef | null;
+  categoriaOrigem: CategoriaOrigem;
+  categoriaCalculada?: CategoriaRef | null;
+}) {
+  if (categoriaOrigem === "SEM_CATEGORIA" || !categoria) return <Pill>Sem categoria</Pill>;
+  const manual = categoriaOrigem === "MANUAL";
+  return <span className="inline-flex items-center gap-1.5" title={manual ? `cálculo: ${categoriaCalculada?.nome ?? "sem categoria"}` : undefined}>
+    <Pill>{categoria.nome}</Pill>
+    {manual && <Pill tone="amber">Manual</Pill>}
+  </span>;
+}
 
 /** Container da barra de busca/filtros no topo de um Panel — mesma moldura da
  *  lista de Operações financeiras (borda inferior + padding). Os filtros em si

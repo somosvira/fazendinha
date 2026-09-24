@@ -1,14 +1,5 @@
 // Rótulos PT-BR e formatação pura para a UI do rebanho. Sem I/O.
-import type { Aptidao, Categoria, PapelReprodutivo, Situacao, TipoSaida } from "../types";
-
-export const ROTULO_CATEGORIA: Record<Categoria, string> = {
-  BEZERRA: "Bezerra",
-  NOVILHA: "Novilha",
-  VACA: "Vaca",
-  BEZERRO: "Bezerro",
-  GARROTE: "Garrote",
-  TOURO: "Touro",
-};
+import type { Aptidao, CategoriaDTO, PapelReprodutivo, Situacao, TipoSaida } from "../types";
 
 export const ROTULO_APTIDAO: Record<Aptidao, string> = {
   LEITE: "Leite",
@@ -35,9 +26,6 @@ export const ROTULO_TIPO_SAIDA: Record<TipoSaida, string> = {
   OUTRO: "Outro",
 };
 
-export function rotuloCategoria(c: Categoria): string {
-  return ROTULO_CATEGORIA[c] ?? c;
-}
 export function rotuloAptidao(a: Aptidao | null): string {
   return a ? ROTULO_APTIDAO[a] ?? a : "—";
 }
@@ -49,6 +37,16 @@ export function rotuloSituacao(s: Situacao): string {
 }
 export function rotuloTipoSaida(t: string): string {
   return (ROTULO_TIPO_SAIDA as Record<string, string>)[t] ?? t;
+}
+export function rotuloSexo(s: "F" | "M"): string {
+  return s === "F" ? "Fêmea" : "Macho";
+}
+
+/** Rótulo de uma categoria numa lista/select: "Nome" — ou "Nome (F)"/"Nome (M)" quando o nome se
+ *  repete em outra categoria da lista (ex.: "Em crescimento" existe para fêmeas e machos). */
+export function rotuloOpcaoCategoria(categorias: Pick<CategoriaDTO, "nome" | "sexo">[], categoria: Pick<CategoriaDTO, "nome" | "sexo">): string {
+  const duplicado = categorias.filter((c) => c.nome === categoria.nome).length > 1;
+  return duplicado ? `${categoria.nome} (${categoria.sexo})` : categoria.nome;
 }
 
 /** Formata meses inteiros (idade calculada no servidor) como "2a 3m". */

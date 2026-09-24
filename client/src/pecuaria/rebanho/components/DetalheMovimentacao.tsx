@@ -7,11 +7,11 @@ import { useCallback, useEffect, useState } from "react";
 import { Loader } from "../../../components/Loading";
 import { PainelCadastro } from "../../../financeiro/PainelCadastro";
 import { Button, ErrorBox, Pill } from "../../../financeiro/financeiro-ui";
-import { buscarMovimentacao, desfazerMovimentacao, RebanhoApiError } from "../api";
+import { buscarMovimentacao, RebanhoApiError } from "../api";
 import type { MovimentacaoDetalhe } from "../types";
-import { formatarDataBR, rotuloCategoria } from "../lib/rotulos";
-import { ModalMotivo } from "../ui";
+import { formatarDataBR } from "../lib/rotulos";
 import { navegarPara } from "../../../router";
+import { ConfirmarDesfazerMovimentacao } from "./ConfirmarDesfazerMovimentacao";
 
 function rotuloDestino(mov: MovimentacaoDetalhe): string {
   return mov.destino.lote ? `${mov.destino.lote.nome} (${mov.destino.propriedade.nome})` : mov.destino.propriedade.nome;
@@ -39,8 +39,6 @@ export function DetalheMovimentacao({ id, podeLancar = true, onFechar, onMudou }
   const [carregando, setCarregando] = useState(true);
 
   const [desfazendo, setDesfazendo] = useState(false);
-  const [processandoDesfazer, setProcessandoDesfazer] = useState(false);
-  const [erroDesfazer, setErroDesfazer] = useState<string | null>(null);
 
   const carregar = useCallback(async () => {
     setCarregando(true); setErro(null);
@@ -54,15 +52,6 @@ export function DetalheMovimentacao({ id, podeLancar = true, onFechar, onMudou }
   const abrirAnimal = (animalId: string) => {
     onFechar();
     navegarPara(`/pecuaria/rebanho/animais/${animalId}`);
-  };
-
-  const confirmarDesfazer = (motivo: string) => {
-    if (!mov || processandoDesfazer) return;
-    setProcessandoDesfazer(true); setErroDesfazer(null);
-    desfazerMovimentacao(mov.id, motivo)
-      .then(async () => { setDesfazendo(false); await carregar(); onMudou?.(); })
-      .catch((e) => setErroDesfazer(mensagemErro(e)))
-      .finally(() => setProcessandoDesfazer(false));
   };
 
   return <PainelCadastro aberto eyebrow="Rebanho" titulo="Movimentação" largura="sm:max-w-3xl" onFechar={onFechar}
@@ -79,7 +68,7 @@ export function DetalheMovimentacao({ id, podeLancar = true, onFechar, onMudou }
           {mov.motivo && <p className="mt-1 break-words text-ink-3">Motivo: {mov.motivo}</p>}
           <p className="mt-1 text-xs text-ink-3">{mov.criadoPor ?? "Sistema"} · {formatarDataBR(mov.criadoEm)}</p>
           {mov.desfeitaEm && <p className="mt-1 text-xs font-medium text-red-700">Desfeita em {formatarDataBR(mov.desfeitaEm)}{mov.desfeitaMotivo ? ` · ${mov.desfeitaMotivo}` : ""}</p>}
-          {podeLancar && mov.podeDesfazer && <div className="mt-3"><Button secondary onClick={() => { setErroDesfazer(null); setDesfazendo(true); }}>Desfazer movimentação</Button></div>}
+          {podeLancar && mov.podeDesfazer && <div className="mt-3"><Button secondary onClick={() => setDesfazendo(true)}>Desfazer movimentação</Button></div>}
         </div>
 
         <div className="overflow-x-auto rounded-xl border border-border">
@@ -92,7 +81,7 @@ export function DetalheMovimentacao({ id, podeLancar = true, onFechar, onMudou }
                 const situacao = ROTULO_SITUACAO_ANIMAL[a.situacao] ?? { texto: a.situacao, tone: "neutral" as const };
                 return <tr key={a.animalId}>
                   <td className="p-3"><button type="button" onClick={() => abrirAnimal(a.animalId)} className="break-words font-semibold text-mast hover:underline">{a.brinco}{a.nome ? ` · ${a.nome}` : ""}</button></td>
-                  <td className="p-3">{rotuloCategoria(a.categoria)}</td>
+                  <td className="p-3">{a.categoria?.nome ?? "Sem categoria"}</td>
                   <td className="p-3">{a.origem ?? "—"}</td>
                   <td className="p-3"><Pill tone={situacao.tone}>{situacao.texto}</Pill></td>
                 </tr>;
@@ -102,16 +91,11 @@ export function DetalheMovimentacao({ id, podeLancar = true, onFechar, onMudou }
         </div>
       </div>}
 
-      {desfazendo && <ModalMotivo
-        titulo="Desfazer movimentação?"
-        eyebrow={mov ? `Movimentação de ${formatarDataBR(mov.data)}` : "Movimentação"}
-        impacto={mov ? <p>Os {mov.quantidadeTotal} animais desta movimentação voltam para a localização anterior.</p> : undefined}
-        labelManter="Manter"
-        labelConfirmar="Desfazer movimentação"
-        confirmando={processandoDesfazer}
-        erro={erroDesfazer}
+      {desfazendo && mov && <ConfirmarDesfazerMovimentacao
+        movimentacaoId={mov.id}
+        detalhe={mov}
         onFechar={() => setDesfazendo(false)}
-        onConfirmar={confirmarDesfazer}
+        onConfirmado={() => { setDesfazendo(false); void carregar().then(() => onMudou?.()); }}
       />}
     </PainelCadastro>;
 }

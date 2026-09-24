@@ -2,7 +2,9 @@
 // Não inventar campos aqui sem conferir o contrato do backend primeiro.
 
 export type Sexo = "F" | "M";
-export type Categoria = "BEZERRA" | "NOVILHA" | "VACA" | "BEZERRO" | "GARROTE" | "TOURO";
+/** Referência leve a uma categoria configurável (CategoriaAnimal) — id + nome. */
+export type CategoriaRef = { id: string; nome: string };
+export type CategoriaOrigem = "AUTOMATICA" | "MANUAL" | "SEM_CATEGORIA";
 export type Aptidao = "LEITE" | "CORTE";
 export type PapelReprodutivo = "NENHUM" | "RECEPTORA" | "DOADORA";
 export type Origem = "NASCIDO" | "COMPRADO";
@@ -19,7 +21,11 @@ export type AnimalResumo = {
   brinco: string;
   nome: string | null;
   sexo: Sexo;
-  categoria: Categoria;
+  /** categoria que vale hoje: manual aberta, se houver, senão a calculada pelas regras */
+  categoria: CategoriaRef | null;
+  categoriaOrigem: CategoriaOrigem;
+  /** o que as regras dariam — difere de `categoria` quando há troca manual */
+  categoriaCalculada: CategoriaRef | null;
   idadeMeses: number;
   dataNascimento: string;
   dataEntrada: string;
@@ -58,6 +64,9 @@ export type HistoricoDestino = {
 
 export type HistoricoPesagem = { id: string; data: string; pesoKg: number; tipo: string; origem: string };
 
+/** Item de `historicoCategoriasManuais` na ficha — mais recente primeiro. */
+export type HistoricoCategoriaManual = { id: string; categoria: CategoriaRef; desde: string; ate: string | null; motivo: string; motivoEncerramento: string | null };
+
 export type SaidaAnimalResumo = {
   id: string;
   data: string;
@@ -81,6 +90,8 @@ export type AnimalFicha = AnimalResumo & {
   historicoLocalizacoes: HistoricoLocalizacao[];
   historicoDestinos: HistoricoDestino[];
   historicoPesagens: HistoricoPesagem[];
+  /** trocas manuais de categoria, mais recente primeiro */
+  historicoCategoriasManuais: HistoricoCategoriaManual[];
   saida: SaidaAnimalResumo | null;
 };
 
@@ -179,7 +190,7 @@ export type Pesagem = {
 export type ListarFiltros = {
   propriedadeId?: number;
   loteId?: string;
-  categoria?: Categoria;
+  categoriaId?: string;
   aptidao?: Aptidao;
   papelReprodutivo?: PapelReprodutivo;
   situacao?: Situacao | "TODOS";
@@ -191,7 +202,8 @@ export type ListarFiltros = {
 /** Contagens do painel calculadas no servidor sobre todo o conjunto filtrado (não só a página). */
 export type PainelServidor = {
   totalAtivos: number;
-  porCategoria: Array<{ categoria: Categoria; total: number }>;
+  /** `categoria` nulo = animais sem categoria (nenhuma regra casou); vem na ordem da configuração */
+  porCategoria: Array<{ categoria: CategoriaRef | null; total: number }>;
   porSitio: Array<{ propriedadeId: number | null; nome: string; total: number }>;
   femeasAtivas: number;
   receptorasAtivas: number;
@@ -263,7 +275,7 @@ export type AnimalDaMovimentacao = {
   animalId: string;
   brinco: string;
   nome: string | null;
-  categoria: Categoria;
+  categoria: CategoriaRef | null;
   /** lote/sítio de onde este animal veio, formatado (null se a origem não existe mais) */
   origem: string | null;
   /** NO_DESTINO: a linha aberta pela movimentação ainda é a atual · SAIU_DO_DESTINO: moveu de
@@ -301,10 +313,80 @@ export type Catalogos = {
 export type EventoPainel = { tipo: "CADASTRO" | "SAIDA" | "ESTORNO"; animalId: string; brinco: string; data: string };
 export type PainelGeral = {
   ativos: number;
-  porCategoria: Array<{ categoria: Categoria; qtd: number }>;
+  /** `categoriaId` nulo = "Sem categoria" */
+  porCategoria: Array<{ categoriaId: string | null; categoria: string; qtd: number }>;
   porSitio: Array<{ propriedadeId: number | null; nome: string; qtd: number }>;
   receptorasPct: number;
   saidas30d: number;
   ultimosEventos: EventoPainel[];
 };
+
+// ---------- categorias configuráveis (Cadastros > Categorias) ----------
+
+export type CriterioPartos = "QUALQUER" | "SEM" | "COM";
+
+/** GET /categorias — regra de cálculo + metadados de cadastro. */
+export type CategoriaDTO = {
+  id: string;
+  nome: string;
+  sexo: Sexo;
+  /** false = só atribuída manualmente (sem regra) */
+  automatica: boolean;
+  ativo: boolean;
+  ordem: number;
+  idadeMinMeses: number | null;
+  /** exclusivo: idade < idadeMaxMeses */
+  idadeMaxMeses: number | null;
+  partos: CriterioPartos;
+  ideagriId: number | null;
+  /** veio dos padrões de fábrica (IDEAGRI) */
+  padrao: boolean;
+  /** texto curto PT-BR, ex. "12 meses ou mais · sem parto", "só manual" */
+  regra: string;
+  animaisAtivos: number;
+  manuaisAbertas: number;
+};
+export type ListarCategoriasResultado = { itens: CategoriaDTO[]; semCategoria: number };
+
+export type CriarCategoriaInput = {
+  nome: string;
+  sexo: Sexo;
+  automatica?: boolean;
+  idadeMinMeses?: number | null;
+  idadeMaxMeses?: number | null;
+  partos?: CriterioPartos;
+  ordem?: number;
+};
+export type EditarCategoriaInput = Partial<{
+  nome: string;
+  sexo: Sexo;
+  automatica: boolean;
+  idadeMinMeses: number | null;
+  idadeMaxMeses: number | null;
+  partos: CriterioPartos;
+  ordem: number;
+  ativo: boolean;
+}>;
+
+/** Uma regra na simulação: a lista inteira como ficaria (id ausente = categoria nova). */
+export type RegraCategoriaProposta = {
+  id?: string;
+  nome: string;
+  sexo: Sexo;
+  automatica: boolean;
+  ativo: boolean;
+  ordem: number;
+  idadeMinMeses?: number | null;
+  idadeMaxMeses?: number | null;
+  partos: CriterioPartos;
+};
+
+export type ResultadoSimulacaoCategorias = {
+  afetados: number;
+  mudancas: Array<{ de: CategoriaRef | null; para: CategoriaRef | null; total: number }>;
+  semCategoria: number;
+};
+
+export type DefinirCategoriaManualInput = { categoriaId: string; data: string; motivo: string };
+export type RemoverCategoriaManualInput = { motivo: string };
 

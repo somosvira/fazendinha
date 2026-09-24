@@ -2,10 +2,10 @@
 // card + aside de revisão escuro. POST /pecuaria/rebanho/animais.
 
 import { type FormEvent, useEffect, useMemo, useState } from "react";
-import { cadastrarAnimal, obterCatalogos, RebanhoApiError } from "../api";
-import type { Aptidao, CatalogoLote, Catalogos, ComposicaoItemInput, Origem, PapelReprodutivo, Sexo } from "../types";
+import { cadastrarAnimal, listarCategorias, obterCatalogos, RebanhoApiError } from "../api";
+import type { Aptidao, CatalogoLote, Catalogos, CategoriaDTO, ComposicaoItemInput, Origem, PapelReprodutivo, Sexo } from "../types";
 import { calcularCategoriaCliente } from "../lib/categoria";
-import { rotuloAptidao, rotuloCategoria, rotuloPapelReprodutivo } from "../lib/rotulos";
+import { rotuloAptidao, rotuloPapelReprodutivo } from "../lib/rotulos";
 import { somaFracoes } from "../lib/composicao";
 import { CampoComposicao } from "../ui";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
@@ -28,6 +28,7 @@ export function NovoAnimal({ onVoltar, podeLancar = true }: { onVoltar: () => vo
 
 function FormNovoAnimal({ onVoltar }: { onVoltar: () => void }) {
   const [catalogos, setCatalogos] = useState<Catalogos | null>(null);
+  const [categorias, setCategorias] = useState<CategoriaDTO[]>([]);
   const [erroCatalogos, setErroCatalogos] = useState<string | null>(null);
 
   const [brinco, setBrinco] = useState("");
@@ -53,6 +54,7 @@ function FormNovoAnimal({ onVoltar }: { onVoltar: () => void }) {
   const [salvando, setSalvando] = useState(false);
 
   useEffect(() => { obterCatalogos().then(setCatalogos).catch((e) => setErroCatalogos(e instanceof Error ? e.message : String(e))); }, []);
+  useEffect(() => { listarCategorias().then((r) => setCategorias(r.itens)).catch(() => undefined); }, []);
 
   const alterarOrigem = (novaOrigem: Origem) => { setOrigem(novaOrigem); if (novaOrigem === "NASCIDO") setDataEntrada(dataNascimento); };
   const alterarDataNascimento = (valor: string) => { setDataNascimento(valor); if (origem === "NASCIDO") setDataEntrada(valor); };
@@ -61,7 +63,7 @@ function FormNovoAnimal({ onVoltar }: { onVoltar: () => void }) {
   const lotesDoSitio: CatalogoLote[] = useMemo(() => catalogos?.lotes.filter((lote) => String(lote.propriedadeId) === propriedadeId) ?? [], [catalogos, propriedadeId]);
   const propriedadeNome = catalogos?.propriedades.find((p) => String(p.id) === propriedadeId)?.nome;
   const loteNome = lotesDoSitio.find((l) => l.id === loteId)?.nome;
-  const categoriaPrevista = dataNascimento ? calcularCategoriaCliente({ sexo, dataNascimento, partosAntesDaEntrada: Number(partosAntesDaEntrada || 0), hoje: hoje() }) : null;
+  const categoriaPrevista = dataNascimento ? calcularCategoriaCliente(categorias, { sexo, dataNascimento, partosAntesDaEntrada: Number(partosAntesDaEntrada || 0), hoje: hoje() }) : null;
   const somaComposicao = somaFracoes(composicao);
   const composicaoRotulo = composicao
     .filter((item) => item.racaId)
@@ -159,7 +161,7 @@ function FormNovoAnimal({ onVoltar }: { onVoltar: () => void }) {
           <div className="text-[11px] font-semibold uppercase tracking-[.14em] text-[#aeb9aa]">Revisão do cadastro</div>
           <div className="mt-3 font-serif text-3xl">{brinco.trim() || "Sem brinco"}</div>
           <div className="mt-5 space-y-3 text-sm leading-5">
-            {categoriaPrevista && <ReviewLine>Categoria calculada: {rotuloCategoria(categoriaPrevista)}.</ReviewLine>}
+            {categoriaPrevista && <ReviewLine>Categoria calculada: {categoriaPrevista.nome}.</ReviewLine>}
             <ReviewLine tone={propriedadeNome ? "green" : "neutral"}>{propriedadeNome ? <>Entra no sítio {propriedadeNome}{loteNome ? `, lote ${loteNome}` : ""}.</> : "Selecione o sítio de destino."}</ReviewLine>
             <ReviewLine>Destino: {rotuloAptidao(aptidao)}{papelReprodutivo !== "NENHUM" ? ` · ${rotuloPapelReprodutivo(papelReprodutivo)}` : ""}.</ReviewLine>
             <ReviewLine tone={composicaoRotulo ? "brown" : "neutral"}>{composicaoRotulo ? <>Composição: {composicaoRotulo}.</> : "Sem composição racial informada."}</ReviewLine>

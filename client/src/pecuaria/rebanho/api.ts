@@ -6,10 +6,14 @@ import type {
   AnimalFicha,
   CadastrarAnimalInput,
   Catalogos,
+  CategoriaRef,
+  CriarCategoriaInput,
   CriarLoteInput,
   CriarMotivoSaidaInput,
   CriarRacaInput,
+  DefinirCategoriaManualInput,
   EditarAnimalInput,
+  EditarCategoriaInput,
   EditarLoteInput,
   EditarMotivoSaidaInput,
   EditarPesagemInput,
@@ -18,6 +22,7 @@ import type {
   EstornoSaidaInput,
   FiltrosMovimentacoes,
   ItemComposicao,
+  ListarCategoriasResultado,
   ListarFiltros,
   ListarMovimentacoesResultado,
   ListarResultado,
@@ -30,6 +35,9 @@ import type {
   Pesagem,
   PesagemInput,
   Raca,
+  RegraCategoriaProposta,
+  RemoverCategoriaManualInput,
+  ResultadoSimulacaoCategorias,
   SaidaInput,
   SubstituirComposicaoInput,
 } from "./types";
@@ -105,6 +113,14 @@ export const darSaidaAnimal = (id: string, input: SaidaInput) =>
 export const estornarSaidaAnimal = (id: string, input: EstornoSaidaInput) =>
   req<AnimalFicha>(`/animais/${id}/saida/estorno`, { method: "POST", body: JSON.stringify(input) });
 
+// ---------- categoria manual do animal (vale sobre o cálculo até ser removida) ----------
+
+export const definirCategoriaManual = (animalId: string, input: DefinirCategoriaManualInput) =>
+  req<AnimalFicha>(`/animais/${animalId}/categoria`, { method: "POST", body: JSON.stringify(input) });
+
+export const removerCategoriaManual = (animalId: string, input: RemoverCategoriaManualInput) =>
+  req<AnimalFicha>(`/animais/${animalId}/categoria/remover`, { method: "POST", body: JSON.stringify(input) });
+
 export const registrarPesagemAnimal = (id: string, input: PesagemInput) =>
   req<Pesagem>(`/animais/${id}/pesagens`, { method: "POST", body: JSON.stringify(input) });
 
@@ -164,6 +180,26 @@ export const criarMotivoSaida = (input: CriarMotivoSaidaInput) =>
 
 export const editarMotivoSaida = (id: string, input: EditarMotivoSaidaInput) =>
   req<MotivoSaida>(`/motivos-saida/${id}`, { method: "PATCH", body: JSON.stringify(input) });
+
+// ---------- categorias configuráveis (Cadastros > Categorias) ----------
+
+export const listarCategorias = (opts?: { incluirInativos?: boolean }) =>
+  req<ListarCategoriasResultado>(comIncluirInativos("/categorias", opts?.incluirInativos));
+
+export const criarCategoria = (input: CriarCategoriaInput) =>
+  req<CategoriaRef>("/categorias", { method: "POST", body: JSON.stringify(input) });
+
+export const editarCategoria = (id: string, input: EditarCategoriaInput) =>
+  req<CategoriaRef>(`/categorias/${id}`, { method: "PATCH", body: JSON.stringify(input) });
+
+export const reordenarCategorias = (ids: string[]) =>
+  req<{ ok: boolean }>("/categorias/ordem", { method: "POST", body: JSON.stringify({ ids }) });
+
+export const simularCategorias = (regras: RegraCategoriaProposta[]) =>
+  req<ResultadoSimulacaoCategorias>("/categorias/simular", { method: "POST", body: JSON.stringify({ regras }) });
+
+export const restaurarPadroesCategorias = (opts?: { simular?: boolean }) =>
+  req<ResultadoSimulacaoCategorias>("/categorias/restaurar-padroes", { method: "POST", body: JSON.stringify({ simular: opts?.simular ?? false }) });
 
 // ---------- visão geral e catálogos ----------
 

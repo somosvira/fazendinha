@@ -7,15 +7,16 @@ import { ArrowLeft, Pencil, Trash2 } from "lucide-react";
 import { fracaoReduzida } from "../lib/composicao";
 import {
   buscarAuditoriaAnimal, buscarFichaAnimal, darSaidaAnimal, desfazerDestinoAnimal, desfazerLocalizacaoAnimal,
-  estornarSaidaAnimal, excluirPesagem, obterCatalogos, RebanhoApiError,
+  estornarSaidaAnimal, excluirPesagem, listarCategorias, obterCatalogos, RebanhoApiError, removerCategoriaManual,
 } from "../api";
-import type { AnimalFicha, Catalogos, EntradaAuditoria, Pesagem } from "../types";
-import { formatarDataBR, formatarIdade, rotuloAptidao, rotuloCategoria, rotuloPapelReprodutivo, rotuloSituacao, rotuloTipoSaida } from "../lib/rotulos";
-import { ModalMotivo } from "../ui";
+import type { AnimalFicha, CategoriaDTO, Catalogos, EntradaAuditoria, Pesagem } from "../types";
+import { formatarDataBR, formatarIdade, rotuloAptidao, rotuloPapelReprodutivo, rotuloSituacao, rotuloTipoSaida } from "../lib/rotulos";
+import { CategoriaPill, ModalMotivo } from "../ui";
 import { FormDadosAnimal } from "../forms/FormDadosAnimal";
 import { FormComposicao } from "../forms/FormComposicao";
 import { FormMovimentar } from "../forms/FormMovimentar";
 import { FormDestino } from "../forms/FormDestino";
+import { FormAlterarCategoria } from "../forms/FormAlterarCategoria";
 import { FormPesagem } from "../forms/FormPesagem";
 import { FormSaida } from "../forms/FormSaida";
 import { ConfirmDialog } from "../../../components/ConfirmDialog";
@@ -42,6 +43,7 @@ function gmdEntre(atual: { pesoKg: number; data: string }, anterior: { pesoKg: n
 export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string; onVoltar: () => void; podeLancar?: boolean }) {
   const [animal, setAnimal] = useState<AnimalFicha | null>(null);
   const [catalogos, setCatalogos] = useState<Catalogos | null>(null);
+  const [categorias, setCategorias] = useState<CategoriaDTO[]>([]);
   const [auditoria, setAuditoria] = useState<EntradaAuditoria[] | null>(null);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -49,6 +51,8 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
   const [editandoComposicao, setEditandoComposicao] = useState(false);
   const [movimentando, setMovimentando] = useState(false);
   const [mudandoDestino, setMudandoDestino] = useState(false);
+  const [alterandoCategoria, setAlterandoCategoria] = useState(false);
+  const [voltandoAutomatico, setVoltandoAutomatico] = useState(false);
   const [pesagemForm, setPesagemForm] = useState<{ modo: "novo" } | { modo: "editar"; pesagem: Pesagem } | null>(null);
   const [dandoSaida, setDandoSaida] = useState(false);
   const [estornandoSaida, setEstornandoSaida] = useState(false);
@@ -72,6 +76,7 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
   }, [id, recarregarAuditoria]);
   useEffect(() => { void carregar(); }, [carregar]);
   useEffect(() => { obterCatalogos().then(setCatalogos).catch(() => undefined); }, []);
+  useEffect(() => { listarCategorias().then((r) => setCategorias(r.itens)).catch(() => undefined); }, []);
 
   if (!animal) return <div className="shell-wide pagina-carregando"><button onClick={onVoltar} className="mt-6 mb-5 inline-flex shrink-0 items-center gap-2 self-start text-sm font-semibold text-ink-2"><ArrowLeft size={17} /> Voltar para animais</button><ErrorBox erro={erro} />{!erro && <Loader label="Carregando animal" full />}</div>;
 
@@ -107,12 +112,13 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
           <div className="flex flex-wrap items-center gap-2">
             <span className="eyebrow">{animal.brinco}</span>
             <Pill tone={ativo ? "green" : "neutral"}>{rotuloSituacao(animal.situacao)}</Pill>
-            <Pill>{rotuloCategoria(animal.categoria)}</Pill>
+            <CategoriaPill categoria={animal.categoria} categoriaOrigem={animal.categoriaOrigem} categoriaCalculada={animal.categoriaCalculada} />
             {animal.aptidao && <Pill tone="brown">{rotuloAptidao(animal.aptidao)}</Pill>}
             {animal.papelReprodutivo && animal.papelReprodutivo !== "NENHUM" && <Pill tone="amber">{rotuloPapelReprodutivo(animal.papelReprodutivo)}</Pill>}
           </div>
           <h1 className="mt-2 break-words font-serif text-[clamp(22px,5vw,30px)] leading-tight">{animal.nome || animal.brinco}</h1>
           <p className="mt-2 break-words text-sm text-ink-3">{formatarIdade(animal.idadeMeses)} · {animal.propriedade?.nome ?? "Sem sítio"}{animal.lote && <> · <LinkLote id={animal.lote.id} nome={animal.lote.nome} /></>}</p>
+          {animal.categoriaOrigem === "MANUAL" && animal.categoriaCalculada?.id === animal.categoria?.id && <p className="mt-2 text-xs text-ink-3">O cálculo já concorda — pode voltar ao automático.</p>}
         </div>
         {podeLancar && <div className="flex flex-wrap gap-2">
           {ativo ? <>
@@ -120,6 +126,8 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
             <Button secondary onClick={() => setEditandoComposicao(true)}>Editar composição</Button>
             <Button secondary onClick={() => setMovimentando(true)}>Movimentar</Button>
             <Button secondary onClick={() => setMudandoDestino(true)}>Mudar destino</Button>
+            <Button secondary onClick={() => setAlterandoCategoria(true)}>Alterar categoria</Button>
+            {animal.categoriaOrigem === "MANUAL" && <Button secondary onClick={() => { setErroAcao(null); setVoltandoAutomatico(true); }}>Voltar ao automático</Button>}
             <Button secondary onClick={() => setPesagemForm({ modo: "novo" })}>Registrar pesagem</Button>
             <Button danger onClick={() => setDandoSaida(true)}>Dar saída</Button>
             <Button danger onClick={() => setExcluindoCadastro(true)}>Excluir cadastro</Button>
@@ -158,6 +166,11 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
           <p className="mt-4 text-sm">{destinoAtual ? <>{rotuloAptidao(destinoAtual.aptidao)}{destinoAtual.papelReprodutivo !== "NENHUM" ? ` · ${rotuloPapelReprodutivo(destinoAtual.papelReprodutivo)}` : ""} <span className="text-ink-3">desde {formatarDataBR(destinoAtual.desde)}</span></> : "Sem destino registrado."}</p>
           {animal.historicoDestinos.length > 0 && <div className="mt-3 overflow-x-auto"><table className="w-full text-left text-xs"><thead className="text-ink-3"><tr><th className="py-1 pr-3 font-semibold">Aptidão</th><th className="py-1 pr-3 font-semibold">Papel</th><th className="py-1 pr-3 font-semibold">Desde</th><th className="py-1 pr-3 font-semibold">Até</th></tr></thead><tbody className="divide-y divide-border">{animal.historicoDestinos.map((dest) => <tr key={dest.id}><td className="py-1.5 pr-3">{rotuloAptidao(dest.aptidao)}</td><td className="py-1.5 pr-3">{rotuloPapelReprodutivo(dest.papelReprodutivo)}</td><td className="py-1.5 pr-3">{formatarDataBR(dest.desde)}</td><td className="py-1.5 pr-3">{dest.ate ? formatarDataBR(dest.ate) : "—"}</td></tr>)}</tbody></table></div>}
         </section>
+
+        <section>
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-3">Categoria</h2>
+          {animal.historicoCategoriasManuais.length > 0 ? <div className="mt-3 overflow-x-auto"><table className="w-full text-left text-xs"><thead className="text-ink-3"><tr><th className="py-1 pr-3 font-semibold">Período</th><th className="py-1 pr-3 font-semibold">Categoria</th><th className="py-1 pr-3 font-semibold">Motivo</th><th className="py-1 pr-3 font-semibold">Motivo do encerramento</th></tr></thead><tbody className="divide-y divide-border">{animal.historicoCategoriasManuais.map((h) => <tr key={h.id}><td className="py-1.5 pr-3 whitespace-nowrap">{formatarDataBR(h.desde)} – {h.ate ? formatarDataBR(h.ate) : "atual"}</td><td className="py-1.5 pr-3">{h.categoria.nome}</td><td className="py-1.5 pr-3 break-words">{h.motivo}</td><td className="py-1.5 pr-3 break-words">{h.motivoEncerramento ?? "—"}</td></tr>)}</tbody></table></div> : <p className="mt-4 text-sm text-ink-3">Categoria calculada pelas regras da fazenda.</p>}
+        </section>
       </div>
 
       <section className="border-t border-border p-6">
@@ -178,11 +191,18 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
 
     {editandoDados && <FormDadosAnimal animal={animal} onFechar={() => setEditandoDados(false)} onSalvo={async (atualizado) => { setAnimal(atualizado); await recarregarAuditoria(); setEditandoDados(false); }} />}
     {editandoComposicao && catalogos && <FormComposicao animal={animal} racas={catalogos.racas} onFechar={() => setEditandoComposicao(false)} onSalvo={async () => { setEditandoComposicao(false); await carregar(); }} />}
-    {movimentando && catalogos && <FormMovimentar animalIds={[animal.id]} propriedades={catalogos.propriedades} lotes={catalogos.lotes} propriedadeInicial={animal.propriedade?.id} loteInicial={animal.lote?.id} onFechar={() => setMovimentando(false)} onSalvo={async () => { setMovimentando(false); await carregar(); }} />}
+    {movimentando && catalogos && <FormMovimentar animais={[animal]} propriedades={catalogos.propriedades} lotes={catalogos.lotes} propriedadeInicial={animal.propriedade?.id} loteInicial={animal.lote?.id} onFechar={() => setMovimentando(false)} onSalvo={async () => { setMovimentando(false); await carregar(); }} />}
     {mudandoDestino && <FormDestino animal={animal} onFechar={() => setMudandoDestino(false)} onSalvo={async (atualizado) => { setAnimal(atualizado); await recarregarAuditoria(); setMudandoDestino(false); }} />}
+    {alterandoCategoria && <FormAlterarCategoria
+      animal={animal}
+      categorias={categorias.filter((c) => c.ativo && c.sexo === animal.sexo && c.id !== animal.categoria?.id)}
+      onFechar={() => setAlterandoCategoria(false)}
+      onSalvo={async (atualizado) => { setAnimal(atualizado); await recarregarAuditoria(); setAlterandoCategoria(false); }}
+    />}
     {pesagemForm && <FormPesagem animalId={animal.id} pesagem={pesagemForm.modo === "editar" ? pesagemForm.pesagem : null} onFechar={() => setPesagemForm(null)} onSalvo={async () => { setPesagemForm(null); await carregar(); }} />}
     {dandoSaida && catalogos && <FormSaida animal={animal} motivos={catalogos.motivosSaida} onFechar={() => setDandoSaida(false)} onSalvo={async (atualizado) => { setAnimal(atualizado); await recarregarAuditoria(); setDandoSaida(false); }} />}
 
+    {voltandoAutomatico && <ModalMotivo titulo="Voltar ao automático" eyebrow={`Animal ${animal.brinco}`} impacto={<p>O animal passa a ser {animal.categoriaCalculada?.nome ?? "Sem categoria"} pelo cálculo.</p>} labelManter="Manter categoria" labelConfirmar="Confirmar" confirmando={emAcao} erro={erroAcao} onFechar={() => setVoltandoAutomatico(false)} onConfirmar={(motivo) => { void executar(() => removerCategoriaManual(animal.id, { motivo }), () => setVoltandoAutomatico(false)); }} />}
     {estornandoSaida && <ModalMotivo titulo="Estornar saída" eyebrow={`Animal ${animal.brinco}`} labelManter="Manter saída" labelConfirmar="Confirmar estorno" confirmando={emAcao} erro={erroAcao} onFechar={() => setEstornandoSaida(false)} onConfirmar={(motivo) => { void executar(() => estornarSaidaAnimal(animal.id, { motivo }), () => setEstornandoSaida(false)); }} />}
     {excluindoCadastro && <ModalMotivo titulo="Excluir cadastro" eyebrow={`Animal ${animal.brinco}`} impacto={<p>O animal receberá uma saída do tipo "Cadastro indevido" e deixará de contar como ativo. Esta ação pode ser estornada depois, reabrindo o cadastro.</p>} labelManter="Manter cadastro" labelConfirmar="Excluir cadastro" confirmando={emAcao} erro={erroAcao} onFechar={() => setExcluindoCadastro(false)} onConfirmar={(motivo) => { void executar(() => darSaidaAnimal(animal.id, { data: hoje(), tipo: "CADASTRO_INDEVIDO", motivoId: null, observacao: motivo }), () => setExcluindoCadastro(false)); }} />}
 

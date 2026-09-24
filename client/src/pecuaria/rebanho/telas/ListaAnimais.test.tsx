@@ -2,21 +2,25 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { ListaAnimais } from "./ListaAnimais";
-import { listarAnimais, obterCatalogos } from "../api";
+import { listarAnimais, listarCategorias, obterCatalogos } from "../api";
 import type { Catalogos } from "../types";
 
 vi.mock("../api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../api")>()),
   listarAnimais: vi.fn(),
+  listarCategorias: vi.fn(),
   obterCatalogos: vi.fn(),
 }));
 
 const vazio = { itens: [], total: 0, painel: { totalAtivos: 0, porCategoria: [], porSitio: [], femeasAtivas: 0, receptorasAtivas: 0 } };
 
+const categoriaVaca = { id: "cat-vaca", nome: "Vaca", sexo: "F" as const, automatica: true, ativo: true, ordem: 10, idadeMinMeses: null, idadeMaxMeses: null, partos: "COM" as const, ideagriId: 7, padrao: true, regra: "com parto", animaisAtivos: 0, manuaisAbertas: 0 };
+
 afterEach(() => { cleanup(); vi.useRealTimers(); });
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(listarAnimais).mockResolvedValue(vazio as never);
+  vi.mocked(listarCategorias).mockResolvedValue({ itens: [categoriaVaca], semCategoria: 0 });
   vi.mocked(obterCatalogos).mockResolvedValue({ racas: [], motivosSaida: [], propriedades: [], lotes: [] } as Catalogos);
 });
 
@@ -43,11 +47,11 @@ describe("ListaAnimais", () => {
     render(<ListaAnimais onAbrirAnimal={vi.fn()} onNovoAnimal={vi.fn()} />);
     await act(async () => { await vi.runOnlyPendingTimersAsync(); });
     const inicial = vi.mocked(listarAnimais).mock.calls.length;
-    fireEvent.change(screen.getByLabelText("Filtrar por categoria"), { target: { value: "VACA" } });
+    fireEvent.change(screen.getByLabelText("Filtrar por categoria"), { target: { value: "cat-vaca" } });
     await act(async () => { await vi.runOnlyPendingTimersAsync(); });
     const novas = vi.mocked(listarAnimais).mock.calls.slice(inicial);
     expect(novas).toHaveLength(1);
-    expect(novas[0][0]).toMatchObject({ categoria: "VACA", page: 1 });
+    expect(novas[0][0]).toMatchObject({ categoriaId: "cat-vaca", page: 1 });
   });
 
   it("sem permissão de lançar não oferece Novo animal", async () => {

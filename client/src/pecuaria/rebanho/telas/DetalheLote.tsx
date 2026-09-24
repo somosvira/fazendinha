@@ -12,10 +12,10 @@ import {
   buscarLote, desfazerMovimentacao, editarLote, listarAnimais, listarMovimentacoesDoLote, obterCatalogos, RebanhoApiError,
 } from "../api";
 import type { AnimalResumo, Catalogos, Lote, PainelServidor } from "../types";
-import { formatarDataBR, rotuloCategoria } from "../lib/rotulos";
+import { formatarDataBR } from "../lib/rotulos";
 import { navegarPara } from "../../../router";
 import { Button, type ColunaTabela, Empty, ErrorBox, PageHeader, PaginaFinanceira, Panel, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
-import { Paginacao } from "../ui";
+import { CategoriaPill, Paginacao } from "../ui";
 import { NavRebanho } from "./NavRebanho";
 import { mensagemDesativar } from "./ListaLotes";
 import { FormLote } from "../cadastros/FormLote";
@@ -27,7 +27,7 @@ import { DetalheMovimentacao } from "../components/DetalheMovimentacao";
 const ITENS_POR_PAGINA = 20;
 
 type Movimentando = {
-  ids: string[];
+  animais: AnimalResumo[];
   /** pré-seleciona o lote atual (movimentação individual/em massa saindo deste lote) */
   usarLoteAtual?: boolean;
   /** "Trazer animais": destino fixo neste lote, sem selects */
@@ -44,7 +44,7 @@ export function DetalheLote({ id, podeLancar = true, onVoltar }: { id: string; p
   const [totalAnimais, setTotalAnimais] = useState(0);
   const [painelLote, setPainelLote] = useState<PainelServidor | null>(null);
   const [paginaAnimais, setPaginaAnimais] = useState(1);
-  const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
+  const [selecionados, setSelecionados] = useState<Map<string, AnimalResumo>>(new Map());
 
   /* muda a cada recarregarTudo() para o HistoricoMovimentacoes voltar à página 1 e recarregar */
   const [historicoToken, setHistoricoToken] = useState(0);
@@ -77,7 +77,7 @@ export function DetalheLote({ id, podeLancar = true, onVoltar }: { id: string; p
 
   /** Depois de qualquer movimentação/desfazer: recarrega lote, animais, painel e histórico (voltando à página 1). */
   const recarregarTudo = useCallback(async () => {
-    setSelecionados(new Set());
+    setSelecionados(new Map());
     setPaginaAnimais(1);
     setHistoricoToken((t) => t + 1);
     await Promise.all([carregarLote(), carregarAnimais(1)]);
@@ -97,8 +97,14 @@ export function DetalheLote({ id, podeLancar = true, onVoltar }: { id: string; p
     );
   };
 
-  const alternarSelecao = (idAnimal: string) => setSelecionados((atual) => { const novo = new Set(atual); if (novo.has(idAnimal)) novo.delete(idAnimal); else novo.add(idAnimal); return novo; });
-  const alternarSelecaoTodos = () => setSelecionados((atual) => atual.size === animais.length ? new Set() : new Set(animais.map((a) => a.id)));
+  const alternarSelecao = (animal: AnimalResumo) => setSelecionados((atual) => { const novo = new Map(atual); if (novo.has(animal.id)) novo.delete(animal.id); else novo.set(animal.id, animal); return novo; });
+  const todosDaPaginaSelecionados = animais.length > 0 && animais.every((a) => selecionados.has(a.id));
+  const alternarSelecaoTodos = () => setSelecionados((atual) => {
+    const novo = new Map(atual);
+    if (todosDaPaginaSelecionados) animais.forEach((a) => novo.delete(a.id));
+    else animais.forEach((a) => novo.set(a.id, a));
+    return novo;
+  });
 
   const executarAcaoLote = async (acao: () => Promise<unknown>, aoTerminar: () => void) => {
     if (processandoLote) return;
@@ -113,12 +119,12 @@ export function DetalheLote({ id, podeLancar = true, onVoltar }: { id: string; p
   const totalPaginasAnimais = Math.max(1, Math.ceil(totalAnimais / ITENS_POR_PAGINA));
 
   const COLUNAS_ANIMAIS: ColunaTabela<AnimalResumo>[] = [
-    ...(podeLancar ? [{ chave: "selecionar", titulo: "", larguraMinima: 44, acoes: true, celula: (item: AnimalResumo) => <label className="flex items-center" onClick={(e: React.MouseEvent) => e.stopPropagation()}><input type="checkbox" aria-label={`Selecionar ${item.brinco}`} checked={selecionados.has(item.id)} onChange={() => alternarSelecao(item.id)} /></label> }] as ColunaTabela<AnimalResumo>[] : []),
+    ...(podeLancar ? [{ chave: "selecionar", titulo: "", larguraMinima: 44, acoes: true, celula: (item: AnimalResumo) => <label className="flex items-center" onClick={(e: React.MouseEvent) => e.stopPropagation()}><input type="checkbox" aria-label={`Selecionar ${item.brinco}`} checked={selecionados.has(item.id)} onChange={() => alternarSelecao(item)} /></label> }] as ColunaTabela<AnimalResumo>[] : []),
     { chave: "brinco", titulo: "Brinco", larguraMinima: 140, principal: true, celula: (item) => <><strong className="break-words">{item.brinco}</strong>{item.nome && <div className="mt-1 text-xs text-ink-3">{item.nome}</div>}</> },
-    { chave: "categoria", titulo: "Categoria", larguraMinima: 110, celula: (item) => <Pill>{rotuloCategoria(item.categoria)}</Pill> },
+    { chave: "categoria", titulo: "Categoria", larguraMinima: 110, celula: (item) => <CategoriaPill categoria={item.categoria} categoriaOrigem={item.categoriaOrigem} categoriaCalculada={item.categoriaCalculada} /> },
     { chave: "peso", titulo: "Último peso", larguraMinima: 130, celula: (item) => item.ultimoPeso ? <>{item.ultimoPeso.kg.toLocaleString("pt-BR")} kg<div className="text-xs text-ink-3">{formatarDataBR(item.ultimoPeso.data)}</div></> : "—" },
     ...(podeLancar ? [{ chave: "acoes", titulo: "Ações", alinhamento: "direita" as const, larguraMinima: 96, acoes: true, celula: (item: AnimalResumo) => <div className="flex justify-end" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-      <button type="button" className="rounded-lg p-2 text-ink-2 hover:bg-surface-2 hover:text-ink" aria-label={`Movimentar ${item.brinco}`} title="Movimentar" onClick={() => setMovimentando({ ids: [item.id], usarLoteAtual: true })}><ArrowRightLeft size={16} /></button>
+      <button type="button" className="rounded-lg p-2 text-ink-2 hover:bg-surface-2 hover:text-ink" aria-label={`Movimentar ${item.brinco}`} title="Movimentar" onClick={() => setMovimentando({ animais: [item], usarLoteAtual: true })}><ArrowRightLeft size={16} /></button>
     </div> }] as ColunaTabela<AnimalResumo>[] : []),
   ];
 
@@ -141,16 +147,16 @@ export function DetalheLote({ id, podeLancar = true, onVoltar }: { id: string; p
 
     {painelLote && <div className="mt-6 flex flex-wrap items-center gap-2 rounded-xl border border-border bg-white p-4 text-sm">
       <strong>{painelLote.totalAtivos} {painelLote.totalAtivos === 1 ? "animal ativo" : "animais ativos"}</strong>
-      {painelLote.porCategoria.map((c) => <Pill key={c.categoria}>{rotuloCategoria(c.categoria)}: {c.total}</Pill>)}
+      {painelLote.porCategoria.map((c) => <Pill key={c.categoria?.id ?? "sem-categoria"}>{c.categoria?.nome ?? "Sem categoria"}: {c.total}</Pill>)}
     </div>}
 
     <Panel className="mt-6 overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-5"><h2 className="font-serif text-xl">Animais no lote</h2></div>
       {podeLancar && animais.length > 0 && <div className="flex flex-wrap items-center gap-3 border-b border-border bg-surface-2 px-4 py-2.5 text-sm">
-        <label className="flex items-center gap-2 font-medium"><input type="checkbox" aria-label="Selecionar todos os animais desta página" checked={selecionados.size > 0 && selecionados.size === animais.length} onChange={alternarSelecaoTodos} /> Selecionar todos</label>
+        <label className="flex items-center gap-2 font-medium"><input type="checkbox" aria-label="Selecionar todos os animais desta página" checked={todosDaPaginaSelecionados} onChange={alternarSelecaoTodos} /> Selecionar todos</label>
         {selecionados.size > 0 && <><span className="text-ink-3">{selecionados.size} selecionado{selecionados.size === 1 ? "" : "s"}</span>
-          <Button secondary onClick={() => setSelecionados(new Set())}>Limpar seleção</Button>
-          <Button onClick={() => setMovimentando({ ids: [...selecionados] })}>Movimentar selecionados ({selecionados.size})</Button>
+          <Button secondary onClick={() => setSelecionados(new Map())}>Limpar seleção</Button>
+          <Button onClick={() => setMovimentando({ animais: [...selecionados.values()] })}>Movimentar selecionados ({selecionados.size})</Button>
         </>}
       </div>}
       {animais.length ? <>
@@ -178,12 +184,12 @@ export function DetalheLote({ id, podeLancar = true, onVoltar }: { id: string; p
       onCancelar={() => setTrazendo(false)}
       onConfirmar={(animaisSelecionados) => {
         setTrazendo(false);
-        setMovimentando({ ids: animaisSelecionados.map((a) => a.id), destinoFixo: { propriedadeId: lote.propriedadeId, loteId: lote.id, rotulo: `${lote.nome} · ${lote.propriedade.nome}` } });
+        setMovimentando({ animais: animaisSelecionados, destinoFixo: { propriedadeId: lote.propriedadeId, loteId: lote.id, rotulo: `${lote.nome} · ${lote.propriedade.nome}` } });
       }}
     />}
 
     {movimentando && catalogos && <FormMovimentar
-      animalIds={movimentando.ids}
+      animais={movimentando.animais}
       propriedades={catalogos.propriedades}
       lotes={catalogos.lotes}
       destinoFixo={movimentando.destinoFixo}

@@ -135,7 +135,7 @@ describe("Lotes do rebanho", () => {
   it("'Movimentar animais' abre o seletor e depois o formulário com destino livre", async () => {
     vi.mocked(listarAnimais).mockResolvedValue({
       itens: [{
-        id: "a1", brinco: "0001", nome: null, sexo: "F", categoria: "VACA", idadeMeses: 30,
+        id: "a1", brinco: "0001", nome: null, sexo: "F", categoria: { id: "cat-vaca", nome: "Vaca" }, categoriaOrigem: "AUTOMATICA" as const, categoriaCalculada: { id: "cat-vaca", nome: "Vaca" }, idadeMeses: 30,
         dataNascimento: "2023-01-01", dataEntrada: "2023-01-01", origem: "NASCIDO",
         propriedade: { id: 1, nome: "Sede" }, lote: null, aptidao: "LEITE", papelReprodutivo: "NENHUM",
         composicaoRotulo: "", ultimoPeso: null, situacao: "ATIVO",
@@ -156,13 +156,15 @@ describe("Lotes do rebanho", () => {
     fireEvent.change(screen.getByLabelText("Sítio de destino"), { target: { value: "1" } });
     fireEvent.click(screen.getByRole("button", { name: "Movimentar" }));
     await waitFor(() => expect(movimentarAnimais).toHaveBeenCalledWith({ animalIds: ["a1"], propriedadeId: 1, loteId: null, data: expect.any(String), motivo: null }));
+    // move e desfazer recarregam as duas seções (lotes + histórico)
+    await waitFor(() => expect(listarLotes).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(listarMovimentacoes).toHaveBeenCalledTimes(2));
   });
 });
 
-describe("Lotes — aba Histórico", () => {
-  it("busca o histórico geral ao abrir a aba e refaz a chamada com os filtros escolhidos", async () => {
+describe("Lotes — histórico de movimentações (sempre visível)", () => {
+  it("busca o histórico geral ao montar e refaz a chamada com os filtros escolhidos", async () => {
     await montar();
-    fireEvent.click(screen.getByRole("button", { name: "Histórico" }));
 
     await waitFor(() => expect(listarMovimentacoes).toHaveBeenCalledWith({
       loteId: undefined, propriedadeId: undefined, dataDe: undefined, dataAte: undefined, incluirDesfeitas: true, page: 1, pageSize: 20,
@@ -181,7 +183,6 @@ describe("Lotes — aba Histórico", () => {
 
   it("trocar o sítio do filtro limpa o lote selecionado", async () => {
     await montar();
-    fireEvent.click(screen.getByRole("button", { name: "Histórico" }));
     await screen.findByLabelText("Filtrar histórico por lote");
 
     fireEvent.change(screen.getByLabelText("Filtrar histórico por sítio"), { target: { value: "1" } });
@@ -190,5 +191,12 @@ describe("Lotes — aba Histórico", () => {
 
     fireEvent.change(screen.getByLabelText("Filtrar histórico por sítio"), { target: { value: "" } });
     await waitFor(() => expect(listarMovimentacoes).toHaveBeenLastCalledWith(expect.objectContaining({ loteId: undefined, propriedadeId: undefined })));
+  });
+
+  it("lotes e histórico ficam visíveis ao mesmo tempo, sem sub-abas", async () => {
+    await montar();
+    expect(screen.getByRole("heading", { name: "Lotes", level: 2 })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Histórico de movimentações" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Histórico" })).toBeNull();
   });
 });

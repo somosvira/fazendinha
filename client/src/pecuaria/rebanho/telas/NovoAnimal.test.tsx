@@ -2,13 +2,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { NovoAnimal } from "./NovoAnimal";
-import { cadastrarAnimal, obterCatalogos } from "../api";
+import { cadastrarAnimal, listarCategorias, obterCatalogos } from "../api";
 import type { Catalogos } from "../types";
 import { navegarPara } from "../../../router";
 
 vi.mock("../api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../api")>()),
   obterCatalogos: vi.fn(),
+  listarCategorias: vi.fn(),
   cadastrarAnimal: vi.fn(),
 }));
 vi.mock("../../../router", async (importOriginal) => ({
@@ -31,6 +32,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   Element.prototype.scrollIntoView = vi.fn();
   vi.mocked(obterCatalogos).mockResolvedValue(catalogos);
+  vi.mocked(listarCategorias).mockResolvedValue({ itens: [], semCategoria: 0 });
 });
 afterEach(cleanup);
 
@@ -62,11 +64,11 @@ describe("NovoAnimal", () => {
 
   it("filtra o lote pelo sítio selecionado e envia o cadastro completo", async () => {
     vi.mocked(cadastrarAnimal).mockResolvedValue({
-      id: "animal-1", brinco: "1234", nome: null, sexo: "F", categoria: "BEZERRA", idadeMeses: 0,
+      id: "animal-1", brinco: "1234", nome: null, sexo: "F", categoria: { id: "cat-crescimento", nome: "Em crescimento" }, categoriaOrigem: "AUTOMATICA", categoriaCalculada: { id: "cat-crescimento", nome: "Em crescimento" }, idadeMeses: 0,
       dataNascimento: "2026-01-01", dataEntrada: "2026-01-01", origem: "NASCIDO", propriedade: { id: 1, nome: "Sede" },
       lote: null, aptidao: "LEITE", papelReprodutivo: "NENHUM", composicaoRotulo: "", ultimoPeso: null, situacao: "ATIVO",
       brincoEletronico: null, sisbov: null, nascimentoEstimado: false, partosAntesDaEntrada: 0, observacao: null,
-      composicao: [], historicoLocalizacoes: [], historicoDestinos: [], historicoPesagens: [], saida: null,
+      composicao: [], historicoLocalizacoes: [], historicoDestinos: [], historicoPesagens: [], historicoCategoriasManuais: [], saida: null,
     });
     await montar();
     fireEvent.change(screen.getByLabelText("Brinco"), { target: { value: "1234" } });
