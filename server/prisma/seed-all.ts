@@ -15,6 +15,7 @@ const passos = [
   ["Plantios reais", "prisma/seed-plantios-reais.ts"],
   ["Equipe e ponto", "prisma/seed-ponto.ts"],
   ["Usuários", "prisma/seed-usuarios.ts"],
+  ["Propriedade dos registros", "src/scripts/backfill-propriedade.ts"],
 ] as const;
 
 console.log(`\n=== seed:all — ${passos.length} etapas ===`);
