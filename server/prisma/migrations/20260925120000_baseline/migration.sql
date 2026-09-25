@@ -2,10 +2,16 @@
 CREATE SCHEMA IF NOT EXISTS "public";
 
 -- CreateEnum
-CREATE TYPE "TipoContaFinanceira" AS ENUM ('BANCO', 'CAIXA', 'APLICACAO', 'DINHEIRO');
+CREATE TYPE "TipoContaFinanceira" AS ENUM ('BANCO', 'CAIXA', 'APLICACAO');
 
 -- CreateEnum
 CREATE TYPE "TipoParceiro" AS ENUM ('CLIENTE', 'FORNECEDOR', 'AMBOS', 'FUNCIONARIO', 'PROPRIETARIO', 'OUTRO');
+
+-- CreateEnum
+CREATE TYPE "PapelParceiro" AS ENUM ('CLIENTE', 'FORNECEDOR', 'PRESTADOR_SERVICO', 'FUNCIONARIO', 'PROPRIETARIO', 'OUTRO');
+
+-- CreateEnum
+CREATE TYPE "TipoBancario" AS ENUM ('CORRENTE', 'POUPANCA', 'PAGAMENTO');
 
 -- CreateEnum
 CREATE TYPE "TipoOperacaoFinanceira" AS ENUM ('COMPRA_ESTOQUE', 'COMPRA_CONSUMO_DIRETO', 'SERVICO', 'VENDA', 'APORTE', 'RETIRADA', 'TRANSFERENCIA_FINANCEIRA', 'AJUSTE_ESTOQUE', 'TRANSFERENCIA_ESTOQUE', 'INVENTARIO_INICIAL', 'BONIFICACAO', 'DEVOLUCAO', 'PRODUCAO');
@@ -41,13 +47,7 @@ CREATE TYPE "StatusPeriodoFinanceiro" AS ENUM ('ABERTO', 'FECHADO');
 CREATE TYPE "ClassificacaoCategoria" AS ENUM ('CUSTEIO', 'INVESTIMENTO');
 
 -- CreateEnum
-CREATE TYPE "TipoProduto" AS ENUM ('MEDICAMENTO', 'RACAO', 'INSUMO', 'MINERAL', 'OUTRO');
-
--- CreateEnum
-CREATE TYPE "SetorEstoque" AS ENUM ('LEITE', 'CAFE', 'CORTE', 'MILHO', 'GERAL');
-
--- CreateEnum
-CREATE TYPE "TipoInsumoPlantio" AS ENUM ('FERTILIZANTE', 'DEFENSIVO', 'HERBICIDA', 'CORRETIVO', 'BIOLOGICO', 'FOLIAR', 'MUDA', 'OUTRO');
+CREATE TYPE "StatusRelatorioFinanceiro" AS ENUM ('PROCESSANDO', 'CONCLUIDO', 'FALHOU');
 
 -- CreateEnum
 CREATE TYPE "ModoProducao" AS ENUM ('ORDENHA', 'TOTAL_DIARIO', 'TANQUE_LOTE');
@@ -104,7 +104,7 @@ CREATE TYPE "StatusExecucaoEtapaIATF" AS ENUM ('PENDENTE', 'CONCLUIDA', 'PULADA'
 CREATE TYPE "TipoMovimento" AS ENUM ('ENTRADA', 'SAIDA', 'AJUSTE');
 
 -- CreateEnum
-CREATE TYPE "OrigemMovimentoEstoque" AS ENUM ('COMPRA', 'CONSUMO_DIRETO', 'TRANSFERENCIA', 'PRODUCAO', 'DEVOLUCAO', 'BONIFICACAO', 'INVENTARIO_INICIAL', 'NUTRICAO', 'SANIDADE', 'PERDA', 'AJUSTE_INVENTARIO');
+CREATE TYPE "OrigemMovimentoEstoque" AS ENUM ('COMPRA', 'CONSUMO_DIRETO', 'TRANSFERENCIA', 'PRODUCAO', 'DEVOLUCAO', 'BONIFICACAO', 'INVENTARIO_INICIAL', 'NUTRICAO', 'SANIDADE', 'APLICACAO', 'PERDA', 'AJUSTE_INVENTARIO');
 
 -- CreateEnum
 CREATE TYPE "StatusMovimentoEstoque" AS ENUM ('CONFIRMADO', 'REVERTIDO');
@@ -182,6 +182,9 @@ CREATE TYPE "UnidadeProducao" AS ENUM ('SC', 'TON');
 CREATE TYPE "DestinoProducao" AS ENUM ('VENDA', 'SILO');
 
 -- CreateEnum
+CREATE TYPE "UnidadeMedida" AS ENUM ('UN', 'KG', 'G', 'T', 'L', 'ML', 'SC', 'DOSE', 'CX', 'M', 'HA');
+
+-- CreateEnum
 CREATE TYPE "TipoSilo" AS ENUM ('GRAO', 'SILAGEM');
 
 -- CreateEnum
@@ -200,27 +203,22 @@ CREATE TYPE "TipoToken" AS ENUM ('CONVITE', 'RESET');
 CREATE TABLE "CentroCusto" (
     "id" SERIAL NOT NULL,
     "nome" TEXT NOT NULL,
-    "ehInvestimento" BOOLEAN NOT NULL DEFAULT false,
+    "ativo" BOOLEAN NOT NULL DEFAULT true,
     "ordem" INTEGER NOT NULL DEFAULT 0,
 
     CONSTRAINT "CentroCusto_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "GrupoCategoria" (
-    "id" SERIAL NOT NULL,
-    "nome" TEXT NOT NULL,
-    "ordem" INTEGER NOT NULL DEFAULT 0,
-
-    CONSTRAINT "GrupoCategoria_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
 CREATE TABLE "Categoria" (
     "id" SERIAL NOT NULL,
     "nome" TEXT NOT NULL,
-    "grupoCategoriaId" INTEGER NOT NULL,
     "classificacao" "ClassificacaoCategoria",
+    "ativo" BOOLEAN NOT NULL DEFAULT true,
+    "ordem" INTEGER NOT NULL DEFAULT 0,
+    "usoSanitario" BOOLEAN NOT NULL DEFAULT false,
+    "usoNutricional" BOOLEAN NOT NULL DEFAULT false,
+    "usoAgricola" BOOLEAN NOT NULL DEFAULT false,
 
     CONSTRAINT "Categoria_pkey" PRIMARY KEY ("id")
 );
@@ -232,6 +230,15 @@ CREATE TABLE "ContaFinanceira" (
     "tipo" "TipoContaFinanceira" NOT NULL,
     "instituicao" TEXT,
     "identificacao" TEXT,
+    "tipoBancario" "TipoBancario",
+    "agencia" TEXT,
+    "numeroConta" TEXT,
+    "digito" TEXT,
+    "titular" TEXT,
+    "local" TEXT,
+    "responsavel" TEXT,
+    "observacoes" TEXT,
+    "ordem" INTEGER NOT NULL DEFAULT 0,
     "saldoAbertura" DECIMAL(14,2) NOT NULL DEFAULT 0,
     "dataSaldoAbertura" DATE NOT NULL,
     "incluirNoSaldoGeral" BOOLEAN NOT NULL DEFAULT true,
@@ -247,60 +254,14 @@ CREATE TABLE "ContaFinanceira" (
 CREATE TABLE "Produto" (
     "id" SERIAL NOT NULL,
     "nome" TEXT NOT NULL,
-    "tipo" "TipoProduto" NOT NULL DEFAULT 'INSUMO',
-    "subtipoPlantio" "TipoInsumoPlantio",
-    "unidade" TEXT NOT NULL DEFAULT 'un',
-    "custoUnitario" DECIMAL(12,2),
-    "carencia" INTEGER,
-    "percentualMS" DECIMAL(5,2),
-    "estocavel" BOOLEAN NOT NULL DEFAULT true,
+    "unidade" "UnidadeMedida" NOT NULL DEFAULT 'UN',
     "minimoEstoque" DECIMAL(12,2),
     "ativo" BOOLEAN NOT NULL DEFAULT true,
-    "setor" "SetorEstoque",
     "categoriaId" INTEGER,
-    "centroCustoId" INTEGER,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "Produto_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "ComposicaoProdutoItem" (
-    "id" SERIAL NOT NULL,
-    "produtoId" INTEGER NOT NULL,
-    "ingredienteId" INTEGER NOT NULL,
-    "proporcao" DECIMAL(6,3) NOT NULL,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT "ComposicaoProdutoItem_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "LocalArmazenamento" (
-    "id" SERIAL NOT NULL,
-    "nome" TEXT NOT NULL,
-    "ativo" BOOLEAN NOT NULL DEFAULT true,
-    "propriedadeId" INTEGER,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-
-    CONSTRAINT "LocalArmazenamento_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "LoteProduto" (
-    "id" SERIAL NOT NULL,
-    "produtoId" INTEGER NOT NULL,
-    "codigo" TEXT NOT NULL,
-    "validade" DATE,
-    "localId" INTEGER,
-    "quantidade" DECIMAL(12,2),
-    "propriedadeId" INTEGER,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-
-    CONSTRAINT "LoteProduto_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -317,31 +278,6 @@ CREATE TABLE "RegistroChuva" (
 );
 
 -- CreateTable
-CREATE TABLE "PrincipioAtivo" (
-    "id" SERIAL NOT NULL,
-    "nome" TEXT NOT NULL,
-    "ehAntibiotico" BOOLEAN NOT NULL DEFAULT false,
-    "carenciaLeiteHoras" INTEGER,
-    "carenciaCarneDias" INTEGER,
-    "ativo" BOOLEAN NOT NULL DEFAULT true,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-
-    CONSTRAINT "PrincipioAtivo_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "ProdutoPrincipioAtivo" (
-    "id" SERIAL NOT NULL,
-    "produtoId" INTEGER NOT NULL,
-    "principioAtivoId" INTEGER NOT NULL,
-    "concentracao" TEXT,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT "ProdutoPrincipioAtivo_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
 CREATE TABLE "Parceiro" (
     "id" SERIAL NOT NULL,
     "nome" TEXT NOT NULL,
@@ -349,11 +285,52 @@ CREATE TABLE "Parceiro" (
     "tipo" "TipoParceiro" NOT NULL DEFAULT 'FORNECEDOR',
     "telefone" TEXT,
     "email" TEXT,
+    "nomeFantasia" TEXT,
+    "pessoaContato" TEXT,
+    "telefoneWhatsapp" BOOLEAN NOT NULL DEFAULT false,
+    "cep" TEXT,
+    "logradouro" TEXT,
+    "numero" TEXT,
+    "complemento" TEXT,
+    "bairro" TEXT,
+    "cidade" TEXT,
+    "uf" TEXT,
+    "referencia" TEXT,
+    "observacoes" TEXT,
+    "formaPagamentoPreferida" "FormaPagamento",
+    "condicaoPagamentoPreferida" TEXT,
+    "prazosPagamento" INTEGER[] DEFAULT ARRAY[]::INTEGER[],
     "ativo" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "Parceiro_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ProdutoFornecedor" (
+    "produtoId" INTEGER NOT NULL,
+    "fornecedorId" INTEGER NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "ProdutoFornecedor_pkey" PRIMARY KEY ("produtoId","fornecedorId")
+);
+
+-- CreateTable
+CREATE TABLE "ProdutoCentroCusto" (
+    "produtoId" INTEGER NOT NULL,
+    "centroCustoId" INTEGER NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "ProdutoCentroCusto_pkey" PRIMARY KEY ("produtoId","centroCustoId")
+);
+
+-- CreateTable
+CREATE TABLE "ParceiroPapel" (
+    "parceiroId" INTEGER NOT NULL,
+    "papel" "PapelParceiro" NOT NULL,
+
+    CONSTRAINT "ParceiroPapel_pkey" PRIMARY KEY ("parceiroId","papel")
 );
 
 -- CreateTable
@@ -374,6 +351,8 @@ CREATE TABLE "PeriodoFinanceiro" (
 
 -- CreateTable
 CREATE TABLE "Operacao" (
+    "categoriaNome" TEXT,
+    "classificacao" "ClassificacaoCategoria",
     "id" SERIAL NOT NULL,
     "tipo" "TipoOperacaoFinanceira" NOT NULL,
     "status" "StatusOperacao" NOT NULL DEFAULT 'RASCUNHO',
@@ -406,7 +385,43 @@ CREATE TABLE "RascunhoOperacao" (
 );
 
 -- CreateTable
+CREATE TABLE "RascunhoRelatorioFinanceiro" (
+    "id" SERIAL NOT NULL,
+    "propriedadeId" INTEGER NOT NULL,
+    "criadoPorId" INTEGER NOT NULL,
+    "configuracao" JSONB NOT NULL,
+    "versao" INTEGER NOT NULL DEFAULT 1,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "RascunhoRelatorioFinanceiro_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "RelatorioFinanceiro" (
+    "id" SERIAL NOT NULL,
+    "nome" TEXT NOT NULL,
+    "status" "StatusRelatorioFinanceiro" NOT NULL DEFAULT 'PROCESSANDO',
+    "parametros" JSONB NOT NULL,
+    "snapshot" JSONB,
+    "storageKey" TEXT,
+    "erro" TEXT,
+    "propriedadeId" INTEGER NOT NULL,
+    "autorId" INTEGER,
+    "autorNome" TEXT NOT NULL,
+    "geradoEm" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "concluidoEm" TIMESTAMP(3),
+
+    CONSTRAINT "RelatorioFinanceiro_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "ItemOperacao" (
+    "categoriaId" INTEGER,
+    "categoriaNome" TEXT,
+    "classificacao" "ClassificacaoCategoria",
+    "centroCustoId" INTEGER,
+    "centroCustoNome" TEXT,
     "id" SERIAL NOT NULL,
     "operacaoId" INTEGER NOT NULL,
     "produtoId" INTEGER,
@@ -962,6 +977,7 @@ CREATE TABLE "AplicacaoPoolDoadora" (
 CREATE TABLE "Grupo" (
     "id" SERIAL NOT NULL,
     "nome" TEXT NOT NULL,
+    "centroCustoId" INTEGER,
     "dietaId" INTEGER,
     "propriedadeId" INTEGER,
 
@@ -1004,7 +1020,7 @@ CREATE TABLE "DietaItem" (
     "dietaId" INTEGER NOT NULL,
     "produtoId" INTEGER NOT NULL,
     "qtdPorCabecaDia" DECIMAL(12,4) NOT NULL,
-    "unidade" TEXT NOT NULL,
+    "unidade" "UnidadeMedida" NOT NULL,
     "ordem" INTEGER NOT NULL DEFAULT 0,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -1282,7 +1298,7 @@ CREATE TABLE "EventoSanitario" (
     "severidade" TEXT,
     "resultadoCultivo" TEXT,
     "produtoId" INTEGER,
-    "quantidadeUsada" DECIMAL(12,2),
+    "quantidadeUsada" DECIMAL(12,3),
     "movimentoEstoqueId" INTEGER,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -1448,14 +1464,15 @@ CREATE TABLE "MovimentoEstoque" (
     "origem" "OrigemMovimentoEstoque" NOT NULL,
     "status" "StatusMovimentoEstoque" NOT NULL DEFAULT 'CONFIRMADO',
     "data" DATE NOT NULL,
-    "quantidade" DECIMAL(12,2) NOT NULL,
-    "custoUnitario" DECIMAL(12,2) NOT NULL,
+    "quantidade" DECIMAL(12,3) NOT NULL,
+    "custoUnitario" DECIMAL(14,4) NOT NULL,
     "valorTotal" DECIMAL(14,2) NOT NULL,
     "grupoId" INTEGER,
     "operacaoId" INTEGER,
     "itemOperacaoId" INTEGER,
     "propriedadeId" INTEGER,
     "criadoPorId" INTEGER,
+    "centroCustoId" INTEGER,
     "reversaoDeId" INTEGER,
     "consumoPeriodoId" INTEGER,
     "observacao" TEXT,
@@ -1609,6 +1626,9 @@ CREATE TABLE "OperacaoAgricola" (
     "responsavel" TEXT,
     "observacao" TEXT,
     "produto" TEXT,
+    "produtoId" INTEGER,
+    "quantidadeTotal" DECIMAL(12,3),
+    "movimentoEstoqueId" INTEGER,
     "doseValor" DECIMAL(10,3),
     "doseUnidade" TEXT,
     "volumeCaldaLha" DECIMAL(7,2),
@@ -2160,10 +2180,7 @@ CREATE TABLE "TokenAcesso" (
 CREATE UNIQUE INDEX "CentroCusto_nome_key" ON "CentroCusto"("nome");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "GrupoCategoria_nome_key" ON "GrupoCategoria"("nome");
-
--- CreateIndex
-CREATE UNIQUE INDEX "Categoria_grupoCategoriaId_nome_key" ON "Categoria"("grupoCategoriaId", "nome");
+CREATE UNIQUE INDEX "Categoria_nome_key" ON "Categoria"("nome");
 
 -- CreateIndex
 CREATE INDEX "ContaFinanceira_propriedadeId_ativo_idx" ON "ContaFinanceira"("propriedadeId", "ativo");
@@ -2175,52 +2192,10 @@ CREATE UNIQUE INDEX "ContaFinanceira_propriedadeId_nome_key" ON "ContaFinanceira
 CREATE UNIQUE INDEX "Produto_nome_key" ON "Produto"("nome");
 
 -- CreateIndex
-CREATE INDEX "Produto_tipo_idx" ON "Produto"("tipo");
-
--- CreateIndex
-CREATE INDEX "ComposicaoProdutoItem_produtoId_idx" ON "ComposicaoProdutoItem"("produtoId");
-
--- CreateIndex
-CREATE INDEX "ComposicaoProdutoItem_ingredienteId_idx" ON "ComposicaoProdutoItem"("ingredienteId");
-
--- CreateIndex
-CREATE UNIQUE INDEX "ComposicaoProdutoItem_produtoId_ingredienteId_key" ON "ComposicaoProdutoItem"("produtoId", "ingredienteId");
-
--- CreateIndex
-CREATE INDEX "LocalArmazenamento_propriedadeId_idx" ON "LocalArmazenamento"("propriedadeId");
-
--- CreateIndex
-CREATE INDEX "LoteProduto_produtoId_idx" ON "LoteProduto"("produtoId");
-
--- CreateIndex
-CREATE INDEX "LoteProduto_validade_idx" ON "LoteProduto"("validade");
-
--- CreateIndex
-CREATE INDEX "LoteProduto_localId_idx" ON "LoteProduto"("localId");
-
--- CreateIndex
-CREATE INDEX "LoteProduto_propriedadeId_idx" ON "LoteProduto"("propriedadeId");
-
--- CreateIndex
 CREATE INDEX "RegistroChuva_data_idx" ON "RegistroChuva"("data");
 
 -- CreateIndex
 CREATE INDEX "RegistroChuva_propriedadeId_idx" ON "RegistroChuva"("propriedadeId");
-
--- CreateIndex
-CREATE UNIQUE INDEX "PrincipioAtivo_nome_key" ON "PrincipioAtivo"("nome");
-
--- CreateIndex
-CREATE INDEX "PrincipioAtivo_ehAntibiotico_idx" ON "PrincipioAtivo"("ehAntibiotico");
-
--- CreateIndex
-CREATE INDEX "ProdutoPrincipioAtivo_produtoId_idx" ON "ProdutoPrincipioAtivo"("produtoId");
-
--- CreateIndex
-CREATE INDEX "ProdutoPrincipioAtivo_principioAtivoId_idx" ON "ProdutoPrincipioAtivo"("principioAtivoId");
-
--- CreateIndex
-CREATE UNIQUE INDEX "ProdutoPrincipioAtivo_produtoId_principioAtivoId_key" ON "ProdutoPrincipioAtivo"("produtoId", "principioAtivoId");
 
 -- CreateIndex
 CREATE INDEX "Parceiro_nome_idx" ON "Parceiro"("nome");
@@ -2230,6 +2205,12 @@ CREATE INDEX "Parceiro_tipo_ativo_idx" ON "Parceiro"("tipo", "ativo");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Parceiro_documento_key" ON "Parceiro"("documento");
+
+-- CreateIndex
+CREATE INDEX "ProdutoFornecedor_fornecedorId_idx" ON "ProdutoFornecedor"("fornecedorId");
+
+-- CreateIndex
+CREATE INDEX "ProdutoCentroCusto_centroCustoId_idx" ON "ProdutoCentroCusto"("centroCustoId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "PeriodoFinanceiro_propriedadeId_ano_mes_key" ON "PeriodoFinanceiro"("propriedadeId", "ano", "mes");
@@ -2253,10 +2234,22 @@ CREATE INDEX "RascunhoOperacao_criadoPorId_updatedAt_idx" ON "RascunhoOperacao"(
 CREATE UNIQUE INDEX "RascunhoOperacao_propriedadeId_criadoPorId_key" ON "RascunhoOperacao"("propriedadeId", "criadoPorId");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "RascunhoRelatorioFinanceiro_propriedadeId_criadoPorId_key" ON "RascunhoRelatorioFinanceiro"("propriedadeId", "criadoPorId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "RelatorioFinanceiro_storageKey_key" ON "RelatorioFinanceiro"("storageKey");
+
+-- CreateIndex
+CREATE INDEX "RelatorioFinanceiro_propriedadeId_geradoEm_idx" ON "RelatorioFinanceiro"("propriedadeId", "geradoEm");
+
+-- CreateIndex
 CREATE INDEX "ItemOperacao_operacaoId_idx" ON "ItemOperacao"("operacaoId");
 
 -- CreateIndex
 CREATE INDEX "ItemOperacao_produtoId_idx" ON "ItemOperacao"("produtoId");
+
+-- CreateIndex
+CREATE INDEX "ItemOperacao_centroCustoId_idx" ON "ItemOperacao"("centroCustoId");
 
 -- CreateIndex
 CREATE INDEX "CompromissoFinanceiro_tipo_status_dataVencimento_idx" ON "CompromissoFinanceiro"("tipo", "status", "dataVencimento");
@@ -2763,6 +2756,9 @@ CREATE INDEX "MovimentoEstoque_consumoPeriodoId_idx" ON "MovimentoEstoque"("cons
 CREATE INDEX "MovimentoEstoque_propriedadeId_idx" ON "MovimentoEstoque"("propriedadeId");
 
 -- CreateIndex
+CREATE INDEX "MovimentoEstoque_centroCustoId_idx" ON "MovimentoEstoque"("centroCustoId");
+
+-- CreateIndex
 CREATE INDEX "ConsumoPeriodo_grupoId_idx" ON "ConsumoPeriodo"("grupoId");
 
 -- CreateIndex
@@ -2799,6 +2795,9 @@ CREATE INDEX "SafraTalhao_ano_idx" ON "SafraTalhao"("ano");
 CREATE UNIQUE INDEX "SafraTalhao_talhaoId_ano_key" ON "SafraTalhao"("talhaoId", "ano");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "OperacaoAgricola_movimentoEstoqueId_key" ON "OperacaoAgricola"("movimentoEstoqueId");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "OperacaoAgricola_operacaoFinanceiraId_key" ON "OperacaoAgricola"("operacaoFinanceiraId");
 
 -- CreateIndex
@@ -2806,6 +2805,9 @@ CREATE INDEX "OperacaoAgricola_talhaoId_data_idx" ON "OperacaoAgricola"("talhaoI
 
 -- CreateIndex
 CREATE INDEX "OperacaoAgricola_dominio_data_idx" ON "OperacaoAgricola"("dominio", "data");
+
+-- CreateIndex
+CREATE INDEX "OperacaoAgricola_produtoId_idx" ON "OperacaoAgricola"("produtoId");
 
 -- CreateIndex
 CREATE INDEX "InspecaoMIP_talhaoId_data_idx" ON "InspecaoMIP"("talhaoId", "data");
@@ -2949,43 +2951,28 @@ CREATE UNIQUE INDEX "TokenAcesso_tokenHash_key" ON "TokenAcesso"("tokenHash");
 CREATE INDEX "TokenAcesso_usuarioId_idx" ON "TokenAcesso"("usuarioId");
 
 -- AddForeignKey
-ALTER TABLE "Categoria" ADD CONSTRAINT "Categoria_grupoCategoriaId_fkey" FOREIGN KEY ("grupoCategoriaId") REFERENCES "GrupoCategoria"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "ContaFinanceira" ADD CONSTRAINT "ContaFinanceira_propriedadeId_fkey" FOREIGN KEY ("propriedadeId") REFERENCES "Propriedade"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Produto" ADD CONSTRAINT "Produto_categoriaId_fkey" FOREIGN KEY ("categoriaId") REFERENCES "Categoria"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Produto" ADD CONSTRAINT "Produto_centroCustoId_fkey" FOREIGN KEY ("centroCustoId") REFERENCES "CentroCusto"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "ComposicaoProdutoItem" ADD CONSTRAINT "ComposicaoProdutoItem_produtoId_fkey" FOREIGN KEY ("produtoId") REFERENCES "Produto"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "ComposicaoProdutoItem" ADD CONSTRAINT "ComposicaoProdutoItem_ingredienteId_fkey" FOREIGN KEY ("ingredienteId") REFERENCES "Produto"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "LocalArmazenamento" ADD CONSTRAINT "LocalArmazenamento_propriedadeId_fkey" FOREIGN KEY ("propriedadeId") REFERENCES "Propriedade"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "LoteProduto" ADD CONSTRAINT "LoteProduto_produtoId_fkey" FOREIGN KEY ("produtoId") REFERENCES "Produto"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "LoteProduto" ADD CONSTRAINT "LoteProduto_localId_fkey" FOREIGN KEY ("localId") REFERENCES "LocalArmazenamento"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "LoteProduto" ADD CONSTRAINT "LoteProduto_propriedadeId_fkey" FOREIGN KEY ("propriedadeId") REFERENCES "Propriedade"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "RegistroChuva" ADD CONSTRAINT "RegistroChuva_propriedadeId_fkey" FOREIGN KEY ("propriedadeId") REFERENCES "Propriedade"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "ProdutoPrincipioAtivo" ADD CONSTRAINT "ProdutoPrincipioAtivo_produtoId_fkey" FOREIGN KEY ("produtoId") REFERENCES "Produto"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "ProdutoFornecedor" ADD CONSTRAINT "ProdutoFornecedor_produtoId_fkey" FOREIGN KEY ("produtoId") REFERENCES "Produto"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "ProdutoPrincipioAtivo" ADD CONSTRAINT "ProdutoPrincipioAtivo_principioAtivoId_fkey" FOREIGN KEY ("principioAtivoId") REFERENCES "PrincipioAtivo"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "ProdutoFornecedor" ADD CONSTRAINT "ProdutoFornecedor_fornecedorId_fkey" FOREIGN KEY ("fornecedorId") REFERENCES "Parceiro"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ProdutoCentroCusto" ADD CONSTRAINT "ProdutoCentroCusto_produtoId_fkey" FOREIGN KEY ("produtoId") REFERENCES "Produto"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ProdutoCentroCusto" ADD CONSTRAINT "ProdutoCentroCusto_centroCustoId_fkey" FOREIGN KEY ("centroCustoId") REFERENCES "CentroCusto"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ParceiroPapel" ADD CONSTRAINT "ParceiroPapel_parceiroId_fkey" FOREIGN KEY ("parceiroId") REFERENCES "Parceiro"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "PeriodoFinanceiro" ADD CONSTRAINT "PeriodoFinanceiro_propriedadeId_fkey" FOREIGN KEY ("propriedadeId") REFERENCES "Propriedade"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -3016,6 +3003,24 @@ ALTER TABLE "RascunhoOperacao" ADD CONSTRAINT "RascunhoOperacao_propriedadeId_fk
 
 -- AddForeignKey
 ALTER TABLE "RascunhoOperacao" ADD CONSTRAINT "RascunhoOperacao_criadoPorId_fkey" FOREIGN KEY ("criadoPorId") REFERENCES "Usuario"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "RascunhoRelatorioFinanceiro" ADD CONSTRAINT "RascunhoRelatorioFinanceiro_propriedadeId_fkey" FOREIGN KEY ("propriedadeId") REFERENCES "Propriedade"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "RascunhoRelatorioFinanceiro" ADD CONSTRAINT "RascunhoRelatorioFinanceiro_criadoPorId_fkey" FOREIGN KEY ("criadoPorId") REFERENCES "Usuario"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "RelatorioFinanceiro" ADD CONSTRAINT "RelatorioFinanceiro_propriedadeId_fkey" FOREIGN KEY ("propriedadeId") REFERENCES "Propriedade"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "RelatorioFinanceiro" ADD CONSTRAINT "RelatorioFinanceiro_autorId_fkey" FOREIGN KEY ("autorId") REFERENCES "Usuario"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ItemOperacao" ADD CONSTRAINT "ItemOperacao_categoriaId_fkey" FOREIGN KEY ("categoriaId") REFERENCES "Categoria"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ItemOperacao" ADD CONSTRAINT "ItemOperacao_centroCustoId_fkey" FOREIGN KEY ("centroCustoId") REFERENCES "CentroCusto"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "ItemOperacao" ADD CONSTRAINT "ItemOperacao_operacaoId_fkey" FOREIGN KEY ("operacaoId") REFERENCES "Operacao"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -3207,6 +3212,9 @@ ALTER TABLE "AplicacaoPoolDoadora" ADD CONSTRAINT "AplicacaoPoolDoadora_grupoId_
 ALTER TABLE "AplicacaoPoolDoadora" ADD CONSTRAINT "AplicacaoPoolDoadora_propriedadeId_fkey" FOREIGN KEY ("propriedadeId") REFERENCES "Propriedade"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "Grupo" ADD CONSTRAINT "Grupo_centroCustoId_fkey" FOREIGN KEY ("centroCustoId") REFERENCES "CentroCusto"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "Grupo" ADD CONSTRAINT "Grupo_dietaId_fkey" FOREIGN KEY ("dietaId") REFERENCES "Dieta"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -3384,6 +3392,9 @@ ALTER TABLE "MovimentoEstoque" ADD CONSTRAINT "MovimentoEstoque_propriedadeId_fk
 ALTER TABLE "MovimentoEstoque" ADD CONSTRAINT "MovimentoEstoque_criadoPorId_fkey" FOREIGN KEY ("criadoPorId") REFERENCES "Usuario"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "MovimentoEstoque" ADD CONSTRAINT "MovimentoEstoque_centroCustoId_fkey" FOREIGN KEY ("centroCustoId") REFERENCES "CentroCusto"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "MovimentoEstoque" ADD CONSTRAINT "MovimentoEstoque_reversaoDeId_fkey" FOREIGN KEY ("reversaoDeId") REFERENCES "MovimentoEstoque"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -3418,6 +3429,12 @@ ALTER TABLE "SafraTalhao" ADD CONSTRAINT "SafraTalhao_talhaoId_fkey" FOREIGN KEY
 
 -- AddForeignKey
 ALTER TABLE "OperacaoAgricola" ADD CONSTRAINT "OperacaoAgricola_talhaoId_fkey" FOREIGN KEY ("talhaoId") REFERENCES "Talhao"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "OperacaoAgricola" ADD CONSTRAINT "OperacaoAgricola_produtoId_fkey" FOREIGN KEY ("produtoId") REFERENCES "Produto"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "OperacaoAgricola" ADD CONSTRAINT "OperacaoAgricola_movimentoEstoqueId_fkey" FOREIGN KEY ("movimentoEstoqueId") REFERENCES "MovimentoEstoque"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "OperacaoAgricola" ADD CONSTRAINT "OperacaoAgricola_operacaoFinanceiraId_fkey" FOREIGN KEY ("operacaoFinanceiraId") REFERENCES "Operacao"("id") ON DELETE SET NULL ON UPDATE CASCADE;
@@ -3538,3 +3555,4 @@ ALTER TABLE "Sessao" ADD CONSTRAINT "Sessao_usuarioId_fkey" FOREIGN KEY ("usuari
 
 -- AddForeignKey
 ALTER TABLE "TokenAcesso" ADD CONSTRAINT "TokenAcesso_usuarioId_fkey" FOREIGN KEY ("usuarioId") REFERENCES "Usuario"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
