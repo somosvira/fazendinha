@@ -155,7 +155,7 @@ enum StatusPeriodoFinanceiro {
 
 // Área responsável pelo gasto: Pecuária, Agronomia, Equipe, Gestão.
 model CentroCusto {
-  id                Int                  @id @default(autoincrement())
+  id                String               @id @default(uuid())
   nome              String               @unique
   ativo             Boolean              @default(true)
   ordem             Int                  @default(0)
@@ -178,7 +178,7 @@ enum ClassificacaoCategoria {
 }
 
 model Categoria {
-  id            Int                     @id @default(autoincrement())
+  id            String                  @id @default(uuid())
   nome          String
   classificacao ClassificacaoCategoria?
   ativo         Boolean                 @default(true)
@@ -196,7 +196,7 @@ model Categoria {
 }
 
 model ContaFinanceira {
-  id                  Int                 @id @default(autoincrement())
+  id                  String              @id @default(uuid())
   nome                String
   tipo                TipoContaFinanceira
   instituicao         String?
@@ -226,7 +226,7 @@ model ContaFinanceira {
 }
 
 model Produto {
-  id            Int                  @id @default(autoincrement())
+  id            String               @id @default(uuid())
   nome          String               @unique
   unidade       UnidadeMedida        @default(UN)
   minimoEstoque Decimal?             @db.Decimal(12, 2)
@@ -237,7 +237,7 @@ model Produto {
   // causa de produtos legados. Se o produto tem estoque não é atributo dele:
   // quem decide é o tipo da operação (ItemOperacao.estocavel).
   categoria     Categoria?           @relation(fields: [categoriaId], references: [id])
-  categoriaId   Int?
+  categoriaId   String?
   // Centros de custo onde este produto pode ser usado (N:N). Um só → o item da
   // operação e a saída de estoque herdam automaticamente; vários → escolha na hora.
   centrosCusto  ProdutoCentroCusto[]
@@ -270,7 +270,7 @@ model RegistroChuva {
 }
 
 model Parceiro {
-  id                         Int                     @id @default(autoincrement())
+  id                         String                  @id @default(uuid())
   nome                       String
   documento                  String?
   tipo                       TipoParceiro            @default(FORNECEDOR)
@@ -310,9 +310,9 @@ model Parceiro {
 // cada entrada continua sendo o parceiro da Operacao que originou o movimento.
 model ProdutoFornecedor {
   produto      Produto  @relation(fields: [produtoId], references: [id], onDelete: Cascade)
-  produtoId    Int
+  produtoId    String
   fornecedor   Parceiro @relation(fields: [fornecedorId], references: [id], onDelete: Cascade)
-  fornecedorId Int
+  fornecedorId String
   createdAt    DateTime @default(now())
 
   @@id([produtoId, fornecedorId])
@@ -324,9 +324,9 @@ model ProdutoFornecedor {
 // Produto.setor (enum fixo) e o Produto.centroCustoId (único).
 model ProdutoCentroCusto {
   produto       Produto     @relation(fields: [produtoId], references: [id], onDelete: Cascade)
-  produtoId     Int
+  produtoId     String
   centroCusto   CentroCusto @relation(fields: [centroCustoId], references: [id], onDelete: Cascade)
-  centroCustoId Int
+  centroCustoId String
   createdAt     DateTime    @default(now())
 
   @@id([produtoId, centroCustoId])
@@ -335,7 +335,7 @@ model ProdutoCentroCusto {
 }
 
 model ParceiroPapel {
-  parceiroId Int
+  parceiroId String
   papel      PapelParceiro
   parceiro   Parceiro      @relation(fields: [parceiroId], references: [id], onDelete: Cascade)
 
@@ -344,7 +344,7 @@ model ParceiroPapel {
 }
 
 model PeriodoFinanceiro {
-  id            Int                     @id @default(autoincrement())
+  id            String                  @id @default(uuid())
   propriedade   Propriedade             @relation(fields: [propriedadeId], references: [id])
   propriedadeId Int
   ano           Int
@@ -364,7 +364,9 @@ model PeriodoFinanceiro {
 model Operacao {
   categoriaNome      String?
   classificacao      ClassificacaoCategoria?
-  id                 Int                     @id @default(autoincrement())
+  id                 String                  @id @default(uuid())
+  // Número sequencial exibido ao usuário (OP-0042) e critério de ordem de registro.
+  numero             Int                     @unique @default(autoincrement())
   tipo               TipoOperacaoFinanceira
   status             StatusOperacao          @default(RASCUNHO)
   data               DateTime                @db.Date
@@ -373,13 +375,13 @@ model Operacao {
   propriedade        Propriedade             @relation(fields: [propriedadeId], references: [id])
   propriedadeId      Int
   parceiro           Parceiro?               @relation(fields: [parceiroId], references: [id])
-  parceiroId         Int?
+  parceiroId         String?
   categoria          Categoria?              @relation(fields: [categoriaId], references: [id])
-  categoriaId        Int?
+  categoriaId        String?
   centroCusto        CentroCusto?            @relation(fields: [centroCustoId], references: [id])
-  centroCustoId      Int?
+  centroCustoId      String?
   corrigeOperacao    Operacao?               @relation("CorrecaoOperacao", fields: [corrigeOperacaoId], references: [id])
-  corrigeOperacaoId  Int?
+  corrigeOperacaoId  String?
   correcoes          Operacao[]              @relation("CorrecaoOperacao")
   criadoPor          Usuario?                @relation("OperacaoCriador", fields: [criadoPorId], references: [id])
   criadoPorId        Int?
@@ -404,7 +406,7 @@ model Operacao {
 // um rascunho por propriedade; nenhum efeito contabil, financeiro ou fisico
 // deriva desta entidade antes da confirmacao.
 model RascunhoOperacao {
-  id            Int                   @id @default(autoincrement())
+  id            String                @id @default(uuid())
   propriedade   Propriedade           @relation(fields: [propriedadeId], references: [id], onDelete: Cascade)
   propriedadeId Int
   criadoPor     Usuario               @relation(fields: [criadoPorId], references: [id], onDelete: Cascade)
@@ -429,7 +431,7 @@ enum StatusRelatorioFinanceiro {
 }
 
 model RascunhoRelatorioFinanceiro {
-  id            Int         @id @default(autoincrement())
+  id            String      @id @default(uuid())
   propriedade   Propriedade @relation(fields: [propriedadeId], references: [id], onDelete: Cascade)
   propriedadeId Int
   criadoPor     Usuario     @relation(fields: [criadoPorId], references: [id], onDelete: Cascade)
@@ -444,7 +446,7 @@ model RascunhoRelatorioFinanceiro {
 }
 
 model RelatorioFinanceiro {
-  id            Int                       @id @default(autoincrement())
+  id            String                    @id @default(uuid())
   nome          String
   status        StatusRelatorioFinanceiro @default(PROCESSANDO)
   parametros    Json
@@ -465,19 +467,21 @@ model RelatorioFinanceiro {
 
 model ItemOperacao {
   categoria         Categoria?              @relation(fields: [categoriaId], references: [id])
-  categoriaId       Int?
+  categoriaId       String?
   categoriaNome     String?
   classificacao     ClassificacaoCategoria?
   // Centro de custo do item. Null = herda Operacao.centroCustoId. Nome congelado
   // como snapshot, igual a categoriaNome.
   centroCusto       CentroCusto?            @relation(fields: [centroCustoId], references: [id], onDelete: SetNull)
-  centroCustoId     Int?
+  centroCustoId     String?
   centroCustoNome   String?
-  id                Int                     @id @default(autoincrement())
+  id                String                  @id @default(uuid())
+  // Posição do item dentro da operação (1, 2, 3…); decide a ordem do rateio.
+  ordem             Int
   operacao          Operacao                @relation(fields: [operacaoId], references: [id], onDelete: Cascade)
-  operacaoId        Int
+  operacaoId        String
   produto           Produto?                @relation(fields: [produtoId], references: [id])
-  produtoId         Int?
+  produtoId         String?
   descricao         String
   quantidade        Decimal                 @db.Decimal(12, 3)
   unidade           String
@@ -487,6 +491,7 @@ model ItemOperacao {
   movimentosEstoque MovimentoEstoque[]
   createdAt         DateTime                @default(now())
 
+  @@unique([operacaoId, ordem])
   @@index([operacaoId])
   @@index([produtoId])
   @@index([centroCustoId])
@@ -494,9 +499,11 @@ model ItemOperacao {
 }
 
 model CompromissoFinanceiro {
-  id             Int                   @id @default(autoincrement())
+  id             String                @id @default(uuid())
+  // Ordem de registro (desempate estável e rótulo "#N").
+  seq            Int                   @unique @default(autoincrement())
   operacao       Operacao              @relation(fields: [operacaoId], references: [id])
-  operacaoId     Int
+  operacaoId     String
   tipo           TipoCompromisso
   status         StatusCompromisso     @default(PENDENTE)
   valorOriginal  Decimal               @db.Decimal(14, 2)
@@ -504,7 +511,7 @@ model CompromissoFinanceiro {
   numeroParcela  Int?
   totalParcelas  Int?
   parceiro       Parceiro?             @relation(fields: [parceiroId], references: [id])
-  parceiroId     Int?
+  parceiroId     String?
   liquidacoes    Liquidacao[]
   documentos     DocumentoFinanceiro[]
   createdAt      DateTime              @default(now())
@@ -516,7 +523,9 @@ model CompromissoFinanceiro {
 }
 
 model TransacaoFinanceira {
-  id             Int                       @id @default(autoincrement())
+  id             String                    @id @default(uuid())
+  // Ordem de registro (desempate estável e rótulo "#N").
+  seq            Int                       @unique @default(autoincrement())
   tipo           TipoTransacaoFinanceira
   status         StatusTransacaoFinanceira @default(CONFIRMADA)
   data           DateTime                  @db.Date
@@ -524,9 +533,9 @@ model TransacaoFinanceira {
   formaPagamento FormaPagamento?
   descricao      String?
   operacao       Operacao?                 @relation(fields: [operacaoId], references: [id])
-  operacaoId     Int?
+  operacaoId     String?
   parceiro       Parceiro?                 @relation(fields: [parceiroId], references: [id])
-  parceiroId     Int?
+  parceiroId     String?
   propriedade    Propriedade               @relation(fields: [propriedadeId], references: [id])
   propriedadeId  Int
   criadoPor      Usuario?                  @relation("TransacaoCriador", fields: [criadoPorId], references: [id])
@@ -535,7 +544,7 @@ model TransacaoFinanceira {
   liquidacoes    Liquidacao[]
   documentos     DocumentoFinanceiro[]
   reversaoDe     TransacaoFinanceira?      @relation("ReversaoTransacao", fields: [reversaoDeId], references: [id])
-  reversaoDeId   Int?                      @unique
+  reversaoDeId   String?                   @unique
   revertidaPor   TransacaoFinanceira?      @relation("ReversaoTransacao")
   createdAt      DateTime                  @default(now())
   updatedAt      DateTime                  @updatedAt
@@ -547,11 +556,13 @@ model TransacaoFinanceira {
 }
 
 model MovimentoConta {
-  id          Int                   @id @default(autoincrement())
+  id          String                @id @default(uuid())
+  // Ordem de registro (desempate estável e rótulo "#N").
+  seq         Int                   @unique @default(autoincrement())
   transacao   TransacaoFinanceira   @relation(fields: [transacaoId], references: [id], onDelete: Cascade)
-  transacaoId Int
+  transacaoId String
   conta       ContaFinanceira       @relation(fields: [contaId], references: [id])
-  contaId     Int
+  contaId     String
   direcao     DirecaoMovimentoConta
   valor       Decimal               @db.Decimal(14, 2)
   createdAt   DateTime              @default(now())
@@ -562,11 +573,11 @@ model MovimentoConta {
 }
 
 model Liquidacao {
-  id            Int                   @id @default(autoincrement())
+  id            String                @id @default(uuid())
   compromisso   CompromissoFinanceiro @relation(fields: [compromissoId], references: [id])
-  compromissoId Int
+  compromissoId String
   transacao     TransacaoFinanceira   @relation(fields: [transacaoId], references: [id])
-  transacaoId   Int
+  transacaoId   String
   valor         Decimal               @db.Decimal(14, 2)
   createdAt     DateTime              @default(now())
 
@@ -576,7 +587,7 @@ model Liquidacao {
 }
 
 model DocumentoFinanceiro {
-  id            Int                     @id @default(autoincrement())
+  id            String                  @id @default(uuid())
   tipo          TipoDocumentoFinanceiro
   nome          String
   numero        String?
@@ -587,13 +598,13 @@ model DocumentoFinanceiro {
   tamanhoBytes  Int?
   sha256        String?                 @unique
   operacao      Operacao?               @relation(fields: [operacaoId], references: [id])
-  operacaoId    Int?
+  operacaoId    String?
   transacao     TransacaoFinanceira?    @relation(fields: [transacaoId], references: [id])
-  transacaoId   Int?
+  transacaoId   String?
   compromisso   CompromissoFinanceiro?  @relation(fields: [compromissoId], references: [id])
-  compromissoId Int?
+  compromissoId String?
   rascunho      RascunhoOperacao?       @relation(fields: [rascunhoId], references: [id], onDelete: Cascade)
-  rascunhoId    Int?
+  rascunhoId    String?
   createdAt     DateTime                @default(now())
 
   @@index([operacaoId])
@@ -604,7 +615,7 @@ model DocumentoFinanceiro {
 }
 
 model AuditoriaFinanceira {
-  id              Int      @id @default(autoincrement())
+  id              String   @id @default(uuid())
   entidade        String
   entidadeId      String
   acao            String
@@ -691,9 +702,11 @@ enum StatusMovimentoEstoque {
 }
 
 model MovimentoEstoque {
-  id               Int                    @id @default(autoincrement())
+  id               String                 @id @default(uuid())
+  // Ordem de registro (desempate estável e rótulo "#N").
+  seq              Int                    @unique @default(autoincrement())
   produto          Produto                @relation(fields: [produtoId], references: [id])
-  produtoId        Int
+  produtoId        String
   tipo             TipoMovimento
   origem           OrigemMovimentoEstoque
   status           StatusMovimentoEstoque @default(CONFIRMADO)
@@ -704,9 +717,9 @@ model MovimentoEstoque {
   // Operações financeiras são a origem normal de entradas; consumos automáticos
   // podem ser justificados pelo evento operacional específico abaixo.
   operacao         Operacao?              @relation(fields: [operacaoId], references: [id])
-  operacaoId       Int?
+  operacaoId       String?
   itemOperacao     ItemOperacao?          @relation(fields: [itemOperacaoId], references: [id])
-  itemOperacaoId   Int?
+  itemOperacaoId   String?
   // Escopo de propriedade (estoque físico é por sítio). Nullable + default principal.
   propriedade      Propriedade?           @relation(fields: [propriedadeId], references: [id])
   propriedadeId    Int?
@@ -715,9 +728,9 @@ model MovimentoEstoque {
   // Alocação operacional: para qual atividade o consumo foi (SAIDA). Não entra
   // nos relatórios financeiros — o custo financeiro é lido pela compra/item.
   centroCusto      CentroCusto?           @relation(fields: [centroCustoId], references: [id])
-  centroCustoId    Int?
+  centroCustoId    String?
   reversaoDe       MovimentoEstoque?      @relation("ReversaoEstoque", fields: [reversaoDeId], references: [id])
-  reversaoDeId     Int?                   @unique
+  reversaoDeId     String?                @unique
   revertidoPor     MovimentoEstoque?      @relation("ReversaoEstoque")
   // Operação agrícola (aplicação/adubação) que gerou esta SAIDA (origem APLICACAO).
   operacaoAgricola OperacaoAgricola?
@@ -1008,10 +1021,10 @@ model OperacaoAgricola {
   // SAIDA automática (movimentoEstoque, origem APLICACAO).
   produto              String?
   produtoRef           Produto?          @relation(fields: [produtoId], references: [id])
-  produtoId            Int?
+  produtoId            String?
   quantidadeTotal      Decimal?          @db.Decimal(12, 3)
   movimentoEstoque     MovimentoEstoque? @relation(fields: [movimentoEstoqueId], references: [id])
-  movimentoEstoqueId   Int?              @unique
+  movimentoEstoqueId   String?           @unique
   doseValor            Decimal?          @db.Decimal(10, 3)
   doseUnidade          String? // "L/ha", "kg/ha", "g/ha", "t/ha"
   volumeCaldaLha       Decimal?          @db.Decimal(7, 2)
@@ -1024,7 +1037,7 @@ model OperacaoAgricola {
   carenciaDias         Int?
   // Referência lógica opcional à operação financeira que originou o custo.
   operacaoFinanceira   Operacao?         @relation(fields: [operacaoFinanceiraId], references: [id])
-  operacaoFinanceiraId Int?              @unique
+  operacaoFinanceiraId String?           @unique
   createdAt            DateTime          @default(now())
   updatedAt            DateTime          @updatedAt
 
@@ -1174,7 +1187,7 @@ model Safra {
   fechada       Boolean              @default(false)
   // Ponte com o financeiro: centro de custo do plantio (ex.: "Plantio Café").
   centroCusto   CentroCusto?         @relation(fields: [centroCustoId], references: [id])
-  centroCustoId Int?
+  centroCustoId String?
   tarefas       TarefaAgricola[]
   apontamentos  ApontamentoMaquina[]
   createdAt     DateTime             @default(now())
@@ -1515,7 +1528,7 @@ model LancamentoCusto {
   numMaquinas          Int?
   numCaminhoes         Int?
   operacaoFinanceira   Operacao?              @relation(fields: [operacaoFinanceiraId], references: [id])
-  operacaoFinanceiraId Int?                   @unique
+  operacaoFinanceiraId String?                @unique
   observacao           String?
   createdAt            DateTime               @default(now())
   updatedAt            DateTime               @updatedAt

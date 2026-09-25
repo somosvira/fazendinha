@@ -338,7 +338,7 @@ async function main() {
     })).id;
   const catFertilizantesId = await categoriaAgricolaPorSubtipo("Fertilizantes e corretivos");
   const catDefensivosId = await categoriaAgricolaPorSubtipo("Defensivos");
-  const categoriaIdPorSubtipo: Record<string, number> = {
+  const categoriaIdPorSubtipo: Record<string, string> = {
     FERTILIZANTE: catFertilizantesId, CORRETIVO: catFertilizantesId, FOLIAR: catFertilizantesId,
     MUDA: catFertilizantesId, BIOLOGICO: catFertilizantesId,
     DEFENSIVO: catDefensivosId, HERBICIDA: catDefensivosId,
@@ -347,7 +347,7 @@ async function main() {
   // Data recente fixa para a ENTRADA inicial (mês não fechado — fora do range de fechamentos).
   const dataEntradaInicial = new Date("2026-03-15");
 
-  const insumoIds: number[] = [];
+  const insumoIds: string[] = [];
   for (const ins of INSUMOS_PLANTIO) {
     const data = {
       unidade: ins.unidade,

@@ -93,11 +93,11 @@ try {
         U14: contaPagamento, U15: aplicacao, U16: poupancaReserva,
         U17: bancoOperacional, U18: bancoOperacional,
       };
-      const casos: { codigo: string; fluxo: string; conta: { id: number; nome: string; saldoInicial: number }; produto: { id: number; nome: string; estoqueInicial: number } | null; inventarioId: number | null }[] = [];
+      const casos: { codigo: string; fluxo: string; conta: { id: string; nome: string; saldoInicial: number }; produto: { id: string; nome: string; estoqueInicial: number } | null; inventarioId: string | null }[] = [];
       for (const [codigo, fluxo, estoqueInicial] of scenarios) {
         const conta = contaPorFluxo[codigo];
         const produto = estoqueInicial === null ? null : await tx.produto.create({ data: { nome: `QA249 ${codigo} Produto`, unidade: "KG", categoriaId: categorias[0].id, centrosCusto: { create: [{ centroCustoId: centro.id }] } } });
-        let inventarioId: number | null = null;
+        let inventarioId: string | null = null;
         if (produto && estoqueInicial) {
           const op = await confirmarRascunhoOperacao(tx, { tipo: "INVENTARIO_INICIAL", data: date(), descricao: `SEED QA249 ${codigo} estoque inicial`, propriedadeId: principal.id, usuarioId: usuarios[0].id, categoriaId: categorias[0].id, centroCustoId: centro.id, itens: [{ produtoId: produto.id, descricao: produto.nome, quantidade: estoqueInicial, unidade: "kg", valorUnitario: 10, estocavel: true }], financeiro: { condicao: "SEM_EFEITO_FINANCEIRO" } });
           inventarioId = op.id;
