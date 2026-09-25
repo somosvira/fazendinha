@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { configuracaoRelatorioFinanceiroSchema, rascunhoRelatorioFinanceiroSchema } from "./relatorios.schemas.js";
+import { SEM_VINCULO } from "../../lib/ids.js";
+import { uid } from "../../lib/uid.fixture.js";
 
 const base = { nome: "Fluxo de maio", dataInicio: "2026-05-01", dataFim: "2026-05-31" };
 
@@ -7,8 +9,8 @@ describe("configuração de relatório financeiro", () => {
   it("aceita multisseleção de tipos, situação, centros, categorias e classificação", () => {
     expect(configuracaoRelatorioFinanceiroSchema.parse({
       ...base, regime: "realizado", tipos: ["COMPRA_ESTOQUE", "VENDA"], status: ["CONFIRMADA"],
-      centroCustoIds: [0, 2], categoriaIds: [3, 3, 0], classificacoes: ["INVESTIMENTO", "SEM_CLASSIFICACAO"],
-    })).toMatchObject({ regime: "realizado", tipos: ["COMPRA_ESTOQUE", "VENDA"], centroCustoIds: [0, 2], categoriaIds: [3, 0], classificacoes: ["INVESTIMENTO", "SEM_CLASSIFICACAO"] });
+      centroCustoIds: [SEM_VINCULO, uid(2)], categoriaIds: [uid(3), uid(3), SEM_VINCULO], classificacoes: ["INVESTIMENTO", "SEM_CLASSIFICACAO"],
+    })).toMatchObject({ regime: "realizado", tipos: ["COMPRA_ESTOQUE", "VENDA"], centroCustoIds: [SEM_VINCULO, uid(2)], categoriaIds: [uid(3), SEM_VINCULO], classificacoes: ["INVESTIMENTO", "SEM_CLASSIFICACAO"] });
   });
 
   it("assume regime completo e dimensões livres por padrão", () => {

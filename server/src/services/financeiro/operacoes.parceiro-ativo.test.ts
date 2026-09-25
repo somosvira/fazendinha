@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { uid } from "../../lib/uid.fixture.js";
 
 const mocks = vi.hoisted(() => ({
   transaction: vi.fn(),
@@ -43,7 +44,7 @@ describe("operações financeiras — cadastros ativos", () => {
       data: new Date("2026-09-10T00:00:00Z"),
       descricao: "Serviço veterinário",
       valorTotal: 100,
-      parceiroId: 7,
+      parceiroId: uid(7),
       propriedadeId: 1,
       itens: [],
       financeiro: { condicao: "SEM_EFEITO_FINANCEIRO" },
@@ -54,11 +55,11 @@ describe("operações financeiras — cadastros ativos", () => {
   it("recusa criar transação avulsa com parceiro inativo", async () => {
     await expect(criarTransacaoAvulsa({
       tipo: "PAGAMENTO",
-      contaId: 1,
+      contaId: uid(1),
       valor: 100,
       data: new Date("2026-09-10T00:00:00Z"),
       descricao: "Pagamento avulso",
-      parceiroId: 7,
+      parceiroId: uid(7),
       propriedadeId: 1,
     })).rejects.toMatchObject({ code: "NAO_ENCONTRADO", campo: "parceiroId" });
     expect(mocks.transacaoCreate).not.toHaveBeenCalled();
@@ -66,8 +67,8 @@ describe("operações financeiras — cadastros ativos", () => {
 
   it("recusa transferência com conta inativa", async () => {
     await expect(transferir({
-      contaOrigemId: 1,
-      contaDestinoId: 2,
+      contaOrigemId: uid(1),
+      contaDestinoId: uid(2),
       valor: 100,
       data: new Date("2026-09-10T00:00:00Z"),
       propriedadeId: 1,
@@ -76,16 +77,16 @@ describe("operações financeiras — cadastros ativos", () => {
   });
 
   it.each([
-    ["categoriaId", 5, "categoriaId"],
-    ["centroCustoId", 8, "centroCustoId"],
+    ["categoriaId", uid(5), "categoriaId"],
+    ["centroCustoId", uid(8), "centroCustoId"],
   ] as const)("recusa operação com %s inativo", async (chave, valor, campo) => {
-    mocks.parceiro.mockResolvedValue({ id: 7, ativo: true, papeis: [{ papel: "PRESTADOR_SERVICO" }] });
+    mocks.parceiro.mockResolvedValue({ id: uid(7), ativo: true, papeis: [{ papel: "PRESTADOR_SERVICO" }] });
     await expect(criarOperacao({
       tipo: "SERVICO",
       data: new Date("2026-09-10T00:00:00Z"),
       descricao: "Serviço veterinário",
       valorTotal: 100,
-      parceiroId: 7,
+      parceiroId: uid(7),
       propriedadeId: 1,
       itens: [],
       [chave]: valor,

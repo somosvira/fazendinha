@@ -30,7 +30,7 @@ const MIME_POR_EXTENSAO: Record<string, string> = Object.fromEntries(
 MIME_POR_EXTENSAO.jpeg = "image/jpeg";
 
 export type NovoDocumentoOperacao = {
-  operacaoId: number;
+  operacaoId: string;
   propriedadeId: number;
   tipo: TipoDocumentoFinanceiro;
   nome: string;
@@ -41,13 +41,13 @@ export type NovoDocumentoOperacao = {
 };
 
 export type NovoDocumentoRascunho = Omit<NovoDocumentoOperacao, "operacaoId"> & {
-  rascunhoId: number;
+  rascunhoId: string;
 };
 
 type UploadContexto = "operacao" | "rascunho";
 type DadosUploadFinanceiro = {
   contexto: UploadContexto;
-  destinoId: number;
+  destinoId: string;
   propriedadeId: number;
   usuarioId: number | null;
   tipo: TipoDocumentoFinanceiro;
@@ -97,7 +97,7 @@ function validarMetadados(input: SolicitarUpload) {
 
 async function criarIntent(
   contexto: UploadContexto,
-  destinoId: number,
+  destinoId: string,
   propriedadeId: number,
   usuarioId: number | null,
   input: SolicitarUpload,
@@ -105,7 +105,7 @@ async function criarIntent(
   const { nome, mimeType, extensao, sha256 } = validarMetadados(input);
   const duplicado = await prisma.documentoFinanceiro.findUnique({ where: { sha256 } });
   if (duplicado) {
-    throw new FinanceiroError("CONFLITO", `Este arquivo já está anexado ao documento #${duplicado.id}`);
+    throw new FinanceiroError("CONFLITO", `Este arquivo já está anexado ao documento "${duplicado.nome}"`);
   }
 
   const uploadId = crypto.randomUUID();
@@ -130,7 +130,7 @@ async function criarIntent(
 }
 
 export async function solicitarUploadOperacao(
-  operacaoId: number,
+  operacaoId: string,
   propriedadeId: number,
   usuarioId: number | null,
   input: SolicitarUpload,
@@ -144,7 +144,7 @@ export async function solicitarUploadOperacao(
 }
 
 export async function solicitarUploadRascunho(
-  rascunhoId: number,
+  rascunhoId: string,
   propriedadeId: number,
   usuarioId: number,
   input: SolicitarUpload,
@@ -171,7 +171,7 @@ export async function confirmarUpload(uploadToken: string, propriedadeId: number
 
   const duplicado = await prisma.documentoFinanceiro.findUnique({ where: { sha256: intent.sha256 } });
   if (duplicado) {
-    throw new FinanceiroError("CONFLITO", `Este arquivo já está anexado ao documento #${duplicado.id}`);
+    throw new FinanceiroError("CONFLITO", `Este arquivo já está anexado ao documento "${duplicado.nome}"`);
   }
 
   const namespace = env.STORAGE_NAMESPACE;
@@ -236,7 +236,7 @@ export async function anexarDocumentoOperacao(input: NovoDocumentoOperacao) {
   if (!operacao) throw new FinanceiroError("NAO_ENCONTRADO", "Operação não encontrada");
   const { nome, mimeType, extensao, sha256 } = validarArquivo(input);
   const duplicado = await prisma.documentoFinanceiro.findUnique({ where: { sha256 } });
-  if (duplicado) throw new FinanceiroError("CONFLITO", `Este arquivo já está anexado ao documento #${duplicado.id}`);
+  if (duplicado) throw new FinanceiroError("CONFLITO", `Este arquivo já está anexado ao documento "${duplicado.nome}"`);
 
   const storage = await getStorage();
   const storageKey = `financeiro/operacoes/${input.operacaoId}/${sha256}.${extensao}`;
@@ -270,7 +270,7 @@ export async function anexarDocumentoRascunho(input: NovoDocumentoRascunho) {
   if (!rascunho) throw new FinanceiroError("NAO_ENCONTRADO", "Rascunho não encontrado");
   const { nome, mimeType, extensao, sha256 } = validarArquivo(input);
   const duplicado = await prisma.documentoFinanceiro.findUnique({ where: { sha256 } });
-  if (duplicado) throw new FinanceiroError("CONFLITO", `Este arquivo já está anexado ao documento #${duplicado.id}`);
+  if (duplicado) throw new FinanceiroError("CONFLITO", `Este arquivo já está anexado ao documento "${duplicado.nome}"`);
   const storage = await getStorage();
   const storageKey = `financeiro/rascunhos/${input.rascunhoId}/${sha256}.${extensao}`;
   const put = await storage.putObject({ key: storageKey, body: input.buffer, contentType: mimeType });
@@ -286,7 +286,7 @@ export async function anexarDocumentoRascunho(input: NovoDocumentoRascunho) {
   }
 }
 
-export async function removerDocumentoRascunho(id: number, rascunhoId: number, propriedadeId: number, usuarioId: number) {
+export async function removerDocumentoRascunho(id: string, rascunhoId: string, propriedadeId: number, usuarioId: number) {
   const documento = await prisma.documentoFinanceiro.findFirst({
     where: { id, rascunhoId, rascunho: { propriedadeId, criadoPorId: usuarioId } },
   });
@@ -295,7 +295,7 @@ export async function removerDocumentoRascunho(id: number, rascunhoId: number, p
   if (documento.storageKey) await (await getStorage()).deleteObject({ key: documento.storageKey });
 }
 
-export async function atualizarDocumentoRascunho(id: number, rascunhoId: number, propriedadeId: number, usuarioId: number, input: { tipo?: TipoDocumentoFinanceiro; numero?: string | null }) {
+export async function atualizarDocumentoRascunho(id: string, rascunhoId: string, propriedadeId: number, usuarioId: number, input: { tipo?: TipoDocumentoFinanceiro; numero?: string | null }) {
   const documento = await prisma.documentoFinanceiro.findFirst({
     where: { id, rascunhoId, rascunho: { propriedadeId, criadoPorId: usuarioId } },
   });
@@ -305,7 +305,7 @@ export async function atualizarDocumentoRascunho(id: number, rascunhoId: number,
   } });
 }
 
-export async function obterDocumento(id: number, propriedadeId: number) {
+export async function obterDocumento(id: string, propriedadeId: number) {
   const documento = await prisma.documentoFinanceiro.findFirst({
     where: { id, operacao: { propriedadeId } },
   });

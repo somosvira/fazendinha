@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { uid } from "../../lib/uid.fixture.js";
 
 const mocks = vi.hoisted(() => ({
   findUnique: vi.fn(), upsert: vi.fn(), delete: vi.fn(), transaction: vi.fn(),
@@ -35,18 +36,18 @@ describe("rascunho único de operação", () => {
 
   it("confirma efeitos, promove documentos e remove o rascunho na mesma transação", async () => {
     const tx = {
-      rascunhoOperacao: { findUnique: vi.fn().mockResolvedValue({ id: 9, versao: 2, dados: { operacao: {
+      rascunhoOperacao: { findUnique: vi.fn().mockResolvedValue({ id: uid(9), versao: 2, dados: { operacao: {
         tipo: "SERVICO", data: "2026-09-07", descricao: "Manutenção do trator", valorTotal: 500,
-        parceiroId: 1, itens: [], financeiro: { condicao: "A_PRAZO", parcelas: [{ valor: 500, dataVencimento: "2026-10-07" }] },
-      } }, documentos: [{ id: 12 }] }), delete: mocks.delete },
+        parceiroId: uid(1), itens: [], financeiro: { condicao: "A_PRAZO", parcelas: [{ valor: 500, dataVencimento: "2026-10-07" }] },
+      } }, documentos: [{ id: uid(12) }] }), delete: mocks.delete },
       documentoFinanceiro: { updateMany: mocks.documentoUpdateMany },
       operacao: { findUniqueOrThrow: mocks.operacaoFindUniqueOrThrow },
     };
     mocks.transaction.mockImplementation((callback) => callback(tx));
-    mocks.confirmarOperacao.mockResolvedValue({ id: 20 });
-    mocks.operacaoFindUniqueOrThrow.mockResolvedValue({ id: 20, status: "CONFIRMADA" });
-    await expect(confirmarRascunho(7, 3, 2)).resolves.toMatchObject({ id: 20 });
-    expect(mocks.documentoUpdateMany).toHaveBeenCalledWith({ where: { rascunhoId: 9 }, data: { rascunhoId: null, operacaoId: 20 } });
-    expect(mocks.delete).toHaveBeenCalledWith({ where: { id: 9 } });
+    mocks.confirmarOperacao.mockResolvedValue({ id: uid(20) });
+    mocks.operacaoFindUniqueOrThrow.mockResolvedValue({ id: uid(20), status: "CONFIRMADA" });
+    await expect(confirmarRascunho(7, 3, 2)).resolves.toMatchObject({ id: uid(20) });
+    expect(mocks.documentoUpdateMany).toHaveBeenCalledWith({ where: { rascunhoId: uid(9) }, data: { rascunhoId: null, operacaoId: uid(20) } });
+    expect(mocks.delete).toHaveBeenCalledWith({ where: { id: uid(9) } });
   });
 });

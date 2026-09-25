@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { uid } from "../../lib/uid.fixture.js";
 
 const mocks = vi.hoisted(() => ({
   transaction: vi.fn(),
@@ -78,92 +79,92 @@ describe("centro de custo efetivo do item — criarOperacao", () => {
     mocks.centro.mockResolvedValue([]);
     await expect(criarOperacao({
       ...baseServico,
-      itens: [itemNaoEstocavel({ centroCustoId: 5 })],
+      itens: [itemNaoEstocavel({ centroCustoId: uid(5) })],
     })).rejects.toMatchObject({ code: "VALIDACAO", campo: "itens.0.centroCustoId" });
     expect(mocks.operacaoCreate).not.toHaveBeenCalled();
   });
 
   it("(c) produto com exatamente 1 centro cadastrado: item sem centroCustoId explícito herda o id do produto e o nome vivo do centro", async () => {
-    mocks.produto.mockResolvedValue([{ id: 42, ativo: true, categoriaId: null, centrosCusto: [{ centroCustoId: 3 }] }]);
-    mocks.centro.mockResolvedValue([{ id: 3, nome: "Pecuária" }]);
+    mocks.produto.mockResolvedValue([{ id: uid(42), ativo: true, categoriaId: null, centrosCusto: [{ centroCustoId: uid(3) }] }]);
+    mocks.centro.mockResolvedValue([{ id: uid(3), nome: "Pecuária" }]);
     await criarOperacao({
       ...baseServico,
-      itens: [itemNaoEstocavel({ produtoId: 42, centroCustoId: undefined })],
+      itens: [itemNaoEstocavel({ produtoId: uid(42), centroCustoId: undefined })],
     });
     expect(mocks.operacaoCreate).toHaveBeenCalledTimes(1);
     const dataArg = mocks.operacaoCreate.mock.calls[0][0].data;
-    expect(dataArg.itens.create[0]).toMatchObject({ centroCustoId: 3, centroCustoNome: "Pecuária" });
+    expect(dataArg.itens.create[0]).toMatchObject({ centroCustoId: uid(3), centroCustoNome: "Pecuária" });
   });
 
   it("(d) produto com 2 centros cadastrados: item sem centroCustoId explícito não herda nenhum (fica null)", async () => {
-    mocks.produto.mockResolvedValue([{ id: 42, ativo: true, categoriaId: null, centrosCusto: [{ centroCustoId: 3 }, { centroCustoId: 4 }] }]);
-    mocks.centro.mockResolvedValue([{ id: 3, nome: "Pecuária" }, { id: 4, nome: "Agronomia" }]);
+    mocks.produto.mockResolvedValue([{ id: uid(42), ativo: true, categoriaId: null, centrosCusto: [{ centroCustoId: uid(3) }, { centroCustoId: uid(4) }] }]);
+    mocks.centro.mockResolvedValue([{ id: uid(3), nome: "Pecuária" }, { id: uid(4), nome: "Agronomia" }]);
     // Precisa de um centro padrão na operação, já que o item não tem centro
     // próprio (não estocável exige um centro efetivo de algum lugar).
     await criarOperacao({
       ...baseServico,
-      centroCustoId: 3,
-      itens: [itemNaoEstocavel({ produtoId: 42, centroCustoId: undefined })],
+      centroCustoId: uid(3),
+      itens: [itemNaoEstocavel({ produtoId: uid(42), centroCustoId: undefined })],
     });
     const dataArg = mocks.operacaoCreate.mock.calls[0][0].data;
     expect(dataArg.itens.create[0]).toMatchObject({ centroCustoId: null, centroCustoNome: null });
   });
 
   it("(e) centroCustoId: null explícito no item ignora o centro único do produto e herda o da operação", async () => {
-    mocks.produto.mockResolvedValue([{ id: 42, ativo: true, categoriaId: null, centrosCusto: [{ centroCustoId: 3 }] }]);
-    mocks.centro.mockResolvedValue([{ id: 3, nome: "Pecuária" }, { id: 7, nome: "Sede" }]);
+    mocks.produto.mockResolvedValue([{ id: uid(42), ativo: true, categoriaId: null, centrosCusto: [{ centroCustoId: uid(3) }] }]);
+    mocks.centro.mockResolvedValue([{ id: uid(3), nome: "Pecuária" }, { id: uid(7), nome: "Sede" }]);
     await criarOperacao({
       ...baseServico,
-      centroCustoId: 7,
-      itens: [itemNaoEstocavel({ produtoId: 42, centroCustoId: null })],
+      centroCustoId: uid(7),
+      itens: [itemNaoEstocavel({ produtoId: uid(42), centroCustoId: null })],
     });
     const dataArg = mocks.operacaoCreate.mock.calls[0][0].data;
     expect(dataArg.itens.create[0]).toMatchObject({ centroCustoId: null, centroCustoNome: null });
     // O item herda o centro 7 da operação nos relatórios (centroEfetivo), mas
     // o registro do item em si fica com null — quem resolve o efetivo é quem lê.
-    expect(dataArg.centroCustoId).toBe(7);
+    expect(dataArg.centroCustoId).toBe(uid(7));
   });
 
   it("(f) movimentoEstoque.create recebe o centro efetivo (item, senão o da operação)", async () => {
     mocks.produto.mockResolvedValue([
-      { id: 42, ativo: true, categoriaId: null, centrosCusto: [{ centroCustoId: 3 }] },
-      { id: 43, ativo: true, categoriaId: null, centrosCusto: [] },
+      { id: uid(42), ativo: true, categoriaId: null, centrosCusto: [{ centroCustoId: uid(3) }] },
+      { id: uid(43), ativo: true, categoriaId: null, centrosCusto: [] },
     ]);
-    mocks.centro.mockResolvedValue([{ id: 3, nome: "Pecuária" }, { id: 7, nome: "Sede" }]);
+    mocks.centro.mockResolvedValue([{ id: uid(3), nome: "Pecuária" }, { id: uid(7), nome: "Sede" }]);
     await criarOperacao({
       tipo: "COMPRA_ESTOQUE",
       data: new Date("2026-09-10T00:00:00Z"),
       descricao: "Compra de insumos",
       propriedadeId: 1,
-      centroCustoId: 7,
+      centroCustoId: uid(7),
       financeiro: { condicao: "SEM_EFEITO_FINANCEIRO" },
       itens: [
         // Item com centro próprio (via produto de 1 centro): usa o do item.
-        { descricao: "Ração", quantidade: 10, unidade: "sc", valorTotal: 500, estocavel: true, produtoId: 42 },
+        { descricao: "Ração", quantidade: 10, unidade: "sc", valorTotal: 500, estocavel: true, produtoId: uid(42) },
         // Item sem centro próprio (produto sem centro cadastrado): usa o da operação.
-        { descricao: "Sal mineral", quantidade: 5, unidade: "sc", valorTotal: 200, estocavel: true, produtoId: 43 },
+        { descricao: "Sal mineral", quantidade: 5, unidade: "sc", valorTotal: 200, estocavel: true, produtoId: uid(43) },
       ],
     });
     expect(mocks.movimentoEstoqueCreate).toHaveBeenCalledTimes(2);
     const centrosUsados = mocks.movimentoEstoqueCreate.mock.calls.map((call) => call[0].data.centroCustoId);
-    expect(centrosUsados).toEqual([3, 7]);
+    expect(centrosUsados).toEqual([uid(3), uid(7)]);
   });
 });
 
 describe("custo da SAIDA de venda — criarOperacao", () => {
   it("VENDA baixa o estoque pelo custo médio do sítio, não pelo preço de venda", async () => {
     const { Prisma } = await import("@prisma/client");
-    mocks.produto.mockResolvedValue([{ id: 42, ativo: true, categoriaId: null, centrosCusto: [{ centroCustoId: 3 }] }]);
-    mocks.centro.mockResolvedValue([{ id: 3, nome: "Pecuária" }]);
+    mocks.produto.mockResolvedValue([{ id: uid(42), ativo: true, categoriaId: null, centrosCusto: [{ centroCustoId: uid(3) }] }]);
+    mocks.centro.mockResolvedValue([{ id: uid(3), nome: "Pecuária" }]);
     // Duas consultas distintas: "tem estoque no sítio" (sem _sum) e a base do
     // custo médio agregada no banco (compras 10×5 + 10×7 → 20 / R$ 120).
     mocks.movimentoEstoqueGroupBy.mockImplementation(async (args: { _sum?: unknown }) => args._sum
-      ? [{ produtoId: 42, _sum: { quantidade: new Prisma.Decimal(20), valorTotal: new Prisma.Decimal(120) } }]
-      : [{ produtoId: 42 }]);
+      ? [{ produtoId: uid(42), _sum: { quantidade: new Prisma.Decimal(20), valorTotal: new Prisma.Decimal(120) } }]
+      : [{ produtoId: uid(42) }]);
     await criarOperacao({
       tipo: "VENDA", data: new Date("2026-09-10T00:00:00Z"), descricao: "Venda de ração", propriedadeId: 1,
       financeiro: { condicao: "SEM_EFEITO_FINANCEIRO" },
-      itens: [{ descricao: "Ração", quantidade: 5, unidade: "sc", valorTotal: 100, estocavel: true, produtoId: 42 }],
+      itens: [{ descricao: "Ração", quantidade: 5, unidade: "sc", valorTotal: 100, estocavel: true, produtoId: uid(42) }],
     });
     const dados = mocks.movimentoEstoqueCreate.mock.calls[0][0].data;
     expect(dados.tipo).toBe("SAIDA");
@@ -172,12 +173,12 @@ describe("custo da SAIDA de venda — criarOperacao", () => {
   });
 
   it("COMPRA_ESTOQUE segue valorizando a ENTRADA pelo item", async () => {
-    mocks.produto.mockResolvedValue([{ id: 42, ativo: true, categoriaId: null, centrosCusto: [{ centroCustoId: 3 }] }]);
-    mocks.centro.mockResolvedValue([{ id: 3, nome: "Pecuária" }]);
+    mocks.produto.mockResolvedValue([{ id: uid(42), ativo: true, categoriaId: null, centrosCusto: [{ centroCustoId: uid(3) }] }]);
+    mocks.centro.mockResolvedValue([{ id: uid(3), nome: "Pecuária" }]);
     await criarOperacao({
       tipo: "COMPRA_ESTOQUE", data: new Date("2026-09-10T00:00:00Z"), descricao: "Compra", propriedadeId: 1,
       financeiro: { condicao: "SEM_EFEITO_FINANCEIRO" },
-      itens: [{ descricao: "Ração", quantidade: 10, unidade: "sc", valorTotal: 70, estocavel: true, produtoId: 42 }],
+      itens: [{ descricao: "Ração", quantidade: 10, unidade: "sc", valorTotal: 70, estocavel: true, produtoId: uid(42) }],
     });
     const dados = mocks.movimentoEstoqueCreate.mock.calls[0][0].data;
     expect(Number(dados.custoUnitario)).toBe(7);
@@ -196,62 +197,62 @@ describe("VENDA/DEVOLUCAO só retiram do estoque produto que teve entrada no sí
   beforeEach(() => {
     // Produto 42 teve entrada no sítio; 43 nunca teve.
     mocks.produto.mockResolvedValue([
-      { id: 42, ativo: true, categoriaId: null, centrosCusto: [] },
-      { id: 43, ativo: true, categoriaId: null, centrosCusto: [] },
+      { id: uid(42), ativo: true, categoriaId: null, centrosCusto: [] },
+      { id: uid(43), ativo: true, categoriaId: null, centrosCusto: [] },
     ]);
-    mocks.centro.mockResolvedValue([{ id: 3, nome: "Pecuária" }]);
-    mocks.movimentoEstoqueGroupBy.mockImplementation(async (args: { _sum?: unknown; where: { produtoId: { in: number[] } } }) =>
-      args._sum ? [] : args.where.produtoId.in.filter((id) => id === 42).map((produtoId) => ({ produtoId })));
+    mocks.centro.mockResolvedValue([{ id: uid(3), nome: "Pecuária" }]);
+    mocks.movimentoEstoqueGroupBy.mockImplementation(async (args: { _sum?: unknown; where: { produtoId: { in: string[] } } }) =>
+      args._sum ? [] : args.where.produtoId.in.filter((id) => id === uid(42)).map((produtoId) => ({ produtoId })));
   });
 
   it("consulta o estoque de todos os produtos em lote, uma vez, no escopo do sítio", async () => {
     await venda([
-      { descricao: "Ração", quantidade: 1, unidade: "sc", valorTotal: 10, produtoId: 42 },
-      { descricao: "Bezerro", quantidade: 1, unidade: "un", valorTotal: 10, produtoId: 43, centroCustoId: 3 },
+      { descricao: "Ração", quantidade: 1, unidade: "sc", valorTotal: 10, produtoId: uid(42) },
+      { descricao: "Bezerro", quantidade: 1, unidade: "un", valorTotal: 10, produtoId: uid(43), centroCustoId: uid(3) },
     ]);
     const temEstoque = mocks.movimentoEstoqueGroupBy.mock.calls.filter(([args]) => !args._sum);
     expect(temEstoque).toHaveLength(1);
-    expect(temEstoque[0][0].where).toMatchObject({ produtoId: { in: [42, 43] }, status: "CONFIRMADO", reversaoDeId: null });
+    expect(temEstoque[0][0].where).toMatchObject({ produtoId: { in: [uid(42), uid(43)] }, status: "CONFIRMADO", reversaoDeId: null });
   });
 
   it("venda de produto com entrada no sítio gera SAIDA", async () => {
-    await venda([{ descricao: "Ração", quantidade: 2, unidade: "sc", valorTotal: 50, produtoId: 42 }]);
+    await venda([{ descricao: "Ração", quantidade: 2, unidade: "sc", valorTotal: 50, produtoId: uid(42) }]);
     expect(mocks.movimentoEstoqueCreate).toHaveBeenCalledTimes(1);
-    expect(mocks.movimentoEstoqueCreate.mock.calls[0][0].data).toMatchObject({ produtoId: 42, tipo: "SAIDA" });
+    expect(mocks.movimentoEstoqueCreate.mock.calls[0][0].data).toMatchObject({ produtoId: uid(42), tipo: "SAIDA" });
     expect(mocks.operacaoCreate.mock.calls[0][0].data.itens.create[0].estocavel).toBe(true);
   });
 
   it("venda de produto sem entrada no sítio não movimenta estoque e exige centro de custo", async () => {
-    await expect(venda([{ descricao: "Bezerro", quantidade: 1, unidade: "un", valorTotal: 900, produtoId: 43 }]))
+    await expect(venda([{ descricao: "Bezerro", quantidade: 1, unidade: "un", valorTotal: 900, produtoId: uid(43) }]))
       .rejects.toMatchObject({ code: "VALIDACAO", campo: "itens.0.centroCustoId" });
     expect(mocks.operacaoCreate).not.toHaveBeenCalled();
 
-    await venda([{ descricao: "Bezerro", quantidade: 1, unidade: "un", valorTotal: 900, produtoId: 43 }], { centroCustoId: 3 });
+    await venda([{ descricao: "Bezerro", quantidade: 1, unidade: "un", valorTotal: 900, produtoId: uid(43) }], { centroCustoId: uid(3) });
     expect(mocks.movimentoEstoqueCreate).not.toHaveBeenCalled();
-    expect(mocks.operacaoCreate.mock.calls[0][0].data.itens.create[0]).toMatchObject({ produtoId: 43, estocavel: false });
+    expect(mocks.operacaoCreate.mock.calls[0][0].data.itens.create[0]).toMatchObject({ produtoId: uid(43), estocavel: false });
   });
 
   it("mesmo com estocavel: true do cliente, produto sem entrada no sítio não gera SAIDA", async () => {
-    await venda([{ descricao: "Bezerro", quantidade: 1, unidade: "un", valorTotal: 900, produtoId: 43, estocavel: true, centroCustoId: 3 }]);
+    await venda([{ descricao: "Bezerro", quantidade: 1, unidade: "un", valorTotal: 900, produtoId: uid(43), estocavel: true, centroCustoId: uid(3) }]);
     expect(mocks.movimentoEstoqueCreate).not.toHaveBeenCalled();
   });
 
   it("DEVOLUCAO segue a mesma regra", async () => {
     await criarOperacao({
-      tipo: "DEVOLUCAO", data: new Date("2026-09-10T00:00:00Z"), descricao: "Devolução", propriedadeId: 1, centroCustoId: 3,
+      tipo: "DEVOLUCAO", data: new Date("2026-09-10T00:00:00Z"), descricao: "Devolução", propriedadeId: 1, centroCustoId: uid(3),
       financeiro: { condicao: "SEM_EFEITO_FINANCEIRO" },
       itens: [
-        { descricao: "Ração", quantidade: 1, unidade: "sc", valorTotal: 10, produtoId: 42 },
-        { descricao: "Outro", quantidade: 1, unidade: "un", valorTotal: 10, produtoId: 43 },
+        { descricao: "Ração", quantidade: 1, unidade: "sc", valorTotal: 10, produtoId: uid(42) },
+        { descricao: "Outro", quantidade: 1, unidade: "un", valorTotal: 10, produtoId: uid(43) },
       ],
     } as never);
     expect(mocks.movimentoEstoqueCreate).toHaveBeenCalledTimes(1);
-    expect(mocks.movimentoEstoqueCreate.mock.calls[0][0].data).toMatchObject({ produtoId: 42, tipo: "SAIDA", origem: "DEVOLUCAO" });
+    expect(mocks.movimentoEstoqueCreate.mock.calls[0][0].data).toMatchObject({ produtoId: uid(42), tipo: "SAIDA", origem: "DEVOLUCAO" });
   });
 
   it("venda sem produto (leite em texto livre) continua válida com centro de custo, sem movimento", async () => {
     mocks.produto.mockResolvedValue([]);
-    await venda([{ descricao: "Leite — quinzena", quantidade: 3000, unidade: "L", valorTotal: 7500, centroCustoId: 3 }]);
+    await venda([{ descricao: "Leite — quinzena", quantidade: 3000, unidade: "L", valorTotal: 7500, centroCustoId: uid(3) }]);
     expect(mocks.operacaoCreate).toHaveBeenCalledTimes(1);
     expect(mocks.movimentoEstoqueCreate).not.toHaveBeenCalled();
     expect(mocks.movimentoEstoqueGroupBy).not.toHaveBeenCalled(); // nada a consultar
@@ -261,9 +262,9 @@ describe("VENDA/DEVOLUCAO só retiram do estoque produto que teve entrada no sí
     await criarOperacao({
       tipo: "COMPRA_ESTOQUE", data: new Date("2026-09-10T00:00:00Z"), descricao: "Compra", propriedadeId: 1,
       financeiro: { condicao: "SEM_EFEITO_FINANCEIRO" },
-      itens: [{ descricao: "Outro", quantidade: 1, unidade: "un", valorTotal: 10, produtoId: 43 }],
+      itens: [{ descricao: "Outro", quantidade: 1, unidade: "un", valorTotal: 10, produtoId: uid(43) }],
     } as never);
     expect(mocks.movimentoEstoqueGroupBy).not.toHaveBeenCalled();
-    expect(mocks.movimentoEstoqueCreate.mock.calls[0][0].data).toMatchObject({ produtoId: 43, tipo: "ENTRADA" });
+    expect(mocks.movimentoEstoqueCreate.mock.calls[0][0].data).toMatchObject({ produtoId: uid(43), tipo: "ENTRADA" });
   });
 });

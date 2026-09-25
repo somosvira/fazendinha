@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { contaSchema, patchContaSchema, parceiroSchema, patchParceiroSchema } from "./schemas.js";
 import { papelCompativel, papeisLegados, tipoLegado } from "./papeis.js";
 import { exigirParceiroAtivo } from "./regras.js";
+import { uid } from "../../lib/uid.fixture.js";
 
 describe("cadastros financeiros ampliados", () => {
   const conta = { nome: "Caixa", tipo: "CAIXA", saldoAbertura: 0, dataSaldoAbertura: "2026-09-11" };
@@ -35,9 +36,9 @@ describe("cadastros financeiros ampliados", () => {
     expect(papelCompativel(["CLIENTE", "FORNECEDOR"], "DEVOLUCAO")).toBe(true);
   });
   it("backend recusa papel incompatível e permite serviço com preferência diferente", async () => {
-    const findFirst = vi.fn().mockResolvedValue({ id: 1, tipo: "FORNECEDOR", ativo: true, papeis: [{ papel: "PRESTADOR_SERVICO" }], formaPagamentoPreferida: "BOLETO" });
+    const findFirst = vi.fn().mockResolvedValue({ id: uid(1), tipo: "FORNECEDOR", ativo: true, papeis: [{ papel: "PRESTADOR_SERVICO" }], formaPagamentoPreferida: "BOLETO" });
     const db = { parceiro: { findFirst } } as unknown as Parameters<typeof exigirParceiroAtivo>[0];
-    await expect(exigirParceiroAtivo(db, 1, "VENDA")).rejects.toMatchObject({ code: "VALIDACAO", campo: "parceiroId" });
-    await expect(exigirParceiroAtivo(db, 1, "SERVICO")).resolves.toMatchObject({ id: 1 });
+    await expect(exigirParceiroAtivo(db, uid(1), "VENDA")).rejects.toMatchObject({ code: "VALIDACAO", campo: "parceiroId" });
+    await expect(exigirParceiroAtivo(db, uid(1), "SERVICO")).resolves.toMatchObject({ id: uid(1) });
   });
 });

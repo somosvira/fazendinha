@@ -50,13 +50,13 @@ export async function exigirPeriodoAberto(db: DbFinanceiro, propriedadeId: numbe
   }
 }
 
-export async function exigirContaAtiva(db: DbFinanceiro, contaId: number, propriedadeId: number) {
+export async function exigirContaAtiva(db: DbFinanceiro, contaId: string, propriedadeId: number) {
   const conta = await db.contaFinanceira.findFirst({ where: { id: contaId, propriedadeId, ativo: true } });
   if (!conta) throw new FinanceiroError("NAO_ENCONTRADO", "Conta financeira não encontrada ou inativa");
   return conta;
 }
 
-export async function exigirParceiroAtivo(db: DbFinanceiro, parceiroId: number, tipoOperacao?: string) {
+export async function exigirParceiroAtivo(db: DbFinanceiro, parceiroId: string, tipoOperacao?: string) {
   const parceiro = await db.parceiro.findFirst({ where: { id: parceiroId, ativo: true }, include: { papeis: true } });
   if (!parceiro) throw new FinanceiroError("NAO_ENCONTRADO", "Parceiro não encontrado ou inativo", "parceiroId");
   if (tipoOperacao && !papelCompativel(papeisDoParceiro(parceiro), tipoOperacao)) {
@@ -67,12 +67,12 @@ export async function exigirParceiroAtivo(db: DbFinanceiro, parceiroId: number, 
 
 export async function auditar(
   db: DbFinanceiro,
-  input: { entidade: string; entidadeId: string | number; acao: string; motivo?: string; usuarioId?: number | null; antes?: unknown; depois?: unknown },
+  input: { entidade: string; entidadeId: string; acao: string; motivo?: string; usuarioId?: number | null; antes?: unknown; depois?: unknown },
 ) {
   await db.auditoriaFinanceira.create({
     data: {
       entidade: input.entidade,
-      entidadeId: String(input.entidadeId),
+      entidadeId: input.entidadeId,
       acao: input.acao,
       motivo: input.motivo,
       usuarioId: input.usuarioId && input.usuarioId > 0 ? input.usuarioId : null,
