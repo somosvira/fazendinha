@@ -31,7 +31,7 @@ export function PlantioContent({ aba, onNavPla, abrirId, onAbriuEntidade }: { ab
   // de montar o EstoqueContent, evitando a busca de saldos sem filtro); `null`
   // = resolvido, mas sem centro cadastrado. O `key` no EstoqueContent remonta o
   // componente quando o centro muda, então ele já nasce com o filtro certo.
-  const [centroCustoEstoque, setCentroCustoEstoque] = useState<number | null | undefined>(undefined);
+  const [centroCustoEstoque, setCentroCustoEstoque] = useState<string | null | undefined>(undefined);
   const [avisoEstoque, setAvisoEstoque] = useState<string | undefined>(undefined);
   // Filtro inicial da tela de Estoque: resolve o centro "Plantio Café" (mesma constante
   // usada em services/plantio/custo.ts, via /estoque/centros-atividade), uma vez,
