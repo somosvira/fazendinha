@@ -36,7 +36,7 @@ import { temAcessoArea, TODAS_AREAS } from "./lib/areas";
 import { BootSplash } from "./components/Loading";
 import { TerranoIntro } from "./components/TerranoIntro";
 import { useOnlineStatus } from "./lib/offline/useOnlineStatus";
-import { garantirProcessamento } from "./lib/offline/fila";
+import { iniciarSessao } from "./lib/offline/sessao";
 
 // Abertura Terrano (marca grande + música no centro, some pro canto).
 //   "always"  → toca em todo load do dashboard (bom pra testar)
@@ -208,9 +208,7 @@ export function App() {
     const destino = destinoDepoisDoLogin(returnTo, u);
     const url = new URL(destino, window.location.origin);
     const tabDestino = pathToTab(url.pathname) ?? DEFAULT_TAB;
-    setSessao(novoToken, u);
-    // A fila para num 401 e só volta a andar com a sessão nova.
-    garantirProcessamento();
+    iniciarSessao(novoToken, u);
     setTokenState(novoToken);
     setUsuario(u);
     setTab(tabDestino);
