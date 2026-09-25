@@ -19,18 +19,16 @@ const mocks = vi.hoisted(() => ({
   queryRaw: vi.fn(),
   transaction: vi.fn(),
   propriedadePrincipalId: vi.fn(),
-  animalCount: vi.fn(),
 }));
 
 vi.mock("../../db.js", () => ({ prisma: {
   $transaction: mocks.transaction,
   produto: { findMany: mocks.produtoFindMany },
-  animal: { count: mocks.animalCount },
   movimentoEstoque: { groupBy: mocks.movGroupBy, findMany: mocks.movFindMany, count: mocks.movCount },
 } }));
 vi.mock("../propriedade.js", () => ({ propriedadePrincipalId: mocks.propriedadePrincipalId, escopoPadraoLeitura: vi.fn().mockResolvedValue(1) }));
 
-import { ajustarContagem, calcularCustoVacaDia, estornarMovimentoTx, listarMovimentos, listarSaldos, produtosComEstoque, produtoTemEstoque, registrarMovimento } from "./estoque.js";
+import { ajustarContagem, estornarMovimentoTx, listarMovimentos, listarSaldos, produtosComEstoque, produtoTemEstoque, registrarMovimento } from "./estoque.js";
 
 const tx = () => ({
   produto: { findUnique: mocks.produtoFindUnique, findFirst: mocks.produtoFindFirst },
@@ -161,7 +159,7 @@ describe("registrarMovimento", () => {
 const movBase = {
   id: 40, produtoId: 3, tipo: "ENTRADA", origem: "AJUSTE_INVENTARIO", status: "CONFIRMADO", data: new Date("2026-01-10"),
   quantidade: new Prisma.Decimal(5), custoUnitario: new Prisma.Decimal(2), valorTotal: new Prisma.Decimal(10),
-  propriedadeId: 1, operacaoId: 50, reversaoDeId: null, revertidoPor: null, centroCustoId: 11, consumoPeriodoId: null,
+  propriedadeId: 1, operacaoId: 50, reversaoDeId: null, revertidoPor: null, centroCustoId: 11,
 };
 
 describe("estornarMovimentoTx", () => {
@@ -180,13 +178,13 @@ describe("estornarMovimentoTx", () => {
     expect(Number(data.quantidade)).toBe(3);
     expect(Number(data.valorTotal)).toBe(6);
   });
-  it("copia o vínculo operacional (lote, animal, talhão) para o inverso", async () => {
-    mocks.movFindFirst.mockResolvedValue({ ...movBase, tipo: "SAIDA", origem: "SANIDADE", operacaoId: null, grupoId: 4, animalId: 9, talhaoId: null });
+  it("copia o vínculo operacional (talhão) para o inverso", async () => {
+    mocks.movFindFirst.mockResolvedValue({ ...movBase, tipo: "SAIDA", origem: "APLICACAO", operacaoId: null, talhaoId: 5 });
     await estornarMovimentoTx(tx() as never, 40, { usuarioId: 7 });
-    expect(mocks.movCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ grupoId: 4, animalId: 9, talhaoId: null, criadoPorId: 7 }) });
+    expect(mocks.movCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ talhaoId: 5, criadoPorId: 7 }) });
   });
   it("dono sintético (id 0) não vira criadoPorId", async () => {
-    mocks.movFindFirst.mockResolvedValue({ ...movBase, tipo: "SAIDA", origem: "SANIDADE", operacaoId: null });
+    mocks.movFindFirst.mockResolvedValue({ ...movBase, tipo: "SAIDA", origem: "APLICACAO", operacaoId: null });
     await estornarMovimentoTx(tx() as never, 40, { usuarioId: 0 });
     expect(mocks.movCreate.mock.calls[0][0].data.criadoPorId).toBeNull();
   });
@@ -352,7 +350,7 @@ describe("listarSaldos", () => {
 });
 
 describe("listarMovimentos — origem para navegação", () => {
-  const base = { produtoId: 3, produto: { nome: "Ureia", centrosCusto: [] }, tipo: "SAIDA", origem: "NUTRICAO", status: "CONFIRMADO", reversaoDeId: null, data: new Date("2026-09-01"), quantidade: new Prisma.Decimal(2), custoUnitario: new Prisma.Decimal(3), valorTotal: new Prisma.Decimal(6), operacao: null, grupo: null, observacao: null, operacaoId: null, consumoPeriodo: null, animal: null, talhao: null, reversaoDe: null };
+  const base = { produtoId: 3, produto: { nome: "Ureia", centrosCusto: [] }, tipo: "SAIDA", origem: "APLICACAO", status: "CONFIRMADO", reversaoDeId: null, data: new Date("2026-09-01"), quantidade: new Prisma.Decimal(2), custoUnitario: new Prisma.Decimal(3), valorTotal: new Prisma.Decimal(6), operacao: null, observacao: null, operacaoId: null, talhao: null, reversaoDe: null };
 
   it("usa o mesmo escopo de sítio de listarSaldos (principal inclui movimento sem propriedade)", async () => {
     mocks.movFindMany.mockResolvedValue([]);
@@ -372,44 +370,38 @@ describe("listarMovimentos — origem para navegação", () => {
     expect(m.fornecedor).toBe("Agro");
   });
 
-  it("resolve lote, animal e talhão das saídas automáticas com uma única consulta", async () => {
+  it("resolve o talhão das saídas automáticas com uma única consulta", async () => {
     mocks.movFindMany.mockResolvedValue([
-      { ...base, id: 2, consumoPeriodo: { grupoId: 7, grupo: { nome: "Lote A" } } },
-      { ...base, id: 3, origem: "SANIDADE", animal: { id: 9, numero: "123", nome: "Mimosa" } },
       { ...base, id: 4, origem: "APLICACAO", talhao: { id: 5, codigo: "T-05" } },
     ]);
     const { itens: ms } = await listarMovimentos();
-    expect(ms.map((m) => m.operacaoId)).toEqual([null, null, null]);
-    expect(ms[0].vinculo).toEqual({ tipo: "LOTE", id: 7, nome: "Lote A" });
-    expect(ms[1].vinculo).toEqual({ tipo: "ANIMAL", id: 9, numero: "123", nome: "Mimosa" });
-    expect(ms[2].vinculo).toEqual({ tipo: "TALHAO", id: 5, codigo: "T-05" });
+    expect(ms.map((m) => m.operacaoId)).toEqual([null]);
+    expect(ms[0].vinculo).toEqual({ tipo: "TALHAO", id: 5, codigo: "T-05" });
     expect(mocks.movFindMany).toHaveBeenCalledTimes(1);
-    expect(mocks.movFindMany.mock.calls[0][0].include).toMatchObject({ consumoPeriodo: expect.anything(), animal: expect.anything(), talhao: expect.anything() });
+    expect(mocks.movFindMany.mock.calls[0][0].include).toMatchObject({ talhao: expect.anything(), reversaoDe: expect.anything() });
   });
 
-  it("o estorno de uma baixa automática mantém o vínculo e informa a origem que desfaz", async () => {
-    // Evento sanitário já excluído: o vínculo vem do próprio movimento (animalId).
+  it("o estorno de uma aplicação excluída mantém o talhão e informa a origem que desfaz", async () => {
+    // Operação agrícola já excluída: o vínculo vem do próprio movimento (talhaoId).
     mocks.movFindMany.mockResolvedValue([
-      { ...base, id: 5, tipo: "ENTRADA", origem: "AJUSTE_INVENTARIO", reversaoDeId: 3, reversaoDe: { origem: "SANIDADE" }, animal: { id: 9, numero: "123", nome: null } },
+      { ...base, id: 5, tipo: "ENTRADA", origem: "AJUSTE_INVENTARIO", reversaoDeId: 4, reversaoDe: { origem: "APLICACAO" }, talhao: { id: 5, codigo: "T-05" } },
     ]);
     const { itens: [m] } = await listarMovimentos();
-    expect(m.vinculo).toEqual({ tipo: "ANIMAL", id: 9, numero: "123", nome: null });
-    expect(m.origemEstornada).toBe("SANIDADE");
+    expect(m.vinculo).toEqual({ tipo: "TALHAO", id: 5, codigo: "T-05" });
+    expect(m.origemEstornada).toBe("APLICACAO");
   });
 
   it("omite vínculo e observação automática de área que o leitor não tem", async () => {
     const linhas = [
-      { ...base, id: 2, grupo: { nome: "Lote A" }, observacao: "Consumo do lote", consumoPeriodo: { grupoId: 7, grupo: { nome: "Lote A" } } },
-      { ...base, id: 3, origem: "SANIDADE", observacao: "Consumo em aplicacao (animal 9)", animal: { id: 9, numero: "123", nome: "Mimosa" } },
       { ...base, id: 4, origem: "APLICACAO", observacao: "Aplicação em T-05", talhao: { id: 5, codigo: "T-05" } },
     ];
     mocks.movFindMany.mockResolvedValue(linhas);
-    const { itens: soFinanceiro } = await listarMovimentos({ vinculosVisiveis: { pecuaria: false, agricultura: false } });
-    expect(soFinanceiro.map((m) => [m.vinculo, m.observacao, m.grupo])).toEqual([[null, null, null], [null, null, null], [null, null, null]]);
+    const { itens: soFinanceiro } = await listarMovimentos({ vinculosVisiveis: { agricultura: false } });
+    expect(soFinanceiro.map((m) => [m.vinculo, m.observacao])).toEqual([[null, null]]);
 
-    const { itens: soAgricultura } = await listarMovimentos({ vinculosVisiveis: { pecuaria: false, agricultura: true } });
-    expect(soAgricultura.map((m) => m.vinculo?.tipo ?? null)).toEqual([null, null, "TALHAO"]);
-    expect(soAgricultura[2].observacao).toBe("Aplicação em T-05");
+    const { itens: soAgricultura } = await listarMovimentos({ vinculosVisiveis: { agricultura: true } });
+    expect(soAgricultura.map((m) => m.vinculo?.tipo ?? null)).toEqual(["TALHAO"]);
+    expect(soAgricultura[0].observacao).toBe("Aplicação em T-05");
   });
   it("filtra por busca (produto, fornecedor e operação), origem, centro e período, e pagina no servidor", async () => {
     mocks.movFindMany.mockResolvedValue([]);
@@ -442,14 +434,3 @@ describe("listarMovimentos — origem para navegação", () => {
   });
 });
 
-describe("calcularCustoVacaDia", () => {
-  it("conta só dieta e sanidade, no escopo do sítio (principal inclui movimento sem propriedade)", async () => {
-    mocks.animalCount.mockResolvedValue(2);
-    mocks.movFindMany.mockResolvedValue([{ valorTotal: new Prisma.Decimal(60), data: new Date() }]);
-    const r = await calcularCustoVacaDia(30, 1);
-    const where = mocks.movFindMany.mock.calls[0][0].where;
-    // Venda, devolução e aplicação agrícola também são SAIDA, mas não custo da vaca.
-    expect(where).toMatchObject({ tipo: "SAIDA", origem: { in: ["NUTRICAO", "SANIDADE"] }, status: "CONFIRMADO", reversaoDeId: null, OR: [{ propriedadeId: 1 }, { propriedadeId: null }] });
-    expect(r).toMatchObject({ vacasEmLactacao: 2, totalConsumo: 60, custoVacaDia: 1 });
-  });
-});

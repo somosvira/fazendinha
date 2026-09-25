@@ -22,9 +22,9 @@ function mockFetch(d: Dados = {}) {
   });
 }
 
-const categoria = { id: 1, nome: "Alimentação", usoSanitario: false, usoNutricional: true, usoAgricola: false };
+const categoria = { id: 1, nome: "Alimentação", usoAgricola: false };
 const saldo = (o: Record<string, unknown>) => ({ produtoId: 1, nome: "Ração", ativo: true, categoria, unidade: "KG", centrosCusto: [], saldo: 15, custoMedio: 6, valor: 90, minimoEstoque: null, abaixoMinimo: false, ...o });
-const mov = (o: Record<string, unknown>) => ({ id: 1, produtoId: 1, produto: "Ração", centrosCusto: [], tipo: "ENTRADA", origem: "COMPRA", status: "CONFIRMADO", reversaoDeId: null, data: "2026-09-10", quantidade: 10, custoUnitario: 6, valorTotal: 60, fornecedor: null, grupo: null, observacao: null, operacaoId: null, vinculo: null, ...o });
+const mov = (o: Record<string, unknown>) => ({ id: 1, produtoId: 1, produto: "Ração", centrosCusto: [], tipo: "ENTRADA", origem: "COMPRA", status: "CONFIRMADO", reversaoDeId: null, data: "2026-09-10", quantidade: 10, custoUnitario: 6, valorTotal: 60, fornecedor: null, observacao: null, operacaoId: null, vinculo: null, ...o });
 
 function sessao(areas: string[], flags: string[] = [], dono = false) {
   localStorage.setItem("rionovo:usuario", JSON.stringify({ id: 1, nome: "T", email: "t@x", papel: "x", abas: [], areas, flags, status: "ATIVO", dono }));
@@ -150,10 +150,10 @@ describe("EstoqueContent — saldos e custo médio", () => {
   });
 
   it("cada movimento mostra uma pill só, com a origem", async () => {
-    vi.stubGlobal("fetch", mockFetch({ saldos: [saldo({})], movimentos: [mov({ id: 1, tipo: "SAIDA", origem: "NUTRICAO" })] }));
+    vi.stubGlobal("fetch", mockFetch({ saldos: [saldo({})], movimentos: [mov({ id: 1, tipo: "SAIDA", origem: "APLICACAO" })] }));
     render(<EstoqueContent />);
     const tabela = within(await screen.findByRole("table", { name: "Histórico de movimentos" }));
-    expect(tabela.getByText("Dieta")).toBeTruthy();
+    expect(tabela.getByText("Aplicação agrícola")).toBeTruthy();
     expect(tabela.queryByText("Saída")).toBeNull();
   });
 
@@ -263,8 +263,6 @@ describe("EstoqueContent — histórico de movimentos", () => {
 describe("EstoqueContent — histórico ligado à origem", () => {
   const movimentos = [
     mov({ id: 1, origem: "COMPRA", operacaoId: 42, fornecedor: "Cooperativa" }),
-    mov({ id: 2, tipo: "SAIDA", origem: "NUTRICAO", vinculo: { tipo: "LOTE", id: 7, nome: "Lote A" } }),
-    mov({ id: 3, tipo: "SAIDA", origem: "SANIDADE", vinculo: { tipo: "ANIMAL", id: 9, numero: "123", nome: "Mimosa" } }),
     mov({ id: 4, tipo: "SAIDA", origem: "APLICACAO", vinculo: { tipo: "TALHAO", id: 5, codigo: "T-05" } }),
   ];
   const abrir = async () => {
@@ -290,19 +288,15 @@ describe("EstoqueContent — histórico ligado à origem", () => {
     window.removeEventListener("popstate", pop);
   });
 
-  it("saídas automáticas levam ao lote, animal e talhão quando o usuário tem a área", async () => {
+  it("saídas automáticas levam ao talhão quando o usuário tem a área", async () => {
     const tabela = await abrir();
-    expect(tabela.getByRole("link", { name: "Lote Lote A" }).getAttribute("href")).toBe("/pecuaria/nutricao");
-    expect(tabela.getByRole("link", { name: "Animal 123 · Mimosa" }).getAttribute("href")).toBe("/pecuaria/animal?id=9");
     expect(tabela.getByRole("link", { name: "Talhão T-05" }).getAttribute("href")).toBe("/plantio/talhao?id=5");
   });
 
-  it("sem a área de destino mostra texto puro com o motivo no title (dieta sem pecuária; operação sem financeiro)", async () => {
+  it("sem a área de destino mostra texto puro com o motivo no title (operação sem financeiro)", async () => {
     sessao(["agricultura"]);
     const tabela = await abrir();
-    expect(tabela.queryByRole("link", { name: /Lote A/ })).toBeNull();
     expect(tabela.queryByRole("link", { name: "OP-0042" })).toBeNull();
-    expect(tabela.getByText("Lote Lote A").getAttribute("title")).toBe("Sem acesso a esta área");
     expect(tabela.getByText("OP-0042").getAttribute("title")).toBe("Sem acesso a esta área");
     // agricultura tem acesso ao talhão
     expect(tabela.getByRole("link", { name: "Talhão T-05" })).toBeTruthy();
@@ -320,7 +314,7 @@ describe("EstoqueContent — histórico ligado à origem", () => {
     vi.stubGlobal("fetch", mockFetch({ saldos: [saldo({})], movimentos: [
       mov({ id: 1, tipo: "ENTRADA", quantidade: 10 }),
       mov({ id: 2, tipo: "SAIDA", origem: "VENDA", quantidade: 4 }),
-      mov({ id: 3, tipo: "ENTRADA", origem: "AJUSTE_INVENTARIO", reversaoDeId: 9, origemEstornada: "SANIDADE", quantidade: 2 }),
+      mov({ id: 3, tipo: "ENTRADA", origem: "AJUSTE_INVENTARIO", reversaoDeId: 9, origemEstornada: "APLICACAO", quantidade: 2 }),
       mov({ id: 4, tipo: "AJUSTE", origem: "AJUSTE_INVENTARIO", quantidade: -3 }),
     ] }));
     render(<EstoqueContent />);
@@ -329,7 +323,7 @@ describe("EstoqueContent — histórico ligado à origem", () => {
     expect(tabela.getByText("−4 kg")).toBeTruthy();
     expect(tabela.getByText("Venda")).toBeTruthy();
     expect(tabela.getByText("+2 kg")).toBeTruthy();
-    expect(tabela.getByText("Estorno de sanidade")).toBeTruthy();
+    expect(tabela.getByText("Estorno de aplicação agrícola")).toBeTruthy();
     expect(tabela.getByText("−3 kg")).toBeTruthy();
     // Valor acompanha o sinal da quantidade (saída negativa, entrada positiva).
     const linhaVenda = tabela.getByText("−4 kg").closest("tr")!;

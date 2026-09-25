@@ -1,13 +1,11 @@
 // Índice dos domínios instrumentados. Domínio novo = 1 arquivo de registro +
-// 1 linha aqui (plantio, corte, cultivo, estoque, equipe, caixinha entram assim).
+// 1 linha aqui (plantio, cultivo, estoque, equipe, pecuária v1 entram assim).
 
 import type { DominioDef } from "../tipos.js";
 import { financeiro } from "./financeiro.js";
-import { rebanho } from "./rebanho.js";
 
 export const DOMINIOS: Record<string, DominioDef> = {
   financeiro,
-  rebanho,
 };
 
 export function obterDominio(nome: string): DominioDef {

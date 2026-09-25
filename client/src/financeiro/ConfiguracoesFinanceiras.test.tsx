@@ -31,10 +31,10 @@ const config: Config = {
     { id: 7, nome: "Cooperativa", documento: "11222333000181", tipo: "FORNECEDOR", telefone: "3499990000", email: "coop@x.com", ativo: true, referencias: 2 },
     { id: 8, nome: "Agro Minas", documento: null, tipo: "FORNECEDOR", telefone: null, email: null, ativo: true, referencias: 0 },
   ],
-  categorias: [{ id: 11, nome: "Insumos", classificacao: "CUSTEIO", ativo: true, ordem: 0, usoSanitario: false, usoNutricional: false, usoAgricola: false, _count: { operacoes: 2, produtos: 1 } }],
+  categorias: [{ id: 11, nome: "Insumos", classificacao: "CUSTEIO", ativo: true, ordem: 0, usoAgricola: false, _count: { operacoes: 2, produtos: 1 } }],
   centrosCusto: [{ id: 20, nome: "Atividade leiteira", ativo: true, ordem: 0, _count: { operacoes: 3, produtos: 0, safras: 0 } }],
   produtos: [],
-  produtosCadastro: [{ id: 30, nome: "Ração 22%", unidade: "KG", minimoEstoque: "500", categoriaId: 11, categoriaNome: "Insumos", categoria: { id: 11, nome: "Insumos", usoSanitario: false, usoNutricional: true, usoAgricola: false }, ativo: true, centroCustoIds: [20], centrosCusto: [{ id: 20, nome: "Atividade leiteira", ativo: true }], fornecedores: [{ id: 7, nome: "Cooperativa", ativo: true }] }],
+  produtosCadastro: [{ id: 30, nome: "Ração 22%", unidade: "KG", minimoEstoque: "500", categoriaId: 11, categoriaNome: "Insumos", categoria: { id: 11, nome: "Insumos", usoAgricola: true }, ativo: true, centroCustoIds: [20], centrosCusto: [{ id: 20, nome: "Atividade leiteira", ativo: true }], fornecedores: [{ id: 7, nome: "Cooperativa", ativo: true }] }],
 };
 
 /* A tabela responsiva renderiza tabela E cartões (CSS decide o que aparece);
@@ -54,10 +54,10 @@ afterEach(cleanup);
 async function montar(aba: "contas" | "parceiros" | "produtos" | "categorias" | "centros" = "contas") {
   render(<ConfiguracoesFinanceiras />);
   await screen.findAllByText("Banco principal");
-  if (aba === "parceiros") fireEvent.click(screen.getByRole("button", { name: /Clientes e fornecedores/ }));
-  if (aba === "produtos") fireEvent.click(screen.getByRole("button", { name: /^Produtos$/ }));
-  if (aba === "categorias") fireEvent.click(screen.getByRole("button", { name: /^Categorias$/ }));
-  if (aba === "centros") fireEvent.click(screen.getByRole("button", { name: /Centros de custo/ }));
+  if (aba === "parceiros") fireEvent.click(screen.getByRole("tab", { name: /Clientes e fornecedores/ }));
+  if (aba === "produtos") fireEvent.click(screen.getByRole("tab", { name: /^Produtos$/ }));
+  if (aba === "categorias") fireEvent.click(screen.getByRole("tab", { name: /^Categorias$/ }));
+  if (aba === "centros") fireEvent.click(screen.getByRole("tab", { name: /Centros de custo/ }));
 }
 
 async function escolherSelect(painel: HTMLElement, rotulo: string, opcao: string) {
@@ -133,7 +133,10 @@ describe("ConfiguracoesFinanceiras — contas", () => {
     const saldo = within(painel).getByLabelText("Saldo de abertura") as HTMLInputElement;
     expect(saldo.type).toBe("text");
     expect(saldo.inputMode).toBe("decimal");
-    expect(saldo.value).toBe("0,00");
+    expect(saldo.value).toBe("");
+    expect(saldo.placeholder).toBe("0,00");
+    fireEvent.blur(saldo);
+    expect(saldo.value).toBe("");
     expect(within(painel).getByText("R$")).toBeTruthy();
     expect(within(painel).queryByLabelText("Ordem de exibição")).toBeNull();
     expect(within(painel).getByRole("combobox", { name: "Tipo" }).getAttribute("data-slot")).toBe("select-trigger");
@@ -142,17 +145,30 @@ describe("ConfiguracoesFinanceiras — contas", () => {
     expect((within(painel).getByLabelText("Titular") as HTMLInputElement).value).toBe("Fazenda  Rio Novo");
   });
 
-  it("reordena contas pelas setas da listagem", async () => {
-    vi.mocked(obterConfiguracoesFinanceiras).mockResolvedValue({
-      ...config,
-      contas: [{ ...config.contas[0], ordem: 0 }, { ...config.contas[1], ativo: true, ordem: 1 }],
-    });
+  it("saldo de abertura seleciona o valor ao focar, para digitar por cima", async () => {
     await montar();
-    fireEvent.click(primeiro("button", "Mover Gaveta para cima"));
-    await waitFor(() => {
-      expect(atualizarConta).toHaveBeenCalledWith(2, { ordem: 0 });
-      expect(atualizarConta).toHaveBeenCalledWith(1, { ordem: 1 });
-    });
+    fireEvent.click(screen.getByRole("button", { name: /Nova conta/ }));
+    const painel = await screen.findByRole("dialog");
+    const saldo = within(painel).getByLabelText("Saldo de abertura") as HTMLInputElement;
+    fireEvent.change(saldo, { target: { value: "1500" } });
+    fireEvent.blur(saldo);
+    expect(saldo.value).toBe("1.500,00");
+    fireEvent.focus(saldo);
+    expect(saldo.value).toBe("1500,00");
+    await waitFor(() => { expect(saldo.selectionStart).toBe(0); expect(saldo.selectionEnd).toBe(saldo.value.length); });
+  });
+
+  it("ações da linha têm dica no hover e não há setas de reordenar", async () => {
+    await montar();
+    expect((primeiro("button", "Editar Banco principal") as HTMLButtonElement).title).toBe("Editar");
+    expect((primeiro("button", "Desativar Banco principal") as HTMLButtonElement).title).toBe("Desativar");
+    expect(screen.queryByRole("button", { name: /Mover .* para (cima|baixo)/ })).toBeNull();
+  });
+
+  it("abas são um tablist com a aba ativa marcada", async () => {
+    await montar("categorias");
+    expect(screen.getByRole("tab", { name: /^Categorias$/ }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByRole("tab", { name: /Contas financeiras/ }).getAttribute("aria-selected")).toBe("false");
   });
 
   it("editar carrega os valores atuais, trava abertura com movimentos e envia só o que mudou", async () => {
@@ -239,19 +255,17 @@ describe("ConfiguracoesFinanceiras — produtos", () => {
   it("filtra produtos por centro de custo", async () => {
     await montar("produtos");
     expect(screen.getByRole("table", { name: "Produtos" })).toBeTruthy();
-    fireEvent.change(screen.getByLabelText("Filtrar por centro de custo"), { target: { value: "SEM" } });
+    await escolherSelect(document.body, "Filtrar por centro de custo", "Sem centro");
     expect(screen.queryByText("Ração 22%")).toBeNull();
-    fireEvent.change(screen.getByLabelText("Filtrar por centro de custo"), { target: { value: "20" } });
+    await escolherSelect(document.body, "Filtrar por centro de custo", "Atividade leiteira");
     expect(screen.getAllByText("Ração 22%").length).toBeGreaterThan(0);
   });
 
   it("filtra produtos pelo uso da categoria", async () => {
     await montar("produtos");
-    fireEvent.change(screen.getByLabelText("Filtrar por uso"), { target: { value: "usoSanitario" } });
-    expect(screen.queryByText("Ração 22%")).toBeNull();
-    fireEvent.change(screen.getByLabelText("Filtrar por uso"), { target: { value: "usoNutricional" } });
+    await escolherSelect(document.body, "Filtrar por uso", "Uso agrícola");
     expect(screen.getAllByText("Ração 22%").length).toBeGreaterThan(0);
-    fireEvent.change(screen.getByLabelText("Filtrar por uso"), { target: { value: "SEM" } });
+    await escolherSelect(document.body, "Filtrar por uso", "Sem uso específico");
     expect(screen.queryByText("Ração 22%")).toBeNull();
   });
 });
@@ -336,7 +350,7 @@ describe("ConfiguracoesFinanceiras — categorias e centros de custo", () => {
     fireEvent.change(within(painel).getByLabelText("Nome da categoria"), { target: { value: "Ração" } });
     fireEvent.change(within(painel).getByLabelText("Classificação"), { target: { value: "CUSTEIO" } });
     fireEvent.click(within(painel).getByRole("button", { name: "Criar categoria" }));
-    await waitFor(() => expect(criarCategoria).toHaveBeenCalledWith({ nome: "Ração", classificacao: "CUSTEIO", ordem: 1, usoSanitario: false, usoNutricional: false, usoAgricola: false }));
+    await waitFor(() => expect(criarCategoria).toHaveBeenCalledWith({ nome: "Ração", classificacao: "CUSTEIO", ordem: 1, usoAgricola: false }));
   });
 
   it("cria um centro de custo sem natureza financeira", async () => {

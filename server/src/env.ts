@@ -31,7 +31,7 @@ const envSchema = z
     SHARED_ACCESS_TOKEN: z.string().min(16).optional(),
 
     // --- OpenAI (provider único do app) ---
-    // Cérebro do bot E da IA do rebanho. Sem a chave: bot desligado e IA do rebanho
+    // Cérebro do bot E das IAs dos módulos. Sem a chave: bot desligado e IA dos módulos
     // em "modo demonstração" (regras locais).
     OPENAI_API_KEY: z.string().optional(),
     OPENAI_MODEL: z.string().default("gpt-4o"),

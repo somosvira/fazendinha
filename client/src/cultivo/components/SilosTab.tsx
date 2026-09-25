@@ -11,7 +11,7 @@ import {
 } from "../api";
 import type { TipoSilo, TipoMovimentoSilo, OrigemMovimentoSilo } from "../types";
 import { HOJE } from "../HOJE";
-import { RebHeader } from "@/rebanho/components/RebHeader";
+import { RebHeader } from "@/components/rb/RebHeader";
 import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
 import { RebTable } from "@/components/rb/RebTable";
 import { RebButton } from "@/components/rb/RebButton";

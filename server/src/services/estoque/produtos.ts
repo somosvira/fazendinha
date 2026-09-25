@@ -24,7 +24,7 @@ export function produtoDTO(produto: Prisma.ProdutoGetPayload<{ include: typeof i
     classificacao: produto.categoria?.classificacao ?? null,
     // Comportamento é da categoria, mesmo que ela esteja inativa (situação é do produto).
     categoria: produto.categoria
-      ? { id: produto.categoria.id, nome: produto.categoria.nome, usoSanitario: produto.categoria.usoSanitario, usoNutricional: produto.categoria.usoNutricional, usoAgricola: produto.categoria.usoAgricola }
+      ? { id: produto.categoria.id, nome: produto.categoria.nome, usoAgricola: produto.categoria.usoAgricola }
       : null,
     ativo: produto.ativo,
     centroCustoIds: produto.centrosCusto.map(({ centroCustoId }) => centroCustoId),
@@ -70,9 +70,9 @@ async function exigirNomeLivre(db: DbFinanceiro, nome: string, ignorarId?: numbe
   if (existente) throw new FinanceiroError("CONFLITO", NOME_DUPLICADO, "nome");
 }
 
-const USO_CAMPO = { sanitario: "usoSanitario", nutricional: "usoNutricional", agricola: "usoAgricola" } as const;
+const USO_CAMPO = { agricola: "usoAgricola" } as const;
 
-export async function listarProdutos(f?: { uso?: "sanitario" | "nutricional" | "agricola"; q?: string; ativo?: boolean; incluirInativos?: boolean }) {
+export async function listarProdutos(f?: { uso?: "agricola"; q?: string; ativo?: boolean; incluirInativos?: boolean }) {
   const where: Prisma.ProdutoWhereInput = {};
   if (f?.uso) where.categoria = { [USO_CAMPO[f.uso]]: true };
   if (f?.q) where.nome = { contains: f.q, mode: "insensitive" };
@@ -126,19 +126,16 @@ export async function atualizarProduto(id: number, input: ProdutoPatchInput, usu
       }
 
       // Trocar a unidade muda a interpretação de tudo que já foi movimentado
-      // (estoque), planejado (dieta) ou registrado em histórico (compra/venda,
-      // aplicação sanitária, aplicação agrícola) na unidade antiga — bloqueia se
-      // houver algum registro para esse produto.
+      // (estoque) ou registrado em histórico (compra/venda, aplicação agrícola)
+      // na unidade antiga — bloqueia se houver algum registro para esse produto.
       if (produto.unidade !== undefined && produto.unidade !== anterior.unidade) {
-        const [movimentos, itensDieta, itensOperacao, eventosSanitarios, operacoesAgricolas] = await Promise.all([
+        const [movimentos, itensOperacao, operacoesAgricolas] = await Promise.all([
           tx.movimentoEstoque.count({ where: { produtoId: id } }),
-          tx.dietaItem.count({ where: { produtoId: id } }),
           tx.itemOperacao.count({ where: { produtoId: id } }),
-          tx.eventoSanitario.count({ where: { produtoId: id, quantidadeUsada: { not: null } } }),
           tx.operacaoAgricola.count({ where: { produtoId: id, doseValor: { not: null } } }),
         ]);
-        if (movimentos > 0 || itensDieta > 0 || itensOperacao > 0 || eventosSanitarios > 0 || operacoesAgricolas > 0) {
-          throw new FinanceiroError("VALIDACAO", "Não é possível trocar a unidade de um produto com movimentos de estoque ou dietas registradas", "unidade");
+        if (movimentos > 0 || itensOperacao > 0 || operacoesAgricolas > 0) {
+          throw new FinanceiroError("VALIDACAO", "Não é possível trocar a unidade de um produto com movimentos de estoque registrados", "unidade");
         }
       }
 

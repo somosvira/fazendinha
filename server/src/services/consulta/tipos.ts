@@ -46,7 +46,7 @@ export interface MetricaDef {
 
 // Regime = semântica temporal + filtros implícitos. Ex.: no financeiro,
 // "realizado" = regime de caixa (LIQUIDADO por dataLiquidacao) e "a_vencer" =
-// projeção (ABERTO por dataVencimento). campoData null = snapshot (ex.: animal).
+// projeção (ABERTO por dataVencimento). campoData null = snapshot (ex.: cadastro sem data).
 export interface RegimeDef {
   descricao: string;
   filtrosFixos: Record<string, unknown>; // ex.: { situacao: "LIQUIDADO", estornado: false }
@@ -55,7 +55,7 @@ export interface RegimeDef {
 
 export interface EntidadeDef {
   descricao: string;
-  modelo: string; // delegate Prisma: "lancamento", "producaoLote", "animal"…
+  modelo: string; // delegate Prisma: "transacaoFinanceira", "compromissoFinanceiro"…
   regimes: Record<string, RegimeDef>;
   regimeDefault: string;
   // Regra dura: métricas destes formatos EXIGEM a dimensão citada em filtros,
@@ -90,7 +90,7 @@ export interface RazaoDef {
 }
 
 export interface DominioDef {
-  nome: string; // "financeiro" | "rebanho" | …
+  nome: string; // "financeiro" | …
   descricao: string;
   entidades: Record<string, EntidadeDef>;
   razoes?: Record<string, RazaoDef>;

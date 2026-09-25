@@ -3,7 +3,7 @@ import { Loader } from "../../components/Loading";
 import { useFuncionarios, useRegistros, upsertRegistro, preencherGrade, num, horasFmt, weekdayBR, tipoDiaPadrao, diasDoMes, mesesRecentes, mesBR } from "../api";
 import type { RegistroDTO, TipoDiaPonto } from "../types";
 import { ToolbarSelect } from "@/components/ToolbarSelect";
-import { RebHeader } from "@/rebanho/components/RebHeader";
+import { RebHeader } from "@/components/rb/RebHeader";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebTable } from "@/components/rb/RebTable";
 import { REB_INP, RebMain, RebAnm } from "@/components/rb/RebPrimitives";

@@ -3,7 +3,7 @@ import type { EqpSub } from "../EquipeContent";
 import { insightDaEquipe } from "../mock/insight";
 import { IaInsightBand } from "./IaInsight";
 import { useDashboard, money, num } from "../api";
-import { RebHeader } from "@/rebanho/components/RebHeader";
+import { RebHeader } from "@/components/rb/RebHeader";
 import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
 import { RebMain } from "@/components/rb/RebPrimitives";
 

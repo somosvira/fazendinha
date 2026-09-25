@@ -20,13 +20,13 @@ const TIPO_MOV: Record<MovimentoDTO["tipo"], { rotulo: string; tom: "green" | "a
 };
 const ROTULO_ORIGEM: Record<OrigemMovimento, string> = {
   COMPRA: "Compra", CONSUMO_DIRETO: "Consumo direto", TRANSFERENCIA: "Transferência", PRODUCAO: "Produção própria", DEVOLUCAO: "Devolução",
-  BONIFICACAO: "Bonificação", INVENTARIO_INICIAL: "Inventário inicial", NUTRICAO: "Dieta", SANIDADE: "Sanidade", PERDA: "Perda",
+  BONIFICACAO: "Bonificação", INVENTARIO_INICIAL: "Inventário inicial", PERDA: "Perda",
   AJUSTE_INVENTARIO: "Ajuste de estoque", APLICACAO: "Aplicação agrícola", VENDA: "Venda",
 };
 // Origens que algum fluxo grava hoje. CONSUMO_DIRETO, TRANSFERENCIA e PERDA
 // seguem no rótulo (dados antigos), mas não no filtro — filtrar por elas sempre
 // daria lista vazia.
-const ORIGENS_FILTRO: readonly OrigemMovimento[] = ["COMPRA", "VENDA", "DEVOLUCAO", "INVENTARIO_INICIAL", "BONIFICACAO", "PRODUCAO", "NUTRICAO", "SANIDADE", "APLICACAO", "AJUSTE_INVENTARIO"];
+const ORIGENS_FILTRO: readonly OrigemMovimento[] = ["COMPRA", "VENDA", "DEVOLUCAO", "INVENTARIO_INICIAL", "BONIFICACAO", "PRODUCAO", "APLICACAO", "AJUSTE_INVENTARIO"];
 
 // Direção física do movimento: SAIDA tira, ENTRADA põe, AJUSTE traz o próprio
 // sinal. Estornos são gravados como ajuste — sem o sinal não dá para saber se
@@ -204,7 +204,7 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
     ...(verValores ? [{ chave: "valor", titulo: "Valor", alinhamento: "centro" as const, larguraMinima: 120, celula: (m: MovimentoDTO) => <span className="whitespace-nowrap">{m.valorTotal != null ? brl(Math.sign(quantidadeComSinal(m)) * Math.abs(m.valorTotal)) : "—"}</span> }] : []),
     { chave: "origem", titulo: "Origem / destino", alinhamento: "centro", larguraMinima: 220, celula: (m) => {
       const destino = destinoDoMovimento(m);
-      if (!destino) return <span className="break-words text-ink-3">{m.fornecedor ?? m.grupo ?? "—"}</span>;
+      if (!destino) return <span className="break-words text-ink-3">{m.fornecedor ?? "—"}</span>;
       return <span className="break-words"><LinkInterno href={destino.href} area={destino.area}>{destino.rotulo}</LinkInterno>{m.fornecedor && <span className="text-ink-3"> · {m.fornecedor}</span>}</span>;
     } },
   ];
@@ -276,7 +276,7 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
     </section>
 
     <section className="mt-10" aria-label="Histórico de movimentos">
-      <h2 className="font-serif text-2xl">Histórico de movimentos<AjudaCampo rotulo="Origem dos movimentos" texto="Cada movimento leva à operação que o gerou; saídas automáticas levam ao lote, animal ou talhão de origem." /></h2>
+      <h2 className="font-serif text-2xl">Histórico de movimentos<AjudaCampo rotulo="Origem dos movimentos" texto="Cada movimento leva à operação que o gerou; saídas automáticas (aplicação no talhão) levam ao talhão de origem." /></h2>
       <div className="mt-3 flex flex-wrap items-center gap-3">
         <label className="relative w-full min-w-0 flex-[2_1_260px] sm:w-auto"><Search size={16} className="absolute left-3 top-3 text-ink-3" aria-hidden="true" /><input type="search" aria-label="Buscar movimento" value={buscaMov} onChange={(e) => setBuscaMov(e.target.value)} placeholder="Buscar por produto, operação ou fornecedor…" className={`${CAMPO} w-full pl-9`} /></label>
         <select aria-label="Filtrar por origem" value={origemMov} onChange={(e) => { setOrigemMov(e.target.value); setPaginaMov(1); }} className={`${CAMPO} min-w-0 flex-[1_1_160px]`}>

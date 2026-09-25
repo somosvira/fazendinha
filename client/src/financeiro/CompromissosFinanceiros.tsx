@@ -80,7 +80,6 @@ export function CompromissosFinanceiros({ onNav, podeLancar = true }: { onNav: (
       cancelLabel="Ver rascunho atual"
       cancelTone="safe"
       tone="danger"
-      dangerFilled
       processando={preparando}
       onCancel={verRascunhoAtual}
       onDismiss={() => setNovoCompromissoPendente(null)}

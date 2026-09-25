@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { Prisma } from "@prisma/client";
-import { saldoProduto, custoVacaDia, custoMedioProduto, valorSaidaPreciso, valorSaidaDaBase, entraNoCustoMedio, consolidarSaldo, type MovIn, type MovCustoIn } from "./estoque.calc.js";
+import { saldoProduto, custoMedioProduto, valorSaidaPreciso, valorSaidaDaBase, entraNoCustoMedio, consolidarSaldo, type MovIn, type MovCustoIn } from "./estoque.calc.js";
 
 const HOJE = "2026-06-17";
 
@@ -37,22 +37,6 @@ describe("saldoProduto", () => {
   it("valor (dinheiro) continua arredondado a 2 casas mesmo com quantidade em 3", () => {
     const movs: MovIn[] = [{ tipo: "ENTRADA", quantidade: 1.123, valorTotal: 10.999, data: HOJE }];
     expect(saldoProduto(movs)).toEqual({ saldo: 1.123, valor: 11 });
-  });
-});
-
-describe("custoVacaDia", () => {
-  it("consumo ÷ (vacas × dias)", () => {
-    // 2100 / (7 * 30) = 10
-    expect(custoVacaDia([{ valorTotal: 2100, data: HOJE }], 7, HOJE, 30)).toBe(10);
-  });
-
-  it("vacas em lactação = 0 → null", () => {
-    expect(custoVacaDia([{ valorTotal: 2100, data: HOJE }], 0, HOJE, 30)).toBeNull();
-  });
-
-  it("saída fora do período (mais de 30 dias atrás) é ignorada", () => {
-    const antiga = "2026-04-01"; // > 30 dias antes de 2026-06-17
-    expect(custoVacaDia([{ valorTotal: 2100, data: antiga }], 7, HOJE, 30)).toBe(0);
   });
 });
 
@@ -102,7 +86,7 @@ describe("custoMedioProduto", () => {
   it("saídas e entradas de outras origens não afetam", () => {
     const r = custoMedioProduto([
       compra(10, 50),
-      { tipo: "SAIDA", origem: "NUTRICAO", status: "CONFIRMADO", reversaoDeId: null, quantidade: D(4), valorTotal: D(99) },
+      { tipo: "SAIDA", origem: "APLICACAO", status: "CONFIRMADO", reversaoDeId: null, quantidade: D(4), valorTotal: D(99) },
       { tipo: "SAIDA", origem: "COMPRA", status: "CONFIRMADO", reversaoDeId: null, quantidade: D(4), valorTotal: D(99) },
       compra(10, 999, { origem: "DEVOLUCAO" }),
     ]);

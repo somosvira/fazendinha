@@ -1,7 +1,7 @@
 // Nomes canônicos dos centros de custo usados pelos módulos operacionais para
 // atribuir custo por atividade (leite/café). Centralizados aqui para evitar
-// strings hardcoded espalhadas em services/seeds/rotas — ver custo-producao.ts,
-// plantio/custo.ts e os seeds.
+// strings hardcoded espalhadas em services/seeds/rotas — ver plantio/custo.ts
+// e os seeds.
 export const CENTROS_ATIVIDADE = {
   LEITE: "Atividade Leiteira",
   CAFE: "Plantio Café",
@@ -29,17 +29,16 @@ export interface DbCentroCustoComNome {
 }
 
 /**
- * Ids dos centros "de atividade" (leite/café) num único findMany — usado pela
- * tela de Estoque (`routes/estoque-centros.ts`) e por `/financeiro/configuracoes`
+ * Id do centro "de atividade" (café) num único findMany — usado pela tela de
+ * Estoque (`routes/estoque-centros.ts`) e por `/financeiro/configuracoes`
  * (`routes/financeiro.ts`) para resolver o filtro inicial sem duas idas ao banco.
  */
-export async function obterCentrosAtividade(db: DbCentroCustoComNome): Promise<{ leite: number | null; cafe: number | null }> {
+export async function obterCentrosAtividade(db: DbCentroCustoComNome): Promise<{ cafe: number | null }> {
   const centros = await db.centroCusto.findMany({
-    where: { nome: { in: [CENTROS_ATIVIDADE.LEITE, CENTROS_ATIVIDADE.CAFE] } },
+    where: { nome: { in: [CENTROS_ATIVIDADE.CAFE] } },
     select: { id: true, nome: true },
   });
   return {
-    leite: centros.find((c) => c.nome === CENTROS_ATIVIDADE.LEITE)?.id ?? null,
     cafe: centros.find((c) => c.nome === CENTROS_ATIVIDADE.CAFE)?.id ?? null,
   };
 }

@@ -17,9 +17,9 @@ async function main() {
   });
 
   const vendaLeite = await prisma.categoria.create({ data: { nome: "Venda de leite", classificacao: "CUSTEIO" } });
-  const racao = await prisma.categoria.create({ data: { nome: "Alimentação animal", classificacao: "CUSTEIO", usoNutricional: true } });
+  const racao = await prisma.categoria.create({ data: { nome: "Alimentação animal", classificacao: "CUSTEIO" } });
   const manutencao = await prisma.categoria.create({ data: { nome: "Manutenção e serviços", classificacao: "CUSTEIO" } });
-  await prisma.categoria.create({ data: { nome: "Medicamento Animal", classificacao: "CUSTEIO", usoSanitario: true } });
+  await prisma.categoria.create({ data: { nome: "Medicamento Animal", classificacao: "CUSTEIO" } });
   await prisma.categoria.create({ data: { nome: "Fertilizantes e corretivos", classificacao: "CUSTEIO", usoAgricola: true } });
   await prisma.categoria.create({ data: { nome: "Defensivos", classificacao: "CUSTEIO", usoAgricola: true } });
   const centroLeite = await prisma.centroCusto.create({ data: { nome: "Pecuária", ordem: 1 } });

@@ -1,9 +1,9 @@
 import { incluirClassificacao, ratearTransacao } from "../financeiro/classificacao.js";
 import { prisma } from "../../db.js";
-import { quebrarPorCategoria } from "../rebanho/custo-producao.js";
+import { quebrarPorCategoria } from "./custo.quebra.js";
 import { CENTROS_ATIVIDADE } from "../estoque/centros-atividade.js";
 
-// ── Ponte financeira do café (espelha rebanho/custo-producao) ────────────────
+// ── Ponte financeira do café ─────────────────────────────────────────────────
 // O café da Rio Novo está em FORMAÇÃO: a maior parte do gasto cai em
 // "Plantio Café - investimento" (formação da lavoura) e só uma fração é custeio
 // recorrente. O custo/saca real só fecha quando a safra fecha; aqui damos a

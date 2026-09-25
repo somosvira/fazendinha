@@ -2,7 +2,7 @@
 
 > **Nosso objetivo não é registrar vacas. Nosso objetivo é aumentar a lucratividade das fazendas leiteiras através de dados, automação e inteligência.**
 
-Fazendinha é uma plataforma de gestão completa para propriedades leiteiras. Unifica **financeiro**, **rebanho**, **reprodução**, **sanidade**, **produção**, **estoque**, **custos** e **inteligência artificial** em um único produto, projetado para responder a pergunta que importa para o produtor:
+Fazendinha é uma plataforma de gestão completa para propriedades rurais. Unifica **financeiro**, **pecuária**, **agronomia**, **equipe**, **estoque** e **inteligência artificial** em um único produto, projetado para responder a pergunta que importa para o produtor:
 
 > *"O que devo fazer hoje para ganhar mais dinheiro?"*
 
@@ -30,18 +30,14 @@ A primeira propriedade rodando o produto é a **Fazenda Rio Novo**, que migrou s
 | Módulo | O que entrega |
 |---|---|
 | **Financeiro** | Reconstruído em torno de `Operacao` → `CompromissoFinanceiro` → `TransacaoFinanceira` → `MovimentoConta` em `ContaFinanceira`. Rascunho de operação, documentos anexos, períodos fechados (mês fechado bloqueia escrita), estorno com auditoria. Regime de caixa: DRE, fluxo de 23 meses, top categorias, projeção de saldo, reclassificação custeio/investimento. Lançamento de gastos também pelo bot do WhatsApp. |
-| **Rebanho** | Cadastro de animais (bovinos e caprinos), genealogia, ficha individual, painel executivo, baixa, busca e filtros. |
-| **Lotes (corte)** | Dentro de "Pecuária" na navegação: lotes coletivos, piquetes/pasto, pesagens, sanidade e nutrição coletivas, comercialização, custo por lote. |
-| **Reprodução** | Ciclos, IATF, diagnósticos, partos, secagem, IEP projetado, worklists, relatórios configuráveis e formulários de campo imprimíveis que retornam para lançamento em grade. |
-| **Sanidade** | CCS e tendência, mastite por quarto, aplicações com carência, vacinas, exames laboratoriais. |
-| **Produção** | Três modos: ordenha individual, total diário, tanque/lote. Curva de lactação, projeção 305d, ranking. |
-| **Nutrição** | Dietas (PB%, ED Mcal/kg), atribuição por lote, integração com consumo de estoque. |
-| **Estoque** | Saldos, movimentos, custo vaca/dia, ponte automática com financeiro em compras. |
-| **Custos** | Custo de produção (R$/litro), custo de sanidade, breakdown por categoria, indicadores zootécnicos cruzados com financeiros. |
-| **Inteligência** | Score 0–100 por animal, percentis no rebanho, projeções de lucro, recomendações, assistente conversacional e bot WhatsApp (OpenAI, `gpt-4o` por padrão) consultando um motor estruturado — sem SQL gerado pelo LLM. |
+| **Pecuária (v1 — Rebanho)** | Cadastro de animais, composição racial, lotes, movimentação (histórico completo, nunca apagado), categoria calculada por regras configuráveis da fazenda, baixa (venda/abate/morte/doação/extravio) com motivo, pesagens, auditoria. Schema Postgres próprio (`pecuaria`), carga única a partir do IDEAGRI. |
+| **Estoque** | Saldos, movimentos, ponte automática com financeiro em compras. |
+| **Inteligência** | Assistente conversacional e bot WhatsApp (OpenAI, `gpt-4o` por padrão) consultando um motor estruturado — sem SQL gerado pelo LLM. |
 | **Agronomia** | Café (talhões, fenologia, MIP, adubação, colheita, apontamento de máquinas) e milho/safras (áreas, produção, silos, custo por safra). |
 | **Equipe** | Funcionários, ponto, folha e rateio de mão de obra por setor. |
 | **Contas e acessos** | Usuários com sessão, papéis (presets), áreas e flags de permissão; dono criado no primeiro boot. Multi-propriedade (escopo de sítio) transversal. |
+
+O produto nasceu como plataforma de pecuária **leiteira** completa (reprodução, sanidade, produção, nutrição, score por animal — ver histórico em `DOMAIN.md`/`METRICS.md`); esse módulo foi removido em set/2026 e reconstruído do zero como a **v1 Rebanho** acima, mais simples e cobrindo qualquer rebanho (não só leiteiro). Os domínios de reprodução/sanidade/produção voltam em cascata nas próximas versões (v2–v5).
 
 A plataforma é multi-tenant na intenção (uma propriedade hoje, várias amanhã) e foi modelada contra dados reais do BPO da Rio Novo — **não inventamos campos**.
 
@@ -54,7 +50,7 @@ Esta é a fonte de verdade do projeto. Antes de implementar qualquer coisa, leia
 | Documento | Para quem | O que define |
 |---|---|---|
 | [`PRODUCT.md`](./PRODUCT.md) | Todos | Missão, visão, público, proposta de valor, mentalidade de produto. |
-| [`DOMAIN.md`](./DOMAIN.md) | Devs, designers, PMs | Conhecimento profundo do agro leiteiro: DEL, CCS, IEP, lactação, IATF, secagem, mastite, ECC, glossário. |
+| [`DOMAIN.md`](./DOMAIN.md) | Devs, designers, PMs | Conhecimento profundo do agro leiteiro: DEL, CCS, IEP, lactação, IATF, secagem, mastite, ECC, glossário. Histórico do módulo removido em set/2026, mantido como referência para os próximos domínios da pecuária (v2–v5). |
 | [`DESIGN.md`](./DESIGN.md) | Designers, devs UI | Filosofia visual, tipografia, paleta, hierarquia, espaçamento, acessibilidade para o produtor 45–70. |
 | [`COMPONENTS.md`](./COMPONENTS.md) | Devs UI | Catálogo dos componentes existentes e quando usar cada um. |
 | [`ARCHITECTURE.md`](./ARCHITECTURE.md) | Devs backend e fullstack | Bounded contexts, modelagem, fluxos, organização de pastas, ESM, validação Zod. |
@@ -136,12 +132,13 @@ cp server/.env.example server/.env
 # o link de definir senha. Sem usuários e sem SHARED_ACCESS_TOKEN, a porta fica
 # aberta em dev.
 
-# 3. Subir tudo (`dev:server` roda `prisma db push` antes do watch)
+# 3. Subir tudo (`dev:server` roda `prisma migrate deploy` antes do watch)
 pnpm dev
 
 # 4. (Opcional) Dados de exemplo
-pnpm --filter rionovo-server run seed:all       # todos os módulos, sem apagar o banco
-pnpm --filter rionovo-server run import:rebanho # rebanho real (rebanho_real.json)
+pnpm --filter rionovo-server run seed:all        # todos os módulos, sem apagar o banco
+pnpm --filter rionovo-server run seed:rebanho    # 4 sítios de demonstração da pecuária v1
+pnpm --filter rionovo-server run import:pecuaria # carga real do IDEAGRI (server/prisma/pecuaria_v1.json, gerado)
 ```
 
 | Porta | Serviço |
@@ -174,19 +171,19 @@ fazendinha/
 │       ├── components/        # Shell, AppSidebar, CommandPalette, Login, charts, pickers
 │       │   └── ui/            # Primitivas shadcn-style (button, dialog, select, sheet, ...)
 │       ├── financeiro/        # Operações, compromissos, contas, relatórios (novo-api.ts)
-│       ├── rebanho/ corte/ plantio/ cultivo/ equipe/   # Módulos operacionais
+│       ├── pecuaria/rebanho/ plantio/ cultivo/ equipe/   # Módulos operacionais
 │       ├── lib/               # auth, hoje, searchIndex, areas, reconciliacao, utils
 │       ├── data/              # Mocks/referência de forma (rionovo.ts, acessos)
 │       └── styles/            # CSS modular (base define as variáveis, dashboard, forms, ...)
 ├── server/                    # Backend Hono + Prisma
 │   ├── src/
-│   │   ├── routes/            # Roteadores finos por domínio (auth, financeiro, usuarios, whatsapp, rebanho/, corte/, plantio/, cultivo/, ponto/)
+│   │   ├── routes/            # Roteadores finos por domínio (auth, financeiro, usuarios, whatsapp, pecuaria/, plantio/, cultivo/, ponto/)
 │   │   ├── services/          # Regra de negócio testada
 │   │   │   ├── auth/          # Usuário, sessão, papéis/áreas/flags, bootstrap do dono
 │   │   │   ├── financeiro/    # operacoes, rascunhos, contas, documentos, regras, dashboard
 │   │   │   ├── consulta/      # Motor estruturado de consultas do bot
 │   │   │   ├── bot/ whatsapp/ # Assistente OpenAI + canal Meta Cloud API
-│   │   │   └── rebanho/ corte/ plantio/ cultivo/ ponto/
+│   │   │   └── pecuaria/rebanho/ plantio/ cultivo/ ponto/
 │   │   ├── middleware/auth.ts # Sessão / token compartilhado
 │   │   ├── lib/               # storage (local/R2), ocr
 │   │   ├── env.ts             # Validação Zod do .env
@@ -194,10 +191,10 @@ fazendinha/
 │   │   └── index.ts           # Bootstrap (backfill multi-propriedade, cleanup)
 │   ├── scripts/               # bateria-ia (gabarito/run)
 │   └── prisma/
-│       ├── schema.prisma      # ~120 models + ~65 enums
-│       ├── migrations/        # migrations cronológicas (sync em prod é manual: migrate deploy ou db push)
-│       ├── seed*.ts import-rebanho.ts
-│       └── rio_novo.json rebanho_real.json   # Dados reais extraídos
+│       ├── schema.prisma      # ~120 models + ~65 enums (schemas `public` + `pecuaria`)
+│       ├── migrations/        # baseline + migration da pecuária v1 (sync em prod é manual: migrate deploy)
+│       ├── seed*.ts import-pecuaria.ts
+│       └── rio_novo.json      # Dados reais extraídos (pecuaria_v1.json é gerado, não versionado)
 ├── scripts/                   # extract_rio_novo.py, gen-nav-doc.ts
 ├── docs/                      # design/, superpowers/{plans,specs}, handoffs, QA, visitas
 ├── .github/workflows/staging.yml
@@ -216,19 +213,19 @@ fazendinha/
 | Comando | O que faz |
 |---|---|
 | `pnpm dev` | Sobe server (41873) e client (41875) em paralelo. |
-| `pnpm dev:server` | Só backend (roda `prisma db push` antes do watch). |
+| `pnpm dev:server` | Só backend (roda `prisma migrate deploy` antes do watch). |
 | `pnpm dev:client` | Só frontend. |
 | `pnpm build` | Build de produção dos dois workspaces. |
 | `pnpm prisma:generate` | Regera Prisma Client. |
 | `pnpm prisma:migrate` | `prisma migrate dev` (requer `DIRECT_URL`). |
 | `pnpm prisma:studio` | Abre Prisma Studio. |
 | `pnpm gen:nav-doc` | Regera `docs/NAVEGACAO.md` a partir da navegação. |
-| `pnpm --filter rionovo-server run db:push` | Sincroniza o schema sem migration (o que roda em prod). |
+| `pnpm --filter rionovo-server run db:push` | Sincroniza o schema sem migration — não usar com o schema `pecuaria` (apaga os índices parciais). |
 | `pnpm --filter rionovo-server run seed` | Dados de exemplo do financeiro. |
 | `pnpm --filter rionovo-server run seed:usuarios` | Usuários de exemplo. |
-| `pnpm --filter rionovo-server run seed:rebanho` / `seed:plantio` / `seed:plantios` / `seed:corte` / `seed:ponto` | Seeds por módulo. |
+| `pnpm --filter rionovo-server run seed:pecuaria` / `seed:rebanho` / `seed:plantio` / `seed:plantios` / `seed:ponto` | Seeds por módulo (`seed:pecuaria` = catálogos; `seed:rebanho` = 4 sítios de demonstração). |
 | `pnpm --filter rionovo-server run seed:all` | Todos os seeds, sem resetar o banco; também roda automaticamente após `prisma migrate reset`. |
-| `pnpm --filter rionovo-server run import:rebanho` | Importa `rebanho_real.json`. |
+| `pnpm --filter rionovo-server run import:pecuaria` | Importa a carga do IDEAGRI (`server/prisma/pecuaria_v1.json`, gerado por `scripts/build-pecuaria-json.mjs`). |
 | `pnpm --filter rionovo-server run whatsapp:user` | Gerencia a allowlist de números do bot. |
 | `pnpm --filter rionovo-server run bateria:gabarito` / `bateria:run` | Bateria de consultas de IA (gera gabarito / executa). |
 | `pnpm --filter rionovo-server run test` | Testes do backend (Vitest). |
@@ -266,10 +263,10 @@ Esses cinco princípios estão acima de qualquer feature. Eles são detalhados e
 Resumo (detalhe em [`ROADMAP.md`](./ROADMAP.md)):
 
 - **MVP** ✅ — financeiro do BPO + cadastro de animais + ficha individual + painel executivo.
-- **V1 (atual)** — núcleo entregue: produção integrada (3 modos), reprodução completa (IATF configurável, DG, partos), sanidade (carência, vacinação com lembrete), painel "Hoje", estoque↔sanidade, simulações financeiras read-only. Restam NF por foto no WhatsApp, CMT via tablet, mastite por quarto.
-- **V2** — IA preditiva (descarte, prenhez, mastite subclínica), WhatsApp como interface principal de lançamento.
-- **V3** — integrações IoT (ordenhadeira, balanças, colares), marketplace de insumos, benchmarking entre fazendas.
-- **Longo prazo** — aplicativo nativo, BI próprio, score de crédito rural derivado da operação.
+- **Financeiro novo** ✅ (ago/set 2026) — `Operacao`/`CompromissoFinanceiro`/`TransacaoFinanceira`/`MovimentoConta` reconstruídos do zero (ver contrato em `docs/financeiro-rebuild-contrato.md`).
+- **Pecuária v1 — Rebanho** ✅ (set 2026) — o módulo de pecuária leiteira/corte anterior (produção, reprodução com IATF, sanidade com carência...) foi removido e reconstruído como um rebanho genérico: identidade, lote, movimentação, categoria configurável, baixa, pesagem. É a base sobre a qual os próximos domínios entram em cascata.
+- **V2–V5 (pecuária)** — reprodução, sanidade, produção/leite e nutrição voltam como domínios ligados por chave à v1 Rebanho — ver `DOMAIN.md`/`METRICS.md` para o conhecimento de domínio mantido como referência.
+- **Depois** — IA preditiva (descarte, prenhez, mastite subclínica), WhatsApp como interface principal de lançamento, integrações IoT, marketplace de insumos, benchmarking entre fazendas, aplicativo nativo, BI próprio, score de crédito rural.
 
 ---
 

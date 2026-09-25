@@ -12,12 +12,15 @@ datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
+  schemas   = ["public", "pecuaria"]
 }
 
 enum TipoContaFinanceira {
   BANCO
   CAIXA
   APLICACAO
+
+  @@schema("public")
 }
 
 enum TipoParceiro {
@@ -27,6 +30,8 @@ enum TipoParceiro {
   FUNCIONARIO
   PROPRIETARIO
   OUTRO
+
+  @@schema("public")
 }
 
 enum PapelParceiro {
@@ -36,12 +41,16 @@ enum PapelParceiro {
   FUNCIONARIO
   PROPRIETARIO
   OUTRO
+
+  @@schema("public")
 }
 
 enum TipoBancario {
   CORRENTE
   POUPANCA
   PAGAMENTO
+
+  @@schema("public")
 }
 
 enum TipoOperacaoFinanceira {
@@ -58,17 +67,23 @@ enum TipoOperacaoFinanceira {
   BONIFICACAO
   DEVOLUCAO
   PRODUCAO
+
+  @@schema("public")
 }
 
 enum StatusOperacao {
   RASCUNHO
   CONFIRMADA
   CANCELADA
+
+  @@schema("public")
 }
 
 enum TipoCompromisso {
   PAGAR
   RECEBER
+
+  @@schema("public")
 }
 
 enum StatusCompromisso {
@@ -76,6 +91,8 @@ enum StatusCompromisso {
   PARCIAL
   LIQUIDADO
   CANCELADO
+
+  @@schema("public")
 }
 
 enum TipoTransacaoFinanceira {
@@ -86,6 +103,8 @@ enum TipoTransacaoFinanceira {
   RETIRADA
   AJUSTE
   REVERSAO
+
+  @@schema("public")
 }
 
 enum FormaPagamento {
@@ -97,16 +116,22 @@ enum FormaPagamento {
   CHEQUE
   DEBITO_AUTOMATICO
   OUTRO
+
+  @@schema("public")
 }
 
 enum StatusTransacaoFinanceira {
   CONFIRMADA
   REVERTIDA
+
+  @@schema("public")
 }
 
 enum DirecaoMovimentoConta {
   ENTRADA
   SAIDA
+
+  @@schema("public")
 }
 
 enum TipoDocumentoFinanceiro {
@@ -117,11 +142,15 @@ enum TipoDocumentoFinanceiro {
   COMPROVANTE
   JUSTIFICATIVA
   OUTRO
+
+  @@schema("public")
 }
 
 enum StatusPeriodoFinanceiro {
   ABERTO
   FECHADO
+
+  @@schema("public")
 }
 
 // Área responsável pelo gasto: Pecuária, Agronomia, Equipe, Gestão.
@@ -134,8 +163,9 @@ model CentroCusto {
   produtos          ProdutoCentroCusto[]
   itensOperacao     ItemOperacao[]
   movimentosEstoque MovimentoEstoque[]
-  grupos            Grupo[]
   safras            Safra[]
+
+  @@schema("public")
 }
 
 // Override gerencial da classificação de uma categoria (custeio × investimento).
@@ -143,25 +173,26 @@ model CentroCusto {
 enum ClassificacaoCategoria {
   CUSTEIO
   INVESTIMENTO
+
+  @@schema("public")
 }
 
 model Categoria {
-  id             Int                     @id @default(autoincrement())
-  nome           String
-  classificacao  ClassificacaoCategoria?
-  ativo          Boolean                 @default(true)
-  ordem          Int                     @default(0)
-  // Marcações de comportamento — sanitário: aparece na sanidade;
-  // nutricional: entra na dieta e indicadores; agrícola: aplicável em talhão e
-  // alerta de estoque do plantio.
-  usoSanitario   Boolean                 @default(false)
-  usoNutricional Boolean                 @default(false)
-  usoAgricola    Boolean                 @default(false)
-  operacoes      Operacao[]
-  produtos       Produto[]
-  itens          ItemOperacao[]
+  id            Int                     @id @default(autoincrement())
+  nome          String
+  classificacao ClassificacaoCategoria?
+  ativo         Boolean                 @default(true)
+  ordem         Int                     @default(0)
+  // Marcação de comportamento — agrícola: aplicável em talhão e alerta de
+  // estoque do plantio. (As marcações sanitária e nutricional voltam com a v3
+  // da pecuária.)
+  usoAgricola   Boolean                 @default(false)
+  operacoes     Operacao[]
+  produtos      Produto[]
+  itens         ItemOperacao[]
 
   @@unique([nome])
+  @@schema("public")
 }
 
 model ContaFinanceira {
@@ -191,32 +222,33 @@ model ContaFinanceira {
 
   @@unique([propriedadeId, nome])
   @@index([propriedadeId, ativo])
+  @@schema("public")
 }
 
 model Produto {
-  id                Int                  @id @default(autoincrement())
-  nome              String               @unique
-  unidade           UnidadeMedida        @default(UN)
-  minimoEstoque     Decimal?             @db.Decimal(12, 2)
-  ativo             Boolean              @default(true)
+  id            Int                  @id @default(autoincrement())
+  nome          String               @unique
+  unidade       UnidadeMedida        @default(UN)
+  minimoEstoque Decimal?             @db.Decimal(12, 2)
+  ativo         Boolean              @default(true)
   // Mapeamento contábil (ponte com o financeiro): categoria padrão que o item
   // de operação herda ao escolher este produto (classificação vem da categoria).
   // Obrigatória no cadastro (validada no service); a coluna segue nullable por
   // causa de produtos legados. Se o produto tem estoque não é atributo dele:
   // quem decide é o tipo da operação (ItemOperacao.estocavel).
-  categoria         Categoria?           @relation(fields: [categoriaId], references: [id])
-  categoriaId       Int?
+  categoria     Categoria?           @relation(fields: [categoriaId], references: [id])
+  categoriaId   Int?
   // Centros de custo onde este produto pode ser usado (N:N). Um só → o item da
   // operação e a saída de estoque herdam automaticamente; vários → escolha na hora.
-  centrosCusto      ProdutoCentroCusto[]
-  movimentos        MovimentoEstoque[]
-  itensOperacao     ItemOperacao[]
-  eventosSanitarios EventoSanitario[]
-  dietaItens        DietaItem[]
-  fornecedores      ProdutoFornecedor[]
-  aplicacoes        OperacaoAgricola[]
-  createdAt         DateTime             @default(now())
-  updatedAt         DateTime             @updatedAt
+  centrosCusto  ProdutoCentroCusto[]
+  movimentos    MovimentoEstoque[]
+  itensOperacao ItemOperacao[]
+  fornecedores  ProdutoFornecedor[]
+  aplicacoes    OperacaoAgricola[]
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  @@schema("public")
 }
 
 // Registro de chuva (pluviômetro) — mm por dia. Só o pluviômetro: sem estação meteorológica,
@@ -234,6 +266,7 @@ model RegistroChuva {
 
   @@index([data])
   @@index([propriedadeId])
+  @@schema("public")
 }
 
 model Parceiro {
@@ -270,6 +303,7 @@ model Parceiro {
   @@unique([documento])
   @@index([nome])
   @@index([tipo, ativo])
+  @@schema("public")
 }
 
 // Catálogo opcional de fornecedores usuais do produto. O fornecedor efetivo de
@@ -283,6 +317,7 @@ model ProdutoFornecedor {
 
   @@id([produtoId, fornecedorId])
   @@index([fornecedorId])
+  @@schema("public")
 }
 
 // Centros de custo onde o produto pode ser consumido. Substitui o antigo
@@ -296,6 +331,7 @@ model ProdutoCentroCusto {
 
   @@id([produtoId, centroCustoId])
   @@index([centroCustoId])
+  @@schema("public")
 }
 
 model ParceiroPapel {
@@ -304,6 +340,7 @@ model ParceiroPapel {
   parceiro   Parceiro      @relation(fields: [parceiroId], references: [id], onDelete: Cascade)
 
   @@id([parceiroId, papel])
+  @@schema("public")
 }
 
 model PeriodoFinanceiro {
@@ -321,46 +358,46 @@ model PeriodoFinanceiro {
   updatedAt     DateTime                @updatedAt
 
   @@unique([propriedadeId, ano, mes])
+  @@schema("public")
 }
 
 model Operacao {
-  categoriaNome       String?
-  classificacao       ClassificacaoCategoria?
-  id                  Int                     @id @default(autoincrement())
-  tipo                TipoOperacaoFinanceira
-  status              StatusOperacao          @default(RASCUNHO)
-  data                DateTime                @db.Date
-  descricao           String?
-  valorTotal          Decimal                 @db.Decimal(14, 2)
-  propriedade         Propriedade             @relation(fields: [propriedadeId], references: [id])
-  propriedadeId       Int
-  parceiro            Parceiro?               @relation(fields: [parceiroId], references: [id])
-  parceiroId          Int?
-  categoria           Categoria?              @relation(fields: [categoriaId], references: [id])
-  categoriaId         Int?
-  centroCusto         CentroCusto?            @relation(fields: [centroCustoId], references: [id])
-  centroCustoId       Int?
-  corrigeOperacao     Operacao?               @relation("CorrecaoOperacao", fields: [corrigeOperacaoId], references: [id])
-  corrigeOperacaoId   Int?
-  correcoes           Operacao[]              @relation("CorrecaoOperacao")
-  criadoPor           Usuario?                @relation("OperacaoCriador", fields: [criadoPorId], references: [id])
-  criadoPorId         Int?
-  itens               ItemOperacao[]
-  compromissos        CompromissoFinanceiro[]
-  transacoes          TransacaoFinanceira[]
-  movimentosEstoque   MovimentoEstoque[]
-  documentos          DocumentoFinanceiro[]
-  operacoesAgricolas  OperacaoAgricola[]
-  manejosSanitarios   ManejoSanitario[]
-  operacoesComerciais OperacaoComercial[]
-  custosCultivo       LancamentoCusto[]
-  createdAt           DateTime                @default(now())
-  updatedAt           DateTime                @updatedAt
+  categoriaNome      String?
+  classificacao      ClassificacaoCategoria?
+  id                 Int                     @id @default(autoincrement())
+  tipo               TipoOperacaoFinanceira
+  status             StatusOperacao          @default(RASCUNHO)
+  data               DateTime                @db.Date
+  descricao          String?
+  valorTotal         Decimal                 @db.Decimal(14, 2)
+  propriedade        Propriedade             @relation(fields: [propriedadeId], references: [id])
+  propriedadeId      Int
+  parceiro           Parceiro?               @relation(fields: [parceiroId], references: [id])
+  parceiroId         Int?
+  categoria          Categoria?              @relation(fields: [categoriaId], references: [id])
+  categoriaId        Int?
+  centroCusto        CentroCusto?            @relation(fields: [centroCustoId], references: [id])
+  centroCustoId      Int?
+  corrigeOperacao    Operacao?               @relation("CorrecaoOperacao", fields: [corrigeOperacaoId], references: [id])
+  corrigeOperacaoId  Int?
+  correcoes          Operacao[]              @relation("CorrecaoOperacao")
+  criadoPor          Usuario?                @relation("OperacaoCriador", fields: [criadoPorId], references: [id])
+  criadoPorId        Int?
+  itens              ItemOperacao[]
+  compromissos       CompromissoFinanceiro[]
+  transacoes         TransacaoFinanceira[]
+  movimentosEstoque  MovimentoEstoque[]
+  documentos         DocumentoFinanceiro[]
+  operacoesAgricolas OperacaoAgricola[]
+  custosCultivo      LancamentoCusto[]
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
 
   @@index([propriedadeId, data])
   @@index([tipo, status])
   @@index([parceiroId])
   @@index([corrigeOperacaoId])
+  @@schema("public")
 }
 
 // Estado temporario do formulario financeiro. Cada usuario possui no maximo
@@ -380,12 +417,15 @@ model RascunhoOperacao {
 
   @@unique([propriedadeId, criadoPorId])
   @@index([criadoPorId, updatedAt])
+  @@schema("public")
 }
 
 enum StatusRelatorioFinanceiro {
   PROCESSANDO
   CONCLUIDO
   FALHOU
+
+  @@schema("public")
 }
 
 model RascunhoRelatorioFinanceiro {
@@ -400,6 +440,7 @@ model RascunhoRelatorioFinanceiro {
   updatedAt     DateTime    @updatedAt
 
   @@unique([propriedadeId, criadoPorId])
+  @@schema("public")
 }
 
 model RelatorioFinanceiro {
@@ -419,6 +460,7 @@ model RelatorioFinanceiro {
   concluidoEm   DateTime?
 
   @@index([propriedadeId, geradoEm])
+  @@schema("public")
 }
 
 model ItemOperacao {
@@ -448,6 +490,7 @@ model ItemOperacao {
   @@index([operacaoId])
   @@index([produtoId])
   @@index([centroCustoId])
+  @@schema("public")
 }
 
 model CompromissoFinanceiro {
@@ -469,6 +512,7 @@ model CompromissoFinanceiro {
 
   @@index([tipo, status, dataVencimento])
   @@index([operacaoId])
+  @@schema("public")
 }
 
 model TransacaoFinanceira {
@@ -499,6 +543,7 @@ model TransacaoFinanceira {
   @@index([propriedadeId, data])
   @@index([tipo, status])
   @@index([operacaoId])
+  @@schema("public")
 }
 
 model MovimentoConta {
@@ -513,6 +558,7 @@ model MovimentoConta {
 
   @@index([contaId, createdAt])
   @@index([transacaoId])
+  @@schema("public")
 }
 
 model Liquidacao {
@@ -526,6 +572,7 @@ model Liquidacao {
 
   @@unique([compromissoId, transacaoId])
   @@index([transacaoId])
+  @@schema("public")
 }
 
 model DocumentoFinanceiro {
@@ -553,6 +600,7 @@ model DocumentoFinanceiro {
   @@index([transacaoId])
   @@index([compromissoId])
   @@index([rascunhoId])
+  @@schema("public")
 }
 
 model AuditoriaFinanceira {
@@ -569,1345 +617,57 @@ model AuditoriaFinanceira {
 
   @@index([entidade, entidadeId])
   @@index([usuarioId, createdAt])
-}
-
-enum ModoProducao {
-  ORDENHA
-  TOTAL_DIARIO
-  TANQUE_LOTE
-}
-
-// Configuração da fazenda (linha única / singleton).
-model Configuracao {
-  id           Int          @id @default(1)
-  producaoModo ModoProducao @default(ORDENHA)
-  // Preço médio do litro de leite recebido. Usado pra estimar receita por animal.
-  // Quando NULL, o cálculo cai em fallback fixo no service (R$ 2,40/L).
-  precoLeite   Decimal?     @db.Decimal(10, 4)
-  atualizadoEm DateTime     @updatedAt
-}
-
-// Parâmetros de manejo do rebanho (metas Embrapa, referências de peso, produção
-// mínima por categoria, regras de desmame). Modelo key/value: cada chave é um
-// parâmetro; o serviço parametros.ts sabe interpretar cada uma.
-//
-// - valorNumero: valor efetivo aplicado (ou "ideal" nas metas com faixa dupla).
-// - valorNumeroAceitavel: 2º threshold das metas Embrapa (semáforo amarelo).
-// - referenciaNumero / referenciaNumeroAceitavel: valor original da Embrapa,
-//   imutável, exibido junto do efetivo pra comparação.
-// - modo: usado em parâmetros que suportam mais de uma regra (ex.: DESMAME_MODO
-//   = "DIAS" | "PESO"). null nos demais.
-// - direcao: só nas metas com semáforo — "maior_melhor" | "menor_melhor".
-// - categoria: agrupador na UI (PRODUCAO, REPRODUCAO, MANEJO, SANITARIO, GESTAO).
-model ParametroManejo {
-  chave                     String   @id
-  categoria                 String
-  descricao                 String
-  unidade                   String?
-  valorNumero               Decimal? @db.Decimal(14, 4)
-  valorNumeroAceitavel      Decimal? @db.Decimal(14, 4)
-  valorTexto                String?
-  modo                      String?
-  direcao                   String?
-  referenciaNumero          Decimal? @db.Decimal(14, 4)
-  referenciaNumeroAceitavel Decimal? @db.Decimal(14, 4)
-  ordem                     Int      @default(0)
-  atualizadoEm              DateTime @updatedAt
-
-  @@index([categoria, ordem])
-}
-
-// Controle leiteiro por animal (modos ORDENHA / TOTAL_DIARIO).
-model ControleLeiteiro {
-  id        Int      @id @default(autoincrement())
-  animal    Animal   @relation(fields: [animalId], references: [id], onDelete: Cascade)
-  animalId  Int
-  data      DateTime @db.Date
-  peso1     Decimal? @db.Decimal(6, 2) // ordenha manhã
-  peso2     Decimal? @db.Decimal(6, 2) // tarde
-  peso3     Decimal? @db.Decimal(6, 2) // noite
-  pesoTotal Decimal  @db.Decimal(6, 2) // total do dia (soma das ordenhas ou total diário)
-  origem    String   @default("manual") // manual | integracao
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([animalId, data])
-}
-
-// Produção por lote/tanque (modo TANQUE_LOTE) — per-animal vem por rateio.
-model ProducaoLote {
-  id            Int          @id @default(autoincrement())
-  grupo         Grupo?       @relation(fields: [grupoId], references: [id])
-  grupoId       Int? // null = tanque da propriedade inteira
-  propriedade   Propriedade? @relation(fields: [propriedadeId], references: [id])
-  propriedadeId Int?
-  data          DateTime     @db.Date
-  litros        Decimal      @db.Decimal(10, 2)
-  origem        String       @default("manual")
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-
-  @@index([grupoId, data])
-  @@index([propriedadeId, data])
-  @@index([data])
-}
-
-// Tanque de resfriamento (cadastro). Espelha "Tanque" do IDEagri.
-model Tanque {
-  id               Int             @id @default(autoincrement())
-  nome             String
-  capacidadeLitros Int?
-  ativo            Boolean         @default(true)
-  analises         AnaliseTanque[]
-  propriedade      Propriedade?    @relation(fields: [propriedadeId], references: [id])
-  propriedadeId    Int?
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
-
-  @@index([propriedadeId])
-}
-
-// Análise de tanque (qualidade do leite bulk). Espelha "Análise de tanque" do IDEagri.
-model AnaliseTanque {
-  id          Int      @id @default(autoincrement())
-  tanque      Tanque   @relation(fields: [tanqueId], references: [id], onDelete: Cascade)
-  tanqueId    Int
-  data        DateTime @db.Date
-  ccs         Int? // células somáticas do tanque (mil/mL)
-  cbt         Int? // contagem bacteriana total (mil UFC/mL)
-  gordura     Decimal? @db.Decimal(4, 2)
-  proteina    Decimal? @db.Decimal(4, 2)
-  temperatura Decimal? @db.Decimal(4, 1) // °C na coleta
-  observacao  String?
-  createdAt   DateTime @default(now())
-
-  @@index([tanqueId, data])
-}
-
-enum SexoAnimal {
-  F
-  M
-}
-
-enum CategoriaAnimal {
-  BEZERRA
-  NOVILHA
-  VACA
-  BEZERRO
-  TOURO
-  CABRITA
-  CABRA
-  CABRITO
-  BODE
-}
-
-// Característica produtiva do indivíduo. Não cria um módulo/setor separado:
-// animais de leite, corte e dupla aptidão compartilham o mesmo cadastro.
-enum FinalidadeAnimal {
-  LEITE
-  CORTE
-  DUPLA_APTIDAO
-  NAO_INFORMADA
-}
-
-enum StatusAnimal {
-  ATIVO
-  BAIXADO
-}
-
-enum StatusReprodutivo {
-  PEV
-  VAZIA
-  INSEMINADA
-  PRENHE
-}
-
-enum EspecieAnimal {
-  BOVINO
-  CAPRINO
-}
-
-model Raca {
-  id           Int           @id @default(autoincrement())
-  nome         String        @unique
-  // Código curto usado na string de grau de sangue (ex.: HO = Holandês, GL = Girolando).
-  codigo       String?       @unique
-  especie      EspecieAnimal @default(BOVINO)
-  animais      Animal[]
-  reprodutores Reprodutor[]
-}
-
-// Central de sêmen (origem do sêmen dos reprodutores). Espelha CENTRALSEMEN do IDEagri.
-model CentralSemen {
-  id            Int          @id @default(autoincrement())
-  nome          String
-  ativo         Boolean      @default(true)
-  reprodutores  Reprodutor[]
-  propriedade   Propriedade? @relation(fields: [propriedadeId], references: [id])
-  propriedadeId Int?
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-
-  @@index([propriedadeId])
-}
-
-// Biblioteca de reprodutores (touros) com origem e índices genéticos (PTAs). Espelha
-// ANIMALINFO_REPRODUTOR + GENCATALOGOINDICADOR do IDEagri (índices operacionais como colunas).
-model Reprodutor {
-  id                   Int                        @id @default(autoincrement())
-  ideagriId            Int?                       @unique
-  nome                 String
-  codigo               String? // registro/código do touro
-  raca                 Raca?                      @relation(fields: [racaId], references: [id])
-  racaId               Int?
-  centralSemen         CentralSemen?              @relation(fields: [centralSemenId], references: [id])
-  centralSemenId       Int?
-  ptaLeite             Decimal?                   @db.Decimal(8, 2) // PTA leite (kg)
-  ptaGordura           Decimal?                   @db.Decimal(6, 2) // PTA gordura (kg ou %)
-  ptaProteina          Decimal?                   @db.Decimal(6, 2) // PTA proteína
-  tpi                  Int? // índice composto (TPI/mérito líquido)
-  ativo                Boolean                    @default(true)
-  propriedade          Propriedade?               @relation(fields: [propriedadeId], references: [id])
-  propriedadeId        Int?
-  valoresIndicador     ValorIndicadorReprodutor[]
-  valoresMarcador      ValorMarcadorReprodutor[]
-  valoresCaseina       ValorCaseinaReprodutor[]
-  pedigree             PedigreeReprodutor?
-  estoquesSemen        EstoqueSemen[]
-  escolhasAcasalamento LinhaPlanoAcasalamento[]
-  fertilizacoes        FertilizacaoColeta[]
-  createdAt            DateTime                   @default(now())
-  updatedAt            DateTime                   @updatedAt
-
-  @@index([propriedadeId])
-  @@index([racaId])
-  @@index([centralSemenId])
-}
-
-// Catálogo genético flexível (GENCATALOGOINDICADOR do IDEAGRI, 271). Compartilhado entre
-// propriedades. `colunaLegada` espelha siglas conhecidas nas colunas PTA de Reprodutor (retrocompat).
-model IndicadorGenetico {
-  id           Int                        @id @default(autoincrement())
-  ideagriId    Int?                       @unique
-  sigla        String                     @unique
-  nome         String
-  unidade      String?
-  direcao      String                     @default("maior_melhor") // maior_melhor | menor_melhor
-  colunaLegada String? // ptaLeite | ptaGordura | ptaProteina | tpi | null
-  ranking      Boolean                    @default(false)
-  ativo        Boolean                    @default(true)
-  valores      ValorIndicadorReprodutor[]
-  itensMedida  ItemMedidaAcasalamento[]
-  createdAt    DateTime                   @default(now())
-  updatedAt    DateTime                   @updatedAt
-}
-
-model ValorIndicadorReprodutor {
-  id           Int               @id @default(autoincrement())
-  reprodutor   Reprodutor        @relation(fields: [reprodutorId], references: [id], onDelete: Cascade)
-  reprodutorId Int
-  indicador    IndicadorGenetico @relation(fields: [indicadorId], references: [id], onDelete: Cascade)
-  indicadorId  Int
-  valor        Decimal           @db.Decimal(12, 3)
-
-  @@unique([reprodutorId, indicadorId])
-  @@index([indicadorId])
-}
-
-// Dicionário de marcadores genéticos (20). Compartilhado. Resultado por touro é texto (ex.: TT/TC/CC).
-model MarcadorGenetico {
-  id        Int                       @id @default(autoincrement())
-  ideagriId Int?                      @unique
-  sigla     String                    @unique
-  nome      String
-  valores   ValorMarcadorReprodutor[]
-}
-
-model ValorMarcadorReprodutor {
-  id           Int              @id @default(autoincrement())
-  reprodutor   Reprodutor       @relation(fields: [reprodutorId], references: [id], onDelete: Cascade)
-  reprodutorId Int
-  marcador     MarcadorGenetico @relation(fields: [marcadorId], references: [id], onDelete: Cascade)
-  marcadorId   Int
-  resultado    String
-
-  @@unique([reprodutorId, marcadorId])
-  @@index([marcadorId])
-}
-
-// Dicionário de variantes de caseína (15). Compartilhado. Genótipo por touro é texto (ex.: A2A2).
-model Caseina {
-  id        Int                      @id @default(autoincrement())
-  ideagriId Int?                     @unique
-  sigla     String                   @unique
-  nome      String
-  valores   ValorCaseinaReprodutor[]
-}
-
-model ValorCaseinaReprodutor {
-  id           Int        @id @default(autoincrement())
-  reprodutor   Reprodutor @relation(fields: [reprodutorId], references: [id], onDelete: Cascade)
-  reprodutorId Int
-  caseina      Caseina    @relation(fields: [caseinaId], references: [id], onDelete: Cascade)
-  caseinaId    Int
-  genotipo     String
-
-  @@unique([reprodutorId, caseinaId])
-  @@index([caseinaId])
-}
-
-// Pedigree do reprodutor (1:1). Genealogia textual (pai/mãe/avós), sem FK a Animal.
-model PedigreeReprodutor {
-  id               Int        @id @default(autoincrement())
-  reprodutor       Reprodutor @relation(fields: [reprodutorId], references: [id], onDelete: Cascade)
-  reprodutorId     Int        @unique
-  ideagriId        Int?       @unique
-  paiNome          String?
-  paiCodigo        String?
-  maeNome          String?
-  maeCodigo        String?
-  avoMaternoNome   String?
-  avoMaternoCodigo String?
-  avoPaternoNome   String?
-  avoPaternoCodigo String?
-}
-
-// Dicionário de tipos de sêmen (3: convencional/sexado/etc.). Compartilhado.
-model TipoSemen {
-  id        Int            @id @default(autoincrement())
-  ideagriId Int?           @unique
-  sigla     String         @unique
-  nome      String
-  estoques  EstoqueSemen[]
-}
-
-// Estoque de doses de sêmen por reprodutor (fato de sítio). `dosesDisponiveis` nunca fica negativo.
-model EstoqueSemen {
-  id               Int                  @id @default(autoincrement())
-  reprodutor       Reprodutor           @relation(fields: [reprodutorId], references: [id], onDelete: Cascade)
-  reprodutorId     Int
-  tipoSemen        TipoSemen?           @relation(fields: [tipoSemenId], references: [id], onDelete: SetNull)
-  tipoSemenId      Int?
-  lote             String?
-  localizacao      String?
-  dosesDisponiveis Int                  @default(0)
-  ideagriId        Int?                 @unique
-  propriedade      Propriedade?         @relation(fields: [propriedadeId], references: [id], onDelete: SetNull)
-  propriedadeId    Int?
-  eventos          EventoReprodutivo[]
-  fertilizacoes    FertilizacaoColeta[]
-  createdAt        DateTime             @default(now())
-  updatedAt        DateTime             @updatedAt
-
-  @@index([reprodutorId])
-  @@index([tipoSemenId])
-  @@index([propriedadeId])
-}
-
-model MedidaAcasalamento {
-  id                 Int                      @id @default(autoincrement())
-  ideagriId          Int?                     @unique
-  nome               String                   @unique
-  tipo               String
-  consanguinidadeMax Decimal?                 @db.Decimal(5, 4)
-  exigePedigree      Boolean                  @default(false)
-  ativo              Boolean                  @default(true)
-  itens              ItemMedidaAcasalamento[]
-  combinacoes        ItemCombinacaoMedida[]
-  createdAt          DateTime                 @default(now())
-  updatedAt          DateTime                 @updatedAt
-}
-
-model ItemMedidaAcasalamento {
-  id          Int                @id @default(autoincrement())
-  medida      MedidaAcasalamento @relation(fields: [medidaId], references: [id], onDelete: Cascade)
-  medidaId    Int
-  indicador   IndicadorGenetico  @relation(fields: [indicadorId], references: [id])
-  indicadorId Int
-  peso        Decimal            @default(1) @db.Decimal(8, 4)
-  minimo      Decimal?           @db.Decimal(12, 3)
-  maximo      Decimal?           @db.Decimal(12, 3)
-
-  @@unique([medidaId, indicadorId])
-  @@index([indicadorId])
-}
-
-model CombinacaoMedidaAcasalamento {
-  id        Int                    @id @default(autoincrement())
-  ideagriId Int?                   @unique
-  nome      String                 @unique
-  ativo     Boolean                @default(true)
-  itens     ItemCombinacaoMedida[]
-  planos    PlanoAcasalamento[]
-  createdAt DateTime               @default(now())
-  updatedAt DateTime               @updatedAt
-}
-
-model ItemCombinacaoMedida {
-  id           Int                          @id @default(autoincrement())
-  combinacao   CombinacaoMedidaAcasalamento @relation(fields: [combinacaoId], references: [id], onDelete: Cascade)
-  combinacaoId Int
-  medida       MedidaAcasalamento           @relation(fields: [medidaId], references: [id])
-  medidaId     Int
-  peso         Decimal                      @default(1) @db.Decimal(8, 4)
-  obrigatoria  Boolean                      @default(false)
-  ordem        Int                          @default(0)
-
-  @@unique([combinacaoId, medidaId])
-  @@index([medidaId])
-}
-
-model PlanoAcasalamento {
-  id            Int                          @id @default(autoincrement())
-  grupo         Grupo                        @relation(fields: [grupoId], references: [id])
-  grupoId       Int
-  combinacao    CombinacaoMedidaAcasalamento @relation(fields: [combinacaoId], references: [id])
-  combinacaoId  Int
-  nome          String
-  propriedade   Propriedade?                 @relation(fields: [propriedadeId], references: [id])
-  propriedadeId Int?
-  versoes       VersaoPlanoAcasalamento[]
-  createdAt     DateTime                     @default(now())
-  updatedAt     DateTime                     @updatedAt
-
-  @@index([grupoId])
-  @@index([combinacaoId])
-  @@index([propriedadeId])
-}
-
-model VersaoPlanoAcasalamento {
-  id             Int                      @id @default(autoincrement())
-  plano          PlanoAcasalamento        @relation(fields: [planoId], references: [id], onDelete: Cascade)
-  planoId        Int
-  versao         Int
-  configSnapshot Json
-  linhas         LinhaPlanoAcasalamento[]
-  createdAt      DateTime                 @default(now())
-
-  @@unique([planoId, versao])
-}
-
-model LinhaPlanoAcasalamento {
-  id                       Int                     @id @default(autoincrement())
-  versao                   VersaoPlanoAcasalamento @relation(fields: [versaoId], references: [id], onDelete: Cascade)
-  versaoId                 Int
-  femea                    Animal                  @relation(fields: [femeaId], references: [id])
-  femeaId                  Int
-  rankingSnapshot          Json
-  reprodutorEscolhido      Reprodutor?             @relation(fields: [reprodutorEscolhidoId], references: [id])
-  reprodutorEscolhidoId    Int?
-  confirmadoNaoVerificavel Boolean                 @default(false)
-
-  @@unique([versaoId, femeaId])
-  @@index([femeaId])
-  @@index([reprodutorEscolhidoId])
-}
-
-// Dicionário oficial compartilhado das classificações de embrião do IDEAGRI.
-model EmbriaoClassificacao {
-  id        Int             @id @default(autoincrement())
-  ideagriId Int?            @unique
-  sigla     String          @unique
-  nome      String
-  ordem     Int             @default(0)
-  ativo     Boolean         @default(true)
-  embrioes  EmbriaoColeta[]
-}
-
-// Coleta FIV/TE por doadora. Fato de sítio; resultados ficam separados por animal.
-model Coleta {
-  id                 Int                   @id @default(autoincrement())
-  ideagriId          Int?                  @unique
-  doadora            Animal                @relation("DoadoraColeta", fields: [doadoraId], references: [id], onDelete: Restrict)
-  doadoraId          Int
-  data               DateTime              @db.Date
-  tecnico            String?
-  metodo             String
-  laboratorio        String?
-  status             String                @default("RASCUNHO")
-  canceladaEm        DateTime?
-  motivoCancelamento String?
-  observacao         String?
-  aplicacaoPool      AplicacaoPoolDoadora? @relation(fields: [aplicacaoPoolId], references: [id], onDelete: SetNull)
-  aplicacaoPoolId    Int?
-  propriedade        Propriedade?          @relation(fields: [propriedadeId], references: [id], onDelete: SetNull)
-  propriedadeId      Int?
-  oocitos            OocitoColeta[]
-  fertilizacoes      FertilizacaoColeta[]
-  createdAt          DateTime              @default(now())
-  updatedAt          DateTime              @updatedAt
-
-  @@index([doadoraId])
-  @@index([propriedadeId])
-  @@index([aplicacaoPoolId])
-}
-
-model OocitoColeta {
-  id         Int     @id @default(autoincrement())
-  coleta     Coleta  @relation(fields: [coletaId], references: [id], onDelete: Cascade)
-  coletaId   Int
-  qualidade  String
-  viavel     Boolean
-  quantidade Int
-
-  @@unique([coletaId, qualidade, viavel])
-}
-
-model FertilizacaoColeta {
-  id                 Int             @id @default(autoincrement())
-  ideagriId          Int?            @unique
-  coleta             Coleta          @relation(fields: [coletaId], references: [id], onDelete: Cascade)
-  coletaId           Int
-  reprodutor         Reprodutor      @relation(fields: [reprodutorId], references: [id], onDelete: Restrict)
-  reprodutorId       Int
-  estoqueSemen       EstoqueSemen?   @relation(fields: [estoqueSemenId], references: [id], onDelete: SetNull)
-  estoqueSemenId     Int?
-  doseBaixada        Boolean         @default(false)
-  data               DateTime?       @db.Date
-  tecnica            String?
-  status             String          @default("ATIVA")
-  canceladaEm        DateTime?
-  motivoCancelamento String?
-  embrioes           EmbriaoColeta[]
-
-  @@index([coletaId])
-  @@index([reprodutorId])
-  @@index([estoqueSemenId])
-}
-
-model EmbriaoColeta {
-  id              Int                   @id @default(autoincrement())
-  ideagriId       Int?                  @unique
-  fertilizacao    FertilizacaoColeta    @relation(fields: [fertilizacaoId], references: [id], onDelete: Cascade)
-  fertilizacaoId  Int
-  classificacao   EmbriaoClassificacao? @relation(fields: [classificacaoId], references: [id], onDelete: SetNull)
-  classificacaoId Int?
-  codigoInterno   String?
-  estagio         String?
-  viavel          Boolean               @default(true)
-  estado          String                @default("DISPONIVEL")
-  propriedade     Propriedade?          @relation(fields: [propriedadeId], references: [id], onDelete: SetNull)
-  propriedadeId   Int?
-  evento          EventoReprodutivo?
-  createdAt       DateTime              @default(now())
-  updatedAt       DateTime              @updatedAt
-
-  @@index([fertilizacaoId])
-  @@index([classificacaoId])
-  @@index([estado])
-  @@index([propriedadeId])
-}
-
-model GrupoPoolDoadora {
-  id            Int                    @id @default(autoincrement())
-  ideagriId     Int?                   @unique
-  nome          String
-  ativo         Boolean                @default(true)
-  propriedade   Propriedade?           @relation(fields: [propriedadeId], references: [id], onDelete: SetNull)
-  propriedadeId Int?
-  itens         ItemGrupoPoolDoadora[]
-  aplicacoes    AplicacaoPoolDoadora[]
-  createdAt     DateTime               @default(now())
-  updatedAt     DateTime               @updatedAt
-
-  @@index([propriedadeId])
-}
-
-model ItemGrupoPoolDoadora {
-  id        Int              @id @default(autoincrement())
-  grupo     GrupoPoolDoadora @relation(fields: [grupoId], references: [id], onDelete: Cascade)
-  grupoId   Int
-  doadora   Animal           @relation("DoadoraPool", fields: [doadoraId], references: [id], onDelete: Cascade)
-  doadoraId Int
-  ativo     Boolean          @default(true)
-
-  @@unique([grupoId, doadoraId])
-}
-
-model AplicacaoPoolDoadora {
-  id            Int              @id @default(autoincrement())
-  grupo         GrupoPoolDoadora @relation(fields: [grupoId], references: [id], onDelete: Restrict)
-  grupoId       Int
-  data          DateTime         @db.Date
-  tecnico       String?
-  propriedade   Propriedade?     @relation(fields: [propriedadeId], references: [id], onDelete: SetNull)
-  propriedadeId Int?
-  coletas       Coleta[]
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
-
-  @@unique([grupoId, data])
-  @@index([grupoId])
-  @@index([propriedadeId])
-}
-
-model Grupo {
-  id                 Int                   @id @default(autoincrement())
-  nome               String                @unique
-  // Atividade do lote: as saídas de estoque (dieta/sanidade) herdam este centro.
-  centroCusto        CentroCusto?          @relation(fields: [centroCustoId], references: [id])
-  centroCustoId      Int?
-  animais            Animal[]
-  dieta              Dieta?                @relation(fields: [dietaId], references: [id])
-  dietaId            Int?
-  propriedade        Propriedade?          @relation(fields: [propriedadeId], references: [id])
-  propriedadeId      Int?
-  producoesLote      ProducaoLote[]
-  movimentosEstoque  MovimentoEstoque[]
-  consumosPeriodo    ConsumoPeriodo[]
-  programacoesIATF   ProgramacaoIATFLote[]
-  planosAcasalamento PlanoAcasalamento[]
-
-  @@index([propriedadeId])
+  @@schema("public")
 }
 
 // Sítio físico da fazenda-cliente (multi-propriedade). Default single-tenant: 1
 // linha (principal). O mesmo seam serve de base p/ multi-tenant (Organizacao) depois.
 model Propriedade {
-  id                     Int                           @id @default(autoincrement())
-  nome                   String                        @unique
-  apelido                String? // rótulo curto p/ o seletor ("Sede", "Recria")
-  cidade                 String?
-  uf                     String?
-  principal              Boolean                       @default(false) // a default quando não há filtro
-  ativo                  Boolean                       @default(true)
-  ordem                  Int                           @default(0)
-  animais                Animal[]
-  grupos                 Grupo[]
-  producoesLote          ProducaoLote[]
-  movimentosEstoque      MovimentoEstoque[]
-  contasFinanceiras      ContaFinanceira[]
-  operacoesFinanceiras   Operacao[]
-  rascunhosOperacoes     RascunhoOperacao[]
-  relatoriosFinanceiros  RelatorioFinanceiro[]
-  rascunhosRelatorios    RascunhoRelatorioFinanceiro[]
-  transacoesFinanceiras  TransacaoFinanceira[]
-  periodosFinanceiros    PeriodoFinanceiro[]
-  lotesCorte             LoteCorte[]
-  piquetes               Piquete[]
-  talhoes                Talhao[]
-  lavouras               Lavoura[]
-  funcionarios           Funcionario[]
-  safrasCultivo          SafraCultivo[]
-  silos                  Silo[]
-  vacinasAgendadas       VacinaAgendada[]
-  protocolosIATF         ProtocoloIATF[]
-  aplicacoesIATF         AplicacaoProtocoloIATF[]
-  programacoesIATF       ProgramacaoIATFLote[]
-  movimentacoesAnimais   MovimentacaoAnimal[]
-  filtrosAnimais         FiltroAnimal[]
-  tanques                Tanque[]
-  protocolosSanitarios   ProtocoloSanitario[]
-  aplicacoesSanitarias   AplicacaoProtocoloSanitario[]
-  centraisSemen          CentralSemen[]
-  reprodutores           Reprodutor[]
-  estoquesSemen          EstoqueSemen[]
-  examesQuarto           ExameQuarto[]
-  registrosChuva         RegistroChuva[]
-  aptidoes               AptidaoAnimal[]
-  planosAcasalamento     PlanoAcasalamento[]
-  modelosFormularioCampo ModeloFormularioCampo[]
-  folhasCampo            FolhaCampo[]
-  coletas                Coleta[]
-  embrioesColeta         EmbriaoColeta[]
-  gruposPoolDoadora      GrupoPoolDoadora[]
-  aplicacoesPoolDoadora  AplicacaoPoolDoadora[]
-  createdAt              DateTime                      @default(now())
-  updatedAt              DateTime                      @updatedAt
-}
+  id                    Int                           @id @default(autoincrement())
+  nome                  String                        @unique
+  apelido               String? // rótulo curto p/ o seletor ("Sede", "Recria")
+  cidade                String?
+  uf                    String?
+  principal             Boolean                       @default(false) // a default quando não há filtro
+  ativo                 Boolean                       @default(true)
+  ordem                 Int                           @default(0)
+  movimentosEstoque     MovimentoEstoque[]
+  contasFinanceiras     ContaFinanceira[]
+  operacoesFinanceiras  Operacao[]
+  rascunhosOperacoes    RascunhoOperacao[]
+  relatoriosFinanceiros RelatorioFinanceiro[]
+  rascunhosRelatorios   RascunhoRelatorioFinanceiro[]
+  transacoesFinanceiras TransacaoFinanceira[]
+  periodosFinanceiros   PeriodoFinanceiro[]
+  talhoes               Talhao[]
+  lavouras              Lavoura[]
+  funcionarios          Funcionario[]
+  safrasCultivo         SafraCultivo[]
+  silos                 Silo[]
+  registrosChuva        RegistroChuva[]
+  createdAt             DateTime                      @default(now())
+  updatedAt             DateTime                      @updatedAt
 
-model Dieta {
-  id              Int              @id @default(autoincrement())
-  nome            String           @unique
-  descricao       String?
-  pb              Decimal?         @db.Decimal(4, 1) // % proteína bruta
-  edMcal          Decimal?         @db.Decimal(4, 2) // energia (Mcal/kg)
-  ativo           Boolean          @default(true)
-  grupos          Grupo[]
-  itens           DietaItem[] // composição: quanto de cada produto por cabeça/dia
-  consumosPeriodo ConsumoPeriodo[]
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-}
+  // Pecuária v1 (schema pecuaria)
+  pecLotes               Lote[]
+  pecLocalizacoes        LocalizacaoAnimal[]
+  pecMovimentacoes       Movimentacao[]
+  pecOrigensMovimentacao MovimentacaoAnimal[]
 
-// Composição de uma dieta: quanto de cada produto por cabeça por dia.
-// Alimenta o motor de consumo (dieta × cabeças × dias → baixa de estoque).
-model DietaItem {
-  id              Int           @id @default(autoincrement())
-  dieta           Dieta         @relation(fields: [dietaId], references: [id], onDelete: Cascade)
-  dietaId         Int
-  produto         Produto       @relation(fields: [produtoId], references: [id])
-  produtoId       Int
-  // Quantidade por cabeça por dia, na unidade abaixo (= Produto.unidade em v1).
-  qtdPorCabecaDia Decimal       @db.Decimal(12, 4)
-  unidade         UnidadeMedida // informativa; em v1 igual à do produto
-  ordem           Int           @default(0)
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-
-  @@unique([dietaId, produtoId])
-  @@index([dietaId])
-}
-
-model Animal {
-  id                   Int                           @id @default(autoincrement())
-  numero               String                        @unique
-  nome                 String?
-  sexo                 SexoAnimal
-  categoria            CategoriaAnimal
-  finalidade           FinalidadeAnimal              @default(NAO_INFORMADA)
-  raca                 Raca?                         @relation(fields: [racaId], references: [id])
-  racaId               Int?
-  grauSangue           String?
-  dataNascimento       DateTime?                     @db.Date
-  dataEntrada          DateTime                      @db.Date
-  brincoEletronico     String?
-  sisbov               String?
-  mae                  Animal?                       @relation("Maternidade", fields: [maeId], references: [id])
-  maeId                Int?
-  pai                  Animal?                       @relation("Paternidade", fields: [paiId], references: [id])
-  paiId                Int?
-  paiNome              String?
-  filhosMae            Animal[]                      @relation("Maternidade")
-  filhosPai            Animal[]                      @relation("Paternidade")
-  grupo                Grupo?                        @relation(fields: [grupoId], references: [id])
-  grupoId              Int?
-  // Escopo de propriedade (multi-propriedade). Nullable + default=principal na
-  // aplicação; fazenda de 1 sítio nunca percebe a camada.
-  propriedade          Propriedade?                  @relation(fields: [propriedadeId], references: [id])
-  propriedadeId        Int?
-  setor                String? // localização física/de manejo (campo legado do IDEagri)
-  status               StatusAnimal                  @default(ATIVO)
-  dataBaixa            DateTime?                     @db.Date
-  motivoBaixa          String?
-  // Papel de receptora (barriga de aluguel na TE). Marcado quando recebe um evento
-  // TRANSFERENCIA_EMBRIAO; a genética das crias que ela carrega vem da doadora.
-  ehReceptora          Boolean                       @default(false)
-  resumo               ResumoAnimal?
-  numPartosEntrada     Int                           @default(0)
-  eventosReprodutivos  EventoReprodutivo[]
-  // Eventos de TE em que este animal é a DOADORA do embrião (genética dos bezerros).
-  embrioesDoados       EventoReprodutivo[]           @relation("Doadora")
-  // Parto que gerou esta cria (lado inverso de EventoReprodutivo.cria). Opcional.
-  partoDeOrigem        EventoReprodutivo?            @relation("CriaDoParto")
-  aptidoes             AptidaoAnimal[]
-  eventosSanitarios    EventoSanitario[]
-  examesQuarto         ExameQuarto[]
-  vacinasAgendadas     VacinaAgendada[]
-  aplicacoesIATF       AplicacaoProtocoloIATF[]
-  aplicacoesSanitarias AplicacaoProtocoloSanitario[]
-  coletasComoDoadora   Coleta[]                      @relation("DoadoraColeta")
-  poolsComoDoadora     ItemGrupoPoolDoadora[]        @relation("DoadoraPool")
-  lactacoes            Lactacao[]
-  controlesLeiteiros   ControleLeiteiro[]
-  pesagens             Pesagem[]
-  movimentacoes        MovimentacaoAnimal[]
-  linhasAcasalamento   LinhaPlanoAcasalamento[]
-  linhasFolhaCampo     LinhaFolhaCampo[]
-  createdAt            DateTime                      @default(now())
-  updatedAt            DateTime                      @updatedAt
-  movimentosEstoque    MovimentoEstoque[]
-
-  @@index([status])
-  @@index([finalidade])
-  @@index([grupoId])
-  @@index([propriedadeId])
-}
-
-// Se a movimentação foi de lote (grupo de manejo) ou de setor (local físico).
-enum TipoMovimentacaoAnimal {
-  GRUPO
-  SETOR
-}
-
-// Fato histórico de troca de lote/setor de um animal ("onde a vaca esteve").
-// Espelha MOVGRUPOANIMAL (1504) / MOVSETORANIMAL (289) do IDEagri, unificados num só
-// fato com `tipo`. Guarda rótulos de origem/destino (snapshot — sobrevive a rename/exclusão
-// do grupo) + o id do grupo quando aplicável. `origem` null = primeira alocação (entrada no lote/setor).
-model MovimentacaoAnimal {
-  id             Int                    @id @default(autoincrement())
-  animal         Animal                 @relation(fields: [animalId], references: [id], onDelete: Cascade)
-  animalId       Int
-  tipo           TipoMovimentacaoAnimal
-  data           DateTime               @db.Date // dia da movimentação
-  origem         String? // rótulo de origem (nome do grupo/setor), null = primeira alocação
-  destino        String // rótulo de destino
-  grupoOrigemId  Int? // id do grupo de origem (só p/ tipo GRUPO; snapshot em `origem` cobre rename)
-  grupoDestinoId Int? // id do grupo de destino (só p/ tipo GRUPO)
-  motivo         String?
-  propriedade    Propriedade?           @relation(fields: [propriedadeId], references: [id])
-  propriedadeId  Int?
-  createdAt      DateTime               @default(now())
-
-  @@index([animalId])
-  @@index([tipo])
-  @@index([data])
-  @@index([propriedadeId])
-}
-
-// Filtro de animais salvo (nomeado) — o produtor guarda um conjunto de critérios simples e
-// reaplica com um clique. Espelha FILTRO do IDEagri (52). Critérios como colunas tipadas.
-model FiltroAnimal {
-  id            Int          @id @default(autoincrement())
-  nome          String
-  status        String       @default("ATIVO") // ATIVO | BAIXADO | TODOS
-  grupoId       Int?
-  setor         String?
-  categoria     String? // CategoriaAnimal (VACA/NOVILHA/...); string livre p/ não acoplar ao enum
-  finalidade    String? // FinalidadeAnimal (LEITE/CORTE/DUPLA_APTIDAO/NAO_INFORMADA)
-  busca         String? // termo de busca (número/nome/brinco)
-  propriedade   Propriedade? @relation(fields: [propriedadeId], references: [id])
-  propriedadeId Int?
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-
-  @@index([propriedadeId])
-}
-
-enum StatusFolhaCampo {
-  RASCUNHO
-  EM_CAMPO
-  AGUARDANDO_LANCAMENTO
-  CONCLUIDA
-  CANCELADA
-}
-
-enum StatusLinhaFolha {
-  PENDENTE
-  PREENCHIDA
-  NAO_REALIZADO
-  REGISTRADA
-}
-
-model ModeloFormularioCampo {
-  id            Int          @id @default(autoincrement())
-  nome          String
-  templateId    String
-  config        Json
-  propriedade   Propriedade? @relation(fields: [propriedadeId], references: [id], onDelete: SetNull)
-  propriedadeId Int?
-  folhas        FolhaCampo[]
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-
-  @@index([propriedadeId, templateId])
-}
-
-model FolhaCampo {
-  id              Int                    @id @default(autoincrement())
-  nome            String
-  templateId      String
-  status          StatusFolhaCampo       @default(EM_CAMPO)
-  filtrosSnapshot Json
-  configSnapshot  Json
-  modelo          ModeloFormularioCampo? @relation(fields: [modeloId], references: [id], onDelete: SetNull)
-  modeloId        Int?
-  totalLinhas     Int
-  linhasProntas   Int                    @default(0)
-  propriedade     Propriedade?           @relation(fields: [propriedadeId], references: [id], onDelete: SetNull)
-  propriedadeId   Int?
-  geradoEm        DateTime               @default(now())
-  concluidoEm     DateTime?
-  linhas          LinhaFolhaCampo[]
-
-  @@index([propriedadeId, status])
-  @@index([templateId])
-}
-
-model LinhaFolhaCampo {
-  id                 Int                @id @default(autoincrement())
-  folha              FolhaCampo         @relation(fields: [folhaId], references: [id], onDelete: Cascade)
-  folhaId            Int
-  ordem              Int
-  animal             Animal             @relation(fields: [animalId], references: [id], onDelete: Restrict)
-  animalId           Int
-  eventoOrigem       EventoReprodutivo? @relation("EventoOrigemFolha", fields: [eventoOrigemId], references: [id], onDelete: SetNull)
-  eventoOrigemId     Int?
-  snapshot           Json
-  status             StatusLinhaFolha   @default(PENDENTE)
-  respostas          Json?
-  motivoNaoRealizado String?
-  eventoGerado       EventoReprodutivo? @relation("EventoGeradoFolha", fields: [eventoGeradoId], references: [id], onDelete: SetNull)
-  eventoGeradoId     Int?               @unique
-  resultadoTipo      String?
-  resultadoId        Int?
-  updatedAt          DateTime           @updatedAt
-
-  @@unique([folhaId, ordem])
-  @@index([folhaId, status])
-  @@index([animalId])
-  @@index([eventoOrigemId])
-  @@index([resultadoTipo, resultadoId])
-}
-
-model ResumoAnimal {
-  animal            Animal            @relation(fields: [animalId], references: [id], onDelete: Cascade)
-  animalId          Int               @id
-  statusReprodutivo StatusReprodutivo @default(VAZIA)
-  del               Int?
-  ordemLactacao     Int?
-  producaoMediaDia  Decimal?          @db.Decimal(6, 2)
-  producao305       Int?
-  producaoTendencia String?
-  ccs               Int?
-  ccsTendencia      String?
-  quartosCronicos   Int               @default(0)
-  quartosPerdidos   Int               @default(0)
-  ultimoDgData      DateTime?         @db.Date
-  ultimoDgResultado String?
-  iepProjetado      Int?
-  diasGestacao      Int?
-  previsaoSecagem   DateTime?         @db.Date
-  ultimaInseminacao DateTime?         @db.Date // cobertura mais recente: IA ou TE (nome legado consumido pelo client)
-  protocoloAtual    String? // protocolo informado na cobertura mais recente
-  atualizadoEm      DateTime          @updatedAt
-}
-
-// Quarto mamário: anterior esq/dir, posterior esq/dir. Alinhado ao import legado (Fatia 19, MAMITE AD/AE/PD/PE).
-enum QuartoMamario {
-  AE
-  AD
-  PE
-  PD
-}
-
-// Escore do teste CMT (California Mastitis Test) por quarto: negativo → 3 cruzes.
-enum ScoreCmt {
-  NEGATIVO
-  TRACOS
-  UMA_CRUZ
-  DUAS_CRUZES
-  TRES_CRUZES
-}
-
-// Exame por quarto mamário (fato próprio): CMT/CCS subclínico e/ou episódio de mastite clínica.
-// Um teste CMT de uma vaca vira até 4 linhas (uma por teta). A cronicidade por quarto é derivada
-// em quarto.recompute.ts e agregada em ResumoAnimal.quartosCronicos/quartosPerdidos. Escopo de
-// propriedade nullable (multi-propriedade) — fazenda de 1 sítio não percebe a camada.
-model ExameQuarto {
-  id               Int           @id @default(autoincrement())
-  animal           Animal        @relation(fields: [animalId], references: [id], onDelete: Cascade)
-  animalId         Int
-  data             DateTime      @db.Date
-  quarto           QuartoMamario
-  scoreCmt         ScoreCmt? // rastreio subclínico; null se registro só clínico
-  ccs              Int? // CCS individual do quarto, se houver
-  clinica          Boolean       @default(false) // episódio de mastite clínica neste quarto
-  severidade       String? // leve/moderada/grave (só clínica)
-  resultadoCultivo String? // agente isolado (só clínica)
-  perdido          Boolean       @default(false) // quarto seco/perdido (agênese funcional)
-  escoreTeto       Int? // escore da ponta do teto (hiperqueratose), 1–4; null = não avaliado
-  observacao       String?
-  propriedade      Propriedade?  @relation(fields: [propriedadeId], references: [id])
-  propriedadeId    Int?
-  createdAt        DateTime      @default(now())
-
-  @@index([animalId, quarto, data])
-  @@index([propriedadeId])
-}
-
-// Origem de um registro de aptidão: lançado à mão ou derivado da regra automática de novilhas.
-enum OrigemAptidao {
-  MANUAL
-  AUTOMATICA
-}
-
-// Aptidão reprodutiva do animal (novilha apta a entrar em reprodução). Espelha
-// frmLancarAptidaoAnimal + frmAptidaoAutomatica do IDEAGRI. Fato próprio (não só PEV derivado).
-model AptidaoAnimal {
-  id            Int           @id @default(autoincrement())
-  animal        Animal        @relation(fields: [animalId], references: [id], onDelete: Cascade)
-  animalId      Int
-  data          DateTime      @db.Date
-  apta          Boolean
-  motivo        String? // por que está apta/inapta (idade/peso/decisão)
-  origem        OrigemAptidao @default(MANUAL)
-  propriedade   Propriedade?  @relation(fields: [propriedadeId], references: [id])
-  propriedadeId Int?
-  createdAt     DateTime      @default(now())
-
-  @@unique([animalId, data, origem])
-  @@index([animalId])
-  @@index([propriedadeId])
-}
-
-// Dicionário oficial de resultados de exame ginecológico (RESULTADOEXAMEGINECOLOGICO do IDEAGRI,
-// 44 resultados por útero/ovário). Compartilhado entre propriedades (propriedadeId ausente de propósito).
-model ResultadoExameGinecologico {
-  id           Int                 @id @default(autoincrement())
-  codigo       Int                 @unique // CDRESULTADOEXAMEGINECOLOGICO de origem
-  nomeResumido String
-  nomeCompleto String?
-  tipo         String? // útero/ovário/…
-  padrao       Boolean             @default(false)
-  eventos      EventoReprodutivo[]
-}
-
-enum TipoEventoReprodutivo {
-  CIO
-  INSEMINACAO
-  COBERTURA // monta natural (IDEAGRI CDTIPOREPRODUCAO=2)
-  DIAGNOSTICO
-  PARTO
-  SECAGEM
-  TRANSFERENCIA_EMBRIAO // TE: embrião implantado numa receptora; genética vem da doadora
-  EXAME_GINECOLOGICO // palpação/US do trato: achado clínico em `resultado` (diagnóstico, não fato estrutural)
-  DESMAME // desmame/desaleitamento do bezerro: fato de ciclo com data; peso opcional em `resultado`
-}
-
-model EventoReprodutivo {
-  id                      Int                         @id @default(autoincrement())
-  animal                  Animal                      @relation(fields: [animalId], references: [id], onDelete: Cascade)
-  animalId                Int
-  tipo                    TipoEventoReprodutivo
-  data                    DateTime                    @db.Date
-  observacao              String?
-  reprodutor              String? // IA: touro/sêmen. TE: touro/sêmen do embrião.
-  protocolo               String?
-  resultado               String?
-  dtPartoPrevista         DateTime?                   @db.Date
-  tipoParto               String? // código IDEAGRI TIPOPARTO (1..7) ou rótulo canônico
-  auxilioParto            String? // código IDEAGRI AUXILIOPARTO (1..4) quando tipo=Auxiliado
-  numCrias                Int?
-  criasVivas              Int?
-  criasNatimortas         Int?
-  sexoCria                String?
-  motivoSecagem           String?
-  // Identidade do fato no REPRODUCAO do IDEAGRI — garante import/reconciliação 1:1.
-  ideagriId               Int?                        @unique
-  // Etapa terminal de IATF/TETF que gerou este evento. Unique = reconcluir não duplica o fato.
-  origemExecucaoId        Int?                        @unique
-  // IA: lote de sêmen consumido (baixa opcional-com-aviso). Nullable — IA por texto livre não referencia lote.
-  estoqueSemen            EstoqueSemen?               @relation(fields: [estoqueSemenId], references: [id], onDelete: SetNull)
-  estoqueSemenId          Int?
-  // true só quando a baixa efetivamente decrementou o estoque (saldo ≥ 1). Estorno devolve a dose sse true.
-  estoqueSemenDoseBaixada Boolean                     @default(false)
-  // EXAME_GINECOLOGICO: resultado oficial do dicionário IDEAGRI (além do achado condensado em `resultado`).
-  resultadoGinecologico   ResultadoExameGinecologico? @relation(fields: [resultadoGinecologicoId], references: [id])
-  resultadoGinecologicoId Int?
-  // PARTO: cria criada/vinculada por este parto (genealogia). Nullable — nem todo parto cadastra a cria.
-  cria                    Animal?                     @relation("CriaDoParto", fields: [criaId], references: [id])
-  criaId                  Int?                        @unique
-  // TE operacional: um embrião interno só pode originar um evento de transferência.
-  embriaoColeta           EmbriaoColeta?              @relation(fields: [embriaoColetaId], references: [id], onDelete: SetNull)
-  embriaoColetaId         Int?                        @unique
-  // TE: preserva o embrião e a doadora externos mesmo quando não pertencem ao rebanho 777.
-  ideagriEmbriaoId        Int?
-  doadoraNumero           String?
-  doadoraNome             String?
-  // TE: doadora do embrião — a genética do bezerro vem dela, não da barriga (animal).
-  doadora                 Animal?                     @relation("Doadora", fields: [doadoraId], references: [id])
-  doadoraId               Int?
-  createdAt               DateTime                    @default(now())
-  updatedAt               DateTime                    @updatedAt
-
-  linhasFolhaOrigem LinhaFolhaCampo[] @relation("EventoOrigemFolha")
-  linhaFolhaGerada  LinhaFolhaCampo?  @relation("EventoGeradoFolha")
-
-  @@index([animalId, data])
-  @@index([ideagriEmbriaoId])
-  @@index([estoqueSemenId])
-}
-
-model Lactacao {
-  id              Int       @id @default(autoincrement())
-  animal          Animal    @relation(fields: [animalId], references: [id], onDelete: Cascade)
-  animalId        Int
-  numero          Int // ordem da lactação (ORDEMLACTACAO ou cronológica)
-  dtInicio        DateTime  @db.Date
-  dtFim           DateTime? @db.Date // null = em curso
-  motivoSecagem   String? // MOTIVOSECAGEM.DESCRICAO
-  tipoAleitamento String? // TIPOALEITAMENTO ('A'…)
-  induzida        Boolean   @default(false)
-  producaoTotal   Decimal?  @db.Decimal(10, 2) // litros no ciclo — só a última lactação do animal (aberta ou seca) traz produção
-  producao305     Decimal?  @db.Decimal(10, 2)
-  duracaoDias     Int? // DEL do Ideagri (hoje sempre null; a duração exibida é recalculada)
-  // Sem propriedadeId: como ControleLeiteiro/Pesagem, é fato-filho de Animal e herda o escopo do animal.
-
-  @@index([animalId, numero])
-}
-
-// Pesagens corporais (Ideagri PESO) — peso e ganho médio diário (GMD) por data.
-model Pesagem {
-  id       Int      @id @default(autoincrement())
-  animal   Animal   @relation(fields: [animalId], references: [id], onDelete: Cascade)
-  animalId Int
-  data     DateTime @db.Date
-  peso     Decimal  @db.Decimal(7, 2)
-  gmd      Decimal? @db.Decimal(6, 3)
-
-  @@index([animalId, data])
-}
-
-enum TipoEventoSanitario {
-  OCORRENCIA
-  APLICACAO
-  EXAME
-  MASTITE
-  VACINA
-}
-
-model EventoSanitario {
-  id                 Int                 @id @default(autoincrement())
-  animal             Animal              @relation(fields: [animalId], references: [id], onDelete: Cascade)
-  animalId           Int
-  tipo               TipoEventoSanitario
-  data               DateTime            @db.Date
-  observacao         String?
-  doenca             String?
-  dtFim              DateTime?           @db.Date
-  diasTratamento     Int?
-  produto            String?
-  dose               String?
-  carencia           Int?
-  loteProduto        String?
-  ccs                Int?
-  gordura            Decimal?            @db.Decimal(4, 2)
-  proteina           Decimal?            @db.Decimal(4, 2)
-  quarto             String?
-  severidade         String?
-  resultadoCultivo   String?
-  // Vínculo opcional com o estoque: quando a APLICACAO/VACINA consome um Produto cadastrado,
-  // produtoRef + quantidadeUsada geram uma SAIDA automática (movimentoEstoque). O texto livre
-  // `produto` acima continua para retrocompatibilidade/exibição.
-  produtoRef         Produto?            @relation(fields: [produtoId], references: [id])
-  produtoId          Int?
-  quantidadeUsada    Decimal?            @db.Decimal(12, 3)
-  movimentoEstoque   MovimentoEstoque?   @relation(fields: [movimentoEstoqueId], references: [id])
-  movimentoEstoqueId Int?                @unique
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
-
-  @@index([animalId, data])
-  @@index([produtoId])
-}
-
-// Vacinação AGENDADA (lembrete por data). Distinta do evento VACINA (histórico do que foi feito):
-// aqui é o que está por vir. Quando aplicadaEm != null, a vacina saiu do lembrete (foi aplicada);
-// o evento sanitário VACINA correspondente pode ser registrado à parte. Escopo de propriedade
-// nullable (multi-propriedade) — fazenda de 1 sítio não percebe a camada.
-model VacinaAgendada {
-  id            Int          @id @default(autoincrement())
-  animal        Animal       @relation(fields: [animalId], references: [id], onDelete: Cascade)
-  animalId      Int
-  propriedade   Propriedade? @relation(fields: [propriedadeId], references: [id])
-  propriedadeId Int?
-  vacina        String // nome/tipo da vacina (ex.: "Aftosa", "Brucelose B19")
-  dataPrevista  DateTime     @db.Date
-  aplicadaEm    DateTime?    @db.Date // null enquanto pendente; preenchido ao marcar aplicada
-  observacao    String?
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-
-  @@index([animalId])
-  @@index([propriedadeId])
-  @@index([dataPrevista])
-}
-
-// Finalidade do protocolo: IATF termina em inseminação; TETF, em transferência de embrião.
-enum FinalidadeIATF {
-  IATF
-  TETF
-}
-
-// Catálogo de protocolos IATF (inseminação artificial em tempo fixo). Antes o
-// protocolo era só texto livre em EventoReprodutivo.protocolo; agora é um catálogo
-// configurável de etapas (D0/D7/D9/D11…) que se aplica a um animal com uma data de
-// início, gerando a agenda (calc puro em iatf.calc.ts).
-model ProtocoloIATF {
-  id               Int                      @id @default(autoincrement())
-  nome             String // rótulo do protocolo (ex.: "IATF 11 dias — P4 + ECP")
-  descricao        String?
-  hormonioBase     String? // hormônio-base/linha do protocolo (ex.: "P4 + ECP")
-  finalidade       FinalidadeIATF           @default(IATF)
-  ideagriId        Int?                     @unique // CDPROTOCOLOIATF de origem
-  ativo            Boolean                  @default(true) // catálogo: inativar em vez de apagar
-  propriedade      Propriedade?             @relation(fields: [propriedadeId], references: [id])
-  propriedadeId    Int?
-  etapas           EtapaProtocoloIATF[]
-  principios       PrincipioProtocoloIATF[]
-  aplicacoes       AplicacaoProtocoloIATF[]
-  programacoesLote ProgramacaoIATFLote[]
-  createdAt        DateTime                 @default(now())
-  updatedAt        DateTime                 @updatedAt
-
-  @@index([propriedadeId])
-  @@index([ativo])
-}
-
-// Uma etapa do protocolo: o que fazer no dia `dia` (offset a partir do D0).
-model EtapaProtocoloIATF {
-  id          Int           @id @default(autoincrement())
-  protocolo   ProtocoloIATF @relation(fields: [protocoloId], references: [id], onDelete: Cascade)
-  protocoloId Int
-  dia         Int // offset em dias a partir do D0 (0, 7, 9, 11…)
-  acao        String // o que fazer nessa etapa
-  hormonio    String? // hormônio/fármaco aplicado, quando houver
-  ordem       Int           @default(0) // desempate quando duas etapas caem no mesmo dia
-
-  @@index([protocoloId])
-}
-
-// Produto/princípio/dose/uso oficial de uma etapa do protocolo (catálogo IDEAGRI).
-model PrincipioProtocoloIATF {
-  id          Int           @id @default(autoincrement())
-  protocolo   ProtocoloIATF @relation(fields: [protocoloId], references: [id], onDelete: Cascade)
-  protocoloId Int
-  dia         Int           @default(0)
-  principio   String?
-  produto     String?
-  dose        String?
-  uso         String?
-
-  @@unique([protocoloId, dia, principio, produto, uso])
-  @@index([protocoloId])
-}
-
-// Status real de uma etapa materializada na aplicação do protocolo a um animal.
-enum StatusExecucaoEtapaIATF {
-  PENDENTE
-  CONCLUIDA
-  PULADA
-}
-
-// Aplicação de um protocolo a um animal, a partir de uma data de início (o D0).
-// As etapas passam a ser materializadas em ExecucaoEtapaIATF (snapshot + status real).
-model AplicacaoProtocoloIATF {
-  id            Int                  @id @default(autoincrement())
-  animal        Animal               @relation(fields: [animalId], references: [id], onDelete: Cascade)
-  animalId      Int
-  protocolo     ProtocoloIATF        @relation(fields: [protocoloId], references: [id])
-  protocoloId   Int
-  dataInicio    DateTime             @db.Date // D0 da aplicação neste animal
-  observacao    String?
-  // Dimensões operacionais espelhadas de PROGRAMACAOIATFASSOCIACAO (quando vierem do lote).
-  usoCidr       Boolean              @default(false)
-  estimulo      String? // ex.: eCG, texto livre da fonte
-  perdaImplante Boolean              @default(false)
-  ideagriId     Int?                 @unique // CDPROGRAMACAOIATFASSOCIACAO de origem
-  // Programação de lote que criou esta aplicação (quando aplicada em massa). Nullable:
-  // null = aplicação avulsa (animal a animal, do #163); preenchido = veio de um lote.
-  programacao   ProgramacaoIATFLote? @relation(fields: [programacaoId], references: [id], onDelete: Cascade)
-  programacaoId Int?
-  propriedade   Propriedade?         @relation(fields: [propriedadeId], references: [id])
-  propriedadeId Int?
-  execucoes     ExecucaoEtapaIATF[]
-  createdAt     DateTime             @default(now())
-  updatedAt     DateTime             @updatedAt
-
-  @@index([animalId])
-  @@index([protocoloId])
-  @@index([programacaoId])
-  @@index([propriedadeId])
-  @@index([dataInicio])
-}
-
-// Execução real de uma etapa do protocolo neste animal. Snapshot de dia/ação/hormônio
-// (não FK no catálogo) — editar o protocolo depois não reescreve o histórico.
-model ExecucaoEtapaIATF {
-  id            Int                     @id @default(autoincrement())
-  aplicacao     AplicacaoProtocoloIATF  @relation(fields: [aplicacaoId], references: [id], onDelete: Cascade)
-  aplicacaoId   Int
-  dia           Int // offset D0
-  acao          String
-  hormonio      String?
-  ordem         Int                     @default(0)
-  dataPlanejada DateTime                @db.Date
-  status        StatusExecucaoEtapaIATF @default(PENDENTE)
-  dataExecucao  DateTime?               @db.Date // quando foi marcada feita/pulada
-  produto       String? // produto aplicado na etapa (quando houver)
-  dose          String?
-  observacao    String?
-  createdAt     DateTime                @default(now())
-  updatedAt     DateTime                @updatedAt
-
-  @@unique([aplicacaoId, dia, ordem])
-  @@index([aplicacaoId, status])
-  @@index([dataPlanejada])
-}
-
-// Catálogo de protocolos sanitários (sequências de manejos: vacinas/tratamentos com offset de
-// dias a partir do D0). Espelha a estrutura do IATF (#163) para o domínio sanitário.
-model ProtocoloSanitario {
-  id            Int                           @id @default(autoincrement())
-  nome          String
-  descricao     String?
-  ativo         Boolean                       @default(true) // catálogo: inativar em vez de apagar
-  propriedade   Propriedade?                  @relation(fields: [propriedadeId], references: [id])
-  propriedadeId Int?
-  etapas        EtapaProtocoloSanitario[]
-  aplicacoes    AplicacaoProtocoloSanitario[]
-  createdAt     DateTime                      @default(now())
-  updatedAt     DateTime                      @updatedAt
-
-  @@index([propriedadeId])
-  @@index([ativo])
-}
-
-model EtapaProtocoloSanitario {
-  id          Int                @id @default(autoincrement())
-  protocolo   ProtocoloSanitario @relation(fields: [protocoloId], references: [id], onDelete: Cascade)
-  protocoloId Int
-  dia         Int // offset em dias a partir do D0
-  acao        String // o que fazer nessa etapa
-  produto     String? // produto/vacina aplicado, quando houver
-  ordem       Int                @default(0)
-
-  @@index([protocoloId])
-}
-
-model AplicacaoProtocoloSanitario {
-  id            Int                @id @default(autoincrement())
-  animal        Animal             @relation(fields: [animalId], references: [id], onDelete: Cascade)
-  animalId      Int
-  protocolo     ProtocoloSanitario @relation(fields: [protocoloId], references: [id])
-  protocoloId   Int
-  dataInicio    DateTime           @db.Date // D0 da aplicação neste animal
-  observacao    String?
-  propriedade   Propriedade?       @relation(fields: [propriedadeId], references: [id])
-  propriedadeId Int?
-  createdAt     DateTime           @default(now())
-  updatedAt     DateTime           @updatedAt
-
-  @@index([animalId])
-  @@index([protocoloId])
-  @@index([propriedadeId])
-  @@index([dataInicio])
-}
-
-// Programação de um protocolo IATF para um LOTE inteiro num mesmo D0. Materializa,
-// numa transação, uma AplicacaoProtocoloIATF por animal do lote (todas com o mesmo
-// protocolo e dataInicio). A agenda D0/D7/D9/D11 é derivada (não materializada),
-// igual à aplicação individual. Espelha PROGRAMACAOIATF/PROGRAMACAOIATFASSOCIACAO do IDEagri.
-model ProgramacaoIATFLote {
-  id            Int                      @id @default(autoincrement())
-  protocolo     ProtocoloIATF            @relation(fields: [protocoloId], references: [id])
-  protocoloId   Int
-  grupo         Grupo?                   @relation(fields: [grupoId], references: [id])
-  grupoId       Int? // lote de origem (opcional — pode ser seleção manual de animais)
-  nome          String? // rótulo livre ("IATF novilhas — jul/26")
-  ideagriId     Int?                     @unique // CDPROGRAMACAOIATF de origem
-  dataInicio    DateTime                 @db.Date // D0 comum do lote
-  observacao    String?
-  aplicacoes    AplicacaoProtocoloIATF[] // as aplicações individuais criadas por esta programação
-  propriedade   Propriedade?             @relation(fields: [propriedadeId], references: [id])
-  propriedadeId Int?
-  createdAt     DateTime                 @default(now())
-  updatedAt     DateTime                 @updatedAt
-
-  @@index([propriedadeId])
-  @@index([grupoId])
-  @@index([dataInicio])
+  @@schema("public")
 }
 
 enum TipoMovimento {
   ENTRADA
   SAIDA
   AJUSTE
+
+  @@schema("public")
 }
 
-// Origem de uma SAIDA/movimento — distingue baixa de consumo automático (NUTRICAO)
-// de digitação manual, perda ou ajuste de inventário. Espelha OrigemMovimentoSilo.
+// Origem de uma SAIDA/movimento — distingue baixa automática (APLICACAO no
+// talhão) de digitação manual, perda ou ajuste de inventário. Espelha
+// OrigemMovimentoSilo. As origens de dieta e sanidade voltam com a v3 da pecuária.
 enum OrigemMovimentoEstoque {
   COMPRA
   CONSUMO_DIRETO
@@ -1916,17 +676,19 @@ enum OrigemMovimentoEstoque {
   DEVOLUCAO
   BONIFICACAO
   INVENTARIO_INICIAL
-  NUTRICAO
-  SANIDADE
   APLICACAO
   PERDA
   AJUSTE_INVENTARIO
   VENDA
+
+  @@schema("public")
 }
 
 enum StatusMovimentoEstoque {
   CONFIRMADO
   REVERTIDO
+
+  @@schema("public")
 }
 
 model MovimentoEstoque {
@@ -1940,8 +702,6 @@ model MovimentoEstoque {
   quantidade       Decimal                @db.Decimal(12, 3)
   custoUnitario    Decimal                @db.Decimal(14, 4)
   valorTotal       Decimal                @db.Decimal(14, 2)
-  grupo            Grupo?                 @relation(fields: [grupoId], references: [id])
-  grupoId          Int?
   // Operações financeiras são a origem normal de entradas; consumos automáticos
   // podem ser justificados pelo evento operacional específico abaixo.
   operacao         Operacao?              @relation(fields: [operacaoId], references: [id])
@@ -1960,21 +720,10 @@ model MovimentoEstoque {
   reversaoDe       MovimentoEstoque?      @relation("ReversaoEstoque", fields: [reversaoDeId], references: [id])
   reversaoDeId     Int?                   @unique
   revertidoPor     MovimentoEstoque?      @relation("ReversaoEstoque")
-  // Fechamento de consumo (Fatia 2) que gerou esta SAIDA, se automática.
-  // SetNull: movimento confirmado nunca some por cascata — reabrir o fechamento
-  // estorna as SAIDAs antes de remover o cabeçalho.
-  consumoPeriodo   ConsumoPeriodo?        @relation(fields: [consumoPeriodoId], references: [id], onDelete: SetNull)
-  consumoPeriodoId Int?
-  // Evento sanitário que gerou esta SAIDA (origem SANIDADE), se automática. Back-ref da FK
-  // EventoSanitario.movimentoEstoqueId.
-  eventoSanitario  EventoSanitario?
   // Operação agrícola (aplicação/adubação) que gerou esta SAIDA (origem APLICACAO).
   operacaoAgricola OperacaoAgricola?
-  // Snapshot do vínculo operacional (animal da sanidade, talhão da aplicação).
-  // Sobrevive à exclusão do evento de origem e é copiado para o estorno — sem
-  // ele, o histórico perde de onde veio a baixa quando o evento é excluído.
-  animal           Animal?                @relation(fields: [animalId], references: [id], onDelete: SetNull)
-  animalId         Int?
+  // Snapshot do talhão da aplicação: sobrevive à exclusão da operação agrícola
+  // e é copiado para o estorno — sem ele, o histórico perde de onde veio a baixa.
   talhao           Talhao?                @relation(fields: [talhaoId], references: [id], onDelete: SetNull)
   talhaoId         Int?
   observacao       String?
@@ -1985,33 +734,10 @@ model MovimentoEstoque {
   @@index([tipo, data])
   @@index([operacaoId])
   @@index([itemOperacaoId])
-  @@index([consumoPeriodoId])
   @@index([propriedadeId])
   @@index([centroCustoId])
-  @@index([animalId])
   @@index([talhaoId])
-}
-
-// Um fechamento de consumo de dieta por lote por período. Agrupa as N SAIDAs
-// (uma por produto da dieta), dá idempotência (unique por lote+janela) e permite
-// estornar o período inteiro numa transação.
-model ConsumoPeriodo {
-  id         Int                @id @default(autoincrement())
-  grupo      Grupo              @relation(fields: [grupoId], references: [id])
-  grupoId    Int
-  dieta      Dieta?             @relation(fields: [dietaId], references: [id]) // snapshot de qual dieta valia
-  dietaId    Int?
-  dataInicio DateTime           @db.Date
-  dataFim    DateTime           @db.Date
-  numCabecas Int // efetivo usado no cálculo (auditoria)
-  diasBase   Int // dias do período (auditoria)
-  custoTotal Decimal            @db.Decimal(14, 2) // soma das SAIDAs geradas
-  observacao String?
-  movimentos MovimentoEstoque[] // as SAIDAs geradas por este fechamento
-  criadoEm   DateTime           @default(now())
-
-  @@unique([grupoId, dataInicio, dataFim]) // idempotência: mesmo lote+janela não fecha 2×
-  @@index([grupoId])
+  @@schema("public")
 }
 
 // =============================================================================
@@ -2033,6 +759,8 @@ enum EstadoTalhao {
   RECEPADO
   FORMACAO
   BAIXADO
+
+  @@schema("public")
 }
 
 enum FaseFenologica {
@@ -2046,6 +774,8 @@ enum FaseFenologica {
   MATURACAO_CEREJA
   COLHEITA
   POS_COLHEITA
+
+  @@schema("public")
 }
 
 enum DominioCultural {
@@ -2053,6 +783,8 @@ enum DominioCultural {
   FITOSSANIDADE
   NUTRICAO
   COLHEITA
+
+  @@schema("public")
 }
 
 enum TipoOperacao {
@@ -2075,6 +807,8 @@ enum TipoOperacao {
   AMOSTRAGEM_SOLO
   AMOSTRAGEM_FOLIAR
   MONITORAMENTO_MIP
+
+  @@schema("public")
 }
 
 enum PragaDoenca {
@@ -2090,6 +824,8 @@ enum PragaDoenca {
   ROSELINIA
   COCHONILHAS
   OUTRA
+
+  @@schema("public")
 }
 
 enum MetodoColheita {
@@ -2097,11 +833,15 @@ enum MetodoColheita {
   DERRICA_MECANIZADA
   SELETIVA
   VARRICAO
+
+  @@schema("public")
 }
 
 enum Bienalidade {
   POSITIVA
   NEGATIVA
+
+  @@schema("public")
 }
 
 // Variedade/cultivar do cafeeiro (Catuaí, Mundo Novo, Topázio, Acauã, etc).
@@ -2115,6 +855,8 @@ model VariedadeCafe {
   cicloDias          Int? // dias da florada até maturação cereja
   observacao         String?
   talhoes            Talhao[]
+
+  @@schema("public")
 }
 
 // Lavoura = agrupador de talhões (espelha Grupo do rebanho).
@@ -2133,6 +875,7 @@ model Lavoura {
   updatedAt       DateTime         @updatedAt
 
   @@index([propriedadeId])
+  @@schema("public")
 }
 
 // Plano de adubação — receita NPK por safra (espelha Dieta do rebanho).
@@ -2150,52 +893,56 @@ model PlanoAdubacao {
   lavouras  Lavoura[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+
+  @@schema("public")
 }
 
 // Talhão — unidade individual da lavoura. Espelha Animal do rebanho.
 model Talhao {
-  id                Int                  @id @default(autoincrement())
-  codigo            String               @unique
-  nome              String?
-  variedade         VariedadeCafe        @relation(fields: [variedadeId], references: [id])
-  variedadeId       Int
-  lavoura           Lavoura?             @relation(fields: [lavouraId], references: [id])
-  lavouraId         Int?
+  id               Int                  @id @default(autoincrement())
+  codigo           String               @unique
+  nome             String?
+  variedade        VariedadeCafe        @relation(fields: [variedadeId], references: [id])
+  variedadeId      Int
+  lavoura          Lavoura?             @relation(fields: [lavouraId], references: [id])
+  lavouraId        Int?
   // Espaçamento como string ("3,80 × 0,60 m") preserva a forma usada pelo
   // produtor; plantasHa é derivado mas guardado pra agilidade nos queries.
-  espacamento       String?
-  plantasHa         Int
-  areaHa            Decimal              @db.Decimal(7, 2)
-  anoPlantio        Int
-  altitude          Int?
-  exposicao         String?
-  declive           Decimal?             @db.Decimal(4, 1)
-  irrigado          Boolean              @default(false)
-  estado            EstadoTalhao         @default(ATIVO)
-  dataPlantio       DateTime             @db.Date
-  ultimaRecepa      DateTime?            @db.Date
-  dataBaixa         DateTime?            @db.Date
-  motivoBaixa       String?
-  observacao        String?
-  resumo            ResumoTalhao?
-  operacoes         OperacaoAgricola[]
-  inspecoes         InspecaoMIP[]
-  amostrasSolo      AmostraSolo[]
-  amostrasFoliar    AmostraFoliar[]
-  passadasColheita  PassadaColheita[]
-  safras            SafraTalhao[]
-  tarefasAgricolas  TarefaAgricola[]
-  apontamentos      ApontamentoMaquina[]
+  espacamento      String?
+  plantasHa        Int
+  areaHa           Decimal              @db.Decimal(7, 2)
+  anoPlantio       Int
+  altitude         Int?
+  exposicao        String?
+  declive          Decimal?             @db.Decimal(4, 1)
+  irrigado         Boolean              @default(false)
+  estado           EstadoTalhao         @default(ATIVO)
+  dataPlantio      DateTime             @db.Date
+  ultimaRecepa     DateTime?            @db.Date
+  dataBaixa        DateTime?            @db.Date
+  motivoBaixa      String?
+  observacao       String?
+  resumo           ResumoTalhao?
+  operacoes        OperacaoAgricola[]
+  inspecoes        InspecaoMIP[]
+  amostrasSolo     AmostraSolo[]
+  amostrasFoliar   AmostraFoliar[]
+  passadasColheita PassadaColheita[]
+  safras           SafraTalhao[]
+  tarefasAgricolas TarefaAgricola[]
+  apontamentos     ApontamentoMaquina[]
   // Escopo de propriedade (Fatia 4B). Nullable + default principal.
-  propriedade       Propriedade?         @relation(fields: [propriedadeId], references: [id])
-  propriedadeId     Int?
-  createdAt         DateTime             @default(now())
-  updatedAt         DateTime             @updatedAt
+  propriedade      Propriedade?         @relation(fields: [propriedadeId], references: [id])
+  propriedadeId    Int?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
   movimentosEstoque MovimentoEstoque[]
 
   @@index([estado])
   @@index([lavouraId])
   @@index([propriedadeId])
+  @@schema("public")
 }
 
 // Read-model pré-computado por talhão — espelha ResumoAnimal.
@@ -2229,6 +976,8 @@ model ResumoTalhao {
   nFoliar               Decimal?       @db.Decimal(4, 2)
   kFoliar               Decimal?       @db.Decimal(4, 2)
   atualizadoEm          DateTime       @updatedAt
+
+  @@schema("public")
 }
 
 // Safra do talhão — espelho de Lactacao (ciclo anual produtivo).
@@ -2248,6 +997,7 @@ model SafraTalhao {
 
   @@unique([talhaoId, ano])
   @@index([ano])
+  @@schema("public")
 }
 
 // Operação agrícola — adubação, calagem, poda, aplicação fito/herbicida,
@@ -2289,6 +1039,7 @@ model OperacaoAgricola {
   @@index([talhaoId, data])
   @@index([dominio, data])
   @@index([produtoId])
+  @@schema("public")
 }
 
 // Inspeção MIP — amostragem de 25 plantas, 200 folhas por talhão
@@ -2314,6 +1065,7 @@ model InspecaoMIP {
   createdAt        DateTime @default(now())
 
   @@index([talhaoId, data])
+  @@schema("public")
 }
 
 // Amostra de solo — resultado completo da análise.
@@ -2340,6 +1092,7 @@ model AmostraSolo {
   createdAt    DateTime @default(now())
 
   @@index([talhaoId, data])
+  @@schema("public")
 }
 
 // Amostra foliar — coleta do 3º/4º par de folhas.
@@ -2366,6 +1119,7 @@ model AmostraFoliar {
   createdAt   DateTime @default(now())
 
   @@index([talhaoId, data])
+  @@schema("public")
 }
 
 // Passada de colheita — uma derriça por talhão por dia. Espelho de
@@ -2392,6 +1146,7 @@ model PassadaColheita {
   updatedAt         DateTime       @updatedAt
 
   @@index([talhaoId, data])
+  @@schema("public")
 }
 
 // =============================================================================
@@ -2407,11 +1162,15 @@ enum StatusTarefa {
   EM_ANDAMENTO
   CONCLUIDA
   CANCELADA
+
+  @@schema("public")
 }
 
 enum TipoApontamento {
   MAQUINA
   HOMEM
+
+  @@schema("public")
 }
 
 // Safra agrícola — janela do ciclo produtivo (espelha SAFRA do Ideagri).
@@ -2428,6 +1187,8 @@ model Safra {
   apontamentos  ApontamentoMaquina[]
   createdAt     DateTime             @default(now())
   updatedAt     DateTime             @updatedAt
+
+  @@schema("public")
 }
 
 // Tarefa agrícola planejada — coração do modelo Ideagri (MANEJOAGRICOLATAREFA):
@@ -2463,6 +1224,7 @@ model TarefaAgricola {
   @@index([safraId])
   @@index([status])
   @@index([talhaoId])
+  @@schema("public")
 }
 
 // Apontamento de hora-máquina / hora-homem (Ideagri HORAMAQUINAHOMEM/USOMAQUINA):
@@ -2486,258 +1248,7 @@ model ApontamentoMaquina {
 
   @@index([safraId])
   @@index([talhaoId, data])
-}
-
-// =============================================================================
-// MÓDULO CORTE — Gado de corte (cria-recria-terminação)
-// =============================================================================
-// A unidade primária é o LOTE (não a cabeça individual): manejo de gado de
-// corte acontece por grupo. Cabeças individuais só são modeladas quando
-// têm valor reprodutivo (matrizes/touros) — para os demais, o lote agrega
-// peso médio + GMD + sanidade.
-//
-// Referencial: Embrapa Gado de Corte (Campo Grande/MS), Manual de Boas
-// Práticas de Vacinação, cronograma 11 (calendário sanitário Sul de Minas),
-// Cepea/B3 (preço da arroba). Decimais financeiros @db.Decimal(14,2); peso
-// em kg @db.Decimal(7,2); percentuais @db.Decimal(5,2).
-//
-// Mesma regra de FechamentoMensal aplica: operações comerciais (venda) cuja
-// data caia num mês fechado não podem ser editadas/excluídas.
-
-enum CategoriaLote {
-  VACA_MATRIZ
-  TOURO
-  BEZERRO_MAMA
-  BEZERRA_MAMA
-  BEZERRO_DESMAMA
-  BEZERRA_DESMAMA
-  GAROTE
-  NOVILHA
-  NOVILHO
-  BOI_GORDO
-  VACA_DESCARTE
-}
-
-enum FaseCiclo {
-  CRIA
-  RECRIA
-  TERMINACAO
-  REPRODUCAO
-}
-
-enum EstadoLote {
-  ATIVO
-  VENDIDO
-  EXTINTO
-}
-
-enum EstadoPiquete {
-  DISPONIVEL
-  OCUPADO
-  DESCANSO
-  REFORMA
-}
-
-enum TipoSanitario {
-  VACINA_AFTOSA
-  VACINA_BRUCELOSE_B19
-  VACINA_CLOSTRIDIOSE
-  VACINA_RAIVA
-  VACINA_CARBUNCULO
-  VACINA_LEPTOSPIROSE
-  VACINA_IBR_BVD
-  VERMIFUGACAO_5811
-  VERMIFUGACAO_ESTRATEGICA
-  CONTROLE_CARRAPATO
-  CONTROLE_MOSCA
-  CONTROLE_BERNE
-  MARCACAO
-  DESCORNA
-  CASTRACAO
-  BRINCO_ELETRONICO
-}
-
-enum TipoSuplemento {
-  MINERAL
-  PROTEICO_SECA
-  ENERGETICO_AGUAS
-  RACAO_CONFINAMENTO
-  SAL_BRANCO
-}
-
-enum TipoComercial {
-  VENDA_ABATE
-  VENDA_REPRODUCAO
-  DESCARTE
-  COMPRA
-  TRANSFERENCIA_ATIVIDADE
-}
-
-enum MetodoPesagem {
-  BALANCA_INDIVIDUAL
-  BALANCA_LOTE
-  FITA_TORACICA
-  VISUAL_ESTIMADO
-}
-
-// Lote — unidade primária do gado de corte.
-model LoteCorte {
-  id                  Int                 @id @default(autoincrement())
-  codigo              String              @unique
-  nome                String
-  categoria           CategoriaLote
-  fase                FaseCiclo
-  raca                String
-  numCabecas          Int
-  numCabecasEntrada   Int // mortalidade = (entrada - atual) / entrada
-  dataFormacao        DateTime            @db.Date
-  origem              String?
-  piquete             Piquete?            @relation(fields: [piqueteId], references: [id])
-  piqueteId           Int?
-  // Escopo de propriedade (Fatia 4). Nullable + default principal.
-  propriedade         Propriedade?        @relation(fields: [propriedadeId], references: [id])
-  propriedadeId       Int?
-  estado              EstadoLote          @default(ATIVO)
-  observacao          String?
-  resumo              ResumoLote?
-  pesagens            PesagemLote[]
-  manejosSanitarios   ManejoSanitario[]
-  suplementacoes      Suplementacao[]
-  operacoesComerciais OperacaoComercial[]
-  createdAt           DateTime            @default(now())
-  updatedAt           DateTime            @updatedAt
-
-  @@index([estado])
-  @@index([categoria, fase])
-  @@index([propriedadeId])
-}
-
-// Read-model pré-computado por lote.
-model ResumoLote {
-  lote                 LoteCorte @relation(fields: [loteId], references: [id], onDelete: Cascade)
-  loteId               Int       @id
-  pesoMedio            Decimal?  @db.Decimal(7, 2)
-  pesoMedioEntrada     Decimal?  @db.Decimal(7, 2)
-  gmd                  Decimal?  @db.Decimal(5, 3)
-  gmdAcumulado         Decimal?  @db.Decimal(5, 3)
-  ultimaPesagem        DateTime? @db.Date
-  diasSemPesar         Int?
-  ua                   Decimal?  @db.Decimal(8, 2)
-  proximaVacina        String?
-  proximoVermifugo     String?
-  ultimoManejo         String?
-  pesoAlvoVenda        Decimal?  @db.Decimal(7, 2)
-  diasParaAlvo         Int?
-  arrobasEstimadas     Decimal?  @db.Decimal(7, 2)
-  mortalidadeAcumulada Decimal?  @db.Decimal(5, 2)
-  proximaAcao          String?
-  proximaAcaoEm        DateTime? @db.Date
-  atualizadoEm         DateTime  @updatedAt
-}
-
-// Piquete = divisão física do pasto. Um lote ocupa um piquete por vez.
-model Piquete {
-  id            Int           @id @default(autoincrement())
-  codigo        String        @unique
-  nome          String
-  capim         String // espécie + cultivar — armazenado como texto
-  areaHa        Decimal       @db.Decimal(7, 2)
-  lotacaoMaxUA  Decimal       @db.Decimal(6, 2)
-  cercaTipo     String?
-  ultimaReforma DateTime?     @db.Date
-  estado        EstadoPiquete @default(DISPONIVEL)
-  diasDescanso  Int?
-  observacao    String?
-  lotes         LoteCorte[]
-  // Escopo de propriedade (Fatia 4). Nullable + default principal.
-  propriedade   Propriedade?  @relation(fields: [propriedadeId], references: [id])
-  propriedadeId Int?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-
-  @@index([propriedadeId])
-}
-
-// Pesagem do lote — KPI central do corte.
-model PesagemLote {
-  id             Int           @id @default(autoincrement())
-  lote           LoteCorte     @relation(fields: [loteId], references: [id], onDelete: Cascade)
-  loteId         Int
-  data           DateTime      @db.Date
-  pesoMedio      Decimal       @db.Decimal(7, 2)
-  numCabecas     Int
-  pesoTotal      Decimal       @db.Decimal(10, 2)
-  metodo         MetodoPesagem
-  responsavel    String?
-  observacao     String?
-  gmdDesdeUltima Decimal?      @db.Decimal(5, 3)
-  createdAt      DateTime      @default(now())
-
-  @@index([loteId, data])
-}
-
-// Manejo sanitário aplicado ao lote inteiro (ou parcial).
-model ManejoSanitario {
-  id                   Int           @id @default(autoincrement())
-  lote                 LoteCorte     @relation(fields: [loteId], references: [id], onDelete: Cascade)
-  loteId               Int
-  data                 DateTime      @db.Date
-  tipo                 TipoSanitario
-  produto              String?
-  doseMl               Decimal?      @db.Decimal(7, 2)
-  numCabecas           Int
-  responsavel          String?
-  carenciaDias         Int?
-  proximaDose          DateTime?     @db.Date
-  observacao           String?
-  // Referência lógica opcional à operação financeira que originou o custo.
-  operacaoFinanceira   Operacao?     @relation(fields: [operacaoFinanceiraId], references: [id])
-  operacaoFinanceiraId Int?          @unique
-  createdAt            DateTime      @default(now())
-
-  @@index([loteId, data])
-  @@index([tipo, data])
-}
-
-// Suplementação por período. Pode coexistir mais de uma simultânea
-// (ex.: mineral + proteico) — dataFim null = ainda ativa.
-model Suplementacao {
-  id                Int            @id @default(autoincrement())
-  lote              LoteCorte      @relation(fields: [loteId], references: [id], onDelete: Cascade)
-  loteId            Int
-  dataInicio        DateTime       @db.Date
-  dataFim           DateTime?      @db.Date
-  tipo              TipoSuplemento
-  produto           String
-  consumoCabecaDiaG Decimal        @db.Decimal(8, 2)
-  custoKg           Decimal?       @db.Decimal(7, 2)
-  observacao        String?
-  createdAt         DateTime       @default(now())
-
-  @@index([loteId, dataInicio])
-}
-
-// Operação comercial — venda, descarte, compra, transferência.
-model OperacaoComercial {
-  id                   Int           @id @default(autoincrement())
-  lote                 LoteCorte?    @relation(fields: [loteId], references: [id])
-  loteId               Int?
-  data                 DateTime      @db.Date
-  tipo                 TipoComercial
-  numCabecas           Int
-  pesoMedio            Decimal       @db.Decimal(7, 2)
-  pesoTotal            Decimal       @db.Decimal(10, 2)
-  arrobas              Decimal?      @db.Decimal(8, 2)
-  precoArroba          Decimal?      @db.Decimal(8, 2)
-  receitaTotal         Decimal?      @db.Decimal(14, 2)
-  comprador            String?
-  observacao           String?
-  operacaoFinanceira   Operacao?     @relation(fields: [operacaoFinanceiraId], references: [id])
-  operacaoFinanceiraId Int?          @unique
-  createdAt            DateTime      @default(now())
-
-  @@index([loteId, data])
-  @@index([tipo, data])
+  @@schema("public")
 }
 
 // =============================================================================
@@ -2752,6 +1263,8 @@ enum TipoDiaPonto {
   FERIADO
   FOLGA
   FALTA
+
+  @@schema("public")
 }
 
 model Funcionario {
@@ -2784,6 +1297,7 @@ model Funcionario {
 
   @@index([ativo])
   @@index([propriedadeId])
+  @@schema("public")
 }
 
 // Registro de jornada de um dia. entrada/saida em "HH:MM"; horas do dia =
@@ -2803,6 +1317,7 @@ model RegistroPonto {
 
   @@unique([funcionarioId, data])
   @@index([funcionarioId, data])
+  @@schema("public")
 }
 
 // ============================================================================
@@ -2814,6 +1329,8 @@ model RegistroPonto {
 enum DirecaoMensagem {
   IN // recebida do usuário
   OUT // enviada pelo bot
+
+  @@schema("public")
 }
 
 // Allowlist de telefones autorizados a usar o bot.
@@ -2826,6 +1343,8 @@ model UsuarioWhatsapp {
   conversas ConversaWhatsapp[]
   createdAt DateTime           @default(now())
   updatedAt DateTime           @updatedAt
+
+  @@schema("public")
 }
 
 // Uma conversa por telefone; guarda o histórico para contexto multi-turno.
@@ -2838,6 +1357,8 @@ model ConversaWhatsapp {
   ultimaAtividade DateTime           @default(now())
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
+
+  @@schema("public")
 }
 
 model MensagemWhatsapp {
@@ -2852,6 +1373,7 @@ model MensagemWhatsapp {
   createdAt   DateTime         @default(now())
 
   @@index([conversaId, createdAt])
+  @@schema("public")
 }
 
 // =============================================================================
@@ -2861,6 +1383,8 @@ model MensagemWhatsapp {
 
 enum Cultura {
   MILHO
+
+  @@schema("public")
 }
 
 enum TipoCustoCultivo {
@@ -2873,25 +1397,33 @@ enum TipoCustoCultivo {
   MAO_DE_OBRA
   MAQUINA
   OUTRO
+
+  @@schema("public")
 }
 
 enum TipoProducao {
   GRAO
   SILAGEM
+
+  @@schema("public")
 }
 
 enum UnidadeProducao {
   SC
   TON
+
+  @@schema("public")
 }
 
 enum DestinoProducao {
   VENDA
   SILO
+
+  @@schema("public")
 }
 
-// Unidade de medida do estoque (Produto/DietaItem). Conversão entre unidades
-// da mesma base em services/estoque/unidades.ts — não confundir com
+// Unidade de medida do estoque (Produto). Conversão entre unidades da mesma
+// base em services/estoque/unidades.ts — não confundir com
 // ItemOperacao.unidade/OperacaoAgricola.doseUnidade, que são texto (rótulo
 // gravado no momento, snapshot legível/histórico).
 enum UnidadeMedida {
@@ -2906,16 +1438,22 @@ enum UnidadeMedida {
   CX
   M
   HA
+
+  @@schema("public")
 }
 
 enum TipoSilo {
   GRAO
   SILAGEM
+
+  @@schema("public")
 }
 
 enum TipoMovimentoSilo {
   ENTRADA
   SAIDA
+
+  @@schema("public")
 }
 
 enum OrigemMovimentoSilo {
@@ -2923,6 +1461,8 @@ enum OrigemMovimentoSilo {
   NUTRICAO
   VENDA
   AJUSTE
+
+  @@schema("public")
 }
 
 model SafraCultivo {
@@ -2947,6 +1487,7 @@ model SafraCultivo {
 
   @@index([cultura, ano])
   @@index([propriedadeId])
+  @@schema("public")
 }
 
 model AreaCultivo {
@@ -2962,6 +1503,7 @@ model AreaCultivo {
   updatedAt      DateTime          @updatedAt
 
   @@unique([safraCultivoId, codigo])
+  @@schema("public")
 }
 
 model LancamentoCusto {
@@ -2988,6 +1530,7 @@ model LancamentoCusto {
 
   @@index([safraCultivoId, data])
   @@index([classe])
+  @@schema("public")
 }
 
 model ProducaoCultivo {
@@ -3009,6 +1552,7 @@ model ProducaoCultivo {
   updatedAt      DateTime         @updatedAt
 
   @@index([safraCultivoId, data])
+  @@schema("public")
 }
 
 model Silo {
@@ -3028,6 +1572,7 @@ model Silo {
   updatedAt     DateTime          @updatedAt
 
   @@index([propriedadeId])
+  @@schema("public")
 }
 
 model MovimentoSilo {
@@ -3044,6 +1589,7 @@ model MovimentoSilo {
   createdAt         DateTime            @default(now())
 
   @@index([siloId, data])
+  @@schema("public")
 }
 
 model ResumoSafraCultivo {
@@ -3060,17 +1606,23 @@ model ResumoSafraCultivo {
   custoTonelada      Decimal?     @db.Decimal(14, 2)
   horasMaquinaTotal  Decimal      @default(0) @db.Decimal(10, 2)
   atualizadoEm       DateTime     @updatedAt
+
+  @@schema("public")
 }
 
 enum StatusUsuario {
   PENDENTE
   ATIVO
   INATIVO
+
+  @@schema("public")
 }
 
 enum TipoToken {
   CONVITE
   RESET
+
+  @@schema("public")
 }
 
 model Usuario {
@@ -3097,6 +1649,24 @@ model Usuario {
   periodosFechados         PeriodoFinanceiro[]           @relation("PeriodoFechadoPor")
   createdAt                DateTime                      @default(now())
   updatedAt                DateTime                      @updatedAt
+
+  // Pecuária v1 (schema pecuaria)
+  pecAnimaisCriados           Animal[]                @relation("AnimalCriadoPor")
+  pecRacasCriadas             Raca[]                  @relation("RacaCriadoPor")
+  pecComposicoesCriadas       ComposicaoRacial[]      @relation("ComposicaoRacialCriadoPor")
+  pecLotesCriados             Lote[]                  @relation("LoteCriadoPor")
+  pecLocalizacoesCriadas      LocalizacaoAnimal[]     @relation("LocalizacaoAnimalCriadoPor")
+  pecMovimentacoesCriadas     Movimentacao[]          @relation("MovimentacaoCriadoPor")
+  pecCategoriasCriadas        CategoriaAnimal[]       @relation("CategoriaAnimalCriadoPor")
+  pecCategoriasManuaisCriadas CategoriaManualAnimal[] @relation("CategoriaManualAnimalCriadoPor")
+  pecDestinosCriados          DestinoAnimal[]         @relation("DestinoAnimalCriadoPor")
+  pecBaixasCriadas            BaixaAnimal[]           @relation("BaixaAnimalCriadoPor")
+  pecMotivosBaixaCriados      MotivoBaixa[]           @relation("MotivoBaixaCriadoPor")
+  pecPesagensCriadas          Pesagem[]               @relation("PesagemCriadoPor")
+  pecAuditoriasCriadas        AuditoriaPecuaria[]     @relation("AuditoriaPecuariaCriadoPor")
+  pecAuditoriasAutor          AuditoriaPecuaria[]     @relation("AuditoriaPecuariaUsuario")
+
+  @@schema("public")
 }
 
 model Sessao {
@@ -3110,6 +1680,7 @@ model Sessao {
   usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 
   @@index([usuarioId])
+  @@schema("public")
 }
 
 model TokenAcesso {
@@ -3123,4 +1694,441 @@ model TokenAcesso {
   usuario   Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 
   @@index([usuarioId])
+  @@schema("public")
+}
+
+// =============================================================================
+// PECUÁRIA v1 — REBANHO (schema Postgres `pecuaria`)
+// Substitui o módulo legado de rebanho/corte (removido do schema `public`).
+// Nada faz cascade a partir do animal.
+// =============================================================================
+
+enum SexoBovino {
+  F
+  M
+
+  @@schema("pecuaria")
+}
+
+enum OrigemAnimal {
+  NASCIDO
+  COMPRADO
+
+  @@schema("pecuaria")
+}
+
+enum AptidaoAnimal {
+  LEITE
+  CORTE
+
+  @@schema("pecuaria")
+}
+
+enum PapelReprodutivo {
+  NENHUM
+  RECEPTORA
+  DOADORA
+
+  @@schema("pecuaria")
+}
+
+// O que aconteceu com o animal (fixo). O porquê fica no MotivoBaixa, classificado por ClasseMotivoBaixa.
+// CADASTRO_INDEVIDO é interno: só o "excluir cadastro" usa.
+enum TipoBaixa {
+  VENDA
+  ABATE
+  MORTE
+  DOACAO
+  EXTRAVIO
+  CADASTRO_INDEVIDO
+
+  @@schema("pecuaria")
+}
+
+// Classe do motivo de baixa (equivale ao TIPOBAIXA do IDEAGRI). Venda/abate/doação aceitam os
+// descartes; morte aceita MORTE; extravio e cadastro indevido não aceitam motivo (baixa.calc.ts).
+enum ClasseMotivoBaixa {
+  DESCARTE_VOLUNTARIO
+  DESCARTE_INVOLUNTARIO
+  MORTE
+
+  @@schema("pecuaria")
+}
+
+enum TipoPesagem {
+  NASCIMENTO
+  ENTRADA
+  DESMAMA
+  ROTINA
+  SAIDA
+
+  @@schema("pecuaria")
+}
+
+enum OrigemPesagem {
+  MANUAL
+  BALANCA
+
+  @@schema("pecuaria")
+}
+
+// Critério de partos de uma regra de categoria.
+enum CriterioPartos {
+  QUALQUER
+  SEM
+  COM
+
+  @@schema("pecuaria")
+}
+
+enum OrigemComposicao {
+  INFORMADA
+  CALCULADA
+
+  @@schema("pecuaria")
+}
+
+// Quem o animal é: identidade estável. Onde está, para que serve e se teve baixa
+// vivem em tabelas de histórico próprias (Localizacao/Destino/Baixa).
+model Animal {
+  id                   String       @id @default(uuid())
+  ideagriId            Int?         @unique
+  brinco               String
+  nome                 String?
+  brincoEletronico     String?      @unique
+  sisbov               String?      @unique
+  sexo                 SexoBovino
+  dataNascimento       DateTime     @db.Date
+  nascimentoEstimado   Boolean      @default(false)
+  origem               OrigemAnimal
+  // = dataNascimento quando origem NASCIDO
+  dataEntrada          DateTime     @db.Date
+  partosAntesDaEntrada Int          @default(0)
+  observacao           String?
+  criadoEm             DateTime     @default(now())
+  criadoPorId          Int?
+  criadoPor            Usuario?     @relation("AnimalCriadoPor", fields: [criadoPorId], references: [id])
+  atualizadoEm         DateTime     @updatedAt
+
+  composicao        ComposicaoRacial[]
+  localizacoes      LocalizacaoAnimal[]
+  destinos          DestinoAnimal[]
+  baixas            BaixaAnimal[]
+  pesagens          Pesagem[]
+  movimentacoes     MovimentacaoAnimal[]
+  categoriasManuais CategoriaManualAnimal[]
+
+  @@index([brinco])
+  @@schema("pecuaria")
+}
+
+// Categoria do animal, configurável pela fazenda. Uma categoria "automática" tem regra
+// (sexo + faixa de idade + partos) avaliada em `ordem` — a primeira que casa vence; uma não
+// automática só é atribuída manualmente (CategoriaManualAnimal). Os itens de fábrica são as
+// categorias do IDEAGRI (`ideagriId` 1–7) e guardam `chavePadrao` para "Restaurar padrões".
+// A categoria nunca é gravada no Animal — ver categoria.calc.ts (inclui a nota das dimensões futuras).
+model CategoriaAnimal {
+  id            String         @id @default(uuid())
+  ideagriId     Int?           @unique
+  chavePadrao   String?        @unique
+  nome          String
+  sexo          SexoBovino
+  automatica    Boolean        @default(true)
+  idadeMinMeses Int?
+  // exclusivo: idade < idadeMaxMeses
+  idadeMaxMeses Int?
+  partos        CriterioPartos @default(QUALQUER)
+  ordem         Int            @default(0)
+  ativo         Boolean        @default(true)
+  criadoEm      DateTime       @default(now())
+  criadoPorId   Int?
+  criadoPor     Usuario?       @relation("CategoriaAnimalCriadoPor", fields: [criadoPorId], references: [id])
+  atualizadoEm  DateTime       @updatedAt
+
+  manuais CategoriaManualAnimal[]
+
+  @@unique([sexo, nome])
+  @@schema("pecuaria")
+}
+
+// Categoria forçada manualmente, com histórico: a linha com `ate` nulo vale sobre o cálculo
+// (no máximo uma aberta por animal — índice parcial na migration). Voltar ao automático fecha a linha.
+model CategoriaManualAnimal {
+  id                 String          @id @default(uuid())
+  animalId           String
+  animal             Animal          @relation(fields: [animalId], references: [id], onDelete: Restrict)
+  categoriaId        String
+  categoria          CategoriaAnimal @relation(fields: [categoriaId], references: [id], onDelete: Restrict)
+  desde              DateTime        @db.Date
+  ate                DateTime?       @db.Date
+  motivo             String
+  motivoEncerramento String?
+  criadoEm           DateTime        @default(now())
+  criadoPorId        Int?
+  criadoPor          Usuario?        @relation("CategoriaManualAnimalCriadoPor", fields: [criadoPorId], references: [id])
+  atualizadoEm       DateTime        @updatedAt
+
+  @@index([animalId, ate])
+  @@index([categoriaId, ate])
+  @@schema("pecuaria")
+}
+
+// Catálogo de raças. Composta (ex.: Girolando) só entra na composição quando o
+// grau de sangue é desconhecido.
+model Raca {
+  id           String   @id @default(uuid())
+  ideagriId    Int?     @unique
+  nome         String
+  sigla        String
+  base         Boolean  @default(true)
+  ativo        Boolean  @default(true)
+  criadoEm     DateTime @default(now())
+  criadoPorId  Int?
+  criadoPor    Usuario? @relation("RacaCriadoPor", fields: [criadoPorId], references: [id])
+  atualizadoEm DateTime @updatedAt
+
+  composicoes ComposicaoRacial[]
+
+  @@schema("pecuaria")
+}
+
+// Grau de sangue do animal em 64 avos por raça. Soma ≤ 64; o resto é desconhecido.
+model ComposicaoRacial {
+  id           String           @id @default(uuid())
+  animalId     String
+  animal       Animal           @relation(fields: [animalId], references: [id], onDelete: Restrict)
+  racaId       String
+  raca         Raca             @relation(fields: [racaId], references: [id], onDelete: Restrict)
+  fracao64     Int
+  origem       OrigemComposicao
+  criadoEm     DateTime         @default(now())
+  criadoPorId  Int?
+  criadoPor    Usuario?         @relation("ComposicaoRacialCriadoPor", fields: [criadoPorId], references: [id])
+  atualizadoEm DateTime         @updatedAt
+
+  @@unique([animalId, racaId])
+  @@index([racaId])
+  @@schema("pecuaria")
+}
+
+// Cadastro do lote (GRUPOANIMAL do IDEAGRI). Pertence a um sítio.
+model Lote {
+  id            String      @id @default(uuid())
+  ideagriId     Int?        @unique
+  nome          String
+  propriedadeId Int
+  propriedade   Propriedade @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
+  ativo         Boolean     @default(true)
+  observacao    String?
+  criadoEm      DateTime    @default(now())
+  criadoPorId   Int?
+  criadoPor     Usuario?    @relation("LoteCriadoPor", fields: [criadoPorId], references: [id])
+  atualizadoEm  DateTime    @updatedAt
+
+  localizacoes       LocalizacaoAnimal[]
+  movimentacoes      Movimentacao[]
+  saidasMovimentacao MovimentacaoAnimal[]
+
+  @@unique([propriedadeId, nome])
+  @@schema("pecuaria")
+}
+
+// Onde o animal está (sítio + lote opcional), com histórico. Linha com `ate`
+// nulo = localização atual; no máximo uma aberta por animal (índice parcial na migration).
+model LocalizacaoAnimal {
+  id                String              @id @default(uuid())
+  animalId          String
+  animal            Animal              @relation(fields: [animalId], references: [id], onDelete: Restrict)
+  propriedadeId     Int
+  propriedade       Propriedade         @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
+  loteId            String?
+  lote              Lote?               @relation(fields: [loteId], references: [id], onDelete: Restrict)
+  desde             DateTime            @db.Date
+  ate               DateTime?           @db.Date
+  // movimentação que abriu esta linha (1 ou N animais); vazio = linha inicial do cadastro/carga
+  movimentacaoId    String?
+  movimentacao      Movimentacao?       @relation(fields: [movimentacaoId], references: [id], onDelete: Restrict)
+  criadoEm          DateTime            @default(now())
+  criadoPorId       Int?
+  criadoPor         Usuario?            @relation("LocalizacaoAnimalCriadoPor", fields: [criadoPorId], references: [id])
+  atualizadoEm      DateTime            @updatedAt
+  baixasQueFecharam BaixaAnimal[]       @relation("BaixaLocalizacaoFechada")
+  itemMovimentacao  MovimentacaoAnimal?
+
+  @@index([animalId, ate])
+  @@index([propriedadeId, ate])
+  @@index([loteId, ate])
+  @@index([movimentacaoId])
+  @@schema("pecuaria")
+}
+
+// Uma movimentação: 1 ou N animais levados ao mesmo destino na mesma data. Cada animal
+// ganha uma LocalizacaoAnimal apontando para cá. Desfazer remove essas linhas, reabre as
+// anteriores e marca `desfeitaEm` — a movimentação fica como histórico, como um estorno.
+model Movimentacao {
+  id                   String      @id @default(uuid())
+  data                 DateTime    @db.Date
+  propriedadeDestinoId Int
+  propriedadeDestino   Propriedade @relation(fields: [propriedadeDestinoId], references: [id], onDelete: Restrict)
+  loteDestinoId        String?
+  loteDestino          Lote?       @relation(fields: [loteDestinoId], references: [id], onDelete: Restrict)
+  motivo               String?
+  // quantos animais foram movidos (fixo; desfazer animal a animal não altera)
+  quantidade           Int
+  desfeitaEm           DateTime?
+  desfeitaMotivo       String?
+  criadoEm             DateTime    @default(now())
+  criadoPorId          Int?
+  criadoPor            Usuario?    @relation("MovimentacaoCriadoPor", fields: [criadoPorId], references: [id])
+  atualizadoEm         DateTime    @updatedAt
+
+  localizacoes LocalizacaoAnimal[]
+  animais      MovimentacaoAnimal[]
+
+  @@index([loteDestinoId, data])
+  @@index([propriedadeDestinoId, data])
+  @@index([data])
+  @@schema("pecuaria")
+}
+
+// Itens da movimentação: um por animal movido, com a origem (onde estava) gravada. Nunca é
+// apagado — desfazer marca `desfeitoEm`, e `localizacaoId` fica nulo quando a linha aberta pela
+// movimentação é removida. É o registro permanente de quem foi movido, de onde e para onde.
+model MovimentacaoAnimal {
+  id                  String             @id @default(uuid())
+  movimentacaoId      String
+  movimentacao        Movimentacao       @relation(fields: [movimentacaoId], references: [id], onDelete: Restrict)
+  animalId            String
+  animal              Animal             @relation(fields: [animalId], references: [id], onDelete: Restrict)
+  origemPropriedadeId Int?
+  origemPropriedade   Propriedade?       @relation(fields: [origemPropriedadeId], references: [id], onDelete: Restrict)
+  origemLoteId        String?
+  origemLote          Lote?              @relation(fields: [origemLoteId], references: [id], onDelete: Restrict)
+  localizacaoId       String?            @unique
+  localizacao         LocalizacaoAnimal? @relation(fields: [localizacaoId], references: [id], onDelete: SetNull)
+  desfeitoEm          DateTime?
+  criadoEm            DateTime           @default(now())
+
+  @@unique([movimentacaoId, animalId])
+  @@index([animalId])
+  @@index([origemLoteId])
+  @@index([origemPropriedadeId])
+  @@schema("pecuaria")
+}
+
+// Para que o animal serve (aptidão + papel reprodutivo), com histórico. Mudar
+// qualquer um fecha a linha e abre outra.
+model DestinoAnimal {
+  id               String           @id @default(uuid())
+  animalId         String
+  animal           Animal           @relation(fields: [animalId], references: [id], onDelete: Restrict)
+  aptidao          AptidaoAnimal
+  papelReprodutivo PapelReprodutivo @default(NENHUM)
+  desde            DateTime         @db.Date
+  ate              DateTime?        @db.Date
+  criadoEm         DateTime         @default(now())
+  criadoPorId      Int?
+  criadoPor        Usuario?         @relation("DestinoAnimalCriadoPor", fields: [criadoPorId], references: [id])
+  atualizadoEm     DateTime         @updatedAt
+
+  baixasQueFecharam BaixaAnimal[] @relation("BaixaDestinoFechado")
+
+  @@index([animalId, ate])
+  @@schema("pecuaria")
+}
+
+// Baixa do rebanho. Baixa não estornada = animal inativo; estorno preserva a linha.
+model BaixaAnimal {
+  id                   String             @id @default(uuid())
+  ideagriId            Int?               @unique
+  animalId             String
+  animal               Animal             @relation(fields: [animalId], references: [id], onDelete: Restrict)
+  data                 DateTime           @db.Date
+  tipo                 TipoBaixa
+  motivoId             String?
+  motivo               MotivoBaixa?       @relation(fields: [motivoId], references: [id], onDelete: Restrict)
+  observacao           String?
+  estornadaEm          DateTime?
+  estornoMotivo        String?
+  // linhas de histórico que ESTA baixa fechou — o estorno reabre exatamente essas
+  // (não dá para deduzir pela data: uma movimentação no mesmo dia também fecha linha com o mesmo `ate`).
+  // SetNull: a baixa ativa é protegida pelo app (desfazer recusa); a estornada perde o vínculo
+  // quando a linha é apagada por um desfazer posterior (a auditoria guarda o antes).
+  localizacaoFechadaId String?
+  localizacaoFechada   LocalizacaoAnimal? @relation("BaixaLocalizacaoFechada", fields: [localizacaoFechadaId], references: [id], onDelete: SetNull)
+  destinoFechadoId     String?
+  destinoFechado       DestinoAnimal?     @relation("BaixaDestinoFechado", fields: [destinoFechadoId], references: [id], onDelete: SetNull)
+  criadoEm             DateTime           @default(now())
+  criadoPorId          Int?
+  criadoPor            Usuario?           @relation("BaixaAnimalCriadoPor", fields: [criadoPorId], references: [id])
+  atualizadoEm         DateTime           @updatedAt
+
+  @@index([animalId])
+  @@index([data])
+  @@index([localizacaoFechadaId])
+  @@index([destinoFechadoId])
+  @@schema("pecuaria")
+}
+
+// Catálogo de motivos de baixa (o porquê), classificado por classe — não por tipo:
+// o mesmo motivo de descarte serve para venda, abate ou doação.
+model MotivoBaixa {
+  id           String            @id @default(uuid())
+  ideagriId    Int?              @unique
+  nome         String
+  classe       ClasseMotivoBaixa
+  ativo        Boolean           @default(true)
+  criadoEm     DateTime          @default(now())
+  criadoPorId  Int?
+  criadoPor    Usuario?          @relation("MotivoBaixaCriadoPor", fields: [criadoPorId], references: [id])
+  atualizadoEm DateTime          @updatedAt
+
+  baixas BaixaAnimal[]
+
+  @@schema("pecuaria")
+}
+
+// Pesagem individual. GMD e peso atual são calculados, não armazenados.
+model Pesagem {
+  id           String        @id @default(uuid())
+  ideagriId    Int?          @unique
+  animalId     String
+  animal       Animal        @relation(fields: [animalId], references: [id], onDelete: Restrict)
+  data         DateTime      @db.Date
+  pesoKg       Decimal       @db.Decimal(7, 2)
+  tipo         TipoPesagem
+  origem       OrigemPesagem @default(MANUAL)
+  observacao   String?
+  criadoEm     DateTime      @default(now())
+  criadoPorId  Int?
+  criadoPor    Usuario?      @relation("PesagemCriadoPor", fields: [criadoPorId], references: [id])
+  atualizadoEm DateTime      @updatedAt
+
+  @@index([animalId, data])
+  @@schema("pecuaria")
+}
+
+// Trilha de toda mutação da pecuária (padrão de AuditoriaFinanceira).
+model AuditoriaPecuaria {
+  id           String   @id @default(uuid())
+  entidade     String
+  entidadeId   String
+  // Animal a que o registro se refere (também para linhas já apagadas: pesagem excluída,
+  // movimentação desfeita), para a trilha do animal não depender da linha ainda existir.
+  animalId     String?
+  acao         String
+  antes        Json?
+  depois       Json?
+  usuarioId    Int?
+  usuario      Usuario? @relation("AuditoriaPecuariaUsuario", fields: [usuarioId], references: [id])
+  em           DateTime @default(now())
+  criadoEm     DateTime @default(now())
+  criadoPorId  Int?
+  criadoPor    Usuario? @relation("AuditoriaPecuariaCriadoPor", fields: [criadoPorId], references: [id])
+  atualizadoEm DateTime @updatedAt
+
+  @@index([entidade, entidadeId])
+  @@index([animalId, em])
+  @@index([em])
+  @@schema("pecuaria")
 }

@@ -26,13 +26,13 @@ beforeEach(() => {
 });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
-const categorias = [{ id: 11, nome: "Insumos", classificacao: "CUSTEIO" as const, ativo: true, ordem: 0, usoSanitario: false, usoNutricional: true, usoAgricola: false }];
+const categorias = [{ id: 11, nome: "Insumos", classificacao: "CUSTEIO" as const, ativo: true, ordem: 0, usoAgricola: true }];
 const centros = [{ id: 20, nome: "Atividade leiteira", ativo: true, ordem: 0 }];
 const fornecedores = [{ id: 7, nome: "Cooperativa", documento: null, tipo: "FORNECEDOR" as const, telefone: null, email: null, ativo: true, referencias: 0 }];
 const produtoCriado = {
   id: 99, nome: "Sal mineral", unidade: "KG",
   categoriaId: 11, categoriaNome: "Insumos", classificacao: "CUSTEIO" as const, ativo: true,
-  categoria: { id: 11, nome: "Insumos", usoSanitario: false, usoNutricional: true, usoAgricola: false },
+  categoria: { id: 11, nome: "Insumos", usoAgricola: true },
   centroCustoIds: [], centrosCusto: [], fornecedores: [],
 };
 
@@ -63,7 +63,7 @@ describe("FormProduto sem props", () => {
     fireEvent.change(screen.getByLabelText("Nome do produto"), { target: { value: "Sal mineral" } });
     fireEvent.change(screen.getByLabelText("Unidade"), { target: { value: "KG" } });
     fireEvent.change(screen.getByLabelText(/^Categoria/), { target: { value: "11" } });
-    await screen.findByText("Uso nutricional");
+    await screen.findByText("Uso agrícola");
     fireEvent.click(screen.getByRole("button", { name: "Criar produto" }));
 
     await waitFor(() => expect(mocks.criarProduto).toHaveBeenCalledWith(expect.objectContaining({ nome: "Sal mineral", unidade: "KG", categoriaId: 11, fornecedorIds: [7], centroCustoIds: [20] })));

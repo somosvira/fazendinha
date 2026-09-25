@@ -49,7 +49,8 @@ export function returnToInterna(raw: string | null | undefined): string | null {
 
 export function podeAcessarTab(usuario: UsuarioSessao, tab: Tab): boolean {
   const dono = !!usuario.dono;
-  if (tab === "acessos") return dono || usuario.flags.includes("gerenciarAcessos");
+  // Sítios é estrutura da fazenda (raramente muda): mesmo público de Acessos.
+  if (tab === "acessos" || tab === "sitios") return dono || usuario.flags.includes("gerenciarAcessos");
   if (tab === "config") return true;
   if (tab === "estoque") return temAcessoEstoque(usuario.areas, dono);
 
@@ -69,7 +70,7 @@ export function paginaInicialAutorizada(usuario: UsuarioSessao): string {
     const tab = aba.id as Tab;
     if (podeAcessarTab(usuario, tab)) return tabToPath(tab);
   }
-  if (temAcessoArea(usuario.areas, "pecuaria", !!usuario.dono)) return tabToPath("reb-dashboard");
+  if (temAcessoArea(usuario.areas, "pecuaria", !!usuario.dono)) return tabToPath("pec-rebanho");
   if (temAcessoArea(usuario.areas, "agricultura", !!usuario.dono)) return tabToPath("pla-dashboard");
   if (temAcessoArea(usuario.areas, "equipe", !!usuario.dono)) return tabToPath("eqp-dashboard");
   return tabToPath("config");

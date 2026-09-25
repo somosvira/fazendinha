@@ -21,8 +21,6 @@ function erroDaApi(erro: unknown, setErros: (erros: Erros) => void, setErroGeral
 export function FormCategoria({ categoria, ordemInicial, onSalvo, onFechar }: { categoria: Categoria | null; ordemInicial: number; onSalvo: () => Promise<void> | void; onFechar: () => void }) {
   const [nome, setNome] = useState(categoria?.nome ?? "");
   const [classificacao, setClassificacao] = useState<"" | "CUSTEIO" | "INVESTIMENTO">(categoria?.classificacao ?? "");
-  const [usoSanitario, setUsoSanitario] = useState(categoria?.usoSanitario ?? false);
-  const [usoNutricional, setUsoNutricional] = useState(categoria?.usoNutricional ?? false);
   const [usoAgricola, setUsoAgricola] = useState(categoria?.usoAgricola ?? false);
   const [erros, setErros] = useState<Erros>({});
   const [erroGeral, setErroGeral] = useState("");
@@ -34,7 +32,7 @@ export function FormCategoria({ categoria, ordemInicial, onSalvo, onFechar }: { 
     if (nome.trim().length < 2) novosErros.nome = "Informe um nome com pelo menos 2 caracteres";
     setErros(novosErros); if (Object.keys(novosErros).length || emCurso.current) return;
     emCurso.current = true; setSalvando(true); setErroGeral("");
-    const dados = { nome: nome.trim(), classificacao: classificacao || null, ordem: categoria?.ordem ?? ordemInicial, usoSanitario, usoNutricional, usoAgricola };
+    const dados = { nome: nome.trim(), classificacao: classificacao || null, ordem: categoria?.ordem ?? ordemInicial, usoAgricola };
     try {
       if (!categoria) await criarCategoria(dados);
       else await atualizarCategoria(categoria.id, dados);
@@ -52,14 +50,6 @@ export function FormCategoria({ categoria, ordemInicial, onSalvo, onFechar }: { 
       <fieldset className="rounded-lg border border-border p-3">
         <legend className="px-1 text-sm font-medium">Uso dos produtos desta categoria</legend>
         <div className="grid gap-2">
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={usoSanitario} onChange={(e) => setUsoSanitario(e.target.checked)} />
-            <span>Sanitário <span className="text-ink-3">— aparece na sanidade</span></span>
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={usoNutricional} onChange={(e) => setUsoNutricional(e.target.checked)} />
-            <span>Nutricional <span className="text-ink-3">— entra na dieta e no custo vaca/dia</span></span>
-          </label>
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={usoAgricola} onChange={(e) => setUsoAgricola(e.target.checked)} />
             <span>Agrícola <span className="text-ink-3">— aplicável em talhão; entra no alerta de estoque do plantio</span></span>

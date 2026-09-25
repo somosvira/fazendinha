@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useSafrasCultivo, useResumoSafraCultivo } from "../api";
 import { ClasseToggle, type Classe } from "../../components/ClasseToggle";
 import { ToolbarSelect } from "@/components/ToolbarSelect";
-import { RebHeader } from "@/rebanho/components/RebHeader";
+import { RebHeader } from "@/components/rb/RebHeader";
 import { RebKpiStrip } from "@/components/rb/RebKpiStrip";
 import { RebMain, RebBox } from "@/components/rb/RebPrimitives";
 import { EmptyState } from "@/components/EmptyState";

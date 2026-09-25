@@ -5,8 +5,8 @@ import type { ComponentProps } from "react";
 import { AppSidebar, TrabalhoAtivo } from "./AppSidebar";
 import type { User } from "@/data/acessos";
 
-vi.mock("../rebanho/api", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("../rebanho/api")>()),
+vi.mock("../api/propriedades", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../api/propriedades")>()),
   usePropriedades: () => ({ data: [], loading: false, recarregar: vi.fn() }),
 }));
 

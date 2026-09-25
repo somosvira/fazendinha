@@ -4,20 +4,17 @@ import { join } from "node:path";
 import pg from "pg";
 import type { PrismaClient } from "@prisma/client";
 
-// O runner usa tabelas em um schema temporário dentro do único banco local.
-const database = "fazendinha_local";
-const qaSchema = process.env.FINANCE_QA_SCHEMA;
+// O runner usa um banco temporário criado por execução no Postgres local.
+const qaDatabase = process.env.FINANCE_QA_DATABASE;
 const url = new URL(process.env.DATABASE_URL ?? "postgresql://invalid/invalid");
-if (!qaSchema || !/^qa249_test_[a-f0-9]{16}$/.test(qaSchema) || url.searchParams.get("schema") !== qaSchema || url.pathname !== `/${database}` || !["127.0.0.1", "localhost", "[::1]"].includes(url.hostname)) {
+if (!qaDatabase || !/^qa249_test_[a-f0-9]{16}$/.test(qaDatabase) || url.pathname !== `/${qaDatabase}` || !["127.0.0.1", "localhost", "[::1]"].includes(url.hostname)) {
   throw new Error("Use pnpm --filter rionovo-server test:financeiro:integration");
 }
-// Injeção de um Prisma REAL com namespace de teste; não simula métodos/queries.
+// Injeção de um Prisma REAL apontado para o banco temporário; não simula métodos/queries.
 vi.mock("../../src/db.js", async () => {
   const { PrismaClient } = await import("@prisma/client");
   const { PrismaPg } = await import("@prisma/adapter-pg");
-  const connection = new URL(process.env.DATABASE_URL!);
-  connection.searchParams.delete("schema");
-  return { prisma: new PrismaClient({ adapter: new PrismaPg({ connectionString: connection.href, options: `-c search_path=${process.env.FINANCE_QA_SCHEMA}` }, { schema: process.env.FINANCE_QA_SCHEMA }) }) };
+  return { prisma: new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL! }) }) };
 });
 let db: PrismaClient;
 let ops: typeof import("../../src/services/financeiro/operacoes.js");
@@ -38,7 +35,7 @@ beforeAll(async () => {
   stock = await import("../../src/services/estoque/estoque.js");
   schema = await import("../../src/services/financeiro/schemas.js");
   const rows = await db.$queryRaw<{ name: string }[]>`SELECT current_database()::text AS name`;
-  expect(rows[0].name).toBe(database);
+  expect(rows[0].name).toBe(qaDatabase);
 });
 beforeEach(async () => {
   serial++;

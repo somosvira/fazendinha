@@ -30,23 +30,22 @@ describe("resolverIdsCentros", () => {
 });
 
 describe("obterCentrosAtividade", () => {
-  it("resolve leite e café num único findMany", async () => {
+  it("resolve café num único findMany", async () => {
     const findMany = vi.fn().mockResolvedValue([
-      { id: 7, nome: CENTROS_ATIVIDADE.LEITE },
       { id: 9, nome: CENTROS_ATIVIDADE.CAFE },
     ]);
     const resultado = await obterCentrosAtividade({ centroCusto: { findMany } });
-    expect(resultado).toEqual({ leite: 7, cafe: 9 });
+    expect(resultado).toEqual({ cafe: 9 });
     expect(findMany).toHaveBeenCalledTimes(1);
     expect(findMany).toHaveBeenCalledWith({
-      where: { nome: { in: [CENTROS_ATIVIDADE.LEITE, CENTROS_ATIVIDADE.CAFE] } },
+      where: { nome: { in: [CENTROS_ATIVIDADE.CAFE] } },
       select: { id: true, nome: true },
     });
   });
 
   it("retorna null para o que não for encontrado", async () => {
-    const findMany = vi.fn().mockResolvedValue([{ id: 7, nome: CENTROS_ATIVIDADE.LEITE }]);
+    const findMany = vi.fn().mockResolvedValue([]);
     const resultado = await obterCentrosAtividade({ centroCusto: { findMany } });
-    expect(resultado).toEqual({ leite: 7, cafe: null });
+    expect(resultado).toEqual({ cafe: null });
   });
 });

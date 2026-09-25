@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Loader } from "../../components/Loading";
 import { useCustoPlantio, useCustoOperacionalCafe, useSafras } from "../api";
 import { ClasseToggle, type Classe } from "../../components/ClasseToggle";
-import { RebHeader } from "@/rebanho/components/RebHeader";
+import { RebHeader } from "@/components/rb/RebHeader";
 import { RebKpiStrip } from "@/components/rb/RebKpiStrip";
 import { RebTable } from "@/components/rb/RebTable";
 import { RebMain, RebBox, RebAnm } from "@/components/rb/RebPrimitives";

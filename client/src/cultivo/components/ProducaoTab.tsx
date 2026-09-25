@@ -12,7 +12,7 @@ import {
 import type { TipoProducao, UnidadeProducao, DestinoProducao } from "../types";
 import { HOJE } from "../HOJE";
 import { ToolbarSelect } from "@/components/ToolbarSelect";
-import { RebHeader } from "@/rebanho/components/RebHeader";
+import { RebHeader } from "@/components/rb/RebHeader";
 import { RebKpiStrip } from "@/components/rb/RebKpiStrip";
 import { RebTable } from "@/components/rb/RebTable";
 import { RebButton } from "@/components/rb/RebButton";

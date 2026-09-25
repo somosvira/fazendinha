@@ -1,5 +1,7 @@
 # Pecuária unificada
 
+> **Histórico:** este documento descreve a arquitetura *anterior* da pecuária (cadastro único `Animal` no schema `public`, com finalidade LEITE/CORTE/DUPLA_APTIDÃO e `LoteCorte`), removida em set/2026. Foi superada pela **v1 Rebanho** (schema Postgres `pecuaria`) — ver a seção Domínio em [`CLAUDE.md`](../../CLAUDE.md).
+
 ## Decisão de produto
 
 A fazenda possui um único cadastro de animais. Leite, corte e dupla aptidão são

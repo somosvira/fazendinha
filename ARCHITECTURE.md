@@ -95,8 +95,7 @@ A modelagem segue uma divisão em **contextos de domínio**. Cada contexto tem s
 flowchart LR
   FIN[Financeiro<br/>Operacao · Compromisso · Transacao · Conta · Periodo]
   EST[Estoque<br/>Produto · MovimentoEstoque]
-  REB[Rebanho / Pecuária leiteira<br/>Animais · Reprodução · IATF · FIV · Genética · Sanidade · Produção · Nutrição]
-  COR[Corte<br/>Lotes · Piquetes · Pesagens · Comercial]
+  PEC[Pecuária (v1 — Rebanho)<br/>Animal · Lote · Movimentação · Categoria · Baixa · Pesagem<br/>schema Postgres separado `pecuaria`]
   PLA[Plantio<br/>Talhões · Safras · Operações agrícolas · Colheita]
   CUL[Cultivo / Milho<br/>Safras · Áreas · Silos]
   EQP[Equipe / Ponto<br/>Funcionários · Registro · Folha]
@@ -105,24 +104,20 @@ flowchart LR
   BOT[Bot & Consulta<br/>WhatsApp · OpenAI · motor de consulta]
 
   FIN --> EST
-  REB --> EST
   PLA --> EST
-  COR -- OperacaoComercial / ManejoSanitario --> FIN
   PLA -- OperacaoAgricola --> FIN
   CUL -- LancamentoCusto --> FIN
-  REB -- custo/litro --> FIN
   BOT --> FIN
-  BOT --> REB
-  AUTH -.gate de área.-> FIN & REB & COR & PLA & CUL & EQP
-  PROP -.propriedadeId.-> FIN & REB & COR & PLA & CUL & EQP
+  BOT --> PEC
+  AUTH -.gate de área.-> FIN & PEC & PLA & CUL & EQP
+  PROP -.propriedadeId.-> FIN & PEC & PLA & CUL & EQP
 ```
 
 ### Pontes (deliberadas)
 
 - **Financeiro → Estoque:** uma `Operacao` de tipo com efeito físico (`COMPRA_ESTOQUE`, `INVENTARIO_INICIAL`, `BONIFICACAO`, `PRODUCAO`, `DEVOLUCAO`, `AJUSTE_ESTOQUE`, `TRANSFERENCIA_ESTOQUE`, `VENDA` de item estocável) gera `MovimentoEstoque` por `ItemOperacao` estocável, com `operacaoId` + `itemOperacaoId` (ver `services/financeiro/operacoes.ts`). Estoque nunca muda "por fora" sem uma origem justificável (`OrigemMovimentoEstoque`).
-- **Módulos operacionais → Financeiro:** fatos operacionais que custam dinheiro (`OperacaoAgricola`, `ManejoSanitario`, `OperacaoComercial`, `LancamentoCusto`) podem apontar para uma `Operacao` (`operacaoId` opcional). O fato operacional continua dono do dado zootécnico/agronômico; o financeiro é dono do valor.
-- **Rebanho → Financeiro:** custo de produção (`R$/litro`) em `services/rebanho/custo-producao.ts` soma `TransacaoFinanceira` do centro de custo leiteiro e divide pela produção estimada de `ResumoAnimal`.
-- **Sanidade → Estoque:** aplicação de medicamento baixa estoque (`sanidade-estoque.calc.ts`, `MovimentoEstoque` de origem sanitária); dieta baixa insumos (`nutricao.consumo.ts`, `ConsumoPeriodo`).
+- **Módulos operacionais → Financeiro:** fatos operacionais que custam dinheiro (`OperacaoAgricola`, `LancamentoCusto`) podem apontar para uma `Operacao` (`operacaoId` opcional). O fato operacional continua dono do dado zootécnico/agronômico; o financeiro é dono do valor.
+- **Pecuária v1 → Financeiro / Estoque:** ainda não existe. O legado tinha custo de produção (`R$/litro`) em `services/rebanho/custo-producao.ts` e baixa de estoque por sanidade/nutrição (`sanidade-estoque.calc.ts`, `nutricao.consumo.ts`) — removidos em set/2026 junto com o resto do módulo antigo. A v1 Rebanho ainda não liga fatos a `Operacao` nem a `MovimentoEstoque`; essas pontes voltam quando os domínios de sanidade/nutrição/produção entrarem (v2–v5, ver Domínio em `CLAUDE.md`).
 - **Auth → tudo:** `exigeArea` por prefixo de rota; `Usuario.areas` decide o que o front mostra e o que o server aceita.
 
 ### Regra de ouro
@@ -150,9 +145,7 @@ server/src/
 ├── routes/               # roteamento Hono por domínio — rotas FINAS
 │   ├── health.ts · auth.ts · usuarios.ts · propriedade.ts
 │   ├── financeiro.ts · categorias.ts · busca.ts · bot.ts · whatsapp.ts
-│   ├── rebanho/          # ~50 routers (animais, eventos, sanidade, iatf, fiv, genética,
-│   │                     #   acasalamento, producao, tanque, estoque, custo-*, relatorios, ...)
-│   ├── corte/            # lotes, eventos, custo, dashboard, ia
+│   ├── pecuaria/rebanho.ts  # pecuária v1 — um router só (animais, lotes, categorias, raças, motivos, painel)
 │   ├── plantio/          # talhoes, eventos, colheita, planejamento, estoque, custo, dashboard, ia
 │   ├── cultivo/          # safras, areas, custos, producao, silos, dashboard
 │   └── ponto/            # index (funcionários + registros), dashboard
@@ -165,9 +158,9 @@ server/src/
     ├── bot/              # agent.ts (OpenAI function-calling) · tools.ts · conversa.ts · navegacao.ts
     ├── whatsapp/         # webhook.ts (verify HMAC) · handler.ts · client.ts
     ├── propriedade.ts    # garantirFundacaoPropriedade, resolverEscopoLeitura/Escrita
-    ├── rebanho/          # ~150 arquivos: *.ts (I/O) + *.calc.ts / *.recompute.ts / *.agg.ts (puros)
-    │                     #   + *.schemas.ts (Zod) + *.mappers.ts (DTO) + ia.*.ts
-    ├── corte/ · plantio/ · cultivo/ · ponto/   # mesma forma
+    ├── pecuaria/rebanho/ # pecuária v1 (schema `pecuaria`): animais.ts · lotes.ts · categorias.ts · racas.ts
+    │                     #   motivos.ts · movimentacoes.ts · painel.ts · regras.ts + *.calc.ts (puros) + schemas.ts · mappers.ts
+    ├── plantio/ · cultivo/ · ponto/   # mesma forma
     ├── busca.ts · volumes.ts · simulacao.calc.ts
     └── ...
 ```
@@ -188,11 +181,12 @@ server/src/
 
    ```ts
    import { zValidator } from "@hono/zod-validator";
-   import { criarAnimalSchema } from "../../services/rebanho/animais.schemas.js";
+   import { cadastrarAnimalSchema } from "../../services/pecuaria/rebanho/schemas.js";
+   import * as animais from "../../services/pecuaria/rebanho/animais.js";
 
-   router.post("/", zValidator("json", criarAnimalSchema), async (c) => {
+   router.post("/animais", zValidator("json", cadastrarAnimalSchema), async (c) => {
      const body = c.req.valid("json"); // tipado e validado
-     const animal = await animaisService.criar(body);
+     const animal = await animais.cadastrar(body, usuarioId(c));
      return c.json(animal, 201);
    });
    ```
@@ -238,8 +232,7 @@ app.route("/api", authPublicoRouter);   // login / convite / reset
 app.use("/api/*", authMiddleware);
 
 // 3. Autorização por área (prefixo)
-app.use("/api/rebanho/*", exigeArea("pecuaria"));
-app.use("/api/corte/*", exigeArea("pecuaria"));
+app.use("/api/pecuaria/rebanho/*", exigeArea("pecuaria"));
 app.use("/api/plantio/*", exigeArea("agricultura"));
 app.use("/api/cultivo/*", exigeArea("agricultura"));
 app.use("/api/ponto/*", exigeArea("equipe"));
@@ -252,7 +245,6 @@ serve({ fetch: app.fetch, port: env.PORT });
 
 // Boot idempotente (à prova de `db push`, que não roda backfill de migration)
 garantirFundacaoPropriedade();
-garantirResultadosGinecologicosSemente();
 garantirDonoBootstrap(); // cria o dono PENDENTE se Usuario vazio + AUTH_BOOTSTRAP_EMAIL
 ```
 
@@ -298,11 +290,12 @@ client/src/
 │   ├── ConfiguracoesFinanceiras.tsx · RelatoriosFinanceiros.tsx · financeiro-ui.tsx
 │   ├── novo-api.ts               # fetch tipado de /api/financeiro/* (tipos = contrato da API)
 │   └── HOJE.ts
-├── rebanho/ · corte/ · plantio/ · cultivo/ · equipe/   # módulos operacionais, mesma forma:
-│   ├── <Modulo>Content.tsx (corte: PlantelContent.tsx)
-│   ├── api.ts · types.ts · HOJE.ts · nav.ts · domains.tsx
-│   ├── components/ · lib/ (derivações puras + testes) · mock/ (referência de forma)
-│   └── styles/ (rebanho)
+├── pecuaria/rebanho/     # pecuária v1: RebanhoContent.tsx · api.ts · types.ts · ui.tsx
+│   └── components/ · forms/ · telas/ · cadastros/ · lib/ (derivações puras + testes)
+├── plantio/ · cultivo/ · equipe/   # módulos operacionais, mesma forma:
+│   ├── <Modulo>Content.tsx
+│   ├── api.ts · types.ts · HOJE.ts · nav.ts · domains.tsx (plantio)
+│   └── components/ · lib/ (derivações puras + testes) · mock/ (referência de forma)
 ├── data/                 # mocks e planilha de referência (rionovo.ts, projecao.ts, acessos.ts, ...)
 └── styles/
     ├── theme.css         # Tailwind v4 (@import "tailwindcss") + tokens — PRIMEIRO
@@ -324,8 +317,7 @@ Não usamos `react-router`. O `App.tsx` mantém `useState<Tab>` e `router.ts` si
 | `cadastros` / `plano` | `/financeiro/configuracoes` / `/financeiro/configuracoes/categorias` |
 | `relatorio` | `/financeiro/relatorios` |
 | `ia` · `acessos` · `config` | `/ia` · `/acessos` · `/configuracoes` |
-| `reb-*` | `/pecuaria/<sub>` |
-| `cor-*` | `/pecuaria/lotes/<sub>` (Lotes é subseção da Pecuária) |
+| `pec-rebanho` | `/pecuaria/rebanho` (subtela decidida pelo pathname: Visão geral · Animais · Lotes · Cadastros) |
 | `pla-*` · `mil-*` · `eqp-*` | `/plantio/<sub>` · `/milho/<sub>` · `/equipe/<sub>` |
 | auth | `/convite/:token` e `/senha/:token` renderizam `DefinirSenha` mesmo deslogado |
 
@@ -353,7 +345,7 @@ Não usamos `react-router`. O `App.tsx` mantém `useState<Tab>` e `router.ts` si
 
 - `schema.prisma`: `url = env("DATABASE_URL")` (**pooled**, `-pooler` no host) e `directUrl = env("DIRECT_URL")` (**direct**).
 - Runtime e `prisma migrate deploy` usam a pooled. `prisma migrate dev` (shadow DB) e `prisma db push` usam a direct.
-- `pnpm dev:server` executa `prisma db push --skip-generate` **antes** de `tsx watch` — o schema local acompanha o código sem migration.
+- `pnpm dev:server` executa `prisma migrate deploy` **antes** de `tsx watch` (não `db push`: os índices únicos parciais da pecuária existem só no SQL da migration).
 
 ### Modelagem
 
@@ -362,23 +354,16 @@ Schema completo em `server/prisma/schema.prisma` (~120 models, ~65 enums). Resum
 | Contexto | Models principais |
 |---|---|
 | Financeiro | `Operacao`, `ItemOperacao`, `CompromissoFinanceiro`, `Liquidacao`, `TransacaoFinanceira`, `MovimentoConta`, `ContaFinanceira`, `Parceiro`, `PeriodoFinanceiro`, `RascunhoOperacao`, `DocumentoFinanceiro`, `AuditoriaFinanceira`, `Categoria` ⊂ `GrupoCategoria`, `CentroCusto` |
-| Estoque | `Produto`, `MovimentoEstoque`, `ConsumoPeriodo` |
+| Estoque | `Produto`, `ProdutoCentroCusto`, `ProdutoFornecedor`, `MovimentoEstoque` |
 | Propriedade | `Propriedade`, `Configuracao`, `ParametroManejo`, `RegistroChuva` |
 | Auth | `Usuario`, `Sessao`, `TokenAcesso` |
-| Rebanho | `Animal`, `ResumoAnimal`, `Raca`, `Grupo`, `Lactacao`, `Pesagem`, `MovimentacaoAnimal`, `FiltroAnimal`, `AptidaoAnimal` |
-| Reprodução | `EventoReprodutivo`, `ResultadoExameGinecologico`, `ProtocoloIATF` (+ etapas/aplicações), `ProgramacaoIATFLote`, `Coleta`, `OocitoColeta`, `FertilizacaoColeta`, `EmbriaoColeta`, `GrupoPoolDoadora` |
-| Genética / acasalamento | `Reprodutor`, `CentralSemen`, `TipoSemen`, `EstoqueSemen`, `IndicadorGenetico`, `MarcadorGenetico`, `Caseina`, `PedigreeReprodutor`, `MedidaAcasalamento`, `PlanoAcasalamento` (+ versões/linhas) |
-| Sanidade | `EventoSanitario`, `ExameQuarto`, `VacinaAgendada`, `ProtocoloSanitario` (+ etapas/aplicações) |
-| Produção de leite | `ControleLeiteiro`, `ProducaoLote`, `Tanque`, `AnaliseTanque` |
-| Nutrição | `Dieta`, `DietaItem` |
-| Formulários de campo | `ModeloFormularioCampo`, `FolhaCampo`, `LinhaFolhaCampo` |
-| Corte | `LoteCorte`, `ResumoLote`, `Piquete`, `PesagemLote`, `ManejoSanitario`, `Suplementacao`, `OperacaoComercial` |
+| Pecuária (v1 — Rebanho, schema `pecuaria`) | `Animal`, `Raca`, `ComposicaoRacial`, `Lote`, `Movimentacao`, `MovimentacaoAnimal`, `CategoriaAnimal`, `CategoriaManualAnimal`, `LocalizacaoAnimal`, `DestinoAnimal`, `BaixaAnimal`, `MotivoBaixa`, `Pesagem`, `AuditoriaPecuaria` |
 | Plantio (café) | `Lavoura`, `VariedadeCafe`, `Talhao`, `ResumoTalhao`, `SafraTalhao`, `Safra`, `OperacaoAgricola`, `PlanoAdubacao`, `InspecaoMIP`, `AmostraSolo`, `AmostraFoliar`, `PassadaColheita`, `TarefaAgricola`, `ApontamentoMaquina` |
 | Cultivo (milho/grãos) | `SafraCultivo`, `AreaCultivo`, `LancamentoCusto`, `ProducaoCultivo`, `Silo`, `MovimentoSilo`, `ResumoSafraCultivo` |
 | Equipe / ponto | `Funcionario`, `RegistroPonto` |
 | WhatsApp | `UsuarioWhatsapp`, `ConversaWhatsapp`, `MensagemWhatsapp` |
 
-O modelo financeiro legado (`Lancamento`, `FechamentoMensal`, `ContaBancaria`, `ClienteFornecedor`, `Caixinha`, `NotaFiscal*`, `WhatsAppConfirmacaoPendente`) **não existe mais**.
+O modelo financeiro legado (`Lancamento`, `FechamentoMensal`, `ContaBancaria`, `ClienteFornecedor`, `Caixinha`, `NotaFiscal*`, `WhatsAppConfirmacaoPendente`) **não existe mais**. O mesmo vale para o schema `public` do módulo de pecuária pré-v1 — reprodução (`EventoReprodutivo`, `ProtocoloIATF`, ...), genética/acasalamento (`Reprodutor`, `CentralSemen`, ...), sanidade (`EventoSanitario`, `ProtocoloSanitario`, ...), produção de leite (`ControleLeiteiro`, `Tanque`, ...), nutrição (`Dieta`, `DietaItem`), formulários de campo e corte (`LoteCorte`, `Piquete`, `ManejoSanitario`, `OperacaoComercial`, ...) — removido em set/2026 (migration `20260925130000_pecuaria_v1_rebanho`). Mantido aqui só como referência de domínio para os próximos domínios da pecuária (v2–v5, ver Domínio em `CLAUDE.md`) — não reintroduzir os models.
 
 ### Núcleo financeiro (o que cada model significa)
 
@@ -404,16 +389,16 @@ O modelo financeiro legado (`Lancamento`, `FechamentoMensal`, `ContaBancaria`, `
 - **Valor sempre positivo.** O sinal vem de `DirecaoMovimentoConta` / tipo da transação.
 - **Nada confirmado é apagado:** estorno com evento inverso + `AuditoriaFinanceira`. `MovimentoEstoque` vira `REVERTIDO` com `revertidoPor`.
 - **`propriedadeId`** obrigatório no financeiro novo; nullable (com backfill no boot) nos módulos antigos.
-- **Cascade** só quando faz sentido de domínio (`Animal → ResumoAnimal`, `RascunhoOperacao → DocumentoFinanceiro`).
+- **Cascade** só quando faz sentido de domínio (`RascunhoOperacao → DocumentoFinanceiro`). Na pecuária v1, o histórico do animal (`ComposicaoRacial`, `LocalizacaoAnimal`, `DestinoAnimal`, `BaixaAnimal`…) usa `Restrict` de propósito — nada que já aconteceu pode sumir por cascade.
 - **Unique composto** quando aplicável (`Categoria(grupoCategoriaId, nome)`, `PeriodoFinanceiro(propriedadeId, ano, mes)`, `RascunhoOperacao(propriedadeId, criadoPorId)`).
-- **Índices** em todos os filtros frequentes (`Operacao(propriedadeId, data)`, `MovimentoEstoque(operacaoId)`, `Animal(status)`, `EventoReprodutivo(animalId, data)`).
+- **Índices** em todos os filtros frequentes (`Operacao(propriedadeId, data)`, `MovimentoEstoque(operacaoId)`, `pecuaria.Animal(brinco)`, `pecuaria.LocalizacaoAnimal(propriedadeId, ate)`).
 
 ### Migrations e sync de schema
 
-- Diretório: `server/prisma/migrations/` — **45 migrations**, nome `AAAAMMDDHHMMSS_descricao_curta`.
+- Diretório: `server/prisma/migrations/` — **2 migrations** (`20260925120000_baseline` + `20260925130000_pecuaria_v1_rebanho`, consolidadas em 25/09/2026), nome `AAAAMMDDHHMMSS_descricao_curta`.
 - **Sempre revisar SQL gerado** antes de commitar. Backfill de dados pode viver na migration, mas **também precisa ser idempotente no boot** (`garantirFundacaoPropriedade`, `garantirDonoBootstrap`), porque `db push` não executa migrations.
-- Dev: `pnpm dev:server` faz `db push`. Migration nova: `pnpm prisma:migrate` com `DIRECT_URL` no `.env`.
-- Prod (Render): `start:prod` é só `node dist/index.js`; o schema é sincronizado por deploy controlado (`migrate deploy` ou `db push`), ver `DEPLOY.md`. Nem toda tabela tem `CREATE TABLE` em migration — `migrate deploy` do zero pode quebrar; recuperar com `migrate resolve --rolled-back <migration> && db push` (seção 9 de [docs/design/multi-propriedade.md](docs/design/multi-propriedade.md)).
+- Dev: `pnpm dev:server` faz `migrate deploy`. Migration nova: `pnpm prisma:migrate` com `DIRECT_URL` no `.env`.
+- Prod (Render): `start:prod` é só `node dist/index.js`; o schema é sincronizado por deploy controlado (`migrate deploy`), ver `DEPLOY.md` §1.4. `migrate deploy` num banco vazio cria tudo; banco com o histórico anterior a 25/09/2026 precisa ser recriado (ou ter a baseline registrada com `migrate resolve --applied`).
 
 ### Período financeiro (fechamento)
 
@@ -485,35 +470,29 @@ Invariantes (do contrato): compra à vista **não** cria compromisso; pagamento 
 - **Documento financeiro** — `POST /financeiro/operacoes/:id/documentos` (ou no rascunho) recebe `multipart/form-data`; `documentos.ts` grava via `lib/storage.ts` (local com link assinado por `LOCAL_DOWNLOAD_SECRET`, ou R2) e cria `DocumentoFinanceiro` com `sha256`. Download em `GET /financeiro/documentos/:id/download`. **Não há OCR nem extração automática** — `lib/ocr.ts` está no repo mas sem rota.
 - **WhatsApp** — `routes/whatsapp.ts` valida `X-Hub-Signature-256` (`services/whatsapp/verify.ts`), `handler.ts` checa a allowlist (`UsuarioWhatsapp`), carrega histórico (`ConversaWhatsapp`/`MensagemWhatsapp`) e chama `bot/agent.ts`: loop de function-calling da OpenAI cujas tools (`bot/tools.ts`, ex.: `saldo_contas`, `estoque`, consultas do motor `services/consulta/`) leem o banco por código estruturado — **o LLM não gera SQL**. O mesmo agente atende o chat web em `routes/bot.ts`.
 
-### 7.4 Registro de evento reprodutivo
+### 7.4 Baixa de um animal (pecuária v1)
 
 ```mermaid
 sequenceDiagram
   participant C as Cliente
-  participant S as Server
-  participant SVC as Service
-  participant DB as Postgres
+  participant S as Server (routes/pecuaria/rebanho.ts)
+  participant SVC as animais.ts
+  participant DB as Postgres (schema pecuaria)
 
-  C->>S: POST /api/rebanho/animais/:id/eventos
-  S->>SVC: criarEvento(animalId, payload)
-  SVC->>DB: INSERT EventoReprodutivo
-  SVC->>SVC: reprocessarStatusReprodutivo(animalId)
-  Note over SVC: deriva status, prox secagem,<br/>iep projetado a partir do histórico
-  SVC->>DB: UPDATE ResumoAnimal
-  SVC-->>C: 201 + animal atualizado
+  C->>S: POST /api/pecuaria/rebanho/animais/:id/baixa
+  S->>SVC: darBaixa(animalId, input, usuarioId, escopo)
+  SVC->>SVC: validarDataBaixa · motivoAceito(tipo, classe)
+  SVC->>DB: $transaction: fecha LocalizacaoAnimal/DestinoAnimal em aberto
+  SVC->>DB: INSERT BaixaAnimal
+  SVC->>DB: INSERT AuditoriaPecuaria (BaixaAnimal, BAIXA)
+  SVC-->>C: 200 + ficha do animal atualizada
 ```
 
-### 7.5 Cálculo de custo/litro
+Estorno é o inverso (`POST .../baixa/estorno` → `estornarBaixa`): reabre a localização/destino fechados e audita. Os domínios de reprodução e sanidade (evento reprodutivo, IATF, status derivado) ainda não existem na v1 — ficam para os próximos domínios (v2–v5, ver Domínio em `CLAUDE.md`).
 
-`/api/rebanho/custo-producao?meses=12` (`services/rebanho/custo-producao.ts`):
+### 7.5 Custo de produção (removido)
 
-1. Soma `TransacaoFinanceira` (`status CONFIRMADA`, `tipo PAGAMENTO`, `data ≥ desde`) cuja `Operacao` tem `CentroCusto` "Atividade Leiteira".
-2. Quebra por categoria (função pura).
-3. Estima `litrosPeriodo = Σ ResumoAnimal.producaoMediaDia × dias`.
-4. `custoLitro = custeioTotal ÷ litrosPeriodo`.
-5. Calcula `custoVacaDia` via `estoque.calc.ts`.
-
-Orquestração faz I/O; `*.calc.ts` faz aritmética e é testado sem banco.
+O legado calculava custo/litro em `services/rebanho/custo-producao.ts` (somava `TransacaoFinanceira` do `CentroCusto` "Atividade Leiteira", dividia pela produção estimada de `ResumoAnimal` via `/api/rebanho/custo-producao`). Removido em set/2026 junto com o resto do módulo antigo — a v1 Rebanho ainda não tem produção nem ponte com o financeiro. A fórmula fica em `METRICS.md` como referência para quando o domínio de produção entrar.
 
 ---
 
@@ -525,7 +504,7 @@ Orquestração faz I/O; `*.calc.ts` faz aritmética e é testado sem banco.
 - **Variáveis:** `OPENAI_API_KEY` (sem ela: bot/chat respondem 503 e as IAs dos módulos caem em modo demonstração com regras locais) e `OPENAI_MODEL` (default `gpt-4o`).
 - **Uso atual:**
   1. Bot do WhatsApp e chat web (`services/bot/agent.ts` + `tools.ts` + `navegacao.ts` para deep-links).
-  2. IA por módulo — rebanho (`services/rebanho/ia.*.ts`), corte, plantio (`ia.context.ts` monta contexto, `ia.llm.ts` chama o modelo, `ia.responder.ts` formata; `ia.insights.ts` são regras locais).
+  2. IA por módulo — plantio (`ia.context.ts` monta contexto, `ia.llm.ts` chama o modelo, `ia.responder.ts` formata; `ia.insights.ts` são regras locais). A pecuária v1 ainda não tem IA de módulo (o legado tinha `services/rebanho/ia.*.ts`, removido em set/2026).
   3. Bateria de avaliação de respostas (`scripts/bateria-ia.*`).
 - Nenhuma consulta é SQL gerado pelo LLM — o motor estruturado (`services/consulta/`) valida e executa.
 
@@ -575,7 +554,7 @@ Orquestração faz I/O; `*.calc.ts` faz aritmética e é testado sem banco.
 ### Estilo de PR
 
 - Commits em PT-BR: `feat(modulo): descrição`, `fix(modulo): descrição`, `chore(infra): ...`.
-- Escopos usuais: `financeiro`, `rebanho`, `corte`, `plantio`, `cultivo`, `ponto`, `auth`, `sidebar`, `ui`, `db`, `infra`.
+- Escopos usuais: `financeiro`, `pecuaria`, `plantio`, `cultivo`, `ponto`, `auth`, `sidebar`, `ui`, `db`, `infra`.
 
 ---
 
@@ -588,20 +567,20 @@ Orquestração faz I/O; `*.calc.ts` faz aritmética e é testado sem banco.
 ### Padrão de teste puro
 
 ```ts
-// services/estoque/estoque.calc.test.ts
+// services/pecuaria/rebanho/baixa.calc.test.ts
 import { describe, it, expect } from "vitest";
-import { custoVacaDia } from "./estoque.calc.js";
+import { motivoAceito } from "./baixa.calc.js";
 
-describe("custoVacaDia", () => {
-  it("retorna null sem dados", () => {
-    expect(custoVacaDia([], 30, new Date(), 30)).toBeNull();
+describe("motivoAceito", () => {
+  it("recusa motivo de morte numa venda", () => {
+    expect(motivoAceito("VENDA", "MORTE")).toBe(false);
   });
 });
 ```
 
 ### O que NÃO testar
 
-- Camada HTTP (rotas) — Hono já testa via tipos + Zod (exceções pontuais em `routes/rebanho/*.test.ts` para montagem de query).
+- Camada HTTP (rotas) — Hono já testa via tipos + Zod (exceções pontuais em `routes/pecuaria/rebanho.test.ts` para montagem de query).
 - Prisma queries triviais (CRUD direto).
 - UI sem regressão visual relevante.
 
@@ -614,7 +593,7 @@ describe("custoVacaDia", () => {
 ```bash
 pnpm install                         # postinstall do server roda prisma generate
 cp server/.env.example server/.env   # DATABASE_URL (+ DIRECT_URL)
-pnpm dev                             # server: prisma db push + tsx watch (:41873) · client: vite (:41875)
+pnpm dev                             # server: prisma migrate deploy + tsx watch (:41873) · client: vite (:41875)
 ```
 
 ### Build
@@ -674,7 +653,7 @@ Detalhe operacional em `DEPLOY.md`.
 ### Quando escalar
 
 1. **Cache em memória** com TTL para agregados de dashboard (períodos `FECHADO` são imutáveis — cache longo).
-2. **Materialização:** `ResumoAnimal`, `ResumoLote`, `ResumoTalhao`, `ResumoSafraCultivo` já existem; estender para um `ResumoFazenda` (KPIs da visão geral).
+2. **Materialização:** `ResumoTalhao`, `ResumoSafraCultivo` já existem; estender para um `ResumoFazenda` (KPIs da visão geral). A pecuária v1 ainda não tem resumo materializado (painel calcula direto).
 3. **Pre-aggregations** em jobs noturnos (custo/litro consolidado por mês).
 4. **Worker queue** (BullMQ ou similar) para OCR de documentos (religar `lib/ocr.ts`), recompute de score e processamento assíncrono do WhatsApp.
 5. **Rota de fechamento de período** (`PeriodoFinanceiro` FECHADO/reaberto com auditoria) e **importador** do histórico para `Operacao`/`TransacaoFinanceira`.
@@ -697,7 +676,7 @@ Detalhe operacional em `DEPLOY.md`.
 - [`CLAUDE.md`](./CLAUDE.md) — instruções operacionais resumidas; prevalece sobre este doc em caso de conflito.
 - [`docs/financeiro-rebuild-contrato.md`](./docs/financeiro-rebuild-contrato.md) — contrato funcional do financeiro novo.
 - [`docs/design/multi-propriedade.md`](./docs/design/multi-propriedade.md) — escopo de sítio, backfill e pegadinhas de deploy.
-- [`docs/design/pecuaria-unificada.md`](./docs/design/pecuaria-unificada.md) — por que Corte vive em `/pecuaria/lotes`.
+- [`docs/design/pecuaria-unificada.md`](./docs/design/pecuaria-unificada.md) — arquitetura anterior da pecuária (histórico, ver nota no topo do arquivo), superada pela v1 Rebanho.
 - [`DOMAIN.md`](./DOMAIN.md) — vocabulário que aparece no schema.
 - [`COMPONENTS.md`](./COMPONENTS.md) — componentes que consomem a API.
 - [`METRICS.md`](./METRICS.md) — fórmulas e como os services calculam.

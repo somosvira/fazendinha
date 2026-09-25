@@ -120,38 +120,13 @@ describe("AppSidebar", () => {
     expect(props.onNav).toHaveBeenCalledWith("gastos");
   });
 
-  it("deixa Reprodução em um clique e mantém Acasalamento nas opções especializadas", () => {
-    const props = baseProps();
-    render(h(AppSidebar, props));
-
-    fireEvent.click(screen.getByRole("button", { name: "Expandir Pecuária" }));
-    const reproducao = screen.getByText("Reprodução");
-    fireEvent.click(reproducao);
-    expect(props.onNav).toHaveBeenCalledWith("reb-reproducao");
-
-    expect(screen.queryByText("Acasalamento")).toBeNull();
-    fireEvent.click(screen.getByTitle("Mais opções de pecuária"));
-    const acasalamento = screen.getByText("Acasalamento");
-    fireEvent.click(acasalamento);
-    expect(props.onNav).toHaveBeenCalledWith("reb-acasalamento");
-  });
-
-  it("expõe Controle leiteiro diretamente na área de pecuária", () => {
+  it("a área Pecuária leva ao Rebanho (v1)", () => {
     const props = baseProps({ areas: ["pecuaria"] });
     render(h(AppSidebar, props));
-
-    fireEvent.click(screen.getByRole("button", { name: "Expandir Pecuária" }));
-    fireEvent.click(screen.getByText("Controle leiteiro"));
-    expect(props.onNav).toHaveBeenCalledWith("reb-producao");
-  });
-
-  it("reúne animais leiteiros e lotes coletivos na mesma área Pecuária", () => {
-    render(h(AppSidebar, baseProps({ areas: ["pecuaria"] })));
     expect(screen.getAllByText("Pecuária")).toHaveLength(1);
     fireEvent.click(screen.getByRole("button", { name: "Expandir Pecuária" }));
-    expect(screen.getByText("Animais")).toBeTruthy();
-    expect(screen.getByText("Lotes coletivos")).toBeTruthy();
-    expect(screen.getByText("Pesagens")).toBeTruthy();
+    fireEvent.click(screen.getByText("Rebanho"));
+    expect(props.onNav).toHaveBeenCalledWith("pec-rebanho");
     expect(screen.queryByText("Gado de corte")).toBeNull();
   });
 
@@ -159,8 +134,7 @@ describe("AppSidebar", () => {
     render(h(AppSidebar, baseProps({ areas: ["rebanho", "gado_corte"] })));
     expect(screen.getAllByText("Pecuária")).toHaveLength(1);
     fireEvent.click(screen.getByRole("button", { name: "Expandir Pecuária" }));
-    expect(screen.getByText("Animais")).toBeTruthy();
-    expect(screen.getByText("Lotes coletivos")).toBeTruthy();
+    expect(screen.getByText("Rebanho")).toBeTruthy();
   });
 
   it("abre a busca global pelo atalho visível da sidebar", () => {
@@ -191,25 +165,12 @@ describe("AppSidebar", () => {
     expect(screen.queryByText("Equipe")).toBeNull();
   });
 
-  it("clicar em Mais opções alterna somente as rotinas menos frequentes", () => {
-    render(h(AppSidebar, baseProps({ areas: ["pecuaria"] })));
-    fireEvent.click(screen.getByRole("button", { name: "Expandir Pecuária" }));
-    expect(screen.getByText("Reprodução")).toBeTruthy();
-    expect(screen.queryByText("FIV / TE")).toBeNull();
-
-    fireEvent.click(screen.getByTitle("Mais opções de pecuária"));
-    expect(screen.getByText("FIV / TE")).toBeTruthy();
-
-    fireEvent.click(screen.getByTitle("Mais opções de pecuária"));
-    expect(screen.queryByText("FIV / TE")).toBeNull();
-  });
-
   it("permite recolher os domínios da sidebar e persiste a escolha", () => {
     render(h(AppSidebar, baseProps()));
 
     fireEvent.click(screen.getByRole("button", { name: "Expandir Pecuária" }));
     fireEvent.click(screen.getByRole("button", { name: "Recolher Pecuária" }));
-    expect(screen.queryByText("Hoje na pecuária")).toBeNull();
+    expect(screen.queryByText("Rebanho")).toBeNull();
     expect(screen.getByRole("button", { name: "Expandir Pecuária" })).toBeTruthy();
     expect(localStorage.getItem("rionovo:sidebar:collapsedGroups:v2")).toContain("pecuaria");
 
@@ -222,10 +183,10 @@ describe("AppSidebar", () => {
   it("reabre o domínio recolhido quando a navegação entra nele", () => {
     localStorage.setItem("rionovo:sidebar:collapsedGroups:v2", JSON.stringify(["pecuaria"]));
     const { rerender } = render(h(AppSidebar, baseProps({ current: "dashboard" as Tab })));
-    expect(screen.queryByText("Hoje na pecuária")).toBeNull();
+    expect(screen.queryByText("Rebanho")).toBeNull();
 
-    rerender(h(AppSidebar, baseProps({ current: "reb-dashboard" as Tab })));
-    expect(screen.getByText("Hoje na pecuária")).toBeTruthy();
+    rerender(h(AppSidebar, baseProps({ current: "pec-rebanho" as Tab })));
+    expect(screen.getByText("Rebanho")).toBeTruthy();
   });
 
   it("persiste as opções abertas e revela automaticamente uma rota secundária ativa", () => {
@@ -236,10 +197,9 @@ describe("AppSidebar", () => {
     expect(localStorage.getItem("rionovo:sidebar:openExtras")).toBe("agronomia");
     expect(screen.getByText("Safras de milho")).toBeTruthy();
 
-    // Deep-link para uma opção secundária de outra área deve abrir o bloco certo.
-    rerender(h(AppSidebar, baseProps({ current: "reb-custo" as Tab })));
-    expect(screen.getByText("Custos e indicadores")).toBeTruthy();
-    expect(screen.queryByText("Safras de milho")).toBeNull();
+    // Deep-link para uma opção secundária da mesma área mantém o bloco aberto.
+    rerender(h(AppSidebar, baseProps({ current: "mil-safras" as Tab })));
+    expect(screen.getByText("Safras de milho")).toBeTruthy();
   });
 
   it("monta o drawer mobile (Sheet) quando mobileOpen=true e não quando false", () => {

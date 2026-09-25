@@ -1,15 +1,20 @@
 import { describe, expect, it } from "vitest";
 import {
-  buildRotaWorklistRebanho,
   entradaDeNovaOperacao,
+  isCadastrosRebanho,
+  isListaAnimaisRebanho,
+  isListaLotesRebanho,
   isNovaOperacaoFinanceira,
+  isNovoAnimalRebanho,
   isNovoRelatorioFinanceiro,
   isSubrotaFinanceira,
+  isSubrotaRebanho,
   URL_NOVA_OPERACAO,
+  parseAnimalId,
+  parseLoteId,
   parseOperacaoFinanceiraId,
   parseContaFinanceiraId,
   parseRelatorioFinanceiroId,
-  parseRotaWorklistRebanho,
   pathToTab,
   tabToPath,
 } from "./router";
@@ -65,53 +70,86 @@ describe("roteamento da pecuária", () => {
     expect(pathToTab("/relatorios")).toBe("relatorio");
     expect(pathToTab("/relatorio")).toBe("relatorio");
   });
-  it.each([
-    ["reb-dashboard", "/pecuaria/dashboard"],
-    ["reb-reproducao", "/pecuaria/reproducao"],
-    ["reb-acasalamento", "/pecuaria/acasalamento"],
-    ["reb-sanidade", "/pecuaria/sanidade"],
-    ["cor-lote", "/pecuaria/lotes"],
-    ["cor-pesagem", "/pecuaria/lotes/pesagens"],
-  ] as const)("converte %s para o pathname canônico", (tab, path) => {
-    expect(tabToPath(tab)).toBe(path);
-    expect(pathToTab(path)).toBe(tab);
+  it("converte a aba do rebanho v1 para o pathname canônico", () => {
+    expect(tabToPath("pec-rebanho")).toBe("/pecuaria/rebanho");
+    expect(pathToTab("/pecuaria/rebanho")).toBe("pec-rebanho");
+    expect(pathToTab("/pecuaria")).toBe("pec-rebanho");
   });
 
-  it.each([
-    ["secagem-atrasada", "/pecuaria/reproducao?worklist=secagem-atrasada"],
-    ["vazia-pos-pev", "/pecuaria/reproducao?worklist=vazia-pos-pev"],
-    ["dg-pendente", "/pecuaria/reproducao?worklist=dg-pendente"],
-    ["parto-proximo", "/pecuaria/reproducao?worklist=parto-proximo"],
-    ["ccs-alta", "/pecuaria/sanidade?worklist=ccs-alta"],
-  ] as const)("monta e interpreta a worklist %s", (chave, url) => {
-    expect(buildRotaWorklistRebanho(chave)).toBe(url);
-    const parsed = new URL(url, "https://rio-novo.test");
-    expect(parseRotaWorklistRebanho(parsed.pathname, parsed.search)).toEqual({
-      chave,
-      tab: chave === "ccs-alta" ? "sanidade" : "reproducao",
-    });
+  it("redireciona os endereços do módulo legado (rebanho/corte) para o rebanho v1", () => {
+    expect(pathToTab("/rebanho")).toBe("pec-rebanho");
+    expect(pathToTab("/rebanho/reproducao")).toBe("pec-rebanho");
+    expect(pathToTab("/corte/lote")).toBe("pec-rebanho");
+    expect(pathToTab("/pecuaria/lotes/pesagens")).toBe("pec-rebanho");
+    expect(pathToTab("/pecuaria/reproducao")).toBe("pec-rebanho");
   });
 
-  it("rejeita chave inválida e chave válida na aba errada", () => {
-    expect(parseRotaWorklistRebanho("/rebanho/reproducao", "?worklist=desconhecida")).toBeNull();
-    expect(parseRotaWorklistRebanho("/rebanho/sanidade", "?worklist=dg-pendente")).toBeNull();
-    expect(parseRotaWorklistRebanho("/rebanho/reproducao", "?worklist=ccs-alta")).toBeNull();
-    expect(buildRotaWorklistRebanho("ccs-alta", "reproducao")).toBeNull();
-  });
-
-  it("mantém os endereços antigos de rebanho e corte como aliases", () => {
-    expect(pathToTab("/rebanho/reproducao")).toBe("reb-reproducao");
-    expect(pathToTab("/corte/lote")).toBe("cor-lote");
+  it("leva o estoque antigo da pecuária para o Estoque único", () => {
+    expect(pathToTab("/pecuaria/estoque")).toBe("estoque");
+    expect(pathToTab("/rebanho/estoque")).toBe("estoque");
   });
 
   it("não transforma uma subrota desconhecida em uma aba válida", () => {
-    expect(pathToTab("/pecuaria/nao-existe")).toBeNull();
     expect(pathToTab("/equipe/admin")).toBeNull();
   });
 
-  it("não confunde filtros financeiros com worklists do rebanho", () => {
-    expect(parseRotaWorklistRebanho("/gastos", "?status=vencidas")).toBeNull();
+  it("mantém filtros financeiros na aba financeira", () => {
     expect(pathToTab("/gastos")).toBe("gastos");
+  });
+});
+
+describe("subrotas do Rebanho v1", () => {
+  const uuid = "3fa85f64-5717-4562-b3fc-2c963f66afa6";
+
+  it("reconhece a lista de animais", () => {
+    expect(isListaAnimaisRebanho("/pecuaria/rebanho/animais")).toBe(true);
+    expect(isListaAnimaisRebanho("/pecuaria/rebanho/animais/")).toBe(true);
+    expect(isListaAnimaisRebanho("/pecuaria/rebanho")).toBe(false);
+    expect(isListaAnimaisRebanho(`/pecuaria/rebanho/animais/${uuid}`)).toBe(false);
+  });
+
+  it("reconhece o cadastro de novo animal", () => {
+    expect(isNovoAnimalRebanho("/pecuaria/rebanho/animais/novo")).toBe(true);
+    expect(isNovoAnimalRebanho("/pecuaria/rebanho/animais/novo/")).toBe(true);
+    expect(isNovoAnimalRebanho(`/pecuaria/rebanho/animais/${uuid}`)).toBe(false);
+  });
+
+  it("reconhece os cadastros (lotes/raças/motivos/sítios)", () => {
+    expect(isCadastrosRebanho("/pecuaria/rebanho/cadastros")).toBe(true);
+    expect(isCadastrosRebanho("/pecuaria/rebanho")).toBe(false);
+  });
+
+  it("extrai o id do animal e rejeita 'novo' e ids inválidos", () => {
+    expect(parseAnimalId(`/pecuaria/rebanho/animais/${uuid}`)).toBe(uuid);
+    expect(parseAnimalId(`/pecuaria/rebanho/animais/${uuid}/`)).toBe(uuid);
+    expect(parseAnimalId("/pecuaria/rebanho/animais/novo")).toBeNull();
+    expect(parseAnimalId("/pecuaria/rebanho/animais/abc")).toBeNull();
+    expect(parseAnimalId("/pecuaria/rebanho/animais")).toBeNull();
+  });
+
+  it("preserva as subrotas do rebanho só na aba pec-rebanho", () => {
+    expect(isSubrotaRebanho("pec-rebanho", "/pecuaria/rebanho/animais")).toBe(true);
+    expect(isSubrotaRebanho("pec-rebanho", "/pecuaria/rebanho/animais/novo")).toBe(true);
+    expect(isSubrotaRebanho("pec-rebanho", `/pecuaria/rebanho/animais/${uuid}`)).toBe(true);
+    expect(isSubrotaRebanho("pec-rebanho", "/pecuaria/rebanho/cadastros")).toBe(true);
+    expect(isSubrotaRebanho("pec-rebanho", "/pecuaria/rebanho/lotes")).toBe(true);
+    expect(isSubrotaRebanho("pec-rebanho", `/pecuaria/rebanho/lotes/${uuid}`)).toBe(true);
+    expect(isSubrotaRebanho("pec-rebanho", "/pecuaria/rebanho")).toBe(false);
+    expect(isSubrotaRebanho("dashboard", "/pecuaria/rebanho/animais")).toBe(false);
+  });
+
+  it("reconhece a lista de lotes", () => {
+    expect(isListaLotesRebanho("/pecuaria/rebanho/lotes")).toBe(true);
+    expect(isListaLotesRebanho("/pecuaria/rebanho/lotes/")).toBe(true);
+    expect(isListaLotesRebanho("/pecuaria/rebanho")).toBe(false);
+    expect(isListaLotesRebanho(`/pecuaria/rebanho/lotes/${uuid}`)).toBe(false);
+  });
+
+  it("extrai o id do lote e rejeita ids inválidos", () => {
+    expect(parseLoteId(`/pecuaria/rebanho/lotes/${uuid}`)).toBe(uuid);
+    expect(parseLoteId(`/pecuaria/rebanho/lotes/${uuid}/`)).toBe(uuid);
+    expect(parseLoteId("/pecuaria/rebanho/lotes/abc")).toBeNull();
+    expect(parseLoteId("/pecuaria/rebanho/lotes")).toBeNull();
   });
 });
 

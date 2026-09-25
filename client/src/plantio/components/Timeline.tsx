@@ -68,7 +68,6 @@ export function Timeline({ eventos, onExcluido }: { eventos: EventoTimeline[]; o
       }
       confirmLabel={excluindo ? "Excluindo…" : "Excluir"}
       tone="danger"
-      dangerFilled
       processando={excluindo}
       onConfirm={confirmarExclusao}
       onCancel={() => { setAlvoExclusao(null); setErro(null); }}

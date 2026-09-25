@@ -51,9 +51,9 @@ Para repetir um fluxo já executado, use novos cadastros identificados ou faça 
 reset local deliberado; não há reset automático. Cancelar não é forma segura de
 zerar a massa enquanto o defeito de saldo físico estiver aberto.
 
-Os testes automáticos também usam fazendinha_local, mas suas tabelas ficam em um
-schema temporário removido ao final. O schema `public` do app e seus dados são
-preservados. Não é criado outro banco ou outro servidor PostgreSQL.
+Os testes automáticos partem do fazendinha_local, mas criam um banco temporário
+no mesmo servidor e o apagam ao final. O fazendinha_local e seus dados são
+preservados. Não é criado outro servidor PostgreSQL.
 
 ## 2. Quais entidades precisamos para uma operação
 
