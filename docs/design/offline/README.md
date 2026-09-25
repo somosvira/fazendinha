@@ -48,31 +48,18 @@ narrativa de mudança em comentário de código nem aqui.
    localmente. `navigateFallbackDenylist: [/^\/api\//]` garante que isso
    nunca intercepta `/api/*` — dado continua 100% por conta da fila.
 
-## Decisão de id: `Int autoincrement` mantido, reconciliação na fila
+## Decisão de id: UUID gerado no cliente
 
-Nenhuma tabela muda de tipo de id. Um create offline ganha um id **temporário
-só-local** (`criarIdTemporario()` → `"local:<uuid>"`, prefixo que nunca
-colide com id real, sempre numérico) — serve só de `key` de lista/React, nunca
-é mandado pro servidor. Quando o item sincroniza, o servidor devolve o id real
-(`Int` sequencial do Postgres) e a lista é invalidada/recarregada.
+Financeiro e estoque usam UUID como id (#302). Um create offline gera o id
+**definitivo** no cliente (`crypto.randomUUID()`) e o manda no `body`; o
+servidor cria o registro com esse id. Não há id temporário nem troca de id na
+fila: uma escrita seguinte, ainda offline, já referencia o id certo (ex.:
+criar uma operação e liquidar o compromisso dela antes de reconectar).
 
-**Reconciliação cross-item:** se uma segunda escrita, ainda offline, referencia
-o id temporário de uma criação que ainda não sincronizou (ex.: criar um
-registro e editar esse mesmo registro de novo antes de reconectar), `fila.ts`
-resolve isso sozinho — `substituirIdNaFila` faz um replace (string em `path`,
-walk recursivo em `body`) em todos os itens restantes da fila assim que o id
-real chega, sem callback nenhum por módulo. Mecanismo genérico, construído na
-fundação mesmo sem nenhum consumidor real ainda no piloto original (Ponto
-usava só chave natural). Cobertura vem de `fila.test.ts` (mocka
-`fetch`/`idb-keyval`).
-
-**Quando isso passa a importar de verdade:** só quando uma escrita offline
-cria uma entidade-PAI que outra escrita offline, na mesma sessão sem sinal,
-vai referenciar antes de sincronizar (ex.: cadastrar um fornecedor novo e, no
-mesmo lançamento offline, referenciar esse fornecedor). Enquanto todo write
-só referencia entidade já existente (cadastrada com internet), não tem
-dependência entre mutations nem precisa de rollback em cascata — é só
-"optimistic create → invalida → refetch".
+Requisito no servidor antes da primeira fatia com create offline: o endpoint
+aceita `id` opcional e é idempotente por ele — reenviar o mesmo create (a fila
+reenvia se a rede cair depois do servidor gravar) devolve o registro existente
+em vez de duplicar.
 
 ## Convenções obrigatórias por módulo
 
@@ -136,12 +123,9 @@ Ao dar suporte offline a uma feature nova, nessa ordem:
   parte, a tela mostra "Carregando..." infinito em vez de uma mensagem
   clara ou de cair no fallback certo (ex.: via `initialData` de outra
   lista).
-- **Listagem que desempata por `id desc` quando duas linhas têm a mesma
-  data** depende, de fato, da ordem sequencial do id real — como o id
-  continua sendo o `Int autoincrement` do Postgres, gerado só no momento
-  real do insert (mesmo atrasado até o sync), isso continua funcionando sem
-  tratamento especial. Só vale checar isso antes de qualquer mudança futura
-  no tipo de id.
+- **Ordem de listagem não usa o id** — UUID não é sequencial. Desempate por
+  `numero`/`seq`/`ordem`, que o servidor atribui na hora do insert real
+  (mesmo atrasado até o sync).
 - **Erro de sessão (401) para a fila inteira** — não vai pro log de erros
   (senão todo item atrás acumularia entradas repetidas da mesma causa).
   `entrar()` em `App.tsx` grava a sessão nova e chama
@@ -168,8 +152,7 @@ Ao dar suporte offline a uma feature nova, nessa ordem:
 3. Testar o caso "nunca visitado" (combinação de filtro/seleção que nunca
    foi buscada online), não só o caso feliz.
 4. Ciclo completo de escrita offline: criar/editar → aparece otimista →
-   reconectar → confirma, id temporário vira id real sem duplicar nem
-   sumir.
+   reconectar → confirma com o mesmo id, sem duplicar nem sumir.
 5. Confirmar que todo hook de leitura que a tela usa está em `useQuery`, não
    só o do formulário de escrita.
 

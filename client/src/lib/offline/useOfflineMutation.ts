@@ -1,17 +1,10 @@
 // Fábrica genérica de escrita offline-aware sobre caches do TanStack Query.
 // Cada tela declara o quê (path/method/body, como criar o item otimista, como
 // cada queryKey afetada deve ser corrigida — `aplicar`); o como — snapshot
-// pra rollback em erro, enfileiramento e substituição de id temporário —
-// fica em fila.ts, escrito uma vez só.
+// pra rollback em erro e enfileiramento — fica em fila.ts, escrito uma vez só.
 import { useSyncExternalStore } from "react";
 import { useQueryClient, type QueryKey } from "@tanstack/react-query";
 import { enfileirarMutation, inscrever, obterFila } from "./fila";
-
-export const ID_TEMPORARIO_PREFIXO = "local:";
-
-export function criarIdTemporario(): string {
-  return `${ID_TEMPORARIO_PREFIXO}${crypto.randomUUID()}`;
-}
 
 function ehObjetoPlano(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v);
@@ -93,9 +86,10 @@ export interface UseOfflineMutationConfig<TInput, TItem, TResp = TItem> {
   body?: (input: TInput) => unknown;
   /** Ponto único de criação do item otimista — roda uma vez por `mutate()`,
    * nunca por queryKey (evita id divergente entre entradas). Omitir quando a
-   * escrita não cria nada novo (delete, update puro). `id` deve vir de
-   * `criarIdTemporario()`; campos computados pelo backend entram
-   * aproximados/zerados — corrigem no refetch pós-sync. */
+   * escrita não cria nada novo (delete, update puro). O `id` é o definitivo:
+   * `crypto.randomUUID()`, enviado no `body` pro servidor criar o registro
+   * com ele. Campos computados pelo backend entram aproximados/zerados —
+   * corrigem no refetch pós-sync. */
   criarOtimista?: (input: TInput) => TItem;
   /** Cada entrada é uma queryKey afetada + como corrigi-la (`aplicar`, com o
    * item otimista já pronto como 2º argumento — nunca gerado de novo aqui). */
@@ -128,11 +122,6 @@ export function useOfflineMutation<TInput, TItem, TResp = TItem>(cfg: UseOffline
       path: cfg.path(input),
       method: cfg.method,
       body: cfg.body?.(input),
-      // Deliberadamente 1 id por escrita. Uma escrita em lote (N itens numa
-      // chamada só) exigiria reescrever N pares temp→real aqui — e que a
-      // resposta do servidor correlacionasse os N ids reais à ordem enviada.
-      // Sem consumidor real ainda, fica só este comentário no ponto certo.
-      idTemporarioGerado: (itemOtimista as { id?: string } | undefined)?.id,
     })
       .then((resposta) => {
         for (const { entrada } of snapshots) queryClient.invalidateQueries({ queryKey: entrada.queryKey });

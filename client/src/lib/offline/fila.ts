@@ -7,10 +7,8 @@
 // nenhum mecanismo interno de terceiro pra serializar.
 //
 // Enquanto a fila está sendo processada, `aguardarFilaLivre()` trava
-// qualquer outro fetch do app (ver req.ts) — isso é o que permite
-// substituir um id temporário (criado por uma escrita otimista) pelo id
-// real em todo o resto da fila antes que outro item que o referencie seja
-// enviado.
+// qualquer outro fetch do app (ver req.ts) — uma leitura nunca chega ao
+// servidor antes das escritas que vieram antes dela.
 import { get, set } from "idb-keyval";
 import { onlineManager } from "@tanstack/react-query";
 import { comPropriedade } from "../../propriedadeScope";
@@ -23,8 +21,6 @@ interface PedidoMutation {
   path: string;
   method: string;
   body?: unknown;
-  /** Id gerado no client pro item otimista, se este pedido cria algo novo. */
-  idTemporarioGerado?: string;
 }
 
 interface ItemFila extends PedidoMutation {
@@ -141,19 +137,6 @@ async function moverParaErros(item: ItemFila, mensagemErro: string): Promise<voi
   await set(CHAVE_ERROS, [...erros, { ...item, erro: mensagemErro, falhouEm: new Date().toISOString() }]);
 }
 
-function substituir(v: unknown, de: string, para: string): unknown {
-  if (typeof v === "string") return v === de ? para : v;
-  if (Array.isArray(v)) return v.map((x) => substituir(x, de, para));
-  if (v && typeof v === "object") {
-    return Object.fromEntries(Object.entries(v).map(([k, val]) => [k, substituir(val, de, para)]));
-  }
-  return v;
-}
-
-function substituirIdNaFila(de: string, para: string) {
-  fila = fila.map((item) => ({ ...item, path: item.path.replaceAll(de, para), body: substituir(item.body, de, para) }));
-}
-
 async function processarFila(): Promise<void> {
   await carregar();
   for (let atual = 1; fila.length > 0; atual++) {
@@ -180,11 +163,6 @@ async function processarFila(): Promise<void> {
       fila = fila.slice(1);
       await persistir();
       continue;
-    }
-    let idReal: string | undefined;
-    if (resposta?.id != null) idReal = String(resposta.id);
-    if (item.idTemporarioGerado && idReal && idReal !== item.idTemporarioGerado) {
-      substituirIdNaFila(item.idTemporarioGerado, idReal);
     }
     fila = fila.slice(1);
     await persistir();

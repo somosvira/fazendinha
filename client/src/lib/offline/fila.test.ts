@@ -29,39 +29,22 @@ function resposta(body: unknown) {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("fila", () => {
-  it("substitui o id temporário nos itens seguintes depois que o create sincroniza", async () => {
+  it("escrita que referencia um registro criado offline segue com o id gerado no cliente", async () => {
     vi.resetModules();
     const { enfileirarMutation } = await import("./fila");
 
+    const id = "0192f3a4-5b6c-7d8e-9f01-23456789abcd";
     const fetchMock = vi.fn()
-      .mockImplementationOnce(() => resposta({ id: "42", nome: "Lote X" }))
-      .mockImplementationOnce(() => resposta({ id: "99", peso: 500 }));
+      .mockImplementationOnce(() => resposta({ id }))
+      .mockImplementationOnce(() => resposta({ ok: true }));
     vi.stubGlobal("fetch", fetchMock);
 
-    const criarLote = enfileirarMutation({
-      mutationKey: "corte.criar-lote",
-      path: "/corte/lotes",
-      method: "POST",
-      body: { nome: "Lote X" },
-      idTemporarioGerado: "local:abc123",
-    });
-    const criarPesagem = enfileirarMutation({
-      mutationKey: "corte.criar-pesagem",
-      path: "/corte/lotes/local:abc123/pesagens",
-      method: "POST",
-      body: { loteId: "local:abc123", peso: 500 },
-    });
+    const criar = enfileirarMutation({ mutationKey: "criar", path: "/registros", method: "POST", body: { id, nome: "X" } });
+    const editar = enfileirarMutation({ mutationKey: "editar", path: `/registros/${id}`, method: "PATCH", body: { nome: "Y" } });
+    await Promise.all([criar, editar]);
 
-    await Promise.all([criarLote, criarPesagem]);
-
-    expect(fetchMock).toHaveBeenNthCalledWith(1, "/api/corte/lotes", expect.objectContaining({
-      method: "POST",
-      body: JSON.stringify({ nome: "Lote X" }),
-    }));
-    expect(fetchMock).toHaveBeenNthCalledWith(2, "/api/corte/lotes/42/pesagens", expect.objectContaining({
-      method: "POST",
-      body: JSON.stringify({ loteId: "42", peso: 500 }),
-    }));
+    expect(fetchMock).toHaveBeenNthCalledWith(1, "/api/registros", expect.objectContaining({ body: JSON.stringify({ id, nome: "X" }) }));
+    expect(fetchMock).toHaveBeenNthCalledWith(2, `/api/registros/${id}`, expect.objectContaining({ method: "PATCH" }));
   });
 
   it("processa a fila em sequência — a segunda escrita só começa depois que a primeira responde", async () => {
