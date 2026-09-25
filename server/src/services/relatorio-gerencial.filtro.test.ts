@@ -15,34 +15,37 @@ vi.mock("../db.js", () => ({ prisma: {
 } }));
 
 import { gerarRelatorioGerencial } from "./relatorio-gerencial.js";
+import { SEM_VINCULO } from "../lib/ids.js";
+import { uid } from "../lib/uid.fixture.js";
 
 const d = (v: string) => new Prisma.Decimal(v);
+const PECUARIA = uid(201), AGRONOMIA = uid(202), NUTRICAO = uid(303), BENFEITORIAS = uid(304), CONTA = uid(501);
 const semFiltro = { tipos: [], status: [], centroCustoIds: [], categoriaIds: [], classificacoes: [] };
 
 // Pagamento integral de uma compra mista (ração + mourões) e um pagamento avulso.
 const compraMista = {
-  id: 1, tipo: "COMPRA_ESTOQUE", status: "CONFIRMADA", descricao: "Compra mista", valorTotal: d("1300"), centroCustoId: 1,
+  id: uid(1), numero: 1, tipo: "COMPRA_ESTOQUE", status: "CONFIRMADA", descricao: "Compra mista", valorTotal: d("1300"), centroCustoId: PECUARIA,
   categoriaNome: null, classificacao: null, parceiro: null, documentos: [], centroCusto: { nome: "Pecuária" }, compromissos: [],
   itens: [
-    { id: 1, valorTotal: d("800"), categoriaId: 3, categoriaNome: "Nutrição", classificacao: "CUSTEIO" },
-    { id: 2, valorTotal: d("500"), categoriaId: 4, categoriaNome: "Benfeitorias", classificacao: "INVESTIMENTO" },
+    { id: uid(21), ordem: 1, valorTotal: d("800"), categoriaId: NUTRICAO, categoriaNome: "Nutrição", classificacao: "CUSTEIO" },
+    { id: uid(22), ordem: 2, valorTotal: d("500"), categoriaId: BENFEITORIAS, categoriaNome: "Benfeitorias", classificacao: "INVESTIMENTO" },
   ],
-  transacoes: [{ id: 10, tipo: "PAGAMENTO", valorTotal: d("1300"), reversaoDeId: null, status: "CONFIRMADA" }],
+  transacoes: [{ id: uid(10), seq: 10, tipo: "PAGAMENTO", valorTotal: d("1300"), reversaoDeId: null, status: "CONFIRMADA" }],
 };
-const movimento = (id: number, transacao: object, valor: string) => ({ id, contaId: 1, direcao: "SAIDA", valor: d(valor), transacao: { status: "CONFIRMADA", data: new Date("2026-09-05T00:00:00Z"), descricao: null, reversaoDe: null, parceiro: null, documentos: [], ...transacao } });
+const movimento = (seq: number, transacao: object, valor: string) => ({ id: uid(seq), seq, contaId: CONTA, direcao: "SAIDA", valor: d(valor), transacao: { status: "CONFIRMADA", data: new Date("2026-09-05T00:00:00Z"), descricao: null, reversaoDe: null, parceiro: null, documentos: [], ...transacao } });
 
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.movimentos.mockResolvedValue([
-    movimento(100, { id: 10, tipo: "PAGAMENTO", operacao: compraMista }, "1300"),
-    movimento(101, { id: 11, tipo: "PAGAMENTO", descricao: "Frete avulso", operacao: null }, "200"),
+    movimento(100, { id: uid(10), seq: 10, tipo: "PAGAMENTO", operacao: compraMista }, "1300"),
+    movimento(101, { id: uid(11), seq: 11, tipo: "PAGAMENTO", descricao: "Frete avulso", operacao: null }, "200"),
   ]);
   mocks.groupBy.mockResolvedValue([]);
   mocks.compromissos.mockResolvedValue([]);
-  mocks.contas.mockResolvedValue([{ id: 1, nome: "Banco", instituicao: null, saldoAbertura: d("5000") }]);
+  mocks.contas.mockResolvedValue([{ id: CONTA, nome: "Banco", instituicao: null, saldoAbertura: d("5000") }]);
   mocks.periodos.mockResolvedValue([]);
   mocks.propriedade.mockResolvedValue({ id: 7, nome: "Fazenda Rio Novo" });
-  mocks.centros.mockResolvedValue([{ id: 1, nome: "Pecuária" }, { id: 2, nome: "Agronomia" }]);
+  mocks.centros.mockResolvedValue([{ id: PECUARIA, nome: "Pecuária" }, { id: AGRONOMIA, nome: "Agronomia" }]);
 });
 
 const query = { inicio: "2026-09-01", fim: "2026-09-30", regime: "realizado" as const };
@@ -60,7 +63,7 @@ describe("relatório gerencial com filtro de composição", () => {
 
   it("filtro de categoria mantém só a fatia pedida, mas não altera o saldo das contas", async () => {
     const completo = await gerarRelatorioGerencial(query, 7);
-    const dto = await gerarRelatorioGerencial(query, 7, { ...semFiltro, categoriaIds: [4] });
+    const dto = await gerarRelatorioGerencial(query, 7, { ...semFiltro, categoriaIds: [BENFEITORIAS] });
     expect(dto.categorias?.itens).toEqual([{ categoria: "Benfeitorias", total: 500, pct: 100 }]);
     expect(dto.resumo.saidas).toBe(500);
     expect(dto.saldoContas).toEqual(completo.saldoContas);
@@ -71,7 +74,7 @@ describe("relatório gerencial com filtro de composição", () => {
   it("filtro de tipo exclui lançamento sem operação; 'sem centro' o inclui", async () => {
     const porTipo = await gerarRelatorioGerencial(query, 7, { ...semFiltro, tipos: ["COMPRA_ESTOQUE"] });
     expect(porTipo.categorias?.itens.map((c) => c.categoria)).toEqual(["Nutrição", "Benfeitorias"]);
-    const semCentro = await gerarRelatorioGerencial(query, 7, { ...semFiltro, centroCustoIds: [0] });
+    const semCentro = await gerarRelatorioGerencial(query, 7, { ...semFiltro, centroCustoIds: [SEM_VINCULO] });
     expect(semCentro.categorias?.itens).toEqual([{ categoria: "Sem categoria", total: 200, pct: 100 }]);
   });
 
@@ -79,24 +82,24 @@ describe("relatório gerencial com filtro de composição", () => {
     const mistaPorCentro = {
       ...compraMista,
       itens: [
-        { id: 1, valorTotal: d("800"), categoriaId: 3, categoriaNome: "Nutrição", classificacao: "CUSTEIO", centroCustoId: 2, centroCustoNome: "Agronomia" },
-        { id: 2, valorTotal: d("500"), categoriaId: 4, categoriaNome: "Benfeitorias", classificacao: "INVESTIMENTO", centroCustoId: null, centroCustoNome: null },
+        { id: uid(21), ordem: 1, valorTotal: d("800"), categoriaId: NUTRICAO, categoriaNome: "Nutrição", classificacao: "CUSTEIO", centroCustoId: AGRONOMIA, centroCustoNome: "Agronomia" },
+        { id: uid(22), ordem: 2, valorTotal: d("500"), categoriaId: BENFEITORIAS, categoriaNome: "Benfeitorias", classificacao: "INVESTIMENTO", centroCustoId: null, centroCustoNome: null },
       ],
     };
-    mocks.movimentos.mockResolvedValue([movimento(100, { id: 10, tipo: "PAGAMENTO", operacao: mistaPorCentro }, "1300")]);
+    mocks.movimentos.mockResolvedValue([movimento(100, { id: uid(10), seq: 10, tipo: "PAGAMENTO", operacao: mistaPorCentro }, "1300")]);
     const tudo = await gerarRelatorioGerencial(query, 7, semFiltro);
     expect(tudo.categorias?.centros.map((c) => [c.centro, c.total])).toEqual([["Agronomia", 800], ["Pecuária", 500]]);
-    const agronomia = await gerarRelatorioGerencial(query, 7, { ...semFiltro, centroCustoIds: [2] });
+    const agronomia = await gerarRelatorioGerencial(query, 7, { ...semFiltro, centroCustoIds: [AGRONOMIA] });
     expect(agronomia.categorias?.itens).toEqual([{ categoria: "Nutrição", total: 800, pct: 100 }]);
-    const pecuaria = await gerarRelatorioGerencial(query, 7, { ...semFiltro, centroCustoIds: [1] });
+    const pecuaria = await gerarRelatorioGerencial(query, 7, { ...semFiltro, centroCustoIds: [PECUARIA] });
     expect(pecuaria.categorias?.itens).toEqual([{ categoria: "Benfeitorias", total: 500, pct: 100 }]);
-    expect((await gerarRelatorioGerencial(query, 7, { ...semFiltro, centroCustoIds: [0] })).categorias?.itens).toEqual([]);
+    expect((await gerarRelatorioGerencial(query, 7, { ...semFiltro, centroCustoIds: [SEM_VINCULO] })).categorias?.itens).toEqual([]);
   });
 
   it("centro renomeado depois do snapshot do item não duplica a linha em 'por centro'", async () => {
-    // O item guarda o snapshot antigo "Pecuária" (id 1); o cadastro vivo foi
+    // O item guarda o snapshot antigo "Pecuária" (PECUARIA); o cadastro vivo foi
     // renomeado para "Bovinocultura" — deve agrupar por id, com o nome vivo.
-    mocks.centros.mockResolvedValue([{ id: 1, nome: "Bovinocultura" }, { id: 2, nome: "Agronomia" }]);
+    mocks.centros.mockResolvedValue([{ id: PECUARIA, nome: "Bovinocultura" }, { id: AGRONOMIA, nome: "Agronomia" }]);
     const dto = await gerarRelatorioGerencial(query, 7, semFiltro);
     // Uma única linha para o centro renomeado (não duas: "Pecuária" e
     // "Bovinocultura"), com o nome vivo; o avulso some centro fica à parte.
@@ -108,8 +111,8 @@ describe("relatório gerencial com filtro de composição", () => {
 
   it("situação da operação não recorta o caixa: avulso e pagamento de operação cancelada seguem no realizado", async () => {
     mocks.movimentos.mockResolvedValue([
-      movimento(100, { id: 10, tipo: "PAGAMENTO", status: "REVERTIDA", operacao: { ...compraMista, status: "CANCELADA" } }, "1300"),
-      movimento(101, { id: 11, tipo: "PAGAMENTO", descricao: "Frete avulso", operacao: null }, "200"),
+      movimento(100, { id: uid(10), seq: 10, tipo: "PAGAMENTO", status: "REVERTIDA", operacao: { ...compraMista, status: "CANCELADA" } }, "1300"),
+      movimento(101, { id: uid(11), seq: 11, tipo: "PAGAMENTO", descricao: "Frete avulso", operacao: null }, "200"),
     ]);
     const dto = await gerarRelatorioGerencial(query, 7, { ...semFiltro, status: ["CONFIRMADA"] });
     expect(dto.resumo.saidas).toBe(1500);

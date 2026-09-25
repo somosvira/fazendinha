@@ -9,9 +9,10 @@
 import { Prisma } from "@prisma/client";
 import type { ConfiguracaoRelatorioFinanceiro } from "./relatorios.schemas.js";
 import type { RelatorioGerencialDTO } from "../relatorio-gerencial.js";
+import { SEM_VINCULO } from "../../lib/ids.js";
 
 type Classificacao = "CUSTEIO" | "INVESTIMENTO" | null;
-export type FiltroRelatorio = Pick<ConfiguracaoRelatorioFinanceiro, "tipos" | "status" | "centroCustoIds" | "categoriaIds" | "classificacoes"> & { parceiroIds?: number[] };
+export type FiltroRelatorio = Pick<ConfiguracaoRelatorioFinanceiro, "tipos" | "status" | "classificacoes"> & { centroCustoIds: string[]; categoriaIds: string[]; parceiroIds?: string[] };
 
 export const ROTULO_TIPO: Record<string, string> = {
   COMPRA_ESTOQUE: "Compra para estoque", COMPRA_CONSUMO_DIRETO: "Compra para consumo direto",
@@ -32,30 +33,30 @@ export function filtroVazio(filtro?: FiltroRelatorio | null) {
 /** Lançamento sem operação (transferência, pagamento avulso) não tem tipo nem
  * situação: só entra com esses filtros livres. O centro é filtrado por parte
  * (`partePassa`) — o avulso rateia numa única parte "sem centro". */
-export function operacaoPassa(filtro: FiltroRelatorio | null | undefined, operacao: { tipo: string; status: string; parceiroId?: number | null } | null) {
+export function operacaoPassa(filtro: FiltroRelatorio | null | undefined, operacao: { tipo: string; status: string; parceiroId?: string | null } | null) {
   if (!filtro) return true;
-  const parceiroOk = (id: number | null | undefined) => !filtro.parceiroIds?.length || filtro.parceiroIds.includes(id ?? 0);
+  const parceiroOk = (id: string | null | undefined) => !filtro.parceiroIds?.length || filtro.parceiroIds.includes(id ?? SEM_VINCULO);
   if (!operacao) return !filtro.tipos.length && !filtro.status.length && parceiroOk(null);
   return (!filtro.tipos.length || (filtro.tipos as readonly string[]).includes(operacao.tipo))
     && (!filtro.status.length || (filtro.status as readonly string[]).includes(operacao.status))
     && parceiroOk(operacao.parceiroId);
 }
 
-/** `centroCustoId` aqui é o efetivo da parte (item ?? operação); 0 = sem centro. */
-export function partePassa(filtro: FiltroRelatorio | null | undefined, parte: { categoriaId?: number | null; classificacao?: Classificacao; centroCustoId?: number | null }) {
+/** `centroCustoId` aqui é o efetivo da parte (item ?? operação); `SEM_VINCULO` = sem centro. */
+export function partePassa(filtro: FiltroRelatorio | null | undefined, parte: { categoriaId?: string | null; classificacao?: Classificacao; centroCustoId?: string | null }) {
   if (!filtro) return true;
-  return (!filtro.categoriaIds.length || filtro.categoriaIds.includes(parte.categoriaId ?? 0))
+  return (!filtro.categoriaIds.length || filtro.categoriaIds.includes(parte.categoriaId ?? SEM_VINCULO))
     && (!filtro.classificacoes.length || filtro.classificacoes.includes(parte.classificacao ?? "SEM_CLASSIFICACAO"))
-    && (!filtro.centroCustoIds.length || filtro.centroCustoIds.includes(parte.centroCustoId ?? 0));
+    && (!filtro.centroCustoIds.length || filtro.centroCustoIds.includes(parte.centroCustoId ?? SEM_VINCULO));
 }
 
-export interface CadastrosFiltro { categorias: { id: number; nome: string }[]; centrosCusto: { id: number; nome: string }[]; parceiros?: { id: number; nome: string }[] }
+export interface CadastrosFiltro { categorias: { id: string; nome: string }[]; centrosCusto: { id: string; nome: string }[]; parceiros?: { id: string; nome: string }[] }
 export interface FiltrosDescritos { tipos: string[]; status: string[]; centrosCusto: string[]; parceiros?: string[]; categorias: string[]; classificacoes: string[] }
 
 /** Congela os nomes no instante da geração: renomear ou desativar um cadastro
  * depois não altera o que o relatório emitido declara ter filtrado. */
 export function descreverFiltros(filtro: FiltroRelatorio, cadastros: CadastrosFiltro): FiltrosDescritos {
-  const nomes = (ids: number[], lista: { id: number; nome: string }[], vazio: string) => ids.map((id) => id === 0 ? vazio : lista.find((item) => item.id === id)?.nome ?? `#${id}`);
+  const nomes =(ids: string[], lista: { id: string; nome: string }[], vazio: string) => ids.map((id) => id === SEM_VINCULO ? vazio : lista.find((item) => item.id === id)?.nome ?? "(removido)");
   return {
     tipos: filtro.tipos.map((tipo) => ROTULO_TIPO[tipo] ?? tipo),
     status: filtro.status.map((status) => ROTULO_STATUS[status] ?? status),
@@ -68,15 +69,15 @@ export function descreverFiltros(filtro: FiltroRelatorio, cadastros: CadastrosFi
 
 type Valor = Prisma.Decimal | string | number;
 export interface OperacaoComposicao {
-  id: number; data: Date; tipo: string; status: string; descricao: string | null; valorTotal: Valor;
-  centroCustoId: number | null; centroCusto: { nome: string } | null; parceiro: { nome: string } | null;
-  categoriaId: number | null; categoriaNome: string | null; classificacao: Classificacao;
-  itens: { id: number; descricao: string; quantidade: Valor; unidade: string; valorTotal: Valor; categoriaId: number | null; categoriaNome: string | null; classificacao: Classificacao; centroCustoId: number | null; centroCustoNome: string | null }[];
+  id: string; numero: number; data: Date; tipo: string; status: string; descricao: string | null; valorTotal: Valor;
+  centroCustoId: string | null; centroCusto: { nome: string } | null; parceiro: { nome: string } | null;
+  categoriaId: string | null; categoriaNome: string | null; classificacao: Classificacao;
+  itens: { id: string; ordem: number; descricao: string; quantidade: Valor; unidade: string; valorTotal: Valor; categoriaId: string | null; categoriaNome: string | null; classificacao: Classificacao; centroCustoId: string | null; centroCustoNome: string | null }[];
 }
 export interface LinhaComposicao {
-  operacaoId: number; data: string; tipo: string; status: string; descricao: string | null; item: string | null;
+  operacaoId: string; operacaoNumero: number; data: string; tipo: string; status: string; descricao: string | null; item: string | null;
   quantidade: string | null; unidade: string | null; parceiro: string | null;
-  categoriaId: number | null; categoria: string; centroCustoId: number | null; centroCusto: string; classificacao: Classificacao; valor: string;
+  categoriaId: string | null; categoria: string; centroCustoId: string | null; centroCusto: string; classificacao: Classificacao; valor: string;
 }
 export interface TotalGrupo { nome: string; total: string; pct: number }
 export interface TotalCategoria extends TotalGrupo { custeio: string; investimento: string; semClassificacao: string }
@@ -103,15 +104,15 @@ const pct = (parte: Prisma.Decimal, total: Prisma.Decimal) => total.isZero() ? 0
  * geração — o nome do item pode ser um snapshot antigo (congelado na criação
  * do item), então agrupar só por esse nome duplicaria a linha de um centro
  * renomeado. Sem o mapa, cai no nome do snapshot (compat). */
-export function comporItens(operacoes: OperacaoComposicao[], filtro?: FiltroRelatorio | null, nomesCentro?: Map<number, string>): Composicao {
-  const nomeCentro = (id: number | null, snapshot: string | null | undefined) => (id ? nomesCentro?.get(id) ?? snapshot ?? SEM_CENTRO : SEM_CENTRO);
+export function comporItens(operacoes: OperacaoComposicao[], filtro?: FiltroRelatorio | null, nomesCentro?: Map<string, string>): Composicao {
+  const nomeCentro = (id: string | null, snapshot: string | null | undefined) => (id ? nomesCentro?.get(id) ?? snapshot ?? SEM_CENTRO : SEM_CENTRO);
   const linhas: LinhaComposicao[] = [];
   for (const operacao of operacoes) {
     if (!operacaoPassa(filtro, operacao)) continue;
     // Centro efetivo da parte: o do item, senão o da operação.
     const centroOperacao = { centroCustoId: operacao.centroCustoId, centroCustoNome: operacao.centroCusto?.nome ?? null };
     const partes = operacao.itens.length
-      ? [...operacao.itens].sort((a, b) => a.id - b.id).map((item) => ({
+      ? [...operacao.itens].sort((a, b) => a.ordem - b.ordem).map((item) => ({
         ...item, ...(item.centroCustoId ? { centroCustoId: item.centroCustoId, centroCustoNome: item.centroCustoNome } : centroOperacao),
         item: item.descricao, quantidade: new Prisma.Decimal(item.quantidade).toString(), unidade: item.unidade as string | null,
       }))
@@ -120,7 +121,7 @@ export function comporItens(operacoes: OperacaoComposicao[], filtro?: FiltroRela
       if (!partePassa(filtro, parte)) continue;
       const centroCustoId = parte.centroCustoId ?? null;
       linhas.push({
-        operacaoId: operacao.id, data: operacao.data.toISOString().slice(0, 10), tipo: operacao.tipo, status: operacao.status,
+        operacaoId: operacao.id, operacaoNumero: operacao.numero, data: operacao.data.toISOString().slice(0, 10), tipo: operacao.tipo, status: operacao.status,
         descricao: operacao.descricao, item: parte.item, quantidade: parte.quantidade, unidade: parte.unidade, parceiro: operacao.parceiro?.nome ?? null,
         categoriaId: parte.categoriaId ?? null, categoria: parte.categoriaNome ?? SEM_CATEGORIA,
         centroCustoId, centroCusto: nomeCentro(centroCustoId, parte.centroCustoNome),
@@ -130,9 +131,9 @@ export function comporItens(operacoes: OperacaoComposicao[], filtro?: FiltroRela
   }
 
   // Só confirmadas: a cancelada e a operação que a corrige somariam em dobro.
-  const porTipo = new Map<string, { operacoes: Set<number>; total: Prisma.Decimal }>();
+  const porTipo = new Map<string, { operacoes: Set<string>; total: Prisma.Decimal }>();
   for (const linha of linhas.filter((l) => l.status === "CONFIRMADA")) {
-    const atual = porTipo.get(linha.tipo) ?? { operacoes: new Set<number>(), total: zero() };
+    const atual = porTipo.get(linha.tipo) ?? { operacoes: new Set<string>(), total: zero() };
     atual.operacoes.add(linha.operacaoId); atual.total = atual.total.plus(linha.valor); porTipo.set(linha.tipo, atual);
   }
 
@@ -143,17 +144,17 @@ export function comporItens(operacoes: OperacaoComposicao[], filtro?: FiltroRela
   const porCategoria = new Map<string, { nome: string; total: Prisma.Decimal; custeio: Prisma.Decimal; investimento: Prisma.Decimal; semClassificacao: Prisma.Decimal }>();
   // Agrupado pela chave (id), não pelo nome: um centro renomeado no meio do
   // período não pode virar duas linhas no relatório.
-  const porCentro = new Map<number, { nome: string; total: Prisma.Decimal }>();
+  const porCentro = new Map<string, { nome: string; total: Prisma.Decimal }>();
   for (const linha of despesas) {
     const chaveClassificacao = linha.classificacao === "CUSTEIO" ? "custeio" : linha.classificacao === "INVESTIMENTO" ? "investimento" : "semClassificacao";
     totais.total = totais.total.plus(linha.valor);
     totais[chaveClassificacao] = totais[chaveClassificacao].plus(linha.valor);
-    const chave = `${linha.categoriaId ?? 0}:${linha.categoria}`;
+    const chave = `${linha.categoriaId ?? SEM_VINCULO}:${linha.categoria}`;
     const categoria = porCategoria.get(chave) ?? { nome: linha.categoria, total: zero(), custeio: zero(), investimento: zero(), semClassificacao: zero() };
     categoria.total = categoria.total.plus(linha.valor);
     categoria[chaveClassificacao] = categoria[chaveClassificacao].plus(linha.valor);
     porCategoria.set(chave, categoria);
-    const centroId = linha.centroCustoId ?? 0;
+    const centroId = linha.centroCustoId ?? SEM_VINCULO;
     const centro = porCentro.get(centroId) ?? { nome: linha.centroCusto, total: zero() };
     centro.total = centro.total.plus(linha.valor);
     porCentro.set(centroId, centro);

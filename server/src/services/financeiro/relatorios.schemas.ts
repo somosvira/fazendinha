@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { SEM_VINCULO } from "../../lib/ids.js";
 import { LIMITE_MESES, REGIMES_RELATORIO, mesesEntreDatas } from "../relatorio-gerencial.schemas.js";
 
 // Transferência financeira só redistribui saldo entre contas próprias; não é
@@ -15,8 +16,7 @@ export const CLASSIFICACOES_RELATORIO = ["CUSTEIO", "INVESTIMENTO", "SEM_CLASSIF
 const dia = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use uma data válida")
   .refine((v) => !Number.isNaN(Date.parse(v)) && new Date(v).toISOString().slice(0, 10) === v, "Data inválida");
 const unicos = <T extends z.ZodTypeAny>(item: T) => z.array(item).max(200).default([]).transform((lista) => [...new Set(lista)] as z.infer<T>[]);
-// 0 representa "Sem centro de custo" / "Sem categoria", como na análise por categoria.
-const ids = unicos(z.number().int().min(0));
+const ids = unicos(z.string().uuid().or(z.literal(SEM_VINCULO)));
 
 const campos = {
   nome: z.string().trim().max(120),

@@ -1,6 +1,7 @@
 /* Configuração de relatório financeiro — regras puras do formulário.
  * Espelha `server/src/services/financeiro/relatorios.schemas.ts`. */
 import { getHoje } from "../../lib/hoje";
+import { SEM_VINCULO } from "../../lib/ids";
 import type { ClassificacaoRelatorio, ConfiguracaoRelatorioFinanceiro, RegimeRelatorioFinanceiro } from "../novo-api";
 
 export const LIMITE_MESES = 24;
@@ -42,7 +43,7 @@ export function configuracaoPadrao(hoje: Date = getHoje()): ConfiguracaoRelatori
   };
 }
 
-const lista = <T,>(valor: unknown, validos?: readonly T[]) => Array.isArray(valor) ? valor.filter((item): item is T => validos ? validos.includes(item as T) : typeof item === "number") : null;
+const lista = <T,>(valor: unknown, validos?: readonly T[]) => Array.isArray(valor) ? valor.filter((item): item is T => validos ? validos.includes(item as T) : typeof item === "string") : null;
 
 /** Rascunho salvo pode estar incompleto ou vir de uma versão anterior do formulário. */
 export function mesclarRascunho(parcial: Partial<ConfiguracaoRelatorioFinanceiro> | null | undefined, base: ConfiguracaoRelatorioFinanceiro = configuracaoPadrao()): ConfiguracaoRelatorioFinanceiro {
@@ -55,9 +56,9 @@ export function mesclarRascunho(parcial: Partial<ConfiguracaoRelatorioFinanceiro
     regime: REGIMES_RELATORIO.some((r) => r.id === parcial.regime) ? parcial.regime! : base.regime,
     tipos: lista<string>(parcial.tipos, TIPOS_RELATORIO) ?? base.tipos,
     status: lista<string>(parcial.status, STATUS_RELATORIO.map(([id]) => id)) ?? base.status,
-    centroCustoIds: lista<number>(parcial.centroCustoIds) ?? base.centroCustoIds,
-    parceiroIds: lista<number>(parcial.parceiroIds) ?? base.parceiroIds,
-    categoriaIds: lista<number>(parcial.categoriaIds) ?? base.categoriaIds,
+    centroCustoIds: lista<string>(parcial.centroCustoIds) ?? base.centroCustoIds,
+    parceiroIds: lista<string>(parcial.parceiroIds) ?? base.parceiroIds,
+    categoriaIds: lista<string>(parcial.categoriaIds) ?? base.categoriaIds,
     classificacoes: lista<ClassificacaoRelatorio>(parcial.classificacoes, CLASSIFICACOES_RELATORIO.map(([id]) => id)) ?? base.classificacoes,
   };
 }
@@ -79,8 +80,8 @@ export const podeGerar = (config: ConfiguracaoRelatorioFinanceiro) => !!config.n
 
 export const alternar = <T,>(itens: T[], valor: T) => itens.includes(valor) ? itens.filter((item) => item !== valor) : [...itens, valor];
 
-type Cadastro = { id: number; nome: string };
-const nomes = (ids: number[], cadastros: Cadastro[], vazio: string) => ids.map((id) => id === 0 ? vazio : cadastros.find((c) => c.id === id)?.nome ?? `#${id}`);
+type Cadastro = { id: string; nome: string };
+const nomes = (ids: string[], cadastros: Cadastro[], vazio: string) => ids.map((id) => id === SEM_VINCULO ? vazio : cadastros.find((c) => c.id === id)?.nome ?? "(removido)");
 const ou = (itens: string[], todos: string) => itens.length ? itens.join(", ") : todos;
 
 export function resumoConfiguracao(config: ConfiguracaoRelatorioFinanceiro, cadastros: { categorias: Cadastro[]; centrosCusto: Cadastro[]; parceiros: Cadastro[]; tipos: Record<string, string> }): [string, string][] {

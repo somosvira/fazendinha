@@ -4,11 +4,11 @@
 // produto pertencer a um único centro de custo é que dá pra inferir sozinho —
 // com mais de um, fica ambíguo e o movimento sai sem centro (null).
 export interface ResolverCentroSaidaIn {
-  produtoCentroIds: number[];
-  contextoCentroId: number | null | undefined;
+  produtoCentroIds: string[];
+  contextoCentroId: string | null | undefined;
 }
 
-export function resolverCentroSaida(input: ResolverCentroSaidaIn): number | null {
+export function resolverCentroSaida(input: ResolverCentroSaidaIn): string | null {
   if (input.contextoCentroId != null) return input.contextoCentroId;
   if (input.produtoCentroIds.length === 1) return input.produtoCentroIds[0];
   return null;

@@ -1,15 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { categoriaCadastroSchema, centroCustoSchema, contaSchema, operacaoSchema, parceiroSchema, patchCategoriaCadastroSchema, patchCentroCustoSchema, patchContaSchema, patchParceiroSchema, rascunhoOperacaoSchema, tipoDocumentoFinanceiroSchema } from "./schemas.js";
+import { uid } from "../../lib/uid.fixture.js";
 
 const base = {
   data: "2026-09-02",
   descricao: "Operação de teste",
-  parceiroId: 1,
+  parceiroId: uid(1),
   financeiro: { condicao: "SEM_EFEITO_FINANCEIRO" as const },
 };
 
 const item = {
-  produtoId: 1,
+  produtoId: uid(1),
   descricao: "Ração",
   quantidade: 10,
   unidade: "kg",
@@ -18,13 +19,13 @@ const item = {
 };
 
 describe("schema de criação de operação", () => {
-  it("item aceita centroCustoId ausente (herda do produto), nulo (herda da operação) ou positivo", () => {
-    const parse = (centroCustoId?: number | null) => operacaoSchema.safeParse({ ...base, tipo: "COMPRA_ESTOQUE", itens: [{ ...item, ...(centroCustoId === undefined ? {} : { centroCustoId }) }] });
-    const centroDoItem = (centroCustoId?: number | null) => { const r = parse(centroCustoId); return r.success ? r.data.itens[0].centroCustoId : "erro"; };
+  it("item aceita centroCustoId ausente (herda do produto), nulo (herda da operação) ou um uuid", () => {
+    const parse = (centroCustoId?: string | null) => operacaoSchema.safeParse({ ...base, tipo: "COMPRA_ESTOQUE", itens: [{ ...item, ...(centroCustoId === undefined ? {} : { centroCustoId }) }] });
+    const centroDoItem = (centroCustoId?: string | null) => { const r = parse(centroCustoId); return r.success ? r.data.itens[0].centroCustoId : "erro"; };
     expect(centroDoItem()).toBeUndefined();
     expect(centroDoItem(null)).toBeNull();
-    expect(centroDoItem(3)).toBe(3);
-    expect(parse(0).success).toBe(false);
+    expect(centroDoItem(uid(3))).toBe(uid(3));
+    expect(parse("nao-uuid").success).toBe(false);
   });
 
   it("aceita serviço com valor total e sem item físico", () => {
@@ -45,7 +46,7 @@ describe("schema de criação de operação", () => {
   });
 
   it("impede efeito financeiro em inventário e ajustes físicos", () => {
-    const resultado = operacaoSchema.safeParse({ ...base, tipo: "INVENTARIO_INICIAL", itens: [item], financeiro: { condicao: "A_VISTA", contaId: 1 } });
+    const resultado = operacaoSchema.safeParse({ ...base, tipo: "INVENTARIO_INICIAL", itens: [item], financeiro: { condicao: "A_VISTA", contaId: uid(2) } });
     expect(resultado.success).toBe(false);
     expect(resultado.error?.issues.some((issue) => issue.path.join(".") === "financeiro.condicao")).toBe(true);
   });
@@ -123,7 +124,7 @@ describe("schemas de categorias e centros de custo", () => {
 });
 
 describe("operacaoSchema — mensagens de parcela em português", () => {
-  const servico = { tipo: "SERVICO", data: "2026-09-02", descricao: "Serviço de teste", parceiroId: 1, valorTotal: 100, itens: [] };
+  const servico = { tipo: "SERVICO", data: "2026-09-02", descricao: "Serviço de teste", parceiroId: uid(1), valorTotal: 100, itens: [] };
   const primeiraMensagem = (parcelas: unknown[]) => {
     const r = operacaoSchema.safeParse({ ...servico, financeiro: { condicao: "A_PRAZO", parcelas } });
     return r.success ? null : r.error.issues[0]?.message;

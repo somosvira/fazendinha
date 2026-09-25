@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { Prisma } from "@prisma/client";
 import { exigirParceiroAtivo, exigirPositivo, FinanceiroError, traduzirConflitoUnico } from "./regras.js";
+import { uid } from "../../lib/uid.fixture.js";
 
 describe("exigirPositivo", () => {
   // decimal.js trata zero como "positivo" (sinal +1) — exigirPositivo precisa
@@ -24,12 +25,12 @@ describe("exigirPositivo", () => {
 describe("regras financeiras — parceiro e conflitos", () => {
   it("exigirParceiroAtivo lança quando não há parceiro ativo", async () => {
     const db = { parceiro: { findFirst: vi.fn().mockResolvedValue(null) } } as never;
-    await expect(exigirParceiroAtivo(db, 3)).rejects.toMatchObject({ code: "NAO_ENCONTRADO", campo: "parceiroId" });
+    await expect(exigirParceiroAtivo(db, uid(3))).rejects.toMatchObject({ code: "NAO_ENCONTRADO", campo: "parceiroId" });
   });
 
   it("exigirParceiroAtivo devolve o parceiro ativo", async () => {
-    const db = { parceiro: { findFirst: vi.fn().mockResolvedValue({ id: 3, ativo: true }) } } as never;
-    await expect(exigirParceiroAtivo(db, 3)).resolves.toEqual({ id: 3, ativo: true });
+    const db = { parceiro: { findFirst: vi.fn().mockResolvedValue({ id: uid(3), ativo: true }) } } as never;
+    await expect(exigirParceiroAtivo(db, uid(3))).resolves.toEqual({ id: uid(3), ativo: true });
   });
 
   it("traduzirConflitoUnico converte P2002 do campo mapeado", () => {

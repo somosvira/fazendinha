@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { RelatoriosFinanceiros } from "./RelatoriosFinanceiros";
 import { descartarRascunhoRelatorioFinanceiro, listarRelatoriosFinanceiros, obterConfiguracoesFinanceiras, obterRascunhoRelatorioFinanceiro, obterRelatorioFinanceiro, salvarPdfRelatorioFinanceiro, type RelatorioFinanceiro } from "./novo-api";
+import { SEM_VINCULO } from "../lib/ids";
+import { uid } from "../lib/uid.fixture";
 
 vi.mock("../api/propriedades", () => ({ usePropriedades: () => ({ data: [], loading: false, recarregar: vi.fn() }) }));
 vi.mock("./novo-api", () => ({
@@ -12,10 +14,10 @@ vi.mock("./novo-api", () => ({
 }));
 
 const base = { status: "CONCLUIDO" as const, propriedadeId: 1, propriedade: "Fazenda Rio Novo", concluidoEm: null, erro: null };
-const parametros = { nome: "", dataInicio: "2026-08-01", dataFim: "2026-08-31", regime: "ambos" as const, tipos: [], status: ["CONFIRMADA"], centroCustoIds: [1], parceiroIds: [], categoriaIds: [3, 0], classificacoes: [] };
+const parametros = { nome: "", dataInicio: "2026-08-01", dataFim: "2026-08-31", regime: "ambos" as const, tipos: [], status: ["CONFIRMADA"], centroCustoIds: [uid(1)], parceiroIds: [], categoriaIds: [uid(3), SEM_VINCULO], classificacoes: [] };
 const relatorios: RelatorioFinanceiro[] = [
-  { ...base, id: 12, nome: "Pecuária — agosto", autor: "Rafael", geradoEm: "2026-09-14T12:00:00Z", parametros },
-  { ...base, id: 11, nome: "Fechamento julho", autor: "Contadora", geradoEm: "2026-08-02T12:00:00Z", parametros: { ...parametros, centroCustoIds: [], categoriaIds: [] }, status: "FALHOU", erro: "Não foi possível montar o relatório. Tente gerar novamente." },
+  { ...base, id: uid(12), nome: "Pecuária — agosto", autor: "Rafael", geradoEm: "2026-09-14T12:00:00Z", parametros },
+  { ...base, id: uid(11), nome: "Fechamento julho", autor: "Contadora", geradoEm: "2026-08-02T12:00:00Z", parametros: { ...parametros, centroCustoIds: [], categoriaIds: [] }, status: "FALHOU", erro: "Não foi possível montar o relatório. Tente gerar novamente." },
 ];
 
 beforeEach(() => {
@@ -56,12 +58,12 @@ describe("central de relatórios financeiros", () => {
     render(<RelatoriosFinanceiros />);
     const tabela = (await screen.findAllByRole("table", { name: "Relatórios gerados" }))[0];
     fireEvent.click(tabela.querySelectorAll("tbody tr")[0]);
-    expect(window.location.pathname).toBe("/financeiro/relatorios/12");
-    expect(obterRelatorioFinanceiro).toHaveBeenCalledWith(12);
+    expect(window.location.pathname).toBe(`/financeiro/relatorios/${uid(12)}`);
+    expect(obterRelatorioFinanceiro).toHaveBeenCalledWith(uid(12));
   });
 
   it("novo relatório descarta o rascunho anterior; continuar o preserva", async () => {
-    vi.mocked(obterRascunhoRelatorioFinanceiro).mockResolvedValue({ id: 1, versao: 2, updatedAt: "", configuracao: { nome: "Rascunho antigo" } });
+    vi.mocked(obterRascunhoRelatorioFinanceiro).mockResolvedValue({ id: uid(1), versao: 2, updatedAt: "", configuracao: { nome: "Rascunho antigo" } });
     vi.mocked(descartarRascunhoRelatorioFinanceiro).mockResolvedValue(undefined);
     render(<RelatoriosFinanceiros />);
     fireEvent.click(await screen.findByRole("button", { name: "Continuar rascunho" }));

@@ -7,6 +7,7 @@ import { usePropriedades } from "../api/propriedades";
 import { descartarRascunhoRelatorioFinanceiro, gerarRelatorioFinanceiro, salvarPdfRelatorioFinanceiro, salvarRascunhoRelatorioFinanceiro, type ConfiguracaoRelatorioFinanceiro, type ConfiguracoesFinanceiras, type RascunhoRelatorioFinanceiro, type RelatorioFinanceiro } from "./novo-api";
 import { Button, ErrorBox, ReviewLine, TIPO_OPERACAO } from "./financeiro-ui";
 import { marcarEdicaoRascunhoRelatorio } from "./rascunhoRelatorioAtivo";
+import { SEM_VINCULO } from "../lib/ids";
 import { CLASSIFICACOES_RELATORIO, REGIMES_RELATORIO, SEM_CATEGORIA, SEM_CENTRO, STATUS_RELATORIO, TIPOS_RELATORIO, configuracaoPadrao, erroPeriodo, isoLocal, mesclarRascunho, podeGerar, resumoConfiguracao, secoesDoRelatorio } from "./lib/relatorios";
 
 const CAMPO = "mt-1.5 w-full rounded-lg border border-border bg-white px-3 py-2.5 text-sm font-normal";
@@ -18,7 +19,7 @@ const dateFromIso = (iso: string): Date | null => {
 };
 
 type Estado = "ALTERADO" | "SALVANDO" | "SALVO" | "ERRO";
-type OpcaoNumero = readonly [number, string];
+type OpcaoValor = readonly [string, string];
 const opcoesMultiSelect = <T extends string | number>(opcoes: readonly (readonly [T, string])[]): MultiSelectOption<T>[] =>
   opcoes.map(([value, label]) => ({ value, label }));
 
@@ -120,9 +121,9 @@ export function NovoRelatorioFinanceiro({ cadastros, rascunho, onVoltar, onGerad
   const range: DateRange = { start: dateFromIso(config.dataInicio), end: dateFromIso(config.dataFim) };
   const problemaPeriodo = erroPeriodo(config);
   const tipos = useMemo(() => TIPOS_RELATORIO.map((tipo) => [tipo, TIPO_OPERACAO[tipo] ?? tipo] as const), []);
-  const centros = useMemo<OpcaoNumero[]>(() => [[0, SEM_CENTRO], ...cadastros.centrosCusto.map((c): OpcaoNumero => [c.id, `${c.nome}${c.ativo ? "" : " (inativo)"}`])], [cadastros.centrosCusto]);
-  const categorias = useMemo<OpcaoNumero[]>(() => [[0, SEM_CATEGORIA], ...cadastros.categorias.map((c): OpcaoNumero => [c.id, `${c.nome}${c.ativo ? "" : " (inativa)"}`])], [cadastros.categorias]);
-  const parceiros = useMemo<OpcaoNumero[]>(() => [[0, "Sem parceiro"], ...cadastros.parceiros.map((p): OpcaoNumero => [p.id, `${p.nome}${p.ativo ? "" : " (inativo)"}`])], [cadastros.parceiros]);
+  const centros = useMemo<OpcaoValor[]>(() => [[SEM_VINCULO, SEM_CENTRO], ...cadastros.centrosCusto.map((c): OpcaoValor => [c.id, `${c.nome}${c.ativo ? "" : " (inativo)"}`])], [cadastros.centrosCusto]);
+  const categorias = useMemo<OpcaoValor[]>(() => [[SEM_VINCULO, SEM_CATEGORIA], ...cadastros.categorias.map((c): OpcaoValor => [c.id, `${c.nome}${c.ativo ? "" : " (inativa)"}`])], [cadastros.categorias]);
+  const parceiros = useMemo<OpcaoValor[]>(() => [[SEM_VINCULO, "Sem parceiro"], ...cadastros.parceiros.map((p): OpcaoValor => [p.id, `${p.nome}${p.ativo ? "" : " (inativo)"}`])], [cadastros.parceiros]);
   const resumo = resumoConfiguracao(config, { categorias: cadastros.categorias, centrosCusto: cadastros.centrosCusto, parceiros: cadastros.parceiros, tipos: TIPO_OPERACAO });
   const bloqueio = !config.nome.trim() ? "Informe um nome para o relatório." : problemaPeriodo;
   // Fazenda de um sítio não vê a camada; na visão consolidada o servidor emite para a principal.

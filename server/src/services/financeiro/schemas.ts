@@ -121,12 +121,12 @@ export const tipoDocumentoFinanceiroSchema = z.enum([
 ]);
 
 export const itemOperacaoSchema = z.object({
-  categoriaId: z.number().int().positive().nullable().optional(),
+  categoriaId: z.string().uuid().nullable().optional(),
   classificacao: z.enum(["CUSTEIO", "INVESTIMENTO"]).nullable().optional(),
   // undefined = herda do produto (se ele tem exatamente 1 centro), senão null;
   // null = explicitamente "herda o centro da operação".
-  centroCustoId: z.number().int().positive().nullable().optional(),
-  produtoId: z.number().int().positive().optional(),
+  centroCustoId: z.string().uuid().nullable().optional(),
+  produtoId: z.string().uuid().optional(),
   descricao: z.string().trim().min(1).max(160),
   quantidade: valorPositivo,
   unidade: z.string().trim().min(1).max(20),
@@ -160,18 +160,18 @@ export const operacaoSchema = z.object({
   data: dataIso,
   descricao: z.string().trim().min(2).max(240),
   valorTotal: z.coerce.number().nonnegative().optional(),
-  parceiroId: z.number().int().positive().optional(),
-  categoriaId: z.number().int().positive().optional(),
-  centroCustoId: z.number().int().positive().optional(),
-  corrigeOperacaoId: z.number().int().positive().optional(),
+  parceiroId: z.string().uuid().optional(),
+  categoriaId: z.string().uuid().optional(),
+  centroCustoId: z.string().uuid().optional(),
+  corrigeOperacaoId: z.string().uuid().optional(),
   propriedadeId: z.number().int().positive().optional(),
   itens: z.array(itemOperacaoSchema).default([]),
   financeiro: z.discriminatedUnion("condicao", [
     z.object({ condicao: z.literal("SEM_EFEITO_FINANCEIRO") }),
-    z.object({ condicao: z.literal("A_VISTA"), contaId: z.number().int().positive(), formaPagamento: formaPagamentoSchema.optional() }),
+    z.object({ condicao: z.literal("A_VISTA"), contaId: z.string().uuid(), formaPagamento: formaPagamentoSchema.optional() }),
     z.object({ condicao: z.literal("A_PRAZO"), parcelas: z.array(parcelaSchema).min(1) }),
     z.object({
-      condicao: z.literal("PARCIAL"), contaId: z.number().int().positive(), valorPago: valorPositivo,
+      condicao: z.literal("PARCIAL"), contaId: z.string().uuid(), valorPago: valorPositivo,
       formaPagamento: formaPagamentoSchema.optional(), parcelas: z.array(parcelaSchema).min(1),
     }),
   ]),
@@ -198,7 +198,7 @@ export const operacaoSchema = z.object({
 });
 
 export const liquidacaoSchema = z.object({
-  contaId: z.number().int().positive(),
+  contaId: z.string().uuid(),
   valor: valorPositivo,
   data: dataIso,
   formaPagamento: formaPagamentoSchema.optional(),
@@ -206,8 +206,8 @@ export const liquidacaoSchema = z.object({
 });
 
 export const transferenciaSchema = z.object({
-  contaOrigemId: z.number().int().positive(),
-  contaDestinoId: z.number().int().positive(),
+  contaOrigemId: z.string().uuid(),
+  contaDestinoId: z.string().uuid(),
   valor: valorPositivo,
   data: dataIso,
   descricao: z.string().trim().max(240).optional(),
@@ -216,11 +216,11 @@ export const transferenciaSchema = z.object({
 
 export const transacaoAvulsaSchema = z.object({
   tipo: z.enum(["PAGAMENTO", "RECEBIMENTO", "APORTE", "RETIRADA", "AJUSTE"]),
-  contaId: z.number().int().positive(),
+  contaId: z.string().uuid(),
   valor: valorPositivo,
   data: dataIso,
   descricao: z.string().trim().min(2).max(240),
-  parceiroId: z.number().int().positive().optional(),
+  parceiroId: z.string().uuid().optional(),
   formaPagamento: formaPagamentoSchema.optional(),
   propriedadeId: z.number().int().positive().optional(),
 });

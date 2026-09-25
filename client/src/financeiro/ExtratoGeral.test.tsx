@@ -4,11 +4,12 @@ import { cleanup, fireEvent, render, screen, within } from "@testing-library/rea
 import { useState } from "react";
 import { ExtratoGeral, FILTROS_EXTRATO_GERAL_INICIAIS, type FiltrosExtratoGeral } from "./ExtratoGeral";
 import type { Conta, MovimentoGeral } from "./novo-api";
+import { uid } from "../lib/uid.fixture";
 afterEach(cleanup);
-const contas = [{ id: 1, nome: "Banco A", instituicao: "Instituição A", ativo: true }, { id: 2, nome: "Caixa B", instituicao: null, ativo: false }] as Conta[];
+const contas = [{ id: uid(1), nome: "Banco A", instituicao: "Instituição A", ativo: true }, { id: uid(2), nome: "Caixa B", instituicao: null, ativo: false }] as Conta[];
 const movimentos: MovimentoGeral[] = [
-  { id: 11, contaId: 1, conta: contas[0], direcao: "ENTRADA", valor: "25", transacao: { id: 21, tipo: "RECEBIMENTO", formaPagamento: null, parceiro: null, operacao: null, data: "2026-09-13", descricao: "Venda A", status: "CONFIRMADA" } },
-  { id: 12, contaId: 2, conta: contas[1], direcao: "SAIDA", valor: "10", transacao: { id: 22, tipo: "PAGAMENTO", formaPagamento: null, parceiro: null, operacao: null, data: "2026-09-12", descricao: "Compra B", status: "CONFIRMADA" } },
+  { id: uid(11), seq: 11, contaId: uid(1), conta: contas[0], direcao: "ENTRADA", valor: "25", transacao: { id: uid(21), seq: 21, tipo: "RECEBIMENTO", formaPagamento: null, parceiro: null, operacao: null, data: "2026-09-13", descricao: "Venda A", status: "CONFIRMADA" } },
+  { id: uid(12), seq: 12, contaId: uid(2), conta: contas[1], direcao: "SAIDA", valor: "10", transacao: { id: uid(22), seq: 22, tipo: "PAGAMENTO", formaPagamento: null, parceiro: null, operacao: null, data: "2026-09-12", descricao: "Compra B", status: "CONFIRMADA" } },
 ];
 // O período agora é um único controle compartilhado, renderizado pelo
 // componente pai (ContasFinanceiras) — ver ContasFinanceiras.test/VisualizacoesFinanceiras.test.
@@ -27,7 +28,7 @@ it("combina filtros inclusivos de data, conta e instituição e abre o movimento
   const tabela = within(await screen.findByRole("table", { name: "Extrato geral" }));
   fireEvent.change(screen.getByLabelText("Início do teste"), { target: { value: "2026-09-13" } });
   fireEvent.change(screen.getByLabelText("Fim do teste"), { target: { value: "2026-09-13" } });
-  fireEvent.change(screen.getByLabelText("Conta"), { target: { value: "1" } });
+  fireEvent.change(screen.getByLabelText("Conta"), { target: { value: uid(1) } });
   fireEvent.change(screen.getByLabelText("Instituição"), { target: { value: "Instituição A" } });
   expect(tabela.queryByText("Compra B")).toBeNull();
   fireEvent.click(tabela.getByText("Venda A")); expect(abrir).toHaveBeenCalledWith(movimentos[0]);
@@ -44,13 +45,13 @@ it("distingue erro de carregamento de extrato vazio", async () => {
 
 it("abre a operação da transferência sem acionar a navegação da linha", () => {
   const abrir = vi.fn();
-  const transferencia: MovimentoGeral = { ...movimentos[0], transacao: { ...movimentos[0].transacao, tipo: "TRANSFERENCIA", operacao: { id: 123, descricao: "Transferência", tipo: "TRANSFERENCIA_FINANCEIRA" } } };
+  const transferencia: MovimentoGeral = { ...movimentos[0], transacao: { ...movimentos[0].transacao, tipo: "TRANSFERENCIA", operacao: { id: uid(123), numero: 123, descricao: "Transferência", tipo: "TRANSFERENCIA_FINANCEIRA" } } };
   render(<ExtratoControlado itens={[transferencia]} onAbrir={abrir} />);
   const link = within(screen.getByRole("table", { name: "Extrato geral" })).getByRole("link", { name: "OP-0123" });
-  expect(link.getAttribute("href")).toBe("/financeiro/operacoes/123");
+  expect(link.getAttribute("href")).toBe(`/financeiro/operacoes/${uid(123)}`);
   fireEvent.click(link, { ctrlKey: true });
   expect(abrir).not.toHaveBeenCalled();
   fireEvent.click(link);
-  expect(window.location.pathname).toBe("/financeiro/operacoes/123");
+  expect(window.location.pathname).toBe(`/financeiro/operacoes/${uid(123)}`);
   expect(abrir).not.toHaveBeenCalled();
 });

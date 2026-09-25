@@ -9,9 +9,10 @@ vi.mock("../../db.js", () => ({ prisma: {
 vi.mock("./contas.js", () => ({ resumoSaldos: mocks.saldos }));
 import { obterDashboard } from "./dashboard.js";
 import { movimentoRealizado } from "./dashboard.calc.js";
+import { uid } from "../../lib/uid.fixture.js";
 const dinheiro = (valor: string) => new Prisma.Decimal(valor);
 const inicio = new Date("2026-09-12T00:00:00Z"); const fim = new Date("2026-09-15T23:59:59.999Z");
-const movimento = (id: number, tipo: string, direcao: string, valor: string, reversao?: string) => ({ id, direcao, valor: dinheiro(valor), transacao: { id, data: inicio, tipo, status: "CONFIRMADA", operacao: null, reversaoDe: reversao ? { tipo: reversao } : null } });
+const movimento = (seq: number, tipo: string, direcao: string, valor: string, reversao?: string) => ({ id: uid(seq), seq, direcao, valor: dinheiro(valor), transacao: { id: uid(100 + seq), seq, data: inicio, tipo, status: "CONFIRMADA", operacao: null, reversaoDe: reversao ? { tipo: reversao } : null } });
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.movimentos.mockResolvedValue([]); mocks.compromissos.mockResolvedValue([]); mocks.count.mockResolvedValue(0); mocks.transacoes.mockResolvedValue([]);
@@ -50,11 +51,11 @@ describe("dashboard no período global", () => {
   it("mantém separado volume econômico, saldo pendente e dinheiro realizado; detecta vínculos ausentes", async () => {
     mocks.operacoes.mockImplementation(async ({ by }) => by[0] === "status" ? [{ status: "CONFIRMADA", _count: 2 }, { status: "CANCELADA", _count: 1 }] : [{ tipo: "SERVICO", _sum: { valorTotal: dinheiro("500") }, _count: 2 }, { tipo: "AJUSTE_ESTOQUE", _sum: { valorTotal: dinheiro("0") }, _count: 1 }]);
     mocks.compromissos.mockResolvedValue([
-      { id: 1, tipo: "PAGAR", status: "PARCIAL", dataVencimento: inicio, valorOriginal: dinheiro("300"), liquidacoes: [{ valor: dinheiro("100"), transacao: { status: "CONFIRMADA" } }, { valor: dinheiro("50"), transacao: { status: "REVERTIDA" } }] },
-      { id: 2, tipo: "PAGAR", status: "CANCELADO", dataVencimento: inicio, valorOriginal: dinheiro("999"), liquidacoes: [] },
+      { id: uid(201), seq: 1, tipo: "PAGAR", status: "PARCIAL", dataVencimento: inicio, valorOriginal: dinheiro("300"), liquidacoes: [{ valor: dinheiro("100"), transacao: { status: "CONFIRMADA" } }, { valor: dinheiro("50"), transacao: { status: "REVERTIDA" } }] },
+      { id: uid(202), seq: 2, tipo: "PAGAR", status: "CANCELADO", dataVencimento: inicio, valorOriginal: dinheiro("999"), liquidacoes: [] },
     ]);
     mocks.movimentos.mockResolvedValue([movimento(1, "PAGAMENTO", "SAIDA", "100")]);
-    mocks.transacoes.mockResolvedValue([{ id: 1, tipo: "PAGAMENTO", status: "CONFIRMADA", operacaoId: null, _count: { movimentos: 0, liquidacoes: 0 } }, { id: 2, tipo: "TRANSFERENCIA", status: "REVERTIDA", operacaoId: 1, _count: { movimentos: 1, liquidacoes: 1 } }]);
+    mocks.transacoes.mockResolvedValue([{ id: uid(101), seq: 1, tipo: "PAGAMENTO", status: "CONFIRMADA", operacaoId: null, _count: { movimentos: 0, liquidacoes: 0 } }, { id: uid(102), seq: 2, tipo: "TRANSFERENCIA", status: "REVERTIDA", operacaoId: uid(301), _count: { movimentos: 1, liquidacoes: 1 } }]);
     const dashboard = await obterDashboard(7, inicio, fim);
     expect(dashboard.base.volumeEconomico.toString()).toBe("500");
     expect(dashboard.base.porTipo).toHaveLength(1);
@@ -63,7 +64,7 @@ describe("dashboard no período global", () => {
     expect(dashboard.proximosCompromissos).toHaveLength(1);
     expect(dashboard.base.compromissos.estados).toEqual({ PARCIAL: 1, CANCELADO: 1 });
     expect(dashboard.base.transacoes).toMatchObject({ avulsas: 1, semMovimentos: 1, transferenciasIncompletas: 1, comLiquidacao: 1 });
-    expect(dashboard.base.vinculosAusentes).toEqual([{ transacaoId: 1, operacaoId: null, motivo: "Sem movimento de conta" }, { transacaoId: 2, operacaoId: 1, motivo: "Transferência sem as duas pontas" }]);
+    expect(dashboard.base.vinculosAusentes).toEqual([{ transacaoId: uid(101), transacaoSeq: 1, operacaoId: null, motivo: "Sem movimento de conta" }, { transacaoId: uid(102), transacaoSeq: 2, operacaoId: uid(301), motivo: "Transferência sem as duas pontas" }]);
   });
   it("estorno de outro período reduz somente o evento no período consultado", () => {
     expect(movimentoRealizado(movimento(1, "REVERSAO", "ENTRADA", "80", "PAGAMENTO"))?.valor.toString()).toBe("-80");

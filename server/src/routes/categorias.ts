@@ -11,8 +11,7 @@ export const categoriasRouter = new Hono().patch(
   "/categorias/:id/classificacao",
   zValidator("json", schema),
   async (c) => {
-    const id = Number(c.req.param("id"));
-    if (!Number.isFinite(id)) return c.json({ error: "id inválido" }, 400);
+    const id = c.req.param("id");
     const { classificacao } = c.req.valid("json");
     try {
       const cat = await prisma.categoria.update({ where: { id }, data: { classificacao } });

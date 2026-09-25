@@ -18,6 +18,7 @@ import {
   pathToTab,
   tabToPath,
 } from "./router";
+import { uid } from "./lib/uid.fixture";
 
 describe("roteamento do estoque", () => {
   it("mapeia a aba estoque para /estoque e volta", () => {
@@ -28,8 +29,8 @@ describe("roteamento do estoque", () => {
 
 describe("roteamento da pecuária", () => {
   it("reconhece o detalhe de uma operação financeira", () => {
-    expect(pathToTab("/financeiro/operacoes/42")).toBe("lancar");
-    expect(parseOperacaoFinanceiraId("/financeiro/operacoes/42")).toBe(42);
+    expect(pathToTab(`/financeiro/operacoes/${uid(42)}`)).toBe("lancar");
+    expect(parseOperacaoFinanceiraId(`/financeiro/operacoes/${uid(42)}`)).toBe(uid(42));
     expect(parseOperacaoFinanceiraId("/financeiro/operacoes")).toBeNull();
   });
   it("marca as entradas de histórico criadas pelo atalho de nova operação", () => {
@@ -46,17 +47,16 @@ describe("roteamento da pecuária", () => {
   it("mantém novo relatório e detalhe de relatório na aba de relatórios", () => {
     expect(pathToTab("/financeiro/relatorios/novo")).toBe("relatorio");
     expect(isNovoRelatorioFinanceiro("/financeiro/relatorios/novo/")).toBe(true);
-    expect(pathToTab("/financeiro/relatorios/12")).toBe("relatorio");
-    expect(parseRelatorioFinanceiroId("/financeiro/relatorios/12")).toBe(12);
+    expect(pathToTab(`/financeiro/relatorios/${uid(12)}`)).toBe("relatorio");
+    expect(parseRelatorioFinanceiroId(`/financeiro/relatorios/${uid(12)}`)).toBe(uid(12));
     expect(parseRelatorioFinanceiroId("/financeiro/relatorios/novo")).toBeNull();
-    expect(parseRelatorioFinanceiroId("/financeiro/relatorios/0")).toBeNull();
   });
   it("preserva subpáginas financeiras só na aba dona delas", () => {
     expect(isSubrotaFinanceira("relatorio", "/financeiro/relatorios/novo")).toBe(true);
-    expect(isSubrotaFinanceira("relatorio", "/financeiro/relatorios/3")).toBe(true);
+    expect(isSubrotaFinanceira("relatorio", `/financeiro/relatorios/${uid(3)}`)).toBe(true);
     expect(isSubrotaFinanceira("lancar", "/financeiro/operacoes/nova")).toBe(true);
-    expect(isSubrotaFinanceira("caixinha", "/financeiro/contas/2")).toBe(true);
-    expect(isSubrotaFinanceira("dashboard", "/financeiro/relatorios/3")).toBe(false);
+    expect(isSubrotaFinanceira("caixinha", `/financeiro/contas/${uid(2)}`)).toBe(true);
+    expect(isSubrotaFinanceira("dashboard", `/financeiro/relatorios/${uid(3)}`)).toBe(false);
     expect(isSubrotaFinanceira("relatorio", "/financeiro/relatorios")).toBe(false);
   });
   it("publica contas e extratos como uma área financeira própria", () => {
@@ -96,6 +96,13 @@ describe("roteamento da pecuária", () => {
   it("mantém filtros financeiros na aba financeira", () => {
     expect(pathToTab("/gastos")).toBe("gastos");
   });
+});
+
+it("reconhece URLs de contas", () => {
+  expect(pathToTab(`/financeiro/contas/${uid(21)}`)).toBe("caixinha");
+  expect(parseContaFinanceiraId(`/financeiro/contas/${uid(21)}/`)).toBe(uid(21));
+  expect(parseContaFinanceiraId("/financeiro/contas/0")).toBe("0");
+  expect(parseContaFinanceiraId("/financeiro/contas/abc")).toBe("abc");
 });
 
 describe("subrotas do Rebanho v1", () => {
@@ -151,13 +158,6 @@ describe("subrotas do Rebanho v1", () => {
     expect(parseLoteId("/pecuaria/rebanho/lotes/abc")).toBeNull();
     expect(parseLoteId("/pecuaria/rebanho/lotes")).toBeNull();
   });
-});
-
-it("reconhece URLs de contas e rejeita IDs inválidos", () => {
-  expect(pathToTab("/financeiro/contas/21")).toBe("caixinha");
-  expect(parseContaFinanceiraId("/financeiro/contas/21/")).toBe(21);
-  expect(parseContaFinanceiraId("/financeiro/contas/0")).toBeNull();
-  expect(parseContaFinanceiraId("/financeiro/contas/abc")).toBeNull();
 });
 
 it("redireciona a rota do assistente enquanto a feature está inativa", () => {

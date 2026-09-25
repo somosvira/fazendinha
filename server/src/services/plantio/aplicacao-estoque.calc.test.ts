@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
+import { uid } from "../../lib/uid.fixture";
 import { parseDoseUnidadeLegada, planejarBaixaAplicacao, textoDoseUnidade } from "./aplicacao-estoque.calc.js";
 
 describe("planejarBaixaAplicacao", () => {
+  const prodId = uid(1);
+
   it("multiplica dose por hectare pela área quando dosePorHectare é true", () => {
     const r = planejarBaixaAplicacao({
-      produtoId: 1, temEstoque: true, produtoUnidade: "L",
+      produtoId: prodId, temEstoque: true, produtoUnidade: "L",
       doseValor: 2, doseUnidadeMedida: "L", dosePorHectare: true, areaHa: 3,
     });
     expect(r).toEqual({ quantidade: 6, deveBaixar: true });
@@ -12,7 +15,7 @@ describe("planejarBaixaAplicacao", () => {
 
   it("usa a dose como total quando não é por hectare", () => {
     const r = planejarBaixaAplicacao({
-      produtoId: 1, temEstoque: true, produtoUnidade: "KG",
+      produtoId: prodId, temEstoque: true, produtoUnidade: "KG",
       doseValor: 10, doseUnidadeMedida: "KG", dosePorHectare: false, areaHa: 3,
     });
     expect(r).toEqual({ quantidade: 10, deveBaixar: true });
@@ -21,7 +24,7 @@ describe("planejarBaixaAplicacao", () => {
   it("converte a dose para a unidade do produto quando a base é a mesma", () => {
     // 200 mL/ha × 5 ha = 1000 mL = 1 L
     const r = planejarBaixaAplicacao({
-      produtoId: 1, temEstoque: true, produtoUnidade: "L",
+      produtoId: prodId, temEstoque: true, produtoUnidade: "L",
       doseValor: 200, doseUnidadeMedida: "ML", dosePorHectare: true, areaHa: 5,
     });
     expect(r).toEqual({ quantidade: 1, deveBaixar: true });
@@ -29,14 +32,14 @@ describe("planejarBaixaAplicacao", () => {
 
   it("lança erro claro quando a dose e o produto têm bases diferentes", () => {
     expect(() => planejarBaixaAplicacao({
-      produtoId: 1, temEstoque: true, produtoUnidade: "KG",
+      produtoId: prodId, temEstoque: true, produtoUnidade: "KG",
       doseValor: 200, doseUnidadeMedida: "ML", dosePorHectare: true, areaHa: 5,
     })).toThrow();
   });
 
   it("prioriza a quantidade total informada explicitamente", () => {
     const r = planejarBaixaAplicacao({
-      produtoId: 1, temEstoque: true, produtoUnidade: "L",
+      produtoId: prodId, temEstoque: true, produtoUnidade: "L",
       doseValor: 2, doseUnidadeMedida: "L", dosePorHectare: true, areaHa: 3,
       quantidadeTotalInformada: 100,
     });
@@ -53,7 +56,7 @@ describe("planejarBaixaAplicacao", () => {
 
   it("não baixa quando o produto não tem estoque no sítio", () => {
     const r = planejarBaixaAplicacao({
-      produtoId: 1, temEstoque: false, produtoUnidade: "L",
+      produtoId: prodId, temEstoque: false, produtoUnidade: "L",
       doseValor: 2, doseUnidadeMedida: "L", dosePorHectare: true, areaHa: 3,
     });
     expect(r.deveBaixar).toBe(false);
@@ -61,7 +64,7 @@ describe("planejarBaixaAplicacao", () => {
 
   it("não baixa quando a quantidade resulta zero ou negativa", () => {
     const r = planejarBaixaAplicacao({
-      produtoId: 1, temEstoque: true, produtoUnidade: "L",
+      produtoId: prodId, temEstoque: true, produtoUnidade: "L",
       doseValor: 0, doseUnidadeMedida: "L", dosePorHectare: true, areaHa: 3,
     });
     expect(r.deveBaixar).toBe(false);
@@ -69,7 +72,7 @@ describe("planejarBaixaAplicacao", () => {
 
   it("trata área ausente como zero (sem dose total informada)", () => {
     const r = planejarBaixaAplicacao({
-      produtoId: 1, temEstoque: true, produtoUnidade: "L",
+      produtoId: prodId, temEstoque: true, produtoUnidade: "L",
       doseValor: 2, doseUnidadeMedida: "L", dosePorHectare: true, areaHa: null,
     });
     expect(r).toEqual({ quantidade: 0, deveBaixar: false });
@@ -77,7 +80,7 @@ describe("planejarBaixaAplicacao", () => {
 
   it("arredonda a quantidade para 3 casas decimais (coluna Decimal(12,3))", () => {
     const r = planejarBaixaAplicacao({
-      produtoId: 1, temEstoque: true, produtoUnidade: "L",
+      produtoId: prodId, temEstoque: true, produtoUnidade: "L",
       doseValor: 1.2345, doseUnidadeMedida: "L", dosePorHectare: true, areaHa: 3,
     });
     expect(r).toEqual({ quantidade: 3.704, deveBaixar: true });
@@ -85,7 +88,7 @@ describe("planejarBaixaAplicacao", () => {
 
   it("sem doseUnidadeMedida e sem quantidadeTotalInformada não baixa", () => {
     const r = planejarBaixaAplicacao({
-      produtoId: 1, temEstoque: true, produtoUnidade: "L",
+      produtoId: prodId, temEstoque: true, produtoUnidade: "L",
       doseValor: 2, doseUnidadeMedida: null, dosePorHectare: true, areaHa: 3,
     });
     expect(r).toEqual({ quantidade: 0, deveBaixar: false });

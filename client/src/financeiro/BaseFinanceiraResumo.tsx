@@ -43,7 +43,7 @@ export function BaseFinanceiraResumo({ base, realizado, compromissos, inicio, fi
           <IndicadorBase label="Transferências sem as duas pontas" valor={base.transacoes.transferenciasIncompletas} alerta />
         </dl></div>
         <p className="text-xs text-ink-3">Parceiro, compromisso e efeito de estoque são opcionais conforme o fato de negócio.</p>
-        {!!base.vinculosAusentes?.length && <div><p className="text-xs text-ink-3">Registros sem o vínculo esperado (até 20):</p><ul className="mt-2 space-y-2">{base.vinculosAusentes.map(item => <li key={item.transacaoId}>Transação #{item.transacaoId} · {item.motivo}{item.operacaoId != null && <> · <LinkOperacaoFinanceira id={item.operacaoId} /></>}</li>)}</ul></div>}
+        {!!base.vinculosAusentes?.length && <div><p className="text-xs text-ink-3">Registros sem o vínculo esperado (até 20):</p><ul className="mt-2 space-y-2">{base.vinculosAusentes.map(item => <li key={item.transacaoId}>Transação #{item.transacaoSeq} · {item.motivo}{item.operacaoId != null && item.operacaoNumero != null && <> · <LinkOperacaoFinanceira id={item.operacaoId} numero={item.operacaoNumero} /></>}</li>)}</ul></div>}
       </div>
     </Panel>
     <Panel className="mt-4 overflow-hidden"><div className="border-b border-border p-5"><h3 className="font-serif text-xl">Volume por tipo de operação</h3><p className="mt-1 text-xs text-ink-3">Volume econômico confirmado no período; cancelamentos excluídos.</p></div><MonetaryDonutChart label="Volume por tipo de operação" emptyLabel="Nenhuma operação confirmada com volume no período." data={base.porTipo.map(item => ({ label: TIPO_OPERACAO[item.tipo] ?? item.tipo, value: Number(item.valor) }))} /></Panel>

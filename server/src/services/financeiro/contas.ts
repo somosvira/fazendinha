@@ -22,7 +22,7 @@ export async function listarContas(propriedadeId?: number | null, incluirInativa
     include: {
       movimentos: {
         select: { direcao: true, valor: true, transacao: { select: { data: true, descricao: true, tipo: true } } },
-        orderBy: [{ transacao: { data: "desc" } }, { id: "desc" }],
+        orderBy: [{ transacao: { data: "desc" } }, { seq: "desc" }],
       },
     },
     orderBy: [{ ativo: "desc" }, { ordem: "asc" }, { nome: "asc" }],
@@ -67,7 +67,7 @@ export async function criarConta(input: z.infer<typeof contaSchema> & { propried
 }
 
 export async function atualizarConta(
-  id: number,
+  id: string,
   propriedadeId: number,
   input: z.infer<typeof patchContaSchema>,
   usuarioId?: number | null,
@@ -97,7 +97,7 @@ export async function atualizarConta(
   } catch (e) { traduzirConflitoUnico(e, CONFLITOS); }
 }
 
-export async function listarExtrato(contaId: number, propriedadeId: number | null, inicio?: Date, fim?: Date) {
+export async function listarExtrato(contaId: string, propriedadeId: number | null, inicio?: Date, fim?: Date) {
   const conta = await prisma.contaFinanceira.findFirst({ where: { id: contaId, ...(propriedadeId != null ? { propriedadeId } : {}) } });
   if (!conta) throw new FinanceiroError("NAO_ENCONTRADO", "Conta financeira não encontrada");
   return prisma.movimentoConta.findMany({
@@ -106,7 +106,7 @@ export async function listarExtrato(contaId: number, propriedadeId: number | nul
       transacao: { ...(inicio || fim ? { data: { ...(inicio ? { gte: inicio } : {}), ...(fim ? { lte: fim } : {}) } } : {}) },
     },
     include: { transacao: { include: { parceiro: true, operacao: true, reversaoDe: { select: { id: true, tipo: true, descricao: true, operacaoId: true } } } } },
-    orderBy: [{ transacao: { data: "desc" } }, { id: "desc" }],
+    orderBy: [{ transacao: { data: "desc" } }, { seq: "desc" }],
   });
 }
 
@@ -114,6 +114,6 @@ export async function listarExtratoGeral(propriedadeId: number | null) {
   return prisma.movimentoConta.findMany({
     where: { conta: propriedadeId != null ? { propriedadeId } : {} },
     include: { conta: { select: { id: true, nome: true, instituicao: true } }, transacao: { include: { parceiro: true, operacao: true, reversaoDe: { select: { id: true, tipo: true, descricao: true, operacaoId: true } } } } },
-    orderBy: [{ transacao: { data: "desc" } }, { id: "desc" }],
+    orderBy: [{ transacao: { data: "desc" } }, { seq: "desc" }],
   });
 }

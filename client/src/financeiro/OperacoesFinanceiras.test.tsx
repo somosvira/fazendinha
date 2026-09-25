@@ -5,6 +5,7 @@ import { OperacoesFinanceiras } from "./OperacoesFinanceiras";
 import { descartarRascunhoOperacao, listarOperacoes, obterRascunhoOperacao } from "./novo-api";
 import { limparRascunhoAtivo, prepararPublicacaoRascunho } from "./rascunhoAtivo";
 import { abrirRotaNovaOperacao } from "../router";
+import { uid } from "../lib/uid.fixture";
 
 vi.mock("./novo-api", () => ({
   listarOperacoes: vi.fn().mockResolvedValue([]),
@@ -14,18 +15,18 @@ vi.mock("./novo-api", () => ({
 }));
 
 vi.mock("./FormOperacao", () => ({
-  FormOperacao: ({ rascunho, operacaoBase, tipoInicial, produtoInicial }: { rascunho: { versao: number } | null; operacaoBase: unknown; tipoInicial?: string; produtoInicial?: number }) => (
+  FormOperacao: ({ rascunho, operacaoBase, tipoInicial, produtoInicial }: { rascunho: { versao: number } | null; operacaoBase: unknown; tipoInicial?: string; produtoInicial?: string }) => (
     <div data-versao={rascunho?.versao}>{tipoInicial === "AJUSTE_ESTOQUE" ? `Formulário de ajuste do produto ${produtoInicial ?? "nenhum"}` : operacaoBase ? "Formulário de correção" : rascunho ? "Formulário com rascunho" : "Formulário novo"}</div>
   ),
 }));
 
 vi.mock("./OperacaoFinanceiraDetalhe", () => ({
   OperacaoFinanceiraDetalhe: ({ onCorrigir }: { onCorrigir: (operacao: unknown) => void }) => (
-    <button type="button" onClick={() => onCorrigir({ id: 12, transacoes: [], compromissos: [], itens: [] })}>Corrigir</button>
+    <button type="button" onClick={() => onCorrigir({ id: uid(12), transacoes: [], compromissos: [], itens: [] })}>Corrigir</button>
   ),
 }));
 
-const rascunho = { id: 8, versao: 2, updatedAt: "2026-09-07T12:00:00Z", documentos: [], dados: { formulario: { descricao: "Compra mensal" } } };
+const rascunho = { id: uid(8), versao: 2, updatedAt: "2026-09-07T12:00:00Z", documentos: [], dados: { formulario: { descricao: "Compra mensal" } } };
 
 beforeEach(() => {
   cleanup(); vi.clearAllMocks(); limparRascunhoAtivo();
@@ -82,20 +83,20 @@ describe("OperacoesFinanceiras — rascunho", () => {
     render(<OperacoesFinanceiras />);
     await screen.findByRole("button", { name: "Continuar operação" });
 
-    act(() => { abrirRotaNovaOperacao({ ajusteEstoqueProdutoId: 7 }); });
+    act(() => { abrirRotaNovaOperacao({ ajusteEstoqueProdutoId: uid(7) }); });
 
-    expect(await screen.findByText("Formulário de ajuste do produto 7")).toBeTruthy();
-    expect(window.location.pathname + window.location.search).toBe("/financeiro/operacoes/nova?tipo=AJUSTE_ESTOQUE&produto=7");
+    expect(await screen.findByText(`Formulário de ajuste do produto ${uid(7)}`)).toBeTruthy();
+    expect(window.location.pathname + window.location.search).toBe(`/financeiro/operacoes/nova?tipo=AJUSTE_ESTOQUE&produto=${uid(7)}`);
   });
 
   it("recarregar a URL do ajuste mantém o tipo e o produto", async () => {
-    window.history.replaceState(null, "", "/financeiro/operacoes/nova?tipo=AJUSTE_ESTOQUE&produto=12");
+    window.history.replaceState(null, "", `/financeiro/operacoes/nova?tipo=AJUSTE_ESTOQUE&produto=${uid(12)}`);
     render(<OperacoesFinanceiras />);
-    expect(await screen.findByText("Formulário de ajuste do produto 12")).toBeTruthy();
+    expect(await screen.findByText(`Formulário de ajuste do produto ${uid(12)}`)).toBeTruthy();
   });
 
   it("o atalho da sidebar troca uma correção em curso pelo rascunho", async () => {
-    window.history.replaceState(null, "", "/financeiro/operacoes/12");
+    window.history.replaceState(null, "", `/financeiro/operacoes/${uid(12)}`);
     render(<OperacoesFinanceiras />);
     fireEvent.click(await screen.findByRole("button", { name: "Corrigir" }));
     expect(await screen.findByText("Formulário de correção")).toBeTruthy();

@@ -4,8 +4,9 @@ import { setToken } from "../lib/auth";
 import { setPropriedadeAtiva } from "../propriedadeScope";
 import { confirmarRascunhoOperacao, descartarRascunhoOperacao, obterRascunhoOperacao, salvarRascunhoOperacao, type RascunhoOperacao } from "./novo-api";
 import { estadoRascunhoAtivo, limparRascunhoAtivo, marcarEdicaoRascunho, prepararPublicacaoRascunho } from "./rascunhoAtivo";
+import { uid } from "../lib/uid.fixture";
 
-const rascunho = (versao: number): RascunhoOperacao => ({ id: 8, versao, updatedAt: "2026-09-14T12:00:00Z", documentos: [], dados: {} });
+const rascunho = (versao: number): RascunhoOperacao => ({ id: uid(8), versao, updatedAt: "2026-09-14T12:00:00Z", documentos: [], dados: {} });
 
 afterEach(() => {
   limparRascunhoAtivo();
@@ -70,7 +71,7 @@ describe("rascunhoAtivo", () => {
   });
 
   it("as chamadas de rascunho da API mantêm a store em dia", async () => {
-    const respostas: unknown[] = [rascunho(1), rascunho(2), {}, rascunho(3), { id: 99 }];
+    const respostas: unknown[] = [rascunho(1), rascunho(2), {}, rascunho(3), { id: uid(99) }];
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => respostas.shift() })));
 
     await obterRascunhoOperacao();
@@ -81,7 +82,7 @@ describe("rascunhoAtivo", () => {
     expect(estadoRascunhoAtivo().rascunho).toBeNull();
     await salvarRascunhoOperacao({});
     expect(estadoRascunhoAtivo().rascunho?.versao).toBe(3);
-    await expect(confirmarRascunhoOperacao(3)).resolves.toEqual({ id: 99 });
+    await expect(confirmarRascunhoOperacao(3)).resolves.toEqual({ id: uid(99) });
     expect(estadoRascunhoAtivo().rascunho).toBeNull();
   });
 

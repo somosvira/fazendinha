@@ -331,7 +331,7 @@ export function gerarPdfRelatorio(snapshot: SnapshotRelatorio): Buffer {
     c.linhas.map((linha) => [
       data(linha.data),
       `${ROTULO_TIPO[linha.tipo] ?? linha.tipo}${linha.status === "CONFIRMADA" ? "" : ` (${ROTULO_STATUS[linha.status] ?? linha.status})`}`,
-      [`OP-${String(linha.operacaoId).padStart(4, "0")}`, linha.item ?? linha.descricao].filter(Boolean).join(" · "),
+      [`OP-${String(linha.operacaoNumero).padStart(4, "0")}`, linha.item ?? linha.descricao].filter(Boolean).join(" · "),
       linha.quantidade ? `${linha.quantidade}${linha.unidade ? ` ${linha.unidade}` : ""}` : "—",
       linha.categoria, linha.centroCusto,
       linha.classificacao ? ROTULO_CLASSIFICACAO[linha.classificacao] : "—",

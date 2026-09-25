@@ -10,7 +10,7 @@ import { dataCurta } from "./lib/relatorios";
 import { NovoRelatorioFinanceiro } from "./NovoRelatorioFinanceiro";
 import { RelatorioFinanceiroDetalhe } from "./RelatorioFinanceiroDetalhe";
 
-type Vista = { tipo: "lista" } | { tipo: "novo" } | { tipo: "detalhe"; id: number };
+type Vista = { tipo: "lista" } | { tipo: "novo" } | { tipo: "detalhe"; id: string };
 const vistaDaUrl = (pathname: string): Vista => {
   if (isNovoRelatorioFinanceiro(pathname)) return { tipo: "novo" };
   const id = parseRelatorioFinanceiroId(pathname);
@@ -38,7 +38,7 @@ export function RelatoriosFinanceiros({ podeExportar = true }: { podeExportar?: 
   const [rascunho, setRascunho] = useState<RascunhoRelatorioFinanceiro | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
-  const [recente, setRecente] = useState<number | null>(null);
+  const [recente, setRecente] = useState<string | null>(null);
   const [iniciando, setIniciando] = useState(false);
   const [periodoEmissao, setPeriodoEmissao] = useState({ inicio: "", fim: "" });
   const [confirmarNovo, setConfirmarNovo] = useState(false);

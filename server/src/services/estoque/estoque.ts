@@ -6,6 +6,7 @@ import { auditar } from "../financeiro/regras.js";
 import { propriedadePrincipalId, escopoPadraoLeitura } from "../propriedade.js";
 import { resolverCentroSaida } from "./centro.calc.js";
 import { rotuloUnidade } from "./unidades.js";
+import { SEM_VINCULO } from "../../lib/ids.js";
 
 export class EstoqueError extends Error {
   constructor(public code: "NAO_ENCONTRADO" | "MES_FECHADO" | "ORIGEM_AUTOMATICA" | "CONFLITO" | "VALIDACAO", m: string) {
@@ -26,7 +27,7 @@ const MAX_CUSTO = 9_999_999_999.99;
 
 export const movimentoSchema = z
   .object({
-    produtoId: z.number().int(),
+    produtoId: z.string().uuid(),
     // Entradas e saídas nascem de operações financeiras ou eventos operacionais; aqui só ajuste de inventário.
     tipo: z.literal("AJUSTE"),
     data: naoFutura,
@@ -35,7 +36,7 @@ export const movimentoSchema = z
     custoUnitario: z.number().nonnegative().max(MAX_CUSTO, "custo unitário muito alto").optional(),
     observacao: z.string().min(5, "justificativa é obrigatória").max(200),
     propriedadeId: z.number().int().optional(), // sítio (multi-propriedade)
-    centroCustoId: z.number().int().positive().nullable().optional(),
+    centroCustoId: z.string().uuid().nullable().optional(),
   })
   // AJUSTE aceita negativa (correção de saldo) mas nunca zero.
   .superRefine((v, ctx) => {
@@ -44,12 +45,12 @@ export const movimentoSchema = z
 export type MovimentoInput = z.infer<typeof movimentoSchema>;
 
 export const ajusteContagemSchema = z.object({
-  produtoId: z.number().int().positive(),
+  produtoId: z.string().uuid(),
   quantidadeContada: z.number().finite().min(0).max(MAX_QTD).multipleOf(0.001),
   saldoEsperado: z.number().finite().min(-MAX_QTD).max(MAX_QTD).multipleOf(0.001),
   observacao: z.string().trim().min(5, "justificativa é obrigatória").max(200),
   propriedadeId: z.number().int().positive().optional(),
-  centroCustoId: z.number().int().positive().nullable().optional(),
+  centroCustoId: z.string().uuid().nullable().optional(),
 });
 
 type DbCusto = Pick<Prisma.TransactionClient, "movimentoEstoque">;
@@ -87,13 +88,13 @@ async function filtroTemEstoque(propriedadeId: number | null): Promise<Prisma.Mo
 }
 
 /** Baixas automáticas (aplicação agrícola) só consomem produto que tem estoque no sítio. */
-export async function produtoTemEstoque(db: DbTemEstoque, produtoId: number, propriedadeId: number | null): Promise<boolean> {
+export async function produtoTemEstoque(db: DbTemEstoque, produtoId: string, propriedadeId: number | null): Promise<boolean> {
   const mov = await db.movimentoEstoque.findFirst({ where: { produtoId, ...(await filtroTemEstoque(propriedadeId)) }, select: { id: true } });
   return mov != null;
 }
 
 /** Versão em lote de produtoTemEstoque: devolve o conjunto dos produtos com estoque no sítio. */
-export async function produtosComEstoque(db: DbTemEstoque, produtoIds: number[], propriedadeId: number | null): Promise<Set<number>> {
+export async function produtosComEstoque(db: DbTemEstoque, produtoIds: string[], propriedadeId: number | null): Promise<Set<string>> {
   const ids = [...new Set(produtoIds)];
   if (ids.length === 0) return new Set();
   const grupos = await db.movimentoEstoque.groupBy({ by: ["produtoId"], where: { produtoId: { in: ids }, ...(await filtroTemEstoque(propriedadeId)) } });
@@ -112,9 +113,9 @@ export async function produtosComEstoque(db: DbTemEstoque, produtoIds: number[],
  * e um groupBy basta (sem somar dois resultados em memória). Nenhuma SAIDA nem
  * linha individual de movimento sai do banco.
  */
-export async function obterBasesCusto(db: DbCusto, produtoIds: number[], propriedadeId: number | null): Promise<Map<number, BaseCusto>> {
+export async function obterBasesCusto(db: DbCusto, produtoIds: string[], propriedadeId: number | null): Promise<Map<string, BaseCusto>> {
   const ids = [...new Set(produtoIds)];
-  const resultado = new Map<number, BaseCusto>();
+  const resultado = new Map<string, BaseCusto>();
   if (ids.length === 0) return resultado;
   const grupos = await db.movimentoEstoque.groupBy({
     by: ["produtoId"],
@@ -142,7 +143,7 @@ export async function obterBasesCusto(db: DbCusto, produtoIds: number[], proprie
   return resultado;
 }
 
-export async function obterBaseCusto(db: DbCusto, produtoId: number, propriedadeId: number | null): Promise<BaseCusto | null> {
+export async function obterBaseCusto(db: DbCusto, produtoId: string, propriedadeId: number | null): Promise<BaseCusto | null> {
   return (await obterBasesCusto(db, [produtoId], propriedadeId)).get(produtoId) ?? null;
 }
 
@@ -150,8 +151,8 @@ export async function obterBaseCusto(db: DbCusto, produtoId: number, propriedade
  * Custo médio ponderado (4 casas) por produto num sítio — só para EXIBIÇÃO.
  * Para valorizar uma saída use obterBasesCusto + valorSaidaPreciso.
  */
-export async function obterCustosMedios(db: DbCusto, produtoIds: number[], propriedadeId: number | null): Promise<Map<number, Prisma.Decimal>> {
-  const resultado = new Map<number, Prisma.Decimal>();
+export async function obterCustosMedios(db: DbCusto, produtoIds: string[], propriedadeId: number | null): Promise<Map<string, Prisma.Decimal>> {
+  const resultado = new Map<string, Prisma.Decimal>();
   for (const [produtoId, base] of await obterBasesCusto(db, produtoIds, propriedadeId)) {
     const custo = custoMedioDaBase(base);
     if (custo != null) resultado.set(produtoId, custo);
@@ -159,13 +160,13 @@ export async function obterCustosMedios(db: DbCusto, produtoIds: number[], propr
   return resultado;
 }
 
-export async function obterCustoMedio(db: DbCusto, produtoId: number, propriedadeId: number | null): Promise<Prisma.Decimal | null> {
+export async function obterCustoMedio(db: DbCusto, produtoId: string, propriedadeId: number | null): Promise<Prisma.Decimal | null> {
   return (await obterCustosMedios(db, [produtoId], propriedadeId)).get(produtoId) ?? null;
 }
 
 const USO_CAMPO = { agricola: "usoAgricola" } as const;
 
-export async function listarSaldos(f?: { centroCustoId?: number; propriedadeId?: number | null; uso?: "agricola" }) {
+export async function listarSaldos(f?: { centroCustoId?: string; propriedadeId?: number | null; uso?: "agricola" }) {
   // O estoque lista os produtos ativos que já tiveram movimento no sítio (qualquer
   // status) — o produto entra no estoque pela operação, não pelo cadastro.
   // Movimento sem propriedade conta como da principal (mesmo escopo do custo médio).
@@ -211,7 +212,7 @@ export async function listarSaldos(f?: { centroCustoId?: number; propriedadeId?:
       abaixoMinimo: minimo != null && saldo < minimo,
     };
   });
-  if (f?.centroCustoId === 0) return linhas.filter((l) => l.centrosCusto.length === 0);
+  if (f?.centroCustoId === SEM_VINCULO) return linhas.filter((l) => l.centrosCusto.length === 0);
   if (f?.centroCustoId) return linhas.filter((l) => l.centrosCusto.some((cc) => cc.id === f.centroCustoId));
   return linhas;
 }
@@ -223,13 +224,13 @@ export type VinculoMovimento = { tipo: "TALHAO"; id: number; codigo: string };
 export type VinculosVisiveis = { agricultura: boolean };
 
 export type FiltroMovimentos = {
-  produtoId?: number; tipo?: string; q?: string; origem?: string; centroCustoId?: number;
+  produtoId?: string; tipo?: string; q?: string; origem?: string; centroCustoId?: string;
   de?: string; ate?: string; pagina?: number; porPagina?: number;
   propriedadeId?: number | null; vinculosVisiveis?: VinculosVisiveis;
 };
 
-// "OP-0011", "op-11" ou só "11" também procuram pela operação de origem.
-function idOperacaoDaBusca(q: string): number | null {
+// "OP-0011", "op-11" ou só "11" também procuram pelo número sequencial da operação de origem.
+function numeroOperacaoDaBusca(q: string): number | null {
   const m = /^(?:op-?)?(\d{1,9})$/i.exec(q.trim());
   return m ? Number(m[1]) : null;
 }
@@ -246,8 +247,7 @@ export async function listarMovimentos(f?: FiltroMovimentos) {
   if (f?.produtoId) where.produtoId = f.produtoId;
   if (f?.tipo) where.tipo = f.tipo as TipoMovimento;
   if (f?.origem) where.origem = f.origem as OrigemMovimentoEstoque;
-  // Mesma regra dos saldos: 0 = produto sem centro de custo.
-  if (f?.centroCustoId === 0) and.push({ produto: { centrosCusto: { none: {} } } });
+  if (f?.centroCustoId === SEM_VINCULO) and.push({ produto: { centrosCusto: { none: {} } } });
   else if (f?.centroCustoId) and.push({ produto: { centrosCusto: { some: { centroCustoId: f.centroCustoId } } } });
   if (f?.de || f?.ate) {
     and.push({ data: {
@@ -257,18 +257,18 @@ export async function listarMovimentos(f?: FiltroMovimentos) {
   }
   const termo = f?.q?.trim();
   if (termo) {
-    const operacaoId = idOperacaoDaBusca(termo);
+    const numeroOperacao = numeroOperacaoDaBusca(termo);
     and.push({ OR: [
       { produto: { nome: { contains: termo, mode: "insensitive" } } },
       { operacao: { parceiro: { nome: { contains: termo, mode: "insensitive" } } } },
-      ...(operacaoId != null ? [{ operacaoId }] : []),
+      ...(numeroOperacao != null ? [{ operacao: { numero: numeroOperacao } }] : []),
     ] });
   }
   const [total, ms] = await Promise.all([
     prisma.movimentoEstoque.count({ where }),
     prisma.movimentoEstoque.findMany({
       where,
-      orderBy: [{ data: "desc" }, { id: "desc" }],
+      orderBy: [{ data: "desc" }, { seq: "desc" }],
       skip: (pagina - 1) * porPagina,
       take: porPagina,
       include: {
@@ -290,6 +290,7 @@ export async function listarMovimentos(f?: FiltroMovimentos) {
     }
     return {
       id: m.id,
+      seq: m.seq,
       produtoId: m.produtoId,
       produto: m.produto.nome,
       centrosCusto: m.produto.centrosCusto.map(({ centroCusto }) => ({ id: centroCusto.id, nome: centroCusto.nome })),
@@ -305,6 +306,7 @@ export async function listarMovimentos(f?: FiltroMovimentos) {
       observacao: oculto ? null : m.observacao ?? null,
       /** Operação financeira de origem (compra, ajuste, inventário…); null nas saídas automáticas. */
       operacaoId: m.operacaoId ?? null,
+      operacaoNumero: m.operacao?.numero ?? null,
       /** Talhão de origem das saídas automáticas (aplicação agrícola); null nos demais. */
       vinculo,
     };
@@ -355,7 +357,7 @@ async function registrarMovimentoTx(tx: Prisma.TransactionClient, input: Movimen
     const operacao = await tx.operacao.create({ data: {
       tipo: "AJUSTE_ESTOQUE", status: "CONFIRMADA", data, descricao: input.observacao,
       valorTotal: valorTotal.abs(), propriedadeId, criadoPorId: usuarioId ?? null,
-      itens: { create: { produtoId: produto.id, descricao: `Ajuste: ${produto.nome}`, quantidade: new Prisma.Decimal(input.quantidade).abs(), unidade: rotuloUnidade(produto.unidade), valorUnitario: custo, valorTotal: valorTotal.abs(), estocavel: true } },
+      itens: { create: { ordem: 1, produtoId: produto.id, descricao: `Ajuste: ${produto.nome}`, quantidade: new Prisma.Decimal(input.quantidade).abs(), unidade: rotuloUnidade(produto.unidade), valorUnitario: custo, valorTotal: valorTotal.abs(), estocavel: true } },
     }, include: { itens: true } });
     const m = await tx.movimentoEstoque.create({
       data: {
@@ -412,7 +414,7 @@ export async function ajustarContagem(input: z.infer<typeof ajusteContagemSchema
  */
 export async function estornarMovimentoTx(
   tx: Prisma.TransactionClient,
-  movimentoId: number,
+  movimentoId: string,
   opts: { usuarioId?: number | null; observacao?: string; data?: Date; propriedadeId?: number | null } = {},
 ) {
   const filtroPropriedade = opts.propriedadeId != null ? { propriedadeId: opts.propriedadeId } : {};
@@ -441,7 +443,7 @@ export async function estornarMovimentoTx(
     quantidade: mov.tipo === "AJUSTE" ? mov.quantidade.negated() : mov.quantidade,
     custoUnitario: mov.custoUnitario, valorTotal: mov.tipo === "AJUSTE" ? mov.valorTotal.negated() : mov.valorTotal,
     propriedadeId: pid, operacaoId: mov.operacaoId, reversaoDeId: mov.id, centroCustoId: mov.centroCustoId,
-    observacao: opts.observacao ?? `Estorno do movimento #${mov.id}`,
+    observacao: opts.observacao ?? `Estorno do movimento #${mov.seq}`,
     criadoPorId: opts.usuarioId ?? null,
   } });
   await tx.movimentoEstoque.update({ where: { id: movimentoId }, data: { status: "REVERTIDO" } });

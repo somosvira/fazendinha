@@ -42,8 +42,8 @@ function direcaoTransacao(tipo: TipoTransacaoFinanceira): DirecaoMovimentoConta 
 async function criarTransacaoComMovimento(
   tx: Prisma.TransactionClient,
   input: {
-    tipo: TipoTransacaoFinanceira; data: Date; valor: Prisma.Decimal.Value; descricao?: string; operacaoId?: number;
-    parceiroId?: number; propriedadeId: number; contaId: number; formaPagamento?: z.infer<typeof transacaoAvulsaSchema>["formaPagamento"];
+    tipo: TipoTransacaoFinanceira; data: Date; valor: Prisma.Decimal.Value; descricao?: string; operacaoId?: string;
+    parceiroId?: string; propriedadeId: number; contaId: string; formaPagamento?: z.infer<typeof transacaoAvulsaSchema>["formaPagamento"];
     usuarioId?: number | null;
   },
 ) {
@@ -69,9 +69,9 @@ async function criarTransacaoComMovimento(
 
 /** Uma consulta para todos os centros usados na operação (cabeçalho + itens).
  * Devolve id → nome só dos ativos; quem chamou decide o campo do erro. */
-async function resolverCentros(tx: Prisma.TransactionClient, ids: number[]) {
+async function resolverCentros(tx: Prisma.TransactionClient, ids: string[]) {
   const unicos = [...new Set(ids)];
-  if (!unicos.length) return new Map<number, string>();
+  if (!unicos.length) return new Map<string, string>();
   const centros = await tx.centroCusto.findMany({ where: { id: { in: unicos }, ativo: true }, select: { id: true, nome: true } });
   return new Map(centros.map((centro) => [centro.id, centro.nome]));
 }
@@ -93,7 +93,7 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
     // (ou nenhum) o item fica sem centro próprio e herda o da operação.
     const centroUnicoDoProduto = (produto: (typeof produtos)[number] | undefined) =>
       produto && produto.centrosCusto.length === 1 ? produto.centrosCusto[0].centroCustoId : null;
-    const centrosItens = input.itens.map((item) => item.centroCustoId === undefined ? centroUnicoDoProduto(produtosPorId.get(item.produtoId ?? 0)) : item.centroCustoId);
+    const centrosItens = input.itens.map((item) => item.centroCustoId === undefined ? centroUnicoDoProduto(produtosPorId.get(item.produtoId ?? "")) : item.centroCustoId);
     // Quem decide se o item entra/sai do estoque é o TIPO da operação, não o
     // produto: nos tipos que põem no estoque (compra para estoque, inventário,
     // bonificação, produção) e no ajuste, todo item com produto (ou marcado
@@ -128,12 +128,13 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
       }
     });
 
-    const classificar = async (categoriaId: number | null | undefined, classificacao?: "CUSTEIO" | "INVESTIMENTO" | null) => {
+    const classificar = async (categoriaId: string | null | undefined, classificacao?: "CUSTEIO" | "INVESTIMENTO" | null) => {
       const categoria = categoriaId ? await tx.categoria.findFirst({ where: { id: categoriaId, ativo: true } }) : null;
       if (categoriaId && !categoria) throw new FinanceiroError("VALIDACAO", "Selecione uma categoria ativa", "categoriaId");
       return { categoriaId: categoria?.id ?? null, categoriaNome: categoria?.nome ?? null, classificacao: classificacao === undefined ? categoria?.classificacao ?? null : classificacao };
     };
     const itens = await Promise.all(input.itens.map(async (item, indice) => ({
+      ordem: indice + 1,
       produtoId: item.produtoId,
       centroCustoId: centrosItens[indice],
       centroCustoNome: centrosItens[indice] ? centros.get(centrosItens[indice]!) ?? null : null,
@@ -153,7 +154,7 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
         ? dinheiro(new Prisma.Decimal(item.quantidade).mul(item.valorUnitario ?? 0))
         : dinheiro(item.valorTotal),
       estocavel: estocavelItens[indice],
-      ...await classificar(item.categoriaId === undefined ? produtosPorId.get(item.produtoId ?? 0)?.categoriaId : item.categoriaId, item.classificacao),
+      ...await classificar(item.categoriaId === undefined ? produtosPorId.get(item.produtoId ?? "")?.categoriaId : item.categoriaId, item.classificacao),
     })));
     const classificacaoOperacao = await classificar(itens.length ? null : input.categoriaId, input.classificacao);
     const totalItens = totalItensFinanceiros(itens);
@@ -268,15 +269,15 @@ export async function criarOperacao(input: OperacaoInput) {
   return prisma.$transaction((tx) => criarOperacaoTx(tx, input));
 }
 
-async function bloquearOperacao(tx: Prisma.TransactionClient, id: number, propriedadeId?: number) {
+async function bloquearOperacao(tx: Prisma.TransactionClient, id: string, propriedadeId?: number) {
   // Serializa liquidações e estornos sem bloquear as referências por chave estrangeira.
   const linhas = propriedadeId == null
-    ? await tx.$queryRaw<{ id: number }[]>`SELECT "id" FROM "Operacao" WHERE "id" = ${id} FOR NO KEY UPDATE`
-    : await tx.$queryRaw<{ id: number }[]>`SELECT "id" FROM "Operacao" WHERE "id" = ${id} AND "propriedadeId" = ${propriedadeId} FOR NO KEY UPDATE`;
+    ? await tx.$queryRaw<{ id: string }[]>`SELECT "id" FROM "Operacao" WHERE "id" = ${id} FOR NO KEY UPDATE`
+    : await tx.$queryRaw<{ id: string }[]>`SELECT "id" FROM "Operacao" WHERE "id" = ${id} AND "propriedadeId" = ${propriedadeId} FOR NO KEY UPDATE`;
   return linhas.length > 0;
 }
 
-async function compromissoParaLiquidar(tx: Prisma.TransactionClient, id: number, valor: Prisma.Decimal) {
+async function compromissoParaLiquidar(tx: Prisma.TransactionClient, id: string, valor: Prisma.Decimal) {
   const compromisso = await tx.compromissoFinanceiro.findUnique({
     where: { id }, include: { operacao: true, liquidacoes: { include: { transacao: true } } },
   });
@@ -291,13 +292,13 @@ async function compromissoParaLiquidar(tx: Prisma.TransactionClient, id: number,
   return { compromisso, restante };
 }
 
-export async function liquidarCompromisso(compromissoId: number, input: LiquidacaoInput) {
+export async function liquidarCompromisso(compromissoId: string, input: LiquidacaoInput) {
   return prisma.$transaction(async (tx) => {
     const valor = exigirPositivo(input.valor);
     const { compromisso } = await compromissoParaLiquidar(tx, compromissoId, valor);
     const tipo = compromisso.tipo === "PAGAR" ? "PAGAMENTO" : "RECEBIMENTO";
     const transacao = await criarTransacaoComMovimento(tx, {
-      tipo, data: input.data, valor, descricao: input.descricao ?? `Liquidação do compromisso #${compromisso.id}`,
+      tipo, data: input.data, valor, descricao: input.descricao ?? `Liquidação do compromisso #${compromisso.seq}`,
       operacaoId: compromisso.operacaoId, parceiroId: compromisso.parceiroId ?? undefined,
       propriedadeId: compromisso.operacao.propriedadeId, contaId: input.contaId,
       formaPagamento: input.formaPagamento, usuarioId: input.usuarioId,
@@ -349,7 +350,7 @@ export async function criarTransacaoAvulsa(input: TransacaoAvulsaInput) {
   });
 }
 
-async function estornarTransacaoTx(tx: Prisma.TransactionClient, id: number, motivo: string, contexto: ContextoEstorno) {
+async function estornarTransacaoTx(tx: Prisma.TransactionClient, id: string, motivo: string, contexto: ContextoEstorno) {
     const referencia = await tx.transacaoFinanceira.findFirst({ where: { id, propriedadeId: contexto.propriedadeId }, select: { operacaoId: true } });
     if (!referencia) throw new FinanceiroError("NAO_ENCONTRADO", "Transação não encontrada");
     if (referencia.operacaoId != null) await bloquearOperacao(tx, referencia.operacaoId, contexto.propriedadeId);
@@ -359,7 +360,7 @@ async function estornarTransacaoTx(tx: Prisma.TransactionClient, id: number, mot
     if (original.status === "REVERTIDA" || original.revertidaPor) throw new FinanceiroError("JA_REVERTIDO", "A transação já foi estornada");
     await exigirPeriodoAberto(tx, original.propriedadeId, new Date());
     const estorno = await tx.transacaoFinanceira.create({ data: {
-      tipo: "REVERSAO", data: new Date(), valorTotal: original.valorTotal, descricao: `Estorno #${id}: ${motivo}`,
+      tipo: "REVERSAO", data: new Date(), valorTotal: original.valorTotal, descricao: `Estorno #${original.seq}: ${motivo}`,
       propriedadeId: original.propriedadeId, operacaoId: original.operacaoId, parceiroId: original.parceiroId,
       criadoPorId: contexto.usuarioId && contexto.usuarioId > 0 ? contexto.usuarioId : null, reversaoDeId: original.id,
       movimentos: { create: original.movimentos.map((movimento) => ({
@@ -379,11 +380,11 @@ async function estornarTransacaoTx(tx: Prisma.TransactionClient, id: number, mot
     return estorno;
 }
 
-export async function estornarTransacao(id: number, motivo: string, contexto: ContextoEstorno) {
+export async function estornarTransacao(id: string, motivo: string, contexto: ContextoEstorno) {
   return prisma.$transaction((tx) => estornarTransacaoTx(tx, id, motivo, contexto));
 }
 
-export async function estornarOperacao(id: number, motivo: string, contexto: ContextoEstorno) {
+export async function estornarOperacao(id: string, motivo: string, contexto: ContextoEstorno) {
   return prisma.$transaction(async (tx) => {
     if (!await bloquearOperacao(tx, id, contexto.propriedadeId)) throw new FinanceiroError("NAO_ENCONTRADO", "Operação não encontrada");
     const operacao = await tx.operacao.findFirst({
@@ -395,7 +396,7 @@ export async function estornarOperacao(id: number, motivo: string, contexto: Con
     await exigirPeriodoAberto(tx, operacao.propriedadeId, new Date());
 
     for (const transacao of operacao.transacoes.filter((item) => item.status === "CONFIRMADA" && item.tipo !== "REVERSAO")) {
-      await estornarTransacaoTx(tx, transacao.id, `${PREFIXO_CANCELAMENTO_OPERACAO}${id}: ${motivo}`, contexto);
+      await estornarTransacaoTx(tx, transacao.id, `${PREFIXO_CANCELAMENTO_OPERACAO}${operacao.numero}: ${motivo}`, contexto);
     }
     for (const movimento of operacao.movimentosEstoque.filter((item) => item.status === "CONFIRMADO" && !item.reversaoDeId && !item.revertidoPor)) {
       await tx.movimentoEstoque.create({ data: {
@@ -405,7 +406,7 @@ export async function estornarOperacao(id: number, motivo: string, contexto: Con
         quantidade: movimento.tipo === "AJUSTE" ? movimento.quantidade.negated() : movimento.quantidade,
         custoUnitario: movimento.custoUnitario, valorTotal: movimento.tipo === "AJUSTE" ? movimento.valorTotal.negated() : movimento.valorTotal,
         propriedadeId: movimento.propriedadeId, operacaoId: operacao.id, centroCustoId: movimento.centroCustoId,
-        reversaoDeId: movimento.id, observacao: `${PREFIXO_CANCELAMENTO_OPERACAO}${id}: ${motivo}`,
+        reversaoDeId: movimento.id, observacao: `${PREFIXO_CANCELAMENTO_OPERACAO}${operacao.numero}: ${motivo}`,
       } });
       await tx.movimentoEstoque.update({ where: { id: movimento.id }, data: { status: "REVERTIDO" } });
     }
@@ -419,7 +420,7 @@ export async function estornarOperacao(id: number, motivo: string, contexto: Con
 const includeOperacao = Prisma.validator<Prisma.OperacaoInclude>()({
   parceiro: true,
   centroCusto: { select: { id: true, nome: true } },
-  itens: true,
+  itens: { orderBy: { ordem: "asc" } },
   compromissos: {
     include: {
       liquidacoes: {
@@ -432,7 +433,7 @@ const includeOperacao = Prisma.validator<Prisma.OperacaoInclude>()({
             },
           },
         },
-        orderBy: [{ transacao: { data: "asc" } }, { id: "asc" }],
+        orderBy: [{ transacao: { data: "asc" } }, { transacao: { seq: "asc" } }],
       },
     },
   },
@@ -442,12 +443,12 @@ const includeOperacao = Prisma.validator<Prisma.OperacaoInclude>()({
       reversaoDe: { select: { id: true, tipo: true, status: true, data: true, descricao: true } },
       revertidaPor: { select: { id: true, tipo: true, status: true, data: true, descricao: true } },
     },
-    orderBy: [{ data: "asc" }, { id: "asc" }],
+    orderBy: [{ data: "asc" }, { seq: "asc" }],
   },
   movimentosEstoque: { include: { revertidoPor: { select: { id: true } }, produto: { select: { id: true, nome: true, unidade: true } } } },
   documentos: { select: documentoPublico },
-  corrigeOperacao: { select: { id: true, descricao: true } },
-  correcoes: { select: { id: true, descricao: true, status: true } },
+  corrigeOperacao: { select: { id: true, numero: true, descricao: true } },
+  correcoes: { select: { id: true, numero: true, descricao: true, status: true } },
 });
 
 function valoresCompromisso<T extends { status: string; valorOriginal: Prisma.Decimal; liquidacoes: { valor: Prisma.Decimal; transacao: { status: string } }[] }>(compromisso: T) {
@@ -472,7 +473,7 @@ function resumoCancelamento(operacao: Prisma.OperacaoGetPayload<{ include: typeo
   const estoque = operacao.movimentosEstoque
     .filter((movimento) => movimento.status === "CONFIRMADO" && !movimento.reversaoDeId && !movimento.revertidoPor)
     .map((movimento) => ({ id: movimento.id, produtoId: movimento.produtoId, produtoNome: movimento.produto.nome, quantidade: movimento.quantidade, unidade: rotuloUnidade(movimento.produto.unidade), tipo: movimento.tipo }));
-  const impactosPorConta = new Map<number, { conta: { id: number; nome: string }; entrada: Prisma.Decimal; saida: Prisma.Decimal }>();
+  const impactosPorConta = new Map<string, { conta: { id: string; nome: string }; entrada: Prisma.Decimal; saida: Prisma.Decimal }>();
   for (const transacao of transacoes) for (const movimento of transacao.movimentos) {
     const atual = impactosPorConta.get(movimento.contaId) ?? { conta: movimento.conta, entrada: new Prisma.Decimal(0), saida: new Prisma.Decimal(0) };
     if (movimento.direcaoInversa === "ENTRADA") atual.entrada = atual.entrada.plus(movimento.valor); else atual.saida = atual.saida.plus(movimento.valor);
@@ -487,7 +488,7 @@ function resumoCancelamento(operacao: Prisma.OperacaoGetPayload<{ include: typeo
   };
 }
 
-export async function obterOperacao(id: number, propriedadeId?: number | null) {
+export async function obterOperacao(id: string, propriedadeId?: number | null) {
   const operacao = await prisma.operacao.findFirst({ where: { id, ...(propriedadeId ? { propriedadeId } : {}) }, include: includeOperacao });
   if (!operacao) throw new FinanceiroError("NAO_ENCONTRADO", "Operação não encontrada");
   return { ...operacao, compromissos: operacao.compromissos.map(valoresCompromisso), resumoCancelamento: resumoCancelamento(operacao) };
@@ -497,14 +498,14 @@ export async function listarOperacoes(propriedadeId?: number | null, inicio?: Da
   return prisma.operacao.findMany({
     where: { ...(propriedadeId ? { propriedadeId } : {}), ...(inicio || fim ? { data: { ...(inicio ? { gte: inicio } : {}), ...(fim ? { lte: fim } : {}) } } : {}) },
     include: includeOperacao,
-    orderBy: [{ data: "desc" }, { id: "desc" }],
+    orderBy: [{ data: "desc" }, { numero: "desc" }],
   });
 }
 
 export async function listarCompromissos(propriedadeId?: number | null, periodo?: { inicio: Date; fim: Date }) {
   const compromissos = await prisma.compromissoFinanceiro.findMany({
     where: { ...(propriedadeId ? { operacao: { propriedadeId } } : {}), ...(periodo ? { dataVencimento: { gte: periodo.inicio, lte: periodo.fim } } : {}) }, include: { parceiro: true, operacao: true, liquidacoes: { include: { transacao: true } } },
-    orderBy: [{ dataVencimento: "asc" }, { id: "asc" }],
+    orderBy: [{ dataVencimento: "asc" }, { seq: "asc" }],
   });
   return compromissos.map((compromisso) => ({
     ...valoresCompromisso(compromisso),

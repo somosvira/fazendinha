@@ -45,7 +45,7 @@ export async function criarParceiro(input: z.infer<typeof parceiroSchema> & { us
   } catch (e) { traduzirConflitoUnico(e, CONFLITOS); }
 }
 
-export async function atualizarParceiro(id: number, input: z.infer<typeof patchParceiroSchema>, usuarioId?: number | null) {
+export async function atualizarParceiro(id: string, input: z.infer<typeof patchParceiroSchema>, usuarioId?: number | null) {
   try {
     return await prisma.$transaction(async (tx) => {
       const encontrado = await tx.parceiro.findUnique({

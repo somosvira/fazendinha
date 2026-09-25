@@ -37,12 +37,12 @@ export function mapearTalhao(row: {
 }
 
 export function mapearCategoria(row: {
-  id: number;
+  id: string;
   nome: string;
 }): ResultadoBusca {
   return {
     tipo: "categoria",
-    entidadeId: String(row.id),
+    entidadeId: row.id,
     label: row.nome,
     sublabel: "Categoria financeira",
     tab: "plano",
@@ -51,13 +51,13 @@ export function mapearCategoria(row: {
 }
 
 export function mapearFornecedor(row: {
-  id: number;
+  id: string;
   nome: string;
   tipo: string;
 }): ResultadoBusca {
   return {
     tipo: "fornecedor",
-    entidadeId: String(row.id),
+    entidadeId: row.id,
     label: row.nome,
     sublabel: row.tipo,
     tab: "cadastros",

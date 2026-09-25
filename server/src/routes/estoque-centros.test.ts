@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { uid } from "../lib/uid.fixture.js";
 
 const mocks = vi.hoisted(() => ({
   centroCustoFindMany: vi.fn(),
@@ -13,13 +14,13 @@ import { estoqueCentrosRouter } from "./estoque-centros.js";
 describe("GET /estoque/centros-atividade", () => {
   it("responde o id de café resolvido num único findMany", async () => {
     mocks.centroCustoFindMany.mockResolvedValue([
-      { id: 5, nome: "Plantio Café" },
+      { id: uid(5), nome: "Plantio Café" },
     ]);
 
     const res = await estoqueCentrosRouter.request("/estoque/centros-atividade");
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ cafe: 5 });
+    expect(await res.json()).toEqual({ cafe: uid(5) });
     expect(mocks.centroCustoFindMany).toHaveBeenCalledTimes(1);
   });
 

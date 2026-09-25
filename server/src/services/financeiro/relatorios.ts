@@ -6,6 +6,7 @@
  */
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../db.js";
+import { SEM_VINCULO } from "../../lib/ids.js";
 import { getStorage } from "../../lib/storage.js";
 import { gerarRelatorioGerencial } from "../relatorio-gerencial.js";
 import { FinanceiroError } from "./regras.js";
@@ -35,7 +36,7 @@ export async function listarRelatorios(propriedadeId: number | null) {
   return relatorios.map(mapear);
 }
 
-export async function obterRelatorio(id: number, propriedadeId: number | null) {
+export async function obterRelatorio(id: string, propriedadeId: number | null) {
   const relatorio = await prisma.relatorioFinanceiro.findFirst({
     where: { id, ...(propriedadeId != null ? { propriedadeId } : {}) },
     select: { ...camposLista, snapshot: true },
@@ -73,9 +74,10 @@ export const descartarRascunho = (propriedadeId: number, usuarioId: number) =>
 
 /** Cadastros inativos continuam válidos: o relatório pode olhar para o passado. */
 async function carregarCadastros(configuracao: ConfiguracaoRelatorioFinanceiro) {
-  const categoriaIds = configuracao.categoriaIds.filter((id) => id > 0);
-  const centroCustoIds = configuracao.centroCustoIds.filter((id) => id > 0);
-  const parceiroIds = configuracao.parceiroIds.filter((id) => id > 0);
+  const semSentinela = (id: string | typeof SEM_VINCULO): id is string => id !== SEM_VINCULO;
+  const categoriaIds = configuracao.categoriaIds.filter(semSentinela);
+  const centroCustoIds = configuracao.centroCustoIds.filter(semSentinela);
+  const parceiroIds = configuracao.parceiroIds.filter(semSentinela);
   const [categorias, centrosCusto, parceiros] = await Promise.all([
     categoriaIds.length ? prisma.categoria.findMany({ where: { id: { in: categoriaIds } }, select: { id: true, nome: true } }) : [],
     centroCustoIds.length ? prisma.centroCusto.findMany({ where: { id: { in: centroCustoIds } }, select: { id: true, nome: true } }) : [],
@@ -102,8 +104,8 @@ export async function gerarRelatorio(propriedadeId: number, usuario: { id: numbe
           tipo: { in: configuracao.tipos.length ? configuracao.tipos : [...TIPOS_RELATORIO] },
           ...(configuracao.status.length ? { status: { in: configuracao.status } } : {}),
         },
-        include: { itens: { orderBy: { id: "asc" } }, centroCusto: { select: { nome: true } }, parceiro: { select: { nome: true } } },
-        orderBy: [{ data: "asc" }, { id: "asc" }],
+        include: { itens: { orderBy: { ordem: "asc" } }, centroCusto: { select: { nome: true } }, parceiro: { select: { nome: true } } },
+        orderBy: [{ data: "asc" }, { numero: "asc" }],
       }),
       prisma.centroCusto.findMany({ select: { id: true, nome: true } }),
     ]);
@@ -133,7 +135,7 @@ export async function gerarRelatorio(propriedadeId: number, usuario: { id: numbe
   }
 }
 
-export async function baixarRelatorio(id: number, propriedadeId: number | null) {
+export async function baixarRelatorio(id: string, propriedadeId: number | null) {
   const relatorio = await prisma.relatorioFinanceiro.findFirst({ where: { id, status: "CONCLUIDO", ...(propriedadeId != null ? { propriedadeId } : {}) } });
   if (!relatorio?.storageKey) throw new FinanceiroError("NAO_ENCONTRADO", "Relatório não encontrado");
   const nome = `${relatorio.nome.replace(/[\\/:*?"<>|\u0000-\u001f]+/g, " ").trim() || "relatorio"}.pdf`;

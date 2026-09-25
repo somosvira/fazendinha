@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { uid } from "../../lib/uid.fixture.js";
 
 const mocks = vi.hoisted(() => ({
   categoriasFindMany: vi.fn(), centrosFindMany: vi.fn(),
@@ -22,10 +23,10 @@ describe("cadastros gerenciais", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.categoriasFindMany.mockResolvedValue([]); mocks.centrosFindMany.mockResolvedValue([]);
-    mocks.categoriaFindUnique.mockResolvedValue({ id: 2, nome: "Insumos", ativo: true, ordem: 0 });
-    mocks.centroFindUnique.mockResolvedValue({ id: 3, nome: "Leite", ativo: true, ordem: 0 });
-    mocks.categoriaCreate.mockResolvedValue({ id: 2, nome: "Insumos", ativo: true, ordem: 0 });
-    mocks.centroUpdate.mockImplementation(async ({ data }) => ({ id: 3, nome: "Leite", ordem: 0, ...data }));
+    mocks.categoriaFindUnique.mockResolvedValue({ id: uid(2), nome: "Insumos", ativo: true, ordem: 0 });
+    mocks.centroFindUnique.mockResolvedValue({ id: uid(3), nome: "Leite", ativo: true, ordem: 0 });
+    mocks.categoriaCreate.mockResolvedValue({ id: uid(2), nome: "Insumos", ativo: true, ordem: 0 });
+    mocks.centroUpdate.mockImplementation(async ({ data }) => ({ id: uid(3), nome: "Leite", ordem: 0, ...data }));
   });
 
   it("lista ativos antes dos inativos com contadores de uso", async () => {
@@ -41,8 +42,8 @@ describe("cadastros gerenciais", () => {
   });
 
   it("preserva o cadastro e audita ao desativar centro de custo", async () => {
-    await atualizarCentroCusto(3, { ativo: false }, 9);
-    expect(mocks.centroUpdate).toHaveBeenCalledWith({ where: { id: 3 }, data: { ativo: false } });
-    expect(mocks.auditoria).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ entidade: "CentroCusto", entidadeId: "3", acao: "ATUALIZADO", usuarioId: 9 }) }));
+    await atualizarCentroCusto(uid(3), { ativo: false }, 9);
+    expect(mocks.centroUpdate).toHaveBeenCalledWith({ where: { id: uid(3) }, data: { ativo: false } });
+    expect(mocks.auditoria).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ entidade: "CentroCusto", entidadeId: uid(3), acao: "ATUALIZADO", usuarioId: 9 }) }));
   });
 });

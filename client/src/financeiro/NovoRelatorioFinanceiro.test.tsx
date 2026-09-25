@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { NovoRelatorioFinanceiro } from "./NovoRelatorioFinanceiro";
 import { descartarRascunhoRelatorioFinanceiro, gerarRelatorioFinanceiro, salvarPdfRelatorioFinanceiro, salvarRascunhoRelatorioFinanceiro, type ConfiguracoesFinanceiras, type RascunhoRelatorioFinanceiro, type RelatorioFinanceiro } from "./novo-api";
+import { uid } from "../lib/uid.fixture";
 
 vi.mock("../api/propriedades", () => ({ usePropriedades: () => ({ data: [], loading: false, recarregar: vi.fn() }) }));
 vi.mock("./novo-api", () => ({
@@ -18,12 +19,12 @@ afterEach(() => { cleanup(); vi.clearAllMocks(); vi.unstubAllGlobals(); });
 
 const cadastros: ConfiguracoesFinanceiras = {
   contas: [], parceiros: [], produtos: [],
-  categorias: [{ id: 3, nome: "Nutrição", ativo: true, ordem: 0, classificacao: "CUSTEIO", usoAgricola: false }, { id: 4, nome: "Silagem antiga", ativo: false, ordem: 1, classificacao: null, usoAgricola: false }],
-  centrosCusto: [{ id: 1, nome: "Pecuária", ativo: true, ordem: 0 }],
+  categorias: [{ id: uid(3), nome: "Nutrição", ativo: true, ordem: 0, classificacao: "CUSTEIO", usoAgricola: false }, { id: uid(4), nome: "Silagem antiga", ativo: false, ordem: 1, classificacao: null, usoAgricola: false }],
+  centrosCusto: [{ id: uid(1), nome: "Pecuária", ativo: true, ordem: 0 }],
 };
 const configuracao = { nome: "Pecuária — agosto", dataInicio: "2026-08-01", dataFim: "2026-08-31", regime: "ambos" as const, tipos: [], status: ["CONFIRMADA"], centroCustoIds: [], categoriaIds: [], classificacoes: [] };
-const rascunho: RascunhoRelatorioFinanceiro = { id: 1, versao: 3, updatedAt: "2026-09-14T10:00:00Z", configuracao };
-const relatorio = { id: 9, nome: configuracao.nome, status: "CONCLUIDO" } as RelatorioFinanceiro;
+const rascunho: RascunhoRelatorioFinanceiro = { id: uid(1), versao: 3, updatedAt: "2026-09-14T10:00:00Z", configuracao };
+const relatorio = { id: uid(9), nome: configuracao.nome, status: "CONCLUIDO" } as unknown as RelatorioFinanceiro;
 
 function renderizar(inicial: RascunhoRelatorioFinanceiro | null = rascunho) {
   const onGerado = vi.fn();
@@ -151,7 +152,7 @@ describe("novo relatório financeiro", () => {
     selecionar("Categoria dos itens", "Nutrição");
     fireEvent.click(screen.getByRole("button", { name: "Gerar relatório" }));
     await waitFor(() => expect(onGerado).toHaveBeenCalledWith(relatorio, null));
-    expect(gerarRelatorioFinanceiro).toHaveBeenCalledWith(expect.objectContaining({ nome: "Pecuária — agosto", categoriaIds: [3], status: ["CONFIRMADA"] }), 4);
+    expect(gerarRelatorioFinanceiro).toHaveBeenCalledWith(expect.objectContaining({ nome: "Pecuária — agosto", categoriaIds: [uid(3)], status: ["CONFIRMADA"] }), 4);
     expect(salvarPdfRelatorioFinanceiro).toHaveBeenCalledWith(relatorio);
   });
 

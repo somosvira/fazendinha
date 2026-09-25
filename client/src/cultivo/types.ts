@@ -73,7 +73,7 @@ export interface LancamentoCusto {
   horasMaquina: number | null;
   numMaquinas: number | null;
   numCaminhoes: number | null;
-  operacaoFinanceiraId: number | null;
+  operacaoFinanceiraId: string | null;
   observacao: string | null;
 }
 

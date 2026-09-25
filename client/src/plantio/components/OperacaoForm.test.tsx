@@ -4,6 +4,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { createElement } from "react";
 
+// Module-level UUID constants for use in tests
+const prod1 = "00000000-0000-0001-8000-000000000001";
+const prod2 = "00000000-0000-0002-8000-000000000002";
+const prod3 = "00000000-0000-0003-8000-000000000003";
+const centro7 = "00000000-0000-0007-8000-000000000007";
+const centro8 = "00000000-0000-0008-8000-000000000008";
+const cat10 = "00000000-0000-000a-8000-00000000000a";
+const cat11 = "00000000-0000-000b-8000-00000000000b";
+
 const apiMocks = vi.hoisted(() => ({
   registrarOperacao: vi.fn(),
 }));
@@ -15,25 +24,25 @@ const rebanhoApiMocks = vi.hoisted(() => ({
   listarCentrosCusto: vi.fn(),
   produtos: [
     {
-      id: 1, nome: "Calcário dolomítico", unidade: "T",
+      id: "00000000-0000-0001-8000-000000000001", nome: "Calcário dolomítico", unidade: "T",
       minimoEstoque: null, ativo: true,
-      categoriaId: 10, categoriaNome: "Fertilizantes e corretivos", classificacao: null,
-      categoria: { id: 10, nome: "Fertilizantes e corretivos", usoAgricola: true },
-      centroCustoIds: [7], centrosCusto: [{ id: 7, nome: "Talhões — insumos", ativo: true }],
+      categoriaId: "00000000-0000-000a-8000-00000000000a", categoriaNome: "Fertilizantes e corretivos", classificacao: null,
+      categoria: { id: "00000000-0000-000a-8000-00000000000a", nome: "Fertilizantes e corretivos", usoAgricola: true },
+      centroCustoIds: ["00000000-0000-0007-8000-000000000007"], centrosCusto: [{ id: "00000000-0000-0007-8000-000000000007", nome: "Talhões — insumos", ativo: true }],
     },
     {
-      id: 2, nome: "Produto sem centro único", unidade: "KG",
+      id: "00000000-0000-0002-8000-000000000002", nome: "Produto sem centro único", unidade: "KG",
       minimoEstoque: null, ativo: true,
-      categoriaId: 10, categoriaNome: "Fertilizantes e corretivos", classificacao: null,
-      categoria: { id: 10, nome: "Fertilizantes e corretivos", usoAgricola: true },
-      centroCustoIds: [7, 8], centrosCusto: [{ id: 7, nome: "Talhões — insumos", ativo: true }, { id: 8, nome: "Outro centro", ativo: true }],
+      categoriaId: "00000000-0000-000a-8000-00000000000a", categoriaNome: "Fertilizantes e corretivos", classificacao: null,
+      categoria: { id: "00000000-0000-000a-8000-00000000000a", nome: "Fertilizantes e corretivos", usoAgricola: true },
+      centroCustoIds: ["00000000-0000-0007-8000-000000000007", "00000000-0000-0008-8000-000000000008"], centrosCusto: [{ id: "00000000-0000-0007-8000-000000000007", nome: "Talhões — insumos", ativo: true }, { id: "00000000-0000-0008-8000-000000000008", nome: "Outro centro", ativo: true }],
     },
     {
-      id: 3, nome: "Herbicida líquido", unidade: "L",
+      id: "00000000-0000-0003-8000-000000000003", nome: "Herbicida líquido", unidade: "L",
       minimoEstoque: null, ativo: true,
-      categoriaId: 11, categoriaNome: "Defensivos", classificacao: null,
-      categoria: { id: 11, nome: "Defensivos", usoAgricola: true },
-      centroCustoIds: [7], centrosCusto: [{ id: 7, nome: "Talhões — insumos", ativo: true }],
+      categoriaId: "00000000-0000-000b-8000-00000000000b", categoriaNome: "Defensivos", classificacao: null,
+      categoria: { id: "00000000-0000-000b-8000-00000000000b", nome: "Defensivos", usoAgricola: true },
+      centroCustoIds: ["00000000-0000-0007-8000-000000000007"], centrosCusto: [{ id: "00000000-0000-0007-8000-000000000007", nome: "Talhões — insumos", ativo: true }],
     },
   ],
 }));
@@ -61,8 +70,8 @@ const base = { talhaoId: "1", talhao, dominioFixo: "nutricao" as const, onFechar
 beforeEach(() => {
   vi.clearAllMocks();
   rebanhoApiMocks.listarCentrosCusto.mockResolvedValue([
-    { id: 7, nome: "Talhões — insumos" },
-    { id: 8, nome: "Outro centro" },
+    { id: centro7, nome: "Talhões — insumos" },
+    { id: centro8, nome: "Outro centro" },
   ]);
 });
 
@@ -80,18 +89,18 @@ describe("OperacaoForm — baixa de estoque", () => {
     fireEvent.change(screen.getByLabelText("Tipo de operação"), { target: { value: "CALAGEM" } });
 
     await screen.findByLabelText("Produto do estoque");
-    selectByLabel("Produto do estoque", "1");
+    selectByLabel("Produto do estoque", prod1);
 
     await waitFor(() => expect((screen.getByPlaceholderText("Ex.: Calcário dolomítico PRNT 85%") as HTMLInputElement).value).toBe("Calcário dolomítico"));
     const centro = screen.getByLabelText("Centro de custo") as HTMLSelectElement;
-    await waitFor(() => expect(centro.value).toBe("7"));
+    await waitFor(() => expect(centro.value).toBe(centro7));
   });
 
   it("mostra a baixa estimada como dose × área (mesma unidade do produto) e permite sobrescrever com quantidade total", async () => {
     render(createElement(OperacaoForm, base));
     fireEvent.change(screen.getByLabelText("Tipo de operação"), { target: { value: "CALAGEM" } });
 
-    selectByLabel("Produto do estoque", "1"); // Calcário dolomítico, unidade T
+    selectByLabel("Produto do estoque", prod1); // Calcário dolomítico, unidade T
     fireEvent.change(screen.getByPlaceholderText("Ex.: 2,5"), { target: { value: "2" } });
     selectByLabel("Unidade da dose", "T");
     // checkbox "por hectare" já vem marcado por padrão
@@ -104,9 +113,9 @@ describe("OperacaoForm — baixa de estoque", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
     await waitFor(() => expect(apiMocks.registrarOperacao).toHaveBeenCalledWith("1", expect.objectContaining({
-      produtoId: 1,
+      produtoId: prod1,
       quantidadeTotal: 3,
-      centroCustoId: 7,
+      centroCustoId: centro7,
     })));
   });
 
@@ -134,7 +143,7 @@ describe("OperacaoForm — baixa de estoque", () => {
     render(createElement(OperacaoForm, base));
     fireEvent.change(screen.getByLabelText("Tipo de operação"), { target: { value: "CALAGEM" } });
 
-    selectByLabel("Produto do estoque", "3"); // Herbicida líquido, unidade L
+    selectByLabel("Produto do estoque", prod3); // Herbicida líquido, unidade L
     fireEvent.change(screen.getByPlaceholderText("Ex.: 2,5"), { target: { value: "200" } });
     selectByLabel("Unidade da dose", "ML");
     // checkbox "por hectare" já vem marcado por padrão (área do talhão = 5 ha)
@@ -146,7 +155,7 @@ describe("OperacaoForm — baixa de estoque", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
     await waitFor(() => expect(apiMocks.registrarOperacao).toHaveBeenCalledWith("1", expect.objectContaining({
-      produtoId: 3,
+      produtoId: prod3,
       doseValor: 200,
       doseUnidadeMedida: "ML",
       dosePorHectare: true,
@@ -157,7 +166,7 @@ describe("OperacaoForm — baixa de estoque", () => {
     render(createElement(OperacaoForm, base));
     fireEvent.change(screen.getByLabelText("Tipo de operação"), { target: { value: "CALAGEM" } });
 
-    selectByLabel("Produto do estoque", "3"); // Herbicida líquido, unidade L
+    selectByLabel("Produto do estoque", prod3); // Herbicida líquido, unidade L
     await waitFor(() => expect((screen.getByLabelText("Unidade da dose") as HTMLSelectElement).value).toBe("L"));
   });
 
@@ -166,8 +175,8 @@ describe("OperacaoForm — baixa de estoque", () => {
     fireEvent.change(screen.getByLabelText("Tipo de operação"), { target: { value: "CALAGEM" } });
 
     selectByLabel("Unidade da dose", "ML"); // usuário mexe na unidade antes de escolher o produto
-    selectByLabel("Produto do estoque", "1"); // Calcário dolomítico, unidade T
-    await waitFor(() => expect((screen.getByLabelText("Produto do estoque") as HTMLSelectElement).value).toBe("1"));
+    selectByLabel("Produto do estoque", prod1); // Calcário dolomítico, unidade T
+    await waitFor(() => expect((screen.getByLabelText("Produto do estoque") as HTMLSelectElement).value).toBe(prod1));
     expect((screen.getByLabelText("Unidade da dose") as HTMLSelectElement).value).toBe("ML");
   });
 
@@ -175,7 +184,7 @@ describe("OperacaoForm — baixa de estoque", () => {
     render(createElement(OperacaoForm, base));
     fireEvent.change(screen.getByLabelText("Tipo de operação"), { target: { value: "CALAGEM" } });
 
-    selectByLabel("Produto do estoque", "2"); // Produto sem centro único, unidade KG
+    selectByLabel("Produto do estoque", prod2); // Produto sem centro único, unidade KG
     fireEvent.change(screen.getByPlaceholderText("Ex.: 2,5"), { target: { value: "200" } });
     selectByLabel("Unidade da dose", "ML");
 
