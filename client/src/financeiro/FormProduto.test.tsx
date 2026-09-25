@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { FormProduto } from "./FormProduto";
+import { uid } from "../lib/uid.fixture";
 
 const mocks = vi.hoisted(() => ({
   listarFornecedores: vi.fn(),
@@ -26,13 +27,13 @@ beforeEach(() => {
 });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
-const categorias = [{ id: 11, nome: "Insumos", classificacao: "CUSTEIO" as const, ativo: true, ordem: 0, usoAgricola: true }];
-const centros = [{ id: 20, nome: "Atividade leiteira", ativo: true, ordem: 0 }];
-const fornecedores = [{ id: 7, nome: "Cooperativa", documento: null, tipo: "FORNECEDOR" as const, telefone: null, email: null, ativo: true, referencias: 0 }];
+const categorias = [{ id: uid(11), nome: "Insumos", classificacao: "CUSTEIO" as const, ativo: true, ordem: 0, usoAgricola: true }];
+const centros = [{ id: uid(20), nome: "Atividade leiteira", ativo: true, ordem: 0 }];
+const fornecedores = [{ id: uid(7), nome: "Cooperativa", documento: null, tipo: "FORNECEDOR" as const, telefone: null, email: null, ativo: true, referencias: 0 }];
 const produtoCriado = {
-  id: 99, nome: "Sal mineral", unidade: "KG",
-  categoriaId: 11, categoriaNome: "Insumos", classificacao: "CUSTEIO" as const, ativo: true,
-  categoria: { id: 11, nome: "Insumos", usoAgricola: true },
+  id: uid(99), nome: "Sal mineral", unidade: "KG",
+  categoriaId: uid(11), categoriaNome: "Insumos", classificacao: "CUSTEIO" as const, ativo: true,
+  categoria: { id: uid(11), nome: "Insumos", usoAgricola: true },
   centroCustoIds: [], centrosCusto: [], fornecedores: [],
 };
 
@@ -62,11 +63,11 @@ describe("FormProduto sem props", () => {
 
     fireEvent.change(screen.getByLabelText("Nome do produto"), { target: { value: "Sal mineral" } });
     fireEvent.change(screen.getByLabelText("Unidade"), { target: { value: "KG" } });
-    fireEvent.change(screen.getByLabelText(/^Categoria/), { target: { value: "11" } });
+    fireEvent.change(screen.getByLabelText(/^Categoria/), { target: { value: uid(11) } });
     await screen.findByText("Uso agrícola");
     fireEvent.click(screen.getByRole("button", { name: "Criar produto" }));
 
-    await waitFor(() => expect(mocks.criarProduto).toHaveBeenCalledWith(expect.objectContaining({ nome: "Sal mineral", unidade: "KG", categoriaId: 11, fornecedorIds: [7], centroCustoIds: [20] })));
+    await waitFor(() => expect(mocks.criarProduto).toHaveBeenCalledWith(expect.objectContaining({ nome: "Sal mineral", unidade: "KG", categoriaId: uid(11), fornecedorIds: [uid(7)], centroCustoIds: [uid(20)] })));
     expect(mocks.criarProduto.mock.calls[0][0]).not.toHaveProperty("estocavel");
     expect(screen.queryByLabelText(/Controla estoque/)).toBeNull();
     await waitFor(() => expect(onSalvo).toHaveBeenCalledWith(produtoCriado));
@@ -102,9 +103,9 @@ describe("FormProduto sem props", () => {
 describe("FormProduto — multiselects de centros e fornecedores", () => {
   it("mostra vínculos inativos como chip rotulado e sem opção nova inativa; enviar mantém os ids", async () => {
     vi.clearAllMocks();
-    const centrosMistos = [...centros, { id: 21, nome: "Café antigo", ativo: false, ordem: 1 }, { id: 22, nome: "Descontinuado", ativo: false, ordem: 2 }];
-    const parceiros = [...fornecedores, { ...fornecedores[0], id: 8, nome: "Ex-fornecedor", ativo: false }];
-    const produto = { ...produtoCriado, unidade: "KG" as const, centroCustoIds: [21], centrosCusto: [{ id: 21, nome: "Café antigo", ativo: false }], fornecedores: [{ id: 8, nome: "Ex-fornecedor", ativo: false }] };
+    const centrosMistos = [...centros, { id: uid(21), nome: "Café antigo", ativo: false, ordem: 1 }, { id: uid(22), nome: "Descontinuado", ativo: false, ordem: 2 }];
+    const parceiros = [...fornecedores, { ...fornecedores[0], id: uid(8), nome: "Ex-fornecedor", ativo: false }];
+    const produto = { ...produtoCriado, unidade: "KG" as const, centroCustoIds: [uid(21)], centrosCusto: [{ id: uid(21), nome: "Café antigo", ativo: false }], fornecedores: [{ id: uid(8), nome: "Ex-fornecedor", ativo: false }] };
     mocks.editarProduto.mockResolvedValue(produto);
     render(<FormProduto produto={produto} parceiros={parceiros} categorias={categorias} centros={centrosMistos} onSalvo={vi.fn()} onFechar={vi.fn()} />);
 
@@ -115,9 +116,9 @@ describe("FormProduto — multiselects de centros e fornecedores", () => {
     expect(screen.queryByRole("option", { name: "Descontinuado" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Centros de custo" }));
 
-    fireEvent.change(screen.getByLabelText(/^Categoria/), { target: { value: "11" } });
+    fireEvent.change(screen.getByLabelText(/^Categoria/), { target: { value: uid(11) } });
     fireEvent.click(screen.getByRole("button", { name: "Salvar produto" }));
-    await waitFor(() => expect(mocks.editarProduto).toHaveBeenCalledWith(99, expect.objectContaining({ centroCustoIds: [21], fornecedorIds: [8] })));
+    await waitFor(() => expect(mocks.editarProduto).toHaveBeenCalledWith(uid(99), expect.objectContaining({ centroCustoIds: [uid(21)], fornecedorIds: [uid(8)] })));
   });
 
   it("mostra o erro do servidor por campo junto ao multiselect", async () => {
@@ -126,7 +127,7 @@ describe("FormProduto — multiselects de centros e fornecedores", () => {
     mocks.criarProduto.mockRejectedValue(new ApiError("Fornecedor inválido", 400, "VALIDACAO", "fornecedorIds"));
     render(<FormProduto produto={null} parceiros={fornecedores} categorias={categorias} centros={centros} onSalvo={vi.fn()} onFechar={vi.fn()} />);
     fireEvent.change(screen.getByLabelText("Nome do produto"), { target: { value: "Sal mineral" } });
-    fireEvent.change(screen.getByLabelText(/^Categoria/), { target: { value: "11" } });
+    fireEvent.change(screen.getByLabelText(/^Categoria/), { target: { value: uid(11) } });
     fireEvent.click(screen.getByRole("button", { name: "Criar produto" }));
     const alerta = await screen.findByText("Fornecedor inválido");
     expect(alerta.getAttribute("role")).toBe("alert");

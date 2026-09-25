@@ -10,9 +10,9 @@ export interface ResultadoAtividade { atividade: Atividade; receita: number; cus
 export interface ResultadoPeriodo { receita: number; custeio: number; investimento: number; resultado: number; porAtividade: ResultadoAtividade[] }
 export interface CategoriaTotal { categoria: string; total: number; pct: number }
 export interface CentroTotal { centro: string; total: number; pct: number }
-export interface ItemCompromisso { id: number; descricao: string | null; fornecedor: string | null; categoria: string; valor: number; dataVencimento: string; diasAtraso: number; vencido: boolean }
+export interface ItemCompromisso { id: string; descricao: string | null; fornecedor: string | null; categoria: string; valor: number; dataVencimento: string; diasAtraso: number; vencido: boolean }
 export interface BlocoCompromisso { total: number; vencido: number; aVencer: number; quantidade: number; itens: ItemCompromisso[] }
-export interface SaldoConta { id: number; nome: string; banco: string | null; saldoInicial: number; entradas: number; saidas: number; saldoFinal: number }
+export interface SaldoConta { id: string; nome: string; banco: string | null; saldoInicial: number; entradas: number; saidas: number; saldoFinal: number }
 export interface OperacaoPorTipo { tipo: TipoOperacao; quantidade: number; valor: number; entraNoTotal: boolean }
 
 export interface RelatorioGerencialDTO {

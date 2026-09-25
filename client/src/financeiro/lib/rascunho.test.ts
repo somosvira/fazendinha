@@ -2,8 +2,9 @@ import { describe, expect, it } from "vitest";
 import type { RascunhoOperacao } from "../novo-api";
 import { brl } from "../financeiro-ui";
 import { quandoSalvo, resumoRascunho } from "./rascunho";
+import { uid } from "../../lib/uid.fixture";
 
-const rascunho = (dados: RascunhoOperacao["dados"]): RascunhoOperacao => ({ id: 1, versao: 1, updatedAt: "2026-09-14T12:00:00Z", documentos: [], dados });
+const rascunho = (dados: RascunhoOperacao["dados"]): RascunhoOperacao => ({ id: uid(1), versao: 1, updatedAt: "2026-09-14T12:00:00Z", documentos: [], dados });
 
 describe("resumoRascunho", () => {
   it("usa a descrição, o tipo e o valor da operação", () => {

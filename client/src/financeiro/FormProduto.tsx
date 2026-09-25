@@ -55,19 +55,19 @@ export function FormProduto({ produto, parceiros: parceirosProp, categorias: cat
   const [nome, setNome] = useState(produto?.nome ?? "");
   const [unidade, setUnidade] = useState<UnidadeMedida>(produto?.unidade ?? "UN");
   const [minimo, setMinimo] = useState(produto?.minimoEstoque ?? "");
-  const [categoriaId, setCategoriaId] = useState(produto?.categoriaId ? String(produto.categoriaId) : "");
-  const [centroCustoIds, setCentroCustoIds] = useState<number[]>(() => produto?.centroCustoIds ?? []);
-  const [fornecedorIds, setFornecedorIds] = useState<number[]>(() => produto?.fornecedores?.map((f) => f.id) ?? []);
+  const [categoriaId, setCategoriaId] = useState(produto?.categoriaId ? produto.categoriaId : "");
+  const [centroCustoIds, setCentroCustoIds] = useState<string[]>(() => produto?.centroCustoIds ?? []);
+  const [fornecedorIds, setFornecedorIds] = useState<string[]>(() => produto?.fornecedores?.map((f) => f.id) ?? []);
   const [erros, setErros] = useState<Record<string, string>>({});
   const [erroGeral, setErroGeral] = useState("");
   const [salvando, setSalvando] = useState(false);
   const emCurso = useRef(false);
   // Só ativos entram como opção nova; os já vinculados continuam visíveis (desabilitados
   // e rotulados) para o usuário enxergar e poder remover o vínculo.
-  const opcoesFornecedores: MultiSelectOption<number>[] = parceiros
+  const opcoesFornecedores: MultiSelectOption<string>[] = parceiros
     .filter((p) => papeisDoParceiro(p).includes("FORNECEDOR") && (p.ativo || fornecedorIds.includes(p.id)))
     .map((p) => ({ value: p.id, label: p.ativo ? p.nome : `${p.nome} (inativo)`, disabled: !p.ativo }));
-  const opcoesCentros: MultiSelectOption<number>[] = centros
+  const opcoesCentros: MultiSelectOption<string>[] = centros
     .filter((c) => c.ativo !== false || centroCustoIds.includes(c.id))
     .map((c) => ({ value: c.id, label: c.ativo === false ? `${c.nome} (inativo)` : c.nome, disabled: c.ativo === false }));
 
@@ -80,7 +80,7 @@ export function FormProduto({ produto, parceiros: parceirosProp, categorias: cat
     setErros(novosErros); if (Object.keys(novosErros).length || emCurso.current) return;
     const dados: ProdutoInput = {
       nome: nome.trim(), unidade,
-      minimoEstoque: minimo === "" ? null : Number(minimo), categoriaId: Number(categoriaId),
+      minimoEstoque: minimo === "" ? null : Number(minimo), categoriaId,
       centroCustoIds, fornecedorIds,
     };
     emCurso.current = true; setSalvando(true); setErroGeral("");
@@ -108,7 +108,7 @@ export function FormProduto({ produto, parceiros: parceirosProp, categorias: cat
       </div>
       <CampoFormulario id="produto-categoria" rotulo="Categoria" obrigatorio ajuda="O uso do produto (agrícola) vem da categoria." erro={erros.categoriaId}>{(p) => <select {...p} value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)} className={classeInput}><option value="">Selecione</option>{categorias.filter((c) => c.ativo || c.id === produto?.categoriaId).map((c) => <option key={c.id} value={c.id}>{c.nome}{c.ativo ? "" : " (inativa)"}</option>)}</select>}</CampoFormulario>
       {(() => {
-        const categoriaSelecionada = categorias.find((c) => String(c.id) === categoriaId);
+        const categoriaSelecionada = categorias.find((c) => c.id === categoriaId);
         const chips = chipsUso(categoriaSelecionada);
         if (!categoriaId) return null;
         return (

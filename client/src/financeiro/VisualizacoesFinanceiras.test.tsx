@@ -6,6 +6,7 @@ import { ContasFinanceiras } from "./ContasFinanceiras";
 import { CompromissosFinanceiros } from "./CompromissosFinanceiros";
 import { VisaoGeralFinanceira } from "./VisaoGeralFinanceira";
 import { liquidarCompromisso, listarCompromissos, obterConfiguracoesFinanceiras, obterDashboardFinanceiro, obterExtratoConta, obterExtratoGeral, type Compromisso, type Conta, type MovimentoGeral } from "./novo-api";
+import { uid } from "../lib/uid.fixture";
 
 vi.mock("./novo-api", async importOriginal => ({
   ...(await importOriginal<typeof import("./novo-api")>()),
@@ -14,13 +15,13 @@ vi.mock("./novo-api", async importOriginal => ({
 }));
 
 const contas: Conta[] = [
-  { id: 1, nome: "Banco", tipo: "BANCO", instituicao: "Sicoob", identificacao: null, saldoAbertura: "0", dataSaldoAbertura: "2026-09-01", saldoAtual: "120", incluirNoSaldoGeral: true, ativo: true, temMovimentos: true },
-  { id: 2, nome: "Caixa", tipo: "CAIXA", instituicao: null, identificacao: null, saldoAbertura: "0", dataSaldoAbertura: "2026-09-01", saldoAtual: "0", incluirNoSaldoGeral: false, ativo: false, temMovimentos: true },
+  { id: uid(1), nome: "Banco", tipo: "BANCO", instituicao: "Sicoob", identificacao: null, saldoAbertura: "0", dataSaldoAbertura: "2026-09-01", saldoAtual: "120", incluirNoSaldoGeral: true, ativo: true, temMovimentos: true },
+  { id: uid(2), nome: "Caixa", tipo: "CAIXA", instituicao: null, identificacao: null, saldoAbertura: "0", dataSaldoAbertura: "2026-09-01", saldoAtual: "0", incluirNoSaldoGeral: false, ativo: false, temMovimentos: true },
 ];
 function movimento(id: number, contaId: number, valor: string, direcao: "ENTRADA" | "SAIDA", tipo: string, extra: Partial<MovimentoGeral["transacao"]> = {}): MovimentoGeral {
-  return { id, contaId, conta: contas[contaId - 1], valor, direcao, transacao: { id, tipo, status: "CONFIRMADA", data: "2026-09-14", descricao: `Movimento ${id}`, operacao: null, parceiro: null, formaPagamento: null, ...extra } };
+  return { id: uid(id), seq: id, contaId: uid(contaId), conta: contas[contaId - 1], valor, direcao, transacao: { id: uid(id), seq: id, tipo, status: "CONFIRMADA", data: "2026-09-14", descricao: `Movimento ${id}`, operacao: null, parceiro: null, formaPagamento: null, ...extra } };
 }
-const operacaoTransferencia = { id: 123, tipo: "TRANSFERENCIA_FINANCEIRA", descricao: "Transferência" };
+const operacaoTransferencia = { id: uid(123), numero: 123, tipo: "TRANSFERENCIA_FINANCEIRA", descricao: "Transferência" };
 const movimentos = [
   movimento(1, 1, "120", "ENTRADA", "RECEBIMENTO"),
   movimento(2, 2, "25", "SAIDA", "PAGAMENTO"),
@@ -32,8 +33,8 @@ const movimentos = [
   movimento(8, 1, "40", "ENTRADA", "REVERSAO", { reversaoDe: { tipo: "PAGAMENTO" } }),
 ];
 const compromisso = (id: number, extra: Partial<Compromisso> = {}): Compromisso => ({
-  id, tipo: "PAGAR", status: "PENDENTE", valorOriginal: "100", valorLiquidado: "0", saldoPendente: "100", dataVencimento: "2026-09-14", numeroParcela: 1, totalParcelas: 1, vencido: false, parceiro: null,
-  operacao: { id, tipo: "SERVICO", descricao: `Compromisso ${id}` }, ...extra,
+  id: uid(id), seq: id, tipo: "PAGAR", status: "PENDENTE", valorOriginal: "100", valorLiquidado: "0", saldoPendente: "100", dataVencimento: "2026-09-14", numeroParcela: 1, totalParcelas: 1, vencido: false, parceiro: null,
+  operacao: { id: uid(id), numero: id, tipo: "SERVICO", descricao: `Compromisso ${id}` }, ...extra,
 });
 
 beforeEach(() => {
@@ -84,7 +85,7 @@ describe("visualizações financeiras integradas", () => {
   });
 
   it("mantém um único seletor de período no detalhe da conta, ligado ao gráfico e ao extrato", async () => {
-    window.history.replaceState(null, "", "/financeiro/contas/1");
+    window.history.replaceState(null, "", `/financeiro/contas/${uid(1)}`);
     render(<ContasFinanceiras onNav={vi.fn()} />);
     await waitFor(() => expect(total("Receitas no período")).toContain("R$ 210,00"));
     const controles = screen.getAllByRole("button", { name: /^Período do extrato da conta:/ });
@@ -93,7 +94,7 @@ describe("visualizações financeiras integradas", () => {
   });
 
   it.each([1, 2])("o detalhe da conta %s usa somente seu extrato e liga a transferência à operação", async id => {
-    window.history.replaceState(null, "", `/financeiro/contas/${id}`);
+    window.history.replaceState(null, "", `/financeiro/contas/${uid(id)}`);
     const onNav = vi.fn();
     render(<ContasFinanceiras onNav={onNav} />);
     await waitFor(() => expect(total("Receitas no período")).toContain(id === 1 ? "R$ 210,00" : "R$ 50,00"));
@@ -101,7 +102,7 @@ describe("visualizações financeiras integradas", () => {
     expect(screen.queryByRole("button", { name: "Gerenciar contas" })).toBeNull();
     expect(obterExtratoGeral).not.toHaveBeenCalled();
     fireEvent.click(screen.getAllByRole("link", { name: "OP-0123" })[0]);
-    expect(window.location.pathname).toBe("/financeiro/operacoes/123");
+    expect(window.location.pathname).toBe(`/financeiro/operacoes/${uid(123)}`);
   });
 
   it("mostra todos os pendentes no calendário da visão geral, além dos cinco itens da lista", async () => {
@@ -172,10 +173,10 @@ describe("visualizações financeiras integradas", () => {
     render(<VisaoGeralFinanceira onNav={vi.fn()} />);
 
     fireEvent.click(await screen.findByRole("button", { name: "Registrar pagamento" }));
-    fireEvent.change(screen.getByLabelText("Conta"), { target: { value: "1" } });
+    fireEvent.change(screen.getByLabelText("Conta"), { target: { value: uid(1) } });
     fireEvent.click(screen.getByRole("button", { name: "Confirmar liquidação" }));
 
-    await waitFor(() => expect(liquidarCompromisso).toHaveBeenCalledWith(1, expect.objectContaining({ contaId: 1, valor: 100 })));
+    await waitFor(() => expect(liquidarCompromisso).toHaveBeenCalledWith(uid(1), expect.objectContaining({ contaId: uid(1), valor: 100 })));
     await waitFor(() => expect(obterDashboardFinanceiro).toHaveBeenCalledTimes(2));
     expect(listarCompromissos).not.toHaveBeenCalled();
   });
@@ -188,7 +189,7 @@ describe("visualizações financeiras integradas", () => {
     render(<VisaoGeralFinanceira onNav={vi.fn()} />);
 
     fireEvent.click(await screen.findByRole("button", { name: "Registrar pagamento" }));
-    fireEvent.change(screen.getByLabelText("Conta"), { target: { value: "1" } });
+    fireEvent.change(screen.getByLabelText("Conta"), { target: { value: uid(1) } });
     fireEvent.click(screen.getByRole("button", { name: "Confirmar liquidação" }));
 
     await waitFor(() => expect(liquidarCompromisso).toHaveBeenCalledOnce());

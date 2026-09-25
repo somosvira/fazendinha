@@ -4,7 +4,7 @@ import { brl, Button, dataBR, ErrorBox, Modal, StatusPill } from "./financeiro-u
 import { navegarPara } from "../router";
 
 /** Nome de conta clicável que abre o extrato já posicionado no movimento correspondente. */
-export function LinkConta({ contaId, movimentoId, nome }: { contaId: number; movimentoId: number; nome: string }) {
+export function LinkConta({ contaId, movimentoId, nome }: { contaId: string; movimentoId: string; nome: string }) {
   return <button type="button" onClick={() => navegarPara(`/financeiro/contas/${contaId}#movimento-${movimentoId}`)} className="font-semibold text-green-800 underline underline-offset-4">{nome}</button>;
 }
 
@@ -14,7 +14,7 @@ export function LinkConta({ contaId, movimentoId, nome }: { contaId: number; mov
  * parcela" em Operações — reutilizável por Compromissos (#274) sem duplicar.
  */
 export function HistoricoLiquidacoes({ compromisso, podeLancar, onEstornado }: { compromisso: Compromisso; podeLancar: boolean; onEstornado: () => Promise<void> }) {
-  const [estornando, setEstornando] = useState<number | null>(null);
+  const [estornando, setEstornando] = useState<string | null>(null);
   const [motivo, setMotivo] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [processando, setProcessando] = useState(false);

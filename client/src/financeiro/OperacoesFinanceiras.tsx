@@ -7,6 +7,7 @@ import { descartarRascunhoOperacao, listarOperacoes, obterConfiguracoesFinanceir
 import { useRascunhoAtivo } from "./rascunhoAtivo";
 import { FormOperacao } from "./FormOperacao";
 import { OperacaoFinanceiraDetalhe } from "./OperacaoFinanceiraDetalhe";
+import { codigoOperacao } from "../estoque/navegacao";
 import { brl, Button, type ColunaTabela, dataBR, Empty, ErrorBox, PageHeader, PaginaCarregando, PaginaFinanceira, Paginacao, Panel, Pill, StatusPill, TabelaFinanceira, TIPO_OPERACAO } from "./financeiro-ui";
 
 type EfeitoFiltro = "TODOS" | "ESTOQUE" | "PAGAMENTO" | "RECEBIMENTO" | "A_PAGAR" | "A_RECEBER" | "TRANSFERENCIA" | "SEM_EFEITOS";
@@ -41,7 +42,7 @@ const ITENS_POR_PAGINA = 15;
  * célula e para o valor no cartão — não há como cabeçalho e conteúdo divergirem. */
 const COLUNAS: ColunaTabela<Operacao>[] = [
   { chave: "data", titulo: "Data", larguraMinima: 100, celula: (operacao) => <span className="whitespace-nowrap text-ink-3">{dataBR(operacao.data)}</span> },
-  { chave: "operacao", titulo: "Operação", larguraMinima: 230, principal: true, celula: (operacao) => <><strong className="break-words">{operacao.descricao || TIPO_OPERACAO[operacao.tipo]}</strong><div className="mt-1 text-xs text-ink-3">OP-{String(operacao.id).padStart(4, "0")}</div></> },
+  { chave: "operacao", titulo: "Operação", larguraMinima: 230, principal: true, celula: (operacao) => <><strong className="break-words">{operacao.descricao || TIPO_OPERACAO[operacao.tipo]}</strong><div className="mt-1 text-xs text-ink-3">{codigoOperacao(operacao.numero)}</div></> },
   { chave: "tipo", titulo: "Tipo", larguraMinima: 145, celula: (operacao) => <span className="break-words text-ink-2">{TIPO_OPERACAO[operacao.tipo] ?? operacao.tipo}</span> },
   { chave: "parceiro", titulo: "Parceiro", larguraMinima: 175, celula: (operacao) => <span className="break-words">{operacao.parceiro?.nome ?? "—"}</span> },
   { chave: "efeitos", titulo: "Efeitos", larguraMinima: 140, celula: (operacao) => <Efeitos operacao={operacao} /> },
@@ -55,7 +56,7 @@ export function OperacoesFinanceiras({ podeLancar = true }: { podeLancar?: boole
   const [iniciandoNova, setIniciandoNova] = useState(false);
   const [busca, setBusca] = useState(""); const [status, setStatus] = useState("TODOS"); const [tipo, setTipo] = useState("TODOS"); const [efeito, setEfeito] = useState<EfeitoFiltro>(efeitoInicial); const [inicio, setInicio] = useState(() => periodoInicial({ inicio: inicioMes(), fim: hojeLocal() }).inicio); const [fim, setFim] = useState(() => periodoInicial({ inicio: inicioMes(), fim: hojeLocal() }).fim);
   const [pagina, setPagina] = useState(1);
-  const [detalheId, setDetalheId] = useState<number | null>(() => typeof window === "undefined" ? null : parseOperacaoFinanceiraId(window.location.pathname));
+  const [detalheId, setDetalheId] = useState<string | null>(() => typeof window === "undefined" ? null : parseOperacaoFinanceiraId(window.location.pathname));
   // O rascunho vem da store compartilhada (a mesma do atalho da sidebar):
   // obterRascunhoOperacao a atualiza, e cada autosave também.
   const carregar = useCallback(async (vigente: () => boolean = () => true) => { setLoading(true); setErro(null); try { const [ops, cfg] = await Promise.all([listarOperacoes({ inicio, fim }), podeLancar ? obterConfiguracoesFinanceiras() : Promise.resolve(null), podeLancar ? obterRascunhoOperacao() : Promise.resolve(null)]); if (vigente()) { setItens(ops); setConfig(cfg); } } catch (e) { if (vigente()) setErro(e instanceof Error ? e.message : String(e)); } finally { if (vigente()) setLoading(false); } }, [inicio, fim, podeLancar]);
@@ -73,7 +74,7 @@ export function OperacoesFinanceiras({ podeLancar = true }: { podeLancar?: boole
   const paginaAtual = Math.min(pagina, totalPaginas);
   const operacoesDaPagina = filtradas.slice((paginaAtual - 1) * ITENS_POR_PAGINA, paginaAtual * ITENS_POR_PAGINA);
   useEffect(() => { if (pagina !== paginaAtual) setPagina(paginaAtual); }, [pagina, paginaAtual]);
-  const abrirDetalhe = (id: number) => { window.history.pushState(null, "", `/financeiro/operacoes/${id}`); setDetalheId(id); setForm(false); };
+  const abrirDetalhe = (id: string) => { window.history.pushState(null, "", `/financeiro/operacoes/${id}`); setDetalheId(id); setForm(false); };
   const voltar = () => { window.history.pushState(null, "", "/financeiro/operacoes"); setDetalheId(null); };
   const abrirFormulario = (base: Operacao | null = null) => { window.history.pushState(null, "", URL_NOVA_OPERACAO); setDetalheId(null); setOperacaoBase(base); setForm(true); };
   const abrirNovaOperacao = async () => {
@@ -93,7 +94,7 @@ export function OperacoesFinanceiras({ podeLancar = true }: { podeLancar?: boole
   const compromissoInicial = parametrosUrl.get("compromisso");
   // Atalho do Estoque: /financeiro/operacoes/nova?tipo=AJUSTE_ESTOQUE&produto=<id>.
   const ajusteInicial = !operacaoBase && parametrosUrl.get("tipo") === "AJUSTE_ESTOQUE";
-  const produtoAjusteInicial = ajusteInicial && /^[1-9]\d*$/.test(parametrosUrl.get("produto") ?? "") ? Number(parametrosUrl.get("produto")) : undefined;
+  const produtoAjusteInicial = ajusteInicial && parametrosUrl.get("produto") ? parametrosUrl.get("produto")! : undefined;
   // A chave separa correção de rascunho: trocar de um para o outro remonta o
   // formulário, senão o autosave gravaria os dados da correção no rascunho.
   if (form && config && !podeLancar) return <PaginaFinanceira><PageHeader titulo="Nova operação" descricao="O seu perfil pode consultar operações, mas não pode criar ou corrigir lançamentos." /><ErrorBox erro="Você não tem permissão para lançar operações financeiras." /></PaginaFinanceira>;

@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { alternar, configuracaoPadrao, erroPeriodo, mesclarRascunho, periodoMes, podeGerar, resumoConfiguracao, secoesDoRelatorio } from "./relatorios";
+import { SEM_VINCULO } from "../../lib/ids";
+import { uid } from "../../lib/uid.fixture";
 
 const hoje = new Date(2026, 8, 14);
 
@@ -11,8 +13,8 @@ describe("configuração do relatório financeiro", () => {
 
   it("mescla rascunho parcial e descarta valores fora do domínio", () => {
     const base = configuracaoPadrao(hoje);
-    expect(mesclarRascunho({ nome: "Pecuária", status: ["RASCUNHO", "CANCELADA"] as string[], categoriaIds: [3, 0], regime: "outro" as never }, base))
-      .toMatchObject({ nome: "Pecuária", status: ["CANCELADA"], categoriaIds: [3, 0], regime: "ambos", dataInicio: base.dataInicio });
+    expect(mesclarRascunho({ nome: "Pecuária", status: ["RASCUNHO", "CANCELADA"] as string[], categoriaIds: [uid(3), SEM_VINCULO], regime: "outro" as never }, base))
+      .toMatchObject({ nome: "Pecuária", status: ["CANCELADA"], categoriaIds: [uid(3), SEM_VINCULO], regime: "ambos", dataInicio: base.dataInicio });
     expect(mesclarRascunho(null, base)).toBe(base);
   });
 
@@ -36,8 +38,8 @@ describe("configuração do relatório financeiro", () => {
   });
 
   it("resume o que entra no documento com os nomes dos cadastros", () => {
-    const config = { ...configuracaoPadrao(hoje), tipos: ["SERVICO"], centroCustoIds: [0, 2], categoriaIds: [3], classificacoes: ["INVESTIMENTO" as const] };
-    const resumo = Object.fromEntries(resumoConfiguracao(config, { categorias: [{ id: 3, nome: "Nutrição" }], centrosCusto: [{ id: 2, nome: "Agronomia" }], parceiros: [], tipos: { SERVICO: "Serviço" } }));
+    const config = { ...configuracaoPadrao(hoje), tipos: ["SERVICO"], centroCustoIds: [SEM_VINCULO, uid(2)], categoriaIds: [uid(3)], classificacoes: ["INVESTIMENTO" as const] };
+    const resumo = Object.fromEntries(resumoConfiguracao(config, { categorias: [{ id: uid(3), nome: "Nutrição" }], centrosCusto: [{ id: uid(2), nome: "Agronomia" }], parceiros: [], tipos: { SERVICO: "Serviço" } }));
     expect(resumo).toMatchObject({ Período: "01/08/2026 a 31/08/2026", Tipos: "Serviço", "Centros de custo": "Sem centro de custo, Agronomia", Categorias: "Nutrição", Classificação: "Investimento", Situação: "Confirmada" });
   });
 
@@ -46,6 +48,6 @@ describe("configuração do relatório financeiro", () => {
     expect(secoesDoRelatorio({ ...base, regime: "previsto" })).not.toContain("Saldo das contas");
     expect(secoesDoRelatorio({ ...base, regime: "previsto" })).toContain("Compromissos a pagar e a receber em aberto");
     expect(secoesDoRelatorio({ ...base, regime: "realizado", status: [] })).toContain("Saldo das contas");
-    expect(secoesDoRelatorio({ ...base, regime: "realizado", categoriaIds: [3] })).toContain("Saldo das contas (sempre sem filtros)");
+    expect(secoesDoRelatorio({ ...base, regime: "realizado", categoriaIds: [uid(3)] })).toContain("Saldo das contas (sempre sem filtros)");
   });
 });

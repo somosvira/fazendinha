@@ -83,14 +83,14 @@ export function navegarPara(pathname: string): void {
   window.dispatchEvent(new PopStateEvent("popstate"));
 }
 
-export function parseContaFinanceiraId(pathname: string): number | null {
-  const match = /^\/financeiro\/contas\/([1-9]\d*)\/?$/i.exec(pathname);
-  return match ? Number(match[1]) : null;
+export function parseContaFinanceiraId(pathname: string): string | null {
+  const match = /^\/financeiro\/contas\/([^/]+)\/?$/.exec(pathname);
+  return match ? match[1] : null;
 }
 
-export function parseOperacaoFinanceiraId(pathname: string): number | null {
-  const match = /^\/financeiro\/operacoes\/(\d+)\/?$/i.exec(pathname);
-  return match ? Number(match[1]) : null;
+export function parseOperacaoFinanceiraId(pathname: string): string | null {
+  const match = /^\/financeiro\/operacoes\/([^/]+)\/?$/.exec(pathname);
+  return match && !isNovaOperacaoFinanceira(pathname) ? match[1] : null;
 }
 
 export function isNovaOperacaoFinanceira(pathname: string): boolean {
@@ -101,9 +101,9 @@ export function isNovoRelatorioFinanceiro(pathname: string): boolean {
   return /^\/financeiro\/relatorios\/novo\/?$/i.test(pathname);
 }
 
-export function parseRelatorioFinanceiroId(pathname: string): number | null {
-  const match = /^\/financeiro\/relatorios\/([1-9]\d*)\/?$/i.exec(pathname);
-  return match ? Number(match[1]) : null;
+export function parseRelatorioFinanceiroId(pathname: string): string | null {
+  const match = /^\/financeiro\/relatorios\/([^/]+)\/?$/.exec(pathname);
+  return match && !isNovoRelatorioFinanceiro(pathname) ? match[1] : null;
 }
 
 /** Subpáginas (detalhe, formulário) que a aba precisa manter na barra de endereço. */
@@ -164,14 +164,14 @@ const ESTADO_NOVA_OPERACAO = { novaOperacao: true } as const;
  *  já está montada (lista, detalhe ou correção), porque pushState não dispara o
  *  evento. A marca no estado distingue essa entrada da correção de operação,
  *  que usa a mesma URL. */
-export function abrirRotaNovaOperacao(destino?: "PAGAR" | "RECEBER" | { compromisso?: "PAGAR" | "RECEBER"; ajusteEstoqueProdutoId?: number; /** abre o ajuste de estoque sem produto pré-selecionado */ ajusteEstoque?: boolean }) {
+export function abrirRotaNovaOperacao(destino?: "PAGAR" | "RECEBER" | { compromisso?: "PAGAR" | "RECEBER"; ajusteEstoqueProdutoId?: string; /** abre o ajuste de estoque sem produto pré-selecionado */ ajusteEstoque?: boolean }) {
   const opcoes = typeof destino === "string" ? { compromisso: destino } : destino ?? {};
   const params = new URLSearchParams();
   if (opcoes.compromisso) params.set("compromisso", opcoes.compromisso);
   // Atalho da tela de Estoque: abre a operação "Ajuste de estoque" já com o produto escolhido.
   if (opcoes.ajusteEstoqueProdutoId || opcoes.ajusteEstoque) {
     params.set("tipo", "AJUSTE_ESTOQUE");
-    if (opcoes.ajusteEstoqueProdutoId) params.set("produto", String(opcoes.ajusteEstoqueProdutoId));
+    if (opcoes.ajusteEstoqueProdutoId) params.set("produto", opcoes.ajusteEstoqueProdutoId);
   }
   const consulta = params.toString();
   const alvo = consulta ? `${URL_NOVA_OPERACAO}?${consulta}` : URL_NOVA_OPERACAO;

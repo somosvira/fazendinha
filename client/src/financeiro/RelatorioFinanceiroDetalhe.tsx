@@ -5,6 +5,12 @@ import { templatePadrao } from "../components/relatorio-gerencial/template";
 import { obterRelatorioFinanceiro, salvarPdfRelatorioFinanceiro, type LinhaComposicaoRelatorio, type RelatorioFinanceiroDetalhe as Detalhe, type TotalGrupoRelatorio } from "./novo-api";
 import { brl, Button, ErrorBox, Metric, PageHeader, PaginaFinanceira, PaginaSemDados, Panel, StatusPill, TabelaFinanceira, TIPO_OPERACAO, type ColunaTabela } from "./financeiro-ui";
 import { dataCurta, REGIMES_RELATORIO } from "./lib/relatorios";
+import { codigoOperacao } from "../estoque/navegacao";
+
+function OperacaoDaLinha({ linha }: { linha: LinhaComposicaoRelatorio }) {
+  if (linha.operacaoNumero != null) return <>{codigoOperacao(linha.operacaoNumero)}</>;
+  return null;
+}
 
 const LINHAS_INICIAIS = 200;
 const percentual = (valor: number) => `${valor.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%`;
@@ -27,7 +33,7 @@ const colunasCentro: ColunaTabela<TotalGrupoRelatorio>[] = [
 ];
 type LinhaIndexada = LinhaComposicaoRelatorio & { indice: number };
 const colunasItens: ColunaTabela<LinhaIndexada>[] = [
-  { chave: "item", titulo: "Operação / item", principal: true, larguraMinima: 240, celula: (l) => <div className="min-w-0"><div className="break-words font-semibold">{l.item ?? l.descricao ?? `OP-${l.operacaoId}`}</div><div className="mt-0.5 break-words text-xs text-ink-3">OP-{String(l.operacaoId).padStart(4, "0")}{l.item && l.descricao ? ` · ${l.descricao}` : ""}{l.parceiro ? ` · ${l.parceiro}` : ""}</div></div> },
+  { chave: "item", titulo: "Operação / item", principal: true, larguraMinima: 240, celula: (l) => <div className="min-w-0"><div className="break-words font-semibold">{l.item ?? l.descricao ?? <OperacaoDaLinha linha={l} />}</div><div className="mt-0.5 break-words text-xs text-ink-3"><OperacaoDaLinha linha={l} />{l.item && l.descricao ? ` · ${l.descricao}` : ""}{l.parceiro ? ` · ${l.parceiro}` : ""}</div></div> },
   { chave: "data", titulo: "Data", larguraMinima: 100, celula: (l) => dataCurta(l.data) },
   { chave: "tipo", titulo: "Tipo", larguraMinima: 160, celula: (l) => <span>{TIPO_OPERACAO[l.tipo] ?? l.tipo}{l.status !== "CONFIRMADA" && <> <StatusPill status={l.status} /></>}</span> },
   { chave: "quantidade", titulo: "Quantidade", alinhamento: "direita", larguraMinima: 110, celula: (l) => l.quantidade ? <span className="whitespace-nowrap">{l.quantidade}{l.unidade ? ` ${l.unidade}` : ""}</span> : "—" },
@@ -41,7 +47,7 @@ function Cabecalho({ titulo, descricao }: { titulo: string; descricao: string })
   return <div className="border-b border-border p-5"><h2 className="font-serif text-xl">{titulo}</h2><p className="mt-1 text-xs text-ink-3">{descricao}</p></div>;
 }
 
-export function RelatorioFinanceiroDetalhe({ id, podeExportar, onVoltar }: { id: number; podeExportar: boolean; onVoltar: () => void }) {
+export function RelatorioFinanceiroDetalhe({ id, podeExportar, onVoltar }: { id: string; podeExportar: boolean; onVoltar: () => void }) {
   const [dados, setDados] = useState<Detalhe | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [todas, setTodas] = useState(false);

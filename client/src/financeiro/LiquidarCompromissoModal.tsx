@@ -29,7 +29,7 @@ export function LiquidarCompromissoModal({ compromisso, contas, onClose, onLiqui
     setErro(null);
     try {
       await liquidarCompromisso(compromisso.id, {
-        contaId: Number(contaId),
+        contaId,
         valor: valorNumerico,
         data,
         formaPagamento,

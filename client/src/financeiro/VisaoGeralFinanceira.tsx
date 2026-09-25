@@ -70,7 +70,7 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
   }, []);
   const dadosAtuais = periodoDados === `${inicioPeriodo}/${fimPeriodo}` ? dados : null;
   const pendentes = (dadosAtuais?.proximosCompromissos ?? []).filter(c => ["PENDENTE", "PARCIAL"].includes(c.status))
-    .sort((a, b) => a.dataVencimento.localeCompare(b.dataVencimento) || a.id - b.id);
+    .sort((a, b) => a.dataVencimento.localeCompare(b.dataVencimento) || a.seq - b.seq);
   const proximos = pendentes.slice(0, 5);
   const recarregar = async () => { setRevisao(value => value + 1); };
   // Preserva o período do topo ao abrir a lista completa — mesmo padrão de

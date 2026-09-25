@@ -5,11 +5,12 @@ import { useState } from "react";
 import { CalendarioCompromissos } from "./CalendarioCompromissos";
 import type { Compromisso } from "./novo-api";
 import { diasDoCalendario, deslocarMes } from "./lib/calendario";
+import { uid } from "../lib/uid.fixture";
 
 afterEach(cleanup);
 const itens: Compromisso[] = [
-  { id: 1, tipo: "PAGAR", status: "PARCIAL", saldoPendente: "50", valorOriginal: "100", valorLiquidado: "50", dataVencimento: "2026-09-01T00:00:00Z", numeroParcela: 1, totalParcelas: 2, vencido: true, parceiro: null, operacao: { id: 10, descricao: "Veterinário", tipo: "SERVICO" } },
-  { id: 2, tipo: "RECEBER", status: "PENDENTE", saldoPendente: "200", valorOriginal: "200", valorLiquidado: "0", dataVencimento: "2026-09-01", numeroParcela: 1, totalParcelas: 1, vencido: false, parceiro: null, operacao: { id: 11, descricao: "Venda de leite", tipo: "VENDA" } },
+  { id: uid(1), seq: 1, tipo: "PAGAR", status: "PARCIAL", saldoPendente: "50", valorOriginal: "100", valorLiquidado: "50", dataVencimento: "2026-09-01T00:00:00Z", numeroParcela: 1, totalParcelas: 2, vencido: true, parceiro: null, operacao: { id: uid(10), numero: 10, descricao: "Veterinário", tipo: "SERVICO" } },
+  { id: uid(2), seq: 2, tipo: "RECEBER", status: "PENDENTE", saldoPendente: "200", valorOriginal: "200", valorLiquidado: "0", dataVencimento: "2026-09-01", numeroParcela: 1, totalParcelas: 1, vencido: false, parceiro: null, operacao: { id: uid(11), numero: 11, descricao: "Venda de leite", tipo: "VENDA" } },
 ];
 function Calendario({ mesInicial = "2026-09", onLiquidar = vi.fn() }: { mesInicial?: string; onLiquidar?: (compromisso: Compromisso) => void }) {
   const [mes, setMes] = useState(mesInicial);
@@ -25,7 +26,7 @@ describe("calendário de compromissos", () => {
     fireEvent.click(dia.getByRole("button", { name: /\(1\/2\) Veterinário, a pagar/ }));
     const modal = within(screen.getByRole("dialog"));
     expect(modal.getByRole("heading", { name: "(1/2) Veterinário" })).toBeTruthy();
-    expect(modal.getByRole("link", { name: "OP-0010" }).getAttribute("href")).toBe("/financeiro/operacoes/10");
+    expect(modal.getByRole("link", { name: "OP-0010" }).getAttribute("href")).toBe(`/financeiro/operacoes/${uid(10)}`);
     fireEvent.click(modal.getByRole("button", { name: "Registrar pagamento" }));
     expect(liquidar).toHaveBeenCalledWith(itens[0]);
     expect(screen.queryByRole("dialog")).toBeNull();

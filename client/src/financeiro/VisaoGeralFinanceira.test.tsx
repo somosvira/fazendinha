@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { baseFinanceiraVazia } from "./dashboard.fixture";
 import { VisaoGeralFinanceira } from "./VisaoGeralFinanceira";
 import { descartarRascunhoOperacao, obterRascunhoOperacao } from "./novo-api";
+import { uid } from "../lib/uid.fixture";
 
 vi.mock("./novo-api", () => ({
   obterDashboardFinanceiro: vi.fn().mockResolvedValue({
@@ -18,7 +19,7 @@ vi.mock("./novo-api", () => ({
   descartarRascunhoOperacao: vi.fn().mockResolvedValue(undefined),
 }));
 
-const rascunho = { id: 8, versao: 1, updatedAt: "2026-09-14T12:00:00Z", documentos: [], dados: {} };
+const rascunho = { id: uid(8), versao: 1, updatedAt: "2026-09-14T12:00:00Z", documentos: [], dados: {} };
 
 beforeEach(() => {
   window.history.replaceState(null, "", "/financeiro");

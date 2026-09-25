@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { ConfiguracoesFinanceiras } from "./ConfiguracoesFinanceiras";
+import { uid } from "../lib/uid.fixture";
 import { ApiError, atualizarConta, atualizarParceiro, atualizarProduto, criarCategoria, criarCentroCusto, criarConta, criarParceiro, obterConfiguracoesFinanceiras, type ConfiguracoesFinanceiras as Config } from "./novo-api";
 import { criarProduto as criarProdutoEstoque, editarProduto as editarProdutoEstoque } from "../estoque/api";
 
@@ -24,17 +25,17 @@ vi.mock("../estoque/api", async (importOriginal) => ({
 
 const config: Config = {
   contas: [
-    { id: 1, nome: "Banco principal", tipo: "BANCO", instituicao: "Sicoob", identificacao: "Ag. 1 · C/C 2", agencia: "1", numeroConta: "2", titular: "Fazenda Rio Novo", ordem: 0, saldoAbertura: "1000", dataSaldoAbertura: "2026-09-01", saldoAtual: "1200", incluirNoSaldoGeral: true, ativo: true, temMovimentos: true },
-    { id: 2, nome: "Gaveta", tipo: "CAIXA", instituicao: null, identificacao: null, saldoAbertura: "0", dataSaldoAbertura: "2026-09-01", saldoAtual: "0", incluirNoSaldoGeral: false, ativo: false, temMovimentos: false },
+    { id: uid(1), nome: "Banco principal", tipo: "BANCO", instituicao: "Sicoob", identificacao: "Ag. 1 · C/C 2", agencia: "1", numeroConta: "2", titular: "Fazenda Rio Novo", ordem: 0, saldoAbertura: "1000", dataSaldoAbertura: "2026-09-01", saldoAtual: "1200", incluirNoSaldoGeral: true, ativo: true, temMovimentos: true },
+    { id: uid(2), nome: "Gaveta", tipo: "CAIXA", instituicao: null, identificacao: null, saldoAbertura: "0", dataSaldoAbertura: "2026-09-01", saldoAtual: "0", incluirNoSaldoGeral: false, ativo: false, temMovimentos: false },
   ],
   parceiros: [
-    { id: 7, nome: "Cooperativa", documento: "11222333000181", tipo: "FORNECEDOR", telefone: "3499990000", email: "coop@x.com", ativo: true, referencias: 2 },
-    { id: 8, nome: "Agro Minas", documento: null, tipo: "FORNECEDOR", telefone: null, email: null, ativo: true, referencias: 0 },
+    { id: uid(7), nome: "Cooperativa", documento: "11222333000181", tipo: "FORNECEDOR", telefone: "3499990000", email: "coop@x.com", ativo: true, referencias: 2 },
+    { id: uid(8), nome: "Agro Minas", documento: null, tipo: "FORNECEDOR", telefone: null, email: null, ativo: true, referencias: 0 },
   ],
-  categorias: [{ id: 11, nome: "Insumos", classificacao: "CUSTEIO", ativo: true, ordem: 0, usoAgricola: false, _count: { operacoes: 2, produtos: 1 } }],
-  centrosCusto: [{ id: 20, nome: "Atividade leiteira", ativo: true, ordem: 0, _count: { operacoes: 3, produtos: 0, safras: 0 } }],
+  categorias: [{ id: uid(11), nome: "Insumos", classificacao: "CUSTEIO", ativo: true, ordem: 0, usoAgricola: false, _count: { operacoes: 2, produtos: 1 } }],
+  centrosCusto: [{ id: uid(20), nome: "Atividade leiteira", ativo: true, ordem: 0, _count: { operacoes: 3, produtos: 0, safras: 0 } }],
   produtos: [],
-  produtosCadastro: [{ id: 30, nome: "Ração 22%", unidade: "KG", minimoEstoque: "500", categoriaId: 11, categoriaNome: "Insumos", categoria: { id: 11, nome: "Insumos", usoAgricola: true }, ativo: true, centroCustoIds: [20], centrosCusto: [{ id: 20, nome: "Atividade leiteira", ativo: true }], fornecedores: [{ id: 7, nome: "Cooperativa", ativo: true }] }],
+  produtosCadastro: [{ id: uid(30), nome: "Ração 22%", unidade: "KG", minimoEstoque: "500", categoriaId: uid(11), categoriaNome: "Insumos", categoria: { id: uid(11), nome: "Insumos", usoAgricola: true }, ativo: true, centroCustoIds: [uid(20)], centrosCusto: [{ id: uid(20), nome: "Atividade leiteira", ativo: true }], fornecedores: [{ id: uid(7), nome: "Cooperativa", ativo: true }] }],
 };
 
 /* A tabela responsiva renderiza tabela E cartões (CSS decide o que aparece);
@@ -182,7 +183,7 @@ describe("ConfiguracoesFinanceiras — contas", () => {
     expect(within(painel).getByText(/já possui movimentos/)).toBeTruthy();
     fireEvent.change(within(painel).getByLabelText("Nome de exibição"), { target: { value: "Banco BB" } });
     fireEvent.click(within(painel).getByRole("button", { name: "Salvar conta" }));
-    await waitFor(() => expect(atualizarConta).toHaveBeenCalledWith(1, { nome: "Banco BB" }));
+    await waitFor(() => expect(atualizarConta).toHaveBeenCalledWith(uid(1), { nome: "Banco BB" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
 
@@ -202,15 +203,15 @@ describe("ConfiguracoesFinanceiras — contas", () => {
   it("desativar pede confirmação e reativar não", async () => {
     await montar();
     fireEvent.click(primeiro("button", "Reativar Gaveta"));
-    await waitFor(() => expect(atualizarConta).toHaveBeenCalledWith(2, { ativo: true }));
+    await waitFor(() => expect(atualizarConta).toHaveBeenCalledWith(uid(2), { ativo: true }));
     expect(screen.queryByRole("heading", { name: /Desativar/ })).toBeNull();
 
     fireEvent.click(primeiro("button", "Desativar Banco principal"));
     expect(await screen.findByRole("heading", { name: "Desativar Banco principal?" })).toBeTruthy();
     expect(screen.getByText(/extrato e todos os movimentos continuam/)).toBeTruthy();
-    expect(atualizarConta).not.toHaveBeenCalledWith(1, { ativo: false });
+    expect(atualizarConta).not.toHaveBeenCalledWith(uid(1), { ativo: false });
     fireEvent.click(screen.getByRole("button", { name: "Desativar" }));
-    await waitFor(() => expect(atualizarConta).toHaveBeenCalledWith(1, { ativo: false }));
+    await waitFor(() => expect(atualizarConta).toHaveBeenCalledWith(uid(1), { ativo: false }));
     await waitFor(() => expect(obterConfiguracoesFinanceiras).toHaveBeenCalledTimes(3));
   });
 });
@@ -224,9 +225,9 @@ describe("ConfiguracoesFinanceiras — produtos", () => {
     const painel = await screen.findByRole("dialog");
     fireEvent.change(within(painel).getByLabelText("Nome do produto"), { target: { value: "Sal mineral" } });
     fireEvent.change(within(painel).getByLabelText("Unidade"), { target: { value: "KG" } });
-    fireEvent.change(within(painel).getByLabelText(/^Categoria/), { target: { value: "11" } });
+    fireEvent.change(within(painel).getByLabelText(/^Categoria/), { target: { value: uid(11) } });
     fireEvent.click(within(painel).getByRole("button", { name: "Criar produto" }));
-    await waitFor(() => expect(criarProdutoEstoque).toHaveBeenCalledWith(expect.objectContaining({ nome: "Sal mineral", unidade: "KG", categoriaId: 11, fornecedorIds: [], centroCustoIds: [] })));
+    await waitFor(() => expect(criarProdutoEstoque).toHaveBeenCalledWith(expect.objectContaining({ nome: "Sal mineral", unidade: "KG", categoriaId: uid(11), fornecedorIds: [], centroCustoIds: [] })));
   });
 
   it("edita o produto com vários fornecedores opcionais", async () => {
@@ -241,7 +242,7 @@ describe("ConfiguracoesFinanceiras — produtos", () => {
     fireEvent.click(await screen.findByRole("option", { name: "Agro Minas" }));
     expect(within(painel).getByRole("button", { name: "Remover Agro Minas" })).toBeTruthy();
     fireEvent.click(within(painel).getByRole("button", { name: "Salvar produto" }));
-    await waitFor(() => expect(editarProdutoEstoque).toHaveBeenCalledWith(30, expect.objectContaining({ fornecedorIds: [7, 8] })));
+    await waitFor(() => expect(editarProdutoEstoque).toHaveBeenCalledWith(uid(30), expect.objectContaining({ fornecedorIds: [uid(7), uid(8)] })));
   });
 
   it("desativa produto explicando que os movimentos históricos ficam preservados", async () => {
@@ -249,7 +250,7 @@ describe("ConfiguracoesFinanceiras — produtos", () => {
     fireEvent.click(primeiro("button", "Desativar Ração 22%"));
     expect(await screen.findByText(/movimentos e saldos históricos continuam vinculados/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Desativar" }));
-    await waitFor(() => expect(atualizarProduto).toHaveBeenCalledWith(30, { ativo: false }));
+    await waitFor(() => expect(atualizarProduto).toHaveBeenCalledWith(uid(30), { ativo: false }));
   });
 
   it("filtra produtos por centro de custo", async () => {
@@ -280,7 +281,7 @@ describe("ConfiguracoesFinanceiras — parceiros", () => {
     fireEvent.change(within(painel).getByLabelText("Prazos em dias"), { target: { value: "30/60" } });
     fireEvent.change(within(painel).getByLabelText("Forma de pagamento sugerida"), { target: { value: "BOLETO" } });
     fireEvent.click(within(painel).getByRole("button", { name: "Salvar parceiro" }));
-    await waitFor(() => expect(atualizarParceiro).toHaveBeenCalledWith(7, { papeis: ["FORNECEDOR", "PRESTADOR_SERVICO"], condicaoPagamentoPreferida: "A_PRAZO", prazosPagamento: [30,60], formaPagamentoPreferida: "BOLETO" }));
+    await waitFor(() => expect(atualizarParceiro).toHaveBeenCalledWith(uid(7), { papeis: ["FORNECEDOR", "PRESTADOR_SERVICO"], condicaoPagamentoPreferida: "A_PRAZO", prazosPagamento: [30,60], formaPagamentoPreferida: "BOLETO" }));
   });
   it("edição carrega nome, documento formatado, papel, telefone e e-mail", async () => {
     await montar("parceiros");
@@ -298,7 +299,7 @@ describe("ConfiguracoesFinanceiras — parceiros", () => {
     fireEvent.click(primeiro("button", "Desativar Cooperativa"));
     expect(await screen.findByText(/Os 2 registros já ligados/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Desativar" }));
-    await waitFor(() => expect(atualizarParceiro).toHaveBeenCalledWith(7, { ativo: false }));
+    await waitFor(() => expect(atualizarParceiro).toHaveBeenCalledWith(uid(7), { ativo: false }));
   });
 
   it.each([
