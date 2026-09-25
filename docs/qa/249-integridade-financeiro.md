@@ -27,10 +27,11 @@ pnpm --filter rionovo-server exec tsc -p tsconfig.financeiro.json
 ```
 
 Requer PostgreSQL local e `server/.env` apontando para **fazendinha_local**.
-O runner cria um schema temporário `qa249_test_*` dentro desse banco, aplica
-migrations nesse schema e injeta um cliente Prisma real configurado para ele.
-Não cria outro banco. Ao terminar remove somente esse schema; `public` e os dados
-de desenvolvimento são preservados. Não execute esse runner contra produção.
+O runner usa essa conexão só para criar um banco temporário `qa249_test_*` no
+mesmo servidor, aplica as migrations nele e injeta um cliente Prisma real
+apontado para ele. Ao terminar apaga esse banco; o fazendinha_local e os dados de
+desenvolvimento são preservados. (Era um schema temporário; virou banco porque o
+Prisma usa os schemas fixos `public` e `pecuaria`.) Não execute esse runner contra produção.
 
 As evidências `resultados.json` e `estados.json` ficam no diretório temporário
 informado pelo comando. Interrupção abrupta pode impedir a limpeza do schema.
@@ -105,7 +106,7 @@ rascunho, documento e auditoria. O trigger é removido em `finally`.
 
 O caso de rascunho também confirma uma nova tentativa bem-sucedida. Estes testes
 usam o Prisma e os serviços reais; o módulo de conexão é substituído por um
-Prisma real no schema temporário, sem simular `$transaction` ou consultas. Sequências de IDs podem avançar em rollback do PostgreSQL; isso não é
+Prisma real no banco temporário, sem simular `$transaction` ou consultas. Sequências de IDs podem avançar em rollback do PostgreSQL; isso não é
 tratado como registro parcial.
 
 ## Limites desta entrega
