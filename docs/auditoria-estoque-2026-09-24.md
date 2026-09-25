@@ -9,7 +9,7 @@ Base: `main` @ `7e62d72` (merge do PR #297, produto universal). Corrigidos: seve
 
 Legenda: **[C]** confirmado no smoke · **[L]** encontrado lendo o código (não reproduzido) · ✅ corrigido
 
-> **Atualização 25/09 (merge do #296, pecuária v1):** a `main` removeu o módulo legado de rebanho (dieta, sanidade, custo vaca/dia) e as origens `NUTRICAO`/`SANIDADE`. Com isso, as partes destas correções que tocavam esse código saíram no merge: a reabertura da dieta com estorno (item 3), o vínculo do movimento com animal/lote (item 8, que ficou só com o talhão), o custo vaca/dia e a prévia da dieta (item 15) e o bloqueio de produto inativo na sanidade e na dieta (item 4, que segue na aplicação agrícola). As migrations foram refeitas depois da nova baseline: `20260925140000_estoque_origem_venda_vinculo_talhao` e `20260925140100_estoque_backfill_venda_talhao`.
+> **Atualização 25/09 (merge do #296, pecuária v1):** a `main` removeu o módulo legado de rebanho (dieta, sanidade, custo vaca/dia) e as origens `NUTRICAO`/`SANIDADE`. Com isso, as partes destas correções que tocavam esse código saíram no merge: a reabertura da dieta com estorno (item 3), o vínculo do movimento com animal/lote (item 8, que ficou só com o talhão), o custo vaca/dia e a prévia da dieta (item 15) e o bloqueio de produto inativo na sanidade e na dieta (item 4, que segue na aplicação agrícola). As migrations foram refeitas depois da nova baseline: `20260925150000_estoque_origem_venda_vinculo_talhao` e `20260925150100_estoque_backfill_venda_talhao` (depois da migration de UUIDs do #302).
 
 ## Correções de severidade alta (itens 1, 3 e 4)
 

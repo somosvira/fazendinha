@@ -172,7 +172,7 @@ async function planejarMovimento(
   talhao: { id?: number; areaHa: Prisma.Decimal | number | null; codigo?: string },
   data: Date,
   propriedadeId: number,
-  opts: { validarCentroAtivo?: boolean; temEstoque?: boolean; produtoAnteriorId?: number | null } = {},
+  opts: { validarCentroAtivo?: boolean; temEstoque?: boolean; produtoAnteriorId?: string | null } = {},
 ) {
   if (input.produtoId == null) return null;
   const produto = await tx.produto.findUnique({ where: { id: input.produtoId }, select: { id: true, nome: true, unidade: true, ativo: true, centrosCusto: { select: { centroCustoId: true } } } });

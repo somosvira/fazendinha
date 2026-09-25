@@ -3,13 +3,14 @@ import { Boxes, Package, PackagePlus, Plus, Search, SlidersHorizontal } from "lu
 import { AjudaCampo, Dica } from "@/components/Dica";
 import { Loader } from "../components/Loading";
 import { navegarPara } from "../router";
-import { rotuloUnidade } from "../lib/unidades";
+import { rotuloUnidade, type UnidadeMedida } from "../lib/unidades";
 import { fmtMoneyExact } from "@/components/charts";
 import { brl, Button, type ColunaTabela, dataBR, Empty, ErrorBox, Metric, PageHeader, PaginaFinanceira, Paginacao, Panel, Pill, TabelaFinanceira } from "../financeiro/financeiro-ui";
 import { FormProduto } from "../financeiro/FormProduto";
 import { PeriodoFinanceiroControl } from "../financeiro/PeriodoFinanceiroControl";
 import { useSaldos, listarMovimentos, listarCentrosCusto, type FiltroMovimentos, type MovimentoDTO, type OrigemMovimento, type SaldoDTO, type RefDTO } from "./api";
 import { abrirAjusteEstoque, destinoDoMovimento, podeAcessarArea, podeAjustarEstoque, podeVerValores } from "./navegacao";
+import { SEM_VINCULO } from "../lib/ids";
 
 const qtd = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 3 });
 const CAMPO = "rounded-lg border border-border bg-white px-3 py-2 text-sm";
@@ -87,7 +88,7 @@ function useMovimentos(f: FiltroMovimentos) {
   return { data, total, loading, erro, recarregar };
 }
 
-export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { centroCustoIdInicial?: number | null; titulo?: string; avisoFiltro?: string } = {}) {
+export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { centroCustoIdInicial?: string | null; titulo?: string; avisoFiltro?: string } = {}) {
   // `centroCustoIdInicial` já chega resolvido: quem chama com um centro de
   // atividade (rebanho/plantio) só monta este componente depois de resolver o
   // centro (ver RebanhoContent/PlantioContent, que usam `key` para remontar);
@@ -150,13 +151,13 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
   const nNegativos = useMemo(() => saldos.data.filter((s) => s.saldo < 0).length, [saldos.data]);
   const nAbaixoMin = useMemo(() => saldos.data.filter((s) => s.abaixoMinimo).length, [saldos.data]);
   const nEmEstoque = useMemo(() => saldos.data.filter((s) => s.saldo > 0).length, [saldos.data]);
-  const unidadePorProduto = useMemo(() => new Map(saldos.data.map((s) => [s.produtoId, s.unidade] as const)), [saldos.data]);
+  const unidadePorProduto = useMemo(() => new Map<string, UnidadeMedida>(saldos.data.map((s) => [s.produtoId, s.unidade] as const)), [saldos.data]);
 
   // Últimas entradas: o movimento de ENTRADA (compra/inventário/bonificação/produção,
   // não estornado) mais recente de cada produto listado — os 6 primeiros.
   const ultimasEntradas = useMemo(() => {
     const listados = new Set(saldos.data.map((s) => s.produtoId));
-    const vistos = new Set<number>();
+    const vistos = new Set<string>();
     const lista: MovimentoDTO[] = [];
     for (const m of entradas.data) {
       if (m.tipo !== "ENTRADA" || m.status !== "CONFIRMADO" || m.reversaoDeId != null || !ORIGENS_ENTRADA.includes(m.origem)) continue;
@@ -253,7 +254,7 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
         <input type="search" aria-label="Buscar produto" value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar por nome ou categoria…" className={CAMPO} />
         <select aria-label="Filtrar por centro de custo" value={centroFiltro} onChange={(e) => setCentroFiltro(e.target.value)} className={CAMPO}>
           <option value="">Todos os centros</option>
-          <option value="0">Sem centro</option>
+          <option value={SEM_VINCULO}>Sem centro</option>
           {centros.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
         </select>
         <select aria-label="Ordenar por" value={ordem} onChange={(e) => setOrdem(e.target.value as Ordem)} className={CAMPO}>
@@ -285,7 +286,7 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
         </select>
         <select aria-label="Filtrar histórico por centro de custo" value={centroMov} onChange={(e) => { setCentroMov(e.target.value); setPaginaMov(1); }} className={`${CAMPO} min-w-0 flex-[1_1_160px]`}>
           <option value="">Todos os centros</option>
-          <option value="0">Sem centro</option>
+          <option value={SEM_VINCULO}>Sem centro</option>
           {centros.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
         </select>
         <PeriodoFinanceiroControl inicio={periodoMov.inicio} fim={periodoMov.fim} allowAll label="Período do histórico" onChange={(periodo) => { setPeriodoMov(periodo); setPaginaMov(1); }} />

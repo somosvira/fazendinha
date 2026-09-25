@@ -20,7 +20,7 @@ export const criarSafraSchema = z.object({
   nome: z.string().min(1, "nome é obrigatório").max(80),
   dataInicio: isoDate,
   dataFim: isoDate,
-  centroCustoId: z.number().int().positive().optional(),
+  centroCustoId: z.string().uuid().optional(),
 });
 
 export const editarSafraSchema = criarSafraSchema.partial().extend({

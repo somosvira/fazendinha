@@ -73,9 +73,9 @@ export const criarOperacaoSchema = z.object({
   dosePorHectare: z.boolean().nullish(),
   doseUnidade: z.string().max(20).nullish(),
   pragaAlvo: pragaDoenca.nullish(),
-  produtoId: z.number().int().positive().nullish(),
+  produtoId: z.string().uuid().nullish(),
   quantidadeTotal: z.number().finite().nonnegative().max(MAX_QTD).nullish(),
-  centroCustoId: z.number().int().positive().nullish(),
+  centroCustoId: z.string().uuid().nullish(),
 });
 
 export const editarOperacaoSchema = criarOperacaoSchema.partial();

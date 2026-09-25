@@ -13,7 +13,7 @@ import { FormProduto } from "./FormProduto";
 
 type Aba = "contas" | "parceiros" | "produtos" | "categorias" | "centros";
 type EntidadePainel = "conta" | "parceiro" | "produto" | "categoria" | "centro";
-type Painel = { entidade: EntidadePainel; modo: "novo" } | { entidade: EntidadePainel; modo: "editar"; id: number } | null;
+type Painel = { entidade: EntidadePainel; modo: "novo" } | { entidade: EntidadePainel; modo: "editar"; id: string } | null;
 type Confirmacao =
   | { tipo: "conta"; item: Conta }
   | { tipo: "parceiro"; item: Parceiro }
@@ -107,7 +107,7 @@ export function ConfiguracoesFinanceiras({ abaInicial = "contas", podeEditar = t
 
   const trocarAba = (nova: Aba) => { setAba(nova); setPainel(null); setConfirmando(null); };
   const abrirNovo = (entidade: EntidadePainel) => { if (podeEditar && !emCurso.current) setPainel({ entidade, modo: "novo" }); };
-  const editar = (entidade: EntidadePainel, item: { id: number }) => { if (podeEditar && !emCurso.current) setPainel({ entidade, modo: "editar", id: item.id }); };
+  const editar = (entidade: EntidadePainel, item: { id: string }) => { if (podeEditar && !emCurso.current) setPainel({ entidade, modo: "editar", id: item.id }); };
   const alternarConta = async (c: Conta) => {
     if (emCurso.current) return;
     if (c.ativo) { setConfirmando({ tipo: "conta", item: c }); return; }
@@ -158,8 +158,8 @@ export function ConfiguracoesFinanceiras({ abaInicial = "contas", podeEditar = t
   const categorias = config.categorias;
   const produtosFiltrados = produtosCadastro.filter((produto) => {
     const buscaOk = produto.nome.toLocaleLowerCase("pt-BR").includes(buscaProduto.trim().toLocaleLowerCase("pt-BR"));
-    const fornecedorOk = filtroFornecedor === "SEM" ? !produto.fornecedores?.length : !filtroFornecedor || produto.fornecedores?.some((f) => f.id === Number(filtroFornecedor));
-    const centroOk = filtroCentro === "SEM" ? !produto.centrosCusto?.length : !filtroCentro || produto.centrosCusto?.some((c) => c.id === Number(filtroCentro));
+    const fornecedorOk = filtroFornecedor === "SEM" ? !produto.fornecedores?.length : !filtroFornecedor || produto.fornecedores?.some((f) => f.id === filtroFornecedor);
+    const centroOk = filtroCentro === "SEM" ? !produto.centrosCusto?.length : !filtroCentro || produto.centrosCusto?.some((c) => c.id === filtroCentro);
     const situacaoOk = filtroSituacao === "TODOS" || (filtroSituacao === "ATIVOS" ? produto.ativo !== false : produto.ativo === false);
     const usoOk = !filtroUso || (filtroUso === "SEM" ? !produto.categoria?.usoAgricola : !!produto.categoria?.usoAgricola);
     return buscaOk && fornecedorOk && centroOk && situacaoOk && usoOk;

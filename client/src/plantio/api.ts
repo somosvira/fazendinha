@@ -76,9 +76,9 @@ export interface OperacaoInput {
   dosePorHectare?: boolean;           // true → dose × área do talhão; false → dose já é o total
   doseUnidade?: string;         // legado (ex.: "mL/ha", "kg/ha", "t/ha") — aceito quando os campos novos não vêm
   pragaAlvo?: string;           // PragaDoenca (só fitossanidade)
-  produtoId?: number | null;         // produto do estoque — gera baixa automática se tiver estoque no sítio
+  produtoId?: string | null;         // produto do estoque — gera baixa automática se tiver estoque no sítio
   quantidadeTotal?: number | null;   // sobrescreve a estimativa (dose × área) quando informado
-  centroCustoId?: number | null;     // se vazio, o server usa o único centro do produto (se houver)
+  centroCustoId?: string | null;     // se vazio, o server usa o único centro do produto (se houver)
 }
 
 export interface TalhaoInput {
@@ -215,7 +215,7 @@ export interface SafraInput {
   nome: string;
   dataInicio: string;       // YYYY-MM-DD
   dataFim: string;          // YYYY-MM-DD
-  centroCustoId?: number | null;
+  centroCustoId?: string | null;
 }
 
 export interface TarefaInput {

@@ -82,7 +82,7 @@ export const financeiroRouter = new Hono()
     catch (e) { return falha(c, e); }
   })
   .patch("/financeiro/produtos/:id", exigePermissao("lancar"), validarCadastro(patchProdutoSchema), async (c) => {
-    try { return c.json(await produtos.atualizarProduto(Number(c.req.param("id")), c.req.valid("json"), usuarioId(c))); }
+    try { return c.json(await produtos.atualizarProduto(c.req.param("id"), c.req.valid("json"), usuarioId(c))); }
     catch (e) { return falha(c, e); }
   })
   .post("/financeiro/categorias", exigePermissao("lancar"), validarCadastro(categoriaCadastroSchema), async (c) => {
@@ -90,7 +90,7 @@ export const financeiroRouter = new Hono()
     catch (e) { return falha(c, e); }
   })
   .patch("/financeiro/categorias/:id", exigePermissao("lancar"), validarCadastro(patchCategoriaCadastroSchema), async (c) => {
-    try { return c.json(await cadastros.atualizarCategoria(Number(c.req.param("id")), c.req.valid("json"), usuarioId(c))); }
+    try { return c.json(await cadastros.atualizarCategoria(c.req.param("id"), c.req.valid("json"), usuarioId(c))); }
     catch (e) { return falha(c, e); }
   })
   .post("/financeiro/centros-custo", exigePermissao("lancar"), validarCadastro(centroCustoSchema), async (c) => {
@@ -98,7 +98,7 @@ export const financeiroRouter = new Hono()
     catch (e) { return falha(c, e); }
   })
   .patch("/financeiro/centros-custo/:id", exigePermissao("lancar"), validarCadastro(patchCentroCustoSchema), async (c) => {
-    try { return c.json(await cadastros.atualizarCentroCusto(Number(c.req.param("id")), c.req.valid("json"), usuarioId(c))); }
+    try { return c.json(await cadastros.atualizarCentroCusto(c.req.param("id"), c.req.valid("json"), usuarioId(c))); }
     catch (e) { return falha(c, e); }
   })
   .get("/financeiro/analise-categorias", zValidator("query", analiseCategoriasSchema, (resultado, c) => {
@@ -124,7 +124,7 @@ export const financeiroRouter = new Hono()
     } catch (e) { return falha(c, e); }
   })
   .patch("/financeiro/contas/:id", exigePermissao("lancar"), validarCadastro(patchContaSchema), async (c) => {
-    try { return c.json(await contas.atualizarConta(Number(c.req.param("id")), await resolverEscopoEscrita(c), c.req.valid("json"), usuarioId(c))); }
+    try { return c.json(await contas.atualizarConta(c.req.param("id"), await resolverEscopoEscrita(c), c.req.valid("json"), usuarioId(c))); }
     catch (e) { return falha(c, e); }
   })
   .get("/financeiro/extrato-geral", async (c) => {
@@ -135,7 +135,7 @@ export const financeiroRouter = new Hono()
     try {
       const inicio = c.req.query("inicio") ? new Date(c.req.query("inicio")!) : undefined;
       const fim = c.req.query("fim") ? new Date(c.req.query("fim")!) : undefined;
-      return c.json(await contas.listarExtrato(Number(c.req.param("id")), await resolverEscopoLeitura(c), inicio, fim));
+      return c.json(await contas.listarExtrato(c.req.param("id"), await resolverEscopoLeitura(c), inicio, fim));
     } catch (e) { return falha(c, e); }
   })
   .get("/financeiro/parceiros", async (c) => c.json(await parceiros.listarParceiros(c.req.query("inativos") === "true")))
@@ -144,7 +144,7 @@ export const financeiroRouter = new Hono()
     catch (e) { return falha(c, e); }
   })
   .patch("/financeiro/parceiros/:id", exigePermissao("lancar"), validarCadastro(patchParceiroSchema), async (c) => {
-    try { return c.json(await parceiros.atualizarParceiro(Number(c.req.param("id")), c.req.valid("json"), usuarioId(c))); }
+    try { return c.json(await parceiros.atualizarParceiro(c.req.param("id"), c.req.valid("json"), usuarioId(c))); }
     catch (e) { return falha(c, e); }
   })
   .get("/financeiro/operacoes", async (c) => {
@@ -192,7 +192,7 @@ export const financeiroRouter = new Hono()
       const propriedadeId = await resolverEscopoEscrita(c); const uid = exigirUsuarioId(c);
       const rascunho = await rascunhos.obterRascunho(propriedadeId, uid);
       if (!rascunho) throw new FinanceiroError("NAO_ENCONTRADO", "Rascunho não encontrado");
-      await documentos.removerDocumentoRascunho(Number(c.req.param("id")), rascunho.id, propriedadeId, uid);
+      await documentos.removerDocumentoRascunho(c.req.param("id"), rascunho.id, propriedadeId, uid);
       return c.body(null, 204);
     } catch (e) { return falha(c, e); }
   })
@@ -201,11 +201,11 @@ export const financeiroRouter = new Hono()
       const propriedadeId = await resolverEscopoEscrita(c); const uid = exigirUsuarioId(c);
       const rascunho = await rascunhos.obterRascunho(propriedadeId, uid);
       if (!rascunho) throw new FinanceiroError("NAO_ENCONTRADO", "Rascunho não encontrado");
-      return c.json(await documentos.atualizarDocumentoRascunho(Number(c.req.param("id")), rascunho.id, propriedadeId, uid, c.req.valid("json")));
+      return c.json(await documentos.atualizarDocumentoRascunho(c.req.param("id"), rascunho.id, propriedadeId, uid, c.req.valid("json")));
     } catch (e) { return falha(c, e); }
   })
   .get("/financeiro/operacoes/:id", async (c) => {
-    try { return c.json(await operacoes.obterOperacao(Number(c.req.param("id")), await resolverEscopoLeitura(c))); }
+    try { return c.json(await operacoes.obterOperacao(c.req.param("id"), await resolverEscopoLeitura(c))); }
     catch (e) { return falha(c, e); }
   })
   .post("/financeiro/operacoes", exigePermissao("lancar"), zValidator("json", operacaoSchema), async (c) => {
@@ -218,12 +218,12 @@ export const financeiroRouter = new Hono()
   .post("/financeiro/operacoes/:id/estorno", exigePermissao("lancar"), zValidator("json", estornoSchema), async (c) => {
     try {
       const propriedadeId = await resolverEscopoEscrita(c);
-      return c.json(await operacoes.estornarOperacao(Number(c.req.param("id")), c.req.valid("json").motivo, { propriedadeId, usuarioId: usuarioId(c) }), 201);
+      return c.json(await operacoes.estornarOperacao(c.req.param("id"), c.req.valid("json").motivo, { propriedadeId, usuarioId: usuarioId(c) }), 201);
     }
     catch (e) { return falha(c, e); }
   })
   .post("/financeiro/operacoes/:id/documentos/intencao", exigePermissao("lancar"), zValidator("json", uploadIntentSchema), async (c) => {
-    try { return c.json(await documentos.solicitarUploadOperacao(Number(c.req.param("id")), await resolverEscopoEscrita(c), usuarioId(c), c.req.valid("json")), 201); }
+    try { return c.json(await documentos.solicitarUploadOperacao(c.req.param("id"), await resolverEscopoEscrita(c), usuarioId(c), c.req.valid("json")), 201); }
     catch (e) { return falha(c, e); }
   })
   .post("/financeiro/operacoes/:id/documentos/confirmacao-upload", exigePermissao("lancar"), zValidator("json", uploadConfirmacaoSchema), async (c) => {
@@ -232,7 +232,7 @@ export const financeiroRouter = new Hono()
   })
   .get("/financeiro/documentos/:id/download", async (c) => {
     try {
-      const documento = await documentos.obterDocumento(Number(c.req.param("id")), await resolverEscopoEscrita(c));
+      const documento = await documentos.obterDocumento(c.req.param("id"), await resolverEscopoEscrita(c));
       const storage = await getStorage();
       return c.redirect(await storage.getSignedDownloadUrl({ key: documento.storageKey!, filename: documento.nome }));
     } catch (e) { return falha(c, e); }
@@ -242,7 +242,7 @@ export const financeiroRouter = new Hono()
     return c.json(await operacoes.listarCompromissos(await resolverEscopoLeitura(c), periodo.inicio && periodo.fim ? { inicio: new Date(`${periodo.inicio}T00:00:00Z`), fim: new Date(`${periodo.fim}T23:59:59.999Z`) } : undefined));
   })
   .post("/financeiro/compromissos/:id/liquidacoes", exigePermissao("lancar"), zValidator("json", liquidacaoSchema), async (c) => {
-    try { return c.json(await operacoes.liquidarCompromisso(Number(c.req.param("id")), { ...c.req.valid("json"), usuarioId: usuarioId(c) }), 201); }
+    try { return c.json(await operacoes.liquidarCompromisso(c.req.param("id"), { ...c.req.valid("json"), usuarioId: usuarioId(c) }), 201); }
     catch (e) { return falha(c, e); }
   })
   .post("/financeiro/transferencias", exigePermissao("lancar"), zValidator("json", transferenciaSchema), async (c) => {
@@ -262,7 +262,7 @@ export const financeiroRouter = new Hono()
   .post("/financeiro/transacoes/:id/estorno", exigePermissao("lancar"), zValidator("json", estornoSchema), async (c) => {
     try {
       const propriedadeId = await resolverEscopoEscrita(c);
-      return c.json(await operacoes.estornarTransacao(Number(c.req.param("id")), c.req.valid("json").motivo, { propriedadeId, usuarioId: usuarioId(c) }), 201);
+      return c.json(await operacoes.estornarTransacao(c.req.param("id"), c.req.valid("json").motivo, { propriedadeId, usuarioId: usuarioId(c) }), 201);
     }
     catch (e) { return falha(c, e); }
   });

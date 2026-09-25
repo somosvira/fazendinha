@@ -9,8 +9,8 @@ import { estornarMovimentoTx, listarSaldos } from "../estoque/estoque.js";
 
 const describeComBanco = process.env.FINANCE_DB_INTEGRATION === "1" ? describe : describe.skip;
 const propriedadesCriadas: number[] = [];
-const parceirosCriados: number[] = [];
-const produtosCriados: number[] = [];
+const parceirosCriados: string[] = [];
+const produtosCriados: string[] = [];
 
 async function fixture() {
   const sufixo = crypto.randomUUID();
@@ -102,7 +102,7 @@ describeComBanco("operações financeiras concorrentes com PostgreSQL", () => {
 
   // Estorno avulso de um movimento (o que plantio/sanidade fazem) disputando o
   // lock da Operacao com o cancelamento financeiro.
-  const estornarMovimento = (id: number, propriedadeId: number) =>
+  const estornarMovimento = (id: string, propriedadeId: number) =>
     prisma.$transaction((tx) => estornarMovimentoTx(tx, id, { propriedadeId }), { isolationLevel: "Serializable" });
 
   it("serializa estorno físico com cancelamento da operação", async () => {

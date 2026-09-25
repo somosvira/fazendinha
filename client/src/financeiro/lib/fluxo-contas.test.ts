@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { MovimentoConta } from "../novo-api";
 import { fluxoDiario, fluxoPeriodo } from "./fluxo-contas";
+import { uid } from "../../lib/uid.fixture";
 
 function movimento(valor: string, direcao: "ENTRADA" | "SAIDA", data: string, transacao: Partial<MovimentoConta["transacao"]> = {}): MovimentoConta {
-  return { id: 1, direcao, valor, transacao: { id: 1, tipo: "RECEBIMENTO", data, descricao: null, formaPagamento: null, parceiro: null, operacao: null, status: "CONFIRMADA", ...transacao } };
+  return { id: uid(1), seq: 1, direcao, valor, transacao: { id: uid(1), seq: 1, tipo: "RECEBIMENTO", data, descricao: null, formaPagamento: null, parceiro: null, operacao: null, status: "CONFIRMADA", ...transacao } };
 }
 
 describe("fluxo diário das contas", () => {
@@ -28,7 +29,7 @@ describe("fluxo diário das contas", () => {
       movimento("100", "SAIDA", "2026-09-10", { tipo: "TRANSFERENCIA", status: "REVERTIDA" }),
       movimento("100", "ENTRADA", "2026-09-10", { tipo: "TRANSFERENCIA", status: "REVERTIDA" }),
       movimento("100", "ENTRADA", "2026-09-11", { tipo: "REVERSAO", reversaoDe: { tipo: "TRANSFERENCIA" } }),
-      movimento("100", "SAIDA", "2026-09-11", { tipo: "REVERSAO", operacao: { id: 4, descricao: null, tipo: "TRANSFERENCIA_FINANCEIRA" } }),
+      movimento("100", "SAIDA", "2026-09-11", { tipo: "REVERSAO", operacao: { id: uid(4), numero: 4, descricao: null, tipo: "TRANSFERENCIA_FINANCEIRA" } }),
       movimento("20", "ENTRADA", "2026-09-10"),
     ];
     const consolidado = fluxoDiario(movimentos, "2026-09", true);

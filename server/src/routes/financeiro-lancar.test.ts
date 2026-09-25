@@ -13,6 +13,7 @@ vi.mock("../services/financeiro/rascunhos.js", () => ({ confirmarRascunho: mocks
 vi.mock("../services/propriedade.js", () => ({ resolverEscopoLeitura: vi.fn().mockResolvedValue(1), resolverEscopoEscrita: vi.fn().mockResolvedValue(1) }));
 
 import { financeiroRouter } from "./financeiro.js";
+import { uid } from "../lib/uid.fixture.js";
 
 const base = { id: 7, nome: "Contador", email: "c@x", papel: "contador", abas: [], areas: ["financeiro"], status: "ATIVO", dono: false };
 const appCom = (usuario: unknown) => new Hono().use("*", async (c, next) => { c.set("usuario" as never, usuario as never); await next(); }).route("/", financeiroRouter);
@@ -21,12 +22,12 @@ const json = { "content-type": "application/json" };
 // Toda escrita com efeito financeiro/físico exige a flag `lancar` (o gate de
 // área financeiro não basta). O rascunho continua livre: não tem efeito.
 const escritas: [string, string, unknown][] = [
-  ["criar operação", "/financeiro/operacoes", { tipo: "SERVICO", data: "2026-09-10", descricao: "Serviço", valorTotal: 10, parceiroId: 1, financeiro: { condicao: "SEM_EFEITO_FINANCEIRO" } }],
+  ["criar operação", "/financeiro/operacoes", { tipo: "SERVICO", data: "2026-09-10", descricao: "Serviço", valorTotal: 10, parceiroId: uid(1), financeiro: { condicao: "SEM_EFEITO_FINANCEIRO" } }],
   ["confirmar rascunho", "/financeiro/operacoes/rascunho/confirmacao", {}],
-  ["anexar documento em operação", "/financeiro/operacoes/5/documentos/intencao", { nome: "nota.pdf", mimeType: "application/pdf", tamanhoBytes: 10, tipo: "NOTA_FISCAL" }],
-  ["liquidar compromisso", "/financeiro/compromissos/3/liquidacoes", { contaId: 1, valor: 10, data: "2026-09-10" }],
-  ["transferir", "/financeiro/transferencias", { contaOrigemId: 1, contaDestinoId: 2, valor: 10, data: "2026-09-10" }],
-  ["transação avulsa", "/financeiro/transacoes", { tipo: "APORTE", contaId: 1, valor: 10, data: "2026-09-10" }],
+  ["anexar documento em operação", `/financeiro/operacoes/${uid(5)}/documentos/intencao`, { nome: "nota.pdf", mimeType: "application/pdf", tamanhoBytes: 10, tipo: "NOTA_FISCAL" }],
+  ["liquidar compromisso", `/financeiro/compromissos/${uid(3)}/liquidacoes`, { contaId: uid(1), valor: 10, data: "2026-09-10" }],
+  ["transferir", "/financeiro/transferencias", { contaOrigemId: uid(1), contaDestinoId: uid(2), valor: 10, data: "2026-09-10" }],
+  ["transação avulsa", "/financeiro/transacoes", { tipo: "APORTE", contaId: uid(1), valor: 10, data: "2026-09-10" }],
 ];
 
 describe("escritas financeiras sem a flag lancar", () => {

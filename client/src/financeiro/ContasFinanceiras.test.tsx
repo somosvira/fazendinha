@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, within, waitFor } from "@testing-library/react";
 import { ContasFinanceiras } from "./ContasFinanceiras";
 import { obterConfiguracoesFinanceiras, obterExtratoConta } from "./novo-api";
+import { uid } from "../lib/uid.fixture";
 
 vi.mock("./novo-api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./novo-api")>()),
@@ -18,9 +19,9 @@ beforeEach(() => {
   vi.mocked(obterExtratoConta).mockResolvedValue([]);
   vi.mocked(obterConfiguracoesFinanceiras).mockResolvedValue({
     contas: [
-      { id: 1, nome: "Banco principal", tipo: "BANCO", instituicao: "Banco A", identificacao: "001", saldoAbertura: "100", dataSaldoAbertura: "2026-09-01", saldoAtual: "100", incluirNoSaldoGeral: true, ativo: true, temMovimentos: false },
-      { id: 2, nome: "Caixa auxiliar", tipo: "CAIXA", instituicao: null, identificacao: null, saldoAbertura: "50", dataSaldoAbertura: "2026-09-01", saldoAtual: "50", incluirNoSaldoGeral: true, ativo: true, temMovimentos: false },
-      { id: 3, nome: "Conta inativa", tipo: "APLICACAO", instituicao: null, identificacao: null, saldoAbertura: "20", dataSaldoAbertura: "2026-09-01", saldoAtual: "20", incluirNoSaldoGeral: true, ativo: false, temMovimentos: false },
+      { id: uid(1), nome: "Banco principal", tipo: "BANCO", instituicao: "Banco A", identificacao: "001", saldoAbertura: "100", dataSaldoAbertura: "2026-09-01", saldoAtual: "100", incluirNoSaldoGeral: true, ativo: true, temMovimentos: false },
+      { id: uid(2), nome: "Caixa auxiliar", tipo: "CAIXA", instituicao: null, identificacao: null, saldoAbertura: "50", dataSaldoAbertura: "2026-09-01", saldoAtual: "50", incluirNoSaldoGeral: true, ativo: true, temMovimentos: false },
+      { id: uid(3), nome: "Conta inativa", tipo: "APLICACAO", instituicao: null, identificacao: null, saldoAbertura: "20", dataSaldoAbertura: "2026-09-01", saldoAtual: "20", incluirNoSaldoGeral: true, ativo: false, temMovimentos: false },
     ],
     parceiros: [], categorias: [], centrosCusto: [], produtos: [],
   });
@@ -49,8 +50,8 @@ describe("ContasFinanceiras — cadastros ativos", () => {
   it("permite consultar o histórico de uma conta inativa", async () => {
     render(<ContasFinanceiras onNav={vi.fn()} />);
     fireEvent.click((await screen.findAllByRole("link", { name: "Ver conta Conta inativa" }))[0]);
-    expect(window.location.pathname).toBe("/financeiro/contas/3");
-    await waitFor(() => expect(obterExtratoConta).toHaveBeenLastCalledWith(3));
+    expect(window.location.pathname).toBe(`/financeiro/contas/${uid(3)}`);
+    await waitFor(() => expect(obterExtratoConta).toHaveBeenLastCalledWith(uid(3)));
     expect(screen.getAllByRole("heading", { name: "Conta inativa" })).toBeTruthy();
   });
 
@@ -73,15 +74,15 @@ describe("ContasFinanceiras — cadastros ativos", () => {
 });
 
 it("abre uma conta diretamente e não substitui uma conta inexistente", async () => {
-  window.history.replaceState(null, "", "/financeiro/contas/2");
+  window.history.replaceState(null, "", `/financeiro/contas/${uid(2)}`);
   render(<ContasFinanceiras onNav={vi.fn()} />);
-  await waitFor(() => expect(obterExtratoConta).toHaveBeenLastCalledWith(2));
+  await waitFor(() => expect(obterExtratoConta).toHaveBeenLastCalledWith(uid(2)));
   fireEvent.click(screen.getByRole("button", { name: /Voltar para contas/ }));
   expect(window.location.pathname).toBe("/financeiro/contas");
   expect(screen.getAllByRole("link", { name: "Ver conta Banco principal" })[0]).toBeTruthy();
   cleanup();
   vi.mocked(obterExtratoConta).mockClear();
-  window.history.replaceState(null, "", "/financeiro/contas/999");
+  window.history.replaceState(null, "", `/financeiro/contas/${uid(999)}`);
   render(<ContasFinanceiras onNav={vi.fn()} />);
   expect(await screen.findByText("Esta conta não está disponível na fazenda selecionada.")).toBeTruthy();
   expect(obterExtratoConta).not.toHaveBeenCalled();
@@ -92,19 +93,19 @@ it("localiza o movimento do endereço depois de carregar o extrato", async () =>
   const originalScroll = HTMLElement.prototype.scrollIntoView;
   HTMLElement.prototype.scrollIntoView = scroll;
   const rects = vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([{}] as unknown as DOMRectList);
-  window.history.replaceState(null, "", "/financeiro/contas/1#movimento-42");
-  vi.mocked(obterExtratoConta).mockResolvedValue([{ id: 42, direcao: "ENTRADA", valor: "10", transacao: { id: 4, tipo: "RECEBIMENTO", status: "CONFIRMADA", data: "2026-09-13", descricao: "Movimento alvo", formaPagamento: null, parceiro: null, operacao: null } }]);
+  window.history.replaceState(null, "", `/financeiro/contas/${uid(1)}#movimento-${uid(42)}`);
+  vi.mocked(obterExtratoConta).mockResolvedValue([{ id: uid(42), seq: 42, direcao: "ENTRADA", valor: "10", transacao: { id: uid(4), seq: 4, tipo: "RECEBIMENTO", status: "CONFIRMADA", data: "2026-09-13", descricao: "Movimento alvo", formaPagamento: null, parceiro: null, operacao: null } }]);
   try {
     render(<ContasFinanceiras onNav={vi.fn()} />);
     await waitFor(() => expect(scroll).toHaveBeenCalledWith({ behavior: "smooth", block: "center" }));
-    expect(document.activeElement?.getAttribute("data-ancora")).toBe("movimento-42");
+    expect(document.activeElement?.getAttribute("data-ancora")).toBe(`movimento-${uid(42)}`);
   } finally { rects.mockRestore(); HTMLElement.prototype.scrollIntoView = originalScroll; }
 });
 
 it("identifica no extrato que a reversão veio do cancelamento de uma operação e linka de volta", async () => {
-  window.history.replaceState(null, "", "/financeiro/contas/1");
+  window.history.replaceState(null, "", `/financeiro/contas/${uid(1)}`);
   vi.mocked(obterExtratoConta).mockResolvedValue([
-    { id: 50, direcao: "ENTRADA", valor: "60", transacao: { id: 9, tipo: "REVERSAO", status: "CONFIRMADA", data: "2026-09-20", descricao: "Cancelamento da operação #5: fornecedor errado", formaPagamento: null, parceiro: null, operacao: { id: 5, descricao: "Compra de ração", tipo: "COMPRA_ESTOQUE" }, reversaoDe: { tipo: "PAGAMENTO" } } },
+    { id: uid(50), seq: 50, direcao: "ENTRADA", valor: "60", transacao: { id: uid(9), seq: 9, tipo: "REVERSAO", status: "CONFIRMADA", data: "2026-09-20", descricao: "Cancelamento da operação #5: fornecedor errado", formaPagamento: null, parceiro: null, operacao: { id: uid(5), numero: 5, descricao: "Compra de ração", tipo: "COMPRA_ESTOQUE" }, reversaoDe: { tipo: "PAGAMENTO" } } },
   ]);
   render(<ContasFinanceiras onNav={vi.fn()} />);
   expect((await screen.findAllByText(/Estorno pelo cancelamento da OP-0005/)).length).toBeGreaterThan(0);

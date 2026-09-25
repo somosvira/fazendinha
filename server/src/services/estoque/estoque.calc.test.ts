@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { Prisma } from "@prisma/client";
 import { saldoProduto, custoMedioProduto, valorSaidaPreciso, valorSaidaDaBase, entraNoCustoMedio, consolidarSaldo, type MovIn, type MovCustoIn } from "./estoque.calc.js";
+import { uid } from "../../lib/uid.fixture.js";
 
 const HOJE = "2026-06-17";
 
@@ -62,13 +63,13 @@ describe("custoMedioProduto", () => {
     const r = custoMedioProduto([
       compra(10, 50),
       compra(10, 70, { status: "REVERTIDO" }),
-      { tipo: "SAIDA", origem: "AJUSTE_INVENTARIO", status: "CONFIRMADO", reversaoDeId: 2, quantidade: D(10), valorTotal: D(70) },
+      { tipo: "SAIDA", origem: "AJUSTE_INVENTARIO", status: "CONFIRMADO", reversaoDeId: uid(2), quantidade: D(10), valorTotal: D(70) },
     ]);
     expect(r.custoMedio?.toNumber()).toBe(5);
   });
 
   it("inverso de entrada com reversaoDeId nunca entra, mesmo se ENTRADA", () => {
-    expect(custoMedioProduto([compra(10, 50), compra(10, 90, { reversaoDeId: 1 })]).custoMedio?.toNumber()).toBe(5);
+    expect(custoMedioProduto([compra(10, 50), compra(10, 90, { reversaoDeId: uid(1) })]).custoMedio?.toNumber()).toBe(5);
   });
 
   it("AJUSTE negativo é ignorado", () => {

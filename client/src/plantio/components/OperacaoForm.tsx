@@ -178,9 +178,9 @@ export function OperacaoForm({ talhaoId, talhao, dominioFixo, onFechar, onSalvo 
         doseUnidadeMedida: doseValorNumerico != null ? doseUnidadeMedida : undefined,
         dosePorHectare: doseValorNumerico != null ? dosePorHectare : undefined,
         pragaAlvo: dominio === "fitossanidade" ? praga : undefined,
-        produtoId: produtoId ? Number(produtoId) : null,
+        produtoId: produtoId || null,
         quantidadeTotal: quantidadeTotal.trim() ? Number(quantidadeTotal.replace(",", ".")) : null,
-        centroCustoId: centroCustoId ? Number(centroCustoId) : null,
+        centroCustoId: centroCustoId || null,
       });
       if (salvo?.aviso) toast.warn("Aplicação registrada sem baixa de estoque", salvo.aviso);
       onSalvo();

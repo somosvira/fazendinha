@@ -11,12 +11,12 @@ export const CENTROS_ATIVIDADE = {
 
 export interface DbCentroCusto {
   centroCusto: {
-    findMany(args: { where: { nome: { in: string[] } }; select: { id: true } }): Promise<{ id: number }[]>;
+    findMany(args: { where: { nome: { in: string[] } }; select: { id: true } }): Promise<{ id: string }[]>;
   };
 }
 
 /** Resolve ids de CentroCusto a partir de uma lista de nomes (um único findMany). */
-export async function resolverIdsCentros(db: DbCentroCusto, nomes: readonly string[]): Promise<number[]> {
+export async function resolverIdsCentros(db: DbCentroCusto, nomes: readonly string[]): Promise<string[]> {
   if (nomes.length === 0) return [];
   const centros = await db.centroCusto.findMany({ where: { nome: { in: [...nomes] } }, select: { id: true } });
   return centros.map((c) => c.id);
@@ -24,7 +24,7 @@ export async function resolverIdsCentros(db: DbCentroCusto, nomes: readonly stri
 
 export interface DbCentroCustoComNome {
   centroCusto: {
-    findMany(args: { where: { nome: { in: string[] } }; select: { id: true; nome: true } }): Promise<{ id: number; nome: string }[]>;
+    findMany(args: { where: { nome: { in: string[] } }; select: { id: true; nome: true } }): Promise<{ id: string; nome: string }[]>;
   };
 }
 
@@ -33,7 +33,7 @@ export interface DbCentroCustoComNome {
  * Estoque (`routes/estoque-centros.ts`) e por `/financeiro/configuracoes`
  * (`routes/financeiro.ts`) para resolver o filtro inicial sem duas idas ao banco.
  */
-export async function obterCentrosAtividade(db: DbCentroCustoComNome): Promise<{ cafe: number | null }> {
+export async function obterCentrosAtividade(db: DbCentroCustoComNome): Promise<{ cafe: string | null }> {
   const centros = await db.centroCusto.findMany({
     where: { nome: { in: [CENTROS_ATIVIDADE.CAFE] } },
     select: { id: true, nome: true },

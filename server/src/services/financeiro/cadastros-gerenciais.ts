@@ -28,7 +28,7 @@ export async function criarCategoria(input: z.infer<typeof categoriaCadastroSche
   } catch (erro) { traduzirConflitoUnico(erro, { nome: "Já existe uma categoria com este nome" }); }
 }
 
-export async function atualizarCategoria(id: number, input: z.infer<typeof patchCategoriaCadastroSchema>, usuarioId?: number | null) {
+export async function atualizarCategoria(id: string, input: z.infer<typeof patchCategoriaCadastroSchema>, usuarioId?: number | null) {
   try {
     return await prisma.$transaction(async (tx) => {
       const anterior = await tx.categoria.findUnique({ where: { id } });
@@ -50,7 +50,7 @@ export async function criarCentroCusto(input: z.infer<typeof centroCustoSchema>,
   } catch (erro) { traduzirConflitoUnico(erro, { nome: "Já existe um centro de custo com este nome" }); }
 }
 
-export async function atualizarCentroCusto(id: number, input: z.infer<typeof patchCentroCustoSchema>, usuarioId?: number | null) {
+export async function atualizarCentroCusto(id: string, input: z.infer<typeof patchCentroCustoSchema>, usuarioId?: number | null) {
   try {
     return await prisma.$transaction(async (tx) => {
       const anterior = await tx.centroCusto.findUnique({ where: { id } });

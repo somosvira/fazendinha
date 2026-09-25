@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { CompromissosFinanceiros } from "./CompromissosFinanceiros";
 import { descartarRascunhoOperacao, listarCompromissos, obterConfiguracoesFinanceiras, obterRascunhoOperacao } from "./novo-api";
+import { uid } from "../lib/uid.fixture";
 
 vi.mock("./novo-api", () => ({
   listarCompromissos: vi.fn().mockResolvedValue([]),
@@ -20,7 +21,7 @@ afterEach(cleanup);
 
 describe("CompromissosFinanceiros — criação", () => {
   it("pede confirmação antes de substituir um rascunho", async () => {
-    vi.mocked(obterRascunhoOperacao).mockResolvedValue({ id: 8, versao: 1, updatedAt: "2026-09-07T12:00:00Z", documentos: [], dados: {} });
+    vi.mocked(obterRascunhoOperacao).mockResolvedValue({ id: uid(8), versao: 1, updatedAt: "2026-09-07T12:00:00Z", documentos: [], dados: {} });
     const onNav = vi.fn();
     render(<CompromissosFinanceiros onNav={onNav} />);
 
@@ -50,7 +51,7 @@ describe("CompromissosFinanceiros — criação", () => {
   });
 
   it("abre o rascunho atual sem descartar seus dados", async () => {
-    vi.mocked(obterRascunhoOperacao).mockResolvedValue({ id: 8, versao: 1, updatedAt: "2026-09-07T12:00:00Z", documentos: [], dados: {} });
+    vi.mocked(obterRascunhoOperacao).mockResolvedValue({ id: uid(8), versao: 1, updatedAt: "2026-09-07T12:00:00Z", documentos: [], dados: {} });
     const onNav = vi.fn();
     render(<CompromissosFinanceiros onNav={onNav} />);
 
@@ -65,7 +66,8 @@ describe("CompromissosFinanceiros — criação", () => {
 
   it("não oferece conta inativa ao liquidar um compromisso", async () => {
     vi.mocked(listarCompromissos).mockResolvedValue([{
-      id: 11,
+      id: uid(11),
+      seq: 11,
       tipo: "PAGAR",
       status: "PENDENTE",
       valorOriginal: "100",
@@ -76,12 +78,12 @@ describe("CompromissosFinanceiros — criação", () => {
       totalParcelas: 2,
       vencido: false,
       parceiro: null,
-      operacao: { id: 5, tipo: "SERVICO", descricao: "Serviço veterinário" },
+      operacao: { id: uid(5), numero: 5, tipo: "SERVICO", descricao: "Serviço veterinário" },
     }]);
     vi.mocked(obterConfiguracoesFinanceiras).mockResolvedValue({
       contas: [
-        { id: 1, nome: "Conta ativa", tipo: "BANCO", instituicao: null, identificacao: null, saldoAbertura: "100", dataSaldoAbertura: "2026-09-01", saldoAtual: "100", incluirNoSaldoGeral: true, ativo: true, temMovimentos: false },
-        { id: 2, nome: "Conta inativa", tipo: "CAIXA", instituicao: null, identificacao: null, saldoAbertura: "0", dataSaldoAbertura: "2026-09-01", saldoAtual: "0", incluirNoSaldoGeral: true, ativo: false, temMovimentos: false },
+        { id: uid(1), nome: "Conta ativa", tipo: "BANCO", instituicao: null, identificacao: null, saldoAbertura: "100", dataSaldoAbertura: "2026-09-01", saldoAtual: "100", incluirNoSaldoGeral: true, ativo: true, temMovimentos: false },
+        { id: uid(2), nome: "Conta inativa", tipo: "CAIXA", instituicao: null, identificacao: null, saldoAbertura: "0", dataSaldoAbertura: "2026-09-01", saldoAtual: "0", incluirNoSaldoGeral: true, ativo: false, temMovimentos: false },
       ],
       parceiros: [], categorias: [], centrosCusto: [], produtos: [],
     });

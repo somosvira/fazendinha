@@ -3,6 +3,8 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import pg from "pg";
 import type { PrismaClient } from "@prisma/client";
+import { SEM_VINCULO } from "../../src/lib/ids.js";
+import { uid } from "../../src/lib/uid.fixture.js";
 
 // O runner usa um banco temporário criado por execução no Postgres local.
 const qaDatabase = process.env.FINANCE_QA_DATABASE;
@@ -22,7 +24,7 @@ let drafts: typeof import("../../src/services/financeiro/rascunhos.js");
 let accounts: typeof import("../../src/services/financeiro/contas.js");
 let stock: typeof import("../../src/services/estoque/estoque.js");
 let schema: typeof import("../../src/services/financeiro/schemas.js");
-let pid: number, accountId: number, partnerId: number, productId: number, userId: number, centroConsumoId: number;
+let pid: number, accountId: string, partnerId: string, productId: string, userId: number, centroConsumoId: string;
 let serial = 0;
 const data = new Date("2026-09-01T12:00:00Z");
 const evidence: unknown[] = [];
@@ -72,7 +74,7 @@ async function snapshot(label: string) {
   evidence.push({ caso: serial, label, state });
   return state;
 }
-async function pay(id: number, valor: number) { return ops.liquidarCompromisso(id, { data, valor, contaId: accountId, usuarioId: userId }); }
+async function pay(id: string, valor: number) { return ops.liquidarCompromisso(id, { data, valor, contaId: accountId, usuarioId: userId }); }
 
 // Falha REAL do PostgreSQL, depois de operação, itens, estoque e dinheiro terem
 // sido inseridos. Não substitui Prisma, serviços ou $transaction por mocks.
@@ -310,7 +312,7 @@ describe("categorias por item e relatórios", () => {
     const filtro = { inicio: "2026-09-01", fim: "2026-11-30", base: "compras" as const, categoriaId: silagem.id };
     expect(await analisarCategorias(filtro, pid)).toMatchObject({ total: "800.00", categorias: [{ categoria: silagem.nome, valor: "800.00" }] });
     expect((await analisarCategorias({ ...filtro, centroCustoId: centro.id }, pid)).total).toBe("800.00");
-    expect((await analisarCategorias({ ...filtro, centroCustoId: 0 }, pid)).total).toBe("0.00");
+    expect((await analisarCategorias({ ...filtro, centroCustoId: SEM_VINCULO }, pid)).total).toBe("0.00");
     expect((await analisarCategorias(filtro, pid + 9999)).total).toBe("0.00");
     expect((await analisarCategorias({ ...filtro, inicio: "2026-10-01" }, pid)).total).toBe("0.00");
     const pagamento = await pay(op.compromissos[0].id, 500);
@@ -354,28 +356,28 @@ describe("categorias por item e relatórios", () => {
     const composicao = comporItens(operacoes, semFiltro);
     expect(composicao.despesas.porCentro.map((c) => [c.nome, c.total])).toEqual([[x.nome, "500.00"], [y.nome, "300.00"], [sede.nome, "200.00"]]);
     expect(comporItens(operacoes, { ...semFiltro, centroCustoIds: [y.id] }).linhas.map((l) => l.item)).toEqual(["B"]);
-    expect(comporItens(operacoes, { ...semFiltro, centroCustoIds: [0] }).linhas).toEqual([]);
+    expect(comporItens(operacoes, { ...semFiltro, centroCustoIds: [SEM_VINCULO] }).linhas).toEqual([]);
     const filtro = { inicio: "2026-09-01", fim: "2026-09-30", base: "compras" as const };
     expect((await analisarCategorias({ ...filtro, centroCustoId: y.id }, pid))).toMatchObject({ total: "300.00", linhas: [{ centroCusto: y.nome }] });
     expect((await analisarCategorias({ ...filtro, centroCustoId: sede.id }, pid))).toMatchObject({ total: "200.00", linhas: [{ centroCusto: sede.nome }] });
-    expect((await analisarCategorias({ ...filtro, centroCustoId: 0 }, pid)).total).toBe("0.00");
+    expect((await analisarCategorias({ ...filtro, centroCustoId: SEM_VINCULO }, pid)).total).toBe("0.00");
     expect((await analisarCategorias({ ...filtro, base: "pagamentos", centroCustoId: x.id }, pid)).total).toBe("500.00");
     const gerencial = await gerarRelatorioGerencial({ inicio: filtro.inicio, fim: filtro.fim, regime: "realizado" }, pid, { ...semFiltro, centroCustoIds: [y.id] });
     expect(gerencial.categorias?.centros).toEqual([{ centro: y.nome, total: 300, pct: 100 }]);
-    expect((await gerarRelatorioGerencial({ inicio: filtro.inicio, fim: filtro.fim, regime: "realizado" }, pid, { ...semFiltro, centroCustoIds: [0] })).categorias?.centros).toEqual([]);
+    expect((await gerarRelatorioGerencial({ inicio: filtro.inicio, fim: filtro.fim, regime: "realizado" }, pid, { ...semFiltro, centroCustoIds: [SEM_VINCULO] })).categorias?.centros).toEqual([]);
 
-    // Caso positivo de centroCustoId: 0 — item estocável cujo produto tem 2 centros
-    // fica sem centro efetivo (nem operação nem item definem um), então cai em "0".
+    // Caso positivo de centroCustoId: SEM_VINCULO — item estocável cujo produto tem 2 centros
+    // fica sem centro efetivo (nem operação nem item definem um), então cai em SEM_VINCULO.
     const insumos = await db.categoria.create({ data: { nome: `Insumos sem centro ${serial}`, classificacao: "CUSTEIO" } });
     const produtoDoisCentros = await db.produto.create({ data: { nome: `Sem centro efetivo ${serial}`, unidade: "UN", categoriaId: insumos.id, centrosCusto: { create: [{ centroCustoId: x.id }, { centroCustoId: y.id }] } } });
     const semCentro = await ops.criarOperacao({ ...input("A_VISTA", "COMPRA_ESTOQUE"), valorTotal: 150, centroCustoId: undefined,
       itens: [{ produtoId: produtoDoisCentros.id, descricao: "Sem centro", quantidade: 1, unidade: "un", valorUnitario: 150, estocavel: true }],
     });
     expect(semCentro.itens[0]).toMatchObject({ centroCustoId: null, centroCustoNome: null });
-    const semCentroFiltro = await analisarCategorias({ ...filtro, centroCustoId: 0 }, pid);
+    const semCentroFiltro = await analisarCategorias({ ...filtro, centroCustoId: SEM_VINCULO }, pid);
     expect(semCentroFiltro.total).toBe("150.00");
     expect(semCentroFiltro.linhas).toEqual([{ operacaoId: semCentro.id, descricao: semCentro.descricao, data: filtro.inicio, categoriaId: insumos.id, categoria: insumos.nome, centroCusto: "Sem centro de custo", classificacao: semCentro.itens[0].classificacao, valor: "150.00" }]);
-    const gerencialZero = await gerarRelatorioGerencial({ inicio: filtro.inicio, fim: filtro.fim, regime: "realizado" }, pid, { ...semFiltro, centroCustoIds: [0] });
+    const gerencialZero = await gerarRelatorioGerencial({ inicio: filtro.inicio, fim: filtro.fim, regime: "realizado" }, pid, { ...semFiltro, centroCustoIds: [SEM_VINCULO] });
     expect(gerencialZero.categorias?.centros).toEqual([{ centro: "(Sem centro de custo)", total: 150, pct: 100 }]);
     expect((await analisarCategorias({ ...filtro, centroCustoId: x.id }, pid)).total).toBe("500.00");
   });
@@ -436,9 +438,9 @@ describe("correções da revisão", () => {
     const pagamento = await ops.criarTransacaoAvulsa({ tipo: "PAGAMENTO", propriedadeId: pid, contaId: accountId, data, valor: 100, descricao: "Frete avulso" });
     await ops.criarTransacaoAvulsa({ tipo: "RECEBIMENTO", propriedadeId: pid, contaId: accountId, data, valor: 75, descricao: "Recebimento avulso" });
     expect(await analisarCategorias(filtro, pid)).toMatchObject({ total: "100.00", linhas: [{ operacaoId: null, contaId: accountId, movimentoId: pagamento.movimentos[0].id, categoria: "Sem categoria", valor: "100.00" }] });
-    expect((await analisarCategorias({ ...filtro, categoriaId: 0, centroCustoId: 0 }, pid)).total).toBe("100.00");
-    expect((await analisarCategorias({ ...filtro, categoriaId: 999999 }, pid)).total).toBe("0.00");
-    expect((await analisarCategorias({ ...filtro, centroCustoId: 999999 }, pid)).total).toBe("0.00");
+    expect((await analisarCategorias({ ...filtro, categoriaId: SEM_VINCULO, centroCustoId: SEM_VINCULO }, pid)).total).toBe("100.00");
+    expect((await analisarCategorias({ ...filtro, categoriaId: uid(999999) }, pid)).total).toBe("0.00");
+    expect((await analisarCategorias({ ...filtro, centroCustoId: uid(999999) }, pid)).total).toBe("0.00");
     expect((await analisarCategorias({ ...filtro, base: "compras" }, pid)).total).toBe("0.00");
     expect((await analisarCategorias(filtro, pid + 99999)).total).toBe("0.00");
     const estorno = await ops.estornarTransacao(pagamento.id, "Reverter frete avulso", { propriedadeId: pid, usuarioId: userId });

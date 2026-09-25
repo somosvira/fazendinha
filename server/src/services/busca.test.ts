@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { uid } from "../lib/uid.fixture";
 import {
   qValido,
   mapearTalhao,
@@ -40,9 +41,10 @@ describe("mapearTalhao", () => {
 
 describe("mapearCategoria", () => {
   it("sublabel = nome do grupo", () => {
-    expect(mapearCategoria({ id: 8, nome: "Ração" })).toEqual({
+    const id = uid(8);
+    expect(mapearCategoria({ id, nome: "Ração" })).toEqual({
       tipo: "categoria",
-      entidadeId: "8",
+      entidadeId: id,
       label: "Ração",
       sublabel: "Categoria financeira",
       tab: "plano",
@@ -53,9 +55,10 @@ describe("mapearCategoria", () => {
 
 describe("mapearFornecedor", () => {
   it("sublabel = tipo da pessoa", () => {
-    expect(mapearFornecedor({ id: 2, nome: "Agropecuária Central", tipo: "FORNECEDOR" })).toEqual({
+    const id = uid(2);
+    expect(mapearFornecedor({ id, nome: "Agropecuária Central", tipo: "FORNECEDOR" })).toEqual({
       tipo: "fornecedor",
-      entidadeId: "2",
+      entidadeId: id,
       label: "Agropecuária Central",
       sublabel: "FORNECEDOR",
       tab: "cadastros",

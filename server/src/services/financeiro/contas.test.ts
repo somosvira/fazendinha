@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Prisma } from "@prisma/client";
+import { uid } from "../../lib/uid.fixture.js";
 
 const mocks = vi.hoisted(() => ({
   contasFindMany: vi.fn(), movimentosFindMany: vi.fn(), findFirst: vi.fn(), update: vi.fn(), create: vi.fn(), count: vi.fn(), auditoria: vi.fn(), transaction: vi.fn(),
@@ -18,7 +19,7 @@ vi.mock("../../db.js", () => {
 import { atualizarConta, criarConta, listarContas, listarExtrato, listarExtratoGeral } from "./contas.js";
 import { FinanceiroError } from "./regras.js";
 
-const anterior = { id: 1, propriedadeId: 1, nome: "Caixa", saldoAbertura: new Prisma.Decimal(50), dataSaldoAbertura: new Date("2026-01-01T00:00:00Z"), ativo: true };
+const anterior = { id: uid(1), propriedadeId: 1, nome: "Caixa", saldoAbertura: new Prisma.Decimal(50), dataSaldoAbertura: new Date("2026-01-01T00:00:00Z"), ativo: true };
 const p2002 = (target: string[]) => new Prisma.PrismaClientKnownRequestError("dup", { code: "P2002", clientVersion: "6", meta: { target } });
 
 describe("contas financeiras", () => {
@@ -26,30 +27,30 @@ describe("contas financeiras", () => {
     vi.clearAllMocks();
     mocks.findFirst.mockResolvedValue(anterior);
     mocks.update.mockImplementation(async ({ data }) => ({ ...anterior, ...data }));
-    mocks.create.mockResolvedValue({ ...anterior, id: 3, saldoAbertura: new Prisma.Decimal(25) });
+    mocks.create.mockResolvedValue({ ...anterior, id: uid(3), saldoAbertura: new Prisma.Decimal(25) });
     mocks.movimentosFindMany.mockResolvedValue([]);
   });
 
   it("consulta extrato no consolidado e recusa conta fora da propriedade selecionada", async () => {
-    await listarExtrato(1, null);
-    expect(mocks.findFirst).toHaveBeenLastCalledWith({ where: { id: 1 } });
+    await listarExtrato(uid(1), null);
+    expect(mocks.findFirst).toHaveBeenLastCalledWith({ where: { id: uid(1) } });
     mocks.movimentosFindMany.mockClear();
     mocks.findFirst.mockResolvedValue(null);
-    await expect(listarExtrato(1, 2)).rejects.toMatchObject({ code: "NAO_ENCONTRADO" });
-    expect(mocks.findFirst).toHaveBeenLastCalledWith({ where: { id: 1, propriedadeId: 2 } });
+    await expect(listarExtrato(uid(1), 2)).rejects.toMatchObject({ code: "NAO_ENCONTRADO" });
+    expect(mocks.findFirst).toHaveBeenLastCalledWith({ where: { id: uid(1), propriedadeId: 2 } });
     expect(mocks.movimentosFindMany).not.toHaveBeenCalled();
   });
 
   it("extrato geral filtra pela propriedade da conta e ordena por data e movimento", async () => {
     await listarExtratoGeral(2);
-    expect(mocks.movimentosFindMany).toHaveBeenLastCalledWith(expect.objectContaining({ where: { conta: { propriedadeId: 2 } }, orderBy: [{ transacao: { data: "desc" } }, { id: "desc" }] }));
+    expect(mocks.movimentosFindMany).toHaveBeenLastCalledWith(expect.objectContaining({ where: { conta: { propriedadeId: 2 } }, orderBy: [{ transacao: { data: "desc" } }, { seq: "desc" }] }));
     await listarExtratoGeral(null);
     expect(mocks.movimentosFindMany).toHaveBeenLastCalledWith(expect.objectContaining({ where: { conta: {} } }));
   });
 
   it("inclui a transação revertida (com id, tipo, descrição e operação) nos extratos individual e geral", async () => {
     const transacao = { include: { parceiro: true, operacao: true, reversaoDe: { select: { id: true, tipo: true, descricao: true, operacaoId: true } } } };
-    await listarExtrato(1, null);
+    await listarExtrato(uid(1), null);
     expect(mocks.movimentosFindMany).toHaveBeenLastCalledWith(expect.objectContaining({ include: { transacao } }));
     await listarExtratoGeral(null);
     expect(mocks.movimentosFindMany).toHaveBeenLastCalledWith(expect.objectContaining({
@@ -58,32 +59,32 @@ describe("contas financeiras", () => {
   });
 
   it("PATCH só de ativo não toca em nenhum outro campo", async () => {
-    const conta = await atualizarConta(1, 1, { ativo: false });
-    expect(mocks.update).toHaveBeenCalledWith({ where: { id: 1 }, data: { ativo: false } });
+    const conta = await atualizarConta(uid(1), 1, { ativo: false });
+    expect(mocks.update).toHaveBeenCalledWith({ where: { id: uid(1) }, data: { ativo: false } });
     expect(mocks.count).not.toHaveBeenCalled();
     expect(conta).toMatchObject({ ativo: false, saldoAtual: new Prisma.Decimal(50), temMovimentos: false });
   });
 
   it("recusa alterar saldo de abertura quando a conta tem movimentos", async () => {
     mocks.count.mockResolvedValue(3);
-    await expect(atualizarConta(1, 1, { saldoAbertura: 99 })).rejects.toMatchObject({ code: "VALIDACAO", campo: "saldoAbertura" });
+    await expect(atualizarConta(uid(1), 1, { saldoAbertura: 99 })).rejects.toMatchObject({ code: "VALIDACAO", campo: "saldoAbertura" });
     expect(mocks.update).not.toHaveBeenCalled();
   });
 
   it("permite alterar data de abertura quando não há movimentos", async () => {
     mocks.count.mockResolvedValue(0);
-    await atualizarConta(1, 1, { dataSaldoAbertura: new Date("2026-02-01T00:00:00Z") });
+    await atualizarConta(uid(1), 1, { dataSaldoAbertura: new Date("2026-02-01T00:00:00Z") });
     expect(mocks.update).toHaveBeenCalled();
   });
 
   it("não consulta movimentos quando o saldo enviado é igual ao atual", async () => {
-    await atualizarConta(1, 1, { saldoAbertura: 50, nome: "Caixa 2" });
+    await atualizarConta(uid(1), 1, { saldoAbertura: 50, nome: "Caixa 2" });
     expect(mocks.count).not.toHaveBeenCalled();
   });
 
   it("não encontra conta de outra propriedade", async () => {
     mocks.findFirst.mockResolvedValue(null);
-    await expect(atualizarConta(1, 2, { nome: "X" })).rejects.toBeInstanceOf(FinanceiroError);
+    await expect(atualizarConta(uid(1), 2, { nome: "X" })).rejects.toBeInstanceOf(FinanceiroError);
   });
 
   it("traduz nome duplicado na propriedade em CONFLITO com campo", async () => {
@@ -94,7 +95,7 @@ describe("contas financeiras", () => {
 
   it("criação devolve saldo e indicador de movimentos consistentes", async () => {
     const conta = await criarConta({ nome: "Reserva", tipo: "CAIXA", saldoAbertura: 25, dataSaldoAbertura: new Date(), incluirNoSaldoGeral: true, propriedadeId: 1 });
-    expect(conta).toMatchObject({ id: 3, saldoAtual: new Prisma.Decimal(25), temMovimentos: false });
+    expect(conta).toMatchObject({ id: uid(3), saldoAtual: new Prisma.Decimal(25), temMovimentos: false });
   });
 
   it("exige dados bancários mínimos e recusa número no titular", async () => {
@@ -108,7 +109,7 @@ describe("contas financeiras", () => {
   it("calcula saldo atual e temMovimentos a partir do razão", async () => {
     mocks.contasFindMany.mockResolvedValue([
       { ...anterior, movimentos: [{ direcao: "ENTRADA", valor: new Prisma.Decimal(100) }, { direcao: "SAIDA", valor: new Prisma.Decimal(30) }] },
-      { ...anterior, id: 2, movimentos: [] },
+      { ...anterior, id: uid(2), movimentos: [] },
     ]);
     const [com, sem] = await listarContas(1, true);
     expect(com.saldoAtual.toNumber()).toBe(120); expect(com.temMovimentos).toBe(true);

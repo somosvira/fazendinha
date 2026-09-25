@@ -7,18 +7,18 @@ import { getUsuario } from "../lib/auth";
  *  Contrato de URL (lido por OperacoesFinanceiras):
  *    /financeiro/operacoes/nova?tipo=AJUSTE_ESTOQUE[&produto=<produtoId>]
  *  O ajuste em si é uma operação financeira (não há mais contagem por modal). */
-export function abrirAjusteEstoque(produtoId?: number) {
+export function abrirAjusteEstoque(produtoId?: string) {
   abrirRotaNovaOperacao(produtoId ? { ajusteEstoqueProdutoId: produtoId } : { ajusteEstoque: true });
 }
 
-export const codigoOperacao = (id: number) => `OP-${String(id).padStart(4, "0")}`;
+export const codigoOperacao = (numero: number) => `OP-${String(numero).padStart(4, "0")}`;
 
 export type DestinoMovimento = { href: string; rotulo: string; area: AreaId };
 
 /** Para onde um movimento leva: a operação financeira que o gerou ou, nas saídas
  *  automáticas, o talhão de origem. null = sem destino conhecido. */
-export function destinoDoMovimento(m: Pick<MovimentoDTO, "operacaoId" | "vinculo">): DestinoMovimento | null {
-  if (m.operacaoId != null) return { href: `/financeiro/operacoes/${m.operacaoId}`, rotulo: codigoOperacao(m.operacaoId), area: "financeiro" };
+export function destinoDoMovimento(m: Pick<MovimentoDTO, "operacaoId" | "operacaoNumero" | "vinculo">): DestinoMovimento | null {
+  if (m.operacaoId != null && m.operacaoNumero != null) return { href: `/financeiro/operacoes/${m.operacaoId}`, rotulo: codigoOperacao(m.operacaoNumero), area: "financeiro" };
   const v = m.vinculo;
   if (!v) return null;
   // `?id=` abre a ficha direto (App.tsx transforma em deep-link de cockpit no popstate).

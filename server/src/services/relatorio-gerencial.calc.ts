@@ -10,6 +10,7 @@
  *     "operações por tipo" para auditoria.
  * Somas acumulam em centavos inteiros para não acumular erro de ponto flutuante.
  */
+import { SEM_VINCULO } from "../lib/ids.js";
 
 export type Natureza = "CREDITO" | "DEBITO";
 export type Situacao = "ABERTO" | "LIQUIDADO" | "LIQUIDADO_PARCIAL";
@@ -19,7 +20,10 @@ export type TipoOperacao = "receita" | "custeio" | "investimento" | "transferenc
 export const CENTRO_TRANSFERENCIA = "(Sem centro de custo)";
 
 export interface LinhaLancamento {
-  id: number;
+  // Id do movimento ou compromisso de origem; as partes rateadas de um mesmo
+  // lançamento repetem o id.
+  id: string;
+  seq: number;
   transferencia?: boolean;
   natureza: Natureza;
   valor: number;
@@ -33,8 +37,8 @@ export interface LinhaLancamento {
   // `id` ausente/null = sem centro de custo (ou chamador antigo que só
   // manda o nome). O nome já vem resolvido ao vivo por quem monta a linha
   // (o snapshot de um item pode estar desatualizado).
-  centroCusto: { id?: number | null; nome: string };
-  contaBancariaId: number | null;
+  centroCusto: { id?: string | null; nome: string };
+  contaBancariaId: string | null;
   fornecedor: string | null;
   temNotaFiscal: boolean;
 }
@@ -112,7 +116,7 @@ export function agregarRealizado(linhas: LinhaLancamento[], inicio: string, fim:
   // período não pode virar duas linhas no relatório. Chamador sem `id`
   // (compat) continua agrupando pelo nome.
   const centros = new Map<string, { nome: string; total: number }>();
-  const chaveCentro = (c: { id?: number | null; nome: string }) => (c.id !== undefined ? `id:${c.id ?? 0}` : `nome:${c.nome}`);
+  const chaveCentro = (c: { id?: string | null; nome: string }) => (c.id !== undefined ? `id:${c.id ?? SEM_VINCULO}` : `nome:${c.nome}`);
 
   for (const l of validas) {
     const v = cents(l.valor);
@@ -159,7 +163,7 @@ export function agregarRealizado(linhas: LinhaLancamento[], inicio: string, fim:
 }
 
 export interface ItemCompromisso {
-  id: number;
+  id: string;
   descricao: string | null;
   fornecedor: string | null;
   categoria: string;
@@ -179,7 +183,8 @@ export function agregarPrevisto(linhas: LinhaLancamento[], hoje: string): Previs
   const bloco = (natureza: Natureza): BlocoCompromisso => {
     const itens = linhas
       .filter((l) => classificarLinha(l) === "compromisso" && l.natureza === natureza)
-      .sort((a, b) => a.dataVencimento.localeCompare(b.dataVencimento) || a.id - b.id)
+      // Mesmo vencimento: o compromisso registrado por último vem primeiro (seq decrescente).
+      .sort((a, b) => a.dataVencimento.localeCompare(b.dataVencimento) || b.seq - a.seq)
       .map((l): ItemCompromisso => {
         const diasAtraso = diffDias(l.dataVencimento, hoje);
         return { id: l.id, descricao: l.descricao, fornecedor: l.fornecedor, categoria: l.categoria.nome, valor: l.valor, dataVencimento: l.dataVencimento, diasAtraso, vencido: diasAtraso > 0 };
@@ -192,9 +197,9 @@ export function agregarPrevisto(linhas: LinhaLancamento[], hoje: string): Previs
   return { hoje, aPagar: bloco("DEBITO"), aReceber: bloco("CREDITO") };
 }
 
-export interface ContaEntrada { id: number; nome: string; banco: string | null; saldoInicial: number }
-export interface MovimentoAnterior { contaBancariaId: number | null; natureza: Natureza; total: number }
-export interface SaldoConta { id: number; nome: string; banco: string | null; saldoInicial: number; entradas: number; saidas: number; saldoFinal: number }
+export interface ContaEntrada { id: string; nome: string; banco: string | null; saldoInicial: number }
+export interface MovimentoAnterior { contaBancariaId: string | null; natureza: Natureza; total: number }
+export interface SaldoConta { id: string; nome: string; banco: string | null; saldoInicial: number; entradas: number; saidas: number; saldoFinal: number }
 export interface SaldoContasAgregado { contas: SaldoConta[]; total: { saldoInicial: number; entradas: number; saidas: number; saldoFinal: number } }
 
 /** Saldo por conta: saldo de abertura + movimentos liquidados antes do período
@@ -207,7 +212,7 @@ export function agregarSaldoContas(
   inicio: string,
   fim: string,
 ): SaldoContasAgregado {
-  const acc = new Map<number, { inicial: number; entradas: number; saidas: number }>();
+  const acc = new Map<string, { inicial: number; entradas: number; saidas: number }>();
   for (const c of contas) acc.set(c.id, { inicial: cents(c.saldoInicial), entradas: 0, saidas: 0 });
   for (const m of anteriores) {
     if (m.contaBancariaId == null) continue;
@@ -235,7 +240,7 @@ const ORDEM_TIPOS: TipoOperacao[] = ["receita", "custeio", "investimento", "tran
 const ENTRA_NO_TOTAL = new Set<TipoOperacao>(["receita", "custeio", "investimento"]);
 
 export function agregarOperacoesPorTipo(linhas: LinhaLancamento[]): OperacaoPorTipo[] {
-  const acc = new Map<TipoOperacao, { ids: Set<number>; valor: number }>(ORDEM_TIPOS.map((t) => [t, { ids: new Set(), valor: 0 }]));
+  const acc = new Map<TipoOperacao, { ids: Set<string>; valor: number }>(ORDEM_TIPOS.map((t) => [t, { ids: new Set(), valor: 0 }]));
   for (const l of linhas) {
     const a = acc.get(classificarLinha(l))!;
     a.ids.add(l.id);

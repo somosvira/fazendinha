@@ -15,8 +15,8 @@ import { infoReversao } from "./lib/reversao";
  * quebra no meio (whitespace-nowrap). */
 const COLUNAS_EXTRATO: ColunaTabela<MovimentoConta>[] = [
   { chave: "data", titulo: "Data", alinhamento: "centro", larguraMinima: 110, celula: (m) => <span className="whitespace-nowrap text-ink-3">{dataBR(m.transacao.data)}</span> },
-  { chave: "descricao", titulo: "Descrição", alinhamento: "centro", larguraMinima: 260, principal: true, celula: (m) => { const reversao = infoReversao(m.transacao); return <><strong className="break-words">{m.transacao.descricao || m.transacao.tipo}</strong><div className="mt-1 break-words text-xs text-ink-3">{m.transacao.formaPagamento?.replaceAll("_", " ") ?? "Movimento financeiro"}{m.transacao.parceiro ? ` · ${m.transacao.parceiro.nome}` : ""}</div>{reversao && <div className="mt-1 break-words text-xs font-medium text-amber-800">{reversao.detalhe}{reversao.operacaoId != null && <> · <LinkOperacaoFinanceira id={reversao.operacaoId} /></>}</div>}</>; } },
-  { chave: "origem", titulo: "Origem", alinhamento: "centro", larguraMinima: 150, celula: (m) => m.transacao.operacao ? <LinkOperacaoFinanceira id={m.transacao.operacao.id} /> : <span className="whitespace-nowrap">Transação avulsa</span> },
+  { chave: "descricao", titulo: "Descrição", alinhamento: "centro", larguraMinima: 260, principal: true, celula: (m) => { const reversao = infoReversao(m.transacao); return <><strong className="break-words">{m.transacao.descricao || m.transacao.tipo}</strong><div className="mt-1 break-words text-xs text-ink-3">{m.transacao.formaPagamento?.replaceAll("_", " ") ?? "Movimento financeiro"}{m.transacao.parceiro ? ` · ${m.transacao.parceiro.nome}` : ""}</div>{reversao && <div className="mt-1 break-words text-xs font-medium text-amber-800">{reversao.detalhe}{reversao.operacaoId != null && reversao.operacaoNumero != null && <> · <LinkOperacaoFinanceira id={reversao.operacaoId} numero={reversao.operacaoNumero} /></>}</div>}</>; } },
+  { chave: "origem", titulo: "Origem", alinhamento: "centro", larguraMinima: 150, celula: (m) => m.transacao.operacao ? <LinkOperacaoFinanceira id={m.transacao.operacao.id} numero={m.transacao.operacao.numero} /> : <span className="whitespace-nowrap">Transação avulsa</span> },
   { chave: "entrada", titulo: "Entrada", alinhamento: "centro", larguraMinima: 120, celula: (m) => <span className="whitespace-nowrap font-semibold text-green-800">{m.direcao === "ENTRADA" ? brl(m.valor) : "—"}</span> },
   { chave: "saida", titulo: "Saída", alinhamento: "centro", larguraMinima: 120, celula: (m) => <span className="whitespace-nowrap font-semibold">{m.direcao === "SAIDA" ? brl(m.valor) : "—"}</span> },
 ];
@@ -35,7 +35,7 @@ export function ContasFinanceiras({ onNav, podeLancar = true }: { onNav: (tab: T
   const carregar = useCallback(() => obterConfiguracoesFinanceiras().then((cfg) => { setConfig(cfg);  }).catch((e) => setErro(e.message)), []);
   useEffect(() => { carregar(); }, [carregar]);
   useEffect(() => { const atualizar = () => setContaId(parseContaFinanceiraId(window.location.pathname)); window.addEventListener("popstate", atualizar); return () => window.removeEventListener("popstate", atualizar); }, []);
-  const navegar = (id: number | null, movimentoId?: number) => navegarPara(id == null ? "/financeiro/contas" : `/financeiro/contas/${id}?${new URLSearchParams({ inicio: filtrosExtratoGeral.inicio, fim: filtrosExtratoGeral.fim })}${movimentoId ? `#movimento-${movimentoId}` : ""}`);
+  const navegar = (id: string | null, movimentoId?: string) => navegarPara(id == null ? "/financeiro/contas" : `/financeiro/contas/${id}?${new URLSearchParams({ inicio: filtrosExtratoGeral.inicio, fim: filtrosExtratoGeral.fim })}${movimentoId ? `#movimento-${movimentoId}` : ""}`);
 
   useEffect(() => {
     let vigente = true;
@@ -51,7 +51,7 @@ export function ContasFinanceiras({ onNav, podeLancar = true }: { onNav: (tab: T
   useEffect(() => {
     if (carregandoExtrato || !extrato.length) return;
     const hash = window.location.hash.slice(1);
-    if (!/^movimento-\d+$/.test(hash)) return;
+    if (!/^movimento-[0-9a-f-]+$/i.test(hash)) return;
     const alvo = Array.from(document.querySelectorAll<HTMLElement>(`[data-ancora="${hash}"]`)).find(el => el.getClientRects().length > 0);
     if (alvo) { alvo.scrollIntoView({ behavior: "smooth", block: "center" }); alvo.tabIndex = -1; alvo.focus({ preventScroll: true }); }
   }, [extrato, carregandoExtrato]);

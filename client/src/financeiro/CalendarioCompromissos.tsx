@@ -12,7 +12,7 @@ export function CalendarioCompromissos({ itens, mes, onChangeMes, onLiquidar }: 
   onChangeMes: (mes: string) => void;
   onLiquidar?: (compromisso: Compromisso) => void;
 }) {
-  const [selecionadoId, setSelecionadoId] = useState<number | null>(null);
+  const [selecionadoId, setSelecionadoId] = useState<string | null>(null);
   const [diaSelecionado, setDiaSelecionado] = useState<string | null>(null);
   const selecionado = itens.find(c => c.id === selecionadoId);
   const dias = diasDoCalendario(mes);
@@ -65,7 +65,7 @@ export function CalendarioCompromissos({ itens, mes, onChangeMes, onLiquidar }: 
       <div className="space-y-5 p-5">
         <div><h3 className="break-words font-serif text-xl">{tituloCompromisso(selecionado)}</h3><p className="mt-2 text-sm text-ink-3">{selecionado.parceiro?.nome ?? "Sem parceiro"}</p></div>
         <div className="flex flex-wrap gap-2"><StatusPill status={selecionado.status} />{selecionado.vencido && <Pill tone="red">Vencido</Pill>}</div>
-        <dl className="grid grid-cols-2 gap-4 text-sm"><div><dt className="text-ink-3">Vencimento</dt><dd className="mt-1 font-semibold">{dataBR(selecionado.dataVencimento)}</dd></div><div><dt className="text-ink-3">{selecionado.tipo === "PAGAR" ? "A pagar" : "A receber"}</dt><dd className="mt-1 font-semibold">{brl(selecionado.saldoPendente)}</dd></div><div><dt className="text-ink-3">Valor original</dt><dd className="mt-1">{brl(selecionado.valorOriginal)}</dd></div><div><dt className="text-ink-3">Operação</dt><dd className="mt-1"><LinkOperacaoFinanceira id={selecionado.operacao.id} /></dd></div></dl>
+        <dl className="grid grid-cols-2 gap-4 text-sm"><div><dt className="text-ink-3">Vencimento</dt><dd className="mt-1 font-semibold">{dataBR(selecionado.dataVencimento)}</dd></div><div><dt className="text-ink-3">{selecionado.tipo === "PAGAR" ? "A pagar" : "A receber"}</dt><dd className="mt-1 font-semibold">{brl(selecionado.saldoPendente)}</dd></div><div><dt className="text-ink-3">Valor original</dt><dd className="mt-1">{brl(selecionado.valorOriginal)}</dd></div><div><dt className="text-ink-3">Operação</dt><dd className="mt-1"><LinkOperacaoFinanceira id={selecionado.operacao.id} numero={selecionado.operacao.numero} /></dd></div></dl>
         {onLiquidar && ["PENDENTE", "PARCIAL"].includes(selecionado.status) && <div className="flex justify-end"><Button onClick={() => { setSelecionadoId(null); onLiquidar(selecionado); }}>{selecionado.tipo === "PAGAR" ? "Registrar pagamento" : "Registrar recebimento"}</Button></div>}
       </div>
     </Modal>}

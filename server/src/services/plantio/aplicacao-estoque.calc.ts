@@ -13,7 +13,7 @@ import type { UnidadeMedida } from "@prisma/client";
 import { converterQuantidade, rotuloUnidade } from "../estoque/unidades.js";
 
 export interface PlanejarBaixaAplicacaoIn {
-  produtoId: number | null | undefined;
+  produtoId: string | null | undefined;
   // O produto tem estoque no sítio do talhão (produtoTemEstoque, resolvido pelo
   // service antes). O cadastro não diz se é estocado — quem põe no estoque é a operação.
   temEstoque: boolean;

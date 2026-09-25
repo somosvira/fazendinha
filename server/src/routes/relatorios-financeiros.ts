@@ -16,7 +16,7 @@ function falha(c: Context, erro: unknown) {
   return c.json({ error: "Erro inesperado ao processar o relatório. Tente novamente." }, 500);
 }
 
-function validar<T extends z.ZodTypeAny>(alvo: "json" | "param", schema: T) {
+function validar<T extends z.ZodTypeAny>(alvo: "json", schema: T) {
   return zValidator(alvo, schema, (resultado, c) => {
     if (!resultado.success) {
       const erro = resultado.error.issues[0];
@@ -38,7 +38,6 @@ function exigirUsuarioId(c: Context) {
   return id;
 }
 
-const idParam = z.object({ id: z.coerce.number().int().positive("Relatório inválido") });
 const gerarRelatorioSchema = z.object({ configuracao: configuracaoRelatorioFinanceiroSchema, versaoRascunho: z.number().int().positive().optional() });
 
 /** Ver o histórico exige a aba de relatórios; montar, gerar e baixar PDF
@@ -72,12 +71,12 @@ export const relatoriosFinanceirosRouter = new Hono()
       return c.json(await relatorios.gerarRelatorio(await resolverEscopoEscrita(c), autor(c), configuracao, versaoRascunho), 201);
     } catch (e) { return falha(c, e); }
   })
-  .get("/financeiro/relatorios/:id", aba, validar("param", idParam), async (c) => {
-    try { return c.json(await relatorios.obterRelatorio(c.req.valid("param").id, await resolverEscopoLeitura(c))); } catch (e) { return falha(c, e); }
+  .get("/financeiro/relatorios/:id", aba, async (c) => {
+    try { return c.json(await relatorios.obterRelatorio(c.req.param("id"), await resolverEscopoLeitura(c))); } catch (e) { return falha(c, e); }
   })
-  .get("/financeiro/relatorios/:id/download", aba, exportar, validar("param", idParam), async (c) => {
+  .get("/financeiro/relatorios/:id/download", aba, exportar, async (c) => {
     try {
-      const arquivo = await relatorios.baixarRelatorio(c.req.valid("param").id, await resolverEscopoLeitura(c));
+      const arquivo = await relatorios.baixarRelatorio(c.req.param("id"), await resolverEscopoLeitura(c));
       c.header("Content-Type", "application/pdf");
       c.header("Content-Disposition", `attachment; filename*=UTF-8''${encodeURIComponent(arquivo.nome)}`);
       return c.body(new Uint8Array(arquivo.buffer));

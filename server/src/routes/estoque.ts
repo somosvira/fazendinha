@@ -12,6 +12,7 @@ import { FinanceiroError } from "../services/financeiro/regras.js";
 import { resolverEscopoLeitura, resolverEscopoEscrita } from "../services/propriedade.js";
 import { exigePermissao, getUsuario } from "../middleware/permissao.js";
 import { temArea, temPermissao } from "../services/auth/papeis.js";
+import { SEM_VINCULO } from "../lib/ids.js";
 
 type Status = 400 | 404 | 409 | 500;
 function fail(e: unknown): { status: Status; body: { error: string; code?: string } } {
@@ -36,21 +37,20 @@ function failCadastro(e: unknown): { status: 400 | 404 | 409 | 500; body: { erro
   return { status: 500, body: { error: "Erro inesperado ao processar. Tente novamente." } };
 }
 
-// `0` = "sem centro de custo"; ausente = sem filtro.
-const saldosQuerySchema = z.object({ centroCustoId: z.coerce.number().int().nonnegative().optional() });
+// SEM_VINCULO = "sem centro de custo"; ausente = sem filtro.
+const saldosQuerySchema = z.object({ centroCustoId: z.string().uuid().or(z.literal(SEM_VINCULO)).optional() });
 const movimentosQuerySchema = z.object({
-  produtoId: z.coerce.number().int().positive().optional(),
+  produtoId: z.string().uuid().optional(),
   tipo: z.enum(["ENTRADA", "SAIDA", "AJUSTE"]).optional(),
   q: z.string().trim().max(80).optional(),
   origem: z.nativeEnum(OrigemMovimentoEstoque).optional(),
-  centroCustoId: z.coerce.number().int().min(0).optional(),
+  centroCustoId: z.string().uuid().or(z.literal(SEM_VINCULO)).optional(),
   de: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   ate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   pagina: z.coerce.number().int().min(1).default(1),
   porPagina: z.coerce.number().int().min(1).max(100).default(15),
 });
-const idParamSchema = z.object({ id: z.coerce.number().int().positive() });
-const ultimoPrecoQuerySchema = z.object({ parceiroId: z.coerce.number().int().positive().optional() });
+const ultimoPrecoQuerySchema = z.object({ parceiroId: z.string().uuid().optional() });
 
 const usuarioId = (c: Parameters<typeof getUsuario>[0]) => getUsuario(c)?.id ?? null;
 const parseAtivo = (v?: string) => (v === "true" ? true : v === "false" ? false : undefined);
@@ -99,27 +99,25 @@ export const estoqueRouter = new Hono()
     const { uso, q, ativo } = c.req.valid("query");
     return c.json(await produtosSvc.listarProdutos({ uso, q, ativo: parseAtivo(ativo), incluirInativos: true }));
   })
-  .get("/estoque/produtos/:id/ultimo-preco", zValidator("param", idParamSchema), zValidator("query", ultimoPrecoQuerySchema), async (c) => {
-    const { id } = c.req.valid("param");
+  .get("/estoque/produtos/:id/ultimo-preco", zValidator("query", ultimoPrecoQuerySchema), async (c) => {
     const { parceiroId } = c.req.valid("query");
     if (!podeVerValores(c)) return c.json(null);
-    return c.json(await produtosSvc.obterUltimoPreco(id, { parceiroId, propriedadeId: await resolverEscopoLeitura(c) }));
+    return c.json(await produtosSvc.obterUltimoPreco(c.req.param("id"), { parceiroId, propriedadeId: await resolverEscopoLeitura(c) }));
   })
   // Sem compra anterior, a sugestão de preço na compra recorre ao custo médio
   // atual do produto (mesma conta de `services/estoque/estoque.ts`) — só de apoio,
   // não preenche o campo automaticamente (ver FormOperacao.tsx).
-  .get("/estoque/produtos/:id/custo-medio", zValidator("param", idParamSchema), async (c) => {
-    const { id } = c.req.valid("param");
+  .get("/estoque/produtos/:id/custo-medio", async (c) => {
     if (!podeVerValores(c)) return c.json({ custoMedio: null });
-    const custoMedio = await svc.obterCustoMedio(prisma, id, await resolverEscopoLeitura(c));
+    const custoMedio = await svc.obterCustoMedio(prisma, c.req.param("id"), await resolverEscopoLeitura(c));
     return c.json({ custoMedio: custoMedio ? custoMedio.toNumber() : null });
   })
   .post("/estoque/produtos", exigePermissao("lancar"), zValidator("json", produtoSchema), async (c) => {
     try { return c.json(await produtosSvc.criarProduto(c.req.valid("json"), usuarioId(c)), 201); }
     catch (e) { const { status, body } = failCadastro(e); return c.json(body, status); }
   })
-  .patch("/estoque/produtos/:id", exigePermissao("lancar"), zValidator("param", idParamSchema), zValidator("json", patchProdutoSchema), async (c) => {
-    try { const { id } = c.req.valid("param"); return c.json(await produtosSvc.atualizarProduto(id, c.req.valid("json"), usuarioId(c))); }
+  .patch("/estoque/produtos/:id", exigePermissao("lancar"), zValidator("json", patchProdutoSchema), async (c) => {
+    try { return c.json(await produtosSvc.atualizarProduto(c.req.param("id"), c.req.valid("json"), usuarioId(c))); }
     catch (e) { const { status, body } = failCadastro(e); return c.json(body, status); }
   })
 

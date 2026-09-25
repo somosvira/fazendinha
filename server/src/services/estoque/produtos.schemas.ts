@@ -7,7 +7,7 @@ const MAX_PRODUTO_VALOR = 9_999_999_999.99;
 export const CATEGORIA_OBRIGATORIA = "Produto precisa de uma categoria";
 
 const idsSchema = (campo: string) =>
-  z.array(z.number().int().positive()).max(200)
+  z.array(z.string().uuid()).max(200)
     .refine((ids) => new Set(ids).size === ids.length, `${campo} repetidos`);
 
 export const produtoSchema = z.object({
@@ -17,7 +17,7 @@ export const produtoSchema = z.object({
   // Categoria é obrigatória: é ela que define o uso do produto (agrícola) e a
   // classificação herdada pelo item da operação. Se o produto tem estoque não
   // é do cadastro — quem decide é a operação.
-  categoriaId: z.number({ required_error: CATEGORIA_OBRIGATORIA, invalid_type_error: CATEGORIA_OBRIGATORIA }).int().positive(CATEGORIA_OBRIGATORIA),
+  categoriaId: z.string({ required_error: CATEGORIA_OBRIGATORIA, invalid_type_error: CATEGORIA_OBRIGATORIA }).uuid(CATEGORIA_OBRIGATORIA),
   centroCustoIds: idsSchema("Centros de custo").default([]),
   fornecedorIds: idsSchema("Fornecedores").default([]),
 });

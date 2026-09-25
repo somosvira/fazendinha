@@ -8,12 +8,13 @@ vi.mock("@prisma/client", async (importOriginal) => {
 });
 
 import { comporItens, type OperacaoComposicao } from "./relatorios.calc.js";
+import { uid } from "../../lib/uid.fixture.js";
 
-function compra(id: number, valor: string, categoria: string, centro: string): OperacaoComposicao {
+function compra(numero: number, valor: string, categoria: string, centro: string): OperacaoComposicao {
   return {
-    id, data: new Date("2026-09-01T00:00:00Z"), tipo: "COMPRA_CONSUMO_DIRETO", status: "CONFIRMADA",
-    descricao: "Compra", valorTotal: valor, centroCustoId: id, centroCusto: { nome: centro }, parceiro: null,
-    categoriaId: id, categoriaNome: categoria, classificacao: "CUSTEIO", itens: [],
+    id: uid(numero), numero, data: new Date("2026-09-01T00:00:00Z"), tipo: "COMPRA_CONSUMO_DIRETO", status: "CONFIRMADA",
+    descricao: "Compra", valorTotal: valor, centroCustoId: uid(200 + numero), centroCusto: { nome: centro }, parceiro: null,
+    categoriaId: uid(300 + numero), categoriaNome: categoria, classificacao: "CUSTEIO", itens: [],
   };
 }
 
