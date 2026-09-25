@@ -144,11 +144,9 @@ Ao dar suporte offline a uma feature nova, nessa ordem:
   no tipo de id.
 - **Erro de sessão (401) para a fila inteira** — não vai pro log de erros
   (senão todo item atrás acumularia entradas repetidas da mesma causa).
-  `entrar()` em `App.tsx` persiste a sessão nova e dá
-  `window.location.reload()` — o boot roda de novo com o token novo,
-  `iniciarFila()` retoma sozinho. Trade-off aceito e nunca revisitado: o
-  reload quebra o autoplay de qualquer animação/áudio ancorado no gesto do
-  clique de login.
+  `entrar()` em `App.tsx` grava a sessão nova e chama
+  `garantirProcessamento()`, sem reload — um reload quebraria o áudio da
+  abertura Terrano, ancorado no gesto do clique de login.
 - **Erro de item (validação/regra de negócio, qualquer não-2xx que não seja
   401) não contamina os outros** — sai da fila, vai pro registro auditável
   (`idb-keyval`, chave `rionovo-fila-erros`), a fila segue com o resto. Sem

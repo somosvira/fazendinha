@@ -126,4 +126,28 @@ describe("fila", () => {
     await new Promise((r) => setTimeout(r, 10));
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
+
+  it("depois de um 401, garantirProcessamento (novo login) reenvia a fila do ponto em que parou", async () => {
+    vi.resetModules();
+    const { set } = await import("idb-keyval");
+    await set("rionovo-fila-pendente", []); // o teste anterior deixa a fila parada no 401
+    const { enfileirarMutation, garantirProcessamento } = await import("./fila");
+
+    const fetchMock = vi.fn()
+      .mockImplementationOnce(() =>
+        Promise.resolve(new Response(JSON.stringify({ error: "não autenticado" }), { status: 401 })),
+      )
+      .mockImplementation(() => resposta({ ok: true }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const item1 = enfileirarMutation({ mutationKey: "a", path: "/a", method: "POST" });
+    const item2 = enfileirarMutation({ mutationKey: "b", path: "/b", method: "POST" });
+    await expect(item1).rejects.toThrow("não autenticado");
+    await new Promise((r) => setTimeout(r, 10));
+
+    garantirProcessamento();
+    await item2;
+
+    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual(["/api/a", "/api/a", "/api/b"]);
+  });
 });

@@ -172,8 +172,7 @@ async function processarFila(): Promise<void> {
       pendencias.get(item.filaId)?.reject(err);
       pendencias.delete(item.filaId);
       // 401 é da sessão inteira, não do item — todo item atrás tomaria o
-      // mesmo erro. Para tudo aqui; App.tsx retoma sozinho após relogar via
-      // window.location.reload() (ver docs/design/offline/README.md).
+      // mesmo erro. Para tudo aqui; `entrar()` em App.tsx retoma após relogar.
       if (err instanceof ErroHttp && err.status === 401) return;
       // Erro de item (validação/regra de negócio) não contamina os outros —
       // tira só ele da fila, pro registro auditável, e segue com o resto.
