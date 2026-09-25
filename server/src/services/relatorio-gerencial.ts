@@ -82,7 +82,7 @@ export async function gerarRelatorioGerencial(query: RelatorioGerencialQuery, pr
           },
         },
       },
-      orderBy: { id: "asc" },
+      orderBy: { seq: "asc" },
     }) : Promise.resolve([]),
     querPrevisto ? prisma.compromissoFinanceiro.findMany({
       where: { status: { in: ["PENDENTE", "PARCIAL"] }, dataVencimento: { gte: de, lte: ate }, operacao: escopo },
@@ -92,10 +92,10 @@ export async function gerarRelatorioGerencial(query: RelatorioGerencialQuery, pr
         documentos: true,
         operacao: { include: { parceiro: true, ...incluirClassificacao, centroCusto: true, documentos: true } },
       },
-      orderBy: { id: "asc" },
+      orderBy: { seq: "asc" },
     }) : Promise.resolve([]),
     querRealizado
-      ? prisma.contaFinanceira.findMany({ where: escopo, select: { id: true, nome: true, instituicao: true, saldoAbertura: true }, orderBy: { id: "asc" } })
+      ? prisma.contaFinanceira.findMany({ where: escopo, select: { id: true, nome: true, instituicao: true, saldoAbertura: true }, orderBy: [{ ordem: "asc" }, { nome: "asc" }, { id: "asc" }] })
       : Promise.resolve([]),
     querRealizado
       ? prisma.movimentoConta.groupBy({
@@ -124,7 +124,7 @@ export async function gerarRelatorioGerencial(query: RelatorioGerencialQuery, pr
       centroCusto: { id, nome: id ? nomesCentro.get(id) ?? operacao?.centroCusto?.nome ?? SEM_CENTRO_GERENCIAL : SEM_CENTRO_GERENCIAL },
     };
   };
-  const linhaParte = (parte: { categoriaNome: string; classificacao: "CUSTEIO" | "INVESTIMENTO" | null; centroCustoId: number | null; centroCustoNome: string | null }) => {
+  const linhaParte = (parte: { categoriaNome: string; classificacao: "CUSTEIO" | "INVESTIMENTO" | null; centroCustoId: string | null; centroCustoNome: string | null }) => {
     const id = parte.centroCustoId ?? null;
     return {
       categoria: { nome: parte.categoriaNome, classificacao: parte.classificacao },
@@ -137,6 +137,7 @@ export async function gerarRelatorioGerencial(query: RelatorioGerencialQuery, pr
     const documentos = [...transacao.documentos, ...(transacao.operacao?.documentos ?? [])];
     return {
       id: movimento.id,
+      seq: movimento.seq,
       natureza: movimento.direcao === "ENTRADA" ? "CREDITO" : "DEBITO",
       valor: toNum(movimento.valor),
       situacao: "LIQUIDADO",
@@ -156,7 +157,8 @@ export async function gerarRelatorioGerencial(query: RelatorioGerencialQuery, pr
     const documentos = [...compromisso.documentos, ...compromisso.operacao.documentos];
     const liquidado = compromisso.liquidacoes.filter((l) => l.transacao.status === "CONFIRMADA").reduce((total, item) => total + toNum(item.valor), 0);
     return {
-      id: -compromisso.id,
+      id: compromisso.id,
+      seq: compromisso.seq,
       natureza: compromisso.tipo === "RECEBER" ? "CREDITO" : "DEBITO",
       valor: Math.max(0, toNum(compromisso.valorOriginal) - liquidado),
       situacao: "ABERTO",
@@ -199,7 +201,7 @@ export async function gerarRelatorioGerencial(query: RelatorioGerencialQuery, pr
 
   // Com filtro, a auditoria conta só os lançamentos que sobraram no recorte.
   const idsNoRecorte = new Set(linhas.map((l) => l.id));
-  const noRecorte = (id: number) => filtroVazio(filtroCaixa) || idsNoRecorte.has(id);
+  const noRecorte = (id: string) => filtroVazio(filtroCaixa) || idsNoRecorte.has(id);
 
   const hoje = new Date().toISOString().slice(0, 10);
   const realizado = querRealizado ? agregarRealizado(linhas, inicio, fim) : null;

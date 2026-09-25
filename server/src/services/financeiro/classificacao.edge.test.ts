@@ -10,16 +10,17 @@ vi.mock("@prisma/client", async (importOriginal) => {
 
 import { Prisma } from "@prisma/client";
 import { classificarFluxo, ratearCategorias, ratearCompromissos } from "./classificacao.js";
+import { uid } from "../../lib/uid.fixture.js";
 
 describe("classificação no runtime do Worker", () => {
   const operacao = {
     valorTotal: new Prisma.Decimal("0.03"),
     itens: [
-      { id: 1, categoriaId: 1, categoriaNome: "Custeio", valorTotal: new Prisma.Decimal("0.01") },
-      { id: 2, categoriaId: 2, categoriaNome: "Investimento", valorTotal: new Prisma.Decimal("0.02") },
+      { id: uid(1), ordem: 1, categoriaId: uid(101), categoriaNome: "Custeio", valorTotal: new Prisma.Decimal("0.01") },
+      { id: uid(2), ordem: 2, categoriaId: uid(102), categoriaNome: "Investimento", valorTotal: new Prisma.Decimal("0.02") },
     ],
     transacoes: [
-      { id: 1, tipo: "PAGAMENTO", valorTotal: new Prisma.Decimal("0.01"), reversaoDeId: null, status: "CONFIRMADA" },
+      { id: uid(11), seq: 1, tipo: "PAGAMENTO", valorTotal: new Prisma.Decimal("0.01"), reversaoDeId: null, status: "CONFIRMADA" },
     ],
   };
 
@@ -31,9 +32,9 @@ describe("classificação no runtime do Worker", () => {
 
   it("conserva o saldo por categoria após pagamento parcial e estorno", () => {
     expect(classificarFluxo(operacao).saldo.map(p => p.valor.toFixed(2))).toEqual(["0.01", "0.01"]);
-    const compromissos = [{ id: 1, status: "PARCIAL", valorOriginal: new Prisma.Decimal("0.03"), liquidacoes: [{ transacaoId: 1, valor: new Prisma.Decimal("0.01") }] }];
-    expect(ratearCompromissos({ ...operacao, compromissos }).get(1)!.map(p => p.valor.toFixed(2))).toEqual(["0.01", "0.01"]);
-    const estornada = { ...operacao, transacoes: [...operacao.transacoes, { id: 2, tipo: "REVERSAO", valorTotal: new Prisma.Decimal("0.01"), reversaoDeId: 1, status: "CONFIRMADA" }] };
+    const compromissos = [{ id: uid(21), seq: 1, status: "PARCIAL", valorOriginal: new Prisma.Decimal("0.03"), liquidacoes: [{ transacaoId: uid(11), valor: new Prisma.Decimal("0.01") }] }];
+    expect(ratearCompromissos({ ...operacao, compromissos }).get(uid(21))!.map(p => p.valor.toFixed(2))).toEqual(["0.01", "0.01"]);
+    const estornada = { ...operacao, transacoes: [...operacao.transacoes, { id: uid(12), seq: 2, tipo: "REVERSAO", valorTotal: new Prisma.Decimal("0.01"), reversaoDeId: uid(11), status: "CONFIRMADA" }] };
     expect(classificarFluxo(estornada).saldo.map(p => p.valor.toFixed(2))).toEqual(["0.01", "0.02"]);
   });
 });

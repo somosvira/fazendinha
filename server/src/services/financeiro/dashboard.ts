@@ -5,6 +5,7 @@ import { dinheiro } from "./regras.js";
 import { listarCompromissos } from "./operacoes.js";
 import { movimentoRealizado } from "./dashboard.calc.js";
 import { resumoSaldos } from "./contas.js";
+import { SEM_VINCULO } from "../../lib/ids.js";
 
 export function serieFluxo(movimentos: { direcao: string; valor: Prisma.Decimal; transacao: { data: Date; tipo?: string; status?: string; reversaoDe?: { tipo: string } | null } }[], inicio: Date, fim: Date) {
   const inicioMes = inicio.toISOString().slice(0, 7);
@@ -54,10 +55,10 @@ export async function obterDashboard(propriedadeId: number | null, inicio: Date,
     prisma.operacao.count({ where: { ...whereOperacao, movimentosEstoque: { some: {} } } }),
     prisma.operacao.count({ where: { ...whereOperacao, parceiroId: null } }),
     prisma.operacao.count({ where: { ...whereOperacao, compromissos: { none: {} }, transacoes: { none: {} }, movimentosEstoque: { none: {} } } }),
-    prisma.transacaoFinanceira.findMany({ where: whereTransacao, select: { id: true, tipo: true, status: true, operacaoId: true, reversaoDe: { select: { tipo: true } }, _count: { select: { movimentos: true, liquidacoes: true } } } }),
+    prisma.transacaoFinanceira.findMany({ where: whereTransacao, select: { id: true, seq: true, tipo: true, status: true, operacaoId: true, reversaoDe: { select: { tipo: true } }, _count: { select: { movimentos: true, liquidacoes: true } } } }),
   ]);
   let entradas = dinheiro(0); let saidas = dinheiro(0);
-  const porCategoria = new Map<string, { categoriaId: number | null; categoria: string; valor: Prisma.Decimal }>();
+  const porCategoria = new Map<string, { categoriaId: string | null; categoria: string; valor: Prisma.Decimal }>();
   for (const movimento of movimentos) {
     const realizado = movimentoRealizado(movimento);
     if (!realizado) continue;
@@ -66,7 +67,7 @@ export async function obterDashboard(propriedadeId: number | null, inicio: Date,
       saidas = dinheiro(saidas.plus(realizado.valor));
       for (const parte of ratearTransacao(movimento.transacao.operacao, movimento.transacao.id, movimento.valor)) {
         // ratearTransacao já preserva a categoria original nos estornos.
-        const chave = `${parte.categoriaId ?? 0}:${parte.categoriaNome}`;
+        const chave = `${parte.categoriaId ?? SEM_VINCULO}:${parte.categoriaNome}`;
         const atual = porCategoria.get(chave) ?? { categoriaId: parte.categoriaId, categoria: parte.categoriaNome, valor: dinheiro(0) };
         atual.valor = dinheiro(atual.valor.plus(parte.valor.abs().mul(realizado.valor.isNegative() ? -1 : 1)));
         porCategoria.set(chave, atual);
@@ -92,7 +93,7 @@ export async function obterDashboard(propriedadeId: number | null, inicio: Date,
       movimentos: { total: movimentos.length, confirmados: movimentos.filter(m => m.transacao.status === "CONFIRMADA" && m.transacao.tipo !== "REVERSAO").length, revertidos: movimentos.filter(m => m.transacao.status === "REVERTIDA").length, estornos: movimentos.filter(m => m.transacao.tipo === "REVERSAO").length },
       volumeEconomico: dinheiro(porTipo.reduce((s, t) => s.plus(t.valor), dinheiro(0))),
       porTipo,
-      vinculosAusentes: transacoes.filter(t => t._count.movimentos === 0 || transferenciaIncompleta(t)).slice(0, 20).map(t => ({ transacaoId: t.id, operacaoId: t.operacaoId, motivo: t._count.movimentos === 0 ? "Sem movimento de conta" : "Transferência sem as duas pontas" })),
+      vinculosAusentes: transacoes.filter(t => t._count.movimentos === 0 || transferenciaIncompleta(t)).slice(0, 20).map(t => ({ transacaoId: t.id, transacaoSeq: t.seq, operacaoId: t.operacaoId, motivo: t._count.movimentos === 0 ? "Sem movimento de conta" : "Transferência sem as duas pontas" })),
     },
   };
 }

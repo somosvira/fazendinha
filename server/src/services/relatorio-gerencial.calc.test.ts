@@ -10,9 +10,15 @@ import {
   mesesEntre,
   type LinhaLancamento,
 } from "./relatorio-gerencial.calc.js";
+import { uid } from "../lib/uid.fixture.js";
+
+const mov = (n: number) => uid(n);
+const comp = (n: number) => uid(100 + n);
+const CONTA_SICOOB = uid(501), CONTA_CAIXA = uid(502);
 
 const base: LinhaLancamento = {
-  id: 1,
+  id: mov(1),
+  seq: 1,
   natureza: "DEBITO",
   valor: 100,
   situacao: "LIQUIDADO",
@@ -23,7 +29,7 @@ const base: LinhaLancamento = {
   numeroDocumento: "NF 1",
   categoria: { nome: "Ração", classificacao: null },
   centroCusto: { nome: "Atv. Leiteira" },
-  contaBancariaId: 1,
+  contaBancariaId: CONTA_SICOOB,
   fornecedor: "Coop",
   temNotaFiscal: true,
 };
@@ -60,14 +66,14 @@ describe("mesesEntre", () => {
 describe("agregarRealizado", () => {
   it("soma só o liquidado no período, excluindo estornos, parciais, abertos e transferências", () => {
     const linhas = [
-      linha({ id: 1, natureza: "CREDITO", valor: 1000.5, categoria: { nome: "Leite", classificacao: null } }),
-      linha({ id: 2, valor: 300.25 }),
-      linha({ id: 3, valor: 50, estornado: true }),
-      linha({ id: 4, valor: 60, situacao: "LIQUIDADO_PARCIAL" }),
-      linha({ id: 5, valor: 70, situacao: "ABERTO", dataLiquidacao: null }),
-      linha({ id: 6, valor: 5000, transferencia: true, centroCusto: { nome: "(Sem centro de custo)" } }),
-      linha({ id: 7, valor: 80, dataLiquidacao: "2026-05-01" }),
-      linha({ id: 8, valor: 200, centroCusto: { nome: "Investimento Café" }, categoria: { nome: "Cerca", classificacao: "INVESTIMENTO" } }),
+      linha({ id: mov(1), seq: 1, natureza: "CREDITO", valor: 1000.5, categoria: { nome: "Leite", classificacao: null } }),
+      linha({ id: mov(2), seq: 2, valor: 300.25 }),
+      linha({ id: mov(3), seq: 3, valor: 50, estornado: true }),
+      linha({ id: mov(4), seq: 4, valor: 60, situacao: "LIQUIDADO_PARCIAL" }),
+      linha({ id: mov(5), seq: 5, valor: 70, situacao: "ABERTO", dataLiquidacao: null }),
+      linha({ id: mov(6), seq: 6, valor: 5000, transferencia: true, centroCusto: { nome: "(Sem centro de custo)" } }),
+      linha({ id: mov(7), seq: 7, valor: 80, dataLiquidacao: "2026-05-01" }),
+      linha({ id: mov(8), seq: 8, valor: 200, centroCusto: { nome: "Investimento Café" }, categoria: { nome: "Cerca", classificacao: "INVESTIMENTO" } }),
     ];
     const r = agregarRealizado(linhas, "2026-03-01", "2026-04-30");
     expect(r.totais).toEqual({ entradas: 1000.5, saidas: 500.25, resultado: 500.25 });
@@ -86,10 +92,10 @@ describe("agregarRealizado", () => {
 
   it("agrupa despesas por categoria e por centro de custo com percentual", () => {
     const linhas = [
-      linha({ id: 1, valor: 300 }),
-      linha({ id: 2, valor: 100, categoria: { nome: "Sal mineral", classificacao: null } }),
-      linha({ id: 3, valor: 100, categoria: { nome: "Diesel", classificacao: null }, centroCusto: { nome: "Atv. Café" } }),
-      linha({ id: 4, natureza: "CREDITO", valor: 999 }),
+      linha({ id: mov(1), seq: 1, valor: 300 }),
+      linha({ id: mov(2), seq: 2, valor: 100, categoria: { nome: "Sal mineral", classificacao: null } }),
+      linha({ id: mov(3), seq: 3, valor: 100, categoria: { nome: "Diesel", classificacao: null }, centroCusto: { nome: "Atv. Café" } }),
+      linha({ id: mov(4), seq: 4, natureza: "CREDITO", valor: 999 }),
     ];
     const r = agregarRealizado(linhas, "2026-03-01", "2026-03-31");
     expect(r.categorias.itens).toEqual([
@@ -114,15 +120,15 @@ describe("agregarRealizado", () => {
 describe("agregarPrevisto", () => {
   it("separa a pagar e a receber, vencidos e a vencer, sem misturar estornos", () => {
     const linhas = [
-      linha({ id: 1, situacao: "ABERTO", dataLiquidacao: null, valor: 100, dataVencimento: "2026-03-01" }),
-      linha({ id: 2, situacao: "ABERTO", dataLiquidacao: null, valor: 200, dataVencimento: "2026-03-20" }),
-      linha({ id: 3, situacao: "ABERTO", dataLiquidacao: null, natureza: "CREDITO", valor: 500, dataVencimento: "2026-03-25" }),
-      linha({ id: 4, situacao: "ABERTO", dataLiquidacao: null, valor: 999, estornado: true }),
-      linha({ id: 5, valor: 999 }),
+      linha({ id: comp(1), seq: 1, situacao: "ABERTO", dataLiquidacao: null, valor: 100, dataVencimento: "2026-03-01" }),
+      linha({ id: comp(2), seq: 2, situacao: "ABERTO", dataLiquidacao: null, valor: 200, dataVencimento: "2026-03-20" }),
+      linha({ id: comp(3), seq: 3, situacao: "ABERTO", dataLiquidacao: null, natureza: "CREDITO", valor: 500, dataVencimento: "2026-03-25" }),
+      linha({ id: comp(4), seq: 4, situacao: "ABERTO", dataLiquidacao: null, valor: 999, estornado: true }),
+      linha({ id: comp(5), seq: 5, valor: 999 }),
     ];
     const r = agregarPrevisto(linhas, "2026-03-10");
     expect(r.aPagar).toMatchObject({ total: 300, vencido: 100, aVencer: 200, quantidade: 2 });
-    expect(r.aPagar.itens.map((i) => i.id)).toEqual([1, 2]);
+    expect(r.aPagar.itens.map((i) => i.id)).toEqual([comp(1), comp(2)]);
     expect(r.aPagar.itens[0]).toMatchObject({ dataVencimento: "2026-03-01", diasAtraso: 9, vencido: true });
     expect(r.aReceber).toMatchObject({ total: 500, vencido: 0, aVencer: 500, quantidade: 1 });
   });
@@ -131,27 +137,27 @@ describe("agregarPrevisto", () => {
 describe("agregarSaldoContas", () => {
   it("parte do saldo inicial + movimentos anteriores e aplica o período, incluindo transferências", () => {
     const contas = [
-      { id: 1, nome: "Sicoob", banco: "756", saldoInicial: 1000 },
-      { id: 2, nome: "Caixa", banco: null, saldoInicial: 0 },
+      { id: CONTA_SICOOB, nome: "Sicoob", banco: "756", saldoInicial: 1000 },
+      { id: CONTA_CAIXA, nome: "Caixa", banco: null, saldoInicial: 0 },
     ];
     const anteriores = [
-      { contaBancariaId: 1, natureza: "CREDITO" as const, total: 500 },
-      { contaBancariaId: 1, natureza: "DEBITO" as const, total: 200 },
+      { contaBancariaId: CONTA_SICOOB, natureza: "CREDITO" as const, total: 500 },
+      { contaBancariaId: CONTA_SICOOB, natureza: "DEBITO" as const, total: 200 },
       { contaBancariaId: null, natureza: "DEBITO" as const, total: 999 },
     ];
     const linhas = [
-      linha({ id: 1, natureza: "CREDITO", valor: 100, contaBancariaId: 1 }),
-      linha({ id: 2, valor: 30, contaBancariaId: 1 }),
-      linha({ id: 3, valor: 50, contaBancariaId: 1, transferencia: true, centroCusto: { nome: "(Sem centro de custo)" } }),
-      linha({ id: 4, natureza: "CREDITO", valor: 50, contaBancariaId: 2, transferencia: true, centroCusto: { nome: "(Sem centro de custo)" } }),
-      linha({ id: 5, valor: 999, contaBancariaId: 1, situacao: "ABERTO", dataLiquidacao: null }),
-      linha({ id: 6, valor: 999, contaBancariaId: 1, estornado: true }),
-      linha({ id: 7, valor: 999, contaBancariaId: null }),
+      linha({ id: mov(1), seq: 1, natureza: "CREDITO", valor: 100, contaBancariaId: CONTA_SICOOB }),
+      linha({ id: mov(2), seq: 2, valor: 30, contaBancariaId: CONTA_SICOOB }),
+      linha({ id: mov(3), seq: 3, valor: 50, contaBancariaId: CONTA_SICOOB, transferencia: true, centroCusto: { nome: "(Sem centro de custo)" } }),
+      linha({ id: mov(4), seq: 4, natureza: "CREDITO", valor: 50, contaBancariaId: CONTA_CAIXA, transferencia: true, centroCusto: { nome: "(Sem centro de custo)" } }),
+      linha({ id: mov(5), seq: 5, valor: 999, contaBancariaId: CONTA_SICOOB, situacao: "ABERTO", dataLiquidacao: null }),
+      linha({ id: mov(6), seq: 6, valor: 999, contaBancariaId: CONTA_SICOOB, estornado: true }),
+      linha({ id: mov(7), seq: 7, valor: 999, contaBancariaId: null }),
     ];
     const r = agregarSaldoContas(contas, anteriores, linhas, "2026-03-01", "2026-03-31");
     expect(r.contas).toEqual([
-      { id: 1, nome: "Sicoob", banco: "756", saldoInicial: 1300, entradas: 100, saidas: 80, saldoFinal: 1320 },
-      { id: 2, nome: "Caixa", banco: null, saldoInicial: 0, entradas: 50, saidas: 0, saldoFinal: 50 },
+      { id: CONTA_SICOOB, nome: "Sicoob", banco: "756", saldoInicial: 1300, entradas: 100, saidas: 80, saldoFinal: 1320 },
+      { id: CONTA_CAIXA, nome: "Caixa", banco: null, saldoInicial: 0, entradas: 50, saidas: 0, saldoFinal: 50 },
     ]);
     expect(r.total).toEqual({ saldoInicial: 1300, entradas: 150, saidas: 80, saldoFinal: 1370 });
   });
@@ -160,13 +166,13 @@ describe("agregarSaldoContas", () => {
 describe("agregarOperacoesPorTipo", () => {
   it("conta e soma cada tipo, marcando o que entra nos totais", () => {
     const linhas = [
-      linha({ id: 1, natureza: "CREDITO", valor: 10 }),
-      linha({ id: 2, valor: 20 }),
-      linha({ id: 3, valor: 30, categoria: { nome: "Trator", classificacao: "INVESTIMENTO" }, centroCusto: { nome: "Pecuária" } }),
-      linha({ id: 4, valor: 40, transferencia: true, centroCusto: { nome: "(Sem centro de custo)" } }),
-      linha({ id: 5, valor: 50, estornado: true }),
-      linha({ id: 6, valor: 60, situacao: "LIQUIDADO_PARCIAL" }),
-      linha({ id: 7, valor: 70, situacao: "ABERTO", dataLiquidacao: null }),
+      linha({ id: mov(1), seq: 1, natureza: "CREDITO", valor: 10 }),
+      linha({ id: mov(2), seq: 2, valor: 20 }),
+      linha({ id: mov(3), seq: 3, valor: 30, categoria: { nome: "Trator", classificacao: "INVESTIMENTO" }, centroCusto: { nome: "Pecuária" } }),
+      linha({ id: mov(4), seq: 4, valor: 40, transferencia: true, centroCusto: { nome: "(Sem centro de custo)" } }),
+      linha({ id: mov(5), seq: 5, valor: 50, estornado: true }),
+      linha({ id: mov(6), seq: 6, valor: 60, situacao: "LIQUIDADO_PARCIAL" }),
+      linha({ id: mov(7), seq: 7, valor: 70, situacao: "ABERTO", dataLiquidacao: null }),
     ];
     expect(agregarOperacoesPorTipo(linhas)).toEqual([
       { tipo: "receita", quantidade: 1, valor: 10, entraNoTotal: true },
@@ -183,10 +189,10 @@ describe("agregarOperacoesPorTipo", () => {
 describe("agregarRastreabilidade", () => {
   it("conta documentos, notas fiscais, sem centro de custo e meses fechados no período", () => {
     const linhas = [
-      linha({ id: 1 }),
-      linha({ id: 2, numeroDocumento: null, temNotaFiscal: false }),
-      linha({ id: 3, transferencia: true, centroCusto: { nome: "(Sem centro de custo)" }, temNotaFiscal: false }),
-      linha({ id: 4, estornado: true }),
+      linha({ id: mov(1), seq: 1 }),
+      linha({ id: mov(2), seq: 2, numeroDocumento: null, temNotaFiscal: false }),
+      linha({ id: mov(3), seq: 3, transferencia: true, centroCusto: { nome: "(Sem centro de custo)" }, temNotaFiscal: false }),
+      linha({ id: mov(4), seq: 4, estornado: true }),
     ];
     const r = agregarRastreabilidade(linhas, [{ ano: 2026, mes: 3 }, { ano: 2025, mes: 1 }], "2026-03-01", "2026-04-30");
     expect(r).toEqual({
