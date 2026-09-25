@@ -36,7 +36,7 @@ export async function listarSafras() {
   return rows.map(toSafraDTO);
 }
 
-async function assertCentroCusto(centroCustoId?: number) {
+async function assertCentroCusto(centroCustoId?: string) {
   if (centroCustoId && !(await prisma.centroCusto.findUnique({ where: { id: centroCustoId } })))
     throw new PlanejamentoError("REF_INVALIDA", "centro de custo inexistente");
 }
