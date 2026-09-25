@@ -33,7 +33,7 @@ export function produtoDTO(produto: Prisma.ProdutoGetPayload<{ include: typeof i
   };
 }
 
-async function validarFornecedores(db: DbFinanceiro, fornecedorIds: number[], permitidosInativos: Set<number>) {
+async function validarFornecedores(db: DbFinanceiro, fornecedorIds: string[], permitidosInativos: Set<string>) {
   if (!fornecedorIds.length) return;
   const fornecedores = await db.parceiro.findMany({ where: { id: { in: fornecedorIds } }, include: { papeis: true } });
   const validos = new Set(fornecedores.filter((p) =>
@@ -44,7 +44,7 @@ async function validarFornecedores(db: DbFinanceiro, fornecedorIds: number[], pe
   }
 }
 
-async function validarCentrosCusto(db: DbFinanceiro, centroCustoIds: number[], permitidosInativos: Set<number>) {
+async function validarCentrosCusto(db: DbFinanceiro, centroCustoIds: string[], permitidosInativos: Set<string>) {
   if (!centroCustoIds.length) return;
   const centros = await db.centroCusto.findMany({ where: { id: { in: centroCustoIds } } });
   const validos = new Set(centros.filter((c) => c.ativo || permitidosInativos.has(c.id)).map((c) => c.id));
@@ -53,7 +53,7 @@ async function validarCentrosCusto(db: DbFinanceiro, centroCustoIds: number[], p
   }
 }
 
-function separarRelacoes<T extends { fornecedorIds?: number[]; centroCustoIds?: number[] }>(input: T) {
+function separarRelacoes<T extends { fornecedorIds?: string[]; centroCustoIds?: string[] }>(input: T) {
   const { fornecedorIds, centroCustoIds, ...produto } = input;
   return { fornecedorIds, centroCustoIds, produto };
 }
@@ -97,7 +97,7 @@ export async function criarProduto(input: ProdutoInput, usuarioId?: number | nul
   } catch (erro) { traduzirConflitoUnico(erro, { nome: "Já existe um produto com este nome" }); }
 }
 
-export async function atualizarProduto(id: number, input: ProdutoPatchInput, usuarioId?: number | null) {
+export async function atualizarProduto(id: string, input: ProdutoPatchInput, usuarioId?: number | null) {
   try {
     return await prisma.$transaction(async (tx) => {
       const anterior = await tx.produto.findUnique({ where: { id }, include: includeProduto });
@@ -160,13 +160,13 @@ export async function atualizarProduto(id: number, input: ProdutoPatchInput, usu
 export interface UltimoPrecoDTO {
   valorUnitario: string;
   data: string;
-  parceiro: { id: number; nome: string } | null;
+  parceiro: { id: string; nome: string } | null;
 }
 
 const TIPOS_COMPRA = ["COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO"] as const;
 
-export async function obterUltimoPreco(produtoId: number, f: { parceiroId?: number | null; propriedadeId?: number | null } = {}): Promise<UltimoPrecoDTO | null> {
-  const buscar = (parceiroId?: number) => prisma.itemOperacao.findFirst({
+export async function obterUltimoPreco(produtoId: string, f: { parceiroId?: string | null; propriedadeId?: number | null } = {}): Promise<UltimoPrecoDTO | null> {
+  const buscar = (parceiroId?: string) => prisma.itemOperacao.findFirst({
     where: {
       produtoId,
       operacao: {
@@ -176,7 +176,7 @@ export async function obterUltimoPreco(produtoId: number, f: { parceiroId?: numb
         ...(parceiroId != null ? { parceiroId } : {}),
       },
     },
-    orderBy: [{ operacao: { data: "desc" } }, { id: "desc" }],
+    orderBy: [{ operacao: { data: "desc" } }, { operacao: { numero: "desc" } }],
     select: { valorUnitario: true, operacao: { select: { data: true, parceiro: { select: { id: true, nome: true } } } } },
   });
   const item = (f.parceiroId != null ? await buscar(f.parceiroId) : null) ?? await buscar();

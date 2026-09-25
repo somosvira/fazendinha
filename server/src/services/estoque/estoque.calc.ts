@@ -41,7 +41,7 @@ export interface MovCustoIn {
   tipo: "ENTRADA" | "SAIDA" | "AJUSTE";
   origem: string;
   status: "CONFIRMADO" | "REVERTIDO";
-  reversaoDeId: number | null;
+  reversaoDeId: string | null;
   quantidade: Prisma.Decimal | number | string;
   valorTotal: Prisma.Decimal | number | string;
 }

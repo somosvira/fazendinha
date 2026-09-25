@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { CENTROS_ATIVIDADE, obterCentrosAtividade, resolverIdsCentros } from "./centros-atividade.js";
+import { uid } from "../../lib/uid.fixture.js";
 
 describe("CENTROS_ATIVIDADE", () => {
   it("expõe os quatro nomes canônicos", () => {
@@ -21,9 +22,9 @@ describe("resolverIdsCentros", () => {
   });
 
   it("resolve ids via um único findMany", async () => {
-    const findMany = vi.fn().mockResolvedValue([{ id: 1 }, { id: 2 }]);
+    const findMany = vi.fn().mockResolvedValue([{ id: uid(1) }, { id: uid(2) }]);
     const ids = await resolverIdsCentros({ centroCusto: { findMany } }, [CENTROS_ATIVIDADE.LEITE, CENTROS_ATIVIDADE.CAFE]);
-    expect(ids).toEqual([1, 2]);
+    expect(ids).toEqual([uid(1), uid(2)]);
     expect(findMany).toHaveBeenCalledTimes(1);
     expect(findMany).toHaveBeenCalledWith({ where: { nome: { in: [CENTROS_ATIVIDADE.LEITE, CENTROS_ATIVIDADE.CAFE] } }, select: { id: true } });
   });
@@ -32,10 +33,10 @@ describe("resolverIdsCentros", () => {
 describe("obterCentrosAtividade", () => {
   it("resolve café num único findMany", async () => {
     const findMany = vi.fn().mockResolvedValue([
-      { id: 9, nome: CENTROS_ATIVIDADE.CAFE },
+      { id: uid(9), nome: CENTROS_ATIVIDADE.CAFE },
     ]);
     const resultado = await obterCentrosAtividade({ centroCusto: { findMany } });
-    expect(resultado).toEqual({ cafe: 9 });
+    expect(resultado).toEqual({ cafe: uid(9) });
     expect(findMany).toHaveBeenCalledTimes(1);
     expect(findMany).toHaveBeenCalledWith({
       where: { nome: { in: [CENTROS_ATIVIDADE.CAFE] } },
