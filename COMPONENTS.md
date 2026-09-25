@@ -3,6 +3,8 @@
 > **Catálogo vivo da UI do Fazendinha.**
 > Antes de criar um componente novo, **busque aqui**. Componente paralelo = bug.
 
+> **Histórico:** boa parte deste catálogo (classes `.rb-*` de `rebanho.css`, os componentes em `client/src/rebanho/` e o Animal Cockpit da seção 14) descreve a UI do módulo de pecuária leiteira/corte **removido em set/2026** — esses arquivos não existem mais. A pecuária v1 (`client/src/pecuaria/rebanho/`) usa Tailwind + as primitivas `components/rb/*` (`RebButton`, `RebField`, `RebModal`, `RebTable`, `RebKpiStrip`, `RebHeader` — nome herdado do rebanho, ver `CLAUDE.md`), ainda não documentadas aqui em detalhe. As seções abaixo ficam como referência de linguagem visual (cores, padrões de card/tabela/drawer) para quando essas telas forem reconstruídas.
+
 Convenções de leitura:
 
 - **Path** é onde está implementado.
@@ -39,7 +41,7 @@ Convenções de leitura:
 - **Path:** `client/src/components/Shell.tsx`
 - **Função:** define o tipo `Tab` da aplicação; exporta `Masthead` e `ReportHeader`.
 - **Tabs financeiros:** `dashboard`, `gastos`, `lancar`, `plano`, `ia`, `relatorio`.
-- **Tabs rebanho:** `reb-dashboard`, `reb-animal`, `reb-reproducao`, `reb-sanidade`, `reb-nutricao`, `reb-producao`, `reb-estoque`, `reb-custo`, `reb-ia`.
+- **Tab pecuária (v1):** `pec-rebanho` — único ponto de entrada; a subtela (Visão geral · Animais · Lotes · Cadastros) é decidida pelo pathname dentro do módulo, não por Tabs separadas.
 - **Tabs auxiliares:** `config`, `cadastros`, `acessos`.
 
 ### `<Masthead>`
@@ -108,9 +110,11 @@ Convenções de leitura:
   desktop e no drawer mobile.
 - **Acesso rápido:** busca global visível, visão geral e novo lançamento quando
   autorizados.
-- **Rotinas diretas:** Animais, Reprodução, Sanidade, Controle leiteiro,
-  Nutrição, Lotes coletivos, Pesagens e Agronomia ficam em um clique. Leite e
-  corte não são áreas diferentes: pertencem à única área **Pecuária**.
+- **Rotinas diretas:** Pecuária (v1 Rebanho) hoje é um único ponto de entrada
+  (`pec-rebanho`); as telas de Animais, Lotes e Cadastros vivem dentro do
+  módulo, não como itens separados na sidebar. Agronomia é quem tem várias
+  rotinas em um clique (Talhões, Fitossanidade, Solo & nutrição, Manejo,
+  Milho).
 - **Rotinas secundárias:** itens menos frequentes ficam em “Mais opções”; o
   bloco abre automaticamente quando uma rota secundária está ativa e persiste
   a preferência no `localStorage`.
@@ -238,6 +242,19 @@ Convenções de leitura:
   </tbody>
 </table>
 ```
+
+### `<TabelaFinanceira>`
+
+- **Path:** `client/src/financeiro/financeiro-ui.tsx`
+- **Função:** uma declaração de colunas produz tabela em `md+` e cartões abaixo
+  de 768 px, preservando a mesma fatia de itens, os rótulos e a navegação por
+  teclado.
+- **Rolagem intermediária:** `barraRolagemSuperior` é opt-in. Quando usado, a
+  tabela ganha uma barra horizontal sincronizada acima do cabeçalho apenas se
+  houver conteúdo excedente; outros consumidores mantêm o comportamento atual.
+- **Paginação:** pertence à página consumidora, depois dos filtros e antes de
+  passar `itens` ao componente. A lista de operações usa 15 itens por página e
+  seletor de página direta.
 
 ### Regras
 
@@ -387,6 +404,13 @@ Todos em `client/src/components/charts.tsx` — **SVG inline próprio, sem depen
 
 ## 12. Drawers, modais e dialogs
 
+### Cadastros financeiros e confirmações
+
+- `financeiro/PainelCadastro.tsx` reutiliza `Sheet`, com cabeçalho, conteúdo rolável e rodapé fixo durante rolagem. Painel e overlay usam camada 1100, acima do Assistente (1000), para não encobrir salvar.
+- `components/ui/sheet.tsx` aceita `overlayClassName` para manter overlay e conteúdo na mesma camada quando necessário.
+- `components/ConfirmDialog.tsx` aceita `processando`: desabilita confirmar/cancelar e bloqueia fechamento enquanto uma ação está pendente. Usa camada 1200 para ficar acima dos painéis.
+- `financeiro/PainelCadastro.tsx:CampoFormulario` aceita `obrigatorio` para sinal visual; o controle mantém `required` quando aplicável e recebe rótulo acessível/erro por campo. `CamposCadastro` compartilha os grupos de campos textuais de conta/endereço.
+
 ### `.rb-drawer`
 
 - **Path CSS:** `rebanho.css`
@@ -509,8 +533,8 @@ Convencionar `DD/mmm/YY` em headers, `DD/MM/YYYY` em tabelas longas.
 
 ### Antes de criar um componente novo
 
-1. **Busque por classe CSS** em `base.css`, `rebanho.css`, `forms.css`. Talvez exista.
-2. **Busque por componente** em `client/src/components/` e `client/src/rebanho/components/`.
+1. **Busque por classe CSS** em `base.css`, `forms.css` (`rebanho.css` era do módulo removido — não existe mais). Talvez exista.
+2. **Busque por componente** em `client/src/components/` (inclui `components/rb/*`) e `client/src/pecuaria/rebanho/`.
 3. **Pergunte:** é variante de algo existente? Extensão é melhor que duplicação.
 4. **Se for criar:** colocar perto de quem usa (não em uma "ui/" abstrata) e documentar aqui na próxima PR.
 

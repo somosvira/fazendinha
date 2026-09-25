@@ -16,7 +16,7 @@ import {
 import type { MilSub } from "../CultivoContent";
 import { ClasseToggle, type Classe } from "../../components/ClasseToggle";
 import { HOJE } from "../HOJE";
-import { RebHeader } from "@/rebanho/components/RebHeader";
+import { RebHeader } from "@/components/rb/RebHeader";
 import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
 import { RebTable } from "@/components/rb/RebTable";
 import { RebButton } from "@/components/rb/RebButton";

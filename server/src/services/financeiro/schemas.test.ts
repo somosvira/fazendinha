@@ -1,15 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { operacaoSchema, rascunhoOperacaoSchema, tipoDocumentoFinanceiroSchema } from "./schemas.js";
+import { categoriaCadastroSchema, centroCustoSchema, contaSchema, operacaoSchema, parceiroSchema, patchCategoriaCadastroSchema, patchCentroCustoSchema, patchContaSchema, patchParceiroSchema, rascunhoOperacaoSchema, tipoDocumentoFinanceiroSchema } from "./schemas.js";
+import { uid } from "../../lib/uid.fixture.js";
 
 const base = {
   data: "2026-09-02",
   descricao: "Operação de teste",
-  parceiroId: 1,
+  parceiroId: uid(1),
   financeiro: { condicao: "SEM_EFEITO_FINANCEIRO" as const },
 };
 
 const item = {
-  produtoId: 1,
+  produtoId: uid(1),
   descricao: "Ração",
   quantidade: 10,
   unidade: "kg",
@@ -18,6 +19,15 @@ const item = {
 };
 
 describe("schema de criação de operação", () => {
+  it("item aceita centroCustoId ausente (herda do produto), nulo (herda da operação) ou um uuid", () => {
+    const parse = (centroCustoId?: string | null) => operacaoSchema.safeParse({ ...base, tipo: "COMPRA_ESTOQUE", itens: [{ ...item, ...(centroCustoId === undefined ? {} : { centroCustoId }) }] });
+    const centroDoItem = (centroCustoId?: string | null) => { const r = parse(centroCustoId); return r.success ? r.data.itens[0].centroCustoId : "erro"; };
+    expect(centroDoItem()).toBeUndefined();
+    expect(centroDoItem(null)).toBeNull();
+    expect(centroDoItem(uid(3))).toBe(uid(3));
+    expect(parse("nao-uuid").success).toBe(false);
+  });
+
   it("aceita serviço com valor total e sem item físico", () => {
     const resultado = operacaoSchema.safeParse({ ...base, tipo: "SERVICO", valorTotal: 500, itens: [] });
     expect(resultado.success).toBe(true);
@@ -36,7 +46,7 @@ describe("schema de criação de operação", () => {
   });
 
   it("impede efeito financeiro em inventário e ajustes físicos", () => {
-    const resultado = operacaoSchema.safeParse({ ...base, tipo: "INVENTARIO_INICIAL", itens: [item], financeiro: { condicao: "A_VISTA", contaId: 1 } });
+    const resultado = operacaoSchema.safeParse({ ...base, tipo: "INVENTARIO_INICIAL", itens: [item], financeiro: { condicao: "A_VISTA", contaId: uid(2) } });
     expect(resultado.success).toBe(false);
     expect(resultado.error?.issues.some((issue) => issue.path.join(".") === "financeiro.condicao")).toBe(true);
   });
@@ -61,5 +71,76 @@ describe("rascunho de operação", () => {
   it("valida a versão otimista quando informada", () => {
     expect(rascunhoOperacaoSchema.safeParse({ dados: {}, versao: 0 }).success).toBe(false);
     expect(rascunhoOperacaoSchema.safeParse({ dados: {}, versao: 2 }).success).toBe(true);
+  });
+});
+
+describe("schemas de conta e parceiro (cadastros)", () => {
+  it("patch de conta não reaplica defaults quando a chave está ausente", () => {
+    const r = patchContaSchema.parse({ nome: "Caixa" });
+    expect(r).toEqual({ nome: "Caixa" });
+    expect("saldoAbertura" in r).toBe(false); expect("incluirNoSaldoGeral" in r).toBe(false);
+  });
+
+  it("patch de conta aceita tipo, saldo e data de abertura", () => {
+    const r = patchContaSchema.parse({ tipo: "APLICACAO", saldoAbertura: "10.5", dataSaldoAbertura: "2026-01-02" });
+    expect(r.tipo).toBe("APLICACAO"); expect(r.saldoAbertura).toBe(10.5); expect(r.dataSaldoAbertura).toBeInstanceOf(Date);
+  });
+
+  it("conta: instituição e identificação vazias viram null", () => {
+    const r = contaSchema.parse({ nome: "Banco", tipo: "BANCO", saldoAbertura: 0, dataSaldoAbertura: "2026-01-01", instituicao: "  ", identificacao: "" });
+    expect(r.instituicao).toBeNull(); expect(r.identificacao).toBeNull();
+  });
+
+  it("parceiro: normaliza documento para dígitos e valida tamanho", () => {
+    expect(parceiroSchema.parse({ nome: "Zé", tipo: "CLIENTE", documento: "123.456.789-09" }).documento).toBe("12345678909");
+    expect(parceiroSchema.parse({ nome: "Zé", tipo: "CLIENTE", documento: "12.345.678/0001-95" }).documento).toBe("12345678000195");
+    expect(parceiroSchema.parse({ nome: "Zé", tipo: "CLIENTE", documento: "" }).documento).toBeNull();
+    expect(parceiroSchema.parse({ nome: "Zé", tipo: "CLIENTE", documento: "111.111.111-11" }).documento).toBe("11111111111");
+    expect(parceiroSchema.safeParse({ nome: "Zé", tipo: "CLIENTE", documento: "1234567890" }).success).toBe(false);
+  });
+
+  it("parceiro: e-mail vazio vira null e inválido é rejeitado", () => {
+    expect(parceiroSchema.parse({ nome: "Zé", tipo: "CLIENTE", email: "" }).email).toBeNull();
+    expect(parceiroSchema.safeParse({ nome: "Zé", tipo: "CLIENTE", email: "x" }).success).toBe(false);
+    expect(patchParceiroSchema.parse({ ativo: false })).toEqual({ ativo: false });
+  });
+});
+
+describe("schemas de categorias e centros de custo", () => {
+  it("normaliza os defaults na criação", () => {
+    expect(categoriaCadastroSchema.parse({ nome: " Insumos " })).toEqual({ nome: "Insumos", classificacao: null, ordem: 0 });
+    expect(centroCustoSchema.parse({ nome: " Leite " })).toEqual({ nome: "Leite", ordem: 0 });
+  });
+
+  it("patches não reaplicam defaults ausentes e aceitam desativação", () => {
+    expect(patchCategoriaCadastroSchema.parse({ ativo: false })).toEqual({ ativo: false });
+    expect(patchCentroCustoSchema.parse({ ativo: false })).toEqual({ ativo: false });
+  });
+
+  it("rejeita nomes curtos, ordem negativa", () => {
+    expect(categoriaCadastroSchema.safeParse({ nome: "A" }).success).toBe(false);
+    expect(centroCustoSchema.safeParse({ nome: "Leite", ordem: -1 }).success).toBe(false);
+  });
+});
+
+describe("operacaoSchema — mensagens de parcela em português", () => {
+  const servico = { tipo: "SERVICO", data: "2026-09-02", descricao: "Serviço de teste", parceiroId: uid(1), valorTotal: 100, itens: [] };
+  const primeiraMensagem = (parcelas: unknown[]) => {
+    const r = operacaoSchema.safeParse({ ...servico, financeiro: { condicao: "A_PRAZO", parcelas } });
+    return r.success ? null : r.error.issues[0]?.message;
+  };
+
+  it("parcela sem valor não vaza a mensagem padrão em inglês do zod", () => {
+    const mensagem = primeiraMensagem([{ valor: "50", dataVencimento: "2026-10-02" }, { valor: "", dataVencimento: "2026-11-02" }]);
+    expect(mensagem).toBe("Nenhuma parcela pode ficar sem valor. Informe um valor maior que zero ou remova a parcela.");
+    expect(mensagem).not.toMatch(/Number must be/);
+  });
+
+  it("parcela sem vencimento pede a data", () => {
+    expect(primeiraMensagem([{ valor: "100", dataVencimento: "" }])).toBe("Informe a data de vencimento de todas as parcelas");
+  });
+
+  it("valor não numérico na parcela pede um número válido", () => {
+    expect(primeiraMensagem([{ valor: "abc", dataVencimento: "2026-10-02" }])).toBe("Informe um valor numérico válido para a parcela");
   });
 });

@@ -1,39 +1,55 @@
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "../src/db.js";
 import { criarOperacao, transferir } from "../src/services/financeiro/operacoes.js";
+import { CENTROS_ATIVIDADE } from "../src/services/estoque/centros-atividade.js";
 
-const prisma = new PrismaClient();
 const hoje = new Date();
 const data = (dias: number) => new Date(Date.UTC(hoje.getUTCFullYear(), hoje.getUTCMonth(), hoje.getUTCDate() + dias));
 
 async function main() {
+  const existente = await prisma.propriedade.findUnique({ where: { nome: "Fazenda Demonstração" }, select: { id: true } });
+  if (existente) {
+    console.log("Seed financeiro já existe; etapa ignorada.");
+    return;
+  }
+
   const propriedade = await prisma.propriedade.create({
     data: { nome: "Fazenda Demonstração", apelido: "Sede", cidade: "Varginha", uf: "MG", principal: true },
   });
 
-  const grupoReceitas = await prisma.grupoCategoria.create({ data: { nome: "Receitas operacionais", ordem: 1 } });
-  const grupoInsumos = await prisma.grupoCategoria.create({ data: { nome: "Insumos e produção", ordem: 2 } });
-  const grupoServicos = await prisma.grupoCategoria.create({ data: { nome: "Serviços e administração", ordem: 3 } });
-  const vendaLeite = await prisma.categoria.create({ data: { nome: "Venda de leite", grupoCategoriaId: grupoReceitas.id, classificacao: "CUSTEIO" } });
-  const racao = await prisma.categoria.create({ data: { nome: "Alimentação animal", grupoCategoriaId: grupoInsumos.id, classificacao: "CUSTEIO" } });
-  const manutencao = await prisma.categoria.create({ data: { nome: "Manutenção e serviços", grupoCategoriaId: grupoServicos.id, classificacao: "CUSTEIO" } });
-  const centroLeite = await prisma.centroCusto.create({ data: { nome: "Produção leiteira", ordem: 1 } });
-  const centroAdministrativo = await prisma.centroCusto.create({ data: { nome: "Administração", ordem: 2 } });
+  const vendaLeite = await prisma.categoria.create({ data: { nome: "Venda de leite", classificacao: "CUSTEIO" } });
+  const racao = await prisma.categoria.create({ data: { nome: "Alimentação animal", classificacao: "CUSTEIO" } });
+  const manutencao = await prisma.categoria.create({ data: { nome: "Manutenção e serviços", classificacao: "CUSTEIO" } });
+  await prisma.categoria.create({ data: { nome: "Medicamento Animal", classificacao: "CUSTEIO" } });
+  await prisma.categoria.create({ data: { nome: "Fertilizantes e corretivos", classificacao: "CUSTEIO", usoAgricola: true } });
+  await prisma.categoria.create({ data: { nome: "Defensivos", classificacao: "CUSTEIO", usoAgricola: true } });
+  const centroLeite = await prisma.centroCusto.create({ data: { nome: "Pecuária", ordem: 1 } });
+  const centroAdministrativo = await prisma.centroCusto.create({ data: { nome: "Gestão", ordem: 2 } });
+
+  for (const nome of ["Agronomia", "Equipe"]) await prisma.centroCusto.create({ data: { nome } });
+
+  // Centros de atividade (custeio do leite/café — ver services/estoque/centros-atividade.ts),
+  // além dos quatro centros de dimensão acima.
+  const centroAtividadeLeite = await prisma.centroCusto.create({ data: { nome: CENTROS_ATIVIDADE.LEITE } });
+  await prisma.centroCusto.create({ data: { nome: CENTROS_ATIVIDADE.CAFE } });
 
   const banco = await prisma.contaFinanceira.create({ data: {
     nome: "Banco principal", tipo: "BANCO", instituicao: "Banco local", identificacao: "Agência 0001 · Conta 12345-6",
+    tipoBancario: "CORRENTE", agencia: "0001", numeroConta: "12345", digito: "6", titular: "Fazenda Demonstração", ordem: 1,
     saldoAbertura: 125_000, dataSaldoAbertura: data(-30), incluirNoSaldoGeral: true, propriedadeId: propriedade.id,
   } });
   const caixa = await prisma.contaFinanceira.create({ data: {
     nome: "Caixa pequeno", tipo: "CAIXA", identificacao: "Responsável: Administrativo",
+    local: "Escritório", responsavel: "Administrativo", ordem: 2,
     saldoAbertura: 2_500, dataSaldoAbertura: data(-30), incluirNoSaldoGeral: true, propriedadeId: propriedade.id,
   } });
 
-  const cooperativa = await prisma.parceiro.create({ data: { nome: "Cooperativa Agropecuária", documento: "00.000.000/0001-01", tipo: "FORNECEDOR" } });
-  const laticinio = await prisma.parceiro.create({ data: { nome: "Laticínio Regional", documento: "00.000.000/0001-02", tipo: "CLIENTE" } });
-  const oficina = await prisma.parceiro.create({ data: { nome: "Oficina Rural", documento: "00.000.000/0001-03", tipo: "FORNECEDOR" } });
+  const cooperativa = await prisma.parceiro.create({ data: { nome: "Cooperativa Agropecuária", documento: "00000000000101", tipo: "FORNECEDOR", papeis: { create: [{ papel: "FORNECEDOR" }] }, formaPagamentoPreferida: "BOLETO", condicaoPagamentoPreferida: "A_PRAZO", prazosPagamento: [30, 60] } });
+  const laticinio = await prisma.parceiro.create({ data: { nome: "Laticínio Regional", documento: "00000000000102", tipo: "CLIENTE", papeis: { create: [{ papel: "CLIENTE" }] } } });
+  const oficina = await prisma.parceiro.create({ data: { nome: "Oficina Rural", documento: "00000000000103", tipo: "FORNECEDOR", papeis: { create: [{ papel: "PRESTADOR_SERVICO" }, { papel: "FORNECEDOR" }] }, pessoaContato: "Equipe da oficina", formaPagamentoPreferida: "PIX" } });
   const produtoRacao = await prisma.produto.create({ data: {
-    nome: "Ração para lactação", tipo: "RACAO", unidade: "kg", estocavel: true, setor: "LEITE",
-    custoUnitario: 12, minimoEstoque: 300, categoriaId: racao.id, centroCustoId: centroLeite.id,
+    nome: "Ração para lactação", unidade: "KG",
+    minimoEstoque: 300, categoriaId: racao.id,
+    centrosCusto: { create: [{ centroCustoId: centroAtividadeLeite.id }] },
   } });
 
   // Compra à vista: operação + saída da conta + entrada física, sem compromisso.
@@ -56,7 +72,7 @@ async function main() {
   await criarOperacao({
     tipo: "VENDA", data: data(0), descricao: "Venda mensal de leite", parceiroId: laticinio.id,
     categoriaId: vendaLeite.id, centroCustoId: centroLeite.id, propriedadeId: propriedade.id,
-    itens: [{ descricao: "Leite entregue", quantidade: 10_000, unidade: "L", valorUnitario: 2.5, estocavel: false }],
+    itens: [{ descricao: "Leite entregue", categoriaId: vendaLeite.id, quantidade: 10_000, unidade: "L", valorUnitario: 2.5, estocavel: false }],
     financeiro: { condicao: "A_VISTA", contaId: banco.id, formaPagamento: "TRANSFERENCIA_BANCARIA" },
   });
 
@@ -64,7 +80,7 @@ async function main() {
   await criarOperacao({
     tipo: "SERVICO", data: data(0), descricao: "Manutenção preventiva do trator", parceiroId: oficina.id,
     categoriaId: manutencao.id, centroCustoId: centroAdministrativo.id, propriedadeId: propriedade.id,
-    itens: [{ descricao: "Mão de obra e revisão", quantidade: 1, unidade: "serviço", valorUnitario: 1_800, estocavel: false }],
+    itens: [{ descricao: "Mão de obra e revisão", categoriaId: manutencao.id, quantidade: 1, unidade: "serviço", valorUnitario: 1_800, estocavel: false }],
     financeiro: { condicao: "A_PRAZO", parcelas: [{ valor: 1_800, dataVencimento: data(12) }] },
   });
 

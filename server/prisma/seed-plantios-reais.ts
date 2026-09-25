@@ -35,10 +35,9 @@
 //   sair sem a nota de "saída mista" (ver resumo.recompute.ts).
 // -----------------------------------------------------------------------------
 
-import { PrismaClient, Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
+import { prisma } from "../src/db.js";
 import { recomputarResumoSafra } from "../src/services/cultivo/resumo.recompute.js";
-
-const prisma = new PrismaClient();
 
 const D = (x: number) => new Prisma.Decimal(x.toFixed(2));
 const D3 = (x: number) => new Prisma.Decimal(x.toFixed(3));
@@ -48,7 +47,7 @@ async function seedCafe() {
   const ccCafe = await prisma.centroCusto.upsert({
     where: { nome: "Plantio Café" },
     update: {},
-    create: { nome: "Plantio Café", ehInvestimento: false, ordem: 2 },
+    create: { nome: "Plantio Café", ordem: 2 },
   });
 
   // Variedade — café adensado Rio Novo é Catuaí Vermelho (clássico Sul de Minas,

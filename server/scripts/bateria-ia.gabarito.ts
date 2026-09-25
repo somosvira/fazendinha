@@ -3,11 +3,10 @@
 // de consulta e dos where do Prisma). Recalcula sozinho — sobrevive a mudanças
 // de dados. Rodar: pnpm --filter rionovo-server run bateria:gabarito [saida.json]
 // As perguntas correspondentes estão em bateria-ia.run.ts (mesmos ids).
-import { PrismaClient } from "@prisma/client";
 import { writeFileSync } from "node:fs";
+import { prisma } from "../src/db.js";
 
-const p = new PrismaClient();
-const q = (s: string) => p.$queryRawUnsafe<Record<string, unknown>[]>(s);
+const q = (s: string) => prisma.$queryRawUnsafe<Record<string, unknown>[]>(s);
 
 // Regime de caixa: LIQUIDADO + estornado=false, por dataLiquidacao.
 const CAIXA = `l.situacao='LIQUIDADO' AND l.estornado=false`;
@@ -101,24 +100,6 @@ async function main() {
     SELECT to_char("dataLiquidacao",'YYYY-MM') mes, ROUND(SUM(valor),2)::float saidas
     FROM "Lancamento" l WHERE ${CAIXA} AND natureza='DEBITO' AND "dataLiquidacao">='2026-01-01'
     GROUP BY 1 ORDER BY 2 ASC`);
-
-  // ── E. Razão ──
-  g.E1_producao_leite = await q(`SELECT COUNT(*)::int n, COALESCE(SUM(litros),0)::float litros FROM "ProducaoLote"`);
-
-  // ── F. Rebanho ──
-  g.F1_ativos_por_categoria = await q(`SELECT categoria, COUNT(*)::int n FROM "Animal" WHERE status='ATIVO' GROUP BY 1 ORDER BY 2 DESC`);
-  g.F2_ccs_media_vacas = await q(`
-    SELECT COUNT(*)::int vacas, COUNT(ra.ccs)::int com_ccs, ROUND(AVG(ra.ccs),2)::float ccs_media
-    FROM "Animal" a LEFT JOIN "ResumoAnimal" ra ON ra."animalId"=a.id
-    WHERE a.status='ATIVO' AND a.categoria='VACA'`);
-  g.F3_del_medio_vacas = await q(`
-    SELECT COUNT(ra.del)::int com_del, ROUND(AVG(ra.del),2)::float del_medio
-    FROM "Animal" a LEFT JOIN "ResumoAnimal" ra ON ra."animalId"=a.id
-    WHERE a.status='ATIVO' AND a.categoria='VACA'`);
-  g.F4_ativos_por_raca = await q(`
-    SELECT COALESCE(r.nome,'(sem raça)') raca, COUNT(*)::int n
-    FROM "Animal" a LEFT JOIN "Raca" r ON r.id=a."racaId" WHERE a.status='ATIVO' GROUP BY 1 ORDER BY 2 DESC`);
-  g.F5_baixados = await q(`SELECT COUNT(*)::int n FROM "Animal" WHERE status='BAIXADO'`);
 
   // ── G. Outros módulos ──
   // Semântica da tool folha_pagamento: débitos realizados com busca='salário'

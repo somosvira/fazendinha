@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Loader } from "../../components/Loading";
 import { useTalhoes } from "../api";
 import { LavouraDomainView, PLA_TOOLBAR } from "./LavouraDomainView";
-import { RebHeader } from "@/rebanho/components/RebHeader";
+import { RebHeader } from "@/components/rb/RebHeader";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebMain } from "@/components/rb/RebPrimitives";
 import { DOMAINS } from "../domains";

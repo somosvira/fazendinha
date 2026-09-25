@@ -1,9 +1,10 @@
 /* Rio Novo — navegação global (rail persistente no desktop + drawer no mobile).
  *
  * A sidebar é organizada por ÁREAS DE TRABALHO, não pela estrutura interna dos
- * módulos. As rotinas mais frequentes ficam sempre em um clique (Reprodução,
- * Sanidade, Controle leiteiro, Animais e Agronomia); recursos de configuração ou
- * análise menos frequentes ficam em "Mais opções" dentro da área correspondente.
+ * módulos. Pecuária hoje é só a v1 Rebanho (Animais · Lotes · Cadastros, uma
+ * área com um único ponto de entrada); Agronomia reúne Plantio e Milho com
+ * várias rotinas em um clique. Recursos de configuração ou análise menos
+ * frequentes ficam em "Mais opções" dentro da área correspondente.
  * A marca Terrano e o seletor de fazenda/sítio vivem no topo da sidebar.
  *
  * DESKTOP: trilho fixo sempre visível; entre 901–1100px vira ícone-only e expande
@@ -11,17 +12,22 @@
  * shadcn `Sheet` (Radix Dialog) — overlay, foco-trap e Escape de graça. */
 
 import { useEffect, useState } from "react";
+import { FilePenLine, Plus } from "lucide-react";
 import type { Tab } from "./Shell";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { TerranoSymbol } from "./TerranoLogo";
 import { SidebarFarmPicker } from "./FarmPicker";
-import { temAcessoArea } from "@/lib/areas";
+import { temAcessoArea, temAcessoEstoque } from "@/lib/areas";
 import { PAPEIS, type User } from "@/data/acessos";
+import { quandoSalvo, type ResumoRascunho } from "@/financeiro/lib/rascunho";
 
-// ícones simples (single-path) por chave — reusa os do rebanho onde aplicável
+type ResumoTrabalhoAtivo = Pick<ResumoRascunho, "titulo" | "tipo" | "detalhe" | "atualizadoEm">;
+
+// ícones simples (single-path) por chave
 const ICON: Partial<Record<Tab, JSX.Element>> = {
+  "pec-rebanho": <><circle cx="12" cy="9" r="5"/><path d="M5 21c1-4 4-6 7-6s6 2 7 6"/></>,
   dashboard: <><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></>,
   gastos: <><circle cx="12" cy="12" r="8"/><path d="M12 8v8M9.5 10.5h4a1.5 1.5 0 0 1 0 3h-3a1.5 1.5 0 0 0 0 3h4"/></>,
   lancar: <><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M12 8v8M8 12h8"/></>,
@@ -31,20 +37,8 @@ const ICON: Partial<Record<Tab, JSX.Element>> = {
   ia: <path d="M12 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2z"/>,
   acessos: <><circle cx="12" cy="8" r="3.5"/><path d="M5 20c1-4 4-6 7-6s6 2 7 6"/></>,
   cadastros: <><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></>,
+  estoque: <><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M3 8l9 5 9-5"/></>,
   config: <><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></>,
-  "reb-dashboard": <><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></>,
-  "reb-animal": <><circle cx="12" cy="9" r="5"/><path d="M5 21c1-4 4-6 7-6s6 2 7 6"/></>,
-  "reb-reproducao": <path d="M12 21s-7-4.5-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 11c0 5.5-7 10-7 10z"/>,
-  "reb-acasalamento": <><circle cx="8" cy="12" r="3"/><circle cx="16" cy="12" r="3"/><path d="M11 12h2M8 9V5M16 9V5M6 5h4M14 5h4M8 15v4M16 15v4"/></>,
-  "reb-sanidade": <path d="M12 6v12M6 12h12"/>,
-  "reb-nutricao": <path d="M12 21c5-3 8-7 8-12 0-1.5-.5-3-1-4-3 0-7 1-9 4s-2 8-2 12c2-2 4-3 6-4"/>,
-  "reb-producao": <><path d="M8 3h8l-1 4H9z"/><path d="M9 7l-2 4v8a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-8l-2-4"/><path d="M7 13h10"/></>,
-  "reb-estoque": <><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M3 8l9 5 9-5"/></>,
-  "reb-custo": <><path d="M12 2v20"/><path d="M17 6.5a4 4 0 0 0-4-2.5h-2a3.5 3.5 0 0 0 0 7h2a3.5 3.5 0 0 1 0 7h-2a4 4 0 0 1-4-2.5"/></>,
-  "reb-carteira": <><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></>,
-  "reb-sugestoes": <><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2z"/></>,
-  "reb-fiv": <><path d="M9 2h6"/><path d="M10 2v6.3a2 2 0 0 1-.4 1.2L5 16a2 2 0 0 0 1.6 3.2h10.8A2 2 0 0 0 19 16l-4.6-6.5a2 2 0 0 1-.4-1.2V2"/><path d="M7.5 14h9"/></>,
-  "reb-relatorios": <><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></>,
   // — Plantio — ícones simbólicos para cada sub-aba.
   "pla-dashboard": <><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></>,
   "pla-talhao": <><path d="M3 12h18M12 3v18"/><rect x="3" y="3" width="18" height="18" rx="2"/></>,
@@ -55,15 +49,6 @@ const ICON: Partial<Record<Tab, JSX.Element>> = {
   "pla-planejamento": <><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 3v4M16 3v4M4 9h16M9 14l2 2 4-4"/></>,
   "pla-estoque": <><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M3 8l9 5 9-5"/></>,
   "pla-custo": <><path d="M12 2v20"/><path d="M17 6.5a4 4 0 0 0-4-2.5h-2a3.5 3.5 0 0 0 0 7h2a3.5 3.5 0 0 1 0 7h-2a4 4 0 0 1-4-2.5"/></>,
-  // — Corte (gado de corte) — ícones simbólicos.
-  "cor-dashboard": <><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></>,
-  "cor-lote": <><circle cx="8" cy="11" r="3"/><circle cx="16" cy="11" r="3"/><path d="M4 20c0-2 2-4 4-4M16 16c2 0 4 2 4 4"/></>,
-  "cor-pesagem": <><rect x="4" y="6" width="16" height="14" rx="2"/><path d="M8 10v4M12 9v5M16 11v3"/></>,
-  "cor-pasto": <><path d="M3 19c2-1 4-1 6 0M9 19c2-1 4-1 6 0M15 19c2-1 4-1 6 0"/><path d="M5 14v5M9 12v7M13 14v5M17 12v7"/></>,
-  "cor-sanidade": <path d="M12 6v12M6 12h12"/>,
-  "cor-nutricao": <path d="M12 21c5-3 8-7 8-12 0-1.5-.5-3-1-4-3 0-7 1-9 4s-2 8-2 12c2-2 4-3 6-4"/>,
-  "cor-comercial": <><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></>,
-  "cor-custo": <><path d="M12 2v20"/><path d="M17 6.5a4 4 0 0 0-4-2.5h-2a3.5 3.5 0 0 0 0 7h2a3.5 3.5 0 0 1 0 7h-2a4 4 0 0 1-4-2.5"/></>,
   // — Milho (cultivo) — ícones simbólicos.
   "mil-dashboard": <><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></>,
   "mil-safras": <><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 11h18"/></>,
@@ -99,28 +84,7 @@ const AREAS_TRABALHO: AreaTrabalho[] = [
     label: "Pecuária",
     permissao: "pecuaria",
     principais: [
-      { id: "reb-dashboard", label: "Hoje na pecuária" },
-      { id: "reb-animal", label: "Animais" },
-      { id: "reb-reproducao", label: "Reprodução" },
-      { id: "reb-sanidade", label: "Sanidade" },
-      { id: "reb-producao", label: "Controle leiteiro" },
-      { id: "reb-nutricao", label: "Nutrição" },
-      { id: "cor-lote", label: "Lotes coletivos" },
-      { id: "cor-pesagem", label: "Pesagens" },
-    ],
-    extras: [
-      { id: "reb-acasalamento", label: "Acasalamento" },
-      { id: "reb-fiv", label: "FIV / TE" },
-      { id: "reb-estoque", label: "Estoque de insumos" },
-      { id: "reb-custo", label: "Custos e indicadores" },
-      { id: "reb-carteira", label: "Carteira do rebanho" },
-      { id: "reb-sugestoes", label: "Sugestões" },
-      { id: "cor-dashboard", label: "Resumo dos lotes" },
-      { id: "cor-pasto", label: "Pasto" },
-      { id: "cor-sanidade", label: "Sanidade coletiva" },
-      { id: "cor-nutricao", label: "Nutrição coletiva" },
-      { id: "cor-comercial", label: "Comercialização" },
-      { id: "cor-custo", label: "Custos dos lotes" },
+      { id: "pec-rebanho", label: "Rebanho" },
     ],
   },
   {
@@ -198,8 +162,8 @@ const RAIL_HIDE =
  *  itens que abrem uma página/sub-página. `activeWhen` acende o item também
  *  quando a aba atual é uma das sub-abas dobradas nele (ex.: "Gastos" fica ativo
  *  em `caixinha`; "Configurações" em `cadastros`/`plano`/`acessos`). */
-function Item({ id, label, current, onNav, nested, chevron, activeWhen, featured }: {
-  id: Tab; label: string; current: Tab; onNav: (t: Tab) => void; nested?: boolean; chevron?: boolean; activeWhen?: Tab[]; featured?: boolean;
+function Item({ id, label, current, onNav, nested, chevron, activeWhen }: {
+  id: Tab; label: string; current: Tab; onNav: (t: Tab) => void; nested?: boolean; chevron?: boolean; activeWhen?: Tab[];
 }) {
   const isOn = current === id || (activeWhen?.includes(current) ?? false);
   return (
@@ -215,7 +179,6 @@ function Item({ id, label, current, onNav, nested, chevron, activeWhen, featured
         "hover:bg-[rgba(232,220,196,0.06)]",
         RAIL_ICON_BTN,
         nested && "py-[7px] pl-4 text-[13px] [&_svg]:h-[15px] [&_svg]:w-[15px]",
-        featured && "border border-[rgba(232,220,196,0.14)] bg-[rgba(232,220,196,0.08)] min-[901px]:max-[1100px]:border-0 min-[901px]:max-[1100px]:bg-transparent [.side-collapsed_&]:border-0 [.side-collapsed_&]:bg-transparent",
         // item ativo: fundo sutil + barrinha brass à esquerda (::before)
         isOn && "bg-[rgba(232,220,196,0.10)] font-semibold [&_svg]:opacity-100 before:absolute before:bottom-2 before:left-0 before:top-2 before:w-[3px] before:rounded-[2px] before:bg-leite",
         isOn && RAIL_ACTIVE,
@@ -264,6 +227,57 @@ function UserMenu({ user, onAcessos, onSair }: { user: User; onAcessos: () => vo
         {onSair && <><DropdownMenuSeparator /><DropdownMenuItem onSelect={onSair} className="rounded-[7px] px-2.5 py-2 text-[13.5px] text-[color:var(--prejuizo)] focus:text-[color:var(--prejuizo)]">Sair</DropdownMenuItem></>}
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+/** Atalho para o trabalho em andamento, no topo da navegação, acima do
+ *  Financeiro. Com rascunho de operação (`resumo`), mostra o lápis e a descrição
+ *  e reabre o rascunho; sem rascunho, mostra um "+" que começa uma operação
+ *  nova. `ativo` quando o formulário está na tela. É um item fino: ícone,
+ *  descrição e, logo abaixo, o tipo da operação em corpo menor; valor e "salvo
+ *  há" ficam no tooltip. A altura mínima é a mesma com e sem rascunho, para o
+ *  item não pular quando o "+" vira rascunho. No trilho recolhido vira só o
+ *  ícone; o ponto brass marca que há rascunho pendente.
+ *  O `aria-current` fica só com o item "Operações" (a página de fato): o cartão
+ *  anuncia o estado no próprio nome, para o leitor de tela não ouvir duas
+ *  páginas atuais. */
+export function TrabalhoAtivo({ resumo, ativo, onAbrir, vazio = "Nova operação" }: { resumo: ResumoTrabalhoAtivo | null; ativo: boolean; onAbrir: () => void; vazio?: string }) {
+  // O "salvo há N min" do tooltip envelhece com a tela parada: re-renderiza a
+  // cada minuto. O relógio é lido na renderização, para acompanhar cada autosave.
+  const [, setTique] = useState(0);
+  useEffect(() => {
+    const intervalo = window.setInterval(() => setTique((tique) => tique + 1), 60_000);
+    return () => window.clearInterval(intervalo);
+  }, []);
+  const salvo = resumo ? quandoSalvo(resumo.atualizadoEm, Date.now()) : null;
+  const rotulo = resumo
+    ? `${ativo ? "Rascunho em edição" : "Continuar rascunho"}: ${resumo.titulo}`
+    : ativo ? `${vazio} em edição` : vazio;
+  return (
+    <button
+      type="button"
+      onClick={onAbrir}
+      aria-label={rotulo}
+      title={[rotulo, resumo?.detalhe, salvo].filter(Boolean).join("\n")}
+      className={cn(
+        "flex min-h-[38px] w-full cursor-pointer items-center gap-3 rounded-[7px] border border-[rgba(232,220,196,0.14)] bg-[rgba(232,220,196,0.05)] px-2.5 py-[3px] text-left font-sans text-[var(--mast-ink)]",
+        "hover:bg-[rgba(232,220,196,0.09)] [&_svg]:h-[16px] [&_svg]:w-[16px] [&_svg]:flex-none",
+        RAIL_ICON_BTN,
+        // Na faixa 901–1100px, o hover expande a sidebar: volta ao layout de
+        // duas linhas finas, em vez do respiro do modo ícone.
+        "min-[901px]:max-[1100px]:group-hover:justify-start min-[901px]:max-[1100px]:group-hover:gap-3 min-[901px]:max-[1100px]:group-hover:px-2.5 min-[901px]:max-[1100px]:group-hover:py-[3px] min-[901px]:max-[1100px]:group-focus-within:justify-start min-[901px]:max-[1100px]:group-focus-within:gap-3 min-[901px]:max-[1100px]:group-focus-within:px-2.5 min-[901px]:max-[1100px]:group-focus-within:py-[3px]",
+        ativo && "border-leite/60 bg-[rgba(232,220,196,0.10)]",
+      )}
+    >
+      <span className="relative flex-none leading-none">
+        {resumo ? <FilePenLine strokeWidth={1.7} aria-hidden /> : <Plus strokeWidth={1.7} aria-hidden />}
+        {resumo && <span aria-hidden className="absolute -right-1 -top-1 h-2 w-2 rounded-full border-2 border-mast bg-leite" />}
+      </span>
+      <span className={cn("min-w-0 flex-1", RAIL_BLOCK)}>
+        <span className="block truncate text-[13px] font-medium leading-4">{resumo ? resumo.titulo : vazio}</span>
+        {resumo?.tipo && <span className="block truncate text-[11px] leading-[14px] text-[var(--side-mute)]">{resumo.tipo}</span>}
+      </span>
+    </button>
   );
 }
 
@@ -332,7 +346,7 @@ function MoreToggle({ context, isOpen, onToggle }: { context: string; isOpen: bo
 export function AppSidebar({
   current, onNav, financeiro, isAdmin, podeVerFolha, areas,
   mobileOpen, onMobileToggle, onAbrirBusca, propAtiva, onTrocarProp,
-  user, colapsada, onToggleColapsar, onAcessos, onSair,
+  user, colapsada, onToggleColapsar, onAcessos, onSair, trabalhoAtivo, trabalhoAtivoRelatorio,
 }: {
   current: Tab; onNav: (t: Tab) => void; financeiro: { id: Tab; label: string }[];
   isAdmin: boolean;
@@ -345,6 +359,9 @@ export function AppSidebar({
   propAtiva: number | null; onTrocarProp: (id: number | null) => void;
   user: User; colapsada: boolean; onToggleColapsar: () => void;
   onAcessos: () => void; onSair?: () => void;
+  // Atalhos acima do Financeiro; o item de operação permanece disponível para iniciar uma nova.
+  trabalhoAtivo?: { resumo: ResumoTrabalhoAtivo | null; ativo: boolean; onAbrir: () => void } | null;
+  trabalhoAtivoRelatorio?: { resumo: ResumoTrabalhoAtivo; ativo: boolean; onAbrir: () => void } | null;
 }) {
   const areasEfetivas = areas ?? ["pecuaria", "agricultura", "equipe"];
   const areasVisiveis = AREAS_TRABALHO.filter(
@@ -424,12 +441,12 @@ export function AppSidebar({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current]);
 
-  // Cabeçalho da sidebar: marca e controle do trilho; o contexto da fazenda
-  // fica em um bloco próprio depois do divisor.
+  // Cabeçalho da sidebar: marca, controles do trilho e, logo abaixo da marca,
+  // o contexto da fazenda. O divisor fecha o cabeçalho depois do seletor.
   const sideHead = (
     <div className="flex-none">
-      <div className="border-b border-[var(--side-hair,rgba(232,220,196,0.1))] px-3.5 py-4 min-[901px]:max-[1100px]:px-2 [.side-collapsed_&]:px-2">
-        <div className="ah-brand flex items-center gap-2.5 px-1.5 min-[901px]:max-[1100px]:flex-col min-[901px]:max-[1100px]:px-0 [.side-collapsed_&]:flex-col [.side-collapsed_&]:px-0">
+      <div className="border-b border-[var(--side-hair,rgba(232,220,196,0.1))] px-3.5 pb-3.5 pt-4 min-[901px]:max-[1100px]:px-2 min-[901px]:max-[1100px]:pb-2 min-[901px]:max-[1100px]:pt-3 [.side-collapsed_&]:px-2 [.side-collapsed_&]:pb-2 [.side-collapsed_&]:pt-3">
+        <div className="ah-brand flex items-center gap-2.5 px-1.5 min-[901px]:max-[1100px]:flex-col min-[901px]:max-[1100px]:gap-1.5 min-[901px]:max-[1100px]:px-0 [.side-collapsed_&]:flex-col [.side-collapsed_&]:gap-1.5 [.side-collapsed_&]:px-0">
           <TerranoSymbol size={30} tone="dark" strokeWidth={4.4} className="ah-brand-symbol flex-none" />
           <span className={cn("font-serif text-[21px] font-medium leading-none tracking-[-0.01em] text-[var(--mast-ink)]", RAIL_LABEL)}>Terrano</span>
           <div className="ml-auto hidden items-center gap-1 min-[901px]:flex min-[901px]:max-[1100px]:ml-0 min-[901px]:max-[1100px]:flex-col [.side-collapsed_&]:ml-0 [.side-collapsed_&]:flex-col">
@@ -439,15 +456,24 @@ export function AppSidebar({
             </button>
           </div>
         </div>
-      </div>
-      <div className="px-3.5 py-3 min-[901px]:max-[1100px]:px-2 [.side-collapsed_&]:px-2">
-        <SidebarFarmPicker propAtiva={propAtiva} onTrocarProp={onTrocarProp} />
+        <div className="mt-3.5 min-[901px]:max-[1100px]:mt-1.5 [.side-collapsed_&]:mt-1.5">
+          <SidebarFarmPicker propAtiva={propAtiva} onTrocarProp={onTrocarProp} onGerenciar={isAdmin ? () => nav("sitios") : undefined} />
+        </div>
       </div>
     </div>
   );
 
   const navBody = (
-    <div className="flex flex-1 flex-col overflow-y-auto overscroll-contain px-3.5 pb-2 pt-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden min-[901px]:max-[1100px]:px-2 [.side-collapsed_&]:px-2">
+    <div className="flex flex-1 flex-col overflow-y-auto overscroll-contain px-3.5 pb-2 pt-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden min-[901px]:max-[1100px]:px-2 min-[901px]:max-[1100px]:pt-2.5 [.side-collapsed_&]:px-2 [.side-collapsed_&]:pt-2.5">
+      {(trabalhoAtivo || trabalhoAtivoRelatorio) && (
+        <section role="group" aria-label="Trabalhos ativos" className="mb-3 border-b border-dashed border-[rgba(232,220,196,0.16)] pb-3">
+          <h2 className={cn("mb-2 px-2.5 text-[10px] font-semibold uppercase tracking-[0.13em] text-[rgba(232,220,196,0.62)]", RAIL_LABEL)}>Trabalhos ativos</h2>
+          <div className="flex flex-col gap-2">
+            {trabalhoAtivo && <TrabalhoAtivo resumo={trabalhoAtivo.resumo} ativo={trabalhoAtivo.ativo} onAbrir={() => { trabalhoAtivo.onAbrir(); onMobileToggle(false); }} />}
+            {trabalhoAtivoRelatorio && <TrabalhoAtivo resumo={trabalhoAtivoRelatorio.resumo} ativo={trabalhoAtivoRelatorio.ativo} onAbrir={() => { trabalhoAtivoRelatorio.onAbrir(); onMobileToggle(false); }} />}
+          </div>
+        </section>
+      )}
       {itensFinanceiros.length > 0 && (
         <div className="flex flex-col gap-px">
           <GroupToggle id="financeiro" label="Financeiro" isOpen={!collapsedGroups.has("financeiro")} onToggle={() => toggleGroup("financeiro")} />
@@ -462,7 +488,6 @@ export function AppSidebar({
                   onNav={nav}
                   nested
                   chevron={t.id !== "dashboard" && t.id !== "lancar"}
-                  featured={t.id === "lancar"}
                   activeWhen={t.id === "cadastros" ? ["plano"] : undefined}
                 />
               ))}
@@ -502,8 +527,14 @@ export function AppSidebar({
         );
       })}
 
+      {temAcessoEstoque(areasEfetivas) && (
+        <div className="mt-3 flex flex-col gap-px border-t border-dashed border-[rgba(232,220,196,0.16)] pt-3">
+          <Item id="estoque" label="Estoque" current={current} onNav={nav} />
+        </div>
+      )}
+
       <div className="mt-3 flex flex-col gap-px border-t border-dashed border-[rgba(232,220,196,0.16)] pt-3">
-        <Item id="config" label="Configurações" current={current} onNav={nav} chevron activeWhen={[...(isAdmin ? (["acessos"] as Tab[]) : [])]} />
+        <Item id="config" label="Configurações" current={current} onNav={nav} chevron activeWhen={[...(isAdmin ? (["sitios", "acessos"] as Tab[]) : [])]} />
       </div>
     </div>
   );

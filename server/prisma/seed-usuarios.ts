@@ -1,11 +1,9 @@
 // Seed de contas de acesso (login real). Idempotente: upsert por e-mail, então
 // pode rodar quantas vezes quiser sem duplicar. Senha guardada só como hash
 // scrypt (nunca em claro). Rodar: pnpm --filter rionovo-server run seed:usuarios
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "../src/db.js";
 import { hashSenha } from "../src/services/auth/hash.js";
 import { aplicarPreset } from "../src/services/auth/papeis.js";
-
-const prisma = new PrismaClient();
 
 const SENHA = "senha123";
 

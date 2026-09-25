@@ -151,17 +151,6 @@ export interface PassadaColheita {
   observacao?: string;
 }
 
-// Insumos do estoque (Plantio) — fertilizantes, defensivos, herbicidas, calcários.
-export type TipoInsumoPlantio =
-  | "FERTILIZANTE"     // formulados NPK, ureia, MAP, KCl
-  | "DEFENSIVO"        // fungicidas, inseticidas, acaricidas
-  | "HERBICIDA"
-  | "CORRETIVO"        // calcário, gesso, fosfato natural
-  | "BIOLOGICO"        // Beauveria, Bacillus, micorrizas
-  | "FOLIAR"           // micronutrientes via foliar
-  | "MUDA"
-  | "OUTRO";
-
 // Operações (eventos não-fenológicos): adubação, aplicação fito, poda, capina.
 export type TipoOperacao =
   | "ADUBACAO_SOLO" | "ADUBACAO_FOLIAR"

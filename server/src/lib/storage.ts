@@ -1,89 +1,27 @@
-// Abstração de storage com dois drivers: "local" (dev sem nuvem) e "r2"
-// (Cloudflare R2, S3-compatible). A interface é a mesma; o driver é escolhido
-// por env.STORAGE_DRIVER.
+// Storage único via Cloudflare R2 (S3-compatible), em todos os ambientes.
 
-import crypto from "node:crypto";
-import fs from "node:fs/promises";
-import path from "node:path";
 import { env } from "../env.js";
 
-export type StorageDriver = "local" | "r2";
+export type StorageDriver = "r2";
 
 export type PutObjectArgs = { key: string; body: Buffer; contentType: string };
 export type PutObjectResult = { storageDriver: StorageDriver; bucket: string | null; storageKey: string };
 export type SignedUrlArgs = { key: string; ttlSeconds?: number; filename?: string };
+export type SignedUploadArgs = { key: string; contentType: string; metadata: Record<string, string>; ttlSeconds?: number };
+export type ObjectHead = { contentLength: number; contentType: string | undefined; metadata: Record<string, string> };
 
 export interface Storage {
   driver: StorageDriver;
   putObject(args: PutObjectArgs): Promise<PutObjectResult>;
+  getSignedUploadUrl(args: SignedUploadArgs): Promise<string>;
   getSignedDownloadUrl(args: SignedUrlArgs): Promise<string>;
+  headObject(args: { key: string }): Promise<ObjectHead>;
+  copyObject(args: { sourceKey: string; destinationKey: string; contentType: string; metadata: Record<string, string> }): Promise<void>;
   getObjectBuffer(args: { key: string }): Promise<Buffer>;
   deleteObject(args: { key: string }): Promise<void>;
   // R2 não tem tier ultra-frio como Glacier; mantemos a assinatura por simetria.
   // Retorna mensagem informativa.
   restoreFromArchive(args: { key: string }): Promise<{ enfileirado: boolean; mensagem: string }>;
-}
-
-// ───── Driver local ─────
-
-class LocalStorage implements Storage {
-  driver: StorageDriver = "local";
-  private baseDir: string;
-
-  constructor(baseDir: string) {
-    this.baseDir = path.resolve(baseDir);
-  }
-
-  private absPath(key: string) {
-    // proteção contra path traversal
-    const normalized = path.posix.normalize(key);
-    if (normalized.startsWith("..") || normalized.startsWith("/") || normalized.includes("\0")) {
-      throw new Error(`storageKey inválido: ${key}`);
-    }
-    return path.join(this.baseDir, normalized);
-  }
-
-  async putObject({ key, body }: PutObjectArgs): Promise<PutObjectResult> {
-    const abs = this.absPath(key);
-    await fs.mkdir(path.dirname(abs), { recursive: true });
-    await fs.writeFile(abs, body);
-    return { storageDriver: "local", bucket: null, storageKey: key };
-  }
-
-  async getSignedDownloadUrl({ key, ttlSeconds = 600 }: SignedUrlArgs): Promise<string> {
-    const exp = Math.floor(Date.now() / 1000) + ttlSeconds;
-    const sig = signLocalToken(key, exp);
-    const qs = new URLSearchParams({ key, exp: String(exp), sig });
-    return `/api/nota-fiscal/local-download?${qs.toString()}`;
-  }
-
-  async getObjectBuffer({ key }: { key: string }): Promise<Buffer> {
-    return fs.readFile(this.absPath(key));
-  }
-
-  async deleteObject({ key }: { key: string }): Promise<void> {
-    try {
-      await fs.unlink(this.absPath(key));
-    } catch (e: any) {
-      if (e?.code !== "ENOENT") throw e;
-    }
-  }
-
-  async restoreFromArchive(): Promise<{ enfileirado: boolean; mensagem: string }> {
-    return { enfileirado: false, mensagem: "Driver local não precisa restauração — arquivo já disponível." };
-  }
-}
-
-// HMAC-SHA256 para assinar URLs de download local. Sem deps externas.
-export function signLocalToken(key: string, exp: number): string {
-  return crypto.createHmac("sha256", env.LOCAL_DOWNLOAD_SECRET).update(`${key}:${exp}`).digest("hex");
-}
-
-export function verifyLocalToken(key: string, exp: number, sig: string): boolean {
-  const expected = signLocalToken(key, exp);
-  if (sig.length !== expected.length) return false;
-  if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return false;
-  return Math.floor(Date.now() / 1000) < exp;
 }
 
 // ───── Driver Cloudflare R2 ─────
@@ -114,6 +52,19 @@ class R2Storage implements Storage {
     return { storageDriver: "r2", bucket: this.bucket, storageKey: key };
   }
 
+  async getSignedUploadUrl({ key, contentType, metadata, ttlSeconds = 600 }: SignedUploadArgs): Promise<string> {
+    const { PutObjectCommand } = await import("@aws-sdk/client-s3");
+    const cmd = new PutObjectCommand({ Bucket: this.bucket, Key: key, ContentType: contentType, Metadata: metadata });
+    // O presigner tende a "hoistar" x-amz-meta-* para a query string. R2
+    // aceita a assinatura, mas não persiste esses metadados como headers de
+    // objeto; mantê-los em SignedHeaders faz o navegador enviá-los e permite
+    // conferência por HeadObject na confirmação.
+    return this.presigner.getSignedUrl(this.client, cmd, {
+      expiresIn: ttlSeconds,
+      unhoistableHeaders: new Set(["content-type", ...Object.keys(metadata).map((key) => `x-amz-meta-${key}`)]),
+    });
+  }
+
   async getSignedDownloadUrl({ key, ttlSeconds = 600, filename }: SignedUrlArgs): Promise<string> {
     const { GetObjectCommand } = await import("@aws-sdk/client-s3");
     const cmd = new GetObjectCommand({
@@ -122,6 +73,24 @@ class R2Storage implements Storage {
       ResponseContentDisposition: filename ? `attachment; filename="${filename}"` : undefined,
     });
     return this.presigner.getSignedUrl(this.client, cmd, { expiresIn: ttlSeconds });
+  }
+
+  async headObject({ key }: { key: string }): Promise<ObjectHead> {
+    const { HeadObjectCommand } = await import("@aws-sdk/client-s3");
+    const head = await this.client.send(new HeadObjectCommand({ Bucket: this.bucket, Key: key }));
+    return { contentLength: head.ContentLength ?? 0, contentType: head.ContentType, metadata: head.Metadata ?? {} };
+  }
+
+  async copyObject({ sourceKey, destinationKey, contentType, metadata }: { sourceKey: string; destinationKey: string; contentType: string; metadata: Record<string, string> }): Promise<void> {
+    const { CopyObjectCommand } = await import("@aws-sdk/client-s3");
+    await this.client.send(new CopyObjectCommand({
+      Bucket: this.bucket,
+      Key: destinationKey,
+      CopySource: `${this.bucket}/${encodeURIComponent(sourceKey).replace(/%2F/g, "/")}`,
+      ContentType: contentType,
+      Metadata: metadata,
+      MetadataDirective: "REPLACE",
+    }));
   }
 
   async getObjectBuffer({ key }: { key: string }): Promise<Buffer> {
@@ -153,13 +122,6 @@ let cached: Storage | null = null;
 
 export async function getStorage(): Promise<Storage> {
   if (cached) return cached;
-
-  if (env.STORAGE_DRIVER === "local") {
-    cached = new LocalStorage(env.LOCAL_STORAGE_DIR);
-    return cached;
-  }
-
-  // R2
   const { S3Client } = await import("@aws-sdk/client-s3");
   const presigner = await import("@aws-sdk/s3-request-presigner");
   const client = new S3Client({

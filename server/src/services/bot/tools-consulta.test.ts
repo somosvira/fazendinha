@@ -1,12 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { toolsConsulta } from "./tools-consulta.js";
-import { formatarAnimalAlerta } from "./tools.js";
+import { DOMINIOS } from "../consulta/registro/index.js";
 
 describe("toolsConsulta", () => {
   const porNome = new Map(toolsConsulta.map((t) => [t.spec.function.name, t]));
 
   it("gera uma tool por domínio instrumentado", () => {
-    expect([...porNome.keys()].sort()).toEqual(["consulta_financeiro", "consulta_rebanho"]);
+    expect([...porNome.keys()].sort()).toEqual(["consulta_financeiro"]);
   });
 
   it("a description documenta o mapa entidade→campos e a proibição de calcular", () => {
@@ -17,15 +17,9 @@ describe("toolsConsulta", () => {
   });
 
   it("o JSON Schema tem os enums do registro", () => {
-    const reb = porNome.get("consulta_rebanho")!;
-    const props = (reb.spec.function.parameters as { properties: Record<string, { enum?: string[] }> })
-      .properties;
-    expect(props.entidade.enum!.sort()).toEqual(["animal", "producao_lote"]);
-    expect(props.razao).toBeUndefined();
-  });
-
-  it("alertas identificam o animal pelo número antes do nome", () => {
-    expect(formatarAnimalAlerta({ numero: "0042", nome: "Jurema" })).toBe("#0042 Jurema");
-    expect(formatarAnimalAlerta({ numero: "0042", nome: null })).toBe("#0042");
+    const fin = porNome.get("consulta_financeiro")!;
+    const props = (fin.spec.function.parameters as { properties: Record<string, { enum?: string[] }> }).properties;
+    expect(props.entidade.enum!.sort()).toEqual(Object.keys(DOMINIOS.financeiro.entidades).sort());
+    expect(props.entidade.enum).toEqual(expect.arrayContaining(["compromisso", "transacao"]));
   });
 });

@@ -11,5 +11,8 @@ describe("Login", () => {
     expect(html).toContain("Senha");
     expect(html).toContain('data-slot="button"');
     expect(html).toContain('data-slot="input"');
+    expect(html).toContain('href="/forgot-password"');
+    expect(html).toContain('aria-label="Mostrar senha"');
+    expect(html).toContain('title="Mostrar senha"');
   });
 });

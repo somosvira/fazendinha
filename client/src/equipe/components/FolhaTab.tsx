@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useFolha, money, num, horasFmt, mesesRecentes, mesBR } from "../api";
 import { ToolbarSelect } from "@/components/ToolbarSelect";
-import { RebHeader } from "@/rebanho/components/RebHeader";
+import { RebHeader } from "@/components/rb/RebHeader";
 import { RebTable } from "@/components/rb/RebTable";
 import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
 import { RebMain, RebAnm } from "@/components/rb/RebPrimitives";

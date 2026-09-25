@@ -1,5 +1,7 @@
 # DOMAIN.md — Conhecimento de Pecuária Leiteira
 
+> **Histórico:** este documento descreve o domínio do módulo de pecuária leiteira/corte **removido em set/2026** (`EventoReprodutivo`, `EventoSanitario`, `ControleLeiteiro`, `ResumoAnimal`, IATF, caprinos etc. não existem mais no schema — ver `CLAUDE.md`, seção Domínio). O que está implementado hoje é a **v1 Rebanho** (`Animal`, `Lote`, `Movimentacao`, `CategoriaAnimal` configurável, `BaixaAnimal`, `Pesagem`, schema Postgres `pecuaria`), que cobre só identidade, localização/lote, categoria e baixa — sem lactação, reprodução, sanidade ou nutrição. Este texto fica como **referência de domínio** para quando esses eixos entrarem em cascata (v2–v5): as definições de DEL, IEP, P305, carência etc. continuam corretas conceitualmente, só não correspondem a nenhum model ou rota hoje.
+
 > **Documento obrigatório antes de codar qualquer coisa do rebanho.**
 > O objetivo é ensinar um desenvolvedor que nunca esteve numa fazenda de leite a entender o domínio bem o suficiente para tomar decisões de implementação sensatas.
 
@@ -665,6 +667,21 @@ Diferenças fisiológicas relevantes:
 | **Compost barn** | Estábulo com cama de serragem compostada. |
 
 ---
+
+## Vocabulário dos cadastros financeiros
+
+- **Conta bancária:** disponibilidade mantida numa instituição; pode ser corrente, poupança ou de pagamento. **Caixa físico:** dinheiro em espécie sob responsabilidade da fazenda. Dinheiro é forma de pagamento, não outro tipo de conta.
+- **Aplicação financeira:** cadastro básico de saldo e instituição; este escopo não inclui rentabilidade, resgates automáticos nem conciliação de investimentos.
+- **Papéis do parceiro:** a mesma pessoa/empresa pode ser cliente, fornecedor, prestador de serviço, funcionário/colaborador, sócio/proprietário ou outro. Esses papéis não são contas de acesso nem permissões. Sócio/proprietário identifica a contraparte de aportes/retiradas; não torna o parceiro dono do sistema.
+- **Prestador de serviço:** contraparte de uma operação de serviço. Não pressupõe venda de produtos; se também fornecer materiais, marcar fornecedor.
+- **Fornecedores do produto:** catálogo opcional de parceiros que normalmente fornecem um produto. Um produto pode não ter fornecedor cadastrado e uma compra pode usar outro fornecedor; o fornecedor efetivo permanece registrado na operação, preservando o histórico do movimento de estoque.
+- **Produto universal:** o cadastro guarda só identidade, categoria (obrigatória), unidade padronizada, mínimo, centros e fornecedores. O que o produto *faz* no sistema vem da categoria (hoje, a marcação de uso agrícola; as de uso sanitário e nutricional voltam com a sanidade e a nutrição da pecuária). O produto **não** diz se é estocado: quem decide é a **operação** — compra para estoque, inventário, bonificação, produção, venda, devolução e ajuste movimentam estoque; consumo direto e serviço não. O *preço* vem das compras: as saídas de estoque são valoradas pelo custo médio ponderado das entradas daquele produto no sítio; venda e devolução também saem a custo médio, nunca ao preço de venda. A aplicação agrícola só baixa produto que já teve entrada no sítio.
+- **Unidade:** lista fixa (un, kg, g, t, L, mL, sc, dose, cx, m, ha) com conversão dentro da mesma base (g↔kg↔t, mL↔L). A dose de uma aplicação agrícola é convertida para a unidade do produto; bases diferentes são recusadas.
+- **Centros de custo do produto:** onde o produto pode ser usado (nenhum, um ou vários). É a "receita" de classificação: ao escolher o produto num item de operação, categoria (e classificação) e o centro único vêm preenchidos. Não existe mais "setor" de produto.
+- **Centro de custo por operação ou por item:** uma operação pode ter um centro único (todos os itens herdam) ou centros por item (nota mista). O centro efetivo de cada parte é o do item ou, na falta, o da operação; relatórios e custos por atividade leem por parte. Item não estocável (frete, serviço) precisa de centro efetivo; item estocável pode ficar sem, porque o custo dele vai para a atividade no consumo.
+- **Custo financeiro × alocação operacional:** o custo financeiro é lido pela compra (por item). As saídas de estoque (aplicação agrícola, ajuste) registram para qual centro o consumo foi, e isso alimenta custos operacionais (custo por talhão) sem entrar nos relatórios financeiros — evita contar duas vezes.
+- **Estoque único:** Pecuária, Plantio e Financeiro veem o mesmo estoque, filtrado por centro de custo. Aplicações e adubações com produto do estoque dão baixa automática (dose × área do talhão).
+- **Preferência de pagamento:** sugestão opcional de forma, condição e prazos em dias. Pode ser ignorada ou alterada em cada operação; nunca obriga uma forma de liquidação.
 
 ## Referências cruzadas
 

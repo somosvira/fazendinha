@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Loader } from "../components/Loading";
 import { TalhaoCockpit } from "./components/TalhaoCockpit";
 import { TalhaoTab } from "./components/TalhaoTab";
 import { FenologiaTab } from "./components/FenologiaTab";
@@ -6,7 +7,8 @@ import { FitossanidadeTab } from "./components/FitossanidadeTab";
 import { NutricaoTab } from "./components/NutricaoTab";
 import { ColheitaTab } from "./components/ColheitaTab";
 import { PlanejamentoTab } from "./components/PlanejamentoTab";
-import { EstoqueTab } from "./components/EstoqueTab";
+import { EstoqueContent } from "../estoque/EstoqueContent";
+import { obterCentrosAtividade } from "../estoque/api";
 import { CustoTab } from "./components/CustoTab";
 import { DashboardView } from "./components/DashboardView";
 import { TalhaoForm } from "./components/TalhaoForm";
@@ -25,6 +27,29 @@ export function PlantioContent({ aba, onNavPla, abrirId, onAbriuEntidade }: { ab
   const [registroInline, setRegistroInline] = useState<{ talhao: Talhao; dominio: "fitossanidade" | "nutricao" } | null>(null);
   // Contador de recarga: bump força o remount (e o refetch) da tab/cockpit após salvar.
   const [recarga, setRecarga] = useState(0);
+  // `undefined` = ainda resolvendo o centro de atividade (mostra Loader em vez
+  // de montar o EstoqueContent, evitando a busca de saldos sem filtro); `null`
+  // = resolvido, mas sem centro cadastrado. O `key` no EstoqueContent remonta o
+  // componente quando o centro muda, então ele já nasce com o filtro certo.
+  const [centroCustoEstoque, setCentroCustoEstoque] = useState<string | null | undefined>(undefined);
+  const [avisoEstoque, setAvisoEstoque] = useState<string | undefined>(undefined);
+  // Filtro inicial da tela de Estoque: resolve o centro "Plantio Café" (mesma constante
+  // usada em services/plantio/custo.ts, via /estoque/centros-atividade), uma vez,
+  // quando a aba Estoque é aberta.
+  useEffect(() => {
+    if (aba !== "estoque") return;
+    let cancelado = false;
+    obterCentrosAtividade().then((centros) => {
+      if (cancelado) return;
+      setCentroCustoEstoque(centros.cafe);
+      setAvisoEstoque(centros.cafe == null ? "Centro da atividade não cadastrado — mostrando todos os produtos." : undefined);
+    }).catch((e) => {
+      if (cancelado) return;
+      setCentroCustoEstoque(null);
+      setAvisoEstoque(`Não foi possível resolver o centro do plantio de café: ${e instanceof Error ? e.message : String(e)}`);
+    });
+    return () => { cancelado = true; };
+  }, [aba]);
 
   // Guarda o talhão a abrir após uma troca de aba (deep-link ⌘K), para o efeito
   // [aba] abaixo não limpar o cockpit recém-aberto. Espelha o proximoAnimalRef.
@@ -68,7 +93,9 @@ export function PlantioContent({ aba, onNavPla, abrirId, onAbriuEntidade }: { ab
                   : aba === "planejamento"
                     ? <PlanejamentoTab />
                     : aba === "estoque"
-                      ? <EstoqueTab />
+                      ? (centroCustoEstoque === undefined
+                          ? <Loader />
+                          : <EstoqueContent key={String(centroCustoEstoque)} centroCustoIdInicial={centroCustoEstoque} titulo="Estoque" avisoFiltro={avisoEstoque} />)
                       : aba === "custo"
                         ? <CustoTab />
                         : <DashboardView onNav={(t) => onNavPla?.(t as PlaSub)} />}

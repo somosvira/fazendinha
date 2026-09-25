@@ -106,6 +106,8 @@ Releia a seção 10 do `PRODUCT.md`. Toda vez. Se a tarefa cruza essa lista, par
 
 ## 4. Regras de domínio
 
+> `DOMAIN.md` descreve o vocabulário do módulo de pecuária leiteira/corte **removido em set/2026** — hoje é referência para os domínios futuros (v2–v5), não para o que existe na v1 Rebanho (identidade, lote, movimentação, categoria configurável, baixa, pesagem). Ao mexer na v1, use o vocabulário real do schema `pecuaria` (`Animal`, `Lote`, `Movimentacao`, `CategoriaAnimal`, `BaixaAnimal`) e da seção Domínio do `CLAUDE.md`; as regras abaixo (4.3, 4.4) valem para quando os domínios de reprodução/sanidade/produção voltarem.
+
 ### 4.1 Vocabulário do agro é obrigatório
 
 Use os termos do `DOMAIN.md`. Lá estão:
@@ -236,7 +238,7 @@ Node ESM exige extensão. Não esquecer.
 
 ```ts
 // ✅ backend
-import { criarAnimalSchema } from "../../services/rebanho/animais.schemas.js";
+import { cadastrarAnimalSchema } from "../../services/pecuaria/rebanho/schemas.js";
 
 // ✅ frontend
 import { ActivityPill } from "../components/Gastos";
@@ -278,7 +280,7 @@ async function createAnimal(payload: CreateAnimalInput) { ... }
 
 - Sem `any` salvo em fronteiras de mock declaradas.
 - Sem `as` casts não justificados.
-- DTOs canônicos em `services/rebanho/types.ts` e `client/src/rebanho/types.ts`.
+- DTOs canônicos em `services/pecuaria/rebanho/mappers.ts` (+ `schemas.ts` para input) e `client/src/pecuaria/rebanho/types.ts`.
 
 ### 7.3 Funções pequenas
 
@@ -382,15 +384,15 @@ Tente reenviar a foto, ou registre manualmente.
 ### 9.1 Commits em PT-BR
 
 ```
-feat(rebanho): timeline de eventos do animal
+feat(pecuaria): telas de baixa com motivo filtrado pela classe
 fix(estoque): movimento sem fornecedor não trava
 chore(infra): atualiza prisma para 6.1
-docs(domain): adiciona seção sobre caprinos
+docs(domain): atualiza referência de domínio da pecuária
 ```
 
 Tipos: `feat`, `fix`, `chore`, `refactor`, `docs`, `style`, `test`.
 
-Modulos: `rebanho`, `estoque`, `financeiro`, `ui`, `db`, `infra`, `nutricao`, `producao`, `sanidade`, `repro`.
+Modulos: `pecuaria`, `estoque`, `financeiro`, `ui`, `db`, `infra` — `nutricao`, `producao`, `sanidade`, `repro` ficam reservados para quando esses domínios entrarem na pecuária v1 (v2–v5, ver Domínio em `CLAUDE.md`).
 
 ### 9.2 PR pequenas
 
@@ -432,7 +434,7 @@ Sempre PR. Branch nomeada `feat/...`, `fix/...`, `docs/...`.
 
 ### 10.3 Smoke render no frontend
 
-Garantir que telas montam sem crash. Exemplo: `client/src/rebanho/__smoke__/render.test.ts`.
+Garantir que telas montam sem crash. Exemplo: `client/src/cultivo/__smoke__/render.test.ts`.
 
 ### 10.4 Dados de teste realistas
 
@@ -481,14 +483,22 @@ Use `include`/`select` Prisma para trazer relações em 1 query. Auditar consult
 
 ## 13. Segurança e privacidade
 
-### 13.1 Auth ainda não está implementada
+### 13.1 Auth existe — respeite as duas camadas
 
-Não confundir CLAUDE.md / handoffs com estado real. **Confirmar com humano** antes de assumir que existe sessão de usuário.
+Há contas reais (`Usuario`, `Sessao`, `TokenAcesso`). O `authMiddleware` resolve
+`Authorization: Bearer <token>` e injeta `c.set("usuario", ...)`; acima dele há gates de
+**área** (`exigeArea`) e de **flag** (`exigePermissao`). Rota nova sob um módulo já coberto
+herda o gate montado em `index.ts` — rota fora desses prefixos precisa do gate explícito.
+
+`SHARED_ACCESS_TOKEN` é ponte de transição (vale como dono) e não deve virar base de
+feature nova. Sem token no env e com a tabela `Usuario` vazia, o dev local fica aberto —
+não confundir isso com "não há auth".
 
 ### 13.2 Dados financeiros são sensíveis
 
 - Não logar valores em texto plano em produção.
-- Não expor `Lancamento` por rota pública sem filtro de propriedade.
+- Não expor `Operacao` / `TransacaoFinanceira` / `CompromissoFinanceiro` por rota pública
+  sem filtro de propriedade (`resolverEscopoLeitura/Escrita`).
 - Nunca commitar `.env`, `*.json` com credenciais.
 
 ### 13.3 LGPD

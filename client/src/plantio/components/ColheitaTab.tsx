@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Loader } from "../../components/Loading";
 import { useTalhoes, usePassadas, type PassadaDTO } from "../api";
 import { LavouraDomainView } from "./LavouraDomainView";
-import { RebHeader } from "@/rebanho/components/RebHeader";
+import { RebHeader } from "@/components/rb/RebHeader";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
 import { RebTable } from "@/components/rb/RebTable";

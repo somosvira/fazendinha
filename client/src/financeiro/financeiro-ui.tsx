@@ -1,6 +1,8 @@
+import { forwardRef, useEffect, useRef, useState } from "react";
 import type { LucideIcon } from "lucide-react";
-import { CalendarDays, Check, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, Pencil, Power, PowerOff, X } from "lucide-react";
 import { Loader } from "../components/Loading";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export const brl = (valor: string | number | null | undefined) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(valor ?? 0));
 export const dataBR = (valor: string) => new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" }).format(new Date(valor));
@@ -20,7 +22,7 @@ export const TIPO_OPERACAO: Record<string, string> = {
 const STATUS: Record<string, string> = {
   RASCUNHO: "Rascunho", CONFIRMADA: "Confirmada", CANCELADA: "Cancelada",
   PENDENTE: "Pendente", PARCIAL: "Parcial", LIQUIDADO: "Liquidado", CANCELADO: "Cancelado",
-  REVERTIDA: "Revertida",
+  REVERTIDA: "Revertida", PROCESSANDO: "Processando", CONCLUIDO: "Concluído", FALHOU: "Falhou",
 };
 
 /* Envelope de toda página financeira. O gutter e o ritmo vertical (inclusive a
@@ -48,16 +50,22 @@ export function PaginaSemDados({ titulo, descricao, label, erro }: { titulo: str
   return <PaginaFinanceira><PageHeader titulo={titulo} descricao={descricao} /><ErrorBox erro={erro} /></PaginaFinanceira>;
 }
 
-export function PageHeader({ titulo, descricao, acao }: { titulo: string; descricao: string; acao?: React.ReactNode }) {
+export function PageHeader({ titulo, descricao, acao, eyebrow = "Financeiro" }: { titulo: string; descricao: string; acao?: React.ReactNode; /** rótulo acima do título; padrão "Financeiro" */ eyebrow?: string }) {
   return <header className="flex flex-wrap items-end justify-between gap-5 border-b border-border pb-6 pt-7 max-[900px]:pt-0">
-    <div className="min-w-0 max-w-3xl flex-[1_1_320px]"><div className="eyebrow">Financeiro</div><h1 className="h1 mt-2 break-words hyphens-auto">{titulo}</h1><p className="mt-2 break-words text-sm leading-6 text-ink-3">{descricao}</p></div>{acao}
+    <div className="min-w-0 max-w-3xl flex-[1_1_320px]">{eyebrow && <div className="eyebrow">{eyebrow}</div>}<h1 className={`h1 break-words hyphens-auto ${eyebrow ? "mt-2" : ""}`}>{titulo}</h1><p className="mt-2 break-words text-sm leading-6 text-ink-3">{descricao}</p></div>{acao}
   </header>;
 }
 
-export function Button({ children, onClick, type = "button", disabled, danger, secondary, className = "" }: { children: React.ReactNode; onClick?: () => void; type?: "button" | "submit"; disabled?: boolean; danger?: boolean; secondary?: boolean; className?: string }) {
-  const cor = danger ? "bg-red-800 text-white hover:bg-red-900" : secondary ? "border border-border bg-white text-ink hover:bg-surface-2" : "bg-mast text-white hover:opacity-90";
-  return <button type={type} onClick={onClick} disabled={disabled} className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-45 ${cor} ${className}`}>{children}</button>;
-}
+// forwardRef (não ref-as-prop): um <Button> usado como `asChild` de um
+// PopoverTrigger/DialogTrigger do Radix precisa repassar a ref de verdade
+// para o <button> nativo, senão o Radix não consegue posicionar/focar nele.
+export const Button = forwardRef<HTMLButtonElement, { children: React.ReactNode; onClick?: () => void; type?: "button" | "submit"; disabled?: boolean; danger?: boolean; secondary?: boolean; className?: string; /** id do form a submeter quando o botão vive fora dele (rodapé de painel) */ form?: string; /** associa o botão a uma mensagem de erro/ajuda (ex.: o alerta de confirmação) */ ariaDescribedby?: string }>(
+  ({ children, onClick, type = "button", disabled, danger, secondary, className = "", form, ariaDescribedby }, ref) => {
+    const cor = danger ? "bg-red-800 text-white hover:bg-red-900" : secondary ? "border border-border bg-white text-ink hover:bg-surface-2" : "bg-mast text-white hover:opacity-90";
+    return <button ref={ref} type={type} form={form} onClick={onClick} disabled={disabled} aria-describedby={ariaDescribedby} className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-45 ${cor} ${className}`}>{children}</button>;
+  },
+);
+Button.displayName = "Button";
 
 export function Panel({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return <section className={`rounded-xl border border-border bg-white shadow-[0_1px_2px_rgba(30,35,28,.04)] ${className}`}>{children}</section>;
@@ -69,13 +77,61 @@ export function Pill({ children, tone = "neutral" }: { children: React.ReactNode
 }
 
 export function StatusPill({ status }: { status: string }) {
-  const tone = status === "CONFIRMADA" || status === "LIQUIDADO" ? "green" : status === "PENDENTE" ? "amber" : status === "PARCIAL" ? "blue" : status.includes("CANCEL") || status === "REVERTIDA" ? "red" : "neutral";
+  const tone = status === "CONFIRMADA" || status === "LIQUIDADO" || status === "CONCLUIDO" ? "green" : status === "PENDENTE" || status === "PROCESSANDO" ? "amber" : status === "PARCIAL" ? "blue" : status.includes("CANCEL") || status === "REVERTIDA" || status === "FALHOU" ? "red" : "neutral";
   return <Pill tone={tone}>{STATUS[status] ?? status}</Pill>;
 }
 
-export function Metric({ label, valor, detalhe, icon: Icon, tone = "default" }: { label: string; valor: string; detalhe: string; icon: LucideIcon; tone?: "default" | "green" | "red" }) {
+export function Metric({ label, valor, detalhe, icon: Icon, tone = "default" }: { label: string; valor: string; detalhe?: string; icon: LucideIcon; tone?: "default" | "green" | "red" }) {
   const iconTone = tone === "green" ? "bg-green-50 text-green-800" : tone === "red" ? "bg-red-50 text-red-800" : "bg-[#eef1e9] text-mast";
-  return <Panel className="@container p-5"><div className="flex items-start justify-between gap-4"><div className="min-w-0 flex-1"><div className="text-[11px] font-semibold uppercase tracking-[.12em] text-ink-3">{label}</div><div className="mt-3 break-words font-serif text-[clamp(19px,8cqw,28px)] leading-none tracking-tight text-ink">{valor}</div></div><div className={`shrink-0 rounded-lg p-2.5 @max-[240px]:hidden ${iconTone}`}><Icon size={18} /></div></div><div className="mt-3 break-words text-xs text-ink-3">{detalhe}</div></Panel>;
+  return <Panel className="@container p-5"><div className="flex items-start justify-between gap-4"><div className="min-w-0 flex-1"><div className="text-[11px] font-semibold uppercase tracking-[.12em] text-ink-3">{label}</div><div className="mt-3 break-words font-serif text-[clamp(19px,8cqw,28px)] leading-none tracking-tight text-ink">{valor}</div></div><div className={`shrink-0 rounded-lg p-2.5 @max-[240px]:hidden ${iconTone}`}><Icon size={18} /></div></div>{detalhe && <div className="mt-3 break-words text-xs text-ink-3">{detalhe}</div>}</Panel>;
+}
+
+/* Rodapé de paginação das tabelas: intervalo exibido, Anterior/Próxima e salto
+ * direto por página. `substantivo` completa "1–15 de N …" (ex.: "operações"). */
+export function Paginacao({ pagina, totalPaginas, total, porPagina, rotulo, substantivo, idSelect, onPagina }: {
+  pagina: number; totalPaginas: number; total: number; porPagina: number;
+  /** aria-label da <nav> */ rotulo: string; substantivo: string; idSelect: string;
+  onPagina: (pagina: number) => void;
+}) {
+  return <nav aria-label={rotulo} className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3 text-sm">
+    <span className="text-ink-3">{(pagina - 1) * porPagina + 1}–{Math.min(pagina * porPagina, total)} de {total} {substantivo}</span>
+    <div className="flex items-center gap-2">
+      <Button secondary disabled={pagina === 1} onClick={() => onPagina(pagina - 1)}>Anterior</Button>
+      <label className="sr-only" htmlFor={idSelect}>Ir para a página</label>
+      <select id={idSelect} aria-label="Ir para a página" value={pagina} onChange={(e) => onPagina(Number(e.target.value))} className="h-10 rounded-lg border border-border bg-white px-2 text-sm">
+        {Array.from({ length: totalPaginas }, (_, indice) => <option key={indice + 1} value={indice + 1}>Página {indice + 1} de {totalPaginas}</option>)}
+      </select>
+      <Button secondary disabled={pagina === totalPaginas} onClick={() => onPagina(pagina + 1)}>Próxima</Button>
+    </div>
+  </nav>;
+}
+
+/* Filtro de listagem no padrão visual do app (Radix Select estilizado), no
+ * lugar do <select> nativo. O Radix não aceita value "", então a opção "todos"
+ * (valor "") trafega por um sentinela interno. */
+const FILTRO_TODOS = "__todos__";
+export function SelectFiltro({ rotulo, valor, onChange, opcoes, className = "" }: { rotulo: string; valor: string; onChange: (valor: string) => void; opcoes: { valor: string; texto: string }[]; className?: string }) {
+  return <Select value={valor === "" ? FILTRO_TODOS : valor} onValueChange={(v) => onChange(v === FILTRO_TODOS ? "" : v)}>
+    <SelectTrigger aria-label={rotulo} title={opcoes.find((o) => o.valor === valor)?.texto} className={`h-10 w-full justify-between rounded-lg bg-white px-3 text-left text-sm font-normal sm:w-auto sm:min-w-[170px] [&>span]:whitespace-nowrap ${className}`}><SelectValue /></SelectTrigger>
+    <SelectContent>{opcoes.map((o) => <SelectItem key={o.valor || FILTRO_TODOS} value={o.valor === "" ? FILTRO_TODOS : o.valor}>{o.texto}</SelectItem>)}</SelectContent>
+  </Select>;
+}
+
+/* Coluna de ações de cadastro: editar e desativar/reativar, com reordenação
+ * opcional. Os botões param a propagação para não disparar o `onAbrir` da
+ * linha (que também abre a edição). Compartilhada por todos os cadastros no
+ * padrão Financeiro (contas, parceiros, categorias, centros de custo e, na
+ * Pecuária, lotes/raças/motivos de baixa). */
+export function AcoesLinha({ nome, ativo, onEditar, onAlternar, onSubir, onDescer, podeSubir = false, podeDescer = false }: { nome: string; ativo: boolean; onEditar: () => void; onAlternar: () => void; onSubir?: () => void; onDescer?: () => void; podeSubir?: boolean; podeDescer?: boolean }) {
+  const parar = (fn: () => void) => (e: React.MouseEvent) => { e.stopPropagation(); fn(); };
+  const cls = "rounded-lg p-2 text-ink-2 hover:bg-surface-2 hover:text-ink";
+  const alternar = ativo ? "Desativar" : "Reativar";
+  return <div className="flex items-center justify-end gap-1">
+    {onSubir && <button type="button" disabled={!podeSubir} onClick={parar(onSubir)} aria-label={`Mover ${nome} para cima`} className={`${cls} disabled:cursor-not-allowed disabled:opacity-30`}><ArrowUp size={16} /></button>}
+    {onDescer && <button type="button" disabled={!podeDescer} onClick={parar(onDescer)} aria-label={`Mover ${nome} para baixo`} className={`${cls} disabled:cursor-not-allowed disabled:opacity-30`}><ArrowDown size={16} /></button>}
+    <button type="button" onClick={parar(onEditar)} title="Editar" aria-label={`Editar ${nome}`} className={cls}><Pencil size={16} /></button>
+    <button type="button" onClick={parar(onAlternar)} title={alternar} aria-label={`${alternar} ${nome}`} className={ativo ? `${cls} hover:text-red-700` : cls}>{ativo ? <PowerOff size={16} /> : <Power size={16} />}</button>
+  </div>;
 }
 
 export function ErrorBox({ erro }: { erro: string | null }) {
@@ -84,10 +140,6 @@ export function ErrorBox({ erro }: { erro: string | null }) {
 
 export function Empty({ children }: { children: React.ReactNode }) {
   return <div className="p-10 text-center text-sm text-ink-3">{children}</div>;
-}
-
-export function MonthControl({ mes, onChange }: { mes: string; onChange: (mes: string) => void }) {
-  return <label className="flex items-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm text-ink-2"><CalendarDays size={16} className="text-ink-3" /><span className="sr-only">Período</span><input type="month" value={mes} onChange={(e) => onChange(e.target.value)} className="bg-transparent font-medium outline-none" /></label>;
 }
 
 export function Modal({ titulo, eyebrow, onClose, children, width = "max-w-xl", semCabecalho = false }: { titulo: string; eyebrow: string; onClose: () => void; children: React.ReactNode; width?: string; semCabecalho?: boolean }) {
@@ -116,7 +168,7 @@ export type ColunaTabela<T> = {
   chave: string;
   titulo: string;
   /** governa <th>, <td> e o valor no cartão — não repetir alinhamento na célula */
-  alinhamento?: "esquerda" | "direita";
+  alinhamento?: "esquerda" | "centro" | "direita";
   celula: (item: T) => React.ReactNode;
   /** largura mínima da coluna (px) — a soma vira o min-width da tabela */
   larguraMinima?: number;
@@ -124,25 +176,74 @@ export type ColunaTabela<T> = {
   principal?: boolean;
   /** já representada no título do cartão — não repetir como par rótulo/valor */
   ocultarNoCartao?: boolean;
+  /** célula com botões próprios: no cartão é renderizada FORA do botão que abre
+   *  a linha (evita <button> dentro de <button>) */
+  acoes?: boolean;
 };
 
-const alinhaCelula = (alinhamento?: "esquerda" | "direita") => (alinhamento === "direita" ? "text-right" : "text-left");
+const alinhaCelula = (alinhamento?: "esquerda" | "centro" | "direita") => alinhamento === "direita" ? "text-right" : alinhamento === "centro" ? "text-center" : "text-left";
 
-export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLinha, rotulo }: {
+export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLinha, rotulo, ancoraDe, barraRolagemSuperior = false }: {
   colunas: ColunaTabela<T>[];
   itens: T[];
   chaveDe: (item: T) => React.Key;
   onAbrir?: (item: T) => void;
   classeLinha?: (item: T) => string;
+  ancoraDe?: (item: T) => string;
   rotulo: string;
+  /** Exibe uma barra horizontal acima da tabela em telas intermediárias. */
+  barraRolagemSuperior?: boolean;
 }) {
   const larguraMinima = colunas.reduce((soma, coluna) => soma + (coluna.larguraMinima ?? 120), 0);
   const principal = colunas.find((coluna) => coluna.principal) ?? colunas[0];
-  const secundarias = colunas.filter((coluna) => coluna !== principal && !coluna.ocultarNoCartao && coluna.titulo);
+  const secundarias = colunas.filter((coluna) => coluna !== principal && !coluna.ocultarNoCartao && !coluna.acoes && coluna.titulo);
+  const acoes = colunas.filter((coluna) => coluna.acoes);
+  const tabelaRef = useRef<HTMLDivElement>(null);
+  const barraRef = useRef<HTMLDivElement>(null);
+  const [temRolagem, setTemRolagem] = useState(false);
+  // Largura real da tabela renderizada — colunas com conteúdo longo podem
+  // esticar além de `larguraMinima`, então o espaçador da barra precisa
+  // medir o scrollWidth de verdade para a barra rolar até o fim.
+  const [larguraRolagem, setLarguraRolagem] = useState(larguraMinima);
+
+  useEffect(() => {
+    if (!barraRolagemSuperior) return;
+    const tabela = tabelaRef.current;
+    if (!tabela) return;
+    const atualizar = () => {
+      setTemRolagem(tabela.scrollWidth > tabela.clientWidth + 1);
+      setLarguraRolagem(tabela.scrollWidth);
+    };
+    atualizar();
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", atualizar);
+      return () => window.removeEventListener("resize", atualizar);
+    }
+    const observador = new ResizeObserver(atualizar);
+    observador.observe(tabela);
+    return () => observador.disconnect();
+  }, [barraRolagemSuperior, larguraMinima, itens.length]);
+
+  const sincronizarRolagem = (origem: "tabela" | "barra") => {
+    const tabela = tabelaRef.current;
+    const barra = barraRef.current;
+    if (!tabela || !barra) return;
+    if (origem === "tabela" && barra.scrollLeft !== tabela.scrollLeft) barra.scrollLeft = tabela.scrollLeft;
+    if (origem === "barra" && tabela.scrollLeft !== barra.scrollLeft) tabela.scrollLeft = barra.scrollLeft;
+  };
+  const roladaPorTeclado = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const barra = barraRef.current;
+    if (!barra) return;
+    if (e.key === "ArrowRight") { barra.scrollLeft += 96; e.preventDefault(); }
+    else if (e.key === "ArrowLeft") { barra.scrollLeft -= 96; e.preventDefault(); }
+  };
 
   return <>
     {/* ≥768px — tabela; a rolagem horizontal fica presa a este wrapper */}
-    <div className="hidden overflow-x-auto md:block">
+    {barraRolagemSuperior && temRolagem && <div ref={barraRef} role="group" aria-label={`Rolagem horizontal: ${rotulo}`} tabIndex={0} onKeyDown={roladaPorTeclado} className="sticky top-0 z-10 hidden overflow-x-auto border-b border-border bg-surface-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#6f7d68]/40 md:block" onScroll={() => sincronizarRolagem("barra")}>
+      <div style={{ width: larguraRolagem, height: 1 }} />
+    </div>}
+    <div ref={tabelaRef} className={`hidden overflow-x-auto md:block ${barraRolagemSuperior && temRolagem ? "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden" : ""}`} onScroll={() => sincronizarRolagem("tabela")}>
       <table className="w-full text-left text-sm" style={{ minWidth: larguraMinima }}>
         <caption className="sr-only">{rotulo}</caption>
         <thead className="bg-[#f4f2e9] text-[11px] uppercase tracking-[.08em] text-ink-3">
@@ -150,12 +251,12 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
         </thead>
         <tbody className="divide-y divide-border">
           {itens.map((item) => <tr
-            key={chaveDe(item)}
+            key={chaveDe(item)} data-ancora={ancoraDe?.(item)}
             /* linha acionável pelo teclado sem sobrescrever o role="row" — trocar
                por role="button" quebraria a semântica de tabela para leitores de tela */
-            {...(onAbrir ? { onClick: () => onAbrir(item), tabIndex: 0, onKeyDown: (e: React.KeyboardEvent) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onAbrir(item); } } } : {})}
+            {...(onAbrir ? { onClick: () => onAbrir(item), tabIndex: 0, onKeyDown: (e: React.KeyboardEvent) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onAbrir(item); } } } : {})}
             className={`${onAbrir ? "cursor-pointer hover:bg-[#faf9f4]" : ""} ${classeLinha?.(item) ?? ""}`}
-          >{colunas.map((coluna) => <td key={coluna.chave} className={`p-4 align-top ${alinhaCelula(coluna.alinhamento)}`}>{coluna.celula(item)}</td>)}</tr>)}
+          >{colunas.map((coluna) => <td key={coluna.chave} className={`p-4 align-middle ${alinhaCelula(coluna.alinhamento)}`}>{coluna.celula(item)}</td>)}</tr>)}
         </tbody>
       </table>
     </div>
@@ -172,10 +273,11 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
             </div>)}
           </dl>
         </>;
-        return <li key={chaveDe(item)} className={classeLinha?.(item) ?? ""}>
+        return <li key={chaveDe(item)} data-ancora={ancoraDe?.(item)} className={classeLinha?.(item) ?? ""}>
           {onAbrir
             ? <button type="button" onClick={() => onAbrir(item)} className="w-full p-4 text-left hover:bg-[#faf9f4]">{corpo}</button>
             : <div className="p-4">{corpo}</div>}
+          {acoes.length > 0 && <div className="flex justify-end gap-2 px-4 pb-4">{acoes.map((coluna) => <div key={coluna.chave}>{coluna.celula(item)}</div>)}</div>}
         </li>;
       })}
     </ul>

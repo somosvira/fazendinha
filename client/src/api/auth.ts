@@ -28,8 +28,22 @@ export async function fetchMe(): Promise<UsuarioSessao | null> {
 }
 
 export async function validarConvite(token: string) {
-  const res = await fetch(`/api/auth/convite/${token}`);
+  const res = await fetch(`/api/auth/convite/${encodeURIComponent(token)}`);
   return ler<{ nome: string; email: string }>(res);
+}
+
+export async function solicitarRecuperacao(email: string): Promise<string> {
+  const res = await fetch("/api/auth/forgot-password", {
+    method: "POST",
+    headers: JSON_H,
+    body: JSON.stringify({ email }),
+  });
+  return (await ler<{ message: string }>(res)).message;
+}
+
+export async function validarReset(token: string): Promise<{ valido: true }> {
+  const res = await fetch(`/api/auth/reset-password/${encodeURIComponent(token)}`);
+  return ler<{ valido: true }>(res);
 }
 
 export async function aceitarConvite(token: string, senha: string) {
@@ -38,7 +52,7 @@ export async function aceitarConvite(token: string, senha: string) {
 }
 
 export async function redefinirSenha(token: string, senha: string) {
-  const res = await fetch("/api/auth/senha/redefinir", { method: "POST", headers: JSON_H, body: JSON.stringify({ token, senha }) });
+  const res = await fetch("/api/auth/reset-password", { method: "POST", headers: JSON_H, body: JSON.stringify({ token, senha }) });
   return ler<{ token: string; usuario: UsuarioSessao }>(res);
 }
 

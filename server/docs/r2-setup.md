@@ -69,7 +69,6 @@ R2_ACCOUNT_ID="<account_id>"
 R2_ACCESS_KEY_ID="<access_key_id>"
 R2_SECRET_ACCESS_KEY="<secret_access_key>"
 R2_BUCKET_NOTAS="rionovo-notas"
-OCR_ENABLED="true"
 ```
 
 Reiniciar o backend. A validação Zod em `server/src/env.ts` aborta o boot se algo faltar.

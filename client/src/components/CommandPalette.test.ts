@@ -119,47 +119,47 @@ describe("CommandPalette", () => {
 
   it("selecionar uma linha de entidade chama onNav(tab, entidadeId) e fecha", async () => {
     const entidade: ResultadoBusca = {
-      tipo: "animal",
+      tipo: "talhao",
       entidadeId: "789",
-      label: "Vaca 789",
-      sublabel: "Lactação",
-      tab: "reb-animal",
-      grupo: "Animais",
+      label: "Talhão 789",
+      sublabel: "Catuaí",
+      tab: "pla-talhao",
+      grupo: "Talhões",
     };
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => [entidade] }));
     vi.useFakeTimers();
 
     const props = baseProps();
     render(h(CommandPalette, props));
-    fireEvent.change(screen.getByPlaceholderText(PLACEHOLDER), { target: { value: "vaca" } });
+    fireEvent.change(screen.getByPlaceholderText(PLACEHOLDER), { target: { value: "talh" } });
     await vi.advanceTimersByTimeAsync(300);
-    expect(screen.getByText("Vaca 789")).toBeTruthy();
+    expect(screen.getByText("Talhão 789")).toBeTruthy();
 
-    fireEvent.click(screen.getByText("Vaca 789"));
+    fireEvent.click(screen.getByText("Talhão 789"));
 
-    expect(props.onNav).toHaveBeenCalledWith("reb-animal", "789");
+    expect(props.onNav).toHaveBeenCalledWith("pla-talhao", "789");
     expect(props.onFechar).toHaveBeenCalledTimes(1);
   });
 
   it("filtra as ENTIDADES do backend por podeVer (não renderiza entidade de aba bloqueada)", async () => {
     const entidade: ResultadoBusca = {
-      tipo: "animal",
+      tipo: "talhao",
       entidadeId: "789",
-      label: "Vaca 789",
-      sublabel: "Lactação",
-      tab: "reb-animal",
-      grupo: "Animais",
+      label: "Talhão 789",
+      sublabel: "Catuaí",
+      tab: "pla-talhao",
+      grupo: "Talhões",
     };
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => [entidade] }));
     vi.useFakeTimers();
 
     // podeVer rejeita a aba da entidade → a linha não deve aparecer, mesmo o
     // backend tendo retornado o item (espelha o filtro do índice estático).
-    render(h(CommandPalette, baseProps({ podeVer: (t) => t !== "reb-animal" })));
-    fireEvent.change(screen.getByPlaceholderText(PLACEHOLDER), { target: { value: "vaca" } });
+    render(h(CommandPalette, baseProps({ podeVer: (t) => t !== "pla-talhao" })));
+    fireEvent.change(screen.getByPlaceholderText(PLACEHOLDER), { target: { value: "talh" } });
     await vi.advanceTimersByTimeAsync(300);
 
-    expect(screen.queryByText("Vaca 789")).toBeNull();
+    expect(screen.queryByText("Talhão 789")).toBeNull();
   });
 
   it("não renderiza o diálogo quando aberto=false", () => {

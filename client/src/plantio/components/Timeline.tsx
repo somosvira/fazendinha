@@ -1,4 +1,7 @@
+import { useState } from "react";
 import type { EventoTimeline } from "../types";
+import { excluirOperacao } from "../api";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 const DOM_LABEL: Record<string, string> = {
   fenologia: "Fenologia",
@@ -30,10 +33,45 @@ function fmtDia(iso: string) {
   return `${d.getDate().toString().padStart(2, "0")} ${meses[d.getMonth()]}${ano}`;
 }
 
-export function Timeline({ eventos }: { eventos: EventoTimeline[] }) {
+export function Timeline({ eventos, onExcluido }: { eventos: EventoTimeline[]; onExcluido?: () => void }) {
   const ordenados = [...eventos].sort((a, b) => Date.parse(b.data) - Date.parse(a.data));
   const anoTopo = ordenados[0] ? new Date(ordenados[0].data).getFullYear() : new Date().getFullYear();
+  const [alvoExclusao, setAlvoExclusao] = useState<EventoTimeline | null>(null);
+  const [excluindo, setExcluindo] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+
+  async function confirmarExclusao() {
+    if (!alvoExclusao) return;
+    setExcluindo(true);
+    setErro(null);
+    try {
+      await excluirOperacao(alvoExclusao.id.replace(/^op-/, ""));
+      setAlvoExclusao(null);
+      onExcluido?.();
+    } catch (e: any) {
+      setErro(e?.message ?? "Erro ao excluir.");
+    } finally {
+      setExcluindo(false);
+    }
+  }
+
   return (
+    <>
+    <ConfirmDialog
+      open={!!alvoExclusao}
+      title="Excluir operação?"
+      message={
+        <>
+          Esta operação será removida da linha do tempo. Se ela gerou baixa de estoque, a baixa vinculada será desfeita. Esta ação não pode ser desfeita.
+          {erro && <p className="mt-2 text-prejuizo">{erro}</p>}
+        </>
+      }
+      confirmLabel={excluindo ? "Excluindo…" : "Excluir"}
+      tone="danger"
+      processando={excluindo}
+      onConfirm={confirmarExclusao}
+      onCancel={() => { setAlvoExclusao(null); setErro(null); }}
+    />
     // .rb-tl — trilho vertical com border-left
     <div className="relative ml-1.5 border-l-2 border-[color:var(--rule)] pl-6">
       <div className="my-0 mb-3 mt-0.5 font-serif text-sm italic text-ink-2">{anoTopo}</div>
@@ -51,6 +89,15 @@ export function Timeline({ eventos }: { eventos: EventoTimeline[] }) {
             >
               <span className="text-sm font-semibold text-ink-2">{fmtDia(e.data)}</span>
               <span className={"ml-2 inline-block rounded-[9px] px-[7px] py-px align-[1px] text-sm font-bold uppercase tracking-[.06em] " + TAG[e.dominio]}>{DOM_LABEL[e.dominio]}</span>
+              {e.id.startsWith("op-") && (
+                <button
+                  type="button"
+                  className="ml-2 text-sm font-medium text-ink-3 underline decoration-dotted hover:text-prejuizo"
+                  onClick={() => setAlvoExclusao(e)}
+                >
+                  excluir
+                </button>
+              )}
               <h5 className="mb-0.5 mt-1 text-[15px] font-semibold">{e.titulo}{e.alerta && <span className="font-semibold text-prejuizo"> ↑ alerta</span>}</h5>
               {quem && <p className="m-0 text-sm text-ink-3">{quem}</p>}
               {e.impacto && <p className="mt-1.5 font-sans text-[15px] font-semibold text-[color:var(--ink)] tabular-nums"><span className="mr-2 text-sm font-bold uppercase tracking-[.08em] text-ink-2">Impacto</span> {e.impacto}</p>}
@@ -60,5 +107,6 @@ export function Timeline({ eventos }: { eventos: EventoTimeline[] }) {
         );
       })}
     </div>
+    </>
   );
 }

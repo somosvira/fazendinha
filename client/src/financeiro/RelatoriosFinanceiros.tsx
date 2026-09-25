@@ -1,16 +1,137 @@
-import { useEffect, useState } from "react";
-import { CircleDollarSign, Package, ShieldCheck } from "lucide-react";
-import { listarCompromissos, listarOperacoes, type Compromisso, type Operacao } from "./novo-api";
-import { brl, ErrorBox, Metric, PageHeader, PaginaCarregando, PaginaFinanceira, Panel, TIPO_OPERACAO } from "./financeiro-ui";
+import { PeriodoFinanceiroControl } from "./PeriodoFinanceiroControl";
+import { isoDate } from "../components/DateRangePicker";
+import { useCallback, useEffect, useState } from "react";
+import { ChevronRight, Download, FilePenLine, FilePlus2, RotateCcw } from "lucide-react";
+import { ConfirmDialog } from "../components/ConfirmDialog";
+import { isNovoRelatorioFinanceiro, parseRelatorioFinanceiroId } from "../router";
+import { descartarRascunhoRelatorioFinanceiro, listarRelatoriosFinanceiros, obterConfiguracoesFinanceiras, obterRascunhoRelatorioFinanceiro, salvarPdfRelatorioFinanceiro, type ConfiguracoesFinanceiras, type RascunhoRelatorioFinanceiro, type RelatorioFinanceiro } from "./novo-api";
+import { Button, Empty, ErrorBox, PageHeader, PaginaFinanceira, PaginaSemDados, Panel, StatusPill, TabelaFinanceira, type ColunaTabela } from "./financeiro-ui";
+import { dataCurta } from "./lib/relatorios";
+import { NovoRelatorioFinanceiro } from "./NovoRelatorioFinanceiro";
+import { RelatorioFinanceiroDetalhe } from "./RelatorioFinanceiroDetalhe";
 
-export function RelatoriosFinanceiros() {
-  const [ops, setOps] = useState<Operacao[]>([]); const [comps, setComps] = useState<Compromisso[]>([]); const [erro, setErro] = useState<string | null>(null); const [carregando, setCarregando] = useState(true);
-  useEffect(() => { Promise.all([listarOperacoes(), listarCompromissos()]).then(([o, c]) => { setOps(o); setComps(c); }).catch((e) => setErro(e.message)).finally(() => setCarregando(false)); }, []);
-  const confirmadas = ops.filter((o) => o.status === "CONFIRMADA"); const total = confirmadas.reduce((s, o) => s + Number(o.valorTotal), 0); const porTipo = Object.entries(confirmadas.reduce<Record<string, number>>((acc, o) => { acc[o.tipo] = (acc[o.tipo] ?? 0) + Number(o.valorTotal); return acc; }, {})).sort((a, b) => b[1] - a[1]);
-  if (carregando && !erro) return <PaginaCarregando label="Carregando relatórios" />;
+type Vista = { tipo: "lista" } | { tipo: "novo" } | { tipo: "detalhe"; id: string };
+const vistaDaUrl = (pathname: string): Vista => {
+  if (isNovoRelatorioFinanceiro(pathname)) return { tipo: "novo" };
+  const id = parseRelatorioFinanceiroId(pathname);
+  return id != null ? { tipo: "detalhe", id } : { tipo: "lista" };
+};
+const mensagem = (falha: unknown) => falha instanceof Error ? falha.message : String(falha);
+const dataHora = (valor: string) => new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(valor));
+const DESCRICAO = "Central dos relatórios emitidos: cada um preserva o recorte, o autor e o PDF gerado.";
 
-  return <PaginaFinanceira><PageHeader titulo="Relatórios financeiros" descricao="Leituras auditáveis geradas somente a partir das operações, compromissos, transações e movimentos já registrados." /><ErrorBox erro={erro} />
-    <div className="mt-6 grid gap-4 md:grid-cols-3"><Metric label="Operações confirmadas" valor={String(confirmadas.length)} detalhe="Registros ativos" icon={ShieldCheck} /><Metric label="Volume econômico" valor={brl(total)} detalhe="Soma das operações confirmadas" icon={CircleDollarSign} /><Metric label="Com efeito de estoque" valor={String(ops.filter((o) => o.movimentosEstoque?.length).length)} detalhe="Operações rastreadas fisicamente" icon={Package} /></div>
-    <div className="mt-6 grid gap-6 lg:grid-cols-2"><Panel><div className="border-b border-border p-5"><h2 className="font-serif text-xl">Volume por tipo de operação</h2><p className="mt-1 text-xs text-ink-3">Base econômica confirmada</p></div><div className="divide-y divide-border">{porTipo.map(([tipo, valor]) => <div key={tipo} className="flex justify-between gap-4 p-4 text-sm"><span className="min-w-0 break-words">{TIPO_OPERACAO[tipo] ?? tipo}</span><strong className="shrink-0 whitespace-nowrap">{brl(valor)}</strong></div>)}</div></Panel><Panel><div className="border-b border-border p-5"><h2 className="font-serif text-xl">Rastreabilidade</h2><p className="mt-1 text-xs text-ink-3">Qualidade da base financeira</p></div><div className="space-y-4 p-5 text-sm"><div className="flex justify-between gap-4"><span className="min-w-0 break-words">Compromissos registrados</span><strong className="shrink-0">{comps.length}</strong></div><div className="flex justify-between gap-4"><span className="min-w-0 break-words">Operações canceladas com histórico</span><strong className="shrink-0">{ops.filter((o) => o.status === "CANCELADA").length}</strong></div><div className="flex justify-between gap-4"><span className="min-w-0 break-words">Operações com parceiro identificado</span><strong className="shrink-0">{ops.filter((o) => o.parceiro).length}</strong></div><div className="rounded-lg bg-[#f4f2e9] p-4 text-xs leading-5 text-ink-3">Exportações, conciliação bancária e relatórios documentais não são exibidos porque ainda não possuem implementação real na API.</div></div></Panel></div>
+function recorte(r: RelatorioFinanceiro) {
+  const p = r.parametros;
+  const partes = [
+    p.tipos?.length ? `${p.tipos.length} tipo${p.tipos.length > 1 ? "s" : ""}` : null,
+    p.centroCustoIds?.length ? `${p.centroCustoIds.length} centro${p.centroCustoIds.length > 1 ? "s" : ""}` : null,
+    p.categoriaIds?.length ? `${p.categoriaIds.length} categoria${p.categoriaIds.length > 1 ? "s" : ""}` : null,
+    p.classificacoes?.length ? p.classificacoes.map((c) => c === "CUSTEIO" ? "custeio" : c === "INVESTIMENTO" ? "investimento" : "não classificadas").join(" + ") : null,
+  ].filter(Boolean);
+  return partes.length ? partes.join(" · ") : "Sem filtros";
+}
+
+export function RelatoriosFinanceiros({ podeExportar = true }: { podeExportar?: boolean }) {
+  const [vista, setVista] = useState<Vista>(() => typeof window === "undefined" ? { tipo: "lista" } : vistaDaUrl(window.location.pathname));
+  const [relatorios, setRelatorios] = useState<RelatorioFinanceiro[] | null>(null);
+  const [cadastros, setCadastros] = useState<ConfiguracoesFinanceiras | null>(null);
+  const [rascunho, setRascunho] = useState<RascunhoRelatorioFinanceiro | null>(null);
+  const [erro, setErro] = useState<string | null>(null);
+  const [aviso, setAviso] = useState<string | null>(null);
+  const [recente, setRecente] = useState<string | null>(null);
+  const [iniciando, setIniciando] = useState(false);
+  const [periodoEmissao, setPeriodoEmissao] = useState({ inicio: "", fim: "" });
+  const [confirmarNovo, setConfirmarNovo] = useState(false);
+
+  const carregar = useCallback(async () => {
+    setErro(null);
+    try {
+      const [lista, dados, draft] = await Promise.all([
+        listarRelatoriosFinanceiros(), obterConfiguracoesFinanceiras(),
+        podeExportar ? obterRascunhoRelatorioFinanceiro() : Promise.resolve(null),
+      ]);
+      setRelatorios(lista); setCadastros(dados); setRascunho(draft);
+    } catch (falha) { setErro(mensagem(falha)); }
+  }, [podeExportar]);
+  useEffect(() => { void carregar(); }, [carregar]);
+  useEffect(() => {
+    const onPop = () => setVista(vistaDaUrl(window.location.pathname));
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
+  const ir = (caminho: string, destino: Vista) => { window.history.pushState(null, "", caminho); setVista(destino); };
+  const voltar = () => { ir("/financeiro/relatorios", { tipo: "lista" }); void carregar(); };
+  const abrirNovo = async (continuar: boolean) => {
+    setErro(null); setAviso(null);
+    if (!continuar && rascunho) {
+      setIniciando(true);
+      try { await descartarRascunhoRelatorioFinanceiro(); setRascunho(null); }
+      catch (falha) { setErro(mensagem(falha)); return; }
+      finally { setIniciando(false); }
+    }
+    ir("/financeiro/relatorios/novo", { tipo: "novo" });
+  };
+  const pedirNovo = () => {
+    if (rascunho) setConfirmarNovo(true);
+    else void abrirNovo(false);
+  };
+  const aoGerar = (relatorio: RelatorioFinanceiro, avisoDownload: string | null) => {
+    setRascunho(null); setRecente(relatorio.id);
+    setAviso(avisoDownload ?? `“${relatorio.nome}” foi gerado e o download do PDF começou.`);
+    voltar();
+  };
+  const baixar = (relatorio: RelatorioFinanceiro) => salvarPdfRelatorioFinanceiro(relatorio).catch((falha) => setErro(mensagem(falha)));
+  const abrir = (relatorio: RelatorioFinanceiro) => ir(`/financeiro/relatorios/${relatorio.id}`, { tipo: "detalhe", id: relatorio.id });
+
+  if (vista.tipo === "detalhe") return <RelatorioFinanceiroDetalhe id={vista.id} podeExportar={podeExportar} onVoltar={voltar} />;
+  if (vista.tipo === "novo" && podeExportar) {
+    if (!cadastros) return <PaginaSemDados titulo="Novo relatório" descricao={DESCRICAO} label="Preparando relatório" erro={erro} />;
+    return <NovoRelatorioFinanceiro cadastros={cadastros} rascunho={rascunho} onVoltar={voltar} onGerado={aoGerar} />;
+  }
+  if (!relatorios) return <PaginaSemDados titulo="Relatórios financeiros" descricao={DESCRICAO} label="Carregando relatórios" erro={erro} />;
+
+  const relatoriosFiltrados = relatorios.filter(r => { const dia = isoDate(new Date(r.geradoEm)); return (!periodoEmissao.inicio || dia >= periodoEmissao.inicio) && (!periodoEmissao.fim || dia <= periodoEmissao.fim); });
+  const variasPropriedades = new Set(relatorios.map((r) => r.propriedadeId)).size > 1;
+  const colunas: ColunaTabela<RelatorioFinanceiro>[] = [
+    { chave: "nome", titulo: "Relatório", principal: true, larguraMinima: 240, celula: (r) => <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><strong className="break-words">{r.nome}</strong>{r.status !== "CONCLUIDO" && <StatusPill status={r.status} />}{r.id === recente && <span className="text-[11px] font-semibold uppercase tracking-[.1em] text-green-800">Novo</span>}</div><div className="mt-0.5 text-xs text-ink-3">{recorte(r)}</div>{r.erro && <div className="mt-1 text-xs text-red-700">{r.erro}</div>}</div> },
+    { chave: "periodo", titulo: "Período", larguraMinima: 190, celula: (r) => <span className="whitespace-nowrap">{dataCurta(r.parametros.dataInicio)} a {dataCurta(r.parametros.dataFim)}</span> },
+    ...(variasPropriedades ? [{ chave: "propriedade", titulo: "Propriedade", larguraMinima: 150, celula: (r: RelatorioFinanceiro) => r.propriedade }] : []),
+    { chave: "gerado", titulo: "Gerado em", larguraMinima: 140, celula: (r) => <span className="whitespace-nowrap">{dataHora(r.geradoEm)}</span> },
+    { chave: "autor", titulo: "Autor", larguraMinima: 140, celula: (r) => r.autor },
+    { chave: "acoes", titulo: "", alinhamento: "direita", larguraMinima: podeExportar ? 170 : 60, acoes: true, celula: (r) => <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>{podeExportar && r.status === "CONCLUIDO" && <Button secondary onClick={() => void baixar(r)}><Download size={15} /> Baixar PDF</Button>}<ChevronRight size={16} className="hidden text-ink-3 md:inline" aria-hidden /></div> },
+  ];
+  const acoes = podeExportar ? <div className="flex flex-wrap gap-2">
+    {rascunho && <Button secondary onClick={() => void abrirNovo(true)}><FilePenLine size={16} /> Continuar rascunho</Button>}
+    <Button disabled={iniciando} onClick={pedirNovo}><FilePlus2 size={16} /> {iniciando ? "Iniciando…" : "Novo relatório"}</Button>
+  </div> : undefined;
+
+  return <PaginaFinanceira>
+    <PageHeader titulo="Relatórios financeiros" descricao={DESCRICAO} acao={acoes} />
+    <ErrorBox erro={erro} />
+    {aviso && <div role="status" className="mt-5 rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-900">{aviso}</div>}
+    <Panel className="mt-6">
+      <div className="flex items-center justify-between gap-4 border-b border-border p-5">
+        <div><h2 className="font-serif text-xl">Histórico</h2><p className="mt-1 text-xs text-ink-3">Do mais recente para o mais antigo. Abra um relatório para ver o conteúdo salvo.</p></div>
+        <button onClick={() => void carregar()} aria-label="Atualizar histórico" className="rounded-lg p-2 hover:bg-surface-2"><RotateCcw size={17} /></button>
+      </div>
+      <div className="border-b border-border p-5"><PeriodoFinanceiroControl inicio={periodoEmissao.inicio} fim={periodoEmissao.fim} allowAll label="Período de emissão" onChange={setPeriodoEmissao} /><p className="mt-2 text-xs text-ink-3">Filtro pela data de emissão; o recorte salvo de cada relatório aparece na tabela.</p></div>
+      {relatoriosFiltrados.length === 0
+        ? <Empty>{relatorios.length ? "Nenhum relatório emitido no período selecionado." : "Nenhum relatório foi gerado ainda."}</Empty>
+        : <TabelaFinanceira rotulo="Relatórios gerados" colunas={colunas} itens={relatoriosFiltrados} chaveDe={(r) => r.id} onAbrir={abrir} classeLinha={(r) => r.id === recente ? "bg-[#f6f9f2]" : ""} />}
+    </Panel>
+    <ConfirmDialog
+      open={confirmarNovo}
+      title="Criar um novo relatório?"
+      message="Você já tem um rascunho de relatório em andamento. Para começar outro, o rascunho atual será apagado."
+      confirmLabel="Descartar e criar"
+      cancelLabel="Continuar rascunho"
+      cancelTone="safe"
+      tone="danger"
+      processando={iniciando}
+      onCancel={() => { setConfirmarNovo(false); void abrirNovo(true); }}
+      onDismiss={() => setConfirmarNovo(false)}
+      onConfirm={() => { setConfirmarNovo(false); void abrirNovo(false); }}
+    />
   </PaginaFinanceira>;
 }

@@ -6,26 +6,33 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { type Tab, type NavTab } from "./components/Shell";
-import { buildRotaWorklistRebanho, isNovaOperacaoFinanceira, parseOperacaoFinanceiraId, parseRotaWorklistRebanho, tabToPath, pathToTab, DEFAULT_TAB, type RotaWorklistRebanho } from "./router";
+import { abrirRotaNovaOperacao, isNovaOperacaoFinanceira, isSubrotaFinanceira, isSubrotaRebanho, tabToPath, pathToTab, DEFAULT_TAB } from "./router";
 import { AppSidebar } from "./components/AppSidebar";
 import { ConfiguracoesHub } from "./components/ConfiguracoesHub";
 import { IA } from "./components/IA";
 import { FinanceiroContent } from "./financeiro/FinanceiroContent";
-import { RebanhoContent, type RebSub } from "./rebanho/RebanhoContent";
-import type { WorklistRebanho } from "./rebanho/api";
+import { obterRascunhoOperacao, obterRascunhoRelatorioFinanceiro } from "./financeiro/novo-api";
+import { limparRascunhoAtivo, useRascunhoAtivo } from "./financeiro/rascunhoAtivo";
+import { resumoRascunho } from "./financeiro/lib/rascunho";
+import { limparRascunhoRelatorioAtivo, useRascunhoRelatorioAtivo } from "./financeiro/rascunhoRelatorioAtivo";
+import { resumoRascunhoRelatorio } from "./financeiro/lib/rascunho-relatorio";
+import { RebanhoContent } from "./pecuaria/rebanho/RebanhoContent";
 import { setPropriedadeAtiva, getPropriedadeAtiva } from "./propriedadeScope";
 import { PlantioContent, type PlaSub } from "./plantio/PlantioContent";
-import { PlantelContent, type CorSub } from "./corte/PlantelContent";
 import { EquipeContent, type EqpSub } from "./equipe/EquipeContent";
 import { CultivoContent, type MilSub } from "./cultivo/CultivoContent";
+import { EstoqueContent } from "./estoque/EstoqueContent";
 import { CommandPalette } from "./components/CommandPalette";
 import { ChatWidget } from "./components/ChatWidget";
+import { ASSISTENTE_ATIVO } from "./featureFlags";
 import { Login } from "./components/Login";
 import { DefinirSenha } from "./components/DefinirSenha";
+import { RecuperarSenha } from "./components/RecuperarSenha";
 import { getToken, getUsuario, setSessao, clearSessao, type UsuarioSessao } from "./lib/auth";
 import { fetchMe, logout } from "./api/auth";
+import { destinoDepoisDoLogin, interpretarRotaAuth, paginaInicialAutorizada, podeAcessarTab, urlSigninPara } from "./navegacaoAuth";
 import { ABAS, type User } from "./data/acessos";
-import { areaDaTab, temAcessoArea, TODAS_AREAS } from "./lib/areas";
+import { temAcessoArea, TODAS_AREAS } from "./lib/areas";
 import { BootSplash } from "./components/Loading";
 import { TerranoIntro } from "./components/TerranoIntro";
 import { useOnlineStatus } from "./lib/offline/useOnlineStatus";
@@ -37,6 +44,9 @@ import { useOnlineStatus } from "./lib/offline/useOnlineStatus";
 // ⚠️ TROCAR PARA "session" ANTES DO PUSH.
 const INTRO_MODE: "always" | "session" | "once" = "session";
 const INTRO_SEEN_KEY = "terrano:intro:seen";
+
+// Intervalo mínimo entre recargas do rascunho ao voltar para a aba do navegador.
+const INTERVALO_MIN_RECARGA_RASCUNHO = 30_000;
 
 // Abas que já SÃO uma tela de chat com a IA. Nelas escondemos o botão flutuante
 // do Assistente (ChatWidget) — teria um botão de chat sobre o composer de chat,
@@ -98,22 +108,6 @@ function OfflineGatedTab() {
   );
 }
 
-const REB: Record<string, RebSub> = {
-  "reb-dashboard": "dashboard",
-  "reb-animal": "animal",
-  "reb-reproducao": "reproducao",
-  "reb-acasalamento": "acasalamento",
-  "reb-fiv": "fiv",
-  "reb-relatorios": "relatorios",
-  "reb-sanidade": "sanidade",
-  "reb-nutricao": "nutricao",
-  "reb-producao": "producao",
-  "reb-estoque": "estoque",
-  "reb-custo": "custo",
-  "reb-carteira": "carteira",
-  "reb-sugestoes": "sugestoes",
-};
-
 const PLA: Record<string, PlaSub> = {
   "pla-dashboard": "dashboard",
   "pla-talhao": "talhao",
@@ -124,17 +118,6 @@ const PLA: Record<string, PlaSub> = {
   "pla-planejamento": "planejamento",
   "pla-estoque": "estoque",
   "pla-custo": "custo",
-};
-
-const COR: Record<string, CorSub> = {
-  "cor-dashboard": "dashboard",
-  "cor-lote": "lote",
-  "cor-pesagem": "pesagem",
-  "cor-pasto": "pasto",
-  "cor-sanidade": "sanidade",
-  "cor-nutricao": "nutricao",
-  "cor-comercial": "comercial",
-  "cor-custo": "custo",
 };
 
 const EQP: Record<string, EqpSub> = {
@@ -154,17 +137,17 @@ const MIL: Record<string, MilSub> = {
 };
 
 export function App() {
-  // Deep-link de convite/reset: /convite/<token> ou /senha/<token>. Renderiza a
-  // tela de definir senha independentemente do gate de login (ver render abaixo).
-  const rotaSenha = (() => {
-    if (typeof window === "undefined") return null;
-    const m = /^\/(convite|senha)\/(.+)$/.exec(window.location.pathname);
-    if (!m) return null;
-    return { modo: (m[1] === "convite" ? "convite" : "senha") as "convite" | "senha", token: m[2] };
-  })();
+  // Atualiza o parser de rotas públicas após replaceState().
+  const [locationRevision, setLocationRevision] = useState(0);
+  const authRoute = useMemo(
+    () => typeof window === "undefined" ? null : interpretarRotaAuth(window.location.pathname, window.location.search),
+    [locationRevision],
+  );
 
-  // Sessão real (usuários do backend). Rehidratada de localStorage no boot
-  // (getToken/getUsuario) — sobrevive a reload.
+  // Sessão real (usuários do backend). O login por e-mail+senha grava token +
+  // usuário e transiciona EM ESTADO — sem window.location.reload(). Um reload
+  // mataria a "sticky activation" do documento e o navegador voltaria a bloquear
+  // o áudio da abertura Terrano, ancorado no clique de "Entrar".
   const [token, setTokenState] = useState<string | null>(() =>
     typeof window === "undefined" ? null : getToken(),
   );
@@ -185,24 +168,6 @@ export function App() {
       ? false
       : deveTocarIntro(pathToTab(window.location.pathname) ?? DEFAULT_TAB),
   );
-  const entrar = (novoToken: string, u: UsuarioSessao) => {
-    setSessao(novoToken, u); // persiste token + usuário antes do reload
-    // Reload após login reprocessa o boot (iniciarFila/garantirProcessamento em
-    // main.tsx) com o token novo — resolve a fila retomar sozinha depois de um
-    // 401 (ver docs/design/offline/README.md). Trade-off conhecido, herdado da
-    // fundação original e nunca revisitado: quebra o autoplay da música/animação
-    // da abertura Terrano (perde o gesto do clique).
-    window.location.reload();
-  };
-  const onSair = token
-    ? () => {
-        void logout();
-        clearSessao();
-        setTokenState(null);
-        setUsuario(null);
-        setShowIntro(false);
-      }
-    : undefined;
   const [mobileOpen, setMobileOpen] = useState(false);
   const [buscaAberta, setBuscaAberta] = useState(false);
   // Colapso manual da sidebar (trilho ícone-only) — persistido entre sessões.
@@ -215,21 +180,14 @@ export function App() {
       try { localStorage.setItem("side-collapsed", n ? "1" : "0"); } catch { /* noop */ }
       return n;
     });
-  // Sítio ativo (multi-propriedade) — governa TODO o app (rebanho, financeiro,
+  // Sítio ativo (multi-propriedade) — governa TODO o app (pecuária, financeiro,
   // dashboard). Trocar grava no escopo compartilhado (header X-Propriedade-Id) e
   // remonta o conteúdo via `key` abaixo, forçando refetch no escopo novo. null =
   // consolidado; com 1 sítio o seletor fica quase invisível (só o + discreto).
   const [propAtiva, setPropAtiva] = useState<number | null>(getPropriedadeAtiva());
-  // Worklist persistente vem da URL; o snapshot é transitório e só existe quando
-  // o clique parte do dashboard já carregado.
-  const [rotaWorklist, setRotaWorklist] = useState<RotaWorklistRebanho | null>(() =>
-    typeof window === "undefined" ? null : parseRotaWorklistRebanho(window.location.pathname, window.location.search),
-  );
-  const [worklistSnapshot, setWorklistSnapshot] = useState<WorklistRebanho | null>(null);
   const trocarPropriedade = (id: number | null) => {
     setPropriedadeAtiva(id);
     setPropAtiva(id);
-    setWorklistSnapshot(null);
   };
   // Deep-link do ⌘K: ao escolher uma entidade real, guardamos {tab, id} e o
   // módulo dono consome (abre o cockpit) via `abrirId` + `onAbriuEntidade`.
@@ -240,13 +198,45 @@ export function App() {
   const [deepLinkFiltros, setDeepLinkFiltros] = useState<{ tab: Tab; filtros: Record<string, string> } | null>(() => {
     if (typeof window === "undefined") return null;
     const sp = new URLSearchParams(window.location.search);
-    if (![...sp.keys()].length || sp.has("worklist") || isNovaOperacaoFinanceira(window.location.pathname)) return null;
+    if (![...sp.keys()].length || isNovaOperacaoFinanceira(window.location.pathname)) return null;
     const t = pathToTab(window.location.pathname);
     return t ? { tab: t, filtros: Object.fromEntries(sp.entries()) } : null;
   });
 
+  const entrar = (novoToken: string, u: UsuarioSessao, returnTo?: string | null) => {
+    const destino = destinoDepoisDoLogin(returnTo, u);
+    const url = new URL(destino, window.location.origin);
+    const tabDestino = pathToTab(url.pathname) ?? DEFAULT_TAB;
+    setSessao(novoToken, u);
+    setTokenState(novoToken);
+    setUsuario(u);
+    setTab(tabDestino);
+    const parametros = url.searchParams;
+    setDeepLinkFiltros(
+      [...parametros.keys()].length && !isNovaOperacaoFinanceira(url.pathname)
+        ? { tab: tabDestino, filtros: Object.fromEntries(parametros.entries()) }
+        : null,
+    );
+    setDeepLink(null);
+    setShowIntro(deveTocarIntro(tabDestino));
+    window.history.replaceState(null, "", destino);
+    setLocationRevision((valor) => valor + 1);
+  };
+
+  const onSair = token
+    ? () => {
+        void logout();
+        clearSessao();
+        setTokenState(null);
+        setUsuario(null);
+        setShowIntro(false);
+        window.history.replaceState(null, "", "/signin");
+        setLocationRevision((valor) => valor + 1);
+      }
+    : undefined;
+
   // Navega a partir de um link da IA ("/caminho?filtros"): troca a aba e guarda os
-  // filtros pra tela consumir na montagem. `id=` em módulo de cockpit (reb/pla/cor)
+  // filtros pra tela consumir na montagem. `id=` em módulo de cockpit (pla)
   // reaproveita o deepLink do ⌘K; o resto vira filtros de tabela (piloto: /gastos).
   const navegarDeepLink = (url: string) => {
     const qi = url.indexOf("?");
@@ -256,7 +246,7 @@ export function App() {
     if (!t) return;
     const filtros = Object.fromEntries(new URLSearchParams(query).entries());
     const s = String(t);
-    const temCockpit = s.startsWith("reb-") || s.startsWith("pla-") || s.startsWith("cor-");
+    const temCockpit = s.startsWith("pla-");
     if (filtros.id && temCockpit) {
       setDeepLink({ tab: t, id: filtros.id });
       setDeepLinkFiltros(null);
@@ -264,8 +254,6 @@ export function App() {
       setDeepLink(null);
       setDeepLinkFiltros(Object.keys(filtros).length ? { tab: t, filtros } : null);
     }
-    setRotaWorklist(null);
-    setWorklistSnapshot(null);
     setTab(t);
     const alvo = tabToPath(t) + (query ? `?${query}` : "");
     if (window.location.pathname + window.location.search !== alvo) window.history.pushState(null, "", alvo);
@@ -274,23 +262,25 @@ export function App() {
   // Navegação MANUAL (sidebar/conteúdo) — limpa filtros de deep-link p/ não reaplicar stale.
   const navegarTab = (t: Tab) => {
     setDeepLinkFiltros(null);
-    setRotaWorklist(null);
-    setWorklistSnapshot(null);
     setTab(t);
     const alvo = tabToPath(t);
     if (window.location.pathname + window.location.search !== alvo) window.history.pushState(null, "", alvo);
   };
 
-  const abrirWorklist = (worklist: WorklistRebanho) => {
-    const alvo = buildRotaWorklistRebanho(worklist.chave, worklist.tab);
-    if (!alvo) return;
-    const rota = { chave: worklist.chave, tab: worklist.tab } as RotaWorklistRebanho;
-    setDeepLink(null);
+  // Atalho "Trabalho ativo" da sidebar: abre o formulário de operação, que
+  // continua o rascunho se houver ou começa um novo. A sub-rota é publicada
+  // antes da troca de aba (ver router.ts).
+  const abrirRascunhoAtivo = () => {
     setDeepLinkFiltros(null);
-    setRotaWorklist(rota);
-    setWorklistSnapshot(worklist);
-    setTab(`reb-${worklist.tab}` as Tab);
+    abrirRotaNovaOperacao();
+    setTab("lancar");
+  };
+  const abrirRascunhoRelatorioAtivo = () => {
+    setDeepLinkFiltros(null);
+    const alvo = "/financeiro/relatorios/novo";
     if (window.location.pathname + window.location.search !== alvo) window.history.pushState(null, "", alvo);
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    setTab("relatorio");
   };
 
   // Splash de abertura — cobre o primeiro paint até as fontes (Newsreader/DM Sans)
@@ -333,6 +323,34 @@ export function App() {
     };
   }, [mobileOpen]);
 
+  useEffect(() => {
+    if (!authRoute || !("alias" in authRoute) || !authRoute.alias) return;
+    const base = authRoute.kind === "invite" ? "/invite/" : "/reset-password/";
+    window.history.replaceState(null, "", `${base}${encodeURIComponent(authRoute.token)}`);
+    setLocationRevision((valor) => valor + 1);
+  }, [authRoute]);
+
+  useEffect(() => {
+    if (token && usuario) return;
+    // A rota vem da barra de endereço, não de `authRoute`: o memo é do render
+    // anterior e este efeito escreve na mesma URL que lê. Sem reler aqui, uma
+    // segunda execução (StrictMode, remontagem) montaria o destino a partir do
+    // `/signin?returnTo=…` que ela mesma gravou e descartaria o returnTo.
+    if (interpretarRotaAuth(window.location.pathname, window.location.search)) return;
+    const destino = urlSigninPara(window.location.pathname, window.location.search);
+    if (window.location.pathname + window.location.search === destino) return;
+    window.history.replaceState(null, "", destino);
+    setLocationRevision((valor) => valor + 1);
+  }, [authRoute, token, usuario]);
+
+  useEffect(() => {
+    if (!token || !usuario || authRoute?.kind !== "signin") return;
+    const destino = paginaInicialAutorizada(usuario);
+    setTab(pathToTab(destino) ?? DEFAULT_TAB);
+    window.history.replaceState(null, "", destino);
+    setLocationRevision((valor) => valor + 1);
+  }, [authRoute, token, usuario]);
+
   // Reflete a aba ativa na URL. Primeiro render usa replaceState (não empilha
   // histórico ao normalizar "/" → "/dashboard); trocas seguintes usam pushState
   // para o botão "voltar" do navegador funcionar.
@@ -341,33 +359,37 @@ export function App() {
     // Convite e redefinição de senha são rotas públicas independentes das
     // abas do aplicativo. Não as normalize para a aba padrão enquanto o
     // usuário estiver criando a senha.
-    if (rotaSenha) return;
-    const worklistUrl = rotaWorklist && tab === `reb-${rotaWorklist.tab}`
-      ? buildRotaWorklistRebanho(rotaWorklist.chave, rotaWorklist.tab)
-      : null;
+    if (authRoute || !token || !usuario) return;
     const filtrosUrl = deepLinkFiltros?.tab === tab
       ? `${tabToPath(tab)}?${new URLSearchParams(deepLinkFiltros.filtros).toString()}`
       : null;
-    const detalheOperacaoUrl = tab === "lancar" && (parseOperacaoFinanceiraId(window.location.pathname) != null || isNovaOperacaoFinanceira(window.location.pathname))
-      ? window.location.pathname + window.location.search
-      : null;
-    const alvo = worklistUrl ?? filtrosUrl ?? detalheOperacaoUrl ?? tabToPath(tab);
+    const subrotaUrl = (isSubrotaFinanceira(tab, window.location.pathname) || isSubrotaRebanho(tab, window.location.pathname)) ? window.location.pathname + window.location.search : null;
+    // sub-rota (ex.: /pecuaria/rebanho/animais?situacao=…) já traz a própria query:
+    // tem prioridade, senão os filtros do deep-link reescreveriam o caminho para a raiz da aba
+    const alvo = subrotaUrl ?? filtrosUrl ?? tabToPath(tab);
     if (window.location.pathname + window.location.search !== alvo) {
       if (firstSync.current) window.history.replaceState(null, "", alvo);
       else window.history.pushState(null, "", alvo);
     }
     firstSync.current = false;
-  }, [tab, rotaWorklist, deepLinkFiltros, rotaSenha]);
+  }, [tab, deepLinkFiltros, authRoute, token, usuario]);
 
-  // Botões voltar/avançar restauram pathname + worklist como uma única rota.
+  // Botões voltar/avançar restauram pathname + filtros como uma única rota.
   useEffect(() => {
     const onPop = () => {
       setTab(pathToTab(window.location.pathname) ?? DEFAULT_TAB);
-      setRotaWorklist(parseRotaWorklistRebanho(window.location.pathname, window.location.search));
-      setWorklistSnapshot(null);
+      setLocationRevision((valor) => valor + 1);
       const sp = new URLSearchParams(window.location.search);
       const t = pathToTab(window.location.pathname);
-      setDeepLinkFiltros(t && [...sp.keys()].length && !sp.has("worklist") && !isNovaOperacaoFinanceira(window.location.pathname) ? { tab: t, filtros: Object.fromEntries(sp.entries()) } : null);
+      // `?id=` numa aba de cockpit (pla-) abre a ficha direto, como o ⌘K e os
+      // links do Estoque levando ao talhão de origem.
+      const cockpitId = t && String(t).startsWith("pla-") ? sp.get("id") : null;
+      if (t && cockpitId) {
+        setDeepLink({ tab: t, id: cockpitId });
+        setDeepLinkFiltros(null);
+        return;
+      }
+      setDeepLinkFiltros(t && [...sp.keys()].length && !isNovaOperacaoFinanceira(window.location.pathname) ? { tab: t, filtros: Object.fromEntries(sp.entries()) } : null);
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
@@ -431,86 +453,109 @@ export function App() {
     }));
   }, [effectiveUser]);
 
-  const canAccessTab = (id: Tab): boolean => {
-    if (id === "acessos") return isAdmin;
-    if (id === "config") return true;
-    const area = areaDaTab(id);
-    if (area && !hasArea(area)) return false;
-    if (area === "financeiro") return visibleTabs.some((t) => t.id === id) || (id === "caixinha" && visibleTabs.some((t) => t.id === "cadastros"));
-    if (area === "equipe" && id === "eqp-folha") return canSeeFolha;
-    return true;
-  };
-
-  const fallbackTab = (): Tab => {
-    if (visibleTabs[0]) return visibleTabs[0].id;
-    if (hasArea("pecuaria")) return "reb-dashboard";
-    if (hasArea("agricultura")) return "pla-dashboard";
-    if (hasArea("equipe")) return "eqp-dashboard";
-    return "config";
-  };
+  const canAccessTab = (id: Tab): boolean => !!usuario && podeAcessarTab(usuario, id);
 
   // URL direta, histórico e deep links também respeitam a mesma matriz da sidebar.
   useEffect(() => {
-    if (!effectiveUser || canAccessTab(tab)) return;
-    setTab(fallbackTab());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visibleTabs, effectiveUser?.areas, tab]);
+    if (!usuario || podeAcessarTab(usuario, tab)) return;
+    setTab(pathToTab(paginaInicialAutorizada(usuario)) ?? DEFAULT_TAB);
+  }, [usuario, tab]);
+
+  // Rascunho de operação do usuário no sítio ativo, oferecido como "Trabalho
+  // ativo" no topo da sidebar (sem rascunho, o atalho vira "+ Nova operação").
+  // Só quem vê a aba Operações consulta o rascunho. O rascunho é por sítio:
+  // trocar de sítio esquece o anterior e busca o novo.
+  const rascunhoAtivo = useRascunhoAtivo();
+  const rascunhoRelatorioAtivo = useRascunhoRelatorioAtivo();
+  const podeVerRascunho = visibleTabs.some((t) => t.id === "lancar");
+  const podeVerRascunhoRelatorio = visibleTabs.some((t) => t.id === "relatorio") && (!!effectiveUser?.dono || !!effectiveUser?.flags.includes("exportar"));
+  const usuarioId = usuario?.id ?? null;
+  useEffect(() => {
+    limparRascunhoAtivo();
+    if (!token || usuarioId == null || !podeVerRascunho) return;
+    let ultimaCarga = 0;
+    // Falha aqui só esconde o atalho; a tela de operações mostra seus próprios erros.
+    const recarregar = () => { ultimaCarga = Date.now(); void obterRascunhoOperacao().catch(() => undefined); };
+    recarregar();
+    // Ao voltar de outra aba do navegador o rascunho pode ter mudado por lá. O
+    // intervalo mínimo evita uma rajada de GETs a quem alterna abas o dia todo.
+    const aoVoltar = () => {
+      if (document.visibilityState === "visible" && Date.now() - ultimaCarga >= INTERVALO_MIN_RECARGA_RASCUNHO) recarregar();
+    };
+    document.addEventListener("visibilitychange", aoVoltar);
+    return () => document.removeEventListener("visibilitychange", aoVoltar);
+  }, [token, usuarioId, podeVerRascunho, propAtiva]);
+  useEffect(() => {
+    limparRascunhoRelatorioAtivo();
+    if (!token || usuarioId == null || !podeVerRascunhoRelatorio) return;
+    let ultimaCarga = 0;
+    const recarregar = () => { ultimaCarga = Date.now(); void obterRascunhoRelatorioFinanceiro().catch(() => undefined); };
+    recarregar();
+    const aoVoltar = () => {
+      if (document.visibilityState === "visible" && Date.now() - ultimaCarga >= INTERVALO_MIN_RECARGA_RASCUNHO) recarregar();
+    };
+    document.addEventListener("visibilitychange", aoVoltar);
+    return () => document.removeEventListener("visibilitychange", aoVoltar);
+  }, [token, usuarioId, podeVerRascunhoRelatorio, propAtiva]);
+  const resumoRascunhoAtivo = useMemo(
+    () => (rascunhoAtivo.rascunho ? resumoRascunho(rascunhoAtivo.rascunho) : null),
+    [rascunhoAtivo.rascunho],
+  );
+  const resumoRascunhoRelatorioAtivo = useMemo(
+    () => (rascunhoRelatorioAtivo.rascunho ? resumoRascunhoRelatorio(rascunhoRelatorioAtivo.rascunho) : null),
+    [rascunhoRelatorioAtivo.rascunho],
+  );
 
   const canSee = (id: Tab) => visibleTabs.some((t) => t.id === id);
   const online = useOnlineStatus();
 
-  // Gate de acesso. Deep-link de convite/reset tem prioridade: mesmo deslogado,
-  // /convite|/senha renderiza a tela de definir senha. Todos os hooks acima já
-  // rodaram — os early returns aqui não violam as Rules of Hooks.
-  if (rotaSenha) {
+  if (authRoute?.kind === "invite" || authRoute?.kind === "reset-password") {
     return (
       <DefinirSenha
-        modo={rotaSenha.modo}
-        token={rotaSenha.token}
+        modo={authRoute.kind === "invite" ? "convite" : "senha"}
+        token={authRoute.token}
         onPronto={(t, u) => {
           entrar(t, u);
-          window.history.replaceState(null, "", "/dashboard");
         }}
       />
     );
   }
-  // Sem sessão válida (token + usuário), só a tela de login.
+  if (authRoute?.kind === "forgot-password") return <RecuperarSenha />;
+  if (authRoute?.kind === "signin") {
+    return <Login onEntrar={(novoToken, u) => entrar(novoToken, u, authRoute.returnTo)} />;
+  }
+  // Sem sessão válida (token + usuário), só a tela de login. `entrar` recebe o
+  // gesto do clique e transiciona em estado — a intro monta no MESMO documento,
+  // liberando o play() da música da abertura.
   if (!token || !usuario || !effectiveUser) {
-    return <Login onEntrar={entrar} />;
+    return <Login onEntrar={(novoToken, u) => entrar(novoToken, u)} />;
   }
 
   const conteudo = !canAccessTab(tab)
     ? <GatedTab user={effectiveUser} abaLabel="esta área" />
     : (!online && !TABS_OFFLINE.has(tab))
     ? <OfflineGatedTab />
-    : String(tab).startsWith("reb-")
-    ? <RebanhoContent aba={REB[tab]} onNavReb={(s) => navegarTab(("reb-" + s) as Tab)}
-        onAbrirWorklist={abrirWorklist}
-        worklistChave={rotaWorklist?.chave}
-        worklistSnapshot={worklistSnapshot && worklistSnapshot.chave === rotaWorklist?.chave ? worklistSnapshot : undefined}
-        abrirId={deepLink && deepLink.tab.startsWith("reb-") ? deepLink.id : undefined}
-        onAbriuEntidade={() => setDeepLink(null)} />
     : String(tab).startsWith("pla-")
     ? <PlantioContent aba={PLA[tab]} onNavPla={(s) => setTab(("pla-" + s) as Tab)}
         abrirId={deepLink && deepLink.tab.startsWith("pla-") ? deepLink.id : undefined}
         onAbriuEntidade={() => setDeepLink(null)} />
-    : String(tab).startsWith("cor-")
-    ? <PlantelContent aba={COR[tab]} onNavCor={(s) => setTab(("cor-" + s) as Tab)}
-        abrirId={deepLink && deepLink.tab.startsWith("cor-") ? deepLink.id : undefined}
-        onAbriuEntidade={() => setDeepLink(null)} />
+    : tab === "pec-rebanho"
+    ? <RebanhoContent podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} />
     : String(tab).startsWith("mil-")
     ? <CultivoContent aba={MIL[tab]} onNavMil={(s) => setTab(("mil-" + s) as Tab)} />
     : String(tab).startsWith("eqp-")
     ? (canSeeFolha
         ? <EquipeContent aba={EQP[tab]} onNavEqp={(s) => setTab(("eqp-" + s) as Tab)} />
         : <GatedTab user={effectiveUser} abaLabel="Equipe & Ponto" />)
-    : (["dashboard", "gastos", "lancar", "caixinha", "cadastros", "relatorio"] as Tab[]).includes(tab)
-    ? <FinanceiroContent tab={tab} onNav={setTab} />
+    : tab === "estoque"
+    ? <EstoqueContent />
+    : (["dashboard", "gastos", "lancar", "caixinha", "cadastros", "plano", "relatorio"] as Tab[]).includes(tab)
+    ? <FinanceiroContent tab={tab} onNav={setTab} podeEditarCadastros={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} podeExportar={!!effectiveUser.dono || effectiveUser.flags.includes("exportar")} />
     : (
       <>
-        {tab === "ia" && (canSee("ia") ? <IA /> : <GatedTab user={effectiveUser} abaLabel="IA" />)}
-        {/* Configurações mantém somente setup global, categorias e acessos. */}
-        {(tab === "config" || tab === "plano" || tab === "acessos") && (
+        {ASSISTENTE_ATIVO && tab === "ia" && (canSee("ia") ? <IA /> : <GatedTab user={effectiveUser} abaLabel="IA" />)}
+        {/* Configurações mantém somente setup global: categorias, sítios e acessos. */}
+        {(tab === "config" || tab === "acessos" || tab === "sitios") && (
           <ConfiguracoesHub
             tab={tab}
             onNav={setTab}
@@ -553,6 +598,14 @@ export function App() {
         onToggleColapsar={toggleSidebar}
         onAcessos={() => setTab("acessos")}
         onSair={onSair}
+        // O atalho só aparece depois de se saber se há rascunho, para o "+" não
+        // piscar antes de o rascunho existente carregar.
+        trabalhoAtivo={podeVerRascunho && rascunhoAtivo.conhecido
+          ? { resumo: resumoRascunhoAtivo, ativo: rascunhoAtivo.editando, onAbrir: abrirRascunhoAtivo }
+          : null}
+        trabalhoAtivoRelatorio={podeVerRascunhoRelatorio && rascunhoRelatorioAtivo.conhecido && resumoRascunhoRelatorioAtivo
+          ? { resumo: resumoRascunhoRelatorioAtivo, ativo: rascunhoRelatorioAtivo.editando, onAbrir: abrirRascunhoRelatorioAtivo }
+          : null}
       />
       <main id="main-content" className="app-main" {...(mobileOpen ? { inert: "" } : {})}>
         <div key={propAtiva ?? "all"} style={{ display: "contents" }}>
@@ -563,21 +616,19 @@ export function App() {
         aberto={buscaAberta}
         onFechar={() => setBuscaAberta(false)}
         onNav={(t, entidadeId) => {
-          setRotaWorklist(null);
-          setWorklistSnapshot(null);
           setDeepLinkFiltros(null);
           setTab(t);
-          // Só entidades de cockpit (reb-*/pla-*/cor-*) precisam de deep-link;
+          // Só entidades de cockpit (pla-*) precisam de deep-link;
           // categoria/fornecedor apenas navegam para a aba.
           const s = String(t);
-          const temCockpit = s.startsWith("reb-") || s.startsWith("pla-") || s.startsWith("cor-");
+          const temCockpit = s.startsWith("pla-");
           setDeepLink(entidadeId && temCockpit ? { tab: t, id: entidadeId } : null);
         }}
         podeVer={(t) => {
           return canAccessTab(t);
         }}
       />
-      {!ABAS_CHAT.has(tab) && <ChatWidget onNavegar={navegarDeepLink} />}
+      {ASSISTENTE_ATIVO && !ABAS_CHAT.has(tab) && <ChatWidget onNavegar={navegarDeepLink} />}
     </div>
     </>
   );

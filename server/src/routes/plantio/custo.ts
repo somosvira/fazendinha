@@ -15,7 +15,7 @@ const CLASSES_VALIDAS = new Set(["custeio", "investimento", "tudo"]);
 const parseClasse = (raw: string | undefined): ClasseCusto =>
   raw != null && CLASSES_VALIDAS.has(raw) ? (raw as ClasseCusto) : "custeio";
 
-// Ponte financeira do café — espelha /api/rebanho/custo-producao.
+// Ponte financeira do café.
 export const plantioCustoRouter = new Hono()
   .get("/plantio/custo", async (c) => {
     // Clampa meses para inteiro positivo sensato — negativos/frações/zero produziriam

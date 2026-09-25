@@ -1,7 +1,7 @@
 import { Loader } from "../../components/Loading";
 import { useTalhoes, useLavouras, usePlanosAdubacao } from "../api";
 import { LavouraDomainView, RB_TBL_LAVOURA } from "./LavouraDomainView";
-import { RebHeader } from "@/rebanho/components/RebHeader";
+import { RebHeader } from "@/components/rb/RebHeader";
 import { RebTable } from "@/components/rb/RebTable";
 import { RebMain, RebEmpty, RebAnm, REB_SEC_SUB } from "@/components/rb/RebPrimitives";
 import { DOMAINS } from "../domains";

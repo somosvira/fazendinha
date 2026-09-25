@@ -1,0 +1,29 @@
+# Postgres local pra dev e testes — não depende de conta Neon.
+#
+# db.ts escolhe o driver adapter do Prisma pelo runtime (server/src/lib/runtime.ts):
+# fora de um Cloudflare Worker (dev local, testes, `tsx watch`) usa PrismaPg,
+# TCP normal, que fala com qualquer Postgres — este container ou o Neon,
+# tanto faz. Só trocar DATABASE_URL no server/.env.
+#
+# Porta 54332 fora do padrão 5432/5433 pra não colidir com outros projetos
+# locais (Supabase costuma ocupar 5432/5432x, outros repos podem usar outras).
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: fazendinha
+      POSTGRES_PASSWORD: fazendinha
+      POSTGRES_DB: fazendinha
+    ports:
+      - "54332:5432"
+    volumes:
+      - fazendinha_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fazendinha -d fazendinha"]
+      interval: 2s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  fazendinha_postgres_data:

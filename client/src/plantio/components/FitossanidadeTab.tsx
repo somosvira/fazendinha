@@ -1,7 +1,7 @@
 import { Loader } from "../../components/Loading";
 import { useTalhoes } from "../api";
 import { LavouraDomainView } from "./LavouraDomainView";
-import { RebHeader } from "@/rebanho/components/RebHeader";
+import { RebHeader } from "@/components/rb/RebHeader";
 import { RebMain } from "@/components/rb/RebPrimitives";
 import { DOMAINS } from "../domains";
 import { insightDaLavoura } from "../mock";

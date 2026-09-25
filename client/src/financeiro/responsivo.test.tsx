@@ -12,20 +12,26 @@
  *   4. o carregamento é o loader de página centralizado, não um bloco solto;
  *   5. toda página financeira usa o mesmo envelope (gutter + folga do menu).
  */
+import { baseFinanceiraVazia } from "./dashboard.fixture";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import { TabelaFinanceira, type ColunaTabela } from "./financeiro-ui";
+import { OperacoesFinanceiras } from "./OperacoesFinanceiras";
 
-const { obterDashboardFinanceiro, obterConfiguracoesFinanceiras, listarCompromissos, listarOperacoes, obterExtratoConta, obterRascunhoOperacao } = vi.hoisted(() => ({
+const { obterDashboardFinanceiro, obterConfiguracoesFinanceiras, listarCompromissos, listarOperacoes, obterExtratoConta, obterRascunhoOperacao, listarRelatoriosFinanceiros, obterRascunhoRelatorioFinanceiro } = vi.hoisted(() => ({
   obterDashboardFinanceiro: vi.fn(), obterConfiguracoesFinanceiras: vi.fn(), listarCompromissos: vi.fn(),
   listarOperacoes: vi.fn(), obterExtratoConta: vi.fn(), obterRascunhoOperacao: vi.fn(),
+  listarRelatoriosFinanceiros: vi.fn(), obterRascunhoRelatorioFinanceiro: vi.fn(),
 }));
 vi.mock("./novo-api", () => ({
+  obterExtratoGeral: vi.fn().mockResolvedValue([]),
+  obterAnaliseCategorias: vi.fn().mockResolvedValue({ base: "compras", total: "0", categorias: [], linhas: [] }),
   obterDashboardFinanceiro, obterConfiguracoesFinanceiras, listarCompromissos, listarOperacoes, obterExtratoConta,
   liquidarCompromisso: vi.fn(), transferir: vi.fn(), criarConta: vi.fn(), criarParceiro: vi.fn(),
   atualizarConta: vi.fn(), atualizarParceiro: vi.fn(), obterOperacao: vi.fn(), estornarOperacao: vi.fn(),
   criarOperacao: vi.fn(), anexarDocumentoOperacao: vi.fn(),
   obterRascunhoOperacao, descartarRascunhoOperacao: vi.fn(), salvarRascunhoOperacao: vi.fn(),
+  listarRelatoriosFinanceiros, obterRascunhoRelatorioFinanceiro, salvarRascunhoRelatorioFinanceiro: vi.fn(),
 }));
 
 // Nunca resolve: congela cada tela no estado de carregamento.
@@ -39,7 +45,8 @@ const rolaHorizontal = (el: Element) => /overflow-x-auto|overflow-x-scroll/.test
 /** Elementos que forçam largura mínima — por classe Tailwind ou style inline. */
 function comLarguraMinima(raiz: HTMLElement) {
   return [...raiz.querySelectorAll<HTMLElement>("*")].filter(
-    (el) => /min-w-\[\d+px\]/.test(el.className) || !!el.style.minWidth,
+    // `min-width: 0` (o ResponsiveContainer do Recharts) existe para permitir encolher: não força largura.
+    (el) => /min-w-\[\d+px\]/.test(el.className) || (parseFloat(el.style.minWidth) || 0) > 0,
   );
 }
 
@@ -101,6 +108,50 @@ describe("TabelaFinanceira", () => {
     expect(linha.getAttribute("role")).toBeNull();
     expect(container.querySelector("ul button")).toBeTruthy(); // no cartão, um botão de verdade
   });
+
+  it("só mostra a barra de rolagem superior quando o conteúdo excede o contêiner, e sincroniza o scroll", () => {
+    // jsdom não faz layout: simula overflow via scrollWidth/clientWidth do wrapper.
+    const clientWidthOriginal = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "clientWidth");
+    const scrollWidthOriginal = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollWidth");
+    Object.defineProperty(HTMLElement.prototype, "clientWidth", { configurable: true, get: () => 400 });
+    Object.defineProperty(HTMLElement.prototype, "scrollWidth", { configurable: true, get: () => 900 });
+    try {
+      const { container } = render(<TabelaFinanceira rotulo="Operações" itens={LINHAS} colunas={COLUNAS} chaveDe={(l) => l.id} barraRolagemSuperior />);
+      const barra = container.querySelector('[aria-label="Rolagem horizontal: Operações"]') as HTMLElement;
+      expect(barra).toBeTruthy();
+      expect(barra.getAttribute("tabindex")).toBe("0");
+      const tabela = container.querySelector("table")!.parentElement as HTMLElement;
+      tabela.scrollLeft = 120;
+      tabela.dispatchEvent(new Event("scroll"));
+      expect(barra.scrollLeft).toBe(120);
+    } finally {
+      // jsdom expõe clientWidth/scrollWidth via Element.prototype — sem descritor
+      // próprio em HTMLElement.prototype, então "restaurar" é remover o override.
+      if (clientWidthOriginal) Object.defineProperty(HTMLElement.prototype, "clientWidth", clientWidthOriginal);
+      else delete (HTMLElement.prototype as unknown as Record<string, unknown>).clientWidth;
+      if (scrollWidthOriginal) Object.defineProperty(HTMLElement.prototype, "scrollWidth", scrollWidthOriginal);
+      else delete (HTMLElement.prototype as unknown as Record<string, unknown>).scrollWidth;
+    }
+  });
+
+  it("não mostra a barra de rolagem superior quando o conteúdo cabe no contêiner", () => {
+    const { container } = render(<TabelaFinanceira rotulo="Operações" itens={LINHAS} colunas={COLUNAS} chaveDe={(l) => l.id} barraRolagemSuperior />);
+    expect(container.querySelector('[aria-label="Rolagem horizontal: Operações"]')).toBeNull();
+  });
+
+  // Regressão: um `overflow-hidden` entre a barra e a viewport vira o contêiner
+  // de rolagem do `position: sticky` da barra e a prende ao topo desse
+  // contêiner em vez da tela — ela para de acompanhar a rolagem da página.
+  it("em Operações, nenhum ancestral da tabela usa overflow-hidden (isso prenderia a barra sticky ao painel, não à viewport)", async () => {
+    listarOperacoes.mockResolvedValue([{ id: 1, data: "2026-09-18T12:00:00.000Z", descricao: "Operação 1", tipo: "SERVICO", status: "CONFIRMADA", valorTotal: "10.00", parceiro: null, movimentosEstoque: [], transacoes: [], compromissos: [], itens: [] }]);
+    obterConfiguracoesFinanceiras.mockResolvedValue({ contas: [], parceiros: [], categorias: [], centrosCusto: [], produtos: [] });
+    obterRascunhoOperacao.mockResolvedValue(null);
+    render(<OperacoesFinanceiras />);
+    const tabela = await screen.findByRole("table"); // findBy* falha (e tenta de novo) enquanto não existir — ao contrário de container.querySelector, que "acharia" null sem erro
+    for (let el: Element | null = tabela; el; el = el.parentElement) {
+      expect(el.className, `elemento ${el.tagName} não pode ter overflow-hidden`).not.toMatch(/(^|\s)overflow-hidden(\s|$)/);
+    }
+  });
 });
 
 describe("telas financeiras — envelope e carregamento", () => {
@@ -114,7 +165,7 @@ describe("telas financeiras — envelope e carregamento", () => {
   ];
 
   it.each(telas)("%s centraliza o carregamento na área de conteúdo", async (_nome, carregar) => {
-    for (const mock of [obterDashboardFinanceiro, obterConfiguracoesFinanceiras, listarCompromissos, listarOperacoes, obterExtratoConta]) mock.mockImplementation(pendente);
+    for (const mock of [obterDashboardFinanceiro, obterConfiguracoesFinanceiras, listarCompromissos, listarOperacoes, obterExtratoConta, listarRelatoriosFinanceiros]) mock.mockImplementation(pendente);
     obterRascunhoOperacao.mockResolvedValue(null);
     const { render: renderizar } = await carregar();
     const { container } = render(renderizar());
@@ -156,13 +207,15 @@ describe("telas financeiras — envelope e carregamento", () => {
       periodo: { inicio: "2026-09-01", fim: "2026-09-30" }, saldoGeral: "1628514.34",
       contas: [{ id: 1, nome: "Banco do Brasil — conta corrente principal", tipo: "BANCO", instituicao: "Banco do Brasil S.A.", identificacao: null, saldoAbertura: "0", dataSaldoAbertura: "2026-01-01", saldoAtual: "1284530.75", incluirNoSaldoGeral: true, ativo: true }],
       realizado: { entradas: "412870.22", saidas: "298345.68", resultado: "114524.54" },
+      fluxo: [{ data: "2026-09-02", entradas: "412870.22", saidas: "298345.68" }],
       compromissos: { aPagar: "204500.9", aReceber: "278140.55" },
-      despesasPorCategoria: [{ categoria: "Nutrição e alimentação do rebanho leiteiro", valor: "184500.9" }],
+      base: baseFinanceiraVazia(), proximosCompromissos: [],
+      despesasPorCategoria: [{ categoriaId: 1, categoria: "Nutrição e alimentação do rebanho leiteiro", valor: "184500.9" }],
     });
     obterConfiguracoesFinanceiras.mockResolvedValue({
       contas: [{ id: 1, nome: "Banco do Brasil — conta corrente principal", tipo: "BANCO", instituicao: "Banco do Brasil S.A.", identificacao: null, saldoAbertura: "0", dataSaldoAbertura: "2026-01-01", saldoAtual: "1284530.75", incluirNoSaldoGeral: true, ativo: true }],
       parceiros: [{ id: 1, nome: "Cooperativa Agropecuária dos Produtores de Leite do Alto Paranaíba Ltda.", documento: "12.345.678/0001-99", tipo: "FORNECEDOR", telefone: null, email: null, ativo: true }],
-      gruposCategorias: [], centrosCusto: [], produtos: [],
+      categorias: [], centrosCusto: [], produtos: [],
     });
     listarCompromissos.mockResolvedValue([{
       id: 1, tipo: "PAGAR", status: "PENDENTE", valorOriginal: "184500.9", valorLiquidado: "0", saldoPendente: "184500.9",
@@ -174,6 +227,8 @@ describe("telas financeiras — envelope e carregamento", () => {
     }]);
     obterExtratoConta.mockResolvedValue([]);
     obterRascunhoOperacao.mockResolvedValue(null);
+    listarRelatoriosFinanceiros.mockResolvedValue([]);
+    obterRascunhoRelatorioFinanceiro.mockResolvedValue(null);
 
     const { render: renderizar } = await carregar();
     const { container, findByRole } = render(renderizar());

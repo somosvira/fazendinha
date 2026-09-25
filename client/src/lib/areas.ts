@@ -9,11 +9,17 @@ const FINANCEIRO = new Set<Tab>(["dashboard", "gastos", "lancar", "caixinha", "p
 
 export function areaDaTab(tab: Tab): AreaId | null {
   const id = String(tab);
-  if (id.startsWith("reb-")) return "pecuaria";
   if (id.startsWith("pla-") || id.startsWith("mil-")) return "agricultura";
-  if (id.startsWith("cor-")) return "pecuaria";
+  if (id.startsWith("pec-")) return "pecuaria";
   if (id.startsWith("eqp-")) return "equipe";
   return FINANCEIRO.has(tab) ? "financeiro" : null;
+}
+
+/** Áreas que enxergam o menu Estoque (único, filtrado por centro de custo). */
+export const AREAS_ESTOQUE: readonly AreaId[] = ["pecuaria", "agricultura", "financeiro"];
+
+export function temAcessoEstoque(areas: string[] | undefined, dono = false): boolean {
+  return AREAS_ESTOQUE.some((area) => temAcessoArea(areas, area, dono));
 }
 
 export function temAcessoArea(areas: string[] | undefined, area: AreaId, dono = false): boolean {

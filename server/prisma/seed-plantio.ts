@@ -7,35 +7,36 @@
 //
 //   pnpm --filter rionovo-server run seed:plantio
 
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "../src/db.js";
 import { talhoes, resumos, lavouras, planosAdubacao, eventos } from "../src/services/plantio/mock.js";
-
-const prisma = new PrismaClient();
+import { CENTROS_ATIVIDADE } from "../src/services/estoque/centros-atividade.js";
 
 // Cultivares resistentes à ferrugem (Hemileia vastatrix) — Embrapa/Procafé.
 const RESISTENTE = /Acauã|Arara|Icatu|Catucaí|Paraíso|Asa Branca/i;
 
 // Insumos da lavoura (café arábica, fazenda ~80 ha Sul de Minas) — viram Produto
-// com `subtipoPlantio` preenchido (null no rebanho). Espelha o SALDOS estático da
-// EstoqueTab: `saldoInicial` vira uma ENTRADA, e o valor exibido = saldo × custo.
+// com a categoria atribuída conforme o `subtipo` abaixo (usado só neste seed para
+// mapear a categoria agrícola certa; o schema não guarda mais esse subtipo).
+// Espelha o SALDOS estático da EstoqueTab: `saldoInicial` vira uma ENTRADA, e o
+// valor exibido = saldo × custo.
 // Custos atualizados Mar/2026. minimo=null → produto sem mínimo (ex.: mudas).
 const INSUMOS_PLANTIO = [
-  { nome: "Sulfato de amônio 21% N",        subtipo: "FERTILIZANTE", unidade: "kg", custo: 3.0,   minimo: 2_000, saldoInicial: 4_800 },
-  { nome: "Cloreto de potássio 60% K₂O",    subtipo: "FERTILIZANTE", unidade: "kg", custo: 4.6,   minimo: 2_500, saldoInicial: 2_200 },
-  { nome: "Ureia 46% N",                    subtipo: "FERTILIZANTE", unidade: "kg", custo: 4.5,   minimo: 1_500, saldoInicial: 1_900 },
-  { nome: "Formulado 20-00-20",             subtipo: "FERTILIZANTE", unidade: "kg", custo: 4.0,   minimo: 2_000, saldoInicial: 3_400 },
-  { nome: "MAP 11-52-00",                   subtipo: "FERTILIZANTE", unidade: "kg", custo: 5.5,   minimo: 1_000, saldoInicial: 900 },
-  { nome: "Calcário dolomítico PRNT 85%",   subtipo: "CORRETIVO",    unidade: "kg", custo: 0.3,   minimo: 8_000, saldoInicial: 18_000 },
-  { nome: "Gesso agrícola",                 subtipo: "CORRETIVO",    unidade: "kg", custo: 0.35,  minimo: 3_000, saldoInicial: 6_500 },
-  { nome: "Oxicloreto de cobre (Recop)",    subtipo: "DEFENSIVO",    unidade: "kg", custo: 26.0,  minimo: 100,   saldoInicial: 140 },
+  { nome: "Sulfato de amônio 21% N",        subtipo: "FERTILIZANTE", unidade: "KG", custo: 3.0,   minimo: 2_000, saldoInicial: 4_800 },
+  { nome: "Cloreto de potássio 60% K₂O",    subtipo: "FERTILIZANTE", unidade: "KG", custo: 4.6,   minimo: 2_500, saldoInicial: 2_200 },
+  { nome: "Ureia 46% N",                    subtipo: "FERTILIZANTE", unidade: "KG", custo: 4.5,   minimo: 1_500, saldoInicial: 1_900 },
+  { nome: "Formulado 20-00-20",             subtipo: "FERTILIZANTE", unidade: "KG", custo: 4.0,   minimo: 2_000, saldoInicial: 3_400 },
+  { nome: "MAP 11-52-00",                   subtipo: "FERTILIZANTE", unidade: "KG", custo: 5.5,   minimo: 1_000, saldoInicial: 900 },
+  { nome: "Calcário dolomítico PRNT 85%",   subtipo: "CORRETIVO",    unidade: "KG", custo: 0.3,   minimo: 8_000, saldoInicial: 18_000 },
+  { nome: "Gesso agrícola",                 subtipo: "CORRETIVO",    unidade: "KG", custo: 0.35,  minimo: 3_000, saldoInicial: 6_500 },
+  { nome: "Oxicloreto de cobre (Recop)",    subtipo: "DEFENSIVO",    unidade: "KG", custo: 26.0,  minimo: 100,   saldoInicial: 140 },
   { nome: "Ciproconazol + Trifloxistrobina (Priori Xtra)", subtipo: "DEFENSIVO", unidade: "L", custo: 290.0, minimo: 20, saldoInicial: 28 },
   { nome: "Epoxiconazol + Piraclostrobina (Opera)",        subtipo: "DEFENSIVO", unidade: "L", custo: 290.0, minimo: 15, saldoInicial: 18 },
-  { nome: "Tiametoxam (Actara)",            subtipo: "DEFENSIVO",    unidade: "kg", custo: 600.0, minimo: 8,     saldoInicial: 6.5 },
+  { nome: "Tiametoxam (Actara)",            subtipo: "DEFENSIVO",    unidade: "KG", custo: 600.0, minimo: 8,     saldoInicial: 6.5 },
   { nome: "Endossulfan (broca)",            subtipo: "DEFENSIVO",    unidade: "L",  custo: 45.0,  minimo: null,  saldoInicial: 0 },
   { nome: "Glifosato 480 g/L",              subtipo: "HERBICIDA",    unidade: "L",  custo: 36.0,  minimo: 30,    saldoInicial: 52 },
-  { nome: "Beauveria bassiana (biológico)", subtipo: "BIOLOGICO",    unidade: "kg", custo: 110.0, minimo: 10,    saldoInicial: 14 },
+  { nome: "Beauveria bassiana (biológico)", subtipo: "BIOLOGICO",    unidade: "KG", custo: 110.0, minimo: 10,    saldoInicial: 14 },
   { nome: "Foliar Zn + B (Stoller)",        subtipo: "FOLIAR",       unidade: "L",  custo: 70.0,  minimo: 25,    saldoInicial: 32 },
-  { nome: "Mudas Catuaí Amarelo IAC 144",   subtipo: "MUDA",         unidade: "un", custo: 1.5,   minimo: null,  saldoInicial: 480 },
+  { nome: "Mudas Catuaí Amarelo IAC 144",   subtipo: "MUDA",         unidade: "UN", custo: 1.5,   minimo: null,  saldoInicial: 480 },
 ] as const;
 
 async function main() {
@@ -227,7 +228,7 @@ async function main() {
   // 7) Camada operacional Ideagri (Fatia P3) — Safra + Tarefas (planejado×realizado)
   //    + Apontamentos hora-máquina/hora-homem. Idempotente: upsert da Safra por nome,
   //    e deleteMany das tarefas/apontamentos dessa safra antes de recriar.
-  const centroCustoCafe = await prisma.centroCusto.findFirst({ where: { nome: "Plantio Café" }, select: { id: true } });
+  const centroCustoCafe = await prisma.centroCusto.findFirst({ where: { nome: CENTROS_ATIVIDADE.CAFE }, select: { id: true } });
   const safra = await prisma.safra.upsert({
     where: { nome: "Safra 2026" },
     update: { dataInicio: new Date("2025-07-01"), dataFim: new Date("2026-06-30"), centroCustoId: centroCustoCafe?.id ?? null },
@@ -318,32 +319,47 @@ async function main() {
 
   console.log(`Camada operacional Ideagri: 1 safra ("${safra.nome}"), ${tarefasSeed.length} tarefas, ${apontamentosSeed.length} apontamentos.`);
 
-  // 8) Estoque de insumos da lavoura — Produto (subtipoPlantio) + uma ENTRADA de
+  // 8) Estoque de insumos da lavoura — Produto (categoria de uso agrícola) + uma ENTRADA de
   //    saldo inicial por produto. Idempotente: upsert por nome; recria os
   //    movimentos só dos produtos do Plantio (não toca no estoque do rebanho).
   //    Liga ao CentroCusto "Plantio Café" quando existe (mesma ponte contábil
   //    usada pelo seed do rebanho).
-  const ccCafeId = (await prisma.centroCusto.findFirst({ where: { nome: "Plantio Café" }, select: { id: true } }))?.id ?? null;
+  const ccCafeId = (await prisma.centroCusto.findFirst({ where: { nome: CENTROS_ATIVIDADE.CAFE }, select: { id: true } }))?.id ?? null;
+
+  // Mapeamento contábil (ponte com o financeiro): categoria conforme o subtipo
+  // agrícola do insumo. "Fertilizantes e corretivos"/"Defensivos" — cria com
+  // upsert por nome se o seed rodar sozinho (sem o seed.ts ter passado antes).
+  const categoriaAgricolaPorSubtipo = async (nome: string) =>
+    (await prisma.categoria.upsert({
+      where: { nome },
+      update: {},
+      create: { nome, classificacao: "CUSTEIO", usoAgricola: true },
+      select: { id: true },
+    })).id;
+  const catFertilizantesId = await categoriaAgricolaPorSubtipo("Fertilizantes e corretivos");
+  const catDefensivosId = await categoriaAgricolaPorSubtipo("Defensivos");
+  const categoriaIdPorSubtipo: Record<string, string> = {
+    FERTILIZANTE: catFertilizantesId, CORRETIVO: catFertilizantesId, FOLIAR: catFertilizantesId,
+    MUDA: catFertilizantesId, BIOLOGICO: catFertilizantesId,
+    DEFENSIVO: catDefensivosId, HERBICIDA: catDefensivosId,
+  };
 
   // Data recente fixa para a ENTRADA inicial (mês não fechado — fora do range de fechamentos).
   const dataEntradaInicial = new Date("2026-03-15");
 
-  const insumoIds: number[] = [];
+  const insumoIds: string[] = [];
   for (const ins of INSUMOS_PLANTIO) {
     const data = {
-      tipo: "INSUMO" as const,
-      subtipoPlantio: ins.subtipo,
       unidade: ins.unidade,
-      custoUnitario: ins.custo,
       minimoEstoque: ins.minimo,
-      estocavel: true,
+      // Todo produto tem categoria; subtipo fora do mapa cai em fertilizantes.
+      categoriaId: categoriaIdPorSubtipo[ins.subtipo] ?? catFertilizantesId,
       ativo: true,
-      centroCustoId: ccCafeId,
     };
     const row = await prisma.produto.upsert({
       where: { nome: ins.nome },
-      update: data,
-      create: { nome: ins.nome, ...data },
+      update: { ...data, ...(ccCafeId != null ? { centrosCusto: { deleteMany: {}, create: [{ centroCustoId: ccCafeId }] } } : {}) },
+      create: { nome: ins.nome, ...data, ...(ccCafeId != null ? { centrosCusto: { create: [{ centroCustoId: ccCafeId }] } } : {}) },
     });
     insumoIds.push(row.id);
   }
@@ -361,11 +377,14 @@ async function main() {
     if (ins.saldoInicial <= 0) continue; // sem saldo inicial (ex.: Endossulfan zerado) → sem ENTRADA
     const produto = await prisma.produto.findUnique({ where: { nome: ins.nome }, select: { id: true } });
     if (!produto) continue;
+    // O cadastro não guarda preço: ins.custo valoriza o saldo inicial, que é a
+    // base do custo médio das saídas (aplicações) deste insumo.
     const valorTotal = Math.round(ins.saldoInicial * ins.custo * 100) / 100;
     await prisma.movimentoEstoque.create({
       data: {
         produtoId: produto.id,
         tipo: "ENTRADA",
+        origem: "INVENTARIO_INICIAL",
         data: dataEntradaInicial,
         quantidade: ins.saldoInicial,
         custoUnitario: ins.custo,
@@ -376,7 +395,7 @@ async function main() {
     entradasCriadas++;
   }
 
-  console.log(`Estoque Plantio: ${INSUMOS_PLANTIO.length} insumos (subtipoPlantio), ${entradasCriadas} entradas de saldo inicial.`);
+  console.log(`Estoque Plantio: ${INSUMOS_PLANTIO.length} insumos, ${entradasCriadas} entradas de saldo inicial.`);
 }
 
 main().then(() => prisma.$disconnect()).catch(async (e) => { console.error(e); await prisma.$disconnect(); process.exit(1); });

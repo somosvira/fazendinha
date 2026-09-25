@@ -7,11 +7,30 @@ import * as parceiros from "../services/financeiro/parceiros.js";
 import * as operacoes from "../services/financeiro/operacoes.js";
 import * as documentos from "../services/financeiro/documentos.js";
 import * as rascunhos from "../services/financeiro/rascunhos.js";
+import { analisarCategorias, analiseCategoriasSchema } from "../services/financeiro/analise-categorias.js";
 import { obterDashboard } from "../services/financeiro/dashboard.js";
-import { contaSchema, estornoSchema, liquidacaoSchema, operacaoSchema, parceiroSchema, rascunhoOperacaoSchema, tipoDocumentoFinanceiroSchema, transacaoAvulsaSchema, transferenciaSchema } from "../services/financeiro/schemas.js";
+import { categoriaCadastroSchema, centroCustoSchema, contaSchema, estornoSchema, liquidacaoSchema, operacaoSchema, parceiroSchema, patchCategoriaCadastroSchema, patchCentroCustoSchema, patchContaSchema, patchParceiroSchema, rascunhoOperacaoSchema, simulacaoParcelasSchema, tipoDocumentoFinanceiroSchema, transacaoAvulsaSchema, transferenciaSchema } from "../services/financeiro/schemas.js";
+import { patchProdutoSchema, produtoSchema } from "../services/estoque/produtos.schemas.js";
 import { FinanceiroError } from "../services/financeiro/regras.js";
-import { prisma } from "../db.js";
 import { getStorage } from "../lib/storage.js";
+import * as cadastros from "../services/financeiro/cadastros-gerenciais.js";
+import * as produtos from "../services/estoque/produtos.js";
+import { exigePermissao } from "../middleware/permissao.js";
+import { prisma } from "../db.js";
+import { obterCentrosAtividade } from "../services/estoque/centros-atividade.js";
+
+export const filtroPeriodoSchema = z.object({ inicio: z.string().date().optional(), fim: z.string().date().optional() }).refine(p => (!p.inicio && !p.fim) || (!!p.inicio && !!p.fim && p.inicio <= p.fim), { message: "Informe um intervalo válido, com início igual ou anterior ao fim." });
+const validarPeriodo = zValidator("query", filtroPeriodoSchema, (resultado, c) => { if (!resultado.success) return c.json({ error: resultado.error.issues[0].message }, 422); });
+
+const uploadIntentSchema = z.object({
+  tipo: tipoDocumentoFinanceiroSchema,
+  nome: z.string().max(180),
+  numero: z.string().max(80).nullable().optional(),
+  mimeType: z.string().max(120),
+  tamanhoBytes: z.number().int().positive(),
+  sha256: z.string().length(64),
+});
+const uploadConfirmacaoSchema = z.object({ uploadToken: z.string().min(20) });
 
 function usuarioId(c: Context): number | null {
   const usuario = c.get("usuario") as { id?: number } | undefined;
@@ -27,58 +46,105 @@ function exigirUsuarioId(c: Context): number {
 function falha(c: Context, erro: unknown) {
   if (erro instanceof FinanceiroError) {
     const status = erro.code === "NAO_ENCONTRADO" ? 404 : erro.code === "VALIDACAO" ? 422 : 409;
-    return c.json({ error: erro.message, code: erro.code }, status);
+    return c.json({ error: erro.message, code: erro.code, ...(erro.campo ? { campo: erro.campo } : {}) }, status);
   }
   console.error("[financeiro]", erro);
   return c.json({ error: "Erro inesperado ao processar a solicitação" }, 500);
 }
 
-const patchContaSchema = contaSchema.pick({ nome: true, instituicao: true, identificacao: true, incluirNoSaldoGeral: true }).partial().extend({ ativo: z.boolean().optional() });
-const patchParceiroSchema = parceiroSchema.partial().extend({ ativo: z.boolean().optional() });
+function validarCadastro<T extends z.ZodTypeAny>(schema: T) {
+  return zValidator("json", schema, (resultado, c) => {
+    if (!resultado.success) {
+      const erro = resultado.error.issues[0];
+      return c.json({ error: erro.message, code: "VALIDACAO", campo: String(erro.path[0] ?? "") }, 422);
+    }
+  });
+}
 
 export const financeiroRouter = new Hono()
   .get("/financeiro/configuracoes", async (c) => {
     const propriedadeId = await resolverEscopoLeitura(c);
-    const [contasFinanceiras, parceirosLista, gruposCategorias, centrosCusto, produtos] = await Promise.all([
+    const [contasFinanceiras, parceirosLista, gerenciais, produtosCadastro, centrosAtividade] = await Promise.all([
       contas.listarContas(propriedadeId, true), parceiros.listarParceiros(true),
-      prisma.grupoCategoria.findMany({ include: { categorias: { orderBy: { nome: "asc" } } }, orderBy: { ordem: "asc" } }),
-      prisma.centroCusto.findMany({ orderBy: [{ ordem: "asc" }, { nome: "asc" }] }),
-      prisma.produto.findMany({ where: { ativo: true }, orderBy: { nome: "asc" }, select: { id: true, nome: true, unidade: true, estocavel: true, custoUnitario: true } }),
+      cadastros.listarCadastrosGerenciais(),
+      produtos.listarProdutosCadastro(),
+      obterCentrosAtividade(prisma),
     ]);
-    return c.json({ contas: contasFinanceiras, parceiros: parceirosLista, gruposCategorias, centrosCusto, produtos });
+    const produtosAtivos = produtosCadastro.filter((p) => p.ativo);
+    return c.json({
+      contas: contasFinanceiras, parceiros: parceirosLista, ...gerenciais,
+      produtos: produtosAtivos, produtosCadastro,
+      centrosAtividade,
+    });
   })
-  .get("/financeiro/dashboard", async (c) => {
+  .post("/financeiro/produtos", exigePermissao("lancar"), validarCadastro(produtoSchema), async (c) => {
+    try { return c.json(await produtos.criarProduto(c.req.valid("json"), usuarioId(c)), 201); }
+    catch (e) { return falha(c, e); }
+  })
+  .patch("/financeiro/produtos/:id", exigePermissao("lancar"), validarCadastro(patchProdutoSchema), async (c) => {
+    try { return c.json(await produtos.atualizarProduto(c.req.param("id"), c.req.valid("json"), usuarioId(c))); }
+    catch (e) { return falha(c, e); }
+  })
+  .post("/financeiro/categorias", exigePermissao("lancar"), validarCadastro(categoriaCadastroSchema), async (c) => {
+    try { return c.json(await cadastros.criarCategoria(c.req.valid("json"), usuarioId(c)), 201); }
+    catch (e) { return falha(c, e); }
+  })
+  .patch("/financeiro/categorias/:id", exigePermissao("lancar"), validarCadastro(patchCategoriaCadastroSchema), async (c) => {
+    try { return c.json(await cadastros.atualizarCategoria(c.req.param("id"), c.req.valid("json"), usuarioId(c))); }
+    catch (e) { return falha(c, e); }
+  })
+  .post("/financeiro/centros-custo", exigePermissao("lancar"), validarCadastro(centroCustoSchema), async (c) => {
+    try { return c.json(await cadastros.criarCentroCusto(c.req.valid("json"), usuarioId(c)), 201); }
+    catch (e) { return falha(c, e); }
+  })
+  .patch("/financeiro/centros-custo/:id", exigePermissao("lancar"), validarCadastro(patchCentroCustoSchema), async (c) => {
+    try { return c.json(await cadastros.atualizarCentroCusto(c.req.param("id"), c.req.valid("json"), usuarioId(c))); }
+    catch (e) { return falha(c, e); }
+  })
+  .get("/financeiro/analise-categorias", zValidator("query", analiseCategoriasSchema, (resultado, c) => {
+    if (!resultado.success) return c.json({ error: resultado.error.issues[0].message }, 422);
+  }), async (c) => {
+    try { return c.json(await analisarCategorias(c.req.valid("query"), await resolverEscopoLeitura(c))); }
+    catch (e) { return falha(c, e); }
+  })
+  .get("/financeiro/dashboard", validarPeriodo, async (c) => {
     const agora = new Date();
-    const inicio = c.req.query("inicio") ? new Date(c.req.query("inicio")!) : new Date(Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth(), 1));
-    const fim = c.req.query("fim") ? new Date(c.req.query("fim")!) : new Date(Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth() + 1, 0, 23, 59, 59));
-    return c.json(await obterDashboard(await resolverEscopoLeitura(c), inicio, fim));
+    const periodo = c.req.valid("query");
+    const inicio = periodo.inicio ? new Date(`${periodo.inicio}T00:00:00Z`) : new Date(Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth(), 1));
+    const fim = periodo.fim ? new Date(`${periodo.fim}T23:59:59.999Z`) : new Date(Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth() + 1, 0, 23, 59, 59, 999));
+    try { return c.json(await obterDashboard(await resolverEscopoLeitura(c), inicio, fim)); }
+    catch (e) { return falha(c, e); }
   })
   .get("/financeiro/contas", async (c) => c.json(await contas.listarContas(await resolverEscopoLeitura(c), c.req.query("inativas") === "true")))
-  .post("/financeiro/contas", zValidator("json", contaSchema), async (c) => {
+  .post("/financeiro/contas", exigePermissao("lancar"), validarCadastro(contaSchema), async (c) => {
     try {
       const input = c.req.valid("json");
       const propriedadeId = await resolverEscopoEscrita(c, input.propriedadeId ?? null);
       return c.json(await contas.criarConta({ ...input, propriedadeId, usuarioId: usuarioId(c) }), 201);
     } catch (e) { return falha(c, e); }
   })
-  .patch("/financeiro/contas/:id", zValidator("json", patchContaSchema), async (c) => {
-    try { return c.json(await contas.atualizarConta(Number(c.req.param("id")), await resolverEscopoEscrita(c), c.req.valid("json"), usuarioId(c))); }
+  .patch("/financeiro/contas/:id", exigePermissao("lancar"), validarCadastro(patchContaSchema), async (c) => {
+    try { return c.json(await contas.atualizarConta(c.req.param("id"), await resolverEscopoEscrita(c), c.req.valid("json"), usuarioId(c))); }
+    catch (e) { return falha(c, e); }
+  })
+  .get("/financeiro/extrato-geral", async (c) => {
+    try { return c.json(await contas.listarExtratoGeral(await resolverEscopoLeitura(c))); }
     catch (e) { return falha(c, e); }
   })
   .get("/financeiro/contas/:id/extrato", async (c) => {
     try {
       const inicio = c.req.query("inicio") ? new Date(c.req.query("inicio")!) : undefined;
       const fim = c.req.query("fim") ? new Date(c.req.query("fim")!) : undefined;
-      return c.json(await contas.listarExtrato(Number(c.req.param("id")), await resolverEscopoEscrita(c), inicio, fim));
+      return c.json(await contas.listarExtrato(c.req.param("id"), await resolverEscopoLeitura(c), inicio, fim));
     } catch (e) { return falha(c, e); }
   })
   .get("/financeiro/parceiros", async (c) => c.json(await parceiros.listarParceiros(c.req.query("inativos") === "true")))
-  .post("/financeiro/parceiros", zValidator("json", parceiroSchema), async (c) => {
+  .post("/financeiro/parceiros", exigePermissao("lancar"), validarCadastro(parceiroSchema), async (c) => {
     try { return c.json(await parceiros.criarParceiro({ ...c.req.valid("json"), usuarioId: usuarioId(c) }), 201); }
     catch (e) { return falha(c, e); }
   })
-  .patch("/financeiro/parceiros/:id", zValidator("json", patchParceiroSchema), async (c) => {
-    try { return c.json(await parceiros.atualizarParceiro(Number(c.req.param("id")), c.req.valid("json"), usuarioId(c))); }
+  .patch("/financeiro/parceiros/:id", exigePermissao("lancar"), validarCadastro(patchParceiroSchema), async (c) => {
+    try { return c.json(await parceiros.atualizarParceiro(c.req.param("id"), c.req.valid("json"), usuarioId(c))); }
     catch (e) { return falha(c, e); }
   })
   .get("/financeiro/operacoes", async (c) => {
@@ -105,29 +171,28 @@ export const financeiroRouter = new Hono()
     try { return c.json(await rascunhos.confirmarRascunho(await resolverEscopoEscrita(c), exigirUsuarioId(c), c.req.valid("json").versao), 201); }
     catch (e) { return falha(c, e); }
   })
-  .post("/financeiro/operacoes/rascunho/documentos", async (c) => {
+  .post("/financeiro/operacoes/simulacao-parcelas", exigePermissao("lancar"), validarCadastro(simulacaoParcelasSchema), async (c) => {
+    try { return c.json(operacoes.simularParcelas(c.req.valid("json"))); }
+    catch (e) { return falha(c, e); }
+  })
+  .post("/financeiro/operacoes/rascunho/documentos/intencao", zValidator("json", uploadIntentSchema), async (c) => {
     try {
-      const form = await c.req.formData();
-      const arquivo = form.get("arquivo");
-      if (!(arquivo instanceof File)) return c.json({ error: "Selecione um arquivo" }, 400);
-      const tipo = tipoDocumentoFinanceiroSchema.safeParse(form.get("tipo"));
-      if (!tipo.success) return c.json({ error: "Tipo de documento inválido" }, 422);
       const propriedadeId = await resolverEscopoEscrita(c); const uid = exigirUsuarioId(c);
       const rascunho = await rascunhos.obterRascunho(propriedadeId, uid);
       if (!rascunho) return c.json({ error: "Salve o rascunho antes de anexar documentos" }, 409);
-      return c.json(await documentos.anexarDocumentoRascunho({
-        rascunhoId: rascunho.id, propriedadeId, usuarioId: uid, tipo: tipo.data,
-        nome: String(form.get("nome") || arquivo.name), numero: String(form.get("numero") || "") || null,
-        mimeType: arquivo.type || "application/octet-stream", buffer: Buffer.from(await arquivo.arrayBuffer()),
-      }), 201);
+      return c.json(await documentos.solicitarUploadRascunho(rascunho.id, propriedadeId, uid, c.req.valid("json")), 201);
     } catch (e) { return falha(c, e); }
+  })
+  .post("/financeiro/operacoes/rascunho/documentos/confirmacao-upload", zValidator("json", uploadConfirmacaoSchema), async (c) => {
+    try { return c.json(await documentos.confirmarUpload(c.req.valid("json").uploadToken, await resolverEscopoEscrita(c), exigirUsuarioId(c)), 201); }
+    catch (e) { return falha(c, e); }
   })
   .delete("/financeiro/operacoes/rascunho/documentos/:id", async (c) => {
     try {
       const propriedadeId = await resolverEscopoEscrita(c); const uid = exigirUsuarioId(c);
       const rascunho = await rascunhos.obterRascunho(propriedadeId, uid);
       if (!rascunho) throw new FinanceiroError("NAO_ENCONTRADO", "Rascunho não encontrado");
-      await documentos.removerDocumentoRascunho(Number(c.req.param("id")), rascunho.id, propriedadeId, uid);
+      await documentos.removerDocumentoRascunho(c.req.param("id"), rascunho.id, propriedadeId, uid);
       return c.body(null, 204);
     } catch (e) { return falha(c, e); }
   })
@@ -136,11 +201,11 @@ export const financeiroRouter = new Hono()
       const propriedadeId = await resolverEscopoEscrita(c); const uid = exigirUsuarioId(c);
       const rascunho = await rascunhos.obterRascunho(propriedadeId, uid);
       if (!rascunho) throw new FinanceiroError("NAO_ENCONTRADO", "Rascunho não encontrado");
-      return c.json(await documentos.atualizarDocumentoRascunho(Number(c.req.param("id")), rascunho.id, propriedadeId, uid, c.req.valid("json")));
+      return c.json(await documentos.atualizarDocumentoRascunho(c.req.param("id"), rascunho.id, propriedadeId, uid, c.req.valid("json")));
     } catch (e) { return falha(c, e); }
   })
   .get("/financeiro/operacoes/:id", async (c) => {
-    try { return c.json(await operacoes.obterOperacao(Number(c.req.param("id")), await resolverEscopoLeitura(c))); }
+    try { return c.json(await operacoes.obterOperacao(c.req.param("id"), await resolverEscopoLeitura(c))); }
     catch (e) { return falha(c, e); }
   })
   .post("/financeiro/operacoes", zValidator("json", operacaoSchema), async (c) => {
@@ -150,47 +215,34 @@ export const financeiroRouter = new Hono()
       return c.json(await operacoes.criarOperacao({ ...input, propriedadeId, usuarioId: usuarioId(c) }), 201);
     } catch (e) { return falha(c, e); }
   })
-  .post("/financeiro/operacoes/:id/estorno", zValidator("json", estornoSchema), async (c) => {
-    try { return c.json(await operacoes.estornarOperacao(Number(c.req.param("id")), c.req.valid("json").motivo, usuarioId(c)), 201); }
+  .post("/financeiro/operacoes/:id/estorno", exigePermissao("lancar"), zValidator("json", estornoSchema), async (c) => {
+    try {
+      const propriedadeId = await resolverEscopoEscrita(c);
+      return c.json(await operacoes.estornarOperacao(c.req.param("id"), c.req.valid("json").motivo, { propriedadeId, usuarioId: usuarioId(c) }), 201);
+    }
     catch (e) { return falha(c, e); }
   })
-  .post("/financeiro/operacoes/:id/documentos", async (c) => {
-    try {
-      const contentLength = Number(c.req.header("content-length") ?? 0);
-      if (contentLength > documentos.MAX_DOCUMENTO_BYTES + 64 * 1024) {
-        return c.json({ error: "O arquivo excede o limite de 10 MB" }, 413);
-      }
-      const form = await c.req.formData();
-      const arquivo = form.get("arquivo");
-      if (!(arquivo instanceof File)) return c.json({ error: "Selecione um arquivo" }, 400);
-      const tipo = tipoDocumentoFinanceiroSchema.safeParse(form.get("tipo"));
-      if (!tipo.success) return c.json({ error: "Tipo de documento inválido" }, 422);
-      const propriedadeId = await resolverEscopoEscrita(c);
-      const documento = await documentos.anexarDocumentoOperacao({
-        operacaoId: Number(c.req.param("id")), propriedadeId, tipo: tipo.data,
-        nome: String(form.get("nome") || arquivo.name), numero: String(form.get("numero") || "") || null,
-        mimeType: arquivo.type || "application/octet-stream", buffer: Buffer.from(await arquivo.arrayBuffer()), usuarioId: usuarioId(c),
-      });
-      return c.json(documento, 201);
-    } catch (e) { return falha(c, e); }
+  .post("/financeiro/operacoes/:id/documentos/intencao", zValidator("json", uploadIntentSchema), async (c) => {
+    try { return c.json(await documentos.solicitarUploadOperacao(c.req.param("id"), await resolverEscopoEscrita(c), usuarioId(c), c.req.valid("json")), 201); }
+    catch (e) { return falha(c, e); }
+  })
+  .post("/financeiro/operacoes/:id/documentos/confirmacao-upload", zValidator("json", uploadConfirmacaoSchema), async (c) => {
+    try { return c.json(await documentos.confirmarUpload(c.req.valid("json").uploadToken, await resolverEscopoEscrita(c), usuarioId(c)), 201); }
+    catch (e) { return falha(c, e); }
   })
   .get("/financeiro/documentos/:id/download", async (c) => {
     try {
-      const documento = await documentos.obterDocumento(Number(c.req.param("id")), await resolverEscopoEscrita(c));
+      const documento = await documentos.obterDocumento(c.req.param("id"), await resolverEscopoEscrita(c));
       const storage = await getStorage();
-      if (storage.driver === "r2") {
-        return c.redirect(await storage.getSignedDownloadUrl({ key: documento.storageKey!, filename: documento.nome }));
-      }
-      const buffer = await storage.getObjectBuffer({ key: documento.storageKey! });
-      c.header("Content-Type", documento.mimeType || "application/octet-stream");
-      c.header("Content-Disposition", `attachment; filename*=UTF-8''${encodeURIComponent(documento.nome)}`);
-      c.header("Cache-Control", "private, max-age=300");
-      return c.body(new Uint8Array(buffer));
+      return c.redirect(await storage.getSignedDownloadUrl({ key: documento.storageKey!, filename: documento.nome }));
     } catch (e) { return falha(c, e); }
   })
-  .get("/financeiro/compromissos", async (c) => c.json(await operacoes.listarCompromissos(await resolverEscopoLeitura(c))))
+  .get("/financeiro/compromissos", validarPeriodo, async (c) => {
+    const periodo = c.req.valid("query");
+    return c.json(await operacoes.listarCompromissos(await resolverEscopoLeitura(c), periodo.inicio && periodo.fim ? { inicio: new Date(`${periodo.inicio}T00:00:00Z`), fim: new Date(`${periodo.fim}T23:59:59.999Z`) } : undefined));
+  })
   .post("/financeiro/compromissos/:id/liquidacoes", zValidator("json", liquidacaoSchema), async (c) => {
-    try { return c.json(await operacoes.liquidarCompromisso(Number(c.req.param("id")), { ...c.req.valid("json"), usuarioId: usuarioId(c) }), 201); }
+    try { return c.json(await operacoes.liquidarCompromisso(c.req.param("id"), { ...c.req.valid("json"), usuarioId: usuarioId(c) }), 201); }
     catch (e) { return falha(c, e); }
   })
   .post("/financeiro/transferencias", zValidator("json", transferenciaSchema), async (c) => {
@@ -207,7 +259,10 @@ export const financeiroRouter = new Hono()
       return c.json(await operacoes.criarTransacaoAvulsa({ ...input, propriedadeId, usuarioId: usuarioId(c) }), 201);
     } catch (e) { return falha(c, e); }
   })
-  .post("/financeiro/transacoes/:id/estorno", zValidator("json", estornoSchema), async (c) => {
-    try { return c.json(await operacoes.estornarTransacao(Number(c.req.param("id")), c.req.valid("json").motivo, usuarioId(c)), 201); }
+  .post("/financeiro/transacoes/:id/estorno", exigePermissao("lancar"), zValidator("json", estornoSchema), async (c) => {
+    try {
+      const propriedadeId = await resolverEscopoEscrita(c);
+      return c.json(await operacoes.estornarTransacao(c.req.param("id"), c.req.valid("json").motivo, { propriedadeId, usuarioId: usuarioId(c) }), 201);
+    }
     catch (e) { return falha(c, e); }
   });

@@ -4,16 +4,14 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../../db.js";
 import type { ContextoConsulta } from "../consulta/tipos.js";
 import { toolsConsulta } from "./tools-consulta.js";
+import { statusSaldoEstoque } from "../estoque/estoque.js";
+import { rotuloUnidade } from "../estoque/unidades.js";
 
 export type Json = Record<string, unknown>;
 type Handler = (args: Json, ctx: ContextoConsulta) => Promise<unknown>;
 export interface Tool {
   spec: { type: "function"; function: { name: string; description: string; parameters: Json } };
   handler: Handler;
-}
-
-export function formatarAnimalAlerta(animal: { numero: string; nome: string | null }) {
-  return animal.nome ? `#${animal.numero} ${animal.nome}` : `#${animal.numero}`;
 }
 
 const saldoContas: Tool = {
@@ -41,9 +39,9 @@ const estoque: Tool = {
     const produtos = await prisma.produto.findMany({ where: { ativo: true, ...(termo ? { nome: { contains: termo, mode: "insensitive" } } : {}) }, take: 50 });
     const itens = [];
     for (const produto of produtos) {
-      const movimentos = await prisma.movimentoEstoque.findMany({ where: { produtoId: produto.id, status: "CONFIRMADO", ...(ctx.propriedadeId ? { propriedadeId: ctx.propriedadeId } : {}) }, select: { tipo: true, quantidade: true } });
+      const movimentos = await prisma.movimentoEstoque.findMany({ where: { produtoId: produto.id, status: statusSaldoEstoque, ...(ctx.propriedadeId ? { propriedadeId: ctx.propriedadeId } : {}) }, select: { tipo: true, quantidade: true } });
       const saldo = movimentos.reduce((s, m) => m.tipo === "SAIDA" ? s.minus(m.quantidade) : s.plus(m.quantidade), new Prisma.Decimal(0));
-      itens.push({ produto: produto.nome, unidade: produto.unidade, saldo: saldo.toNumber() });
+      itens.push({ produto: produto.nome, unidade: rotuloUnidade(produto.unidade), saldo: saldo.toNumber() });
     }
     return itens;
   },
@@ -51,10 +49,10 @@ const estoque: Tool = {
 
 export async function taxonomiaResumo() {
   const [grupos, centros] = await Promise.all([
-    prisma.grupoCategoria.findMany({ select: { nome: true }, orderBy: { nome: "asc" } }),
+    prisma.categoria.findMany({ select: { nome: true }, orderBy: { nome: "asc" } }),
     prisma.centroCusto.findMany({ select: { nome: true }, orderBy: { nome: "asc" } }),
   ]);
-  return `Grupos: ${grupos.map((g) => g.nome).join("; ")}. Centros de custo: ${centros.map((c) => c.nome).join("; ")}.`;
+  return `Categorias: ${grupos.map((g) => g.nome).join("; ")}. Centros de custo: ${centros.map((c) => c.nome).join("; ")}.`;
 }
 
 const TOOLS = [...toolsConsulta, saldoContas, estoque];
