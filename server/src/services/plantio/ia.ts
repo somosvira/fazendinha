@@ -76,7 +76,7 @@ async function carregarEstoqueBaixo(propriedadeId?: number | null): Promise<Esto
 async function montarContextoReal(propriedadeId?: number | null): Promise<ContextoPlantio> {
   const [talhoes, custoRaw, colheita, estoqueBaixo] = await Promise.all([
     carregarTalhoes(propriedadeId),
-    agregarCustoPlantio(12), // custo financeiro fica farm-wide (mesmo precedente do rebanho/custo-producao)
+    agregarCustoPlantio(12), // custo financeiro fica farm-wide
     carregarColheita(propriedadeId),
     carregarEstoqueBaixo(propriedadeId),
   ]);

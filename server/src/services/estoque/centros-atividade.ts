@@ -1,7 +1,7 @@
 // Nomes canônicos dos centros de custo usados pelos módulos operacionais para
 // atribuir custo por atividade (leite/café). Centralizados aqui para evitar
-// strings hardcoded espalhadas em services/seeds/rotas — ver custo-producao.ts,
-// plantio/custo.ts e os seeds.
+// strings hardcoded espalhadas em services/seeds/rotas — ver plantio/custo.ts
+// e os seeds.
 export const CENTROS_ATIVIDADE = {
   LEITE: "Atividade Leiteira",
   CAFE: "Plantio Café",

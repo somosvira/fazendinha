@@ -69,6 +69,10 @@ const TAB_BY_PATH_LEGADO: Record<string, Tab> = {
   "/gastos": "gastos",
   "/lancar": "lancar",
   "/caixinha": "caixinha",
+  // O estoque da pecuária legada virou o Estoque único (antes da regex abaixo,
+  // que mandaria para o Rebanho).
+  "/pecuaria/estoque": "estoque",
+  "/rebanho/estoque": "estoque",
 };
 
 export const DEFAULT_TAB: Tab = "dashboard";

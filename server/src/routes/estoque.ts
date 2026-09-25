@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
+import { OrigemMovimentoEstoque } from "@prisma/client";
 import { prisma } from "../db.js";
 import * as svc from "../services/estoque/estoque.js";
 import * as produtosSvc from "../services/estoque/produtos.js";
@@ -41,7 +42,7 @@ const movimentosQuerySchema = z.object({
   produtoId: z.coerce.number().int().positive().optional(),
   tipo: z.enum(["ENTRADA", "SAIDA", "AJUSTE"]).optional(),
   q: z.string().trim().max(80).optional(),
-  origem: z.enum(["COMPRA", "CONSUMO_DIRETO", "TRANSFERENCIA", "PRODUCAO", "DEVOLUCAO", "BONIFICACAO", "INVENTARIO_INICIAL", "APLICACAO", "PERDA", "AJUSTE_INVENTARIO"]).optional(),
+  origem: z.nativeEnum(OrigemMovimentoEstoque).optional(),
   centroCustoId: z.coerce.number().int().min(0).optional(),
   de: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   ate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
@@ -85,8 +86,7 @@ export const estoqueRouter = new Hono()
     catch (e) { const { status, body } = fail(e); return c.json(body, status); }
   })
   // Sem DELETE de movimento: movimento de estoque confirmado só é desfeito pelo
-  // domínio que o originou (estorno da operação, do evento sanitário, da
-  // aplicação agrícola ou do período de consumo).
+  // domínio que o originou (estorno da operação ou da aplicação agrícola).
 
   // ── Produtos (cadastro) ─────────────────────────────────────────────────────
   .get("/estoque/produtos", zValidator("query", produtosQuerySchema), async (c) => {

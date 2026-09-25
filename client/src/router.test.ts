@@ -84,6 +84,11 @@ describe("roteamento da pecuária", () => {
     expect(pathToTab("/pecuaria/reproducao")).toBe("pec-rebanho");
   });
 
+  it("leva o estoque antigo da pecuária para o Estoque único", () => {
+    expect(pathToTab("/pecuaria/estoque")).toBe("estoque");
+    expect(pathToTab("/rebanho/estoque")).toBe("estoque");
+  });
+
   it("não transforma uma subrota desconhecida em uma aba válida", () => {
     expect(pathToTab("/equipe/admin")).toBeNull();
   });

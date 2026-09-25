@@ -38,13 +38,11 @@ CREATE TYPE "pecuaria"."CriterioPartos" AS ENUM ('QUALQUER', 'SEM', 'COM');
 CREATE TYPE "pecuaria"."OrigemComposicao" AS ENUM ('INFORMADA', 'CALCULADA');
 
 -- AlterEnum
-BEGIN;
 CREATE TYPE "OrigemMovimentoEstoque_new" AS ENUM ('COMPRA', 'CONSUMO_DIRETO', 'TRANSFERENCIA', 'PRODUCAO', 'DEVOLUCAO', 'BONIFICACAO', 'INVENTARIO_INICIAL', 'APLICACAO', 'PERDA', 'AJUSTE_INVENTARIO');
 ALTER TABLE "MovimentoEstoque" ALTER COLUMN "origem" TYPE "OrigemMovimentoEstoque_new" USING ("origem"::text::"OrigemMovimentoEstoque_new");
 ALTER TYPE "OrigemMovimentoEstoque" RENAME TO "OrigemMovimentoEstoque_old";
 ALTER TYPE "OrigemMovimentoEstoque_new" RENAME TO "OrigemMovimentoEstoque";
 DROP TYPE "public"."OrigemMovimentoEstoque_old";
-COMMIT;
 
 -- DropForeignKey
 ALTER TABLE "AnaliseTanque" DROP CONSTRAINT "AnaliseTanque_tanqueId_fkey";

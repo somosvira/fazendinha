@@ -85,8 +85,8 @@ export function useSaldos(f?: { centroCustoId?: number | string }) {
 }
 
 // ── Cadastros (Produtos + referências financeiras) ─────────────────────────
-// Mesmos DTOs/rotas do `/estoque/*` (gate pecuária|agricultura|financeiro) —
-// os services por trás são os mesmos de `/rebanho/*` (ver server/src/routes/estoque.ts).
+// Rotas `/estoque/*` (gate pecuária|agricultura|financeiro) — ver
+// server/src/routes/estoque.ts.
 // Mesmo tipo de `financeiro/novo-api.ts` (contrato único de Produto na API) —
 // `/estoque/produtos` e `/financeiro/produtos` são a mesma tabela e o mesmo service.
 export type ProdutoDTO = Produto;

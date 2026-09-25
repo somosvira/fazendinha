@@ -15,7 +15,7 @@ pendente e lacunas de suporte. Todo QA pela interface continua pendente.
 O [roteiro pela interface](249-roteiro-interface.md) descreve 18 fluxos, as
 entidades necessárias, os saldos esperados e como adicionar a massa ao banco local
 com `seed:qa249` e abrir o app com `pnpm dev`, nas portas habituais. A suíte
-automatizada usa tabelas separadas dentro do mesmo banco local.
+automatizada usa um banco temporário no mesmo Postgres local.
 
 ## Executar
 
@@ -34,7 +34,7 @@ desenvolvimento são preservados. (Era um schema temporário; virou banco porque
 Prisma usa os schemas fixos `public` e `pecuaria`.) Não execute esse runner contra produção.
 
 As evidências `resultados.json` e `estados.json` ficam no diretório temporário
-informado pelo comando. Interrupção abrupta pode impedir a limpeza do schema.
+informado pelo comando. Interrupção abrupta pode impedir a remoção do banco temporário `qa249_test_*`.
 A seed manual é independente e aditiva; usa as tabelas habituais de `public`.
 
 A configuração dedicada inclui `server/tests/financeiro`, fora do glob da suíte
