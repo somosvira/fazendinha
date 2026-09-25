@@ -3,8 +3,7 @@
  * volume produzido — antes chumbados (Custo/L, Preço médio, Sacas, Preço/saca).
  *
  * Leite: não há série histórica de litros por mês, só a taxa diária atual das
- * vacas em lactação; estimamos o volume de um período por taxa × dias (mesma
- * lógica de rebanho/custo-producao.ts). Café: sacas beneficiadas são reais
+ * vacas em lactação; estimamos o volume de um período por taxa × dias. Café: sacas beneficiadas são reais
  * (somam-se as passadas de colheita do período). */
 
 /** Litros estimados num período: taxa diária atual × dias. Arredonda p/ inteiro. */

@@ -1,11 +1,12 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
+import { OrigemMovimentoEstoque } from "@prisma/client";
 import { prisma } from "../db.js";
 import * as svc from "../services/estoque/estoque.js";
 import * as produtosSvc from "../services/estoque/produtos.js";
 import { produtoSchema, patchProdutoSchema, produtosQuerySchema } from "../services/estoque/produtos.schemas.js";
-import * as refSvc from "../services/rebanho/financeiro-ref.js";
+import * as refSvc from "../services/estoque/referencias.js";
 import { listarParceiros } from "../services/financeiro/parceiros.js";
 import { FinanceiroError } from "../services/financeiro/regras.js";
 import { resolverEscopoLeitura, resolverEscopoEscrita } from "../services/propriedade.js";
@@ -41,7 +42,7 @@ const movimentosQuerySchema = z.object({
   produtoId: z.coerce.number().int().positive().optional(),
   tipo: z.enum(["ENTRADA", "SAIDA", "AJUSTE"]).optional(),
   q: z.string().trim().max(80).optional(),
-  origem: z.enum(["COMPRA", "CONSUMO_DIRETO", "TRANSFERENCIA", "PRODUCAO", "DEVOLUCAO", "BONIFICACAO", "INVENTARIO_INICIAL", "NUTRICAO", "SANIDADE", "APLICACAO", "PERDA", "AJUSTE_INVENTARIO"]).optional(),
+  origem: z.nativeEnum(OrigemMovimentoEstoque).optional(),
   centroCustoId: z.coerce.number().int().min(0).optional(),
   de: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   ate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
@@ -63,9 +64,9 @@ export const estoqueRouter = new Hono()
   .get("/estoque/movimentos", zValidator("query", movimentosQuerySchema), async (c) => {
     const { produtoId, tipo, q, origem, centroCustoId, de, ate, pagina, porPagina } = c.req.valid("query");
     // O gate de /estoque aceita pecuária, agricultura ou financeiro; o vínculo
-    // (animal/lote/talhão) das saídas automáticas só vai para quem tem a área.
+    // (talhão) das saídas automáticas só vai para quem tem a área.
     const u = getUsuario(c);
-    const vinculosVisiveis = u ? { pecuaria: temArea(u, "pecuaria"), agricultura: temArea(u, "agricultura") } : undefined;
+    const vinculosVisiveis = u ? { agricultura: temArea(u, "agricultura") } : undefined;
     return c.json(await svc.listarMovimentos({ produtoId, tipo, q, origem, centroCustoId, de, ate, pagina, porPagina, propriedadeId: await resolverEscopoLeitura(c), vinculosVisiveis }));
   })
   .post("/estoque/ajustes", exigePermissao("lancar"), zValidator("json", svc.ajusteContagemSchema), async (c) => {
@@ -85,8 +86,7 @@ export const estoqueRouter = new Hono()
     catch (e) { const { status, body } = fail(e); return c.json(body, status); }
   })
   // Sem DELETE de movimento: movimento de estoque confirmado só é desfeito pelo
-  // domínio que o originou (estorno da operação, do evento sanitário, da
-  // aplicação agrícola ou do período de consumo).
+  // domínio que o originou (estorno da operação ou da aplicação agrícola).
 
   // ── Produtos (cadastro) ─────────────────────────────────────────────────────
   .get("/estoque/produtos", zValidator("query", produtosQuerySchema), async (c) => {

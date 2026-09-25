@@ -40,7 +40,7 @@ vi.mock("../services/estoque/produtos.js", async (importOriginal) => {
     obterUltimoPreco: mocks.obterUltimoPreco,
   };
 });
-vi.mock("../services/rebanho/financeiro-ref.js", () => ({
+vi.mock("../services/estoque/referencias.js", () => ({
   listarCategorias: mocks.listarCategorias,
   listarCentrosCusto: mocks.listarCentrosCusto,
 }));
@@ -141,11 +141,11 @@ describe("GET /estoque/movimentos", () => {
   });
   it("repassa ao service quais vínculos o usuário pode ver, pelas áreas", async () => {
     await appCom({ ...base, areas: ["financeiro"], flags: [] }).request("/estoque/movimentos");
-    expect(mocks.listarMovimentos).toHaveBeenLastCalledWith(expect.objectContaining({ propriedadeId: 3, vinculosVisiveis: { pecuaria: false, agricultura: false } }));
+    expect(mocks.listarMovimentos).toHaveBeenLastCalledWith(expect.objectContaining({ propriedadeId: 3, vinculosVisiveis: { agricultura: false } }));
     await appCom(soAgricultura).request("/estoque/movimentos");
-    expect(mocks.listarMovimentos).toHaveBeenLastCalledWith(expect.objectContaining({ vinculosVisiveis: { pecuaria: false, agricultura: true } }));
+    expect(mocks.listarMovimentos).toHaveBeenLastCalledWith(expect.objectContaining({ vinculosVisiveis: { agricultura: true } }));
     await appCom({ ...base, areas: [], dono: true, flags: [] }).request("/estoque/movimentos");
-    expect(mocks.listarMovimentos).toHaveBeenLastCalledWith(expect.objectContaining({ vinculosVisiveis: { pecuaria: true, agricultura: true } }));
+    expect(mocks.listarMovimentos).toHaveBeenLastCalledWith(expect.objectContaining({ vinculosVisiveis: { agricultura: true } }));
   });
 });
 

@@ -29,8 +29,8 @@ async function main() {
   });
 
   const [alimentacao, sanidade, manutencao, receitas, investimento] = await Promise.all([
-    prisma.categoria.create({ data: { nome: "QA Relatórios · Alimentação", classificacao: "CUSTEIO", usoNutricional: true } }),
-    prisma.categoria.create({ data: { nome: "QA Relatórios · Sanidade", classificacao: "CUSTEIO", usoSanitario: true } }),
+    prisma.categoria.create({ data: { nome: "QA Relatórios · Alimentação", classificacao: "CUSTEIO" } }),
+    prisma.categoria.create({ data: { nome: "QA Relatórios · Sanidade", classificacao: "CUSTEIO" } }),
     prisma.categoria.create({ data: { nome: "QA Relatórios · Manutenção", classificacao: "CUSTEIO" } }),
     prisma.categoria.create({ data: { nome: "QA Relatórios · Receitas", classificacao: "CUSTEIO" } }),
     prisma.categoria.create({ data: { nome: "QA Relatórios · Equipamentos", classificacao: "INVESTIMENTO" } }),

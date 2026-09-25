@@ -7,21 +7,19 @@ import { MultiSelect, type MultiSelectOption } from "@/components/MultiSelect";
 import { UNIDADES_ORDENADAS, rotuloUnidadeCompleto, type UnidadeMedida } from "../lib/unidades";
 
 // Chips informativos das marcações de uso da categoria escolhida — o
-// comportamento (sanitário/nutricional/agrícola) é da categoria, não do produto.
+// comportamento (agrícola) é da categoria, não do produto.
 function chipsUso(categoria: Categoria | undefined) {
   if (!categoria) return [];
   const chips: string[] = [];
-  if (categoria.usoSanitario) chips.push("Uso sanitário");
-  if (categoria.usoNutricional) chips.push("Uso nutricional");
   if (categoria.usoAgricola) chips.push("Uso agrícola");
   return chips;
 }
 
 /* `parceiros`/`categorias`/`centros` são opcionais: quando quem abre o painel já
  * tem essas listas em mãos (ex.: `ConfiguracoesFinanceiras`), passa-as direto;
- * caso contrário (cadastro rápido a partir do estoque/rebanho/plantio), o
- * formulário carrega sozinho de `estoque/api.ts` — mesmas rotas liberadas às
- * três áreas (pecuária/agricultura/financeiro). */
+ * caso contrário (cadastro rápido a partir do estoque/plantio), o formulário
+ * carrega sozinho de `estoque/api.ts` — mesmas rotas liberadas às três áreas
+ * (pecuária/agricultura/financeiro). */
 export function FormProduto({ produto, parceiros: parceirosProp, categorias: categoriasProp, centros: centrosProp, onSalvo, onFechar }: {
   produto: Produto | null; parceiros?: Parceiro[]; categorias?: Categoria[]; centros?: CentroCusto[];
   onSalvo: (salvo: Produto) => Promise<void> | void; onFechar: () => void;
@@ -108,7 +106,7 @@ export function FormProduto({ produto, parceiros: parceirosProp, categorias: cat
         <CampoFormulario id="produto-unidade" rotulo="Unidade" obrigatorio ajuda="Unidade em que o produto é comprado e baixado. Não pode mudar depois que houver movimento." erro={erros.unidade}>{(p) => <select {...p} value={unidade} onChange={(e) => setUnidade(e.target.value as UnidadeMedida)} className={classeInput}>{UNIDADES_ORDENADAS.map((u) => <option key={u} value={u}>{rotuloUnidadeCompleto(u)}</option>)}</select>}</CampoFormulario>
         <CampoFormulario id="produto-minimo" rotulo="Estoque mínimo" ajuda="Abaixo dessa quantidade o produto aparece com alerta na tela de Estoque." erro={erros.minimoEstoque}>{(p) => <input {...p} type="number" min="0" step="0.01" value={minimo} onChange={(e) => setMinimo(e.target.value)} className={classeInput} />}</CampoFormulario>
       </div>
-      <CampoFormulario id="produto-categoria" rotulo="Categoria" obrigatorio ajuda="O uso do produto (sanitário, nutricional, agrícola) vem da categoria." erro={erros.categoriaId}>{(p) => <select {...p} value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)} className={classeInput}><option value="">Selecione</option>{categorias.filter((c) => c.ativo || c.id === produto?.categoriaId).map((c) => <option key={c.id} value={c.id}>{c.nome}{c.ativo ? "" : " (inativa)"}</option>)}</select>}</CampoFormulario>
+      <CampoFormulario id="produto-categoria" rotulo="Categoria" obrigatorio ajuda="O uso do produto (agrícola) vem da categoria." erro={erros.categoriaId}>{(p) => <select {...p} value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)} className={classeInput}><option value="">Selecione</option>{categorias.filter((c) => c.ativo || c.id === produto?.categoriaId).map((c) => <option key={c.id} value={c.id}>{c.nome}{c.ativo ? "" : " (inativa)"}</option>)}</select>}</CampoFormulario>
       {(() => {
         const categoriaSelecionada = categorias.find((c) => String(c.id) === categoriaId);
         const chips = chipsUso(categoriaSelecionada);

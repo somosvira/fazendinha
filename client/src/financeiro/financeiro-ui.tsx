@@ -1,6 +1,6 @@
 import { forwardRef, useEffect, useRef, useState } from "react";
 import type { LucideIcon } from "lucide-react";
-import { Check, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, Pencil, Power, PowerOff, X } from "lucide-react";
 import { Loader } from "../components/Loading";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -115,6 +115,23 @@ export function SelectFiltro({ rotulo, valor, onChange, opcoes, className = "" }
     <SelectTrigger aria-label={rotulo} title={opcoes.find((o) => o.valor === valor)?.texto} className={`h-10 w-full justify-between rounded-lg bg-white px-3 text-left text-sm font-normal sm:w-auto sm:min-w-[170px] [&>span]:whitespace-nowrap ${className}`}><SelectValue /></SelectTrigger>
     <SelectContent>{opcoes.map((o) => <SelectItem key={o.valor || FILTRO_TODOS} value={o.valor === "" ? FILTRO_TODOS : o.valor}>{o.texto}</SelectItem>)}</SelectContent>
   </Select>;
+}
+
+/* Coluna de ações de cadastro: editar e desativar/reativar, com reordenação
+ * opcional. Os botões param a propagação para não disparar o `onAbrir` da
+ * linha (que também abre a edição). Compartilhada por todos os cadastros no
+ * padrão Financeiro (contas, parceiros, categorias, centros de custo e, na
+ * Pecuária, lotes/raças/motivos de baixa). */
+export function AcoesLinha({ nome, ativo, onEditar, onAlternar, onSubir, onDescer, podeSubir = false, podeDescer = false }: { nome: string; ativo: boolean; onEditar: () => void; onAlternar: () => void; onSubir?: () => void; onDescer?: () => void; podeSubir?: boolean; podeDescer?: boolean }) {
+  const parar = (fn: () => void) => (e: React.MouseEvent) => { e.stopPropagation(); fn(); };
+  const cls = "rounded-lg p-2 text-ink-2 hover:bg-surface-2 hover:text-ink";
+  const alternar = ativo ? "Desativar" : "Reativar";
+  return <div className="flex items-center justify-end gap-1">
+    {onSubir && <button type="button" disabled={!podeSubir} onClick={parar(onSubir)} aria-label={`Mover ${nome} para cima`} className={`${cls} disabled:cursor-not-allowed disabled:opacity-30`}><ArrowUp size={16} /></button>}
+    {onDescer && <button type="button" disabled={!podeDescer} onClick={parar(onDescer)} aria-label={`Mover ${nome} para baixo`} className={`${cls} disabled:cursor-not-allowed disabled:opacity-30`}><ArrowDown size={16} /></button>}
+    <button type="button" onClick={parar(onEditar)} title="Editar" aria-label={`Editar ${nome}`} className={cls}><Pencil size={16} /></button>
+    <button type="button" onClick={parar(onAlternar)} title={alternar} aria-label={`${alternar} ${nome}`} className={ativo ? `${cls} hover:text-red-700` : cls}>{ativo ? <PowerOff size={16} /> : <Power size={16} />}</button>
+  </div>;
 }
 
 export function ErrorBox({ erro }: { erro: string | null }) {

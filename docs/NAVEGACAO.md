@@ -1,7 +1,7 @@
 # Navegação da dashboard (deep-links da IA)
 
 > **Gerado por `scripts/gen-nav-doc.ts` a partir de `server/src/services/bot/navegacao.ts`.**
-> Não editar à mão — mexer no catálogo e rodar `pnpm gen:nav-doc`. Gerado em 2026-09-09.
+> Não editar à mão — mexer no catálogo e rodar `pnpm gen:nav-doc`. Gerado em 2026-09-23.
 
 Este é o guia que a IA recebe no contexto (via `navegacaoResumo()`) para responder com
 links internos que levam o usuário à tela/tabela certa, já com o recorte aplicado.
@@ -71,7 +71,17 @@ Formato do link: `[rótulo curto](/caminho?param=valor&param2=valor2)`.
 **Exemplos:**
   - [Abrir os relatórios financeiros](/financeiro/relatorios)
 
-### `/pecuaria/animal` — Rebanho — lista de animais
+### `/financeiro/configuracoes` — Configurações financeiras
+
+**Quando linkar:** Quando o usuário precisa consultar ou manter contas, parceiros, categorias e centros de custo.
+
+**Filtros:**
+  - (sem filtros de deep-link)
+
+**Exemplos:**
+  - [Abrir as configurações financeiras](/financeiro/configuracoes)
+
+### `/pecuaria/rebanho` — Rebanho — lista de animais
 
 **Quando linkar:** Quando a resposta é sobre o rebanho/animais e o usuário pode querer ver a lista.
 
@@ -79,48 +89,9 @@ Formato do link: `[rótulo curto](/caminho?param=valor&param2=valor2)`.
   - (sem filtros de deep-link)
 
 **Exemplos:**
-  - [Ver o rebanho](/pecuaria/animal)
-
-### `/pecuaria/producao` — Produção de leite
-
-**Quando linkar:** Pedidos de produção/controle leiteiro do rebanho.
-
-**Filtros:**
-  - `worklist` (producao-caindo) — abre a tela já com a lista de trabalho aplicada
-
-**Exemplos:**
-  - [Ver a produção de leite](/pecuaria/producao)
-  - [Ver as vacas com produção caindo](/pecuaria/producao?worklist=producao-caindo)
-
-### `/pecuaria/sanidade` — Sanidade / alertas do rebanho
-
-**Quando linkar:** Pedidos de sanidade, CCS, mastite, carência, vacinas e alertas do rebanho.
-
-**Filtros:**
-  - `worklist` (ccs-alta | carencia | vacina-pendente) — abre a tela já com a lista de trabalho aplicada
-
-**Exemplos:**
-  - [Ver alertas de sanidade](/pecuaria/sanidade)
-  - [Ver as vacas com CCS alta](/pecuaria/sanidade?worklist=ccs-alta)
-  - [Ver o leite em carência](/pecuaria/sanidade?worklist=carencia)
-
-### `/pecuaria/reproducao` — Reprodução do rebanho
-
-**Quando linkar:** Pedidos de reprodução: o que inseminar, diagnóstico de gestação pendente, secagem, partos previstos.
-
-**Filtros:**
-  - `worklist` (secagem-atrasada | vazia-pos-pev | dg-pendente | parto-proximo | precisa-de-exame) — abre a tela já com a lista de trabalho aplicada
-
-**Exemplos:**
-  - [Ver a reprodução](/pecuaria/reproducao)
-  - [Ver os DGs pendentes](/pecuaria/reproducao?worklist=dg-pendente)
-  - [Ver as secagens atrasadas](/pecuaria/reproducao?worklist=secagem-atrasada)
+  - [Ver o rebanho](/pecuaria/rebanho)
 
 ## Plano de implementação no client (filtros)
-
-O que **já funciona**: `?worklist=<chave>` nas telas de reprodução, sanidade e produção do
-rebanho. O router expõe `REBANHO_WORKLISTS` + `parseRotaWorklistRebanho` e o App.tsx
-aplica a lista de trabalho na montagem — esses deep-links podem ser emitidos hoje.
 
 O que **falta**: as telas do financeiro ainda não leem query string. A navegação é
 `useState<Tab>` + History API gravando só o path (client/src/router.ts, App.tsx), e cada
@@ -129,7 +100,7 @@ filtro:
 
 1. **Parsear a query string na entrada** (App.tsx, junto de `pathToTab`): ler
    `window.location.search` -> objeto de filtros e passar para a tela via prop
-   (ex.: `deepLinkFiltros`), reaproveitando o padrão já usado pelo `?worklist=`.
+   (ex.: `deepLinkFiltros`).
 2. **Cada tela consome os params na montagem**, usando os nomes que ela já tem em estado:
    - `CompromissosFinanceiros` -> `aba` (PAGAR | RECEBER | LIQUIDADOS) e `soVencidos`;
    - `OperacoesFinanceiras` -> `busca`, `tipo`, `status`, `efeito`, `inicio`/`fim`;

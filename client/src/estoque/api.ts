@@ -31,26 +31,26 @@ function qs(f?: object): string {
   return s ? `?${s}` : "";
 }
 
-// Centros de custo "de atividade" (leite/café) — usados pelos módulos rebanho/
-// plantio para pré-filtrar a tela de Estoque. Rota própria (não atrás do gate
-// de área "financeiro"), montada sob /api/estoque/* (pecuaria|agricultura|financeiro).
-export interface CentrosAtividadeDTO { leite: number | null; cafe: number | null }
+// Centro de custo "de atividade" (café) — usado pelos módulos plantio para
+// pré-filtrar a tela de Estoque. Rota própria (não atrás do gate de área
+// "financeiro"), montada sob /api/estoque/* (pecuaria|agricultura|financeiro).
+export interface CentrosAtividadeDTO { cafe: number | null }
 export const obterCentrosAtividade = () => req<CentrosAtividadeDTO>("/estoque/centros-atividade");
 
 // ── Estoque: saldos + movimentos ───────────────────────────
-export interface SaldoDTO { produtoId: number; nome: string; categoria: { id: number; nome: string; usoSanitario: boolean; usoNutricional: boolean; usoAgricola: boolean } | null; unidade: UnidadeMedida; centrosCusto: { id: number; nome: string }[]; saldo: number;
+export interface SaldoDTO { produtoId: number; nome: string; categoria: { id: number; nome: string; usoAgricola: boolean } | null; unidade: UnidadeMedida; centrosCusto: { id: number; nome: string }[]; saldo: number;
   /** Média ponderada das entradas valorizadas no sítio; null sem base (nenhuma compra/inventário com valor). */
   custoMedio: number | null;
   /** saldo × custoMedio (0 quando custoMedio é null). */
   valor: number; minimoEstoque: number | null; abaixoMinimo: boolean; }
-export type OrigemMovimento = "COMPRA" | "CONSUMO_DIRETO" | "TRANSFERENCIA" | "PRODUCAO" | "DEVOLUCAO" | "BONIFICACAO" | "INVENTARIO_INICIAL" | "NUTRICAO" | "SANIDADE" | "PERDA" | "AJUSTE_INVENTARIO" | "APLICACAO";
-export type VinculoMovimento = { tipo: "LOTE"; id: number; nome: string } | { tipo: "ANIMAL"; id: number; numero: string; nome: string | null } | { tipo: "TALHAO"; id: number; codigo: string };
-export interface MovimentoDTO { id: number; produtoId: number; produto: string; centrosCusto: { id: number; nome: string }[]; tipo: "ENTRADA" | "SAIDA" | "AJUSTE"; origem: OrigemMovimento; status: "CONFIRMADO" | "REVERTIDO"; reversaoDeId: number | null; data: string; quantidade: number; custoUnitario: number; valorTotal: number; fornecedor: string | null; grupo: string | null; observacao: string | null;
+export type OrigemMovimento = "COMPRA" | "CONSUMO_DIRETO" | "TRANSFERENCIA" | "PRODUCAO" | "DEVOLUCAO" | "BONIFICACAO" | "INVENTARIO_INICIAL" | "PERDA" | "AJUSTE_INVENTARIO" | "APLICACAO";
+export type VinculoMovimento = { tipo: "TALHAO"; id: number; codigo: string };
+export interface MovimentoDTO { id: number; produtoId: number; produto: string; centrosCusto: { id: number; nome: string }[]; tipo: "ENTRADA" | "SAIDA" | "AJUSTE"; origem: OrigemMovimento; status: "CONFIRMADO" | "REVERTIDO"; reversaoDeId: number | null; data: string; quantidade: number; custoUnitario: number; valorTotal: number; fornecedor: string | null; observacao: string | null;
   /** Operação financeira de origem (compra, ajuste, inventário…); null nas saídas automáticas. */
   operacaoId: number | null;
-  /** Lote/animal/talhão de origem das saídas automáticas (dieta/sanidade/aplicação); null nos demais. */
+  /** Talhão de origem das saídas automáticas (aplicação agrícola); null nos demais. */
   vinculo: VinculoMovimento | null; }
-export interface MovimentoInput { produtoId: number; tipo: "AJUSTE"; data: string; quantidade: number; custoUnitario?: number; grupoId?: number; observacao?: string; centroCustoId?: number; }
+export interface MovimentoInput { produtoId: number; tipo: "AJUSTE"; data: string; quantidade: number; custoUnitario?: number; observacao?: string; centroCustoId?: number; }
 export interface MovimentoResult { id: number; operacaoId: number; }
 
 export const listarSaldos = (f?: { centroCustoId?: number | string }) => req<SaldoDTO[]>(`/estoque/saldos${qs(f)}`);
@@ -85,12 +85,12 @@ export function useSaldos(f?: { centroCustoId?: number | string }) {
 }
 
 // ── Cadastros (Produtos + referências financeiras) ─────────────────────────
-// Mesmos DTOs/rotas do `/estoque/*` (gate pecuária|agricultura|financeiro) —
-// os services por trás são os mesmos de `/rebanho/*` (ver server/src/routes/estoque.ts).
+// Rotas `/estoque/*` (gate pecuária|agricultura|financeiro) — ver
+// server/src/routes/estoque.ts.
 // Mesmo tipo de `financeiro/novo-api.ts` (contrato único de Produto na API) —
 // `/estoque/produtos` e `/financeiro/produtos` são a mesma tabela e o mesmo service.
 export type ProdutoDTO = Produto;
-export type UsoProduto = "sanitario" | "nutricional" | "agricola";
+export type UsoProduto = "agricola";
 export interface ProdutoInput {
   nome: string; unidade: UnidadeMedida;
   // Categoria obrigatória (define o uso). Se o produto entra no estoque quem decide é a operação.

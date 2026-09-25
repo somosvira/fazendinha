@@ -20,8 +20,8 @@ const dto = (p: {
   id: number; nome: string; apelido: string | null; cidade: string | null; uf: string | null; principal: boolean; ativo: boolean; ordem: number;
 }): PropriedadeDTO => ({ id: p.id, nome: p.nome, apelido: p.apelido, cidade: p.cidade, uf: p.uf, principal: p.principal, ativo: p.ativo, ordem: p.ordem });
 
-export async function listarPropriedades(): Promise<PropriedadeDTO[]> {
-  const ps = await prisma.propriedade.findMany({ where: { ativo: true }, orderBy: [{ ordem: "asc" }, { id: "asc" }] });
+export async function listarPropriedades(incluirInativos = false): Promise<PropriedadeDTO[]> {
+  const ps = await prisma.propriedade.findMany({ where: incluirInativos ? {} : { ativo: true }, orderBy: [{ ordem: "asc" }, { id: "asc" }] });
   return ps.map(dto);
 }
 
@@ -45,23 +45,37 @@ export async function escopoPadraoLeitura(): Promise<number | null> {
   return total <= 1 ? propriedadePrincipalId() : null;
 }
 
+// Postgres Int4 (coluna `Propriedade.id`): um id fora da faixa passaria direto para o Prisma e
+// voltaria como erro cru de banco (500) em vez de uma rejeição clara (S2).
+const INT4_MAX = 2147483647;
+
+/**
+ * `X-Propriedade-Id`/`?propriedadeId=` explícito, mas não numérico ou fora da faixa do Postgres
+ * (S2): antes esse valor passava direto pro Prisma (que ou ignorava — `Number.isInteger(NaN)` é
+ * false — ou estourava com erro cru de banco). Agora rejeita cedo com uma mensagem clara.
+ */
+function parseEscopoIdHeader(raw: string): number {
+  const id = Number(raw);
+  if (!Number.isInteger(id) || id < 1 || id > INT4_MAX) {
+    throw new PropriedadeError("ESCOPO_INVALIDO", "X-Propriedade-Id inválido: informe um número inteiro positivo");
+  }
+  return id;
+}
+
 // Escopo de LEITURA a partir do request (header X-Propriedade-Id ou ?propriedadeId=):
 //   explícito            → aquele id
 //   ausente + 1 sítio    → a principal (invisível)
 //   ausente + N sítios   → null (consolidado, sem filtro)
 export async function resolverEscopoLeitura(c: Context): Promise<number | null> {
   const raw = c.req.header("X-Propriedade-Id") ?? c.req.query("propriedadeId");
-  if (raw != null && raw !== "") {
-    const id = Number(raw);
-    if (Number.isInteger(id)) return id;
-  }
+  if (raw != null && raw !== "") return parseEscopoIdHeader(raw);
   return escopoPadraoLeitura();
 }
 
 // Garante a fundação em runtime, IDEMPOTENTE. Necessário porque prod aplica o
 // schema via `prisma db push`, que NÃO roda o SQL de seed/backfill da migration —
 // sem isto a tabela nasceria vazia e os propriedadeId ficariam NULL (a Fatia 1
-// filtraria por principal e o rebanho todo sumiria). Chamado no boot.
+// filtraria por principal e os fatos sumiriam). Chamado no boot.
 // Nome neutro (não hardcoda "Rio Novo" — sistema é revendido); o dono renomeia na UI.
 export async function garantirFundacaoPropriedade(): Promise<void> {
   const total = await prisma.propriedade.count();
@@ -70,53 +84,18 @@ export async function garantirFundacaoPropriedade(): Promise<void> {
   }
   _principalId = null; // invalida cache; recomputa a principal (recém-criada ou existente)
   const pid = await propriedadePrincipalId();
-  await prisma.animal.updateMany({ where: { propriedadeId: null }, data: { propriedadeId: pid } });
-  await prisma.grupo.updateMany({ where: { propriedadeId: null }, data: { propriedadeId: pid } });
-  // Produção por grupo herda o sítio do lote; tanque geral legado cai na principal.
-  await prisma.$executeRaw`
-    UPDATE "ProducaoLote" AS p
-    SET "propriedadeId" = COALESCE(
-      (SELECT g."propriedadeId" FROM "Grupo" AS g WHERE g."id" = p."grupoId"),
-      ${pid}
-    )
-    WHERE p."propriedadeId" IS NULL
-  `;
   await prisma.movimentoEstoque.updateMany({ where: { propriedadeId: null }, data: { propriedadeId: pid } });
-  await prisma.loteCorte.updateMany({ where: { propriedadeId: null }, data: { propriedadeId: pid } });
-  await prisma.piquete.updateMany({ where: { propriedadeId: null }, data: { propriedadeId: pid } });
   await prisma.talhao.updateMany({ where: { propriedadeId: null }, data: { propriedadeId: pid } });
   await prisma.lavoura.updateMany({ where: { propriedadeId: null }, data: { propriedadeId: pid } });
   await prisma.funcionario.updateMany({ where: { propriedadeId: null }, data: { propriedadeId: pid } });
   await prisma.safraCultivo.updateMany({ where: { propriedadeId: null }, data: { propriedadeId: pid } });
   await prisma.silo.updateMany({ where: { propriedadeId: null }, data: { propriedadeId: pid } });
 
-  // `prisma db push` cria as colunas do read-model, mas não executa o SQL de
-  // backfill da migration. Mantém a tabela da Reprodução útil logo no primeiro
-  // boot após o deploy, sem depender de um novo evento por animal.
-  await prisma.$executeRaw`
-    WITH "UltimaCobertura" AS (
-      SELECT DISTINCT ON ("animalId")
-        "animalId", "data", "protocolo"
-      FROM "EventoReprodutivo"
-      WHERE "tipo" IN ('INSEMINACAO', 'COBERTURA', 'TRANSFERENCIA_EMBRIAO')
-      ORDER BY "animalId", "data" DESC, "id" DESC
-    )
-    UPDATE "ResumoAnimal" AS "resumo"
-    SET
-      "ultimaInseminacao" = "cobertura"."data",
-      "protocoloAtual" = "cobertura"."protocolo"
-    FROM "UltimaCobertura" AS "cobertura"
-    WHERE "resumo"."animalId" = "cobertura"."animalId"
-      AND (
-        "resumo"."ultimaInseminacao" IS DISTINCT FROM "cobertura"."data"
-        OR "resumo"."protocoloAtual" IS DISTINCT FROM "cobertura"."protocolo"
-      )
-  `;
 }
 
 // ── Cadastro de propriedades (Fatia 1) ──────────────────────────────────────
 export class PropriedadeError extends Error {
-  constructor(public code: "NAO_ENCONTRADO" | "NOME_DUPLICADO", m: string) {
+  constructor(public code: "NAO_ENCONTRADO" | "NOME_DUPLICADO" | "ESCOPO_INVALIDO", m: string) {
     super(m);
   }
 }
@@ -164,9 +143,6 @@ export async function editarPropriedade(id: number, input: PropriedadeInput): Pr
 export async function resolverEscopoEscrita(c: Context, explicitoId?: number | null): Promise<number> {
   if (explicitoId != null) return explicitoId;
   const raw = c.req.header("X-Propriedade-Id") ?? c.req.query("propriedadeId");
-  if (raw != null && raw !== "") {
-    const id = Number(raw);
-    if (Number.isInteger(id)) return id;
-  }
+  if (raw != null && raw !== "") return parseEscopoIdHeader(raw);
   return propriedadePrincipalId();
 }

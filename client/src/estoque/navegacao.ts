@@ -16,15 +16,12 @@ export const codigoOperacao = (id: number) => `OP-${String(id).padStart(4, "0")}
 export type DestinoMovimento = { href: string; rotulo: string; area: AreaId };
 
 /** Para onde um movimento leva: a operação financeira que o gerou ou, nas saídas
- *  automáticas, o lote/animal/talhão de origem. null = sem destino conhecido. */
+ *  automáticas, o talhão de origem. null = sem destino conhecido. */
 export function destinoDoMovimento(m: Pick<MovimentoDTO, "operacaoId" | "vinculo">): DestinoMovimento | null {
   if (m.operacaoId != null) return { href: `/financeiro/operacoes/${m.operacaoId}`, rotulo: codigoOperacao(m.operacaoId), area: "financeiro" };
   const v = m.vinculo;
   if (!v) return null;
-  // Lote de leite: os fechamentos de consumo (que geram estas saídas) vivem na aba Nutrição.
-  if (v.tipo === "LOTE") return { href: "/pecuaria/nutricao", rotulo: `Lote ${v.nome}`, area: "pecuaria" };
   // `?id=` abre a ficha direto (App.tsx transforma em deep-link de cockpit no popstate).
-  if (v.tipo === "ANIMAL") return { href: `/pecuaria/animal?id=${v.id}`, rotulo: `Animal ${v.numero}${v.nome ? ` · ${v.nome}` : ""}`, area: "pecuaria" };
   return { href: `/plantio/talhao?id=${v.id}`, rotulo: `Talhão ${v.codigo}`, area: "agricultura" };
 }
 

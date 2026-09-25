@@ -4,7 +4,7 @@ import { useSafras, useTarefas, useApontamentos, excluirTarefa, excluirApontamen
 import type { TarefaPlanejada } from "../types";
 import { TarefaForm } from "./TarefaForm";
 import { ApontamentoForm } from "./ApontamentoForm";
-import { RebHeader } from "@/rebanho/components/RebHeader";
+import { RebHeader } from "@/components/rb/RebHeader";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
 import { RebTable } from "@/components/rb/RebTable";

@@ -26,11 +26,11 @@ export type ContaInput = { nome: string; tipo: TipoConta; instituicao?: string |
 export type ContaPatch = Partial<ContaInput> & DadosConta & { ativo?: boolean };
 export type ParceiroInput = DadosParceiro & { nome: string; documento?: string | null; tipo?: TipoParceiro; telefone?: string | null; email?: string | null };
 export type ParceiroPatch = Partial<ParceiroInput> & { ativo?: boolean };
-export type Categoria = { id: number; nome: string; classificacao: "CUSTEIO" | "INVESTIMENTO" | null; ativo: boolean; ordem: number; usoSanitario: boolean; usoNutricional: boolean; usoAgricola: boolean; _count?: { operacoes: number; produtos: number; itens?: number } };
+export type Categoria = { id: number; nome: string; classificacao: "CUSTEIO" | "INVESTIMENTO" | null; ativo: boolean; ordem: number; usoAgricola: boolean; _count?: { operacoes: number; produtos: number; itens?: number } };
 export type CentroCusto = { id: number; nome: string; ativo: boolean; ordem: number; _count?: { operacoes: number; produtos: number; safras: number } };
-// Comportamento (sanitário/nutricional/agrícola) é da categoria do produto —
-// mesmo que ela esteja inativa (situação é do produto, uso é da categoria).
-export type ProdutoCategoria = { id: number; nome: string; usoSanitario: boolean; usoNutricional: boolean; usoAgricola: boolean };
+// Comportamento (agrícola) é da categoria do produto — mesmo que ela esteja
+// inativa (situação é do produto, uso é da categoria).
+export type ProdutoCategoria = { id: number; nome: string; usoAgricola: boolean };
 export type Produto = {
   id: number; nome: string;
   unidade: UnidadeMedida;
@@ -45,7 +45,7 @@ export type ProdutoInput = {
   // Categoria obrigatória (define o uso). Se o produto entra no estoque quem decide é a operação.
   minimoEstoque: number | null; categoriaId: number; centroCustoIds: number[]; fornecedorIds: number[];
 };
-export type ConfiguracoesFinanceiras = { contas: Conta[]; parceiros: Parceiro[]; categorias: Categoria[]; centrosCusto: CentroCusto[]; produtos: Produto[]; produtosCadastro?: Produto[]; centrosAtividade?: { leite: number | null; cafe: number | null } };
+export type ConfiguracoesFinanceiras = { contas: Conta[]; parceiros: Parceiro[]; categorias: Categoria[]; centrosCusto: CentroCusto[]; produtos: Produto[]; produtosCadastro?: Produto[]; centrosAtividade?: { cafe: number | null } };
 export type ContaHistorico = { id: number; nome: string };
 export type ReferenciaReversao = { id: number; tipo: string; status: string; data: string; descricao: string | null };
 export type MovimentoOperacao = { id: number; contaId: number; direcao: "ENTRADA" | "SAIDA"; valor: string; conta: ContaHistorico };
@@ -207,7 +207,7 @@ export const criarConta = (input: ContaInput & DadosConta) => req<Conta>("/finan
 export const atualizarConta = (id: number, input: ContaPatch) => req<Conta>(`/financeiro/contas/${id}`, { method: "PATCH", body: JSON.stringify(input) });
 export const criarParceiro = (input: ParceiroInput) => req<Parceiro>("/financeiro/parceiros", { method: "POST", body: JSON.stringify(input) });
 export const atualizarParceiro = (id: number, input: ParceiroPatch) => req<Parceiro>(`/financeiro/parceiros/${id}`, { method: "PATCH", body: JSON.stringify(input) });
-export type CategoriaInput = { nome: string; classificacao?: "CUSTEIO" | "INVESTIMENTO" | null; ordem?: number; usoSanitario?: boolean; usoNutricional?: boolean; usoAgricola?: boolean };
+export type CategoriaInput = { nome: string; classificacao?: "CUSTEIO" | "INVESTIMENTO" | null; ordem?: number; usoAgricola?: boolean };
 export type CentroCustoInput = { nome: string; ordem?: number };
 export const criarCategoria = (input: CategoriaInput) => req<Categoria>("/financeiro/categorias", { method: "POST", body: JSON.stringify(input) });
 export const atualizarCategoria = (id: number, input: Partial<CategoriaInput> & { ativo?: boolean }) => req<Categoria>(`/financeiro/categorias/${id}`, { method: "PATCH", body: JSON.stringify(input) });

@@ -101,24 +101,6 @@ async function main() {
     FROM "Lancamento" l WHERE ${CAIXA} AND natureza='DEBITO' AND "dataLiquidacao">='2026-01-01'
     GROUP BY 1 ORDER BY 2 ASC`);
 
-  // ── E. Razão ──
-  g.E1_producao_leite = await q(`SELECT COUNT(*)::int n, COALESCE(SUM(litros),0)::float litros FROM "ProducaoLote"`);
-
-  // ── F. Rebanho ──
-  g.F1_ativos_por_categoria = await q(`SELECT categoria, COUNT(*)::int n FROM "Animal" WHERE status='ATIVO' GROUP BY 1 ORDER BY 2 DESC`);
-  g.F2_ccs_media_vacas = await q(`
-    SELECT COUNT(*)::int vacas, COUNT(ra.ccs)::int com_ccs, ROUND(AVG(ra.ccs),2)::float ccs_media
-    FROM "Animal" a LEFT JOIN "ResumoAnimal" ra ON ra."animalId"=a.id
-    WHERE a.status='ATIVO' AND a.categoria='VACA'`);
-  g.F3_del_medio_vacas = await q(`
-    SELECT COUNT(ra.del)::int com_del, ROUND(AVG(ra.del),2)::float del_medio
-    FROM "Animal" a LEFT JOIN "ResumoAnimal" ra ON ra."animalId"=a.id
-    WHERE a.status='ATIVO' AND a.categoria='VACA'`);
-  g.F4_ativos_por_raca = await q(`
-    SELECT COALESCE(r.nome,'(sem raça)') raca, COUNT(*)::int n
-    FROM "Animal" a LEFT JOIN "Raca" r ON r.id=a."racaId" WHERE a.status='ATIVO' GROUP BY 1 ORDER BY 2 DESC`);
-  g.F5_baixados = await q(`SELECT COUNT(*)::int n FROM "Animal" WHERE status='BAIXADO'`);
-
   // ── G. Outros módulos ──
   // Semântica da tool folha_pagamento: débitos realizados com busca='salário'
   // (categoria OU grupo OU centro de custo contendo o termo), agrupados por pessoa.

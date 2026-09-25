@@ -4,7 +4,7 @@ import { useFuncionarios, useCustoMOSetor, money, horasFmt, dateBR } from "../ap
 import type { FuncionarioDTO } from "../types";
 import { FuncionarioForm } from "./FuncionarioForm";
 import { ToolbarSelect } from "@/components/ToolbarSelect";
-import { RebHeader } from "@/rebanho/components/RebHeader";
+import { RebHeader } from "@/components/rb/RebHeader";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebTable } from "@/components/rb/RebTable";
 import { RebMain, RebAnm, RebPill } from "@/components/rb/RebPrimitives";

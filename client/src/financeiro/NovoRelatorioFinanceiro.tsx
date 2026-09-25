@@ -3,7 +3,7 @@ import { ArrowLeft, FileDown, Trash2 } from "lucide-react";
 import { MultiSelect, type MultiSelectOption } from "@/components/MultiSelect";
 import { DateRangePicker, type DateRange } from "@/components/DateRangePicker";
 import { getPropriedadeAtiva } from "../propriedadeScope";
-import { usePropriedades } from "../rebanho/api";
+import { usePropriedades } from "../api/propriedades";
 import { descartarRascunhoRelatorioFinanceiro, gerarRelatorioFinanceiro, salvarPdfRelatorioFinanceiro, salvarRascunhoRelatorioFinanceiro, type ConfiguracaoRelatorioFinanceiro, type ConfiguracoesFinanceiras, type RascunhoRelatorioFinanceiro, type RelatorioFinanceiro } from "./novo-api";
 import { Button, ErrorBox, ReviewLine, TIPO_OPERACAO } from "./financeiro-ui";
 import { marcarEdicaoRascunhoRelatorio } from "./rascunhoRelatorioAtivo";

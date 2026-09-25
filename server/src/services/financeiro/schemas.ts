@@ -85,8 +85,6 @@ export const categoriaCadastroSchema = z.object({
   nome: z.string().trim().min(2).max(80),
   classificacao: z.enum(["CUSTEIO", "INVESTIMENTO"]).nullable().default(null),
   ordem: z.number().int().min(0).max(9999).default(0),
-  usoSanitario: z.boolean().optional(),
-  usoNutricional: z.boolean().optional(),
   usoAgricola: z.boolean().optional(),
 });
 

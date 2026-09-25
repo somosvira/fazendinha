@@ -4,7 +4,7 @@ import { insightDaLavoura } from "../mock";
 import { IaInsightBand } from "./IaInsight";
 import { useDashboard } from "../api";
 import { FASES_LABEL } from "../lib/fenologia";
-import { RebHeader } from "@/rebanho/components/RebHeader";
+import { RebHeader } from "@/components/rb/RebHeader";
 import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
 import { RebMain } from "@/components/rb/RebPrimitives";
 

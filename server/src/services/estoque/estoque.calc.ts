@@ -1,7 +1,7 @@
 import { Prisma } from "@prisma/client";
 
 // Motor puro de estoque (sem I/O; só Prisma.Decimal), testado por TDD.
-// Saldo é computado (Σ entradas − Σ saídas). custo vaca/dia = consumo ÷ (vacas × dias).
+// Saldo é computado (Σ entradas − Σ saídas).
 
 export interface MovIn {
   tipo: "ENTRADA" | "SAIDA" | "AJUSTE";
@@ -22,22 +22,6 @@ export function saldoProduto(movs: MovIn[]): { saldo: number; valor: number } {
   }
   // saldo é quantidade (MovimentoEstoque.quantidade Decimal(12,3)) — 3 casas; valor é dinheiro — 2 casas.
   return { saldo: Math.round(saldo * 1000) / 1000, valor: Math.round(valor * 100) / 100 };
-}
-
-export function custoVacaDia(
-  saidas: { valorTotal: number; data: string }[],
-  vacasEmLactacao: number,
-  hoje: string,
-  periodoDias: number,
-): number | null {
-  if (vacasEmLactacao <= 0) return null;
-  const limite = new Date(hoje);
-  limite.setDate(limite.getDate() - periodoDias);
-  const fim = new Date(hoje);
-  const total = saidas
-    .filter((s) => new Date(s.data) >= limite && new Date(s.data) <= fim)
-    .reduce((a, s) => a + s.valorTotal, 0);
-  return Math.round((total / (vacasEmLactacao * periodoDias)) * 100) / 100;
 }
 
 // ── Custo médio ponderado ────────────────────────────────────────────────────

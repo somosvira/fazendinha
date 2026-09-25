@@ -4,7 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { NovoRelatorioFinanceiro } from "./NovoRelatorioFinanceiro";
 import { descartarRascunhoRelatorioFinanceiro, gerarRelatorioFinanceiro, salvarPdfRelatorioFinanceiro, salvarRascunhoRelatorioFinanceiro, type ConfiguracoesFinanceiras, type RascunhoRelatorioFinanceiro, type RelatorioFinanceiro } from "./novo-api";
 
-vi.mock("../rebanho/api", () => ({ usePropriedades: () => ({ data: [], loading: false, recarregar: vi.fn() }) }));
+vi.mock("../api/propriedades", () => ({ usePropriedades: () => ({ data: [], loading: false, recarregar: vi.fn() }) }));
 vi.mock("./novo-api", () => ({
   descartarRascunhoRelatorioFinanceiro: vi.fn(), gerarRelatorioFinanceiro: vi.fn(),
   salvarPdfRelatorioFinanceiro: vi.fn(), salvarRascunhoRelatorioFinanceiro: vi.fn(),
@@ -18,7 +18,7 @@ afterEach(() => { cleanup(); vi.clearAllMocks(); vi.unstubAllGlobals(); });
 
 const cadastros: ConfiguracoesFinanceiras = {
   contas: [], parceiros: [], produtos: [],
-  categorias: [{ id: 3, nome: "Nutrição", ativo: true, ordem: 0, classificacao: "CUSTEIO", usoSanitario: false, usoNutricional: true, usoAgricola: false }, { id: 4, nome: "Silagem antiga", ativo: false, ordem: 1, classificacao: null, usoSanitario: false, usoNutricional: false, usoAgricola: false }],
+  categorias: [{ id: 3, nome: "Nutrição", ativo: true, ordem: 0, classificacao: "CUSTEIO", usoAgricola: false }, { id: 4, nome: "Silagem antiga", ativo: false, ordem: 1, classificacao: null, usoAgricola: false }],
   centrosCusto: [{ id: 1, nome: "Pecuária", ativo: true, ordem: 0 }],
 };
 const configuracao = { nome: "Pecuária — agosto", dataInicio: "2026-08-01", dataFim: "2026-08-31", regime: "ambos" as const, tipos: [], status: ["CONFIRMADA"], centroCustoIds: [], categoriaIds: [], classificacoes: [] };

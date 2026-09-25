@@ -14,10 +14,6 @@ export interface Tool {
   handler: Handler;
 }
 
-export function formatarAnimalAlerta(animal: { numero: string; nome: string | null }) {
-  return animal.nome ? `#${animal.numero} ${animal.nome}` : `#${animal.numero}`;
-}
-
 const saldoContas: Tool = {
   spec: { type: "function", function: { name: "saldo_contas", description: "Saldo atual por conta e saldo geral, calculados exclusivamente pelo razão financeiro.", parameters: { type: "object", properties: {} } } },
   handler: async (_args, ctx) => {

@@ -58,7 +58,7 @@ const talhaoBase = {
 const movimentoExistente = {
   id: 88, produtoId: 3, tipo: "SAIDA", origem: "APLICACAO", status: "CONFIRMADO", data: new Date("2026-01-10"),
   quantidade: new Prisma.Decimal(20), custoUnitario: new Prisma.Decimal(2), valorTotal: new Prisma.Decimal(40),
-  propriedadeId: 5, operacaoId: null, reversaoDeId: null, revertidoPor: null, centroCustoId: null, consumoPeriodoId: null,
+  propriedadeId: 5, operacaoId: null, reversaoDeId: null, revertidoPor: null, centroCustoId: null,
 };
 
 const produtoUreia = { id: 3, nome: "Ureia", unidade: "KG", centrosCusto: [] };
@@ -359,7 +359,7 @@ describe("editarOperacao", () => {
     const movimentoComCentro = {
       id: 88, produtoId: 3, quantidade: new Prisma.Decimal(20), custoUnitario: new Prisma.Decimal(2), valorTotal: new Prisma.Decimal(40),
       data: new Date("2026-01-10"), centroCustoId: 5, propriedadeId: 5, tipo: "SAIDA", origem: "APLICACAO", status: "CONFIRMADO",
-      operacaoId: null, reversaoDeId: null, revertidoPor: null, consumoPeriodoId: null,
+      operacaoId: null, reversaoDeId: null, revertidoPor: null,
     };
     const produtoDoisCentros = {
       id: 3, nome: "Ureia", unidade: "KG",

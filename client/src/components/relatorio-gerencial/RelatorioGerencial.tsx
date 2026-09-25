@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { fetchRelatorioGerencial } from "../../api";
 import { getHoje } from "../../lib/hoje";
 import { getPropriedadeAtiva } from "../../propriedadeScope";
-import { usePropriedades } from "../../rebanho/api";
+import { usePropriedades } from "../../api/propriedades";
 import { DateRangePicker, type DateRange } from "../DateRangePicker";
 import { useToast } from "../Toast";
 import { RelatorioGerencialDocumento } from "./RelatorioGerencialDocumento";

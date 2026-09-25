@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Building2, Package, Pencil, Plus, Power, PowerOff, Tags, Target, Users } from "lucide-react";
+import { Building2, Package, Plus, Tags, Target, Users } from "lucide-react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { atualizarCategoria, atualizarCentroCusto, atualizarConta, atualizarParceiro, atualizarProduto, obterConfiguracoesFinanceiras, type Categoria, type CentroCusto, type Conta, type ConfiguracoesFinanceiras as Config, type Parceiro, type Produto } from "./novo-api";
-import { brl, Button, type ColunaTabela, dataBR, ErrorBox, PageHeader, PaginaFinanceira, PaginaSemDados, Panel, Pill, SelectFiltro, TabelaFinanceira } from "./financeiro-ui";
+import { AcoesLinha, brl, Button, type ColunaTabela, dataBR, ErrorBox, PageHeader, PaginaFinanceira, PaginaSemDados, Panel, Pill, SelectFiltro, TabelaFinanceira } from "./financeiro-ui";
 import { FormConta, TIPO_CONTA } from "./FormConta";
 import { FormParceiro } from "./FormParceiro";
 import { PAPEIS_PARCEIRO, papeisDoParceiro } from "./lib/parceiros";
@@ -21,18 +21,6 @@ type Confirmacao =
   | { tipo: "categoria"; item: Categoria }
   | { tipo: "centro"; item: CentroCusto }
   | null;
-
-/* Coluna de ações: editar e desativar/reativar. Os botões param a propagação
- * para não disparar o `onAbrir` da linha (que também abre a edição). */
-function AcoesLinha({ nome, ativo, onEditar, onAlternar }: { nome: string; ativo: boolean; onEditar: () => void; onAlternar: () => void }) {
-  const parar = (fn: () => void) => (e: React.MouseEvent) => { e.stopPropagation(); fn(); };
-  const cls = "rounded-lg p-2 text-ink-2 hover:bg-surface-2 hover:text-ink";
-  const alternar = ativo ? "Desativar" : "Reativar";
-  return <div className="flex items-center justify-end gap-1">
-    <button type="button" onClick={parar(onEditar)} title="Editar" aria-label={`Editar ${nome}`} className={cls}><Pencil size={16} /></button>
-    <button type="button" onClick={parar(onAlternar)} title={alternar} aria-label={`${alternar} ${nome}`} className={ativo ? `${cls} hover:text-red-700` : cls}>{ativo ? <PowerOff size={16} /> : <Power size={16} />}</button>
-  </div>;
-}
 
 const colunasContas = (editar: (c: Conta) => void, alternar: (c: Conta) => void): ColunaTabela<Conta>[] => [
   { chave: "conta", titulo: "Conta", larguraMinima: 210, principal: true, celula: (c) => <strong className="break-words">{c.nome}</strong> },
@@ -67,8 +55,7 @@ const colunasCategorias = (editar: (c: Categoria) => void, alternar: (c: Categor
   { chave: "categoria", titulo: "Categoria", principal: true, larguraMinima: 210, celula: (c) => <strong>{c.nome}</strong> },
   { chave: "classificacao", titulo: "Classificação", alinhamento: "centro", larguraMinima: 130, celula: (c) => c.classificacao === "INVESTIMENTO" ? "Investimento" : c.classificacao === "CUSTEIO" ? "Custeio" : "Não classificada" },
   { chave: "uso", titulo: "Uso", alinhamento: "centro", larguraMinima: 150, celula: (c) => {
-    const chips = [c.usoSanitario && "Sanitário", c.usoNutricional && "Nutricional", c.usoAgricola && "Agrícola"].filter(Boolean) as string[];
-    return chips.length ? <span className="flex flex-wrap justify-center gap-1">{chips.map((chip) => <Pill key={chip} tone="neutral">{chip}</Pill>)}</span> : "—";
+    return c.usoAgricola ? <Pill tone="neutral">Agrícola</Pill> : "—";
   } },
   { chave: "referencias", titulo: "Em uso", alinhamento: "centro", larguraMinima: 100, celula: (c) => (c._count?.operacoes ?? 0) + (c._count?.produtos ?? 0) + (c._count?.itens ?? 0) },
   { chave: "situacao", titulo: "Situação", alinhamento: "centro", larguraMinima: 100, celula: (c) => <Pill tone={c.ativo ? "green" : "neutral"}>{c.ativo ? "Ativa" : "Inativa"}</Pill> },
@@ -174,9 +161,7 @@ export function ConfiguracoesFinanceiras({ abaInicial = "contas", podeEditar = t
     const fornecedorOk = filtroFornecedor === "SEM" ? !produto.fornecedores?.length : !filtroFornecedor || produto.fornecedores?.some((f) => f.id === Number(filtroFornecedor));
     const centroOk = filtroCentro === "SEM" ? !produto.centrosCusto?.length : !filtroCentro || produto.centrosCusto?.some((c) => c.id === Number(filtroCentro));
     const situacaoOk = filtroSituacao === "TODOS" || (filtroSituacao === "ATIVOS" ? produto.ativo !== false : produto.ativo === false);
-    const usoOk = !filtroUso || (filtroUso === "SEM"
-      ? !produto.categoria?.usoSanitario && !produto.categoria?.usoNutricional && !produto.categoria?.usoAgricola
-      : !!produto.categoria?.[filtroUso as "usoSanitario" | "usoNutricional" | "usoAgricola"]);
+    const usoOk = !filtroUso || (filtroUso === "SEM" ? !produto.categoria?.usoAgricola : !!produto.categoria?.usoAgricola);
     return buscaOk && fornecedorOk && centroOk && situacaoOk && usoOk;
   });
   const acao = aba === "categorias"
@@ -191,7 +176,7 @@ export function ConfiguracoesFinanceiras({ abaInicial = "contas", podeEditar = t
     <fieldset disabled={processando || !podeEditar} aria-busy={processando} className="min-w-0">
       {aba === "contas" && <Panel className="mt-5 overflow-hidden"><TabelaFinanceira rotulo="Contas financeiras" itens={config.contas} colunas={colunasContas((c) => editar("conta", c), alternarConta)} chaveDe={(c) => c.id} onAbrir={(c) => editar("conta", c)} classeLinha={(c) => !c.ativo ? "opacity-55" : ""} /></Panel>}
       {aba === "parceiros" && <Panel className="mt-5 overflow-hidden"><TabelaFinanceira rotulo="Clientes e fornecedores" itens={config.parceiros} colunas={colunasParceiros((p) => editar("parceiro", p), alternarParceiro)} chaveDe={(p) => p.id} onAbrir={(p) => editar("parceiro", p)} classeLinha={(p) => !p.ativo ? "opacity-55" : ""} /></Panel>}
-      {aba === "produtos" && <><div className="mt-5 flex flex-wrap gap-3"><input aria-label="Buscar produto" value={buscaProduto} onChange={(e) => setBuscaProduto(e.target.value)} placeholder="Buscar por nome…" className="h-10 min-w-[200px] flex-1 rounded-lg border border-border bg-white px-3 text-sm" /><SelectFiltro rotulo="Filtrar por fornecedor" valor={filtroFornecedor} onChange={setFiltroFornecedor} opcoes={[{ valor: "", texto: "Todos os fornecedores" }, { valor: "SEM", texto: "Sem fornecedor" }, ...config.parceiros.filter((p) => papeisDoParceiro(p).includes("FORNECEDOR")).map((p) => ({ valor: String(p.id), texto: p.nome }))]} /><SelectFiltro rotulo="Filtrar por centro de custo" valor={filtroCentro} onChange={setFiltroCentro} opcoes={[{ valor: "", texto: "Todos os centros" }, { valor: "SEM", texto: "Sem centro" }, ...config.centrosCusto.filter((c) => c.ativo).map((c) => ({ valor: String(c.id), texto: c.nome }))]} /><SelectFiltro rotulo="Filtrar por uso" valor={filtroUso} onChange={setFiltroUso} opcoes={[{ valor: "", texto: "Todos os usos" }, { valor: "usoSanitario", texto: "Uso sanitário" }, { valor: "usoNutricional", texto: "Uso nutricional" }, { valor: "usoAgricola", texto: "Uso agrícola" }, { valor: "SEM", texto: "Sem uso específico" }]} /><SelectFiltro rotulo="Filtrar por situação" valor={filtroSituacao} onChange={setFiltroSituacao} opcoes={[{ valor: "TODOS", texto: "Ativos e inativos" }, { valor: "ATIVOS", texto: "Ativos" }, { valor: "INATIVOS", texto: "Inativos" }]} /></div><Panel className="mt-3 overflow-hidden"><TabelaFinanceira rotulo="Produtos" itens={produtosFiltrados} colunas={colunasProdutos((p) => editar("produto", p), alternarProduto)} chaveDe={(p) => p.id} onAbrir={(p) => editar("produto", p)} classeLinha={(p) => p.ativo === false ? "opacity-55" : ""} /></Panel></>}
+      {aba === "produtos" && <><div className="mt-5 flex flex-wrap gap-3"><input aria-label="Buscar produto" value={buscaProduto} onChange={(e) => setBuscaProduto(e.target.value)} placeholder="Buscar por nome…" className="h-10 min-w-[200px] flex-1 rounded-lg border border-border bg-white px-3 text-sm" /><SelectFiltro rotulo="Filtrar por fornecedor" valor={filtroFornecedor} onChange={setFiltroFornecedor} opcoes={[{ valor: "", texto: "Todos os fornecedores" }, { valor: "SEM", texto: "Sem fornecedor" }, ...config.parceiros.filter((p) => papeisDoParceiro(p).includes("FORNECEDOR")).map((p) => ({ valor: String(p.id), texto: p.nome }))]} /><SelectFiltro rotulo="Filtrar por centro de custo" valor={filtroCentro} onChange={setFiltroCentro} opcoes={[{ valor: "", texto: "Todos os centros" }, { valor: "SEM", texto: "Sem centro" }, ...config.centrosCusto.filter((c) => c.ativo).map((c) => ({ valor: String(c.id), texto: c.nome }))]} /><SelectFiltro rotulo="Filtrar por uso" valor={filtroUso} onChange={setFiltroUso} opcoes={[{ valor: "", texto: "Todos" }, { valor: "usoAgricola", texto: "Uso agrícola" }, { valor: "SEM", texto: "Sem uso específico" }]} /><SelectFiltro rotulo="Filtrar por situação" valor={filtroSituacao} onChange={setFiltroSituacao} opcoes={[{ valor: "TODOS", texto: "Ativos e inativos" }, { valor: "ATIVOS", texto: "Ativos" }, { valor: "INATIVOS", texto: "Inativos" }]} /></div><Panel className="mt-3 overflow-hidden"><TabelaFinanceira rotulo="Produtos" itens={produtosFiltrados} colunas={colunasProdutos((p) => editar("produto", p), alternarProduto)} chaveDe={(p) => p.id} onAbrir={(p) => editar("produto", p)} classeLinha={(p) => p.ativo === false ? "opacity-55" : ""} /></Panel></>}
       {aba === "categorias" && <Panel className="mt-5 overflow-hidden"><TabelaFinanceira rotulo="Categorias financeiras" itens={categorias} colunas={colunasCategorias((c) => editar("categoria", c), alternarCategoria)} chaveDe={(c) => c.id} onAbrir={(c) => editar("categoria", c)} classeLinha={(c) => !c.ativo ? "opacity-55" : ""} /></Panel>}
       {aba === "centros" && <Panel className="mt-5 overflow-hidden"><TabelaFinanceira rotulo="Centros de custo" itens={config.centrosCusto} colunas={colunasCentros((c) => editar("centro", c), alternarCentro)} chaveDe={(c) => c.id} onAbrir={(c) => editar("centro", c)} classeLinha={(c) => !c.ativo ? "opacity-55" : ""} /></Panel>}
     </fieldset>

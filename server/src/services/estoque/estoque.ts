@@ -1,7 +1,7 @@
 import { prisma } from "../../db.js";
 import { Prisma, type OrigemMovimentoEstoque, type TipoMovimento } from "@prisma/client";
 import { z } from "zod";
-import { saldoProduto, custoVacaDia, custoMedioDaBase, valorSaidaDaBase, ORIGENS_CUSTO_MEDIO, type BaseCusto, type MovIn } from "./estoque.calc.js";
+import { saldoProduto, custoMedioDaBase, valorSaidaDaBase, ORIGENS_CUSTO_MEDIO, type BaseCusto, type MovIn } from "./estoque.calc.js";
 import { auditar } from "../financeiro/regras.js";
 import { propriedadePrincipalId, escopoPadraoLeitura } from "../propriedade.js";
 import { resolverCentroSaida } from "./centro.calc.js";
@@ -16,11 +16,6 @@ export class EstoqueError extends Error {
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 // O original e seu movimento inverso se anulam no razão físico.
 export const statusSaldoEstoque: Prisma.EnumStatusMovimentoEstoqueFilter = { in: ["CONFIRMADO", "REVERTIDO"] };
-export const saidaConsumoConfirmada = {
-  tipo: "SAIDA",
-  status: "CONFIRMADO",
-  reversaoDeId: null,
-} satisfies Prisma.MovimentoEstoqueWhereInput;
 const naoFutura = z.string().refine((s) => new Date(s) <= new Date(), "data não pode ser futura");
 
 // MAX_QTD compatível com MovimentoEstoque.quantidade Decimal(12,3); MAX_CUSTO com
@@ -38,7 +33,6 @@ export const movimentoSchema = z
     // 3 casas = MovimentoEstoque.quantidade Decimal(12,3); 0,0004 seria gravado como 0,000.
     quantidade: z.number().finite().min(-MAX_QTD, "quantidade muito alta").max(MAX_QTD, "quantidade muito alta").multipleOf(0.001, "quantidade aceita no máximo 3 casas decimais"),
     custoUnitario: z.number().nonnegative().max(MAX_CUSTO, "custo unitário muito alto").optional(),
-    grupoId: z.number().int().optional(),
     observacao: z.string().min(5, "justificativa é obrigatória").max(200),
     propriedadeId: z.number().int().optional(), // sítio (multi-propriedade)
     centroCustoId: z.number().int().positive().nullable().optional(),
@@ -78,9 +72,9 @@ type DbTemEstoque = Pick<Prisma.TransactionClient, "movimentoEstoque">;
 // Mesmo escopo de sítio do custo médio (movimento sem propriedade = principal;
 // propriedadeId null = consolidado, qualquer sítio). O sítio vai num AND porque
 // o escopo da principal também é um OR.
-// Atenção: isto decide só o que PODE ser baixado (dieta, sanidade, aplicação,
-// venda); a lista de saldos (listarSaldos) continua mostrando qualquer produto
-// com movimento no sítio.
+// Atenção: isto decide só o que PODE ser baixado (aplicação agrícola, venda);
+// a lista de saldos (listarSaldos) continua mostrando qualquer produto com
+// movimento no sítio.
 async function filtroTemEstoque(propriedadeId: number | null): Promise<Prisma.MovimentoEstoqueWhereInput> {
   return {
     status: "CONFIRMADO",
@@ -92,7 +86,7 @@ async function filtroTemEstoque(propriedadeId: number | null): Promise<Prisma.Mo
   };
 }
 
-/** Baixas automáticas (dieta, sanidade, aplicação agrícola) só consomem produto que tem estoque no sítio. */
+/** Baixas automáticas (aplicação agrícola) só consomem produto que tem estoque no sítio. */
 export async function produtoTemEstoque(db: DbTemEstoque, produtoId: number, propriedadeId: number | null): Promise<boolean> {
   const mov = await db.movimentoEstoque.findFirst({ where: { produtoId, ...(await filtroTemEstoque(propriedadeId)) }, select: { id: true } });
   return mov != null;
@@ -169,9 +163,9 @@ export async function obterCustoMedio(db: DbCusto, produtoId: number, propriedad
   return (await obterCustosMedios(db, [produtoId], propriedadeId)).get(produtoId) ?? null;
 }
 
-const USO_CAMPO = { sanitario: "usoSanitario", nutricional: "usoNutricional", agricola: "usoAgricola" } as const;
+const USO_CAMPO = { agricola: "usoAgricola" } as const;
 
-export async function listarSaldos(f?: { centroCustoId?: number; propriedadeId?: number | null; uso?: "sanitario" | "nutricional" | "agricola" }) {
+export async function listarSaldos(f?: { centroCustoId?: number; propriedadeId?: number | null; uso?: "agricola" }) {
   // O estoque lista os produtos ativos que já tiveram movimento no sítio (qualquer
   // status) — o produto entra no estoque pela operação, não pelo cadastro.
   // Movimento sem propriedade conta como da principal (mesmo escopo do custo médio).
@@ -206,7 +200,7 @@ export async function listarSaldos(f?: { centroCustoId?: number; propriedadeId?:
       produtoId: p.id,
       nome: p.nome,
       categoria: p.categoria
-        ? { id: p.categoria.id, nome: p.categoria.nome, usoSanitario: p.categoria.usoSanitario, usoNutricional: p.categoria.usoNutricional, usoAgricola: p.categoria.usoAgricola }
+        ? { id: p.categoria.id, nome: p.categoria.nome, usoAgricola: p.categoria.usoAgricola }
         : null,
       unidade: p.unidade,
       centrosCusto: p.centrosCusto.map(({ centroCusto }) => ({ id: centroCusto.id, nome: centroCusto.nome })),
@@ -223,13 +217,10 @@ export async function listarSaldos(f?: { centroCustoId?: number; propriedadeId?:
 }
 
 /** Para onde levar o usuário quando o movimento NÃO nasceu de uma operação financeira (saídas automáticas). */
-export type VinculoMovimento =
-  | { tipo: "LOTE"; id: number; nome: string }
-  | { tipo: "ANIMAL"; id: number; numero: string; nome: string | null }
-  | { tipo: "TALHAO"; id: number; codigo: string };
+export type VinculoMovimento = { tipo: "TALHAO"; id: number; codigo: string };
 
-/** Quais vínculos operacionais o leitor pode ver (quem só tem financeiro não vê animal/lote/talhão). Ausente = todos. */
-export type VinculosVisiveis = { pecuaria: boolean; agricultura: boolean };
+/** Quais vínculos operacionais o leitor pode ver (quem só tem financeiro não vê talhão). Ausente = todos. */
+export type VinculosVisiveis = { agricultura: boolean };
 
 export type FiltroMovimentos = {
   produtoId?: number; tipo?: string; q?: string; origem?: string; centroCustoId?: number;
@@ -244,7 +235,7 @@ function idOperacaoDaBusca(q: string): number | null {
 }
 
 export async function listarMovimentos(f?: FiltroMovimentos) {
-  const visiveis = f?.vinculosVisiveis ?? { pecuaria: true, agricultura: true };
+  const visiveis = f?.vinculosVisiveis ?? { agricultura: true };
   const pagina = f?.pagina ?? 1;
   const porPagina = f?.porPagina ?? 15;
   const and: Prisma.MovimentoEstoqueWhereInput[] = [
@@ -283,27 +274,17 @@ export async function listarMovimentos(f?: FiltroMovimentos) {
       include: {
         produto: { include: { centrosCusto: { include: { centroCusto: true } } } },
         operacao: { include: { parceiro: true } },
-        grupo: true,
         // Origem das saídas automáticas (sem operação financeira): um único join por relação, sem N+1.
-        consumoPeriodo: { select: { grupoId: true, grupo: { select: { nome: true } } } },
-        eventoSanitario: { select: { animalId: true, animal: { select: { numero: true, nome: true } } } },
         operacaoAgricola: { select: { talhaoId: true, talhao: { select: { codigo: true } } } },
       },
     }),
   ]);
   const itens = ms.map((m) => {
     let vinculo: VinculoMovimento | null = null;
-    // Dado de área que o leitor não tem (lote/animal → pecuária, talhão →
-    // agricultura) não sai: nem o vínculo, nem a observação gerada pela saída
-    // automática (que cita animal/talhão).
+    // Dado de área que o leitor não tem (talhão → agricultura) não sai: nem o
+    // vínculo, nem a observação gerada pela saída automática (que cita talhão).
     let oculto = false;
-    if (m.consumoPeriodo) {
-      if (visiveis.pecuaria) vinculo = { tipo: "LOTE", id: m.consumoPeriodo.grupoId, nome: m.consumoPeriodo.grupo.nome };
-      else oculto = true;
-    } else if (m.eventoSanitario) {
-      if (visiveis.pecuaria) vinculo = { tipo: "ANIMAL", id: m.eventoSanitario.animalId, numero: m.eventoSanitario.animal.numero, nome: m.eventoSanitario.animal.nome };
-      else oculto = true;
-    } else if (m.operacaoAgricola) {
+    if (m.operacaoAgricola) {
       if (visiveis.agricultura) vinculo = { tipo: "TALHAO", id: m.operacaoAgricola.talhaoId, codigo: m.operacaoAgricola.talhao.codigo };
       else oculto = true;
     }
@@ -313,7 +294,7 @@ export async function listarMovimentos(f?: FiltroMovimentos) {
       produto: m.produto.nome,
       centrosCusto: m.produto.centrosCusto.map(({ centroCusto }) => ({ id: centroCusto.id, nome: centroCusto.nome })),
       tipo: m.tipo,
-      origem: m.origem, // COMPRA | CONSUMO_DIRETO | TRANSFERENCIA | PRODUCAO | DEVOLUCAO | BONIFICACAO | INVENTARIO_INICIAL | NUTRICAO | SANIDADE | APLICACAO | PERDA | AJUSTE_INVENTARIO
+      origem: m.origem, // COMPRA | CONSUMO_DIRETO | TRANSFERENCIA | PRODUCAO | DEVOLUCAO | BONIFICACAO | INVENTARIO_INICIAL | APLICACAO | PERDA | AJUSTE_INVENTARIO
       status: m.status,
       reversaoDeId: m.reversaoDeId,
       data: iso(m.data),
@@ -321,11 +302,10 @@ export async function listarMovimentos(f?: FiltroMovimentos) {
       custoUnitario: Number(m.custoUnitario),
       valorTotal: Number(m.valorTotal),
       fornecedor: m.operacao?.parceiro?.nome ?? null,
-      grupo: visiveis.pecuaria ? m.grupo?.nome ?? null : null,
       observacao: oculto ? null : m.observacao ?? null,
       /** Operação financeira de origem (compra, ajuste, inventário…); null nas saídas automáticas. */
       operacaoId: m.operacaoId ?? null,
-      /** Lote/animal/talhão de origem das saídas automáticas (dieta/sanidade/aplicação); null nos demais. */
+      /** Talhão de origem das saídas automáticas (aplicação agrícola); null nos demais. */
       vinculo,
     };
   });
@@ -386,7 +366,6 @@ async function registrarMovimentoTx(tx: Prisma.TransactionClient, input: Movimen
         quantidade: input.quantidade,
         custoUnitario: custo,
         valorTotal,
-        grupoId: input.grupoId ?? null,
         operacaoId: operacao.id,
         itemOperacaoId: operacao.itens[0]?.id,
         propriedadeId,
@@ -470,20 +449,4 @@ export async function estornarMovimentoTx(
     antes: { produtoId: mov.produtoId, tipo: mov.tipo, origem: mov.origem, quantidade: mov.quantidade.toNumber(), operacaoId: mov.operacaoId, centroCustoId: mov.centroCustoId },
     depois: { status: "REVERTIDO", movimentoInversoId: inverso.id } });
   return { original: mov, inverso };
-}
-
-export async function calcularCustoVacaDia(periodoDias = 30, propriedadeId?: number | null) {
-  const hoje = iso(new Date());
-  // Por sítio: vacas e saídas filtram pela propriedade quando há escopo.
-  const vacas = await prisma.animal.count({ where: { status: "ATIVO", resumo: { del: { not: null } }, ...(propriedadeId ? { propriedadeId } : {}) } });
-  const limite = new Date(hoje); // meia-noite UTC do dia de hoje — alinha com a janela da função pura (inclui a data-limite)
-  limite.setDate(limite.getDate() - periodoDias);
-  const saidas = await prisma.movimentoEstoque.findMany({
-    where: { ...saidaConsumoConfirmada, data: { gte: limite }, ...(propriedadeId ? { propriedadeId } : {}) },
-    select: { valorTotal: true, data: true },
-  });
-  const arr = saidas.map((s) => ({ valorTotal: Number(s.valorTotal), data: iso(s.data) }));
-  const custo = custoVacaDia(arr, vacas, hoje, periodoDias);
-  const totalConsumo = Math.round(arr.reduce((a, s) => a + s.valorTotal, 0) * 100) / 100;
-  return { periodoDias, custoVacaDia: custo, vacasEmLactacao: vacas, totalConsumo };
 }

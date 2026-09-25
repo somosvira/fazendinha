@@ -1,5 +1,4 @@
 import { prisma } from "../db.js";
-import { rotuloAnimal } from "./rebanho/identificacao.js";
 
 /**
  * Busca global de entidades reais para a paleta de comandos (⌘K).
@@ -7,7 +6,7 @@ import { rotuloAnimal } from "./rebanho/identificacao.js";
  * Evoluindo o ⌘K para entidades — "pode ser".
  */
 export type ResultadoBusca = {
-  tipo: "talhao" | "animal" | "lote" | "categoria" | "fornecedor";
+  tipo: "talhao" | "categoria" | "fornecedor";
   entidadeId: string;
   label: string;
   sublabel: string;
@@ -34,46 +33,6 @@ export function mapearTalhao(row: {
     sublabel: row.variedade?.nome ?? row.lavoura?.nome ?? "Talhão",
     tab: "pla-talhao",
     grupo: "Talhões",
-  };
-}
-
-export function mapearAnimal(row: {
-  id: number;
-  numero: string;
-  nome: string | null;
-  categoria: string;
-  raca?: { nome: string } | null;
-  brincoEletronico?: string | null;
-}): ResultadoBusca {
-  return {
-    tipo: "animal",
-    entidadeId: String(row.id),
-    label: rotuloAnimal(row.numero, row.nome),
-    // Mostra o brinco eletrônico no sublabel quando houver — confirma pro
-    // usuário que o número lido pelo bastão casou com este animal.
-    sublabel:
-      row.categoria +
-      (row.raca?.nome ? " · " + row.raca.nome : "") +
-      (row.brincoEletronico ? " · brinco " + row.brincoEletronico : ""),
-    tab: "reb-animal",
-    grupo: "Animais",
-  };
-}
-
-export function mapearLote(row: {
-  id: number;
-  codigo: string;
-  nome: string;
-  categoria: string;
-  numCabecas: number;
-}): ResultadoBusca {
-  return {
-    tipo: "lote",
-    entidadeId: String(row.id),
-    label: row.codigo + " · " + row.nome,
-    sublabel: row.categoria + " · " + row.numCabecas + " cab",
-    tab: "cor-lote",
-    grupo: "Lotes coletivos",
   };
 }
 
@@ -110,14 +69,14 @@ const TAKE = 6;
 
 /**
  * Busca entidades reais no banco. Retorna [] se q tiver < 2 caracteres.
- * Consulta os 5 modelos em paralelo, cada um com `contains` case-insensitive,
- * concatenando na ordem: talhões, animais, lotes, categorias, fornecedores.
+ * Consulta os 3 modelos em paralelo, cada um com `contains` case-insensitive,
+ * concatenando na ordem: talhões, categorias, fornecedores.
  */
 export async function buscarEntidades(q: string): Promise<ResultadoBusca[]> {
   if (!qValido(q)) return [];
   const termo = q.trim();
 
-  const [talhoes, animais, lotes, categorias, fornecedores] = await Promise.all([
+  const [talhoes, categorias, fornecedores] = await Promise.all([
     prisma.talhao.findMany({
       where: {
         OR: [
@@ -128,32 +87,6 @@ export async function buscarEntidades(q: string): Promise<ResultadoBusca[]> {
       include: { variedade: { select: { nome: true } }, lavoura: { select: { nome: true } } },
       // ATIVO (não BAIXADO) primeiro, depois por código
       orderBy: [{ estado: "asc" }, { codigo: "asc" }],
-      take: TAKE,
-    }),
-    prisma.animal.findMany({
-      where: {
-        OR: [
-          { numero: { contains: termo, mode: "insensitive" } },
-          { nome: { contains: termo, mode: "insensitive" } },
-          // Brinco eletrônico (RFID): o bastão de leitura atua como teclado e
-          // digita o número da etiqueta no campo de busca — casar aqui é a
-          // Fase 1 do A6 (sem hardware dedicado).
-          { brincoEletronico: { contains: termo, mode: "insensitive" } },
-        ],
-      },
-      include: { raca: { select: { nome: true } } },
-      // ATIVO antes de BAIXADO
-      orderBy: [{ status: "asc" }, { numero: "asc" }],
-      take: TAKE,
-    }),
-    prisma.loteCorte.findMany({
-      where: {
-        OR: [
-          { codigo: { contains: termo, mode: "insensitive" } },
-          { nome: { contains: termo, mode: "insensitive" } },
-        ],
-      },
-      orderBy: { codigo: "asc" },
       take: TAKE,
     }),
     prisma.categoria.findMany({
@@ -170,8 +103,6 @@ export async function buscarEntidades(q: string): Promise<ResultadoBusca[]> {
 
   return [
     ...talhoes.map(mapearTalhao),
-    ...animais.map(mapearAnimal),
-    ...lotes.map(mapearLote),
     ...categorias.map(mapearCategoria),
     ...fornecedores.map(mapearFornecedor),
   ];

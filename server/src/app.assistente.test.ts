@@ -10,10 +10,7 @@ describe("assistente temporariamente inativo", () => {
   it.each([
     ["POST", "/api/bot/ask"],
     ["GET", "/api/whatsapp/webhook"],
-    ["POST", "/api/rebanho/ia"],
-    ["GET", "/api/rebanho/ia/insights"],
     ["POST", "/api/plantio/ia"],
-    ["POST", "/api/corte/ia"],
   ])("bloqueia %s %s antes de executar o canal", async (method, pathname) => {
     const resposta = await app.request(`http://localhost${pathname}`, { method });
     expect(resposta.status).toBe(503);
@@ -21,6 +18,6 @@ describe("assistente temporariamente inativo", () => {
   });
 
   it("não confunde inseminação artificial com o assistente", () => {
-    expect(rotaDoAssistente("/api/rebanho/iatf/protocolos")).toBe(false);
+    expect(rotaDoAssistente("/api/plantio/iatf/protocolos")).toBe(false);
   });
 });

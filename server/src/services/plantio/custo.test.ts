@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { quebrarPorCategoria } from "../rebanho/custo-producao.js";
+import { quebrarPorCategoria } from "./custo.quebra.js";
 
 // O motor de quebra por categoria é reusado do rebanho; aqui validamos a LÓGICA
 // de split custeio vs investimento do café (a parte nova do P2) sem tocar no
