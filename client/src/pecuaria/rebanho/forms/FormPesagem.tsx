@@ -47,7 +47,7 @@ export function FormPesagem({ animalId, pesagem = null, onSalvo, onFechar }: {
   };
 
   const formId = "form-pesagem-animal";
-  return <PainelCadastro aberto eyebrow="Pesagem" titulo={pesagem ? "Editar pesagem" : "Registrar pesagem"} onFechar={() => { if (!salvando) onFechar(); }}
+  return <PainelCadastro aberto titulo={pesagem ? "Editar pesagem" : "Registrar pesagem"} onFechar={() => { if (!salvando) onFechar(); }}
     rodape={<><Button secondary onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form={formId} disabled={salvando}>{salvando ? "Salvando…" : pesagem ? "Salvar pesagem" : "Registrar pesagem"}</Button></>}>
     <form id={formId} onSubmit={submeter} noValidate className="grid gap-4">
       <ErrorBox erro={erroGeral} />

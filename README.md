@@ -132,7 +132,7 @@ cp server/.env.example server/.env
 # o link de definir senha. Sem usuários e sem SHARED_ACCESS_TOKEN, a porta fica
 # aberta em dev.
 
-# 3. Subir tudo (`dev:server` roda `prisma db push` antes do watch)
+# 3. Subir tudo (`dev:server` roda `prisma migrate deploy` antes do watch)
 pnpm dev
 
 # 4. (Opcional) Dados de exemplo
@@ -192,7 +192,7 @@ fazendinha/
 │   ├── scripts/               # bateria-ia (gabarito/run)
 │   └── prisma/
 │       ├── schema.prisma      # ~120 models + ~65 enums (schemas `public` + `pecuaria`)
-│       ├── migrations/        # migrations cronológicas (sync em prod é manual: migrate deploy ou db push)
+│       ├── migrations/        # baseline + migration da pecuária v1 (sync em prod é manual: migrate deploy)
 │       ├── seed*.ts import-pecuaria.ts
 │       └── rio_novo.json      # Dados reais extraídos (pecuaria_v1.json é gerado, não versionado)
 ├── scripts/                   # extract_rio_novo.py, gen-nav-doc.ts
@@ -213,14 +213,14 @@ fazendinha/
 | Comando | O que faz |
 |---|---|
 | `pnpm dev` | Sobe server (41873) e client (41875) em paralelo. |
-| `pnpm dev:server` | Só backend (roda `prisma db push` antes do watch). |
+| `pnpm dev:server` | Só backend (roda `prisma migrate deploy` antes do watch). |
 | `pnpm dev:client` | Só frontend. |
 | `pnpm build` | Build de produção dos dois workspaces. |
 | `pnpm prisma:generate` | Regera Prisma Client. |
 | `pnpm prisma:migrate` | `prisma migrate dev` (requer `DIRECT_URL`). |
 | `pnpm prisma:studio` | Abre Prisma Studio. |
 | `pnpm gen:nav-doc` | Regera `docs/NAVEGACAO.md` a partir da navegação. |
-| `pnpm --filter rionovo-server run db:push` | Sincroniza o schema sem migration (o que roda em prod). |
+| `pnpm --filter rionovo-server run db:push` | Sincroniza o schema sem migration — não usar com o schema `pecuaria` (apaga os índices parciais). |
 | `pnpm --filter rionovo-server run seed` | Dados de exemplo do financeiro. |
 | `pnpm --filter rionovo-server run seed:usuarios` | Usuários de exemplo. |
 | `pnpm --filter rionovo-server run seed:pecuaria` / `seed:rebanho` / `seed:plantio` / `seed:plantios` / `seed:ponto` | Seeds por módulo (`seed:pecuaria` = catálogos; `seed:rebanho` = 4 sítios de demonstração). |

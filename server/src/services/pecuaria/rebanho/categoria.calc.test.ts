@@ -5,7 +5,7 @@ import {
   type CondicaoRegra, type RegraCategoria,
 } from "./categoria.calc.js";
 
-// os padrões de fábrica (categorias do IDEAGRI), como na migration pecuaria_categorias
+// os padrões de fábrica (categorias do IDEAGRI), como na migration da pecuária v1
 const r = (id: string, nome: string, sexo: "F" | "M", ordem: number, extra: Partial<RegraCategoria> = {}): RegraCategoria => ({
   id, nome, sexo, ordem, automatica: true, ativo: true, idadeMinMeses: null, idadeMaxMeses: null, partos: "QUALQUER", ...extra,
 });

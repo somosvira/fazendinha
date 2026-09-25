@@ -122,7 +122,6 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
       cancelLabel="Ver rascunho atual"
       cancelTone="safe"
       tone="danger"
-      dangerFilled
       processando={preparando}
       onCancel={verRascunhoAtual}
       onDismiss={() => setSubstituirRascunho(false)}

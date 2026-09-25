@@ -51,7 +51,7 @@ export function FormCategoria({ categoria, salvando, erro, onSalvar, onFechar }:
   };
 
   const formId = "form-categoria";
-  return <PainelCadastro aberto eyebrow="Categoria" titulo={categoria ? `Editar ${categoria.nome}` : "Nova categoria"} onFechar={() => { if (!salvando) onFechar(); }}
+  return <PainelCadastro aberto titulo={categoria ? `Editar ${categoria.nome}` : "Nova categoria"} onFechar={() => { if (!salvando) onFechar(); }}
     rodape={<><Button secondary onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form={formId} disabled={salvando}>{salvando ? "Salvando…" : categoria ? "Salvar categoria" : "Criar categoria"}</Button></>}>
     <form id={formId} onSubmit={submeter} className="grid gap-4" noValidate>
       <ErrorBox erro={erro} />

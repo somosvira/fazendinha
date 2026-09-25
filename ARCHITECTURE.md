@@ -94,7 +94,7 @@ A modelagem segue uma divisão em **contextos de domínio**. Cada contexto tem s
 ```mermaid
 flowchart LR
   FIN[Financeiro<br/>Operacao · Compromisso · Transacao · Conta · Periodo]
-  EST[Estoque<br/>Produto · MovimentoEstoque · LoteProduto]
+  EST[Estoque<br/>Produto · MovimentoEstoque]
   PEC[Pecuária (v1 — Rebanho)<br/>Animal · Lote · Movimentação · Categoria · Baixa · Pesagem<br/>schema Postgres separado `pecuaria`]
   PLA[Plantio<br/>Talhões · Safras · Operações agrícolas · Colheita]
   CUL[Cultivo / Milho<br/>Safras · Áreas · Silos]
@@ -345,7 +345,7 @@ Não usamos `react-router`. O `App.tsx` mantém `useState<Tab>` e `router.ts` si
 
 - `schema.prisma`: `url = env("DATABASE_URL")` (**pooled**, `-pooler` no host) e `directUrl = env("DIRECT_URL")` (**direct**).
 - Runtime e `prisma migrate deploy` usam a pooled. `prisma migrate dev` (shadow DB) e `prisma db push` usam a direct.
-- `pnpm dev:server` executa `prisma db push --skip-generate` **antes** de `tsx watch` — o schema local acompanha o código sem migration.
+- `pnpm dev:server` executa `prisma migrate deploy` **antes** de `tsx watch` (não `db push`: os índices únicos parciais da pecuária existem só no SQL da migration).
 
 ### Modelagem
 
@@ -354,7 +354,7 @@ Schema completo em `server/prisma/schema.prisma` (~120 models, ~65 enums). Resum
 | Contexto | Models principais |
 |---|---|
 | Financeiro | `Operacao`, `ItemOperacao`, `CompromissoFinanceiro`, `Liquidacao`, `TransacaoFinanceira`, `MovimentoConta`, `ContaFinanceira`, `Parceiro`, `PeriodoFinanceiro`, `RascunhoOperacao`, `DocumentoFinanceiro`, `AuditoriaFinanceira`, `Categoria` ⊂ `GrupoCategoria`, `CentroCusto` |
-| Estoque | `Produto`, `ComposicaoProdutoItem`, `LocalArmazenamento`, `LoteProduto`, `MovimentoEstoque`, `ConsumoPeriodo`, `PrincipioAtivo` |
+| Estoque | `Produto`, `ProdutoCentroCusto`, `ProdutoFornecedor`, `MovimentoEstoque` |
 | Propriedade | `Propriedade`, `Configuracao`, `ParametroManejo`, `RegistroChuva` |
 | Auth | `Usuario`, `Sessao`, `TokenAcesso` |
 | Pecuária (v1 — Rebanho, schema `pecuaria`) | `Animal`, `Raca`, `ComposicaoRacial`, `Lote`, `Movimentacao`, `MovimentacaoAnimal`, `CategoriaAnimal`, `CategoriaManualAnimal`, `LocalizacaoAnimal`, `DestinoAnimal`, `BaixaAnimal`, `MotivoBaixa`, `Pesagem`, `AuditoriaPecuaria` |
@@ -395,10 +395,10 @@ O modelo financeiro legado (`Lancamento`, `FechamentoMensal`, `ContaBancaria`, `
 
 ### Migrations e sync de schema
 
-- Diretório: `server/prisma/migrations/` — **45 migrations**, nome `AAAAMMDDHHMMSS_descricao_curta`.
+- Diretório: `server/prisma/migrations/` — **2 migrations** (`20260925120000_baseline` + `20260925130000_pecuaria_v1_rebanho`, consolidadas em 25/09/2026), nome `AAAAMMDDHHMMSS_descricao_curta`.
 - **Sempre revisar SQL gerado** antes de commitar. Backfill de dados pode viver na migration, mas **também precisa ser idempotente no boot** (`garantirFundacaoPropriedade`, `garantirDonoBootstrap`), porque `db push` não executa migrations.
-- Dev: `pnpm dev:server` faz `db push`. Migration nova: `pnpm prisma:migrate` com `DIRECT_URL` no `.env`.
-- Prod (Render): `start:prod` é só `node dist/index.js`; o schema é sincronizado por deploy controlado (`migrate deploy` ou `db push`), ver `DEPLOY.md`. Nem toda tabela tem `CREATE TABLE` em migration — `migrate deploy` do zero pode quebrar; recuperar com `migrate resolve --rolled-back <migration> && db push` (seção 9 de [docs/design/multi-propriedade.md](docs/design/multi-propriedade.md)).
+- Dev: `pnpm dev:server` faz `migrate deploy`. Migration nova: `pnpm prisma:migrate` com `DIRECT_URL` no `.env`.
+- Prod (Render): `start:prod` é só `node dist/index.js`; o schema é sincronizado por deploy controlado (`migrate deploy`), ver `DEPLOY.md` §1.4. `migrate deploy` num banco vazio cria tudo; banco com o histórico anterior a 25/09/2026 precisa ser recriado (ou ter a baseline registrada com `migrate resolve --applied`).
 
 ### Período financeiro (fechamento)
 
@@ -593,7 +593,7 @@ describe("motivoAceito", () => {
 ```bash
 pnpm install                         # postinstall do server roda prisma generate
 cp server/.env.example server/.env   # DATABASE_URL (+ DIRECT_URL)
-pnpm dev                             # server: prisma db push + tsx watch (:41873) · client: vite (:41875)
+pnpm dev                             # server: prisma migrate deploy + tsx watch (:41873) · client: vite (:41875)
 ```
 
 ### Build

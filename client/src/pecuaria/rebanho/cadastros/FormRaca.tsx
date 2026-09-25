@@ -39,7 +39,7 @@ export function FormRaca({ raca, onSalvo, onFechar }: { raca: Raca | null; onSal
   };
 
   const formId = "form-raca";
-  return <PainelCadastro aberto eyebrow="Raça" titulo={raca ? `Editar ${raca.nome}` : "Nova raça"} onFechar={() => { if (!emCurso.current) onFechar(); }}
+  return <PainelCadastro aberto titulo={raca ? `Editar ${raca.nome}` : "Nova raça"} onFechar={() => { if (!emCurso.current) onFechar(); }}
     rodape={<><Button secondary onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form={formId} disabled={salvando}>{salvando ? "Salvando…" : raca ? "Salvar raça" : "Criar raça"}</Button></>}>
     <form id={formId} onSubmit={submeter} className="grid gap-4" noValidate>
       <ErrorBox erro={erroGeral} />

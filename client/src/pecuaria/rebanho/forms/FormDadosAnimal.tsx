@@ -87,7 +87,7 @@ export function FormDadosAnimal({ animal, onSalvo, onFechar }: {
   };
 
   const formId = "form-dados-animal";
-  return <PainelCadastro aberto eyebrow="Animal" titulo={`Editar ${animal.brinco}`} onFechar={() => { if (!salvando) onFechar(); }}
+  return <PainelCadastro aberto titulo={`Editar ${animal.brinco}`} onFechar={() => { if (!salvando) onFechar(); }}
     rodape={<><Button secondary onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form={formId} disabled={salvando}>{salvando ? "Salvando…" : "Salvar dados"}</Button></>}>
     <form id={formId} onSubmit={submeter} noValidate className="grid gap-4">
       <ErrorBox erro={erroGeral} />

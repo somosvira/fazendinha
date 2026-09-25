@@ -40,7 +40,7 @@ export function FormMotivoBaixa({ motivo, onSalvo, onFechar }: { motivo: MotivoB
   };
 
   const formId = "form-motivo-baixa";
-  return <PainelCadastro aberto eyebrow="Motivo de baixa" titulo={motivo ? `Editar ${motivo.nome}` : "Novo motivo de baixa"} onFechar={() => { if (!emCurso.current) onFechar(); }}
+  return <PainelCadastro aberto titulo={motivo ? `Editar ${motivo.nome}` : "Novo motivo de baixa"} onFechar={() => { if (!emCurso.current) onFechar(); }}
     rodape={<><Button secondary onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form={formId} disabled={salvando}>{salvando ? "Salvando…" : motivo ? "Salvar motivo" : "Criar motivo"}</Button></>}>
     <form id={formId} onSubmit={submeter} className="grid gap-4" noValidate>
       <ErrorBox erro={erroGeral} />

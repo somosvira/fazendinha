@@ -44,8 +44,8 @@ describe("parceiros", () => {
   });
 
   it("agrega referencias a partir das contagens", async () => {
-    mocks.findMany.mockResolvedValue([{ id: 1, nome: "A", tipo: "AMBOS", _count: { operacoes: 2, compromissos: 1, transacoes: 3 } }]);
+    mocks.findMany.mockResolvedValue([{ id: 1, nome: "A", tipo: "AMBOS", _count: { operacoes: 2, compromissos: 1, transacoes: 3, produtosFornecidos: 2 } }]);
     const [p] = await listarParceiros(true);
-    expect(p).toEqual({ id: 1, nome: "A", tipo: "AMBOS", papeis: ["CLIENTE", "FORNECEDOR"], referencias: 6 });
+    expect(p).toEqual({ id: 1, nome: "A", tipo: "AMBOS", papeis: ["CLIENTE", "FORNECEDOR"], referencias: 8 });
   });
 });

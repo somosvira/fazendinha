@@ -52,6 +52,7 @@ export const COMANDOS: Comando[] = [
   // "fin-plano"/"fin-ia" removidos: abas Categorias e IA financeira ocultas até
   // terem backend real (ver data/acessos.ts).
   { id: "fin-relatorio", tab: "relatorio", label: "Relatórios", grupo: "Financeiro", sinonimos: ["central de relatórios", "relatório gerencial", "dre", "fluxo de caixa"], descricao: "Central de relatórios de toda a fazenda" },
+  { id: "estoque", tab: "estoque", label: "Estoque", grupo: "Financeiro", sinonimos: ["insumo", "insumos", "saldo", "almoxarifado", "medicamento", "produto", "defensivo", "fertilizante"], descricao: "Estoque de insumos — saldos, movimentos e ajustes" },
 
   // — Pecuária: cadastro individual único, independentemente da finalidade —
   { id: "pec-rebanho", tab: "pec-rebanho", label: "Rebanho", grupo: "Pecuária", sinonimos: ["rebanho", "pecuária", "vaca", "vacas", "boi", "gado", "bovino", "animais", "brinco", "ficha do animal", "lote", "movimentar", "saída", "pesagem"], descricao: "Cadastro de animais do rebanho" },

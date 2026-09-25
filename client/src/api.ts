@@ -160,29 +160,6 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
   return res.json();
 }
 
-export interface SimPrecoLeite {
-  base: { litros: number; precoMedio: number; receitaLeite: number; custeioLeite: number; fluxoPeriodo: number };
-  resultado: {
-    variacaoPct: number; precoBase: number; precoSimulado: number;
-    receitaLeiteBase: number; receitaLeiteSimulada: number; deltaReceita: number;
-    margemLeiteBase: number; margemLeiteSimulada: number;
-    fluxoPeriodoBase: number; fluxoPeriodoSimulado: number;
-  };
-}
-export interface SimRacao {
-  base: { custoVacaDiaAtual: number; vacasEmLactacao: number; periodoDias: number };
-  resultado: {
-    custoVacaDiaAtual: number; custoVacaDiaSimulado: number; deltaVacaDia: number;
-    vacasEmLactacao: number; periodoDias: number;
-    custoMensalAtual: number; custoMensalSimulado: number; economiaMensal: number;
-  };
-}
-
-export const simularPrecoLeite = (variacaoPct: number) =>
-  postJson<SimPrecoLeite>("/simulacao/preco-leite", { variacaoPct });
-export const simularRacao = (params: { variacaoPct?: number; custoVacaDiaNovo?: number; periodoDias?: number }) =>
-  postJson<SimRacao>("/simulacao/racao", params);
-
 /**
  * GET /api/financeiro/relatorio-gerencial — agregados do relatório gerencial.
  * `propriedadeId` explícito sobrescreve o sítio ativo; `null` pede o consolidado

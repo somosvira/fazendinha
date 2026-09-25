@@ -183,7 +183,7 @@ describe("resumoCancelamento (via obterOperacao)", () => {
       id: 9, propriedadeId: 1, parceiro: null, itens: [],
       compromissos: [],
       transacoes: [{ id: 40, tipo: "PAGAMENTO", status: "CONFIRMADA", data: new Date("2026-09-10"), valorTotal: decimal("50"), tipoRevertida: null, revertidaPor: null, movimentos: [] }],
-      movimentosEstoque: [{ id: 31, status: "CONFIRMADO", tipo: "ENTRADA", produtoId: 4, quantidade: decimal("10"), reversaoDeId: null, revertidoPor: null, produto: { id: 4, nome: "Ração bovina", unidade: "kg" } }],
+      movimentosEstoque: [{ id: 31, status: "CONFIRMADO", tipo: "ENTRADA", produtoId: 4, quantidade: decimal("10"), reversaoDeId: null, revertidoPor: null, produto: { id: 4, nome: "Ração bovina", unidade: "KG" } }],
       documentos: [],
     });
 

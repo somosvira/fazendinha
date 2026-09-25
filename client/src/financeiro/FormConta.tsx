@@ -18,7 +18,7 @@ export function FormConta({ conta, aberto, ordemInicial = 0, onSalvo, onFechar }
   const [tipo, setTipo] = useState<TipoConta>(conta?.tipo ?? "BANCO");
   const [instituicao, setInstituicao] = useState(conta?.instituicao ?? "");
   const [identificacao, setIdentificacao] = useState(conta?.identificacao ?? "");
-  const [saldoAbertura, setSaldoAbertura] = useState(formatarValorMonetario(conta?.saldoAbertura ?? "0"));
+  const [saldoAbertura, setSaldoAbertura] = useState(conta ? formatarValorMonetario(conta.saldoAbertura) : "");
   const [dataSaldoAbertura, setDataSaldoAbertura] = useState(conta?.dataSaldoAbertura.slice(0, 10) ?? hoje());
   const [incluirNoSaldoGeral, setIncluirNoSaldoGeral] = useState(conta?.incluirNoSaldoGeral ?? true);
   const [erros, setErros] = useState<ErrosCampo>({});
@@ -31,7 +31,9 @@ export function FormConta({ conta, aberto, ordemInicial = 0, onSalvo, onFechar }
   const submeter = async (e: FormEvent) => {
     e.preventDefault();
     if (emCurso.current) return;
-    const validacao = validarConta({ nome, saldoAbertura, dataSaldoAbertura, tipo, instituicao, agencia: extras.agencia, numeroConta: extras.numeroConta, titular: extras.titular }, { aberturaEditavel });
+    // Campo vazio (só a dica "0,00" à mostra) vale saldo zero.
+    const saldoInformado = saldoAbertura.trim() === "" ? "0" : saldoAbertura;
+    const validacao = validarConta({ nome, saldoAbertura: saldoInformado, dataSaldoAbertura, tipo, instituicao, agencia: extras.agencia, numeroConta: extras.numeroConta, titular: extras.titular }, { aberturaEditavel });
     setErros(validacao); setErroGeral(null);
     if (Object.keys(validacao).length) return;
     const texto = (v: string) => (v.trim() === "" ? null : v.trim());
@@ -39,7 +41,7 @@ export function FormConta({ conta, aberto, ordemInicial = 0, onSalvo, onFechar }
     const adicionais = { ...Object.fromEntries(Object.entries(extras).map(([k, v]) => [k, texto(v)])), tipoBancario: tipoBancario || null };
     try {
       if (!conta) {
-        await criarConta({ ...adicionais, nome: nome.trim(), tipo, instituicao: texto(instituicao), identificacao: texto(identificacao), saldoAbertura: valorMonetario(saldoAbertura), dataSaldoAbertura, incluirNoSaldoGeral, ordem: ordemInicial });
+        await criarConta({ ...adicionais, nome: nome.trim(), tipo, instituicao: texto(instituicao), identificacao: texto(identificacao), saldoAbertura: valorMonetario(saldoInformado), dataSaldoAbertura, incluirNoSaldoGeral, ordem: ordemInicial });
       } else {
         const patch: ContaPatch = {};
         Object.assign(patch, Object.fromEntries(Object.entries(adicionais).filter(([k, v]) => v !== (conta[k as keyof Conta] ?? null))));
@@ -49,7 +51,7 @@ export function FormConta({ conta, aberto, ordemInicial = 0, onSalvo, onFechar }
         if (texto(identificacao) !== conta.identificacao) patch.identificacao = texto(identificacao);
         if (incluirNoSaldoGeral !== conta.incluirNoSaldoGeral) patch.incluirNoSaldoGeral = incluirNoSaldoGeral;
         if (aberturaEditavel) {
-          if (valorMonetario(saldoAbertura) !== Number(conta.saldoAbertura)) patch.saldoAbertura = valorMonetario(saldoAbertura);
+          if (valorMonetario(saldoInformado) !== Number(conta.saldoAbertura)) patch.saldoAbertura = valorMonetario(saldoInformado);
           if (dataSaldoAbertura !== conta.dataSaldoAbertura.slice(0, 10)) patch.dataSaldoAbertura = dataSaldoAbertura;
         }
         if (Object.keys(patch).length) await atualizarConta(conta.id, patch);
@@ -62,7 +64,7 @@ export function FormConta({ conta, aberto, ordemInicial = 0, onSalvo, onFechar }
   };
 
   const formId = "form-conta";
-  return <PainelCadastro aberto={aberto} eyebrow="Conta financeira" titulo={conta ? `Editar ${conta.nome}` : "Nova conta"} onFechar={() => { if (!emCurso.current) onFechar(); }}
+  return <PainelCadastro aberto={aberto} titulo={conta ? `Editar ${conta.nome}` : "Nova conta"} onFechar={() => { if (!emCurso.current) onFechar(); }}
     rodape={<><Button secondary onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form={formId} disabled={salvando}>{salvando ? "Salvando…" : conta ? "Salvar conta" : "Criar conta"}</Button></>}>
     <form id={formId} onSubmit={submeter} noValidate className="grid gap-4">
       <p className="text-sm text-ink-3">* Campos obrigatórios</p>
@@ -82,7 +84,7 @@ export function FormConta({ conta, aberto, ordemInicial = 0, onSalvo, onFechar }
       {tipo === "CAIXA" && <CamposCadastro prefixo="conta" campos={CAMPOS_CAIXA} valores={extras} onChange={(k, v) => setExtras((s) => ({ ...s, [k]: v }))} erros={erros} />}
       <CampoFormulario id="conta-identificacao" rotulo="Identificação da conta" erro={erros.identificacao} ajuda="Agência, número da conta ou qualquer referência que ajude a reconhecer a conta.">{(p) => <input {...p} value={identificacao} onChange={(e) => setIdentificacao(e.target.value)} placeholder="Ex.: Ag. 1234 · C/C 56789-0" className={classeInput} />}</CampoFormulario>
       <div className="grid gap-4 sm:grid-cols-2">
-        <CampoFormulario id="conta-saldo" rotulo="Saldo de abertura" obrigatorio erro={erros.saldoAbertura}>{(p) => <div className={`mt-1.5 flex overflow-hidden rounded-lg border bg-white transition focus-within:border-[#6f7d68] focus-within:ring-2 focus-within:ring-[#6f7d68]/15 ${erros.saldoAbertura ? "border-red-700" : "border-border"} ${!aberturaEditavel ? "bg-surface-2 text-ink-3" : ""}`}><span aria-hidden="true" className="inline-flex shrink-0 items-center pl-3 text-sm font-normal text-ink-3">R$</span><input {...p} data-slot="input" required inputMode="decimal" disabled={!aberturaEditavel} value={saldoAbertura} onChange={(e) => { const v = e.target.value; if (/^-?[\d.]*,?\d{0,2}$/.test(v)) setSaldoAbertura(v); }} onFocus={() => setSaldoAbertura((atual) => atual.replace(/\./g, ""))} onBlur={() => setSaldoAbertura(formatarValorMonetario(saldoAbertura))} className="min-w-0 flex-1 border-0 bg-transparent px-2 py-2.5 font-normal outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0 focus-visible:outline-none disabled:cursor-not-allowed" /></div>}</CampoFormulario>
+        <CampoFormulario id="conta-saldo" rotulo="Saldo de abertura" obrigatorio erro={erros.saldoAbertura}>{(p) => <div className={`mt-1.5 flex overflow-hidden rounded-lg border bg-white transition focus-within:border-[#6f7d68] focus-within:ring-2 focus-within:ring-[#6f7d68]/15 ${erros.saldoAbertura ? "border-red-700" : "border-border"} ${!aberturaEditavel ? "bg-surface-2 text-ink-3" : ""}`}><span aria-hidden="true" className="inline-flex shrink-0 items-center pl-3 text-sm font-normal text-ink-3">R$</span><input {...p} data-slot="input" required inputMode="decimal" disabled={!aberturaEditavel} value={saldoAbertura} onChange={(e) => { const v = e.target.value; if (/^-?[\d.]*,?\d{0,2}$/.test(v)) setSaldoAbertura(v); }} placeholder="0,00" onFocus={(e) => { const campo = e.currentTarget; setSaldoAbertura((atual) => atual.replace(/\./g, "")); requestAnimationFrame(() => campo.select()); }} onBlur={() => setSaldoAbertura((atual) => (atual.trim() === "" ? "" : formatarValorMonetario(atual)))} className="min-w-0 flex-1 border-0 bg-transparent px-2 py-2.5 font-normal outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0 focus-visible:outline-none disabled:cursor-not-allowed" /></div>}</CampoFormulario>
         <CampoFormulario id="conta-data" rotulo="Data do saldo de abertura" obrigatorio erro={erros.dataSaldoAbertura}>{(p) => <input {...p} required type="date" disabled={!aberturaEditavel} value={dataSaldoAbertura} onChange={(e) => setDataSaldoAbertura(e.target.value)} className={classeInput} />}</CampoFormulario>
       </div>
       {!aberturaEditavel && <p className="rounded-lg border border-border bg-surface-2 p-3 text-xs text-ink-2">Esta conta já possui movimentos; saldo e data de abertura não podem mais ser alterados.</p>}

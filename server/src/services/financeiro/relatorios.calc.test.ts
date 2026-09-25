@@ -16,30 +16,47 @@ function operacao(parcial: Partial<OperacaoComposicao> & { id: number }): Operac
 const mista = operacao({
   id: 7, valorTotal: "1300.00",
   itens: [
-    { id: 11, descricao: "Ração lactação", quantidade: "10", unidade: "sc", valorTotal: "800.00", categoriaId: 3, categoriaNome: "Nutrição", classificacao: "CUSTEIO" },
-    { id: 12, descricao: "Mourões", quantidade: "50", unidade: "un", valorTotal: "500.00", categoriaId: 4, categoriaNome: "Benfeitorias", classificacao: "INVESTIMENTO" },
+    { id: 11, descricao: "Ração lactação", quantidade: "10", unidade: "sc", valorTotal: "800.00", categoriaId: 3, categoriaNome: "Nutrição", classificacao: "CUSTEIO", centroCustoId: null, centroCustoNome: null },
+    { id: 12, descricao: "Mourões", quantidade: "50", unidade: "un", valorTotal: "500.00", categoriaId: 4, categoriaNome: "Benfeitorias", classificacao: "INVESTIMENTO", centroCustoId: null, centroCustoNome: null },
+  ],
+});
+// Nota mista por centro: ração com centro próprio (Pecuária), adubo com outro
+// centro (Agronomia) e um serviço sem centro que herda o da operação (Sede).
+const mistaPorCentro = operacao({
+  id: 13, valorTotal: "1000.00", centroCustoId: 9, centroCusto: { nome: "Sede" },
+  itens: [
+    { id: 21, descricao: "Ração", quantidade: "1", unidade: "sc", valorTotal: "500.00", categoriaId: 3, categoriaNome: "Nutrição", classificacao: "CUSTEIO", centroCustoId: 1, centroCustoNome: "Pecuária" },
+    { id: 22, descricao: "Adubo", quantidade: "1", unidade: "sc", valorTotal: "300.00", categoriaId: 6, categoriaNome: "Adubação", classificacao: "CUSTEIO", centroCustoId: 2, centroCustoNome: "Agronomia" },
+    { id: 23, descricao: "Frete", quantidade: "1", unidade: "un", valorTotal: "200.00", categoriaId: 7, categoriaNome: "Logística", classificacao: "CUSTEIO", centroCustoId: null, centroCustoNome: null },
   ],
 });
 
 describe("filtros do relatório", () => {
   it("sem filtro deixa tudo passar", () => {
-    expect(operacaoPassa(semFiltro, { tipo: "VENDA", status: "CANCELADA", centroCustoId: null })).toBe(true);
+    expect(operacaoPassa(semFiltro, { tipo: "VENDA", status: "CANCELADA" })).toBe(true);
     expect(operacaoPassa(semFiltro, null)).toBe(true);
     expect(partePassa(semFiltro, { categoriaId: null, classificacao: null })).toBe(true);
   });
 
-  it("filtra operação por tipo, situação e centro de custo, com 0 = sem centro", () => {
+  it("filtra operação por tipo e situação; o centro é decidido por parte", () => {
     const f = filtro({ tipos: ["SERVICO"], status: ["CONFIRMADA"], centroCustoIds: [0, 2] });
-    expect(operacaoPassa(f, { tipo: "SERVICO", status: "CONFIRMADA", centroCustoId: 2 })).toBe(true);
-    expect(operacaoPassa(f, { tipo: "SERVICO", status: "CONFIRMADA", centroCustoId: null })).toBe(true);
-    expect(operacaoPassa(f, { tipo: "SERVICO", status: "CONFIRMADA", centroCustoId: 1 })).toBe(false);
-    expect(operacaoPassa(f, { tipo: "VENDA", status: "CONFIRMADA", centroCustoId: 2 })).toBe(false);
-    expect(operacaoPassa(f, { tipo: "SERVICO", status: "CANCELADA", centroCustoId: 2 })).toBe(false);
+    expect(operacaoPassa(f, { tipo: "SERVICO", status: "CONFIRMADA" })).toBe(true);
+    expect(operacaoPassa(f, { tipo: "VENDA", status: "CONFIRMADA" })).toBe(false);
+    expect(operacaoPassa(f, { tipo: "SERVICO", status: "CANCELADA" })).toBe(false);
   });
 
-  it("lançamento sem operação só entra sem filtro de tipo/situação e conta como sem centro", () => {
+  it("filtra a parte por centro de custo efetivo, com 0 = sem centro", () => {
+    const f = filtro({ centroCustoIds: [0, 2] });
+    expect(partePassa(f, { centroCustoId: 2 })).toBe(true);
+    expect(partePassa(f, { centroCustoId: null })).toBe(true);
+    expect(partePassa(f, {})).toBe(true);
+    expect(partePassa(f, { centroCustoId: 1 })).toBe(false);
+  });
+
+  it("lançamento sem operação só entra sem filtro de tipo/situação; o centro fica com a parte", () => {
     expect(operacaoPassa(filtro({ centroCustoIds: [0] }), null)).toBe(true);
-    expect(operacaoPassa(filtro({ centroCustoIds: [1] }), null)).toBe(false);
+    expect(operacaoPassa(filtro({ centroCustoIds: [1] }), null)).toBe(true);
+    expect(partePassa(filtro({ centroCustoIds: [1] }), { centroCustoId: null })).toBe(false);
     expect(operacaoPassa(filtro({ tipos: ["SERVICO"] }), null)).toBe(false);
     expect(operacaoPassa(filtro({ status: ["CONFIRMADA"] }), null)).toBe(false);
   });
@@ -68,6 +85,52 @@ describe("composição por item", () => {
     expect(c.despesas).toMatchObject({ total: "1300.00", custeio: "800.00", investimento: "500.00", semClassificacao: "0.00" });
     expect(c.despesas.porCategoria.map((p) => [p.nome, p.total, p.pct])).toEqual([["Nutrição", "800.00", 61.54], ["Benfeitorias", "500.00", 38.46]]);
     expect(c.despesas.porCentro).toEqual([{ nome: "Pecuária", total: "1300.00", pct: 100 }]);
+  });
+
+  it("nota mista por centro: cada item vai ao seu centro e o item sem centro herda o da operação", () => {
+    const c = comporItens([mistaPorCentro], semFiltro);
+    expect(c.linhas.map((l) => [l.item, l.centroCusto, l.valor])).toEqual([
+      ["Ração", "Pecuária", "500.00"], ["Adubo", "Agronomia", "300.00"], ["Frete", "Sede", "200.00"],
+    ]);
+    expect(c.despesas.porCentro.map((p) => [p.nome, p.total])).toEqual([["Pecuária", "500.00"], ["Agronomia", "300.00"], ["Sede", "200.00"]]);
+  });
+
+  it("centro renomeado depois do snapshot do item agrupa numa única linha com o nome vivo", () => {
+    // O item da operação "mistaPorCentro" guarda o snapshot "Pecuária" (id 1);
+    // se o cadastro foi renomeado para "Bovinocultura", o mapa de nomes vivos
+    // deve prevalecer tanto na linha quanto no total por centro.
+    const nomesCentro = new Map([[1, "Bovinocultura"]]);
+    const c = comporItens([mistaPorCentro], semFiltro, nomesCentro);
+    expect(c.linhas.map((l) => [l.item, l.centroCustoId, l.centroCusto])).toEqual([
+      ["Ração", 1, "Bovinocultura"], ["Adubo", 2, "Agronomia"], ["Frete", 9, "Sede"],
+    ]);
+    expect(c.despesas.porCentro.map((p) => [p.nome, p.total])).toEqual([["Bovinocultura", "500.00"], ["Agronomia", "300.00"], ["Sede", "200.00"]]);
+  });
+
+  it("sem mapa de nomes vivos, mesmo id com nomes de snapshot diferentes ainda vira uma linha só (agrupa por id)", () => {
+    const duasGrafias = operacao({
+      id: 30, valorTotal: "600.00",
+      itens: [
+        { id: 31, descricao: "Ração", quantidade: "1", unidade: "sc", valorTotal: "400.00", categoriaId: 3, categoriaNome: "Nutrição", classificacao: "CUSTEIO", centroCustoId: 1, centroCustoNome: "Pecuária" },
+        { id: 32, descricao: "Sal", quantidade: "1", unidade: "sc", valorTotal: "200.00", categoriaId: 3, categoriaNome: "Nutrição", classificacao: "CUSTEIO", centroCustoId: 1, centroCustoNome: "Bovinocultura (antigo)" },
+      ],
+    });
+    const c = comporItens([duasGrafias], semFiltro);
+    expect(c.despesas.porCentro).toHaveLength(1);
+    expect(c.despesas.porCentro[0].total).toBe("600.00");
+  });
+
+  it("filtro por centro devolve só as partes daquele centro; o centro da operação vale para o item sem centro", () => {
+    const agronomia = comporItens([mistaPorCentro, mista], filtro({ centroCustoIds: [2] }));
+    expect(agronomia.linhas.map((l) => l.item)).toEqual(["Adubo"]);
+    expect(agronomia.despesas.total).toBe("300.00");
+    const sede = comporItens([mistaPorCentro], filtro({ centroCustoIds: [9] }));
+    expect(sede.linhas.map((l) => l.item)).toEqual(["Frete"]);
+    // Nenhuma parte fica sem centro efetivo: a operação tem centro.
+    expect(comporItens([mistaPorCentro], filtro({ centroCustoIds: [0] })).linhas).toEqual([]);
+    // Operação sem centro: os itens sem centro próprio caem em "sem centro".
+    const semCentro = comporItens([{ ...mistaPorCentro, centroCustoId: null, centroCusto: null }], filtro({ centroCustoIds: [0] }));
+    expect(semCentro.linhas.map((l) => [l.item, l.centroCusto])).toEqual([["Frete", "Sem centro de custo"]]);
   });
 
   it("filtro de categoria mantém só a fatia correspondente da operação mista", () => {

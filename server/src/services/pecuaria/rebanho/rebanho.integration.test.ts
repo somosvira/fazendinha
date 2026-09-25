@@ -1,7 +1,8 @@
 // Testes de banco da pecuária v1 (Rebanho): chamam os services reais contra o Postgres.
 // Só rodam com PECUARIA_DB_INTEGRATION=1 (o CI liga; ver .github/workflows/staging.yml) e
 // precisam das migrations aplicadas via `prisma migrate deploy` — os índices parciais de
-// "uma linha aberta por animal" e as FKs ON DELETE SET NULL da baixa só existem no SQL delas.
+// "uma linha aberta por animal" e as categorias padrão só existem no SQL da migration da
+// pecuária v1 (`20260925130000_pecuaria_v1_rebanho`).
 // Cada teste cria os próprios sítios, lotes e animais (nomes/brincos únicos por execução) e o
 // afterAll apaga tudo em ordem segura de FK.
 

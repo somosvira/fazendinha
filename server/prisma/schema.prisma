@@ -155,13 +155,15 @@ enum StatusPeriodoFinanceiro {
 
 // Área responsável pelo gasto: Pecuária, Agronomia, Equipe, Gestão.
 model CentroCusto {
-  id        Int        @id @default(autoincrement())
-  nome      String     @unique
-  ativo     Boolean    @default(true)
-  ordem     Int        @default(0)
-  operacoes Operacao[]
-  produtos  Produto[]
-  safras    Safra[]
+  id                Int                  @id @default(autoincrement())
+  nome              String               @unique
+  ativo             Boolean              @default(true)
+  ordem             Int                  @default(0)
+  operacoes         Operacao[]
+  produtos          ProdutoCentroCusto[]
+  itensOperacao     ItemOperacao[]
+  movimentosEstoque MovimentoEstoque[]
+  safras            Safra[]
 
   @@schema("public")
 }
@@ -181,6 +183,10 @@ model Categoria {
   classificacao ClassificacaoCategoria?
   ativo         Boolean                 @default(true)
   ordem         Int                     @default(0)
+  // Marcação de comportamento — agrícola: aplicável em talhão e alerta de
+  // estoque do plantio. (As marcações sanitária e nutricional voltam com a v3
+  // da pecuária.)
+  usoAgricola   Boolean                 @default(false)
   operacoes     Operacao[]
   produtos      Produto[]
   itens         ItemOperacao[]
@@ -219,135 +225,29 @@ model ContaFinanceira {
   @@schema("public")
 }
 
-enum TipoProduto {
-  MEDICAMENTO
-  RACAO
-  INSUMO
-  MINERAL
-  OUTRO
-
-  @@schema("public")
-}
-
-// Setor operacional (atividade/centro produtivo) a que o produto pertence —
-// dimensão SEPARADA da categoria/centro de custo contábil. Usada para filtrar e
-// agrupar o estoque e refletir o custo por atividade. Espelha os módulos reais
-// da fazenda (rebanho-leite / plantio-café / corte / cultivo-milho). GERAL =
-// insumo compartilhado. Opcional: produto sem setor é exibido como GERAL.
-enum SetorEstoque {
-  LEITE
-  CAFE
-  CORTE
-  MILHO
-  GERAL
-
-  @@schema("public")
-}
-
-// Subtipo agrícola de um Produto usado no Plantio (café). Só preenchido nos
-// insumos da lavoura; null nos produtos do rebanho. A aba Estoque do Plantio
-// filtra Produto por este campo (não polui o estoque do rebanho).
-enum TipoInsumoPlantio {
-  FERTILIZANTE
-  DEFENSIVO
-  HERBICIDA
-  CORRETIVO
-  BIOLOGICO
-  FOLIAR
-  MUDA
-  OUTRO
-
-  @@schema("public")
-}
-
 model Produto {
-  id                 Int                     @id @default(autoincrement())
-  nome               String                  @unique
-  tipo               TipoProduto             @default(INSUMO)
-  // Subtipo agrícola (só nos insumos do Plantio; null no rebanho).
-  subtipoPlantio     TipoInsumoPlantio?
-  unidade            String                  @default("un")
-  custoUnitario      Decimal?                @db.Decimal(12, 2)
-  carencia           Int?
-  percentualMS       Decimal?                @db.Decimal(5, 2)
-  estocavel          Boolean                 @default(true)
-  minimoEstoque      Decimal?                @db.Decimal(12, 2)
-  ativo              Boolean                 @default(true)
-  // Setor operacional (Leite/Café/Corte/Milho/Geral) — dimensão SEPARADA da
-  // categoria contábil abaixo. Null = não classificado (exibido como GERAL).
-  setor              SetorEstoque?
-  // Mapeamento contábil (ponte com o financeiro): default da categoria/centro de custo
-  // que a compra (ENTRADA) deste produto deve lançar.
-  categoria          Categoria?              @relation(fields: [categoriaId], references: [id])
-  categoriaId        Int?
-  centroCusto        CentroCusto?            @relation(fields: [centroCustoId], references: [id])
-  centroCustoId      Int?
-  movimentos         MovimentoEstoque[]
-  itensOperacao      ItemOperacao[]
-  principiosAtivos   ProdutoPrincipioAtivo[]
-  // Receita (ração formulada): itens onde este produto é a ração-mãe, e onde é ingrediente.
-  composicao         ComposicaoProdutoItem[] @relation("ComposicaoDaRacao")
-  usadoEmComposicoes ComposicaoProdutoItem[] @relation("IngredienteEmComposicao")
-  lotes              LoteProduto[]
-  createdAt          DateTime                @default(now())
-  updatedAt          DateTime                @updatedAt
+  id            Int                  @id @default(autoincrement())
+  nome          String               @unique
+  unidade       UnidadeMedida        @default(UN)
+  minimoEstoque Decimal?             @db.Decimal(12, 2)
+  ativo         Boolean              @default(true)
+  // Mapeamento contábil (ponte com o financeiro): categoria padrão que o item
+  // de operação herda ao escolher este produto (classificação vem da categoria).
+  // Obrigatória no cadastro (validada no service); a coluna segue nullable por
+  // causa de produtos legados. Se o produto tem estoque não é atributo dele:
+  // quem decide é o tipo da operação (ItemOperacao.estocavel).
+  categoria     Categoria?           @relation(fields: [categoriaId], references: [id])
+  categoriaId   Int?
+  // Centros de custo onde este produto pode ser usado (N:N). Um só → o item da
+  // operação e a saída de estoque herdam automaticamente; vários → escolha na hora.
+  centrosCusto  ProdutoCentroCusto[]
+  movimentos    MovimentoEstoque[]
+  itensOperacao ItemOperacao[]
+  fornecedores  ProdutoFornecedor[]
+  aplicacoes    OperacaoAgricola[]
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
 
-  @@index([tipo])
-  @@schema("public")
-}
-
-// Um ingrediente da receita de um produto (ração formulada): produto-mãe → ingrediente + proporção.
-// Espelha "Composição de produto" do IDEagri; mesmo padrão do ProdutoPrincipioAtivo (#174).
-model ComposicaoProdutoItem {
-  id            Int      @id @default(autoincrement())
-  produto       Produto  @relation("ComposicaoDaRacao", fields: [produtoId], references: [id], onDelete: Cascade)
-  produtoId     Int
-  ingrediente   Produto  @relation("IngredienteEmComposicao", fields: [ingredienteId], references: [id], onDelete: Cascade)
-  ingredienteId Int
-  proporcao     Decimal  @db.Decimal(6, 3) // % do ingrediente na receita
-  createdAt     DateTime @default(now())
-
-  @@unique([produtoId, ingredienteId])
-  @@index([produtoId])
-  @@index([ingredienteId])
-  @@schema("public")
-}
-
-// Local físico de armazenamento (galpão, farmácia…). Espelha "local de armazenamento" do IDEagri.
-model LocalArmazenamento {
-  id            Int           @id @default(autoincrement())
-  nome          String
-  ativo         Boolean       @default(true)
-  lotes         LoteProduto[]
-  propriedade   Propriedade?  @relation(fields: [propriedadeId], references: [id])
-  propriedadeId Int?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-
-  @@index([propriedadeId])
-  @@schema("public")
-}
-
-// Lote de um produto (código + validade + local). Cadastro/registro paralelo — NÃO é o razão de
-// estoque (o saldo continua em MovimentoEstoque). Espelha "Lote de produto" do IDEagri.
-model LoteProduto {
-  id            Int                 @id @default(autoincrement())
-  produto       Produto             @relation(fields: [produtoId], references: [id], onDelete: Cascade)
-  produtoId     Int
-  codigo        String
-  validade      DateTime?           @db.Date
-  local         LocalArmazenamento? @relation(fields: [localId], references: [id])
-  localId       Int?
-  quantidade    Decimal?            @db.Decimal(12, 2)
-  propriedade   Propriedade?        @relation(fields: [propriedadeId], references: [id])
-  propriedadeId Int?
-  createdAt     DateTime            @default(now())
-  updatedAt     DateTime            @updatedAt
-
-  @@index([produtoId])
-  @@index([validade])
-  @@index([localId])
-  @@index([propriedadeId])
   @@schema("public")
 }
 
@@ -366,41 +266,6 @@ model RegistroChuva {
 
   @@index([data])
   @@index([propriedadeId])
-  @@schema("public")
-}
-
-// Princípio ativo (fármaco) — catálogo. Base para carência/antibiótico: um medicamento é
-// composto por um ou mais princípios ativos, e a carência efetiva do leite/carne deriva da
-// composição. Espelha PRINCIPIOATIVO (665) do IDEagri.
-model PrincipioAtivo {
-  id                 Int                     @id @default(autoincrement())
-  nome               String                  @unique
-  ehAntibiotico      Boolean                 @default(false) // antibiótico → leite em carência não pode ser vendido
-  carenciaLeiteHoras Int? // carência de leite sugerida (horas), quando conhecida
-  carenciaCarneDias  Int? // carência de carne sugerida (dias), quando conhecida
-  ativo              Boolean                 @default(true)
-  produtos           ProdutoPrincipioAtivo[]
-  createdAt          DateTime                @default(now())
-  updatedAt          DateTime                @updatedAt
-
-  @@index([ehAntibiotico])
-  @@schema("public")
-}
-
-// Composição: quais princípios ativos um Produto (medicamento) contém. Join N:N com
-// concentração opcional. Espelha PRODUTOPRINCIPIOATIVO (12445) do IDEagri.
-model ProdutoPrincipioAtivo {
-  id               Int            @id @default(autoincrement())
-  produto          Produto        @relation(fields: [produtoId], references: [id], onDelete: Cascade)
-  produtoId        Int
-  principioAtivo   PrincipioAtivo @relation(fields: [principioAtivoId], references: [id], onDelete: Cascade)
-  principioAtivoId Int
-  concentracao     String? // ex.: "150 mg/mL" — texto livre (a unidade varia por fármaco)
-  createdAt        DateTime       @default(now())
-
-  @@unique([produtoId, principioAtivoId])
-  @@index([produtoId])
-  @@index([principioAtivoId])
   @@schema("public")
 }
 
@@ -431,12 +296,41 @@ model Parceiro {
   operacoes                  Operacao[]
   compromissos               CompromissoFinanceiro[]
   transacoes                 TransacaoFinanceira[]
+  produtosFornecidos         ProdutoFornecedor[]
   createdAt                  DateTime                @default(now())
   updatedAt                  DateTime                @updatedAt
 
   @@unique([documento])
   @@index([nome])
   @@index([tipo, ativo])
+  @@schema("public")
+}
+
+// Catálogo opcional de fornecedores usuais do produto. O fornecedor efetivo de
+// cada entrada continua sendo o parceiro da Operacao que originou o movimento.
+model ProdutoFornecedor {
+  produto      Produto  @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+  produtoId    Int
+  fornecedor   Parceiro @relation(fields: [fornecedorId], references: [id], onDelete: Cascade)
+  fornecedorId Int
+  createdAt    DateTime @default(now())
+
+  @@id([produtoId, fornecedorId])
+  @@index([fornecedorId])
+  @@schema("public")
+}
+
+// Centros de custo onde o produto pode ser consumido. Substitui o antigo
+// Produto.setor (enum fixo) e o Produto.centroCustoId (único).
+model ProdutoCentroCusto {
+  produto       Produto     @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+  produtoId     Int
+  centroCusto   CentroCusto @relation(fields: [centroCustoId], references: [id], onDelete: Cascade)
+  centroCustoId Int
+  createdAt     DateTime    @default(now())
+
+  @@id([produtoId, centroCustoId])
+  @@index([centroCustoId])
   @@schema("public")
 }
 
@@ -574,6 +468,11 @@ model ItemOperacao {
   categoriaId       Int?
   categoriaNome     String?
   classificacao     ClassificacaoCategoria?
+  // Centro de custo do item. Null = herda Operacao.centroCustoId. Nome congelado
+  // como snapshot, igual a categoriaNome.
+  centroCusto       CentroCusto?            @relation(fields: [centroCustoId], references: [id], onDelete: SetNull)
+  centroCustoId     Int?
+  centroCustoNome   String?
   id                Int                     @id @default(autoincrement())
   operacao          Operacao                @relation(fields: [operacaoId], references: [id], onDelete: Cascade)
   operacaoId        Int
@@ -590,6 +489,7 @@ model ItemOperacao {
 
   @@index([operacaoId])
   @@index([produtoId])
+  @@index([centroCustoId])
   @@schema("public")
 }
 
@@ -744,8 +644,6 @@ model Propriedade {
   funcionarios          Funcionario[]
   safrasCultivo         SafraCultivo[]
   silos                 Silo[]
-  locaisArmazenamento   LocalArmazenamento[]
-  lotesProduto          LoteProduto[]
   registrosChuva        RegistroChuva[]
   createdAt             DateTime                      @default(now())
   updatedAt             DateTime                      @updatedAt
@@ -767,8 +665,9 @@ enum TipoMovimento {
   @@schema("public")
 }
 
-// Origem de uma SAIDA/movimento — distingue baixa de consumo automático (NUTRICAO)
-// de digitação manual, perda ou ajuste de inventário. Espelha OrigemMovimentoSilo.
+// Origem de uma SAIDA/movimento — distingue baixa automática (APLICACAO no
+// talhão) de digitação manual, perda ou ajuste de inventário. Espelha
+// OrigemMovimentoSilo. As origens de dieta e sanidade voltam com a v3 da pecuária.
 enum OrigemMovimentoEstoque {
   COMPRA
   CONSUMO_DIRETO
@@ -777,8 +676,7 @@ enum OrigemMovimentoEstoque {
   DEVOLUCAO
   BONIFICACAO
   INVENTARIO_INICIAL
-  NUTRICAO
-  SANIDADE
+  APLICACAO
   PERDA
   AJUSTE_INVENTARIO
 
@@ -793,39 +691,46 @@ enum StatusMovimentoEstoque {
 }
 
 model MovimentoEstoque {
-  id             Int                    @id @default(autoincrement())
-  produto        Produto                @relation(fields: [produtoId], references: [id])
-  produtoId      Int
-  tipo           TipoMovimento
-  origem         OrigemMovimentoEstoque
-  status         StatusMovimentoEstoque @default(CONFIRMADO)
-  data           DateTime               @db.Date
-  quantidade     Decimal                @db.Decimal(12, 2)
-  custoUnitario  Decimal                @db.Decimal(12, 2)
-  valorTotal     Decimal                @db.Decimal(14, 2)
+  id               Int                    @id @default(autoincrement())
+  produto          Produto                @relation(fields: [produtoId], references: [id])
+  produtoId        Int
+  tipo             TipoMovimento
+  origem           OrigemMovimentoEstoque
+  status           StatusMovimentoEstoque @default(CONFIRMADO)
+  data             DateTime               @db.Date
+  quantidade       Decimal                @db.Decimal(12, 3)
+  custoUnitario    Decimal                @db.Decimal(14, 4)
+  valorTotal       Decimal                @db.Decimal(14, 2)
   // Operações financeiras são a origem normal de entradas; consumos automáticos
   // podem ser justificados pelo evento operacional específico abaixo.
-  operacao       Operacao?              @relation(fields: [operacaoId], references: [id])
-  operacaoId     Int?
-  itemOperacao   ItemOperacao?          @relation(fields: [itemOperacaoId], references: [id])
-  itemOperacaoId Int?
+  operacao         Operacao?              @relation(fields: [operacaoId], references: [id])
+  operacaoId       Int?
+  itemOperacao     ItemOperacao?          @relation(fields: [itemOperacaoId], references: [id])
+  itemOperacaoId   Int?
   // Escopo de propriedade (estoque físico é por sítio). Nullable + default principal.
-  propriedade    Propriedade?           @relation(fields: [propriedadeId], references: [id])
-  propriedadeId  Int?
-  criadoPor      Usuario?               @relation("MovimentoEstoqueCriador", fields: [criadoPorId], references: [id])
-  criadoPorId    Int?
-  reversaoDe     MovimentoEstoque?      @relation("ReversaoEstoque", fields: [reversaoDeId], references: [id])
-  reversaoDeId   Int?                   @unique
-  revertidoPor   MovimentoEstoque?      @relation("ReversaoEstoque")
-  observacao     String?
-  createdAt      DateTime               @default(now())
-  updatedAt      DateTime               @updatedAt
+  propriedade      Propriedade?           @relation(fields: [propriedadeId], references: [id])
+  propriedadeId    Int?
+  criadoPor        Usuario?               @relation("MovimentoEstoqueCriador", fields: [criadoPorId], references: [id])
+  criadoPorId      Int?
+  // Alocação operacional: para qual atividade o consumo foi (SAIDA). Não entra
+  // nos relatórios financeiros — o custo financeiro é lido pela compra/item.
+  centroCusto      CentroCusto?           @relation(fields: [centroCustoId], references: [id])
+  centroCustoId    Int?
+  reversaoDe       MovimentoEstoque?      @relation("ReversaoEstoque", fields: [reversaoDeId], references: [id])
+  reversaoDeId     Int?                   @unique
+  revertidoPor     MovimentoEstoque?      @relation("ReversaoEstoque")
+  // Operação agrícola (aplicação/adubação) que gerou esta SAIDA (origem APLICACAO).
+  operacaoAgricola OperacaoAgricola?
+  observacao       String?
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
 
   @@index([produtoId, data])
   @@index([tipo, data])
   @@index([operacaoId])
   @@index([itemOperacaoId])
   @@index([propriedadeId])
+  @@index([centroCustoId])
   @@schema("public")
 }
 
@@ -1090,34 +995,42 @@ model SafraTalhao {
 // Operação agrícola — adubação, calagem, poda, aplicação fito/herbicida,
 // monitoramento. Espelho de EventoSanitario do rebanho.
 model OperacaoAgricola {
-  id                   Int             @id @default(autoincrement())
-  talhao               Talhao          @relation(fields: [talhaoId], references: [id], onDelete: Cascade)
+  id                   Int               @id @default(autoincrement())
+  talhao               Talhao            @relation(fields: [talhaoId], references: [id], onDelete: Cascade)
   talhaoId             Int
   dominio              DominioCultural
   tipo                 TipoOperacao
-  data                 DateTime        @db.Date
+  data                 DateTime          @db.Date
   responsavel          String?
   observacao           String?
-  // Aplicações/adubações: produto, dose, calda.
+  // Aplicações/adubações: produto, dose, calda. `produto` é o rótulo livre legado;
+  // `produtoRef` liga ao estoque e, com quantidadeTotal (dose × área), gera a
+  // SAIDA automática (movimentoEstoque, origem APLICACAO).
   produto              String?
-  doseValor            Decimal?        @db.Decimal(10, 3)
+  produtoRef           Produto?          @relation(fields: [produtoId], references: [id])
+  produtoId            Int?
+  quantidadeTotal      Decimal?          @db.Decimal(12, 3)
+  movimentoEstoque     MovimentoEstoque? @relation(fields: [movimentoEstoqueId], references: [id])
+  movimentoEstoqueId   Int?              @unique
+  doseValor            Decimal?          @db.Decimal(10, 3)
   doseUnidade          String? // "L/ha", "kg/ha", "g/ha", "t/ha"
-  volumeCaldaLha       Decimal?        @db.Decimal(7, 2)
+  volumeCaldaLha       Decimal?          @db.Decimal(7, 2)
   // Adubação: NPK efetivamente entregue ao solo/folha.
-  nKgHa                Decimal?        @db.Decimal(7, 2)
-  p2o5KgHa             Decimal?        @db.Decimal(7, 2)
-  k2oKgHa              Decimal?        @db.Decimal(7, 2)
+  nKgHa                Decimal?          @db.Decimal(7, 2)
+  p2o5KgHa             Decimal?          @db.Decimal(7, 2)
+  k2oKgHa              Decimal?          @db.Decimal(7, 2)
   // Aplicação fito: praga/doença alvo.
   pragaAlvo            PragaDoenca?
   carenciaDias         Int?
   // Referência lógica opcional à operação financeira que originou o custo.
-  operacaoFinanceira   Operacao?       @relation(fields: [operacaoFinanceiraId], references: [id])
-  operacaoFinanceiraId Int?            @unique
-  createdAt            DateTime        @default(now())
-  updatedAt            DateTime        @updatedAt
+  operacaoFinanceira   Operacao?         @relation(fields: [operacaoFinanceiraId], references: [id])
+  operacaoFinanceiraId Int?              @unique
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
 
   @@index([talhaoId, data])
   @@index([dominio, data])
+  @@index([produtoId])
   @@schema("public")
 }
 
@@ -1497,6 +1410,26 @@ enum UnidadeProducao {
 enum DestinoProducao {
   VENDA
   SILO
+
+  @@schema("public")
+}
+
+// Unidade de medida do estoque (Produto). Conversão entre unidades da mesma
+// base em services/estoque/unidades.ts — não confundir com
+// ItemOperacao.unidade/OperacaoAgricola.doseUnidade, que são texto (rótulo
+// gravado no momento, snapshot legível/histórico).
+enum UnidadeMedida {
+  UN
+  KG
+  G
+  T
+  L
+  ML
+  SC
+  DOSE
+  CX
+  M
+  HA
 
   @@schema("public")
 }

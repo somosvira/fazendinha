@@ -54,7 +54,7 @@ export function DetalheMovimentacao({ id, podeLancar = true, onFechar, onMudou }
     navegarPara(`/pecuaria/rebanho/animais/${animalId}`);
   };
 
-  return <PainelCadastro aberto eyebrow="Rebanho" titulo="Movimentação" largura="sm:max-w-3xl" onFechar={onFechar}
+  return <PainelCadastro aberto titulo="Movimentação" largura="sm:max-w-3xl" onFechar={onFechar}
       rodape={<Button secondary onClick={onFechar}>Fechar</Button>}>
       <ErrorBox erro={erro} />
       {carregando && !mov ? <Loader label="Carregando movimentação" /> : mov && <div className="grid gap-5">

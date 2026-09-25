@@ -1,7 +1,7 @@
 import type { Tab } from "./components/Shell";
 import { ABAS } from "./data/acessos";
 import type { UsuarioSessao } from "./lib/auth";
-import { areaDaTab, temAcessoArea } from "./lib/areas";
+import { areaDaTab, temAcessoArea, temAcessoEstoque } from "./lib/areas";
 import { pathToTab, tabToPath } from "./router";
 
 export type RotaAuth =
@@ -52,6 +52,7 @@ export function podeAcessarTab(usuario: UsuarioSessao, tab: Tab): boolean {
   // Sítios é estrutura da fazenda (raramente muda): mesmo público de Acessos.
   if (tab === "acessos" || tab === "sitios") return dono || usuario.flags.includes("gerenciarAcessos");
   if (tab === "config") return true;
+  if (tab === "estoque") return temAcessoEstoque(usuario.areas, dono);
 
   const area = areaDaTab(tab);
   if (area && !temAcessoArea(usuario.areas, area, dono)) return false;

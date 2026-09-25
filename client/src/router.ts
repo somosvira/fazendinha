@@ -29,6 +29,7 @@ const PATH_BY_TAB: Record<Tab, string> = {
   sitios: "/configuracoes/sitios",
   cadastros: "/financeiro/configuracoes",
   "pec-rebanho": "/pecuaria/rebanho",
+  estoque: "/estoque",
   "pla-dashboard": "/plantio/dashboard",
   "pla-talhao": "/plantio/talhao",
   "pla-fenologia": "/plantio/fenologia",
@@ -159,8 +160,17 @@ const ESTADO_NOVA_OPERACAO = { novaOperacao: true } as const;
  *  já está montada (lista, detalhe ou correção), porque pushState não dispara o
  *  evento. A marca no estado distingue essa entrada da correção de operação,
  *  que usa a mesma URL. */
-export function abrirRotaNovaOperacao(compromisso?: "PAGAR" | "RECEBER") {
-  const alvo = compromisso ? `${URL_NOVA_OPERACAO}?compromisso=${compromisso}` : URL_NOVA_OPERACAO;
+export function abrirRotaNovaOperacao(destino?: "PAGAR" | "RECEBER" | { compromisso?: "PAGAR" | "RECEBER"; ajusteEstoqueProdutoId?: number; /** abre o ajuste de estoque sem produto pré-selecionado */ ajusteEstoque?: boolean }) {
+  const opcoes = typeof destino === "string" ? { compromisso: destino } : destino ?? {};
+  const params = new URLSearchParams();
+  if (opcoes.compromisso) params.set("compromisso", opcoes.compromisso);
+  // Atalho da tela de Estoque: abre a operação "Ajuste de estoque" já com o produto escolhido.
+  if (opcoes.ajusteEstoqueProdutoId || opcoes.ajusteEstoque) {
+    params.set("tipo", "AJUSTE_ESTOQUE");
+    if (opcoes.ajusteEstoqueProdutoId) params.set("produto", String(opcoes.ajusteEstoqueProdutoId));
+  }
+  const consulta = params.toString();
+  const alvo = consulta ? `${URL_NOVA_OPERACAO}?${consulta}` : URL_NOVA_OPERACAO;
   if (window.location.pathname + window.location.search !== alvo) window.history.pushState(ESTADO_NOVA_OPERACAO, "", alvo);
   window.dispatchEvent(new PopStateEvent("popstate", { state: ESTADO_NOVA_OPERACAO }));
 }

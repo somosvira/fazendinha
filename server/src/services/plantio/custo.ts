@@ -1,6 +1,7 @@
 import { incluirClassificacao, ratearTransacao } from "../financeiro/classificacao.js";
 import { prisma } from "../../db.js";
 import { quebrarPorCategoria } from "./custo.quebra.js";
+import { CENTROS_ATIVIDADE } from "../estoque/centros-atividade.js";
 
 // ── Ponte financeira do café (espelha rebanho/custo-producao) ────────────────
 // O café da Rio Novo está em FORMAÇÃO: a maior parte do gasto cai em
@@ -12,7 +13,7 @@ import { quebrarPorCategoria } from "./custo.quebra.js";
 //   - "Plantio Café"                  → custeio
 //   - "Plantio Café - investimento"   → investimento (formação)
 //   - "Atividade Plantio"             → custeio (mão de obra/insumos genéricos)
-const CENTROS_CAFE = ["Plantio Café", "Plantio Café - investimento", "Atividade Plantio"] as const;
+const CENTROS_CAFE = [CENTROS_ATIVIDADE.CAFE, CENTROS_ATIVIDADE.CAFE_INVESTIMENTO, CENTROS_ATIVIDADE.PLANTIO] as const;
 
 
 const toNum = (x: any) => (x != null ? Number(x) : 0);
@@ -42,7 +43,9 @@ export async function agregarCustoPlantio(meses = 12, classe: ClasseCusto = "cus
     where: {
       OR: [{ tipo: "PAGAMENTO" }, { tipo: "REVERSAO", reversaoDe: { tipo: "PAGAMENTO" } }],
       data: { gte: desde },
-      operacao: { centroCustoId: { in: centroCafeIds } },
+      // Pré-filtro: a operação ou algum item aponta um centro do café. O rateio
+      // abaixo fica só com as partes cujo centro efetivo (item ?? operação) é café.
+      operacao: { OR: [{ centroCustoId: { in: centroCafeIds } }, { itens: { some: { centroCustoId: { in: centroCafeIds } } } }] },
     },
     select: {
       id: true, valorTotal: true,
@@ -51,7 +54,7 @@ export async function agregarCustoPlantio(meses = 12, classe: ClasseCusto = "cus
   });
 
   // Classificação gravada em cada item; o nome do centro não define investimento.
-  const partes = lancs.flatMap((l) => ratearTransacao(l.operacao, l.id, l.valorTotal));
+  const partes = lancs.flatMap((l) => ratearTransacao(l.operacao, l.id, l.valorTotal).filter((p) => p.centroCustoId != null && centroCafeIds.includes(p.centroCustoId)));
   const custeio = partes.filter((p) => p.classificacao !== "INVESTIMENTO");
   const investimento = partes.filter((p) => p.classificacao === "INVESTIMENTO");
   const custeioTotal = Math.round(custeio.reduce((s, p) => s + p.valor.toNumber(), 0) * 100) / 100;

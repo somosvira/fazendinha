@@ -93,7 +93,7 @@ export async function gerarRelatorio(propriedadeId: number, usuario: { id: numbe
     data: { nome: configuracao.nome, parametros: json(configuracao), propriedadeId, autorId: usuario.id, autorNome: usuario.nome },
   });
   try {
-    const [gerencial, operacoes] = await Promise.all([
+    const [gerencial, operacoes, centros] = await Promise.all([
       gerarRelatorioGerencial({ inicio: configuracao.dataInicio, fim: configuracao.dataFim, regime: configuracao.regime }, propriedadeId, configuracao),
       prisma.operacao.findMany({
         where: {
@@ -105,10 +105,15 @@ export async function gerarRelatorio(propriedadeId: number, usuario: { id: numbe
         include: { itens: { orderBy: { id: "asc" } }, centroCusto: { select: { nome: true } }, parceiro: { select: { nome: true } } },
         orderBy: [{ data: "asc" }, { id: "asc" }],
       }),
+      prisma.centroCusto.findMany({ select: { id: true, nome: true } }),
     ]);
+    // Nome vivo por id: o snapshot de um item pode estar desatualizado se o
+    // centro foi renomeado depois — sem isso, `comporItens` agruparia pelo
+    // nome antigo e duplicaria a linha.
+    const nomesCentro = new Map(centros.map((c) => [c.id, c.nome]));
     const snapshot: SnapshotRelatorio = {
       versao: 1, nome: configuracao.nome, geradoEm: criado.geradoEm.toISOString(), autor: usuario.nome,
-      propriedade: gerencial.meta.propriedade, configuracao, filtros, gerencial, composicao: comporItens(operacoes, configuracao),
+      propriedade: gerencial.meta.propriedade, configuracao, filtros, gerencial, composicao: comporItens(operacoes, configuracao, nomesCentro),
     };
     const storageKey = `relatorios-financeiros/${propriedadeId}/${criado.id}.pdf`;
     await (await getStorage()).putObject({ key: storageKey, body: gerarPdfRelatorio(snapshot), contentType: "application/pdf" });

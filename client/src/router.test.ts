@@ -19,6 +19,13 @@ import {
   tabToPath,
 } from "./router";
 
+describe("roteamento do estoque", () => {
+  it("mapeia a aba estoque para /estoque e volta", () => {
+    expect(tabToPath("estoque")).toBe("/estoque");
+    expect(pathToTab("/estoque")).toBe("estoque");
+  });
+});
+
 describe("roteamento da pecuária", () => {
   it("reconhece o detalhe de uma operação financeira", () => {
     expect(pathToTab("/financeiro/operacoes/42")).toBe("lancar");

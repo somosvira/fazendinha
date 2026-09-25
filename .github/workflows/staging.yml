@@ -54,9 +54,48 @@ jobs:
       - name: Testes do transformador da carga da pecuária (scripts/*.test.mjs)
         run: node --test scripts/*.test.mjs
       # migrate deploy (e não db push): os índices únicos parciais da pecuária ("uma linha
-      # aberta por animal") e as FKs ON DELETE SET NULL da baixa só existem no SQL das
-      # migrations — db push os apagaria e o banco de teste divergiria do de produção.
+      # aberta por animal") e as categorias padrão só existem no SQL da migration da
+      # pecuária v1 — db push os apagaria e o banco de teste divergiria do de produção.
       - name: Preparar banco isolado dos testes
         run: pnpm --filter rionovo-server exec prisma migrate deploy
       - name: Testes (server)
         run: pnpm --filter rionovo-server test
+
+  financeiro-integration:
+    name: financeiro (bateria de invariantes, banco real)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: fazendinha
+          POSTGRES_PASSWORD: fazendinha
+          POSTGRES_DB: fazendinha_local
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U fazendinha -d fazendinha_local"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # scripts/qa-financeiro.mjs exige esse nome de banco e host local — ele
+      # cria um banco temporário por execução (isolado do fazendinha_local "de
+      # verdade" que dev usa) e o apaga ao final.
+      DATABASE_URL: postgresql://fazendinha:fazendinha@localhost:5432/fazendinha_local
+      DIRECT_URL: postgresql://fazendinha:fazendinha@localhost:5432/fazendinha_local
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4 # lê packageManager (pnpm@10.7.1) do package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter rionovo-server exec prisma generate
+      # O script roda com `node --env-file=.env`; no runner o arquivo não existe.
+      - run: printf 'DATABASE_URL=%s\nDIRECT_URL=%s\n' "$DATABASE_URL" "$DIRECT_URL" > server/.env
+      # O script aplica as migrations (prisma migrate deploy) no banco
+      # temporário que ele mesmo cria antes de rodar a bateria.
+      - name: Bateria de invariantes do financeiro (banco real)
+        run: pnpm --filter rionovo-server run test:financeiro:integration

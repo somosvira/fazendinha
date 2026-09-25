@@ -94,7 +94,7 @@ export function SeletorAnimais({ excluirLoteId, onConfirmar, onCancelar }: {
   ];
 
   const quantidade = selecionados.size;
-  return <PainelCadastro aberto eyebrow="Rebanho" titulo="Selecionar animais" largura="sm:max-w-3xl" onFechar={onCancelar}
+  return <PainelCadastro aberto titulo="Selecionar animais" largura="sm:max-w-3xl" onFechar={onCancelar}
     rodape={<><Button secondary onClick={onCancelar}>Cancelar</Button><Button disabled={quantidade === 0} onClick={() => onConfirmar([...selecionados.values()])}>Continuar ({quantidade})</Button></>}>
     <div className="grid gap-4">
       <ErrorBox erro={erro} />

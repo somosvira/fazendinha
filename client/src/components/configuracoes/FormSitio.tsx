@@ -45,7 +45,7 @@ export function FormSitio({ sitio, onSalvo, onFechar }: { sitio: PropriedadeDTO 
   };
 
   const formId = "form-sitio";
-  return <PainelCadastro aberto eyebrow="Sítio" titulo={sitio ? `Editar ${sitio.nome}` : "Novo sítio"} onFechar={() => { if (!emCurso.current) onFechar(); }}
+  return <PainelCadastro aberto titulo={sitio ? `Editar ${sitio.nome}` : "Novo sítio"} onFechar={() => { if (!emCurso.current) onFechar(); }}
     rodape={<><Button secondary onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form={formId} disabled={salvando}>{salvando ? "Salvando…" : sitio ? "Salvar sítio" : "Criar sítio"}</Button></>}>
     <form id={formId} onSubmit={submeter} className="grid gap-4" noValidate>
       <ErrorBox erro={erroGeral} />

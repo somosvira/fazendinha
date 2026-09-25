@@ -49,7 +49,7 @@ export function FormLote({ lote, propriedades, propriedadeInicialId, onSalvo, on
   };
 
   const formId = "form-lote";
-  return <PainelCadastro aberto eyebrow="Lote" titulo={lote ? `Editar ${lote.nome}` : "Novo lote"} onFechar={() => { if (!emCurso.current) onFechar(); }}
+  return <PainelCadastro aberto titulo={lote ? `Editar ${lote.nome}` : "Novo lote"} onFechar={() => { if (!emCurso.current) onFechar(); }}
     rodape={<><Button secondary onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form={formId} disabled={salvando}>{salvando ? "Salvando…" : lote ? "Salvar lote" : "Criar lote"}</Button></>}>
     <form id={formId} onSubmit={submeter} className="grid gap-4" noValidate>
       <ErrorBox erro={erroGeral} />

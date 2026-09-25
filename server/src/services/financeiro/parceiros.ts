@@ -7,9 +7,9 @@ import type { PapelParceiro, TipoParceiro } from "@prisma/client";
 
 const CONFLITOS = { documento: "Já existe um parceiro com este CPF/CNPJ" };
 
-type ContagensParceiro = { operacoes: number; compromissos: number; transacoes: number };
+type ContagensParceiro = { operacoes: number; compromissos: number; transacoes: number; produtosFornecidos: number };
 
-const totalReferencias = (contagens: ContagensParceiro) => contagens.operacoes + contagens.compromissos + contagens.transacoes;
+const totalReferencias = (contagens: ContagensParceiro) => contagens.operacoes + contagens.compromissos + contagens.transacoes + (contagens.produtosFornecidos ?? 0);
 
 function comReferencias<T extends { tipo: TipoParceiro; papeis?: { papel: PapelParceiro }[] }>(parceiro: T, contagens: ContagensParceiro) {
   return { ...parceiro, papeis: papeisDoParceiro(parceiro), referencias: totalReferencias(contagens) };
@@ -21,13 +21,13 @@ function validarPreferencias(dados: { condicaoPagamentoPreferida?: string | null
   }
 }
 
-/* `referencias` = operações + compromissos + transações ligadas ao parceiro;
+/* `referencias` = operações + compromissos + transações + produtos ligados ao parceiro;
  * a UI usa para explicar o impacto de desativar. */
 export async function listarParceiros(incluirInativos = false) {
   const lista = await prisma.parceiro.findMany({
     where: incluirInativos ? {} : { ativo: true },
     orderBy: { nome: "asc" },
-    include: { papeis: true, _count: { select: { operacoes: true, compromissos: true, transacoes: true } } },
+    include: { papeis: true, _count: { select: { operacoes: true, compromissos: true, transacoes: true, produtosFornecidos: true } } },
   });
   return lista.map(({ _count, ...parceiro }) => comReferencias(parceiro, _count));
 }
@@ -40,7 +40,7 @@ export async function criarParceiro(input: z.infer<typeof parceiroSchema> & { us
       const selecionados = papeis ?? papeisLegados(tipo ?? "FORNECEDOR");
       const parceiro = await tx.parceiro.create({ data: { ...dados, tipo: tipoLegado(selecionados), papeis: { create: selecionados.map((papel) => ({ papel })) } }, include: { papeis: true } });
       await auditar(tx, { entidade: "Parceiro", entidadeId: parceiro.id, acao: "CRIADO", usuarioId, depois: parceiro });
-      return comReferencias(parceiro, { operacoes: 0, compromissos: 0, transacoes: 0 });
+      return comReferencias(parceiro, { operacoes: 0, compromissos: 0, transacoes: 0, produtosFornecidos: 0 });
     });
   } catch (e) { traduzirConflitoUnico(e, CONFLITOS); }
 }
@@ -50,7 +50,7 @@ export async function atualizarParceiro(id: number, input: z.infer<typeof patchP
     return await prisma.$transaction(async (tx) => {
       const encontrado = await tx.parceiro.findUnique({
         where: { id },
-        include: { papeis: true, _count: { select: { operacoes: true, compromissos: true, transacoes: true } } },
+        include: { papeis: true, _count: { select: { operacoes: true, compromissos: true, transacoes: true, produtosFornecidos: true } } },
       });
       if (!encontrado) throw new FinanceiroError("NAO_ENCONTRADO", "Parceiro não encontrado");
       const { _count, ...anterior } = encontrado;

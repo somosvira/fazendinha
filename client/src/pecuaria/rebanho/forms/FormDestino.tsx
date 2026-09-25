@@ -33,7 +33,7 @@ export function FormDestino({ animal, onSalvo, onFechar }: {
   };
 
   const formId = "form-destino-animal";
-  return <PainelCadastro aberto eyebrow="Destino" titulo={`Mudar destino de ${animal.brinco}`} onFechar={() => { if (!salvando) onFechar(); }}
+  return <PainelCadastro aberto titulo={`Mudar destino de ${animal.brinco}`} onFechar={() => { if (!salvando) onFechar(); }}
     rodape={<><Button secondary onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form={formId} disabled={salvando}>{salvando ? "Salvando…" : "Salvar destino"}</Button></>}>
     <form id={formId} onSubmit={submeter} noValidate className="grid gap-4">
       <ErrorBox erro={erroGeral} />

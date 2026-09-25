@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { FormOperacao } from "./FormOperacao";
+import { setPropriedadeAtiva } from "../propriedadeScope";
 import type { ConfiguracoesFinanceiras } from "./novo-api";
 
 afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers(); });
@@ -18,7 +19,7 @@ const config: ConfiguracoesFinanceiras = {
   ],
   categorias: [],
   centrosCusto: [],
-  produtos: [{ id: 1, nome: "Ração", unidade: "kg", estocavel: true, custoUnitario: "5" }],
+  produtos: [{ id: 1, nome: "Ração", unidade: "KG" }],
 };
 
 function montar() {
@@ -26,9 +27,9 @@ function montar() {
 }
 
 describe("FormOperacao", () => {
-  it("não oferece ajuste de estoque como nova operação", () => {
+  it("oferece ajuste de estoque como tipo de operação", () => {
     montar();
-    expect(screen.queryByRole("option", { name: "Ajuste de estoque" })).toBeNull();
+    expect(screen.getByRole("option", { name: "Ajuste de estoque" })).toBeTruthy();
     expect(screen.getByRole("option", { name: "Compra para estoque" })).toBeTruthy();
   });
 
@@ -128,6 +129,60 @@ describe("FormOperacao", () => {
     expect(screen.queryByRole("textbox", { name: "Unidade do item 1" })).toBeNull();
   });
 
+  it("sugere o valor unitário da última compra do fornecedor selecionado", async () => {
+    const fetchMock = vi.fn(async (url: unknown) => String(url).includes("/ultimo-preco")
+      ? { ok: true, json: async () => ({ valorUnitario: "7.5", data: "2026-09-03", parceiro: { id: 1, nome: "Fornecedor Rural" } }) }
+      : { ok: true, json: async () => ({}) });
+    vi.stubGlobal("fetch", fetchMock);
+    montar();
+    fireEvent.change(screen.getByLabelText("Fornecedor ou parceiro"), { target: { value: "1" } });
+    fireEvent.change(screen.getByRole("combobox", { name: "Produto do item 1" }), { target: { value: "1" } });
+    await waitFor(() => expect((screen.getByRole("spinbutton", { name: "Valor unitário do item 1" }) as HTMLInputElement).value).toBe("7.50"));
+    expect(fetchMock).toHaveBeenCalledWith("/api/estoque/produtos/1/ultimo-preco?parceiroId=1", expect.anything());
+    expect(screen.getByText(/Última compra:/).textContent?.replaceAll("\u00a0", " ")).toBe("Última compra: R$ 7,50 em 03/09 (Fornecedor Rural)");
+  });
+
+  it("sem histórico de compra, deixa o valor unitário vazio e sem linha de ajuda", async () => {
+    const fetchMock = vi.fn(async () => ({ ok: true, json: async () => null }));
+    vi.stubGlobal("fetch", fetchMock);
+    montar();
+    fireEvent.change(screen.getByRole("combobox", { name: "Produto do item 1" }), { target: { value: "1" } });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/estoque/produtos/1/ultimo-preco", expect.anything()));
+    expect((screen.getByRole("spinbutton", { name: "Valor unitário do item 1" }) as HTMLInputElement).value).toBe("");
+    expect(screen.queryByText(/Última compra:/)).toBeNull();
+  });
+
+  it("não sobrescreve um valor digitado antes da sugestão chegar", async () => {
+    let responder: (v: unknown) => void = () => {};
+    vi.stubGlobal("fetch", vi.fn(() => new Promise((resolve) => { responder = resolve; })));
+    montar();
+    fireEvent.change(screen.getByRole("combobox", { name: "Produto do item 1" }), { target: { value: "1" } });
+    const campo = screen.getByRole("spinbutton", { name: "Valor unitário do item 1" }) as HTMLInputElement;
+    fireEvent.change(campo, { target: { value: "9" } });
+    responder({ ok: true, json: async () => ({ valorUnitario: "7.5", data: "2026-09-03", parceiro: null }) });
+    await waitFor(() => expect(screen.queryByText(/Última compra:/)).toBeTruthy());
+    expect(campo.value).toBe("9");
+  });
+
+  it("preenche o valor unitário sugerido com as 4 casas decimais do custo por unidade fracionária", async () => {
+    const fetchMock = vi.fn(async (url: unknown) => String(url).includes("/ultimo-preco")
+      ? { ok: true, json: async () => ({ valorUnitario: "0.1234", data: "2026-09-03", parceiro: null }) }
+      : { ok: true, json: async () => ({}) });
+    vi.stubGlobal("fetch", fetchMock);
+    montar();
+    fireEvent.change(screen.getByRole("combobox", { name: "Produto do item 1" }), { target: { value: "1" } });
+    await waitFor(() => expect((screen.getByRole("spinbutton", { name: "Valor unitário do item 1" }) as HTMLInputElement).value).toBe("0.1234"));
+  });
+
+  it("não trunca para zero, ao perder foco, um valor unitário digitado manualmente com 5 casas decimais", () => {
+    montar();
+    const campo = screen.getByRole("spinbutton", { name: "Valor unitário do item 1" }) as HTMLInputElement;
+    fireEvent.change(campo, { target: { value: "0.00045" } });
+    fireEvent.blur(campo);
+    expect(campo.value).not.toBe("0.00");
+    expect(Number(campo.value)).toBeGreaterThan(0);
+  });
+
   it("não expõe o saldo no seletor de conta", () => {
     montar();
     expect(screen.getByRole("option", { name: "Banco principal" })).toBeTruthy();
@@ -196,23 +251,173 @@ describe("FormOperacao", () => {
   });
 });
 
-it("herda a categoria por produto, pede centro para mistura e preserva escolha manual", () => {
-  render(<FormOperacao config={{ ...config,
-    categorias: [{ id: 1, nome: "Silagem", classificacao: "CUSTEIO", ativo: true, ordem: 0 }, { id: 2, nome: "Vacinas", classificacao: "CUSTEIO", ativo: true, ordem: 0 }],
+function configCentrosDivergentes() {
+  return { ...config,
+    categorias: [{ id: 1, nome: "Silagem", classificacao: "CUSTEIO" as const, ativo: true, ordem: 0, usoAgricola: false }, { id: 2, nome: "Vacinas", classificacao: "CUSTEIO" as const, ativo: true, ordem: 0, usoAgricola: false }],
     centrosCusto: [{ id: 1, nome: "Pecuária", ativo: true, ordem: 0 }, { id: 2, nome: "Agronomia", ativo: true, ordem: 0 }],
-    produtos: [{ ...config.produtos[0], categoriaId: 1, centroCustoId: 1 }, { ...config.produtos[0], id: 2, nome: "Vacina", categoriaId: 2, centroCustoId: 2 }],
-  }} onSalvo={vi.fn()} />);
+    produtos: [{ ...config.produtos[0], categoriaId: 1, centroCustoIds: [1] }, { ...config.produtos[0], id: 2, nome: "Vacina", categoriaId: 2, centroCustoIds: [2] }],
+  };
+}
+
+it("produto com um único centro preenche o item e sugere o centro da operação", () => {
+  render(<FormOperacao config={configCentrosDivergentes()} onSalvo={vi.fn()} />);
   fireEvent.change(screen.getByLabelText("Produto do item 1"), { target: { value: "1" } });
   expect((screen.getByLabelText("Categoria do item 1") as HTMLSelectElement).value).toBe("1");
   expect((screen.getByLabelText("Centro de custo") as HTMLSelectElement).value).toBe("1");
+});
+
+it("produtos com centros divergentes mostram aviso e 'Separar por item' preenche o modo por item", () => {
+  render(<FormOperacao config={configCentrosDivergentes()} onSalvo={vi.fn()} />);
+  fireEvent.change(screen.getByLabelText("Produto do item 1"), { target: { value: "1" } });
   fireEvent.click(screen.getByRole("button", { name: /Adicionar item/i }));
   fireEvent.change(screen.getByLabelText("Produto do item 2"), { target: { value: "2" } });
   expect((screen.getByLabelText("Categoria do item 2") as HTMLSelectElement).value).toBe("2");
   expect((screen.getByLabelText("Centro de custo") as HTMLSelectElement).value).toBe("");
-  expect(screen.getByText(/Os produtos sugerem áreas diferentes/)).toBeTruthy();
-  fireEvent.change(screen.getByLabelText("Centro de custo"), { target: { value: "2" } });
-  fireEvent.change(screen.getByLabelText("Produto do item 2"), { target: { value: "1" } });
-  expect((screen.getByLabelText("Centro de custo") as HTMLSelectElement).value).toBe("2");
+  expect(screen.getByText(/Os produtos pertencem a centros de custo diferentes/)).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: /Separar por item/i }));
+  expect((screen.getByLabelText("Centro de custo do item 1") as HTMLSelectElement).value).toBe("1");
+  expect((screen.getByLabelText("Centro de custo do item 2") as HTMLSelectElement).value).toBe("2");
+  expect(screen.getByText("Centro padrão (itens sem centro)")).toBeTruthy();
+});
+
+it("modo por item envia centroCustoId por item e null nos itens sem centro próprio", async () => {
+  const fetchMock = vi.fn(async (url: unknown, init?: RequestInit) => {
+    const caminho = String(url);
+    if (caminho.endsWith("/financeiro/operacoes/rascunho") && init?.method === "PUT") {
+      return { ok: true, json: async () => ({ id: 9, dados: {}, versao: 1, documentos: [], updatedAt: "2026-09-07T12:00:00Z" }) };
+    }
+    if (caminho.endsWith("/financeiro/operacoes/rascunho/confirmacao")) {
+      return { ok: true, json: async () => ({ id: 43, tipo: "COMPRA_ESTOQUE", status: "CONFIRMADA", data: "2026-09-22", descricao: "Compra mista", valorTotal: "100.00", parceiro: null, itens: [], compromissos: [], transacoes: [], movimentosEstoque: [], documentos: [] }) };
+    }
+    return { ok: true, json: async () => ({}) };
+  });
+  vi.stubGlobal("fetch", fetchMock);
+  const cfg = configCentrosDivergentes();
+  render(<FormOperacao config={cfg} onSalvo={vi.fn()} />);
+  fireEvent.change(screen.getByLabelText("Descrição"), { target: { value: "Compra mista" } });
+  fireEvent.change(screen.getByLabelText("Fornecedor ou parceiro"), { target: { value: String(config.parceiros[0].id) } });
+  fireEvent.change(screen.getByLabelText("Produto do item 1"), { target: { value: "1" } });
+  fireEvent.change(screen.getByRole("spinbutton", { name: "Valor unitário do item 1" }), { target: { value: "100" } });
+  fireEvent.click(screen.getByRole("button", { name: /Adicionar item/i }));
+  fireEvent.change(screen.getByLabelText("Produto do item 2"), { target: { value: "2" } });
+  fireEvent.click(screen.getByRole("button", { name: /Separar por item/i }));
+  fireEvent.change(screen.getByLabelText("Centro de custo do item 2"), { target: { value: "" } });
+  fireEvent.change(screen.getByLabelText("Conta financeira"), { target: { value: String(config.contas[0].id) } });
+  fireEvent.click(screen.getByRole("button", { name: "Confirmar operação" }));
+  await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+  const chamadaConfirmar = fetchMock.mock.calls.find(([url]) => String(url).endsWith("/financeiro/operacoes/rascunho/confirmacao"));
+  expect(chamadaConfirmar).toBeTruthy();
+});
+
+it("item não estocável sem centro de custo bloqueia a confirmação com mensagem no campo", () => {
+  const originalScroll = HTMLElement.prototype.scrollIntoView;
+  HTMLElement.prototype.scrollIntoView = vi.fn();
+  try {
+    const cfg = configCentrosDivergentes();
+    render(<FormOperacao config={cfg} tipoInicial="COMPRA_CONSUMO_DIRETO" onSalvo={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText("Fornecedor ou parceiro"), { target: { value: String(cfg.parceiros[0].id) } });
+    fireEvent.change(screen.getByLabelText("Descrição"), { target: { value: "Serviço avulso" } });
+    fireEvent.change(screen.getByLabelText("Descrição do item 1"), { target: { value: "Item sem centro" } });
+    fireEvent.change(screen.getByLabelText("Quantidade do item 1"), { target: { value: "1" } });
+    fireEvent.change(screen.getByLabelText("Valor unitário do item 1"), { target: { value: "10" } });
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar operação" }));
+    const campo = screen.getByLabelText("Centro de custo");
+    expect(campo.getAttribute("aria-invalid")).toBe("true");
+    expect(document.activeElement).toBe(campo);
+  } finally {
+    HTMLElement.prototype.scrollIntoView = originalScroll;
+  }
+});
+
+it("rascunho salvo antes do centro de custo por item existir (item sem centroCustoId): ao confirmar, marca o campo e não envia", () => {
+  const originalScroll = HTMLElement.prototype.scrollIntoView;
+  HTMLElement.prototype.scrollIntoView = vi.fn();
+  const fetchMock = vi.fn(async (_url: unknown, _init?: RequestInit) => ({ ok: true, json: async () => ({}) }));
+  vi.stubGlobal("fetch", fetchMock);
+  try {
+    const cfg = configCentrosDivergentes();
+    // Simula um rascunho persistido antes de `centroCustoPorItem` existir: o
+    // item não tem a chave `centroCustoId` (não apenas ""), e o formulário
+    // também não tem `centroCustoPorItem`.
+    const rascunhoAntigo = {
+      id: 8, versao: 1, updatedAt: "2026-09-11", documentos: [],
+      dados: {
+        formulario: {
+          tipo: "COMPRA_CONSUMO_DIRETO", condicao: "SEM_EFEITO_FINANCEIRO",
+          descricao: "Compra legada", valorOperacao: "10",
+          itens: [{ id: 1, categoriaId: "", classificacao: "", produtoId: "", descricao: "Item legado", quantidade: "1", unidade: "un", modoValor: "UNITARIO", valorUnitario: "10", valorTotal: "" }],
+          parceiroId: String(cfg.parceiros[0].id), categoriaId: "", centroCustoId: "", contaId: "", formaPagamento: "PIX", data: "2026-09-11", valorAgora: "", parcelas: [],
+        },
+      },
+    };
+    render(<FormOperacao config={cfg} rascunho={rascunhoAntigo} onSalvo={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar operação" }));
+    const campo = screen.getByLabelText("Centro de custo");
+    expect(campo.getAttribute("aria-invalid")).toBe("true");
+    expect(document.activeElement).toBe(campo);
+    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/financeiro/operacoes/rascunho/confirmacao"))).toBe(false);
+  } finally {
+    HTMLElement.prototype.scrollIntoView = originalScroll;
+  }
+});
+
+it("'Separar por item' deixa vazio (herda a operação) quando o produto não tem centro único", () => {
+  const cfg = { ...configCentrosDivergentes() };
+  cfg.produtos = [{ ...cfg.produtos[0], centroCustoIds: [] }, cfg.produtos[1]];
+  render(<FormOperacao config={cfg} onSalvo={vi.fn()} />);
+  fireEvent.change(screen.getByLabelText("Produto do item 1"), { target: { value: "1" } });
+  fireEvent.change(screen.getByLabelText("Centro de custo"), { target: { value: "1" } });
+  fireEvent.click(screen.getByRole("button", { name: /Adicionar item/i }));
+  fireEvent.change(screen.getByLabelText("Produto do item 2"), { target: { value: "2" } });
+  fireEvent.click(screen.getByRole("radio", { name: /Por item/i }));
+  expect((screen.getByLabelText("Centro de custo do item 1") as HTMLSelectElement).value).toBe("");
+  expect((screen.getByLabelText("Centro de custo do item 2") as HTMLSelectElement).value).toBe("2");
+});
+
+it("erro do servidor itens.N.centroCustoId no modo Único marca e rola até o centro da operação", async () => {
+  const originalScroll = HTMLElement.prototype.scrollIntoView;
+  const scroll = vi.fn();
+  HTMLElement.prototype.scrollIntoView = scroll;
+  const fetchMock = vi.fn(async (url: unknown, init?: RequestInit) => {
+    const caminho = String(url);
+    if (caminho.endsWith("/financeiro/operacoes/rascunho") && init?.method === "PUT") {
+      return { ok: true, json: async () => ({ id: 10, dados: {}, versao: 1, documentos: [], updatedAt: "2026-09-07T12:00:00Z" }) };
+    }
+    if (caminho.endsWith("/financeiro/operacoes/rascunho/confirmacao")) {
+      return { ok: false, status: 422, json: async () => ({ error: "Selecione um centro de custo ativo", campo: "itens.0.centroCustoId" }) };
+    }
+    return { ok: true, json: async () => ({}) };
+  });
+  vi.stubGlobal("fetch", fetchMock);
+  try {
+    const cfg = configCentrosDivergentes();
+    render(<FormOperacao config={cfg} onSalvo={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText("Descrição"), { target: { value: "Compra combinada" } });
+    fireEvent.change(screen.getByLabelText("Fornecedor ou parceiro"), { target: { value: String(cfg.parceiros[0].id) } });
+    fireEvent.change(screen.getByLabelText("Produto do item 1"), { target: { value: "1" } });
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Valor unitário do item 1" }), { target: { value: "100" } });
+    fireEvent.change(screen.getByLabelText("Centro de custo"), { target: { value: "1" } });
+    fireEvent.change(screen.getByLabelText("Conta financeira"), { target: { value: String(cfg.contas[0].id) } });
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar operação" }));
+    await waitFor(() => expect(screen.getByLabelText("Centro de custo").getAttribute("aria-invalid")).toBe("true"));
+    const campo = screen.getByLabelText("Centro de custo");
+    expect(campo.id).toBe("campo-centroCustoId");
+    expect(scroll).toHaveBeenCalled();
+  } finally {
+    HTMLElement.prototype.scrollIntoView = originalScroll;
+  }
+});
+
+it("voltar para Único limpa os centros preenchidos nos itens", () => {
+  render(<FormOperacao config={configCentrosDivergentes()} onSalvo={vi.fn()} />);
+  fireEvent.change(screen.getByLabelText("Produto do item 1"), { target: { value: "1" } });
+  fireEvent.click(screen.getByRole("button", { name: /Adicionar item/i }));
+  fireEvent.change(screen.getByLabelText("Produto do item 2"), { target: { value: "2" } });
+  fireEvent.click(screen.getByRole("button", { name: /Separar por item/i }));
+  expect((screen.getByLabelText("Centro de custo do item 1") as HTMLSelectElement).value).toBe("1");
+  fireEvent.click(screen.getByRole("radio", { name: /Único para a operação/i }));
+  expect(screen.queryByLabelText("Centro de custo do item 1")).toBeNull();
+  expect(screen.queryByLabelText("Centro de custo do item 2")).toBeNull();
 });
 
 describe("FormOperacao — geração de parcelas", () => {
@@ -473,17 +678,17 @@ describe("FormOperacao — botão sempre ativo; erro rola e foca o campo (não f
     expect(scroll).toHaveBeenCalled();
   });
 
-  it("centro de custo ambíguo entre produtos: rola e foca o campo", () => {
+  it("item não estocável sem centro de custo: rola e foca o campo do item", () => {
     const [, scroll] = comScrollStub(() => {
       render(<FormOperacao config={{ ...config,
         centrosCusto: [{ id: 1, nome: "Pecuária", ativo: true, ordem: 0 }, { id: 2, nome: "Agronomia", ativo: true, ordem: 0 }],
-        produtos: [{ ...config.produtos[0], centroCustoId: 1 }, { ...config.produtos[0], id: 2, nome: "Adubo", centroCustoId: 2 }],
-      }} onSalvo={vi.fn()} />);
+        produtos: [{ ...config.produtos[0], centroCustoIds: [1] }, { ...config.produtos[0], id: 2, nome: "Adubo", centroCustoIds: [2] }],
+      }} tipoInicial="COMPRA_CONSUMO_DIRETO" onSalvo={vi.fn()} />);
       fireEvent.change(screen.getByLabelText("Fornecedor ou parceiro"), { target: { value: "1" } });
       fireEvent.change(screen.getByLabelText("Descrição"), { target: { value: "Compra combinada" } });
-      fireEvent.change(screen.getByLabelText("Produto do item 1"), { target: { value: "1" } });
-      fireEvent.click(screen.getByRole("button", { name: /Adicionar item/i }));
-      fireEvent.change(screen.getByLabelText("Produto do item 2"), { target: { value: "2" } });
+      fireEvent.change(screen.getByLabelText("Descrição do item 1"), { target: { value: "Item avulso" } });
+      fireEvent.change(screen.getByLabelText("Quantidade do item 1"), { target: { value: "1" } });
+      fireEvent.change(screen.getByLabelText("Valor unitário do item 1"), { target: { value: "10" } });
       fireEvent.change(screen.getByLabelText("Conta financeira"), { target: { value: "1" } });
       fireEvent.click(screen.getByRole("button", { name: "Confirmar operação" }));
       const campo = screen.getByLabelText("Centro de custo");
@@ -565,5 +770,255 @@ describe("FormOperacao — botão sempre ativo; erro rola e foca o campo (não f
       expect(secao).toBe(document.activeElement);
     });
     expect(scroll).toHaveBeenCalled();
+  });
+});
+
+describe("estocável é decidido pelo tipo da operação, não pelo produto", () => {
+  const rascunhoCom = (tipo: string) => ({
+    id: 8, versao: 1, updatedAt: "2026-09-11", documentos: [],
+    dados: {
+      formulario: {
+        tipo, condicao: "SEM_EFEITO_FINANCEIRO", descricao: "Compra de ração", valorOperacao: "",
+        itens: [{ id: 1, categoriaId: "", classificacao: "", centroCustoId: "", produtoId: "1", descricao: "Ração", quantidade: "2", unidade: "kg", modoValor: "UNITARIO", valorUnitario: "10", valorTotal: "" }],
+        parceiroId: "1", categoriaId: "", centroCustoId: "", contaId: "", formaPagamento: "PIX", data: "2026-09-11", valorAgora: "", parcelas: [],
+      },
+    },
+  });
+
+  async function itemEnviado(tipo: string) {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ id: 8, dados: {}, versao: 2, documentos: [], updatedAt: "2026-09-11T12:00:00Z" }) });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<FormOperacao config={config} rascunho={rascunhoCom(tipo)} onSalvo={vi.fn()} />);
+    fireEvent.change(screen.getByRole("textbox", { name: "Descrição" }), { target: { value: "Compra de ração do mês" } });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/financeiro/operacoes/rascunho", expect.objectContaining({ method: "PUT" })), { timeout: 2000 });
+    const [, init] = fetchMock.mock.calls.find(([url]) => url === "/api/financeiro/operacoes/rascunho")!;
+    return JSON.parse(String(init.body)).dados.operacao.itens[0];
+  }
+
+  it("COMPRA_ESTOQUE com produto → item estocável", async () => {
+    expect(await itemEnviado("COMPRA_ESTOQUE")).toMatchObject({ produtoId: 1, estocavel: true });
+  });
+
+  it("COMPRA_CONSUMO_DIRETO com o mesmo produto → item não estocável", async () => {
+    expect(await itemEnviado("COMPRA_CONSUMO_DIRETO")).toMatchObject({ produtoId: 1, estocavel: false });
+  });
+});
+
+describe("tipo Ajuste de estoque", () => {
+  const MSG_CONFLITO = "O estoque mudou desde que você abriu esta tela. Atualize o saldo e confira a diferença.";
+  const saldo = (saldoAtual: number) => [{ produtoId: 1, nome: "Ração", categoria: null, unidade: "KG", centrosCusto: [], saldo: saldoAtual, custoMedio: 2, valor: 2 * saldoAtual, minimoEstoque: null, abaixoMinimo: false }];
+  const resposta = (ok: boolean, corpo: unknown, status = ok ? 200 : 400) => ({ ok, status, json: async () => corpo });
+
+  function abrir({ saldos = [saldo(1)], ajuste = resposta(true, { id: 9, operacaoId: 33, saldoAnterior: 1, quantidadeContada: 1.005, diferenca: 0.005 }), produtoInicial }: { saldos?: ReturnType<typeof saldo>[]; ajuste?: ReturnType<typeof resposta>; produtoInicial?: number } = {}) {
+    let leitura = 0;
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url === "/api/estoque/saldos") return resposta(true, saldos[Math.min(leitura++, saldos.length - 1)]);
+      if (url === "/api/estoque/ajustes") return ajuste;
+      return resposta(true, {});
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const onSalvo = vi.fn();
+    render(<FormOperacao config={{ ...config, centrosCusto: [{ id: 5, nome: "Pecuária", ativo: true, ordem: 0 }], produtos: [{ ...config.produtos[0], centroCustoIds: [5] }] }} tipoInicial="AJUSTE_ESTOQUE" produtoInicial={produtoInicial} onSalvo={onSalvo} />);
+    return { fetchMock, onSalvo };
+  }
+  // jsdom não implementa scrollIntoView (usado ao destacar o campo inválido).
+  const scrollOriginal = HTMLElement.prototype.scrollIntoView;
+  beforeEach(() => { HTMLElement.prototype.scrollIntoView = vi.fn(); });
+  afterEach(() => { HTMLElement.prototype.scrollIntoView = scrollOriginal; });
+  const chamadasAjuste = (fetchMock: ReturnType<typeof vi.fn>) => fetchMock.mock.calls.filter(([url]) => url === "/api/estoque/ajustes");
+  const confirmar = () => screen.getByRole("button", { name: "Confirmar ajuste" }) as HTMLButtonElement;
+  async function escolherProduto() {
+    const select = await screen.findByLabelText("Produto");
+    await waitFor(() => expect(screen.getByRole("option", { name: "Ração" })).toBeTruthy());
+    fireEvent.change(select, { target: { value: "1" } });
+  }
+
+  it("troca o formulário: sem parceiro, conta, parcelas, data e itens", async () => {
+    abrir();
+    await escolherProduto();
+    expect(screen.queryByLabelText("Data")).toBeNull();
+    expect(screen.queryByLabelText("Conta financeira")).toBeNull();
+    expect(screen.queryByLabelText("Condição financeira")).toBeNull();
+    expect(screen.queryByRole("combobox", { name: "Produto do item 1" })).toBeNull();
+    expect(screen.getByText("Sem movimentação financeira")).toBeTruthy();
+    expect(screen.getByLabelText("Justificativa do ajuste")).toBeTruthy();
+    expect(screen.getByRole("combobox", { name: "Centro de custo" })).toBeTruthy();
+  });
+
+  it("mostra o saldo atual do produto e a diferença com sinal", async () => {
+    abrir();
+    await escolherProduto();
+    expect(screen.getByLabelText("Saldo atual").textContent?.replaceAll("\u00a0", " ")).toBe("1 kg");
+    fireEvent.change(screen.getByLabelText("Quantidade contada"), { target: { value: "1.005" } });
+    expect(screen.getByRole("status", { name: "Diferença do ajuste" }).textContent).toContain("+0,005 kg");
+    fireEvent.change(screen.getByLabelText("Quantidade contada"), { target: { value: "0" } });
+    expect(screen.getByRole("status", { name: "Diferença do ajuste" }).textContent).toContain("-1 kg");
+  });
+
+  it("pré-seleciona o produto do atalho e sugere o centro único do produto", async () => {
+    abrir({ produtoInicial: 1 });
+    await waitFor(() => expect((screen.getByLabelText("Produto") as HTMLSelectElement).value).toBe("1"));
+    expect(screen.getByLabelText("Saldo atual").textContent).toContain("kg");
+    expect((screen.getByRole("combobox", { name: "Centro de custo" }) as HTMLSelectElement).value).toBe("5");
+  });
+
+  it("quantidade contada igual ao saldo: nenhum ajuste necessário e confirmar desabilitado", async () => {
+    const { fetchMock } = abrir();
+    await escolherProduto();
+    fireEvent.change(screen.getByLabelText("Quantidade contada"), { target: { value: "1" } });
+    fireEvent.change(screen.getByLabelText("Justificativa do ajuste"), { target: { value: "Contagem física" } });
+    expect(screen.getAllByText(/Nenhum ajuste necessário/).length).toBeGreaterThan(0);
+    expect(confirmar().disabled).toBe(true);
+    fireEvent.click(confirmar());
+    expect(chamadasAjuste(fetchMock)).toHaveLength(0);
+  });
+
+  it("contada 1,005 contra saldo 1: habilita e envia o ajuste com saldoEsperado e a justificativa", async () => {
+    const { fetchMock, onSalvo } = abrir();
+    await escolherProduto();
+    fireEvent.change(screen.getByLabelText("Quantidade contada"), { target: { value: "1.005" } });
+    fireEvent.change(screen.getByLabelText("Justificativa do ajuste"), { target: { value: "  Contagem física de setembro " } });
+    expect(confirmar().disabled).toBe(false);
+    fireEvent.click(confirmar());
+    await waitFor(() => expect(onSalvo).toHaveBeenCalledWith({ id: 33 }));
+    const chamadas = chamadasAjuste(fetchMock);
+    expect(chamadas).toHaveLength(1);
+    expect(chamadas[0][1]).toMatchObject({ method: "POST" });
+    expect(JSON.parse(String(chamadas[0][1].body))).toEqual({ produtoId: 1, quantidadeContada: 1.005, saldoEsperado: 1, observacao: "Contagem física de setembro", centroCustoId: 5 });
+    // Não passa pelo fluxo de rascunho/operação genérica.
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes("/financeiro/operacoes"))).toBe(false);
+  });
+
+  it("justificativa com menos de 5 caracteres bloqueia o envio e destaca o campo", async () => {
+    const { fetchMock, onSalvo } = abrir();
+    await escolherProduto();
+    fireEvent.change(screen.getByLabelText("Quantidade contada"), { target: { value: "3" } });
+    fireEvent.change(screen.getByLabelText("Justificativa do ajuste"), { target: { value: "abc" } });
+    fireEvent.click(confirmar());
+    const campo = screen.getByLabelText("Justificativa do ajuste");
+    expect(campo.getAttribute("aria-invalid")).toBe("true");
+    expect(screen.getByText(/pelo menos 5 caracteres/)).toBeTruthy();
+    expect(chamadasAjuste(fetchMock)).toHaveLength(0);
+    expect(onSalvo).not.toHaveBeenCalled();
+  });
+
+  it("recusa quantidade com mais de 3 casas ou negativa", async () => {
+    const { fetchMock } = abrir();
+    await escolherProduto();
+    fireEvent.change(screen.getByLabelText("Justificativa do ajuste"), { target: { value: "Contagem física" } });
+    for (const invalido of ["1.0004", "-1"]) {
+      fireEvent.change(screen.getByLabelText("Quantidade contada"), { target: { value: invalido } });
+      fireEvent.click(confirmar());
+      expect(screen.getByLabelText("Quantidade contada").getAttribute("aria-invalid")).toBe("true");
+    }
+    expect(chamadasAjuste(fetchMock)).toHaveLength(0);
+  });
+
+  it("CONFLITO: explica que o estoque mudou e recarrega o saldo para reconferir a diferença", async () => {
+    const { fetchMock, onSalvo } = abrir({ saldos: [saldo(1), saldo(4)], ajuste: resposta(false, { error: "O estoque mudou desde a consulta.", code: "CONFLITO" }, 409) });
+    await escolherProduto();
+    fireEvent.change(screen.getByLabelText("Quantidade contada"), { target: { value: "5" } });
+    fireEvent.change(screen.getByLabelText("Justificativa do ajuste"), { target: { value: "Contagem física" } });
+    fireEvent.click(confirmar());
+    await waitFor(() => expect(screen.getByText(MSG_CONFLITO)).toBeTruthy());
+    expect(onSalvo).not.toHaveBeenCalled();
+    await waitFor(() => expect(screen.getByLabelText("Saldo atual").textContent).toContain("4"));
+    expect(screen.getByRole("status", { name: "Diferença do ajuste" }).textContent).toContain("+1 kg");
+    expect(fetchMock.mock.calls.filter(([url]) => url === "/api/estoque/saldos")).toHaveLength(2);
+    // Reconfirmando com o saldo novo, o servidor recebe o saldoEsperado atualizado.
+    fireEvent.click(confirmar());
+    await waitFor(() => expect(chamadasAjuste(fetchMock)).toHaveLength(2));
+    expect(JSON.parse(String(chamadasAjuste(fetchMock)[1][1].body)).saldoEsperado).toBe(4);
+  });
+
+  it("outros erros do servidor aparecem sem recarregar o saldo", async () => {
+    const { fetchMock } = abrir({ ajuste: resposta(false, { error: "período financeiro fechado", code: "MES_FECHADO" }, 409) });
+    await escolherProduto();
+    fireEvent.change(screen.getByLabelText("Quantidade contada"), { target: { value: "5" } });
+    fireEvent.change(screen.getByLabelText("Justificativa do ajuste"), { target: { value: "Contagem física" } });
+    fireEvent.click(confirmar());
+    await waitFor(() => expect(screen.getAllByText("período financeiro fechado").length).toBeGreaterThan(0));
+    expect(fetchMock.mock.calls.filter(([url]) => url === "/api/estoque/saldos")).toHaveLength(1);
+  });
+
+  it("não salva rascunho enquanto o tipo é ajuste", async () => {
+    const { fetchMock } = abrir();
+    await escolherProduto();
+    fireEvent.change(screen.getByLabelText("Justificativa do ajuste"), { target: { value: "Contagem física" } });
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    expect(fetchMock.mock.calls.some(([url]) => url === "/api/financeiro/operacoes/rascunho")).toBe(false);
+    expect(screen.queryByRole("button", { name: "Limpar rascunho" })).toBeNull();
+  });
+
+  it("aberto pelo atalho, ignora o conteúdo de um rascunho existente", async () => {
+    const fetchMock = vi.fn(async (url: string) => resposta(true, url === "/api/estoque/saldos" ? saldo(1) : {}));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<FormOperacao config={config} tipoInicial="AJUSTE_ESTOQUE" produtoInicial={1} rascunho={{ id: 8, versao: 1, updatedAt: "2026-09-11", documentos: [], dados: { formulario: { tipo: "SERVICO", condicao: "A_VISTA", descricao: "Manutenção", valorOperacao: "100", parceiroId: "1", contaId: "1", formaPagamento: "PIX", data: "2026-09-11" } } }} onSalvo={vi.fn()} />);
+    expect((screen.getByLabelText("Tipo de operação") as HTMLSelectElement).value).toBe("AJUSTE_ESTOQUE");
+    expect((screen.getByLabelText("Justificativa do ajuste") as HTMLTextAreaElement).value).toBe("");
+  });
+
+  it("aberto pelo atalho, trava o tipo em Ajuste e nunca faz autosave do rascunho", async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn(async (url: string) => resposta(true, url === "/api/estoque/saldos" ? saldo(1) : {}));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<FormOperacao config={config} tipoInicial="AJUSTE_ESTOQUE" produtoInicial={1} rascunho={{ id: 8, versao: 3, updatedAt: "2026-09-11", documentos: [], dados: { formulario: { tipo: "COMPRA_ESTOQUE", condicao: "A_VISTA", descricao: "Compra com 5 itens" } } }} onSalvo={vi.fn()} />);
+    const select = screen.getByLabelText("Tipo de operação") as HTMLSelectElement;
+    expect(select.disabled).toBe(true);
+    expect(screen.getByText(/para outro tipo de operação, abra Nova operação/)).toBeTruthy();
+    fireEvent.change(select, { target: { value: "COMPRA_ESTOQUE" } });
+    fireEvent.change(screen.getByLabelText("Justificativa do ajuste"), { target: { value: "Contagem física" } });
+    await vi.advanceTimersByTimeAsync(3000);
+    expect((screen.getByLabelText("Tipo de operação") as HTMLSelectElement).value).toBe("AJUSTE_ESTOQUE");
+    expect(fetchMock.mock.calls.some(([url]) => url === "/api/financeiro/operacoes/rascunho")).toBe(false);
+    expect(screen.queryByRole("button", { name: "Limpar rascunho" })).toBeNull();
+    expect(screen.queryByLabelText("Anexar documentos")).toBeNull();
+  });
+
+  describe("modo consolidado", () => {
+    const sitios = (n: number) => Array.from({ length: n }, (_, i) => ({ id: i + 1, nome: `Sítio ${i + 1}`, apelido: null, cidade: null, uf: null, principal: i === 0, ativo: true, ordem: i }));
+    function abrirCom(nSitios: number) {
+      const fetchMock = vi.fn(async (url: string) => resposta(true, url === "/api/estoque/saldos" ? saldo(1) : url === "/api/propriedades" ? sitios(nSitios) : {}));
+      vi.stubGlobal("fetch", fetchMock);
+      render(<FormOperacao config={config} tipoInicial="AJUSTE_ESTOQUE" produtoInicial={1} onSalvo={vi.fn()} />);
+    }
+    afterEach(() => setPropriedadeAtiva(null));
+
+    it("vários sítios e nenhum ativo: avisa para escolher a fazenda e bloqueia o envio", async () => {
+      setPropriedadeAtiva(null);
+      abrirCom(2);
+      expect(await screen.findByText(/Selecione uma fazenda no seletor do topo para ajustar o estoque/)).toBeTruthy();
+      expect(screen.queryByLabelText("Quantidade contada")).toBeNull();
+      expect(confirmar().disabled).toBe(true);
+    });
+
+    it("um só sítio: formulário normal", async () => {
+      setPropriedadeAtiva(null);
+      abrirCom(1);
+      await waitFor(() => expect((screen.getByLabelText("Produto") as HTMLSelectElement).value).toBe("1"));
+      expect(screen.queryByText(/Selecione uma fazenda no seletor do topo/)).toBeNull();
+      expect(screen.getByLabelText("Quantidade contada")).toBeTruthy();
+    });
+
+    it("vários sítios com sítio ativo: formulário normal", async () => {
+      setPropriedadeAtiva(2);
+      abrirCom(3);
+      await waitFor(() => expect((screen.getByLabelText("Produto") as HTMLSelectElement).value).toBe("1"));
+      expect(screen.queryByText(/Selecione uma fazenda no seletor do topo/)).toBeNull();
+      expect(screen.getByLabelText("Quantidade contada")).toBeTruthy();
+    });
+  });
+});
+
+describe("painel de revisão — movimentos de estoque", () => {
+  it("VENDA e DEVOLUCAO não prometem N movimentos; a compra mantém a contagem exata", () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, status: 200, json: async () => ({}) })));
+    const { unmount } = render(<FormOperacao config={config} tipoInicial="VENDA" onSalvo={vi.fn()} />);
+    expect(screen.getByText("Movimenta o estoque dos produtos que já tiveram entrada nesta fazenda.")).toBeTruthy();
+    expect(screen.queryByText(/Nenhum movimento físico/)).toBeNull();
+    unmount();
+    render(<FormOperacao config={config} tipoInicial="COMPRA_ESTOQUE" onSalvo={vi.fn()} />);
+    expect(screen.queryByText(/Movimenta o estoque dos produtos/)).toBeNull();
+    expect(screen.getByText("Nenhum movimento físico de estoque será gerado.")).toBeTruthy();
   });
 });

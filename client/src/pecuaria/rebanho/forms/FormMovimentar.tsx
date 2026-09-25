@@ -67,7 +67,7 @@ export function FormMovimentar({ animais, propriedades, lotes, propriedadeInicia
 
   const titulo = lista.length === 1 ? "Movimentar animal" : `Movimentar ${lista.length} animais`;
   const formId = "form-movimentar-animais";
-  return <PainelCadastro aberto eyebrow="Localização" titulo={titulo} onFechar={() => { if (!salvando) onFechar(); }}
+  return <PainelCadastro aberto titulo={titulo} onFechar={() => { if (!salvando) onFechar(); }}
     rodape={<><Button secondary onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form={formId} disabled={salvando || !lista.length}>{salvando ? "Salvando…" : "Movimentar"}</Button></>}>
     <form id={formId} onSubmit={submeter} noValidate className="grid gap-4">
       <ErrorBox erro={erroGeral ?? erro} />

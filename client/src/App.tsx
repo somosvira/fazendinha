@@ -21,6 +21,7 @@ import { setPropriedadeAtiva, getPropriedadeAtiva } from "./propriedadeScope";
 import { PlantioContent, type PlaSub } from "./plantio/PlantioContent";
 import { EquipeContent, type EqpSub } from "./equipe/EquipeContent";
 import { CultivoContent, type MilSub } from "./cultivo/CultivoContent";
+import { EstoqueContent } from "./estoque/EstoqueContent";
 import { CommandPalette } from "./components/CommandPalette";
 import { ChatWidget } from "./components/ChatWidget";
 import { ASSISTENTE_ATIVO } from "./featureFlags";
@@ -359,6 +360,14 @@ export function App() {
       setLocationRevision((valor) => valor + 1);
       const sp = new URLSearchParams(window.location.search);
       const t = pathToTab(window.location.pathname);
+      // `?id=` numa aba de cockpit (pla-) abre a ficha direto, como o ⌘K e os
+      // links do Estoque levando ao talhão de origem.
+      const cockpitId = t && String(t).startsWith("pla-") ? sp.get("id") : null;
+      if (t && cockpitId) {
+        setDeepLink({ tab: t, id: cockpitId });
+        setDeepLinkFiltros(null);
+        return;
+      }
       setDeepLinkFiltros(t && [...sp.keys()].length && !isNovaOperacaoFinanceira(window.location.pathname) ? { tab: t, filtros: Object.fromEntries(sp.entries()) } : null);
     };
     window.addEventListener("popstate", onPop);
@@ -514,6 +523,8 @@ export function App() {
     ? (canSeeFolha
         ? <EquipeContent aba={EQP[tab]} onNavEqp={(s) => setTab(("eqp-" + s) as Tab)} />
         : <GatedTab user={effectiveUser} abaLabel="Equipe & Ponto" />)
+    : tab === "estoque"
+    ? <EstoqueContent />
     : (["dashboard", "gastos", "lancar", "caixinha", "cadastros", "plano", "relatorio"] as Tab[]).includes(tab)
     ? <FinanceiroContent tab={tab} onNav={setTab} podeEditarCadastros={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} podeExportar={!!effectiveUser.dono || effectiveUser.flags.includes("exportar")} />
     : (

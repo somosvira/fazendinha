@@ -30,7 +30,10 @@ export interface LinhaLancamento {
   descricao: string | null;
   numeroDocumento: string | null;
   categoria: { nome: string; classificacao: "CUSTEIO" | "INVESTIMENTO" | null };
-  centroCusto: { nome: string };
+  // `id` ausente/null = sem centro de custo (ou chamador antigo que só
+  // manda o nome). O nome já vem resolvido ao vivo por quem monta a linha
+  // (o snapshot de um item pode estar desatualizado).
+  centroCusto: { id?: number | null; nome: string };
   contaBancariaId: number | null;
   fornecedor: string | null;
   temNotaFiscal: boolean;
@@ -105,7 +108,11 @@ export function agregarRealizado(linhas: LinhaLancamento[], inicio: string, fim:
     ATIVIDADES.map((a) => [a, { receita: 0, custeio: 0, investimento: 0 }]),
   );
   const categorias = new Map<string, number>();
-  const centros = new Map<string, number>();
+  // Agrupado pela chave (id), não pelo nome: um centro renomeado no meio do
+  // período não pode virar duas linhas no relatório. Chamador sem `id`
+  // (compat) continua agrupando pelo nome.
+  const centros = new Map<string, { nome: string; total: number }>();
+  const chaveCentro = (c: { id?: number | null; nome: string }) => (c.id !== undefined ? `id:${c.id ?? 0}` : `nome:${c.nome}`);
 
   for (const l of validas) {
     const v = cents(l.valor);
@@ -123,7 +130,10 @@ export function agregarRealizado(linhas: LinhaLancamento[], inicio: string, fim:
     if (tipo === "investimento") { investimento += v; atv.investimento += v; }
     else { custeio += v; atv.custeio += v; }
     categorias.set(l.categoria.nome, (categorias.get(l.categoria.nome) ?? 0) + v);
-    centros.set(l.centroCusto.nome, (centros.get(l.centroCusto.nome) ?? 0) + v);
+    const chave = chaveCentro(l.centroCusto);
+    const centro = centros.get(chave) ?? { nome: l.centroCusto.nome, total: 0 };
+    centro.total += v;
+    centros.set(chave, centro);
   }
 
   const desc = <T extends { total: number }>(a: T, b: T) => b.total - a.total;
@@ -143,7 +153,7 @@ export function agregarRealizado(linhas: LinhaLancamento[], inicio: string, fim:
     },
     categorias: {
       itens: [...categorias.entries()].map(([categoria, total]) => ({ categoria, total: reais(total), pct: pct(total, saidas) })).sort(desc),
-      centros: [...centros.entries()].map(([centro, total]) => ({ centro, total: reais(total), pct: pct(total, saidas) })).sort(desc),
+      centros: [...centros.values()].map(({ nome, total }) => ({ centro: nome, total: reais(total), pct: pct(total, saidas) })).sort(desc),
     },
   };
 }

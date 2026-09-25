@@ -39,4 +39,23 @@ describe("classificação por item", () => {
     const servico = { itens: [], valorTotal: 100, categoriaId: 3, categoriaNome: "Serviços", transacoes: [{ id: 1, tipo: "PAGAMENTO", valorTotal: 40, reversaoDeId: null, status: "CONFIRMADA" }], compromissos: [{ id: 1, valorOriginal: d(60), status: "PENDENTE", liquidacoes: [] }] };
     expect(ratearCompromissos(servico).get(1)![0]).toMatchObject({ categoriaNome: "Serviços", valor: d(60) });
   });
+  it("centro efetivo de cada parte: o do item, senão o da operação, e sobrevive ao rateio de pagamento e de compromisso", () => {
+    const mista: OperacaoComFluxo & { compromissos: { id: number; status: string; valorOriginal: Prisma.Decimal; liquidacoes: never[] }[] } = {
+      valorTotal: 1000, centroCustoId: 9, centroCusto: { id: 9, nome: "Sede" },
+      itens: [
+        { id: 1, categoriaId: 1, categoriaNome: "Ração", classificacao: "CUSTEIO", valorTotal: 500, centroCustoId: 1, centroCustoNome: "Pecuária" },
+        { id: 2, categoriaId: 2, categoriaNome: "Frete", classificacao: "CUSTEIO", valorTotal: 500, centroCustoId: null, centroCustoNome: null },
+      ],
+      transacoes: [{ id: 1, tipo: "PAGAMENTO", valorTotal: 400, reversaoDeId: null, status: "CONFIRMADA" }],
+      compromissos: [{ id: 1, status: "PENDENTE", valorOriginal: d(600), liquidacoes: [] }],
+    };
+    const centros = (partes: ReturnType<typeof ratearCategorias>) => partes.map((p) => [p.centroCustoId, p.centroCustoNome]);
+    expect(centros(ratearCategorias(mista, 1000))).toEqual([[1, "Pecuária"], [9, "Sede"]]);
+    expect(centros(classificarFluxo(mista).transacoes.get(1)!)).toEqual([[1, "Pecuária"], [9, "Sede"]]);
+    expect(centros(ratearCompromissos(mista).get(1)!)).toEqual([[1, "Pecuária"], [9, "Sede"]]);
+    // Sem centro na operação, o item sem centro fica sem centro; serviço sem itens usa o da operação.
+    expect(centros(ratearCategorias({ ...mista, centroCustoId: null, centroCusto: null }, 1000))).toEqual([[1, "Pecuária"], [null, null]]);
+    expect(centros(ratearCategorias({ itens: [], centroCustoId: 9, centroCusto: { id: 9, nome: "Sede" } }, 100))).toEqual([[9, "Sede"]]);
+    expect(centros(ratearCategorias(null, 100))).toEqual([[null, null]]);
+  });
 });

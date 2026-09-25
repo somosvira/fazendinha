@@ -2,7 +2,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { ConfiguracoesFinanceiras } from "./ConfiguracoesFinanceiras";
-import { ApiError, atualizarConta, atualizarParceiro, criarCategoria, criarCentroCusto, criarConta, criarParceiro, obterConfiguracoesFinanceiras, type ConfiguracoesFinanceiras as Config } from "./novo-api";
+import { ApiError, atualizarConta, atualizarParceiro, atualizarProduto, criarCategoria, criarCentroCusto, criarConta, criarParceiro, obterConfiguracoesFinanceiras, type ConfiguracoesFinanceiras as Config } from "./novo-api";
+import { criarProduto as criarProdutoEstoque, editarProduto as editarProdutoEstoque } from "../estoque/api";
 
 /* Mantém ApiError real (o formulário usa instanceof) e substitui só as chamadas. */
 vi.mock("./novo-api", async (importOriginal) => ({
@@ -11,6 +12,14 @@ vi.mock("./novo-api", async (importOriginal) => ({
   criarConta: vi.fn(), atualizarConta: vi.fn(), criarParceiro: vi.fn(), atualizarParceiro: vi.fn(),
   criarCategoria: vi.fn(), atualizarCategoria: vi.fn(),
   criarCentroCusto: vi.fn(), atualizarCentroCusto: vi.fn(),
+  atualizarProduto: vi.fn(),
+}));
+/* `FormProduto` salva sempre via `estoque/api.ts` (rota liberada às três áreas,
+ * mesmo service do server) — só o toggle ativo/inativo da tabela usa
+ * `atualizarProduto` de `novo-api.ts` diretamente (ver ConfiguracoesFinanceiras.tsx). */
+vi.mock("../estoque/api", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../estoque/api")>()),
+  criarProduto: vi.fn(), editarProduto: vi.fn(),
 }));
 
 const config: Config = {
@@ -18,9 +27,14 @@ const config: Config = {
     { id: 1, nome: "Banco principal", tipo: "BANCO", instituicao: "Sicoob", identificacao: "Ag. 1 · C/C 2", agencia: "1", numeroConta: "2", titular: "Fazenda Rio Novo", ordem: 0, saldoAbertura: "1000", dataSaldoAbertura: "2026-09-01", saldoAtual: "1200", incluirNoSaldoGeral: true, ativo: true, temMovimentos: true },
     { id: 2, nome: "Gaveta", tipo: "CAIXA", instituicao: null, identificacao: null, saldoAbertura: "0", dataSaldoAbertura: "2026-09-01", saldoAtual: "0", incluirNoSaldoGeral: false, ativo: false, temMovimentos: false },
   ],
-  parceiros: [{ id: 7, nome: "Cooperativa", documento: "11222333000181", tipo: "FORNECEDOR", telefone: "3499990000", email: "coop@x.com", ativo: true, referencias: 2 }],
-  categorias: [{ id: 11, nome: "Insumos", classificacao: "CUSTEIO", ativo: true, ordem: 0, _count: { operacoes: 2, produtos: 1 } }],
-  centrosCusto: [{ id: 20, nome: "Atividade leiteira", ativo: true, ordem: 0, _count: { operacoes: 3, produtos: 0, safras: 0 } }], produtos: [],
+  parceiros: [
+    { id: 7, nome: "Cooperativa", documento: "11222333000181", tipo: "FORNECEDOR", telefone: "3499990000", email: "coop@x.com", ativo: true, referencias: 2 },
+    { id: 8, nome: "Agro Minas", documento: null, tipo: "FORNECEDOR", telefone: null, email: null, ativo: true, referencias: 0 },
+  ],
+  categorias: [{ id: 11, nome: "Insumos", classificacao: "CUSTEIO", ativo: true, ordem: 0, usoAgricola: false, _count: { operacoes: 2, produtos: 1 } }],
+  centrosCusto: [{ id: 20, nome: "Atividade leiteira", ativo: true, ordem: 0, _count: { operacoes: 3, produtos: 0, safras: 0 } }],
+  produtos: [],
+  produtosCadastro: [{ id: 30, nome: "Ração 22%", unidade: "KG", minimoEstoque: "500", categoriaId: 11, categoriaNome: "Insumos", categoria: { id: 11, nome: "Insumos", usoAgricola: true }, ativo: true, centroCustoIds: [20], centrosCusto: [{ id: 20, nome: "Atividade leiteira", ativo: true }], fornecedores: [{ id: 7, nome: "Cooperativa", ativo: true }] }],
 };
 
 /* A tabela responsiva renderiza tabela E cartões (CSS decide o que aparece);
@@ -30,18 +44,20 @@ const primeiro = (role: string, name: string | RegExp) => screen.getAllByRole(ro
 beforeEach(() => {
   vi.clearAllMocks();
   Element.prototype.scrollIntoView = vi.fn();
+  vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
   vi.mocked(obterConfiguracoesFinanceiras).mockResolvedValue(config);
   vi.mocked(atualizarConta).mockResolvedValue(config.contas[0]);
   vi.mocked(atualizarParceiro).mockResolvedValue(config.parceiros[0]);
 });
 afterEach(cleanup);
 
-async function montar(aba: "contas" | "parceiros" | "categorias" | "centros" = "contas") {
+async function montar(aba: "contas" | "parceiros" | "produtos" | "categorias" | "centros" = "contas") {
   render(<ConfiguracoesFinanceiras />);
   await screen.findAllByText("Banco principal");
-  if (aba === "parceiros") fireEvent.click(screen.getByRole("button", { name: /Clientes e fornecedores/ }));
-  if (aba === "categorias") fireEvent.click(screen.getByRole("button", { name: /^Categorias$/ }));
-  if (aba === "centros") fireEvent.click(screen.getByRole("button", { name: /Centros de custo/ }));
+  if (aba === "parceiros") fireEvent.click(screen.getByRole("tab", { name: /Clientes e fornecedores/ }));
+  if (aba === "produtos") fireEvent.click(screen.getByRole("tab", { name: /^Produtos$/ }));
+  if (aba === "categorias") fireEvent.click(screen.getByRole("tab", { name: /^Categorias$/ }));
+  if (aba === "centros") fireEvent.click(screen.getByRole("tab", { name: /Centros de custo/ }));
 }
 
 async function escolherSelect(painel: HTMLElement, rotulo: string, opcao: string) {
@@ -117,7 +133,10 @@ describe("ConfiguracoesFinanceiras — contas", () => {
     const saldo = within(painel).getByLabelText("Saldo de abertura") as HTMLInputElement;
     expect(saldo.type).toBe("text");
     expect(saldo.inputMode).toBe("decimal");
-    expect(saldo.value).toBe("0,00");
+    expect(saldo.value).toBe("");
+    expect(saldo.placeholder).toBe("0,00");
+    fireEvent.blur(saldo);
+    expect(saldo.value).toBe("");
     expect(within(painel).getByText("R$")).toBeTruthy();
     expect(within(painel).queryByLabelText("Ordem de exibição")).toBeNull();
     expect(within(painel).getByRole("combobox", { name: "Tipo" }).getAttribute("data-slot")).toBe("select-trigger");
@@ -126,17 +145,30 @@ describe("ConfiguracoesFinanceiras — contas", () => {
     expect((within(painel).getByLabelText("Titular") as HTMLInputElement).value).toBe("Fazenda  Rio Novo");
   });
 
-  it("reordena contas pelas setas da listagem", async () => {
-    vi.mocked(obterConfiguracoesFinanceiras).mockResolvedValue({
-      ...config,
-      contas: [{ ...config.contas[0], ordem: 0 }, { ...config.contas[1], ativo: true, ordem: 1 }],
-    });
+  it("saldo de abertura seleciona o valor ao focar, para digitar por cima", async () => {
     await montar();
-    fireEvent.click(primeiro("button", "Mover Gaveta para cima"));
-    await waitFor(() => {
-      expect(atualizarConta).toHaveBeenCalledWith(2, { ordem: 0 });
-      expect(atualizarConta).toHaveBeenCalledWith(1, { ordem: 1 });
-    });
+    fireEvent.click(screen.getByRole("button", { name: /Nova conta/ }));
+    const painel = await screen.findByRole("dialog");
+    const saldo = within(painel).getByLabelText("Saldo de abertura") as HTMLInputElement;
+    fireEvent.change(saldo, { target: { value: "1500" } });
+    fireEvent.blur(saldo);
+    expect(saldo.value).toBe("1.500,00");
+    fireEvent.focus(saldo);
+    expect(saldo.value).toBe("1500,00");
+    await waitFor(() => { expect(saldo.selectionStart).toBe(0); expect(saldo.selectionEnd).toBe(saldo.value.length); });
+  });
+
+  it("ações da linha têm dica no hover e não há setas de reordenar", async () => {
+    await montar();
+    expect((primeiro("button", "Editar Banco principal") as HTMLButtonElement).title).toBe("Editar");
+    expect((primeiro("button", "Desativar Banco principal") as HTMLButtonElement).title).toBe("Desativar");
+    expect(screen.queryByRole("button", { name: /Mover .* para (cima|baixo)/ })).toBeNull();
+  });
+
+  it("abas são um tablist com a aba ativa marcada", async () => {
+    await montar("categorias");
+    expect(screen.getByRole("tab", { name: /^Categorias$/ }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByRole("tab", { name: /Contas financeiras/ }).getAttribute("aria-selected")).toBe("false");
   });
 
   it("editar carrega os valores atuais, trava abertura com movimentos e envia só o que mudou", async () => {
@@ -180,6 +212,61 @@ describe("ConfiguracoesFinanceiras — contas", () => {
     fireEvent.click(screen.getByRole("button", { name: "Desativar" }));
     await waitFor(() => expect(atualizarConta).toHaveBeenCalledWith(1, { ativo: false }));
     await waitFor(() => expect(obterConfiguracoesFinanceiras).toHaveBeenCalledTimes(3));
+  });
+});
+
+describe("ConfiguracoesFinanceiras — produtos", () => {
+  it("cadastra produto sem exigir fornecedor", async () => {
+    vi.mocked(criarProdutoEstoque).mockResolvedValue(config.produtosCadastro![0]);
+    await montar("produtos");
+    expect(screen.getByRole("table", { name: "Produtos" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Novo produto" }));
+    const painel = await screen.findByRole("dialog");
+    fireEvent.change(within(painel).getByLabelText("Nome do produto"), { target: { value: "Sal mineral" } });
+    fireEvent.change(within(painel).getByLabelText("Unidade"), { target: { value: "KG" } });
+    fireEvent.change(within(painel).getByLabelText(/^Categoria/), { target: { value: "11" } });
+    fireEvent.click(within(painel).getByRole("button", { name: "Criar produto" }));
+    await waitFor(() => expect(criarProdutoEstoque).toHaveBeenCalledWith(expect.objectContaining({ nome: "Sal mineral", unidade: "KG", categoriaId: 11, fornecedorIds: [], centroCustoIds: [] })));
+  });
+
+  it("edita o produto com vários fornecedores opcionais", async () => {
+    vi.mocked(editarProdutoEstoque).mockResolvedValue(config.produtosCadastro![0]);
+    await montar("produtos");
+    fireEvent.click(primeiro("button", "Editar Ração 22%"));
+    const painel = await screen.findByRole("dialog");
+    // Fornecedor já vinculado aparece como chip removível no multiselect.
+    expect(within(painel).getByRole("button", { name: "Remover Cooperativa" })).toBeTruthy();
+    expect(within(painel).getByRole("button", { name: "Remover Atividade leiteira" })).toBeTruthy();
+    fireEvent.click(within(painel).getByRole("button", { name: "Fornecedores do produto" }));
+    fireEvent.click(await screen.findByRole("option", { name: "Agro Minas" }));
+    expect(within(painel).getByRole("button", { name: "Remover Agro Minas" })).toBeTruthy();
+    fireEvent.click(within(painel).getByRole("button", { name: "Salvar produto" }));
+    await waitFor(() => expect(editarProdutoEstoque).toHaveBeenCalledWith(30, expect.objectContaining({ fornecedorIds: [7, 8] })));
+  });
+
+  it("desativa produto explicando que os movimentos históricos ficam preservados", async () => {
+    await montar("produtos");
+    fireEvent.click(primeiro("button", "Desativar Ração 22%"));
+    expect(await screen.findByText(/movimentos e saldos históricos continuam vinculados/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Desativar" }));
+    await waitFor(() => expect(atualizarProduto).toHaveBeenCalledWith(30, { ativo: false }));
+  });
+
+  it("filtra produtos por centro de custo", async () => {
+    await montar("produtos");
+    expect(screen.getByRole("table", { name: "Produtos" })).toBeTruthy();
+    await escolherSelect(document.body, "Filtrar por centro de custo", "Sem centro");
+    expect(screen.queryByText("Ração 22%")).toBeNull();
+    await escolherSelect(document.body, "Filtrar por centro de custo", "Atividade leiteira");
+    expect(screen.getAllByText("Ração 22%").length).toBeGreaterThan(0);
+  });
+
+  it("filtra produtos pelo uso da categoria", async () => {
+    await montar("produtos");
+    await escolherSelect(document.body, "Filtrar por uso", "Uso agrícola");
+    expect(screen.getAllByText("Ração 22%").length).toBeGreaterThan(0);
+    await escolherSelect(document.body, "Filtrar por uso", "Sem uso específico");
+    expect(screen.queryByText("Ração 22%")).toBeNull();
   });
 });
 
@@ -263,7 +350,7 @@ describe("ConfiguracoesFinanceiras — categorias e centros de custo", () => {
     fireEvent.change(within(painel).getByLabelText("Nome da categoria"), { target: { value: "Ração" } });
     fireEvent.change(within(painel).getByLabelText("Classificação"), { target: { value: "CUSTEIO" } });
     fireEvent.click(within(painel).getByRole("button", { name: "Criar categoria" }));
-    await waitFor(() => expect(criarCategoria).toHaveBeenCalledWith({ nome: "Ração", classificacao: "CUSTEIO", ordem: 1 }));
+    await waitFor(() => expect(criarCategoria).toHaveBeenCalledWith({ nome: "Ração", classificacao: "CUSTEIO", ordem: 1, usoAgricola: false }));
   });
 
   it("cria um centro de custo sem natureza financeira", async () => {

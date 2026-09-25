@@ -2,6 +2,9 @@ import { Prisma, type DirecaoMovimentoConta, type TipoCompromisso, type TipoTran
 import { prisma } from "../../db.js";
 import { auditar, dinheiro, exigirContaAtiva, exigirParceiroAtivo, exigirPeriodoAberto, exigirPositivo, FinanceiroError } from "./regras.js";
 import { gerarParcelasFinanceiras, totalItensFinanceiros } from "./parcelas.calc.js";
+import { obterBasesCusto, produtosComEstoque } from "../estoque/estoque.js";
+import { valorSaidaDaBase } from "../estoque/estoque.calc.js";
+import { rotuloUnidade } from "../estoque/unidades.js";
 import type { z } from "zod";
 import type { liquidacaoSchema, operacaoSchema, simulacaoParcelasSchema, transacaoAvulsaSchema, transferenciaSchema } from "./schemas.js";
 
@@ -64,6 +67,15 @@ async function criarTransacaoComMovimento(
   });
 }
 
+/** Uma consulta para todos os centros usados na operação (cabeçalho + itens).
+ * Devolve id → nome só dos ativos; quem chamou decide o campo do erro. */
+async function resolverCentros(tx: Prisma.TransactionClient, ids: number[]) {
+  const unicos = [...new Set(ids)];
+  if (!unicos.length) return new Map<number, string>();
+  const centros = await tx.centroCusto.findMany({ where: { id: { in: unicos }, ativo: true }, select: { id: true, nome: true } });
+  return new Map(centros.map((centro) => [centro.id, centro.nome]));
+}
+
 async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInput) {
     await exigirPeriodoAberto(tx, input.propriedadeId, input.data);
     if (input.parceiroId) await exigirParceiroAtivo(tx, input.parceiroId, input.tipo);
@@ -74,25 +86,57 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
     }
     const produtosIds = input.itens.flatMap((item) => item.produtoId ? [item.produtoId] : []);
     const produtos = produtosIds.length
-      ? await tx.produto.findMany({ where: { id: { in: produtosIds }, ativo: true } })
+      ? await tx.produto.findMany({ where: { id: { in: produtosIds }, ativo: true }, include: { centrosCusto: { select: { centroCustoId: true } } } })
       : [];
     const produtosPorId = new Map(produtos.map((produto) => [produto.id, produto]));
+    // Produto com exatamente um centro cadastrado o transmite ao item; com vários
+    // (ou nenhum) o item fica sem centro próprio e herda o da operação.
+    const centroUnicoDoProduto = (produto: (typeof produtos)[number] | undefined) =>
+      produto && produto.centrosCusto.length === 1 ? produto.centrosCusto[0].centroCustoId : null;
+    const centrosItens = input.itens.map((item) => item.centroCustoId === undefined ? centroUnicoDoProduto(produtosPorId.get(item.produtoId ?? 0)) : item.centroCustoId);
+    // Quem decide se o item entra/sai do estoque é o TIPO da operação, não o
+    // produto: nos tipos que põem no estoque (compra para estoque, inventário,
+    // bonificação, produção) e no ajuste, todo item com produto (ou marcado
+    // estocável pelo cliente) é estocável; nos demais tipos nenhum é. O snapshot
+    // ItemOperacao.estocavel grava essa decisão.
+    // Venda/devolução só retiram do estoque produto que já teve entrada no sítio
+    // (mesma regra das baixas automáticas): vender leite, bezerro ou café que
+    // nunca foi estocado não gera SAIDA a custo 0 nem saldo negativo — o item
+    // vira não estocável e segue a regra de centro de custo efetivo.
     const temEfeitoEstoque = incluiEstoque.has(input.tipo) || retiraEstoque.has(input.tipo) || input.tipo === "AJUSTE_ESTOQUE";
-    if (temEfeitoEstoque) {
-      for (const item of input.itens.filter((item) => item.estocavel)) {
-        if (!item.produtoId || !produtosPorId.has(item.produtoId)) {
-          throw new FinanceiroError("VALIDACAO", `O item estocável “${item.descricao}” precisa apontar para um produto ativo`);
-        }
+    const retira = retiraEstoque.has(input.tipo);
+    const comEstoqueNoSitio = retira ? await produtosComEstoque(tx, produtosIds, input.propriedadeId) : null;
+    const estocavelItens = input.itens.map((item) => {
+      if (!temEfeitoEstoque) return false;
+      if (comEstoqueNoSitio && item.produtoId != null) return comEstoqueNoSitio.has(item.produtoId);
+      return item.estocavel || item.produtoId != null;
+    });
+    const centros = await resolverCentros(tx, [input.centroCustoId ?? null, ...centrosItens].flatMap((id) => id ? [id] : []));
+    if (input.centroCustoId && !centros.has(input.centroCustoId)) throw new FinanceiroError("VALIDACAO", "Selecione um centro de custo ativo", "centroCustoId");
+    centrosItens.forEach((id, indice) => {
+      if (id && !centros.has(id)) throw new FinanceiroError("VALIDACAO", "Selecione um centro de custo ativo", `itens.${indice}.centroCustoId`);
+      // Item não estocável sem centro efetivo (próprio ou da operação) não tem
+      // onde parar nos relatórios; estocável pode ficar sem centro (o consumo
+      // futuro decide).
+      if (!estocavelItens[indice] && !(id ?? input.centroCustoId)) {
+        throw new FinanceiroError("VALIDACAO", "Informe o centro de custo deste item ou um centro padrão para a operação", `itens.${indice}.centroCustoId`);
       }
-    }
+    });
+    input.itens.forEach((item, indice) => {
+      if (estocavelItens[indice] && (!item.produtoId || !produtosPorId.has(item.produtoId))) {
+        throw new FinanceiroError("VALIDACAO", `O item “${item.descricao}” movimenta estoque e precisa apontar para um produto ativo`);
+      }
+    });
 
     const classificar = async (categoriaId: number | null | undefined, classificacao?: "CUSTEIO" | "INVESTIMENTO" | null) => {
       const categoria = categoriaId ? await tx.categoria.findFirst({ where: { id: categoriaId, ativo: true } }) : null;
       if (categoriaId && !categoria) throw new FinanceiroError("VALIDACAO", "Selecione uma categoria ativa", "categoriaId");
       return { categoriaId: categoria?.id ?? null, categoriaNome: categoria?.nome ?? null, classificacao: classificacao === undefined ? categoria?.classificacao ?? null : classificacao };
     };
-    const itens = await Promise.all(input.itens.map(async (item) => ({
+    const itens = await Promise.all(input.itens.map(async (item, indice) => ({
       produtoId: item.produtoId,
+      centroCustoId: centrosItens[indice],
+      centroCustoNome: centrosItens[indice] ? centros.get(centrosItens[indice]!) ?? null : null,
       descricao: item.descricao,
       quantidade: new Prisma.Decimal(item.quantidade),
       unidade: item.unidade,
@@ -108,7 +152,7 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
       valorTotal: item.valorTotal === undefined
         ? dinheiro(new Prisma.Decimal(item.quantidade).mul(item.valorUnitario ?? 0))
         : dinheiro(item.valorTotal),
-      estocavel: item.estocavel,
+      estocavel: estocavelItens[indice],
       ...await classificar(item.categoriaId === undefined ? produtosPorId.get(item.produtoId ?? 0)?.categoriaId : item.categoriaId, item.classificacao),
     })));
     const classificacaoOperacao = await classificar(itens.length ? null : input.categoriaId, input.classificacao);
@@ -118,11 +162,6 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
       throw new FinanceiroError("VALIDACAO", "O valor total informado deve corresponder à soma dos itens");
     }
     if (valorTotal.isNegative()) throw new FinanceiroError("VALIDACAO", "O valor total da operação não pode ser negativo");
-
-    if (input.centroCustoId) {
-      const centro = await tx.centroCusto.findFirst({ where: { id: input.centroCustoId, ativo: true } });
-      if (!centro) throw new FinanceiroError("VALIDACAO", "Selecione um centro de custo ativo", "centroCustoId");
-    }
 
     if (input.financeiro.condicao === "PARCIAL") {
       const futuro = input.financeiro.parcelas.reduce((soma, parcela) => soma.plus(parcela.valor), new Prisma.Decimal(0));
@@ -158,10 +197,20 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
       const origem = input.tipo === "COMPRA_ESTOQUE" ? "COMPRA" : input.tipo === "INVENTARIO_INICIAL" ? "INVENTARIO_INICIAL"
         : input.tipo === "BONIFICACAO" ? "BONIFICACAO" : input.tipo === "PRODUCAO" ? "PRODUCAO"
           : input.tipo === "DEVOLUCAO" ? "DEVOLUCAO" : "AJUSTE_INVENTARIO";
-      for (const item of operacao.itens.filter((item) => item.estocavel && item.produtoId)) {
+      const itensEstoque = operacao.itens.filter((item) => item.estocavel && item.produtoId);
+      // SAIDA (venda/devolução) baixa pelo custo médio do sítio, nunca pelo
+      // preço de venda; ENTRADA/AJUSTE valorizam pelo próprio item.
+      const custosSaida = tipoMovimento === "SAIDA"
+        ? await obterBasesCusto(tx, itensEstoque.map((item) => item.produtoId!), input.propriedadeId)
+        : null;
+      for (const item of itensEstoque) {
+        const valores = custosSaida
+          ? valorSaidaDaBase(item.quantidade, custosSaida.get(item.produtoId!))
+          : { custoUnitario: item.valorUnitario, valorTotal: item.valorTotal };
         await tx.movimentoEstoque.create({ data: {
           produtoId: item.produtoId!, tipo: tipoMovimento, origem, data: input.data, quantidade: item.quantidade,
-          custoUnitario: item.valorUnitario, valorTotal: item.valorTotal, operacaoId: operacao.id, itemOperacaoId: item.id,
+          ...valores, operacaoId: operacao.id, itemOperacaoId: item.id,
+          centroCustoId: item.centroCustoId ?? input.centroCustoId ?? null,
           propriedadeId: input.propriedadeId, criadoPorId: input.usuarioId && input.usuarioId > 0 ? input.usuarioId : null,
           observacao: input.descricao,
         } });
@@ -355,7 +404,7 @@ export async function estornarOperacao(id: number, motivo: string, contexto: Con
         origem: "AJUSTE_INVENTARIO", data: new Date(),
         quantidade: movimento.tipo === "AJUSTE" ? movimento.quantidade.negated() : movimento.quantidade,
         custoUnitario: movimento.custoUnitario, valorTotal: movimento.tipo === "AJUSTE" ? movimento.valorTotal.negated() : movimento.valorTotal,
-        propriedadeId: movimento.propriedadeId, operacaoId: operacao.id,
+        propriedadeId: movimento.propriedadeId, operacaoId: operacao.id, centroCustoId: movimento.centroCustoId,
         reversaoDeId: movimento.id, observacao: `${PREFIXO_CANCELAMENTO_OPERACAO}${id}: ${motivo}`,
       } });
       await tx.movimentoEstoque.update({ where: { id: movimento.id }, data: { status: "REVERTIDO" } });
@@ -369,6 +418,7 @@ export async function estornarOperacao(id: number, motivo: string, contexto: Con
 
 const includeOperacao = Prisma.validator<Prisma.OperacaoInclude>()({
   parceiro: true,
+  centroCusto: { select: { id: true, nome: true } },
   itens: true,
   compromissos: {
     include: {
@@ -421,7 +471,7 @@ function resumoCancelamento(operacao: Prisma.OperacaoGetPayload<{ include: typeo
     }));
   const estoque = operacao.movimentosEstoque
     .filter((movimento) => movimento.status === "CONFIRMADO" && !movimento.reversaoDeId && !movimento.revertidoPor)
-    .map((movimento) => ({ id: movimento.id, produtoId: movimento.produtoId, produtoNome: movimento.produto.nome, quantidade: movimento.quantidade, unidade: movimento.produto.unidade, tipo: movimento.tipo }));
+    .map((movimento) => ({ id: movimento.id, produtoId: movimento.produtoId, produtoNome: movimento.produto.nome, quantidade: movimento.quantidade, unidade: rotuloUnidade(movimento.produto.unidade), tipo: movimento.tipo }));
   const impactosPorConta = new Map<number, { conta: { id: number; nome: string }; entrada: Prisma.Decimal; saida: Prisma.Decimal }>();
   for (const transacao of transacoes) for (const movimento of transacao.movimentos) {
     const atual = impactosPorConta.get(movimento.contaId) ?? { conta: movimento.conta, entrada: new Prisma.Decimal(0), saida: new Prisma.Decimal(0) };

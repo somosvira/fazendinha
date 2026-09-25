@@ -21,7 +21,7 @@ Os arquivos de config já estão no repo:
 1. `pnpm install --frozen-lockfile` (Node 20, pnpm via `packageManager` do `package.json`).
 2. `pnpm --filter rionovo-server exec prisma generate` — o Prisma Client é necessário para o `tsc`; não conecta ao banco.
 3. `pnpm -r run build` — server (`tsc`) e client (`tsc -b && vite build`).
-4. Sobe um Postgres 16 efêmero, materializa o schema com `prisma db push` e roda `pnpm --filter rionovo-server test`. A integração de recuperação usa somente fixtures `@example.test`, removidas após cada caso; nenhum ambiente ou proprietário real é acessado.
+4. Sobe um Postgres 16 efêmero, aplica as migrations com `prisma migrate deploy` e roda `pnpm --filter rionovo-server test`. A integração de recuperação usa somente fixtures `@example.test`, removidas após cada caso; nenhum ambiente ou proprietário real é acessado.
 
 O CI **não** deploya. Os deploys são feitos pelas integrações Git nativas: Render (`autoDeployTrigger: checksPass` → só deploya a `main` depois do CI verde) e Cloudflare Pages (build a cada push). Não há credenciais de infra no GitHub Actions.
 
@@ -85,7 +85,7 @@ Health check: `GET /api/health`. Build inicial: 3-5 min. Com `autoDeployTrigger:
 
 ### 1.4. Sincronizar o schema no Neon (passo manual, controlado)
 
-**Não há passo automático de schema no start em produção.** `start:prod` é só `node dist/index.js`; quem roda `prisma db push --skip-generate` é o script `dev` **local**. Se o código novo depende de coluna/tabela nova e o banco não foi sincronizado, a API sobe e quebra na primeira query (`P2021`/`P2022`).
+**Não há passo automático de schema no start em produção.** `start:prod` é só `node dist/index.js`; quem roda `prisma migrate deploy` é o script `dev` **local**. Se o código novo depende de coluna/tabela nova e o banco não foi sincronizado, a API sobe e quebra na primeira query (`P2021`/`P2022`).
 
 Sempre que um deploy trouxer mudança em `server/prisma/schema.prisma`, sincronize **antes** (ou logo depois) do deploy, com o `server/.env` apontando para o Neon de produção (ou via Shell do Render). Depois de sincronizar, rode também o backfill de multi-propriedade (não dispara mais sozinho no boot):
 
@@ -103,7 +103,7 @@ pnpm --filter rionovo-server exec prisma migrate deploy
 
 Aplica só as migrations de `server/prisma/migrations/` ainda não registradas. Não precisa de shadow DB, então a `DATABASE_URL` pooled basta.
 
-**Opção B — `db push` (sem histórico, exige `DIRECT_URL` válida):**
+**Opção B — `db push` (sem histórico, exige `DIRECT_URL` válida). Não usar enquanto houver o schema `pecuaria`:** os índices únicos parciais e as categorias padrão existem só no SQL da migration e o `db push` não os cria (ou os apagaria).
 
 ```bash
 pnpm --filter rionovo-server run db:push
@@ -118,13 +118,11 @@ Sincroniza o schema direto, ignorando o histórico de migrations. É o que histo
 - Se um `migrate deploy` travar no meio (`P3018`), recupere com `prisma migrate resolve --rolled-back <migration>` e depois `db push`.
 - `prisma migrate dev` (criar migration nova) precisa da `DIRECT_URL` real — ver "Pooled vs direct URL" no `CLAUDE.md`.
 
-#### PR #259 — cadastros financeiros ampliados
+#### Histórico consolidado (25/09/2026, PR #296)
 
-A migration `20260911180000_cadastros_financeiros` é aditiva e faz os backfills `DINHEIRO → CAIXA` e `AMBOS → CLIENTE + FORNECEDOR`, sem recriar contas/parceiros ou alterar seus IDs. Aplicar **antes de disponibilizar a nova API/UI**, após backup e conferência do ambiente. A baseline desta branch é `20260910150000_baseline`.
+As migrations viraram duas: `20260925120000_baseline` (o estado final da `main` antes da pecuária v1, gerado pelo Prisma a partir do schema) e `20260925130000_pecuaria_v1_rebanho` (cria o schema `pecuaria`, apaga as 68 tabelas do módulo legado e os vínculos do estoque com dieta/sanidade, e tem o SQL escrito à mão: índices únicos parciais e categorias padrão).
 
-Em banco vazio, `prisma migrate deploy` aplica baseline + ampliação. Em banco existente sem histórico, comparar primeiro o schema existente com a baseline e só registrar a baseline como aplicada se forem equivalentes; depois aplicar a ampliação. Se as colunas já vieram de `db push`, conferir o schema e executar/verificar o backfill antes de registrar a migration como aplicada. Não executar a baseline de criação sobre tabelas existentes nem resetar banco com dados.
-
-Após `db push`, executar `pnpm --filter rionovo-server run backfill:cadastros-financeiros` para o backfill idempotente (`garantirCadastrosFinanceiros`). Assim como os demais bootstraps da main, ele é manual e roda em Node apontando para o banco do ambiente, inclusive quando o app usa Worker. Não dispara no boot nem em requests. Isso **não substitui** a aplicação controlada do schema em produção. Não manter instâncias antigas escrevendo os tipos legados durante o rollout. Nenhuma migration de produção é executada automaticamente pelo PR.
+Um banco com o histórico antigo em `_prisma_migrations` (qualquer ambiente anterior a esta data) **não** aceita o `migrate deploy` novo — a baseline tentaria recriar tabelas existentes. Como hoje não há dados reais em produção, o caminho é recriar o banco: apagar os schemas `public` e `pecuaria`, rodar `prisma migrate deploy` no banco vazio e depois os bootstraps (§1.5). Quando houver dados reais, a alternativa sem perda é conferir que o banco está no estado da `main` de 24/09, registrar a baseline com `prisma migrate resolve --applied 20260925120000_baseline` e então aplicar a migration da pecuária.
 
 ### 1.5. Bootstrap do dono (script manual)
 
@@ -301,7 +299,7 @@ Mesmo modelo do Render (§1) e do Pages (§2): conecta o repo, Cloudflare builda
 6. Variáveis de ambiente de **runtime** (**Settings → Variables and Secrets**, depois de criado): as mesmas de `server/.env.example`. Tipo **Secret** pra `DATABASE_URL`, `JWT_SECRET`, `SHARED_ACCESS_TOKEN`, `OPENAI_API_KEY`, `LOCAL_DOWNLOAD_SECRET`, `RESEND_API_KEY`, `R2_*`, `WHATSAPP_*` — como "Text" ficam legíveis por qualquer um com acesso ao dashboard. `STORAGE_DRIVER` **precisa ser `r2`** — o driver `local` não funciona dentro do Worker (sem filesystem; `getStorage()` recusa com erro claro se tentar). `APP_BASE_URL` aqui deve ser a URL pública do próprio Worker (mesmo valor do passo 5, é o que o `cf-deploy.sh` reusa pro health check). `keep_vars: true` no `wrangler.jsonc` garante que essas variáveis sobrevivem aos próximos deploys automáticos.
 7. Salvar dispara o primeiro build. Depois disso, todo push na `main` builda e deploya sozinho — igual ao Pages hoje.
 
-> O histórico de migrations foi consolidado numa baseline única (`20260910150000_baseline`, #261) — `prisma migrate deploy` contra um banco vazio foi reconfirmado funcionando de ponta a ponta (testado local via `docker-compose.yml`). O risco de drift comentado no topo de `scripts/cf-deploy.sh` (Neon de produção sincronizado historicamente por `db push`, não por `migrate deploy`) continua valendo — é sobre o **estado do banco de produção**, não sobre os arquivos de migration; se `cf-deploy.sh` abortar por isso no primeiro deploy, resolver uma vez com `prisma migrate resolve --applied 20260910150000_baseline` (mesmo passo do §1.4, adaptado pro nome da baseline).
+> O histórico de migrations foi consolidado em `20260925120000_baseline` + `20260925130000_pecuaria_v1_rebanho` (PR #296; ver §1.4) — `prisma migrate deploy` contra um banco vazio foi confirmado de ponta a ponta. O risco de drift comentado no topo de `scripts/cf-deploy.sh` (Neon de produção sincronizado historicamente por `db push`, não por `migrate deploy`) continua valendo — é sobre o **estado do banco de produção**, não sobre os arquivos de migration; se `cf-deploy.sh` abortar por isso no primeiro deploy, seguir o §1.4 ("Histórico consolidado").
 
 ### 6.3. Teste local opcional (sem afetar o Worker do dashboard)
 
@@ -317,7 +315,7 @@ Cria um `.dev.vars` na raiz (formato `.env`, git-ignorado) com as mesmas envs, p
 Schema do banco e os três bootstraps continuam manuais e iguais ao fluxo do Render (§1.4, §1.5) — são scripts Node, rodam local ou em CI apontando `DATABASE_URL` pro Neon, não dentro do Worker:
 
 ```bash
-pnpm --filter rionovo-server exec prisma migrate deploy   # ou db:push
+pnpm --filter rionovo-server exec prisma migrate deploy
 pnpm --filter rionovo-server run backfill:propriedade
 pnpm --filter rionovo-server run bootstrap:dono
 pnpm --filter rionovo-server run bootstrap:resultados-ginecologicos

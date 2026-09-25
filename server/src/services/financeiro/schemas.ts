@@ -85,6 +85,7 @@ export const categoriaCadastroSchema = z.object({
   nome: z.string().trim().min(2).max(80),
   classificacao: z.enum(["CUSTEIO", "INVESTIMENTO"]).nullable().default(null),
   ordem: z.number().int().min(0).max(9999).default(0),
+  usoAgricola: z.boolean().optional(),
 });
 
 export const patchCategoriaCadastroSchema = categoriaCadastroSchema.partial().extend({ ativo: z.boolean().optional() });
@@ -122,6 +123,9 @@ export const tipoDocumentoFinanceiroSchema = z.enum([
 export const itemOperacaoSchema = z.object({
   categoriaId: z.number().int().positive().nullable().optional(),
   classificacao: z.enum(["CUSTEIO", "INVESTIMENTO"]).nullable().optional(),
+  // undefined = herda do produto (se ele tem exatamente 1 centro), senão null;
+  // null = explicitamente "herda o centro da operação".
+  centroCustoId: z.number().int().positive().nullable().optional(),
   produtoId: z.number().int().positive().optional(),
   descricao: z.string().trim().min(1).max(160),
   quantidade: valorPositivo,

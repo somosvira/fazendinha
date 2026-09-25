@@ -2,6 +2,7 @@ import { forwardRef, useEffect, useRef, useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import { ArrowDown, ArrowUp, Check, Pencil, Power, PowerOff, X } from "lucide-react";
 import { Loader } from "../components/Loading";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export const brl = (valor: string | number | null | undefined) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(valor ?? 0));
 export const dataBR = (valor: string) => new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" }).format(new Date(valor));
@@ -49,9 +50,9 @@ export function PaginaSemDados({ titulo, descricao, label, erro }: { titulo: str
   return <PaginaFinanceira><PageHeader titulo={titulo} descricao={descricao} /><ErrorBox erro={erro} /></PaginaFinanceira>;
 }
 
-export function PageHeader({ titulo, descricao, acao, eyebrow = "Financeiro" }: { titulo: string; descricao: string; acao?: React.ReactNode; eyebrow?: string }) {
+export function PageHeader({ titulo, descricao, acao, eyebrow = "Financeiro" }: { titulo: string; descricao: string; acao?: React.ReactNode; /** rótulo acima do título; padrão "Financeiro" */ eyebrow?: string }) {
   return <header className="flex flex-wrap items-end justify-between gap-5 border-b border-border pb-6 pt-7 max-[900px]:pt-0">
-    <div className="min-w-0 max-w-3xl flex-[1_1_320px]"><div className="eyebrow">{eyebrow}</div><h1 className="h1 mt-2 break-words hyphens-auto">{titulo}</h1><p className="mt-2 break-words text-sm leading-6 text-ink-3">{descricao}</p></div>{acao}
+    <div className="min-w-0 max-w-3xl flex-[1_1_320px]">{eyebrow && <div className="eyebrow">{eyebrow}</div>}<h1 className={`h1 break-words hyphens-auto ${eyebrow ? "mt-2" : ""}`}>{titulo}</h1><p className="mt-2 break-words text-sm leading-6 text-ink-3">{descricao}</p></div>{acao}
   </header>;
 }
 
@@ -80,9 +81,40 @@ export function StatusPill({ status }: { status: string }) {
   return <Pill tone={tone}>{STATUS[status] ?? status}</Pill>;
 }
 
-export function Metric({ label, valor, detalhe, icon: Icon, tone = "default" }: { label: string; valor: string; detalhe: string; icon: LucideIcon; tone?: "default" | "green" | "red" }) {
+export function Metric({ label, valor, detalhe, icon: Icon, tone = "default" }: { label: string; valor: string; detalhe?: string; icon: LucideIcon; tone?: "default" | "green" | "red" }) {
   const iconTone = tone === "green" ? "bg-green-50 text-green-800" : tone === "red" ? "bg-red-50 text-red-800" : "bg-[#eef1e9] text-mast";
-  return <Panel className="@container p-5"><div className="flex items-start justify-between gap-4"><div className="min-w-0 flex-1"><div className="text-[11px] font-semibold uppercase tracking-[.12em] text-ink-3">{label}</div><div className="mt-3 break-words font-serif text-[clamp(19px,8cqw,28px)] leading-none tracking-tight text-ink">{valor}</div></div><div className={`shrink-0 rounded-lg p-2.5 @max-[240px]:hidden ${iconTone}`}><Icon size={18} /></div></div><div className="mt-3 break-words text-xs text-ink-3">{detalhe}</div></Panel>;
+  return <Panel className="@container p-5"><div className="flex items-start justify-between gap-4"><div className="min-w-0 flex-1"><div className="text-[11px] font-semibold uppercase tracking-[.12em] text-ink-3">{label}</div><div className="mt-3 break-words font-serif text-[clamp(19px,8cqw,28px)] leading-none tracking-tight text-ink">{valor}</div></div><div className={`shrink-0 rounded-lg p-2.5 @max-[240px]:hidden ${iconTone}`}><Icon size={18} /></div></div>{detalhe && <div className="mt-3 break-words text-xs text-ink-3">{detalhe}</div>}</Panel>;
+}
+
+/* Rodapé de paginação das tabelas: intervalo exibido, Anterior/Próxima e salto
+ * direto por página. `substantivo` completa "1–15 de N …" (ex.: "operações"). */
+export function Paginacao({ pagina, totalPaginas, total, porPagina, rotulo, substantivo, idSelect, onPagina }: {
+  pagina: number; totalPaginas: number; total: number; porPagina: number;
+  /** aria-label da <nav> */ rotulo: string; substantivo: string; idSelect: string;
+  onPagina: (pagina: number) => void;
+}) {
+  return <nav aria-label={rotulo} className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3 text-sm">
+    <span className="text-ink-3">{(pagina - 1) * porPagina + 1}–{Math.min(pagina * porPagina, total)} de {total} {substantivo}</span>
+    <div className="flex items-center gap-2">
+      <Button secondary disabled={pagina === 1} onClick={() => onPagina(pagina - 1)}>Anterior</Button>
+      <label className="sr-only" htmlFor={idSelect}>Ir para a página</label>
+      <select id={idSelect} aria-label="Ir para a página" value={pagina} onChange={(e) => onPagina(Number(e.target.value))} className="h-10 rounded-lg border border-border bg-white px-2 text-sm">
+        {Array.from({ length: totalPaginas }, (_, indice) => <option key={indice + 1} value={indice + 1}>Página {indice + 1} de {totalPaginas}</option>)}
+      </select>
+      <Button secondary disabled={pagina === totalPaginas} onClick={() => onPagina(pagina + 1)}>Próxima</Button>
+    </div>
+  </nav>;
+}
+
+/* Filtro de listagem no padrão visual do app (Radix Select estilizado), no
+ * lugar do <select> nativo. O Radix não aceita value "", então a opção "todos"
+ * (valor "") trafega por um sentinela interno. */
+const FILTRO_TODOS = "__todos__";
+export function SelectFiltro({ rotulo, valor, onChange, opcoes, className = "" }: { rotulo: string; valor: string; onChange: (valor: string) => void; opcoes: { valor: string; texto: string }[]; className?: string }) {
+  return <Select value={valor === "" ? FILTRO_TODOS : valor} onValueChange={(v) => onChange(v === FILTRO_TODOS ? "" : v)}>
+    <SelectTrigger aria-label={rotulo} title={opcoes.find((o) => o.valor === valor)?.texto} className={`h-10 w-full justify-between rounded-lg bg-white px-3 text-left text-sm font-normal sm:w-auto sm:min-w-[170px] [&>span]:whitespace-nowrap ${className}`}><SelectValue /></SelectTrigger>
+    <SelectContent>{opcoes.map((o) => <SelectItem key={o.valor || FILTRO_TODOS} value={o.valor === "" ? FILTRO_TODOS : o.valor}>{o.texto}</SelectItem>)}</SelectContent>
+  </Select>;
 }
 
 /* Coluna de ações de cadastro: editar e desativar/reativar, com reordenação
@@ -93,11 +125,12 @@ export function Metric({ label, valor, detalhe, icon: Icon, tone = "default" }: 
 export function AcoesLinha({ nome, ativo, onEditar, onAlternar, onSubir, onDescer, podeSubir = false, podeDescer = false }: { nome: string; ativo: boolean; onEditar: () => void; onAlternar: () => void; onSubir?: () => void; onDescer?: () => void; podeSubir?: boolean; podeDescer?: boolean }) {
   const parar = (fn: () => void) => (e: React.MouseEvent) => { e.stopPropagation(); fn(); };
   const cls = "rounded-lg p-2 text-ink-2 hover:bg-surface-2 hover:text-ink";
+  const alternar = ativo ? "Desativar" : "Reativar";
   return <div className="flex items-center justify-end gap-1">
     {onSubir && <button type="button" disabled={!podeSubir} onClick={parar(onSubir)} aria-label={`Mover ${nome} para cima`} className={`${cls} disabled:cursor-not-allowed disabled:opacity-30`}><ArrowUp size={16} /></button>}
     {onDescer && <button type="button" disabled={!podeDescer} onClick={parar(onDescer)} aria-label={`Mover ${nome} para baixo`} className={`${cls} disabled:cursor-not-allowed disabled:opacity-30`}><ArrowDown size={16} /></button>}
-    <button type="button" onClick={parar(onEditar)} aria-label={`Editar ${nome}`} className={cls}><Pencil size={16} /></button>
-    <button type="button" onClick={parar(onAlternar)} aria-label={`${ativo ? "Desativar" : "Reativar"} ${nome}`} className={cls}>{ativo ? <PowerOff size={16} /> : <Power size={16} />}</button>
+    <button type="button" onClick={parar(onEditar)} title="Editar" aria-label={`Editar ${nome}`} className={cls}><Pencil size={16} /></button>
+    <button type="button" onClick={parar(onAlternar)} title={alternar} aria-label={`${alternar} ${nome}`} className={ativo ? `${cls} hover:text-red-700` : cls}>{ativo ? <PowerOff size={16} /> : <Power size={16} />}</button>
   </div>;
 }
 
@@ -210,7 +243,7 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
     {barraRolagemSuperior && temRolagem && <div ref={barraRef} role="group" aria-label={`Rolagem horizontal: ${rotulo}`} tabIndex={0} onKeyDown={roladaPorTeclado} className="sticky top-0 z-10 hidden overflow-x-auto border-b border-border bg-surface-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#6f7d68]/40 md:block" onScroll={() => sincronizarRolagem("barra")}>
       <div style={{ width: larguraRolagem, height: 1 }} />
     </div>}
-    <div ref={tabelaRef} className="hidden overflow-x-auto md:block" onScroll={() => sincronizarRolagem("tabela")}>
+    <div ref={tabelaRef} className={`hidden overflow-x-auto md:block ${barraRolagemSuperior && temRolagem ? "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden" : ""}`} onScroll={() => sincronizarRolagem("tabela")}>
       <table className="w-full text-left text-sm" style={{ minWidth: larguraMinima }}>
         <caption className="sr-only">{rotulo}</caption>
         <thead className="bg-[#f4f2e9] text-[11px] uppercase tracking-[.08em] text-ink-3">
@@ -223,7 +256,7 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
                por role="button" quebraria a semântica de tabela para leitores de tela */
             {...(onAbrir ? { onClick: () => onAbrir(item), tabIndex: 0, onKeyDown: (e: React.KeyboardEvent) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onAbrir(item); } } } : {})}
             className={`${onAbrir ? "cursor-pointer hover:bg-[#faf9f4]" : ""} ${classeLinha?.(item) ?? ""}`}
-          >{colunas.map((coluna) => <td key={coluna.chave} className={`p-4 align-top ${alinhaCelula(coluna.alinhamento)}`}>{coluna.celula(item)}</td>)}</tr>)}
+          >{colunas.map((coluna) => <td key={coluna.chave} className={`p-4 align-middle ${alinhaCelula(coluna.alinhamento)}`}>{coluna.celula(item)}</td>)}</tr>)}
         </tbody>
       </table>
     </div>

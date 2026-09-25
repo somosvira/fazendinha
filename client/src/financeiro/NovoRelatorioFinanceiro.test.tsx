@@ -18,7 +18,7 @@ afterEach(() => { cleanup(); vi.clearAllMocks(); vi.unstubAllGlobals(); });
 
 const cadastros: ConfiguracoesFinanceiras = {
   contas: [], parceiros: [], produtos: [],
-  categorias: [{ id: 3, nome: "Nutrição", ativo: true, ordem: 0, classificacao: "CUSTEIO" }, { id: 4, nome: "Silagem antiga", ativo: false, ordem: 1, classificacao: null }],
+  categorias: [{ id: 3, nome: "Nutrição", ativo: true, ordem: 0, classificacao: "CUSTEIO", usoAgricola: false }, { id: 4, nome: "Silagem antiga", ativo: false, ordem: 1, classificacao: null, usoAgricola: false }],
   centrosCusto: [{ id: 1, nome: "Pecuária", ativo: true, ordem: 0 }],
 };
 const configuracao = { nome: "Pecuária — agosto", dataInicio: "2026-08-01", dataFim: "2026-08-31", regime: "ambos" as const, tipos: [], status: ["CONFIRMADA"], centroCustoIds: [], categoriaIds: [], classificacoes: [] };

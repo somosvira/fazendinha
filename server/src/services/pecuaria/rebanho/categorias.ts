@@ -11,7 +11,7 @@ import {
 } from "./categoria.calc.js";
 import type { CriarCategoriaInput, EditarCategoriaInput, RegraPropostaInput } from "./schemas.js";
 
-/** Padrões de fábrica: as categorias do IDEAGRI (CATEGORIA 1–7). Mesmos valores da migration pecuaria_categorias. */
+/** Padrões de fábrica: as categorias do IDEAGRI (CATEGORIA 1–7). Mesmos valores do INSERT na migration da pecuária v1 (`20260925130000_pecuaria_v1_rebanho`). */
 export const CATEGORIAS_PADRAO: Array<{
   chavePadrao: string; ideagriId: number; nome: string; sexo: Sexo; automatica: boolean;
   idadeMinMeses: number | null; idadeMaxMeses: number | null; partos: CriterioPartos; ordem: number;
