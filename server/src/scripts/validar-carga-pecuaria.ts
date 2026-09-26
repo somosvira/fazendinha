@@ -215,6 +215,29 @@ async function main() {
   info(`animais com brincoEletronico preenchido: ${comBrincoEletronico} / ${totalAnimais}`);
   info(`animais com SISBOV preenchido: ${comSisbov} / ${totalAnimais}`);
 
+  // ---- 13) filiação (v2) ------------------------------------------------------
+  console.log(`\n13) Filiação (genética)`);
+  const [maeAnimal, maeExterna, paiAnimal, paiExterno, genitoresExternos] = await Promise.all([
+    prisma.animal.count({ where: { maeId: { not: null } } }),
+    prisma.animal.count({ where: { maeExternaId: { not: null } } }),
+    prisma.animal.count({ where: { paiId: { not: null } } }),
+    prisma.animal.count({ where: { paiExternoId: { not: null } } }),
+    prisma.genitorExterno.count(),
+  ]);
+  info(`mãe: ${maeAnimal} do rebanho, ${maeExterna} externa · pai: ${paiAnimal} do rebanho, ${paiExterno} externo · genitores externos: ${genitoresExternos}`);
+  const sexoErrado = await prisma.animal.count({
+    where: { OR: [{ mae: { sexo: "M" } }, { pai: { sexo: "F" } }, { maeExterna: { sexo: "M" } }, { paiExterno: { sexo: "F" } }] },
+  });
+  if (sexoErrado === 0) ok(`nenhuma mãe macho nem pai fêmea`);
+  else falha(`${sexoErrado} animais com genitor de sexo trocado`);
+  const nascidosAntesDaMae = await prisma.$queryRaw<{ n: bigint }[]>`
+    SELECT COUNT(*) AS n FROM pecuaria."Animal" f
+    JOIN pecuaria."Animal" m ON m.id = f."maeId"
+    WHERE m."dataNascimento" >= f."dataNascimento"`;
+  const n = Number(nascidosAntesDaMae[0]?.n ?? 0);
+  if (n === 0) ok(`toda mãe do rebanho nasceu antes da cria`);
+  else falha(`${n} crias nascidas antes (ou no dia) da mãe — dado do IDEAGRI a revisar`, false);
+
   console.log(`\n=== ${falhas === 0 ? "Validação OK" : `${falhas} checagem(ns) crítica(s) com FALHA`} ===`);
   await prisma.$disconnect();
   if (falhas > 0) process.exit(1);

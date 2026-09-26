@@ -20,7 +20,11 @@
  *  - composição: PERCENTUAL (0–100) → fracao64 = round(pct*64/100); se a soma passar de 64,
  *    o maior componente é reduzido até 64;
  *  - periodoAberto = período ANIMALPERIODO mais recente com DATAFIM vazio (1 Doadora, 2 Receptora,
- *    3 Descarte); a interpretação do tipo e o fallback pro papel do setor ficam com o importador.
+ *    3 Descarte); a interpretação do tipo e o fallback pro papel do setor ficam com o importador;
+ *  - filiação (v2): maeIdeagriId/paiIdeagriId apontam para um animal do rebanho OU para um item de
+ *    `genitoresExternos`; o sexo do genitor externo é o do papel (mãe → F, pai → M). Genitor
+ *    usado nos dois papéis é inconsistência do IDEAGRI: fica o primeiro papel visto e a outra
+ *    referência é descartada com aviso.
  * Determinístico: tudo ordenado por ideagriId / nome.
  */
 import { readFileSync, writeFileSync } from "node:fs";
@@ -230,6 +234,9 @@ export function construir(texto, geradoEm) {
   const motivosBaixa = new Map();
   const tiposBaixa = new Map();
   const racas = new Map();
+  const filiacao = new Map();
+  const genitoresBrutos = new Map();
+  const racasPorGenitor = new Map();
   const push = (m, k, v) => (m.has(k) ? m.get(k).push(v) : m.set(k, [v]));
 
   for (const l of linhas) {
@@ -252,6 +259,17 @@ export function construir(texto, geradoEm) {
       push(pesagensPorAnimal, num(f[1]), {
         ideagriId: num(f[0]), data: txt(f[2]), pesoKg: num(f[3]), tipoIdeagri: txt(f[4]),
       });
+    } else if (l.startsWith("@FIL@")) {
+      const f = l.slice(5).split(SEP);
+      filiacao.set(num(f[0]), { mae: num(f[1]), pai: num(f[2]) });
+    } else if (l.startsWith("@GE@")) {
+      const f = l.slice(4).split(SEP);
+      genitoresBrutos.set(num(f[0]), {
+        ideagriId: num(f[0]), numero: txt(f[1]), nome: txt(f[2]), sexoIdeagri: txt(f[3]), tipoIdeagri: txt(f[4]), central: txt(f[5]),
+      });
+    } else if (l.startsWith("@GERACA@")) {
+      const f = l.slice(8).split(SEP);
+      push(racasPorGenitor, num(f[0]), { sigla: txt(f[2]) ?? txt(f[3]), percentual: num(f[4]) });
     } else if (l.startsWith("@AP@")) {
       const f = l.slice(4).split(SEP);
       push(periodosPorAnimal, num(f[1]), {
@@ -269,6 +287,13 @@ export function construir(texto, geradoEm) {
     .filter((a) => a.ideagriId != null)
     .sort((x, y) => x.ideagriId - y.ideagriId)
     .map((a) => montarAnimal(a, racasPorAnimal.get(a.ideagriId), pesagensPorAnimal.get(a.ideagriId), periodosPorAnimal.get(a.ideagriId)));
+
+  const { genitoresExternos, filiacaoPorAnimal } = montarGenitores(animais, filiacao, genitoresBrutos, racasPorGenitor);
+  for (const a of animais) {
+    const fil = filiacaoPorAnimal.get(a.ideagriId);
+    if (fil?.mae != null) a.maeIdeagriId = fil.mae;
+    if (fil?.pai != null) a.paiIdeagriId = fil.pai;
+  }
 
   const propriedades = [...new Set(animais.map((a) => a.propriedadeNome))]
     .sort((a, b) => a.localeCompare(b, "pt-BR"))
@@ -290,8 +315,57 @@ export function construir(texto, geradoEm) {
     racas: [...racas.values()].sort((a, b) => a.ideagriId - b.ideagriId),
     motivosBaixa: [...motivosBaixa.values()].sort((a, b) => a.ideagriId - b.ideagriId),
     tiposBaixa: [...tiposBaixa.values()].sort((a, b) => a.ideagriId - b.ideagriId),
+    genitoresExternos,
     animais,
   };
+}
+
+/**
+ * Resolve a filiação do dump: referência a animal do rebanho fica como está; referência a animal
+ * de fora vira genitor externo (sexo pelo papel). Referência a algo que não veio nem em @A@ nem em
+ * @GE@ é descartada com aviso — o importador nunca recebe ponteiro sem destino.
+ */
+export function montarGenitores(animais, filiacao, genitoresBrutos, racasPorGenitor) {
+  const doRebanho = new Map(animais.map((a) => [a.ideagriId, a]));
+  const papelDoGenitor = new Map();
+  const filiacaoPorAnimal = new Map();
+
+  const resolver = (filhoId, genitorId, papel) => {
+    if (genitorId == null) return null;
+    if (genitorId === filhoId) { console.warn(`FILIAÇÃO: animal ${filhoId} aponta para si mesmo como ${papel} — ignorado`); return null; }
+    const interno = doRebanho.get(genitorId);
+    if (interno) {
+      const sexoEsperado = papel === "mãe" ? "F" : "M";
+      if (interno.sexo !== sexoEsperado) { console.warn(`FILIAÇÃO: ${papel} ${genitorId} do animal ${filhoId} tem sexo ${interno.sexo} — ignorada`); return null; }
+      return genitorId;
+    }
+    if (!genitoresBrutos.has(genitorId)) { console.warn(`FILIAÇÃO: ${papel} ${genitorId} do animal ${filhoId} não veio no dump — ignorada`); return null; }
+    const anterior = papelDoGenitor.get(genitorId);
+    if (anterior && anterior !== papel) { console.warn(`FILIAÇÃO: genitor externo ${genitorId} usado como mãe e como pai — mantido como ${anterior}`); return null; }
+    papelDoGenitor.set(genitorId, papel);
+    return genitorId;
+  };
+
+  for (const [filhoId, { mae, pai }] of [...filiacao.entries()].sort((x, y) => x[0] - y[0])) {
+    if (!doRebanho.has(filhoId)) continue;
+    filiacaoPorAnimal.set(filhoId, { mae: resolver(filhoId, mae, "mãe"), pai: resolver(filhoId, pai, "pai") });
+  }
+
+  const genitoresExternos = [...papelDoGenitor.entries()]
+    .sort((x, y) => x[0] - y[0])
+    .map(([id, papel]) => {
+      const g = genitoresBrutos.get(id);
+      return {
+        ideagriId: id,
+        sexo: papel === "mãe" ? "F" : "M",
+        nome: g.nome ?? g.numero ?? `IDEAGRI ${id}`,
+        codigo: g.nome && g.numero ? g.numero : null,
+        fornecedor: g.central,
+        tipoIdeagri: g.tipoIdeagri,
+        composicao: composicaoEm64(racasPorGenitor.get(id) ?? []),
+      };
+    });
+  return { genitoresExternos, filiacaoPorAnimal };
 }
 
 function main() {

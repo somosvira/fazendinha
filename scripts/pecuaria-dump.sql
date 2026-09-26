@@ -3,14 +3,14 @@
  * Orquestrado por scripts/extract-pecuaria.sh (isql.exe numa CÓPIA do DADOS777.FDB).
  *
  * Convenções:
- *  - cada linha sai prefixada (@A@/@RACA@/@MB@/@RC@/@P@/@AP@) e os campos separados por '~|~';
+ *  - cada linha sai prefixada (@A@/@RACA@/@MB@/@RC@/@P@/@AP@/@FIL@/@GE@/@GERACA@) e os campos separados por '~|~';
  *  - datas 'YYYY-MM-DD' (CAST de DATE para VARCHAR no Firebird);
  *  - NÃO selecionar colunas blob (OBSERVACAO etc.) — quebram o isql (SU$APPENDBLOBTOFILE);
  *  - chaves estáveis = códigos internos do IDEAGRI (CDANIMAL, CDRACA, CDMOTIVOBAIXA, CDPESO),
  *    que viram `ideagriId` no JSON (importador idempotente por ideagriId).
  *
  * Filtro do rebanho da v1: TIPOANIMAL='A' AND ANIMALREBANHO=1.
- *   (sem o antigo "OR EXISTS COLETA": as doadoras externas DB01–DB06 ficam para a v2.)
+ *   (sem o antigo "OR EXISTS COLETA": doadoras e touros de fora entram pela v2 — @GE@ abaixo.)
  *
  * ENCODING: o banco guarda texto em WIN1252. Conforme o charset da conexão do isql, a saída
  * chega como CP1252 puro OU como UTF-8 (a extração de jul/2026 chegou UTF-8 e foi lida como
@@ -146,3 +146,63 @@ FROM ANIMALPERIODO ap
 WHERE a.TIPOANIMAL='A' AND a.ANIMALREBANHO=1
   AND ap.DATAFIM IS NULL
 ORDER BY ap.CDANIMAL, ap.DATAINICIO DESC;
+
+
+/* ── FILIAÇÃO (v2) ─────────────────────────────────────────────────────────────
+ * @FIL@ cdanimal | cdmae | cdpai
+ * Só animais do rebanho com mãe ou pai informados. Mãe/pai podem ser outro animal do
+ * rebanho (vira maeId/paiId) ou um animal de fora — touro de central, sêmen, embrião,
+ * doadora de outra fazenda (TIPOANIMAL E/S, ou A com ANIMALREBANHO≠1) — que vem em @GE@.
+ */
+SELECT '@FIL@' || CAST(a.CDANIMAL AS VARCHAR(12))
+  || '~|~' || COALESCE(CAST(a.CDMAE AS VARCHAR(12)),'')
+  || '~|~' || COALESCE(CAST(a.CDPAI AS VARCHAR(12)),'')
+  AS "LINHA"
+FROM ANIMAL a
+WHERE a.TIPOANIMAL='A' AND a.ANIMALREBANHO=1
+  AND (a.CDMAE IS NOT NULL OR a.CDPAI IS NOT NULL)
+ORDER BY a.CDANIMAL;
+
+/* ── GENITORES EXTERNOS (v2) ───────────────────────────────────────────────────
+ * @GE@ cdanimal | numero | nome | sexo | tipoanimal | central
+ * Quem é mãe ou pai de algum animal do rebanho mas não é do rebanho. O sexo que vale é o
+ * do papel (mãe → F, pai → M); o SEXO do IDEAGRI vem só para conferência. central =
+ * CENTRALSEMEN.DESCRICAO (vira `fornecedor`). VALIDAR NA 1ª EXECUÇÃO: ANIMAL.CDCENTRALSEMEN
+ * existe como escrito (consta no mapa do IDEAGRI de 22/09).
+ */
+SELECT '@GE@' || CAST(g.CDANIMAL AS VARCHAR(12))
+  || '~|~' || COALESCE(g.NUMERO,'')
+  || '~|~' || COALESCE(g.NOME,'')
+  || '~|~' || COALESCE(g.SEXO,'')
+  || '~|~' || COALESCE(g.TIPOANIMAL,'')
+  || '~|~' || COALESCE(cs.DESCRICAO,'')
+  AS "LINHA"
+FROM ANIMAL g
+  LEFT JOIN CENTRALSEMEN cs ON cs.CDCENTRALSEMEN = g.CDCENTRALSEMEN
+WHERE NOT (g.TIPOANIMAL='A' AND g.ANIMALREBANHO=1)
+  AND EXISTS (
+    SELECT 1 FROM ANIMAL f
+    WHERE f.TIPOANIMAL='A' AND f.ANIMALREBANHO=1
+      AND (f.CDMAE = g.CDANIMAL OR f.CDPAI = g.CDANIMAL)
+  )
+ORDER BY g.CDANIMAL;
+
+/* ── COMPOSIÇÃO DOS GENITORES EXTERNOS (v2) ────────────────────────────────────
+ * @GERACA@ cdanimal | cdraca | sigla | descricao | percentual   (mesmo formato de @RACA@)
+ */
+SELECT '@GERACA@' || CAST(ar.CDANIMAL AS VARCHAR(12))
+  || '~|~' || CAST(ar.CDRACA AS VARCHAR(8))
+  || '~|~' || COALESCE(r.SIGLA,'')
+  || '~|~' || COALESCE(r.DESCRICAO,'')
+  || '~|~' || COALESCE(CAST(ar.PERCENTUAL AS VARCHAR(20)),'')
+  AS "LINHA"
+FROM ANIMALRACA ar
+  JOIN ANIMAL g ON g.CDANIMAL = ar.CDANIMAL
+  LEFT JOIN RACA r ON r.CDRACA = ar.CDRACA
+WHERE NOT (g.TIPOANIMAL='A' AND g.ANIMALREBANHO=1)
+  AND EXISTS (
+    SELECT 1 FROM ANIMAL f
+    WHERE f.TIPOANIMAL='A' AND f.ANIMALREBANHO=1
+      AND (f.CDMAE = g.CDANIMAL OR f.CDPAI = g.CDANIMAL)
+  )
+ORDER BY ar.CDANIMAL, ar.CDRACA;
