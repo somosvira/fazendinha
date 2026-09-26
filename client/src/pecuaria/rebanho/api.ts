@@ -12,6 +12,7 @@ import type {
   ComposicaoSugerida,
   CriarGenitorInput,
   CriarLoteInput,
+  CriarMaterialGeneticoInput,
   CriarMotivoBaixaInput,
   CriarRacaInput,
   DefinirCategoriaManualInput,
@@ -20,6 +21,7 @@ import type {
   EditarCategoriaInput,
   EditarGenitorInput,
   EditarLoteInput,
+  EditarMaterialGeneticoInput,
   EditarMotivoBaixaInput,
   EditarPesagemInput,
   EditarRacaInput,
@@ -34,9 +36,11 @@ import type {
   ListarCategoriasResultado,
   ListarFiltros,
   ListarGenitoresQuery,
+  ListarMaterialGeneticoQuery,
   ListarMovimentacoesResultado,
   ListarResultado,
   Lote,
+  MaterialGeneticoDTO,
   MotivoBaixa,
   MovimentacaoDetalhe,
   MovimentarInput,
@@ -135,6 +139,23 @@ export const editarGenitor = (id: string, input: EditarGenitorInput) =>
 
 export const substituirComposicaoGenitor = (id: string, input: SubstituirComposicaoGenitorInput) =>
   req<GenitorDTO>(`/genitores/${id}/composicao`, { method: "PUT", body: JSON.stringify(input) });
+
+// ---------- genética v2: material genético (sêmen/embrião) ----------
+
+export const listarMaterialGenetico = (filtros: ListarMaterialGeneticoQuery = {}) => {
+  const params = new URLSearchParams();
+  for (const [chave, valor] of Object.entries(filtros)) {
+    if (valor !== undefined && valor !== null) params.set(chave, String(valor));
+  }
+  const query = params.toString();
+  return req<MaterialGeneticoDTO[]>(`/material-genetico${query ? `?${query}` : ""}`);
+};
+
+export const criarMaterialGenetico = (input: CriarMaterialGeneticoInput) =>
+  req<MaterialGeneticoDTO>("/material-genetico", { method: "POST", body: JSON.stringify(input) });
+
+export const editarMaterialGenetico = (id: string, input: EditarMaterialGeneticoInput) =>
+  req<MaterialGeneticoDTO>(`/material-genetico/${id}`, { method: "PATCH", body: JSON.stringify(input) });
 
 export const buscarAuditoriaAnimal = (id: string, opts?: { page?: number; pageSize?: number }) => {
   const params = new URLSearchParams();

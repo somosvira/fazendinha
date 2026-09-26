@@ -284,7 +284,7 @@ export type EntradaAuditoria = {
   alteracoes: Array<{ campo: string; rotulo: string; antes: string | null; depois: string | null }>;
 };
 
-export type EntidadeCadastro = "Lote" | "Raca" | "MotivoBaixa" | "CategoriaAnimal" | "GenitorExterno";
+export type EntidadeCadastro = "Lote" | "Raca" | "MotivoBaixa" | "CategoriaAnimal" | "GenitorExterno" | "MaterialGenetico";
 
 export type Lote = {
   id: string;
@@ -505,4 +505,40 @@ export type EditarGenitorInput = Partial<{
 export type SubstituirComposicaoGenitorInput = { itens: ComposicaoItemInput[] };
 
 export type ListarGenitoresQuery = { sexo?: Sexo; incluirInativos?: boolean; q?: string };
+
+// ---------- genética v2: material genético (sêmen/embrião) ----------
+
+export type TipoMaterialGenetico = "SEMEN" | "EMBRIAO";
+export type TipoSemen = "CONVENCIONAL" | "SEXADO_FEMEA" | "SEXADO_MACHO";
+
+export type GenitorMaterialDTO =
+  | { tipo: "ANIMAL"; id: string; nome: string | null; brinco: string }
+  | { tipo: "EXTERNO"; id: string; nome: string; codigo: string | null };
+
+export type MaterialGeneticoDTO = {
+  id: string;
+  tipo: TipoMaterialGenetico;
+  tipoSemen: TipoSemen | null;
+  touro: GenitorMaterialDTO;
+  doadora: GenitorMaterialDTO | null;
+  observacao: string | null;
+  produto: { id: string; nome: string; unidade: string; ativo: boolean; categoriaNome: string | null };
+  /** saldo no sítio ativo; null = produto ainda sem movimento no estoque. */
+  saldo: number | null;
+};
+
+export type RefGenitorInput = { tipo: "ANIMAL" | "EXTERNO"; id: string };
+
+export type CriarMaterialGeneticoInput = {
+  tipo: TipoMaterialGenetico;
+  tipoSemen?: TipoSemen | null;
+  touro: RefGenitorInput;
+  doadora?: RefGenitorInput | null;
+  observacao?: string | null;
+  produto: { nome?: string; categoriaId: string; centroCustoIds?: string[]; fornecedorIds?: string[] };
+};
+
+export type EditarMaterialGeneticoInput = Partial<{ tipoSemen: TipoSemen | null; observacao: string | null }>;
+
+export type ListarMaterialGeneticoQuery = { tipo?: TipoMaterialGenetico; incluirInativos?: boolean };
 

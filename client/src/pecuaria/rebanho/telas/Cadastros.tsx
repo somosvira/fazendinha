@@ -12,26 +12,27 @@
 // o usuário corrigir).
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Dna, LogOut, Plus, Tags, Users } from "lucide-react";
+import { Dna, FlaskConical, LogOut, Pencil, Plus, Tags, Users } from "lucide-react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Loader } from "@/components/Loading";
-import { AcoesLinha, Button, type ColunaTabela, ErrorBox, PageHeader, PaginaFinanceira, Panel, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
+import { AcoesLinha, Button, type ColunaTabela, Empty, ErrorBox, PageHeader, PaginaFinanceira, Panel, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
 import { BarraFiltros, SubAbas } from "../ui";
 import { NavRebanho } from "./NavRebanho";
 import { AlteracoesCadastro } from "../components/AlteracoesCadastro";
 import {
   criarCategoria, editarCategoria, editarGenitor, editarMotivoBaixa, editarRaca, listarCategorias, listarGenitores,
-  listarMotivosBaixa, listarRacas, obterCatalogos, reordenarCategorias, restaurarPadroesCategorias, simularCategorias, RebanhoApiError,
+  listarMaterialGenetico, listarMotivosBaixa, listarRacas, obterCatalogos, reordenarCategorias, restaurarPadroesCategorias, simularCategorias, RebanhoApiError,
 } from "../api";
-import type { CatalogoRaca, CategoriaDTO, ClasseMotivoBaixa, GenitorDTO, MotivoBaixa, Raca, RegraCategoriaProposta, ResultadoSimulacaoCategorias } from "../types";
+import type { CatalogoRaca, CategoriaDTO, ClasseMotivoBaixa, GenitorDTO, MaterialGeneticoDTO, MotivoBaixa, Raca, RegraCategoriaProposta, ResultadoSimulacaoCategorias } from "../types";
 import { rotuloClasseMotivo, rotuloSexo } from "../lib/rotulos";
 import { FormMotivoBaixa } from "../cadastros/FormMotivoBaixa";
 import { FormRaca } from "../cadastros/FormRaca";
 import { FormGenitor } from "../cadastros/FormGenitor";
+import { FormMaterialGenetico } from "../cadastros/FormMaterialGenetico";
 import { FormCategoria, type DadosFormCategoria } from "../cadastros/FormCategoria";
 
-type Aba = "categorias" | "racas" | "motivos" | "genitores";
-type EntidadePainel = "raca" | "motivo" | "genitor";
+type Aba = "categorias" | "racas" | "motivos" | "genitores" | "material-genetico";
+type EntidadePainel = "raca" | "motivo" | "genitor" | "material";
 type Painel = { entidade: EntidadePainel; modo: "novo" } | { entidade: EntidadePainel; modo: "editar"; id: string | number } | null;
 type PainelCategoria = { modo: "novo" } | { modo: "editar"; categoria: CategoriaDTO } | null;
 type Confirmacao =
@@ -104,6 +105,31 @@ const colunasGenitores = (editar: (g: GenitorDTO) => void, alternar: (g: Genitor
   { chave: "acoes", titulo: "Ações", alinhamento: "direita", larguraMinima: 110, acoes: true, celula: (g) => <AcoesLinha nome={g.nome} ativo={g.ativo} onEditar={() => editar(g)} onAlternar={() => alternar(g)} /> },
 ];
 
+function nomeGenitorMaterial(g: MaterialGeneticoDTO["touro"] | MaterialGeneticoDTO["doadora"]): string {
+  if (!g) return "—";
+  return g.tipo === "ANIMAL" ? (g.nome ? `${g.brinco} ${g.nome}` : g.brinco) : g.nome;
+}
+
+const ROTULO_TIPO_MATERIAL: Record<MaterialGeneticoDTO["tipo"], string> = { SEMEN: "Sêmen", EMBRIAO: "Embrião" };
+const ROTULO_TIPO_SEMEN: Record<string, string> = { CONVENCIONAL: "Convencional", SEXADO_FEMEA: "Sexado fêmea", SEXADO_MACHO: "Sexado macho" };
+
+function rotuloSaldoMaterial(m: MaterialGeneticoDTO): string {
+  if (m.saldo === null) return "Sem estoque";
+  const unidade = m.tipo === "EMBRIAO" ? (m.saldo === 1 ? "embrião" : "embriões") : (m.saldo === 1 ? "dose" : "doses");
+  return `${m.saldo} ${unidade}`;
+}
+
+const colunasMaterial = (editar: (m: MaterialGeneticoDTO) => void): ColunaTabela<MaterialGeneticoDTO>[] => [
+  { chave: "produto", titulo: "Produto", larguraMinima: 200, principal: true, celula: (m) => <strong className="break-words">{m.produto.nome}</strong> },
+  { chave: "tipo", titulo: "Tipo", larguraMinima: 100, celula: (m) => ROTULO_TIPO_MATERIAL[m.tipo] },
+  { chave: "touro", titulo: "Touro", larguraMinima: 150, celula: (m) => nomeGenitorMaterial(m.touro) },
+  { chave: "doadora", titulo: "Doadora", larguraMinima: 150, celula: (m) => nomeGenitorMaterial(m.doadora) },
+  { chave: "tipoSemen", titulo: "Tipo de sêmen", larguraMinima: 130, celula: (m) => m.tipoSemen ? ROTULO_TIPO_SEMEN[m.tipoSemen] ?? m.tipoSemen : "—" },
+  { chave: "saldo", titulo: "Saldo", alinhamento: "direita", larguraMinima: 110, celula: (m) => rotuloSaldoMaterial(m) },
+  { chave: "situacao", titulo: "Situação", alinhamento: "direita", larguraMinima: 100, celula: (m) => <Pill tone={m.produto.ativo ? "green" : "neutral"}>{m.produto.ativo ? "Ativo" : "Inativo"}</Pill> },
+  { chave: "acoes", titulo: "Ações", alinhamento: "direita", larguraMinima: 90, acoes: true, celula: (m) => <div className="flex justify-end"><button type="button" onClick={(e) => { e.stopPropagation(); editar(m); }} title="Editar" aria-label={`Editar ${m.produto.nome}`} className="rounded-lg p-2 text-ink-2 hover:bg-surface-2 hover:text-ink"><Pencil size={16} /></button></div> },
+];
+
 function mensagemDesativar(confirmacao: NonNullable<Confirmacao>): string {
   if (confirmacao.tipo === "raca") return "A raça deixa de aparecer para novos cadastros e composições raciais. Composições já registradas continuam intactas.";
   if (confirmacao.tipo === "genitor") return "O genitor deixa de aparecer para novas filiações. Filiações já registradas continuam intactas.";
@@ -116,6 +142,7 @@ export function Cadastros({ podeLancar = true }: { podeLancar?: boolean }) {
   const [racas, setRacas] = useState<Raca[] | null>(null);
   const [motivos, setMotivos] = useState<MotivoBaixa[] | null>(null);
   const [genitores, setGenitores] = useState<GenitorDTO[] | null>(null);
+  const [materiais, setMateriais] = useState<MaterialGeneticoDTO[] | null>(null);
   const [racasCatalogo, setRacasCatalogo] = useState<CatalogoRaca[]>([]);
   const [painel, setPainel] = useState<Painel>(null);
   const [confirmando, setConfirmando] = useState<Confirmacao>(null);
@@ -134,6 +161,7 @@ export function Cadastros({ podeLancar = true }: { podeLancar?: boolean }) {
   const carregarRacas = useCallback(() => listarRacas({ incluirInativos: mostrarInativos }).then(setRacas).catch((e) => setErro(e.message)), [mostrarInativos]);
   const carregarMotivos = useCallback(() => listarMotivosBaixa({ incluirInativos: mostrarInativos }).then(setMotivos).catch((e) => setErro(e.message)), [mostrarInativos]);
   const carregarGenitores = useCallback(() => listarGenitores({ incluirInativos: mostrarInativos }).then(setGenitores).catch((e) => setErro(mensagemErro(e))), [mostrarInativos]);
+  const carregarMateriais = useCallback(() => listarMaterialGenetico({ incluirInativos: mostrarInativos }).then(setMateriais).catch((e) => setErro(mensagemErro(e))), [mostrarInativos]);
   useEffect(() => { obterCatalogos().then((c) => setRacasCatalogo(c.racas)).catch(() => undefined); }, []);
   /** sempre traz ativas e inativas — a simulação precisa da lista completa; "Mostrar inativas" só filtra a tabela. */
   const carregarCategorias = useCallback(() => listarCategorias({ incluirInativos: true }).then((r) => { setCategorias(r.itens); setSemCategoriaAtual(r.semCategoria); }).catch((e) => setErro(mensagemErro(e))), []);
@@ -142,15 +170,17 @@ export function Cadastros({ podeLancar = true }: { podeLancar?: boolean }) {
     if (aba === "racas") carregarRacas();
     else if (aba === "motivos") carregarMotivos();
     else if (aba === "genitores") carregarGenitores();
+    else if (aba === "material-genetico") carregarMateriais();
     else carregarCategorias();
-  }, [aba, carregarRacas, carregarMotivos, carregarGenitores, carregarCategorias]);
+  }, [aba, carregarRacas, carregarMotivos, carregarGenitores, carregarMateriais, carregarCategorias]);
 
   const recarregarAtual = useCallback(async () => {
     if (aba === "racas") await carregarRacas();
     else if (aba === "motivos") await carregarMotivos();
     else if (aba === "genitores") await carregarGenitores();
+    else if (aba === "material-genetico") await carregarMateriais();
     else await carregarCategorias();
-  }, [aba, carregarRacas, carregarMotivos, carregarGenitores, carregarCategorias]);
+  }, [aba, carregarRacas, carregarMotivos, carregarGenitores, carregarMateriais, carregarCategorias]);
 
   const executar = async (acao: () => Promise<unknown>) => {
     if (emCurso.current) return;
@@ -256,6 +286,7 @@ export function Cadastros({ podeLancar = true }: { podeLancar?: boolean }) {
   const racaSelecionada = painel?.entidade === "raca" && painel.modo === "editar" ? (racas ?? []).find((r) => r.id === painel.id) ?? null : null;
   const motivoSelecionado = painel?.entidade === "motivo" && painel.modo === "editar" ? (motivos ?? []).find((m) => m.id === painel.id) ?? null : null;
   const genitorSelecionado = painel?.entidade === "genitor" && painel.modo === "editar" ? (genitores ?? []).find((g) => g.id === painel.id) ?? null : null;
+  const materialSelecionado = painel?.entidade === "material" && painel.modo === "editar" ? (materiais ?? []).find((m) => m.id === painel.id) ?? null : null;
   /* key força remount do formulário a cada abertura, zerando o estado local */
   const chavePainel = painel ? `${painel.entidade}-${painel.modo === "editar" ? painel.id : "novo"}` : "fechado";
   const chavePainelCategoria = painelCategoria ? (painelCategoria.modo === "editar" ? `editar-${painelCategoria.categoria.id}` : "novo") : "fechado";
@@ -264,14 +295,15 @@ export function Cadastros({ podeLancar = true }: { podeLancar?: boolean }) {
     : aba === "categorias" ? <div className="flex flex-wrap gap-2"><Button secondary onClick={restaurarPadroes}>Restaurar padrões</Button><Button onClick={() => setPainelCategoria({ modo: "novo" })}><Plus size={16} /> Nova categoria</Button></div>
     : aba === "racas" ? <Button onClick={() => abrirNovo("raca")}><Plus size={16} /> Nova raça</Button>
     : aba === "genitores" ? <Button onClick={() => abrirNovo("genitor")}><Plus size={16} /> Novo genitor externo</Button>
+    : aba === "material-genetico" ? <Button onClick={() => abrirNovo("material")}><Plus size={16} /> Novo material genético</Button>
     : <Button onClick={() => abrirNovo("motivo")}><Plus size={16} /> Novo motivo de baixa</Button>;
 
-  const carregando = (aba === "racas" && racas === null) || (aba === "motivos" && motivos === null) || (aba === "categorias" && categorias === null) || (aba === "genitores" && genitores === null);
+  const carregando = (aba === "racas" && racas === null) || (aba === "motivos" && motivos === null) || (aba === "categorias" && categorias === null) || (aba === "genitores" && genitores === null) || (aba === "material-genetico" && materiais === null);
   const bloqueado = processando || simulando || aplicando;
   const motivosExibidos = [...(motivos ?? [])].sort(compararMotivos);
 
   return <PaginaFinanceira>
-    <PageHeader eyebrow="Pecuária" titulo="Cadastros" descricao="Categorias, raças, motivos de baixa e genitores externos usados pelo rebanho." acao={acao} />
+    <PageHeader eyebrow="Pecuária" titulo="Cadastros" descricao="Categorias, raças, motivos de baixa, genitores externos e material genético usados pelo rebanho." acao={acao} />
     <NavRebanho ativa="cadastros" />
     <ErrorBox erro={painelCategoria ? null : erro} />
     <SubAbas abas={[
@@ -279,10 +311,11 @@ export function Cadastros({ podeLancar = true }: { podeLancar?: boolean }) {
       { valor: "racas", rotulo: "Raças", icon: Dna },
       { valor: "motivos", rotulo: "Motivos de baixa", icon: LogOut },
       { valor: "genitores", rotulo: "Genitores externos", icon: Users },
+      { valor: "material-genetico", rotulo: "Material genético", icon: FlaskConical },
     ]} ativa={aba} onSelecionar={trocarAba} />
 
     {carregando
-      ? <div className="mt-5"><Loader label={`Carregando ${aba === "categorias" ? "categorias" : aba === "racas" ? "raças" : aba === "genitores" ? "genitores externos" : "motivos de baixa"}`} /></div>
+      ? <div className="mt-5"><Loader label={`Carregando ${aba === "categorias" ? "categorias" : aba === "racas" ? "raças" : aba === "genitores" ? "genitores externos" : aba === "material-genetico" ? "material genético" : "motivos de baixa"}`} /></div>
       // os filtros ("Mostrar inativas/os") ficam fora do fieldset de escrita — quem só pode ver
       // continua podendo filtrar (K7); só a tabela (edição/ativação) é desabilitada sem podeLancar.
       : <>
@@ -339,11 +372,27 @@ export function Cadastros({ podeLancar = true }: { podeLancar?: boolean }) {
             <AlteracoesCadastro entidade="GenitorExterno" />
           </Panel>
         </>}
+
+        {aba === "material-genetico" && <>
+          <Panel className="mt-5 overflow-hidden">
+            <BarraFiltros><label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" disabled={bloqueado} checked={mostrarInativos} onChange={(e) => setMostrarInativos(e.target.checked)} />Mostrar inativos</label></BarraFiltros>
+            <fieldset disabled={bloqueado || !podeLancar} aria-busy={bloqueado} className="min-w-0">
+              {(materiais ?? []).length === 0
+                ? <Empty>Sêmen e embrião entram no estoque pela compra (Financeiro › Nova operação). Cadastre aqui de quem é o material.</Empty>
+                : <TabelaFinanceira rotulo="Material genético" itens={materiais ?? []} colunas={colunasMaterial((m) => editar("material", m))} chaveDe={(m) => m.id} onAbrir={podeLancar ? (m) => editar("material", m) : undefined} classeLinha={(m) => !m.produto.ativo ? "opacity-55" : ""} />}
+            </fieldset>
+          </Panel>
+          <Panel className="mt-6 overflow-hidden">
+            <div className="border-b border-border p-5"><h2 className="font-serif text-xl">Histórico de alterações</h2></div>
+            <AlteracoesCadastro entidade="MaterialGenetico" />
+          </Panel>
+        </>}
       </>}
 
     {painel?.entidade === "raca" && <FormRaca key={chavePainel} raca={racaSelecionada} onSalvo={aoSalvar} onFechar={() => setPainel(null)} />}
     {painel?.entidade === "motivo" && <FormMotivoBaixa key={chavePainel} motivo={motivoSelecionado} onSalvo={aoSalvar} onFechar={() => setPainel(null)} />}
     {painel?.entidade === "genitor" && <FormGenitor key={chavePainel} genitor={genitorSelecionado} racas={racasCatalogo} onSalvo={aoSalvar} onFechar={() => setPainel(null)} />}
+    {painel?.entidade === "material" && <FormMaterialGenetico key={chavePainel} material={materialSelecionado} onSalvo={aoSalvar} onFechar={() => setPainel(null)} />}
     {painelCategoria && <FormCategoria key={chavePainelCategoria} categoria={categoriaSelecionada} salvando={simulando || aplicando} erro={erro} onSalvar={salvarCategoria} onFechar={() => { if (!simulando && !aplicando) setPainelCategoria(null); }} />}
 
     <ConfirmDialog

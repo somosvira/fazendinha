@@ -22,6 +22,7 @@ export function FormCategoria({ categoria, ordemInicial, onSalvo, onFechar }: { 
   const [nome, setNome] = useState(categoria?.nome ?? "");
   const [classificacao, setClassificacao] = useState<"" | "CUSTEIO" | "INVESTIMENTO">(categoria?.classificacao ?? "");
   const [usoAgricola, setUsoAgricola] = useState(categoria?.usoAgricola ?? false);
+  const [usoGenetico, setUsoGenetico] = useState(categoria?.usoGenetico ?? false);
   const [erros, setErros] = useState<Erros>({});
   const [erroGeral, setErroGeral] = useState("");
   const [salvando, setSalvando] = useState(false);
@@ -32,7 +33,7 @@ export function FormCategoria({ categoria, ordemInicial, onSalvo, onFechar }: { 
     if (nome.trim().length < 2) novosErros.nome = "Informe um nome com pelo menos 2 caracteres";
     setErros(novosErros); if (Object.keys(novosErros).length || emCurso.current) return;
     emCurso.current = true; setSalvando(true); setErroGeral("");
-    const dados = { nome: nome.trim(), classificacao: classificacao || null, ordem: categoria?.ordem ?? ordemInicial, usoAgricola };
+    const dados = { nome: nome.trim(), classificacao: classificacao || null, ordem: categoria?.ordem ?? ordemInicial, usoAgricola, usoGenetico };
     try {
       if (!categoria) await criarCategoria(dados);
       else await atualizarCategoria(categoria.id, dados);
@@ -53,6 +54,10 @@ export function FormCategoria({ categoria, ordemInicial, onSalvo, onFechar }: { 
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={usoAgricola} onChange={(e) => setUsoAgricola(e.target.checked)} />
             <span>Agrícola <span className="text-ink-3">— aplicável em talhão; entra no alerta de estoque do plantio</span></span>
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={usoGenetico} onChange={(e) => setUsoGenetico(e.target.checked)} />
+            <span>Uso genético <span className="text-ink-3">— habilita a categoria para cadastro de sêmen e embrião</span></span>
           </label>
         </div>
       </fieldset>

@@ -21,7 +21,7 @@ function ladoParaValor(lado: FiliacaoLadoDTO | null): ValorGenitor {
   return { tipo: "EXTERNO", id: lado.id };
 }
 
-export function CampoGenitor({ rotulo, sexo, ladoInicial, excluirAnimalId, valor, onChange }: {
+export function CampoGenitor({ rotulo, sexo, ladoInicial, excluirAnimalId, valor, onChange, obrigatorio = false }: {
   rotulo: string;
   sexo: Sexo;
   /** ficha atual (edição) — se ausente, começa em "Desconhecida/o" */
@@ -30,6 +30,8 @@ export function CampoGenitor({ rotulo, sexo, ladoInicial, excluirAnimalId, valor
   excluirAnimalId?: string;
   valor?: ValorGenitor;
   onChange: (valor: ValorGenitor) => void;
+  /** sem a opção "Desconhecida/o" (ex.: touro e doadora de material genético) */
+  obrigatorio?: boolean;
 }) {
   const [interno, setInterno] = useState<ValorGenitor>(() => valor ?? ladoParaValor(ladoInicial ?? null));
   const [genitoresExternos, setGenitoresExternos] = useState<GenitorDTO[] | null>(null);
@@ -56,7 +58,7 @@ export function CampoGenitor({ rotulo, sexo, ladoInicial, excluirAnimalId, valor
       {([
         { valor: "ANIMAL" as const, rotulo: "Animal da fazenda" },
         { valor: "EXTERNO" as const, rotulo: "Genitor externo" },
-        { valor: "NENHUM" as const, rotulo: "Desconhecida/o" },
+        ...(obrigatorio ? [] : [{ valor: "NENHUM" as const, rotulo: "Desconhecida/o" }]),
       ]).map((opcao) => <button
         key={opcao.valor} type="button" onClick={() => trocarModo(opcao.valor)}
         aria-pressed={modo === opcao.valor}

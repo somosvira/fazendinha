@@ -38,7 +38,7 @@ export interface CentrosAtividadeDTO { cafe: string | null }
 export const obterCentrosAtividade = () => req<CentrosAtividadeDTO>("/estoque/centros-atividade");
 
 // ── Estoque: saldos + movimentos ───────────────────────────
-export interface SaldoDTO { produtoId: string; nome: string; categoria: { id: string; nome: string; usoAgricola: boolean } | null; unidade: UnidadeMedida; centrosCusto: { id: string; nome: string }[]; saldo: number;
+export interface SaldoDTO { produtoId: string; nome: string; categoria: { id: string; nome: string; usoAgricola: boolean; usoGenetico: boolean } | null; unidade: UnidadeMedida; centrosCusto: { id: string; nome: string }[]; saldo: number;
   /** Média ponderada das entradas valorizadas no sítio; null sem base (nenhuma compra/inventário com valor). */
   custoMedio: number | null;
   /** saldo × custoMedio (0 quando custoMedio é null). */
@@ -91,7 +91,7 @@ export function useSaldos(f?: { centroCustoId?: string }) {
 // Mesmo tipo de `financeiro/novo-api.ts` (contrato único de Produto na API) —
 // `/estoque/produtos` e `/financeiro/produtos` são a mesma tabela e o mesmo service.
 export type ProdutoDTO = Produto;
-export type UsoProduto = "agricola";
+export type UsoProduto = "agricola" | "genetico";
 export interface ProdutoInput {
   nome: string; unidade: UnidadeMedida;
   // Categoria obrigatória (define o uso). Se o produto entra no estoque quem decide é a operação.
