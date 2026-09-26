@@ -337,9 +337,10 @@ describe("DetalheAnimal — movimentações", () => {
 });
 
 describe("DetalheAnimal — filiação", () => {
-  it("mostra 'Não informada' quando mãe e pai são null", async () => {
+  it("mostra 'Não informada/o' quando mãe e pai são null", async () => {
     await montar(base);
-    expect(screen.getAllByText("Não informada")).toHaveLength(2);
+    expect(screen.getByText("Não informada")).toBeTruthy();
+    expect(screen.getByText("Não informado")).toBeTruthy();
   });
 
   it("mostra a mãe como link quando é um animal da fazenda e o pai como pill Externo quando é genitor externo", async () => {

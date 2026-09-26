@@ -15,7 +15,7 @@ export type ValorGenitor =
 
 type Modo = "ANIMAL" | "EXTERNO" | "NENHUM";
 
-function ladoParaValor(lado: FiliacaoLadoDTO | null): ValorGenitor {
+export function ladoParaValor(lado: FiliacaoLadoDTO | null): ValorGenitor {
   if (!lado) return { tipo: "NENHUM" };
   if (lado.tipo === "ANIMAL") return { tipo: "ANIMAL", id: lado.id, brinco: lado.brinco, nome: lado.nome };
   return { tipo: "EXTERNO", id: lado.id };
@@ -84,7 +84,7 @@ export function CampoGenitor({ rotulo, sexo, ladoInicial, excluirAnimalId, valor
       {(genitoresExternos ?? []).map((g) => <option key={g.id} value={g.id}>{g.nome}{g.fornecedor ? ` (${g.fornecedor})` : ""}</option>)}
     </select>}
 
-    {modo === "NENHUM" && <p className="text-xs text-ink-3">Sem {rotulo.toLowerCase()} informada.</p>}
+    {modo === "NENHUM" && <p className="text-xs text-ink-3">{sexo === "F" ? `${rotulo} não informada.` : `${rotulo} não informado.`}</p>}
   </div>;
 }
 

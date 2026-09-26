@@ -35,8 +35,8 @@ import { DetalheMovimentacao } from "../components/DetalheMovimentacao";
 
 /** Nome/brinco de mãe ou pai na seção Filiação — link para a ficha quando é animal nosso,
  *  selo "externo" quando é genitor de fora. */
-function LadoFiliacao({ lado }: { lado: AnimalFicha["filiacao"]["mae"] }) {
-  if (!lado) return <span className="text-ink-3">Não informada</span>;
+function LadoFiliacao({ lado, vazio }: { lado: AnimalFicha["filiacao"]["mae"]; vazio: string }) {
+  if (!lado) return <span className="text-ink-3">{vazio}</span>;
   if (lado.tipo === "ANIMAL") return <span className="inline-flex items-center gap-2">
     <button type="button" onClick={() => navegarPara(`/pecuaria/rebanho/animais/${lado.id}`)} className="break-words font-semibold text-mast hover:underline">{lado.brinco}{lado.nome ? ` — ${lado.nome}` : ""}</button>
     {lado.baixado && <Pill tone="neutral">Baixado</Pill>}
@@ -203,8 +203,8 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
         <section>
           <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-3">Filiação</h2>
           <dl className="mt-4 grid gap-3 text-sm">
-            <div><dt className="text-xs text-ink-3">Mãe</dt><dd className="mt-0.5"><LadoFiliacao lado={animal.filiacao.mae} /></dd></div>
-            <div><dt className="text-xs text-ink-3">Pai</dt><dd className="mt-0.5"><LadoFiliacao lado={animal.filiacao.pai} /></dd></div>
+            <div><dt className="text-xs text-ink-3">Mãe</dt><dd className="mt-0.5"><LadoFiliacao lado={animal.filiacao.mae} vazio="Não informada" /></dd></div>
+            <div><dt className="text-xs text-ink-3">Pai</dt><dd className="mt-0.5"><LadoFiliacao lado={animal.filiacao.pai} vazio="Não informado" /></dd></div>
           </dl>
           {filhos && filhos.length > 0 && <div className="mt-4">
             <h3 className="text-xs font-semibold text-ink-3">Filhos ({filhos.length})</h3>

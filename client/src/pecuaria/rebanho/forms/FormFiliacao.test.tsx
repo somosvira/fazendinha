@@ -24,6 +24,22 @@ const animal = {
 } as unknown as AnimalFicha;
 
 describe("FormFiliacao", () => {
+  it("abre com a filiação atual e, salvando sem mexer, mantém mãe e pai", async () => {
+    const comFiliacao = {
+      ...animal,
+      filiacao: {
+        mae: { tipo: "ANIMAL", id: "mae-1", brinco: "V1", nome: "Mimosa", sexo: "F", baixado: false },
+        pai: { tipo: "EXTERNO", id: "ext-9", nome: "Zeus", codigo: null, fornecedor: null },
+      },
+    } as unknown as AnimalFicha;
+    vi.mocked(definirFiliacaoAnimal).mockResolvedValue({ ...comFiliacao, avisos: [], composicaoSugerida: null } as never);
+    const onSalvo = vi.fn();
+    render(<FormFiliacao animal={comFiliacao} onSalvo={onSalvo} onFechar={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: /Salvar filiação/ }));
+    await waitFor(() => expect(onSalvo).toHaveBeenCalled());
+    expect(definirFiliacaoAnimal).toHaveBeenCalledWith("animal-1", { maeId: "mae-1", maeExternaId: null, paiId: null, paiExternoId: "ext-9" });
+  });
+
   it("sem escolher genitores, envia todos os quatro campos como null", async () => {
     vi.mocked(definirFiliacaoAnimal).mockResolvedValue({ ...animal, avisos: [], composicaoSugerida: null } as never);
     const onSalvo = vi.fn();

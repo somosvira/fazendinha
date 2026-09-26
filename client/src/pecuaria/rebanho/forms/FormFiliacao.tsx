@@ -9,15 +9,15 @@ import type { AnimalFicha, ComposicaoSugerida } from "../types";
 import { Button, ErrorBox } from "../../../financeiro/financeiro-ui";
 import { PainelCadastro } from "../../../financeiro/PainelCadastro";
 import { ConfirmDialog } from "../../../components/ConfirmDialog";
-import { CampoGenitor, valorGenitorParaCampos, type ValorGenitor } from "../components/CampoGenitor";
+import { CampoGenitor, ladoParaValor, valorGenitorParaCampos, type ValorGenitor } from "../components/CampoGenitor";
 
 export function FormFiliacao({ animal, onSalvo, onFechar }: {
   animal: AnimalFicha;
   onSalvo: (atualizado: AnimalFicha) => Promise<void> | void;
   onFechar: () => void;
 }) {
-  const [mae, setMae] = useState<ValorGenitor>({ tipo: "NENHUM" });
-  const [pai, setPai] = useState<ValorGenitor>({ tipo: "NENHUM" });
+  const [mae, setMae] = useState<ValorGenitor>(() => ladoParaValor(animal.filiacao?.mae ?? null));
+  const [pai, setPai] = useState<ValorGenitor>(() => ladoParaValor(animal.filiacao?.pai ?? null));
   const [avisos, setAvisos] = useState<Array<{ campo: string; mensagem: string }>>([]);
   const [sugestao, setSugestao] = useState<ComposicaoSugerida | null>(null);
   const [resultadoPendente, setResultadoPendente] = useState<AnimalFicha | null>(null);
