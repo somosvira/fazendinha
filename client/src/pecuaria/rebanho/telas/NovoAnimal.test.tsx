@@ -57,7 +57,7 @@ describe("NovoAnimal", () => {
     const entrada = screen.getByLabelText("Data de entrada") as HTMLInputElement;
     expect(entrada.disabled).toBe(true);
     fireEvent.change(nascimento, { target: { value: "2024-01-10" } });
-    expect(entrada.value).toBe("2024-01-10");
+    expect(entrada.value).toBe("10/01/2024");
     fireEvent.change(screen.getByLabelText("Origem"), { target: { value: "COMPRADO" } });
     expect(entrada.disabled).toBe(false);
   });

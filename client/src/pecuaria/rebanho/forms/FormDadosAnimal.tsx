@@ -8,6 +8,19 @@ import { editarAnimal, RebanhoApiError } from "../api";
 import type { AnimalFicha, EditarAnimalInput, Origem, Sexo } from "../types";
 import { Button, ErrorBox, hoje } from "../../../financeiro/financeiro-ui";
 import { CampoFormulario, classeInput, PainelCadastro } from "../../../financeiro/PainelCadastro";
+import { DatePicker } from "../../../components/DatePicker";
+
+import { rolarParaCampo } from "../ui";
+/** Campo → id do elemento, na ordem da tela: o primeiro com erro recebe rolagem e foco. */
+const ELEMENTO_DO_CAMPO: [campo: string, elementId: string][] = [
+  ["brinco", "animal-brinco"], ["nome", "animal-nome"], ["brincoEletronico", "animal-brinco-eletronico"], ["sisbov", "animal-sisbov"],
+  ["sexo", "animal-sexo"], ["dataNascimento", "animal-data-nascimento"], ["origem", "animal-origem"], ["dataEntrada", "animal-data-entrada"],
+  ["partosAntesDaEntrada", "animal-partos"], ["observacao", "animal-observacao"],
+];
+function irParaPrimeiroErro(erros: Record<string, string | undefined>) {
+  const alvo = ELEMENTO_DO_CAMPO.find(([campo]) => erros[campo]);
+  if (alvo) rolarParaCampo(alvo[1]);
+}
 
 type Erros = Partial<Record<keyof EditarAnimalInput, string>>;
 
@@ -61,7 +74,7 @@ export function FormDadosAnimal({ animal, onSalvo, onFechar }: {
     if (emCurso.current) return;
     const validacao = validar();
     setErros(validacao);
-    if (Object.keys(validacao).length) return;
+    if (Object.keys(validacao).length) { irParaPrimeiroErro(validacao); return; }
     const texto = (v: string) => (v.trim() === "" ? null : v.trim());
     const patch: EditarAnimalInput = {};
     if (brinco.trim() !== animal.brinco) patch.brinco = brinco.trim();
@@ -81,7 +94,7 @@ export function FormDadosAnimal({ animal, onSalvo, onFechar }: {
       const atualizado = await editarAnimal(animal.id, patch);
       await onSalvo(atualizado);
     } catch (erro) {
-      if (erro instanceof RebanhoApiError && erro.campo) setErros({ [erro.campo]: erro.message } as Erros);
+      if (erro instanceof RebanhoApiError && erro.campo) { const doCampo = { [erro.campo]: erro.message } as Erros; setErros(doCampo); irParaPrimeiroErro(doCampo); }
       else setErroGeral(erro instanceof Error ? erro.message : String(erro));
     } finally { emCurso.current = false; setSalvando(false); }
   };
@@ -101,12 +114,12 @@ export function FormDadosAnimal({ animal, onSalvo, onFechar }: {
       </div>
       <CampoFormulario id="animal-sexo" rotulo="Sexo" obrigatorio>{(p) => <select {...p} value={sexo} onChange={(e) => alterarSexo(e.target.value as Sexo)} className={classeInput}><option value="F">Fêmea</option><option value="M">Macho</option></select>}</CampoFormulario>
       <div className="grid gap-4 sm:grid-cols-2">
-        <CampoFormulario id="animal-data-nascimento" rotulo="Data de nascimento" obrigatorio erro={erros.dataNascimento}>{(p) => <input {...p} required type="date" max={hoje()} value={dataNascimento} onChange={(e) => alterarDataNascimento(e.target.value)} className={classeInput} />}</CampoFormulario>
+        <CampoFormulario id="animal-data-nascimento" rotulo="Data de nascimento" obrigatorio erro={erros.dataNascimento}>{(p) => <DatePicker {...p} required max={hoje()} value={dataNascimento} onChange={alterarDataNascimento} className="mt-1.5" />}</CampoFormulario>
         <CampoFormulario id="animal-nascimento-estimado" rotulo="Nascimento estimado">{(p) => <label className="mt-1.5 flex h-[42px] items-center gap-2"><input id={p.id} type="checkbox" aria-label={p["aria-label"]} checked={nascimentoEstimado} onChange={(e) => setNascimentoEstimado(e.target.checked)} /><span className="text-sm font-normal text-ink-3">A data é uma estimativa</span></label>}</CampoFormulario>
       </div>
       <CampoFormulario id="animal-origem" rotulo="Origem" obrigatorio>{(p) => <select {...p} value={origem} onChange={(e) => alterarOrigem(e.target.value as Origem)} className={classeInput}><option value="NASCIDO">Nascido na propriedade</option><option value="COMPRADO">Comprado</option></select>}</CampoFormulario>
       <div className="grid gap-4 sm:grid-cols-2">
-        <CampoFormulario id="animal-data-entrada" rotulo="Data de entrada" obrigatorio erro={erros.dataEntrada} ajuda={origem === "NASCIDO" ? "Igual ao nascimento para animais nascidos na propriedade." : undefined}>{(p) => <input {...p} required type="date" max={hoje()} disabled={origem === "NASCIDO"} value={dataEntrada} onChange={(e) => setDataEntrada(e.target.value)} className={classeInput} />}</CampoFormulario>
+        <CampoFormulario id="animal-data-entrada" rotulo="Data de entrada" obrigatorio erro={erros.dataEntrada} ajuda={origem === "NASCIDO" ? "Igual ao nascimento para animais nascidos na propriedade." : undefined}>{(p) => <DatePicker {...p} required max={hoje()} disabled={origem === "NASCIDO"} value={dataEntrada} onChange={setDataEntrada} className="mt-1.5" />}</CampoFormulario>
         {sexo === "F" && <CampoFormulario id="animal-partos" rotulo="Partos antes da entrada" ajuda="Usado para calcular a categoria (novilha vira vaca a partir de 1 parto).">{(p) => <input {...p} type="number" min={0} step={1} value={partosAntesDaEntrada} onChange={(e) => setPartosAntesDaEntrada(e.target.value)} className={classeInput} />}</CampoFormulario>}
       </div>
       <CampoFormulario id="animal-observacao" rotulo="Observação">{(p) => <textarea {...p} maxLength={500} value={observacao} onChange={(e) => setObservacao(e.target.value)} className={classeInput} />}</CampoFormulario>

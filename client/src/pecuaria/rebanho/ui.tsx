@@ -8,10 +8,10 @@ import { useCallback, useState, type ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { X } from "lucide-react";
 import { useToast } from "../../components/Toast";
-import { Button, ErrorBox, Modal, Pill } from "../../financeiro/financeiro-ui";
+import { Button, ErrorBox, Modal, Panel, Pill } from "../../financeiro/financeiro-ui";
 import { classeInput } from "../../financeiro/PainelCadastro";
 import { desfazerMovimentacao, RebanhoApiError } from "./api";
-import { PRESETS_FRACAO, somaFracoes } from "./lib/composicao";
+import { fracaoReduzida, PRESETS_FRACAO, somaFracoes } from "./lib/composicao";
 import type { CatalogoRaca, CategoriaOrigem, CategoriaRef, ComposicaoItemInput } from "./types";
 
 function mensagemErro(e: unknown): string {
@@ -53,6 +53,52 @@ export function CategoriaPill({ categoria, categoriaOrigem, categoriaCalculada }
     <Pill>{categoria.nome}</Pill>
     {manual && <Pill tone="amber">Manual</Pill>}
   </span>;
+}
+
+/** Card de seção da ficha do animal: cabeçalho com ícone + título (e uma ação opcional à direita,
+ *  ex. "Desfazer última movimentação") separado do conteúdo por uma régua — cada bloco de dados
+ *  fica visualmente isolado e identificável pelo ícone. */
+export function CardFicha({ icon: Icon, titulo, acao, children, className = "" }: {
+  icon: LucideIcon;
+  titulo: string;
+  acao?: ReactNode;
+  children: ReactNode;
+  className?: string;
+}) {
+  return <Panel className={`min-w-0 overflow-hidden ${className}`}>
+    <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3.5">
+      <h2 className="flex items-center gap-2.5 text-sm font-semibold text-ink">
+        <span aria-hidden="true" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[#eef1e9] text-mast"><Icon size={16} /></span>
+        {titulo}
+      </h2>
+      {acao}
+    </header>
+    <div className="p-5">{children}</div>
+  </Panel>;
+}
+
+/** Par rótulo/valor da ficha, com ícone pequeno à esquerda. */
+export function DadoFicha({ icon: Icon, rotulo, children }: { icon: LucideIcon; rotulo: string; children: ReactNode }) {
+  return <div className="flex min-w-0 items-start gap-2.5">
+    <Icon aria-hidden="true" size={16} className="mt-0.5 shrink-0 text-ink-3" />
+    <div className="min-w-0"><dt className="text-xs text-ink-3">{rotulo}</dt><dd className="mt-0.5 break-words text-sm text-ink">{children}</dd></div>
+  </div>;
+}
+
+/** Faixa de destaque (valor atual) dentro de um CardFicha — ex. "Recria · desde 10/01/2026". */
+export function DestaqueFicha({ children }: { children: ReactNode }) {
+  return <div className="rounded-lg border border-border bg-surface-2 px-4 py-3 text-sm">{children}</div>;
+}
+
+/** Leva o usuário até o campo com problema: rola até ele (centralizado) e foca — mesmo
+ *  comportamento do FormOperacao do financeiro. Roda no próximo frame para o campo já ter
+ *  recebido `aria-invalid`/mensagem do render que marcou o erro. */
+export function rolarParaCampo(elementId: string) {
+  requestAnimationFrame(() => {
+    const elemento = document.getElementById(elementId);
+    elemento?.scrollIntoView?.({ behavior: "smooth", block: "center" });
+    elemento?.focus?.({ preventScroll: true });
+  });
 }
 
 /** Container da barra de busca/filtros no topo de um Panel — mesma moldura da
@@ -132,13 +178,14 @@ export function CampoComposicao({ racas, itens, onChange, erro }: {
         <label htmlFor={`composicao-fracao-${indice}`}>Fração (/64)</label>
         <input id={`composicao-fracao-${indice}`} type="number" min={1} max={64} className={classeInput} value={item.fracao64 || ""} onChange={(e) => atualizar(indice, { fracao64: Number(e.target.value) })} />
       </div>
+      {item.fracao64 >= 1 && item.fracao64 <= 64 && <span className="pb-2.5 text-sm font-semibold text-ink" aria-label={`Fração reduzida ${fracaoReduzida(item.fracao64)}`}>= {fracaoReduzida(item.fracao64)}</span>}
       <div className="flex flex-wrap gap-1 pb-0.5">
         {PRESETS_FRACAO.map((preset) => <button key={preset.label} type="button" onClick={() => atualizar(indice, { fracao64: preset.fracao64 })} className="rounded-full border border-border px-2.5 py-1 text-xs font-semibold text-ink-2 hover:bg-surface-2">{preset.label}</button>)}
       </div>
       <button type="button" onClick={() => remover(indice)} aria-label="Remover raça da composição" className="rounded-lg p-2 text-ink-2 hover:bg-surface-2 hover:text-red-700"><X size={16} /></button>
     </div>)}
     <button type="button" onClick={adicionar} className="text-sm font-semibold text-mast hover:underline">+ Adicionar raça</button>
-    <p className={`text-xs ${soma > 64 ? "font-semibold text-red-700" : "text-ink-3"}`}>Soma atual: {soma}/64{soma > 64 ? " — reduza para no máximo 64" : ""}</p>
+    <p className={`text-xs ${soma > 64 ? "font-semibold text-red-700" : "text-ink-3"}`}>Soma atual: {soma > 0 && soma <= 64 ? `${fracaoReduzida(soma)} (${soma}/64)` : `${soma}/64`}{soma > 64 ? " — reduza para no máximo 64" : ""}</p>
     {erro && <p role="alert" className="text-xs text-red-700">{erro}</p>}
   </div>;
 }

@@ -7,6 +7,7 @@ import type { AnimalFicha, CategoriaDTO } from "../types";
 import { rotuloOpcaoCategoria } from "../lib/rotulos";
 import { Button, ErrorBox, hoje } from "../../../financeiro/financeiro-ui";
 import { CampoFormulario, classeInput, PainelCadastro } from "../../../financeiro/PainelCadastro";
+import { DatePicker } from "../../../components/DatePicker";
 
 export function FormAlterarCategoria({ animal, categorias, onSalvo, onFechar }: {
   animal: AnimalFicha;
@@ -52,7 +53,7 @@ export function FormAlterarCategoria({ animal, categorias, onSalvo, onFechar }: 
         <option value="">Selecione</option>
         {categorias.map((c) => <option key={c.id} value={c.id}>{rotuloOpcaoCategoria(categorias, c)}</option>)}
       </select>}</CampoFormulario>
-      <CampoFormulario id="categoria-data" rotulo="Data" obrigatorio erro={erros.data}>{(p) => <input {...p} required type="date" max={hoje()} value={data} onChange={(e) => setData(e.target.value)} className={classeInput} />}</CampoFormulario>
+      <CampoFormulario id="categoria-data" rotulo="Data" obrigatorio erro={erros.data}>{(p) => <DatePicker {...p} required max={hoje()} value={data} onChange={setData} className="mt-1.5" />}</CampoFormulario>
       <CampoFormulario id="categoria-motivo" rotulo="Motivo" obrigatorio erro={erros.motivo}>{(p) => <textarea {...p} required maxLength={300} value={motivo} onChange={(e) => setMotivo(e.target.value)} className={classeInput} />}</CampoFormulario>
     </form>
   </PainelCadastro>;

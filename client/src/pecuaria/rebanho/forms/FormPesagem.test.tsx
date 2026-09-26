@@ -21,7 +21,7 @@ describe("FormPesagem — edição", () => {
     const onSalvo = vi.fn();
     render(<FormPesagem animalId="animal-1" pesagem={pesagem} onSalvo={onSalvo} onFechar={vi.fn()} />);
     expect(screen.getByRole("heading", { name: "Editar pesagem" })).toBeTruthy();
-    expect((screen.getByLabelText("Data") as HTMLInputElement).value).toBe("2026-05-01");
+    expect((screen.getByLabelText("Data") as HTMLInputElement).value).toBe("01/05/2026");
     expect((screen.getByLabelText("Peso (kg)") as HTMLInputElement).value).toBe("210");
     fireEvent.change(screen.getByLabelText("Peso (kg)"), { target: { value: "215.5" } });
     fireEvent.click(screen.getByRole("button", { name: "Salvar pesagem" }));

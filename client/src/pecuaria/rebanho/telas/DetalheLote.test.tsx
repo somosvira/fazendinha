@@ -177,7 +177,7 @@ describe("DetalheLote — resumo do lote", () => {
   it("trocar o período do GMD recarrega o resumo com o novo período", async () => {
     await montar();
     await screen.findByText("Resumo do lote");
-    expect(buscarResumoLote).toHaveBeenCalledWith("lote-1", { periodoDias: 90 });
+    expect(buscarResumoLote).toHaveBeenCalledWith("lote-1", { periodoDias: "entrada" });
     fireEvent.change(screen.getByLabelText("Período do GMD"), { target: { value: "180" } });
     await waitFor(() => expect(buscarResumoLote).toHaveBeenCalledWith("lote-1", { periodoDias: 180 }));
   });

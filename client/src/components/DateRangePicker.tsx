@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
-const PT_MONTHS = [
+export const PT_MONTHS = [
   "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
   "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
 ];
@@ -49,7 +49,9 @@ export const formatRangeLabel = (range: DateRange | null | undefined): string =>
   return `${formatBR(range.start)} – ${formatBR(range.end)}`;
 };
 
-function CalendarMonth({
+/** Grade de um mês. Exportada para o seletor de data única (DatePicker.tsx), que passa
+ *  `range = { start: dia, end: dia }` e esconde o título (ele tem seus próprios selects de mês/ano). */
+export function CalendarMonth({
   year,
   month,
   range,
@@ -59,6 +61,7 @@ function CalendarMonth({
   minDate,
   maxDate,
   onNavigate,
+  hideTitle = false,
 }: {
   year: number;
   month: number;
@@ -69,6 +72,7 @@ function CalendarMonth({
   minDate?: Date;
   maxDate?: Date;
   onNavigate: (date: Date) => void;
+  hideTitle?: boolean;
 }) {
   const first = new Date(year, month, 1);
   const startDow = first.getDay();
@@ -88,11 +92,11 @@ function CalendarMonth({
 
   return (
     <div className="flex flex-col">
-      <div className="pb-3.5 pt-1 text-center">
+      {!hideTitle && <div className="pb-3.5 pt-1 text-center">
         <span className="font-serif text-[17px] tracking-[-0.005em] text-foreground">
           {PT_MONTHS[month]} <span className="tabular-nums text-ink-3">{year}</span>
         </span>
-      </div>
+      </div>}
       <div className="grid grid-cols-7 gap-y-0.5">
         {PT_WEEKDAYS.map((w, i) => (
           <div key={i} className="pb-2 pt-1 text-center font-sans text-[10px] uppercase tracking-[0.18em] text-ink-3">
