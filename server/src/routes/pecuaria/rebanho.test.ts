@@ -20,6 +20,13 @@ const mocks = vi.hoisted(() => ({
   buscarAuditoriaCadastro: vi.fn(),
   buscarResumoLote: vi.fn(),
   buscarPainelGeral: vi.fn(),
+  definirFiliacao: vi.fn(),
+  listarFilhos: vi.fn(),
+  composicaoSugerida: vi.fn(),
+  listarGenitores: vi.fn(),
+  criarGenitor: vi.fn(),
+  editarGenitor: vi.fn(),
+  substituirComposicaoGenitor: vi.fn(),
 }));
 
 vi.mock("../../services/propriedade.js", () => {
@@ -37,6 +44,15 @@ vi.mock("../../services/pecuaria/rebanho/animais.js", () => ({
   buscarFicha: mocks.buscarFicha,
   buscarAuditoriaAnimal: mocks.buscarAuditoriaAnimal,
   buscarAuditoriaCadastro: mocks.buscarAuditoriaCadastro,
+  definirFiliacao: mocks.definirFiliacao,
+  listarFilhos: mocks.listarFilhos,
+  composicaoSugerida: mocks.composicaoSugerida,
+}));
+vi.mock("../../services/pecuaria/rebanho/genitores.js", () => ({
+  listarGenitores: mocks.listarGenitores,
+  criarGenitor: mocks.criarGenitor,
+  editarGenitor: mocks.editarGenitor,
+  substituirComposicaoGenitor: mocks.substituirComposicaoGenitor,
 }));
 vi.mock("../../services/pecuaria/rebanho/categorias.js", () => ({
   listarCategorias: vi.fn(),
@@ -145,6 +161,8 @@ describe("rebanhoRouter — gate de permissão `lancar` (achado 2)", () => {
     ["desfazer movimentação", () => app(usuario({ flags: [] })).request(`/movimentacoes/${ID}/desfazer`, jsonBody({ motivo: "engano" }))],
     ["baixa de animal", () => app(usuario({ flags: [] })).request(`/animais/${ID}/baixa`, jsonBody({ data: "2026-09-01", tipo: "VENDA" }))],
     ["estorno de baixa", () => app(usuario({ flags: [] })).request(`/animais/${ID}/baixa/estorno`, jsonBody({ motivo: "engano" }))],
+    ["genitores externos", () => app(usuario({ flags: [] })).request("/genitores", jsonBody({ sexo: "M", nome: "Zeus" }))],
+    ["filiação", () => app(usuario({ flags: [] })).request(`/animais/${ID}/filiacao`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: "{}" })],
   ])("também bloqueia escrita em %s sem `lancar`", async (_nome, fazerRequisicao) => {
     const res = await fazerRequisicao();
     expect(res.status).toBe(403);
@@ -421,5 +439,65 @@ describe("rebanhoRouter — filtros novos de GET /animais", () => {
     const res = await app(usuario({ flags: [] })).request("/animais?idadeMinMeses=13&idadeMaxMeses=12");
     expect(res.status).toBe(422);
     expect(await res.json()).toMatchObject({ campo: "idadeMaxMeses" });
+  });
+});
+
+describe("rebanhoRouter — genitores externos", () => {
+  it("POST /genitores com sexo inválido é 422", async () => {
+    const res = await app(usuario({ flags: ["lancar"] })).request("/genitores", jsonBody({ sexo: "X", nome: "Zeus" }));
+    expect(res.status).toBe(422);
+    expect(mocks.criarGenitor).not.toHaveBeenCalled();
+  });
+
+  it("POST /genitores válido chama o service e devolve 201", async () => {
+    mocks.criarGenitor.mockResolvedValue({ id: ID, nome: "Zeus HO" });
+    const res = await app(usuario({ id: 7, flags: ["lancar"] })).request("/genitores", jsonBody({ sexo: "M", nome: "Zeus HO" }));
+    expect(res.status).toBe(201);
+    expect(mocks.criarGenitor).toHaveBeenCalledWith({ sexo: "M", nome: "Zeus HO", composicao: [] }, 7);
+  });
+
+  it("GET /genitores repassa os filtros da query", async () => {
+    mocks.listarGenitores.mockResolvedValue([]);
+    const res = await app(usuario({ flags: [] })).request("/genitores?sexo=M&incluirInativos=true&q=zeus");
+    expect(res.status).toBe(200);
+    expect(mocks.listarGenitores).toHaveBeenCalledWith({ sexo: "M", incluirInativos: true, q: "zeus" });
+  });
+
+  it("PUT /genitores/:id/composicao com fração fora da faixa é 422", async () => {
+    const res = await app(usuario({ flags: ["lancar"] })).request(`/genitores/${ID}/composicao`, {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ itens: [{ racaId: ID, fracao64: 65 }] }),
+    });
+    expect(res.status).toBe(422);
+    expect(mocks.substituirComposicaoGenitor).not.toHaveBeenCalled();
+  });
+});
+
+describe("rebanhoRouter — filiação do animal", () => {
+  it("PUT /animais/:id/filiacao com mãe animal e externa ao mesmo tempo é 422", async () => {
+    const res = await app(usuario({ flags: ["lancar"] })).request(`/animais/${ID}/filiacao`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ maeId: ID, maeExternaId: ID }) });
+    expect(res.status).toBe(422);
+    expect(mocks.definirFiliacao).not.toHaveBeenCalled();
+  });
+
+  it("PUT /animais/:id/filiacao válido chama o service com o escopo resolvido", async () => {
+    mocks.definirFiliacao.mockResolvedValue({ id: ID, avisos: [], composicaoSugerida: null });
+    const res = await app(usuario({ id: 7, flags: ["lancar"] })).request(`/animais/${ID}/filiacao`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ maeExternaId: ID }) });
+    expect(res.status).toBe(200);
+    expect(mocks.definirFiliacao).toHaveBeenCalledWith(ID, { maeExternaId: ID }, 7, 1);
+  });
+
+  it("GET /animais/:id/filhos chama o service com o escopo resolvido", async () => {
+    mocks.listarFilhos.mockResolvedValue([]);
+    const res = await app(usuario({ flags: [] })).request(`/animais/${ID}/filhos`);
+    expect(res.status).toBe(200);
+    expect(mocks.listarFilhos).toHaveBeenCalledWith(ID, 1);
+  });
+
+  it("GET /animais/:id/composicao-sugerida chama o service com o escopo resolvido", async () => {
+    mocks.composicaoSugerida.mockResolvedValue(null);
+    const res = await app(usuario({ flags: [] })).request(`/animais/${ID}/composicao-sugerida`);
+    expect(res.status).toBe(200);
+    expect(mocks.composicaoSugerida).toHaveBeenCalledWith(ID, 1);
   });
 });

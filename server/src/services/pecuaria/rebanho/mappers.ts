@@ -1,4 +1,4 @@
-import type { TipoBaixa } from "@prisma/client";
+import type { TipoBaixa, OrigemComposicao } from "@prisma/client";
 import { idadeEmMeses, type AvaliacaoCategoria, type CategoriaRef, type OrigemCategoria } from "./categoria.calc.js";
 import { normalizarComposicao, rotuloComposicao, type FracaoRaca } from "./composicao.calc.js";
 import { gmdEntre } from "./peso.calc.js";
@@ -102,6 +102,18 @@ export interface ItemComposicaoFicha extends FracaoRaca {
   racaId: string;
   nome: string;
   racaAtiva: boolean;
+  origem: OrigemComposicao;
+}
+
+export interface FiliacaoLadoDTO {
+  tipo: "ANIMAL" | "EXTERNO";
+  id: string;
+  nome: string | null;
+  sexo?: "F" | "M";
+  brinco?: string;
+  baixado?: boolean;
+  codigo?: string | null;
+  fornecedor?: string | null;
 }
 
 export interface FichaPeso {
@@ -138,6 +150,10 @@ export interface AnimalFicha extends AnimalResumo {
   /** todas as baixas do animal, inclusive as estornadas (data desc, criadoEm desc) */
   historicoBaixas: HistoricoBaixaFicha[];
   peso: FichaPeso;
+  /** v2 · Genética: mãe e pai, cada um `null` ou um animal nosso ou um genitor externo */
+  filiacao: { mae: FiliacaoLadoDTO | null; pai: FiliacaoLadoDTO | null };
+  /** quantos filhos (como mãe ou pai) este animal tem registrados */
+  filhosCount: number;
 }
 
 export interface PainelRebanho {
@@ -183,7 +199,11 @@ const RESUMOS_AUDITORIA: Record<string, string> = {
   "Animal:CADASTRO": "Cadastro do animal",
   "Animal:IMPORTACAO": "Importado do IDEAGRI",
   "Animal:EDICAO": "Edição dos dados do animal",
+  "Animal:FILIACAO": "Filiação definida",
   "ComposicaoRacial:EDICAO": "Composição racial alterada",
+  "GenitorExterno:CADASTRO": "Genitor externo cadastrado",
+  "GenitorExterno:EDICAO": "Genitor externo editado",
+  "GenitorExterno:COMPOSICAO": "Composição do genitor externo alterada",
   "LocalizacaoAnimal:MOVIMENTACAO": "Movimentação de localização/lote",
   "LocalizacaoAnimal:DESFAZER": "Movimentação de localização desfeita",
   "Movimentacao:MOVIMENTACAO": "Movimentação registrada",

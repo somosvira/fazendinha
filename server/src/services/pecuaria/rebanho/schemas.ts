@@ -26,6 +26,23 @@ export const composicaoItemSchema = z.object({
   fracao64: z.number().int().min(1).max(64),
 });
 
+/**
+ * Filiação (v2 · Genética): cada lado (mãe/pai) aponta para um animal nosso OU um genitor
+ * externo, nunca os dois — checado em `superRefine`/no service, espelhando o CHECK do banco.
+ */
+const filiacaoCamposSchema = z.object({
+  maeId: z.string().uuid().nullable().optional(),
+  paiId: z.string().uuid().nullable().optional(),
+  maeExternaId: z.string().uuid().nullable().optional(),
+  paiExternoId: z.string().uuid().nullable().optional(),
+});
+function exigirLadoUnico(f: { maeId?: string | null; maeExternaId?: string | null; paiId?: string | null; paiExternoId?: string | null }, ctx: z.RefinementCtx) {
+  if (f.maeId && f.maeExternaId) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["maeExternaId"], message: "Escolha a mãe como animal da fazenda ou genitor externo, não os dois" });
+  if (f.paiId && f.paiExternoId) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["paiExternoId"], message: "Escolha o pai como animal da fazenda ou genitor externo, não os dois" });
+}
+export const filiacaoSchema = filiacaoCamposSchema.superRefine(exigirLadoUnico);
+export type FiliacaoInput = z.infer<typeof filiacaoSchema>;
+
 export const cadastrarAnimalSchema = z.object({
   brinco: z.string().trim().min(1).max(40),
   nome: z.string().trim().max(120).nullable().optional(),
@@ -44,7 +61,7 @@ export const cadastrarAnimalSchema = z.object({
   papelReprodutivo: z.enum(["NENHUM", "RECEPTORA", "DOADORA"]).optional().default("NENHUM"),
   composicao: z.array(composicaoItemSchema).optional().default([]),
   pesoEntradaKg: pesoKgSchema.nullable().optional(),
-});
+}).merge(filiacaoCamposSchema).superRefine(exigirLadoUnico);
 export type CadastrarAnimalInput = z.infer<typeof cadastrarAnimalSchema>;
 
 export const editarAnimalSchema = z.object({
@@ -59,7 +76,7 @@ export const editarAnimalSchema = z.object({
   dataEntrada: dataNaoFutura.optional(),
   partosAntesDaEntrada: z.number().int().min(0).optional(),
   observacao: z.string().trim().max(500).nullable().optional(),
-});
+}).merge(filiacaoCamposSchema).superRefine(exigirLadoUnico);
 export type EditarAnimalInput = z.infer<typeof editarAnimalSchema>;
 
 export const substituirComposicaoSchema = z.object({
@@ -146,7 +163,7 @@ export const auditoriaAnimalQuerySchema = z.object({
 export type AuditoriaAnimalQuery = z.infer<typeof auditoriaAnimalQuerySchema>;
 
 export const auditoriaCadastroQuerySchema = z.object({
-  entidade: z.enum(["Lote", "Raca", "MotivoBaixa", "CategoriaAnimal"]),
+  entidade: z.enum(["Lote", "Raca", "MotivoBaixa", "CategoriaAnimal", "GenitorExterno"]),
   entidadeId: z.string().uuid().optional(),
   page: z.coerce.number().int().min(1).optional().default(1),
   pageSize: z.coerce.number().int().min(1).max(100).optional().default(20),
@@ -336,4 +353,41 @@ export const removerCategoriaManualSchema = z.object({
   motivo: z.string().trim().min(1).max(300),
 });
 export type RemoverCategoriaManualInput = z.infer<typeof removerCategoriaManualSchema>;
+
+// ---------- genética (v2): genitores externos e filiação ----------
+
+export const criarGenitorSchema = z.object({
+  sexo: z.enum(["F", "M"]),
+  nome: z.string().trim().min(1).max(120),
+  codigo: z.string().trim().max(60).nullable().optional(),
+  fornecedor: z.string().trim().max(120).nullable().optional(),
+  observacao: z.string().trim().max(500).nullable().optional(),
+  composicao: z.array(composicaoItemSchema).optional().default([]),
+});
+export type CriarGenitorInput = z.infer<typeof criarGenitorSchema>;
+
+export const editarGenitorSchema = z.object({
+  sexo: z.enum(["F", "M"]).optional(),
+  nome: z.string().trim().min(1).max(120).optional(),
+  codigo: z.string().trim().max(60).nullable().optional(),
+  fornecedor: z.string().trim().max(120).nullable().optional(),
+  observacao: z.string().trim().max(500).nullable().optional(),
+  ativo: z.boolean().optional(),
+});
+export type EditarGenitorInput = z.infer<typeof editarGenitorSchema>;
+
+export const substituirComposicaoGenitorSchema = z.object({
+  itens: z.array(composicaoItemSchema),
+});
+export type SubstituirComposicaoGenitorInput = z.infer<typeof substituirComposicaoGenitorSchema>;
+
+export const listarGenitoresQuerySchema = z.object({
+  sexo: z.enum(["F", "M"]).optional(),
+  incluirInativos: z.enum(["true", "false"]).optional().transform((v) => v === "true"),
+  q: z.string().trim().max(120).optional(),
+});
+export type ListarGenitoresQuery = z.infer<typeof listarGenitoresQuerySchema>;
+
+export const definirFiliacaoSchema = filiacaoCamposSchema.superRefine(exigirLadoUnico);
+export type DefinirFiliacaoInput = z.infer<typeof definirFiliacaoSchema>;
 
