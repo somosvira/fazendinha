@@ -131,7 +131,8 @@ export const rebanhoRouter = new Hono()
   .put("/animais/:id/composicao", idParam, validar(substituirComposicaoSchema), async (c) => {
     try {
       const escopo = await resolverEscopoLeitura(c);
-      return c.json(await animais.substituirComposicao(c.req.valid("param").id, c.req.valid("json"), usuarioId(c), escopo));
+      const { origem, ...input } = c.req.valid("json");
+      return c.json(await animais.substituirComposicao(c.req.valid("param").id, input, usuarioId(c), escopo, origem));
     } catch (e) { return falha(c, e); }
   })
   .put("/animais/:id/filiacao", idParam, validar(definirFiliacaoSchema), async (c) => {

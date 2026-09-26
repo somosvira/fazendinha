@@ -23,6 +23,7 @@ const mocks = vi.hoisted(() => ({
   definirFiliacao: vi.fn(),
   listarFilhos: vi.fn(),
   composicaoSugerida: vi.fn(),
+  substituirComposicao: vi.fn(),
   listarGenitores: vi.fn(),
   listarMaterialGenetico: vi.fn(),
   criarMaterialGenetico: vi.fn(),
@@ -50,6 +51,7 @@ vi.mock("../../services/pecuaria/rebanho/animais.js", () => ({
   definirFiliacao: mocks.definirFiliacao,
   listarFilhos: mocks.listarFilhos,
   composicaoSugerida: mocks.composicaoSugerida,
+  substituirComposicao: mocks.substituirComposicao,
 }));
 vi.mock("../../services/pecuaria/rebanho/genitores.js", () => ({
   listarGenitores: mocks.listarGenitores,
@@ -540,5 +542,17 @@ describe("rebanhoRouter — material genético", () => {
     const res = await app(usuario({ flags: [] })).request("/material-genetico?tipo=EMBRIAO");
     expect(res.status).toBe(200);
     expect(mocks.listarMaterialGenetico).toHaveBeenCalledWith({ tipo: "EMBRIAO", incluirInativos: false }, expect.anything());
+  });
+});
+
+describe("rebanhoRouter — composição do animal", () => {
+  it("PUT /animais/:id/composicao repassa a origem CALCULADA ao aplicar a sugestão", async () => {
+    mocks.substituirComposicao.mockResolvedValue([]);
+    const res = await app(usuario({ id: 7, flags: ["lancar"] })).request(`/animais/${ID}/composicao`, {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ itens: [{ racaId: ID, fracao64: 56 }], origem: "CALCULADA" }),
+    });
+    expect(res.status).toBe(200);
+    expect(mocks.substituirComposicao).toHaveBeenCalledWith(ID, { itens: [{ racaId: ID, fracao64: 56 }] }, 7, expect.anything(), "CALCULADA");
   });
 });

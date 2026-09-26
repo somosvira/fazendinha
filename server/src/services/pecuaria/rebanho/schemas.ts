@@ -81,8 +81,10 @@ export type EditarAnimalInput = z.infer<typeof editarAnimalSchema>;
 
 export const substituirComposicaoSchema = z.object({
   itens: z.array(composicaoItemSchema),
+  // CALCULADA = "aplicar a composição sugerida pelos genitores"; o padrão é digitada pelo usuário.
+  origem: z.enum(["INFORMADA", "CALCULADA"]).optional().default("INFORMADA"),
 });
-export type SubstituirComposicaoInput = z.infer<typeof substituirComposicaoSchema>;
+export type SubstituirComposicaoInput = Omit<z.infer<typeof substituirComposicaoSchema>, "origem">;
 
 export const movimentarSchema = z.object({
   animalIds: z.array(z.string().uuid()).min(1).max(2000).refine((v) => new Set(v).size === v.length, "IDs de animais repetidos"),

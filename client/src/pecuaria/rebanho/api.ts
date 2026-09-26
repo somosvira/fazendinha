@@ -9,12 +9,16 @@ import type {
   Catalogos,
   CategoriaRef,
   CriarCategoriaInput,
+  ComposicaoSugerida,
+  CriarGenitorInput,
   CriarLoteInput,
   CriarMotivoBaixaInput,
   CriarRacaInput,
   DefinirCategoriaManualInput,
+  DefinirFiliacaoResultado,
   EditarAnimalInput,
   EditarCategoriaInput,
+  EditarGenitorInput,
   EditarLoteInput,
   EditarMotivoBaixaInput,
   EditarPesagemInput,
@@ -22,10 +26,14 @@ import type {
   EntidadeCadastro,
   EntradaAuditoria,
   EstornoBaixaInput,
+  FiliacaoInput,
+  FilhoResumo,
   FiltrosMovimentacoes,
+  GenitorDTO,
   ItemComposicao,
   ListarCategoriasResultado,
   ListarFiltros,
+  ListarGenitoresQuery,
   ListarMovimentacoesResultado,
   ListarResultado,
   Lote,
@@ -42,6 +50,7 @@ import type {
   RemoverCategoriaManualInput,
   ResumoLote,
   ResultadoSimulacaoCategorias,
+  SubstituirComposicaoGenitorInput,
   SubstituirComposicaoInput,
 } from "./types";
 
@@ -100,6 +109,32 @@ export const editarAnimal = (id: string, input: EditarAnimalInput) =>
 
 export const substituirComposicaoAnimal = (id: string, input: SubstituirComposicaoInput) =>
   req<ItemComposicao[]>(`/animais/${id}/composicao`, { method: "PUT", body: JSON.stringify(input) });
+
+// ---------- genética v2: filiação e genitores externos ----------
+
+export const definirFiliacaoAnimal = (id: string, input: FiliacaoInput) =>
+  req<DefinirFiliacaoResultado>(`/animais/${id}/filiacao`, { method: "PUT", body: JSON.stringify(input) });
+
+export const listarFilhosAnimal = (id: string) => req<FilhoResumo[]>(`/animais/${id}/filhos`);
+
+export const buscarComposicaoSugerida = (id: string) => req<ComposicaoSugerida | null>(`/animais/${id}/composicao-sugerida`);
+
+export const listarGenitores = (filtros: ListarGenitoresQuery = {}) => {
+  const params = new URLSearchParams();
+  for (const [chave, valor] of Object.entries(filtros)) {
+    if (valor !== undefined && valor !== null && valor !== "") params.set(chave, String(valor));
+  }
+  const query = params.toString();
+  return req<GenitorDTO[]>(`/genitores${query ? `?${query}` : ""}`);
+};
+
+export const criarGenitor = (input: CriarGenitorInput) => req<GenitorDTO>("/genitores", { method: "POST", body: JSON.stringify(input) });
+
+export const editarGenitor = (id: string, input: EditarGenitorInput) =>
+  req<GenitorDTO>(`/genitores/${id}`, { method: "PATCH", body: JSON.stringify(input) });
+
+export const substituirComposicaoGenitor = (id: string, input: SubstituirComposicaoGenitorInput) =>
+  req<GenitorDTO>(`/genitores/${id}/composicao`, { method: "PUT", body: JSON.stringify(input) });
 
 export const buscarAuditoriaAnimal = (id: string, opts?: { page?: number; pageSize?: number }) => {
   const params = new URLSearchParams();

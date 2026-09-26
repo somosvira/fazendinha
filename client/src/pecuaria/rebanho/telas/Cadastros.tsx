@@ -12,7 +12,7 @@
 // o usuário corrigir).
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Dna, LogOut, Plus, Tags } from "lucide-react";
+import { Dna, LogOut, Plus, Tags, Users } from "lucide-react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Loader } from "@/components/Loading";
 import { AcoesLinha, Button, type ColunaTabela, ErrorBox, PageHeader, PaginaFinanceira, Panel, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
@@ -20,22 +20,24 @@ import { BarraFiltros, SubAbas } from "../ui";
 import { NavRebanho } from "./NavRebanho";
 import { AlteracoesCadastro } from "../components/AlteracoesCadastro";
 import {
-  criarCategoria, editarCategoria, editarMotivoBaixa, editarRaca, listarCategorias, listarMotivosBaixa, listarRacas,
-  reordenarCategorias, restaurarPadroesCategorias, simularCategorias, RebanhoApiError,
+  criarCategoria, editarCategoria, editarGenitor, editarMotivoBaixa, editarRaca, listarCategorias, listarGenitores,
+  listarMotivosBaixa, listarRacas, obterCatalogos, reordenarCategorias, restaurarPadroesCategorias, simularCategorias, RebanhoApiError,
 } from "../api";
-import type { CategoriaDTO, ClasseMotivoBaixa, MotivoBaixa, Raca, RegraCategoriaProposta, ResultadoSimulacaoCategorias } from "../types";
+import type { CatalogoRaca, CategoriaDTO, ClasseMotivoBaixa, GenitorDTO, MotivoBaixa, Raca, RegraCategoriaProposta, ResultadoSimulacaoCategorias } from "../types";
 import { rotuloClasseMotivo, rotuloSexo } from "../lib/rotulos";
 import { FormMotivoBaixa } from "../cadastros/FormMotivoBaixa";
 import { FormRaca } from "../cadastros/FormRaca";
+import { FormGenitor } from "../cadastros/FormGenitor";
 import { FormCategoria, type DadosFormCategoria } from "../cadastros/FormCategoria";
 
-type Aba = "categorias" | "racas" | "motivos";
-type EntidadePainel = "raca" | "motivo";
+type Aba = "categorias" | "racas" | "motivos" | "genitores";
+type EntidadePainel = "raca" | "motivo" | "genitor";
 type Painel = { entidade: EntidadePainel; modo: "novo" } | { entidade: EntidadePainel; modo: "editar"; id: string | number } | null;
 type PainelCategoria = { modo: "novo" } | { modo: "editar"; categoria: CategoriaDTO } | null;
 type Confirmacao =
   | { tipo: "raca"; item: Raca }
   | { tipo: "motivo"; item: MotivoBaixa }
+  | { tipo: "genitor"; item: GenitorDTO }
   | null;
 /** confirmação de impacto de uma mudança nas categorias — `aplicar` já vem fechada sobre a ação */
 type ConfirmacaoCategoria = { resultado: ResultadoSimulacaoCategorias; aplicar: () => Promise<unknown> } | null;
@@ -91,8 +93,20 @@ function compararMotivos(a: MotivoBaixa, b: MotivoBaixa): number {
   return diferenca !== 0 ? diferenca : a.nome.localeCompare(b.nome, "pt-BR");
 }
 
+const colunasGenitores = (editar: (g: GenitorDTO) => void, alternar: (g: GenitorDTO) => void): ColunaTabela<GenitorDTO>[] => [
+  { chave: "nome", titulo: "Nome", larguraMinima: 170, principal: true, celula: (g) => <strong className="break-words">{g.nome}</strong> },
+  { chave: "sexo", titulo: "Sexo", larguraMinima: 90, celula: (g) => rotuloSexo(g.sexo) },
+  { chave: "codigo", titulo: "Código", larguraMinima: 100, celula: (g) => g.codigo ?? "—" },
+  { chave: "fornecedor", titulo: "Fornecedor", larguraMinima: 140, celula: (g) => g.fornecedor ?? "—" },
+  { chave: "composicao", titulo: "Composição", larguraMinima: 150, celula: (g) => <span className="break-words text-ink-3">{g.composicaoRotulo || "—"}</span> },
+  { chave: "filhos", titulo: "Filhos", alinhamento: "centro", larguraMinima: 90, celula: (g) => g.filhos },
+  { chave: "situacao", titulo: "Situação", alinhamento: "direita", larguraMinima: 100, celula: (g) => <Pill tone={g.ativo ? "green" : "neutral"}>{g.ativo ? "Ativo" : "Inativo"}</Pill> },
+  { chave: "acoes", titulo: "Ações", alinhamento: "direita", larguraMinima: 110, acoes: true, celula: (g) => <AcoesLinha nome={g.nome} ativo={g.ativo} onEditar={() => editar(g)} onAlternar={() => alternar(g)} /> },
+];
+
 function mensagemDesativar(confirmacao: NonNullable<Confirmacao>): string {
   if (confirmacao.tipo === "raca") return "A raça deixa de aparecer para novos cadastros e composições raciais. Composições já registradas continuam intactas.";
+  if (confirmacao.tipo === "genitor") return "O genitor deixa de aparecer para novas filiações. Filiações já registradas continuam intactas.";
   return "O motivo deixa de aparecer para novas baixas. Baixas já registradas continuam intactas.";
 }
 
@@ -101,6 +115,8 @@ export function Cadastros({ podeLancar = true }: { podeLancar?: boolean }) {
   const [mostrarInativos, setMostrarInativos] = useState(false);
   const [racas, setRacas] = useState<Raca[] | null>(null);
   const [motivos, setMotivos] = useState<MotivoBaixa[] | null>(null);
+  const [genitores, setGenitores] = useState<GenitorDTO[] | null>(null);
+  const [racasCatalogo, setRacasCatalogo] = useState<CatalogoRaca[]>([]);
   const [painel, setPainel] = useState<Painel>(null);
   const [confirmando, setConfirmando] = useState<Confirmacao>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -117,20 +133,24 @@ export function Cadastros({ podeLancar = true }: { podeLancar?: boolean }) {
 
   const carregarRacas = useCallback(() => listarRacas({ incluirInativos: mostrarInativos }).then(setRacas).catch((e) => setErro(e.message)), [mostrarInativos]);
   const carregarMotivos = useCallback(() => listarMotivosBaixa({ incluirInativos: mostrarInativos }).then(setMotivos).catch((e) => setErro(e.message)), [mostrarInativos]);
+  const carregarGenitores = useCallback(() => listarGenitores({ incluirInativos: mostrarInativos }).then(setGenitores).catch((e) => setErro(mensagemErro(e))), [mostrarInativos]);
+  useEffect(() => { obterCatalogos().then((c) => setRacasCatalogo(c.racas)).catch(() => undefined); }, []);
   /** sempre traz ativas e inativas — a simulação precisa da lista completa; "Mostrar inativas" só filtra a tabela. */
   const carregarCategorias = useCallback(() => listarCategorias({ incluirInativos: true }).then((r) => { setCategorias(r.itens); setSemCategoriaAtual(r.semCategoria); }).catch((e) => setErro(mensagemErro(e))), []);
 
   useEffect(() => {
     if (aba === "racas") carregarRacas();
     else if (aba === "motivos") carregarMotivos();
+    else if (aba === "genitores") carregarGenitores();
     else carregarCategorias();
-  }, [aba, carregarRacas, carregarMotivos, carregarCategorias]);
+  }, [aba, carregarRacas, carregarMotivos, carregarGenitores, carregarCategorias]);
 
   const recarregarAtual = useCallback(async () => {
     if (aba === "racas") await carregarRacas();
     else if (aba === "motivos") await carregarMotivos();
+    else if (aba === "genitores") await carregarGenitores();
     else await carregarCategorias();
-  }, [aba, carregarRacas, carregarMotivos, carregarCategorias]);
+  }, [aba, carregarRacas, carregarMotivos, carregarGenitores, carregarCategorias]);
 
   const executar = async (acao: () => Promise<unknown>) => {
     if (emCurso.current) return;
@@ -146,11 +166,13 @@ export function Cadastros({ podeLancar = true }: { podeLancar?: boolean }) {
 
   const alternarRaca = (r: Raca) => { if (emCurso.current) return; if (r.ativo) { setConfirmando({ tipo: "raca", item: r }); return; } void executar(() => editarRaca(r.id, { ativo: true })); };
   const alternarMotivo = (m: MotivoBaixa) => { if (emCurso.current) return; if (m.ativo) { setConfirmando({ tipo: "motivo", item: m }); return; } void executar(() => editarMotivoBaixa(m.id, { ativo: true })); };
+  const alternarGenitor = (g: GenitorDTO) => { if (emCurso.current) return; if (g.ativo) { setConfirmando({ tipo: "genitor", item: g }); return; } void executar(() => editarGenitor(g.id, { ativo: true })); };
 
   const confirmarDesativacao = () => {
     if (!confirmando) return;
     void executar(async () => {
       if (confirmando.tipo === "raca") await editarRaca(confirmando.item.id, { ativo: false });
+      else if (confirmando.tipo === "genitor") await editarGenitor(confirmando.item.id, { ativo: false });
       else await editarMotivoBaixa(confirmando.item.id, { ativo: false });
       setConfirmando(null);
     });
@@ -233,6 +255,7 @@ export function Cadastros({ podeLancar = true }: { podeLancar?: boolean }) {
 
   const racaSelecionada = painel?.entidade === "raca" && painel.modo === "editar" ? (racas ?? []).find((r) => r.id === painel.id) ?? null : null;
   const motivoSelecionado = painel?.entidade === "motivo" && painel.modo === "editar" ? (motivos ?? []).find((m) => m.id === painel.id) ?? null : null;
+  const genitorSelecionado = painel?.entidade === "genitor" && painel.modo === "editar" ? (genitores ?? []).find((g) => g.id === painel.id) ?? null : null;
   /* key força remount do formulário a cada abertura, zerando o estado local */
   const chavePainel = painel ? `${painel.entidade}-${painel.modo === "editar" ? painel.id : "novo"}` : "fechado";
   const chavePainelCategoria = painelCategoria ? (painelCategoria.modo === "editar" ? `editar-${painelCategoria.categoria.id}` : "novo") : "fechado";
@@ -240,24 +263,26 @@ export function Cadastros({ podeLancar = true }: { podeLancar?: boolean }) {
   const acao = !podeLancar ? undefined
     : aba === "categorias" ? <div className="flex flex-wrap gap-2"><Button secondary onClick={restaurarPadroes}>Restaurar padrões</Button><Button onClick={() => setPainelCategoria({ modo: "novo" })}><Plus size={16} /> Nova categoria</Button></div>
     : aba === "racas" ? <Button onClick={() => abrirNovo("raca")}><Plus size={16} /> Nova raça</Button>
+    : aba === "genitores" ? <Button onClick={() => abrirNovo("genitor")}><Plus size={16} /> Novo genitor externo</Button>
     : <Button onClick={() => abrirNovo("motivo")}><Plus size={16} /> Novo motivo de baixa</Button>;
 
-  const carregando = (aba === "racas" && racas === null) || (aba === "motivos" && motivos === null) || (aba === "categorias" && categorias === null);
+  const carregando = (aba === "racas" && racas === null) || (aba === "motivos" && motivos === null) || (aba === "categorias" && categorias === null) || (aba === "genitores" && genitores === null);
   const bloqueado = processando || simulando || aplicando;
   const motivosExibidos = [...(motivos ?? [])].sort(compararMotivos);
 
   return <PaginaFinanceira>
-    <PageHeader eyebrow="Pecuária" titulo="Cadastros" descricao="Categorias, raças e motivos de baixa usados pelo rebanho." acao={acao} />
+    <PageHeader eyebrow="Pecuária" titulo="Cadastros" descricao="Categorias, raças, motivos de baixa e genitores externos usados pelo rebanho." acao={acao} />
     <NavRebanho ativa="cadastros" />
     <ErrorBox erro={painelCategoria ? null : erro} />
     <SubAbas abas={[
       { valor: "categorias", rotulo: "Categorias", icon: Tags },
       { valor: "racas", rotulo: "Raças", icon: Dna },
       { valor: "motivos", rotulo: "Motivos de baixa", icon: LogOut },
+      { valor: "genitores", rotulo: "Genitores externos", icon: Users },
     ]} ativa={aba} onSelecionar={trocarAba} />
 
     {carregando
-      ? <div className="mt-5"><Loader label={`Carregando ${aba === "categorias" ? "categorias" : aba === "racas" ? "raças" : "motivos de baixa"}`} /></div>
+      ? <div className="mt-5"><Loader label={`Carregando ${aba === "categorias" ? "categorias" : aba === "racas" ? "raças" : aba === "genitores" ? "genitores externos" : "motivos de baixa"}`} /></div>
       // os filtros ("Mostrar inativas/os") ficam fora do fieldset de escrita — quem só pode ver
       // continua podendo filtrar (K7); só a tabela (edição/ativação) é desabilitada sem podeLancar.
       : <>
@@ -301,10 +326,24 @@ export function Cadastros({ podeLancar = true }: { podeLancar?: boolean }) {
             <AlteracoesCadastro entidade="MotivoBaixa" />
           </Panel>
         </>}
+
+        {aba === "genitores" && <>
+          <Panel className="mt-5 overflow-hidden">
+            <BarraFiltros><label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" disabled={bloqueado} checked={mostrarInativos} onChange={(e) => setMostrarInativos(e.target.checked)} />Mostrar inativos</label></BarraFiltros>
+            <fieldset disabled={bloqueado || !podeLancar} aria-busy={bloqueado} className="min-w-0">
+              <TabelaFinanceira rotulo="Genitores externos" itens={genitores ?? []} colunas={colunasGenitores((g) => editar("genitor", g), alternarGenitor)} chaveDe={(g) => g.id} onAbrir={podeLancar ? (g) => editar("genitor", g) : undefined} classeLinha={(g) => !g.ativo ? "opacity-55" : ""} />
+            </fieldset>
+          </Panel>
+          <Panel className="mt-6 overflow-hidden">
+            <div className="border-b border-border p-5"><h2 className="font-serif text-xl">Histórico de alterações</h2></div>
+            <AlteracoesCadastro entidade="GenitorExterno" />
+          </Panel>
+        </>}
       </>}
 
     {painel?.entidade === "raca" && <FormRaca key={chavePainel} raca={racaSelecionada} onSalvo={aoSalvar} onFechar={() => setPainel(null)} />}
     {painel?.entidade === "motivo" && <FormMotivoBaixa key={chavePainel} motivo={motivoSelecionado} onSalvo={aoSalvar} onFechar={() => setPainel(null)} />}
+    {painel?.entidade === "genitor" && <FormGenitor key={chavePainel} genitor={genitorSelecionado} racas={racasCatalogo} onSalvo={aoSalvar} onFechar={() => setPainel(null)} />}
     {painelCategoria && <FormCategoria key={chavePainelCategoria} categoria={categoriaSelecionada} salvando={simulando || aplicando} erro={erro} onSalvar={salvarCategoria} onFechar={() => { if (!simulando && !aplicando) setPainelCategoria(null); }} />}
 
     <ConfirmDialog

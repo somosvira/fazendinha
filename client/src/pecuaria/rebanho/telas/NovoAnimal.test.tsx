@@ -73,6 +73,8 @@ describe("NovoAnimal", () => {
       baixa: null,
       peso: { ultimo: null, gmdRecente: null, gmdDesdeEntrada: null, gmdPeriodo: { dias: null, valor: null, pesagens: 0 } },
       historicoBaixas: [],
+      filiacao: { mae: null, pai: null },
+      filhosCount: 0,
     });
     await montar();
     // fêmea: papel e partos aparecem; troca o papel antes de trocar de sexo
@@ -104,6 +106,8 @@ describe("NovoAnimal", () => {
       baixa: null,
       peso: { ultimo: null, gmdRecente: null, gmdDesdeEntrada: null, gmdPeriodo: { dias: null, valor: null, pesagens: 0 } },
       historicoBaixas: [],
+      filiacao: { mae: null, pai: null },
+      filhosCount: 0,
     });
     await montar();
     fireEvent.change(screen.getByLabelText("Brinco"), { target: { value: "1234" } });

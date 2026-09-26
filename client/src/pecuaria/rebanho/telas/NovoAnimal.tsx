@@ -8,6 +8,7 @@ import { calcularCategoriaCliente } from "../lib/categoria";
 import { rotuloAptidao, rotuloPapelReprodutivo } from "../lib/rotulos";
 import { somaFracoes } from "../lib/composicao";
 import { CampoComposicao } from "../ui";
+import { CampoGenitor, valorGenitorParaCampos, type ValorGenitor } from "../components/CampoGenitor";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import { navegarPara } from "../../../router";
 import { Button, ErrorBox, hoje, PageHeader, PaginaCarregando, PaginaFinanceira, ReviewLine } from "../../../financeiro/financeiro-ui";
@@ -48,6 +49,8 @@ function FormNovoAnimal({ onVoltar }: { onVoltar: () => void }) {
   const [papelReprodutivo, setPapelReprodutivo] = useState<PapelReprodutivo>("NENHUM");
   const [composicao, setComposicao] = useState<ComposicaoItemInput[]>([]);
   const [pesoEntradaKg, setPesoEntradaKg] = useState("");
+  const [mae, setMae] = useState<ValorGenitor>({ tipo: "NENHUM" });
+  const [pai, setPai] = useState<ValorGenitor>({ tipo: "NENHUM" });
 
   const [erros, setErros] = useState<Erros>({});
   const [erroGeral, setErroGeral] = useState<string | null>(null);
@@ -98,6 +101,7 @@ function FormNovoAnimal({ onVoltar }: { onVoltar: () => void }) {
         observacao: observacao.trim() || null, propriedadeId: Number(propriedadeId), loteId: loteId || null,
         aptidao, papelReprodutivo, composicao: composicao.filter((item) => item.racaId),
         pesoEntradaKg: pesoEntradaKg ? Number(pesoEntradaKg) : null,
+        ...valorGenitorParaCampos(mae, pai),
       });
       navegarPara(`/pecuaria/rebanho/animais/${animal.id}`);
     } catch (falha) {
@@ -138,6 +142,10 @@ function FormNovoAnimal({ onVoltar }: { onVoltar: () => void }) {
             <CampoFormulario id="novo-animal-nascimento-estimado" rotulo="Nascimento estimado">{(p) => <label className="mt-1.5 flex h-[42px] items-center gap-2"><input id={p.id} type="checkbox" aria-label={p["aria-label"]} checked={nascimentoEstimado} onChange={(e) => setNascimentoEstimado(e.target.checked)} /><span className="text-sm font-normal text-ink-3">A data é uma estimativa</span></label>}</CampoFormulario>
             {sexo === "F" && <CampoFormulario id="novo-animal-partos" rotulo="Partos antes da entrada" ajuda="Define a categoria (novilha vira vaca a partir de 1 parto).">{(p) => <input {...p} type="number" min={0} step={1} value={partosAntesDaEntrada} onChange={(e) => setPartosAntesDaEntrada(e.target.value)} className={classeInput} />}</CampoFormulario>}
           </div>
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <CampoGenitor rotulo="Mãe" sexo="F" valor={mae} onChange={setMae} />
+            <CampoGenitor rotulo="Pai" sexo="M" valor={pai} onChange={setPai} />
+          </div>
         </section>
         <section>
           <h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Localização e destino</h3>
@@ -150,6 +158,7 @@ function FormNovoAnimal({ onVoltar }: { onVoltar: () => void }) {
         </section>
         <section>
           <h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Composição racial</h3>
+          {composicao.length === 0 && (mae.tipo !== "NENHUM" || pai.tipo !== "NENHUM") && <p className="mb-3 text-sm text-ink-3">Sem composição informada aqui: será calculada pelos genitores ao salvar.</p>}
           <CampoComposicao racas={catalogos.racas} itens={composicao} onChange={setComposicao} erro={erros.composicao} />
         </section>
         <section>
@@ -166,7 +175,8 @@ function FormNovoAnimal({ onVoltar }: { onVoltar: () => void }) {
             {categoriaPrevista && <ReviewLine>Categoria calculada: {categoriaPrevista.nome}.</ReviewLine>}
             <ReviewLine tone={propriedadeNome ? "green" : "neutral"}>{propriedadeNome ? <>Entra no sítio {propriedadeNome}{loteNome ? `, lote ${loteNome}` : ""}.</> : "Selecione o sítio de destino."}</ReviewLine>
             <ReviewLine>Destino: {rotuloAptidao(aptidao)}{papelReprodutivo !== "NENHUM" ? ` · ${rotuloPapelReprodutivo(papelReprodutivo)}` : ""}.</ReviewLine>
-            <ReviewLine tone={composicaoRotulo ? "brown" : "neutral"}>{composicaoRotulo ? <>Composição: {composicaoRotulo}.</> : "Sem composição racial informada."}</ReviewLine>
+            <ReviewLine tone={composicaoRotulo ? "brown" : "neutral"}>{composicaoRotulo ? <>Composição: {composicaoRotulo}.</> : (mae.tipo !== "NENHUM" || pai.tipo !== "NENHUM") ? "Composição será calculada pelos genitores." : "Sem composição racial informada."}</ReviewLine>
+            {(mae.tipo !== "NENHUM" || pai.tipo !== "NENHUM") && <ReviewLine>Filiação: {mae.tipo === "ANIMAL" ? mae.brinco || "mãe selecionada" : mae.tipo === "EXTERNO" ? "mãe externa selecionada" : "mãe não informada"} · {pai.tipo === "ANIMAL" ? pai.brinco || "pai selecionado" : pai.tipo === "EXTERNO" ? "pai externo selecionado" : "pai não informado"}.</ReviewLine>}
             {pesoEntradaKg && <ReviewLine>Peso de entrada: {Number(pesoEntradaKg).toLocaleString("pt-BR")} kg.</ReviewLine>}
           </div>
         </div>

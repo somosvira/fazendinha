@@ -3,10 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { Cadastros } from "./Cadastros";
 import {
-  criarCategoria, criarMotivoBaixa, criarRaca, editarMotivoBaixa, editarRaca, listarAuditoriaCadastro, listarCategorias, listarMotivosBaixa, listarRacas,
-  reordenarCategorias, restaurarPadroesCategorias, simularCategorias,
+  criarCategoria, criarMotivoBaixa, criarRaca, editarGenitor, editarMotivoBaixa, editarRaca, listarAuditoriaCadastro, listarCategorias,
+  listarGenitores, listarMotivosBaixa, listarRacas, obterCatalogos, reordenarCategorias, restaurarPadroesCategorias, simularCategorias,
 } from "../api";
-import type { CategoriaDTO, MotivoBaixa, Raca } from "../types";
+import type { CategoriaDTO, GenitorDTO, MotivoBaixa, Raca } from "../types";
 
 /* Mantém RebanhoApiError real (os forms usam instanceof) e substitui só as chamadas. */
 vi.mock("../api", async (importOriginal) => ({
@@ -24,6 +24,9 @@ vi.mock("../api", async (importOriginal) => ({
   simularCategorias: vi.fn(),
   restaurarPadroesCategorias: vi.fn(),
   listarAuditoriaCadastro: vi.fn(),
+  listarGenitores: vi.fn(),
+  editarGenitor: vi.fn(),
+  obterCatalogos: vi.fn(),
 }));
 
 const racasMock: Raca[] = [
@@ -57,6 +60,8 @@ beforeEach(() => {
   vi.mocked(simularCategorias).mockResolvedValue({ afetados: 0, mudancas: [], semCategoria: 0 });
   vi.mocked(editarRaca).mockImplementation((id, patch) => Promise.resolve({ ...racasMock.find((r) => r.id === id)!, ...patch }));
   vi.mocked(listarAuditoriaCadastro).mockResolvedValue({ itens: [], total: 0 });
+  vi.mocked(listarGenitores).mockResolvedValue([]);
+  vi.mocked(obterCatalogos).mockResolvedValue({ racas: [], motivosBaixa: [], propriedades: [], lotes: [] });
 });
 afterEach(cleanup);
 
@@ -377,5 +382,41 @@ describe("Cadastros do rebanho — histórico de alterações", () => {
   it("sem alterações registradas mostra o estado vazio", async () => {
     await montarCategorias();
     expect(await screen.findByText("Nenhuma alteração registrada.")).toBeTruthy();
+  });
+});
+
+describe("Cadastros do rebanho — genitores externos", () => {
+  const genitoresMock: GenitorDTO[] = [
+    { id: "g1", sexo: "F", nome: "Vaca Externa A", codigo: "VA1", fornecedor: "Fazenda Vizinha", observacao: null, ativo: true, composicao: [], composicaoRotulo: "1/2 HO", filhos: 2 },
+    { id: "g2", sexo: "M", nome: "Touro Externo B", codigo: null, fornecedor: null, observacao: null, ativo: false, composicao: [], composicaoRotulo: "", filhos: 0 },
+  ];
+
+  async function montarGenitores() {
+    vi.mocked(listarGenitores).mockResolvedValue(genitoresMock.filter((g) => g.ativo));
+    render(<Cadastros />);
+    await screen.findAllByText("Vaca");
+    fireEvent.click(screen.getByRole("button", { name: "Genitores externos" }));
+    await screen.findAllByText("Vaca Externa A");
+  }
+
+  it("lista os genitores externos ativos, com composição e filhos", async () => {
+    await montarGenitores();
+    const tabela = primeiro("table", "Genitores externos");
+    expect(within(tabela).getByText("Vaca Externa A")).toBeTruthy();
+    expect(within(tabela).getByText("1/2 HO")).toBeTruthy();
+    expect(within(tabela).getByText("2")).toBeTruthy();
+    expect(within(tabela).queryByText("Touro Externo B")).toBeNull();
+  });
+
+  it("Mostrar inativos traz o genitor inativo, e desativar chama editarGenitor", async () => {
+    await montarGenitores();
+    vi.mocked(listarGenitores).mockResolvedValue(genitoresMock);
+    fireEvent.click(screen.getByRole("checkbox", { name: "Mostrar inativos" }));
+    await waitFor(() => expect(within(primeiro("table", "Genitores externos")).getByText("Touro Externo B")).toBeTruthy());
+
+    vi.mocked(editarGenitor).mockResolvedValue({ ...genitoresMock[0], ativo: false });
+    fireEvent.click(within(primeiro("table", "Genitores externos")).getAllByRole("button", { name: /Desativar Vaca Externa A/ })[0]);
+    fireEvent.click(screen.getByRole("button", { name: "Desativar" }));
+    await waitFor(() => expect(editarGenitor).toHaveBeenCalledWith("g1", { ativo: false }));
   });
 });
