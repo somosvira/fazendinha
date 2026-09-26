@@ -204,6 +204,8 @@ const RESUMOS_AUDITORIA: Record<string, string> = {
   "GenitorExterno:CADASTRO": "Genitor externo cadastrado",
   "GenitorExterno:EDICAO": "Genitor externo editado",
   "GenitorExterno:COMPOSICAO": "Composição do genitor externo alterada",
+  "MaterialGenetico:CADASTRO": "Material genético cadastrado",
+  "MaterialGenetico:EDICAO": "Material genético editado",
   "LocalizacaoAnimal:MOVIMENTACAO": "Movimentação de localização/lote",
   "LocalizacaoAnimal:DESFAZER": "Movimentação de localização desfeita",
   "Movimentacao:MOVIMENTACAO": "Movimentação registrada",

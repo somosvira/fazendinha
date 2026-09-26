@@ -163,7 +163,7 @@ export const auditoriaAnimalQuerySchema = z.object({
 export type AuditoriaAnimalQuery = z.infer<typeof auditoriaAnimalQuerySchema>;
 
 export const auditoriaCadastroQuerySchema = z.object({
-  entidade: z.enum(["Lote", "Raca", "MotivoBaixa", "CategoriaAnimal", "GenitorExterno"]),
+  entidade: z.enum(["Lote", "Raca", "MotivoBaixa", "CategoriaAnimal", "GenitorExterno", "MaterialGenetico"]),
   entidadeId: z.string().uuid().optional(),
   page: z.coerce.number().int().min(1).optional().default(1),
   pageSize: z.coerce.number().int().min(1).max(100).optional().default(20),
@@ -391,3 +391,38 @@ export type ListarGenitoresQuery = z.infer<typeof listarGenitoresQuerySchema>;
 export const definirFiliacaoSchema = filiacaoCamposSchema.superRefine(exigirLadoUnico);
 export type DefinirFiliacaoInput = z.infer<typeof definirFiliacaoSchema>;
 
+
+// ---------- genética (v2): material genético (sêmen/embrião como produto do estoque) ----------
+
+const refGenitorSchema = z.object({ tipo: z.enum(["ANIMAL", "EXTERNO"]), id: z.string().uuid() });
+
+export const criarMaterialGeneticoSchema = z.object({
+  tipo: z.enum(["SEMEN", "EMBRIAO"]),
+  tipoSemen: z.enum(["CONVENCIONAL", "SEXADO_FEMEA", "SEXADO_MACHO"]).nullable().optional(),
+  touro: refGenitorSchema,
+  doadora: refGenitorSchema.nullable().optional(),
+  observacao: z.string().trim().max(500).nullable().optional(),
+  produto: z.object({
+    nome: z.string().trim().min(2).max(80).optional(),
+    categoriaId: z.string().uuid(),
+    centroCustoIds: z.array(z.string().uuid()).optional(),
+    fornecedorIds: z.array(z.string().uuid()).optional(),
+  }),
+}).superRefine((v, ctx) => {
+  if (v.tipo === "EMBRIAO" && !v.doadora) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["doadora"], message: "Embrião precisa de doadora" });
+  if (v.tipo === "SEMEN" && v.doadora) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["doadora"], message: "Sêmen não tem doadora" });
+  if (v.tipo === "EMBRIAO" && v.tipoSemen) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["tipoSemen"], message: "Tipo de sêmen só vale para sêmen" });
+});
+export type CriarMaterialGeneticoInput = z.infer<typeof criarMaterialGeneticoSchema>;
+
+export const editarMaterialGeneticoSchema = z.object({
+  tipoSemen: z.enum(["CONVENCIONAL", "SEXADO_FEMEA", "SEXADO_MACHO"]).nullable().optional(),
+  observacao: z.string().trim().max(500).nullable().optional(),
+});
+export type EditarMaterialGeneticoInput = z.infer<typeof editarMaterialGeneticoSchema>;
+
+export const listarMaterialGeneticoQuerySchema = z.object({
+  tipo: z.enum(["SEMEN", "EMBRIAO"]).optional(),
+  incluirInativos: z.enum(["true", "false"]).optional().transform((v) => v === "true"),
+});
+export type ListarMaterialGeneticoQuery = z.infer<typeof listarMaterialGeneticoQuerySchema>;

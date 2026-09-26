@@ -24,7 +24,7 @@ import type {
 } from "./schemas.js";
 
 /** Entidades de cadastro que `/auditoria` (fora do animal) pode consultar. */
-export const ENTIDADES_AUDITORIA_CADASTRO = ["Lote", "Raca", "MotivoBaixa", "CategoriaAnimal", "GenitorExterno"] as const;
+export const ENTIDADES_AUDITORIA_CADASTRO = ["Lote", "Raca", "MotivoBaixa", "CategoriaAnimal", "GenitorExterno", "MaterialGenetico"] as const;
 export type EntidadeAuditoriaCadastro = (typeof ENTIDADES_AUDITORIA_CADASTRO)[number];
 
 // ---------- helpers de leitura (escopados por propriedade quando informado) ----------

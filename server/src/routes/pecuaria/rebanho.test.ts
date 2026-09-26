@@ -24,6 +24,9 @@ const mocks = vi.hoisted(() => ({
   listarFilhos: vi.fn(),
   composicaoSugerida: vi.fn(),
   listarGenitores: vi.fn(),
+  listarMaterialGenetico: vi.fn(),
+  criarMaterialGenetico: vi.fn(),
+  editarMaterialGenetico: vi.fn(),
   criarGenitor: vi.fn(),
   editarGenitor: vi.fn(),
   substituirComposicaoGenitor: vi.fn(),
@@ -53,6 +56,11 @@ vi.mock("../../services/pecuaria/rebanho/genitores.js", () => ({
   criarGenitor: mocks.criarGenitor,
   editarGenitor: mocks.editarGenitor,
   substituirComposicaoGenitor: mocks.substituirComposicaoGenitor,
+}));
+vi.mock("../../services/pecuaria/rebanho/materialGenetico.js", () => ({
+  listarMaterialGenetico: mocks.listarMaterialGenetico,
+  criarMaterialGenetico: mocks.criarMaterialGenetico,
+  editarMaterialGenetico: mocks.editarMaterialGenetico,
 }));
 vi.mock("../../services/pecuaria/rebanho/categorias.js", () => ({
   listarCategorias: vi.fn(),
@@ -162,6 +170,7 @@ describe("rebanhoRouter — gate de permissão `lancar` (achado 2)", () => {
     ["baixa de animal", () => app(usuario({ flags: [] })).request(`/animais/${ID}/baixa`, jsonBody({ data: "2026-09-01", tipo: "VENDA" }))],
     ["estorno de baixa", () => app(usuario({ flags: [] })).request(`/animais/${ID}/baixa/estorno`, jsonBody({ motivo: "engano" }))],
     ["genitores externos", () => app(usuario({ flags: [] })).request("/genitores", jsonBody({ sexo: "M", nome: "Zeus" }))],
+    ["material genético", () => app(usuario({ flags: [] })).request("/material-genetico", jsonBody({ tipo: "SEMEN", touro: { tipo: "EXTERNO", id: ID }, produto: { categoriaId: ID } }))],
     ["filiação", () => app(usuario({ flags: [] })).request(`/animais/${ID}/filiacao`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: "{}" })],
   ])("também bloqueia escrita em %s sem `lancar`", async (_nome, fazerRequisicao) => {
     const res = await fazerRequisicao();
@@ -499,5 +508,37 @@ describe("rebanhoRouter — filiação do animal", () => {
     const res = await app(usuario({ flags: [] })).request(`/animais/${ID}/composicao-sugerida`);
     expect(res.status).toBe(200);
     expect(mocks.composicaoSugerida).toHaveBeenCalledWith(ID, 1);
+  });
+});
+
+describe("rebanhoRouter — material genético", () => {
+  it("POST /material-genetico de sêmen com doadora é 422", async () => {
+    const res = await app(usuario({ flags: ["lancar"] })).request("/material-genetico", jsonBody({
+      tipo: "SEMEN", touro: { tipo: "EXTERNO", id: ID }, doadora: { tipo: "EXTERNO", id: ID }, produto: { categoriaId: ID },
+    }));
+    expect(res.status).toBe(422);
+    expect(mocks.criarMaterialGenetico).not.toHaveBeenCalled();
+  });
+
+  it("POST /material-genetico de embrião sem doadora é 422", async () => {
+    const res = await app(usuario({ flags: ["lancar"] })).request("/material-genetico", jsonBody({
+      tipo: "EMBRIAO", touro: { tipo: "EXTERNO", id: ID }, produto: { categoriaId: ID },
+    }));
+    expect(res.status).toBe(422);
+  });
+
+  it("POST /material-genetico válido chama o service e devolve 201", async () => {
+    mocks.criarMaterialGenetico.mockResolvedValue({ id: ID });
+    const body = { tipo: "SEMEN", touro: { tipo: "EXTERNO", id: ID }, produto: { categoriaId: ID } };
+    const res = await app(usuario({ id: 7, flags: ["lancar"] })).request("/material-genetico", jsonBody(body));
+    expect(res.status).toBe(201);
+    expect(mocks.criarMaterialGenetico).toHaveBeenCalledWith(body, 7);
+  });
+
+  it("GET /material-genetico lê no escopo do sítio", async () => {
+    mocks.listarMaterialGenetico.mockResolvedValue([]);
+    const res = await app(usuario({ flags: [] })).request("/material-genetico?tipo=EMBRIAO");
+    expect(res.status).toBe(200);
+    expect(mocks.listarMaterialGenetico).toHaveBeenCalledWith({ tipo: "EMBRIAO", incluirInativos: false }, expect.anything());
   });
 });

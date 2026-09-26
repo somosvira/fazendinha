@@ -164,9 +164,9 @@ export async function obterCustoMedio(db: DbCusto, produtoId: string, propriedad
   return (await obterCustosMedios(db, [produtoId], propriedadeId)).get(produtoId) ?? null;
 }
 
-const USO_CAMPO = { agricola: "usoAgricola" } as const;
+const USO_CAMPO = { agricola: "usoAgricola", genetico: "usoGenetico" } as const;
 
-export async function listarSaldos(f?: { centroCustoId?: string; propriedadeId?: number | null; uso?: "agricola" }) {
+export async function listarSaldos(f?: { centroCustoId?: string; propriedadeId?: number | null; uso?: keyof typeof USO_CAMPO }) {
   // O estoque lista os produtos ativos que já tiveram movimento no sítio (qualquer
   // status) — o produto entra no estoque pela operação, não pelo cadastro.
   // Movimento sem propriedade conta como da principal (mesmo escopo do custo médio).
@@ -201,7 +201,7 @@ export async function listarSaldos(f?: { centroCustoId?: string; propriedadeId?:
       produtoId: p.id,
       nome: p.nome,
       categoria: p.categoria
-        ? { id: p.categoria.id, nome: p.categoria.nome, usoAgricola: p.categoria.usoAgricola }
+        ? { id: p.categoria.id, nome: p.categoria.nome, usoAgricola: p.categoria.usoAgricola, usoGenetico: p.categoria.usoGenetico }
         : null,
       unidade: p.unidade,
       centrosCusto: p.centrosCusto.map(({ centroCusto }) => ({ id: centroCusto.id, nome: centroCusto.nome })),

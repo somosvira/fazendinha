@@ -14,6 +14,7 @@ import * as painel from "../../services/pecuaria/rebanho/painel.js";
 import * as movimentacoes from "../../services/pecuaria/rebanho/movimentacoes.js";
 import * as categorias from "../../services/pecuaria/rebanho/categorias.js";
 import * as genitores from "../../services/pecuaria/rebanho/genitores.js";
+import * as materialGenetico from "../../services/pecuaria/rebanho/materialGenetico.js";
 import {
   cadastrarAnimalSchema, editarAnimalSchema, movimentarSchema, mudarDestinoSchema,
   baixaSchema, estornoBaixaSchema, pesagemSchema, editarPesagemSchema, listarFiltrosSchema,
@@ -24,6 +25,7 @@ import {
   categoriaManualSchema, removerCategoriaManualSchema,
   gmdPeriodoQuerySchema, painelQuerySchema, auditoriaAnimalQuerySchema, auditoriaCadastroQuerySchema,
   criarGenitorSchema, editarGenitorSchema, substituirComposicaoGenitorSchema, listarGenitoresQuerySchema, definirFiliacaoSchema,
+  criarMaterialGeneticoSchema, editarMaterialGeneticoSchema, listarMaterialGeneticoQuerySchema,
 } from "../../services/pecuaria/rebanho/schemas.js";
 
 function usuarioId(c: Context): number | null {
@@ -338,6 +340,21 @@ export const rebanhoRouter = new Hono()
   .put("/genitores/:id/composicao", idParam, validar(substituirComposicaoGenitorSchema), async (c) => {
     try {
       return c.json(await genitores.substituirComposicaoGenitor(c.req.valid("param").id, c.req.valid("json"), usuarioId(c)));
+    } catch (e) { return falha(c, e); }
+  })
+  .get("/material-genetico", validarQuery(listarMaterialGeneticoQuerySchema), async (c) => {
+    try {
+      return c.json(await materialGenetico.listarMaterialGenetico(c.req.valid("query"), await resolverEscopoLeitura(c)));
+    } catch (e) { return falha(c, e); }
+  })
+  .post("/material-genetico", validar(criarMaterialGeneticoSchema), async (c) => {
+    try {
+      return c.json(await materialGenetico.criarMaterialGenetico(c.req.valid("json"), usuarioId(c)), 201);
+    } catch (e) { return falha(c, e); }
+  })
+  .patch("/material-genetico/:id", idParam, validar(editarMaterialGeneticoSchema), async (c) => {
+    try {
+      return c.json(await materialGenetico.editarMaterialGenetico(c.req.valid("param").id, c.req.valid("json"), usuarioId(c)));
     } catch (e) { return falha(c, e); }
   })
   .get("/motivos-baixa", validarQuery(incluirInativosQuerySchema), async (c) => {
