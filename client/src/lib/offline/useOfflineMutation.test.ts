@@ -199,4 +199,67 @@ describe("useOfflineMutation — patch otimista via aplicar", () => {
     await vi.waitFor(() => expect(onError).toHaveBeenCalled());
     expect(queryClient.getQueryData<Item[]>(listaKey)).toEqual([]);
   });
+
+  it("aplicar que lança numa entrada não deixa patch de entrada anterior no cache nem enfileira", async () => {
+    const { enfileirarMutation } = await import("./fila");
+    vi.mocked(enfileirarMutation).mockClear();
+    const queryClient = new QueryClient();
+    const chaveA: QueryKey = ["a"];
+    const chaveB: QueryKey = ["b"];
+    queryClient.setQueryData<Item[]>(chaveA, []);
+    queryClient.setQueryData<Item[]>(chaveB, []);
+
+    const cfg: UseOfflineMutationConfig<{ nome: string }, Item> = {
+      mutationKey: "teste.falha-aplicar",
+      path: () => "/itens",
+      method: "POST",
+      criarOtimista: (input) => ({ id: "temp-1", nome: input.nome, endereco: { rua: "", cidade: "" } }),
+      queryKeys: (_input, itemOtimista) => [
+        { queryKey: chaveA, aplicar: (atual: Item[] | undefined) => appendItemToCacheList(atual, itemOtimista!) },
+        {
+          queryKey: chaveB,
+          aplicar: () => {
+            throw new Error("aplicar quebrou");
+          },
+        },
+      ],
+    };
+
+    const { result } = renderHook(() => useOfflineMutation(cfg), { wrapper: montarWrapper(queryClient) });
+    const onError = vi.fn();
+    result.current.mutate({ nome: "X" }, { onError });
+
+    expect(queryClient.getQueryData<Item[]>(chaveA)).toEqual([]);
+    expect(queryClient.getQueryData<Item[]>(chaveB)).toEqual([]);
+    expect(enfileirarMutation).not.toHaveBeenCalled();
+    expect(onError).toHaveBeenCalled();
+  });
+
+  it("criarOtimista que lança não muda cache nem enfileira", async () => {
+    const { enfileirarMutation } = await import("./fila");
+    vi.mocked(enfileirarMutation).mockClear();
+    const queryClient = new QueryClient();
+    const queryKey: QueryKey = ["itens"];
+    queryClient.setQueryData<Item[]>(queryKey, []);
+
+    const cfg: UseOfflineMutationConfig<{ nome: string }, Item> = {
+      mutationKey: "teste.falha-criar-otimista",
+      path: () => "/itens",
+      method: "POST",
+      criarOtimista: () => {
+        throw new Error("criarOtimista quebrou");
+      },
+      queryKeys: (_input, itemOtimista) => [
+        { queryKey, aplicar: (atual: Item[] | undefined) => appendItemToCacheList(atual, itemOtimista!) },
+      ],
+    };
+
+    const { result } = renderHook(() => useOfflineMutation(cfg), { wrapper: montarWrapper(queryClient) });
+    const onError = vi.fn();
+    result.current.mutate({ nome: "X" }, { onError });
+
+    expect(queryClient.getQueryData<Item[]>(queryKey)).toEqual([]);
+    expect(enfileirarMutation).not.toHaveBeenCalled();
+    expect(onError).toHaveBeenCalled();
+  });
 });

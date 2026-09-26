@@ -106,15 +106,28 @@ export function useOfflineMutation<TInput, TItem, TResp = TItem>(cfg: UseOffline
   const fila = useSyncExternalStore(inscrever, obterFila, obterFila);
   const pendentes = fila.filter((item) => item.mutationKey === cfg.mutationKey).map((item) => item.body as TInput);
 
+  // Tudo ou nada: os valores novos são calculados antes de qualquer
+  // `setQueryData`. Se algum cálculo lançar, o cache não muda, nada entra na
+  // fila e o erro vai para `opts.onError`.
   function mutate(
     input: TInput,
     opts?: { onSuccess?: (item: TResp) => void; onError?: (err: unknown) => void },
   ) {
-    const itemOtimista = cfg.criarOtimista?.(input);
-    const entradas = cfg.queryKeys(input, itemOtimista);
-    const snapshots = entradas.map((entrada) => ({ entrada, anterior: queryClient.getQueryData(entrada.queryKey) }));
-    for (const { entrada, anterior } of snapshots) {
-      if (entrada.aplicar) queryClient.setQueryData(entrada.queryKey, entrada.aplicar(anterior, itemOtimista));
+    let snapshots: { entrada: EntradaPatch<any, TItem>; anterior: unknown; novo: unknown }[];
+    try {
+      const itemOtimista = cfg.criarOtimista?.(input);
+      const entradas = cfg.queryKeys(input, itemOtimista);
+      snapshots = entradas.map((entrada) => {
+        const anterior = queryClient.getQueryData(entrada.queryKey);
+        return { entrada, anterior, novo: entrada.aplicar ? entrada.aplicar(anterior, itemOtimista) : undefined };
+      });
+    } catch (err) {
+      opts?.onError?.(err);
+      return;
+    }
+
+    for (const { entrada, novo } of snapshots) {
+      if (entrada.aplicar) queryClient.setQueryData(entrada.queryKey, novo);
     }
 
     enfileirarMutation({
