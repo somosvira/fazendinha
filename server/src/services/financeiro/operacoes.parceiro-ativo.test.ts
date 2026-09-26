@@ -17,7 +17,7 @@ vi.mock("../../db.js", () => {
     periodoFinanceiro: { findUnique: mocks.periodo },
     parceiro: { findFirst: mocks.parceiro },
     contaFinanceira: { findFirst: mocks.conta },
-    categoria: { findFirst: mocks.categoria },
+    categoria: { findMany: mocks.categoria },
     centroCusto: { findMany: mocks.centro },
     operacao: { create: mocks.operacaoCreate },
     transacaoFinanceira: { create: mocks.transacaoCreate },
@@ -34,7 +34,7 @@ describe("operações financeiras — cadastros ativos", () => {
     mocks.periodo.mockResolvedValue(null);
     mocks.parceiro.mockResolvedValue(null);
     mocks.conta.mockResolvedValue(null);
-    mocks.categoria.mockResolvedValue(null);
+    mocks.categoria.mockResolvedValue([]);
     mocks.centro.mockResolvedValue([]);
   });
 

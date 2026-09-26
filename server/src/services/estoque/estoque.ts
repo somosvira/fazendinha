@@ -7,6 +7,7 @@ import { propriedadePrincipalId, escopoPadraoLeitura } from "../propriedade.js";
 import { resolverCentroSaida } from "./centro.calc.js";
 import { rotuloUnidade } from "./unidades.js";
 import { SEM_VINCULO } from "../../lib/ids.js";
+import type { AjusteContagemValidado } from "@rionovo/shared";
 
 export class EstoqueError extends Error {
   constructor(public code: "NAO_ENCONTRADO" | "MES_FECHADO" | "ORIGEM_AUTOMATICA" | "CONFLITO" | "VALIDACAO", m: string) {
@@ -44,15 +45,7 @@ export const movimentoSchema = z
   });
 export type MovimentoInput = z.infer<typeof movimentoSchema>;
 
-export const ajusteContagemSchema = z.object({
-  id: z.string().uuid().optional(),
-  produtoId: z.string().uuid(),
-  quantidadeContada: z.number().finite().min(0).max(MAX_QTD).multipleOf(0.001),
-  saldoEsperado: z.number().finite().min(-MAX_QTD).max(MAX_QTD).multipleOf(0.001),
-  observacao: z.string().trim().min(5, "justificativa é obrigatória").max(200),
-  propriedadeId: z.number().int().positive().optional(),
-  centroCustoId: z.string().uuid().nullable().optional(),
-});
+export { ajusteContagemSchema } from "@rionovo/shared";
 
 type DbCusto = Pick<Prisma.TransactionClient, "movimentoEstoque">;
 
@@ -394,7 +387,7 @@ async function ajusteExistente(db: Prisma.TransactionClient, id: string | undefi
   return { id: depois.movimentoId, operacaoId: id, saldoAnterior: antes.quantidade, quantidadeContada: depois.quantidade, diferenca: depois.diferenca };
 }
 
-export async function ajustarContagem(input: z.infer<typeof ajusteContagemSchema> & { usuarioId?: number | null }) {
+export async function ajustarContagem(input: AjusteContagemValidado & { usuarioId?: number | null }) {
   const propriedadeId = input.propriedadeId ?? await escopoPadraoLeitura();
   if (propriedadeId == null) throw new EstoqueError("VALIDACAO", "Selecione uma fazenda para ajustar o estoque.");
   try {

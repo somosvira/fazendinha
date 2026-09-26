@@ -20,7 +20,7 @@ vi.mock("../../db.js", () => {
   const tx = {
     periodoFinanceiro: { findUnique: mocks.periodo },
     parceiro: { findFirst: mocks.parceiro },
-    categoria: { findFirst: mocks.categoria },
+    categoria: { findMany: mocks.categoria },
     centroCusto: { findMany: mocks.centro },
     produto: { findMany: mocks.produto },
     operacao: { create: mocks.operacaoCreate, findUniqueOrThrow: mocks.operacaoFindUniqueOrThrow },

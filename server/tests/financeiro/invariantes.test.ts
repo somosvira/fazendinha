@@ -6,6 +6,7 @@ import pg from "pg";
 import type { PrismaClient } from "@prisma/client";
 import { SEM_VINCULO } from "../../src/lib/ids.js";
 import { uid } from "../../src/lib/uid.fixture.js";
+import { preverEfeitosOperacao, type ContextoOperacao } from "@rionovo/shared";
 
 // O runner usa um banco temporário criado por execução no Postgres local.
 const qaDatabase = process.env.FINANCE_QA_DATABASE;
@@ -724,5 +725,93 @@ describe("ids gerados pelo cliente", () => {
     const op = await drafts.confirmarRascunho(pid, userId, draft.versao);
     expect(op.id).toBe(id);
     expect((await contagens()).saldoConta).toBe(900);
+  });
+});
+
+describe("previsão compartilhada × registros gravados", () => {
+  const TIPOS = [
+    "COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO", "SERVICO", "VENDA", "APORTE", "RETIRADA",
+    "AJUSTE_ESTOQUE", "TRANSFERENCIA_ESTOQUE", "INVENTARIO_INICIAL", "BONIFICACAO", "DEVOLUCAO", "PRODUCAO",
+  ] as const;
+  const CONDICOES = ["SEM_EFEITO_FINANCEIRO", "A_VISTA", "A_PRAZO", "PARCIAL"] as const;
+  const comParceiro = new Set(["COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO", "SERVICO", "VENDA", "DEVOLUCAO"]);
+  const n = (valor: unknown) => Number(valor);
+
+  it.each(TIPOS)("%s em todas as condições aceitas", async (tipo) => {
+    const centroItem = (await db.centroCusto.create({ data: { nome: `Item ${serial}` } })).id;
+    const catItem = await db.categoria.create({ data: { nome: `Máquinas QA ${serial}`, classificacao: "INVESTIMENTO" } });
+    const produtoCentro = (await db.produto.create({ data: { nome: `Produto centro ${serial}`, unidade: "UN", categoriaId: catItem.id, centrosCusto: { create: [{ centroCustoId: centroItem }] } } })).id;
+    const produto = await db.produto.findUniqueOrThrow({ where: { id: productId }, include: { categoria: true } });
+    if (tipo === "VENDA" || tipo === "DEVOLUCAO") {
+      await ops.criarOperacao({ ...schema.operacaoSchema.parse({
+        tipo: "COMPRA_ESTOQUE", data, descricao: "Estoque inicial", parceiroId: partnerId, financeiro: { condicao: "SEM_EFEITO_FINANCEIRO" },
+        itens: [
+          { produtoId: productId, descricao: "Produto QA", quantidade: 300, unidade: "kg", valorTotal: 1000 },
+          { produtoId: produtoCentro, descricao: "Produto centro", quantidade: 30, unidade: "un", valorTotal: 70 },
+        ],
+      }), propriedadeId: pid, usuarioId: userId });
+    }
+    const contexto: ContextoOperacao = {
+      produtos: [
+        { id: productId, categoriaId: produto.categoriaId, centrosCustoIds: [] },
+        { id: produtoCentro, categoriaId: catItem.id, centrosCustoIds: [centroItem] },
+      ],
+      categorias: [
+        { id: produto.categoria!.id, nome: produto.categoria!.nome, classificacao: produto.categoria!.classificacao },
+        { id: catItem.id, nome: catItem.nome, classificacao: catItem.classificacao },
+      ],
+      centrosCusto: [{ id: centroConsumoId, nome: `Consumo direto ${serial}` }, { id: centroItem, nome: `Item ${serial}` }],
+      produtosComEstoque: tipo === "VENDA" || tipo === "DEVOLUCAO" ? [productId, produtoCentro] : [],
+      basesCusto: tipo === "VENDA" || tipo === "DEVOLUCAO" ? [{ produtoId: productId, quantidade: 300, valor: 1000 }, { produtoId: produtoCentro, quantidade: 30, valor: 70 }] : [],
+    };
+
+    let casos = 0;
+    for (const condicao of CONDICOES) for (const comItens of [true, false]) {
+      const financeiro = condicao === "SEM_EFEITO_FINANCEIRO" ? { condicao }
+        : condicao === "A_VISTA" ? { condicao, contaId: accountId, formaPagamento: "PIX" }
+          : condicao === "A_PRAZO" ? { condicao, parcelas: [{ id: randomUUID(), valor: 33.33, dataVencimento: "2026-10-01" }, { valor: 33.34, dataVencimento: "2026-11-01" }] }
+            : { condicao, contaId: accountId, valorPago: 16.67, parcelas: [{ valor: 50, dataVencimento: "2026-10-01" }] };
+      const parse = schema.operacaoSchema.safeParse({
+        tipo, data, descricao: `Previsão ${tipo} ${condicao}`, centroCustoId: centroConsumoId,
+        ...(comParceiro.has(tipo) ? { parceiroId: partnerId } : {}),
+        ...(comItens
+          ? { itens: [
+            { produtoId: productId, descricao: "Produto QA", quantidade: 3, unidade: "kg", valorUnitario: 10.005 },
+            { produtoId: produtoCentro, descricao: "Produto centro", quantidade: 3, unidade: "un", valorTotal: 20 },
+            { descricao: "Frete", quantidade: 1, unidade: "un", valorTotal: 16.64, centroCustoId: centroItem, categoriaId: catItem.id, classificacao: "CUSTEIO" },
+            { produtoId: produtoCentro, descricao: "Produto centro sem centro", quantidade: 1, unidade: "un", valorTotal: 0.01, centroCustoId: null },
+          ] }
+          : { valorTotal: 66.67 }),
+        financeiro,
+      });
+      if (!parse.success) continue;
+      casos++;
+      const efeitos = preverEfeitosOperacao(parse.data, contexto);
+      const op = await ops.criarOperacao({ ...parse.data, propriedadeId: pid, usuarioId: userId });
+
+      expect({ valorTotal: n(op.valorTotal), categoriaId: op.categoriaId, categoriaNome: op.categoriaNome, classificacao: op.classificacao, centroCustoId: op.centroCustoId })
+        .toEqual({ valorTotal: efeitos.valorTotal, categoriaId: efeitos.categoriaId, categoriaNome: efeitos.categoriaNome, classificacao: efeitos.classificacao, centroCustoId: efeitos.centroCustoId });
+      const itens = [...op.itens].sort((a, b) => a.ordem - b.ordem);
+      expect(itens.map((item) => ({
+        ordem: item.ordem, produtoId: item.produtoId ?? undefined, descricao: item.descricao, quantidade: n(item.quantidade), unidade: item.unidade,
+        valorUnitario: n(item.valorUnitario), valorTotal: n(item.valorTotal), estocavel: item.estocavel,
+        categoriaId: item.categoriaId, categoriaNome: item.categoriaNome, classificacao: item.classificacao,
+        centroCustoId: item.centroCustoId, centroCustoNome: item.centroCustoNome, centroCustoEfetivoId: item.centroCustoId ?? op.centroCustoId,
+      }))).toEqual(efeitos.itens);
+      const ordemPorItem = new Map(itens.map((item) => [item.id, item.ordem]));
+      expect(op.movimentosEstoque.map((m) => ({
+        ordemItem: ordemPorItem.get(m.itemOperacaoId!), produtoId: m.produtoId, tipo: m.tipo, origem: m.origem,
+        quantidade: n(m.quantidade), custoUnitario: n(m.custoUnitario), valorTotal: n(m.valorTotal), centroCustoId: m.centroCustoId,
+      })).sort((a, b) => a.ordemItem! - b.ordemItem!)).toEqual(efeitos.movimentosEstoque);
+      expect([...op.compromissos].sort((a, b) => (a.numeroParcela ?? 0) - (b.numeroParcela ?? 0)).map((c, i) => ({
+        ...(efeitos.compromissos[i]?.id ? { id: c.id } : {}), tipo: c.tipo, valorOriginal: n(c.valorOriginal), dataVencimento: c.dataVencimento,
+        numeroParcela: c.numeroParcela, totalParcelas: c.totalParcelas,
+      }))).toEqual(efeitos.compromissos);
+      expect(op.transacoes.map((t) => ({
+        tipo: t.tipo, direcao: t.movimentos[0].direcao, valor: n(t.valorTotal), contaId: t.movimentos[0].contaId,
+        ...(t.formaPagamento ? { formaPagamento: t.formaPagamento } : {}),
+      }))).toEqual(efeitos.transacao ? [efeitos.transacao] : []);
+    }
+    expect(casos).toBeGreaterThan(0);
   });
 });
