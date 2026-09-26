@@ -7,6 +7,18 @@ import { VisaoGeralFinanceira } from "./VisaoGeralFinanceira";
 import { descartarRascunhoOperacao, obterRascunhoOperacao } from "./novo-api";
 import { uid } from "../lib/uid.fixture";
 
+import { enfileirarMutation } from "../lib/offline/fila";
+vi.mock("../lib/offline/fila", () => {
+  const filaVazia: unknown[] = [];
+  return {
+    enfileirarMutation: vi.fn().mockResolvedValue(null),
+    inscrever: () => () => {},
+    obterFila: () => filaVazia,
+    aguardarFilaLivre: () => Promise.resolve(),
+    filaTravada: () => false,
+  };
+});
+
 vi.mock("./novo-api", () => ({
   obterDashboardFinanceiro: vi.fn().mockResolvedValue({
     periodo: { inicio: "2026-09-01", fim: "2026-09-30" }, saldoGeral: "0", contas: [],
@@ -64,7 +76,7 @@ describe("VisaoGeralFinanceira — nova operação", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Nova operação" }));
     fireEvent.click(await screen.findByRole("button", { name: "Criar mesmo assim" }));
 
-    await waitFor(() => expect(descartarRascunhoOperacao).toHaveBeenCalledOnce());
+    await waitFor(() => expect(enfileirarMutation).toHaveBeenCalledWith(expect.objectContaining({ path: "/financeiro/operacoes/rascunho", method: "DELETE" })));
     await waitFor(() => expect(onNav).toHaveBeenCalledWith("lancar"));
   });
 });

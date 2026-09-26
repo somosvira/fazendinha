@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { comPropriedade } from "../propriedadeScope";
 import { ApiError, type Categoria, type CentroCusto, type Parceiro, type Produto } from "../financeiro/novo-api";
 import type { UnidadeMedida } from "../lib/unidades";
+import { aguardarFilaLivre, filaTravada } from "../lib/offline/fila";
 
 export { ApiError };
 // Tipos de referência do plano financeiro (categoria/centro de custo/parceiro) —
@@ -9,6 +10,7 @@ export { ApiError };
 export type { Categoria, CentroCusto, Parceiro };
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
+  if (filaTravada()) await aguardarFilaLivre();
   const headers: Record<string, string> = { ...((init?.headers as Record<string, string>) || {}) };
   if (init?.body) headers["content-type"] = "application/json";
   const res = await fetch(`/api${path}`, { ...init, headers: comPropriedade(headers) });

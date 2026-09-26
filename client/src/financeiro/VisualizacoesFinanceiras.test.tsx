@@ -9,6 +9,18 @@ import { VisaoGeralFinanceira } from "./VisaoGeralFinanceira";
 import { liquidarCompromisso, listarCompromissos, obterConfiguracoesFinanceiras, obterDashboardFinanceiro, obterExtratoConta, obterExtratoGeral, type Compromisso, type Conta, type MovimentoGeral } from "./novo-api";
 import { uid } from "../lib/uid.fixture";
 
+import { enfileirarMutation } from "../lib/offline/fila";
+vi.mock("../lib/offline/fila", () => {
+  const filaVazia: unknown[] = [];
+  return {
+    enfileirarMutation: vi.fn().mockResolvedValue(null),
+    inscrever: () => () => {},
+    obterFila: () => filaVazia,
+    aguardarFilaLivre: () => Promise.resolve(),
+    filaTravada: () => false,
+  };
+});
+
 vi.mock("./novo-api", async importOriginal => ({
   ...(await importOriginal<typeof import("./novo-api")>()),
   obterConfiguracoesFinanceiras: vi.fn(), obterExtratoConta: vi.fn(), obterExtratoGeral: vi.fn(),
@@ -177,8 +189,8 @@ describe("visualizações financeiras integradas", () => {
     fireEvent.change(screen.getByLabelText("Conta"), { target: { value: uid(1) } });
     fireEvent.click(screen.getByRole("button", { name: "Confirmar liquidação" }));
 
-    await waitFor(() => expect(liquidarCompromisso).toHaveBeenCalledWith(uid(1), expect.objectContaining({ contaId: uid(1), valor: 100 })));
-    await waitFor(() => expect(obterDashboardFinanceiro).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(enfileirarMutation).toHaveBeenCalledWith(expect.objectContaining({ path: `/financeiro/compromissos/${uid(1)}/liquidacoes`, body: expect.objectContaining({ contaId: uid(1), valor: 100, transacaoId: expect.any(String) }) })));
+    await waitFor(() => expect(vi.mocked(obterDashboardFinanceiro).mock.calls.length).toBeGreaterThanOrEqual(2));
     expect(listarCompromissos).not.toHaveBeenCalled();
   });
 
@@ -186,15 +198,15 @@ describe("visualizações financeiras integradas", () => {
     vi.mocked(listarCompromissos).mockResolvedValue([compromisso(1)]);
     vi.mocked(obterDashboardFinanceiro)
       .mockResolvedValueOnce({ periodo: { inicio: "2026-09-01", fim: "2026-09-30" }, saldoGeral: "120", contas, realizado: { entradas: "120", saidas: "25", resultado: "95" }, fluxo: [], compromissos: { aPagar: "100", aReceber: "0" }, despesasPorCategoria: [], base: baseFinanceiraVazia(), proximosCompromissos: [compromisso(1)] })
-      .mockRejectedValueOnce(new Error("Falha ao atualizar painel"));
+      .mockRejectedValue(new Error("Falha ao atualizar painel"));
     render(<VisaoGeralFinanceira onNav={vi.fn()} />);
 
     fireEvent.click(await screen.findByRole("button", { name: "Registrar pagamento" }));
     fireEvent.change(screen.getByLabelText("Conta"), { target: { value: uid(1) } });
     fireEvent.click(screen.getByRole("button", { name: "Confirmar liquidação" }));
 
-    await waitFor(() => expect(liquidarCompromisso).toHaveBeenCalledOnce());
-    expect(screen.queryByRole("dialog", { name: "Registrar pagamento" })).toBeNull();
+    await waitFor(() => expect(enfileirarMutation).toHaveBeenCalledOnce());
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Registrar pagamento" })).toBeNull());
     expect(await screen.findByText("Falha ao atualizar painel")).toBeTruthy();
   });
 

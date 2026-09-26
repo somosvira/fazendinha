@@ -1,4 +1,4 @@
-import { codigoOperacao } from "../../estoque/navegacao";
+import { codigoOperacaoFinanceira } from "./codigo";
 
 // Espelha PREFIXO_CANCELAMENTO_OPERACAO de server/src/services/financeiro/operacoes.ts —
 // é como o cliente reconhece, na descrição de uma transação REVERSAO, que ela
@@ -12,10 +12,10 @@ export function ehCancelamentoDeOperacao(descricao: string | null | undefined): 
 export type InfoReversao = { detalhe: string; operacaoId: string | null; operacaoNumero: number | null };
 
 /** Só retorna algo para movimentos de reversão (tipo REVERSAO); o restante do extrato ignora. */
-export function infoReversao(transacao: { tipo: string; descricao: string | null; operacao?: { id: string; numero: number } | null; reversaoDe?: { tipo: string } | null }): InfoReversao | null {
+export function infoReversao(transacao: { tipo: string; descricao: string | null; operacao?: { id: string; numero: number | null } | null; reversaoDe?: { tipo: string } | null }): InfoReversao | null {
   if (transacao.tipo !== "REVERSAO") return null;
   if (ehCancelamentoDeOperacao(transacao.descricao) && transacao.operacao) {
-    return { detalhe: `Estorno pelo cancelamento da ${codigoOperacao(transacao.operacao.numero)}`, operacaoId: transacao.operacao.id, operacaoNumero: transacao.operacao.numero };
+    return { detalhe: `Estorno pelo cancelamento da ${codigoOperacaoFinanceira(transacao.operacao.numero)}`, operacaoId: transacao.operacao.id, operacaoNumero: transacao.operacao.numero };
   }
   const tipoOriginal = transacao.reversaoDe?.tipo;
   return { detalhe: tipoOriginal ? `Estorno de ${tipoOriginal.replaceAll("_", " ").toLowerCase()}` : "Estorno de lançamento", operacaoId: null, operacaoNumero: null };

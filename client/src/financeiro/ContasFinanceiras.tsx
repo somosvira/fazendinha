@@ -1,11 +1,14 @@
 import { PeriodoFinanceiroControl } from "./PeriodoFinanceiroControl";
 import { periodoDoAnoAtual, periodoInicial } from "./lib/periodo";
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { ArrowLeftRight, Settings2 } from "lucide-react";
 import { ExtratoGeral, FILTROS_EXTRATO_GERAL_INICIAIS, filtrarMovimentosExtratoGeral, type FiltrosExtratoGeral } from "./ExtratoGeral";
 import { navegarPara, parseContaFinanceiraId } from "../router";
 import type { Tab } from "../components/Shell";
-import { transferir, type MovimentoConta, type MovimentoGeral } from "./novo-api";
+import type { MovimentoConta, MovimentoGeral } from "./novo-api";
+import { useContasComSaldoEstimado, useTransferir } from "./mutations";
+import { useSalvarOffline } from "../lib/offline/useSalvarOffline";
+import { useToast } from "../components/Toast";
 import { useConfiguracoesFinanceiras, useExtratoConta, useExtratoGeral } from "./queries";
 import { brl, Button, type ColunaTabela, dataBR, ehOfflineSemDados, Empty, ErrorBox, hoje, Modal, PageHeader, PaginaFinanceira, PaginaSemDados, Panel, Pill, SemConexaoAviso, TabelaFinanceira } from "./financeiro-ui";
 import { LinkOperacaoFinanceira } from "./LinkOperacaoFinanceira";
@@ -32,9 +35,11 @@ export function ContasFinanceiras({ onNav }: { onNav: (tab: Tab) => void }) {
   const selecionada = config?.contas.find(c => c.id === contaId) ?? null;
   const [erro, setErro] = useState<string | null>(null); const [transferindo, setTransferindo] = useState(false); const [origemId, setOrigemId] = useState(""); const [destinoId, setDestinoId] = useState(""); const [valor, setValor] = useState("");
   const [dataTransferencia, setDataTransferencia] = useState(hoje);
-  const transferenciaEmCurso = useRef(false);
-  const [registrandoTransferencia, setRegistrandoTransferencia] = useState(false);
-  const fecharTransferencia = () => { if (!transferenciaEmCurso.current) setTransferindo(false); };
+  const { mutate: mutateTransferir } = useTransferir();
+  const { salvando: registrandoTransferencia, salvar } = useSalvarOffline();
+  const toast = useToast();
+  const saldoEstimado = useContasComSaldoEstimado();
+  const fecharTransferencia = () => { if (!registrandoTransferencia) setTransferindo(false); };
   const [buscaConta, setBuscaConta] = useState(""); const [tipoConta, setTipoConta] = useState(""); const [instituicaoConta, setInstituicaoConta] = useState(""); const [statusConta, setStatusConta] = useState("");
   const [filtrosExtratoGeral, setFiltrosExtratoGeral] = useState<FiltrosExtratoGeral>(() => ({ ...FILTROS_EXTRATO_GERAL_INICIAIS, ...periodoInicial(periodoDoAnoAtual(), { permitirVazio: true }) }));
   const [periodoConta, setPeriodoConta] = useState(() => periodoInicial(periodoDoAnoAtual(), { permitirVazio: true }));
@@ -75,35 +80,34 @@ export function ContasFinanceiras({ onNav }: { onNav: (tab: Tab) => void }) {
   const valorTransferencia = Number(valor);
   const transferenciaValida = !!origem && !!destino && origem.id !== destino.id && Number.isFinite(valorTransferencia) && valorTransferencia > 0 && !!dataTransferencia && dataTransferencia <= hoje();
   const impactoSaldoGeral = transferenciaValida ? Math.round(valorTransferencia * 100) * (Number(destino.incluirNoSaldoGeral) - Number(origem.incluirNoSaldoGeral)) / 100 : 0;
-  const registrarTransferencia = async (e: FormEvent) => {
+  const registrarTransferencia = (e: FormEvent) => {
     e.preventDefault();
-    if (transferenciaEmCurso.current || !transferenciaValida) return;
-    transferenciaEmCurso.current = true;
-    setRegistrandoTransferencia(true);
+    if (registrandoTransferencia || !transferenciaValida) return;
     setErro(null);
     try {
-      await transferir({ contaOrigemId: origem.id, contaDestinoId: destino.id, valor: valorTransferencia, data: dataTransferencia, descricao: "Transferência entre contas" });
-      setTransferindo(false); setOrigemId(""); setDestinoId(""); setValor(""); setDataTransferencia(hoje());
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : String(e));
-    } finally {
-      transferenciaEmCurso.current = false;
-      setRegistrandoTransferencia(false);
+      salvar(mutateTransferir, { contaOrigemId: origem.id, contaDestinoId: destino.id, valor: valorTransferencia, data: dataTransferencia, descricao: "Transferência entre contas" }, {
+        onSalvo: () => { setTransferindo(false); setOrigemId(""); setDestinoId(""); setValor(""); setDataTransferencia(hoje()); },
+        onErroInline: setErro,
+        onErroTardio: (mensagem) => toast.error("A transferência registrada sem conexão foi recusada", mensagem),
+      });
+    } catch (falha) {
+      setErro(falha instanceof Error ? falha.message : String(falha));
     }
   };
+  const avisoSaldoEstimado = (id: string) => saldoEstimado.has(id) ? <div className="mt-1"><Pill tone="amber">offline — saldo estimado</Pill></div> : null;
 
   return <PaginaFinanceira>
     {contaId != null && <Button secondary onClick={() => navegar(null)}>← Voltar para contas</Button>}
     <PageHeader titulo={contaId == null ? "Contas e extratos" : selecionada?.nome ?? "Conta não encontrada"} descricao={contaId == null ? "Acompanhe os saldos e abra uma conta para consultar seus dados e extrato." : "Dados da conta e histórico de movimentações."} acao={<div className="flex flex-wrap gap-2">{contaId == null && <Button secondary onClick={() => onNav("cadastros")}><Settings2 size={16} /> Gerenciar contas</Button>}<Button onClick={() => setTransferindo(true)}><ArrowLeftRight size={16} /> Transferir</Button></div>} />
     <ErrorBox erro={erro} />
     {contaId == null && <>
-      <Panel className="mt-6 p-6"><div className="eyebrow">Saldo geral</div><div className="mt-3 flex flex-wrap items-center justify-between gap-5"><div><div className="font-serif text-4xl">{brl(saldoGeral)}</div><p className="mt-2 text-sm text-ink-3">{config.contas.filter(c => c.ativo && c.incluirNoSaldoGeral).length} contas ativas incluídas no saldo da fazenda selecionada.</p></div><Button secondary onClick={() => document.getElementById("extrato-geral")?.scrollIntoView({ behavior: "smooth", block: "start" })}>Ver extrato geral</Button></div></Panel>
+      <Panel className="mt-6 p-6"><div className="eyebrow">Saldo geral</div><div className="mt-3 flex flex-wrap items-center justify-between gap-5"><div><div className="font-serif text-4xl">{brl(saldoGeral)}</div>{config.contas.some((c) => saldoEstimado.has(c.id)) && <div className="mt-1"><Pill tone="amber">offline — saldo estimado</Pill></div>}<p className="mt-2 text-sm text-ink-3">{config.contas.filter(c => c.ativo && c.incluirNoSaldoGeral).length} contas ativas incluídas no saldo da fazenda selecionada.</p></div><Button secondary onClick={() => document.getElementById("extrato-geral")?.scrollIntoView({ behavior: "smooth", block: "start" })}>Ver extrato geral</Button></div></Panel>
       <section className="mt-8" aria-labelledby="titulo-contas"><h2 id="titulo-contas" className="font-serif text-2xl">Contas</h2><p className="mt-2 text-sm text-ink-3">Consulte os saldos e acesse os dados e o extrato de cada conta.</p>
       <Panel className="mt-4 overflow-hidden"><div className="grid gap-4 border-b border-border p-5 sm:grid-cols-2 xl:grid-cols-4"><label className="text-sm font-medium">Buscar conta<input type="search" value={buscaConta} onChange={e => setBuscaConta(e.target.value)} placeholder="Nome, instituição ou identificação" className="mt-1.5 w-full rounded-lg border border-border bg-white p-2.5 font-normal" /></label><label className="text-sm font-medium">Tipo<select value={tipoConta} onChange={e => setTipoConta(e.target.value)} className="mt-1.5 w-full rounded-lg border border-border bg-white p-2.5 font-normal"><option value="">Todos os tipos</option><option value="BANCO">Banco</option><option value="CAIXA">Caixa</option><option value="APLICACAO">Aplicação</option></select></label><label className="text-sm font-medium">Instituição<select value={instituicaoConta} onChange={e => setInstituicaoConta(e.target.value)} className="mt-1.5 w-full rounded-lg border border-border bg-white p-2.5 font-normal"><option value="">Todas as instituições</option>{instituicoes.map(i => <option key={i} value={i}>{i}</option>)}<option value="__sem__">Sem instituição</option></select></label><label className="text-sm font-medium">Situação<select value={statusConta} onChange={e => setStatusConta(e.target.value)} className="mt-1.5 w-full rounded-lg border border-border bg-white p-2.5 font-normal"><option value="">Ativas e inativas</option><option value="ATIVA">Ativas</option><option value="INATIVA">Inativas</option></select></label></div>{contasFiltradas.length ? <TabelaFinanceira rotulo="Contas financeiras" itens={contasFiltradas} chaveDe={c => c.id} colunas={[
         { chave: "nome", titulo: "Conta", alinhamento: "centro", principal: true, larguraMinima: 220, celula: c => <><strong>{c.nome}</strong>{(!c.ativo || !c.incluirNoSaldoGeral) && <div className="mt-1 text-xs text-ink-3">{!c.ativo ? "Inativa" : "Fora do saldo geral"}</div>}</> },
         { chave: "tipo", titulo: "Tipo", alinhamento: "centro", larguraMinima: 120, celula: c => c.tipo === "BANCO" ? "Banco" : c.tipo === "CAIXA" ? "Caixa" : "Aplicação" },
         { chave: "instituicao", titulo: "Instituição", alinhamento: "centro", larguraMinima: 160, celula: c => c.instituicao || "—" },
-        { chave: "saldo", titulo: "Saldo atual", alinhamento: "centro", larguraMinima: 150, celula: c => <strong className="whitespace-nowrap">{brl(c.saldoAtual)}</strong> },
+        { chave: "saldo", titulo: "Saldo atual", alinhamento: "centro", larguraMinima: 150, celula: c => <><strong className="whitespace-nowrap">{brl(c.saldoAtual)}</strong>{avisoSaldoEstimado(c.id)}</> },
         { chave: "ultima", titulo: "Última movimentação", alinhamento: "centro", larguraMinima: 220, celula: c => c.ultimaOperacao ? <><div>{c.ultimaOperacao.descricao || c.ultimaOperacao.tipo.replaceAll("_", " ")}</div><div className="mt-1 text-xs text-ink-3">{dataBR(c.ultimaOperacao.data)}</div></> : "Sem movimentações" },
         { chave: "acao", titulo: "Ação", alinhamento: "centro", larguraMinima: 140, acoes: true, celula: c => <a href={`/financeiro/contas/${c.id}`} className="inline-flex rounded-lg border border-border px-3 py-2 text-sm font-medium hover:bg-stone-50" aria-label={`Ver conta ${c.nome}`} onClick={e => { if (!e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey && e.button === 0) { e.preventDefault(); navegar(c.id); } }}>Ver conta →</a> },
       ]} /> : <Empty>Nenhuma conta encontrada para os filtros selecionados.</Empty>}</Panel></section>
@@ -114,7 +118,7 @@ export function ContasFinanceiras({ onNav }: { onNav: (tab: Tab) => void }) {
     {contaId != null && !selecionada && <Empty>Esta conta não está disponível na fazenda selecionada.</Empty>}
     {selecionada && <div className="mt-6 flex flex-wrap items-center gap-3"><PeriodoFinanceiroControl inicio={periodoConta.inicio} fim={periodoConta.fim} allowAll label="Período do extrato da conta" onChange={setPeriodoConta} /><span className="text-xs text-ink-3">Um único período para o gráfico e a tabela de extrato desta conta.</span></div>}
     {selecionada && <FluxoContasFinanceiras key={selecionada.id} movimentos={extrato} periodo={periodoConta} carregando={carregandoExtrato} erro={erroExtrato} escopo={selecionada.nome} />}
-    {selecionada && <Panel className="mt-6 overflow-hidden"><div className="flex flex-wrap items-center justify-between gap-4 border-b border-border p-5"><div className="min-w-0 flex-[1_1_260px]"><div className="eyebrow">Extrato da conta</div><h2 className="mt-1 break-words font-serif text-2xl">{selecionada.nome}</h2><p className="mt-1 break-words text-xs text-ink-3">Abertura em {dataBR(selecionada.dataSaldoAbertura)} com {brl(selecionada.saldoAbertura)}</p></div><div className="min-w-0"><div className="text-xs text-ink-3">Saldo atual da conta</div><div className="mt-1 whitespace-nowrap font-serif text-3xl">{brl(selecionada.saldoAtual)}</div>{!selecionada.incluirNoSaldoGeral && <p className="mt-1 text-xs text-ink-3">Não incluída no saldo geral</p>}</div><Pill tone={selecionada.ativo ? "green" : "neutral"}>{selecionada.ativo ? "Ativa" : "Inativa"}</Pill></div>
+    {selecionada && <Panel className="mt-6 overflow-hidden"><div className="flex flex-wrap items-center justify-between gap-4 border-b border-border p-5"><div className="min-w-0 flex-[1_1_260px]"><div className="eyebrow">Extrato da conta</div><h2 className="mt-1 break-words font-serif text-2xl">{selecionada.nome}</h2><p className="mt-1 break-words text-xs text-ink-3">Abertura em {dataBR(selecionada.dataSaldoAbertura)} com {brl(selecionada.saldoAbertura)}</p></div><div className="min-w-0"><div className="text-xs text-ink-3">Saldo atual da conta</div><div className="mt-1 whitespace-nowrap font-serif text-3xl">{brl(selecionada.saldoAtual)}</div>{saldoEstimado.has(selecionada.id) && <p className="mt-1 text-xs text-amber-800">offline — saldo estimado, atualiza ao reconectar</p>}{!selecionada.incluirNoSaldoGeral && <p className="mt-1 text-xs text-ink-3">Não incluída no saldo geral</p>}</div><Pill tone={selecionada.ativo ? "green" : "neutral"}>{selecionada.ativo ? "Ativa" : "Inativa"}</Pill></div>
       <dl className="grid gap-5 border-b border-border p-5 sm:grid-cols-2 lg:grid-cols-3">{([
         ["Tipo", selecionada.tipo], ["Instituição", selecionada.instituicao], ["Identificação", selecionada.identificacao], ["Tipo bancário", selecionada.tipoBancario], ["Agência", selecionada.agencia], ["Número da conta", selecionada.numeroConta], ["Dígito", selecionada.digito], ["Titular", selecionada.titular], ["Local", selecionada.local], ["Responsável", selecionada.responsavel], ["Incluída no saldo geral", selecionada.ativo && selecionada.incluirNoSaldoGeral ? "Sim" : "Não"], ["Observações", selecionada.observacoes],
       ] as const).map(([label, value]) => <div key={label} className="min-w-0"><dt className="text-xs text-ink-3">{label}</dt><dd className="mt-1 whitespace-pre-wrap break-words text-sm">{value || "—"}</dd></div>)}</dl>

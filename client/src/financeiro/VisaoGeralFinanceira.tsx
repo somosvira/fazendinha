@@ -3,7 +3,10 @@ import { ArrowDownLeft, ArrowUpRight, ChevronRight, Landmark, Plus, TrendingDown
 import type { Tab } from "../components/Shell";
 import { AnaliseCategorias } from "./AnaliseCategorias";
 import { BaseFinanceiraResumo } from "./BaseFinanceiraResumo";
-import { descartarRascunhoOperacao, obterRascunhoOperacao, type Compromisso } from "./novo-api";
+import { useQueryClient } from "@tanstack/react-query";
+import type { Compromisso } from "./novo-api";
+import { existeRascunhoOperacao, useContasComSaldoEstimado, useDescartarRascunho } from "./mutations";
+import { useOnlineStatus } from "../lib/offline/useOnlineStatus";
 import { useConfiguracoesFinanceiras, useDashboardFinanceiro } from "./queries";
 import { brl, Button, dataBR, ehOfflineSemDados, Empty, ErrorBox, mesAtual, Metric, PageHeader, PaginaCarregando, PaginaFinanceira, Panel, Pill, SemConexaoAviso } from "./financeiro-ui";
 import { ConfirmDialog } from "../components/ConfirmDialog";
@@ -28,6 +31,10 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
   const [tipoGraficoFluxo, setTipoGraficoFluxo] = useState<ChartType>("line");
   const [substituirRascunho, setSubstituirRascunho] = useState(false);
   const [preparando, setPreparando] = useState(false);
+  const queryClient = useQueryClient();
+  const online = useOnlineStatus();
+  const descartarRascunho = useDescartarRascunho();
+  const saldoEstimado = useContasComSaldoEstimado();
   // Só o cold start (nenhum período já carregado nesta sessão) usa o loader
   // de página cheia — trocar de período depois disso mantém o cabeçalho (com
   // o próprio controle de período) sempre visível, só a área de dados esconde.
@@ -40,17 +47,12 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
   const iniciarNovaOperacao = async () => {
     setPreparando(true); setErro(null);
     try {
-      if (await obterRascunhoOperacao()) setSubstituirRascunho(true);
+      if (await existeRascunhoOperacao(queryClient, online)) setSubstituirRascunho(true);
       else abrirFormulario();
     } catch (e) { setErro(e instanceof Error ? e.message : String(e)); }
     finally { setPreparando(false); }
   };
-  const descartarEIniciar = async () => {
-    setPreparando(true); setErro(null);
-    try { await descartarRascunhoOperacao(); setSubstituirRascunho(false); abrirFormulario(); }
-    catch (e) { setErro(e instanceof Error ? e.message : String(e)); }
-    finally { setPreparando(false); }
-  };
+  const descartarEIniciar = () => { descartarRascunho.mutate(); setSubstituirRascunho(false); abrirFormulario(); };
   const verRascunhoAtual = () => { setSubstituirRascunho(false); abrirFormulario(); };
 
   const dadosAtuais = dashboardQuery.data ?? null;
@@ -83,7 +85,7 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
     {erroDashboard && !dadosAtuais && <Button secondary onClick={() => dashboardQuery.refetch()}>Tentar novamente</Button>}
     {dadosAtuais && <>
       <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <Metric label="Saldo geral" valor={brl(dadosAtuais.saldoGeral)} detalhe="Fotografia atual das contas ativas" icon={WalletCards} />
+        <Metric label="Saldo geral" valor={brl(dadosAtuais.saldoGeral)} detalhe={dadosAtuais.contas.some((c) => saldoEstimado.has(c.id)) ? "offline — saldo estimado" : "Fotografia atual das contas ativas"} icon={WalletCards} />
         <Metric label="Recebimentos" valor={brl(dadosAtuais.realizado.entradas)} detalhe="Realizados no período" icon={TrendingUp} tone="green" />
         <Metric label="Pagamentos" valor={brl(dadosAtuais.realizado.saidas)} detalhe="Realizados no período" icon={TrendingDown} tone="red" />
         <Metric label="A pagar" valor={brl(dadosAtuais.compromissos.aPagar)} detalhe="Saldo pendente por vencimento no período" icon={ArrowUpRight} />
@@ -106,7 +108,7 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
 
         <Panel className="mt-6 overflow-hidden">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-5"><div className="min-w-0"><h2 className="font-serif text-xl">Contas e disponibilidade</h2><p className="mt-1 text-xs text-ink-3">Fotografia dos saldos atuais calculados pelo extrato; não é uma soma no período</p></div><button onClick={() => onNav("caixinha")} className="flex shrink-0 items-center gap-1 whitespace-nowrap text-sm font-semibold text-green-800">Ver extratos <ChevronRight size={15} /></button></div>
-          <div className="divide-y divide-border">{dadosAtuais.contas.map((c) => <button key={c.id} onClick={() => onNav("caixinha")} className="flex w-full flex-wrap items-center justify-between gap-x-4 gap-y-2 px-5 py-4 text-left hover:bg-surface-2"><div className="flex min-w-0 flex-[1_1_180px] items-center gap-3"><div className="shrink-0 rounded-lg bg-[#eef1e9] p-2 text-mast">{c.tipo === "BANCO" ? <Landmark size={17} /> : <WalletCards size={17} />}</div><div className="min-w-0"><div className="break-words font-semibold text-ink">{c.nome}</div><div className="mt-0.5 break-words text-xs text-ink-3">{c.tipo}{c.instituicao ? ` · ${c.instituicao}` : ""}{!c.incluirNoSaldoGeral ? " · fora do saldo geral" : ""}</div></div></div><div className="shrink-0 text-right"><strong className="whitespace-nowrap text-base">{brl(c.saldoAtual)}</strong><div className="mt-1 text-[11px] text-ink-3">saldo atual</div></div></button>)}</div>
+          <div className="divide-y divide-border">{dadosAtuais.contas.map((c) => <button key={c.id} onClick={() => onNav("caixinha")} className="flex w-full flex-wrap items-center justify-between gap-x-4 gap-y-2 px-5 py-4 text-left hover:bg-surface-2"><div className="flex min-w-0 flex-[1_1_180px] items-center gap-3"><div className="shrink-0 rounded-lg bg-[#eef1e9] p-2 text-mast">{c.tipo === "BANCO" ? <Landmark size={17} /> : <WalletCards size={17} />}</div><div className="min-w-0"><div className="break-words font-semibold text-ink">{c.nome}</div><div className="mt-0.5 break-words text-xs text-ink-3">{c.tipo}{c.instituicao ? ` · ${c.instituicao}` : ""}{!c.incluirNoSaldoGeral ? " · fora do saldo geral" : ""}</div></div></div><div className="shrink-0 text-right"><strong className="whitespace-nowrap text-base">{brl(c.saldoAtual)}</strong><div className={`mt-1 text-[11px] ${saldoEstimado.has(c.id) ? "text-amber-800" : "text-ink-3"}`}>{saldoEstimado.has(c.id) ? "offline — saldo estimado" : "saldo atual"}</div></div></button>)}</div>
         </Panel>
       {configQuery.isError && <ErrorBox erro={configQuery.error instanceof Error ? configQuery.error.message : String(configQuery.error)} />}
       <AnaliseCategorias despesas={dadosAtuais.despesasPorCategoria} categorias={configQuery.data?.categorias ?? []} />
@@ -123,7 +125,7 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
       processando={preparando}
       onCancel={verRascunhoAtual}
       onDismiss={() => setSubstituirRascunho(false)}
-      onConfirm={() => { void descartarEIniciar(); }}
+      onConfirm={descartarEIniciar}
     />
   </PaginaFinanceira>;
 }

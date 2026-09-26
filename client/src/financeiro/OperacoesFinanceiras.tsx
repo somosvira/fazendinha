@@ -4,12 +4,15 @@ import { ChevronRight, FilePenLine, Plus, Search } from "lucide-react";
 import { PeriodoFinanceiroControl } from "./PeriodoFinanceiroControl";
 import { periodoInicial } from "./lib/periodo";
 import { entradaDeNovaOperacao, isNovaOperacaoFinanceira, parseOperacaoFinanceiraId, URL_NOVA_OPERACAO } from "../router";
-import { descartarRascunhoOperacao, type Operacao } from "./novo-api";
+import type { Operacao } from "./novo-api";
+import { useDescartarRascunho } from "./mutations";
+import { lerRascunhoLocal, limparRascunhoLocal } from "./rascunhoLocal";
+import { useOnlineStatus } from "../lib/offline/useOnlineStatus";
 import { financeiroKeys, useConfiguracoesFinanceiras, useOperacoesFinanceiras, useRascunhoOperacao } from "./queries";
 import { useRascunhoAtivo } from "./rascunhoAtivo";
 import { FormOperacao } from "./FormOperacao";
 import { OperacaoFinanceiraDetalhe } from "./OperacaoFinanceiraDetalhe";
-import { codigoOperacao } from "../estoque/navegacao";
+import { codigoOperacaoFinanceira } from "./lib/codigo";
 import { brl, Button, type ColunaTabela, dataBR, ehOfflineSemDados, Empty, ErrorBox, PageHeader, PaginaCarregando, PaginaFinanceira, Paginacao, Panel, Pill, SemConexaoAviso, StatusPill, TabelaFinanceira, TIPO_OPERACAO } from "./financeiro-ui";
 
 type EfeitoFiltro = "TODOS" | "ESTOQUE" | "PAGAMENTO" | "RECEBIMENTO" | "A_PAGAR" | "A_RECEBER" | "TRANSFERENCIA" | "SEM_EFEITOS";
@@ -47,7 +50,7 @@ const OPERACOES_VAZIO: Operacao[] = [];
  * célula e para o valor no cartão — não há como cabeçalho e conteúdo divergirem. */
 const COLUNAS: ColunaTabela<Operacao>[] = [
   { chave: "data", titulo: "Data", larguraMinima: 100, celula: (operacao) => <span className="whitespace-nowrap text-ink-3">{dataBR(operacao.data)}</span> },
-  { chave: "operacao", titulo: "Operação", larguraMinima: 230, principal: true, celula: (operacao) => <><strong className="break-words">{operacao.descricao || TIPO_OPERACAO[operacao.tipo]}</strong><div className="mt-1 text-xs text-ink-3">{codigoOperacao(operacao.numero)}</div></> },
+  { chave: "operacao", titulo: "Operação", larguraMinima: 230, principal: true, celula: (operacao) => <><strong className="break-words">{operacao.descricao || TIPO_OPERACAO[operacao.tipo]}</strong><div className="mt-1 text-xs text-ink-3">{codigoOperacaoFinanceira(operacao.numero)}</div></> },
   { chave: "tipo", titulo: "Tipo", larguraMinima: 145, celula: (operacao) => <span className="break-words text-ink-2">{TIPO_OPERACAO[operacao.tipo] ?? operacao.tipo}</span> },
   { chave: "parceiro", titulo: "Parceiro", larguraMinima: 175, celula: (operacao) => <span className="break-words">{operacao.parceiro?.nome ?? "—"}</span> },
   { chave: "efeitos", titulo: "Efeitos", larguraMinima: 140, celula: (operacao) => <Efeitos operacao={operacao} /> },
@@ -76,7 +79,17 @@ export function OperacoesFinanceiras({ podeLancar = true }: { podeLancar?: boole
   // (ver rascunhoAtivo.ts), que é quem o botão e o FormOperacao realmente lêem.
   const rascunhoQuery = useRascunhoOperacao(podeLancar);
   const rascunhoAtivo = useRascunhoAtivo();
+  // Sem conexão a store pode nunca ter sido publicada nesta sessão; o cache persistido responde.
   const rascunho = rascunhoAtivo.conhecido ? rascunhoAtivo.rascunho : rascunhoQuery.data ?? null;
+  const online = useOnlineStatus();
+  const descartarRascunho = useDescartarRascunho();
+  const [temRascunhoLocal, setTemRascunhoLocal] = useState(false);
+  useEffect(() => {
+    if (form) return;
+    let ativo = true;
+    void lerRascunhoLocal().then((local) => { if (ativo) setTemRascunhoLocal(!!local); });
+    return () => { ativo = false; };
+  }, [form]);
   const itens = operacoesQuery.data ?? OPERACOES_VAZIO;
   useEffect(() => {
     const onPop = (evento: PopStateEvent) => {
@@ -96,17 +109,18 @@ export function OperacoesFinanceiras({ podeLancar = true }: { podeLancar?: boole
   const abrirFormulario = (base: Operacao | null = null) => { window.history.pushState(null, "", URL_NOVA_OPERACAO); setDetalheId(null); setOperacaoBase(base); setForm(true); };
   const abrirNovaOperacao = async () => {
     setIniciandoNova(true); setErro(null);
-    try {
-      if (rascunho) await descartarRascunhoOperacao();
-      abrirFormulario();
-    } catch (e) { setErro(e instanceof Error ? e.message : String(e)); }
-    finally { setIniciandoNova(false); }
+    if (rascunho) descartarRascunho.mutate(undefined, { onError: (e) => setErro(e instanceof Error ? e.message : String(e)) });
+    else await limparRascunhoLocal();
+    setTemRascunhoLocal(false);
+    setIniciandoNova(false);
+    abrirFormulario();
   };
   const continuarRascunho = () => abrirFormulario();
   const corrigir = (operacao: Operacao) => abrirFormulario(operacao);
   const aposSalvarOperacao = async (operacao: Pick<Operacao, "id">, aviso?: string) => {
     setForm(false); setOperacaoBase(null);
-    await Promise.all([
+    // Sem conexão a própria escrita na fila corrige o cache e invalida depois de sincronizar.
+    if (online) await Promise.all([
       queryClient.invalidateQueries({ queryKey: financeiroKeys.operacoesTodos() }),
       queryClient.invalidateQueries({ queryKey: financeiroKeys.compromissosTodos() }),
       queryClient.invalidateQueries({ queryKey: financeiroKeys.dashboardTodos() }),
@@ -137,7 +151,7 @@ export function OperacoesFinanceiras({ podeLancar = true }: { podeLancar?: boole
   }
 
   return <PaginaFinanceira>
-    <PageHeader titulo="Operações" descricao="Fatos de negócio e seus efeitos financeiros e físicos, preservados em um histórico auditável." acao={podeLancar ? <div className="flex flex-wrap gap-2">{rascunho && <Button secondary onClick={continuarRascunho}><FilePenLine size={16} /> Continuar operação</Button>}<Button disabled={iniciandoNova} onClick={() => { void abrirNovaOperacao(); }}><Plus size={16} /> {iniciandoNova ? "Iniciando…" : "Nova operação"}</Button></div> : undefined} />
+    <PageHeader titulo="Operações" descricao="Fatos de negócio e seus efeitos financeiros e físicos, preservados em um histórico auditável." acao={podeLancar ? <div className="flex flex-wrap gap-2">{(rascunho || temRascunhoLocal) && <Button secondary onClick={continuarRascunho}><FilePenLine size={16} /> Continuar operação</Button>}<Button disabled={iniciandoNova} onClick={() => { void abrirNovaOperacao(); }}><Plus size={16} /> {iniciandoNova ? "Iniciando…" : "Nova operação"}</Button></div> : undefined} />
     <ErrorBox erro={erro} />
     {/* overflow-clip (não overflow-hidden): overflow-hidden faria deste Panel o
      * contêiner de rolagem do `position: sticky` da barra de TabelaFinanceira,

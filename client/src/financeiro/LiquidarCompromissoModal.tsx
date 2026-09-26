@@ -1,5 +1,8 @@
-import { useRef, useState } from "react";
-import { liquidarCompromisso, type Compromisso, type Conta } from "./novo-api";
+import { useState } from "react";
+import type { Compromisso, Conta } from "./novo-api";
+import { useLiquidarCompromisso } from "./mutations";
+import { useSalvarOffline } from "../lib/offline/useSalvarOffline";
+import { useToast } from "../components/Toast";
 import { brl, Button, ErrorBox, hoje, Modal } from "./financeiro-ui";
 import { FORMAS_PAGAMENTO } from "./lib/parceiros";
 import { tituloCompromisso } from "./lib/compromissos";
@@ -13,39 +16,30 @@ export function LiquidarCompromissoModal({ compromisso, contas, onClose, onLiqui
 }) {
   const [contaId, setContaId] = useState("");
   const [valor, setValor] = useState(String(Number(compromisso.saldoPendente)));
-  const [processando, setProcessando] = useState(false);
-  const emCurso = useRef(false);
   const [data, setData] = useState(hoje);
   const [formaPagamento, setFormaPagamento] = useState("PIX");
   const [erro, setErro] = useState<string | null>(null);
-  const fechar = () => { if (!emCurso.current) onClose(); };
+  const { mutate } = useLiquidarCompromisso();
+  const { salvando: processando, salvar } = useSalvarOffline();
+  const toast = useToast();
+  const fechar = () => { if (!processando) onClose(); };
   const valorNumerico = Number(valor);
   const valorValido = valorNumerico > 0 && valorNumerico <= Number(compromisso.saldoPendente);
 
-  const confirmar = async () => {
-    if (!contaId || !valorValido || !data || data > hoje() || emCurso.current) return;
-    emCurso.current = true;
-    setProcessando(true);
+  const confirmar = () => {
+    if (!contaId || !valorValido || !data || data > hoje() || processando) return;
     setErro(null);
     try {
-      await liquidarCompromisso(compromisso.id, {
-        contaId,
-        valor: valorNumerico,
-        data,
-        formaPagamento,
+      salvar(mutate, { compromissoId: compromisso.id, tipo: compromisso.tipo, operacaoId: compromisso.operacao.id, contaId, valor: valorNumerico, data, formaPagamento }, {
+        onSalvo: () => {
+          onClose();
+          Promise.resolve(onLiquidado()).catch((e) => onErro(e instanceof Error ? e.message : String(e)));
+        },
+        onErroInline: (mensagem) => { setErro(mensagem); onErro(mensagem); },
+        onErroTardio: (mensagem) => toast.error(`${compromisso.tipo === "PAGAR" ? "Pagamento" : "Recebimento"} registrado sem conexão foi recusado`, mensagem),
       });
-      onClose();
-      try {
-        await onLiquidado();
-      } catch (e) {
-        onErro(e instanceof Error ? e.message : String(e));
-      }
     } catch (e) {
-      const mensagem = e instanceof Error ? e.message : String(e);
-      setErro(mensagem); onErro(mensagem);
-    } finally {
-      setProcessando(false);
-      emCurso.current = false;
+      setErro(e instanceof Error ? e.message : String(e));
     }
   };
 
@@ -72,7 +66,7 @@ export function LiquidarCompromissoModal({ compromisso, contas, onClose, onLiqui
       <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">Ao confirmar, o saldo da conta será alterado e o compromisso ficará parcial ou liquidado. O registro poderá ser revertido posteriormente com histórico.</div>
       <div className="mt-5 flex justify-end gap-2">
         <Button secondary disabled={processando} onClick={fechar}>Cancelar</Button>
-        <Button disabled={!contaId || !valorValido || !data || data > hoje() || processando} onClick={() => { void confirmar(); }}>{processando ? "Registrando…" : "Confirmar liquidação"}</Button>
+        <Button disabled={!contaId || !valorValido || !data || data > hoje() || processando} onClick={confirmar}>{processando ? "Registrando…" : "Confirmar liquidação"}</Button>
       </div>
     </div>
   </Modal>;

@@ -886,7 +886,7 @@ describe("tipo Ajuste de estoque", () => {
     const chamadas = chamadasAjuste(fetchMock);
     expect(chamadas).toHaveLength(1);
     expect(chamadas[0][1]).toMatchObject({ method: "POST" });
-    expect(JSON.parse(String(chamadas[0][1].body))).toEqual({ produtoId: uid(1), quantidadeContada: 1.005, saldoEsperado: 1, observacao: "Contagem física de setembro", centroCustoId: uid(5) });
+    expect(JSON.parse(String(chamadas[0][1].body))).toEqual({ produtoId: uid(1), quantidadeContada: 1.005, saldoEsperado: 1, observacao: "Contagem física de setembro", centroCustoId: uid(5), id: expect.stringMatching(/^[0-9a-f-]{36}$/) });
     // Não passa pelo fluxo de rascunho/operação genérica.
     expect(fetchMock.mock.calls.some(([url]) => String(url).includes("/financeiro/operacoes"))).toBe(false);
   });
