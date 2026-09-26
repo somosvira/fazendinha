@@ -5,7 +5,7 @@
 import crypto from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
 import { prisma } from "../../../db.js";
-import { cadastrar, definirFiliacao, listarFilhos, substituirComposicao } from "./animais.js";
+import { cadastrar, definirFiliacao, editar, listarFilhos, substituirComposicao } from "./animais.js";
 import { criarGenitor, editarGenitor } from "./genitores.js";
 import { RebanhoError, hojeFazenda } from "./regras.js";
 import { cadastrarAnimalSchema } from "./schemas.js";
@@ -177,5 +177,50 @@ describeComBanco("pecuária v2 (genética) com PostgreSQL", () => {
     await definirFiliacao(filho.id, { paiExternoId: genitor.id }, null);
 
     await expect(editarGenitor(genitor.id, { sexo: "F" }, null)).rejects.toThrow(RebanhoError);
+  });
+
+  it("editar recusa trocar o sexo de quem já é mãe", async () => {
+    const propriedadeId = await sitio();
+    const mae = await novoAnimal(propriedadeId);
+    const filho = await novoAnimal(propriedadeId, { dataNascimento: diasAntes(5), dataEntrada: diasAntes(5) });
+    await definirFiliacao(filho.id, { maeId: mae.id }, null);
+    await expect(editar(mae.id, { sexo: "M" }, null)).rejects.toMatchObject({ code: "CONFLITO", campo: "sexo" });
+  });
+
+  it("editar recusa nascimento que quebra a ordem com genitores e filhos", async () => {
+    const propriedadeId = await sitio();
+    const mae = await novoAnimal(propriedadeId, { dataNascimento: diasAntes(800) });
+    const filho = await novoAnimal(propriedadeId, { dataNascimento: diasAntes(400), dataEntrada: diasAntes(30) });
+    await definirFiliacao(filho.id, { maeId: mae.id }, null);
+    await expect(editar(mae.id, { dataNascimento: diasAntes(300) }, null)).rejects.toMatchObject({ code: "VALIDACAO", campo: "dataNascimento" });
+    await expect(editar(filho.id, { dataNascimento: diasAntes(900) }, null)).rejects.toMatchObject({ code: "VALIDACAO", campo: "dataNascimento" });
+  });
+
+  it("filiação removida limpa a composição CALCULADA e audita", async () => {
+    const racaHO = await raca("HO");
+    const propriedadeId = await sitio();
+    const mae = await novoAnimal(propriedadeId);
+    await substituirComposicao(mae.id, { itens: [{ racaId: racaHO, fracao64: 64 }] }, null);
+    const filho = await novoAnimal(propriedadeId, { dataNascimento: diasAntes(5), dataEntrada: diasAntes(5) });
+    await definirFiliacao(filho.id, { maeId: mae.id }, null);
+    expect(await prisma.composicaoRacial.count({ where: { animalId: filho.id } })).toBeGreaterThan(0);
+
+    await definirFiliacao(filho.id, {}, null);
+    expect(await prisma.composicaoRacial.count({ where: { animalId: filho.id } })).toBe(0);
+    const auditorias = await prisma.auditoriaPecuaria.count({ where: { animalId: filho.id, entidade: "ComposicaoRacial" } });
+    expect(auditorias).toBe(2);
+  });
+
+  it("genitor externo inativo: recusa escolha nova (campo do lado), aceita manter o atual", async () => {
+    const propriedadeId = await sitio();
+    const touro = await criarGenitor({ sexo: "M", nome: `Touro inativo ${RUN}`, codigo: null, fornecedor: null, observacao: null, composicao: [] }, null);
+    genitoresCriados.push(touro.id);
+    const filho = await novoAnimal(propriedadeId, { dataNascimento: diasAntes(5), dataEntrada: diasAntes(5) });
+    await definirFiliacao(filho.id, { paiExternoId: touro.id }, null);
+    await editarGenitor(touro.id, { ativo: false }, null);
+
+    await expect(definirFiliacao(filho.id, { paiExternoId: touro.id }, null)).resolves.toBeTruthy();
+    const outro = await novoAnimal(propriedadeId, { dataNascimento: diasAntes(5), dataEntrada: diasAntes(5) });
+    await expect(definirFiliacao(outro.id, { paiExternoId: touro.id }, null)).rejects.toMatchObject({ campo: "paiExternoId" });
   });
 });

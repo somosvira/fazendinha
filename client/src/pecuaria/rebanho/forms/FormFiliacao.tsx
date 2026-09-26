@@ -9,7 +9,7 @@ import type { AnimalFicha, ComposicaoSugerida } from "../types";
 import { Button, ErrorBox } from "../../../financeiro/financeiro-ui";
 import { PainelCadastro } from "../../../financeiro/PainelCadastro";
 import { ConfirmDialog } from "../../../components/ConfirmDialog";
-import { CampoGenitor, ladoParaValor, valorGenitorParaCampos, type ValorGenitor } from "../components/CampoGenitor";
+import { CampoGenitor, genitorIncompleto, mensagemGenitorIncompleto, ladoParaValor, valorGenitorParaCampos, type ValorGenitor } from "../components/CampoGenitor";
 
 export function FormFiliacao({ animal, onSalvo, onFechar }: {
   animal: AnimalFicha;
@@ -25,10 +25,17 @@ export function FormFiliacao({ animal, onSalvo, onFechar }: {
   const [salvando, setSalvando] = useState(false);
   const [aplicandoSugestao, setAplicandoSugestao] = useState(false);
   const emCurso = useRef(false);
+  const [errosGenitor, setErrosGenitor] = useState<{ mae?: string; pai?: string }>({});
 
   const submeter = async (e: FormEvent) => {
     e.preventDefault();
     if (emCurso.current) return;
+    const incompletos = {
+      mae: genitorIncompleto(mae) ? mensagemGenitorIncompleto("Mãe", "F") : undefined,
+      pai: genitorIncompleto(pai) ? mensagemGenitorIncompleto("Pai", "M") : undefined,
+    };
+    setErrosGenitor(incompletos);
+    if (incompletos.mae || incompletos.pai) return;
     emCurso.current = true; setSalvando(true); setErroGeral(null);
     try {
       const campos = valorGenitorParaCampos(mae, pai);
@@ -72,8 +79,8 @@ export function FormFiliacao({ animal, onSalvo, onFechar }: {
         {avisos.length > 0 && <div role="status" className="space-y-1 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           {avisos.map((a, i) => <p key={i}>{a.mensagem}</p>)}
         </div>}
-        <CampoGenitor rotulo="Mãe" sexo="F" ladoInicial={animal.filiacao.mae} excluirAnimalId={animal.id} valor={mae} onChange={setMae} />
-        <CampoGenitor rotulo="Pai" sexo="M" ladoInicial={animal.filiacao.pai} excluirAnimalId={animal.id} valor={pai} onChange={setPai} />
+        <CampoGenitor rotulo="Mãe" sexo="F" ladoInicial={animal.filiacao.mae} excluirAnimalId={animal.id} valor={mae} onChange={setMae} erro={errosGenitor.mae} />
+        <CampoGenitor rotulo="Pai" sexo="M" ladoInicial={animal.filiacao.pai} excluirAnimalId={animal.id} valor={pai} onChange={setPai} erro={errosGenitor.pai} />
       </form>
     </PainelCadastro>
 

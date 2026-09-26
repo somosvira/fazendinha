@@ -69,6 +69,10 @@ describe("validarIntervaloPartos", () => {
     expect(erros).toEqual([]);
   });
 
+  it("gêmeos / mesmo parto (até 7 dias) não avisam", () => {
+    expect(validarIntervaloPartos("2024-01-01", ["2024-01-01", "2023-12-27"])).toEqual([]);
+  });
+
   it("sem partos anteriores não avisa", () => {
     expect(validarIntervaloPartos("2024-01-01", [])).toEqual([]);
   });

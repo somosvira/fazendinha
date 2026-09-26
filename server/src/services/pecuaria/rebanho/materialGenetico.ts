@@ -82,23 +82,22 @@ export function nomeSugerido(tipo: "SEMEN" | "EMBRIAO", touro: string, doadora: 
   return tipoSemen && tipoSemen !== "CONVENCIONAL" ? `Sêmen ${touro} (${ROTULO_SEMEN[tipoSemen]})` : `Sêmen ${touro}`;
 }
 
-async function saldosGeneticos(propriedadeId: number | null): Promise<Map<string, number>> {
-  const saldos = await listarSaldos({ propriedadeId, uso: "genetico" });
+async function saldosGeneticos(propriedadeId: number | null, produtoIds: string[]): Promise<Map<string, number>> {
+  if (!produtoIds.length) return new Map();
+  const saldos = await listarSaldos({ propriedadeId, produtoIds });
   return new Map(saldos.map((s) => [s.produtoId, s.saldo]));
 }
 
 export async function listarMaterialGenetico(filtros: Partial<ListarMaterialGeneticoQuery> = {}, propriedadeId: number | null = null): Promise<MaterialGeneticoDTO[]> {
-  const [materiais, saldos] = await Promise.all([
-    prisma.materialGenetico.findMany({
+  const materiais = await prisma.materialGenetico.findMany({
       where: {
         ...(filtros.tipo ? { tipo: filtros.tipo } : {}),
         ...(filtros.incluirInativos ? {} : { produto: { ativo: true } }),
       },
       include: includeMaterial,
       orderBy: { produto: { nome: "asc" } },
-    }),
-    saldosGeneticos(propriedadeId),
-  ]);
+    });
+  const saldos = await saldosGeneticos(propriedadeId, materiais.map((m) => m.produtoId));
   return materiais.map((m) => dto(m, saldos.get(m.produtoId) ?? null));
 }
 

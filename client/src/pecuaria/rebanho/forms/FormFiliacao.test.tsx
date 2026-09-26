@@ -81,4 +81,12 @@ describe("FormFiliacao", () => {
     await waitFor(() => expect(substituirComposicaoAnimal).toHaveBeenCalledWith("animal-1", { itens: [{ racaId: "r-ho", fracao64: 32 }], origem: "CALCULADA" }));
     await waitFor(() => expect(onSalvo).toHaveBeenCalled());
   });
+
+  it("modo animal sem mãe escolhida bloqueia o envio com erro no campo", async () => {
+    render(<FormFiliacao animal={animal} onSalvo={vi.fn()} onFechar={vi.fn()} />);
+    fireEvent.click(screen.getAllByRole("button", { name: "Animal da fazenda" })[0]);
+    fireEvent.click(screen.getByRole("button", { name: /Salvar filiação/ }));
+    expect(await screen.findByText("Escolha a mãe ou marque Desconhecida")).toBeTruthy();
+    expect(definirFiliacaoAnimal).not.toHaveBeenCalled();
+  });
 });

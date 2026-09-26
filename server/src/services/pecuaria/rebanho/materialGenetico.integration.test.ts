@@ -4,7 +4,7 @@
 import crypto from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
 import { prisma } from "../../../db.js";
-import { criarGenitor } from "./genitores.js";
+import { criarGenitor, editarGenitor } from "./genitores.js";
 import { criarMaterialGenetico, editarMaterialGenetico, listarMaterialGenetico } from "./materialGenetico.js";
 import { RebanhoError } from "./regras.js";
 
@@ -32,6 +32,7 @@ afterAll(async () => {
   const produtoIds = produtos.map((p) => p.produtoId);
   await prisma.auditoriaPecuaria.deleteMany({ where: { entidadeId: { in: [...materiais, ...genitores] } } });
   await prisma.materialGenetico.deleteMany({ where: { id: { in: materiais } } });
+  await prisma.movimentoEstoque.deleteMany({ where: { produtoId: { in: produtoIds } } });
   await prisma.auditoriaFinanceira.deleteMany({ where: { entidadeId: { in: produtoIds } } });
   await prisma.produto.deleteMany({ where: { id: { in: produtoIds } } });
   await prisma.categoria.deleteMany({ where: { id: { in: categorias } } });
@@ -94,5 +95,27 @@ describeComBanco("material genético (banco real)", () => {
     expect(editado.tipoSemen).toBe("SEXADO_MACHO");
 
     await expect(prisma.materialGenetico.update({ where: { id: m.id }, data: { tipo: "EMBRIAO", tipoSemen: null } })).rejects.toThrow();
+  });
+
+  it("editarGenitor recusa trocar o sexo de genitor usado em material genético", async () => {
+    const cat = await categoria(true);
+    const touro = await genitor("M", "Cronos");
+    const m = await criarMaterialGenetico({ tipo: "SEMEN", touro: { tipo: "EXTERNO", id: touro.id }, produto: { categoriaId: cat } }, null);
+    materiais.push(m.id);
+    await expect(editarGenitor(touro.id, { sexo: "F" }, null)).rejects.toMatchObject({ code: "CONFLITO", campo: "sexo" });
+  });
+
+  it("saldo aparece mesmo com categoria sem uso genético ou produto inativo", async () => {
+    const cat = await categoria(true);
+    const touro = await genitor("M", "Urano");
+    const m = await criarMaterialGenetico({ tipo: "SEMEN", touro: { tipo: "EXTERNO", id: touro.id }, produto: { categoriaId: cat } }, null);
+    materiais.push(m.id);
+    await prisma.movimentoEstoque.create({
+      data: { produtoId: m.produto.id, tipo: "ENTRADA", origem: "COMPRA", data: new Date(), quantidade: 5, custoUnitario: 10, valorTotal: 50 },
+    });
+    await prisma.categoria.update({ where: { id: cat }, data: { usoGenetico: false } });
+    await prisma.produto.update({ where: { id: m.produto.id }, data: { ativo: false } });
+    const lista = await listarMaterialGenetico({ incluirInativos: true });
+    expect(lista.find((x) => x.id === m.id)?.saldo).toBe(5);
   });
 });

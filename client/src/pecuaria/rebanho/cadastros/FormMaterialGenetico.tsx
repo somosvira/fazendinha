@@ -10,7 +10,7 @@ import { listarCategorias, type Categoria } from "../../../estoque/api";
 import type { MaterialGeneticoDTO, RefGenitorInput, TipoMaterialGenetico, TipoSemen } from "../types";
 import { Button, ErrorBox } from "../../../financeiro/financeiro-ui";
 import { CampoFormulario, classeInput, PainelCadastro } from "../../../financeiro/PainelCadastro";
-import { CampoGenitor, type ValorGenitor } from "../components/CampoGenitor";
+import { CampoGenitor, genitorIncompleto, type ValorGenitor } from "../components/CampoGenitor";
 
 type Erros = Record<string, string>;
 
@@ -79,9 +79,9 @@ export function FormMaterialGenetico({ material, onSalvo, onFechar }: {
 
     const novosErros: Erros = {};
     const refTouro = paraRefGenitor(touro);
-    if (!refTouro) novosErros.touro = "Informe o touro";
+    if (!refTouro || genitorIncompleto(touro)) novosErros.touro = "Informe o touro";
     const refDoadora = tipo === "EMBRIAO" ? paraRefGenitor(doadora) : null;
-    if (tipo === "EMBRIAO" && !refDoadora) novosErros.doadora = "Informe a doadora";
+    if (tipo === "EMBRIAO" && (!refDoadora || genitorIncompleto(doadora))) novosErros.doadora = "Informe a doadora";
     if (!categoriaId) novosErros.categoriaId = "Selecione a categoria";
     setErros(novosErros);
     if (Object.keys(novosErros).length) return;

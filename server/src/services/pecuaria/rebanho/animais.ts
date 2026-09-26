@@ -159,6 +159,7 @@ async function resolverFiliacao(
   db: DbPecuaria,
   filho: { id: string; dataNascimento: Date },
   input: { maeId?: string | null; paiId?: string | null; maeExternaId?: string | null; paiExternoId?: string | null },
+  atual: { maeExternaId: string | null; paiExternoId: string | null } = { maeExternaId: null, paiExternoId: null },
 ): Promise<FiliacaoResolvida> {
   const maeId = input.maeId ?? null;
   const paiId = input.paiId ?? null;
@@ -177,6 +178,9 @@ async function resolverFiliacao(
     if (externoId) {
       const g = await db.genitorExterno.findUnique({ where: { id: externoId } });
       if (!g) throw new RebanhoError("NAO_ENCONTRADO", "Genitor externo não encontrado", campo);
+      // inativo só é aceito se já era o genitor atual daquele lado
+      const atualDoLado = campo === "maeExternaId" ? atual.maeExternaId : atual.paiExternoId;
+      if (!g.ativo && g.id !== atualDoLado) throw new RebanhoError("NAO_ENCONTRADO", "Genitor externo não encontrado ou inativo", campo);
       return {
         ref: { tipo: "EXTERNO", id: g.id, sexo: g.sexo, ativo: g.ativo },
         composicao: await composicaoGenitorExternoComoFracao(db, g.id),
@@ -214,24 +218,27 @@ async function resolverFiliacao(
     avisosFinais = [...avisos, ...validarIntervaloPartos(filhoRef.dataNascimento, outrosPartos.map((p) => p.dataNascimento.toISOString().slice(0, 10)))];
   }
 
-  // genitor externo inativo recém-escolhido não pode ser gravado (some das opções para escolhas
-  // novas); um que já era o genitor continua válido — checado pelo chamador (ele sabe o "antes").
   return { maeId, paiId, maeExternaId, paiExternoId, maeComposicao: mae.composicao, paiComposicao: pai.composicao, avisos: avisosFinais };
 }
 
-/** Substitui a composição do animal pela sugerida quando ela está vazia ou é toda CALCULADA; nunca sobrescreve INFORMADA. */
+/**
+ * Substitui a composição do animal pela sugerida quando ela está vazia ou é toda CALCULADA; sem
+ * sugestão, limpa a CALCULADA (veio de genitores que não estão mais registrados). Nunca mexe em INFORMADA.
+ */
 async function aplicarComposicaoCalculada(tx: DbPecuaria, animalId: string, sugerida: FracaoRaca[] | null, usuarioId: number | null): Promise<boolean> {
-  if (sugerida == null) return false;
   const atual = await tx.composicaoRacial.findMany({ where: { animalId } });
+  if (sugerida == null && atual.length === 0) return false;
   const podeSubstituir = atual.length === 0 || atual.every((c) => c.origem === "CALCULADA");
   if (!podeSubstituir) return false;
 
   await tx.composicaoRacial.deleteMany({ where: { animalId } });
-  if (sugerida.length) {
+  if (sugerida?.length) {
     await tx.composicaoRacial.createMany({
       data: sugerida.map((c) => ({ animalId, racaId: c.sigla, fracao64: c.fracao64, origem: "CALCULADA" as const, criadoPorId: usuarioId })),
     });
   }
+  const depois = await tx.composicaoRacial.findMany({ where: { animalId } });
+  await auditar(tx, { entidade: "ComposicaoRacial", entidadeId: animalId, animalId, acao: "EDICAO", usuarioId, antes: atual, depois });
   return true;
 }
 
@@ -278,11 +285,6 @@ export async function cadastrar(input: CadastrarAnimalInput, usuarioId: number |
   const filiacaoResolvida = temFiliacao
     ? await resolverFiliacao(prisma, { id: crypto.randomUUID(), dataNascimento: new Date(input.dataNascimento) }, input)
     : null;
-  if (filiacaoResolvida && (filiacaoResolvida.maeExternaId || filiacaoResolvida.paiExternoId)) {
-    const externos = [filiacaoResolvida.maeExternaId, filiacaoResolvida.paiExternoId].filter((x): x is string => x != null);
-    const ativos = await prisma.genitorExterno.count({ where: { id: { in: externos }, ativo: true } });
-    if (ativos !== externos.length) throw new RebanhoError("NAO_ENCONTRADO", "Genitor externo não encontrado ou inativo", "maeExternaId");
-  }
   const composicaoSugeridaCadastro = filiacaoResolvida ? composicaoDosGenitores(filiacaoResolvida.maeComposicao, filiacaoResolvida.paiComposicao) : null;
 
   // animal novo (id ainda não existe): não há trava de animal; lote antes do brinco (ordem em regras.ts)
@@ -351,6 +353,21 @@ export async function cadastrar(input: CadastrarAnimalInput, usuarioId: number |
 
 // ---------- editar (só campos fixos) ----------
 
+/** Nascimento novo precisa continuar depois dos genitores (animais) e antes de todos os filhos. */
+async function exigirOrdemNascimento(db: DbPecuaria, animal: { id: string; maeId: string | null; paiId: string | null }, nascimento: Date): Promise<void> {
+  const genitorIds = [animal.maeId, animal.paiId].filter((x): x is string => x != null);
+  const [genitores, filhoMaisVelho] = await Promise.all([
+    genitorIds.length ? db.animal.findMany({ where: { id: { in: genitorIds } }, select: { dataNascimento: true } }) : Promise.resolve([]),
+    db.animal.findFirst({ where: { OR: [{ maeId: animal.id }, { paiId: animal.id }] }, orderBy: { dataNascimento: "asc" }, select: { dataNascimento: true } }),
+  ]);
+  if (genitores.some((g) => g.dataNascimento.getTime() >= nascimento.getTime())) {
+    throw new RebanhoError("VALIDACAO", "O animal precisa ter nascido depois da mãe e do pai", "dataNascimento");
+  }
+  if (filhoMaisVelho && filhoMaisVelho.dataNascimento.getTime() <= nascimento.getTime()) {
+    throw new RebanhoError("VALIDACAO", "O animal precisa ter nascido antes dos seus filhos", "dataNascimento");
+  }
+}
+
 export async function editar(id: string, input: EditarAnimalInput, usuarioId: number | null, escopo: number | null = null): Promise<AnimalResumo> {
   await exigirNoEscopo(prisma, id, escopo);
 
@@ -385,6 +402,21 @@ export async function editar(id: string, input: EditarAnimalInput, usuarioId: nu
         primeiraCategoriaManualDesde: primeiraCategoriaManual?.desde ?? null,
       });
       if (ajuste.erros.length) throw new RebanhoError("VALIDACAO", ajuste.erros[0].mensagem, ajuste.erros[0].campo);
+    }
+
+    if (input.dataNascimento != null && nascimentoNovo.getTime() !== animal.dataNascimento.getTime()) {
+      // mexendo na filiação junto, os genitores são validados por resolverFiliacao com a data nova
+      const mexeFiliacao = input.maeId !== undefined || input.maeExternaId !== undefined || input.paiId !== undefined || input.paiExternoId !== undefined;
+      await exigirOrdemNascimento(tx, mexeFiliacao ? { ...animal, maeId: null, paiId: null } : animal, nascimentoNovo);
+    }
+
+    if (input.sexo && input.sexo !== animal.sexo) {
+      const [filhos, materiais] = await Promise.all([
+        tx.animal.count({ where: { OR: [{ maeId: id }, { paiId: id }] } }),
+        tx.materialGenetico.count({ where: { OR: [{ touroId: id }, { doadoraId: id }] } }),
+      ]);
+      if (filhos > 0) throw new RebanhoError("CONFLITO", "Este animal já é mãe/pai de outros animais; não é possível trocar o sexo", "sexo");
+      if (materiais > 0) throw new RebanhoError("CONFLITO", "Este animal é usado em material genético (sêmen/embrião); não é possível trocar o sexo", "sexo");
     }
 
     // a categoria manual tem sexo: trocar o sexo do animal exige voltar ao automático antes
@@ -430,15 +462,7 @@ export async function editar(id: string, input: EditarAnimalInput, usuarioId: nu
       const propostaPaiExternoId = tocaPai ? (input.paiExternoId ?? null) : animal.paiExternoId;
       filiacaoResolvidaEdicao = await resolverFiliacao(tx, { id, dataNascimento: nascimentoNovo }, {
         maeId: propostaMaeId, maeExternaId: propostaMaeExternaId, paiId: propostaPaiId, paiExternoId: propostaPaiExternoId,
-      });
-      const genitoresExternosNovos = [
-        tocaMae && input.maeExternaId && input.maeExternaId !== animal.maeExternaId ? input.maeExternaId : null,
-        tocaPai && input.paiExternoId && input.paiExternoId !== animal.paiExternoId ? input.paiExternoId : null,
-      ].filter((x): x is string => x != null);
-      if (genitoresExternosNovos.length) {
-        const ativos = await tx.genitorExterno.count({ where: { id: { in: genitoresExternosNovos }, ativo: true } });
-        if (ativos !== genitoresExternosNovos.length) throw new RebanhoError("NAO_ENCONTRADO", "Genitor externo não encontrado ou inativo", "maeExternaId");
-      }
+      }, animal);
       composicaoSugeridaEdicao = composicaoDosGenitores(filiacaoResolvidaEdicao.maeComposicao, filiacaoResolvidaEdicao.paiComposicao);
     }
 
@@ -580,17 +604,8 @@ export async function definirFiliacao(
     const animal = await exigirAnimal(tx, animalId);
     const antes = { maeId: animal.maeId, paiId: animal.paiId, maeExternaId: animal.maeExternaId, paiExternoId: animal.paiExternoId };
 
-    const resolvida = await resolverFiliacao(tx, { id: animalId, dataNascimento: animal.dataNascimento }, input);
+    const resolvida = await resolverFiliacao(tx, { id: animalId, dataNascimento: animal.dataNascimento }, input, animal);
     avisos = resolvida.avisos;
-
-    const externosNovos = [
-      resolvida.maeExternaId && resolvida.maeExternaId !== animal.maeExternaId ? resolvida.maeExternaId : null,
-      resolvida.paiExternoId && resolvida.paiExternoId !== animal.paiExternoId ? resolvida.paiExternoId : null,
-    ].filter((x): x is string => x != null);
-    if (externosNovos.length) {
-      const ativos = await tx.genitorExterno.count({ where: { id: { in: externosNovos }, ativo: true } });
-      if (ativos !== externosNovos.length) throw new RebanhoError("NAO_ENCONTRADO", "Genitor externo não encontrado ou inativo", "maeExternaId");
-    }
 
     const salvo = await tx.animal.update({
       where: { id: animalId },

@@ -21,7 +21,16 @@ export function ladoParaValor(lado: FiliacaoLadoDTO | null): ValorGenitor {
   return { tipo: "EXTERNO", id: lado.id };
 }
 
-export function CampoGenitor({ rotulo, sexo, ladoInicial, excluirAnimalId, valor, onChange, obrigatorio = false }: {
+/** Modo animal/externo escolhido mas sem genitor selecionado — o form não pode enviar null calado. */
+export function genitorIncompleto(valor: ValorGenitor): boolean {
+  return valor.tipo !== "NENHUM" && !valor.id;
+}
+
+export function mensagemGenitorIncompleto(rotulo: string, sexo: Sexo): string {
+  return `Escolha ${sexo === "F" ? "a" : "o"} ${rotulo.toLowerCase()} ou marque ${sexo === "F" ? "Desconhecida" : "Desconhecido"}`;
+}
+
+export function CampoGenitor({ rotulo, sexo, ladoInicial, excluirAnimalId, valor, onChange, obrigatorio = false, erro }: {
   rotulo: string;
   sexo: Sexo;
   /** ficha atual (edição) — se ausente, começa em "Desconhecida/o" */
@@ -32,6 +41,7 @@ export function CampoGenitor({ rotulo, sexo, ladoInicial, excluirAnimalId, valor
   onChange: (valor: ValorGenitor) => void;
   /** sem a opção "Desconhecida/o" (ex.: touro e doadora de material genético) */
   obrigatorio?: boolean;
+  erro?: string;
 }) {
   const [interno, setInterno] = useState<ValorGenitor>(() => valor ?? ladoParaValor(ladoInicial ?? null));
   const [genitoresExternos, setGenitoresExternos] = useState<GenitorDTO[] | null>(null);
@@ -85,6 +95,7 @@ export function CampoGenitor({ rotulo, sexo, ladoInicial, excluirAnimalId, valor
     </select>}
 
     {modo === "NENHUM" && <p className="text-xs text-ink-3">{sexo === "F" ? `${rotulo} não informada.` : `${rotulo} não informado.`}</p>}
+    {erro && <p role="alert" className="text-sm text-red-600">{erro}</p>}
   </div>;
 }
 

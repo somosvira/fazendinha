@@ -166,13 +166,16 @@ export async function obterCustoMedio(db: DbCusto, produtoId: string, propriedad
 
 const USO_CAMPO = { agricola: "usoAgricola", genetico: "usoGenetico" } as const;
 
-export async function listarSaldos(f?: { centroCustoId?: string; propriedadeId?: number | null; uso?: keyof typeof USO_CAMPO }) {
+export async function listarSaldos(f?: { centroCustoId?: string; propriedadeId?: number | null; uso?: keyof typeof USO_CAMPO; produtoIds?: string[] }) {
   // O estoque lista os produtos ativos que já tiveram movimento no sítio (qualquer
   // status) — o produto entra no estoque pela operação, não pelo cadastro.
   // Movimento sem propriedade conta como da principal (mesmo escopo do custo médio).
   const sitio = await filtroSitioCusto(f?.propriedadeId ?? null);
   const produtos = await prisma.produto.findMany({
-    where: { ativo: true, movimentos: { some: sitio }, ...(f?.uso ? { categoria: { [USO_CAMPO[f.uso]]: true } } : {}) },
+    // com produtoIds, o chamador já sabe quais produtos quer: ignora ativo/uso
+    where: f?.produtoIds
+      ? { id: { in: f.produtoIds }, movimentos: { some: sitio } }
+      : { ativo: true, movimentos: { some: sitio }, ...(f?.uso ? { categoria: { [USO_CAMPO[f.uso]]: true } } : {}) },
     orderBy: { nome: "asc" },
     // Saldo por sítio: com filtro, só os movimentos daquela propriedade contam.
     include: {

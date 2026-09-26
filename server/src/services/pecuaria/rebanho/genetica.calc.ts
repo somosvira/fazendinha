@@ -67,7 +67,11 @@ export function validarFiliacao(
  */
 export function validarIntervaloPartos(dataNascimentoFilho: string, partosAnteriores: string[]): ErroValidacao[] {
   const LIMITE_MESES = 15;
+  const MESMO_PARTO_DIAS = 7;
+  const dia = 86_400_000;
   for (const parto of partosAnteriores) {
+    // gêmeos/mesmo parto não contam como outro parto
+    if (Math.abs(Date.parse(parto) - Date.parse(dataNascimentoFilho)) <= MESMO_PARTO_DIAS * dia) continue;
     const meses = Math.abs(mesesEntre(parto, dataNascimentoFilho));
     if (meses < LIMITE_MESES) {
       return [{ campo: "maeId", mensagem: `A mãe teve outro parto há menos de ${LIMITE_MESES} meses` }];

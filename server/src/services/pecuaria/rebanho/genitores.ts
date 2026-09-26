@@ -117,6 +117,8 @@ export async function editarGenitor(id: string, input: EditarGenitorInput, usuar
     if (input.sexo && input.sexo !== existente.sexo) {
       const filhos = await contarFilhos(tx, id);
       if (filhos > 0) throw new RebanhoError("CONFLITO", "Este genitor já tem filhos registrados; não é possível trocar o sexo", "sexo");
+      const materiais = await tx.materialGenetico.count({ where: { OR: [{ touroExternoId: id }, { doadoraExternaId: id }] } });
+      if (materiais > 0) throw new RebanhoError("CONFLITO", "Este genitor é usado em material genético (sêmen/embrião); não é possível trocar o sexo", "sexo");
     }
     if (input.nome != null || input.sexo != null) {
       await exigirNomeLivre(tx, input.sexo ?? existente.sexo, input.nome ?? existente.nome, id);

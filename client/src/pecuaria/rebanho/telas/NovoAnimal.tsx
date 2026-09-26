@@ -8,7 +8,7 @@ import { calcularCategoriaCliente } from "../lib/categoria";
 import { rotuloAptidao, rotuloPapelReprodutivo } from "../lib/rotulos";
 import { somaFracoes } from "../lib/composicao";
 import { CampoComposicao } from "../ui";
-import { CampoGenitor, valorGenitorParaCampos, type ValorGenitor } from "../components/CampoGenitor";
+import { CampoGenitor, genitorIncompleto, mensagemGenitorIncompleto, valorGenitorParaCampos, type ValorGenitor } from "../components/CampoGenitor";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import { navegarPara } from "../../../router";
 import { Button, ErrorBox, hoje, PageHeader, PaginaCarregando, PaginaFinanceira, ReviewLine } from "../../../financeiro/financeiro-ui";
@@ -85,6 +85,8 @@ function FormNovoAnimal({ onVoltar }: { onVoltar: () => void }) {
     if (!propriedadeId) novosErros.propriedadeId = "Selecione o sítio";
     if (composicao.some((item) => !item.racaId)) novosErros.composicao = "Selecione a raça em todas as linhas de composição";
     else if (somaComposicao > 64) novosErros.composicao = "A soma das frações não pode passar de 64";
+    if (genitorIncompleto(mae)) novosErros.mae = mensagemGenitorIncompleto("Mãe", "F");
+    if (genitorIncompleto(pai)) novosErros.pai = mensagemGenitorIncompleto("Pai", "M");
     return novosErros;
   };
 
@@ -143,8 +145,8 @@ function FormNovoAnimal({ onVoltar }: { onVoltar: () => void }) {
             {sexo === "F" && <CampoFormulario id="novo-animal-partos" rotulo="Partos antes da entrada" ajuda="Define a categoria (novilha vira vaca a partir de 1 parto).">{(p) => <input {...p} type="number" min={0} step={1} value={partosAntesDaEntrada} onChange={(e) => setPartosAntesDaEntrada(e.target.value)} className={classeInput} />}</CampoFormulario>}
           </div>
           <div className="mt-4 grid gap-4 md:grid-cols-2">
-            <CampoGenitor rotulo="Mãe" sexo="F" valor={mae} onChange={setMae} />
-            <CampoGenitor rotulo="Pai" sexo="M" valor={pai} onChange={setPai} />
+            <CampoGenitor rotulo="Mãe" sexo="F" valor={mae} onChange={setMae} erro={erros.mae} />
+            <CampoGenitor rotulo="Pai" sexo="M" valor={pai} onChange={setPai} erro={erros.pai} />
           </div>
         </section>
         <section>
