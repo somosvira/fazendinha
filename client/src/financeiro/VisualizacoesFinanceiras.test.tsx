@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { baseFinanceiraVazia } from "./dashboard.fixture";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { render } from "./lib/testQueryClient";
 import { ContasFinanceiras } from "./ContasFinanceiras";
 import { CompromissosFinanceiros } from "./CompromissosFinanceiros";
 import { VisaoGeralFinanceira } from "./VisaoGeralFinanceira";

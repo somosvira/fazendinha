@@ -1,14 +1,16 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { ChevronRight, FilePenLine, Plus, Search } from "lucide-react";
 import { PeriodoFinanceiroControl } from "./PeriodoFinanceiroControl";
 import { periodoInicial } from "./lib/periodo";
 import { entradaDeNovaOperacao, isNovaOperacaoFinanceira, parseOperacaoFinanceiraId, URL_NOVA_OPERACAO } from "../router";
-import { descartarRascunhoOperacao, listarOperacoes, obterConfiguracoesFinanceiras, obterRascunhoOperacao, type ConfiguracoesFinanceiras, type Operacao } from "./novo-api";
+import { descartarRascunhoOperacao, type Operacao } from "./novo-api";
+import { financeiroKeys, useConfiguracoesFinanceiras, useOperacoesFinanceiras, useRascunhoOperacao } from "./queries";
 import { useRascunhoAtivo } from "./rascunhoAtivo";
 import { FormOperacao } from "./FormOperacao";
 import { OperacaoFinanceiraDetalhe } from "./OperacaoFinanceiraDetalhe";
 import { codigoOperacao } from "../estoque/navegacao";
-import { brl, Button, type ColunaTabela, dataBR, Empty, ErrorBox, PageHeader, PaginaCarregando, PaginaFinanceira, Paginacao, Panel, Pill, StatusPill, TabelaFinanceira, TIPO_OPERACAO } from "./financeiro-ui";
+import { brl, Button, type ColunaTabela, dataBR, ehOfflineSemDados, Empty, ErrorBox, PageHeader, PaginaCarregando, PaginaFinanceira, Paginacao, Panel, Pill, SemConexaoAviso, StatusPill, TabelaFinanceira, TIPO_OPERACAO } from "./financeiro-ui";
 
 type EfeitoFiltro = "TODOS" | "ESTOQUE" | "PAGAMENTO" | "RECEBIMENTO" | "A_PAGAR" | "A_RECEBER" | "TRANSFERENCIA" | "SEM_EFEITOS";
 function Efeitos({ operacao }: { operacao: Operacao }) {
@@ -37,6 +39,9 @@ const efeitoInicial = (): EfeitoFiltro => {
   return (EFEITOS_FILTRO as string[]).includes(valor ?? "") ? (valor as EfeitoFiltro) : "TODOS";
 };
 const ITENS_POR_PAGINA = 15;
+// Referência estável — um literal `[]` inline no `?? []` do retorno da query
+// criaria um array novo a cada render (ver docs/design/offline/README.md).
+const OPERACOES_VAZIO: Operacao[] = [];
 
 /* Colunas da lista de operações. `alinhamento` vale para o cabeçalho, para a
  * célula e para o valor no cartão — não há como cabeçalho e conteúdo divergirem. */
@@ -52,15 +57,27 @@ const COLUNAS: ColunaTabela<Operacao>[] = [
 ];
 
 export function OperacoesFinanceiras({ podeLancar = true }: { podeLancar?: boolean }) {
-  const [itens, setItens] = useState<Operacao[]>([]); const [config, setConfig] = useState<ConfiguracoesFinanceiras | null>(null); const { rascunho } = useRascunhoAtivo(); const [form, setForm] = useState(() => typeof window !== "undefined" && isNovaOperacaoFinanceira(window.location.pathname)); const [operacaoBase, setOperacaoBase] = useState<Operacao | null>(null); const [loading, setLoading] = useState(true); const [erro, setErro] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const [form, setForm] = useState(() => typeof window !== "undefined" && isNovaOperacaoFinanceira(window.location.pathname)); const [operacaoBase, setOperacaoBase] = useState<Operacao | null>(null); const [erro, setErro] = useState<string | null>(null);
   const [iniciandoNova, setIniciandoNova] = useState(false);
   const [busca, setBusca] = useState(""); const [status, setStatus] = useState("TODOS"); const [tipo, setTipo] = useState("TODOS"); const [efeito, setEfeito] = useState<EfeitoFiltro>(efeitoInicial); const [inicio, setInicio] = useState(() => periodoInicial({ inicio: inicioMes(), fim: hojeLocal() }).inicio); const [fim, setFim] = useState(() => periodoInicial({ inicio: inicioMes(), fim: hojeLocal() }).fim);
   const [pagina, setPagina] = useState(1);
   const [detalheId, setDetalheId] = useState<string | null>(() => typeof window === "undefined" ? null : parseOperacaoFinanceiraId(window.location.pathname));
-  // O rascunho vem da store compartilhada (a mesma do atalho da sidebar):
-  // obterRascunhoOperacao a atualiza, e cada autosave também.
-  const carregar = useCallback(async (vigente: () => boolean = () => true) => { setLoading(true); setErro(null); try { const [ops, cfg] = await Promise.all([listarOperacoes({ inicio, fim }), podeLancar ? obterConfiguracoesFinanceiras() : Promise.resolve(null), podeLancar ? obterRascunhoOperacao() : Promise.resolve(null)]); if (vigente()) { setItens(ops); setConfig(cfg); } } catch (e) { if (vigente()) setErro(e instanceof Error ? e.message : String(e)); } finally { if (vigente()) setLoading(false); } }, [inicio, fim, podeLancar]);
-  useEffect(() => { let ativo = true; void carregar(() => ativo); return () => { ativo = false; }; }, [carregar]);
+  const operacoesQuery = useOperacoesFinanceiras({ inicio, fim });
+  const configQuery = useConfiguracoesFinanceiras(podeLancar);
+  // Só o cold start (nada carregado ainda nesta sessão) usa o loader de
+  // página cheia — um filtro novo depois disso mostra o texto de carregando
+  // dentro do próprio Panel, sem esconder cabeçalho/filtros.
+  const [carregouAlgumaVez, setCarregouAlgumaVez] = useState(false);
+  useEffect(() => { if (operacoesQuery.data) setCarregouAlgumaVez(true); }, [operacoesQuery.data]);
+  // Leitura própria desta tela (única entre as telas financeiras que
+  // depende do rascunho pra decidir "Continuar operação" x "Nova operação"
+  // logo ao montar, sem esperar clique) — publica na store compartilhada
+  // (ver rascunhoAtivo.ts), que é quem o botão e o FormOperacao realmente lêem.
+  const rascunhoQuery = useRascunhoOperacao(podeLancar);
+  const rascunhoAtivo = useRascunhoAtivo();
+  const rascunho = rascunhoAtivo.conhecido ? rascunhoAtivo.rascunho : rascunhoQuery.data ?? null;
+  const itens = operacoesQuery.data ?? OPERACOES_VAZIO;
   useEffect(() => {
     const onPop = (evento: PopStateEvent) => {
       setDetalheId(parseOperacaoFinanceiraId(window.location.pathname)); setForm(isNovaOperacaoFinanceira(window.location.pathname));
@@ -87,9 +104,24 @@ export function OperacoesFinanceiras({ podeLancar = true }: { podeLancar?: boole
   };
   const continuarRascunho = () => abrirFormulario();
   const corrigir = (operacao: Operacao) => abrirFormulario(operacao);
+  const aposSalvarOperacao = async (operacao: Pick<Operacao, "id">, aviso?: string) => {
+    setForm(false); setOperacaoBase(null);
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: financeiroKeys.operacoesTodos() }),
+      queryClient.invalidateQueries({ queryKey: financeiroKeys.compromissosTodos() }),
+      queryClient.invalidateQueries({ queryKey: financeiroKeys.dashboardTodos() }),
+      queryClient.invalidateQueries({ queryKey: financeiroKeys.configuracoes() }),
+    ]);
+    queryClient.setQueryData(financeiroKeys.rascunho(), null);
+    if (aviso) setErro(aviso);
+    abrirDetalhe(operacao.id);
+  };
 
   if (detalheId != null) return <OperacaoFinanceiraDetalhe operacaoId={detalheId} onVoltar={voltar} onAbrir={abrirDetalhe} onCorrigir={corrigir} podeLancar={podeLancar} />;
-  if (loading && !config) return <PaginaCarregando label="Carregando operações" />;
+  if (!carregouAlgumaVez && !form && (operacoesQuery.isPending || (podeLancar && configQuery.isPending))) {
+    if (ehOfflineSemDados(operacoesQuery)) return <PaginaFinanceira><PageHeader titulo="Operações" descricao="Fatos de negócio e seus efeitos financeiros e físicos, preservados em um histórico auditável." /><SemConexaoAviso mensagem="Sem conexão e sem operações salvas para este período." /></PaginaFinanceira>;
+    return <PaginaCarregando label="Carregando operações" />;
+  }
   const parametrosUrl = typeof window === "undefined" ? new URLSearchParams() : new URLSearchParams(window.location.search);
   const compromissoInicial = parametrosUrl.get("compromisso");
   // Atalho do Estoque: /financeiro/operacoes/nova?tipo=AJUSTE_ESTOQUE&produto=<id>.
@@ -97,8 +129,12 @@ export function OperacoesFinanceiras({ podeLancar = true }: { podeLancar?: boole
   const produtoAjusteInicial = ajusteInicial && parametrosUrl.get("produto") ? parametrosUrl.get("produto")! : undefined;
   // A chave separa correção de rascunho: trocar de um para o outro remonta o
   // formulário, senão o autosave gravaria os dados da correção no rascunho.
-  if (form && config && !podeLancar) return <PaginaFinanceira><PageHeader titulo="Nova operação" descricao="O seu perfil pode consultar operações, mas não pode criar ou corrigir lançamentos." /><ErrorBox erro="Você não tem permissão para lançar operações financeiras." /></PaginaFinanceira>;
-  if (form && config) return <FormOperacao key={operacaoBase ? `correcao-${operacaoBase.id}` : ajusteInicial ? `ajuste-${produtoAjusteInicial ?? ""}` : "rascunho"} config={config} rascunho={operacaoBase ? null : rascunho} operacaoBase={operacaoBase} condicaoInicial={compromissoInicial ? "A_PRAZO" : undefined} tipoInicial={ajusteInicial ? "AJUSTE_ESTOQUE" : compromissoInicial === "RECEBER" ? "VENDA" : compromissoInicial === "PAGAR" ? "COMPRA_CONSUMO_DIRETO" : undefined} produtoInicial={produtoAjusteInicial} onSalvo={async (operacao, aviso) => { setForm(false); setOperacaoBase(null); await carregar(); if (aviso) setErro(aviso); abrirDetalhe(operacao.id); }} />;
+  if (form && !podeLancar) return <PaginaFinanceira><PageHeader titulo="Nova operação" descricao="O seu perfil pode consultar operações, mas não pode criar ou corrigir lançamentos." /><ErrorBox erro="Você não tem permissão para lançar operações financeiras." /></PaginaFinanceira>;
+  if (form) {
+    if (ehOfflineSemDados(configQuery)) return <PaginaFinanceira><PageHeader titulo="Nova operação" descricao="Cadastros necessários para lançar (contas, categorias, produtos) ainda não foram carregados." /><SemConexaoAviso mensagem="Sem conexão e sem cadastros salvos — abra esta tela uma vez online antes de lançar offline." /></PaginaFinanceira>;
+    if (configQuery.isPending) return <PaginaCarregando label="Preparando formulário" />;
+    return <FormOperacao key={operacaoBase ? `correcao-${operacaoBase.id}` : ajusteInicial ? `ajuste-${produtoAjusteInicial ?? ""}` : "rascunho"} config={configQuery.data!} rascunho={operacaoBase ? null : rascunho} operacaoBase={operacaoBase} condicaoInicial={compromissoInicial ? "A_PRAZO" : undefined} tipoInicial={ajusteInicial ? "AJUSTE_ESTOQUE" : compromissoInicial === "RECEBER" ? "VENDA" : compromissoInicial === "PAGAR" ? "COMPRA_CONSUMO_DIRETO" : undefined} produtoInicial={produtoAjusteInicial} onSalvo={(operacao, aviso) => { void aposSalvarOperacao(operacao, aviso); }} />;
+  }
 
   return <PaginaFinanceira>
     <PageHeader titulo="Operações" descricao="Fatos de negócio e seus efeitos financeiros e físicos, preservados em um histórico auditável." acao={podeLancar ? <div className="flex flex-wrap gap-2">{rascunho && <Button secondary onClick={continuarRascunho}><FilePenLine size={16} /> Continuar operação</Button>}<Button disabled={iniciandoNova} onClick={() => { void abrirNovaOperacao(); }}><Plus size={16} /> {iniciandoNova ? "Iniciando…" : "Nova operação"}</Button></div> : undefined} />
@@ -114,7 +150,7 @@ export function OperacoesFinanceiras({ podeLancar = true }: { podeLancar?: boole
         <select aria-label="Filtrar por efeito" value={efeito} onChange={(e) => { setEfeito(e.target.value as EfeitoFiltro); setPagina(1); }} className="h-[42px] w-full min-w-0 flex-[1_1_170px] rounded-lg border border-border bg-white px-3 text-sm sm:w-auto"><option value="TODOS">Todos os efeitos</option><option value="ESTOQUE">Estoque</option><option value="PAGAMENTO">Pagamento</option><option value="RECEBIMENTO">Recebimento</option><option value="A_PAGAR">A pagar</option><option value="A_RECEBER">A receber</option><option value="TRANSFERENCIA">Transferência</option><option value="SEM_EFEITOS">Sem efeitos</option></select>
         <select aria-label="Filtrar por status" value={status} onChange={(e) => { setStatus(e.target.value); setPagina(1); }} className="h-[42px] w-full min-w-0 flex-[1_1_150px] rounded-lg border border-border bg-white px-3 text-sm sm:w-auto"><option value="TODOS">Todos os status</option><option value="CONFIRMADA">Confirmadas</option><option value="CANCELADA">Canceladas</option></select>
       </div>
-      {loading ? <p role="status" className="p-5">Carregando operações do período…</p> : erro ? <Empty>Não foi possível carregar as operações.</Empty> : filtradas.length ? <><TabelaFinanceira rotulo="Operações do período" itens={operacoesDaPagina} colunas={COLUNAS} chaveDe={(operacao) => operacao.id} onAbrir={(operacao) => abrirDetalhe(operacao.id)} classeLinha={(operacao) => operacao.status === "CANCELADA" ? "opacity-60" : ""} barraRolagemSuperior />
+      {ehOfflineSemDados(operacoesQuery) ? <SemConexaoAviso mensagem="Sem conexão e sem operações salvas para este período." /> : operacoesQuery.isPending ? <p role="status" className="p-5">Carregando operações do período…</p> : operacoesQuery.isError ? <Empty>Não foi possível carregar as operações.</Empty> : filtradas.length ? <><TabelaFinanceira rotulo="Operações do período" itens={operacoesDaPagina} colunas={COLUNAS} chaveDe={(operacao) => operacao.id} onAbrir={(operacao) => abrirDetalhe(operacao.id)} classeLinha={(operacao) => operacao.status === "CANCELADA" ? "opacity-60" : ""} barraRolagemSuperior />
         <Paginacao pagina={paginaAtual} totalPaginas={totalPaginas} total={filtradas.length} porPagina={ITENS_POR_PAGINA} rotulo="Paginação de operações" substantivo="operações" idSelect="pagina-operacoes" onPagina={setPagina} /></> : <Empty>Nenhuma operação encontrada no período e filtros selecionados.</Empty>}
     </Panel>
   </PaginaFinanceira>;

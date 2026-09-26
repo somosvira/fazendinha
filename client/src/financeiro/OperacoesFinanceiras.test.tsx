@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
+import { render } from "./lib/testQueryClient";
 import { OperacoesFinanceiras } from "./OperacoesFinanceiras";
 import { descartarRascunhoOperacao, listarOperacoes, obterRascunhoOperacao } from "./novo-api";
 import { limparRascunhoAtivo, prepararPublicacaoRascunho } from "./rascunhoAtivo";

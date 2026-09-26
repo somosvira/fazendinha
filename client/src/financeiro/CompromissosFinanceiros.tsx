@@ -1,10 +1,12 @@
 import { PeriodoFinanceiroControl } from "./PeriodoFinanceiroControl";
 import { periodoInicial } from "./lib/periodo";
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { ArrowDownLeft, ArrowUpRight, CalendarDays } from "lucide-react";
 import { ConfirmDialog } from "../components/ConfirmDialog";
-import { descartarRascunhoOperacao, listarCompromissos, obterConfiguracoesFinanceiras, obterRascunhoOperacao, type Compromisso, type ConfiguracoesFinanceiras } from "./novo-api";
-import { brl, Button, dataBR, Empty, ErrorBox, mesAtual, Metric, PageHeader, PaginaCarregando, PaginaFinanceira, Panel, Pill, StatusPill } from "./financeiro-ui";
+import { descartarRascunhoOperacao, obterRascunhoOperacao, type Compromisso } from "./novo-api";
+import { financeiroKeys, useCompromissosFinanceiros, useConfiguracoesFinanceiras } from "./queries";
+import { brl, Button, dataBR, ehOfflineSemDados, Empty, ErrorBox, mesAtual, Metric, PageHeader, PaginaCarregando, PaginaFinanceira, Panel, Pill, SemConexaoAviso, StatusPill } from "./financeiro-ui";
 import type { Tab } from "../components/Shell";
 import { abrirRotaNovaOperacao } from "../router";
 import { tituloCompromisso } from "./lib/compromissos";
@@ -13,20 +15,18 @@ import { ControleVisaoCompromissos, type VisaoCompromissos } from "./ControleVis
 import { LiquidarCompromissoModal } from "./LiquidarCompromissoModal";
 import { codigoOperacao } from "../estoque/navegacao";
 
+const COMPROMISSOS_VAZIO: Compromisso[] = [];
+
 export function CompromissosFinanceiros({ onNav, podeLancar = true }: { onNav: (tab: Tab) => void; podeLancar?: boolean }) {
-  const [itens, setItens] = useState<Compromisso[]>([]); const [config, setConfig] = useState<ConfiguracoesFinanceiras | null>(null); const [pagando, setPagando] = useState<Compromisso | null>(null); const [erro, setErro] = useState<string | null>(null); const [aba, setAba] = useState<"PAGAR" | "RECEBER" | "LIQUIDADOS" | "TODOS">(() => new URLSearchParams(window.location.search).get("situacao") === "todos" ? "TODOS" : "PAGAR"); const [soVencidos, setSoVencidos] = useState(false);
+  const queryClient = useQueryClient();
+  const [pagando, setPagando] = useState<Compromisso | null>(null); const [erro, setErro] = useState<string | null>(null); const [aba, setAba] = useState<"PAGAR" | "RECEBER" | "LIQUIDADOS" | "TODOS">(() => new URLSearchParams(window.location.search).get("situacao") === "todos" ? "TODOS" : "PAGAR"); const [soVencidos, setSoVencidos] = useState(false);
   const [periodo, setPeriodo] = useState(() => periodoInicial({ inicio: "", fim: "" }, { permitirVazio: true }));
-  const [carregando, setCarregando] = useState(true);
   const [visao, setVisao] = useState<VisaoCompromissos>("lista");
   const [mes, setMes] = useState(() => periodo.inicio.slice(0, 7) || mesAtual());
   const [novoCompromissoPendente, setNovoCompromissoPendente] = useState<"PAGAR" | "RECEBER" | null>(null); const [preparando, setPreparando] = useState(false);
-  const carregar = useCallback(async (vigente: () => boolean = () => true) => {
-    setCarregando(true); setErro(null); setItens([]);
-    try { const [c, cfg] = await Promise.all([listarCompromissos(periodo), podeLancar ? obterConfiguracoesFinanceiras() : Promise.resolve(null)]); if (vigente()) { setItens(c); setConfig(cfg); } }
-    catch (e) { if (vigente()) setErro(e instanceof Error ? e.message : String(e)); }
-    finally { if (vigente()) setCarregando(false); }
-  }, [podeLancar, periodo]);
-  useEffect(() => { let vigente = true; void carregar(() => vigente); return () => { vigente = false; }; }, [carregar]);
+  const compromissosQuery = useCompromissosFinanceiros(periodo);
+  const configQuery = useConfiguracoesFinanceiras(podeLancar);
+  const itens = compromissosQuery.data ?? COMPROMISSOS_VAZIO;
   const lista = itens
     .filter((c) => aba === "TODOS" || (aba === "LIQUIDADOS" ? c.status === "LIQUIDADO" : c.tipo === aba && ["PENDENTE", "PARCIAL"].includes(c.status)))
     .filter((c) => !soVencidos || c.vencido);
@@ -56,13 +56,15 @@ export function CompromissosFinanceiros({ onNav, podeLancar = true }: { onNav: (
     finally { setPreparando(false); }
   };
 
-  if (carregando && !config && !erro) return <PaginaCarregando label="Carregando compromissos" />;
+  if (!compromissosQuery.data && ehOfflineSemDados(compromissosQuery)) return <PaginaFinanceira><PageHeader titulo="Compromissos" descricao="Agenda de valores futuros. Vencimento indica prazo; o status informa se a obrigação está pendente, parcial ou liquidada." /><SemConexaoAviso mensagem="Sem conexão e sem compromissos salvos para este período." /></PaginaFinanceira>;
+  if (!compromissosQuery.data && compromissosQuery.isPending) return <PaginaCarregando label="Carregando compromissos" />;
 
   return <PaginaFinanceira>
     <PageHeader titulo="Compromissos" descricao="Agenda de valores futuros. Vencimento indica prazo; o status informa se a obrigação está pendente, parcial ou liquidada." acao={podeLancar ? <div className="flex flex-wrap gap-2"><Button secondary disabled={preparando} onClick={() => { void prepararNovoCompromisso("RECEBER"); }}>Criar a receber</Button><Button disabled={preparando} onClick={() => { void prepararNovoCompromisso("PAGAR"); }}>Criar a pagar</Button></div> : undefined} />
     <ErrorBox erro={erro} />
+    {compromissosQuery.isError && <ErrorBox erro={compromissosQuery.error instanceof Error ? compromissosQuery.error.message : String(compromissosQuery.error)} />}
     <div className="mt-4 flex flex-wrap items-center gap-3"><PeriodoFinanceiroControl inicio={periodo.inicio} fim={periodo.fim} allowAll label="Período de vencimento" onChange={p => { setPeriodo(p); if (p.inicio) setMes(p.inicio.slice(0, 7)); }} /><span className="text-xs text-ink-3">Filtro pela data de vencimento, inclusive nos liquidados.</span></div>
-    {carregando && <p role="status">Carregando compromissos do período…</p>}
+    {compromissosQuery.isFetching && compromissosQuery.data && <p role="status">Atualizando compromissos do período…</p>}
     <div className="mt-6 grid gap-4 md:grid-cols-3"><Metric label="A pagar" valor={brl(itens.filter((c) => c.tipo === "PAGAR" && !["LIQUIDADO", "CANCELADO"].includes(c.status)).reduce((s, c) => s + Number(c.saldoPendente), 0))} detalhe="Saldo pendente" icon={ArrowUpRight} /><Metric label="A receber" valor={brl(itens.filter((c) => c.tipo === "RECEBER" && !["LIQUIDADO", "CANCELADO"].includes(c.status)).reduce((s, c) => s + Number(c.saldoPendente), 0))} detalhe="Saldo pendente" icon={ArrowDownLeft} /><Metric label="Vencidos" valor={String(itens.filter((c) => c.vencido).length)} detalhe="Condição de prazo, não status" icon={CalendarDays} tone="red" /></div>
     <Panel className="mt-6 overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-4"><div className="flex flex-wrap gap-2">{([['PAGAR', 'A pagar'], ['RECEBER', 'A receber'], ['LIQUIDADOS', 'Liquidados'], ['TODOS', 'Todos']] as const).map(([k, label]) => <button key={k} onClick={() => setAba(k)} className={`rounded-lg px-4 py-2 text-sm font-semibold ${aba === k ? "bg-mast text-white" : "bg-[#f4f2e9] text-ink"}`}>{label}</button>)}</div><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={soVencidos} onChange={(e) => setSoVencidos(e.target.checked)} /> Mostrar somente vencidos</label></div>
@@ -72,7 +74,7 @@ export function CompromissosFinanceiros({ onNav, podeLancar = true }: { onNav: (
       </>}
     </Panel>
 
-    {podeLancar && pagando && <LiquidarCompromissoModal key={pagando.id} compromisso={pagando} contas={config?.contas ?? []} onClose={() => setPagando(null)} onLiquidado={() => carregar()} onErro={setErro} />}
+    {podeLancar && pagando && <LiquidarCompromissoModal key={pagando.id} compromisso={pagando} contas={configQuery.data?.contas ?? []} onClose={() => setPagando(null)} onLiquidado={() => { void queryClient.invalidateQueries({ queryKey: financeiroKeys.compromissosTodos() }); }} onErro={setErro} />}
     <ConfirmDialog
       open={novoCompromissoPendente != null}
       title={novoCompromissoPendente === "RECEBER" ? "Criar um novo valor a receber?" : "Criar um novo valor a pagar?"}

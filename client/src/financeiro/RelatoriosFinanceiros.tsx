@@ -1,11 +1,14 @@
 import { PeriodoFinanceiroControl } from "./PeriodoFinanceiroControl";
 import { isoDate } from "../components/DateRangePicker";
-import { useCallback, useEffect, useState } from "react";
-import { ChevronRight, Download, FilePenLine, FilePlus2, RotateCcw } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { ChevronRight, Download, FilePenLine, FilePlus2, RotateCcw, WifiOff } from "lucide-react";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { isNovoRelatorioFinanceiro, parseRelatorioFinanceiroId } from "../router";
-import { descartarRascunhoRelatorioFinanceiro, listarRelatoriosFinanceiros, obterConfiguracoesFinanceiras, obterRascunhoRelatorioFinanceiro, salvarPdfRelatorioFinanceiro, type ConfiguracoesFinanceiras, type RascunhoRelatorioFinanceiro, type RelatorioFinanceiro } from "./novo-api";
-import { Button, Empty, ErrorBox, PageHeader, PaginaFinanceira, PaginaSemDados, Panel, StatusPill, TabelaFinanceira, type ColunaTabela } from "./financeiro-ui";
+import { descartarRascunhoRelatorioFinanceiro, salvarPdfRelatorioFinanceiro, type RelatorioFinanceiro } from "./novo-api";
+import { financeiroKeys, useConfiguracoesFinanceiras, useRascunhoRelatorioFinanceiro, useRelatoriosFinanceiros } from "./queries";
+import { useOnlineStatus } from "../lib/offline/useOnlineStatus";
+import { Button, ehOfflineSemDados, Empty, ErrorBox, PageHeader, PaginaFinanceira, PaginaSemDados, Panel, SemConexaoAviso, StatusPill, TabelaFinanceira, type ColunaTabela } from "./financeiro-ui";
 import { dataCurta } from "./lib/relatorios";
 import { NovoRelatorioFinanceiro } from "./NovoRelatorioFinanceiro";
 import { RelatorioFinanceiroDetalhe } from "./RelatorioFinanceiroDetalhe";
@@ -32,10 +35,15 @@ function recorte(r: RelatorioFinanceiro) {
 }
 
 export function RelatoriosFinanceiros({ podeExportar = true }: { podeExportar?: boolean }) {
+  const queryClient = useQueryClient();
+  const online = useOnlineStatus();
   const [vista, setVista] = useState<Vista>(() => typeof window === "undefined" ? { tipo: "lista" } : vistaDaUrl(window.location.pathname));
-  const [relatorios, setRelatorios] = useState<RelatorioFinanceiro[] | null>(null);
-  const [cadastros, setCadastros] = useState<ConfiguracoesFinanceiras | null>(null);
-  const [rascunho, setRascunho] = useState<RascunhoRelatorioFinanceiro | null>(null);
+  const relatoriosQuery = useRelatoriosFinanceiros();
+  const cadastrosQuery = useConfiguracoesFinanceiras();
+  const rascunhoQuery = useRascunhoRelatorioFinanceiro(podeExportar);
+  const relatorios = relatoriosQuery.data ?? null;
+  const cadastros = cadastrosQuery.data ?? null;
+  const rascunho = rascunhoQuery.data ?? null;
   const [erro, setErro] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [recente, setRecente] = useState<string | null>(null);
@@ -43,17 +51,14 @@ export function RelatoriosFinanceiros({ podeExportar = true }: { podeExportar?: 
   const [periodoEmissao, setPeriodoEmissao] = useState({ inicio: "", fim: "" });
   const [confirmarNovo, setConfirmarNovo] = useState(false);
 
-  const carregar = useCallback(async () => {
+  const carregar = async () => {
     setErro(null);
-    try {
-      const [lista, dados, draft] = await Promise.all([
-        listarRelatoriosFinanceiros(), obterConfiguracoesFinanceiras(),
-        podeExportar ? obterRascunhoRelatorioFinanceiro() : Promise.resolve(null),
-      ]);
-      setRelatorios(lista); setCadastros(dados); setRascunho(draft);
-    } catch (falha) { setErro(mensagem(falha)); }
-  }, [podeExportar]);
-  useEffect(() => { void carregar(); }, [carregar]);
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: financeiroKeys.relatoriosTodos() }),
+      queryClient.invalidateQueries({ queryKey: financeiroKeys.configuracoes() }),
+      queryClient.invalidateQueries({ queryKey: financeiroKeys.rascunhoRelatorio() }),
+    ]);
+  };
   useEffect(() => {
     const onPop = () => setVista(vistaDaUrl(window.location.pathname));
     window.addEventListener("popstate", onPop);
@@ -62,11 +67,13 @@ export function RelatoriosFinanceiros({ podeExportar = true }: { podeExportar?: 
 
   const ir = (caminho: string, destino: Vista) => { window.history.pushState(null, "", caminho); setVista(destino); };
   const voltar = () => { ir("/financeiro/relatorios", { tipo: "lista" }); void carregar(); };
+  // Criar e continuar um relatório exige rede (o próprio processamento é
+  // feito no servidor) — o botão fica desabilitado offline (ver acao abaixo).
   const abrirNovo = async (continuar: boolean) => {
     setErro(null); setAviso(null);
     if (!continuar && rascunho) {
       setIniciando(true);
-      try { await descartarRascunhoRelatorioFinanceiro(); setRascunho(null); }
+      try { await descartarRascunhoRelatorioFinanceiro(); queryClient.setQueryData(financeiroKeys.rascunhoRelatorio(), null); }
       catch (falha) { setErro(mensagem(falha)); return; }
       finally { setIniciando(false); }
     }
@@ -77,7 +84,8 @@ export function RelatoriosFinanceiros({ podeExportar = true }: { podeExportar?: 
     else void abrirNovo(false);
   };
   const aoGerar = (relatorio: RelatorioFinanceiro, avisoDownload: string | null) => {
-    setRascunho(null); setRecente(relatorio.id);
+    queryClient.setQueryData(financeiroKeys.rascunhoRelatorio(), null);
+    setRecente(relatorio.id);
     setAviso(avisoDownload ?? `“${relatorio.nome}” foi gerado e o download do PDF começou.`);
     voltar();
   };
@@ -86,10 +94,10 @@ export function RelatoriosFinanceiros({ podeExportar = true }: { podeExportar?: 
 
   if (vista.tipo === "detalhe") return <RelatorioFinanceiroDetalhe id={vista.id} podeExportar={podeExportar} onVoltar={voltar} />;
   if (vista.tipo === "novo" && podeExportar) {
-    if (!cadastros) return <PaginaSemDados titulo="Novo relatório" descricao={DESCRICAO} label="Preparando relatório" erro={erro} />;
+    if (!cadastros) return <PaginaSemDados titulo="Novo relatório" descricao={DESCRICAO} label="Preparando relatório" erro={cadastrosQuery.isError ? mensagem(cadastrosQuery.error) : null} semConexao={ehOfflineSemDados(cadastrosQuery)} />;
     return <NovoRelatorioFinanceiro cadastros={cadastros} rascunho={rascunho} onVoltar={voltar} onGerado={aoGerar} />;
   }
-  if (!relatorios) return <PaginaSemDados titulo="Relatórios financeiros" descricao={DESCRICAO} label="Carregando relatórios" erro={erro} />;
+  if (!relatorios) return <PaginaSemDados titulo="Relatórios financeiros" descricao={DESCRICAO} label="Carregando relatórios" erro={erro ?? (relatoriosQuery.isError ? mensagem(relatoriosQuery.error) : null)} semConexao={ehOfflineSemDados(relatoriosQuery)} />;
 
   const relatoriosFiltrados = relatorios.filter(r => { const dia = isoDate(new Date(r.geradoEm)); return (!periodoEmissao.inicio || dia >= periodoEmissao.inicio) && (!periodoEmissao.fim || dia <= periodoEmissao.fim); });
   const variasPropriedades = new Set(relatorios.map((r) => r.propriedadeId)).size > 1;
@@ -99,11 +107,12 @@ export function RelatoriosFinanceiros({ podeExportar = true }: { podeExportar?: 
     ...(variasPropriedades ? [{ chave: "propriedade", titulo: "Propriedade", larguraMinima: 150, celula: (r: RelatorioFinanceiro) => r.propriedade }] : []),
     { chave: "gerado", titulo: "Gerado em", larguraMinima: 140, celula: (r) => <span className="whitespace-nowrap">{dataHora(r.geradoEm)}</span> },
     { chave: "autor", titulo: "Autor", larguraMinima: 140, celula: (r) => r.autor },
-    { chave: "acoes", titulo: "", alinhamento: "direita", larguraMinima: podeExportar ? 170 : 60, acoes: true, celula: (r) => <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>{podeExportar && r.status === "CONCLUIDO" && <Button secondary onClick={() => void baixar(r)}><Download size={15} /> Baixar PDF</Button>}<ChevronRight size={16} className="hidden text-ink-3 md:inline" aria-hidden /></div> },
+    { chave: "acoes", titulo: "", alinhamento: "direita", larguraMinima: podeExportar ? 170 : 60, acoes: true, celula: (r) => <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>{podeExportar && r.status === "CONCLUIDO" && <Button secondary disabled={!online} title={online ? undefined : "Baixar PDF precisa de conexão"} onClick={() => void baixar(r)}>{online ? <Download size={15} /> : <WifiOff size={15} />} Baixar PDF</Button>}<ChevronRight size={16} className="hidden text-ink-3 md:inline" aria-hidden /></div> },
   ];
-  const acoes = podeExportar ? <div className="flex flex-wrap gap-2">
-    {rascunho && <Button secondary onClick={() => void abrirNovo(true)}><FilePenLine size={16} /> Continuar rascunho</Button>}
-    <Button disabled={iniciando} onClick={pedirNovo}><FilePlus2 size={16} /> {iniciando ? "Iniciando…" : "Novo relatório"}</Button>
+  const acoes = podeExportar ? <div className="flex flex-wrap items-center gap-2">
+    {rascunho && <Button secondary disabled={!online} title={online ? undefined : "Continuar o rascunho precisa de conexão"} onClick={() => void abrirNovo(true)}><FilePenLine size={16} /> Continuar rascunho</Button>}
+    <Button disabled={iniciando || !online} title={online ? undefined : "Gerar um relatório precisa de conexão"} onClick={pedirNovo}><FilePlus2 size={16} /> {iniciando ? "Iniciando…" : "Novo relatório"}</Button>
+    {!online && <span className="text-xs text-ink-3">Sem conexão — gerar e baixar ficam disponíveis ao reconectar.</span>}
   </div> : undefined;
 
   return <PaginaFinanceira>

@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Download, FilePenLine, RotateCcw } from "lucide-react";
-import { estornarOperacao, estornarTransacao, obterOperacao, type Compromisso, type Operacao, type TransacaoOperacao } from "./novo-api";
+import { estornarOperacao, estornarTransacao, type Compromisso, type Operacao, type TransacaoOperacao } from "./novo-api";
+import { financeiroKeys, useOperacaoFinanceira } from "./queries";
 import { Loader } from "../components/Loading";
-import { brl, Button, dataBR, ErrorBox, Modal, PaginaFinanceira, Panel, StatusPill, TIPO_OPERACAO } from "./financeiro-ui";
+import { brl, Button, dataBR, ehOfflineSemDados, ErrorBox, Modal, PaginaFinanceira, Panel, SemConexaoAviso, StatusPill, TIPO_OPERACAO } from "./financeiro-ui";
 import { tituloCompromisso } from "./lib/compromissos";
 import { deCentavos, paraCentavos } from "./lib/parcelas";
 import { HistoricoLiquidacoes, LinkConta } from "./HistoricoLiquidacoes";
@@ -10,12 +12,14 @@ import { codigoOperacao } from "../estoque/navegacao";
 
 /** Saldo líquido (entrada − saída) do impacto de conta no cancelamento, em centavos — sem ponto flutuante. */
 function impactoLiquido(impacto: { entrada: string; saida: string }) {
-  const centavos = (paraCentavos(impacto.entrada) ?? 0) - (paraCentavos(impacto.saida) ?? 0);
-  return { centavos, texto: `${centavos > 0 ? "+" : centavos < 0 ? "−" : ""}${brl(deCentavos(Math.abs(centavos)))}` };
+  const centavos = paraCentavos(impacto.entrada)! - paraCentavos(impacto.saida)!;
+  return { centavos, texto: `${centavos >= 0 ? "+" : "-"} ${deCentavos(Math.abs(centavos))}` };
 }
 
 export function OperacaoFinanceiraDetalhe({ operacaoId, onVoltar, onAbrir, onCorrigir, podeLancar = true }: { operacaoId: string; onVoltar: () => void; onAbrir: (id: string) => void; onCorrigir: (operacao: Operacao) => void; podeLancar?: boolean }) {
-  const [operacao, setOperacao] = useState<Operacao | null>(null);
+  const queryClient = useQueryClient();
+  const operacaoQuery = useOperacaoFinanceira(operacaoId);
+  const operacao = operacaoQuery.data ?? null;
   const [erro, setErro] = useState<string | null>(null);
   const [cancelando, setCancelando] = useState(false);
   const [motivo, setMotivo] = useState("");
@@ -24,35 +28,41 @@ export function OperacaoFinanceiraDetalhe({ operacaoId, onVoltar, onAbrir, onCor
   const emCurso = useRef(false);
   const [salvando, setSalvando] = useState(false);
   const [compromissoAberto, setCompromissoAberto] = useState<Compromisso | null>(null);
-  const carregar = useCallback(async () => { try { setErro(null); setOperacao(await obterOperacao(operacaoId)); } catch (e) { setErro(e instanceof Error ? e.message : String(e)); } }, [operacaoId]);
-  useEffect(() => { void carregar(); }, [carregar]);
+  const carregar = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: financeiroKeys.operacao(operacaoId) }),
+      queryClient.invalidateQueries({ queryKey: financeiroKeys.operacoesTodos() }),
+      queryClient.invalidateQueries({ queryKey: financeiroKeys.compromissosTodos() }),
+      queryClient.invalidateQueries({ queryKey: financeiroKeys.dashboardTodos() }),
+      queryClient.invalidateQueries({ queryKey: financeiroKeys.configuracoes() }),
+      queryClient.invalidateQueries({ queryKey: financeiroKeys.extratoGeral() }),
+    ]);
+  };
+  const erroCarga = operacaoQuery.isError ? (operacaoQuery.error instanceof Error ? operacaoQuery.error.message : String(operacaoQuery.error)) : null;
 
   // `.pagina-carregando` mede exatamente uma viewport e o loader toma a sobra —
   // com PaginaFinanceira o botão e o padding somariam por fora dos 100dvh.
-  if (!operacao) return <div className="shell-wide pagina-carregando"><button onClick={onVoltar} className="mt-6 mb-5 inline-flex shrink-0 items-center gap-2 self-start text-sm font-semibold text-ink-2"><ArrowLeft size={17} /> Voltar para operações</button><ErrorBox erro={erro} />{!erro && <Loader label="Carregando operação" full />}</div>;
+  if (!operacao) return <div className="shell-wide pagina-carregando"><button onClick={onVoltar} className="mt-6 mb-5 inline-flex shrink-0 items-center gap-2 self-start text-sm font-semibold text-ink-2"><ArrowLeft size={17} /> Voltar para operações</button><ErrorBox erro={erroCarga} />{ehOfflineSemDados(operacaoQuery) ? <SemConexaoAviso mensagem="Sem conexão e sem esta operação salva localmente." /> : !erroCarga && <Loader label="Carregando operação" full />}</div>;
 
   const resumoCancelamento = operacao.resumoCancelamento;
   const transacoesOriginais = resumoCancelamento ? resumoCancelamento.transacoes : operacao.transacoes.filter((item) => item.tipo !== "REVERSAO" && item.status === "CONFIRMADA");
-  const valorFinanceiro = transacoesOriginais.reduce((soma, item) => soma + Number(item.valorTotal), 0);
-  const valorCompromissos = resumoCancelamento ? resumoCancelamento.compromissos.reduce((soma, item) => soma + Number(item.saldoExigivel), 0) : operacao.compromissos.reduce((soma, item) => soma + Number(item.saldoExigivel ?? item.saldoPendente), 0);
-  const quantidadeEstoque = resumoCancelamento ? resumoCancelamento.estoque.length : operacao.movimentosEstoque.filter((item) => item.status === "CONFIRMADO" && item.reversaoDeId == null && !item.revertidoPor).length;
+  const valorFinanceiro = transacoesOriginais.reduce((soma, transacao) => soma + Number(transacao.valorTotal), 0);
+  const valorCompromissos = (resumoCancelamento?.compromissos ?? operacao.compromissos).reduce((soma, compromisso) => soma + Number(compromisso.saldoExigivel), 0);
+  const quantidadeEstoque = resumoCancelamento ? resumoCancelamento.estoque.length : operacao.movimentosEstoque.filter((item) => item.status === "CONFIRMADO").length;
   const algumItemComCentroProprio = operacao.itens.some((item) => item.centroCustoId);
 
   const confirmarCancelamento = async () => {
     if (emCurso.current || motivo.trim().length < 5) return;
     emCurso.current = true; setSalvando(true); setErro(null);
-    try { await estornarOperacao(operacao.id, motivo.trim()); setCancelando(false); setMotivo(""); await carregar(); }
+    try { await estornarOperacao(operacaoId, motivo.trim()); setCancelando(false); await carregar(); }
     catch (e) { setErro(e instanceof Error ? e.message : String(e)); }
     finally { emCurso.current = false; setSalvando(false); }
   };
-
   const confirmarEstorno = async () => {
-    if (!estornando || motivoEstorno.trim().length < 5 || emCurso.current) return;
+    if (emCurso.current || !estornando || motivoEstorno.trim().length < 5) return;
     emCurso.current = true; setSalvando(true); setErro(null);
-    try {
-      await estornarTransacao(estornando.id, motivoEstorno.trim());
-      setEstornando(null); setMotivoEstorno(""); await carregar();
-    } catch (e) { setErro(e instanceof Error ? e.message : String(e)); }
+    try { await estornarTransacao(estornando.id, motivoEstorno.trim()); setEstornando(null); await carregar(); }
+    catch (e) { setErro(e instanceof Error ? e.message : String(e)); }
     finally { emCurso.current = false; setSalvando(false); }
   };
 

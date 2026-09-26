@@ -3,8 +3,9 @@ import { ArrowDownLeft, ArrowUpRight, ChevronRight, Landmark, Plus, TrendingDown
 import type { Tab } from "../components/Shell";
 import { AnaliseCategorias } from "./AnaliseCategorias";
 import { BaseFinanceiraResumo } from "./BaseFinanceiraResumo";
-import { descartarRascunhoOperacao, obterConfiguracoesFinanceiras, obterDashboardFinanceiro, obterRascunhoOperacao, type Compromisso, type ConfiguracoesFinanceiras, type DashboardFinanceiro } from "./novo-api";
-import { brl, Button, dataBR, Empty, ErrorBox, mesAtual, Metric, PageHeader, PaginaCarregando, PaginaFinanceira, Panel, Pill } from "./financeiro-ui";
+import { descartarRascunhoOperacao, obterRascunhoOperacao, type Compromisso } from "./novo-api";
+import { useConfiguracoesFinanceiras, useDashboardFinanceiro } from "./queries";
+import { brl, Button, dataBR, ehOfflineSemDados, Empty, ErrorBox, mesAtual, Metric, PageHeader, PaginaCarregando, PaginaFinanceira, Panel, Pill, SemConexaoAviso } from "./financeiro-ui";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { abrirRotaNovaOperacao, navegarPara } from "../router";
 import { tituloCompromisso } from "./lib/compromissos";
@@ -18,19 +19,20 @@ import { periodoDoAnoAtual } from "./lib/periodo";
 export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab: Tab) => void; podeLancar?: boolean }) {
   const [inicioPeriodo, setInicioPeriodo] = useState(() => periodoDoAnoAtual().inicio);
   const [fimPeriodo, setFimPeriodo] = useState(() => periodoDoAnoAtual().fim);
-  const [dados, setDados] = useState<DashboardFinanceiro | null>(null);
-  const [config, setConfig] = useState<ConfiguracoesFinanceiras | null>(null);
+  const dashboardQuery = useDashboardFinanceiro(inicioPeriodo, fimPeriodo);
+  const configQuery = useConfiguracoesFinanceiras();
   const [liquidando, setLiquidando] = useState<Compromisso | null>(null);
   const [erro, setErro] = useState<string | null>(null);
-  const [erroConfig, setErroConfig] = useState<string | null>(null);
   const [visao, setVisao] = useState<VisaoCompromissos>("lista");
   const [mesCalendario, setMesCalendario] = useState(mesAtual());
-  const [carregando, setCarregando] = useState(true);
-  const [revisao, setRevisao] = useState(0);
-  const [periodoDados, setPeriodoDados] = useState("");
   const [tipoGraficoFluxo, setTipoGraficoFluxo] = useState<ChartType>("line");
   const [substituirRascunho, setSubstituirRascunho] = useState(false);
   const [preparando, setPreparando] = useState(false);
+  // Só o cold start (nenhum período já carregado nesta sessão) usa o loader
+  // de página cheia — trocar de período depois disso mantém o cabeçalho (com
+  // o próprio controle de período) sempre visível, só a área de dados esconde.
+  const [carregouAlgumaVez, setCarregouAlgumaVez] = useState(false);
+  useEffect(() => { if (dashboardQuery.data) setCarregouAlgumaVez(true); }, [dashboardQuery.data]);
 
   // Mesmo cuidado de Compromissos: um rascunho em andamento só é descartado
   // depois de confirmação, e "Ver rascunho atual" é a saída segura.
@@ -51,38 +53,34 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
   };
   const verRascunhoAtual = () => { setSubstituirRascunho(false); abrirFormulario(); };
 
-  useEffect(() => {
-    let vigente = true;
-    setDados(null); setCarregando(true); setErro(null);
-    obterDashboardFinanceiro(inicioPeriodo, fimPeriodo)
-      .then(d => { if (vigente) { setDados(d); setPeriodoDados(`${inicioPeriodo}/${fimPeriodo}`); } })
-      .catch(e => { if (vigente) setErro(e.message); })
-      .finally(() => { if (vigente) setCarregando(false); });
-    return () => { vigente = false; };
-  }, [inicioPeriodo, fimPeriodo, revisao]);
-  useEffect(() => {
-    let vigente = true;
-    // Falha aqui não deve poluir o erro/"Tentar novamente" do painel principal:
-    // config só alimenta o filtro de categorias e a lista de contas do modal
-    // de liquidação, ambos com um estado próprio para se degradar sem o dado.
-    obterConfiguracoesFinanceiras().then(cfg => { if (vigente) setConfig(cfg); }).catch(e => { if (vigente) setErroConfig(e instanceof Error ? e.message : String(e)); });
-    return () => { vigente = false; };
-  }, []);
-  const dadosAtuais = periodoDados === `${inicioPeriodo}/${fimPeriodo}` ? dados : null;
+  const dadosAtuais = dashboardQuery.data ?? null;
   const pendentes = (dadosAtuais?.proximosCompromissos ?? []).filter(c => ["PENDENTE", "PARCIAL"].includes(c.status))
-    .sort((a, b) => a.dataVencimento.localeCompare(b.dataVencimento) || a.seq - b.seq);
+    .sort((a, b) => a.dataVencimento.localeCompare(b.dataVencimento) || (a.seq ?? 0) - (b.seq ?? 0));
   const proximos = pendentes.slice(0, 5);
-  const recarregar = async () => { setRevisao(value => value + 1); };
+  // `refetch()` de um observer nunca rejeita sozinho — checar `isError` e
+  // relançar é o que propaga a falha pro modal de liquidação (ele fecha
+  // mesmo assim, e mostra o erro à parte — ver useSalvarOffline).
+  const recarregar = async () => {
+    const resultado = await dashboardQuery.refetch();
+    if (resultado.isError) throw resultado.error;
+  };
   // Preserva o período do topo ao abrir a lista completa — mesmo padrão de
   // navegação usado pelos links da Base financeira.
   const hrefCompromissos = `/financeiro/compromissos?${new URLSearchParams({ inicio: inicioPeriodo, fim: fimPeriodo })}`;
-  if (!periodoDados && carregando && !erro) return <PaginaCarregando label="Carregando financeiro" />;
+  const erroDashboard = dashboardQuery.isError ? (dashboardQuery.error instanceof Error ? dashboardQuery.error.message : String(dashboardQuery.error)) : null;
+  if (!dadosAtuais && !carregouAlgumaVez) {
+    if (ehOfflineSemDados(dashboardQuery)) return <PaginaFinanceira><PageHeader titulo="Visão geral financeira" descricao="Disponibilidade atual, dinheiro realizado no período e compromissos com vencimento no período selecionado." /><SemConexaoAviso /></PaginaFinanceira>;
+    if (dashboardQuery.isPending) return <PaginaCarregando label="Carregando financeiro" />;
+  }
 
   return <PaginaFinanceira>
     <PageHeader titulo="Visão geral financeira" descricao="Disponibilidade atual, dinheiro realizado no período e compromissos com vencimento no período selecionado." acao={<div className="flex flex-wrap items-end gap-2"><PeriodoFinanceiroControl inicio={inicioPeriodo} fim={fimPeriodo} onChange={(periodo) => { setInicioPeriodo(periodo.inicio); setFimPeriodo(periodo.fim); setMesCalendario(periodo.inicio.slice(0, 7)); }} />{podeLancar && <Button disabled={preparando} onClick={() => { void iniciarNovaOperacao(); }}><Plus size={16} /> Nova operação</Button>}</div>} />
     <ErrorBox erro={erro} />
-    {(carregando || (!dadosAtuais && !erro)) && <p role="status" className="mt-6">Carregando financeiro do período…</p>}
-    {erro && !dadosAtuais && <Button secondary onClick={() => setRevisao(value => value + 1)}>Tentar novamente</Button>}
+    {erroDashboard && !dadosAtuais && <ErrorBox erro={erroDashboard} />}
+    {ehOfflineSemDados(dashboardQuery) && <SemConexaoAviso mensagem="Sem conexão e sem dados salvos para este período." />}
+    {!dadosAtuais && !erroDashboard && !ehOfflineSemDados(dashboardQuery) && <p role="status" className="mt-6">Carregando financeiro do período…</p>}
+    {dashboardQuery.isFetching && dadosAtuais && <p role="status" className="mt-6">Atualizando financeiro do período…</p>}
+    {erroDashboard && !dadosAtuais && <Button secondary onClick={() => dashboardQuery.refetch()}>Tentar novamente</Button>}
     {dadosAtuais && <>
       <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <Metric label="Saldo geral" valor={brl(dadosAtuais.saldoGeral)} detalhe="Fotografia atual das contas ativas" icon={WalletCards} />
@@ -110,10 +108,10 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-5"><div className="min-w-0"><h2 className="font-serif text-xl">Contas e disponibilidade</h2><p className="mt-1 text-xs text-ink-3">Fotografia dos saldos atuais calculados pelo extrato; não é uma soma no período</p></div><button onClick={() => onNav("caixinha")} className="flex shrink-0 items-center gap-1 whitespace-nowrap text-sm font-semibold text-green-800">Ver extratos <ChevronRight size={15} /></button></div>
           <div className="divide-y divide-border">{dadosAtuais.contas.map((c) => <button key={c.id} onClick={() => onNav("caixinha")} className="flex w-full flex-wrap items-center justify-between gap-x-4 gap-y-2 px-5 py-4 text-left hover:bg-surface-2"><div className="flex min-w-0 flex-[1_1_180px] items-center gap-3"><div className="shrink-0 rounded-lg bg-[#eef1e9] p-2 text-mast">{c.tipo === "BANCO" ? <Landmark size={17} /> : <WalletCards size={17} />}</div><div className="min-w-0"><div className="break-words font-semibold text-ink">{c.nome}</div><div className="mt-0.5 break-words text-xs text-ink-3">{c.tipo}{c.instituicao ? ` · ${c.instituicao}` : ""}{!c.incluirNoSaldoGeral ? " · fora do saldo geral" : ""}</div></div></div><div className="shrink-0 text-right"><strong className="whitespace-nowrap text-base">{brl(c.saldoAtual)}</strong><div className="mt-1 text-[11px] text-ink-3">saldo atual</div></div></button>)}</div>
         </Panel>
-      <ErrorBox erro={erroConfig} />
-      <AnaliseCategorias despesas={dadosAtuais.despesasPorCategoria} categorias={config?.categorias ?? []} />
+      {configQuery.isError && <ErrorBox erro={configQuery.error instanceof Error ? configQuery.error.message : String(configQuery.error)} />}
+      <AnaliseCategorias despesas={dadosAtuais.despesasPorCategoria} categorias={configQuery.data?.categorias ?? []} />
     </>}
-    {podeLancar && liquidando && <LiquidarCompromissoModal key={liquidando.id} compromisso={liquidando} contas={config?.contas ?? []} onClose={() => setLiquidando(null)} onLiquidado={recarregar} onErro={setErro} />}
+    {podeLancar && liquidando && <LiquidarCompromissoModal key={liquidando.id} compromisso={liquidando} contas={configQuery.data?.contas ?? []} onClose={() => setLiquidando(null)} onLiquidado={recarregar} onErro={setErro} />}
     <ConfirmDialog
       open={substituirRascunho}
       title="Criar uma nova operação?"

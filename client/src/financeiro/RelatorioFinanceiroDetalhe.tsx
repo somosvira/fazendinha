@@ -1,9 +1,11 @@
-import { useEffect, useState } from "react";
-import { ArrowLeft, CircleDollarSign, Download, Hammer, Sprout, TrendingDown, WalletCards } from "lucide-react";
+import { useState } from "react";
+import { ArrowLeft, CircleDollarSign, Download, Hammer, Sprout, TrendingDown, WalletCards, WifiOff } from "lucide-react";
 import { RelatorioGerencialDocumento } from "../components/relatorio-gerencial/RelatorioGerencialDocumento";
 import { templatePadrao } from "../components/relatorio-gerencial/template";
-import { obterRelatorioFinanceiro, salvarPdfRelatorioFinanceiro, type LinhaComposicaoRelatorio, type RelatorioFinanceiroDetalhe as Detalhe, type TotalGrupoRelatorio } from "./novo-api";
-import { brl, Button, ErrorBox, Metric, PageHeader, PaginaFinanceira, PaginaSemDados, Panel, StatusPill, TabelaFinanceira, TIPO_OPERACAO, type ColunaTabela } from "./financeiro-ui";
+import { salvarPdfRelatorioFinanceiro, type LinhaComposicaoRelatorio, type TotalGrupoRelatorio } from "./novo-api";
+import { useRelatorioFinanceiro } from "./queries";
+import { useOnlineStatus } from "../lib/offline/useOnlineStatus";
+import { brl, Button, ehOfflineSemDados, ErrorBox, Metric, PageHeader, PaginaFinanceira, PaginaSemDados, Panel, StatusPill, TabelaFinanceira, TIPO_OPERACAO, type ColunaTabela } from "./financeiro-ui";
 import { dataCurta, REGIMES_RELATORIO } from "./lib/relatorios";
 import { codigoOperacao } from "../estoque/navegacao";
 
@@ -48,21 +50,18 @@ function Cabecalho({ titulo, descricao }: { titulo: string; descricao: string })
 }
 
 export function RelatorioFinanceiroDetalhe({ id, podeExportar, onVoltar }: { id: string; podeExportar: boolean; onVoltar: () => void }) {
-  const [dados, setDados] = useState<Detalhe | null>(null);
+  const online = useOnlineStatus();
+  const relatorioQuery = useRelatorioFinanceiro(id);
+  const dados = relatorioQuery.data ?? null;
   const [erro, setErro] = useState<string | null>(null);
   const [todas, setTodas] = useState(false);
-  useEffect(() => {
-    let atual = true;
-    obterRelatorioFinanceiro(id).then((d) => { if (atual) setDados(d); }).catch((e) => { if (atual) setErro(e instanceof Error ? e.message : String(e)); });
-    return () => { atual = false; };
-  }, [id]);
 
-  if (!dados) return <PaginaSemDados titulo="Relatório financeiro" descricao="Relatório emitido e preservado no histórico." label="Carregando relatório" erro={erro} />;
+  if (!dados) return <PaginaSemDados titulo="Relatório financeiro" descricao="Relatório emitido e preservado no histórico." label="Carregando relatório" erro={erro ?? (relatorioQuery.isError ? (relatorioQuery.error instanceof Error ? relatorioQuery.error.message : String(relatorioQuery.error)) : null)} semConexao={ehOfflineSemDados(relatorioQuery)} />;
   const snapshot = dados.snapshot;
   const linhas: LinhaIndexada[] = snapshot?.composicao.linhas.map((linha, indice) => ({ ...linha, indice })) ?? [];
   const periodo = `${dataCurta(dados.parametros.dataInicio)} a ${dataCurta(dados.parametros.dataFim)}`;
   const baixar = () => salvarPdfRelatorioFinanceiro(dados).catch((e) => setErro(e instanceof Error ? e.message : String(e)));
-  const acao = <div className="flex flex-wrap gap-2"><Button secondary onClick={onVoltar}><ArrowLeft size={16} /> Relatórios</Button>{podeExportar && dados.status === "CONCLUIDO" && <Button onClick={() => void baixar()}><Download size={16} /> Baixar PDF</Button>}</div>;
+  const acao = <div className="flex flex-wrap items-center gap-2"><Button secondary onClick={onVoltar}><ArrowLeft size={16} /> Relatórios</Button>{podeExportar && dados.status === "CONCLUIDO" && <Button disabled={!online} title={online ? undefined : "Baixar PDF precisa de conexão"} onClick={() => void baixar()}>{online ? <Download size={16} /> : <WifiOff size={16} />} Baixar PDF</Button>}{!online && <span className="text-xs text-ink-3">Sem conexão — baixar fica disponível ao reconectar.</span>}</div>;
 
   return <PaginaFinanceira>
     <PageHeader titulo={dados.nome} descricao={`${dados.propriedade} · ${periodo} · gerado em ${dataHora(dados.geradoEm)} por ${dados.autor}`} acao={acao} />
