@@ -3,9 +3,9 @@
 Motor genérico de leitura/escrita offline (TanStack Query + IndexedDB + fila
 de mutação própria), destilado da primeira rodada do epic offline
 (`epic/offline-first`, nunca mergeado — divergiu demais do `main` depois do
-rebuild do Financeiro e da unificação Rebanho/Corte). Esta fundação porta só
-o motor (`client/src/lib/offline/`), sem nenhuma cobertura de feature. A
-próxima fatia a usar isso é o Financeiro.
+rebuild do Financeiro e da unificação Rebanho/Corte). O motor vive em
+`client/src/lib/offline/`. O Financeiro é a primeira fatia coberta (seção
+própria abaixo); os demais módulos ainda não têm suporte offline.
 
 Este doc é a versão curta: convenções obrigatórias + armadilhas já batidas.
 Se uma decisão daqui precisar de mais contexto histórico (por que foi feita
@@ -38,9 +38,9 @@ narrativa de mudança em comentário de código nem aqui.
    ninguém disparar uma ação nova por cima do que ainda está sincronizando.
 6. **Trava de área sem suporte** — `App.tsx` define `TABS_OFFLINE`
    (`Set<Tab>`) + `useOnlineStatus()`. Fora dessa lista, sem rede, a aba
-   renderiza `OfflineGatedTab` em vez da tela real. **Hoje o set está vazio**
-   — a fundação sozinha não cobre feature nenhuma; cada fatia nova precisa
-   adicionar suas próprias abas aqui.
+   renderiza `OfflineGatedTab` em vez da tela real. Cada fatia nova precisa
+   adicionar suas próprias abas aqui — hoje só o Financeiro está no set (ver
+   seção abaixo).
 7. **App shell offline** — `vite-plugin-pwa` (`vite.config.ts`,
    `generateSW`) faz precache do HTML/JS/CSS, senão abrir o app offline sem
    visita prévia (ou dar reload numa aba deep-linked) falha com
@@ -70,12 +70,12 @@ Ao dar suporte offline a uma feature nova, nessa ordem:
    também lê. Um hook hand-rolled nunca persiste, mesmo depois de rodar
    online por meses.
 2. **Pré-validar antes de enfileirar**, reusando o schema Zod do server via
-   `packages/shared` (quando esse workspace existir de novo neste repo — ver
-   nota abaixo) — nunca reescrever a regra no client. Reduz a classe de erro
-   mais comum que contamina a fila; não elimina (erro de regra de negócio
-   que depende de estado do servidor, tipo período fechado, nunca dá pra
-   prevenir 100% no client — é o mundo mudando entre o enfileiramento e o
-   envio, não falha de validação).
+   `packages/shared` (`@rionovo/shared` — ver nota abaixo) — nunca reescrever
+   a regra no client. Reduz a classe de erro mais comum que contamina a
+   fila; não elimina (erro de regra de negócio que depende de estado do
+   servidor, tipo período fechado, nunca dá pra prevenir 100% no client — é
+   o mundo mudando entre o enfileiramento e o envio, não falha de
+   validação).
 3. **Cobrir toda operação que a feature já tem em algum lugar do app**
    (create **e** editar **e** excluir), não só create — checar antes de
    assumir que "é o mesmo escopo" de outra feature parecida. Deixar um botão
@@ -187,11 +187,47 @@ está nas convenções acima):
   teste: continua igualmente verdadeiro e útil sem nenhum contexto de
   quando foi escrito?
 
+## Financeiro
+
+Primeira fatia coberta pela fundação, na aba `financeiro` (e `lancar`,
+`gastos`, `caixinha`, `relatorio` — `TABS_OFFLINE` em `App.tsx`).
+
+**Funciona offline:**
+
+- Leituras em cache: visão geral, operações e detalhe, compromissos, contas
+  e extratos, lista e detalhe de relatórios emitidos.
+- Lançar operação — todos os tipos do formulário, à vista, a prazo ou
+  parcial, com as parcelas calculadas no aparelho via `@rionovo/shared`.
+- Ajuste de estoque — usa o saldo em cache como `saldoEsperado`; o servidor
+  recusa com 409 se o estoque mudou entre o enfileiramento e o envio.
+- Liquidar compromisso, transferência entre contas, rascunho de operação
+  salvo no aparelho.
+- Ids são gerados no cliente; o servidor é idempotente por id (ver "Decisão
+  de id" acima). Enquanto há envio pendente, saldos aparecem como "saldo
+  estimado".
+
+**Exige conexão:** cancelar/estornar operação ou transação, criar correção,
+anexar documentos, cadastros (categoria, centro de custo, parceiro, produto,
+conta), emitir relatório ou baixar PDF, fechar período.
+
+**Onde está:** `client/src/financeiro/queries.ts` (leituras e query keys),
+`mutations.ts` (escritas), `rascunhoLocal.ts`; `packages/shared` (schemas,
+parcelas, `preverEfeitosOperacao`, usado também pelo servidor).
+
+**Limitações conhecidas:**
+
+- Um envio recusado pelo servidor só fica registrado no IndexedDB
+  (`rionovo-fila-erros`) — sem tela própria — se a aba for recarregada antes
+  do aviso aparecer.
+- O rascunho salvo no aparelho só sobe para o servidor quando o formulário é
+  aberto online de novo.
+- O ajuste de estoque offline exige ter aberto a tela de ajuste online antes
+  (é o que popula o saldo em cache que o ajuste usa).
+
 ## Nota: `packages/shared`
 
-O epic original moveu schema/cálculo puro compartilhado (client+server) pra
-um workspace `packages/shared` (`@rionovo/shared`), principalmente pra
-pré-validação (convenção 2 acima). Esse workspace **não existe hoje neste
-branch** — não foi portado porque era acoplado às features antigas
-(Rebanho/Corte). Recriar quando a fatia do Financeiro precisar reusar um
-schema Zod do server no client; não é pré-requisito da fundação.
+Workspace `packages/shared` (`@rionovo/shared`), usado por client e server:
+schema/cálculo puro compartilhado — hoje inclui os schemas de operação, o
+cálculo de parcelas e `preverEfeitosOperacao`. Pré-validar no client (ver
+convenção 2) sempre com um desses, nunca reescrevendo a regra à parte. Novos
+módulos que precisarem reusar um schema Zod do server no client entram aqui.
