@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { randomUUID } from "node:crypto";
 import pg from "pg";
 import type { PrismaClient } from "@prisma/client";
 import { SEM_VINCULO } from "../../src/lib/ids.js";
@@ -560,5 +561,168 @@ describe("correções da revisão", () => {
     await ops.estornarOperacao(segunda.id, "Compra lançada em duplicidade", { propriedadeId: pid, usuarioId: userId });
     expect(await linha()).toMatchObject({ saldo: 5, custoMedio: 5, valor: 25 });
     await snapshot("custo médio após estorno");
+  });
+});
+
+// Segura as inserções na tabela até as duas chamadas chegarem à barreira.
+async function emCorrida<T>(tabela: string, chamadas: () => Promise<T>[]) {
+  const barrier = new pg.Client({ connectionString: process.env.DATABASE_URL });
+  await barrier.connect();
+  const key = 2492027;
+  let running: Promise<PromiseSettledResult<T>[]> | undefined;
+  try {
+    await barrier.query("SELECT pg_advisory_lock($1)", [key]);
+    await db.$executeRawUnsafe(`CREATE FUNCTION qa249_corrida() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN PERFORM pg_advisory_xact_lock(${key}); RETURN NEW; END $$`);
+    await db.$executeRawUnsafe(`CREATE TRIGGER qa249_corrida BEFORE INSERT ON "${tabela}" FOR EACH ROW EXECUTE FUNCTION qa249_corrida()`);
+    running = Promise.allSettled(chamadas());
+    let waiting = 0;
+    for (let attempt = 0; attempt < 60 && waiting < 2; attempt++) {
+      const result = await barrier.query("SELECT count(*)::int AS count FROM pg_locks WHERE locktype = 'advisory' AND objid = $1 AND NOT granted", [key]);
+      waiting = result.rows[0].count;
+      if (waiting < 2) await new Promise(resolve => setTimeout(resolve, 25));
+    }
+    expect(waiting, "os dois envios devem alcançar a barreira").toBe(2);
+    await barrier.query("SELECT pg_advisory_unlock($1)", [key]);
+    return await running;
+  } finally {
+    await barrier.query("SELECT pg_advisory_unlock_all()");
+    await running;
+    await db.$executeRawUnsafe(`DROP TRIGGER IF EXISTS qa249_corrida ON "${tabela}"`);
+    await db.$executeRawUnsafe(`DROP FUNCTION IF EXISTS qa249_corrida()`);
+    await barrier.end();
+  }
+}
+
+describe("ids gerados pelo cliente", () => {
+  const contagens = async () => ({
+    operacoes: await db.operacao.count({ where: { propriedadeId: pid } }),
+    compromissos: await db.compromissoFinanceiro.count({ where: { operacao: { propriedadeId: pid } } }),
+    transacoes: await db.transacaoFinanceira.count({ where: { propriedadeId: pid } }),
+    liquidacoes: await db.liquidacao.count({ where: { compromisso: { operacao: { propriedadeId: pid } } } }),
+    movimentosEstoque: await db.movimentoEstoque.count({ where: { propriedadeId: pid } }),
+    auditoria: await db.auditoriaFinanceira.count({ where: { usuarioId: userId } }),
+    saldoConta: Number((await accounts.listarContas(pid, true))[0].saldoAtual),
+  });
+  const aPrazoComIds = (id: string, parcelaId: string) => {
+    const base = input("A_PRAZO");
+    return { ...base, id, financeiro: { condicao: "A_PRAZO" as const, parcelas: [{ id: parcelaId, valor: 100, dataVencimento: new Date("2026-10-01") }] } };
+  };
+
+  it("operação com id e parcela com id: reenvio devolve a mesma e a parcela é liquidável pelo id", async () => {
+    const id = randomUUID(), parcelaId = randomUUID();
+    const criada = await ops.criarOperacao(aPrazoComIds(id, parcelaId));
+    expect(criada.id).toBe(id);
+    expect(criada.compromissos.map(c => c.id)).toEqual([parcelaId]);
+    const antes = await contagens();
+    const reenvio = await ops.criarOperacao(aPrazoComIds(id, parcelaId));
+    expect(reenvio).toEqual(criada);
+    expect(await contagens()).toEqual(antes);
+    await ops.liquidarCompromisso(parcelaId, { data, valor: 100, contaId: accountId, usuarioId: userId });
+    expect((await contagens()).saldoConta).toBe(900);
+  });
+
+  it("à vista reenviada não debita a conta de novo", async () => {
+    const id = randomUUID();
+    const criada = await ops.criarOperacao({ ...input("A_VISTA"), id });
+    const antes = await contagens();
+    expect(antes.saldoConta).toBe(900);
+    expect(await ops.criarOperacao({ ...input("A_VISTA"), id })).toEqual(criada);
+    expect(await contagens()).toEqual(antes);
+  });
+
+  it("sem id, dois envios iguais continuam gerando duas operações", async () => {
+    await ops.criarOperacao(input("A_VISTA")); await ops.criarOperacao(input("A_VISTA"));
+    const estado = await contagens();
+    expect(estado.operacoes).toBe(2); expect(estado.saldoConta).toBe(800);
+  });
+
+  it("id de outro tipo ou de outra propriedade é conflito sem efeitos", async () => {
+    const id = randomUUID();
+    await ops.criarOperacao({ ...input("A_VISTA"), id });
+    const antes = await contagens();
+    await expect(ops.criarOperacao({ ...input("A_VISTA", "SERVICO"), id })).rejects.toMatchObject({ code: "CONFLITO" });
+    const outra = await db.propriedade.create({ data: { nome: `Outra id ${serial}` } });
+    const contaOutra = (await db.contaFinanceira.create({ data: { nome: "Conta outra", tipo: "BANCO", propriedadeId: outra.id, dataSaldoAbertura: data } })).id;
+    await expect(ops.criarOperacao({ ...input("A_VISTA"), id, propriedadeId: outra.id, financeiro: { condicao: "A_VISTA", contaId: contaOutra } })).rejects.toMatchObject({ code: "CONFLITO" });
+    await expect(ops.transferir({ id, contaOrigemId: accountId, contaDestinoId: contaOutra, valor: 10, data, propriedadeId: pid })).rejects.toMatchObject({ code: "CONFLITO" });
+    await expect(stock.ajustarContagem({ id, propriedadeId: pid, produtoId: productId, saldoEsperado: 10, quantidadeContada: 8, observacao: "Contagem conferida", usuarioId: userId })).rejects.toMatchObject({ code: "CONFLITO" });
+    expect(await contagens()).toEqual(antes);
+  });
+
+  it("id de parcela já usado por outro compromisso é conflito", async () => {
+    const parcelaId = randomUUID();
+    await ops.criarOperacao(aPrazoComIds(randomUUID(), parcelaId));
+    const antes = await contagens();
+    await expect(ops.criarOperacao(aPrazoComIds(randomUUID(), parcelaId))).rejects.toMatchObject({ code: "CONFLITO" });
+    expect(await contagens()).toEqual(antes);
+  });
+
+  it("dois envios concorrentes da mesma operação gravam uma só", async () => {
+    const id = randomUUID();
+    const resultados = await emCorrida("Operacao", () => [ops.criarOperacao({ ...input("A_VISTA"), id }), ops.criarOperacao({ ...input("A_VISTA"), id })]);
+    evidence.push({ caso: serial, corridaOperacao: resultados.map(r => r.status) });
+    expect(resultados.map(r => r.status)).toEqual(["fulfilled", "fulfilled"]);
+    const [a, b] = resultados.map(r => (r as PromiseFulfilledResult<Awaited<ReturnType<typeof ops.criarOperacao>>>).value);
+    expect(a.id).toBe(id); expect(b).toEqual(a);
+    const estado = await contagens();
+    expect(estado.operacoes).toBe(1); expect(estado.transacoes).toBe(1); expect(estado.saldoConta).toBe(900);
+  });
+
+  it("liquidação com id: reenvio devolve a mesma transação; id de outro compromisso é conflito", async () => {
+    const op = await ops.criarOperacao(input());
+    const outra = await ops.criarOperacao(input());
+    const transacaoId = randomUUID();
+    const liquidar = (compromissoId: string) => ops.liquidarCompromisso(compromissoId, { transacaoId, data, valor: 40, contaId: accountId, usuarioId: userId });
+    const primeira = await liquidar(op.compromissos[0].id);
+    expect(primeira.id).toBe(transacaoId);
+    const antes = await contagens();
+    expect(antes.saldoConta).toBe(960);
+    expect(await liquidar(op.compromissos[0].id)).toEqual(primeira);
+    await expect(liquidar(outra.compromissos[0].id)).rejects.toMatchObject({ code: "CONFLITO" });
+    expect(await contagens()).toEqual(antes);
+  });
+
+  it("duas liquidações concorrentes com o mesmo id pagam uma vez", async () => {
+    const op = await ops.criarOperacao(input());
+    const transacaoId = randomUUID();
+    const liquidar = () => ops.liquidarCompromisso(op.compromissos[0].id, { transacaoId, data, valor: 60, contaId: accountId, usuarioId: userId });
+    const resultados = await emCorrida("TransacaoFinanceira", () => [liquidar(), liquidar()]);
+    evidence.push({ caso: serial, corridaLiquidacao: resultados.map(r => r.status) });
+    expect(resultados.map(r => r.status)).toEqual(["fulfilled", "fulfilled"]);
+    const estado = await contagens();
+    expect(estado.liquidacoes).toBe(1); expect(estado.saldoConta).toBe(940);
+  });
+
+  it("transferência com id: reenvio devolve a mesma transação e não move saldo de novo", async () => {
+    const destino = (await db.contaFinanceira.create({ data: { nome: "Caixa QA", tipo: "CAIXA", propriedadeId: pid, dataSaldoAbertura: data } })).id;
+    const id = randomUUID();
+    const transferir = () => ops.transferir({ id, contaOrigemId: accountId, contaDestinoId: destino, valor: 150, data, propriedadeId: pid, usuarioId: userId });
+    const primeira = await transferir();
+    expect(primeira.operacaoId).toBe(id);
+    const antes = await contagens();
+    expect(await transferir()).toEqual(primeira);
+    expect(await contagens()).toEqual(antes);
+    const saldos = await accounts.listarContas(pid, true);
+    expect(saldos.map(c => Number(c.saldoAtual)).sort((x, y) => x - y)).toEqual([150, 850]);
+  });
+
+  it("ajuste de contagem com id: reenvio com saldo já alterado devolve o mesmo ajuste", async () => {
+    await ops.criarOperacao(input("SEM_EFEITO_FINANCEIRO", "INVENTARIO_INICIAL"));
+    const id = randomUUID();
+    const ajustar = () => stock.ajustarContagem({ id, propriedadeId: pid, produtoId: productId, saldoEsperado: 10, quantidadeContada: 7, observacao: "Contagem conferida", usuarioId: userId });
+    const primeira = await ajustar();
+    expect(primeira).toMatchObject({ operacaoId: id, saldoAnterior: 10, quantidadeContada: 7, diferenca: -3 });
+    const antes = await contagens();
+    expect(await ajustar()).toEqual(primeira);
+    expect(await contagens()).toEqual(antes);
+    expect((await stock.listarSaldos({ propriedadeId: pid })).find(p => p.produtoId === productId)?.saldo).toBe(7);
+  });
+
+  it("rascunho confirmado usa o id informado na operação", async () => {
+    const id = randomUUID();
+    const draft = await drafts.salvarRascunho({ propriedadeId: pid, usuarioId: userId, dados: { operacao: JSON.parse(JSON.stringify({ ...input("A_VISTA"), id })) } });
+    const op = await drafts.confirmarRascunho(pid, userId, draft.versao);
+    expect(op.id).toBe(id);
+    expect((await contagens()).saldoConta).toBe(900);
   });
 });

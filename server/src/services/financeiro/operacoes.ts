@@ -1,4 +1,4 @@
-import { Prisma, type DirecaoMovimentoConta, type TipoCompromisso, type TipoTransacaoFinanceira } from "@prisma/client";
+import { Prisma, type DirecaoMovimentoConta, type TipoCompromisso, type TipoOperacaoFinanceira, type TipoTransacaoFinanceira } from "@prisma/client";
 import { prisma } from "../../db.js";
 import { auditar, dinheiro, exigirContaAtiva, exigirParceiroAtivo, exigirPeriodoAberto, exigirPositivo, FinanceiroError } from "./regras.js";
 import { gerarParcelasFinanceiras, totalItensFinanceiros } from "./parcelas.calc.js";
@@ -42,7 +42,7 @@ function direcaoTransacao(tipo: TipoTransacaoFinanceira): DirecaoMovimentoConta 
 async function criarTransacaoComMovimento(
   tx: Prisma.TransactionClient,
   input: {
-    tipo: TipoTransacaoFinanceira; data: Date; valor: Prisma.Decimal.Value; descricao?: string; operacaoId?: string;
+    id?: string; tipo: TipoTransacaoFinanceira; data: Date; valor: Prisma.Decimal.Value; descricao?: string; operacaoId?: string;
     parceiroId?: string; propriedadeId: number; contaId: string; formaPagamento?: z.infer<typeof transacaoAvulsaSchema>["formaPagamento"];
     usuarioId?: number | null;
   },
@@ -52,6 +52,7 @@ async function criarTransacaoComMovimento(
   await exigirContaAtiva(tx, input.contaId, input.propriedadeId);
   return tx.transacaoFinanceira.create({
     data: {
+      id: input.id,
       tipo: input.tipo,
       data: input.data,
       valorTotal: valor,
@@ -76,7 +77,46 @@ async function resolverCentros(tx: Prisma.TransactionClient, ids: string[]) {
   return new Map(centros.map((centro) => [centro.id, centro.nome]));
 }
 
+const includeOperacaoCriada = {
+  itens: true, compromissos: true, transacoes: { include: { movimentos: true } }, movimentosEstoque: true,
+  documentos: { select: documentoPublico }, parceiro: true,
+} satisfies Prisma.OperacaoInclude;
+
+/** Reenvio com um id que outra requisição acabou de gravar: devolve o registro já criado. */
+async function comIdDoCliente<T>(id: string | undefined, criar: () => Promise<T>, existente: () => Promise<T | null>): Promise<T> {
+  try {
+    return await criar();
+  } catch (erro) {
+    if (!id) throw erro;
+    const registro = await existente();
+    if (registro) return registro;
+    throw erro;
+  }
+}
+
+async function operacaoExistente(db: Prisma.TransactionClient, id: string | undefined, propriedadeId: number, tipo: TipoOperacaoFinanceira) {
+  if (!id) return false;
+  const operacao = await db.operacao.findUnique({ where: { id }, select: { propriedadeId: true, tipo: true } });
+  if (!operacao) return false;
+  if (operacao.propriedadeId !== propriedadeId || operacao.tipo !== tipo) {
+    throw new FinanceiroError("CONFLITO", "Este identificador já pertence a outra operação");
+  }
+  return true;
+}
+
+async function operacaoCriadaExistente(db: Prisma.TransactionClient, input: OperacaoInput) {
+  if (!await operacaoExistente(db, input.id, input.propriedadeId, input.tipo)) return null;
+  return db.operacao.findUniqueOrThrow({ where: { id: input.id }, include: includeOperacaoCriada });
+}
+
 async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInput) {
+    const existente = await operacaoCriadaExistente(tx, input);
+    if (existente) return existente;
+    const parcelasInformadas = input.financeiro.condicao === "A_PRAZO" || input.financeiro.condicao === "PARCIAL" ? input.financeiro.parcelas : [];
+    const idsParcelas = parcelasInformadas.flatMap((parcela) => parcela.id ? [parcela.id] : []);
+    if (idsParcelas.length && await tx.compromissoFinanceiro.count({ where: { id: { in: idsParcelas } } })) {
+      throw new FinanceiroError("CONFLITO", "Este identificador de parcela já pertence a outro compromisso");
+    }
     await exigirPeriodoAberto(tx, input.propriedadeId, input.data);
     if (input.parceiroId) await exigirParceiroAtivo(tx, input.parceiroId, input.tipo);
     if (input.corrigeOperacaoId) {
@@ -177,6 +217,7 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
 
     const operacao = await tx.operacao.create({
       data: {
+        id: input.id,
         tipo: input.tipo,
         status: "CONFIRMADA",
         data: input.data,
@@ -222,7 +263,7 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
       ? input.financeiro.parcelas : [];
     for (const [indice, parcela] of parcelas.entries()) {
       await tx.compromissoFinanceiro.create({ data: {
-        operacaoId: operacao.id, tipo: tipoCompromisso(input.tipo), valorOriginal: dinheiro(parcela.valor),
+        id: parcela.id, operacaoId: operacao.id, tipo: tipoCompromisso(input.tipo), valorOriginal: dinheiro(parcela.valor),
         dataVencimento: parcela.dataVencimento, numeroParcela: indice + 1, totalParcelas: parcelas.length,
         parceiroId: input.parceiroId,
       } });
@@ -238,10 +279,7 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
     }
 
     await auditar(tx, { entidade: "Operacao", entidadeId: operacao.id, acao: "CONFIRMADA", usuarioId: input.usuarioId, depois: operacao });
-    return tx.operacao.findUniqueOrThrow({
-      where: { id: operacao.id },
-      include: { itens: true, compromissos: true, transacoes: { include: { movimentos: true } }, movimentosEstoque: true, documentos: { select: documentoPublico }, parceiro: true },
-    });
+    return tx.operacao.findUniqueOrThrow({ where: { id: operacao.id }, include: includeOperacaoCriada });
 }
 
 export function simularParcelas(input: SimulacaoParcelasInput) {
@@ -266,7 +304,9 @@ export function confirmarRascunhoOperacao(tx: Prisma.TransactionClient, input: O
 }
 
 export async function criarOperacao(input: OperacaoInput) {
-  return prisma.$transaction((tx) => criarOperacaoTx(tx, input));
+  return comIdDoCliente(input.id,
+    () => prisma.$transaction((tx) => criarOperacaoTx(tx, input)),
+    () => operacaoCriadaExistente(prisma, input));
 }
 
 async function bloquearOperacao(tx: Prisma.TransactionClient, id: string, propriedadeId?: number) {
@@ -292,13 +332,28 @@ async function compromissoParaLiquidar(tx: Prisma.TransactionClient, id: string,
   return { compromisso, restante };
 }
 
+async function liquidacaoExistente(db: Prisma.TransactionClient, compromissoId: string, transacaoId: string | undefined) {
+  if (!transacaoId) return null;
+  const transacao = await db.transacaoFinanceira.findUnique({
+    where: { id: transacaoId }, include: { movimentos: true, liquidacoes: { select: { compromissoId: true } } },
+  });
+  if (!transacao) return null;
+  const { liquidacoes, ...resto } = transacao;
+  if (!liquidacoes.some((liquidacao) => liquidacao.compromissoId === compromissoId)) {
+    throw new FinanceiroError("CONFLITO", "Este identificador já pertence a outra transação");
+  }
+  return resto;
+}
+
 export async function liquidarCompromisso(compromissoId: string, input: LiquidacaoInput) {
-  return prisma.$transaction(async (tx) => {
+  return comIdDoCliente(input.transacaoId, () => prisma.$transaction(async (tx) => {
+    const existente = await liquidacaoExistente(tx, compromissoId, input.transacaoId);
+    if (existente) return existente;
     const valor = exigirPositivo(input.valor);
     const { compromisso } = await compromissoParaLiquidar(tx, compromissoId, valor);
     const tipo = compromisso.tipo === "PAGAR" ? "PAGAMENTO" : "RECEBIMENTO";
     const transacao = await criarTransacaoComMovimento(tx, {
-      tipo, data: input.data, valor, descricao: input.descricao ?? `Liquidação do compromisso #${compromisso.seq}`,
+      id: input.transacaoId, tipo, data: input.data, valor, descricao: input.descricao ?? `Liquidação do compromisso #${compromisso.seq}`,
       operacaoId: compromisso.operacaoId, parceiroId: compromisso.parceiroId ?? undefined,
       propriedadeId: compromisso.operacao.propriedadeId, contaId: input.contaId,
       formaPagamento: input.formaPagamento, usuarioId: input.usuarioId,
@@ -312,18 +367,25 @@ export async function liquidarCompromisso(compromissoId: string, input: Liquidac
     await tx.compromissoFinanceiro.update({ where: { id: compromissoId }, data: { status: novoRestante.isZero() ? "LIQUIDADO" : "PARCIAL" } });
     await auditar(tx, { entidade: "CompromissoFinanceiro", entidadeId: compromissoId, acao: "LIQUIDADO", usuarioId: input.usuarioId, depois: { transacaoId: transacao.id, valor } });
     return transacao;
-  });
+  }), () => liquidacaoExistente(prisma, compromissoId, input.transacaoId));
+}
+
+async function transferenciaExistente(db: Prisma.TransactionClient, input: TransferenciaInput) {
+  if (!await operacaoExistente(db, input.id, input.propriedadeId, "TRANSFERENCIA_FINANCEIRA")) return null;
+  return db.transacaoFinanceira.findFirstOrThrow({ where: { operacaoId: input.id, tipo: "TRANSFERENCIA" }, include: { movimentos: true }, orderBy: { seq: "asc" } });
 }
 
 export async function transferir(input: TransferenciaInput) {
   if (input.contaOrigemId === input.contaDestinoId) throw new FinanceiroError("VALIDACAO", "As contas de origem e destino devem ser diferentes");
-  return prisma.$transaction(async (tx) => {
+  return comIdDoCliente(input.id, () => prisma.$transaction(async (tx) => {
+    const existente = await transferenciaExistente(tx, input);
+    if (existente) return existente;
     await exigirPeriodoAberto(tx, input.propriedadeId, input.data);
     await exigirContaAtiva(tx, input.contaOrigemId, input.propriedadeId);
     await exigirContaAtiva(tx, input.contaDestinoId, input.propriedadeId);
     const valor = exigirPositivo(input.valor);
     const operacao = await tx.operacao.create({ data: {
-      tipo: "TRANSFERENCIA_FINANCEIRA", status: "CONFIRMADA", data: input.data, valorTotal: valor,
+      id: input.id, tipo: "TRANSFERENCIA_FINANCEIRA", status: "CONFIRMADA", data: input.data, valorTotal: valor,
       descricao: input.descricao ?? "Transferência entre contas", propriedadeId: input.propriedadeId,
       criadoPorId: input.usuarioId && input.usuarioId > 0 ? input.usuarioId : null,
     } });
@@ -338,7 +400,7 @@ export async function transferir(input: TransferenciaInput) {
     }, include: { movimentos: true } });
     await auditar(tx, { entidade: "TransacaoFinanceira", entidadeId: transacao.id, acao: "TRANSFERENCIA_CONFIRMADA", usuarioId: input.usuarioId, depois: transacao });
     return transacao;
-  });
+  }), () => transferenciaExistente(prisma, input));
 }
 
 export async function criarTransacaoAvulsa(input: TransacaoAvulsaInput) {

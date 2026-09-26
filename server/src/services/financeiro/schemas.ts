@@ -136,6 +136,7 @@ export const itemOperacaoSchema = z.object({
 }).refine((item) => item.valorUnitario !== undefined || item.valorTotal !== undefined, { message: "Informe o valor unitário ou total do item", path: ["valorUnitario"] });
 
 const parcelaSchema = z.object({
+  id: z.string().uuid().optional(),
   valor: z.coerce.number({ invalid_type_error: "Informe um valor numérico válido para a parcela" }).positive("Nenhuma parcela pode ficar sem valor. Informe um valor maior que zero ou remova a parcela."),
   dataVencimento: z.coerce.date({ errorMap: () => ({ message: "Informe a data de vencimento de todas as parcelas" }) }),
 });
@@ -152,6 +153,7 @@ export const simulacaoParcelasSchema = z.object({
 });
 
 export const operacaoSchema = z.object({
+  id: z.string().uuid().optional(),
   classificacao: z.enum(["CUSTEIO", "INVESTIMENTO"]).nullable().optional(),
   tipo: z.enum([
     "COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO", "SERVICO", "VENDA", "APORTE", "RETIRADA",
@@ -195,9 +197,14 @@ export const operacaoSchema = z.object({
   if (tiposSomenteFisicos.has(input.tipo) && input.financeiro.condicao !== "SEM_EFEITO_FINANCEIRO") {
     ctx.addIssue({ code: "custom", path: ["financeiro", "condicao"], message: "Este tipo de operação não gera movimentação financeira" });
   }
+  if (input.financeiro.condicao === "A_PRAZO" || input.financeiro.condicao === "PARCIAL") {
+    const ids = input.financeiro.parcelas.flatMap((parcela) => parcela.id ? [parcela.id] : []);
+    if (new Set(ids).size !== ids.length) ctx.addIssue({ code: "custom", path: ["financeiro", "parcelas"], message: "Há parcelas com o mesmo identificador" });
+  }
 });
 
 export const liquidacaoSchema = z.object({
+  transacaoId: z.string().uuid().optional(),
   contaId: z.string().uuid(),
   valor: valorPositivo,
   data: dataIso,
@@ -206,6 +213,7 @@ export const liquidacaoSchema = z.object({
 });
 
 export const transferenciaSchema = z.object({
+  id: z.string().uuid().optional(),
   contaOrigemId: z.string().uuid(),
   contaDestinoId: z.string().uuid(),
   valor: valorPositivo,

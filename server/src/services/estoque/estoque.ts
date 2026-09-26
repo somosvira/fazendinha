@@ -45,6 +45,7 @@ export const movimentoSchema = z
 export type MovimentoInput = z.infer<typeof movimentoSchema>;
 
 export const ajusteContagemSchema = z.object({
+  id: z.string().uuid().optional(),
   produtoId: z.string().uuid(),
   quantidadeContada: z.number().finite().min(0).max(MAX_QTD).multipleOf(0.001),
   saldoEsperado: z.number().finite().min(-MAX_QTD).max(MAX_QTD).multipleOf(0.001),
@@ -333,7 +334,7 @@ export async function registrarMovimento(input: MovimentoInput & { usuarioId?: n
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 }
 
-async function registrarMovimentoTx(tx: Prisma.TransactionClient, input: MovimentoInput, propriedadeId: number, usuarioId?: number | null) {
+async function registrarMovimentoTx(tx: Prisma.TransactionClient, input: MovimentoInput, propriedadeId: number, usuarioId?: number | null, operacaoId?: string) {
     const produto = await tx.produto.findUnique({ where: { id: input.produtoId }, include: { centrosCusto: { select: { centroCustoId: true } } } });
     if (!produto) throw new EstoqueError("NAO_ENCONTRADO", "produto não encontrado");
     if (input.centroCustoId != null && !(await tx.centroCusto.findFirst({ where: { id: input.centroCustoId, ativo: true } }))) throw new EstoqueError("NAO_ENCONTRADO", "centro de custo não encontrado");
@@ -355,7 +356,7 @@ async function registrarMovimentoTx(tx: Prisma.TransactionClient, input: Movimen
       throw new EstoqueError("VALIDACAO", "Este produto não tem estoque neste sítio — registre uma compra ou um inventário antes de dar baixa");
     }
     const operacao = await tx.operacao.create({ data: {
-      tipo: "AJUSTE_ESTOQUE", status: "CONFIRMADA", data, descricao: input.observacao,
+      id: operacaoId, tipo: "AJUSTE_ESTOQUE", status: "CONFIRMADA", data, descricao: input.observacao,
       valorTotal: valorTotal.abs(), propriedadeId, criadoPorId: usuarioId ?? null,
       itens: { create: { ordem: 1, produtoId: produto.id, descricao: `Ajuste: ${produto.nome}`, quantidade: new Prisma.Decimal(input.quantidade).abs(), unidade: rotuloUnidade(produto.unidade), valorUnitario: custo, valorTotal: valorTotal.abs(), estocavel: true } },
     }, include: { itens: true } });
@@ -380,11 +381,26 @@ async function registrarMovimentoTx(tx: Prisma.TransactionClient, input: Movimen
     return { id: m.id, operacaoId: operacao.id };
 }
 
+async function ajusteExistente(db: Prisma.TransactionClient, id: string | undefined, propriedadeId: number) {
+  if (!id) return null;
+  const operacao = await db.operacao.findUnique({ where: { id }, select: { tipo: true, propriedadeId: true } });
+  if (!operacao) return null;
+  const auditoria = operacao.tipo === "AJUSTE_ESTOQUE" && operacao.propriedadeId === propriedadeId
+    ? await db.auditoriaFinanceira.findFirst({ where: { entidade: "Operacao", entidadeId: id, acao: "AJUSTE_CONTAGEM" } })
+    : null;
+  if (!auditoria) throw new EstoqueError("CONFLITO", "Este identificador já pertence a outra operação");
+  const antes = auditoria.estadoAnterior as { quantidade: number };
+  const depois = auditoria.estadoPosterior as { quantidade: number; diferenca: number; movimentoId: string };
+  return { id: depois.movimentoId, operacaoId: id, saldoAnterior: antes.quantidade, quantidadeContada: depois.quantidade, diferenca: depois.diferenca };
+}
+
 export async function ajustarContagem(input: z.infer<typeof ajusteContagemSchema> & { usuarioId?: number | null }) {
   const propriedadeId = input.propriedadeId ?? await escopoPadraoLeitura();
   if (propriedadeId == null) throw new EstoqueError("VALIDACAO", "Selecione uma fazenda para ajustar o estoque.");
   try {
     return await prisma.$transaction(async tx => {
+      const existente = await ajusteExistente(tx, input.id, propriedadeId);
+      if (existente) return existente;
       const produto = await tx.produto.findFirst({ where: { id: input.produtoId, ativo: true } });
       if (!produto) throw new EstoqueError("NAO_ENCONTRADO", "Produto ativo não encontrado");
       // Mesmo escopo de sítio de listarSaldos (sem propriedade = principal), senão o saldo esperado da tela nunca casaria.
@@ -394,13 +410,15 @@ export async function ajustarContagem(input: z.infer<typeof ajusteContagemSchema
       const delta = new Prisma.Decimal(input.quantidadeContada).minus(saldo);
       if (delta.isZero()) throw new EstoqueError("VALIDACAO", "A quantidade contada já corresponde ao estoque. Nenhum ajuste é necessário.");
       if (delta.abs().greaterThan(MAX_QTD)) throw new EstoqueError("VALIDACAO", "A diferença excede o limite permitido para um ajuste.");
-      const resultado = await registrarMovimentoTx(tx, { produtoId: input.produtoId, tipo: "AJUSTE", quantidade: delta.toNumber(), data: iso(new Date()), observacao: input.observacao, centroCustoId: input.centroCustoId }, propriedadeId, input.usuarioId);
+      const resultado = await registrarMovimentoTx(tx, { produtoId: input.produtoId, tipo: "AJUSTE", quantidade: delta.toNumber(), data: iso(new Date()), observacao: input.observacao, centroCustoId: input.centroCustoId }, propriedadeId, input.usuarioId, input.id);
       await auditar(tx, { entidade: "Operacao", entidadeId: resultado.operacaoId, acao: "AJUSTE_CONTAGEM", usuarioId: input.usuarioId, motivo: input.observacao,
         antes: { produtoId: produto.id, propriedadeId, quantidade: saldo.toNumber() },
         depois: { quantidade: input.quantidadeContada, diferenca: delta.toNumber(), movimentoId: resultado.id } });
       return { ...resultado, saldoAnterior: saldo.toNumber(), quantidadeContada: input.quantidadeContada, diferenca: delta.toNumber() };
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   } catch (error) {
+    const existente = await ajusteExistente(prisma, input.id, propriedadeId);
+    if (existente) return existente;
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2034") throw new EstoqueError("CONFLITO", "O estoque mudou durante a confirmação. Atualize o saldo e tente novamente.");
     throw error;
   }
