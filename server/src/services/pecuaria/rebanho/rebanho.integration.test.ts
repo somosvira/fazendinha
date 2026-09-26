@@ -296,10 +296,13 @@ describeComBanco("pecuária v1 (rebanho) com PostgreSQL", () => {
     const hoje = hojeFazendaDate();
     const regrasAntes = await carregarRegras();
     const menorOrdem = Math.min(0, ...regrasAntes.map((r) => r.ordem));
-    // regra temporária na frente de todas: faixa 13–23 meses, cria bordas novas e exclusões para as seguintes
-    const faixa = await criarCategoria(criarCategoriaSchema.parse({
-      nome: `Faixa teste ${RUN}`, sexo: "F", automatica: true, idadeMinMeses: 13, idadeMaxMeses: 24, partos: "QUALQUER", ordem: menorOrdem - 10,
-    }), null);
+    // regra temporária na frente de todas: faixa 13–23 meses, cria bordas novas e exclusões para as seguintes.
+    // Ela cruza com Vaca/Novilha de propósito — o cadastro recusa isso hoje, mas regras sobrepostas
+    // gravadas antes da trava continuam existindo e o filtro de banco tem de seguir a ordem igual à memória;
+    // por isso entra direto no banco, sem passar por criarCategoria.
+    const faixa = await prisma.categoriaAnimal.create({
+      data: { nome: `Faixa teste ${RUN}`, sexo: "F", automatica: true, idadeMinMeses: 13, idadeMaxMeses: 24, partos: "QUALQUER", ordem: menorOrdem - 10 },
+    });
     const soManual = await criarCategoria(criarCategoriaSchema.parse({ nome: `Manual teste ${RUN}`, sexo: "M", automatica: false }), null);
     categoriasCriadas.push(faixa.id, soManual.id);
 
@@ -492,7 +495,8 @@ describeComBanco("pecuária v1 (rebanho) com PostgreSQL", () => {
     // e o Em crescimento do macho (sem critério), e cria uma regra estreita de macho (12–23 meses)
     const desligar = await prisma.categoriaAnimal.findMany({ where: { chavePadrao: { in: ["F_NOVILHA", "M_EM_CRESCIMENTO"] }, ativo: true }, select: { id: true } });
     const reprodutor = await prisma.categoriaAnimal.findUniqueOrThrow({ where: { chavePadrao: "M_REPRODUTOR" } });
-    const garrote = await criarCategoria(criarCategoriaSchema.parse({ nome: `Garrote teste ${RUN}`, sexo: "M", automatica: true, idadeMinMeses: 12, idadeMaxMeses: 24 }), null);
+    // cruza com "Em crescimento" (macho, qualquer idade): entra direto no banco, como uma sobreposição anterior à trava
+    const garrote = await prisma.categoriaAnimal.create({ data: { nome: `Garrote teste ${RUN}`, sexo: "M", automatica: true, idadeMinMeses: 12, idadeMaxMeses: 24 } });
     categoriasCriadas.push(garrote.id);
     await prisma.categoriaAnimal.updateMany({ where: { id: { in: desligar.map((d) => d.id) } }, data: { ativo: false } });
     try {
