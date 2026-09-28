@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Download, FilePenLine, RotateCcw } from "lucide-react";
 import { estornarOperacao, estornarTransacao, type Compromisso, type Operacao, type TransacaoOperacao } from "./novo-api";
-import { financeiroKeys, useOperacaoFinanceira } from "./queries";
+import { invalidarFinanceiro, useOperacaoFinanceira } from "./queries";
 import { Loader } from "../components/Loading";
 import { brl, Button, dataBR, ErrorBox, Modal, PaginaFinanceira, Panel, SemConexaoAviso, StatusPill, TIPO_OPERACAO } from "./financeiro-ui";
 import { ehOfflineSemDados } from "../lib/offline/estadoQuery";
@@ -31,16 +31,7 @@ export function OperacaoFinanceiraDetalhe({ operacaoId, onVoltar, onAbrir, onCor
   const emCurso = useRef(false);
   const [salvando, setSalvando] = useState(false);
   const [compromissoAberto, setCompromissoAberto] = useState<Compromisso | null>(null);
-  const carregar = async () => {
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: financeiroKeys.operacao(operacaoId) }),
-      queryClient.invalidateQueries({ queryKey: financeiroKeys.operacoesTodos() }),
-      queryClient.invalidateQueries({ queryKey: financeiroKeys.compromissosTodos() }),
-      queryClient.invalidateQueries({ queryKey: financeiroKeys.dashboardTodos() }),
-      queryClient.invalidateQueries({ queryKey: financeiroKeys.configuracoes() }),
-      queryClient.invalidateQueries({ queryKey: financeiroKeys.extratoGeral() }),
-    ]);
-  };
+  const revalidar = () => invalidarFinanceiro(queryClient);
   const erroCarga = operacaoQuery.isError ? (operacaoQuery.error instanceof Error ? operacaoQuery.error.message : String(operacaoQuery.error)) : null;
 
   // `.pagina-carregando` mede exatamente uma viewport e o loader toma a sobra —
@@ -57,7 +48,7 @@ export function OperacaoFinanceiraDetalhe({ operacaoId, onVoltar, onAbrir, onCor
   const confirmarCancelamento = async () => {
     if (emCurso.current || motivo.trim().length < 5) return;
     emCurso.current = true; setSalvando(true); setErro(null);
-    try { await estornarOperacao(operacao.id, motivo.trim()); setCancelando(false); setMotivo(""); await carregar(); }
+    try { await estornarOperacao(operacao.id, motivo.trim()); setCancelando(false); setMotivo(""); revalidar(); }
     catch (e) { setErro(e instanceof Error ? e.message : String(e)); }
     finally { emCurso.current = false; setSalvando(false); }
   };
@@ -67,7 +58,7 @@ export function OperacaoFinanceiraDetalhe({ operacaoId, onVoltar, onAbrir, onCor
     emCurso.current = true; setSalvando(true); setErro(null);
     try {
       await estornarTransacao(estornando.id, motivoEstorno.trim());
-      setEstornando(null); setMotivoEstorno(""); await carregar();
+      setEstornando(null); setMotivoEstorno(""); revalidar();
     } catch (e) { setErro(e instanceof Error ? e.message : String(e)); }
     finally { emCurso.current = false; setSalvando(false); }
   };
@@ -87,7 +78,7 @@ export function OperacaoFinanceiraDetalhe({ operacaoId, onVoltar, onAbrir, onCor
       <section className="border-t border-border p-6"><div className="flex items-center justify-between gap-3"><div className="min-w-0"><h2 className="text-xs font-semibold uppercase tracking-wider text-ink-3">Documentos</h2><p className="mt-1 text-xs text-ink-3">Arquivos vinculados à origem da operação.</p></div><strong className="text-sm">{operacao.documentos.length}</strong></div>{operacao.documentos.length ? <div className="mt-4 grid gap-2 md:grid-cols-2">{operacao.documentos.map((documento) => <a key={documento.id} href={`/api/financeiro/documentos/${documento.id}/download`} className="flex items-center justify-between gap-3 rounded-lg border border-border p-3 text-sm hover:bg-[#faf9f4]"><span className="min-w-0"><strong className="break-words">{documento.nome}</strong><span className="mt-0.5 block break-words text-xs text-ink-3">{documento.tipo.replaceAll("_", " ")}{documento.numero ? ` · ${documento.numero}` : ""}</span></span><Download size={16} className="shrink-0 text-ink-3" /></a>)}</div> : <p className="mt-4 text-sm text-ink-3">Nenhum documento anexado.</p>}</section>
     </Panel>
     {cancelando && <Modal titulo="Cancelar operação" eyebrow="Revisão obrigatória" onClose={() => { if (!salvando) setCancelando(false); }} width="max-w-2xl"><div className="p-6"><ErrorBox erro={erro} /><p className="text-sm leading-6 text-ink-3">A operação original será preservada e marcada como cancelada. O sistema executará os efeitos inversos em uma única transação.</p><div className="mt-5 space-y-2 rounded-xl border border-red-200 bg-red-50/60 p-4 text-sm text-red-950">{quantidadeEstoque > 0 && <p>• Reverter {quantidadeEstoque} movimento{quantidadeEstoque === 1 ? "" : "s"} de estoque.</p>}{transacoesOriginais.length > 0 && <p>• Estornar {transacoesOriginais.length} transação{transacoesOriginais.length === 1 ? "" : "ões"} financeira{transacoesOriginais.length === 1 ? "" : "s"}, totalizando {brl(valorFinanceiro)}.</p>}{(resumoCancelamento?.compromissos.length ?? operacao.compromissos.length) > 0 && <p>• Cancelar {resumoCancelamento?.compromissos.length ?? operacao.compromissos.length} compromisso(s), com saldo exigível de {brl(valorCompromissos)}.</p>}<p>• Preservar documentos, operação original e histórico de auditoria.</p></div>{resumoCancelamento && <div className="mt-4 space-y-3 rounded-xl border border-border p-4 text-sm"><strong>Efeitos elegíveis para este cancelamento</strong>{resumoCancelamento.transacoes.map((transacao) => <div key={transacao.id} className="rounded-lg bg-surface-2 p-3"><p><strong>{transacao.tipo.replaceAll("_", " ")} · {brl(transacao.valorTotal)}</strong> · {dataBR(transacao.data)}</p>{transacao.movimentos.map((movimento) => <p key={movimento.id} className="mt-1 text-xs text-ink-3">{movimento.direcaoInversa === "ENTRADA" ? "Entrada" : "Saída"} inversa em <LinkConta contaId={movimento.contaId} movimentoId={movimento.id} nome={movimento.conta.nome} /> · {brl(movimento.valor)}</p>)}</div>)}{resumoCancelamento.estoque.map((movimento) => <p key={movimento.id} className="text-xs text-ink-3">Reverter {movimento.tipo === "ENTRADA" ? "entrada" : movimento.tipo === "SAIDA" ? "saída" : "ajuste"} de {Number(movimento.quantidade).toLocaleString("pt-BR")} {movimento.unidade} de {movimento.produtoNome}.</p>)}{resumoCancelamento.compromissos.map((compromisso) => <p key={compromisso.id}>Parcela {compromisso.numeroParcela ?? compromisso.id}: pago {brl(compromisso.valorLiquidado)}, saldo a cancelar {brl(compromisso.saldoExigivel)}.</p>)}{resumoCancelamento.impactosPorConta.map((impacto) => <p key={impacto.conta.id} className="text-xs text-ink-3">{impacto.conta.nome}: impacto no saldo {impactoLiquido(impacto).texto}</p>)}</div>}<ErrorBox erro={erro} /><label className="mt-5 block text-sm font-medium">Motivo do cancelamento *<textarea aria-label="Motivo do cancelamento" maxLength={300} disabled={salvando} value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Explique por que esta operação precisa ser cancelada" className="mt-1.5 min-h-24 w-full rounded-lg border border-border bg-white p-3 font-normal" /></label><div className="mt-5 flex justify-end gap-2"><Button secondary disabled={salvando} onClick={() => setCancelando(false)}>Manter operação</Button><Button danger disabled={salvando || motivo.trim().length < 5} onClick={confirmarCancelamento}>{salvando ? "Cancelando…" : "Confirmar cancelamento"}</Button></div></div></Modal>}
-    {compromissoAberto && <Modal titulo="Detalhe da parcela" eyebrow="Compromisso financeiro" onClose={() => setCompromissoAberto(null)} width="max-w-2xl"><div className="p-6"><HistoricoLiquidacoes compromisso={compromissoAberto} podeLancar={podeLancar} onEstornado={async () => { await carregar(); setCompromissoAberto(null); }} /></div></Modal>}
+    {compromissoAberto && <Modal titulo="Detalhe da parcela" eyebrow="Compromisso financeiro" onClose={() => setCompromissoAberto(null)} width="max-w-2xl"><div className="p-6"><HistoricoLiquidacoes compromisso={compromissoAberto} podeLancar={podeLancar} onEstornado={async () => { revalidar(); setCompromissoAberto(null); }} /></div></Modal>}
     {estornando && <Modal titulo="Estornar transação" eyebrow="Revisão financeira" onClose={() => { if (!emCurso.current) setEstornando(null); }}><div className="p-6"><ErrorBox erro={erro} /><p className="text-sm leading-6">O valor de {brl(estornando.valorTotal)} será revertido na conta. A operação, os itens e o estoque serão preservados. Se esta transação liquidou uma parcela, o saldo pendente será recalculado. O pagamento original e o estorno ficam no histórico.</p><p className="mt-3 text-xs text-ink-3">O estorno será registrado na data de hoje, que precisa estar em um período aberto.</p><label className="mt-5 block text-sm font-medium">Motivo do estorno<textarea disabled={salvando} maxLength={300} value={motivoEstorno} onChange={e => setMotivoEstorno(e.target.value)} className="mt-1.5 min-h-24 w-full rounded-lg border border-border p-3 font-normal" /></label><div className="mt-5 flex justify-end gap-2"><Button secondary disabled={salvando} onClick={() => setEstornando(null)}>Manter transação</Button><Button danger disabled={salvando || motivoEstorno.trim().length < 5} onClick={() => { void confirmarEstorno(); }}>{salvando ? "Estornando…" : "Confirmar estorno"}</Button></div></div></Modal>}
   </PaginaFinanceira>;
 }

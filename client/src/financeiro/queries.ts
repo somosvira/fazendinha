@@ -1,5 +1,5 @@
 // Query keys e hooks de leitura do Financeiro (ver docs/design/offline/README.md).
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, type QueryClient } from "@tanstack/react-query";
 import {
   obterDashboardFinanceiro, obterConfiguracoesFinanceiras, listarOperacoes, obterOperacao,
   listarCompromissos, obterExtratoConta, obterExtratoGeral,
@@ -22,6 +22,12 @@ export const financeiroKeys = {
   relatorio: (id: string) => ["financeiro", "relatorio", id] as const,
   rascunhoRelatorio: () => ["financeiro", "rascunho-relatorio"] as const,
 };
+
+/** Invalida tudo sob o prefixo `financeiro` (operações, compromissos, dashboard,
+ *  configurações, extratos — inclusive por conta) numa chamada só. */
+export function invalidarFinanceiro(qc: QueryClient) {
+  return qc.invalidateQueries({ queryKey: ["financeiro"] });
+}
 
 export function useDashboardFinanceiro(inicio?: string, fim?: string) {
   return useQuery({ queryKey: financeiroKeys.dashboard(inicio, fim), queryFn: () => obterDashboardFinanceiro(inicio, fim) });

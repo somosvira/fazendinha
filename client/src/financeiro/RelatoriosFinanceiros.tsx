@@ -52,13 +52,10 @@ export function RelatoriosFinanceiros({ podeExportar = true }: { podeExportar?: 
   const [periodoEmissao, setPeriodoEmissao] = useState({ inicio: "", fim: "" });
   const [confirmarNovo, setConfirmarNovo] = useState(false);
 
-  const carregar = async () => {
+  const revalidar = () => {
     setErro(null);
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: financeiroKeys.relatoriosTodos() }),
-      queryClient.invalidateQueries({ queryKey: financeiroKeys.configuracoes() }),
-      queryClient.invalidateQueries({ queryKey: financeiroKeys.rascunhoRelatorio() }),
-    ]);
+    queryClient.invalidateQueries({ queryKey: financeiroKeys.relatoriosTodos() });
+    queryClient.invalidateQueries({ queryKey: financeiroKeys.rascunhoRelatorio() });
   };
   useEffect(() => {
     const onPop = () => setVista(vistaDaUrl(window.location.pathname));
@@ -67,7 +64,7 @@ export function RelatoriosFinanceiros({ podeExportar = true }: { podeExportar?: 
   }, []);
 
   const ir = (caminho: string, destino: Vista) => { window.history.pushState(null, "", caminho); setVista(destino); };
-  const voltar = () => { ir("/financeiro/relatorios", { tipo: "lista" }); void carregar(); };
+  const voltar = () => { ir("/financeiro/relatorios", { tipo: "lista" }); revalidar(); };
   // Criar e continuar um relatório exige rede (o próprio processamento é
   // feito no servidor) — o botão fica desabilitado offline (ver acao abaixo).
   const abrirNovo = async (continuar: boolean) => {
@@ -123,7 +120,7 @@ export function RelatoriosFinanceiros({ podeExportar = true }: { podeExportar?: 
     <Panel className="mt-6">
       <div className="flex items-center justify-between gap-4 border-b border-border p-5">
         <div><h2 className="font-serif text-xl">Histórico</h2><p className="mt-1 text-xs text-ink-3">Do mais recente para o mais antigo. Abra um relatório para ver o conteúdo salvo.</p></div>
-        <button onClick={() => void carregar()} aria-label="Atualizar histórico" className="rounded-lg p-2 hover:bg-surface-2"><RotateCcw size={17} /></button>
+        <button onClick={revalidar} aria-label="Atualizar histórico" className="rounded-lg p-2 hover:bg-surface-2"><RotateCcw size={17} /></button>
       </div>
       <div className="border-b border-border p-5"><PeriodoFinanceiroControl inicio={periodoEmissao.inicio} fim={periodoEmissao.fim} allowAll label="Período de emissão" onChange={setPeriodoEmissao} /><p className="mt-2 text-xs text-ink-3">Filtro pela data de emissão; o recorte salvo de cada relatório aparece na tabela.</p></div>
       {relatoriosFiltrados.length === 0

@@ -6,7 +6,7 @@ import { periodoInicial } from "./lib/periodo";
 import { entradaDeNovaOperacao, isNovaOperacaoFinanceira, parseOperacaoFinanceiraId, URL_NOVA_OPERACAO } from "../router";
 import { descartarRascunhoOperacao, obterRascunhoOperacao, type Operacao } from "./novo-api";
 import { useOnlineStatus } from "../lib/offline/useOnlineStatus";
-import { financeiroKeys, useConfiguracoesFinanceiras, useOperacoesFinanceiras } from "./queries";
+import { invalidarFinanceiro, useConfiguracoesFinanceiras, useOperacoesFinanceiras } from "./queries";
 import { useRascunhoAtivo } from "./rascunhoAtivo";
 import { FormOperacao } from "./FormOperacao";
 import { OperacaoFinanceiraDetalhe } from "./OperacaoFinanceiraDetalhe";
@@ -113,15 +113,10 @@ export function OperacoesFinanceiras({ podeLancar = true }: { podeLancar?: boole
   };
   const continuarRascunho = () => abrirFormulario();
   const corrigir = (operacao: Operacao) => abrirFormulario(operacao);
-  const aposSalvarOperacao = async (operacao: Pick<Operacao, "id">, aviso?: string) => {
+  const aposSalvarOperacao = (operacao: Pick<Operacao, "id">, aviso?: string) => {
     setForm(false); setOperacaoBase(null);
     // Sem conexão a própria escrita na fila corrige o cache e invalida depois de sincronizar.
-    if (online) await Promise.all([
-      queryClient.invalidateQueries({ queryKey: financeiroKeys.operacoesTodos() }),
-      queryClient.invalidateQueries({ queryKey: financeiroKeys.compromissosTodos() }),
-      queryClient.invalidateQueries({ queryKey: financeiroKeys.dashboardTodos() }),
-      queryClient.invalidateQueries({ queryKey: financeiroKeys.configuracoes() }),
-    ]);
+    if (online) invalidarFinanceiro(queryClient);
     if (aviso) setErro(aviso);
     abrirDetalhe(operacao.id);
   };
@@ -142,7 +137,7 @@ export function OperacoesFinanceiras({ podeLancar = true }: { podeLancar?: boole
   if (form) {
     if (ehOfflineSemDados(configQuery)) return <PaginaFinanceira><PageHeader titulo="Nova operação" descricao="Cadastros necessários para lançar (contas, categorias, produtos) ainda não foram carregados." /><SemConexaoAviso mensagem="Sem conexão e sem cadastros salvos — abra esta tela uma vez online antes de lançar offline." /></PaginaFinanceira>;
     if (configQuery.isPending) return <PaginaCarregando label="Preparando formulário" />;
-    return <FormOperacao key={operacaoBase ? `correcao-${operacaoBase.id}` : ajusteInicial ? `ajuste-${produtoAjusteInicial ?? ""}` : semRascunho ? "novo-sem-rascunho" : "rascunho"} config={configQuery.data!} rascunho={operacaoBase || semRascunho ? null : rascunho} operacaoBase={operacaoBase} condicaoInicial={compromissoInicial ? "A_PRAZO" : undefined} tipoInicial={ajusteInicial ? "AJUSTE_ESTOQUE" : compromissoInicial === "RECEBER" ? "VENDA" : compromissoInicial === "PAGAR" ? "COMPRA_CONSUMO_DIRETO" : undefined} produtoInicial={produtoAjusteInicial} onSalvo={(operacao, aviso) => { void aposSalvarOperacao(operacao, aviso); }} />;
+    return <FormOperacao key={operacaoBase ? `correcao-${operacaoBase.id}` : ajusteInicial ? `ajuste-${produtoAjusteInicial ?? ""}` : semRascunho ? "novo-sem-rascunho" : "rascunho"} config={configQuery.data!} rascunho={operacaoBase || semRascunho ? null : rascunho} operacaoBase={operacaoBase} condicaoInicial={compromissoInicial ? "A_PRAZO" : undefined} tipoInicial={ajusteInicial ? "AJUSTE_ESTOQUE" : compromissoInicial === "RECEBER" ? "VENDA" : compromissoInicial === "PAGAR" ? "COMPRA_CONSUMO_DIRETO" : undefined} produtoInicial={produtoAjusteInicial} onSalvo={aposSalvarOperacao} />;
   }
 
   return <PaginaFinanceira>
