@@ -9,7 +9,6 @@ const mocks = vi.hoisted(() => ({
   operacaoFindUniqueOrThrow: vi.fn(),
   operacaoCreate: vi.fn(),
   transacaoFindUnique: vi.fn(),
-  transacaoFindFirstOrThrow: vi.fn(),
   transacaoCreate: vi.fn(),
   compromissoFindUnique: vi.fn(),
   compromissoCount: vi.fn(),
@@ -20,7 +19,7 @@ vi.mock("../../db.js", () => {
   const db = {
     periodoFinanceiro: { findUnique: mocks.periodo },
     operacao: { findUnique: mocks.operacaoFindUnique, findUniqueOrThrow: mocks.operacaoFindUniqueOrThrow, create: mocks.operacaoCreate },
-    transacaoFinanceira: { findUnique: mocks.transacaoFindUnique, findFirstOrThrow: mocks.transacaoFindFirstOrThrow, create: mocks.transacaoCreate },
+    transacaoFinanceira: { findUnique: mocks.transacaoFindUnique, create: mocks.transacaoCreate },
     compromissoFinanceiro: { findUnique: mocks.compromissoFindUnique, count: mocks.compromissoCount },
     auditoriaFinanceira: { create: mocks.auditoriaCreate },
   };
@@ -75,19 +74,16 @@ describe("liquidação com id da transação", () => {
 
 describe("operação com id do cliente", () => {
   it("reenvio da mesma operação devolve a gravada sem checar período nem auditar", async () => {
-    mocks.operacaoFindUnique.mockResolvedValue({ propriedadeId: 1, tipo: "SERVICO" });
-    mocks.operacaoFindUniqueOrThrow.mockResolvedValue({ id: uid(10), numero: 7 });
-    expect(await criarOperacao(operacaoInput)).toEqual({ id: uid(10), numero: 7 });
+    // Id é global — a mesma operação reenviada de outra propriedade também conta como reenvio.
+    mocks.operacaoFindUnique.mockResolvedValue({ id: uid(10), numero: 7, propriedadeId: 2, tipo: "SERVICO" });
+    expect(await criarOperacao(operacaoInput)).toEqual({ id: uid(10), numero: 7, propriedadeId: 2, tipo: "SERVICO" });
     expect(mocks.periodo).not.toHaveBeenCalled();
     expect(mocks.operacaoCreate).not.toHaveBeenCalled();
     expect(mocks.auditoriaCreate).not.toHaveBeenCalled();
   });
 
-  it.each([
-    ["outra propriedade", { propriedadeId: 2, tipo: "SERVICO" }],
-    ["outro tipo", { propriedadeId: 1, tipo: "VENDA" }],
-  ])("id de operação de %s é conflito", async (_, existente) => {
-    mocks.operacaoFindUnique.mockResolvedValue(existente);
+  it("id de operação de outro tipo é conflito", async () => {
+    mocks.operacaoFindUnique.mockResolvedValue({ propriedadeId: 1, tipo: "VENDA" });
     await expect(criarOperacao(operacaoInput)).rejects.toMatchObject({ code: "CONFLITO" });
     expect(mocks.operacaoCreate).not.toHaveBeenCalled();
   });
@@ -105,15 +101,14 @@ describe("transferência com id do cliente", () => {
   const entrada = { id: uid(50), contaOrigemId: uid(2), contaDestinoId: uid(3), valor: 10, data, propriedadeId: 1 };
 
   it("reenvio devolve a transação da transferência gravada", async () => {
-    mocks.operacaoFindUnique.mockResolvedValue({ propriedadeId: 1, tipo: "TRANSFERENCIA_FINANCEIRA" });
-    mocks.transacaoFindFirstOrThrow.mockResolvedValue({ id: uid(51), tipo: "TRANSFERENCIA", movimentos: [] });
+    mocks.operacaoFindUnique.mockResolvedValue({ tipo: "TRANSFERENCIA_FINANCEIRA", transacoes: [{ id: uid(51), tipo: "TRANSFERENCIA", movimentos: [] }] });
     expect(await transferir(entrada)).toEqual({ id: uid(51), tipo: "TRANSFERENCIA", movimentos: [] });
-    expect(mocks.transacaoFindFirstOrThrow).toHaveBeenCalledWith(expect.objectContaining({ where: { operacaoId: uid(50), tipo: "TRANSFERENCIA" } }));
+    expect(mocks.operacaoFindUnique).toHaveBeenCalledWith(expect.objectContaining({ where: { id: uid(50) } }));
     expect(mocks.operacaoCreate).not.toHaveBeenCalled();
   });
 
   it("id de outra operação é conflito", async () => {
-    mocks.operacaoFindUnique.mockResolvedValue({ propriedadeId: 1, tipo: "SERVICO" });
+    mocks.operacaoFindUnique.mockResolvedValue({ tipo: "SERVICO" });
     await expect(transferir(entrada)).rejects.toMatchObject({ code: "CONFLITO" });
   });
 });

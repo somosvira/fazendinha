@@ -637,14 +637,14 @@ describe("ids gerados pelo cliente", () => {
     expect(estado.operacoes).toBe(2); expect(estado.saldoConta).toBe(800);
   });
 
-  it("id de outro tipo ou de outra propriedade é conflito sem efeitos", async () => {
+  it("id de outro tipo é conflito; mesmo tipo em outra propriedade reenvia (id é global, propriedade não é fronteira)", async () => {
     const id = randomUUID();
-    await ops.criarOperacao({ ...input("A_VISTA"), id });
+    const criada = await ops.criarOperacao({ ...input("A_VISTA"), id });
     const antes = await contagens();
     await expect(ops.criarOperacao({ ...input("A_VISTA", "SERVICO"), id })).rejects.toMatchObject({ code: "CONFLITO" });
     const outra = await db.propriedade.create({ data: { nome: `Outra id ${serial}` } });
     const contaOutra = (await db.contaFinanceira.create({ data: { nome: "Conta outra", tipo: "BANCO", propriedadeId: outra.id, dataSaldoAbertura: data } })).id;
-    await expect(ops.criarOperacao({ ...input("A_VISTA"), id, propriedadeId: outra.id, financeiro: { condicao: "A_VISTA", contaId: contaOutra } })).rejects.toMatchObject({ code: "CONFLITO" });
+    expect(await ops.criarOperacao({ ...input("A_VISTA"), id, propriedadeId: outra.id, financeiro: { condicao: "A_VISTA", contaId: contaOutra } })).toEqual(criada);
     await expect(ops.transferir({ id, contaOrigemId: accountId, contaDestinoId: contaOutra, valor: 10, data, propriedadeId: pid })).rejects.toMatchObject({ code: "CONFLITO" });
     await expect(stock.ajustarContagem({ id, propriedadeId: pid, produtoId: productId, saldoEsperado: 10, quantidadeContada: 8, observacao: "Contagem conferida", usuarioId: userId })).rejects.toMatchObject({ code: "CONFLITO" });
     expect(await contagens()).toEqual(antes);
@@ -707,14 +707,14 @@ describe("ids gerados pelo cliente", () => {
     expect(saldos.map(c => Number(c.saldoAtual)).sort((x, y) => x - y)).toEqual([150, 850]);
   });
 
-  it("ajuste de contagem com id: reenvio com saldo já alterado devolve o mesmo ajuste", async () => {
+  it("ajuste de contagem com id: reenvio com saldo já alterado devolve só o operacaoId", async () => {
     await ops.criarOperacao(input("SEM_EFEITO_FINANCEIRO", "INVENTARIO_INICIAL"));
     const id = randomUUID();
     const ajustar = () => stock.ajustarContagem({ id, propriedadeId: pid, produtoId: productId, saldoEsperado: 10, quantidadeContada: 7, observacao: "Contagem conferida", usuarioId: userId });
     const primeira = await ajustar();
     expect(primeira).toMatchObject({ operacaoId: id, saldoAnterior: 10, quantidadeContada: 7, diferenca: -3 });
     const antes = await contagens();
-    expect(await ajustar()).toEqual(primeira);
+    expect(await ajustar()).toEqual({ operacaoId: id });
     expect(await contagens()).toEqual(antes);
     expect((await stock.listarSaldos({ propriedadeId: pid })).find(p => p.produtoId === productId)?.saldo).toBe(7);
   });

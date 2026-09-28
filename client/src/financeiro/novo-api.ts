@@ -104,7 +104,8 @@ export const listarCompromissos = (periodo?: { inicio: string; fim: string }) =>
 export const obterExtratoConta = (id: string) => req<MovimentoConta[]>(`/financeiro/contas/${id}/extrato`);
 export const criarOperacao = (input: unknown) => req<Operacao>("/financeiro/operacoes", { method: "POST", body: JSON.stringify(input) });
 export type AjusteEstoqueInput = { id?: string; produtoId: string; quantidadeContada: number; saldoEsperado: number; observacao: string; centroCustoId?: string | null };
-export type AjusteEstoqueResultado = { id: string; operacaoId: string; saldoAnterior: number; quantidadeContada: number; diferenca: number };
+// No reenvio (mesmo id já confirmado) o servidor devolve só `operacaoId` — é o único campo que o client lê.
+export type AjusteEstoqueResultado = { operacaoId: string; id?: string; saldoAnterior?: number; quantidadeContada?: number; diferenca?: number };
 /** Ajuste por contagem de estoque: o servidor recalcula o saldo, recusa (CONFLITO/409) se ele mudou desde `saldoEsperado` e cria a Operacao AJUSTE_ESTOQUE + movimento físico. */
 export const registrarAjusteEstoque = (input: AjusteEstoqueInput) => req<AjusteEstoqueResultado>("/estoque/ajustes", { method: "POST", body: JSON.stringify(input) });
 export const simularParcelasOperacao = (input: unknown) => req<SimulacaoParcelas>("/financeiro/operacoes/simulacao-parcelas", { method: "POST", body: JSON.stringify(input) });

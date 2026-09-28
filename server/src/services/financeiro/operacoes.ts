@@ -1,4 +1,4 @@
-import { Prisma, type TipoOperacaoFinanceira, type TipoTransacaoFinanceira } from "@prisma/client";
+import { Prisma, type TipoTransacaoFinanceira } from "@prisma/client";
 import { prisma } from "../../db.js";
 import { auditar, exigirContaAtiva, exigirParceiroAtivo, exigirPeriodoAberto, exigirPositivo, FinanceiroError } from "./regras.js";
 import { comoErroFinanceiro, simularParcelas as simularParcelasCalc } from "./parcelas.calc.js";
@@ -69,19 +69,13 @@ async function comIdDoCliente<T>(id: string | undefined, criar: () => Promise<T>
   }
 }
 
-async function operacaoExistente(db: Prisma.TransactionClient, id: string | undefined, propriedadeId: number, tipo: TipoOperacaoFinanceira) {
-  if (!id) return false;
-  const operacao = await db.operacao.findUnique({ where: { id }, select: { propriedadeId: true, tipo: true } });
-  if (!operacao) return false;
-  if (operacao.propriedadeId !== propriedadeId || operacao.tipo !== tipo) {
-    throw new FinanceiroError("CONFLITO", "Este identificador já pertence a outra operação");
-  }
-  return true;
-}
-
+// O id é global (não é fronteira de segurança) — confere só o tipo do registro existente.
 async function operacaoCriadaExistente(db: Prisma.TransactionClient, input: OperacaoInput) {
-  if (!await operacaoExistente(db, input.id, input.propriedadeId, input.tipo)) return null;
-  return db.operacao.findUniqueOrThrow({ where: { id: input.id }, include: includeOperacaoCriada });
+  if (!input.id) return null;
+  const operacao = await db.operacao.findUnique({ where: { id: input.id }, include: includeOperacaoCriada });
+  if (!operacao) return null;
+  if (operacao.tipo !== input.tipo) throw new FinanceiroError("CONFLITO", "Este identificador já pertence a outra operação");
+  return operacao;
 }
 
 /** O que a previsão dos efeitos precisa ler do banco: só registros ativos. */
@@ -253,8 +247,14 @@ export async function liquidarCompromisso(compromissoId: string, input: Liquidac
 }
 
 async function transferenciaExistente(db: Prisma.TransactionClient, input: TransferenciaInput) {
-  if (!await operacaoExistente(db, input.id, input.propriedadeId, "TRANSFERENCIA_FINANCEIRA")) return null;
-  return db.transacaoFinanceira.findFirstOrThrow({ where: { operacaoId: input.id, tipo: "TRANSFERENCIA" }, include: { movimentos: true }, orderBy: { seq: "asc" } });
+  if (!input.id) return null;
+  const operacao = await db.operacao.findUnique({
+    where: { id: input.id },
+    include: { transacoes: { where: { tipo: "TRANSFERENCIA" }, include: { movimentos: true }, orderBy: { seq: "asc" } } },
+  });
+  if (!operacao) return null;
+  if (operacao.tipo !== "TRANSFERENCIA_FINANCEIRA") throw new FinanceiroError("CONFLITO", "Este identificador já pertence a outra operação");
+  return operacao.transacoes[0] ?? null;
 }
 
 export async function transferir(input: TransferenciaInput) {
