@@ -1,6 +1,6 @@
-import { arredondarDinheiro, multiplicarDecimais, paraCentavos, somarDecimais, type ValorDecimal } from "./decimal.js";
+import { arredondarDinheiro, multiplicarDecimais, paraCentavos, somarDecimais, type ValorDecimal } from "../lib/decimal.js";
 import { ErroValidacaoFinanceira } from "./erros.js";
-import type { SimulacaoParcelasValidada } from "./financeiro.schemas.js";
+import type { SimulacaoParcelasValidada } from "../schemas/financeiro.schemas.js";
 
 export type ItemMonetario = { quantidade: ValorDecimal; valorUnitario?: ValorDecimal; valorTotal?: ValorDecimal };
 export type ParcelaGerada = { valor: number; dataVencimento: string };

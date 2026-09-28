@@ -1,7 +1,7 @@
-import { arredondarDinheiro, dividirDecimais, somarDecimais, type ValorDecimal } from "./decimal.js";
+import { arredondarDinheiro, dividirDecimais, somarDecimais, type ValorDecimal } from "../lib/decimal.js";
 import { ErroValidacaoFinanceira } from "./erros.js";
 import { totalItensFinanceiros, valorItemFinanceiro } from "./parcelas.calc.js";
-import type { FormaPagamento, OperacaoValidada } from "./financeiro.schemas.js";
+import type { FormaPagamento, OperacaoValidada } from "../schemas/financeiro.schemas.js";
 
 type Classificacao = "CUSTEIO" | "INVESTIMENTO";
 type TipoOperacao = OperacaoValidada["tipo"];

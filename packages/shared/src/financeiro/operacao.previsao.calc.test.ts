@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { operacaoSchema, type OperacaoValidada } from "./financeiro.schemas.js";
+import { operacaoSchema, type OperacaoValidada } from "../schemas/financeiro.schemas.js";
 import { preverEfeitosOperacao, valorSaidaPelaBase, type ContextoOperacao } from "./operacao.previsao.calc.js";
 
 const uid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
