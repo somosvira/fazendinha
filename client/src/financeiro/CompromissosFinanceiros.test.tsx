@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { onlineManager } from "@tanstack/react-query";
 import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { render } from "./lib/testQueryClient";
 import { CompromissosFinanceiros } from "./CompromissosFinanceiros";
@@ -105,5 +106,18 @@ describe("CompromissosFinanceiros — criação", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Registrar pagamento" }));
     expect(await screen.findByRole("option", { name: /Conta ativa/ })).toBeTruthy();
     expect(screen.queryByRole("option", { name: /Conta inativa/ })).toBeNull();
+  });
+});
+
+describe("CompromissosFinanceiros — offline em período não visitado", () => {
+  it("avisa em vez de mostrar o período anterior, mantendo o filtro de período", async () => {
+    render(<CompromissosFinanceiros onNav={vi.fn()} />);
+    await screen.findByRole("button", { name: /^Período/ });
+    onlineManager.setOnline(false);
+    fireEvent.click(screen.getByRole("button", { name: /^Período/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Ano anterior" }));
+    expect(await screen.findByText(/Sem conexão e sem compromissos salvos para este período/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: /^Período/ })).toBeTruthy();
+    onlineManager.setOnline(true);
   });
 });

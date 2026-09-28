@@ -51,7 +51,8 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
   };
   const verRascunhoAtual = () => { setSubstituirRascunho(false); abrirFormulario(); };
 
-  const dadosAtuais = dashboardQuery.data ?? null;
+  const semDadosDoPeriodo = ehOfflineSemDados(dashboardQuery);
+  const dadosAtuais = semDadosDoPeriodo ? null : dashboardQuery.data ?? null;
   const pendentes = (dadosAtuais?.proximosCompromissos ?? []).filter(c => ["PENDENTE", "PARCIAL"].includes(c.status))
     .sort((a, b) => a.dataVencimento.localeCompare(b.dataVencimento) || (a.seq ?? 0) - (b.seq ?? 0));
   const proximos = pendentes.slice(0, 5);
@@ -66,7 +67,7 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
   // navegação usado pelos links da Base financeira.
   const hrefCompromissos = `/financeiro/compromissos?${new URLSearchParams({ inicio: inicioPeriodo, fim: fimPeriodo })}`;
   const erroDashboard = dashboardQuery.isError ? (dashboardQuery.error instanceof Error ? dashboardQuery.error.message : String(dashboardQuery.error)) : null;
-  if (!dadosAtuais) {
+  if (!dashboardQuery.data) {
     if (ehOfflineSemDados(dashboardQuery)) return <PaginaFinanceira><PageHeader titulo="Visão geral financeira" descricao="Disponibilidade atual, dinheiro realizado no período e compromissos com vencimento no período selecionado." /><SemConexaoAviso /></PaginaFinanceira>;
     if (dashboardQuery.isPending) return <PaginaCarregando label="Carregando financeiro" />;
   }
@@ -75,7 +76,7 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
     <PageHeader titulo="Visão geral financeira" descricao="Disponibilidade atual, dinheiro realizado no período e compromissos com vencimento no período selecionado." acao={<div className="flex flex-wrap items-end gap-2"><PeriodoFinanceiroControl inicio={inicioPeriodo} fim={fimPeriodo} onChange={(periodo) => { setInicioPeriodo(periodo.inicio); setFimPeriodo(periodo.fim); setMesCalendario(periodo.inicio.slice(0, 7)); }} />{podeLancar && <Button disabled={preparando} onClick={() => { void iniciarNovaOperacao(); }}><Plus size={16} /> Nova operação</Button>}</div>} />
     <ErrorBox erro={erro} />
     {erroDashboard && !dadosAtuais && <ErrorBox erro={erroDashboard} />}
-    {ehOfflineSemDados(dashboardQuery) && <SemConexaoAviso mensagem="Sem conexão e sem dados salvos para este período." />}
+    {semDadosDoPeriodo && <SemConexaoAviso mensagem="Sem conexão e sem dados salvos para este período." />}
     {dashboardQuery.isFetching && dadosAtuais && <p role="status" className="mt-6">Atualizando financeiro do período…</p>}
     {erroDashboard && !dadosAtuais && <Button secondary onClick={() => dashboardQuery.refetch()}>Tentar novamente</Button>}
     {dadosAtuais && <>

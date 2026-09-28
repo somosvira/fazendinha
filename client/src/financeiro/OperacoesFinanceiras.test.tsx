@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { onlineManager } from "@tanstack/react-query";
 import { act, cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { render } from "./lib/testQueryClient";
 import { OperacoesFinanceiras } from "./OperacoesFinanceiras";
@@ -150,5 +151,18 @@ describe("OperacoesFinanceiras — paginação", () => {
     expect((await screen.findAllByText("Operação 16")).length).toBe(2);
     expect(screen.queryAllByText("Operação 15")).toHaveLength(0);
     expect(screen.getByText("16–16 de 16 operações")).toBeTruthy();
+  });
+});
+
+describe("OperacoesFinanceiras — offline em período não visitado", () => {
+  it("avisa em vez de mostrar o período anterior, mantendo o filtro de período", async () => {
+    render(<OperacoesFinanceiras />);
+    await screen.findByRole("button", { name: /^Período/ });
+    onlineManager.setOnline(false);
+    fireEvent.click(screen.getByRole("button", { name: /^Período/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Ano anterior" }));
+    expect(await screen.findByText(/Sem conexão e sem operações salvas para este período/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: /^Período/ })).toBeTruthy();
+    onlineManager.setOnline(true);
   });
 });

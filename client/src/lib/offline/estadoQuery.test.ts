@@ -13,4 +13,12 @@ describe("ehOfflineSemDados", () => {
   it("false quando já resolveu, mesmo pausada", () => {
     expect(ehOfflineSemDados({ isPending: false, fetchStatus: "paused" })).toBe(false);
   });
+
+  it("true com dado emprestado (keepPreviousData) e pausada", () => {
+    expect(ehOfflineSemDados({ isPending: false, isPlaceholderData: true, fetchStatus: "paused" })).toBe(true);
+  });
+
+  it("false com dado emprestado enquanto ainda busca", () => {
+    expect(ehOfflineSemDados({ isPending: false, isPlaceholderData: true, fetchStatus: "fetching" })).toBe(false);
+  });
 });

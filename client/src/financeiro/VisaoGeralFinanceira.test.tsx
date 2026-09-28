@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { onlineManager } from "@tanstack/react-query";
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { render } from "./lib/testQueryClient";
 import { baseFinanceiraVazia } from "./dashboard.fixture";
@@ -145,5 +146,21 @@ describe("Visão geral — período global", () => {
     expect(screen.queryByRole("heading", { name: "Base financeira" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Tentar novamente" }));
     await screen.findByRole("heading", { name: "Base financeira" });
+  });
+});
+
+describe("Visão geral — offline em período não visitado", () => {
+  it("troca para um período sem cache offline: avisa e não mostra os números do período anterior", async () => {
+    const snapshot = (total: string): DashboardFinanceiro => ({ periodo: { inicio: "2026-01-01", fim: "2026-12-31" }, saldoGeral: "0", contas: [], realizado: { entradas: total, saidas: "0", resultado: total }, fluxo: [], compromissos: { aPagar: "0", aReceber: "0" }, despesasPorCategoria: [], proximosCompromissos: [], base: { ...baseFinanceiraVazia(), volumeEconomico: total } });
+    vi.mocked(obterDashboardFinanceiro).mockResolvedValueOnce(snapshot("321"));
+    render(<VisaoGeralFinanceira onNav={vi.fn()} />);
+    await screen.findByRole("heading", { name: "Base financeira" });
+    onlineManager.setOnline(false);
+    fireEvent.click(screen.getByRole("button", { name: /^Período:/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Ano anterior" }));
+    expect(await screen.findByText(/Sem conexão e sem dados salvos para este período/)).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Base financeira" })).toBeNull();
+    expect(screen.getByRole("button", { name: /^Período:/ })).toBeTruthy();
+    onlineManager.setOnline(true);
   });
 });
