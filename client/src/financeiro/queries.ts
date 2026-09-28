@@ -1,5 +1,5 @@
 // Query keys e hooks de leitura do Financeiro (ver docs/design/offline/README.md).
-import { useQuery, type QueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, type QueryClient } from "@tanstack/react-query";
 import {
   obterDashboardFinanceiro, obterConfiguracoesFinanceiras, listarOperacoes, obterOperacao,
   listarCompromissos, obterExtratoConta, obterExtratoGeral,
@@ -30,19 +30,19 @@ export function invalidarFinanceiro(qc: QueryClient) {
 }
 
 export function useDashboardFinanceiro(inicio?: string, fim?: string) {
-  return useQuery({ queryKey: financeiroKeys.dashboard(inicio, fim), queryFn: () => obterDashboardFinanceiro(inicio, fim) });
+  return useQuery({ queryKey: financeiroKeys.dashboard(inicio, fim), queryFn: () => obterDashboardFinanceiro(inicio, fim), placeholderData: keepPreviousData });
 }
 export function useConfiguracoesFinanceiras(enabled = true) {
   return useQuery({ queryKey: financeiroKeys.configuracoes(), queryFn: () => obterConfiguracoesFinanceiras(), enabled });
 }
 export function useOperacoesFinanceiras(filtros?: { inicio?: string; fim?: string }) {
-  return useQuery({ queryKey: financeiroKeys.operacoes(filtros), queryFn: () => listarOperacoes(filtros) });
+  return useQuery({ queryKey: financeiroKeys.operacoes(filtros), queryFn: () => listarOperacoes(filtros), placeholderData: keepPreviousData });
 }
 export function useOperacaoFinanceira(id: string | null) {
   return useQuery({ queryKey: financeiroKeys.operacao(id ?? ""), queryFn: () => obterOperacao(id!), enabled: id != null });
 }
 export function useCompromissosFinanceiros(periodo?: { inicio?: string; fim?: string }) {
-  return useQuery({ queryKey: financeiroKeys.compromissos(periodo), queryFn: () => listarCompromissos(periodo?.inicio && periodo.fim ? { inicio: periodo.inicio, fim: periodo.fim } : undefined) });
+  return useQuery({ queryKey: financeiroKeys.compromissos(periodo), queryFn: () => listarCompromissos(periodo?.inicio && periodo.fim ? { inicio: periodo.inicio, fim: periodo.fim } : undefined), placeholderData: keepPreviousData });
 }
 export function useExtratoConta(contaId: string | null) {
   return useQuery({ queryKey: financeiroKeys.extrato(contaId ?? ""), queryFn: () => obterExtratoConta(contaId!), enabled: contaId != null });

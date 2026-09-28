@@ -84,7 +84,7 @@ import { obterDashboardFinanceiro, listarOperacoes, type DashboardFinanceiro } f
 import { act } from "@testing-library/react";
 
 describe("Visão geral — período global", () => {
-  it("recarrega toda a visão em uma consulta, esconde os dados anteriores e ignora respostas atrasadas", async () => {
+  it("recarrega toda a visão em uma consulta, mantém os dados anteriores enquanto atualiza e ignora respostas atrasadas", async () => {
     const snapshot = (total: string): DashboardFinanceiro => ({ periodo: { inicio: "2026-01-01", fim: "2026-12-31" }, saldoGeral: "0", contas: [], realizado: { entradas: total, saidas: "0", resultado: total }, fluxo: [], compromissos: { aPagar: "0", aReceber: "0" }, despesasPorCategoria: [], proximosCompromissos: [], base: { ...baseFinanceiraVazia(), volumeEconomico: total, porTipo: [{ tipo: "VENDA", valor: total }] } });
     vi.mocked(obterDashboardFinanceiro).mockResolvedValueOnce(snapshot("321"));
     render(<VisaoGeralFinanceira onNav={vi.fn()} />);
@@ -97,8 +97,10 @@ describe("Visão geral — período global", () => {
     vi.mocked(obterDashboardFinanceiro).mockReturnValueOnce(new Promise(resolve => { resolveOld = resolve; }));
     fireEvent.click(screen.getByRole("button", { name: /^Período:/ }));
     fireEvent.click(screen.getByRole("button", { name: "Ano anterior" }));
-    expect(screen.queryByText("R$ 321,00")).toBeNull();
-    expect(screen.queryByRole("heading", { name: "Base financeira" })).toBeNull();
+    // Troca de período mantém o dado anterior em tela (keepPreviousData) e avisa que está atualizando.
+    expect(screen.getAllByText("R$ 321,00").length).toBeGreaterThan(0);
+    expect(screen.getByRole("heading", { name: "Base financeira" })).toBeTruthy();
+    expect(await screen.findByText("Atualizando financeiro do período…")).toBeTruthy();
     vi.mocked(obterDashboardFinanceiro).mockResolvedValueOnce(snapshot("876"));
     fireEvent.click(screen.getByRole("button", { name: /^Período:/ }));
     fireEvent.click(screen.getByRole("button", { name: "Mês atual" }));

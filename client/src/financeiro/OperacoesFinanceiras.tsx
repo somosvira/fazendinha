@@ -67,11 +67,6 @@ export function OperacoesFinanceiras({ podeLancar = true }: { podeLancar?: boole
   const [detalheId, setDetalheId] = useState<string | null>(() => typeof window === "undefined" ? null : parseOperacaoFinanceiraId(window.location.pathname));
   const operacoesQuery = useOperacoesFinanceiras({ inicio, fim });
   const configQuery = useConfiguracoesFinanceiras(podeLancar);
-  // Só o cold start (nada carregado ainda nesta sessão) usa o loader de
-  // página cheia — um filtro novo depois disso mostra o texto de carregando
-  // dentro do próprio Panel, sem esconder cabeçalho/filtros.
-  const [carregouAlgumaVez, setCarregouAlgumaVez] = useState(false);
-  useEffect(() => { if (operacoesQuery.data) setCarregouAlgumaVez(true); }, [operacoesQuery.data]);
   // Leitura própria desta tela (única entre as telas financeiras que
   // depende do rascunho pra decidir "Continuar operação" x "Nova operação"
   // logo ao montar, sem esperar clique) — publica na store compartilhada
@@ -122,7 +117,7 @@ export function OperacoesFinanceiras({ podeLancar = true }: { podeLancar?: boole
   };
 
   if (detalheId != null) return <OperacaoFinanceiraDetalhe operacaoId={detalheId} onVoltar={voltar} onAbrir={abrirDetalhe} onCorrigir={corrigir} podeLancar={podeLancar} />;
-  if (!carregouAlgumaVez && !form && (operacoesQuery.isPending || (podeLancar && configQuery.isPending))) {
+  if (!form && (operacoesQuery.isPending || (podeLancar && configQuery.isPending))) {
     if (ehOfflineSemDados(operacoesQuery)) return <PaginaFinanceira><PageHeader titulo="Operações" descricao="Fatos de negócio e seus efeitos financeiros e físicos, preservados em um histórico auditável." /><SemConexaoAviso mensagem="Sem conexão e sem operações salvas para este período." /></PaginaFinanceira>;
     return <PaginaCarregando label="Carregando operações" />;
   }
@@ -154,7 +149,7 @@ export function OperacoesFinanceiras({ podeLancar = true }: { podeLancar?: boole
         <select aria-label="Filtrar por efeito" value={efeito} onChange={(e) => { setEfeito(e.target.value as EfeitoFiltro); setPagina(1); }} className="h-[42px] w-full min-w-0 flex-[1_1_170px] rounded-lg border border-border bg-white px-3 text-sm sm:w-auto"><option value="TODOS">Todos os efeitos</option><option value="ESTOQUE">Estoque</option><option value="PAGAMENTO">Pagamento</option><option value="RECEBIMENTO">Recebimento</option><option value="A_PAGAR">A pagar</option><option value="A_RECEBER">A receber</option><option value="TRANSFERENCIA">Transferência</option><option value="SEM_EFEITOS">Sem efeitos</option></select>
         <select aria-label="Filtrar por status" value={status} onChange={(e) => { setStatus(e.target.value); setPagina(1); }} className="h-[42px] w-full min-w-0 flex-[1_1_150px] rounded-lg border border-border bg-white px-3 text-sm sm:w-auto"><option value="TODOS">Todos os status</option><option value="CONFIRMADA">Confirmadas</option><option value="CANCELADA">Canceladas</option></select>
       </div>
-      {ehOfflineSemDados(operacoesQuery) ? <SemConexaoAviso mensagem="Sem conexão e sem operações salvas para este período." /> : operacoesQuery.isPending ? <p role="status" className="p-5">Carregando operações do período…</p> : operacoesQuery.isError ? <Empty>Não foi possível carregar as operações.</Empty> : filtradas.length ? <><TabelaFinanceira rotulo="Operações do período" itens={operacoesDaPagina} colunas={COLUNAS} chaveDe={(operacao) => operacao.id} onAbrir={(operacao) => abrirDetalhe(operacao.id)} classeLinha={(operacao) => operacao.status === "CANCELADA" ? "opacity-60" : ""} barraRolagemSuperior />
+      {operacoesQuery.isError ? <Empty>Não foi possível carregar as operações.</Empty> : filtradas.length ? <><TabelaFinanceira rotulo="Operações do período" itens={operacoesDaPagina} colunas={COLUNAS} chaveDe={(operacao) => operacao.id} onAbrir={(operacao) => abrirDetalhe(operacao.id)} classeLinha={(operacao) => operacao.status === "CANCELADA" ? "opacity-60" : ""} barraRolagemSuperior />
         <Paginacao pagina={paginaAtual} totalPaginas={totalPaginas} total={filtradas.length} porPagina={ITENS_POR_PAGINA} rotulo="Paginação de operações" substantivo="operações" idSelect="pagina-operacoes" onPagina={setPagina} /></> : <Empty>Nenhuma operação encontrada no período e filtros selecionados.</Empty>}
     </Panel>
   </PaginaFinanceira>;

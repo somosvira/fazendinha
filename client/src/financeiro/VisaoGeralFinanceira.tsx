@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ArrowDownLeft, ArrowUpRight, ChevronRight, Landmark, Plus, TrendingDown, TrendingUp, WalletCards } from "lucide-react";
 import type { Tab } from "../components/Shell";
 import { AnaliseCategorias } from "./AnaliseCategorias";
@@ -31,11 +31,6 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
   const [substituirRascunho, setSubstituirRascunho] = useState(false);
   const [preparando, setPreparando] = useState(false);
   const saldoEstimado = useContasComSaldoEstimado();
-  // Só o cold start (nenhum período já carregado nesta sessão) usa o loader
-  // de página cheia — trocar de período depois disso mantém o cabeçalho (com
-  // o próprio controle de período) sempre visível, só a área de dados esconde.
-  const [carregouAlgumaVez, setCarregouAlgumaVez] = useState(false);
-  useEffect(() => { if (dashboardQuery.data) setCarregouAlgumaVez(true); }, [dashboardQuery.data]);
 
   // Mesmo cuidado de Compromissos: um rascunho em andamento só é descartado
   // depois de confirmação, e "Ver rascunho atual" é a saída segura.
@@ -71,7 +66,7 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
   // navegação usado pelos links da Base financeira.
   const hrefCompromissos = `/financeiro/compromissos?${new URLSearchParams({ inicio: inicioPeriodo, fim: fimPeriodo })}`;
   const erroDashboard = dashboardQuery.isError ? (dashboardQuery.error instanceof Error ? dashboardQuery.error.message : String(dashboardQuery.error)) : null;
-  if (!dadosAtuais && !carregouAlgumaVez) {
+  if (!dadosAtuais) {
     if (ehOfflineSemDados(dashboardQuery)) return <PaginaFinanceira><PageHeader titulo="Visão geral financeira" descricao="Disponibilidade atual, dinheiro realizado no período e compromissos com vencimento no período selecionado." /><SemConexaoAviso /></PaginaFinanceira>;
     if (dashboardQuery.isPending) return <PaginaCarregando label="Carregando financeiro" />;
   }
@@ -81,7 +76,6 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
     <ErrorBox erro={erro} />
     {erroDashboard && !dadosAtuais && <ErrorBox erro={erroDashboard} />}
     {ehOfflineSemDados(dashboardQuery) && <SemConexaoAviso mensagem="Sem conexão e sem dados salvos para este período." />}
-    {!dadosAtuais && !erroDashboard && !ehOfflineSemDados(dashboardQuery) && <p role="status" className="mt-6">Carregando financeiro do período…</p>}
     {dashboardQuery.isFetching && dadosAtuais && <p role="status" className="mt-6">Atualizando financeiro do período…</p>}
     {erroDashboard && !dadosAtuais && <Button secondary onClick={() => dashboardQuery.refetch()}>Tentar novamente</Button>}
     {dadosAtuais && <>
