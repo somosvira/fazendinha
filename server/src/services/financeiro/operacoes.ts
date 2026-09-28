@@ -135,7 +135,7 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
         status: "CONFIRMADA",
         data: input.data,
         descricao: input.descricao,
-        valorTotal: new Prisma.Decimal(efeitos.valorTotal),
+        valorTotal: efeitos.valorTotal,
         propriedadeId: input.propriedadeId,
         parceiroId: input.parceiroId,
         categoriaId: efeitos.categoriaId,
@@ -144,33 +144,16 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
         centroCustoId: input.centroCustoId,
         corrigeOperacaoId: input.corrigeOperacaoId,
         criadoPorId,
-        itens: { create: efeitos.itens.map((item) => ({
-          ordem: item.ordem,
-          produtoId: item.produtoId,
-          centroCustoId: item.centroCustoId,
-          centroCustoNome: item.centroCustoNome,
-          descricao: item.descricao,
-          quantidade: new Prisma.Decimal(item.quantidade),
-          unidade: item.unidade,
-          valorUnitario: new Prisma.Decimal(item.valorUnitario),
-          valorTotal: new Prisma.Decimal(item.valorTotal),
-          estocavel: item.estocavel,
-          categoriaId: item.categoriaId,
-          categoriaNome: item.categoriaNome,
-          classificacao: item.classificacao,
-        })) },
+        itens: { create: efeitos.itens.map(({ centroCustoEfetivoId, ...item }) => item) },
       },
       include: { itens: true },
     });
 
     const itemPorOrdem = new Map(operacao.itens.map((item) => [item.ordem, item.id]));
-    for (const movimento of efeitos.movimentosEstoque) {
+    for (const { ordemItem, ...movimento } of efeitos.movimentosEstoque) {
       await tx.movimentoEstoque.create({ data: {
-        produtoId: movimento.produtoId, tipo: movimento.tipo, origem: movimento.origem, data: input.data,
-        quantidade: new Prisma.Decimal(movimento.quantidade),
-        custoUnitario: new Prisma.Decimal(movimento.custoUnitario), valorTotal: new Prisma.Decimal(movimento.valorTotal),
-        operacaoId: operacao.id, itemOperacaoId: itemPorOrdem.get(movimento.ordemItem),
-        centroCustoId: movimento.centroCustoId,
+        ...movimento, data: input.data,
+        operacaoId: operacao.id, itemOperacaoId: itemPorOrdem.get(ordemItem),
         propriedadeId: input.propriedadeId, criadoPorId,
         observacao: input.descricao,
       } });
@@ -178,9 +161,7 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
 
     for (const compromisso of efeitos.compromissos) {
       await tx.compromissoFinanceiro.create({ data: {
-        id: compromisso.id, operacaoId: operacao.id, tipo: compromisso.tipo, valorOriginal: new Prisma.Decimal(compromisso.valorOriginal),
-        dataVencimento: compromisso.dataVencimento, numeroParcela: compromisso.numeroParcela, totalParcelas: compromisso.totalParcelas,
-        parceiroId: input.parceiroId,
+        ...compromisso, operacaoId: operacao.id, parceiroId: input.parceiroId,
       } });
     }
 
