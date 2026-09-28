@@ -1,0 +1,639 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Roteiro de Testes do Rebanho</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap">
+<style>
+:root{
+  --bg:#EFEBE0; --surface:#F8F5EC; --surface-2:#F2EEE2;
+  --ink:#16201D; --ink-2:#3B4541; --ink-3:#5E6763;
+  --line:#D3CBB6; --line-2:#E3DCCA;
+  --accent:#4F5C40; --sage-soft:#DDE2D0;
+  --brass:#A8894A; --brass-ink:#6E5423; --brass-soft:#EFE4C8;
+  --coffee:#5C3A1E; --coffee-soft:#E8D9C6;
+  --ok:#2F6B3F; --ok-soft:#DCEBDD;
+  --bad:#9B2C22; --bad-soft:#F5DAD5;
+  --serif:"Newsreader",Georgia,"Times New Roman",serif;
+  --sans:"DM Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"DM Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#111513; --surface:#181D1A; --surface-2:#1E2420;
+    --ink:#ECE6D8; --ink-2:#C5C8BD; --ink-3:#9CA297;
+    --line:#2E3631; --line-2:#252B27;
+    --accent:#B5C29C; --sage-soft:#26301F;
+    --brass:#D4BC85; --brass-ink:#E6D3A6; --brass-soft:#3A3120;
+    --coffee:#D6AE84; --coffee-soft:#3A2A1C;
+    --ok:#9ED3A8; --ok-soft:#1F3325;
+    --bad:#F0A69C; --bad-soft:#3D211D;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#111513; --surface:#181D1A; --surface-2:#1E2420;
+  --ink:#ECE6D8; --ink-2:#C5C8BD; --ink-3:#9CA297;
+  --line:#2E3631; --line-2:#252B27;
+  --accent:#B5C29C; --sage-soft:#26301F;
+  --brass:#D4BC85; --brass-ink:#E6D3A6; --brass-soft:#3A3120;
+  --coffee:#D6AE84; --coffee-soft:#3A2A1C;
+  --ok:#9ED3A8; --ok-soft:#1F3325;
+  --bad:#F0A69C; --bad-soft:#3D211D;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--sans);padding-inline:clamp(16px,4vw,40px);padding-block:0 80px}
+.wrap{max-width:1040px;margin:0 auto}
+code{font-family:var(--mono);font-size:.88em;background:var(--surface-2);border:1px solid var(--line-2);padding:0 5px;border-radius:4px;overflow-wrap:anywhere}
+h1,h2,h3{text-wrap:balance}
+button{font:inherit;color:inherit}
+button:focus-visible,input:focus-visible,textarea:focus-visible,a:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+header.top{padding-block:40px 6px}
+.eyebrow{font:500 12px/1.4 var(--mono);letter-spacing:.07em;text-transform:uppercase;color:var(--accent);margin:0}
+h1{font:600 clamp(36px,6vw,56px)/1.02 var(--serif);margin:12px 0 14px;letter-spacing:-.01em}
+.lede{font-size:17px;color:var(--ink-2);margin:0 0 18px;max-width:68ch}
+
+/* barra de progresso fixa */
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);border-bottom:1px solid var(--line);padding-block:10px;display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px}
+.meter{flex:1 1 220px;display:flex;align-items:center;gap:10px;min-width:0}
+.track{flex:1;height:8px;border-radius:99px;background:var(--surface-2);border:1px solid var(--line-2);overflow:hidden;display:flex}
+.track .p{background:var(--ok)}
+.track .f{background:var(--bad)}
+.count{font:500 13px var(--mono);font-variant-numeric:tabular-nums;color:var(--ink-2);white-space:nowrap}
+.tools{display:flex;flex-wrap:wrap;gap:6px}
+.btn{font:500 13px var(--sans);padding:6px 11px;border:1px solid var(--line);background:var(--surface);border-radius:6px;cursor:pointer}
+.btn:hover{border-color:var(--ink-3)}
+.btn[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.btn.danger{color:var(--bad)}
+.confirm{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:13px;color:var(--ink-2)}
+.status{font-size:13px;color:var(--ok);min-height:1em}
+
+/* seções */
+section{padding-top:34px;scroll-margin-top:64px}
+h2{font:600 30px/1.1 var(--serif);margin:0 0 8px}
+.intro{color:var(--ink-2);margin:0 0 14px;max-width:72ch}
+
+/* features */
+.feat{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:18px 28px;margin-top:10px}
+.feat div{border-top:2px solid var(--ink);padding-top:10px}
+.feat h3{font:600 18px/1.25 var(--serif);margin:0 0 6px}
+.feat ul{margin:0;padding-left:18px;display:grid;gap:4px;font-size:14px;color:var(--ink-2)}
+.feat li b{color:var(--ink);font-weight:600}
+
+/* dados de teste */
+.tw{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:8px;margin-top:10px}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{text-align:left;vertical-align:top;padding:7px 12px;border-bottom:1px solid var(--line-2)}
+thead th{font:500 11px var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--ink-3);white-space:nowrap}
+tbody th{font:500 12.5px var(--mono);color:var(--ink-3);white-space:nowrap}
+tbody tr:last-child td,tbody tr:last-child th{border-bottom:0}
+td{font-variant-numeric:tabular-nums}
+td .big{font:600 15px var(--mono);color:var(--ink)}
+
+/* roteiro */
+.nav{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0 0;padding:0;list-style:none}
+.nav a{display:inline-flex;align-items:center;gap:6px;font-size:13px;text-decoration:none;color:var(--ink-2);padding:4px 9px;border:1px solid var(--line);border-radius:99px;background:var(--surface)}
+.nav a:hover{border-color:var(--ink-3)}
+.nav a .n{font:500 11px var(--mono);color:var(--ink-3);font-variant-numeric:tabular-nums}
+.nav a.done{background:var(--ok-soft);border-color:transparent;color:var(--ok)}
+.nav a.fail{background:var(--bad-soft);border-color:transparent;color:var(--bad)}
+
+.grp{margin-top:6px;border:1px solid var(--line);background:var(--surface);border-radius:10px;overflow:hidden}
+.grp-h{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 14px;padding:14px 16px 10px;border-bottom:1px solid var(--line-2)}
+.grp-h h3{font:600 21px/1.2 var(--serif);margin:0}
+.grp-h .n{font:500 12px var(--mono);color:var(--ink-3);font-variant-numeric:tabular-nums}
+.grp-h p{flex-basis:100%;margin:2px 0 0;font-size:13.5px;color:var(--ink-2);max-width:78ch}
+ol.steps{list-style:none;margin:0;padding:0}
+.step{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:4px 12px;padding:11px 16px;border-top:1px solid var(--line-2);align-items:start}
+.step:first-child{border-top:0}
+.step input[type=checkbox]{width:18px;height:18px;margin:2px 0 0;accent-color:var(--ok);cursor:pointer}
+.step .id{font:500 11px var(--mono);color:var(--ink-3);margin-right:6px;font-variant-numeric:tabular-nums}
+.step .acao,.step .esp{display:block}
+.step label{cursor:pointer}
+.step .acao{font-size:14.5px;color:var(--ink)}
+.step .acao b{font-weight:600}
+.step .esp{font-size:13.5px;color:var(--ink-2);margin-top:3px}
+.step .esp::before{content:"Esperado: ";font:500 11px var(--mono);letter-spacing:.04em;text-transform:uppercase;color:var(--ink-3)}
+.tag{font:500 10.5px/1 var(--mono);letter-spacing:.04em;text-transform:uppercase;padding:3px 6px;border-radius:4px;margin-left:6px;vertical-align:1px;white-space:nowrap}
+.t-neg{background:var(--coffee-soft);color:var(--coffee)}
+.t-opt{background:var(--brass-soft);color:var(--brass-ink)}
+.failbtn{font:500 12px var(--sans);padding:3px 8px;border:1px solid var(--line);border-radius:5px;background:transparent;cursor:pointer;color:var(--ink-3);white-space:nowrap}
+.failbtn[aria-pressed="true"]{background:var(--bad-soft);color:var(--bad);border-color:transparent}
+.note{grid-column:2 / -1}
+.note textarea{width:100%;min-height:54px;resize:vertical;font:13.5px/1.45 var(--sans);color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:6px 9px}
+.step.is-ok .acao,.step.is-ok .esp{opacity:.55}
+.step.is-ok .acao{text-decoration:line-through;text-decoration-color:var(--ink-3)}
+.step.is-fail{background:var(--bad-soft)}
+.hide-done .step.is-ok{display:none}
+
+.report{margin-top:12px}
+.report textarea{width:100%;min-height:180px;font:12.5px/1.5 var(--mono);background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:10px}
+.foot{margin-top:40px;padding-top:14px;border-top:1px solid var(--line);font-size:13px;color:var(--ink-3)}
+.foot p{margin:0 0 6px;max-width:none}
+@media (max-width:560px){
+  .step{grid-template-columns:24px minmax(0,1fr)}
+  .step .failbtn{grid-column:2;justify-self:start}
+  h2{font-size:26px}
+}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+</style>
+
+<div class="wrap">
+<header class="top">
+  <p class="eyebrow">Terrano · Pecuária v1 Rebanho + v2 Genética · <code>/pecuaria/rebanho</code></p>
+  <h1>Roteiro de Testes do Rebanho</h1>
+  <p class="lede">Teste manual, de ponta a ponta, de tudo o que a v1 (Rebanho) e a v2 (Genética) da pecuária entregaram. Siga as seções na ordem: cada uma usa os dados que a anterior criou. Marque o que passou; se algo falhar, clique em “Falhou” e anote o que viu. As marcações ficam salvas só neste navegador, e “Copiar relatório” gera o resumo para mandar ao time.</p>
+</header>
+
+<div class="bar" role="region" aria-label="Progresso">
+  <div class="meter">
+    <div class="track" aria-hidden="true"><div class="p" id="barP"></div><div class="f" id="barF"></div></div>
+    <span class="count" id="count">0 de 0</span>
+  </div>
+  <div class="tools">
+    <button class="btn" id="btnHide" aria-pressed="false" type="button">Esconder os que passaram</button>
+    <button class="btn" id="btnReport" type="button">Copiar relatório</button>
+    <button class="btn danger" id="btnReset" type="button">Limpar marcações</button>
+  </div>
+  <div class="confirm" id="confirmReset" hidden>
+    <span>Apagar todas as marcações e anotações?</span>
+    <button class="btn danger" id="btnResetYes" type="button">Apagar</button>
+    <button class="btn" id="btnResetNo" type="button">Manter</button>
+  </div>
+  <span class="status" id="status" role="status"></span>
+</div>
+
+<main>
+<section id="features">
+  <h2>O que a v1 e a v2 entregaram</h2>
+  <p class="intro">Tudo que está na <code>main</code> desde o merge do PR #296 (25/09/2026). O módulo é a tela <code>/pecuaria/rebanho</code> com quatro abas (Visão geral · Animais · Lotes · Cadastros) e a API <code>/api/pecuaria/rebanho/*</code>, no schema Postgres <code>pecuaria</code> (14 tabelas).</p>
+  <div class="feat">
+    <div><h3>Cadastro do animal</h3><ul>
+      <li><b>Novo animal</b>: brinco, nome, sexo, brinco eletrônico, SISBOV, origem (nascido/comprado), nascimento (com “data estimada”), entrada, partos antes da entrada, observação</li>
+      <li>Sítio, lote, aptidão (leite/corte), papel reprodutivo (nenhum/receptora/doadora) e peso de entrada, já no cadastro</li>
+      <li><b>Composição racial</b> em 64 avos, com raça composta (Girolando)</li>
+      <li>Editar dados, editar composição, <b>excluir cadastro</b> (vira baixa “cadastro indevido”, estornável)</li>
+    </ul></div>
+    <div><h3>Localização e destino</h3><ul>
+      <li><b>Movimentar</b> 1 ou vários animais entre lotes e sítios, com motivo e data</li>
+      <li>Desfazer a movimentação inteira (tudo ou nada) ou só a última de um animal</li>
+      <li>Aviso com “Desfazer” logo após mover, em todas as telas</li>
+      <li><b>Mudar destino</b> (aptidão + papel) e desfazer a última mudança</li>
+      <li>Histórico com período (desde/até) de localização e destino</li>
+    </ul></div>
+    <div><h3>Peso e GMD</h3><ul>
+      <li>Registrar, editar e excluir <b>pesagem</b> (nascimento, entrada, desmama, rotina, saída; manual ou balança)</li>
+      <li>Peso atual, <b>GMD</b> recente, do período (30/90/180/365 dias ou desde a entrada) e desde a entrada</li>
+      <li>Gráfico do peso na ficha</li>
+    </ul></div>
+    <div><h3>Categoria</h3><ul>
+      <li>Categoria <b>calculada</b> por regras da fazenda (idade + parto), avaliadas em ordem</li>
+      <li>7 categorias padrão do IDEAGRI e “Restaurar padrões”</li>
+      <li>Criar, editar, reordenar, desativar regras, com <b>simulação</b> antes de aplicar</li>
+      <li>Forçar categoria manual com motivo e “Voltar ao automático”</li>
+    </ul></div>
+    <div><h3>Baixa</h3><ul>
+      <li><b>Dar baixa</b> por tipo: venda, abate, morte, doação, extravio</li>
+      <li>Motivo do catálogo agrupado por classe (descarte voluntário, involuntário, morte)</li>
+      <li><b>Estornar baixa</b>: reabre exatamente onde o animal estava</li>
+      <li>Histórico de baixas na ficha, inclusive as estornadas</li>
+    </ul></div>
+    <div><h3>Lotes</h3><ul>
+      <li>Criar, editar, desativar e reativar lote por sítio</li>
+      <li><b>Página do lote</b>: resumo (animais, peso médio, GMD médio, idade média, categorias), tabela, “Trazer animais”, “Saíram por baixa”, histórico e alterações</li>
+      <li>Histórico de movimentações geral, com filtros e “Mostrar desfeitas”</li>
+    </ul></div>
+    <div><h3>Cadastros da fazenda</h3><ul>
+      <li>Raças (nome, sigla, raça base ou composta)</li>
+      <li>Motivos de baixa (nome + classe)</li>
+      <li>Categorias (regras)</li>
+      <li>Contagem de uso e histórico de alterações em cada sub-aba</li>
+    </ul></div>
+    <div><h3>Leitura e controle</h3><ul>
+      <li><b>Visão geral</b>: ativos, receptoras, baixas em 30 dias, sítios; baixas por tipo e classe (30 dias / 12 meses); atalhos para a lista filtrada</li>
+      <li><b>Lista de animais</b> com busca, 14 filtros, ordenação, paginação e ações em lote</li>
+      <li><b>Auditoria</b>: quem, quando, campo antes → depois</li>
+      <li>Permissões: área <code>pecuaria</code> + flag <code>lancar</code> (sem ela, só consulta); escopo por sítio</li>
+      <li>Carga única do IDEAGRI (<code>import:pecuaria</code>, só script)</li>
+    </ul></div>
+  </div>
+  <p class="intro" style="margin-top:22px"><b>v2 · Genética</b> — PR #305 (26/09/2026), base da reprodução (v4).</p>
+  <div class="feat">
+    <div><h3>Filiação</h3><ul>
+      <li><b>Mãe e pai</b> na ficha: animal da fazenda ou <b>genitor externo</b>, nunca os dois</li>
+      <li>Lista de <b>filhos</b>, com link para cada ficha</li>
+      <li>Mãe e pai já no <b>Novo animal</b></li>
+      <li>Recusa sexo trocado, filho nascido antes do genitor e ciclo; avisa mãe jovem e partos próximos</li>
+    </ul></div>
+    <div><h3>Genitores externos</h3><ul>
+      <li>Touro de central ou doadora de fora, com código, fornecedor e <b>composição</b></li>
+      <li>Sub-aba em Cadastros, com contagem de filhos e histórico</li>
+      <li>Não troca de sexo se já é genitor ou está em material genético</li>
+    </ul></div>
+    <div><h3>Composição calculada</h3><ul>
+      <li>Raça do filho pela média dos genitores, selo <b>Calculada</b> ou <b>Informada</b></li>
+      <li>“Calcular pelos genitores” na ficha; nunca sobrescreve a informada sem perguntar</li>
+      <li>Limpa a calculada quando os genitores saem; tudo auditado</li>
+    </ul></div>
+    <div><h3>Material genético</h3><ul>
+      <li><b>Sêmen</b> (convencional, sexado fêmea/macho) e <b>embrião</b> como produto do estoque (dose ou unidade)</li>
+      <li>Categoria financeira com <b>Uso genético</b>; compra pelo fluxo normal</li>
+      <li>Saldo em estoque na sub-aba Material genético; consumo fica para a v4</li>
+    </ul></div>
+    <div><h3>Carga do IDEAGRI</h3><ul>
+      <li>Traz mãe, pai e os touros/doadoras de fora (TIPOANIMAL E/S)</li>
+      <li>Segunda passada idempotente; validador confere sexo e datas</li>
+    </ul></div>
+  </div>
+</section>
+
+<section id="dados">
+  <h2>Dados de teste</h2>
+  <p class="intro">Os três animais de partida, preenchendo todos os campos do cadastro. As datas assumem hoje = 26/09/2026; se testar em outro dia, as idades e categorias esperadas podem mudar. Os lotes vêm da seção 2. Os números de brinco eletrônico e SISBOV são fictícios, só precisam ser únicos.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Campo</th><th>Animal A</th><th>Animal B</th><th>Animal C</th></tr></thead>
+    <tbody>
+      <tr><th>Brinco</th><td><span class="big">N302</span></td><td><span class="big">G503</span></td><td><span class="big">T110</span></td></tr>
+      <tr><th>Nome</th><td>Estrela</td><td>Mimosa</td><td>Trovão</td></tr>
+      <tr><th>Sexo</th><td>Fêmea</td><td>Fêmea</td><td>Macho</td></tr>
+      <tr><th>Brinco eletrônico</th><td>982000000000302</td><td>982000000000503</td><td>982000000000110</td></tr>
+      <tr><th>SISBOV</th><td>105300000000302</td><td>105300000000503</td><td>105300000000110</td></tr>
+      <tr><th>Origem</th><td>Nascido na propriedade</td><td>Comprado</td><td>Nascido na propriedade</td></tr>
+      <tr><th>Nascimento</th><td>01/05/2025</td><td>01/03/2021 · marcar “data estimada”</td><td>10/04/2026</td></tr>
+      <tr><th>Entrada</th><td>= nascimento</td><td>15/08/2024</td><td>= nascimento</td></tr>
+      <tr><th>Partos antes da entrada</th><td>0</td><td>2</td><td>0 (campo não se aplica a macho)</td></tr>
+      <tr><th>Composição racial</th><td>Holandês 48 + Gir Leiteiro 16 (¾ HO ¼ GO)</td><td>Girolando 64 (composta)</td><td>Nelore 32 + Angus 32 (½ NE ½ AN)</td></tr>
+      <tr><th>Sítio · lote</th><td>Sítio A · Bezerreiro</td><td>Sítio A · Receptoras</td><td>Sítio A · Bezerreiro</td></tr>
+      <tr><th>Aptidão · papel</th><td>Leite · Nenhum</td><td>Leite · Receptora</td><td>Corte · Nenhum</td></tr>
+      <tr><th>Peso de entrada</th><td>34 kg</td><td>480 kg</td><td>32 kg</td></tr>
+      <tr><th>Observação</th><td>Filha da 7710, parto normal</td><td>Comprada do vizinho, 2 crias</td><td>Primeiro bezerro de corte</td></tr>
+      <tr><th>Idade esperada</th><td>16 meses</td><td>66 meses</td><td>5 meses</td></tr>
+      <tr><th>Categoria esperada</th><td>Novilha</td><td>Vaca</td><td>Em crescimento (macho)</td></tr>
+    </tbody>
+  </table></div>
+  <p class="intro" style="margin-top:12px"><b>Sítios:</b> “Sítio A” é o sítio principal da fazenda. Os passos marcados <span class="tag t-opt">2 sítios</span> precisam de um segundo sítio (“Sítio B”), criado em Configurações › Sítios; sem ele, pule-os. Passos marcados <span class="tag t-neg">recusa</span> testam algo que o sistema deve impedir.</p>
+  <h3 style="font:600 20px/1.2 var(--serif);margin:26px 0 6px">Dados da v2 · Genética</h3>
+  <p class="intro">Usados nas seções marcadas “v2”, depois de terminar as da v1 (reaproveitam N302, G503 e T110).</p>
+  <div class="tw"><table>
+    <thead><tr><th>Cadastro</th><th>Dados</th></tr></thead>
+    <tbody>
+      <tr><th>Touro externo</th><td><span class="big">Zeus</span> · macho · código ZEUS123 · fornecedor ABS Pecplan · Holandês 64/64</td></tr>
+      <tr><th>Doadora externa</th><td><span class="big">Doadora DB01</span> · fêmea · código DB01 · fornecedor Fazenda Vista Alegre · Holandês 32 + Gir Leiteiro 32</td></tr>
+      <tr><th>Bezerra B1</th><td>Brinco B1 · fêmea · nascida na propriedade hoje · mãe N302 · pai Zeus · sem composição digitada</td></tr>
+      <tr><th>Bezerra B2</th><td>Brinco B2 · fêmea · nascida em 01/06/2026 · mãe N302 · pai Zeus (para o aviso de mãe jovem)</td></tr>
+      <tr><th>Categoria financeira</th><td>“Material genético” com <b>Uso genético</b> marcado</td></tr>
+    </tbody>
+  </table></div>
+  <ul class="nav" id="nav" aria-label="Seções do roteiro"></ul>
+</section>
+
+<section id="roteiro">
+  <h2>Roteiro</h2>
+  <div id="grupos"></div>
+</section>
+
+<section id="relatorio">
+  <h2>Relatório</h2>
+  <p class="intro">O texto abaixo é o que “Copiar relatório” copia. Se o botão não funcionar no seu navegador, selecione e copie daqui.</p>
+  <div class="report"><textarea id="reportText" readonly aria-label="Relatório dos testes"></textarea></div>
+</section>
+</main>
+
+<footer class="foot">
+  <p>Fontes: “Pecuária Schema Map” (artefato do projeto), <code>CLAUDE.md</code>, telas em <code>client/src/pecuaria/rebanho/</code> e services em <code>server/src/services/pecuaria/rebanho/</code>, na <code>main</code> de 26/09/2026.</p>
+  <p>v2: PR somosvira/fazendinha#305 (branch <code>claude/zen-fermat-ypdneu</code>).</p>
+  <p>Fora do escopo (não testar): sanidade, nutrição, reprodução (IA, TE, parto, consumo de doses) e leite.</p>
+</footer>
+</div>
+
+<script>
+const G = [
+ {id:"prep", t:"Preparação", d:"Ambiente e acesso antes de começar.", s:[
+  ["Rodar as migrations e os catálogos: <code>pnpm dev:server</code> (aplica <code>migrate deploy</code>) e <code>pnpm --filter rionovo-server run seed:pecuaria</code>.","Raças e motivos de baixa de fábrica criados; o comando termina sem erro."],
+  ["Entrar com um usuário que tenha a área <b>Pecuária</b> e a flag <b>lancar</b> (o dono tem as duas).","A barra lateral mostra Pecuária › Rebanho."],
+  ["Abrir <code>/pecuaria/rebanho</code>.","Abre a Visão geral, com as abas Visão geral · Animais · Lotes · Cadastros."],
+  ["Em Cadastros › Raças, conferir o catálogo de fábrica.","Holandês (HO), Gir Leiteiro (GO), Nelore (NE), Jersey (JE), Angus (AN), Guzerá (GU), Pardo Suíço (PS) e Girolando (GL, composta)."],
+  ["Em Cadastros › Categorias, conferir as regras de fábrica.","7 categorias, em ordem: fêmeas Vaca (com parto), Em crescimento (&lt; 12 meses, sem parto), Novilha (≥ 12 meses, sem parto); machos Em crescimento (qualquer idade), Reprodutor, Boi carreiro, Rufião (só manual)."],
+  ["Em Cadastros › Motivos de baixa, conferir os três grupos.","Descarte voluntário (5), descarte involuntário (7) e morte (17 causas)."]
+ ]},
+ {id:"racas", t:"Raças e motivos de baixa", d:"Cadastros › Raças e Cadastros › Motivos de baixa.", s:[
+  ["Criar a raça <b>Tabapuã</b>, sigla <b>TB</b>, raça base marcada.","Aparece na lista, com uso 0."],
+  ["Tentar criar outra raça chamada <b>Tabapuã</b>.","Recusado: nome repetido.",1],
+  ["Tentar a sigla <b>t</b> e depois <b>TABA</b>.","Recusado: a sigla tem 2 ou 3 letras maiúsculas.",1],
+  ["Editar Tabapuã: sigla <b>TP</b>. Abrir o histórico de alterações.","Linha com data, hora, usuário e “sigla: TB → TP”."],
+  ["Desativar Tabapuã e ligar “Mostrar inativos”.","Some da lista padrão, aparece com “Mostrar inativos”, e não é oferecida em composições novas."],
+  ["Criar o motivo <b>Raio</b>, classe <b>Morte</b>.","Aparece no grupo Morte."],
+  ["Criar o motivo <b>Venda de excedente</b>, classe Descarte voluntário.","Aparece no grupo Descarte voluntário."],
+  ["Tentar criar o motivo <b>raio</b> (minúsculo).","Recusado: nome repetido, sem diferenciar maiúsculas.",1]
+ ]},
+ {id:"lotes", t:"Lotes", d:"Aba Lotes.", s:[
+  ["Criar no Sítio A os lotes <b>Bezerreiro</b>, <b>Recria</b> e <b>Receptoras</b>, com observação em um deles.","Os três aparecem na aba Lotes, filtráveis por sítio, com 0 animais."],
+  ["Tentar criar outro <b>Recria</b> no Sítio A.","Recusado: nome repetido no sítio.",1],
+  ["Criar <b>Recria</b> no Sítio B.","Aceito: o mesmo nome pode existir em outro sítio.",0,1],
+  ["Criar um lote <b>Lote teste</b> e desativá-lo; ligar “Mostrar inativos”.","Some da lista padrão; aparece com “Mostrar inativos”. Reativar funciona."],
+  ["Editar o lote Lote teste: trocar o nome.","Nome muda; o campo sítio não pode ser trocado; a página do lote mostra a alteração em “Alterações do lote”."]
+ ]},
+ {id:"animais", t:"Cadastro dos 3 animais", d:"Botão “Novo animal” (Visão geral ou Animais). Use a tabela de dados de teste.", s:[
+  ["Cadastrar <b>N302 Estrela</b> com todos os campos da coluna A. Conferir o passo “Revisão do cadastro” antes de salvar.","A revisão mostra todos os dados. Ao salvar, a ficha abre com categoria <b>Novilha</b>, idade 16 meses, Sítio A · Bezerreiro, Leite · Nenhum, peso atual 34 kg."],
+  ["Na ficha de N302, conferir as seções Localização, Destino, Composição e Pesagens.","Uma linha aberta de localização e uma de destino, as duas desde 01/05/2025; composição ¾ HO ¼ GO; uma pesagem de 34 kg em 01/05/2025."],
+  ["Cadastrar <b>G503 Mimosa</b> (coluna B): comprada, nascimento estimado, entrada 15/08/2024, 2 partos antes da entrada.","Categoria <b>Vaca</b>; nascimento marcado como estimado; Sítio A · Receptoras; Leite · Receptora; peso 480 kg."],
+  ["Cadastrar <b>T110 Trovão</b> (coluna C), macho de corte.","Categoria <b>Em crescimento</b>; papel reprodutivo só “Nenhum” (receptora/doadora não são oferecidas para macho)."],
+  ["Tentar cadastrar outro animal com brinco <b>N302</b> no Sítio A.","Recusado: brinco já usado por um animal ativo do sítio.",1],
+  ["Cadastrar um animal com brinco <b>N302</b> no Sítio B e depois excluir o cadastro dele (motivo “teste de brinco por sítio”).","Aceito: o brinco só é único dentro do sítio.",0,1],
+  ["Tentar cadastrar um animal com o brinco eletrônico <b>982000000000302</b> (ou o SISBOV de N302).","Recusado: brinco eletrônico e SISBOV não repetem em nenhum sítio.",1],
+  ["Tentar um animal comprado com entrada <b>antes</b> do nascimento.","Recusado.",1],
+  ["Tentar nascimento ou entrada numa data <b>futura</b>.","Recusado.",1],
+  ["Tentar composição Holandês 48 + Gir Leiteiro 32 (soma 80).","Recusado: a soma não passa de 64.",1],
+  ["Tentar colocar o animal num lote de outro sítio ou num lote inativo.","O lote não aparece na lista, ou o servidor recusa.",1],
+  ["Voltar à aba Animais.","Os três animais aparecem como Ativo, com categoria, idade, lote, aptidão e peso."]
+ ]},
+ {id:"editar", t:"Editar dados e composição", d:"Na ficha do animal.", s:[
+  ["N302: “Editar dados”, trocar o nome para <b>Estrela II</b> e a observação.","Ficha e lista mostram o nome novo; a Auditoria mostra “nome: Estrela → Estrela II”."],
+  ["N302: “Editar composição” para Holandês 32 + Gir Leiteiro 32.","Composição passa a ½ HO ½ GO; a anterior some por inteiro (é substituída)."],
+  ["N302: tentar adicionar Tabapuã (inativa) à composição.","Não é oferecida: raça inativa só vale para quem já a tinha.",1],
+  ["G503: editar a entrada para 20/08/2024.","A primeira localização, o primeiro destino e a pesagem de entrada passam a começar em 20/08/2024."],
+  ["T110: pela lista (lápis “Editar dados”), alterar o brinco eletrônico.","Salva; a lista atualiza."]
+ ]},
+ {id:"pesagens", t:"Pesagens e GMD", d:"Na ficha: “Registrar pesagem”, lápis e lixeira na tabela de pesagens.", s:[
+  ["N302: registrar 88 kg em 15/09/2025, tipo Desmama, origem Manual.","Aparece na tabela; peso atual continua o mais recente."],
+  ["N302: registrar 150 kg em 10/01/2026 (Rotina), 210 kg em 10/05/2026 (Rotina) e 262 kg em 10/09/2026 (Rotina, origem <b>Balança</b>, observação “pesagem do mês”).","Peso atual 262 kg; GMD recente ≈ 0,42 kg/dia ((262 − 210) ÷ 123 dias); GMD desde a entrada ≈ 0,46 kg/dia."],
+  ["N302: no seletor de período do GMD, passar por 30, 90, 180, 365 dias e “desde a entrada”.","O GMD do período muda a cada opção; o gráfico mostra a curva 34 → 88 → 150 → 210 → 262."],
+  ["N302: editar a pesagem de 10/09/2026 para 265 kg.","Peso e GMD recalculam na hora; a observação “pesagem do mês” é mantida."],
+  ["G503: registrar 505 kg em 01/06/2026 e 498 kg em 01/09/2026.","GMD recente negativo (perdeu peso)."],
+  ["T110: registrar 60 kg em 20/06/2026 e excluir em seguida (confirmar “Excluir pesagem?”).","A pesagem some da tabela; a Auditoria de T110 ainda mostra a exclusão, com o peso que tinha."],
+  ["Tentar uma pesagem antes do nascimento do animal.","Recusado.",1],
+  ["Tentar uma pesagem com data futura.","Recusado.",1],
+  ["Tentar peso 0 kg.","Recusado: mínimo 0,01 kg.",1]
+ ]},
+ {id:"mov", t:"Movimentações", d:"Ficha, lista de Animais, aba Lotes e página do lote.", s:[
+  ["N302: na ficha, “Movimentar” para Sítio A · <b>Recria</b> em 10/01/2026, motivo “Desmama do grupo de maio”.","Localização de Bezerreiro fecha em 10/01/2026 e Recria abre na mesma data; a seção Movimentações da ficha mostra a movimentação com o motivo."],
+  ["Na lista de Animais, selecionar N302 e T110 e mover os dois para <b>Recria</b> em 20/09/2026.","T110 vai para Recria; N302 é pulado porque já está lá. Aparece o aviso com “Desfazer”."],
+  ["Clicar em “Desfazer” no aviso.","T110 volta para Bezerreiro; a movimentação fica marcada como desfeita."],
+  ["Repetir a movimentação de T110 para Recria em 20/09/2026, sem desfazer.","T110 em Recria."],
+  ["Abrir a página do lote <b>Receptoras</b> e usar “Trazer animais” para trazer N302 em 21/09/2026.","N302 aparece em Receptoras; a paginação do seletor funciona."],
+  ["Aba Lotes › Histórico de movimentações: filtrar por lote e por período; ligar “Mostrar desfeitas”.","Aparecem as movimentações criadas; a desfeita só com “Mostrar desfeitas”."],
+  ["Abrir o detalhe da movimentação de 10/01/2026 e tentar “Desfazer”.","Recusado: N302 já foi movido de novo depois.",1],
+  ["Abrir a movimentação de T110 de 20/09/2026 e desfazer a inteira (motivo obrigatório).","A tela mostra antes quem volta para onde; depois de confirmar, T110 volta para Bezerreiro e a movimentação fica como desfeita, ainda no histórico."],
+  ["N302: “Desfazer última movimentação”.","N302 volta para Recria; a localização de Receptoras some e a de Recria é reaberta."],
+  ["N302: mover de novo para Receptoras em 21/09/2026.","N302 em Receptoras."],
+  ["Tentar mover um animal com data anterior à localização atual (ex.: N302 em 01/09/2026).","Recusado.",1],
+  ["Mover T110 para Sítio B · Recria em 22/09/2026.","T110 aparece no Sítio B; filtrar a lista por sítio confirma.",0,1],
+  ["Com um animal ativo de brinco <b>N302</b> no Sítio B, tentar mover a N302 do Sítio A para o Sítio B.","Recusado: brinco já usado no sítio de destino.",1,1],
+  ["Trazer T110 de volta para Sítio A · Bezerreiro.","T110 em Bezerreiro.",0,1]
+ ]},
+ {id:"destino", t:"Destino (aptidão e papel)", d:"“Mudar destino” e “Desfazer última mudança” na ficha.", s:[
+  ["N302: mudar destino para Leite · <b>Receptora</b> em 21/09/2026.","Destino antigo fecha em 21/09/2026 e o novo abre; a Visão geral soma 1 receptora."],
+  ["N302: “Desfazer última mudança”.","Volta a Leite · Nenhum."],
+  ["N302: mudar de novo para Leite · Receptora em 21/09/2026.","Leite · Receptora."],
+  ["T110: tentar papel Receptora ou Doadora.","Não é oferecido (ou o servidor recusa) para macho.",1],
+  ["Tentar mudar destino com data anterior ao destino atual.","Recusado.",1]
+ ]},
+ {id:"catman", t:"Categoria manual", d:"“Alterar categoria” e “Voltar ao automático” na ficha.", s:[
+  ["N302: “Alterar categoria” para <b>Vaca</b>, motivo “Comprada já parida (teste)”.","Pílula “Vaca” com selo Manual e o cálculo (Novilha) ao lado."],
+  ["Na lista, ligar o filtro “Só forçadas”.","Só N302 aparece."],
+  ["N302: tentar escolher uma categoria de macho.","Só aparecem categorias de fêmea.",1],
+  ["N302: tentar forçar Vaca de novo.","Recusado: já é a categoria de hoje.",1],
+  ["N302: “Voltar ao automático”.","Volta a Novilha; o histórico de categoria mostra o período forçado com o motivo do encerramento."],
+  ["T110: forçar <b>Reprodutor</b>, motivo “Touro escolhido para monta”.","T110 como Reprodutor (Manual). Deixe assim para a próxima seção."]
+ ]},
+ {id:"regras", t:"Regras de categoria", d:"Cadastros › Categorias.", s:[
+  ["Conferir a coluna “Forçadas”.","Reprodutor mostra 1."],
+  ["Tentar desativar <b>Reprodutor</b>.","Recusado: há animal com ela forçada.",1],
+  ["Tentar mudar o sexo de Reprodutor para Fêmea.","Recusado pelo mesmo motivo.",1],
+  ["Editar <b>Novilha</b>: idade mínima 18 meses; na janela “Aplicar esta mudança?”, ler e cancelar.","A simulação mostra N302 Novilha → Sem categoria e avisa que animais vão ficar sem categoria. Cancelar não grava nada."],
+  ["Criar <b>Novilha jovem</b>: Fêmea, 12 a 17 meses, sem parto, posicionada antes de Novilha. Aplicar.","A simulação mostra “1 animal muda: Novilha → Novilha jovem”. Depois de aplicar, a ficha de N302 mostra Novilha jovem."],
+  ["Reordenar: colocar Novilha jovem depois de Novilha.","A simulação mostra N302 voltando para Novilha (a primeira regra que encaixa vence)."],
+  ["Desativar Novilha jovem.","Some da lista padrão; aparece com “Mostrar inativas”."],
+  ["“Restaurar padrões”.","Volta às 7 categorias de fábrica, com simulação antes."],
+  ["Abrir o histórico de alterações de Categorias.","Todas as mudanças acima, com antes → depois."],
+  ["T110: “Voltar ao automático”.","T110 volta a Em crescimento; “Forçadas” de Reprodutor volta a 0."]
+ ]},
+ {id:"baixa", t:"Baixa, estorno e excluir cadastro", d:"“Dar baixa”, “Estornar baixa” e “Excluir cadastro” na ficha.", s:[
+  ["G503: abrir “Dar baixa”, tipo <b>Venda</b>, e conferir a lista de motivos.","Só motivos de descarte (voluntário e involuntário), agrupados por classe; nenhuma causa de morte."],
+  ["Trocar o tipo para <b>Morte</b>.","Só causas de morte, incluindo Raio."],
+  ["Trocar o tipo para <b>Extravio</b>.","Sem campo de motivo."],
+  ["Tentar a baixa de G503 em 30/08/2026.","Recusado: antes da última pesagem (01/09/2026).",1],
+  ["Dar baixa em G503: Venda, 20/09/2026, motivo Baixa produção, observação “Vendida ao frigorífico”.","G503 fica Baixado; a lista mostra a coluna Baixa (Venda · 20/09/2026); a ficha só oferece “Estornar baixa”; localização e destino aparecem “na baixa”."],
+  ["Visão geral.","Animais ativos cai 1; Receptoras cai 1; Baixas em 30 dias = 1; o painel “Baixas no período” mostra Venda e Descarte voluntário."],
+  ["Tentar registrar pesagem ou mover G503.","Recusado ou botão ausente: animal baixado não tem ações.",1],
+  ["Cadastrar um animal novo com brinco <b>G503</b> no Sítio A (dados mínimos).","Aceito: a baixa liberou o brinco."],
+  ["Tentar estornar a baixa de G503 (a Mimosa).","Recusado: o brinco já está com outro animal ativo no sítio.",1],
+  ["No G503 novo: “Excluir cadastro”, motivo “Cadastro de teste”.","Vira baixa do tipo Cadastro indevido; não entra em “Baixas em 30 dias”."],
+  ["Estornar a baixa da Mimosa, motivo “Venda cancelada”.","Mimosa volta a Ativa, em Sítio A · Receptoras, Leite · Receptora (as mesmas linhas reabertas); o histórico de baixas mostra a venda como estornada."],
+  ["Dar baixa na Mimosa: <b>Morte</b>, 24/09/2026, motivo Raio.","Baixada por morte; “Baixas no período” mostra a classe Morte."],
+  ["Em Cadastros › Motivos, editar Raio para Descarte voluntário.","Recusado: uma baixa de morte ativa usa esse motivo.",1],
+  ["Tentar pesagem na Mimosa em 25/09/2026.","Recusado: depois da baixa.",1],
+  ["Ver a ficha da Mimosa.","Idade para na data da baixa; histórico de baixas com as duas (venda estornada e morte)."]
+ ]},
+ {id:"lotepag", t:"Página do lote", d:"Aba Lotes › clicar num lote.", s:[
+  ["Abrir <b>Receptoras</b> › Resumo do lote.","1 animal ativo (N302, fêmea); peso médio 265 kg com mínimo e máximo; GMD do período “1 de 1 animais”; idade média 16 meses; pílula da categoria."],
+  ["Conferir a tabela “Animais no lote”.","Colunas sexo, idade, aptidão, peso, GMD e “no lote desde” (21/09/2026)."],
+  ["Conferir “Saíram por baixa”.","A Mimosa aparece, com o tipo e a data da baixa."],
+  ["Conferir o Histórico do lote.","Entradas e saídas: N302 entrou; a movimentação desfeita aparece marcada."],
+  ["Tentar desativar Receptoras.","Recusado: tem animal ativo.",1],
+  ["Mover N302 para Recria; desativar Receptoras; reativar.","Desativa quando vazio; lote inativo não aparece para mover nem para cadastrar; reativar volta ao normal."],
+  ["Mover N302 de volta para Receptoras (data de hoje).","N302 em Receptoras."],
+  ["Ver “Alterações do lote”.","Criação, desativação e reativação, com quem fez e quando."]
+ ]},
+ {id:"lista", t:"Lista de animais: filtros e ordenação", d:"Aba Animais.", s:[
+  ["Buscar por brinco “T110” e por nome “Estrela”.","Encontra o animal certo."],
+  ["Situação: Ativos, Baixados, Todas.","Ativos: N302 e T110. Baixados: Mimosa e os cadastros excluídos."],
+  ["Filtrar por sítio, lote, sexo (Fêmeas/Machos) e origem (Nascido/Comprado).","Cada filtro reduz a lista ao esperado."],
+  ["Filtrar por categoria, “Sem categoria” e “Só forçadas”.","Coerente com as categorias atuais."],
+  ["Filtrar por aptidão (Leite/Corte) e papel (Receptora).","N302 em Receptora; T110 em Corte."],
+  ["Filtrar por raça (Holandês) e por idade 12 a 24 meses.","Só N302."],
+  ["Baixados + tipo de baixa Morte + período “Baixa de/até” cobrindo 24/09/2026.","Só a Mimosa."],
+  ["Trocar a ordenação.","A ordem muda conforme o critério."],
+  ["Selecionar todos da página e “Limpar seleção”.","Seleção marca e desmarca; ações em lote aparecem só com seleção."],
+  ["Recarregar a página (F5) com filtros e numa ficha aberta; usar voltar/avançar do navegador.","A mesma tela reabre; voltar/avançar navegam entre as telas."]
+ ]},
+ {id:"visao", t:"Visão geral", d:"Aba Visão geral.", s:[
+  ["Conferir os indicadores.","Animais ativos 2, Receptoras 1, Baixas em 30 dias 1 (a morte; venda estornada e cadastro indevido não contam), Sítios com animais."],
+  ["Painel “Baixas no período”: alternar 30 dias e 12 meses; ver Por tipo e Por classe.","Morte aparece; a proporção descarte voluntário × involuntário é mostrada quando há descartes."],
+  ["Conferir “Por categoria” e “Por sítio”.","Novilha 1 e Em crescimento 1."],
+  ["Clicar numa contagem ou barra.","Abre a lista de Animais já filtrada."],
+  ["Conferir “Últimos cadastros e baixas”.","Os cadastros e as baixas feitos no teste, os mais recentes primeiro."]
+ ]},
+ {id:"audit", t:"Auditoria", d:"Seção Auditoria na ficha, na página do lote e em cada sub-aba de Cadastros.", s:[
+  ["Abrir a Auditoria de N302.","Cadastro, edições, composição, pesagens, movimentações, desfazer, destino e categoria, cada uma com data, hora, usuário e campo antes → depois."],
+  ["Usar “Carregar mais”.","Carrega as linhas mais antigas."],
+  ["Auditoria de T110.","A pesagem excluída continua registrada."],
+  ["Auditoria da Mimosa.","Baixa, estorno e a segunda baixa."]
+ ]},
+ {id:"perm", t:"Permissões", d:"Em Acessos, com usuários de teste.", s:[
+  ["Entrar com usuário com área Pecuária <b>sem</b> a flag lancar.","Vê tudo, os filtros funcionam, mas nenhum botão de escrita aparece (Novo animal, Movimentar, Dar baixa, pesagem, cadastros)."],
+  ["Com esse usuário, tentar um POST direto na API (ex.: pelo DevTools).","Servidor responde 403.",1],
+  ["Entrar com usuário sem a área Pecuária.","O módulo não aparece na barra lateral; <code>/api/pecuaria/rebanho/*</code> responde 403.",1],
+  ["Trocar o sítio ativo no seletor de sítio.","As telas mostram só os dados do sítio escolhido.",0,1]
+ ]},
+ {id:"conc", t:"Concorrência e atalhos", d:"Casos corrigidos na review de 24/09.", s:[
+  ["Clicar duas vezes rápido em “Salvar” de um cadastro ou movimentação.","Grava uma vez só; se houver conflito, aparece um aviso para recarregar, nunca erro 500."],
+  ["Em duas abas, dar baixa num animal numa e movê-lo na outra.","A segunda ação é recusada; o animal não fica baixado com localização aberta.",1],
+  ["Abrir os endereços antigos <code>/rebanho</code> e <code>/pecuaria</code>.","Redirecionam para <code>/pecuaria/rebanho</code>."]
+ ]},
+ {id:"carga", t:"Carga do IDEAGRI (opcional, só script)", d:"Em homologação, com banco descartável.", s:[
+  ["Rodar <code>import:pecuaria</code> com <code>server/prisma/pecuaria_v1.json</code>.","Animais, lotes, raças, motivos, pesagens, baixas e categorias forçadas criados; animais que já existem são pulados."],
+  ["Rodar <code>validar:pecuaria</code>.","Sem divergências; brinco eletrônico, SISBOV e papel reprodutivo presentes."],
+  ["Rodar <code>import:pecuaria</code> de novo.","Nada é duplicado."]
+ ]},
+ {id:"v2gen", t:"v2 · Genitores externos", d:"Cadastros › Genitores externos.", s:[
+  ["Criar o touro <b>Zeus</b> com os dados da tabela da v2, composição Holandês 64/64.","Aparece na lista com sexo Macho, código, fornecedor, composição “Holandês” e 0 filhos."],
+  ["Criar a doadora <b>Doadora DB01</b> (fêmea), composição Holandês 32 + Gir Leiteiro 32.","Aparece com composição ½ HO ½ GO."],
+  ["Tentar criar outro touro chamado <b>Zeus</b>.","Recusado: nome repetido para o mesmo sexo.",1],
+  ["Tentar composição Holandês 48 + Gir Leiteiro 32 num genitor.","Recusado: a soma não passa de 64.",1],
+  ["Editar Zeus: trocar o fornecedor. Abrir o histórico de alterações.","Histórico mostra “fornecedor: ABS Pecplan → …” com usuário e hora."],
+  ["Criar um genitor “Touro teste”, desativar e ligar “Mostrar inativos”.","Some da lista padrão e das escolhas de pai; aparece com “Mostrar inativos”."]
+ ]},
+ {id:"v2fil", t:"v2 · Filiação na ficha", d:"Ficha do animal › seção Filiação › “Definir filiação”.", s:[
+  ["N302: “Definir filiação” — mãe <b>Animal da fazenda</b> G503, pai <b>Genitor externo</b> Zeus. Salvar.","Seção Filiação mostra “G503 — Mimosa” com link e “Zeus” com selo Externo."],
+  ["Na busca da mãe, digitar G503 (baixada por morte na v1).","G503 aparece com a indicação “Baixado”: animal baixado continua válido como genitor."],
+  ["Clicar no link da mãe (G503).","Abre a ficha de G503, com “Filhos (1)” listando N302."],
+  ["Reabrir “Definir filiação” de N302 e salvar sem mexer.","Abre já com G503 e Zeus preenchidos; salvar mantém os dois."],
+  ["Na mãe, escolher “Animal da fazenda” e salvar sem selecionar ninguém.","Salvar é bloqueado com “Escolha a mãe ou marque Desconhecida”; nada é apagado.",1],
+  ["Na busca do pai (Animal da fazenda), procurar N302 ou outra fêmea.","Não aparece: a busca do pai só lista machos, e o próprio animal nunca aparece.",1],
+  ["Na lista de genitores externos do pai, procurar a Doadora DB01.","Não aparece: só genitores machos.",1]
+ ]},
+ {id:"v2comp", t:"v2 · Composição calculada", d:"Ficha › Composição racial.", s:[
+  ["Ao salvar a filiação de N302 (composição ½ HO ½ GO digitada na v1).","Pergunta “Substituir pela composição calculada?” com o rótulo sugerido (½ HO ½ GL: média de G503 Girolando e Zeus Holandês)."],
+  ["Responder <b>Manter</b>.","Composição continua ½ HO ½ GO, com selo Informada."],
+  ["Clicar em <b>Calcular pelos genitores</b> e confirmar.","Composição vira ½ HO ½ GL com selo Calculada."],
+  ["Abrir a Auditoria de N302.","Aparecem a filiação definida e a composição alterada (antes → depois)."]
+ ]},
+ {id:"v2novo", t:"v2 · Novo animal com filiação", d:"Botão “Novo animal”.", s:[
+  ["Cadastrar <b>B1</b> (tabela da v2): mãe N302, pai Zeus, sem digitar composição. Conferir a Revisão.","Revisão mostra mãe e pai e avisa que a composição será calculada. Na ficha: ¾ HO ¼ GL, selo Calculada."],
+  ["Ficha de N302.","“Filhos (1)” com B1."],
+  ["Cadastrar <b>B2</b> (nascida 01/06/2026, mãe N302, pai Zeus).","Salva, com aviso (não bloqueia): mãe com menos de 15 meses no parto."],
+  ["B1: “Definir filiação” marcando mãe e pai como Desconhecida/o.","Filiação fica “Não informada / Não informado” e a composição Calculada some (veio de genitores que saíram)."],
+  ["B1: definir de novo mãe N302 e pai Zeus.","Composição Calculada volta (¾ HO ¼ GL)."]
+ ]},
+ {id:"v2integ", t:"v2 · Integridade da filiação", d:"Editar dados e cadastros.", s:[
+  ["N302 (mãe de B1 e B2): “Editar dados”, trocar o sexo para Macho.","Recusado: o animal já é mãe de outros animais.",1],
+  ["B1: “Editar dados”, nascimento 01/01/2025 (antes da mãe N302).","Recusado: a cria não pode nascer antes da mãe.",1],
+  ["N302: “Definir filiação” com mãe B1.","Recusado: a mãe precisa ter nascido antes do filho.",1],
+  ["Cadastros › Genitores externos: editar Zeus para sexo Fêmea.","Recusado: Zeus já é pai de animais.",1],
+  ["Definir filiação escolhendo “Touro teste” (inativo) como pai.","Não aparece na lista; se forçado pela API, o erro aparece no campo Pai.",1]
+ ]},
+ {id:"v2mat", t:"v2 · Material genético", d:"Financeiro › Configurações e Cadastros › Material genético.", s:[
+  ["Cadastros › Material genético sem nenhuma categoria de uso genético: “Novo material genético”.","O campo Categoria mostra a dica para marcar uma categoria como uso genético em Financeiro › Configurações."],
+  ["Financeiro › Configurações › Categorias: criar “Material genético” com <b>Uso genético</b> marcado.","A categoria mostra a pílula de uso genético; o filtro “Filtrar por uso” tem “Uso genético”."],
+  ["Criar material: <b>Sêmen</b>, sexado fêmea, touro Zeus (externo), categoria Material genético, nome em branco.","Produto criado como “Sêmen Zeus (sexado fêmea)”, unidade dose; na lista, saldo “Sem estoque”."],
+  ["Criar material: <b>Embrião</b>, touro Zeus, doadora Doadora DB01.","Produto “Embrião Zeus × Doadora DB01”, unidade unidade."],
+  ["Tentar embrião sem doadora.","Salvar bloqueado: embrião precisa de doadora.",1],
+  ["Tentar sêmen com um touro fêmea (Doadora DB01 não aparece na lista de touros).","Não é possível: só machos na lista de touros.",1],
+  ["Financeiro › Nova operação: compra para estoque de 10 doses do sêmen, confirmar.","Na aba Material genético, saldo “10 doses”; em /estoque (área pecuária) o produto aparece com 10."],
+  ["Editar o material de sêmen: trocar para convencional e escrever uma observação.","Só tipo de sêmen e observação são editáveis; o histórico registra a edição."],
+  ["Cadastros › Genitores externos: editar a Doadora DB01 para Macho.","Recusado: a doadora está em um material genético.",1]
+ ]},
+ {id:"v2carga", t:"v2 · Carga do IDEAGRI (opcional, só script)", d:"Em homologação, com banco descartável e o dump real.", s:[
+  ["Extrair o dump (<code>scripts/extract-pecuaria.sh</code>) e gerar o JSON (<code>build-pecuaria-json.mjs</code>).","O JSON traz <code>genitoresExternos</code> e <code>maeIdeagriId</code>/<code>paiIdeagriId</code> nos animais; a consulta @GE@ roda (confirma <code>ANIMAL.CDCENTRALSEMEN</code>)."],
+  ["Rodar <code>import:pecuaria</code>.","Relatório mostra genitores externos criados e filiações para animal do rebanho e para genitor externo."],
+  ["Rodar <code>import:pecuaria</code> de novo.","Nada é duplicado; filiação editada no sistema não é sobrescrita."],
+  ["Rodar <code>validar:pecuaria</code>.","Seção 13: nenhuma mãe macho nem pai fêmea; toda mãe nasceu antes da cria."]
+ ]}
+];
+
+const KEY = "roteiro-pecuaria-v1";
+let st = {};
+try { st = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { st = {}; }
+function save(){ try { localStorage.setItem(KEY, JSON.stringify(st)); } catch (e) {} }
+
+const esc = s => s.replace(/<[^>]+>/g, "").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&amp;/g,"&");
+const $ = id => document.getElementById(id);
+
+function render(){
+  const root = $("grupos"), nav = $("nav");
+  G.forEach((g, gi) => {
+    const box = document.createElement("div");
+    box.className = "grp"; box.id = "g-" + g.id;
+    box.style.marginTop = gi ? "18px" : "6px";
+    box.innerHTML = `<div class="grp-h"><h3>${gi + 1}. ${g.t}</h3><span class="n" id="n-${g.id}"></span><p>${g.d}</p></div><ol class="steps"></ol>`;
+    const ol = box.querySelector("ol");
+    g.s.forEach((s, si) => {
+      const id = `${g.id}-${si + 1}`, code = `${gi + 1}.${si + 1}`;
+      const li = document.createElement("li");
+      li.className = "step"; li.id = "s-" + id;
+      const tags = (s[2] ? '<span class="tag t-neg">recusa</span>' : "") + (s[3] ? '<span class="tag t-opt">2 sítios</span>' : "");
+      li.innerHTML = `<input type="checkbox" id="c-${id}" aria-label="Passou: passo ${code}">
+        <label for="c-${id}"><span class="acao"><span class="id">${code}</span>${s[0]}${tags}</span><span class="esp">${s[1]}</span></label>
+        <button type="button" class="failbtn" aria-pressed="false" id="f-${id}">Falhou</button>
+        <div class="note" hidden><textarea id="t-${id}" placeholder="O que aconteceu? (tela, mensagem, dado)" aria-label="Anotação do passo ${code}"></textarea></div>`;
+      const cb = li.querySelector("input"), fb = li.querySelector(".failbtn"), note = li.querySelector(".note"), ta = li.querySelector("textarea");
+      cb.addEventListener("change", () => { const v = st[id] || {}; v.ok = cb.checked; if (cb.checked) v.fail = false; st[id] = v; save(); paint(); });
+      fb.addEventListener("click", () => { const v = st[id] || {}; v.fail = !v.fail; if (v.fail) v.ok = false; st[id] = v; save(); paint(); if (v.fail) ta.focus(); });
+      ta.addEventListener("input", () => { const v = st[id] || {}; v.note = ta.value; st[id] = v; save(); buildReport(); });
+      ol.appendChild(li);
+    });
+    root.appendChild(box);
+    const a = document.createElement("li");
+    a.innerHTML = `<a href="#g-${g.id}" id="a-${g.id}">${g.t} <span class="n"></span></a>`;
+    nav.appendChild(a);
+  });
+}
+
+function paint(){
+  let tot = 0, ok = 0, fail = 0;
+  G.forEach(g => {
+    let gok = 0, gf = 0;
+    g.s.forEach((s, si) => {
+      const id = `${g.id}-${si + 1}`, v = st[id] || {};
+      const li = $("s-" + id);
+      li.querySelector("input").checked = !!v.ok;
+      li.classList.toggle("is-ok", !!v.ok);
+      li.classList.toggle("is-fail", !!v.fail);
+      const fb = li.querySelector(".failbtn"); fb.setAttribute("aria-pressed", v.fail ? "true" : "false");
+      li.querySelector(".note").hidden = !v.fail;
+      const ta = li.querySelector("textarea"); if (ta.value !== (v.note || "")) ta.value = v.note || "";
+      if (v.ok) gok++; if (v.fail) gf++;
+    });
+    tot += g.s.length; ok += gok; fail += gf;
+    $("n-" + g.id).textContent = `${gok}/${g.s.length}` + (gf ? ` · ${gf} falha${gf > 1 ? "s" : ""}` : "");
+    const a = $("a-" + g.id);
+    a.querySelector(".n").textContent = `${gok}/${g.s.length}`;
+    a.classList.toggle("done", gok === g.s.length);
+    a.classList.toggle("fail", gf > 0);
+  });
+  $("barP").style.width = (ok / tot * 100) + "%";
+  $("barF").style.width = (fail / tot * 100) + "%";
+  $("count").textContent = `${ok} de ${tot} passaram` + (fail ? ` · ${fail} falharam` : "");
+  buildReport();
+}
+
+function buildReport(){
+  const d = new Date(), pad = n => String(n).padStart(2, "0");
+  const lines = [`Roteiro de testes · Pecuária v1 (Rebanho) · ${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()}`];
+  let tot = 0, ok = 0; const fails = [], pend = [];
+  G.forEach((g, gi) => g.s.forEach((s, si) => {
+    const id = `${g.id}-${si + 1}`, v = st[id] || {}, code = `${gi + 1}.${si + 1}`;
+    tot++; if (v.ok) ok++;
+    if (v.fail) fails.push(`- ${code} [${g.t}] ${esc(s[0])}\n  Esperado: ${esc(s[1])}\n  Visto: ${(v.note || "(sem anotação)").trim()}`);
+    else if (!v.ok) pend.push(`${code}`);
+  }));
+  lines.push(`Passaram: ${ok} de ${tot} · Falharam: ${fails.length} · Pendentes: ${pend.length}`, "");
+  lines.push(fails.length ? "FALHAS\n" + fails.join("\n") : "Nenhuma falha registrada.");
+  if (pend.length) lines.push("", "Pendentes: " + pend.join(", "));
+  $("reportText").value = lines.join("\n");
+}
+
+render(); paint();
+
+$("btnHide").addEventListener("click", e => {
+  const on = e.currentTarget.getAttribute("aria-pressed") !== "true";
+  e.currentTarget.setAttribute("aria-pressed", on ? "true" : "false");
+  document.body.classList.toggle("hide-done", on);
+});
+$("btnReport").addEventListener("click", () => {
+  buildReport();
+  const txt = $("reportText").value;
+  const done = () => { $("status").textContent = "Relatório copiado"; setTimeout(() => $("status").textContent = "", 2500); };
+  const fallback = () => { const t = $("reportText"); t.focus(); t.select(); $("status").textContent = "Selecionei o relatório no fim da página: copie com Ctrl+C"; };
+  try { navigator.clipboard.writeText(txt).then(done, fallback); } catch (e) { fallback(); }
+});
+$("btnReset").addEventListener("click", () => { $("confirmReset").hidden = false; $("btnReset").hidden = true; });
+$("btnResetNo").addEventListener("click", () => { $("confirmReset").hidden = true; $("btnReset").hidden = false; });
+$("btnResetYes").addEventListener("click", () => {
+  st = {}; save(); paint();
+  $("confirmReset").hidden = true; $("btnReset").hidden = false;
+  $("status").textContent = "Marcações apagadas";
+});
+</script>
+
+</body></html>

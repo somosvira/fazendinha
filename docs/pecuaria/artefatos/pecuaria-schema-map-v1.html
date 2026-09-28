@@ -1,0 +1,1583 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pecuária Schema Map</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap">
+<style>
+:root{
+  --bg:#F2EDE2; --surface:#FAF6EC; --surface-2:#F6F1E4;
+  --ink:#14191A; --ink-2:#3A4341; --ink-3:#5A625F;
+  --line:#D6CDB8; --line-2:#E6DECD;
+  --accent:#4F5C40; --sage:#6B7A5C; --sage-soft:#DDE2D0;
+  --brass:#B89A5C; --brass-ink:#6E5423; --brass-soft:#EFE4C8;
+  --coffee:#5C3A1E; --coffee-soft:#E5D5C0;
+  --serif:"Newsreader",Georgia,"Times New Roman",serif;
+  --sans:"DM Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"DM Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#111513; --surface:#181D1A; --surface-2:#1E2420;
+    --ink:#ECE6D8; --ink-2:#C5C8BD; --ink-3:#9CA297;
+    --line:#2E3631; --line-2:#252B27;
+    --accent:#B5C29C; --sage:#A3B08E; --sage-soft:#26301F;
+    --brass:#D4BC85; --brass-ink:#E6D3A6; --brass-soft:#3A3120;
+    --coffee:#D6AE84; --coffee-soft:#3A2A1C;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#111513; --surface:#181D1A; --surface-2:#1E2420;
+  --ink:#ECE6D8; --ink-2:#C5C8BD; --ink-3:#9CA297;
+  --line:#2E3631; --line-2:#252B27;
+  --accent:#B5C29C; --sage:#A3B08E; --sage-soft:#26301F;
+  --brass:#D4BC85; --brass-ink:#E6D3A6; --brass-soft:#3A3120;
+  --coffee:#D6AE84; --coffee-soft:#3A2A1C;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15.5px/1.6 var(--sans);padding-inline:clamp(16px,4vw,44px);padding-block:0 72px}
+.wrap{max-width:1120px;margin:0 auto}
+a{color:var(--accent)}
+code{font-family:var(--mono);font-size:.88em;background:var(--surface-2);border:1px solid var(--line-2);padding:0 5px;border-radius:4px;overflow-wrap:anywhere}
+p{max-width:72ch}
+h1,h2,h3,h4{text-wrap:balance}
+button:focus-visible,a:focus-visible,.er-scroll:focus-visible,.scroll:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* cabeçalho */
+.top{padding-block:48px 8px}
+.eyebrow{font:500 12px/1.4 var(--mono);letter-spacing:.07em;text-transform:uppercase;color:var(--accent);margin:0}
+.eyebrow code{background:none;border:0;padding:0;font-size:1em;text-transform:none;letter-spacing:0}
+h1{font:600 clamp(40px,6.4vw,64px)/1 var(--serif);margin:14px 0 16px;letter-spacing:-.01em}
+.lede{font-size:18px;line-height:1.55;color:var(--ink-2);margin:0 0 22px;max-width:66ch}
+.stats{display:flex;flex-wrap:wrap;gap:0;margin:0 0 18px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.stats div{flex:1 1 150px;padding:14px 18px 12px 0}
+.stats dt{font:600 38px/1 var(--serif);font-variant-numeric:tabular-nums}
+.stats dd{margin:6px 0 0;font-size:13px;color:var(--ink-3)}
+.src{font-size:13px;color:var(--ink-3);margin:0}
+
+/* navegação */
+nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);border-bottom:1px solid var(--line);display:flex;flex-wrap:wrap;gap:4px 18px;padding-block:11px;margin-top:22px;font-size:13.5px}
+nav a{color:var(--ink-3);text-decoration:none}
+nav a:hover,nav a:focus-visible{color:var(--accent);text-decoration:underline}
+
+/* seções */
+section{padding-top:40px;margin-top:8px;scroll-margin-top:56px}
+section + section{border-top:1px solid var(--line)}
+h2{font:600 32px/1.08 var(--serif);margin:0 0 10px}
+.intro{color:var(--ink-2);margin:0 0 18px}
+h3.group{font:500 12px/1.3 var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--ink-3);margin:34px 0 12px;display:flex;align-items:center;gap:10px}
+h3.group::after{content:"";flex:1;height:1px;background:var(--line)}
+
+/* princípios */
+.principles{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:22px 32px;margin:8px 0 30px}
+.principles div{border-top:2px solid var(--ink);padding-top:12px}
+.principles h3{font:600 20px/1.2 var(--serif);margin:0 0 6px}
+.principles p{margin:0;color:var(--ink-2);font-size:15px}
+
+/* figuras */
+.fig{margin:22px 0 30px;background:var(--surface);border:1px solid var(--line);border-radius:8px}
+.fig .scroll{overflow-x:auto;padding:14px 14px 6px}
+.fig svg{display:block;width:100%;height:auto;min-width:760px;color:var(--ink)}
+.fig figcaption{font-size:13.5px;color:var(--ink-2);padding:10px 16px 14px;border-top:1px solid var(--line-2);max-width:none}
+.fig figcaption b{color:var(--ink)}
+.ax{stroke:var(--line);stroke-width:1}
+.sep{stroke:var(--line-2);stroke-width:1}
+.tick-t{fill:var(--ink-3);font:11px var(--sans)}
+.lane-t{fill:var(--ink-2);font:500 12px var(--mono)}
+.bar-closed{fill:var(--surface);stroke:var(--ink-3);stroke-width:1}
+.bar-open{fill:var(--brass-soft);stroke:var(--brass);stroke-width:1.6}
+.bar-ident{fill:var(--sage-soft);stroke:var(--sage);stroke-width:1}
+.bar-t{fill:var(--ink);font:500 12px var(--sans)}
+.hoje{stroke:var(--ink-3);stroke-width:1;stroke-dasharray:3 3}
+.hoje-t{fill:var(--ink-2);font:600 11px var(--sans)}
+.dot{fill:var(--coffee)}
+.dot-t{fill:var(--ink-2);font:500 11px var(--mono)}
+.tipo-t{fill:var(--ink-3);font:10px var(--mono)}
+.muted-t{fill:var(--ink-3);font:italic 12px var(--sans)}
+.leg-t{fill:var(--ink-2);font:12px var(--sans)}
+.arrow-open{stroke:var(--brass);stroke-width:1.6;fill:none}
+.mk-brass{fill:var(--brass)}
+.mk-ink{fill:var(--ink-3)}
+.mk-coffee{fill:var(--coffee)}
+.col-t{fill:var(--ink);font:600 13px var(--sans)}
+.tr{stroke:var(--ink-3);stroke-width:1.3;fill:none}
+.tr-t{fill:var(--ink-3);font:11px var(--sans)}
+.box-open{fill:var(--brass-soft);stroke:var(--brass);stroke-width:1.6}
+.box-closed{fill:var(--surface);stroke:var(--ink-3);stroke-width:1}
+.box-saida{fill:var(--coffee-soft);stroke:var(--coffee);stroke-width:1.6}
+.box-ghost{fill:var(--surface);stroke:var(--ink-3);stroke-width:1;stroke-dasharray:4 3}
+.b-title{fill:var(--ink);font:500 12px var(--mono)}
+.b-line{fill:var(--ink-2);font:12px var(--sans)}
+.b-code{fill:var(--ink-2);font:11px var(--mono)}
+.route{stroke:var(--coffee);stroke-width:1.4;fill:none}
+
+/* diagrama ER */
+.er{margin:18px 0 8px;background:var(--surface);border:1px solid var(--line);border-radius:8px}
+.er-bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px 10px;border-bottom:1px solid var(--line-2);font-size:12.5px;color:var(--ink-3)}
+.er-bar button{font:500 13px var(--sans);min-width:38px;padding:5px 10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:5px;cursor:pointer}
+.er-bar button:hover{border-color:var(--ink-3)}
+.er-bar output{font:500 12px var(--mono);min-width:44px;text-align:center;color:var(--ink-2)}
+.er-scroll{overflow:auto;max-height:80vh;padding:12px}
+.er-scroll pre.mermaid{margin:0;background:transparent;font-size:12px}
+.note{font-size:13.5px;color:var(--ink-3);margin:8px 0 0}
+
+/* tabelas por entidade */
+.ent{margin:0 0 30px}
+.ent-h{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px;margin:0 0 4px}
+.ent-h h4{font:500 20px/1.2 var(--mono);margin:0}
+.ent > p{margin:0 0 10px;color:var(--ink-2)}
+.role{font:500 11px/1 var(--mono);letter-spacing:.04em;text-transform:uppercase;padding:4px 8px;border-radius:99px;border:1px solid var(--line);color:var(--ink-2);background:var(--surface-2)}
+.role.r-id{background:var(--sage-soft);border-color:transparent;color:var(--ink)}
+.role.r-hist{background:var(--brass-soft);border-color:transparent;color:var(--brass-ink)}
+.role.r-ev{background:var(--coffee-soft);border-color:transparent;color:var(--ink)}
+.tw{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{text-align:left;vertical-align:top;padding:7px 12px;border-bottom:1px solid var(--line-2)}
+thead th{font:500 11px var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--ink-3);background:var(--surface);border-bottom:1px solid var(--line)}
+tbody tr:last-child td{border-bottom:0}
+td.c{font:500 13px var(--mono);white-space:nowrap;color:var(--ink)}
+td.t{font:12.5px var(--mono);color:var(--ink-2);white-space:nowrap}
+td.t .k{font:500 10.5px var(--mono);padding:1px 5px;border-radius:3px;margin-left:4px;background:var(--sage-soft);color:var(--ink)}
+.cons{font-size:13px;color:var(--ink-3);margin:8px 0 0;max-width:none}
+.cons b{color:var(--ink-2);font-weight:600}
+
+/* enums */
+.enums{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:18px 28px;margin-top:6px}
+.enums div{border-top:1px solid var(--line);padding-top:10px}
+.enums h4{font:500 14px var(--mono);margin:0 0 6px}
+.vals{display:flex;flex-wrap:wrap;gap:5px;margin:0 0 6px;padding:0;list-style:none}
+.vals li{font:500 11.5px var(--mono);padding:2px 8px;border-radius:99px;background:var(--surface);border:1px solid var(--line)}
+.enums p{margin:0;font-size:12.5px;color:var(--ink-3)}
+
+/* regras, operações */
+.where{font:500 11px/1 var(--mono);text-transform:uppercase;letter-spacing:.04em;padding:4px 8px;border-radius:99px;white-space:nowrap;display:inline-block}
+.w-db{background:var(--sage-soft);color:var(--ink)}
+.w-app{background:var(--brass-soft);color:var(--brass-ink)}
+.w-rota{background:var(--surface-2);color:var(--ink-2);border:1px solid var(--line)}
+td.ref{font:12px var(--mono);color:var(--ink-3);overflow-wrap:anywhere;min-width:180px}
+td.op{font-weight:600;white-space:nowrap}
+td.aud{font:12px var(--mono);color:var(--ink-2);white-space:nowrap}
+
+/* régua da categoria */
+.ruler{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin:10px 0 18px}
+.r-grid{display:grid;grid-template-columns:64px repeat(3,minmax(0,1fr));gap:6px}
+.r-axis span{font:11px var(--mono);color:var(--ink-3);padding-bottom:2px;border-bottom:1px solid var(--line)}
+.r-who{font:600 13px var(--sans);align-self:center}
+.seg{font:500 12px var(--mono);text-align:center;padding:7px 4px;border-radius:5px}
+.s-f{background:var(--brass-soft);color:var(--brass-ink)}
+.s-m{background:var(--sage-soft);color:var(--ink)}
+.ruler p{margin:10px 0 0;font-size:13.5px;color:var(--ink-2)}
+.derived{margin:0;padding:0;list-style:none;display:grid;gap:8px}
+.derived li{padding-left:14px;border-left:2px solid var(--line)}
+.derived b{font-weight:600}
+
+footer{margin-top:48px;padding-top:18px;border-top:1px solid var(--line);font-size:13px;color:var(--ink-3)}
+footer p{max-width:none;margin:0 0 6px}
+@media (max-width:560px){ h2{font-size:27px} .stats dt{font-size:32px} .lede{font-size:16.5px} }
+@media (prefers-reduced-motion:reduce){ *{scroll-behavior:auto} }
+
+</style>
+<style>
+:root{
+  --ok:#2F6B3F; --ok-soft:#DCEBDD;
+  --warn:#8A5A0B; --warn-soft:#F4E6C4;
+  --bad:#9B2C22; --bad-soft:#F5DAD5;
+  --info:#3E5A73; --info-soft:#DCE5EE;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ok:#9ED3A8; --ok-soft:#1F3325;
+    --warn:#E8C27A; --warn-soft:#3A2E17;
+    --bad:#F0A69C; --bad-soft:#3D211D;
+    --info:#A9C4DD; --info-soft:#1F2B36;
+  }
+}
+:root[data-theme="dark"]{
+  --ok:#9ED3A8; --ok-soft:#1F3325;
+  --warn:#E8C27A; --warn-soft:#3A2E17;
+  --bad:#F0A69C; --bad-soft:#3D211D;
+  --info:#A9C4DD; --info-soft:#1F2B36;
+}
+
+/* partes */
+.part{padding-top:56px;scroll-margin-top:56px}
+.part + .part{border-top:2px solid var(--ink);margin-top:48px}
+.part-eyebrow{font:500 12px/1.4 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin:0 0 8px}
+.part > h2{font:600 clamp(32px,4.6vw,44px)/1.05 var(--serif);margin:0 0 12px}
+.part > .intro{font-size:17px;max-width:68ch}
+.sub{padding-top:30px;scroll-margin-top:56px}
+.sub > h3{font:600 26px/1.15 var(--serif);margin:0 0 8px}
+.sub > p.intro{margin-bottom:16px}
+
+/* tabelas em linguagem simples */
+.tbl{display:grid;grid-template-columns:minmax(0,220px) minmax(0,1fr);gap:8px 28px;padding:18px 0;border-top:1px solid var(--line-2)}
+.tbl:first-of-type{border-top:0}
+.tbl-name{display:flex;flex-direction:column;gap:6px}
+.tbl-name code{font:500 15px var(--mono);background:none;border:0;padding:0;color:var(--ink)}
+.tbl-name .role{align-self:flex-start}
+.tbl-body h4{font:600 20px/1.25 var(--serif);margin:0 0 6px}
+.tbl-body p{margin:0 0 8px}
+.tbl-body .ex{font-size:14px;color:var(--ink-2);background:var(--surface);border:1px solid var(--line-2);border-radius:6px;padding:8px 12px;margin:8px 0;max-width:72ch}
+.tbl-body .ex b{font:500 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);margin-right:6px}
+.tbl-body .rule{font-size:14px;color:var(--ink-2);margin:0}
+.tbl-body .rule b{color:var(--ink);font-weight:600}
+details.cols{margin-top:10px}
+details.cols summary{cursor:pointer;font:500 13px var(--sans);color:var(--accent);list-style:none;display:inline-flex;align-items:center;gap:6px}
+details.cols summary::-webkit-details-marker{display:none}
+details.cols summary::before{content:"+";font:500 14px var(--mono);width:16px;height:16px;display:inline-grid;place-items:center;border:1px solid var(--line);border-radius:3px}
+details.cols[open] summary::before{content:"−"}
+details.cols .tw{margin-top:10px}
+@media (max-width:640px){ .tbl{grid-template-columns:1fr} }
+
+.derived-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px 26px;margin-top:8px}
+.derived-grid div{border-top:1px solid var(--line);padding-top:10px}
+.derived-grid h4{font:600 16px/1.3 var(--sans);margin:0 0 4px}
+.derived-grid p{margin:0;font-size:14px;color:var(--ink-2)}
+
+/* status */
+.st{font:500 11px/1 var(--mono);letter-spacing:.03em;padding:4px 8px;border-radius:99px;white-space:nowrap;display:inline-block}
+.st-ok{background:var(--ok-soft);color:var(--ok)}
+.st-parcial{background:var(--warn-soft);color:var(--warn)}
+.st-falta{background:var(--bad-soft);color:var(--bad)}
+.st-script{background:var(--info-soft);color:var(--info)}
+.legend{display:flex;flex-wrap:wrap;gap:8px 18px;margin:4px 0 18px;font-size:13.5px;color:var(--ink-2)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+
+/* efeitos */
+.fx-group{font:500 12px/1.3 var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--ink-3);margin:30px 0 12px;display:flex;align-items:center;gap:10px}
+.fx-group::after{content:"";flex:1;height:1px;background:var(--line)}
+.fx-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr));gap:14px}
+.fx{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px 16px 12px;display:flex;flex-direction:column;gap:8px}
+.fx-h{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 10px}
+.fx-h h4{font:600 17px/1.25 var(--sans);margin:0}
+.fx p{margin:0;font-size:14.5px;color:var(--ink-2);max-width:none}
+.ops{display:flex;flex-wrap:wrap;gap:5px;margin:0;padding:0;list-style:none}
+.ops li{font:500 11.5px var(--mono);padding:3px 7px;border-radius:4px;border:1px solid var(--line-2);background:var(--bg);color:var(--ink)}
+.ops li i{font-style:normal;color:var(--ink-3);margin-right:4px}
+.ops li.o-cria i{color:var(--ok)}
+.ops li.o-fecha i,.ops li.o-apaga i{color:var(--bad)}
+.ops li.o-abre i,.ops li.o-reabre i{color:var(--accent)}
+.ops li.o-marca i{color:var(--warn)}
+.fx dl{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;margin:0;font-size:13.5px}
+.fx dt{font:500 11px/1.9 var(--mono);text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3)}
+.fx dd{margin:0;color:var(--ink-2)}
+.fx dd.warn{color:var(--bad)}
+
+/* lacunas */
+.gaps{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:22px 30px;margin-top:10px}
+.gaps h4{font:600 17px/1.3 var(--sans);margin:0 0 8px;display:flex;align-items:center;gap:8px}
+.gaps ol{margin:0;padding-left:20px;display:grid;gap:8px;font-size:14.5px;color:var(--ink-2)}
+.gaps li b{color:var(--ink);font-weight:600}
+
+/* próximos passos */
+.track{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:0;margin:18px 0 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface);overflow:hidden}
+.track a{display:flex;flex-direction:column;gap:3px;padding:12px 14px;text-decoration:none;color:var(--ink);border-left:1px solid var(--line-2)}
+.track a:first-child{border-left:0;background:var(--sage-soft)}
+.track a:hover{background:var(--surface-2)}
+.track b{font:500 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
+.track span{font:600 16px/1.2 var(--sans)}
+.track small{font-size:12.5px;color:var(--ink-3)}
+@media (max-width:760px){ .track{grid-template-columns:1fr} .track a{border-left:0;border-top:1px solid var(--line-2)} .track a:first-child{border-top:0} }
+
+.dom{padding-top:34px;scroll-margin-top:56px}
+.dom-h{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px;margin:0 0 6px}
+.dom-h .ver{font:500 13px var(--mono);padding:3px 9px;border-radius:4px;background:var(--ink);color:var(--bg)}
+.dom-h h3{font:600 28px/1.1 var(--serif);margin:0}
+.dom > p.lead{font-size:16px;color:var(--ink-2);margin:0 0 14px;max-width:70ch}
+.dom h5{font:500 11.5px var(--mono);text-transform:uppercase;letter-spacing:.07em;color:var(--ink-3);margin:18px 0 8px}
+.dom .twocol{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:4px 32px}
+.dom ul.plain{margin:0;padding-left:18px;display:grid;gap:6px;font-size:14.5px;color:var(--ink-2)}
+.dom ul.plain b{color:var(--ink);font-weight:600}
+.evs{display:flex;flex-wrap:wrap;gap:6px;margin:0;padding:0;list-style:none}
+.evs li{font:500 12.5px var(--sans);padding:4px 10px;border-radius:99px;background:var(--coffee-soft);color:var(--ink)}
+.src-box{font-size:13px;color:var(--ink-3);margin-top:12px;max-width:none}
+.src-box code{font-size:.92em}
+.callout{border:1px solid var(--line);border-left:3px solid var(--brass);background:var(--surface);border-radius:6px;padding:12px 16px;margin:14px 0;font-size:14.5px;color:var(--ink-2);max-width:78ch}
+.callout b{color:var(--ink)}
+td.new{font:500 13px var(--mono);white-space:nowrap;color:var(--ink)}
+td.new em{font-style:normal;font:500 10.5px var(--mono);padding:1px 5px;border-radius:3px;margin-left:5px;background:var(--brass-soft);color:var(--brass-ink)}
+</style>
+
+<div class="wrap">
+<header class="top">
+  <p class="eyebrow">Terrano · schema Postgres <code>pecuaria</code> · v1 Rebanho</p>
+  <h1>Pecuária Schema Map</h1>
+  <p class="lede">O que o banco da pecuária guarda hoje, explicado sem jargão; o que acontece nas tabelas quando alguém usa a tela; e quais tabelas e eventos vêm a seguir.</p>
+  <dl class="stats">
+    <div><dt>14</dt><dd>tabelas no schema <code>pecuaria</code></dd></div>
+    <div><dt>19</dt><dd>ações que mexem nas tabelas</dd></div>
+    <div><dt>0</dt><dd>erros conhecidos em aberto (corrigidos em 24/09)</dd></div>
+    <div><dt>~23</dt><dd>tabelas novas em 4 domínios</dd></div>
+  </dl>
+  <p class="src">Branch <code>feat/pecuaria-v1-rebanho</code> (PR #296), após o merge da main de 25/09/2026 (correções da review e telas finais da v1). Fontes: <code>server/prisma/schema.prisma</code>, a baseline e a migration da pecuária v1 (25/09), os services em <code>server/src/services/pecuaria/rebanho/</code> e as telas em <code>client/src/pecuaria/rebanho/</code>.</p>
+</header>
+
+<nav aria-label="Seções">
+  <a href="#tabelas">1 · As tabelas</a><a href="#efeitos">2 · Os efeitos</a><a href="#proximos">3 · Próximos passos</a><a href="#referencia">Referência técnica</a>
+</nav>
+
+<main>
+<!-- ═════════════════════════ PARTE 1 ═════════════════════════ -->
+<section class="part" id="tabelas">
+  <p class="part-eyebrow">Parte 1 de 3</p>
+  <h2>As tabelas, em linguagem simples</h2>
+  <p class="intro">Pense no rebanho como um arquivo de fichas. Cada animal tem uma <b>ficha de identidade</b> que quase não muda. Tudo o que muda com o tempo (onde ele está, para que serve, se saiu do rebanho) fica em <b>cadernos separados</b>, em que cada linha diz “de tal data até tal data”. A linha sem data final é o “agora”. Nada é sobrescrito: mudar é fechar a linha de hoje e abrir outra, e a história do animal fica inteira.</p>
+
+  <figure class="fig">
+    <div class="scroll" tabindex="0">
+    <svg viewBox="0 0 1000 326" role="img" aria-label="Linha do tempo de uma novilha de exemplo. O animal é uma faixa única de identidade. A localização tem duas linhas fechadas, Principal Bezerreiro e Mexicana Recria, e uma aberta, Mexicana Receptoras. O destino tem uma linha fechada, leite sem papel, e uma aberta, leite receptora. Há cinco pesagens pontuais e nenhuma baixa, então o animal está ativo.">
+      <defs>
+        <marker id="mk-open" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="mk-brass" d="M0 0L10 5L0 10z"/></marker>
+      </defs>
+      <text class="hoje-t" x="943" y="14" text-anchor="middle">hoje</text>
+      <line class="ax" x1="190" y1="40" x2="975" y2="40"/>
+      <g class="ax">
+        <line x1="190" y1="36" x2="190" y2="44"/><line x1="370" y1="36" x2="370" y2="44"/><line x1="550" y1="36" x2="550" y2="44"/><line x1="730" y1="36" x2="730" y2="44"/><line x1="910" y1="36" x2="910" y2="44"/>
+      </g>
+      <g class="tick-t" text-anchor="middle">
+        <text x="190" y="30">mai/25</text><text x="370" y="30">set/25</text><text x="550" y="30">jan/26</text><text x="730" y="30">mai/26</text><text x="910" y="30">set/26</text>
+      </g>
+      <g class="sep">
+        <line x1="20" y1="96" x2="980" y2="96"/><line x1="20" y1="148" x2="980" y2="148"/><line x1="20" y1="200" x2="980" y2="200"/><line x1="20" y1="256" x2="980" y2="256"/>
+      </g>
+      <g class="lane-t">
+        <text x="20" y="74">Animal</text><text x="20" y="126">LocalizacaoAnimal</text><text x="20" y="178">DestinoAnimal</text><text x="20" y="232">Pesagem</text><text x="20" y="284">BaixaAnimal</text>
+      </g>
+      <line class="hoje" x1="943" y1="44" x2="943" y2="292"/>
+
+      <rect class="bar-ident" x="190" y="58" width="753" height="24" rx="4"/>
+      <text class="bar-t" x="202" y="74">N302 · fêmea · nascida e entrada em 01/05/25 · origem NASCIDO</text>
+
+      <rect class="bar-closed" x="190" y="110" width="358" height="24" rx="4"/>
+      <text class="bar-t" x="200" y="126">Principal · Bezerreiro</text>
+      <rect class="bar-closed" x="552" y="110" width="221" height="24" rx="4"/>
+      <text class="bar-t" x="562" y="126">Mexicana · Recria</text>
+      <rect class="bar-open" x="777" y="110" width="166" height="24" rx="4"/>
+      <text class="bar-t" x="787" y="126">Mexicana · Receptoras</text>
+      <line class="arrow-open" x1="943" y1="122" x2="974" y2="122" marker-end="url(#mk-open)"/>
+
+      <rect class="bar-closed" x="190" y="162" width="583" height="24" rx="4"/>
+      <text class="bar-t" x="200" y="178">LEITE · NENHUM</text>
+      <rect class="bar-open" x="777" y="162" width="166" height="24" rx="4"/>
+      <text class="bar-t" x="787" y="178">LEITE · RECEPTORA</text>
+      <line class="arrow-open" x1="943" y1="174" x2="974" y2="174" marker-end="url(#mk-open)"/>
+
+      <g class="dot-t" text-anchor="middle">
+        <text x="190" y="220">34 kg</text><text x="325" y="220">88 kg</text><text x="550" y="220">150 kg</text><text x="730" y="220">210 kg</text><text x="910" y="220">262 kg</text>
+      </g>
+      <g class="dot">
+        <circle cx="190" cy="231" r="4.5"/><circle cx="325" cy="231" r="4.5"/><circle cx="550" cy="231" r="4.5"/><circle cx="730" cy="231" r="4.5"/><circle cx="910" cy="231" r="4.5"/>
+      </g>
+      <g class="tipo-t" text-anchor="middle">
+        <text x="190" y="249">NASCIMENTO</text><text x="325" y="249">DESMAMA</text><text x="550" y="249">ROTINA</text><text x="730" y="249">ROTINA</text><text x="910" y="249">ROTINA</text>
+      </g>
+
+      <text class="muted-t" x="190" y="284">nenhuma linha: o animal está ativo</text>
+
+      <rect class="bar-closed" x="190" y="304" width="22" height="12" rx="3"/>
+      <text class="leg-t" x="220" y="314">linha fechada: vale de desde até ate</text>
+      <rect class="bar-open" x="470" y="304" width="22" height="12" rx="3"/>
+      <text class="leg-t" x="500" y="314">linha aberta: ate vazio, é o estado atual</text>
+    </svg>
+    </div>
+    <figcaption><b>Uma vida no schema (exemplo ilustrativo).</b> A identidade é uma linha só. Cada tabela de histórico tem no máximo uma linha aberta. Mudar o local ou o destino fecha a aberta com a data da mudança e abre outra. Cada movimentação é um registro em <code>Movimentacao</code> (data, destino, motivo, quem fez), e cada animal movido ganha uma linha apontando para ele. Pesagens são pontos, não períodos.</figcaption>
+  </figure>
+
+  <div class="sub" id="tb-identidade">
+    <h3>Quem o animal é</h3>
+    <p class="intro">Dados que nascem com o animal ou com a sua chegada.</p>
+
+    <article class="tbl" id="p-animal">
+      <div class="tbl-name"><code>Animal</code><span class="role r-id">identidade</span></div>
+      <div class="tbl-body">
+        <h4>A ficha de identidade</h4>
+        <p>Brinco, nome, sexo, data de nascimento, se nasceu na fazenda ou foi comprado, quando entrou no rebanho, quantos partos a fêmea já tinha ao chegar, brinco eletrônico e SISBOV. Só isso. Onde o animal está, qual a categoria e se foi vendido <b>não</b> ficam aqui: vêm das outras tabelas.</p>
+        <p class="ex"><b>Exemplo</b>N302, fêmea, nascida na fazenda em 01/05/2025, entrada na mesma data, nenhum parto antes da entrada.</p>
+        <p class="rule"><b>Regra que importa:</b> o brinco não pode repetir entre os animais <em>ativos</em> do mesmo sítio. Depois da baixa, o número fica livre. Brinco eletrônico e SISBOV não repetem no rebanho inteiro.</p>
+        <details class="cols"><summary>Ver colunas</summary><div class="tw"><table>
+      <thead><tr><th>Coluna</th><th>Tipo</th><th>Significado e regra</th></tr></thead>
+      <tbody>
+        <tr><td class="c">id</td><td class="t">uuid<span class="k">PK</span></td><td>Chave primária.</td></tr>
+        <tr><td class="c">ideagriId</td><td class="t">int?<span class="k">único</span></td><td><code>CDANIMAL</code> do IDEAGRI, preenchido na carga inicial.</td></tr>
+        <tr><td class="c">brinco</td><td class="t">texto</td><td>Número visual. Único entre os animais ativos do mesmo sítio; pode voltar a ser usado depois que o animal sai.</td></tr>
+        <tr><td class="c">nome</td><td class="t">texto?</td><td></td></tr>
+        <tr><td class="c">brincoEletronico</td><td class="t">texto?<span class="k">único</span></td><td>Único no rebanho inteiro.</td></tr>
+        <tr><td class="c">sisbov</td><td class="t">texto?<span class="k">único</span></td><td>Único no rebanho inteiro.</td></tr>
+        <tr><td class="c">sexo</td><td class="t">SexoBovino</td><td>F ou M.</td></tr>
+        <tr><td class="c">dataNascimento</td><td class="t">data</td><td></td></tr>
+        <tr><td class="c">nascimentoEstimado</td><td class="t">booleano</td><td>Nascimento aproximado, por exemplo de animal comprado sem data.</td></tr>
+        <tr><td class="c">origem</td><td class="t">OrigemAnimal</td><td>NASCIDO ou COMPRADO.</td></tr>
+        <tr><td class="c">dataEntrada</td><td class="t">data</td><td>Quando o animal entrou no rebanho; a primeira localização e o primeiro destino começam nela. Se NASCIDO, é igual ao nascimento.</td></tr>
+        <tr><td class="c">partosAntesDaEntrada</td><td class="t">int, padrão 0</td><td>Partos que a fêmea já tinha ao chegar. Hoje é a única fonte de partos para a categoria.</td></tr>
+        <tr><td class="c">observacao</td><td class="t">texto?</td><td></td></tr>
+      </tbody>
+    </table></div><p class="cons"><b>Restrições:</b> únicos em <code>ideagriId</code>, <code>brincoEletronico</code> e <code>sisbov</code>; índice em <code>brinco</code>. O brinco por sítio não tem constraint no banco (ver Regras).</p></details>
+      </div>
+    </article>
+
+    <article class="tbl" id="p-composicao">
+      <div class="tbl-name"><code>ComposicaoRacial</code><span class="role">atributo</span></div>
+      <div class="tbl-body">
+        <h4>O sangue do animal</h4>
+        <p>Uma linha por raça, com a fração em <b>64 avos</b>, a mesma conta do grau de sangue: 1/2 = 32, 5/8 = 40, 3/4 = 48. A soma não passa de 64; o que falta é “desconhecido”.</p>
+        <p class="ex"><b>Exemplo</b>Holandês 48 + Gir Leiteiro 16 = ¾ HO ¼ GIR.</p>
+        <p class="rule"><b>Regra que importa:</b> editar substitui a composição inteira, e uma raça aparece uma vez só por animal.</p>
+        <details class="cols"><summary>Ver colunas</summary><div class="tw"><table>
+      <thead><tr><th>Coluna</th><th>Tipo</th><th>Significado e regra</th></tr></thead>
+      <tbody>
+        <tr><td class="c">animalId</td><td class="t">uuid<span class="k">FK</span></td><td>→ Animal.</td></tr>
+        <tr><td class="c">racaId</td><td class="t">uuid<span class="k">FK</span></td><td>→ Raca.</td></tr>
+        <tr><td class="c">fracao64</td><td class="t">int</td><td>De 1 a 64; a soma do animal não passa de 64. Exemplos: 1/2 = 32, 5/8 = 40, 3/4 = 48.</td></tr>
+        <tr><td class="c">origem</td><td class="t">OrigemComposicao</td><td>INFORMADA na tela, ou CALCULADA a partir do texto de raça na carga.</td></tr>
+      </tbody>
+    </table></div><p class="cons"><b>Restrições:</b> único (animalId, racaId); índice em racaId. Editar substitui a composição inteira.</p></details>
+      </div>
+    </article>
+  </div>
+
+  <div class="sub" id="tb-historico">
+    <h3>Onde está, para que serve, que categoria tem</h3>
+    <p class="intro">Os “cadernos com período”. Cada um tem no máximo uma linha aberta por animal, e o banco garante isso.</p>
+
+    <article class="tbl" id="p-localizacao">
+      <div class="tbl-name"><code>LocalizacaoAnimal</code><span class="role r-hist">histórico</span></div>
+      <div class="tbl-body">
+        <h4>Onde o animal está</h4>
+        <p>Sítio (obrigatório) e lote (opcional), com a data de início e a de fim. A linha aberta é onde o animal está agora. Mover o animal fecha essa linha na data da mudança e abre outra no destino.</p>
+        <p class="ex"><b>Exemplo</b>Principal · Bezerreiro de 01/05/25 a 10/01/26, depois Mexicana · Recria de 10/01/26 até hoje.</p>
+        <p class="rule"><b>Regra que importa:</b> o lote tem de ser do mesmo sítio e estar ativo. Uma linha criada por movimentação aponta para ela (<code>movimentacaoId</code>); a primeira linha, do cadastro, não aponta para nada.</p>
+        <details class="cols"><summary>Ver colunas</summary><div class="tw"><table>
+      <thead><tr><th>Coluna</th><th>Tipo</th><th>Significado e regra</th></tr></thead>
+      <tbody>
+        <tr><td class="c">animalId</td><td class="t">uuid<span class="k">FK</span></td><td>→ Animal.</td></tr>
+        <tr><td class="c">propriedadeId</td><td class="t">int<span class="k">FK</span></td><td>→ Propriedade: o sítio, no schema <code>public</code>.</td></tr>
+        <tr><td class="c">loteId</td><td class="t">uuid?<span class="k">FK</span></td><td>→ Lote. Tem de ser um lote ativo do mesmo sítio, ou vazio.</td></tr>
+        <tr><td class="c">desde</td><td class="t">data</td><td>Início do período.</td></tr>
+        <tr><td class="c">ate</td><td class="t">data?</td><td>Fim do período. Vazio = localização atual.</td></tr>
+        <tr><td class="c">movimentacaoId</td><td class="t">uuid?<span class="k">FK</span></td><td>→ Movimentacao que abriu esta linha. Vazio na linha criada pelo cadastro ou pela carga inicial.</td></tr>
+      </tbody>
+    </table></div><p class="cons"><b>Restrições:</b> índice único parcial <code>LocalizacaoAnimal_animalId_aberta_key</code> em <code>animalId</code> onde <code>ate</code> é nulo; índices (animalId, ate), (propriedadeId, ate), (loteId, ate) e (movimentacaoId).</p></details>
+      </div>
+    </article>
+
+    <article class="tbl" id="p-destino">
+      <div class="tbl-name"><code>DestinoAnimal</code><span class="role r-hist">histórico</span></div>
+      <div class="tbl-body">
+        <h4>Para que o animal serve</h4>
+        <p>A aptidão (leite ou corte) e o papel reprodutivo (nenhum, receptora ou doadora), também com período. Mudar qualquer um dos dois fecha a linha e abre outra.</p>
+        <p class="ex"><b>Exemplo</b>Leite, sem papel, até 01/06/26; Leite, receptora, desde então.</p>
+        <p class="rule"><b>Regra que importa:</b> a mudança não pode ter data anterior ao destino atual. Só dá para desfazer a última.</p>
+        <details class="cols"><summary>Ver colunas</summary><div class="tw"><table>
+      <thead><tr><th>Coluna</th><th>Tipo</th><th>Significado e regra</th></tr></thead>
+      <tbody>
+        <tr><td class="c">animalId</td><td class="t">uuid<span class="k">FK</span></td><td>→ Animal.</td></tr>
+        <tr><td class="c">aptidao</td><td class="t">AptidaoAnimal</td><td>LEITE ou CORTE.</td></tr>
+        <tr><td class="c">papelReprodutivo</td><td class="t">PapelReprodutivo</td><td>NENHUM (padrão), RECEPTORA ou DOADORA.</td></tr>
+        <tr><td class="c">desde</td><td class="t">data</td><td>Início do período.</td></tr>
+        <tr><td class="c">ate</td><td class="t">data?</td><td>Vazio = destino atual.</td></tr>
+      </tbody>
+    </table></div><p class="cons"><b>Restrições:</b> índice único parcial <code>DestinoAnimal_animalId_aberto_key</code> em <code>animalId</code> onde <code>ate</code> é nulo; índice (animalId, ate).</p></details>
+      </div>
+    </article>
+
+    <article class="tbl" id="p-categoria-manual">
+      <div class="tbl-name"><code>CategoriaManualAnimal</code><span class="role r-hist">histórico</span></div>
+      <div class="tbl-body">
+        <h4>Quando alguém força a categoria</h4>
+        <p>A categoria normalmente é <b>calculada</b> (veja <code>CategoriaAnimal</code> abaixo). Esta tabela só é usada quando o usuário decide “esta é Vaca, mesmo que o cálculo diga Novilha”. Vale do dia em que foi forçada até alguém clicar em “Voltar ao automático”.</p>
+        <p class="ex"><b>Exemplo</b>Uma fêmea de 20 meses forçada como Vaca em 12/09/26, motivo “comprada já parida”.</p>
+        <p class="rule"><b>Regra que importa:</b> só uma categoria do mesmo sexo do animal. É um rótulo: forçar “Vaca” não cria parto nem lactação.</p>
+        <details class="cols"><summary>Ver colunas</summary><div class="tw"><table>
+      <thead><tr><th>Coluna</th><th>Tipo</th><th>Significado e regra</th></tr></thead>
+      <tbody>
+        <tr><td class="c">animalId</td><td class="t">uuid<span class="k">FK</span></td><td>→ Animal.</td></tr>
+        <tr><td class="c">categoriaId</td><td class="t">uuid<span class="k">FK</span></td><td>→ CategoriaAnimal ativa, do mesmo sexo do animal.</td></tr>
+        <tr><td class="c">desde / ate</td><td class="t">data / data?</td><td>Período; <code>ate</code> vazio = vale agora.</td></tr>
+        <tr><td class="c">motivo</td><td class="t">texto</td><td>Obrigatório. Na carga do IDEAGRI: “Categoria do IDEAGRI na carga”.</td></tr>
+        <tr><td class="c">motivoEncerramento</td><td class="t">texto?</td><td>Por que voltou ao automático ou foi trocada.</td></tr>
+      </tbody>
+    </table></div><p class="cons"><b>Restrições:</b> índice único parcial <code>CategoriaManualAnimal_animalId_aberta_key</code> (uma aberta por animal); índices (animalId, ate) e (categoriaId, ate).</p></details>
+      </div>
+    </article>
+  </div>
+
+  <div class="sub" id="tb-eventos">
+    <h3>O que aconteceu com o animal</h3>
+    <p class="intro">Acontecimentos com data. Nenhum some sem rastro: movimentação é desfeita, baixa é estornada; só a pesagem pode ser apagada, e a auditoria guarda o que era.</p>
+
+    <article class="tbl" id="p-movimentacao">
+      <div class="tbl-name"><code>Movimentacao</code><span class="role r-ev">evento</span></div>
+      <div class="tbl-body">
+        <h4>A ordem de mudança</h4>
+        <p>Um registro cada vez que alguém move animais: a data, o sítio e o lote de destino, o motivo e quantos animais foram. Pode ser desfeita inteira; nesse caso ela fica marcada como desfeita, com o motivo, e continua no histórico.</p>
+        <p class="ex"><b>Exemplo</b>10/01/26 · 12 animais para Mexicana · Recria · “desmama do grupo de maio”.</p>
+        <details class="cols"><summary>Ver colunas</summary><div class="tw"><table>
+      <thead><tr><th>Coluna</th><th>Tipo</th><th>Significado e regra</th></tr></thead>
+      <tbody>
+        <tr><td class="c">data</td><td class="t">data</td><td>Data da movimentação: o <code>desde</code> das linhas novas e o <code>ate</code> das que foram fechadas.</td></tr>
+        <tr><td class="c">propriedadeDestinoId</td><td class="t">int<span class="k">FK</span></td><td>→ Propriedade de destino.</td></tr>
+        <tr><td class="c">loteDestinoId</td><td class="t">uuid?<span class="k">FK</span></td><td>→ Lote de destino, ou vazio (sem lote).</td></tr>
+        <tr><td class="c">motivo</td><td class="t">texto?</td><td>Digitado uma vez para a movimentação toda.</td></tr>
+        <tr><td class="c">quantidade</td><td class="t">int</td><td>Quantos animais foram movidos.</td></tr>
+        <tr><td class="c">desfeitaEm</td><td class="t">data e hora?</td><td>Vazio = vale. Desfazer apaga as linhas que ela abriu, reabre as anteriores e preenche este campo; o registro fica como histórico.</td></tr>
+        <tr><td class="c">desfeitaMotivo</td><td class="t">texto?</td><td>Obrigatório ao desfazer.</td></tr>
+      </tbody>
+    </table></div><p class="cons"><b>Restrições:</b> índices (loteDestinoId, data), (propriedadeDestinoId, data) e (data). Desfazer é tudo ou nada: se algum animal já foi movido de novo, foi baixado ou teve a linha usada numa baixa, nada muda.</p></details>
+      </div>
+    </article>
+
+    <article class="tbl" id="p-movimentacao-animal">
+      <div class="tbl-name"><code>MovimentacaoAnimal</code><span class="role r-ev">itens do evento</span></div>
+      <div class="tbl-body">
+        <h4>A lista de quem foi na mudança</h4>
+        <p>Uma linha por animal movido, com <b>de onde ele saiu</b>. Nunca é apagada, nem quando a movimentação é desfeita. É por ela que o histórico do lote mostra quem entrou e quem saiu.</p>
+        <p class="ex"><b>Exemplo</b>N302 saiu de Principal · Bezerreiro na movimentação de 10/01/26.</p>
+        <details class="cols"><summary>Ver colunas</summary><div class="tw"><table>
+      <thead><tr><th>Coluna</th><th>Tipo</th><th>Significado e regra</th></tr></thead>
+      <tbody>
+        <tr><td class="c">movimentacaoId</td><td class="t">uuid<span class="k">FK</span></td><td>→ Movimentacao.</td></tr>
+        <tr><td class="c">animalId</td><td class="t">uuid<span class="k">FK</span></td><td>→ Animal.</td></tr>
+        <tr><td class="c">origemPropriedadeId</td><td class="t">int?<span class="k">FK</span></td><td>Sítio onde o animal estava antes.</td></tr>
+        <tr><td class="c">origemLoteId</td><td class="t">uuid?<span class="k">FK</span></td><td>Lote onde o animal estava antes (vazio = sem lote). É o que faz a saída aparecer no histórico do lote de origem.</td></tr>
+        <tr><td class="c">localizacaoId</td><td class="t">uuid?<span class="k">FK</span> <span class="k">único</span></td><td>→ LocalizacaoAnimal aberta pela movimentação. Vira vazio (SET NULL) quando o desfazer apaga essa linha.</td></tr>
+        <tr><td class="c">desfeitoEm</td><td class="t">data e hora?</td><td>Preenchido quando o animal é desfeito sozinho ou junto com a movimentação inteira.</td></tr>
+      </tbody>
+    </table></div><p class="cons"><b>Restrições:</b> único (movimentacaoId, animalId); índices em animalId, origemLoteId e origemPropriedadeId.</p></details>
+      </div>
+    </article>
+
+    <article class="tbl" id="p-baixa">
+      <div class="tbl-name"><code>BaixaAnimal</code><span class="role r-ev">evento com estorno</span></div>
+      <div class="tbl-body">
+        <h4>A saída do rebanho</h4>
+        <p>O registro de que o animal deixou de fazer parte do rebanho: data, <b>tipo</b> (venda, abate, morte, doação, extravio) e, se quiser, o <b>motivo</b> do catálogo. Enquanto houver uma baixa não estornada, o animal está “Baixado”. A baixa fecha a localização e o destino e anota quais fechou, para que o estorno reabra exatamente esses.</p>
+        <p class="ex"><b>Exemplo</b>G503 · Venda em 12/09/26 · motivo Baixa produção (descarte voluntário).</p>
+        <p class="rule"><b>Regra que importa:</b> o motivo precisa combinar com o tipo (venda não aceita causa de morte). “Excluir cadastro” também é uma baixa, do tipo interno Cadastro indevido.</p>
+        <details class="cols"><summary>Ver colunas</summary><div class="tw"><table>
+      <thead><tr><th>Coluna</th><th>Tipo</th><th>Significado e regra</th></tr></thead>
+      <tbody>
+        <tr><td class="c">animalId</td><td class="t">uuid<span class="k">FK</span></td><td>→ Animal.</td></tr>
+        <tr><td class="c">ideagriId</td><td class="t">int?<span class="k">único</span></td><td>Reservado para a baixa do IDEAGRI.</td></tr>
+        <tr><td class="c">data</td><td class="t">data</td><td>Não pode ser anterior à entrada nem ao início da localização e do destino abertos.</td></tr>
+        <tr><td class="c">tipo</td><td class="t">TipoBaixa</td><td>VENDA, ABATE, MORTE, DOACAO, EXTRAVIO ou CADASTRO_INDEVIDO. Este último é interno, usado só por “Excluir cadastro”.</td></tr>
+        <tr><td class="c">motivoId</td><td class="t">uuid?<span class="k">FK</span></td><td>→ MotivoBaixa. Opcional; tem de ser um motivo ativo cuja classe aceite o tipo (ver Regras). EXTRAVIO e CADASTRO_INDEVIDO não levam motivo.</td></tr>
+        <tr><td class="c">observacao</td><td class="t">texto?</td><td></td></tr>
+        <tr><td class="c">estornadaEm</td><td class="t">data e hora?</td><td>Vazio = a baixa vale e o animal está inativo.</td></tr>
+        <tr><td class="c">estornoMotivo</td><td class="t">texto?</td><td>Obrigatório ao estornar.</td></tr>
+        <tr><td class="c">localizacaoFechadaId</td><td class="t">uuid?<span class="k">FK</span></td><td>→ LocalizacaoAnimal que esta baixa fechou. Se a baixa for estornada e essa linha depois apagada por um desfazer, o vínculo fica vazio.</td></tr>
+        <tr><td class="c">destinoFechadoId</td><td class="t">uuid?<span class="k">FK</span></td><td>→ DestinoAnimal que esta baixa fechou.</td></tr>
+      </tbody>
+    </table></div><p class="cons"><b>Restrições:</b> índice único parcial <code>BaixaAnimal_animalId_ativa_key</code> em <code>animalId</code> onde <code>estornadaEm</code> é nulo; índices em animalId, data, localizacaoFechadaId e destinoFechadoId.</p></details>
+      </div>
+    </article>
+
+    <article class="tbl" id="p-pesagem">
+      <div class="tbl-name"><code>Pesagem</code><span class="role r-ev">evento</span></div>
+      <div class="tbl-body">
+        <h4>Cada vez que o animal subiu na balança</h4>
+        <p>Data, peso em kg, tipo (nascimento, entrada, desmama, rotina, saída) e origem (manual ou balança). O último peso e o ganho de peso por dia (GMD) são calculados a partir daqui; o animal não tem coluna de peso.</p>
+        <p class="ex"><b>Exemplo</b>N302 · 150 kg em 10/01/26 · rotina · manual.</p>
+        <p class="rule"><b>Regra que importa:</b> a data fica entre o nascimento e a baixa. É a única tabela de evento em que a linha pode ser apagada de verdade.</p>
+        <details class="cols"><summary>Ver colunas</summary><div class="tw"><table>
+      <thead><tr><th>Coluna</th><th>Tipo</th><th>Significado e regra</th></tr></thead>
+      <tbody>
+        <tr><td class="c">animalId</td><td class="t">uuid<span class="k">FK</span></td><td>→ Animal.</td></tr>
+        <tr><td class="c">ideagriId</td><td class="t">int?<span class="k">único</span></td><td><code>CDPESO</code> do IDEAGRI.</td></tr>
+        <tr><td class="c">data</td><td class="t">data</td><td>Entre o nascimento e a baixa do animal.</td></tr>
+        <tr><td class="c">pesoKg</td><td class="t">decimal(7,2)</td><td>Maior que zero, até 9.999,99 kg.</td></tr>
+        <tr><td class="c">tipo</td><td class="t">TipoPesagem</td><td>NASCIMENTO, ENTRADA, DESMAMA, ROTINA ou SAIDA.</td></tr>
+        <tr><td class="c">origem</td><td class="t">OrigemPesagem</td><td>MANUAL (padrão) ou BALANCA.</td></tr>
+        <tr><td class="c">observacao</td><td class="t">texto?</td><td></td></tr>
+      </tbody>
+    </table></div><p class="cons"><b>Restrições:</b> índice (animalId, data). É a única tabela de evento cuja linha pode ser apagada de fato, sempre com auditoria.</p></details>
+      </div>
+    </article>
+  </div>
+
+  <div class="sub" id="tb-catalogos">
+    <h3>As listas da fazenda</h3>
+    <p class="intro">Cadastros que as outras tabelas usam. Nenhum é apagado: desativar tira o item das escolhas e mantém o que já foi registrado com ele.</p>
+
+    <article class="tbl" id="p-lote">
+      <div class="tbl-name"><code>Lote</code><span class="role">catálogo</span></div>
+      <div class="tbl-body">
+        <h4>Os grupos de manejo</h4>
+        <p>Bezerreiro, Recria, Receptoras… Cada lote pertence a um sítio e não muda de sítio. É onde o animal está dentro do sítio.</p>
+        <p class="rule"><b>Regra que importa:</b> nome único no sítio; lote com animal ativo não pode ser desativado.</p>
+        <details class="cols"><summary>Ver colunas</summary><div class="tw"><table>
+      <thead><tr><th>Coluna</th><th>Tipo</th><th>Significado e regra</th></tr></thead>
+      <tbody>
+        <tr><td class="c">ideagriId</td><td class="t">int?<span class="k">único</span></td><td>Reservado para o <code>GRUPOANIMAL</code> do IDEAGRI.</td></tr>
+        <tr><td class="c">nome</td><td class="t">texto</td><td>Único dentro do sítio.</td></tr>
+        <tr><td class="c">propriedadeId</td><td class="t">int<span class="k">FK</span></td><td>→ Propriedade. Não muda depois de criado.</td></tr>
+        <tr><td class="c">ativo</td><td class="t">booleano</td><td>Não pode ser desativado enquanto tiver animal ativo.</td></tr>
+        <tr><td class="c">observacao</td><td class="t">texto?</td><td></td></tr>
+      </tbody>
+    </table></div><p class="cons"><b>Restrições:</b> único (propriedadeId, nome).</p></details>
+      </div>
+    </article>
+
+    <article class="tbl" id="p-raca">
+      <div class="tbl-name"><code>Raca</code><span class="role">catálogo</span></div>
+      <div class="tbl-body">
+        <h4>As raças</h4>
+        <p>Nome e sigla (HO, GIR, NEL…). Uma raça “composta”, como Girolando, é usada quando se sabe a mistura mas não o grau exato.</p>
+        <details class="cols"><summary>Ver colunas</summary><div class="tw"><table>
+      <thead><tr><th>Coluna</th><th>Tipo</th><th>Significado e regra</th></tr></thead>
+      <tbody>
+        <tr><td class="c">ideagriId</td><td class="t">int?<span class="k">único</span></td><td></td></tr>
+        <tr><td class="c">nome</td><td class="t">texto</td><td>Sem duplicata, checado na aplicação.</td></tr>
+        <tr><td class="c">sigla</td><td class="t">texto</td><td>2 ou 3 letras maiúsculas.</td></tr>
+        <tr><td class="c">base</td><td class="t">booleano</td><td>Padrão verdadeiro. Falso = raça composta, como Girolando, usada quando o grau de sangue é desconhecido.</td></tr>
+        <tr><td class="c">ativo</td><td class="t">booleano</td><td>Raça inativa continua aceita na composição de quem já a tem.</td></tr>
+      </tbody>
+    </table></div><p class="cons"><b>Restrições:</b> nenhuma constraint única no banco além de <code>ideagriId</code>.</p></details>
+      </div>
+    </article>
+
+    <article class="tbl" id="p-categoria">
+      <div class="tbl-name"><code>CategoriaAnimal</code><span class="role">catálogo com regra</span></div>
+      <div class="tbl-body">
+        <h4>As regras de categoria da fazenda</h4>
+        <p>Cada categoria tem nome, sexo e uma regra: faixa de idade em meses e “com parto”, “sem parto” ou “tanto faz”. As regras são lidas <b>em ordem</b>, e a primeira que encaixa no animal vence. O padrão são as 7 categorias do IDEAGRI (Em crescimento, Novilha, Vaca para fêmeas; Em crescimento, Reprodutor, Boi carreiro, Rufião para machos), e a fazenda pode editar, criar ou “Restaurar padrões”.</p>
+        <p class="ex"><b>Exemplo</b>Fêmea de 14 meses, sem parto: não é Vaca (precisa de parto), não é Em crescimento (até 12 meses) → Novilha.</p>
+        <p class="rule"><b>Regra que importa:</b> mudar uma regra recategoriza na hora todos os animais sem categoria forçada; por isso a tela mostra antes quantos mudam.</p>
+        <details class="cols"><summary>Ver regras de fábrica</summary><div class="tw"><table>
+      <thead><tr><th>Padrão</th><th>Sexo</th><th>Regra inicial</th></tr></thead>
+      <tbody>
+        <tr><td class="c">Vaca</td><td class="t">F</td><td>com parto (hoje, <code>partosAntesDaEntrada</code>)</td></tr>
+        <tr><td class="c">Em crescimento</td><td class="t">F</td><td>menos de 12 meses, sem parto</td></tr>
+        <tr><td class="c">Novilha</td><td class="t">F</td><td>12 meses ou mais, sem parto</td></tr>
+        <tr><td class="c">Em crescimento</td><td class="t">M</td><td>qualquer idade</td></tr>
+        <tr><td class="c">Reprodutor · Boi carreiro · Rufião</td><td class="t">M</td><td>só manual</td></tr>
+      </tbody>
+    </table></div><p class="cons"><b>Restrições:</b> único (sexo, nome); únicos em <code>ideagriId</code> e <code>chavePadrao</code>. Desativar ou trocar o sexo é recusado se houver animal com ela manual. Toda mudança de regra é simulada antes (quantos animais mudam) e auditada.</p></details>
+      </div>
+    </article>
+
+    <article class="tbl" id="p-motivo">
+      <div class="tbl-name"><code>MotivoBaixa</code><span class="role">catálogo</span></div>
+      <div class="tbl-body">
+        <h4>O porquê da baixa</h4>
+        <p>Cada motivo tem uma <b>classe</b>: descarte voluntário (a fazenda escolheu: baixa produção, idade avançada, excedente), descarte involuntário (o animal obrigou: infertilidade, mastite crônica, casco) ou morte (pneumonia, anaplasmose, acidente…). A classe decide em que tipo de baixa o motivo aparece.</p>
+        <p class="rule"><b>Regra que importa:</b> venda, abate e doação aceitam os dois descartes; morte aceita só causa de morte; extravio não usa motivo.</p>
+        <details class="cols"><summary>Ver colunas</summary><div class="tw"><table>
+      <thead><tr><th>Coluna</th><th>Tipo</th><th>Significado e regra</th></tr></thead>
+      <tbody>
+        <tr><td class="c">ideagriId</td><td class="t">int?<span class="k">único</span></td><td><code>MOTIVOBAIXA</code> do IDEAGRI.</td></tr>
+        <tr><td class="c">nome</td><td class="t">texto</td><td>Sem duplicata no catálogo inteiro, sem diferenciar maiúsculas, checado na aplicação.</td></tr>
+        <tr><td class="c">classe</td><td class="t">ClasseMotivoBaixa</td><td>DESCARTE_VOLUNTARIO, DESCARTE_INVOLUNTARIO ou MORTE — equivalente ao TIPOBAIXA do IDEAGRI. Editar é recusado se uma baixa ativa de tipo incompatível já usa o motivo.</td></tr>
+        <tr><td class="c">ativo</td><td class="t">booleano</td><td></td></tr>
+      </tbody>
+    </table></div><p class="cons"><b>Restrições:</b> nenhuma constraint única no banco além de <code>ideagriId</code>.</p><p class="cons">Motivos de fábrica: descarte voluntário (Baixa produção, Idade avançada, Excedente de animais, Bezerro macho, Temperamento/ordenha difícil), descarte involuntário (Infertilidade/repetição de cio, Aborto, Mastite crônica, Casco/locomoção, Úbere/tetos, Doença crônica, Lesão/acidente) e morte (17 causas, entre elas Pneumonia, Anaplasmose, Acidente, Tripanossoma, Peritonite, Septicemia, Intoxicação por plantas tóxicas, Botulismo). “Venda”, “Abate”, “Doação” e “Cadastro indevido” deixaram de ser motivo: viraram tipo.</p></details>
+      </div>
+    </article>
+  </div>
+
+  <div class="sub" id="tb-trilha">
+    <h3>O livro de ocorrências</h3>
+    <article class="tbl" id="p-auditoria">
+      <div class="tbl-name"><code>AuditoriaPecuaria</code><span class="role">trilha</span></div>
+      <div class="tbl-body">
+        <h4>Quem mudou o quê, e como era antes</h4>
+        <p>Toda alteração grava uma linha: a tabela, a ação, quem fez, quando, uma foto de antes e outra de depois. A trilha de um animal aparece no fim da ficha dele e sobrevive até a linhas apagadas, como uma pesagem excluída.</p>
+        <details class="cols"><summary>Ver colunas</summary><div class="tw"><table>
+      <thead><tr><th>Coluna</th><th>Tipo</th><th>Significado e regra</th></tr></thead>
+      <tbody>
+        <tr><td class="c">entidade</td><td class="t">texto</td><td>Tabela afetada.</td></tr>
+        <tr><td class="c">entidadeId</td><td class="t">texto</td><td>Id da linha afetada, sem chave estrangeira.</td></tr>
+        <tr><td class="c">animalId</td><td class="t">texto?</td><td>Animal envolvido, sem chave estrangeira: a trilha do animal sobrevive a linhas apagadas.</td></tr>
+        <tr><td class="c">acao</td><td class="t">texto</td><td>CADASTRO, IMPORTACAO, EDICAO, MOVIMENTACAO, MUDANCA_DESTINO, DESFAZER, BAIXA, ESTORNO, REGISTRO ou EXCLUSAO.</td></tr>
+        <tr><td class="c">antes</td><td class="t">jsonb?</td><td>Foto da linha antes da mudança.</td></tr>
+        <tr><td class="c">depois</td><td class="t">jsonb?</td><td>Foto da linha depois da mudança.</td></tr>
+        <tr><td class="c">usuarioId</td><td class="t">int?<span class="k">FK</span></td><td>→ Usuario: quem fez.</td></tr>
+        <tr><td class="c">em</td><td class="t">data e hora</td><td>Quando.</td></tr>
+      </tbody>
+    </table></div><p class="cons"><b>Restrições:</b> índices (entidade, entidadeId), (animalId, em) e (em).</p></details>
+      </div>
+    </article>
+    <p class="note">Duas tabelas do schema <code>public</code> entram em cena: <code>Propriedade</code> (o sítio) e <code>Usuario</code> (quem fez).</p>
+  </div>
+
+  <div class="sub" id="tb-calculado">
+    <h3>O que nenhuma tabela guarda</h3>
+    <p class="intro">Calculado na hora em que a tela pede, para nunca ficar desatualizado.</p>
+    <div class="derived-grid">
+      <div><h4>Situação</h4><p>“Baixado” se existe uma baixa não estornada; senão, “Ativo”.</p></div>
+      <div><h4>Onde está e para que serve</h4><p>A linha aberta de localização e a de destino.</p></div>
+      <div><h4>Categoria</h4><p>A forçada, se houver; senão, a primeira regra da fazenda que encaixa; senão, “Sem categoria”.</p></div>
+      <div><h4>Idade</h4><p>Meses completos desde o nascimento até hoje, no fuso da fazenda; para um baixado, até a data da baixa.</p></div>
+      <div><h4>Último peso</h4><p>A pesagem mais recente.</p></div>
+      <div><h4>GMD</h4><p>Quilos ganhos por dia: entre as duas últimas pesagens, num período (30 a 365 dias) ou desde a entrada.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═════════════════════════ PARTE 2 ═════════════════════════ -->
+<section class="part" id="efeitos">
+  <p class="part-eyebrow">Parte 2 de 3</p>
+  <h2>Os efeitos entre as tabelas</h2>
+  <p class="intro">O que acontece nas tabelas quando alguém faz algo na tela, o que o sistema recusa, e se isso aparece na interface. Toda ação roda de uma vez só (se uma parte falha, nada é gravado) e deixa uma linha na auditoria.</p>
+  <div class="legend">
+    <span><span class="st st-ok">na tela</span> existe e aparece</span>
+    <span><span class="st st-parcial">parcial</span> funciona, mas falta algo ou há erro</span>
+    <span><span class="st st-falta">falta</span> deveria aparecer e não aparece</span>
+    <span><span class="st st-script">só script</span> não tem tela</span>
+  </div>
+  <div class="legend">
+    <span><ul class="ops"><li class="o-cria"><i>+</i>cria</li></ul></span>
+    <span><ul class="ops"><li class="o-fecha"><i>■</i>fecha a linha aberta</li></ul></span>
+    <span><ul class="ops"><li class="o-abre"><i>▶</i>abre linha nova</li></ul></span>
+    <span><ul class="ops"><li class="o-reabre"><i>↺</i>reabre</li></ul></span>
+    <span><ul class="ops"><li class="o-marca"><i>✓</i>marca</li></ul></span>
+    <span><ul class="ops"><li class="o-apaga"><i>×</i>apaga</li></ul></span>
+  </div>
+
+  <h3 class="fx-group">Cadastro do animal</h3>
+  <div class="fx-list">
+    <article class="fx">
+      <div class="fx-h"><h4>Cadastrar animal</h4><span class="st st-ok">na tela</span></div>
+      <p>Um cadastro cria o animal e já abre os dois cadernos, começando na data de entrada.</p>
+      <ul class="ops"><li class="o-cria"><i>+</i>Animal</li><li class="o-abre"><i>▶</i>LocalizacaoAnimal</li><li class="o-abre"><i>▶</i>DestinoAnimal</li><li class="o-cria"><i>+</i>ComposicaoRacial</li><li class="o-cria"><i>+</i>Pesagem de entrada (se informou peso)</li></ul>
+      <dl><dt>Recusa</dt><dd>Brinco já usado por animal ativo do sítio; lote inativo ou de outro sítio; entrada antes do nascimento (nascido na fazenda: entrada = nascimento).</dd><dt>Onde</dt><dd>Botão “Novo animal” na Visão geral e em Animais.</dd></dl>
+    </article>
+    <article class="fx">
+      <div class="fx-h"><h4>Editar dados</h4><span class="st st-ok">na tela</span></div>
+      <p>Muda a ficha. Se a data de entrada ou de nascimento muda, o começo dos cadernos e as pesagens de entrada e nascimento acompanham.</p>
+      <ul class="ops"><li class="o-marca"><i>✓</i>Animal</li><li class="o-marca"><i>✓</i>1ª LocalizacaoAnimal · 1º DestinoAnimal</li><li class="o-marca"><i>✓</i>Pesagem entrada/nascimento</li></ul>
+      <dl><dt>Recusa</dt><dd>Entrada depois da primeira mudança ou da baixa; nascimento depois de alguma pesagem; trocar o sexo com categoria forçada aberta; nova entrada depois do início de uma categoria forçada. Virar macho fecha o papel de receptora/doadora e zera os partos.</dd><dt>Onde</dt><dd>“Editar dados” na ficha e lápis na lista.</dd></dl>
+    </article>
+    <article class="fx">
+      <div class="fx-h"><h4>Editar composição racial</h4><span class="st st-ok">na tela</span></div>
+      <p>Troca a composição inteira.</p>
+      <ul class="ops"><li class="o-apaga"><i>×</i>ComposicaoRacial antiga</li><li class="o-cria"><i>+</i>ComposicaoRacial nova</li></ul>
+      <dl><dt>Recusa</dt><dd>Soma acima de 64; raça inativa que o animal ainda não tinha.</dd><dt>Onde</dt><dd>“Editar composição” na ficha.</dd></dl>
+    </article>
+    <article class="fx">
+      <div class="fx-h"><h4>Excluir cadastro</h4><span class="st st-ok">na tela</span></div>
+      <p>Não apaga: dá uma baixa do tipo Cadastro indevido, com o motivo na observação. O brinco fica livre e dá para estornar. Não entra em “Baixas em 30 dias”.</p>
+      <ul class="ops"><li class="o-fecha"><i>■</i>LocalizacaoAnimal</li><li class="o-fecha"><i>■</i>DestinoAnimal</li><li class="o-cria"><i>+</i>BaixaAnimal</li></ul>
+      <dl><dt>Onde</dt><dd>“Excluir cadastro” na ficha.</dd></dl>
+    </article>
+  </div>
+
+  <h3 class="fx-group">Onde o animal está</h3>
+  <div class="fx-list">
+    <article class="fx">
+      <div class="fx-h"><h4>Movimentar (1 ou vários)</h4><span class="st st-ok">na tela</span></div>
+      <p>Cria a ordem de mudança e, para cada animal, fecha a localização de hoje e abre a nova, anotando de onde ele saiu. Tudo ou nada: se um animal não pode, nenhum vai.</p>
+      <ul class="ops"><li class="o-cria"><i>+</i>Movimentacao</li><li class="o-cria"><i>+</i>MovimentacaoAnimal por animal</li><li class="o-fecha"><i>■</i>LocalizacaoAnimal atual</li><li class="o-abre"><i>▶</i>LocalizacaoAnimal nova</li></ul>
+      <dl><dt>Recusa</dt><dd>Animal baixado; data antes da localização atual; lote inativo ou de outro sítio; brinco já usado no sítio de destino. Quem já está no destino é pulado. Depois de mover, todas as telas mostram o aviso com “Desfazer”.</dd><dt>Onde</dt><dd>Ficha, lista de Animais (um ou selecionados), aba Lotes e página do lote (“Trazer animais”).</dd></dl>
+    </article>
+    <article class="fx">
+      <div class="fx-h"><h4>Desfazer a movimentação inteira</h4><span class="st st-ok">na tela</span></div>
+      <p>Apaga as linhas que ela abriu, reabre onde cada animal estava e marca tudo como desfeito. A lista de quem foi continua.</p>
+      <ul class="ops"><li class="o-apaga"><i>×</i>LocalizacaoAnimal aberta por ela</li><li class="o-reabre"><i>↺</i>LocalizacaoAnimal anterior</li><li class="o-marca"><i>✓</i>MovimentacaoAnimal desfeito</li><li class="o-marca"><i>✓</i>Movimentacao desfeita</li></ul>
+      <dl><dt>Recusa</dt><dd>Se qualquer animal já foi movido de novo, tem baixa valendo (uma baixa estornada não impede mais) ou teria o brinco repetido no lugar de volta. A tela mostra quem volta para onde antes de confirmar.</dd><dt>Onde</dt><dd>Histórico de movimentações (aba Lotes e página do lote) e detalhe da movimentação, pelo sítio de destino ou de origem.</dd></dl>
+    </article>
+    <article class="fx">
+      <div class="fx-h"><h4>Desfazer a última movimentação de um animal</h4><span class="st st-ok">na tela</span></div>
+      <p>Tira só esse animal da movimentação. Se ele era o último, a movimentação inteira fica desfeita.</p>
+      <ul class="ops"><li class="o-apaga"><i>×</i>LocalizacaoAnimal atual</li><li class="o-reabre"><i>↺</i>LocalizacaoAnimal anterior</li><li class="o-marca"><i>✓</i>MovimentacaoAnimal</li></ul>
+      <dl><dt>Recusa</dt><dd>Linha já usada por uma baixa; brinco ocupado no lugar de volta.</dd><dt>Onde</dt><dd>“Desfazer última movimentação” na ficha.</dd></dl>
+    </article>
+    <article class="fx">
+      <div class="fx-h"><h4>Mudar destino · desfazer destino</h4><span class="st st-ok">na tela</span></div>
+      <p>Fecha a aptidão/papel de hoje e abre a nova. Desfazer apaga a última e reabre a anterior.</p>
+      <ul class="ops"><li class="o-fecha"><i>■</i>DestinoAnimal atual</li><li class="o-abre"><i>▶</i>DestinoAnimal novo</li></ul>
+      <dl><dt>Recusa</dt><dd>Data antes do destino atual; receptora ou doadora em macho; desfazer uma linha já usada por baixa.</dd><dt>Onde</dt><dd>“Mudar destino” e “Desfazer última mudança” na ficha.</dd></dl>
+    </article>
+  </div>
+
+  <h3 class="fx-group">Saída do rebanho</h3>
+  <figure class="fig">
+    <div class="scroll" tabindex="0">
+    <svg viewBox="0 0 1000 292" role="img" aria-label="Três estados de um animal. Ativo: localização L3 e destino D2 abertos, nenhuma baixa. Depois de dar baixa: L3 e D2 fechados em 10/09/26 e uma baixa B1 que aponta para L3 e D2. Depois do estorno: L3 e D2 reabertos e B1 preservada com data de estorno.">
+      <defs>
+        <marker id="mk-ink" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="mk-ink" d="M0 0L10 5L0 10z"/></marker>
+        <marker id="mk-coffee" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="mk-coffee" d="M0 0L10 5L0 10z"/></marker>
+      </defs>
+      <g class="col-t"><text x="20" y="26">Ativo</text><text x="370" y="26">Depois de dar baixa</text><text x="720" y="26">Depois do estorno</text></g>
+      <line class="tr" x1="292" y1="21" x2="358" y2="21" marker-end="url(#mk-ink)"/>
+      <text class="tr-t" x="325" y="12" text-anchor="middle">dar baixa</text>
+      <line class="tr" x1="642" y1="21" x2="708" y2="21" marker-end="url(#mk-ink)"/>
+      <text class="tr-t" x="675" y="12" text-anchor="middle">estornar</text>
+
+      <rect class="box-open" x="20" y="44" width="260" height="58" rx="6"/>
+      <text class="b-title" x="32" y="63">LocalizacaoAnimal · L3</text>
+      <text class="b-line" x="32" y="80">Mexicana · Receptoras</text>
+      <text class="b-code" x="32" y="95">desde 01/06/26 · ate vazio</text>
+      <rect class="box-open" x="20" y="116" width="260" height="58" rx="6"/>
+      <text class="b-title" x="32" y="135">DestinoAnimal · D2</text>
+      <text class="b-line" x="32" y="152">LEITE · RECEPTORA</text>
+      <text class="b-code" x="32" y="167">desde 01/06/26 · ate vazio</text>
+      <rect class="box-ghost" x="20" y="190" width="260" height="86" rx="6"/>
+      <text class="b-title" x="32" y="210">BaixaAnimal</text>
+      <text class="b-line" x="32" y="228">nenhuma baixa valendo</text>
+      <text class="b-code" x="32" y="246">o animal está ativo</text>
+
+      <rect class="box-closed" x="370" y="44" width="260" height="58" rx="6"/>
+      <text class="b-title" x="382" y="63">LocalizacaoAnimal · L3</text>
+      <text class="b-line" x="382" y="80">Mexicana · Receptoras</text>
+      <text class="b-code" x="382" y="95">ate = 10/09/26</text>
+      <rect class="box-closed" x="370" y="116" width="260" height="58" rx="6"/>
+      <text class="b-title" x="382" y="135">DestinoAnimal · D2</text>
+      <text class="b-line" x="382" y="152">LEITE · RECEPTORA</text>
+      <text class="b-code" x="382" y="167">ate = 10/09/26</text>
+      <rect class="box-saida" x="370" y="190" width="260" height="86" rx="6"/>
+      <text class="b-title" x="382" y="210">BaixaAnimal · B1 · VENDA</text>
+      <text class="b-code" x="382" y="228">10/09/26 · estornadaEm vazio</text>
+      <text class="b-code" x="382" y="246">destinoFechadoId = D2</text>
+      <text class="b-code" x="382" y="264">localizacaoFechadaId = L3</text>
+      <path class="route" d="M630 242 H648 V145 H631" marker-end="url(#mk-coffee)"/>
+      <path class="route" d="M630 260 H664 V73 H631" marker-end="url(#mk-coffee)"/>
+
+      <rect class="box-open" x="720" y="44" width="260" height="58" rx="6"/>
+      <text class="b-title" x="732" y="63">LocalizacaoAnimal · L3</text>
+      <text class="b-line" x="732" y="80">Mexicana · Receptoras</text>
+      <text class="b-code" x="732" y="95">ate vazio de novo · reaberta</text>
+      <rect class="box-open" x="720" y="116" width="260" height="58" rx="6"/>
+      <text class="b-title" x="732" y="135">DestinoAnimal · D2</text>
+      <text class="b-line" x="732" y="152">LEITE · RECEPTORA</text>
+      <text class="b-code" x="732" y="167">ate vazio de novo · reaberta</text>
+      <rect class="box-ghost" x="720" y="190" width="260" height="86" rx="6"/>
+      <text class="b-title" x="732" y="210">BaixaAnimal · B1 · VENDA</text>
+      <text class="b-code" x="732" y="228">estornadaEm = 12/09/26</text>
+      <text class="b-code" x="732" y="246">estornoMotivo preenchido</text>
+      <text class="b-line" x="732" y="264">a linha fica como histórico</text>
+    </svg>
+    </div>
+    <figcaption><b>Baixa e estorno.</b> Dar baixa fecha as linhas abertas e grava na própria baixa quais foram fechadas. Estornar reabre exatamente essas linhas, sem deduzir pela data (uma movimentação no mesmo dia também fecharia uma linha com o mesmo <code>ate</code>), e mantém a baixa com <code>estornadaEm</code> e <code>estornoMotivo</code>. Um índice parcial impede duas baixas valendo ao mesmo tempo.</figcaption>
+  </figure>
+  <div class="fx-list">
+    <article class="fx">
+      <div class="fx-h"><h4>Dar baixa</h4><span class="st st-ok">na tela</span></div>
+      <p>Fecha os dois cadernos e cria a baixa apontando para as linhas fechadas. O animal passa a “Baixado”, sai das contagens de ativos e libera o brinco no sítio.</p>
+      <ul class="ops"><li class="o-fecha"><i>■</i>LocalizacaoAnimal</li><li class="o-fecha"><i>■</i>DestinoAnimal</li><li class="o-cria"><i>+</i>BaixaAnimal</li></ul>
+      <dl><dt>Recusa</dt><dd>Motivo que não combina com o tipo; data antes da localização ou do destino atuais; animal já baixado; data anterior à última pesagem.</dd><dt>Onde</dt><dd>“Dar baixa” na ficha (tipo, motivo agrupado por classe).</dd></dl>
+    </article>
+    <article class="fx">
+      <div class="fx-h"><h4>Estornar baixa</h4><span class="st st-ok">na tela</span></div>
+      <p>Reabre exatamente as linhas que a baixa fechou e marca a baixa como estornada, com o motivo. O animal volta a “Ativo” onde estava.</p>
+      <ul class="ops"><li class="o-reabre"><i>↺</i>LocalizacaoAnimal</li><li class="o-reabre"><i>↺</i>DestinoAnimal</li><li class="o-marca"><i>✓</i>BaixaAnimal estornada</li></ul>
+      <dl><dt>Recusa</dt><dd>Se o brinco já foi reusado por outro animal ativo no mesmo sítio.</dd><dt>Onde</dt><dd>“Estornar baixa”, única ação na ficha de um animal baixado.</dd></dl>
+    </article>
+  </div>
+
+  <h3 class="fx-group">Peso e categoria</h3>
+  <div class="fx-list">
+    <article class="fx">
+      <div class="fx-h"><h4>Registrar · editar · excluir pesagem</h4><span class="st st-ok">na tela</span></div>
+      <p>Cria, altera ou apaga a pesagem. O último peso e o GMD mudam na hora, porque são calculados.</p>
+      <ul class="ops"><li class="o-cria"><i>+</i>Pesagem</li><li class="o-marca"><i>✓</i>Pesagem</li><li class="o-apaga"><i>×</i>Pesagem</li></ul>
+      <dl><dt>Recusa</dt><dd>Data antes do nascimento, depois da baixa ou no futuro; peso abaixo de 0,01 kg. A observação aparece na tabela e é mantida ao editar.</dd><dt>Onde</dt><dd>“Registrar pesagem”, lápis e lixeira na tabela de pesagens da ficha.</dd></dl>
+    </article>
+    <article class="fx">
+      <div class="fx-h"><h4>Forçar categoria · voltar ao automático</h4><span class="st st-ok">na tela</span></div>
+      <p>Forçar fecha a categoria forçada anterior (se houver) e abre a nova. Voltar ao automático só fecha. Em todas as listas e contagens o animal passa a aparecer com a categoria nova.</p>
+      <ul class="ops"><li class="o-fecha"><i>■</i>CategoriaManualAnimal</li><li class="o-abre"><i>▶</i>CategoriaManualAnimal</li></ul>
+      <dl><dt>Recusa</dt><dd>Categoria de outro sexo ou inativa; animal baixado; a mesma categoria de hoje.</dd><dt>Onde</dt><dd>“Alterar categoria” e “Voltar ao automático” na ficha, com o cálculo ao lado.</dd></dl>
+    </article>
+    <article class="fx">
+      <div class="fx-h"><h4>Mudar as regras de categoria</h4><span class="st st-ok">na tela</span></div>
+      <p>Criar, editar ou reordenar uma regra não grava nada nos animais: todos os que não têm categoria forçada mudam na hora, porque a categoria é calculada. Antes de salvar, a tela simula e mostra “12 animais mudam: 8 Novilha → Vaca…”.</p>
+      <ul class="ops"><li class="o-marca"><i>✓</i>CategoriaAnimal</li></ul>
+      <dl><dt>Recusa</dt><dd>Desativar ou mudar o sexo de uma categoria que algum animal tem forçada.</dd><dt>Onde</dt><dd>Cadastros › Categorias, com a coluna “Forçadas” e o histórico de alterações.</dd></dl>
+    </article>
+  </div>
+
+  <h3 class="fx-group">Listas da fazenda e carga</h3>
+  <div class="fx-list">
+    <article class="fx">
+      <div class="fx-h"><h4>Lotes</h4><span class="st st-ok">na tela</span></div>
+      <p>Criar, editar, desativar e reativar. O lote nunca muda de sítio.</p>
+      <ul class="ops"><li class="o-cria"><i>+</i>Lote</li><li class="o-marca"><i>✓</i>Lote</li></ul>
+      <dl><dt>Recusa</dt><dd>Nome repetido no sítio; desativar com animal ativo dentro.</dd><dt>Onde</dt><dd>Aba Lotes e página do lote.</dd></dl>
+    </article>
+    <article class="fx">
+      <div class="fx-h"><h4>Raças · motivos de baixa</h4><span class="st st-ok">na tela</span></div>
+      <p>Criar, editar, desativar. Mudar a classe de um motivo é recusado se deixar alguma baixa com motivo que não combina.</p>
+      <ul class="ops"><li class="o-cria"><i>+</i>Raca · MotivoBaixa</li><li class="o-marca"><i>✓</i>Raca · MotivoBaixa</li></ul>
+      <dl><dt>Onde</dt><dd>Cadastros › Raças e Motivos de baixa.</dd></dl>
+    </article>
+    <article class="fx">
+      <div class="fx-h"><h4>Carga do IDEAGRI</h4><span class="st st-script">só script</span></div>
+      <p>Uma vez só. Cria cada animal com a composição, a primeira localização e o primeiro destino, as pesagens, a baixa (se houver) e a categoria forçada quando a do IDEAGRI difere do cálculo. Animal que já existe é pulado.</p>
+      <ul class="ops"><li class="o-cria"><i>+</i>Animal e cadernos</li><li class="o-cria"><i>+</i>Pesagem</li><li class="o-cria"><i>+</i>BaixaAnimal</li><li class="o-cria"><i>+</i>CategoriaManualAnimal</li><li class="o-cria"><i>+</i>Lote · Raca · MotivoBaixa que faltarem</li></ul>
+      <dl><dt>Falta</dt><dd class="warn">Ainda não foi rodada com os dados reais. Já traz brinco eletrônico, SISBOV e o papel reprodutivo do IDEAGRI.</dd><dt>Onde</dt><dd><code>import:pecuaria</code> + <code>validar:pecuaria</code>.</dd></dl>
+    </article>
+  </div>
+
+  <div class="sub" id="efeitos-leitura">
+    <h3>O que a tela calcula, e onde aparece</h3>
+    <div class="tw"><table>
+      <thead><tr><th>Efeito calculado</th><th>Estado</th><th>Onde aparece · o que falta</th></tr></thead>
+      <tbody>
+        <tr><td class="op">Situação ativo / baixado</td><td><span class="st st-ok">na tela</span></td><td>Pílula na lista e na ficha; filtros Ativos / Baixados, tipo e período da baixa; coluna “Baixa” (tipo · data) na lista; histórico completo de baixas na ficha, inclusive as estornadas.</td></tr>
+        <tr><td class="op">Categoria</td><td><span class="st st-ok">na tela</span></td><td>Pílula com selo “Manual” e o cálculo ao lado; filtro na lista; contagens na Visão geral e no lote.</td></tr>
+        <tr><td class="op">Idade</td><td><span class="st st-ok">na tela</span></td><td>Lista, ficha e página do lote, no fuso da fazenda; para um baixado, para na data da baixa. Filtro por faixa de idade em Animais.</td></tr>
+        <tr><td class="op">Onde está</td><td><span class="st st-ok">na tela</span></td><td>Lista e ficha. Para um baixado, o último sítio, lote e aptidão, marcados “na baixa”.</td></tr>
+        <tr><td class="op">Último peso</td><td><span class="st st-ok">na tela</span></td><td>Topo da ficha (“Peso atual”), lista e página do lote.</td></tr>
+        <tr><td class="op">GMD</td><td><span class="st st-ok">na tela</span></td><td>Calculado no servidor: recente (última × anterior), do período (30, 90, 180, 365 dias ou desde a entrada) e desde a entrada, na ficha com gráfico do peso; coluna na lista e na página do lote; média do lote no resumo do lote.</td></tr>
+        <tr><td class="op">Resumo do lote</td><td><span class="st st-ok">na tela</span></td><td>Animais (fêmeas/machos), peso médio com mínimo e máximo, GMD médio do período (N de M animais), idade média, pílulas por categoria; tabela com sexo, idade, aptidão, peso, GMD e “no lote desde”; seção “Saíram por baixa”.</td></tr>
+        <tr><td class="op">Visão geral</td><td><span class="st st-ok">na tela</span></td><td>Ativos, receptoras, baixas; painel “Baixas no período” (30 dias / 12 meses) por tipo e por classe, com a proporção descarte voluntário × involuntário. Contagens e barras abrem a lista de animais já filtrada.</td></tr>
+        <tr><td class="op">Histórico de movimentações</td><td><span class="st st-ok">na tela</span></td><td>Geral e por lote, com o detalhe; na ficha, as movimentações do animal (inclusive desfeitas) e a coluna Motivo na localização.</td></tr>
+        <tr><td class="op">Auditoria</td><td><span class="st st-ok">na tela</span></td><td>Ficha do animal, página do lote e cada sub-aba de Cadastros: data e hora, quem fez e o que mudou (campo: antes → depois), com “Carregar mais”.</td></tr>
+        <tr><td class="op">Simulação de categorias</td><td><span class="st st-ok">na tela</span></td><td>“Aplicar esta mudança?” em Cadastros, com o aviso de animais sem categoria.</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <div class="sub" id="lacunas">
+    <h3>Corrigido na review de 24/09</h3>
+    <p class="intro">Uma review completa do PR (regras, escopo, migrations e carga, telas, testes) encontrou os problemas abaixo. Todos foram corrigidos e cobertos por testes, incluindo testes com banco de verdade.</p>
+    <div class="gaps">
+      <div>
+        <h4><span class="st st-ok">corrigido</span> Integridade</h4>
+        <ol>
+          <li><b>Duas pessoas no mesmo animal ao mesmo tempo</b> (baixa × movimentação) podiam deixar o animal baixado com uma localização aberta. Agora cada escrita trava o animal e só fecha linha que ainda está aberta.</li>
+          <li><b>Baixa estornada</b> impedia desfazer a movimentação anterior.</li>
+          <li><b>Duplo clique</b> virava erro 500; agora é um aviso para recarregar.</li>
+          <li><b>Desfazer em dobro</b> e lote desativado ao mesmo tempo que recebia animal.</li>
+        </ol>
+      </div>
+      <div>
+        <h4><span class="st st-ok">corrigido</span> Regras e carga</h4>
+        <ol>
+          <li><b>Carga do IDEAGRI</b> descartava brinco eletrônico e SISBOV; agora traz também o papel reprodutivo e avalia a categoria na data da extração.</li>
+          <li><b>Seed</b> criava 4 sítios fixos com uma segunda “principal”.</li>
+          <li>Datas no fuso da fazenda e nunca no futuro; receptora e doadora só em fêmea; baixa não antes da última pesagem; categoria forçada sem sobreposição; peso mínimo.</li>
+          <li>Pesagem editada perdia a observação; ficha de baixado sem sítio; idade de baixado; cadastro indevido nas baixas do mês.</li>
+        </ol>
+      </div>
+      <div>
+        <h4><span class="st st-ok">corrigido</span> Telas e testes</h4>
+        <ol>
+          <li>“Trazer animais” podia esconder a paginação; histórico e “editar” podiam mostrar resposta antiga.</li>
+          <li>Baixados sem ações na lista; filtros liberados para quem só vê; “Desfazer” após mover em todas as telas.</li>
+          <li>Testes com banco de verdade no CI (tudo ou nada, concorrência, trava de brinco, filtro de categoria) e CI aplicando as migrations.</li>
+        </ol>
+      </div>
+    </div>
+    <h3 style="margin-top:30px">Levado para a tela em 24/09</h3>
+    <p class="intro">O que o banco já tinha e a interface não mostrava.</p>
+    <div class="gaps"><div><ol>
+      <li><b>GMD</b> recente, do período e desde a entrada, com gráfico do peso na ficha e média na página do lote.</li>
+      <li><b>Histórico completo de baixas</b> na ficha; filtros por tipo e período de baixa na lista.</li>
+      <li><b>Página do lote</b> com indicadores, tabela completa, “Saíram por baixa” e alterações do lote.</li>
+      <li><b>Movimentações do animal</b> com motivo e link; <b>auditoria</b> com hora e antes/depois.</li>
+      <li><b>Contagens de uso</b> em Cadastros e <b>filtros novos</b> em Animais (sexo, origem, raça, idade, sem categoria, forçadas, ordenação).</li>
+    </ol></div></div>
+  </div>
+</section>
+
+<!-- ═════════════════════════ PARTE 3 ═════════════════════════ -->
+<section class="part" id="proximos">
+  <p class="part-eyebrow">Parte 3 de 3</p>
+  <h2>Próximos passos</h2>
+  <p class="intro">A ordem combinada é uma cascata: cada domínio entra com as próprias tabelas e se liga ao rebanho pelo <code>animalId</code>, sem mexer na identidade do animal. Primeiro fecha-se a v1; depois Genética, Sanidade, peso e nutrição, Reprodução (cujo primeiro marco é o <b>exame de toque</b> do veterinário) e Leite.</p>
+
+  <div class="track" role="list">
+    <a href="#passo-v1" role="listitem"><b>agora</b><span>Fechar a v1</span><small>erros, regras, carga real</small></a>
+    <a href="#passo-v2" role="listitem"><b>v2</b><span>Genética</span><small>pai, mãe, touros, sêmen</small></a>
+    <a href="#passo-v3" role="listitem"><b>v3</b><span>Sanidade, peso e nutrição</span><small>doenças, tratamentos, carência, dieta</small></a>
+    <a href="#passo-v4" role="listitem"><b>v4</b><span>Reprodução</span><small>serviço, toque, parto</small></a>
+    <a href="#passo-v5" role="listitem"><b>v5</b><span>Leite</span><small>lactação, controle, CCS</small></a>
+  </div>
+
+  <div class="dom" id="passo-v1">
+    <div class="dom-h"><span class="ver">agora</span><h3>Fechar a v1 do Rebanho</h3></div>
+    <p class="lead">Nenhuma tabela nova. As correções da review já estão no PR; falta o que depende de dados reais e de produção.</p>
+    <ul class="plain">
+      <li><s>Corrigir os erros e as regras da review</s> — feito em 24/09.</li>
+      <li><s>Levar para a tela GMD, histórico de baixas, página do lote e o resto</s> — feito em 24/09.</li>
+      <li><s>Trazer a main (estoque unificado e produto universal) para o PR, com as migrations consolidadas em uma baseline + 1 migration da pecuária</s> — 25/09.</li>
+      <li><b>Rodar a carga real do IDEAGRI</b> (<code>import:pecuaria</code> + <code>validar:pecuaria</code>).</li>
+    </ul>
+  </div>
+
+  <div class="dom" id="passo-v2">
+    <div class="dom-h"><span class="ver">v2</span><h3>Genética</h3></div>
+    <p class="lead">Saber de quem o animal é filho e com que touro cada vaca é servida. É pequena, mas a Reprodução depende dela: um serviço precisa de um reprodutor, e a cria precisa de mãe e pai.</p>
+    <h5>Tabelas novas</h5>
+    <div class="tw"><table>
+      <thead><tr><th>Tabela</th><th>O que é</th><th>Liga em</th></tr></thead>
+      <tbody>
+        <tr><td class="new">Reprodutor</td><td>O touro, do rebanho ou de central: nome, código, raça, central, tipo de sêmen.</td><td>Animal (quando é da fazenda), Raca</td></tr>
+        <tr><td class="new">CentralSemen</td><td>Quem vende o sêmen.</td><td>Reprodutor</td></tr>
+        <tr><td class="new">EstoqueSemen</td><td>Doses em estoque por reprodutor, lote e botijão.</td><td>Reprodutor</td></tr>
+        <tr><td class="new">mãe e pai <em>colunas</em></td><td><code>maeId</code> e <code>paiId</code> no próprio animal: filiação é identidade, não muda com o manejo.</td><td>Animal → Animal, Reprodutor</td></tr>
+      </tbody>
+    </table></div>
+    <div class="twocol">
+      <div><h5>Eventos novos</h5><ul class="evs"><li>entrada de doses</li><li>uso de dose (no serviço, v4)</li><li>descarte de dose</li><li>registro de mãe e pai</li></ul></div>
+      <div><h5>Efeitos nas tabelas de hoje</h5><ul class="plain"><li>A composição racial pode ser <b>calculada</b> a partir da mãe e do pai (a origem CALCULADA já existe).</li><li>A cria nascida na v4 já entra com mãe e pai.</li></ul></div>
+    </div>
+    <p class="src-box">No IDEAGRI: <code>ANIMAL.CDMAE/CDPAI</code>, <code>ANIMALINFO_REPRODUTOR</code> (81), <code>CENTRALSEMEN</code> (25), <code>TIPOSEMEN</code> (3). Provas e pedigree (<code>GENPROVA</code>, <code>GENPEDIGREE</code>) estão vazios nesta fazenda: índices genéticos podem esperar.</p>
+  </div>
+
+  <div class="dom" id="passo-v3">
+    <div class="dom-h"><span class="ver">v3</span><h3>Sanidade, peso e nutrição</h3></div>
+    <p class="lead">O que o animal teve, o que tomou e até quando o leite e a carne ficam em carência. Junto entra a nutrição — a dieta de cada lote e o que ela consome — porque as duas mexem no mesmo estoque e no mesmo custo por animal.</p>
+    <h5>Tabelas novas</h5>
+    <div class="tw"><table>
+      <thead><tr><th>Tabela</th><th>O que é</th><th>Liga em</th></tr></thead>
+      <tbody>
+        <tr><td class="new">Doenca</td><td>Catálogo de doenças (pneumonia, tristeza parasitária…).</td><td>—</td></tr>
+        <tr><td class="new">OcorrenciaSanitaria</td><td>O animal ficou doente: doença, início, fim, observação.</td><td>Animal, Doenca</td></tr>
+        <tr><td class="new">AplicacaoProduto</td><td>Tratamento, vacina ou vermífugo: produto, dose, lote do produto e carência em dias, que dá o “liberado em”.</td><td>Animal, Produto (estoque), OcorrenciaSanitaria</td></tr>
+        <tr><td class="new">ProtocoloSanitario</td><td>Calendário da fazenda: brucelose, aftosa, vermifugação, com as etapas.</td><td>—</td></tr>
+        <tr><td class="new">ExameAnimal</td><td>Brucelose, tuberculose e outros exames, com resultado.</td><td>Animal</td></tr>
+        <tr><td class="new">Dieta</td><td>A receita de um lote: quais produtos e quanto por cabeça por dia.</td><td>Lote</td></tr>
+        <tr><td class="new">ItemDieta</td><td>Um produto da receita, com quantidade numa unidade padronizada.</td><td>Dieta, Produto, <code>UnidadeMedida</code></td></tr>
+        <tr><td class="new">FechamentoConsumo</td><td>O fechamento do consumo de um lote num período: quanto a dieta dele gastou de cada produto, e o que gera a saída de estoque da nutrição.</td><td>Lote, Dieta, MovimentoEstoque</td></tr>
+      </tbody>
+    </table></div>
+    <div class="twocol">
+      <div><h5>Eventos novos</h5><ul class="evs"><li>ocorrência de doença</li><li>tratamento</li><li>vacinação</li><li>vermifugação</li><li>exame</li><li>castração</li><li>pesagem em lote</li><li>troca de dieta</li><li>fechamento de consumo</li></ul></div>
+      <div><h5>Efeitos nas tabelas de hoje</h5><ul class="plain">
+        <li>Fechamento de consumo dá <b>saída no estoque</b> (origem nutrição) pelo custo médio, no centro de custo do lote — e o <b>Lote ganha centro de custo</b>.</li>
+        <li>Aplicação de produto dá <b>saída no estoque</b> (origem sanidade) pelo custo médio, com quantidade em 3 casas, e fica <b>bloqueada em mês financeiro fechado</b>.</li>
+        <li>Carência aberta <b>avisa ao dar baixa</b> por venda ou abate (e, na v5, no leite); a carência ganha lugar próprio na tabela, porque a main tirou a carência e o % de matéria seca do cadastro de produto.</li>
+        <li><b>Custo sanitário por animal</b>, somando as aplicações que ele recebeu.</li>
+        <li>A categoria de produto ganha de volta as marcações “uso sanitário” e “uso nutricional” — decidem quais produtos aparecem na sanidade e quais aparecem na dieta.</li>
+        <li>Morte depois de uma doença registrada sugere o motivo da baixa.</li>
+        <li>O estoque volta a ter as origens <b>Nutrição</b> e <b>Sanidade</b>, e o histórico do estoque volta a mostrar o lote ou o animal de origem, com link.</li>
+        <li>Um manejo sanitário pode ligar à operação financeira de compra do medicamento — como o <code>ManejoSanitario</code> do legado fazia.</li>
+      </ul></div>
+    </div>
+    <p class="src-box">No IDEAGRI: <code>APLICACAOPRODUTO</code> (4.487), <code>DOENCAANIMAL</code> (458) + <code>DOENCA</code> (38), <code>EXAMEANIMAL</code> (248), <code>PROTOCOLOSANITARIO</code> (9), <code>PESO</code> (2.477).</p>
+  </div>
+
+  <div class="dom" id="passo-v4">
+    <div class="dom-h"><span class="ver">v4</span><h3>Reprodução</h3></div>
+    <p class="lead">O ciclo da vaca: servir, confirmar a prenhez no toque, parir. O primeiro marco é a <b>lista do exame de toque</b>: o veterinário vem às quintas e faz de 10 a 46 diagnósticos por visita. A lista é montada para a data da visita, pode ser impressa e é lançada em lote pelo celular.</p>
+    <h5>Tabelas novas</h5>
+    <div class="tw"><table>
+      <thead><tr><th>Tabela</th><th>O que é</th><th>Liga em</th></tr></thead>
+      <tbody>
+        <tr><td class="new">Servico</td><td>Inseminação, cobertura ou transferência de embrião: data, reprodutor, dose usada, inseminador, protocolo.</td><td>Animal, Reprodutor, EstoqueSemen</td></tr>
+        <tr><td class="new">ExameReprodutivo</td><td><b>O toque.</b> Data, veterinário, qual serviço ele confirma, resultado (prenhe, vazia ou só exame), achados de útero e ovários, parto previsto, sexagem, decisão.</td><td>Animal, Servico, ResultadoGinecologico</td></tr>
+        <tr><td class="new">ResultadoGinecologico</td><td>Catálogo dos achados do exame (44 no IDEAGRI).</td><td>—</td></tr>
+        <tr><td class="new">Parto</td><td>Data, tipo (normal, aborto, natimorto…), auxílio, <b>retenção de placenta</b>, crias.</td><td>Animal (mãe), Servico, crias → Animal</td></tr>
+        <tr><td class="new">AptidaoReprodutiva</td><td>O dia em que a novilha foi liberada para servir, com o peso.</td><td>Animal, Pesagem</td></tr>
+        <tr><td class="new">ParametroReprodutivo</td><td>Por sítio: período de espera após o parto (PEV) e atraso de novilha e vaca.</td><td>Propriedade</td></tr>
+        <tr><td class="new">ProtocoloIATF <em>depois</em></td><td>Protocolos e programações de inseminação em tempo fixo.</td><td>Servico, Lote</td></tr>
+      </tbody>
+    </table></div>
+    <div class="twocol">
+      <div>
+        <h5>Eventos novos</h5><ul class="evs"><li>cio</li><li>inseminação</li><li>cobertura</li><li>transferência de embrião</li><li>toque / diagnóstico de gestação</li><li>exame ginecológico</li><li>parto</li><li>aborto</li><li>novilha apta</li></ul>
+        <h5>Calculado na leitura</h5>
+        <ul class="plain">
+          <li><b>Situação reprodutiva:</b> inseminada, coberta, implantada, gestante ou vazia, pelo último evento.</li>
+          <li><b>Dias desde a tentativa</b> (+7 na transferência de embrião) e <b>ordem da tentativa</b> desde o último parto.</li>
+          <li><b>Número de partos</b> e <b>retenção de placenta</b> do último parto.</li>
+          <li><b>Situação da vazia:</b> liberada, em espera ou em atraso.</li>
+        </ul>
+      </div>
+      <div>
+        <h5>Efeitos nas tabelas de hoje</h5>
+        <ul class="plain">
+          <li>A regra “com parto” da categoria passa a contar <b>partos registrados</b>, não só os de antes da entrada. Isso corrige as 121 vacas que hoje entrariam como novilha.</li>
+          <li>Parto <b>cadastra a cria</b> como Animal nascido, com mãe e pai, no lugar onde a mãe está.</li>
+          <li>Parto <b>abre a lactação</b> (tabela da v5, criada já aqui).</li>
+          <li>Serviço <b>gasta uma dose</b> do estoque de sêmen.</li>
+          <li>O papel reprodutivo ganha <b>Descarte</b>, como no IDEAGRI.</li>
+          <li>Lote ganha tipo (curral IATF, pasto…) para montar o lote do protocolo.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="callout"><b>Diferente do IDEAGRI, de propósito:</b> uma tabela por tipo de evento em vez de uma tabela única de 81 colunas; o toque aponta para o serviço que confirma, em vez de o sistema deduzir pela data; e nada fica em cache enquanto calcular na leitura for rápido.</div>
+    <p class="src-box">No IDEAGRI: <code>REPRODUCAO</code> (3.626 linhas; tipos 1 IA, 2 cobertura, 3 TE, 4 diagnóstico, 7 parto; 1.843 diagnósticos, 1.173 prenhes e 670 vazias), <code>RESULTADOEXAMEGINECOLOGICO</code> (44), <code>PROGRAMACAOIATF</code> (88), <code>ANIMALPERIODO</code> (38), <code>ANIMAL.DTAPTIDAO</code>. A confirmar com a fazenda: valores reais de PEV e atraso, e o que significam as anotações à mão na coluna Toque do relatório.</p>
+  </div>
+
+  <div class="dom" id="passo-v5">
+    <div class="dom-h"><span class="ver">v5</span><h3>Leite</h3></div>
+    <p class="lead">Quanto cada vaca produz, em que ponto da lactação está e como está a qualidade do leite.</p>
+    <h5>Tabelas novas</h5>
+    <div class="tw"><table>
+      <thead><tr><th>Tabela</th><th>O que é</th><th>Liga em</th></tr></thead>
+      <tbody>
+        <tr><td class="new">Lactacao</td><td>Um caderno com período: abre no parto, fecha na secagem, com o motivo de secagem.</td><td>Animal, Parto</td></tr>
+        <tr><td class="new">MotivoSecagem</td><td>Catálogo (fim de lactação, baixa produção, mastite…).</td><td>Lactacao</td></tr>
+        <tr><td class="new">ControleLeiteiro</td><td>Litros de cada ordenha no dia do controle.</td><td>Lactacao</td></tr>
+        <tr><td class="new">AnaliseLeite</td><td>CCS, gordura e proteína por vaca.</td><td>Lactacao</td></tr>
+        <tr><td class="new">Mastite</td><td>Caso de mastite: quarto, microrganismo, tratamento.</td><td>Lactacao, AplicacaoProduto</td></tr>
+      </tbody>
+    </table></div>
+    <div class="twocol">
+      <div><h5>Eventos novos</h5><ul class="evs"><li>secagem</li><li>controle leiteiro</li><li>análise de leite</li><li>caso de mastite</li></ul></div>
+      <div><h5>Efeitos e cálculos</h5><ul class="plain"><li><b>Em lactação ou seca</b>, <b>DEL</b> (dias em lactação), <b>produção em 305 dias</b> e pico.</li><li>Carência de tratamento (v3) marca o leite a descartar.</li><li>Categoria produtiva passa a existir (veja abaixo).</li><li><b>Custo vaca/dia:</b> consumo de insumos (v3) ÷ vacas em lactação × dias.</li><li><b>Custo de produção do leite</b> pelo centro de custo “Atividade Leiteira”, resolvido por id e respeitando o centro de custo por item da operação.</li><li><b>Carteira e margem por vaca.</b></li><li>Volta o simulador com <b>“Cenários reais”</b>: preço do leite e custo da ração informados, não só hipotéticos.</li></ul></div>
+    </div>
+    <p class="src-box">No IDEAGRI: <code>LACTACAO</code> (373), <code>LEITE</code> (1.916 controles), <code>ANALISELEITE</code> (467), <code>MAMITE</code> (51), <code>MOTIVOSECAGEM</code> (10). Tanque e produção por lote estão vazios nesta fazenda.</p>
+  </div>
+
+  <div class="dom" id="passo-transversal">
+    <div class="dom-h"><span class="ver">sempre</span><h3>O que atravessa os domínios</h3></div>
+    <div class="twocol">
+      <div>
+        <h5>Categoria em dimensões</h5>
+        <ul class="plain">
+          <li>Hoje só existe a categoria básica (Em crescimento, Novilha, Vaca…). O IDEAGRI calcula outras em paralelo, e elas entram como <b>eixos separados</b>, cada um calculado pelos próprios fatos:</li>
+          <li><b>Produtiva:</b> mamando, desmamado, em lactação, seca, com a desmama (v3) e a lactação (v5).</li>
+          <li><b>Reprodutiva:</b> inseminada, coberta, implantada, gestante, vazia (v4).</li>
+          <li><b>Situação da vazia:</b> liberada, em espera, em atraso (v4).</li>
+        </ul>
+      </div>
+      <div>
+        <h5>Carga do histórico</h5>
+        <ul class="plain">
+          <li>Cada domínio traz o próprio histórico do IDEAGRI, ligado pelo código do animal (<code>ideagriId</code>). Sem isso, situação reprodutiva, número de partos e DEL saem errados.</li>
+          <li>O maior volume: <code>APLICACAOPRODUTO</code> 4.487, <code>REPRODUCAO</code> 3.626, <code>PESO</code> 2.477, <code>LEITE</code> 1.916.</li>
+        </ul>
+      </div>
+      <div>
+        <h5>Venda de animal ↔ financeiro</h5>
+        <ul class="plain">
+          <li>Uma baixa do tipo <b>venda</b> poderá gerar ou ligar uma <b>operação financeira de venda</b>, para o valor do animal entrar no fluxo de caixa sem lançamento duplicado.</li>
+          <li>O legado fazia isso com <code>OperacaoComercial</code>, que apontava para a <code>Operacao</code> financeira.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="sub" id="codigo-retirado">
+    <h3>Referência do código retirado</h3>
+    <p class="intro">A main trouxe um estoque unificado e um cadastro de produto universal, mais simples que o do módulo antigo de pecuária. As telas e regras que o módulo antigo tinha para dieta, aplicação sanitária e os custos derivados saíram do código nesse merge, mas continuam no histórico do git — servem de referência para reconstruir cada peça na v3 e na v5. Para consultar: <code>git show 0b38de5:&lt;caminho&gt;</code>.</p>
+    <div class="tw"><table>
+      <thead><tr><th>Item</th><th>Fase</th><th>Caminho em <code>0b38de5</code></th></tr></thead>
+      <tbody>
+        <tr><td>Dieta e consumo</td><td>v3</td><td class="ref">server/src/services/rebanho/nutricao.ts · nutricao.consumo.ts · client/src/rebanho/components/DietaForm.tsx · ConsumoLoteDrawer.tsx</td></tr>
+        <tr><td>Desenho da baixa automática da dieta</td><td>v3</td><td class="ref">docs/design/dieta-estoque-baixa-automatica.md</td></tr>
+        <tr><td>Aplicação sanitária com baixa de estoque</td><td>v3</td><td class="ref">server/src/services/rebanho/eventos-sanidade.ts · sanidade-estoque.calc.ts · client/src/estoque/components/BaixaEstoqueCard.tsx · client/src/rebanho/components/EventoForm.tsx</td></tr>
+        <tr><td>Custo sanitário</td><td>v3</td><td class="ref">server/src/services/rebanho/custo-sanidade.ts</td></tr>
+        <tr><td>Custo de produção do leite</td><td>v5</td><td class="ref">server/src/services/rebanho/custo-producao.ts</td></tr>
+        <tr><td>Custo vaca/dia</td><td>v5</td><td class="ref">server/src/services/estoque/estoque.ts (calcularCustoVacaDia) · estoque.calc.ts (custoVacaDia)</td></tr>
+        <tr><td>Carteira/margem</td><td>v5</td><td class="ref">server/src/services/rebanho/carteira.ts</td></tr>
+        <tr><td>Insights</td><td>transversal</td><td class="ref">server/src/services/rebanho/insights.ts</td></tr>
+        <tr><td>Vínculo do movimento de estoque com lote/animal</td><td>v3</td><td class="ref">server/src/services/estoque/estoque.ts (listarMovimentos) · client/src/estoque/navegacao.ts</td></tr>
+        <tr><td>Cenários do simulador</td><td>v5</td><td class="ref">client/src/components/CenariosReais.tsx</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+</section>
+
+<!-- ═════════════════════════ REFERÊNCIA ═════════════════════════ -->
+<section class="part" id="referencia">
+  <p class="part-eyebrow">Referência técnica</p>
+  <h2>Para quem vai mexer no código</h2>
+  <p class="intro">O diagrama das 14 tabelas, os tipos fechados, onde cada regra é garantida, o que é calculado na leitura e por qual rota, e de onde cada tabela veio no IDEAGRI.</p>
+
+  <div class="sub" id="diagrama">
+    <h3>Diagrama</h3>
+    <p class="intro">As 14 tabelas do schema <code>pecuaria</code> e as duas do <code>public</code> a que elas se ligam. <code>criadoEm</code>, <code>criadoPorId</code> e <code>atualizadoEm</code>, presentes em todas, ficaram de fora. A linha tracejada é uma referência sem chave estrangeira.</p>
+    <figure class="er" aria-label="Diagrama entidade-relacionamento do schema pecuaria">
+    <div class="er-bar">
+      <button type="button" data-z="-" aria-label="Diminuir">−</button>
+      <button type="button" data-z="fit">Ajustar</button>
+      <button type="button" data-z="+" aria-label="Aumentar">+</button>
+      <output id="er-z" aria-live="polite">—</output>
+      <span>role dentro do quadro para ver o diagrama inteiro</span>
+    </div>
+    <div class="er-scroll" id="er-box" tabindex="0">
+<pre class="mermaid">%%{init: {"er": {"useMaxWidth": false}}}%%
+erDiagram
+  Animal {
+    uuid id PK
+    int ideagriId "único · CDANIMAL"
+    string brinco "único entre ativos do sítio (app)"
+    string nome
+    string brincoEletronico "único"
+    string sisbov "único"
+    SexoBovino sexo "F | M"
+    date dataNascimento
+    bool nascimentoEstimado
+    OrigemAnimal origem "NASCIDO | COMPRADO"
+    date dataEntrada "= nascimento se NASCIDO"
+    int partosAntesDaEntrada "padrão 0"
+    string observacao
+  }
+  ComposicaoRacial {
+    uuid id PK
+    uuid animalId FK
+    uuid racaId FK
+    int fracao64 "1 a 64 · soma ≤ 64"
+    OrigemComposicao origem "INFORMADA | CALCULADA"
+  }
+  Raca {
+    uuid id PK
+    int ideagriId "único"
+    string nome
+    string sigla "2 ou 3 letras"
+    bool base "false = composta"
+    bool ativo
+  }
+  LocalizacaoAnimal {
+    uuid id PK
+    uuid animalId FK
+    int propriedadeId FK "sítio"
+    uuid loteId FK "opcional"
+    date desde
+    date ate "vazio = atual"
+    uuid movimentacaoId FK "vazio = linha inicial"
+  }
+  Movimentacao {
+    uuid id PK
+    date data
+    int propriedadeDestinoId FK
+    uuid loteDestinoId FK "opcional"
+    string motivo
+    int quantidade
+    timestamp desfeitaEm "vazio = vale"
+    string desfeitaMotivo
+  }
+  MovimentacaoAnimal {
+    uuid id PK
+    uuid movimentacaoId FK
+    uuid animalId FK
+    int origemPropriedadeId FK "onde estava"
+    uuid origemLoteId FK
+    uuid localizacaoId FK "vira vazio ao desfazer"
+    timestamp desfeitoEm
+  }
+  Lote {
+    uuid id PK
+    int ideagriId "único"
+    string nome "único no sítio"
+    int propriedadeId FK
+    bool ativo
+    string observacao
+  }
+  DestinoAnimal {
+    uuid id PK
+    uuid animalId FK
+    AptidaoAnimal aptidao "LEITE | CORTE"
+    PapelReprodutivo papelReprodutivo "NENHUM | RECEPTORA | DOADORA"
+    date desde
+    date ate "vazio = atual"
+  }
+  BaixaAnimal {
+    uuid id PK
+    int ideagriId "único"
+    uuid animalId FK
+    date data
+    TipoBaixa tipo
+    uuid motivoId FK
+    string observacao
+    timestamp estornadaEm "vazio = baixa vale"
+    string estornoMotivo
+    uuid localizacaoFechadaId FK
+    uuid destinoFechadoId FK
+  }
+  MotivoBaixa {
+    uuid id PK
+    int ideagriId "único"
+    string nome
+    ClasseMotivoBaixa classe
+    bool ativo
+  }
+  Pesagem {
+    uuid id PK
+    int ideagriId "único · CDPESO"
+    uuid animalId FK
+    date data
+    decimal pesoKg "7,2"
+    TipoPesagem tipo
+    OrigemPesagem origem "MANUAL | BALANCA"
+    string observacao
+  }
+  AuditoriaPecuaria {
+    uuid id PK
+    string entidade
+    string entidadeId "sem FK"
+    string animalId "sem FK"
+    string acao
+    json antes
+    json depois
+    int usuarioId FK
+    timestamp em
+  }
+  CategoriaAnimal {
+    uuid id PK
+    int ideagriId "único · CATEGORIA 1–7"
+    string chavePadrao "único · item de fábrica"
+    string nome "único por sexo"
+    SexoBovino sexo
+    bool automatica "false = só manual"
+    int idadeMinMeses
+    int idadeMaxMeses "exclusivo"
+    CriterioPartos partos "QUALQUER | SEM | COM"
+    int ordem "primeira regra que casa vence"
+    bool ativo
+  }
+  CategoriaManualAnimal {
+    uuid id PK
+    uuid animalId FK
+    uuid categoriaId FK
+    date desde
+    date ate "vazio = vale"
+    string motivo
+    string motivoEncerramento
+  }
+  Propriedade {
+    int id PK
+    string nome "schema public"
+  }
+  Usuario {
+    int id PK
+    string nome "schema public"
+  }
+  Animal ||--o{ ComposicaoRacial : "animalId"
+  Raca ||--o{ ComposicaoRacial : "racaId"
+  Animal ||--o{ LocalizacaoAnimal : "animalId"
+  Propriedade ||--o{ LocalizacaoAnimal : "propriedadeId"
+  Lote |o--o{ LocalizacaoAnimal : "loteId"
+  Movimentacao |o--o{ LocalizacaoAnimal : "movimentacaoId"
+  Propriedade ||--o{ Movimentacao : "propriedadeDestinoId"
+  Lote |o--o{ Movimentacao : "loteDestinoId"
+  Movimentacao ||--o{ MovimentacaoAnimal : "movimentacaoId"
+  Animal ||--o{ MovimentacaoAnimal : "animalId"
+  Lote |o--o{ MovimentacaoAnimal : "origemLoteId"
+  LocalizacaoAnimal |o--o| MovimentacaoAnimal : "localizacaoId"
+  Propriedade ||--o{ Lote : "propriedadeId"
+  Animal ||--o{ DestinoAnimal : "animalId"
+  Animal ||--o{ BaixaAnimal : "animalId"
+  MotivoBaixa |o--o{ BaixaAnimal : "motivoId"
+  LocalizacaoAnimal |o--o{ BaixaAnimal : "localizacaoFechadaId"
+  DestinoAnimal |o--o{ BaixaAnimal : "destinoFechadoId"
+  Animal ||--o{ Pesagem : "animalId"
+  Animal ||--o{ CategoriaManualAnimal : "animalId"
+  CategoriaAnimal ||--o{ CategoriaManualAnimal : "categoriaId"
+  Usuario |o--o{ AuditoriaPecuaria : "usuarioId"
+  Animal ||..o{ AuditoriaPecuaria : "animalId, sem FK"
+</pre>
+    </div>
+  </figure>
+    <p class="note">Todas as chaves estrangeiras são <code>ON DELETE RESTRICT</code>, menos <code>criadoPorId</code> e <code>usuarioId</code>, que ficam vazias se o usuário for apagado.</p>
+  </div>
+
+  <div class="sub" id="enums">
+    <h3>Enums</h3>
+    <div class="enums">
+    <div><h4>SexoBovino</h4><ul class="vals"><li>F</li><li>M</li></ul><p>Animal.sexo</p></div>
+    <div><h4>OrigemAnimal</h4><ul class="vals"><li>NASCIDO</li><li>COMPRADO</li></ul><p>Animal.origem</p></div>
+    <div><h4>AptidaoAnimal</h4><ul class="vals"><li>LEITE</li><li>CORTE</li></ul><p>DestinoAnimal.aptidao</p></div>
+    <div><h4>PapelReprodutivo</h4><ul class="vals"><li>NENHUM</li><li>RECEPTORA</li><li>DOADORA</li></ul><p>DestinoAnimal.papelReprodutivo</p></div>
+    <div><h4>TipoBaixa</h4><ul class="vals"><li>VENDA</li><li>ABATE</li><li>MORTE</li><li>DOACAO</li><li>EXTRAVIO</li><li>CADASTRO_INDEVIDO</li></ul><p>BaixaAnimal.tipo</p></div>
+    <div><h4>ClasseMotivoBaixa</h4><ul class="vals"><li>DESCARTE_VOLUNTARIO</li><li>DESCARTE_INVOLUNTARIO</li><li>MORTE</li></ul><p>MotivoBaixa.classe</p></div>
+    <div><h4>TipoPesagem</h4><ul class="vals"><li>NASCIMENTO</li><li>ENTRADA</li><li>DESMAMA</li><li>ROTINA</li><li>SAIDA</li></ul><p>Pesagem.tipo</p></div>
+    <div><h4>OrigemPesagem</h4><ul class="vals"><li>MANUAL</li><li>BALANCA</li></ul><p>Pesagem.origem</p></div>
+    <div><h4>CriterioPartos</h4><ul class="vals"><li>QUALQUER</li><li>SEM</li><li>COM</li></ul><p>CategoriaAnimal.partos</p></div>
+    <div><h4>OrigemComposicao</h4><ul class="vals"><li>INFORMADA</li><li>CALCULADA</li></ul><p>ComposicaoRacial.origem</p></div>
+  </div>
+  </div>
+
+  <div class="sub" id="regras">
+    <h3>Onde cada regra é garantida</h3>
+    <div class="tw"><table>
+    <thead><tr><th>Regra</th><th>Quem garante</th><th>Onde</th></tr></thead>
+    <tbody>
+      <tr><td>Uma localização aberta por animal</td><td><span class="where w-db">banco</span></td><td class="ref">LocalizacaoAnimal_animalId_aberta_key</td></tr>
+      <tr><td>Um destino aberto por animal</td><td><span class="where w-db">banco</span></td><td class="ref">DestinoAnimal_animalId_aberto_key</td></tr>
+      <tr><td>No máximo uma baixa valendo por animal</td><td><span class="where w-db">banco</span></td><td class="ref">BaixaAnimal_animalId_ativa_key</td></tr>
+      <tr><td>Nada apaga em cascata</td><td><span class="where w-db">banco</span></td><td class="ref">chaves estrangeiras ON DELETE RESTRICT</td></tr>
+      <tr><td>Brinco eletrônico e SISBOV únicos no rebanho</td><td><span class="where w-db">banco</span></td><td class="ref">@unique em Animal</td></tr>
+      <tr><td>Uma raça aparece uma vez na composição do animal</td><td><span class="where w-db">banco</span></td><td class="ref">@@unique(animalId, racaId)</td></tr>
+      <tr><td>Uma categoria manual aberta por animal</td><td><span class="where w-db">banco</span></td><td class="ref">CategoriaManualAnimal_animalId_aberta_key</td></tr>
+      <tr><td>Nome de lote único no sítio</td><td><span class="where w-db">banco</span></td><td class="ref">@@unique(propriedadeId, nome)</td></tr>
+      <tr><td>Brinco único entre os ativos do mesmo sítio, comparado sem espaços nas pontas e em maiúsculas</td><td><span class="where w-app">app + lock</span></td><td class="ref">brinco.calc.ts; pg_advisory_xact_lock por sítio e brinco em regras.ts</td></tr>
+      <tr><td>Frações de 1 a 64, soma até 64</td><td><span class="where w-app">app</span></td><td class="ref">composicao.calc.ts</td></tr>
+      <tr><td>Datas coerentes: entrada depois do nascimento; nascido tem entrada igual ao nascimento; pesagem entre nascimento e baixa; baixa, movimentação e mudança de destino não voltam para antes do período atual</td><td><span class="where w-app">app</span></td><td class="ref">datas.calc.ts, movimentacao.calc.ts, baixa.calc.ts</td></tr>
+      <tr><td>Lote da localização é do mesmo sítio e está ativo</td><td><span class="where w-app">app</span></td><td class="ref">animais.ts</td></tr>
+      <tr><td>Motivo da baixa está ativo e sua classe aceita o tipo (CLASSES_POR_TIPO)</td><td><span class="where w-app">app</span></td><td class="ref">animais.ts, baixa.calc.ts</td></tr>
+      <tr><td>Lote com animal ativo não é desativado</td><td><span class="where w-app">app</span></td><td class="ref">lotes.ts</td></tr>
+      <tr><td>Raça e motivo sem duplicata</td><td><span class="where w-app">app</span></td><td class="ref">racas.ts, motivos.ts</td></tr>
+      <tr><td>Estorno reabre exatamente as linhas que a baixa fechou</td><td><span class="where w-app">app</span></td><td class="ref">localizacaoFechadaId e destinoFechadoId</td></tr>
+      <tr><td>Desfazer a movimentação inteira só se cada animal ainda estiver nela, ativo e sem baixa usando a linha (tudo ou nada)</td><td><span class="where w-app">app + lock</span></td><td class="ref">planejarDesfazerMovimentacao em movimentacao.calc.ts</td></tr>
+      <tr><td>Desfazer só a última linha, e nunca uma que uma baixa já usou</td><td><span class="where w-app">app</span></td><td class="ref">movimentacao.calc.ts, animais.ts</td></tr>
+      <tr><td>Uma escrita por animal por vez: trava por animal, depois o lote, depois os brincos, sempre nessa ordem; só fecha linha que ainda está aberta</td><td><span class="where w-app">app + lock</span></td><td class="ref">travarAnimais, travarLoteAtivo, travarBrincos, exigirAfetadas em regras.ts</td></tr>
+<tr><td>Datas no fuso da fazenda (America/Sao_Paulo) e nunca no futuro</td><td><span class="where w-app">app</span></td><td class="ref">hojeFazenda em regras.ts; dataNaoFutura em schemas.ts</td></tr>
+<tr><td>Escrever exige a área pecuária e a permissão “lançar”</td><td><span class="where w-rota">rota</span></td><td class="ref">routes/pecuaria/rebanho.ts</td></tr>
+    </tbody>
+  </table></div>
+  </div>
+
+  <div class="sub" id="leitura">
+    <h3>Cálculos e rotas de leitura</h3>
+    <p class="intro">O que é calculado na hora (nenhuma coluna guarda) e por onde a tela lê. Todas as rotas ficam sob <code>/api/pecuaria/rebanho</code> e respeitam o sítio ativo, menos os cadastros, que valem para a fazenda inteira.</p>
+    <div class="tw"><table>
+      <thead><tr><th>Assunto</th><th>Onde é calculado</th><th>Rota</th></tr></thead>
+      <tbody>
+        <tr><td>Categoria (manual, regras em ordem, sem categoria)</td><td class="ref">categoria.calc.ts · categorias.ts (whereCategoria)</td><td class="ref">GET /animais?categoriaId= · semCategoria= · categoriaOrigem=MANUAL</td></tr>
+        <tr><td>Idade (fuso da fazenda; baixado para na data da baixa)</td><td class="ref">categoria.calc.ts (idadeEmMeses) · regras.ts (hojeFazenda)</td><td class="ref">GET /animais?idadeMinMeses= &amp; idadeMaxMeses=</td></tr>
+        <tr><td>Peso e GMD: recente, do período (30/90/180/365 dias ou desde a entrada), desde a entrada</td><td class="ref">peso.calc.ts</td><td class="ref">GET /animais/:id?periodoDias= · GET /animais (gmdRecente)</td></tr>
+        <tr><td>Resumo do lote: sexo, categoria, peso médio, GMD médio, idade média</td><td class="ref">lotes.ts (buscarResumoLote) · peso.calc.ts (agregarPesoLote)</td><td class="ref">GET /lotes/:id/resumo?periodoDias=</td></tr>
+        <tr><td>Baixas: histórico do animal e painel por tipo e por classe</td><td class="ref">animais.ts (buscarFicha) · painel.ts</td><td class="ref">GET /animais/:id (historicoBaixas) · GET /painel?periodoDias= · GET /animais?tipoBaixa= &amp; baixaDe= &amp; baixaAte=</td></tr>
+        <tr><td>Movimentações do animal</td><td class="ref">movimentacoes.ts</td><td class="ref">GET /movimentacoes?animalId= &amp; incluirDesfeitas=</td></tr>
+        <tr><td>Auditoria com alterações campo a campo (antes → depois)</td><td class="ref">auditoria.calc.ts</td><td class="ref">GET /animais/:id/auditoria?page= · GET /auditoria?entidade=Lote|Raca|MotivoBaixa|CategoriaAnimal</td></tr>
+        <tr><td>Contagens de uso nos cadastros</td><td class="ref">categorias.ts · racas.ts · motivos.ts</td><td class="ref">GET /categorias (manuaisAbertas) · GET /racas (animaisAtivos) · GET /motivos-baixa (baixasValendo)</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <div class="sub" id="ideagri">
+    <h3>Equivalência com o IDEAGRI</h3>
+    <p class="intro">De onde veio cada tabela. O lado IDEAGRI em detalhe está no <a href="https://claude.ai/artifact/9LH3b5gX3nE87mcLSitgnW" target="_blank" rel="noopener">IDEAGRI Schema Map</a> e em <a href="https://claude.ai/artifact/217wV35oei7uvKtj9dM8fe" target="_blank" rel="noopener">Animal no IDEAGRI</a>.</p>
+    <div class="tw"><table>
+    <thead><tr><th>Terrano</th><th>IDEAGRI</th><th>O que mudou</th></tr></thead>
+    <tbody>
+      <tr><td class="c">Animal</td><td class="ref">ANIMAL (TIPOANIMAL = A, ANIMALREBANHO = 1)</td><td>Lá o animal carrega setor, categoria e baixa. Aqui guarda só identidade.</td></tr>
+      <tr><td class="c">ComposicaoRacial</td><td class="ref">ANIMALRACA.PERCENTUAL</td><td>Percentual vira 64 avos.</td></tr>
+      <tr><td class="c">Raca</td><td class="ref">RACA</td><td>Catálogo enxuto; composta marcada por <code>base</code>.</td></tr>
+      <tr><td class="c">Lote</td><td class="ref">GRUPOANIMAL</td><td>Lá o grupo é solto; aqui pertence a um sítio.</td></tr>
+      <tr><td class="c">LocalizacaoAnimal</td><td class="ref">MOVSETOR + MOVSETORANIMAL, MOVGRUPO + MOVGRUPOANIMAL</td><td>Lá são dois eixos, cada um com cabeçalho de movimentação. Aqui é um eixo só: o cabeçalho é <code>Movimentacao</code> e cada animal tem uma linha com sítio, lote e período.</td></tr>
+      <tr><td class="c">Movimentacao</td><td class="ref">MOVGRUPO, MOVSETOR (cabeçalhos)</td><td>Um cabeçalho só para sítio e lote, com desfazer.</td></tr>
+      <tr><td class="c">MovimentacaoAnimal</td><td class="ref">MOVGRUPOANIMAL, MOVSETORANIMAL</td><td>Uma linha por animal, como lá; aqui guarda também a origem.</td></tr>
+      <tr><td class="c">Propriedade</td><td class="ref">SETOR (“Principal - Leite”)</td><td>O sítio é o nome antes do hífen.</td></tr>
+      <tr><td class="c">DestinoAnimal</td><td class="ref">ANIMALPERIODO.TIPO (1 Doadora, 2 Receptora, 3 Descarte)</td><td>Papel com período nos dois. Aqui não existe Descarte, e a aptidão leite/corte mora na mesma linha.</td></tr>
+      <tr><td class="c">BaixaAnimal</td><td class="ref">ANIMAL.DTBAIXA + CDTIPOBAIXA + CDMOTIVOBAIXA</td><td>Lá a baixa é campo do animal, sem estorno. Aqui é linha própria, estornável. Na carga: nome de motivo Venda/Abate/Doação vira o tipo, sem motivo; senão CDTIPOBAIXA 3 vira MORTE e 1/2 viram VENDA (descarte). O texto original do motivo fica em <code>observacao</code> como “IDEAGRI: &lt;motivo&gt;”.</td></tr>
+      <tr><td class="c">MotivoBaixa</td><td class="ref">MOTIVOBAIXA, TIPOBAIXA</td><td>TIPOBAIXA vira <code>ClasseMotivoBaixa</code> (1 Voluntária, 2 Descarte involuntário, 3 Morte). O motivo não fica mais preso a um tipo de baixa: motivo novo herda a classe do CDTIPOBAIXA mais comum entre os animais que o usam (nenhum caso → MORTE).</td></tr>
+      <tr><td class="c">Pesagem</td><td class="ref">PESO + TIPOPESO</td><td>Lá são 14 tipos de pesagem; aqui, 5.</td></tr>
+      <tr><td class="c">AuditoriaPecuaria</td><td class="ref">colunas SYS$UI, SYS$DI, SYS$UU, SYS$DU</td><td>Lá só quem e quando. Aqui também o antes e o depois.</td></tr>
+      <tr><td class="c">CategoriaAnimal</td><td class="ref">CATEGORIA (7 de fábrica) + SP_CATEGORIA</td><td>Mesmas 7 categorias como padrão. Lá são decididas por aptidão, lactação e escolha do usuário; aqui por regras editáveis (idade, partos) enquanto aptidão e lactação não existem.</td></tr>
+      <tr><td class="c">CategoriaManualAnimal</td><td class="ref">ANIMAL.CDCATEGORIA (escolha do usuário)</td><td>Lá a escolha sobrescreve o campo; aqui fica com período e motivo.</td></tr>
+    </tbody>
+  </table></div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <p>Fontes: <code>server/prisma/schema.prisma</code>; a migration da pecuária v1 (<code>20260925130000_pecuaria_v1_rebanho</code>); regras em <code>server/src/services/pecuaria/rebanho/</code>; telas em <code>client/src/pecuaria/rebanho/</code>; contagens do IDEAGRI da base <code>DADOS777</code>.</p>
+  <p>Retrato do PR #296 aberto, sem merge. Os próximos passos são proposta: nomes de tabelas e campos serão fechados no plano de cada domínio.</p>
+</footer>
+</div>
+
+<script>
+(function () {
+  var box = document.getElementById('er-box');
+  var out = document.getElementById('er-z');
+  if (!box || !out) return;
+  var zoom = null;
+  function svg() { return box.querySelector('svg'); }
+  function naturalWidth(s) {
+    if (!s.dataset.nw) {
+      var vb = s.viewBox && s.viewBox.baseVal;
+      var w = vb && vb.width ? vb.width : s.getBoundingClientRect().width;
+      s.dataset.nw = String(w || 1000);
+    }
+    return Number(s.dataset.nw);
+  }
+  function apply(z) {
+    var s = svg();
+    if (!s) return;
+    zoom = z;
+    s.style.maxWidth = 'none';
+    s.style.width = Math.round(naturalWidth(s) * z) + 'px';
+    s.style.height = 'auto';
+    out.textContent = Math.round(z * 100) + '%';
+  }
+  function fit() {
+    var s = svg();
+    if (!s) return;
+    apply(Math.max(0.2, (box.clientWidth - 24) / naturalWidth(s)));
+  }
+  document.querySelectorAll('.er-bar [data-z]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var k = b.getAttribute('data-z');
+      if (k === 'fit') return fit();
+      var z = zoom || 1;
+      apply(k === '+' ? Math.min(z * 1.25, 3) : Math.max(z / 1.25, 0.2));
+    });
+  });
+  var tries = 0;
+  var timer = setInterval(function () {
+    tries += 1;
+    if (svg()) { clearInterval(timer); out.textContent = '100%'; zoom = 1; }
+    else if (tries > 40) { clearInterval(timer); }
+  }, 250);
+})();
+</script>
+
+
+<!--claude-mermaid-runtime-begin:3477-->
+<style>.mermaid-diagram{margin-block:4px}.mermaid-diagram svg{display:block;margin:0 auto;max-width:100%;height:auto}</style>
+<script src="/_runtime/mermaid-11.16.1.min.js"></script>
+<script>(function(){
+var CFG={"palettes":{"light":{"surface":"#f4efe4","text":"#42392e","line":"#8a7f6d","border":"#7a6c52","bg":"#fffdf8"},"dark":{"surface":"#262b34","text":"#f2f3f5","line":"#a8adb8","border":"#9aa4b8","bg":"#1f232b"}}};
+if(typeof mermaid==='undefined')return;
+var pres=Array.prototype.slice.call(document.querySelectorAll('pre.mermaid')).filter(function(p){if(p.hasAttribute('data-claude-mermaid-claimed'))return false;p.setAttribute('data-claude-mermaid-claimed','1');return true;});
+if(!pres.length)return;
+var mq=window.matchMedia?window.matchMedia('(prefers-color-scheme: dark)'):null;
+var root=document.documentElement;
+var items=pres.map(function(pre){
+var mount=document.createElement('div');mount.className='mermaid-diagram';
+return {pre:pre,mount:mount,src:pre.textContent||''};
+});
+var seq=0;
+var renderGen=0;
+var lastKey='';
+function pageBg(fallback){
+var els=[document.body,document.documentElement];
+for(var i=0;i<els.length;i++){
+var c=els[i]&&getComputedStyle(els[i]).backgroundColor;
+if(c&&c!=='transparent'&&c!=='rgba(0, 0, 0, 0)')return c;
+}
+return fallback;
+}
+function render(){
+var theme=root.getAttribute('data-theme');
+var dark=theme==='dark'||(!!(mq&&mq.matches)&&theme!=='light');
+var pal=dark?CFG.palettes.dark:CFG.palettes.light;
+var bg=pageBg(pal.bg);
+var key=(dark?'d':'l')+'|'+bg;
+if(key===lastKey)return;
+lastKey=key;
+var gen=++renderGen;
+var font=getComputedStyle(document.body).fontFamily||'sans-serif';
+var nat={useMaxWidth:false};
+mermaid.initialize({
+startOnLoad:false,securityLevel:'strict',theme:'base',
+flowchart:nat,sequence:nat,er:nat,state:nat,class:nat,pie:nat,
+gantt:nat,journey:nat,timeline:nat,gitGraph:nat,mindmap:nat,xyChart:nat,
+quadrantChart:nat,sankey:nat,c4:nat,requirement:nat,block:nat,
+packet:nat,kanban:nat,architecture:nat,radar:nat,
+themeVariables:{background:bg,mainBkg:pal.surface,primaryColor:pal.surface,
+primaryTextColor:pal.text,lineColor:pal.line,primaryBorderColor:pal.border,
+nodeBorder:pal.border,clusterBorder:pal.border,edgeLabelBackground:bg,
+clusterBkg:'rgba(127,127,127,0.07)',titleColor:pal.text,
+darkMode:dark,rowOdd:bg,rowEven:'rgba(127,127,127,0.07)',
+attributeBackgroundColorOdd:bg,attributeBackgroundColorEven:'rgba(127,127,127,0.07)',
+fontSize:'16px',fontFamily:font},
+themeCSS:'.node rect, .node circle, .node polygon, .node path, .cluster rect { stroke-width: 2px; }'
+});
+items.forEach(function(it){
+var id='claude-mermaid-'+seq++;
+mermaid.render(id,it.src).then(function(r){
+if(gen!==renderGen)return;
+var prev=it.pre.previousElementSibling;
+if(prev&&prev.className==='mermaid-diagram'&&prev!==it.mount)return;
+it.mount.innerHTML=r.svg;
+if(!it.mount.parentNode)it.pre.parentNode.insertBefore(it.mount,it.pre);
+it.pre.style.display='none';
+},function(){
+var scratch=document.getElementById(id);
+if(scratch)scratch.parentNode.removeChild(scratch);
+scratch=document.getElementById('d'+id);
+if(scratch)scratch.parentNode.removeChild(scratch);
+if(gen!==renderGen)return;
+if(it.mount.parentNode)it.mount.parentNode.removeChild(it.mount);
+it.pre.style.display='';
+});
+});
+}
+render();
+if(mq&&mq.addEventListener)mq.addEventListener('change',render);
+if(typeof MutationObserver!=='undefined')new MutationObserver(render).observe(root,{attributes:true,attributeFilter:['data-theme']});
+})();</script>
+<!--claude-mermaid-runtime-end-->
+</body></html>
+
+</body></html>

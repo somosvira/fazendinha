@@ -1,0 +1,63 @@
+# Pecuária — base de documentação
+
+Esta pasta concentra o contexto funcional e técnico da reconstrução da pecuária. Ela substitui a dependência de uma sessão privada do Claude: os artefatos originais agora estão versionados no repositório e podem ser consultados por qualquer pessoa ou agente que trabalhe no projeto.
+
+## Estado em 28/09/2026
+
+| Entrega | Estado | Referência |
+|---|---|---|
+| v1 · Rebanho | mesclada na `main` em 25/09/2026 | [PR #296](https://github.com/somosvira/fazendinha/pull/296) |
+| Follow-up da v1 | PR em rascunho, CI verde, ainda fora da `main` | [PR #306](https://github.com/somosvira/fazendinha/pull/306) |
+| v2 · Genética | PR em rascunho, CI verde, ainda fora da `main` | [PR #305](https://github.com/somosvira/fazendinha/pull/305) |
+| Validação da v2 com dados reais | pendente | executar a carga com o dump real do IDEAGRI e confirmar `ANIMAL.CDCENTRALSEMEN` |
+
+“Concluída” significa que a implementação e os testes automatizados foram feitos. A v2 só estará disponível para o restante do time depois de sair de rascunho, passar pela validação real, ser revisada e entrar na `main`.
+
+## Ordem de leitura
+
+1. [Pecuária Schema Map — v1](./artefatos/pecuaria-schema-map-v1.html): modelo do Rebanho, invariantes, efeitos das ações e roadmap original.
+2. [Pecuária v2 · Genética](./artefatos/pecuaria-v2-genetica.html): decisões da v2, tabelas, regras, telas e integração com estoque.
+3. [Roteiro de Testes do Rebanho](./artefatos/roteiro-testes-rebanho-v1-v2.html): QA manual de ponta a ponta para v1 e v2. As marcações ficam apenas no navegador de quem executar.
+4. [IDEAGRI Schema Map](./artefatos/ideagri-schema-map.html): inventário do banco legado e relações usadas para preparar a carga inicial.
+
+Os arquivos são snapshots HTML e preservam os diagramas e a interatividade dos artefatos originais. Alguns recursos visuais carregam bibliotecas pela internet. Se o GitHub mostrar apenas o código-fonte, baixe o arquivo e abra-o no navegador.
+
+## Como interpretar os documentos
+
+- O **Fazendinha é a fonte de verdade operacional** depois da carga inicial. O IDEAGRI é apenas origem de migração e referência para reconciliação; não deve virar dependência de execução.
+- O mapa do IDEAGRI descreve o legado, não o modelo que o Fazendinha deve copiar.
+- O Schema Map da v1 é um retrato anterior à implementação da v2. A seção “Genética” do roadmap nele propõe `Reprodutor`, `CentralSemen` e `EstoqueSemen`, mas foi superada pela decisão documentada na v2: `GenitorExterno`, `MaterialGenetico` e o estoque único do produto.
+- O documento da v2 é o contrato de produto e arquitetura do PR #305. Para detalhes exatos de implementação, prevalecem a migration, o schema Prisma e os testes da branch.
+- O roteiro de testes combina v1 e v2, embora a v2 ainda não esteja na `main`. Para testá-lo inteiro, use uma branch que contenha os PRs #305 e #306 já conciliados.
+
+Quando houver divergência, use esta ordem para resolver: invariantes de produto aprovadas → migration/schema → testes automatizados → implementação → documento histórico. Corrija a documentação na mesma PR que alterar o comportamento.
+
+## Decisões centrais preservadas
+
+- O eixo é construído em cascata: v1 Rebanho → v2 Genética → v3 Sanidade, peso e nutrição → v4 Reprodução → v5 Leite.
+- Filiação é identidade: mãe e pai podem ser animais da fazenda ou genitores externos, nunca os dois no mesmo lado.
+- Receptora gesta, mas não transmite genética.
+- Composição racial usa 64 avos e distingue origem informada de calculada.
+- Sêmen e embrião são produtos do estoque único; compra e saldo usam o fluxo existente. O consumo será ligado aos eventos reprodutivos na v4.
+- Dados com histórico não são sobrescritos silenciosamente. Escritas relevantes são auditadas e respeitam o escopo do sítio.
+
+## Próximos passos recomendados
+
+1. **Homologar e mesclar o PR #306 primeiro.** Ele fecha o feedback manual da v1 e é a base funcional que a v2 deve herdar.
+2. **Atualizar o PR #305 sobre a `main` após o #306.** Uma simulação de merge encontrou conflitos de conteúdo em `Cadastros.tsx`, `DetalheAnimal.tsx`, `DetalheAnimal.test.tsx` e `NovoAnimal.tsx`. Os dois PRs aparecem separadamente como “mergeáveis”, mas não se combinam automaticamente.
+3. **Reexecutar a bateria completa depois da conciliação.** Além da CI, repetir os testes de servidor com PostgreSQL, testes do client, typecheck e build.
+4. **Rodar a carga real da v2.** Confirmar a consulta de genitores externos, especialmente `ANIMAL.CDCENTRALSEMEN`; executar a importação duas vezes para verificar idempotência e depois `validar:pecuaria`.
+5. **Executar o roteiro manual completo.** Cobrir filiação, composição calculada versus informada, genitor inativo, animal baixado como genitor, material genético, saldo e os avisos de idade/ciclo.
+6. **Tirar o PR #305 de rascunho, revisar e mesclar.** Só então atualizar esta página para marcar a v2 como presente na `main`.
+7. **Abrir a v3 apenas depois dessa estabilização.** Começar por um contrato de domínio curto para Sanidade, peso e nutrição, mantendo integração com produto, estoque, custo e carência como dependências explícitas.
+
+## Manutenção
+
+Toda PR que altere a pecuária deve:
+
+- atualizar esta página quando mudar estado, sequência ou decisão transversal;
+- atualizar ou substituir o artefato do domínio quando mudar contrato, tabelas ou regras;
+- registrar o PR associado e a data do retrato;
+- evitar depender de links privados do Claude ou de outro chat como única fonte de contexto.
+
+Os quatro HTMLs desta pasta foram exportados do Claude em 28/09/2026 e copiados sem alteração de conteúdo.
