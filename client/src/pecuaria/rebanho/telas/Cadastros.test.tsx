@@ -65,7 +65,7 @@ beforeEach(() => {
   vi.mocked(listarMaterialGenetico).mockResolvedValue([]);
   vi.mocked(obterCatalogos).mockResolvedValue({ racas: [], motivosBaixa: [], propriedades: [], lotes: [] });
 });
-afterEach(cleanup);
+afterEach(() => { cleanup(); window.history.replaceState(null, "", "/"); });
 
 async function montarCategorias() {
   render(<Cadastros />);
@@ -459,5 +459,12 @@ describe("Cadastros do rebanho — material genético", () => {
     expect(within(tabela).getByText("Embrião Touro X × Estrela")).toBeTruthy();
     expect(within(tabela).getByText("002 Estrela")).toBeTruthy();
     expect(within(tabela).getByText("Sem estoque")).toBeTruthy();
+  });
+
+  it("deep-link do estoque abre a sub-aba e o material correto", async () => {
+    vi.mocked(listarMaterialGenetico).mockResolvedValue(materiaisMock);
+    window.history.replaceState(null, "", "/pecuaria/rebanho/cadastros?aba=material-genetico&material=mg1");
+    render(<Cadastros />);
+    expect((await screen.findAllByText("Editar Sêmen Zeus (sexado fêmea)")).length).toBeGreaterThan(0);
   });
 });

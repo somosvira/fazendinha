@@ -10,12 +10,14 @@ import { Button, ErrorBox } from "../../../financeiro/financeiro-ui";
 import { PainelCadastro } from "../../../financeiro/PainelCadastro";
 import { ConfirmDialog } from "../../../components/ConfirmDialog";
 import { CampoGenitor, genitorIncompleto, mensagemGenitorIncompleto, ladoParaValor, valorGenitorParaCampos, type ValorGenitor } from "../components/CampoGenitor";
+import { useToast } from "../../../components/Toast";
 
 export function FormFiliacao({ animal, onSalvo, onFechar }: {
   animal: AnimalFicha;
   onSalvo: (atualizado: AnimalFicha) => Promise<void> | void;
   onFechar: () => void;
 }) {
+  const toast = useToast();
   const [mae, setMae] = useState<ValorGenitor>(() => ladoParaValor(animal.filiacao?.mae ?? null));
   const [pai, setPai] = useState<ValorGenitor>(() => ladoParaValor(animal.filiacao?.pai ?? null));
   const [avisos, setAvisos] = useState<Array<{ campo: string; mensagem: string }>>([]);
@@ -26,6 +28,11 @@ export function FormFiliacao({ animal, onSalvo, onFechar }: {
   const [aplicandoSugestao, setAplicandoSugestao] = useState(false);
   const emCurso = useRef(false);
   const [errosGenitor, setErrosGenitor] = useState<{ mae?: string; pai?: string }>({});
+
+  const concluir = async (resultado: AnimalFicha, avisosResultado: Array<{ mensagem: string }>) => {
+    if (avisosResultado.length) toast.warn("Filiação salva com aviso", avisosResultado.map((aviso) => aviso.mensagem).join(" · "));
+    await onSalvo(resultado);
+  };
 
   const submeter = async (e: FormEvent) => {
     e.preventDefault();
@@ -45,7 +52,7 @@ export function FormFiliacao({ animal, onSalvo, onFechar }: {
         setSugestao(resultado.composicaoSugerida);
         setResultadoPendente(resultado);
       } else {
-        await onSalvo(resultado);
+        await concluir(resultado, resultado.avisos);
       }
     } catch (falha) {
       setErroGeral(falha instanceof RebanhoApiError ? falha.message : falha instanceof Error ? falha.message : String(falha));
@@ -58,7 +65,7 @@ export function FormFiliacao({ animal, onSalvo, onFechar }: {
     try {
       await substituirComposicaoAnimal(animal.id, { itens: sugestao.itens.map((i) => ({ racaId: i.racaId, fracao64: i.fracao64 })), origem: "CALCULADA" });
       setSugestao(null);
-      await onSalvo(resultadoPendente);
+      await concluir(resultadoPendente, avisos);
     } catch (falha) {
       setErroGeral(falha instanceof RebanhoApiError ? falha.message : falha instanceof Error ? falha.message : String(falha));
     } finally { setAplicandoSugestao(false); }
@@ -67,7 +74,7 @@ export function FormFiliacao({ animal, onSalvo, onFechar }: {
   const manterComposicao = async () => {
     if (!resultadoPendente) return;
     setSugestao(null);
-    await onSalvo(resultadoPendente);
+    await concluir(resultadoPendente, avisos);
   };
 
   const formId = "form-filiacao-animal";

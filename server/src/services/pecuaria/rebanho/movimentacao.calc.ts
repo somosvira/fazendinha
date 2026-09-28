@@ -121,7 +121,7 @@ export function planejarDestino(input: {
   const { atual, novo, data } = input;
 
   if (atual && paraTempo(data) < paraTempo(atual.desde)) {
-    throw new MovimentacaoError("Data da mudança de destino não pode ser anterior ao início do destino atual");
+    throw new MovimentacaoError("Data da mudança de finalidade não pode ser anterior ao início da finalidade atual");
   }
 
   const semMudanca = atual != null && atual.aptidao === novo.aptidao && atual.papelReprodutivo === novo.papelReprodutivo;

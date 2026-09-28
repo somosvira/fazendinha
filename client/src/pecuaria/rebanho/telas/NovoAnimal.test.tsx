@@ -6,6 +6,9 @@ import { cadastrarAnimal, listarCategorias, obterCatalogos } from "../api";
 import type { Catalogos } from "../types";
 import { navegarPara } from "../../../router";
 
+const toastMocks = vi.hoisted(() => ({ warn: vi.fn() }));
+vi.mock("../../../components/Toast", () => ({ useToast: () => toastMocks }));
+
 vi.mock("../api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../api")>()),
   obterCatalogos: vi.fn(),
@@ -57,7 +60,7 @@ describe("NovoAnimal", () => {
     const entrada = screen.getByLabelText("Data de entrada") as HTMLInputElement;
     expect(entrada.disabled).toBe(true);
     fireEvent.change(nascimento, { target: { value: "2024-01-10" } });
-    expect(entrada.value).toBe("2024-01-10");
+    expect(entrada.value).toBe("10/01/2024");
     fireEvent.change(screen.getByLabelText("Origem"), { target: { value: "COMPRADO" } });
     expect(entrada.disabled).toBe(false);
   });
@@ -75,6 +78,7 @@ describe("NovoAnimal", () => {
       historicoBaixas: [],
       filiacao: { mae: null, pai: null },
       filhosCount: 0,
+      avisos: [],
     });
     await montar();
     // fêmea: papel e partos aparecem; troca o papel antes de trocar de sexo
@@ -108,6 +112,7 @@ describe("NovoAnimal", () => {
       historicoBaixas: [],
       filiacao: { mae: null, pai: null },
       filhosCount: 0,
+      avisos: [],
     });
     await montar();
     fireEvent.change(screen.getByLabelText("Brinco"), { target: { value: "1234" } });
@@ -120,5 +125,15 @@ describe("NovoAnimal", () => {
       brinco: "1234", dataNascimento: "2026-01-01", dataEntrada: "2026-01-01", propriedadeId: 1, loteId: "lote-1", aptidao: "LEITE",
     })));
     expect(navegarPara).toHaveBeenCalledWith("/pecuaria/rebanho/animais/animal-1");
+  });
+
+  it("mostra o aviso de filiação devolvido ao salvar sem bloquear o cadastro", async () => {
+    vi.mocked(cadastrarAnimal).mockResolvedValue({ id: "animal-aviso", avisos: [{ campo: "maeId", mensagem: "A mãe teria menos de 15 meses de idade no parto" }] } as never);
+    await montar();
+    fireEvent.change(screen.getByLabelText("Brinco"), { target: { value: "B2" } });
+    fireEvent.change(screen.getByLabelText("Sítio"), { target: { value: "1" } });
+    fireEvent.click(screen.getByRole("button", { name: "Salvar animal" }));
+    await waitFor(() => expect(toastMocks.warn).toHaveBeenCalledWith("Animal salvo com aviso", "A mãe teria menos de 15 meses de idade no parto"));
+    expect(navegarPara).toHaveBeenCalledWith("/pecuaria/rebanho/animais/animal-aviso");
   });
 });

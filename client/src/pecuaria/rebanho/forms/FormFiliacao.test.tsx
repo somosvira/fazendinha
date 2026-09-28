@@ -5,6 +5,9 @@ import { FormFiliacao } from "./FormFiliacao";
 import { definirFiliacaoAnimal, listarGenitores, substituirComposicaoAnimal } from "../api";
 import type { AnimalFicha, GenitorDTO } from "../types";
 
+const toastMocks = vi.hoisted(() => ({ warn: vi.fn() }));
+vi.mock("../../../components/Toast", () => ({ useToast: () => toastMocks }));
+
 vi.mock("../api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../api")>()),
   definirFiliacaoAnimal: vi.fn(),
@@ -88,5 +91,14 @@ describe("FormFiliacao", () => {
     fireEvent.click(screen.getByRole("button", { name: /Salvar filiação/ }));
     expect(await screen.findByText("Escolha a mãe ou marque Desconhecida")).toBeTruthy();
     expect(definirFiliacaoAnimal).not.toHaveBeenCalled();
+  });
+
+  it("mantém o aviso visível em toast depois que o painel fecha", async () => {
+    vi.mocked(definirFiliacaoAnimal).mockResolvedValue({ ...animal, avisos: [{ campo: "maeId", mensagem: "A mãe teria menos de 15 meses de idade no parto" }], composicaoSugerida: null } as never);
+    const onSalvo = vi.fn();
+    render(<FormFiliacao animal={animal} onSalvo={onSalvo} onFechar={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: /Salvar filiação/ }));
+    await waitFor(() => expect(toastMocks.warn).toHaveBeenCalledWith("Filiação salva com aviso", "A mãe teria menos de 15 meses de idade no parto"));
+    expect(onSalvo).toHaveBeenCalled();
   });
 });

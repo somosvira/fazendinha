@@ -30,4 +30,17 @@ describe("GraficoPeso", () => {
     const html = renderToStaticMarkup(<GraficoPeso historicoPesagens={[]} />);
     expect(html).toContain("pelo menos duas pesagens");
   });
+
+  it("recorta a curva na janela do período e avisa quando sobram menos de duas pesagens", () => {
+    const historico = [
+      pesagem("p3", "2026-09-10", 262),
+      pesagem("p2", "2026-05-10", 210),
+      pesagem("p1", "2025-05-01", 34, "ENTRADA"),
+    ];
+    const noPeriodo = renderToStaticMarkup(<GraficoPeso historicoPesagens={historico} desde="2026-03-30" ate="2026-09-26" />);
+    expect(noPeriodo).toContain("recharts-responsive-container");
+    const curto = renderToStaticMarkup(<GraficoPeso historicoPesagens={historico} desde="2026-08-27" ate="2026-09-26" />);
+    expect(curto).toContain("Menos de duas pesagens neste período");
+    expect(curto).not.toContain("recharts-responsive-container");
+  });
 });

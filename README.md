@@ -60,11 +60,13 @@ Esta é a fonte de verdade do projeto. Antes de implementar qualquer coisa, leia
 | [`CLAUDE.md`](./CLAUDE.md) | Claude Code | Instruções operacionais resumidas para o agente. |
 | [`DEPLOY.md`](./DEPLOY.md) | DevOps | Procedimentos de deploy (Cloudflare Pages + Render + Neon). |
 | [`TODO.md`](./TODO.md) | Todos | Pendências correntes. |
+| [`docs/pecuaria/README.md`](./docs/pecuaria/README.md) | Devs, designers, PMs e agentes | Base versionada da reconstrução da pecuária: artefatos da v1/v2, mapa do IDEAGRI, estado dos PRs, decisões e próximos passos. |
 
 Notas de trabalho na raiz: `ANALISE-ROTAS.md`, `AUDITORIA-2026-07-06.md`, `HANDOFF-sprint-pre-teste-2026-07-06.md`, `PLANO-dashboard-ia.md`.
 
 Em `docs/`:
 
+- **Pecuária v1–v5** — [`docs/pecuaria/README.md`](./docs/pecuaria/README.md) organiza os quatro artefatos-base, explicita o que já está na `main`, o que ainda está em PR e a sequência recomendada de evolução.
 - **Design specs** — `docs/design/` (`multi-propriedade.md`, `pecuaria-unificada.md`, `reproducao-paridade-ideagri.md`, `ia-consulta-semantica.md`, `relatorios-gerais.md`, `dieta-estoque-baixa-automatica.md`, `ocr-folhas-setor.md`, `ideagri-catalogo-features.md`, `ideagri-gaps.md`, painel milho/equipe).
 - **Planos e specs por fatia** — `docs/superpowers/plans/` e `docs/superpowers/specs/` (rebanho fatia 1–18, reprodução blocos A–C, shadcn fases 0–5, auth/contas, central de relatórios).
 - **Financeiro novo** — `financeiro-rebuild-contrato.md`, `proposta-reestruturacao-financeiro.md`, `handoff-design-novo-financeiro.md`, `avaliacao-produto-financeiro-2026-09-01.md`.

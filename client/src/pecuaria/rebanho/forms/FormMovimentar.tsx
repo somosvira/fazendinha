@@ -9,6 +9,7 @@ import { movimentarAnimais, RebanhoApiError } from "../api";
 import type { AnimalResumo, CatalogoLote, Propriedade } from "../types";
 import { Button, ErrorBox, hoje } from "../../../financeiro/financeiro-ui";
 import { CampoFormulario, classeInput, PainelCadastro } from "../../../financeiro/PainelCadastro";
+import { DatePicker } from "../../../components/DatePicker";
 
 /** "está em: <lote> (<sítio>)" quando há lote, senão "está em: <sítio>, sem lote". */
 function localizacaoAtual(animal: AnimalResumo): string {
@@ -95,7 +96,7 @@ export function FormMovimentar({ animais, propriedades, lotes, propriedadeInicia
           <CampoFormulario id="movimentar-propriedade" rotulo="Sítio de destino" obrigatorio>{(p) => <select {...p} required value={propriedadeId} onChange={(e) => { setPropriedadeId(e.target.value); setLoteId(""); }} className={classeInput}><option value="">Selecione</option>{propriedades.map((prop) => <option key={prop.id} value={prop.id}>{prop.apelido ?? prop.nome}</option>)}</select>}</CampoFormulario>
           <CampoFormulario id="movimentar-lote" rotulo="Lote" ajuda={!propriedadeId ? "Selecione o sítio para escolher o lote." : undefined}>{(p) => <select {...p} disabled={!propriedadeId} value={loteId} onChange={(e) => setLoteId(e.target.value)} className={classeInput}><option value="">Sem lote</option>{lotesDoSitio.map((lote) => <option key={lote.id} value={lote.id}>{lote.nome}</option>)}</select>}</CampoFormulario>
         </>}
-      <CampoFormulario id="movimentar-data" rotulo="Data" obrigatorio erro={erroData}>{(p) => <input {...p} required type="date" max={hoje()} value={data} onChange={(e) => setData(e.target.value)} className={classeInput} />}</CampoFormulario>
+      <CampoFormulario id="movimentar-data" rotulo="Data" obrigatorio erro={erroData}>{(p) => <DatePicker {...p} required max={hoje()} value={data} onChange={setData} className="mt-1.5" />}</CampoFormulario>
       <CampoFormulario id="movimentar-motivo" rotulo="Motivo">{(p) => <input {...p} maxLength={300} value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Ex.: reagrupamento de lote" className={classeInput} />}</CampoFormulario>
     </form>
   </PainelCadastro>;

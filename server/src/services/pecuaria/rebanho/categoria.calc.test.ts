@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   avaliarCategoria, calcularCategoriaAutomatica, condicaoDaRegra, condicoesSemCategoria, descreverRegra, faixaNascimentoParaIdade,
-  filtroCategoria, idadeEmMeses, idadeNaFaixa, nascimentoLimiteParaIdade, regraCasa, validarDataCategoriaManual, validarRegra,
+  filtroCategoria, idadeEmMeses, idadeNaFaixa, mensagemSobreposicao, nascimentoLimiteParaIdade, paresSobrepostos, regraCasa, regrasSeSobrepoem,
+  sobreposicaoDe, validarDataCategoriaManual, validarRegra,
   type CondicaoRegra, type RegraCategoria,
 } from "./categoria.calc.js";
 
@@ -262,5 +263,44 @@ describe("faixaNascimentoParaIdade (filtro de idade)", () => {
     expect(idadeNaFaixa(11, 12, undefined)).toBe(false);
     expect(idadeNaFaixa(14, null, 13)).toBe(false);
     expect(idadeNaFaixa(0, undefined, undefined)).toBe(true);
+  });
+});
+
+describe("sobreposição de regras", () => {
+  it("os padrões de fábrica não se sobrepõem", () => {
+    expect(paresSobrepostos(PADROES)).toEqual([]);
+  });
+
+  it("mesma faixa de idade e parto compatível se sobrepõe (o caso do 'só uma funcionou')", () => {
+    const nova = r("nov-jovem", "Novilha jovem", "F", 25, { idadeMinMeses: 12, idadeMaxMeses: 18, partos: "SEM" });
+    expect(sobreposicaoDe(nova, PADROES)?.nome).toBe("Novilha");
+    expect(mensagemSobreposicao(nova, PADROES.find((x) => x.id === "nov")!)).toContain('"Novilha jovem" (12 a 17 meses · sem parto) se sobrepõe à de "Novilha"');
+  });
+
+  it("faixas encostadas não se sobrepõem (máximo é exclusivo)", () => {
+    const a = r("a", "A", "F", 1, { idadeMaxMeses: 12, partos: "SEM" });
+    const b = r("b", "B", "F", 2, { idadeMinMeses: 12, partos: "SEM" });
+    expect(regrasSeSobrepoem(a, b)).toBe(false);
+  });
+
+  it("'sem parto' × 'com parto' não se cruzam; 'qualquer' cruza com os dois", () => {
+    const sem = r("s", "S", "F", 1, { partos: "SEM" });
+    const com = r("c", "C", "F", 2, { partos: "COM" });
+    const qualquer = r("q", "Q", "F", 3, { idadeMinMeses: 100 });
+    expect(regrasSeSobrepoem(sem, com)).toBe(false);
+    expect(regrasSeSobrepoem(qualquer, com)).toBe(true);
+    expect(regrasSeSobrepoem(qualquer, sem)).toBe(true);
+  });
+
+  it("ignora regra inativa, só manual e de outro sexo", () => {
+    const base = r("x", "X", "F", 1);
+    expect(regrasSeSobrepoem(base, r("y", "Y", "F", 2, { ativo: false }))).toBe(false);
+    expect(regrasSeSobrepoem(base, r("y", "Y", "F", 2, { automatica: false }))).toBe(false);
+    expect(regrasSeSobrepoem(base, r("y", "Y", "M", 2))).toBe(false);
+  });
+
+  it("para macho o parto não conta: nova regra de macho cruza com 'Em crescimento' (qualquer idade)", () => {
+    const garrote = r("gar", "Garrote", "M", 45, { idadeMinMeses: 12, idadeMaxMeses: 24, partos: "SEM" });
+    expect(sobreposicaoDe(garrote, PADROES)?.id).toBe(PADROES.find((x) => x.sexo === "M" && x.automatica)!.id);
   });
 });

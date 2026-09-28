@@ -62,7 +62,7 @@ export function CampoGenitor({ rotulo, sexo, ladoInicial, excluirAnimalId, valor
 
   const animalSelecionado: AnimalSelecionado | null = atual.tipo === "ANIMAL" && atual.id ? { id: atual.id, brinco: atual.brinco, nome: atual.nome } : null;
 
-  return <div className="space-y-2">
+  return <div id={`campo-genitor-${sexo === "F" ? "mae" : "pai"}`} tabIndex={-1} className="space-y-2 outline-none">
     <span className="block text-sm font-medium">{rotulo}</span>
     <div className="flex flex-wrap gap-1.5" role="group" aria-label={`Tipo de ${rotulo.toLowerCase()}`}>
       {([

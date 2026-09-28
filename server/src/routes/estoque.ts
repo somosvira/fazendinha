@@ -59,14 +59,15 @@ const parseAtivo = (v?: string) => (v === "true" ? true : v === "false" ? false 
 export const estoqueRouter = new Hono()
   .get("/estoque/saldos", zValidator("query", saldosQuerySchema), async (c) => {
     const { centroCustoId } = c.req.valid("query");
-    return c.json(await svc.listarSaldos({ centroCustoId, propriedadeId: await resolverEscopoLeitura(c) }));
+    const u = getUsuario(c);
+    return c.json(await svc.listarSaldos({ centroCustoId, propriedadeId: await resolverEscopoLeitura(c), materialGeneticoVisivel: u ? temArea(u, "pecuaria") : true }));
   })
   .get("/estoque/movimentos", zValidator("query", movimentosQuerySchema), async (c) => {
     const { produtoId, tipo, q, origem, centroCustoId, de, ate, pagina, porPagina } = c.req.valid("query");
     // O gate de /estoque aceita pecuária, agricultura ou financeiro; o vínculo
     // (talhão) das saídas automáticas só vai para quem tem a área.
     const u = getUsuario(c);
-    const vinculosVisiveis = u ? { agricultura: temArea(u, "agricultura") } : undefined;
+    const vinculosVisiveis = u ? { agricultura: temArea(u, "agricultura"), pecuaria: temArea(u, "pecuaria") } : undefined;
     return c.json(await svc.listarMovimentos({ produtoId, tipo, q, origem, centroCustoId, de, ate, pagina, porPagina, propriedadeId: await resolverEscopoLeitura(c), vinculosVisiveis }));
   })
   .post("/estoque/ajustes", exigePermissao("lancar"), zValidator("json", svc.ajusteContagemSchema), async (c) => {

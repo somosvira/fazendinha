@@ -159,6 +159,10 @@ export type CadastrarAnimalInput = {
   pesoEntradaKg?: number | null;
 } & FiliacaoInput;
 
+export type CadastrarAnimalResultado = AnimalFicha & {
+  avisos: Array<{ campo: string; mensagem: string }>;
+};
+
 /** PATCH /animais/:id — além dos dados fixos, aceita os campos de nascimento/
  *  entrada validados contra o histórico já existente (ver datas.calc.ts). */
 export type EditarAnimalInput = Partial<{
@@ -425,7 +429,12 @@ export type CategoriaDTO = {
   animaisAtivos: number;
   manuaisAbertas: number;
 };
-export type ListarCategoriasResultado = { itens: CategoriaDTO[]; semCategoria: number };
+export type ListarCategoriasResultado = {
+  itens: CategoriaDTO[];
+  semCategoria: number;
+  /** pares de regras ativas cujas faixas se cruzam — gravados antes da trava; a tela avisa para corrigir */
+  sobrepostas?: Array<{ a: CategoriaRef; b: CategoriaRef; mensagem: string }>;
+};
 
 export type CriarCategoriaInput = {
   nome: string;
@@ -541,4 +550,3 @@ export type CriarMaterialGeneticoInput = {
 export type EditarMaterialGeneticoInput = Partial<{ tipoSemen: TipoSemen | null; observacao: string | null }>;
 
 export type ListarMaterialGeneticoQuery = { tipo?: TipoMaterialGenetico; incluirInativos?: boolean };
-

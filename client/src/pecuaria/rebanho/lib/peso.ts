@@ -12,7 +12,19 @@ export const PERIODOS_GMD: { valor: PeriodoGmd; rotulo: string }[] = [
   { valor: "entrada", rotulo: "Desde a entrada" },
 ];
 
-export const PERIODO_GMD_PADRAO: PeriodoGmd = 90;
+/** "Desde a entrada" mostra a curva inteira do animal — é o que se quer ver ao abrir a ficha. */
+export const PERIODO_GMD_PADRAO: PeriodoGmd = "entrada";
+
+/** Início ("aaaa-mm-dd") da janela do GMD do período, contada para trás a partir de `limite`
+ *  (hoje, ou a data da baixa) — mesma conta de `resumoPeso` em peso.calc.ts no servidor, para o
+ *  gráfico mostrar exatamente as pesagens que entram no "GMD do período". `null` = sem limite
+ *  inferior ("desde a entrada"). */
+export function inicioJanelaGmd(periodo: PeriodoGmd, limite: string): string | null {
+  if (periodo === "entrada") return null;
+  const data = new Date(`${limite.slice(0, 10)}T00:00:00Z`);
+  data.setUTCDate(data.getUTCDate() - periodo);
+  return data.toISOString().slice(0, 10);
+}
 
 export function rotuloPeriodoGmd(periodo: PeriodoGmd | number | null): string {
   if (periodo === null || periodo === "entrada") return "desde a entrada";

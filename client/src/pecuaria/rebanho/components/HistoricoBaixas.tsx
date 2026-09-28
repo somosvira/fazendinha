@@ -2,16 +2,17 @@
 // baixa em vigor. As ações de Dar baixa/Estornar continuam no cabeçalho da ficha
 // (DetalheAnimal.tsx) — este componente só mostra a lista.
 
+import { ArchiveX } from "lucide-react";
 import { Pill } from "../../../financeiro/financeiro-ui";
+import { CardFicha } from "../ui";
 import { formatarDataBR, rotuloClasseMotivo, rotuloTipoBaixa } from "../lib/rotulos";
 import type { AnimalFicha } from "../types";
 
 export function HistoricoBaixas({ historicoBaixas }: { historicoBaixas: AnimalFicha["historicoBaixas"] }) {
   if (!historicoBaixas.length) return null;
 
-  return <section className="border-t border-border p-6">
-    <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-3">Baixas</h2>
-    <div className="mt-4 overflow-x-auto">
+  return <CardFicha icon={ArchiveX} titulo="Baixas" className="lg:col-span-2">
+    <div className="overflow-x-auto">
       <table className="w-full text-left text-sm">
         <thead className="text-xs text-ink-3"><tr>
           <th className="py-1.5 pr-3 font-semibold">Data</th>
@@ -35,5 +36,5 @@ export function HistoricoBaixas({ historicoBaixas }: { historicoBaixas: AnimalFi
         </tbody>
       </table>
     </div>
-  </section>;
+  </CardFicha>;
 }

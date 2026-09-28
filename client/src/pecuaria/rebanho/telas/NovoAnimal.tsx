@@ -6,16 +6,51 @@ import { cadastrarAnimal, listarCategorias, obterCatalogos, RebanhoApiError } fr
 import type { Aptidao, CatalogoLote, Catalogos, CategoriaDTO, ComposicaoItemInput, Origem, PapelReprodutivo, Sexo } from "../types";
 import { calcularCategoriaCliente } from "../lib/categoria";
 import { rotuloAptidao, rotuloPapelReprodutivo } from "../lib/rotulos";
-import { somaFracoes } from "../lib/composicao";
-import { CampoComposicao } from "../ui";
+import { fracaoReduzida, somaFracoes } from "../lib/composicao";
+import { CampoComposicao, rolarParaCampo } from "../ui";
 import { CampoGenitor, genitorIncompleto, mensagemGenitorIncompleto, valorGenitorParaCampos, type ValorGenitor } from "../components/CampoGenitor";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import { navegarPara } from "../../../router";
 import { Button, ErrorBox, hoje, PageHeader, PaginaCarregando, PaginaFinanceira, ReviewLine } from "../../../financeiro/financeiro-ui";
 import { CampoFormulario, classeInput } from "../../../financeiro/PainelCadastro";
 import { NavRebanho } from "./NavRebanho";
+import { DatePicker } from "../../../components/DatePicker";
+import { useToast } from "../../../components/Toast";
 
 type Erros = Record<string, string>;
+
+/** Campo do formulário (nome usado na validação local e no `campo` dos erros da API) → id do
+ *  elemento na tela, na ordem em que aparecem — o primeiro com erro recebe rolagem e foco. */
+const ELEMENTO_DO_CAMPO: [campo: string, elementId: string][] = [
+  ["brinco", "novo-animal-brinco"],
+  ["nome", "novo-animal-nome"],
+  ["brincoEletronico", "novo-animal-brinco-eletronico"],
+  ["sisbov", "novo-animal-sisbov"],
+  ["dataNascimento", "novo-animal-data-nascimento"],
+  ["dataEntrada", "novo-animal-data-entrada"],
+  ["partosAntesDaEntrada", "novo-animal-partos"],
+  ["mae", "campo-genitor-mae"],
+  ["maeId", "campo-genitor-mae"],
+  ["maeExternaId", "campo-genitor-mae"],
+  ["pai", "campo-genitor-pai"],
+  ["paiId", "campo-genitor-pai"],
+  ["paiExternoId", "campo-genitor-pai"],
+  ["propriedadeId", "novo-animal-propriedade"],
+  ["loteId", "novo-animal-lote"],
+  ["aptidao", "novo-animal-aptidao"],
+  ["papelReprodutivo", "novo-animal-papel"],
+  ["composicao", "composicao-raca-0"],
+  ["pesoEntradaKg", "novo-animal-peso"],
+  ["observacao", "novo-animal-observacao"],
+];
+
+/** Rola até o primeiro campo com erro; devolve false se nenhum dos erros tem campo na tela. */
+function irParaPrimeiroErro(erros: Erros): boolean {
+  const alvo = ELEMENTO_DO_CAMPO.find(([campo]) => erros[campo]);
+  if (!alvo) return false;
+  rolarParaCampo(alvo[1]);
+  return true;
+}
 
 export function NovoAnimal({ onVoltar, podeLancar = true }: { onVoltar: () => void; podeLancar?: boolean }) {
   if (!podeLancar) {
@@ -28,6 +63,7 @@ export function NovoAnimal({ onVoltar, podeLancar = true }: { onVoltar: () => vo
 }
 
 function FormNovoAnimal({ onVoltar }: { onVoltar: () => void }) {
+  const toast = useToast();
   const [catalogos, setCatalogos] = useState<Catalogos | null>(null);
   const [categorias, setCategorias] = useState<CategoriaDTO[]>([]);
   const [erroCatalogos, setErroCatalogos] = useState<string | null>(null);
@@ -72,7 +108,7 @@ function FormNovoAnimal({ onVoltar }: { onVoltar: () => void }) {
   const somaComposicao = somaFracoes(composicao);
   const composicaoRotulo = composicao
     .filter((item) => item.racaId)
-    .map((item) => `${catalogos?.racas.find((r) => r.id === item.racaId)?.sigla ?? "?"} ${item.fracao64}/64`)
+    .map((item) => `${catalogos?.racas.find((r) => r.id === item.racaId)?.sigla ?? "?"} ${fracaoReduzida(item.fracao64)}`)
     .join(" · ");
 
   const validar = (): Erros => {
@@ -94,7 +130,7 @@ function FormNovoAnimal({ onVoltar }: { onVoltar: () => void }) {
     e.preventDefault();
     const validacao = validar();
     setErros(validacao);
-    if (Object.keys(validacao).length) return;
+    if (Object.keys(validacao).length) { irParaPrimeiroErro(validacao); return; }
     setSalvando(true); setErroGeral(null);
     try {
       const animal = await cadastrarAnimal({
@@ -105,11 +141,15 @@ function FormNovoAnimal({ onVoltar }: { onVoltar: () => void }) {
         pesoEntradaKg: pesoEntradaKg ? Number(pesoEntradaKg) : null,
         ...valorGenitorParaCampos(mae, pai),
       });
+      if (animal.avisos?.length) toast.warn("Animal salvo com aviso", animal.avisos.map((aviso) => aviso.mensagem).join(" · "));
       navegarPara(`/pecuaria/rebanho/animais/${animal.id}`);
     } catch (falha) {
-      if (falha instanceof RebanhoApiError && falha.campo) setErros({ [falha.campo]: falha.message });
       const mensagem = falha instanceof RebanhoApiError ? falha.message : falha instanceof Error ? falha.message : String(falha);
-      setErroGeral(mensagem);
+      // erro de um campo que está na tela: mensagem junto dele e o usuário é levado até lá;
+      // senão, a caixa de erro no topo do formulário (rolando até ela)
+      const doCampo = falha instanceof RebanhoApiError && falha.campo ? { [falha.campo]: mensagem } : {};
+      setErros(doCampo);
+      if (!irParaPrimeiroErro(doCampo)) { setErroGeral(mensagem); rolarParaCampo("novo-animal-erro"); }
     } finally { setSalvando(false); }
   };
 
@@ -124,7 +164,7 @@ function FormNovoAnimal({ onVoltar }: { onVoltar: () => void }) {
     <ErrorBox erro={erroCatalogos} />
     {catalogos && <form onSubmit={submeter} noValidate className="mt-6 grid overflow-hidden rounded-xl border border-border bg-white xl:grid-cols-[minmax(0,1fr)_330px]">
       <div className="space-y-7 p-5 md:p-7 xl:min-h-0 xl:overflow-y-auto">
-        <ErrorBox erro={erroGeral} />
+        <div id="novo-animal-erro" tabIndex={-1} className="outline-none"><ErrorBox erro={erroGeral} /></div>
         <section>
           <h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Identificação</h3>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -139,8 +179,8 @@ function FormNovoAnimal({ onVoltar }: { onVoltar: () => void }) {
           <h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Origem e datas</h3>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             <CampoFormulario id="novo-animal-origem" rotulo="Origem" obrigatorio>{(p) => <select {...p} value={origem} onChange={(e) => alterarOrigem(e.target.value as Origem)} className={classeInput}><option value="NASCIDO">Nascido na propriedade</option><option value="COMPRADO">Comprado</option></select>}</CampoFormulario>
-            <CampoFormulario id="novo-animal-data-nascimento" rotulo="Data de nascimento" obrigatorio erro={erros.dataNascimento}>{(p) => <input {...p} required type="date" max={hoje()} value={dataNascimento} onChange={(e) => alterarDataNascimento(e.target.value)} className={classeInput} />}</CampoFormulario>
-            <CampoFormulario id="novo-animal-data-entrada" rotulo="Data de entrada" obrigatorio erro={erros.dataEntrada}>{(p) => <input {...p} required type="date" max={hoje()} disabled={origem === "NASCIDO"} value={dataEntrada} onChange={(e) => setDataEntrada(e.target.value)} className={classeInput} />}</CampoFormulario>
+            <CampoFormulario id="novo-animal-data-nascimento" rotulo="Data de nascimento" obrigatorio erro={erros.dataNascimento}>{(p) => <DatePicker {...p} required max={hoje()} value={dataNascimento} onChange={alterarDataNascimento} className="mt-1.5" />}</CampoFormulario>
+            <CampoFormulario id="novo-animal-data-entrada" rotulo="Data de entrada" obrigatorio erro={erros.dataEntrada}>{(p) => <DatePicker {...p} required max={hoje()} disabled={origem === "NASCIDO"} value={dataEntrada} onChange={setDataEntrada} className="mt-1.5" />}</CampoFormulario>
             <CampoFormulario id="novo-animal-nascimento-estimado" rotulo="Nascimento estimado">{(p) => <label className="mt-1.5 flex h-[42px] items-center gap-2"><input id={p.id} type="checkbox" aria-label={p["aria-label"]} checked={nascimentoEstimado} onChange={(e) => setNascimentoEstimado(e.target.checked)} /><span className="text-sm font-normal text-ink-3">A data é uma estimativa</span></label>}</CampoFormulario>
             {sexo === "F" && <CampoFormulario id="novo-animal-partos" rotulo="Partos antes da entrada" ajuda="Define a categoria (novilha vira vaca a partir de 1 parto).">{(p) => <input {...p} type="number" min={0} step={1} value={partosAntesDaEntrada} onChange={(e) => setPartosAntesDaEntrada(e.target.value)} className={classeInput} />}</CampoFormulario>}
           </div>
@@ -150,7 +190,7 @@ function FormNovoAnimal({ onVoltar }: { onVoltar: () => void }) {
           </div>
         </section>
         <section>
-          <h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Localização e destino</h3>
+          <h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Localização e finalidade</h3>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             <CampoFormulario id="novo-animal-propriedade" rotulo="Sítio" obrigatorio erro={erros.propriedadeId}>{(p) => <select {...p} required value={propriedadeId} onChange={(e) => alterarPropriedade(e.target.value)} className={classeInput}><option value="">Selecione</option>{catalogos.propriedades.map((prop) => <option key={prop.id} value={prop.id}>{prop.apelido ?? prop.nome}</option>)}</select>}</CampoFormulario>
             <CampoFormulario id="novo-animal-lote" rotulo="Lote" ajuda={!propriedadeId ? "Selecione o sítio para escolher o lote." : undefined}>{(p) => <select {...p} disabled={!propriedadeId} value={loteId} onChange={(e) => setLoteId(e.target.value)} className={classeInput}><option value="">Sem lote</option>{lotesDoSitio.map((lote) => <option key={lote.id} value={lote.id}>{lote.nome}</option>)}</select>}</CampoFormulario>
@@ -176,7 +216,7 @@ function FormNovoAnimal({ onVoltar }: { onVoltar: () => void }) {
           <div className="mt-5 space-y-3 text-sm leading-5">
             {categoriaPrevista && <ReviewLine>Categoria calculada: {categoriaPrevista.nome}.</ReviewLine>}
             <ReviewLine tone={propriedadeNome ? "green" : "neutral"}>{propriedadeNome ? <>Entra no sítio {propriedadeNome}{loteNome ? `, lote ${loteNome}` : ""}.</> : "Selecione o sítio de destino."}</ReviewLine>
-            <ReviewLine>Destino: {rotuloAptidao(aptidao)}{papelReprodutivo !== "NENHUM" ? ` · ${rotuloPapelReprodutivo(papelReprodutivo)}` : ""}.</ReviewLine>
+            <ReviewLine>Finalidade: {rotuloAptidao(aptidao)}{papelReprodutivo !== "NENHUM" ? ` · ${rotuloPapelReprodutivo(papelReprodutivo)}` : ""}.</ReviewLine>
             <ReviewLine tone={composicaoRotulo ? "brown" : "neutral"}>{composicaoRotulo ? <>Composição: {composicaoRotulo}.</> : (mae.tipo !== "NENHUM" || pai.tipo !== "NENHUM") ? "Composição será calculada pelos genitores." : "Sem composição racial informada."}</ReviewLine>
             {(mae.tipo !== "NENHUM" || pai.tipo !== "NENHUM") && <ReviewLine>Filiação: {mae.tipo === "ANIMAL" ? mae.brinco || "mãe selecionada" : mae.tipo === "EXTERNO" ? "mãe externa selecionada" : "mãe não informada"} · {pai.tipo === "ANIMAL" ? pai.brinco || "pai selecionado" : pai.tipo === "EXTERNO" ? "pai externo selecionado" : "pai não informado"}.</ReviewLine>}
             {pesoEntradaKg && <ReviewLine>Peso de entrada: {Number(pesoEntradaKg).toLocaleString("pt-BR")} kg.</ReviewLine>}

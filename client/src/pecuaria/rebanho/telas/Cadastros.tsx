@@ -23,7 +23,7 @@ import {
   criarCategoria, editarCategoria, editarGenitor, editarMotivoBaixa, editarRaca, listarCategorias, listarGenitores,
   listarMaterialGenetico, listarMotivosBaixa, listarRacas, obterCatalogos, reordenarCategorias, restaurarPadroesCategorias, simularCategorias, RebanhoApiError,
 } from "../api";
-import type { CatalogoRaca, CategoriaDTO, ClasseMotivoBaixa, GenitorDTO, MaterialGeneticoDTO, MotivoBaixa, Raca, RegraCategoriaProposta, ResultadoSimulacaoCategorias } from "../types";
+import type { CatalogoRaca, CategoriaDTO, ClasseMotivoBaixa, GenitorDTO, ListarCategoriasResultado, MaterialGeneticoDTO, MotivoBaixa, Raca, RegraCategoriaProposta, ResultadoSimulacaoCategorias } from "../types";
 import { rotuloClasseMotivo, rotuloSexo } from "../lib/rotulos";
 import { FormMotivoBaixa } from "../cadastros/FormMotivoBaixa";
 import { FormRaca } from "../cadastros/FormRaca";
@@ -137,7 +137,10 @@ function mensagemDesativar(confirmacao: NonNullable<Confirmacao>): string {
 }
 
 export function Cadastros({ podeLancar = true }: { podeLancar?: boolean }) {
-  const [aba, setAba] = useState<Aba>("categorias");
+  const parametrosIniciais = typeof window === "undefined" ? new URLSearchParams() : new URLSearchParams(window.location.search);
+  const materialInicial = parametrosIniciais.get("material");
+  const abaInicial = parametrosIniciais.get("aba");
+  const [aba, setAba] = useState<Aba>(abaInicial === "material-genetico" || materialInicial ? "material-genetico" : abaInicial === "genitores" ? "genitores" : "categorias");
   const [mostrarInativos, setMostrarInativos] = useState(false);
   const [racas, setRacas] = useState<Raca[] | null>(null);
   const [motivos, setMotivos] = useState<MotivoBaixa[] | null>(null);
@@ -149,10 +152,12 @@ export function Cadastros({ podeLancar = true }: { podeLancar?: boolean }) {
   const [erro, setErro] = useState<string | null>(null);
   const [processando, setProcessando] = useState(false);
   const emCurso = useRef(false);
+  const deepLinkConsumido = useRef(false);
 
   // ---------- categorias ----------
   const [categorias, setCategorias] = useState<CategoriaDTO[] | null>(null);
   const [semCategoriaAtual, setSemCategoriaAtual] = useState(0);
+  const [sobrepostas, setSobrepostas] = useState<NonNullable<ListarCategoriasResultado["sobrepostas"]>>([]);
   const [painelCategoria, setPainelCategoria] = useState<PainelCategoria>(null);
   const [confirmacaoCategoria, setConfirmacaoCategoria] = useState<ConfirmacaoCategoria>(null);
   const [simulando, setSimulando] = useState(false);
@@ -164,7 +169,7 @@ export function Cadastros({ podeLancar = true }: { podeLancar?: boolean }) {
   const carregarMateriais = useCallback(() => listarMaterialGenetico({ incluirInativos: mostrarInativos }).then(setMateriais).catch((e) => setErro(mensagemErro(e))), [mostrarInativos]);
   useEffect(() => { obterCatalogos().then((c) => setRacasCatalogo(c.racas)).catch(() => undefined); }, []);
   /** sempre traz ativas e inativas — a simulação precisa da lista completa; "Mostrar inativas" só filtra a tabela. */
-  const carregarCategorias = useCallback(() => listarCategorias({ incluirInativos: true }).then((r) => { setCategorias(r.itens); setSemCategoriaAtual(r.semCategoria); }).catch((e) => setErro(mensagemErro(e))), []);
+  const carregarCategorias = useCallback(() => listarCategorias({ incluirInativos: true }).then((r) => { setCategorias(r.itens); setSemCategoriaAtual(r.semCategoria); setSobrepostas(r.sobrepostas ?? []); }).catch((e) => setErro(mensagemErro(e))), []);
 
   useEffect(() => {
     if (aba === "racas") carregarRacas();
@@ -174,7 +179,17 @@ export function Cadastros({ podeLancar = true }: { podeLancar?: boolean }) {
     else carregarCategorias();
   }, [aba, carregarRacas, carregarMotivos, carregarGenitores, carregarMateriais, carregarCategorias]);
 
+  useEffect(() => {
+    if (deepLinkConsumido.current || !materialInicial || materiais === null) return;
+    deepLinkConsumido.current = true;
+    if (materiais.some((material) => material.id === materialInicial)) setPainel({ entidade: "material", modo: "editar", id: materialInicial });
+    else setErro("Material genético não encontrado.");
+  }, [materialInicial, materiais]);
+
+  /* sobe a cada escrita — o "Histórico de alterações" da sub-aba recarrega junto com a tabela */
+  const [alteracoesToken, setAlteracoesToken] = useState(0);
   const recarregarAtual = useCallback(async () => {
+    setAlteracoesToken((t) => t + 1);
     if (aba === "racas") await carregarRacas();
     else if (aba === "motivos") await carregarMotivos();
     else if (aba === "genitores") await carregarGenitores();
@@ -224,6 +239,7 @@ export function Cadastros({ podeLancar = true }: { podeLancar?: boolean }) {
       } else {
         await aplicar();
         setPainelCategoria(null);
+        setAlteracoesToken((t) => t + 1);
         await carregarCategorias();
       }
     } catch (e) { setErro(mensagemErro(e)); }
@@ -237,6 +253,7 @@ export function Cadastros({ podeLancar = true }: { podeLancar?: boolean }) {
       await confirmacaoCategoria.aplicar();
       setConfirmacaoCategoria(null);
       setPainelCategoria(null);
+      setAlteracoesToken((t) => t + 1);
       await carregarCategorias();
     } catch (e) {
       setConfirmacaoCategoria(null);
@@ -320,7 +337,11 @@ export function Cadastros({ podeLancar = true }: { podeLancar?: boolean }) {
       // continua podendo filtrar (K7); só a tabela (edição/ativação) é desabilitada sem podeLancar.
       : <>
         {aba === "categorias" && <>
-          <p className="mt-5 max-w-3xl text-sm text-ink-3">As categorias são calculadas por estas regras, na ordem da tabela — a primeira que casa vence, dentro de cada sexo. Itens marcados "Padrão" vêm do IDEAGRI. Uma troca manual feita na ficha do animal tem prioridade sobre o cálculo até ser desfeita.</p>
+          <p className="mt-5 max-w-3xl text-sm text-ink-3">As categorias são calculadas por estas regras. Cada animal cai em uma só categoria: regras ativas do mesmo sexo não podem ter faixas (idade e parto) que se cruzem. Itens marcados "Padrão" vêm do IDEAGRI. Uma troca manual feita na ficha do animal tem prioridade sobre o cálculo até ser desfeita.</p>
+          {sobrepostas.length > 0 && <div role="alert" className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+            <strong>Regras sobrepostas:</strong> nesses casos só a primeira da ordem vale e a outra nunca é aplicada. Corrija a faixa de uma delas.
+            <ul className="mt-1.5 list-disc pl-5">{sobrepostas.map((par) => <li key={`${par.a.id}-${par.b.id}`}>{par.mensagem}</li>)}</ul>
+          </div>}
           {semCategoriaAtual > 0 && <div role="status" className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">{semCategoriaAtual} {semCategoriaAtual === 1 ? "animal ativo" : "animais ativos"} sem categoria — nenhuma regra casou.</div>}
           <Panel className="mt-4 overflow-hidden">
             <BarraFiltros><label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" disabled={bloqueado} checked={mostrarInativos} onChange={(e) => setMostrarInativos(e.target.checked)} />Mostrar inativas</label></BarraFiltros>
@@ -330,7 +351,7 @@ export function Cadastros({ podeLancar = true }: { podeLancar?: boolean }) {
           </Panel>
           <Panel className="mt-6 overflow-hidden">
             <div className="border-b border-border p-5"><h2 className="font-serif text-xl">Histórico de alterações</h2></div>
-            <AlteracoesCadastro entidade="CategoriaAnimal" />
+            <AlteracoesCadastro entidade="CategoriaAnimal" recarregarToken={alteracoesToken} />
           </Panel>
         </>}
 
@@ -343,7 +364,7 @@ export function Cadastros({ podeLancar = true }: { podeLancar?: boolean }) {
           </Panel>
           <Panel className="mt-6 overflow-hidden">
             <div className="border-b border-border p-5"><h2 className="font-serif text-xl">Histórico de alterações</h2></div>
-            <AlteracoesCadastro entidade="Raca" />
+            <AlteracoesCadastro entidade="Raca" recarregarToken={alteracoesToken} />
           </Panel>
         </>}
 
@@ -356,7 +377,7 @@ export function Cadastros({ podeLancar = true }: { podeLancar?: boolean }) {
           </Panel>
           <Panel className="mt-6 overflow-hidden">
             <div className="border-b border-border p-5"><h2 className="font-serif text-xl">Histórico de alterações</h2></div>
-            <AlteracoesCadastro entidade="MotivoBaixa" />
+            <AlteracoesCadastro entidade="MotivoBaixa" recarregarToken={alteracoesToken} />
           </Panel>
         </>}
 
@@ -369,7 +390,7 @@ export function Cadastros({ podeLancar = true }: { podeLancar?: boolean }) {
           </Panel>
           <Panel className="mt-6 overflow-hidden">
             <div className="border-b border-border p-5"><h2 className="font-serif text-xl">Histórico de alterações</h2></div>
-            <AlteracoesCadastro entidade="GenitorExterno" />
+            <AlteracoesCadastro entidade="GenitorExterno" recarregarToken={alteracoesToken} />
           </Panel>
         </>}
 
@@ -384,7 +405,7 @@ export function Cadastros({ podeLancar = true }: { podeLancar?: boolean }) {
           </Panel>
           <Panel className="mt-6 overflow-hidden">
             <div className="border-b border-border p-5"><h2 className="font-serif text-xl">Histórico de alterações</h2></div>
-            <AlteracoesCadastro entidade="MaterialGenetico" />
+            <AlteracoesCadastro entidade="MaterialGenetico" recarregarToken={alteracoesToken} />
           </Panel>
         </>}
       </>}

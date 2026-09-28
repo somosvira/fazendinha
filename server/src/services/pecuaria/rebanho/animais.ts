@@ -253,7 +253,7 @@ async function rotularComposicaoCalculada(db: DbPecuaria, itens: FracaoRaca[] | 
 
 // ---------- cadastrar ----------
 
-export async function cadastrar(input: CadastrarAnimalInput, usuarioId: number | null): Promise<AnimalResumo> {
+export async function cadastrar(input: CadastrarAnimalInput, usuarioId: number | null): Promise<AnimalResumo & { avisos: Array<{ campo: string; mensagem: string }> }> {
   const erosDatas = validarDatasAnimal({ dataNascimento: input.dataNascimento, dataEntrada: input.dataEntrada, origem: input.origem });
   if (erosDatas.length) throw new RebanhoError("VALIDACAO", erosDatas[0].mensagem, erosDatas[0].campo);
 
@@ -348,7 +348,7 @@ export async function cadastrar(input: CadastrarAnimalInput, usuarioId: number |
     return animal;
   });
 
-  return buscarFicha(criado.id, null).then((f) => f as AnimalResumo);
+  return buscarFicha(criado.id, null).then((f) => ({ ...f, avisos: filiacaoResolvida?.avisos ?? [] }) as AnimalResumo & { avisos: Array<{ campo: string; mensagem: string }> });
 }
 
 // ---------- editar (só campos fixos) ----------
@@ -1386,7 +1386,7 @@ export async function desfazerDestino(animalId: string, usuarioId: number | null
 
     // só baixa ativa protege a linha; a estornada perde o vínculo (FK ON DELETE SET NULL)
     const referenciada = await tx.baixaAnimal.findFirst({ where: { destinoFechadoId: plano.remover.id, estornadaEm: null } });
-    if (referenciada) throw new RebanhoError("CONFLITO", "Essa mudança de destino já foi usada em uma baixa e não pode ser desfeita");
+    if (referenciada) throw new RebanhoError("CONFLITO", "Essa mudança de finalidade já foi usada em uma baixa e não pode ser desfeita");
 
     const removida = linhas.find((l) => l.id === plano.remover.id)!;
     const anterior = linhas.find((l) => l.id === plano.reabrir.id)!;

@@ -6,6 +6,7 @@ import type {
   AnimalFicha,
   BaixaInput,
   CadastrarAnimalInput,
+  CadastrarAnimalResultado,
   Catalogos,
   CategoriaRef,
   CriarCategoriaInput,
@@ -97,7 +98,7 @@ export const listarAnimais = (filtros: ListarFiltros) => {
 };
 
 export const cadastrarAnimal = (input: CadastrarAnimalInput) =>
-  req<AnimalFicha>("/animais", { method: "POST", body: JSON.stringify(input) });
+  req<CadastrarAnimalResultado>("/animais", { method: "POST", body: JSON.stringify(input) });
 
 export const buscarFichaAnimal = (id: string, opts?: { periodoDias?: PeriodoGmd }) => {
   const params = new URLSearchParams();

@@ -38,14 +38,14 @@ export interface CentrosAtividadeDTO { cafe: string | null }
 export const obterCentrosAtividade = () => req<CentrosAtividadeDTO>("/estoque/centros-atividade");
 
 // ── Estoque: saldos + movimentos ───────────────────────────
-export interface SaldoDTO { produtoId: string; nome: string; categoria: { id: string; nome: string; usoAgricola: boolean; usoGenetico: boolean } | null; unidade: UnidadeMedida; centrosCusto: { id: string; nome: string }[]; saldo: number;
+export interface SaldoDTO { produtoId: string; nome: string; materialGeneticoId: string | null; categoria: { id: string; nome: string; usoAgricola: boolean; usoGenetico: boolean } | null; unidade: UnidadeMedida; centrosCusto: { id: string; nome: string }[]; saldo: number;
   /** Média ponderada das entradas valorizadas no sítio; null sem base (nenhuma compra/inventário com valor). */
   custoMedio: number | null;
   /** saldo × custoMedio (0 quando custoMedio é null). */
   valor: number; minimoEstoque: number | null; abaixoMinimo: boolean; }
 export type OrigemMovimento = "COMPRA" | "CONSUMO_DIRETO" | "TRANSFERENCIA" | "PRODUCAO" | "DEVOLUCAO" | "BONIFICACAO" | "INVENTARIO_INICIAL" | "PERDA" | "AJUSTE_INVENTARIO" | "APLICACAO";
 export type VinculoMovimento = { tipo: "TALHAO"; id: number; codigo: string };
-export interface MovimentoDTO { id: string; seq: number; produtoId: string; produto: string; centrosCusto: { id: string; nome: string }[]; tipo: "ENTRADA" | "SAIDA" | "AJUSTE"; origem: OrigemMovimento; status: "CONFIRMADO" | "REVERTIDO"; reversaoDeId: string | null; data: string; quantidade: number; custoUnitario: number; valorTotal: number; fornecedor: string | null; observacao: string | null;
+export interface MovimentoDTO { id: string; seq: number; produtoId: string; produto: string; materialGeneticoId: string | null; centrosCusto: { id: string; nome: string }[]; tipo: "ENTRADA" | "SAIDA" | "AJUSTE"; origem: OrigemMovimento; status: "CONFIRMADO" | "REVERTIDO"; reversaoDeId: string | null; data: string; quantidade: number; custoUnitario: number; valorTotal: number; fornecedor: string | null; observacao: string | null;
   /** Operação financeira de origem (compra, ajuste, inventário…); null nas saídas automáticas. */
   operacaoId: string | null;
   operacaoNumero: number | null;

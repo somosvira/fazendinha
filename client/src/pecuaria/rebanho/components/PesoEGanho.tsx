@@ -3,10 +3,11 @@
 // (GMD desde a anterior, observação, editar/excluir).
 
 import { Pencil, Scale, Trash2, TrendingUp, Weight } from "lucide-react";
-import { Metric } from "../../../financeiro/financeiro-ui";
 import { SeletorPeriodoGmd } from "./SeletorPeriodoGmd";
+import { CardFicha } from "../ui";
 import { GraficoPeso, ROTULO_TIPO_PESAGEM } from "./GraficoPeso";
-import { formatarGmd, formatarKg, rotuloPeriodoGmd } from "../lib/peso";
+import { formatarGmd, formatarKg, inicioJanelaGmd, rotuloPeriodoGmd } from "../lib/peso";
+import { hoje, Metric } from "../../../financeiro/financeiro-ui";
 import { formatarDataBR } from "../lib/rotulos";
 import type { AnimalFicha, PeriodoGmd, Pesagem } from "../types";
 
@@ -29,18 +30,16 @@ export function PesoEGanho({ animal, periodo, onPeriodoChange, podeLancar, onEdi
   onExcluirPesagem: (pesagem: Pesagem) => void;
 }) {
   const { peso, historicoPesagens } = animal;
+  // mesma janela do "GMD do período": conta para trás a partir de hoje, ou da baixa para quem saiu
+  const limite = animal.baixa?.data?.slice(0, 10) ?? hoje();
+  const desde = inicioJanelaGmd(periodo, limite);
   const detalhePeriodo = peso.gmdPeriodo.valor == null
     ? "Pesagens insuficientes"
     // `gmdPeriodo.dias` é o intervalo entre a 1ª e a última pesagem usadas, não a janela escolhida
     : `${peso.gmdPeriodo.pesagens} pesagens em ${peso.gmdPeriodo.dias ?? 0} dias · ${rotuloPeriodoGmd(periodo)}`;
 
-  return <section className="border-t border-border p-6">
-    <div className="flex flex-wrap items-center justify-between gap-3">
-      <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-3">Peso e ganho</h2>
-      <SeletorPeriodoGmd id="periodo-gmd-animal" valor={periodo} onChange={onPeriodoChange} />
-    </div>
-
-    <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+  return <CardFicha icon={Scale} titulo="Peso e ganho" className="lg:col-span-2" acao={<SeletorPeriodoGmd id="periodo-gmd-animal" valor={periodo} onChange={onPeriodoChange} />}>
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <Metric label="Último peso" icon={Scale} valor={formatarKg(peso.ultimo?.kg)} detalhe={peso.ultimo ? formatarDataBR(peso.ultimo.data) : "Sem pesagem registrada"} />
       <Metric label="GMD recente" icon={TrendingUp} valor={formatarGmd(peso.gmdRecente)} detalhe="Entre as duas últimas pesagens" />
       <Metric label="GMD do período" icon={Weight} valor={formatarGmd(peso.gmdPeriodo.valor)} detalhe={detalhePeriodo} />
@@ -48,7 +47,7 @@ export function PesoEGanho({ animal, periodo, onPeriodoChange, podeLancar, onEdi
     </div>
 
     <div className="mt-6">
-      <GraficoPeso historicoPesagens={historicoPesagens} />
+      <GraficoPeso historicoPesagens={historicoPesagens} desde={desde} ate={limite} />
     </div>
 
     <div className="mt-6">
@@ -76,5 +75,5 @@ export function PesoEGanho({ animal, periodo, onPeriodoChange, podeLancar, onEdi
         </tbody>
       </table></div> : <p className="text-sm text-ink-3">Nenhuma pesagem registrada.</p>}
     </div>
-  </section>;
+  </CardFicha>;
 }

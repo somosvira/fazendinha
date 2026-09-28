@@ -17,13 +17,19 @@ const config = { peso: { label: "Peso", color: "var(--cafe)" } } satisfies Chart
 
 const axisProps = { tick: { fill: "var(--ink-2)", fontSize: 12 }, tickLine: false, axisLine: false } as const;
 
-export function GraficoPeso({ historicoPesagens }: { historicoPesagens: HistoricoPesagem[] }) {
+/** `desde`/`ate` ("aaaa-mm-dd", inclusivos) recortam a curva na janela do período do GMD escolhido
+ *  na ficha; sem eles, a curva inteira. */
+export function GraficoPeso({ historicoPesagens, desde = null, ate = null }: { historicoPesagens: HistoricoPesagem[]; desde?: string | null; ate?: string | null }) {
   // a ficha traz as pesagens mais recentes primeiro; o gráfico precisa da ordem cronológica
-  const pontos = [...historicoPesagens]
+  const noPeriodo = historicoPesagens.filter((p) => (desde == null || p.data.slice(0, 10) >= desde) && (ate == null || p.data.slice(0, 10) <= ate));
+  const pontos = [...noPeriodo]
     .sort((a, b) => a.data.localeCompare(b.data))
     .map((p, indice) => ({ chave: `${p.data}-${indice}`, rotuloData: formatarDataBR(p.data), peso: p.pesoKg, tipo: p.tipo }));
 
-  if (pontos.length < 2) return <p className="text-sm text-ink-3">É preciso pelo menos duas pesagens para o gráfico.</p>;
+  if (pontos.length < 2) {
+    const recortado = noPeriodo.length < historicoPesagens.length && historicoPesagens.length >= 2;
+    return <p className="text-sm text-ink-3">{recortado ? "Menos de duas pesagens neste período — escolha um período maior para ver a curva." : "É preciso pelo menos duas pesagens para o gráfico."}</p>;
+  }
 
   return <ChartContainer config={config} className="h-[220px] w-full aspect-auto overflow-hidden" role="img" aria-label="Evolução do peso do animal ao longo do tempo">
     <LineChart data={pontos} margin={{ top: 18, right: 18, bottom: 8, left: 8 }} accessibilityLayer>

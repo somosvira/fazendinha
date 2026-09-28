@@ -6,7 +6,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "../../../db.js";
 import { auditar, hojeFazendaDate, traduzirConflitoUnico, RebanhoError, type DbPecuaria } from "./regras.js";
 import {
-  avaliarCategoria, condicoesSemCategoria, descreverRegra, filtroCategoria, validarRegra,
+  avaliarCategoria, condicoesSemCategoria, descreverRegra, filtroCategoria, mensagemSobreposicao, paresSobrepostos, sobreposicaoDe, validarRegra,
   type CategoriaRef, type CondicaoRegra, type CriterioPartos, type RegraCategoria, type Sexo,
 } from "./categoria.calc.js";
 import type { CriarCategoriaInput, EditarCategoriaInput, RegraPropostaInput } from "./schemas.js";
@@ -139,11 +139,31 @@ async function simularContra(propostas: RegraCategoria[]): Promise<ResultadoSimu
   return { afetados: lista.reduce((s, m) => s + m.total, 0), mudancas: lista, semCategoria: depois.semCategoria };
 }
 
+/** Chave do que decide a faixa de uma regra — para saber se a proposta mexeu nela. */
+const faixa = (r: RegraCategoria) => `${r.sexo}|${r.automatica}|${r.ativo}|${r.idadeMinMeses}|${r.idadeMaxMeses}|${r.sexo === "M" ? "QUALQUER" : r.partos}`;
+
+/**
+ * Recusa (VALIDACAO) se alguma regra nova ou alterada em `propostas` se sobrepõe a outra. Só as
+ * alteradas são checadas: uma sobreposição que já existia no banco (de antes desta trava) não
+ * bloqueia editar outra categoria — ela aparece como aviso na listagem.
+ */
+function exigirSemSobreposicao(propostas: RegraCategoria[], atuais: RegraCategoria[], campo = "idadeMinMeses") {
+  const porId = new Map(atuais.map((r) => [r.id, r]));
+  for (const proposta of propostas) {
+    const atual = porId.get(proposta.id);
+    if (atual && faixa(atual) === faixa(proposta)) continue;
+    const outra = sobreposicaoDe(proposta, propostas);
+    if (outra) throw new RebanhoError("VALIDACAO", mensagemSobreposicao(proposta, outra), campo);
+  }
+}
+
 export async function simularCategorias(propostas: RegraPropostaInput[]): Promise<ResultadoSimulacao> {
-  return simularContra(propostas.map((p, i) => ({
+  const regras = propostas.map((p, i) => ({
     id: p.id ?? `nova-${i}`, nome: p.nome, sexo: p.sexo, automatica: p.automatica, ativo: p.ativo, ordem: p.ordem,
     idadeMinMeses: p.idadeMinMeses ?? null, idadeMaxMeses: p.idadeMaxMeses ?? null, partos: p.partos,
-  })));
+  }));
+  exigirSemSobreposicao(regras, await carregarRegras());
+  return simularContra(regras);
 }
 
 // ---------- cadastro ----------
@@ -156,7 +176,7 @@ export interface CategoriaDTO extends RegraCategoria {
   manuaisAbertas: number;
 }
 
-export async function listarCategorias(incluirInativas = false): Promise<{ itens: CategoriaDTO[]; semCategoria: number }> {
+export async function listarCategorias(incluirInativas = false): Promise<{ itens: CategoriaDTO[]; semCategoria: number; sobrepostas: Array<{ a: CategoriaRef; b: CategoriaRef; mensagem: string }> }> {
   const hoje = hojeFazendaDate();
   const [linhas, animais, manuais] = await Promise.all([
     prisma.categoriaAnimal.findMany({ where: incluirInativas ? {} : { ativo: true }, orderBy: [{ ordem: "asc" }, { nome: "asc" }] }),
@@ -176,6 +196,8 @@ export async function listarCategorias(incluirInativas = false): Promise<{ itens
       manuaisAbertas: manuaisPor.get(c.id) ?? 0,
     })),
     semCategoria,
+    // sobreposições que já estavam gravadas antes da trava — a tela avisa para corrigir
+    sobrepostas: paresSobrepostos(regras).map(([a, b]) => ({ a: { id: a.id, nome: a.nome }, b: { id: b.id, nome: b.nome }, mensagem: mensagemSobreposicao(a, b) })),
   };
 }
 
@@ -190,6 +212,14 @@ export async function criarCategoria(input: CriarCategoriaInput, usuarioId: numb
   exigirRegraValida(input);
   const ultima = await prisma.categoriaAnimal.findFirst({ orderBy: { ordem: "desc" }, select: { ordem: true } });
   const criada = await prisma.$transaction(async (tx) => {
+    if (input.automatica) {
+      const nova: RegraCategoria = {
+        id: "nova", nome: input.nome, sexo: input.sexo, automatica: true, ativo: true, ordem: input.ordem ?? Number.MAX_SAFE_INTEGER,
+        idadeMinMeses: input.idadeMinMeses ?? null, idadeMaxMeses: input.idadeMaxMeses ?? null, partos: input.sexo === "F" ? input.partos : "QUALQUER",
+      };
+      const outra = sobreposicaoDe(nova, await carregarRegras(tx));
+      if (outra) throw new RebanhoError("VALIDACAO", mensagemSobreposicao(nova, outra), "idadeMinMeses");
+    }
     const c = await tx.categoriaAnimal.create({
       data: {
         nome: input.nome, sexo: input.sexo, automatica: input.automatica,
@@ -223,6 +253,17 @@ export async function editarCategoria(id: string, input: EditarCategoriaInput, u
     }
     if (manuais > 0 && input.ativo === false) {
       throw new RebanhoError("CONFLITO", `${manuais} animal(is) têm esta categoria manual; volte-os ao automático antes de desativar`, "ativo");
+    }
+    const sexo = input.sexo ?? existente.sexo;
+    const final: RegraCategoria = {
+      id, nome, sexo, automatica, ativo: input.ativo ?? existente.ativo, ordem: input.ordem ?? existente.ordem,
+      idadeMinMeses: automatica ? idadeMinMeses : null, idadeMaxMeses: automatica ? idadeMaxMeses : null,
+      partos: automatica && sexo === "F" ? input.partos ?? existente.partos : "QUALQUER",
+    };
+    // reativar ou mexer na faixa não pode deixar a regra cruzando com outra ativa
+    if (faixa(final) !== faixa(paraRegra(existente))) {
+      const outra = sobreposicaoDe(final, await carregarRegras(tx));
+      if (outra) throw new RebanhoError("VALIDACAO", mensagemSobreposicao(final, outra), input.ativo === true ? "ativo" : "idadeMinMeses");
     }
     const c = await tx.categoriaAnimal.update({
       where: { id },
@@ -263,6 +304,12 @@ export async function restaurarPadroes(simular: boolean, usuarioId: number | nul
   });
   // padrão apagado do banco (não deveria acontecer) volta a existir
   for (const p of CATEGORIAS_PADRAO) if (!porChave.has(p.chavePadrao)) propostas.push({ id: `padrao-${p.chavePadrao}`, ativo: true, ...p });
+  // um padrão reativado pode cruzar com uma categoria criada pela fazenda
+  const conflito = paresSobrepostos(propostas).find(([a, b]) => linhas.some((l) => l.id === a.id || l.id === b.id) || a.id.startsWith("padrao-") || b.id.startsWith("padrao-"));
+  if (conflito) {
+    const [a, b] = conflito;
+    throw new RebanhoError("CONFLITO", `Restaurar os padrões deixaria regras sobrepostas. ${mensagemSobreposicao(a, b)} Desative ou ajuste a categoria criada pela fazenda antes de restaurar.`);
+  }
   const resultado = await simularContra(propostas);
   if (simular) return resultado;
 
