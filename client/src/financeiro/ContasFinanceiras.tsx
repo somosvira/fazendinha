@@ -44,9 +44,8 @@ export function ContasFinanceiras({ onNav }: { onNav: (tab: Tab) => void }) {
   const [buscaConta, setBuscaConta] = useState(""); const [tipoConta, setTipoConta] = useState(""); const [instituicaoConta, setInstituicaoConta] = useState(""); const [statusConta, setStatusConta] = useState("");
   const [filtrosExtratoGeral, setFiltrosExtratoGeral] = useState<FiltrosExtratoGeral>(() => ({ ...FILTROS_EXTRATO_GERAL_INICIAIS, ...periodoInicial(periodoDoAnoAtual(), { permitirVazio: true }) }));
   const [periodoConta, setPeriodoConta] = useState(() => periodoInicial(periodoDoAnoAtual(), { permitirVazio: true }));
-  // Só uma das duas queries de extrato está "ativa" por vez, conforme a conta
-  // selecionada — a outra fica `enabled: false` (nunca dispara, não é a que
-  // gatilha o loading desta tela).
+  // Só a query do modo atual (geral ou conta) fica ligada; carregando e erro
+  // vêm dela — query desligada fica isPending para sempre.
   const extratoContaQuery = useExtratoConta(contaId != null && selecionada ? contaId : null);
   const extratoGeralQuery = useExtratoGeral(contaId == null);
   const extratoAtivo = contaId == null ? extratoGeralQuery : extratoContaQuery;
