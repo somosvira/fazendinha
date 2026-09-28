@@ -34,7 +34,10 @@ export async function prepararPartidasTx(tx: Prisma.TransactionClient, args: {
   const ids = new Set<string>();
   for (const escolha of escolhas) {
     const quantidade = decimal(escolha.quantidade);
-    if (!quantidade.isFinite() || quantidade.isZero() || quantidade.decimalPlaces() > 3 || (saida ? quantidade.gte(0) : quantidade.lte(0))) {
+    // A saída guarda quantidade positiva; o sinal físico vem de tipo=SAIDA.
+    // Apenas um AJUSTE negativo usa quantidade/alocação negativas no razão.
+    if (!quantidade.isFinite() || quantidade.isZero() || quantidade.decimalPlaces() > 3
+      || (args.quantidade.isNegative() ? quantidade.gte(0) : quantidade.lte(0))) {
       throw new EstoqueError("VALIDACAO", "Quantidade inválida na distribuição por partida");
     }
     let partida = escolha.partidaId ? await tx.partidaProduto.findFirst({ where: { id: escolha.partidaId, produtoId: args.produtoId } }) : null;

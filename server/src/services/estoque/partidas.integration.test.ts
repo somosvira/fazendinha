@@ -1,7 +1,8 @@
 import crypto from "node:crypto";
+import { Prisma } from "@prisma/client";
 import { afterAll, describe, expect, it } from "vitest";
 import { prisma } from "../../db.js";
-import { ativarRastreio, listarPartidas } from "./partidas.js";
+import { ativarRastreio, listarPartidas, prepararPartidasTx } from "./partidas.js";
 
 const describeComBanco = process.env.PECUARIA_DB_INTEGRATION === "1" ? describe : describe.skip;
 const run = crypto.randomUUID().slice(0, 8);
@@ -38,11 +39,16 @@ describeComBanco("rastreio de partidas no estoque único", () => {
       produtoId: produto.id, propriedadeId: propriedade.id, tipo: "SAIDA", origem: "SANIDADE",
       data: new Date("2026-09-02"), quantidade: 1, custoUnitario: 12, valorTotal: 12,
     } })).rejects.toThrow();
-    const saida = await prisma.movimentoEstoque.create({ data: {
-      produtoId: produto.id, propriedadeId: propriedade.id, tipo: "SAIDA", origem: "SANIDADE",
-      data: new Date("2026-09-02"), quantidade: 1, custoUnitario: 12, valorTotal: 12,
-      alocacaoPartidaEstoques: { create: { partidaId: legado.id, quantidade: 1 } },
-    } });
+    const saida = await prisma.$transaction(async (tx) => {
+      const distribuicao = await prepararPartidasTx(tx, { produtoId: produto.id, rastrearPartidas: true,
+        propriedadeId: propriedade.id, tipo: "SAIDA", quantidade: new Prisma.Decimal(1),
+        partidas: [{ partidaId: legado.id, quantidade: 1 }] });
+      return tx.movimentoEstoque.create({ data: {
+        produtoId: produto.id, propriedadeId: propriedade.id, tipo: "SAIDA", origem: "SANIDADE",
+        data: new Date("2026-09-02"), quantidade: 1, custoUnitario: 12, valorTotal: 12,
+        alocacaoPartidaEstoques: { create: distribuicao.map((p) => ({ partidaId: p.partidaId, quantidade: p.quantidade })) },
+      } });
+    });
     expect((await listarPartidas(produto.id, propriedade.id))[0].saldo).toBe("9");
     expect(saida.produtoId).toBe(produto.id);
   });
