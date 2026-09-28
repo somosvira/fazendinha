@@ -1,0 +1,18 @@
+import { describe, expect, it } from "vitest";
+import { calcularPrazoCarencia } from "./carencia.calc.js";
+
+describe("carência por animal", () => {
+  const primeira = { data: new Date("2026-09-01"), aplicadaEm: new Date("2026-09-01T10:00:00-03:00"), precisaoTemporal: "HORA", carenciaLeiteHoras: 24, carenciaCarneHoras: 48 };
+  it("não inventa uma data de carência sem aplicações", () => {
+    expect(calcularPrazoCarencia([], "LEITE")).toEqual({ estado: "NENHUMA" });
+  });
+  it("guarda o término mais distante de cada destino", () => {
+    const segunda = { ...primeira, aplicadaEm: new Date("2026-09-02T10:00:00-03:00"), carenciaLeiteHoras: 12 };
+    expect(calcularPrazoCarencia([primeira, segunda], "LEITE")).toMatchObject({ estado: "CONHECIDO", ate: new Date("2026-09-02T22:00:00-03:00") });
+    expect(calcularPrazoCarencia([primeira, segunda], "CARNE")).toMatchObject({ estado: "CONHECIDO", ate: new Date("2026-09-04T10:00:00-03:00") });
+  });
+  it("não trata ausência de prazo como zero", () => {
+    expect(calcularPrazoCarencia([{ ...primeira, carenciaLeiteHoras: null }], "LEITE")).toEqual({ estado: "NAO_INFORMADO" });
+    expect(calcularPrazoCarencia([{ ...primeira, carenciaLeiteHoras: 0 }], "LEITE")).toMatchObject({ estado: "CONHECIDO", ate: primeira.aplicadaEm });
+  });
+});

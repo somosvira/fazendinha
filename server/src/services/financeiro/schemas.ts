@@ -134,6 +134,12 @@ export const itemOperacaoSchema = z.object({
   valorUnitario: z.coerce.number().nonnegative().optional(),
   valorTotal: z.coerce.number().positive().optional(),
   estocavel: z.boolean().default(false),
+  partidas: z.array(z.object({
+    partidaId: z.string().uuid().optional(),
+    codigo: z.string().trim().min(1).max(100).optional(),
+    validade: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullish(),
+    quantidade: z.coerce.number().finite(),
+  })).optional(),
 }).refine((item) => item.valorUnitario !== undefined || item.valorTotal !== undefined, { message: "Informe o valor unitário ou total do item", path: ["valorUnitario"] });
 
 const parcelaSchema = z.object({

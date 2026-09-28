@@ -5,6 +5,7 @@ import { OrigemMovimentoEstoque } from "@prisma/client";
 import { prisma } from "../db.js";
 import * as svc from "../services/estoque/estoque.js";
 import * as produtosSvc from "../services/estoque/produtos.js";
+import * as partidasSvc from "../services/estoque/partidas.js";
 import { produtoSchema, patchProdutoSchema, produtosQuerySchema } from "../services/estoque/produtos.schemas.js";
 import * as refSvc from "../services/estoque/referencias.js";
 import { listarParceiros } from "../services/financeiro/parceiros.js";
@@ -90,6 +91,19 @@ export const estoqueRouter = new Hono()
   // domínio que o originou (estorno da operação ou da aplicação agrícola).
 
   // ── Produtos (cadastro) ─────────────────────────────────────────────────────
+  .get("/estoque/partidas", zValidator("query", z.object({ produtoId: z.string().uuid() })), async (c) => {
+    try {
+      const propriedadeId = await resolverEscopoLeitura(c);
+      if (propriedadeId == null) throw new svc.EstoqueError("VALIDACAO", "Selecione um sítio para consultar as partidas");
+      return c.json(await partidasSvc.listarPartidas(c.req.valid("query").produtoId, propriedadeId));
+    } catch (e) { const { status, body } = fail(e); return c.json(body, status); }
+  })
+  .post("/estoque/produtos/:id/rastreio", exigePermissao("lancar"), async (c) => {
+    try {
+      if (!z.string().uuid().safeParse(c.req.param("id")).success) throw new svc.EstoqueError("VALIDACAO", "Produto inválido");
+      return c.json(await partidasSvc.ativarRastreio(c.req.param("id"), usuarioId(c)), 201);
+    } catch (e) { const { status, body } = fail(e); return c.json(body, status); }
+  })
   .get("/estoque/produtos", zValidator("query", produtosQuerySchema), async (c) => {
     const { uso, q, ativo } = c.req.valid("query");
     return c.json(await produtosSvc.listarProdutos({ uso, q, ativo: parseAtivo(ativo), incluirInativos: true }));

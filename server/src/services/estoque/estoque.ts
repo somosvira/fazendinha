@@ -7,6 +7,7 @@ import { propriedadePrincipalId, escopoPadraoLeitura } from "../propriedade.js";
 import { resolverCentroSaida } from "./centro.calc.js";
 import { rotuloUnidade } from "./unidades.js";
 import { SEM_VINCULO } from "../../lib/ids.js";
+import { prepararPartidasTx, saldoPartidaTx } from "./partidas.js";
 
 export class EstoqueError extends Error {
   constructor(public code: "NAO_ENCONTRADO" | "MES_FECHADO" | "ORIGEM_AUTOMATICA" | "CONFLITO" | "VALIDACAO", m: string) {
@@ -24,6 +25,10 @@ const naoFutura = z.string().refine((s) => new Date(s) <= new Date(), "data não
 // antes de chegar ao Prisma.
 const MAX_QTD = 999_999_999.999;
 const MAX_CUSTO = 9_999_999_999.99;
+const distribuicaoPartidasSchema = z.array(z.object({
+  partidaId: z.string().uuid().optional(), codigo: z.string().trim().min(1).max(100).optional(),
+  validade: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullish(), quantidade: z.number().finite(),
+})).optional();
 
 export const movimentoSchema = z
   .object({
@@ -37,6 +42,7 @@ export const movimentoSchema = z
     observacao: z.string().min(5, "justificativa é obrigatória").max(200),
     propriedadeId: z.number().int().optional(), // sítio (multi-propriedade)
     centroCustoId: z.string().uuid().nullable().optional(),
+    partidas: distribuicaoPartidasSchema,
   })
   // AJUSTE aceita negativa (correção de saldo) mas nunca zero.
   .superRefine((v, ctx) => {
@@ -48,6 +54,7 @@ export const ajusteContagemSchema = z.object({
   produtoId: z.string().uuid(),
   quantidadeContada: z.number().finite().min(0).max(MAX_QTD).multipleOf(0.001),
   saldoEsperado: z.number().finite().min(-MAX_QTD).max(MAX_QTD).multipleOf(0.001),
+  partidas: distribuicaoPartidasSchema,
   observacao: z.string().trim().min(5, "justificativa é obrigatória").max(200),
   propriedadeId: z.number().int().positive().optional(),
   centroCustoId: z.string().uuid().nullable().optional(),
@@ -360,10 +367,13 @@ async function registrarMovimentoTx(tx: Prisma.TransactionClient, input: Movimen
     if (new Prisma.Decimal(input.quantidade).isNegative() && !(await produtoTemEstoque(tx, produto.id, propriedadeId))) {
       throw new EstoqueError("VALIDACAO", "Este produto não tem estoque neste sítio — registre uma compra ou um inventário antes de dar baixa");
     }
+    const distribuicao = await prepararPartidasTx(tx, { produtoId: produto.id, rastrearPartidas: produto.rastrearPartidas,
+      propriedadeId, tipo: "AJUSTE", quantidade: new Prisma.Decimal(input.quantidade), partidas: input.partidas });
     const operacao = await tx.operacao.create({ data: {
       tipo: "AJUSTE_ESTOQUE", status: "CONFIRMADA", data, descricao: input.observacao,
       valorTotal: valorTotal.abs(), propriedadeId, criadoPorId: usuarioId ?? null,
-      itens: { create: { ordem: 1, produtoId: produto.id, descricao: `Ajuste: ${produto.nome}`, quantidade: new Prisma.Decimal(input.quantidade).abs(), unidade: rotuloUnidade(produto.unidade), valorUnitario: custo, valorTotal: valorTotal.abs(), estocavel: true } },
+      itens: { create: { ordem: 1, produtoId: produto.id, descricao: `Ajuste: ${produto.nome}`, quantidade: new Prisma.Decimal(input.quantidade).abs(), unidade: rotuloUnidade(produto.unidade), valorUnitario: custo, valorTotal: valorTotal.abs(), estocavel: true,
+        ...(distribuicao.length ? { partidasSnapshot: distribuicao.map((p) => ({ partidaId: p.partidaId, codigo: p.codigo, validade: p.validade?.toISOString().slice(0, 10) ?? null, quantidade: p.quantidade.toString() })) } : {}) } },
     }, include: { itens: true } });
     const m = await tx.movimentoEstoque.create({
       data: {
@@ -380,6 +390,7 @@ async function registrarMovimentoTx(tx: Prisma.TransactionClient, input: Movimen
         centroCustoId,
         observacao: input.observacao,
         criadoPorId: usuarioId ?? null,
+        ...(distribuicao.length ? { alocacaoPartidaEstoques: { create: distribuicao.map((p) => ({ partidaId: p.partidaId, quantidade: p.quantidade })) } } : {}),
       },
     });
 
@@ -400,7 +411,7 @@ export async function ajustarContagem(input: z.infer<typeof ajusteContagemSchema
       const delta = new Prisma.Decimal(input.quantidadeContada).minus(saldo);
       if (delta.isZero()) throw new EstoqueError("VALIDACAO", "A quantidade contada já corresponde ao estoque. Nenhum ajuste é necessário.");
       if (delta.abs().greaterThan(MAX_QTD)) throw new EstoqueError("VALIDACAO", "A diferença excede o limite permitido para um ajuste.");
-      const resultado = await registrarMovimentoTx(tx, { produtoId: input.produtoId, tipo: "AJUSTE", quantidade: delta.toNumber(), data: iso(new Date()), observacao: input.observacao, centroCustoId: input.centroCustoId }, propriedadeId, input.usuarioId);
+      const resultado = await registrarMovimentoTx(tx, { produtoId: input.produtoId, tipo: "AJUSTE", quantidade: delta.toNumber(), data: iso(new Date()), observacao: input.observacao, centroCustoId: input.centroCustoId, partidas: input.partidas }, propriedadeId, input.usuarioId);
       await auditar(tx, { entidade: "Operacao", entidadeId: resultado.operacaoId, acao: "AJUSTE_CONTAGEM", usuarioId: input.usuarioId, motivo: input.observacao,
         antes: { produtoId: produto.id, propriedadeId, quantidade: saldo.toNumber() },
         depois: { quantidade: input.quantidadeContada, diferenca: delta.toNumber(), movimentoId: resultado.id } });
@@ -434,12 +445,19 @@ export async function estornarMovimentoTx(
   } else {
     await tx.$queryRaw`SELECT "id" FROM "MovimentoEstoque" WHERE "id" = ${movimentoId} FOR NO KEY UPDATE`;
   }
-  const mov = await tx.movimentoEstoque.findFirst({ where: { id: movimentoId, ...filtroPropriedade }, include: { revertidoPor: true } });
+  const mov = await tx.movimentoEstoque.findFirst({ where: { id: movimentoId, ...filtroPropriedade }, include: { revertidoPor: true, alocacaoPartidaEstoques: true } });
   if (!mov) throw new EstoqueError("NAO_ENCONTRADO", "movimento não encontrado");
   if (mov.revertidoPor || mov.status === "REVERTIDO") throw new EstoqueError("ORIGEM_AUTOMATICA", "movimento já estornado");
   if (mov.reversaoDeId != null) throw new EstoqueError("ORIGEM_AUTOMATICA", "um movimento de estorno não pode ser estornado novamente");
 
   const pid = mov.propriedadeId ?? await propriedadePrincipalId();
+  if (mov.tipo === "ENTRADA" || (mov.tipo === "AJUSTE" && mov.quantidade.gt(0))) {
+    for (const alocacao of mov.alocacaoPartidaEstoques) {
+      if ((await saldoPartidaTx(tx, alocacao.partidaId, pid)).lt(alocacao.quantidade)) {
+        throw new EstoqueError("CONFLITO", "A partida da entrada já foi consumida; reconcilie o estoque antes de estornar.");
+      }
+    }
+  }
   const data = opts.data ?? new Date();
   if (await mesFechado(tx, pid, data)) throw new EstoqueError("MES_FECHADO", "período financeiro fechado");
   const inverso = await tx.movimentoEstoque.create({ data: {
@@ -451,6 +469,7 @@ export async function estornarMovimentoTx(
     propriedadeId: pid, operacaoId: mov.operacaoId, reversaoDeId: mov.id, centroCustoId: mov.centroCustoId,
     observacao: opts.observacao ?? `Estorno do movimento #${mov.seq}`,
     criadoPorId: opts.usuarioId ?? null,
+    ...(mov.alocacaoPartidaEstoques.length ? { alocacaoPartidaEstoques: { create: mov.alocacaoPartidaEstoques.map((a) => ({ partidaId: a.partidaId, quantidade: mov.tipo === "AJUSTE" ? a.quantidade.negated() : a.quantidade })) } } : {}),
   } });
   await tx.movimentoEstoque.update({ where: { id: movimentoId }, data: { status: "REVERTIDO" } });
   await auditar(tx, { entidade: "MovimentoEstoque", entidadeId: mov.id, acao: "ESTORNO_MOVIMENTO", usuarioId: opts.usuarioId, motivo: opts.observacao,

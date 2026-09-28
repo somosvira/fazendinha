@@ -10,6 +10,7 @@ Esta pasta concentra o contexto funcional e técnico da reconstrução da pecuá
 | Follow-up da v1 | mesclado na `main` em 28/09/2026 | [PR #306](https://github.com/somosvira/fazendinha/pull/306) |
 | v2 · Genética | PR em rascunho, reconciliado com a `main`, aguardando CI e homologação | [PR #305](https://github.com/somosvira/fazendinha/pull/305) |
 | Validação da v2 com dados reais | pendente | executar a carga com o dump real do IDEAGRI e confirmar `ANIMAL.CDCENTRALSEMEN` |
+| v3 · Sanidade, peso e nutrição | implementação iniciada em branch sobre a v2; ainda incompleta e não homologada | [Artefato V3](./artefatos/pecuaria-v3-sanidade-peso-nutricao.html), contrato-alvo de um único PR sobre a v2 |
 
 “Concluída” significa que a implementação e os testes automatizados foram feitos. A v2 só estará disponível para o restante do time depois de sair de rascunho, passar pela validação real, ser revisada e entrar na `main`.
 
@@ -19,6 +20,7 @@ Esta pasta concentra o contexto funcional e técnico da reconstrução da pecuá
 2. [Pecuária v2 · Genética](./artefatos/pecuaria-v2-genetica.html): decisões da v2, tabelas, regras, telas e integração com estoque.
 3. [Roteiro de Testes do Rebanho](./artefatos/roteiro-testes-rebanho-v1-v2.html): QA manual de ponta a ponta para v1 e v2. As marcações ficam apenas no navegador de quem executar.
 4. [IDEAGRI Schema Map](./artefatos/ideagri-schema-map.html): inventário do banco legado e relações usadas para preparar a carga inicial.
+5. [Pecuária v3 · Sanidade, peso e nutrição](./artefatos/pecuaria-v3-sanidade-peso-nutricao.html): proposta de implementação sobre a v2, com diagramas, contrato de dados, efeitos operacionais, comparação com o IDEAGRI e fases/testes de um único PR.
 
 Os arquivos são snapshots HTML e preservam os diagramas e a interatividade dos artefatos originais. Alguns recursos visuais carregam bibliotecas pela internet. Se o GitHub mostrar apenas o código-fonte, baixe o arquivo e abra-o no navegador.
 
@@ -28,6 +30,8 @@ Os arquivos são snapshots HTML e preservam os diagramas e a interatividade dos 
 - O mapa do IDEAGRI descreve o legado, não o modelo que o Fazendinha deve copiar.
 - O Schema Map da v1 é um retrato anterior à implementação da v2. A seção “Genética” do roadmap nele propõe `Reprodutor`, `CentralSemen` e `EstoqueSemen`, mas foi superada pela decisão documentada na v2: `GenitorExterno`, `MaterialGenetico` e o estoque único do produto.
 - O documento da v2 é o contrato de produto e arquitetura do PR #305. Para detalhes exatos de implementação, prevalecem a migration, o schema Prisma e os testes da branch.
+- O artefato da v3 é o contrato-alvo, baseado no código do #305 em `e31eb55`. A implementação foi iniciada, mas o artefato ainda não representa recursos prontos ou homologação da carga real. A entrega em um único PR é requisito; os padrões propostos e os pontos de revisão estão explicitados no artefato.
+- A primeira fatia em andamento inclui schema/migration aditivos, partida no estoque genérico, aplicação sanitária com dose incluída em Serviço sem cadastro obrigatório de Produto, carência e ocorrência clínica. Protocolos, exames, manejo coletivo, nutrição, telas completas e importação IDEAGRI ainda não devem ser anunciados como disponíveis.
 - O roteiro de testes combina v1 e v2, embora a v2 ainda não esteja na `main`. Para testá-lo inteiro, use uma branch que contenha os PRs #305 e #306 já conciliados.
 
 Quando houver divergência, use esta ordem para resolver: invariantes de produto aprovadas → migration/schema → testes automatizados → implementação → documento histórico. Corrija a documentação na mesma PR que alterar o comportamento.
@@ -48,7 +52,7 @@ Quando houver divergência, use esta ordem para resolver: invariantes de produto
 3. **Rodar a carga real da v2.** Confirmar a consulta de genitores externos, especialmente `ANIMAL.CDCENTRALSEMEN`; executar a importação duas vezes para verificar idempotência e depois `validar:pecuaria`.
 4. **Executar o roteiro manual completo.** Cobrir filiação, composição calculada versus informada, genitor inativo, animal baixado como genitor, material genético, saldo e os avisos de idade/ciclo.
 5. **Tirar o PR #305 de rascunho, revisar e mesclar.** Só então atualizar esta página para marcar a v2 como presente na `main`.
-6. **Abrir a v3 apenas depois dessa estabilização.** Começar por um contrato de domínio curto para Sanidade, peso e nutrição, mantendo integração com produto, estoque, custo e carência como dependências explícitas.
+6. **Revisar o planejamento da v3 e implementar em um único PR sobre a v2.** Usar o [artefato V3](./artefatos/pecuaria-v3-sanidade-peso-nutricao.html) para revisar escopo, decisões, tabelas e critérios de aceite. O desenvolvimento pode partir do head atualizado do #305; se a v2 ainda estiver aberta, manter a base do PR na branch da v2 e depois ajustar para a `main`. A liberação da v3 depende da estabilização da v2 e da homologação de suas próprias mudanças.
 
 ## Manutenção
 
@@ -59,4 +63,4 @@ Toda PR que altere a pecuária deve:
 - registrar o PR associado e a data do retrato;
 - evitar depender de links privados do Claude ou de outro chat como única fonte de contexto.
 
-Os quatro HTMLs desta pasta foram exportados do Claude em 28/09/2026 e copiados sem alteração de conteúdo.
+Os quatro HTMLs originais (v1, v2, roteiro de testes e mapa IDEAGRI) foram exportados do Claude em 28/09/2026 e copiados sem alteração de conteúdo. O planejamento da v3 foi elaborado no repositório nessa mesma data e usa diagramas locais, sem bibliotecas externas.

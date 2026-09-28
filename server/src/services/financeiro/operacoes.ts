@@ -5,6 +5,7 @@ import { gerarParcelasFinanceiras, totalItensFinanceiros } from "./parcelas.calc
 import { obterBasesCusto, produtosComEstoque } from "../estoque/estoque.js";
 import { valorSaidaDaBase } from "../estoque/estoque.calc.js";
 import { rotuloUnidade } from "../estoque/unidades.js";
+import { prepararPartidasTx, saldoPartidaTx } from "../estoque/partidas.js";
 import type { z } from "zod";
 import type { liquidacaoSchema, operacaoSchema, simulacaoParcelasSchema, transacaoAvulsaSchema, transferenciaSchema } from "./schemas.js";
 
@@ -126,6 +127,7 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
       if (estocavelItens[indice] && (!item.produtoId || !produtosPorId.has(item.produtoId))) {
         throw new FinanceiroError("VALIDACAO", `O item “${item.descricao}” movimenta estoque e precisa apontar para um produto ativo`);
       }
+      if (!estocavelItens[indice] && item.partidas?.length) throw new FinanceiroError("VALIDACAO", "Partidas só podem ser informadas para item que movimenta estoque");
     });
 
     const classificar = async (categoriaId: string | null | undefined, classificacao?: "CUSTEIO" | "INVESTIMENTO" | null) => {
@@ -154,6 +156,7 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
         ? dinheiro(new Prisma.Decimal(item.quantidade).mul(item.valorUnitario ?? 0))
         : dinheiro(item.valorTotal),
       estocavel: estocavelItens[indice],
+      ...(item.partidas?.length ? { partidasSnapshot: item.partidas as Prisma.InputJsonValue } : {}),
       ...await classificar(item.categoriaId === undefined ? produtosPorId.get(item.produtoId ?? "")?.categoriaId : item.categoriaId, item.classificacao),
     })));
     const classificacaoOperacao = await classificar(itens.length ? null : input.categoriaId, input.classificacao);
@@ -205,6 +208,13 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
         ? await obterBasesCusto(tx, itensEstoque.map((item) => item.produtoId!), input.propriedadeId)
         : null;
       for (const item of itensEstoque) {
+        const entrada = input.itens[item.ordem - 1];
+        const produto = produtosPorId.get(item.produtoId!)!;
+        const distribuicao = await prepararPartidasTx(tx, {
+          produtoId: produto.id, rastrearPartidas: produto.rastrearPartidas, propriedadeId: input.propriedadeId,
+          tipo: tipoMovimento, quantidade: item.quantidade,
+          partidas: entrada.partidas,
+        });
         const valores = custosSaida
           ? valorSaidaDaBase(item.quantidade, custosSaida.get(item.produtoId!))
           : { custoUnitario: item.valorUnitario, valorTotal: item.valorTotal };
@@ -214,6 +224,10 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
           centroCustoId: item.centroCustoId ?? input.centroCustoId ?? null,
           propriedadeId: input.propriedadeId, criadoPorId: input.usuarioId && input.usuarioId > 0 ? input.usuarioId : null,
           observacao: input.descricao,
+          ...(distribuicao.length ? { alocacaoPartidaEstoques: { create: distribuicao.map((p) => ({ partidaId: p.partidaId, quantidade: p.quantidade })) } } : {}),
+        } });
+        if (distribuicao.length) await tx.itemOperacao.update({ where: { id: item.id }, data: {
+          partidasSnapshot: distribuicao.map((p) => ({ partidaId: p.partidaId, codigo: p.codigo, validade: p.validade?.toISOString().slice(0, 10) ?? null, quantidade: p.quantidade.toString() })),
         } });
       }
     }
@@ -389,16 +403,28 @@ export async function estornarOperacao(id: string, motivo: string, contexto: Con
     if (!await bloquearOperacao(tx, id, contexto.propriedadeId)) throw new FinanceiroError("NAO_ENCONTRADO", "Operação não encontrada");
     const operacao = await tx.operacao.findFirst({
       where: { id, propriedadeId: contexto.propriedadeId },
-      include: { transacoes: true, compromissos: { include: { liquidacoes: true } }, movimentosEstoque: { include: { revertidoPor: true } } },
+      include: { transacoes: true, compromissos: { include: { liquidacoes: true } }, movimentosEstoque: { include: { revertidoPor: true, alocacaoPartidaEstoques: true } } },
     });
     if (!operacao) throw new FinanceiroError("NAO_ENCONTRADO", "Operação não encontrada");
     if (operacao.status === "CANCELADA") throw new FinanceiroError("JA_REVERTIDO", "A operação já foi cancelada");
+    const [aplicacaoVinculada, exameVinculado] = await Promise.all([
+      tx.aplicacaoProduto.findFirst({ where: { status: "VALIDO", OR: [{ operacaoServicoId: id }, { itemCompraDireta: { operacaoId: id } }] }, select: { id: true } }),
+      tx.exameAnimal.findFirst({ where: { status: "VALIDO", operacaoServicoId: id }, select: { id: true } }),
+    ]);
+    if (aplicacaoVinculada || exameVinculado) throw new FinanceiroError("CONFLITO", "Esta operação financia aplicações ou exames ativos. Revise os vínculos antes de cancelá-la.");
     await exigirPeriodoAberto(tx, operacao.propriedadeId, new Date());
 
     for (const transacao of operacao.transacoes.filter((item) => item.status === "CONFIRMADA" && item.tipo !== "REVERSAO")) {
       await estornarTransacaoTx(tx, transacao.id, `${PREFIXO_CANCELAMENTO_OPERACAO}${operacao.numero}: ${motivo}`, contexto);
     }
     for (const movimento of operacao.movimentosEstoque.filter((item) => item.status === "CONFIRMADO" && !item.reversaoDeId && !item.revertidoPor)) {
+      if (movimento.tipo === "ENTRADA" || (movimento.tipo === "AJUSTE" && movimento.quantidade.gt(0))) {
+        for (const alocacao of movimento.alocacaoPartidaEstoques) {
+          if ((await saldoPartidaTx(tx, alocacao.partidaId, movimento.propriedadeId ?? operacao.propriedadeId)).lt(alocacao.quantidade)) {
+            throw new FinanceiroError("CONFLITO", "A partida da entrada já foi consumida; reconcilie o estoque antes de cancelar a operação.");
+          }
+        }
+      }
       await tx.movimentoEstoque.create({ data: {
         produtoId: movimento.produtoId,
         tipo: movimento.tipo === "ENTRADA" ? "SAIDA" : movimento.tipo === "SAIDA" ? "ENTRADA" : "AJUSTE",
@@ -407,6 +433,7 @@ export async function estornarOperacao(id: string, motivo: string, contexto: Con
         custoUnitario: movimento.custoUnitario, valorTotal: movimento.tipo === "AJUSTE" ? movimento.valorTotal.negated() : movimento.valorTotal,
         propriedadeId: movimento.propriedadeId, operacaoId: operacao.id, centroCustoId: movimento.centroCustoId,
         reversaoDeId: movimento.id, observacao: `${PREFIXO_CANCELAMENTO_OPERACAO}${operacao.numero}: ${motivo}`,
+        ...(movimento.alocacaoPartidaEstoques.length ? { alocacaoPartidaEstoques: { create: movimento.alocacaoPartidaEstoques.map((a) => ({ partidaId: a.partidaId, quantidade: movimento.tipo === "AJUSTE" ? a.quantidade.negated() : a.quantidade })) } } : {}),
       } });
       await tx.movimentoEstoque.update({ where: { id: movimento.id }, data: { status: "REVERTIDO" } });
     }
