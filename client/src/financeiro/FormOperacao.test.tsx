@@ -156,9 +156,11 @@ describe("FormOperacao", () => {
 
   it("não sobrescreve um valor digitado antes da sugestão chegar", async () => {
     let responder: (v: unknown) => void = () => {};
-    vi.stubGlobal("fetch", vi.fn(() => new Promise((resolve) => { responder = resolve; })));
+    const fetchMock = vi.fn(() => new Promise((resolve) => { responder = resolve; }));
+    vi.stubGlobal("fetch", fetchMock);
     montar();
     fireEvent.change(screen.getByRole("combobox", { name: "Produto do item 1" }), { target: { value: uid(1) } });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
     const campo = screen.getByRole("spinbutton", { name: "Valor unitário do item 1" }) as HTMLInputElement;
     fireEvent.change(campo, { target: { value: "9" } });
     responder({ ok: true, json: async () => ({ valorUnitario: "7.5", data: "2026-09-03", parceiro: null }) });

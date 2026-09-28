@@ -44,11 +44,11 @@ function chamouSaldos(fetchMock: ReturnType<typeof mockFetch>) {
 }
 
 describe("EstoqueContent — filtro inicial vindo do módulo", () => {
-  it("busca saldos já com o centro quando `centroCustoIdInicial` é passado (string)", () => {
+  it("busca saldos já com o centro quando `centroCustoIdInicial` é passado (string)", async () => {
     const fetchMock = fetch as unknown as ReturnType<typeof mockFetch>;
     render(<EstoqueContent centroCustoIdInicial={centroId} />);
+    await waitFor(() => expect(chamouSaldos(fetchMock)).toBe(true));
     const chamada = fetchMock.mock.calls.find(([url]) => /\/estoque\/saldos/.test(String(url)));
-    expect(chamada).toBeTruthy();
     expect(String(chamada![0])).toContain(`centroCustoId=${centroId}`);
     // exatamente 1 chamada a saldos — sem uma busca sem filtro antes.
     expect(fetchMock.mock.calls.filter(([url]) => /\/estoque\/saldos/.test(String(url)))).toHaveLength(1);
@@ -57,13 +57,14 @@ describe("EstoqueContent — filtro inicial vindo do módulo", () => {
   it("busca saldos assim que o filtro é resolvido (mesmo null, sem centro cadastrado)", async () => {
     const fetchMock = fetch as unknown as ReturnType<typeof mockFetch>;
     render(<EstoqueContent centroCustoIdInicial={null} avisoFiltro="Centro não cadastrado" />);
-    expect(chamouSaldos(fetchMock)).toBe(true);
+    await waitFor(() => expect(chamouSaldos(fetchMock)).toBe(true));
     expect(await screen.findByText("Centro não cadastrado")).toBeTruthy();
   });
 
-  it("sem centroCustoIdInicial (menu /estoque direto) busca saldos sem filtro uma vez", () => {
+  it("sem centroCustoIdInicial (menu /estoque direto) busca saldos sem filtro uma vez", async () => {
     const fetchMock = fetch as unknown as ReturnType<typeof mockFetch>;
     render(<EstoqueContent />);
+    await waitFor(() => expect(chamouSaldos(fetchMock)).toBe(true));
     const chamadasSaldos = fetchMock.mock.calls.filter(([url]) => /\/estoque\/saldos/.test(String(url)));
     expect(chamadasSaldos).toHaveLength(1);
     expect(String(chamadasSaldos[0][0])).not.toContain("centroCustoId");

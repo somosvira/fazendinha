@@ -1,28 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { comPropriedade } from "../propriedadeScope";
-import { ApiError, type Categoria, type CentroCusto, type Parceiro, type Produto } from "../financeiro/novo-api";
+import { ApiError, req } from "../lib/offline/req";
+import type { Categoria, CentroCusto, Parceiro, Produto } from "../financeiro/novo-api";
 import type { UnidadeMedida } from "../lib/unidades";
-import { aguardarFilaLivre, filaTravada } from "../lib/offline/fila";
 
 export { ApiError };
 // Tipos de referência do plano financeiro (categoria/centro de custo/parceiro) —
 // mesmo contrato de `financeiro/novo-api.ts`, reusado aqui para não duplicar.
 export type { Categoria, CentroCusto, Parceiro };
-
-async function req<T>(path: string, init?: RequestInit): Promise<T> {
-  if (filaTravada()) await aguardarFilaLivre();
-  const headers: Record<string, string> = { ...((init?.headers as Record<string, string>) || {}) };
-  if (init?.body) headers["content-type"] = "application/json";
-  const res = await fetch(`/api${path}`, { ...init, headers: comPropriedade(headers) });
-  if (!res.ok) {
-    const b: any = await res.json().catch(() => null);
-    let msg = `HTTP ${res.status}`;
-    if (typeof b?.error === "string") msg = b.error;                                   // erro do service (ex.: número duplicado)
-    else if (b?.error?.issues?.length) msg = b.error.issues.map((i: any) => i.message).join("; "); // ZodError do zValidator
-    throw new ApiError(msg, res.status, b?.code, b?.campo);
-  }
-  return res.json();
-}
 
 // monta a query string a partir de um objeto (ignora undefined/null/"") — ?a=1&b=2 ou ""
 function qs(f?: object): string {

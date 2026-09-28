@@ -1,11 +1,9 @@
-import { comPropriedade } from "../propriedadeScope";
-import { ApiError } from "../lib/offline/req";
+import { ApiError, req, reqBlob } from "../lib/offline/req";
 import type { RelatorioGerencialDTO } from "../components/relatorio-gerencial/types";
 import { prepararPublicacaoRascunho } from "./rascunhoAtivo";
 import { prepararPublicacaoRascunhoRelatorio } from "./rascunhoRelatorioAtivo";
 import type { UnidadeMedida } from "../lib/unidades";
 import { SEM_VINCULO } from "../lib/ids";
-import { aguardarFilaLivre, filaTravada } from "../lib/offline/fila";
 
 export type TipoConta = "BANCO" | "CAIXA" | "APLICACAO";
 export type PapelParceiro = "CLIENTE" | "FORNECEDOR" | "PRESTADOR_SERVICO" | "FUNCIONARIO" | "PROPRIETARIO" | "OUTRO";
@@ -95,17 +93,6 @@ export type RelatorioFinanceiroDetalhe = RelatorioFinanceiro & { snapshot: Snaps
 
 export { ApiError };
 
-async function req<T>(path: string, init?: RequestInit): Promise<T> {
-  if (filaTravada()) await aguardarFilaLivre();
-  const resposta = await fetch(`/api${path}`, {
-    ...init,
-    headers: comPropriedade({ ...(init?.body ? { "content-type": "application/json" } : {}), ...((init?.headers as Record<string, string>) ?? {}) }),
-  });
-  const corpo = await resposta.json().catch(() => ({}));
-  if (!resposta.ok) throw new ApiError(corpo.error ?? `Erro HTTP ${resposta.status}`, resposta.status, corpo.code, corpo.campo);
-  return corpo as T;
-}
-
 export const obterDashboardFinanceiro = (inicio?: string, fim?: string) => req<DashboardFinanceiro>(`/financeiro/dashboard${inicio && fim ? `?inicio=${inicio}&fim=${fim}` : ""}`);
 export const obterConfiguracoesFinanceiras = () => req<ConfiguracoesFinanceiras>("/financeiro/configuracoes");
 export const listarOperacoes = (filtros?: { inicio?: string; fim?: string }) => {
@@ -160,12 +147,7 @@ export const gerarRelatorioFinanceiro = (configuracao: ConfiguracaoRelatorioFina
   });
 };
 export const obterRelatorioFinanceiro = (id: string) => req<RelatorioFinanceiroDetalhe>(`/financeiro/relatorios/${id}`);
-export async function baixarRelatorioFinanceiro(id: string) {
-  if (filaTravada()) await aguardarFilaLivre();
-  const resposta = await fetch(`/api/financeiro/relatorios/${id}/download`, { headers: comPropriedade() });
-  if (!resposta.ok) { const corpo = await resposta.json().catch(() => ({})); throw new ApiError(corpo.error ?? `Erro HTTP ${resposta.status}`, resposta.status); }
-  return resposta.blob();
-}
+export const baixarRelatorioFinanceiro = (id: string) => reqBlob(`/financeiro/relatorios/${id}/download`);
 /** Baixa o PDF guardado e entrega ao navegador como download. */
 export async function salvarPdfRelatorioFinanceiro(relatorio: Pick<RelatorioFinanceiro, "id" | "nome">) {
   const url = URL.createObjectURL(await baixarRelatorioFinanceiro(relatorio.id));
@@ -194,11 +176,7 @@ async function enviarDocumentoDireto(intencaoPath: string, confirmacaoPath: stri
 
 export const anexarDocumentoRascunho = (input: { arquivo: File; tipo: string; numero?: string }) =>
   enviarDocumentoDireto("/financeiro/operacoes/rascunho/documentos/intencao", "/financeiro/operacoes/rascunho/documentos/confirmacao-upload", input);
-export async function removerDocumentoRascunho(id: string) {
-  if (filaTravada()) await aguardarFilaLivre();
-  const resposta = await fetch(`/api/financeiro/operacoes/rascunho/documentos/${id}`, { method: "DELETE", headers: comPropriedade() });
-  if (!resposta.ok) { const corpo = await resposta.json().catch(() => ({})); throw new Error(corpo.error ?? `Erro HTTP ${resposta.status}`); }
-}
+export const removerDocumentoRascunho = (id: string) => req<void>(`/financeiro/operacoes/rascunho/documentos/${id}`, { method: "DELETE" });
 export const atualizarDocumentoRascunho = (id: string, input: { tipo?: string; numero?: string | null }) => req<DocumentoFinanceiro>(`/financeiro/operacoes/rascunho/documentos/${id}`, { method: "PATCH", body: JSON.stringify(input) });
 export const anexarDocumentoOperacao = (operacaoId: string, input: { arquivo: File; tipo: string; numero?: string }) =>
   enviarDocumentoDireto(`/financeiro/operacoes/${operacaoId}/documentos/intencao`, `/financeiro/operacoes/${operacaoId}/documentos/confirmacao-upload`, input);

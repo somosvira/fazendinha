@@ -137,6 +137,6 @@ describe("App — trabalho ativo", () => {
     const depois = Date.now() + 31_000;
     vi.spyOn(Date, "now").mockReturnValue(depois);
     document.dispatchEvent(new Event("visibilitychange"));
-    expect(chamadasRascunho).toHaveLength(2);
+    await waitFor(() => expect(chamadasRascunho).toHaveLength(2));
   });
 });
