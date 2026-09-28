@@ -1,4 +1,5 @@
 import { comPropriedade } from "../propriedadeScope";
+import { ApiError } from "../lib/offline/req";
 import type { RelatorioGerencialDTO } from "../components/relatorio-gerencial/types";
 import { prepararPublicacaoRascunho } from "./rascunhoAtivo";
 import { prepararPublicacaoRascunhoRelatorio } from "./rascunhoRelatorioAtivo";
@@ -91,10 +92,7 @@ export type SnapshotRelatorioFinanceiro = {
 };
 export type RelatorioFinanceiroDetalhe = RelatorioFinanceiro & { snapshot: SnapshotRelatorioFinanceiro | null };
 
-/** Erro da API financeira: `campo` indica o input ao qual a mensagem se refere. */
-export class ApiError extends Error {
-  constructor(message: string, public status: number, public code?: string, public campo?: string) { super(message); this.name = "ApiError"; }
-}
+export { ApiError };
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
   const resposta = await fetch(`/api${path}`, {
