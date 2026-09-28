@@ -4,12 +4,14 @@
 // cache e rede mostra o aviso — nunca "Carregando…" infinito — e os botões
 // de Relatórios que dependem do servidor ficam desabilitados offline.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, screen } from "@testing-library/react";
+import { cleanup, fireEvent, screen } from "@testing-library/react";
 import { onlineManager } from "@tanstack/react-query";
 import { baseFinanceiraVazia } from "./dashboard.fixture";
 import { VisaoGeralFinanceira } from "./VisaoGeralFinanceira";
 import { RelatoriosFinanceiros } from "./RelatoriosFinanceiros";
+import { OperacoesFinanceiras } from "./OperacoesFinanceiras";
 import { financeiroKeys } from "./queries";
+import { limparRascunhoAtivo, prepararPublicacaoRascunho } from "./rascunhoAtivo";
 import { periodoDoAnoAtual } from "./lib/periodo";
 import { criarQueryClientTeste, renderComQuery } from "./lib/testQueryClient";
 import type { DashboardFinanceiro, RelatorioFinanceiro } from "./novo-api";
@@ -87,5 +89,29 @@ describe("Relatórios — offline", () => {
     const novo = screen.getAllByRole("button", { name: /Novo relatório/ })[0] as HTMLButtonElement;
     expect(novo.disabled).toBe(true);
     expect(screen.getAllByText(/Sem conexão/).length).toBeGreaterThan(0);
+  });
+});
+
+describe("Operações — offline", () => {
+  afterEach(() => limparRascunhoAtivo());
+
+  it("Continuar operação fica desabilitado sem rede; Nova operação abre um formulário em branco sem descartar nada", async () => {
+    const { descartarRascunhoOperacao } = await import("./novo-api");
+    const queryClient = criarQueryClientTeste();
+    queryClient.setQueryData(financeiroKeys.configuracoes(), { contas: [], parceiros: [], categorias: [], centrosCusto: [], produtos: [] });
+    prepararPublicacaoRascunho("escrita")({ id: "r1", versao: 1, updatedAt: "2026-01-01T00:00:00Z", documentos: [], dados: { formulario: { descricao: "Rascunho existente" } } });
+
+    renderComQuery(<OperacoesFinanceiras />, { queryClient });
+    await screen.findByRole("heading", { name: "Operações" });
+    onlineManager.setOnline(false);
+
+    const continuar = await screen.findByRole("button", { name: "Continuar operação" }) as HTMLButtonElement;
+    expect(continuar.disabled).toBe(true);
+
+    fireEvent.click(screen.getByRole("button", { name: "Nova operação" }));
+
+    expect(await screen.findByRole("heading", { name: "Nova operação" })).toBeTruthy();
+    expect(screen.queryByDisplayValue("Rascunho existente")).toBeNull();
+    expect(descartarRascunhoOperacao).not.toHaveBeenCalled();
   });
 });

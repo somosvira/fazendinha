@@ -283,13 +283,11 @@ describe("useDescartarRascunho", () => {
   it("enfileira o DELETE e esquece o rascunho na hora", () => {
     const qc = clienteComCache();
     const rascunho = { id: uid(8), versao: 2, updatedAt: "2026-09-10", documentos: [], dados: {} } satisfies RascunhoOperacao;
-    qc.setQueryData(financeiroKeys.rascunho(), rascunho);
     prepararPublicacaoRascunho("escrita")(rascunho);
     const { result } = renderHook(() => useDescartarRascunho(), { wrapper: montar(qc) });
     result.current.mutate();
 
     expect(corpoEnviado()).toMatchObject({ path: "/financeiro/operacoes/rascunho", method: "DELETE" });
-    expect(qc.getQueryData(financeiroKeys.rascunho())).toBeNull();
     expect(estadoRascunhoAtivo().rascunho).toBeNull();
   });
 });

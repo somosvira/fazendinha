@@ -4,11 +4,9 @@ import { ChevronRight, FilePenLine, Plus, Search } from "lucide-react";
 import { PeriodoFinanceiroControl } from "./PeriodoFinanceiroControl";
 import { periodoInicial } from "./lib/periodo";
 import { entradaDeNovaOperacao, isNovaOperacaoFinanceira, parseOperacaoFinanceiraId, URL_NOVA_OPERACAO } from "../router";
-import type { Operacao } from "./novo-api";
-import { useDescartarRascunho } from "./mutations";
-import { lerRascunhoLocal, limparRascunhoLocal } from "./rascunhoLocal";
+import { descartarRascunhoOperacao, obterRascunhoOperacao, type Operacao } from "./novo-api";
 import { useOnlineStatus } from "../lib/offline/useOnlineStatus";
-import { financeiroKeys, useConfiguracoesFinanceiras, useOperacoesFinanceiras, useRascunhoOperacao } from "./queries";
+import { financeiroKeys, useConfiguracoesFinanceiras, useOperacoesFinanceiras } from "./queries";
 import { useRascunhoAtivo } from "./rascunhoAtivo";
 import { FormOperacao } from "./FormOperacao";
 import { OperacaoFinanceiraDetalhe } from "./OperacaoFinanceiraDetalhe";
@@ -78,19 +76,12 @@ export function OperacoesFinanceiras({ podeLancar = true }: { podeLancar?: boole
   // depende do rascunho pra decidir "Continuar operação" x "Nova operação"
   // logo ao montar, sem esperar clique) — publica na store compartilhada
   // (ver rascunhoAtivo.ts), que é quem o botão e o FormOperacao realmente lêem.
-  const rascunhoQuery = useRascunhoOperacao(podeLancar);
-  const rascunhoAtivo = useRascunhoAtivo();
-  // Sem conexão a store pode nunca ter sido publicada nesta sessão; o cache persistido responde.
-  const rascunho = rascunhoAtivo.conhecido ? rascunhoAtivo.rascunho : rascunhoQuery.data ?? null;
-  const online = useOnlineStatus();
-  const descartarRascunho = useDescartarRascunho();
-  const [temRascunhoLocal, setTemRascunhoLocal] = useState(false);
   useEffect(() => {
-    if (form) return;
-    let ativo = true;
-    void lerRascunhoLocal().then((local) => { if (ativo) setTemRascunhoLocal(!!local); });
-    return () => { ativo = false; };
-  }, [form]);
+    if (!podeLancar) return;
+    void obterRascunhoOperacao().catch(() => undefined);
+  }, [podeLancar]);
+  const { rascunho } = useRascunhoAtivo();
+  const online = useOnlineStatus();
   const itens = operacoesQuery.data ?? OPERACOES_VAZIO;
   useEffect(() => {
     const onPop = (evento: PopStateEvent) => {
@@ -107,14 +98,18 @@ export function OperacoesFinanceiras({ podeLancar = true }: { podeLancar?: boole
   useEffect(() => { if (pagina !== paginaAtual) setPagina(paginaAtual); }, [pagina, paginaAtual]);
   const abrirDetalhe = (id: string) => { window.history.pushState(null, "", `/financeiro/operacoes/${id}`); setDetalheId(id); setForm(false); };
   const voltar = () => { window.history.pushState(null, "", "/financeiro/operacoes"); setDetalheId(null); };
-  const abrirFormulario = (base: Operacao | null = null) => { window.history.pushState(null, "", URL_NOVA_OPERACAO); setDetalheId(null); setOperacaoBase(base); setForm(true); };
+  const [semRascunho, setSemRascunho] = useState(false);
+  const abrirFormulario = (base: Operacao | null = null, semRascunhoAtual = false) => { window.history.pushState(null, "", URL_NOVA_OPERACAO); setDetalheId(null); setOperacaoBase(base); setSemRascunho(semRascunhoAtual); setForm(true); };
   const abrirNovaOperacao = async () => {
+    // Sem conexão não dá pra descartar o rascunho no servidor: abre um formulário
+    // em branco, descolado dele (ver docs/design/offline/README.md).
+    if (!online) { abrirFormulario(null, true); return; }
     setIniciandoNova(true); setErro(null);
-    if (rascunho) descartarRascunho.mutate(undefined, { onError: (e) => setErro(e instanceof Error ? e.message : String(e)) });
-    else await limparRascunhoLocal();
-    setTemRascunhoLocal(false);
-    setIniciandoNova(false);
-    abrirFormulario();
+    try {
+      if (rascunho) await descartarRascunhoOperacao();
+      abrirFormulario();
+    } catch (e) { setErro(e instanceof Error ? e.message : String(e)); }
+    finally { setIniciandoNova(false); }
   };
   const continuarRascunho = () => abrirFormulario();
   const corrigir = (operacao: Operacao) => abrirFormulario(operacao);
@@ -127,7 +122,6 @@ export function OperacoesFinanceiras({ podeLancar = true }: { podeLancar?: boole
       queryClient.invalidateQueries({ queryKey: financeiroKeys.dashboardTodos() }),
       queryClient.invalidateQueries({ queryKey: financeiroKeys.configuracoes() }),
     ]);
-    queryClient.setQueryData(financeiroKeys.rascunho(), null);
     if (aviso) setErro(aviso);
     abrirDetalhe(operacao.id);
   };
@@ -148,11 +142,11 @@ export function OperacoesFinanceiras({ podeLancar = true }: { podeLancar?: boole
   if (form) {
     if (ehOfflineSemDados(configQuery)) return <PaginaFinanceira><PageHeader titulo="Nova operação" descricao="Cadastros necessários para lançar (contas, categorias, produtos) ainda não foram carregados." /><SemConexaoAviso mensagem="Sem conexão e sem cadastros salvos — abra esta tela uma vez online antes de lançar offline." /></PaginaFinanceira>;
     if (configQuery.isPending) return <PaginaCarregando label="Preparando formulário" />;
-    return <FormOperacao key={operacaoBase ? `correcao-${operacaoBase.id}` : ajusteInicial ? `ajuste-${produtoAjusteInicial ?? ""}` : "rascunho"} config={configQuery.data!} rascunho={operacaoBase ? null : rascunho} operacaoBase={operacaoBase} condicaoInicial={compromissoInicial ? "A_PRAZO" : undefined} tipoInicial={ajusteInicial ? "AJUSTE_ESTOQUE" : compromissoInicial === "RECEBER" ? "VENDA" : compromissoInicial === "PAGAR" ? "COMPRA_CONSUMO_DIRETO" : undefined} produtoInicial={produtoAjusteInicial} onSalvo={(operacao, aviso) => { void aposSalvarOperacao(operacao, aviso); }} />;
+    return <FormOperacao key={operacaoBase ? `correcao-${operacaoBase.id}` : ajusteInicial ? `ajuste-${produtoAjusteInicial ?? ""}` : semRascunho ? "novo-sem-rascunho" : "rascunho"} config={configQuery.data!} rascunho={operacaoBase || semRascunho ? null : rascunho} operacaoBase={operacaoBase} condicaoInicial={compromissoInicial ? "A_PRAZO" : undefined} tipoInicial={ajusteInicial ? "AJUSTE_ESTOQUE" : compromissoInicial === "RECEBER" ? "VENDA" : compromissoInicial === "PAGAR" ? "COMPRA_CONSUMO_DIRETO" : undefined} produtoInicial={produtoAjusteInicial} onSalvo={(operacao, aviso) => { void aposSalvarOperacao(operacao, aviso); }} />;
   }
 
   return <PaginaFinanceira>
-    <PageHeader titulo="Operações" descricao="Fatos de negócio e seus efeitos financeiros e físicos, preservados em um histórico auditável." acao={podeLancar ? <div className="flex flex-wrap gap-2">{(rascunho || temRascunhoLocal) && <Button secondary onClick={continuarRascunho}><FilePenLine size={16} /> Continuar operação</Button>}<Button disabled={iniciandoNova} onClick={() => { void abrirNovaOperacao(); }}><Plus size={16} /> {iniciandoNova ? "Iniciando…" : "Nova operação"}</Button></div> : undefined} />
+    <PageHeader titulo="Operações" descricao="Fatos de negócio e seus efeitos financeiros e físicos, preservados em um histórico auditável." acao={podeLancar ? <div className="flex flex-wrap gap-2">{rascunho && <Button secondary disabled={!online} title={online ? undefined : "Continuar operação precisa de conexão"} onClick={continuarRascunho}><FilePenLine size={16} /> Continuar operação</Button>}<Button disabled={iniciandoNova} onClick={() => { void abrirNovaOperacao(); }}><Plus size={16} /> {iniciandoNova ? "Iniciando…" : "Nova operação"}</Button></div> : undefined} />
     <ErrorBox erro={erro} />
     {/* overflow-clip (não overflow-hidden): overflow-hidden faria deste Panel o
      * contêiner de rolagem do `position: sticky` da barra de TabelaFinanceira,

@@ -200,27 +200,33 @@ Primeira fatia coberta pela fundação, na aba `financeiro` (e `lancar`,
   parcial, com as parcelas calculadas no aparelho via `@rionovo/shared`.
 - Ajuste de estoque — usa o saldo em cache como `saldoEsperado`; o servidor
   recusa com 409 se o estoque mudou entre o enfileiramento e o envio.
-- Liquidar compromisso, transferência entre contas, rascunho de operação
-  salvo no aparelho.
+- Liquidar compromisso, transferência entre contas.
 - Ids são gerados no cliente; o servidor é idempotente por id (ver "Decisão
   de id" acima). Enquanto há envio pendente, saldos aparecem como "saldo
   estimado".
 
 **Exige conexão:** cancelar/estornar operação ou transação, criar correção,
 anexar documentos, cadastros (categoria, centro de custo, parceiro, produto,
-conta), emitir relatório ou baixar PDF, fechar período.
+conta), emitir relatório ou baixar PDF, fechar período, continuar ou limpar
+o rascunho de operação.
 
 **Onde está:** `client/src/financeiro/queries.ts` (leituras e query keys),
-`mutations.ts` (escritas), `rascunhoLocal.ts`; `packages/shared` (schemas,
-parcelas, `preverEfeitosOperacao`, usado também pelo servidor).
+`mutations.ts` (escritas); `packages/shared` (schemas, parcelas,
+`preverEfeitosOperacao`, usado também pelo servidor).
+
+**Rascunho de operação sem conexão:** sem rascunho salvo no aparelho — o
+autosave pausa e o formulário fica só em memória, com aviso pra não fechar a
+aba; ao reconectar com o form aberto, o autosave volta ao normal. Confirmar
+offline enfileira o `POST /operacoes` com o id gerado no cliente e, se o
+formulário tinha um rascunho do servidor (`versaoRef.current != null`), some
+com um `DELETE` dele também. "Nova operação" offline abre um formulário em
+branco, sem carregar nenhum rascunho.
 
 **Limitações conhecidas:**
 
 - Um envio recusado pelo servidor só fica registrado no IndexedDB
   (`rionovo-fila-erros`) — sem tela própria — se a aba for recarregada antes
   do aviso aparecer.
-- O rascunho salvo no aparelho só sobe para o servidor quando o formulário é
-  aberto online de novo.
 - O ajuste de estoque offline exige ter aberto a tela de ajuste online antes
   (é o que popula o saldo em cache que o ajuste usa).
 

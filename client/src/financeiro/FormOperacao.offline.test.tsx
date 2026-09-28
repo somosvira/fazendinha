@@ -1,12 +1,11 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { onlineManager } from "@tanstack/react-query";
 import { gerarParcelasFinanceiras } from "@rionovo/shared";
 import { FormOperacao } from "./FormOperacao";
 import { criarQueryClientTeste, renderComQuery } from "./lib/testQueryClient";
 import { enfileirarMutation } from "../lib/offline/fila";
-import { lerRascunhoLocal, limparRascunhoLocal, salvarRascunhoLocal, type RascunhoLocal } from "./rascunhoLocal";
 import { estoqueKeys, financeiroKeys } from "./queries";
 import type { ConfiguracoesFinanceiras, Operacao, RascunhoOperacao } from "./novo-api";
 import { uid } from "../lib/uid.fixture";
@@ -22,13 +21,6 @@ vi.mock("../lib/offline/fila", () => {
   };
 });
 
-let rascunhoNoAparelho: RascunhoLocal | null = null;
-vi.mock("./rascunhoLocal", () => ({
-  lerRascunhoLocal: vi.fn(async () => rascunhoNoAparelho),
-  salvarRascunhoLocal: vi.fn(async (rascunho: Omit<RascunhoLocal, "salvoEm">) => { rascunhoNoAparelho = { ...rascunho, salvoEm: "2026-09-10T12:00:00Z" }; }),
-  limparRascunhoLocal: vi.fn(async () => { rascunhoNoAparelho = null; }),
-}));
-
 const config: ConfiguracoesFinanceiras = {
   contas: [{ id: uid(1), nome: "Banco principal", tipo: "BANCO", instituicao: null, identificacao: null, saldoAbertura: "1000", dataSaldoAbertura: "2026-09-01", saldoAtual: "1000", incluirNoSaldoGeral: true, ativo: true, temMovimentos: false }],
   parceiros: [{ id: uid(1), nome: "Oficina", documento: null, tipo: "FORNECEDOR", papeis: ["PRESTADOR_SERVICO"], telefone: null, email: null, ativo: true, referencias: 0 }],
@@ -41,7 +33,6 @@ const rascunhoServidor = (versao: number, formulario: Record<string, unknown> = 
 
 let fetchMock: ReturnType<typeof vi.fn>;
 beforeEach(() => {
-  rascunhoNoAparelho = null;
   vi.clearAllMocks();
   fetchMock = vi.fn(async () => ({ ok: true, status: 200, json: async () => ({}) }));
   vi.stubGlobal("fetch", fetchMock);
@@ -68,7 +59,7 @@ describe("FormOperacao sem conexão", () => {
   it("confirma pela fila com o id gerado no aparelho e descarta o rascunho que estava no servidor", async () => {
     onlineManager.setOnline(false);
     const { onSalvo } = montar({ rascunho: rascunhoServidor(3) });
-    expect(screen.getByText(/O rascunho fica salvo neste aparelho/)).toBeTruthy();
+    expect(screen.getByText(/o rascunho não está sendo salvo/)).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Confirmar operação" }));
 
@@ -150,45 +141,36 @@ describe("FormOperacao sem conexão", () => {
   });
 });
 
-describe("FormOperacao — rascunho no aparelho", () => {
-  it("sem conexão, o autosave grava no aparelho e não no servidor", async () => {
+describe("FormOperacao — autosave sem conexão", () => {
+  it("sem conexão, o autosave pausa: fica só em memória, sem chamar o servidor", async () => {
     onlineManager.setOnline(false);
     montar({ rascunho: rascunhoServidor(4) });
-    vi.useFakeTimers();
     fireEvent.change(screen.getByRole("textbox", { name: "Descrição" }), { target: { value: "Troca de óleo" } });
-    await act(async () => { await vi.advanceTimersByTimeAsync(900); });
-    vi.useRealTimers();
 
-    expect(salvarRascunhoLocal).toHaveBeenCalledWith(expect.objectContaining({ versao: 4, dados: expect.objectContaining({ formulario: expect.objectContaining({ descricao: "Troca de óleo" }) }) }));
-    expect(screen.getByText("Salvo neste aparelho")).toBeTruthy();
+    expect(screen.getByText("Alterações não salvas")).toBeTruthy();
     expect(chamouServidor("/rascunho")).toBe(false);
   });
 
-  it("ao reabrir, restaura o que ficou no aparelho em vez do rascunho do servidor", async () => {
+  it("ao reconectar com o form aberto, o autosave volta ao normal e salva o que ficou só em memória", async () => {
+    montar({ rascunho: rascunhoServidor(4) });
     onlineManager.setOnline(false);
-    rascunhoNoAparelho = { versao: 4, salvoEm: "2026-09-10T12:00:00Z", dados: { formulario: { ...formularioServico, descricao: "Editado sem sinal" }, operacao: {} } };
-    montar({ rascunho: rascunhoServidor(4) });
-    await waitFor(() => expect((screen.getByRole("textbox", { name: "Descrição" }) as HTMLTextAreaElement).value).toBe("Editado sem sinal"));
-  });
+    fireEvent.change(screen.getByRole("textbox", { name: "Descrição" }), { target: { value: "Troca de óleo" } });
+    expect(screen.getByText("Alterações não salvas")).toBeTruthy();
 
-  it("ao reconectar, envia o conteúdo do aparelho com a versão que tinha e limpa o local", async () => {
-    rascunhoNoAparelho = { versao: 4, salvoEm: "2026-09-10T12:00:00Z", dados: { formulario: { ...formularioServico, descricao: "Editado sem sinal" }, operacao: {} } };
-    fetchMock.mockImplementation(async () => ({ ok: true, status: 200, json: async () => ({ ...rascunhoServidor(5), dados: rascunhoNoAparelho!.dados }) }));
-    montar({ rascunho: rascunhoServidor(4) });
+    onlineManager.setOnline(true);
 
-    await waitFor(() => expect(limparRascunhoLocal).toHaveBeenCalled());
+    await waitFor(() => expect(chamouServidor("/rascunho")).toBe(true));
     const [, init] = fetchMock.mock.calls.find(([url, opcoes]) => url === "/api/financeiro/operacoes/rascunho" && opcoes?.method === "PUT")!;
-    expect(JSON.parse(String(init.body))).toMatchObject({ versao: 4, dados: { formulario: { descricao: "Editado sem sinal" } } });
+    expect(JSON.parse(String(init.body))).toMatchObject({ versao: 4, dados: { formulario: { descricao: "Troca de óleo" } } });
   });
 
-  it("se outro aparelho mudou o rascunho, avisa e mantém o conteúdo local", async () => {
-    rascunhoNoAparelho = { versao: 4, salvoEm: "2026-09-10T12:00:00Z", dados: { formulario: { ...formularioServico, descricao: "Editado sem sinal" }, operacao: {} } };
+  it("se outro aparelho mudou o rascunho, avisa e mantém o conteúdo em memória", async () => {
     fetchMock.mockImplementation(async () => ({ ok: false, status: 409, json: async () => ({ error: "O rascunho foi atualizado em outra sessão. Recarregue a página antes de continuar.", code: "CONFLITO" }) }));
     montar({ rascunho: rascunhoServidor(6) });
+    fireEvent.change(screen.getByRole("textbox", { name: "Descrição" }), { target: { value: "Editado por aqui" } });
 
     expect(await screen.findByText(/atualizado em outra sessão/)).toBeTruthy();
     expect(screen.getByText("Falha ao salvar")).toBeTruthy();
-    expect(limparRascunhoLocal).not.toHaveBeenCalled();
-    expect(await lerRascunhoLocal()).not.toBeNull();
+    expect((screen.getByRole("textbox", { name: "Descrição" }) as HTMLTextAreaElement).value).toBe("Editado por aqui");
   });
 });

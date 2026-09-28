@@ -7,7 +7,6 @@ import { VisaoGeralFinanceira } from "./VisaoGeralFinanceira";
 import { descartarRascunhoOperacao, obterRascunhoOperacao } from "./novo-api";
 import { uid } from "../lib/uid.fixture";
 
-import { enfileirarMutation } from "../lib/offline/fila";
 vi.mock("../lib/offline/fila", () => {
   const filaVazia: unknown[] = [];
   return {
@@ -76,7 +75,7 @@ describe("VisaoGeralFinanceira — nova operação", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Nova operação" }));
     fireEvent.click(await screen.findByRole("button", { name: "Criar mesmo assim" }));
 
-    await waitFor(() => expect(enfileirarMutation).toHaveBeenCalledWith(expect.objectContaining({ path: "/financeiro/operacoes/rascunho", method: "DELETE" })));
+    await waitFor(() => expect(descartarRascunhoOperacao).toHaveBeenCalled());
     await waitFor(() => expect(onNav).toHaveBeenCalledWith("lancar"));
   });
 });

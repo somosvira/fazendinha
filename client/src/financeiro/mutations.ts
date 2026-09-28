@@ -11,11 +11,10 @@ import {
 import type { SaldoDTO } from "../estoque/api";
 import {
   type AjusteEstoqueInput, type AjusteEstoqueResultado, type Compromisso, type ConfiguracoesFinanceiras, type Conta, type DashboardFinanceiro,
-  type MovimentoConta, type MovimentoGeral, type Operacao, type ParceiroBase, type RascunhoOperacao, obterRascunhoOperacao,
+  type MovimentoConta, type MovimentoGeral, type Operacao, type ParceiroBase, obterRascunhoOperacao,
 } from "./novo-api";
 import { estoqueKeys, financeiroKeys } from "./queries";
-import { estadoRascunhoAtivo, prepararPublicacaoRascunho } from "./rascunhoAtivo";
-import { lerRascunhoLocal, limparRascunhoLocal } from "./rascunhoLocal";
+import { prepararPublicacaoRascunho } from "./rascunhoAtivo";
 import { rotuloUnidade } from "../lib/unidades";
 import { dia, dataIso, hojeIso } from "../lib/data";
 
@@ -481,12 +480,11 @@ export function useDescartarRascunho() {
     mutationKey: CHAVE_DESCARTAR,
     path: () => "/financeiro/operacoes/rascunho",
     method: "DELETE",
-    queryKeys: () => [{ queryKey: financeiroKeys.rascunho(), aplicar: (): RascunhoOperacao | null => null }],
+    queryKeys: () => [],
   });
 
   function mutate(_input?: void, opts?: Callbacks<null>) {
     prepararPublicacaoRascunho("escrita")(null);
-    void limparRascunhoLocal();
     base.mutate(undefined, opts);
   }
 
@@ -511,8 +509,6 @@ export function useContasComSaldoEstimado(): ReadonlySet<string> {
   }, [fila]);
 }
 
-/** Online pergunta ao servidor; sem conexão, vale o que o aparelho sabe (cache ou edição local). */
-export async function existeRascunhoOperacao(qc: QueryClient, online: boolean): Promise<boolean> {
-  if (online) return !!(await obterRascunhoOperacao());
-  return !!(estadoRascunhoAtivo().rascunho ?? qc.getQueryData<RascunhoOperacao | null>(financeiroKeys.rascunho())) || !!(await lerRascunhoLocal());
+export async function existeRascunhoOperacao(): Promise<boolean> {
+  return !!(await obterRascunhoOperacao());
 }

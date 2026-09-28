@@ -6,7 +6,6 @@ import { CompromissosFinanceiros } from "./CompromissosFinanceiros";
 import { descartarRascunhoOperacao, listarCompromissos, obterConfiguracoesFinanceiras, obterRascunhoOperacao } from "./novo-api";
 import { uid } from "../lib/uid.fixture";
 
-import { enfileirarMutation } from "../lib/offline/fila";
 vi.mock("../lib/offline/fila", () => {
   const filaVazia: unknown[] = [];
   return {
@@ -44,10 +43,10 @@ describe("CompromissosFinanceiros — criação", () => {
     expect(screen.getByText(/dados preenchidos e documentos anexados serão excluídos permanentemente/)).toBeTruthy();
     expect(screen.getByRole("button", { name: "Ver rascunho atual" }).className).toContain("bg-green-50");
     expect(screen.getByRole("button", { name: "Criar mesmo assim" }).className).toContain("bg-destructive");
-    expect(enfileirarMutation).not.toHaveBeenCalled();
+    expect(descartarRascunhoOperacao).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole("button", { name: "Criar mesmo assim" }));
-    await waitFor(() => expect(enfileirarMutation).toHaveBeenCalledWith(expect.objectContaining({ path: "/financeiro/operacoes/rascunho", method: "DELETE" })));
+    await waitFor(() => expect(descartarRascunhoOperacao).toHaveBeenCalled());
     await waitFor(() => expect(onNav).toHaveBeenCalledWith("lancar"));
   });
 

@@ -13,7 +13,6 @@ import { brl, Button, emDias, ErrorBox, hoje, ReviewLine, TIPO_OPERACAO } from "
 import { FORMAS_PAGAMENTO, parceiroCompativel, parcelasSugeridas } from "./lib/parceiros";
 import { deCentavos, paraCentavos, simularParcelasLocal, somarParcelas, type FrequenciaParcelas } from "./lib/parcelas";
 import { marcarEdicaoRascunho } from "./rascunhoAtivo";
-import { lerRascunhoLocal, limparRascunhoLocal, salvarRascunhoLocal, type RascunhoLocal } from "./rascunhoLocal";
 import { useAjusteEstoque, useCriarOperacao, useDescartarRascunho, type CriarOperacaoInput } from "./mutations";
 import { estoqueKeys } from "./queries";
 import { listarSaldos, obterCustoMedio, obterUltimoPreco, type SaldoDTO, type UltimoPrecoDTO } from "../estoque/api";
@@ -94,27 +93,11 @@ function CampoErro({ id, className = "mt-1.5", children }: { id?: string; classN
 
 type PropsFormOperacao = { config: ConfiguracoesFinanceiras; rascunho?: RascunhoOperacao | null; condicaoInicial?: Condicao; tipoInicial?: string; /** Produto pré-selecionado no tipo Ajuste de estoque (atalho da tela de Estoque). */ produtoInicial?: string; operacaoBase?: Operacao | null; onSalvo: (operacao: Pick<Operacao, "id">, aviso?: string) => void };
 
-/** Edições feitas sem conexão ficam no aparelho; se houver uma, o formulário
- *  reabre com ela (em vez do rascunho do servidor) e a envia ao reconectar. */
-export function FormOperacao(props: PropsFormOperacao) {
-  const usaRascunho = !props.operacaoBase && props.tipoInicial !== TIPO_AJUSTE;
-  const [rascunhoLocal, setRascunhoLocal] = useState<RascunhoLocal | null>(null);
-  const [geracao, setGeracao] = useState(0);
-  useEffect(() => {
-    if (!usaRascunho) return;
-    let ativo = true;
-    void lerRascunhoLocal().then((salvo) => { if (ativo && salvo) { setRascunhoLocal(salvo); setGeracao((atual) => atual + 1); } });
-    return () => { ativo = false; };
-  }, [usaRascunho]);
-  const reiniciar = () => { setRascunhoLocal(null); setGeracao((atual) => atual + 1); };
-  return <FormOperacaoConteudo key={geracao} {...props} rascunho={geracao && !rascunhoLocal ? null : props.rascunho} rascunhoLocal={rascunhoLocal} onReiniciar={reiniciar} />;
-}
-
-function FormOperacaoConteudo({ config, rascunho = null, rascunhoLocal, condicaoInicial, tipoInicial, produtoInicial, operacaoBase = null, onSalvo, onReiniciar }: PropsFormOperacao & { rascunhoLocal: RascunhoLocal | null; onReiniciar: () => void }) {
+export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoInicial, produtoInicial, operacaoBase = null, onSalvo }: PropsFormOperacao) {
   // Aberto pelo atalho do Estoque (tipoInicial = ajuste): ignora o conteúdo do
   // rascunho — o ajuste não usa rascunho e não deve herdar/atropelar o dele.
   const atalhoAjuste = !operacaoBase && tipoInicial === TIPO_AJUSTE;
-  const inicial = (!operacaoBase && !atalhoAjuste ? rascunhoLocal?.dados.formulario ?? rascunho?.dados.formulario : null) as Partial<EstadoFormulario> | null;
+  const inicial = (!operacaoBase && !atalhoAjuste ? rascunho?.dados.formulario : null) as Partial<EstadoFormulario> | null;
   const online = useOnlineStatus();
   const onlineRef = useRef(online);
   onlineRef.current = online;
@@ -179,10 +162,8 @@ function FormOperacaoConteudo({ config, rascunho = null, rascunhoLocal, condicao
   const [salvando, setSalvando] = useState(false);
   const [confirmarLimpeza, setConfirmarLimpeza] = useState(false);
   const [confirmarSugestao, setConfirmarSugestao] = useState(false);
-  const [estadoSalvamento, setEstadoSalvamento] = useState<"ALTERADO" | "SALVANDO" | "SALVO" | "LOCAL" | "ERRO">(rascunhoLocal ? "LOCAL" : rascunho ? "SALVO" : "ALTERADO");
-  const versaoRef = useRef(rascunhoLocal ? rascunhoLocal.versao : rascunho?.versao);
-  // Há edição guardada só no aparelho, ainda não enviada ao servidor.
-  const pendenteLocalRef = useRef(!!rascunhoLocal);
+  const [estadoSalvamento, setEstadoSalvamento] = useState<"ALTERADO" | "SALVANDO" | "SALVO" | "ERRO">(rascunho ? "SALVO" : "ALTERADO");
+  const versaoRef = useRef(rascunho?.versao);
   const salvamentoEmCursoRef = useRef<Promise<RascunhoOperacao> | null>(null);
   const iniciouRef = useRef(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -314,12 +295,6 @@ function FormOperacaoConteudo({ config, rascunho = null, rascunhoLocal, condicao
     || parcelas.some((parcela) => parcela.valor)
   ), [categoriaId, centroCustoId, contaId, descricao, documentosSalvos.length, itens, parceiroId, parcelas, valorAgora, valorOperacao]);
 
-  const guardarNoAparelho = async () => {
-    pendenteLocalRef.current = true;
-    await salvarRascunhoLocal({ dados: dadosRascunho, versao: versaoRef.current });
-    setEstadoSalvamento("LOCAL");
-  };
-
   const persistirRascunho = async () => {
     if (salvamentoEmCursoRef.current) await salvamentoEmCursoRef.current.catch(() => undefined);
     setEstadoSalvamento("SALVANDO");
@@ -328,7 +303,6 @@ function FormOperacaoConteudo({ config, rascunho = null, rascunhoLocal, condicao
     try {
       const salvo = await requisicao;
       versaoRef.current = salvo.versao; setEstadoSalvamento("SALVO");
-      if (pendenteLocalRef.current) { pendenteLocalRef.current = false; void limparRascunhoLocal(); }
       return salvo;
     } catch (falha) {
       setEstadoSalvamento("ERRO"); throw falha;
@@ -347,11 +321,12 @@ function FormOperacaoConteudo({ config, rascunho = null, rascunhoLocal, condicao
     // rascunho real e um autosave com o form quase vazio o sobrescreveria.
     if (ehAjuste || atalhoAjuste) return;
     setEstadoSalvamento("ALTERADO");
+    // Sem conexão o autosave pausa — o formulário fica só em memória até reconectar.
+    if (!onlineRef.current) return;
     const timer = window.setTimeout(() => {
-      if (!onlineRef.current) { void guardarNoAparelho(); return; }
       void persistirRascunho().catch((falha) => {
-        // Queda de rede que o status online ainda não percebeu.
-        if (falha instanceof TypeError) { void guardarNoAparelho(); return; }
+        // Queda de rede que o status online ainda não percebeu; a volta da conexão salva.
+        if (falha instanceof TypeError) return;
         setErro(falha instanceof Error ? falha.message : String(falha));
       });
     }, 800);
@@ -360,9 +335,9 @@ function FormOperacaoConteudo({ config, rascunho = null, rascunhoLocal, condicao
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dadosRascunho, operacaoBase, ehAjuste, atalhoAjuste]);
   useEffect(() => {
-    if (!online || !pendenteLocalRef.current || operacaoBase || ehAjuste || atalhoAjuste) return;
+    if (!online || !iniciouRef.current || operacaoBase || ehAjuste || atalhoAjuste || estadoSalvamento !== "ALTERADO") return;
     void persistirRascunho().catch((falha) => setErro(falha instanceof Error ? falha.message : String(falha)));
-    // Só na volta da conexão (ou ao abrir online com edição guardada no aparelho).
+    // Só na volta da conexão — o autosave volta ao normal a partir daqui.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [online]);
   // Acende o atalho "Trabalho ativo" da sidebar enquanto o rascunho está na tela.
@@ -618,7 +593,6 @@ function FormOperacaoConteudo({ config, rascunho = null, rascunhoLocal, condicao
       else {
         const salvo = await persistirRascunho();
         operacao = await confirmarRascunhoOperacao(salvo.versao);
-        void limparRascunhoLocal();
       }
       const falhas: string[] = [];
       for (const anexo of anexos) {
@@ -652,8 +626,6 @@ function FormOperacaoConteudo({ config, rascunho = null, rascunhoLocal, condicao
       criarOffline.validar(corpo);
       // O rascunho que já estava no servidor seria confirmado por esta operação; sem ele, sobraria órfão.
       if (versaoRef.current != null) descartarOffline.mutate();
-      else void limparRascunhoLocal();
-      pendenteLocalRef.current = false;
       salvarOffline(criarOffline.mutate, corpo, {
         onSalvo: () => onSalvo({ id }),
         onErroInline: setErroConfirmacao,
@@ -693,9 +665,8 @@ function FormOperacaoConteudo({ config, rascunho = null, rascunhoLocal, condicao
 
   const limparRascunho = async () => {
     setConfirmarLimpeza(false);
-    if (!online) { descartarOffline.mutate(); onReiniciar(); return; }
     setSalvando(true); setErro(null);
-    try { await descartarRascunhoOperacao(); await limparRascunhoLocal(); window.location.reload(); }
+    try { await descartarRascunhoOperacao(); window.location.reload(); }
     catch (falha) { setErro(falha instanceof Error ? falha.message : String(falha)); setSalvando(false); }
   };
 
@@ -725,7 +696,7 @@ function FormOperacaoConteudo({ config, rascunho = null, rascunhoLocal, condicao
     </>}
   </section>;
   return <div className="shell-wide pb-10">
-    <div className="mb-5 flex min-h-[82px] flex-wrap items-center justify-between gap-4 border-b border-border pb-5 pt-3"><div><div className="text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Registro orientado</div><h1 className="mt-1 font-serif text-3xl text-ink md:text-4xl">{operacaoBase ? "Criar operação de correção" : "Nova operação"}</h1></div>{!operacaoBase && !ehAjuste && !atalhoAjuste && temConteudoRascunho && <div className="flex items-center gap-3"><span aria-live="polite" className={`text-xs font-medium ${estadoSalvamento === "ERRO" ? "text-red-700" : "text-ink-3"}`}>{estadoSalvamento === "SALVANDO" ? "Salvando…" : estadoSalvamento === "SALVO" ? "Rascunho salvo" : estadoSalvamento === "LOCAL" ? "Salvo neste aparelho" : estadoSalvamento === "ERRO" ? "Falha ao salvar" : "Alterações não salvas"}</span><Button type="button" secondary disabled={salvando} onClick={() => setConfirmarLimpeza(true)}>Limpar rascunho</Button></div>}</div>
+    <div className="mb-5 flex min-h-[82px] flex-wrap items-center justify-between gap-4 border-b border-border pb-5 pt-3"><div><div className="text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Registro orientado</div><h1 className="mt-1 font-serif text-3xl text-ink md:text-4xl">{operacaoBase ? "Criar operação de correção" : "Nova operação"}</h1></div>{!operacaoBase && !ehAjuste && !atalhoAjuste && temConteudoRascunho && <div className="flex items-center gap-3"><span aria-live="polite" className={`text-xs font-medium ${estadoSalvamento === "ERRO" ? "text-red-700" : "text-ink-3"}`}>{estadoSalvamento === "SALVANDO" ? "Salvando…" : estadoSalvamento === "SALVO" ? "Rascunho salvo" : estadoSalvamento === "ERRO" ? "Falha ao salvar" : "Alterações não salvas"}</span><Button type="button" secondary disabled={salvando || !online} title={online ? undefined : "Limpar rascunho precisa de conexão"} onClick={() => setConfirmarLimpeza(true)}>Limpar rascunho</Button></div>}</div>
     {/* noValidate: a validação é 100% nossa (encontrarPrimeiroCampoInvalido) —
      * sem isso, a validação nativa do navegador bloqueia o evento de submit
      * antes do nosso onSubmit rodar sempre que um campo `required` estiver
@@ -735,7 +706,7 @@ function FormOperacaoConteudo({ config, rascunho = null, rascunhoLocal, condicao
     <form onSubmit={submit} noValidate className="grid min-h-[calc(100vh-180px)] overflow-hidden rounded-xl border border-border bg-white xl:grid-cols-[minmax(0,1fr)_330px]">
       <div className="space-y-7 p-5 md:p-7 xl:min-h-0 xl:overflow-y-auto">
         <ErrorBox erro={erro} />
-        {!online && <div role="status" className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm leading-5 text-amber-950"><CloudOff size={18} className="mt-0.5 shrink-0" aria-hidden /><div><strong>Sem conexão</strong><p className="mt-1 text-xs">{operacaoBase ? "Criar uma correção precisa de conexão." : `${!ehAjuste && !atalhoAjuste ? "O rascunho fica salvo neste aparelho e vai para o servidor quando a conexão voltar. " : ""}Ao confirmar, a operação entra na fila e é enviada quando a conexão voltar.`}</p></div></div>}
+        {!online && <div role="status" className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm leading-5 text-amber-950"><CloudOff size={18} className="mt-0.5 shrink-0" aria-hidden /><div><strong>Sem conexão</strong><p className="mt-1 text-xs">{operacaoBase ? "Criar uma correção precisa de conexão." : `${!ehAjuste && !atalhoAjuste ? "Sem conexão: o rascunho não está sendo salvo; não feche esta aba. " : ""}Ao confirmar, a operação entra na fila e é enviada quando a conexão voltar.`}</p></div></div>}
         {operacaoBase && <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm leading-5 text-amber-950"><strong>Nova operação baseada na {codigoOperacaoFinanceira(operacaoBase.numero)}</strong><p className="mt-1 text-xs">Revise todos os dados e efeitos antes de confirmar. A operação cancelada permanecerá preservada no histórico.</p></div>}
         <section>
           <h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Identificação</h3>

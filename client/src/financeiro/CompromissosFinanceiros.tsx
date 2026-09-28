@@ -4,9 +4,8 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowDownLeft, ArrowUpRight, CalendarDays } from "lucide-react";
 import { ConfirmDialog } from "../components/ConfirmDialog";
-import type { Compromisso } from "./novo-api";
-import { existeRascunhoOperacao, useDescartarRascunho } from "./mutations";
-import { useOnlineStatus } from "../lib/offline/useOnlineStatus";
+import { descartarRascunhoOperacao, type Compromisso } from "./novo-api";
+import { existeRascunhoOperacao } from "./mutations";
 import { financeiroKeys, useCompromissosFinanceiros, useConfiguracoesFinanceiras } from "./queries";
 import { brl, Button, dataBR, Empty, ErrorBox, mesAtual, Metric, PageHeader, PaginaCarregando, PaginaFinanceira, Panel, Pill, SemConexaoAviso, StatusPill } from "./financeiro-ui";
 import { ehOfflineSemDados } from "../lib/offline/estadoQuery";
@@ -27,8 +26,6 @@ export function CompromissosFinanceiros({ onNav, podeLancar = true }: { onNav: (
   const [visao, setVisao] = useState<VisaoCompromissos>("lista");
   const [mes, setMes] = useState(() => periodo.inicio.slice(0, 7) || mesAtual());
   const [novoCompromissoPendente, setNovoCompromissoPendente] = useState<"PAGAR" | "RECEBER" | null>(null); const [preparando, setPreparando] = useState(false);
-  const online = useOnlineStatus();
-  const descartarRascunho = useDescartarRascunho();
   const compromissosQuery = useCompromissosFinanceiros(periodo);
   const configQuery = useConfiguracoesFinanceiras(podeLancar);
   const itens = compromissosQuery.data ?? COMPROMISSOS_VAZIO;
@@ -46,16 +43,18 @@ export function CompromissosFinanceiros({ onNav, podeLancar = true }: { onNav: (
   const prepararNovoCompromisso = async (tipo: "PAGAR" | "RECEBER") => {
     setPreparando(true); setErro(null);
     try {
-      if (await existeRascunhoOperacao(queryClient, online)) setNovoCompromissoPendente(tipo);
+      if (await existeRascunhoOperacao()) setNovoCompromissoPendente(tipo);
       else criarCompromisso(tipo);
     } catch (e) { setErro(e instanceof Error ? e.message : String(e)); }
     finally { setPreparando(false); }
   };
-  const descartarECriarCompromisso = () => {
+  const descartarECriarCompromisso = async () => {
     const tipo = novoCompromissoPendente;
     if (!tipo) return;
-    descartarRascunho.mutate();
-    setNovoCompromissoPendente(null); criarCompromisso(tipo);
+    setPreparando(true); setErro(null);
+    try { await descartarRascunhoOperacao(); setNovoCompromissoPendente(null); criarCompromisso(tipo); }
+    catch (e) { setErro(e instanceof Error ? e.message : String(e)); }
+    finally { setPreparando(false); }
   };
 
   if (ehOfflineSemDados(compromissosQuery)) return <PaginaFinanceira><PageHeader titulo="Compromissos" descricao="Agenda de valores futuros. Vencimento indica prazo; o status informa se a obrigação está pendente, parcial ou liquidada." /><SemConexaoAviso mensagem="Sem conexão e sem compromissos salvos para este período." /></PaginaFinanceira>;
@@ -88,7 +87,7 @@ export function CompromissosFinanceiros({ onNav, podeLancar = true }: { onNav: (
       processando={preparando}
       onCancel={verRascunhoAtual}
       onDismiss={() => setNovoCompromissoPendente(null)}
-      onConfirm={descartarECriarCompromisso}
+      onConfirm={() => { void descartarECriarCompromisso(); }}
     />
   </PaginaFinanceira>;
 }

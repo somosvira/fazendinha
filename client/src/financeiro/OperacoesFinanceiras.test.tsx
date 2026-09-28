@@ -8,7 +8,6 @@ import { limparRascunhoAtivo, prepararPublicacaoRascunho } from "./rascunhoAtivo
 import { abrirRotaNovaOperacao } from "../router";
 import { uid } from "../lib/uid.fixture";
 
-import { enfileirarMutation } from "../lib/offline/fila";
 vi.mock("../lib/offline/fila", () => {
   const filaVazia: unknown[] = [];
   return {
@@ -58,13 +57,9 @@ describe("OperacoesFinanceiras — rascunho", () => {
   });
 
   it("descarta o rascunho antes de iniciar uma nova operação", async () => {
-    vi.mocked(enfileirarMutation).mockImplementation(async () => {
-      vi.mocked(obterRascunhoOperacao).mockImplementation(async () => prepararPublicacaoRascunho("leitura")(null));
-      return null;
-    });
     render(<OperacoesFinanceiras />);
     fireEvent.click(await screen.findByRole("button", { name: "Nova operação" }));
-    await waitFor(() => expect(enfileirarMutation).toHaveBeenCalledWith(expect.objectContaining({ path: "/financeiro/operacoes/rascunho", method: "DELETE" })));
+    await waitFor(() => expect(descartarRascunhoOperacao).toHaveBeenCalled());
     expect(await screen.findByText("Formulário novo")).toBeTruthy();
   });
 

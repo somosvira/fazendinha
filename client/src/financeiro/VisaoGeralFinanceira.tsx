@@ -3,10 +3,8 @@ import { ArrowDownLeft, ArrowUpRight, ChevronRight, Landmark, Plus, TrendingDown
 import type { Tab } from "../components/Shell";
 import { AnaliseCategorias } from "./AnaliseCategorias";
 import { BaseFinanceiraResumo } from "./BaseFinanceiraResumo";
-import { useQueryClient } from "@tanstack/react-query";
-import type { Compromisso } from "./novo-api";
-import { existeRascunhoOperacao, useContasComSaldoEstimado, useDescartarRascunho } from "./mutations";
-import { useOnlineStatus } from "../lib/offline/useOnlineStatus";
+import { descartarRascunhoOperacao, type Compromisso } from "./novo-api";
+import { existeRascunhoOperacao, useContasComSaldoEstimado } from "./mutations";
 import { useConfiguracoesFinanceiras, useDashboardFinanceiro } from "./queries";
 import { brl, Button, dataBR, Empty, ErrorBox, mesAtual, Metric, PageHeader, PaginaCarregando, PaginaFinanceira, Panel, Pill, SemConexaoAviso } from "./financeiro-ui";
 import { ehOfflineSemDados } from "../lib/offline/estadoQuery";
@@ -32,9 +30,6 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
   const [tipoGraficoFluxo, setTipoGraficoFluxo] = useState<ChartType>("line");
   const [substituirRascunho, setSubstituirRascunho] = useState(false);
   const [preparando, setPreparando] = useState(false);
-  const queryClient = useQueryClient();
-  const online = useOnlineStatus();
-  const descartarRascunho = useDescartarRascunho();
   const saldoEstimado = useContasComSaldoEstimado();
   // Só o cold start (nenhum período já carregado nesta sessão) usa o loader
   // de página cheia — trocar de período depois disso mantém o cabeçalho (com
@@ -48,12 +43,17 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
   const iniciarNovaOperacao = async () => {
     setPreparando(true); setErro(null);
     try {
-      if (await existeRascunhoOperacao(queryClient, online)) setSubstituirRascunho(true);
+      if (await existeRascunhoOperacao()) setSubstituirRascunho(true);
       else abrirFormulario();
     } catch (e) { setErro(e instanceof Error ? e.message : String(e)); }
     finally { setPreparando(false); }
   };
-  const descartarEIniciar = () => { descartarRascunho.mutate(); setSubstituirRascunho(false); abrirFormulario(); };
+  const descartarEIniciar = async () => {
+    setPreparando(true); setErro(null);
+    try { await descartarRascunhoOperacao(); setSubstituirRascunho(false); abrirFormulario(); }
+    catch (e) { setErro(e instanceof Error ? e.message : String(e)); }
+    finally { setPreparando(false); }
+  };
   const verRascunhoAtual = () => { setSubstituirRascunho(false); abrirFormulario(); };
 
   const dadosAtuais = dashboardQuery.data ?? null;
@@ -126,7 +126,7 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
       processando={preparando}
       onCancel={verRascunhoAtual}
       onDismiss={() => setSubstituirRascunho(false)}
-      onConfirm={descartarEIniciar}
+      onConfirm={() => { void descartarEIniciar(); }}
     />
   </PaginaFinanceira>;
 }
