@@ -1,6 +1,6 @@
 export * from "./schemas/financeiro.schemas.js";
 export { ErroValidacaoFinanceira } from "./financeiro/erros.js";
-export { arredondarDinheiro, arredondarDecimal, type ValorDecimal } from "./lib/decimal.js";
+export { arredondarDinheiro, arredondarDecimal, dinheiro, somar, type ValorDecimal } from "./lib/decimal.js";
 export {
   gerarParcelasFinanceiras, simularParcelas, totalItensFinanceiros, valorItemFinanceiro,
   type ItemMonetario, type ParcelaGerada,

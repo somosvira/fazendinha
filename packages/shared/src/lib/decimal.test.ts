@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { arredondarDecimal, arredondarDinheiro, dividirDecimais, multiplicarDecimais, paraCentavos, somarDecimais } from "./decimal.js";
+import { arredondarDecimal, arredondarDinheiro, dinheiro, dividirDecimais, multiplicarDecimais, paraCentavos, somar, somarDecimais } from "./decimal.js";
 
 describe("decimal exato", () => {
   it("arredonda meio para longe do zero, sem erro de ponto flutuante", () => {
@@ -29,5 +29,13 @@ describe("decimal exato", () => {
     expect(paraCentavos("100.00")).toBe(10000);
     expect(paraCentavos(0.335)).toBe(34);
     expect(paraCentavos(7)).toBe(700);
+  });
+
+  it("dinheiro/somar formatam em texto de 2 casas, sem conta em number", () => {
+    expect(dinheiro(1)).toBe("1.00");
+    expect(dinheiro("1234.5")).toBe("1234.50");
+    expect(dinheiro(0.335)).toBe("0.34");
+    expect(somar("10.00", 0.1)).toBe("10.10");
+    expect(somar("10.00", -0.005)).toBe("10.00");
   });
 });

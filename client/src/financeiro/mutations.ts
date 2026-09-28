@@ -1,7 +1,7 @@
 import { useMemo, useSyncExternalStore } from "react";
 import { useQueryClient, type QueryClient, type QueryKey } from "@tanstack/react-query";
 import {
-  ajusteContagemSchema, arredondarDinheiro, ErroValidacaoFinanceira, liquidacaoSchema, operacaoSchema, preverEfeitosOperacao,
+  ajusteContagemSchema, arredondarDinheiro, dinheiro, somar, ErroValidacaoFinanceira, liquidacaoSchema, operacaoSchema, preverEfeitosOperacao,
   transferenciaSchema, type ContextoOperacao, type EfeitosOperacao, type OperacaoValidada,
 } from "@rionovo/shared";
 import { inscrever, obterFila } from "../lib/offline/fila";
@@ -28,9 +28,6 @@ const CHAVE_TRANSFERIR = "financeiro-transferir";
 const CHAVE_DESCARTAR = "financeiro-descartar-rascunho";
 
 // ── Valores e datas ──────────────────────────────────────────────────────────
-
-const dinheiro = (valor: number | string) => arredondarDinheiro(Number(valor)).toFixed(2);
-const somar = (atual: string, delta: number) => dinheiro(Number(atual) + delta);
 
 /** Limites de período guardados na queryKey (posições 2 e 3: início e fim; null ou "" = sem limite). */
 function noPeriodo(queryKey: QueryKey, data: string) {
