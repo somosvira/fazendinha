@@ -185,7 +185,7 @@ export function useOfflineMutation<TInput, TItem, TResp = TItem>(cfg: UseOffline
 // ── Validação antes de enfileirar ───────────────────────────────────────────
 
 /** Formato comum ao `safeParse` do Zod — evita depender do pacote no client. */
-type ResultadoZod<T> = { success: true; data: T } | { success: false; error: { issues: { message: string; path: (string | number)[] }[] } };
+export type ResultadoZod<T> = { success: true; data: T } | { success: false; error: { issues: { message: string; path: (string | number)[] }[] } };
 
 export function erroDeValidacao(mensagem: string, campo?: string): ApiError {
   return new ApiError(mensagem, 422, "VALIDACAO", campo);

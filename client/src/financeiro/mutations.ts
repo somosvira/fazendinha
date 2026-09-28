@@ -5,16 +5,19 @@ import {
   transferenciaSchema, type ContextoOperacao, type EfeitosOperacao, type OperacaoValidada,
 } from "@rionovo/shared";
 import { inscrever, obterFila } from "../lib/offline/fila";
-import { useOfflineMutation, type EntradaPatch } from "../lib/offline/useOfflineMutation";
+import {
+  insertItemSortedInCacheList, invalidar, porPrefixo, updateItemInCacheList, useOfflineMutation, validado, erroDeValidacao, type ResultadoZod,
+} from "../lib/offline/useOfflineMutation";
 import type { SaldoDTO } from "../estoque/api";
 import {
-  ApiError, type AjusteEstoqueInput, type AjusteEstoqueResultado, type Compromisso, type ConfiguracoesFinanceiras, type Conta, type DashboardFinanceiro,
+  type AjusteEstoqueInput, type AjusteEstoqueResultado, type Compromisso, type ConfiguracoesFinanceiras, type Conta, type DashboardFinanceiro,
   type MovimentoConta, type MovimentoGeral, type Operacao, type ParceiroBase, type RascunhoOperacao, obterRascunhoOperacao,
 } from "./novo-api";
 import { estoqueKeys, financeiroKeys } from "./queries";
 import { estadoRascunhoAtivo, prepararPublicacaoRascunho } from "./rascunhoAtivo";
 import { lerRascunhoLocal, limparRascunhoLocal } from "./rascunhoLocal";
 import { rotuloUnidade } from "../lib/unidades";
+import { dia, dataIso, hojeIso } from "../lib/data";
 
 type Callbacks<T> = { onSuccess?: (resposta: T) => void; onError?: (erro: unknown) => void };
 
@@ -24,28 +27,10 @@ const CHAVE_LIQUIDAR = "financeiro-liquidar-compromisso";
 const CHAVE_TRANSFERIR = "financeiro-transferir";
 const CHAVE_DESCARTAR = "financeiro-descartar-rascunho";
 
-// ── Validação ────────────────────────────────────────────────────────────────
-
-type ResultadoZod<T> = { success: true; data: T } | { success: false; error: { issues: { message: string; path: (string | number)[] }[] } };
-
-function erroDeValidacao(mensagem: string, campo?: string) {
-  return new ApiError(mensagem, 422, "VALIDACAO", campo);
-}
-
-function validado<T>(resultado: ResultadoZod<T>): T {
-  if (resultado.success) return resultado.data;
-  const [primeiro] = resultado.error.issues;
-  throw erroDeValidacao(primeiro?.message ?? "Dados inválidos", primeiro?.path.length ? primeiro.path.join(".") : undefined);
-}
-
 // ── Valores e datas ──────────────────────────────────────────────────────────
 
 const dinheiro = (valor: number | string) => arredondarDinheiro(Number(valor)).toFixed(2);
 const somar = (atual: string, delta: number) => dinheiro(Number(atual) + delta);
-const dia = (valor: string) => valor.slice(0, 10);
-const dataIso = (data: Date | string) => typeof data === "string" ? new Date(`${dia(data)}T00:00:00.000Z`).toISOString() : data.toISOString();
-const hojeIso = () => `${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`;
-const uuid = () => crypto.randomUUID();
 
 /** Limites de período guardados na queryKey (posições 2 e 3: início e fim; null ou "" = sem limite). */
 function noPeriodo(queryKey: QueryKey, data: string) {
@@ -53,29 +38,6 @@ function noPeriodo(queryKey: QueryKey, data: string) {
   const d = dia(data);
   return (typeof inicio !== "string" || !inicio || d >= inicio) && (typeof fim !== "string" || !fim || d <= fim);
 }
-
-/** Insere mantendo a ordem decrescente por data da lista; o item novo fica à frente dos do mesmo dia. */
-function inserirDecrescente<T>(lista: T[], item: T, dataDe: (valor: T) => string): T[] {
-  const indice = lista.findIndex((atual) => dia(dataDe(atual)) <= dia(dataDe(item)));
-  return indice === -1 ? [...lista, item] : [...lista.slice(0, indice), item, ...lista.slice(indice)];
-}
-
-/** Insere mantendo a ordem crescente por data da lista; o item novo fica depois dos do mesmo dia. */
-function inserirCrescente<T>(lista: T[], item: T, dataDe: (valor: T) => string): T[] {
-  const indice = lista.findIndex((atual) => dia(dataDe(atual)) > dia(dataDe(item)));
-  return indice === -1 ? [...lista, item] : [...lista.slice(0, indice), item, ...lista.slice(indice)];
-}
-
-// ── Entradas de cache ────────────────────────────────────────────────────────
-
-/** Uma entrada por query já em cache sob o prefixo: `setQueryData` exige a chave exata. */
-function porPrefixo<T>(qc: QueryClient, prefixo: QueryKey, aplicar: (atual: T, queryKey: QueryKey) => T): EntradaPatch<T | undefined, unknown>[] {
-  return qc.getQueriesData<T>({ queryKey: prefixo })
-    .filter(([, dados]) => dados !== undefined)
-    .map(([queryKey]) => ({ queryKey, aplicar: (atual: T | undefined) => atual === undefined ? atual : aplicar(atual, queryKey) }));
-}
-
-const invalidar = (queryKey: QueryKey): EntradaPatch<unknown, unknown> => ({ queryKey });
 
 type DeltaConta = { contaId: string; delta: number };
 
@@ -104,16 +66,16 @@ function entradasSaldo(qc: QueryClient, deltas: DeltaConta[]) {
 function entradasExtrato(qc: QueryClient, movimentos: MovimentoGeral[]) {
   return [
     ...movimentos.flatMap((movimento) => porPrefixo<MovimentoConta[]>(qc, financeiroKeys.extrato(movimento.contaId), (lista) =>
-      inserirDecrescente<MovimentoConta>(lista, movimento, (item) => item.transacao.data))),
+      insertItemSortedInCacheList<MovimentoConta>(lista, movimento, (item) => dia(item.transacao.data), "desc"))),
     ...porPrefixo<MovimentoGeral[]>(qc, financeiroKeys.extratoGeral(), (lista) =>
-      movimentos.reduce((atual, movimento) => inserirDecrescente(atual, movimento, (item) => item.transacao.data), lista)),
+      movimentos.reduce((atual, movimento) => insertItemSortedInCacheList(atual, movimento, (item) => dia(item.transacao.data), "desc"), lista)),
   ];
 }
 
 function entradasOperacaoNova(qc: QueryClient, operacao: Operacao) {
   return [
     ...porPrefixo<Operacao[]>(qc, financeiroKeys.operacoesTodos(), (lista, queryKey) =>
-      noPeriodo(queryKey, operacao.data) ? inserirDecrescente(lista, operacao, (item) => item.data) : lista),
+      noPeriodo(queryKey, operacao.data) ? insertItemSortedInCacheList(lista, operacao, (item) => dia(item.data), "desc") : lista),
     { queryKey: financeiroKeys.operacao(operacao.id), aplicar: () => operacao },
     invalidar(financeiroKeys.operacoesTodos()),
   ];
@@ -192,8 +154,8 @@ function comIds(input: CriarOperacaoInput): CriarOperacaoInput & { id: string } 
   const parcelas = input.financeiro.parcelas;
   return {
     ...input,
-    id: input.id ?? uuid(),
-    financeiro: parcelas ? { ...input.financeiro, parcelas: parcelas.map((parcela) => ({ ...parcela, id: parcela.id ?? uuid() })) } : input.financeiro,
+    id: input.id ?? crypto.randomUUID(),
+    financeiro: parcelas ? { ...input.financeiro, parcelas: parcelas.map((parcela) => ({ ...parcela, id: parcela.id ?? crypto.randomUUID() })) } : input.financeiro,
   };
 }
 
@@ -213,25 +175,25 @@ function montarOperacaoOtimista(qc: QueryClient, id: string, input: OperacaoVali
     centroCustoId: input.centroCustoId ?? null, centroCusto: centro ? { id: centro.id, nome: centro.nome } : null,
     corrigeOperacaoId: input.corrigeOperacaoId ?? null, corrigeOperacao: null, correcoes: [],
     itens: (efeitos?.itens ?? []).map((item) => ({
-      id: uuid(), ordem: item.ordem, descricao: item.descricao, quantidade: String(item.quantidade), unidade: item.unidade,
+      id: crypto.randomUUID(), ordem: item.ordem, descricao: item.descricao, quantidade: String(item.quantidade), unidade: item.unidade,
       valorUnitario: String(item.valorUnitario), valorTotal: dinheiro(item.valorTotal), estocavel: item.estocavel, produtoId: item.produtoId ?? null,
       categoriaId: item.categoriaId, categoriaNome: item.categoriaNome, classificacao: item.classificacao,
       centroCustoId: item.centroCustoId, centroCustoNome: item.centroCustoNome,
     })),
     compromissos: (efeitos?.compromissos ?? []).map((compromisso) => ({
-      id: compromisso.id ?? uuid(), seq: null, tipo: compromisso.tipo, status: "PENDENTE",
+      id: compromisso.id ?? crypto.randomUUID(), seq: null, tipo: compromisso.tipo, status: "PENDENTE",
       valorOriginal: dinheiro(compromisso.valorOriginal), valorLiquidado: "0.00",
       saldoPendente: dinheiro(compromisso.valorOriginal), saldoExigivel: dinheiro(compromisso.valorOriginal),
       dataVencimento: compromisso.dataVencimento.toISOString(), numeroParcela: compromisso.numeroParcela, totalParcelas: compromisso.totalParcelas,
       vencido: compromisso.dataVencimento < agora, parceiro, operacao: referencia, liquidacoes: [],
     })),
     transacoes: transacao ? [{
-      id: uuid(), seq: null, tipo: transacao.tipo, status: "CONFIRMADA", data, valorTotal: dinheiro(transacao.valor),
+      id: crypto.randomUUID(), seq: null, tipo: transacao.tipo, status: "CONFIRMADA", data, valorTotal: dinheiro(transacao.valor),
       formaPagamento: transacao.formaPagamento ?? null, operacaoId: id,
-      movimentos: [{ id: uuid(), seq: null, contaId: transacao.contaId, direcao: transacao.direcao, valor: dinheiro(transacao.valor), conta: contaDoCache(qc, transacao.contaId) }],
+      movimentos: [{ id: crypto.randomUUID(), seq: null, contaId: transacao.contaId, direcao: transacao.direcao, valor: dinheiro(transacao.valor), conta: contaDoCache(qc, transacao.contaId) }],
     }] : [],
     movimentosEstoque: (efeitos?.movimentosEstoque ?? []).map((movimento) => ({
-      id: uuid(), seq: null, tipo: movimento.tipo, status: "CONFIRMADO", quantidade: String(movimento.quantidade), valorTotal: dinheiro(movimento.valorTotal), produtoId: movimento.produtoId,
+      id: crypto.randomUUID(), seq: null, tipo: movimento.tipo, status: "CONFIRMADO", quantidade: String(movimento.quantidade), valorTotal: dinheiro(movimento.valorTotal), produtoId: movimento.produtoId,
     })),
     documentos: [],
   };
@@ -287,7 +249,7 @@ export function useCriarOperacao() {
         ...entradasOperacaoNova(qc, operacao),
         ...(operacao.compromissos.length ? porPrefixo<Compromisso[]>(qc, financeiroKeys.compromissosTodos(), (lista, queryKey) =>
           operacao.compromissos.filter((compromisso) => noPeriodo(queryKey, compromisso.dataVencimento))
-            .reduce((atual, compromisso) => inserirCrescente(atual, compromisso, (item) => item.dataVencimento), lista)) : []),
+            .reduce((atual, compromisso) => insertItemSortedInCacheList(atual, compromisso, (item) => dia(item.dataVencimento), "asc"), lista)) : []),
         invalidar(financeiroKeys.compromissosTodos()),
         ...entradasExtrato(qc, movimentos),
         ...entradasSaldo(qc, deltasDosMovimentos(movimentos)),
@@ -320,7 +282,7 @@ export function useCriarOperacao() {
 type AjustePreparado = { corpo: AjusteEstoqueInput & { id: string }; otimista: Operacao };
 
 function prepararAjuste(qc: QueryClient, input: AjusteEstoqueInput): AjustePreparado {
-  const corpo = { ...input, id: input.id ?? uuid() };
+  const corpo = { ...input, id: input.id ?? crypto.randomUUID() };
   validado(ajusteContagemSchema.safeParse(corpo) as ResultadoZod<unknown>);
   const saldo = qc.getQueryData<SaldoDTO[]>(estoqueKeys.saldos())?.find((item) => item.produtoId === input.produtoId);
   const produto = lerConfig(qc)?.produtos.find((item) => item.id === input.produtoId);
@@ -331,9 +293,9 @@ function prepararAjuste(qc: QueryClient, input: AjusteEstoqueInput): AjustePrepa
   const otimista: Operacao = {
     id: corpo.id, numero: null, tipo: "AJUSTE_ESTOQUE", status: "CONFIRMADA", data: hojeIso(), descricao: input.observacao.trim(), valorTotal: valor,
     parceiro: null, centroCustoId: input.centroCustoId ?? null, corrigeOperacao: null, correcoes: [],
-    itens: [{ id: uuid(), ordem: 1, descricao: `Ajuste: ${nome}`, quantidade: String(Math.abs(diferenca)), unidade: saldo ? rotuloUnidade(saldo.unidade) : produto ? rotuloUnidade(produto.unidade) : "un", valorUnitario: String(custo), valorTotal: valor, estocavel: true, produtoId: input.produtoId }],
+    itens: [{ id: crypto.randomUUID(), ordem: 1, descricao: `Ajuste: ${nome}`, quantidade: String(Math.abs(diferenca)), unidade: saldo ? rotuloUnidade(saldo.unidade) : produto ? rotuloUnidade(produto.unidade) : "un", valorUnitario: String(custo), valorTotal: valor, estocavel: true, produtoId: input.produtoId }],
     compromissos: [], transacoes: [], documentos: [],
-    movimentosEstoque: [{ id: uuid(), seq: null, tipo: "AJUSTE", status: "CONFIRMADO", quantidade: String(diferenca), valorTotal: valor, produtoId: input.produtoId }],
+    movimentosEstoque: [{ id: crypto.randomUUID(), seq: null, tipo: "AJUSTE", status: "CONFIRMADO", quantidade: String(diferenca), valorTotal: valor, produtoId: input.produtoId }],
   };
   return { corpo, otimista };
 }
@@ -383,7 +345,7 @@ type LiquidacaoPreparada = { compromissoId: string; tipo: "PAGAR" | "RECEBER"; o
 
 function prepararLiquidacao(input: LiquidarCompromissoInput): LiquidacaoPreparada {
   const corpo: CorpoLiquidacao = {
-    transacaoId: input.transacaoId ?? uuid(), contaId: input.contaId, valor: input.valor, data: input.data,
+    transacaoId: input.transacaoId ?? crypto.randomUUID(), contaId: input.contaId, valor: input.valor, data: input.data,
     ...(input.formaPagamento ? { formaPagamento: input.formaPagamento } : {}),
     ...(input.descricao ? { descricao: input.descricao } : {}),
   };
@@ -415,13 +377,16 @@ export function useLiquidarCompromisso() {
     body: (preparada) => preparada.corpo,
     queryKeys: (preparada) => {
       const { corpo, compromissoId } = preparada;
-      const atualizar = (lista: Compromisso[]) => lista.map((item) => item.id === compromissoId ? liquidar(item, corpo.valor) : item);
+      const atualizar = (lista: Compromisso[]): Compromisso[] => {
+        const existente = lista.find((item) => item.id === compromissoId);
+        return existente ? updateItemInCacheList(lista, liquidar(existente, corpo.valor), (item) => item.id === compromissoId) : lista;
+      };
       const compromisso = qc.getQueriesData<Compromisso[]>({ queryKey: financeiroKeys.compromissosTodos() })
         .flatMap(([, lista]) => lista ?? []).find((item) => item.id === compromissoId);
       const operacaoId = preparada.operacaoId ?? compromisso?.operacao.id;
       const direcao = preparada.tipo === "RECEBER" ? "ENTRADA" as const : "SAIDA" as const;
       const movimento: MovimentoGeral = {
-        id: uuid(), seq: null, contaId: corpo.contaId, direcao, valor: dinheiro(corpo.valor), conta: contaDoCache(qc, corpo.contaId),
+        id: crypto.randomUUID(), seq: null, contaId: corpo.contaId, direcao, valor: dinheiro(corpo.valor), conta: contaDoCache(qc, corpo.contaId),
         transacao: {
           id: corpo.transacaoId, seq: null, tipo: preparada.tipo === "RECEBER" ? "RECEBIMENTO" : "PAGAMENTO", status: "CONFIRMADA", data: dataIso(corpo.data),
           descricao: corpo.descricao ?? (compromisso ? `Liquidação do compromisso${compromisso.seq != null ? ` #${compromisso.seq}` : ""}` : "Liquidação de compromisso"),
@@ -460,7 +425,7 @@ export type TransferirInput = { id?: string; contaOrigemId: string; contaDestino
 type TransferenciaPreparada = { corpo: TransferirInput & { id: string }; otimista: Operacao };
 
 function prepararTransferencia(qc: QueryClient, input: TransferirInput): TransferenciaPreparada {
-  const corpo = { ...input, id: input.id ?? uuid() };
+  const corpo = { ...input, id: input.id ?? crypto.randomUUID() };
   validado(transferenciaSchema.safeParse(corpo) as ResultadoZod<unknown>);
   if (corpo.contaOrigemId === corpo.contaDestinoId) throw erroDeValidacao("Escolha contas de origem e destino diferentes", "contaDestinoId");
   const valor = dinheiro(corpo.valor);
@@ -470,10 +435,10 @@ function prepararTransferencia(qc: QueryClient, input: TransferirInput): Transfe
     id: corpo.id, numero: null, tipo: "TRANSFERENCIA_FINANCEIRA", status: "CONFIRMADA", data, descricao, valorTotal: valor,
     parceiro: null, corrigeOperacao: null, correcoes: [], itens: [], compromissos: [], movimentosEstoque: [], documentos: [],
     transacoes: [{
-      id: uuid(), seq: null, tipo: "TRANSFERENCIA", status: "CONFIRMADA", data, valorTotal: valor, formaPagamento: null, operacaoId: corpo.id,
+      id: crypto.randomUUID(), seq: null, tipo: "TRANSFERENCIA", status: "CONFIRMADA", data, valorTotal: valor, formaPagamento: null, operacaoId: corpo.id,
       movimentos: [
-        { id: uuid(), seq: null, contaId: corpo.contaOrigemId, direcao: "SAIDA", valor, conta: contaDoCache(qc, corpo.contaOrigemId) },
-        { id: uuid(), seq: null, contaId: corpo.contaDestinoId, direcao: "ENTRADA", valor, conta: contaDoCache(qc, corpo.contaDestinoId) },
+        { id: crypto.randomUUID(), seq: null, contaId: corpo.contaOrigemId, direcao: "SAIDA", valor, conta: contaDoCache(qc, corpo.contaOrigemId) },
+        { id: crypto.randomUUID(), seq: null, contaId: corpo.contaDestinoId, direcao: "ENTRADA", valor, conta: contaDoCache(qc, corpo.contaDestinoId) },
       ],
     }],
   };
