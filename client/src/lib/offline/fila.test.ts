@@ -162,4 +162,31 @@ describe("fila", () => {
       headers: expect.objectContaining({ "X-Propriedade-Id": "1" }),
     }));
   });
+
+  it("processamento passa por navigator.locks — só uma execução por vez, mesmo sobrepondo chamadas", async () => {
+    vi.resetModules();
+    let concorrentes = 0;
+    let maxConcorrentes = 0;
+    const requestMock = vi.fn(async (_nome: string, cb: () => Promise<unknown>) => {
+      concorrentes++;
+      maxConcorrentes = Math.max(maxConcorrentes, concorrentes);
+      try {
+        return await cb();
+      } finally {
+        concorrentes--;
+      }
+    });
+    vi.stubGlobal("navigator", { locks: { request: requestMock } });
+
+    const { enfileirarMutation, garantirProcessamento } = await import("./fila");
+    const fetchMock = vi.fn(() => resposta({ ok: true }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const pedido = enfileirarMutation({ mutationKey: "a", path: "/a", method: "POST" });
+    garantirProcessamento(); // chamada sobreposta — `processando` já barra, mas prova que a trava é usada
+    await pedido;
+
+    expect(requestMock).toHaveBeenCalledWith("rionovo-fila-processamento", expect.any(Function));
+    expect(maxConcorrentes).toBe(1);
+  });
 });

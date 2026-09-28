@@ -15,6 +15,7 @@ import { comPropriedadeExplicita, getPropriedadeAtiva } from "../../propriedadeS
 
 const CHAVE = "rionovo-fila-pendente";
 const CHAVE_ERROS = "rionovo-fila-erros";
+const TRAVA_PROCESSAMENTO = "rionovo-fila-processamento";
 
 interface PedidoMutation {
   mutationKey: string;
@@ -98,6 +99,20 @@ function destravar() {
   notificar();
 }
 
+// IndexedDB é compartilhado entre abas do mesmo navegador — sem isso, duas
+// abas reconectando juntas drenam a mesma fila em paralelo e cada uma manda
+// os itens duplicados ao servidor. `navigator.locks` (indisponível em alguns
+// ambientes de teste) serializa entre abas; sem ele, roda direto.
+function comTravaEntreAbas<T>(fn: () => Promise<T>): Promise<T> {
+  if (typeof navigator !== "undefined" && "locks" in navigator) {
+    // O tipo de LockGrantedCallback não modela retorno assíncrono (a API de
+    // verdade espera a promise do callback assentar antes de resolver esta),
+    // então o `as` corrige só o tipo, não o comportamento.
+    return navigator.locks.request(TRAVA_PROCESSAMENTO, fn) as unknown as Promise<T>;
+  }
+  return fn();
+}
+
 function carregar(): Promise<void> {
   if (carregada) return Promise.resolve();
   if (!carregandoPromise) {
@@ -178,8 +193,14 @@ export function garantirProcessamento(): void {
   if (processando || !onlineManager.isOnline()) return;
   processando = true;
   travar();
-  carregar()
-    .then(() => processarFila())
+  comTravaEntreAbas(async () => {
+    // Relê do IndexedDB ao entrar na trava — outra aba pode ter drenado (ou
+    // adicionado) itens enquanto esta esperava a vez.
+    fila = (await get<ItemFila[]>(CHAVE)) ?? [];
+    carregada = true;
+    notificar();
+    await processarFila();
+  })
     .finally(() => {
       processando = false;
       progresso = null;
