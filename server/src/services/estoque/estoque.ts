@@ -447,12 +447,13 @@ export async function estornarMovimentoTx(
   }
   const mov = await tx.movimentoEstoque.findFirst({ where: { id: movimentoId, ...filtroPropriedade }, include: { revertidoPor: true, alocacaoPartidaEstoques: true } });
   if (!mov) throw new EstoqueError("NAO_ENCONTRADO", "movimento não encontrado");
+  const alocacoes = mov.alocacaoPartidaEstoques ?? [];
   if (mov.revertidoPor || mov.status === "REVERTIDO") throw new EstoqueError("ORIGEM_AUTOMATICA", "movimento já estornado");
   if (mov.reversaoDeId != null) throw new EstoqueError("ORIGEM_AUTOMATICA", "um movimento de estorno não pode ser estornado novamente");
 
   const pid = mov.propriedadeId ?? await propriedadePrincipalId();
   if (mov.tipo === "ENTRADA" || (mov.tipo === "AJUSTE" && mov.quantidade.gt(0))) {
-    for (const alocacao of mov.alocacaoPartidaEstoques) {
+    for (const alocacao of alocacoes) {
       if ((await saldoPartidaTx(tx, alocacao.partidaId, pid)).lt(alocacao.quantidade)) {
         throw new EstoqueError("CONFLITO", "A partida da entrada já foi consumida; reconcilie o estoque antes de estornar.");
       }
@@ -469,7 +470,7 @@ export async function estornarMovimentoTx(
     propriedadeId: pid, operacaoId: mov.operacaoId, reversaoDeId: mov.id, centroCustoId: mov.centroCustoId,
     observacao: opts.observacao ?? `Estorno do movimento #${mov.seq}`,
     criadoPorId: opts.usuarioId ?? null,
-    ...(mov.alocacaoPartidaEstoques.length ? { alocacaoPartidaEstoques: { create: mov.alocacaoPartidaEstoques.map((a) => ({ partidaId: a.partidaId, quantidade: mov.tipo === "AJUSTE" ? a.quantidade.negated() : a.quantidade })) } } : {}),
+    ...(alocacoes.length ? { alocacaoPartidaEstoques: { create: alocacoes.map((a) => ({ partidaId: a.partidaId, quantidade: mov.tipo === "AJUSTE" ? a.quantidade.negated() : a.quantidade })) } } : {}),
   } });
   await tx.movimentoEstoque.update({ where: { id: movimentoId }, data: { status: "REVERTIDO" } });
   await auditar(tx, { entidade: "MovimentoEstoque", entidadeId: mov.id, acao: "ESTORNO_MOVIMENTO", usuarioId: opts.usuarioId, motivo: opts.observacao,

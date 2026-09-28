@@ -55,9 +55,26 @@ describeComBanco("aplicação com doses inclusas em Serviço", () => {
     expect(aplicacao.itemCompraDiretaId).toBeNull();
     expect(aplicacao.operacaoServicoId).toBe(servico.id);
     expect(aplicacao.nomeProdutoAplicado).toContain("Vacina");
+    const outroAnimal = await cadastrar(cadastrarAnimalSchema.parse({
+      brinco: `V3B${run}`, sexo: "F", origem: "COMPRADO", aptidao: "LEITE",
+      dataNascimento: diasAntes(700), dataEntrada: diasAntes(20), propriedadeId: propriedade.id,
+    }), null);
+    animalIds.push(outroAnimal.id);
+    const outraAplicacao = await criarAplicacao({
+      animalId: outroAnimal.id, propriedadeId: propriedade.id, data,
+      aplicadaEm: `${data}T15:00:00-03:00`, finalidade: "VACINA",
+      origemInsumo: "INCLUSO_SERVICO", nomeProdutoAplicado: "Vacina identificada pelo veterinário",
+      dose: "2", unidadeDose: "ML", carenciaLeiteHoras: 0, carenciaCarneHoras: 48,
+      operacaoServicoId: servico.id,
+    }, null);
+    expect(outraAplicacao.operacaoServicoId).toBe(servico.id);
+    expect(outraAplicacao.movimentoEstoqueId).toBeNull();
+    expect(outraAplicacao.valorProdutoAtribuido).toBeNull();
     expect((await carenciaAnimal(animal.id, propriedade.id)).carne).toMatchObject({ estado: "CONHECIDO" });
     await expect(estornarOperacao(servico.id, "Correção", { propriedadeId: propriedade.id })).rejects.toThrow(/aplicações/);
     await anularAplicacao(aplicacao.id, propriedade.id, "Registro lançado incorretamente", null);
     expect((await carenciaAnimal(animal.id, propriedade.id)).carne).toEqual({ estado: "NENHUMA" });
+    await expect(estornarOperacao(servico.id, "Correção", { propriedadeId: propriedade.id })).rejects.toThrow(/aplicações/);
+    await anularAplicacao(outraAplicacao.id, propriedade.id, "Registro lançado incorretamente", null);
   });
 });
