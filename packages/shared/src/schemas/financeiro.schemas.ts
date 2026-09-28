@@ -41,6 +41,23 @@ export const simulacaoParcelasSchema = z.object({
   if (!input.itens.length && input.valorTotal === undefined) ctx.addIssue({ code: "custom", path: ["valorTotal"], message: "Informe itens ou o valor total" });
 });
 
+const financeiroSchema = z.discriminatedUnion("condicao", [
+  z.object({ condicao: z.literal("SEM_EFEITO_FINANCEIRO") }),
+  z.object({ condicao: z.literal("A_VISTA"), contaId: z.string().uuid(), formaPagamento: formaPagamentoSchema.optional() }),
+  z.object({ condicao: z.literal("A_PRAZO"), parcelas: z.array(parcelaSchema).min(1) }),
+  z.object({
+    condicao: z.literal("PARCIAL"), contaId: z.string().uuid(), valorPago: valorPositivo,
+    formaPagamento: formaPagamentoSchema.optional(), parcelas: z.array(parcelaSchema).min(1),
+  }),
+]);
+
+export type Financeiro = z.infer<typeof financeiroSchema>;
+
+/** Só A_PRAZO e PARCIAL carregam parcelas. */
+export function temParcelas(f: Financeiro): f is Extract<Financeiro, { parcelas: unknown }> {
+  return f.condicao === "A_PRAZO" || f.condicao === "PARCIAL";
+}
+
 export const operacaoSchema = z.object({
   id: z.string().uuid().optional(),
   classificacao: z.enum(["CUSTEIO", "INVESTIMENTO"]).nullable().optional(),
@@ -57,15 +74,7 @@ export const operacaoSchema = z.object({
   corrigeOperacaoId: z.string().uuid().optional(),
   propriedadeId: z.number().int().positive().optional(),
   itens: z.array(itemOperacaoSchema).default([]),
-  financeiro: z.discriminatedUnion("condicao", [
-    z.object({ condicao: z.literal("SEM_EFEITO_FINANCEIRO") }),
-    z.object({ condicao: z.literal("A_VISTA"), contaId: z.string().uuid(), formaPagamento: formaPagamentoSchema.optional() }),
-    z.object({ condicao: z.literal("A_PRAZO"), parcelas: z.array(parcelaSchema).min(1) }),
-    z.object({
-      condicao: z.literal("PARCIAL"), contaId: z.string().uuid(), valorPago: valorPositivo,
-      formaPagamento: formaPagamentoSchema.optional(), parcelas: z.array(parcelaSchema).min(1),
-    }),
-  ]),
+  financeiro: financeiroSchema,
 }).superRefine((input, ctx) => {
   const tiposComItens = new Set([
     "COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO", "VENDA", "AJUSTE_ESTOQUE",
@@ -86,7 +95,7 @@ export const operacaoSchema = z.object({
   if (tiposSomenteFisicos.has(input.tipo) && input.financeiro.condicao !== "SEM_EFEITO_FINANCEIRO") {
     ctx.addIssue({ code: "custom", path: ["financeiro", "condicao"], message: "Este tipo de operação não gera movimentação financeira" });
   }
-  if (input.financeiro.condicao === "A_PRAZO" || input.financeiro.condicao === "PARCIAL") {
+  if (temParcelas(input.financeiro)) {
     const ids = input.financeiro.parcelas.flatMap((parcela) => parcela.id ? [parcela.id] : []);
     if (new Set(ids).size !== ids.length) ctx.addIssue({ code: "custom", path: ["financeiro", "parcelas"], message: "Há parcelas com o mesmo identificador" });
   }

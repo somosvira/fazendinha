@@ -21,6 +21,7 @@ import { rotuloUnidade } from "../lib/unidades";
 import { codigoOperacaoFinanceira } from "./lib/codigo";
 
 type Condicao = "A_VISTA" | "A_PRAZO" | "PARCIAL" | "SEM_EFEITO_FINANCEIRO";
+const condicaoComParcelas = (condicao: Condicao) => condicao === "A_PRAZO" || condicao === "PARCIAL";
 type ModoValor = "UNITARIO" | "TOTAL";
 type ItemForm = { categoriaId: string; classificacao: string; centroCustoId: string; id: number; produtoId: string; descricao: string; quantidade: string; unidade: string; modoValor: ModoValor; valorUnitario: string; valorTotal: string };
 type ParcelaForm = { id: number; valor: string; vencimento: string };
@@ -520,7 +521,7 @@ function FormOperacaoConteudo({ config, rascunho = null, rascunhoLocal, condicao
     : condicao === "PARCIAL" ? realizadoAgora > 0 && saldoFuturoFinanceiro > 0 && parcelas.length > 0 && totalParcelasEmCentavos === paraCentavos(saldoFuturoFinanceiro.toFixed(2)) : true;
   // A soma fechar não basta: uma parcela em branco (valor 0) passa na soma mas a
   // API a rejeita. Cada parcela precisa de valor > 0 e de vencimento.
-  const parcelaIncompleta = condicao === "A_PRAZO" || condicao === "PARCIAL"
+  const parcelaIncompleta = condicaoComParcelas(condicao)
     ? parcelas.find((parcela) => !((paraCentavos(parcela.valor) ?? 0) > 0) || !parcela.vencimento)
     : undefined;
   const parcelasValidas = somaParcelasConfere && !parcelaIncompleta;
@@ -871,7 +872,7 @@ function EfeitoFinanceiro({ online, permite, condicao, alterarCondicao, contaId,
     }
     void gerar();
   };
-  const aPrazo = condicao === "A_PRAZO" || condicao === "PARCIAL";
+  const aPrazo = condicaoComParcelas(condicao);
 
   return <section>
     <h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Efeito financeiro</h3>

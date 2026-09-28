@@ -2,7 +2,7 @@ import { Prisma, type DirecaoMovimentoConta, type TipoOperacaoFinanceira, type T
 import { prisma } from "../../db.js";
 import { auditar, exigirContaAtiva, exigirParceiroAtivo, exigirPeriodoAberto, exigirPositivo, FinanceiroError } from "./regras.js";
 import { comoErroFinanceiro, simularParcelas as simularParcelasCalc } from "./parcelas.calc.js";
-import { preverEfeitosOperacao, type ContextoOperacao } from "@rionovo/shared";
+import { preverEfeitosOperacao, temParcelas, type ContextoOperacao } from "@rionovo/shared";
 import { obterBasesCusto, produtosComEstoque } from "../estoque/estoque.js";
 import type { BaseCusto } from "../estoque/estoque.calc.js";
 import { rotuloUnidade } from "../estoque/unidades.js";
@@ -116,7 +116,7 @@ async function carregarContextoOperacao(tx: Prisma.TransactionClient, input: Ope
 async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInput) {
     const existente = await operacaoCriadaExistente(tx, input);
     if (existente) return existente;
-    const parcelasInformadas = input.financeiro.condicao === "A_PRAZO" || input.financeiro.condicao === "PARCIAL" ? input.financeiro.parcelas : [];
+    const parcelasInformadas = temParcelas(input.financeiro) ? input.financeiro.parcelas : [];
     const idsParcelas = parcelasInformadas.flatMap((parcela) => parcela.id ? [parcela.id] : []);
     if (idsParcelas.length && await tx.compromissoFinanceiro.count({ where: { id: { in: idsParcelas } } })) {
       throw new FinanceiroError("CONFLITO", "Este identificador de parcela já pertence a outro compromisso");

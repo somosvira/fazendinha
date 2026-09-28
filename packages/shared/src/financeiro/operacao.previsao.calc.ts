@@ -1,7 +1,7 @@
 import { arredondarDinheiro, dividirDecimais, somarDecimais, type ValorDecimal } from "../lib/decimal.js";
 import { ErroValidacaoFinanceira } from "./erros.js";
 import { totalItensFinanceiros, valorItemFinanceiro } from "./parcelas.calc.js";
-import type { FormaPagamento, OperacaoValidada } from "../schemas/financeiro.schemas.js";
+import { temParcelas, type FormaPagamento, type OperacaoValidada } from "../schemas/financeiro.schemas.js";
 
 type Classificacao = "CUSTEIO" | "INVESTIMENTO";
 type TipoOperacao = OperacaoValidada["tipo"];
@@ -220,7 +220,7 @@ export function preverEfeitosOperacao(input: OperacaoValidada, contexto: Context
     }))
     : [];
 
-  const parcelas = financeiro.condicao === "A_PRAZO" || financeiro.condicao === "PARCIAL" ? financeiro.parcelas : [];
+  const parcelas = temParcelas(financeiro) ? financeiro.parcelas : [];
   const compromissos: CompromissoPrevisto[] = parcelas.map((parcela, indice) => ({
     ...(parcela.id ? { id: parcela.id } : {}),
     tipo: tipoCompromissoDaOperacao(input.tipo),
