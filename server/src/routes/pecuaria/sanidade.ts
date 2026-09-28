@@ -10,6 +10,8 @@ import { RebanhoError } from "../../services/pecuaria/rebanho/regras.js";
 import { FinanceiroError } from "../../services/financeiro/regras.js";
 import * as aplicacoes from "../../services/pecuaria/sanidade/aplicacoes.js";
 import * as ocorrencias from "../../services/pecuaria/sanidade/ocorrencias.js";
+import * as protocolos from "../../services/pecuaria/sanidade/protocolos.js";
+import * as exames from "../../services/pecuaria/sanidade/exames.js";
 
 const uuid = z.string().uuid();
 const data = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
@@ -77,6 +79,52 @@ export const sanidadeRouter = new Hono()
   .post("/ocorrencias/:id/anulacao", validar(z.object({ propriedadeId: z.number().int().positive(), motivo: z.string().trim().min(5).max(500) })), async (c) => {
     try { const body = c.req.valid("json"); const propriedadeId = await resolverEscopoEscrita(c, body.propriedadeId);
       return c.json(await ocorrencias.anularOcorrencia(c.req.param("id"), propriedadeId, body.motivo, getUsuario(c)?.id ?? null)); }
+    catch (e) { return falha(c, e); }
+  })
+  .get("/protocolos", async (c) => { try { return c.json(await protocolos.listarProtocolos()); } catch (e) { return falha(c, e); } })
+  .post("/protocolos", validar(z.object({ nome: z.string().trim().min(2).max(160), descricao: z.string().trim().max(500).nullish(),
+    etapas: z.array(z.object({ diaRelativo: z.number().int().nonnegative(), tipo: z.enum(["APLICACAO", "EXAME"]),
+      produtoId: uuid.nullish(), tipoExameId: uuid.nullish(), finalidade: z.enum(["TRATAMENTO", "VACINA", "VERMIFUGO"]).nullish(),
+      dose: z.number().positive().nullish(), unidade: z.string().trim().max(30).nullish(), via: z.string().trim().max(80).nullish() })).min(1),
+  })), async (c) => {
+    try { return c.json(await protocolos.criarProtocolo(c.req.valid("json"), getUsuario(c)?.id ?? null), 201); }
+    catch (e) { return falha(c, e); }
+  })
+  .post("/protocolos/:id/publicacao", async (c) => {
+    try { return c.json(await protocolos.publicarProtocolo(c.req.param("id"), getUsuario(c)?.id ?? null)); }
+    catch (e) { return falha(c, e); }
+  })
+  .post("/execucoes", validar(z.object({ protocoloId: uuid, animalId: uuid, propriedadeId: z.number().int().positive(),
+    inicio: data, ocorrenciaId: uuid.nullish(), operacaoServicoId: uuid.nullish() })), async (c) => {
+    try { const body = c.req.valid("json"); const propriedadeId = await resolverEscopoEscrita(c, body.propriedadeId);
+      return c.json(await protocolos.iniciarExecucao({ ...body, propriedadeId }, getUsuario(c)?.id ?? null), 201); }
+    catch (e) { return falha(c, e); }
+  })
+  .get("/tarefas", async (c) => {
+    try { const animalId = c.req.query("animalId"); if (animalId && !uuid.safeParse(animalId).success) return c.json({ error: "Animal inválido", code: "VALIDACAO" }, 422);
+      return c.json(await protocolos.listarTarefas(await resolverEscopoLeitura(c), animalId)); }
+    catch (e) { return falha(c, e); }
+  })
+  .post("/tarefas/:id/dispensa", validar(z.object({ motivo: z.string().trim().min(5).max(500) })), async (c) => {
+    try { return c.json(await protocolos.dispensarTarefa(c.req.param("id"), c.req.valid("json").motivo, getUsuario(c)?.id ?? null)); }
+    catch (e) { return falha(c, e); }
+  })
+  .get("/tipos-exame", async (c) => { try { return c.json(await exames.listarTiposExame()); } catch (e) { return falha(c, e); } })
+  .post("/tipos-exame", validar(z.object({ nome: z.string().trim().min(2).max(120), tipoResultado: z.enum(["TEXTO", "NUMERO", "OPCAO"]),
+    unidade: z.string().trim().max(30).nullish(), opcoes: z.array(z.string().trim().min(1).max(100)).max(30).nullish() })), async (c) => {
+    try { return c.json(await exames.criarTipoExame(c.req.valid("json"), getUsuario(c)?.id ?? null), 201); }
+    catch (e) { return falha(c, e); }
+  })
+  .get("/exames", async (c) => {
+    try { const animalId = c.req.query("animalId"); if (animalId && !uuid.safeParse(animalId).success) return c.json({ error: "Animal inválido", code: "VALIDACAO" }, 422);
+      return c.json(await exames.listarExames(animalId, await resolverEscopoLeitura(c))); }
+    catch (e) { return falha(c, e); }
+  })
+  .post("/exames", validar(z.object({ animalId: uuid, propriedadeId: z.number().int().positive(), tipoExameId: uuid, data,
+    resultadoTexto: z.string().trim().max(1000).nullish(), resultadoNumero: z.number().finite().nullish(), resultadoOpcao: z.string().trim().max(100).nullish(),
+    responsavel: z.string().trim().max(160).nullish(), ocorrenciaId: uuid.nullish(), tarefaId: uuid.nullish(), operacaoServicoId: uuid.nullish() })), async (c) => {
+    try { const body = c.req.valid("json"); const propriedadeId = await resolverEscopoEscrita(c, body.propriedadeId);
+      return c.json(await exames.registrarExame({ ...body, propriedadeId }, getUsuario(c)?.id ?? null), 201); }
     catch (e) { return falha(c, e); }
   })
   .get("/aplicacoes", async (c) => {

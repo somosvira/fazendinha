@@ -731,3 +731,47 @@ CREATE CONSTRAINT TRIGGER "MovimentoEstoque_partidas_v3" AFTER INSERT OR UPDATE 
   DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION "conferir_alocacao_partida_v3"();
 CREATE CONSTRAINT TRIGGER "AlocacaoPartidaEstoque_partidas_v3" AFTER INSERT OR UPDATE OR DELETE ON "AlocacaoPartidaEstoque"
   DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION "conferir_alocacao_partida_v3"();
+CREATE FUNCTION "impedir_edicao_alocacao_partida_v3"() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  RAISE EXCEPTION 'alocação de partida confirmada é imutável; use movimento inverso' USING ERRCODE = '23514';
+END $$;
+CREATE TRIGGER "AlocacaoPartidaEstoque_imutavel_v3" BEFORE UPDATE ON "AlocacaoPartidaEstoque"
+  FOR EACH ROW EXECUTE FUNCTION "impedir_edicao_alocacao_partida_v3"();
+
+-- Um fechamento confirmado congela os animal-dias. Alterações posteriores
+-- continuam permitidas quando não mudam a ocupação dentro daquele intervalo.
+CREATE FUNCTION "proteger_localizacao_consumo_v3"() RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE
+  fechamento record;
+  dias_antes integer;
+  dias_depois integer;
+  old_lote text;
+  new_lote text;
+BEGIN
+  IF TG_OP <> 'INSERT' THEN old_lote := OLD."loteId"; END IF;
+  IF TG_OP <> 'DELETE' THEN new_lote := NEW."loteId"; END IF;
+  FOR fechamento IN
+    SELECT f."id", f."loteId", f."inicio", f."fim"
+    FROM "pecuaria"."FechamentoConsumo" f
+    WHERE f."status" = 'CONFIRMADO'
+      AND (f."loteId" = old_lote OR f."loteId" = new_lote)
+  LOOP
+    dias_antes := 0;
+    dias_depois := 0;
+    IF TG_OP <> 'INSERT' AND old_lote = fechamento."loteId" THEN
+      dias_antes := greatest(0, least(coalesce(OLD."ate", fechamento."fim" + 1), fechamento."fim" + 1)
+        - greatest(OLD."desde", fechamento."inicio"));
+    END IF;
+    IF TG_OP <> 'DELETE' AND new_lote = fechamento."loteId" THEN
+      dias_depois := greatest(0, least(coalesce(NEW."ate", fechamento."fim" + 1), fechamento."fim" + 1)
+        - greatest(NEW."desde", fechamento."inicio"));
+    END IF;
+    IF dias_antes <> dias_depois THEN
+      RAISE EXCEPTION 'localização altera animal-dias do fechamento %; estorne-o antes', fechamento."id" USING ERRCODE = '23514';
+    END IF;
+  END LOOP;
+  IF TG_OP = 'DELETE' THEN RETURN OLD; END IF;
+  RETURN NEW;
+END $$;
+CREATE TRIGGER "LocalizacaoAnimal_consumo_v3" BEFORE INSERT OR UPDATE OR DELETE ON "pecuaria"."LocalizacaoAnimal"
+  FOR EACH ROW EXECUTE FUNCTION "proteger_localizacao_consumo_v3"();

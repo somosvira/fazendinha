@@ -24,9 +24,11 @@ export function produtoDTO(produto: Prisma.ProdutoGetPayload<{ include: typeof i
     classificacao: produto.categoria?.classificacao ?? null,
     // Comportamento é da categoria, mesmo que ela esteja inativa (situação é do produto).
     categoria: produto.categoria
-      ? { id: produto.categoria.id, nome: produto.categoria.nome, usoAgricola: produto.categoria.usoAgricola, usoGenetico: produto.categoria.usoGenetico }
+      ? { id: produto.categoria.id, nome: produto.categoria.nome, usoAgricola: produto.categoria.usoAgricola, usoGenetico: produto.categoria.usoGenetico,
+        usoSanitario: produto.categoria.usoSanitario, usoNutricional: produto.categoria.usoNutricional }
       : null,
     ativo: produto.ativo,
+    rastrearPartidas: produto.rastrearPartidas,
     centroCustoIds: produto.centrosCusto.map(({ centroCustoId }) => centroCustoId),
     centrosCusto: produto.centrosCusto.map(({ centroCusto }) => ({ id: centroCusto.id, nome: centroCusto.nome, ativo: centroCusto.ativo })),
     fornecedores: produto.fornecedores.map(({ fornecedor }) => ({ id: fornecedor.id, nome: fornecedor.nome, ativo: fornecedor.ativo })),
@@ -58,7 +60,7 @@ function separarRelacoes<T extends { fornecedorIds?: string[]; centroCustoIds?: 
   return { fornecedorIds, centroCustoIds, produto };
 }
 
-const USO_CAMPO = { agricola: "usoAgricola", genetico: "usoGenetico" } as const;
+const USO_CAMPO = { agricola: "usoAgricola", genetico: "usoGenetico", sanitario: "usoSanitario", nutricional: "usoNutricional" } as const;
 
 export async function listarProdutos(f?: { uso?: keyof typeof USO_CAMPO; q?: string; ativo?: boolean; incluirInativos?: boolean }) {
   const where: Prisma.ProdutoWhereInput = {};

@@ -27,6 +27,7 @@ import { SeletorPeriodoGmd } from "../components/SeletorPeriodoGmd";
 import { HistoricoMovimentacoes } from "../components/HistoricoMovimentacoes";
 import { AlteracoesCadastro } from "../components/AlteracoesCadastro";
 import { DetalheMovimentacao } from "../components/DetalheMovimentacao";
+import { NutricaoLote } from "../nutricao/NutricaoLote";
 
 const ITENS_POR_PAGINA = 20;
 
@@ -232,6 +233,8 @@ export function DetalheLote({ id, podeLancar = true, onVoltar }: { id: string; p
       <div className="border-b border-border p-5"><h2 className="font-serif text-xl">Alterações do lote</h2></div>
       <AlteracoesCadastro entidade="Lote" entidadeId={lote.id} recarregarToken={alteracoesToken} />
     </Panel>
+
+    <NutricaoLote loteId={lote.id} propriedadeId={lote.propriedadeId} podeLancar={podeLancar && lote.ativo} />
 
     {editando && <FormLote lote={lote} propriedades={[]} onSalvo={async () => { setEditando(false); await Promise.all([carregarLote(), recarregarResumoEBaixados()]); }} onFechar={() => setEditando(false)} />}
 

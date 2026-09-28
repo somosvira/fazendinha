@@ -161,24 +161,40 @@ export async function criarAplicacao(input: AplicacaoInput, usuarioId: number | 
   return prisma.$transaction(async (tx) => {
     await travarAnimais(tx, [input.animalId]);
     const data = await conferirLocalizacao(tx, input);
+    let dados = input;
+    if (input.tarefaId) {
+      const tarefa = await tx.tarefaSanitaria.findUnique({ where: { id: input.tarefaId },
+        include: { etapa: true, execucao: true, aplicacao: true, exame: true } });
+      if (!tarefa || tarefa.execucao.canceladaEm || tarefa.dispensadaEm || tarefa.aplicacao || tarefa.exame || tarefa.etapa.tipo !== "APLICACAO") {
+        erro("A tarefa não está disponível para esta aplicação", "tarefaId");
+      }
+      if (tarefa!.etapa.produtoId !== input.produtoId || tarefa!.etapa.finalidade !== input.finalidade
+        || !tarefa!.etapa.dose?.equals(input.dose) || tarefa!.etapa.unidade !== input.unidadeDose) {
+        erro("A aplicação deve corresponder ao Produto, finalidade e dose da etapa", "tarefaId");
+      }
+      if (tarefa!.execucao.operacaoServicoId && input.operacaoServicoId && tarefa!.execucao.operacaoServicoId !== input.operacaoServicoId) {
+        erro("O Serviço da aplicação diverge do protocolo", "operacaoServicoId");
+      }
+      dados = { ...input, operacaoServicoId: input.operacaoServicoId ?? tarefa!.execucao.operacaoServicoId };
+    }
     // Ordem global: animal antes de Produto/sítio. A trava serializa consumo
     // concorrente e reserva de quantidade da mesma compra direta.
     const trava = input.itemCompraDiretaId ? `pec-compra-direta:${input.itemCompraDiretaId}` : `pec-produto:${input.propriedadeId}:${input.produtoId ?? "sem-produto"}`;
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${trava}))`;
-    const origem = await prepararOrigem(tx, input, data, usuarioId);
+    const origem = await prepararOrigem(tx, dados, data, usuarioId);
     const criada = await tx.aplicacaoProduto.create({ data: {
-      animalId: input.animalId, propriedadeId: input.propriedadeId, produtoId: input.produtoId ?? null,
-      nomeProdutoAplicado: origem.nomeProdutoAplicado, ocorrenciaId: input.ocorrenciaId ?? null, tarefaId: input.tarefaId ?? null,
-      data, aplicadaEm: new Date(input.aplicadaEm), precisaoTemporal: "HORA", finalidade: input.finalidade,
-      dose: new Prisma.Decimal(input.dose), unidadeDose: input.unidadeDose,
-      carenciaLeiteHoras: input.carenciaLeiteHoras ?? null, carenciaCarneHoras: input.carenciaCarneHoras ?? null,
-      referenciaCarencia: input.referenciaCarencia ?? null, origemInsumo: input.origemInsumo,
-      quantidadeUtilizada: new Prisma.Decimal(input.dose),
+      animalId: dados.animalId, propriedadeId: dados.propriedadeId, produtoId: dados.produtoId ?? null,
+      nomeProdutoAplicado: origem.nomeProdutoAplicado, ocorrenciaId: dados.ocorrenciaId ?? null, tarefaId: dados.tarefaId ?? null,
+      data, aplicadaEm: new Date(dados.aplicadaEm), precisaoTemporal: "HORA", finalidade: dados.finalidade,
+      dose: new Prisma.Decimal(dados.dose), unidadeDose: dados.unidadeDose,
+      carenciaLeiteHoras: dados.carenciaLeiteHoras ?? null, carenciaCarneHoras: dados.carenciaCarneHoras ?? null,
+      referenciaCarencia: dados.referenciaCarencia ?? null, origemInsumo: dados.origemInsumo,
+      quantidadeUtilizada: new Prisma.Decimal(dados.dose),
       movimentoEstoqueId: origem.movimentoEstoqueId, itemCompraDiretaId: origem.itemCompraDiretaId,
-      quantidadeCompraDireta: origem.quantidadeCompraDireta, operacaoServicoId: input.operacaoServicoId ?? null,
+      quantidadeCompraDireta: origem.quantidadeCompraDireta, operacaoServicoId: dados.operacaoServicoId ?? null,
       valorProdutoAtribuido: origem.valorProdutoAtribuido, situacaoCusto: origem.situacaoCusto,
       partidaCodigoSnapshot: origem.partidaCodigoSnapshot, partidaValidadeSnapshot: origem.partidaValidadeSnapshot,
-      justificativaSemOrigem: input.justificativaSemOrigem ?? null,
+      justificativaSemOrigem: dados.justificativaSemOrigem ?? null,
     } });
     await auditar(tx, { entidade: "AplicacaoProduto", entidadeId: criada.id, animalId: input.animalId, acao: "REGISTRO", usuarioId,
       depois: { origemInsumo: criada.origemInsumo, operacaoServicoId: criada.operacaoServicoId, itemCompraDiretaId: criada.itemCompraDiretaId, movimentoEstoqueId: criada.movimentoEstoqueId } });

@@ -87,6 +87,8 @@ export const categoriaCadastroSchema = z.object({
   ordem: z.number().int().min(0).max(9999).default(0),
   usoAgricola: z.boolean().optional(),
   usoGenetico: z.boolean().optional(),
+  usoSanitario: z.boolean().optional(),
+  usoNutricional: z.boolean().optional(),
 });
 
 export const patchCategoriaCadastroSchema = categoriaCadastroSchema.partial().extend({ ativo: z.boolean().optional() });

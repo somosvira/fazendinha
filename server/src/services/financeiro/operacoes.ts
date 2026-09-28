@@ -407,11 +407,12 @@ export async function estornarOperacao(id: string, motivo: string, contexto: Con
     });
     if (!operacao) throw new FinanceiroError("NAO_ENCONTRADO", "Operação não encontrada");
     if (operacao.status === "CANCELADA") throw new FinanceiroError("JA_REVERTIDO", "A operação já foi cancelada");
-    const [aplicacaoVinculada, exameVinculado] = await Promise.all([
+    const [aplicacaoVinculada, exameVinculado, protocoloVinculado] = await Promise.all([
       tx.aplicacaoProduto.findFirst({ where: { status: "VALIDO", OR: [{ operacaoServicoId: id }, { itemCompraDireta: { operacaoId: id } }] }, select: { id: true } }),
       tx.exameAnimal.findFirst({ where: { status: "VALIDO", operacaoServicoId: id }, select: { id: true } }),
+      tx.execucaoProtocoloSanitario.findFirst({ where: { canceladaEm: null, operacaoServicoId: id }, select: { id: true } }),
     ]);
-    if (aplicacaoVinculada || exameVinculado) throw new FinanceiroError("CONFLITO", "Esta operação financia aplicações ou exames ativos. Revise os vínculos antes de cancelá-la.");
+    if (aplicacaoVinculada || exameVinculado || protocoloVinculado) throw new FinanceiroError("CONFLITO", "Esta operação financia aplicações, exames ou protocolos ativos. Revise os vínculos antes de cancelá-la.");
     await exigirPeriodoAberto(tx, operacao.propriedadeId, new Date());
 
     for (const transacao of operacao.transacoes.filter((item) => item.status === "CONFIRMADA" && item.tipo !== "REVERSAO")) {

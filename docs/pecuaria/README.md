@@ -10,7 +10,7 @@ Esta pasta concentra o contexto funcional e técnico da reconstrução da pecuá
 | Follow-up da v1 | mesclado na `main` em 28/09/2026 | [PR #306](https://github.com/somosvira/fazendinha/pull/306) |
 | v2 · Genética | PR em rascunho, reconciliado com a `main`, aguardando CI e homologação | [PR #305](https://github.com/somosvira/fazendinha/pull/305) |
 | Validação da v2 com dados reais | pendente | executar a carga com o dump real do IDEAGRI e confirmar `ANIMAL.CDCENTRALSEMEN` |
-| v3 · Sanidade, peso e nutrição | implementação iniciada em branch sobre a v2; ainda incompleta e não homologada | [Artefato V3](./artefatos/pecuaria-v3-sanidade-peso-nutricao.html), contrato-alvo de um único PR sobre a v2 |
+| v3 · Sanidade, peso e nutrição | [PR #308](https://github.com/somosvira/fazendinha/pull/308) em rascunho sobre a v2; ainda incompleta e não homologada | [Artefato V3](./artefatos/pecuaria-v3-sanidade-peso-nutricao.html), contrato-alvo do PR |
 
 “Concluída” significa que a implementação e os testes automatizados foram feitos. A v2 só estará disponível para o restante do time depois de sair de rascunho, passar pela validação real, ser revisada e entrar na `main`.
 
@@ -31,7 +31,7 @@ Os arquivos são snapshots HTML e preservam os diagramas e a interatividade dos 
 - O Schema Map da v1 é um retrato anterior à implementação da v2. A seção “Genética” do roadmap nele propõe `Reprodutor`, `CentralSemen` e `EstoqueSemen`, mas foi superada pela decisão documentada na v2: `GenitorExterno`, `MaterialGenetico` e o estoque único do produto.
 - O documento da v2 é o contrato de produto e arquitetura do PR #305. Para detalhes exatos de implementação, prevalecem a migration, o schema Prisma e os testes da branch.
 - O artefato da v3 é o contrato-alvo, baseado no código do #305 em `e31eb55`. A implementação foi iniciada, mas o artefato ainda não representa recursos prontos ou homologação da carga real. A entrega em um único PR é requisito; os padrões propostos e os pontos de revisão estão explicitados no artefato.
-- A primeira fatia em andamento inclui schema/migration aditivos, partida no estoque genérico, aplicação sanitária com dose incluída em Serviço sem cadastro obrigatório de Produto, carência e ocorrência clínica. Protocolos, exames, manejo coletivo, nutrição, telas completas e importação IDEAGRI ainda não devem ser anunciados como disponíveis.
+- O PR em rascunho já implementa a base de schema/migration, partidas no estoque genérico, aplicações com dose incluída em Serviço sem Produto obrigatório, carência, ocorrências, protocolos e exames, pesagem coletiva/manejo e o primeiro fluxo de dieta/fechamento nutricional. A interface ainda não cobre todos esses fluxos; reconciliação de partidas, proteções de concorrência, validação integral e importação IDEAGRI permanecem pendentes. Nada disso deve ser anunciado como V3 homologada.
 - O roteiro de testes combina v1 e v2, embora a v2 ainda não esteja na `main`. Para testá-lo inteiro, use uma branch que contenha os PRs #305 e #306 já conciliados.
 
 Quando houver divergência, use esta ordem para resolver: invariantes de produto aprovadas → migration/schema → testes automatizados → implementação → documento histórico. Corrija a documentação na mesma PR que alterar o comportamento.
