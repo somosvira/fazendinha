@@ -15,8 +15,11 @@ vi.mock("@tanstack/react-query", () => ({
   onlineManager: { isOnline: () => true, subscribe: () => () => {} },
 }));
 
+let propriedadeAtiva: number | null = null;
 vi.mock("../../propriedadeScope", () => ({
-  comPropriedade: (h: Record<string, string> = {}) => h,
+  comPropriedadeExplicita: (id: number | null, h: Record<string, string> = {}) =>
+    id != null ? { ...h, "X-Propriedade-Id": String(id) } : h,
+  getPropriedadeAtiva: () => propriedadeAtiva,
 }));
 
 function resposta(body: unknown) {
@@ -26,7 +29,10 @@ function resposta(body: unknown) {
   }));
 }
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  propriedadeAtiva = null;
+});
 
 describe("fila", () => {
   it("escrita que referencia um registro criado offline segue com o id gerado no cliente", async () => {
@@ -132,5 +138,55 @@ describe("fila", () => {
     await item2;
 
     expect(fetchMock.mock.calls.map(([url]) => url)).toEqual(["/api/a", "/api/a", "/api/b"]);
+  });
+
+  it("grava o sítio ativo no item ao enfileirar, fixo mesmo se o sítio mudar depois", async () => {
+    vi.resetModules();
+    const { set: setMock } = await import("idb-keyval");
+    const { enfileirarMutation } = await import("./fila");
+
+    (setMock as any).mockClear();
+    propriedadeAtiva = 1;
+    const fetchMock = vi.fn(() => new Promise<Response>(() => {})); // nunca resolve — item fica na fila
+    vi.stubGlobal("fetch", fetchMock);
+
+    enfileirarMutation({ mutationKey: "a", path: "/a", method: "POST" }); // não espera — fica pendente
+    await new Promise((r) => setTimeout(r, 10)); // dá tempo do enfileiramento terminar
+
+    propriedadeAtiva = 2; // troca de sítio com o item já na fila e o envio já em voo
+
+    const chamadaComItem = (setMock as any).mock.calls.find(([, v]: [string, any[]]) =>
+      Array.isArray(v) && v.some((item) => item.path === "/a"));
+    expect(chamadaComItem?.[1].find((item: any) => item.path === "/a")).toMatchObject({ propriedadeId: 1 });
+    expect(fetchMock).toHaveBeenCalledWith("/api/a", expect.objectContaining({
+      headers: expect.objectContaining({ "X-Propriedade-Id": "1" }),
+    }));
+  });
+
+  it("processamento passa por navigator.locks — só uma execução por vez, mesmo sobrepondo chamadas", async () => {
+    vi.resetModules();
+    let concorrentes = 0;
+    let maxConcorrentes = 0;
+    const requestMock = vi.fn(async (_nome: string, cb: () => Promise<unknown>) => {
+      concorrentes++;
+      maxConcorrentes = Math.max(maxConcorrentes, concorrentes);
+      try {
+        return await cb();
+      } finally {
+        concorrentes--;
+      }
+    });
+    vi.stubGlobal("navigator", { locks: { request: requestMock } });
+
+    const { enfileirarMutation, garantirProcessamento } = await import("./fila");
+    const fetchMock = vi.fn(() => resposta({ ok: true }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const pedido = enfileirarMutation({ mutationKey: "a", path: "/a", method: "POST" });
+    garantirProcessamento(); // chamada sobreposta — `processando` já barra, mas prova que a trava é usada
+    await pedido;
+
+    expect(requestMock).toHaveBeenCalledWith("rionovo-fila-processamento", expect.any(Function));
+    expect(maxConcorrentes).toBe(1);
   });
 });

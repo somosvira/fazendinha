@@ -3,8 +3,9 @@
 // cada queryKey afetada deve ser corrigida — `aplicar`); o como — snapshot
 // pra rollback em erro e enfileiramento — fica em fila.ts, escrito uma vez só.
 import { useSyncExternalStore } from "react";
-import { useQueryClient, type QueryKey } from "@tanstack/react-query";
+import { useQueryClient, type QueryClient, type QueryKey } from "@tanstack/react-query";
 import { enfileirarMutation, inscrever, obterFila } from "./fila";
+import { ApiError } from "./req";
 
 function ehObjetoPlano(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v);
@@ -38,6 +39,22 @@ export function appendItemToCacheList<T>(atual: T[] | undefined, item: T): T[] {
 // promete até o próximo fetch real corrigir.
 export function prependItemToCacheList<T>(atual: T[] | undefined, item: T): T[] {
   return [item, ...(atual ?? [])];
+}
+
+// Insere mantendo a lista ordenada por `chaveOrdem` (string comparável, ex.:
+// data em ISO). "desc" deixa o item novo à frente dos de chave igual; "asc"
+// deixa depois — escolher conforme o `orderBy` real do servidor.
+export function insertItemSortedInCacheList<T>(
+  atual: T[] | undefined,
+  item: T,
+  chaveOrdem: (item: T) => string,
+  direcao: "asc" | "desc",
+): T[] {
+  const lista = atual ?? [];
+  const chave = chaveOrdem(item);
+  const indice = lista.findIndex((existente) =>
+    direcao === "desc" ? chaveOrdem(existente) <= chave : chaveOrdem(existente) > chave);
+  return indice === -1 ? [...lista, item] : [...lista.slice(0, indice), item, ...lista.slice(indice)];
 }
 
 export function removeItemFromCacheList<T>(atual: T[] | undefined, corresponde: (item: T) => boolean): T[] {
@@ -77,6 +94,22 @@ export interface EntradaPatch<T, TItem> {
   queryKey: QueryKey;
   aplicar?: (atual: T | undefined, itemOtimista: TItem | undefined) => T;
 }
+
+/** Uma entrada por query já em cache sob o prefixo — `setQueryData` exige a
+ * chave exata, então cada combinação de filtro cacheada vira uma entrada. */
+export function porPrefixo<T>(
+  qc: QueryClient,
+  prefixo: QueryKey,
+  aplicar: (atual: T, queryKey: QueryKey) => T,
+): EntradaPatch<T | undefined, unknown>[] {
+  return qc.getQueriesData<T>({ queryKey: prefixo })
+    .filter(([, dados]) => dados !== undefined)
+    .map(([queryKey]) => ({ queryKey, aplicar: (atual: T | undefined) => atual === undefined ? atual : aplicar(atual, queryKey) }));
+}
+
+/** Entrada só de invalidação — dado derivado recomputado no servidor (saldo,
+ * resumo, ranking), sem patch otimista possível. */
+export const invalidar = (queryKey: QueryKey): EntradaPatch<unknown, unknown> => ({ queryKey });
 
 export interface UseOfflineMutationConfig<TInput, TItem, TResp = TItem> {
   /** Identifica esta mutation na fila — usado só pra filtrar `pendentes`. */
@@ -147,4 +180,22 @@ export function useOfflineMutation<TInput, TItem, TResp = TItem>(cfg: UseOffline
   }
 
   return { mutate, pendentes };
+}
+
+// ── Validação antes de enfileirar ───────────────────────────────────────────
+
+/** Formato comum ao `safeParse` do Zod — evita depender do pacote no client. */
+type ResultadoZod<T> = { success: true; data: T } | { success: false; error: { issues: { message: string; path: (string | number)[] }[] } };
+
+export function erroDeValidacao(mensagem: string, campo?: string): ApiError {
+  return new ApiError(mensagem, 422, "VALIDACAO", campo);
+}
+
+/** Devolve `data` do resultado, ou lança `ApiError` 422 com o `campo` do
+ * primeiro issue — usar antes de enfileirar, pra falhar cedo com a mesma
+ * mensagem que o servidor daria. */
+export function validado<T>(resultado: ResultadoZod<T>): T {
+  if (resultado.success) return resultado.data;
+  const [primeiro] = resultado.error.issues;
+  throw erroDeValidacao(primeiro?.message ?? "Dados inválidos", primeiro?.path.length ? primeiro.path.join(".") : undefined);
 }

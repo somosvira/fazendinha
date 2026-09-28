@@ -5,6 +5,14 @@
 import { comPropriedade } from "../../propriedadeScope";
 import { aguardarFilaLivre } from "./fila";
 
+/** Erro da API: `campo` indica o input ao qual a mensagem se refere. */
+export class ApiError extends Error {
+  constructor(message: string, public status: number, public code?: string, public campo?: string) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
 function extrairErro(b: any, status: number): string {
   if (typeof b?.error === "string") return b.error;
   if (typeof b?.erro === "string") return b.erro;
@@ -19,7 +27,10 @@ export async function req<T>(path: string, init?: RequestInit): Promise<T> {
     ...(init?.body ? { "content-type": "application/json" } : {}),
   });
   const res = await fetch(`/api${path}`, { ...init, headers });
-  if (!res.ok) throw new Error(extrairErro(await res.json().catch(() => null), res.status));
+  if (!res.ok) {
+    const corpo = await res.json().catch(() => null);
+    throw new ApiError(extrairErro(corpo, res.status), res.status, corpo?.code, corpo?.campo);
+  }
   if (res.status === 204) return undefined as T;
   return res.json();
 }
