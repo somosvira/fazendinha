@@ -90,9 +90,8 @@ function GatedTab({ user, abaLabel }: { user: User; abaLabel: string }) {
 }
 
 // Abas com suporte real a escrita offline (fila própria) — ver
-// docs/design/offline/README.md. Começa vazia: a fundação por si só não cobre
-// nenhuma feature ainda, então toda aba fica travada sem rede até a fatia
-// correspondente (a próxima é Financeiro) declarar suporte aqui.
+// docs/design/offline/README.md. Um módulo sem entrada aqui fica travado sem
+// rede até declarar suporte.
 const TABS_OFFLINE = new Set<Tab>([]);
 
 function OfflineGatedTab() {
