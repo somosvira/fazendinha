@@ -25,7 +25,9 @@ function formatarDataHoraBR(iso: string): string {
   return Number.isNaN(data.getTime()) ? iso : data.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
 }
 
-export function AlteracoesCadastro({ entidade, entidadeId }: { entidade: EntidadeCadastro; entidadeId?: string }) {
+/** `recarregarToken`: quem hospeda muda o valor depois de uma escrita (editar, desativar…) para a
+ *  lista voltar à página 1 com a alteração nova, sem precisar recarregar a página. */
+export function AlteracoesCadastro({ entidade, entidadeId, recarregarToken }: { entidade: EntidadeCadastro; entidadeId?: string; recarregarToken?: unknown }) {
   const [itens, setItens] = useState<EntradaAuditoria[]>([]);
   const [total, setTotal] = useState(0);
   const [pagina, setPagina] = useState(1);
@@ -34,7 +36,7 @@ export function AlteracoesCadastro({ entidade, entidadeId }: { entidade: Entidad
   const [erro, setErro] = useState<string | null>(null);
   const [expandidos, setExpandidos] = useState<Set<number>>(new Set());
 
-  // muda entidade/entidadeId (ex.: trocou de sub-aba em Cadastros) — reinicia do zero
+  // muda entidade/entidadeId (ex.: trocou de sub-aba em Cadastros) ou houve escrita — reinicia do zero
   useEffect(() => {
     let vigente = true;
     setCarregando(true); setErro(null); setPagina(1); setExpandidos(new Set());
@@ -43,7 +45,7 @@ export function AlteracoesCadastro({ entidade, entidadeId }: { entidade: Entidad
       .catch((e) => { if (vigente) setErro(mensagemErro(e)); })
       .finally(() => { if (vigente) setCarregando(false); });
     return () => { vigente = false; };
-  }, [entidade, entidadeId]);
+  }, [entidade, entidadeId, recarregarToken]);
 
   const carregarMais = async () => {
     const proxima = pagina + 1;

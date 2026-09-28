@@ -74,7 +74,7 @@ export function planejarBaixa(input: {
     throw new BaixaError("Data da baixa não pode ser anterior ao início da localização atual");
   }
   if (input.destinoAberto && t(input.data) < t(input.destinoAberto.desde)) {
-    throw new BaixaError("Data da baixa não pode ser anterior ao início do destino atual");
+    throw new BaixaError("Data da baixa não pode ser anterior ao início da finalidade atual");
   }
 
   return {
@@ -104,7 +104,7 @@ export function planejarEstornoBaixa(input: {
     throw new BaixaError("Animal já tem uma localização aberta; não é possível reabrir a da baixa", "CONFLITO");
   }
   if (baixa.destinoFechadoId && input.destinoAberto && input.destinoAberto.id !== baixa.destinoFechadoId) {
-    throw new BaixaError("Animal já tem um destino aberto; não é possível reabrir o da baixa", "CONFLITO");
+    throw new BaixaError("Animal já tem uma finalidade aberta; não é possível reabrir a da baixa", "CONFLITO");
   }
   return {
     reabrirLocalizacao: baixa.localizacaoFechadaId ? { id: baixa.localizacaoFechadaId } : null,

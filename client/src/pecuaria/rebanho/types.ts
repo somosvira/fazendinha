@@ -400,7 +400,12 @@ export type CategoriaDTO = {
   animaisAtivos: number;
   manuaisAbertas: number;
 };
-export type ListarCategoriasResultado = { itens: CategoriaDTO[]; semCategoria: number };
+export type ListarCategoriasResultado = {
+  itens: CategoriaDTO[];
+  semCategoria: number;
+  /** pares de regras ativas cujas faixas se cruzam — gravados antes da trava; a tela avisa para corrigir */
+  sobrepostas?: Array<{ a: CategoriaRef; b: CategoriaRef; mensagem: string }>;
+};
 
 export type CriarCategoriaInput = {
   nome: string;

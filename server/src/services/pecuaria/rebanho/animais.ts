@@ -1066,7 +1066,7 @@ export async function desfazerDestino(animalId: string, usuarioId: number | null
 
     // só baixa ativa protege a linha; a estornada perde o vínculo (FK ON DELETE SET NULL)
     const referenciada = await tx.baixaAnimal.findFirst({ where: { destinoFechadoId: plano.remover.id, estornadaEm: null } });
-    if (referenciada) throw new RebanhoError("CONFLITO", "Essa mudança de destino já foi usada em uma baixa e não pode ser desfeita");
+    if (referenciada) throw new RebanhoError("CONFLITO", "Essa mudança de finalidade já foi usada em uma baixa e não pode ser desfeita");
 
     const removida = linhas.find((l) => l.id === plano.remover.id)!;
     const anterior = linhas.find((l) => l.id === plano.reabrir.id)!;

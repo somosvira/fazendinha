@@ -12,7 +12,7 @@ const m = vi.hoisted(() => {
     lote: { update: vi.fn() },
     motivoBaixa: { findFirst: vi.fn(), update: vi.fn() },
     categoriaManualAnimal: { count: vi.fn() },
-    categoriaAnimal: { update: vi.fn(), findFirst: vi.fn(), upsert: vi.fn() },
+    categoriaAnimal: { update: vi.fn(), findFirst: vi.fn(), upsert: vi.fn(), findMany: vi.fn(), create: vi.fn() },
     auditoriaPecuaria: { create: vi.fn() },
   };
   const prisma = {
@@ -20,7 +20,7 @@ const m = vi.hoisted(() => {
     localizacaoAnimal: { findMany: vi.fn() },
     baixaAnimal: { findMany: vi.fn() },
     motivoBaixa: { findUnique: vi.fn() },
-    categoriaAnimal: { findUnique: vi.fn(), findMany: vi.fn() },
+    categoriaAnimal: { findUnique: vi.fn(), findMany: vi.fn(), findFirst: vi.fn() },
     animal: { findMany: vi.fn() },
     $transaction: vi.fn(async (fn: (t: typeof tx) => unknown) => fn(tx)),
   };
@@ -31,7 +31,7 @@ vi.mock("../../../db.js", () => ({ prisma: m.prisma }));
 
 import { editarLote } from "./lotes.js";
 import { editarMotivoBaixa } from "./motivos.js";
-import { CATEGORIAS_PADRAO, editarCategoria, restaurarPadroes } from "./categorias.js";
+import { CATEGORIAS_PADRAO, criarCategoria, editarCategoria, restaurarPadroes } from "./categorias.js";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -39,6 +39,7 @@ beforeEach(() => {
   m.tx.auditoriaPecuaria.create.mockResolvedValue({});
   m.prisma.localizacaoAnimal.findMany.mockResolvedValue([]);
   m.prisma.baixaAnimal.findMany.mockResolvedValue([]);
+  m.tx.categoriaAnimal.findMany.mockResolvedValue([]);
 });
 
 describe("editarLote: desativar com animal ativo", () => {
@@ -188,5 +189,45 @@ describe("categorias: troca de sexo com categoria manual aberta", () => {
       expect(m.tx.categoriaAnimal.upsert).toHaveBeenCalledTimes(CATEGORIAS_PADRAO.length);
       expect(m.tx.categoriaAnimal.upsert).toHaveBeenCalledWith(expect.objectContaining({ where: { chavePadrao: "F_VACA" }, update: expect.objectContaining({ sexo: "F" }) }));
     });
+  });
+});
+
+describe("categorias: faixas sobrepostas", () => {
+  const linha = (extra: Record<string, unknown>) => ({
+    ideagriId: null, chavePadrao: null, automatica: true, ativo: true, idadeMinMeses: null, idadeMaxMeses: null, partos: "QUALQUER", ...extra,
+  });
+  const novilha = linha({ id: "cat-nov", chavePadrao: "F_NOVILHA", nome: "Novilha", sexo: "F", idadeMinMeses: 12, partos: "SEM", ordem: 30 });
+  const emCrescimento = linha({ id: "cat-ec", chavePadrao: "F_EM_CRESCIMENTO", nome: "Em crescimento", sexo: "F", idadeMaxMeses: 12, partos: "SEM", ordem: 20 });
+
+  beforeEach(() => {
+    m.tx.categoriaAnimal.findMany.mockResolvedValue([emCrescimento, novilha]);
+    m.tx.categoriaManualAnimal.count.mockResolvedValue(0);
+    m.prisma.categoriaAnimal.findFirst.mockResolvedValue({ ordem: 70 });
+  });
+
+  it("criarCategoria recusa uma faixa que cruza com outra ativa do mesmo sexo e não grava", async () => {
+    await expect(criarCategoria({ nome: "Novilha jovem", sexo: "F", automatica: true, idadeMinMeses: 12, idadeMaxMeses: 18, partos: "SEM" } as never, 7))
+      .rejects.toMatchObject({ code: "VALIDACAO", campo: "idadeMinMeses", message: expect.stringContaining('se sobrepõe à de "Novilha"') });
+    expect(m.tx.categoriaAnimal.create).not.toHaveBeenCalled();
+  });
+
+  it("criarCategoria aceita faixa sem interseção (ex.: com parto)", async () => {
+    m.tx.categoriaAnimal.create.mockResolvedValue({ id: "nova", nome: "Primípara" });
+    await criarCategoria({ nome: "Primípara", sexo: "F", automatica: true, idadeMinMeses: null, idadeMaxMeses: 36, partos: "COM" } as never, 7);
+    expect(m.tx.categoriaAnimal.create).toHaveBeenCalled();
+  });
+
+  it("editarCategoria recusa estender a faixa para dentro da outra", async () => {
+    m.prisma.categoriaAnimal.findUnique.mockResolvedValue(emCrescimento);
+    await expect(editarCategoria("cat-ec", { idadeMaxMeses: 18 }, 7)).rejects.toMatchObject({ code: "VALIDACAO", message: expect.stringContaining('"Em crescimento"') });
+    expect(m.tx.categoriaAnimal.update).not.toHaveBeenCalled();
+  });
+
+  it("editarCategoria só renomeando não checa faixa (sobreposição antiga não trava outras edições)", async () => {
+    m.prisma.categoriaAnimal.findUnique.mockResolvedValue(novilha);
+    m.tx.categoriaAnimal.update.mockResolvedValue({ ...novilha, nome: "Novilhas" });
+    m.tx.categoriaAnimal.findMany.mockResolvedValue([novilha, linha({ id: "velha", nome: "Sobreposta antiga", sexo: "F", idadeMinMeses: 12, ordem: 40 })]);
+    await editarCategoria("cat-nov", { nome: "Novilhas" }, 7);
+    expect(m.tx.categoriaAnimal.update).toHaveBeenCalled();
   });
 });

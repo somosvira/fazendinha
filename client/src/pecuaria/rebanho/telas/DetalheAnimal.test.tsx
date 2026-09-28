@@ -67,7 +67,7 @@ async function montar(animal: AnimalFicha) {
 describe("DetalheAnimal — ações conforme situação", () => {
   it("animal ativo mostra todas as ações de edição e não mostra estornar", async () => {
     await montar(base);
-    for (const nome of ["Editar dados", "Editar composição", "Movimentar", "Mudar destino", "Alterar categoria", "Registrar pesagem", "Dar baixa", "Excluir cadastro"]) {
+    for (const nome of ["Editar dados", "Editar composição", "Movimentar", "Mudar finalidade", "Alterar categoria", "Registrar pesagem", "Dar baixa", "Excluir cadastro"]) {
       expect(screen.getByRole("button", { name: nome })).toBeTruthy();
     }
     expect(screen.queryByRole("button", { name: "Estornar baixa" })).toBeNull();
@@ -78,7 +78,7 @@ describe("DetalheAnimal — ações conforme situação", () => {
     const baixado: AnimalFicha = { ...base, situacao: "BAIXADO", baixa: { id: "baixa-1", data: "2026-01-10", tipo: "VENDA", motivo: null, observacao: null, estornadaEm: null, estornoMotivo: null } };
     await montar(baixado);
     expect(screen.getByRole("button", { name: "Estornar baixa" })).toBeTruthy();
-    for (const nome of ["Editar dados", "Editar composição", "Movimentar", "Mudar destino", "Alterar categoria", "Registrar pesagem", "Dar baixa", "Excluir cadastro"]) {
+    for (const nome of ["Editar dados", "Editar composição", "Movimentar", "Mudar finalidade", "Alterar categoria", "Registrar pesagem", "Dar baixa", "Excluir cadastro"]) {
       expect(screen.queryByRole("button", { name: nome })).toBeNull();
     }
   });
@@ -136,12 +136,12 @@ describe("DetalheAnimal — permissão, linha atual e composição", () => {
         { id: "loc-1", propriedade: { id: 1, nome: "Principal" }, lote: null, desde: "2022-01-01", ate: null, motivo: null, movimentacaoId: null },
       ],
     });
-    expect(screen.getByText((_, el) => el?.tagName === "P" && /^Principal/.test(el.textContent ?? ""))).toBeTruthy();
+    expect(screen.getByText((_, el) => el?.tagName === "STRONG" && /^Principal/.test(el.textContent ?? ""))).toBeTruthy();
   });
 
   it("mostra o nome da raça e marca a inativa", async () => {
     await montar({ ...base, composicao: [{ racaId: "r-gl", sigla: "GL", nome: "Girolando", racaAtiva: false, fracao64: 32 }] });
-    expect(screen.getByText(/Girolando \(GL\)/)).toBeTruthy();
+    expect(screen.getByText((_, el) => el?.tagName === "SPAN" && /^Girolando \(GL\)/.test(el.textContent ?? ""))).toBeTruthy();
     expect(screen.getByText(/inativa/)).toBeTruthy();
   });
 });
@@ -149,15 +149,17 @@ describe("DetalheAnimal — permissão, linha atual e composição", () => {
 describe("DetalheAnimal — categoria", () => {
   it("categoria automática não mostra o selo Manual nem o botão de voltar", async () => {
     await montar(base);
-    expect(screen.getByText("Vaca")).toBeTruthy();
+    expect(screen.getAllByText("Vaca").length).toBeGreaterThan(0);
     expect(screen.queryByText("Manual")).toBeNull();
     expect(screen.queryByRole("button", { name: "Voltar ao automático" })).toBeNull();
   });
 
   it("categoria manual mostra o selo Manual, o título com o cálculo e o botão de voltar", async () => {
     await montar({ ...base, categoria: catNovilha, categoriaOrigem: "MANUAL", categoriaCalculada: catVaca });
-    expect(screen.getByText("Novilha")).toBeTruthy();
-    expect(screen.getByText("Manual")).toBeTruthy();
+    expect(screen.getAllByText("Novilha").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Manual").length).toBeGreaterThan(0);
+    // o card de categoria diz o que as regras dariam
+    expect(screen.getByText(/Pelas regras seria Vaca/)).toBeTruthy();
     expect(screen.getByRole("button", { name: "Voltar ao automático" })).toBeTruthy();
     expect(screen.queryByText(/cálculo já concorda/)).toBeNull();
   });
@@ -169,7 +171,8 @@ describe("DetalheAnimal — categoria", () => {
 
   it("sem categoria mostra 'Sem categoria'", async () => {
     await montar({ ...base, categoria: null, categoriaOrigem: "SEM_CATEGORIA", categoriaCalculada: null });
-    expect(screen.getByText("Sem categoria")).toBeTruthy();
+    expect(screen.getAllByText("Sem categoria").length).toBeGreaterThan(0);
+    expect(screen.getByText(/nenhuma regra ativa se aplica/)).toBeTruthy();
   });
 
   it("alterar categoria envia categoriaId, data e motivo", async () => {
@@ -204,7 +207,9 @@ describe("DetalheAnimal — categoria", () => {
 
   it("mostra o histórico de categorias manuais e o estado vazio quando não há nenhuma", async () => {
     await montar(base);
-    expect(screen.getByText("Categoria calculada pelas regras da fazenda.")).toBeTruthy();
+    // sem troca manual, o card mostra a categoria atual e de onde ela vem (não só um aviso genérico)
+    expect(screen.getByText(/calculada pela regra/)).toBeTruthy();
+    expect(screen.queryByText("Trocas manuais")).toBeNull();
     cleanup();
     await montar({
       ...base,
@@ -253,16 +258,33 @@ describe("DetalheAnimal — ficha de baixado (K4/K5)", () => {
       baixa: { id: "baixa-1", data: "2026-01-10", tipo: "VENDA", motivo: null, observacao: null, estornadaEm: null, estornoMotivo: null },
     };
     await montar(baixado);
-    // pills de aptidão/papel também marcam "na baixa", então busca a linha do cabeçalho pelo <p>
-    const linhaCabecalho = screen.getByText((_, el) => el?.tagName === "P" && /na baixa/.test(el.textContent ?? "") && /último sítio/.test(el.textContent ?? ""));
-    expect(linhaCabecalho.textContent).toContain("último sítio: Sede");
-    expect(linhaCabecalho.textContent).toContain("último lote: ");
-    expect(screen.getByText("Lote 1")).toBeTruthy();
+    // faixa de resumo: idade congelada na baixa e o último local
+    expect(screen.getByText("Idade na baixa")).toBeTruthy();
+    const local = screen.getByText("Último local").parentElement!;
+    expect(local.textContent).toContain("Lote 1");
+    expect(local.textContent).toContain("Sede");
+  });
+
+  it("destaca a baixa em vigor no topo da ficha: tipo, data, motivo, observação e quem registrou", async () => {
+    const baixado: AnimalFicha = {
+      ...base, situacao: "BAIXADO",
+      baixa: { id: "baixa-1", data: "2026-09-24", tipo: "MORTE", motivo: { nome: "Raio", classe: "MORTE" }, observacao: "Tempestade no pasto", estornadaEm: null, estornoMotivo: null },
+      historicoBaixas: [{ id: "baixa-1", data: "2026-09-24", tipo: "MORTE", motivo: { nome: "Raio", classe: "MORTE" }, observacao: "Tempestade no pasto", estornadaEm: null, estornoMotivo: null, criadoPor: "Ana" }],
+    };
+    await montar(baixado);
+    const faixa = screen.getByText("Animal baixado").closest("[role=status]")!;
+    expect(faixa.textContent).toContain("Morte em 24/09/2026");
+    expect(faixa.textContent).toContain("Motivo: Raio");
+    expect(faixa.textContent).toContain("Tempestade no pasto");
+    expect(faixa.textContent).toContain("registrada por Ana");
+    // animal baixado não tem ações de manejo, nem nas pesagens
+    expect(screen.queryByRole("button", { name: /Editar pesagem|Excluir pesagem/ })).toBeNull();
   });
 
   it("animal ativo não mostra os rótulos de 'último'/'na baixa'", async () => {
     await montar({ ...base, idadeNaBaixa: false });
-    expect(screen.queryByText(/último sítio/)).toBeNull();
+    expect(screen.queryByText("Último local")).toBeNull();
+    expect(screen.queryByText("Animal baixado")).toBeNull();
     expect(screen.queryByText(/na baixa/)).toBeNull();
   });
 });
@@ -287,26 +309,31 @@ describe("DetalheAnimal — movimentar (K8)", () => {
 describe("DetalheAnimal — peso e GMD no cabeçalho", () => {
   it("com pesagem, mostra o peso atual e o GMD recente ao lado da idade", async () => {
     await montar({ ...base, peso: { ultimo: { kg: 262, data: "2026-09-01" }, gmdRecente: 0.51, gmdDesdeEntrada: null, gmdPeriodo: { dias: null, valor: null, pesagens: 0 } } });
-    expect(screen.getByText((_, el) => el?.tagName === "P" && /Peso atual 262 kg · \+0,510 kg\/dia/.test(el.textContent ?? ""))).toBeTruthy();
+    const tile = screen.getByText("Peso atual").parentElement!;
+    expect(tile.textContent).toContain("262 kg");
+    expect(tile.textContent).toContain("+0,510 kg/dia");
   });
 
   it("sem pesagem, mostra 'Sem pesagem' no lugar do peso", async () => {
     await montar(base);
-    expect(screen.getByText((_, el) => el?.tagName === "P" && /Sem pesagem/.test(el.textContent ?? ""))).toBeTruthy();
+    expect(screen.getByText("Peso atual").parentElement!.textContent).toContain("Sem pesagem");
   });
 });
 
 describe("DetalheAnimal — seletor de período do GMD", () => {
   it("trocar o período refaz a busca da ficha com o periodoDias escolhido", async () => {
     await montar(base);
-    expect(buscarFichaAnimal).toHaveBeenLastCalledWith("animal-1", { periodoDias: 90 });
+    // padrão: desde a entrada (a curva inteira do animal)
+    expect(buscarFichaAnimal).toHaveBeenLastCalledWith("animal-1", { periodoDias: "entrada" });
 
     fireEvent.change(screen.getByLabelText("Período do GMD"), { target: { value: "30" } });
     await waitFor(() => expect(buscarFichaAnimal).toHaveBeenLastCalledWith("animal-1", { periodoDias: 30 }));
   });
 
-  it("'Desde a entrada' busca com periodoDias=entrada (sem o parâmetro o servidor usa 90 dias)", async () => {
+  it("voltar para 'Desde a entrada' busca com periodoDias=entrada (sem o parâmetro o servidor usa 90 dias)", async () => {
     await montar(base);
+    fireEvent.change(screen.getByLabelText("Período do GMD"), { target: { value: "90" } });
+    await waitFor(() => expect(buscarFichaAnimal).toHaveBeenLastCalledWith("animal-1", { periodoDias: 90 }));
     fireEvent.change(screen.getByLabelText("Período do GMD"), { target: { value: "entrada" } });
     await waitFor(() => expect(buscarFichaAnimal).toHaveBeenLastCalledWith("animal-1", { periodoDias: "entrada" }));
   });

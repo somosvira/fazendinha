@@ -71,7 +71,9 @@ export function DetalheLote({ id, podeLancar = true, onVoltar }: { id: string; p
   const [trazendo, setTrazendo] = useState(false);
   const [movimentando, setMovimentando] = useState<Movimentando>(null);
 
-  const carregarLote = useCallback(async () => { setLote(await buscarLote(id)); }, [id]);
+  /* o lote é recarregado depois de toda escrita nele (editar, desativar…) — o painel "Alterações do lote" segue junto */
+  const [alteracoesToken, setAlteracoesToken] = useState(0);
+  const carregarLote = useCallback(async () => { setLote(await buscarLote(id)); setAlteracoesToken((t) => t + 1); }, [id]);
   const carregarResumo = useCallback(async (periodo: PeriodoGmd) => { setResumo(await buscarResumoLote(id, { periodoDias: periodo })); }, [id]);
   const carregarAnimais = useCallback(async (pagina: number) => {
     const resultado = await listarAnimais({ loteId: id, situacao: "ATIVO", page: pagina, pageSize: ITENS_POR_PAGINA });
@@ -228,7 +230,7 @@ export function DetalheLote({ id, podeLancar = true, onVoltar }: { id: string; p
 
     <Panel className="mt-6 overflow-hidden">
       <div className="border-b border-border p-5"><h2 className="font-serif text-xl">Alterações do lote</h2></div>
-      <AlteracoesCadastro entidade="Lote" entidadeId={lote.id} />
+      <AlteracoesCadastro entidade="Lote" entidadeId={lote.id} recarregarToken={alteracoesToken} />
     </Panel>
 
     {editando && <FormLote lote={lote} propriedades={[]} onSalvo={async () => { setEditando(false); await Promise.all([carregarLote(), recarregarResumoEBaixados()]); }} onFechar={() => setEditando(false)} />}

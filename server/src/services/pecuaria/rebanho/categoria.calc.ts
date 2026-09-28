@@ -149,6 +149,48 @@ export function validarRegra(regra: Pick<RegraCategoria, "nome" | "automatica" |
   return erros;
 }
 
+/** Critério de partos efetivo: para macho não se aplica (sempre "qualquer"). */
+function partosEfetivo(regra: Pick<RegraCategoria, "sexo" | "partos">): CriterioPartos {
+  return regra.sexo === "M" ? "QUALQUER" : regra.partos;
+}
+
+/**
+ * Duas regras se sobrepõem quando algum animal casaria com as duas: ambas ativas e automáticas,
+ * mesmo sexo, critérios de parto compatíveis ("qualquer" cruza com tudo; "sem" × "com" não) e
+ * faixas de idade [mín, máx) com interseção. A fazenda quer cada animal em exatamente uma
+ * categoria — com sobreposição, a ordem decidiria em silêncio e a outra regra "não funcionaria".
+ */
+export function regrasSeSobrepoem(a: RegraCategoria, b: RegraCategoria): boolean {
+  if (a.id === b.id || !a.ativo || !b.ativo || !a.automatica || !b.automatica || a.sexo !== b.sexo) return false;
+  const pa = partosEfetivo(a);
+  const pb = partosEfetivo(b);
+  if (pa !== "QUALQUER" && pb !== "QUALQUER" && pa !== pb) return false;
+  const inicio = Math.max(a.idadeMinMeses ?? 0, b.idadeMinMeses ?? 0);
+  const fim = Math.min(a.idadeMaxMeses ?? Number.POSITIVE_INFINITY, b.idadeMaxMeses ?? Number.POSITIVE_INFINITY);
+  return inicio < fim;
+}
+
+/** Primeira regra de `outras` que se sobrepõe a `regra` (na ordem de avaliação), ou null. */
+export function sobreposicaoDe(regra: RegraCategoria, outras: RegraCategoria[]): RegraCategoria | null {
+  return [...outras].sort((x, y) => x.ordem - y.ordem || x.nome.localeCompare(y.nome)).find((o) => regrasSeSobrepoem(regra, o)) ?? null;
+}
+
+/** Todos os pares sobrepostos de uma lista de regras (cada par uma vez). */
+export function paresSobrepostos(regras: RegraCategoria[]): Array<[RegraCategoria, RegraCategoria]> {
+  const pares: Array<[RegraCategoria, RegraCategoria]> = [];
+  for (let i = 0; i < regras.length; i++) {
+    for (let j = i + 1; j < regras.length; j++) if (regrasSeSobrepoem(regras[i], regras[j])) pares.push([regras[i], regras[j]]);
+  }
+  return pares;
+}
+
+/** Mensagem PT-BR para a UI, dizendo com qual regra a faixa se cruza. */
+export function mensagemSobreposicao(regra: Pick<RegraCategoria, "nome" | "sexo" | "automatica" | "idadeMinMeses" | "idadeMaxMeses" | "partos">, outra: Pick<RegraCategoria, "nome" | "sexo" | "automatica" | "idadeMinMeses" | "idadeMaxMeses" | "partos">): string {
+  const sexo = regra.sexo === "F" ? "fêmeas" : "machos";
+  return `A faixa de "${regra.nome}" (${descreverRegra({ ...regra, partos: partosEfetivo(regra) })}) se sobrepõe à de "${outra.nome}" (${descreverRegra({ ...outra, partos: partosEfetivo(outra) })}) para ${sexo}. `
+    + "Ajuste as idades ou o critério de parto para que cada animal caia em uma só categoria.";
+}
+
 /** Texto curto da regra, ex.: "12 meses ou mais · sem parto", "menos de 12 meses", "manual". */
 export function descreverRegra(regra: Pick<RegraCategoria, "automatica" | "idadeMinMeses" | "idadeMaxMeses" | "partos">): string {
   if (!regra.automatica) return "só manual";

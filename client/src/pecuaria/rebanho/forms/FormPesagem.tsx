@@ -6,6 +6,7 @@ import { editarPesagem, registrarPesagemAnimal, RebanhoApiError } from "../api";
 import type { OrigemPesagem, Pesagem, TipoPesagem } from "../types";
 import { Button, ErrorBox, hoje } from "../../../financeiro/financeiro-ui";
 import { CampoFormulario, classeInput, PainelCadastro } from "../../../financeiro/PainelCadastro";
+import { DatePicker } from "../../../components/DatePicker";
 
 const ROTULO_TIPO_PESAGEM: Record<TipoPesagem, string> = {
   NASCIMENTO: "Nascimento", ENTRADA: "Entrada", DESMAMA: "Desmama", ROTINA: "Rotina", SAIDA: "Saída",
@@ -52,7 +53,7 @@ export function FormPesagem({ animalId, pesagem = null, onSalvo, onFechar }: {
     <form id={formId} onSubmit={submeter} noValidate className="grid gap-4">
       <ErrorBox erro={erroGeral} />
       <div className="grid gap-4 sm:grid-cols-2">
-        <CampoFormulario id="pesagem-data" rotulo="Data" obrigatorio erro={erros.data}>{(p) => <input {...p} required type="date" max={hoje()} value={data} onChange={(e) => setData(e.target.value)} className={classeInput} />}</CampoFormulario>
+        <CampoFormulario id="pesagem-data" rotulo="Data" obrigatorio erro={erros.data}>{(p) => <DatePicker {...p} required max={hoje()} value={data} onChange={setData} className="mt-1.5" />}</CampoFormulario>
         <CampoFormulario id="pesagem-peso" rotulo="Peso (kg)" obrigatorio erro={erros.pesoKg}>{(p) => <input {...p} required type="number" min="0.01" step="0.01" value={pesoKg} onChange={(e) => setPesoKg(e.target.value)} className={classeInput} />}</CampoFormulario>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">

@@ -9,6 +9,7 @@ import type { AnimalFicha, CatalogoMotivoBaixa, TipoBaixa } from "../types";
 import { CLASSES_POR_TIPO, rotuloClasseMotivo, rotuloTipoBaixa } from "../lib/rotulos";
 import { Button, ErrorBox, hoje, Modal } from "../../../financeiro/financeiro-ui";
 import { classeInput } from "../../../financeiro/PainelCadastro";
+import { DatePicker } from "../../../components/DatePicker";
 
 const TIPOS_BAIXA: TipoBaixa[] = ["VENDA", "ABATE", "MORTE", "DOACAO", "EXTRAVIO"];
 
@@ -58,7 +59,7 @@ export function FormBaixa({ animal, motivos, onSalvo, onFechar }: {
         <p>• A baixa pode ser estornada depois, reabrindo o animal.</p>
       </div>
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
-        <label className="text-sm font-medium">Data da baixa *<input required type="date" max={hoje()} value={data} onChange={(e) => setData(e.target.value)} aria-invalid={erroData ? true : undefined} aria-describedby={erroData ? "baixa-data-erro" : undefined} className={classeInput} />{erroData && <p id="baixa-data-erro" role="alert" className="mt-1 text-xs font-normal text-red-700">{erroData}</p>}</label>
+        <label className="text-sm font-medium">Data da baixa *<DatePicker required aria-label="Data da baixa" max={hoje()} value={data} onChange={setData} aria-invalid={erroData ? true : undefined} aria-describedby={erroData ? "baixa-data-erro" : undefined} className="mt-1.5" />{erroData && <p id="baixa-data-erro" role="alert" className="mt-1 text-xs font-normal text-red-700">{erroData}</p>}</label>
         <label className="text-sm font-medium">Tipo *<select required value={tipo} onChange={(e) => mudarTipo(e.target.value as TipoBaixa)} className={classeInput}>{TIPOS_BAIXA.map((t) => <option key={t} value={t}>{rotuloTipoBaixa(t)}</option>)}</select></label>
         {grupos.length > 0 && <label className="text-sm font-medium sm:col-span-2">Motivo do catálogo<select value={motivoId} onChange={(e) => setMotivoId(e.target.value)} className={classeInput}>
           <option value="">Sem motivo específico</option>

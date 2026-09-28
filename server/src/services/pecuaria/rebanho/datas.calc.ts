@@ -82,7 +82,7 @@ export function validarDataDestino(input: {
   desde: Date | string;
 }): ErroValidacao[] {
   if (antes(input.desde, input.dataEntrada)) {
-    return [{ campo: "data", mensagem: "Mudança de destino não pode ser anterior à entrada do animal" }];
+    return [{ campo: "data", mensagem: "Mudança de finalidade não pode ser anterior à entrada do animal" }];
   }
   return [];
 }
