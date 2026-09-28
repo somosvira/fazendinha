@@ -5,7 +5,8 @@ import { templatePadrao } from "../components/relatorio-gerencial/template";
 import { salvarPdfRelatorioFinanceiro, type LinhaComposicaoRelatorio, type TotalGrupoRelatorio } from "./novo-api";
 import { useRelatorioFinanceiro } from "./queries";
 import { useOnlineStatus } from "../lib/offline/useOnlineStatus";
-import { brl, Button, ehOfflineSemDados, ErrorBox, Metric, PageHeader, PaginaFinanceira, PaginaSemDados, Panel, StatusPill, TabelaFinanceira, TIPO_OPERACAO, type ColunaTabela } from "./financeiro-ui";
+import { brl, Button, ErrorBox, Metric, PageHeader, PaginaFinanceira, PaginaSemDados, Panel, StatusPill, TabelaFinanceira, TIPO_OPERACAO, type ColunaTabela } from "./financeiro-ui";
+import { ehOfflineSemDados } from "../lib/offline/estadoQuery";
 import { dataCurta, REGIMES_RELATORIO } from "./lib/relatorios";
 import { codigoOperacao } from "../estoque/navegacao";
 

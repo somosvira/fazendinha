@@ -13,7 +13,8 @@ import { useRascunhoAtivo } from "./rascunhoAtivo";
 import { FormOperacao } from "./FormOperacao";
 import { OperacaoFinanceiraDetalhe } from "./OperacaoFinanceiraDetalhe";
 import { codigoOperacaoFinanceira } from "./lib/codigo";
-import { brl, Button, type ColunaTabela, dataBR, ehOfflineSemDados, Empty, ErrorBox, PageHeader, PaginaCarregando, PaginaFinanceira, Paginacao, Panel, Pill, SemConexaoAviso, StatusPill, TabelaFinanceira, TIPO_OPERACAO } from "./financeiro-ui";
+import { brl, Button, type ColunaTabela, dataBR, Empty, ErrorBox, PageHeader, PaginaCarregando, PaginaFinanceira, Paginacao, Panel, Pill, SemConexaoAviso, StatusPill, TabelaFinanceira, TIPO_OPERACAO } from "./financeiro-ui";
+import { ehOfflineSemDados } from "../lib/offline/estadoQuery";
 
 type EfeitoFiltro = "TODOS" | "ESTOQUE" | "PAGAMENTO" | "RECEBIMENTO" | "A_PAGAR" | "A_RECEBER" | "TRANSFERENCIA" | "SEM_EFEITOS";
 function Efeitos({ operacao }: { operacao: Operacao }) {

@@ -8,7 +8,8 @@ import { isNovoRelatorioFinanceiro, parseRelatorioFinanceiroId } from "../router
 import { descartarRascunhoRelatorioFinanceiro, salvarPdfRelatorioFinanceiro, type RelatorioFinanceiro } from "./novo-api";
 import { financeiroKeys, useConfiguracoesFinanceiras, useRascunhoRelatorioFinanceiro, useRelatoriosFinanceiros } from "./queries";
 import { useOnlineStatus } from "../lib/offline/useOnlineStatus";
-import { Button, ehOfflineSemDados, Empty, ErrorBox, PageHeader, PaginaFinanceira, PaginaSemDados, Panel, SemConexaoAviso, StatusPill, TabelaFinanceira, type ColunaTabela } from "./financeiro-ui";
+import { Button, Empty, ErrorBox, PageHeader, PaginaFinanceira, PaginaSemDados, Panel, SemConexaoAviso, StatusPill, TabelaFinanceira, type ColunaTabela } from "./financeiro-ui";
+import { ehOfflineSemDados } from "../lib/offline/estadoQuery";
 import { dataCurta } from "./lib/relatorios";
 import { NovoRelatorioFinanceiro } from "./NovoRelatorioFinanceiro";
 import { RelatorioFinanceiroDetalhe } from "./RelatorioFinanceiroDetalhe";

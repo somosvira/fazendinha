@@ -8,7 +8,8 @@ import type { Compromisso } from "./novo-api";
 import { existeRascunhoOperacao, useDescartarRascunho } from "./mutations";
 import { useOnlineStatus } from "../lib/offline/useOnlineStatus";
 import { financeiroKeys, useCompromissosFinanceiros, useConfiguracoesFinanceiras } from "./queries";
-import { brl, Button, dataBR, ehOfflineSemDados, Empty, ErrorBox, mesAtual, Metric, PageHeader, PaginaCarregando, PaginaFinanceira, Panel, Pill, SemConexaoAviso, StatusPill } from "./financeiro-ui";
+import { brl, Button, dataBR, Empty, ErrorBox, mesAtual, Metric, PageHeader, PaginaCarregando, PaginaFinanceira, Panel, Pill, SemConexaoAviso, StatusPill } from "./financeiro-ui";
+import { ehOfflineSemDados } from "../lib/offline/estadoQuery";
 import type { Tab } from "../components/Shell";
 import { abrirRotaNovaOperacao } from "../router";
 import { tituloCompromisso } from "./lib/compromissos";
@@ -57,7 +58,7 @@ export function CompromissosFinanceiros({ onNav, podeLancar = true }: { onNav: (
     setNovoCompromissoPendente(null); criarCompromisso(tipo);
   };
 
-  if (!compromissosQuery.data && ehOfflineSemDados(compromissosQuery)) return <PaginaFinanceira><PageHeader titulo="Compromissos" descricao="Agenda de valores futuros. Vencimento indica prazo; o status informa se a obrigação está pendente, parcial ou liquidada." /><SemConexaoAviso mensagem="Sem conexão e sem compromissos salvos para este período." /></PaginaFinanceira>;
+  if (ehOfflineSemDados(compromissosQuery)) return <PaginaFinanceira><PageHeader titulo="Compromissos" descricao="Agenda de valores futuros. Vencimento indica prazo; o status informa se a obrigação está pendente, parcial ou liquidada." /><SemConexaoAviso mensagem="Sem conexão e sem compromissos salvos para este período." /></PaginaFinanceira>;
   if (!compromissosQuery.data && compromissosQuery.isPending) return <PaginaCarregando label="Carregando compromissos" />;
 
   return <PaginaFinanceira>
