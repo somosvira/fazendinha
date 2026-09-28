@@ -7,7 +7,7 @@ import { propriedadePrincipalId, escopoPadraoLeitura } from "../propriedade.js";
 import { resolverCentroSaida } from "./centro.calc.js";
 import { rotuloUnidade } from "./unidades.js";
 import { SEM_VINCULO } from "../../lib/ids.js";
-import type { AjusteContagemValidado } from "@rionovo/shared";
+import { MAX_QTD, type AjusteContagemValidado } from "@rionovo/shared";
 
 export class EstoqueError extends Error {
   constructor(public code: "NAO_ENCONTRADO" | "MES_FECHADO" | "ORIGEM_AUTOMATICA" | "CONFLITO" | "VALIDACAO", m: string) {
@@ -23,7 +23,6 @@ const naoFutura = z.string().refine((s) => new Date(s) <= new Date(), "data não
 // MAX_QTD compatível com MovimentoEstoque.quantidade Decimal(12,3); MAX_CUSTO com
 // custoUnitario Decimal(14,4) truncado à mesma ordem de grandeza — evita Postgres 22003
 // antes de chegar ao Prisma.
-const MAX_QTD = 999_999_999.999;
 const MAX_CUSTO = 9_999_999_999.99;
 
 export const movimentoSchema = z

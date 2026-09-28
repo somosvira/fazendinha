@@ -92,7 +92,10 @@ function tipoTransacaoDaOperacao(tipo: TipoOperacao): TipoTransacaoOperacao {
   return "PAGAMENTO";
 }
 
-function direcaoTransacao(tipo: TipoTransacaoOperacao): "ENTRADA" | "SAIDA" {
+/** Aceita qualquer tipo de transação em texto (não só `TipoTransacaoOperacao`) —
+ *  o servidor reusa com o enum Prisma, que tem variantes a mais (TRANSFERENCIA,
+ *  AJUSTE, REVERSAO), todas SAIDA por esta mesma regra. */
+export function direcaoTransacao(tipo: string): "ENTRADA" | "SAIDA" {
   return tipo === "RECEBIMENTO" || tipo === "APORTE" ? "ENTRADA" : "SAIDA";
 }
 

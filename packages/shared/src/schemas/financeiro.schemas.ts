@@ -121,7 +121,7 @@ export const transferenciaSchema = z.object({
 });
 
 // Limites das colunas Decimal(12,3) de MovimentoEstoque.
-const MAX_QTD = 999_999_999.999;
+export const MAX_QTD = 999_999_999.999;
 
 export const ajusteContagemSchema = z.object({
   id: z.string().uuid().optional(),

@@ -1,8 +1,8 @@
-import { Prisma, type DirecaoMovimentoConta, type TipoOperacaoFinanceira, type TipoTransacaoFinanceira } from "@prisma/client";
+import { Prisma, type TipoOperacaoFinanceira, type TipoTransacaoFinanceira } from "@prisma/client";
 import { prisma } from "../../db.js";
 import { auditar, exigirContaAtiva, exigirParceiroAtivo, exigirPeriodoAberto, exigirPositivo, FinanceiroError } from "./regras.js";
 import { comoErroFinanceiro, simularParcelas as simularParcelasCalc } from "./parcelas.calc.js";
-import { preverEfeitosOperacao, temParcelas, type ContextoOperacao } from "@rionovo/shared";
+import { direcaoTransacao, preverEfeitosOperacao, temParcelas, type ContextoOperacao } from "@rionovo/shared";
 import { obterBasesCusto, produtosComEstoque } from "../estoque/estoque.js";
 import type { BaseCusto } from "../estoque/estoque.calc.js";
 import { rotuloUnidade } from "../estoque/unidades.js";
@@ -22,10 +22,6 @@ type SimulacaoParcelasInput = z.infer<typeof simulacaoParcelasSchema>;
 export const PREFIXO_CANCELAMENTO_OPERACAO = "Cancelamento da operação #";
 
 const documentoPublico = { id: true, tipo: true, nome: true, numero: true, mimeType: true, tamanhoBytes: true, createdAt: true } as const;
-
-function direcaoTransacao(tipo: TipoTransacaoFinanceira): DirecaoMovimentoConta {
-  return tipo === "RECEBIMENTO" || tipo === "APORTE" ? "ENTRADA" : "SAIDA";
-}
 
 async function criarTransacaoComMovimento(
   tx: Prisma.TransactionClient,

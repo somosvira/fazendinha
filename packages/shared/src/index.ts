@@ -6,7 +6,7 @@ export {
   type ItemMonetario, type ParcelaGerada,
 } from "./financeiro/parcelas.calc.js";
 export {
-  preverEfeitosOperacao, valorSaidaPelaBase,
+  preverEfeitosOperacao, valorSaidaPelaBase, direcaoTransacao,
   type ContextoOperacao, type EfeitosOperacao, type ItemPrevisto, type MovimentoEstoquePrevisto,
   type CompromissoPrevisto, type TransacaoPrevista, type TipoMovimentoEstoque, type OrigemMovimentoEstoque,
   type TipoTransacaoOperacao,
