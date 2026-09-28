@@ -11,7 +11,7 @@
 // servidor antes das escritas que vieram antes dela.
 import { get, set } from "idb-keyval";
 import { onlineManager } from "@tanstack/react-query";
-import { comPropriedade } from "../../propriedadeScope";
+import { comPropriedadeExplicita, getPropriedadeAtiva } from "../../propriedadeScope";
 
 const CHAVE = "rionovo-fila-pendente";
 const CHAVE_ERROS = "rionovo-fila-erros";
@@ -26,6 +26,9 @@ interface PedidoMutation {
 interface ItemFila extends PedidoMutation {
   filaId: string;
   criadoEm: string;
+  /** Sítio ativo no momento do enfileiramento — trocar de sítio antes da
+   *  reconexão não deve mudar pra onde o item já enfileirado é enviado. */
+  propriedadeId: number | null;
 }
 
 interface ItemErro extends ItemFila {
@@ -113,8 +116,8 @@ async function persistir(): Promise<void> {
 }
 
 // Fetch cru, sem passar por `aguardarFilaLivre()` (é quem detém o gate).
-async function fetchCru(path: string, method: string, body: unknown): Promise<any> {
-  const headers = comPropriedade(body !== undefined ? { "content-type": "application/json" } : {});
+async function fetchCru(path: string, method: string, body: unknown, propriedadeId: number | null): Promise<any> {
+  const headers = comPropriedadeExplicita(propriedadeId, body !== undefined ? { "content-type": "application/json" } : {});
   const res = await fetch(`/api${path}`, {
     method,
     headers,
@@ -147,7 +150,7 @@ async function processarFila(): Promise<void> {
     const item = fila[0];
     let resposta: any;
     try {
-      resposta = await fetchCru(item.path, item.method, item.body);
+      resposta = await fetchCru(item.path, item.method, item.body, item.propriedadeId);
     } catch (err) {
       // rede caiu de novo no meio do replay — deixa o item na fila, tenta
       // de novo na próxima reconexão, sem rejeitar ninguém.
@@ -198,7 +201,7 @@ export function iniciarFila(): void {
 
 export async function enfileirarMutation(pedido: PedidoMutation): Promise<any> {
   await carregar();
-  const item: ItemFila = { ...pedido, filaId: crypto.randomUUID(), criadoEm: new Date().toISOString() };
+  const item: ItemFila = { ...pedido, filaId: crypto.randomUUID(), criadoEm: new Date().toISOString(), propriedadeId: getPropriedadeAtiva() };
   fila = [...fila, item];
   await persistir();
   garantirProcessamento();

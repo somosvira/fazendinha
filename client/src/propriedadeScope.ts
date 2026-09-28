@@ -25,8 +25,19 @@ export const getPropriedadeAtiva = (): number | null => _propriedadeAtiva;
 export function comPropriedade(
   headers: Record<string, string> = {},
 ): Record<string, string> {
+  return comPropriedadeExplicita(_propriedadeAtiva, headers);
+}
+
+// Igual a `comPropriedade`, mas com o sítio explícito em vez de ler o ativo no
+// momento da chamada — usado pela fila de escrita offline, que grava o sítio
+// no item ao enfileirar (ver fila.ts) para não reenviar no sítio errado se o
+// usuário trocar de sítio antes da reconexão.
+export function comPropriedadeExplicita(
+  propriedadeId: number | null,
+  headers: Record<string, string> = {},
+): Record<string, string> {
   const base = comAuth(headers);
-  return _propriedadeAtiva != null
-    ? { ...base, "X-Propriedade-Id": String(_propriedadeAtiva) }
+  return propriedadeId != null
+    ? { ...base, "X-Propriedade-Id": String(propriedadeId) }
     : base;
 }
