@@ -122,7 +122,7 @@ Ao dar suporte offline a uma feature nova, nessa ordem:
   visitada** — não é erro, é `fetchStatus: "paused"`; sem tratar isso à
   parte, a tela mostra "Carregando..." infinito em vez de uma mensagem
   clara ou de cair no fallback certo (ex.: via `initialData` de outra
-  lista).
+  lista). Usar `ehOfflineSemDados(query)` (`lib/offline/estadoQuery.ts`).
 - **Ordem de listagem não usa o id** — UUID não é sequencial. Desempate por
   `numero`/`seq`/`ordem`, que o servidor atribui na hora do insert real
   (mesmo atrasado até o sync).
