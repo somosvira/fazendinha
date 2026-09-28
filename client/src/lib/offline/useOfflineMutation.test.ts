@@ -6,9 +6,13 @@ import { renderHook } from "@testing-library/react";
 import {
   useOfflineMutation,
   appendItemToCacheList,
+  insertItemSortedInCacheList,
+  invalidar,
+  porPrefixo,
   removeItemFromCacheList,
   updateItemInCacheList,
   upsertItemInCacheList,
+  validado,
   type UseOfflineMutationConfig,
 } from "./useOfflineMutation";
 
@@ -261,5 +265,58 @@ describe("useOfflineMutation — patch otimista via aplicar", () => {
     expect(queryClient.getQueryData<Item[]>(queryKey)).toEqual([]);
     expect(enfileirarMutation).not.toHaveBeenCalled();
     expect(onError).toHaveBeenCalled();
+  });
+});
+
+describe("insertItemSortedInCacheList", () => {
+  const chave = (v: { data: string }) => v.data;
+
+  it("desc: item novo fica à frente dos de mesma chave", () => {
+    const lista = [{ data: "2026-01-02" }, { data: "2026-01-01" }];
+    const resultado = insertItemSortedInCacheList(lista, { data: "2026-01-01" }, chave, "desc");
+    expect(resultado.map((v) => v.data)).toEqual(["2026-01-02", "2026-01-01", "2026-01-01"]);
+  });
+
+  it("asc: item novo fica depois dos de mesma chave", () => {
+    const lista = [{ data: "2026-01-01" }, { data: "2026-01-02" }];
+    const resultado = insertItemSortedInCacheList(lista, { data: "2026-01-01" }, chave, "asc");
+    expect(resultado.map((v) => v.data)).toEqual(["2026-01-01", "2026-01-01", "2026-01-02"]);
+  });
+
+  it("lista undefined vira lista de um item", () => {
+    expect(insertItemSortedInCacheList(undefined, { data: "2026-01-01" }, chave, "desc")).toEqual([{ data: "2026-01-01" }]);
+  });
+});
+
+describe("porPrefixo / invalidar", () => {
+  it("porPrefixo gera uma entrada por query já em cache sob o prefixo, ignorando as sem dado", () => {
+    const queryClient = new QueryClient();
+    queryClient.setQueryData(["itens", "a"], [1, 2]);
+    queryClient.setQueryData(["itens", "b"], [3]);
+    queryClient.setQueryData(["itens", "c"], undefined);
+
+    const entradas = porPrefixo<number[]>(queryClient, ["itens"], (atual) => atual.map((n) => n * 10));
+
+    expect(entradas).toHaveLength(2);
+    for (const entrada of entradas) {
+      expect(entrada.aplicar!(queryClient.getQueryData(entrada.queryKey), undefined)).toEqual(
+        (queryClient.getQueryData(entrada.queryKey) as number[]).map((n) => n * 10),
+      );
+    }
+  });
+
+  it("invalidar devolve só a queryKey, sem aplicar", () => {
+    expect(invalidar(["financeiro"])).toEqual({ queryKey: ["financeiro"] });
+  });
+});
+
+describe("validado", () => {
+  it("devolve o data do resultado bem-sucedido", () => {
+    expect(validado({ success: true, data: { x: 1 } })).toEqual({ x: 1 });
+  });
+
+  it("lança ApiError 422 com o campo do primeiro issue", () => {
+    expect(() => validado({ success: false, error: { issues: [{ message: "obrigatório", path: ["valor"] }] } }))
+      .toThrow(expect.objectContaining({ name: "ApiError", status: 422, code: "VALIDACAO", campo: "valor" }));
   });
 });
