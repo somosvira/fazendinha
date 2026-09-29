@@ -36,7 +36,7 @@ import { temAcessoArea, TODAS_AREAS } from "./lib/areas";
 import { BootSplash } from "./components/Loading";
 import { TerranoIntro } from "./components/TerranoIntro";
 import { useOnlineStatus } from "./lib/offline/useOnlineStatus";
-import { iniciarSessao } from "./lib/offline/sessao";
+import { iniciarSessao, limparCacheDaSessao } from "./lib/offline/sessao";
 
 // Abertura Terrano (marca grande + música no centro, some pro canto).
 //   "always"  → toca em todo load do dashboard (bom pra testar)
@@ -227,6 +227,7 @@ export function App() {
     ? () => {
         void logout();
         clearSessao();
+        limparCacheDaSessao();
         setTokenState(null);
         setUsuario(null);
         setShowIntro(false);
