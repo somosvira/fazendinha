@@ -11,6 +11,7 @@ import { VisaoGeralFinanceira } from "./VisaoGeralFinanceira";
 import { RelatoriosFinanceiros } from "./RelatoriosFinanceiros";
 import { OperacoesFinanceiras } from "./OperacoesFinanceiras";
 import { financeiroKeys } from "./queries";
+import { setPropriedadeAtiva } from "../propriedadeScope";
 import { limparRascunhoAtivo, prepararPublicacaoRascunho } from "./rascunhoAtivo";
 import { periodoDoAnoAtual } from "./lib/periodo";
 import { criarQueryClientTeste, renderComQuery } from "./lib/testQueryClient";
@@ -42,6 +43,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   cleanup();
+  setPropriedadeAtiva(null);
   onlineManager.setOnline(true); // nunca deixar um teste offline vazar pro próximo
 });
 
@@ -66,6 +68,26 @@ describe("Visão geral — offline", () => {
 
     expect(await screen.findByText(/Sem conexão e sem dados salvos/)).toBeTruthy();
     expect(screen.queryByText("Carregando financeiro")).toBeNull();
+  });
+});
+
+describe("Visão geral — cache por sítio offline", () => {
+  it("dado aquecido no sítio A não aparece no sítio B sem rede; A segue intacto", async () => {
+    const queryClient = criarQueryClientTeste();
+    const { inicio, fim } = periodoDoAnoAtual();
+    setPropriedadeAtiva(1);
+    queryClient.setQueryData(financeiroKeys.dashboard(inicio, fim), dashboardVazio());
+    onlineManager.setOnline(false);
+
+    setPropriedadeAtiva(2);
+    const sitioB = renderComQuery(<VisaoGeralFinanceira onNav={vi.fn()} />, { queryClient });
+    expect(await screen.findByText(/Sem conexão e sem dados salvos/)).toBeTruthy();
+    expect(screen.queryByText("R$ 120,00")).toBeNull();
+    sitioB.unmount();
+
+    setPropriedadeAtiva(1);
+    renderComQuery(<VisaoGeralFinanceira onNav={vi.fn()} />, { queryClient });
+    expect(await screen.findByText("R$ 120,00")).toBeTruthy();
   });
 });
 

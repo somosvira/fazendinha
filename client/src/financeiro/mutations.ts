@@ -28,9 +28,9 @@ const CHAVE_DESCARTAR = "financeiro-descartar-rascunho";
 
 // ── Valores e datas ──────────────────────────────────────────────────────────
 
-/** Limites de período guardados na queryKey (posições 2 e 3: início e fim; null ou "" = sem limite). */
+/** Limites de período guardados na queryKey (posições 3 e 4: início e fim; null ou "" = sem limite). */
 function noPeriodo(queryKey: QueryKey, data: string) {
-  const [, , inicio, fim] = queryKey as readonly unknown[];
+  const [, , , inicio, fim] = queryKey as readonly unknown[];
   const d = dia(data);
   return (typeof inicio !== "string" || !inicio || d >= inicio) && (typeof fim !== "string" || !fim || d <= fim);
 }
@@ -396,7 +396,7 @@ export function useLiquidarCompromisso() {
         ...porPrefixo<DashboardFinanceiro>(qc, financeiroKeys.dashboardTodos(), (dashboard) => ({ ...dashboard, proximosCompromissos: atualizar(dashboard.proximosCompromissos) })),
         ...(operacaoId ? porPrefixo<Operacao>(qc, financeiroKeys.operacao(operacaoId), (operacao) => ({ ...operacao, compromissos: atualizar(operacao.compromissos) })) : []),
         ...porPrefixo<Operacao[]>(qc, financeiroKeys.operacoesTodos(), (lista) => lista.map((operacao) => operacao.id === operacaoId ? { ...operacao, compromissos: atualizar(operacao.compromissos) } : operacao)),
-        invalidar(["financeiro", "operacao"]),
+        invalidar(financeiroKeys.operacaoTodos()),
         invalidar(financeiroKeys.operacoesTodos()),
         ...entradasExtrato(qc, [movimento]),
         ...entradasSaldo(qc, deltasDosMovimentos([movimento])),

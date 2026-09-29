@@ -5,22 +5,28 @@ import {
   listarCompromissos, obterExtratoConta, obterExtratoGeral,
   listarRelatoriosFinanceiros, obterRelatorioFinanceiro, obterRascunhoRelatorioFinanceiro,
 } from "./novo-api";
+import { getPropriedadeAtiva } from "../propriedadeScope";
 import { listarSaldos, obterUltimoPreco, obterCustoMedio } from "../estoque/api";
 
+// O sítio ativo é o 2º elemento de toda chave: cada sítio tem cache próprio e o
+// prefixo ["financeiro"] / ["estoque"] continua alcançando todos.
+const sitio = () => getPropriedadeAtiva();
+
 export const financeiroKeys = {
-  dashboardTodos: () => ["financeiro", "dashboard"] as const,
-  dashboard: (inicio?: string, fim?: string) => ["financeiro", "dashboard", inicio ?? null, fim ?? null] as const,
-  configuracoes: () => ["financeiro", "configuracoes"] as const,
-  operacoesTodos: () => ["financeiro", "operacoes"] as const,
-  operacoes: (filtros?: { inicio?: string; fim?: string }) => ["financeiro", "operacoes", filtros?.inicio ?? null, filtros?.fim ?? null] as const,
-  operacao: (id: string) => ["financeiro", "operacao", id] as const,
-  compromissosTodos: () => ["financeiro", "compromissos"] as const,
-  compromissos: (periodo?: { inicio?: string; fim?: string }) => ["financeiro", "compromissos", periodo?.inicio ?? null, periodo?.fim ?? null] as const,
-  extrato: (contaId: string) => ["financeiro", "extrato", contaId] as const,
-  extratoGeral: () => ["financeiro", "extrato-geral"] as const,
-  relatoriosTodos: () => ["financeiro", "relatorios"] as const,
-  relatorio: (id: string) => ["financeiro", "relatorio", id] as const,
-  rascunhoRelatorio: () => ["financeiro", "rascunho-relatorio"] as const,
+  dashboardTodos: () => ["financeiro", sitio(), "dashboard"] as const,
+  dashboard: (inicio?: string, fim?: string) => ["financeiro", sitio(), "dashboard", inicio ?? null, fim ?? null] as const,
+  configuracoes: () => ["financeiro", sitio(), "configuracoes"] as const,
+  operacoesTodos: () => ["financeiro", sitio(), "operacoes"] as const,
+  operacoes: (filtros?: { inicio?: string; fim?: string }) => ["financeiro", sitio(), "operacoes", filtros?.inicio ?? null, filtros?.fim ?? null] as const,
+  operacaoTodos: () => ["financeiro", sitio(), "operacao"] as const,
+  operacao: (id: string) => ["financeiro", sitio(), "operacao", id] as const,
+  compromissosTodos: () => ["financeiro", sitio(), "compromissos"] as const,
+  compromissos: (periodo?: { inicio?: string; fim?: string }) => ["financeiro", sitio(), "compromissos", periodo?.inicio ?? null, periodo?.fim ?? null] as const,
+  extrato: (contaId: string) => ["financeiro", sitio(), "extrato", contaId] as const,
+  extratoGeral: () => ["financeiro", sitio(), "extrato-geral"] as const,
+  relatoriosTodos: () => ["financeiro", sitio(), "relatorios"] as const,
+  relatorio: (id: string) => ["financeiro", sitio(), "relatorio", id] as const,
+  rascunhoRelatorio: () => ["financeiro", sitio(), "rascunho-relatorio"] as const,
 };
 
 /** Invalida tudo sob o prefixo `financeiro` (operações, compromissos, dashboard,
@@ -62,10 +68,10 @@ export function useRascunhoRelatorioFinanceiro(enabled = true) {
 
 // ── Estoque: leituras usadas pelo FormOperacao ──
 export const estoqueKeys = {
-  saldosTodos: () => ["estoque", "saldos"] as const,
-  saldos: (f?: { centroCustoId?: string }) => ["estoque", "saldos", f?.centroCustoId ?? null] as const,
-  ultimoPreco: (produtoId: string, parceiroId?: string | null) => ["estoque", "ultimo-preco", produtoId, parceiroId ?? null] as const,
-  custoMedio: (produtoId: string) => ["estoque", "custo-medio", produtoId] as const,
+  saldosTodos: () => ["estoque", sitio(), "saldos"] as const,
+  saldos: (f?: { centroCustoId?: string }) => ["estoque", sitio(), "saldos", f?.centroCustoId ?? null] as const,
+  ultimoPreco: (produtoId: string, parceiroId?: string | null) => ["estoque", sitio(), "ultimo-preco", produtoId, parceiroId ?? null] as const,
+  custoMedio: (produtoId: string) => ["estoque", sitio(), "custo-medio", produtoId] as const,
 };
 
 export function useSaldosEstoque(f?: { centroCustoId?: string }) {
