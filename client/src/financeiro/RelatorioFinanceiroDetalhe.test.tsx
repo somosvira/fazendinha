@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
+import { render } from "./lib/testQueryClient";
 import { RelatorioFinanceiroDetalhe } from "./RelatorioFinanceiroDetalhe";
 import { obterRelatorioFinanceiro, salvarPdfRelatorioFinanceiro, type RelatorioFinanceiroDetalhe as Detalhe } from "./novo-api";
 import { uid } from "../lib/uid.fixture";

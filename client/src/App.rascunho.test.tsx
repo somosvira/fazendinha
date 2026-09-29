@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
+import { render } from "./financeiro/lib/testQueryClient";
 import { App } from "./App";
 import { setSessao, type UsuarioSessao } from "./lib/auth";
 import { setPropriedadeAtiva } from "./propriedadeScope";
@@ -136,6 +137,6 @@ describe("App — trabalho ativo", () => {
     const depois = Date.now() + 31_000;
     vi.spyOn(Date, "now").mockReturnValue(depois);
     document.dispatchEvent(new Event("visibilitychange"));
-    expect(chamadasRascunho).toHaveLength(2);
+    await waitFor(() => expect(chamadasRascunho).toHaveLength(2));
   });
 });

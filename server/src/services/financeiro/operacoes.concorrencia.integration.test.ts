@@ -71,7 +71,7 @@ describeComBanco("operações financeiras concorrentes com PostgreSQL", () => {
     const f = await fixture();
     const operacao = await criarOperacao(entrada(f, "A_PRAZO"));
     const resultados = await Promise.allSettled([
-      liquidarCompromisso(operacao.compromissos[0].id, { data: new Date(), valor: 60, contaId: f.contaId }),
+      liquidarCompromisso(operacao.compromissos[0].id, { data: new Date(), valor: 60, contaId: f.contaId, propriedadeId: f.propriedadeId }),
       estornarOperacao(operacao.id, "Cancelamento concorrente", { propriedadeId: f.propriedadeId }),
     ]);
 

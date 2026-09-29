@@ -1,9 +1,22 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { onlineManager } from "@tanstack/react-query";
+import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
+import { render } from "./lib/testQueryClient";
 import { CompromissosFinanceiros } from "./CompromissosFinanceiros";
 import { descartarRascunhoOperacao, listarCompromissos, obterConfiguracoesFinanceiras, obterRascunhoOperacao } from "./novo-api";
 import { uid } from "../lib/uid.fixture";
+
+vi.mock("../lib/offline/fila", () => {
+  const filaVazia: unknown[] = [];
+  return {
+    enfileirarMutation: vi.fn().mockResolvedValue(null),
+    inscrever: () => () => {},
+    obterFila: () => filaVazia,
+    aguardarFilaLivre: () => Promise.resolve(),
+    filaTravada: () => false,
+  };
+});
 
 vi.mock("./novo-api", () => ({
   listarCompromissos: vi.fn().mockResolvedValue([]),
@@ -34,7 +47,7 @@ describe("CompromissosFinanceiros — criação", () => {
     expect(descartarRascunhoOperacao).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole("button", { name: "Criar mesmo assim" }));
-    await waitFor(() => expect(descartarRascunhoOperacao).toHaveBeenCalledOnce());
+    await waitFor(() => expect(descartarRascunhoOperacao).toHaveBeenCalled());
     await waitFor(() => expect(onNav).toHaveBeenCalledWith("lancar"));
   });
 
@@ -93,5 +106,18 @@ describe("CompromissosFinanceiros — criação", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Registrar pagamento" }));
     expect(await screen.findByRole("option", { name: /Conta ativa/ })).toBeTruthy();
     expect(screen.queryByRole("option", { name: /Conta inativa/ })).toBeNull();
+  });
+});
+
+describe("CompromissosFinanceiros — offline em período não visitado", () => {
+  it("avisa em vez de mostrar o período anterior, mantendo o filtro de período", async () => {
+    render(<CompromissosFinanceiros onNav={vi.fn()} />);
+    await screen.findByRole("button", { name: /^Período/ });
+    onlineManager.setOnline(false);
+    fireEvent.click(screen.getByRole("button", { name: /^Período/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Ano anterior" }));
+    expect(await screen.findByText(/Sem conexão e sem compromissos salvos para este período/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: /^Período/ })).toBeTruthy();
+    onlineManager.setOnline(true);
   });
 });

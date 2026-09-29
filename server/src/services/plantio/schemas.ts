@@ -1,9 +1,7 @@
 import { z } from "zod";
 import { UnidadeMedida } from "@prisma/client";
+import { MAX_QTD } from "@rionovo/shared";
 
-// Limite compatível com a coluna quantidadeTotal, Decimal(12,3) — evita Postgres
-// 22003 antes de chegar ao Prisma.
-const MAX_QTD = 999_999_999.999;
 // doseValor é Decimal(10,3) — limite menor, específico dessa coluna.
 const MAX_DOSE = 9_999_999.999;
 

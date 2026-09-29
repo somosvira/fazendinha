@@ -1,5 +1,4 @@
-import { comPropriedade } from "../propriedadeScope";
-import { ApiError } from "../lib/offline/req";
+import { ApiError, req, reqBlob } from "../lib/offline/req";
 import type { RelatorioGerencialDTO } from "../components/relatorio-gerencial/types";
 import { prepararPublicacaoRascunho } from "./rascunhoAtivo";
 import { prepararPublicacaoRascunhoRelatorio } from "./rascunhoRelatorioAtivo";
@@ -50,18 +49,18 @@ export type ProdutoInput = {
 export type ConfiguracoesFinanceiras = { contas: Conta[]; parceiros: Parceiro[]; categorias: Categoria[]; centrosCusto: CentroCusto[]; produtos: Produto[]; produtosCadastro?: Produto[]; centrosAtividade?: { cafe: string | null } };
 export type ContaHistorico = { id: string; nome: string };
 export type ReferenciaReversao = { id: string; tipo: string; status: string; data: string; descricao: string | null };
-export type MovimentoOperacao = { id: string; seq: number; contaId: string; direcao: "ENTRADA" | "SAIDA"; valor: string; conta: ContaHistorico };
-export type TransacaoOperacao = { id: string; seq: number; tipo: string; status: string; data: string; valorTotal: string; formaPagamento: string | null; movimentos: MovimentoOperacao[]; reversaoDe?: ReferenciaReversao | null; revertidaPor?: ReferenciaReversao | null; operacaoId?: string | null };
+export type MovimentoOperacao = { id: string; seq: number | null; contaId: string; direcao: "ENTRADA" | "SAIDA"; valor: string; conta: ContaHistorico };
+export type TransacaoOperacao = { id: string; seq: number | null; tipo: string; status: string; data: string; valorTotal: string; formaPagamento: string | null; movimentos: MovimentoOperacao[]; reversaoDe?: ReferenciaReversao | null; revertidaPor?: ReferenciaReversao | null; operacaoId?: string | null };
 export type Liquidacao = { id: string; valor: string; transacao: TransacaoOperacao };
-export type Compromisso = { id: string; seq: number; tipo: "PAGAR" | "RECEBER"; status: string; valorOriginal: string; valorLiquidado: string; saldoPendente: string; saldoExigivel?: string; dataVencimento: string; numeroParcela: number | null; totalParcelas: number | null; vencido?: boolean; parceiro: ParceiroBase | null; operacao: { id: string; numero: number; tipo: string; descricao: string | null }; liquidacoes?: Liquidacao[] };
+export type Compromisso = { id: string; seq: number | null; tipo: "PAGAR" | "RECEBER"; status: string; valorOriginal: string; valorLiquidado: string; saldoPendente: string; saldoExigivel?: string; dataVencimento: string; numeroParcela: number | null; totalParcelas: number | null; vencido?: boolean; parceiro: ParceiroBase | null; operacao: { id: string; numero: number | null; tipo: string; descricao: string | null }; liquidacoes?: Liquidacao[] };
 export type ItemOperacao = { categoriaId?: string | null; categoriaNome?: string | null; classificacao?: "CUSTEIO" | "INVESTIMENTO" | null; centroCustoId?: string | null; centroCustoNome?: string | null; id: string; ordem: number; descricao: string; quantidade: string; unidade: string; valorUnitario: string; valorTotal: string; estocavel: boolean; produtoId: string | null };
-export type MovimentoEstoqueOperacao = { id: string; seq: number; tipo: string; status: string; quantidade: string; valorTotal: string; produtoId: string; reversaoDeId?: string | null; revertidoPor?: { id: string } | null };
+export type MovimentoEstoqueOperacao = { id: string; seq: number | null; tipo: string; status: string; quantidade: string; valorTotal: string; produtoId: string; reversaoDeId?: string | null; revertidoPor?: { id: string } | null };
 export type DocumentoFinanceiro = { id: string; tipo: string; nome: string; numero: string | null; mimeType: string | null; tamanhoBytes: number | null };
 export type RascunhoOperacao = { id: string; dados: { formulario?: Record<string, unknown>; operacao?: Record<string, unknown> }; versao: number; updatedAt: string; documentos: DocumentoFinanceiro[] };
 export type SimulacaoParcelas = { totalOperacao: string; valorPagoAgora: string; saldoAPrazo: string; parcelas: { valor: string; dataVencimento: string }[] };
 export type ResumoCancelamento = { compromissos: { id: string; numeroParcela: number | null; status: string; valorOriginal: string; valorLiquidado: string; saldoExigivel: string }[]; transacoes: { id: string; seq: number; tipo: string; data: string; valorTotal: string; movimentos: (MovimentoOperacao & { direcaoInversa: "ENTRADA" | "SAIDA" })[] }[]; estoque: { id: string; produtoId: string; produtoNome: string; quantidade: string; unidade: string; tipo: string }[]; impactosPorConta: { conta: ContaHistorico; entrada: string; saida: string }[]; documentosPreservados: number };
-export type Operacao = { categoriaNome?: string | null; classificacao?: "CUSTEIO" | "INVESTIMENTO" | null; id: string; numero: number; tipo: string; status: string; data: string; descricao: string | null; valorTotal: string; parceiro: ParceiroBase | null; parceiroId?: string | null; categoriaId?: string | null; centroCustoId?: string | null; centroCusto?: { id: string; nome: string } | null; corrigeOperacaoId?: string | null; corrigeOperacao?: { id: string; numero: number; descricao: string | null } | null; correcoes?: { id: string; numero: number; descricao: string | null; status: string }[]; itens: ItemOperacao[]; compromissos: Compromisso[]; transacoes: TransacaoOperacao[]; movimentosEstoque: MovimentoEstoqueOperacao[]; documentos: DocumentoFinanceiro[]; resumoCancelamento?: ResumoCancelamento };
-export type MovimentoConta = { id: string; seq: number; contaId?: string; direcao: "ENTRADA" | "SAIDA"; valor: string; transacao: { id: string; seq: number; tipo: string; status: string; data: string; descricao: string | null; formaPagamento: string | null; parceiro: ParceiroBase | null; operacao: { id: string; numero: number; descricao: string | null; tipo: string } | null; reversaoDe?: { id?: string; tipo: string; descricao?: string | null; operacaoId?: string | null } | null } };
+export type Operacao = { categoriaNome?: string | null; classificacao?: "CUSTEIO" | "INVESTIMENTO" | null; id: string; numero: number | null; tipo: string; status: string; data: string; descricao: string | null; valorTotal: string; parceiro: ParceiroBase | null; parceiroId?: string | null; categoriaId?: string | null; centroCustoId?: string | null; centroCusto?: { id: string; nome: string } | null; corrigeOperacaoId?: string | null; corrigeOperacao?: { id: string; numero: number; descricao: string | null } | null; correcoes?: { id: string; numero: number; descricao: string | null; status: string }[]; itens: ItemOperacao[]; compromissos: Compromisso[]; transacoes: TransacaoOperacao[]; movimentosEstoque: MovimentoEstoqueOperacao[]; documentos: DocumentoFinanceiro[]; resumoCancelamento?: ResumoCancelamento };
+export type MovimentoConta = { id: string; seq: number | null; contaId?: string; direcao: "ENTRADA" | "SAIDA"; valor: string; transacao: { id: string; seq: number | null; tipo: string; status: string; data: string; descricao: string | null; formaPagamento: string | null; parceiro: ParceiroBase | null; operacao: { id: string; numero: number | null; descricao: string | null; tipo: string } | null; reversaoDe?: { id?: string; tipo: string; descricao?: string | null; operacaoId?: string | null } | null } };
 export type BaseFinanceira = {
   operacoes: { total: number; estados: Record<string, number>; comEstoque: number; semParceiro: number; semEfeitos: number };
   compromissos: { total: number; estados: Record<string, number> };
@@ -94,16 +93,6 @@ export type RelatorioFinanceiroDetalhe = RelatorioFinanceiro & { snapshot: Snaps
 
 export { ApiError };
 
-async function req<T>(path: string, init?: RequestInit): Promise<T> {
-  const resposta = await fetch(`/api${path}`, {
-    ...init,
-    headers: comPropriedade({ ...(init?.body ? { "content-type": "application/json" } : {}), ...((init?.headers as Record<string, string>) ?? {}) }),
-  });
-  const corpo = await resposta.json().catch(() => ({}));
-  if (!resposta.ok) throw new ApiError(corpo.error ?? `Erro HTTP ${resposta.status}`, resposta.status, corpo.code, corpo.campo);
-  return corpo as T;
-}
-
 export const obterDashboardFinanceiro = (inicio?: string, fim?: string) => req<DashboardFinanceiro>(`/financeiro/dashboard${inicio && fim ? `?inicio=${inicio}&fim=${fim}` : ""}`);
 export const obterConfiguracoesFinanceiras = () => req<ConfiguracoesFinanceiras>("/financeiro/configuracoes");
 export const listarOperacoes = (filtros?: { inicio?: string; fim?: string }) => {
@@ -114,8 +103,9 @@ export const obterOperacao = (id: string) => req<Operacao>(`/financeiro/operacoe
 export const listarCompromissos = (periodo?: { inicio: string; fim: string }) => req<Compromisso[]>(`/financeiro/compromissos${periodo?.inicio && periodo.fim ? `?${new URLSearchParams(periodo)}` : ""}`);
 export const obterExtratoConta = (id: string) => req<MovimentoConta[]>(`/financeiro/contas/${id}/extrato`);
 export const criarOperacao = (input: unknown) => req<Operacao>("/financeiro/operacoes", { method: "POST", body: JSON.stringify(input) });
-export type AjusteEstoqueInput = { produtoId: string; quantidadeContada: number; saldoEsperado: number; observacao: string; centroCustoId?: string | null };
-export type AjusteEstoqueResultado = { id: string; operacaoId: string; saldoAnterior: number; quantidadeContada: number; diferenca: number };
+export type AjusteEstoqueInput = { id?: string; produtoId: string; quantidadeContada: number; saldoEsperado: number; observacao: string; centroCustoId?: string | null };
+// No reenvio (mesmo id já confirmado) o servidor devolve só `operacaoId` — é o único campo que o client lê.
+export type AjusteEstoqueResultado = { operacaoId: string; id?: string; saldoAnterior?: number; quantidadeContada?: number; diferenca?: number };
 /** Ajuste por contagem de estoque: o servidor recalcula o saldo, recusa (CONFLITO/409) se ele mudou desde `saldoEsperado` e cria a Operacao AJUSTE_ESTOQUE + movimento físico. */
 export const registrarAjusteEstoque = (input: AjusteEstoqueInput) => req<AjusteEstoqueResultado>("/estoque/ajustes", { method: "POST", body: JSON.stringify(input) });
 export const simularParcelasOperacao = (input: unknown) => req<SimulacaoParcelas>("/financeiro/operacoes/simulacao-parcelas", { method: "POST", body: JSON.stringify(input) });
@@ -158,11 +148,7 @@ export const gerarRelatorioFinanceiro = (configuracao: ConfiguracaoRelatorioFina
   });
 };
 export const obterRelatorioFinanceiro = (id: string) => req<RelatorioFinanceiroDetalhe>(`/financeiro/relatorios/${id}`);
-export async function baixarRelatorioFinanceiro(id: string) {
-  const resposta = await fetch(`/api/financeiro/relatorios/${id}/download`, { headers: comPropriedade() });
-  if (!resposta.ok) { const corpo = await resposta.json().catch(() => ({})); throw new ApiError(corpo.error ?? `Erro HTTP ${resposta.status}`, resposta.status); }
-  return resposta.blob();
-}
+export const baixarRelatorioFinanceiro = (id: string) => reqBlob(`/financeiro/relatorios/${id}/download`);
 /** Baixa o PDF guardado e entrega ao navegador como download. */
 export async function salvarPdfRelatorioFinanceiro(relatorio: Pick<RelatorioFinanceiro, "id" | "nome">) {
   const url = URL.createObjectURL(await baixarRelatorioFinanceiro(relatorio.id));
@@ -191,10 +177,7 @@ async function enviarDocumentoDireto(intencaoPath: string, confirmacaoPath: stri
 
 export const anexarDocumentoRascunho = (input: { arquivo: File; tipo: string; numero?: string }) =>
   enviarDocumentoDireto("/financeiro/operacoes/rascunho/documentos/intencao", "/financeiro/operacoes/rascunho/documentos/confirmacao-upload", input);
-export async function removerDocumentoRascunho(id: string) {
-  const resposta = await fetch(`/api/financeiro/operacoes/rascunho/documentos/${id}`, { method: "DELETE", headers: comPropriedade() });
-  if (!resposta.ok) { const corpo = await resposta.json().catch(() => ({})); throw new Error(corpo.error ?? `Erro HTTP ${resposta.status}`); }
-}
+export const removerDocumentoRascunho = (id: string) => req<void>(`/financeiro/operacoes/rascunho/documentos/${id}`, { method: "DELETE" });
 export const atualizarDocumentoRascunho = (id: string, input: { tipo?: string; numero?: string | null }) => req<DocumentoFinanceiro>(`/financeiro/operacoes/rascunho/documentos/${id}`, { method: "PATCH", body: JSON.stringify(input) });
 export const anexarDocumentoOperacao = (operacaoId: string, input: { arquivo: File; tipo: string; numero?: string }) =>
   enviarDocumentoDireto(`/financeiro/operacoes/${operacaoId}/documentos/intencao`, `/financeiro/operacoes/${operacaoId}/documentos/confirmacao-upload`, input);

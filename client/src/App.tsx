@@ -89,10 +89,9 @@ function GatedTab({ user, abaLabel }: { user: User; abaLabel: string }) {
   );
 }
 
-// Abas com suporte real a escrita offline (fila própria) — ver
-// docs/design/offline/README.md. Um módulo sem entrada aqui fica travado sem
-// rede até declarar suporte.
-const TABS_OFFLINE = new Set<Tab>([]);
+// Abas com suporte real a uso offline (cache de leitura + fila de escrita) —
+// ver docs/design/offline/README.md.
+const TABS_OFFLINE = new Set<Tab>(["dashboard", "lancar", "gastos", "caixinha", "relatorio"]);
 
 function OfflineGatedTab() {
   return (
@@ -101,7 +100,7 @@ function OfflineGatedTab() {
         <div className="lock">⊘</div>
         <div className="h">Esta área não funciona sem conexão</div>
         <div className="s">
-          Nenhuma área tem suporte a uso offline por enquanto. Volte a ficar online pra acessar esta aba.
+          Sem conexão, só o Financeiro (visão geral, operações, compromissos, contas e relatórios) funciona. Volte a ficar online pra acessar esta aba.
         </div>
       </div>
     </div>

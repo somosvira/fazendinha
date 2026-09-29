@@ -14,7 +14,8 @@
  */
 import { baseFinanceiraVazia } from "./dashboard.fixture";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, screen } from "@testing-library/react";
+import { render } from "./lib/testQueryClient";
 import { TabelaFinanceira, type ColunaTabela } from "./financeiro-ui";
 import { OperacoesFinanceiras } from "./OperacoesFinanceiras";
 

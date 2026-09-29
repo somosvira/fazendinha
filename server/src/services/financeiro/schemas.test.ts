@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { categoriaCadastroSchema, centroCustoSchema, contaSchema, operacaoSchema, parceiroSchema, patchCategoriaCadastroSchema, patchCentroCustoSchema, patchContaSchema, patchParceiroSchema, rascunhoOperacaoSchema, tipoDocumentoFinanceiroSchema } from "./schemas.js";
+import { categoriaCadastroSchema, centroCustoSchema, contaSchema, liquidacaoSchema, operacaoSchema, parceiroSchema, patchCategoriaCadastroSchema, patchCentroCustoSchema, patchContaSchema, patchParceiroSchema, rascunhoOperacaoSchema, tipoDocumentoFinanceiroSchema, transferenciaSchema } from "./schemas.js";
 import { uid } from "../../lib/uid.fixture.js";
 
 const base = {
@@ -142,5 +142,35 @@ describe("operacaoSchema — mensagens de parcela em português", () => {
 
   it("valor não numérico na parcela pede um número válido", () => {
     expect(primeiraMensagem([{ valor: "abc", dataVencimento: "2026-10-02" }])).toBe("Informe um valor numérico válido para a parcela");
+  });
+});
+
+describe("ids gerados pelo cliente", () => {
+  const aPrazo = (parcelas: unknown[], extra: Record<string, unknown> = {}) =>
+    operacaoSchema.safeParse({ ...base, ...extra, tipo: "COMPRA_ESTOQUE", itens: [item], financeiro: { condicao: "A_PRAZO", parcelas } });
+
+  it("operação e parcelas aceitam id uuid opcional", () => {
+    const r = aPrazo([{ id: uid(11), valor: 30, dataVencimento: "2026-10-02" }, { valor: 20, dataVencimento: "2026-11-02" }], { id: uid(10) });
+    expect(r.success).toBe(true);
+    if (!r.success || r.data.financeiro.condicao !== "A_PRAZO") return;
+    expect(r.data.id).toBe(uid(10));
+    expect(r.data.financeiro.parcelas.map((p) => p.id)).toEqual([uid(11), undefined]);
+  });
+
+  it("rejeita id que não é uuid", () => {
+    expect(aPrazo([{ valor: 50, dataVencimento: "2026-10-02" }], { id: "op-1" }).success).toBe(false);
+    expect(aPrazo([{ id: "p-1", valor: 50, dataVencimento: "2026-10-02" }]).success).toBe(false);
+  });
+
+  it("rejeita parcelas com o mesmo id", () => {
+    const r = aPrazo([{ id: uid(11), valor: 30, dataVencimento: "2026-10-02" }, { id: uid(11), valor: 20, dataVencimento: "2026-11-02" }]);
+    expect(r.success).toBe(false);
+    expect(r.error?.issues[0]?.message).toBe("Há parcelas com o mesmo identificador");
+  });
+
+  it("liquidação e transferência aceitam o id da transação/operação", () => {
+    expect(liquidacaoSchema.parse({ transacaoId: uid(20), contaId: uid(2), valor: 10, data: "2026-09-02" }).transacaoId).toBe(uid(20));
+    expect(transferenciaSchema.parse({ id: uid(21), contaOrigemId: uid(2), contaDestinoId: uid(3), valor: 10, data: "2026-09-02" }).id).toBe(uid(21));
+    expect(liquidacaoSchema.safeParse({ transacaoId: "x", contaId: uid(2), valor: 10, data: "2026-09-02" }).success).toBe(false);
   });
 });

@@ -1,19 +1,26 @@
 import { type ChangeEvent, type FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { CircleAlert, FileText, Loader2, Paperclip, Plus, Trash2, Wand2 } from "lucide-react";
+import { useQueryClient, type QueryKey } from "@tanstack/react-query";
+import { CircleAlert, CloudOff, FileText, Loader2, Paperclip, Plus, Trash2, Wand2 } from "lucide-react";
 import { ConfirmDialog } from "../components/ConfirmDialog";
+import { useToast } from "../components/Toast";
+import { useOnlineStatus } from "../lib/offline/useOnlineStatus";
+import { useSalvarOffline } from "../lib/offline/useSalvarOffline";
 import { Popover, PopoverContent, PopoverTrigger } from "../components/ui/popover";
 import { getPropriedadeAtiva } from "../propriedadeScope";
 import { listarPropriedades } from "@/api/propriedades";
 import { anexarDocumentoOperacao, anexarDocumentoRascunho, ApiError, atualizarDocumentoRascunho, confirmarRascunhoOperacao, criarOperacao, descartarRascunhoOperacao, registrarAjusteEstoque, removerDocumentoRascunho, salvarRascunhoOperacao, simularParcelasOperacao, type ConfiguracoesFinanceiras, type DocumentoFinanceiro, type Operacao, type RascunhoOperacao, type SimulacaoParcelas } from "./novo-api";
 import { brl, Button, emDias, ErrorBox, hoje, ReviewLine, TIPO_OPERACAO } from "./financeiro-ui";
 import { FORMAS_PAGAMENTO, parceiroCompativel, parcelasSugeridas } from "./lib/parceiros";
-import { deCentavos, paraCentavos, somarParcelas, type FrequenciaParcelas } from "./lib/parcelas";
+import { deCentavos, paraCentavos, simularParcelasLocal, somarParcelas, type FrequenciaParcelas } from "./lib/parcelas";
 import { marcarEdicaoRascunho } from "./rascunhoAtivo";
+import { useAjusteEstoque, useCriarOperacao, useDescartarRascunho, type CriarOperacaoInput } from "./mutations";
+import { estoqueKeys } from "./queries";
 import { listarSaldos, obterCustoMedio, obterUltimoPreco, type SaldoDTO, type UltimoPrecoDTO } from "../estoque/api";
 import { rotuloUnidade } from "../lib/unidades";
-import { codigoOperacao } from "../estoque/navegacao";
+import { codigoOperacaoFinanceira } from "./lib/codigo";
 
 type Condicao = "A_VISTA" | "A_PRAZO" | "PARCIAL" | "SEM_EFEITO_FINANCEIRO";
+const condicaoComParcelas = (condicao: Condicao) => condicao === "A_PRAZO" || condicao === "PARCIAL";
 type ModoValor = "UNITARIO" | "TOTAL";
 type ItemForm = { categoriaId: string; classificacao: string; centroCustoId: string; id: number; produtoId: string; descricao: string; quantidade: string; unidade: string; modoValor: ModoValor; valorUnitario: string; valorTotal: string };
 type ParcelaForm = { id: number; valor: string; vencimento: string };
@@ -84,17 +91,31 @@ function CampoErro({ id, className = "mt-1.5", children }: { id?: string; classN
   return <span id={id} role="alert" className={`flex items-start gap-1.5 text-xs font-semibold text-red-700 ${className}`}><CircleAlert size={14} className="mt-px shrink-0" aria-hidden /><span>{children}</span></span>;
 }
 
-export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoInicial, produtoInicial, operacaoBase = null, onSalvo }: { config: ConfiguracoesFinanceiras; rascunho?: RascunhoOperacao | null; condicaoInicial?: Condicao; tipoInicial?: string; /** Produto pré-selecionado no tipo Ajuste de estoque (atalho da tela de Estoque). */ produtoInicial?: string; operacaoBase?: Operacao | null; onSalvo: (operacao: Pick<Operacao, "id">, aviso?: string) => void }) {
+type PropsFormOperacao = { config: ConfiguracoesFinanceiras; rascunho?: RascunhoOperacao | null; condicaoInicial?: Condicao; tipoInicial?: string; /** Produto pré-selecionado no tipo Ajuste de estoque (atalho da tela de Estoque). */ produtoInicial?: string; operacaoBase?: Operacao | null; onSalvo: (operacao: Pick<Operacao, "id">, aviso?: string) => void };
+
+export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoInicial, produtoInicial, operacaoBase = null, onSalvo }: PropsFormOperacao) {
   // Aberto pelo atalho do Estoque (tipoInicial = ajuste): ignora o conteúdo do
   // rascunho — o ajuste não usa rascunho e não deve herdar/atropelar o dele.
   const atalhoAjuste = !operacaoBase && tipoInicial === TIPO_AJUSTE;
   const inicial = (!operacaoBase && !atalhoAjuste ? rascunho?.dados.formulario : null) as Partial<EstadoFormulario> | null;
+  const online = useOnlineStatus();
+  const onlineRef = useRef(online);
+  onlineRef.current = online;
+  const queryClient = useQueryClient();
+  const toast = useToast();
+  const criarOffline = useCriarOperacao();
+  const ajusteOffline = useAjusteEstoque();
+  const descartarOffline = useDescartarRascunho();
+  const { salvar: salvarOffline } = useSalvarOffline();
+  // Leitura de apoio do estoque: online busca e guarda no cache; offline usa o que houver.
+  const lerEstoque = <T,>(queryKey: QueryKey, queryFn: () => Promise<T>): Promise<T | undefined> =>
+    onlineRef.current ? queryClient.fetchQuery({ queryKey, queryFn, staleTime: 0 }) : Promise.resolve(queryClient.getQueryData<T>(queryKey));
   const transacaoBase = operacaoBase?.transacoes.find((item) => item.tipo !== "REVERSAO");
   const temCompromissos = !!operacaoBase?.compromissos.length;
   const condicaoBase: Condicao = inicial?.condicao ?? (!operacaoBase ? condicaoInicial ?? (tipoInicial && !TIPOS_FINANCEIROS.has(tipoInicial) ? "SEM_EFEITO_FINANCEIRO" : "A_VISTA") : transacaoBase && temCompromissos ? "PARCIAL" : temCompromissos ? "A_PRAZO" : transacaoBase ? "A_VISTA" : "SEM_EFEITO_FINANCEIRO");
   const [tipo, setTipo] = useState(inicial?.tipo ?? operacaoBase?.tipo ?? tipoInicial ?? "COMPRA_ESTOQUE");
   const [condicao, setCondicao] = useState<Condicao>(condicaoBase);
-  const [descricao, setDescricao] = useState(inicial?.descricao ?? (operacaoBase ? `Correção da ${codigoOperacao(operacaoBase.numero)} — ${operacaoBase.descricao ?? TIPO_OPERACAO[operacaoBase.tipo]}` : ""));
+  const [descricao, setDescricao] = useState(inicial?.descricao ?? (operacaoBase ? `Correção da ${codigoOperacaoFinanceira(operacaoBase.numero)} — ${operacaoBase.descricao ?? TIPO_OPERACAO[operacaoBase.tipo]}` : ""));
   const [valorOperacao, setValorOperacao] = useState(inicial?.valorOperacao ?? operacaoBase?.valorTotal ?? "");
   // Rascunhos salvos antes do centro de custo por item existir podem trazer
   // `itens` sem `centroCustoId` (campo ausente, não ""): normaliza na
@@ -163,18 +184,19 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   // ajuste é gravado em um só: o `saldoEsperado` nunca bateria (loop de CONFLITO).
   const [totalSitios, setTotalSitios] = useState<number | null>(null);
   useEffect(() => {
-    if (!ehAjuste || getPropriedadeAtiva() != null || totalSitios !== null) return;
+    if (!ehAjuste || !online || getPropriedadeAtiva() != null || totalSitios !== null) return;
     let ativo = true;
     listarPropriedades().then((lista) => { if (ativo) setTotalSitios(Array.isArray(lista) ? lista.filter((p) => p.ativo).length : 0); }).catch(() => undefined);
     return () => { ativo = false; };
-  }, [ehAjuste, totalSitios]);
+  }, [ehAjuste, online, totalSitios]);
   const ajusteConsolidado = ehAjuste && getPropriedadeAtiva() == null && (totalSitios ?? 0) >= 2;
 
   const carregarSaldos = async () => {
     const pedido = ++saldosPedidoRef.current;
     setSaldosCarregando(true); setSaldosErro(null);
     try {
-      const lista = await listarSaldos();
+      const lista = await lerEstoque(estoqueKeys.saldos(), () => listarSaldos());
+      if (!lista) throw new Error("Sem conexão e sem saldos de estoque salvos neste aparelho.");
       if (pedido === saldosPedidoRef.current) setSaldos(lista);
     } catch (falha) {
       if (pedido === saldosPedidoRef.current) setSaldosErro(falha instanceof Error ? falha.message : String(falha));
@@ -280,7 +302,8 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
     salvamentoEmCursoRef.current = requisicao;
     try {
       const salvo = await requisicao;
-      versaoRef.current = salvo.versao; setEstadoSalvamento("SALVO"); return salvo;
+      versaoRef.current = salvo.versao; setEstadoSalvamento("SALVO");
+      return salvo;
     } catch (falha) {
       setEstadoSalvamento("ERRO"); throw falha;
     } finally {
@@ -298,11 +321,25 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
     // rascunho real e um autosave com o form quase vazio o sobrescreveria.
     if (ehAjuste || atalhoAjuste) return;
     setEstadoSalvamento("ALTERADO");
-    const timer = window.setTimeout(() => { void persistirRascunho().catch((falha) => setErro(falha instanceof Error ? falha.message : String(falha))); }, 800);
+    // Sem conexão o autosave pausa — o formulário fica só em memória até reconectar.
+    if (!onlineRef.current) return;
+    const timer = window.setTimeout(() => {
+      void persistirRascunho().catch((falha) => {
+        // Queda de rede que o status online ainda não percebeu; a volta da conexão salva.
+        if (falha instanceof TypeError) return;
+        setErro(falha instanceof Error ? falha.message : String(falha));
+      });
+    }, 800);
     return () => window.clearTimeout(timer);
     // O payload memorizado representa integralmente o estado editavel.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dadosRascunho, operacaoBase, ehAjuste, atalhoAjuste]);
+  useEffect(() => {
+    if (!online || !iniciouRef.current || operacaoBase || ehAjuste || atalhoAjuste || estadoSalvamento !== "ALTERADO") return;
+    void persistirRascunho().catch((falha) => setErro(falha instanceof Error ? falha.message : String(falha)));
+    // Só na volta da conexão — o autosave volta ao normal a partir daqui.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [online]);
   // Acende o atalho "Trabalho ativo" da sidebar enquanto o rascunho está na tela.
   useEffect(() => (operacaoBase || ehAjuste || atalhoAjuste ? undefined : marcarEdicaoRascunho()), [operacaoBase, ehAjuste, atalhoAjuste]);
 
@@ -349,12 +386,12 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   // um valor que o usuário tenha digitado nesse meio-tempo.
   const buscarSugestaoPreco = (itemId: number, produtoId: string, parceiroBusca: string, valorAntesDaBusca: string, sugestaoAnterior?: { produtoId: string; valor: string }) => {
     if (!SUGERE_ULTIMO_PRECO.has(tipo)) return;
-    obterUltimoPreco(produtoId, parceiroBusca || undefined).then((ultimo) => {
+    lerEstoque(estoqueKeys.ultimoPreco(produtoId, parceiroBusca || undefined), () => obterUltimoPreco(produtoId, parceiroBusca || undefined)).then((ultimo) => {
       if (!ultimo?.valorUnitario) {
         // Sem compra anterior: sem sugestão pra preencher — mostra o custo médio
         // atual como texto de apoio (não altera o campo).
         setUltimosPrecos(({ [itemId]: _descartado, ...resto }) => resto);
-        obterCustoMedio(produtoId).then((resultado) => {
+        lerEstoque(estoqueKeys.custoMedio(produtoId), () => obterCustoMedio(produtoId)).then((resultado) => {
           setCustosMedios((atuais) => ({ ...atuais, [itemId]: resultado?.custoMedio ?? null }));
         }).catch(() => { /* apoio opcional: falha de rede não bloqueia o formulário */ });
         return;
@@ -419,6 +456,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
     const arquivos = Array.from(evento.target.files ?? []);
     const permitidas = new Set(["pdf", "xml", "jpg", "jpeg", "png", "webp"]);
     const invalidos = arquivos.filter((arquivo) => arquivo.size > 10 * 1024 * 1024 || !permitidas.has(arquivo.name.split(".").pop()?.toLowerCase() ?? ""));
+    if (!online) { setErro("Sem conexão: anexe os documentos depois de sincronizar."); evento.target.value = ""; return; }
     if (invalidos.length) setErro(`Alguns arquivos não foram adicionados por formato ou tamanho inválido: ${invalidos.map((arquivo) => arquivo.name).join(", ")}`);
     const validos = arquivos.filter((arquivo) => !invalidos.includes(arquivo));
     if (operacaoBase) setAnexos((atuais) => [...atuais, ...validos.map((arquivo) => ({ id: proximoId++, arquivo, tipo: "NOTA_FISCAL", numero: "" }))]);
@@ -458,7 +496,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
     : condicao === "PARCIAL" ? realizadoAgora > 0 && saldoFuturoFinanceiro > 0 && parcelas.length > 0 && totalParcelasEmCentavos === paraCentavos(saldoFuturoFinanceiro.toFixed(2)) : true;
   // A soma fechar não basta: uma parcela em branco (valor 0) passa na soma mas a
   // API a rejeita. Cada parcela precisa de valor > 0 e de vencimento.
-  const parcelaIncompleta = condicao === "A_PRAZO" || condicao === "PARCIAL"
+  const parcelaIncompleta = condicaoComParcelas(condicao)
     ? parcelas.find((parcela) => !((paraCentavos(parcela.valor) ?? 0) > 0) || !parcela.vencimento)
     : undefined;
   const parcelasValidas = somaParcelasConfere && !parcelaIncompleta;
@@ -538,15 +576,20 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
     }
     setErroConfirmacao(null);
     setCampoInvalido(null);
+    if (!online) {
+      if (operacaoBase) { setErroConfirmacao("Criar uma correção precisa de conexão."); return; }
+      confirmarSemConexao();
+      return;
+    }
     setSalvando(true);
     try {
       if (ehAjuste && saldoProduto) {
-        const resultado = await registrarAjusteEstoque({ produtoId: saldoProduto.produtoId, quantidadeContada: contadaMilesimos / 1000, saldoEsperado: Math.round(saldoProduto.saldo * 1000) / 1000, observacao: descricao.trim(), centroCustoId: centroCustoId || undefined });
+        const resultado = await registrarAjusteEstoque({ ...corpoAjuste(saldoProduto), id: crypto.randomUUID() });
         onSalvo({ id: resultado.operacaoId });
         return;
       }
       let operacao: Operacao;
-      if (operacaoBase) operacao = await criarOperacao(operacaoRascunho);
+      if (operacaoBase) operacao = await criarOperacao({ ...operacaoRascunho, id: crypto.randomUUID() });
       else {
         const salvo = await persistirRascunho();
         operacao = await confirmarRascunhoOperacao(salvo.versao);
@@ -556,31 +599,66 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
         try { await anexarDocumentoOperacao(operacao.id, anexo); }
         catch (falha) { falhas.push(`${anexo.arquivo.name}: ${falha instanceof Error ? falha.message : String(falha)}`); }
       }
-      onSalvo(operacao, falhas.length ? `A operação ${codigoOperacao(operacao.numero)} foi criada, mas alguns anexos falharam: ${falhas.join("; ")}` : undefined);
+      onSalvo(operacao, falhas.length ? `A operação ${codigoOperacaoFinanceira(operacao.numero)} foi criada, mas alguns anexos falharam: ${falhas.join("; ")}` : undefined);
     } catch (falha) {
-      if (ehAjuste && falha instanceof ApiError && falha.code === "CONFLITO") {
-        // Saldo mudou: recarrega para o usuário reconferir a nova diferença antes de reconfirmar.
-        setErroConfirmacao(MSG_CONFLITO_SALDO);
-        void carregarSaldos();
+      mostrarErroConfirmacao(falha);
+    } finally { setSalvando(false); }
+  };
+
+  const corpoAjuste = (saldo: SaldoDTO) => ({ produtoId: saldo.produtoId, quantidadeContada: contadaMilesimos / 1000, saldoEsperado: Math.round(saldo.saldo * 1000) / 1000, observacao: descricao.trim(), centroCustoId: centroCustoId || undefined });
+
+  // Sem conexão a operação entra na fila com id gerado aqui e o formulário fecha
+  // na hora; uma recusa do servidor no envio chega depois, como aviso. Nunca
+  // chamada em modo correção (`operacaoBase`) — essa exige conexão.
+  const confirmarSemConexao = () => {
+    const id = crypto.randomUUID();
+    try {
+      if (ehAjuste && saldoProduto) {
+        salvarOffline(ajusteOffline.mutate, { ...corpoAjuste(saldoProduto), id }, {
+          onSalvo: () => onSalvo({ id }),
+          onErroInline: setErroConfirmacao,
+          onErroTardio: (mensagem) => toast.error("O ajuste de estoque feito sem conexão foi recusado", mensagem),
+        });
         return;
       }
-      const mensagem = falha instanceof Error ? falha.message : String(falha);
-      setErroConfirmacao(mensagem);
-      setErro(mensagem);
-      if (falha instanceof ApiError && falha.campo) {
-        // Erros de centro de custo por item (`itens.<i>.centroCustoId`) recebem o
-        // mesmo tratamento da validação local: no modo Único esse select nem
-        // existe na tela, então o campo e o foco vão para o centro da operação.
-        const ehErroDeCentro = /^itens\.\d+\.centroCustoId$/.test(falha.campo);
-        const mapeado = ehErroDeCentro ? mapearCampoCentro(falha.campo) : { campo: falha.campo, elementId: `campo-${falha.campo}` };
-        setCampoInvalido(mapeado.campo);
-        if (ehErroDeCentro) {
-          const elemento = document.getElementById(mapeado.elementId);
-          elemento?.scrollIntoView({ behavior: "smooth", block: "center" });
-          elemento?.focus?.();
-        }
+      if (anexos.length) { setErroConfirmacao("Sem conexão não é possível enviar os documentos anexados. Remova-os ou confirme quando a conexão voltar."); return; }
+      const corpo = { ...operacaoRascunho, id } as CriarOperacaoInput;
+      criarOffline.validar(corpo);
+      // O rascunho que já estava no servidor seria confirmado por esta operação; sem ele, sobraria órfão.
+      if (versaoRef.current != null) descartarOffline.mutate();
+      salvarOffline(criarOffline.mutate, corpo, {
+        onSalvo: () => onSalvo({ id }),
+        onErroInline: setErroConfirmacao,
+        onErroTardio: (mensagem) => toast.error("A operação registrada sem conexão foi recusada", mensagem),
+      });
+    } catch (falha) {
+      mostrarErroConfirmacao(falha);
+    }
+  };
+
+  const mostrarErroConfirmacao = (falha: unknown) => {
+    if (ehAjuste && falha instanceof ApiError && falha.code === "CONFLITO") {
+      // Saldo mudou: recarrega para o usuário reconferir a nova diferença antes de reconfirmar.
+      setErroConfirmacao(MSG_CONFLITO_SALDO);
+      void carregarSaldos();
+      return;
+    }
+    const mensagem = falha instanceof Error ? falha.message : String(falha);
+    setErroConfirmacao(mensagem);
+    setErro(mensagem);
+    if (falha instanceof ApiError && falha.campo) {
+      // Erros de centro de custo por item (`itens.<i>.centroCustoId`) recebem o
+      // mesmo tratamento da validação local: no modo Único esse select nem
+      // existe na tela, então o campo e o foco vão para o centro da operação.
+      const ehErroDeCentro = /^itens\.\d+\.centroCustoId$/.test(falha.campo);
+      const mapeado = ehErroDeCentro ? mapearCampoCentro(falha.campo) : { campo: falha.campo, elementId: `campo-${falha.campo}` };
+      setCampoInvalido(mapeado.campo);
+      if (ehErroDeCentro) {
+        const elemento = document.getElementById(mapeado.elementId);
+        elemento?.scrollIntoView({ behavior: "smooth", block: "center" });
+        elemento?.focus?.();
       }
-    } finally { setSalvando(false); }
+    }
   };
 
   useEffect(() => { if (erroConfirmacao) erroConfirmacaoRef.current?.focus(); }, [erroConfirmacao]);
@@ -618,7 +696,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
     </>}
   </section>;
   return <div className="shell-wide pb-10">
-    <div className="mb-5 flex min-h-[82px] flex-wrap items-center justify-between gap-4 border-b border-border pb-5 pt-3"><div><div className="text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Registro orientado</div><h1 className="mt-1 font-serif text-3xl text-ink md:text-4xl">{operacaoBase ? "Criar operação de correção" : "Nova operação"}</h1></div>{!operacaoBase && !ehAjuste && !atalhoAjuste && temConteudoRascunho && <div className="flex items-center gap-3"><span aria-live="polite" className={`text-xs font-medium ${estadoSalvamento === "ERRO" ? "text-red-700" : "text-ink-3"}`}>{estadoSalvamento === "SALVANDO" ? "Salvando…" : estadoSalvamento === "SALVO" ? "Rascunho salvo" : estadoSalvamento === "ERRO" ? "Falha ao salvar" : "Alterações não salvas"}</span><Button type="button" secondary disabled={salvando} onClick={() => setConfirmarLimpeza(true)}>Limpar rascunho</Button></div>}</div>
+    <div className="mb-5 flex min-h-[82px] flex-wrap items-center justify-between gap-4 border-b border-border pb-5 pt-3"><div><div className="text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Registro orientado</div><h1 className="mt-1 font-serif text-3xl text-ink md:text-4xl">{operacaoBase ? "Criar operação de correção" : "Nova operação"}</h1></div>{!operacaoBase && !ehAjuste && !atalhoAjuste && temConteudoRascunho && <div className="flex items-center gap-3"><span aria-live="polite" className={`text-xs font-medium ${estadoSalvamento === "ERRO" ? "text-red-700" : "text-ink-3"}`}>{estadoSalvamento === "SALVANDO" ? "Salvando…" : estadoSalvamento === "SALVO" ? "Rascunho salvo" : estadoSalvamento === "ERRO" ? "Falha ao salvar" : "Alterações não salvas"}</span><Button type="button" secondary disabled={salvando || !online} title={online ? undefined : "Limpar rascunho precisa de conexão"} onClick={() => setConfirmarLimpeza(true)}>Limpar rascunho</Button></div>}</div>
     {/* noValidate: a validação é 100% nossa (encontrarPrimeiroCampoInvalido) —
      * sem isso, a validação nativa do navegador bloqueia o evento de submit
      * antes do nosso onSubmit rodar sempre que um campo `required` estiver
@@ -628,7 +706,8 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
     <form onSubmit={submit} noValidate className="grid min-h-[calc(100vh-180px)] overflow-hidden rounded-xl border border-border bg-white xl:grid-cols-[minmax(0,1fr)_330px]">
       <div className="space-y-7 p-5 md:p-7 xl:min-h-0 xl:overflow-y-auto">
         <ErrorBox erro={erro} />
-        {operacaoBase && <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm leading-5 text-amber-950"><strong>Nova operação baseada na {codigoOperacao(operacaoBase.numero)}</strong><p className="mt-1 text-xs">Revise todos os dados e efeitos antes de confirmar. A operação cancelada permanecerá preservada no histórico.</p></div>}
+        {!online && <div role="status" className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm leading-5 text-amber-950"><CloudOff size={18} className="mt-0.5 shrink-0" aria-hidden /><div><strong>Sem conexão</strong><p className="mt-1 text-xs">{operacaoBase ? "Criar uma correção precisa de conexão." : `${!ehAjuste && !atalhoAjuste ? "Sem conexão: o rascunho não está sendo salvo; não feche esta aba. " : ""}Ao confirmar, a operação entra na fila e é enviada quando a conexão voltar.`}</p></div></div>}
+        {operacaoBase && <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm leading-5 text-amber-950"><strong>Nova operação baseada na {codigoOperacaoFinanceira(operacaoBase.numero)}</strong><p className="mt-1 text-xs">Revise todos os dados e efeitos antes de confirmar. A operação cancelada permanecerá preservada no histórico.</p></div>}
         <section>
           <h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Identificação</h3>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -654,8 +733,8 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
           <p className="my-2 text-xs text-ink-3">É apenas uma sugestão. Você pode escolher outras condições livremente.{parceiroSelecionado.condicaoPagamentoPreferida === "A_PRAZO" && !sugestaoParcelas.length && " Informe o valor e a data para calcular as parcelas."}</p>
           <Button type="button" secondary disabled={salvando || (parceiroSelecionado.condicaoPagamentoPreferida === "A_PRAZO" && !sugestaoParcelas.length)} onClick={() => setConfirmarSugestao(true)}>Usar sugestão</Button>
         </div>}
-        <EfeitoFinanceiro permite={permiteFinanceiro} condicao={condicao} alterarCondicao={alterarCondicao} contaId={contaId} setContaId={setContaId} formaPagamento={formaPagamento} setFormaPagamento={setFormaPagamento} config={config} valorAgora={valorAgora} setValorAgora={setValorAgora} total={totalFinanceiro} parcelas={parcelas} setParcelas={setParcelas} somaParcelasConfere={somaParcelasConfere} saldoFuturo={saldoFuturoFinanceiro} entradaSimulacao={entradaSimulacao} assinaturaSimulacao={assinaturaSimulacao} onSimulacao={(resultado) => setSimulacao({ assinatura: assinaturaSimulacao, resultado })} geradorParcelas={geradorParcelas} setGeradorParcelas={setGeradorParcelas} campoInvalido={campoInvalido} limparCampoInvalido={limparCampoInvalido} />
-        {!ehAjuste && !atalhoAjuste && <Documentos anexos={anexos} setAnexos={setAnexos} anexosEnviando={anexosEnviando} documentosSalvos={documentosSalvos}atualizarDocumentoSalvo={atualizarDocumentoSalvo} removerDocumentoSalvo={removerDocumentoSalvo} selecionarAnexos={selecionarAnexos} />}
+        <EfeitoFinanceiro online={online} permite={permiteFinanceiro} condicao={condicao} alterarCondicao={alterarCondicao} contaId={contaId} setContaId={setContaId} formaPagamento={formaPagamento} setFormaPagamento={setFormaPagamento} config={config} valorAgora={valorAgora} setValorAgora={setValorAgora} total={totalFinanceiro} parcelas={parcelas} setParcelas={setParcelas} somaParcelasConfere={somaParcelasConfere} saldoFuturo={saldoFuturoFinanceiro} entradaSimulacao={entradaSimulacao} assinaturaSimulacao={assinaturaSimulacao} onSimulacao={(resultado) => setSimulacao({ assinatura: assinaturaSimulacao, resultado })} geradorParcelas={geradorParcelas} setGeradorParcelas={setGeradorParcelas} campoInvalido={campoInvalido} limparCampoInvalido={limparCampoInvalido} />
+        {!ehAjuste && !atalhoAjuste && <Documentos offline={!online} anexos={anexos} setAnexos={setAnexos} anexosEnviando={anexosEnviando} documentosSalvos={documentosSalvos}atualizarDocumentoSalvo={atualizarDocumentoSalvo} removerDocumentoSalvo={removerDocumentoSalvo} selecionarAnexos={selecionarAnexos} />}
       </div>
       <aside className="flex h-full flex-col border-t border-border bg-[#1f2b21] p-6 text-white xl:border-l xl:border-t-0"><div><div className="text-[11px] font-semibold uppercase tracking-[.14em] text-[#aeb9aa]">Revisão dos efeitos</div><div className="mt-3 font-serif text-3xl">{ehAjuste ? (diferencaMilesimos === null ? "—" : `${fmtDiferenca(diferencaMilesimos / 1000)} ${unidadeAjuste}`) : brl(total)}</div>{ehAjuste && <div className="mt-1 text-xs text-[#aeb9aa]">Diferença de estoque</div>}{comItens && <div className="mt-5 border-y border-white/10 py-4"><div className="mb-2 text-[10px] font-semibold uppercase tracking-[.14em] text-[#aeb9aa]">Itens da operação</div><div className="space-y-2">{itens.map((item) => { const produto = config.produtos.find((produtoAtual) => produtoAtual.id === item.produtoId); return <div key={item.id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 text-xs leading-4"><div className="min-w-0"><div className="truncate font-medium text-white">{produto?.nome || item.descricao || "Produto não selecionado"}</div><div className="text-[#aeb9aa]">{Number(item.quantidade || 0).toLocaleString("pt-BR")} {produto ? rotuloUnidade(produto.unidade) : (item.unidade || "un")}</div></div><strong className="self-center whitespace-nowrap text-white">{brl(totalItem(item))}</strong></div>; })}</div></div>}<div className={ehAjuste ? "hidden" : "mt-4 flex flex-wrap gap-6 text-xs"}><div className="space-y-2"><p className="font-semibold text-[#aeb9aa]">Valores por categoria</p>{resumoCategorias.map(([nome, centavos]) => <div key={nome} className="flex justify-between gap-3"><span>{nome}</span><strong>{brl(centavos / 100)}</strong></div>)}</div>{porItem && resumoCentros.length > 0 && <div className="space-y-2"><p className="font-semibold text-[#aeb9aa]">Valores por centro de custo</p>{resumoCentros.map(([nome, centavos]) => <div key={nome} className="flex justify-between gap-3"><span>{nome}</span><strong>{brl(centavos / 100)}</strong></div>)}</div>}</div><div className="mt-5 space-y-3 text-sm leading-5"><ReviewLine>Registrar {TIPO_OPERACAO[tipo]?.toLowerCase()}.</ReviewLine>{ehAjuste && <ReviewLine tone="brown">{saldoProduto && diferencaMilesimos !== null && !ajusteSemDiferenca ? <>Gerar 1 movimento físico de ajuste em {saldoProduto.nome}: saldo de {fmtQuantidade(saldoProduto.saldo)} para {fmtQuantidade(contadaMilesimos / 1000)} {unidadeAjuste}.</> : "Nenhum movimento físico de estoque será gerado."}</ReviewLine>}{movimentaEstoque && <ReviewLine tone="brown">{tipo === "VENDA" || tipo === "DEVOLUCAO" ? "Movimenta o estoque dos produtos que já tiveram entrada nesta fazenda." : movimentosEstoque > 0 ? <>Gerar {movimentosEstoque} movimento{movimentosEstoque === 1 ? "" : "s"} físico{movimentosEstoque === 1 ? "" : "s"} de estoque.</> : "Nenhum movimento físico de estoque será gerado."}</ReviewLine>}{condicao === "A_VISTA" && <ReviewLine>Registrar {entradaFinanceira ? "recebimento" : "pagamento"} integral de {brl(total)}.</ReviewLine>}{condicao === "A_PRAZO" && <ReviewLine tone="amber">Criar {parcelas.length} compromisso{parcelas.length === 1 ? "" : "s"} {entradaFinanceira ? "a receber" : "a pagar"}, totalizando {brl(totalParcelas)}. O saldo não muda agora.</ReviewLine>}{condicao === "PARCIAL" && <><ReviewLine>Registrar {entradaFinanceira ? "recebimento" : "pagamento"} de {brl(realizadoAgora)} agora.</ReviewLine><ReviewLine tone="amber">Criar {parcelas.length} compromisso{parcelas.length === 1 ? "" : "s"} para o saldo de {brl(totalParcelas)}.</ReviewLine></>}{condicao === "SEM_EFEITO_FINANCEIRO" && <ReviewLine tone="neutral">Nenhuma conta financeira ou compromisso será movimentado.</ReviewLine>}{!ehAjuste && (anexos.length + documentosSalvos.length) > 0 && <ReviewLine tone="neutral">Anexar {anexos.length + documentosSalvos.length} documento{anexos.length + documentosSalvos.length === 1 ? "" : "s"} à operação.</ReviewLine>}</div></div><div className="mt-auto border-t border-white/10 pt-5">{erroConfirmacao && <div id="erro-confirmacao" ref={erroConfirmacaoRef} role="alert" tabIndex={-1} className="mb-3 rounded-lg border border-red-300/50 bg-red-950/50 p-3 text-sm text-red-100">{erroConfirmacao}</div>}<p className="mb-3 text-center text-[11px] leading-4 text-[#aeb9aa]">A confirmação cria somente os efeitos descritos acima.</p><Button type="submit" disabled={salvando || anexosEnviando.length > 0 || (ehAjuste && (ajusteSemDiferenca || ajusteConsolidado))} ariaDescribedby={[erroConfirmacao ? "erro-confirmacao" : null, !podeConfirmar ? "motivo-pendencia" : null].filter(Boolean).join(" ") || undefined} className="w-full !bg-[#e9e3d2] !text-[#1f2b21]">{salvando ? "Confirmando…" : anexosEnviando.length ? "Anexando documento…" : ehAjuste ? "Confirmar ajuste" : "Confirmar operação"}</Button>{!podeConfirmar && <p id="motivo-pendencia" role="status" className="mt-3 flex items-start justify-center gap-1.5 text-center text-xs leading-5 text-[#e3c66f]"><CircleAlert size={14} className="mt-px shrink-0" aria-hidden /><span>{ehAjuste && ajusteSemDiferenca ? "Nenhum ajuste necessário: a quantidade contada é igual ao saldo atual." : "Ainda há campos pendentes ou incompletos nesta operação. Revise os itens destacados para confirmar."}</span></p>}</div></aside>
     </form>
@@ -709,7 +788,7 @@ function ItensOperacao({ itens, setItens, config, ultimosPrecos, custosMedios, m
 
 type GeradorParcelas = NonNullable<EstadoFormulario["geradorParcelas"]>;
 type PropsEfeitoFinanceiro = {
-  permite: boolean; condicao: Condicao; alterarCondicao: (condicao: Condicao) => void;
+  online: boolean; permite: boolean; condicao: Condicao; alterarCondicao: (condicao: Condicao) => void;
   contaId: string; setContaId: (id: string) => void; formaPagamento: string; setFormaPagamento: (forma: string) => void;
   config: ConfiguracoesFinanceiras; valorAgora: string; setValorAgora: (valor: string) => void;
   total: number; parcelas: ParcelaForm[]; setParcelas: React.Dispatch<React.SetStateAction<ParcelaForm[]>>;
@@ -720,7 +799,7 @@ type PropsEfeitoFinanceiro = {
   campoInvalido: string | null; limparCampoInvalido: (campo: string) => void;
 };
 
-function EfeitoFinanceiro({ permite, condicao, alterarCondicao, contaId, setContaId, formaPagamento, setFormaPagamento, config, valorAgora, setValorAgora, total, parcelas, setParcelas, somaParcelasConfere, saldoFuturo, entradaSimulacao, onSimulacao, geradorParcelas, setGeradorParcelas, campoInvalido, limparCampoInvalido }: PropsEfeitoFinanceiro) {
+function EfeitoFinanceiro({ online, permite, condicao, alterarCondicao, contaId, setContaId, formaPagamento, setFormaPagamento, config, valorAgora, setValorAgora, total, parcelas, setParcelas, somaParcelasConfere, saldoFuturo, entradaSimulacao, onSimulacao, geradorParcelas, setGeradorParcelas, campoInvalido, limparCampoInvalido }: PropsEfeitoFinanceiro) {
   const [gerando, setGerando] = useState(false);
   const [erroGeracao, setErroGeracao] = useState<string | null>(null);
   const [campoInvalidoGeracao, setCampoInvalidoGeracao] = useState<string | null>(null);
@@ -734,12 +813,13 @@ function EfeitoFinanceiro({ permite, condicao, alterarCondicao, contaId, setCont
     setErroGeracao(null);
     setCampoInvalidoGeracao(null);
     try {
-      const resultado = await simularParcelasOperacao({
+      const entrada = {
         ...entradaSimulacao,
         quantidadeParcelas: Number(geradorParcelas.quantidade),
         frequencia: geradorParcelas.frequencia,
         primeiroVencimento: geradorParcelas.primeiroVencimento,
-      });
+      };
+      const resultado = online ? await simularParcelasOperacao(entrada) : simularParcelasLocal(entrada);
       onSimulacao(resultado);
       setParcelas(resultado.parcelas.map((parcela) => ({ id: proximoId++, valor: parcela.valor, vencimento: parcela.dataVencimento })));
       setConfirmarSubstituicao(false);
@@ -763,7 +843,7 @@ function EfeitoFinanceiro({ permite, condicao, alterarCondicao, contaId, setCont
     }
     void gerar();
   };
-  const aPrazo = condicao === "A_PRAZO" || condicao === "PARCIAL";
+  const aPrazo = condicaoComParcelas(condicao);
 
   return <section>
     <h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Efeito financeiro</h3>
@@ -810,8 +890,9 @@ function EfeitoFinanceiro({ permite, condicao, alterarCondicao, contaId, setCont
   </section>;
 }
 
-function Documentos({ anexos, setAnexos, anexosEnviando, documentosSalvos, atualizarDocumentoSalvo, removerDocumentoSalvo, selecionarAnexos }: { anexos: AnexoForm[]; setAnexos: React.Dispatch<React.SetStateAction<AnexoForm[]>>; anexosEnviando: AnexoEnviando[]; documentosSalvos: DocumentoFinanceiro[]; atualizarDocumentoSalvo: (id: string, patch: { tipo?: string; numero?: string | null }) => void; removerDocumentoSalvo: (id: string) => void; selecionarAnexos: (evento: ChangeEvent<HTMLInputElement>) => void }) {
+function Documentos({ offline, anexos, setAnexos, anexosEnviando, documentosSalvos, atualizarDocumentoSalvo, removerDocumentoSalvo, selecionarAnexos }: { offline: boolean; anexos: AnexoForm[]; setAnexos: React.Dispatch<React.SetStateAction<AnexoForm[]>>; anexosEnviando: AnexoEnviando[]; documentosSalvos: DocumentoFinanceiro[]; atualizarDocumentoSalvo: (id: string, patch: { tipo?: string; numero?: string | null }) => void; removerDocumentoSalvo: (id: string) => void; selecionarAnexos: (evento: ChangeEvent<HTMLInputElement>) => void }) {
   const vazio = !anexos.length && !documentosSalvos.length && !anexosEnviando.length;
   const enviando = anexosEnviando.length > 0;
-  return <section><div className="mb-4 flex items-center justify-between gap-3"><div><h3 className="text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Documentos</h3><p className="mt-1 text-xs text-ink-3">PDF, XML, JPG, PNG ou WEBP, com até 10 MB por arquivo.</p></div><label aria-disabled={enviando} className={`inline-flex items-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-semibold ${enviando ? "cursor-wait opacity-60" : "cursor-pointer hover:bg-[#faf9f4]"}`}>{enviando ? <Loader2 size={15} className="animate-spin" aria-hidden /> : <Paperclip size={15} />} {enviando ? "Anexando…" : "Anexar"}<input aria-label="Anexar documentos" type="file" multiple disabled={enviando} accept=".pdf,.xml,.jpg,.jpeg,.png,.webp,application/pdf,application/xml,text/xml,image/jpeg,image/png,image/webp" className="sr-only" onChange={selecionarAnexos} /></label></div>{!vazio ? <div className="space-y-2">{documentosSalvos.map((documento) => <div key={`salvo-${documento.id}`} className="grid items-center gap-3 rounded-lg border border-border p-3 md:grid-cols-[minmax(0,1fr)_180px_160px_36px]"><div className="flex min-w-0 items-center gap-3"><FileText size={18} className="shrink-0 text-ink-3" /><div className="min-w-0"><div className="truncate text-sm font-medium">{documento.nome}</div><div className="text-xs text-ink-3">Salvo no rascunho</div></div></div><select aria-label={`Tipo do documento ${documento.nome}`} className={`${SELECT} mt-0 p-2 text-sm`} value={documento.tipo} onChange={(e) => atualizarDocumentoSalvo(documento.id, { tipo: e.target.value })}>{Object.entries(TIPOS_DOCUMENTO).map(([chave, nome]) => <option key={chave} value={chave}>{nome}</option>)}</select><input aria-label={`Número do documento ${documento.nome}`} placeholder="Número (opcional)" className="rounded-lg border border-[#d8cfbb] bg-white p-2 text-sm" value={documento.numero ?? ""} onChange={(e) => atualizarDocumentoSalvo(documento.id, { numero: e.target.value })} /><button type="button" aria-label={`Remover documento ${documento.nome}`} onClick={() => removerDocumentoSalvo(documento.id)} className="rounded-lg p-2 text-red-700 hover:bg-red-50"><Trash2 size={16} /></button></div>)}{anexos.map((anexo) => <div key={anexo.id} className="grid items-center gap-3 rounded-lg border border-border p-3 md:grid-cols-[minmax(0,1fr)_180px_160px_36px]"><div className="flex min-w-0 items-center gap-3"><FileText size={18} className="shrink-0 text-ink-3" /><div className="min-w-0"><div className="truncate text-sm font-medium">{anexo.arquivo.name}</div><div className="text-xs text-ink-3">{(anexo.arquivo.size / 1024 / 1024).toFixed(2)} MB</div></div></div><select aria-label={`Tipo do documento ${anexo.arquivo.name}`} className={`${SELECT} mt-0 p-2 text-sm`} value={anexo.tipo} onChange={(e) => setAnexos((atuais) => atuais.map((atual) => atual.id === anexo.id ? { ...atual, tipo: e.target.value } : atual))}>{Object.entries(TIPOS_DOCUMENTO).map(([chave, nome]) => <option key={chave} value={chave}>{nome}</option>)}</select><input aria-label={`Número do documento ${anexo.arquivo.name}`} placeholder="Número (opcional)" className="rounded-lg border border-[#d8cfbb] bg-white p-2 text-sm outline-none focus:border-[#6f7d68] focus:ring-2 focus:ring-[#6f7d68]/15" value={anexo.numero} onChange={(e) => setAnexos((atuais) => atuais.map((atual) => atual.id === anexo.id ? { ...atual, numero: e.target.value } : atual))} /><button type="button" aria-label={`Remover documento ${anexo.arquivo.name}`} onClick={() => setAnexos((atuais) => atuais.filter((atual) => atual.id !== anexo.id))} className="rounded-lg p-2 text-red-700 hover:bg-red-50"><Trash2 size={16} /></button></div>)}{anexosEnviando.map((pendente) => <div key={`enviando-${pendente.id}`} role="status" aria-busy="true" aria-label={`Anexando documento ${pendente.nome}`} className="flex items-center gap-3 rounded-lg border border-dashed border-[#6f7d68]/50 bg-[#faf9f4] p-3"><Loader2 size={18} className="shrink-0 animate-spin text-[#6f7d68]" aria-hidden /><div className="min-w-0"><div className="truncate text-sm font-medium">{pendente.nome}</div><div className="text-xs text-ink-3">Anexando… {(pendente.tamanho / 1024 / 1024).toFixed(2)} MB</div></div></div>)}</div> : <div className="rounded-lg border border-dashed border-border p-5 text-center text-sm text-ink-3">Nenhum documento anexado.</div>}</section>;
+  const bloqueado = enviando || offline;
+  return <section><div className="mb-4 flex items-center justify-between gap-3"><div><h3 className="text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Documentos</h3><p className="mt-1 text-xs text-ink-3">{offline ? "Sem conexão: anexe os documentos depois de sincronizar." : "PDF, XML, JPG, PNG ou WEBP, com até 10 MB por arquivo."}</p></div><label aria-disabled={bloqueado} className={`inline-flex items-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-semibold ${enviando ? "cursor-wait opacity-60" : offline ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:bg-[#faf9f4]"}`}>{enviando ? <Loader2 size={15} className="animate-spin" aria-hidden /> : <Paperclip size={15} />} {enviando ? "Anexando…" : "Anexar"}<input aria-label="Anexar documentos" type="file" multiple disabled={bloqueado} accept=".pdf,.xml,.jpg,.jpeg,.png,.webp,application/pdf,application/xml,text/xml,image/jpeg,image/png,image/webp" className="sr-only" onChange={selecionarAnexos} /></label></div>{!vazio ? <div className="space-y-2">{documentosSalvos.map((documento) => <div key={`salvo-${documento.id}`} className="grid items-center gap-3 rounded-lg border border-border p-3 md:grid-cols-[minmax(0,1fr)_180px_160px_36px]"><div className="flex min-w-0 items-center gap-3"><FileText size={18} className="shrink-0 text-ink-3" /><div className="min-w-0"><div className="truncate text-sm font-medium">{documento.nome}</div><div className="text-xs text-ink-3">Salvo no rascunho</div></div></div><select aria-label={`Tipo do documento ${documento.nome}`} className={`${SELECT} mt-0 p-2 text-sm`} value={documento.tipo} onChange={(e) => atualizarDocumentoSalvo(documento.id, { tipo: e.target.value })}>{Object.entries(TIPOS_DOCUMENTO).map(([chave, nome]) => <option key={chave} value={chave}>{nome}</option>)}</select><input aria-label={`Número do documento ${documento.nome}`} placeholder="Número (opcional)" className="rounded-lg border border-[#d8cfbb] bg-white p-2 text-sm" value={documento.numero ?? ""} onChange={(e) => atualizarDocumentoSalvo(documento.id, { numero: e.target.value })} /><button type="button" aria-label={`Remover documento ${documento.nome}`} onClick={() => removerDocumentoSalvo(documento.id)} className="rounded-lg p-2 text-red-700 hover:bg-red-50"><Trash2 size={16} /></button></div>)}{anexos.map((anexo) => <div key={anexo.id} className="grid items-center gap-3 rounded-lg border border-border p-3 md:grid-cols-[minmax(0,1fr)_180px_160px_36px]"><div className="flex min-w-0 items-center gap-3"><FileText size={18} className="shrink-0 text-ink-3" /><div className="min-w-0"><div className="truncate text-sm font-medium">{anexo.arquivo.name}</div><div className="text-xs text-ink-3">{(anexo.arquivo.size / 1024 / 1024).toFixed(2)} MB</div></div></div><select aria-label={`Tipo do documento ${anexo.arquivo.name}`} className={`${SELECT} mt-0 p-2 text-sm`} value={anexo.tipo} onChange={(e) => setAnexos((atuais) => atuais.map((atual) => atual.id === anexo.id ? { ...atual, tipo: e.target.value } : atual))}>{Object.entries(TIPOS_DOCUMENTO).map(([chave, nome]) => <option key={chave} value={chave}>{nome}</option>)}</select><input aria-label={`Número do documento ${anexo.arquivo.name}`} placeholder="Número (opcional)" className="rounded-lg border border-[#d8cfbb] bg-white p-2 text-sm outline-none focus:border-[#6f7d68] focus:ring-2 focus:ring-[#6f7d68]/15" value={anexo.numero} onChange={(e) => setAnexos((atuais) => atuais.map((atual) => atual.id === anexo.id ? { ...atual, numero: e.target.value } : atual))} /><button type="button" aria-label={`Remover documento ${anexo.arquivo.name}`} onClick={() => setAnexos((atuais) => atuais.filter((atual) => atual.id !== anexo.id))} className="rounded-lg p-2 text-red-700 hover:bg-red-50"><Trash2 size={16} /></button></div>)}{anexosEnviando.map((pendente) => <div key={`enviando-${pendente.id}`} role="status" aria-busy="true" aria-label={`Anexando documento ${pendente.nome}`} className="flex items-center gap-3 rounded-lg border border-dashed border-[#6f7d68]/50 bg-[#faf9f4] p-3"><Loader2 size={18} className="shrink-0 animate-spin text-[#6f7d68]" aria-hidden /><div className="min-w-0"><div className="truncate text-sm font-medium">{pendente.nome}</div><div className="text-xs text-ink-3">Anexando… {(pendente.tamanho / 1024 / 1024).toFixed(2)} MB</div></div></div>)}</div> : <div className="rounded-lg border border-dashed border-border p-5 text-center text-sm text-ink-3">Nenhum documento anexado.</div>}</section>;
 }

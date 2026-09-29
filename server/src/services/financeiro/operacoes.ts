@@ -1,15 +1,16 @@
-import { Prisma, type DirecaoMovimentoConta, type TipoCompromisso, type TipoTransacaoFinanceira } from "@prisma/client";
+import { Prisma, type TipoTransacaoFinanceira } from "@prisma/client";
 import { prisma } from "../../db.js";
-import { auditar, dinheiro, exigirContaAtiva, exigirParceiroAtivo, exigirPeriodoAberto, exigirPositivo, FinanceiroError } from "./regras.js";
-import { gerarParcelasFinanceiras, totalItensFinanceiros } from "./parcelas.calc.js";
+import { auditar, exigirContaAtiva, exigirParceiroAtivo, exigirPeriodoAberto, exigirPositivo, FinanceiroError } from "./regras.js";
+import { comoErroFinanceiro, simularParcelas as simularParcelasCalc } from "./parcelas.calc.js";
+import { direcaoTransacao, preverEfeitosOperacao, temParcelas, type ContextoOperacao } from "@rionovo/shared";
 import { obterBasesCusto, produtosComEstoque } from "../estoque/estoque.js";
-import { valorSaidaDaBase } from "../estoque/estoque.calc.js";
+import type { BaseCusto } from "../estoque/estoque.calc.js";
 import { rotuloUnidade } from "../estoque/unidades.js";
 import type { z } from "zod";
 import type { liquidacaoSchema, operacaoSchema, simulacaoParcelasSchema, transacaoAvulsaSchema, transferenciaSchema } from "./schemas.js";
 
 type OperacaoInput = z.infer<typeof operacaoSchema> & { propriedadeId: number; usuarioId?: number | null };
-type LiquidacaoInput = z.infer<typeof liquidacaoSchema> & { usuarioId?: number | null };
+type LiquidacaoInput = z.infer<typeof liquidacaoSchema> & { propriedadeId: number; usuarioId?: number | null };
 type TransferenciaInput = z.infer<typeof transferenciaSchema> & { propriedadeId: number; usuarioId?: number | null };
 type TransacaoAvulsaInput = z.infer<typeof transacaoAvulsaSchema> & { propriedadeId: number; usuarioId?: number | null };
 type ContextoEstorno = { propriedadeId: number; usuarioId?: number | null };
@@ -20,29 +21,12 @@ type SimulacaoParcelasInput = z.infer<typeof simulacaoParcelasSchema>;
 // detectar que uma reversão no extrato veio de um cancelamento e linkar de volta.
 export const PREFIXO_CANCELAMENTO_OPERACAO = "Cancelamento da operação #";
 
-const incluiEstoque = new Set(["COMPRA_ESTOQUE", "INVENTARIO_INICIAL", "BONIFICACAO", "PRODUCAO"]);
-const retiraEstoque = new Set(["VENDA", "DEVOLUCAO"]);
 const documentoPublico = { id: true, tipo: true, nome: true, numero: true, mimeType: true, tamanhoBytes: true, createdAt: true } as const;
-
-function tipoCompromisso(tipoOperacao: string): TipoCompromisso {
-  return tipoOperacao === "VENDA" || tipoOperacao === "DEVOLUCAO" ? "RECEBER" : "PAGAR";
-}
-
-function tipoTransacao(tipoOperacao: string): TipoTransacaoFinanceira {
-  if (tipoOperacao === "VENDA" || tipoOperacao === "DEVOLUCAO") return "RECEBIMENTO";
-  if (tipoOperacao === "APORTE") return "APORTE";
-  if (tipoOperacao === "RETIRADA") return "RETIRADA";
-  return "PAGAMENTO";
-}
-
-function direcaoTransacao(tipo: TipoTransacaoFinanceira): DirecaoMovimentoConta {
-  return tipo === "RECEBIMENTO" || tipo === "APORTE" ? "ENTRADA" : "SAIDA";
-}
 
 async function criarTransacaoComMovimento(
   tx: Prisma.TransactionClient,
   input: {
-    tipo: TipoTransacaoFinanceira; data: Date; valor: Prisma.Decimal.Value; descricao?: string; operacaoId?: string;
+    id?: string; tipo: TipoTransacaoFinanceira; data: Date; valor: Prisma.Decimal.Value; descricao?: string; operacaoId?: string;
     parceiroId?: string; propriedadeId: number; contaId: string; formaPagamento?: z.infer<typeof transacaoAvulsaSchema>["formaPagamento"];
     usuarioId?: number | null;
   },
@@ -52,6 +36,7 @@ async function criarTransacaoComMovimento(
   await exigirContaAtiva(tx, input.contaId, input.propriedadeId);
   return tx.transacaoFinanceira.create({
     data: {
+      id: input.id,
       tipo: input.tipo,
       data: input.data,
       valorTotal: valor,
@@ -67,16 +52,65 @@ async function criarTransacaoComMovimento(
   });
 }
 
-/** Uma consulta para todos os centros usados na operação (cabeçalho + itens).
- * Devolve id → nome só dos ativos; quem chamou decide o campo do erro. */
-async function resolverCentros(tx: Prisma.TransactionClient, ids: string[]) {
-  const unicos = [...new Set(ids)];
-  if (!unicos.length) return new Map<string, string>();
-  const centros = await tx.centroCusto.findMany({ where: { id: { in: unicos }, ativo: true }, select: { id: true, nome: true } });
-  return new Map(centros.map((centro) => [centro.id, centro.nome]));
+const includeOperacaoCriada = {
+  itens: true, compromissos: true, transacoes: { include: { movimentos: true } }, movimentosEstoque: true,
+  documentos: { select: documentoPublico }, parceiro: true,
+} satisfies Prisma.OperacaoInclude;
+
+/** Reenvio com um id que outra requisição acabou de gravar: devolve o registro já criado. */
+async function comIdDoCliente<T>(id: string | undefined, criar: () => Promise<T>, existente: () => Promise<T | null>): Promise<T> {
+  try {
+    return await criar();
+  } catch (erro) {
+    if (!id) throw erro;
+    const registro = await existente();
+    if (registro) return registro;
+    throw erro;
+  }
+}
+
+// O id é global, mas um registro existente só é reenvio legítimo dentro do mesmo sítio e tipo.
+async function operacaoCriadaExistente(db: Prisma.TransactionClient, input: OperacaoInput) {
+  if (!input.id) return null;
+  const operacao = await db.operacao.findUnique({ where: { id: input.id }, include: includeOperacaoCriada });
+  if (!operacao) return null;
+  if (operacao.tipo !== input.tipo || operacao.propriedadeId !== input.propriedadeId) throw new FinanceiroError("CONFLITO", "Este identificador já pertence a outra operação");
+  return operacao;
+}
+
+/** O que a previsão dos efeitos precisa ler do banco: só registros ativos. */
+async function carregarContextoOperacao(tx: Prisma.TransactionClient, input: OperacaoInput): Promise<ContextoOperacao> {
+  const produtosIds = [...new Set(input.itens.flatMap((item) => item.produtoId ? [item.produtoId] : []))];
+  const produtos = produtosIds.length
+    ? await tx.produto.findMany({ where: { id: { in: produtosIds }, ativo: true }, include: { centrosCusto: { select: { centroCustoId: true } } } })
+    : [];
+  const retira = input.tipo === "VENDA" || input.tipo === "DEVOLUCAO";
+  const comEstoque = retira ? [...await produtosComEstoque(tx, produtosIds, input.propriedadeId)] : [];
+  const basesCusto = comEstoque.length ? await obterBasesCusto(tx, comEstoque, input.propriedadeId) : new Map<string, BaseCusto>();
+  const idsCentros = [input.centroCustoId, ...input.itens.map((item) => item.centroCustoId), ...produtos.flatMap((produto) => produto.centrosCusto.map((c) => c.centroCustoId))];
+  const idsCategorias = [input.categoriaId, ...input.itens.map((item) => item.categoriaId), ...produtos.map((produto) => produto.categoriaId)];
+  const unicos = (ids: (string | null | undefined)[]) => [...new Set(ids.flatMap((id) => id ? [id] : []))];
+  const [centrosCusto, categorias] = await Promise.all([
+    unicos(idsCentros).length ? tx.centroCusto.findMany({ where: { id: { in: unicos(idsCentros) }, ativo: true }, select: { id: true, nome: true } }) : [],
+    unicos(idsCategorias).length ? tx.categoria.findMany({ where: { id: { in: unicos(idsCategorias) }, ativo: true }, select: { id: true, nome: true, classificacao: true } }) : [],
+  ]);
+  return {
+    produtos: produtos.map((produto) => ({ id: produto.id, categoriaId: produto.categoriaId, centrosCustoIds: produto.centrosCusto.map((c) => c.centroCustoId) })),
+    categorias,
+    centrosCusto,
+    produtosComEstoque: comEstoque,
+    basesCusto: [...basesCusto].map(([produtoId, base]) => ({ produtoId, quantidade: base.quantidade.toString(), valor: base.valor.toString() })),
+  };
 }
 
 async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInput) {
+    const existente = await operacaoCriadaExistente(tx, input);
+    if (existente) return existente;
+    const parcelasInformadas = temParcelas(input.financeiro) ? input.financeiro.parcelas : [];
+    const idsParcelas = parcelasInformadas.flatMap((parcela) => parcela.id ? [parcela.id] : []);
+    if (idsParcelas.length && await tx.compromissoFinanceiro.count({ where: { id: { in: idsParcelas } } })) {
+      throw new FinanceiroError("CONFLITO", "Este identificador de parcela já pertence a outro compromisso");
+    }
     await exigirPeriodoAberto(tx, input.propriedadeId, input.data);
     if (input.parceiroId) await exigirParceiroAtivo(tx, input.parceiroId, input.tipo);
     if (input.corrigeOperacaoId) {
@@ -84,181 +118,61 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
       if (!original) throw new FinanceiroError("NAO_ENCONTRADO", "Operação original da correção não encontrada");
       if (original.status !== "CANCELADA") throw new FinanceiroError("CONFLITO", "Somente uma operação cancelada pode receber uma correção");
     }
-    const produtosIds = input.itens.flatMap((item) => item.produtoId ? [item.produtoId] : []);
-    const produtos = produtosIds.length
-      ? await tx.produto.findMany({ where: { id: { in: produtosIds }, ativo: true }, include: { centrosCusto: { select: { centroCustoId: true } } } })
-      : [];
-    const produtosPorId = new Map(produtos.map((produto) => [produto.id, produto]));
-    // Produto com exatamente um centro cadastrado o transmite ao item; com vários
-    // (ou nenhum) o item fica sem centro próprio e herda o da operação.
-    const centroUnicoDoProduto = (produto: (typeof produtos)[number] | undefined) =>
-      produto && produto.centrosCusto.length === 1 ? produto.centrosCusto[0].centroCustoId : null;
-    const centrosItens = input.itens.map((item) => item.centroCustoId === undefined ? centroUnicoDoProduto(produtosPorId.get(item.produtoId ?? "")) : item.centroCustoId);
-    // Quem decide se o item entra/sai do estoque é o TIPO da operação, não o
-    // produto: nos tipos que põem no estoque (compra para estoque, inventário,
-    // bonificação, produção) e no ajuste, todo item com produto (ou marcado
-    // estocável pelo cliente) é estocável; nos demais tipos nenhum é. O snapshot
-    // ItemOperacao.estocavel grava essa decisão.
-    // Venda/devolução só retiram do estoque produto que já teve entrada no sítio
-    // (mesma regra das baixas automáticas): vender leite, bezerro ou café que
-    // nunca foi estocado não gera SAIDA a custo 0 nem saldo negativo — o item
-    // vira não estocável e segue a regra de centro de custo efetivo.
-    const temEfeitoEstoque = incluiEstoque.has(input.tipo) || retiraEstoque.has(input.tipo) || input.tipo === "AJUSTE_ESTOQUE";
-    const retira = retiraEstoque.has(input.tipo);
-    const comEstoqueNoSitio = retira ? await produtosComEstoque(tx, produtosIds, input.propriedadeId) : null;
-    const estocavelItens = input.itens.map((item) => {
-      if (!temEfeitoEstoque) return false;
-      if (comEstoqueNoSitio && item.produtoId != null) return comEstoqueNoSitio.has(item.produtoId);
-      return item.estocavel || item.produtoId != null;
-    });
-    const centros = await resolverCentros(tx, [input.centroCustoId ?? null, ...centrosItens].flatMap((id) => id ? [id] : []));
-    if (input.centroCustoId && !centros.has(input.centroCustoId)) throw new FinanceiroError("VALIDACAO", "Selecione um centro de custo ativo", "centroCustoId");
-    centrosItens.forEach((id, indice) => {
-      if (id && !centros.has(id)) throw new FinanceiroError("VALIDACAO", "Selecione um centro de custo ativo", `itens.${indice}.centroCustoId`);
-      // Item não estocável sem centro efetivo (próprio ou da operação) não tem
-      // onde parar nos relatórios; estocável pode ficar sem centro (o consumo
-      // futuro decide).
-      if (!estocavelItens[indice] && !(id ?? input.centroCustoId)) {
-        throw new FinanceiroError("VALIDACAO", "Informe o centro de custo deste item ou um centro padrão para a operação", `itens.${indice}.centroCustoId`);
-      }
-    });
-    input.itens.forEach((item, indice) => {
-      if (estocavelItens[indice] && (!item.produtoId || !produtosPorId.has(item.produtoId))) {
-        throw new FinanceiroError("VALIDACAO", `O item “${item.descricao}” movimenta estoque e precisa apontar para um produto ativo`);
-      }
-    });
-
-    const classificar = async (categoriaId: string | null | undefined, classificacao?: "CUSTEIO" | "INVESTIMENTO" | null) => {
-      const categoria = categoriaId ? await tx.categoria.findFirst({ where: { id: categoriaId, ativo: true } }) : null;
-      if (categoriaId && !categoria) throw new FinanceiroError("VALIDACAO", "Selecione uma categoria ativa", "categoriaId");
-      return { categoriaId: categoria?.id ?? null, categoriaNome: categoria?.nome ?? null, classificacao: classificacao === undefined ? categoria?.classificacao ?? null : classificacao };
-    };
-    const itens = await Promise.all(input.itens.map(async (item, indice) => ({
-      ordem: indice + 1,
-      produtoId: item.produtoId,
-      centroCustoId: centrosItens[indice],
-      centroCustoNome: centrosItens[indice] ? centros.get(centrosItens[indice]!) ?? null : null,
-      descricao: item.descricao,
-      quantidade: new Prisma.Decimal(item.quantidade),
-      unidade: item.unidade,
-      // Quando o item vem por valor total, `valorTotal` é o campo autoritativo
-      // (é ele que soma para o total da operação, nunca a reconstrução
-      // quantidade × unitário). `valorUnitario` aqui é só um derivado para
-      // exibição/relatório e é arredondado explicitamente às 4 casas da
-      // coluna — sem isso, quocientes não exatos (ex.: 100 ÷ 3) dependeriam
-      // do arredondamento implícito do driver do Postgres ao gravar.
-      valorUnitario: item.valorTotal === undefined
-        ? new Prisma.Decimal(item.valorUnitario ?? 0)
-        : dinheiro(item.valorTotal).div(item.quantidade).toDecimalPlaces(4),
-      valorTotal: item.valorTotal === undefined
-        ? dinheiro(new Prisma.Decimal(item.quantidade).mul(item.valorUnitario ?? 0))
-        : dinheiro(item.valorTotal),
-      estocavel: estocavelItens[indice],
-      ...await classificar(item.categoriaId === undefined ? produtosPorId.get(item.produtoId ?? "")?.categoriaId : item.categoriaId, item.classificacao),
-    })));
-    const classificacaoOperacao = await classificar(itens.length ? null : input.categoriaId, input.classificacao);
-    const totalItens = totalItensFinanceiros(itens);
-    const valorTotal = input.valorTotal === undefined ? totalItens : dinheiro(input.valorTotal);
-    if (itens.length > 0 && input.valorTotal !== undefined && !totalItens.equals(valorTotal)) {
-      throw new FinanceiroError("VALIDACAO", "O valor total informado deve corresponder à soma dos itens");
-    }
-    if (valorTotal.isNegative()) throw new FinanceiroError("VALIDACAO", "O valor total da operação não pode ser negativo");
-
-    if (input.financeiro.condicao === "PARCIAL") {
-      const futuro = input.financeiro.parcelas.reduce((soma, parcela) => soma.plus(parcela.valor), new Prisma.Decimal(0));
-      if (!dinheiro(futuro.plus(input.financeiro.valorPago)).equals(valorTotal)) {
-        throw new FinanceiroError("VALIDACAO", "O valor pago somado às parcelas deve ser igual ao total da operação");
-      }
-    }
-    if (input.financeiro.condicao === "A_PRAZO") {
-      const futuro = input.financeiro.parcelas.reduce((soma, parcela) => soma.plus(parcela.valor), new Prisma.Decimal(0));
-      if (!dinheiro(futuro).equals(valorTotal)) throw new FinanceiroError("VALIDACAO", "A soma das parcelas deve ser igual ao total da operação");
-    }
+    const contexto = await carregarContextoOperacao(tx, input);
+    const efeitos = comoErroFinanceiro(() => preverEfeitosOperacao(input, contexto));
+    const criadoPorId = input.usuarioId && input.usuarioId > 0 ? input.usuarioId : null;
 
     const operacao = await tx.operacao.create({
       data: {
+        id: input.id,
         tipo: input.tipo,
         status: "CONFIRMADA",
         data: input.data,
         descricao: input.descricao,
-        valorTotal,
+        valorTotal: efeitos.valorTotal,
         propriedadeId: input.propriedadeId,
         parceiroId: input.parceiroId,
-        ...classificacaoOperacao,
+        categoriaId: efeitos.categoriaId,
+        categoriaNome: efeitos.categoriaNome,
+        classificacao: efeitos.classificacao,
         centroCustoId: input.centroCustoId,
         corrigeOperacaoId: input.corrigeOperacaoId,
-        criadoPorId: input.usuarioId && input.usuarioId > 0 ? input.usuarioId : null,
-        itens: { create: itens },
+        criadoPorId,
+        itens: { create: efeitos.itens.map(({ centroCustoEfetivoId, ...item }) => item) },
       },
       include: { itens: true },
     });
 
-    if (temEfeitoEstoque) {
-      const tipoMovimento = retiraEstoque.has(input.tipo) ? "SAIDA" : input.tipo === "AJUSTE_ESTOQUE" ? "AJUSTE" : "ENTRADA";
-      const origem = input.tipo === "COMPRA_ESTOQUE" ? "COMPRA" : input.tipo === "INVENTARIO_INICIAL" ? "INVENTARIO_INICIAL"
-        : input.tipo === "BONIFICACAO" ? "BONIFICACAO" : input.tipo === "PRODUCAO" ? "PRODUCAO"
-          : input.tipo === "DEVOLUCAO" ? "DEVOLUCAO" : "AJUSTE_INVENTARIO";
-      const itensEstoque = operacao.itens.filter((item) => item.estocavel && item.produtoId);
-      // SAIDA (venda/devolução) baixa pelo custo médio do sítio, nunca pelo
-      // preço de venda; ENTRADA/AJUSTE valorizam pelo próprio item.
-      const custosSaida = tipoMovimento === "SAIDA"
-        ? await obterBasesCusto(tx, itensEstoque.map((item) => item.produtoId!), input.propriedadeId)
-        : null;
-      for (const item of itensEstoque) {
-        const valores = custosSaida
-          ? valorSaidaDaBase(item.quantidade, custosSaida.get(item.produtoId!))
-          : { custoUnitario: item.valorUnitario, valorTotal: item.valorTotal };
-        await tx.movimentoEstoque.create({ data: {
-          produtoId: item.produtoId!, tipo: tipoMovimento, origem, data: input.data, quantidade: item.quantidade,
-          ...valores, operacaoId: operacao.id, itemOperacaoId: item.id,
-          centroCustoId: item.centroCustoId ?? input.centroCustoId ?? null,
-          propriedadeId: input.propriedadeId, criadoPorId: input.usuarioId && input.usuarioId > 0 ? input.usuarioId : null,
-          observacao: input.descricao,
-        } });
-      }
-    }
-
-    const parcelas = input.financeiro.condicao === "A_PRAZO" || input.financeiro.condicao === "PARCIAL"
-      ? input.financeiro.parcelas : [];
-    for (const [indice, parcela] of parcelas.entries()) {
-      await tx.compromissoFinanceiro.create({ data: {
-        operacaoId: operacao.id, tipo: tipoCompromisso(input.tipo), valorOriginal: dinheiro(parcela.valor),
-        dataVencimento: parcela.dataVencimento, numeroParcela: indice + 1, totalParcelas: parcelas.length,
-        parceiroId: input.parceiroId,
+    const itemPorOrdem = new Map(operacao.itens.map((item) => [item.ordem, item.id]));
+    for (const { ordemItem, ...movimento } of efeitos.movimentosEstoque) {
+      await tx.movimentoEstoque.create({ data: {
+        ...movimento, data: input.data,
+        operacaoId: operacao.id, itemOperacaoId: itemPorOrdem.get(ordemItem),
+        propriedadeId: input.propriedadeId, criadoPorId,
+        observacao: input.descricao,
       } });
     }
 
-    if (input.financeiro.condicao === "A_VISTA" || input.financeiro.condicao === "PARCIAL") {
-      const valor = input.financeiro.condicao === "A_VISTA" ? valorTotal : dinheiro(input.financeiro.valorPago);
+    for (const compromisso of efeitos.compromissos) {
+      await tx.compromissoFinanceiro.create({ data: {
+        ...compromisso, operacaoId: operacao.id, parceiroId: input.parceiroId,
+      } });
+    }
+
+    if (efeitos.transacao) {
       await criarTransacaoComMovimento(tx, {
-        tipo: tipoTransacao(input.tipo), data: input.data, valor, descricao: input.descricao, operacaoId: operacao.id,
-        parceiroId: input.parceiroId, propriedadeId: input.propriedadeId, contaId: input.financeiro.contaId,
-        formaPagamento: input.financeiro.formaPagamento, usuarioId: input.usuarioId,
+        tipo: efeitos.transacao.tipo, data: input.data, valor: efeitos.transacao.valor, descricao: input.descricao, operacaoId: operacao.id,
+        parceiroId: input.parceiroId, propriedadeId: input.propriedadeId, contaId: efeitos.transacao.contaId,
+        formaPagamento: efeitos.transacao.formaPagamento, usuarioId: input.usuarioId,
       });
     }
 
     await auditar(tx, { entidade: "Operacao", entidadeId: operacao.id, acao: "CONFIRMADA", usuarioId: input.usuarioId, depois: operacao });
-    return tx.operacao.findUniqueOrThrow({
-      where: { id: operacao.id },
-      include: { itens: true, compromissos: true, transacoes: { include: { movimentos: true } }, movimentosEstoque: true, documentos: { select: documentoPublico }, parceiro: true },
-    });
+    return tx.operacao.findUniqueOrThrow({ where: { id: operacao.id }, include: includeOperacaoCriada });
 }
 
 export function simularParcelas(input: SimulacaoParcelasInput) {
-  const totalOperacao = input.itens.length
-    ? totalItensFinanceiros(input.itens)
-    : dinheiro(input.valorTotal ?? 0);
-  const valorPagoAgora = dinheiro(input.valorPagoAgora ?? 0);
-  const saldoAPrazo = dinheiro(totalOperacao.minus(valorPagoAgora));
-  // `isPositive()` do decimal.js considera zero positivo (sinal +1) — usar
-  // lessThanOrEqualTo(0) para realmente exigir saldo > 0 aqui.
-  if (saldoAPrazo.lessThanOrEqualTo(0)) throw new FinanceiroError("VALIDACAO", "O saldo a prazo deve ser maior que zero", "valorPagoAgora");
-  return {
-    totalOperacao,
-    valorPagoAgora,
-    saldoAPrazo,
-    parcelas: gerarParcelasFinanceiras(saldoAPrazo, input.quantidadeParcelas, input.frequencia, input.primeiroVencimento),
-  };
+  return simularParcelasCalc(input);
 }
 
 export function confirmarRascunhoOperacao(tx: Prisma.TransactionClient, input: OperacaoInput) {
@@ -266,7 +180,9 @@ export function confirmarRascunhoOperacao(tx: Prisma.TransactionClient, input: O
 }
 
 export async function criarOperacao(input: OperacaoInput) {
-  return prisma.$transaction((tx) => criarOperacaoTx(tx, input));
+  return comIdDoCliente(input.id,
+    () => prisma.$transaction((tx) => criarOperacaoTx(tx, input)),
+    () => operacaoCriadaExistente(prisma, input));
 }
 
 async function bloquearOperacao(tx: Prisma.TransactionClient, id: string, propriedadeId?: number) {
@@ -292,13 +208,28 @@ async function compromissoParaLiquidar(tx: Prisma.TransactionClient, id: string,
   return { compromisso, restante };
 }
 
+async function liquidacaoExistente(db: Prisma.TransactionClient, compromissoId: string, transacaoId: string | undefined, propriedadeId: number) {
+  if (!transacaoId) return null;
+  const transacao = await db.transacaoFinanceira.findUnique({
+    where: { id: transacaoId }, include: { movimentos: true, liquidacoes: { select: { compromissoId: true } } },
+  });
+  if (!transacao) return null;
+  const { liquidacoes, ...resto } = transacao;
+  if (resto.propriedadeId !== propriedadeId || !liquidacoes.some((liquidacao) => liquidacao.compromissoId === compromissoId)) {
+    throw new FinanceiroError("CONFLITO", "Este identificador já pertence a outra transação");
+  }
+  return resto;
+}
+
 export async function liquidarCompromisso(compromissoId: string, input: LiquidacaoInput) {
-  return prisma.$transaction(async (tx) => {
+  return comIdDoCliente(input.transacaoId, () => prisma.$transaction(async (tx) => {
+    const existente = await liquidacaoExistente(tx, compromissoId, input.transacaoId, input.propriedadeId);
+    if (existente) return existente;
     const valor = exigirPositivo(input.valor);
     const { compromisso } = await compromissoParaLiquidar(tx, compromissoId, valor);
     const tipo = compromisso.tipo === "PAGAR" ? "PAGAMENTO" : "RECEBIMENTO";
     const transacao = await criarTransacaoComMovimento(tx, {
-      tipo, data: input.data, valor, descricao: input.descricao ?? `Liquidação do compromisso #${compromisso.seq}`,
+      id: input.transacaoId, tipo, data: input.data, valor, descricao: input.descricao ?? `Liquidação do compromisso #${compromisso.seq}`,
       operacaoId: compromisso.operacaoId, parceiroId: compromisso.parceiroId ?? undefined,
       propriedadeId: compromisso.operacao.propriedadeId, contaId: input.contaId,
       formaPagamento: input.formaPagamento, usuarioId: input.usuarioId,
@@ -312,18 +243,31 @@ export async function liquidarCompromisso(compromissoId: string, input: Liquidac
     await tx.compromissoFinanceiro.update({ where: { id: compromissoId }, data: { status: novoRestante.isZero() ? "LIQUIDADO" : "PARCIAL" } });
     await auditar(tx, { entidade: "CompromissoFinanceiro", entidadeId: compromissoId, acao: "LIQUIDADO", usuarioId: input.usuarioId, depois: { transacaoId: transacao.id, valor } });
     return transacao;
+  }), () => liquidacaoExistente(prisma, compromissoId, input.transacaoId, input.propriedadeId));
+}
+
+async function transferenciaExistente(db: Prisma.TransactionClient, input: TransferenciaInput) {
+  if (!input.id) return null;
+  const operacao = await db.operacao.findUnique({
+    where: { id: input.id },
+    include: { transacoes: { where: { tipo: "TRANSFERENCIA" }, include: { movimentos: true }, orderBy: { seq: "asc" } } },
   });
+  if (!operacao) return null;
+  if (operacao.tipo !== "TRANSFERENCIA_FINANCEIRA" || operacao.propriedadeId !== input.propriedadeId) throw new FinanceiroError("CONFLITO", "Este identificador já pertence a outra operação");
+  return operacao.transacoes[0] ?? null;
 }
 
 export async function transferir(input: TransferenciaInput) {
   if (input.contaOrigemId === input.contaDestinoId) throw new FinanceiroError("VALIDACAO", "As contas de origem e destino devem ser diferentes");
-  return prisma.$transaction(async (tx) => {
+  return comIdDoCliente(input.id, () => prisma.$transaction(async (tx) => {
+    const existente = await transferenciaExistente(tx, input);
+    if (existente) return existente;
     await exigirPeriodoAberto(tx, input.propriedadeId, input.data);
     await exigirContaAtiva(tx, input.contaOrigemId, input.propriedadeId);
     await exigirContaAtiva(tx, input.contaDestinoId, input.propriedadeId);
     const valor = exigirPositivo(input.valor);
     const operacao = await tx.operacao.create({ data: {
-      tipo: "TRANSFERENCIA_FINANCEIRA", status: "CONFIRMADA", data: input.data, valorTotal: valor,
+      id: input.id, tipo: "TRANSFERENCIA_FINANCEIRA", status: "CONFIRMADA", data: input.data, valorTotal: valor,
       descricao: input.descricao ?? "Transferência entre contas", propriedadeId: input.propriedadeId,
       criadoPorId: input.usuarioId && input.usuarioId > 0 ? input.usuarioId : null,
     } });
@@ -338,7 +282,7 @@ export async function transferir(input: TransferenciaInput) {
     }, include: { movimentos: true } });
     await auditar(tx, { entidade: "TransacaoFinanceira", entidadeId: transacao.id, acao: "TRANSFERENCIA_CONFIRMADA", usuarioId: input.usuarioId, depois: transacao });
     return transacao;
-  });
+  }), () => transferenciaExistente(prisma, input));
 }
 
 export async function criarTransacaoAvulsa(input: TransacaoAvulsaInput) {

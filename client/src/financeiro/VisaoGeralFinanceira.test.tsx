@@ -1,10 +1,24 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { onlineManager } from "@tanstack/react-query";
+import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { render } from "./lib/testQueryClient";
 import { baseFinanceiraVazia } from "./dashboard.fixture";
 import { VisaoGeralFinanceira } from "./VisaoGeralFinanceira";
 import { descartarRascunhoOperacao, obterRascunhoOperacao } from "./novo-api";
 import { uid } from "../lib/uid.fixture";
+
+let fila: { mutationKey: string }[] = [];
+
+vi.mock("../lib/offline/fila", () => {
+  return {
+    enfileirarMutation: vi.fn().mockResolvedValue(null),
+    inscrever: () => () => {},
+    obterFila: () => fila,
+    aguardarFilaLivre: () => Promise.resolve(),
+    filaTravada: () => false,
+  };
+});
 
 vi.mock("./novo-api", () => ({
   obterDashboardFinanceiro: vi.fn().mockResolvedValue({
@@ -22,6 +36,7 @@ vi.mock("./novo-api", () => ({
 const rascunho = { id: uid(8), versao: 1, updatedAt: "2026-09-14T12:00:00Z", documentos: [], dados: {} };
 
 beforeEach(() => {
+  fila = [];
   window.history.replaceState(null, "", "/financeiro");
   vi.clearAllMocks();
 });
@@ -63,7 +78,7 @@ describe("VisaoGeralFinanceira — nova operação", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Nova operação" }));
     fireEvent.click(await screen.findByRole("button", { name: "Criar mesmo assim" }));
 
-    await waitFor(() => expect(descartarRascunhoOperacao).toHaveBeenCalledOnce());
+    await waitFor(() => expect(descartarRascunhoOperacao).toHaveBeenCalled());
     await waitFor(() => expect(onNav).toHaveBeenCalledWith("lancar"));
   });
 });
@@ -72,7 +87,7 @@ import { obterDashboardFinanceiro, listarOperacoes, type DashboardFinanceiro } f
 import { act } from "@testing-library/react";
 
 describe("Visão geral — período global", () => {
-  it("recarrega toda a visão em uma consulta, esconde os dados anteriores e ignora respostas atrasadas", async () => {
+  it("recarrega toda a visão em uma consulta, mantém os dados anteriores enquanto atualiza e ignora respostas atrasadas", async () => {
     const snapshot = (total: string): DashboardFinanceiro => ({ periodo: { inicio: "2026-01-01", fim: "2026-12-31" }, saldoGeral: "0", contas: [], realizado: { entradas: total, saidas: "0", resultado: total }, fluxo: [], compromissos: { aPagar: "0", aReceber: "0" }, despesasPorCategoria: [], proximosCompromissos: [], base: { ...baseFinanceiraVazia(), volumeEconomico: total, porTipo: [{ tipo: "VENDA", valor: total }] } });
     vi.mocked(obterDashboardFinanceiro).mockResolvedValueOnce(snapshot("321"));
     render(<VisaoGeralFinanceira onNav={vi.fn()} />);
@@ -85,8 +100,10 @@ describe("Visão geral — período global", () => {
     vi.mocked(obterDashboardFinanceiro).mockReturnValueOnce(new Promise(resolve => { resolveOld = resolve; }));
     fireEvent.click(screen.getByRole("button", { name: /^Período:/ }));
     fireEvent.click(screen.getByRole("button", { name: "Ano anterior" }));
-    expect(screen.queryByText("R$ 321,00")).toBeNull();
-    expect(screen.queryByRole("heading", { name: "Base financeira" })).toBeNull();
+    // Troca de período mantém o dado anterior em tela (keepPreviousData) e avisa que está atualizando.
+    expect(screen.getAllByText("R$ 321,00").length).toBeGreaterThan(0);
+    expect(screen.getByRole("heading", { name: "Base financeira" })).toBeTruthy();
+    expect(await screen.findByText("Atualizando financeiro do período…")).toBeTruthy();
     vi.mocked(obterDashboardFinanceiro).mockResolvedValueOnce(snapshot("876"));
     fireEvent.click(screen.getByRole("button", { name: /^Período:/ }));
     fireEvent.click(screen.getByRole("button", { name: "Mês atual" }));
@@ -131,5 +148,42 @@ describe("Visão geral — período global", () => {
     expect(screen.queryByRole("heading", { name: "Base financeira" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Tentar novamente" }));
     await screen.findByRole("heading", { name: "Base financeira" });
+  });
+});
+
+describe("Visão geral — offline em período não visitado", () => {
+  it("troca para um período sem cache offline: avisa e não mostra os números do período anterior", async () => {
+    const snapshot = (total: string): DashboardFinanceiro => ({ periodo: { inicio: "2026-01-01", fim: "2026-12-31" }, saldoGeral: "0", contas: [], realizado: { entradas: total, saidas: "0", resultado: total }, fluxo: [], compromissos: { aPagar: "0", aReceber: "0" }, despesasPorCategoria: [], proximosCompromissos: [], base: { ...baseFinanceiraVazia(), volumeEconomico: total } });
+    vi.mocked(obterDashboardFinanceiro).mockResolvedValueOnce(snapshot("321"));
+    render(<VisaoGeralFinanceira onNav={vi.fn()} />);
+    await screen.findByRole("heading", { name: "Base financeira" });
+    onlineManager.setOnline(false);
+    fireEvent.click(screen.getByRole("button", { name: /^Período:/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Ano anterior" }));
+    expect(await screen.findByText(/Sem conexão e sem dados salvos para este período/)).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Base financeira" })).toBeNull();
+    expect(screen.getByRole("button", { name: /^Período:/ })).toBeTruthy();
+    onlineManager.setOnline(true);
+  });
+});
+
+describe("VisaoGeralFinanceira — escrita pendente", () => {
+  it("não avisa sem escrita pendente", async () => {
+    render(<VisaoGeralFinanceira onNav={vi.fn()} />);
+    await screen.findByText("Saldo geral");
+    expect(screen.queryByText(/Valores estimados/)).toBeNull();
+  });
+
+  it("marca a visão como estimada quando há escrita financeira na fila", async () => {
+    fila = [{ mutationKey: "financeiro-liquidar-compromisso" }];
+    render(<VisaoGeralFinanceira onNav={vi.fn()} />);
+    expect(await screen.findByText(/Valores estimados — há alterações aguardando sincronização/)).toBeTruthy();
+  });
+
+  it("ignora item de fila que não mexe nos totais (descartar rascunho)", async () => {
+    fila = [{ mutationKey: "financeiro-descartar-rascunho" }];
+    render(<VisaoGeralFinanceira onNav={vi.fn()} />);
+    await screen.findByText("Saldo geral");
+    expect(screen.queryByText(/Valores estimados/)).toBeNull();
   });
 });

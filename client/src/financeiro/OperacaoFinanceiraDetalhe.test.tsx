@@ -1,8 +1,11 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { onlineManager } from "@tanstack/react-query";
+import { render, criarQueryClientTeste, renderComQuery } from "./lib/testQueryClient";
 import { OperacaoFinanceiraDetalhe } from "./OperacaoFinanceiraDetalhe";
 import type { Operacao } from "./novo-api";
+import { financeiroKeys } from "./queries";
 import { uid } from "../lib/uid.fixture";
 
 const { obterOperacao, estornarOperacao, estornarTransacao } = vi.hoisted(() => ({ obterOperacao: vi.fn(), estornarOperacao: vi.fn(), estornarTransacao: vi.fn() }));
@@ -16,7 +19,7 @@ const operacao = {
   compromissos: [], movimentosEstoque: [{ id: uid(1), seq: 1, tipo: "ENTRADA", status: "CONFIRMADO", quantidade: "30", valorTotal: "360", produtoId: uid(1) }], documentos: [],
 };
 
-afterEach(() => { cleanup(); vi.clearAllMocks(); });
+afterEach(() => { cleanup(); vi.clearAllMocks(); onlineManager.setOnline(true); });
 beforeEach(() => { window.history.replaceState(null, "", `/financeiro/operacoes/${uid(6)}`); });
 
 const contaBanco = { id: uid(1), nome: "Banco principal" };
@@ -74,6 +77,37 @@ describe("OperacaoFinanceiraDetalhe", () => {
     expect(await screen.findByRole("heading", { name: "Compra de ração" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Cancelar operação" })).toBeNull();
     expect(screen.queryByRole("button", { name: /Estornar pagamento/ })).toBeNull();
+  });
+
+  it("desabilita cancelar, estornar e criar correção sem conexão", async () => {
+    const operacaoCancelada = { ...operacao, status: "CANCELADA" };
+    const queryClient = criarQueryClientTeste();
+    queryClient.setQueryData(financeiroKeys.operacao(uid(6)), operacaoCancelada);
+    onlineManager.setOnline(false);
+    renderComQuery(<OperacaoFinanceiraDetalhe operacaoId={uid(6)} onVoltar={vi.fn()} onAbrir={vi.fn()} onCorrigir={vi.fn()} podeLancar />, { queryClient });
+    const correcao = await screen.findByRole("button", { name: "Criar correção" });
+    expect((correcao as HTMLButtonElement).disabled).toBe(true);
+    expect(correcao.title).toContain("precisa de conexão");
+  });
+
+  it("desabilita cancelar operação sem conexão", async () => {
+    const queryClient = criarQueryClientTeste();
+    queryClient.setQueryData(financeiroKeys.operacao(uid(6)), operacao);
+    onlineManager.setOnline(false);
+    renderComQuery(<OperacaoFinanceiraDetalhe operacaoId={uid(6)} onVoltar={vi.fn()} onAbrir={vi.fn()} onCorrigir={vi.fn()} podeLancar />, { queryClient });
+    const cancelar = await screen.findByRole("button", { name: "Cancelar operação" });
+    expect((cancelar as HTMLButtonElement).disabled).toBe(true);
+    expect(cancelar.title).toContain("precisa de conexão");
+  });
+
+  it("desabilita estornar pagamento sem conexão", async () => {
+    const queryClient = criarQueryClientTeste();
+    queryClient.setQueryData(financeiroKeys.operacao(uid(6)), operacao);
+    onlineManager.setOnline(false);
+    renderComQuery(<OperacaoFinanceiraDetalhe operacaoId={uid(6)} onVoltar={vi.fn()} onAbrir={vi.fn()} onCorrigir={vi.fn()} podeLancar />, { queryClient });
+    const estornar = await screen.findByRole("button", { name: /Estornar pagamento/ });
+    expect((estornar as HTMLButtonElement).disabled).toBe(true);
+    expect(estornar.title).toContain("precisa de conexão");
   });
 
   it("não anuncia reversão física para movimentos já estornados", async () => {

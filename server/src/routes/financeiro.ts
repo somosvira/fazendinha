@@ -242,7 +242,7 @@ export const financeiroRouter = new Hono()
     return c.json(await operacoes.listarCompromissos(await resolverEscopoLeitura(c), periodo.inicio && periodo.fim ? { inicio: new Date(`${periodo.inicio}T00:00:00Z`), fim: new Date(`${periodo.fim}T23:59:59.999Z`) } : undefined));
   })
   .post("/financeiro/compromissos/:id/liquidacoes", zValidator("json", liquidacaoSchema), async (c) => {
-    try { return c.json(await operacoes.liquidarCompromisso(c.req.param("id"), { ...c.req.valid("json"), usuarioId: usuarioId(c) }), 201); }
+    try { return c.json(await operacoes.liquidarCompromisso(c.req.param("id"), { ...c.req.valid("json"), propriedadeId: await resolverEscopoEscrita(c), usuarioId: usuarioId(c) }), 201); }
     catch (e) { return falha(c, e); }
   })
   .post("/financeiro/transferencias", zValidator("json", transferenciaSchema), async (c) => {

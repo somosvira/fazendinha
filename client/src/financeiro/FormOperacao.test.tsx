@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
+import { render } from "./lib/testQueryClient";
 import { FormOperacao } from "./FormOperacao";
 import { setPropriedadeAtiva } from "../propriedadeScope";
 import type { ConfiguracoesFinanceiras } from "./novo-api";
@@ -155,9 +156,11 @@ describe("FormOperacao", () => {
 
   it("não sobrescreve um valor digitado antes da sugestão chegar", async () => {
     let responder: (v: unknown) => void = () => {};
-    vi.stubGlobal("fetch", vi.fn(() => new Promise((resolve) => { responder = resolve; })));
+    const fetchMock = vi.fn(() => new Promise((resolve) => { responder = resolve; }));
+    vi.stubGlobal("fetch", fetchMock);
     montar();
     fireEvent.change(screen.getByRole("combobox", { name: "Produto do item 1" }), { target: { value: uid(1) } });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
     const campo = screen.getByRole("spinbutton", { name: "Valor unitário do item 1" }) as HTMLInputElement;
     fireEvent.change(campo, { target: { value: "9" } });
     responder({ ok: true, json: async () => ({ valorUnitario: "7.5", data: "2026-09-03", parceiro: null }) });
@@ -885,7 +888,7 @@ describe("tipo Ajuste de estoque", () => {
     const chamadas = chamadasAjuste(fetchMock);
     expect(chamadas).toHaveLength(1);
     expect(chamadas[0][1]).toMatchObject({ method: "POST" });
-    expect(JSON.parse(String(chamadas[0][1].body))).toEqual({ produtoId: uid(1), quantidadeContada: 1.005, saldoEsperado: 1, observacao: "Contagem física de setembro", centroCustoId: uid(5) });
+    expect(JSON.parse(String(chamadas[0][1].body))).toEqual({ produtoId: uid(1), quantidadeContada: 1.005, saldoEsperado: 1, observacao: "Contagem física de setembro", centroCustoId: uid(5), id: expect.stringMatching(/^[0-9a-f-]{36}$/) });
     // Não passa pelo fluxo de rascunho/operação genérica.
     expect(fetchMock.mock.calls.some(([url]) => String(url).includes("/financeiro/operacoes"))).toBe(false);
   });

@@ -44,10 +44,21 @@ export function PaginaCarregando({ label }: { label: string }) {
 /* Página cujos dados ainda não chegaram: carrega, ou mostra o erro. Existe para
  * que uma falha no fetch nunca deixe a tela girando para sempre — o guard
  * `if (!dados) return <PaginaCarregando/>` sozinho engole o erro, porque os
- * dados continuam nulos e o ErrorBox lá embaixo nunca é alcançado. */
-export function PaginaSemDados({ titulo, descricao, label, erro }: { titulo: string; descricao: string; label: string; erro: string | null }) {
+ * dados continuam nulos e o ErrorBox lá embaixo nunca é alcançado.
+ * `semConexao` cobre o terceiro caso (offline, nunca visitado): a query fica
+ * pausada (`fetchStatus: "paused"`) em vez de errar, então nem `erro` nem os
+ * dados chegam — sem tratar isso à parte a tela ficaria "Carregando…" para
+ * sempre (ver docs/design/offline/README.md). */
+export function PaginaSemDados({ titulo, descricao, label, erro, semConexao = false }: { titulo: string; descricao: string; label: string; erro: string | null; semConexao?: boolean }) {
+  if (semConexao) return <PaginaFinanceira><PageHeader titulo={titulo} descricao={descricao} /><SemConexaoAviso /></PaginaFinanceira>;
   if (!erro) return <PaginaCarregando label={label} />;
   return <PaginaFinanceira><PageHeader titulo={titulo} descricao={descricao} /><ErrorBox erro={erro} /></PaginaFinanceira>;
+}
+
+/** Aviso reutilizável de "sem conexão e sem dados salvos" — offline, numa
+ *  query nunca visitada online antes (nada em cache pra mostrar). */
+export function SemConexaoAviso({ mensagem = "Sem conexão e sem dados salvos para este filtro. Conecte-se à internet para carregar." }: { mensagem?: string }) {
+  return <div role="status" className="mt-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">{mensagem}</div>;
 }
 
 export function PageHeader({ titulo, descricao, acao, eyebrow = "Financeiro" }: { titulo: string; descricao: string; acao?: React.ReactNode; /** rótulo acima do título; padrão "Financeiro" */ eyebrow?: string }) {
@@ -59,10 +70,10 @@ export function PageHeader({ titulo, descricao, acao, eyebrow = "Financeiro" }: 
 // forwardRef (não ref-as-prop): um <Button> usado como `asChild` de um
 // PopoverTrigger/DialogTrigger do Radix precisa repassar a ref de verdade
 // para o <button> nativo, senão o Radix não consegue posicionar/focar nele.
-export const Button = forwardRef<HTMLButtonElement, { children: React.ReactNode; onClick?: () => void; type?: "button" | "submit"; disabled?: boolean; danger?: boolean; secondary?: boolean; className?: string; /** id do form a submeter quando o botão vive fora dele (rodapé de painel) */ form?: string; /** associa o botão a uma mensagem de erro/ajuda (ex.: o alerta de confirmação) */ ariaDescribedby?: string }>(
-  ({ children, onClick, type = "button", disabled, danger, secondary, className = "", form, ariaDescribedby }, ref) => {
+export const Button = forwardRef<HTMLButtonElement, { children: React.ReactNode; onClick?: () => void; type?: "button" | "submit"; disabled?: boolean; danger?: boolean; secondary?: boolean; className?: string; /** id do form a submeter quando o botão vive fora dele (rodapé de painel) */ form?: string; /** associa o botão a uma mensagem de erro/ajuda (ex.: o alerta de confirmação) */ ariaDescribedby?: string; /** ex.: motivo de estar desabilitado (offline) */ title?: string }>(
+  ({ children, onClick, type = "button", disabled, danger, secondary, className = "", form, ariaDescribedby, title }, ref) => {
     const cor = danger ? "bg-red-800 text-white hover:bg-red-900" : secondary ? "border border-border bg-white text-ink hover:bg-surface-2" : "bg-mast text-white hover:opacity-90";
-    return <button ref={ref} type={type} form={form} onClick={onClick} disabled={disabled} aria-describedby={ariaDescribedby} className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-45 ${cor} ${className}`}>{children}</button>;
+    return <button ref={ref} type={type} form={form} onClick={onClick} disabled={disabled} aria-describedby={ariaDescribedby} title={title} className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-45 ${cor} ${className}`}>{children}</button>;
   },
 );
 Button.displayName = "Button";
