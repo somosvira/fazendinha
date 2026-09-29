@@ -1,5 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { composicaoValida, fracaoReduzida, somaFracoes } from "./composicao";
+import { composicaoValida, fracaoReduzida, juntarComposicoes, parcelaInformada, respeitaHerdanca, somaFracoes } from "./composicao";
+
+describe("parcela herdada", () => {
+  const fixa = [{ racaId: "ho", fracao64: 32 }];
+  it("permite completar a metade desconhecida com a mesma raça", () => {
+    expect(juntarComposicoes(fixa, [{ racaId: "ho", fracao64: 16 }, { racaId: "go", fracao64: 16 }]))
+      .toEqual([{ racaId: "ho", fracao64: 48 }, { racaId: "go", fracao64: 16 }]);
+    expect(parcelaInformada([{ racaId: "ho", fracao64: 48 }, { racaId: "go", fracao64: 16 }], fixa))
+      .toEqual([{ racaId: "ho", fracao64: 16 }, { racaId: "go", fracao64: 16 }]);
+  });
+  it("identifica registros antigos divergentes", () => {
+    expect(respeitaHerdanca([{ racaId: "go", fracao64: 64 }], fixa)).toBe(false);
+  });
+});
 
 describe("composicao", () => {
   it("soma frações", () => {

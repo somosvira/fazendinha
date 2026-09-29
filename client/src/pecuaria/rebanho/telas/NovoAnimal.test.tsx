@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { NovoAnimal } from "./NovoAnimal";
-import { cadastrarAnimal, listarCategorias, obterCatalogos } from "../api";
+import { cadastrarAnimal, listarCategorias, listarGenitores, obterCatalogos, preverComposicaoAnimal } from "../api";
 import type { Catalogos } from "../types";
 import { navegarPara } from "../../../router";
 
@@ -14,6 +14,8 @@ vi.mock("../api", async (importOriginal) => ({
   obterCatalogos: vi.fn(),
   listarCategorias: vi.fn(),
   cadastrarAnimal: vi.fn(),
+  listarGenitores: vi.fn(),
+  preverComposicaoAnimal: vi.fn(),
 }));
 vi.mock("../../../router", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../../router")>()),
@@ -36,6 +38,8 @@ beforeEach(() => {
   Element.prototype.scrollIntoView = vi.fn();
   vi.mocked(obterCatalogos).mockResolvedValue(catalogos);
   vi.mocked(listarCategorias).mockResolvedValue({ itens: [], semCategoria: 0 });
+  vi.mocked(listarGenitores).mockResolvedValue([]);
+  vi.mocked(preverComposicaoAnimal).mockResolvedValue(null);
 });
 afterEach(cleanup);
 
@@ -46,6 +50,19 @@ async function montar() {
 }
 
 describe("NovoAnimal", () => {
+  it("ao selecionar um pai, fixa a metade herdada e limita a parte informável", async () => {
+    vi.mocked(listarGenitores).mockImplementation((filtros) => Promise.resolve(filtros?.sexo === "M" ? [{ id: "pai-1", sexo: "M", nome: "Touro", codigo: null, fornecedor: null, fornecedorId: null, observacao: null, ativo: true, composicao: [], composicaoRotulo: "", filhos: 0 }] : []));
+    vi.mocked(preverComposicaoAnimal).mockResolvedValue({ itens: [{ racaId: "raca-1", sigla: "NE", fracao64: 32 }], rotulo: "1/2 NE" });
+    vi.mocked(cadastrarAnimal).mockResolvedValue({ id: "filho-1", avisos: [] } as never);
+    await montar();
+    fireEvent.change(screen.getByLabelText("Brinco"), { target: { value: "filho-1" } });
+    fireEvent.change(screen.getByLabelText("Sítio"), { target: { value: "1" } });
+    fireEvent.click(screen.getAllByRole("button", { name: "Genitor externo" })[1]);
+    fireEvent.change(await screen.findByLabelText("Selecionar pai entre os genitores externos"), { target: { value: "pai-1" } });
+    expect(await screen.findByText(/Parcela fixa dos genitores: 1\/2 NE \(32\/64\)/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Salvar animal" }));
+    await waitFor(() => expect(cadastrarAnimal).toHaveBeenCalledWith(expect.objectContaining({ composicao: [{ racaId: "raca-1", fracao64: 32 }] })));
+  });
   it("mostra erros de validação ao submeter sem brinco, nascimento ou sítio", async () => {
     await montar();
     fireEvent.click(screen.getByRole("button", { name: "Salvar animal" }));

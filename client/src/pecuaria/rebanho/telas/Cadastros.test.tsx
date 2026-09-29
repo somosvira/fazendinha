@@ -389,8 +389,8 @@ describe("Cadastros do rebanho — histórico de alterações", () => {
 
 describe("Cadastros do rebanho — genitores externos", () => {
   const genitoresMock: GenitorDTO[] = [
-    { id: "g1", sexo: "F", nome: "Vaca Externa A", codigo: "VA1", fornecedor: "Fazenda Vizinha", observacao: null, ativo: true, composicao: [], composicaoRotulo: "1/2 HO", filhos: 2 },
-    { id: "g2", sexo: "M", nome: "Touro Externo B", codigo: null, fornecedor: null, observacao: null, ativo: false, composicao: [], composicaoRotulo: "", filhos: 0 },
+    { id: "g1", sexo: "F", nome: "Vaca Externa A", codigo: "VA1", fornecedor: "Fazenda Vizinha", fornecedorId: null, observacao: null, ativo: true, composicao: [], composicaoRotulo: "1/2 HO", filhos: 2 },
+    { id: "g2", sexo: "M", nome: "Touro Externo B", codigo: null, fornecedor: null, fornecedorId: null, observacao: null, ativo: false, composicao: [], composicaoRotulo: "", filhos: 0 },
   ];
 
   async function montarGenitores() {

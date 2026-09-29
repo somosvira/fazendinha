@@ -1,11 +1,26 @@
 import { describe, expect, it } from "vitest";
 import {
   calcularComposicaoFilho,
+  composicaoRespeitaHerdanca,
+  juntarComposicao,
   normalizarComposicao,
   parseGrauSangue,
   rotuloComposicao,
   validarComposicao,
 } from "./composicao.calc.js";
+
+describe("parcela herdada", () => {
+  const herdada = [{ sigla: "HO", fracao64: 32 }];
+  it("fixa a metade conhecida e admite complemento da mesma raça", () => {
+    expect(juntarComposicao(herdada, [{ sigla: "HO", fracao64: 16 }, { sigla: "GO", fracao64: 16 }]))
+      .toEqual([{ sigla: "HO", fracao64: 48 }, { sigla: "GO", fracao64: 16 }]);
+    expect(composicaoRespeitaHerdanca([{ sigla: "HO", fracao64: 48 }, { sigla: "GO", fracao64: 16 }], herdada)).toBe(true);
+  });
+  it("não deixa reduzir nem omitir a parcela conhecida", () => {
+    expect(composicaoRespeitaHerdanca([{ sigla: "HO", fracao64: 16 }], herdada)).toBe(false);
+    expect(composicaoRespeitaHerdanca([{ sigla: "GO", fracao64: 32 }], herdada)).toBe(false);
+  });
+});
 
 describe("parseGrauSangue", () => {
   it('parseia "3/4 HO, GO" com o restante indo para o último sem fração', () => {

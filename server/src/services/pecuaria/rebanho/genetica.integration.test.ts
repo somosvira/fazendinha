@@ -6,6 +6,7 @@ import crypto from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
 import { prisma } from "../../../db.js";
 import { cadastrar, definirFiliacao, editar, listarFilhos, substituirComposicao } from "./animais.js";
+import { buscarAuditoriaCadastro } from "./animais.js";
 import { criarGenitor, editarGenitor } from "./genitores.js";
 import { RebanhoError, hojeFazenda } from "./regras.js";
 import { cadastrarAnimalSchema } from "./schemas.js";
@@ -19,6 +20,7 @@ const propriedadesCriadas: number[] = [];
 const animaisCriados: string[] = [];
 const genitoresCriados: string[] = [];
 const racasCriadas: string[] = [];
+const fornecedoresCriados: string[] = [];
 let seq = 0;
 
 function diasAntes(dias: number, base = hojeFazenda()): string {
@@ -75,11 +77,42 @@ afterAll(async () => {
   await prisma.animal.deleteMany({ where: { id: animalId } });
   await prisma.composicaoGenitorExterno.deleteMany({ where: { genitorId: { in: genitoresCriados } } });
   await prisma.genitorExterno.deleteMany({ where: { id: { in: genitoresCriados } } });
+  await prisma.parceiro.deleteMany({ where: { id: { in: fornecedoresCriados } } });
   await prisma.raca.deleteMany({ where: { id: { in: racasCriadas } } });
   await prisma.propriedade.deleteMany({ where: { id: propriedadeId } });
 });
 
 describeComBanco("pecuária v2 (genética) com PostgreSQL", () => {
+  it("vincula fornecedor cadastrado, acompanha seu nome e rejeita parceiro sem papel de fornecedor", async () => {
+    const fornecedor = await prisma.parceiro.create({ data: { nome: `Central ${RUN}`, tipo: "FORNECEDOR" } });
+    const cliente = await prisma.parceiro.create({ data: { nome: `Cliente ${RUN}`, tipo: "CLIENTE" } });
+    fornecedoresCriados.push(fornecedor.id, cliente.id);
+    await expect(criarGenitor({ sexo: "M", nome: `Invalido ${RUN}`, fornecedorId: cliente.id, composicao: [] }, null))
+      .rejects.toMatchObject({ campo: "fornecedorId" });
+    const genitor = await criarGenitor({ sexo: "M", nome: `Touro central ${RUN}`, fornecedorId: fornecedor.id, composicao: [] }, null);
+    genitoresCriados.push(genitor.id);
+    expect(genitor).toMatchObject({ fornecedorId: fornecedor.id, fornecedor: fornecedor.nome });
+    await prisma.parceiro.update({ where: { id: fornecedor.id }, data: { nome: `Central nova ${RUN}` } });
+    const atualizado = await editarGenitor(genitor.id, { codigo: "A1" }, null);
+    expect(atualizado.fornecedor).toBe(`Central nova ${RUN}`);
+  });
+
+  it("histórico do genitor mostra fornecedor e composição por nome, sem IDs internos", async () => {
+    const racaId = await raca("HG");
+    const genitor = await criarGenitor({ sexo: "M", nome: `Historico ${RUN}`, fornecedor: "Central inicial", composicao: [{ racaId, fracao64: 64 }] }, null);
+    genitoresCriados.push(genitor.id);
+    await editarGenitor(genitor.id, { fornecedor: "Central nova" }, null);
+    const historico = await buscarAuditoriaCadastro("GenitorExterno", genitor.id);
+    expect(historico.itens.find((e) => e.acao === "EDICAO")?.alteracoes).toContainEqual({
+      campo: "fornecedor", rotulo: "Fornecedor", antes: "Central inicial", depois: "Central nova",
+    });
+    expect(historico.itens.find((e) => e.acao === "CADASTRO")?.alteracoes).toContainEqual({
+      campo: "composicao", rotulo: "Composição racial", antes: null,
+      depois: expect.stringContaining("64/64"),
+    });
+    expect(historico.itens.every((e) => e.resumo.includes(genitor.nome))).toBe(true);
+  });
+
   it("cria genitor externo com composição", async () => {
     const racaId = await raca("HO");
     const genitor = await criarGenitor({ sexo: "M", nome: `Zeus ${RUN}`, codigo: null, fornecedor: null, observacao: null, composicao: [{ racaId, fracao64: 64 }] }, null);
@@ -131,7 +164,7 @@ describeComBanco("pecuária v2 (genética) com PostgreSQL", () => {
     expect(total).toBe(56);
   });
 
-  it("composição INFORMADA não é sobrescrita; a sugestão volta na resposta", async () => {
+  it("composição INFORMADA compatível mantém o complemento e fixa a parte herdada", async () => {
     const racaHO = await raca("HO");
     const propriedadeId = await sitio();
     const mae = await novoAnimal(propriedadeId);
@@ -139,10 +172,52 @@ describeComBanco("pecuária v2 (genética) com PostgreSQL", () => {
     const filho = await novoAnimal(propriedadeId, { sexo: "M", dataNascimento: diasAntes(10), dataEntrada: diasAntes(10), composicao: [{ racaId: racaHO, fracao64: 32 }] });
 
     const resultado = await definirFiliacao(filho.id, { maeId: mae.id }, null);
-    expect(resultado.composicaoSugerida).not.toBeNull();
+    expect(resultado.composicaoSugerida).toBeNull();
     const composicaoFinal = await prisma.composicaoRacial.findMany({ where: { animalId: filho.id } });
-    expect(composicaoFinal[0].origem).toBe("INFORMADA");
+    expect(composicaoFinal[0].origem).toBe("CALCULADA");
     expect(composicaoFinal[0].fracao64).toBe(32);
+    expect(composicaoFinal[0].fracaoCalculada64).toBe(32);
+  });
+
+  it("nova filiação incompatível substitui a composição manual na mesma transação e avisa", async () => {
+    const ho = await raca("HO");
+    const go = await raca("GO");
+    const propriedadeId = await sitio();
+    const pai = await novoAnimal(propriedadeId, { sexo: "M", composicao: [{ racaId: ho, fracao64: 64 }] });
+    const filho = await novoAnimal(propriedadeId, { dataNascimento: diasAntes(10), dataEntrada: diasAntes(10), composicao: [{ racaId: go, fracao64: 64 }] });
+    const resultado = await definirFiliacao(filho.id, { paiId: pai.id }, null);
+    expect(resultado.avisos).toEqual(expect.arrayContaining([expect.objectContaining({ campo: "composicao" })]));
+    expect(resultado.composicaoSugerida).toBeNull();
+    expect(await prisma.composicaoRacial.findMany({ where: { animalId: filho.id } })).toEqual([expect.objectContaining({ racaId: ho, fracao64: 32, fracaoCalculada64: 32 })]);
+    const alteracoes = await prisma.auditoriaPecuaria.findMany({ where: { animalId: filho.id, entidade: "ComposicaoRacial" } });
+    expect(alteracoes.length).toBeGreaterThan(0);
+  });
+
+  it("dois genitores completos fixam 64/64 no cadastro e bloqueiam mudança comum", async () => {
+    const ho = await raca("HO");
+    const go = await raca("GO");
+    const propriedadeId = await sitio();
+    const mae = await novoAnimal(propriedadeId, { composicao: [{ racaId: ho, fracao64: 64 }] });
+    const pai = await novoAnimal(propriedadeId, { sexo: "M", composicao: [{ racaId: go, fracao64: 64 }] });
+    const filho = await novoAnimal(propriedadeId, { sexo: "M", dataNascimento: diasAntes(10), dataEntrada: diasAntes(10), maeId: mae.id, paiId: pai.id });
+    expect(await prisma.composicaoRacial.findMany({ where: { animalId: filho.id } })).toEqual(expect.arrayContaining([
+      expect.objectContaining({ racaId: ho, fracao64: 32, fracaoCalculada64: 32 }),
+      expect.objectContaining({ racaId: go, fracao64: 32, fracaoCalculada64: 32 }),
+    ]));
+    await expect(substituirComposicao(filho.id, { itens: [{ racaId: ho, fracao64: 64 }] }, null)).rejects.toMatchObject({ campo: "composicao" });
+    await expect(novoAnimal(propriedadeId, { sexo: "M", dataNascimento: diasAntes(10), dataEntrada: diasAntes(10), maeId: mae.id, paiId: pai.id, composicao: [{ racaId: ho, fracao64: 64 }] })).rejects.toMatchObject({ campo: "composicao" });
+    await substituirComposicao(filho.id, { itens: [{ racaId: ho, fracao64: 64 }], justificativaExcecao: "Resultado genômico documentado" }, null);
+    const excecao = await prisma.composicaoRacial.findMany({ where: { animalId: filho.id } });
+    expect(excecao).toEqual([expect.objectContaining({ racaId: ho, fracao64: 64, fracaoCalculada64: 0, origem: "INFORMADA" })]);
+  });
+
+  it("um genitor puro fixa 32/64 e aceita complemento da mesma raça", async () => {
+    const ho = await raca("HO");
+    const propriedadeId = await sitio();
+    const pai = await novoAnimal(propriedadeId, { sexo: "M", composicao: [{ racaId: ho, fracao64: 64 }] });
+    const filho = await novoAnimal(propriedadeId, { dataNascimento: diasAntes(10), dataEntrada: diasAntes(10), paiId: pai.id, composicao: [{ racaId: ho, fracao64: 48 }] });
+    expect(await prisma.composicaoRacial.findMany({ where: { animalId: filho.id } })).toEqual([expect.objectContaining({ racaId: ho, fracao64: 48, fracaoCalculada64: 32, origem: "INFORMADA" })]);
+    await expect(substituirComposicao(filho.id, { itens: [{ racaId: ho, fracao64: 16 }] }, null)).rejects.toMatchObject({ campo: "composicao" });
   });
 
   it("listarFilhos retorna os filhos pela filiação registrada", async () => {

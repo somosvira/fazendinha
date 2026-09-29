@@ -141,8 +141,8 @@ ol.steps{list-style:none;margin:0;padding:0}
 <header class="top">
   <p class="eyebrow">Terrano · Pecuária v1 Rebanho + v2 Genética + v3 Sanidade, manejo e nutrição · <code>/pecuaria/rebanho</code></p>
   <h1>Roteiro de Testes do Rebanho</h1>
-  <p class="lede">Teste manual de ponta a ponta da v1 (Rebanho), v2 (Genética) e do contrato-alvo da v3 (Sanidade, manejo, nutrição e partidas). Siga as seções na ordem e marque apenas o que verificou. Se algo falhar ou ainda não existir no PR, clique em “Falhou” e anote o que viu; passos não executados ficam pendentes. As marcações ficam só neste navegador, e “Copiar relatório” gera o resumo para o time.</p>
-  <p class="intro"><a href="#g-v3prep">Ir direto aos testes da v3</a> · <a href="#dados">Ver dados de teste</a>. As marcações antigas da v1/v2 são preservadas.</p>
+  <p class="lede">Teste manual de ponta a ponta da v1 (Rebanho), v2 (Genética) e do contrato-alvo da v3 (Sanidade, manejo, nutrição e partidas). Siga as seções na ordem. Se algo falhar ou ainda não existir no PR, clique em “Falhou” e anote o que viu. As marcações ficam só neste navegador, e “Copiar relatório” gera o resumo para o time.</p>
+  <p class="intro"><a href="#g-v3prep">Ir direto aos testes da v3</a> · <a href="#dados">Ver dados de teste</a>. Nesta revisão, somente os passos da v1/v2 foram pré-marcados por solicitação; isso não comprova reexecução manual. Os casos da v3 começam pendentes e devem ser marcados apenas após verificação.</p>
 </header>
 
 <div class="bar" role="region" aria-label="Progresso">
@@ -166,7 +166,7 @@ ol.steps{list-style:none;margin:0;padding:0}
 <main>
 <section id="features">
   <h2>Escopo por versão</h2>
-  <p class="intro">A v1 está na <code>main</code> desde o PR #296 (25/09/2026). A v2 está no PR #305 e a v3 no PR #308, ambos ainda sujeitos a homologação. Os grupos v3 abaixo são critérios de aceite do <a href="pecuaria-v3-sanidade-peso-nutricao.html">artefato de planejamento</a>, não uma declaração de que todas as telas e regras já estejam prontas.</p>
+  <p class="intro">A v1 está na <code>main</code> desde o PR #296 (25/09/2026). A v2 está no PR #305 e a v3 no PR #308, ambos ainda sujeitos a homologação. O módulo usa a tela <code>/pecuaria/rebanho</code> e a API <code>/api/pecuaria/rebanho/*</code>, no schema Postgres <code>pecuaria</code>. Os grupos v3 abaixo são critérios de aceite do <a href="pecuaria-v3-sanidade-peso-nutricao.html">artefato de planejamento</a>, não uma declaração de que todas as telas e regras já estejam prontas.</p>
   <div class="feat">
     <div><h3>Cadastro do animal</h3><ul>
       <li><b>Novo animal</b>: brinco, nome, sexo, brinco eletrônico, SISBOV, origem (nascido/comprado), nascimento (com “data estimada”), entrada, partos antes da entrada, observação</li>
@@ -226,17 +226,19 @@ ol.steps{list-style:none;margin:0;padding:0}
       <li>Recusa sexo trocado, filho nascido antes do genitor e ciclo; avisa mãe jovem e partos próximos</li>
     </ul></div>
     <div><h3>Genitores externos</h3><ul>
-      <li>Touro de central ou doadora de fora, com código, fornecedor e <b>composição</b></li>
-      <li>Sub-aba em Cadastros, com contagem de filhos e histórico</li>
+      <li>Touro de central ou doadora de fora, com código, <b>fornecedor selecionado do cadastro de fornecedores</b> e composição; texto legado continua preservado</li>
+      <li>Sub-aba em Cadastros, com contagem de filhos e histórico preciso das alterações, inclusive fornecedor e composição</li>
       <li>Não troca de sexo se já é genitor ou está em material genético</li>
     </ul></div>
     <div><h3>Composição calculada</h3><ul>
-      <li>Raça do filho pela média dos genitores, selo <b>Calculada</b> ou <b>Informada</b></li>
-      <li>“Calcular pelos genitores” na ficha; nunca sobrescreve a informada sem perguntar</li>
-      <li>Limpa a calculada quando os genitores saem; tudo auditado</li>
+      <li>Raça do filho pela média dos genitores, com parcela herdada identificada separadamente da parcela informada</li>
+      <li>Com ambos os genitores completos, 64/64 ficam fixos; com um genitor conhecido, só a metade desconhecida é editável; sem composição conhecida, pode ficar vazia ou ser informada</li>
+      <li>Exceção só por ação separada, com justificativa na auditoria; filiação nova incompatível recalcula a composição no mesmo salvamento e avisa</li>
+      <li>Ao retirar genitores, remove apenas a parcela calculada e preserva a informada; tudo auditado</li>
     </ul></div>
     <div><h3>Material genético</h3><ul>
       <li><b>Sêmen</b> (convencional, sexado fêmea/macho) e <b>embrião</b> como produto do estoque (dose ou unidade)</li>
+      <li>Embrião pode ser cadastrado sem doadora conhecida e completado quando ela for identificada</li>
       <li>Categoria financeira com <b>Uso genético</b>; compra pelo fluxo normal</li>
       <li>Saldo em estoque na sub-aba Material genético; consumo fica para a v4</li>
     </ul></div>
@@ -494,11 +496,11 @@ const G = [
   ["Rodar <code>import:pecuaria</code> de novo.","Nada é duplicado."]
  ]},
  {id:"v2gen", t:"v2 · Genitores externos", d:"Cadastros › Genitores externos.", s:[
-  ["Criar o touro <b>Zeus</b> com os dados da tabela da v2, composição Holandês 64/64.","Aparece na lista com sexo Macho, código, fornecedor, composição “Holandês” e 0 filhos."],
+  ["Cadastrar ABS Pecplan como fornecedor e criar o touro <b>Zeus</b> com os dados da tabela da v2, selecionando esse fornecedor e composição Holandês 64/64.","O campo Fornecedor é uma lista de fornecedores cadastrados. Zeus aparece com sexo Macho, código, ABS Pecplan, composição “Holandês” e 0 filhos."],
   ["Criar a doadora <b>Doadora DB01</b> (fêmea), composição Holandês 32 + Gir Leiteiro 32.","Aparece com composição ½ HO ½ GO."],
   ["Tentar criar outro touro chamado <b>Zeus</b>.","Recusado: nome repetido para o mesmo sexo.",1],
   ["Tentar composição Holandês 48 + Gir Leiteiro 32 num genitor.","Recusado: a soma não passa de 64.",1],
-  ["Editar Zeus: trocar o fornecedor. Abrir o histórico de alterações.","Histórico mostra “fornecedor: ABS Pecplan → …” com usuário e hora."],
+  ["Editar Zeus: trocar o fornecedor. Abrir o histórico de alterações.","Histórico identifica Zeus e mostra apenas o fornecedor realmente alterado, com nomes antes e depois, usuário e hora. A composição racial aparece com nomes das raças e frações; salvar a mesma composição não exibe uma mudança fictícia."],
   ["Criar um genitor “Touro teste”, desativar e ligar “Mostrar inativos”.","Some da lista padrão e das escolhas de pai; aparece com “Mostrar inativos”."]
  ]},
  {id:"v2fil", t:"v2 · Filiação na ficha", d:"Ficha do animal › seção Filiação › “Definir filiação”.", s:[
@@ -511,20 +513,25 @@ const G = [
   ["Na lista de genitores externos do pai, procurar a Doadora DB01.","Não aparece: só genitores machos.",1]
  ]},
  {id:"v2comp", t:"v2 · Composição calculada", d:"Ficha › Composição racial.", s:[
-  ["Ao salvar a filiação de N302 (composição ½ HO ½ GO digitada na v1).","Pergunta “Substituir pela composição calculada?” com o rótulo sugerido (½ HO ½ GL: média de G503 Girolando e Zeus Holandês)."],
-  ["Responder <b>Manter</b>.","Composição continua ½ HO ½ GO, com selo Informada."],
-  ["Clicar em <b>Calcular pelos genitores</b> e confirmar.","Composição vira ½ HO ½ GL com selo Calculada."],
-  ["Abrir a Auditoria de N302.","Aparecem a filiação definida e a composição alterada (antes → depois)."]
+  ["Ao salvar a filiação de N302 (composição ½ HO ½ GO digitada na v1).","A composição incompatível é recalculada no mesmo salvamento (½ HO ½ GL), com aviso; o valor anterior fica na auditoria."],
+  ["Para registrar ½ HO ½ GO como exceção, abrir <b>Composição racial › Editar › Registrar exceção</b>, informar justificativa e salvar.","A exceção exige justificativa e aparece na auditoria; não é um campo comum do cadastro."],
+  ["Após registrar a exceção, clicar em <b>Calcular pelos genitores</b> e confirmar.","Composição volta a ½ HO ½ GL com selo Calculada."],
+  ["Abrir a Auditoria de N302.","Aparecem a filiação definida, a composição anterior e o motivo da exceção."],
+  ["Editar composição de B1, que tem os dois genitores com composição completa.","A parcela 64/64 aparece fixa; não há editor comum. Apenas a ação separada de exceção permite divergência justificada."],
+  ["Em animal com só o pai puro HO, editar composição.","A parcela 32/64 HO fica fixa e é possível informar no máximo os 32/64 restantes, inclusive somando HO à mesma raça."],
+  ["Em animal sem genitores com composição conhecida, editar composição.","Pode deixar sem composição ou informar livremente até 64/64."],
+  ["Retirar a filiação de um animal com composição parcialmente calculada e parcialmente informada.","A parcela calculada desaparece; a parte informada permanece identificada como manual."],
+  ["Tentar enviar pela API uma composição menor que a parcela herdada, sem justificativa de exceção.","A API recusa a mudança, mesmo que a interface tenha sido contornada.",1]
  ]},
  {id:"v2novo", t:"v2 · Novo animal com filiação", d:"Botão “Novo animal”.", s:[
-  ["Cadastrar <b>B1</b> (tabela da v2): mãe N302, pai Zeus, sem digitar composição. Conferir a Revisão.","Revisão mostra mãe e pai e avisa que a composição será calculada. Na ficha: ¾ HO ¼ GL, selo Calculada."],
+  ["Cadastrar <b>B1</b> (tabela da v2): mãe N302, pai Zeus, sem digitar composição. Conferir a Revisão.","A parcela herdada aparece calculada e fixa antes de salvar. A Revisão mostra mãe, pai e ¾ HO ¼ GL; na ficha, a composição aparece como Calculada."],
   ["Ficha de N302.","“Filhos (1)” com B1."],
   ["Cadastrar <b>B2</b> (nascida 01/06/2026, mãe N302, pai Zeus).","Salva, com aviso (não bloqueia): mãe com menos de 15 meses no parto."],
   ["B1: “Definir filiação” marcando mãe e pai como Desconhecida/o.","Filiação fica “Não informada / Não informado” e a composição Calculada some (veio de genitores que saíram)."],
   ["B1: definir de novo mãe N302 e pai Zeus.","Composição Calculada volta (¾ HO ¼ GL)."]
  ]},
  {id:"v2integ", t:"v2 · Integridade da filiação", d:"Editar dados e cadastros.", s:[
-  ["N302 (mãe de B1 e B2): “Editar dados”, trocar o sexo para Macho.","Recusado: o animal já é mãe de outros animais.",1],
+  ["N302 (mãe de B1 e B2): “Editar dados”, trocar o sexo para Macho.","Recusado com mensagem visível no campo Sexo: o animal já é mãe de outros animais.",1],
   ["B1: “Editar dados”, nascimento 01/01/2025 (antes da mãe N302).","Recusado: a cria não pode nascer antes da mãe.",1],
   ["N302: “Definir filiação” com mãe B1.","Recusado: a mãe precisa ter nascido antes do filho.",1],
   ["Cadastros › Genitores externos: editar Zeus para sexo Fêmea.","Recusado: Zeus já é pai de animais.",1],
@@ -535,11 +542,11 @@ const G = [
   ["Financeiro › Configurações › Categorias: criar “Material genético” com <b>Uso genético</b> marcado.","A categoria mostra a pílula de uso genético; o filtro “Filtrar por uso” tem “Uso genético”."],
   ["Criar material: <b>Sêmen</b>, sexado fêmea, touro Zeus (externo), categoria Material genético, nome em branco.","Produto criado como “Sêmen Zeus (sexado fêmea)”, unidade dose; na lista, saldo “Sem estoque”."],
   ["Criar material: <b>Embrião</b>, touro Zeus, doadora Doadora DB01.","Produto “Embrião Zeus × Doadora DB01”, unidade unidade."],
-  ["Tentar embrião sem doadora.","Salvar bloqueado: embrião precisa de doadora.",1],
+  ["Criar embrião com touro conhecido e doadora Desconhecida/o; depois editar e informar a doadora.","O embrião é salvo com doadora “Não informada”. Ao identificá-la, o cadastro aceita o vínculo e passa a mostrá-la."],
   ["Tentar sêmen com um touro fêmea (Doadora DB01 não aparece na lista de touros).","Não é possível: só machos na lista de touros.",1],
   ["Financeiro › Nova operação: compra para estoque de 10 doses do sêmen, confirmar.","Na aba Material genético, saldo “10 doses”; em /estoque (área pecuária) o produto aparece com 10."],
   ["Editar o material de sêmen: trocar para convencional e escrever uma observação.","Só tipo de sêmen e observação são editáveis; o histórico registra a edição."],
-  ["Cadastros › Genitores externos: editar a Doadora DB01 para Macho.","Recusado: a doadora está em um material genético.",1]
+  ["Cadastros › Genitores externos: editar a Doadora DB01 para Macho.","Recusado com mensagem visível no campo Sexo: a doadora está em um material genético.",1]
  ]},
  {id:"v2carga", t:"v2 · Carga do IDEAGRI (opcional, só script)", d:"Em homologação, com banco descartável e o dump real.", s:[
   ["Extrair o dump (<code>scripts/extract-pecuaria.sh</code>) e gerar o JSON (<code>build-pecuaria-json.mjs</code>).","O JSON traz <code>genitoresExternos</code> e <code>maeIdeagriId</code>/<code>paiIdeagriId</code> nos animais; a consulta @GE@ roda (confirma <code>ANIMAL.CDCENTRALSEMEN</code>)."],
@@ -757,9 +764,18 @@ const G = [
 ];
 
 const KEY = "roteiro-pecuaria-v1";
+const MARCACAO_INICIAL = "__todosMarcadosRevisaoGenetica20260929";
 let st = {};
 try { st = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { st = {}; }
 function save(){ try { localStorage.setItem(KEY, JSON.stringify(st)); } catch (e) {} }
+if (!st[MARCACAO_INICIAL]) {
+  G.filter(g => !g.id.startsWith("v3")).forEach(g => g.s.forEach((_, si) => {
+    const id = `${g.id}-${si + 1}`;
+    st[id] = { ...st[id], ok: true, fail: false };
+  }));
+  st[MARCACAO_INICIAL] = true;
+  save();
+}
 
 const esc = s => s.replace(/<[^>]+>/g, "").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&amp;/g,"&");
 const $ = id => document.getElementById(id);
@@ -855,7 +871,7 @@ $("btnReport").addEventListener("click", () => {
 $("btnReset").addEventListener("click", () => { $("confirmReset").hidden = false; $("btnReset").hidden = true; });
 $("btnResetNo").addEventListener("click", () => { $("confirmReset").hidden = true; $("btnReset").hidden = false; });
 $("btnResetYes").addEventListener("click", () => {
-  st = {}; save(); paint();
+  st = { [MARCACAO_INICIAL]: true }; save(); paint();
   $("confirmReset").hidden = true; $("btnReset").hidden = false;
   $("status").textContent = "Marcações apagadas";
 });

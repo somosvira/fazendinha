@@ -41,7 +41,7 @@ export function FormMaterialGenetico({ material, onSalvo, onFechar }: {
   const [tipo, setTipo] = useState<TipoMaterialGenetico>(material?.tipo ?? "SEMEN");
   const [tipoSemen, setTipoSemen] = useState<TipoSemen>(material?.tipoSemen ?? "CONVENCIONAL");
   const [touro, setTouro] = useState<ValorGenitor>(valorGenitorDe(material?.touro ?? null));
-  const [doadora, setDoadora] = useState<ValorGenitor>(valorGenitorDe(material?.doadora ?? null));
+  const [doadora, setDoadora] = useState<ValorGenitor>(material?.doadora ? valorGenitorDe(material.doadora) : { tipo: "NENHUM" });
   const [observacao, setObservacao] = useState(material?.observacao ?? "");
   const [nomeProduto, setNomeProduto] = useState("");
   const [categoriaId, setCategoriaId] = useState("");
@@ -63,10 +63,15 @@ export function FormMaterialGenetico({ material, onSalvo, onFechar }: {
     e.preventDefault();
     if (emCurso.current) return;
     if (editando) {
+      if (material.tipo === "EMBRIAO" && !material.doadora && genitorIncompleto(doadora)) {
+        setErros({ doadora: "Escolha uma doadora ou marque Desconhecida/o" });
+        return;
+      }
       emCurso.current = true; setSalvando(true); setErroGeral(null);
       try {
         await editarMaterialGenetico(material.id, {
           tipoSemen: material.tipo === "SEMEN" ? tipoSemen : undefined,
+          doadora: material.tipo === "EMBRIAO" && !material.doadora ? paraRefGenitor(doadora) ?? undefined : undefined,
           observacao: observacao.trim() || null,
         });
         await onSalvo();
@@ -81,7 +86,7 @@ export function FormMaterialGenetico({ material, onSalvo, onFechar }: {
     const refTouro = paraRefGenitor(touro);
     if (!refTouro || genitorIncompleto(touro)) novosErros.touro = "Informe o touro";
     const refDoadora = tipo === "EMBRIAO" ? paraRefGenitor(doadora) : null;
-    if (tipo === "EMBRIAO" && (!refDoadora || genitorIncompleto(doadora))) novosErros.doadora = "Informe a doadora";
+    if (tipo === "EMBRIAO" && genitorIncompleto(doadora)) novosErros.doadora = "Escolha uma doadora ou marque Desconhecida/o";
     if (!categoriaId) novosErros.categoriaId = "Selecione a categoria";
     setErros(novosErros);
     if (Object.keys(novosErros).length) return;
@@ -131,7 +136,8 @@ export function FormMaterialGenetico({ material, onSalvo, onFechar }: {
         {erros.touro && <p role="alert" className="-mt-2 text-sm text-red-600">{erros.touro}</p>}
 
         {tipo === "EMBRIAO" && <>
-          <CampoGenitor rotulo="Doadora" sexo="F" valor={doadora} onChange={setDoadora} obrigatorio />
+          <CampoGenitor rotulo="Doadora" sexo="F" valor={doadora} onChange={setDoadora} />
+          <p className="text-xs text-ink-3">Se a doadora ainda não for conhecida, marque Desconhecida/o. Ela poderá ser informada depois.</p>
           {erros.doadora && <p role="alert" className="-mt-2 text-sm text-red-600">{erros.doadora}</p>}
         </>}
 
@@ -145,9 +151,15 @@ export function FormMaterialGenetico({ material, onSalvo, onFechar }: {
               </select>}
             </CampoFormulario>}
 
-        <CampoFormulario id="material-nome" rotulo="Nome do produto" ajuda="Opcional — se vazio, é gerado a partir do touro e da doadora.">
+        <CampoFormulario id="material-nome" rotulo="Nome do produto" ajuda="Opcional — se vazio, é gerado a partir do touro e da doadora, quando conhecida.">
           {(p) => <input {...p} maxLength={80} value={nomeProduto} onChange={(e) => setNomeProduto(e.target.value)} placeholder="Gerado automaticamente" className={classeInput} />}
         </CampoFormulario>
+      </>}
+
+      {editando && material.tipo === "EMBRIAO" && !material.doadora && <>
+        <CampoGenitor rotulo="Doadora" sexo="F" valor={doadora} onChange={setDoadora} />
+        <p className="text-xs text-ink-3">Doadora ainda não informada. Se for identificada, selecione-a para completar o cadastro.</p>
+        {erros.doadora && <p role="alert" className="text-sm text-red-600">{erros.doadora}</p>}
       </>}
 
       <CampoFormulario id="material-observacao" rotulo="Observação">

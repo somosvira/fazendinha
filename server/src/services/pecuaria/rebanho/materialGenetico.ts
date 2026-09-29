@@ -78,7 +78,7 @@ async function resolverGenitor(db: DbPecuaria, ref: RefGenitor, sexo: "F" | "M",
 }
 
 export function nomeSugerido(tipo: "SEMEN" | "EMBRIAO", touro: string, doadora: string | null, tipoSemen: TipoSemen | null): string {
-  if (tipo === "EMBRIAO") return `Embrião ${touro} × ${doadora}`;
+  if (tipo === "EMBRIAO") return doadora ? `Embrião ${touro} × ${doadora}` : `Embrião ${touro}`;
   return tipoSemen && tipoSemen !== "CONVENCIONAL" ? `Sêmen ${touro} (${ROTULO_SEMEN[tipoSemen]})` : `Sêmen ${touro}`;
 }
 
@@ -149,10 +149,17 @@ export async function editarMaterialGenetico(id: string, input: EditarMaterialGe
     const anterior = await tx.materialGenetico.findUnique({ where: { id } });
     if (!anterior) throw new RebanhoError("NAO_ENCONTRADO", "Material genético não encontrado");
     if (anterior.tipo === "EMBRIAO" && input.tipoSemen) throw new RebanhoError("VALIDACAO", "Tipo de sêmen só vale para sêmen", "tipoSemen");
+    if (input.doadora) {
+      if (anterior.tipo !== "EMBRIAO") throw new RebanhoError("VALIDACAO", "Doadora só vale para embrião", "doadora");
+      if (anterior.doadoraId || anterior.doadoraExternaId) throw new RebanhoError("CONFLITO", "Este embrião já tem doadora registrada", "doadora");
+      await resolverGenitor(tx, input.doadora, "F", "doadora");
+    }
     const material = await tx.materialGenetico.update({
       where: { id },
       data: {
         ...(input.tipoSemen !== undefined && anterior.tipo === "SEMEN" ? { tipoSemen: input.tipoSemen ?? "CONVENCIONAL" } : {}),
+        ...(input.doadora?.tipo === "ANIMAL" ? { doadoraId: input.doadora.id } : {}),
+        ...(input.doadora?.tipo === "EXTERNO" ? { doadoraExternaId: input.doadora.id } : {}),
         ...(input.observacao !== undefined ? { observacao: input.observacao } : {}),
       },
       include: includeMaterial,

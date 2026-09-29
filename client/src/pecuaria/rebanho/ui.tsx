@@ -153,11 +153,12 @@ export function SubAbas<T extends string>({ abas, ativa, onSelecionar }: {
 /** Editor de composição racial: raça + fração em 64 avos, com pré-sets e
  *  validação de soma <= 64 (mesma regra de lib/composicao.ts). Usado no
  *  cadastro do animal e na edição de composição. */
-export function CampoComposicao({ racas, itens, onChange, erro }: {
+export function CampoComposicao({ racas, itens, onChange, erro, limite64 = 64 }: {
   racas: CatalogoRaca[];
   itens: ComposicaoItemInput[];
   onChange: (itens: ComposicaoItemInput[]) => void;
   erro?: string;
+  limite64?: number;
 }) {
   const soma = somaFracoes(itens);
   const atualizar = (indice: number, patch: Partial<ComposicaoItemInput>) =>
@@ -176,16 +177,16 @@ export function CampoComposicao({ racas, itens, onChange, erro }: {
       </div>
       <div className="w-28 text-sm font-medium">
         <label htmlFor={`composicao-fracao-${indice}`}>Fração (/64)</label>
-        <input id={`composicao-fracao-${indice}`} type="number" min={1} max={64} className={classeInput} value={item.fracao64 || ""} onChange={(e) => atualizar(indice, { fracao64: Number(e.target.value) })} />
+        <input id={`composicao-fracao-${indice}`} type="number" min={1} max={limite64} className={classeInput} value={item.fracao64 || ""} onChange={(e) => atualizar(indice, { fracao64: Number(e.target.value) })} />
       </div>
       {item.fracao64 >= 1 && item.fracao64 <= 64 && <span className="pb-2.5 text-sm font-semibold text-ink" aria-label={`Fração reduzida ${fracaoReduzida(item.fracao64)}`}>= {fracaoReduzida(item.fracao64)}</span>}
       <div className="flex flex-wrap gap-1 pb-0.5">
-        {PRESETS_FRACAO.map((preset) => <button key={preset.label} type="button" onClick={() => atualizar(indice, { fracao64: preset.fracao64 })} className="rounded-full border border-border px-2.5 py-1 text-xs font-semibold text-ink-2 hover:bg-surface-2">{preset.label}</button>)}
+        {PRESETS_FRACAO.filter((preset) => preset.fracao64 <= limite64).map((preset) => <button key={preset.label} type="button" onClick={() => atualizar(indice, { fracao64: preset.fracao64 })} className="rounded-full border border-border px-2.5 py-1 text-xs font-semibold text-ink-2 hover:bg-surface-2">{preset.label}</button>)}
       </div>
       <button type="button" onClick={() => remover(indice)} aria-label="Remover raça da composição" className="rounded-lg p-2 text-ink-2 hover:bg-surface-2 hover:text-red-700"><X size={16} /></button>
     </div>)}
     <button type="button" onClick={adicionar} className="text-sm font-semibold text-mast hover:underline">+ Adicionar raça</button>
-    <p className={`text-xs ${soma > 64 ? "font-semibold text-red-700" : "text-ink-3"}`}>Soma atual: {soma > 0 && soma <= 64 ? `${fracaoReduzida(soma)} (${soma}/64)` : `${soma}/64`}{soma > 64 ? " — reduza para no máximo 64" : ""}</p>
+    <p className={`text-xs ${soma > limite64 ? "font-semibold text-red-700" : "text-ink-3"}`}>Soma atual: {soma > 0 && soma <= 64 ? `${fracaoReduzida(soma)} (${soma}/64)` : `${soma}/64`}{soma > limite64 ? ` — reduza para no máximo ${limite64}/64` : ""}</p>
     {erro && <p role="alert" className="text-xs text-red-700">{erro}</p>}
   </div>;
 }

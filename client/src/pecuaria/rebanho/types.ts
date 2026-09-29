@@ -49,7 +49,7 @@ export type AnimalResumo = {
 export type FracaoRaca = { sigla: string; fracao64: number };
 export type OrigemComposicao = "INFORMADA" | "CALCULADA";
 /** Item da composição na ficha: traz o id e a situação da raça (inativa continua editável). */
-export type ItemComposicaoFicha = FracaoRaca & { racaId: string; nome: string; racaAtiva: boolean; origem: OrigemComposicao };
+export type ItemComposicaoFicha = FracaoRaca & { racaId: string; nome: string; racaAtiva: boolean; origem: OrigemComposicao; fracaoCalculada64: number };
 
 /** v2 · Genética: mãe/pai na ficha do animal — animal nosso ou genitor externo. */
 export type FiliacaoLadoDTO =
@@ -179,7 +179,7 @@ export type EditarAnimalInput = Partial<{
   observacao: string | null;
 }> & Partial<FiliacaoInput>;
 
-export type SubstituirComposicaoInput = { itens: ComposicaoItemInput[]; origem?: "INFORMADA" | "CALCULADA" };
+export type SubstituirComposicaoInput = { itens: ComposicaoItemInput[]; origem?: "INFORMADA" | "CALCULADA"; justificativaExcecao?: string };
 
 export type ComposicaoSugerida = { itens: Array<{ racaId: string; sigla: string; fracao64: number }>; rotulo: string };
 export type DefinirFiliacaoResultado = AnimalFicha & {
@@ -486,6 +486,7 @@ export type GenitorDTO = {
   nome: string;
   codigo: string | null;
   fornecedor: string | null;
+  fornecedorId: string | null;
   observacao: string | null;
   ativo: boolean;
   composicao: Array<FracaoRaca & { racaId: string; nome: string }>;
@@ -498,6 +499,7 @@ export type CriarGenitorInput = {
   nome: string;
   codigo?: string | null;
   fornecedor?: string | null;
+  fornecedorId?: string | null;
   observacao?: string | null;
   composicao?: ComposicaoItemInput[];
 };
@@ -507,6 +509,7 @@ export type EditarGenitorInput = Partial<{
   nome: string;
   codigo: string | null;
   fornecedor: string | null;
+  fornecedorId: string | null;
   observacao: string | null;
   ativo: boolean;
 }>;
@@ -547,6 +550,6 @@ export type CriarMaterialGeneticoInput = {
   produto: { nome?: string; categoriaId: string; centroCustoIds?: string[]; fornecedorIds?: string[] };
 };
 
-export type EditarMaterialGeneticoInput = Partial<{ tipoSemen: TipoSemen | null; observacao: string | null }>;
+export type EditarMaterialGeneticoInput = Partial<{ tipoSemen: TipoSemen | null; doadora: RefGenitorInput; observacao: string | null }>;
 
 export type ListarMaterialGeneticoQuery = { tipo?: TipoMaterialGenetico; incluirInativos?: boolean };

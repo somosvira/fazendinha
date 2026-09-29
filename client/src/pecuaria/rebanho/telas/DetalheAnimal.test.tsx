@@ -143,7 +143,7 @@ describe("DetalheAnimal — permissão, linha atual e composição", () => {
   });
 
   it("mostra o nome da raça e marca a inativa", async () => {
-    await montar({ ...base, composicao: [{ racaId: "r-gl", sigla: "GL", nome: "Girolando", racaAtiva: false, origem: "INFORMADA", fracao64: 32 }] });
+    await montar({ ...base, composicao: [{ racaId: "r-gl", sigla: "GL", nome: "Girolando", racaAtiva: false, origem: "INFORMADA", fracao64: 32, fracaoCalculada64: 0 }] });
     expect(screen.getByText((_, el) => el?.tagName === "SPAN" && /^Girolando \(GL\)/.test(el.textContent ?? ""))).toBeTruthy();
     expect(screen.getByText(/inativa/)).toBeTruthy();
   });
