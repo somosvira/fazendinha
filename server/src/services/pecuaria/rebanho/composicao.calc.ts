@@ -5,6 +5,17 @@ export interface FracaoRaca {
   fracao64: number;
 }
 
+/** Junta a herança fixa à parcela que ainda não se conhece, sem duplicar a raça. */
+export function juntarComposicao(herdada: FracaoRaca[], informada: FracaoRaca[]): FracaoRaca[] {
+  return normalizarComposicao([...herdada, ...informada]);
+}
+
+/** A entrada completa nunca pode reduzir a parcela conhecida pelo pedigree. */
+export function composicaoRespeitaHerdanca(itens: FracaoRaca[], herdada: FracaoRaca[]): boolean {
+  const porRaca = new Map(itens.map((item) => [item.sigla, item.fracao64]));
+  return herdada.every((item) => (porRaca.get(item.sigla) ?? 0) >= item.fracao64);
+}
+
 export interface ErroValidacao {
   campo: string;
   mensagem: string;

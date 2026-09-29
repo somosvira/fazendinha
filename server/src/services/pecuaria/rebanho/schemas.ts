@@ -81,10 +81,12 @@ export type EditarAnimalInput = z.infer<typeof editarAnimalSchema>;
 
 export const substituirComposicaoSchema = z.object({
   itens: z.array(composicaoItemSchema),
+  justificativaExcecao: z.string().trim().min(10).max(500).optional(),
   // CALCULADA = "aplicar a composição sugerida pelos genitores"; o padrão é digitada pelo usuário.
   origem: z.enum(["INFORMADA", "CALCULADA"]).optional().default("INFORMADA"),
 });
 export type SubstituirComposicaoInput = Omit<z.infer<typeof substituirComposicaoSchema>, "origem">;
+
 
 export const movimentarSchema = z.object({
   animalIds: z.array(z.string().uuid()).min(1).max(2000).refine((v) => new Set(v).size === v.length, "IDs de animais repetidos"),
@@ -363,6 +365,7 @@ export const criarGenitorSchema = z.object({
   nome: z.string().trim().min(1).max(120),
   codigo: z.string().trim().max(60).nullable().optional(),
   fornecedor: z.string().trim().max(120).nullable().optional(),
+  fornecedorId: z.string().uuid().nullable().optional(),
   observacao: z.string().trim().max(500).nullable().optional(),
   composicao: z.array(composicaoItemSchema).optional().default([]),
 });
@@ -373,6 +376,7 @@ export const editarGenitorSchema = z.object({
   nome: z.string().trim().min(1).max(120).optional(),
   codigo: z.string().trim().max(60).nullable().optional(),
   fornecedor: z.string().trim().max(120).nullable().optional(),
+  fornecedorId: z.string().uuid().nullable().optional(),
   observacao: z.string().trim().max(500).nullable().optional(),
   ativo: z.boolean().optional(),
 });
@@ -392,6 +396,7 @@ export type ListarGenitoresQuery = z.infer<typeof listarGenitoresQuerySchema>;
 
 export const definirFiliacaoSchema = filiacaoCamposSchema.superRefine(exigirLadoUnico);
 export type DefinirFiliacaoInput = z.infer<typeof definirFiliacaoSchema>;
+export const preverComposicaoSchema = filiacaoCamposSchema.extend({ dataNascimento: dataNaoFutura }).superRefine(exigirLadoUnico);
 
 
 // ---------- genética (v2): material genético (sêmen/embrião como produto do estoque) ----------
@@ -411,7 +416,6 @@ export const criarMaterialGeneticoSchema = z.object({
     fornecedorIds: z.array(z.string().uuid()).optional(),
   }),
 }).superRefine((v, ctx) => {
-  if (v.tipo === "EMBRIAO" && !v.doadora) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["doadora"], message: "Embrião precisa de doadora" });
   if (v.tipo === "SEMEN" && v.doadora) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["doadora"], message: "Sêmen não tem doadora" });
   if (v.tipo === "EMBRIAO" && v.tipoSemen) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["tipoSemen"], message: "Tipo de sêmen só vale para sêmen" });
 });
@@ -419,6 +423,7 @@ export type CriarMaterialGeneticoInput = z.infer<typeof criarMaterialGeneticoSch
 
 export const editarMaterialGeneticoSchema = z.object({
   tipoSemen: z.enum(["CONVENCIONAL", "SEXADO_FEMEA", "SEXADO_MACHO"]).nullable().optional(),
+  doadora: refGenitorSchema.optional(),
   observacao: z.string().trim().max(500).nullable().optional(),
 });
 export type EditarMaterialGeneticoInput = z.infer<typeof editarMaterialGeneticoSchema>;

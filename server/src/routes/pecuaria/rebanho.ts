@@ -24,7 +24,7 @@ import {
   criarCategoriaSchema, editarCategoriaSchema, simularCategoriasSchema, reordenarCategoriasSchema, restaurarPadroesSchema,
   categoriaManualSchema, removerCategoriaManualSchema,
   gmdPeriodoQuerySchema, painelQuerySchema, auditoriaAnimalQuerySchema, auditoriaCadastroQuerySchema,
-  criarGenitorSchema, editarGenitorSchema, substituirComposicaoGenitorSchema, listarGenitoresQuerySchema, definirFiliacaoSchema,
+  criarGenitorSchema, editarGenitorSchema, substituirComposicaoGenitorSchema, listarGenitoresQuerySchema, definirFiliacaoSchema, preverComposicaoSchema,
   criarMaterialGeneticoSchema, editarMaterialGeneticoSchema, listarMaterialGeneticoQuerySchema,
 } from "../../services/pecuaria/rebanho/schemas.js";
 
@@ -134,6 +134,10 @@ export const rebanhoRouter = new Hono()
       const { origem, ...input } = c.req.valid("json");
       return c.json(await animais.substituirComposicao(c.req.valid("param").id, input, usuarioId(c), escopo, origem));
     } catch (e) { return falha(c, e); }
+  })
+  .post("/animais/composicao-prevista", validar(preverComposicaoSchema), async (c) => {
+    try { return c.json(await animais.preverComposicao(c.req.valid("json"))); }
+    catch (e) { return falha(c, e); }
   })
   .put("/animais/:id/filiacao", idParam, validar(definirFiliacaoSchema), async (c) => {
     try {

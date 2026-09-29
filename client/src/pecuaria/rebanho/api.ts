@@ -124,6 +124,9 @@ export const listarFilhosAnimal = (id: string) => req<FilhoResumo[]>(`/animais/$
 
 export const buscarComposicaoSugerida = (id: string) => req<ComposicaoSugerida | null>(`/animais/${id}/composicao-sugerida`);
 
+export const preverComposicaoAnimal = (input: FiliacaoInput & { dataNascimento: string }) =>
+  req<ComposicaoSugerida | null>("/animais/composicao-prevista", { method: "POST", body: JSON.stringify(input) });
+
 export const listarGenitores = (filtros: ListarGenitoresQuery = {}) => {
   const params = new URLSearchParams();
   for (const [chave, valor] of Object.entries(filtros)) {

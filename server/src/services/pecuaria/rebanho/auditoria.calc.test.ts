@@ -59,6 +59,29 @@ describe("diferencas", () => {
     expect(diferencas("Animal", antes, depois)).toEqual([]);
   });
 
+  it("genitor externo: mostra apenas os campos realmente alterados, com rótulos legíveis", () => {
+    const antes = { id: "g1", nome: "Zeus", sexo: "M", codigo: "Z1", fornecedor: "Central A", fornecedorId: "p1", ativo: true, observacao: null };
+    const depois = { ...antes, fornecedor: "Central B", fornecedorId: "p2", ativo: false, atualizadoEm: "2026-09-29" };
+    expect(diferencas("GenitorExterno", antes, depois)).toEqual([
+      { campo: "fornecedor", rotulo: "Fornecedor", antes: "Central A", depois: "Central B" },
+      { campo: "ativo", rotulo: "Ativo", antes: "sim", depois: "não" },
+    ]);
+  });
+
+  it("genitor externo: composição mostra raças e frações, sem confundir troca de IDs internos com alteração", () => {
+    const nomes = { r1: "Holandesa", r2: "Gir" };
+    const antes = [{ id: "linha-antiga", racaId: "r1", fracao64: 64 }];
+    const mesma = [{ id: "linha-nova", racaId: "r1", fracao64: 64 }];
+    const depois = [{ id: "linha-nova-2", racaId: "r1", fracao64: 32 }, { racaId: "r2", fracao64: 32 }];
+    expect(diferencas("GenitorExterno", antes, mesma, nomes)).toEqual([]);
+    expect(diferencas("GenitorExterno", antes, depois, nomes)).toEqual([
+      { campo: "composicao", rotulo: "Composição racial", antes: "Holandesa 64/64", depois: "Holandesa 32/64 · Gir 32/64" },
+    ]);
+    expect(diferencas("GenitorExterno", null, { nome: "Zeus", composicao: antes }, nomes)).toContainEqual(
+      { campo: "composicao", rotulo: "Composição racial", antes: null, depois: "Holandesa 64/64" },
+    );
+  });
+
   it("objetos aninhados fora do mapa (ex.: histórico de ajuste da entrada) ficam de fora", () => {
     const antes = { id: "a1", nome: "Mimosa" };
     const depois = { id: "a1", nome: "Mimosa", historicoAjustado: { localizacao: "x", pesagens: ["p1"] } };

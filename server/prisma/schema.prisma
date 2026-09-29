@@ -300,6 +300,7 @@ model Parceiro {
   compromissos               CompromissoFinanceiro[]
   transacoes                 TransacaoFinanceira[]
   produtosFornecidos         ProdutoFornecedor[]
+  genitoresExternos          GenitorExterno[]
   createdAt                  DateTime                @default(now())
   updatedAt                  DateTime                @updatedAt
 
@@ -1875,6 +1876,8 @@ model GenitorExterno {
   nome         String
   codigo       String?
   fornecedor   String?
+  fornecedorId String?
+  fornecedorParceiro Parceiro? @relation(fields: [fornecedorId], references: [id], onDelete: SetNull)
   ativo        Boolean    @default(true)
   observacao   String?
   criadoEm     DateTime   @default(now())
@@ -1889,6 +1892,7 @@ model GenitorExterno {
   materiaisComoDoadora MaterialGenetico[]         @relation("MaterialDoadoraExterna")
 
   @@index([sexo, nome])
+  @@index([fornecedorId])
   @@schema("pecuaria")
 }
 
@@ -2014,6 +2018,8 @@ model ComposicaoRacial {
   racaId       String
   raca         Raca             @relation(fields: [racaId], references: [id], onDelete: Restrict)
   fracao64     Int
+  // Parcela herdada dos genitores dentro de fracao64; o restante foi informado.
+  fracaoCalculada64 Int @default(0)
   origem       OrigemComposicao
   criadoEm     DateTime         @default(now())
   criadoPorId  Int?

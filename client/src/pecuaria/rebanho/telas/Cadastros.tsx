@@ -123,7 +123,7 @@ const colunasMaterial = (editar: (m: MaterialGeneticoDTO) => void): ColunaTabela
   { chave: "produto", titulo: "Produto", larguraMinima: 200, principal: true, celula: (m) => <strong className="break-words">{m.produto.nome}</strong> },
   { chave: "tipo", titulo: "Tipo", larguraMinima: 100, celula: (m) => ROTULO_TIPO_MATERIAL[m.tipo] },
   { chave: "touro", titulo: "Touro", larguraMinima: 150, celula: (m) => nomeGenitorMaterial(m.touro) },
-  { chave: "doadora", titulo: "Doadora", larguraMinima: 150, celula: (m) => nomeGenitorMaterial(m.doadora) },
+  { chave: "doadora", titulo: "Doadora", larguraMinima: 150, celula: (m) => m.tipo === "EMBRIAO" && !m.doadora ? "Não informada" : nomeGenitorMaterial(m.doadora) },
   { chave: "tipoSemen", titulo: "Tipo de sêmen", larguraMinima: 130, celula: (m) => m.tipoSemen ? ROTULO_TIPO_SEMEN[m.tipoSemen] ?? m.tipoSemen : "—" },
   { chave: "saldo", titulo: "Saldo", alinhamento: "direita", larguraMinima: 110, celula: (m) => rotuloSaldoMaterial(m) },
   { chave: "situacao", titulo: "Situação", alinhamento: "direita", larguraMinima: 100, celula: (m) => <Pill tone={m.produto.ativo ? "green" : "neutral"}>{m.produto.ativo ? "Ativo" : "Inativo"}</Pill> },

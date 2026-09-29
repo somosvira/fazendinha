@@ -22,8 +22,8 @@ const categoriasGeneticas = [
   { id: "cat-1", nome: "Genética", classificacao: "INVESTIMENTO" as const, ativo: true, ordem: 0, usoAgricola: false, usoGenetico: true },
 ];
 
-const touroExterno: GenitorDTO = { id: "touro-ext", sexo: "M", nome: "Touro X", codigo: null, fornecedor: null, observacao: null, ativo: true, composicao: [], composicaoRotulo: "", filhos: 0 };
-const doadoraExterna: GenitorDTO = { id: "doadora-ext", sexo: "F", nome: "Estrela", codigo: null, fornecedor: null, observacao: null, ativo: true, composicao: [], composicaoRotulo: "", filhos: 0 };
+const touroExterno: GenitorDTO = { id: "touro-ext", sexo: "M", nome: "Touro X", codigo: null, fornecedor: null, fornecedorId: null, observacao: null, ativo: true, composicao: [], composicaoRotulo: "", filhos: 0 };
+const doadoraExterna: GenitorDTO = { id: "doadora-ext", sexo: "F", nome: "Estrela", codigo: null, fornecedor: null, fornecedorId: null, observacao: null, ativo: true, composicao: [], composicaoRotulo: "", filhos: 0 };
 
 afterEach(cleanup);
 beforeEach(() => {
@@ -56,7 +56,7 @@ describe("FormMaterialGenetico — criação", () => {
     await waitFor(() => expect(onSalvo).toHaveBeenCalled());
   });
 
-  it("embrião: exige doadora antes de enviar", async () => {
+  it("embrião: aceita doadora desconhecida e mantém a escolha de uma doadora conhecida", async () => {
     const onSalvo = vi.fn();
     render(<FormMaterialGenetico material={null} onSalvo={onSalvo} onFechar={vi.fn()} />);
 
@@ -67,14 +67,14 @@ describe("FormMaterialGenetico — criação", () => {
     fireEvent.change(screen.getByLabelText(/Selecionar touro entre os genitores externos/), { target: { value: "touro-ext" } });
     fireEvent.change(screen.getByLabelText("Categoria"), { target: { value: "cat-1" } });
 
+    vi.mocked(criarMaterialGenetico).mockResolvedValue({} as never);
     fireEvent.click(screen.getByRole("button", { name: /Criar material/ }));
-    expect(await screen.findByText("Informe a doadora")).toBeTruthy();
-    expect(criarMaterialGenetico).not.toHaveBeenCalled();
+    await waitFor(() => expect(criarMaterialGenetico).toHaveBeenCalledWith(expect.objectContaining({ doadora: null })));
+    vi.mocked(criarMaterialGenetico).mockClear();
 
     fireEvent.click(screen.getAllByRole("button", { name: "Genitor externo" })[1]);
     await screen.findByText("Estrela");
     fireEvent.change(screen.getByLabelText(/Selecionar doadora entre os genitores externos/), { target: { value: "doadora-ext" } });
-    vi.mocked(criarMaterialGenetico).mockResolvedValue({} as never);
     fireEvent.click(screen.getByRole("button", { name: /Criar material/ }));
 
     await waitFor(() => expect(criarMaterialGenetico).toHaveBeenCalledWith({
@@ -107,5 +107,17 @@ describe("FormMaterialGenetico — edição", () => {
 
     await waitFor(() => expect(editarMaterialGenetico).toHaveBeenCalledWith("mg1", { tipoSemen: "SEXADO_FEMEA", observacao: null }));
     await waitFor(() => expect(onSalvo).toHaveBeenCalled());
+  });
+
+  it("permite identificar depois a doadora de um embrião cadastrado sem ela", async () => {
+    vi.mocked(editarMaterialGenetico).mockResolvedValue({} as never);
+    render(<FormMaterialGenetico material={{ ...material, tipo: "EMBRIAO", tipoSemen: null, doadora: null }} onSalvo={vi.fn()} onFechar={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Genitor externo" }));
+    await screen.findByText("Estrela");
+    fireEvent.change(screen.getByLabelText(/Selecionar doadora entre os genitores externos/), { target: { value: "doadora-ext" } });
+    fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
+    await waitFor(() => expect(editarMaterialGenetico).toHaveBeenCalledWith("mg1", {
+      tipoSemen: undefined, doadora: { tipo: "EXTERNO", id: "doadora-ext" }, observacao: null,
+    }));
   });
 });

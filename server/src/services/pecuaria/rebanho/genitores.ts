@@ -2,6 +2,7 @@ import { prisma } from "../../../db.js";
 import { auditar, RebanhoError, type DbPecuaria } from "./regras.js";
 import { validarComposicao, rotuloComposicao, type FracaoRaca } from "./composicao.calc.js";
 import type { CriarGenitorInput, EditarGenitorInput, ListarGenitoresQuery, SubstituirComposicaoGenitorInput } from "./schemas.js";
+import { papeisDoParceiro } from "../../financeiro/papeis.js";
 
 export interface GenitorDTO {
   id: string;
@@ -9,6 +10,7 @@ export interface GenitorDTO {
   nome: string;
   codigo: string | null;
   fornecedor: string | null;
+  fornecedorId: string | null;
   observacao: string | null;
   ativo: boolean;
   composicao: FracaoRaca[];
@@ -31,13 +33,14 @@ async function contarFilhos(db: DbPecuaria, genitorId: string): Promise<number> 
   return comoMae + comoPai;
 }
 
-function dto(g: { id: string; sexo: "F" | "M"; nome: string; codigo: string | null; fornecedor: string | null; observacao: string | null; ativo: boolean }, composicao: FracaoRaca[], filhos: number): GenitorDTO {
+function dto(g: { id: string; sexo: "F" | "M"; nome: string; codigo: string | null; fornecedor: string | null; fornecedorId: string | null; fornecedorParceiro?: { nome: string } | null; observacao: string | null; ativo: boolean }, composicao: FracaoRaca[], filhos: number): GenitorDTO {
   return {
     id: g.id,
     sexo: g.sexo,
     nome: g.nome,
     codigo: g.codigo,
-    fornecedor: g.fornecedor,
+    fornecedor: g.fornecedorParceiro?.nome ?? g.fornecedor,
+    fornecedorId: g.fornecedorId,
     observacao: g.observacao,
     ativo: g.ativo,
     composicao,
@@ -54,12 +57,13 @@ export async function listarGenitores(filtros: Partial<ListarGenitoresQuery> = {
       ...(filtros.q ? { nome: { contains: filtros.q, mode: "insensitive" } } : {}),
     },
     orderBy: { nome: "asc" },
+    include: { fornecedorParceiro: { select: { nome: true } } },
   });
   return Promise.all(genitores.map(async (g) => dto(g, await composicaoDoGenitor(prisma, g.id), await contarFilhos(prisma, g.id))));
 }
 
 export async function buscarGenitor(id: string): Promise<GenitorDTO> {
-  const g = await prisma.genitorExterno.findUnique({ where: { id } });
+  const g = await prisma.genitorExterno.findUnique({ where: { id }, include: { fornecedorParceiro: { select: { nome: true } } } });
   if (!g) throw new RebanhoError("NAO_ENCONTRADO", "Genitor não encontrado");
   return dto(g, await composicaoDoGenitor(prisma, id), await contarFilhos(prisma, id));
 }
@@ -85,15 +89,26 @@ async function exigirRacasValidas(db: DbPecuaria, itens: Array<{ racaId: string 
   if (aceitas.length !== racaIds.length) throw new RebanhoError("NAO_ENCONTRADO", "Raça da composição não encontrada ou inativa", "composicao");
 }
 
+async function exigirFornecedorValido(db: DbPecuaria, fornecedorId: string | null | undefined, atualId?: string | null) {
+  if (!fornecedorId) return null;
+  const parceiro = await db.parceiro.findUnique({ where: { id: fornecedorId }, include: { papeis: true } });
+  if (!parceiro || !papeisDoParceiro(parceiro).includes("FORNECEDOR") || (!parceiro.ativo && fornecedorId !== atualId)) {
+    throw new RebanhoError("VALIDACAO", "Selecione um fornecedor cadastrado e ativo", "fornecedorId");
+  }
+  return parceiro;
+}
+
 export async function criarGenitor(input: CriarGenitorInput, usuarioId: number | null): Promise<GenitorDTO> {
   validarComposicaoInput(input.composicao);
   await exigirRacasValidas(prisma, input.composicao);
 
   const criado = await prisma.$transaction(async (tx) => {
     await exigirNomeLivre(tx, input.sexo, input.nome);
+    const fornecedor = await exigirFornecedorValido(tx, input.fornecedorId);
     const genitor = await tx.genitorExterno.create({
       data: {
-        sexo: input.sexo, nome: input.nome, codigo: input.codigo ?? null, fornecedor: input.fornecedor ?? null,
+        sexo: input.sexo, nome: input.nome, codigo: input.codigo ?? null,
+        fornecedor: fornecedor?.nome ?? input.fornecedor ?? null, fornecedorId: fornecedor?.id ?? null,
         observacao: input.observacao ?? null, criadoPorId: usuarioId,
       },
     });
@@ -106,7 +121,7 @@ export async function criarGenitor(input: CriarGenitorInput, usuarioId: number |
     return genitor;
   });
 
-  return dto(criado, await composicaoDoGenitor(prisma, criado.id), 0);
+  return buscarGenitor(criado.id);
 }
 
 export async function editarGenitor(id: string, input: EditarGenitorInput, usuarioId: number | null): Promise<GenitorDTO> {
@@ -123,13 +138,15 @@ export async function editarGenitor(id: string, input: EditarGenitorInput, usuar
     if (input.nome != null || input.sexo != null) {
       await exigirNomeLivre(tx, input.sexo ?? existente.sexo, input.nome ?? existente.nome, id);
     }
+    const fornecedor = await exigirFornecedorValido(tx, input.fornecedorId, existente.fornecedorId);
     const salvo = await tx.genitorExterno.update({
       where: { id },
       data: {
         sexo: input.sexo ?? undefined,
         nome: input.nome ?? undefined,
         codigo: input.codigo === undefined ? undefined : input.codigo,
-        fornecedor: input.fornecedor === undefined ? undefined : input.fornecedor,
+        fornecedor: input.fornecedorId === undefined ? input.fornecedor === undefined ? undefined : input.fornecedor : fornecedor?.nome ?? null,
+        fornecedorId: input.fornecedorId === undefined ? undefined : input.fornecedorId,
         observacao: input.observacao === undefined ? undefined : input.observacao,
         ativo: input.ativo ?? undefined,
       },
@@ -138,7 +155,7 @@ export async function editarGenitor(id: string, input: EditarGenitorInput, usuar
     return salvo;
   });
 
-  return dto(atualizado, await composicaoDoGenitor(prisma, id), await contarFilhos(prisma, id));
+  return buscarGenitor(atualizado.id);
 }
 
 export async function substituirComposicaoGenitor(id: string, input: SubstituirComposicaoGenitorInput, usuarioId: number | null): Promise<GenitorDTO> {
@@ -162,5 +179,5 @@ export async function substituirComposicaoGenitor(id: string, input: SubstituirC
     await auditar(tx, { entidade: "GenitorExterno", entidadeId: id, acao: "COMPOSICAO", usuarioId, antes, depois });
   });
 
-  return dto(existente, await composicaoDoGenitor(prisma, id), await contarFilhos(prisma, id));
+  return buscarGenitor(id);
 }

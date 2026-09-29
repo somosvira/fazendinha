@@ -85,7 +85,7 @@ describeComBanco("material genético (banco real)", () => {
       .rejects.toMatchObject({ code: "CONFLITO" });
   });
 
-  it("edita o tipo de sêmen e o CHECK do banco barra embrião sem doadora", async () => {
+  it("edita o tipo de sêmen e o CHECK do banco mantém a separação dos tipos", async () => {
     const cat = await categoria(true);
     const touro = await genitor("M", "Ares");
     const m = await criarMaterialGenetico({ tipo: "SEMEN", touro: { tipo: "EXTERNO", id: touro.id }, produto: { categoriaId: cat } }, null);
@@ -94,7 +94,21 @@ describeComBanco("material genético (banco real)", () => {
     const editado = await editarMaterialGenetico(m.id, { tipoSemen: "SEXADO_MACHO" }, null);
     expect(editado.tipoSemen).toBe("SEXADO_MACHO");
 
-    await expect(prisma.materialGenetico.update({ where: { id: m.id }, data: { tipo: "EMBRIAO", tipoSemen: null } })).rejects.toThrow();
+    await expect(prisma.materialGenetico.update({ where: { id: m.id }, data: { tipo: "EMBRIAO", tipoSemen: "SEXADO_MACHO" } })).rejects.toThrow();
+  });
+
+  it("cadastra embrião sem doadora conhecida e permite informá-la depois", async () => {
+    const cat = await categoria(true);
+    const touro = await genitor("M", "Desconhecida");
+    const doadora = await genitor("F", "Identificada");
+    const material = await criarMaterialGenetico({ tipo: "EMBRIAO", touro: { tipo: "EXTERNO", id: touro.id }, produto: { categoriaId: cat } }, null);
+    materiais.push(material.id);
+    expect(material.doadora).toBeNull();
+    expect(material.produto.nome).toBe(`Embrião Desconhecida ${RUN}`);
+    const atualizado = await editarMaterialGenetico(material.id, { doadora: { tipo: "EXTERNO", id: doadora.id } }, null);
+    expect(atualizado.doadora).toMatchObject({ id: doadora.id });
+    await expect(editarMaterialGenetico(material.id, { doadora: { tipo: "EXTERNO", id: doadora.id } }, null))
+      .rejects.toMatchObject({ campo: "doadora" });
   });
 
   it("editarGenitor recusa trocar o sexo de genitor usado em material genético", async () => {

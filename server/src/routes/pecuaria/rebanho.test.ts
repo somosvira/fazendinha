@@ -23,6 +23,7 @@ const mocks = vi.hoisted(() => ({
   definirFiliacao: vi.fn(),
   listarFilhos: vi.fn(),
   composicaoSugerida: vi.fn(),
+  preverComposicao: vi.fn(),
   substituirComposicao: vi.fn(),
   listarGenitores: vi.fn(),
   listarMaterialGenetico: vi.fn(),
@@ -51,6 +52,7 @@ vi.mock("../../services/pecuaria/rebanho/animais.js", () => ({
   definirFiliacao: mocks.definirFiliacao,
   listarFilhos: mocks.listarFilhos,
   composicaoSugerida: mocks.composicaoSugerida,
+  preverComposicao: mocks.preverComposicao,
   substituirComposicao: mocks.substituirComposicao,
 }));
 vi.mock("../../services/pecuaria/rebanho/genitores.js", () => ({
@@ -485,6 +487,15 @@ describe("rebanhoRouter — genitores externos", () => {
 });
 
 describe("rebanhoRouter — filiação do animal", () => {
+  it("POST /animais/composicao-prevista valida a filiação antes de calcular", async () => {
+    const invalida = await app(usuario({ flags: ["lancar"] })).request("/animais/composicao-prevista", jsonBody({ dataNascimento: "2026-01-01", maeId: ID, maeExternaId: ID }));
+    expect(invalida.status).toBe(422);
+    expect(mocks.preverComposicao).not.toHaveBeenCalled();
+    mocks.preverComposicao.mockResolvedValue({ itens: [], rotulo: "" });
+    const valida = await app(usuario({ flags: ["lancar"] })).request("/animais/composicao-prevista", jsonBody({ dataNascimento: "2026-01-01", paiExternoId: ID }));
+    expect(valida.status).toBe(200);
+    expect(mocks.preverComposicao).toHaveBeenCalledWith({ dataNascimento: "2026-01-01", paiExternoId: ID });
+  });
   it("PUT /animais/:id/filiacao com mãe animal e externa ao mesmo tempo é 422", async () => {
     const res = await app(usuario({ flags: ["lancar"] })).request(`/animais/${ID}/filiacao`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ maeId: ID, maeExternaId: ID }) });
     expect(res.status).toBe(422);
@@ -522,11 +533,13 @@ describe("rebanhoRouter — material genético", () => {
     expect(mocks.criarMaterialGenetico).not.toHaveBeenCalled();
   });
 
-  it("POST /material-genetico de embrião sem doadora é 422", async () => {
+  it("POST /material-genetico de embrião sem doadora aceita procedência desconhecida", async () => {
+    mocks.criarMaterialGenetico.mockResolvedValue({ id: ID });
     const res = await app(usuario({ flags: ["lancar"] })).request("/material-genetico", jsonBody({
       tipo: "EMBRIAO", touro: { tipo: "EXTERNO", id: ID }, produto: { categoriaId: ID },
     }));
-    expect(res.status).toBe(422);
+    expect(res.status).toBe(201);
+    expect(mocks.criarMaterialGenetico).toHaveBeenCalledWith(expect.objectContaining({ tipo: "EMBRIAO" }), expect.anything());
   });
 
   it("POST /material-genetico válido chama o service e devolve 201", async () => {

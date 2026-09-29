@@ -231,7 +231,7 @@ footer p{max-width:none;margin:0 0 6px}
         <text class="bx-t" x="52" y="304">ComposicaoRacial</text>
         <text class="bx-s" x="220" y="304">v1</text>
         <text class="bx-l" x="52" y="332">animalId · racaId · fracao64</text>
-        <text class="bx-l" x="52" y="348">origem: INFORMADA | CALCULADA</text>
+        <text class="bx-l" x="52" y="348">fracaoCalculada64 · origem</text>
       </g>
       <path class="rel" d="M150 236 V286" marker-end="url(#ar)" style="color:var(--ink-3)"/>
 
@@ -361,7 +361,7 @@ footer p{max-width:none;margin:0 0 6px}
       <tr><td class="c">sexo</td><td class="t">SexoBovino</td><td>F (doadora) ou M (touro). Decide onde pode ser usado.</td></tr>
       <tr><td class="c">nome</td><td class="t">texto</td><td>Obrigatório. Sem duplicata por (sexo, nome), checado na aplicação.</td></tr>
       <tr><td class="c">codigo</td><td class="t">texto?</td><td>Registro na central ou na associação.</td></tr>
-      <tr><td class="c">fornecedor</td><td class="t">texto?</td><td>Central de sêmen ou fazenda de origem. Texto livre; o produto do estoque tem o fornecedor formal (Parceiro).</td></tr>
+      <tr><td class="c">fornecedorId / fornecedor</td><td class="t">Parceiro? / texto?</td><td>O cadastro manual seleciona um Parceiro com papel de fornecedor. O texto permanece para preservar a origem importada do IDEAGRI quando ainda não houver parceiro correspondente.</td></tr>
       <tr><td class="c">ideagriId</td><td class="t">int?<span class="k">único</span></td><td><code>CDANIMAL</code> do IDEAGRI para linhas de tipo E ou S.</td></tr>
       <tr><td class="c">ativo</td><td class="t">booleano</td><td>Inativo some das escolhas novas; fichas existentes continuam apontando.</td></tr>
       <tr><td class="c">observacao</td><td class="t">texto?</td><td></td></tr>
@@ -379,7 +379,7 @@ footer p{max-width:none;margin:0 0 6px}
       <tr><td class="c">tipo</td><td class="t">TipoMaterialGenetico</td><td>SEMEN ou EMBRIAO.</td></tr>
       <tr><td class="c">tipoSemen</td><td class="t">TipoSemen?</td><td>CONVENCIONAL, SEXADO_FEMEA ou SEXADO_MACHO. Só para sêmen.</td></tr>
       <tr><td class="c">touroId / touroExternoId</td><td class="t">uuid?<span class="k">FK</span></td><td>Um dos dois, obrigatório. Animal macho nosso ou genitor externo M.</td></tr>
-      <tr><td class="c">doadoraId / doadoraExternaId</td><td class="t">uuid?<span class="k">FK</span></td><td>Um dos dois, obrigatório para embrião; vazio para sêmen.</td></tr>
+      <tr><td class="c">doadoraId / doadoraExternaId</td><td class="t">uuid?<span class="k">FK</span></td><td>Para embrião, pode ficar sem doadora quando a procedência é desconhecida; se informada, aponta para um dos dois. Vazio para sêmen. A doadora desconhecida pode ser vinculada depois.</td></tr>
       <tr><td class="c">produtoId</td><td class="t">uuid<span class="k">FK</span> <span class="k">único</span></td><td>→ Produto (schema public). Criado na mesma transação, unidade DOSE (sêmen) ou UN (embrião), categoria com <code>usoGenetico</code>.</td></tr>
     </tbody>
   </table></div>
@@ -405,7 +405,7 @@ footer p{max-width:none;margin:0 0 6px}
       <tr><td>Mãe é fêmea; pai é macho. Vale para animal nosso e para genitor externo.</td><td class="t">genetica.calc</td></tr>
       <tr><td>Nenhum genitor pode ser o próprio animal nem um descendente dele (checado até 3 gerações).</td><td class="t">genetica.calc + CHECK</td></tr>
       <tr><td>Genitor animal nasceu antes do filho. Mãe com menos de 15 meses de diferença gera aviso, não bloqueio.</td><td class="t">genetica.calc</td></tr>
-      <tr><td>Composição CALCULADA é refeita ao mudar a filiação. Se era INFORMADA, o servidor devolve a sugestão e a tela pergunta antes de sobrescrever.</td><td class="t">animais.ts</td></tr>
+      <tr><td>A parcela herdada de mãe e pai é fixa. Só o restante desconhecido pode ser informado. Ao mudar a filiação, composição antiga incompatível é recalculada na mesma transação, com aviso e histórico preservado. Uma divergência nova exige a ação explícita de exceção, com justificativa auditada.</td><td class="t">animais.ts</td></tr>
       <tr><td>Animal baixado continua válido como genitor (filiação é passado). Genitor externo inativo continua nas fichas, some das escolhas.</td><td class="t">genitores.ts</td></tr>
       <tr><td>Material genético cria o produto na mesma transação; produto com movimento não pode ser excluído (regra do estoque).</td><td class="t">materialGenetico.ts</td></tr>
       <tr><td>Toda escrita passa por <code>auditar</code> e <code>travarAnimais</code>; filiação audita com o <code>animalId</code> do filho.</td><td class="t">regras.ts (v1)</td></tr>
@@ -419,11 +419,11 @@ footer p{max-width:none;margin:0 0 6px}
     <div class="scr"><h4>Ficha do animal</h4><p class="where">telas/DetalheAnimal.tsx</p><ul>
       <li>Nova seção <b>Filiação</b> entre Dados e Composição: mãe e pai com nome, brinco ou código, link quando é animal nosso, selo "externo"; botão "Definir filiação"</li>
       <li>Lista <b>Filhos</b> (brinco, sexo, nascimento, link)</li>
-      <li>Em Composição: botão <b>"Calcular pelos genitores"</b> com o rótulo sugerido antes de aplicar; selo Calculada ou Informada</li>
+      <li>Em Composição: parcela calculada visível e fixa, editor só para a parte desconhecida; exceção em ação separada com justificativa e auditoria.</li>
     </ul></div>
     <div class="scr"><h4>Novo animal</h4><p class="where">telas/NovoAnimal.tsx</p><ul>
       <li>Passo "Origem e datas": <b>mãe e pai</b> opcionais</li>
-      <li>Passo "Composição racial": vem <b>pré-preenchida</b> quando há genitores, editável</li>
+      <li>Passo "Composição racial": calcula e fixa a parcela conhecida dos genitores; apenas o restante pode ser preenchido.</li>
       <li>Revisão mostra a filiação</li>
     </ul></div>
     <div class="scr"><h4>Formulário de filiação</h4><p class="where">forms/FormFiliacao.tsx · components/BuscaAnimal.tsx (novos)</p><ul>
@@ -431,9 +431,9 @@ footer p{max-width:none;margin:0 0 6px}
       <li><b>BuscaAnimal</b>: seletor único por brinco ou nome, filtrado por sexo. O <code>SeletorAnimais</code> da v1 é multi-seleção para lotes e não serve aqui</li>
     </ul></div>
     <div class="scr"><h4>Cadastros</h4><p class="where">telas/Cadastros.tsx</p><ul>
-      <li>Sub-aba <b>Genitores externos</b>: nome, sexo, código, fornecedor, composição, nº de filhos, ativo; formulário reusa <code>FormComposicao</code></li>
-      <li>Sub-aba <b>Material genético</b>: produto, tipo, touro, doadora, tipo de sêmen, saldo em estoque</li>
-      <li>Histórico de alterações e "Mostrar inativos", como nas outras</li>
+      <li>Sub-aba <b>Genitores externos</b>: nome, sexo, código, fornecedor selecionado de <code>Parceiro</code>, composição, nº de filhos, ativo</li>
+      <li>Sub-aba <b>Material genético</b>: produto, tipo, touro, doadora opcional em embrião, tipo de sêmen, saldo em estoque</li>
+      <li>Histórico de alterações preciso, inclusive fornecedor e composição; "Mostrar inativos" como nas outras</li>
     </ul></div>
     <div class="scr"><h4>Financeiro › Configurações</h4><p class="where">FormCadastrosGerenciais.tsx · FormProduto.tsx · ConfiguracoesFinanceiras.tsx</p><ul>
       <li>Checkbox <b>"Uso genético"</b> na categoria; chip no produto; filtro por uso</li>
@@ -457,12 +457,12 @@ footer p{max-width:none;margin:0 0 6px}
       <tr><td>Touro, sêmen e embrião</td><td>Linhas de <code>ANIMAL</code> com <code>TIPOANIMAL</code> A (rebanho), E (externo) ou S (sêmen). 984 linhas, só ~631 do rebanho.</td><td>Fora de <code>Animal</code>. Genitor de fora → <code>GenitorExterno</code>; sêmen e embrião → <code>Produto</code> + <code>MaterialGenetico</code>.</td><td>Contagens, brinco, categoria, localização e baixa continuam só com animais reais. O dump da v1 já filtra <code>TIPOANIMAL='A'</code>.</td></tr>
       <tr><td>Mãe e pai</td><td><code>CDMAE</code>/<code>CDPAI</code>, auto-relação; o pai pode ser touro, sêmen ou animal.</td><td><code>maeId</code>/<code>paiId</code> (animal nosso) ou <code>maeExternaId</code>/<code>paiExternoId</code>.</td><td>Filiação é identidade, não histórico. Mesmo poder de expressão, sem misturar tabelas.</td></tr>
       <tr><td>Genética do animal nosso</td><td>Repetida: touro da fazenda tem a própria linha em <code>ANIMALRACA</code>.</td><td>Lida da ficha (<code>ComposicaoRacial</code>), nunca duplicada.</td><td>Uma fonte de verdade.</td></tr>
-      <tr><td>Raça do filho</td><td><code>ANIMALRACA</code> em %, digitada.</td><td>Calculada em 64 avos pelos genitores (<code>calcularComposicaoFilho</code>, já escrito na v1 e sem uso); origem CALCULADA.</td><td>Menos digitação; o usuário pode sobrescrever.</td></tr>
-      <tr><td>Central de sêmen</td><td><code>CENTRALSEMEN</code>, 25 de fábrica.</td><td>Texto <code>fornecedor</code> no genitor; <code>Parceiro</code> fornecedor no produto.</td><td>Central é um fornecedor como outro.</td></tr>
+      <tr><td>Raça do filho</td><td><code>ANIMALRACA</code> em %, digitada.</td><td>Calculada em 64 avos pelos genitores (<code>calcularComposicaoFilho</code>); <code>fracaoCalculada64</code> separa a parcela herdada da informada.</td><td>Menos digitação sem perder a incerteza: só a parcela desconhecida é editável, salvo exceção justificada.</td></tr>
+      <tr><td>Central de sêmen</td><td><code>CENTRALSEMEN</code>, 25 de fábrica.</td><td><code>Parceiro</code> fornecedor no genitor e no produto; texto legado preservado na carga.</td><td>Central é um fornecedor como outro.</td></tr>
       <tr><td>Tipo de sêmen</td><td><code>TIPOSEMEN</code>, 3 linhas.</td><td>Enum com 3 valores.</td><td>Fixo.</td></tr>
       <tr><td>Base de touros</td><td><code>basetouros.FDB</code>, 584.557 registros.</td><td>Não importar; cadastrar sob demanda. A carga traz só os usados (81 em <code>ANIMALINFO_REPRODUTOR</code>).</td><td>Volume sem uso.</td></tr>
       <tr><td>Estoque de sêmen e embrião</td><td><code>frmAssociacaoSemen</code>; estoque de doses vazio nesta fazenda.</td><td>Produto do estoque único, unidade DOSE ou UN, categoria com <code>usoGenetico</code>.</td><td>Compra, custo médio, centro de custo e tela de estoque vêm prontos.</td></tr>
-      <tr><td>Embrião</td><td><code>ANIMAL</code> tipo E com <code>CDMAE</code> = doadora e <code>CDPAI</code> = touro; <code>EMBRIAOCLASSIFICACAO</code> (6).</td><td><code>MaterialGenetico</code> tipo EMBRIAO com doadora e touro. Classificação fica para a v4.</td><td>Embrião é material, não animal.</td></tr>
+      <tr><td>Embrião</td><td><code>ANIMAL</code> tipo E com <code>CDMAE</code> = doadora e <code>CDPAI</code> = touro; <code>EMBRIAOCLASSIFICACAO</code> (6).</td><td><code>MaterialGenetico</code> tipo EMBRIAO com touro e doadora opcional, vinculável depois. Classificação fica para a v4.</td><td>Embrião é material, não animal; procedência desconhecida não bloqueia o cadastro.</td></tr>
       <tr><td>Estado calculado</td><td>Procedures alimentam o cache <code>ANIMALINFO_*</code>.</td><td>Filhos e composição sugerida calculados na leitura.</td><td>Mesmo princípio da v1.</td></tr>
     </tbody>
   </table></div>

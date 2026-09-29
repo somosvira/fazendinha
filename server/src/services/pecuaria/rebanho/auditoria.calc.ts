@@ -106,6 +106,14 @@ const CAMPOS_POR_ENTIDADE: Record<string, Record<string, CampoConfig>> = {
     ordem: { rotulo: "Ordem", formatar: numero },
     ativo: { rotulo: "Ativa", formatar: booleano },
   },
+  GenitorExterno: {
+    nome: { rotulo: "Nome" },
+    sexo: { rotulo: "Sexo", formatar: enumRotulo(ROTULO_SEXO) },
+    codigo: { rotulo: "Código" },
+    fornecedor: { rotulo: "Fornecedor" },
+    observacao: { rotulo: "Observação" },
+    ativo: { rotulo: "Ativo", formatar: booleano },
+  },
   Pesagem: {
     data: { rotulo: "Data", formatar: data },
     pesoKg: { rotulo: "Peso (kg)", formatar: numero },
@@ -161,15 +169,16 @@ function comoRegistro(v: unknown): Record<string, unknown> | null {
  * Entidade sem mapa configurado (ex.: `Movimentacao`, `ComposicaoRacial`) devolve `[]` — o
  * resumo textual (`resumoAuditoria`) já cobre esses casos.
  */
-export function diferencas(entidade: string, antes: unknown, depois: unknown): CampoAlteracao[] {
+export function diferencas(entidade: string, antes: unknown, depois: unknown, nomesRacas: Record<string, string> = {}): CampoAlteracao[] {
   const campos = CAMPOS_POR_ENTIDADE[entidade];
   if (!campos) return [];
   const registroAntes = comoRegistro(antes);
   const registroDepois = comoRegistro(depois);
-  if (!registroAntes && !registroDepois) return [];
+  if (!registroAntes && !registroDepois && entidade !== "GenitorExterno") return [];
 
   const alteracoes: CampoAlteracao[] = [];
   for (const [campo, config] of Object.entries(campos)) {
+    if (!registroAntes && !registroDepois) break;
     if (!registroAntes) {
       // cadastro: só os campos preenchidos em `depois` entram, com antes = null
       const valorDepois = valorFormatado(config, registroDepois![campo]);
@@ -190,5 +199,26 @@ export function diferencas(entidade: string, antes: unknown, depois: unknown): C
       alteracoes.push({ campo, rotulo: config.rotulo, antes: valorAntes, depois: valorDepois });
     }
   }
+  if (entidade === "GenitorExterno") {
+    const composicaoAntes = composicaoGenitor(antes, nomesRacas);
+    const composicaoDepois = composicaoGenitor(depois, nomesRacas);
+    if (composicaoAntes.chave !== composicaoDepois.chave) {
+      alteracoes.push({ campo: "composicao", rotulo: "Composição racial", antes: composicaoAntes.rotulo, depois: composicaoDepois.rotulo });
+    }
+  }
   return alteracoes;
+}
+
+function composicaoGenitor(valor: unknown, nomesRacas: Record<string, string>) {
+  const itens = Array.isArray(valor) ? valor : comoRegistro(valor)?.composicao;
+  if (!Array.isArray(itens)) return { chave: "", rotulo: null as string | null };
+  const fracoes = itens.flatMap((item) => {
+    const linha = comoRegistro(item);
+    return typeof linha?.racaId === "string" && typeof linha.fracao64 === "number"
+      ? [{ racaId: linha.racaId, fracao64: linha.fracao64 }] : [];
+  }).sort((a, b) => a.racaId.localeCompare(b.racaId));
+  return {
+    chave: fracoes.map((f) => `${f.racaId}:${f.fracao64}`).join("|"),
+    rotulo: fracoes.length ? fracoes.map((f) => `${nomesRacas[f.racaId] ?? f.racaId} ${f.fracao64}/64`).join(" · ") : null,
+  };
 }

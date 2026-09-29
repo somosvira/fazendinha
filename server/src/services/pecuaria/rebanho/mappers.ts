@@ -103,6 +103,7 @@ export interface ItemComposicaoFicha extends FracaoRaca {
   nome: string;
   racaAtiva: boolean;
   origem: OrigemComposicao;
+  fracaoCalculada64: number;
 }
 
 export interface FiliacaoLadoDTO {

@@ -3,8 +3,9 @@
 // é gravada junto no cadastro (POST) ou via PUT dedicado (edição), igual ao padrão
 // de FormComposicao para o animal.
 
-import { FormEvent, useRef, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { criarGenitor, editarGenitor, substituirComposicaoGenitor, RebanhoApiError } from "../api";
+import { listarFornecedores, type Parceiro } from "../../../estoque/api";
 import type { CatalogoRaca, ComposicaoItemInput, GenitorDTO, Sexo } from "../types";
 import { composicaoValida } from "../lib/composicao";
 import { Button, ErrorBox } from "../../../financeiro/financeiro-ui";
@@ -22,7 +23,10 @@ export function FormGenitor({ genitor, racas, onSalvo, onFechar }: {
   const [sexo, setSexo] = useState<Sexo>(genitor?.sexo ?? "F");
   const [nome, setNome] = useState(genitor?.nome ?? "");
   const [codigo, setCodigo] = useState(genitor?.codigo ?? "");
-  const [fornecedor, setFornecedor] = useState(genitor?.fornecedor ?? "");
+  const [fornecedorId, setFornecedorId] = useState(genitor?.fornecedorId ?? (genitor?.fornecedor ? "legado" : ""));
+  const [fornecedores, setFornecedores] = useState<Parceiro[]>([]);
+  const [carregandoFornecedores, setCarregandoFornecedores] = useState(true);
+  const [erroFornecedores, setErroFornecedores] = useState<string | null>(null);
   const [observacao, setObservacao] = useState(genitor?.observacao ?? "");
   const [composicao, setComposicao] = useState<ComposicaoItemInput[]>(
     (genitor?.composicao ?? []).map((c) => ({ racaId: c.racaId, fracao64: c.fracao64 })),
@@ -40,6 +44,14 @@ export function FormGenitor({ genitor, racas, onSalvo, onFechar }: {
   const [salvando, setSalvando] = useState(false);
   const emCurso = useRef(false);
 
+  useEffect(() => {
+    let ativo = true;
+    listarFornecedores().then((lista) => { if (ativo) setFornecedores(lista); })
+      .catch((erro) => { if (ativo) setErroFornecedores(erro instanceof Error ? erro.message : String(erro)); })
+      .finally(() => { if (ativo) setCarregandoFornecedores(false); });
+    return () => { ativo = false; };
+  }, []);
+
   const submeter = async (e: FormEvent) => {
     e.preventDefault();
     if (emCurso.current) return;
@@ -54,9 +66,9 @@ export function FormGenitor({ genitor, racas, onSalvo, onFechar }: {
     try {
       const itens = composicao.filter((item) => item.racaId);
       if (!genitor) {
-        await criarGenitor({ sexo, nome: nome.trim(), codigo: codigo.trim() || null, fornecedor: fornecedor.trim() || null, observacao: observacao.trim() || null, composicao: itens });
+        await criarGenitor({ sexo, nome: nome.trim(), codigo: codigo.trim() || null, fornecedorId: fornecedorId || null, observacao: observacao.trim() || null, composicao: itens });
       } else {
-        await editarGenitor(genitor.id, { sexo, nome: nome.trim(), codigo: codigo.trim() || null, fornecedor: fornecedor.trim() || null, observacao: observacao.trim() || null });
+        await editarGenitor(genitor.id, { sexo, nome: nome.trim(), codigo: codigo.trim() || null, ...(fornecedorId === "legado" ? {} : { fornecedorId: fornecedorId || null }), observacao: observacao.trim() || null });
         await substituirComposicaoGenitor(genitor.id, { itens });
       }
       await onSalvo();
@@ -68,14 +80,15 @@ export function FormGenitor({ genitor, racas, onSalvo, onFechar }: {
 
   const formId = "form-genitor";
   return <PainelCadastro aberto titulo={genitor ? `Editar ${genitor.nome}` : "Novo genitor externo"} onFechar={() => { if (!salvando) onFechar(); }}
-    rodape={<><Button secondary onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form={formId} disabled={salvando}>{salvando ? "Salvando…" : genitor ? "Salvar genitor" : "Criar genitor"}</Button></>}>
+    rodape={<><Button secondary onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form={formId} disabled={salvando || carregandoFornecedores || !!erroFornecedores}>{salvando ? "Salvando…" : genitor ? "Salvar genitor" : "Criar genitor"}</Button></>}>
     <form id={formId} onSubmit={submeter} className="grid gap-4" noValidate>
       <ErrorBox erro={erroGeral} />
+      {erroFornecedores && <ErrorBox erro={`Não foi possível carregar fornecedores: ${erroFornecedores}`} />}
       <div className="grid gap-4 md:grid-cols-2">
         <CampoFormulario id="genitor-nome" rotulo="Nome" obrigatorio erro={erros.nome}>{(p) => <input {...p} required maxLength={120} value={nome} onChange={(e) => setNome(e.target.value)} className={classeInput} />}</CampoFormulario>
-        <CampoFormulario id="genitor-sexo" rotulo="Sexo" obrigatorio ajuda={genitor && genitor.filhos > 0 ? "Não pode ser alterado — este genitor já tem filhos registrados." : undefined}>{(p) => <select {...p} disabled={!!(genitor && genitor.filhos > 0)} value={sexo} onChange={(e) => setSexo(e.target.value as Sexo)} className={classeInput}><option value="F">Fêmea</option><option value="M">Macho</option></select>}</CampoFormulario>
+        <CampoFormulario id="genitor-sexo" rotulo="Sexo" obrigatorio erro={erros.sexo} ajuda={genitor && genitor.filhos > 0 ? "Não pode ser alterado — este genitor já tem filhos registrados." : undefined}>{(p) => <select {...p} disabled={!!(genitor && genitor.filhos > 0)} value={sexo} onChange={(e) => setSexo(e.target.value as Sexo)} className={classeInput}><option value="F">Fêmea</option><option value="M">Macho</option></select>}</CampoFormulario>
         <CampoFormulario id="genitor-codigo" rotulo="Código">{(p) => <input {...p} maxLength={60} value={codigo} onChange={(e) => setCodigo(e.target.value)} className={classeInput} />}</CampoFormulario>
-        <CampoFormulario id="genitor-fornecedor" rotulo="Fornecedor">{(p) => <input {...p} maxLength={120} value={fornecedor} onChange={(e) => setFornecedor(e.target.value)} className={classeInput} />}</CampoFormulario>
+        <CampoFormulario id="genitor-fornecedor" rotulo="Fornecedor" erro={erros.fornecedorId} ajuda={carregandoFornecedores ? "Carregando fornecedores…" : undefined}>{(p) => <select {...p} value={fornecedorId} onChange={(e) => setFornecedorId(e.target.value)} disabled={carregandoFornecedores || !!erroFornecedores} className={classeInput}><option value="">Nenhum fornecedor</option>{fornecedorId === "legado" && <option value="legado">{genitor?.fornecedor} (sem vínculo cadastrado)</option>}{fornecedores.filter((f) => f.ativo || f.id === fornecedorId).map((f) => <option key={f.id} value={f.id}>{f.nome}{f.ativo ? "" : " (inativo)"}</option>)}</select>}</CampoFormulario>
       </div>
       <CampoFormulario id="genitor-observacao" rotulo="Observação">{(p) => <textarea {...p} maxLength={500} value={observacao} onChange={(e) => setObservacao(e.target.value)} className={classeInput} />}</CampoFormulario>
       <div>
