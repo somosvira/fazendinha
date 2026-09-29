@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createElement, type ReactNode } from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, QueryObserver } from "@tanstack/react-query";
 import { renderHook } from "@testing-library/react";
 import { enfileirarMutation } from "../lib/offline/fila";
 import { uid } from "../lib/uid.fixture";
@@ -153,10 +153,15 @@ describe("useCriarOperacao", () => {
     expect(qc.getQueryData(financeiroKeys.operacoes(janeiro))).toEqual([]);
   });
 
-  it("desfaz o otimista quando o servidor recusa", async () => {
+  it("refaz a leitura do servidor quando ele recusa, sem sobra do otimista", async () => {
     let rejeitar!: (erro: unknown) => void;
     resposta = () => new Promise((_, reject) => { rejeitar = reject; });
     const qc = clienteComCache();
+    const noServidor = [financeiroKeys.operacoes(periodo), financeiroKeys.configuracoes()] as const;
+    const observadores = noServidor.map((queryKey) => {
+      const verdade = qc.getQueryData(queryKey);
+      return new QueryObserver(qc, { queryKey, queryFn: async () => verdade, staleTime: Infinity }).subscribe(() => {});
+    });
     const onError = vi.fn();
     const { result } = renderHook(() => useCriarOperacao(), { wrapper: montar(qc) });
     const id = result.current.mutate(compraAVista, { onError });
@@ -164,9 +169,12 @@ describe("useCriarOperacao", () => {
     rejeitar(new Error("Período fechado"));
 
     await vi.waitFor(() => expect(onError).toHaveBeenCalled());
-    expect(qc.getQueryData(financeiroKeys.operacoes(periodo))).toEqual([]);
-    expect(qc.getQueryData<ConfiguracoesFinanceiras>(financeiroKeys.configuracoes())!.contas[0].saldoAtual).toBe("5000.00");
+    await vi.waitFor(() => {
+      expect(qc.getQueryData(financeiroKeys.operacoes(periodo))).toEqual([]);
+      expect(qc.getQueryData<ConfiguracoesFinanceiras>(financeiroKeys.configuracoes())!.contas[0].saldoAtual).toBe("5000.00");
+    });
     expect(qc.getQueryData(financeiroKeys.operacao(id))).toBeUndefined();
+    observadores.forEach((cancelar) => cancelar());
   });
 
   it("invalida listas, dashboard e configurações depois de sincronizar", async () => {
