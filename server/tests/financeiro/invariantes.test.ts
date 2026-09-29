@@ -76,7 +76,7 @@ async function snapshot(label: string) {
   evidence.push({ caso: serial, label, state });
   return state;
 }
-async function pay(id: string, valor: number) { return ops.liquidarCompromisso(id, { data, valor, contaId: accountId, usuarioId: userId }); }
+async function pay(id: string, valor: number) { return ops.liquidarCompromisso(id, { data, valor, contaId: accountId, usuarioId: userId, propriedadeId: pid }); }
 
 // Falha REAL do PostgreSQL, depois de operação, itens, estoque e dinheiro terem
 // sido inseridos. Não substitui Prisma, serviços ou $transaction por mocks.
@@ -618,7 +618,7 @@ describe("ids gerados pelo cliente", () => {
     const reenvio = await ops.criarOperacao(aPrazoComIds(id, parcelaId));
     expect(reenvio).toEqual(criada);
     expect(await contagens()).toEqual(antes);
-    await ops.liquidarCompromisso(parcelaId, { data, valor: 100, contaId: accountId, usuarioId: userId });
+    await ops.liquidarCompromisso(parcelaId, { data, valor: 100, contaId: accountId, usuarioId: userId, propriedadeId: pid });
     expect((await contagens()).saldoConta).toBe(900);
   });
 
@@ -637,14 +637,14 @@ describe("ids gerados pelo cliente", () => {
     expect(estado.operacoes).toBe(2); expect(estado.saldoConta).toBe(800);
   });
 
-  it("id de outro tipo é conflito; mesmo tipo em outra propriedade reenvia (id é global, propriedade não é fronteira)", async () => {
+  it("id de outro tipo ou de outra propriedade é conflito", async () => {
     const id = randomUUID();
-    const criada = await ops.criarOperacao({ ...input("A_VISTA"), id });
+    await ops.criarOperacao({ ...input("A_VISTA"), id });
     const antes = await contagens();
     await expect(ops.criarOperacao({ ...input("A_VISTA", "SERVICO"), id })).rejects.toMatchObject({ code: "CONFLITO" });
     const outra = await db.propriedade.create({ data: { nome: `Outra id ${serial}` } });
     const contaOutra = (await db.contaFinanceira.create({ data: { nome: "Conta outra", tipo: "BANCO", propriedadeId: outra.id, dataSaldoAbertura: data } })).id;
-    expect(await ops.criarOperacao({ ...input("A_VISTA"), id, propriedadeId: outra.id, financeiro: { condicao: "A_VISTA", contaId: contaOutra } })).toEqual(criada);
+    await expect(ops.criarOperacao({ ...input("A_VISTA"), id, propriedadeId: outra.id, financeiro: { condicao: "A_VISTA", contaId: contaOutra } })).rejects.toMatchObject({ code: "CONFLITO" });
     await expect(ops.transferir({ id, contaOrigemId: accountId, contaDestinoId: contaOutra, valor: 10, data, propriedadeId: pid })).rejects.toMatchObject({ code: "CONFLITO" });
     await expect(stock.ajustarContagem({ id, propriedadeId: pid, produtoId: productId, saldoEsperado: 10, quantidadeContada: 8, observacao: "Contagem conferida", usuarioId: userId })).rejects.toMatchObject({ code: "CONFLITO" });
     expect(await contagens()).toEqual(antes);
@@ -673,7 +673,7 @@ describe("ids gerados pelo cliente", () => {
     const op = await ops.criarOperacao(input());
     const outra = await ops.criarOperacao(input());
     const transacaoId = randomUUID();
-    const liquidar = (compromissoId: string) => ops.liquidarCompromisso(compromissoId, { transacaoId, data, valor: 40, contaId: accountId, usuarioId: userId });
+    const liquidar = (compromissoId: string) => ops.liquidarCompromisso(compromissoId, { transacaoId, data, valor: 40, contaId: accountId, usuarioId: userId, propriedadeId: pid });
     const primeira = await liquidar(op.compromissos[0].id);
     expect(primeira.id).toBe(transacaoId);
     const antes = await contagens();
@@ -686,7 +686,7 @@ describe("ids gerados pelo cliente", () => {
   it("duas liquidações concorrentes com o mesmo id pagam uma vez", async () => {
     const op = await ops.criarOperacao(input());
     const transacaoId = randomUUID();
-    const liquidar = () => ops.liquidarCompromisso(op.compromissos[0].id, { transacaoId, data, valor: 60, contaId: accountId, usuarioId: userId });
+    const liquidar = () => ops.liquidarCompromisso(op.compromissos[0].id, { transacaoId, data, valor: 60, contaId: accountId, usuarioId: userId, propriedadeId: pid });
     const resultados = await emCorrida("TransacaoFinanceira", () => [liquidar(), liquidar()]);
     evidence.push({ caso: serial, corridaLiquidacao: resultados.map(r => r.status) });
     expect(resultados.map(r => r.status)).toEqual(["fulfilled", "fulfilled"]);
