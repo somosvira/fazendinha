@@ -3,10 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { Cadastros } from "./Cadastros";
 import {
-  criarCategoria, criarMotivoBaixa, criarRaca, editarMotivoBaixa, editarRaca, listarAuditoriaCadastro, listarCategorias, listarMotivosBaixa, listarRacas,
-  reordenarCategorias, restaurarPadroesCategorias, simularCategorias,
+  criarCategoria, criarMotivoBaixa, criarRaca, editarGenitor, editarMotivoBaixa, editarRaca, listarAuditoriaCadastro, listarCategorias,
+  listarGenitores, listarMaterialGenetico, listarMotivosBaixa, listarRacas, obterCatalogos, reordenarCategorias, restaurarPadroesCategorias, simularCategorias,
 } from "../api";
-import type { CategoriaDTO, MotivoBaixa, Raca } from "../types";
+import type { CategoriaDTO, GenitorDTO, MaterialGeneticoDTO, MotivoBaixa, Raca } from "../types";
 
 /* Mantém RebanhoApiError real (os forms usam instanceof) e substitui só as chamadas. */
 vi.mock("../api", async (importOriginal) => ({
@@ -24,6 +24,10 @@ vi.mock("../api", async (importOriginal) => ({
   simularCategorias: vi.fn(),
   restaurarPadroesCategorias: vi.fn(),
   listarAuditoriaCadastro: vi.fn(),
+  listarGenitores: vi.fn(),
+  editarGenitor: vi.fn(),
+  listarMaterialGenetico: vi.fn(),
+  obterCatalogos: vi.fn(),
 }));
 
 const racasMock: Raca[] = [
@@ -57,8 +61,11 @@ beforeEach(() => {
   vi.mocked(simularCategorias).mockResolvedValue({ afetados: 0, mudancas: [], semCategoria: 0 });
   vi.mocked(editarRaca).mockImplementation((id, patch) => Promise.resolve({ ...racasMock.find((r) => r.id === id)!, ...patch }));
   vi.mocked(listarAuditoriaCadastro).mockResolvedValue({ itens: [], total: 0 });
+  vi.mocked(listarGenitores).mockResolvedValue([]);
+  vi.mocked(listarMaterialGenetico).mockResolvedValue([]);
+  vi.mocked(obterCatalogos).mockResolvedValue({ racas: [], motivosBaixa: [], propriedades: [], lotes: [] });
 });
-afterEach(cleanup);
+afterEach(() => { cleanup(); window.history.replaceState(null, "", "/"); });
 
 async function montarCategorias() {
   render(<Cadastros />);
@@ -377,5 +384,87 @@ describe("Cadastros do rebanho — histórico de alterações", () => {
   it("sem alterações registradas mostra o estado vazio", async () => {
     await montarCategorias();
     expect(await screen.findByText("Nenhuma alteração registrada.")).toBeTruthy();
+  });
+});
+
+describe("Cadastros do rebanho — genitores externos", () => {
+  const genitoresMock: GenitorDTO[] = [
+    { id: "g1", sexo: "F", nome: "Vaca Externa A", codigo: "VA1", fornecedor: "Fazenda Vizinha", fornecedorId: null, observacao: null, ativo: true, composicao: [], composicaoRotulo: "1/2 HO", filhos: 2 },
+    { id: "g2", sexo: "M", nome: "Touro Externo B", codigo: null, fornecedor: null, fornecedorId: null, observacao: null, ativo: false, composicao: [], composicaoRotulo: "", filhos: 0 },
+  ];
+
+  async function montarGenitores() {
+    vi.mocked(listarGenitores).mockResolvedValue(genitoresMock.filter((g) => g.ativo));
+    render(<Cadastros />);
+    await screen.findAllByText("Vaca");
+    fireEvent.click(screen.getByRole("button", { name: "Genitores externos" }));
+    await screen.findAllByText("Vaca Externa A");
+  }
+
+  it("lista os genitores externos ativos, com composição e filhos", async () => {
+    await montarGenitores();
+    const tabela = primeiro("table", "Genitores externos");
+    expect(within(tabela).getByText("Vaca Externa A")).toBeTruthy();
+    expect(within(tabela).getByText("1/2 HO")).toBeTruthy();
+    expect(within(tabela).getByText("2")).toBeTruthy();
+    expect(within(tabela).queryByText("Touro Externo B")).toBeNull();
+  });
+
+  it("Mostrar inativos traz o genitor inativo, e desativar chama editarGenitor", async () => {
+    await montarGenitores();
+    vi.mocked(listarGenitores).mockResolvedValue(genitoresMock);
+    fireEvent.click(screen.getByRole("checkbox", { name: "Mostrar inativos" }));
+    await waitFor(() => expect(within(primeiro("table", "Genitores externos")).getByText("Touro Externo B")).toBeTruthy());
+
+    vi.mocked(editarGenitor).mockResolvedValue({ ...genitoresMock[0], ativo: false });
+    fireEvent.click(within(primeiro("table", "Genitores externos")).getAllByRole("button", { name: /Desativar Vaca Externa A/ })[0]);
+    fireEvent.click(screen.getByRole("button", { name: "Desativar" }));
+    await waitFor(() => expect(editarGenitor).toHaveBeenCalledWith("g1", { ativo: false }));
+  });
+});
+
+describe("Cadastros do rebanho — material genético", () => {
+  const materiaisMock: MaterialGeneticoDTO[] = [
+    {
+      id: "mg1", tipo: "SEMEN", tipoSemen: "SEXADO_FEMEA",
+      touro: { tipo: "ANIMAL", id: "a1", nome: "Zeus", brinco: "001" },
+      doadora: null, observacao: null,
+      produto: { id: "p1", nome: "Sêmen Zeus (sexado fêmea)", unidade: "DOSE", ativo: true, categoriaNome: "Genética" },
+      saldo: 12,
+    },
+    {
+      id: "mg2", tipo: "EMBRIAO", tipoSemen: null,
+      touro: { tipo: "EXTERNO", id: "e1", nome: "Touro X", codigo: "TX1" },
+      doadora: { tipo: "ANIMAL", id: "a2", nome: "Estrela", brinco: "002" },
+      observacao: null,
+      produto: { id: "p2", nome: "Embrião Touro X × Estrela", unidade: "UN", ativo: true, categoriaNome: "Genética" },
+      saldo: null,
+    },
+  ];
+
+  async function montarMaterialGenetico() {
+    vi.mocked(listarMaterialGenetico).mockResolvedValue(materiaisMock);
+    render(<Cadastros />);
+    await screen.findAllByText("Vaca");
+    fireEvent.click(screen.getByRole("button", { name: "Material genético" }));
+    await screen.findAllByText("Sêmen Zeus (sexado fêmea)");
+  }
+
+  it("lista sêmen e embrião com touro/doadora e saldo formatado", async () => {
+    await montarMaterialGenetico();
+    const tabela = primeiro("table", "Material genético");
+    expect(within(tabela).getByText("Sêmen Zeus (sexado fêmea)")).toBeTruthy();
+    expect(within(tabela).getByText("001 Zeus")).toBeTruthy();
+    expect(within(tabela).getByText("12 doses")).toBeTruthy();
+    expect(within(tabela).getByText("Embrião Touro X × Estrela")).toBeTruthy();
+    expect(within(tabela).getByText("002 Estrela")).toBeTruthy();
+    expect(within(tabela).getByText("Sem estoque")).toBeTruthy();
+  });
+
+  it("deep-link do estoque abre a sub-aba e o material correto", async () => {
+    vi.mocked(listarMaterialGenetico).mockResolvedValue(materiaisMock);
+    window.history.replaceState(null, "", "/pecuaria/rebanho/cadastros?aba=material-genetico&material=mg1");
+    render(<Cadastros />);
+    expect((await screen.findAllByText("Editar Sêmen Zeus (sexado fêmea)")).length).toBeGreaterThan(0);
   });
 });

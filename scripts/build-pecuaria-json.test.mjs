@@ -153,3 +153,29 @@ test("construir: período com dataFim (fechado) não vira periodoAberto; animal 
   assert.equal(j.animais[0].periodoAberto, null); // 71
   assert.equal(j.animais[1].periodoAberto, null); // 72, sem nenhuma linha @AP@
 });
+
+test("filiação: mãe do rebanho, pai externo com composição, referências inválidas descartadas", () => {
+  const A = (id, numero, sexo) => `@A@${id}~|~${numero}~|~~|~${sexo}~|~2020-01-01~|~2020-01-01~|~~|~~|~0~|~~|~~|~~|~Principal - Leite~|~Lote 1~|~~|~~|~`;
+  const dump = [
+    A(1, "V1", "F"),
+    A(2, "V2", "F"),
+    A(3, "T3", "M"),
+    "@FIL@2~|~1~|~900",   // mãe do rebanho, pai externo
+    "@FIL@3~|~901~|~2",   // mãe externa, "pai" fêmea do rebanho → descartado
+    "@FIL@1~|~999~|~",    // mãe que não veio no dump → descartada
+    "@GE@900~|~ZEUS123~|~Zeus~|~M~|~S~|~ABS Pecplan",
+    "@GE@901~|~DB01~|~~|~F~|~E~|~",
+    "@GERACA@900~|~1~|~HO~|~Holandês~|~100",
+  ].join("\n");
+  const json = construir(dump, "2026-09-26");
+  const porId = new Map(json.animais.map((a) => [a.ideagriId, a]));
+  assert.equal(porId.get(2).maeIdeagriId, 1);
+  assert.equal(porId.get(2).paiIdeagriId, 900);
+  assert.equal(porId.get(3).maeIdeagriId, 901);
+  assert.equal(porId.get(3).paiIdeagriId, undefined);
+  assert.equal(porId.get(1).maeIdeagriId, undefined);
+  assert.deepEqual(json.genitoresExternos, [
+    { ideagriId: 900, sexo: "M", nome: "Zeus", codigo: "ZEUS123", fornecedor: "ABS Pecplan", tipoIdeagri: "S", composicao: [{ sigla: "HO", fracao64: 64 }] },
+    { ideagriId: 901, sexo: "F", nome: "DB01", codigo: null, fornecedor: null, tipoIdeagri: "E", composicao: [] },
+  ]);
+});

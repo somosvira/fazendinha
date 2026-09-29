@@ -6,29 +6,42 @@ import type {
   AnimalFicha,
   BaixaInput,
   CadastrarAnimalInput,
+  CadastrarAnimalResultado,
   Catalogos,
   CategoriaRef,
   CriarCategoriaInput,
+  ComposicaoSugerida,
+  CriarGenitorInput,
   CriarLoteInput,
+  CriarMaterialGeneticoInput,
   CriarMotivoBaixaInput,
   CriarRacaInput,
   DefinirCategoriaManualInput,
+  DefinirFiliacaoResultado,
   EditarAnimalInput,
   EditarCategoriaInput,
+  EditarGenitorInput,
   EditarLoteInput,
+  EditarMaterialGeneticoInput,
   EditarMotivoBaixaInput,
   EditarPesagemInput,
   EditarRacaInput,
   EntidadeCadastro,
   EntradaAuditoria,
   EstornoBaixaInput,
+  FiliacaoInput,
+  FilhoResumo,
   FiltrosMovimentacoes,
+  GenitorDTO,
   ItemComposicao,
   ListarCategoriasResultado,
   ListarFiltros,
+  ListarGenitoresQuery,
+  ListarMaterialGeneticoQuery,
   ListarMovimentacoesResultado,
   ListarResultado,
   Lote,
+  MaterialGeneticoDTO,
   MotivoBaixa,
   MovimentacaoDetalhe,
   MovimentarInput,
@@ -42,6 +55,7 @@ import type {
   RemoverCategoriaManualInput,
   ResumoLote,
   ResultadoSimulacaoCategorias,
+  SubstituirComposicaoGenitorInput,
   SubstituirComposicaoInput,
 } from "./types";
 
@@ -84,7 +98,7 @@ export const listarAnimais = (filtros: ListarFiltros) => {
 };
 
 export const cadastrarAnimal = (input: CadastrarAnimalInput) =>
-  req<AnimalFicha>("/animais", { method: "POST", body: JSON.stringify(input) });
+  req<CadastrarAnimalResultado>("/animais", { method: "POST", body: JSON.stringify(input) });
 
 export const buscarFichaAnimal = (id: string, opts?: { periodoDias?: PeriodoGmd }) => {
   const params = new URLSearchParams();
@@ -100,6 +114,52 @@ export const editarAnimal = (id: string, input: EditarAnimalInput) =>
 
 export const substituirComposicaoAnimal = (id: string, input: SubstituirComposicaoInput) =>
   req<ItemComposicao[]>(`/animais/${id}/composicao`, { method: "PUT", body: JSON.stringify(input) });
+
+// ---------- genética v2: filiação e genitores externos ----------
+
+export const definirFiliacaoAnimal = (id: string, input: FiliacaoInput) =>
+  req<DefinirFiliacaoResultado>(`/animais/${id}/filiacao`, { method: "PUT", body: JSON.stringify(input) });
+
+export const listarFilhosAnimal = (id: string) => req<FilhoResumo[]>(`/animais/${id}/filhos`);
+
+export const buscarComposicaoSugerida = (id: string) => req<ComposicaoSugerida | null>(`/animais/${id}/composicao-sugerida`);
+
+export const preverComposicaoAnimal = (input: FiliacaoInput & { dataNascimento: string }) =>
+  req<ComposicaoSugerida | null>("/animais/composicao-prevista", { method: "POST", body: JSON.stringify(input) });
+
+export const listarGenitores = (filtros: ListarGenitoresQuery = {}) => {
+  const params = new URLSearchParams();
+  for (const [chave, valor] of Object.entries(filtros)) {
+    if (valor !== undefined && valor !== null && valor !== "") params.set(chave, String(valor));
+  }
+  const query = params.toString();
+  return req<GenitorDTO[]>(`/genitores${query ? `?${query}` : ""}`);
+};
+
+export const criarGenitor = (input: CriarGenitorInput) => req<GenitorDTO>("/genitores", { method: "POST", body: JSON.stringify(input) });
+
+export const editarGenitor = (id: string, input: EditarGenitorInput) =>
+  req<GenitorDTO>(`/genitores/${id}`, { method: "PATCH", body: JSON.stringify(input) });
+
+export const substituirComposicaoGenitor = (id: string, input: SubstituirComposicaoGenitorInput) =>
+  req<GenitorDTO>(`/genitores/${id}/composicao`, { method: "PUT", body: JSON.stringify(input) });
+
+// ---------- genética v2: material genético (sêmen/embrião) ----------
+
+export const listarMaterialGenetico = (filtros: ListarMaterialGeneticoQuery = {}) => {
+  const params = new URLSearchParams();
+  for (const [chave, valor] of Object.entries(filtros)) {
+    if (valor !== undefined && valor !== null) params.set(chave, String(valor));
+  }
+  const query = params.toString();
+  return req<MaterialGeneticoDTO[]>(`/material-genetico${query ? `?${query}` : ""}`);
+};
+
+export const criarMaterialGenetico = (input: CriarMaterialGeneticoInput) =>
+  req<MaterialGeneticoDTO>("/material-genetico", { method: "POST", body: JSON.stringify(input) });
+
+export const editarMaterialGenetico = (id: string, input: EditarMaterialGeneticoInput) =>
+  req<MaterialGeneticoDTO>(`/material-genetico/${id}`, { method: "PATCH", body: JSON.stringify(input) });
 
 export const buscarAuditoriaAnimal = (id: string, opts?: { page?: number; pageSize?: number }) => {
   const params = new URLSearchParams();

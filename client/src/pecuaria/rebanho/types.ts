@@ -47,8 +47,14 @@ export type AnimalResumo = {
 };
 
 export type FracaoRaca = { sigla: string; fracao64: number };
+export type OrigemComposicao = "INFORMADA" | "CALCULADA";
 /** Item da composição na ficha: traz o id e a situação da raça (inativa continua editável). */
-export type ItemComposicaoFicha = FracaoRaca & { racaId: string; nome: string; racaAtiva: boolean };
+export type ItemComposicaoFicha = FracaoRaca & { racaId: string; nome: string; racaAtiva: boolean; origem: OrigemComposicao; fracaoCalculada64: number };
+
+/** v2 · Genética: mãe/pai na ficha do animal — animal nosso ou genitor externo. */
+export type FiliacaoLadoDTO =
+  | { tipo: "ANIMAL"; id: string; nome: string | null; sexo: Sexo; brinco: string; baixado: boolean }
+  | { tipo: "EXTERNO"; id: string; nome: string; codigo: string | null; fornecedor: string | null };
 
 export type HistoricoLocalizacao = {
   id: string;
@@ -99,6 +105,10 @@ export type AnimalFicha = AnimalResumo & {
   historicoPesagens: HistoricoPesagem[];
   /** trocas manuais de categoria, mais recente primeiro */
   historicoCategoriasManuais: HistoricoCategoriaManual[];
+  /** v2 · Genética: mãe e pai, cada um null ou um animal nosso ou um genitor externo */
+  filiacao: { mae: FiliacaoLadoDTO | null; pai: FiliacaoLadoDTO | null };
+  /** quantos filhos (como mãe ou pai) este animal tem registrados */
+  filhosCount: number;
   baixa: BaixaAnimalResumo | null;
   peso: {
     ultimo: { kg: number; data: string } | null;
@@ -121,6 +131,14 @@ export type AnimalFicha = AnimalResumo & {
 export type ComposicaoItemInput = { racaId: string; fracao64: number };
 export type ItemComposicao = { racaId: string; sigla: string; nome: string; fracao64: number };
 
+/** v2 · Genética: cada lado (mãe/pai) aponta para um animal nosso OU um genitor externo, nunca os dois. */
+export type FiliacaoInput = {
+  maeId?: string | null;
+  paiId?: string | null;
+  maeExternaId?: string | null;
+  paiExternoId?: string | null;
+};
+
 export type CadastrarAnimalInput = {
   brinco: string;
   nome?: string | null;
@@ -139,6 +157,10 @@ export type CadastrarAnimalInput = {
   papelReprodutivo?: PapelReprodutivo;
   composicao?: ComposicaoItemInput[];
   pesoEntradaKg?: number | null;
+} & FiliacaoInput;
+
+export type CadastrarAnimalResultado = AnimalFicha & {
+  avisos: Array<{ campo: string; mensagem: string }>;
 };
 
 /** PATCH /animais/:id — além dos dados fixos, aceita os campos de nascimento/
@@ -155,9 +177,16 @@ export type EditarAnimalInput = Partial<{
   dataEntrada: string;
   partosAntesDaEntrada: number;
   observacao: string | null;
-}>;
+}> & Partial<FiliacaoInput>;
 
-export type SubstituirComposicaoInput = { itens: ComposicaoItemInput[] };
+export type SubstituirComposicaoInput = { itens: ComposicaoItemInput[]; origem?: "INFORMADA" | "CALCULADA"; justificativaExcecao?: string };
+
+export type ComposicaoSugerida = { itens: Array<{ racaId: string; sigla: string; fracao64: number }>; rotulo: string };
+export type DefinirFiliacaoResultado = AnimalFicha & {
+  avisos: Array<{ campo: string; mensagem: string }>;
+  composicaoSugerida: ComposicaoSugerida | null;
+};
+export type FilhoResumo = { id: string; brinco: string; nome: string | null; sexo: Sexo; dataNascimento: string; situacao: Situacao };
 
 export type MovimentarInput = {
   animalIds: string[];
@@ -259,7 +288,7 @@ export type EntradaAuditoria = {
   alteracoes: Array<{ campo: string; rotulo: string; antes: string | null; depois: string | null }>;
 };
 
-export type EntidadeCadastro = "Lote" | "Raca" | "MotivoBaixa" | "CategoriaAnimal";
+export type EntidadeCadastro = "Lote" | "Raca" | "MotivoBaixa" | "CategoriaAnimal" | "GenitorExterno" | "MaterialGenetico";
 
 export type Lote = {
   id: string;
@@ -449,3 +478,78 @@ export type ResultadoSimulacaoCategorias = {
 export type DefinirCategoriaManualInput = { categoriaId: string; data: string; motivo: string };
 export type RemoverCategoriaManualInput = { motivo: string };
 
+// ---------- genética v2: genitores externos ----------
+
+export type GenitorDTO = {
+  id: string;
+  sexo: Sexo;
+  nome: string;
+  codigo: string | null;
+  fornecedor: string | null;
+  fornecedorId: string | null;
+  observacao: string | null;
+  ativo: boolean;
+  composicao: Array<FracaoRaca & { racaId: string; nome: string }>;
+  composicaoRotulo: string;
+  filhos: number;
+};
+
+export type CriarGenitorInput = {
+  sexo: Sexo;
+  nome: string;
+  codigo?: string | null;
+  fornecedor?: string | null;
+  fornecedorId?: string | null;
+  observacao?: string | null;
+  composicao?: ComposicaoItemInput[];
+};
+
+export type EditarGenitorInput = Partial<{
+  sexo: Sexo;
+  nome: string;
+  codigo: string | null;
+  fornecedor: string | null;
+  fornecedorId: string | null;
+  observacao: string | null;
+  ativo: boolean;
+}>;
+
+export type SubstituirComposicaoGenitorInput = { itens: ComposicaoItemInput[] };
+
+export type ListarGenitoresQuery = { sexo?: Sexo; incluirInativos?: boolean; q?: string };
+
+// ---------- genética v2: material genético (sêmen/embrião) ----------
+
+export type TipoMaterialGenetico = "SEMEN" | "EMBRIAO";
+export type TipoSemen = "CONVENCIONAL" | "SEXADO_FEMEA" | "SEXADO_MACHO";
+
+export type GenitorMaterialDTO =
+  | { tipo: "ANIMAL"; id: string; nome: string | null; brinco: string }
+  | { tipo: "EXTERNO"; id: string; nome: string; codigo: string | null };
+
+export type MaterialGeneticoDTO = {
+  id: string;
+  tipo: TipoMaterialGenetico;
+  tipoSemen: TipoSemen | null;
+  touro: GenitorMaterialDTO;
+  doadora: GenitorMaterialDTO | null;
+  observacao: string | null;
+  produto: { id: string; nome: string; unidade: string; ativo: boolean; categoriaNome: string | null };
+  /** saldo no sítio ativo; null = produto ainda sem movimento no estoque. */
+  saldo: number | null;
+};
+
+export type RefGenitorInput = { tipo: "ANIMAL" | "EXTERNO"; id: string };
+
+export type CriarMaterialGeneticoInput = {
+  tipo: TipoMaterialGenetico;
+  tipoSemen?: TipoSemen | null;
+  touro: RefGenitorInput;
+  doadora?: RefGenitorInput | null;
+  observacao?: string | null;
+  produto: { nome?: string; categoriaId: string; centroCustoIds?: string[]; fornecedorIds?: string[] };
+};
+
+export type EditarMaterialGeneticoInput = Partial<{ tipoSemen: TipoSemen | null; doadora: RefGenitorInput; observacao: string | null }>;
+
+export type ListarMaterialGeneticoQuery = { tipo?: TipoMaterialGenetico; incluirInativos?: boolean };

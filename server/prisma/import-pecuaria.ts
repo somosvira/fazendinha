@@ -18,6 +18,12 @@
 // os demais. Se houve alguma falha, o processo termina com código de saída 1 — os detalhes
 // aparecem no relatório (`Falhas`) impresso antes da saída.
 //
+// Genética (v2): `genitoresExternos` (touros/doadoras de fora do rebanho) são criados por
+// `ideagriId` antes dos animais; a filiação (`maeIdeagriId`/`paiIdeagriId`) entra numa segunda
+// passada, depois que todos os animais existem. A segunda passada só preenche o lado que ainda
+// está vazio — nunca sobrescreve filiação editada no sistema — então rodar de novo também é
+// seguro e completa a filiação de animais importados antes da v2.
+//
 // Ordem recomendada:
 //   1) `pnpm --filter rionovo-server run seed:pecuaria`   → Raca/MotivoBaixa (não cria Propriedade)
 //   2) `pnpm --filter rionovo-server run import:pecuaria` → importa server/prisma/pecuaria_v1.json
@@ -91,6 +97,19 @@ interface AnimalJson {
   racaTexto?: string | null;
   baixa: BaixaJson | null;
   pesagens: PesagemJson[];
+  /** CDMAE/CDPAI: ideagriId de um animal do rebanho ou de um item de `genitoresExternos` (v2). */
+  maeIdeagriId?: number;
+  paiIdeagriId?: number;
+}
+
+interface GenitorExternoJson {
+  ideagriId: number;
+  sexo: "F" | "M";
+  nome: string;
+  codigo: string | null;
+  fornecedor: string | null;
+  tipoIdeagri: string | null;
+  composicao: ComposicaoJson[];
 }
 
 interface PecuariaJson {
@@ -101,6 +120,8 @@ interface PecuariaJson {
   motivosBaixa: { ideagriId: number; nome: string }[];
   /** catálogo TIPOBAIXA (1 Voluntária, 2 Descarte involuntário, 3 Morte) — só referência, não consumido diretamente */
   tiposBaixa: { ideagriId: number; nome: string }[];
+  /** v2 — ausente em JSONs gerados antes da genética. */
+  genitoresExternos?: GenitorExternoJson[];
   animais: AnimalJson[];
 }
 
@@ -233,6 +254,7 @@ async function main() {
 
   const siglasNecessarias = new Set<string>();
   for (const a of dados.animais) for (const c of a.composicao) siglasNecessarias.add(c.sigla);
+  for (const g of dados.genitoresExternos ?? []) for (const c of g.composicao) siglasNecessarias.add(c.sigla);
   for (const sigla of siglasNecessarias) {
     if (racaIdPorSigla.has(sigla)) {
       cRaca.ignoradas++;
@@ -328,6 +350,24 @@ async function main() {
       if (id) return id;
     }
     return null;
+  }
+
+  // ---- Genitores externos (v2): por ideagriId; existente é ignorado ----------
+  const cGenitor = novoContador();
+  for (const g of dados.genitoresExternos ?? []) {
+    if (await prisma.genitorExterno.findUnique({ where: { ideagriId: g.ideagriId } })) { cGenitor.ignoradas++; continue; }
+    const composicao = g.composicao.flatMap((c) => {
+      const racaId = racaIdPorSigla.get(c.sigla);
+      return racaId ? [{ racaId, fracao64: c.fracao64 }] : [];
+    });
+    await prisma.genitorExterno.create({
+      data: {
+        ideagriId: g.ideagriId, sexo: g.sexo, nome: g.nome, codigo: g.codigo, fornecedor: g.fornecedor,
+        observacao: g.tipoIdeagri ? `IDEAGRI TIPOANIMAL ${g.tipoIdeagri}` : null,
+        composicao: { create: composicao },
+      },
+    });
+    cGenitor.criadas++;
   }
 
   // ---- Animais ---------------------------------------------------------------
@@ -537,6 +577,39 @@ async function main() {
     }
   }
 
+  // ---- Filiação (v2): segunda passada, só preenche o lado vazio ---------------
+  let filiacoesAnimal = 0;
+  let filiacoesExterno = 0;
+  const idAnimalPorIdeagri = new Map(
+    (await prisma.animal.findMany({ where: { ideagriId: { not: null } }, select: { id: true, ideagriId: true } })).map((x) => [x.ideagriId!, x.id]),
+  );
+  const idGenitorPorIdeagri = new Map(
+    (await prisma.genitorExterno.findMany({ where: { ideagriId: { not: null } }, select: { id: true, ideagriId: true } })).map((x) => [x.ideagriId!, x.id]),
+  );
+  for (const a of dados.animais) {
+    if (a.maeIdeagriId == null && a.paiIdeagriId == null) continue;
+    const filhoId = idAnimalPorIdeagri.get(a.ideagriId);
+    if (!filhoId) continue;
+    try {
+      const atual = await prisma.animal.findUniqueOrThrow({ where: { id: filhoId }, select: { maeId: true, maeExternaId: true, paiId: true, paiExternoId: true } });
+      const data: { maeId?: string; maeExternaId?: string; paiId?: string; paiExternoId?: string } = {};
+      const lado = (ideagriId: number | undefined, animalCampo: "maeId" | "paiId", externoCampo: "maeExternaId" | "paiExternoId") => {
+        if (ideagriId == null || atual[animalCampo] || atual[externoCampo]) return;
+        const animalId = idAnimalPorIdeagri.get(ideagriId);
+        const externoId = idGenitorPorIdeagri.get(ideagriId);
+        if (animalId) { data[animalCampo] = animalId; filiacoesAnimal++; }
+        else if (externoId) { data[externoCampo] = externoId; filiacoesExterno++; }
+        else avisos.push(`Animal ${a.brinco} (ideagriId ${a.ideagriId}): ${animalCampo === "maeId" ? "mãe" : "pai"} ${ideagriId} não encontrado — filiação não gravada`);
+      };
+      lado(a.maeIdeagriId, "maeId", "maeExternaId");
+      lado(a.paiIdeagriId, "paiId", "paiExternoId");
+      if (Object.keys(data).length) await prisma.animal.update({ where: { id: filhoId }, data });
+    } catch (e) {
+      const mensagem = e instanceof Error ? e.message : String(e);
+      falhas.push({ brinco: a.brinco, ideagriId: a.ideagriId, mensagem: `filiação: ${mensagem}` });
+    }
+  }
+
   // ---- Brinco duplicado entre ativos do mesmo sítio (relatório, não bloqueia) ----
   const localizacoesAbertas = await prisma.localizacaoAnimal.findMany({
     where: { ate: null },
@@ -570,6 +643,8 @@ async function main() {
   console.log(`Destino       — criados: ${cDestino.criadas}, ignorados: ${cDestino.ignoradas}`);
   console.log(`Baixas        — criadas: ${cBaixa.criadas}, ignoradas: ${cBaixa.ignoradas}, sem motivo resolvido: ${baixasSemMotivo}`);
   console.log(`Pesagens      — criadas: ${cPesagem.criadas}, ignoradas: ${cPesagem.ignoradas}`);
+  console.log(`Genitores ext. — criados: ${cGenitor.criadas}, ignorados (já existiam): ${cGenitor.ignoradas}`);
+  console.log(`Filiação      — para animal do rebanho: ${filiacoesAnimal}, para genitor externo: ${filiacoesExterno}`);
   console.log(`Animais sem composição racial: ${semComposicao}`);
   console.log(`Frações de composição perdidas (raça não resolvida): ${fracoesRacaPerdidas}`);
   console.log(`Papel reprodutivo inicial vindo do ANIMALPERIODO aberto: ${papelPorPeriodo}`);

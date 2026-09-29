@@ -86,6 +86,7 @@ export const categoriaCadastroSchema = z.object({
   classificacao: z.enum(["CUSTEIO", "INVESTIMENTO"]).nullable().default(null),
   ordem: z.number().int().min(0).max(9999).default(0),
   usoAgricola: z.boolean().optional(),
+  usoGenetico: z.boolean().optional(),
 });
 
 export const patchCategoriaCadastroSchema = categoriaCadastroSchema.partial().extend({ ativo: z.boolean().optional() });

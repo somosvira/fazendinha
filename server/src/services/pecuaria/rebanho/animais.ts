@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../../db.js";
 import {
@@ -6,22 +7,24 @@ import {
 } from "./regras.js";
 import { brincoDisponivel, normalizarBrinco } from "./brinco.calc.js";
 import { validarDatasAnimal, validarDataBaixa, validarDataPesagem, validarDataDestino, planejarAjusteEntrada } from "./datas.calc.js";
-import { validarComposicao } from "./composicao.calc.js";
+import { validarComposicao, rotuloComposicao, composicaoRespeitaHerdanca, type FracaoRaca } from "./composicao.calc.js";
+import { validarFiliacao, validarIntervaloPartos, genitorEhDescendente, composicaoDosGenitores, type GenitorRef } from "./genetica.calc.js";
 import { planejarDestino, planejarDesfazer, planejarDesfazerMovimentacao, planejarMovimentacaoEmMassa, MovimentacaoError, type LinhaHistorico } from "./movimentacao.calc.js";
 import { avaliarCategoria, faixaNascimentoParaIdade, validarDataCategoriaManual, type RegraCategoria } from "./categoria.calc.js";
 import { carregarRegras, manualDe, SELECT_MANUAL_ABERTA, whereCategoria, whereSemCategoria } from "./categorias.js";
 import { planejarBaixa, planejarEstornoBaixa, motivoAceito, mensagemMotivoRecusado, BaixaError } from "./baixa.calc.js";
-import { agregarPainel, mapearAnimalResumo, resumoAuditoria, type AnimalResumo, type AnimalFicha, type ItemComposicaoFicha, type PainelRebanho } from "./mappers.js";
+import { agregarPainel, mapearAnimalResumo, resumoAuditoria, type AnimalResumo, type AnimalFicha, type ItemComposicaoFicha, type PainelRebanho, type FiliacaoLadoDTO } from "./mappers.js";
 import { resumoPeso } from "./peso.calc.js";
 import { diferencas, type CampoAlteracao } from "./auditoria.calc.js";
 import type {
   CadastrarAnimalInput, EditarAnimalInput, MovimentarInput, MudarDestinoInput,
   BaixaInput, EstornoBaixaInput, PesagemInput, EditarPesagemInput, ListarFiltrosInput,
   SubstituirComposicaoInput, CategoriaManualInput, RemoverCategoriaManualInput,
+  DefinirFiliacaoInput,
 } from "./schemas.js";
 
 /** Entidades de cadastro que `/auditoria` (fora do animal) pode consultar. */
-export const ENTIDADES_AUDITORIA_CADASTRO = ["Lote", "Raca", "MotivoBaixa", "CategoriaAnimal"] as const;
+export const ENTIDADES_AUDITORIA_CADASTRO = ["Lote", "Raca", "MotivoBaixa", "CategoriaAnimal", "GenitorExterno", "MaterialGenetico"] as const;
 export type EntidadeAuditoriaCadastro = (typeof ENTIDADES_AUDITORIA_CADASTRO)[number];
 
 // ---------- helpers de leitura (escopados por propriedade quando informado) ----------
@@ -103,13 +106,193 @@ async function exigirBrincoLivre(db: DbPecuaria, brinco: string, propriedadeId: 
 async function composicaoDaFicha(db: DbPecuaria, animalId: string): Promise<ItemComposicaoFicha[]> {
   const itens = await db.composicaoRacial.findMany({ where: { animalId }, include: { raca: true } });
   return itens
-    .map((i) => ({ racaId: i.racaId, sigla: i.raca.sigla, nome: i.raca.nome, racaAtiva: i.raca.ativo, fracao64: i.fracao64 }))
+    .map((i) => ({ racaId: i.racaId, sigla: i.raca.sigla, nome: i.raca.nome, racaAtiva: i.raca.ativo, fracao64: i.fracao64, fracaoCalculada64: i.fracaoCalculada64, origem: i.origem }))
     .sort((a, b) => b.fracao64 - a.fracao64);
+}
+
+// ---------- filiação (v2 · Genética) ----------
+//
+// Composição do filho é calculada agrupando por `racaId` (não por sigla — duas raças podem ter
+// a mesma sigla em teoria, `racaId` é a chave real). `composicaoDosGenitores`/`calcularComposicaoFilho`
+// são agnósticos ao significado do campo `sigla` de `FracaoRaca`; aqui ele carrega o `racaId`.
+
+async function composicaoAnimalComoFracao(db: DbPecuaria, animalId: string): Promise<FracaoRaca[]> {
+  const itens = await db.composicaoRacial.findMany({ where: { animalId } });
+  return itens.map((i) => ({ sigla: i.racaId, fracao64: i.fracao64 }));
+}
+
+async function composicaoGenitorExternoComoFracao(db: DbPecuaria, genitorId: string): Promise<FracaoRaca[]> {
+  const itens = await db.composicaoGenitorExterno.findMany({ where: { genitorId } });
+  return itens.map((i) => ({ sigla: i.racaId, fracao64: i.fracao64 }));
+}
+
+async function composicaoHerdada(db: DbPecuaria, animal: { maeId: string | null; maeExternaId: string | null; paiId: string | null; paiExternoId: string | null }): Promise<FracaoRaca[]> {
+  const [mae, pai] = await Promise.all([
+    animal.maeId ? composicaoAnimalComoFracao(db, animal.maeId) : animal.maeExternaId ? composicaoGenitorExternoComoFracao(db, animal.maeExternaId) : Promise.resolve(null),
+    animal.paiId ? composicaoAnimalComoFracao(db, animal.paiId) : animal.paiExternoId ? composicaoGenitorExternoComoFracao(db, animal.paiExternoId) : Promise.resolve(null),
+  ]);
+  return composicaoDosGenitores(mae, pai) ?? [];
+}
+
+function exigirHerdanca(itens: FracaoRaca[], herdada: FracaoRaca[], justificativa?: string): void {
+  if (composicaoRespeitaHerdanca(itens, herdada)) return;
+  if (justificativa?.trim() && justificativa.trim().length >= 10) return;
+  throw new RebanhoError("VALIDACAO", "A composição não pode alterar a parcela calculada dos genitores. Para registrar uma exceção, informe uma justificativa de pelo menos 10 caracteres.", "composicao");
+}
+
+function linhasComposicao(animalId: string, itens: Array<{ racaId: string; fracao64: number }>, herdada: FracaoRaca[], usuarioId: number | null, excecao = false) {
+  const porRaca = new Map(herdada.map((c) => [c.sigla, c.fracao64]));
+  return itens.map((c) => {
+    const fracaoCalculada64 = excecao ? 0 : (porRaca.get(c.racaId) ?? 0);
+    return { animalId, racaId: c.racaId, fracao64: c.fracao64, fracaoCalculada64, origem: fracaoCalculada64 === c.fracao64 ? "CALCULADA" as const : "INFORMADA" as const, criadoPorId: usuarioId };
+  });
+}
+
+/** Sobe de `raizIds` por até 3 gerações (filhos, netos, bisnetos) — usado para checar ciclo. */
+async function carregarDescendentes(db: DbPecuaria, raizId: string): Promise<Set<string>> {
+  const vistos = new Set<string>();
+  let atual = [raizId];
+  for (let nivel = 0; nivel < 3 && atual.length; nivel += 1) {
+    const filhos = await db.animal.findMany({ where: { OR: [{ maeId: { in: atual } }, { paiId: { in: atual } }] }, select: { id: true } });
+    const novos = filhos.map((f) => f.id).filter((id) => !vistos.has(id));
+    novos.forEach((id) => vistos.add(id));
+    atual = novos;
+  }
+  return vistos;
+}
+
+interface FiliacaoResolvida {
+  maeId: string | null;
+  paiId: string | null;
+  maeExternaId: string | null;
+  paiExternoId: string | null;
+  maeComposicao: FracaoRaca[] | null;
+  paiComposicao: FracaoRaca[] | null;
+  avisos: Array<{ campo: string; mensagem: string }>;
+}
+
+/**
+ * Valida e resolve a filiação proposta (mãe/pai, animal nosso ou genitor externo): sexo, o
+ * próprio animal, nascimento anterior, ciclo de ancestralidade (até 3 gerações) e o aviso de
+ * intervalo entre partos. Não grava nada — só lê e valida. `input` já vem no formato "estado
+ * final" (campo ausente/null = sem genitor daquele lado).
+ */
+async function resolverFiliacao(
+  db: DbPecuaria,
+  filho: { id: string; dataNascimento: Date },
+  input: { maeId?: string | null; paiId?: string | null; maeExternaId?: string | null; paiExternoId?: string | null },
+  atual: { maeExternaId: string | null; paiExternoId: string | null } = { maeExternaId: null, paiExternoId: null },
+): Promise<FiliacaoResolvida> {
+  const maeId = input.maeId ?? null;
+  const paiId = input.paiId ?? null;
+  const maeExternaId = input.maeExternaId ?? null;
+  const paiExternoId = input.paiExternoId ?? null;
+
+  async function carregarLado(animalId: string | null, externoId: string | null, campo: "maeId" | "paiId" | "maeExternaId" | "paiExternoId"): Promise<{ ref: GenitorRef | null; composicao: FracaoRaca[] | null }> {
+    if (animalId) {
+      const a = await db.animal.findUnique({ where: { id: animalId } });
+      if (!a) throw new RebanhoError("NAO_ENCONTRADO", "Genitor não encontrado", campo);
+      return {
+        ref: { tipo: "ANIMAL", id: a.id, sexo: a.sexo, dataNascimento: a.dataNascimento.toISOString().slice(0, 10) },
+        composicao: await composicaoAnimalComoFracao(db, a.id),
+      };
+    }
+    if (externoId) {
+      const g = await db.genitorExterno.findUnique({ where: { id: externoId } });
+      if (!g) throw new RebanhoError("NAO_ENCONTRADO", "Genitor externo não encontrado", campo);
+      // inativo só é aceito se já era o genitor atual daquele lado
+      const atualDoLado = campo === "maeExternaId" ? atual.maeExternaId : atual.paiExternoId;
+      if (!g.ativo && g.id !== atualDoLado) throw new RebanhoError("NAO_ENCONTRADO", "Genitor externo não encontrado ou inativo", campo);
+      return {
+        ref: { tipo: "EXTERNO", id: g.id, sexo: g.sexo, ativo: g.ativo },
+        composicao: await composicaoGenitorExternoComoFracao(db, g.id),
+      };
+    }
+    return { ref: null, composicao: null };
+  }
+
+  const [mae, pai] = await Promise.all([
+    carregarLado(maeId, maeExternaId, maeId ? "maeId" : "maeExternaId"),
+    carregarLado(paiId, paiExternoId, paiId ? "paiId" : "paiExternoId"),
+  ]);
+
+  const filhoRef = { id: filho.id, dataNascimento: filho.dataNascimento.toISOString().slice(0, 10) };
+  const { erros, avisos } = validarFiliacao(filhoRef, mae.ref, pai.ref);
+  if (erros.length) throw new RebanhoError("VALIDACAO", erros[0].mensagem, erros[0].campo);
+
+  const idsAnimaisPropostos = [
+    mae.ref?.tipo === "ANIMAL" ? { campo: "maeId" as const, id: mae.ref.id } : null,
+    pai.ref?.tipo === "ANIMAL" ? { campo: "paiId" as const, id: pai.ref.id } : null,
+  ].filter((x): x is { campo: "maeId" | "paiId"; id: string } => x != null);
+
+  if (idsAnimaisPropostos.length) {
+    const descendentes = await carregarDescendentes(db, filho.id);
+    for (const { campo, id } of idsAnimaisPropostos) {
+      if (genitorEhDescendente(id, descendentes)) {
+        throw new RebanhoError("VALIDACAO", "Esse animal é descendente do próprio filho — não pode ser seu genitor", campo);
+      }
+    }
+  }
+
+  let avisosFinais = avisos;
+  if (mae.ref?.tipo === "ANIMAL") {
+    const outrosPartos = await db.animal.findMany({ where: { maeId: mae.ref.id, id: { not: filho.id } }, select: { dataNascimento: true } });
+    avisosFinais = [...avisos, ...validarIntervaloPartos(filhoRef.dataNascimento, outrosPartos.map((p) => p.dataNascimento.toISOString().slice(0, 10)))];
+  }
+
+  return { maeId, paiId, maeExternaId, paiExternoId, maeComposicao: mae.composicao, paiComposicao: pai.composicao, avisos: avisosFinais };
+}
+
+/**
+ * Recalcula a parcela herdada e preserva a manual quando couber. Ao retirar a filiação,
+ * remove apenas a parcela antes atribuída aos genitores.
+ */
+async function aplicarComposicaoCalculada(tx: DbPecuaria, animalId: string, sugerida: FracaoRaca[] | null, usuarioId: number | null): Promise<boolean> {
+  const atual = await tx.composicaoRacial.findMany({ where: { animalId } });
+  if (sugerida == null && atual.length === 0) return false;
+  if (sugerida == null && atual.some((c) => c.origem === "INFORMADA")) {
+    await tx.composicaoRacial.deleteMany({ where: { animalId } });
+    const informada = atual.map((c) => ({ racaId: c.racaId, fracao64: c.fracao64 - c.fracaoCalculada64 })).filter((c) => c.fracao64 > 0);
+    if (informada.length) await tx.composicaoRacial.createMany({ data: linhasComposicao(animalId, informada, [], usuarioId) });
+    const depois = await tx.composicaoRacial.findMany({ where: { animalId } });
+    await auditar(tx, { entidade: "ComposicaoRacial", entidadeId: animalId, animalId, acao: "EDICAO", usuarioId, antes: atual, depois });
+    return true;
+  }
+  const podeSubstituir = atual.length === 0 || atual.every((c) => c.origem === "CALCULADA");
+  if (!podeSubstituir && sugerida && composicaoRespeitaHerdanca(atual.map((c) => ({ sigla: c.racaId, fracao64: c.fracao64 })), sugerida)) {
+    // A parte manual cabe no lado desconhecido: preserva o total e atualiza sua proveniência.
+    const fixa = new Map(sugerida.map((c) => [c.sigla, c.fracao64]));
+    for (const item of atual) {
+      const fracaoCalculada64 = fixa.get(item.racaId) ?? 0;
+      await tx.composicaoRacial.update({ where: { id: item.id }, data: { fracaoCalculada64, origem: fracaoCalculada64 === item.fracao64 ? "CALCULADA" : "INFORMADA" } });
+    }
+    const depois = await tx.composicaoRacial.findMany({ where: { animalId } });
+    await auditar(tx, { entidade: "ComposicaoRacial", entidadeId: animalId, animalId, acao: "EDICAO", usuarioId, antes: atual, depois });
+    return true;
+  }
+  await tx.composicaoRacial.deleteMany({ where: { animalId } });
+  if (sugerida?.length) {
+    await tx.composicaoRacial.createMany({
+        data: sugerida.map((c) => ({ animalId, racaId: c.sigla, fracao64: c.fracao64, fracaoCalculada64: c.fracao64, origem: "CALCULADA" as const, criadoPorId: usuarioId })),
+    });
+  }
+  const depois = await tx.composicaoRacial.findMany({ where: { animalId } });
+  await auditar(tx, { entidade: "ComposicaoRacial", entidadeId: animalId, animalId, acao: "EDICAO", usuarioId, antes: atual, depois });
+  return true;
+}
+
+/** Rótulo de uma composição calculada (sigla=racaId): resolve os nomes reais antes de formatar. */
+async function rotularComposicaoCalculada(db: DbPecuaria, itens: FracaoRaca[] | null): Promise<{ itens: Array<{ racaId: string; sigla: string; fracao64: number }>; rotulo: string } | null> {
+  if (itens == null) return null;
+  const racas = await db.raca.findMany({ where: { id: { in: itens.map((i) => i.sigla) } } });
+  const mapa = new Map(racas.map((r) => [r.id, r.sigla]));
+  const comSigla = itens.map((i) => ({ racaId: i.sigla, sigla: mapa.get(i.sigla) ?? "?", fracao64: i.fracao64 }));
+  return { itens: comSigla, rotulo: rotuloComposicao(comSigla.map((i) => ({ sigla: i.sigla, fracao64: i.fracao64 }))) };
 }
 
 // ---------- cadastrar ----------
 
-export async function cadastrar(input: CadastrarAnimalInput, usuarioId: number | null): Promise<AnimalResumo> {
+export async function cadastrar(input: CadastrarAnimalInput, usuarioId: number | null): Promise<AnimalResumo & { avisos: Array<{ campo: string; mensagem: string }> }> {
   const erosDatas = validarDatasAnimal({ dataNascimento: input.dataNascimento, dataEntrada: input.dataEntrada, origem: input.origem });
   if (erosDatas.length) throw new RebanhoError("VALIDACAO", erosDatas[0].mensagem, erosDatas[0].campo);
 
@@ -129,10 +312,22 @@ export async function cadastrar(input: CadastrarAnimalInput, usuarioId: number |
   const propriedade = await prisma.propriedade.findFirst({ where: { id: input.propriedadeId, ativo: true } });
   if (!propriedade) throw new RebanhoError("NAO_ENCONTRADO", "Propriedade não encontrada ou inativa", "propriedadeId");
 
+  // filiação (v2 · Genética): validada antes da transação — o animal ainda não existe, então o
+  // "ciclo" não pode ocorrer (nenhum descendente aponta pra um id que ainda não foi gerado).
+  const temFiliacao = input.maeId != null || input.paiId != null || input.maeExternaId != null || input.paiExternoId != null;
+  const filiacaoResolvida = temFiliacao
+    ? await resolverFiliacao(prisma, { id: crypto.randomUUID(), dataNascimento: new Date(input.dataNascimento) }, input)
+    : null;
+  const composicaoSugeridaCadastro = filiacaoResolvida ? composicaoDosGenitores(filiacaoResolvida.maeComposicao, filiacaoResolvida.paiComposicao) : null;
+  const herdadaCadastro = composicaoSugeridaCadastro ?? [];
+  if (input.composicao.length) exigirHerdanca(input.composicao.map((c) => ({ sigla: c.racaId, fracao64: c.fracao64 })), herdadaCadastro);
   if (input.composicao.length) {
+    const herdadas = new Set(herdadaCadastro.map((c) => c.sigla));
     const racaIds = [...new Set(input.composicao.map((c) => c.racaId))];
-    const encontradas = await prisma.raca.count({ where: { id: { in: racaIds }, ativo: true } });
-    if (encontradas !== racaIds.length) throw new RebanhoError("NAO_ENCONTRADO", "Raça da composição não encontrada ou inativa", "composicao");
+    const encontradas = await prisma.raca.findMany({ where: { id: { in: racaIds } }, select: { id: true, ativo: true } });
+    if (encontradas.length !== racaIds.length || encontradas.some((r) => !r.ativo && !herdadas.has(r.id))) {
+      throw new RebanhoError("NAO_ENCONTRADO", "Raça da composição não encontrada ou inativa", "composicao");
+    }
   }
 
   // animal novo (id ainda não existe): não há trava de animal; lote antes do brinco (ordem em regras.ts)
@@ -153,6 +348,10 @@ export async function cadastrar(input: CadastrarAnimalInput, usuarioId: number |
         dataEntrada: new Date(input.dataEntrada),
         partosAntesDaEntrada: input.partosAntesDaEntrada,
         observacao: input.observacao ?? null,
+        maeId: filiacaoResolvida?.maeId ?? null,
+        paiId: filiacaoResolvida?.paiId ?? null,
+        maeExternaId: filiacaoResolvida?.maeExternaId ?? null,
+        paiExternoId: filiacaoResolvida?.paiExternoId ?? null,
         criadoPorId: usuarioId,
       },
     }).catch((e) => traduzirConflitoUnico(e, {
@@ -170,7 +369,12 @@ export async function cadastrar(input: CadastrarAnimalInput, usuarioId: number |
 
     if (input.composicao.length) {
       await tx.composicaoRacial.createMany({
-        data: input.composicao.map((c) => ({ animalId: animal.id, racaId: c.racaId, fracao64: c.fracao64, origem: "INFORMADA" as const, criadoPorId: usuarioId })),
+        data: linhasComposicao(animal.id, input.composicao, herdadaCadastro, usuarioId),
+      });
+    } else if (composicaoSugeridaCadastro && composicaoSugeridaCadastro.length) {
+      // sem composição informada mas com genitores conhecidos: grava como CALCULADA (sigla=racaId)
+      await tx.composicaoRacial.createMany({
+        data: composicaoSugeridaCadastro.map((c) => ({ animalId: animal.id, racaId: c.sigla, fracao64: c.fracao64, fracaoCalculada64: c.fracao64, origem: "CALCULADA" as const, criadoPorId: usuarioId })),
       });
     }
 
@@ -187,10 +391,25 @@ export async function cadastrar(input: CadastrarAnimalInput, usuarioId: number |
     return animal;
   });
 
-  return buscarFicha(criado.id, null).then((f) => f as AnimalResumo);
+  return buscarFicha(criado.id, null).then((f) => ({ ...f, avisos: filiacaoResolvida?.avisos ?? [] }) as AnimalResumo & { avisos: Array<{ campo: string; mensagem: string }> });
 }
 
 // ---------- editar (só campos fixos) ----------
+
+/** Nascimento novo precisa continuar depois dos genitores (animais) e antes de todos os filhos. */
+async function exigirOrdemNascimento(db: DbPecuaria, animal: { id: string; maeId: string | null; paiId: string | null }, nascimento: Date): Promise<void> {
+  const genitorIds = [animal.maeId, animal.paiId].filter((x): x is string => x != null);
+  const [genitores, filhoMaisVelho] = await Promise.all([
+    genitorIds.length ? db.animal.findMany({ where: { id: { in: genitorIds } }, select: { dataNascimento: true } }) : Promise.resolve([]),
+    db.animal.findFirst({ where: { OR: [{ maeId: animal.id }, { paiId: animal.id }] }, orderBy: { dataNascimento: "asc" }, select: { dataNascimento: true } }),
+  ]);
+  if (genitores.some((g) => g.dataNascimento.getTime() >= nascimento.getTime())) {
+    throw new RebanhoError("VALIDACAO", "O animal precisa ter nascido depois da mãe e do pai", "dataNascimento");
+  }
+  if (filhoMaisVelho && filhoMaisVelho.dataNascimento.getTime() <= nascimento.getTime()) {
+    throw new RebanhoError("VALIDACAO", "O animal precisa ter nascido antes dos seus filhos", "dataNascimento");
+  }
+}
 
 export async function editar(id: string, input: EditarAnimalInput, usuarioId: number | null, escopo: number | null = null): Promise<AnimalResumo> {
   await exigirNoEscopo(prisma, id, escopo);
@@ -228,6 +447,21 @@ export async function editar(id: string, input: EditarAnimalInput, usuarioId: nu
       if (ajuste.erros.length) throw new RebanhoError("VALIDACAO", ajuste.erros[0].mensagem, ajuste.erros[0].campo);
     }
 
+    if (input.dataNascimento != null && nascimentoNovo.getTime() !== animal.dataNascimento.getTime()) {
+      // mexendo na filiação junto, os genitores são validados por resolverFiliacao com a data nova
+      const mexeFiliacao = input.maeId !== undefined || input.maeExternaId !== undefined || input.paiId !== undefined || input.paiExternoId !== undefined;
+      await exigirOrdemNascimento(tx, mexeFiliacao ? { ...animal, maeId: null, paiId: null } : animal, nascimentoNovo);
+    }
+
+    if (input.sexo && input.sexo !== animal.sexo) {
+      const [filhos, materiais] = await Promise.all([
+        tx.animal.count({ where: { OR: [{ maeId: id }, { paiId: id }] } }),
+        tx.materialGenetico.count({ where: { OR: [{ touroId: id }, { doadoraId: id }] } }),
+      ]);
+      if (filhos > 0) throw new RebanhoError("CONFLITO", "Este animal já é mãe/pai de outros animais; não é possível trocar o sexo", "sexo");
+      if (materiais > 0) throw new RebanhoError("CONFLITO", "Este animal é usado em material genético (sêmen/embrião); não é possível trocar o sexo", "sexo");
+    }
+
     // a categoria manual tem sexo: trocar o sexo do animal exige voltar ao automático antes
     if (input.sexo && input.sexo !== animal.sexo) {
       const manual = await tx.categoriaManualAnimal.findFirst({ where: { animalId: id, ate: null }, include: { categoria: true } });
@@ -258,6 +492,23 @@ export async function editar(id: string, input: EditarAnimalInput, usuarioId: nu
       if (loc) await exigirBrincoLivre(tx, input.brinco, loc.propriedadeId, id);
     }
 
+    // filiação (v2 · Genética): campo ausente = não mexe; qualquer um presente resolve o lado
+    // inteiro (mãe/pai são pares — não dá pra só trocar maeExternaId sem saber o maeId atual).
+    const tocaMae = input.maeId !== undefined || input.maeExternaId !== undefined;
+    const tocaPai = input.paiId !== undefined || input.paiExternoId !== undefined;
+    let filiacaoResolvidaEdicao: Awaited<ReturnType<typeof resolverFiliacao>> | null = null;
+    let composicaoSugeridaEdicao: FracaoRaca[] | null = null;
+    if (tocaMae || tocaPai) {
+      const propostaMaeId = tocaMae ? (input.maeId ?? null) : animal.maeId;
+      const propostaMaeExternaId = tocaMae ? (input.maeExternaId ?? null) : animal.maeExternaId;
+      const propostaPaiId = tocaPai ? (input.paiId ?? null) : animal.paiId;
+      const propostaPaiExternoId = tocaPai ? (input.paiExternoId ?? null) : animal.paiExternoId;
+      filiacaoResolvidaEdicao = await resolverFiliacao(tx, { id, dataNascimento: nascimentoNovo }, {
+        maeId: propostaMaeId, maeExternaId: propostaMaeExternaId, paiId: propostaPaiId, paiExternoId: propostaPaiExternoId,
+      }, animal);
+      composicaoSugeridaEdicao = composicaoDosGenitores(filiacaoResolvidaEdicao.maeComposicao, filiacaoResolvidaEdicao.paiComposicao);
+    }
+
     const salvo = await tx.animal.update({
       where: { id },
       data: {
@@ -272,11 +523,19 @@ export async function editar(id: string, input: EditarAnimalInput, usuarioId: nu
         dataEntrada: input.dataEntrada != null ? entradaNova : undefined,
         partosAntesDaEntrada: trocaParaMacho ? 0 : (input.partosAntesDaEntrada ?? undefined),
         observacao: input.observacao === undefined ? undefined : input.observacao,
+        maeId: tocaMae ? (filiacaoResolvidaEdicao?.maeId ?? null) : undefined,
+        maeExternaId: tocaMae ? (filiacaoResolvidaEdicao?.maeExternaId ?? null) : undefined,
+        paiId: tocaPai ? (filiacaoResolvidaEdicao?.paiId ?? null) : undefined,
+        paiExternoId: tocaPai ? (filiacaoResolvidaEdicao?.paiExternoId ?? null) : undefined,
       },
     }).catch((e) => traduzirConflitoUnico(e, {
       brincoEletronico: "Já existe um animal com esse brinco eletrônico",
       sisbov: "Já existe um animal com esse SISBOV",
     }));
+
+    if (tocaMae || tocaPai) {
+      await aplicarComposicaoCalculada(tx, id, composicaoSugeridaEdicao, usuarioId);
+    }
 
     // o histórico que começava na entrada/nascimento antigos acompanha as novas datas
     if (ajuste) {
@@ -310,6 +569,7 @@ export async function substituirComposicao(
   input: SubstituirComposicaoInput,
   usuarioId: number | null,
   escopo: number | null = null,
+  origem: "INFORMADA" | "CALCULADA" = "INFORMADA",
 ): Promise<ItemComposicaoFicha[]> {
   await exigirNoEscopo(prisma, animalId, escopo);
 
@@ -330,21 +590,133 @@ export async function substituirComposicao(
 
   const composicao = await prisma.$transaction(async (tx) => {
     await travarAnimais(tx, [animalId]);
+    const animal = await exigirAnimal(tx, animalId);
+    const herdada = await composicaoHerdada(tx, animal);
+    const itens = input.itens.length ? input.itens : herdada.map((c) => ({ racaId: c.sigla, fracao64: c.fracao64 }));
+    const excecao = !composicaoRespeitaHerdanca(itens.map((c) => ({ sigla: c.racaId, fracao64: c.fracao64 })), herdada);
+    exigirHerdanca(itens.map((c) => ({ sigla: c.racaId, fracao64: c.fracao64 })), herdada, input.justificativaExcecao);
+    if (origem === "CALCULADA" && (excecao || itens.some((c) => c.fracao64 !== herdada.find((h) => h.sigla === c.racaId)?.fracao64))) {
+      throw new RebanhoError("VALIDACAO", "A composição calculada deve ser exatamente a herdada dos genitores.", "itens");
+    }
     const antes = await tx.composicaoRacial.findMany({ where: { animalId } });
     await tx.composicaoRacial.deleteMany({ where: { animalId } });
-    if (input.itens.length) {
+    if (itens.length) {
       await tx.composicaoRacial.createMany({
-        data: input.itens.map((c) => ({ animalId, racaId: c.racaId, fracao64: c.fracao64, origem: "INFORMADA" as const, criadoPorId: usuarioId })),
+        data: linhasComposicao(animalId, itens, herdada, usuarioId, excecao),
       });
     }
     const depois = await tx.composicaoRacial.findMany({ where: { animalId }, include: { raca: true } });
-    await auditar(tx, { entidade: "ComposicaoRacial", entidadeId: animalId, animalId, acao: "EDICAO", usuarioId, antes, depois });
+    await auditar(tx, { entidade: "ComposicaoRacial", entidadeId: animalId, animalId, acao: "EDICAO", usuarioId, antes, depois: { itens: depois, justificativaExcecao: input.justificativaExcecao?.trim() ?? null } });
     return depois;
   });
 
   return composicao
-    .map((c) => ({ racaId: c.racaId, sigla: c.raca.sigla, nome: c.raca.nome, racaAtiva: c.raca.ativo, fracao64: c.fracao64 }))
+    .map((c) => ({ racaId: c.racaId, sigla: c.raca.sigla, nome: c.raca.nome, racaAtiva: c.raca.ativo, fracao64: c.fracao64, fracaoCalculada64: c.fracaoCalculada64, origem: c.origem }))
     .sort((a, b) => b.fracao64 - a.fracao64);
+}
+
+/** Prévia para o cadastro, antes de existir o id do filho. */
+export async function preverComposicao(input: DefinirFiliacaoInput & { dataNascimento: string }) {
+  const resolvida = await resolverFiliacao(prisma, { id: crypto.randomUUID(), dataNascimento: new Date(input.dataNascimento) }, input);
+  return rotularComposicaoCalculada(prisma, composicaoDosGenitores(resolvida.maeComposicao, resolvida.paiComposicao));
+}
+
+// ---------- filiação: definir, filhos, sugestão de composição ----------
+
+/** Ficha simplificada de um genitor (para `filiacao.mae`/`filiacao.pai` da ficha). */
+async function fichaFiliacaoLado(db: DbPecuaria, animalId: string | null, externoId: string | null): Promise<FiliacaoLadoDTO | null> {
+  if (animalId) {
+    const a = await db.animal.findUnique({ where: { id: animalId } });
+    if (!a) return null;
+    const baixa = await baixaAberta(db, animalId);
+    return { tipo: "ANIMAL", id: a.id, nome: a.nome, sexo: a.sexo, brinco: a.brinco, baixado: baixa != null };
+  }
+  if (externoId) {
+    const g = await db.genitorExterno.findUnique({ where: { id: externoId } });
+    if (!g) return null;
+    return { tipo: "EXTERNO", id: g.id, nome: g.nome, codigo: g.codigo, fornecedor: g.fornecedor };
+  }
+  return null;
+}
+
+/**
+ * Define a filiação e reconcilia a parcela herdada na mesma transação. Se o registro manual
+ * anterior divergir da nova filiação, o valor antigo permanece na auditoria e o cálculo vigora.
+ */
+export async function definirFiliacao(
+  animalId: string,
+  input: DefinirFiliacaoInput,
+  usuarioId: number | null,
+  escopo: number | null = null,
+): Promise<AnimalFicha & { avisos: Array<{ campo: string; mensagem: string }>; composicaoSugerida: { itens: Array<{ racaId: string; sigla: string; fracao64: number }>; rotulo: string } | null }> {
+  await exigirNoEscopo(prisma, animalId, escopo);
+
+  let avisos: Array<{ campo: string; mensagem: string }> = [];
+  let composicaoSubstituida = false;
+
+  await prisma.$transaction(async (tx) => {
+    await travarAnimais(tx, [animalId]);
+    const animal = await exigirAnimal(tx, animalId);
+    const antes = { maeId: animal.maeId, paiId: animal.paiId, maeExternaId: animal.maeExternaId, paiExternoId: animal.paiExternoId };
+
+    const resolvida = await resolverFiliacao(tx, { id: animalId, dataNascimento: animal.dataNascimento }, input, animal);
+    avisos = resolvida.avisos;
+    const mudouFiliacao = animal.maeId !== resolvida.maeId || animal.maeExternaId !== resolvida.maeExternaId || animal.paiId !== resolvida.paiId || animal.paiExternoId !== resolvida.paiExternoId;
+    const sugerida = composicaoDosGenitores(resolvida.maeComposicao, resolvida.paiComposicao);
+    if (mudouFiliacao) {
+      const atual = await tx.composicaoRacial.findMany({ where: { animalId } });
+      composicaoSubstituida = atual.some((c) => c.origem === "INFORMADA") && sugerida != null && !composicaoRespeitaHerdanca(atual.map((c) => ({ sigla: c.racaId, fracao64: c.fracao64 })), sugerida);
+    }
+
+    const salvo = await tx.animal.update({
+      where: { id: animalId },
+      data: { maeId: resolvida.maeId, paiId: resolvida.paiId, maeExternaId: resolvida.maeExternaId, paiExternoId: resolvida.paiExternoId },
+    });
+    await auditar(tx, { entidade: "Animal", entidadeId: animalId, animalId, acao: "FILIACAO", usuarioId, antes, depois: { maeId: salvo.maeId, paiId: salvo.paiId, maeExternaId: salvo.maeExternaId, paiExternoId: salvo.paiExternoId } });
+
+    if (mudouFiliacao) await aplicarComposicaoCalculada(tx, animalId, sugerida, usuarioId);
+  });
+
+  const ficha = await buscarFicha(animalId, null);
+  if (composicaoSubstituida) avisos = [...avisos, { campo: "composicao", mensagem: "A composição anterior divergia da nova filiação e foi substituída pelo cálculo; o valor anterior permanece na auditoria." }];
+  return { ...ficha, avisos, composicaoSugerida: null };
+}
+
+/** Composição que os genitores atuais do animal sugerem — sem gravar nada. */
+export async function composicaoSugerida(animalId: string, escopo: number | null = null): Promise<{ itens: Array<{ racaId: string; sigla: string; fracao64: number }>; rotulo: string } | null> {
+  await exigirNoEscopo(prisma, animalId, escopo);
+  const animal = await exigirAnimal(prisma, animalId);
+  const [maeComposicao, paiComposicao] = await Promise.all([
+    animal.maeId ? composicaoAnimalComoFracao(prisma, animal.maeId) : animal.maeExternaId ? composicaoGenitorExternoComoFracao(prisma, animal.maeExternaId) : Promise.resolve(null),
+    animal.paiId ? composicaoAnimalComoFracao(prisma, animal.paiId) : animal.paiExternoId ? composicaoGenitorExternoComoFracao(prisma, animal.paiExternoId) : Promise.resolve(null),
+  ]);
+  const sugerida = composicaoDosGenitores(maeComposicao, paiComposicao);
+  return rotularComposicaoCalculada(prisma, sugerida);
+}
+
+export interface FilhoResumo {
+  id: string;
+  brinco: string;
+  nome: string | null;
+  sexo: "F" | "M";
+  dataNascimento: string;
+  situacao: "ATIVO" | "BAIXADO";
+}
+
+/** Filhos do animal (como mãe ou pai), pela filiação registrada — não pela ficha genealógica dele. */
+export async function listarFilhos(animalId: string, escopo: number | null = null): Promise<FilhoResumo[]> {
+  await exigirNoEscopo(prisma, animalId, escopo);
+  const filhos = await prisma.animal.findMany({
+    where: { OR: [{ maeId: animalId }, { paiId: animalId }] },
+    orderBy: { dataNascimento: "desc" },
+  });
+  const baixas = await prisma.baixaAnimal.findMany({ where: { animalId: { in: filhos.map((f) => f.id) }, estornadaEm: null }, select: { animalId: true } });
+  const baixados = new Set(baixas.map((b) => b.animalId));
+  return filhos.map((f) => ({
+    id: f.id, brinco: f.brinco, nome: f.nome, sexo: f.sexo,
+    dataNascimento: f.dataNascimento.toISOString().slice(0, 10),
+    situacao: baixados.has(f.id) ? "BAIXADO" : "ATIVO",
+  }));
 }
 
 // ---------- categoria manual (vale sobre o cálculo até ser removida) ----------
@@ -412,6 +784,12 @@ export async function buscarFicha(id: string, propriedadeEscopo: number | null, 
     composicaoDaFicha(prisma, id),
     prisma.categoriaManualAnimal.findMany({ where: { animalId: id }, include: { categoria: { select: { id: true, nome: true } } }, orderBy: [{ desde: "desc" }, { criadoEm: "desc" }] }),
     carregarRegras(),
+  ]);
+
+  const [mae, pai, filhosCount] = await Promise.all([
+    fichaFiliacaoLado(prisma, animal.maeId, animal.maeExternaId),
+    fichaFiliacaoLado(prisma, animal.paiId, animal.paiExternoId),
+    prisma.animal.count({ where: { OR: [{ maeId: id }, { paiId: id }] } }),
   ]);
 
   const locAtual = localizacoes.find((l) => l.ate == null) ?? null;
@@ -505,6 +883,8 @@ export async function buscarFicha(id: string, propriedadeEscopo: number | null, 
       criadoPor: b.criadoPor?.nome ?? null,
     })),
     peso,
+    filiacao: { mae, pai },
+    filhosCount,
   };
 }
 
@@ -1262,15 +1642,23 @@ export interface EntradaAuditoriaDTO {
 function mapearEntradaAuditoria(e: {
   em: Date; acao: string; entidade: string; entidadeId: string; antes: unknown; depois: unknown;
   usuario: { nome: string } | null;
-}): EntradaAuditoriaDTO {
+}, nomesRacas: Record<string, string> = {}, nomeGenitor?: string): EntradaAuditoriaDTO {
+  const justificativa = e.entidade === "ComposicaoRacial" && e.depois && typeof e.depois === "object" && !Array.isArray(e.depois)
+    ? (e.depois as Record<string, unknown>).justificativaExcecao : null;
+  const genitor = e.entidade === "GenitorExterno" && e.depois && typeof e.depois === "object" && !Array.isArray(e.depois)
+    ? (e.depois as Record<string, unknown>).nome : e.entidade === "GenitorExterno" && e.antes && typeof e.antes === "object" && !Array.isArray(e.antes)
+      ? (e.antes as Record<string, unknown>).nome : null;
   return {
     em: e.em.toISOString(),
     acao: e.acao,
     entidade: e.entidade,
     entidadeId: e.entidadeId,
     usuarioNome: e.usuario?.nome ?? null,
-    resumo: resumoAuditoria(e.entidade, e.acao),
-    alteracoes: diferencas(e.entidade, e.antes, e.depois),
+    resumo: `${typeof justificativa === "string" ? "Exceção na composição racial" : resumoAuditoria(e.entidade, e.acao)}${typeof genitor === "string" ? ` · ${genitor}` : nomeGenitor ? ` · ${nomeGenitor}` : ""}`,
+    alteracoes: [
+      ...diferencas(e.entidade, e.antes, e.depois, nomesRacas),
+      ...(typeof justificativa === "string" ? [{ campo: "justificativaExcecao", rotulo: "Justificativa", antes: null, depois: justificativa }] : []),
+    ],
   };
 }
 
@@ -1292,7 +1680,7 @@ export async function buscarAuditoriaAnimal(
     }),
   ]);
 
-  return { itens: entradas.map(mapearEntradaAuditoria), total };
+  return { itens: entradas.map((e) => mapearEntradaAuditoria(e)), total };
 }
 
 /**
@@ -1314,5 +1702,20 @@ export async function buscarAuditoriaCadastro(
     }),
   ]);
 
-  return { itens: entradas.map(mapearEntradaAuditoria), total };
+  const idsRacas = new Set<string>();
+  if (entidade === "GenitorExterno") {
+    for (const entrada of entradas) {
+      for (const valor of [entrada.antes, entrada.depois]) {
+        const itens = Array.isArray(valor) ? valor : valor && typeof valor === "object" ? (valor as Record<string, unknown>).composicao : null;
+        if (Array.isArray(itens)) for (const item of itens) {
+          if (item && typeof item === "object" && typeof item.racaId === "string") idsRacas.add(item.racaId);
+        }
+      }
+    }
+  }
+  const nomesRacas = Object.fromEntries((await prisma.raca.findMany({ where: { id: { in: [...idsRacas] } }, select: { id: true, nome: true } })).map((r) => [r.id, r.nome]));
+  const nomesGenitores = entidade === "GenitorExterno"
+    ? Object.fromEntries((await prisma.genitorExterno.findMany({ where: { id: { in: entradas.map((e) => e.entidadeId) } }, select: { id: true, nome: true } })).map((g) => [g.id, g.nome]))
+    : {};
+  return { itens: entradas.map((e) => mapearEntradaAuditoria(e, nomesRacas, nomesGenitores[e.entidadeId])), total };
 }

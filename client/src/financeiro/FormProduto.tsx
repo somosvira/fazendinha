@@ -12,6 +12,7 @@ function chipsUso(categoria: Categoria | undefined) {
   if (!categoria) return [];
   const chips: string[] = [];
   if (categoria.usoAgricola) chips.push("Uso agrícola");
+  if (categoria.usoGenetico) chips.push("Uso genético");
   return chips;
 }
 

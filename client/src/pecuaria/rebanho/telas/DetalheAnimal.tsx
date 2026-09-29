@@ -9,15 +9,17 @@ import { useCallback, useEffect, useState } from "react";
 import { ArchiveX, ArrowLeft, ArrowLeftRight, Baby, CalendarDays, Dna, Hash, History, Home, IdCard, LogIn, MapPin, Mars, Nfc, Scale, StickyNote, Tags, Target, Venus, type LucideIcon } from "lucide-react";
 import { fracaoReduzida } from "../lib/composicao";
 import {
-  buscarFichaAnimal, darBaixaAnimal, desfazerDestinoAnimal, desfazerLocalizacaoAnimal,
-  estornarBaixaAnimal, excluirPesagem, listarCategorias, listarMovimentacoes, obterCatalogos, RebanhoApiError, removerCategoriaManual,
+  buscarComposicaoSugerida, buscarFichaAnimal, darBaixaAnimal, desfazerDestinoAnimal, desfazerLocalizacaoAnimal,
+  estornarBaixaAnimal, excluirPesagem, listarCategorias, listarFilhosAnimal, listarMovimentacoes, obterCatalogos,
+  RebanhoApiError, removerCategoriaManual, substituirComposicaoAnimal,
 } from "../api";
-import type { AnimalFicha, CategoriaDTO, Catalogos, PeriodoGmd, Pesagem } from "../types";
+import type { AnimalFicha, CategoriaDTO, Catalogos, ComposicaoSugerida, FilhoResumo, PeriodoGmd, Pesagem } from "../types";
 import { formatarDataBR, formatarIdade, rotuloAptidao, rotuloClasseMotivo, rotuloPapelReprodutivo, rotuloSituacao, rotuloTipoBaixa } from "../lib/rotulos";
 import { formatarGmd, formatarKg, PERIODO_GMD_PADRAO } from "../lib/peso";
 import { CardFicha, CategoriaPill, DadoFicha, DestaqueFicha, ModalMotivo, useAoMovimentarComToast } from "../ui";
 import { FormDadosAnimal } from "../forms/FormDadosAnimal";
 import { FormComposicao } from "../forms/FormComposicao";
+import { FormFiliacao } from "../forms/FormFiliacao";
 import { FormMovimentar } from "../forms/FormMovimentar";
 import { FormDestino } from "../forms/FormDestino";
 import { FormAlterarCategoria } from "../forms/FormAlterarCategoria";
@@ -33,6 +35,17 @@ import { HistoricoBaixas } from "../components/HistoricoBaixas";
 import { AuditoriaAnimal } from "../components/AuditoriaAnimal";
 import { HistoricoMovimentacoes } from "../components/HistoricoMovimentacoes";
 import { DetalheMovimentacao } from "../components/DetalheMovimentacao";
+
+/** Nome/brinco de mãe ou pai na seção Filiação — link para a ficha quando é animal nosso,
+ *  selo "externo" quando é genitor de fora. */
+function LadoFiliacao({ lado, vazio }: { lado: AnimalFicha["filiacao"]["mae"]; vazio: string }) {
+  if (!lado) return <span className="text-ink-3">{vazio}</span>;
+  if (lado.tipo === "ANIMAL") return <span className="inline-flex items-center gap-2">
+    <button type="button" onClick={() => navegarPara(`/pecuaria/rebanho/animais/${lado.id}`)} className="break-words font-semibold text-mast hover:underline">{lado.brinco}{lado.nome ? ` — ${lado.nome}` : ""}</button>
+    {lado.baixado && <Pill tone="neutral">Baixado</Pill>}
+  </span>;
+  return <span className="inline-flex items-center gap-2 break-words">{lado.nome}<Pill tone="brown">Externo</Pill></span>;
+}
 
 /** Nome do lote como link para a página do lote — usado no cabeçalho e no histórico de localização.
  *  Nenhuma das duas linhas onde aparece tem `onClick` no `<tr>`/container, então não precisa de stopPropagation. */
@@ -64,6 +77,11 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
 
   const [editandoDados, setEditandoDados] = useState(false);
   const [editandoComposicao, setEditandoComposicao] = useState(false);
+  const [definindoFiliacao, setDefinindoFiliacao] = useState(false);
+  const [filhos, setFilhos] = useState<FilhoResumo[] | null>(null);
+  const [sugestaoComposicao, setSugestaoComposicao] = useState<ComposicaoSugerida | null>(null);
+  const [calculandoSugestao, setCalculandoSugestao] = useState(false);
+  const [aplicandoSugestao, setAplicandoSugestao] = useState(false);
   const [movimentando, setMovimentando] = useState(false);
   const [mudandoDestino, setMudandoDestino] = useState(false);
   const [alterandoCategoria, setAlterandoCategoria] = useState(false);
@@ -91,7 +109,30 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
   useEffect(() => { void carregar(); }, [carregar]);
   useEffect(() => { obterCatalogos().then(setCatalogos).catch(() => undefined); }, []);
   useEffect(() => { listarCategorias().then((r) => setCategorias(r.itens)).catch(() => undefined); }, []);
+  useEffect(() => {
+    if (animal && animal.filhosCount > 0) listarFilhosAnimal(id).then(setFilhos).catch(() => setFilhos([]));
+    else setFilhos(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, animal?.filhosCount, refreshToken]);
   const aoMovimentar = useAoMovimentarComToast(carregar);
+
+  const calcularComposicaoPelosGenitores = async () => {
+    setCalculandoSugestao(true); setErroAcao(null);
+    try { setSugestaoComposicao(await buscarComposicaoSugerida(id)); }
+    catch (e) { setErroAcao(e instanceof RebanhoApiError ? e.message : e instanceof Error ? e.message : String(e)); }
+    finally { setCalculandoSugestao(false); }
+  };
+
+  const aplicarComposicaoSugerida = async () => {
+    if (!sugestaoComposicao) return;
+    setAplicandoSugestao(true); setErroAcao(null);
+    try {
+      await substituirComposicaoAnimal(id, { itens: sugestaoComposicao.itens.map((i) => ({ racaId: i.racaId, fracao64: i.fracao64 })), origem: "CALCULADA" });
+      setSugestaoComposicao(null);
+      await carregar();
+    } catch (e) { setErroAcao(e instanceof RebanhoApiError ? e.message : e instanceof Error ? e.message : String(e)); }
+    finally { setAplicandoSugestao(false); }
+  };
   const carregarMovimentacoes = useCallback((pagina: number) => listarMovimentacoes({ animalId: id, incluirDesfeitas: true, page: pagina, pageSize: 20 }), [id]);
 
   if (!animal) return <div className="shell-wide pagina-carregando"><button onClick={onVoltar} className="mt-6 mb-5 inline-flex shrink-0 items-center gap-2 self-start text-sm font-semibold text-ink-2"><ArrowLeft size={17} /> Voltar para animais</button><ErrorBox erro={erro} />{!erro && <Loader label="Carregando animal" full />}</div>;
@@ -146,6 +187,7 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
         </div>
         {podeLancar && <div className="flex max-w-full flex-wrap gap-2 lg:max-w-[560px] lg:justify-end">
           {ativo ? <>
+            <Button secondary onClick={() => setDefinindoFiliacao(true)}>Definir filiação</Button>
             <Button secondary onClick={() => setMovimentando(true)}>Movimentar</Button>
             <Button secondary onClick={() => setPesagemForm({ modo: "novo" })}>Registrar pesagem</Button>
             <Button secondary onClick={() => setMudandoDestino(true)}>Mudar finalidade</Button>
@@ -197,10 +239,34 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
         {animal.observacao && <div className="mt-5 flex gap-2.5 rounded-lg border border-border bg-surface-2 px-4 py-3 text-sm text-ink-2"><StickyNote aria-hidden="true" size={16} className="mt-0.5 shrink-0 text-ink-3" /><p className="min-w-0 break-words">{animal.observacao}</p></div>}
       </CardFicha>
 
-      <CardFicha icon={Dna} titulo="Composição racial">
+      <CardFicha
+        icon={Baby}
+        titulo="Filiação"
+        acao={podeLancar && ativo ? <button type="button" className="text-xs font-semibold text-green-800" onClick={() => setDefinindoFiliacao(true)}>Definir filiação</button> : undefined}
+      >
+        <dl className="grid gap-4 sm:grid-cols-2">
+          <div><dt className="text-xs text-ink-3">Mãe</dt><dd className="mt-1 text-sm"><LadoFiliacao lado={animal.filiacao.mae} vazio="Não informada" /></dd></div>
+          <div><dt className="text-xs text-ink-3">Pai</dt><dd className="mt-1 text-sm"><LadoFiliacao lado={animal.filiacao.pai} vazio="Não informado" /></dd></div>
+        </dl>
+        {filhos && filhos.length > 0 && <div className="mt-5 border-t border-border pt-4">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-ink-3">Filhos ({filhos.length})</h3>
+          <ul className="mt-3 space-y-2 text-sm">
+            {filhos.map((f) => <li key={f.id} className="flex flex-wrap items-center justify-between gap-2">
+              <button type="button" onClick={() => navegarPara(`/pecuaria/rebanho/animais/${f.id}`)} className="break-words font-semibold text-mast hover:underline">{f.brinco}{f.nome ? ` — ${f.nome}` : ""}</button>
+              <span className="text-xs text-ink-3">{f.sexo === "F" ? "Fêmea" : "Macho"} · {formatarDataBR(f.dataNascimento)} · {rotuloSituacao(f.situacao)}</span>
+            </li>)}
+          </ul>
+        </div>}
+      </CardFicha>
+
+      <CardFicha
+        icon={Dna}
+        titulo="Composição racial"
+        acao={podeLancar && ativo && (animal.filiacao.mae || animal.filiacao.pai) ? <button type="button" disabled={calculandoSugestao} onClick={() => void calcularComposicaoPelosGenitores()} className="text-xs font-semibold text-green-800 disabled:text-ink-3">{calculandoSugestao ? "Calculando…" : "Calcular pelos genitores"}</button> : undefined}
+      >
         {composicaoOrdenada.length ? <>
           <ul className="space-y-3.5 text-sm">{composicaoOrdenada.map((item) => <li key={item.racaId}>
-            <div className="flex items-baseline justify-between gap-3"><span className="min-w-0 break-words">{item.nome} <span className="text-ink-3">({item.sigla})</span>{!item.racaAtiva && <span className="text-ink-3"> · inativa</span>}</span><strong className="shrink-0 tabular-nums">{fracaoReduzida(item.fracao64)}</strong></div>
+            <div className="flex flex-wrap items-baseline justify-between gap-3"><span className="min-w-0 break-words">{item.nome} <span className="text-ink-3">({item.sigla})</span>{!item.racaAtiva && <span className="text-ink-3"> · inativa</span>}</span><span className="flex items-center gap-2"><strong className="shrink-0 tabular-nums">{fracaoReduzida(item.fracao64)}</strong><Pill tone={item.fracaoCalculada64 === item.fracao64 || item.origem === "CALCULADA" ? "blue" : "neutral"}>{item.fracaoCalculada64 > 0 && item.fracaoCalculada64 < item.fracao64 ? "Calculada + informada" : item.origem === "CALCULADA" ? "Calculada" : "Informada"}</Pill></span></div>
             <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-surface-2" aria-hidden="true"><div className="h-full rounded-full bg-[var(--cafe)]" style={{ width: `${(item.fracao64 / 64) * 100}%` }} /></div>
           </li>)}</ul>
           {somaComposicao < 64 && <p className="mt-4 text-xs text-ink-3">Restante ({fracaoReduzida(64 - somaComposicao)}) sem raça informada.</p>}
@@ -264,6 +330,7 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
 
     {editandoDados && <FormDadosAnimal animal={animal} onFechar={() => setEditandoDados(false)} onSalvo={async (atualizado) => { setAnimal(atualizado); tocar(); setEditandoDados(false); }} />}
     {editandoComposicao && catalogos && <FormComposicao animal={animal} racas={catalogos.racas} onFechar={() => setEditandoComposicao(false)} onSalvo={async () => { setEditandoComposicao(false); await carregar(); }} />}
+    {definindoFiliacao && <FormFiliacao animal={animal} onFechar={() => setDefinindoFiliacao(false)} onSalvo={async (atualizado) => { setAnimal(atualizado); tocar(); setDefinindoFiliacao(false); }} />}
     {movimentando && catalogos && <FormMovimentar animais={[animal]} propriedades={catalogos.propriedades} lotes={catalogos.lotes} propriedadeInicial={animal.propriedade?.id} loteInicial={animal.lote?.id} onFechar={() => setMovimentando(false)} onSalvo={async (resultado) => { setMovimentando(false); await aoMovimentar(resultado); }} />}
     {mudandoDestino && <FormDestino animal={animal} onFechar={() => setMudandoDestino(false)} onSalvo={async (atualizado) => { setAnimal(atualizado); tocar(); setMudandoDestino(false); }} />}
     {alterandoCategoria && <FormAlterarCategoria
@@ -284,5 +351,17 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
     <ConfirmDialog open={!!excluindoPesagem} title="Excluir pesagem?" message={<>{erroAcao && <p className="mb-2 text-red-700">{erroAcao}</p>}<p>Esta pesagem será removida permanentemente do histórico do animal.</p></>} confirmLabel="Excluir pesagem" cancelLabel="Manter" tone="danger" processando={emAcao} onCancel={() => setExcluindoPesagem(null)} onConfirm={() => { void excluirPesagemConfirmada(); }} />
 
     {movimentacaoAbertaId && <DetalheMovimentacao id={movimentacaoAbertaId} podeLancar={podeLancar} onFechar={() => setMovimentacaoAbertaId(null)} onMudou={() => { void carregar(); }} />}
+
+    <ConfirmDialog
+      open={sugestaoComposicao != null}
+      title="Aplicar composição calculada?"
+      message={sugestaoComposicao ? <p>Composição calculada pelos genitores: <strong>{sugestaoComposicao.rotulo}</strong></p> : ""}
+      confirmLabel="Aplicar composição"
+      cancelLabel="Cancelar"
+      tone="neutral"
+      processando={aplicandoSugestao}
+      onConfirm={() => { void aplicarComposicaoSugerida(); }}
+      onCancel={() => setSugestaoComposicao(null)}
+    />
   </div>;
 }

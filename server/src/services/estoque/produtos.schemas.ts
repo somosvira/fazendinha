@@ -28,7 +28,7 @@ export type ProdutoPatchInput = z.infer<typeof patchProdutoSchema>;
 
 // Filtro de produtos por uso (marcações da categoria) — usado por
 // /estoque/produtos para validar o query param `uso`.
-export const usoQuerySchema = z.enum(["agricola"]);
+export const usoQuerySchema = z.enum(["agricola", "genetico"]);
 export const produtosQuerySchema = z.object({
   uso: usoQuerySchema.optional(),
   q: z.string().optional(),

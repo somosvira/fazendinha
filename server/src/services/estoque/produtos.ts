@@ -24,7 +24,7 @@ export function produtoDTO(produto: Prisma.ProdutoGetPayload<{ include: typeof i
     classificacao: produto.categoria?.classificacao ?? null,
     // Comportamento é da categoria, mesmo que ela esteja inativa (situação é do produto).
     categoria: produto.categoria
-      ? { id: produto.categoria.id, nome: produto.categoria.nome, usoAgricola: produto.categoria.usoAgricola }
+      ? { id: produto.categoria.id, nome: produto.categoria.nome, usoAgricola: produto.categoria.usoAgricola, usoGenetico: produto.categoria.usoGenetico }
       : null,
     ativo: produto.ativo,
     centroCustoIds: produto.centrosCusto.map(({ centroCustoId }) => centroCustoId),
@@ -58,9 +58,9 @@ function separarRelacoes<T extends { fornecedorIds?: string[]; centroCustoIds?: 
   return { fornecedorIds, centroCustoIds, produto };
 }
 
-const USO_CAMPO = { agricola: "usoAgricola" } as const;
+const USO_CAMPO = { agricola: "usoAgricola", genetico: "usoGenetico" } as const;
 
-export async function listarProdutos(f?: { uso?: "agricola"; q?: string; ativo?: boolean; incluirInativos?: boolean }) {
+export async function listarProdutos(f?: { uso?: keyof typeof USO_CAMPO; q?: string; ativo?: boolean; incluirInativos?: boolean }) {
   const where: Prisma.ProdutoWhereInput = {};
   if (f?.uso) where.categoria = { [USO_CAMPO[f.uso]]: true };
   if (f?.q) where.nome = { contains: f.q, mode: "insensitive" };
@@ -75,26 +75,29 @@ export async function listarProdutosCadastro() {
 
 export async function criarProduto(input: ProdutoInput, usuarioId?: number | null) {
   try {
-    return await prisma.$transaction(async (tx) => {
-      const { fornecedorIds = [], centroCustoIds = [], produto } = separarRelacoes(input);
-      if (produto.categoriaId == null) {
-        throw new FinanceiroError("VALIDACAO", CATEGORIA_OBRIGATORIA, "categoriaId");
-      }
-      await validarFornecedores(tx, fornecedorIds, new Set());
-      await validarCentrosCusto(tx, centroCustoIds, new Set());
-      const criado = await tx.produto.create({
-        data: {
-          ...produto,
-          fornecedores: { create: fornecedorIds.map((fornecedorId) => ({ fornecedorId })) },
-          centrosCusto: { create: centroCustoIds.map((centroCustoId) => ({ centroCustoId })) },
-        },
-        include: includeProduto,
-      });
-      const dto = produtoDTO(criado);
-      await auditar(tx, { entidade: "Produto", entidadeId: criado.id, acao: "CRIADO", usuarioId, depois: dto });
-      return dto;
-    });
+    return await prisma.$transaction((tx) => criarProdutoTx(tx, input, usuarioId));
   } catch (erro) { traduzirConflitoUnico(erro, { nome: "Já existe um produto com este nome" }); }
+}
+
+/** Cria o produto dentro de uma transação já aberta (ex.: material genético cria o produto junto). */
+export async function criarProdutoTx(tx: Prisma.TransactionClient, input: ProdutoInput, usuarioId?: number | null) {
+  const { fornecedorIds = [], centroCustoIds = [], produto } = separarRelacoes(input);
+  if (produto.categoriaId == null) {
+    throw new FinanceiroError("VALIDACAO", CATEGORIA_OBRIGATORIA, "categoriaId");
+  }
+  await validarFornecedores(tx, fornecedorIds, new Set());
+  await validarCentrosCusto(tx, centroCustoIds, new Set());
+  const criado = await tx.produto.create({
+    data: {
+      ...produto,
+      fornecedores: { create: fornecedorIds.map((fornecedorId) => ({ fornecedorId })) },
+      centrosCusto: { create: centroCustoIds.map((centroCustoId) => ({ centroCustoId })) },
+    },
+    include: includeProduto,
+  });
+  const dto = produtoDTO(criado);
+  await auditar(tx, { entidade: "Produto", entidadeId: criado.id, acao: "CRIADO", usuarioId, depois: dto });
+  return dto;
 }
 
 export async function atualizarProduto(id: string, input: ProdutoPatchInput, usuarioId?: number | null) {

@@ -30,6 +30,8 @@ const ORIGENS_ENTRADA: readonly OrigemMovimento[] = ["COMPRA", "INVENTARIO_INICI
 const ITENS_POR_PAGINA = 15;
 const ENTRADAS_EXIBIDAS = 6;
 
+const hrefMaterialGenetico = (id: string) => `/pecuaria/rebanho/cadastros?aba=material-genetico&material=${encodeURIComponent(id)}`;
+
 type Ordem = "nome" | "categoria" | "valor";
 
 /* Triângulo vermelho com exclamação amarela — sinal de "abaixo do mínimo", usado
@@ -157,7 +159,7 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
   const recarregarTudo = () => { saldos.recarregar(); movimentos.recarregar(); entradas.recarregar(); };
 
   const colunasSaldos: ColunaTabela<SaldoDTO>[] = [
-    { chave: "produto", titulo: "Produto", larguraMinima: 220, principal: true, celula: (s) => <span className="flex flex-wrap items-center gap-2"><strong className="break-words font-semibold">{s.nome}</strong>{s.abaixoMinimo && <Dica rotulo="Abaixo do mínimo" conteudo={`Abaixo do mínimo${s.minimoEstoque != null ? ` (${qtd(s.minimoEstoque)} ${rotuloUnidade(s.unidade)})` : ""}`} className="hover:opacity-80"><IconeAbaixoMinimo /></Dica>}</span> },
+    { chave: "produto", titulo: "Produto", larguraMinima: 220, principal: true, celula: (s) => <span className="flex flex-wrap items-center gap-2"><strong className="break-words font-semibold">{s.materialGeneticoId ? <LinkInterno href={hrefMaterialGenetico(s.materialGeneticoId)} area="pecuaria">{s.nome}</LinkInterno> : s.nome}</strong>{s.abaixoMinimo && <Dica rotulo="Abaixo do mínimo" conteudo={`Abaixo do mínimo${s.minimoEstoque != null ? ` (${qtd(s.minimoEstoque)} ${rotuloUnidade(s.unidade)})` : ""}`} className="hover:opacity-80"><IconeAbaixoMinimo /></Dica>}</span> },
     { chave: "categoria", titulo: "Categoria", alinhamento: "centro", larguraMinima: 140, celula: (s) => s.categoria?.nome ?? "Sem categoria" },
     { chave: "centros", titulo: "Centros de custo", alinhamento: "centro", larguraMinima: 180, celula: (s) => <span className="break-words text-ink-3">{s.centrosCusto.map((c) => c.nome).join(" · ") || "Sem centro"}</span> },
     { chave: "saldo", titulo: "Saldo", alinhamento: "centro", larguraMinima: 110, celula: (s) => <span className="whitespace-nowrap">{qtd(s.saldo)} {rotuloUnidade(s.unidade)}</span> },
@@ -173,7 +175,7 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
 
   const colunasMovimentos: ColunaTabela<MovimentoDTO>[] = [
     { chave: "data", titulo: "Data", alinhamento: "centro", larguraMinima: 100, celula: (m) => <span className="whitespace-nowrap">{dataBR(m.data)}</span> },
-    { chave: "produto", titulo: "Produto", larguraMinima: 200, principal: true, celula: (m) => <strong className="break-words font-semibold">{m.produto}</strong> },
+    { chave: "produto", titulo: "Produto", larguraMinima: 200, principal: true, celula: (m) => <strong className="break-words font-semibold">{m.materialGeneticoId ? <LinkInterno href={hrefMaterialGenetico(m.materialGeneticoId)} area="pecuaria">{m.produto}</LinkInterno> : m.produto}</strong> },
     { chave: "tipo", titulo: "Tipo", alinhamento: "centro", larguraMinima: 190, celula: (m) => (
       <span className="flex flex-wrap items-center justify-center gap-1.5">
         <span title={TIPO_MOV[m.tipo].rotulo}><Pill tone={TIPO_MOV[m.tipo].tom}>{ROTULO_ORIGEM[m.origem] ?? m.origem}</Pill></span>

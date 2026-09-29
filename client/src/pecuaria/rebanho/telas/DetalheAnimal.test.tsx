@@ -5,7 +5,7 @@ import { ToastProvider } from "@/components/Toast";
 import { DetalheAnimal } from "./DetalheAnimal";
 import {
   buscarAuditoriaAnimal, buscarFichaAnimal, definirCategoriaManual, desfazerMovimentacao, editarAnimal, editarPesagem, listarCategorias,
-  listarMovimentacoes, movimentarAnimais, obterCatalogos, removerCategoriaManual,
+  listarFilhosAnimal, listarMovimentacoes, movimentarAnimais, obterCatalogos, removerCategoriaManual,
 } from "../api";
 import type { AnimalFicha, CategoriaDTO, Catalogos } from "../types";
 
@@ -16,6 +16,7 @@ vi.mock("../api", async (importOriginal) => ({
   obterCatalogos: vi.fn(),
   listarCategorias: vi.fn(),
   listarMovimentacoes: vi.fn(),
+  listarFilhosAnimal: vi.fn(),
   definirCategoriaManual: vi.fn(),
   removerCategoriaManual: vi.fn(),
   editarAnimal: vi.fn(),
@@ -52,6 +53,8 @@ const base: AnimalFicha = {
   baixa: null,
   peso: { ultimo: null, gmdRecente: null, gmdDesdeEntrada: null, gmdPeriodo: { dias: null, valor: null, pesagens: 0 } },
   historicoBaixas: [],
+  filiacao: { mae: null, pai: null },
+  filhosCount: 0,
 };
 
 function Wrapper({ children }: { children: React.ReactNode }) {
@@ -140,7 +143,7 @@ describe("DetalheAnimal — permissão, linha atual e composição", () => {
   });
 
   it("mostra o nome da raça e marca a inativa", async () => {
-    await montar({ ...base, composicao: [{ racaId: "r-gl", sigla: "GL", nome: "Girolando", racaAtiva: false, fracao64: 32 }] });
+    await montar({ ...base, composicao: [{ racaId: "r-gl", sigla: "GL", nome: "Girolando", racaAtiva: false, origem: "INFORMADA", fracao64: 32, fracaoCalculada64: 0 }] });
     expect(screen.getByText((_, el) => el?.tagName === "SPAN" && /^Girolando \(GL\)/.test(el.textContent ?? ""))).toBeTruthy();
     expect(screen.getByText(/inativa/)).toBeTruthy();
   });
@@ -357,5 +360,35 @@ describe("DetalheAnimal — movimentações", () => {
   it("busca as movimentações filtradas pelo animal, incluindo as desfeitas", async () => {
     await montar(base);
     await waitFor(() => expect(listarMovimentacoes).toHaveBeenCalledWith(expect.objectContaining({ animalId: "animal-1", incluirDesfeitas: true })));
+  });
+});
+
+describe("DetalheAnimal — filiação", () => {
+  it("mostra 'Não informada/o' quando mãe e pai são null", async () => {
+    await montar(base);
+    expect(screen.getByText("Não informada")).toBeTruthy();
+    expect(screen.getByText("Não informado")).toBeTruthy();
+  });
+
+  it("mostra a mãe como link quando é um animal da fazenda e o pai como pill Externo quando é genitor externo", async () => {
+    await montar({
+      ...base,
+      filiacao: {
+        mae: { tipo: "ANIMAL", id: "mae-1", nome: "Estrela", sexo: "F", brinco: "999", baixado: false },
+        pai: { tipo: "EXTERNO", id: "ext-1", nome: "Touro Reprodutor X", codigo: "TX1", fornecedor: "Central" },
+      },
+    });
+    expect(screen.getByRole("button", { name: "999 — Estrela" })).toBeTruthy();
+    expect(screen.getByText("Touro Reprodutor X")).toBeTruthy();
+    expect(screen.getByText("Externo")).toBeTruthy();
+  });
+
+  it("com filhosCount > 0, busca e lista os filhos", async () => {
+    vi.mocked(listarFilhosAnimal).mockResolvedValue([
+      { id: "filho-1", brinco: "500", nome: null, sexo: "M", dataNascimento: "2025-01-10", situacao: "ATIVO" },
+    ]);
+    await montar({ ...base, filhosCount: 1 });
+    await waitFor(() => expect(listarFilhosAnimal).toHaveBeenCalledWith("animal-1"));
+    expect(await screen.findByRole("button", { name: "500" })).toBeTruthy();
   });
 });

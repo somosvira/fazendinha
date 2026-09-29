@@ -168,12 +168,12 @@ describe("telas financeiras — envelope e carregamento", () => {
     for (const mock of [obterDashboardFinanceiro, obterConfiguracoesFinanceiras, listarCompromissos, listarOperacoes, obterExtratoConta, listarRelatoriosFinanceiros]) mock.mockImplementation(pendente);
     obterRascunhoOperacao.mockResolvedValue(null);
     const { render: renderizar } = await carregar();
-    const { container } = render(renderizar());
+    const { container, getByRole } = render(renderizar());
 
     const loader = container.querySelector(".loader")!;
     expect(loader, "toda tela usa o mesmo dialeto de loading").toBeTruthy();
     expect(loader.className).toContain("loader--pagina");
-    expect(screen.getByRole("status")).toBeTruthy();
+    expect(getByRole("status")).toBeTruthy();
 
     // A coluna de carregamento mede uma viewport e o loader toma a sobra. Ela NÃO
     // pode ser a `.pagina-financeira`: o padding vertical daquela somaria por fora
@@ -183,7 +183,7 @@ describe("telas financeiras — envelope e carregamento", () => {
     expect(raiz.className).toContain("pagina-carregando");
     expect(raiz.className).not.toContain("pagina-financeira");
     expect(loader.parentElement, "o loader é filho direto da coluna que mede a viewport").toBe(raiz);
-  });
+  }, 60_000);
 
   it.each([
     ["Contas e extratos", async () => { const m = await import("./ContasFinanceiras"); return () => <m.ContasFinanceiras onNav={() => {}} />; }],

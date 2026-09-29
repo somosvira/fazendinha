@@ -41,6 +41,8 @@ function criarFicha(overrides: Partial<AnimalFicha>): AnimalFicha {
     baixa: null,
     peso: { ultimo: null, gmdRecente: null, gmdDesdeEntrada: null, gmdPeriodo: { dias: null, valor: null, pesagens: 0 } },
     historicoBaixas: [],
+    filiacao: { mae: null, pai: null },
+    filhosCount: 0,
     ...overrides,
   };
 }

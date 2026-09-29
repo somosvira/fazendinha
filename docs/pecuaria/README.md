@@ -7,8 +7,8 @@ Esta pasta concentra o contexto funcional e técnico da reconstrução da pecuá
 | Entrega | Estado | Referência |
 |---|---|---|
 | v1 · Rebanho | mesclada na `main` em 25/09/2026 | [PR #296](https://github.com/somosvira/fazendinha/pull/296) |
-| Follow-up da v1 | PR em rascunho, CI verde, ainda fora da `main` | [PR #306](https://github.com/somosvira/fazendinha/pull/306) |
-| v2 · Genética | PR em rascunho, CI verde, ainda fora da `main` | [PR #305](https://github.com/somosvira/fazendinha/pull/305) |
+| Follow-up da v1 | mesclado na `main` em 28/09/2026 | [PR #306](https://github.com/somosvira/fazendinha/pull/306) |
+| v2 · Genética | PR em rascunho, reconciliado com a `main`, aguardando CI e homologação | [PR #305](https://github.com/somosvira/fazendinha/pull/305) |
 | Validação da v2 com dados reais | pendente | executar a carga com o dump real do IDEAGRI e confirmar `ANIMAL.CDCENTRALSEMEN` |
 
 “Concluída” significa que a implementação e os testes automatizados foram feitos. A v2 só estará disponível para o restante do time depois de sair de rascunho, passar pela validação real, ser revisada e entrar na `main`.
@@ -43,13 +43,12 @@ Quando houver divergência, use esta ordem para resolver: invariantes de produto
 
 ## Próximos passos recomendados
 
-1. **Homologar e mesclar o PR #306 primeiro.** Ele fecha o feedback manual da v1 e é a base funcional que a v2 deve herdar.
-2. **Atualizar o PR #305 sobre a `main` após o #306.** Uma simulação de merge encontrou conflitos de conteúdo em `Cadastros.tsx`, `DetalheAnimal.tsx`, `DetalheAnimal.test.tsx` e `NovoAnimal.tsx`. Os dois PRs aparecem separadamente como “mergeáveis”, mas não se combinam automaticamente.
-3. **Reexecutar a bateria completa depois da conciliação.** Além da CI, repetir os testes de servidor com PostgreSQL, testes do client, typecheck e build.
-4. **Rodar a carga real da v2.** Confirmar a consulta de genitores externos, especialmente `ANIMAL.CDCENTRALSEMEN`; executar a importação duas vezes para verificar idempotência e depois `validar:pecuaria`.
-5. **Executar o roteiro manual completo.** Cobrir filiação, composição calculada versus informada, genitor inativo, animal baixado como genitor, material genético, saldo e os avisos de idade/ciclo.
-6. **Tirar o PR #305 de rascunho, revisar e mesclar.** Só então atualizar esta página para marcar a v2 como presente na `main`.
-7. **Abrir a v3 apenas depois dessa estabilização.** Começar por um contrato de domínio curto para Sanidade, peso e nutrição, mantendo integração com produto, estoque, custo e carência como dependências explícitas.
+1. **Acompanhar a CI do PR #305 após a conciliação.** Os conflitos em `Cadastros.tsx`, `DetalheAnimal.tsx`, `DetalheAnimal.test.tsx` e `NovoAnimal.tsx` foram resolvidos preservando a ficha em cards e o datepicker da v1, sem retirar filiação, descendência e composição racial da v2.
+2. **Homologar os gaps fechados na conciliação.** O saldo e o histórico do estoque agora permitem navegar até o material genético associado, respeitando a permissão da área de pecuária; avisos não bloqueantes de filiação também permanecem visíveis depois de salvar um animal ou editar sua filiação.
+3. **Rodar a carga real da v2.** Confirmar a consulta de genitores externos, especialmente `ANIMAL.CDCENTRALSEMEN`; executar a importação duas vezes para verificar idempotência e depois `validar:pecuaria`.
+4. **Executar o roteiro manual completo.** Cobrir filiação, composição calculada versus informada, genitor inativo, animal baixado como genitor, material genético, saldo e os avisos de idade/ciclo.
+5. **Tirar o PR #305 de rascunho, revisar e mesclar.** Só então atualizar esta página para marcar a v2 como presente na `main`.
+6. **Abrir a v3 apenas depois dessa estabilização.** Começar por um contrato de domínio curto para Sanidade, peso e nutrição, mantendo integração com produto, estoque, custo e carência como dependências explícitas.
 
 ## Manutenção
 

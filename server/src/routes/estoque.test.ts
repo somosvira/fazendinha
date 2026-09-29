@@ -110,7 +110,7 @@ describe("GET /estoque/saldos", () => {
   it("lê sem flag lancar (gate de área fica no app)", async () => {
     const res = await appCom(semLancar).request(`/estoque/saldos?centroCustoId=${SEM_VINCULO}`);
     expect(res.status).toBe(200);
-    expect(mocks.listarSaldos).toHaveBeenCalledWith(expect.objectContaining({ centroCustoId: SEM_VINCULO, propriedadeId: 3 }));
+    expect(mocks.listarSaldos).toHaveBeenCalledWith(expect.objectContaining({ centroCustoId: SEM_VINCULO, propriedadeId: 3, materialGeneticoVisivel: true }));
   });
   it("sem centroCustoId → sem filtro", async () => {
     await appCom(semLancar).request("/estoque/saldos");
@@ -143,11 +143,11 @@ describe("GET /estoque/movimentos", () => {
   });
   it("repassa ao service quais vínculos o usuário pode ver, pelas áreas", async () => {
     await appCom({ ...base, areas: ["financeiro"], flags: [] }).request("/estoque/movimentos");
-    expect(mocks.listarMovimentos).toHaveBeenLastCalledWith(expect.objectContaining({ propriedadeId: 3, vinculosVisiveis: { agricultura: false } }));
+    expect(mocks.listarMovimentos).toHaveBeenLastCalledWith(expect.objectContaining({ propriedadeId: 3, vinculosVisiveis: { agricultura: false, pecuaria: false } }));
     await appCom(soAgricultura).request("/estoque/movimentos");
-    expect(mocks.listarMovimentos).toHaveBeenLastCalledWith(expect.objectContaining({ vinculosVisiveis: { agricultura: true } }));
+    expect(mocks.listarMovimentos).toHaveBeenLastCalledWith(expect.objectContaining({ vinculosVisiveis: { agricultura: true, pecuaria: false } }));
     await appCom({ ...base, areas: [], dono: true, flags: [] }).request("/estoque/movimentos");
-    expect(mocks.listarMovimentos).toHaveBeenLastCalledWith(expect.objectContaining({ vinculosVisiveis: { agricultura: true } }));
+    expect(mocks.listarMovimentos).toHaveBeenLastCalledWith(expect.objectContaining({ vinculosVisiveis: { agricultura: true, pecuaria: true } }));
   });
 });
 

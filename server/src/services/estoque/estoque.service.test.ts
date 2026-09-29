@@ -284,7 +284,13 @@ describe("listarSaldos", () => {
   });
 
   const mov = (tipo: string, quantidade: string, valorTotal: string) => ({ tipo, quantidade: new Prisma.Decimal(quantidade), valorTotal: new Prisma.Decimal(valorTotal), data: new Date("2026-01-10") });
-  const produtoMl = (movimentos: unknown[]) => ({ id: uid(3), nome: "Ivermectina", unidade: "ML", minimoEstoque: null, categoria: null, centrosCusto: [], movimentos });
+  const produtoMl = (movimentos: unknown[], materialGenetico: { id: string } | null = null) => ({ id: uid(3), nome: "Ivermectina", unidade: "ML", minimoEstoque: null, categoria: null, centrosCusto: [], materialGenetico, movimentos });
+
+  it("expõe o vínculo do produto com a identidade genética somente quando permitido", async () => {
+    mocks.produtoFindMany.mockResolvedValue([produtoMl([], { id: uid(8) })]);
+    expect((await listarSaldos({ propriedadeId: 1 }))[0].materialGeneticoId).toBe(uid(8));
+    expect((await listarSaldos({ propriedadeId: 1, materialGeneticoVisivel: false }))[0].materialGeneticoId).toBeNull();
+  });
 
   it("valor do saldo usa a base exata (Σvalor ÷ Σquantidade), não o custo médio arredondado × saldo", async () => {
     // Base 25.000 mL por R$ 11,25 → custo real 0,00045/mL, exibido 0,0005.
@@ -305,7 +311,13 @@ describe("listarSaldos", () => {
 });
 
 describe("listarMovimentos — origem para navegação", () => {
-  const base = { seq: 1, produtoId: uid(3), produto: { nome: "Ureia", centrosCusto: [] }, tipo: "SAIDA", origem: "APLICACAO", status: "CONFIRMADO", reversaoDeId: null, data: new Date("2026-09-01"), quantidade: new Prisma.Decimal(2), custoUnitario: new Prisma.Decimal(3), valorTotal: new Prisma.Decimal(6), operacao: null, observacao: null, operacaoId: null, operacaoAgricola: null };
+  const base = { seq: 1, produtoId: uid(3), produto: { nome: "Ureia", centrosCusto: [], materialGenetico: null }, tipo: "SAIDA", origem: "APLICACAO", status: "CONFIRMADO", reversaoDeId: null, data: new Date("2026-09-01"), quantidade: new Prisma.Decimal(2), custoUnitario: new Prisma.Decimal(3), valorTotal: new Prisma.Decimal(6), operacao: null, observacao: null, operacaoId: null, operacaoAgricola: null };
+
+  it("expõe o vínculo genético no movimento apenas para quem pode ver pecuária", async () => {
+    mocks.movFindMany.mockResolvedValue([{ ...base, id: uid(4), produto: { ...base.produto, materialGenetico: { id: uid(8) } } }]);
+    expect((await listarMovimentos()).itens[0].materialGeneticoId).toBe(uid(8));
+    expect((await listarMovimentos({ vinculosVisiveis: { agricultura: true, pecuaria: false } })).itens[0].materialGeneticoId).toBeNull();
+  });
 
   it("usa o mesmo escopo de sítio de listarSaldos (principal inclui movimento sem propriedade)", async () => {
     mocks.movFindMany.mockResolvedValue([]);

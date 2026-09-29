@@ -164,21 +164,25 @@ export async function obterCustoMedio(db: DbCusto, produtoId: string, propriedad
   return (await obterCustosMedios(db, [produtoId], propriedadeId)).get(produtoId) ?? null;
 }
 
-const USO_CAMPO = { agricola: "usoAgricola" } as const;
+const USO_CAMPO = { agricola: "usoAgricola", genetico: "usoGenetico" } as const;
 
-export async function listarSaldos(f?: { centroCustoId?: string; propriedadeId?: number | null; uso?: "agricola" }) {
+export async function listarSaldos(f?: { centroCustoId?: string; propriedadeId?: number | null; uso?: keyof typeof USO_CAMPO; produtoIds?: string[]; materialGeneticoVisivel?: boolean }) {
   // O estoque lista os produtos ativos que já tiveram movimento no sítio (qualquer
   // status) — o produto entra no estoque pela operação, não pelo cadastro.
   // Movimento sem propriedade conta como da principal (mesmo escopo do custo médio).
   const sitio = await filtroSitioCusto(f?.propriedadeId ?? null);
   const produtos = await prisma.produto.findMany({
-    where: { ativo: true, movimentos: { some: sitio }, ...(f?.uso ? { categoria: { [USO_CAMPO[f.uso]]: true } } : {}) },
+    // com produtoIds, o chamador já sabe quais produtos quer: ignora ativo/uso
+    where: f?.produtoIds
+      ? { id: { in: f.produtoIds }, movimentos: { some: sitio } }
+      : { ativo: true, movimentos: { some: sitio }, ...(f?.uso ? { categoria: { [USO_CAMPO[f.uso]]: true } } : {}) },
     orderBy: { nome: "asc" },
     // Saldo por sítio: com filtro, só os movimentos daquela propriedade contam.
     include: {
       movimentos: { where: { status: statusSaldoEstoque, ...sitio } },
       centrosCusto: { include: { centroCusto: true } },
       categoria: true,
+      materialGenetico: { select: { id: true } },
     },
   });
   const bases = await obterBasesCusto(prisma, produtos.map((p) => p.id), f?.propriedadeId ?? null);
@@ -200,8 +204,9 @@ export async function listarSaldos(f?: { centroCustoId?: string; propriedadeId?:
     return {
       produtoId: p.id,
       nome: p.nome,
+      materialGeneticoId: f?.materialGeneticoVisivel === false ? null : p.materialGenetico?.id ?? null,
       categoria: p.categoria
-        ? { id: p.categoria.id, nome: p.categoria.nome, usoAgricola: p.categoria.usoAgricola }
+        ? { id: p.categoria.id, nome: p.categoria.nome, usoAgricola: p.categoria.usoAgricola, usoGenetico: p.categoria.usoGenetico }
         : null,
       unidade: p.unidade,
       centrosCusto: p.centrosCusto.map(({ centroCusto }) => ({ id: centroCusto.id, nome: centroCusto.nome })),
@@ -221,7 +226,7 @@ export async function listarSaldos(f?: { centroCustoId?: string; propriedadeId?:
 export type VinculoMovimento = { tipo: "TALHAO"; id: number; codigo: string };
 
 /** Quais vínculos operacionais o leitor pode ver (quem só tem financeiro não vê talhão). Ausente = todos. */
-export type VinculosVisiveis = { agricultura: boolean };
+export type VinculosVisiveis = { agricultura: boolean; pecuaria?: boolean };
 
 export type FiltroMovimentos = {
   produtoId?: string; tipo?: string; q?: string; origem?: string; centroCustoId?: string;
@@ -236,7 +241,7 @@ function numeroOperacaoDaBusca(q: string): number | null {
 }
 
 export async function listarMovimentos(f?: FiltroMovimentos) {
-  const visiveis = f?.vinculosVisiveis ?? { agricultura: true };
+  const visiveis = f?.vinculosVisiveis ?? { agricultura: true, pecuaria: true };
   const pagina = f?.pagina ?? 1;
   const porPagina = f?.porPagina ?? 15;
   const and: Prisma.MovimentoEstoqueWhereInput[] = [
@@ -272,7 +277,7 @@ export async function listarMovimentos(f?: FiltroMovimentos) {
       skip: (pagina - 1) * porPagina,
       take: porPagina,
       include: {
-        produto: { include: { centrosCusto: { include: { centroCusto: true } } } },
+        produto: { include: { centrosCusto: { include: { centroCusto: true } }, materialGenetico: { select: { id: true } } } },
         operacao: { include: { parceiro: true } },
         // Origem das saídas automáticas (sem operação financeira): um único join por relação, sem N+1.
         operacaoAgricola: { select: { talhaoId: true, talhao: { select: { codigo: true } } } },
@@ -293,6 +298,7 @@ export async function listarMovimentos(f?: FiltroMovimentos) {
       seq: m.seq,
       produtoId: m.produtoId,
       produto: m.produto.nome,
+      materialGeneticoId: visiveis.pecuaria !== false ? m.produto.materialGenetico?.id ?? null : null,
       centrosCusto: m.produto.centrosCusto.map(({ centroCusto }) => ({ id: centroCusto.id, nome: centroCusto.nome })),
       tipo: m.tipo,
       origem: m.origem, // COMPRA | CONSUMO_DIRETO | TRANSFERENCIA | PRODUCAO | DEVOLUCAO | BONIFICACAO | INVENTARIO_INICIAL | APLICACAO | PERDA | AJUSTE_INVENTARIO

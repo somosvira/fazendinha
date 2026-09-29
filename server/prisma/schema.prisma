@@ -187,6 +187,8 @@ model Categoria {
   // estoque do plantio. (As marcações sanitária e nutricional voltam com a v3
   // da pecuária.)
   usoAgricola   Boolean                 @default(false)
+  // Genético: produtos que podem ser material genético (sêmen/embrião) da pecuária.
+  usoGenetico   Boolean                 @default(false)
   operacoes     Operacao[]
   produtos      Produto[]
   itens         ItemOperacao[]
@@ -226,27 +228,28 @@ model ContaFinanceira {
 }
 
 model Produto {
-  id            String               @id @default(uuid())
-  nome          String               @unique
-  unidade       UnidadeMedida        @default(UN)
-  minimoEstoque Decimal?             @db.Decimal(12, 2)
-  ativo         Boolean              @default(true)
+  id               String               @id @default(uuid())
+  nome             String               @unique
+  unidade          UnidadeMedida        @default(UN)
+  minimoEstoque    Decimal?             @db.Decimal(12, 2)
+  ativo            Boolean              @default(true)
   // Mapeamento contábil (ponte com o financeiro): categoria padrão que o item
   // de operação herda ao escolher este produto (classificação vem da categoria).
   // Obrigatória no cadastro (validada no service); a coluna segue nullable por
   // causa de produtos legados. Se o produto tem estoque não é atributo dele:
   // quem decide é o tipo da operação (ItemOperacao.estocavel).
-  categoria     Categoria?           @relation(fields: [categoriaId], references: [id])
-  categoriaId   String?
+  categoria        Categoria?           @relation(fields: [categoriaId], references: [id])
+  categoriaId      String?
   // Centros de custo onde este produto pode ser usado (N:N). Um só → o item da
   // operação e a saída de estoque herdam automaticamente; vários → escolha na hora.
-  centrosCusto  ProdutoCentroCusto[]
-  movimentos    MovimentoEstoque[]
-  itensOperacao ItemOperacao[]
-  fornecedores  ProdutoFornecedor[]
-  aplicacoes    OperacaoAgricola[]
-  createdAt     DateTime             @default(now())
-  updatedAt     DateTime             @updatedAt
+  centrosCusto     ProdutoCentroCusto[]
+  movimentos       MovimentoEstoque[]
+  itensOperacao    ItemOperacao[]
+  fornecedores     ProdutoFornecedor[]
+  aplicacoes       OperacaoAgricola[]
+  materialGenetico MaterialGenetico?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
 
   @@schema("public")
 }
@@ -297,6 +300,7 @@ model Parceiro {
   compromissos               CompromissoFinanceiro[]
   transacoes                 TransacaoFinanceira[]
   produtosFornecidos         ProdutoFornecedor[]
+  genitoresExternos          GenitorExterno[]
   createdAt                  DateTime                @default(now())
   updatedAt                  DateTime                @updatedAt
 
@@ -1670,6 +1674,9 @@ model Usuario {
   pecPesagensCriadas          Pesagem[]               @relation("PesagemCriadoPor")
   pecAuditoriasCriadas        AuditoriaPecuaria[]     @relation("AuditoriaPecuariaCriadoPor")
   pecAuditoriasAutor          AuditoriaPecuaria[]     @relation("AuditoriaPecuariaUsuario")
+  // Pecuária v2 (genética)
+  pecGenitoresCriados         GenitorExterno[]        @relation("GenitorExternoCriadoPor")
+  pecMateriaisCriados         MaterialGenetico[]      @relation("MaterialGeneticoCriadoPor")
 
   @@schema("public")
 }
@@ -1796,34 +1803,139 @@ enum OrigemComposicao {
 // Quem o animal é: identidade estável. Onde está, para que serve e se teve baixa
 // vivem em tabelas de histórico próprias (Localizacao/Destino/Baixa).
 model Animal {
-  id                   String       @id @default(uuid())
-  ideagriId            Int?         @unique
+  id                   String          @id @default(uuid())
+  ideagriId            Int?            @unique
   brinco               String
   nome                 String?
-  brincoEletronico     String?      @unique
-  sisbov               String?      @unique
+  brincoEletronico     String?         @unique
+  sisbov               String?         @unique
   sexo                 SexoBovino
-  dataNascimento       DateTime     @db.Date
-  nascimentoEstimado   Boolean      @default(false)
+  dataNascimento       DateTime        @db.Date
+  nascimentoEstimado   Boolean         @default(false)
   origem               OrigemAnimal
   // = dataNascimento quando origem NASCIDO
-  dataEntrada          DateTime     @db.Date
-  partosAntesDaEntrada Int          @default(0)
+  dataEntrada          DateTime        @db.Date
+  partosAntesDaEntrada Int             @default(0)
   observacao           String?
-  criadoEm             DateTime     @default(now())
+  // Filiação (v2): cada lado aponta para um animal nosso OU para um genitor externo, nunca
+  // os dois (CHECK na migration). Filiação é identidade, não histórico.
+  maeId                String?
+  mae                  Animal?         @relation("AnimalMae", fields: [maeId], references: [id], onDelete: Restrict)
+  paiId                String?
+  pai                  Animal?         @relation("AnimalPai", fields: [paiId], references: [id], onDelete: Restrict)
+  maeExternaId         String?
+  maeExterna           GenitorExterno? @relation("AnimalMaeExterna", fields: [maeExternaId], references: [id], onDelete: Restrict)
+  paiExternoId         String?
+  paiExterno           GenitorExterno? @relation("AnimalPaiExterno", fields: [paiExternoId], references: [id], onDelete: Restrict)
+  criadoEm             DateTime        @default(now())
   criadoPorId          Int?
-  criadoPor            Usuario?     @relation("AnimalCriadoPor", fields: [criadoPorId], references: [id])
-  atualizadoEm         DateTime     @updatedAt
+  criadoPor            Usuario?        @relation("AnimalCriadoPor", fields: [criadoPorId], references: [id])
+  atualizadoEm         DateTime        @updatedAt
 
-  composicao        ComposicaoRacial[]
-  localizacoes      LocalizacaoAnimal[]
-  destinos          DestinoAnimal[]
-  baixas            BaixaAnimal[]
-  pesagens          Pesagem[]
-  movimentacoes     MovimentacaoAnimal[]
-  categoriasManuais CategoriaManualAnimal[]
+  composicao           ComposicaoRacial[]
+  localizacoes         LocalizacaoAnimal[]
+  destinos             DestinoAnimal[]
+  baixas               BaixaAnimal[]
+  pesagens             Pesagem[]
+  movimentacoes        MovimentacaoAnimal[]
+  categoriasManuais    CategoriaManualAnimal[]
+  filhosComoMae        Animal[]                @relation("AnimalMae")
+  filhosComoPai        Animal[]                @relation("AnimalPai")
+  materiaisComoTouro   MaterialGenetico[]      @relation("MaterialTouro")
+  materiaisComoDoadora MaterialGenetico[]      @relation("MaterialDoadora")
 
   @@index([brinco])
+  @@index([maeId])
+  @@index([paiId])
+  @@index([maeExternaId])
+  @@index([paiExternoId])
+  @@schema("pecuaria")
+}
+
+enum TipoMaterialGenetico {
+  SEMEN
+  EMBRIAO
+
+  @@schema("pecuaria")
+}
+
+enum TipoSemen {
+  CONVENCIONAL
+  SEXADO_FEMEA
+  SEXADO_MACHO
+
+  @@schema("pecuaria")
+}
+
+// Genitor que não é animal da fazenda: touro de central (M) ou doadora de outra fazenda (F).
+// Só dado genético — sem brinco, lote, peso ou baixa. Animal nosso é genitor pela própria ficha.
+model GenitorExterno {
+  id           String     @id @default(uuid())
+  ideagriId    Int?       @unique
+  sexo         SexoBovino
+  nome         String
+  codigo       String?
+  fornecedor   String?
+  fornecedorId String?
+  fornecedorParceiro Parceiro? @relation(fields: [fornecedorId], references: [id], onDelete: SetNull)
+  ativo        Boolean    @default(true)
+  observacao   String?
+  criadoEm     DateTime   @default(now())
+  criadoPorId  Int?
+  criadoPor    Usuario?   @relation("GenitorExternoCriadoPor", fields: [criadoPorId], references: [id])
+  atualizadoEm DateTime   @updatedAt
+
+  composicao           ComposicaoGenitorExterno[]
+  filhosComoMae        Animal[]                   @relation("AnimalMaeExterna")
+  filhosComoPai        Animal[]                   @relation("AnimalPaiExterno")
+  materiaisComoTouro   MaterialGenetico[]         @relation("MaterialTouroExterno")
+  materiaisComoDoadora MaterialGenetico[]         @relation("MaterialDoadoraExterna")
+
+  @@index([sexo, nome])
+  @@index([fornecedorId])
+  @@schema("pecuaria")
+}
+
+// Grau de sangue do genitor externo em 64 avos (espelho de ComposicaoRacial).
+model ComposicaoGenitorExterno {
+  id        String         @id @default(uuid())
+  genitorId String
+  genitor   GenitorExterno @relation(fields: [genitorId], references: [id], onDelete: Cascade)
+  racaId    String
+  raca      Raca           @relation(fields: [racaId], references: [id], onDelete: Restrict)
+  fracao64  Int
+
+  @@unique([genitorId, racaId])
+  @@index([racaId])
+  @@schema("pecuaria")
+}
+
+// Identidade genética de um produto do estoque (sêmen ou embrião). O produto diz quanto
+// tem, quanto custou e onde está; esta linha diz de quem é. Consumo (IA/TE) entra na v4.
+model MaterialGenetico {
+  id               String               @id @default(uuid())
+  tipo             TipoMaterialGenetico
+  tipoSemen        TipoSemen?
+  touroId          String?
+  touro            Animal?              @relation("MaterialTouro", fields: [touroId], references: [id], onDelete: Restrict)
+  touroExternoId   String?
+  touroExterno     GenitorExterno?      @relation("MaterialTouroExterno", fields: [touroExternoId], references: [id], onDelete: Restrict)
+  doadoraId        String?
+  doadora          Animal?              @relation("MaterialDoadora", fields: [doadoraId], references: [id], onDelete: Restrict)
+  doadoraExternaId String?
+  doadoraExterna   GenitorExterno?      @relation("MaterialDoadoraExterna", fields: [doadoraExternaId], references: [id], onDelete: Restrict)
+  produtoId        String               @unique
+  produto          Produto              @relation(fields: [produtoId], references: [id], onDelete: Restrict)
+  observacao       String?
+  criadoEm         DateTime             @default(now())
+  criadoPorId      Int?
+  criadoPor        Usuario?             @relation("MaterialGeneticoCriadoPor", fields: [criadoPorId], references: [id])
+  atualizadoEm     DateTime             @updatedAt
+
+  @@index([touroId])
+  @@index([touroExternoId])
+  @@index([doadoraId])
+  @@index([doadoraExternaId])
   @@schema("pecuaria")
 }
 
@@ -1892,7 +2004,8 @@ model Raca {
   criadoPor    Usuario? @relation("RacaCriadoPor", fields: [criadoPorId], references: [id])
   atualizadoEm DateTime @updatedAt
 
-  composicoes ComposicaoRacial[]
+  composicoes          ComposicaoRacial[]
+  composicoesGenitores ComposicaoGenitorExterno[]
 
   @@schema("pecuaria")
 }
@@ -1905,6 +2018,8 @@ model ComposicaoRacial {
   racaId       String
   raca         Raca             @relation(fields: [racaId], references: [id], onDelete: Restrict)
   fracao64     Int
+  // Parcela herdada dos genitores dentro de fracao64; o restante foi informado.
+  fracaoCalculada64 Int @default(0)
   origem       OrigemComposicao
   criadoEm     DateTime         @default(now())
   criadoPorId  Int?

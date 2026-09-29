@@ -27,8 +27,8 @@ function mockFetch(d: Dados = {}) {
 const produtoId = uid(1);
 const centroId = uid(5);
 const categoria = { id: uid(100), nome: "Alimentação", usoAgricola: false };
-const saldo = (o: Record<string, unknown>) => ({ produtoId, nome: "Ração", categoria, unidade: "KG", centrosCusto: [], saldo: 15, custoMedio: 6, valor: 90, minimoEstoque: null, abaixoMinimo: false, ...o });
-const mov = (o: Record<string, unknown>) => ({ id: uid(10), seq: 1, produtoId, produto: "Ração", centrosCusto: [], tipo: "ENTRADA", origem: "COMPRA", status: "CONFIRMADO", reversaoDeId: null, data: "2026-09-10", quantidade: 10, custoUnitario: 6, valorTotal: 60, fornecedor: null, observacao: null, operacaoId: null, operacaoNumero: null, vinculo: null, ...o });
+const saldo = (o: Record<string, unknown>) => ({ produtoId, nome: "Ração", materialGeneticoId: null, categoria, unidade: "KG", centrosCusto: [], saldo: 15, custoMedio: 6, valor: 90, minimoEstoque: null, abaixoMinimo: false, ...o });
+const mov = (o: Record<string, unknown>) => ({ id: uid(10), seq: 1, produtoId, produto: "Ração", materialGeneticoId: null, centrosCusto: [], tipo: "ENTRADA", origem: "COMPRA", status: "CONFIRMADO", reversaoDeId: null, data: "2026-09-10", quantidade: 10, custoUnitario: 6, valorTotal: 60, fornecedor: null, observacao: null, operacaoId: null, operacaoNumero: null, vinculo: null, ...o });
 
 function sessao(areas: string[], flags: string[] = [], dono = false) {
   localStorage.setItem("rionovo:usuario", JSON.stringify({ id: 1, nome: "T", email: "t@x", papel: "x", abas: [], areas, flags, status: "ATIVO", dono }));
@@ -79,6 +79,13 @@ describe("EstoqueContent — filtro inicial vindo do módulo", () => {
 });
 
 describe("EstoqueContent — saldos e custo médio", () => {
+  it("produto genético leva ao cadastro da sua identidade genética", async () => {
+    const materialId = uid(8);
+    vi.stubGlobal("fetch", mockFetch({ saldos: [saldo({ nome: "Sêmen Zeus", materialGeneticoId: materialId })] }));
+    render(<EstoqueContent />);
+    const link = (await screen.findAllByRole("link", { name: "Sêmen Zeus" }))[0] as HTMLAnchorElement;
+    expect(link.getAttribute("href")).toBe(`/pecuaria/rebanho/cadastros?aba=material-genetico&material=${materialId}`);
+  });
   it("mostra custo médio e valor (saldo × médio); sem custo, '—'", async () => {
     vi.stubGlobal("fetch", mockFetch({ saldos: [
       saldo({}),
