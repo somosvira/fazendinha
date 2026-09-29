@@ -16,6 +16,7 @@ import { comPropriedadeExplicita, getPropriedadeAtiva } from "../../propriedadeS
 const CHAVE = "rionovo-fila-pendente";
 const CHAVE_ERROS = "rionovo-fila-erros";
 const TRAVA_PROCESSAMENTO = "rionovo-fila-processamento";
+const TRAVA_ESCRITA = "rionovo-fila-escrita";
 
 interface PedidoMutation {
   mutationKey: string;
@@ -103,12 +104,12 @@ function destravar() {
 // abas reconectando juntas drenam a mesma fila em paralelo e cada uma manda
 // os itens duplicados ao servidor. `navigator.locks` (indisponível em alguns
 // ambientes de teste) serializa entre abas; sem ele, roda direto.
-function comTravaEntreAbas<T>(fn: () => Promise<T>): Promise<T> {
+function comTravaEntreAbas<T>(nome: string, fn: () => Promise<T>): Promise<T> {
   if (typeof navigator !== "undefined" && "locks" in navigator) {
     // O tipo de LockGrantedCallback não modela retorno assíncrono (a API de
     // verdade espera a promise do callback assentar antes de resolver esta),
     // então o `as` corrige só o tipo, não o comportamento.
-    return navigator.locks.request(TRAVA_PROCESSAMENTO, fn) as unknown as Promise<T>;
+    return navigator.locks.request(nome, fn) as unknown as Promise<T>;
   }
   return fn();
 }
@@ -128,6 +129,16 @@ function carregar(): Promise<void> {
 async function persistir(): Promise<void> {
   await set(CHAVE, fila);
   notificar();
+}
+
+// Toda alteração da fila persistida relê o IndexedDB dentro de uma trava própria
+// (separada da do processamento, que fica presa durante o replay inteiro): a
+// cópia em memória pode estar velha e regravá-la apagaria itens de outra aba.
+async function alterarFilaPersistida(alterar: (atual: ItemFila[]) => ItemFila[]): Promise<void> {
+  await comTravaEntreAbas(TRAVA_ESCRITA, async () => {
+    fila = alterar((await get<ItemFila[]>(CHAVE)) ?? []);
+    await persistir();
+  });
 }
 
 // Fetch cru, sem passar por `aguardarFilaLivre()` (é quem detém o gate).
@@ -178,12 +189,10 @@ async function processarFila(): Promise<void> {
       // Erro de item (validação/regra de negócio) não contamina os outros —
       // tira só ele da fila, pro registro auditável, e segue com o resto.
       await moverParaErros(item, err instanceof Error ? err.message : String(err));
-      fila = fila.slice(1);
-      await persistir();
+      await alterarFilaPersistida((atual) => atual.filter((i) => i.filaId !== item.filaId));
       continue;
     }
-    fila = fila.slice(1);
-    await persistir();
+    await alterarFilaPersistida((atual) => atual.filter((i) => i.filaId !== item.filaId));
     pendencias.get(item.filaId)?.resolve(resposta);
     pendencias.delete(item.filaId);
   }
@@ -193,7 +202,7 @@ export function garantirProcessamento(): void {
   if (processando || !onlineManager.isOnline()) return;
   processando = true;
   travar();
-  comTravaEntreAbas(async () => {
+  comTravaEntreAbas(TRAVA_PROCESSAMENTO, async () => {
     // Relê do IndexedDB ao entrar na trava — outra aba pode ter drenado (ou
     // adicionado) itens enquanto esta esperava a vez.
     fila = (await get<ItemFila[]>(CHAVE)) ?? [];
@@ -223,8 +232,7 @@ export function iniciarFila(): void {
 export async function enfileirarMutation(pedido: PedidoMutation): Promise<any> {
   await carregar();
   const item: ItemFila = { ...pedido, filaId: crypto.randomUUID(), criadoEm: new Date().toISOString(), propriedadeId: getPropriedadeAtiva() };
-  fila = [...fila, item];
-  await persistir();
+  await alterarFilaPersistida((atual) => [...atual, item]);
   garantirProcessamento();
   return new Promise((resolve, reject) => pendencias.set(item.filaId, { resolve, reject }));
 }

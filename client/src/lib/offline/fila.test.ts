@@ -173,7 +173,8 @@ describe("fila", () => {
     vi.resetModules();
     let concorrentes = 0;
     let maxConcorrentes = 0;
-    const requestMock = vi.fn(async (_nome: string, cb: () => Promise<unknown>) => {
+    const requestMock = vi.fn(async (nome: string, cb: () => Promise<unknown>) => {
+      if (nome !== "rionovo-fila-processamento") return cb();
       concorrentes++;
       maxConcorrentes = Math.max(maxConcorrentes, concorrentes);
       try {
@@ -196,10 +197,17 @@ describe("fila", () => {
     expect(maxConcorrentes).toBe(1);
   });
 
-  // `enfileirarMutation` lê e regrava a fila fora da navigator.locks: duas abas
-  // (dois módulos sobre o mesmo IndexedDB) enfileirando juntas sobrescrevem
-  // uma à outra. Reproduz o bug — trocar por `it` quando a fila for corrigida.
-  it.fails("duas abas enfileirando quase juntas mantêm os dois itens no IndexedDB", async () => {
+  it("duas abas enfileirando quase juntas mantêm os dois itens no IndexedDB", async () => {
+    const caudas = new Map<string, Promise<unknown>>();
+    vi.stubGlobal("navigator", {
+      locks: {
+        request: (nome: string, cb: () => Promise<unknown>) => {
+          const resultado = (caudas.get(nome) ?? Promise.resolve()).then(cb);
+          caudas.set(nome, resultado.catch(() => {}));
+          return resultado;
+        },
+      },
+    });
     rede.online = false;
     vi.resetModules();
     const abaA = await import("./fila");
