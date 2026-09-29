@@ -1,7 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+const { armazenamento, rede } = vi.hoisted(() => ({
+  armazenamento: new Map<string, unknown>(),
+  rede: { online: true },
+}));
+
 vi.mock("idb-keyval", () => {
-  const armazenamento = new Map<string, unknown>();
   return {
     get: vi.fn((k: string) => Promise.resolve(armazenamento.get(k))),
     set: vi.fn((k: string, v: unknown) => {
@@ -12,7 +16,7 @@ vi.mock("idb-keyval", () => {
 });
 
 vi.mock("@tanstack/react-query", () => ({
-  onlineManager: { isOnline: () => true, subscribe: () => () => {} },
+  onlineManager: { isOnline: () => rede.online, subscribe: () => () => {} },
 }));
 
 let propriedadeAtiva: number | null = null;
@@ -31,6 +35,8 @@ function resposta(body: unknown) {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  armazenamento.clear();
+  rede.online = true;
   propriedadeAtiva = null;
 });
 
@@ -188,5 +194,23 @@ describe("fila", () => {
 
     expect(requestMock).toHaveBeenCalledWith("rionovo-fila-processamento", expect.any(Function));
     expect(maxConcorrentes).toBe(1);
+  });
+
+  // `enfileirarMutation` lê e regrava a fila fora da navigator.locks: duas abas
+  // (dois módulos sobre o mesmo IndexedDB) enfileirando juntas sobrescrevem
+  // uma à outra. Reproduz o bug — trocar por `it` quando a fila for corrigida.
+  it.fails("duas abas enfileirando quase juntas mantêm os dois itens no IndexedDB", async () => {
+    rede.online = false;
+    vi.resetModules();
+    const abaA = await import("./fila");
+    vi.resetModules();
+    const abaB = await import("./fila");
+
+    void abaA.enfileirarMutation({ mutationKey: "a", path: "/a", method: "POST" });
+    void abaB.enfileirarMutation({ mutationKey: "b", path: "/b", method: "POST" });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    const gravada = armazenamento.get("rionovo-fila-pendente") as { path: string }[];
+    expect(gravada.map((item) => item.path).sort()).toEqual(["/a", "/b"]);
   });
 });
