@@ -2,7 +2,7 @@
 
 Esta pasta concentra o contexto funcional e técnico da reconstrução da pecuária. Ela substitui a dependência de uma sessão privada do Claude: os artefatos originais agora estão versionados no repositório e podem ser consultados por qualquer pessoa ou agente que trabalhe no projeto.
 
-## Estado em 28/09/2026
+## Estado em 29/09/2026
 
 | Entrega | Estado | Referência |
 |---|---|---|
@@ -18,7 +18,7 @@ Esta pasta concentra o contexto funcional e técnico da reconstrução da pecuá
 
 1. [Pecuária Schema Map — v1](./artefatos/pecuaria-schema-map-v1.html): modelo do Rebanho, invariantes, efeitos das ações e roadmap original.
 2. [Pecuária v2 · Genética](./artefatos/pecuaria-v2-genetica.html): decisões da v2, tabelas, regras, telas e integração com estoque.
-3. [Roteiro de Testes do Rebanho](./artefatos/roteiro-testes-rebanho-v1-v2.html): QA manual de ponta a ponta para v1 e v2. As marcações ficam apenas no navegador de quem executar.
+3. [Roteiro de Testes do Rebanho](./artefatos/roteiro-testes-rebanho-v1-v2.html): QA manual de ponta a ponta para v1, v2 e contrato-alvo da v3. As marcações ficam apenas no navegador de quem executar; o nome histórico do arquivo foi mantido para preservar links.
 4. [IDEAGRI Schema Map](./artefatos/ideagri-schema-map.html): inventário do banco legado e relações usadas para preparar a carga inicial.
 5. [Pecuária v3 · Sanidade, peso e nutrição](./artefatos/pecuaria-v3-sanidade-peso-nutricao.html): proposta de implementação sobre a v2, com diagramas, contrato de dados, efeitos operacionais, comparação com o IDEAGRI e fases/testes de um único PR.
 
@@ -32,7 +32,7 @@ Os arquivos são snapshots HTML e preservam os diagramas e a interatividade dos 
 - O documento da v2 é o contrato de produto e arquitetura do PR #305. Para detalhes exatos de implementação, prevalecem a migration, o schema Prisma e os testes da branch.
 - O artefato da v3 é o contrato-alvo, baseado no código do #305 em `e31eb55`. A implementação foi iniciada, mas o artefato ainda não representa recursos prontos ou homologação da carga real. A entrega em um único PR é requisito; os padrões propostos e os pontos de revisão estão explicitados no artefato.
 - O PR em rascunho já implementa a base de schema/migration, partidas no estoque genérico, aplicações com dose incluída em Serviço sem Produto obrigatório, carência, ocorrências, protocolos e exames, pesagem coletiva/manejo e o primeiro fluxo de dieta/fechamento nutricional. A interface ainda não cobre todos esses fluxos; reconciliação de partidas, proteções de concorrência, validação integral e importação IDEAGRI permanecem pendentes. Nada disso deve ser anunciado como V3 homologada.
-- O roteiro de testes combina v1 e v2, embora a v2 ainda não esteja na `main`. Para testá-lo inteiro, use uma branch que contenha os PRs #305 e #306 já conciliados.
+- O roteiro de testes combina v1, v2 e 175 casos-alvo da v3, embora v2 e v3 ainda não estejam na `main`. Para executar a v3 inteira, use o PR #308 sobre a base conciliada da v2, depois de completar seus fluxos pendentes. Um caso não executado fica pendente; um fluxo ausente ou incorreto deve ser marcado como falha, nunca como aprovado. A carga histórica requer o dump real do IDEAGRI.
 
 Quando houver divergência, use esta ordem para resolver: invariantes de produto aprovadas → migration/schema → testes automatizados → implementação → documento histórico. Corrija a documentação na mesma PR que alterar o comportamento.
 
@@ -52,7 +52,7 @@ Quando houver divergência, use esta ordem para resolver: invariantes de produto
 3. **Rodar a carga real da v2.** Confirmar a consulta de genitores externos, especialmente `ANIMAL.CDCENTRALSEMEN`; executar a importação duas vezes para verificar idempotência e depois `validar:pecuaria`.
 4. **Executar o roteiro manual completo.** Cobrir filiação, composição calculada versus informada, genitor inativo, animal baixado como genitor, material genético, saldo e os avisos de idade/ciclo.
 5. **Tirar o PR #305 de rascunho, revisar e mesclar.** Só então atualizar esta página para marcar a v2 como presente na `main`.
-6. **Revisar o planejamento da v3 e implementar em um único PR sobre a v2.** Usar o [artefato V3](./artefatos/pecuaria-v3-sanidade-peso-nutricao.html) para revisar escopo, decisões, tabelas e critérios de aceite. O desenvolvimento pode partir do head atualizado do #305; se a v2 ainda estiver aberta, manter a base do PR na branch da v2 e depois ajustar para a `main`. A liberação da v3 depende da estabilização da v2 e da homologação de suas próprias mudanças.
+6. **Concluir e homologar o PR #308 da v3 sobre a v2.** Usar o [artefato V3](./artefatos/pecuaria-v3-sanidade-peso-nutricao.html) como contrato e os grupos v3 do [roteiro de testes](./artefatos/roteiro-testes-rebanho-v1-v2.html) como critérios manuais de aceite. Se a v2 ainda estiver aberta, manter a base na branch do #305 e depois ajustar para a `main`. Não liberar a v3 enquanto houver casos obrigatórios não implementados, falhos ou dependentes da carga real.
 
 ## Manutenção
 

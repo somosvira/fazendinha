@@ -139,9 +139,10 @@ ol.steps{list-style:none;margin:0;padding:0}
 
 <div class="wrap">
 <header class="top">
-  <p class="eyebrow">Terrano · Pecuária v1 Rebanho + v2 Genética · <code>/pecuaria/rebanho</code></p>
+  <p class="eyebrow">Terrano · Pecuária v1 Rebanho + v2 Genética + v3 Sanidade, manejo e nutrição · <code>/pecuaria/rebanho</code></p>
   <h1>Roteiro de Testes do Rebanho</h1>
-  <p class="lede">Teste manual, de ponta a ponta, de tudo o que a v1 (Rebanho) e a v2 (Genética) da pecuária entregaram. Siga as seções na ordem: cada uma usa os dados que a anterior criou. Marque o que passou; se algo falhar, clique em “Falhou” e anote o que viu. As marcações ficam salvas só neste navegador, e “Copiar relatório” gera o resumo para mandar ao time.</p>
+  <p class="lede">Teste manual de ponta a ponta da v1 (Rebanho), v2 (Genética) e do contrato-alvo da v3 (Sanidade, manejo, nutrição e partidas). Siga as seções na ordem e marque apenas o que verificou. Se algo falhar ou ainda não existir no PR, clique em “Falhou” e anote o que viu; passos não executados ficam pendentes. As marcações ficam só neste navegador, e “Copiar relatório” gera o resumo para o time.</p>
+  <p class="intro"><a href="#g-v3prep">Ir direto aos testes da v3</a> · <a href="#dados">Ver dados de teste</a>. As marcações antigas da v1/v2 são preservadas.</p>
 </header>
 
 <div class="bar" role="region" aria-label="Progresso">
@@ -164,8 +165,8 @@ ol.steps{list-style:none;margin:0;padding:0}
 
 <main>
 <section id="features">
-  <h2>O que a v1 e a v2 entregaram</h2>
-  <p class="intro">Tudo que está na <code>main</code> desde o merge do PR #296 (25/09/2026). O módulo é a tela <code>/pecuaria/rebanho</code> com quatro abas (Visão geral · Animais · Lotes · Cadastros) e a API <code>/api/pecuaria/rebanho/*</code>, no schema Postgres <code>pecuaria</code> (14 tabelas).</p>
+  <h2>Escopo por versão</h2>
+  <p class="intro">A v1 está na <code>main</code> desde o PR #296 (25/09/2026). A v2 está no PR #305 e a v3 no PR #308, ambos ainda sujeitos a homologação. Os grupos v3 abaixo são critérios de aceite do <a href="pecuaria-v3-sanidade-peso-nutricao.html">artefato de planejamento</a>, não uma declaração de que todas as telas e regras já estejam prontas.</p>
   <div class="feat">
     <div><h3>Cadastro do animal</h3><ul>
       <li><b>Novo animal</b>: brinco, nome, sexo, brinco eletrônico, SISBOV, origem (nascido/comprado), nascimento (com “data estimada”), entrada, partos antes da entrada, observação</li>
@@ -244,6 +245,13 @@ ol.steps{list-style:none;margin:0;padding:0}
       <li>Segunda passada idempotente; validador confere sexo e datas</li>
     </ul></div>
   </div>
+  <p class="intro" style="margin-top:22px"><b>v3 · Sanidade, manejo, nutrição e partidas</b> — contrato-alvo do PR #308 sobre a v2. A carga IDEAGRI é inicial, nunca integração em tempo real.</p>
+  <div class="feat">
+    <div><h3>Sanidade</h3><ul><li>Ocorrências, aplicações de vacina/vermífugo/tratamento, exames e protocolos com tarefas.</li><li>Quatro origens da dose: estoque, compra direta, Serviço com doses inclusas e exceção justificada.</li><li>Carência separada de leite e carne, inclusive prazo desconhecido, com histórico e anulação.</li></ul></div>
+    <div><h3>Estoque e custos</h3><ul><li>Partidas e validade no estoque único, inclusive financeiro, agricultura, material genético e nutrição.</li><li>Serviço com dose inclusa: medicamento e dose na aplicação, referência financeira ao Serviço, sem Produto obrigatório nem saída física.</li><li>Consumo não cria outra despesa nem duplica o custo do Serviço.</li></ul></div>
+    <div><h3>Manejo e peso</h3><ul><li>Pesagens coletivas alimentam a Pesagem, o gráfico e o GMD existentes.</li><li>Desmama e castração são fatos auditáveis; peso na desmama é opcional.</li></ul></div>
+    <div><h3>Nutrição</h3><ul><li>Receita por cabeça/dia, versões publicadas e vigência por lote.</li><li>Prévia por animal-dias históricos, conferência do consumo real, saída de estoque e custo sem nova despesa.</li><li>Fechamentos, correções por estorno e matéria seca apenas quando informada.</li></ul></div>
+  </div>
 </section>
 
 <section id="dados">
@@ -283,6 +291,15 @@ ol.steps{list-style:none;margin:0;padding:0}
       <tr><th>Categoria financeira</th><td>“Material genético” com <b>Uso genético</b> marcado</td></tr>
     </tbody>
   </table></div>
+  <h3 style="font:600 20px/1.2 var(--serif);margin:26px 0 6px">Dados da v3 · Cenário controlado</h3>
+  <p class="intro">Use um banco de homologação descartável, com setembro de 2026 aberto no financeiro. Não reutilize a Mimosa baixada ou mude os fatos históricos da v1/v2 para montar o cenário. Os passos de 2 sítios continuam opcionais quando o Sítio B não existir.</p>
+  <div class="tw"><table><thead><tr><th>Fixture</th><th>Dados e efeito esperado</th></tr></thead><tbody>
+    <tr><th>Lotes</th><td>No Sítio A, criar <b>V3 Nutrição</b> e <b>V3 Transição</b>, com centro de custo ativo. Sítio B · Recria fica para transferência.</td></tr>
+    <tr><th>Animais</th><td><b>RN01–RN10</b> no lote V3 Nutrição de 01/09/2026; <b>RN11–RN12</b> entram em 06/09/2026. Nascidos antes da entrada; RN01–RN11 são fêmeas e RN12 é macho. No intervalo 01–10/09, são <b>110 animal-dias</b>. Criar <b>RT01</b> em V3 Transição desde 01/09 para testar troca de dieta. Brincos únicos no sítio.</td></tr>
+    <tr><th>Produtos</th><td><b>Vacina V3</b> em mL: 50 mL, partidas VA (20 mL, validade 30/11/2026) e VB (30 mL, validade 31/12/2026). <b>Ração V3</b> em kg: saldo ≥ 400 kg, MS 90% informada. <b>Mineral V3</b> em kg: estoque suficiente, MS não informada. Ração e Mineral usam categoria nutricional.</td></tr>
+    <tr><th>Financeiro</th><td>Serviço veterinário confirmado de <b>R$ 1.000</b> com doses inclusas; compra para consumo direto confirmada de 10 mL de outro medicamento, item não estocável. Manter um produto de estoque com custo conhecido e outro sem base para comparar a apresentação do custo.</td></tr>
+    <tr><th>Dieta</th><td><b>V3 Crescimento</b>, rascunho com Ração V3 a <b>3 kg/cabeça/dia</b> e Mineral V3 a 0,1 kg/cabeça/dia. Publicar versão 1 e aplicar ao lote desde 01/09/2026. Para Ração V3 em 01–10/09, previsão = <b>330 kg</b>.</td></tr>
+  </tbody></table></div>
   <ul class="nav" id="nav" aria-label="Seções do roteiro"></ul>
 </section>
 
@@ -299,9 +316,10 @@ ol.steps{list-style:none;margin:0;padding:0}
 </main>
 
 <footer class="foot">
-  <p>Fontes: “Pecuária Schema Map” (artefato do projeto), <code>CLAUDE.md</code>, telas em <code>client/src/pecuaria/rebanho/</code> e services em <code>server/src/services/pecuaria/rebanho/</code>, na <code>main</code> de 26/09/2026.</p>
+  <p>Fontes: artefatos v1, v2 e <a href="pecuaria-v3-sanidade-peso-nutricao.html">v3</a>, schema/migration e testes do repositório. O roteiro v3 é alvo de homologação, não evidência de implementação concluída.</p>
   <p>v2: PR somosvira/fazendinha#305 (branch <code>claude/zen-fermat-ypdneu</code>).</p>
-  <p>Fora do escopo (não testar): sanidade, nutrição, reprodução (IA, TE, parto, consumo de doses) e leite.</p>
+  <p>v3: PR somosvira/fazendinha#308 (rascunho, baseado no #305). Carga histórica depende de cópia real do IDEAGRI; sem ela, deixar os passos correspondentes pendentes.</p>
+  <p>Fora do escopo da v3: reprodução (IA, TE, parto e consumo de material genético), ordenha/leite, ECC, formulação automática, recomendação clínica, integração de balança e modo offline.</p>
 </footer>
 </div>
 
@@ -528,6 +546,213 @@ const G = [
   ["Rodar <code>import:pecuaria</code>.","Relatório mostra genitores externos criados e filiações para animal do rebanho e para genitor externo."],
   ["Rodar <code>import:pecuaria</code> de novo.","Nada é duplicado; filiação editada no sistema não é sobrescrita."],
   ["Rodar <code>validar:pecuaria</code>.","Seção 13: nenhuma mãe macho nem pai fêmea; toda mãe nasceu antes da cria."]
+ ]},
+ {id:"v3prep", t:"v3 · Preparação e migração", d:"Contrato-alvo do PR #308. Executar em cópia descartável da v2, sem dados de produção.", s:[
+  ["Aplicar a migration da v3 num banco vazio que já recebeu v1 e v2.","Tabelas, constraints e rotas novas sobem sem recriar ou alterar fatos anteriores."],
+  ["Aplicar a migration da v3 numa cópia com animais, material genético, produtos, movimentos e operações da v2.","Contagens, saldos, filiação, composição, auditoria e links da v2 permanecem iguais."],
+  ["Reaplicar <code>migrate deploy</code>.","Nenhuma migration ou dado é duplicado."],
+  ["Confirmar que rastreio por partida começa desligado nos produtos antigos.","A migração não inventa códigos, validades ou distribuição física."],
+  ["Montar os lotes, animais, produtos, Serviço e dieta da tabela v3; anotar IDs e saldos antes de iniciar.","Há 110 animal-dias em V3 Nutrição de 01 a 10/09/2026 e nenhum efeito clínico ou financeiro fictício além das operações criadas."],
+  ["Abrir a v3 com área Pecuária e permissão de lançamento; conferir ficha, lote, estoque e financeiro.","A v1/v2 continua navegável; as novas seções não substituem filiação, material genético, peso ou auditoria."],
+  ["Conferir banco sem ativar rastreio e sem rodar importador no boot.","Nenhuma partida técnica, carga IDEAGRI ou movimento V3 aparece espontaneamente."]
+ ]},
+ {id:"v3produto", t:"v3 · Produtos e perfis", d:"Formulário único de Produto e categorias de uso; nenhum catálogo paralelo de medicamentos ou ração.", s:[
+  ["Marcar Uso sanitário na categoria da Vacina V3 e Uso nutricional na categoria da Ração V3.","Os usos aparecem em cadastro e filtros, preservando Uso agrícola e Uso genético."],
+  ["Salvar o perfil da Vacina V3 com via e carência sugerida de leite/carne.","A sugestão aparece na aplicação, mas não confirma dose nem prazo sem revisão humana."],
+  ["Deixar uma das carências do perfil em branco e informar zero na outra.","Em branco é desconhecido; zero é ausência de carência informada, nunca valor presumido."],
+  ["Salvar MS de 90% na Ração V3 e deixar MS do Mineral V3 vazia.","90% é aceito; Mineral mostra MS desconhecida."],
+  ["Tentar MS menor que 0 e maior que 100.","Ambos recusados no formulário e no servidor.",1],
+  ["Trocar a unidade de Produto com movimentos existentes ou retirar uso exigido por perfil/receita ativa.","Recusado sem corromper movimentos, receitas ou perfis antigos.",1],
+  ["Inativar Produto que já tem aplicações ou dieta publicada.","Ele sai das novas escolhas, mas os fatos e snapshots históricos continuam legíveis."],
+  ["Alterar a carência do perfil depois de uma aplicação e a MS depois de publicar receita.","Só novos lançamentos recebem as novas sugestões; aplicação e receita anteriores não mudam."]
+ ]},
+ {id:"v3partida", t:"v3 · Partidas no estoque único", d:"Compra, inventário, agricultura, material genético e consumo pecuário usam o mesmo razão físico.", s:[
+  ["Ativar rastreio na Vacina V3 após um movimento antigo sem partida.","O razão antigo recebe a partida técnica Legado não identificado; saldo e valor totais antes/depois são iguais."],
+  ["Tentar ativar rastreio em Produto cujo saldo legado é negativo.","Ativação recusada até reconciliar o saldo; nenhuma alocação parcial fica gravada.",1],
+  ["Tentar desligar o rastreio pela edição comum do Produto.","Não é permitido; partidas e histórico permanecem.",1],
+  ["Comprar 20 mL da partida VA e 30 mL da VB para o Sítio A, com validades diferentes.","Saldo total 50 mL; saldos 20/30 por partida, com código e validade visíveis."],
+  ["Confirmar entrada rastreada sem código ou com distribuição que não soma o item.","Recusada sem operação/movimento parcial.",1],
+  ["Tentar usar numa saída a partida de outro Produto ou repetir a mesma partida no movimento.","Recusado pela validação e pela integridade do banco.",1],
+  ["Consumir 5 mL da VA numa aplicação.","Saldo VA 15 mL, VB 30 mL e total 45 mL; um movimento SANIDADE aponta para a aplicação."],
+  ["Repartir uma saída de 10 mL em VA e VB.","Um movimento de 10 mL contém duas alocações cuja soma é exatamente 10 mL; o total não é contado duas vezes."],
+  ["Tentar saída maior que o saldo da VA, mesmo havendo saldo suficiente em VB.","Recusado: saldo total não substitui saldo da partida escolhida.",1],
+  ["Tentar aplicar partida vencida; repetir como documentação de fato passado com justificativa.","Uso operacional normal bloqueado; fato histórico excepcional só entra com ciência/justificativa auditada.",1],
+  ["Cadastrar partida sem validade e comparar à VA com vencimento informado.","Validade desconhecida é explícita; o sistema não a escolhe silenciosamente como primeira saída."],
+  ["Identificar saldo da partida técnica por reconciliação: tirar dela e colocar em códigos conhecidos.","Saldo físico e valor líquido do Produto não mudam; o consumo passado continua atribuído à partida técnica."],
+  ["Fazer compra, devolução, perda, produção, bonificação, ajuste e inventário de Produto rastreado.","Cada caminho exige distribuição; item confirmado e movimento preservam o snapshot das partidas."],
+  ["Fazer aplicação agrícola de Produto rastreado e depois editar/anular o fato.","Saída exige partida; estorno devolve exatamente as mesmas quantidades e códigos."],
+  ["Transferir Produto rastreado do Sítio A para o B e consultar saldos em ambos.","Quantidade e identidade/validade da partida saem de A e entram em B, sem mistura entre sítios.",0,1],
+  ["Cancelar entrada cuja partida já foi consumida; repetir com entrada ainda íntegra.","Primeiro cancelamento é recusado por saldo negativo; o segundo cria inverso exato, preservando original e auditoria.",1],
+  ["Repetir consumo de duas telas ao mesmo tempo contra o último saldo da mesma partida.","Só uma confirmação vence; não há saldo negativo ou baixa sem fato correspondente."]
+ ]},
+ {id:"v3origem", t:"v3 · Aplicações e origem da dose", d:"Fato clínico separado da origem financeira/física; testar as quatro origens.", s:[
+  ["Registrar vacina em RN01 com Produto da fazenda, 2 mL da VA, data/hora, via e carências.","Aplicação válida na ficha, saída SANIDADE de 2 mL no sítio do fato e custo médio ou custo não apurado."],
+  ["Registrar aplicação em RN02 com compra confirmada para consumo direto, item não estocável de 10 mL.","Vínculo ao item e parcela de custo, sem entrada/saída física nem nova despesa."],
+  ["Aplicar 4 mL e 6 mL do mesmo item direto em animais diferentes; tentar mais 1 mL.","As duas primeiras destinam os 10 mL; a terceira é recusada, inclusive se enviada em paralelo.",1],
+  ["Tentar vincular compra direta de outro Produto, sítio, data futura ou item estocável.","Cada opção é recusada e não consome o item nem cria aplicação.",1],
+  ["Anular uma das aplicações da compra direta com motivo e refazer outra dentro da quantidade liberada.","Só a destinação anulada é liberada; a compra e seu gasto permanecem."],
+  ["Registrar Serviço veterinário confirmado de R$ 1.000 com doses inclusas para RN01 e RN02.","Cada animal guarda nome do medicamento, dose, hora, carência e referência ao mesmo Serviço; Produto é opcional, sem item financeiro novo nem movimento de estoque."],
+  ["Conferir o Serviço depois dessas duas aplicações.","O gasto total continua R$ 1.000 uma vez; não se atribui preço inventado a cada dose ou animal."],
+  ["Tentar aplicação de dose inclusa sem Serviço confirmado ou com Serviço de outro sítio.","Recusada com indicação do vínculo que falta; não há estoque fictício.",1,1],
+  ["Registrar aplicação executada por veterinário com dose da fazenda e referência ao Serviço.","O Serviço representa o atendimento; há saída SANIDADE separada para a dose da fazenda, sem duplicar despesa."],
+  ["Registrar fato real cuja origem não foi localizada, com justificativa específica.","Aplicação aparece como pendência de reconciliação e custo não apurado; autor e hora da justificativa ficam auditados."],
+  ["Tentar origem não localizada sem justificativa.","Recusada, sem apagar o fato anterior ou inventar compra.",1],
+  ["Localizar posteriormente a origem dessa dose e reconciliar com compra direta ou estoque, com motivo.","A origem atual muda por fluxo auditado; justificativa original permanece consultável e não há despesa duplicada."],
+  ["Tentar dose de 0,5 mL contra Produto estocado em L, que daria 0,0005 L; tentar converter dose em kg.","Ambas recusadas com orientação de unidade adequada; nunca arredondar para zero.",1],
+  ["Aplicar Produto sem base de custo conhecida.","Fato e quantidade permanecem; a tela mostra custo não apurado, não R$ 0 como custo real."],
+  ["Tentar cancelar compra direta ou Serviço ainda vinculados a aplicações válidas.","Cancelamento bloqueado e mostra os vínculos a resolver; após anulação/reassociação, o fluxo pode prosseguir.",1],
+  ["Anular aplicação com saída de estoque e motivo.","Original e auditoria permanecem; movimento inverso devolve a mesma partida, quantidade e valor; carência é recalculada."]
+ ]},
+ {id:"v3carencia", t:"v3 · Carência e baixa", d:"Prazos de leite e carne são independentes; ausência de informação nunca significa liberação.", s:[
+  ["Conferir uma aplicação com 0 hora para leite e 48 horas para carne.","Leite tem zero informado; carne termina 48 horas após o instante local da aplicação."],
+  ["Deixar carência do leite vazia numa aplicação válida.","Mostra carência não informada, não liberado; zero e vazio têm estados diferentes."],
+  ["Aplicar duas doses em horários diferentes com prazos diferentes.","Resumo por destino usa o maior término entre aplicações válidas, não soma os prazos."],
+  ["Encerrar a ocorrência ou concluir o protocolo sem anular a aplicação.","Carência permanece até o prazo próprio da dose."],
+  ["Transferir RN01 do Sítio A para o B durante a carência.","Ficha no B mostra o prazo trazido do A e identifica o sítio do fato/custo original.",0,1],
+  ["Corrigir prazo de carência com motivo; depois tentar editar diretamente produto, dose, data ou sítio da aplicação.","Prazo corrigido é auditado; demais campos exigem anular e relançar, sem sobrescrever o original.",1],
+  ["Fazer aplicação perto da meia-noite com offset, atravessando a data UTC.","Data exibida e data do movimento seguem America/Sao_Paulo; fim da carência respeita a hora real."],
+  ["Consultar aplicação importada apenas com dia e prazo conhecido.","Prazo usa fim conservador do dia local e é rotulado como aproximado; hora não é inventada."],
+  ["Tentar venda/abate de animal com carência vigente e depois com carência desconhecida.","Servidor exige ciência explícita em ambos e grava restrições, justificativa, autor e instante na baixa.",1],
+  ["Tentar passar pelo cliente prazo diferente do calculado na revisão da baixa.","Servidor relê as aplicações; a baixa não confia no valor enviado pelo navegador.",1],
+  ["Anular a última aplicação que causava prazo conhecido e consultar a ficha.","Prazo recalcula; outras doses válidas continuam sendo consideradas."]
+ ]},
+ {id:"v3ocorrencia", t:"v3 · Doenças e ocorrências", d:"Diagnóstico e tratamento são fatos diferentes; desfecho é explícito.", s:[
+  ["Criar Doença V3 em Cadastros e registrar ocorrência para RN01.","Aparece na ficha e lista de casos abertos, com data, sítio e auditoria; não baixa estoque."],
+  ["Vincular tratamento à ocorrência e depois encerrá-la como recuperado.","Tratamento permanece; ocorrência sai dos casos abertos e a carência não encurta."],
+  ["Encerrar como morte uma ocorrência em outro animal.","Desfecho clínico não cria automaticamente baixa; motivo de baixa pode ser sugerido, mas a pessoa escolhe."],
+  ["Tentar fim antes do início ou ocorrência anterior ao nascimento/entrada.","Recusado, com campo e data identificados.",1],
+  ["Tentar vincular aplicação de RN02 à ocorrência de RN01.","Recusado; nenhuma relação cruzada entre animais.",1],
+  ["Tentar anular ocorrência com aplicação/exame válido ligado; depois resolver vínculos e repetir.","Primeira tentativa orienta a revisão; anulação preserva o fato e o motivo na auditoria.",1],
+  ["Inativar Doença usada historicamente.","Não aparece em novos casos, mas nome e vínculo antigos continuam legíveis."]
+ ]},
+ {id:"v3protocolo", t:"v3 · Protocolos e tarefas", d:"Protocolo é plano clínico; tarefa é agenda; aplicação/exame é o que ocorreu; Serviço é gasto.", s:[
+  ["Criar protocolo rascunho com aplicação no dia 0, repetição no dia 7 e exame no dia 14.","Etapas têm ordem, tipo e intervalo explícitos; nenhuma dose ou compromisso financeiro nasce do rascunho."],
+  ["Tentar publicar etapa sem Produto/dose/unidade/finalidade ou exame sem tipo.","Publicação recusada e rascunho preservado para correção.",1],
+  ["Corrigir rascunho e publicar versão 1; tentar editar a publicada.","Versão publicada fica imutável; correção cria versão 2 sem mudar execuções existentes.",1],
+  ["Iniciar execução em RN01 com Serviço opcional e ocorrência vinculada.","Tarefas recebem datas relativas e snapshots da versão; nenhum medicamento sai do estoque antes da realização."],
+  ["Iniciar o mesmo protocolo para RN02 sem Serviço.","Agenda pertence a RN02; não se cria pagamento, compra ou atendimento financeiro por tarefa."],
+  ["Vincular Serviço à execução e realizar tarefa de aplicação com dose incluída nele.","Aplicação herda referência ao Serviço quando cabível; medicamento/dose ficam no animal, sem Produto obrigatório no caso de aplicação avulsa incluída."],
+  ["Adiar uma tarefa com motivo e dispensar outra com motivo.","Nova previsão/dispensa ficam auditadas; nenhuma delas cria consumo ou carência."],
+  ["Realizar uma tarefa de aplicação e reenviar a mesma confirmação/chave.","Existe um fato válido e, quando aplicável, uma só saída de estoque; reenvio não duplica."],
+  ["Tentar realizar tarefa dispensada, cancelada ou de outro animal.","Recusado com indicação da tarefa; nenhum fato parcial.",1],
+  ["Anular aplicação realizada numa execução ainda ativa e refazer corretamente.","Tarefa volta a pendente; aplicação anulada fica no histórico e a nova realiza a tarefa sem dupla baixa."],
+  ["Cancelar execução com uma tarefa já realizada e outras pendentes.","Fatos realizados permanecem; pendentes são dispensadas/canceladas com motivo; não há estorno clínico automático."],
+  ["Concluir todas as tarefas e consultar ocorrência vinculada.","Protocolo aparece concluído, mas doença não é marcada como curada sem desfecho explícito."],
+  ["Tentar iniciar execução para animal de outro sítio ou após baixa.","Recusado pelo histórico do animal na data, não pela localização atual apenas.",1,1]
+ ]},
+ {id:"v3exame", t:"v3 · Exames e resultados", d:"Coleta, resultado e serviço do laboratório são referências distintas.", s:[
+  ["Criar tipos de exame Texto, Número com unidade e Opção com escolhas definidas.","Cada tipo informa como o resultado será preenchido; não há interpretação diagnóstica automática."],
+  ["Registrar exame de RN01 sem resultado, associado a ocorrência e tarefa de exame.","Aparece como resultado pendente; tarefa não vira aplicação nem movimenta estoque."],
+  ["Informar resultado numérico com unidade e preencher texto/opção nos demais tipos.","Cada exame aceita exatamente o formato configurado e mostra o valor original na ficha."],
+  ["Tentar opção fora do catálogo, texto num exame numérico ou múltiplos formatos simultâneos.","Recusado sem perder o resultado anterior.",1],
+  ["Corrigir um resultado com motivo e consultar auditoria.","Antes/depois, autor e data ficam visíveis; não se apaga o valor anterior."],
+  ["Mudar/inativar o tipo de exame depois de usá-lo.","Formato histórico não muda; novo formato exige outro tipo e exames antigos seguem legíveis."],
+  ["Vincular exame de laboratório a Serviço confirmado do mesmo sítio.","Serviço fica como origem financeira, sem cobrança automática adicional."],
+  ["Tentar exame em animal errado, Serviço de outro sítio ou data posterior à baixa.","Recusado pelo servidor, sem exame órfão.",1,1],
+  ["Anular exame com motivo e consultar a tarefa correspondente.","Exame permanece no histórico como anulado; tarefa ativa volta a pendente sem duplicar Serviço."]
+ ]},
+ {id:"v3manejo", t:"v3 · Pesagem coletiva, desmama e castração", d:"Manejo não altera automaticamente identidade, filiação, lote ou categoria.", s:[
+  ["Selecionar RN01 e RN02 e revisar pesagem coletiva com datas, pesos e origem Manual/Balança informada.","Prévia valida cada linha; confirma Pesagens comuns que atualizam peso atual, gráfico e GMD."],
+  ["Incluir no coletivo um animal de outro sítio, baixado ou com peso inválido.","Confirmação grava zero pesagens e informa o erro na linha afetada.",1,1],
+  ["Reenviar a mesma chave de confirmação coletiva.","Retorna os mesmos IDs; nenhum peso é duplicado."],
+  ["Reutilizar a chave com conteúdo, usuário ou sítio diferente.","Conflito explícito; fatos originais permanecem.",1,1],
+  ["Registrar desmama de RN01 sem peso; registrar desmama de RN02 com peso opcional.","Fatos auditáveis; somente RN02 cria/associa Pesagem do tipo Desmama."],
+  ["Consultar animal sem desmama registrada.","Mostra não informada, nunca presume que ainda mama."],
+  ["Tentar segunda desmama vigente para RN01.","Recusada; a primeira permanece.",1],
+  ["Registrar castração de RN12 (macho) e tentar em RN01 (fêmea).","RN12 recebe manejo sem mudar sexo/filiação/categoria; fêmea é recusada.",1],
+  ["Tentar segunda castração vigente em RN12.","Recusada, inclusive em envio paralelo.",1],
+  ["Anular desmama que tem peso vinculado.","Manejo fica anulado, mas a Pesagem e seu GMD permanecem; exclusão de peso seria ação separada."],
+  ["Tentar manejo antes do nascimento/entrada ou depois da baixa.","Recusado sem alterar o animal.",1],
+  ["Retroagir baixa ou corrigir nascimento de animal com manejo posterior incompatível.","A alteração avisa o conflito e não apaga o manejo silenciosamente.",1]
+ ]},
+ {id:"v3dieta", t:"v3 · Receitas e vigências", d:"Rascunho pode ser corrigido; versão publicada e período usado são históricos.", s:[
+  ["Criar rascunho V3 Crescimento com Ração V3 a 3 kg/cabeça/dia e Mineral V3 a 0,1 kg/cabeça/dia.","Itens e unidades são mostrados em matéria natural; Produto precisa de uso nutricional."],
+  ["Corrigir quantidade do rascunho antes de publicar.","Valor novo substitui o rascunho sem criar consumo ou movimento."],
+  ["Tentar quantidade zero, mesmo Produto duas vezes ou unidade incompatível.","Recusado com indicação do ingrediente.",1],
+  ["Publicar versão 1 e tentar alterar diretamente seus ingredientes.","Publicado é imutável; nova edição cria versão 2, sem reescrever a 1.",1],
+  ["Aplicar versão 1 ao lote V3 Nutrição desde 01/09/2026.","Vigência aparece no lote; só planejar dieta não baixa estoque."],
+  ["Em V3 Transição, aplicar versão 1 e depois versão 2 a partir de 06/09/2026; preservar V3 Nutrição na versão 1 para o teste de 110 animal-dias.","Vigência 1 fecha no dia 6 e 2 abre no lote de transição; os intervalos [desde, até) não se sobrepõem."],
+  ["Tentar criar vigência sobreposta ou usar receita não publicada.","Recusada pelo servidor/banco; não há duas dietas no mesmo dia do lote.",1],
+  ["Corrigir vigência ainda sem fechamento, informando motivo.","Histórico da alteração aparece e não altera outros lotes que usem a mesma receita."],
+  ["Em cenário separado com fechamento já confirmado, tentar mudar a vigência coberta.","Orienta estornar o fechamento afetado antes; versão e snapshot antigo permanecem.",1],
+  ["Em cenário separado com fechamento já confirmado, mudar centro de custo do lote.","Só fechamentos futuros usam o centro novo; o confirmado preserva o centro original."],
+  ["Consultar MS da receita publicada após editar o perfil da Ração V3.","Snapshot antigo continua 90%; Mineral V3 segue como MS desconhecida."]
+ ]},
+ {id:"v3consumo", t:"v3 · Prévia e fechamento nutricional", d:"Animal-dias vêm da ocupação histórica, não do número atual de animais no lote.", s:[
+  ["Pedir prévia de 01 a 10/09/2026 antes de trocar a dieta.","RN01–RN10 contam 10 dias cada, RN11–RN12 contam 5 cada: 110 animal-dias; Ração V3 prevista = 330 kg."],
+  ["Mover RN12 no dia 06/09 e repetir a prévia numa fixture separada.","Dia 6 conta no destino e não duas vezes; animal-dias do lote de origem caem conforme [desde, até)."],
+  ["Dar baixa num animal no dia 06/09 numa fixture separada.","Dia da baixa não conta para alimento; não se usa o total atual de cabeças para recalcular o passado."],
+  ["Fechar intervalo sem dieta em parte do período ou lote sem participantes históricos.","Prévia identifica lacuna/lote vazio e confirmação é recusada.",1],
+  ["Pedir prévia de V3 Transição cruzando as duas vigências; repetir numa fixture que cruze setembro/outubro.","Divide por vigência e mês, com animal-dias e receitas próprios; confirmação do conjunto é atômica."],
+  ["Conferir prévia antes de confirmar.","Mostra participantes, animal-dias, centro, quantidade prevista, saldo/partidas e custo conhecido ou incompleto por ingrediente."],
+  ["Confirmar 320 kg de Ração V3 em vez dos 330 previstos, com justificativa.","Saída NUTRICAO é 320 kg; fechamento guarda previsto 330, confirmado 320, motivo e participantes."],
+  ["Tentar quantidade real diferente da prevista sem justificativa.","Recusada; nenhuma baixa parcial ocorre.",1],
+  ["Confirmar zero de um ingrediente com motivo.","Item zero permanece no fechamento; não cria movimento de estoque para ele."],
+  ["Confirmar ingrediente sem saldo com opção Sem baixa justificada e motivo explícito.","Consumo fica registrado sem inventar saldo ou custo; custo incompleto aparece no total."],
+  ["Tentar baixa de ingrediente sem estoque/partida suficiente.","Recusada; nenhum outro ingrediente do fechamento é baixado.",1],
+  ["Conferir saída de Produto rastreado com duas partidas.","Distribuição soma a quantidade confirmada; ambos os saldos mudam no estoque único."],
+  ["Conferir MS da Ração V3 e do Mineral V3 no fechamento.","MS conhecida da Ração é 90% da massa confirmada (320 kg → 288 kg); Mineral não entra como 100% e a cobertura é incompleta."],
+  ["Conferir atribuição de custo por animal-dia.","Soma das parcelas conhecidas fecha exatamente nos centavos do custo conhecido; aparece como estimativa por permanência, não ingestão medida."],
+  ["Repetir confirmação do mesmo intervalo e a mesma chave de envio.","Não duplica fechamento, movimentos, participantes ou custo; sobreposição com outra chave é recusada.",1],
+  ["Tentar fechamento de dois sítios ou centro de custo inexistente/inativo.","Recusado; estoque e custo do Sítio A não migram para B.",1,1],
+  ["Estornar fechamento com motivo no mês aberto.","Original permanece como estornado; movimentos inversos devolvem mesmas partidas, quantidades e valores; DRE não ganha outra despesa."],
+  ["Tentar estornar de novo ou estornar com mês original fechado.","Recusado, sem segunda devolução física.",1]
+ ]},
+ {id:"v3hist", t:"v3 · Histórico e concorrência", d:"Nenhuma correção retroativa pode mudar silenciosamente um fechamento confirmado.", s:[
+  ["Após fechar consumo, tentar mover animal retroativamente dentro do período.","Recusado com referência ao fechamento afetado e orientação de estorno.",1],
+  ["Após fechar, cadastrar animal com entrada retroativa no lote ou mudar sua data de entrada.","Recusado mesmo para animal ausente do snapshot original.",1],
+  ["Após fechar, retroagir baixa ou estornar baixa que mudaria animal-dias.","Recusado até estornar o consumo; histórico anterior não é reescrito.",1],
+  ["Mudar localização fora do período fechado.","Permitido quando não altera animal-dias congelados."],
+  ["Executar fechamento e movimentação retroativa ao mesmo tempo em duas sessões.","Um lado vence; o outro recebe conflito/reprévia, sem participantes inconsistentes."],
+  ["Executar dois fechamentos sobrepostos, ou fechamento e troca de dieta simultâneos.","Sem duplicidade, sobreposição ou receita errada; conflitos são revalidados e nenhum estoque parcial fica gravado."],
+  ["Aplicar medicamento e dar baixa no mesmo animal simultaneamente.","Ordem temporal e carência são revalidadas; não há aplicação posterior à baixa confirmada."],
+  ["Forçar falha de rede após confirmar aplicação/coletivo/fechamento e reenviar com a mesma chave.","Mesmos IDs/efeitos são retornados uma vez; chave reaproveitada com payload diferente dá conflito."],
+  ["Tentar escrever estoque rastreado por caminho antigo sem alocações.","Constraint do banco rejeita a transação; não há razão sem partida."],
+  ["Comparar auditoria antes/depois de anulações, estornos e reconciliações.","Autor, sítio, instante, motivo, estado anterior e novo estão preservados; nada é apagado fisicamente."]
+ ]},
+ {id:"v3integ", t:"v3 · Financeiro, agricultura e genética", d:"Regressão transversal do mesmo Produto/Estoque; não somar custo analítico como nova despesa.", s:[
+  ["Filtrar estoque por Uso sanitário e Uso nutricional e abrir movimentos SANIDADE/NUTRICAO.","Produto, partida, sítio, saldo e link ao fato de origem aparecem sem expor dados de área não autorizada."],
+  ["Abrir Serviço de R$ 1.000 com várias aplicações/exames/protocolo vinculados.","Mostra animais atendidos sem somar R$ 1.000 para cada fato; parcelas individuais só após rateio explícito."],
+  ["Comparar DRE, fluxo de caixa e contas a pagar antes/depois de aplicações e consumo de estoque.","Gastos originais continuam únicos; atribuições clínicas/nutricionais não criam Operacao ou pagamento extra."],
+  ["Abrir compra direta e conferir quantidade destinada/sem destinação por aplicações.","Soma destinada não supera o item e muda após anulação, sem estoque físico."],
+  ["Tentar cancelar Serviço com execução de protocolo ou exame válido, mesmo sem aplicação.","Bloqueado até revisar os vínculos; cancelar não apaga cuidado já realizado.",1],
+  ["Revisar autosave de partidas em rascunho financeiro e confirmar compra/saída rastreada.","Distribuição escolhida não se perde e vira snapshot do item e alocação do movimento."],
+  ["Comprar/consultar sêmen ou embrião rastreado em partidas.","Segue Produto e estoque únicos; identidade genética, filiação e saldos da v2 permanecem; consumo reprodutivo não é criado na v3."],
+  ["Cancelar operação financeira com entrada de partida parcialmente consumida na agricultura ou pecuária.","Cancelamento bloqueado quando tornaria saldo de partida negativo, mesmo se saldo total do Produto parecer suficiente.",1],
+  ["Fechar mês financeiro e tentar operação com efeito físico retroativo, anulação e estorno no mês fechado.","Escritas que mudariam estoque do mês são recusadas; fato clínico sem estoque segue regra própria.",1]
+ ]},
+ {id:"v3acesso", t:"v3 · Sítios, permissões e interface", d:"Conferir servidor e tela: sítio é o do fato; custo é informação restrita.", s:[
+  ["Consultar fatos de RN01 após transferência A → B, filtrando por sítio e no consolidado.","Histórico clínico da ficha acompanha o animal; listagem do A mostra fatos ocorridos no A; custo/estoque não migram ao B.",0,1],
+  ["Consultar fato histórico importado com sítio não identificado.","Aparece no consolidado e na ficha, não em total de um sítio específico; carência do animal ainda o considera."],
+  ["Entrar com área Pecuária sem flag lancar.","Consulta funciona; criação, edição, confirmação e anulação não são oferecidas nem aceitas por POST direto.",1],
+  ["Entrar sem área Pecuária e chamar as rotas novas.","Servidor devolve 403 e o módulo não aparece.",1],
+  ["Entrar com Pecuária sem área Financeiro ou sem verValores.","Dose, tarefa e carência seguem visíveis; valores e detalhes financeiros sensíveis não vazam na resposta nem na interface."],
+  ["Entrar sem permissão exportar e tentar exportar histórico/relatório V3.","Exportação é recusada sem bloquear a leitura autorizada.",1],
+  ["Testar confirmação coletiva com 200 animais e depois 201.","Até 200 revisados atomicamente; 201 orienta dividir a sessão, sem gravar os primeiros.",1],
+  ["Abrir ficha, lote, cadastro, estoque e Serviço em 375, 720, 1180 e 1440 px.","Sem tabela cortada, ação inacessível ou modal preso; carregando, vazio, erro recuperável e sucesso ficam claros."],
+  ["Navegar só por teclado pelos campos de data/hora, partida, tarefas e confirmação de carência.","Foco visível, rótulos e mensagens de erro associados; avisos não dependem apenas da cor."],
+  ["Usar voltar/avançar após ir da tarefa à aplicação, do estoque ao fato e do lote ao fechamento.","Links preservam filtro/sítio e voltam ao contexto anterior."]
+ ]},
+ {id:"v3carga", t:"v3 · Carga IDEAGRI e reconciliação", d:"Só com cópia real do Firebird e banco descartável; fonte inicial, nunca sincronização operacional.", s:[
+  ["Inspecionar amostras reais de DOENCA/DOENCAANIMAL, APLICACAOPRODUTO, exames, protocolos e localizações.","Relatório de cobertura registra chave, dose textual, unidade, hora, resultado, sítio e incertezas antes de importar."],
+  ["Gerar dump/JSON V3 preservando banco+tabela+chave, texto bruto e hash da linha.","IDs iguais de bancos diferentes não se confundem; nenhuma informação ilegível é descartada silenciosamente."],
+  ["Mapear PRODUTO legado a Produto existente por correspondência revisada.","Nenhuma fusão por nome parecido; produto sem unidade/categoria confiável fica pendente."],
+  ["Importar doenças e ocorrências com início/fim comprovados.","Vínculo legado de cura não vira automaticamente causa ou tratamento."],
+  ["Importar aplicação com dose legível e data sem hora.","Precisão DIA explícita, origem histórica, carência aproximada quando possível; nenhuma saída de estoque ou despesa atual."],
+  ["Importar dose textual ilegível ou unidade ambígua.","Vai a rejeição/pendência com payload original; não vira 0 ou unidade inventada."],
+  ["Importar protocolo incompleto e exame sem resultado no retrato.","Protocolo fica rascunho/pendente; exame não vira negativo ou normal por ausência de resultado."],
+  ["Conferir pesagens IDEAGRI já importadas pela v1.","Nenhuma Pesagem é duplicada; tipo Desmama não fabrica ManejoAnimal sem fato datado."],
+  ["Conferir DIETA/DIETAPRODUTO/ALOCACAODIETA e LOTEPRODUTO vazios no retrato.","Não cria dietas, consumos ou partidas/validades fictícias."],
+  ["Comparar aceitos + rejeitados com elegíveis de cada tabela e saldos antes/depois.","Cobertura fecha por tabela; estoque, caixa, DRE e custos operacionais atuais permanecem invariantes."],
+  ["Importar o mesmo dump duas vezes; depois alterar uma linha de origem e repetir.","Segunda carga idêntica é no-op; hash diferente gera divergência para revisão, sem sobrescrever correção operacional."],
+  ["Rodar validador com vínculos órfãos, animal baixado e genitor externo em fixtures de rejeição.","Rejeições identificam a origem; genitor externo não recebe aplicação, manejo, dieta ou pesagem; relatório final permite reconciliação."]
+ ]},
+ {id:"v3aceite", t:"v3 · Aceite e regressão final", d:"Executar depois dos grupos anteriores, na base final do único PR V3.", s:[
+  ["Repetir filiação interna/externa, composição informada/calculada, animal baixado como genitor e material genético da v2.","Nenhuma regra/identidade genética do #305 foi substituída pela v3."],
+  ["Repetir localização, lote, categoria, baixa/estorno, peso/GMD e auditoria da v1.","Históricos e invariantes originais permanecem, inclusive depois de aplicações, manejos e fechamentos."],
+  ["Conferir migration e testes automatizados contra banco vazio e cópia V2, build de servidor/cliente e CI do PR.","Sem falhas; testes com banco são realmente executados, não só marcados como skipped."],
+  ["Comparar saldo total e por partida, despesas e animal-dias antes/depois de cada anulação/estorno.","Movimentos inversos reconciliam exatamente; fatos originais e auditoria persistem."],
+  ["Revisar todos os passos V3 marcados Falhou ou pendentes e registrar evidência por sítio/usuário/data.","Não anunciar V3 homologada enquanto algum critério obrigatório estiver ausente, sem validação ou dependente do dump real."]
  ]}
 ];
 
@@ -599,7 +824,7 @@ function paint(){
 
 function buildReport(){
   const d = new Date(), pad = n => String(n).padStart(2, "0");
-  const lines = [`Roteiro de testes · Pecuária v1 (Rebanho) · ${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()}`];
+  const lines = [`Roteiro de testes · Pecuária v1 + v2 + v3 · ${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()}`];
   let tot = 0, ok = 0; const fails = [], pend = [];
   G.forEach((g, gi) => g.s.forEach((s, si) => {
     const id = `${g.id}-${si + 1}`, v = st[id] || {}, code = `${gi + 1}.${si + 1}`;
