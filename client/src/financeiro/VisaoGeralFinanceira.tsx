@@ -4,7 +4,7 @@ import type { Tab } from "../components/Shell";
 import { AnaliseCategorias } from "./AnaliseCategorias";
 import { BaseFinanceiraResumo } from "./BaseFinanceiraResumo";
 import { descartarRascunhoOperacao, type Compromisso } from "./novo-api";
-import { existeRascunhoOperacao, useContasComSaldoEstimado } from "./mutations";
+import { existeRascunhoOperacao, useContasComSaldoEstimado, useEscritaFinanceiraPendente } from "./mutations";
 import { useConfiguracoesFinanceiras, useDashboardFinanceiro } from "./queries";
 import { brl, Button, dataBR, Empty, ErrorBox, mesAtual, Metric, PageHeader, PaginaCarregando, PaginaFinanceira, Panel, Pill, SemConexaoAviso } from "./financeiro-ui";
 import { ehOfflineSemDados } from "../lib/offline/estadoQuery";
@@ -31,6 +31,7 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
   const [substituirRascunho, setSubstituirRascunho] = useState(false);
   const [preparando, setPreparando] = useState(false);
   const saldoEstimado = useContasComSaldoEstimado();
+  const aguardandoSincronizacao = useEscritaFinanceiraPendente();
 
   // Mesmo cuidado de Compromissos: um rascunho em andamento só é descartado
   // depois de confirmação, e "Ver rascunho atual" é a saída segura.
@@ -80,6 +81,7 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
     {dashboardQuery.isFetching && dadosAtuais && <p role="status" className="mt-6">Atualizando financeiro do período…</p>}
     {erroDashboard && !dadosAtuais && <Button secondary onClick={() => dashboardQuery.refetch()}>Tentar novamente</Button>}
     {dadosAtuais && <>
+      {aguardandoSincronizacao && <SemConexaoAviso mensagem="Valores estimados — há alterações aguardando sincronização. Os totais desta visão serão atualizados quando forem enviadas." />}
       <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <Metric label="Saldo geral" valor={brl(dadosAtuais.saldoGeral)} detalhe={dadosAtuais.contas.some((c) => saldoEstimado.has(c.id)) ? "offline — saldo estimado" : "Fotografia atual das contas ativas"} icon={WalletCards} />
         <Metric label="Recebimentos" valor={brl(dadosAtuais.realizado.entradas)} detalhe="Realizados no período" icon={TrendingUp} tone="green" />

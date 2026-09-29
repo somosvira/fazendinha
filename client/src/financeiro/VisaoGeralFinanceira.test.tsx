@@ -8,12 +8,13 @@ import { VisaoGeralFinanceira } from "./VisaoGeralFinanceira";
 import { descartarRascunhoOperacao, obterRascunhoOperacao } from "./novo-api";
 import { uid } from "../lib/uid.fixture";
 
+let fila: { mutationKey: string }[] = [];
+
 vi.mock("../lib/offline/fila", () => {
-  const filaVazia: unknown[] = [];
   return {
     enfileirarMutation: vi.fn().mockResolvedValue(null),
     inscrever: () => () => {},
-    obterFila: () => filaVazia,
+    obterFila: () => fila,
     aguardarFilaLivre: () => Promise.resolve(),
     filaTravada: () => false,
   };
@@ -35,6 +36,7 @@ vi.mock("./novo-api", () => ({
 const rascunho = { id: uid(8), versao: 1, updatedAt: "2026-09-14T12:00:00Z", documentos: [], dados: {} };
 
 beforeEach(() => {
+  fila = [];
   window.history.replaceState(null, "", "/financeiro");
   vi.clearAllMocks();
 });
@@ -162,5 +164,26 @@ describe("Visão geral — offline em período não visitado", () => {
     expect(screen.queryByRole("heading", { name: "Base financeira" })).toBeNull();
     expect(screen.getByRole("button", { name: /^Período:/ })).toBeTruthy();
     onlineManager.setOnline(true);
+  });
+});
+
+describe("VisaoGeralFinanceira — escrita pendente", () => {
+  it("não avisa sem escrita pendente", async () => {
+    render(<VisaoGeralFinanceira onNav={vi.fn()} />);
+    await screen.findByText("Saldo geral");
+    expect(screen.queryByText(/Valores estimados/)).toBeNull();
+  });
+
+  it("marca a visão como estimada quando há escrita financeira na fila", async () => {
+    fila = [{ mutationKey: "financeiro-liquidar-compromisso" }];
+    render(<VisaoGeralFinanceira onNav={vi.fn()} />);
+    expect(await screen.findByText(/Valores estimados — há alterações aguardando sincronização/)).toBeTruthy();
+  });
+
+  it("ignora item de fila que não mexe nos totais (descartar rascunho)", async () => {
+    fila = [{ mutationKey: "financeiro-descartar-rascunho" }];
+    render(<VisaoGeralFinanceira onNav={vi.fn()} />);
+    await screen.findByText("Saldo geral");
+    expect(screen.queryByText(/Valores estimados/)).toBeNull();
   });
 });

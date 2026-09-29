@@ -509,6 +509,14 @@ export function useContasComSaldoEstimado(): ReadonlySet<string> {
   }, [fila]);
 }
 
+const CHAVES_QUE_MEXEM_NO_DASHBOARD = new Set([CHAVE_CRIAR, CHAVE_AJUSTE, CHAVE_LIQUIDAR, CHAVE_TRANSFERIR]);
+
+/** Há escrita financeira na fila — o dashboard derivado só é recalculado no servidor. */
+export function useEscritaFinanceiraPendente(): boolean {
+  const fila = useSyncExternalStore(inscrever, obterFila, obterFila);
+  return fila.some((item) => CHAVES_QUE_MEXEM_NO_DASHBOARD.has(item.mutationKey));
+}
+
 export async function existeRascunhoOperacao(): Promise<boolean> {
   return !!(await obterRascunhoOperacao());
 }
