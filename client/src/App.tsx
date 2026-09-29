@@ -35,6 +35,8 @@ import { ABAS, type User } from "./data/acessos";
 import { temAcessoArea, TODAS_AREAS } from "./lib/areas";
 import { BootSplash } from "./components/Loading";
 import { TerranoIntro } from "./components/TerranoIntro";
+import { useOnlineStatus } from "./lib/offline/useOnlineStatus";
+import { iniciarSessao, limparCacheDaSessao } from "./lib/offline/sessao";
 
 // Abertura Terrano (marca grande + música no centro, some pro canto).
 //   "always"  → toca em todo load do dashboard (bom pra testar)
@@ -81,6 +83,25 @@ function GatedTab({ user, abaLabel }: { user: User; abaLabel: string }) {
         <div className="s">
           A aba <strong>{abaLabel}</strong> não está liberada para este perfil. O proprietário pode liberar em
           Acessos &amp; Permissões.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Abas com suporte real a escrita offline (fila própria) — ver
+// docs/design/offline/README.md. Um módulo sem entrada aqui fica travado sem
+// rede até declarar suporte.
+const TABS_OFFLINE = new Set<Tab>([]);
+
+function OfflineGatedTab() {
+  return (
+    <div className="shell-wide">
+      <div className="gated-msg">
+        <div className="lock">⊘</div>
+        <div className="h">Esta área não funciona sem conexão</div>
+        <div className="s">
+          Nenhuma área tem suporte a uso offline por enquanto. Volte a ficar online pra acessar esta aba.
         </div>
       </div>
     </div>
@@ -186,7 +207,7 @@ export function App() {
     const destino = destinoDepoisDoLogin(returnTo, u);
     const url = new URL(destino, window.location.origin);
     const tabDestino = pathToTab(url.pathname) ?? DEFAULT_TAB;
-    setSessao(novoToken, u);
+    iniciarSessao(novoToken, u);
     setTokenState(novoToken);
     setUsuario(u);
     setTab(tabDestino);
@@ -206,6 +227,7 @@ export function App() {
     ? () => {
         void logout();
         clearSessao();
+        limparCacheDaSessao();
         setTokenState(null);
         setUsuario(null);
         setShowIntro(false);
@@ -486,6 +508,7 @@ export function App() {
   );
 
   const canSee = (id: Tab) => visibleTabs.some((t) => t.id === id);
+  const online = useOnlineStatus();
 
   if (authRoute?.kind === "invite" || authRoute?.kind === "reset-password") {
     return (
@@ -511,6 +534,8 @@ export function App() {
 
   const conteudo = !canAccessTab(tab)
     ? <GatedTab user={effectiveUser} abaLabel="esta área" />
+    : (!online && !TABS_OFFLINE.has(tab))
+    ? <OfflineGatedTab />
     : String(tab).startsWith("pla-")
     ? <PlantioContent aba={PLA[tab]} onNavPla={(s) => setTab(("pla-" + s) as Tab)}
         abrirId={deepLink && deepLink.tab.startsWith("pla-") ? deepLink.id : undefined}

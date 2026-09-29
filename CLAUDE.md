@@ -185,3 +185,4 @@ Feature transversal: fatos ganham `propriedadeId` (nullable nos módulos antigos
 
 1. **Backend:** rota fina em `server/src/routes/<modulo>/` → service em `services/<modulo>/`, com o cálculo puro isolado em `*.calc.ts` e testado. Respeitar escopo de propriedade (`resolverEscopoLeitura/Escrita(c)`), o gate de área do módulo e, em qualquer escrita financeira, `exigirPeriodoAberto` + auditoria + estorno em vez de delete.
 2. **Frontend:** função no `api.ts` do módulo (ou `financeiro/novo-api.ts`) usando `comPropriedade()` nos headers. Trocar o import de `mock/` pela chamada real; manter o mock como referência da forma até estabilizar.
+3. **Offline:** todo hook de leitura ou mutation novo (nesta migração ou numa tela já conectada) segue o padrão obrigatório de [docs/design/offline/README.md](docs/design/offline/README.md) antes de escrever `useState`+`fetch` cru ou `mutate()` direto — convenções, armadilhas já batidas e checklist de revisão/teste ficam só lá.
