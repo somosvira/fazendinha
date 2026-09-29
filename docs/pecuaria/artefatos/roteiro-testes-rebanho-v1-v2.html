@@ -107,10 +107,16 @@ ol.steps{list-style:none;margin:0;padding:0}
 .step:first-child{border-top:0}
 .step input[type=checkbox]{width:18px;height:18px;margin:2px 0 0;accent-color:var(--ok);cursor:pointer}
 .step .id{font:500 11px var(--mono);color:var(--ink-3);margin-right:6px;font-variant-numeric:tabular-nums}
+.step-v3 .id{display:block;font-size:13px;font-weight:600;color:var(--accent);margin-bottom:4px}
 .step .acao,.step .esp{display:block}
 .step label{cursor:pointer}
 .step .acao{font-size:14.5px;color:var(--ink)}
 .step .acao b{font-weight:600}
+.step .onde,.step .fazer{display:block}
+.step .onde{font-size:13px;color:var(--ink-2);margin:4px 0}
+.step .onde b,.step .fazer b{font:500 11px var(--mono);letter-spacing:.04em;text-transform:uppercase;color:var(--ink-3)}
+.step .onde.is-planned{color:var(--brass-ink)}
+.step .onde.is-technical{color:var(--coffee)}
 .step .esp{font-size:13.5px;color:var(--ink-2);margin-top:3px}
 .step .esp::before{content:"Esperado: ";font:500 11px var(--mono);letter-spacing:.04em;text-transform:uppercase;color:var(--ink-3)}
 .tag{font:500 10.5px/1 var(--mono);letter-spacing:.04em;text-transform:uppercase;padding:3px 6px;border-radius:4px;margin-left:6px;vertical-align:1px;white-space:nowrap}
@@ -142,7 +148,7 @@ ol.steps{list-style:none;margin:0;padding:0}
   <p class="eyebrow">Terrano · Pecuária v1 Rebanho + v2 Genética + v3 Sanidade, manejo e nutrição · <code>/pecuaria/rebanho</code></p>
   <h1>Roteiro de Testes do Rebanho</h1>
   <p class="lede">Teste manual de ponta a ponta da v1 (Rebanho), v2 (Genética) e do contrato-alvo da v3 (Sanidade, manejo, nutrição e partidas). Siga as seções na ordem. Se algo falhar ou ainda não existir no PR, clique em “Falhou” e anote o que viu. As marcações ficam só neste navegador, e “Copiar relatório” gera o resumo para o time.</p>
-  <p class="intro"><a href="#g-v3prep">Ir direto aos testes da v3</a> · <a href="#dados">Ver dados de teste</a>. Nesta revisão, somente os passos da v1/v2 foram pré-marcados por solicitação; isso não comprova reexecução manual. Os casos da v3 começam pendentes e devem ser marcados apenas após verificação.</p>
+  <p class="intro"><a href="#g-v3prep">Ir direto aos testes da v3</a> · <a href="#dados">Ver dados de teste</a> · <a href="http://localhost:41875/pecuaria/rebanho" target="_blank" rel="noopener noreferrer">Abrir aplicação local</a> (com o servidor ligado). Cada passo da v3 mostra o número, o caminho na aplicação, o que fazer e o resultado esperado. “Tela prevista” ainda não é navegável no PR atual; “apoio técnico” exige validação fora da interface. Se estiver homologando a entrega final e a tela ou a ação faltar, marque “Falhou” e anote isso. Somente os passos da v1/v2 foram pré-marcados por solicitação; isso não comprova reexecução manual. Os casos da v3 começam pendentes.</p>
 </header>
 
 <div class="bar" role="region" aria-label="Progresso">
@@ -294,7 +300,7 @@ ol.steps{list-style:none;margin:0;padding:0}
     </tbody>
   </table></div>
   <h3 style="font:600 20px/1.2 var(--serif);margin:26px 0 6px">Dados da v3 · Cenário controlado</h3>
-  <p class="intro">Use um banco de homologação descartável, com setembro de 2026 aberto no financeiro. Não reutilize a Mimosa baixada ou mude os fatos históricos da v1/v2 para montar o cenário. Os passos de 2 sítios continuam opcionais quando o Sítio B não existir.</p>
+  <p class="intro">Use o banco local de testes no Docker, com setembro de 2026 aberto no financeiro. Os seeds locais preparam catálogos e animais de demonstração, mas <b>não criam automaticamente</b> RN01–RN12, os produtos e a dieta abaixo: monte esses dados antes dos grupos que os usam. Não reutilize a Mimosa baixada nem mude os fatos históricos da v1/v2. Os passos de 2 sítios continuam opcionais quando o Sítio B não existir.</p>
   <div class="tw"><table><thead><tr><th>Fixture</th><th>Dados e efeito esperado</th></tr></thead><tbody>
     <tr><th>Lotes</th><td>No Sítio A, criar <b>V3 Nutrição</b> e <b>V3 Transição</b>, com centro de custo ativo. Sítio B · Recria fica para transferência.</td></tr>
     <tr><th>Animais</th><td><b>RN01–RN10</b> no lote V3 Nutrição de 01/09/2026; <b>RN11–RN12</b> entram em 06/09/2026. Nascidos antes da entrada; RN01–RN11 são fêmeas e RN12 é macho. No intervalo 01–10/09, são <b>110 animal-dias</b>. Criar <b>RT01</b> em V3 Transição desde 01/09 para testar troca de dieta. Brincos únicos no sítio.</td></tr>
@@ -554,17 +560,17 @@ const G = [
   ["Rodar <code>import:pecuaria</code> de novo.","Nada é duplicado; filiação editada no sistema não é sobrescrita."],
   ["Rodar <code>validar:pecuaria</code>.","Seção 13: nenhuma mãe macho nem pai fêmea; toda mãe nasceu antes da cria."]
  ]},
- {id:"v3prep", t:"v3 · Preparação e migração", d:"Contrato-alvo do PR #308. Executar em cópia descartável da v2, sem dados de produção.", s:[
+ {id:"v3prep", t:"v3 · Preparação e migração", d:"Contrato-alvo do PR #308. Use o banco local de testes no Docker; a prova de atualização de uma base V2 com dados é um caso técnico separado.", s:[
   ["Aplicar a migration da v3 num banco vazio que já recebeu v1 e v2.","Tabelas, constraints e rotas novas sobem sem recriar ou alterar fatos anteriores."],
   ["Aplicar a migration da v3 numa cópia com animais, material genético, produtos, movimentos e operações da v2.","Contagens, saldos, filiação, composição, auditoria e links da v2 permanecem iguais."],
   ["Reaplicar <code>migrate deploy</code>.","Nenhuma migration ou dado é duplicado."],
   ["Confirmar que rastreio por partida começa desligado nos produtos antigos.","A migração não inventa códigos, validades ou distribuição física."],
-  ["Montar os lotes, animais, produtos, Serviço e dieta da tabela v3; anotar IDs e saldos antes de iniciar.","Há 110 animal-dias em V3 Nutrição de 01 a 10/09/2026 e nenhum efeito clínico ou financeiro fictício além das operações criadas."],
+  ["Crie V3 Nutrição e V3 Transição em Lotes; cadastre RN01–RN12 e RT01 em Animais com as datas da tabela v3; prepare Vacina V3, Ração V3, Mineral V3, compra direta e Serviço nas telas financeiras. Quando existir a tela Nutrição, crie V3 Crescimento. Anote os IDs e saldos antes de iniciar.","Há 110 animal-dias em V3 Nutrição de 01 a 10/09/2026 e nenhum efeito clínico ou financeiro fictício além das operações criadas."],
   ["Abrir a v3 com área Pecuária e permissão de lançamento; conferir ficha, lote, estoque e financeiro.","A v1/v2 continua navegável; as novas seções não substituem filiação, material genético, peso ou auditoria."],
   ["Conferir banco sem ativar rastreio e sem rodar importador no boot.","Nenhuma partida técnica, carga IDEAGRI ou movimento V3 aparece espontaneamente."]
  ]},
  {id:"v3produto", t:"v3 · Produtos e perfis", d:"Formulário único de Produto e categorias de uso; nenhum catálogo paralelo de medicamentos ou ração.", s:[
-  ["Marcar Uso sanitário na categoria da Vacina V3 e Uso nutricional na categoria da Ração V3.","Os usos aparecem em cadastro e filtros, preservando Uso agrícola e Uso genético."],
+  ["Na aba Categorias, edite ou crie a categoria da Vacina V3, marque <b>Uso sanitário</b> e salve. Repita com a categoria da Ração V3, marcando <b>Uso nutricional</b>; volte à lista para conferir os rótulos.","Os usos aparecem em cadastro e filtros, preservando Uso agrícola e Uso genético."],
   ["Salvar o perfil da Vacina V3 com via e carência sugerida de leite/carne.","A sugestão aparece na aplicação, mas não confirma dose nem prazo sem revisão humana."],
   ["Deixar uma das carências do perfil em branco e informar zero na outra.","Em branco é desconhecido; zero é ausência de carência informada, nunca valor presumido."],
   ["Salvar MS de 90% na Ração V3 e deixar MS do Mineral V3 vazia.","90% é aceito; Mineral mostra MS desconhecida."],
@@ -763,6 +769,66 @@ const G = [
  ]}
 ];
 
+// O roteiro V3 é navegável por pessoa, mas parte do contrato ainda só existe na API.
+// A ordem de cada linha acompanha a ordem dos passos do grupo em G.
+const PAGINAS_V3 = {
+  ambiente: ["Apoio técnico › terminal do projeto e banco de testes no Docker", "technical"],
+  fixture: ["Pecuária › Rebanho › Lotes e Animais → Financeiro › Configurações e Operações → Nutrição › Receitas (última tela prevista)", "planned"],
+  rebanho: ["Pecuária › Rebanho › Visão geral", "current"],
+  animais: ["Pecuária › Rebanho › Animais", "current"],
+  ficha: ["Pecuária › Rebanho › Animais › abrir a ficha do animal", "current"],
+  sanidadeFicha: ["Pecuária › Rebanho › Animais › abrir o animal › card Sanidade", "current"],
+  servicoAplicacao: ["Pecuária › Rebanho › Animais › abrir o animal › Sanidade › Registrar aplicação do Serviço", "current"],
+  baixa: ["Pecuária › Rebanho › Animais › abrir o animal › Dar baixa", "current"],
+  auditoria: ["Pecuária › Rebanho › Animais › abrir o animal › Auditoria", "current"],
+  lotes: ["Pecuária › Rebanho › Lotes", "current"],
+  lote: ["Pecuária › Rebanho › Lotes › abrir o lote", "current"],
+  cadastros: ["Pecuária › Rebanho › Cadastros", "current"],
+  categorias: ["Financeiro › Configurações financeiras › Categorias", "current"],
+  produtos: ["Financeiro › Configurações financeiras › Produtos", "current"],
+  perfilProduto: ["Financeiro › Configurações financeiras › Produtos › abrir produto › perfil sanitário/nutricional (painel previsto)", "planned"],
+  operacoes: ["Financeiro › Operações › abrir ou criar operação", "current"],
+  servico: ["Financeiro › Operações › abrir ou criar Serviço", "current"],
+  compraPartida: ["Financeiro › Operações › compra/ajuste › distribuir por partida (painel previsto)", "planned"],
+  estoque: ["Estoque › Saldos ou Histórico de movimentos", "current"],
+  partidas: ["Estoque › abrir produto › Partidas e reconciliação (painel previsto)", "planned"],
+  plantio: ["Agricultura › Plantio › Estoque agrícola / operação de aplicação", "current"],
+  sanidade: ["Pecuária › Rebanho › Sanidade (seção prevista)", "planned"],
+  cadSanidade: ["Pecuária › Rebanho › Cadastros › Doenças, Protocolos ou Tipos de exame (abas previstas)", "planned"],
+  aplicacao: ["Pecuária › Rebanho › Animais › abrir o animal › Sanidade › Nova aplicação (fluxo previsto)", "planned"],
+  manejo: ["Pecuária › Rebanho › Animais › abrir o animal › Manejo (painel previsto)", "planned"],
+  pesagemColetiva: ["Pecuária › Rebanho › Animais › selecionar animais › Pesagem coletiva (ação prevista)", "planned"],
+  dieta: ["Pecuária › Rebanho › Nutrição › Receitas (seção prevista)", "planned"],
+  loteDieta: ["Pecuária › Rebanho › Lotes › abrir o lote › Dieta e consumo (painel previsto)", "planned"],
+  acessos: ["Configurações › Acessos › usuário e permissões", "current"],
+  sitios: ["Configurações › Sítios", "current"],
+  relatorios: ["Financeiro › Relatórios / Visão geral / Contas", "current"],
+  ideagri: ["Apoio técnico › dump e scripts de importação/validação IDEAGRI; sem tela no aplicativo", "technical"],
+  roteiro: ["Este roteiro › grupos V3 e Relatório", "current"],
+};
+const CAMINHOS_V3 = {
+  v3prep: "ambiente ambiente ambiente produtos fixture rebanho ambiente",
+  v3produto: "categorias perfilProduto perfilProduto perfilProduto perfilProduto produtos produtos perfilProduto",
+  v3partida: "produtos produtos produtos compraPartida compraPartida compraPartida aplicacao compraPartida partidas aplicacao partidas partidas operacoes plantio operacoes operacoes ambiente",
+  v3origem: "aplicacao aplicacao aplicacao aplicacao aplicacao servicoAplicacao servico servicoAplicacao aplicacao aplicacao aplicacao aplicacao aplicacao aplicacao servico aplicacao",
+  v3carencia: "sanidadeFicha aplicacao sanidadeFicha sanidadeFicha ficha aplicacao aplicacao aplicacao baixa baixa sanidadeFicha",
+  v3ocorrencia: "cadSanidade sanidade sanidade sanidade sanidade sanidade cadSanidade",
+  v3protocolo: "cadSanidade cadSanidade cadSanidade sanidade sanidade sanidade sanidade sanidade sanidade sanidade sanidade sanidade sanidade",
+  v3exame: "cadSanidade sanidade sanidade sanidade sanidade cadSanidade sanidade sanidade sanidade",
+  v3manejo: "pesagemColetiva pesagemColetiva pesagemColetiva pesagemColetiva manejo manejo manejo manejo manejo manejo manejo baixa",
+  v3dieta: "dieta dieta dieta dieta loteDieta loteDieta loteDieta loteDieta loteDieta lote loteDieta",
+  v3consumo: "loteDieta animais baixa loteDieta loteDieta loteDieta loteDieta loteDieta loteDieta loteDieta loteDieta estoque loteDieta loteDieta loteDieta loteDieta loteDieta loteDieta",
+  v3hist: "animais animais baixa animais ambiente ambiente ambiente ambiente estoque auditoria",
+  v3integ: "estoque servico relatorios operacoes servico operacoes cadastros operacoes operacoes",
+  v3acesso: "sanidadeFicha sanidade acessos acessos acessos acessos pesagemColetiva rebanho rebanho rebanho",
+  v3carga: "ideagri ideagri ideagri ideagri ideagri ideagri ideagri ideagri ideagri ideagri ideagri ideagri",
+  v3aceite: "cadastros rebanho ambiente estoque roteiro",
+};
+for (const g of G.filter(g => g.id.startsWith("v3"))) {
+  const caminhos = CAMINHOS_V3[g.id]?.split(" ") || [];
+  if (caminhos.length !== g.s.length || caminhos.some(c => !PAGINAS_V3[c])) throw new Error(`Caminhos incompletos no grupo ${g.id}`);
+}
+
 const KEY = "roteiro-pecuaria-v1";
 const MARCACAO_INICIAL = "__todosMarcadosRevisaoGenetica20260929";
 let st = {};
@@ -791,10 +857,14 @@ function render(){
     g.s.forEach((s, si) => {
       const id = `${g.id}-${si + 1}`, code = `${gi + 1}.${si + 1}`;
       const li = document.createElement("li");
-      li.className = "step"; li.id = "s-" + id;
+      li.className = g.id.startsWith("v3") ? "step step-v3" : "step"; li.id = "s-" + id;
       const tags = (s[2] ? '<span class="tag t-neg">recusa</span>' : "") + (s[3] ? '<span class="tag t-opt">2 sítios</span>' : "");
+      const pagina = g.id.startsWith("v3") ? PAGINAS_V3[CAMINHOS_V3[g.id].split(" ")[si]] : null;
+      const acao = pagina
+        ? `<span class="id">${code}</span><span class="onde ${pagina[1] === "planned" ? "is-planned" : pagina[1] === "technical" ? "is-technical" : ""}"><b>Onde:</b> ${pagina[0]}</span><span class="fazer"><b>Faça:</b> ${s[0]}</span>`
+        : `<span class="id">${code}</span>${s[0]}`;
       li.innerHTML = `<input type="checkbox" id="c-${id}" aria-label="Passou: passo ${code}">
-        <label for="c-${id}"><span class="acao"><span class="id">${code}</span>${s[0]}${tags}</span><span class="esp">${s[1]}</span></label>
+        <label for="c-${id}"><span class="acao">${acao}${tags}</span><span class="esp">${s[1]}</span></label>
         <button type="button" class="failbtn" aria-pressed="false" id="f-${id}">Falhou</button>
         <div class="note" hidden><textarea id="t-${id}" placeholder="O que aconteceu? (tela, mensagem, dado)" aria-label="Anotação do passo ${code}"></textarea></div>`;
       const cb = li.querySelector("input"), fb = li.querySelector(".failbtn"), note = li.querySelector(".note"), ta = li.querySelector("textarea");
@@ -805,7 +875,7 @@ function render(){
     });
     root.appendChild(box);
     const a = document.createElement("li");
-    a.innerHTML = `<a href="#g-${g.id}" id="a-${g.id}">${g.t} <span class="n"></span></a>`;
+    a.innerHTML = `<a href="#g-${g.id}" id="a-${g.id}">${gi + 1}. ${g.t} <span class="n"></span></a>`;
     nav.appendChild(a);
   });
 }
@@ -844,8 +914,9 @@ function buildReport(){
   let tot = 0, ok = 0; const fails = [], pend = [];
   G.forEach((g, gi) => g.s.forEach((s, si) => {
     const id = `${g.id}-${si + 1}`, v = st[id] || {}, code = `${gi + 1}.${si + 1}`;
+    const pagina = g.id.startsWith("v3") ? PAGINAS_V3[CAMINHOS_V3[g.id].split(" ")[si]] : null;
     tot++; if (v.ok) ok++;
-    if (v.fail) fails.push(`- ${code} [${g.t}] ${esc(s[0])}\n  Esperado: ${esc(s[1])}\n  Visto: ${(v.note || "(sem anotação)").trim()}`);
+    if (v.fail) fails.push(`- ${code} [${g.t}] ${esc(s[0])}${pagina ? `\n  Onde: ${pagina[0]}` : ""}\n  Esperado: ${esc(s[1])}\n  Visto: ${(v.note || "(sem anotação)").trim()}`);
     else if (!v.ok) pend.push(`${code}`);
   }));
   lines.push(`Passaram: ${ok} de ${tot} · Falharam: ${fails.length} · Pendentes: ${pend.length}`, "");
