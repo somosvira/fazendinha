@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   movCreate: vi.fn(),
   movUpdate: vi.fn(),
   opCreate: vi.fn(),
+  opFindUnique: vi.fn(),
   auditCreate: vi.fn(),
   queryRaw: vi.fn(),
   transaction: vi.fn(),
@@ -24,6 +25,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("../../db.js", () => ({ prisma: {
   $transaction: mocks.transaction,
   produto: { findMany: mocks.produtoFindMany },
+  operacao: { findUnique: mocks.opFindUnique },
   movimentoEstoque: { groupBy: mocks.movGroupBy, findMany: mocks.movFindMany, count: mocks.movCount },
 } }));
 vi.mock("../propriedade.js", () => ({ propriedadePrincipalId: mocks.propriedadePrincipalId, escopoPadraoLeitura: vi.fn().mockResolvedValue(1) }));
@@ -35,7 +37,7 @@ const tx = () => ({
   centroCusto: { findFirst: mocks.centroFindFirst },
   periodoFinanceiro: { findUnique: mocks.periodoFindUnique },
   movimentoEstoque: { findMany: mocks.movFindMany, groupBy: mocks.movGroupBy, findFirst: mocks.movFindFirst, create: mocks.movCreate, update: mocks.movUpdate },
-  operacao: { create: mocks.opCreate },
+  operacao: { create: mocks.opCreate, findUnique: mocks.opFindUnique },
   auditoriaFinanceira: { create: mocks.auditCreate },
   $queryRaw: mocks.queryRaw,
 });
@@ -173,6 +175,22 @@ describe("estornarMovimentoTx", () => {
     await estornarMovimentoTx(tx() as never, uid(40));
     const data = mocks.movCreate.mock.calls[0][0].data;
     expect(data.observacao).toBe("Estorno do movimento #40");
+  });
+});
+
+describe("ajustarContagem — reenvio com id do cliente", () => {
+  const ajuste = { id: uid(60), produtoId: uid(3), quantidadeContada: 8, saldoEsperado: 10, observacao: "Contagem física", propriedadeId: 1, usuarioId: 7 };
+
+  it("reenvio no mesmo sítio devolve o ajuste gravado sem criar nada", async () => {
+    mocks.opFindUnique.mockResolvedValue({ tipo: "AJUSTE_ESTOQUE", propriedadeId: 1 });
+    expect(await ajustarContagem(ajuste)).toEqual({ operacaoId: uid(60) });
+    expect(mocks.opCreate).not.toHaveBeenCalled();
+  });
+
+  it("id de ajuste de outro sítio é conflito", async () => {
+    mocks.opFindUnique.mockResolvedValue({ tipo: "AJUSTE_ESTOQUE", propriedadeId: 2 });
+    await expect(ajustarContagem(ajuste)).rejects.toMatchObject({ code: "CONFLITO" });
+    expect(mocks.opCreate).not.toHaveBeenCalled();
   });
 });
 

@@ -374,11 +374,11 @@ async function registrarMovimentoTx(tx: Prisma.TransactionClient, input: Movimen
 }
 
 /** Reenvio: o client só usa `operacaoId` — sem ler a AuditoriaFinanceira. */
-async function ajusteExistente(db: Prisma.TransactionClient, id: string | undefined) {
+async function ajusteExistente(db: Prisma.TransactionClient, id: string | undefined, propriedadeId: number) {
   if (!id) return null;
-  const operacao = await db.operacao.findUnique({ where: { id }, select: { tipo: true } });
+  const operacao = await db.operacao.findUnique({ where: { id }, select: { tipo: true, propriedadeId: true } });
   if (!operacao) return null;
-  if (operacao.tipo !== "AJUSTE_ESTOQUE") throw new EstoqueError("CONFLITO", "Este identificador já pertence a outra operação");
+  if (operacao.tipo !== "AJUSTE_ESTOQUE" || operacao.propriedadeId !== propriedadeId) throw new EstoqueError("CONFLITO", "Este identificador já pertence a outra operação");
   return { operacaoId: id };
 }
 
@@ -387,7 +387,7 @@ export async function ajustarContagem(input: AjusteContagemValidado & { usuarioI
   if (propriedadeId == null) throw new EstoqueError("VALIDACAO", "Selecione uma fazenda para ajustar o estoque.");
   try {
     return await prisma.$transaction(async tx => {
-      const existente = await ajusteExistente(tx, input.id);
+      const existente = await ajusteExistente(tx, input.id, propriedadeId);
       if (existente) return existente;
       const produto = await tx.produto.findFirst({ where: { id: input.produtoId, ativo: true } });
       if (!produto) throw new EstoqueError("NAO_ENCONTRADO", "Produto ativo não encontrado");
@@ -405,7 +405,7 @@ export async function ajustarContagem(input: AjusteContagemValidado & { usuarioI
       return { ...resultado, saldoAnterior: saldo.toNumber(), quantidadeContada: input.quantidadeContada, diferenca: delta.toNumber() };
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   } catch (error) {
-    const existente = await ajusteExistente(prisma, input.id);
+    const existente = await ajusteExistente(prisma, input.id, propriedadeId);
     if (existente) return existente;
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2034") throw new EstoqueError("CONFLITO", "O estoque mudou durante a confirmação. Atualize o saldo e tente novamente.");
     throw error;

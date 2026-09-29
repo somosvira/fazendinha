@@ -10,7 +10,7 @@ import type { z } from "zod";
 import type { liquidacaoSchema, operacaoSchema, simulacaoParcelasSchema, transacaoAvulsaSchema, transferenciaSchema } from "./schemas.js";
 
 type OperacaoInput = z.infer<typeof operacaoSchema> & { propriedadeId: number; usuarioId?: number | null };
-type LiquidacaoInput = z.infer<typeof liquidacaoSchema> & { usuarioId?: number | null };
+type LiquidacaoInput = z.infer<typeof liquidacaoSchema> & { propriedadeId: number; usuarioId?: number | null };
 type TransferenciaInput = z.infer<typeof transferenciaSchema> & { propriedadeId: number; usuarioId?: number | null };
 type TransacaoAvulsaInput = z.infer<typeof transacaoAvulsaSchema> & { propriedadeId: number; usuarioId?: number | null };
 type ContextoEstorno = { propriedadeId: number; usuarioId?: number | null };
@@ -69,12 +69,12 @@ async function comIdDoCliente<T>(id: string | undefined, criar: () => Promise<T>
   }
 }
 
-// O id é global (não é fronteira de segurança) — confere só o tipo do registro existente.
+// O id é global, mas um registro existente só é reenvio legítimo dentro do mesmo sítio e tipo.
 async function operacaoCriadaExistente(db: Prisma.TransactionClient, input: OperacaoInput) {
   if (!input.id) return null;
   const operacao = await db.operacao.findUnique({ where: { id: input.id }, include: includeOperacaoCriada });
   if (!operacao) return null;
-  if (operacao.tipo !== input.tipo) throw new FinanceiroError("CONFLITO", "Este identificador já pertence a outra operação");
+  if (operacao.tipo !== input.tipo || operacao.propriedadeId !== input.propriedadeId) throw new FinanceiroError("CONFLITO", "Este identificador já pertence a outra operação");
   return operacao;
 }
 
@@ -208,14 +208,14 @@ async function compromissoParaLiquidar(tx: Prisma.TransactionClient, id: string,
   return { compromisso, restante };
 }
 
-async function liquidacaoExistente(db: Prisma.TransactionClient, compromissoId: string, transacaoId: string | undefined) {
+async function liquidacaoExistente(db: Prisma.TransactionClient, compromissoId: string, transacaoId: string | undefined, propriedadeId: number) {
   if (!transacaoId) return null;
   const transacao = await db.transacaoFinanceira.findUnique({
     where: { id: transacaoId }, include: { movimentos: true, liquidacoes: { select: { compromissoId: true } } },
   });
   if (!transacao) return null;
   const { liquidacoes, ...resto } = transacao;
-  if (!liquidacoes.some((liquidacao) => liquidacao.compromissoId === compromissoId)) {
+  if (resto.propriedadeId !== propriedadeId || !liquidacoes.some((liquidacao) => liquidacao.compromissoId === compromissoId)) {
     throw new FinanceiroError("CONFLITO", "Este identificador já pertence a outra transação");
   }
   return resto;
@@ -223,7 +223,7 @@ async function liquidacaoExistente(db: Prisma.TransactionClient, compromissoId: 
 
 export async function liquidarCompromisso(compromissoId: string, input: LiquidacaoInput) {
   return comIdDoCliente(input.transacaoId, () => prisma.$transaction(async (tx) => {
-    const existente = await liquidacaoExistente(tx, compromissoId, input.transacaoId);
+    const existente = await liquidacaoExistente(tx, compromissoId, input.transacaoId, input.propriedadeId);
     if (existente) return existente;
     const valor = exigirPositivo(input.valor);
     const { compromisso } = await compromissoParaLiquidar(tx, compromissoId, valor);
@@ -243,7 +243,7 @@ export async function liquidarCompromisso(compromissoId: string, input: Liquidac
     await tx.compromissoFinanceiro.update({ where: { id: compromissoId }, data: { status: novoRestante.isZero() ? "LIQUIDADO" : "PARCIAL" } });
     await auditar(tx, { entidade: "CompromissoFinanceiro", entidadeId: compromissoId, acao: "LIQUIDADO", usuarioId: input.usuarioId, depois: { transacaoId: transacao.id, valor } });
     return transacao;
-  }), () => liquidacaoExistente(prisma, compromissoId, input.transacaoId));
+  }), () => liquidacaoExistente(prisma, compromissoId, input.transacaoId, input.propriedadeId));
 }
 
 async function transferenciaExistente(db: Prisma.TransactionClient, input: TransferenciaInput) {
@@ -253,7 +253,7 @@ async function transferenciaExistente(db: Prisma.TransactionClient, input: Trans
     include: { transacoes: { where: { tipo: "TRANSFERENCIA" }, include: { movimentos: true }, orderBy: { seq: "asc" } } },
   });
   if (!operacao) return null;
-  if (operacao.tipo !== "TRANSFERENCIA_FINANCEIRA") throw new FinanceiroError("CONFLITO", "Este identificador já pertence a outra operação");
+  if (operacao.tipo !== "TRANSFERENCIA_FINANCEIRA" || operacao.propriedadeId !== input.propriedadeId) throw new FinanceiroError("CONFLITO", "Este identificador já pertence a outra operação");
   return operacao.transacoes[0] ?? null;
 }
 
