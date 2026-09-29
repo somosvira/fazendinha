@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from "vitest";
 import { createElement, type ReactNode } from "react";
-import { QueryClient, QueryClientProvider, type QueryKey } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, QueryObserver, type QueryKey } from "@tanstack/react-query";
 import { renderHook } from "@testing-library/react";
 import {
   useOfflineMutation,
@@ -179,7 +179,7 @@ describe("useOfflineMutation — patch otimista via aplicar", () => {
     });
   });
 
-  it("em erro, desfaz o patch otimista em todas as entradas (rollback)", async () => {
+  it("em erro, invalida as entradas e o refetch traz o estado do servidor", async () => {
     enfileirarImpl = () => Promise.reject(new Error("falhou"));
     const queryClient = new QueryClient();
     const listaKey: QueryKey = ["itens"];
@@ -197,11 +197,52 @@ describe("useOfflineMutation — patch otimista via aplicar", () => {
 
     const { result } = renderHook(() => useOfflineMutation(cfg), { wrapper: montarWrapper(queryClient) });
     const onError = vi.fn();
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
     result.current.mutate({ nome: "X" }, { onError });
 
     expect(queryClient.getQueryData<Item[]>(listaKey)).toHaveLength(1);
     await vi.waitFor(() => expect(onError).toHaveBeenCalled());
-    expect(queryClient.getQueryData<Item[]>(listaKey)).toEqual([]);
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: listaKey });
+  });
+
+  it("duas mutações otimistas na mesma query recusadas em sequência não deixam fantasma nem escondem a pendente", async () => {
+    const queryClient = new QueryClient();
+    const listaKey: QueryKey = ["itens"];
+    let servidor: Item[] = [];
+    const observador = new QueryObserver(queryClient, { queryKey: listaKey, queryFn: async () => servidor, staleTime: Infinity });
+    const cancelar = observador.subscribe(() => {});
+    await vi.waitFor(() => expect(queryClient.getQueryData(listaKey)).toEqual([]));
+
+    const rejeicoes: ((err: Error) => void)[] = [];
+    enfileirarImpl = () => new Promise((_, rejeitar) => rejeicoes.push(rejeitar));
+    const cfg: UseOfflineMutationConfig<{ id: string }, Item> = {
+      mutationKey: "teste.duas-recusadas",
+      path: () => "/itens",
+      method: "POST",
+      criarOtimista: (input) => ({ id: input.id, nome: input.id, endereco: { rua: "", cidade: "" } }),
+      queryKeys: (_input, itemOtimista) => [
+        { queryKey: listaKey, aplicar: (atual: Item[] | undefined) => appendItemToCacheList(atual, itemOtimista!) },
+      ],
+    };
+    const { result } = renderHook(() => useOfflineMutation(cfg), { wrapper: montarWrapper(queryClient) });
+    const onErrorA = vi.fn();
+    const onErrorB = vi.fn();
+    result.current.mutate({ id: "a" }, { onError: onErrorA });
+    result.current.mutate({ id: "b" }, { onError: onErrorB });
+    const ids = () => (queryClient.getQueryData<Item[]>(listaKey) ?? []).map((i) => i.id);
+    expect(ids()).toEqual(["a", "b"]);
+
+    // "a" é recusada enquanto "b" já consta no servidor, ainda sem confirmação.
+    servidor = [{ id: "b", nome: "b", endereco: { rua: "", cidade: "" } }];
+    rejeicoes[0](new Error("recusada"));
+    await vi.waitFor(() => expect(onErrorA).toHaveBeenCalled());
+    await vi.waitFor(() => expect(ids()).toEqual(["b"]));
+
+    servidor = [];
+    rejeicoes[1](new Error("recusada"));
+    await vi.waitFor(() => expect(onErrorB).toHaveBeenCalled());
+    await vi.waitFor(() => expect(ids()).toEqual([]));
+    cancelar();
   });
 
   it("aplicar que lança numa entrada não deixa patch de entrada anterior no cache nem enfileira", async () => {

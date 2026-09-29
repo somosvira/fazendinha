@@ -1,7 +1,7 @@
 // Fábrica genérica de escrita offline-aware sobre caches do TanStack Query.
 // Cada tela declara o quê (path/method/body, como criar o item otimista, como
-// cada queryKey afetada deve ser corrigida — `aplicar`); o como — snapshot
-// pra rollback em erro e enfileiramento — fica em fila.ts, escrito uma vez só.
+// cada queryKey afetada deve ser corrigida — `aplicar`); o como — enfileiramento
+// e refetch das queries afetadas em erro — fica aqui e em fila.ts, escrito uma vez só.
 import { useSyncExternalStore } from "react";
 import { useQueryClient, type QueryClient, type QueryKey } from "@tanstack/react-query";
 import { enfileirarMutation, inscrever, obterFila } from "./fila";
@@ -146,13 +146,13 @@ export function useOfflineMutation<TInput, TItem, TResp = TItem>(cfg: UseOffline
     input: TInput,
     opts?: { onSuccess?: (item: TResp) => void; onError?: (err: unknown) => void },
   ) {
-    let snapshots: { entrada: EntradaPatch<any, TItem>; anterior: unknown; novo: unknown }[];
+    let snapshots: { entrada: EntradaPatch<any, TItem>; novo: unknown }[];
     try {
       const itemOtimista = cfg.criarOtimista?.(input);
       const entradas = cfg.queryKeys(input, itemOtimista);
       snapshots = entradas.map((entrada) => {
         const anterior = queryClient.getQueryData(entrada.queryKey);
-        return { entrada, anterior, novo: entrada.aplicar ? entrada.aplicar(anterior, itemOtimista) : undefined };
+        return { entrada, novo: entrada.aplicar ? entrada.aplicar(anterior, itemOtimista) : undefined };
       });
     } catch (err) {
       opts?.onError?.(err);
@@ -174,7 +174,7 @@ export function useOfflineMutation<TInput, TItem, TResp = TItem>(cfg: UseOffline
         opts?.onSuccess?.(resposta as TResp);
       })
       .catch((err) => {
-        for (const { entrada, anterior } of snapshots) queryClient.setQueryData(entrada.queryKey, anterior);
+        for (const { entrada } of snapshots) queryClient.invalidateQueries({ queryKey: entrada.queryKey });
         opts?.onError?.(err);
       });
   }
