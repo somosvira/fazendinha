@@ -562,14 +562,12 @@ const G = [
   ["Rodar <code>import:pecuaria</code> de novo.","Nada é duplicado; filiação editada no sistema não é sobrescrita."],
   ["Rodar <code>validar:pecuaria</code>.","Seção 13: nenhuma mãe macho nem pai fêmea; toda mãe nasceu antes da cria."]
  ]},
- {id:"v3prep", t:"v3 · Preparação e migração", d:"Contrato-alvo do PR #308. Use o banco local de testes no Docker; a prova de atualização de uma base V2 com dados é um caso técnico separado.", s:[
-  ["Aplicar a migration da v3 num banco vazio que já recebeu v1 e v2.","Tabelas, constraints e rotas novas sobem sem recriar ou alterar fatos anteriores."],
-  ["Aplicar a migration da v3 numa cópia com animais, material genético, produtos, movimentos e operações da v2.","Contagens, saldos, filiação, composição, auditoria e links da v2 permanecem iguais."],
-  ["Reaplicar <code>migrate deploy</code>.","Nenhuma migration ou dado é duplicado."],
-  ["Confirmar que rastreio por partida começa desligado nos produtos antigos.","A migração não inventa códigos, validades ou distribuição física."],
-  ["Crie V3 Nutrição e V3 Transição em Lotes; cadastre RN01–RN12 e RT01 em Animais com as datas da tabela v3. No grupo 27, crie as categorias e os produtos da tabela; no 28, faça as entradas e partidas; nos grupos de origem, crie compra direta e Serviço; no 35, crie a dieta V3 Crescimento. Anote os IDs e saldos antes de cada grupo, sem lançar operações ou consumo antecipadamente.","Há 110 animal-dias em V3 Nutrição de 01 a 10/09/2026; o simples cadastro de lotes, animais, categorias e produtos não gera estoque nem gasto."],
-  ["Abrir a v3 com área Pecuária e permissão de lançamento; conferir ficha, lote, estoque e financeiro.","A v1/v2 continua navegável; as novas seções não substituem filiação, material genético, peso ou auditoria."],
-  ["Conferir banco sem ativar rastreio e sem rodar importador no boot.","Nenhuma partida técnica, carga IDEAGRI ou movimento V3 aparece espontaneamente."]
+ {id:"v3prep", t:"v3 · Preparação do cenário local", d:"Use somente o banco local de testes no Docker. Esta seção prepara rebanho e acesso; não exige cópia V2, reexecução de migration ou carga IDEAGRI.", s:[
+  ["Confirme que a aplicação local está ligada ao banco <b>fazendinha_v3_teste</b> no Docker e que a migration V3 já está aplicada. Não crie cópia de banco nem importe IDEAGRI para este roteiro.","O ambiente está pronto para testes descartáveis da V3 e não depende de preservar histórico de outra base."],
+  ["Abra Pecuária › Rebanho e Financeiro › Configurações financeiras. Confirme que consegue ver Lotes, Animais, Categorias e Produtos com um usuário que pode lançar.","Você consegue chegar às telas que serão usadas nos grupos 26 e 27; ausência de permissão é registrada como falha de acesso, não contornada por outro usuário."],
+  ["Em Pecuária › Rebanho › Lotes, crie <b>V3 Nutrição</b> e <b>V3 Transição</b> no Sítio A, ambos com centro de custo ativo. Não crie ainda categorias, produtos, saldo ou operação.","Os dois lotes ficam disponíveis para os animais. Criar lote não cria estoque, dieta, consumo ou gasto."],
+  ["Em Pecuária › Rebanho › Animais, crie <b>RN01–RN10</b> no lote V3 Nutrição com entrada em 01/09/2026 e <b>RN11–RN12</b> com entrada em 06/09/2026; todos nasceram antes da entrada. RN01–RN11 são fêmeas e RN12 é macho. Crie <b>RT01</b> no lote V3 Transição, com entrada em 01/09/2026.","No intervalo de 01 a 10/09/2026, V3 Nutrição soma 110 animal-dias. Brincos são únicos no sítio; nenhum cadastro clínico, estoque ou financeiro é criado."],
+  ["Siga para o <b>grupo 27</b> para criar exclusivamente as categorias Sanidade V3/Nutrição V3 e os cinco Produtos V3. Depois, siga a ordem: <b>28</b> para partidas e entradas, <b>29</b> para aplicação/origem e Serviço, <b>35</b> para dieta. O rastreio por partida é testado no 28, pois sua tela ainda é prevista no PR atual.","Cada grupo começa com os dados mínimos certos: produto cadastrado não tem saldo; Serviço não é criado no 27; dieta não é criada no 26."]
  ]},
  {id:"v3produto", t:"v3 · Produtos e perfis", d:"Crie exatamente as categorias e os produtos da tabela v3; cadastro não equivale a entrada em estoque. Os painéis de perfil são parte do contrato V3, mas ainda não aparecem na interface atual: na homologação final, marque Falhou se continuarem ausentes.", s:[
   ["Em Financeiro › Configurações financeiras › Categorias, clique em Nova categoria. Nome <b>Sanidade V3</b>, Classificação <b>Custeio</b>; em Uso dos produtos desta categoria, marque somente <b>Sanitário</b> e salve. Crie <b>Nutrição V3</b> com Classificação <b>Custeio</b>, marcando somente <b>Nutricional</b>. Reabra cada uma e confira os quatro marcadores.","As duas categorias aparecem com o uso correto; Agrícola e Uso genético ficam desmarcados. Nenhuma categoria do seed foi modificada."],
@@ -809,7 +807,7 @@ const PAGINAS_V3 = {
   roteiro: ["Este roteiro › grupos V3 e Relatório", "current"],
 };
 const CAMINHOS_V3 = {
-  v3prep: "ambiente ambiente ambiente produtos fixture rebanho ambiente",
+  v3prep: "ambiente rebanho lotes animais roteiro",
   v3produto: "categorias produtos produtos produtos perfilProduto produtos produtos perfilProduto",
   v3partida: "produtos produtos produtos compraPartida compraPartida compraPartida aplicacao compraPartida partidas aplicacao partidas partidas operacoes plantio operacoes operacoes ambiente",
   v3origem: "aplicacao aplicacao aplicacao aplicacao aplicacao servicoAplicacao servico servicoAplicacao aplicacao aplicacao aplicacao aplicacao aplicacao aplicacao servico aplicacao",
