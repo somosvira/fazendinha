@@ -43,12 +43,10 @@ const caixa: CSSProperties = {
 
 function FaixaOffline() {
   const online = useOnlineStatus();
-  const pendentes = useSyncExternalStore(inscrever, obterFila, obterFila).length;
   if (online) return null;
   return (
     <div role="status" style={faixa}>
       Sem conexão — dados podem estar desatualizados
-      {pendentes > 0 ? ` · ${pendentes} ${pendentes === 1 ? "alteração pendente" : "alterações pendentes"}` : ""}
     </div>
   );
 }

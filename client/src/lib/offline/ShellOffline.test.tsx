@@ -30,23 +30,11 @@ describe("ShellOffline — faixa offline", () => {
     expect(screen.queryByText(/Sem conexão/)).toBeNull();
   });
 
-  it("aparece offline sem contagem quando a fila está vazia", () => {
-    onlineManager.setOnline(false);
-    render(<ShellOffline />);
-    expect(screen.getByRole("status").textContent).toBe("Sem conexão — dados podem estar desatualizados");
-  });
-
-  it("mostra a quantidade de alterações pendentes e some ao reconectar", () => {
+  it("aparece offline, mesmo com itens na fila, e some ao reconectar", () => {
     onlineManager.setOnline(false);
     fila = [{}, {}];
     render(<ShellOffline />);
-    expect(screen.getByRole("status").textContent).toBe("Sem conexão — dados podem estar desatualizados · 2 alterações pendentes");
-
-    act(() => {
-      fila = [{}];
-      for (const cb of ouvintes) cb();
-    });
-    expect(screen.getByRole("status").textContent).toContain("1 alteração pendente");
+    expect(screen.getByRole("status").textContent).toBe("Sem conexão — dados podem estar desatualizados");
 
     act(() => onlineManager.setOnline(true));
     expect(screen.queryByRole("status")).toBeNull();
