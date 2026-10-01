@@ -153,6 +153,25 @@ enum StatusPeriodoFinanceiro {
   @@schema("public")
 }
 
+enum StatusImportacaoFinanceira {
+  PROCESSANDO
+  CONCLUIDA
+  FALHOU
+
+  @@schema("public")
+}
+
+enum StatusLinhaImportacaoFinanceira {
+  PRONTA
+  IMPORTADA
+  AGRUPADA
+  IGNORADA
+  REVISAO
+  REJEITADA
+
+  @@schema("public")
+}
+
 // Área responsável pelo gasto: Pecuária, Agronomia, Equipe, Gestão.
 model CentroCusto {
   id                String               @id @default(uuid())
@@ -635,6 +654,49 @@ model AuditoriaFinanceira {
   @@schema("public")
 }
 
+// Lote imutável da carga histórica. O hash impede reaplicar a mesma planilha e
+// as linhas abaixo mantêm a ligação entre a origem e as entidades geradas.
+model ImportacaoFinanceira {
+  id            String                      @id @default(uuid())
+  arquivo       String
+  sha256        String                      @unique
+  fonte         String
+  versaoFormato Int
+  versaoMatriz  Int
+  status        StatusImportacaoFinanceira  @default(PROCESSANDO)
+  opcoes        Json
+  resumo        Json?
+  erro          String?
+  propriedade   Propriedade                 @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
+  propriedadeId Int
+  linhas        LinhaImportacaoFinanceira[]
+  iniciadoEm    DateTime                    @default(now())
+  concluidoEm   DateTime?
+
+  @@index([propriedadeId, iniciadoEm])
+  @@schema("public")
+}
+
+model LinhaImportacaoFinanceira {
+  id           String                          @id @default(uuid())
+  importacao   ImportacaoFinanceira            @relation(fields: [importacaoId], references: [id], onDelete: Cascade)
+  importacaoId String
+  indiceCache  Int
+  hashLinha    String
+  status       StatusLinhaImportacaoFinanceira
+  rota         String?
+  chaveEvento  String?
+  motivo       String?
+  origem       Json
+  destino      Json?
+  createdAt    DateTime                        @default(now())
+
+  @@unique([importacaoId, indiceCache])
+  @@index([importacaoId, status])
+  @@index([chaveEvento])
+  @@schema("public")
+}
+
 // Sítio físico da fazenda-cliente (multi-propriedade). Default single-tenant: 1
 // linha (principal). O mesmo seam serve de base p/ multi-tenant (Organizacao) depois.
 model Propriedade {
@@ -654,6 +716,7 @@ model Propriedade {
   rascunhosRelatorios   RascunhoRelatorioFinanceiro[]
   transacoesFinanceiras TransacaoFinanceira[]
   periodosFinanceiros   PeriodoFinanceiro[]
+  importacoesFinanceiras ImportacaoFinanceira[]
   talhoes               Talhao[]
   lavouras              Lavoura[]
   funcionarios          Funcionario[]
