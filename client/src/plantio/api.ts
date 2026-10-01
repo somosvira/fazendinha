@@ -65,6 +65,7 @@ export interface PassadaDTO {
 // Payload de registro de operação cultural — espelha o body aceito pelo backend
 // em POST /plantio/talhoes/:id/operacoes. Retorna o evento criado (timeline).
 export interface OperacaoInput {
+  partidas?: Array<{ partidaId: string; quantidade: number }>;
   dominio: "fenologia" | "fitossanidade" | "nutricao" | "colheita";
   tipo: string;                 // TipoOperacao (ex.: "APLICACAO_FUNGICIDA")
   data: string;                 // YYYY-MM-DD

@@ -2,7 +2,7 @@ import { Prisma, type DirecaoMovimentoConta, type TipoCompromisso, type TipoTran
 import { prisma } from "../../db.js";
 import { auditar, dinheiro, exigirContaAtiva, exigirParceiroAtivo, exigirPeriodoAberto, exigirPositivo, FinanceiroError } from "./regras.js";
 import { gerarParcelasFinanceiras, totalItensFinanceiros } from "./parcelas.calc.js";
-import { obterBasesCusto, produtosComEstoque } from "../estoque/estoque.js";
+import { obterBasesCusto, produtosComEstoque, statusSaldoEstoque } from "../estoque/estoque.js";
 import { valorSaidaDaBase } from "../estoque/estoque.calc.js";
 import { rotuloUnidade } from "../estoque/unidades.js";
 import { prepararPartidasTx, saldoPartidaTx } from "../estoque/partidas.js";
@@ -212,7 +212,7 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
         const produto = produtosPorId.get(item.produtoId!)!;
         const distribuicao = await prepararPartidasTx(tx, {
           produtoId: produto.id, rastrearPartidas: produto.rastrearPartidas, propriedadeId: input.propriedadeId,
-          tipo: tipoMovimento, quantidade: item.quantidade,
+          tipo: tipoMovimento, data: input.data, quantidade: item.quantidade,
           partidas: entrada.partidas,
         });
         const valores = custosSaida
@@ -419,6 +419,12 @@ export async function estornarOperacao(id: string, motivo: string, contexto: Con
       await estornarTransacaoTx(tx, transacao.id, `${PREFIXO_CANCELAMENTO_OPERACAO}${operacao.numero}: ${motivo}`, contexto);
     }
     for (const movimento of operacao.movimentosEstoque.filter((item) => item.status === "CONFIRMADO" && !item.reversaoDeId && !item.revertidoPor)) {
+      if (operacao.tipo === "TRANSFERENCIA_ESTOQUE" && movimento.propriedadeId != null) await exigirPeriodoAberto(tx, movimento.propriedadeId, new Date());
+      if (operacao.tipo === "TRANSFERENCIA_ESTOQUE" && movimento.tipo === "ENTRADA") {
+        const saldoMovimentos = await tx.movimentoEstoque.findMany({ where: { produtoId: movimento.produtoId, propriedadeId: movimento.propriedadeId, status: statusSaldoEstoque }, select: { tipo: true, quantidade: true } });
+        const saldo = saldoMovimentos.reduce((s, m) => m.tipo === "SAIDA" ? s.minus(m.quantidade) : s.plus(m.quantidade), new Prisma.Decimal(0));
+        if (saldo.lt(movimento.quantidade)) throw new FinanceiroError("CONFLITO", "O estoque transferido já foi consumido no destino; reconcilie antes de cancelar.");
+      }
       if (movimento.tipo === "ENTRADA" || (movimento.tipo === "AJUSTE" && movimento.quantidade.gt(0))) {
         for (const alocacao of movimento.alocacaoPartidaEstoques) {
           if ((await saldoPartidaTx(tx, alocacao.partidaId, movimento.propriedadeId ?? operacao.propriedadeId)).lt(alocacao.quantidade)) {

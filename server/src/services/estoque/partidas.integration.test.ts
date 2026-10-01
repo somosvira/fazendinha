@@ -2,7 +2,10 @@ import crypto from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { afterAll, describe, expect, it } from "vitest";
 import { prisma } from "../../db.js";
-import { ativarRastreio, listarPartidas, prepararPartidasTx } from "./partidas.js";
+import { ativarRastreio, identificarLegado, listarPartidas, prepararPartidasTx } from "./partidas.js";
+import { obterBaseCusto } from "./estoque.js";
+import { transferirEstoque } from "./transferencias.js";
+import { estornarOperacao } from "../financeiro/operacoes.js";
 
 const describeComBanco = process.env.PECUARIA_DB_INTEGRATION === "1" ? describe : describe.skip;
 const run = crypto.randomUUID().slice(0, 8);
@@ -11,11 +14,14 @@ const propriedades: number[] = [];
 
 afterAll(async () => {
   if (!produtos.length) return;
+  const operacoes = await prisma.operacao.findMany({ where: { propriedadeId: { in: propriedades } }, select: { id: true } });
+  await prisma.auditoriaFinanceira.deleteMany({ where: { entidadeId: { in: operacoes.map((o) => o.id) } } });
   await prisma.auditoriaFinanceira.deleteMany({ where: { entidade: "Produto", entidadeId: { in: produtos } } });
   // Somente o banco descartável do teste desliga o rastreio para desmontar a fixture.
   await prisma.produto.updateMany({ where: { id: { in: produtos } }, data: { rastrearPartidas: false } });
   await prisma.alocacaoPartidaEstoque.deleteMany({ where: { partida: { produtoId: { in: produtos } } } });
   await prisma.movimentoEstoque.deleteMany({ where: { produtoId: { in: produtos } } });
+  await prisma.operacao.deleteMany({ where: { id: { in: operacoes.map((o) => o.id) } } });
   await prisma.partidaProduto.deleteMany({ where: { produtoId: { in: produtos } } });
   await prisma.produto.deleteMany({ where: { id: { in: produtos } } });
   await prisma.propriedade.deleteMany({ where: { id: { in: propriedades } } });
@@ -51,5 +57,28 @@ describeComBanco("rastreio de partidas no estoque único", () => {
     });
     expect((await listarPartidas(produto.id, propriedade.id))[0].saldo).toBe("9");
     expect(saida.produtoId).toBe(produto.id);
+    const custoAntes = await obterBaseCusto(prisma, produto.id, propriedade.id);
+    await identificarLegado({ chave: crypto.randomUUID(), produtoId: produto.id, propriedadeId: propriedade.id, codigo: "FABRICANTE-TESTE", validade: "2026-12-31", quantidade: "4", motivo: "Conferência física do legado", data: "2026-09-03" }, null);
+    const partidas = await listarPartidas(produto.id, propriedade.id);
+    expect(partidas.find((p) => p.codigo === "FABRICANTE-TESTE")?.saldo).toBe("4");
+    expect(partidas.find((p) => p.id === legado.id)?.saldo).toBe("5");
+    const movimentos = await prisma.movimentoEstoque.findMany({ where: { produtoId: produto.id, origem: "IDENTIFICACAO_PARTIDA" } });
+    expect(movimentos.reduce((s, m) => s.plus(m.quantidade), new Prisma.Decimal(0)).toString()).toBe("0");
+    expect(movimentos.reduce((s, m) => s.plus(m.valorTotal), new Prisma.Decimal(0)).toString()).toBe("0");
+    expect(await obterBaseCusto(prisma, produto.id, propriedade.id)).toEqual(custoAntes);
+    const destino = await prisma.propriedade.create({ data: { nome: `Destino V3 ${run}` } }); propriedades.push(destino.id);
+    const identificada = partidas.find((p) => p.codigo === "FABRICANTE-TESTE")!;
+    const input = { chave: crypto.randomUUID(), produtoId: produto.id, origemId: propriedade.id, destinoId: destino.id, quantidade: "2", data: "2026-09-04", motivo: "Transferência física de teste", partidas: [{ partidaId: identificada.id, quantidade: 2 }] };
+    const transferida = await transferirEstoque(input, null);
+    expect(await transferirEstoque(input, null)).toEqual(transferida);
+    expect((await listarPartidas(produto.id, destino.id)).find((p) => p.id === identificada.id)?.saldo).toBe("2");
+    expect((await obterBaseCusto(prisma, produto.id, destino.id))?.valor.toString()).toBe("24");
+    await estornarOperacao(transferida.operacaoId, "Estorno de teste de transferência", { propriedadeId: propriedade.id, usuarioId: null });
+    expect((await listarPartidas(produto.id, destino.id)).find((p) => p.id === identificada.id)?.saldo).toBe("0");
+    expect((await listarPartidas(produto.id, propriedade.id)).find((p) => p.id === identificada.id)?.saldo).toBe("4");
+    const perda = await transferirEstoque({ ...input, chave: crypto.randomUUID(), destinoId: propriedade.id, quantidade: "1", partidas: [{ partidaId: identificada.id, quantidade: 1 }], modo: "PERDA" }, null);
+    expect((await listarPartidas(produto.id, propriedade.id)).find((p) => p.id === identificada.id)?.saldo).toBe("3");
+    await estornarOperacao(perda.operacaoId, "Revisão documentada da perda", { propriedadeId: propriedade.id, usuarioId: null });
+    expect((await listarPartidas(produto.id, propriedade.id)).find((p) => p.id === identificada.id)?.saldo).toBe("4");
   });
 });

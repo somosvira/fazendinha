@@ -5,6 +5,7 @@ import { CampoFormulario, classeInput, PainelCadastro } from "./PainelCadastro";
 import { papeisDoParceiro } from "./lib/parceiros";
 import { MultiSelect, type MultiSelectOption } from "@/components/MultiSelect";
 import { UNIDADES_ORDENADAS, rotuloUnidadeCompleto, type UnidadeMedida } from "../lib/unidades";
+import { PartidasProduto } from "../estoque/PartidasProduto";
 
 // Chips informativos das marcações de uso da categoria escolhida — o
 // comportamento (agrícola) é da categoria, não do produto.
@@ -59,6 +60,12 @@ export function FormProduto({ produto, parceiros: parceirosProp, categorias: cat
   const [unidade, setUnidade] = useState<UnidadeMedida>(produto?.unidade ?? "UN");
   const [minimo, setMinimo] = useState(produto?.minimoEstoque ?? "");
   const [categoriaId, setCategoriaId] = useState(produto?.categoriaId ? produto.categoriaId : "");
+  const [leite, setLeite] = useState(produto?.perfilSanitario?.carenciaLeiteHoras?.toString() ?? "");
+  const [carne, setCarne] = useState(produto?.perfilSanitario?.carenciaCarneHoras?.toString() ?? "");
+  const [via, setVia] = useState(produto?.perfilSanitario?.viaPadrao ?? "");
+  const [referencia, setReferencia] = useState(produto?.perfilSanitario?.referenciaTecnica ?? "");
+  const [materiaSeca, setMateriaSeca] = useState(produto?.perfilNutricional?.materiaSecaPercentual ?? "");
+  const categoriaEscolhida = categorias.find((c) => c.id === categoriaId);
   const [centroCustoIds, setCentroCustoIds] = useState<string[]>(() => produto?.centroCustoIds ?? []);
   const [fornecedorIds, setFornecedorIds] = useState<string[]>(() => produto?.fornecedores?.map((f) => f.id) ?? []);
   const [erros, setErros] = useState<Record<string, string>>({});
@@ -85,6 +92,8 @@ export function FormProduto({ produto, parceiros: parceirosProp, categorias: cat
       nome: nome.trim(), unidade,
       minimoEstoque: minimo === "" ? null : Number(minimo), categoriaId,
       centroCustoIds, fornecedorIds,
+      ...(categoriaEscolhida?.usoSanitario ? { perfilSanitario: { carenciaLeiteHoras: leite === "" ? null : Number(leite), carenciaCarneHoras: carne === "" ? null : Number(carne), viaPadrao: via || null, referenciaTecnica: referencia || null } } : {}),
+      ...(categoriaEscolhida?.usoNutricional ? { perfilNutricional: { materiaSecaPercentual: materiaSeca === "" ? null : Number(materiaSeca) } } : {}),
     };
     emCurso.current = true; setSalvando(true); setErroGeral("");
     try {
@@ -102,9 +111,12 @@ export function FormProduto({ produto, parceiros: parceirosProp, categorias: cat
     <form id={formId} onSubmit={submeter} className="grid gap-4" noValidate>
       <p className="text-sm text-ink-3">O preço vem das compras (custo médio no estoque) e o uso do produto vem da categoria. Quem põe o produto no estoque é a operação (compra para estoque, inventário, produção…).</p>
       <ErrorBox erro={erroGeral || null} />
+      {produto && <PartidasProduto produtoId={produto.id} rastreado={produto.rastrearPartidas ?? false} onMudou={() => {}} />}
       {erroCarga && <ErrorBox erro={`Não foi possível carregar fornecedores/categorias/centros de custo: ${erroCarga}`} />}
       {carregando && <p className="text-sm text-ink-3">Carregando fornecedores, categorias e centros de custo…</p>}
       <CampoFormulario id="produto-nome" rotulo="Nome do produto" obrigatorio erro={erros.nome}>{(p) => <input {...p} maxLength={80} value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Ração 22%" className={classeInput} />}</CampoFormulario>
+      {categoriaEscolhida?.usoSanitario && <fieldset className="grid gap-3 rounded-lg border border-border p-3"><legend>Perfil sanitário — sugestões para revisão</legend><CampoFormulario id="produto-leite" rotulo="Carência sugerida de leite (horas)">{(p) => <input {...p} type="number" min="0" step="1" value={leite} onChange={(e) => setLeite(e.target.value)} className={classeInput} />}</CampoFormulario><CampoFormulario id="produto-carne" rotulo="Carência sugerida de carne (horas)">{(p) => <input {...p} type="number" min="0" step="1" value={carne} onChange={(e) => setCarne(e.target.value)} className={classeInput} />}</CampoFormulario><CampoFormulario id="produto-via" rotulo="Via de aplicação sugerida">{(p) => <input {...p} maxLength={80} value={via} onChange={(e) => setVia(e.target.value)} className={classeInput} />}</CampoFormulario><CampoFormulario id="produto-referencia" rotulo="Referência técnica">{(p) => <input {...p} maxLength={300} value={referencia} onChange={(e) => setReferencia(e.target.value)} className={classeInput} />}</CampoFormulario></fieldset>}
+      {categoriaEscolhida?.usoNutricional && <CampoFormulario id="produto-ms" rotulo="Matéria seca (%)" ajuda="Opcional. Ausência significa cobertura incompleta, não zero.">{(p) => <input {...p} type="number" min="0" max="100" step="0.01" value={materiaSeca} onChange={(e) => setMateriaSeca(e.target.value)} className={classeInput} />}</CampoFormulario>}
       <div className="grid gap-4 sm:grid-cols-2">
         <CampoFormulario id="produto-unidade" rotulo="Unidade" obrigatorio ajuda="Unidade em que o produto é comprado e baixado. Não pode mudar depois que houver movimento." erro={erros.unidade}>{(p) => <select {...p} value={unidade} onChange={(e) => setUnidade(e.target.value as UnidadeMedida)} className={classeInput}>{UNIDADES_ORDENADAS.map((u) => <option key={u} value={u}>{rotuloUnidadeCompleto(u)}</option>)}</select>}</CampoFormulario>
         <CampoFormulario id="produto-minimo" rotulo="Estoque mínimo" ajuda="Abaixo dessa quantidade o produto aparece com alerta na tela de Estoque." erro={erros.minimoEstoque}>{(p) => <input {...p} type="number" min="0" step="0.01" value={minimo} onChange={(e) => setMinimo(e.target.value)} className={classeInput} />}</CampoFormulario>

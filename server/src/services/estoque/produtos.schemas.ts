@@ -20,6 +20,8 @@ export const produtoSchema = z.object({
   categoriaId: z.string({ required_error: CATEGORIA_OBRIGATORIA, invalid_type_error: CATEGORIA_OBRIGATORIA }).uuid(CATEGORIA_OBRIGATORIA),
   centroCustoIds: idsSchema("Centros de custo").default([]),
   fornecedorIds: idsSchema("Fornecedores").default([]),
+  perfilSanitario: z.object({ carenciaLeiteHoras: z.number().int().nonnegative().nullable(), carenciaCarneHoras: z.number().int().nonnegative().nullable(), viaPadrao: z.string().trim().max(80).nullish(), referenciaTecnica: z.string().trim().max(300).nullish() }).optional(),
+  perfilNutricional: z.object({ materiaSecaPercentual: z.number().min(0).max(100).multipleOf(0.01).nullable() }).optional(),
 });
 export type ProdutoInput = z.infer<typeof produtoSchema>;
 

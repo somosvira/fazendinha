@@ -4,18 +4,21 @@ import { prisma } from "../../../db.js";
 import { cadastrar } from "../rebanho/animais.js";
 import { cadastrarAnimalSchema } from "../rebanho/schemas.js";
 import { atribuirDieta, criarDieta, publicarDieta } from "./dietas.js";
-import { confirmarConsumo, estornarFechamento, previaConsumo } from "./consumo.js";
+import { confirmarConsumo, confirmarPeriodos, estornarFechamento, previaConsumo, previaPeriodos } from "./consumo.js";
 
 const describeComBanco = process.env.PECUARIA_DB_INTEGRATION === "1" ? describe : describe.skip;
 const run = crypto.randomUUID().slice(0, 8);
-const ids = { propriedade: 0, animal: "", lote: "", produto: "", centro: "", dieta: "", vigencia: "", fechamento: "" };
+const ids = { propriedade: 0, animal: "", lote: "", produto: "", centro: "", dieta: "", vigencia: "", fechamento: "", categoria: "" };
 
 afterAll(async () => {
   if (!ids.propriedade) return;
-  await prisma.auditoriaPecuaria.deleteMany({ where: { OR: [{ animalId: ids.animal }, { entidadeId: { in: [ids.dieta, ids.vigencia, ids.fechamento] } }] } });
-  await prisma.itemFechamentoConsumo.deleteMany({ where: { fechamentoId: ids.fechamento } });
-  await prisma.participacaoConsumoAnimal.deleteMany({ where: { fechamentoId: ids.fechamento } });
-  await prisma.fechamentoConsumo.deleteMany({ where: { id: ids.fechamento } });
+  const fechamentos = await prisma.fechamentoConsumo.findMany({ where: { loteId: ids.lote }, select: { id: true } });
+  const fechamentoIds = fechamentos.map((f) => f.id);
+  await prisma.auditoriaPecuaria.deleteMany({ where: { OR: [{ animalId: ids.animal }, { entidadeId: { in: [ids.dieta, ids.vigencia, ...fechamentoIds] } }] } });
+  await prisma.itemFechamentoConsumo.deleteMany({ where: { fechamentoId: { in: fechamentoIds } } });
+  await prisma.participacaoConsumoAnimal.deleteMany({ where: { fechamentoId: { in: fechamentoIds } } });
+  await prisma.fechamentoConsumo.deleteMany({ where: { id: { in: fechamentoIds } } });
+  await prisma.requisicaoPecuaria.deleteMany({ where: { propriedadeId: ids.propriedade } });
   await prisma.vigenciaDietaLote.deleteMany({ where: { id: ids.vigencia } });
   await prisma.itemDieta.deleteMany({ where: { dietaId: ids.dieta } });
   await prisma.dieta.deleteMany({ where: { id: ids.dieta } });
@@ -25,6 +28,7 @@ afterAll(async () => {
   await prisma.animal.deleteMany({ where: { id: ids.animal } });
   await prisma.lote.deleteMany({ where: { id: ids.lote } });
   await prisma.produto.deleteMany({ where: { id: ids.produto } });
+  await prisma.categoria.deleteMany({ where: { id: ids.categoria } });
   await prisma.centroCusto.deleteMany({ where: { id: ids.centro } });
   await prisma.propriedade.deleteMany({ where: { id: ids.propriedade } });
 });
@@ -36,7 +40,8 @@ describeComBanco("fechamento nutricional com PostgreSQL", () => {
     const lote = await prisma.lote.create({ data: { nome: `Lote V3 ${run}`, propriedadeId: propriedade.id, centroCustoId: centro.id } }); ids.lote = lote.id;
     const animal = await cadastrar(cadastrarAnimalSchema.parse({ brinco: `NU${run}`, sexo: "F", origem: "COMPRADO", aptidao: "LEITE",
       dataNascimento: "2024-01-01", dataEntrada: "2026-08-01", propriedadeId: propriedade.id, loteId: lote.id }), null); ids.animal = animal.id;
-    const produto = await prisma.produto.create({ data: { nome: `Ração V3 ${run}`, unidade: "KG" } }); ids.produto = produto.id;
+    const categoria = await prisma.categoria.create({ data: { nome: `Nutrição V3 ${run}`, usoNutricional: true } }); ids.categoria = categoria.id;
+    const produto = await prisma.produto.create({ data: { nome: `Ração V3 ${run}`, unidade: "KG", categoriaId: categoria.id } }); ids.produto = produto.id;
     await prisma.movimentoEstoque.create({ data: { produtoId: produto.id, propriedadeId: propriedade.id,
       tipo: "ENTRADA", origem: "INVENTARIO_INICIAL", data: new Date("2026-08-30"), quantidade: 50, custoUnitario: 2, valorTotal: 100 } });
     const dieta = await criarDieta({ nome: `Dieta V3 ${run}`, itens: [{ produtoId: produto.id, quantidadeCabecaDia: 3 }] }, null); ids.dieta = dieta.id;
@@ -59,5 +64,23 @@ describeComBanco("fechamento nutricional com PostgreSQL", () => {
     await expect(confirmarConsumo({ ...contexto, itens: [{ produtoId: produto.id, modoEstoque: "BAIXA_ESTOQUE" }] }, null)).rejects.toThrow();
     await estornarFechamento(fechamento.id, propriedade.id, "Revisão do consumo registrado", null);
     expect((await prisma.fechamentoConsumo.findUnique({ where: { id: fechamento.id } }))?.status).toBe("ESTORNADO");
+  });
+  it("divide mês, aponta lacunas e confirma atomicamente sem duplicar no reenvio", async () => {
+    const contexto = { loteId: ids.lote, propriedadeId: ids.propriedade, inicio: "2026-09-29", fim: "2026-10-02" };
+    const previa = await previaPeriodos(contexto);
+    expect(previa.lacunas).toEqual([]);
+    expect(previa.periodos).toHaveLength(2);
+    expect(previa.periodos.map((p) => p.itens[0].quantidadePrevista)).toEqual(["6", "6"]);
+    const lacunas = await previaPeriodos({ ...contexto, inicio: "2026-08-30", fim: "2026-09-02" });
+    expect(lacunas.lacunas).toEqual([{ inicio: "2026-08-30", fim: "2026-08-31" }]);
+    const periodos = previa.periodos.map((p) => ({ inicio: p.inicio.toISOString().slice(0, 10), fim: p.fim.toISOString().slice(0, 10), itens: [{ produtoId: ids.produto, quantidadeConfirmada: 6, modoEstoque: "BAIXA_ESTOQUE" as const }] }));
+    const antes = await prisma.fechamentoConsumo.count({ where: { loteId: ids.lote } });
+    await expect(confirmarPeriodos({ ...contexto, chave: crypto.randomUUID(), periodos: [periodos[0], { ...periodos[1], itens: [{ ...periodos[1].itens[0], quantidadeConfirmada: 999, motivoAjuste: "Saldo insuficiente intencional" }] }] }, null)).rejects.toThrow(/Saldo/);
+    expect(await prisma.fechamentoConsumo.count({ where: { loteId: ids.lote } })).toBe(antes);
+    const input = { ...contexto, chave: crypto.randomUUID(), periodos };
+    const resultado = await confirmarPeriodos(input, null);
+    expect(resultado.fechamentos).toHaveLength(2);
+    expect(await confirmarPeriodos(input, null)).toEqual(resultado);
+    expect(await prisma.fechamentoConsumo.count({ where: { loteId: ids.lote } })).toBe(antes + 2);
   });
 });

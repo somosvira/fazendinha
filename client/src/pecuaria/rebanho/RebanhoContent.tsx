@@ -21,6 +21,8 @@ import { DetalheAnimal } from "./telas/DetalheAnimal";
 import { ListaLotes } from "./telas/ListaLotes";
 import { DetalheLote } from "./telas/DetalheLote";
 import { Cadastros } from "./telas/Cadastros";
+import { Sanidade } from "./sanidade/Sanidade";
+import { Nutricao } from "./nutricao/Nutricao";
 
 type Tela =
   | { tipo: "visao-geral" }
@@ -30,8 +32,11 @@ type Tela =
   | { tipo: "lotes" }
   | { tipo: "detalhe-lote"; id: string }
   | { tipo: "cadastros" };
+type TelaV3 = Tela | { tipo: "sanidade" | "nutricao" };
 
-function telaDaUrl(pathname: string): Tela {
+function telaDaUrl(pathname: string): TelaV3 {
+  if (pathname === "/pecuaria/rebanho/sanidade") return { tipo: "sanidade" };
+  if (pathname === "/pecuaria/rebanho/nutricao") return { tipo: "nutricao" };
   const animalId = parseAnimalId(pathname);
   if (animalId) return { tipo: "detalhe-animal", id: animalId };
   if (isNovoAnimalRebanho(pathname)) return { tipo: "novo-animal" };
@@ -49,7 +54,7 @@ const URL_LOTES = "/pecuaria/rebanho/lotes";
 
 /** `podeLancar`: sem a flag `lancar` o módulo é só consulta — as telas escondem toda ação de escrita. */
 export function RebanhoContent({ podeLancar = true }: { podeLancar?: boolean }) {
-  const [tela, setTela] = useState<Tela>(() => telaDaUrl(window.location.pathname));
+  const [tela, setTela] = useState<TelaV3>(() => telaDaUrl(window.location.pathname));
 
   useEffect(() => {
     const aoNavegar = () => setTela(telaDaUrl(window.location.pathname));
@@ -79,5 +84,7 @@ export function RebanhoContent({ podeLancar = true }: { podeLancar?: boolean }) 
   if (tela.tipo === "cadastros") {
     return <Cadastros podeLancar={podeLancar} />;
   }
+  if (tela.tipo === "sanidade") return <Sanidade podeLancar={podeLancar} />;
+  if (tela.tipo === "nutricao") return <Nutricao podeLancar={podeLancar} />;
   return <VisaoGeral podeLancar={podeLancar} />;
 }

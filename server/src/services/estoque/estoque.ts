@@ -135,8 +135,8 @@ export async function obterBasesCusto(db: DbCusto, produtoIds: string[], proprie
       AND: [
         await filtroSitioCusto(propriedadeId),
         { OR: [
-          { tipo: "ENTRADA", origem: { in: [...ORIGENS_CUSTO_MEDIO] } },
-          { tipo: "AJUSTE" },
+          { tipo: "ENTRADA", origem: { in: [...ORIGENS_CUSTO_MEDIO, ...(propriedadeId != null ? ["TRANSFERENCIA" as const] : [])] } },
+          { tipo: "AJUSTE", origem: { not: "IDENTIFICACAO_PARTIDA" } },
         ] },
       ],
     },
@@ -236,7 +236,7 @@ export type VinculoMovimento = { tipo: "TALHAO"; id: number; codigo: string };
 export type VinculosVisiveis = { agricultura: boolean; pecuaria?: boolean };
 
 export type FiltroMovimentos = {
-  produtoId?: string; tipo?: string; q?: string; origem?: string; centroCustoId?: string;
+  produtoId?: string; partidaId?: string; tipo?: string; q?: string; origem?: string; centroCustoId?: string;
   de?: string; ate?: string; pagina?: number; porPagina?: number;
   propriedadeId?: number | null; vinculosVisiveis?: VinculosVisiveis;
 };
@@ -257,6 +257,7 @@ export async function listarMovimentos(f?: FiltroMovimentos) {
   ];
   const where: Prisma.MovimentoEstoqueWhereInput = { status: statusSaldoEstoque, AND: and };
   if (f?.produtoId) where.produtoId = f.produtoId;
+  if (f?.partidaId) where.alocacaoPartidaEstoques = { some: { partidaId: f.partidaId } };
   if (f?.tipo) where.tipo = f.tipo as TipoMovimento;
   if (f?.origem) where.origem = f.origem as OrigemMovimentoEstoque;
   if (f?.centroCustoId === SEM_VINCULO) and.push({ produto: { centrosCusto: { none: {} } } });
@@ -288,6 +289,7 @@ export async function listarMovimentos(f?: FiltroMovimentos) {
         operacao: { include: { parceiro: true } },
         // Origem das saídas automáticas (sem operação financeira): um único join por relação, sem N+1.
         operacaoAgricola: { select: { talhaoId: true, talhao: { select: { codigo: true } } } },
+        alocacaoPartidaEstoques: { include: { partida: { select: { codigo: true, validade: true } } } },
       },
     }),
   ]);
@@ -304,6 +306,7 @@ export async function listarMovimentos(f?: FiltroMovimentos) {
       id: m.id,
       seq: m.seq,
       produtoId: m.produtoId,
+      partidas: (m.alocacaoPartidaEstoques ?? []).map((a) => ({ partidaId: a.partidaId, codigo: a.partida.codigo, validade: a.partida.validade, quantidade: a.quantidade.toString() })),
       produto: m.produto.nome,
       materialGeneticoId: visiveis.pecuaria !== false ? m.produto.materialGenetico?.id ?? null : null,
       centrosCusto: m.produto.centrosCusto.map(({ centroCusto }) => ({ id: centroCusto.id, nome: centroCusto.nome })),

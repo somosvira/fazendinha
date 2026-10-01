@@ -6,6 +6,7 @@ import { navegarPara } from "../router";
 import { rotuloUnidade, type UnidadeMedida } from "../lib/unidades";
 import { fmtMoneyExact } from "@/components/charts";
 import { brl, Button, type ColunaTabela, dataBR, Empty, ErrorBox, Metric, PageHeader, PaginaFinanceira, Paginacao, Panel, Pill, TabelaFinanceira } from "../financeiro/financeiro-ui";
+import { TransferirEstoque } from "./TransferirEstoque";
 import { FormProduto } from "../financeiro/FormProduto";
 import { PeriodoFinanceiroControl } from "../financeiro/PeriodoFinanceiroControl";
 import { useSaldos, listarMovimentos, listarCentrosCusto, type FiltroMovimentos, type MovimentoDTO, type OrigemMovimento, type SaldoDTO, type RefDTO } from "./api";
@@ -23,6 +24,7 @@ const ROTULO_ORIGEM: Record<OrigemMovimento, string> = {
   COMPRA: "Compra", CONSUMO_DIRETO: "Consumo direto", TRANSFERENCIA: "Transferência", PRODUCAO: "Produção própria", DEVOLUCAO: "Devolução",
   BONIFICACAO: "Bonificação", INVENTARIO_INICIAL: "Inventário inicial", PERDA: "Perda",
   AJUSTE_INVENTARIO: "Ajuste de estoque", APLICACAO: "Aplicação agrícola",
+  SANIDADE: "Aplicação sanitária", NUTRICAO: "Consumo nutricional", IDENTIFICACAO_PARTIDA: "Identificação de partida",
 };
 // Origens que colocam produto no estoque — alimentam o card "Últimas entradas".
 const ORIGENS_ENTRADA: readonly OrigemMovimento[] = ["COMPRA", "INVENTARIO_INICIAL", "BONIFICACAO", "PRODUCAO"];
@@ -105,6 +107,8 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
   useEffect(() => { setPaginaSaldos(1); }, [busca, centroFiltro, ordem, soAbaixoMin, soNegativos]);
   const [centros, setCentros] = useState<RefDTO[]>([]);
   const [erroCentros, setErroCentros] = useState<string | null>(null);
+  const [perdendo, setPerdendo] = useState(false);
+  const [transferindo, setTransferindo] = useState(false);
   const [cadastrandoProduto, setCadastrandoProduto] = useState(false);
   // O ajuste é uma operação financeira: exige a área financeiro e a permissão `lancar`.
   const podeAjustar = podeAjustarEstoque();
@@ -120,7 +124,7 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
       return s.nome.toLocaleLowerCase("pt-BR").includes(termo) || (s.categoria?.nome ?? "").toLocaleLowerCase("pt-BR").includes(termo);
     });
     return [...filtrados].sort((a, b) => {
-      if (ordem === "valor") return b.valor - a.valor || a.nome.localeCompare(b.nome, "pt-BR");
+      if (ordem === "valor") return (b.valor ?? 0) - (a.valor ?? 0) || a.nome.localeCompare(b.nome, "pt-BR");
       if (ordem === "categoria") return (a.categoria?.nome ?? "").localeCompare(b.categoria?.nome ?? "", "pt-BR") || a.nome.localeCompare(b.nome, "pt-BR");
       return a.nome.localeCompare(b.nome, "pt-BR");
     });
@@ -134,7 +138,7 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
   // Total encolheu (estorno, novo filtro no servidor): volta à última página existente.
   useEffect(() => { if (!movimentos.loading && paginaMov > totalPaginasMov) setPaginaMov(totalPaginasMov); }, [movimentos.loading, paginaMov, totalPaginasMov]);
   const filtrosMovAtivos = buscaMovAplicada !== "" || origemMov !== "" || centroMov !== "" || periodoMov.inicio !== "" || periodoMov.fim !== "";
-  const valorTotal = useMemo(() => saldos.data.reduce((soma, s) => soma + Math.max(0, s.valor), 0), [saldos.data]);
+  const valorTotal = useMemo(() => saldos.data.reduce((soma, s) => soma + Math.max(0, s.valor ?? 0), 0), [saldos.data]);
   const nNegativos = useMemo(() => saldos.data.filter((s) => s.saldo < 0).length, [saldos.data]);
   const nAbaixoMin = useMemo(() => saldos.data.filter((s) => s.abaixoMinimo).length, [saldos.data]);
   const nEmEstoque = useMemo(() => saldos.data.filter((s) => s.saldo > 0).length, [saldos.data]);
@@ -164,7 +168,7 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
     { chave: "centros", titulo: "Centros de custo", alinhamento: "centro", larguraMinima: 180, celula: (s) => <span className="break-words text-ink-3">{s.centrosCusto.map((c) => c.nome).join(" · ") || "Sem centro"}</span> },
     { chave: "saldo", titulo: "Saldo", alinhamento: "centro", larguraMinima: 110, celula: (s) => <span className="whitespace-nowrap">{qtd(s.saldo)} {rotuloUnidade(s.unidade)}</span> },
     { chave: "custo", titulo: "Custo médio", alinhamento: "centro", larguraMinima: 120, celula: (s) => <span className="whitespace-nowrap">{s.custoMedio != null ? fmtMoneyExact(s.custoMedio) : "—"}</span> },
-    { chave: "valor", titulo: "Valor", alinhamento: "centro", larguraMinima: 120, celula: (s) => <strong className="whitespace-nowrap font-semibold">{s.custoMedio != null ? brl(s.valor) : "—"}</strong> },
+    { chave: "valor", titulo: "Valor", alinhamento: "centro", larguraMinima: 120, celula: (s) => <strong className="whitespace-nowrap font-semibold">{s.custoMedio != null ? brl(s.valor ?? 0) : "—"}</strong> },
     { chave: "minimo", titulo: "Mínimo", alinhamento: "centro", larguraMinima: 110, celula: (s) => <span className="whitespace-nowrap">{s.minimoEstoque != null ? `${qtd(s.minimoEstoque)} ${rotuloUnidade(s.unidade)}` : "—"}</span> },
     ...(podeAjustar ? [{ chave: "acoes", titulo: "Ações", alinhamento: "centro" as const, larguraMinima: 90, acoes: true, celula: (s: SaldoDTO) => (
       <div className="flex items-center justify-center gap-1">
@@ -184,7 +188,7 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
       </span>
     ) },
     { chave: "qtd", titulo: "Qtde", alinhamento: "centro", larguraMinima: 110, celula: (m) => { const un = unidadePorProduto.get(m.produtoId); return <span className="whitespace-nowrap">{qtd(m.quantidade)}{un ? ` ${rotuloUnidade(un)}` : ""}</span>; } },
-    { chave: "valor", titulo: "Valor", alinhamento: "centro", larguraMinima: 120, celula: (m) => <span className="whitespace-nowrap">{brl(m.valorTotal)}</span> },
+    { chave: "valor", titulo: "Valor", alinhamento: "centro", larguraMinima: 120, celula: (m) => <span className="whitespace-nowrap">{m.valorTotal == null ? "—" : brl(m.valorTotal)}</span> },
     { chave: "origem", titulo: "Origem / destino", alinhamento: "centro", larguraMinima: 220, celula: (m) => {
       const destino = destinoDoMovimento(m);
       if (!destino) return <span className="break-words text-ink-3">{m.fornecedor ?? "—"}</span>;
@@ -194,6 +198,8 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
 
   const filtrosAtivos = busca.trim() !== "" || soAbaixoMin || soNegativos;
   const acao = <div className="flex flex-wrap gap-2">
+    {podeAjustar && <Button secondary onClick={() => setPerdendo(true)}>Registrar perda</Button>}
+    {podeAjustar && <Button secondary onClick={() => setTransferindo(true)}>Transferir estoque</Button>}
     {podeAjustar && <Button secondary onClick={() => abrirAjusteEstoque()}><SlidersHorizontal size={16} /> Ajustar quantidade</Button>}
     <Button onClick={() => setCadastrandoProduto(true)}><Plus size={16} /> Cadastrar produto</Button>
   </div>;
@@ -207,7 +213,7 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
     <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
-          <Metric label="Valor em estoque" valor={brl(valorTotal)} icon={Boxes} />
+          <Metric label="Valor em estoque" valor={saldos.data.length > 0 && saldos.data.every((s) => s.valor == null) ? "—" : brl(valorTotal)} icon={Boxes} />
           {nNegativos > 0 && <button type="button" aria-pressed={soNegativos} onClick={() => setSoNegativos((v) => !v)} className="self-start text-left text-xs text-red-800 underline underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">{nNegativos} {nNegativos === 1 ? "produto com saldo negativo" : "produtos com saldo negativo"}{soNegativos ? " — filtro ativo, clique para ver todos" : ""}</button>}
         </div>
         <Metric label="Produtos em estoque" valor={String(nEmEstoque)} icon={Package} />
@@ -284,6 +290,8 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
       </Panel>
     </section>
 
+    {perdendo && <TransferirEstoque perda onFechar={() => setPerdendo(false)} onSalvo={() => { setPerdendo(false); recarregarTudo(); }} />}
+    {transferindo && <TransferirEstoque onFechar={() => setTransferindo(false)} onSalvo={() => { setTransferindo(false); recarregarTudo(); }} />}
     {cadastrandoProduto && <FormProduto produto={null} onFechar={() => setCadastrandoProduto(false)} onSalvo={() => { setCadastrandoProduto(false); recarregarTudo(); }} />}
   </PaginaFinanceira>;
 }

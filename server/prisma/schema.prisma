@@ -721,6 +721,7 @@ enum OrigemMovimentoEstoque {
   AJUSTE_INVENTARIO
   SANIDADE
   NUTRICAO
+  IDENTIFICACAO_PARTIDA
 
   @@schema("public")
 }
@@ -1907,20 +1908,20 @@ enum TipoSemen {
 // Genitor que não é animal da fazenda: touro de central (M) ou doadora de outra fazenda (F).
 // Só dado genético — sem brinco, lote, peso ou baixa. Animal nosso é genitor pela própria ficha.
 model GenitorExterno {
-  id           String     @id @default(uuid())
-  ideagriId    Int?       @unique
-  sexo         SexoBovino
-  nome         String
-  codigo       String?
-  fornecedor   String?
-  fornecedorId String?
-  fornecedorParceiro Parceiro? @relation(fields: [fornecedorId], references: [id], onDelete: SetNull)
-  ativo        Boolean    @default(true)
-  observacao   String?
-  criadoEm     DateTime   @default(now())
-  criadoPorId  Int?
-  criadoPor    Usuario?   @relation("GenitorExternoCriadoPor", fields: [criadoPorId], references: [id])
-  atualizadoEm DateTime   @updatedAt
+  id                 String     @id @default(uuid())
+  ideagriId          Int?       @unique
+  sexo               SexoBovino
+  nome               String
+  codigo             String?
+  fornecedor         String?
+  fornecedorId       String?
+  fornecedorParceiro Parceiro?  @relation(fields: [fornecedorId], references: [id], onDelete: SetNull)
+  ativo              Boolean    @default(true)
+  observacao         String?
+  criadoEm           DateTime   @default(now())
+  criadoPorId        Int?
+  criadoPor          Usuario?   @relation("GenitorExternoCriadoPor", fields: [criadoPorId], references: [id])
+  atualizadoEm       DateTime   @updatedAt
 
   composicao           ComposicaoGenitorExterno[]
   filhosComoMae        Animal[]                   @relation("AnimalMaeExterna")
@@ -2049,19 +2050,19 @@ model Raca {
 
 // Grau de sangue do animal em 64 avos por raça. Soma ≤ 64; o resto é desconhecido.
 model ComposicaoRacial {
-  id           String           @id @default(uuid())
-  animalId     String
-  animal       Animal           @relation(fields: [animalId], references: [id], onDelete: Restrict)
-  racaId       String
-  raca         Raca             @relation(fields: [racaId], references: [id], onDelete: Restrict)
-  fracao64     Int
+  id                String           @id @default(uuid())
+  animalId          String
+  animal            Animal           @relation(fields: [animalId], references: [id], onDelete: Restrict)
+  racaId            String
+  raca              Raca             @relation(fields: [racaId], references: [id], onDelete: Restrict)
+  fracao64          Int
   // Parcela herdada dos genitores dentro de fracao64; o restante foi informado.
-  fracaoCalculada64 Int @default(0)
-  origem       OrigemComposicao
-  criadoEm     DateTime         @default(now())
-  criadoPorId  Int?
-  criadoPor    Usuario?         @relation("ComposicaoRacialCriadoPor", fields: [criadoPorId], references: [id])
-  atualizadoEm DateTime         @updatedAt
+  fracaoCalculada64 Int              @default(0)
+  origem            OrigemComposicao
+  criadoEm          DateTime         @default(now())
+  criadoPorId       Int?
+  criadoPor         Usuario?         @relation("ComposicaoRacialCriadoPor", fields: [criadoPorId], references: [id])
+  atualizadoEm      DateTime         @updatedAt
 
   @@unique([animalId, racaId])
   @@index([racaId])
@@ -2421,50 +2422,71 @@ model OcorrenciaSanitaria {
   @@schema("pecuaria")
 }
 
+model TipoAplicacaoSanitaria {
+  id           String                    @id @default(uuid())
+  nome         String                    @unique
+  ativo        Boolean                   @default(true)
+  aplicacoes   AplicacaoProduto[]
+  etapas       EtapaProtocoloSanitario[]
+  criadoEm     DateTime                  @default(now())
+  atualizadoEm DateTime                  @updatedAt
+
+  @@schema("pecuaria")
+}
+
 model AplicacaoProduto {
-  id                      String                @id @default(uuid())
-  animalId                String
-  animal                  Animal                @relation(fields: [animalId], references: [id], onDelete: Restrict)
-  propriedadeId           Int?
-  propriedade             Propriedade?          @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
-  produtoId               String?
-  produto                 Produto?              @relation(fields: [produtoId], references: [id], onDelete: Restrict)
-  nomeProdutoAplicado     String
-  ocorrenciaId            String?
-  ocorrencia              OcorrenciaSanitaria?  @relation(fields: [ocorrenciaId], references: [id], onDelete: Restrict)
-  tarefaId                String?               @unique
-  tarefa                  TarefaSanitaria?      @relation(fields: [tarefaId], references: [id], onDelete: Restrict)
-  data                    DateTime              @db.Date
-  aplicadaEm              DateTime?
-  precisaoTemporal        String                @default("HORA")
-  finalidade              FinalidadeAplicacao
-  dose                    Decimal?              @db.Decimal(12, 3)
-  unidadeDose             String?
-  via                     String?
-  carenciaLeiteHoras      Int?
-  carenciaCarneHoras      Int?
-  referenciaCarencia      String?
-  origemInsumo            OrigemInsumoSanitario
-  quantidadeUtilizada     Decimal?              @db.Decimal(12, 3)
-  movimentoEstoqueId      String?               @unique
-  movimentoEstoque        MovimentoEstoque?     @relation(fields: [movimentoEstoqueId], references: [id], onDelete: Restrict)
-  itemCompraDiretaId      String?
-  itemCompraDireta        ItemOperacao?         @relation(fields: [itemCompraDiretaId], references: [id], onDelete: Restrict)
-  quantidadeCompraDireta  Decimal?              @db.Decimal(12, 3)
-  operacaoServicoId       String?
-  operacaoServico         Operacao?             @relation(fields: [operacaoServicoId], references: [id], onDelete: Restrict)
-  valorProdutoAtribuido   Decimal?              @db.Decimal(14, 2)
-  valorServicoAtribuido   Decimal?              @db.Decimal(14, 2)
-  situacaoCusto           String                @default("NAO_APURADO")
-  partidaCodigoSnapshot   String?
-  partidaValidadeSnapshot DateTime?             @db.Date
-  justificativaSemOrigem  String?
-  status                  StatusFatoPecuariaV3  @default(VALIDO)
-  motivoAnulacao          String?
-  anuladoEm               DateTime?
-  origem                  String                @default("MANUAL")
-  criadoEm                DateTime              @default(now())
-  atualizadoEm            DateTime              @updatedAt
+  id                         String                  @id @default(uuid())
+  animalId                   String
+  animal                     Animal                  @relation(fields: [animalId], references: [id], onDelete: Restrict)
+  propriedadeId              Int?
+  propriedade                Propriedade?            @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
+  produtoId                  String?
+  produto                    Produto?                @relation(fields: [produtoId], references: [id], onDelete: Restrict)
+  nomeProdutoAplicado        String
+  ocorrenciaId               String?
+  ocorrencia                 OcorrenciaSanitaria?    @relation(fields: [ocorrenciaId], references: [id], onDelete: Restrict)
+  tarefaId                   String?                 @unique
+  tarefa                     TarefaSanitaria?        @relation(fields: [tarefaId], references: [id], onDelete: Restrict)
+  data                       DateTime                @db.Date
+  aplicadaEm                 DateTime?
+  precisaoTemporal           String                  @default("HORA")
+  finalidade                 FinalidadeAplicacao?
+  tipoAplicacaoId            String?
+  tipoAplicacao              TipoAplicacaoSanitaria? @relation(fields: [tipoAplicacaoId], references: [id], onDelete: Restrict)
+  tipoAplicacaoNomeSnapshot  String?
+  responsavel                String?
+  estadoCarenciaLeite        String                  @default("NAO_INFORMADO")
+  estadoCarenciaCarne        String                  @default("NAO_INFORMADO")
+  justificativaCarenciaLeite String?
+  aptidaoCarenciaSnapshot    String?
+  justificativaCarenciaCarne String?
+  dose                       Decimal?                @db.Decimal(12, 3)
+  unidadeDose                String?
+  via                        String?
+  carenciaLeiteHoras         Int?
+  carenciaCarneHoras         Int?
+  referenciaCarencia         String?
+  origemInsumo               OrigemInsumoSanitario
+  quantidadeUtilizada        Decimal?                @db.Decimal(12, 3)
+  movimentoEstoqueId         String?                 @unique
+  movimentoEstoque           MovimentoEstoque?       @relation(fields: [movimentoEstoqueId], references: [id], onDelete: Restrict)
+  itemCompraDiretaId         String?
+  itemCompraDireta           ItemOperacao?           @relation(fields: [itemCompraDiretaId], references: [id], onDelete: Restrict)
+  quantidadeCompraDireta     Decimal?                @db.Decimal(12, 3)
+  operacaoServicoId          String?
+  operacaoServico            Operacao?               @relation(fields: [operacaoServicoId], references: [id], onDelete: Restrict)
+  valorProdutoAtribuido      Decimal?                @db.Decimal(14, 2)
+  valorServicoAtribuido      Decimal?                @db.Decimal(14, 2)
+  situacaoCusto              String                  @default("NAO_APURADO")
+  partidaCodigoSnapshot      String?
+  partidaValidadeSnapshot    DateTime?               @db.Date
+  justificativaSemOrigem     String?
+  status                     StatusFatoPecuariaV3    @default(VALIDO)
+  motivoAnulacao             String?
+  anuladoEm                  DateTime?
+  origem                     String                  @default("MANUAL")
+  criadoEm                   DateTime                @default(now())
+  atualizadoEm               DateTime                @updatedAt
 
   @@index([animalId, data])
   @@index([propriedadeId, data])
@@ -2490,43 +2512,47 @@ model ProtocoloSanitario {
 }
 
 model EtapaProtocoloSanitario {
-  id          String               @id @default(uuid())
-  protocoloId String
-  protocolo   ProtocoloSanitario   @relation(fields: [protocoloId], references: [id], onDelete: Restrict)
-  ordem       Int
-  diaRelativo Int
-  tipo        String
-  produtoId   String?
-  produto     Produto?             @relation(fields: [produtoId], references: [id], onDelete: Restrict)
-  tipoExameId String?
-  tipoExame   TipoExame?           @relation(fields: [tipoExameId], references: [id], onDelete: Restrict)
-  finalidade  FinalidadeAplicacao?
-  dose        Decimal?             @db.Decimal(12, 3)
-  unidade     String?
-  via         String?
-  tarefas     TarefaSanitaria[]
+  id                        String                  @id @default(uuid())
+  protocoloId               String
+  protocolo                 ProtocoloSanitario      @relation(fields: [protocoloId], references: [id], onDelete: Restrict)
+  ordem                     Int
+  diaRelativo               Int
+  tipo                      String
+  produtoId                 String?
+  produto                   Produto?                @relation(fields: [produtoId], references: [id], onDelete: Restrict)
+  tipoExameId               String?
+  tipoExame                 TipoExame?              @relation(fields: [tipoExameId], references: [id], onDelete: Restrict)
+  finalidade                FinalidadeAplicacao?
+  tipoAplicacaoId           String?
+  tipoAplicacao             TipoAplicacaoSanitaria? @relation(fields: [tipoAplicacaoId], references: [id], onDelete: Restrict)
+  tipoAplicacaoNomeSnapshot String?
+  dose                      Decimal?                @db.Decimal(12, 3)
+  unidade                   String?
+  via                       String?
+  tarefas                   TarefaSanitaria[]
 
   @@unique([protocoloId, ordem])
   @@schema("pecuaria")
 }
 
 model ExecucaoProtocoloSanitario {
-  id                 String               @id @default(uuid())
-  protocoloId        String
-  protocolo          ProtocoloSanitario   @relation(fields: [protocoloId], references: [id], onDelete: Restrict)
-  animalId           String
-  animal             Animal               @relation(fields: [animalId], references: [id], onDelete: Restrict)
-  propriedadeId      Int?
-  propriedade        Propriedade?         @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
-  inicio             DateTime             @db.Date
-  ocorrenciaId       String?
-  ocorrencia         OcorrenciaSanitaria? @relation(fields: [ocorrenciaId], references: [id], onDelete: Restrict)
-  operacaoServicoId  String?
-  operacaoServico    Operacao?            @relation(fields: [operacaoServicoId], references: [id], onDelete: Restrict)
-  canceladaEm        DateTime?
-  motivoCancelamento String?
-  tarefas            TarefaSanitaria[]
-  criadoEm           DateTime             @default(now())
+  id                    String               @id @default(uuid())
+  protocoloId           String
+  protocolo             ProtocoloSanitario   @relation(fields: [protocoloId], references: [id], onDelete: Restrict)
+  animalId              String
+  animal                Animal               @relation(fields: [animalId], references: [id], onDelete: Restrict)
+  propriedadeId         Int?
+  propriedade           Propriedade?         @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
+  inicio                DateTime             @db.Date
+  ocorrenciaId          String?
+  ocorrencia            OcorrenciaSanitaria? @relation(fields: [ocorrenciaId], references: [id], onDelete: Restrict)
+  operacaoServicoId     String?
+  operacaoServico       Operacao?            @relation(fields: [operacaoServicoId], references: [id], onDelete: Restrict)
+  canceladaEm           DateTime?
+  motivoCancelamento    String?
+  valorServicoAtribuido Decimal?             @db.Decimal(14, 2)
+  tarefas               TarefaSanitaria[]
+  criadoEm              DateTime             @default(now())
 
   @@index([animalId, inicio])
   @@index([operacaoServicoId])
@@ -2565,31 +2591,32 @@ model TipoExame {
 }
 
 model ExameAnimal {
-  id                String               @id @default(uuid())
-  animalId          String
-  animal            Animal               @relation(fields: [animalId], references: [id], onDelete: Restrict)
-  propriedadeId     Int?
-  propriedade       Propriedade?         @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
-  tipoExameId       String
-  tipoExame         TipoExame            @relation(fields: [tipoExameId], references: [id], onDelete: Restrict)
-  ocorrenciaId      String?
-  ocorrencia        OcorrenciaSanitaria? @relation(fields: [ocorrenciaId], references: [id], onDelete: Restrict)
-  tarefaId          String?              @unique
-  tarefa            TarefaSanitaria?     @relation(fields: [tarefaId], references: [id], onDelete: Restrict)
-  operacaoServicoId String?
-  operacaoServico   Operacao?            @relation(fields: [operacaoServicoId], references: [id], onDelete: Restrict)
-  data              DateTime             @db.Date
-  resultadoTexto    String?
-  resultadoNumero   Decimal?             @db.Decimal(14, 4)
-  resultadoOpcao    String?
-  formatoSnapshot   Json
-  responsavel       String?
-  status            StatusFatoPecuariaV3 @default(VALIDO)
-  origem            String               @default("MANUAL")
-  motivoAnulacao    String?
-  anuladoEm         DateTime?
-  criadoEm          DateTime             @default(now())
-  atualizadoEm      DateTime             @updatedAt
+  id                    String               @id @default(uuid())
+  animalId              String
+  animal                Animal               @relation(fields: [animalId], references: [id], onDelete: Restrict)
+  propriedadeId         Int?
+  propriedade           Propriedade?         @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
+  tipoExameId           String
+  tipoExame             TipoExame            @relation(fields: [tipoExameId], references: [id], onDelete: Restrict)
+  ocorrenciaId          String?
+  ocorrencia            OcorrenciaSanitaria? @relation(fields: [ocorrenciaId], references: [id], onDelete: Restrict)
+  tarefaId              String?              @unique
+  tarefa                TarefaSanitaria?     @relation(fields: [tarefaId], references: [id], onDelete: Restrict)
+  operacaoServicoId     String?
+  valorServicoAtribuido Decimal?             @db.Decimal(14, 2)
+  operacaoServico       Operacao?            @relation(fields: [operacaoServicoId], references: [id], onDelete: Restrict)
+  data                  DateTime             @db.Date
+  resultadoTexto        String?
+  resultadoNumero       Decimal?             @db.Decimal(14, 4)
+  resultadoOpcao        String?
+  formatoSnapshot       Json
+  responsavel           String?
+  status                StatusFatoPecuariaV3 @default(VALIDO)
+  origem                String               @default("MANUAL")
+  motivoAnulacao        String?
+  anuladoEm             DateTime?
+  criadoEm              DateTime             @default(now())
+  atualizadoEm          DateTime             @updatedAt
 
   @@index([animalId, data])
   @@index([operacaoServicoId])

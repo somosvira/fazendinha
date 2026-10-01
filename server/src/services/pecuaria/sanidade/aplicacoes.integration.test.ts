@@ -6,6 +6,7 @@ import { cadastrarAnimalSchema } from "../rebanho/schemas.js";
 import { hojeFazenda } from "../rebanho/regras.js";
 import { estornarOperacao } from "../../financeiro/operacoes.js";
 import { anularAplicacao, carenciaAnimal, criarAplicacao } from "./aplicacoes.js";
+import { listarRateios, salvarRateio } from "./rateios.js";
 
 const describeComBanco = process.env.PECUARIA_DB_INTEGRATION === "1" ? describe : describe.skip;
 const run = crypto.randomUUID().slice(0, 8);
@@ -68,6 +69,11 @@ describeComBanco("aplicação com doses inclusas em Serviço", () => {
       operacaoServicoId: servico.id,
     }, null);
     expect(outraAplicacao.operacaoServicoId).toBe(servico.id);
+    await salvarRateio({ servicoId: servico.id, propriedadeId: propriedade.id, tipo: "APLICACAO", id: aplicacao.id, valor: "600", motivo: "Rateio manual confirmado" }, null);
+    await salvarRateio({ servicoId: servico.id, propriedadeId: propriedade.id, tipo: "APLICACAO", id: outraAplicacao.id, valor: "400", motivo: "Complemento manual confirmado" }, null);
+    expect((await listarRateios(servico.id, propriedade.id)).totalAtribuido).toBe("1000");
+    await expect(salvarRateio({ servicoId: servico.id, propriedadeId: propriedade.id, tipo: "APLICACAO", id: outraAplicacao.id, valor: "401", motivo: "Tentativa acima do confirmado" }, null)).rejects.toThrow(/ultrapassa/);
+    expect((await prisma.operacao.findUniqueOrThrow({ where: { id: servico.id } })).valorTotal.toString()).toBe("1000");
     expect(outraAplicacao.movimentoEstoqueId).toBeNull();
     expect(outraAplicacao.valorProdutoAtribuido).toBeNull();
     expect((await carenciaAnimal(animal.id, propriedade.id)).carne).toMatchObject({ estado: "CONHECIDO" });

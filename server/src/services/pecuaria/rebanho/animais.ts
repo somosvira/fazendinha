@@ -1478,6 +1478,11 @@ export async function darBaixa(input: BaixaInput & { animalId: string }, usuario
     // trava antes de ler a linha aberta: uma movimentação/mudança de destino simultânea
     // esperaria aqui e depois veria o animal baixado (sem trava, ficava baixado com linha aberta)
     await travarAnimais(tx, [animalId]);
+    const { carenciaAnimalTx } = await import("../sanidade/aplicacoes.js");
+    const carencias = await carenciaAnimalTx(tx, animalId);
+    const fimDia = new Date(`${input.data}T00:00:00-03:00`);
+    const restricoes = [carencias.leite, carencias.carne].filter((p) => p.estado === "NAO_INFORMADO" || (p.estado === "CONHECIDO" && p.ate > fimDia));
+    if (["VENDA", "ABATE"].includes(input.tipo) && restricoes.length && (!input.cienciaSanitaria || !input.justificativaSanitaria?.trim())) throw new RebanhoError("VALIDACAO", "Há carência vigente ou desconhecida. Confirme ciência e justifique a baixa", "justificativaSanitaria");
     const animal = await exigirAnimal(tx, animalId);
     const [ativa, localAberta, destAberto, ultimaPesagem] = await Promise.all([
       baixaAberta(tx, animalId),
@@ -1510,7 +1515,7 @@ export async function darBaixa(input: BaixaInput & { animalId: string }, usuario
       },
     });
 
-    await auditar(tx, { entidade: "BaixaAnimal", entidadeId: baixa.id, animalId, acao: "BAIXA", usuarioId, depois: baixa });
+    await auditar(tx, { entidade: "BaixaAnimal", entidadeId: baixa.id, animalId, acao: "BAIXA", usuarioId, depois: { ...baixa, cienciaSanitaria: { carencias, ciente: input.cienciaSanitaria ?? false, justificativa: input.justificativaSanitaria ?? null } } });
   });
 
   return buscarFicha(animalId, null).then((f) => f as AnimalResumo);

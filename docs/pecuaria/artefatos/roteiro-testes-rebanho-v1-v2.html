@@ -565,15 +565,15 @@ const G = [
  {id:"v3prep", t:"v3 · Preparação do cenário local", d:"Use somente o banco local de testes no Docker. Esta seção prepara rebanho e acesso; não exige cópia V2, reexecução de migration ou carga IDEAGRI.", s:[
   ["Confirme que a aplicação local está ligada ao banco <b>fazendinha_v3_teste</b> no Docker e que a migration V3 já está aplicada. Não crie cópia de banco nem importe IDEAGRI para este roteiro.","O ambiente está pronto para testes descartáveis da V3 e não depende de preservar histórico de outra base."],
   ["Abra Pecuária › Rebanho e Financeiro › Configurações financeiras. Confirme que consegue ver Lotes, Animais, Categorias e Produtos com um usuário que pode lançar.","Você consegue chegar às telas que serão usadas nos grupos 26 e 27; ausência de permissão é registrada como falha de acesso, não contornada por outro usuário."],
-  ["Em Pecuária › Rebanho › Lotes, crie <b>V3 Nutrição</b> e <b>V3 Transição</b> no Sítio A (Fazenda Demonstração). Lote não tem campo de centro de custo; não crie ainda categorias, produtos, saldo ou operação.","Os dois lotes ficam disponíveis para os animais. Criar lote não cria estoque, dieta, consumo ou gasto."],
+  ["Em Pecuária › Rebanho › Lotes, crie <b>V3 Nutrição</b> e <b>V3 Transição</b> no Sítio A (Fazenda Demonstração). O cadastro de lote agora expõe centro de custo opcional; selecione Pecuária se disponível. Não crie ainda categorias, produtos, saldo ou operação.","Os dois lotes ficam disponíveis para os animais. Criar lote não cria estoque, dieta, consumo ou gasto."],
   ["Em Pecuária › Rebanho › Animais, crie <b>RN01–RN10</b> como Comprado, nascidos em 01/08/2026, no lote V3 Nutrição com entrada em 01/09/2026; crie <b>RN11–RN12</b> com os mesmos nascimento/origem e entrada em 06/09/2026. RN01–RN11 são fêmeas e RN12 é macho. Crie <b>RT01</b>, fêmea, Comprado, nascida em 01/08/2026 no lote V3 Transição, com entrada em 01/09/2026.","No intervalo de 01 a 10/09/2026, V3 Nutrição soma 110 animal-dias. Brincos são únicos no sítio; nenhum cadastro clínico, estoque ou financeiro é criado."],
-  ["Siga para o <b>grupo 27</b> para criar exclusivamente as categorias Sanidade V3/Nutrição V3 e os cinco Produtos V3. Depois, siga a ordem: <b>28</b> para partidas e entradas, <b>29</b> para aplicação/origem e Serviço, <b>35</b> para dieta. O rastreio por partida é testado no 28, pois sua tela ainda é prevista no PR atual.","Cada grupo começa com os dados mínimos certos: produto cadastrado não tem saldo; Serviço não é criado no 27; dieta não é criada no 26."]
+  ["Siga para o <b>grupo 27</b> para criar exclusivamente as categorias Sanidade V3/Nutrição V3 e os cinco Produtos V3. Depois, siga a ordem: <b>28</b> para partidas e entradas, <b>29</b> para aplicação/origem e Serviço, <b>35</b> para dieta. O rastreio por partida é testado no 28, pela ação Ativar controle por partida ao reabrir o Produto.","Cada grupo começa com os dados mínimos certos: produto cadastrado não tem saldo; Serviço não é criado no 27; dieta não é criada no 26."]
  ]},
- {id:"v3produto", t:"v3 · Produtos e perfis", d:"Crie exatamente as categorias e os produtos da tabela v3; cadastro não equivale a entrada em estoque. Os painéis de perfil são parte do contrato V3, mas ainda não aparecem na interface atual: na homologação final, marque Falhou se continuarem ausentes.", s:[
+ {id:"v3produto", t:"v3 · Produtos e perfis", d:"Crie exatamente as categorias e os produtos da tabela v3; cadastro não equivale a entrada em estoque. Os painéis de perfil estão no formulário de Produto, conforme o uso da categoria; reabra cada cadastro para verificar os valores.", s:[
   ["Em Financeiro › Configurações financeiras › Categorias, clique em Nova categoria. Nome <b>Sanidade V3</b>, Classificação <b>Custeio</b>; em Uso dos produtos desta categoria, marque somente <b>Sanitário</b> e salve. Crie <b>Nutrição V3</b> com Classificação <b>Custeio</b>, marcando somente <b>Nutricional</b>. Reabra cada uma e confira os quatro marcadores.","As duas categorias aparecem com o uso correto; Agrícola e Uso genético ficam desmarcados. Nenhuma categoria do seed foi modificada."],
-  ["Em Financeiro › Configurações financeiras › Produtos, clique em Novo produto. Crie <b>Vacina V3</b>, unidade <b>mL</b>, categoria <b>Sanidade V3</b>, estoque mínimo <b>0</b>; deixe centros e fornecedores vazios. Reabra o produto e, no perfil sanitário previsto, informe via <b>Intramuscular</b>, leite <b>0 h</b>, carne <b>48 h</b>, referência <b>Cenário fictício V3</b>. Salve e reabra para conferir.","O produto mostra o chip Sanitário e saldo inicial zero. O perfil conserva exatamente 0/48 h e a referência; ao registrar aplicação, esses campos são sugestões revisáveis, não dose ou prazo confirmados automaticamente. Se o painel de perfil não existir, registre Falhou para esta parte."],
+  ["Em Financeiro › Configurações financeiras › Produtos, clique em Novo produto. Crie <b>Vacina V3</b>, unidade <b>mL</b>, categoria <b>Sanidade V3</b>, estoque mínimo <b>0</b>; deixe centros e fornecedores vazios. Reabra o produto e, no perfil sanitário, informe via <b>Intramuscular</b>, leite <b>0 h</b>, carne <b>48 h</b>, referência <b>Cenário fictício V3</b>. Salve e reabra para conferir.","O produto mostra o chip Sanitário e saldo inicial zero. O perfil conserva exatamente 0/48 h e a referência; ao registrar aplicação, esses campos são sugestões revisáveis, não dose ou prazo confirmados automaticamente. Se o painel de perfil não existir, registre Falhou para esta parte."],
   ["Ainda em Produtos, crie <b>Medicamento V3 Sem Prazo</b>, unidade <b>mL</b>, categoria <b>Sanidade V3</b>. No perfil sanitário, deixe <b>carência do leite vazia</b> e preencha <b>carência da carne com 0 h</b>; salve, reabra e confira os dois campos separadamente.","Leite permanece desconhecido/em branco, não vira 0 nem ‘liberado’; carne permanece 0 h. Se não houver edição do perfil, marque Falhou e não invente o valor em outro campo."],
-  ["Em Produtos, crie <b>Ração V3</b> e <b>Mineral V3</b>, ambos na categoria <b>Nutrição V3</b> e unidade <b>kg</b>; crie também <b>Medicamento V3 Compra Direta</b> em <b>Sanidade V3</b>, unidade <b>mL</b>. Deixe estoque mínimo 0, centros e fornecedores vazios. No perfil nutricional previsto, grave MS da Ração em <b>90%</b> e deixe MS do Mineral <b>vazia</b>; reabra para conferir.","Os três cadastros exibem seus chips de uso e saldo inicial zero. Ração mostra 90% de MS; Mineral indica desconhecido, sem assumir 100%. Se o perfil não estiver disponível, marque Falhou para os campos de MS."],
+  ["Em Produtos, crie <b>Ração V3</b> e <b>Mineral V3</b>, ambos na categoria <b>Nutrição V3</b> e unidade <b>kg</b>; crie também <b>Medicamento V3 Compra Direta</b> em <b>Sanidade V3</b>, unidade <b>mL</b>. Deixe estoque mínimo 0, centros e fornecedores vazios. No perfil nutricional, grave MS da Ração em <b>90%</b> e deixe MS do Mineral <b>vazia</b>; reabra para conferir.","Os três cadastros exibem seus chips de uso e saldo inicial zero. Ração mostra 90% de MS; Mineral indica desconhecido, sem assumir 100%. Se o perfil não estiver disponível, marque Falhou para os campos de MS."],
   ["Reabra <b>Ração V3</b> e tente salvar MS <b>-1%</b>; depois tente <b>101%</b>. Após cada tentativa, reabra para confirmar que o valor segue em <b>90%</b>.","As duas tentativas são recusadas pelo formulário e pelo servidor; nenhum valor inválido substitui 90%. Se não houver campo de MS, marque Falhou por funcionalidade ausente.",1],
   ["<b>Volte aqui após 28.4.</b> Reabra <b>Vacina V3</b> e tente salvar a unidade como <b>kg</b> no lugar de mL; verifique a recusa e que permaneceu mL. Em Categorias, tente salvar <b>Sanidade V3</b> com Sanitário desmarcado, apesar do perfil vinculado. <b>Após 35.4</b>, tente o mesmo com Nutricional de <b>Nutrição V3</b>. Se alguma alteração indevida for aceita, marque Falhou e restaure o valor original antes de continuar.","Mudança de unidade com movimentos e retirada de uso exigido por perfil ou receita são recusadas; saldos, perfis e receita não mudam. Execute somente após as dependências citadas.",1],
   ["<b>Volte aqui após 29 (aplicação da Vacina V3) e 35 (dieta publicada).</b> Na lista de Produtos, inative <b>Vacina V3</b> e <b>Ração V3</b> uma de cada vez; confira a ficha da aplicação e a versão publicada da dieta. Reative os produtos antes de seguir para não interferir nos outros testes.","Produtos inativos não entram em novas escolhas, mas a aplicação e a receita antigas continuam legíveis com seus dados congelados; reativação não cria nem apaga fatos."],
@@ -769,16 +769,86 @@ const G = [
  ]}
 ];
 
-// O roteiro V3 é navegável por pessoa, mas parte do contrato ainda só existe na API.
+G.push({
+  "id": "v3interface",
+  "t": "v3 · Interface e ajustes de Sanidade",
+  "d": "Complemento de 01/10/2026. Execute após produtos/estoque/dietas dos grupos anteriores. Medicamentos e prazos deste roteiro são fictícios, não recomendações clínicas.",
+  "s": [
+    [
+      "Em Cadastros › Sanidade › Tipos de aplicação, crie <b>Antibiótico V3</b>. Abra RN01 › Sanidade › Registrar aplicação sanitária; selecione esse tipo e Estoque da fazenda, Produto Vacina V3, partida VA, quantidade <b>10 mL</b>, data 10/09/2026 às 10:00, responsável <b>Funcionário V3</b>, leite 0 h e carne 48 h. Deixe Serviço vazio. Confirme.",
+      "Aplicação válida com responsável e autor auditado distintos. Se a entrada era 50 mL sem consumo prévio, o saldo total fica 40 mL; a partida VA diminui 10 mL."
+    ],
+    [
+      "Renomeie Antibiótico V3 para <b>Antibiótico V3 revisado</b> e inative. Volte à aplicação de RN01; abra uma aplicação nova para conferir as escolhas.",
+      "O histórico mostra Antibiótico V3; tipo inativo não aparece para novo lançamento. Nenhuma origem ou carência é determinada automaticamente pelo tipo."
+    ],
+    [
+      "No Produto Vacina V3, confira via Intramuscular e perfil 0/48 h. Na aplicação de RN02, escolha o Produto e revise os prazos sugeridos antes de confirmar.",
+      "Sugestões podem ser alteradas. Zero é informado e prazo vazio permanece desconhecido."
+    ],
+    [
+      "Abra RN12 (macho) › Sanidade › Registrar aplicação sanitária. Expanda Leite e confirme Não se aplica; para carne escolha Não se aplica e tente confirmar sem justificativa. Depois informe <b>Justificativa fictícia para testar o fluxo</b>.",
+      "Leite aparece resumido e não é confirmado automaticamente. Carne não aplicável exige justificativa; nenhum prazo vazio vira zero."
+    ],
+    [
+      "Em RN03 › Sanidade, registre origem não localizada, nome <b>Vacina V3</b>, 1 mL, data 10/09/2026 às 11:00, motivo <b>Saída de campo sem conferência da origem</b>, prazos 0/48 h.",
+      "Pendência visível; nenhum movimento físico nem nova despesa."
+    ],
+    [
+      "Na aplicação pendente de RN03, clique Reconciliar origem. Escolha Estoque da fazenda, Vacina V3, partida com saldo e motivo <b>Conferência do almoxarifado</b>; confirme. Reabra a auditoria de RN03.",
+      "Apenas uma baixa de 1 mL. Medicamento, dose, data e prazos não mudam; a justificativa original e vínculos anteriores permanecem auditados."
+    ],
+    [
+      "Repita a pendência em outro animal e reconcilie com Incluído em Serviço, escolhendo o Serviço confirmado com doses inclusas do grupo 29; não selecione Produto.",
+      "Vínculo com Serviço sem entrada/saída de estoque e sem duplicar gasto. Não é necessário cadastrar o medicamento como Produto."
+    ],
+    [
+      "Em Animais, selecione RN04 e RN05 › Aplicação sanitária coletiva. Preencha dados comuns válidos, escolha Estoque e quantidade 1 mL; clique Conferir por animal. Ajuste RN05 para 2 mL e confirme o conjunto.",
+      "Revisão mostra as duas linhas. Uma aplicação por animal; total baixado 3 mL, sem gravação parcial."
+    ],
+    [
+      "No mesmo coletivo, prepare quantidade maior que o saldo na segunda linha e tente confirmar. Consulte os dois históricos após a recusa.",
+      "Mensagem identifica a linha problemática; nenhuma aplicação ou movimento do conjunto inválido é persistido."
+    ],
+    [
+      "Em Nutrição › Receitas, sem selecionar lote, edite um rascunho e salve. Publique, depois clique Criar nova versão a partir desta; altere a quantidade e salve.",
+      "Receitas são independentes da seleção do lote. Versão publicada não muda; nova versão fica em rascunho."
+    ],
+    [
+      "Em Nutrição › Lotes › V3 Nutrição, clique Corrigir vigência. Informe uma data dentro das vizinhas e motivo <b>Correção documentada da programação</b>. Repita tentando deslocar a vigência sobre fechamento confirmado.",
+      "Sem fechamento afetado, início e fim anterior contíguo são auditados. Com fechamento afetado, a correção é recusada e informa os vínculos a estornar."
+    ],
+    [
+      "Em Nutrição › Fechamentos › V3 Nutrição, confira 29/09/2026 a 02/10/2026 com dieta e animais cobrindo o intervalo. Revise cada período e distribuição por partida antes de Confirmar conjunto conferido.",
+      "Prévia separa setembro/outubro e toda troca de vigência. O conjunto confirma atomicamente; falha de saldo em um período não grava os outros."
+    ],
+    [
+      "Confira um intervalo começando antes da primeira dieta. Depois confira 01 a 10/09/2026 no cenário RN01–RN12 original (antes de alterar permanências), receita 3 kg/cabeça/dia.",
+      "Lacunas sem dieta são mostradas e impedem confirmação do conjunto. Cenário original produz 110 animal-dias e 330 kg previstos; MS incompleta continua explícita."
+    ],
+    [
+      "Abra Produto rastreado › Controle por partida › Ver movimentos. Confira uma baixa e seu estorno. Se houver saldo técnico legado, identifique parte com código <b>V3-IDENTIFICADA</b>, quantidade menor que o saldo técnico e motivo <b>Identificação física de teste</b>.",
+      "Histórico filtrado pela partida e pelo sítio, com paginação. Identificação gera redistribuição de valor/quantidade líquidos zero e não altera custo médio."
+    ],
+    ["Em Animais, selecione RN06 e RN07 › Protocolos coletivos. Escolha versão publicada e início 10/09/2026; clique Conferir, revise cada linha e confirme. Faça também Coleta coletiva com tipo de exame cadastrado, sem preencher resultado.", "Uma execução/coleta por animal, sem consumo de estoque no planejamento e sem resultado inventado. Reenvio não duplica fatos; linha inválida recusa o conjunto inteiro."],
+    ["Em Sanidade, selecione animal atendido pelo Serviço confirmado do grupo 29 › Ratear Serviço (opcional). Atribua R$ 100 ao exame e confirme com motivo. Tente atribuir ao conjunto valor maior que o Serviço. Tente atribuir custo ao protocolo e ao seu exame simultaneamente.", "Rateio é manual e exige Financeiro/verValores/lancar. Soma não ultrapassa valor confirmado; duplicação protocolo/fato é recusada. Nenhuma nova despesa ou movimento físico."],
+    ["Em Estoque › Transferir estoque, escolha Vacina V3, sítio de origem com saldo, outro sítio ativo, 2 mL, data 11/09/2026 e motivo Transferência física V3. Adicione partida VA e distribua 2 mL. Confirme; abra a operação vinculada e cancele com motivo.", "Origem diminui 2 e destino aumenta 2 na mesma partida, sem compra/despesa. Cancelamento devolve nas partidas originais; é recusado se o destino já consumiu a quantidade transferida."],
+    ["Em Estoque › Registrar perda, escolha Vacina V3, sítio com saldo, quantidade 1 mL, data 11/09/2026 e motivo Descarte físico de teste. Distribua 1 mL na partida escolhida e confirme.", "Somente saída física PERDA, sem gasto financeiro novo. Descarte documentado pode retirar produto vencido; isso não autoriza sua aplicação sanitária ou uso operacional."],
+    ["Na aplicação sanitária, selecione partida vencida antes da data do fato e tente registrar sem ciência. Para documentar uma aplicação real já ocorrida, marque a ciência excepcional e explique Registro tardio de fato ocorrido, cuja validade foi constatada depois. Confirme e consulte histórico/auditoria.", "Uso vencido normal é recusado. Documentação excepcional exige fato no passado, ciência e motivo; a auditoria distingue documentação de autorização de uso."],
+    ["Em Sanidade › Carências, sem selecionar animal, filtre período/lote e avance páginas. Busque RN01 por brinco e abra seu link. Em Nutrição › Fechamentos › Detalhes, abra Prévia do estorno de um fechamento com baixa e outro sem baixa.", "Lista geral mantém restrições do animal, inclusive doses do sítio anterior. Link direto não depende dos primeiros 100 animais. Prévia devolve apenas o que saiu fisicamente, nas partidas originais; consumo sem baixa não cria entrada."]
+  ]
+});
+
+// Os fluxos V3 têm interface; testes de carga e concorrência continuam com apoio técnico.
 // A ordem de cada linha acompanha a ordem dos passos do grupo em G.
 const PAGINAS_V3 = {
   ambiente: ["Apoio técnico › terminal do projeto e banco de testes no Docker", "technical"],
-  fixture: ["Pecuária › Rebanho › Lotes e Animais → Financeiro › Configurações e Operações → Nutrição › Receitas (última tela prevista)", "planned"],
+  fixture: ["Pecuária › Rebanho › Lotes e Animais → Financeiro › Configurações e Operações → Rebanho › Nutrição › Receitas","current"],
   rebanho: ["Pecuária › Rebanho › Visão geral", "current"],
   animais: ["Pecuária › Rebanho › Animais", "current"],
   ficha: ["Pecuária › Rebanho › Animais › abrir a ficha do animal", "current"],
   sanidadeFicha: ["Pecuária › Rebanho › Animais › abrir o animal › card Sanidade", "current"],
-  servicoAplicacao: ["Pecuária › Rebanho › Animais › abrir o animal › Sanidade › Registrar aplicação do Serviço", "current"],
+  servicoAplicacao: ["Pecuária › Rebanho › Animais › abrir o animal › Sanidade › Registrar aplicação sanitária", "current"],
   baixa: ["Pecuária › Rebanho › Animais › abrir o animal › Dar baixa", "current"],
   auditoria: ["Pecuária › Rebanho › Animais › abrir o animal › Auditoria", "current"],
   lotes: ["Pecuária › Rebanho › Lotes", "current"],
@@ -786,20 +856,20 @@ const PAGINAS_V3 = {
   cadastros: ["Pecuária › Rebanho › Cadastros", "current"],
   categorias: ["Financeiro › Configurações financeiras › Categorias", "current"],
   produtos: ["Financeiro › Configurações financeiras › Produtos", "current"],
-  perfilProduto: ["Financeiro › Configurações financeiras › Produtos › abrir produto › perfil sanitário/nutricional (painel previsto)", "planned"],
+  perfilProduto: ["Financeiro › Configurações financeiras › Produtos › abrir produto › Perfil sanitário/nutricional","current"],
   operacoes: ["Financeiro › Operações › abrir ou criar operação", "current"],
   servico: ["Financeiro › Operações › abrir ou criar Serviço", "current"],
-  compraPartida: ["Financeiro › Operações › compra/ajuste › distribuir por partida (painel previsto)", "planned"],
+  compraPartida: ["Financeiro › Operações › compra/ajuste › Distribuição por partida","current"],
   estoque: ["Estoque › Saldos ou Histórico de movimentos", "current"],
-  partidas: ["Estoque › abrir produto › Partidas e reconciliação (painel previsto)", "planned"],
+  partidas: ["Financeiro › Configurações financeiras › Produtos › abrir produto › Controle por partida › Ver movimentos / Identificar estoque legado","current"],
   plantio: ["Agricultura › Plantio › Estoque agrícola / operação de aplicação", "current"],
-  sanidade: ["Pecuária › Rebanho › Sanidade (seção prevista)", "planned"],
-  cadSanidade: ["Pecuária › Rebanho › Cadastros › Doenças, Protocolos ou Tipos de exame (abas previstas)", "planned"],
-  aplicacao: ["Pecuária › Rebanho › Animais › abrir o animal › Sanidade › Nova aplicação (fluxo previsto)", "planned"],
-  manejo: ["Pecuária › Rebanho › Animais › abrir o animal › Manejo (painel previsto)", "planned"],
-  pesagemColetiva: ["Pecuária › Rebanho › Animais › selecionar animais › Pesagem coletiva (ação prevista)", "planned"],
-  dieta: ["Pecuária › Rebanho › Nutrição › Receitas (seção prevista)", "planned"],
-  loteDieta: ["Pecuária › Rebanho › Lotes › abrir o lote › Dieta e consumo (painel previsto)", "planned"],
+  sanidade: ["Pecuária › Rebanho › Sanidade › Agenda, Ocorrências, Aplicações, Exames ou Carências","current"],
+  cadSanidade: ["Pecuária › Rebanho › Cadastros › Sanidade › Tipos de aplicação, Doenças, Protocolos ou Tipos de exame","current"],
+  aplicacao: ["Pecuária › Rebanho › Animais › abrir o animal › Sanidade › Registrar aplicação sanitária","current"],
+  manejo: ["Pecuária › Rebanho › Animais › abrir o animal › Manejo","current"],
+  pesagemColetiva: ["Pecuária › Rebanho › Animais › selecionar animais › Pesagem coletiva","current"],
+  dieta: ["Pecuária › Rebanho › Nutrição › Receitas","current"],
+  loteDieta: ["Pecuária › Rebanho › Nutrição › Lotes ou Fechamentos › selecionar lote; também disponível na ficha do lote","current"],
   acessos: ["Configurações › Acessos › usuário e permissões", "current"],
   sitios: ["Configurações › Sítios", "current"],
   relatorios: ["Financeiro › Relatórios / Visão geral / Contas", "current"],
@@ -807,6 +877,7 @@ const PAGINAS_V3 = {
   roteiro: ["Este roteiro › grupos V3 e Relatório", "current"],
 };
 const CAMINHOS_V3 = {
+  v3interface: "aplicacao cadSanidade perfilProduto aplicacao aplicacao sanidadeFicha sanidadeFicha animais animais dieta loteDieta loteDieta loteDieta partidas animais sanidade estoque estoque aplicacao sanidade",
   v3prep: "ambiente rebanho lotes animais roteiro",
   v3produto: "categorias produtos produtos produtos perfilProduto produtos produtos perfilProduto",
   v3partida: "produtos produtos produtos compraPartida compraPartida compraPartida aplicacao compraPartida partidas aplicacao partidas partidas operacoes plantio operacoes operacoes ambiente",

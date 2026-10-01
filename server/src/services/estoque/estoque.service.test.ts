@@ -102,7 +102,7 @@ describe("registrarMovimento", () => {
     expect(args.where).toEqual(expect.objectContaining({ produtoId: { in: [uid(3)] }, status: "CONFIRMADO", reversaoDeId: null, quantidade: { gt: 0 }, valorTotal: { gt: 0 } }));
     // propriedade 1 é a principal → inclui movimentos legados sem propriedade.
     expect(args.where.AND[0]).toEqual({ OR: [{ propriedadeId: 1 }, { propriedadeId: null }] });
-    expect(args.where.AND[1]).toEqual({ OR: [{ tipo: "ENTRADA", origem: { in: ["COMPRA", "BONIFICACAO", "PRODUCAO", "INVENTARIO_INICIAL"] } }, { tipo: "AJUSTE" }] });
+    expect(args.where.AND[1]).toEqual({ OR: [{ tipo: "ENTRADA", origem: { in: ["COMPRA", "BONIFICACAO", "PRODUCAO", "INVENTARIO_INICIAL", "TRANSFERENCIA"] } }, { tipo: "AJUSTE", origem: { not: "IDENTIFICACAO_PARTIDA" } }] });
     expect(mocks.movFindMany).not.toHaveBeenCalled();
     const data = mocks.movCreate.mock.calls[0][0].data;
     expect(Number(data.custoUnitario)).toBe(6);

@@ -1,3 +1,5 @@
+import { confirmarColetivo } from "./coletivos.js";
+import { filtrosFatos, limites, type ConsultaSanitaria } from "./consulta.js";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../../db.js";
 import { RebanhoError, auditar, travarAnimais } from "../rebanho/regras.js";
@@ -20,15 +22,14 @@ export async function criarTipoExame(input: { nome: string; tipoResultado: TipoR
   });
 }
 
-export async function listarExames(animalId: string | undefined, propriedadeId: number | null) {
-  return prisma.exameAnimal.findMany({ where: { ...(animalId ? { animalId } : {}), ...(propriedadeId == null ? {} : { propriedadeId }) },
-    include: { tipoExame: { select: { nome: true } } }, orderBy: [{ data: "desc" }, { criadoEm: "desc" }], take: 100 });
+export async function listarExames(animalId: string | undefined, propriedadeId: number | null, filtro?: ConsultaSanitaria) {
+  return prisma.exameAnimal.findMany({ where: { ...filtrosFatos(filtro), ...(animalId ? { animalId } : {}), ...(propriedadeId == null ? {} : { propriedadeId }) },
+    include: { tipoExame: { select: { nome: true } } }, orderBy: [{ data: "desc" }, { criadoEm: "desc" }], ...limites(filtro) });
 }
 
-export async function registrarExame(input: { animalId: string; propriedadeId: number; tipoExameId: string; data: string;
+async function registrarExameTx(tx: Prisma.TransactionClient, input: { animalId: string; propriedadeId: number; tipoExameId: string; data: string;
   resultadoTexto?: string | null; resultadoNumero?: number | null; resultadoOpcao?: string | null;
   responsavel?: string | null; ocorrenciaId?: string | null; tarefaId?: string | null; operacaoServicoId?: string | null }, usuarioId: number | null) {
-  return prisma.$transaction(async (tx) => {
     await travarAnimais(tx, [input.animalId]);
     const data = dia(input.data);
     const local = await tx.localizacaoAnimal.findFirst({ where: { animalId: input.animalId, propriedadeId: input.propriedadeId,
@@ -37,13 +38,13 @@ export async function registrarExame(input: { animalId: string; propriedadeId: n
     const tipo = await tx.tipoExame.findFirst({ where: { id: input.tipoExameId, ativo: true } });
     if (!tipo) throw new RebanhoError("VALIDACAO", "Tipo de exame não encontrado", "tipoExameId");
     const preenchidos = [input.resultadoTexto, input.resultadoNumero, input.resultadoOpcao].filter((v) => v !== undefined && v !== null && v !== "");
-    if (preenchidos.length !== 1 || (tipo.tipoResultado === "TEXTO" && !input.resultadoTexto?.trim())
+    if (preenchidos.length > 0 && (preenchidos.length !== 1 || (tipo.tipoResultado === "TEXTO" && !input.resultadoTexto?.trim())
       || (tipo.tipoResultado === "NUMERO" && input.resultadoNumero == null)
-      || (tipo.tipoResultado === "OPCAO" && !input.resultadoOpcao)) {
+      || (tipo.tipoResultado === "OPCAO" && !input.resultadoOpcao))) {
       throw new RebanhoError("VALIDACAO", "Informe um único resultado no formato deste exame", "resultado");
     }
     const opcoes = Array.isArray(tipo.opcoes) ? tipo.opcoes : [];
-    if (tipo.tipoResultado === "OPCAO" && !opcoes.some((opcao) => opcao === input.resultadoOpcao)) throw new RebanhoError("VALIDACAO", "Resultado fora das opções do exame", "resultadoOpcao");
+    if (input.resultadoOpcao && !opcoes.some((opcao) => opcao === input.resultadoOpcao)) throw new RebanhoError("VALIDACAO", "Resultado fora das opções do exame", "resultadoOpcao");
     if (input.resultadoNumero != null && !Number.isFinite(input.resultadoNumero)) throw new RebanhoError("VALIDACAO", "Resultado numérico inválido", "resultadoNumero");
     if (input.ocorrenciaId && !(await tx.ocorrenciaSanitaria.findFirst({ where: { id: input.ocorrenciaId, animalId: input.animalId, status: "VALIDO" } }))) {
       throw new RebanhoError("VALIDACAO", "Ocorrência não pertence ao animal", "ocorrenciaId");
@@ -71,5 +72,27 @@ export async function registrarExame(input: { animalId: string; propriedadeId: n
       tarefaId: input.tarefaId ?? null, operacaoServicoId } });
     await auditar(tx, { entidade: "ExameAnimal", entidadeId: criado.id, animalId: input.animalId, acao: "REGISTRO", usuarioId, depois: criado });
     return criado;
+}
+
+export async function registrarExame(input: Parameters<typeof registrarExameTx>[1], usuarioId: number | null) {
+  return prisma.$transaction((tx) => registrarExameTx(tx, input, usuarioId), { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+}
+export async function registrarExameColetivo(input: { chave: string; propriedadeId: number; itens: Parameters<typeof registrarExameTx>[1][] }, usuarioId: number | null) {
+  return confirmarColetivo(input, usuarioId, "EXAME_COLETIVO", registrarExameTx);
+}
+
+export async function corrigirExame(id: string, propriedadeId: number, input: { motivo: string; resultadoTexto?: string | null; resultadoNumero?: number | null; resultadoOpcao?: string | null; anular?: boolean }, usuarioId: number | null) {
+  return prisma.$transaction(async (tx) => {
+    const original = await tx.exameAnimal.findFirst({ where: { id, propriedadeId, status: "VALIDO" } });
+    if (!original) throw new RebanhoError("NAO_ENCONTRADO", "Exame não encontrado ou anulado");
+    await travarAnimais(tx, [original.animalId]);
+    const formato = original.formatoSnapshot as { tipoResultado: string; opcoes?: string[] };
+    if (!input.anular) {
+      const preenchidos = [input.resultadoTexto, input.resultadoNumero, input.resultadoOpcao].filter((v) => v != null && v !== "");
+      if (preenchidos.length !== 1 || (formato.tipoResultado === "TEXTO" && !input.resultadoTexto?.trim()) || (formato.tipoResultado === "NUMERO" && input.resultadoNumero == null) || (formato.tipoResultado === "OPCAO" && !formato.opcoes?.includes(input.resultadoOpcao ?? ""))) throw new RebanhoError("VALIDACAO", "Informe resultado no formato preservado na coleta", "resultado");
+    }
+    const salvo = await tx.exameAnimal.update({ where: { id }, data: input.anular ? { status: "ANULADO", motivoAnulacao: input.motivo, anuladoEm: new Date() } : { resultadoTexto: input.resultadoTexto?.trim() || null, resultadoNumero: input.resultadoNumero ?? null, resultadoOpcao: input.resultadoOpcao ?? null } });
+    await auditar(tx, { entidade: "ExameAnimal", entidadeId: id, animalId: original.animalId, propriedadeId, acao: input.anular ? "ANULACAO" : "RESULTADO_CORRIGIDO", usuarioId, antes: original, depois: { ...salvo, motivo: input.motivo } });
+    return salvo;
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 }

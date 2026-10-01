@@ -42,10 +42,11 @@ export interface SaldoDTO { produtoId: string; nome: string; materialGeneticoId:
   /** Média ponderada das entradas valorizadas no sítio; null sem base (nenhuma compra/inventário com valor). */
   custoMedio: number | null;
   /** saldo × custoMedio (0 quando custoMedio é null). */
-  valor: number; minimoEstoque: number | null; abaixoMinimo: boolean; }
-export type OrigemMovimento = "COMPRA" | "CONSUMO_DIRETO" | "TRANSFERENCIA" | "PRODUCAO" | "DEVOLUCAO" | "BONIFICACAO" | "INVENTARIO_INICIAL" | "PERDA" | "AJUSTE_INVENTARIO" | "APLICACAO";
+  valor: number | null; minimoEstoque: number | null; abaixoMinimo: boolean; }
+export type OrigemMovimento = "COMPRA" | "CONSUMO_DIRETO" | "TRANSFERENCIA" | "PRODUCAO" | "DEVOLUCAO" | "BONIFICACAO" | "INVENTARIO_INICIAL" | "PERDA" | "AJUSTE_INVENTARIO" | "APLICACAO" | "SANIDADE" | "NUTRICAO" | "IDENTIFICACAO_PARTIDA";
 export type VinculoMovimento = { tipo: "TALHAO"; id: number; codigo: string };
-export interface MovimentoDTO { id: string; seq: number; produtoId: string; produto: string; materialGeneticoId: string | null; centrosCusto: { id: string; nome: string }[]; tipo: "ENTRADA" | "SAIDA" | "AJUSTE"; origem: OrigemMovimento; status: "CONFIRMADO" | "REVERTIDO"; reversaoDeId: string | null; data: string; quantidade: number; custoUnitario: number; valorTotal: number; fornecedor: string | null; observacao: string | null;
+export interface MovimentoDTO { id: string; seq: number; produtoId: string; produto: string; materialGeneticoId: string | null; centrosCusto: { id: string; nome: string }[]; tipo: "ENTRADA" | "SAIDA" | "AJUSTE"; origem: OrigemMovimento; status: "CONFIRMADO" | "REVERTIDO"; reversaoDeId: string | null; data: string; quantidade: number; custoUnitario: number | null; valorTotal: number | null; fornecedor: string | null; observacao: string | null;
+  partidas?: { partidaId: string; codigo: string; validade: string | null; quantidade: string }[];
   /** Operação financeira de origem (compra, ajuste, inventário…); null nas saídas automáticas. */
   operacaoId: string | null;
   operacaoNumero: number | null;
@@ -56,7 +57,7 @@ export interface MovimentoResult { id: string; operacaoId: string; }
 
 export const listarSaldos = (f?: { centroCustoId?: string }) => req<SaldoDTO[]>(`/estoque/saldos${qs(f)}`);
 export type FiltroMovimentos = {
-  produtoId?: string; tipo?: string; q?: string; origem?: string;
+  produtoId?: string; partidaId?: string; tipo?: string; q?: string; origem?: string;
   centroCustoId?: string;
   de?: string; ate?: string; pagina?: number; porPagina?: number;
 };
@@ -91,11 +92,13 @@ export function useSaldos(f?: { centroCustoId?: string }) {
 // Mesmo tipo de `financeiro/novo-api.ts` (contrato único de Produto na API) —
 // `/estoque/produtos` e `/financeiro/produtos` são a mesma tabela e o mesmo service.
 export type ProdutoDTO = Produto;
-export type UsoProduto = "agricola" | "genetico";
+export type UsoProduto = "agricola" | "genetico" | "sanitario" | "nutricional";
 export interface ProdutoInput {
   nome: string; unidade: UnidadeMedida;
   // Categoria obrigatória (define o uso). Se o produto entra no estoque quem decide é a operação.
   minimoEstoque?: number | null; ativo?: boolean; categoriaId: string; centroCustoIds?: string[]; fornecedorIds?: string[];
+  perfilSanitario?: { carenciaLeiteHoras: number | null; carenciaCarneHoras: number | null; viaPadrao?: string | null; referenciaTecnica?: string | null };
+  perfilNutricional?: { materiaSecaPercentual: number | null };
 }
 export const listarProdutos = (f?: { uso?: UsoProduto; q?: string; ativo?: boolean }) => req<ProdutoDTO[]>(`/estoque/produtos${qs(f)}`);
 export const criarProduto = (p: ProdutoInput) => req<ProdutoDTO>(`/estoque/produtos`, { method: "POST", body: JSON.stringify(p) });

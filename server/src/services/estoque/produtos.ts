@@ -11,6 +11,8 @@ export const includeProduto = {
   },
   centrosCusto: { include: { centroCusto: true }, orderBy: { centroCusto: { nome: "asc" as const } } },
   categoria: true,
+  perfilSanitarioProduto: true,
+  perfilNutricionalProduto: true,
 } as const;
 
 export function produtoDTO(produto: Prisma.ProdutoGetPayload<{ include: typeof includeProduto }>) {
@@ -29,6 +31,8 @@ export function produtoDTO(produto: Prisma.ProdutoGetPayload<{ include: typeof i
       : null,
     ativo: produto.ativo,
     rastrearPartidas: produto.rastrearPartidas,
+    perfilSanitario: produto.perfilSanitarioProduto,
+    perfilNutricional: produto.perfilNutricionalProduto ? { materiaSecaPercentual: produto.perfilNutricionalProduto.materiaSecaPercentual?.toString() ?? null } : null,
     centroCustoIds: produto.centrosCusto.map(({ centroCustoId }) => centroCustoId),
     centrosCusto: produto.centrosCusto.map(({ centroCusto }) => ({ id: centroCusto.id, nome: centroCusto.nome, ativo: centroCusto.ativo })),
     fornecedores: produto.fornecedores.map(({ fornecedor }) => ({ id: fornecedor.id, nome: fornecedor.nome, ativo: fornecedor.ativo })),
@@ -55,9 +59,9 @@ async function validarCentrosCusto(db: DbFinanceiro, centroCustoIds: string[], p
   }
 }
 
-function separarRelacoes<T extends { fornecedorIds?: string[]; centroCustoIds?: string[] }>(input: T) {
-  const { fornecedorIds, centroCustoIds, ...produto } = input;
-  return { fornecedorIds, centroCustoIds, produto };
+function separarRelacoes(input: ProdutoPatchInput) {
+  const { fornecedorIds, centroCustoIds, perfilSanitario, perfilNutricional, ...produto } = input;
+  return { fornecedorIds, centroCustoIds, perfilSanitario, perfilNutricional, produto };
 }
 
 const USO_CAMPO = { agricola: "usoAgricola", genetico: "usoGenetico", sanitario: "usoSanitario", nutricional: "usoNutricional" } as const;
@@ -83,15 +87,21 @@ export async function criarProduto(input: ProdutoInput, usuarioId?: number | nul
 
 /** Cria o produto dentro de uma transação já aberta (ex.: material genético cria o produto junto). */
 export async function criarProdutoTx(tx: Prisma.TransactionClient, input: ProdutoInput, usuarioId?: number | null) {
-  const { fornecedorIds = [], centroCustoIds = [], produto } = separarRelacoes(input);
+  const { fornecedorIds = [], centroCustoIds = [], perfilSanitario, perfilNutricional, produto } = separarRelacoes(input);
   if (produto.categoriaId == null) {
     throw new FinanceiroError("VALIDACAO", CATEGORIA_OBRIGATORIA, "categoriaId");
   }
   await validarFornecedores(tx, fornecedorIds, new Set());
   await validarCentrosCusto(tx, centroCustoIds, new Set());
+  const categoria = perfilSanitario || perfilNutricional ? await tx.categoria.findUnique({ where: { id: produto.categoriaId } }) : null;
+  if (perfilSanitario && !categoria?.usoSanitario) throw new FinanceiroError("VALIDACAO", "Perfil sanitário exige categoria com uso sanitário", "categoriaId");
+  if (perfilNutricional && !categoria?.usoNutricional) throw new FinanceiroError("VALIDACAO", "Perfil nutricional exige categoria com uso nutricional", "categoriaId");
   const criado = await tx.produto.create({
     data: {
       ...produto,
+      nome: input.nome, unidade: input.unidade,
+      ...(perfilSanitario ? { perfilSanitarioProduto: { create: perfilSanitario } } : {}),
+      ...(perfilNutricional ? { perfilNutricionalProduto: { create: perfilNutricional } } : {}),
       fornecedores: { create: fornecedorIds.map((fornecedorId) => ({ fornecedorId })) },
       centrosCusto: { create: centroCustoIds.map((centroCustoId) => ({ centroCustoId })) },
     },
@@ -107,7 +117,7 @@ export async function atualizarProduto(id: string, input: ProdutoPatchInput, usu
     return await prisma.$transaction(async (tx) => {
       const anterior = await tx.produto.findUnique({ where: { id }, include: includeProduto });
       if (!anterior) throw new FinanceiroError("NAO_ENCONTRADO", "Produto não encontrado");
-      const { fornecedorIds, centroCustoIds, produto } = separarRelacoes(input);
+      const { fornecedorIds, centroCustoIds, perfilSanitario, perfilNutricional, produto } = separarRelacoes(input);
 
       // Todo produto precisa de categoria. Um produto legado sem categoria só
       // pode ser ativado/desativado sem informá-la; qualquer outra edição exige.
@@ -116,6 +126,11 @@ export async function atualizarProduto(id: string, input: ProdutoPatchInput, usu
       if (categoriaId == null && !soSituacao) {
         throw new FinanceiroError("VALIDACAO", CATEGORIA_OBRIGATORIA, "categoriaId");
       }
+      const mudouCategoria = produto.categoriaId !== undefined && produto.categoriaId !== anterior.categoriaId;
+      const exigeNutricional = !!(perfilNutricional || anterior.perfilNutricionalProduto) || (mudouCategoria && !!(await tx.itemDieta.count({ where: { produtoId: id } })));
+      const categoria = categoriaId && (perfilSanitario || anterior.perfilSanitarioProduto || exigeNutricional) ? await tx.categoria.findUnique({ where: { id: categoriaId } }) : null;
+      if ((perfilSanitario || anterior.perfilSanitarioProduto) && !categoria?.usoSanitario) throw new FinanceiroError("VALIDACAO", "Produto com perfil sanitário exige uso sanitário", "categoriaId");
+      if (exigeNutricional && !categoria?.usoNutricional) throw new FinanceiroError("VALIDACAO", "Perfil ou receita exige uso nutricional", "categoriaId");
 
       // Trocar a unidade muda a interpretação de tudo que já foi movimentado
       // (estoque) ou registrado em histórico (compra/venda, aplicação agrícola)
@@ -142,6 +157,8 @@ export async function atualizarProduto(id: string, input: ProdutoPatchInput, usu
         where: { id },
         data: {
           ...produto,
+          ...(perfilSanitario ? { perfilSanitarioProduto: { upsert: { create: perfilSanitario, update: perfilSanitario } } } : {}),
+          ...(perfilNutricional ? { perfilNutricionalProduto: { upsert: { create: perfilNutricional, update: perfilNutricional } } } : {}),
           ...(fornecedorIds === undefined ? {} : {
             fornecedores: { deleteMany: {}, create: fornecedorIds.map((fornecedorId) => ({ fornecedorId })) },
           }),

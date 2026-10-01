@@ -18,6 +18,10 @@ function falha(c: Context, e: unknown) {
 }
 
 export const manejoRouter = new Hono()
+  .post("/eventos/:id/anulacao", validar(z.object({ propriedadeId: z.number().int().positive(), motivo: z.string().trim().min(5).max(500) })), async (c) => {
+    try { const body = c.req.valid("json"); const propriedadeId = await resolverEscopoEscrita(c, body.propriedadeId);
+      return c.json(await manejo.anularManejo(c.req.param("id"), propriedadeId, body.motivo, getUsuario(c)?.id ?? null)); } catch (e) { return falha(c, e); }
+  })
   .post("/pesagens-coletivas", validar(z.object({ chave: uuid, propriedadeId: z.number().int().positive(), data,
     tipo: z.enum(["ROTINA", "ENTRADA", "DESMAMA", "SAIDA"]), origem: z.enum(["MANUAL", "BALANCA"]),
     itens: z.array(z.object({ animalId: uuid, pesoKg: z.number().positive().max(99999.99), observacao: z.string().trim().max(500).nullish() })).min(1).max(500) })), async (c) => {

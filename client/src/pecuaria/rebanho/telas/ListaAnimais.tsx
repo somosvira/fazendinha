@@ -10,6 +10,9 @@
 // afetado.
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { FormColetivoSanitario } from "../sanidade/FormColetivoSanitario";
+import { FormAplicacaoServico } from "../sanidade/FormAplicacaoServico";
+import { PesagemColetiva } from "../manejo/ManejoAnimal";
 import { ArrowRightLeft, Pencil, Plus, Search } from "lucide-react";
 import { listarAnimais, buscarFichaAnimal, listarCategorias, obterCatalogos, RebanhoApiError } from "../api";
 import type { AnimalFicha, AnimalResumo, Aptidao, CategoriaDTO, Catalogos, Origem, PainelServidor, PapelReprodutivo, Sexo, Situacao, TipoBaixa } from "../types";
@@ -108,6 +111,9 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true }:
   const [pagina, setPagina] = useState(1);
 
   const [selecionados, setSelecionados] = useState<Map<string, AnimalResumo>>(new Map());
+  const [pesando, setPesando] = useState(false);
+  const [coletivoSanitario, setColetivoSanitario] = useState<"exame" | "protocolo" | null>(null);
+  const [aplicando, setAplicando] = useState(false);
   const [editando, setEditando] = useState<AnimalFicha | null>(null);
   const [carregandoEdicaoId, setCarregandoEdicaoId] = useState<string | null>(null);
   const [movimentando, setMovimentando] = useState<{ animais: AnimalResumo[]; propriedadeId?: number | null; loteId?: string | null } | null>(null);
@@ -288,6 +294,7 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true }:
         </label>
       </BarraFiltros>
       {podeLancar && itensSelecionaveis.length > 0 && <div className="flex flex-wrap items-center gap-3 border-b border-border bg-surface-2 px-4 py-2.5 text-sm">
+        {selecionados.size > 0 && <><Button secondary onClick={() => setPesando(true)}>Pesagem coletiva</Button><Button secondary onClick={() => setAplicando(true)}>Aplicação sanitária coletiva</Button><Button secondary onClick={() => setColetivoSanitario("exame")}>Coleta coletiva</Button><Button secondary onClick={() => setColetivoSanitario("protocolo")}>Protocolos coletivos</Button></>}
         <label className="flex items-center gap-2 font-medium"><input type="checkbox" aria-label="Selecionar todos os animais desta página" checked={todosDaPaginaSelecionados} onChange={alternarSelecaoTodos} /> Selecionar todos</label>
         {selecionados.size > 0 && <><span className="text-ink-3">{selecionados.size} selecionado{selecionados.size === 1 ? "" : "s"}</span><Button secondary onClick={() => setSelecionados(new Map())}>Limpar seleção</Button><Button onClick={() => setMovimentando({ animais: [...selecionados.values()] })}>Movimentar {selecionados.size} {selecionados.size === 1 ? "animal" : "animais"}</Button></>}
       </div>}
@@ -298,6 +305,9 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true }:
     </Panel>
 
     {editando && <FormDadosAnimal animal={editando} onFechar={() => setEditando(null)} onSalvo={async () => { setEditando(null); await recarregar(); }} />}
+    {coletivoSanitario && <FormColetivoSanitario tipo={coletivoSanitario} animais={[...selecionados.values()]} onFechar={() => setColetivoSanitario(null)} onSalvo={() => { setColetivoSanitario(null); setSelecionados(new Map()); void recarregar(); }} />}
+    {aplicando && [...selecionados.values()][0]?.propriedade?.id != null && <FormAplicacaoServico animalId={[...selecionados.values()][0].id} propriedadeId={[...selecionados.values()][0].propriedade!.id} animais={[...selecionados.values()].map((a) => ({ id: a.id, brinco: a.brinco, propriedadeId: a.propriedade?.id ?? null }))} onFechar={() => setAplicando(false)} onSalvo={() => { setAplicando(false); setSelecionados(new Map()); void recarregar(); }} />}
+    {pesando && <PesagemColetiva animais={[...selecionados.values()]} onFechar={() => setPesando(false)} onSalvo={() => { setPesando(false); setSelecionados(new Map()); void recarregar(); }} />}
     {movimentando && catalogos && <FormMovimentar animais={movimentando.animais} propriedades={catalogos.propriedades} lotes={catalogos.lotes} propriedadeInicial={movimentando.propriedadeId} loteInicial={movimentando.loteId} onFechar={() => setMovimentando(null)} onSalvo={async (resultado) => { setMovimentando(null); setSelecionados(new Map()); await aoMovimentar(resultado); }} />}
   </PaginaFinanceira>;
 }

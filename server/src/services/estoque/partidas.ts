@@ -1,7 +1,11 @@
+import crypto from "node:crypto";
 import { Prisma, type TipoMovimento } from "@prisma/client";
 import { prisma } from "../../db.js";
 import { propriedadePrincipalId } from "../propriedade.js";
 import { EstoqueError, statusSaldoEstoque } from "./estoque.js";
+import { obterBaseCusto } from "./estoque.js";
+import { exigirPeriodoAberto } from "../financeiro/regras.js";
+import { valorSaidaDaBase } from "./estoque.calc.js";
 
 export type SelecaoPartida = { partidaId?: string; codigo?: string; validade?: string | null; quantidade: number | string };
 
@@ -19,7 +23,7 @@ export async function saldoPartidaTx(tx: Prisma.TransactionClient, partidaId: st
 /** Resolve e valida as partidas antes de criar o movimento. Não altera saldo por si só. */
 export async function prepararPartidasTx(tx: Prisma.TransactionClient, args: {
   produtoId: string; rastrearPartidas: boolean; propriedadeId: number; tipo: TipoMovimento;
-  quantidade: Prisma.Decimal; partidas?: SelecaoPartida[];
+  quantidade: Prisma.Decimal; partidas?: SelecaoPartida[]; data?: Date; descarte?: boolean;
 }) {
   const escolhas = args.partidas ?? [];
   if (!args.rastrearPartidas) {
@@ -53,6 +57,7 @@ export async function prepararPartidasTx(tx: Prisma.TransactionClient, args: {
     if (!partida) throw new EstoqueError("VALIDACAO", "Partida inválida");
     if (ids.has(partida.id)) throw new EstoqueError("VALIDACAO", "Uma partida não pode aparecer duas vezes no mesmo movimento");
     ids.add(partida.id);
+    if (saida && !args.descarte && args.tipo !== "AJUSTE" && partida.validade && partida.validade < (args.data ?? new Date())) throw new EstoqueError("VALIDACAO", `Partida ${partida.codigo} vencida na data do uso operacional`);
     if (saida && (await saldoPartidaTx(tx, partida.id, args.propriedadeId)).lt(quantidade.abs())) {
       throw new EstoqueError("VALIDACAO", `Saldo insuficiente na partida ${partida.codigo}`);
     }
@@ -93,4 +98,38 @@ export async function listarPartidas(produtoId: string, propriedadeId: number) {
     id: partida.id, codigo: partida.codigo, validade: partida.validade, fabricante: partida.fabricante,
     origemRastreio: partida.origemRastreio, saldo: (await saldoPartidaTx(prisma, partida.id, propriedadeId)).toString(),
   })));
+}
+
+export async function identificarLegado(input: { chave: string; produtoId: string; propriedadeId: number; codigo: string; validade?: string | null; quantidade: string; motivo: string; data: string }, usuarioId: number | null) {
+  const hash = crypto.createHash("sha256").update(JSON.stringify(input)).digest("hex");
+  return prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`pec-produto:${input.propriedadeId}:${input.produtoId}`}))`;
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`estoque-identificacao:${input.chave}`}))`;
+    const anterior = await tx.auditoriaFinanceira.findFirst({ where: { acao: "IDENTIFICAR_ESTOQUE_LEGADO", estadoPosterior: { path: ["chave"], equals: input.chave } } });
+    if (anterior) {
+      const resultado = anterior.estadoPosterior as { hash: string; partidaId: string; movimentos: string[] };
+      if (resultado.hash !== hash || anterior.usuarioId !== usuarioId) throw new EstoqueError("CONFLITO", "Chave de reenvio usada com outros dados");
+      return { partidaId: resultado.partidaId, movimentos: resultado.movimentos };
+    }
+    const produto = await tx.produto.findUnique({ where: { id: input.produtoId } });
+    const legado = await tx.partidaProduto.findFirst({ where: { produtoId: input.produtoId, origemRastreio: "LEGADO_NAO_IDENTIFICADO" } });
+    const quantidade = decimal(input.quantidade);
+    if (!produto?.rastrearPartidas || !legado) throw new EstoqueError("VALIDACAO", "Produto sem partida técnica de legado");
+    if (!quantidade.isFinite() || quantidade.lte(0) || quantidade.decimalPlaces() > 3) throw new EstoqueError("VALIDACAO", "Quantidade inválida");
+    if ((await saldoPartidaTx(tx, legado.id, input.propriedadeId)).lt(quantidade)) throw new EstoqueError("VALIDACAO", "Quantidade maior que o saldo não identificado");
+    if (input.codigo === legado.codigo) throw new EstoqueError("VALIDACAO", "Informe uma partida identificada, não a técnica");
+    const data = new Date(`${input.data}T00:00:00Z`);
+    await exigirPeriodoAberto(tx, input.propriedadeId, data);
+    const validade = input.validade ? new Date(`${input.validade}T00:00:00Z`) : null;
+    const identificada = await tx.partidaProduto.upsert({ where: { produtoId_codigo: { produtoId: produto.id, codigo: input.codigo } }, create: { produtoId: produto.id, codigo: input.codigo, validade }, update: {} });
+    if (identificada.validade?.getTime() !== validade?.getTime()) throw new EstoqueError("CONFLITO", "Validade diverge da partida identificada");
+    const base = await obterBaseCusto(tx, produto.id, input.propriedadeId);
+    const { custoUnitario, valorTotal: valor } = valorSaidaDaBase(quantidade, base);
+    const movimentos = [];
+    for (const [partidaId, sinal] of [[legado.id, -1], [identificada.id, 1]] as const) {
+      movimentos.push(await tx.movimentoEstoque.create({ data: { produtoId: produto.id, propriedadeId: input.propriedadeId, data, tipo: "AJUSTE", origem: "IDENTIFICACAO_PARTIDA", quantidade: quantidade.mul(sinal), custoUnitario, valorTotal: valor.mul(sinal), criadoPorId: usuarioId, observacao: `Identificação de legado: ${input.motivo}`, alocacaoPartidaEstoques: { create: { partidaId, quantidade: quantidade.mul(sinal) } } } }));
+    }
+    await tx.auditoriaFinanceira.create({ data: { entidade: "Produto", entidadeId: produto.id, acao: "IDENTIFICAR_ESTOQUE_LEGADO", usuarioId, estadoAnterior: { partidaId: legado.id }, estadoPosterior: { chave: input.chave, hash, propriedadeId: input.propriedadeId, partidaId: identificada.id, quantidade: quantidade.toString(), motivo: input.motivo, movimentos: movimentos.map((m) => m.id), quantidadeLiquida: "0", valorLiquido: "0" } } });
+    return { partidaId: identificada.id, movimentos: movimentos.map((m) => m.id) };
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 }

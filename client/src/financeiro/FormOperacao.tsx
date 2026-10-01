@@ -1,4 +1,5 @@
 import { type ChangeEvent, type FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { SelecaoPartidas, type DistribuicaoPartida } from "../estoque/SelecaoPartidas";
 import { CircleAlert, FileText, Loader2, Paperclip, Plus, Trash2, Wand2 } from "lucide-react";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { Popover, PopoverContent, PopoverTrigger } from "../components/ui/popover";
@@ -15,7 +16,7 @@ import { codigoOperacao } from "../estoque/navegacao";
 
 type Condicao = "A_VISTA" | "A_PRAZO" | "PARCIAL" | "SEM_EFEITO_FINANCEIRO";
 type ModoValor = "UNITARIO" | "TOTAL";
-type ItemForm = { categoriaId: string; classificacao: string; centroCustoId: string; id: number; produtoId: string; descricao: string; quantidade: string; unidade: string; modoValor: ModoValor; valorUnitario: string; valorTotal: string };
+type ItemForm = { categoriaId: string; classificacao: string; centroCustoId: string; id: number; produtoId: string; descricao: string; quantidade: string; unidade: string; modoValor: ModoValor; valorUnitario: string; valorTotal: string; partidas?: DistribuicaoPartida[] };
 type ParcelaForm = { id: number; valor: string; vencimento: string };
 type AnexoForm = { id: number; arquivo: File; tipo: string; numero: string };
 type AnexoEnviando = { id: number; nome: string; tamanho: number };
@@ -152,6 +153,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   const [simulacao, setSimulacao] = useState<{ assinatura: string; resultado: SimulacaoParcelas } | null>(null);
   // Ajuste de estoque: o saldo lido (`saldos`) é o `saldoEsperado` enviado; se ele
   // mudar no servidor antes da confirmação, o POST responde CONFLITO.
+  const [partidasAjuste, setPartidasAjuste] = useState<DistribuicaoPartida[]>([]);
   const [ajusteProdutoId, setAjusteProdutoId] = useState(produtoInicial ?? "");
   const [quantidadeContada, setQuantidadeContada] = useState("");
   const [saldos, setSaldos] = useState<SaldoDTO[] | null>(null);
@@ -262,7 +264,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
       itens: comItens ? itens.map((item) => {
         const produto = config.produtos.find((produtoAtual) => produtoAtual.id === item.produtoId);
         const centroEfetivo = porItem ? item.centroCustoId : "";
-        return { categoriaId: item.categoriaId || null, classificacao: item.classificacao || null, centroCustoId: centroEfetivo || null, produtoId: item.produtoId || undefined, descricao: item.descricao.trim(), quantidade: item.quantidade, unidade: item.unidade || (produto ? rotuloUnidade(produto.unidade) : "un"), ...(item.modoValor === "TOTAL" ? { valorTotal: item.valorTotal } : { valorUnitario: item.valorUnitario }), estocavel: movimentaEstoque && !!item.produtoId };
+        return { categoriaId: item.categoriaId || null, classificacao: item.classificacao || null, centroCustoId: centroEfetivo || null, produtoId: item.produtoId || undefined, descricao: item.descricao.trim(), quantidade: item.quantidade, unidade: item.unidade || (produto ? rotuloUnidade(produto.unidade) : "un"), ...(item.modoValor === "TOTAL" ? { valorTotal: item.valorTotal } : { valorUnitario: item.valorUnitario }), partidas: item.partidas, estocavel: movimentaEstoque && !!item.produtoId };
       }) : [], financeiro,
     };
   }, [classificacao, categoriaId, centroCustoId, porItem, comItens, condicao, config.produtos, contaId, data, descricao, formaPagamento, itens, movimentaEstoque, operacaoBase?.id, parceiroId, parcelas, tipo, valorAgora, valorOperacao]);
@@ -374,7 +376,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   const alterarProduto = (id: number, produtoId: string) => {
     const produto = config.produtos.find((item) => item.id === produtoId);
     const categoria = categorias.find((c) => c.id === produto?.categoriaId);
-    atualizarItem(id, produto ? { produtoId, descricao: produto.nome, unidade: rotuloUnidade(produto.unidade), valorUnitario: "", categoriaId: String(categoria?.id ?? ""), classificacao: categoria?.classificacao ?? "", centroCustoId: centroUnicoDoProduto(produtoId) } : { produtoId, categoriaId: "", classificacao: "", centroCustoId: "" });
+    atualizarItem(id, produto ? { partidas: undefined, produtoId, descricao: produto.nome, unidade: rotuloUnidade(produto.unidade), valorUnitario: "", categoriaId: String(categoria?.id ?? ""), classificacao: categoria?.classificacao ?? "", centroCustoId: centroUnicoDoProduto(produtoId) } : { partidas: undefined, produtoId, categoriaId: "", classificacao: "", centroCustoId: "" });
     setUltimosPrecos(({ [id]: _descartado, ...resto }) => resto);
     setCustosMedios(({ [id]: _descartado, ...resto }) => resto);
     setSugestaoValor(({ [id]: _descartado, ...resto }) => resto);
@@ -541,7 +543,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
     setSalvando(true);
     try {
       if (ehAjuste && saldoProduto) {
-        const resultado = await registrarAjusteEstoque({ produtoId: saldoProduto.produtoId, quantidadeContada: contadaMilesimos / 1000, saldoEsperado: Math.round(saldoProduto.saldo * 1000) / 1000, observacao: descricao.trim(), centroCustoId: centroCustoId || undefined });
+        const resultado = await registrarAjusteEstoque({ produtoId: saldoProduto.produtoId, quantidadeContada: contadaMilesimos / 1000, saldoEsperado: Math.round(saldoProduto.saldo * 1000) / 1000, observacao: descricao.trim(), centroCustoId: centroCustoId || undefined, ...(partidasAjuste.length ? { partidas: partidasAjuste.map((p) => ({ ...p, quantidade: Number(p.quantidade) * (diferencaMilesimos! < 0 ? -1 : 1) })) } : {}) });
         onSalvo({ id: resultado.operacaoId });
         return;
       }
@@ -608,11 +610,12 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
     {ajusteConsolidado ? <p role="alert" className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm leading-5 text-amber-950">Selecione uma fazenda no seletor do topo para ajustar o estoque — o ajuste é feito em uma fazenda por vez.</p> : <>
     <p className="mb-4 max-w-2xl text-xs leading-5 text-ink-3">Informe a quantidade realmente contada. O sistema calcula a diferença contra o saldo atual e registra o ajuste, sem efeito financeiro, na data de hoje.</p>
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-      <label className="text-sm font-medium">Produto *<select id="campo-ajusteProduto" aria-label="Produto" aria-invalid={campoInvalido === "ajusteProduto" || undefined} aria-describedby={campoInvalido === "ajusteProduto" ? "erro-ajusteProduto" : undefined} required disabled={saldosCarregando && saldos === null} className={SELECT + classeCampoErro("ajusteProduto")} value={ajusteProdutoId} onChange={(e) => { setAjusteProdutoId(e.target.value); limparCampoInvalido("ajusteProduto"); }}><option value="">{saldosCarregando && saldos === null ? "Carregando saldos…" : "Selecione"}</option>{saldos?.map((saldo) => <option key={saldo.produtoId} value={saldo.produtoId}>{saldo.nome}</option>)}</select>{campoInvalido === "ajusteProduto" && <CampoErro id="erro-ajusteProduto">Selecione o produto que será contado.</CampoErro>}</label>
+      <label className="text-sm font-medium">Produto *<select id="campo-ajusteProduto" aria-label="Produto" aria-invalid={campoInvalido === "ajusteProduto" || undefined} aria-describedby={campoInvalido === "ajusteProduto" ? "erro-ajusteProduto" : undefined} required disabled={saldosCarregando && saldos === null} className={SELECT + classeCampoErro("ajusteProduto")} value={ajusteProdutoId} onChange={(e) => { setAjusteProdutoId(e.target.value); setPartidasAjuste([]); limparCampoInvalido("ajusteProduto"); }}><option value="">{saldosCarregando && saldos === null ? "Carregando saldos…" : "Selecione"}</option>{saldos?.map((saldo) => <option key={saldo.produtoId} value={saldo.produtoId}>{saldo.nome}</option>)}</select>{campoInvalido === "ajusteProduto" && <CampoErro id="erro-ajusteProduto">Selecione o produto que será contado.</CampoErro>}</label>
       <div className="text-sm font-medium">Saldo atual<div className="mt-1.5 flex items-center gap-3"><output aria-label="Saldo atual" className="inline-flex min-h-[42px] flex-1 items-center rounded-lg border border-[#e5dfd0] bg-[#f0ede4] px-3 py-2.5 font-normal text-ink">{saldoProduto ? `${fmtQuantidade(saldoProduto.saldo)} ${unidadeAjuste}` : "—"}</output><button type="button" disabled={saldosCarregando} onClick={() => { void carregarSaldos(); }} className="whitespace-nowrap text-xs font-semibold text-[#4d5a47] underline underline-offset-2 disabled:opacity-50">{saldosCarregando ? "Atualizando…" : "Atualizar saldo"}</button></div></div>
       <label className="text-sm font-medium">Quantidade contada *<div className="mt-1.5 flex"><input id="campo-quantidadeContada" aria-label="Quantidade contada" aria-invalid={campoInvalido === "quantidadeContada" || undefined} aria-describedby={campoInvalido === "quantidadeContada" ? "erro-quantidadeContada" : undefined} required min="0" max={MAX_QTD_AJUSTE} step="0.001" type="number" className={`min-w-0 flex-1 rounded-l-lg border border-[#d8cfbb] bg-white px-3 py-2.5 font-normal outline-none focus:border-[#6f7d68] focus:ring-2 focus:ring-[#6f7d68]/15${classeCampoErro("quantidadeContada")}`} value={quantidadeContada} onChange={(e) => { setQuantidadeContada(e.target.value); limparCampoInvalido("quantidadeContada"); }} /><span aria-hidden className="inline-flex min-w-14 items-center justify-center rounded-r-lg border border-l-0 border-[#d8cfbb] bg-[#f0ede4] px-3 text-sm text-ink-3">{unidadeAjuste || "un"}</span></div>{campoInvalido === "quantidadeContada" && <CampoErro id="erro-quantidadeContada">{quantidadeContada.trim() === "" ? "Informe a quantidade contada." : "Informe um número entre 0 e 999.999.999,999, com até 3 casas decimais."}</CampoErro>}</label>
     </div>
     <div role="status" aria-label="Diferença do ajuste" className={`mt-4 rounded-lg border px-4 py-3 text-sm ${ajusteSemDiferenca ? "border-amber-200 bg-amber-50 text-amber-950" : "border-[#e5dfd0] bg-[#faf9f4]"}`}>{diferencaMilesimos === null ? <span className="text-ink-3">Selecione o produto e informe a quantidade contada para ver a diferença.</span> : ajusteSemDiferenca ? <strong>Nenhum ajuste necessário: a quantidade contada é igual ao saldo atual.</strong> : <>Diferença: <strong>{fmtDiferenca(diferencaMilesimos / 1000)} {unidadeAjuste}</strong> <span className="text-ink-3">({diferencaMilesimos > 0 ? "entrada" : "saída"} de ajuste)</span></>}</div>
+    {config.produtos.find((p) => p.id === ajusteProdutoId)?.rastrearPartidas && diferencaMilesimos != null && diferencaMilesimos !== 0 && <><p className="mt-3 text-sm">Distribua somente a diferença absoluta {Math.abs(diferencaMilesimos) / 1000} {unidadeAjuste}. Saídas preservam as partidas selecionadas; o sinal será aplicado ao ajuste.</p><SelecaoPartidas produtoId={ajusteProdutoId} saida={diferencaMilesimos < 0} valor={partidasAjuste} onChange={setPartidasAjuste} /></>}
     {saldosErro && <CampoErro className="mt-3">{saldosErro}</CampoErro>}
     <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">{campoDescricao}</div>
     </>}
@@ -638,7 +641,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
             {!ehAjuste && campoDescricao}
           </div>
         </section>
-        {ehAjuste ? secaoAjuste : comItens ? <ItensOperacao itens={itens} setItens={setItens} config={config} ultimosPrecos={ultimosPrecos} custosMedios={custosMedios} movimentaEstoque={movimentaEstoque} atualizarItem={atualizarItem} alterarProduto={alterarProduto} itemInvalidoId={itemInvalidoId} porItem={porItem} centroCustoOperacao={centroCustoId} campoInvalido={campoInvalido} limparCampoInvalido={limparCampoInvalido} /> :<section><h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Valor do serviço</h3><label className="block max-w-xs text-sm font-medium">Valor total *<input id="campo-valorOperacao" aria-label="Valor total da operação" aria-invalid={campoInvalido === "valorOperacao" || undefined} aria-describedby={campoInvalido === "valorOperacao" ? "erro-valorOperacao" : undefined} required min="0.01" step="0.01" type="number" className={CAMPO + classeCampoErro("valorOperacao")} value={valorOperacao} onChange={(e) => { setValorOperacao(e.target.value); limparCampoInvalido("valorOperacao"); }} onBlur={(e) => setValorOperacao(normalizarMoeda(e.target.value))} />{campoInvalido === "valorOperacao" && <CampoErro id="erro-valorOperacao">Informe um valor total maior que zero.</CampoErro>}</label></section>}
+        {ehAjuste ? secaoAjuste : comItens ? <ItensOperacao itens={itens} setItens={setItens} config={config} ultimosPrecos={ultimosPrecos} custosMedios={custosMedios} movimentaEstoque={movimentaEstoque} saidaEstoque={tipo === "VENDA" || tipo === "DEVOLUCAO"} atualizarItem={atualizarItem} alterarProduto={alterarProduto} itemInvalidoId={itemInvalidoId} porItem={porItem} centroCustoOperacao={centroCustoId} campoInvalido={campoInvalido} limparCampoInvalido={limparCampoInvalido} /> :<section><h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Valor do serviço</h3><label className="block max-w-xs text-sm font-medium">Valor total *<input id="campo-valorOperacao" aria-label="Valor total da operação" aria-invalid={campoInvalido === "valorOperacao" || undefined} aria-describedby={campoInvalido === "valorOperacao" ? "erro-valorOperacao" : undefined} required min="0.01" step="0.01" type="number" className={CAMPO + classeCampoErro("valorOperacao")} value={valorOperacao} onChange={(e) => { setValorOperacao(e.target.value); limparCampoInvalido("valorOperacao"); }} onBlur={(e) => setValorOperacao(normalizarMoeda(e.target.value))} />{campoInvalido === "valorOperacao" && <CampoErro id="erro-valorOperacao">Informe um valor total maior que zero.</CampoErro>}</label></section>}
         <section><h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Classificação</h3>
           {comItens && <div role="radiogroup" aria-label="Modo do centro de custo" className="mb-4 flex flex-wrap items-center gap-5 text-sm font-medium">
             <span className="text-ink-3">Centro de custo:</span>
@@ -673,7 +676,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   </div>;
 }
 
-function ItensOperacao({ itens, setItens, config, ultimosPrecos, custosMedios, movimentaEstoque, atualizarItem, alterarProduto, itemInvalidoId, porItem, centroCustoOperacao, campoInvalido, limparCampoInvalido }: { itens: ItemForm[]; setItens: React.Dispatch<React.SetStateAction<ItemForm[]>>; config: ConfiguracoesFinanceiras; ultimosPrecos: Record<number, UltimoPrecoDTO & { produtoId: string }>; custosMedios: Record<number, number | null>; movimentaEstoque: boolean; atualizarItem: (id: number, patch: Partial<ItemForm>) => void; alterarProduto: (id: number, produtoId: string) => void; itemInvalidoId: number | null; porItem: boolean; centroCustoOperacao: string; campoInvalido: string | null; limparCampoInvalido: (campo: string) => void }) {
+function ItensOperacao({ itens, setItens, config, ultimosPrecos, custosMedios, movimentaEstoque, saidaEstoque, atualizarItem, alterarProduto, itemInvalidoId, porItem, centroCustoOperacao, campoInvalido, limparCampoInvalido }: { itens: ItemForm[]; setItens: React.Dispatch<React.SetStateAction<ItemForm[]>>; config: ConfiguracoesFinanceiras; ultimosPrecos: Record<number, UltimoPrecoDTO & { produtoId: string }>; custosMedios: Record<number, number | null>; movimentaEstoque: boolean; saidaEstoque: boolean; atualizarItem: (id: number, patch: Partial<ItemForm>) => void; alterarProduto: (id: number, produtoId: string) => void; itemInvalidoId: number | null; porItem: boolean; centroCustoOperacao: string; campoInvalido: string | null; limparCampoInvalido: (campo: string) => void }) {
   return <section>
     <div className="mb-4 flex items-center justify-between gap-3"><div><h3 className="text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Itens da operação</h3><p className="mt-1 text-xs text-ink-3">Informe o valor unitário ou alterne para o valor total de cada item.</p></div><Button type="button" secondary onClick={() => setItens((atuais) => [...atuais, novoItem()])}><Plus size={15} /> Adicionar item</Button></div>
     <div className="space-y-3">{itens.map((item, indice) => {
@@ -685,6 +688,7 @@ function ItensOperacao({ itens, setItens, config, ultimosPrecos, custosMedios, m
       const campoCentro = `itens.${indice}.centroCustoId`;
       const centroInvalido = campoInvalido === campoCentro;
       return <div key={item.id} id={`item-${item.id}`} tabIndex={-1} className={`rounded-xl border p-4 outline-none ${invalido ? "border-red-400 bg-red-50/40 ring-2 ring-red-200" : "border-border bg-[#faf9f4]"}`}>
+        {movimentaEstoque && produto?.rastrearPartidas && <SelecaoPartidas produtoId={produto.id} saida={saidaEstoque} valor={item.partidas ?? []} onChange={(partidas) => atualizarItem(item.id, { partidas })} />}
         <div className="mb-3 flex items-center justify-between"><strong className="text-sm">Item {indice + 1}</strong>{itens.length > 1 && <button type="button" aria-label={`Remover item ${indice + 1}`} onClick={() => setItens((atuais) => atuais.filter((atual) => atual.id !== item.id))} className="rounded-lg p-1.5 text-red-700 hover:bg-red-50"><Trash2 size={16} /></button>}</div>
         {invalido && <CampoErro className="mb-3">Preencha a descrição, a quantidade{movimentaEstoque ? " e o produto" : ""} deste item.</CampoErro>}
         <div className="grid gap-4 md:grid-cols-[minmax(200px,0.8fr)_minmax(0,2fr)]">

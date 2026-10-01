@@ -269,7 +269,7 @@ export async function criarOperacao(talhaoId: number, input: CriarOperacaoInput,
     const movimento = await planejarMovimento(tx, input, talhao, data, propriedadeId);
     semEstoque = movimento?.semEstoque ?? false;
     const distribuicao = movimento?.plano ? await prepararPartidasTx(tx, { produtoId: movimento.produto.id,
-      rastrearPartidas: movimento.produto.rastrearPartidas, propriedadeId, tipo: "SAIDA", quantidade: movimento.plano.quantidade, partidas: input.partidas }) : [];
+      rastrearPartidas: movimento.produto.rastrearPartidas, propriedadeId, tipo: "SAIDA", data: movimento.plano.data, quantidade: movimento.plano.quantidade, partidas: input.partidas }) : [];
     const mov = movimento?.plano ? await tx.movimentoEstoque.create({ data: { ...movimento.plano, criadoPorId: usuarioId,
       ...(distribuicao.length ? { alocacaoPartidaEstoques: { create: distribuicao.map((p) => ({ partidaId: p.partidaId, quantidade: p.quantidade })) } } : {}),
     } }) : null;
@@ -386,7 +386,7 @@ export async function editarOperacao(operacaoId: number, input: EditarOperacaoIn
         await estornarMovimentoTx(tx, anterior.id, { usuarioId, observacao: `Estorno: operação agrícola #${operacaoId} editada` });
       }
       const distribuicao = await prepararPartidasTx(tx, { produtoId: plano.produtoId,
-        rastrearPartidas: movimento!.produto.rastrearPartidas, propriedadeId, tipo: "SAIDA", quantidade: plano.quantidade, partidas: input.partidas });
+        rastrearPartidas: movimento!.produto.rastrearPartidas, propriedadeId, tipo: "SAIDA", data: plano.data, quantidade: plano.quantidade, partidas: input.partidas });
       const criado = await tx.movimentoEstoque.create({ data: { ...plano, criadoPorId: usuarioId,
         ...(distribuicao.length ? { alocacaoPartidaEstoques: { create: distribuicao.map((p) => ({ partidaId: p.partidaId, quantidade: p.quantidade })) } } : {}),
       } });

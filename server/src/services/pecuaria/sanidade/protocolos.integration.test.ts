@@ -4,8 +4,9 @@ import { prisma } from "../../../db.js";
 import { cadastrar } from "../rebanho/animais.js";
 import { cadastrarAnimalSchema } from "../rebanho/schemas.js";
 import { hojeFazenda } from "../rebanho/regras.js";
-import { criarTipoExame, registrarExame } from "./exames.js";
-import { criarProtocolo, iniciarExecucao, listarTarefas, publicarProtocolo } from "./protocolos.js";
+import { criarTipoExame, registrarExame, registrarExameColetivo } from "./exames.js";
+import { criarProtocolo, iniciarExecucao, iniciarExecucaoColetivo, listarTarefas, publicarProtocolo } from "./protocolos.js";
+import { salvarRateio } from "./rateios.js";
 
 const describeComBanco = process.env.PECUARIA_DB_INTEGRATION === "1" ? describe : describe.skip;
 const run = crypto.randomUUID().slice(0, 8);
@@ -14,9 +15,11 @@ const animalIds: string[] = [];
 const protocoloIds: string[] = [];
 const tipoIds: string[] = [];
 const execucaoIds: string[] = [];
+const servicoIds: string[] = [];
 
 afterAll(async () => {
   if (!propriedadeIds.length) return;
+  await prisma.requisicaoPecuaria.deleteMany({ where: { propriedadeId: { in: propriedadeIds } } });
   await prisma.auditoriaPecuaria.deleteMany({ where: { OR: [
     { animalId: { in: animalIds } }, { entidadeId: { in: [...protocoloIds, ...tipoIds, ...execucaoIds] } },
   ] } });
@@ -29,6 +32,7 @@ afterAll(async () => {
   await prisma.destinoAnimal.deleteMany({ where: { animalId: { in: animalIds } } });
   await prisma.localizacaoAnimal.deleteMany({ where: { animalId: { in: animalIds } } });
   await prisma.animal.deleteMany({ where: { id: { in: animalIds } } });
+  await prisma.operacao.deleteMany({ where: { id: { in: servicoIds } } });
   await prisma.propriedade.deleteMany({ where: { id: { in: propriedadeIds } } });
 });
 
@@ -46,14 +50,47 @@ describeComBanco("protocolo e exame com PostgreSQL", () => {
     await publicarProtocolo(protocolo.id, null);
     const antes = await prisma.movimentoEstoque.count();
     const data = hojeFazenda();
-    const execucao = await iniciarExecucao({ protocoloId: protocolo.id, animalId: animal.id, propriedadeId: propriedade.id, inicio: data }, null);
+    const servico = await prisma.operacao.create({ data: { tipo: "SERVICO", status: "CONFIRMADA", data: new Date(data), valorTotal: 1000, propriedadeId: propriedade.id } });
+    servicoIds.push(servico.id);
+    const execucao = await iniciarExecucao({ protocoloId: protocolo.id, animalId: animal.id, propriedadeId: propriedade.id, inicio: data, operacaoServicoId: servico.id }, null);
     execucaoIds.push(execucao.id);
     expect(execucao.tarefas).toHaveLength(1);
     expect((await listarTarefas(propriedade.id, animal.id))[0].situacao).toBe("PENDENTE");
     expect(await prisma.movimentoEstoque.count()).toBe(antes);
-    await registrarExame({ animalId: animal.id, propriedadeId: propriedade.id, tipoExameId: tipo.id, data,
+    const exame = await registrarExame({ animalId: animal.id, propriedadeId: propriedade.id, tipoExameId: tipo.id, data,
       resultadoOpcao: "NEGATIVO", tarefaId: execucao.tarefas[0].id }, null);
+    await salvarRateio({ servicoId: servico.id, propriedadeId: propriedade.id, tipo: "PROTOCOLO", id: execucao.id, valor: "100", motivo: "Rateio do atendimento completo" }, null);
+    await expect(salvarRateio({ servicoId: servico.id, propriedadeId: propriedade.id, tipo: "EXAME", id: exame.id, valor: "10", motivo: "Tentativa de duplicar protocolo e exame" }, null)).rejects.toThrow(/protocolo e/);
+    await salvarRateio({ servicoId: servico.id, propriedadeId: propriedade.id, tipo: "PROTOCOLO", id: execucao.id, valor: null, motivo: "Retirar antes de atribuir aos fatos" }, null);
+    await salvarRateio({ servicoId: servico.id, propriedadeId: propriedade.id, tipo: "EXAME", id: exame.id, valor: "100", motivo: "Atribuição ao exame confirmado" }, null);
     expect((await listarTarefas(propriedade.id, animal.id))[0].situacao).toBe("REALIZADA");
     expect(await prisma.movimentoEstoque.count()).toBe(antes);
+  });
+  it("coletivos de protocolos e exames são atômicos e o reenvio não duplica fatos", async () => {
+    const propriedadeId = propriedadeIds[0];
+    const animalId = animalIds[0];
+    const data = hojeFazenda();
+    const segundo = await cadastrar(cadastrarAnimalSchema.parse({ brinco: `PC${run}`, sexo: "M", origem: "COMPRADO", aptidao: "CORTE", dataNascimento: "2024-01-01", dataEntrada: "2026-08-01", propriedadeId }), null);
+    animalIds.push(segundo.id);
+    const protocolo = { protocoloId: protocoloIds[0], animalId, propriedadeId, inicio: data };
+    const exame = { animalId, propriedadeId, tipoExameId: tipoIds[0], data };
+    const chaveProtocolo = crypto.randomUUID();
+    const chaveExame = crypto.randomUUID();
+    const antesP = await prisma.execucaoProtocoloSanitario.count({ where: { animalId } });
+    const antesE = await prisma.exameAnimal.count({ where: { animalId } });
+    const invalidosP = { chave: crypto.randomUUID(), propriedadeId, itens: [protocolo, { ...protocolo, animalId: segundo.id, protocoloId: crypto.randomUUID() }] };
+    const invalidosE = { chave: crypto.randomUUID(), propriedadeId, itens: [exame, { ...exame, animalId: segundo.id, tipoExameId: crypto.randomUUID() }] };
+    await expect(iniciarExecucaoColetivo(invalidosP, null)).rejects.toThrow();
+    await expect(registrarExameColetivo(invalidosE, null)).rejects.toThrow();
+    expect(await prisma.execucaoProtocoloSanitario.count({ where: { animalId } })).toBe(antesP);
+    expect(await prisma.exameAnimal.count({ where: { animalId } })).toBe(antesE);
+    const p = { chave: chaveProtocolo, propriedadeId, itens: [protocolo] };
+    const e = { chave: chaveExame, propriedadeId, itens: [exame] };
+    expect(await iniciarExecucaoColetivo(p, null)).toEqual(await iniciarExecucaoColetivo(p, null));
+    expect(await registrarExameColetivo(e, null)).toEqual(await registrarExameColetivo(e, null));
+    expect(await prisma.execucaoProtocoloSanitario.count({ where: { animalId } })).toBe(antesP + 1);
+    expect(await prisma.exameAnimal.count({ where: { animalId } })).toBe(antesE + 1);
+    const execucoes = await prisma.execucaoProtocoloSanitario.findMany({ where: { animalId }, select: { id: true } });
+    execucaoIds.push(...execucoes.map((v) => v.id).filter((id) => !execucaoIds.includes(id)));
   });
 });

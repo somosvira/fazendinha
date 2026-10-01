@@ -12,10 +12,12 @@ vi.mock("./novo-api", () => ({
 }));
 class ResizeObserverMock { observe() {} unobserve() {} disconnect() {} }
 beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-09-14T12:00:00-03:00"));
   vi.stubGlobal("ResizeObserver", ResizeObserverMock);
   if (!window.HTMLElement.prototype.scrollIntoView) window.HTMLElement.prototype.scrollIntoView = () => {};
 });
-afterEach(() => { cleanup(); vi.clearAllMocks(); vi.unstubAllGlobals(); });
+afterEach(() => { cleanup(); vi.useRealTimers(); vi.clearAllMocks(); vi.unstubAllGlobals(); });
 
 const cadastros: ConfiguracoesFinanceiras = {
   contas: [], parceiros: [], produtos: [],

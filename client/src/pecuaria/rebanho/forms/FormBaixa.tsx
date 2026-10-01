@@ -3,7 +3,8 @@
 // cancelamento de OperacaoFinanceiraDetalhe.tsx — por isso é um Modal, não
 // o ModalMotivo genérico (aqui há mais campos que só o motivo).
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { consultarCarencia, type CarenciaAnimal } from "../sanidade/api";
 import { darBaixaAnimal, RebanhoApiError } from "../api";
 import type { AnimalFicha, CatalogoMotivoBaixa, TipoBaixa } from "../types";
 import { CLASSES_POR_TIPO, rotuloClasseMotivo, rotuloTipoBaixa } from "../lib/rotulos";
@@ -23,6 +24,10 @@ export function FormBaixa({ animal, motivos, onSalvo, onFechar }: {
   const [tipo, setTipo] = useState<TipoBaixa>("VENDA");
   const [motivoId, setMotivoId] = useState("");
   const [observacao, setObservacao] = useState("");
+  const [carencias, setCarencias] = useState<CarenciaAnimal | null>(null);
+  const [ciente, setCiente] = useState(false);
+  const [justificativa, setJustificativa] = useState("");
+  useEffect(() => { let vivo = true; consultarCarencia(animal.id).then((c) => { if (vivo) setCarencias(c); }).catch((e: unknown) => { if (vivo) setErroGeral(e instanceof Error ? e.message : String(e)); }); return () => { vivo = false; }; }, [animal.id]);
   const [erroGeral, setErroGeral] = useState<string | null>(null);
   const [erroData, setErroData] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
@@ -43,7 +48,7 @@ export function FormBaixa({ animal, motivos, onSalvo, onFechar }: {
     if (emCurso.current) return;
     emCurso.current = true; setSalvando(true); setErroGeral(null); setErroData(null);
     try {
-      const atualizado = await darBaixaAnimal(animal.id, { data, tipo, motivoId: motivoId || null, observacao: observacao.trim() || null });
+      const atualizado = await darBaixaAnimal(animal.id, { data, tipo, motivoId: motivoId || null, observacao: observacao.trim() || null, ...(ciente ? { cienciaSanitaria: true, justificativaSanitaria: justificativa.trim() || null } : {}) });
       await onSalvo(atualizado);
     } catch (falha) {
       if (falha instanceof RebanhoApiError && falha.campo === "data") setErroData(falha.message);
@@ -54,6 +59,7 @@ export function FormBaixa({ animal, motivos, onSalvo, onFechar }: {
   return <Modal titulo="Dar baixa" eyebrow={`Animal ${animal.brinco}`} onClose={() => { if (!salvando) onFechar(); }} width="max-w-2xl">
     <div className="p-6">
       <ErrorBox erro={erroGeral} />
+      {["VENDA", "ABATE"].includes(tipo) && <section className="mt-3 grid gap-2 rounded-lg border border-amber-200 p-3 text-sm"><h3 className="font-semibold">Conferência sanitária</h3>{carencias ? (["leite", "carne"] as const).map((destino) => { const p = carencias[destino]; return <p key={destino}>{destino === "leite" ? "Leite" : "Abate/carne"}: {p.estado === "CONHECIDO" ? `até ${new Date(p.ate).toLocaleString("pt-BR")}` : p.estado === "NAO_INFORMADO" ? "Prazo desconhecido — exige ciência" : p.estado === "NAO_APLICAVEL" ? "Não se aplica" : "Sem aplicações ativas"}</p>; }) : <p>Consultando carências…</p>}<label className="flex gap-2"><input type="checkbox" checked={ciente} onChange={(e) => setCiente(e.target.checked)} /> Estou ciente das restrições sanitárias apresentadas.</label>{ciente && <label>Justificativa para a baixa diante das restrições<textarea maxLength={500} minLength={5} value={justificativa} onChange={(e) => setJustificativa(e.target.value)} className={classeInput} /></label>}<p className="text-xs text-ink-3">O servidor revalidará as carências na confirmação. A ciência e a justificativa ficam na auditoria.</p></section>}
       <div className="mt-2 space-y-2 rounded-xl border border-red-200 bg-red-50/60 p-4 text-sm text-red-950">
         <p>• O animal {animal.brinco} deixará de ser contado como ativo no rebanho.</p>
         <p>• A baixa pode ser estornada depois, reabrindo o animal.</p>

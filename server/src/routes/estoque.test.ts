@@ -51,7 +51,7 @@ vi.mock("../services/financeiro/parceiros.js", () => ({ listarParceiros: mocks.l
 import { estoqueRouter } from "./estoque.js";
 
 const base = { id: 7, nome: "Peão", email: "p@x", papel: "OPERADOR", abas: [], areas: ["pecuaria"], status: "ATIVO", dono: false };
-const semLancar = { ...base, flags: ["verValores"] };
+const semLancar = { ...base, areas: ["pecuaria", "financeiro"], flags: ["verValores"] };
 const comLancar = { ...base, flags: ["lancar"] };
 const soAgricultura = { ...base, id: 9, areas: ["agricultura"], flags: ["verValores"] };
 
@@ -107,6 +107,13 @@ describe("escritas exigem a flag lancar", () => {
 });
 
 describe("GET /estoque/saldos", () => {
+  it("oculta custos sem Financeiro ou sem verValores, mantendo o saldo físico", async () => {
+    mocks.listarSaldos.mockResolvedValue([{ produtoId: uid(1), saldo: 40, custoMedio: 2, valor: 80 }]);
+    for (const usuario of [{ ...base, flags: ["verValores"] }, { ...base, areas: ["financeiro"], flags: [] }]) {
+      const res = await appCom(usuario).request("/estoque/saldos");
+      expect(await res.json()).toEqual([{ produtoId: uid(1), saldo: 40, custoMedio: null, valor: null }]);
+    }
+  });
   it("lê sem flag lancar (gate de área fica no app)", async () => {
     const res = await appCom(semLancar).request(`/estoque/saldos?centroCustoId=${SEM_VINCULO}`);
     expect(res.status).toBe(200);
@@ -124,6 +131,12 @@ describe("GET /estoque/saldos", () => {
 });
 
 describe("GET /estoque/movimentos", () => {
+  it("mantém partidas e quantidades, mas não expõe custos sem permissão financeira", async () => {
+    const partidas = [{ partidaId: uid(2), quantidade: "10" }];
+    mocks.listarMovimentos.mockResolvedValue({ itens: [{ quantidade: 10, custoUnitario: 2, valorTotal: 20, partidas }], total: 1 });
+    const res = await appCom({ ...base, flags: [] }).request("/estoque/movimentos");
+    expect(await res.json()).toEqual({ itens: [{ quantidade: 10, custoUnitario: null, valorTotal: null, partidas }], total: 1 });
+  });
   it.each(["abc", "-1", "1.5"])("produtoId=%s → 400", async (v) => {
     const res = await appCom(semLancar).request(`/estoque/movimentos?produtoId=${v}`);
     expect(res.status).toBe(400);

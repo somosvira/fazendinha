@@ -10,25 +10,28 @@ export async function listarDietas() {
 }
 
 export async function criarDieta(input: { nome: string; observacao?: string | null;
-  itens: Array<{ produtoId: string; quantidadeCabecaDia: number }> }, usuarioId: number | null) {
+  itens: Array<{ produtoId: string; quantidadeCabecaDia: number }> }, usuarioId: number | null, id?: string) {
   if (!input.itens.length || new Set(input.itens.map((i) => i.produtoId)).size !== input.itens.length) {
     throw new RebanhoError("VALIDACAO", "Informe ingredientes sem repetição", "itens");
   }
   return prisma.$transaction(async (tx) => {
+    const existente = id ? await tx.dieta.findUnique({ where: { id }, include: { itens: true } }) : null;
+    if (id && !existente) throw new RebanhoError("NAO_ENCONTRADO", "Dieta não encontrada");
+    if (existente?.publicadaEm) throw new RebanhoError("CONFLITO", "Versão publicada é imutável; crie nova versão");
     const ultima = await tx.dieta.findFirst({ where: { nome: input.nome.trim() }, orderBy: { versao: "desc" } });
     const itens = [];
     for (const item of input.itens) {
       if (!Number.isFinite(item.quantidadeCabecaDia) || item.quantidadeCabecaDia <= 0 || new Prisma.Decimal(item.quantidadeCabecaDia).decimalPlaces() > 3) {
         throw new RebanhoError("VALIDACAO", "Quantidade por cabeça/dia inválida", "itens");
       }
-      const produto = await tx.produto.findFirst({ where: { id: item.produtoId, ativo: true }, include: { perfilNutricionalProduto: true } });
+      const produto = await tx.produto.findFirst({ where: { id: item.produtoId, ativo: true, categoria: { usoNutricional: true } }, include: { perfilNutricionalProduto: true } });
       if (!produto) throw new RebanhoError("VALIDACAO", "Ingrediente não encontrado", "itens");
       itens.push({ produtoId: produto.id, quantidadeCabecaDia: new Prisma.Decimal(item.quantidadeCabecaDia),
         unidade: produto.unidade, materiaSecaPercentualSnapshot: produto.perfilNutricionalProduto?.materiaSecaPercentual ?? null });
     }
-    const dieta = await tx.dieta.create({ data: { nome: input.nome.trim(), versao: (ultima?.versao ?? 0) + 1,
-      observacao: input.observacao?.trim() || null, itens: { create: itens } }, include: { itens: true } });
-    await auditar(tx, { entidade: "Dieta", entidadeId: dieta.id, acao: "VERSAO_CRIADA", usuarioId, depois: dieta });
+    const dados = { nome: input.nome.trim(), observacao: input.observacao?.trim() || null };
+    const dieta = existente ? await tx.dieta.update({ where: { id: existente.id }, data: { ...dados, itens: { deleteMany: {}, create: itens } }, include: { itens: true } }) : await tx.dieta.create({ data: { ...dados, versao: (ultima?.versao ?? 0) + 1, itens: { create: itens } }, include: { itens: true } });
+    await auditar(tx, { entidade: "Dieta", entidadeId: dieta.id, acao: existente ? "RASCUNHO_EDITADO" : "VERSAO_CRIADA", usuarioId, ...(existente ? { antes: existente } : {}), depois: dieta });
     return dieta;
   });
 }
@@ -39,6 +42,11 @@ export async function publicarDieta(id: string, usuarioId: number | null) {
     if (!dieta) throw new RebanhoError("NAO_ENCONTRADO", "Dieta não encontrada");
     if (dieta.publicadaEm) throw new RebanhoError("CONFLITO", "Esta versão já foi publicada");
     if (!dieta.itens.length) throw new RebanhoError("VALIDACAO", "Dieta sem ingredientes não pode ser publicada");
+    for (const item of dieta.itens) {
+      const produto = await tx.produto.findFirst({ where: { id: item.produtoId, ativo: true, categoria: { usoNutricional: true } }, include: { perfilNutricionalProduto: true } });
+      if (!produto) throw new RebanhoError("CONFLITO", "Ingrediente inativo ou sem uso nutricional");
+      await tx.itemDieta.update({ where: { id: item.id }, data: { unidade: produto.unidade, materiaSecaPercentualSnapshot: produto.perfilNutricionalProduto?.materiaSecaPercentual ?? null } });
+    }
     const publicada = await tx.dieta.update({ where: { id }, data: { publicadaEm: new Date() } });
     await auditar(tx, { entidade: "Dieta", entidadeId: id, acao: "PUBLICACAO", usuarioId, antes: dieta, depois: publicada });
     return publicada;
@@ -70,5 +78,28 @@ export async function atribuirDieta(input: { loteId: string; propriedadeId: numb
     await auditar(tx, { entidade: "VigenciaDietaLote", entidadeId: criada.id, propriedadeId: lote.propriedadeId,
       acao: "ATRIBUICAO", usuarioId, depois: criada });
     return criada;
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+}
+
+export async function corrigirVigencia(id: string, propriedadeId: number, input: { desde: string; motivo: string }, usuarioId: number | null) {
+  return prisma.$transaction(async (tx) => {
+    const original = await tx.vigenciaDietaLote.findFirst({ where: { id, lote: { propriedadeId } } });
+    if (!original) throw new RebanhoError("NAO_ENCONTRADO", "Vigência não encontrada neste sítio");
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`pec-lote-consumo:${original.loteId}`}))`;
+    const vizinhas = await tx.vigenciaDietaLote.findMany({ where: { loteId: original.loteId }, orderBy: { desde: "asc" } });
+    const indice = vizinhas.findIndex((v) => v.id === id); const anterior = vizinhas[indice - 1]; const proxima = vizinhas[indice + 1];
+    const desde = dia(input.desde);
+    if ((anterior && desde <= anterior.desde) || (proxima && desde >= proxima.desde)) throw new RebanhoError("CONFLITO", "A correção deve permanecer entre as vigências vizinhas");
+    const menor = desde < original.desde ? desde : original.desde;
+    const maior = desde > original.desde ? desde : original.desde;
+    const afetados = maior > menor ? await tx.fechamentoConsumo.findMany({ where: { loteId: original.loteId, status: "CONFIRMADO", inicio: { lt: maior }, fim: { gte: menor } }, select: { id: true } }) : [];
+    if (afetados.length) throw new RebanhoError("CONFLITO", `Estorne os fechamentos afetados antes de corrigir: ${afetados.map((f) => f.id).join(", ")}`);
+    if (anterior && anterior.ate?.getTime() === original.desde.getTime()) {
+      const salvo = await tx.vigenciaDietaLote.update({ where: { id: anterior.id }, data: { ate: desde } });
+      await auditar(tx, { entidade: "VigenciaDietaLote", entidadeId: anterior.id, propriedadeId, acao: "VIGENCIA_CORRIGIDA", usuarioId, antes: anterior, depois: { ...salvo, motivo: input.motivo } });
+    }
+    const salva = await tx.vigenciaDietaLote.update({ where: { id }, data: { desde } });
+    await auditar(tx, { entidade: "VigenciaDietaLote", entidadeId: id, propriedadeId, acao: "VIGENCIA_CORRIGIDA", usuarioId, antes: original, depois: { ...salva, motivo: input.motivo } });
+    return salva;
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 }

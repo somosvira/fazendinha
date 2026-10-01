@@ -1,0 +1,15 @@
+import { useState } from "react";
+import { Button, ErrorBox } from "../../../financeiro/financeiro-ui";
+import { classeInput, PainelCadastro } from "../../../financeiro/PainelCadastro";
+import { reqSanidade } from "./api";
+export type ExameResultado = { id: string; formatoSnapshot: { tipoResultado: string; unidade?: string | null; opcoes?: string[] }; resultadoTexto: string | null; resultadoNumero: string | null; resultadoOpcao: string | null };
+export function ResultadoExame({ exame, propriedadeId, onSalvo }: { exame: ExameResultado; propriedadeId: number; onSalvo: () => void }) {
+  const [aberto, setAberto] = useState(false);
+  const [resultado, setResultado] = useState(exame.resultadoTexto ?? exame.resultadoNumero ?? exame.resultadoOpcao ?? "");
+  const [anular, setAnular] = useState(false);
+  const [motivo, setMotivo] = useState("");
+  const [ocupado, setOcupado] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+  async function salvar() { if (ocupado) return; setOcupado(true); setErro(null); try { await reqSanidade(`/exames/${exame.id}/correcao`, { method: "POST", body: JSON.stringify({ propriedadeId, motivo, anular, ...(anular ? {} : exame.formatoSnapshot.tipoResultado === "NUMERO" ? { resultadoNumero: Number(resultado) } : exame.formatoSnapshot.tipoResultado === "OPCAO" ? { resultadoOpcao: resultado } : { resultadoTexto: resultado }) }) }); setAberto(false); onSalvo(); } catch (e) { setErro(e instanceof Error ? e.message : String(e)); } finally { setOcupado(false); } }
+  return <><Button secondary className="mt-2" onClick={() => setAberto(true)}>Resultado / correção / anulação</Button>{aberto && <PainelCadastro aberto titulo="Atualizar exame" onFechar={() => { if (!ocupado) setAberto(false); }} rodape={<Button type="submit" form={`resultado-${exame.id}`} disabled={ocupado}>Confirmar com motivo</Button>}><form id={`resultado-${exame.id}`} className="grid gap-4" onSubmit={(e) => { e.preventDefault(); void salvar(); }}><ErrorBox erro={erro} /><label className="flex gap-2"><input type="checkbox" checked={anular} onChange={(e) => setAnular(e.target.checked)} /> Anular o exame preservando seu histórico</label>{!anular && <label>Resultado {exame.formatoSnapshot.unidade ?? ""}{exame.formatoSnapshot.tipoResultado === "OPCAO" ? <select required value={resultado} onChange={(e) => setResultado(e.target.value)} className={classeInput}><option value="">Selecione</option>{exame.formatoSnapshot.opcoes?.map((o) => <option key={o}>{o}</option>)}</select> : <input required type={exame.formatoSnapshot.tipoResultado === "NUMERO" ? "number" : "text"} step="any" value={resultado} onChange={(e) => setResultado(e.target.value)} className={classeInput} />}</label>}<label>Motivo do preenchimento, correção ou anulação<textarea required minLength={5} maxLength={500} value={motivo} onChange={(e) => setMotivo(e.target.value)} className={classeInput} /></label><p className="text-sm text-ink-3">O formato é aquele preservado na coleta. Os resultados anteriores ficam na auditoria.</p></form></PainelCadastro>}</>;
+}

@@ -9,6 +9,7 @@ vi.mock("../api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../api")>()),
   darBaixaAnimal: vi.fn(),
 }));
+vi.mock("../sanidade/api", () => ({ consultarCarencia: vi.fn().mockResolvedValue({ leite: { estado: "NENHUMA" }, carne: { estado: "NENHUMA" } }) }));
 
 afterEach(cleanup);
 beforeEach(() => vi.clearAllMocks());

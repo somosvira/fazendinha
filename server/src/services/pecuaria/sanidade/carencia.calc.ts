@@ -4,11 +4,14 @@ export type AplicacaoCarencia = {
   precisaoTemporal: string;
   carenciaLeiteHoras: number | null;
   carenciaCarneHoras: number | null;
+  estadoCarenciaLeite?: string;
+  estadoCarenciaCarne?: string;
 };
 
 export type PrazoCarencia =
   | { estado: "NENHUMA" }
   | { estado: "NAO_INFORMADO" }
+  | { estado: "NAO_APLICAVEL" }
   | { estado: "CONHECIDO"; ate: Date; precisaoAproximada: boolean };
 
 function baseDaAplicacao(a: AplicacaoCarencia): Date {
@@ -25,10 +28,13 @@ export function calcularPrazoCarencia(
 ): PrazoCarencia {
   if (!aplicacoes.length) return { estado: "NENHUMA" };
   const chave = destino === "LEITE" ? "carenciaLeiteHoras" : "carenciaCarneHoras";
-  if (aplicacoes.some((a) => a[chave] == null)) return { estado: "NAO_INFORMADO" };
+  const chaveEstado = destino === "LEITE" ? "estadoCarenciaLeite" : "estadoCarenciaCarne";
+  const relevantes = aplicacoes.filter((a) => a[chaveEstado] !== "NAO_APLICAVEL");
+  if (!relevantes.length) return { estado: "NAO_APLICAVEL" };
+  if (relevantes.some((a) => a[chaveEstado] === "NAO_INFORMADO" || a[chave] == null)) return { estado: "NAO_INFORMADO" };
   let maior = new Date(0);
   let aproximada = false;
-  for (const a of aplicacoes) {
+  for (const a of relevantes) {
     const fim = new Date(baseDaAplicacao(a).getTime() + a[chave]! * 3_600_000);
     if (fim.getTime() > maior.getTime()) {
       maior = fim;

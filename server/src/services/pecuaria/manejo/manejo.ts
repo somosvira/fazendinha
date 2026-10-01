@@ -28,7 +28,7 @@ export async function registrarPesagensColetivas(input: { chave: string; proprie
     await travarAnimais(tx, ids);
     const anterior = await tx.requisicaoPecuaria.findUnique({ where: { chave: input.chave } });
     if (anterior) {
-      if (anterior.hashPayload !== hashPayload || anterior.operacao !== "PESAGEM_COLETIVA" || anterior.propriedadeId !== input.propriedadeId) {
+      if (anterior.hashPayload !== hashPayload || anterior.usuarioId !== usuarioId || anterior.operacao !== "PESAGEM_COLETIVA" || anterior.propriedadeId !== input.propriedadeId) {
         throw new RebanhoError("CONFLITO", "Chave de repetição já usada com outros dados");
       }
       return { requisicaoId: anterior.chave, pesagens: anterior.resultadoIds };
@@ -84,4 +84,16 @@ export async function registrarManejo(input: { animalId: string; propriedadeId: 
 export async function listarManejos(animalId: string | undefined, propriedadeId: number | null) {
   return prisma.manejoAnimal.findMany({ where: { ...(animalId ? { animalId } : {}), ...(propriedadeId == null ? {} : { propriedadeId }) },
     include: { pesagem: { select: { id: true, pesoKg: true } } }, orderBy: [{ data: "desc" }, { criadoEm: "desc" }], take: 100 });
+}
+
+export async function anularManejo(id: string, propriedadeId: number, motivo: string, usuarioId: number | null) {
+  return prisma.$transaction(async (tx) => {
+    const original = await tx.manejoAnimal.findFirst({ where: { id, propriedadeId, status: "VALIDO" } });
+    if (!original) throw new RebanhoError("NAO_ENCONTRADO", "Manejo não encontrado ou já anulado");
+    await travarAnimais(tx, [original.animalId]);
+    const salvo = await tx.manejoAnimal.update({ where: { id }, data: { status: "ANULADO", motivoAnulacao: motivo, anuladoEm: new Date() } });
+    await auditar(tx, { entidade: "ManejoAnimal", entidadeId: id, animalId: original.animalId, propriedadeId, acao: "ANULACAO", usuarioId, antes: original, depois: salvo });
+    // A pesagem é um fato independente e não é removida pela anulação do manejo.
+    return salvo;
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 }

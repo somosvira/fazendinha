@@ -1,15 +1,21 @@
 import { useCallback, useEffect, useState } from "react";
 import { Button, ErrorBox, hoje, Panel } from "../../../financeiro/financeiro-ui";
+import { ConferenciaPeriodos } from "./ConferenciaPeriodos";
 import { DatePicker } from "../../../components/DatePicker";
 import {
-  atribuirDieta, confirmarConsumo, criarDieta, listarCentrosNutricionais, listarDietas, listarFechamentos,
-  listarPartidasNutricionais, listarProdutosNutricionais, listarVigencias, previaConsumo, publicarDieta,
-  type CentroNutricional, type Dieta, type Fechamento, type PartidaNutricional, type Previa, type ProdutoNutricional, type Vigencia,
+  atribuirDieta, corrigirVigencia, criarDieta, editarDieta, estornarConsumo, listarCentrosNutricionais, listarDietas, listarFechamentos,
+  listarProdutosNutricionais, listarVigencias, publicarDieta,
+  type CentroNutricional, type Dieta, type Fechamento, type ProdutoNutricional, type Vigencia,
 } from "./api";
 
-type EscolhaConsumo = { quantidade: string; motivo: string; modo: "BAIXA_ESTOQUE" | "SEM_BAIXA_JUSTIFICADA"; justificativa: string; partidas: Record<string, string> };
 
-export function NutricaoLote({ loteId, propriedadeId, podeLancar }: { loteId: string; propriedadeId: number; podeLancar: boolean }) {
+export function NutricaoLote({ loteId, propriedadeId, podeLancar, vista }: { loteId?: string; propriedadeId?: number; podeLancar: boolean; vista?: "lotes" | "receitas" | "fechamentos" }) {
+  const [vigenciaCorrecao, setVigenciaCorrecao] = useState<Vigencia | null>(null);
+  const [dataCorrecao, setDataCorrecao] = useState("");
+  const [motivoCorrecao, setMotivoCorrecao] = useState("");
+  const [rascunhoId, setRascunhoId] = useState<string | null>(null);
+  const [estornando, setEstornando] = useState<string | null>(null);
+  const [motivoEstorno, setMotivoEstorno] = useState("");
   const [dietas, setDietas] = useState<Dieta[]>([]);
   const [vigencias, setVigencias] = useState<Vigencia[]>([]);
   const [fechamentos, setFechamentos] = useState<Fechamento[]>([]);
@@ -21,15 +27,9 @@ export function NutricaoLote({ loteId, propriedadeId, podeLancar }: { loteId: st
   const [ingredientes, setIngredientes] = useState([{ produtoId: "", quantidadeCabecaDia: "" }]);
   const [dietaId, setDietaId] = useState("");
   const [desde, setDesde] = useState(hoje());
-  const [inicio, setInicio] = useState(hoje().slice(0, 7) + "-01");
-  const [fim, setFim] = useState(hoje());
-  const [centroCustoId, setCentroCustoId] = useState("");
-  const [previa, setPrevia] = useState<Previa | null>(null);
-  const [escolhas, setEscolhas] = useState<Record<string, EscolhaConsumo>>({});
-  const [partidas, setPartidas] = useState<Record<string, PartidaNutricional[]>>({});
 
   const carregar = useCallback(async () => {
-    const [ds, vs, fs, ps, cs] = await Promise.all([listarDietas(), listarVigencias(loteId), listarFechamentos(loteId),
+    const [ds, vs, fs, ps, cs] = await Promise.all([listarDietas(), loteId ? listarVigencias(loteId) : Promise.resolve([]), loteId ? listarFechamentos(loteId) : Promise.resolve([]),
       listarProdutosNutricionais(), listarCentrosNutricionais()]);
     setDietas(ds); setVigencias(vs); setFechamentos(fs); setProdutos(ps); setCentros(cs.filter((c) => c.ativo));
   }, [loteId]);
@@ -51,44 +51,20 @@ export function NutricaoLote({ loteId, propriedadeId, podeLancar }: { loteId: st
     if (!nome.trim() || ingredientes.some((i) => !i.produtoId || !(Number(i.quantidadeCabecaDia) > 0))) {
       setErro("Informe o nome, os ingredientes e a quantidade por cabeça/dia."); return;
     }
-    await executar(() => criarDieta({ nome: nome.trim(), itens: ingredientes.map((i) => ({ produtoId: i.produtoId, quantidadeCabecaDia: Number(i.quantidadeCabecaDia) })) }),
-      () => { setNome(""); setIngredientes([{ produtoId: "", quantidadeCabecaDia: "" }]); });
+    const body = { nome: nome.trim(), itens: ingredientes.map((i) => ({ produtoId: i.produtoId, quantidadeCabecaDia: Number(i.quantidadeCabecaDia) })) };
+    await executar(() => rascunhoId ? editarDieta(rascunhoId, body) : criarDieta(body),
+      () => { setRascunhoId(null); setNome(""); setIngredientes([{ produtoId: "", quantidadeCabecaDia: "" }]); });
   }
 
-  async function conferir() {
-    setOcupado(true); setErro(null);
-    try {
-      const p = await previaConsumo({ loteId, propriedadeId, inicio, fim, centroCustoId: centroCustoId || null });
-      const porProduto = await Promise.all(p.itens.map(async (i) => [i.produtoId, i.rastrearPartidas ? await listarPartidasNutricionais(i.produtoId) : []] as const));
-      setPartidas(Object.fromEntries(porProduto));
-      setEscolhas(Object.fromEntries(p.itens.map((i) => [i.produtoId, { quantidade: i.quantidadePrevista, motivo: "", modo: "BAIXA_ESTOQUE", justificativa: "", partidas: {} }])));
-      setPrevia(p);
-    } catch (e) { setErro(e instanceof Error ? e.message : String(e)); }
-    finally { setOcupado(false); }
-  }
-
-  async function confirmar() {
-    if (!previa) return;
-    const itens = previa.itens.map((i) => {
-      const e = escolhas[i.produtoId];
-      return { produtoId: i.produtoId, quantidadeConfirmada: Number(e.quantidade), motivoAjuste: e.motivo.trim() || undefined,
-        modoEstoque: e.modo, justificativaSemBaixa: e.justificativa.trim() || undefined,
-        ...(i.rastrearPartidas && e.modo === "BAIXA_ESTOQUE" ? { partidas: Object.entries(e.partidas).filter(([, q]) => Number(q) > 0)
-          .map(([partidaId, quantidade]) => ({ partidaId, quantidade: Number(quantidade) })) } : {}) };
-    });
-    await executar(() => confirmarConsumo({ loteId, propriedadeId, inicio, fim, centroCustoId: centroCustoId || null, itens }),
-      () => setPrevia(null));
-  }
-
-  const mudarEscolha = (produtoId: string, patch: Partial<EscolhaConsumo>) => setEscolhas((atual) => ({ ...atual, [produtoId]: { ...atual[produtoId], ...patch } }));
   const classe = "min-h-10 w-full rounded-lg border border-border bg-white px-3 py-2 text-sm";
 
   return <Panel className="mt-6 p-5">
-    <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="font-serif text-xl">Nutrição do lote</h2>
+    <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="font-serif text-xl">{vista === "receitas" ? "Receitas" : "Nutrição do lote"}</h2>
       <p className="mt-1 text-sm text-ink-3">Dieta vigente: {dietaAtual ? `${dietaAtual.dieta.nome} · versão ${dietaAtual.dieta.versao}` : "nenhuma"}. Consumo é estimado por animal-dia e confirmado após conferência.</p></div></div>
     <ErrorBox erro={erro} />
+    {(vista == null || vista === "receitas") && <details className="mt-4 rounded-lg border border-border p-3"><summary className="cursor-pointer font-semibold">Receitas e ingredientes ({dietas.length})</summary>{dietas.map((d) => <div key={d.id} className="mt-3 border-t border-border pt-3 text-sm"><strong>{d.nome} · v{d.versao} · {d.publicadaEm ? "Publicada — imutável" : "Rascunho"}</strong>{d.itens.map((i) => <p key={i.produtoId}>{i.produto?.nome} · {i.quantidadeCabecaDia} {i.unidade}/cabeça/dia · MS {i.materiaSecaPercentualSnapshot == null ? "não informada" : `${i.materiaSecaPercentualSnapshot}%`}</p>)}{podeLancar && <Button secondary className="mt-2" onClick={() => { setRascunhoId(d.publicadaEm ? null : d.id); setNome(d.nome); setIngredientes(d.itens.map((i) => ({ produtoId: i.produtoId, quantidadeCabecaDia: i.quantidadeCabecaDia }))); }}>{d.publicadaEm ? "Criar nova versão a partir desta" : "Editar rascunho"}</Button>}</div>)}</details>}
     {podeLancar && <div className="mt-5 grid gap-5 lg:grid-cols-2">
-      <section className="rounded-xl border border-border p-4"><h3 className="font-semibold">Nova versão de dieta</h3>
+      {(vista == null || vista === "receitas") && <section className="rounded-xl border border-border p-4"><h3 className="font-semibold">Nova versão de dieta</h3>
         <label className="mt-3 block text-sm">Nome da dieta<input className={classe} value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Dieta de lactação" /></label>
         <p className="mt-3 text-sm font-medium">Ingredientes por cabeça/dia</p>
         {ingredientes.map((item, indice) => <div key={indice} className="mt-2 grid gap-2 sm:grid-cols-[1fr_130px_auto]">
@@ -99,40 +75,26 @@ export function NutricaoLote({ loteId, propriedadeId, podeLancar }: { loteId: st
           <Button secondary onClick={() => setIngredientes((xs) => xs.filter((_, j) => j !== indice))} disabled={ingredientes.length === 1}>Remover</Button>
         </div>)}
         <div className="mt-3 flex flex-wrap gap-2"><Button secondary onClick={() => setIngredientes((xs) => [...xs, { produtoId: "", quantidadeCabecaDia: "" }])}>Adicionar ingrediente</Button>
-          <Button onClick={() => { void criarReceita(); }} disabled={ocupado}>Criar rascunho</Button></div>
+          <Button onClick={() => { void criarReceita(); }} disabled={ocupado}>{rascunhoId ? "Salvar rascunho" : "Criar rascunho"}</Button></div>
         {rascunhos.length > 0 && <div className="mt-4 space-y-2 text-sm"><p className="font-medium">Rascunhos</p>{rascunhos.map((d) => <div key={d.id} className="flex flex-wrap items-center justify-between gap-2"><span>{d.nome} · v{d.versao}</span><Button secondary onClick={() => { void executar(() => publicarDieta(d.id)); }} disabled={ocupado}>Publicar</Button></div>)}</div>}
-      </section>
-      <section className="rounded-xl border border-border p-4"><h3 className="font-semibold">Atribuir dieta ao lote</h3>
+      </section>}
+      {loteId && propriedadeId != null && (vista == null || vista === "lotes") && <section className="rounded-xl border border-border p-4"><h3 className="font-semibold">Atribuir dieta ao lote</h3>
         <label className="mt-3 block text-sm">Versão publicada<select className={classe} value={dietaId} onChange={(e) => setDietaId(e.target.value)}><option value="">Selecione</option>{publicadas.map((d) => <option key={d.id} value={d.id}>{d.nome} · v{d.versao}</option>)}</select></label>
         <label className="mt-3 block text-sm">Início da vigência<DatePicker value={desde} onChange={setDesde} className="mt-1.5" /></label>
         <Button className="mt-3" onClick={() => { if (!dietaId) { setErro("Selecione a dieta publicada."); return; } void executar(() => atribuirDieta({ loteId, propriedadeId, dietaId, desde })); }} disabled={ocupado}>Aplicar ao lote</Button>
-        <div className="mt-4 space-y-1 text-sm text-ink-3">{vigencias.map((v) => <p key={v.id}>{v.dieta.nome} v{v.dieta.versao}: {v.desde.slice(0, 10)} – {v.ate?.slice(0, 10) ?? "atual"}</p>)}</div>
-      </section>
+        <div className="mt-4 space-y-1 text-sm text-ink-3">{vigencias.map((v) => <p key={v.id}>{v.dieta.nome} v{v.dieta.versao}: {v.desde.slice(0, 10)} – {v.ate?.slice(0, 10) ?? "atual"} <Button secondary onClick={() => { setVigenciaCorrecao(v); setDataCorrecao(v.desde.slice(0, 10)); setMotivoCorrecao(""); }}>Corrigir vigência</Button></p>)}</div>
+      </section>}
     </div>}
-    <section className="mt-5 rounded-xl border border-border p-4"><h3 className="font-semibold">Fechamento do consumo</h3>
-      {podeLancar && <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <label className="text-sm">De<DatePicker value={inicio} onChange={setInicio} className="mt-1.5" /></label>
-        <label className="text-sm">Até<DatePicker value={fim} onChange={setFim} className="mt-1.5" /></label>
-        <label className="text-sm">Centro de custo<select className={classe} value={centroCustoId} onChange={(e) => setCentroCustoId(e.target.value)}><option value="">Usar o centro do lote</option>{centros.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}</select></label>
-        <div className="flex items-end"><Button onClick={() => { void conferir(); }} disabled={ocupado}>Conferir período</Button></div>
-      </div>}
-      {previa && <div className="mt-4 space-y-4"><p className="text-sm"><strong>{previa.animalDias} animal-dias</strong> · {previa.participantes.length} animais · {previa.dieta.nome} v{previa.dieta.versao}</p>
-        {previa.itens.map((i) => { const e = escolhas[i.produtoId]; return <div key={i.produtoId} className="rounded-lg border border-border p-3 text-sm">
-          <p className="font-semibold">{i.nome} · previsto {i.quantidadePrevista} {i.unidade}</p>
-          <div className="mt-2 grid gap-2 sm:grid-cols-2"><label>Quantidade real<input className={classe} type="number" min="0" step="0.001" value={e.quantidade} onChange={(ev) => mudarEscolha(i.produtoId, { quantidade: ev.target.value })} /></label>
-            <label>Origem<select className={classe} value={e.modo} onChange={(ev) => mudarEscolha(i.produtoId, { modo: ev.target.value as EscolhaConsumo["modo"] })}><option value="BAIXA_ESTOQUE">Baixar do estoque</option><option value="SEM_BAIXA_JUSTIFICADA">Sem baixa, com justificativa</option></select></label></div>
-          {Number(e.quantidade) !== Number(i.quantidadePrevista) && <label className="mt-2 block">Por que diferiu da previsão?<input className={classe} value={e.motivo} onChange={(ev) => mudarEscolha(i.produtoId, { motivo: ev.target.value })} /></label>}
-          {e.modo === "SEM_BAIXA_JUSTIFICADA" && <label className="mt-2 block">Por que não houve baixa?<input className={classe} value={e.justificativa} onChange={(ev) => mudarEscolha(i.produtoId, { justificativa: ev.target.value })} /></label>}
-          {i.rastrearPartidas && e.modo === "BAIXA_ESTOQUE" && <div className="mt-2"><p className="font-medium">Distribuição por partida</p>
-            {(partidas[i.produtoId] ?? []).map((p) => <label key={p.id} className="mt-1 grid grid-cols-[1fr_120px] items-center gap-2"><span>{p.codigo} · saldo {p.saldo}{p.validade ? ` · vence ${p.validade.slice(0, 10)}` : " · validade desconhecida"}</span>
-              <input className={classe} type="number" min="0" step="0.001" value={e.partidas[p.id] ?? ""} onChange={(ev) => mudarEscolha(i.produtoId, { partidas: { ...e.partidas, [p.id]: ev.target.value } })} /></label>)}</div>}
-        </div>; })}
-        <Button onClick={() => { void confirmar(); }} disabled={ocupado}>Confirmar consumo conferido</Button>
-      </div>}
+    {loteId && propriedadeId != null && (vista == null || vista === "fechamentos") && <section className="mt-5 rounded-xl border border-border p-4"><h3 className="font-semibold">Fechamento do consumo</h3>
+      {podeLancar && <ConferenciaPeriodos loteId={loteId} propriedadeId={propriedadeId} centros={centros} onSalvo={carregar} />}
       <div className="mt-5 space-y-2"><p className="text-sm font-medium">Histórico</p>{fechamentos.length ? fechamentos.map((f) => <div key={f.id} className="rounded-lg border border-border p-3 text-sm">
         <strong>{f.inicio.slice(0, 10)} – {f.fim.slice(0, 10)}</strong> · {f.animalDias} animal-dias · {f.status === "CONFIRMADO" ? "Confirmado" : "Estornado"}
         <p className="text-ink-3">{f.itens.map((i) => `${i.produto.nome}: ${i.quantidadeConfirmada} (previsto ${i.quantidadePrevista})`).join(" · ")}</p>
+        <details className="mt-2"><summary>Detalhes do fechamento</summary><p>{f.vigencia.dieta.nome} v{f.vigencia.dieta.versao} · centro {f.centroCusto.nome}</p>{f.itens.map((i) => <p key={i.produtoId}>{i.produto.nome}: {i.quantidadeConfirmada} {i.unidade} · custo {i.movimentoEstoque?.valorTotal == null ? "não disponível / não apurado" : `R$ ${i.movimentoEstoque.valorTotal}`} · {i.situacaoCusto}{i.movimentoEstoque?.alocacaoPartidaEstoques.map((a) => ` · partida ${a.partida.codigo}: ${a.quantidade}`).join("")}</p>)}<p>Participação — atribuição por permanência:</p>{f.participacoes.map((p) => <p key={p.animalId}>{p.animal.brinco}: {p.dias} dias</p>)}</details>
+        {podeLancar && f.status === "CONFIRMADO" && <Button secondary className="mt-2" onClick={() => { setEstornando(f.id); setMotivoEstorno(""); }}>Conferir estorno</Button>}
       </div>) : <p className="text-sm text-ink-3">Nenhum fechamento registrado.</p>}</div>
-    </section>
+    </section>}
+    {vigenciaCorrecao && propriedadeId != null && <section className="mt-4 grid gap-3 rounded-lg border border-amber-300 p-4"><h3>Corrigir início da vigência · {vigenciaCorrecao.dieta.nome}</h3><p className="text-sm">Ajusta também o fim da vigência anterior contígua. Fechamentos afetados devem ser estornados antes.</p><DatePicker value={dataCorrecao} onChange={setDataCorrecao} /><label>Motivo<textarea className={classe} minLength={5} maxLength={500} value={motivoCorrecao} onChange={(e) => setMotivoCorrecao(e.target.value)} /></label><div className="flex gap-2"><Button secondary onClick={() => setVigenciaCorrecao(null)} disabled={ocupado}>Cancelar</Button><Button disabled={ocupado || motivoCorrecao.trim().length < 5 || !dataCorrecao} onClick={() => void executar(() => corrigirVigencia(vigenciaCorrecao.id, { propriedadeId, desde: dataCorrecao, motivo: motivoCorrecao }), () => setVigenciaCorrecao(null))}>Confirmar correção</Button></div></section>}
+    {estornando && propriedadeId != null && <section className="mt-4 rounded-lg border border-amber-300 p-4"><h3 className="font-semibold">Prévia do estorno</h3><p className="text-sm">Serão devolvidas ao estoque as quantidades que tiveram baixa, nas partidas originais. Consumos sem baixa não geram entrada. O histórico permanece registrado.</p>{fechamentos.find((f) => f.id === estornando)?.itens.map((i) => <p key={i.produtoId} className="mt-2 text-sm">{i.produto.nome}: {i.movimentoEstoque ? `${i.movimentoEstoque.quantidade} ${i.unidade} a devolver${i.movimentoEstoque.alocacaoPartidaEstoques.map((a) => ` · ${a.partida.codigo}: ${a.quantidade}`).join("")}` : "sem devolução — não houve baixa"}</p>)}<label className="mt-3 block text-sm">Motivo<textarea className={classe} maxLength={500} value={motivoEstorno} onChange={(e) => setMotivoEstorno(e.target.value)} /></label><div className="mt-3 flex gap-2"><Button secondary disabled={ocupado} onClick={() => setEstornando(null)}>Cancelar</Button><Button disabled={ocupado || motivoEstorno.trim().length < 5} onClick={() => { void executar(() => estornarConsumo(estornando, { propriedadeId, motivo: motivoEstorno }), () => { setEstornando(null); }); }}>Confirmar estorno com motivo</Button></div></section>}
   </Panel>;
 }

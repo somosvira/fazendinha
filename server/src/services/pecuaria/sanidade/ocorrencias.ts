@@ -1,3 +1,4 @@
+import { filtrosFatos, limites, type ConsultaSanitaria } from "./consulta.js";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../../db.js";
 import { RebanhoError, auditar, travarAnimais } from "../rebanho/regras.js";
@@ -19,10 +20,10 @@ export async function criarDoenca(nome: string, motivoBaixaSugeridoId: string | 
   });
 }
 
-export async function listarOcorrencias(animalId: string | undefined, propriedadeId: number | null) {
-  return prisma.ocorrenciaSanitaria.findMany({ where: { ...(animalId ? { animalId } : {}), ...(propriedadeId == null ? {} : { propriedadeId }) },
+export async function listarOcorrencias(animalId: string | undefined, propriedadeId: number | null, filtro?: ConsultaSanitaria) {
+  return prisma.ocorrenciaSanitaria.findMany({ where: { ...filtrosFatos(filtro, "inicio"), ...(animalId ? { animalId } : {}), ...(propriedadeId == null ? {} : { propriedadeId }) },
     include: { doenca: { select: { id: true, nome: true } }, _count: { select: { aplicacoes: true, exames: true, execucoes: true } } },
-    orderBy: [{ inicio: "desc" }, { criadoEm: "desc" }], take: 100 });
+    orderBy: [{ inicio: "desc" }, { criadoEm: "desc" }], ...limites(filtro) });
 }
 
 export async function criarOcorrencia(input: { animalId: string; propriedadeId: number; doencaId: string; inicio: string; observacao?: string | null }, usuarioId: number | null) {
