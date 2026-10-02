@@ -44,8 +44,11 @@ export interface SaldoDTO { produtoId: string; nome: string; materialGeneticoId:
   /** saldo × custoMedio (0 quando custoMedio é null). */
   valor: number | null; minimoEstoque: number | null; abaixoMinimo: boolean; }
 export type OrigemMovimento = "COMPRA" | "CONSUMO_DIRETO" | "TRANSFERENCIA" | "PRODUCAO" | "DEVOLUCAO" | "BONIFICACAO" | "INVENTARIO_INICIAL" | "PERDA" | "AJUSTE_INVENTARIO" | "APLICACAO" | "SANIDADE" | "NUTRICAO" | "IDENTIFICACAO_PARTIDA";
-export type VinculoMovimento = { tipo: "TALHAO"; id: number; codigo: string };
-export interface MovimentoDTO { id: string; seq: number; produtoId: string; produto: string; materialGeneticoId: string | null; centrosCusto: { id: string; nome: string }[]; tipo: "ENTRADA" | "SAIDA" | "AJUSTE"; origem: OrigemMovimento; status: "CONFIRMADO" | "REVERTIDO"; reversaoDeId: string | null; data: string; quantidade: number; custoUnitario: number | null; valorTotal: number | null; fornecedor: string | null; observacao: string | null;
+export type VinculoMovimento =
+  | { tipo: "TALHAO"; id: number; codigo: string }
+  | { tipo: "APLICACAO_SANITARIA"; id: string; animalId: string }
+  | { tipo: "FECHAMENTO_NUTRICIONAL"; id: string; loteId: string };
+export interface MovimentoDTO { id: string; propriedadeId?: number | null; seq: number; produtoId: string; produto: string; materialGeneticoId: string | null; centrosCusto: { id: string; nome: string }[]; tipo: "ENTRADA" | "SAIDA" | "AJUSTE"; origem: OrigemMovimento; status: "CONFIRMADO" | "REVERTIDO"; reversaoDeId: string | null; data: string; quantidade: number; custoUnitario: number | null; valorTotal: number | null; fornecedor: string | null; observacao: string | null;
   partidas?: { partidaId: string; codigo: string; validade: string | null; quantidade: string }[];
   /** Operação financeira de origem (compra, ajuste, inventário…); null nas saídas automáticas. */
   operacaoId: string | null;
@@ -57,7 +60,8 @@ export interface MovimentoResult { id: string; operacaoId: string; }
 
 export const listarSaldos = (f?: { centroCustoId?: string }) => req<SaldoDTO[]>(`/estoque/saldos${qs(f)}`);
 export type FiltroMovimentos = {
-  produtoId?: string; partidaId?: string; tipo?: string; q?: string; origem?: string;
+  movimentoId?: string; produtoId?: string; partidaId?: string; tipo?: string; q?: string; origem?: string;
+  propriedadeId?: number;
   centroCustoId?: string;
   de?: string; ate?: string; pagina?: number; porPagina?: number;
 };

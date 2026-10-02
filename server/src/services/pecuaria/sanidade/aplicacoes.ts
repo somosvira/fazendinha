@@ -9,8 +9,12 @@ import { valorSaidaDaBase } from "../../estoque/estoque.calc.js";
 import { converterQuantidade, UNIDADES } from "../../estoque/unidades.js";
 import { exigirPeriodoAberto } from "../../financeiro/regras.js";
 import { calcularPrazoCarencia } from "./carencia.calc.js";
+import { conferirAnimalNoFato } from "../fatos.js";
+import { transacaoPecuaria } from "../transacao.js";
+import { confirmarFato } from "../idempotencia.js";
 
 export type AplicacaoInput = {
+  chave?: string;
   animalId: string;
   propriedadeId: number;
   data: string;
@@ -49,20 +53,13 @@ function erro(mensagem: string, campo?: string): never {
 }
 
 async function conferirLocalizacao(tx: Prisma.TransactionClient, input: AplicacaoInput) {
-  const animal = await tx.animal.findUnique({ where: { id: input.animalId }, select: { id: true, dataNascimento: true, dataEntrada: true } });
-  if (!animal) throw new RebanhoError("NAO_ENCONTRADO", "Animal não encontrado");
   const data = dia(input.data);
+  await conferirAnimalNoFato(tx, input.animalId, input.propriedadeId, data);
   const momento = new Date(input.aplicadaEm);
   if (!Number.isFinite(momento.getTime()) || new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).format(momento) !== input.data) {
     erro("A data e o horário da aplicação devem corresponder ao mesmo dia no Brasil", "aplicadaEm");
   }
-  if (data < animal.dataNascimento || data < animal.dataEntrada) erro("A aplicação não pode anteceder o nascimento ou a entrada do animal", "data");
-  const local = await tx.localizacaoAnimal.findFirst({
-    where: { animalId: input.animalId, propriedadeId: input.propriedadeId, desde: { lte: data }, OR: [{ ate: null }, { ate: { gt: data } }] },
-  });
-  if (!local) erro("O animal não estava neste sítio na data da aplicação", "propriedadeId");
-  const baixa = await tx.baixaAnimal.findFirst({ where: { animalId: input.animalId, estornadaEm: null } });
-  if (baixa && data >= baixa.data) erro("A aplicação não pode ocorrer após a baixa do animal", "data");
+  if (momento > new Date()) erro("A aplicação não pode ocorrer no futuro", "aplicadaEm");
   if (input.ocorrenciaId) {
     const ocorrencia = await tx.ocorrenciaSanitaria.findFirst({ where: { id: input.ocorrenciaId, animalId: input.animalId, status: "VALIDO" } });
     if (!ocorrencia) erro("Ocorrência não pertence a este animal", "ocorrenciaId");
@@ -191,18 +188,19 @@ async function criarAplicacaoTx(tx: Prisma.TransactionClient, input: AplicacaoIn
     let dados = input;
     if (input.tarefaId) {
       const tarefa = await tx.tarefaSanitaria.findUnique({ where: { id: input.tarefaId },
-        include: { etapa: true, execucao: true, aplicacao: true, exame: true } });
-      if (!tarefa || tarefa.execucao.canceladaEm || tarefa.dispensadaEm || tarefa.aplicacao || tarefa.exame || tarefa.etapa.tipo !== "APLICACAO") {
+        include: { etapa: true, execucao: true, aplicacoes: { where: { status: "VALIDO" } }, exames: { where: { status: "VALIDO" } } } });
+      if (!tarefa || tarefa.execucao.animalId !== input.animalId || tarefa.execucao.canceladaEm || tarefa.dispensadaEm || tarefa.aplicacoes.length || tarefa.exames.length || tarefa.etapa.tipo !== "APLICACAO") {
         erro("A tarefa não está disponível para esta aplicação", "tarefaId");
       }
       if (tarefa!.etapa.produtoId !== input.produtoId || (tarefa!.etapa.tipoAplicacaoId ? tarefa!.etapa.tipoAplicacaoId !== tipoAplicacao!.id : tarefa!.etapa.finalidade !== input.finalidade)
         || !tarefa!.etapa.dose?.equals(input.dose) || tarefa!.etapa.unidade !== input.unidadeDose) {
         erro("A aplicação deve corresponder ao Produto, finalidade e dose da etapa", "tarefaId");
       }
-      if (tarefa!.execucao.operacaoServicoId && input.operacaoServicoId && tarefa!.execucao.operacaoServicoId !== input.operacaoServicoId) {
+      const servicoDoSitio = tarefa!.execucao.propriedadeId === input.propriedadeId ? tarefa!.execucao.operacaoServicoId : null;
+      if (servicoDoSitio && input.operacaoServicoId && servicoDoSitio !== input.operacaoServicoId) {
         erro("O Serviço da aplicação diverge do protocolo", "operacaoServicoId");
       }
-      dados = { ...input, operacaoServicoId: input.operacaoServicoId ?? tarefa!.execucao.operacaoServicoId };
+      dados = { ...input, operacaoServicoId: input.operacaoServicoId ?? servicoDoSitio };
     }
     // Ordem global: animal antes de Produto/sítio. A trava serializa consumo
     // concorrente e reserva de quantidade da mesma compra direta.
@@ -227,20 +225,20 @@ async function criarAplicacaoTx(tx: Prisma.TransactionClient, input: AplicacaoIn
       partidaCodigoSnapshot: origem.partidaCodigoSnapshot, partidaValidadeSnapshot: origem.partidaValidadeSnapshot,
       justificativaSemOrigem: dados.justificativaSemOrigem ?? null,
     } });
-    await auditar(tx, { entidade: "AplicacaoProduto", entidadeId: criada.id, animalId: input.animalId, acao: "REGISTRO", usuarioId,
+    await auditar(tx, { entidade: "AplicacaoProduto", entidadeId: criada.id, animalId: input.animalId, propriedadeId: input.propriedadeId, acao: "REGISTRO", usuarioId,
       depois: { origemInsumo: criada.origemInsumo, operacaoServicoId: criada.operacaoServicoId, itemCompraDiretaId: criada.itemCompraDiretaId, movimentoEstoqueId: criada.movimentoEstoqueId, cienciaPartidaVencida: !!input.documentacaoExcepcional, motivoDocumentacaoExcepcional: input.motivoDocumentacaoExcepcional ?? null } });
     return criada;
 }
 
 export async function criarAplicacao(input: AplicacaoInput, usuarioId: number | null) {
-  return prisma.$transaction((tx) => criarAplicacaoTx(tx, input, usuarioId), { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  return confirmarFato(input, usuarioId, "APLICACAO", criarAplicacaoTx, (tx, id) => tx.aplicacaoProduto.findUniqueOrThrow({ where: { id } }));
 }
 
 export async function criarAplicacoesColetivas(input: { chave: string; propriedadeId: number; itens: AplicacaoInput[] }, usuarioId: number | null) {
   const ids = input.itens.map((i) => i.animalId);
   if (!ids.length || ids.length > 100 || new Set(ids).size !== ids.length || input.itens.some((i) => i.propriedadeId !== input.propriedadeId)) erro("Selecione de 1 a 100 animais distintos do mesmo sítio", "itens");
   const hashPayload = crypto.createHash("sha256").update(JSON.stringify({ ...input, itens: [...input.itens].sort((a, b) => a.animalId.localeCompare(b.animalId)) })).digest("hex");
-  return prisma.$transaction(async (tx) => {
+  return transacaoPecuaria(async (tx) => {
     await travarAnimais(tx, ids);
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`pec-requisicao:${input.chave}`}))`;
     const anterior = await tx.requisicaoPecuaria.findUnique({ where: { chave: input.chave } });
@@ -255,12 +253,12 @@ export async function criarAplicacoesColetivas(input: { chave: string; proprieda
     }
     await tx.requisicaoPecuaria.create({ data: { chave: input.chave, propriedadeId: input.propriedadeId, usuarioId, operacao: "APLICACAO_COLETIVA", hashPayload, resultadoIds: aplicacoes } });
     return { aplicacoes };
-  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 30000 });
+  });
 }
 
 export type ReconciliacaoInput = Pick<AplicacaoInput, "origemInsumo" | "produtoId" | "operacaoServicoId" | "itemCompraDiretaId" | "partidaId" | "partidaCodigo" | "partidaValidade"> & { motivo: string };
 export async function reconciliarOrigem(id: string, propriedadeId: number, input: ReconciliacaoInput, usuarioId: number | null) {
-  return prisma.$transaction(async (tx) => {
+  return transacaoPecuaria(async (tx) => {
     const antes = await tx.aplicacaoProduto.findFirst({ where: { id, propriedadeId, status: "VALIDO", origemInsumo: "SEM_ORIGEM_JUSTIFICADA" } });
     if (!antes) throw new RebanhoError("CONFLITO", "Somente aplicação válida com origem pendente pode ser reconciliada");
     await travarAnimais(tx, [antes.animalId]);
@@ -279,7 +277,7 @@ export async function reconciliarOrigem(id: string, propriedadeId: number, input
     // despesa: a origem aponta para estoque/compra/Serviço já existente.
     await auditar(tx, { entidade: "AplicacaoProduto", entidadeId: id, animalId: antes.animalId, propriedadeId, acao: "ORIGEM_RECONCILIADA", usuarioId, antes, depois: { ...depois, motivo: input.motivo } });
     return depois;
-  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  });
 }
 
 export async function listarAplicacoes(animalId: string | undefined, propriedadeId: number | null, filtro?: ConsultaSanitaria) {
@@ -320,7 +318,7 @@ export async function carenciaAnimalTx(tx: Prisma.TransactionClient, animalId: s
 }
 
 export async function anularAplicacao(id: string, propriedadeId: number, motivo: string, usuarioId: number | null) {
-  return prisma.$transaction(async (tx) => {
+  return transacaoPecuaria(async (tx) => {
     const existente = await tx.aplicacaoProduto.findFirst({ where: { id, propriedadeId, status: "VALIDO" } });
     if (!existente) throw new RebanhoError("NAO_ENCONTRADO", "Aplicação não encontrada ou já anulada");
     await travarAnimais(tx, [existente.animalId]);
@@ -331,7 +329,7 @@ export async function anularAplicacao(id: string, propriedadeId: number, motivo:
     await auditar(tx, { entidade: "AplicacaoProduto", entidadeId: id, animalId: existente.animalId, acao: "ANULACAO", usuarioId,
       antes: existente, depois: { status: salva.status, motivo } });
     return salva;
-  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  });
 }
 
 export async function corrigirCarencia(id: string, propriedadeId: number, input: Pick<AplicacaoInput, "estadoCarenciaLeite" | "estadoCarenciaCarne" | "carenciaLeiteHoras" | "carenciaCarneHoras" | "justificativaCarenciaCarne" | "justificativaCarenciaLeite"> & { motivo: string }, usuarioId: number | null) {

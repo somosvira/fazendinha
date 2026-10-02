@@ -1,4 +1,6 @@
 import crypto from "node:crypto";
+import { conferirFatosNaBaixa, conferirHistoricoDosFatos } from "../fatos.js";
+import { transacaoPecuaria } from "../transacao.js";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../../db.js";
 import {
@@ -544,6 +546,7 @@ export async function editar(id: string, input: EditarAnimalInput, usuarioId: nu
       if (ajuste.moverPesagensEntrada.length) await tx.pesagem.updateMany({ where: { id: { in: ajuste.moverPesagensEntrada } }, data: { data: entradaNova } });
       if (ajuste.moverPesagensNascimento.length) await tx.pesagem.updateMany({ where: { id: { in: ajuste.moverPesagensNascimento } }, data: { data: nascimentoNovo } });
     }
+    if (mudaDatas || (input.sexo && input.sexo !== animal.sexo)) await conferirHistoricoDosFatos(tx, [id]);
 
     if (ajusteDestino) {
       await auditar(tx, {
@@ -1229,6 +1232,7 @@ export async function movimentar(input: MovimentarInput, usuarioId: number | nul
         })),
       ],
     });
+    await conferirHistoricoDosFatos(tx, novas.map((l) => l.animalId));
     return novas.length;
   }, { timeout: 30_000, maxWait: 10_000 });
 
@@ -1310,6 +1314,8 @@ export async function desfazerLocalizacao(animalId: string, usuarioId: number | 
     exigirAfetadas(await tx.localizacaoAnimal.deleteMany({ where: { id: removida.id, ate: null } }), 1);
     exigirAfetadas(await tx.localizacaoAnimal.updateMany({ where: { id: anterior.id, ate: { not: null } }, data: { ate: null } }), 1);
     const reaberta = { ...anterior, ate: null };
+
+    await conferirHistoricoDosFatos(tx, [animalId]);
 
     await auditar(tx, { entidade: "LocalizacaoAnimal", entidadeId: removida.id, animalId, acao: "DESFAZER", usuarioId, antes: { removida, anteriorFechada: anterior }, depois: { reaberta } });
 
@@ -1430,6 +1436,7 @@ export async function desfazerMovimentacao(id: string, motivo: string, usuarioId
         })),
       ],
     });
+    await conferirHistoricoDosFatos(tx, plano.passos.map((p) => p.animalId));
     return { desfeitos: plano.passos.length };
   }, { timeout: 30_000, maxWait: 10_000 });
 }
@@ -1474,12 +1481,13 @@ export async function darBaixa(input: BaixaInput & { animalId: string }, usuario
     }
   }
 
-  await prisma.$transaction(async (tx) => {
+  await transacaoPecuaria(async (tx) => {
     // trava antes de ler a linha aberta: uma movimentação/mudança de destino simultânea
     // esperaria aqui e depois veria o animal baixado (sem trava, ficava baixado com linha aberta)
     await travarAnimais(tx, [animalId]);
     const { carenciaAnimalTx } = await import("../sanidade/aplicacoes.js");
     const carencias = await carenciaAnimalTx(tx, animalId);
+    await conferirFatosNaBaixa(tx, animalId, new Date(input.data));
     const fimDia = new Date(`${input.data}T00:00:00-03:00`);
     const restricoes = [carencias.leite, carencias.carne].filter((p) => p.estado === "NAO_INFORMADO" || (p.estado === "CONHECIDO" && p.ate > fimDia));
     if (["VENDA", "ABATE"].includes(input.tipo) && restricoes.length && (!input.cienciaSanitaria || !input.justificativaSanitaria?.trim())) throw new RebanhoError("VALIDACAO", "Há carência vigente ou desconhecida. Confirme ciência e justifique a baixa", "justificativaSanitaria");
@@ -1508,14 +1516,18 @@ export async function darBaixa(input: BaixaInput & { animalId: string }, usuario
       exigirAfetadas(await tx.destinoAnimal.updateMany({ where: { id: plano.fecharDestino.id, ate: null }, data: { ate: new Date(plano.fecharDestino.ate) } }), 1);
     }
 
+    const cienciaCarenciaSnapshot = JSON.parse(JSON.stringify({ carencias, restricoes,
+      ciente: input.cienciaSanitaria ?? false, justificativa: input.justificativaSanitaria?.trim() || null,
+      usuarioId, propriedadeId: localAberta?.propriedadeId ?? null, confirmadaEm: new Date().toISOString(), dataBaixa: input.data }));
     const baixa = await tx.baixaAnimal.create({
       data: {
         animalId, data: new Date(input.data), tipo: input.tipo, motivoId: input.motivoId ?? null, observacao: input.observacao ?? null,
         localizacaoFechadaId: plano.fecharLocalizacao?.id ?? null, destinoFechadoId: plano.fecharDestino?.id ?? null, criadoPorId: usuarioId,
+        cienciaCarenciaSnapshot,
       },
     });
 
-    await auditar(tx, { entidade: "BaixaAnimal", entidadeId: baixa.id, animalId, acao: "BAIXA", usuarioId, depois: { ...baixa, cienciaSanitaria: { carencias, ciente: input.cienciaSanitaria ?? false, justificativa: input.justificativaSanitaria ?? null } } });
+    await auditar(tx, { entidade: "BaixaAnimal", entidadeId: baixa.id, animalId, propriedadeId: localAberta?.propriedadeId ?? null, acao: "BAIXA", usuarioId, depois: { ...baixa, cienciaSanitaria: cienciaCarenciaSnapshot } });
   });
 
   return buscarFicha(animalId, null).then((f) => f as AnimalResumo);

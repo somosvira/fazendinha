@@ -12,6 +12,7 @@ import { PeriodoFinanceiroControl } from "../financeiro/PeriodoFinanceiroControl
 import { useSaldos, listarMovimentos, listarCentrosCusto, type FiltroMovimentos, type MovimentoDTO, type OrigemMovimento, type SaldoDTO, type RefDTO } from "./api";
 import { abrirAjusteEstoque, destinoDoMovimento, podeAcessarArea, podeAjustarEstoque } from "./navegacao";
 import { SEM_VINCULO } from "../lib/ids";
+import { ConsultaPartidas } from "./ConsultaPartidas";
 
 const qtd = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 3 });
 const CAMPO = "rounded-lg border border-border bg-white px-3 py-2 text-sm";
@@ -80,6 +81,9 @@ function useMovimentos(f: FiltroMovimentos) {
 }
 
 export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { centroCustoIdInicial?: string | null; titulo?: string; avisoFiltro?: string } = {}) {
+  const urlEstoque = new URLSearchParams(window.location.search);
+  const movimentoId = urlEstoque.get("movimentoId") ?? "";
+  const sitioMovimento = Number(urlEstoque.get("propriedadeId")) || undefined;
   // `centroCustoIdInicial` já chega resolvido: quem chama com um centro de
   // atividade (rebanho/plantio) só monta este componente depois de resolver o
   // centro (ver RebanhoContent/PlantioContent, que usam `key` para remontar);
@@ -97,7 +101,7 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
     const t = setTimeout(() => { setBuscaMovAplicada(buscaMov.trim()); setPaginaMov(1); }, 300);
     return () => clearTimeout(t);
   }, [buscaMov]);
-  const movimentos = useMovimentos({ q: buscaMovAplicada, origem: origemMov, centroCustoId: centroMov, de: periodoMov.inicio, ate: periodoMov.fim, pagina: paginaMov, porPagina: ITENS_POR_PAGINA });
+  const movimentos = useMovimentos({ movimentoId: movimentoId || undefined, propriedadeId: sitioMovimento, q: movimentoId ? undefined : buscaMovAplicada, origem: movimentoId ? undefined : origemMov, centroCustoId: movimentoId ? undefined : centroMov, de: movimentoId ? undefined : periodoMov.inicio, ate: movimentoId ? undefined : periodoMov.fim, pagina: paginaMov, porPagina: ITENS_POR_PAGINA });
   const entradas = useMovimentos({ tipo: "ENTRADA", porPagina: 100 });
   const [paginaSaldos, setPaginaSaldos] = useState(1);
   const [busca, setBusca] = useState("");
@@ -264,8 +268,11 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
       </Panel>
     </section>
 
+    <ConsultaPartidas />
+
     <section className="mt-10" aria-label="Histórico de movimentos">
       <h2 className="font-serif text-2xl">Histórico de movimentos<AjudaCampo rotulo="Origem dos movimentos" texto="Cada movimento leva à operação que o gerou; saídas automáticas (aplicação no talhão) levam ao talhão de origem." /></h2>
+      {movimentoId && <p className="mt-2 rounded-lg border border-border bg-surface p-3 text-sm">Movimento selecionado · <a href="/estoque" className="underline">Voltar ao histórico completo</a></p>}
       <div className="mt-3 flex flex-wrap items-center gap-3">
         <label className="relative w-full min-w-0 flex-[2_1_260px] sm:w-auto"><Search size={16} className="absolute left-3 top-3 text-ink-3" aria-hidden="true" /><input type="search" aria-label="Buscar movimento" value={buscaMov} onChange={(e) => setBuscaMov(e.target.value)} placeholder="Buscar por produto, operação ou fornecedor…" className={`${CAMPO} w-full pl-9`} /></label>
         <select aria-label="Filtrar por origem" value={origemMov} onChange={(e) => { setOrigemMov(e.target.value); setPaginaMov(1); }} className={`${CAMPO} min-w-0 flex-[1_1_160px]`}>

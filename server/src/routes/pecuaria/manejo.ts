@@ -34,7 +34,7 @@ export const manejoRouter = new Hono()
       return c.json(await manejo.listarManejos(animalId, await resolverEscopoLeitura(c))); }
     catch (e) { return falha(c, e); }
   })
-  .post("/eventos", validar(z.object({ animalId: uuid, propriedadeId: z.number().int().positive(), data,
+  .post("/eventos", validar(z.object({ chave: uuid.optional(), animalId: uuid, propriedadeId: z.number().int().positive(), data,
     tipo: z.enum(["DESMAMA", "CASTRACAO"]), pesoKg: z.number().positive().max(99999.99).nullish(),
     responsavel: z.string().trim().max(160).nullish(), observacao: z.string().trim().max(500).nullish() })), async (c) => {
     try { const body = c.req.valid("json"); const propriedadeId = await resolverEscopoEscrita(c, body.propriedadeId);

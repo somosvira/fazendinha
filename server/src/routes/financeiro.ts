@@ -15,9 +15,11 @@ import { FinanceiroError } from "../services/financeiro/regras.js";
 import { getStorage } from "../lib/storage.js";
 import * as cadastros from "../services/financeiro/cadastros-gerenciais.js";
 import * as produtos from "../services/estoque/produtos.js";
-import { exigePermissao } from "../middleware/permissao.js";
+import { exigePermissao, getUsuario } from "../middleware/permissao.js";
 import { prisma } from "../db.js";
 import { obterCentrosAtividade } from "../services/estoque/centros-atividade.js";
+import { listarOrigemFinanceira } from "../services/pecuaria/sanidade/origem-financeira.js";
+import { temArea, temPermissao } from "../services/auth/papeis.js";
 
 export const filtroPeriodoSchema = z.object({ inicio: z.string().date().optional(), fim: z.string().date().optional() }).refine(p => (!p.inicio && !p.fim) || (!!p.inicio && !!p.fim && p.inicio <= p.fim), { message: "Informe um intervalo válido, com início igual ou anterior ao fim." });
 const validarPeriodo = zValidator("query", filtroPeriodoSchema, (resultado, c) => { if (!resultado.success) return c.json({ error: resultado.error.issues[0].message }, 422); });
@@ -206,6 +208,15 @@ export const financeiroRouter = new Hono()
   })
   .get("/financeiro/operacoes/:id", async (c) => {
     try { return c.json(await operacoes.obterOperacao(c.req.param("id"), await resolverEscopoLeitura(c))); }
+    catch (e) { return falha(c, e); }
+  })
+  .get("/financeiro/operacoes/:id/vinculos-pecuaria", async (c) => {
+    const usuario = getUsuario(c);
+    if (usuario && !temArea(usuario, "pecuaria")) return c.json({ error: "Sem acesso à Pecuária" }, 403);
+    try {
+      const dados = await listarOrigemFinanceira(c.req.param("id"), await resolverEscopoLeitura(c));
+      return c.json(usuario && !temPermissao(usuario, "verValores") ? { ...dados, fatos: dados.fatos.map((f) => ({ ...f, custoProduto: null, rateioServico: null })) } : dados);
+    }
     catch (e) { return falha(c, e); }
   })
   .post("/financeiro/operacoes", zValidator("json", operacaoSchema), async (c) => {

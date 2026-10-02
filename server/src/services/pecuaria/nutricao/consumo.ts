@@ -9,6 +9,9 @@ import { prepararPartidasTx, type SelecaoPartida } from "../../estoque/partidas.
 import { exigirPeriodoAberto } from "../../financeiro/regras.js";
 import { propriedadePrincipalId } from "../../propriedade.js";
 import { converterQuantidade } from "../../estoque/unidades.js";
+import { calcularAtribuicao } from "./atribuicao.calc.js";
+import type { PaginaNutricao } from "./schemas.js";
+import { transacaoPecuaria } from "../transacao.js";
 
 const dia = (s: string) => new Date(`${s}T00:00:00Z`);
 const decimal = (v: number | string | Prisma.Decimal) => new Prisma.Decimal(v);
@@ -129,7 +132,7 @@ async function confirmarConsumoTx(tx: Prisma.TransactionClient, input: Fechament
 }
 
 export async function confirmarConsumo(input: FechamentoInput, usuarioId: number | null) {
-  return prisma.$transaction((tx) => confirmarConsumoTx(tx, input, usuarioId), { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  return transacaoPecuaria((tx) => confirmarConsumoTx(tx, input, usuarioId));
 }
 
 const textoDia = (d: Date) => d.toISOString().slice(0, 10);
@@ -151,8 +154,7 @@ async function dividirPeriodosTx(tx: Prisma.TransactionClient, input: Omit<Fecha
   });
 }
 
-export async function previaPeriodos(input: Omit<FechamentoInput, "itens">) {
-  return prisma.$transaction(async (tx) => {
+async function montarPreviaPeriodosTx(tx: Prisma.TransactionClient, input: Omit<FechamentoInput, "itens">) {
     const divisao = await dividirPeriodosTx(tx, input);
     const periodos = [];
     const lacunas = [];
@@ -160,36 +162,93 @@ export async function previaPeriodos(input: Omit<FechamentoInput, "itens">) {
       if (!p.vigenciaId) { lacunas.push({ inicio: p.inicio, fim: p.fim }); continue; }
       periodos.push(await previaConsumoTx(tx, { ...input, inicio: p.inicio, fim: p.fim }));
     }
-    return { periodos, lacunas };
-  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 30000 });
+    const baseConferida = periodos.map((p) => ({ inicio: p.inicio, fim: p.fim, vigenciaId: p.vigenciaId, centroCustoId: p.centroCustoId, animalDias: p.animalDias,
+      participantes: [...p.participantes].sort((a, b) => a.animalId.localeCompare(b.animalId)).map((a) => [a.animalId, a.dias]),
+      itens: [...p.itens].sort((a, b) => a.produtoId.localeCompare(b.produtoId)).map((i) => [i.produtoId, i.quantidadePrevista, i.saldo, i.custoPrevisto, i.materiaSecaKg]) }));
+    const revisao = crypto.createHash("sha256").update(JSON.stringify({ baseConferida, lacunas })).digest("hex");
+    return { periodos, lacunas, revisao };
 }
 
-export async function confirmarPeriodos(input: { chave: string; loteId: string; propriedadeId: number; inicio: string; fim: string; centroCustoId?: string | null; periodos: Array<{ inicio: string; fim: string; itens: FechamentoInput["itens"] }> }, usuarioId: number | null) {
+export async function previaPeriodos(input: Omit<FechamentoInput, "itens">) {
+  return prisma.$transaction((tx) => montarPreviaPeriodosTx(tx, input), { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 30000 });
+}
+
+export async function confirmarPeriodos(input: { chave: string; revisao: string; loteId: string; propriedadeId: number; inicio: string; fim: string; centroCustoId?: string | null; periodos: Array<{ inicio: string; fim: string; itens: FechamentoInput["itens"] }> }, usuarioId: number | null) {
   const hashPayload = crypto.createHash("sha256").update(JSON.stringify(input)).digest("hex");
-  return prisma.$transaction(async (tx) => {
-    const divisao = await dividirPeriodosTx(tx, input);
+  return transacaoPecuaria(async (tx) => {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`pec-requisicao:${input.chave}`}))`;
     const anterior = await tx.requisicaoPecuaria.findUnique({ where: { chave: input.chave } });
     if (anterior) {
       if (anterior.hashPayload !== hashPayload || anterior.usuarioId !== usuarioId || anterior.propriedadeId !== input.propriedadeId || anterior.operacao !== "CONSUMO_PERIODOS") throw new RebanhoError("CONFLITO", "Chave já utilizada com outros dados");
       return { fechamentos: anterior.resultadoIds };
     }
-    if (divisao.some((p) => !p.vigenciaId) || divisao.length !== input.periodos.length || divisao.some((p, i) => p.inicio !== input.periodos[i].inicio || p.fim !== input.periodos[i].fim)) throw new RebanhoError("CONFLITO", "Vigências mudaram ou há lacunas sem dieta; confira novamente");
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`pec-lote-consumo:${input.loteId}`}))`;
+    const previaAtual = await montarPreviaPeriodosTx(tx, input);
+    if (previaAtual.revisao !== input.revisao) throw new RebanhoError("CONFLITO", "A dieta, ocupação, estoque ou custo mudou desde a prévia; confira novamente");
+    if (previaAtual.lacunas.length || previaAtual.periodos.length !== input.periodos.length || previaAtual.periodos.some((p, i) => p.inicio.toISOString().slice(0, 10) !== input.periodos[i].inicio || p.fim.toISOString().slice(0, 10) !== input.periodos[i].fim)) throw new RebanhoError("CONFLITO", "Vigências mudaram ou há lacunas sem dieta; confira novamente");
     const fechamentos = [];
     for (const p of input.periodos) { const f = await confirmarConsumoTx(tx, { ...input, ...p }, usuarioId); fechamentos.push({ id: f.id, inicio: textoDia(f.inicio), fim: textoDia(f.fim) }); }
     await tx.requisicaoPecuaria.create({ data: { chave: input.chave, propriedadeId: input.propriedadeId, usuarioId, operacao: "CONSUMO_PERIODOS", hashPayload, resultadoIds: fechamentos } });
     return { fechamentos };
-  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 30000 });
+  });
 }
 
-export async function listarFechamentos(loteId: string | undefined, propriedadeId: number | null) {
-  return prisma.fechamentoConsumo.findMany({ where: { ...(loteId ? { loteId } : {}), ...(propriedadeId == null ? {} : { propriedadeId }) },
-    include: { centroCusto: { select: { nome: true } }, vigencia: { select: { dieta: { select: { nome: true, versao: true } } } }, itens: { include: { produto: { select: { nome: true } }, movimentoEstoque: { select: { quantidade: true, valorTotal: true, custoUnitario: true, alocacaoPartidaEstoques: { select: { quantidade: true, partida: { select: { codigo: true, validade: true } } } } } } } }, participacoes: { include: { animal: { select: { brinco: true } } } } },
-    orderBy: { inicio: "desc" }, take: 100 });
+const detalheInclude = {
+  lote: { select: { id: true, nome: true } }, centroCusto: { select: { nome: true } },
+  vigencia: { select: { dieta: { select: { nome: true, versao: true } } } },
+  itens: { include: { produto: { select: { nome: true } }, movimentoEstoque: { select: { id: true, quantidade: true, valorTotal: true, custoUnitario: true,
+    alocacaoPartidaEstoques: { select: { quantidade: true, partida: { select: { codigo: true, validade: true } } } } } } } },
+  participacoes: { include: { animal: { select: { brinco: true } } } },
+} satisfies Prisma.FechamentoConsumoInclude;
+type Detalhe = Prisma.FechamentoConsumoGetPayload<{ include: typeof detalheInclude }>;
+
+/** Só a base CONHECIDO representa valor apurado; zero sem base não é gratuidade. */
+export function apresentarFechamento(f: Detalhe, verValores: boolean) {
+  const atribuicao = calcularAtribuicao(f.participacoes, f.animalDias, f.itens.map((i) => ({ produtoId: i.produtoId, unidade: i.unidade,
+    quantidadeConfirmada: i.quantidadeConfirmada,
+    custoConhecido: i.quantidadeConfirmada.isZero() ? "0" : i.situacaoCusto === "CONHECIDO" ? i.movimentoEstoque?.valorTotal ?? null : null,
+  })));
+  return { ...f, verValores, custoConhecido: verValores ? atribuicao.custoConhecido : null, coberturaCustoCompleta: atribuicao.coberturaCustoCompleta,
+    itens: f.itens.map((i) => ({ ...i, movimentoEstoque: i.movimentoEstoque ? { ...i.movimentoEstoque,
+      valorTotal: verValores && i.situacaoCusto === "CONHECIDO" ? i.movimentoEstoque.valorTotal : null,
+      custoUnitario: verValores && i.situacaoCusto === "CONHECIDO" ? i.movimentoEstoque.custoUnitario : null } : null })),
+    participacoes: atribuicao.participacoes.map((p) => ({ ...p, animal: f.participacoes.find((a) => a.animalId === p.animalId)!.animal,
+      custoConhecido: verValores ? p.custoConhecido : null,
+      custoConhecidoPorDia: verValores ? p.custoConhecidoPorDia : null,
+      itens: p.itens.map((i) => ({ ...i, custoConhecido: verValores ? i.custoConhecido : null })),
+    })),
+  };
+}
+
+export async function listarFechamentos(loteId: string | undefined, propriedadeId: number | null, pagina: PaginaNutricao = { pagina: 1, limite: 25 }, verValores = false, animalId?: string) {
+  const where: Prisma.FechamentoConsumoWhereInput = { ...(loteId ? { loteId } : {}), ...(propriedadeId == null ? {} : { propriedadeId }), ...(animalId ? { participacoes: { some: { animalId } } } : {}) };
+  return prisma.$transaction(async (tx) => {
+    const [fechamentos, total] = await Promise.all([
+      tx.fechamentoConsumo.findMany({ where, include: detalheInclude, orderBy: [{ inicio: "desc" }, { id: "asc" }], skip: (pagina.pagina - 1) * pagina.limite, take: pagina.limite }),
+      tx.fechamentoConsumo.count({ where }),
+    ]);
+    return { itens: fechamentos.map((f) => apresentarFechamento(f, verValores)), total, ...pagina };
+  });
+}
+
+export async function detalheFechamento(id: string, propriedadeId: number | null, verValores: boolean) {
+  const f = await prisma.fechamentoConsumo.findFirst({ where: { id, ...(propriedadeId == null ? {} : { propriedadeId }) }, include: detalheInclude });
+  if (!f) throw new RebanhoError("NAO_ENCONTRADO", "Fechamento não encontrado neste sítio");
+  return apresentarFechamento(f, verValores);
+}
+
+export async function consumoAnimal(animalId: string, propriedadeId: number | null, pagina: PaginaNutricao, verValores: boolean) {
+  const animal = await prisma.animal.findFirst({ where: { id: animalId, ...(propriedadeId == null ? {} : { localizacoes: { some: { propriedadeId } } }) }, select: { id: true } });
+  if (!animal) throw new RebanhoError("NAO_ENCONTRADO", "Animal não encontrado neste sítio");
+  const lista = await listarFechamentos(undefined, propriedadeId, pagina, verValores, animalId);
+  return { ...lista, animalId, verValores, itens: lista.itens.map((f) => ({ id: f.id, inicio: f.inicio, fim: f.fim, status: f.status, lote: f.lote,
+    dieta: f.vigencia.dieta, propriedadeId: f.propriedadeId, ...f.participacoes.find((p) => p.animalId === animalId)!,
+    itens: f.participacoes.find((p) => p.animalId === animalId)!.itens.map((i) => ({ ...i, nome: f.itens.find((item) => item.produtoId === i.produtoId)!.produto.nome })),
+  })) };
 }
 
 export async function estornarFechamento(id: string, propriedadeId: number, motivo: string, usuarioId: number | null) {
-  return prisma.$transaction(async (tx) => {
+  return transacaoPecuaria(async (tx) => {
     const fechamento = await tx.fechamentoConsumo.findFirst({ where: { id, propriedadeId },
       include: { itens: true, participacoes: true } });
     if (!fechamento) throw new RebanhoError("NAO_ENCONTRADO", "Fechamento não encontrado");
@@ -204,5 +263,5 @@ export async function estornarFechamento(id: string, propriedadeId: number, moti
     await auditar(tx, { entidade: "FechamentoConsumo", entidadeId: id, propriedadeId, acao: "ESTORNO", usuarioId,
       antes: fechamento, depois: { status: salvo.status, motivo } });
     return salvo;
-  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  });
 }

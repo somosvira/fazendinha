@@ -4,7 +4,7 @@ import { prisma } from "../../../db.js";
 import { cadastrar } from "../rebanho/animais.js";
 import { cadastrarAnimalSchema } from "../rebanho/schemas.js";
 import { hojeFazenda } from "../rebanho/regras.js";
-import { listarManejos, registrarManejo, registrarPesagensColetivas } from "./manejo.js";
+import { anularManejo, listarManejos, registrarManejo, registrarPesagensColetivas } from "./manejo.js";
 
 const describeComBanco = process.env.PECUARIA_DB_INTEGRATION === "1" ? describe : describe.skip;
 const run = crypto.randomUUID().slice(0, 8);
@@ -41,7 +41,14 @@ describeComBanco("manejo e pesagem coletiva com PostgreSQL", () => {
     expect(primeira.pesagens).toEqual(segunda.pesagens);
     expect(await prisma.pesagem.count({ where: { requisicaoId: chave } })).toBe(2);
     await expect(registrarManejo({ animalId: animais[0], propriedadeId: propriedade.id, data: hojeFazenda(), tipo: "CASTRACAO" }, null)).rejects.toThrow(/macho/);
-    await registrarManejo({ animalId: animais[1], propriedadeId: propriedade.id, data: hojeFazenda(), tipo: "CASTRACAO" }, null);
+    const chaveManejo = crypto.randomUUID(); chaves.push(chaveManejo);
+    const inputManejo = { chave: chaveManejo, animalId: animais[1], propriedadeId: propriedade.id, data: hojeFazenda(), tipo: "CASTRACAO" as const, pesoKg: 390.25 };
+    const registrado = await registrarManejo(inputManejo, null);
+    expect((await registrarManejo(inputManejo, null)).id).toBe(registrado.id);
     expect((await listarManejos(animais[1], propriedade.id))[0].tipo).toBe("CASTRACAO");
+    const anulado = await anularManejo(registrado.id, propriedade.id, "Manejo lançado por engano", null);
+    expect(anulado.pesagemId).toBeNull();
+    expect(await prisma.pesagem.findUnique({ where: { id: registrado.pesagemId! } })).toBeTruthy();
+    expect((await registrarManejo(inputManejo, null)).id).toBe(registrado.id);
   });
 });

@@ -17,10 +17,12 @@ export type DestinoMovimento = { href: string; rotulo: string; area: AreaId };
 
 /** Para onde um movimento leva: a operação financeira que o gerou ou, nas saídas
  *  automáticas, o talhão de origem. null = sem destino conhecido. */
-export function destinoDoMovimento(m: Pick<MovimentoDTO, "operacaoId" | "operacaoNumero" | "vinculo">): DestinoMovimento | null {
+export function destinoDoMovimento(m: Pick<MovimentoDTO, "operacaoId" | "operacaoNumero" | "vinculo" | "propriedadeId">): DestinoMovimento | null {
   if (m.operacaoId != null && m.operacaoNumero != null) return { href: `/financeiro/operacoes/${m.operacaoId}`, rotulo: codigoOperacao(m.operacaoNumero), area: "financeiro" };
   const v = m.vinculo;
   if (!v) return null;
+  if (v.tipo === "APLICACAO_SANITARIA") return { href: `/pecuaria/rebanho/sanidade?aba=aplicacoes&animalId=${encodeURIComponent(v.animalId)}&aplicacaoId=${encodeURIComponent(v.id)}&detalheTipo=aplicacao&detalheId=${encodeURIComponent(v.id)}${m.propriedadeId ? `&propriedadeId=${m.propriedadeId}` : ""}`, rotulo: "Aplicação sanitária", area: "pecuaria" };
+  if (v.tipo === "FECHAMENTO_NUTRICIONAL") return { href: `/pecuaria/rebanho/nutricao?aba=fechamentos&loteId=${encodeURIComponent(v.loteId)}&fechamentoId=${encodeURIComponent(v.id)}`, rotulo: "Fechamento nutricional", area: "pecuaria" };
   // `?id=` abre a ficha direto (App.tsx transforma em deep-link de cockpit no popstate).
   return { href: `/plantio/talhao?id=${v.id}`, rotulo: `Talhão ${v.codigo}`, area: "agricultura" };
 }

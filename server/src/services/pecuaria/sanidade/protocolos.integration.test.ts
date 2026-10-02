@@ -1,10 +1,10 @@
 import crypto from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
 import { prisma } from "../../../db.js";
-import { cadastrar } from "../rebanho/animais.js";
+import { cadastrar, darBaixa, desfazerLocalizacao, editar, movimentar } from "../rebanho/animais.js";
 import { cadastrarAnimalSchema } from "../rebanho/schemas.js";
 import { hojeFazenda } from "../rebanho/regras.js";
-import { criarTipoExame, registrarExame, registrarExameColetivo } from "./exames.js";
+import { corrigirExame, criarTipoExame, listarExames, registrarExame, registrarExameColetivo } from "./exames.js";
 import { criarProtocolo, iniciarExecucao, iniciarExecucaoColetivo, listarTarefas, publicarProtocolo } from "./protocolos.js";
 import { salvarRateio } from "./rateios.js";
 
@@ -24,6 +24,7 @@ afterAll(async () => {
     { animalId: { in: animalIds } }, { entidadeId: { in: [...protocoloIds, ...tipoIds, ...execucaoIds] } },
   ] } });
   await prisma.exameAnimal.deleteMany({ where: { animalId: { in: animalIds } } });
+  await prisma.baixaAnimal.deleteMany({ where: { animalId: { in: animalIds } } });
   await prisma.tarefaSanitaria.deleteMany({ where: { execucaoId: { in: execucaoIds } } });
   await prisma.execucaoProtocoloSanitario.deleteMany({ where: { id: { in: execucaoIds } } });
   await prisma.etapaProtocoloSanitario.deleteMany({ where: { protocoloId: { in: protocoloIds } } });
@@ -31,6 +32,8 @@ afterAll(async () => {
   await prisma.tipoExame.deleteMany({ where: { id: { in: tipoIds } } });
   await prisma.destinoAnimal.deleteMany({ where: { animalId: { in: animalIds } } });
   await prisma.localizacaoAnimal.deleteMany({ where: { animalId: { in: animalIds } } });
+  await prisma.movimentacaoAnimal.deleteMany({ where: { animalId: { in: animalIds } } });
+  await prisma.movimentacao.deleteMany({ where: { propriedadeDestinoId: { in: propriedadeIds } } });
   await prisma.animal.deleteMany({ where: { id: { in: animalIds } } });
   await prisma.operacao.deleteMany({ where: { id: { in: servicoIds } } });
   await prisma.propriedade.deleteMany({ where: { id: { in: propriedadeIds } } });
@@ -92,5 +95,40 @@ describeComBanco("protocolo e exame com PostgreSQL", () => {
     expect(await prisma.exameAnimal.count({ where: { animalId } })).toBe(antesE + 1);
     const execucoes = await prisma.execucaoProtocoloSanitario.findMany({ where: { animalId }, select: { id: true } });
     execucaoIds.push(...execucoes.map((v) => v.id).filter((id) => !execucaoIds.includes(id)));
+  });
+  it("anulação preserva tentativa; agenda acompanha transferência e fatos mantêm sítio original", async () => {
+    const origem = propriedadeIds[0];
+    const destino = await prisma.propriedade.create({ data: { nome: `Destino agenda ${run}` } });
+    propriedadeIds.push(destino.id);
+    const animal = await cadastrar(cadastrarAnimalSchema.parse({ brinco: `TR${run}`, sexo: "F", origem: "COMPRADO", aptidao: "LEITE", dataNascimento: "2024-01-01", dataEntrada: "2026-08-01", propriedadeId: origem }), null);
+    animalIds.push(animal.id);
+    const execucao = await iniciarExecucao({ animalId: animal.id, propriedadeId: origem, protocoloId: protocoloIds[0], inicio: "2026-09-01" }, null);
+    execucaoIds.push(execucao.id);
+    const tarefaId = execucao.tarefas[0].id;
+    const primeiro = await registrarExame({ animalId: animal.id, propriedadeId: origem, data: "2026-09-01", tipoExameId: tipoIds[0], tarefaId }, null);
+    await expect(registrarExame({ animalId: animal.id, propriedadeId: origem, data: "2026-09-02", tipoExameId: tipoIds[0], tarefaId }, null)).rejects.toThrow(/já realizada/);
+    await corrigirExame(primeiro.id, origem, { motivo: "Coleta descartada antes da análise", anular: true }, null);
+    expect((await listarTarefas(origem, animal.id))[0].situacao).toBe("PENDENTE");
+    await movimentar({ animalIds: [animal.id], propriedadeId: destino.id, data: "2026-09-10" }, null);
+    expect(await listarTarefas(origem, animal.id)).toEqual([]);
+    expect((await listarTarefas(destino.id, animal.id))[0]).toMatchObject({ propriedadeAtualId: destino.id, execucao: { propriedadeId: origem } });
+    const entrada = { chave: crypto.randomUUID(), animalId: animal.id, propriedadeId: destino.id, data: "2026-09-10", tipoExameId: tipoIds[0], tarefaId };
+    const segundo = await registrarExame(entrada, null);
+    expect((await registrarExame(entrada, null)).id).toBe(segundo.id);
+    expect(segundo.id).not.toBe(primeiro.id);
+    const tarefa = (await listarTarefas(destino.id, animal.id))[0];
+    expect(tarefa.aplicacao).toBeNull();
+    expect(tarefa.exame?.id).toBe(segundo.id);
+    expect(tarefa.exames).toHaveLength(2);
+    expect(await listarExames(animal.id, origem)).toEqual([expect.objectContaining({ id: primeiro.id, status: "ANULADO", tarefaId })]);
+    await expect(desfazerLocalizacao(animal.id, null)).rejects.toThrow(/sítio de fatos/);
+    await expect(darBaixa({ animalId: animal.id, tipo: "MORTE", data: "2026-09-09" }, null)).rejects.toThrow(/antecede fatos/);
+    await expect(editar(animal.id, { dataEntrada: "2026-09-11" }, null)).rejects.toThrow();
+    await darBaixa({ animalId: animal.id, tipo: "MORTE", data: "2026-09-20" }, null);
+    const retroativo = await registrarExame({ animalId: animal.id, propriedadeId: origem, data: "2026-09-05", tipoExameId: tipoIds[0] }, null);
+    expect(retroativo.propriedadeId).toBe(origem);
+    await registrarExame({ animalId: animal.id, propriedadeId: destino.id, data: "2026-09-20", tipoExameId: tipoIds[0] }, null);
+    await expect(registrarExame({ animalId: animal.id, propriedadeId: destino.id, data: "2026-09-21", tipoExameId: tipoIds[0] }, null)).rejects.toThrow(/após a baixa/);
+    await expect(registrarExame({ animalId: animal.id, propriedadeId: origem, data: "2026-09-10", tipoExameId: tipoIds[0] }, null)).rejects.toThrow(/não estava/);
   });
 });

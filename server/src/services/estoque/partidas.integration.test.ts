@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { afterAll, describe, expect, it } from "vitest";
 import { prisma } from "../../db.js";
-import { ativarRastreio, identificarLegado, listarPartidas, prepararPartidasTx } from "./partidas.js";
+import { ativarRastreio, identificarLegado, listarPartidas, prepararPartidasTx, previaAtivacaoRastreio } from "./partidas.js";
 import { obterBaseCusto } from "./estoque.js";
 import { transferirEstoque } from "./transferencias.js";
 import { estornarOperacao } from "../financeiro/operacoes.js";
@@ -28,6 +28,22 @@ afterAll(async () => {
 });
 
 describeComBanco("rastreio de partidas no estoque único", () => {
+  it("recusa ativação se o razão mudar após a prévia e exige nova conferência", async () => {
+    const propriedade = await prisma.propriedade.create({ data: { nome: `Revisão rastreio ${run}` } });
+    propriedades.push(propriedade.id);
+    const produto = await prisma.produto.create({ data: { nome: `Produto revisão ${run}`, unidade: "UN" } });
+    produtos.push(produto.id);
+    await prisma.movimentoEstoque.create({ data: { produtoId: produto.id, propriedadeId: propriedade.id, tipo: "ENTRADA", origem: "INVENTARIO_INICIAL", data: new Date("2026-09-01"), quantidade: 5, custoUnitario: 1, valorTotal: 5 } });
+    const previaAntiga = await previaAtivacaoRastreio(produto.id);
+    await prisma.movimentoEstoque.create({ data: { produtoId: produto.id, propriedadeId: propriedade.id, tipo: "ENTRADA", origem: "BONIFICACAO", data: new Date("2026-09-02"), quantidade: 2, custoUnitario: 1, valorTotal: 2 } });
+    await expect(ativarRastreio(produto.id, null, previaAntiga.revisao)).rejects.toThrow(/mudou desde a prévia/);
+    expect((await prisma.produto.findUniqueOrThrow({ where: { id: produto.id } })).rastrearPartidas).toBe(false);
+    const previaAtual = await previaAtivacaoRastreio(produto.id);
+    expect(previaAtual).toMatchObject({ movimentosLegados: 2, saldos: [{ propriedadeId: propriedade.id, quantidade: "7" }] });
+    await ativarRastreio(produto.id, null, previaAtual.revisao);
+    expect((await listarPartidas(produto.id, propriedade.id))[0].saldo).toBe("7");
+  });
+
   it("atribui o razão anterior ao legado e recusa movimento novo sem distribuição", async () => {
     const propriedade = await prisma.propriedade.create({ data: { nome: `Pec V3 partidas ${run}` } });
     propriedades.push(propriedade.id);
@@ -37,7 +53,9 @@ describeComBanco("rastreio de partidas no estoque único", () => {
       produtoId: produto.id, propriedadeId: propriedade.id, tipo: "ENTRADA", origem: "INVENTARIO_INICIAL",
       data: new Date("2026-09-01"), quantidade: 10, custoUnitario: 12, valorTotal: 120,
     } });
-    const ativacao = await ativarRastreio(produto.id, null);
+    const previa = await previaAtivacaoRastreio(produto.id);
+    expect(previa).toMatchObject({ movimentosLegados: 1, partidaTecnica: "LEGADO_NAO_IDENTIFICADO", alteracaoLiquidaQuantidade: "0", alteracaoLiquidaValor: "0" });
+    const ativacao = await ativarRastreio(produto.id, null, previa.revisao);
     expect(ativacao.movimentosLegados).toBe(1);
     const [legado] = await listarPartidas(produto.id, propriedade.id);
     expect(legado).toMatchObject({ codigo: "LEGADO_NAO_IDENTIFICADO", saldo: "10" });

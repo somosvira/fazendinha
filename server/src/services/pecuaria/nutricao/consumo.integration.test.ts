@@ -4,7 +4,7 @@ import { prisma } from "../../../db.js";
 import { cadastrar } from "../rebanho/animais.js";
 import { cadastrarAnimalSchema } from "../rebanho/schemas.js";
 import { atribuirDieta, criarDieta, publicarDieta } from "./dietas.js";
-import { confirmarConsumo, confirmarPeriodos, estornarFechamento, previaConsumo, previaPeriodos } from "./consumo.js";
+import { confirmarConsumo, confirmarPeriodos, consumoAnimal, detalheFechamento, estornarFechamento, previaConsumo, previaPeriodos } from "./consumo.js";
 
 const describeComBanco = process.env.PECUARIA_DB_INTEGRATION === "1" ? describe : describe.skip;
 const run = crypto.randomUUID().slice(0, 8);
@@ -57,6 +57,14 @@ describeComBanco("fechamento nutricional com PostgreSQL", () => {
     expect(fechamento.itens[0].quantidadeConfirmada.toString()).toBe("28");
     const movimento = await prisma.movimentoEstoque.findUnique({ where: { id: fechamento.itens[0].movimentoEstoqueId! } });
     expect(movimento?.quantidade.toString()).toBe("28");
+    const detalhe = await detalheFechamento(fechamento.id, propriedade.id, true);
+    expect(detalhe.custoConhecido).toBe("56.00");
+    expect(detalhe.participacoes[0].itens[0].quantidadeAtribuida).toBe("28.000");
+    expect(detalhe.participacoes[0].itens[0].quantidadePorDia).toBe("2.800000");
+    const individual = await consumoAnimal(animal.id, propriedade.id, { pagina: 1, limite: 25 }, false);
+    expect(individual.total).toBe(1);
+    expect(individual.itens[0].custoConhecido).toBeNull();
+    expect(individual.itens[0].itens[0].custoConhecido).toBeNull();
     const local = await prisma.localizacaoAnimal.findFirstOrThrow({ where: { animalId: animal.id, loteId: lote.id } });
     await expect(prisma.localizacaoAnimal.update({ where: { id: local.id }, data: { desde: new Date("2026-09-05") } })).rejects.toThrow();
     await prisma.localizacaoAnimal.update({ where: { id: local.id }, data: { ate: new Date("2026-09-15") } });
@@ -64,6 +72,7 @@ describeComBanco("fechamento nutricional com PostgreSQL", () => {
     await expect(confirmarConsumo({ ...contexto, itens: [{ produtoId: produto.id, modoEstoque: "BAIXA_ESTOQUE" }] }, null)).rejects.toThrow();
     await estornarFechamento(fechamento.id, propriedade.id, "Revisão do consumo registrado", null);
     expect((await prisma.fechamentoConsumo.findUnique({ where: { id: fechamento.id } }))?.status).toBe("ESTORNADO");
+    expect((await detalheFechamento(fechamento.id, propriedade.id, true)).custoConhecido).toBe("56.00");
   });
   it("divide mês, aponta lacunas e confirma atomicamente sem duplicar no reenvio", async () => {
     const contexto = { loteId: ids.lote, propriedadeId: ids.propriedade, inicio: "2026-09-29", fim: "2026-10-02" };
@@ -75,9 +84,11 @@ describeComBanco("fechamento nutricional com PostgreSQL", () => {
     expect(lacunas.lacunas).toEqual([{ inicio: "2026-08-30", fim: "2026-08-31" }]);
     const periodos = previa.periodos.map((p) => ({ inicio: p.inicio.toISOString().slice(0, 10), fim: p.fim.toISOString().slice(0, 10), itens: [{ produtoId: ids.produto, quantidadeConfirmada: 6, modoEstoque: "BAIXA_ESTOQUE" as const }] }));
     const antes = await prisma.fechamentoConsumo.count({ where: { loteId: ids.lote } });
-    await expect(confirmarPeriodos({ ...contexto, chave: crypto.randomUUID(), periodos: [periodos[0], { ...periodos[1], itens: [{ ...periodos[1].itens[0], quantidadeConfirmada: 999, motivoAjuste: "Saldo insuficiente intencional" }] }] }, null)).rejects.toThrow(/Saldo/);
+    await expect(confirmarPeriodos({ ...contexto, chave: crypto.randomUUID(), revisao: "0".repeat(64), periodos }, null)).rejects.toThrow(/mudou desde a prévia/);
     expect(await prisma.fechamentoConsumo.count({ where: { loteId: ids.lote } })).toBe(antes);
-    const input = { ...contexto, chave: crypto.randomUUID(), periodos };
+    await expect(confirmarPeriodos({ ...contexto, chave: crypto.randomUUID(), revisao: previa.revisao, periodos: [periodos[0], { ...periodos[1], itens: [{ ...periodos[1].itens[0], quantidadeConfirmada: 999, motivoAjuste: "Saldo insuficiente intencional" }] }] }, null)).rejects.toThrow(/Saldo/);
+    expect(await prisma.fechamentoConsumo.count({ where: { loteId: ids.lote } })).toBe(antes);
+    const input = { ...contexto, chave: crypto.randomUUID(), revisao: previa.revisao, periodos };
     const resultado = await confirmarPeriodos(input, null);
     expect(resultado.fechamentos).toHaveLength(2);
     expect(await confirmarPeriodos(input, null)).toEqual(resultado);

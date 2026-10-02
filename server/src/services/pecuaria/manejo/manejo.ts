@@ -2,20 +2,14 @@ import crypto from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../../db.js";
 import { RebanhoError, auditar, travarAnimais } from "../rebanho/regras.js";
-import { validarDataPesagem } from "../rebanho/datas.calc.js";
+import { conferirAnimalNoFato } from "../fatos.js";
+import { transacaoPecuaria } from "../transacao.js";
+import { confirmarFato } from "../idempotencia.js";
 
 const dia = (s: string) => new Date(`${s}T00:00:00Z`);
 
 async function conferirAnimal(tx: Prisma.TransactionClient, animalId: string, propriedadeId: number, data: string) {
-  const animal = await tx.animal.findUnique({ where: { id: animalId } });
-  if (!animal) throw new RebanhoError("NAO_ENCONTRADO", "Animal não encontrado");
-  const local = await tx.localizacaoAnimal.findFirst({ where: { animalId, propriedadeId, desde: { lte: dia(data) },
-    OR: [{ ate: null }, { ate: { gt: dia(data) } }] } });
-  if (!local) throw new RebanhoError("VALIDACAO", "Animal não estava neste sítio na data informada", "data");
-  const baixa = await tx.baixaAnimal.findFirst({ where: { animalId, estornadaEm: null } });
-  const erros = validarDataPesagem({ dataNascimento: animal.dataNascimento, dataBaixa: baixa?.data ?? null, dataPesagem: data });
-  if (erros.length) throw new RebanhoError("VALIDACAO", erros[0].mensagem, erros[0].campo);
-  return animal;
+  return conferirAnimalNoFato(tx, animalId, propriedadeId, dia(data));
 }
 
 export async function registrarPesagensColetivas(input: { chave: string; propriedadeId: number; data: string;
@@ -24,8 +18,9 @@ export async function registrarPesagensColetivas(input: { chave: string; proprie
   const ids = input.itens.map((i) => i.animalId);
   if (!ids.length || ids.length > 500 || new Set(ids).size !== ids.length) throw new RebanhoError("VALIDACAO", "Selecione de 1 a 500 animais sem repetição", "itens");
   const hashPayload = crypto.createHash("sha256").update(JSON.stringify({ ...input, itens: [...input.itens].sort((a, b) => a.animalId.localeCompare(b.animalId)) })).digest("hex");
-  return prisma.$transaction(async (tx) => {
+  return transacaoPecuaria(async (tx) => {
     await travarAnimais(tx, ids);
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`pec-requisicao:${input.chave}`}))`;
     const anterior = await tx.requisicaoPecuaria.findUnique({ where: { chave: input.chave } });
     if (anterior) {
       if (anterior.hashPayload !== hashPayload || anterior.usuarioId !== usuarioId || anterior.operacao !== "PESAGEM_COLETIVA" || anterior.propriedadeId !== input.propriedadeId) {
@@ -52,12 +47,11 @@ export async function registrarPesagensColetivas(input: { chave: string; proprie
     }
     await tx.requisicaoPecuaria.update({ where: { chave: input.chave }, data: { resultadoIds: pesagens } });
     return { requisicaoId: input.chave, pesagens };
-  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  });
 }
 
-export async function registrarManejo(input: { animalId: string; propriedadeId: number; data: string; tipo: "DESMAMA" | "CASTRACAO";
+async function registrarManejoTx(tx: Prisma.TransactionClient, input: { chave?: string; animalId: string; propriedadeId: number; data: string; tipo: "DESMAMA" | "CASTRACAO";
   pesoKg?: number | null; responsavel?: string | null; observacao?: string | null }, usuarioId: number | null) {
-  return prisma.$transaction(async (tx) => {
     await travarAnimais(tx, [input.animalId]);
     const animal = await conferirAnimal(tx, input.animalId, input.propriedadeId, input.data);
     if (input.tipo === "CASTRACAO" && animal.sexo !== "M") throw new RebanhoError("VALIDACAO", "Castração só se aplica a animal macho", "tipo");
@@ -78,7 +72,10 @@ export async function registrarManejo(input: { animalId: string; propriedadeId: 
     if (pesagem) await auditar(tx, { entidade: "Pesagem", entidadeId: pesagem.id, animalId: input.animalId,
       propriedadeId: input.propriedadeId, acao: "REGISTRO_MANEJO", usuarioId, depois: pesagem });
     return manejo;
-  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+}
+
+export async function registrarManejo(input: Parameters<typeof registrarManejoTx>[1], usuarioId: number | null) {
+  return confirmarFato(input, usuarioId, "MANEJO", registrarManejoTx, (tx, id) => tx.manejoAnimal.findUniqueOrThrow({ where: { id } }));
 }
 
 export async function listarManejos(animalId: string | undefined, propriedadeId: number | null) {
@@ -87,13 +84,13 @@ export async function listarManejos(animalId: string | undefined, propriedadeId:
 }
 
 export async function anularManejo(id: string, propriedadeId: number, motivo: string, usuarioId: number | null) {
-  return prisma.$transaction(async (tx) => {
+  return transacaoPecuaria(async (tx) => {
     const original = await tx.manejoAnimal.findFirst({ where: { id, propriedadeId, status: "VALIDO" } });
     if (!original) throw new RebanhoError("NAO_ENCONTRADO", "Manejo não encontrado ou já anulado");
     await travarAnimais(tx, [original.animalId]);
-    const salvo = await tx.manejoAnimal.update({ where: { id }, data: { status: "ANULADO", motivoAnulacao: motivo, anuladoEm: new Date() } });
+    const salvo = await tx.manejoAnimal.update({ where: { id }, data: { status: "ANULADO", motivoAnulacao: motivo, anuladoEm: new Date(), pesagemId: null } });
     await auditar(tx, { entidade: "ManejoAnimal", entidadeId: id, animalId: original.animalId, propriedadeId, acao: "ANULACAO", usuarioId, antes: original, depois: salvo });
     // A pesagem é um fato independente e não é removida pela anulação do manejo.
     return salvo;
-  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  });
 }

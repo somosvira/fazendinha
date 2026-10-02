@@ -1,6 +1,8 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../../db.js";
-import { RebanhoError, auditar } from "../rebanho/regras.js";
+import { RebanhoError, auditar, hojeFazendaDate } from "../rebanho/regras.js";
+import type { PaginaNutricao } from "./schemas.js";
+import { transacaoPecuaria } from "../transacao.js";
 
 const dia = (s: string) => new Date(`${s}T00:00:00Z`);
 
@@ -53,14 +55,23 @@ export async function publicarDieta(id: string, usuarioId: number | null) {
   });
 }
 
-export async function listarVigencias(loteId: string | undefined, propriedadeId: number | null) {
-  return prisma.vigenciaDietaLote.findMany({ where: { ...(loteId ? { loteId } : {}), ...(propriedadeId == null ? {} : { lote: { propriedadeId } }) },
-    include: { dieta: { select: { id: true, nome: true, versao: true } }, lote: { select: { id: true, nome: true, propriedadeId: true } } },
-    orderBy: { desde: "desc" }, take: 100 });
+export async function listarVigencias(loteId: string | undefined, propriedadeId: number | null, pagina: PaginaNutricao = { pagina: 1, limite: 25 }) {
+  const where: Prisma.VigenciaDietaLoteWhereInput = { ...(loteId ? { loteId } : {}), ...(propriedadeId == null ? {} : { lote: { propriedadeId } }) };
+  const include = { dieta: { select: { id: true, nome: true, versao: true } }, lote: { select: { id: true, nome: true, propriedadeId: true } } } satisfies Prisma.VigenciaDietaLoteInclude;
+  const hoje = hojeFazendaDate();
+  return prisma.$transaction(async (tx) => {
+    const [itens, total, vigente, programada] = await Promise.all([
+      tx.vigenciaDietaLote.findMany({ where, include, orderBy: [{ desde: "desc" }, { id: "asc" }], skip: (pagina.pagina - 1) * pagina.limite, take: pagina.limite }),
+      tx.vigenciaDietaLote.count({ where }),
+      loteId ? tx.vigenciaDietaLote.findFirst({ where: { ...where, desde: { lte: hoje }, OR: [{ ate: null }, { ate: { gt: hoje } }] }, include }) : null,
+      loteId ? tx.vigenciaDietaLote.findFirst({ where: { ...where, desde: { gt: hoje } }, include, orderBy: [{ desde: "asc" }, { id: "asc" }] }) : null,
+    ]);
+    return { itens, total, ...pagina, vigente, programada };
+  });
 }
 
 export async function atribuirDieta(input: { loteId: string; propriedadeId: number; dietaId: string; desde: string }, usuarioId: number | null) {
-  return prisma.$transaction(async (tx) => {
+  return transacaoPecuaria(async (tx) => {
     const lote = await tx.lote.findFirst({ where: { id: input.loteId, propriedadeId: input.propriedadeId, ativo: true } });
     if (!lote) throw new RebanhoError("VALIDACAO", "Lote não encontrado neste sítio", "loteId");
     const dieta = await tx.dieta.findFirst({ where: { id: input.dietaId, publicadaEm: { not: null }, ativo: true } });
@@ -78,11 +89,11 @@ export async function atribuirDieta(input: { loteId: string; propriedadeId: numb
     await auditar(tx, { entidade: "VigenciaDietaLote", entidadeId: criada.id, propriedadeId: lote.propriedadeId,
       acao: "ATRIBUICAO", usuarioId, depois: criada });
     return criada;
-  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  });
 }
 
 export async function corrigirVigencia(id: string, propriedadeId: number, input: { desde: string; motivo: string }, usuarioId: number | null) {
-  return prisma.$transaction(async (tx) => {
+  return transacaoPecuaria(async (tx) => {
     const original = await tx.vigenciaDietaLote.findFirst({ where: { id, lote: { propriedadeId } } });
     if (!original) throw new RebanhoError("NAO_ENCONTRADO", "Vigência não encontrada neste sítio");
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`pec-lote-consumo:${original.loteId}`}))`;
@@ -101,5 +112,5 @@ export async function corrigirVigencia(id: string, propriedadeId: number, input:
     const salva = await tx.vigenciaDietaLote.update({ where: { id }, data: { desde } });
     await auditar(tx, { entidade: "VigenciaDietaLote", entidadeId: id, propriedadeId, acao: "VIGENCIA_CORRIGIDA", usuarioId, antes: original, depois: { ...salva, motivo: input.motivo } });
     return salva;
-  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  });
 }

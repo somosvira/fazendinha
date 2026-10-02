@@ -42,8 +42,10 @@ function failCadastro(e: unknown): { status: 400 | 404 | 409 | 500; body: { erro
 // SEM_VINCULO = "sem centro de custo"; ausente = sem filtro.
 const saldosQuerySchema = z.object({ centroCustoId: z.string().uuid().or(z.literal(SEM_VINCULO)).optional() });
 const movimentosQuerySchema = z.object({
+  movimentoId: z.string().uuid().optional(),
   produtoId: z.string().uuid().optional(),
   partidaId: z.string().uuid().optional(),
+  propriedadeId: z.coerce.number().int().positive().optional(),
   tipo: z.enum(["ENTRADA", "SAIDA", "AJUSTE"]).optional(),
   q: z.string().trim().max(80).optional(),
   origem: z.nativeEnum(OrigemMovimentoEstoque).optional(),
@@ -74,12 +76,12 @@ export const estoqueRouter = new Hono()
     return c.json(podeVerCustos(c) ? saldos : saldos.map((s) => ({ ...s, custoMedio: null, valor: null })));
   })
   .get("/estoque/movimentos", zValidator("query", movimentosQuerySchema), async (c) => {
-    const { produtoId, partidaId, tipo, q, origem, centroCustoId, de, ate, pagina, porPagina } = c.req.valid("query");
+    const { movimentoId, produtoId, partidaId, propriedadeId, tipo, q, origem, centroCustoId, de, ate, pagina, porPagina } = c.req.valid("query");
     // O gate de /estoque aceita pecuária, agricultura ou financeiro; o vínculo
     // (talhão) das saídas automáticas só vai para quem tem a área.
     const u = getUsuario(c);
     const vinculosVisiveis = u ? { agricultura: temArea(u, "agricultura"), pecuaria: temArea(u, "pecuaria") } : undefined;
-    const movimentos = await svc.listarMovimentos({ produtoId, partidaId, tipo, q, origem, centroCustoId, de, ate, pagina, porPagina, propriedadeId: await resolverEscopoLeitura(c), vinculosVisiveis });
+    const movimentos = await svc.listarMovimentos({ movimentoId, produtoId, partidaId, tipo, q, origem, centroCustoId, de, ate, pagina, porPagina, propriedadeId: propriedadeId ?? await resolverEscopoLeitura(c), vinculosVisiveis });
     return c.json(podeVerCustos(c) ? movimentos : { ...movimentos, itens: movimentos.itens.map((m) => ({ ...m, custoUnitario: null, valorTotal: null })) });
   })
   .post("/estoque/ajustes", exigePermissao("lancar"), zValidator("json", svc.ajusteContagemSchema), async (c) => {
@@ -109,10 +111,16 @@ export const estoqueRouter = new Hono()
       return c.json(await partidasSvc.listarPartidas(c.req.valid("query").produtoId, propriedadeId));
     } catch (e) { const { status, body } = fail(e); return c.json(body, status); }
   })
-  .post("/estoque/produtos/:id/rastreio", exigePermissao("lancar"), async (c) => {
+  .get("/estoque/produtos/:id/rastreio/previa", async (c) => {
     try {
       if (!z.string().uuid().safeParse(c.req.param("id")).success) throw new svc.EstoqueError("VALIDACAO", "Produto inválido");
-      return c.json(await partidasSvc.ativarRastreio(c.req.param("id"), usuarioId(c)), 201);
+      return c.json(await partidasSvc.previaAtivacaoRastreio(c.req.param("id")));
+    } catch (e) { const { status, body } = fail(e); return c.json(body, status); }
+  })
+  .post("/estoque/produtos/:id/rastreio", exigePermissao("lancar"), zValidator("json", z.object({ revisao: z.string().regex(/^[a-f0-9]{64}$/) })), async (c) => {
+    try {
+      if (!z.string().uuid().safeParse(c.req.param("id")).success) throw new svc.EstoqueError("VALIDACAO", "Produto inválido");
+      return c.json(await partidasSvc.ativarRastreio(c.req.param("id"), usuarioId(c), c.req.valid("json").revisao), 201);
     } catch (e) { const { status, body } = fail(e); return c.json(body, status); }
   })
   .post("/estoque/produtos/:id/identificar-legado", exigePermissao("lancar"), zValidator("json", z.object({ chave: z.string().uuid(), codigo: z.string().trim().min(1).max(100), validade: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullish(), quantidade: z.string().regex(/^\d+(\.\d{1,3})?$/), motivo: z.string().trim().min(5).max(500), data: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) })), async (c) => {

@@ -230,13 +230,16 @@ export async function listarSaldos(f?: { centroCustoId?: string; propriedadeId?:
 }
 
 /** Para onde levar o usuário quando o movimento NÃO nasceu de uma operação financeira (saídas automáticas). */
-export type VinculoMovimento = { tipo: "TALHAO"; id: number; codigo: string };
+export type VinculoMovimento =
+  | { tipo: "TALHAO"; id: number; codigo: string }
+  | { tipo: "APLICACAO_SANITARIA"; id: string; animalId: string }
+  | { tipo: "FECHAMENTO_NUTRICIONAL"; id: string; loteId: string };
 
 /** Quais vínculos operacionais o leitor pode ver (quem só tem financeiro não vê talhão). Ausente = todos. */
 export type VinculosVisiveis = { agricultura: boolean; pecuaria?: boolean };
 
 export type FiltroMovimentos = {
-  produtoId?: string; partidaId?: string; tipo?: string; q?: string; origem?: string; centroCustoId?: string;
+  movimentoId?: string; produtoId?: string; partidaId?: string; tipo?: string; q?: string; origem?: string; centroCustoId?: string;
   de?: string; ate?: string; pagina?: number; porPagina?: number;
   propriedadeId?: number | null; vinculosVisiveis?: VinculosVisiveis;
 };
@@ -256,6 +259,7 @@ export async function listarMovimentos(f?: FiltroMovimentos) {
     await filtroSitioCusto(f?.propriedadeId ?? null),
   ];
   const where: Prisma.MovimentoEstoqueWhereInput = { status: statusSaldoEstoque, AND: and };
+  if (f?.movimentoId) where.id = f.movimentoId;
   if (f?.produtoId) where.produtoId = f.produtoId;
   if (f?.partidaId) where.alocacaoPartidaEstoques = { some: { partidaId: f.partidaId } };
   if (f?.tipo) where.tipo = f.tipo as TipoMovimento;
@@ -289,6 +293,8 @@ export async function listarMovimentos(f?: FiltroMovimentos) {
         operacao: { include: { parceiro: true } },
         // Origem das saídas automáticas (sem operação financeira): um único join por relação, sem N+1.
         operacaoAgricola: { select: { talhaoId: true, talhao: { select: { codigo: true } } } },
+        aplicacaoProduto: { select: { id: true, animalId: true } },
+        itemFechamentoConsumo: { select: { fechamento: { select: { id: true, loteId: true } } } },
         alocacaoPartidaEstoques: { include: { partida: { select: { codigo: true, validade: true } } } },
       },
     }),
@@ -301,9 +307,16 @@ export async function listarMovimentos(f?: FiltroMovimentos) {
     if (m.operacaoAgricola) {
       if (visiveis.agricultura) vinculo = { tipo: "TALHAO", id: m.operacaoAgricola.talhaoId, codigo: m.operacaoAgricola.talhao.codigo };
       else oculto = true;
+    } else if (m.aplicacaoProduto) {
+      if (visiveis.pecuaria !== false) vinculo = { tipo: "APLICACAO_SANITARIA", id: m.aplicacaoProduto.id, animalId: m.aplicacaoProduto.animalId };
+      else oculto = true;
+    } else if (m.itemFechamentoConsumo) {
+      if (visiveis.pecuaria !== false) vinculo = { tipo: "FECHAMENTO_NUTRICIONAL", id: m.itemFechamentoConsumo.fechamento.id, loteId: m.itemFechamentoConsumo.fechamento.loteId };
+      else oculto = true;
     }
     return {
       id: m.id,
+      propriedadeId: m.propriedadeId,
       seq: m.seq,
       produtoId: m.produtoId,
       partidas: (m.alocacaoPartidaEstoques ?? []).map((a) => ({ partidaId: a.partidaId, codigo: a.partida.codigo, validade: a.partida.validade, quantidade: a.quantidade.toString() })),

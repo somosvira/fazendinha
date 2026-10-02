@@ -2,7 +2,9 @@
 
 Esta pasta concentra o contexto funcional e técnico da reconstrução da pecuária. Ela substitui a dependência de uma sessão privada do Claude: os artefatos originais agora estão versionados no repositório e podem ser consultados por qualquer pessoa ou agente que trabalhe no projeto.
 
-## Estado em 01/10/2026
+## Estado documental em 02/10/2026
+
+Auditoria local da branch `codex/pecuaria-v3`, commit `dce3311`. Os estados remotos dos PRs abaixo são o registro anterior, não uma nova consulta ao GitHub.
 
 | Entrega | Estado | Referência |
 |---|---|---|
@@ -10,7 +12,9 @@ Esta pasta concentra o contexto funcional e técnico da reconstrução da pecuá
 | Follow-up da v1 | mesclado na `main` em 28/09/2026 | [PR #306](https://github.com/somosvira/fazendinha/pull/306) |
 | v2 · Genética | PR em rascunho, reconciliado com a `main`, aguardando CI e homologação | [PR #305](https://github.com/somosvira/fazendinha/pull/305) |
 | Validação da v2 com dados reais | pendente | executar a carga com o dump real do IDEAGRI e confirmar `ANIMAL.CDCENTRALSEMEN` |
-| v3 · Sanidade, peso e nutrição | [PR #308](https://github.com/somosvira/fazendinha/pull/308) em rascunho sobre a v2; interface dos quatro eixos disponível para testes, não homologada | [Artefato V3](./artefatos/pecuaria-v3-sanidade-peso-nutricao.html), contrato-alvo do PR |
+| v3 · Sanidade, peso e nutrição | Correção operacional V3-01 a V3-13 em andamento no PR #308; testes PostgreSQL e homologação visual ainda pendentes; carga IDEAGRI V3 fora desta rodada | [Artefato V3 — estado atual, contrato e auditoria anterior](./artefatos/pecuaria-v3-sanidade-peso-nutricao.html#correcao-operacional) |
+
+Validação automatizada da rodada V3 em 02/10: 1.064 testes de servidor e 785 de interface aprovados; 58 testes de integração com banco não executados. O Docker local não ficou disponível, portanto as migrations novas, os cenários concorrentes PostgreSQL e a homologação visual 1180/720 px continuam pendentes. A seção inicial do artefato V3 registra também as lacunas remanescentes de filtros/paginação sanitária e confirmação idempotente universal.
 
 “Concluída” significa que a implementação e os testes automatizados foram feitos. A v2 só estará disponível para o restante do time depois de sair de rascunho, passar pela validação real, ser revisada e entrar na `main`.
 
@@ -20,7 +24,7 @@ Esta pasta concentra o contexto funcional e técnico da reconstrução da pecuá
 2. [Pecuária v2 · Genética](./artefatos/pecuaria-v2-genetica.html): decisões da v2, tabelas, regras, telas e integração com estoque.
 3. [Roteiro de Testes do Rebanho](./artefatos/roteiro-testes-rebanho-v1-v2.html): QA manual de ponta a ponta para v1, v2 e contrato-alvo da v3. As marcações ficam apenas no navegador de quem executar; o nome histórico do arquivo foi mantido para preservar links.
 4. [IDEAGRI Schema Map](./artefatos/ideagri-schema-map.html): inventário do banco legado e relações usadas para preparar a carga inicial.
-5. [Pecuária v3 · Sanidade, peso e nutrição](./artefatos/pecuaria-v3-sanidade-peso-nutricao.html): proposta de implementação sobre a v2, com diagramas, contrato de dados, efeitos operacionais, comparação com o IDEAGRI e fases/testes de um único PR.
+5. [Pecuária v3 · Sanidade, peso e nutrição](./artefatos/pecuaria-v3-sanidade-peso-nutricao.html): fonte canônica do escopo V3, com mapa funcional, estado auditado, lacunas, diagramas, contratos, efeitos, comparação com o IDEAGRI e critérios de aceite. Começar pelo inventário atual antes de ler as telas-alvo.
 
 Os arquivos são snapshots HTML e preservam os diagramas e a interatividade dos artefatos originais. Alguns recursos visuais carregam bibliotecas pela internet. Se o GitHub mostrar apenas o código-fonte, baixe o arquivo e abra-o no navegador.
 
@@ -30,15 +34,30 @@ Os arquivos são snapshots HTML e preservam os diagramas e a interatividade dos 
 - O mapa do IDEAGRI descreve o legado, não o modelo que o Fazendinha deve copiar.
 - O Schema Map da v1 é um retrato anterior à implementação da v2. A seção “Genética” do roadmap nele propõe `Reprodutor`, `CentralSemen` e `EstoqueSemen`, mas foi superada pela decisão documentada na v2: `GenitorExterno`, `MaterialGenetico` e o estoque único do produto.
 - O documento da v2 é o contrato de produto e arquitetura do PR #305. Para detalhes exatos de implementação, prevalecem a migration, o schema Prisma e os testes da branch.
-- O artefato da v3 é o contrato-alvo, baseado no código do #305 em `e31eb55`. A implementação foi iniciada, mas o artefato ainda não representa recursos prontos ou homologação da carga real. A entrega em um único PR é requisito; os padrões propostos e os pontos de revisão estão explicitados no artefato.
-- O PR em rascunho implementa schema/migrations, os quatro eixos e seus caminhos de interface. A homologação manual integral e a carga/reconciliação com o dump real IDEAGRI permanecem pendentes. Nada disso deve ser anunciado como V3 homologada.
+- O artefato da v3 preserva o contrato aprovado, registra a correção operacional em seção própria e mantém separadamente a auditoria de base em `dce3311`. Regras ainda não implementadas continuam requisitos, não devem ser apagadas para acomodar limitações do código. Os diagramas representam relações, não prova de fluxo concluído.
+- A auditoria de 02/10 encontrou pendências de implementação: reexecução de tarefa após anulação, sítio da agenda/partidas, indicação de dieta futura, atribuição nutricional individual, navegação entre fatos e origens, manutenção de catálogos, adiamento de tarefa, detalhes de rastreabilidade, paginação/estados de tela, manejo histórico e contratos de confirmação. A carga IDEAGRI V3 também precisa ser implementada, não apenas homologada. Ver IDs V3-01 a V3-14 no artefato.
+- O inventário abaixo registra componentes disponíveis em 01/10, com as limitações da auditoria acima. Não significa completude dos quatro eixos nem V3 homologada.
   - Atualização da interface em 01/10/2026: navegação direta em `/pecuaria/rebanho/sanidade` e `/pecuaria/rebanho/nutricao`; aplicação sanitária com quatro origens, Serviço opcional no estoque, quantidade/unidade e responsável; cadastros de tipos configuráveis (nome histórico preservado), doenças, tipos de exame e protocolos com rascunhos/publicação; ocorrências, agenda/execução/dispensa/cancelamento e coleta/resultado/correção/anulação de exames; carência por destino e correção auditada, com ciência revalidada na baixa; pesagem coletiva idempotente e manejo/anulação; edição/clonagem/publicação de receitas, participantes/MS/saldo/custo permitido na conferência, centro de custo no lote e estorno de consumo; perfis no Produto, ativação e identificação auditada de partidas legadas, movimentos por partida, distribuição nos itens financeiros, ajustes contados e aplicação agrícola. Acrescentadas reconciliação de origem com justificativa preservada, aplicações coletivas atômicas/idempotentes, leite condicional, abas Lotes/Receitas/Fechamentos, correção de vigências e divisão de períodos por mês/vigência com lacunas e confirmação conjunta idempotente.
   - Complementos disponíveis: rateio manual opcional de Serviço (soma limitada ao valor confirmado e sem duplicação entre protocolo e fatos); coletivos atômicos/idempotentes de protocolos e exames; filtros/paginação sanitários no servidor, busca de animal e lista geral de carências; históricos sanitários nas fichas de animais/lotes; transferência entre sítios e perda física com partidas e estornos conservados; documentação excepcional auditada de aplicação vencida, distinta de autorização operacional; prévia detalhada das devoluções de fechamento. Custos transferidos entram na base do sítio de destino, mas não são contados duas vezes no consolidado. Homologação manual integral, cenários completos de permissões e concorrência e validação visual a 1180/720 px seguem como critérios de aceite. Embalagens, frasco aberto e perdas durante aplicação ficam para melhoria posterior, preservando a baixa parcial na unidade do Produto.
 - O roteiro de testes combina v1, v2 e 193 casos-alvo da v3, embora v2 e v3 ainda não estejam na `main`. Cada passo v3 mostra numeração, caminho na aplicação, ação e resultado esperado; caminhos marcados como tela prevista ainda não são navegáveis no PR atual, e os de apoio técnico não são testes de interface. O grupo 26 prepara somente o cenário local descartável; não exige cópia V2, reexecução de migration nem carga IDEAGRI. Para executar a v3 inteira, use o PR #308 sobre a base conciliada da v2, seguindo os critérios de aceite, sem confundir implementação com homologação. Um caso não executado fica pendente; um fluxo ausente ou incorreto deve ser marcado como falha, nunca como aprovado. A carga histórica requer o dump real do IDEAGRI.
 
-Quando houver divergência, use esta ordem para resolver: invariantes de produto aprovadas → migration/schema → testes automatizados → implementação → documento histórico. Corrija a documentação na mesma PR que alterar o comportamento.
+Quando houver divergência, o contrato aprovado no artefato define o comportamento desejado; migration/schema, serviços, interface e testes demonstram o comportamento implementado. Registre a diferença como pendência, sem substituir requisito por limitação acidental do código. Documentos históricos não anulam decisões posteriores. Atualize artefato, implementação e testes na mesma mudança que resolver a divergência.
 
-### Validação desta mudança
+### Correção operacional de 02/10 — validação ainda aberta
+
+- Escopo confirmado: desmama e castração individuais, pesagem coletiva; carga histórica IDEAGRI V3 fora desta rodada, explicitamente pendente. Embalagens, ECC, formulação automática, recomendação clínica e balança física continuam fora.
+- Backend de fatos/histórico, sítio, snapshot na baixa, idempotência e retry: 29 testes focados passaram. Nutrição: 14 testes de serviço, 10 de interface e 30 de ficha passaram. Estoque: 78 testes focados do servidor e 31 da interface passaram. Esses números são por pacote e podem se sobrepor; não representam a suíte completa.
+- Migrations novas e testes PostgreSQL foram preparados, mas **não executados**: Docker Desktop falhou ao iniciar seu mecanismo local. O banco foi preservado; não houve reset nem recriação. Build e integração final ainda precisam ser repetidos após as alterações de catálogos e interface.
+- O [roteiro manual](./artefatos/roteiro-testes-rebanho-v1-v2.html) permanece sem execução/homologação nesta rodada. Não declarar a V3 homologada nem a carga IDEAGRI entregue.
+
+### Validação da auditoria de base de 02/10 (antes da correção)
+
+- Inspeção de schema, migrations, rotas, serviços, componentes e testes da branch, sem alteração de código operacional ou banco.
+- Reexecutados 6 testes de cálculo (carência e animal-dias) e 10 testes de interface (aplicação, baixa e conferência nutricional): todos passaram. Esses testes focados não cobrem todas as lacunas identificadas.
+- A aplicação não respondeu na porta local 41875 nesta sessão; não foi feita nova homologação visual nem dos fluxos de banco.
+- O artefato registra 14 grupos de divergências, caminhos de navegação, relação entre entidades e ordem recomendada de conclusão. A revisão não marca casos manuais como aprovados.
+
+### Registro anterior de validação — 01/10 (não reexecutado integralmente nesta auditoria)
 
 - Servidor: 1.023 testes unitários passaram; testes de banco são executados separadamente.
 - Interface: 771 testes passaram na suíte completa; repetida a regressão de estoque, aplicação e conferência após os últimos ajustes.

@@ -154,6 +154,11 @@ describe("GET /estoque/movimentos", () => {
     await appCom(semLancar).request(`/estoque/movimentos?q=OP-0011&origem=COMPRA&centroCustoId=${SEM_VINCULO}&de=2026-09-01&ate=2026-09-30&pagina=2`);
     expect(mocks.listarMovimentos).toHaveBeenLastCalledWith(expect.objectContaining({ q: "OP-0011", origem: "COMPRA", centroCustoId: SEM_VINCULO, de: "2026-09-01", ate: "2026-09-30", pagina: 2, porPagina: 15 }));
   });
+  it("abre um movimento específico no sítio histórico sem usar o sítio ativo", async () => {
+    const id = uid(98);
+    await appCom(semLancar).request(`/estoque/movimentos?movimentoId=${id}&propriedadeId=7`);
+    expect(mocks.listarMovimentos).toHaveBeenLastCalledWith(expect.objectContaining({ movimentoId: id, propriedadeId: 7 }));
+  });
   it("repassa ao service quais vínculos o usuário pode ver, pelas áreas", async () => {
     await appCom({ ...base, areas: ["financeiro"], flags: [] }).request("/estoque/movimentos");
     expect(mocks.listarMovimentos).toHaveBeenLastCalledWith(expect.objectContaining({ propriedadeId: 3, vinculosVisiveis: { agricultura: false, pecuaria: false } }));
