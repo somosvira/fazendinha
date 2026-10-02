@@ -2,7 +2,7 @@ import { confirmarColetivo } from "./coletivos.js";
 import { intervalo, limites, type ConsultaSanitaria } from "./consulta.js";
 import { Prisma, type FinalidadeAplicacao } from "@prisma/client";
 import { prisma } from "../../../db.js";
-import { RebanhoError, auditar, travarAnimais } from "../rebanho/regras.js";
+import { RebanhoError, auditar, hojeFazenda, travarAnimais } from "../rebanho/regras.js";
 import { conferirAnimalNoFato } from "../fatos.js";
 import { transacaoPecuaria } from "../transacao.js";
 import { confirmarFato } from "../idempotencia.js";
@@ -130,7 +130,7 @@ export async function listarTarefas(propriedadeId: number | null, animalId?: str
   if (filtro?.situacao === "EXECUCAO_CANCELADA") where.AND = [{ execucao: { canceladaEm: { not: null } } }];
   else if (filtro?.situacao === "DISPENSADA") where.AND = [{ execucao: { canceladaEm: null } }, { dispensadaEm: { not: null } }];
   else if (filtro?.situacao === "REALIZADA") where.AND = [{ execucao: { canceladaEm: null } }, { dispensadaEm: null }, realizada];
-  else if (filtro?.situacao === "PENDENTE") where.AND = [{ execucao: { canceladaEm: null } }, { dispensadaEm: null }, { NOT: realizada }];
+  else if (filtro?.situacao === "PENDENTE" || filtro?.situacao === "ATRASADA") where.AND = [{ execucao: { canceladaEm: null } }, { dispensadaEm: null }, { NOT: realizada }, ...(filtro.situacao === "ATRASADA" ? [{ previstaPara: { lt: dia(hojeFazenda()) } }] : [])];
   const tarefas = await prisma.tarefaSanitaria.findMany({ where, include: {
     execucao: { select: { animalId: true, propriedadeId: true, canceladaEm: true, protocolo: { select: { nome: true, versao: true } }, animal: { select: { localizacoes: { where: { ate: null }, select: { propriedadeId: true } } } } } },
     aplicacoes: { select: { id: true, status: true }, orderBy: { criadoEm: "desc" } }, exames: { select: { id: true, status: true }, orderBy: { criadoEm: "desc" } },

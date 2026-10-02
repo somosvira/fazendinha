@@ -2,7 +2,7 @@ import { z } from "zod";
 export const consultaSanitariaSchema = z.object({
   animalId: z.string().uuid().optional(), loteId: z.string().uuid().optional(),
   de: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), ate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  situacao: z.enum(["VALIDO", "ANULADO", "PENDENTE", "REALIZADA", "DISPENSADA", "EXECUCAO_CANCELADA"]).optional(),
+  situacao: z.enum(["VALIDO", "ANULADO", "PENDENTE", "ATRASADA", "REALIZADA", "DISPENSADA", "EXECUCAO_CANCELADA", "ABERTA", "ENCERRADA", "AGUARDANDO_RESULTADO", "RESULTADO_INFORMADO", "ORIGEM_PENDENTE", "CARÊNCIA_VIGENTE", "CARÊNCIA_DESCONHECIDA"]).optional(),
   pagina: z.coerce.number().int().min(1).default(1), porPagina: z.coerce.number().int().min(1).max(100).default(50),
 });
 export type ConsultaSanitaria = z.infer<typeof consultaSanitariaSchema>;

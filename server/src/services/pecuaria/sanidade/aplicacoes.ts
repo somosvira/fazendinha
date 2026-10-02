@@ -281,7 +281,7 @@ export async function reconciliarOrigem(id: string, propriedadeId: number, input
 }
 
 export async function listarAplicacoes(animalId: string | undefined, propriedadeId: number | null, filtro?: ConsultaSanitaria) {
-  return prisma.aplicacaoProduto.findMany({ where: { ...filtrosFatos(filtro), ...(animalId ? { animalId } : {}), ...(propriedadeId == null ? {} : { propriedadeId }) },
+  return prisma.aplicacaoProduto.findMany({ where: { ...filtrosFatos(filtro), ...(filtro?.situacao === "ORIGEM_PENDENTE" ? { origemInsumo: "SEM_ORIGEM_JUSTIFICADA" } : {}), ...(animalId ? { animalId } : {}), ...(propriedadeId == null ? {} : { propriedadeId }) },
     orderBy: [{ data: "desc" }, { criadoEm: "desc" }], ...limites(filtro) });
 }
 

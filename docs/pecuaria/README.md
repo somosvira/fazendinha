@@ -14,7 +14,7 @@ Auditoria local da branch `codex/pecuaria-v3`, commit `dce3311`. Os estados remo
 | Validação da v2 com dados reais | pendente | executar a carga com o dump real do IDEAGRI e confirmar `ANIMAL.CDCENTRALSEMEN` |
 | v3 · Sanidade, peso e nutrição | Correção operacional V3-01 a V3-13 em andamento no PR #308; testes PostgreSQL e homologação visual ainda pendentes; carga IDEAGRI V3 fora desta rodada | [Artefato V3 — estado atual, contrato e auditoria anterior](./artefatos/pecuaria-v3-sanidade-peso-nutricao.html#correcao-operacional) |
 
-Validação automatizada da rodada V3 em 02/10: 1.064 testes de servidor e 785 de interface aprovados; 58 testes de integração com banco não executados. O Docker local não ficou disponível, portanto as migrations novas, os cenários concorrentes PostgreSQL e a homologação visual 1180/720 px continuam pendentes. A seção inicial do artefato V3 registra também as lacunas remanescentes de filtros/paginação sanitária e confirmação idempotente universal.
+Validação automatizada da rodada V3 em 02/10: 1.064 testes de servidor e 785 de interface aprovados na suíte completa, além de testes focados posteriores; 58 testes de integração com banco não executados. O Docker local não ficou disponível, portanto as migrations novas, os cenários concorrentes PostgreSQL e a homologação visual 1180/720 px continuam pendentes. A seção inicial do artefato V3 registra também as lacunas remanescentes de carências/paginação sanitária e confirmação idempotente universal.
 
 “Concluída” significa que a implementação e os testes automatizados foram feitos. A v2 só estará disponível para o restante do time depois de sair de rascunho, passar pela validação real, ser revisada e entrar na `main`.
 

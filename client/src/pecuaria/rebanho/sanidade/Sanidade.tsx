@@ -328,13 +328,7 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
     if (de) params.set("de", de);
     if (ate) params.set("ate", ate);
     if (situacao) {
-      const situacaoApi = [
-        "ABERTA",
-        "ENCERRADA",
-        "AGUARDANDO_RESULTADO",
-      ].includes(situacao)
-        ? "VALIDO"
-        : ["CARÊNCIA_VIGENTE", "CARÊNCIA_DESCONHECIDA"].includes(situacao)
+      const situacaoApi = ["CARÊNCIA_VIGENTE", "CARÊNCIA_DESCONHECIDA"].includes(situacao)
           ? ""
           : situacao;
       if (situacaoApi) params.set("situacao", situacaoApi);
@@ -451,6 +445,9 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
     if (situacao === "ENCERRADA") return !!fim;
     if (situacao === "AGUARDANDO_RESULTADO")
       return resultado == null || resultado === "";
+    if (situacao === "RESULTADO_INFORMADO") return resultado != null && resultado !== "";
+    if (situacao === "ORIGEM_PENDENTE") return true;
+    if (situacao === "ATRASADA") return s === "PENDENTE";
     if (situacao === "CARÊNCIA_VIGENTE" || situacao === "CARÊNCIA_DESCONHECIDA")
       return true;
     return s === situacao;
@@ -691,6 +688,7 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
             {(aba === "agenda"
               ? [
                   ["PENDENTE", "Pendente"],
+                  ["ATRASADA", "Atrasada"],
                   ["REALIZADA", "Realizada"],
                   ["DISPENSADA", "Dispensada"],
                   ["EXECUCAO_CANCELADA", "Execução cancelada"],
@@ -704,7 +702,7 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
                 : aba === "exames"
                   ? [
                       ["AGUARDANDO_RESULTADO", "Aguardando resultado"],
-                      ["VALIDO", "Resultado informado"],
+                      ["RESULTADO_INFORMADO", "Resultado informado"],
                       ["ANULADO", "Anulado"],
                     ]
                   : aba === "carencias"
@@ -714,6 +712,7 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
                       ]
                     : [
                         ["VALIDO", "Válida"],
+                        ["ORIGEM_PENDENTE", "Origem pendente"],
                         ["ANULADO", "Anulada"],
                       ]
             ).map(([s, rotulo]) => (

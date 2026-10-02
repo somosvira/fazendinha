@@ -45,7 +45,9 @@ export async function criarTipoExame(input: { nome: string; tipoResultado: TipoR
 }
 
 export async function listarExames(animalId: string | undefined, propriedadeId: number | null, filtro?: ConsultaSanitaria) {
-  const lista = await prisma.exameAnimal.findMany({ where: { ...filtrosFatos(filtro), ...(animalId ? { animalId } : {}), ...(propriedadeId == null ? {} : { propriedadeId }) },
+  const aguardando = filtro?.situacao === "AGUARDANDO_RESULTADO";
+  const informado = filtro?.situacao === "RESULTADO_INFORMADO";
+  const lista = await prisma.exameAnimal.findMany({ where: { ...filtrosFatos(filtro), ...(aguardando ? { resultadoTexto: null, resultadoNumero: null, resultadoOpcao: null } : informado ? { OR: [{ resultadoTexto: { not: null } }, { resultadoNumero: { not: null } }, { resultadoOpcao: { not: null } }] } : {}), ...(animalId ? { animalId } : {}), ...(propriedadeId == null ? {} : { propriedadeId }) },
     include: { tipoExame: { select: { nome: true } } }, orderBy: [{ data: "desc" }, { criadoEm: "desc" }], ...limites(filtro) });
   return lista.map((e) => ({ ...e, tipoExame: { nome: nomeExameHistorico(e.formatoSnapshot, e.tipoExame.nome) } }));
 }
