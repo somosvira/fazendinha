@@ -12,9 +12,9 @@ Auditoria local da branch `codex/pecuaria-v3`, commit `dce3311`. Os estados remo
 | Follow-up da v1 | mesclado na `main` em 28/09/2026 | [PR #306](https://github.com/somosvira/fazendinha/pull/306) |
 | v2 · Genética | PR em rascunho, reconciliado com a `main`, aguardando CI e homologação | [PR #305](https://github.com/somosvira/fazendinha/pull/305) |
 | Validação da v2 com dados reais | pendente | executar a carga com o dump real do IDEAGRI e confirmar `ANIMAL.CDCENTRALSEMEN` |
-| v3 · Sanidade, peso e nutrição | Correção operacional V3-01 a V3-13 em andamento no PR #308; testes PostgreSQL e homologação visual ainda pendentes; carga IDEAGRI V3 fora desta rodada | [Artefato V3 — estado atual, contrato e auditoria anterior](./artefatos/pecuaria-v3-sanidade-peso-nutricao.html#correcao-operacional) |
+| v3 · Sanidade, peso e nutrição | Correção operacional V3-01 a V3-13 em andamento no PR #308; migrations e 58 testes PostgreSQL executados no banco local, homologação visual/manual ainda pendente; carga IDEAGRI V3 fora desta rodada | [Artefato V3 — estado atual, contrato e auditoria anterior](./artefatos/pecuaria-v3-sanidade-peso-nutricao.html#correcao-operacional) |
 
-Validação automatizada da rodada V3 em 02/10: 1.064 testes de servidor e 785 de interface aprovados na suíte completa, além de testes focados posteriores; 58 testes de integração com banco não executados. O Docker local não ficou disponível, portanto as migrations novas, os cenários concorrentes PostgreSQL e a homologação visual 1180/720 px continuam pendentes. A seção inicial do artefato V3 registra também as lacunas remanescentes de carências/paginação sanitária e confirmação idempotente universal.
+Validação automatizada da rodada V3 em 02/10: 1.064 testes de servidor sem banco e 785 de interface aprovados na suíte completa, além de testes focados posteriores. Após o Docker voltar, as duas migrations V3 foram aplicadas em `fazendinha_v3_teste`; os 58 testes PostgreSQL antes ignorados passaram (51 de Pecuária/Estoque e 7 de Financeiro/Auth). `prisma migrate status` confirmou schema atualizado e os índices parciais foram conferidos no banco. A homologação visual 1180/720 px e o roteiro manual continuam pendentes. A seção inicial do artefato V3 registra também as lacunas remanescentes de carências/paginação sanitária e confirmação idempotente universal.
 
 “Concluída” significa que a implementação e os testes automatizados foram feitos. A v2 só estará disponível para o restante do time depois de sair de rascunho, passar pela validação real, ser revisada e entrar na `main`.
 
@@ -43,11 +43,11 @@ Os arquivos são snapshots HTML e preservam os diagramas e a interatividade dos 
 
 Quando houver divergência, o contrato aprovado no artefato define o comportamento desejado; migration/schema, serviços, interface e testes demonstram o comportamento implementado. Registre a diferença como pendência, sem substituir requisito por limitação acidental do código. Documentos históricos não anulam decisões posteriores. Atualize artefato, implementação e testes na mesma mudança que resolver a divergência.
 
-### Correção operacional de 02/10 — validação ainda aberta
+### Correção operacional de 02/10 — validação manual ainda aberta
 
 - Escopo confirmado: desmama e castração individuais, pesagem coletiva; carga histórica IDEAGRI V3 fora desta rodada, explicitamente pendente. Embalagens, ECC, formulação automática, recomendação clínica e balança física continuam fora.
 - Backend de fatos/histórico, sítio, snapshot na baixa, idempotência e retry: 29 testes focados passaram. Nutrição: 14 testes de serviço, 10 de interface e 30 de ficha passaram. Estoque: 78 testes focados do servidor e 31 da interface passaram. Esses números são por pacote e podem se sobrepor; não representam a suíte completa.
-- Migrations novas e testes PostgreSQL foram preparados, mas **não executados**: Docker Desktop falhou ao iniciar seu mecanismo local. O banco foi preservado; não houve reset nem recriação. Build e integração final ainda precisam ser repetidos após as alterações de catálogos e interface.
+- Depois da retomada do Docker, as duas migrations V3 foram aplicadas e os 58 testes PostgreSQL passaram. O banco foi preservado; não houve reset nem recriação. Builds de cliente e servidor também passaram. Isso não substitui homologação manual de interface, permissões, telas a 1180/720 px ou carga IDEAGRI V3.
 - O [roteiro manual](./artefatos/roteiro-testes-rebanho-v1-v2.html) permanece sem execução/homologação nesta rodada. Não declarar a V3 homologada nem a carga IDEAGRI entregue.
 
 ### Validação da auditoria de base de 02/10 (antes da correção)
