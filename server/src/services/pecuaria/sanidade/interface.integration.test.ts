@@ -6,10 +6,11 @@ import { cadastrarAnimalSchema } from "../rebanho/schemas.js";
 import { hojeFazenda } from "../rebanho/regras.js";
 import { anularAplicacao, carenciaAnimal, criarAplicacao, criarAplicacoesColetivas, reconciliarOrigem } from "./aplicacoes.js";
 import { salvarTipoAplicacao } from "./tiposAplicacao.js";
+import { listarPartidas } from "../../estoque/partidas.js";
 
 const comBanco = process.env.PECUARIA_DB_INTEGRATION === "1" ? describe : describe.skip;
 const run = crypto.randomUUID().slice(0, 8);
-const ids = { sitio: 0, animal: "", produto: "", tipo: "" };
+const ids = { sitio: 0, animal: "", produto: "", tipo: "", partida: "" };
 const hoje = hojeFazenda();
 const antes = (n: number) => new Date(Date.parse(hoje) - n * 86400000).toISOString().slice(0, 10);
 afterAll(async () => {
@@ -19,7 +20,11 @@ afterAll(async () => {
   await prisma.aplicacaoProduto.deleteMany({ where: { animalId: ids.animal } });
   await prisma.requisicaoPecuaria.deleteMany({ where: { propriedadeId: ids.sitio } });
   await prisma.auditoriaFinanceira.deleteMany({ where: { entidadeId: { in: movimentos.map((m) => m.id) } } });
+  // Desmonta somente a fixture descartável; a UI não permite desligar rastreio.
+  await prisma.produto.update({ where: { id: ids.produto }, data: { rastrearPartidas: false } });
+  await prisma.alocacaoPartidaEstoque.deleteMany({ where: { partidaId: ids.partida } });
   await prisma.movimentoEstoque.deleteMany({ where: { produtoId: ids.produto } });
+  await prisma.partidaProduto.deleteMany({ where: { produtoId: ids.produto } });
   await prisma.produto.deleteMany({ where: { id: ids.produto } });
   await prisma.destinoAnimal.deleteMany({ where: { animalId: ids.animal } });
   await prisma.localizacaoAnimal.deleteMany({ where: { animalId: ids.animal } });
@@ -32,15 +37,18 @@ comBanco("contratos da interface sanitária V3", () => {
     const sitio = await prisma.propriedade.create({ data: { nome: `UI V3 ${run}` } }); ids.sitio = sitio.id;
     const animal = await cadastrar(cadastrarAnimalSchema.parse({ brinco: `UI${run}`, sexo: "F", origem: "COMPRADO", aptidao: "CORTE", propriedadeId: sitio.id, dataNascimento: antes(100), dataEntrada: antes(20) }), null); ids.animal = animal.id;
     const tipo = await salvarTipoAplicacao({ nome: `Personalizado ${run}` }, null); ids.tipo = tipo.id;
-    const produto = await prisma.produto.create({ data: { nome: `Medicamento ${run}`, unidade: "ML" } }); ids.produto = produto.id;
-    await prisma.movimentoEstoque.create({ data: { produtoId: produto.id, propriedadeId: sitio.id, tipo: "ENTRADA", origem: "INVENTARIO_INICIAL", data: new Date(antes(10)), quantidade: 50, custoUnitario: 2, valorTotal: 100 } });
-    const input = { animalId: animal.id, propriedadeId: sitio.id, data: antes(1), aplicadaEm: `${antes(1)}T10:00:00-03:00`, tipoAplicacaoId: tipo.id, origemInsumo: "BAIXA_ESTOQUE" as const, produtoId: produto.id, nomeProdutoAplicado: produto.nome, dose: "10", unidadeDose: "ML" as const, responsavel: "Funcionário da fazenda", estadoCarenciaLeite: "NAO_APLICAVEL" as const, estadoCarenciaCarne: "INFORMADO" as const, carenciaLeiteHoras: null, carenciaCarneHoras: 0 };
+    const produto = await prisma.produto.create({ data: { nome: `Medicamento ${run}`, unidade: "ML", usoSanitario: true, rastrearPartidas: true } }); ids.produto = produto.id;
+    const partida = await prisma.partidaProduto.create({ data: { produtoId: produto.id, codigo: `FAB-${run}`, validade: new Date(Date.parse(hoje) + 365 * 86400000) } }); ids.partida = partida.id;
+    await prisma.movimentoEstoque.create({ data: { produtoId: produto.id, propriedadeId: sitio.id, tipo: "ENTRADA", origem: "INVENTARIO_INICIAL", data: new Date(antes(10)), quantidade: 50, custoUnitario: 2, valorTotal: 100, alocacaoPartidaEstoques: { create: { partidaId: partida.id, quantidade: 50 } } } });
+    const input = { animalId: animal.id, propriedadeId: sitio.id, data: antes(1), aplicadaEm: `${antes(1)}T10:00:00-03:00`, tipoAplicacaoId: tipo.id, origemInsumo: "BAIXA_ESTOQUE" as const, produtoId: produto.id, partidaId: partida.id, nomeProdutoAplicado: produto.nome, dose: "10", unidadeDose: "ML" as const, responsavel: "Funcionário da fazenda", estadoCarenciaLeite: "NAO_APLICAVEL" as const, estadoCarenciaCarne: "INFORMADO" as const, carenciaLeiteHoras: null, carenciaCarneHoras: 0 };
     const aplicacao = await criarAplicacao(input, null);
     expect(aplicacao.operacaoServicoId).toBeNull();
     expect(aplicacao.responsavel).toBe("Funcionário da fazenda");
     const saida = await prisma.movimentoEstoque.findUniqueOrThrow({ where: { id: aplicacao.movimentoEstoqueId! } });
     expect(saida.quantidade.toString()).toBe("10");
     expect(50 - saida.quantidade.toNumber()).toBe(40);
+    expect((await listarPartidas(produto.id, sitio.id)).find((p) => p.id === partida.id)?.saldo).toBe("40");
+    expect(aplicacao.partidaCodigoSnapshot).toBe(partida.codigo);
     expect((await carenciaAnimal(animal.id, sitio.id)).leite).toEqual({ estado: "NAO_APLICAVEL" });
     await salvarTipoAplicacao({ nome: `Renomeado ${run}`, ativo: false }, null, tipo.id);
     expect((await prisma.aplicacaoProduto.findUniqueOrThrow({ where: { id: aplicacao.id } })).tipoAplicacaoNomeSnapshot).toBe(tipo.nome);
@@ -48,6 +56,7 @@ comBanco("contratos da interface sanitária V3", () => {
     await mudarDestino({ animalId: animal.id, data: hoje, aptidao: "LEITE", papelReprodutivo: "NENHUM" }, null, sitio.id);
     expect(await carenciaAnimal(animal.id, sitio.id)).toMatchObject({ leite: { estado: "NAO_INFORMADO" }, revisaoLeitePendente: true });
     await anularAplicacao(aplicacao.id, sitio.id, "Correção comprovada da aplicação", null);
+    expect((await listarPartidas(produto.id, sitio.id)).find((p) => p.id === partida.id)?.saldo).toBe("50");
     expect((await carenciaAnimal(animal.id, sitio.id)).leite).toEqual({ estado: "NENHUMA" });
   });
   it("reconcilia estoque sem mudar o fato e preserva a justificativa original", async () => {
@@ -55,7 +64,7 @@ comBanco("contratos da interface sanitária V3", () => {
     const produto = await prisma.produto.findUniqueOrThrow({ where: { id: ids.produto } });
     const input = { animalId: ids.animal, propriedadeId: ids.sitio, data: hoje, aplicadaEm: `${hoje}T10:00:00-03:00`, tipoAplicacaoId: ids.tipo, origemInsumo: "SEM_ORIGEM_JUSTIFICADA" as const, nomeProdutoAplicado: produto.nome, dose: "10", unidadeDose: "ML" as const, justificativaSemOrigem: "Aplicado em campo; origem ainda não localizada", carenciaLeiteHoras: 0, carenciaCarneHoras: 0 };
     const aplicada = await criarAplicacao(input, null);
-    const reconciliada = await reconciliarOrigem(aplicada.id, ids.sitio, { origemInsumo: "BAIXA_ESTOQUE", produtoId: ids.produto, motivo: "Conferência do medicamento no almoxarifado" }, null);
+    const reconciliada = await reconciliarOrigem(aplicada.id, ids.sitio, { origemInsumo: "BAIXA_ESTOQUE", produtoId: ids.produto, partidaId: ids.partida, motivo: "Conferência do medicamento no almoxarifado" }, null);
     expect(reconciliada.justificativaSemOrigem).toBe(input.justificativaSemOrigem);
     expect(reconciliada.nomeProdutoAplicado).toBe(aplicada.nomeProdutoAplicado);
     expect(reconciliada.dose?.toString()).toBe(aplicada.dose?.toString());
@@ -65,7 +74,7 @@ comBanco("contratos da interface sanitária V3", () => {
     expect(auditoria).not.toBeNull();
   });
   it("confirma coletivo uma única vez e desfaz integralmente o conjunto inválido", async () => {
-    const item = { animalId: ids.animal, propriedadeId: ids.sitio, data: hoje, aplicadaEm: `${hoje}T11:00:00-03:00`, tipoAplicacaoId: ids.tipo, origemInsumo: "BAIXA_ESTOQUE" as const, produtoId: ids.produto, nomeProdutoAplicado: "Medicamento", dose: "1", unidadeDose: "ML" as const, carenciaLeiteHoras: 0, carenciaCarneHoras: 0 };
+    const item = { animalId: ids.animal, propriedadeId: ids.sitio, data: hoje, aplicadaEm: `${hoje}T11:00:00-03:00`, tipoAplicacaoId: ids.tipo, origemInsumo: "BAIXA_ESTOQUE" as const, produtoId: ids.produto, partidaId: ids.partida, nomeProdutoAplicado: "Medicamento", dose: "1", unidadeDose: "ML" as const, carenciaLeiteHoras: 0, carenciaCarneHoras: 0 };
     const input = { chave: crypto.randomUUID(), propriedadeId: ids.sitio, itens: [item] };
     const resultado = await criarAplicacoesColetivas(input, null);
     expect(await criarAplicacoesColetivas(input, null)).toEqual(resultado);

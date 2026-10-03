@@ -6,6 +6,7 @@ import { RebanhoError, auditar, hojeFazenda, travarAnimais } from "../rebanho/re
 import { conferirAnimalNoFato } from "../fatos.js";
 import { transacaoPecuaria } from "../transacao.js";
 import { confirmarFato } from "../idempotencia.js";
+import { travarUsosProduto } from "../../estoque/usos.js";
 
 type Etapa = {
   diaRelativo: number; tipo: "APLICACAO" | "EXAME"; produtoId?: string | null; tipoExameId?: string | null;
@@ -17,13 +18,14 @@ const somarDias = (data: Date, n: number) => new Date(data.getTime() + n * 86_40
 
 async function validarEtapas(tx: Prisma.TransactionClient, etapas: Etapa[]) {
   if (!etapas.length) throw new RebanhoError("VALIDACAO", "O protocolo precisa de ao menos uma etapa", "etapas");
+  await travarUsosProduto(tx, etapas.flatMap((e) => e.produtoId ? [e.produtoId] : []));
   for (const [indice, e] of etapas.entries()) {
     if (!Number.isInteger(e.diaRelativo) || e.diaRelativo < 0) throw new RebanhoError("VALIDACAO", "Dia relativo inválido", `etapas.${indice}.diaRelativo`);
     if (e.tipo === "APLICACAO") {
       if (!e.produtoId || (!e.finalidade && !e.tipoAplicacaoId) || !e.dose || e.dose <= 0 || !e.unidade || e.tipoExameId) {
         throw new RebanhoError("VALIDACAO", "Etapa de aplicação precisa de Produto, finalidade, dose e unidade", `etapas.${indice}`);
       }
-      if (!(await tx.produto.findFirst({ where: { id: e.produtoId, ativo: true } }))) throw new RebanhoError("VALIDACAO", "Produto da etapa não encontrado", `etapas.${indice}.produtoId`);
+      if (!(await tx.produto.findFirst({ where: { id: e.produtoId, ativo: true, usoSanitario: true } }))) throw new RebanhoError("VALIDACAO", "Selecione um produto ativo com uso sanitário", `etapas.${indice}.produtoId`);
       const tipo = await tx.tipoAplicacaoSanitaria.findFirst({ where: { id: e.tipoAplicacaoId ?? (e.finalidade === "VACINA" ? "a0300000-0000-4000-8000-000000000002" : e.finalidade === "VERMIFUGO" ? "a0300000-0000-4000-8000-000000000003" : "a0300000-0000-4000-8000-000000000001"), ativo: true } });
       if (!tipo) throw new RebanhoError("VALIDACAO", "Tipo de aplicação inativo ou inexistente", `etapas.${indice}.tipoAplicacaoId`);
       e.tipoAplicacaoId = tipo.id;

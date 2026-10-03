@@ -44,6 +44,7 @@ const colunasParceiros = (editar: (p: Parceiro) => void, alternar: (p: Parceiro)
 const colunasProdutos = (editar: (p: Produto) => void, alternar: (p: Produto) => void): ColunaTabela<Produto>[] => [
   { chave: "nome", titulo: "Produto", larguraMinima: 200, principal: true, celula: (p) => <strong className="break-words font-semibold">{p.nome}</strong> },
   { chave: "categoria", titulo: "Categoria", larguraMinima: 130, celula: (p) => p.categoriaNome ?? "Sem categoria" },
+  { chave: "uso", titulo: "Tipos de uso", larguraMinima: 130, celula: (p) => [p.usoAgricola && "Agrícola", p.usoGenetico && "Genético", p.usoSanitario && "Sanitário", p.usoNutricional && "Nutricional"].filter(Boolean).join(" · ") || "Geral" },
   { chave: "unidade", titulo: "Unidade", larguraMinima: 80, celula: (p) => rotuloUnidade(p.unidade) },
   { chave: "centrosCusto", titulo: "Centros de custo", larguraMinima: 150, celula: (p) => <span className="break-words text-ink-3">{p.centrosCusto?.map((c) => `${c.nome}${c.ativo ? "" : " (inativo)"}`).join(" · ") || "—"}</span> },
   { chave: "fornecedores", titulo: "Fornecedores", larguraMinima: 150, celula: (p) => <span className="break-words text-ink-3">{p.fornecedores?.map((f) => `${f.nome}${f.ativo ? "" : " (inativo)"}`).join(" · ") || "Sem fornecedor"}</span> },
@@ -54,10 +55,6 @@ const colunasProdutos = (editar: (p: Produto) => void, alternar: (p: Produto) =>
 const colunasCategorias = (editar: (c: Categoria) => void, alternar: (c: Categoria) => void): ColunaTabela<Categoria>[] => [
   { chave: "categoria", titulo: "Categoria", principal: true, larguraMinima: 210, celula: (c) => <strong>{c.nome}</strong> },
   { chave: "classificacao", titulo: "Classificação", alinhamento: "centro", larguraMinima: 130, celula: (c) => c.classificacao === "INVESTIMENTO" ? "Investimento" : c.classificacao === "CUSTEIO" ? "Custeio" : "Não classificada" },
-  { chave: "uso", titulo: "Uso", alinhamento: "centro", larguraMinima: 150, celula: (c) => {
-    if (!c.usoAgricola && !c.usoGenetico && !c.usoSanitario && !c.usoNutricional) return "—";
-    return <span className="flex flex-wrap justify-center gap-1">{c.usoAgricola && <Pill tone="neutral">Agrícola</Pill>}{c.usoGenetico && <Pill tone="neutral">Genético</Pill>}{c.usoSanitario && <Pill tone="neutral">Sanitário</Pill>}{c.usoNutricional && <Pill tone="neutral">Nutricional</Pill>}</span>;
-  } },
   { chave: "referencias", titulo: "Em uso", alinhamento: "centro", larguraMinima: 100, celula: (c) => (c._count?.operacoes ?? 0) + (c._count?.produtos ?? 0) + (c._count?.itens ?? 0) },
   { chave: "situacao", titulo: "Situação", alinhamento: "centro", larguraMinima: 100, celula: (c) => <Pill tone={c.ativo ? "green" : "neutral"}>{c.ativo ? "Ativa" : "Inativa"}</Pill> },
   { chave: "acoes", titulo: "Ações", alinhamento: "direita", larguraMinima: 110, acoes: true, celula: (c) => <AcoesLinha nome={c.nome} ativo={c.ativo} onEditar={() => editar(c)} onAlternar={() => alternar(c)} /> },
@@ -162,8 +159,8 @@ export function ConfiguracoesFinanceiras({ abaInicial = "contas", podeEditar = t
     const fornecedorOk = filtroFornecedor === "SEM" ? !produto.fornecedores?.length : !filtroFornecedor || produto.fornecedores?.some((f) => f.id === filtroFornecedor);
     const centroOk = filtroCentro === "SEM" ? !produto.centrosCusto?.length : !filtroCentro || produto.centrosCusto?.some((c) => c.id === filtroCentro);
     const situacaoOk = filtroSituacao === "TODOS" || (filtroSituacao === "ATIVOS" ? produto.ativo !== false : produto.ativo === false);
-    const usoOk = !filtroUso || (filtroUso === "SEM" ? !produto.categoria?.usoAgricola && !produto.categoria?.usoGenetico && !produto.categoria?.usoSanitario && !produto.categoria?.usoNutricional
-      : !!produto.categoria?.[filtroUso as "usoAgricola" | "usoGenetico" | "usoSanitario" | "usoNutricional"]);
+    const usoOk = !filtroUso || (filtroUso === "SEM" ? !produto.usoAgricola && !produto.usoGenetico && !produto.usoSanitario && !produto.usoNutricional
+      : !!produto[filtroUso as "usoAgricola" | "usoGenetico" | "usoSanitario" | "usoNutricional"]);
     return buscaOk && fornecedorOk && centroOk && situacaoOk && usoOk;
   });
   const acao = aba === "categorias"

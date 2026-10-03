@@ -37,6 +37,31 @@ const produtoCriado = {
   centroCustoIds: [], centrosCusto: [], fornecedores: [],
 };
 
+describe("tipos de uso e validação dos perfis", () => {
+  beforeEach(() => { vi.clearAllMocks(); mocks.criarProduto.mockResolvedValue(produtoCriado); });
+  const montar = () => {
+    render(<FormProduto produto={null} categorias={categorias} centros={[]} parceiros={[]} onSalvo={vi.fn()} onFechar={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText("Nome do produto"), { target: { value: "Produto de teste" } });
+    fireEvent.change(screen.getByLabelText("Categoria"), { target: { value: uid(11) } });
+    fireEvent.click(screen.getByLabelText("Nutricional"));
+  };
+  it.each(["-1", "101", "abc", "90,255"])("recusa MS %s no campo e mantém o formulário", async (valor) => {
+    montar(); fireEvent.change(screen.getByLabelText("Matéria seca (%)"), { target: { value: valor } });
+    fireEvent.click(screen.getByRole("button", { name: "Criar produto" }));
+    expect(await screen.findByText("Informe a matéria seca entre 0% e 100%.")).toBeTruthy();
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText("Matéria seca (%)")));
+    expect(mocks.criarProduto).not.toHaveBeenCalled();
+    expect((screen.getByLabelText("Nome do produto") as HTMLInputElement).value).toBe("Produto de teste");
+  });
+  it.each([["0", 0], ["100", 100], ["90,25", 90.25], ["", null]])("aceita MS %s preservando o significado", async (valor, esperado) => {
+    montar(); fireEvent.change(screen.getByLabelText("Matéria seca (%)"), { target: { value: valor } });
+    fireEvent.click(screen.getByLabelText("Sanitário"));
+    fireEvent.click(screen.getByLabelText("Controlar lotes e validade"));
+    fireEvent.click(screen.getByRole("button", { name: "Criar produto" }));
+    await waitFor(() => expect(mocks.criarProduto).toHaveBeenCalledWith(expect.objectContaining({ usoNutricional: true, usoSanitario: true, usoAgricola: false, rastrearPartidas: true, perfilNutricional: { materiaSecaPercentual: esperado } })));
+  });
+});
+
 describe("FormProduto sem props", () => {
   it("carrega fornecedores/categorias/centros do estoque e chama onSalvo com o produto criado", async () => {
     mocks.listarFornecedores.mockResolvedValue(fornecedores);
@@ -64,7 +89,7 @@ describe("FormProduto sem props", () => {
     fireEvent.change(screen.getByLabelText("Nome do produto"), { target: { value: "Sal mineral" } });
     fireEvent.change(screen.getByLabelText("Unidade"), { target: { value: "KG" } });
     fireEvent.change(screen.getByLabelText(/^Categoria/), { target: { value: uid(11) } });
-    await screen.findByText("Uso agrícola");
+    fireEvent.click(screen.getByLabelText("Agrícola"));
     fireEvent.click(screen.getByRole("button", { name: "Criar produto" }));
 
     await waitFor(() => expect(mocks.criarProduto).toHaveBeenCalledWith(expect.objectContaining({ nome: "Sal mineral", unidade: "KG", categoriaId: uid(11), fornecedorIds: [uid(7)], centroCustoIds: [uid(20)] })));

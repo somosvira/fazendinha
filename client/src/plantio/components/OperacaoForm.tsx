@@ -103,7 +103,7 @@ export function OperacaoForm({ talhaoId, talhao, dominioFixo, onFechar, onSalvo 
 
   // Baixa de estoque — produto do estoque opcional, com estimativa dose × área.
   const { data: produtos } = useProdutosEstoque({ ativo: true, uso: "agricola" });
-  // Produtos de uso agrícola (categoria). A baixa só acontece se o produto tiver
+  // Produtos de uso agrícola. A baixa só acontece se o produto tiver
   // estoque no sítio do talhão — decisão do servidor, não do cadastro.
   const produtosAgricolas = useMemo(
     () => produtos.filter((p) => p.ativo).sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),
@@ -335,7 +335,7 @@ export function OperacaoForm({ talhaoId, talhao, dominioFixo, onFechar, onSalvo 
                   {produtosAgricolas.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
                 </select>
               </RebField>
-              <p className="-mt-2.5 text-xs text-ink-3">Só produtos de categorias marcadas como uso agrícola aparecem aqui (Configurações → Categorias).</p>
+              <p className="-mt-2.5 text-xs text-ink-3">Só produtos com tipo de uso Agrícola aparecem aqui. Configure o uso no cadastro do Produto.</p>
               {produtoSelecionado && (
                 <>
                   {baixaEstimada && baixaEstimada.erro && (
@@ -346,7 +346,7 @@ export function OperacaoForm({ talhaoId, talhao, dominioFixo, onFechar, onSalvo 
                       Baixa estimada: <b>{baixaEstimada.valor.toLocaleString("pt-BR", { maximumFractionDigits: 3 })} {baixaEstimada.unidade}</b>
                     </p>
                   )}
-                  {produtoSelecionado.rastrearPartidas && <SelecaoPartidas produtoId={produtoId} saida valor={partidas} onChange={setPartidas} />}
+                  {produtoSelecionado.rastrearPartidas && <SelecaoPartidas produtoId={produtoId} dataFato={data} quantidade={quantidadeTotal || (baixaEstimada?.valor != null ? String(baixaEstimada.valor) : "")} unidade={produtoSelecionado.unidade} saida valor={partidas} onChange={setPartidas} />}
                   <RebField label="Quantidade total (sobrescreve a estimativa)">
                     <input type="number" value={quantidadeTotal} onChange={(e) => setQuantidadeTotal(e.target.value)} placeholder={baixaEstimada?.valor != null ? String(baixaEstimada.valor) : "Ex.: 120"} />
                   </RebField>

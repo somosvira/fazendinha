@@ -3,6 +3,7 @@ import { prisma } from "../../db.js";
 import { papeisDoParceiro } from "../financeiro/papeis.js";
 import { auditar, FinanceiroError, traduzirConflitoUnico, type DbFinanceiro } from "../financeiro/regras.js";
 import { CATEGORIA_OBRIGATORIA, type ProdutoInput, type ProdutoPatchInput } from "./produtos.schemas.js";
+import { travarUsosProduto } from "./usos.js";
 
 export const includeProduto = {
   fornecedores: {
@@ -24,7 +25,10 @@ export function produtoDTO(produto: Prisma.ProdutoGetPayload<{ include: typeof i
     categoriaId: produto.categoriaId ?? null,
     categoriaNome: produto.categoria?.nome ?? null,
     classificacao: produto.categoria?.classificacao ?? null,
-    // Comportamento é da categoria, mesmo que ela esteja inativa (situação é do produto).
+    usoAgricola: produto.usoAgricola,
+    usoGenetico: produto.usoGenetico,
+    usoSanitario: produto.usoSanitario,
+    usoNutricional: produto.usoNutricional,
     categoria: produto.categoria
       ? { id: produto.categoria.id, nome: produto.categoria.nome, usoAgricola: produto.categoria.usoAgricola, usoGenetico: produto.categoria.usoGenetico,
         usoSanitario: produto.categoria.usoSanitario, usoNutricional: produto.categoria.usoNutricional }
@@ -68,7 +72,7 @@ const USO_CAMPO = { agricola: "usoAgricola", genetico: "usoGenetico", sanitario:
 
 export async function listarProdutos(f?: { uso?: keyof typeof USO_CAMPO; q?: string; ativo?: boolean; incluirInativos?: boolean }) {
   const where: Prisma.ProdutoWhereInput = {};
-  if (f?.uso) where.categoria = { [USO_CAMPO[f.uso]]: true };
+  if (f?.uso) Object.assign(where, { [USO_CAMPO[f.uso]]: true });
   if (f?.q) where.nome = { contains: f.q, mode: "insensitive" };
   if (f?.ativo != null) where.ativo = f.ativo;
   else if (!f?.incluirInativos) where.ativo = true;
@@ -93,9 +97,8 @@ export async function criarProdutoTx(tx: Prisma.TransactionClient, input: Produt
   }
   await validarFornecedores(tx, fornecedorIds, new Set());
   await validarCentrosCusto(tx, centroCustoIds, new Set());
-  const categoria = perfilSanitario || perfilNutricional ? await tx.categoria.findUnique({ where: { id: produto.categoriaId } }) : null;
-  if (perfilSanitario && !categoria?.usoSanitario) throw new FinanceiroError("VALIDACAO", "Perfil sanitário exige categoria com uso sanitário", "categoriaId");
-  if (perfilNutricional && !categoria?.usoNutricional) throw new FinanceiroError("VALIDACAO", "Perfil nutricional exige categoria com uso nutricional", "categoriaId");
+  if (perfilSanitario && !produto.usoSanitario) throw new FinanceiroError("VALIDACAO", "Selecione o uso sanitário para preencher esse perfil", "usoSanitario");
+  if (perfilNutricional && !produto.usoNutricional) throw new FinanceiroError("VALIDACAO", "Selecione o uso nutricional para preencher esse perfil", "usoNutricional");
   const criado = await tx.produto.create({
     data: {
       ...produto,
@@ -115,6 +118,7 @@ export async function criarProdutoTx(tx: Prisma.TransactionClient, input: Produt
 export async function atualizarProduto(id: string, input: ProdutoPatchInput, usuarioId?: number | null) {
   try {
     return await prisma.$transaction(async (tx) => {
+      await travarUsosProduto(tx, [id]);
       const anterior = await tx.produto.findUnique({ where: { id }, include: includeProduto });
       if (!anterior) throw new FinanceiroError("NAO_ENCONTRADO", "Produto não encontrado");
       const { fornecedorIds, centroCustoIds, perfilSanitario, perfilNutricional, produto } = separarRelacoes(input);
@@ -126,11 +130,20 @@ export async function atualizarProduto(id: string, input: ProdutoPatchInput, usu
       if (categoriaId == null && !soSituacao) {
         throw new FinanceiroError("VALIDACAO", CATEGORIA_OBRIGATORIA, "categoriaId");
       }
-      const mudouCategoria = produto.categoriaId !== undefined && produto.categoriaId !== anterior.categoriaId;
-      const exigeNutricional = !!(perfilNutricional || anterior.perfilNutricionalProduto) || (mudouCategoria && !!(await tx.itemDieta.count({ where: { produtoId: id } })));
-      const categoria = categoriaId && (perfilSanitario || anterior.perfilSanitarioProduto || exigeNutricional) ? await tx.categoria.findUnique({ where: { id: categoriaId } }) : null;
-      if ((perfilSanitario || anterior.perfilSanitarioProduto) && !categoria?.usoSanitario) throw new FinanceiroError("VALIDACAO", "Produto com perfil sanitário exige uso sanitário", "categoriaId");
-      if (exigeNutricional && !categoria?.usoNutricional) throw new FinanceiroError("VALIDACAO", "Perfil ou receita exige uso nutricional", "categoriaId");
+      if (produto.rastrearPartidas !== undefined && produto.rastrearPartidas !== anterior.rastrearPartidas) {
+        throw new FinanceiroError("CONFLITO", "Use a conferência de ativação do controle de lotes. Depois de ativado, não pode ser desligado.", "rastrearPartidas");
+      }
+      if ((perfilSanitario || anterior.perfilSanitarioProduto) && !(produto.usoSanitario ?? anterior.usoSanitario)) throw new FinanceiroError("CONFLITO", "O perfil sanitário exige uso sanitário", "usoSanitario");
+      if ((perfilNutricional || anterior.perfilNutricionalProduto) && !(produto.usoNutricional ?? anterior.usoNutricional)) throw new FinanceiroError("CONFLITO", "O perfil nutricional exige uso nutricional", "usoNutricional");
+      const vinculos = [
+        ["usoAgricola", "aplicações agrícolas", () => tx.operacaoAgricola.count({ where: { produtoId: id } })],
+        ["usoGenetico", "material genético", () => tx.materialGenetico.count({ where: { produtoId: id } })],
+        ["usoSanitario", "aplicações ou protocolos sanitários", async () => (await tx.aplicacaoProduto.count({ where: { produtoId: id } })) + (await tx.etapaProtocoloSanitario.count({ where: { produtoId: id } }))],
+        ["usoNutricional", "receitas ou fechamentos nutricionais", async () => (await tx.itemDieta.count({ where: { produtoId: id } })) + (await tx.itemFechamentoConsumo.count({ where: { produtoId: id } }))],
+      ] as const;
+      for (const [campo, descricao, contar] of vinculos) {
+        if (produto[campo] === false && await contar() > 0) throw new FinanceiroError("CONFLITO", `Uso exigido por ${descricao}. Consulte os vínculos antes de alterar.`, campo);
+      }
 
       // Trocar a unidade muda a interpretação de tudo que já foi movimentado
       // (estoque) ou registrado em histórico (compra/venda, aplicação agrícola)

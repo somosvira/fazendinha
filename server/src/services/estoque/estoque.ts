@@ -182,7 +182,7 @@ export async function listarSaldos(f?: { centroCustoId?: string; propriedadeId?:
     // com produtoIds, o chamador já sabe quais produtos quer: ignora ativo/uso
     where: f?.produtoIds
       ? { id: { in: f.produtoIds }, movimentos: { some: sitio } }
-      : { ativo: true, movimentos: { some: sitio }, ...(f?.uso ? { categoria: { [USO_CAMPO[f.uso]]: true } } : {}) },
+      : { ativo: true, movimentos: { some: sitio }, ...(f?.uso ? { [USO_CAMPO[f.uso]]: true } : {}) },
     orderBy: { nome: "asc" },
     // Saldo por sítio: com filtro, só os movimentos daquela propriedade contam.
     include: {
@@ -211,6 +211,7 @@ export async function listarSaldos(f?: { centroCustoId?: string; propriedadeId?:
     return {
       produtoId: p.id,
       nome: p.nome,
+      usoAgricola: p.usoAgricola, usoGenetico: p.usoGenetico, usoSanitario: p.usoSanitario, usoNutricional: p.usoNutricional,
       materialGeneticoId: f?.materialGeneticoVisivel === false ? null : p.materialGenetico?.id ?? null,
       categoria: p.categoria
         ? { id: p.categoria.id, nome: p.categoria.nome, usoAgricola: p.categoria.usoAgricola, usoGenetico: p.categoria.usoGenetico }
@@ -471,7 +472,7 @@ export async function estornarMovimentoTx(
   if (mov.tipo === "ENTRADA" || (mov.tipo === "AJUSTE" && mov.quantidade.gt(0))) {
     for (const alocacao of alocacoes) {
       if ((await saldoPartidaTx(tx, alocacao.partidaId, pid)).lt(alocacao.quantidade)) {
-        throw new EstoqueError("CONFLITO", "A partida da entrada já foi consumida; reconcilie o estoque antes de estornar.");
+        throw new EstoqueError("CONFLITO", "O lote da entrada já foi consumido; reconcilie o estoque antes de estornar.");
       }
     }
   }

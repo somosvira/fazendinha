@@ -41,7 +41,7 @@ describeComBanco("fechamento nutricional com PostgreSQL", () => {
     const animal = await cadastrar(cadastrarAnimalSchema.parse({ brinco: `NU${run}`, sexo: "F", origem: "COMPRADO", aptidao: "LEITE",
       dataNascimento: "2024-01-01", dataEntrada: "2026-08-01", propriedadeId: propriedade.id, loteId: lote.id }), null); ids.animal = animal.id;
     const categoria = await prisma.categoria.create({ data: { nome: `Nutrição V3 ${run}`, usoNutricional: true } }); ids.categoria = categoria.id;
-    const produto = await prisma.produto.create({ data: { nome: `Ração V3 ${run}`, unidade: "KG", categoriaId: categoria.id } }); ids.produto = produto.id;
+    const produto = await prisma.produto.create({ data: { nome: `Ração V3 ${run}`, unidade: "KG", categoriaId: categoria.id, usoNutricional: true } }); ids.produto = produto.id;
     await prisma.movimentoEstoque.create({ data: { produtoId: produto.id, propriedadeId: propriedade.id,
       tipo: "ENTRADA", origem: "INVENTARIO_INICIAL", data: new Date("2026-08-30"), quantidade: 50, custoUnitario: 2, valorTotal: 100 } });
     const dieta = await criarDieta({ nome: `Dieta V3 ${run}`, itens: [{ produtoId: produto.id, quantidadeCabecaDia: 3 }] }, null); ids.dieta = dieta.id;

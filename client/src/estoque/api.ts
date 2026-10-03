@@ -39,6 +39,7 @@ export const obterCentrosAtividade = () => req<CentrosAtividadeDTO>("/estoque/ce
 
 // ── Estoque: saldos + movimentos ───────────────────────────
 export interface SaldoDTO { produtoId: string; nome: string; materialGeneticoId: string | null; categoria: { id: string; nome: string; usoAgricola: boolean; usoGenetico: boolean } | null; unidade: UnidadeMedida; centrosCusto: { id: string; nome: string }[]; saldo: number;
+  usoAgricola?: boolean; usoGenetico?: boolean; usoSanitario?: boolean; usoNutricional?: boolean;
   /** Média ponderada das entradas valorizadas no sítio; null sem base (nenhuma compra/inventário com valor). */
   custoMedio: number | null;
   /** saldo × custoMedio (0 quando custoMedio é null). */
@@ -99,7 +100,8 @@ export type ProdutoDTO = Produto;
 export type UsoProduto = "agricola" | "genetico" | "sanitario" | "nutricional";
 export interface ProdutoInput {
   nome: string; unidade: UnidadeMedida;
-  // Categoria obrigatória (define o uso). Se o produto entra no estoque quem decide é a operação.
+  usoAgricola?: boolean; usoGenetico?: boolean; usoSanitario?: boolean; usoNutricional?: boolean; rastrearPartidas?: boolean;
+  // Categoria obrigatória para classificação financeira. Se o produto entra no estoque quem decide é a operação.
   minimoEstoque?: number | null; ativo?: boolean; categoriaId: string; centroCustoIds?: string[]; fornecedorIds?: string[];
   perfilSanitario?: { carenciaLeiteHoras: number | null; carenciaCarneHoras: number | null; viaPadrao?: string | null; referenciaTecnica?: string | null };
   perfilNutricional?: { materiaSecaPercentual: number | null };

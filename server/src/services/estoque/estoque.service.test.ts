@@ -280,7 +280,7 @@ describe("listarSaldos", () => {
   it("consolidado lista produto com movimento em qualquer sítio e mantém o filtro de uso", async () => {
     mocks.produtoFindMany.mockResolvedValue([]);
     await listarSaldos({ propriedadeId: null, uso: "agricola" });
-    expect(mocks.produtoFindMany.mock.calls[0][0].where).toEqual({ ativo: true, movimentos: { some: {} }, categoria: { usoAgricola: true } });
+    expect(mocks.produtoFindMany.mock.calls[0][0].where).toEqual({ ativo: true, movimentos: { some: {} }, usoAgricola: true });
   });
 
   const mov = (tipo: string, quantidade: string, valorTotal: string) => ({ tipo, quantidade: new Prisma.Decimal(quantidade), valorTotal: new Prisma.Decimal(valorTotal), data: new Date("2026-01-10") });

@@ -77,7 +77,7 @@ export function ConferenciaPeriodos({ loteId, propriedadeId, centros, onSalvo }:
               </div>
               {Number(e.quantidade) !== Number(i.quantidadePrevista) && <label>Motivo da diferença<input className={classeInput} value={e.motivo} onChange={(ev) => mudar(k, { motivo: ev.target.value })} /></label>}
               {e.modo === "SEM_BAIXA_JUSTIFICADA" && <label>Justificativa sem baixa<textarea className={classeInput} value={e.justificativa} onChange={(ev) => mudar(k, { justificativa: ev.target.value })} /></label>}
-              {i.rastrearPartidas && e.modo === "BAIXA_ESTOQUE" && Number(e.quantidade) > 0 && <SelecaoPartidas produtoId={i.produtoId} propriedadeId={propriedadeId} dataFato={p.fim.slice(0, 10)} saida valor={e.partidas} onChange={(s) => mudar(k, { partidas: s })} />}
+              {i.rastrearPartidas && e.modo === "BAIXA_ESTOQUE" && Number(e.quantidade) > 0 && <SelecaoPartidas produtoId={i.produtoId} propriedadeId={propriedadeId} dataFato={p.fim.slice(0, 10)} quantidade={e.quantidade} unidade={i.unidade} saida valor={e.partidas} onChange={(s) => mudar(k, { partidas: s })} />}
             </div>;
           })}
         </fieldset>;

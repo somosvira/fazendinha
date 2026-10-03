@@ -13,6 +13,7 @@ import { useSaldos, listarMovimentos, listarCentrosCusto, type FiltroMovimentos,
 import { abrirAjusteEstoque, destinoDoMovimento, podeAcessarArea, podeAjustarEstoque } from "./navegacao";
 import { SEM_VINCULO } from "../lib/ids";
 import { ConsultaPartidas } from "./ConsultaPartidas";
+import { ROTULO_ORIGEM } from "./rotulos";
 
 const qtd = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 3 });
 const CAMPO = "rounded-lg border border-border bg-white px-3 py-2 text-sm";
@@ -20,12 +21,6 @@ const SEM_ACESSO = "Sem acesso a esta área";
 
 const TIPO_MOV: Record<MovimentoDTO["tipo"], { rotulo: string; tom: "green" | "amber" | "blue" }> = {
   ENTRADA: { rotulo: "Entrada", tom: "green" }, SAIDA: { rotulo: "Saída", tom: "amber" }, AJUSTE: { rotulo: "Ajuste", tom: "blue" },
-};
-const ROTULO_ORIGEM: Record<OrigemMovimento, string> = {
-  COMPRA: "Compra", CONSUMO_DIRETO: "Consumo direto", TRANSFERENCIA: "Transferência", PRODUCAO: "Produção própria", DEVOLUCAO: "Devolução",
-  BONIFICACAO: "Bonificação", INVENTARIO_INICIAL: "Inventário inicial", PERDA: "Perda",
-  AJUSTE_INVENTARIO: "Ajuste de estoque", APLICACAO: "Aplicação agrícola",
-  SANIDADE: "Aplicação sanitária", NUTRICAO: "Consumo nutricional", IDENTIFICACAO_PARTIDA: "Identificação de partida",
 };
 // Origens que colocam produto no estoque — alimentam o card "Últimas entradas".
 const ORIGENS_ENTRADA: readonly OrigemMovimento[] = ["COMPRA", "INVENTARIO_INICIAL", "BONIFICACAO", "PRODUCAO"];

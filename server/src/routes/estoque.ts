@@ -60,6 +60,11 @@ const ultimoPrecoQuerySchema = z.object({ parceiroId: z.string().uuid().optional
 const usuarioId = (c: Parameters<typeof getUsuario>[0]) => getUsuario(c)?.id ?? null;
 const podeVerCustos = (c: Parameters<typeof getUsuario>[0]) => { const u = getUsuario(c); return !!u && temArea(u, "financeiro") && temPermissao(u, "verValores"); };
 const parseAtivo = (v?: string) => (v === "true" ? true : v === "false" ? false : undefined);
+function validarProduto<T extends z.ZodTypeAny>(schema: T) {
+  return zValidator("json", schema, (resultado, c) => {
+    if (!resultado.success) { const erro = resultado.error.issues[0]; return c.json({ error: erro.message, code: "VALIDACAO", campo: erro.path.join(".") }, 422); }
+  });
+}
 
 // Leituras ficam só com o gate de área (app.ts); escritas exigem a flag `lancar`.
 export const estoqueRouter = new Hono()
@@ -107,7 +112,7 @@ export const estoqueRouter = new Hono()
   .get("/estoque/partidas", zValidator("query", z.object({ produtoId: z.string().uuid(), propriedadeId: z.coerce.number().int().positive().optional() })), async (c) => {
     try {
       const propriedadeId = c.req.valid("query").propriedadeId ?? await resolverEscopoLeitura(c);
-      if (propriedadeId == null) throw new svc.EstoqueError("VALIDACAO", "Selecione um sítio para consultar as partidas");
+      if (propriedadeId == null) throw new svc.EstoqueError("VALIDACAO", "Selecione um sítio para consultar os lotes");
       return c.json(await partidasSvc.listarPartidas(c.req.valid("query").produtoId, propriedadeId));
     } catch (e) { const { status, body } = fail(e); return c.json(body, status); }
   })
@@ -146,11 +151,11 @@ export const estoqueRouter = new Hono()
     const custoMedio = await svc.obterCustoMedio(prisma, c.req.param("id"), await resolverEscopoLeitura(c));
     return c.json({ custoMedio: custoMedio ? custoMedio.toNumber() : null });
   })
-  .post("/estoque/produtos", exigePermissao("lancar"), zValidator("json", produtoSchema), async (c) => {
+  .post("/estoque/produtos", exigePermissao("lancar"), validarProduto(produtoSchema), async (c) => {
     try { return c.json(await produtosSvc.criarProduto(c.req.valid("json"), usuarioId(c)), 201); }
     catch (e) { const { status, body } = failCadastro(e); return c.json(body, status); }
   })
-  .patch("/estoque/produtos/:id", exigePermissao("lancar"), zValidator("json", patchProdutoSchema), async (c) => {
+  .patch("/estoque/produtos/:id", exigePermissao("lancar"), validarProduto(patchProdutoSchema), async (c) => {
     try { return c.json(await produtosSvc.atualizarProduto(c.req.param("id"), c.req.valid("json"), usuarioId(c))); }
     catch (e) { const { status, body } = failCadastro(e); return c.json(body, status); }
   })

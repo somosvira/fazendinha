@@ -134,7 +134,7 @@ const registro = (valor: unknown): RegistroDetalhe => valor && typeof valor === 
 const textoDetalhe = (valor: unknown) => valor == null || valor === "" ? "Não informado" : String(valor);
 const dadosDetalhe: Record<string, Array<[string, string]>> = {
   ocorrencia: [["Início", "inicio"], ["Fim", "fim"], ["Situação", "status"], ["Desfecho", "desfecho"]],
-  aplicacao: [["Data", "data"], ["Situação", "status"], ["Medicamento", "nomeProdutoAplicado"], ["Quantidade", "dose"], ["Unidade", "unidadeDose"], ["Origem", "origemInsumo"], ["Responsável", "responsavel"], ["Via", "via"], ["Referência técnica", "referenciaCarencia"], ["Partida", "partidaCodigoSnapshot"], ["Validade da partida", "partidaValidadeSnapshot"], ["Carência leite", "estadoCarenciaLeite"], ["Prazo leite (h)", "carenciaLeiteHoras"], ["Carência carne", "estadoCarenciaCarne"], ["Prazo carne (h)", "carenciaCarneHoras"]],
+  aplicacao: [["Data", "data"], ["Situação", "status"], ["Medicamento", "nomeProdutoAplicado"], ["Quantidade", "dose"], ["Unidade", "unidadeDose"], ["Origem", "origemInsumo"], ["Responsável", "responsavel"], ["Via", "via"], ["Referência técnica", "referenciaCarencia"], ["Lote", "partidaCodigoSnapshot"], ["Validade do lote", "partidaValidadeSnapshot"], ["Carência leite", "estadoCarenciaLeite"], ["Prazo leite (h)", "carenciaLeiteHoras"], ["Carência carne", "estadoCarenciaCarne"], ["Prazo carne (h)", "carenciaCarneHoras"]],
   exame: [["Data", "data"], ["Situação", "status"], ["Resultado", "resultadoTexto"], ["Resultado numérico", "resultadoNumero"], ["Opção", "resultadoOpcao"]],
   execucao: [["Início", "inicio"], ["Situação", "status"], ["Cancelada em", "canceladaEm"]],
 };

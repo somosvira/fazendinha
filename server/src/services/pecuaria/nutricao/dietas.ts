@@ -3,6 +3,7 @@ import { prisma } from "../../../db.js";
 import { RebanhoError, auditar, hojeFazendaDate } from "../rebanho/regras.js";
 import type { PaginaNutricao } from "./schemas.js";
 import { transacaoPecuaria } from "../transacao.js";
+import { travarUsosProduto } from "../../estoque/usos.js";
 
 const dia = (s: string) => new Date(`${s}T00:00:00Z`);
 
@@ -17,6 +18,7 @@ export async function criarDieta(input: { nome: string; observacao?: string | nu
     throw new RebanhoError("VALIDACAO", "Informe ingredientes sem repetição", "itens");
   }
   return prisma.$transaction(async (tx) => {
+    await travarUsosProduto(tx, input.itens.map((i) => i.produtoId));
     const existente = id ? await tx.dieta.findUnique({ where: { id }, include: { itens: true } }) : null;
     if (id && !existente) throw new RebanhoError("NAO_ENCONTRADO", "Dieta não encontrada");
     if (existente?.publicadaEm) throw new RebanhoError("CONFLITO", "Versão publicada é imutável; crie nova versão");
@@ -26,7 +28,7 @@ export async function criarDieta(input: { nome: string; observacao?: string | nu
       if (!Number.isFinite(item.quantidadeCabecaDia) || item.quantidadeCabecaDia <= 0 || new Prisma.Decimal(item.quantidadeCabecaDia).decimalPlaces() > 3) {
         throw new RebanhoError("VALIDACAO", "Quantidade por cabeça/dia inválida", "itens");
       }
-      const produto = await tx.produto.findFirst({ where: { id: item.produtoId, ativo: true, categoria: { usoNutricional: true } }, include: { perfilNutricionalProduto: true } });
+      const produto = await tx.produto.findFirst({ where: { id: item.produtoId, ativo: true, usoNutricional: true }, include: { perfilNutricionalProduto: true } });
       if (!produto) throw new RebanhoError("VALIDACAO", "Ingrediente não encontrado", "itens");
       itens.push({ produtoId: produto.id, quantidadeCabecaDia: new Prisma.Decimal(item.quantidadeCabecaDia),
         unidade: produto.unidade, materiaSecaPercentualSnapshot: produto.perfilNutricionalProduto?.materiaSecaPercentual ?? null });
@@ -42,10 +44,11 @@ export async function publicarDieta(id: string, usuarioId: number | null) {
   return prisma.$transaction(async (tx) => {
     const dieta = await tx.dieta.findUnique({ where: { id }, include: { itens: true } });
     if (!dieta) throw new RebanhoError("NAO_ENCONTRADO", "Dieta não encontrada");
+    await travarUsosProduto(tx, dieta.itens.map((i) => i.produtoId));
     if (dieta.publicadaEm) throw new RebanhoError("CONFLITO", "Esta versão já foi publicada");
     if (!dieta.itens.length) throw new RebanhoError("VALIDACAO", "Dieta sem ingredientes não pode ser publicada");
     for (const item of dieta.itens) {
-      const produto = await tx.produto.findFirst({ where: { id: item.produtoId, ativo: true, categoria: { usoNutricional: true } }, include: { perfilNutricionalProduto: true } });
+      const produto = await tx.produto.findFirst({ where: { id: item.produtoId, ativo: true, usoNutricional: true }, include: { perfilNutricionalProduto: true } });
       if (!produto) throw new RebanhoError("CONFLITO", "Ingrediente inativo ou sem uso nutricional");
       await tx.itemDieta.update({ where: { id: item.id }, data: { unidade: produto.unidade, materiaSecaPercentualSnapshot: produto.perfilNutricionalProduto?.materiaSecaPercentual ?? null } });
     }

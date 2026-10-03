@@ -33,14 +33,6 @@ export async function atualizarCategoria(id: string, input: z.infer<typeof patch
     return await prisma.$transaction(async (tx) => {
       const anterior = await tx.categoria.findUnique({ where: { id } });
       if (!anterior) throw new FinanceiroError("NAO_ENCONTRADO", "Categoria não encontrada");
-      if (input.usoSanitario === false && anterior.usoSanitario) {
-        const exigido = await tx.produto.findFirst({ where: { categoriaId: id, perfilSanitarioProduto: { isNot: null } }, select: { nome: true } });
-        if (exigido) throw new FinanceiroError("CONFLITO", `Uso sanitário exigido pelo perfil de ${exigido.nome}`, "usoSanitario");
-      }
-      if (input.usoNutricional === false && anterior.usoNutricional) {
-        const exigido = await tx.produto.findFirst({ where: { categoriaId: id, OR: [{ perfilNutricionalProduto: { isNot: null } }, { itemDietas: { some: {} } }] }, select: { nome: true } });
-        if (exigido) throw new FinanceiroError("CONFLITO", `Uso nutricional exigido por perfil/receita de ${exigido.nome}`, "usoNutricional");
-      }
       const categoria = await tx.categoria.update({ where: { id }, data: input });
       await auditar(tx, { entidade: "Categoria", entidadeId: id, acao: "ATUALIZADA", usuarioId, antes: anterior, depois: categoria });
       return categoria;

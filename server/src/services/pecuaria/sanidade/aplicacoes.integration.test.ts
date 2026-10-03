@@ -99,7 +99,7 @@ describeComBanco("aplicação com doses inclusas em Serviço", () => {
     const propriedadeId = propriedadeIds[0];
     const animal = await cadastrar(cadastrarAnimalSchema.parse({ brinco: `SN${run}`, sexo: "F", origem: "COMPRADO", aptidao: "LEITE", dataNascimento: diasAntes(800), dataEntrada: diasAntes(30), propriedadeId }), null);
     animalIds.push(animal.id);
-    const produto = await prisma.produto.create({ data: { nome: `Vacina tarefa ${run}`, unidade: "ML" } });
+    const produto = await prisma.produto.create({ data: { nome: `Vacina tarefa ${run}`, unidade: "ML", usoSanitario: true } });
     produtoIds.push(produto.id);
     const protocolo = await criarProtocolo({ nome: `Vacinação ${run}`, etapas: [{ tipo: "APLICACAO", diaRelativo: 0, produtoId: produto.id, finalidade: "VACINA", dose: 2, unidade: "ML" }] }, null);
     protocoloIds.push(protocolo.id);

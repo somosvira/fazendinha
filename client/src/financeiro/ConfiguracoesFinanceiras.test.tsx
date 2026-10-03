@@ -35,7 +35,7 @@ const config: Config = {
   categorias: [{ id: uid(11), nome: "Insumos", classificacao: "CUSTEIO", ativo: true, ordem: 0, usoAgricola: false, usoGenetico: false, _count: { operacoes: 2, produtos: 1 } }],
   centrosCusto: [{ id: uid(20), nome: "Atividade leiteira", ativo: true, ordem: 0, _count: { operacoes: 3, produtos: 0, safras: 0 } }],
   produtos: [],
-  produtosCadastro: [{ id: uid(30), nome: "Ração 22%", unidade: "KG", minimoEstoque: "500", categoriaId: uid(11), categoriaNome: "Insumos", categoria: { id: uid(11), nome: "Insumos", usoAgricola: true, usoGenetico: false }, ativo: true, centroCustoIds: [uid(20)], centrosCusto: [{ id: uid(20), nome: "Atividade leiteira", ativo: true }], fornecedores: [{ id: uid(7), nome: "Cooperativa", ativo: true }] }],
+  produtosCadastro: [{ id: uid(30), nome: "Ração 22%", unidade: "KG", minimoEstoque: "500", usoAgricola: true, categoriaId: uid(11), categoriaNome: "Insumos", categoria: { id: uid(11), nome: "Insumos", usoAgricola: false, usoGenetico: false }, ativo: true, centroCustoIds: [uid(20)], centrosCusto: [{ id: uid(20), nome: "Atividade leiteira", ativo: true }], fornecedores: [{ id: uid(7), nome: "Cooperativa", ativo: true }] }],
 };
 
 /* A tabela responsiva renderiza tabela E cartões (CSS decide o que aparece);
@@ -262,7 +262,7 @@ describe("ConfiguracoesFinanceiras — produtos", () => {
     expect(screen.getAllByText("Ração 22%").length).toBeGreaterThan(0);
   });
 
-  it("filtra produtos pelo uso da categoria", async () => {
+  it("filtra produtos pelo próprio uso sem depender da categoria", async () => {
     await montar("produtos");
     await escolherSelect(document.body, "Filtrar por uso", "Uso agrícola");
     expect(screen.getAllByText("Ração 22%").length).toBeGreaterThan(0);
@@ -351,7 +351,7 @@ describe("ConfiguracoesFinanceiras — categorias e centros de custo", () => {
     fireEvent.change(within(painel).getByLabelText("Nome da categoria"), { target: { value: "Ração" } });
     fireEvent.change(within(painel).getByLabelText("Classificação"), { target: { value: "CUSTEIO" } });
     fireEvent.click(within(painel).getByRole("button", { name: "Criar categoria" }));
-    await waitFor(() => expect(criarCategoria).toHaveBeenCalledWith({ nome: "Ração", classificacao: "CUSTEIO", ordem: 1, usoAgricola: false, usoGenetico: false, usoSanitario: false, usoNutricional: false }));
+    await waitFor(() => expect(criarCategoria).toHaveBeenCalledWith({ nome: "Ração", classificacao: "CUSTEIO", ordem: 1 }));
   });
 
   it("cria um centro de custo sem natureza financeira", async () => {

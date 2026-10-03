@@ -58,7 +58,7 @@ function validarCadastro<T extends z.ZodTypeAny>(schema: T) {
   return zValidator("json", schema, (resultado, c) => {
     if (!resultado.success) {
       const erro = resultado.error.issues[0];
-      return c.json({ error: erro.message, code: "VALIDACAO", campo: String(erro.path[0] ?? "") }, 422);
+      return c.json({ error: erro.message, code: "VALIDACAO", campo: erro.path.join(".") }, 422);
     }
   });
 }

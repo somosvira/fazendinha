@@ -228,6 +228,12 @@ describe("GET /estoque/fornecedores", () => {
 });
 
 describe("POST /estoque/produtos", () => {
+  it.each([-1, 101])("rejeita MS %s com mensagem e campo localizados", async (valor) => {
+    const res = await appCom(comLancar).request("/estoque/produtos", { method: "POST", headers: json, body: JSON.stringify({ nome: "Ração", categoriaId: uid(3), usoNutricional: true, perfilNutricional: { materiaSecaPercentual: valor } }) });
+    expect(res.status).toBe(422);
+    expect(await res.json()).toMatchObject({ error: "Informe a matéria seca entre 0% e 100%.", campo: "perfilNutricional.materiaSecaPercentual" });
+    expect(mocks.criarProduto).not.toHaveBeenCalled();
+  });
   const body = { nome: "Ureia", unidade: "KG", categoriaId: uid(1) };
   it("sem lancar → 403", async () => {
     const res = await appCom(soAgricultura).request("/estoque/produtos", { method: "POST", headers: json, body: JSON.stringify(body) });

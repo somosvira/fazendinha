@@ -350,7 +350,7 @@ async function main() {
   const insumoIds: string[] = [];
   for (const ins of INSUMOS_PLANTIO) {
     const data = {
-      unidade: ins.unidade,
+      unidade: ins.unidade, usoAgricola: true,
       minimoEstoque: ins.minimo,
       // Todo produto tem categoria; subtipo fora do mapa cai em fertilizantes.
       categoriaId: categoriaIdPorSubtipo[ins.subtipo] ?? catFertilizantesId,

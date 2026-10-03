@@ -29,11 +29,11 @@ export type ParceiroInput = DadosParceiro & { nome: string; documento?: string |
 export type ParceiroPatch = Partial<ParceiroInput> & { ativo?: boolean };
 export type Categoria = { id: string; nome: string; classificacao: "CUSTEIO" | "INVESTIMENTO" | null; ativo: boolean; ordem: number; usoAgricola: boolean; usoGenetico: boolean; usoSanitario?: boolean; usoNutricional?: boolean; _count?: { operacoes: number; produtos: number; itens?: number } };
 export type CentroCusto = { id: string; nome: string; ativo: boolean; ordem: number; _count?: { operacoes: number; produtos: number; safras: number } };
-// Comportamento (agrícola/genético) é da categoria do produto — mesmo que ela
-// esteja inativa (situação é do produto, uso é da categoria).
+// Categoria organiza o financeiro; os tipos de uso pertencem ao Produto.
 export type ProdutoCategoria = { id: string; nome: string; usoAgricola: boolean; usoGenetico: boolean; usoSanitario?: boolean; usoNutricional?: boolean };
 export type Produto = {
   id: string; nome: string;
+  usoAgricola?: boolean; usoGenetico?: boolean; usoSanitario?: boolean; usoNutricional?: boolean;
   rastrearPartidas?: boolean;
   perfilSanitario?: { carenciaLeiteHoras: number | null; carenciaCarneHoras: number | null; viaPadrao: string | null; referenciaTecnica: string | null } | null;
   perfilNutricional?: { materiaSecaPercentual: string | null } | null;
@@ -46,7 +46,8 @@ export type Produto = {
 };
 export type ProdutoInput = {
   nome: string; unidade: UnidadeMedida;
-  // Categoria obrigatória (define o uso). Se o produto entra no estoque quem decide é a operação.
+  usoAgricola?: boolean; usoGenetico?: boolean; usoSanitario?: boolean; usoNutricional?: boolean; rastrearPartidas?: boolean;
+  // Categoria obrigatória para classificação financeira. Se o produto entra no estoque quem decide é a operação.
   minimoEstoque: number | null; categoriaId: string; centroCustoIds: string[]; fornecedorIds: string[];
 };
 export type ConfiguracoesFinanceiras = { contas: Conta[]; parceiros: Parceiro[]; categorias: Categoria[]; centrosCusto: CentroCusto[]; produtos: Produto[]; produtosCadastro?: Produto[]; centrosAtividade?: { cafe: string | null } };

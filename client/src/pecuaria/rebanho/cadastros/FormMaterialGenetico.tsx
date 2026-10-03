@@ -57,7 +57,7 @@ export function FormMaterialGenetico({ material, onSalvo, onFechar }: {
     listarCategorias(false).then(setCategorias).catch((e) => setErroCarga(e instanceof Error ? e.message : String(e)));
   }, [editando]);
 
-  const categoriasGeneticas = (categorias ?? []).filter((c) => c.usoGenetico);
+  const categoriasGeneticas = (categorias ?? []).filter((c) => c.ativo);
 
   const submeter = async (e: FormEvent) => {
     e.preventDefault();
@@ -143,7 +143,7 @@ export function FormMaterialGenetico({ material, onSalvo, onFechar }: {
 
         {erroCarga && <ErrorBox erro={`Não foi possível carregar as categorias: ${erroCarga}`} />}
         {categorias && categoriasGeneticas.length === 0
-          ? <p className="text-sm text-amber-700">Marque uma categoria como uso genético em Financeiro › Configurações.</p>
+          ? <p className="text-sm text-amber-700">Cadastre uma categoria financeira em Financeiro › Configurações.</p>
           : <CampoFormulario id="material-categoria" rotulo="Categoria" obrigatorio ajuda="Categoria financeira usada nas compras deste material." erro={erros.categoriaId}>
               {(p) => <select {...p} value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)} className={classeInput}>
                 <option value="">Selecione</option>

@@ -124,10 +124,14 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
       }
     });
     input.itens.forEach((item, indice) => {
+      const produto = item.produtoId ? produtosPorId.get(item.produtoId) : undefined;
+      if (estocavelItens[indice] && produto && item.unidade.trim().toLocaleLowerCase() !== rotuloUnidade(produto.unidade).toLocaleLowerCase()) {
+        throw new FinanceiroError("VALIDACAO", `Informe a quantidade na unidade do produto (${rotuloUnidade(produto.unidade)}).`, `itens.${indice}.unidade`);
+      }
       if (estocavelItens[indice] && (!item.produtoId || !produtosPorId.has(item.produtoId))) {
         throw new FinanceiroError("VALIDACAO", `O item “${item.descricao}” movimenta estoque e precisa apontar para um produto ativo`);
       }
-      if (!estocavelItens[indice] && item.partidas?.length) throw new FinanceiroError("VALIDACAO", "Partidas só podem ser informadas para item que movimenta estoque");
+      if (!estocavelItens[indice] && item.partidas?.length) throw new FinanceiroError("VALIDACAO", "Lotes só podem ser informados para item que movimenta estoque");
     });
 
     const classificar = async (categoriaId: string | null | undefined, classificacao?: "CUSTEIO" | "INVESTIMENTO" | null) => {
@@ -428,7 +432,7 @@ export async function estornarOperacao(id: string, motivo: string, contexto: Con
       if (movimento.tipo === "ENTRADA" || (movimento.tipo === "AJUSTE" && movimento.quantidade.gt(0))) {
         for (const alocacao of movimento.alocacaoPartidaEstoques) {
           if ((await saldoPartidaTx(tx, alocacao.partidaId, movimento.propriedadeId ?? operacao.propriedadeId)).lt(alocacao.quantidade)) {
-            throw new FinanceiroError("CONFLITO", "A partida da entrada já foi consumida; reconcilie o estoque antes de cancelar a operação.");
+            throw new FinanceiroError("CONFLITO", "O lote da entrada já foi consumido; reconcilie o estoque antes de cancelar a operação.");
           }
         }
       }

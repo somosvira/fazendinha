@@ -176,8 +176,10 @@ async function planejarMovimento(
   opts: { validarCentroAtivo?: boolean; temEstoque?: boolean } = {},
 ) {
   if (input.produtoId == null) return null;
-  const produto = await tx.produto.findUnique({ where: { id: input.produtoId }, select: { id: true, nome: true, unidade: true, rastrearPartidas: true, centrosCusto: { select: { centroCustoId: true } } } });
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`produto-usos:${input.produtoId}`}))`;
+  const produto = await tx.produto.findUnique({ where: { id: input.produtoId }, select: { id: true, nome: true, unidade: true, usoAgricola: true, rastrearPartidas: true, centrosCusto: { select: { centroCustoId: true } } } });
   if (!produto) throw new PlantioEventoError("NAO_ENCONTRADO", "produto do estoque não encontrado");
+  if (!produto.usoAgricola) throw new PlantioEventoError("VALIDACAO", "Selecione um produto com uso agrícola");
   // Só baixa produto com estoque (entrada/ajuste positivo confirmado) no sítio
   // do talhão. Na edição, quem chama pode fixar a decisão (baixa estável).
   const temEstoque = opts.temEstoque ?? await produtoTemEstoque(tx, produto.id, propriedadeId);

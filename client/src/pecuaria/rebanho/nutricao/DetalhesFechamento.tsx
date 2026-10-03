@@ -9,7 +9,7 @@ export function DetalhesFechamento({ fechamento: f }: { fechamento: Fechamento }
     {f.verValores && <p>Custo conhecido: {f.custoConhecido == null ? "não apurado" : fmtMoneyExact(Number(f.custoConhecido))} · {f.coberturaCustoCompleta ? "cobertura completa" : "cobertura incompleta"}</p>}
     {f.itens.map((i) => <p key={i.produtoId}>{i.produto.nome}: conferido {i.quantidadeConfirmada} {i.unidade} · previsto {i.quantidadePrevista} {i.unidade}
       {f.verValores && <> · custo {i.movimentoEstoque?.valorTotal == null ? (Number(i.quantidadeConfirmada) === 0 ? fmtMoneyExact(0) : "não apurado") : fmtMoneyExact(Number(i.movimentoEstoque.valorTotal))}</>}
-      {i.movimentoEstoque?.alocacaoPartidaEstoques.map((a) => ` · partida ${a.partida.codigo}: ${a.quantidade} ${i.unidade}`).join("")}</p>)}
+      {i.movimentoEstoque?.alocacaoPartidaEstoques.map((a) => ` · lote ${a.partida.codigo}: ${a.quantidade} ${i.unidade}`).join("")}</p>)}
     <p className="font-semibold">Atribuído por permanência</p>
     <p className="text-ink-3">Estimativa proporcional aos dias no lote; não mede a ingestão individual. Estornos permanecem no histórico.</p>
     {f.participacoes.map((p) => <div key={p.animalId} className="rounded-lg border border-border p-3">

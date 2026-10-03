@@ -91,8 +91,10 @@ async function obterSaldo(tx: Prisma.TransactionClient, produtoId: string, propr
 }
 
 async function prepararOrigem(tx: Prisma.TransactionClient, input: AplicacaoInput, data: Date, usuarioId: number | null) {
+  if (input.produtoId) await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`produto-usos:${input.produtoId}`}))`;
   const produto = input.produtoId ? await tx.produto.findUnique({ where: { id: input.produtoId } }) : null;
   if (input.produtoId && !produto) erro("Produto não encontrado", "produtoId");
+  if (produto && (!produto.ativo || !produto.usoSanitario)) erro("Selecione um produto ativo com uso sanitário", "produtoId");
   const dose = new Prisma.Decimal(input.dose);
   if (!dose.isFinite() || dose.lte(0) || dose.decimalPlaces() > 3) erro("Informe uma dose positiva com até três casas", "dose");
   let movimentoEstoqueId: string | null = null;
@@ -137,15 +139,15 @@ async function prepararOrigem(tx: Prisma.TransactionClient, input: AplicacaoInpu
     try { quantidade = converterQuantidade(dose, input.unidadeDose, produto.unidade); }
     catch { erro("A dose não pode ser convertida para a unidade do Produto", "unidadeDose"); }
     if (quantidade!.decimalPlaces() > 3) erro("Cadastre o Produto em unidade menor: esta dose perderia precisão", "dose");
-    if (produto.rastrearPartidas && !input.partidaId) erro("Selecione a partida do Produto", "partidaId");
-    if (!produto.rastrearPartidas && input.partidaId) erro("Este Produto não usa partidas", "partidaId");
+    if (produto.rastrearPartidas && !input.partidaId) erro("Selecione o lote do produto", "partidaId");
+    if (!produto.rastrearPartidas && input.partidaId) erro("Este Produto não usa lotes", "partidaId");
     const partida = input.partidaId ? await tx.partidaProduto.findFirst({ where: { id: input.partidaId, produtoId: produto.id } }) : null;
-    if (input.partidaId && !partida) erro("Partida não pertence a este Produto", "partidaId");
+    if (input.partidaId && !partida) erro("Lote não pertence a este Produto", "partidaId");
     if (partida?.validade && partida.validade < data) {
-      if (!input.documentacaoExcepcional || (input.motivoDocumentacaoExcepcional?.trim().length ?? 0) < 5 || new Date(input.aplicadaEm) > new Date()) erro("Partida vencida: uso operacional bloqueado; documentação de fato já ocorrido exige ciência e justificativa", "partidaId");
-    } else if (input.documentacaoExcepcional) erro("Documentação excepcional só cabe para fato já ocorrido com partida vencida", "documentacaoExcepcional");
+      if (!input.documentacaoExcepcional || (input.motivoDocumentacaoExcepcional?.trim().length ?? 0) < 5 || new Date(input.aplicadaEm) > new Date()) erro("Lote vencido: uso operacional bloqueado; documentação de fato já ocorrido exige ciência e justificativa", "partidaId");
+    } else if (input.documentacaoExcepcional) erro("Documentação excepcional só cabe para fato já ocorrido com lote vencido", "documentacaoExcepcional");
     if ((await obterSaldo(tx, produto.id, input.propriedadeId)).lt(quantidade!)) erro("Saldo de estoque insuficiente neste sítio", "dose");
-    if (partida && (await obterSaldo(tx, produto.id, input.propriedadeId, partida.id)).lt(quantidade!)) erro("Saldo da partida insuficiente neste sítio", "partidaId");
+    if (partida && (await obterSaldo(tx, produto.id, input.propriedadeId, partida.id)).lt(quantidade!)) erro("Saldo do lote insuficiente neste sítio", "partidaId");
     await exigirPeriodoAberto(tx, input.propriedadeId, data);
     const base = await obterBaseCusto(tx, produto.id, input.propriedadeId);
     const valores = valorSaidaDaBase(quantidade!, base);
