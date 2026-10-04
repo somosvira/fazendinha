@@ -29,7 +29,7 @@ describe("exigeAba", () => {
 function appQualquerArea(u: UsuarioContexto | null) {
   return new Hono()
     .use("*", async (c, next) => { if (u) c.set("usuario" as never, u as never); await next(); })
-    .get("/x", exigeQualquerArea(["pecuaria", "agricultura", "financeiro"]), (c) => c.json({ ok: true }));
+    .get("/x", exigeQualquerArea(["pecuaria", "financeiro", "financeiro"]), (c) => c.json({ ok: true }));
 }
 
 describe("exigeQualquerArea", () => {
@@ -37,7 +37,7 @@ describe("exigeQualquerArea", () => {
     expect((await appQualquerArea(null).request("/x")).status).toBe(401);
   });
   it("passa quando o usuário tem uma das áreas listadas", async () => {
-    expect((await appQualquerArea(usuario({ areas: ["agricultura"] })).request("/x")).status).toBe(200);
+    expect((await appQualquerArea(usuario({ areas: ["financeiro"] })).request("/x")).status).toBe(200);
   });
   it("403 quando não tem nenhuma das áreas listadas", async () => {
     expect((await appQualquerArea(usuario({ areas: ["equipe"] })).request("/x")).status).toBe(403);

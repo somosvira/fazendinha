@@ -32,7 +32,7 @@ import { atualizarProduto, criarProduto, obterUltimoPreco } from "./produtos.js"
 import { Prisma } from "@prisma/client";
 import { uid } from "../../lib/uid.fixture.js";
 
-const base = { id: uid(1), nome: "Ração", unidade: "KG", minimoEstoque: null, categoriaId: uid(3), ativo: true, categoria: { id: uid(3), nome: "Alimentação", classificacao: "CUSTEIO", usoAgricola: false } };
+const base = { id: uid(1), nome: "Ração", unidade: "KG", minimoEstoque: null, categoriaId: uid(3), ativo: true, categoria: { id: uid(3), nome: "Alimentação", classificacao: "CUSTEIO", } };
 const fornecedor = { id: uid(7), nome: "Cooperativa", ativo: true, tipo: "FORNECEDOR", papeis: [{ papel: "FORNECEDOR" }] };
 const centro = { id: uid(4), nome: "Pecuária", ativo: true };
 
@@ -164,12 +164,6 @@ describe("troca de unidade com movimento/dieta registrados", () => {
     expect(mocks.produtoUpdate).not.toHaveBeenCalled();
   });
 
-  it("produto com operação agrícola com doseValor não pode trocar de unidade", async () => {
-    mocks.produtoFindUnique.mockResolvedValue({ ...base, unidade: "KG", fornecedores: [], centrosCusto: [] });
-    mocks.operacaoAgricolaCount.mockResolvedValue(1);
-    await expect(atualizarProduto(uid(1), { unidade: "SC" }, 9)).rejects.toMatchObject({ code: "VALIDACAO", campo: "unidade" });
-    expect(mocks.produtoUpdate).not.toHaveBeenCalled();
-  });
 
   it("produto sem nenhum histórico continua livre para trocar de unidade", async () => {
     mocks.produtoFindUnique.mockResolvedValue({ ...base, unidade: "KG", fornecedores: [], centrosCusto: [] });

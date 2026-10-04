@@ -1,6 +1,6 @@
 import type { Tab } from "../components/Shell";
 
-export const TODAS_AREAS = ["financeiro", "pecuaria", "agricultura", "equipe"] as const;
+export const TODAS_AREAS = ["financeiro", "pecuaria"] as const;
 export type AreaId = (typeof TODAS_AREAS)[number];
 
 const AREAS_LEGADAS_PECUARIA = new Set(["rebanho", "gado_corte"]);
@@ -9,14 +9,12 @@ const FINANCEIRO = new Set<Tab>(["dashboard", "gastos", "lancar", "caixinha", "p
 
 export function areaDaTab(tab: Tab): AreaId | null {
   const id = String(tab);
-  if (id.startsWith("pla-") || id.startsWith("mil-")) return "agricultura";
   if (id.startsWith("pec-")) return "pecuaria";
-  if (id.startsWith("eqp-")) return "equipe";
   return FINANCEIRO.has(tab) ? "financeiro" : null;
 }
 
 /** Áreas que enxergam o menu Estoque (único, filtrado por centro de custo). */
-export const AREAS_ESTOQUE: readonly AreaId[] = ["pecuaria", "agricultura", "financeiro"];
+export const AREAS_ESTOQUE: readonly AreaId[] = ["pecuaria", "financeiro"];
 
 export function temAcessoEstoque(areas: string[] | undefined, dono = false): boolean {
   return AREAS_ESTOQUE.some((area) => temAcessoArea(areas, area, dono));

@@ -25,12 +25,11 @@ export function produtoDTO(produto: Prisma.ProdutoGetPayload<{ include: typeof i
     categoriaId: produto.categoriaId ?? null,
     categoriaNome: produto.categoria?.nome ?? null,
     classificacao: produto.categoria?.classificacao ?? null,
-    usoAgricola: produto.usoAgricola,
     usoGenetico: produto.usoGenetico,
     usoSanitario: produto.usoSanitario,
     usoNutricional: produto.usoNutricional,
     categoria: produto.categoria
-      ? { id: produto.categoria.id, nome: produto.categoria.nome, usoAgricola: produto.categoria.usoAgricola, usoGenetico: produto.categoria.usoGenetico,
+      ? { id: produto.categoria.id, nome: produto.categoria.nome, usoGenetico: produto.categoria.usoGenetico,
         usoSanitario: produto.categoria.usoSanitario, usoNutricional: produto.categoria.usoNutricional }
       : null,
     ativo: produto.ativo,
@@ -68,7 +67,7 @@ function separarRelacoes(input: ProdutoPatchInput) {
   return { fornecedorIds, centroCustoIds, perfilSanitario, perfilNutricional, produto };
 }
 
-const USO_CAMPO = { agricola: "usoAgricola", genetico: "usoGenetico", sanitario: "usoSanitario", nutricional: "usoNutricional" } as const;
+const USO_CAMPO = { genetico: "usoGenetico", sanitario: "usoSanitario", nutricional: "usoNutricional" } as const;
 
 export async function listarProdutos(f?: { uso?: keyof typeof USO_CAMPO; q?: string; ativo?: boolean; incluirInativos?: boolean }) {
   const where: Prisma.ProdutoWhereInput = {};
@@ -136,7 +135,6 @@ export async function atualizarProduto(id: string, input: ProdutoPatchInput, usu
       if ((perfilSanitario || anterior.perfilSanitarioProduto) && !(produto.usoSanitario ?? anterior.usoSanitario)) throw new FinanceiroError("CONFLITO", "O perfil sanitário exige uso sanitário", "usoSanitario");
       if ((perfilNutricional || anterior.perfilNutricionalProduto) && !(produto.usoNutricional ?? anterior.usoNutricional)) throw new FinanceiroError("CONFLITO", "O perfil nutricional exige uso nutricional", "usoNutricional");
       const vinculos = [
-        ["usoAgricola", "aplicações agrícolas", () => tx.operacaoAgricola.count({ where: { produtoId: id } })],
         ["usoGenetico", "material genético", () => tx.materialGenetico.count({ where: { produtoId: id } })],
         ["usoSanitario", "aplicações ou protocolos sanitários", async () => (await tx.aplicacaoProduto.count({ where: { produtoId: id } })) + (await tx.etapaProtocoloSanitario.count({ where: { produtoId: id } }))],
         ["usoNutricional", "receitas ou fechamentos nutricionais", async () => (await tx.itemDieta.count({ where: { produtoId: id } })) + (await tx.itemFechamentoConsumo.count({ where: { produtoId: id } }))],
@@ -149,12 +147,11 @@ export async function atualizarProduto(id: string, input: ProdutoPatchInput, usu
       // (estoque) ou registrado em histórico (compra/venda, aplicação agrícola)
       // na unidade antiga — bloqueia se houver algum registro para esse produto.
       if (produto.unidade !== undefined && produto.unidade !== anterior.unidade) {
-        const [movimentos, itensOperacao, operacoesAgricolas] = await Promise.all([
+        const [movimentos, itensOperacao] = await Promise.all([
           tx.movimentoEstoque.count({ where: { produtoId: id } }),
           tx.itemOperacao.count({ where: { produtoId: id } }),
-          tx.operacaoAgricola.count({ where: { produtoId: id, doseValor: { not: null } } }),
         ]);
-        if (movimentos > 0 || itensOperacao > 0 || operacoesAgricolas > 0) {
+        if (movimentos > 0 || itensOperacao > 0) {
           throw new FinanceiroError("VALIDACAO", "Não é possível trocar a unidade de um produto com movimentos de estoque registrados", "unidade");
         }
       }

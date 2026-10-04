@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import { uid } from "../lib/uid.fixture";
 import {
   qValido,
-  mapearTalhao,
   mapearCategoria,
   mapearFornecedor,
 } from "./busca.js";
@@ -18,24 +17,6 @@ describe("qValido", () => {
     expect(qValido("ca")).toBe(true);
     expect(qValido("  CA ")).toBe(true);
     expect(qValido("CATARINA")).toBe(true);
-  });
-});
-
-describe("mapearTalhao", () => {
-  it("label junta código + nome; sublabel usa variedade", () => {
-    expect(mapearTalhao({ id: 7, codigo: "CAF-01", nome: "Cafundó alto", variedade: { nome: "Catuaí" }, lavoura: { nome: "Cafundó" } })).toEqual({
-      tipo: "talhao",
-      entidadeId: "7",
-      label: "CAF-01 · Cafundó alto",
-      sublabel: "Catuaí",
-      tab: "pla-talhao",
-      grupo: "Talhões",
-    });
-  });
-  it("sem nome → label só código; sem variedade → lavoura; sem ambos → 'Talhão'", () => {
-    expect(mapearTalhao({ id: 3, codigo: "CAF-02", nome: null, variedade: null, lavoura: { nome: "Baixada" } }).label).toBe("CAF-02");
-    expect(mapearTalhao({ id: 3, codigo: "CAF-02", nome: null, variedade: null, lavoura: { nome: "Baixada" } }).sublabel).toBe("Baixada");
-    expect(mapearTalhao({ id: 4, codigo: "CAF-03", nome: null, variedade: null, lavoura: null }).sublabel).toBe("Talhão");
   });
 });
 

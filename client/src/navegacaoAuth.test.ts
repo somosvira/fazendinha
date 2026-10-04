@@ -75,7 +75,7 @@ describe("aba Estoque", () => {
   it("libera para dono e para quem tem pecuária, agricultura ou financeiro", () => {
     expect(podeAcessarTab({ ...base, dono: true }, "estoque")).toBe(true);
     expect(podeAcessarTab({ ...base, areas: ["pecuaria"] }, "estoque")).toBe(true);
-    expect(podeAcessarTab({ ...base, areas: ["agricultura"] }, "estoque")).toBe(true);
+    expect(podeAcessarTab({ ...base, areas: ["agricultura"] }, "estoque")).toBe(false);
     expect(podeAcessarTab({ ...base, areas: ["financeiro"] }, "estoque")).toBe(true);
   });
   it("bloqueia quem só tem a área equipe", () => {

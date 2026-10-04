@@ -31,15 +31,13 @@ type Props = {
 };
 
 // Ordem fixa dos cabeçalhos de entidades reais (depois dos grupos de navegação).
-const ORDEM_GRUPO_ENTIDADE = ["Talhões", "Animais", "Lotes coletivos", "Categorias", "Fornecedores"];
+const ORDEM_GRUPO_ENTIDADE = ["Animais", "Lotes coletivos", "Categorias", "Fornecedores"];
 
 // Ordem fixa das seções (cabeçalhos) no resultado.
 const ORDEM_GRUPO: GrupoComando[] = [
   "Ações",
   "Financeiro",
   "Pecuária",
-  "Plantio",
-  "Milho",
   "Administração",
 ];
 
@@ -47,8 +45,6 @@ const ORDEM_GRUPO: GrupoComando[] = [
 const COR_GRUPO: Record<GrupoComando, string> = {
   Financeiro: "var(--info)",
   Pecuária: "var(--leite)",
-  Plantio: "var(--outros)",
-  Milho: "var(--outros)",
   Administração: "var(--ink-3)",
   Ações: "var(--leite-2)",
 };

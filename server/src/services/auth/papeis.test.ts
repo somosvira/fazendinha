@@ -32,8 +32,8 @@ describe("papeis", () => {
     expect(temArea({ dono: false, areas: ["pecuaria"] }, "pecuaria")).toBe(true);
     expect(temArea({ dono: false, areas: ["rebanho"] }, "pecuaria")).toBe(true);
     expect(temArea({ dono: false, areas: ["gado_corte"] }, "pecuaria")).toBe(true);
-    expect(temArea({ dono: false, areas: ["pecuaria"] }, "agricultura")).toBe(false);
-    expect(temArea({ dono: true, areas: [] }, "agricultura")).toBe(true);
+    expect(temArea({ dono: false, areas: ["pecuaria"] }, "financeiro")).toBe(false);
+    expect(temArea({ dono: true, areas: [] }, "financeiro")).toBe(true);
     expect(PAPEIS.proprietario.areas).toEqual([...AREAS_IDS]);
   });
 });

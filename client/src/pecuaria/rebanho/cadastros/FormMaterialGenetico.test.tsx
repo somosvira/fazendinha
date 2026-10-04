@@ -19,7 +19,7 @@ vi.mock("../../../estoque/api", async (importOriginal) => ({
 }));
 
 const categoriasGeneticas = [
-  { id: "cat-1", nome: "Genética", classificacao: "INVESTIMENTO" as const, ativo: true, ordem: 0, usoAgricola: false, usoGenetico: true },
+  { id: "cat-1", nome: "Genética", classificacao: "INVESTIMENTO" as const, ativo: true, ordem: 0, usoGenetico: true },
 ];
 
 const touroExterno: GenitorDTO = { id: "touro-ext", sexo: "M", nome: "Touro X", codigo: null, fornecedor: null, fornecedorId: null, observacao: null, ativo: true, composicao: [], composicaoRotulo: "", filhos: 0 };

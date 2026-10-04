@@ -163,9 +163,9 @@ describe("GET /estoque/movimentos", () => {
     await appCom({ ...base, areas: ["financeiro"], flags: [] }).request("/estoque/movimentos");
     expect(mocks.listarMovimentos).toHaveBeenLastCalledWith(expect.objectContaining({ propriedadeId: 3, vinculosVisiveis: { agricultura: false, pecuaria: false } }));
     await appCom(soAgricultura).request("/estoque/movimentos");
-    expect(mocks.listarMovimentos).toHaveBeenLastCalledWith(expect.objectContaining({ vinculosVisiveis: { agricultura: true, pecuaria: false } }));
+    expect(mocks.listarMovimentos).toHaveBeenLastCalledWith(expect.objectContaining({ vinculosVisiveis: { pecuaria: false } }));
     await appCom({ ...base, areas: [], dono: true, flags: [] }).request("/estoque/movimentos");
-    expect(mocks.listarMovimentos).toHaveBeenLastCalledWith(expect.objectContaining({ vinculosVisiveis: { agricultura: true, pecuaria: true } }));
+    expect(mocks.listarMovimentos).toHaveBeenLastCalledWith(expect.objectContaining({ vinculosVisiveis: { pecuaria: true } }));
   });
 });
 

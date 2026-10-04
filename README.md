@@ -2,7 +2,7 @@
 
 > **Nosso objetivo não é registrar vacas. Nosso objetivo é aumentar a lucratividade das fazendas leiteiras através de dados, automação e inteligência.**
 
-Fazendinha é uma plataforma de gestão completa para propriedades rurais. Unifica **financeiro**, **pecuária**, **agronomia**, **equipe**, **estoque** e **inteligência artificial** em um único produto, projetado para responder a pergunta que importa para o produtor:
+Fazendinha é uma plataforma de gestão completa para propriedades rurais. Unifica **financeiro**, **pecuária** e **estoque compartilhado** em um único produto, projetado para responder a pergunta que importa para o produtor:
 
 > *"O que devo fazer hoje para ganhar mais dinheiro?"*
 
@@ -25,6 +25,8 @@ A primeira propriedade rodando o produto é a **Fazenda Rio Novo**, que migrou s
 
 ---
 
+> Em 03/10/2026, agricultura (café/plantio e milho/cultivo) e equipe/ponto foram retiradas para reconstrução. A base preserva financeiro, pecuária V3 e estoque único. Consulte [a análise da remoção](./docs/remocao-agricultura-equipe.md).
+
 ## Visão Geral
 
 | Módulo | O que entrega |
@@ -33,8 +35,6 @@ A primeira propriedade rodando o produto é a **Fazenda Rio Novo**, que migrou s
 | **Pecuária (v1 — Rebanho)** | Cadastro de animais, composição racial, lotes, movimentação (histórico completo, nunca apagado), categoria calculada por regras configuráveis da fazenda, baixa (venda/abate/morte/doação/extravio) com motivo, pesagens, auditoria. Schema Postgres próprio (`pecuaria`), carga única a partir do IDEAGRI. |
 | **Estoque** | Saldos, movimentos, ponte automática com financeiro em compras. |
 | **Inteligência** | Assistente conversacional e bot WhatsApp (OpenAI, `gpt-4o` por padrão) consultando um motor estruturado — sem SQL gerado pelo LLM. |
-| **Agronomia** | Café (talhões, fenologia, MIP, adubação, colheita, apontamento de máquinas) e milho/safras (áreas, produção, silos, custo por safra). |
-| **Equipe** | Funcionários, ponto, folha e rateio de mão de obra por setor. |
 | **Contas e acessos** | Usuários com sessão, papéis (presets), áreas e flags de permissão; dono criado no primeiro boot. Multi-propriedade (escopo de sítio) transversal. |
 
 O produto nasceu como plataforma de pecuária **leiteira** completa (reprodução, sanidade, produção, nutrição, score por animal — ver histórico em `DOMAIN.md`/`METRICS.md`); esse módulo foi removido em set/2026 e reconstruído do zero como a **v1 Rebanho** acima, mais simples e cobrindo qualquer rebanho (não só leiteiro). Os domínios de reprodução/sanidade/produção voltam em cascata nas próximas versões (v2–v5).
@@ -173,19 +173,19 @@ fazendinha/
 │       ├── components/        # Shell, AppSidebar, CommandPalette, Login, charts, pickers
 │       │   └── ui/            # Primitivas shadcn-style (button, dialog, select, sheet, ...)
 │       ├── financeiro/        # Operações, compromissos, contas, relatórios (novo-api.ts)
-│       ├── pecuaria/rebanho/ plantio/ cultivo/ equipe/   # Módulos operacionais
+│       ├── pecuaria/rebanho/   # Módulos operacionais
 │       ├── lib/               # auth, hoje, searchIndex, areas, reconciliacao, utils
 │       ├── data/              # Mocks/referência de forma (rionovo.ts, acessos)
 │       └── styles/            # CSS modular (base define as variáveis, dashboard, forms, ...)
 ├── server/                    # Backend Hono + Prisma
 │   ├── src/
-│   │   ├── routes/            # Roteadores finos por domínio (auth, financeiro, usuarios, whatsapp, pecuaria/, plantio/, cultivo/, ponto/)
+│   │   ├── routes/            # Roteadores finos por domínio (auth, financeiro, usuarios, whatsapp, pecuaria/)
 │   │   ├── services/          # Regra de negócio testada
 │   │   │   ├── auth/          # Usuário, sessão, papéis/áreas/flags, bootstrap do dono
 │   │   │   ├── financeiro/    # operacoes, rascunhos, contas, documentos, regras, dashboard
 │   │   │   ├── consulta/      # Motor estruturado de consultas do bot
 │   │   │   ├── bot/ whatsapp/ # Assistente OpenAI + canal Meta Cloud API
-│   │   │   └── pecuaria/rebanho/ plantio/ cultivo/ ponto/
+│   │   │   └── pecuaria/rebanho/
 │   │   ├── middleware/auth.ts # Sessão / token compartilhado
 │   │   ├── lib/               # storage (local/R2), ocr
 │   │   ├── env.ts             # Validação Zod do .env
@@ -193,7 +193,7 @@ fazendinha/
 │   │   └── index.ts           # Bootstrap (backfill multi-propriedade, cleanup)
 │   ├── scripts/               # bateria-ia (gabarito/run)
 │   └── prisma/
-│       ├── schema.prisma      # ~120 models + ~65 enums (schemas `public` + `pecuaria`)
+│       ├── schema.prisma      # 69 models (schemas `public` + `pecuaria`)
 │       ├── migrations/        # baseline + migration da pecuária v1 (sync em prod é manual: migrate deploy)
 │       ├── seed*.ts import-pecuaria.ts
 │       └── rio_novo.json      # Dados reais extraídos (pecuaria_v1.json é gerado, não versionado)
@@ -225,7 +225,7 @@ fazendinha/
 | `pnpm --filter rionovo-server run db:push` | Sincroniza o schema sem migration — não usar com o schema `pecuaria` (apaga os índices parciais). |
 | `pnpm --filter rionovo-server run seed` | Dados de exemplo do financeiro. |
 | `pnpm --filter rionovo-server run seed:usuarios` | Usuários de exemplo. |
-| `pnpm --filter rionovo-server run seed:pecuaria` / `seed:rebanho` / `seed:plantio` / `seed:plantios` / `seed:ponto` | Seeds por módulo (`seed:pecuaria` = catálogos; `seed:rebanho` = 4 sítios de demonstração). |
+| `pnpm --filter rionovo-server run seed:pecuaria` / `seed:rebanho` | Seeds por módulo (`seed:pecuaria` = catálogos; `seed:rebanho` = 4 sítios de demonstração). |
 | `pnpm --filter rionovo-server run seed:all` | Todos os seeds, sem resetar o banco; também roda automaticamente após `prisma migrate reset`. |
 | `pnpm --filter rionovo-server run import:pecuaria` | Importa a carga do IDEAGRI (`server/prisma/pecuaria_v1.json`, gerado por `scripts/build-pecuaria-json.mjs`). |
 | `pnpm --filter rionovo-server run whatsapp:user` | Gerencia a allowlist de números do bot. |

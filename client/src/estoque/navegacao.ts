@@ -24,7 +24,7 @@ export function destinoDoMovimento(m: Pick<MovimentoDTO, "operacaoId" | "operaca
   if (v.tipo === "APLICACAO_SANITARIA") return { href: `/pecuaria/rebanho/sanidade?aba=aplicacoes&animalId=${encodeURIComponent(v.animalId)}&aplicacaoId=${encodeURIComponent(v.id)}&detalheTipo=aplicacao&detalheId=${encodeURIComponent(v.id)}${m.propriedadeId ? `&propriedadeId=${m.propriedadeId}` : ""}`, rotulo: "Aplicação sanitária", area: "pecuaria" };
   if (v.tipo === "FECHAMENTO_NUTRICIONAL") return { href: `/pecuaria/rebanho/nutricao?aba=fechamentos&loteId=${encodeURIComponent(v.loteId)}&fechamentoId=${encodeURIComponent(v.id)}`, rotulo: "Fechamento nutricional", area: "pecuaria" };
   // `?id=` abre a ficha direto (App.tsx transforma em deep-link de cockpit no popstate).
-  return { href: `/plantio/talhao?id=${v.id}`, rotulo: `Talhão ${v.codigo}`, area: "agricultura" };
+  return null;
 }
 
 /** Sessão atual enxerga a área de destino? (sem sessão gravada = acesso aberto, como em dev) */

@@ -38,8 +38,6 @@ export const ABAS: Aba[] = [
 export const AREAS: Area[] = [
   { id: "financeiro", label: "Financeiro", desc: "Saldos, operações, compromissos, contas, extratos e relatórios financeiros" },
   { id: "pecuaria", label: "Pecuária", desc: "Animais, grupos e lotes, reprodução, sanidade, produção, nutrição e comercialização" },
-  { id: "agricultura", label: "Agricultura", desc: "Plantio de café, milho, safras, talhões e silos" },
-  { id: "equipe", label: "Equipe e ponto", desc: "Funcionários, marcações de ponto e folha" },
 ];
 
 // Permissões sensíveis (além da visibilidade de abas)

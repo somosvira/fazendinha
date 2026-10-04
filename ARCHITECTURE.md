@@ -1,3 +1,5 @@
+> Estado operacional em 03/10/2026: agricultura e equipe/ponto removidos sobre a pecuária V3. Seções antigas desses módulos são referência histórica; não reintroduzir rotas, modelos ou seeds. Ver [remoção de agricultura e equipe](./docs/remocao-agricultura-equipe.md).
+
 # ARCHITECTURE.md — Arquitetura do Sistema
 
 > **Como o Fazendinha (Terrano) está organizado e por quê.**

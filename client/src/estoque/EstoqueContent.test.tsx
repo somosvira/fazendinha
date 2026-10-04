@@ -26,7 +26,7 @@ function mockFetch(d: Dados = {}) {
 
 const produtoId = uid(1);
 const centroId = uid(5);
-const categoria = { id: uid(100), nome: "Alimentação", usoAgricola: false };
+const categoria = { id: uid(100), nome: "Alimentação", };
 const saldo = (o: Record<string, unknown>) => ({ produtoId, nome: "Ração", materialGeneticoId: null, categoria, unidade: "KG", centrosCusto: [], saldo: 15, custoMedio: 6, valor: 90, minimoEstoque: null, abaixoMinimo: false, ...o });
 const mov = (o: Record<string, unknown>) => ({ id: uid(10), seq: 1, produtoId, produto: "Ração", materialGeneticoId: null, centrosCusto: [], tipo: "ENTRADA", origem: "COMPRA", status: "CONFIRMADO", reversaoDeId: null, data: "2026-09-10", quantidade: 10, custoUnitario: 6, valorTotal: 60, fornecedor: null, observacao: null, operacaoId: null, operacaoNumero: null, vinculo: null, ...o });
 
@@ -277,7 +277,7 @@ describe("EstoqueContent — histórico ligado à origem", () => {
   const opNumero = 42;
   const movimentos = [
     mov({ id: uid(1), origem: "COMPRA", operacaoId: opId, operacaoNumero: opNumero, fornecedor: "Cooperativa" }),
-    mov({ id: uid(4), tipo: "SAIDA", origem: "APLICACAO", vinculo: { tipo: "TALHAO", id: 5, codigo: "T-05" } }),
+    mov({ id: uid(4), tipo: "SAIDA", origem: "SANIDADE", vinculo: { tipo: "APLICACAO_SANITARIA", id: uid(5), animalId: uid(6) } }),
   ];
   const abrir = async () => {
     vi.stubGlobal("fetch", mockFetch({ saldos: [saldo({})], movimentos }));
@@ -304,16 +304,16 @@ describe("EstoqueContent — histórico ligado à origem", () => {
 
   it("saídas automáticas levam ao talhão quando o usuário tem a área", async () => {
     const tabela = await abrir();
-    expect(tabela.getByRole("link", { name: "Talhão T-05" }).getAttribute("href")).toBe("/plantio/talhao?id=5");
+    expect(tabela.getByRole("link", { name: "Aplicação sanitária" }).getAttribute("href")).toContain("/pecuaria/rebanho/sanidade?");
   });
 
   it("sem a área de destino mostra texto puro com o motivo no title (operação sem financeiro)", async () => {
-    sessao(["agricultura"]);
+    sessao(["pecuaria"]);
     const tabela = await abrir();
     expect(tabela.queryByRole("link", { name: "OP-0042" })).toBeNull();
     expect(tabela.getByText("OP-0042").getAttribute("title")).toBe("Sem acesso a esta área");
     // agricultura tem acesso ao talhão
-    expect(tabela.getByRole("link", { name: "Talhão T-05" })).toBeTruthy();
+    expect(tabela.getByRole("link", { name: "Aplicação sanitária" })).toBeTruthy();
   });
 
   it("movimento estornado/estorno é sinalizado", async () => {

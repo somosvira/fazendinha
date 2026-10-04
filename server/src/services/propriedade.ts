@@ -85,11 +85,6 @@ export async function garantirFundacaoPropriedade(): Promise<void> {
   _principalId = null; // invalida cache; recomputa a principal (recém-criada ou existente)
   const pid = await propriedadePrincipalId();
   await prisma.movimentoEstoque.updateMany({ where: { propriedadeId: null }, data: { propriedadeId: pid } });
-  await prisma.talhao.updateMany({ where: { propriedadeId: null }, data: { propriedadeId: pid } });
-  await prisma.lavoura.updateMany({ where: { propriedadeId: null }, data: { propriedadeId: pid } });
-  await prisma.funcionario.updateMany({ where: { propriedadeId: null }, data: { propriedadeId: pid } });
-  await prisma.safraCultivo.updateMany({ where: { propriedadeId: null }, data: { propriedadeId: pid } });
-  await prisma.silo.updateMany({ where: { propriedadeId: null }, data: { propriedadeId: pid } });
 
 }
 

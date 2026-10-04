@@ -80,12 +80,12 @@ describe("CommandPalette", () => {
 
   it("dispara /api/busca com ≥2 chars, ~200ms de debounce, com os headers de comPropriedade(), e renderiza as entidades", async () => {
     const entidade: ResultadoBusca = {
-      tipo: "talhao",
+      tipo: "categoria",
       entidadeId: "42",
       label: "Talhão da Serra",
       sublabel: "Plantio · 3,2 ha",
-      tab: "pla-talhao",
-      grupo: "Talhões",
+      tab: "plano",
+      grupo: "Categorias",
     };
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => [entidade] });
     vi.stubGlobal("fetch", fetchMock);
@@ -119,12 +119,12 @@ describe("CommandPalette", () => {
 
   it("selecionar uma linha de entidade chama onNav(tab, entidadeId) e fecha", async () => {
     const entidade: ResultadoBusca = {
-      tipo: "talhao",
+      tipo: "categoria",
       entidadeId: "789",
-      label: "Talhão 789",
-      sublabel: "Catuaí",
-      tab: "pla-talhao",
-      grupo: "Talhões",
+      label: "Categoria 789",
+      sublabel: "Categoria financeira",
+      tab: "plano",
+      grupo: "Categorias",
     };
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => [entidade] }));
     vi.useFakeTimers();
@@ -133,33 +133,33 @@ describe("CommandPalette", () => {
     render(h(CommandPalette, props));
     fireEvent.change(screen.getByPlaceholderText(PLACEHOLDER), { target: { value: "talh" } });
     await vi.advanceTimersByTimeAsync(300);
-    expect(screen.getByText("Talhão 789")).toBeTruthy();
+    expect(screen.getByText("Categoria 789")).toBeTruthy();
 
-    fireEvent.click(screen.getByText("Talhão 789"));
+    fireEvent.click(screen.getByText("Categoria 789"));
 
-    expect(props.onNav).toHaveBeenCalledWith("pla-talhao", "789");
+    expect(props.onNav).toHaveBeenCalledWith("plano", "789");
     expect(props.onFechar).toHaveBeenCalledTimes(1);
   });
 
   it("filtra as ENTIDADES do backend por podeVer (não renderiza entidade de aba bloqueada)", async () => {
     const entidade: ResultadoBusca = {
-      tipo: "talhao",
+      tipo: "categoria",
       entidadeId: "789",
-      label: "Talhão 789",
-      sublabel: "Catuaí",
-      tab: "pla-talhao",
-      grupo: "Talhões",
+      label: "Categoria 789",
+      sublabel: "Categoria financeira",
+      tab: "plano",
+      grupo: "Categorias",
     };
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => [entidade] }));
     vi.useFakeTimers();
 
     // podeVer rejeita a aba da entidade → a linha não deve aparecer, mesmo o
     // backend tendo retornado o item (espelha o filtro do índice estático).
-    render(h(CommandPalette, baseProps({ podeVer: (t) => t !== "pla-talhao" })));
+    render(h(CommandPalette, baseProps({ podeVer: (t) => t !== "plano" })));
     fireEvent.change(screen.getByPlaceholderText(PLACEHOLDER), { target: { value: "talh" } });
     await vi.advanceTimersByTimeAsync(300);
 
-    expect(screen.queryByText("Talhão 789")).toBeNull();
+    expect(screen.queryByText("Categoria 789")).toBeNull();
   });
 
   it("não renderiza o diálogo quando aberto=false", () => {

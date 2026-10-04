@@ -17,25 +17,8 @@ import { canalRecuperacaoConfigurado } from "./services/auth/email.js";
 import { propriedadeRouter } from "./routes/propriedade.js";
 import { rebanhoRouter as pecuariaRebanhoRouter } from "./routes/pecuaria/rebanho.js";
 import { estoqueRouter } from "./routes/estoque.js";
-import { estoqueCentrosRouter } from "./routes/estoque-centros.js";
 import { relatorioGerencialRouter } from "./routes/relatorio-gerencial.js";
 import { relatoriosFinanceirosRouter } from "./routes/relatorios-financeiros.js";
-import { plantioTalhoesRouter } from "./routes/plantio/talhoes.js";
-import { plantioDashboardRouter } from "./routes/plantio/dashboard.js";
-import { plantioCadastrosRouter } from "./routes/plantio/cadastros.js";
-import { plantioEventosRouter } from "./routes/plantio/eventos.js";
-import { plantioCustoRouter } from "./routes/plantio/custo.js";
-import { plantioColheitaRouter } from "./routes/plantio/colheita.js";
-import { plantioPlanejamentoRouter } from "./routes/plantio/planejamento.js";
-import { plantioIaRouter } from "./routes/plantio/ia.js";
-import { cultivoSafrasRouter } from "./routes/cultivo/safras.js";
-import { cultivoAreasRouter } from "./routes/cultivo/areas.js";
-import { cultivoCustosRouter } from "./routes/cultivo/custos.js";
-import { cultivoProducaoRouter } from "./routes/cultivo/producao.js";
-import { cultivoSilosRouter } from "./routes/cultivo/silos.js";
-import { cultivoDashboardRouter } from "./routes/cultivo/dashboard.js";
-import { pontoRouter } from "./routes/ponto/index.js";
-import { pontoDashboardRouter } from "./routes/ponto/dashboard.js";
 import { buscaRouter } from "./routes/busca.js";
 import { whatsappRouter } from "./routes/whatsapp.js";
 import { ASSISTENTE_ATIVO, rotaDoAssistente } from "./featureFlags.js";
@@ -86,15 +69,11 @@ app.route("/api", authPublicoRouter);
 app.use("/api/*", authMiddleware);
 
 // Autorização por domínio: o frontend também esconde os módulos, mas este gate
-// impede acesso por URL/cURL. Agricultura reúne os módulos Plantio e Cultivo.
 app.use("/api/pecuaria/rebanho/*", exigeArea("pecuaria"));
-app.use("/api/plantio/*", exigeArea("agricultura"));
-app.use("/api/cultivo/*", exigeArea("agricultura"));
-app.use("/api/ponto/*", exigeArea("equipe"));
 for (const path of [
   "/api/financeiro", "/api/financeiro/*", "/api/categorias", "/api/categorias/*",
 ]) app.use(path, exigeArea("financeiro"));
-app.use("/api/estoque/*", exigeQualquerArea(["pecuaria", "agricultura", "financeiro"]));
+app.use("/api/estoque/*", exigeQualquerArea(["pecuaria", "financeiro"]));
 
 // Protegidos (exigem sessão resolvida pelo authMiddleware):
 app.route("/api", authPrivadoRouter);
@@ -104,23 +83,6 @@ app.route("/api", categoriasRouter);
 app.route("/api", financeiroRouter);
 app.route("/api/pecuaria/rebanho", pecuariaRebanhoRouter);
 app.route("/api", estoqueRouter);
-app.route("/api", estoqueCentrosRouter);
 app.route("/api", relatorioGerencialRouter);
 app.route("/api", relatoriosFinanceirosRouter);
-app.route("/api", plantioTalhoesRouter);
-app.route("/api", plantioDashboardRouter);
-app.route("/api", plantioCadastrosRouter);
-app.route("/api", plantioEventosRouter);
-app.route("/api", plantioCustoRouter);
-app.route("/api", plantioColheitaRouter);
-app.route("/api", plantioPlanejamentoRouter);
-app.route("/api", plantioIaRouter);
-app.route("/api", cultivoSafrasRouter);
-app.route("/api", cultivoAreasRouter);
-app.route("/api", cultivoCustosRouter);
-app.route("/api", cultivoProducaoRouter);
-app.route("/api", cultivoSilosRouter);
-app.route("/api", cultivoDashboardRouter);
-app.route("/api", pontoRouter);
-app.route("/api", pontoDashboardRouter);
 app.route("/api", buscaRouter);

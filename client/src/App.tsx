@@ -18,9 +18,6 @@ import { limparRascunhoRelatorioAtivo, useRascunhoRelatorioAtivo } from "./finan
 import { resumoRascunhoRelatorio } from "./financeiro/lib/rascunho-relatorio";
 import { RebanhoContent } from "./pecuaria/rebanho/RebanhoContent";
 import { setPropriedadeAtiva, getPropriedadeAtiva } from "./propriedadeScope";
-import { PlantioContent, type PlaSub } from "./plantio/PlantioContent";
-import { EquipeContent, type EqpSub } from "./equipe/EquipeContent";
-import { CultivoContent, type MilSub } from "./cultivo/CultivoContent";
 import { EstoqueContent } from "./estoque/EstoqueContent";
 import { ProdutoEstoqueDetalhe } from "./estoque/ProdutoEstoqueDetalhe";
 import { parseProdutoEstoqueId } from "./router";
@@ -89,33 +86,8 @@ function GatedTab({ user, abaLabel }: { user: User; abaLabel: string }) {
   );
 }
 
-const PLA: Record<string, PlaSub> = {
-  "pla-dashboard": "dashboard",
-  "pla-talhao": "talhao",
-  "pla-fenologia": "fenologia",
-  "pla-fitossanidade": "fitossanidade",
-  "pla-nutricao": "nutricao",
-  "pla-colheita": "colheita",
-  "pla-planejamento": "planejamento",
-  "pla-estoque": "estoque",
-  "pla-custo": "custo",
-};
 
-const EQP: Record<string, EqpSub> = {
-  "eqp-dashboard": "dashboard",
-  "eqp-funcionarios": "funcionarios",
-  "eqp-ponto": "ponto",
-  "eqp-folha": "folha",
-};
 
-const MIL: Record<string, MilSub> = {
-  "mil-dashboard": "dashboard",
-  "mil-safras": "safras",
-  "mil-custos": "custos",
-  "mil-producao": "producao",
-  "mil-silos": "silos",
-  "mil-custo": "custo",
-};
 
 export function App() {
   // Atualiza o parser de rotas públicas após replaceState().
@@ -170,9 +142,6 @@ export function App() {
     setPropriedadeAtiva(id);
     setPropAtiva(id);
   };
-  // Deep-link do ⌘K: ao escolher uma entidade real, guardamos {tab, id} e o
-  // módulo dono consome (abre o cockpit) via `abrirId` + `onAbriuEntidade`.
-  const [deepLink, setDeepLink] = useState<{ tab: Tab; id: string } | null>(null);
 
   // Deep-link da IA (chat): filtros aplicados numa tela via query string
   // (ex.: /gastos?status=vencidas). Inicializa da URL no load/reload.
@@ -198,7 +167,6 @@ export function App() {
         ? { tab: tabDestino, filtros: Object.fromEntries(parametros.entries()) }
         : null,
     );
-    setDeepLink(null);
     setShowIntro(deveTocarIntro(tabDestino));
     window.history.replaceState(null, "", destino);
     setLocationRevision((valor) => valor + 1);
@@ -226,15 +194,7 @@ export function App() {
     const t = pathToTab(path);
     if (!t) return;
     const filtros = Object.fromEntries(new URLSearchParams(query).entries());
-    const s = String(t);
-    const temCockpit = s.startsWith("pla-");
-    if (filtros.id && temCockpit) {
-      setDeepLink({ tab: t, id: filtros.id });
-      setDeepLinkFiltros(null);
-    } else {
-      setDeepLink(null);
-      setDeepLinkFiltros(Object.keys(filtros).length ? { tab: t, filtros } : null);
-    }
+    setDeepLinkFiltros(Object.keys(filtros).length ? { tab: t, filtros } : null);
     setTab(t);
     const alvo = tabToPath(t) + (query ? `?${query}` : "");
     if (window.location.pathname + window.location.search !== alvo) window.history.pushState(null, "", alvo);
@@ -362,14 +322,6 @@ export function App() {
       setLocationRevision((valor) => valor + 1);
       const sp = new URLSearchParams(window.location.search);
       const t = pathToTab(window.location.pathname);
-      // `?id=` numa aba de cockpit (pla-) abre a ficha direto, como o ⌘K e os
-      // links do Estoque levando ao talhão de origem.
-      const cockpitId = t && String(t).startsWith("pla-") ? sp.get("id") : null;
-      if (t && cockpitId) {
-        setDeepLink({ tab: t, id: cockpitId });
-        setDeepLinkFiltros(null);
-        return;
-      }
       setDeepLinkFiltros(t && [...sp.keys()].length && !isNovaOperacaoFinanceira(window.location.pathname) ? { tab: t, filtros: Object.fromEntries(sp.entries()) } : null);
     };
     window.addEventListener("popstate", onPop);
@@ -420,9 +372,7 @@ export function App() {
   const isAdmin = !!effectiveUser?.flags.includes("gerenciarAcessos") || !!effectiveUser?.dono;
   const hasArea = (area: (typeof TODAS_AREAS)[number]) =>
     temAcessoArea(effectiveUser?.areas, area, !!effectiveUser?.dono);
-  // Módulo Equipe & Ponto expõe salário, CPF e chave Pix — mesma flag que
   // mascara "Pessoal / Salários" no financeiro. Gestor e consulta ficam de fora.
-  const canSeeFolha = !!effectiveUser?.flags.includes("verSalarios") || !!effectiveUser?.dono;
 
   // Abas visíveis do grupo Financeiro (sem "rebanho" e sem "acessos" — Acessos
   // mora no rodapé da sidebar, renderizado via isAdmin pelo AppSidebar).
@@ -513,18 +463,8 @@ export function App() {
 
   const conteudo = !canAccessTab(tab)
     ? <GatedTab user={effectiveUser} abaLabel="esta área" />
-    : String(tab).startsWith("pla-")
-    ? <PlantioContent aba={PLA[tab]} onNavPla={(s) => setTab(("pla-" + s) as Tab)}
-        abrirId={deepLink && deepLink.tab.startsWith("pla-") ? deepLink.id : undefined}
-        onAbriuEntidade={() => setDeepLink(null)} />
     : tab === "pec-rebanho"
     ? <RebanhoContent podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} />
-    : String(tab).startsWith("mil-")
-    ? <CultivoContent aba={MIL[tab]} onNavMil={(s) => setTab(("mil-" + s) as Tab)} />
-    : String(tab).startsWith("eqp-")
-    ? (canSeeFolha
-        ? <EquipeContent aba={EQP[tab]} onNavEqp={(s) => setTab(("eqp-" + s) as Tab)} />
-        : <GatedTab user={effectiveUser} abaLabel="Equipe & Ponto" />)
     : tab === "estoque"
     ? (parseProdutoEstoqueId(window.location.pathname) ? <ProdutoEstoqueDetalhe key={window.location.pathname} produtoId={parseProdutoEstoqueId(window.location.pathname)!} onSelecionarSitio={trocarPropriedade} /> : <EstoqueContent />)
     : (["dashboard", "gastos", "lancar", "caixinha", "cadastros", "plano", "relatorio"] as Tab[]).includes(tab)
@@ -564,7 +504,6 @@ export function App() {
         onNav={navegarTab}
         financeiro={visibleTabs}
         isAdmin={isAdmin}
-        podeVerFolha={canSeeFolha}
         areas={effectiveUser.areas ?? [...TODAS_AREAS]}
         mobileOpen={mobileOpen}
         onMobileToggle={setMobileOpen}
@@ -596,11 +535,6 @@ export function App() {
         onNav={(t, entidadeId) => {
           setDeepLinkFiltros(null);
           setTab(t);
-          // Só entidades de cockpit (pla-*) precisam de deep-link;
-          // categoria/fornecedor apenas navegam para a aba.
-          const s = String(t);
-          const temCockpit = s.startsWith("pla-");
-          setDeepLink(entidadeId && temCockpit ? { tab: t, id: entidadeId } : null);
         }}
         podeVer={(t) => {
           return canAccessTab(t);

@@ -6,7 +6,7 @@ import { prisma } from "../db.js";
  * Evoluindo o ⌘K para entidades — "pode ser".
  */
 export type ResultadoBusca = {
-  tipo: "talhao" | "categoria" | "fornecedor";
+  tipo: "categoria" | "fornecedor";
   entidadeId: string;
   label: string;
   sublabel: string;
@@ -18,23 +18,6 @@ export type ResultadoBusca = {
 export const qValido = (q: string): boolean => q.trim().length >= 2;
 
 // ── Mappers puros (linha do Prisma → ResultadoBusca) — unit-testáveis ──
-
-export function mapearTalhao(row: {
-  id: number;
-  codigo: string;
-  nome: string | null;
-  variedade?: { nome: string } | null;
-  lavoura?: { nome: string } | null;
-}): ResultadoBusca {
-  return {
-    tipo: "talhao",
-    entidadeId: String(row.id),
-    label: row.codigo + (row.nome ? " · " + row.nome : ""),
-    sublabel: row.variedade?.nome ?? row.lavoura?.nome ?? "Talhão",
-    tab: "pla-talhao",
-    grupo: "Talhões",
-  };
-}
 
 export function mapearCategoria(row: {
   id: string;
@@ -76,19 +59,7 @@ export async function buscarEntidades(q: string): Promise<ResultadoBusca[]> {
   if (!qValido(q)) return [];
   const termo = q.trim();
 
-  const [talhoes, categorias, fornecedores] = await Promise.all([
-    prisma.talhao.findMany({
-      where: {
-        OR: [
-          { codigo: { contains: termo, mode: "insensitive" } },
-          { nome: { contains: termo, mode: "insensitive" } },
-        ],
-      },
-      include: { variedade: { select: { nome: true } }, lavoura: { select: { nome: true } } },
-      // ATIVO (não BAIXADO) primeiro, depois por código
-      orderBy: [{ estado: "asc" }, { codigo: "asc" }],
-      take: TAKE,
-    }),
+  const [categorias, fornecedores] = await Promise.all([
     prisma.categoria.findMany({
       where: { nome: { contains: termo, mode: "insensitive" } },
       orderBy: { nome: "asc" },
@@ -102,7 +73,6 @@ export async function buscarEntidades(q: string): Promise<ResultadoBusca[]> {
   ]);
 
   return [
-    ...talhoes.map(mapearTalhao),
     ...categorias.map(mapearCategoria),
     ...fornecedores.map(mapearFornecedor),
   ];

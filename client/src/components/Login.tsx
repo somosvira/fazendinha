@@ -111,7 +111,7 @@ export function Login({ onEntrar }: { onEntrar?: (token: string, usuario: Usuari
             O campo em <em className="italic text-[color:var(--leite)]">números</em> que você entende.
           </h1>
           <p className="mt-5 max-w-[34ch] text-[15px] leading-[1.6] text-[color:var(--side-mute)]">
-            Leite, café, gado e equipe — o resultado de cada atividade, mês a mês, sem planilha.
+            Pecuária e financeiro — o resultado da fazenda, mês a mês, sem planilha.
           </p>
         </div>
 

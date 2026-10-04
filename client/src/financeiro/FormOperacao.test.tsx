@@ -299,7 +299,7 @@ describe("FormOperacao", () => {
 
 function configCentrosDivergentes() {
   return { ...config,
-    categorias: [{ id: uid(1), nome: "Silagem", classificacao: "CUSTEIO" as const, ativo: true, ordem: 0, usoAgricola: false, usoGenetico: false }, { id: uid(2), nome: "Vacinas", classificacao: "CUSTEIO" as const, ativo: true, ordem: 0, usoAgricola: false, usoGenetico: false }],
+    categorias: [{ id: uid(1), nome: "Silagem", classificacao: "CUSTEIO" as const, ativo: true, ordem: 0, usoGenetico: false }, { id: uid(2), nome: "Vacinas", classificacao: "CUSTEIO" as const, ativo: true, ordem: 0, usoGenetico: false }],
     centrosCusto: [{ id: uid(1), nome: "Pecuária", ativo: true, ordem: 0 }, { id: uid(2), nome: "Agronomia", ativo: true, ordem: 0 }],
     produtos: [{ ...config.produtos[0], categoriaId: uid(1), centroCustoIds: [uid(1)] }, { ...config.produtos[0], id: uid(2), nome: "Vacina", categoriaId: uid(2), centroCustoIds: [uid(2)] }],
   };
