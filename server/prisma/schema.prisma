@@ -754,7 +754,6 @@ model MovimentoEstoque {
   reversaoDe              MovimentoEstoque?        @relation("ReversaoEstoque", fields: [reversaoDeId], references: [id])
   reversaoDeId            String?                  @unique
   revertidoPor            MovimentoEstoque?        @relation("ReversaoEstoque")
-  // Operação agrícola (aplicação/adubação) que gerou esta SAIDA (origem APLICACAO).
   observacao              String?
   createdAt               DateTime                 @default(now())
   updatedAt               DateTime                 @updatedAt

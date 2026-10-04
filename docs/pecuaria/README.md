@@ -1,9 +1,5 @@
 # Pecuária — base de documentação
 
-### Simplificação do cadastro de Produto (03/10/2026)
-
-Criação e edição compartilham os campos e a ordem do mesmo formulário. Categoria é exclusivamente financeira: sua troca não altera usos ou perfis. O controle de lotes usa a mesma opção; em Produto existente, exige prévia e confirmação antes da ativação permanente. Referência técnica foi retirada dos formulários de Produto e aplicação sanitária: novos campos só entram quando houver demanda concreta. Referências históricas continuam armazenadas; editar o Produto sem esse campo não as apaga. Revalidar 27.2 sem limpar marcações anteriores.
-
 Esta pasta concentra o contexto funcional e técnico da reconstrução da pecuária. Ela substitui a dependência de uma sessão privada do Claude: os artefatos originais agora estão versionados no repositório e podem ser consultados por qualquer pessoa ou agente que trabalhe no projeto.
 
 ## Estado documental em 03/10/2026
@@ -139,3 +135,5 @@ Os quatro HTMLs originais (v1, v2, roteiro de testes e mapa IDEAGRI) foram expor
 ## Retirada de agricultura e equipe — 03/10/2026
 
 A limpeza usa a V3 local como base e preserva genética, sanidade, peso, nutrição, financeiro e estoque único, incluindo lotes por validade ainda não publicados. A retirada de `usoAgricola` elimina a dependência de aplicações agrícolas na validação de Produtos; os demais usos e suas proteções permanecem. Ver [análise e migração](../remocao-agricultura-equipe.md).
+
+A revisão de escopo do PR #310 restaura o preenchimento e a cópia da referência técnica sanitária, assim como a interface de ativação de lotes anterior à limpeza. A retirada de agricultura/equipe não simplifica nem reduz funcionalidades da V3.

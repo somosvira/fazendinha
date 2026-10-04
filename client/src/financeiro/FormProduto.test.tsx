@@ -38,17 +38,17 @@ const produtoCriado = {
 };
 
 describe("tipos de uso e validação dos perfis", () => {
-  it("editar categoria conserva usos e perfil, sem reenviar referência técnica histórica", async () => {
+  it("editar categoria conserva usos, carências e referência técnica do perfil", async () => {
     const produto = { ...produtoCriado, unidade: "ML" as const, rastrearPartidas: true, usoSanitario: true, perfilSanitario: { carenciaLeiteHoras: 0, carenciaCarneHoras: 48, viaPadrao: "Intramuscular", referenciaTecnica: "Referência histórica" } };
     mocks.editarProduto.mockResolvedValue(produto);
     render(<FormProduto produto={produto} categorias={[...categorias, { ...categorias[0], id: uid(12), nome: "Nutrição" }]} centros={[]} parceiros={[]} onSalvo={vi.fn()} onFechar={vi.fn()} />);
-    expect(screen.queryByLabelText(/Referência técnica/)).toBeNull();
-    expect((screen.getByLabelText("Controlar lotes por validade") as HTMLInputElement).disabled).toBe(true);
+    expect((screen.getByLabelText(/Referência técnica/) as HTMLInputElement).value).toBe("Referência histórica");
+    expect(screen.getByText(/Controle de lotes por validade ativo/)).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Categoria"), { target: { value: uid(12) } });
     fireEvent.click(screen.getByRole("button", { name: "Salvar produto" }));
     await waitFor(() => expect(mocks.editarProduto).toHaveBeenCalledWith(produto.id, expect.objectContaining({
       categoriaId: uid(12), usoSanitario: true,
-      perfilSanitario: { carenciaLeiteHoras: 0, carenciaCarneHoras: 48, viaPadrao: "Intramuscular" },
+      perfilSanitario: { carenciaLeiteHoras: 0, carenciaCarneHoras: 48, viaPadrao: "Intramuscular", referenciaTecnica: "Referência histórica" },
     })));
   });
   beforeEach(() => { vi.clearAllMocks(); mocks.criarProduto.mockResolvedValue(produtoCriado); });

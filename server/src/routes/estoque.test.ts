@@ -49,14 +49,15 @@ vi.mock("../services/estoque/referencias.js", () => ({
 vi.mock("../services/financeiro/parceiros.js", () => ({ listarParceiros: mocks.listarParceiros }));
 
 import { estoqueRouter } from "./estoque.js";
+import { exigeQualquerArea } from "../middleware/permissao.js";
 
 const base = { id: 7, nome: "Peão", email: "p@x", papel: "OPERADOR", abas: [], areas: ["pecuaria"], status: "ATIVO", dono: false };
 const semLancar = { ...base, areas: ["pecuaria", "financeiro"], flags: ["verValores"] };
 const comLancar = { ...base, flags: ["lancar"] };
-const soAgricultura = { ...base, id: 9, areas: ["agricultura"], flags: ["verValores"] };
+const soFinanceiro = { ...base, id: 9, areas: ["financeiro"], flags: ["verValores"] };
 
 function appCom(usuario: unknown) {
-  return new Hono().use("*", async (c, next) => { c.set("usuario" as never, usuario as never); await next(); }).route("/", estoqueRouter);
+  return new Hono().use("*", async (c, next) => { c.set("usuario" as never, usuario as never); await next(); }).use("/estoque/*", exigeQualquerArea(["pecuaria", "financeiro"])).route("/", estoqueRouter);
 }
 
 const ontem = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
@@ -161,8 +162,8 @@ describe("GET /estoque/movimentos", () => {
   });
   it("repassa ao service quais vínculos o usuário pode ver, pelas áreas", async () => {
     await appCom({ ...base, areas: ["financeiro"], flags: [] }).request("/estoque/movimentos");
-    expect(mocks.listarMovimentos).toHaveBeenLastCalledWith(expect.objectContaining({ propriedadeId: 3, vinculosVisiveis: { agricultura: false, pecuaria: false } }));
-    await appCom(soAgricultura).request("/estoque/movimentos");
+    expect(mocks.listarMovimentos).toHaveBeenLastCalledWith(expect.objectContaining({ propriedadeId: 3, vinculosVisiveis: { pecuaria: false } }));
+    await appCom(soFinanceiro).request("/estoque/movimentos");
     expect(mocks.listarMovimentos).toHaveBeenLastCalledWith(expect.objectContaining({ vinculosVisiveis: { pecuaria: false } }));
     await appCom({ ...base, areas: [], dono: true, flags: [] }).request("/estoque/movimentos");
     expect(mocks.listarMovimentos).toHaveBeenLastCalledWith(expect.objectContaining({ vinculosVisiveis: { pecuaria: true } }));
@@ -181,33 +182,33 @@ describe("rotas órfãs removidas", () => {
 });
 
 describe("GET /estoque/produtos ?uso=", () => {
-  it("uso válido → 200 e repassa ao service", async () => {
+  it.each(["genetico", "sanitario", "nutricional"])("uso %s → 200 e repassa ao service", async (uso) => {
     mocks.listarProdutos.mockResolvedValue([]);
-    const res = await appCom(soAgricultura).request("/estoque/produtos?uso=agricola");
+    const res = await appCom(soFinanceiro).request(`/estoque/produtos?uso=${uso}`);
     expect(res.status).toBe(200);
-    expect(mocks.listarProdutos).toHaveBeenCalledWith(expect.objectContaining({ uso: "agricola" }));
+    expect(mocks.listarProdutos).toHaveBeenCalledWith(expect.objectContaining({ uso }));
   });
-  it("uso inválido → 400", async () => {
-    const res = await appCom(soAgricultura).request("/estoque/produtos?uso=invalido");
+  it.each(["invalido", "agricola"])("uso %s → 400", async (uso) => {
+    const res = await appCom(soFinanceiro).request(`/estoque/produtos?uso=${uso}`);
     expect(res.status).toBe(400);
   });
 });
 
-describe("acesso de usuário só-agricultura aos cadastros do estoque", () => {
+describe("acesso de usuário só-financeiro aos cadastros do estoque", () => {
   it("GET /estoque/produtos → 200", async () => {
-    const res = await appCom(soAgricultura).request("/estoque/produtos");
+    const res = await appCom(soFinanceiro).request("/estoque/produtos");
     expect(res.status).toBe(200);
   });
   it("GET /estoque/categorias → 200", async () => {
-    const res = await appCom(soAgricultura).request("/estoque/categorias");
+    const res = await appCom(soFinanceiro).request("/estoque/categorias");
     expect(res.status).toBe(200);
   });
   it("GET /estoque/centros-custo → 200", async () => {
-    const res = await appCom(soAgricultura).request("/estoque/centros-custo");
+    const res = await appCom(soFinanceiro).request("/estoque/centros-custo");
     expect(res.status).toBe(200);
   });
   it("GET /estoque/fornecedores → 200", async () => {
-    const res = await appCom(soAgricultura).request("/estoque/fornecedores");
+    const res = await appCom(soFinanceiro).request("/estoque/fornecedores");
     expect(res.status).toBe(200);
   });
 });
@@ -236,7 +237,7 @@ describe("POST /estoque/produtos", () => {
   });
   const body = { nome: "Ureia", unidade: "KG", categoriaId: uid(1) };
   it("sem lancar → 403", async () => {
-    const res = await appCom(soAgricultura).request("/estoque/produtos", { method: "POST", headers: json, body: JSON.stringify(body) });
+    const res = await appCom(soFinanceiro).request("/estoque/produtos", { method: "POST", headers: json, body: JSON.stringify(body) });
     expect(res.status).toBe(403);
     expect(mocks.criarProduto).not.toHaveBeenCalled();
   });
@@ -335,5 +336,14 @@ describe("validações de lote em português", () => {
     const resposta = await appCom(semLancar).request(`/estoque/produtos/${uid(1)}/lotes/previa?validade=amanha`);
     expect(resposta.status).toBe(422);
     expect(await resposta.json()).toEqual({ error: "Informe uma validade válida ou escolha Validade não informada", code: "VALIDACAO", campo: "validade" });
+  });
+});
+
+
+describe("estoque compartilhado após retirada de áreas", () => {
+  it.each(["agricultura", "equipe"])("área %s não concede acesso ao estoque", async (area) => {
+    const res = await appCom({ ...base, areas: [area], flags: ["lancar", "verValores"] }).request("/estoque/produtos");
+    expect(res.status).toBe(403);
+    expect(mocks.listarProdutos).not.toHaveBeenCalled();
   });
 });

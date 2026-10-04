@@ -144,7 +144,7 @@ export async function atualizarProduto(id: string, input: ProdutoPatchInput, usu
       }
 
       // Trocar a unidade muda a interpretação de tudo que já foi movimentado
-      // (estoque) ou registrado em histórico (compra/venda, aplicação agrícola)
+      // (estoque) ou registrado em histórico (compra/venda)
       // na unidade antiga — bloqueia se houver algum registro para esse produto.
       if (produto.unidade !== undefined && produto.unidade !== anterior.unidade) {
         const [movimentos, itensOperacao] = await Promise.all([

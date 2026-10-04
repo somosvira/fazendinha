@@ -236,7 +236,7 @@ export type VinculoMovimento =
   | { tipo: "APLICACAO_SANITARIA"; id: string; animalId: string }
   | { tipo: "FECHAMENTO_NUTRICIONAL"; id: string; loteId: string };
 
-/** Quais vínculos operacionais o leitor pode ver (quem só tem financeiro não vê talhão). Ausente = todos. */
+/** Quais vínculos operacionais o leitor pode ver (quem só tem financeiro não vê o fato da pecuária). Ausente = todos. */
 export type VinculosVisiveis = { pecuaria?: boolean };
 
 export type FiltroMovimentos = {
@@ -444,7 +444,7 @@ export async function ajustarContagem(input: z.infer<typeof ajusteContagemSchema
 /**
  * Estorna um movimento de estoque dentro de uma transação já aberta: cria o
  * movimento inverso (reversaoDeId) copiando centro/propriedade/operação e marca
- * o original como REVERTIDO. Não decide se a origem PODE ser estornada — essa
+ * o original como REVERTIDO. A validação da origem cabe ao domínio que chama.
  */
 export async function estornarMovimentoTx(
   tx: Prisma.TransactionClient,

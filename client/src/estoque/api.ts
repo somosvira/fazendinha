@@ -87,13 +87,14 @@ export function useSaldos(f?: { centroCustoId?: string }) {
 }
 
 // ── Cadastros (Produtos + referências financeiras) ─────────────────────────
-// Rotas `/estoque/*` (gate pecuária|agricultura|financeiro) — ver
+// Rotas `/estoque/*` (gate pecuária|financeiro) — ver
 // server/src/routes/estoque.ts.
 // Mesmo tipo de `financeiro/novo-api.ts` (contrato único de Produto na API) —
 // `/estoque/produtos` e `/financeiro/produtos` são a mesma tabela e o mesmo service.
 export type ProdutoDTO = Produto;
 export type UsoProduto = "genetico" | "sanitario" | "nutricional";
 export interface ProdutoInput {
+  usoGenetico?: boolean; usoSanitario?: boolean; usoNutricional?: boolean; rastrearPartidas?: boolean;
   nome: string; unidade: UnidadeMedida;
   // Categoria obrigatória para classificação financeira. Se o produto entra no estoque quem decide é a operação.
   minimoEstoque?: number | null; ativo?: boolean; categoriaId: string; centroCustoIds?: string[]; fornecedorIds?: string[];

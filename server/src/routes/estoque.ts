@@ -95,8 +95,7 @@ export const estoqueRouter = new Hono()
   })
   .get("/estoque/movimentos", zValidator("query", movimentosQuerySchema), async (c) => {
     const { movimentoId, produtoId, partidaId, propriedadeId, tipo, q, origem, centroCustoId, de, ate, pagina, porPagina } = c.req.valid("query");
-    // O gate de /estoque aceita pecuária, agricultura ou financeiro; o vínculo
-    // (talhão) das saídas automáticas só vai para quem tem a área.
+    // Vínculos sanitários/nutricionais só saem para quem tem acesso à pecuária.
     const u = getUsuario(c);
     const vinculosVisiveis = u ? { pecuaria: temArea(u, "pecuaria") } : undefined;
     const movimentos = await svc.listarMovimentos({ movimentoId, produtoId, partidaId, tipo, q, origem, centroCustoId, de, ate, pagina, porPagina, propriedadeId: propriedadeId ?? await resolverEscopoLeitura(c), vinculosVisiveis });

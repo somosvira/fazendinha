@@ -87,8 +87,6 @@ function GatedTab({ user, abaLabel }: { user: User; abaLabel: string }) {
 }
 
 
-
-
 export function App() {
   // Atualiza o parser de rotas públicas após replaceState().
   const [locationRevision, setLocationRevision] = useState(0);
@@ -372,7 +370,6 @@ export function App() {
   const isAdmin = !!effectiveUser?.flags.includes("gerenciarAcessos") || !!effectiveUser?.dono;
   const hasArea = (area: (typeof TODAS_AREAS)[number]) =>
     temAcessoArea(effectiveUser?.areas, area, !!effectiveUser?.dono);
-  // mascara "Pessoal / Salários" no financeiro. Gestor e consulta ficam de fora.
 
   // Abas visíveis do grupo Financeiro (sem "rebanho" e sem "acessos" — Acessos
   // mora no rodapé da sidebar, renderizado via isAdmin pelo AppSidebar).
@@ -532,7 +529,7 @@ export function App() {
       <CommandPalette
         aberto={buscaAberta}
         onFechar={() => setBuscaAberta(false)}
-        onNav={(t, entidadeId) => {
+        onNav={(t) => {
           setDeepLinkFiltros(null);
           setTab(t);
         }}

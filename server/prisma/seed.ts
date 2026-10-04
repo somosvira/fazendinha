@@ -1,6 +1,5 @@
 import { prisma } from "../src/db.js";
 import { criarOperacao, transferir } from "../src/services/financeiro/operacoes.js";
-import { CENTROS_ATIVIDADE } from "../src/services/estoque/centros-atividade.js";
 
 const hoje = new Date();
 const data = (dias: number) => new Date(Date.UTC(hoje.getUTCFullYear(), hoje.getUTCMonth(), hoje.getUTCDate() + dias));
@@ -20,17 +19,16 @@ async function main() {
   const racao = await prisma.categoria.create({ data: { nome: "Alimentação animal", classificacao: "CUSTEIO" } });
   const manutencao = await prisma.categoria.create({ data: { nome: "Manutenção e serviços", classificacao: "CUSTEIO" } });
   await prisma.categoria.create({ data: { nome: "Medicamento Animal", classificacao: "CUSTEIO" } });
-  await prisma.categoria.create({ data: { nome: "Fertilizantes e corretivos", classificacao: "CUSTEIO", usoAgricola: true } });
-  await prisma.categoria.create({ data: { nome: "Defensivos", classificacao: "CUSTEIO", usoAgricola: true } });
+  await prisma.categoria.create({ data: { nome: "Fertilizantes e corretivos", classificacao: "CUSTEIO" } });
+  await prisma.categoria.create({ data: { nome: "Defensivos", classificacao: "CUSTEIO" } });
   const centroLeite = await prisma.centroCusto.create({ data: { nome: "Pecuária", ordem: 1 } });
   const centroAdministrativo = await prisma.centroCusto.create({ data: { nome: "Gestão", ordem: 2 } });
 
   for (const nome of ["Agronomia", "Equipe"]) await prisma.centroCusto.create({ data: { nome } });
 
-  // Centros de atividade (custeio do leite/café — ver services/estoque/centros-atividade.ts),
-  // além dos quatro centros de dimensão acima.
-  const centroAtividadeLeite = await prisma.centroCusto.create({ data: { nome: CENTROS_ATIVIDADE.LEITE } });
-  await prisma.centroCusto.create({ data: { nome: CENTROS_ATIVIDADE.CAFE } });
+  // Classificações financeiras continuam disponíveis independentemente dos módulos operacionais.
+  const centroAtividadeLeite = await prisma.centroCusto.create({ data: { nome: "Atividade Leiteira" } });
+  await prisma.centroCusto.create({ data: { nome: "Plantio Café" } });
 
   const banco = await prisma.contaFinanceira.create({ data: {
     nome: "Banco principal", tipo: "BANCO", instituicao: "Banco local", identificacao: "Agência 0001 · Conta 12345-6",
