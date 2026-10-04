@@ -1,6 +1,7 @@
 import { prisma } from "../../../db.js";
 import { RebanhoError } from "../rebanho/regras.js";
 import { nomeExameHistorico } from "./exames.js";
+import { alocacaoLoteSanitario, loteAplicacaoDTO } from "./lotes.js";
 
 const animal = { select: { id: true, brinco: true, nome: true } } as const;
 const ocorrencia = { select: { id: true, doencaNomeSnapshot: true, inicio: true, fim: true, status: true } } as const;
@@ -10,22 +11,24 @@ const escopo = (id: string, propriedadeId: number | null) => ({ id, ...(propried
 export async function obterOcorrencia(id: string, propriedadeId: number | null) {
   const fato = await prisma.ocorrenciaSanitaria.findFirst({ where: escopo(id, propriedadeId), include: {
     animal, doenca: { select: { id: true, nome: true } },
-    aplicacoes: { where: propriedadeId == null ? {} : { propriedadeId }, orderBy: { data: "desc" } },
+    aplicacoes: { where: propriedadeId == null ? {} : { propriedadeId }, orderBy: { data: "desc" }, include: { movimentoEstoque: { select: { alocacaoPartidaEstoques: alocacaoLoteSanitario } } } },
     exames: { where: propriedadeId == null ? {} : { propriedadeId }, orderBy: { data: "desc" }, include: { tipoExame: { select: { nome: true } } } },
     execucoes: { where: propriedadeId == null ? {} : { propriedadeId }, include: { protocolo: { select: { nome: true, versao: true } } } },
   } });
   if (!fato) throw new RebanhoError("NAO_ENCONTRADO", "Ocorrência não encontrada neste sítio");
   return { ...fato, doenca: { ...fato.doenca, nome: fato.doencaNomeSnapshot ?? fato.doenca.nome },
+    aplicacoes: fato.aplicacoes.map((a) => ({ ...a, ...loteAplicacaoDTO(a) })),
     exames: fato.exames.map((e) => ({ ...e, tipoExame: { nome: nomeExameHistorico(e.formatoSnapshot, e.tipoExame.nome) } })) };
 }
 
 export async function obterAplicacao(id: string, propriedadeId: number | null) {
   const fato = await prisma.aplicacaoProduto.findFirst({ where: escopo(id, propriedadeId), include: {
     animal, ocorrencia, tarefa,
-    movimentoEstoque: { select: { id: true, data: true, origem: true, operacaoId: true, itemOperacaoId: true } },
+    movimentoEstoque: { select: { id: true, data: true, origem: true, operacaoId: true, itemOperacaoId: true,
+      alocacaoPartidaEstoques: { select: { partidaId: true, quantidade: true, partida: { select: { nome: true, codigo: true, validade: true, lotePrincipalId: true, lotePrincipal: { select: { nome: true } } } } } } } },
   } });
   if (!fato) throw new RebanhoError("NAO_ENCONTRADO", "Aplicação não encontrada neste sítio");
-  return fato;
+  return { ...fato, ...loteAplicacaoDTO(fato) };
 }
 
 export async function obterExame(id: string, propriedadeId: number | null) {

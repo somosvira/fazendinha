@@ -5,9 +5,10 @@ import { gerarParcelasFinanceiras, totalItensFinanceiros } from "./parcelas.calc
 import { obterBasesCusto, produtosComEstoque, statusSaldoEstoque } from "../estoque/estoque.js";
 import { valorSaidaDaBase } from "../estoque/estoque.calc.js";
 import { rotuloUnidade } from "../estoque/unidades.js";
-import { prepararPartidasTx, saldoPartidaTx } from "../estoque/partidas.js";
+import { conferirSaldoEstornoPartidasTx, prepararPartidasTx } from "../estoque/partidas.js";
 import type { z } from "zod";
 import type { liquidacaoSchema, operacaoSchema, simulacaoParcelasSchema, transacaoAvulsaSchema, transferenciaSchema } from "./schemas.js";
+import { conferirReenvioOperacaoTx, hashConfirmacao } from "./idempotencia.js";
 
 type OperacaoInput = z.infer<typeof operacaoSchema> & { propriedadeId: number; usuarioId?: number | null };
 type LiquidacaoInput = z.infer<typeof liquidacaoSchema> & { usuarioId?: number | null };
@@ -78,6 +79,8 @@ async function resolverCentros(tx: Prisma.TransactionClient, ids: string[]) {
 }
 
 async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInput) {
+    const reenvio = await conferirReenvioOperacaoTx(tx, input);
+    if (reenvio) return reenvio;
     await exigirPeriodoAberto(tx, input.propriedadeId, input.data);
     if (input.parceiroId) await exigirParceiroAtivo(tx, input.parceiroId, input.tipo);
     if (input.corrigeOperacaoId) {
@@ -218,6 +221,7 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
           produtoId: produto.id, rastrearPartidas: produto.rastrearPartidas, propriedadeId: input.propriedadeId,
           tipo: tipoMovimento, data: input.data, quantidade: item.quantidade,
           partidas: entrada.partidas,
+          usuarioId: input.usuarioId,
         });
         const valores = custosSaida
           ? valorSaidaDaBase(item.quantidade, custosSaida.get(item.produtoId!))
@@ -231,7 +235,7 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
           ...(distribuicao.length ? { alocacaoPartidaEstoques: { create: distribuicao.map((p) => ({ partidaId: p.partidaId, quantidade: p.quantidade })) } } : {}),
         } });
         if (distribuicao.length) await tx.itemOperacao.update({ where: { id: item.id }, data: {
-          partidasSnapshot: distribuicao.map((p) => ({ partidaId: p.partidaId, codigo: p.codigo, validade: p.validade?.toISOString().slice(0, 10) ?? null, quantidade: p.quantidade.toString() })),
+          partidasSnapshot: distribuicao.map((p) => ({ partidaId: p.partidaId, codigo: p.codigo, nome: p.nome, validade: p.validade?.toISOString().slice(0, 10) ?? null, quantidade: p.quantidade.toString(), cienciaValidadeDesconhecida: p.cienciaValidadeDesconhecida })),
         } });
       }
     }
@@ -256,6 +260,8 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
     }
 
     await auditar(tx, { entidade: "Operacao", entidadeId: operacao.id, acao: "CONFIRMADA", usuarioId: input.usuarioId, depois: operacao });
+    if (input.chave) await auditar(tx, { entidade: "Operacao", entidadeId: operacao.id, acao: "CONFIRMACAO_OPERACAO_IDEMPOTENTE", usuarioId: input.usuarioId,
+      depois: { chave: input.chave, hash: hashConfirmacao(input), propriedadeId: input.propriedadeId } });
     return tx.operacao.findUniqueOrThrow({
       where: { id: operacao.id },
       include: { itens: true, compromissos: true, transacoes: { include: { movimentos: true } }, movimentosEstoque: true, documentos: { select: documentoPublico }, parceiro: true },
@@ -430,11 +436,7 @@ export async function estornarOperacao(id: string, motivo: string, contexto: Con
         if (saldo.lt(movimento.quantidade)) throw new FinanceiroError("CONFLITO", "O estoque transferido já foi consumido no destino; reconcilie antes de cancelar.");
       }
       if (movimento.tipo === "ENTRADA" || (movimento.tipo === "AJUSTE" && movimento.quantidade.gt(0))) {
-        for (const alocacao of movimento.alocacaoPartidaEstoques) {
-          if ((await saldoPartidaTx(tx, alocacao.partidaId, movimento.propriedadeId ?? operacao.propriedadeId)).lt(alocacao.quantidade)) {
-            throw new FinanceiroError("CONFLITO", "O lote da entrada já foi consumido; reconcilie o estoque antes de cancelar a operação.");
-          }
-        }
+        await conferirSaldoEstornoPartidasTx(tx, movimento.alocacaoPartidaEstoques, movimento.propriedadeId ?? operacao.propriedadeId);
       }
       await tx.movimentoEstoque.create({ data: {
         produtoId: movimento.produtoId,

@@ -1,4 +1,4 @@
-import { SelecaoPartidas, type DistribuicaoPartida } from "../../estoque/SelecaoPartidas";
+import { SelecaoPartidas, conferirDistribuicaoPartidas, type DistribuicaoPartida } from "../../estoque/SelecaoPartidas";
 import { useEffect, useMemo, useState } from "react";
 import type { Talhao, TipoOperacao, PragaDoenca } from "../types";
 import { registrarOperacao, type OperacaoInput } from "../api";
@@ -132,6 +132,7 @@ export function OperacaoForm({ talhaoId, talhao, dominioFixo, onFechar, onSalvo 
   })();
 
   function selecionarProduto(id: string) {
+    setPartidas([]);
     setProdutoId(id);
     const p = produtosAgricolas.find((x) => String(x.id) === id);
     if (p) {
@@ -151,6 +152,7 @@ export function OperacaoForm({ talhaoId, talhao, dominioFixo, onFechar, onSalvo 
   async function salvar() {
     setSalvando(true); setErro(null);
     try {
+      if (produtoSelecionado?.rastrearPartidas) conferirDistribuicaoPartidas(partidas, Number(quantidadeTotal || baixaEstimada?.valor || 0), true);
       // Detalhes específicos do domínio que não cabem no body canônico do backend
       // (NPK, calda, incidência, colheita) viram notas no campo observação, pra não
       // se perder até existir endpoint dedicado.
@@ -181,7 +183,7 @@ export function OperacaoForm({ talhaoId, talhao, dominioFixo, onFechar, onSalvo 
         dosePorHectare: doseValorNumerico != null ? dosePorHectare : undefined,
         pragaAlvo: dominio === "fitossanidade" ? praga : undefined,
         produtoId: produtoId || null,
-        ...(produtoSelecionado?.rastrearPartidas ? { partidas: partidas.map((p) => ({ partidaId: p.partidaId!, quantidade: Number(p.quantidade) })) } : {}),
+        ...(produtoSelecionado?.rastrearPartidas ? { partidas: partidas.map((p) => ({ partidaId: p.partidaId!, quantidade: Number(p.quantidade), cienciaValidadeDesconhecida: p.cienciaValidadeDesconhecida })) } : {}),
         quantidadeTotal: quantidadeTotal.trim() ? Number(quantidadeTotal.replace(",", ".")) : null,
         centroCustoId: centroCustoId || null,
       });

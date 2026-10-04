@@ -27,6 +27,51 @@ function montar() {
   render(<FormOperacao config={config} onSalvo={vi.fn()} />);
 }
 
+it("apresenta produto e quantidade antes dos lotes por validade na compra", async () => {
+  vi.stubGlobal("fetch", vi.fn(async (url: unknown) => ({ ok: true, json: async () => String(url).includes("/estoque/partidas?") ? [] : { custoMedio: null } })));
+  render(<FormOperacao config={{ ...config, produtos: [{ ...config.produtos[0], rastrearPartidas: true }] }} tipoInicial="COMPRA_ESTOQUE" onSalvo={vi.fn()} />);
+  const produto = screen.getByLabelText("Produto do item 1");
+  fireEvent.change(produto, { target: { value: uid(1) } });
+  const validade = await screen.findByLabelText("Situação da validade 1");
+  expect(produto.compareDocumentPosition(validade) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(screen.getByLabelText("Quantidade do item 1").compareDocumentPosition(validade) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+});
+
+it("retry após resposta perdida repete chave e versão sem recriar o rascunho", async () => {
+  const confirmacoes: Array<{ chave: string; versao: number }> = [];
+  let salvamentos = 0;
+  const fetchMock = vi.fn(async (url: unknown, init?: RequestInit) => {
+    if (String(url).endsWith("/financeiro/operacoes/rascunho") && init?.method === "PUT") {
+      salvamentos++;
+      return { ok: true, json: async () => ({ id: "draft", dados: {}, versao: 4, documentos: [] }) };
+    }
+    if (String(url).endsWith("/financeiro/operacoes/rascunho/confirmacao")) {
+      confirmacoes.push(JSON.parse(String(init?.body)));
+      if (confirmacoes.length === 1) throw new Error("Resposta da confirmação não chegou. Tente novamente.");
+      return { ok: true, json: async () => ({ id: "operacao", numero: 7, documentos: [] }) };
+    }
+    return { ok: true, json: async () => ({}) };
+  });
+  vi.stubGlobal("fetch", fetchMock);
+  const onSalvo = vi.fn();
+  render(<FormOperacao config={config} tipoInicial="SERVICO" onSalvo={onSalvo} />);
+  fireEvent.change(screen.getByLabelText("Descrição"), { target: { value: "Consulta sanitária" } });
+  fireEvent.change(screen.getByLabelText("Valor total da operação"), { target: { value: "100" } });
+  fireEvent.change(screen.getByLabelText("Prestador de serviço"), { target: { value: uid(1) } });
+  fireEvent.change(screen.getByLabelText("Conta financeira"), { target: { value: uid(1) } });
+  fireEvent.click(screen.getByRole("button", { name: "Confirmar operação" }));
+  await screen.findAllByText("Resposta da confirmação não chegou. Tente novamente.");
+  const antesDoRetry = salvamentos;
+  fireEvent.click(screen.getByRole("button", { name: "Confirmar operação" }));
+  await waitFor(() => expect(onSalvo).toHaveBeenCalled());
+  expect(confirmacoes).toHaveLength(2);
+  expect(confirmacoes[1]).toEqual(confirmacoes[0]);
+  expect(confirmacoes[0].chave).toMatch(/^[0-9a-f-]{36}$/);
+  expect(salvamentos).toBe(antesDoRetry);
+  const persistido = fetchMock.mock.calls.find(([url, init]) => String(url).endsWith("/rascunho") && init?.method === "PUT");
+  expect(JSON.parse(String(persistido?.[1]?.body)).dados.operacao.chave).toBe(confirmacoes[0].chave);
+});
+
 describe("FormOperacao", () => {
   it("oferece ajuste de estoque como tipo de operação", () => {
     montar();

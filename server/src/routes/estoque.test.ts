@@ -135,7 +135,7 @@ describe("GET /estoque/movimentos", () => {
     const partidas = [{ partidaId: uid(2), quantidade: "10" }];
     mocks.listarMovimentos.mockResolvedValue({ itens: [{ quantidade: 10, custoUnitario: 2, valorTotal: 20, partidas }], total: 1 });
     const res = await appCom({ ...base, flags: [] }).request("/estoque/movimentos");
-    expect(await res.json()).toEqual({ itens: [{ quantidade: 10, custoUnitario: null, valorTotal: null, partidas }], total: 1 });
+    expect(await res.json()).toEqual({ itens: [{ quantidade: 10, custoUnitario: null, valorTotal: null, partidas, operacaoId: null, operacaoNumero: null }], total: 1 });
   });
   it.each(["abc", "-1", "1.5"])("produtoId=%s → 400", async (v) => {
     const res = await appCom(semLancar).request(`/estoque/movimentos?produtoId=${v}`);
@@ -300,5 +300,40 @@ describe("POST /estoque/ajustes — erros do serviço", () => {
     const res = await appCom(comLancar).request("/estoque/ajustes", { method: "POST", headers: json, body: JSON.stringify({ produtoId: uid(1), quantidadeContada: 5, saldoEsperado: 10, observacao: "Contagem física" }) });
     expect(res.status).toBe(409);
     expect(await res.json()).toEqual({ error: "O estoque mudou desde a consulta.", code: "CONFLITO" });
+  });
+});
+
+describe("movimentos do Produto — visibilidade das origens financeiras", () => {
+  it("leitor só de Pecuária consulta saldo físico e vínculo clínico sem links ou valores financeiros", async () => {
+    mocks.leitura.mockResolvedValue(2);
+    mocks.listarMovimentos.mockResolvedValue({ total: 1, itens: [{ id: uid(8), quantidade: 10, tipo: "SAIDA", custoUnitario: 2, valorTotal: 20, valorTotalMovimento: 100,
+      operacaoId: uid(9), operacaoNumero: 17, vinculo: { tipo: "APLICACAO_SANITARIA", id: uid(10), animalId: uid(11) } }] });
+    for (const caminho of ["/estoque/movimentos", `/estoque/produtos/${uid(1)}/movimentos`]) {
+      const resposta = await appCom({ ...base, flags: [] }).request(caminho);
+      expect(resposta.status).toBe(200);
+      expect(await resposta.json()).toMatchObject({ total: 1, itens: [{ quantidade: 10, operacaoId: null, operacaoNumero: null, custoUnitario: null, valorTotal: null, valorTotalMovimento: null,
+        vinculo: { tipo: "APLICACAO_SANITARIA", id: uid(10) } }] });
+    }
+  });
+  it("acesso Financeiro conserva os vínculos da operação", async () => {
+    mocks.leitura.mockResolvedValue(2);
+    mocks.listarMovimentos.mockResolvedValue({ total: 1, itens: [{ id: uid(8), quantidade: 10, custoUnitario: 2, valorTotal: 20, operacaoId: uid(9), operacaoNumero: 17 }] });
+    const resposta = await appCom(semLancar).request(`/estoque/produtos/${uid(1)}/movimentos`);
+    expect(await resposta.json()).toMatchObject({ itens: [{ operacaoId: uid(9), operacaoNumero: 17, custoUnitario: 2, valorTotal: 20 }] });
+  });
+});
+
+describe("validações de lote em português", () => {
+  it("nome ausente ou vazio aponta o campo sem chamar a escrita", async () => {
+    for (const body of [{}, { nome: "" }]) {
+      const resposta = await appCom(comLancar).request(`/estoque/partidas/${uid(1)}`, { method: "PATCH", headers: json, body: JSON.stringify(body) });
+      expect(resposta.status).toBe(422);
+      expect(await resposta.json()).toEqual({ error: "Informe o nome do lote", code: "VALIDACAO", campo: "nome" });
+    }
+  });
+  it("prévia exige data ou validade não informada com mensagem em português", async () => {
+    const resposta = await appCom(semLancar).request(`/estoque/produtos/${uid(1)}/lotes/previa?validade=amanha`);
+    expect(resposta.status).toBe(422);
+    expect(await resposta.json()).toEqual({ error: "Informe uma validade válida ou escolha Validade não informada", code: "VALIDACAO", campo: "validade" });
   });
 });

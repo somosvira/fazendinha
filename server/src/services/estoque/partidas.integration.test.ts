@@ -58,7 +58,7 @@ describeComBanco("rastreio de partidas no estoque único", () => {
     const ativacao = await ativarRastreio(produto.id, null, previa.revisao);
     expect(ativacao.movimentosLegados).toBe(1);
     const [legado] = await listarPartidas(produto.id, propriedade.id);
-    expect(legado).toMatchObject({ codigo: "LEGADO_NAO_IDENTIFICADO", saldo: "10" });
+    expect(legado).toMatchObject({ validade: null, saldo: "10", origemRastreio: "LEGADO_NAO_IDENTIFICADO" });
     await expect(prisma.movimentoEstoque.create({ data: {
       produtoId: produto.id, propriedadeId: propriedade.id, tipo: "SAIDA", origem: "SANIDADE",
       data: new Date("2026-09-02"), quantidade: 1, custoUnitario: 12, valorTotal: 12,
@@ -66,7 +66,7 @@ describeComBanco("rastreio de partidas no estoque único", () => {
     const saida = await prisma.$transaction(async (tx) => {
       const distribuicao = await prepararPartidasTx(tx, { produtoId: produto.id, rastrearPartidas: true,
         propriedadeId: propriedade.id, tipo: "SAIDA", quantidade: new Prisma.Decimal(1),
-        partidas: [{ partidaId: legado.id, quantidade: 1 }] });
+        partidas: [{ partidaId: legado.id, quantidade: 1, cienciaValidadeDesconhecida: true }] });
       return tx.movimentoEstoque.create({ data: {
         produtoId: produto.id, propriedadeId: propriedade.id, tipo: "SAIDA", origem: "SANIDADE",
         data: new Date("2026-09-02"), quantidade: 1, custoUnitario: 12, valorTotal: 12,
@@ -78,14 +78,14 @@ describeComBanco("rastreio de partidas no estoque único", () => {
     const custoAntes = await obterBaseCusto(prisma, produto.id, propriedade.id);
     await identificarLegado({ chave: crypto.randomUUID(), produtoId: produto.id, propriedadeId: propriedade.id, codigo: "FABRICANTE-TESTE", validade: "2026-12-31", quantidade: "4", motivo: "Conferência física do legado", data: "2026-09-03" }, null);
     const partidas = await listarPartidas(produto.id, propriedade.id);
-    expect(partidas.find((p) => p.codigo === "FABRICANTE-TESTE")?.saldo).toBe("4");
+    expect(partidas.find((p) => p.validade?.toISOString().slice(0, 10) === "2026-12-31")?.saldo).toBe("4");
     expect(partidas.find((p) => p.id === legado.id)?.saldo).toBe("5");
     const movimentos = await prisma.movimentoEstoque.findMany({ where: { produtoId: produto.id, origem: "IDENTIFICACAO_PARTIDA" } });
     expect(movimentos.reduce((s, m) => s.plus(m.quantidade), new Prisma.Decimal(0)).toString()).toBe("0");
     expect(movimentos.reduce((s, m) => s.plus(m.valorTotal), new Prisma.Decimal(0)).toString()).toBe("0");
     expect(await obterBaseCusto(prisma, produto.id, propriedade.id)).toEqual(custoAntes);
     const destino = await prisma.propriedade.create({ data: { nome: `Destino V3 ${run}` } }); propriedades.push(destino.id);
-    const identificada = partidas.find((p) => p.codigo === "FABRICANTE-TESTE")!;
+    const identificada = partidas.find((p) => p.validade?.toISOString().slice(0, 10) === "2026-12-31")!;
     const input = { chave: crypto.randomUUID(), produtoId: produto.id, origemId: propriedade.id, destinoId: destino.id, quantidade: "2", data: "2026-09-04", motivo: "Transferência física de teste", partidas: [{ partidaId: identificada.id, quantidade: 2 }] };
     const transferida = await transferirEstoque(input, null);
     expect(await transferirEstoque(input, null)).toEqual(transferida);

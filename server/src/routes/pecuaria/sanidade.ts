@@ -1,6 +1,7 @@
 import { Hono, type Context } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
+import { EstoqueError } from "../../services/estoque/estoque.js";
 import { Prisma, UnidadeMedida } from "@prisma/client";
 import { prisma } from "../../db.js";
 import { resolverEscopoEscrita, resolverEscopoLeitura } from "../../services/propriedade.js";
@@ -40,6 +41,7 @@ const aplicacaoSchema = z.object({
   ocorrenciaId: uuid.nullish(), tarefaId: uuid.nullish(),
   operacaoServicoId: uuid.nullish(), itemCompraDiretaId: uuid.nullish(),
   partidaId: uuid.nullish(), partidaCodigo: z.string().trim().max(100).nullish(),
+  cienciaValidadeDesconhecida: z.boolean().optional(),
   partidaValidade: data.nullish(),
   justificativaSemOrigem: z.string().trim().max(500).nullish(),
   documentacaoExcepcional: z.boolean().optional(),
@@ -47,6 +49,7 @@ const aplicacaoSchema = z.object({
 }).strict();
 
 function falha(c: Context, e: unknown) {
+  if (e instanceof EstoqueError) return c.json({ error: e.message, code: e.code }, e.code === "NAO_ENCONTRADO" ? 404 : e.code === "VALIDACAO" ? 422 : 409);
   if (e instanceof z.ZodError) return c.json({ error: e.issues[0].message, code: "VALIDACAO" }, 422);
   if (e instanceof RebanhoError || e instanceof FinanceiroError) {
     const status = e.code === "NAO_ENCONTRADO" ? 404 : e.code === "VALIDACAO" ? 422 : 409;
@@ -119,7 +122,7 @@ export const sanidadeRouter = new Hono()
       if (body.itens.some((i) => i.propriedadeId !== propriedadeId)) return c.json({ error: "Todos os animais devem pertencer ao sítio da operação" }, 422);
       return c.json(await aplicacoes.criarAplicacoesColetivas({ ...body, propriedadeId }, getUsuario(c)?.id ?? null), 201); } catch (e) { return falha(c, e); }
   })
-  .post("/aplicacoes/:id/origem", validar(aplicacaoSchema.pick({ origemInsumo: true, produtoId: true, operacaoServicoId: true, itemCompraDiretaId: true, partidaId: true, partidaCodigo: true, partidaValidade: true }).extend({ propriedadeId: z.number().int().positive(), motivo: z.string().trim().min(5).max(500) }).strict()), async (c) => {
+  .post("/aplicacoes/:id/origem", validar(aplicacaoSchema.pick({ origemInsumo: true, produtoId: true, operacaoServicoId: true, itemCompraDiretaId: true, partidaId: true, partidaCodigo: true, partidaValidade: true, cienciaValidadeDesconhecida: true }).extend({ propriedadeId: z.number().int().positive(), motivo: z.string().trim().min(5).max(500) }).strict()), async (c) => {
     try { const { propriedadeId: solicitado, ...input } = c.req.valid("json"); const propriedadeId = await resolverEscopoEscrita(c, solicitado);
       return c.json(ocultarCustos(await aplicacoes.reconciliarOrigem(c.req.param("id"), propriedadeId, input, getUsuario(c)?.id ?? null), c)); } catch (e) { return falha(c, e); }
   })

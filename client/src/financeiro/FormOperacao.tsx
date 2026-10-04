@@ -1,5 +1,5 @@
 import { type ChangeEvent, type FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { SelecaoPartidas, type DistribuicaoPartida } from "../estoque/SelecaoPartidas";
+import { SelecaoPartidas, conferirDistribuicaoPartidas, type DistribuicaoPartida } from "../estoque/SelecaoPartidas";
 import { CircleAlert, FileText, Loader2, Paperclip, Plus, Trash2, Wand2 } from "lucide-react";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { Popover, PopoverContent, PopoverTrigger } from "../components/ui/popover";
@@ -145,6 +145,9 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   const [estadoSalvamento, setEstadoSalvamento] = useState<"ALTERADO" | "SALVANDO" | "SALVO" | "ERRO">(rascunho ? "SALVO" : "ALTERADO");
   const versaoRef = useRef(rascunho?.versao);
   const salvamentoEmCursoRef = useRef<Promise<RascunhoOperacao> | null>(null);
+  const identidadeOperacao = useRef({ assinatura: "", chave: typeof rascunho?.dados.operacao?.chave === "string" ? rascunho.dados.operacao.chave : crypto.randomUUID() });
+  const confirmacaoPendenteRef = useRef<{ chave: string; versao: number } | null>(null);
+  const autosaveTimerRef = useRef<number | null>(null);
   const iniciouRef = useRef(false);
   const [erro, setErro] = useState<string | null>(null);
   const erroConfirmacaoRef = useRef<HTMLDivElement>(null);
@@ -252,7 +255,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
     centroCustoPorItem: porItem,
     contaId, formaPagamento, data, valorAgora, parcelas, geradorParcelas,
   }), [tipo, condicao, descricao, valorOperacao, itens, parceiroId, categoriaId, classificacao, centroEscolhidoManualmente, centroCustoId, porItem, contaId, formaPagamento, data, valorAgora, parcelas, geradorParcelas]);
-  const operacaoRascunho = useMemo(() => {
+  const operacaoSemChave = useMemo(() => {
     const financeiro = condicao === "A_VISTA" ? { condicao, contaId, formaPagamento }
       : condicao === "A_PRAZO" ? { condicao, parcelas: parcelas.map((parcela) => ({ valor: parcela.valor, dataVencimento: parcela.vencimento })) }
         : condicao === "PARCIAL" ? { condicao, contaId, valorPago: valorAgora, formaPagamento, parcelas: parcelas.map((parcela) => ({ valor: parcela.valor, dataVencimento: parcela.vencimento })) }
@@ -268,6 +271,12 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
       }) : [], financeiro,
     };
   }, [classificacao, categoriaId, centroCustoId, porItem, comItens, condicao, config.produtos, contaId, data, descricao, formaPagamento, itens, movimentaEstoque, operacaoBase?.id, parceiroId, parcelas, tipo, valorAgora, valorOperacao]);
+  const operacaoRascunho = useMemo(() => {
+    const assinatura = JSON.stringify(operacaoSemChave);
+    if (identidadeOperacao.current.assinatura && identidadeOperacao.current.assinatura !== assinatura) identidadeOperacao.current.chave = crypto.randomUUID();
+    identidadeOperacao.current.assinatura = assinatura;
+    return { ...operacaoSemChave, chave: identidadeOperacao.current.chave };
+  }, [operacaoSemChave]);
   const dadosRascunho = useMemo(() => ({ formulario: estadoFormulario, operacao: operacaoRascunho }), [estadoFormulario, operacaoRascunho]);
   const temConteudoRascunho = useMemo(() => !!(
     documentosSalvos.length || descricao.trim() || valorOperacao || parceiroId || categoriaId || centroCustoId || contaId || valorAgora
@@ -301,7 +310,8 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
     if (ehAjuste || atalhoAjuste) return;
     setEstadoSalvamento("ALTERADO");
     const timer = window.setTimeout(() => { void persistirRascunho().catch((falha) => setErro(falha instanceof Error ? falha.message : String(falha))); }, 800);
-    return () => window.clearTimeout(timer);
+    autosaveTimerRef.current = timer;
+    return () => { window.clearTimeout(timer); autosaveTimerRef.current = null; };
     // O payload memorizado representa integralmente o estado editavel.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dadosRascunho, operacaoBase, ehAjuste, atalhoAjuste]);
@@ -539,9 +549,14 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
       return;
     }
     setErroConfirmacao(null);
+    if (autosaveTimerRef.current != null) { window.clearTimeout(autosaveTimerRef.current); autosaveTimerRef.current = null; }
     setCampoInvalido(null);
     setSalvando(true);
     try {
+      if (ehAjuste && saldoProduto && config.produtos.find((p) => p.id === ajusteProdutoId)?.rastrearPartidas && diferencaMilesimos) conferirDistribuicaoPartidas(partidasAjuste, diferencaMilesimos / 1000, diferencaMilesimos < 0);
+      if (movimentaEstoque && !ehAjuste) for (const item of itens) {
+        if (config.produtos.find((p) => p.id === item.produtoId)?.rastrearPartidas) conferirDistribuicaoPartidas(item.partidas ?? [], Number(item.quantidade), tipo === "VENDA" || tipo === "DEVOLUCAO");
+      }
       if (ehAjuste && saldoProduto) {
         const resultado = await registrarAjusteEstoque({ produtoId: saldoProduto.produtoId, quantidadeContada: contadaMilesimos / 1000, saldoEsperado: Math.round(saldoProduto.saldo * 1000) / 1000, observacao: descricao.trim(), centroCustoId: centroCustoId || undefined, ...(partidasAjuste.length ? { partidas: partidasAjuste.map((p) => ({ ...p, quantidade: Number(p.quantidade) * (diferencaMilesimos! < 0 ? -1 : 1) })) } : {}) });
         onSalvo({ id: resultado.operacaoId });
@@ -550,8 +565,14 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
       let operacao: Operacao;
       if (operacaoBase) operacao = await criarOperacao(operacaoRascunho);
       else {
-        const salvo = await persistirRascunho();
-        operacao = await confirmarRascunhoOperacao(salvo.versao);
+        let pendente = confirmacaoPendenteRef.current;
+        if (pendente?.chave !== operacaoRascunho.chave) {
+          const salvo = await persistirRascunho();
+          pendente = { chave: operacaoRascunho.chave, versao: salvo.versao };
+          confirmacaoPendenteRef.current = pendente;
+        }
+        operacao = await confirmarRascunhoOperacao(pendente.versao, pendente.chave);
+        confirmacaoPendenteRef.current = null;
       }
       const falhas: string[] = [];
       for (const anexo of anexos) {
@@ -688,7 +709,6 @@ function ItensOperacao({ dataFato, itens, setItens, config, ultimosPrecos, custo
       const campoCentro = `itens.${indice}.centroCustoId`;
       const centroInvalido = campoInvalido === campoCentro;
       return <div key={item.id} id={`item-${item.id}`} tabIndex={-1} className={`rounded-xl border p-4 outline-none ${invalido ? "border-red-400 bg-red-50/40 ring-2 ring-red-200" : "border-border bg-[#faf9f4]"}`}>
-        {movimentaEstoque && produto?.rastrearPartidas && <SelecaoPartidas produtoId={produto.id} dataFato={dataFato} quantidade={item.quantidade} unidade={produto.unidade} saida={saidaEstoque} valor={item.partidas ?? []} onChange={(partidas) => atualizarItem(item.id, { partidas })} />}
         <div className="mb-3 flex items-center justify-between"><strong className="text-sm">Item {indice + 1}</strong>{itens.length > 1 && <button type="button" aria-label={`Remover item ${indice + 1}`} onClick={() => setItens((atuais) => atuais.filter((atual) => atual.id !== item.id))} className="rounded-lg p-1.5 text-red-700 hover:bg-red-50"><Trash2 size={16} /></button>}</div>
         {invalido && <CampoErro className="mb-3">Preencha a descrição, a quantidade{movimentaEstoque ? " e o produto" : ""} deste item.</CampoErro>}
         <div className="grid gap-4 md:grid-cols-[minmax(200px,0.8fr)_minmax(0,2fr)]">
@@ -706,6 +726,7 @@ function ItensOperacao({ dataFato, itens, setItens, config, ultimosPrecos, custo
           {item.modoValor === "UNITARIO" ? <label className="text-sm font-medium">Valor unitário *<input aria-label={`Valor unitário do item ${indice + 1}`} required min="0" step="0.0001" type="number" className={CAMPO} value={item.valorUnitario} onChange={(e) => atualizarItem(item.id, { valorUnitario: e.target.value })} onBlur={(e) => atualizarItem(item.id, { valorUnitario: normalizarPreco(e.target.value) })} />{ultimo && <span className="mt-1 block text-xs font-normal text-ink-3">Última compra: {brlPreciso(ultimo.valorUnitario)} em {dataCurta(ultimo.data)}{ultimo.parceiro ? ` (${ultimo.parceiro.nome})` : ""}</span>}{!ultimo && custoMedio != null && <span className="mt-1 block text-xs font-normal text-ink-3">Custo médio atual: {brlPreciso(custoMedio)}</span>}</label> : <label className="text-sm font-medium">Valor total do item *<input aria-label={`Valor total do item ${indice + 1}`} required min="0" step="0.01" type="number" className={CAMPO} value={item.valorTotal} onChange={(e) => atualizarItem(item.id, { valorTotal: e.target.value })} onBlur={(e) => atualizarItem(item.id, { valorTotal: normalizarMoeda(e.target.value) })} /></label>}
           <div className="self-end rounded-lg border border-[#e5dfd0] bg-white px-3 py-2.5 text-sm"><span className="text-ink-3">Total do item</span><strong className="float-right">{brl(totalItem(item))}</strong></div>
         </div>
+        {movimentaEstoque && produto?.rastrearPartidas && <SelecaoPartidas produtoId={produto.id} dataFato={dataFato} quantidade={item.quantidade} unidade={produto.unidade} saida={saidaEstoque} valor={item.partidas ?? []} onChange={(partidas) => atualizarItem(item.id, { partidas })} />}
       </div>;
     })}</div>
   </section>;

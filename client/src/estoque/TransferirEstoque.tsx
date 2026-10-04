@@ -5,7 +5,7 @@ import { DatePicker } from "../components/DatePicker";
 import { listarPropriedades, type PropriedadeDTO } from "../api/propriedades";
 import { getPropriedadeAtiva, comPropriedade } from "../propriedadeScope";
 import { listarProdutos, type ProdutoDTO } from "./api";
-import { SelecaoPartidas, type DistribuicaoPartida } from "./SelecaoPartidas";
+import { SelecaoPartidas, conferirDistribuicaoPartidas, type DistribuicaoPartida } from "./SelecaoPartidas";
 export function TransferirEstoque({ onFechar, onSalvo, perda = false }: { perda?: boolean; onFechar: () => void; onSalvo: () => void }) {
   const [produtos, setProdutos] = useState<ProdutoDTO[]>([]);
   const [sitios, setSitios] = useState<PropriedadeDTO[]>([]);
@@ -25,7 +25,8 @@ export function TransferirEstoque({ onFechar, onSalvo, perda = false }: { perda?
     if (ocupado) return;
     setOcupado(true); setErro(null);
     try {
-      const r = await fetch(perda ? "/api/estoque/perdas" : "/api/estoque/transferencias", { method: "POST", headers: comPropriedade({ "content-type": "application/json" }), body: JSON.stringify({ chave, produtoId, origemId: Number(origemId), ...(perda ? {} : { destinoId: Number(destinoId) }), quantidade, data, motivo, ...(produto?.rastrearPartidas ? { partidas: partidas.map((p) => ({ partidaId: p.partidaId, quantidade: Number(p.quantidade) })) } : {}) }) });
+      if (produto?.rastrearPartidas) conferirDistribuicaoPartidas(partidas, Number(quantidade), true);
+      const r = await fetch(perda ? "/api/estoque/perdas" : "/api/estoque/transferencias", { method: "POST", headers: comPropriedade({ "content-type": "application/json" }), body: JSON.stringify({ chave, produtoId, origemId: Number(origemId), ...(perda ? {} : { destinoId: Number(destinoId) }), quantidade, data, motivo, ...(produto?.rastrearPartidas ? { partidas: partidas.map((p) => ({ partidaId: p.partidaId, quantidade: Number(p.quantidade), cienciaValidadeDesconhecida: p.cienciaValidadeDesconhecida })) } : {}) }) });
       const d = await r.json(); if (!r.ok) throw new Error(d.error ?? "Transferência não confirmada"); onSalvo();
     } catch (e) { setErro(e instanceof Error ? e.message : String(e)); } finally { setOcupado(false); }
   }

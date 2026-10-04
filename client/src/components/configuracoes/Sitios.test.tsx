@@ -29,11 +29,11 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("Configurações > Sítios", () => {
-  it("lista sítios com apelido, cidade, principal e situação", () => {
+  it("lista sítios pelo nome, com cidade, principal e situação", () => {
     render(<Sitios />);
     const tabela = screen.getByRole("table", { name: "Sítios" });
     expect(within(tabela).getByText("Principal", { selector: "strong" })).toBeTruthy();
-    expect(within(tabela).getByText("Sede")).toBeTruthy();
+    expect(within(tabela).queryByText("Sede")).toBeNull();
     expect(within(tabela).getByText("Uberaba — MG")).toBeTruthy();
     expect(within(tabela).getByText("Inativo")).toBeTruthy();
   });
@@ -49,12 +49,13 @@ describe("Configurações > Sítios", () => {
     render(<Sitios />);
     fireEvent.click(screen.getByRole("button", { name: /Novo sítio/ }));
     const painel = await screen.findByRole("dialog");
+    expect(within(painel).queryByLabelText("Apelido")).toBeNull();
     fireEvent.change(within(painel).getByLabelText(/Nome do sítio/), { target: { value: "Nova" } });
     fireEvent.change(within(painel).getByLabelText("Cidade"), { target: { value: "Uberaba" } });
     fireEvent.change(within(painel).getByLabelText("UF"), { target: { value: "mg" } });
     fireEvent.click(within(painel).getByRole("button", { name: "Criar sítio" }));
     await waitFor(() => expect(criarPropriedade).toHaveBeenCalledWith({
-      nome: "Nova", apelido: undefined, cidade: "Uberaba", uf: "MG", principal: false, ativo: true,
+      nome: "Nova", cidade: "Uberaba", uf: "MG", principal: false, ativo: true,
     }));
   });
 

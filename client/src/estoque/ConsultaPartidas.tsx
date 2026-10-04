@@ -72,6 +72,7 @@ export function ConsultaPartidas() {
     <h2 className="font-serif text-2xl">Lotes dos produtos</h2>
     <p className="mt-1 text-sm text-ink-3">Consulte saldos, validade e movimentos por sítio. Para ativar o rastreio ou identificar legado, abra o cadastro do Produto.</p>
     <ErrorBox erro={erro} />
+    {produtoId && <a href={`/estoque/produtos/${produtoId}`} className="mt-2 inline-block text-sm underline">Abrir ficha do produto</a>}
     <div className="mt-3 grid gap-3 sm:grid-cols-3">
       <label className="grid gap-1 text-sm">Sítio
         <select aria-label="Sítio dos lotes" className="rounded-lg border border-border bg-white px-3 py-2" value={sitioId || ""} onChange={(e) => { setSitioId(Number(e.target.value) || 0); setPagina(1); }}>
@@ -95,10 +96,10 @@ export function ConsultaPartidas() {
         : carregando ? <p className="text-sm">Carregando lotes…</p>
         : !partidasVisiveis.length ? <p className="text-sm text-ink-3">Nenhum lote corresponde ao filtro neste sítio.</p>
         : <div className="grid gap-2">{partidasVisiveis.map((p) => <div key={p.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border p-3 text-sm">
-          <div><strong>{p.origemRastreio === "LEGADO_NAO_IDENTIFICADO" ? "Estoque sem lote identificado" : p.codigo}</strong><div className="text-ink-3">Saldo: {p.saldo} {produto?.unidade} · Validade: {p.validade ? dataBR(p.validade.slice(0, 10)) : "não informada"}</div></div>
+          <div><strong>{p.nome || (p.origemRastreio === "LEGADO_NAO_IDENTIFICADO" ? "Estoque sem validade informada" : p.codigo)}</strong><div className="text-ink-3">Saldo: {p.saldo} {produto?.unidade} · Validade: {p.validade ? dataBR(p.validade.slice(0, 10)) : "não informada"}</div></div>
           <Button secondary onClick={() => { setPartidaId(p.id); setPagina(1); }}>Ver movimentos</Button>
         </div>)}</div>}
-      {partidaId && <div className="mt-4 border-t border-border pt-3"><h3 className="font-semibold">Movimentos do lote {partidas.find((p) => p.id === partidaId)?.codigo}</h3>
+      {partidaId && <div className="mt-4 border-t border-border pt-3"><h3 className="font-semibold">Movimentos do lote {partidas.find((p) => p.id === partidaId)?.nome || partidas.find((p) => p.id === partidaId)?.codigo}</h3>
         {carregandoHistorico ? <p className="text-sm">Carregando movimentos…</p> : !movimentos.length ? <p className="text-sm text-ink-3">Sem movimentos neste sítio.</p> : movimentos.map((m) => { const destino = destinoDoMovimento(m); return <p key={m.id} className="border-b border-border py-2 text-sm">{dataBR(m.data)} · {ROTULO_ORIGEM[m.origem]} · {m.partidas?.find((a) => a.partidaId === partidaId)?.quantidade ?? m.quantidade} {produto?.unidade}{destino && podeAcessarArea(destino.area) && <> · <a href={destino.href} onClick={(e) => { if (e.button === 0 && !e.ctrlKey && !e.metaKey) { e.preventDefault(); navegarPara(destino.href); } }} className="text-green-800 underline">{destino.rotulo}</a></>}</p>; })}
         <div className="mt-2 flex gap-2"><Button secondary disabled={pagina <= 1} onClick={() => setPagina((v) => v - 1)}>Anterior</Button><Button secondary disabled={pagina * 10 >= total} onClick={() => setPagina((v) => v + 1)}>Próxima</Button><Button secondary onClick={() => setPartidaId("")}>Fechar</Button></div>
       </div>}

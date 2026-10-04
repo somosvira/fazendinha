@@ -12,6 +12,7 @@ import { obterDashboard } from "../services/financeiro/dashboard.js";
 import { categoriaCadastroSchema, centroCustoSchema, contaSchema, estornoSchema, liquidacaoSchema, operacaoSchema, parceiroSchema, patchCategoriaCadastroSchema, patchCentroCustoSchema, patchContaSchema, patchParceiroSchema, rascunhoOperacaoSchema, simulacaoParcelasSchema, tipoDocumentoFinanceiroSchema, transacaoAvulsaSchema, transferenciaSchema } from "../services/financeiro/schemas.js";
 import { patchProdutoSchema, produtoSchema } from "../services/estoque/produtos.schemas.js";
 import { FinanceiroError } from "../services/financeiro/regras.js";
+import { EstoqueError } from "../services/estoque/estoque.js";
 import { getStorage } from "../lib/storage.js";
 import * as cadastros from "../services/financeiro/cadastros-gerenciais.js";
 import * as produtos from "../services/estoque/produtos.js";
@@ -46,6 +47,10 @@ function exigirUsuarioId(c: Context): number {
 }
 
 function falha(c: Context, erro: unknown) {
+  if (erro instanceof EstoqueError) {
+    const status = erro.code === "NAO_ENCONTRADO" ? 404 : erro.code === "VALIDACAO" ? 422 : 409;
+    return c.json({ error: erro.message, code: erro.code }, status);
+  }
   if (erro instanceof FinanceiroError) {
     const status = erro.code === "NAO_ENCONTRADO" ? 404 : erro.code === "VALIDACAO" ? 422 : 409;
     return c.json({ error: erro.message, code: erro.code, ...(erro.campo ? { campo: erro.campo } : {}) }, status);
@@ -169,8 +174,8 @@ export const financeiroRouter = new Hono()
     try { await rascunhos.descartarRascunho(await resolverEscopoEscrita(c), exigirUsuarioId(c)); return c.body(null, 204); }
     catch (e) { return falha(c, e); }
   })
-  .post("/financeiro/operacoes/rascunho/confirmacao", zValidator("json", z.object({ versao: z.number().int().positive().optional() })), async (c) => {
-    try { return c.json(await rascunhos.confirmarRascunho(await resolverEscopoEscrita(c), exigirUsuarioId(c), c.req.valid("json").versao), 201); }
+  .post("/financeiro/operacoes/rascunho/confirmacao", zValidator("json", z.object({ versao: z.number().int().positive().optional(), chave: z.string().uuid().optional() })), async (c) => {
+    try { const body = c.req.valid("json"); return c.json(await rascunhos.confirmarRascunho(await resolverEscopoEscrita(c), exigirUsuarioId(c), body.versao, body.chave), 201); }
     catch (e) { return falha(c, e); }
   })
   .post("/financeiro/operacoes/simulacao-parcelas", exigePermissao("lancar"), validarCadastro(simulacaoParcelasSchema), async (c) => {

@@ -42,7 +42,7 @@ const colunasParceiros = (editar: (p: Parceiro) => void, alternar: (p: Parceiro)
 ];
 
 const colunasProdutos = (editar: (p: Produto) => void, alternar: (p: Produto) => void): ColunaTabela<Produto>[] => [
-  { chave: "nome", titulo: "Produto", larguraMinima: 200, principal: true, celula: (p) => <strong className="break-words font-semibold">{p.nome}</strong> },
+  { chave: "nome", titulo: "Produto", larguraMinima: 200, principal: true, celula: (p) => <a href={`/estoque/produtos/${p.id}`} className="break-words font-semibold underline">{p.nome}</a> },
   { chave: "categoria", titulo: "Categoria", larguraMinima: 130, celula: (p) => p.categoriaNome ?? "Sem categoria" },
   { chave: "uso", titulo: "Tipos de uso", larguraMinima: 130, celula: (p) => [p.usoAgricola && "Agrícola", p.usoGenetico && "Genético", p.usoSanitario && "Sanitário", p.usoNutricional && "Nutricional"].filter(Boolean).join(" · ") || "Geral" },
   { chave: "unidade", titulo: "Unidade", larguraMinima: 80, celula: (p) => rotuloUnidade(p.unidade) },
@@ -81,7 +81,7 @@ function mensagemDesativar(confirmacao: NonNullable<Confirmacao>) {
 export function ConfiguracoesFinanceiras({ abaInicial = "contas", podeEditar = true }: { abaInicial?: Aba; podeEditar?: boolean }) {
   const [config, setConfig] = useState<Config | null>(null);
   const [erro, setErro] = useState<string | null>(null);
-  const [aba, setAba] = useState<Aba>(abaInicial);
+  const [aba, setAba] = useState<Aba>(() => { const alvo = new URLSearchParams(window.location.search).get("aba"); return alvo === "parceiros" || alvo === "produtos" ? alvo : abaInicial; });
   const [painel, setPainel] = useState<Painel>(null);
   const [confirmando, setConfirmando] = useState<Confirmacao>(null);
   const [processando, setProcessando] = useState(false);

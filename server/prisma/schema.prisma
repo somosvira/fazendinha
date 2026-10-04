@@ -661,7 +661,7 @@ model AuditoriaFinanceira {
 model Propriedade {
   id                    Int                           @id @default(autoincrement())
   nome                  String                        @unique
-  apelido               String? // rótulo curto p/ o seletor ("Sede", "Recria")
+  apelido               String? // compatibilidade histórica; a interface identifica sítios por nome
   cidade                String?
   uf                    String?
   principal             Boolean                       @default(false) // a default quando não há filtro
@@ -2315,13 +2315,18 @@ model PartidaProduto {
   produtoId      String
   produto        Produto                  @relation(fields: [produtoId], references: [id], onDelete: Restrict)
   codigo         String
+  nome           String?
   validade       DateTime?                @db.Date
+  lotePrincipalId String?
+  lotePrincipal   PartidaProduto?          @relation("AgrupamentoValidade", fields: [lotePrincipalId], references: [id], onDelete: Restrict)
+  aliases         PartidaProduto[]         @relation("AgrupamentoValidade")
   fabricante     String?
   origemRastreio String                   @default("INFORMADA")
   alocacoes      AlocacaoPartidaEstoque[]
   criadoEm       DateTime                 @default(now())
 
   @@unique([produtoId, codigo])
+  @@index([lotePrincipalId])
   @@schema("public")
 }
 

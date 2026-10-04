@@ -120,7 +120,7 @@ export const obterOperacao = (id: string) => req<Operacao>(`/financeiro/operacoe
 export const listarCompromissos = (periodo?: { inicio: string; fim: string }) => req<Compromisso[]>(`/financeiro/compromissos${periodo?.inicio && periodo.fim ? `?${new URLSearchParams(periodo)}` : ""}`);
 export const obterExtratoConta = (id: string) => req<MovimentoConta[]>(`/financeiro/contas/${id}/extrato`);
 export const criarOperacao = (input: unknown) => req<Operacao>("/financeiro/operacoes", { method: "POST", body: JSON.stringify(input) });
-export type AjusteEstoqueInput = { produtoId: string; quantidadeContada: number; saldoEsperado: number; observacao: string; centroCustoId?: string | null; partidas?: Array<{ partidaId?: string; codigo?: string; validade?: string | null; quantidade: number }> };
+export type AjusteEstoqueInput = { produtoId: string; quantidadeContada: number; saldoEsperado: number; observacao: string; centroCustoId?: string | null; partidas?: Array<{ partidaId?: string; codigo?: string; nome?: string; validade?: string | null; cienciaValidadeDesconhecida?: boolean; quantidade: number }> };
 export type AjusteEstoqueResultado = { id: string; operacaoId: string; saldoAnterior: number; quantidadeContada: number; diferenca: number };
 /** Ajuste por contagem de estoque: o servidor recalcula o saldo, recusa (CONFLITO/409) se ele mudou desde `saldoEsperado` e cria a Operacao AJUSTE_ESTOQUE + movimento físico. */
 export const registrarAjusteEstoque = (input: AjusteEstoqueInput) => req<AjusteEstoqueResultado>("/estoque/ajustes", { method: "POST", body: JSON.stringify(input) });
@@ -139,9 +139,9 @@ export const descartarRascunhoOperacao = () => {
   const publicar = prepararPublicacaoRascunho("escrita");
   return req<void>("/financeiro/operacoes/rascunho", { method: "DELETE" }).then(() => { publicar(null); });
 };
-export const confirmarRascunhoOperacao = (versao?: number) => {
+export const confirmarRascunhoOperacao = (versao?: number, chave?: string) => {
   const publicar = prepararPublicacaoRascunho("escrita");
-  return req<Operacao>("/financeiro/operacoes/rascunho/confirmacao", { method: "POST", body: JSON.stringify({ versao }) }).then((operacao) => { publicar(null); return operacao; });
+  return req<Operacao>("/financeiro/operacoes/rascunho/confirmacao", { method: "POST", body: JSON.stringify({ versao, chave }) }).then((operacao) => { publicar(null); return operacao; });
 };
 export const listarRelatoriosFinanceiros = () => req<RelatorioFinanceiro[]>("/financeiro/relatorios");
 export const obterRascunhoRelatorioFinanceiro = () => {

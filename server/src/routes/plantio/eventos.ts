@@ -5,8 +5,10 @@ import { montarTimeline, criarOperacao, editarOperacao, excluirOperacao, Plantio
 import { prisma } from "../../db.js";
 import { resolverEscopoEscrita } from "../../services/propriedade.js";
 import { getUsuario } from "../../middleware/permissao.js";
+import { EstoqueError } from "../../services/estoque/estoque.js";
 
 function handle(err: unknown): { status: 404 | 409 | 422 | 500; body: { error: string } } {
+  if (err instanceof EstoqueError) return { status: err.code === "NAO_ENCONTRADO" ? 404 : err.code === "VALIDACAO" ? 422 : 409, body: { error: err.message } };
   if (err instanceof PlantioEventoError) {
     const map = { NAO_ENCONTRADO: 404, MES_FECHADO: 409, VALIDACAO: 422 } as const;
     return { status: map[err.code], body: { error: err.message } };

@@ -6,7 +6,7 @@ export type AplicacaoSanitaria = {
   id: string; animalId: string; propriedadeId?: number | null; data: string; aplicadaEm: string | null; finalidade: "TRATAMENTO" | "VACINA" | "VERMIFUGO" | null;
   nomeProdutoAplicado: string; dose: string; unidadeDose: string | null; origemInsumo: string;
   operacaoServicoId: string | null; status: "VALIDO" | "ANULADO";
-  partidaCodigoSnapshot: string | null; partidaValidadeSnapshot: string | null; justificativaSemOrigem: string | null;
+  loteNome?: string | null; partidaCodigoSnapshot: string | null; partidaValidadeSnapshot: string | null; justificativaSemOrigem: string | null;
   tipoAplicacaoNomeSnapshot: string | null; responsavel: string | null;
   estadoCarenciaLeite: EstadoPrazo; estadoCarenciaCarne: EstadoPrazo;
   carenciaLeiteHoras: number | null; carenciaCarneHoras: number | null; justificativaCarenciaCarne: string | null;
@@ -38,7 +38,7 @@ export type AplicacaoInput = {
   ocorrenciaId?: string;
   origemInsumo: "BAIXA_ESTOQUE" | "INCLUSO_SERVICO" | "COMPRA_CONSUMO_DIRETO" | "SEM_ORIGEM_JUSTIFICADA";
   nomeProdutoAplicado: string; produtoId?: string; dose: string; unidadeDose: string; responsavel?: string; via?: string; referenciaCarencia?: string;
-  operacaoServicoId?: string; itemCompraDiretaId?: string; partidaId?: string; partidaCodigo?: string; partidaValidade?: string;
+  operacaoServicoId?: string; itemCompraDiretaId?: string; partidaId?: string; partidaCodigo?: string; partidaValidade?: string; cienciaValidadeDesconhecida?: boolean;
   justificativaSemOrigem?: string; estadoCarenciaLeite: EstadoPrazo; estadoCarenciaCarne: EstadoPrazo;
   documentacaoExcepcional?: boolean; motivoDocumentacaoExcepcional?: string;
   carenciaLeiteHoras: number | null; carenciaCarneHoras: number | null; justificativaCarenciaCarne?: string;

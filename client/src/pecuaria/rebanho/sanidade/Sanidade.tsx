@@ -161,7 +161,8 @@ function DetalheSanitario({ tipo, valor, abrir }: { tipo: string; valor: unknown
     {!!doenca.nome && <p><strong>Doença:</strong> {String(doenca.nome)}</p>}
     {!!tipoExame.nome && <p><strong>Tipo de exame:</strong> {String(tipoExame.nome)}</p>}
     {!!protocolo.nome && <p><strong>Protocolo:</strong> {String(protocolo.nome)} · versão {textoDetalhe(protocolo.versao)}</p>}
-    <dl className="grid gap-2 sm:grid-cols-2">{(dadosDetalhe[tipo] ?? []).map(([rotulo, chave]) => <div key={chave} className="rounded-lg bg-surface p-2"><dt className="text-ink-3">{rotulo}</dt><dd>{textoDetalhe(fato[chave])}</dd></div>)}</dl>
+    <dl className="grid gap-2 sm:grid-cols-2">{(dadosDetalhe[tipo] ?? []).map(([rotulo, chave]) => <div key={chave} className="rounded-lg bg-surface p-2"><dt className="text-ink-3">{rotulo}</dt><dd>{textoDetalhe(chave === "partidaCodigoSnapshot" ? fato.loteNome || fato[chave] : fato[chave])}</dd></div>)}</dl>
+    {!!fato.loteNome && typeof fato.partidaCodigoSnapshot === "string" && fato.partidaCodigoSnapshot !== fato.loteNome && !/^LOTE-[0-9a-f-]{36}$/i.test(fato.partidaCodigoSnapshot) && <p className="text-ink-3">Referência histórica do lote: {fato.partidaCodigoSnapshot}</p>}
     {!!movimento.id && <p><strong>Saída do estoque:</strong> <a className="underline" href={`/estoque?movimentoId=${encodeURIComponent(String(movimento.id))}${fato.propriedadeId ? `&propriedadeId=${encodeURIComponent(String(fato.propriedadeId))}` : ""}`}>Ver movimento</a></p>}
     {!!fato.operacaoServicoId && podeAcessarArea("financeiro") && <p><strong>Serviço:</strong> <a className="underline" href={`/financeiro/operacoes/${encodeURIComponent(String(fato.operacaoServicoId))}`}>Ver origem financeira</a></p>}
     {fato.valorProdutoAtribuido != null && <p><strong>Custo atribuído do medicamento:</strong> R$ {String(fato.valorProdutoAtribuido)}</p>}

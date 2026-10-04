@@ -79,12 +79,13 @@ describe("EstoqueContent — filtro inicial vindo do módulo", () => {
 });
 
 describe("EstoqueContent — saldos e custo médio", () => {
-  it("produto genético leva ao cadastro da sua identidade genética", async () => {
+  it("nome abre a ficha do produto e preserva o atalho da identidade genética", async () => {
     const materialId = uid(8);
     vi.stubGlobal("fetch", mockFetch({ saldos: [saldo({ nome: "Sêmen Zeus", materialGeneticoId: materialId })] }));
     render(<EstoqueContent />);
     const link = (await screen.findAllByRole("link", { name: "Sêmen Zeus" }))[0] as HTMLAnchorElement;
-    expect(link.getAttribute("href")).toBe(`/pecuaria/rebanho/cadastros?aba=material-genetico&material=${materialId}`);
+    expect(link.getAttribute("href")).toBe(`/estoque/produtos/${produtoId}`);
+    expect(screen.getAllByRole("link", { name: "Identidade genética" })[0].getAttribute("href")).toBe(`/pecuaria/rebanho/cadastros?aba=material-genetico&material=${materialId}`);
   });
   it("mostra custo médio e valor (saldo × médio); sem custo, '—'", async () => {
     vi.stubGlobal("fetch", mockFetch({ saldos: [

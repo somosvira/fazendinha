@@ -56,7 +56,7 @@ describe("tipos de uso e validação dos perfis", () => {
   it.each([["0", 0], ["100", 100], ["90,25", 90.25], ["", null]])("aceita MS %s preservando o significado", async (valor, esperado) => {
     montar(); fireEvent.change(screen.getByLabelText("Matéria seca (%)"), { target: { value: valor } });
     fireEvent.click(screen.getByLabelText("Sanitário"));
-    fireEvent.click(screen.getByLabelText("Controlar lotes e validade"));
+    fireEvent.click(screen.getByLabelText("Controlar lotes por validade"));
     fireEvent.click(screen.getByRole("button", { name: "Criar produto" }));
     await waitFor(() => expect(mocks.criarProduto).toHaveBeenCalledWith(expect.objectContaining({ usoNutricional: true, usoSanitario: true, usoAgricola: false, rastrearPartidas: true, perfilNutricional: { materiaSecaPercentual: esperado } })));
   });

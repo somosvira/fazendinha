@@ -90,7 +90,7 @@ export function RelatorioGerencial({ onVoltar }: { onVoltar?: () => void }) {
             Propriedade
             <select className="rounded-md border border-border bg-[color:var(--bg)] px-3 py-2 text-sm text-foreground" value={propriedadeId ?? ""} onChange={(e) => setPropriedadeId(e.target.value ? Number(e.target.value) : null)}>
               <option value="">Consolidado</option>
-              {ativas.map((p) => <option key={p.id} value={p.id}>{p.apelido ?? p.nome}</option>)}
+              {ativas.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
             </select>
           </label>
         )}

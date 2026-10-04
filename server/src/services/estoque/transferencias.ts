@@ -30,7 +30,7 @@ export async function transferirEstoque(input: { chave: string; produtoId: strin
     const movimentos = await tx.movimentoEstoque.findMany({ where: { produtoId: produto.id, status: statusSaldoEstoque, ...(input.origemId === principal ? { OR: [{ propriedadeId: input.origemId }, { propriedadeId: null }] } : { propriedadeId: input.origemId }) }, select: { tipo: true, quantidade: true } });
     const saldo = movimentos.reduce((s, m) => m.tipo === "SAIDA" ? s.minus(m.quantidade) : s.plus(m.quantidade), new Prisma.Decimal(0));
     if (saldo.lt(quantidade)) throw new EstoqueError("CONFLITO", "Saldo insuficiente no sítio de origem");
-    const partidas = await prepararPartidasTx(tx, { produtoId: produto.id, rastrearPartidas: produto.rastrearPartidas, propriedadeId: input.origemId, tipo: "SAIDA", quantidade, data, partidas: input.partidas, descarte: input.modo === "PERDA" });
+    const partidas = await prepararPartidasTx(tx, { produtoId: produto.id, rastrearPartidas: produto.rastrearPartidas, propriedadeId: input.origemId, tipo: "SAIDA", quantidade, data, partidas: input.partidas, descarte: true });
     const valores = valorSaidaDaBase(quantidade, await obterBaseCusto(tx, produto.id, input.origemId));
     const operacao = await tx.operacao.create({ data: { tipo: input.modo ? "AJUSTE_ESTOQUE" : "TRANSFERENCIA_ESTOQUE", status: "CONFIRMADA", propriedadeId: input.origemId, data, descricao: input.modo ? `Perda: ${input.motivo}` : input.motivo, valorTotal: valores.valorTotal, criadoPorId: usuarioId } });
     const destinos: Array<["SAIDA" | "ENTRADA", number]> = input.modo ? [["SAIDA", input.origemId]] : [["SAIDA", input.origemId], ["ENTRADA", input.destinoId]];

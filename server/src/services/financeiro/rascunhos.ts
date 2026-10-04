@@ -3,8 +3,9 @@ import type { z } from "zod";
 import { prisma } from "../../db.js";
 import { getStorage } from "../../lib/storage.js";
 import { confirmarRascunhoOperacao } from "./operacoes.js";
-import { FinanceiroError } from "./regras.js";
+import { auditar, FinanceiroError } from "./regras.js";
 import { operacaoSchema, type rascunhoOperacaoSchema } from "./schemas.js";
+import { includeOperacaoConfirmada } from "./idempotencia.js";
 
 type SalvarRascunhoInput = z.infer<typeof rascunhoOperacaoSchema> & {
   propriedadeId: number;
@@ -60,8 +61,19 @@ export async function descartarRascunho(propriedadeId: number, usuarioId: number
   return removido;
 }
 
-export async function confirmarRascunho(propriedadeId: number, usuarioId: number, versao?: number) {
+export async function confirmarRascunho(propriedadeId: number, usuarioId: number, versao?: number, chaveReenvio?: string) {
   return prisma.$transaction(async (tx) => {
+    if (chaveReenvio) {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`fin-rascunho-confirmacao:${chaveReenvio}`}))`;
+      const anterior = await tx.auditoriaFinanceira.findFirst({ where: { acao: "CONFIRMACAO_RASCUNHO_IDEMPOTENTE", estadoPosterior: { path: ["chave"], equals: chaveReenvio } } });
+      if (anterior) {
+        const resultado = anterior.estadoPosterior as { propriedadeId: number; versao: number | null };
+        if (anterior.usuarioId !== usuarioId || resultado.propriedadeId !== propriedadeId || resultado.versao !== (versao ?? null)) throw new FinanceiroError("CONFLITO", "Chave de reenvio usada com outros dados");
+        const atual = await tx.rascunhoOperacao.findUnique({ where: chave(propriedadeId, usuarioId) });
+        if (atual) throw new FinanceiroError("CONFLITO", "Já existe uma confirmação com esta chave. Confira o histórico antes de confirmar o novo rascunho.");
+        return tx.operacao.findUniqueOrThrow({ where: { id: anterior.entidadeId }, include: includeOperacaoConfirmada });
+      }
+    }
     const rascunho = await tx.rascunhoOperacao.findUnique({
       where: chave(propriedadeId, usuarioId),
       include: { documentos: true },
@@ -75,12 +87,14 @@ export async function confirmarRascunho(propriedadeId: number, usuarioId: number
     if (!validacao.success) {
       throw new FinanceiroError("VALIDACAO", validacao.error.issues[0]?.message ?? "Preencha todos os campos obrigatórios");
     }
-    const operacao = await confirmarRascunhoOperacao(tx, { ...validacao.data, propriedadeId, usuarioId });
+    const operacao = await confirmarRascunhoOperacao(tx, { ...validacao.data, ...(chaveReenvio ? { chave: chaveReenvio } : {}), propriedadeId, usuarioId });
     await tx.documentoFinanceiro.updateMany({
       where: { rascunhoId: rascunho.id },
       data: { rascunhoId: null, operacaoId: operacao.id },
     });
     await tx.rascunhoOperacao.delete({ where: { id: rascunho.id } });
+    if (chaveReenvio) await auditar(tx, { entidade: "Operacao", entidadeId: operacao.id, acao: "CONFIRMACAO_RASCUNHO_IDEMPOTENTE", usuarioId,
+      depois: { chave: chaveReenvio, propriedadeId, versao: versao ?? null } });
     return tx.operacao.findUniqueOrThrow({
       where: { id: operacao.id },
       include: {

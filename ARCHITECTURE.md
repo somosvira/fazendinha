@@ -341,6 +341,18 @@ Não usamos `react-router`. O `App.tsx` mantém `useState<Tab>` e `router.ts` si
 
 ## 6. Banco de dados (Postgres / Neon)
 
+### Lotes do produto por validade (03/10/2026)
+
+`PartidaProduto` representa um grupo de Produto + validade, independente de fornecedor. Há uma raiz por data e uma única raiz de validade não informada por Produto, garantidas por índices parciais na migration `20261003180000_lotes_produto_validade`. O nome é opcional e editável com auditoria; não é chave. Códigos anteriores permanecem como referências técnicas históricas e códigos novos são gerados pelo servidor. Entradas novas escolhem explicitamente uma data ou `null`, somam linhas da mesma validade e conservam o nome do grupo existente.
+
+Partidas anteriores da mesma validade tornam-se aliases por `lotePrincipalId`, com raiz escolhida por `criadoEm,id`. A migration preserva IDs, alocações, snapshots e auditorias. Leituras e verificações somam raiz + aliases por sítio (ou consolidado), novas escritas apontam à raiz e estornos copiam as alocações originais. O banco impede ciclos, aliases de outro Produto/validade e mudança da raiz que invalidaria o histórico. O lock de Produto serializa a criação do grupo e o consumo concorrente. Cadastro/rascunho não cria lote; ativar rastreio sem movimentos também não cria. Grupos sem alocação no escopo não são apresentados; grupos esgotados com histórico continuam consultáveis.
+
+Saídas operacionais aceitam validade até o fim do dia informado e exigem `cienciaValidadeDesconhecida` explícita quando a validade é desconhecida, com auditoria. Transferência física, perda e estorno preservam rastreabilidade sem exigir ciência de uso. Documentação sanitária excepcional de fato já ocorrido com lote vencido mantém sua justificativa e auditoria. Identificação de estoque sem validade redistribui para uma validade conhecida sem efeito líquido em quantidade/valor nem mudança do custo médio do Produto.
+
+A ficha `GET /api/estoque/produtos/:id` expõe o cadastro, saldo do escopo, custo atual do Produto e contagens de lotes. `/lotes`, `/origens` e `/movimentos` paginam o histórico físico por Produto/grupo; `/api/estoque/partidas` permanece compatível, acrescentando nome e aliases. `PATCH /api/estoque/partidas/:id` renomeia a raiz com `lancar` e auditoria. Fornecedor é derivado das entradas/compras, e saídas não inventam fornecedor. O servidor oculta custos sem área Financeiro + `verValores` e links financeiros sem acesso à área, mantendo o mesmo método de custo médio por Produto e sítio.
+
+`GET /api/estoque/produtos/:id/lotes/previa?validade=YYYY-MM-DD|nao-informada` resolve o grupo global antes da entrada, inclusive quando só tem histórico em outro sítio. Nas consultas filtradas por grupo, a quantidade é a soma das alocações daquele grupo; `quantidadeMovimento` conserva o total original para contexto. Nas origens e no histórico de movimentos, `valorTotal` acompanha esse recorte proporcional do valor já gravado e `valorTotalMovimento` conserva o valor original, ambos protegidos pela permissão de valores; isso não cria método de custeio por lote. A confirmação financeira aceita `chave` opcional para manter clientes anteriores: mesma chave, conteúdo normalizado, autor e sítio recuperam a mesma operação sem novos movimentos; dados diferentes são recusados. A confirmação do rascunho aceita `{versao,chave}`, recupera a operação após remoção do rascunho e rejeita a reutilização em nova versão/conteúdo. A UI conserva a tentativa no retry de rede, sem salvar outro rascunho antes de recuperar a confirmação.
+
 ### Conexão
 
 - `schema.prisma`: `url = env("DATABASE_URL")` (**pooled**, `-pooler` no host) e `directUrl = env("DIRECT_URL")` (**direct**).
