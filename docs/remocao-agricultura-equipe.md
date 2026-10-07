@@ -1,6 +1,6 @@
 # Retirada de agricultura e equipe — 03/10/2026
 
-Base atualizada em 07/10/2026: `main` (`beada40`) e V3 final (`72d5866`, incorporada pelo merge `757ae0b` do PR #308). O #308 foi mesclado em `claude/zen-fermat-ypdneu`, ainda não na `main` consultada; o PR #310 aponta para `main` e inclui a V3 enquanto ela não estiver nessa base. Esta limpeza não implica homologação da V3 nem altera marcações do roteiro manual.
+Base atualizada em 07/10/2026: exclusivamente `main@517f33f`, que recebeu a V3 pelo PR #311. O PR #310 incorpora essa `main` e aponta para ela; seu diff não inclui mais as entregas da V3 como novidades. Esta limpeza não implica homologação da V3 nem altera marcações do roteiro manual.
 
 ## Resultado
 
@@ -74,3 +74,11 @@ Validação desta conciliação:
 - A cadeia também passou na ordem de instalação desde zero, com a remoção anterior à migration de ciclos. Os dois bancos descartáveis foram removidos ao finalizar a validação.
 
 Homologação visual/manual completa da V3 e carga IDEAGRI continuam fora desta conciliação; nenhuma marcação do guia foi aprovada ou resetada.
+
+### Conferência final exclusivamente com a main — 07/10/2026
+
+Após o PR #311, `origin/main` avançou para `517f33f`. A integração desse commit foi sem conflitos e sem alteração na árvore de código previamente validada. A partir desta atualização, somente `main` será usada como base de integração e de revisão; branches de versões anteriores não são fontes para novas conciliações.
+
+A comparação direta confirmou código operacional da pecuária e 55 definições Prisma desse schema idênticos à `main`. Operações, rascunhos, regras financeiras, contas e telas centrais de operações/compromissos/contas/relatórios continuam idênticos; alterações financeiras restantes retiram apenas filtros, contadores e contratos agrícolas. Nenhum arquivo de financeiro/pecuária é excluído. Todas as migrations herdadas da `main` permanecem byte a byte; a única migration acrescentada é a remoção já validada. As 23 tabelas retiradas coincidem exatamente com o escopo Agricultura/Equipe; nenhuma coluna física dos modelos mantidos é removida além dos dois campos `usoAgricola`, e só o default de `Usuario.areas` muda.
+
+Não foi necessário repetir as suítes: o merge não modificou o código nem as migrations cobertos pelas execuções descritas acima. Esta rodada acrescenta conferência estrutural contra a `main` atual e atualização documental, sem aplicar migrations ou alterar bancos.

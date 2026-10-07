@@ -1,4 +1,4 @@
-> Estado desta branch em 07/10/2026: agricultura e equipe/ponto removidos sobre a V3 final (`72d5866`), conciliada com `main` (`beada40`). Seções antigas desses módulos são referência histórica; não reintroduzir rotas, modelos ou seeds. Ver [remoção de agricultura e equipe](./docs/remocao-agricultura-equipe.md).
+> Estado desta branch em 07/10/2026: agricultura e equipe/ponto removidos sobre `main@517f33f`, que já contém a V3. `main` é a única base de integração e comparação. Seções antigas desses módulos são referência histórica; não reintroduzir rotas, modelos ou seeds. Ver [remoção de agricultura e equipe](./docs/remocao-agricultura-equipe.md).
 
 # ARCHITECTURE.md — Arquitetura do Sistema
 

@@ -2,11 +2,13 @@
 
 ## Integração da remoção com a V3 final — 07/10/2026
 
-O PR #305 entrou na `main` (`beada40`). O PR #308 foi mesclado em 07/10 na sua base `claude/zen-fermat-ypdneu` (`757ae0b`), incorporando a V3 final `72d5866`; essa mesclagem ainda não pertence à `main` consultada nesta rodada. O PR #310 incorpora ambas as bases e passa a apontar para `main`. Enquanto a V3 não entrar nessa base, o diff do #310 também inclui suas entregas.
+O PR #311 incorporou a V3 à `main` em `517f33f`, em 07/10/2026. O PR #310 foi atualizado exclusivamente a partir dessa `main`, que passa a ser a única base de integração e comparação. A incorporação desse merge não mudou a árvore de código já validada; o diff do #310 agora contém somente a limpeza e seus ajustes/documentação, sem incluir as entregas da V3 como novidades.
 
 A retirada de agricultura/equipe mantém integralmente o código operacional da pecuária final: ciclos e participantes, execução de etapas com desvios auditados, ocorrências, exames, procedimentos de Serviço, peso, nutrição, genética, carências, lotes por validade e permissões. A migration aditiva de ciclos `20261006180000_rodadas_protocolos_desvios` permanece. O guia final e suas marcações são preservados; o cenário exclusivamente agrícola é não aplicável à composição sem agricultura, conforme o próprio guia.
 
 As decisões finais da V3 substituem ajustes antigos desta limpeza: referência técnica permanece apenas no histórico, sem voltar aos formulários, e a ativação de lotes usa a opção comum de cadastro/edição com prévia e confirmação. A consulta de lotes acontece pela ficha do Produto. Esta integração não declara homologação manual nem entrega de carga IDEAGRI. Evidências da conciliação ficam em [remoção de agricultura e equipe](../remocao-agricultura-equipe.md).
+
+Conferência contra `main@517f33f`: todo o código operacional da pecuária e as 55 definições de modelos/enums de seu schema permanecem idênticos. O núcleo de operações, contas, compromissos, estornos e relatórios financeiros permanece; diferenças no financeiro se limitam às referências agrícolas retiradas. Todas as migrations herdadas da `main` são preservadas byte a byte. Colunas físicas dos modelos mantidos continuam iguais, exceto `Categoria.usoAgricola`, `Produto.usoAgricola` e a normalização explícita de `Usuario.areas`.
 
 ### Correção da troca de dieta — 07/10/2026
 
