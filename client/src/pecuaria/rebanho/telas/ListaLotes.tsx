@@ -138,7 +138,7 @@ export function ListaLotes({ podeLancar = true, onAbrirLote }: { podeLancar?: bo
         <label className="flex items-center gap-2 text-sm font-medium">Sítio
           <select aria-label="Filtrar por sítio" disabled={processando} value={filtroSitio} onChange={(e) => setFiltroSitio(e.target.value)} className="rounded-lg border border-border bg-white p-2 text-sm font-normal">
             <option value="">Todos</option>
-            {sitiosAtivos.map((s) => <option key={s.id} value={s.id}>{s.apelido || s.nome}</option>)}
+            {sitiosAtivos.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}
           </select>
         </label>
       </BarraFiltros>
@@ -155,7 +155,7 @@ export function ListaLotes({ podeLancar = true, onAbrirLote }: { podeLancar?: bo
         <label className="flex items-center gap-2 text-sm font-medium">Sítio
           <select aria-label="Filtrar histórico por sítio" value={filtroSitioHistorico} onChange={(e) => { setFiltroSitioHistorico(e.target.value); setFiltroLoteHistorico(""); }} className="rounded-lg border border-border bg-white p-2 text-sm font-normal">
             <option value="">Todos</option>
-            {sitiosAtivos.map((s) => <option key={s.id} value={s.id}>{s.apelido || s.nome}</option>)}
+            {sitiosAtivos.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}
           </select>
         </label>
         <label className="flex items-center gap-2 text-sm font-medium">Lote

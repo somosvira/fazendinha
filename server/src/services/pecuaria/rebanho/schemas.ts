@@ -109,6 +109,8 @@ export const tipoBaixaSchema = z.enum(["VENDA", "ABATE", "MORTE", "DOACAO", "EXT
 export const classeMotivoBaixaSchema = z.enum(["DESCARTE_VOLUNTARIO", "DESCARTE_INVOLUNTARIO", "MORTE"]);
 
 export const baixaSchema = z.object({
+  cienciaSanitaria: z.boolean().optional(),
+  justificativaSanitaria: z.string().trim().min(5).max(500).nullish(),
   animalId: z.string().uuid().optional(),
   data: dataNaoFutura,
   tipo: tipoBaixaSchema,
@@ -244,6 +246,7 @@ export const listarFiltrosSchema = z.object({
 export type ListarFiltrosInput = z.infer<typeof listarFiltrosSchema>;
 
 export const criarLoteSchema = z.object({
+  centroCustoId: z.string().uuid().nullish(),
   nome: z.string().trim().min(1).max(120),
   propriedadeId: propriedadeIdObrigatorio,
   observacao: z.string().trim().max(500).nullable().optional(),
@@ -251,6 +254,7 @@ export const criarLoteSchema = z.object({
 export type CriarLoteInput = z.infer<typeof criarLoteSchema>;
 
 export const editarLoteSchema = z.object({
+  centroCustoId: z.string().uuid().nullish(),
   nome: z.string().trim().min(1).max(120).optional(),
   ativo: z.boolean().optional(),
   observacao: z.string().trim().max(500).nullable().optional(),

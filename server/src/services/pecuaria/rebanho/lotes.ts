@@ -6,6 +6,7 @@ import { agregarPesoLote, resumoPeso, type ItemPesoLote } from "./peso.calc.js";
 import type { CriarLoteInput, EditarLoteInput } from "./schemas.js";
 
 export interface LoteDTO {
+  centroCustoId?: string | null;
   id: string;
   nome: string;
   propriedadeId: number;
@@ -45,6 +46,7 @@ export async function listarLotes(propriedadeId: number | null, incluirInativos 
   return lotes.map((l) => ({
     id: l.id,
     nome: l.nome,
+    centroCustoId: l.centroCustoId,
     propriedadeId: l.propriedadeId,
     propriedade: l.propriedade,
     ativo: l.ativo,
@@ -57,7 +59,7 @@ export async function buscarLote(id: string, escopo: number | null): Promise<Lot
   const lote = await prisma.lote.findUnique({ where: { id }, include: { propriedade: { select: { id: true, nome: true } } } });
   if (!lote || (escopo != null && lote.propriedadeId !== escopo)) throw new RebanhoError("NAO_ENCONTRADO", "Lote não encontrado");
   const contagem = await contarAnimaisAtivosPorLote(prisma, [id]);
-  return { id: lote.id, nome: lote.nome, propriedadeId: lote.propriedadeId, propriedade: lote.propriedade, ativo: lote.ativo, observacao: lote.observacao, animaisAtivos: contagem.get(id) ?? 0 };
+  return { id: lote.id, nome: lote.nome, centroCustoId: lote.centroCustoId, propriedadeId: lote.propriedadeId, propriedade: lote.propriedade, ativo: lote.ativo, observacao: lote.observacao, animaisAtivos: contagem.get(id) ?? 0 };
 }
 
 export async function criarLote(input: CriarLoteInput, usuarioId: number | null): Promise<LoteDTO> {
@@ -65,14 +67,15 @@ export async function criarLote(input: CriarLoteInput, usuarioId: number | null)
   if (!propriedade) throw new RebanhoError("NAO_ENCONTRADO", "Propriedade não encontrada ou inativa", "propriedadeId");
 
   const criado = await prisma.$transaction(async (tx) => {
+    if (input.centroCustoId && !(await tx.centroCusto.findFirst({ where: { id: input.centroCustoId, ativo: true } }))) throw new RebanhoError("VALIDACAO", "Centro de custo inativo ou inexistente", "centroCustoId");
     const lote = await tx.lote.create({
-      data: { nome: input.nome, propriedadeId: input.propriedadeId, observacao: input.observacao ?? null, criadoPorId: usuarioId },
+      data: { nome: input.nome, propriedadeId: input.propriedadeId, centroCustoId: input.centroCustoId, observacao: input.observacao ?? null, criadoPorId: usuarioId },
     }).catch((e) => traduzirConflitoUnico(e, { nome: `Já existe um lote "${input.nome}" nesse sítio` }));
     await auditar(tx, { entidade: "Lote", entidadeId: lote.id, acao: "CADASTRO", usuarioId, depois: lote });
     return lote;
   });
 
-  return { id: criado.id, nome: criado.nome, propriedadeId: criado.propriedadeId, propriedade: { id: propriedade.id, nome: propriedade.nome }, ativo: criado.ativo, observacao: criado.observacao, animaisAtivos: 0 };
+  return { id: criado.id, nome: criado.nome, centroCustoId: criado.centroCustoId, propriedadeId: criado.propriedadeId, propriedade: { id: propriedade.id, nome: propriedade.nome }, ativo: criado.ativo, observacao: criado.observacao, animaisAtivos: 0 };
 }
 
 export async function editarLote(id: string, input: EditarLoteInput, usuarioId: number | null, escopo: number | null = null): Promise<LoteDTO> {
@@ -80,6 +83,7 @@ export async function editarLote(id: string, input: EditarLoteInput, usuarioId: 
   if (!existente || (escopo != null && existente.propriedadeId !== escopo)) throw new RebanhoError("NAO_ENCONTRADO", "Lote não encontrado");
 
   const atualizado = await prisma.$transaction(async (tx) => {
+    if (input.centroCustoId && input.centroCustoId !== existente.centroCustoId && !(await tx.centroCusto.findFirst({ where: { id: input.centroCustoId, ativo: true } }))) throw new RebanhoError("VALIDACAO", "Centro de custo inativo ou inexistente", "centroCustoId");
     if (input.ativo === false && existente.ativo) {
       // FOR UPDATE espera quem está pondo animal no lote (FOR SHARE em travarLoteAtivo) terminar,
       // e a contagem abaixo, lida depois, já enxerga esse animal
@@ -93,14 +97,14 @@ export async function editarLote(id: string, input: EditarLoteInput, usuarioId: 
 
     const salvo = await tx.lote.update({
       where: { id },
-      data: { nome: input.nome ?? undefined, ativo: input.ativo ?? undefined, observacao: input.observacao === undefined ? undefined : input.observacao },
+      data: { nome: input.nome ?? undefined, ativo: input.ativo ?? undefined, centroCustoId: input.centroCustoId, observacao: input.observacao === undefined ? undefined : input.observacao },
     }).catch((e) => traduzirConflitoUnico(e, { nome: `Já existe um lote "${input.nome}" nesse sítio` }));
     await auditar(tx, { entidade: "Lote", entidadeId: id, acao: "EDICAO", usuarioId, antes: existente, depois: salvo });
     return salvo;
   });
 
   const contagem = await contarAnimaisAtivosPorLote(prisma, [id]);
-  return { id: atualizado.id, nome: atualizado.nome, propriedadeId: atualizado.propriedadeId, propriedade: existente.propriedade, ativo: atualizado.ativo, observacao: atualizado.observacao, animaisAtivos: contagem.get(id) ?? 0 };
+  return { id: atualizado.id, nome: atualizado.nome, centroCustoId: atualizado.centroCustoId, propriedadeId: atualizado.propriedadeId, propriedade: existente.propriedade, ativo: atualizado.ativo, observacao: atualizado.observacao, animaisAtivos: contagem.get(id) ?? 0 };
 }
 
 // ---------- resumo do lote (GMD, peso, categorias — só os animais ativos que estão nele hoje) ----------

@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { FormBaixa } from "./FormBaixa";
+import { consultarCarencia } from "../sanidade/api";
 import { darBaixaAnimal } from "../api";
 import type { AnimalFicha, CatalogoMotivoBaixa } from "../types";
 
@@ -9,6 +10,7 @@ vi.mock("../api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../api")>()),
   darBaixaAnimal: vi.fn(),
 }));
+vi.mock("../sanidade/api", () => ({ consultarCarencia: vi.fn().mockResolvedValue({ leite: { estado: "NENHUMA" }, carne: { estado: "NENHUMA" } }) }));
 
 afterEach(cleanup);
 beforeEach(() => vi.clearAllMocks());
@@ -84,6 +86,7 @@ describe("FormBaixa", () => {
     fireEvent.change(screen.getByLabelText(/^Tipo/), { target: { value: "ABATE" } });
     fireEvent.change(screen.getByLabelText("Motivo do catálogo"), { target: { value: "mi1" } });
     fireEvent.change(screen.getByLabelText("Observação"), { target: { value: "Lote de descarte" } });
+    await waitFor(() => expect((screen.getByRole("button", { name: "Confirmar baixa" }) as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(screen.getByRole("button", { name: "Confirmar baixa" }));
     await waitFor(() => expect(darBaixaAnimal).toHaveBeenCalledWith("animal-1", { data: "2026-09-12", tipo: "ABATE", motivoId: "mi1", observacao: "Lote de descarte" }));
     await waitFor(() => expect(onSalvo).toHaveBeenCalled());
@@ -92,7 +95,22 @@ describe("FormBaixa", () => {
   it("sem motivo escolhido envia motivoId nulo", async () => {
     vi.mocked(darBaixaAnimal).mockResolvedValue({ ...animal, situacao: "BAIXADO" });
     render(<FormBaixa animal={animal} motivos={motivos} onSalvo={vi.fn()} onFechar={vi.fn()} />);
+    await waitFor(() => expect((screen.getByRole("button", { name: "Confirmar baixa" }) as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(screen.getByRole("button", { name: "Confirmar baixa" }));
     await waitFor(() => expect(darBaixaAnimal).toHaveBeenCalledWith("animal-1", expect.objectContaining({ tipo: "VENDA", motivoId: null })));
   });
+});
+it("consulta a data da baixa e invalida ciência ao alterar a data", async () => {
+  vi.mocked(consultarCarencia).mockResolvedValue({ leite: { estado: "NAO_INFORMADO" }, carne: { estado: "NENHUMA" } });
+  render(<FormBaixa animal={animal} motivos={motivos} onSalvo={vi.fn()} onFechar={vi.fn()} />);
+  const ciencia = await screen.findByRole("switch");
+  expect(ciencia).toHaveProperty("checked", false);
+  fireEvent.click(screen.getByRole("button", { name: "Confirmar baixa" }));
+  expect(darBaixaAnimal).not.toHaveBeenCalled();
+  expect(document.getElementById("baixa-ciencia-erro")).toBeTruthy();
+  fireEvent.click(ciencia);
+  fireEvent.change(screen.getByLabelText("Justificativa para a baixa diante das restrições"), { target: { value: "Baixa histórica conferida" } });
+  fireEvent.change(screen.getByLabelText(/Data da baixa/), { target: { value: "2026-09-13" } });
+  await waitFor(() => expect(consultarCarencia).toHaveBeenLastCalledWith("animal-1", "2026-09-13"));
+  expect(await screen.findByRole("switch")).toHaveProperty("checked", false);
 });

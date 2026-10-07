@@ -18,10 +18,11 @@ vi.mock("../api", async (importOriginal) => ({
   listarMovimentacoes: vi.fn(),
   desfazerMovimentacao: vi.fn(),
 }));
+vi.mock("../../../estoque/api", async (importOriginal) => ({ ...(await importOriginal<typeof import("../../../estoque/api")>()), listarCentrosCusto: vi.fn().mockResolvedValue([]) }));
 
 vi.mock("../../../api/propriedades", () => ({
   usePropriedades: () => ({
-    data: [{ id: 1, nome: "Sede", apelido: null, cidade: null, uf: null, principal: true, ativo: true, ordem: 0 }],
+    data: [{ id: 1, nome: "Sede", apelido: "Apelido antigo", cidade: null, uf: null, principal: true, ativo: true, ordem: 0 }],
     loading: false,
     recarregar: vi.fn(),
   }),
@@ -41,7 +42,7 @@ const primeiro = (role: string, name: string | RegExp) => screen.getAllByRole(ro
 
 const catalogosMock: Catalogos = {
   racas: [], motivosBaixa: [],
-  propriedades: [{ id: 1, nome: "Sede", apelido: null }],
+  propriedades: [{ id: 1, nome: "Sede", apelido: "Apelido antigo" }],
   lotes: [{ id: "l1", nome: "Lote 1", propriedadeId: 1 }, { id: "l2", nome: "Lote 2", propriedadeId: 1 }],
 };
 
@@ -99,7 +100,7 @@ describe("Lotes do rebanho", () => {
     expect((within(painel).getByLabelText("Sítio") as HTMLSelectElement).value).toBe("1");
     fireEvent.change(within(painel).getByLabelText("Nome do lote"), { target: { value: "Lote novo" } });
     fireEvent.click(within(painel).getByRole("button", { name: "Criar lote" }));
-    await waitFor(() => expect(criarLote).toHaveBeenCalledWith({ nome: "Lote novo", propriedadeId: 1, observacao: null }));
+    await waitFor(() => expect(criarLote).toHaveBeenCalledWith({ nome: "Lote novo", propriedadeId: 1, observacao: null, centroCustoId: null }));
     await waitFor(() => expect(listarLotes).toHaveBeenCalledTimes(2));
   });
 
@@ -111,7 +112,7 @@ describe("Lotes do rebanho", () => {
     expect((within(painel).getByLabelText("Sítio") as HTMLInputElement).disabled).toBe(true);
     fireEvent.change(within(painel).getByLabelText("Nome do lote"), { target: { value: "Lote 1 — renomeado" } });
     fireEvent.click(within(painel).getByRole("button", { name: "Salvar lote" }));
-    await waitFor(() => expect(editarLote).toHaveBeenCalledWith("l1", { nome: "Lote 1 — renomeado", observacao: null }));
+    await waitFor(() => expect(editarLote).toHaveBeenCalledWith("l1", { nome: "Lote 1 — renomeado", observacao: null, centroCustoId: null }));
   });
 
   it("desativar avisa os animais ativos e pede confirmação; reativar não pede", async () => {

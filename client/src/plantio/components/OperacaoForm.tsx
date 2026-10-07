@@ -1,3 +1,4 @@
+import { SelecaoPartidas, conferirDistribuicaoPartidas, type DistribuicaoPartida } from "../../estoque/SelecaoPartidas";
 import { useEffect, useMemo, useState } from "react";
 import type { Talhao, TipoOperacao, PragaDoenca } from "../types";
 import { registrarOperacao, type OperacaoInput } from "../api";
@@ -71,6 +72,7 @@ export function OperacaoForm({ talhaoId, talhao, dominioFixo, onFechar, onSalvo 
   const [data, setData] = useState(HOJE);
   const [praga, setPraga] = useState<PragaDoenca>("FERRUGEM");
   const [produto, setProduto] = useState("");
+  const [partidas, setPartidas] = useState<DistribuicaoPartida[]>([]);
   const [produtoId, setProdutoId] = useState<string>("");
   const [quantidadeTotal, setQuantidadeTotal] = useState("");
   const [centroCustoId, setCentroCustoId] = useState<string>("");
@@ -101,7 +103,7 @@ export function OperacaoForm({ talhaoId, talhao, dominioFixo, onFechar, onSalvo 
 
   // Baixa de estoque — produto do estoque opcional, com estimativa dose × área.
   const { data: produtos } = useProdutosEstoque({ ativo: true, uso: "agricola" });
-  // Produtos de uso agrícola (categoria). A baixa só acontece se o produto tiver
+  // Produtos de uso agrícola. A baixa só acontece se o produto tiver
   // estoque no sítio do talhão — decisão do servidor, não do cadastro.
   const produtosAgricolas = useMemo(
     () => produtos.filter((p) => p.ativo).sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),
@@ -130,6 +132,7 @@ export function OperacaoForm({ talhaoId, talhao, dominioFixo, onFechar, onSalvo 
   })();
 
   function selecionarProduto(id: string) {
+    setPartidas([]);
     setProdutoId(id);
     const p = produtosAgricolas.find((x) => String(x.id) === id);
     if (p) {
@@ -149,6 +152,7 @@ export function OperacaoForm({ talhaoId, talhao, dominioFixo, onFechar, onSalvo 
   async function salvar() {
     setSalvando(true); setErro(null);
     try {
+      if (produtoSelecionado?.rastrearPartidas) conferirDistribuicaoPartidas(partidas, Number(quantidadeTotal || baixaEstimada?.valor || 0), true);
       // Detalhes específicos do domínio que não cabem no body canônico do backend
       // (NPK, calda, incidência, colheita) viram notas no campo observação, pra não
       // se perder até existir endpoint dedicado.
@@ -179,6 +183,7 @@ export function OperacaoForm({ talhaoId, talhao, dominioFixo, onFechar, onSalvo 
         dosePorHectare: doseValorNumerico != null ? dosePorHectare : undefined,
         pragaAlvo: dominio === "fitossanidade" ? praga : undefined,
         produtoId: produtoId || null,
+        ...(produtoSelecionado?.rastrearPartidas ? { partidas: partidas.map((p) => ({ partidaId: p.partidaId!, quantidade: Number(p.quantidade), cienciaValidadeDesconhecida: p.cienciaValidadeDesconhecida })) } : {}),
         quantidadeTotal: quantidadeTotal.trim() ? Number(quantidadeTotal.replace(",", ".")) : null,
         centroCustoId: centroCustoId || null,
       });
@@ -327,12 +332,12 @@ export function OperacaoForm({ talhaoId, talhao, dominioFixo, onFechar, onSalvo 
           (dominio === "nutricao" && (tipo === "ADUBACAO_SOLO" || tipo === "ADUBACAO_FOLIAR" || tipo === "CALAGEM" || tipo === "GESSAGEM")) ? (
             <>
               <RebField label="Produto do estoque">
-                <select className="rb-field-select" value={produtoId} onChange={(e) => selecionarProduto(e.target.value)}>
+                <select className="rb-field-select" value={produtoId} onChange={(e) => { setPartidas([]); selecionarProduto(e.target.value); }}>
                   <option value="">— sem baixa de estoque —</option>
                   {produtosAgricolas.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
                 </select>
               </RebField>
-              <p className="-mt-2.5 text-xs text-ink-3">Só produtos de categorias marcadas como uso agrícola aparecem aqui (Configurações → Categorias).</p>
+              <p className="-mt-2.5 text-xs text-ink-3">Só produtos com tipo de uso Agrícola aparecem aqui. Configure o uso no cadastro do Produto.</p>
               {produtoSelecionado && (
                 <>
                   {baixaEstimada && baixaEstimada.erro && (
@@ -343,6 +348,7 @@ export function OperacaoForm({ talhaoId, talhao, dominioFixo, onFechar, onSalvo 
                       Baixa estimada: <b>{baixaEstimada.valor.toLocaleString("pt-BR", { maximumFractionDigits: 3 })} {baixaEstimada.unidade}</b>
                     </p>
                   )}
+                  {produtoSelecionado.rastrearPartidas && <SelecaoPartidas produtoId={produtoId} dataFato={data} quantidade={quantidadeTotal || (baixaEstimada?.valor != null ? String(baixaEstimada.valor) : "")} unidade={produtoSelecionado.unidade} saida valor={partidas} onChange={setPartidas} />}
                   <RebField label="Quantidade total (sobrescreve a estimativa)">
                     <input type="number" value={quantidadeTotal} onChange={(e) => setQuantidadeTotal(e.target.value)} placeholder={baixaEstimada?.valor != null ? String(baixaEstimada.valor) : "Ex.: 120"} />
                   </RebField>

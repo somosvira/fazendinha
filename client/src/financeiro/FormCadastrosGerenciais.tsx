@@ -21,8 +21,6 @@ function erroDaApi(erro: unknown, setErros: (erros: Erros) => void, setErroGeral
 export function FormCategoria({ categoria, ordemInicial, onSalvo, onFechar }: { categoria: Categoria | null; ordemInicial: number; onSalvo: () => Promise<void> | void; onFechar: () => void }) {
   const [nome, setNome] = useState(categoria?.nome ?? "");
   const [classificacao, setClassificacao] = useState<"" | "CUSTEIO" | "INVESTIMENTO">(categoria?.classificacao ?? "");
-  const [usoAgricola, setUsoAgricola] = useState(categoria?.usoAgricola ?? false);
-  const [usoGenetico, setUsoGenetico] = useState(categoria?.usoGenetico ?? false);
   const [erros, setErros] = useState<Erros>({});
   const [erroGeral, setErroGeral] = useState("");
   const [salvando, setSalvando] = useState(false);
@@ -33,7 +31,7 @@ export function FormCategoria({ categoria, ordemInicial, onSalvo, onFechar }: { 
     if (nome.trim().length < 2) novosErros.nome = "Informe um nome com pelo menos 2 caracteres";
     setErros(novosErros); if (Object.keys(novosErros).length || emCurso.current) return;
     emCurso.current = true; setSalvando(true); setErroGeral("");
-    const dados = { nome: nome.trim(), classificacao: classificacao || null, ordem: categoria?.ordem ?? ordemInicial, usoAgricola, usoGenetico };
+    const dados = { nome: nome.trim(), classificacao: classificacao || null, ordem: categoria?.ordem ?? ordemInicial };
     try {
       if (!categoria) await criarCategoria(dados);
       else await atualizarCategoria(categoria.id, dados);
@@ -48,19 +46,7 @@ export function FormCategoria({ categoria, ordemInicial, onSalvo, onFechar }: { 
       <ErrorBox erro={erroGeral || null} />
       <CampoFormulario id="categoria-nome" rotulo="Nome da categoria" obrigatorio erro={erros.nome}>{(p) => <input {...p} required maxLength={80} value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Insumos" className={classeInput} />}</CampoFormulario>
       <CampoFormulario id="categoria-classificacao" rotulo="Classificação" ajuda="A direção financeira continua sendo definida pelo tipo da operação.">{(p) => <select {...p} value={classificacao} onChange={(e) => setClassificacao(e.target.value as typeof classificacao)} className={classeInput}><option value="">Não classificada</option><option value="CUSTEIO">Custeio</option><option value="INVESTIMENTO">Investimento</option></select>}</CampoFormulario>
-      <fieldset className="rounded-lg border border-border p-3">
-        <legend className="px-1 text-sm font-medium">Uso dos produtos desta categoria</legend>
-        <div className="grid gap-2">
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={usoAgricola} onChange={(e) => setUsoAgricola(e.target.checked)} />
-            <span>Agrícola <span className="text-ink-3">— aplicável em talhão; entra no alerta de estoque do plantio</span></span>
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={usoGenetico} onChange={(e) => setUsoGenetico(e.target.checked)} />
-            <span>Uso genético <span className="text-ink-3">— habilita a categoria para cadastro de sêmen e embrião</span></span>
-          </label>
-        </div>
-      </fieldset>
+      <p className="text-sm text-ink-3">A categoria organiza relatórios e classificação financeira. Os tipos de uso são escolhidos em cada produto.</p>
     </form>
   </PainelCadastro>;
 }

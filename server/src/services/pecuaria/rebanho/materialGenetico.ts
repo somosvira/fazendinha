@@ -110,12 +110,12 @@ export async function criarMaterialGenetico(input: CriarMaterialGeneticoInput, u
 
       const categoria = await tx.categoria.findUnique({ where: { id: input.produto.categoriaId } });
       if (!categoria || !categoria.ativo) throw new RebanhoError("VALIDACAO", "Categoria não encontrada ou inativa", "categoriaId");
-      if (!categoria.usoGenetico) throw new RebanhoError("VALIDACAO", "Escolha uma categoria marcada como uso genético", "categoriaId");
 
       const produto = await criarProdutoTx(tx, {
         nome: input.produto.nome ?? nomeSugerido(input.tipo, nomeTouro, nomeDoadora, tipoSemen),
         unidade: input.tipo === "SEMEN" ? "DOSE" : "UN",
         categoriaId: categoria.id,
+        usoGenetico: true,
         centroCustoIds: input.produto.centroCustoIds ?? [],
         fornecedorIds: input.produto.fornecedorIds ?? [],
       }, usuarioId);

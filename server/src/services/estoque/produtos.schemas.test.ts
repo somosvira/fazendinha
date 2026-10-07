@@ -35,4 +35,14 @@ describe("produtoSchema", () => {
   it("rejeita nome vazio", () => {
     expect(produtoSchema.safeParse({ nome: "", categoriaId: uid(3) }).success).toBe(false);
   });
+
+  it.each([-1, 101])("recusa MS %s com caminho do campo e mensagem em português", (valor) => {
+    const resultado = patchProdutoSchema.safeParse({ perfilNutricional: { materiaSecaPercentual: valor } });
+    expect(resultado.success).toBe(false);
+    expect(resultado.error?.issues[0]).toMatchObject({ path: ["perfilNutricional", "materiaSecaPercentual"], message: "Informe a matéria seca entre 0% e 100%." });
+  });
+
+  it.each([0, 100, 90.25, null])("mantém MS %s sem converter vazio em zero", (valor) => {
+    expect(patchProdutoSchema.parse({ perfilNutricional: { materiaSecaPercentual: valor } }).perfilNutricional?.materiaSecaPercentual).toBe(valor);
+  });
 });

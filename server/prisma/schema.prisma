@@ -155,15 +155,17 @@ enum StatusPeriodoFinanceiro {
 
 // Área responsável pelo gasto: Pecuária, Agronomia, Equipe, Gestão.
 model CentroCusto {
-  id                String               @id @default(uuid())
-  nome              String               @unique
-  ativo             Boolean              @default(true)
-  ordem             Int                  @default(0)
-  operacoes         Operacao[]
-  produtos          ProdutoCentroCusto[]
-  itensOperacao     ItemOperacao[]
-  movimentosEstoque MovimentoEstoque[]
-  safras            Safra[]
+  id                 String               @id @default(uuid())
+  nome               String               @unique
+  ativo              Boolean              @default(true)
+  ordem              Int                  @default(0)
+  operacoes          Operacao[]
+  produtos           ProdutoCentroCusto[]
+  itensOperacao      ItemOperacao[]
+  movimentosEstoque  MovimentoEstoque[]
+  safras             Safra[]
+  lotes              Lote[]
+  fechamentoConsumos FechamentoConsumo[]
 
   @@schema("public")
 }
@@ -178,20 +180,22 @@ enum ClassificacaoCategoria {
 }
 
 model Categoria {
-  id            String                  @id @default(uuid())
-  nome          String
-  classificacao ClassificacaoCategoria?
-  ativo         Boolean                 @default(true)
-  ordem         Int                     @default(0)
+  id             String                  @id @default(uuid())
+  nome           String
+  classificacao  ClassificacaoCategoria?
+  ativo          Boolean                 @default(true)
+  ordem          Int                     @default(0)
   // Marcação de comportamento — agrícola: aplicável em talhão e alerta de
   // estoque do plantio. (As marcações sanitária e nutricional voltam com a v3
   // da pecuária.)
-  usoAgricola   Boolean                 @default(false)
+  usoAgricola    Boolean                 @default(false)
   // Genético: produtos que podem ser material genético (sêmen/embrião) da pecuária.
-  usoGenetico   Boolean                 @default(false)
-  operacoes     Operacao[]
-  produtos      Produto[]
-  itens         ItemOperacao[]
+  usoGenetico    Boolean                 @default(false)
+  usoSanitario   Boolean                 @default(false)
+  usoNutricional Boolean                 @default(false)
+  operacoes      Operacao[]
+  produtos       Produto[]
+  itens          ItemOperacao[]
 
   @@unique([nome])
   @@schema("public")
@@ -228,28 +232,40 @@ model ContaFinanceira {
 }
 
 model Produto {
-  id               String               @id @default(uuid())
-  nome             String               @unique
-  unidade          UnidadeMedida        @default(UN)
-  minimoEstoque    Decimal?             @db.Decimal(12, 2)
-  ativo            Boolean              @default(true)
+  id                       String                    @id @default(uuid())
+  nome                     String                    @unique
+  usoAgricola              Boolean                   @default(false)
+  usoGenetico              Boolean                   @default(false)
+  usoSanitario             Boolean                   @default(false)
+  usoNutricional           Boolean                   @default(false)
+  rastrearPartidas         Boolean                   @default(false)
+  unidade                  UnidadeMedida             @default(UN)
+  minimoEstoque            Decimal?                  @db.Decimal(12, 2)
+  ativo                    Boolean                   @default(true)
   // Mapeamento contábil (ponte com o financeiro): categoria padrão que o item
   // de operação herda ao escolher este produto (classificação vem da categoria).
   // Obrigatória no cadastro (validada no service); a coluna segue nullable por
   // causa de produtos legados. Se o produto tem estoque não é atributo dele:
   // quem decide é o tipo da operação (ItemOperacao.estocavel).
-  categoria        Categoria?           @relation(fields: [categoriaId], references: [id])
-  categoriaId      String?
+  categoria                Categoria?                @relation(fields: [categoriaId], references: [id])
+  categoriaId              String?
   // Centros de custo onde este produto pode ser usado (N:N). Um só → o item da
   // operação e a saída de estoque herdam automaticamente; vários → escolha na hora.
-  centrosCusto     ProdutoCentroCusto[]
-  movimentos       MovimentoEstoque[]
-  itensOperacao    ItemOperacao[]
-  fornecedores     ProdutoFornecedor[]
-  aplicacoes       OperacaoAgricola[]
-  materialGenetico MaterialGenetico?
-  createdAt        DateTime             @default(now())
-  updatedAt        DateTime             @updatedAt
+  centrosCusto             ProdutoCentroCusto[]
+  movimentos               MovimentoEstoque[]
+  itensOperacao            ItemOperacao[]
+  fornecedores             ProdutoFornecedor[]
+  aplicacoes               OperacaoAgricola[]
+  materialGenetico         MaterialGenetico?
+  createdAt                DateTime                  @default(now())
+  updatedAt                DateTime                  @updatedAt
+  partidaProdutos          PartidaProduto[]
+  perfilSanitarioProduto   PerfilSanitarioProduto?
+  perfilNutricionalProduto PerfilNutricionalProduto?
+  aplicacaoProdutos        AplicacaoProduto[]
+  etapaProtocoloSanitarios EtapaProtocoloSanitario[]
+  itemDietas               ItemDieta[]
+  itemFechamentoConsumos   ItemFechamentoConsumo[]
 
   @@schema("public")
 }
@@ -366,38 +382,41 @@ model PeriodoFinanceiro {
 }
 
 model Operacao {
-  categoriaNome      String?
-  classificacao      ClassificacaoCategoria?
-  id                 String                  @id @default(uuid())
+  categoriaNome               String?
+  classificacao               ClassificacaoCategoria?
+  id                          String                       @id @default(uuid())
   // Número sequencial exibido ao usuário (OP-0042) e critério de ordem de registro.
-  numero             Int                     @unique @default(autoincrement())
-  tipo               TipoOperacaoFinanceira
-  status             StatusOperacao          @default(RASCUNHO)
-  data               DateTime                @db.Date
-  descricao          String?
-  valorTotal         Decimal                 @db.Decimal(14, 2)
-  propriedade        Propriedade             @relation(fields: [propriedadeId], references: [id])
-  propriedadeId      Int
-  parceiro           Parceiro?               @relation(fields: [parceiroId], references: [id])
-  parceiroId         String?
-  categoria          Categoria?              @relation(fields: [categoriaId], references: [id])
-  categoriaId        String?
-  centroCusto        CentroCusto?            @relation(fields: [centroCustoId], references: [id])
-  centroCustoId      String?
-  corrigeOperacao    Operacao?               @relation("CorrecaoOperacao", fields: [corrigeOperacaoId], references: [id])
-  corrigeOperacaoId  String?
-  correcoes          Operacao[]              @relation("CorrecaoOperacao")
-  criadoPor          Usuario?                @relation("OperacaoCriador", fields: [criadoPorId], references: [id])
-  criadoPorId        Int?
-  itens              ItemOperacao[]
-  compromissos       CompromissoFinanceiro[]
-  transacoes         TransacaoFinanceira[]
-  movimentosEstoque  MovimentoEstoque[]
-  documentos         DocumentoFinanceiro[]
-  operacoesAgricolas OperacaoAgricola[]
-  custosCultivo      LancamentoCusto[]
-  createdAt          DateTime                @default(now())
-  updatedAt          DateTime                @updatedAt
+  numero                      Int                          @unique @default(autoincrement())
+  tipo                        TipoOperacaoFinanceira
+  status                      StatusOperacao               @default(RASCUNHO)
+  data                        DateTime                     @db.Date
+  descricao                   String?
+  valorTotal                  Decimal                      @db.Decimal(14, 2)
+  propriedade                 Propriedade                  @relation(fields: [propriedadeId], references: [id])
+  propriedadeId               Int
+  parceiro                    Parceiro?                    @relation(fields: [parceiroId], references: [id])
+  parceiroId                  String?
+  categoria                   Categoria?                   @relation(fields: [categoriaId], references: [id])
+  categoriaId                 String?
+  centroCusto                 CentroCusto?                 @relation(fields: [centroCustoId], references: [id])
+  centroCustoId               String?
+  corrigeOperacao             Operacao?                    @relation("CorrecaoOperacao", fields: [corrigeOperacaoId], references: [id])
+  corrigeOperacaoId           String?
+  correcoes                   Operacao[]                   @relation("CorrecaoOperacao")
+  criadoPor                   Usuario?                     @relation("OperacaoCriador", fields: [criadoPorId], references: [id])
+  criadoPorId                 Int?
+  itens                       ItemOperacao[]
+  compromissos                CompromissoFinanceiro[]
+  transacoes                  TransacaoFinanceira[]
+  movimentosEstoque           MovimentoEstoque[]
+  documentos                  DocumentoFinanceiro[]
+  operacoesAgricolas          OperacaoAgricola[]
+  custosCultivo               LancamentoCusto[]
+  createdAt                   DateTime                     @default(now())
+  updatedAt                   DateTime                     @updatedAt
+  aplicacaoProdutos           AplicacaoProduto[]
+  execucaoProtocoloSanitarios ExecucaoProtocoloSanitario[]
+  exameAnimals                ExameAnimal[]
 
   @@index([propriedadeId, data])
   @@index([tipo, status])
@@ -492,8 +511,10 @@ model ItemOperacao {
   valorUnitario     Decimal                 @db.Decimal(14, 4)
   valorTotal        Decimal                 @db.Decimal(14, 2)
   estocavel         Boolean                 @default(false)
+  partidasSnapshot  Json?
   movimentosEstoque MovimentoEstoque[]
   createdAt         DateTime                @default(now())
+  aplicacaoProdutos AplicacaoProduto[]
 
   @@unique([operacaoId, ordem])
   @@index([operacaoId])
@@ -638,9 +659,10 @@ model AuditoriaFinanceira {
 // Sítio físico da fazenda-cliente (multi-propriedade). Default single-tenant: 1
 // linha (principal). O mesmo seam serve de base p/ multi-tenant (Organizacao) depois.
 model Propriedade {
+  rodadasProtocolo            RodadaProtocoloSanitario[]
   id                    Int                           @id @default(autoincrement())
   nome                  String                        @unique
-  apelido               String? // rótulo curto p/ o seletor ("Sede", "Recria")
+  apelido               String? // compatibilidade histórica; a interface identifica sítios por nome
   cidade                String?
   uf                    String?
   principal             Boolean                       @default(false) // a default quando não há filtro
@@ -664,10 +686,18 @@ model Propriedade {
   updatedAt             DateTime                      @updatedAt
 
   // Pecuária v1 (schema pecuaria)
-  pecLotes               Lote[]
-  pecLocalizacoes        LocalizacaoAnimal[]
-  pecMovimentacoes       Movimentacao[]
-  pecOrigensMovimentacao MovimentacaoAnimal[]
+  pecLotes                    Lote[]
+  pecLocalizacoes             LocalizacaoAnimal[]
+  pecMovimentacoes            Movimentacao[]
+  pecOrigensMovimentacao      MovimentacaoAnimal[]
+  auditoriaPecuarias          AuditoriaPecuaria[]
+  ocorrenciaSanitarias        OcorrenciaSanitaria[]
+  aplicacaoProdutos           AplicacaoProduto[]
+  execucaoProtocoloSanitarios ExecucaoProtocoloSanitario[]
+  exameAnimals                ExameAnimal[]
+  manejoAnimals               ManejoAnimal[]
+  fechamentoConsumos          FechamentoConsumo[]
+  requisicaoPecuarias         RequisicaoPecuaria[]
 
   @@schema("public")
 }
@@ -694,6 +724,9 @@ enum OrigemMovimentoEstoque {
   APLICACAO
   PERDA
   AJUSTE_INVENTARIO
+  SANIDADE
+  NUTRICAO
+  IDENTIFICACAO_PARTIDA
 
   @@schema("public")
 }
@@ -706,41 +739,44 @@ enum StatusMovimentoEstoque {
 }
 
 model MovimentoEstoque {
-  id               String                 @id @default(uuid())
+  id                      String                   @id @default(uuid())
   // Ordem de registro (desempate estável e rótulo "#N").
-  seq              Int                    @unique @default(autoincrement())
-  produto          Produto                @relation(fields: [produtoId], references: [id])
-  produtoId        String
-  tipo             TipoMovimento
-  origem           OrigemMovimentoEstoque
-  status           StatusMovimentoEstoque @default(CONFIRMADO)
-  data             DateTime               @db.Date
-  quantidade       Decimal                @db.Decimal(12, 3)
-  custoUnitario    Decimal                @db.Decimal(14, 4)
-  valorTotal       Decimal                @db.Decimal(14, 2)
+  seq                     Int                      @unique @default(autoincrement())
+  produto                 Produto                  @relation(fields: [produtoId], references: [id])
+  produtoId               String
+  tipo                    TipoMovimento
+  origem                  OrigemMovimentoEstoque
+  status                  StatusMovimentoEstoque   @default(CONFIRMADO)
+  data                    DateTime                 @db.Date
+  quantidade              Decimal                  @db.Decimal(12, 3)
+  custoUnitario           Decimal                  @db.Decimal(14, 4)
+  valorTotal              Decimal                  @db.Decimal(14, 2)
   // Operações financeiras são a origem normal de entradas; consumos automáticos
   // podem ser justificados pelo evento operacional específico abaixo.
-  operacao         Operacao?              @relation(fields: [operacaoId], references: [id])
-  operacaoId       String?
-  itemOperacao     ItemOperacao?          @relation(fields: [itemOperacaoId], references: [id])
-  itemOperacaoId   String?
+  operacao                Operacao?                @relation(fields: [operacaoId], references: [id])
+  operacaoId              String?
+  itemOperacao            ItemOperacao?            @relation(fields: [itemOperacaoId], references: [id])
+  itemOperacaoId          String?
   // Escopo de propriedade (estoque físico é por sítio). Nullable + default principal.
-  propriedade      Propriedade?           @relation(fields: [propriedadeId], references: [id])
-  propriedadeId    Int?
-  criadoPor        Usuario?               @relation("MovimentoEstoqueCriador", fields: [criadoPorId], references: [id])
-  criadoPorId      Int?
+  propriedade             Propriedade?             @relation(fields: [propriedadeId], references: [id])
+  propriedadeId           Int?
+  criadoPor               Usuario?                 @relation("MovimentoEstoqueCriador", fields: [criadoPorId], references: [id])
+  criadoPorId             Int?
   // Alocação operacional: para qual atividade o consumo foi (SAIDA). Não entra
   // nos relatórios financeiros — o custo financeiro é lido pela compra/item.
-  centroCusto      CentroCusto?           @relation(fields: [centroCustoId], references: [id])
-  centroCustoId    String?
-  reversaoDe       MovimentoEstoque?      @relation("ReversaoEstoque", fields: [reversaoDeId], references: [id])
-  reversaoDeId     String?                @unique
-  revertidoPor     MovimentoEstoque?      @relation("ReversaoEstoque")
+  centroCusto             CentroCusto?             @relation(fields: [centroCustoId], references: [id])
+  centroCustoId           String?
+  reversaoDe              MovimentoEstoque?        @relation("ReversaoEstoque", fields: [reversaoDeId], references: [id])
+  reversaoDeId            String?                  @unique
+  revertidoPor            MovimentoEstoque?        @relation("ReversaoEstoque")
   // Operação agrícola (aplicação/adubação) que gerou esta SAIDA (origem APLICACAO).
-  operacaoAgricola OperacaoAgricola?
-  observacao       String?
-  createdAt        DateTime               @default(now())
-  updatedAt        DateTime               @updatedAt
+  operacaoAgricola        OperacaoAgricola?
+  observacao              String?
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  alocacaoPartidaEstoques AlocacaoPartidaEstoque[]
+  aplicacaoProduto        AplicacaoProduto?
+  itemFechamentoConsumo   ItemFechamentoConsumo?
 
   @@index([produtoId, data])
   @@index([tipo, data])
@@ -1677,6 +1713,7 @@ model Usuario {
   // Pecuária v2 (genética)
   pecGenitoresCriados         GenitorExterno[]        @relation("GenitorExternoCriadoPor")
   pecMateriaisCriados         MaterialGenetico[]      @relation("MaterialGeneticoCriadoPor")
+  requisicaoPecuarias         RequisicaoPecuaria[]
 
   @@schema("public")
 }
@@ -1832,17 +1869,23 @@ model Animal {
   criadoPor            Usuario?        @relation("AnimalCriadoPor", fields: [criadoPorId], references: [id])
   atualizadoEm         DateTime        @updatedAt
 
-  composicao           ComposicaoRacial[]
-  localizacoes         LocalizacaoAnimal[]
-  destinos             DestinoAnimal[]
-  baixas               BaixaAnimal[]
-  pesagens             Pesagem[]
-  movimentacoes        MovimentacaoAnimal[]
-  categoriasManuais    CategoriaManualAnimal[]
-  filhosComoMae        Animal[]                @relation("AnimalMae")
-  filhosComoPai        Animal[]                @relation("AnimalPai")
-  materiaisComoTouro   MaterialGenetico[]      @relation("MaterialTouro")
-  materiaisComoDoadora MaterialGenetico[]      @relation("MaterialDoadora")
+  composicao                  ComposicaoRacial[]
+  localizacoes                LocalizacaoAnimal[]
+  destinos                    DestinoAnimal[]
+  baixas                      BaixaAnimal[]
+  pesagens                    Pesagem[]
+  movimentacoes               MovimentacaoAnimal[]
+  categoriasManuais           CategoriaManualAnimal[]
+  filhosComoMae               Animal[]                     @relation("AnimalMae")
+  filhosComoPai               Animal[]                     @relation("AnimalPai")
+  materiaisComoTouro          MaterialGenetico[]           @relation("MaterialTouro")
+  materiaisComoDoadora        MaterialGenetico[]           @relation("MaterialDoadora")
+  ocorrenciaSanitarias        OcorrenciaSanitaria[]
+  aplicacaoProdutos           AplicacaoProduto[]
+  execucaoProtocoloSanitarios ExecucaoProtocoloSanitario[]
+  exameAnimals                ExameAnimal[]
+  manejoAnimals               ManejoAnimal[]
+  participacaoConsumoAnimals  ParticipacaoConsumoAnimal[]
 
   @@index([brinco])
   @@index([maeId])
@@ -1870,20 +1913,20 @@ enum TipoSemen {
 // Genitor que não é animal da fazenda: touro de central (M) ou doadora de outra fazenda (F).
 // Só dado genético — sem brinco, lote, peso ou baixa. Animal nosso é genitor pela própria ficha.
 model GenitorExterno {
-  id           String     @id @default(uuid())
-  ideagriId    Int?       @unique
-  sexo         SexoBovino
-  nome         String
-  codigo       String?
-  fornecedor   String?
-  fornecedorId String?
-  fornecedorParceiro Parceiro? @relation(fields: [fornecedorId], references: [id], onDelete: SetNull)
-  ativo        Boolean    @default(true)
-  observacao   String?
-  criadoEm     DateTime   @default(now())
-  criadoPorId  Int?
-  criadoPor    Usuario?   @relation("GenitorExternoCriadoPor", fields: [criadoPorId], references: [id])
-  atualizadoEm DateTime   @updatedAt
+  id                 String     @id @default(uuid())
+  ideagriId          Int?       @unique
+  sexo               SexoBovino
+  nome               String
+  codigo             String?
+  fornecedor         String?
+  fornecedorId       String?
+  fornecedorParceiro Parceiro?  @relation(fields: [fornecedorId], references: [id], onDelete: SetNull)
+  ativo              Boolean    @default(true)
+  observacao         String?
+  criadoEm           DateTime   @default(now())
+  criadoPorId        Int?
+  criadoPor          Usuario?   @relation("GenitorExternoCriadoPor", fields: [criadoPorId], references: [id])
+  atualizadoEm       DateTime   @updatedAt
 
   composicao           ComposicaoGenitorExterno[]
   filhosComoMae        Animal[]                   @relation("AnimalMaeExterna")
@@ -2012,19 +2055,19 @@ model Raca {
 
 // Grau de sangue do animal em 64 avos por raça. Soma ≤ 64; o resto é desconhecido.
 model ComposicaoRacial {
-  id           String           @id @default(uuid())
-  animalId     String
-  animal       Animal           @relation(fields: [animalId], references: [id], onDelete: Restrict)
-  racaId       String
-  raca         Raca             @relation(fields: [racaId], references: [id], onDelete: Restrict)
-  fracao64     Int
+  id                String           @id @default(uuid())
+  animalId          String
+  animal            Animal           @relation(fields: [animalId], references: [id], onDelete: Restrict)
+  racaId            String
+  raca              Raca             @relation(fields: [racaId], references: [id], onDelete: Restrict)
+  fracao64          Int
   // Parcela herdada dos genitores dentro de fracao64; o restante foi informado.
-  fracaoCalculada64 Int @default(0)
-  origem       OrigemComposicao
-  criadoEm     DateTime         @default(now())
-  criadoPorId  Int?
-  criadoPor    Usuario?         @relation("ComposicaoRacialCriadoPor", fields: [criadoPorId], references: [id])
-  atualizadoEm DateTime         @updatedAt
+  fracaoCalculada64 Int              @default(0)
+  origem            OrigemComposicao
+  criadoEm          DateTime         @default(now())
+  criadoPorId       Int?
+  criadoPor         Usuario?         @relation("ComposicaoRacialCriadoPor", fields: [criadoPorId], references: [id])
+  atualizadoEm      DateTime         @updatedAt
 
   @@unique([animalId, racaId])
   @@index([racaId])
@@ -2033,21 +2076,25 @@ model ComposicaoRacial {
 
 // Cadastro do lote (GRUPOANIMAL do IDEAGRI). Pertence a um sítio.
 model Lote {
-  id            String      @id @default(uuid())
-  ideagriId     Int?        @unique
+  id            String       @id @default(uuid())
+  ideagriId     Int?         @unique
   nome          String
   propriedadeId Int
-  propriedade   Propriedade @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
-  ativo         Boolean     @default(true)
+  propriedade   Propriedade  @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
+  centroCustoId String?
+  centroCusto   CentroCusto? @relation(fields: [centroCustoId], references: [id], onDelete: Restrict)
+  ativo         Boolean      @default(true)
   observacao    String?
-  criadoEm      DateTime    @default(now())
+  criadoEm      DateTime     @default(now())
   criadoPorId   Int?
-  criadoPor     Usuario?    @relation("LoteCriadoPor", fields: [criadoPorId], references: [id])
-  atualizadoEm  DateTime    @updatedAt
+  criadoPor     Usuario?     @relation("LoteCriadoPor", fields: [criadoPorId], references: [id])
+  atualizadoEm  DateTime     @updatedAt
 
   localizacoes       LocalizacaoAnimal[]
   movimentacoes      Movimentacao[]
   saidasMovimentacao MovimentacaoAnimal[]
+  vigenciaDietaLotes VigenciaDietaLote[]
+  fechamentoConsumos FechamentoConsumo[]
 
   @@unique([propriedadeId, nome])
   @@schema("pecuaria")
@@ -2159,29 +2206,30 @@ model DestinoAnimal {
 
 // Baixa do rebanho. Baixa não estornada = animal inativo; estorno preserva a linha.
 model BaixaAnimal {
-  id                   String             @id @default(uuid())
-  ideagriId            Int?               @unique
-  animalId             String
-  animal               Animal             @relation(fields: [animalId], references: [id], onDelete: Restrict)
-  data                 DateTime           @db.Date
-  tipo                 TipoBaixa
-  motivoId             String?
-  motivo               MotivoBaixa?       @relation(fields: [motivoId], references: [id], onDelete: Restrict)
-  observacao           String?
-  estornadaEm          DateTime?
-  estornoMotivo        String?
+  id                      String             @id @default(uuid())
+  ideagriId               Int?               @unique
+  animalId                String
+  animal                  Animal             @relation(fields: [animalId], references: [id], onDelete: Restrict)
+  data                    DateTime           @db.Date
+  tipo                    TipoBaixa
+  motivoId                String?
+  motivo                  MotivoBaixa?       @relation(fields: [motivoId], references: [id], onDelete: Restrict)
+  observacao              String?
+  cienciaCarenciaSnapshot Json?
+  estornadaEm             DateTime?
+  estornoMotivo           String?
   // linhas de histórico que ESTA baixa fechou — o estorno reabre exatamente essas
   // (não dá para deduzir pela data: uma movimentação no mesmo dia também fecha linha com o mesmo `ate`).
   // SetNull: a baixa ativa é protegida pelo app (desfazer recusa); a estornada perde o vínculo
   // quando a linha é apagada por um desfazer posterior (a auditoria guarda o antes).
-  localizacaoFechadaId String?
-  localizacaoFechada   LocalizacaoAnimal? @relation("BaixaLocalizacaoFechada", fields: [localizacaoFechadaId], references: [id], onDelete: SetNull)
-  destinoFechadoId     String?
-  destinoFechado       DestinoAnimal?     @relation("BaixaDestinoFechado", fields: [destinoFechadoId], references: [id], onDelete: SetNull)
-  criadoEm             DateTime           @default(now())
-  criadoPorId          Int?
-  criadoPor            Usuario?           @relation("BaixaAnimalCriadoPor", fields: [criadoPorId], references: [id])
-  atualizadoEm         DateTime           @updatedAt
+  localizacaoFechadaId    String?
+  localizacaoFechada      LocalizacaoAnimal? @relation("BaixaLocalizacaoFechada", fields: [localizacaoFechadaId], references: [id], onDelete: SetNull)
+  destinoFechadoId        String?
+  destinoFechado          DestinoAnimal?     @relation("BaixaDestinoFechado", fields: [destinoFechadoId], references: [id], onDelete: SetNull)
+  criadoEm                DateTime           @default(now())
+  criadoPorId             Int?
+  criadoPor               Usuario?           @relation("BaixaAnimalCriadoPor", fields: [criadoPorId], references: [id])
+  atualizadoEm            DateTime           @updatedAt
 
   @@index([animalId])
   @@index([data])
@@ -2203,26 +2251,30 @@ model MotivoBaixa {
   criadoPor    Usuario?          @relation("MotivoBaixaCriadoPor", fields: [criadoPorId], references: [id])
   atualizadoEm DateTime          @updatedAt
 
-  baixas BaixaAnimal[]
+  baixas  BaixaAnimal[]
+  doencas Doenca[]
 
   @@schema("pecuaria")
 }
 
 // Pesagem individual. GMD e peso atual são calculados, não armazenados.
 model Pesagem {
-  id           String        @id @default(uuid())
-  ideagriId    Int?          @unique
+  id           String              @id @default(uuid())
+  ideagriId    Int?                @unique
   animalId     String
-  animal       Animal        @relation(fields: [animalId], references: [id], onDelete: Restrict)
-  data         DateTime      @db.Date
-  pesoKg       Decimal       @db.Decimal(7, 2)
+  animal       Animal              @relation(fields: [animalId], references: [id], onDelete: Restrict)
+  data         DateTime            @db.Date
+  pesoKg       Decimal             @db.Decimal(7, 2)
   tipo         TipoPesagem
-  origem       OrigemPesagem @default(MANUAL)
+  origem       OrigemPesagem       @default(MANUAL)
   observacao   String?
-  criadoEm     DateTime      @default(now())
+  requisicaoId String?
+  requisicao   RequisicaoPecuaria? @relation(fields: [requisicaoId], references: [chave], onDelete: Restrict)
+  criadoEm     DateTime            @default(now())
   criadoPorId  Int?
-  criadoPor    Usuario?      @relation("PesagemCriadoPor", fields: [criadoPorId], references: [id])
-  atualizadoEm DateTime      @updatedAt
+  criadoPor    Usuario?            @relation("PesagemCriadoPor", fields: [criadoPorId], references: [id])
+  atualizadoEm DateTime            @updatedAt
+  manejoAnimal ManejoAnimal?
 
   @@index([animalId, data])
   @@schema("pecuaria")
@@ -2230,25 +2282,542 @@ model Pesagem {
 
 // Trilha de toda mutação da pecuária (padrão de AuditoriaFinanceira).
 model AuditoriaPecuaria {
-  id           String   @id @default(uuid())
-  entidade     String
-  entidadeId   String
+  id            String              @id @default(uuid())
+  entidade      String
+  entidadeId    String
   // Animal a que o registro se refere (também para linhas já apagadas: pesagem excluída,
   // movimentação desfeita), para a trilha do animal não depender da linha ainda existir.
-  animalId     String?
-  acao         String
-  antes        Json?
-  depois       Json?
-  usuarioId    Int?
-  usuario      Usuario? @relation("AuditoriaPecuariaUsuario", fields: [usuarioId], references: [id])
-  em           DateTime @default(now())
-  criadoEm     DateTime @default(now())
-  criadoPorId  Int?
-  criadoPor    Usuario? @relation("AuditoriaPecuariaCriadoPor", fields: [criadoPorId], references: [id])
-  atualizadoEm DateTime @updatedAt
+  animalId      String?
+  propriedadeId Int?
+  propriedade   Propriedade?        @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
+  requisicaoId  String?
+  requisicao    RequisicaoPecuaria? @relation(fields: [requisicaoId], references: [chave], onDelete: Restrict)
+  acao          String
+  antes         Json?
+  depois        Json?
+  usuarioId     Int?
+  usuario       Usuario?            @relation("AuditoriaPecuariaUsuario", fields: [usuarioId], references: [id])
+  em            DateTime            @default(now())
+  criadoEm      DateTime            @default(now())
+  criadoPorId   Int?
+  criadoPor     Usuario?            @relation("AuditoriaPecuariaCriadoPor", fields: [criadoPorId], references: [id])
+  atualizadoEm  DateTime            @updatedAt
 
   @@index([entidade, entidadeId])
   @@index([animalId, em])
   @@index([em])
+  @@schema("pecuaria")
+}
+
+// V3: o catálogo de produtos continua único. Partidas refinam o saldo físico;
+// aplicações com insumo fornecido pelo veterinário guardam o nome sem criar Produto.
+model PartidaProduto {
+  id             String                   @id @default(uuid())
+  produtoId      String
+  produto        Produto                  @relation(fields: [produtoId], references: [id], onDelete: Restrict)
+  codigo         String
+  nome           String?
+  validade       DateTime?                @db.Date
+  lotePrincipalId String?
+  lotePrincipal   PartidaProduto?          @relation("AgrupamentoValidade", fields: [lotePrincipalId], references: [id], onDelete: Restrict)
+  aliases         PartidaProduto[]         @relation("AgrupamentoValidade")
+  fabricante     String?
+  origemRastreio String                   @default("INFORMADA")
+  alocacoes      AlocacaoPartidaEstoque[]
+  criadoEm       DateTime                 @default(now())
+
+  @@unique([produtoId, codigo])
+  @@index([lotePrincipalId])
+  @@schema("public")
+}
+
+model AlocacaoPartidaEstoque {
+  id                 String           @id @default(uuid())
+  movimentoEstoqueId String
+  movimentoEstoque   MovimentoEstoque @relation(fields: [movimentoEstoqueId], references: [id], onDelete: Restrict)
+  partidaId          String
+  partida            PartidaProduto   @relation(fields: [partidaId], references: [id], onDelete: Restrict)
+  quantidade         Decimal          @db.Decimal(12, 3)
+
+  @@unique([movimentoEstoqueId, partidaId])
+  @@index([partidaId])
+  @@schema("public")
+}
+
+model PerfilSanitarioProduto {
+  id                 String   @id @default(uuid())
+  produtoId          String   @unique
+  produto            Produto  @relation(fields: [produtoId], references: [id], onDelete: Restrict)
+  carenciaLeiteHoras Int?
+  carenciaCarneHoras Int?
+  viaPadrao          String?
+  referenciaTecnica  String?
+  atualizadoEm       DateTime @updatedAt
+
+  @@schema("pecuaria")
+}
+
+model PerfilNutricionalProduto {
+  id                    String   @id @default(uuid())
+  produtoId             String   @unique
+  produto               Produto  @relation(fields: [produtoId], references: [id], onDelete: Restrict)
+  materiaSecaPercentual Decimal? @db.Decimal(5, 2)
+  atualizadoEm          DateTime @updatedAt
+
+  @@schema("pecuaria")
+}
+
+enum StatusFatoPecuariaV3 {
+  VALIDO
+  ANULADO
+
+  @@schema("pecuaria")
+}
+
+enum OrigemInsumoSanitario {
+  BAIXA_ESTOQUE
+  COMPRA_CONSUMO_DIRETO
+  INCLUSO_SERVICO
+  SEM_ORIGEM_JUSTIFICADA
+  HISTORICO_IMPORTADO
+
+  @@schema("pecuaria")
+}
+
+enum FinalidadeAplicacao {
+  TRATAMENTO
+  VACINA
+  VERMIFUGO
+
+  @@schema("pecuaria")
+}
+
+model Doenca {
+  id                    String                @id @default(uuid())
+  nome                  String                @unique
+  ativo                 Boolean               @default(true)
+  motivoBaixaSugeridoId String?
+  motivoBaixaSugerido   MotivoBaixa?          @relation(fields: [motivoBaixaSugeridoId], references: [id], onDelete: Restrict)
+  ocorrencias           OcorrenciaSanitaria[]
+  criadoEm              DateTime              @default(now())
+  atualizadoEm          DateTime              @updatedAt
+
+  @@schema("pecuaria")
+}
+
+model OcorrenciaSanitaria {
+  id             String                       @id @default(uuid())
+  animalId       String
+  animal         Animal                       @relation(fields: [animalId], references: [id], onDelete: Restrict)
+  propriedadeId  Int?
+  propriedade    Propriedade?                 @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
+  doencaId       String
+  doenca         Doenca                       @relation(fields: [doencaId], references: [id], onDelete: Restrict)
+  doencaNomeSnapshot String?
+  inicio         DateTime                     @db.Date
+  fim            DateTime?                    @db.Date
+  desfecho       String?
+  observacao     String?
+  status         StatusFatoPecuariaV3         @default(VALIDO)
+  origem         String                       @default("MANUAL")
+  motivoAnulacao String?
+  anuladoEm      DateTime?
+  criadoEm       DateTime                     @default(now())
+  atualizadoEm   DateTime                     @updatedAt
+  aplicacoes     AplicacaoProduto[]
+  exames         ExameAnimal[]
+  execucoes      ExecucaoProtocoloSanitario[]
+
+  @@index([animalId, inicio])
+  @@index([propriedadeId, inicio])
+  @@schema("pecuaria")
+}
+
+model TipoAplicacaoSanitaria {
+  id           String                    @id @default(uuid())
+  nome         String                    @unique
+  ativo        Boolean                   @default(true)
+  aplicacoes   AplicacaoProduto[]
+  etapas       EtapaProtocoloSanitario[]
+  criadoEm     DateTime                  @default(now())
+  atualizadoEm DateTime                  @updatedAt
+
+  @@schema("pecuaria")
+}
+
+model AplicacaoProduto {
+  desvioProtocoloSnapshot Json?
+  id                         String                  @id @default(uuid())
+  animalId                   String
+  animal                     Animal                  @relation(fields: [animalId], references: [id], onDelete: Restrict)
+  propriedadeId              Int?
+  propriedade                Propriedade?            @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
+  produtoId                  String?
+  produto                    Produto?                @relation(fields: [produtoId], references: [id], onDelete: Restrict)
+  nomeProdutoAplicado        String
+  ocorrenciaId               String?
+  ocorrencia                 OcorrenciaSanitaria?    @relation(fields: [ocorrenciaId], references: [id], onDelete: Restrict)
+  // Unicidade somente para fatos válidos, definida por índice parcial na migration.
+  tarefaId                   String?
+  tarefa                     TarefaSanitaria?        @relation(fields: [tarefaId], references: [id], onDelete: Restrict)
+  data                       DateTime                @db.Date
+  aplicadaEm                 DateTime?
+  precisaoTemporal           String                  @default("HORA")
+  finalidade                 FinalidadeAplicacao?
+  tipoAplicacaoId            String?
+  tipoAplicacao              TipoAplicacaoSanitaria? @relation(fields: [tipoAplicacaoId], references: [id], onDelete: Restrict)
+  tipoAplicacaoNomeSnapshot  String?
+  responsavel                String?
+  estadoCarenciaLeite        String                  @default("NAO_INFORMADO")
+  estadoCarenciaCarne        String                  @default("NAO_INFORMADO")
+  justificativaCarenciaLeite String?
+  aptidaoCarenciaSnapshot    String?
+  justificativaCarenciaCarne String?
+  dose                       Decimal?                @db.Decimal(12, 3)
+  unidadeDose                String?
+  via                        String?
+  carenciaLeiteHoras         Int?
+  carenciaCarneHoras         Int?
+  referenciaCarencia         String?
+  origemInsumo               OrigemInsumoSanitario
+  quantidadeUtilizada        Decimal?                @db.Decimal(12, 3)
+  movimentoEstoqueId         String?                 @unique
+  movimentoEstoque           MovimentoEstoque?       @relation(fields: [movimentoEstoqueId], references: [id], onDelete: Restrict)
+  itemCompraDiretaId         String?
+  itemCompraDireta           ItemOperacao?           @relation(fields: [itemCompraDiretaId], references: [id], onDelete: Restrict)
+  quantidadeCompraDireta     Decimal?                @db.Decimal(12, 3)
+  operacaoServicoId          String?
+  operacaoServico            Operacao?               @relation(fields: [operacaoServicoId], references: [id], onDelete: Restrict)
+  valorProdutoAtribuido      Decimal?                @db.Decimal(14, 2)
+  valorServicoAtribuido      Decimal?                @db.Decimal(14, 2)
+  situacaoCusto              String                  @default("NAO_APURADO")
+  partidaCodigoSnapshot      String?
+  partidaValidadeSnapshot    DateTime?               @db.Date
+  justificativaSemOrigem     String?
+  status                     StatusFatoPecuariaV3    @default(VALIDO)
+  motivoAnulacao             String?
+  anuladoEm                  DateTime?
+  origem                     String                  @default("MANUAL")
+  criadoEm                   DateTime                @default(now())
+  atualizadoEm               DateTime                @updatedAt
+
+  @@index([animalId, data])
+  @@index([propriedadeId, data])
+  @@index([itemCompraDiretaId])
+  @@index([tarefaId])
+  @@index([operacaoServicoId])
+  @@schema("pecuaria")
+}
+
+model ProtocoloSanitario {
+  rodadas      RodadaProtocoloSanitario[]
+  id           String                       @id @default(uuid())
+  nome         String
+  versao       Int                          @default(1)
+  descricao    String?
+  publicadoEm  DateTime?
+  ativo        Boolean                      @default(true)
+  etapas       EtapaProtocoloSanitario[]
+  execucoes    ExecucaoProtocoloSanitario[]
+  criadoEm     DateTime                     @default(now())
+  atualizadoEm DateTime                     @updatedAt
+
+  @@unique([nome, versao])
+  @@schema("pecuaria")
+}
+
+model EtapaProtocoloSanitario {
+  id                        String                  @id @default(uuid())
+  protocoloId               String
+  protocolo                 ProtocoloSanitario      @relation(fields: [protocoloId], references: [id], onDelete: Restrict)
+  ordem                     Int
+  diaRelativo               Int
+  tipo                      String
+  produtoId                 String?
+  produto                   Produto?                @relation(fields: [produtoId], references: [id], onDelete: Restrict)
+  tipoExameId               String?
+  tipoExame                 TipoExame?              @relation(fields: [tipoExameId], references: [id], onDelete: Restrict)
+  finalidade                FinalidadeAplicacao?
+  tipoAplicacaoId           String?
+  tipoAplicacao             TipoAplicacaoSanitaria? @relation(fields: [tipoAplicacaoId], references: [id], onDelete: Restrict)
+  tipoAplicacaoNomeSnapshot String?
+  dose                      Decimal?                @db.Decimal(12, 3)
+  unidade                   String?
+  via                       String?
+  tarefas                   TarefaSanitaria[]
+
+  @@unique([protocoloId, ordem])
+  @@schema("pecuaria")
+}
+
+model RodadaProtocoloSanitario {
+  id               String @id @default(uuid())
+  nome             String
+  protocoloId      String
+  protocolo        ProtocoloSanitario @relation(fields: [protocoloId], references: [id], onDelete: Restrict)
+  propriedadeId    Int
+  propriedade      Propriedade @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
+  inicioReferencia DateTime @db.Date
+  execucoes        ExecucaoProtocoloSanitario[]
+  criadoEm         DateTime @default(now())
+  atualizadoEm     DateTime @updatedAt
+
+  @@index([propriedadeId, inicioReferencia])
+  @@index([protocoloId])
+  @@schema("pecuaria")
+}
+
+model ExecucaoProtocoloSanitario {
+  rodadaId              String?
+  rodada                RodadaProtocoloSanitario? @relation(fields: [rodadaId], references: [id], onDelete: Restrict)
+  id                    String               @id @default(uuid())
+  protocoloId           String
+  protocolo             ProtocoloSanitario   @relation(fields: [protocoloId], references: [id], onDelete: Restrict)
+  animalId              String
+  animal                Animal               @relation(fields: [animalId], references: [id], onDelete: Restrict)
+  propriedadeId         Int?
+  propriedade           Propriedade?         @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
+  inicio                DateTime             @db.Date
+  ocorrenciaId          String?
+  ocorrencia            OcorrenciaSanitaria? @relation(fields: [ocorrenciaId], references: [id], onDelete: Restrict)
+  operacaoServicoId     String?
+  operacaoServico       Operacao?            @relation(fields: [operacaoServicoId], references: [id], onDelete: Restrict)
+  canceladaEm           DateTime?
+  motivoCancelamento    String?
+  valorServicoAtribuido Decimal?             @db.Decimal(14, 2)
+  tarefas               TarefaSanitaria[]
+  criadoEm              DateTime             @default(now())
+
+  @@index([animalId, inicio])
+  @@index([rodadaId])
+  @@index([operacaoServicoId])
+  @@schema("pecuaria")
+}
+
+model TarefaSanitaria {
+  id             String                     @id @default(uuid())
+  execucaoId     String
+  execucao       ExecucaoProtocoloSanitario @relation(fields: [execucaoId], references: [id], onDelete: Restrict)
+  etapaId        String
+  etapa          EtapaProtocoloSanitario    @relation(fields: [etapaId], references: [id], onDelete: Restrict)
+  previstaPara   DateTime                   @db.Date
+  parametros     Json
+  dispensadaEm   DateTime?
+  motivoDispensa String?
+  aplicacoes     AplicacaoProduto[]
+  exames         ExameAnimal[]
+
+  @@unique([execucaoId, etapaId])
+  @@index([previstaPara])
+  @@schema("pecuaria")
+}
+
+model TipoExame {
+  id            String                    @id @default(uuid())
+  nome          String                    @unique
+  tipoResultado String
+  unidade       String?
+  opcoes        Json?
+  ativo         Boolean                   @default(true)
+  exames        ExameAnimal[]
+  etapas        EtapaProtocoloSanitario[]
+
+  @@schema("pecuaria")
+}
+
+model ExameAnimal {
+  desvioProtocoloSnapshot Json?
+  id                    String               @id @default(uuid())
+  animalId              String
+  animal                Animal               @relation(fields: [animalId], references: [id], onDelete: Restrict)
+  propriedadeId         Int?
+  propriedade           Propriedade?         @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
+  tipoExameId           String
+  tipoExame             TipoExame            @relation(fields: [tipoExameId], references: [id], onDelete: Restrict)
+  ocorrenciaId          String?
+  ocorrencia            OcorrenciaSanitaria? @relation(fields: [ocorrenciaId], references: [id], onDelete: Restrict)
+  // Unicidade somente para fatos válidos, definida por índice parcial na migration.
+  tarefaId              String?
+  tarefa                TarefaSanitaria?     @relation(fields: [tarefaId], references: [id], onDelete: Restrict)
+  operacaoServicoId     String?
+  valorServicoAtribuido Decimal?             @db.Decimal(14, 2)
+  operacaoServico       Operacao?            @relation(fields: [operacaoServicoId], references: [id], onDelete: Restrict)
+  data                  DateTime             @db.Date
+  resultadoTexto        String?
+  resultadoNumero       Decimal?             @db.Decimal(14, 4)
+  resultadoOpcao        String?
+  formatoSnapshot       Json
+  responsavel           String?
+  status                StatusFatoPecuariaV3 @default(VALIDO)
+  origem                String               @default("MANUAL")
+  motivoAnulacao        String?
+  anuladoEm             DateTime?
+  criadoEm              DateTime             @default(now())
+  atualizadoEm          DateTime             @updatedAt
+
+  @@index([animalId, data])
+  @@index([tarefaId])
+  @@index([operacaoServicoId])
+  @@schema("pecuaria")
+}
+
+model ManejoAnimal {
+  id             String               @id @default(uuid())
+  animalId       String
+  animal         Animal               @relation(fields: [animalId], references: [id], onDelete: Restrict)
+  propriedadeId  Int?
+  propriedade    Propriedade?         @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
+  tipo           String
+  data           DateTime             @db.Date
+  pesagemId      String?              @unique
+  pesagem        Pesagem?             @relation(fields: [pesagemId], references: [id], onDelete: Restrict)
+  responsavel    String?
+  observacao     String?
+  status         StatusFatoPecuariaV3 @default(VALIDO)
+  motivoAnulacao String?
+  anuladoEm      DateTime?
+  origem         String               @default("MANUAL")
+  criadoEm       DateTime             @default(now())
+
+  @@index([animalId, data])
+  @@schema("pecuaria")
+}
+
+model Dieta {
+  id           String              @id @default(uuid())
+  nome         String
+  versao       Int                 @default(1)
+  publicadaEm  DateTime?
+  ativo        Boolean             @default(true)
+  observacao   String?
+  itens        ItemDieta[]
+  vigencias    VigenciaDietaLote[]
+  criadoEm     DateTime            @default(now())
+  atualizadoEm DateTime            @updatedAt
+
+  @@unique([nome, versao])
+  @@schema("pecuaria")
+}
+
+model ItemDieta {
+  id                            String   @id @default(uuid())
+  dietaId                       String
+  dieta                         Dieta    @relation(fields: [dietaId], references: [id], onDelete: Restrict)
+  produtoId                     String
+  produto                       Produto  @relation(fields: [produtoId], references: [id], onDelete: Restrict)
+  quantidadeCabecaDia           Decimal  @db.Decimal(12, 3)
+  unidade                       String
+  materiaSecaPercentualSnapshot Decimal? @db.Decimal(5, 2)
+
+  @@unique([dietaId, produtoId])
+  @@schema("pecuaria")
+}
+
+model VigenciaDietaLote {
+  id          String              @id @default(uuid())
+  loteId      String
+  lote        Lote                @relation(fields: [loteId], references: [id], onDelete: Restrict)
+  dietaId     String
+  dieta       Dieta               @relation(fields: [dietaId], references: [id], onDelete: Restrict)
+  desde       DateTime            @db.Date
+  ate         DateTime?           @db.Date
+  fechamentos FechamentoConsumo[]
+  criadoEm    DateTime            @default(now())
+
+  @@index([loteId, desde])
+  @@schema("pecuaria")
+}
+
+enum StatusFechamentoConsumo {
+  CONFIRMADO
+  ESTORNADO
+
+  @@schema("pecuaria")
+}
+
+model FechamentoConsumo {
+  id            String                      @id @default(uuid())
+  loteId        String
+  lote          Lote                        @relation(fields: [loteId], references: [id], onDelete: Restrict)
+  propriedadeId Int
+  propriedade   Propriedade                 @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
+  vigenciaId    String
+  vigencia      VigenciaDietaLote           @relation(fields: [vigenciaId], references: [id], onDelete: Restrict)
+  inicio        DateTime                    @db.Date
+  fim           DateTime                    @db.Date
+  centroCustoId String
+  centroCusto   CentroCusto                 @relation(fields: [centroCustoId], references: [id], onDelete: Restrict)
+  animalDias    Int
+  confirmadoEm  DateTime                    @default(now())
+  status        StatusFechamentoConsumo     @default(CONFIRMADO)
+  motivoEstorno String?
+  estornadoEm   DateTime?
+  itens         ItemFechamentoConsumo[]
+  participacoes ParticipacaoConsumoAnimal[]
+
+  @@index([loteId, inicio, fim])
+  @@schema("pecuaria")
+}
+
+model ItemFechamentoConsumo {
+  id                    String            @id @default(uuid())
+  fechamentoId          String
+  fechamento            FechamentoConsumo @relation(fields: [fechamentoId], references: [id], onDelete: Restrict)
+  produtoId             String
+  produto               Produto           @relation(fields: [produtoId], references: [id], onDelete: Restrict)
+  quantidadePrevista    Decimal           @db.Decimal(12, 3)
+  quantidadeConfirmada  Decimal           @db.Decimal(12, 3)
+  baseQuantidade        String
+  motivoAjuste          String?
+  unidade               String
+  movimentoEstoqueId    String?           @unique
+  movimentoEstoque      MovimentoEstoque? @relation(fields: [movimentoEstoqueId], references: [id], onDelete: Restrict)
+  modoEstoque           String
+  justificativaSemBaixa String?
+  situacaoCusto         String
+
+  @@unique([fechamentoId, produtoId])
+  @@schema("pecuaria")
+}
+
+model ParticipacaoConsumoAnimal {
+  id           String            @id @default(uuid())
+  fechamentoId String
+  fechamento   FechamentoConsumo @relation(fields: [fechamentoId], references: [id], onDelete: Restrict)
+  animalId     String
+  animal       Animal            @relation(fields: [animalId], references: [id], onDelete: Restrict)
+  dias         Int
+
+  @@unique([fechamentoId, animalId])
+  @@schema("pecuaria")
+}
+
+model RequisicaoPecuaria {
+  chave              String              @id @default(uuid())
+  propriedadeId      Int
+  propriedade        Propriedade         @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
+  usuarioId          Int?
+  usuario            Usuario?            @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+  operacao           String
+  hashPayload        String
+  resultadoIds       Json
+  criadaEm           DateTime            @default(now())
+  pesagems           Pesagem[]
+  auditoriaPecuarias AuditoriaPecuaria[]
+
+  @@schema("pecuaria")
+}
+
+model VinculoImportacaoPecuaria {
+  id              String   @id @default(uuid())
+  bancoOrigem     String
+  tabelaOrigem    String
+  chaveOrigem     String
+  entidadeDestino String
+  destinoId       String
+  hashOrigem      String
+  importadoEm     DateTime @default(now())
+
+  @@unique([bancoOrigem, tabelaOrigem, chaveOrigem])
   @@schema("pecuaria")
 }

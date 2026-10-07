@@ -13,7 +13,7 @@ vi.mock("../api", async (importOriginal) => ({
 afterEach(cleanup);
 beforeEach(() => vi.clearAllMocks());
 
-const propriedades: Propriedade[] = [{ id: 1, nome: "Sede", apelido: null }, { id: 2, nome: "Sítio Novo", apelido: null }];
+const propriedades: Propriedade[] = [{ id: 1, nome: "Sede", apelido: "Apelido antigo" }, { id: 2, nome: "Sítio Novo", apelido: "Outro apelido" }];
 const lotes: CatalogoLote[] = [{ id: "lote-1", nome: "Lote A", propriedadeId: 1 }, { id: "lote-2", nome: "Lote B", propriedadeId: 2 }];
 
 const catVaca = { id: "cat-vaca", nome: "Vaca" };

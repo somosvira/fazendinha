@@ -71,6 +71,7 @@ export interface CustoMedio extends BaseCusto {
  * contrapartida como doação), não de uma ENTRADA sem valor — fora de escopo aqui.
  */
 export function entraNoCustoMedio(m: MovCustoIn): boolean {
+  if (m.origem === "IDENTIFICACAO_PARTIDA") return false;
   if (m.status !== "CONFIRMADO" || m.reversaoDeId != null) return false;
   const valorizada = () => new Prisma.Decimal(m.quantidade).greaterThan(0) && new Prisma.Decimal(m.valorTotal).greaterThan(0);
   if (m.tipo === "ENTRADA") return (ORIGENS_CUSTO_MEDIO as readonly string[]).includes(m.origem) && valorizada();

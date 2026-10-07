@@ -4,6 +4,7 @@
  * confirmar — os formulários são curtos e não há rascunho aqui. */
 
 import type { ReactNode } from "react";
+import { CircleAlert } from "lucide-react";
 import { AjudaCampo } from "@/components/Dica";
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
@@ -45,7 +46,7 @@ export function CampoFormulario({ id, rotulo, erro, ajuda, children, obrigatorio
   return <div className="text-sm font-medium">
     <label htmlFor={id}>{rotulo}{obrigatorio && <span aria-hidden="true"> *</span>}</label>{ajuda && <AjudaCampo texto={ajuda} rotulo={`Ajuda: ${rotulo}`} />}
     {children({ id, "aria-label": rotulo, "aria-invalid": Boolean(erro), "aria-describedby": descricao })}
-    {erro && <p id={`${id}-erro`} role="alert" className="mt-1 text-xs font-normal text-red-700">{erro}</p>}
+    {erro && <p id={`${id}-erro`} role="alert" className="mt-1 flex items-start gap-1.5 text-xs font-normal text-red-700"><CircleAlert size={14} className="mt-px shrink-0" aria-hidden />{erro}</p>}
     {ajuda && <p id={`${id}-ajuda`} className="sr-only">{ajuda}</p>}
   </div>;
 }

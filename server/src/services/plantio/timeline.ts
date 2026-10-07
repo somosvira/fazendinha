@@ -8,6 +8,7 @@ import { resolverCentroSaida } from "../estoque/centro.calc.js";
 import { estornarMovimentoTx, obterBaseCusto, produtoTemEstoque } from "../estoque/estoque.js";
 import { valorSaidaDaBase } from "../estoque/estoque.calc.js";
 import { propriedadePrincipalId } from "../propriedade.js";
+import { prepararPartidasTx } from "../estoque/partidas.js";
 
 export class PlantioEventoError extends Error {
   constructor(public code: "NAO_ENCONTRADO" | "MES_FECHADO" | "VALIDACAO", message: string) {
@@ -175,8 +176,10 @@ async function planejarMovimento(
   opts: { validarCentroAtivo?: boolean; temEstoque?: boolean } = {},
 ) {
   if (input.produtoId == null) return null;
-  const produto = await tx.produto.findUnique({ where: { id: input.produtoId }, select: { id: true, nome: true, unidade: true, centrosCusto: { select: { centroCustoId: true } } } });
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`produto-usos:${input.produtoId}`}))`;
+  const produto = await tx.produto.findUnique({ where: { id: input.produtoId }, select: { id: true, nome: true, unidade: true, usoAgricola: true, rastrearPartidas: true, centrosCusto: { select: { centroCustoId: true } } } });
   if (!produto) throw new PlantioEventoError("NAO_ENCONTRADO", "produto do estoque não encontrado");
+  if (!produto.usoAgricola) throw new PlantioEventoError("VALIDACAO", "Selecione um produto com uso agrícola");
   // Só baixa produto com estoque (entrada/ajuste positivo confirmado) no sítio
   // do talhão. Na edição, quem chama pode fixar a decisão (baixa estável).
   const temEstoque = opts.temEstoque ?? await produtoTemEstoque(tx, produto.id, propriedadeId);
@@ -267,7 +270,11 @@ export async function criarOperacao(talhaoId: number, input: CriarOperacaoInput,
     await assertPeriodoAberto(tx, propriedadeId, data);
     const movimento = await planejarMovimento(tx, input, talhao, data, propriedadeId);
     semEstoque = movimento?.semEstoque ?? false;
-    const mov = movimento?.plano ? await tx.movimentoEstoque.create({ data: { ...movimento.plano, criadoPorId: usuarioId } }) : null;
+    const distribuicao = movimento?.plano ? await prepararPartidasTx(tx, { produtoId: movimento.produto.id,
+      rastrearPartidas: movimento.produto.rastrearPartidas, propriedadeId, tipo: "SAIDA", data: movimento.plano.data, quantidade: movimento.plano.quantidade, partidas: input.partidas, usuarioId }) : [];
+    const mov = movimento?.plano ? await tx.movimentoEstoque.create({ data: { ...movimento.plano, criadoPorId: usuarioId,
+      ...(distribuicao.length ? { alocacaoPartidaEstoques: { create: distribuicao.map((p) => ({ partidaId: p.partidaId, quantidade: p.quantidade })) } } : {}),
+    } }) : null;
     return tx.operacaoAgricola.create({
       data: {
         talhaoId,
@@ -380,7 +387,11 @@ export async function editarOperacao(operacaoId: number, input: EditarOperacaoIn
       if (anterior) {
         await estornarMovimentoTx(tx, anterior.id, { usuarioId, observacao: `Estorno: operação agrícola #${operacaoId} editada` });
       }
-      const criado = await tx.movimentoEstoque.create({ data: { ...plano, criadoPorId: usuarioId } });
+      const distribuicao = await prepararPartidasTx(tx, { produtoId: plano.produtoId,
+        rastrearPartidas: movimento!.produto.rastrearPartidas, propriedadeId, tipo: "SAIDA", data: plano.data, quantidade: plano.quantidade, partidas: input.partidas, usuarioId });
+      const criado = await tx.movimentoEstoque.create({ data: { ...plano, criadoPorId: usuarioId,
+        ...(distribuicao.length ? { alocacaoPartidaEstoques: { create: distribuicao.map((p) => ({ partidaId: p.partidaId, quantidade: p.quantidade })) } } : {}),
+      } });
       movimentoEstoqueId = criado.id;
       quantidadeTotal = criado.quantidade;
     } else if (movimentoEstoqueId != null) {

@@ -102,7 +102,7 @@ describe("registrarMovimento", () => {
     expect(args.where).toEqual(expect.objectContaining({ produtoId: { in: [uid(3)] }, status: "CONFIRMADO", reversaoDeId: null, quantidade: { gt: 0 }, valorTotal: { gt: 0 } }));
     // propriedade 1 é a principal → inclui movimentos legados sem propriedade.
     expect(args.where.AND[0]).toEqual({ OR: [{ propriedadeId: 1 }, { propriedadeId: null }] });
-    expect(args.where.AND[1]).toEqual({ OR: [{ tipo: "ENTRADA", origem: { in: ["COMPRA", "BONIFICACAO", "PRODUCAO", "INVENTARIO_INICIAL"] } }, { tipo: "AJUSTE" }] });
+    expect(args.where.AND[1]).toEqual({ OR: [{ tipo: "ENTRADA", origem: { in: ["COMPRA", "BONIFICACAO", "PRODUCAO", "INVENTARIO_INICIAL", "TRANSFERENCIA"] } }, { tipo: "AJUSTE", origem: { not: "IDENTIFICACAO_PARTIDA" } }] });
     expect(mocks.movFindMany).not.toHaveBeenCalled();
     const data = mocks.movCreate.mock.calls[0][0].data;
     expect(Number(data.custoUnitario)).toBe(6);
@@ -280,7 +280,7 @@ describe("listarSaldos", () => {
   it("consolidado lista produto com movimento em qualquer sítio e mantém o filtro de uso", async () => {
     mocks.produtoFindMany.mockResolvedValue([]);
     await listarSaldos({ propriedadeId: null, uso: "agricola" });
-    expect(mocks.produtoFindMany.mock.calls[0][0].where).toEqual({ ativo: true, movimentos: { some: {} }, categoria: { usoAgricola: true } });
+    expect(mocks.produtoFindMany.mock.calls[0][0].where).toEqual({ ativo: true, movimentos: { some: {} }, usoAgricola: true });
   });
 
   const mov = (tipo: string, quantidade: string, valorTotal: string) => ({ tipo, quantidade: new Prisma.Decimal(quantidade), valorTotal: new Prisma.Decimal(valorTotal), data: new Date("2026-01-10") });
@@ -312,6 +312,12 @@ describe("listarSaldos", () => {
 
 describe("listarMovimentos — origem para navegação", () => {
   const base = { seq: 1, produtoId: uid(3), produto: { nome: "Ureia", centrosCusto: [], materialGenetico: null }, tipo: "SAIDA", origem: "APLICACAO", status: "CONFIRMADO", reversaoDeId: null, data: new Date("2026-09-01"), quantidade: new Prisma.Decimal(2), custoUnitario: new Prisma.Decimal(3), valorTotal: new Prisma.Decimal(6), operacao: null, observacao: null, operacaoId: null, operacaoAgricola: null };
+
+  it("consulta pelo ID preserva o movimento revertido e aponta para seu inverso", async () => {
+    mocks.movFindMany.mockResolvedValue([{ ...base, id: uid(1), status: "REVERTIDO", revertidoPor: { id: uid(2) } }]);
+    expect((await listarMovimentos({ movimentoId: uid(1), propriedadeId: 2 })).itens[0]).toMatchObject({ id: uid(1), status: "REVERTIDO", estorno: { id: uid(2) } });
+    expect(mocks.movFindMany).toHaveBeenCalledWith(expect.objectContaining({ where: { id: uid(1), status: { in: ["CONFIRMADO", "REVERTIDO"] }, AND: [{ propriedadeId: 2 }] } }));
+  });
 
   it("expõe o vínculo genético no movimento apenas para quem pode ver pecuária", async () => {
     mocks.movFindMany.mockResolvedValue([{ ...base, id: uid(4), produto: { ...base.produto, materialGenetico: { id: uid(8) } } }]);

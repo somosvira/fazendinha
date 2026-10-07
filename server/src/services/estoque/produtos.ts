@@ -3,6 +3,7 @@ import { prisma } from "../../db.js";
 import { papeisDoParceiro } from "../financeiro/papeis.js";
 import { auditar, FinanceiroError, traduzirConflitoUnico, type DbFinanceiro } from "../financeiro/regras.js";
 import { CATEGORIA_OBRIGATORIA, type ProdutoInput, type ProdutoPatchInput } from "./produtos.schemas.js";
+import { travarUsosProduto } from "./usos.js";
 
 export const includeProduto = {
   fornecedores: {
@@ -11,6 +12,8 @@ export const includeProduto = {
   },
   centrosCusto: { include: { centroCusto: true }, orderBy: { centroCusto: { nome: "asc" as const } } },
   categoria: true,
+  perfilSanitarioProduto: true,
+  perfilNutricionalProduto: true,
 } as const;
 
 export function produtoDTO(produto: Prisma.ProdutoGetPayload<{ include: typeof includeProduto }>) {
@@ -22,11 +25,18 @@ export function produtoDTO(produto: Prisma.ProdutoGetPayload<{ include: typeof i
     categoriaId: produto.categoriaId ?? null,
     categoriaNome: produto.categoria?.nome ?? null,
     classificacao: produto.categoria?.classificacao ?? null,
-    // Comportamento é da categoria, mesmo que ela esteja inativa (situação é do produto).
+    usoAgricola: produto.usoAgricola,
+    usoGenetico: produto.usoGenetico,
+    usoSanitario: produto.usoSanitario,
+    usoNutricional: produto.usoNutricional,
     categoria: produto.categoria
-      ? { id: produto.categoria.id, nome: produto.categoria.nome, usoAgricola: produto.categoria.usoAgricola, usoGenetico: produto.categoria.usoGenetico }
+      ? { id: produto.categoria.id, nome: produto.categoria.nome, usoAgricola: produto.categoria.usoAgricola, usoGenetico: produto.categoria.usoGenetico,
+        usoSanitario: produto.categoria.usoSanitario, usoNutricional: produto.categoria.usoNutricional }
       : null,
     ativo: produto.ativo,
+    rastrearPartidas: produto.rastrearPartidas,
+    perfilSanitario: produto.perfilSanitarioProduto,
+    perfilNutricional: produto.perfilNutricionalProduto ? { materiaSecaPercentual: produto.perfilNutricionalProduto.materiaSecaPercentual?.toString() ?? null } : null,
     centroCustoIds: produto.centrosCusto.map(({ centroCustoId }) => centroCustoId),
     centrosCusto: produto.centrosCusto.map(({ centroCusto }) => ({ id: centroCusto.id, nome: centroCusto.nome, ativo: centroCusto.ativo })),
     fornecedores: produto.fornecedores.map(({ fornecedor }) => ({ id: fornecedor.id, nome: fornecedor.nome, ativo: fornecedor.ativo })),
@@ -53,16 +63,16 @@ async function validarCentrosCusto(db: DbFinanceiro, centroCustoIds: string[], p
   }
 }
 
-function separarRelacoes<T extends { fornecedorIds?: string[]; centroCustoIds?: string[] }>(input: T) {
-  const { fornecedorIds, centroCustoIds, ...produto } = input;
-  return { fornecedorIds, centroCustoIds, produto };
+function separarRelacoes(input: ProdutoPatchInput) {
+  const { fornecedorIds, centroCustoIds, perfilSanitario, perfilNutricional, ...produto } = input;
+  return { fornecedorIds, centroCustoIds, perfilSanitario, perfilNutricional, produto };
 }
 
-const USO_CAMPO = { agricola: "usoAgricola", genetico: "usoGenetico" } as const;
+const USO_CAMPO = { agricola: "usoAgricola", genetico: "usoGenetico", sanitario: "usoSanitario", nutricional: "usoNutricional" } as const;
 
 export async function listarProdutos(f?: { uso?: keyof typeof USO_CAMPO; q?: string; ativo?: boolean; incluirInativos?: boolean }) {
   const where: Prisma.ProdutoWhereInput = {};
-  if (f?.uso) where.categoria = { [USO_CAMPO[f.uso]]: true };
+  if (f?.uso) Object.assign(where, { [USO_CAMPO[f.uso]]: true });
   if (f?.q) where.nome = { contains: f.q, mode: "insensitive" };
   if (f?.ativo != null) where.ativo = f.ativo;
   else if (!f?.incluirInativos) where.ativo = true;
@@ -81,15 +91,20 @@ export async function criarProduto(input: ProdutoInput, usuarioId?: number | nul
 
 /** Cria o produto dentro de uma transação já aberta (ex.: material genético cria o produto junto). */
 export async function criarProdutoTx(tx: Prisma.TransactionClient, input: ProdutoInput, usuarioId?: number | null) {
-  const { fornecedorIds = [], centroCustoIds = [], produto } = separarRelacoes(input);
+  const { fornecedorIds = [], centroCustoIds = [], perfilSanitario, perfilNutricional, produto } = separarRelacoes(input);
   if (produto.categoriaId == null) {
     throw new FinanceiroError("VALIDACAO", CATEGORIA_OBRIGATORIA, "categoriaId");
   }
   await validarFornecedores(tx, fornecedorIds, new Set());
   await validarCentrosCusto(tx, centroCustoIds, new Set());
+  if (perfilSanitario && !produto.usoSanitario) throw new FinanceiroError("VALIDACAO", "Selecione o uso sanitário para preencher esse perfil", "usoSanitario");
+  if (perfilNutricional && !produto.usoNutricional) throw new FinanceiroError("VALIDACAO", "Selecione o uso nutricional para preencher esse perfil", "usoNutricional");
   const criado = await tx.produto.create({
     data: {
       ...produto,
+      nome: input.nome, unidade: input.unidade,
+      ...(perfilSanitario ? { perfilSanitarioProduto: { create: perfilSanitario } } : {}),
+      ...(perfilNutricional ? { perfilNutricionalProduto: { create: perfilNutricional } } : {}),
       fornecedores: { create: fornecedorIds.map((fornecedorId) => ({ fornecedorId })) },
       centrosCusto: { create: centroCustoIds.map((centroCustoId) => ({ centroCustoId })) },
     },
@@ -103,9 +118,10 @@ export async function criarProdutoTx(tx: Prisma.TransactionClient, input: Produt
 export async function atualizarProduto(id: string, input: ProdutoPatchInput, usuarioId?: number | null) {
   try {
     return await prisma.$transaction(async (tx) => {
+      await travarUsosProduto(tx, [id]);
       const anterior = await tx.produto.findUnique({ where: { id }, include: includeProduto });
       if (!anterior) throw new FinanceiroError("NAO_ENCONTRADO", "Produto não encontrado");
-      const { fornecedorIds, centroCustoIds, produto } = separarRelacoes(input);
+      const { fornecedorIds, centroCustoIds, perfilSanitario, perfilNutricional, produto } = separarRelacoes(input);
 
       // Todo produto precisa de categoria. Um produto legado sem categoria só
       // pode ser ativado/desativado sem informá-la; qualquer outra edição exige.
@@ -113,6 +129,20 @@ export async function atualizarProduto(id: string, input: ProdutoPatchInput, usu
       const soSituacao = Object.entries(input).every(([campo, valor]) => campo === "ativo" || valor === undefined);
       if (categoriaId == null && !soSituacao) {
         throw new FinanceiroError("VALIDACAO", CATEGORIA_OBRIGATORIA, "categoriaId");
+      }
+      if (produto.rastrearPartidas !== undefined && produto.rastrearPartidas !== anterior.rastrearPartidas) {
+        throw new FinanceiroError("CONFLITO", "Use a conferência de ativação do controle de lotes. Depois de ativado, não pode ser desligado.", "rastrearPartidas");
+      }
+      if ((perfilSanitario || anterior.perfilSanitarioProduto) && !(produto.usoSanitario ?? anterior.usoSanitario)) throw new FinanceiroError("CONFLITO", "O perfil sanitário exige uso sanitário", "usoSanitario");
+      if ((perfilNutricional || anterior.perfilNutricionalProduto) && !(produto.usoNutricional ?? anterior.usoNutricional)) throw new FinanceiroError("CONFLITO", "O perfil nutricional exige uso nutricional", "usoNutricional");
+      const vinculos = [
+        ["usoAgricola", "aplicações agrícolas", () => tx.operacaoAgricola.count({ where: { produtoId: id } })],
+        ["usoGenetico", "material genético", () => tx.materialGenetico.count({ where: { produtoId: id } })],
+        ["usoSanitario", "aplicações ou protocolos sanitários", async () => (await tx.aplicacaoProduto.count({ where: { produtoId: id } })) + (await tx.etapaProtocoloSanitario.count({ where: { produtoId: id } }))],
+        ["usoNutricional", "receitas ou fechamentos nutricionais", async () => (await tx.itemDieta.count({ where: { produtoId: id } })) + (await tx.itemFechamentoConsumo.count({ where: { produtoId: id } }))],
+      ] as const;
+      for (const [campo, descricao, contar] of vinculos) {
+        if (produto[campo] === false && await contar() > 0) throw new FinanceiroError("CONFLITO", `Uso exigido por ${descricao}. Consulte os vínculos antes de alterar.`, campo);
       }
 
       // Trocar a unidade muda a interpretação de tudo que já foi movimentado
@@ -140,6 +170,8 @@ export async function atualizarProduto(id: string, input: ProdutoPatchInput, usu
         where: { id },
         data: {
           ...produto,
+          ...(perfilSanitario ? { perfilSanitarioProduto: { upsert: { create: perfilSanitario, update: perfilSanitario } } } : {}),
+          ...(perfilNutricional ? { perfilNutricionalProduto: { upsert: { create: perfilNutricional, update: perfilNutricional } } } : {}),
           ...(fornecedorIds === undefined ? {} : {
             fornecedores: { deleteMany: {}, create: fornecedorIds.map((fornecedorId) => ({ fornecedorId })) },
           }),

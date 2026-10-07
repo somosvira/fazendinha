@@ -15,6 +15,9 @@ import * as movimentacoes from "../../services/pecuaria/rebanho/movimentacoes.js
 import * as categorias from "../../services/pecuaria/rebanho/categorias.js";
 import * as genitores from "../../services/pecuaria/rebanho/genitores.js";
 import * as materialGenetico from "../../services/pecuaria/rebanho/materialGenetico.js";
+import { sanidadeRouter } from "./sanidade.js";
+import { manejoRouter } from "./manejo.js";
+import { nutricaoRouter } from "./nutricao.js";
 import {
   cadastrarAnimalSchema, editarAnimalSchema, movimentarSchema, mudarDestinoSchema,
   baixaSchema, estornoBaixaSchema, pesagemSchema, editarPesagemSchema, listarFiltrosSchema,
@@ -402,3 +405,7 @@ export const rebanhoRouter = new Hono()
       lotes: lotesAtivos.map((l) => ({ id: l.id, nome: l.nome, propriedadeId: l.propriedadeId })),
     });
   });
+
+rebanhoRouter.route("/sanidade", sanidadeRouter);
+rebanhoRouter.route("/manejo", manejoRouter);
+rebanhoRouter.route("/nutricao", nutricaoRouter);

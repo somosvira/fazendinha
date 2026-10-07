@@ -203,6 +203,8 @@ export type MudarDestinoInput = {
 };
 
 export type BaixaInput = {
+  cienciaSanitaria?: boolean;
+  justificativaSanitaria?: string | null;
   data: string;
   tipo: TipoBaixa;
   motivoId?: string | null;
@@ -291,6 +293,7 @@ export type EntradaAuditoria = {
 export type EntidadeCadastro = "Lote" | "Raca" | "MotivoBaixa" | "CategoriaAnimal" | "GenitorExterno" | "MaterialGenetico";
 
 export type Lote = {
+  centroCustoId?: string | null;
   id: string;
   nome: string;
   propriedadeId: number;
@@ -308,8 +311,8 @@ export type ResumoLote = {
   peso: { medioKg: number | null; minKg: number | null; maxKg: number | null; semPeso: number };
   gmd: { medio: number | null; comGmd: number; periodoDias: number | null };
 };
-export type CriarLoteInput = { nome: string; propriedadeId: number; observacao?: string | null };
-export type EditarLoteInput = Partial<{ nome: string; ativo: boolean; observacao: string | null }>;
+export type CriarLoteInput = { nome: string; propriedadeId: number; observacao?: string | null; centroCustoId?: string | null };
+export type EditarLoteInput = Partial<{ nome: string; ativo: boolean; observacao: string | null; centroCustoId: string | null }>;
 
 /** GET /lotes/:id/movimentacoes e GET /movimentacoes — histórico de movimentações entre
  *  lotes/sítios. Na vista de um lote (`/lotes/:id/movimentacoes`), `direcao` vem preenchida

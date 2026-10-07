@@ -76,6 +76,7 @@ export const criarOperacaoSchema = z.object({
   produtoId: z.string().uuid().nullish(),
   quantidadeTotal: z.number().finite().nonnegative().max(MAX_QTD).nullish(),
   centroCustoId: z.string().uuid().nullish(),
+  partidas: z.array(z.object({ partidaId: z.string().uuid(), quantidade: z.number().positive(), cienciaValidadeDesconhecida: z.boolean().optional() })).optional(),
 });
 
 export const editarOperacaoSchema = criarOperacaoSchema.partial();
