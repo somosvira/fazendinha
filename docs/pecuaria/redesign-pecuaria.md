@@ -1,7 +1,7 @@
 # Redesign da Pecuária — plano de execução
 
 Data: 07/10/2026. Base: `main@f060470798e2dc5c34bc43717e77ebc75c01d838`.
-Branch: `codex/pecuaria-redesign`. Estado inicial: planejamento registrado; implementação e validação por etapas.
+Branch: `codex/pecuaria-redesign`. PR em rascunho: [#312](https://github.com/somosvira/fazendinha/pull/312). Implementação e validação por etapas.
 
 ## Objetivo e decisões fechadas
 
@@ -74,7 +74,7 @@ Proprietário único por arquivo compartilhado; frontend/backend paralelos somen
 ## Sequência e acompanhamento
 
 - [x] Criar branch isolada a partir da `main` atualizada e registrar o plano.
-- [ ] Abrir PR em rascunho e vinculá-lo ao chat.
+- [x] Abrir PR em rascunho e vinculá-lo ao chat.
 - [ ] Etapa 1: navegação, padrões comuns, sanidade e manejo.
 - [ ] Etapa 2: coletas persistidas, impressão e retorno para pesagem/rotinas sanitárias.
 - [ ] Etapa 3: dietas, atribuições, consumo diário/global e consolidação.
@@ -82,6 +82,10 @@ Proprietário único por arquivo compartilhado; frontend/backend paralelos somen
 - [ ] Conferência visual/teclado a 1440, 1180 e 720 px e impressão A4.
 
 Cada marco será atualizado apenas com evidência da execução. PR em rascunho não significa redesign concluído nem homologação manual.
+
+### Limite de execução solicitado
+
+Em 07/10/2026, o usuário definiu parada obrigatória com **75% ou menos de uso restante**, mesmo sem conclusão. A consulta inicial confirmou 89% restante. Consultar o limite compartilhado da conta em cada etapa e antes de iniciar a próxima; agentes também devem respeitar o checkpoint. Ao atingir o limite, interromper o trabalho e os agentes, preservar os arquivos e informar entregas, validações e pendências. Não iniciar implementação, testes ou publicação adicionais depois da parada sem nova orientação do usuário.
 
 ## Critérios de aceite e testes
 
