@@ -88,6 +88,11 @@ export function parseContaFinanceiraId(pathname: string): string | null {
   return match ? match[1] : null;
 }
 
+export function parseProdutoEstoqueId(pathname: string): string | null {
+  const match = /^\/estoque\/produtos\/([^/]+)\/?$/i.exec(pathname);
+  return match ? match[1] : null;
+}
+
 export function parseOperacaoFinanceiraId(pathname: string): string | null {
   const match = /^\/financeiro\/operacoes\/([^/]+)\/?$/.exec(pathname);
   return match && !isNovaOperacaoFinanceira(pathname) ? match[1] : null;
@@ -151,7 +156,8 @@ export function parseLoteId(pathname: string): string | null {
 export function isSubrotaRebanho(tab: Tab, pathname: string): boolean {
   if (tab !== "pec-rebanho") return false;
   return isListaAnimaisRebanho(pathname) || isNovoAnimalRebanho(pathname) || isCadastrosRebanho(pathname)
-    || isListaLotesRebanho(pathname) || parseAnimalId(pathname) != null || parseLoteId(pathname) != null;
+    || isListaLotesRebanho(pathname) || parseAnimalId(pathname) != null || parseLoteId(pathname) != null
+    || pathname === "/pecuaria/rebanho/sanidade" || pathname === "/pecuaria/rebanho/nutricao";
 }
 
 export const URL_NOVA_OPERACAO = "/financeiro/operacoes/nova";
@@ -197,6 +203,7 @@ export function pathToTab(pathname: string): Tab | null {
 
   if (path === "/" || path === "") return DEFAULT_TAB;
   if (path === "/ia" && !ASSISTENTE_ATIVO) return DEFAULT_TAB;
+  if (parseProdutoEstoqueId(path) != null) return "estoque";
   if (parseContaFinanceiraId(path) != null) return "caixinha";
   if (parseOperacaoFinanceiraId(path) != null) return "lancar";
   if (isNovaOperacaoFinanceira(path)) return "lancar";

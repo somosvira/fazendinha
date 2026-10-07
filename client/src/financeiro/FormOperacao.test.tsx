@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { FormOperacao } from "./FormOperacao";
 import { setPropriedadeAtiva } from "../propriedadeScope";
 import type { ConfiguracoesFinanceiras } from "./novo-api";
@@ -26,6 +26,202 @@ const config: ConfiguracoesFinanceiras = {
 function montar() {
   render(<FormOperacao config={config} onSalvo={vi.fn()} />);
 }
+
+describe("altura disponível e foco nos painéis da operação", () => {
+  it("contém a rolagem da página só enquanto a operação está aberta e restaura os estilos anteriores", () => {
+    document.documentElement.style.setProperty("overflow", "auto", "important");
+    document.body.style.removeProperty("overflow");
+    document.body.style.setProperty("overflow-x", "clip", "important");
+    const { unmount } = render(<FormOperacao config={config} onSalvo={vi.fn()} />);
+    expect(document.documentElement.style.overflow).toBe("hidden");
+    expect(document.body.style.overflow).toBe("hidden");
+    unmount();
+    expect(document.documentElement.style.overflow).toBe("auto");
+    expect(document.documentElement.style.getPropertyPriority("overflow")).toBe("important");
+    expect(document.body.style.getPropertyValue("overflow")).toBe("");
+    expect(document.body.style.getPropertyValue("overflow-x")).toBe("clip");
+    expect(document.body.style.getPropertyPriority("overflow-x")).toBe("important");
+    expect(document.body.style.getPropertyValue("overflow-y")).toBe("");
+    document.documentElement.style.removeProperty("overflow");
+    document.body.style.removeProperty("overflow-x");
+  });
+
+  it("inclui o título no painel e recalcula o espaço quando um aviso do shell muda", () => {
+    let topo = 64;
+    const callbacks: ResizeObserverCallback[] = [];
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      return { top: this.classList.contains("pagina-operacao") ? topo : 0 } as DOMRect;
+    });
+    vi.stubGlobal("ResizeObserver", class {
+      constructor(callback: ResizeObserverCallback) { callbacks.push(callback); }
+      observe = vi.fn(); disconnect = vi.fn();
+    });
+    vi.stubGlobal("innerHeight", 800);
+    const { container } = render(<><div role="status">Aviso do sítio</div><FormOperacao config={config} onSalvo={vi.fn()} /></>);
+    const pagina = container.querySelector<HTMLElement>(".pagina-operacao")!;
+    expect(pagina.style.height).toBe("736px");
+    expect(screen.getByTestId("campos-operacao").contains(screen.getByRole("heading", { name: "Nova operação" }))).toBe(true);
+    topo = 112;
+    act(() => callbacks[0]([], {} as ResizeObserver));
+    expect(pagina.style.height).toBe("688px");
+    expect(callbacks).toHaveLength(1);
+  });
+
+  it.each([720, 1180])("rola apenas o painel interno e preserva o foco a %i px", async (largura) => {
+    vi.stubGlobal("innerWidth", largura);
+    const rolar = vi.fn();
+    const rolarPagina = vi.fn();
+    const original = HTMLElement.prototype.scrollIntoView;
+    HTMLElement.prototype.scrollIntoView = rolarPagina;
+    montar();
+    const painel = largura >= 1024 ? screen.getByTestId("campos-operacao") : screen.getByRole("button", { name: "Confirmar operação" }).closest("form")!;
+    Object.defineProperty(painel, "scrollTo", { value: rolar, configurable: true });
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar operação" }));
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText("Fornecedor ou parceiro")));
+    expect(rolar).toHaveBeenCalledWith(expect.objectContaining({ behavior: "smooth" }));
+    expect(rolarPagina).not.toHaveBeenCalled();
+    HTMLElement.prototype.scrollIntoView = original;
+  });
+});
+
+describe("erros de distribuição dos lotes", () => {
+  const mensagemSoma = "A soma dos lotes deve conferir com a quantidade do movimento: esperado 10; soma informada 7.";
+  function preparar(partidas = [{ quantidade: "4", validade: null }, { quantidade: "3", validade: null }], campoApi?: string, segundoItem = false) {
+    const onSalvo = vi.fn();
+    const fetchMock = vi.fn(async (url: unknown, init?: RequestInit) => {
+      const caminho = String(url);
+      if (caminho.includes("/estoque/partidas?")) return { ok: true, json: async () => [] };
+      if (caminho.endsWith("/financeiro/operacoes/rascunho") && init?.method === "PUT") return { ok: true, json: async () => ({ id: "draft", dados: {}, versao: 4, documentos: [] }) };
+      if (caminho.endsWith("/financeiro/operacoes/rascunho/confirmacao")) return { ok: false, status: 422, json: async () => ({ error: "Confira a quantidade deste lote.", code: "VALIDACAO", campo: campoApi }) };
+      return { ok: true, json: async () => ({ existente: null }) };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const item = { id: 900, produtoId: uid(1), descricao: "Ração", quantidade: "10", unidade: "KG", modoValor: "UNITARIO", valorUnitario: "2", valorTotal: "", categoriaId: "", classificacao: "", centroCustoId: "", partidas };
+    render(<FormOperacao config={{ ...config, produtos: [{ ...config.produtos[0], rastrearPartidas: true }, { id: uid(2), nome: "Sal mineral", unidade: "KG" }] }} rascunho={{ id: "draft", versao: 3, updatedAt: "2026-10-04", documentos: [], dados: { formulario: {
+      tipo: "INVENTARIO_INICIAL", condicao: "SEM_EFEITO_FINANCEIRO", descricao: "Estoque conferido", itens: segundoItem ? [{ ...item, id: 42, produtoId: uid(2), descricao: "Sal mineral", partidas: undefined }, item] : [item],
+    } } }} onSalvo={onSalvo} />);
+    return { onSalvo, fetchMock };
+  }
+
+  it("exibe soma esperada e informada junto aos lotes e à confirmação, preserva os dados e foca o aviso", async () => {
+    const { onSalvo, fetchMock } = preparar();
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar operação" }));
+    await screen.findAllByText(mensagemSoma);
+    const grupo = document.getElementById("campo-itens.0.partidas")!;
+    expect(grupo.getAttribute("aria-invalid")).toBe("true");
+    expect(grupo.querySelector('[role="alert"]')?.textContent).toBe(mensagemSoma);
+    expect(grupo.querySelector('[role="alert"] svg')).toBeTruthy();
+    expect(screen.getByTestId("confirmacao-operacao").textContent).toContain(mensagemSoma);
+    await waitFor(() => expect(document.activeElement).toBe(grupo.querySelector('[role="alert"]')));
+    expect((screen.getByLabelText("Quantidade do lote 1") as HTMLInputElement).value).toBe("4");
+    expect((screen.getByLabelText("Quantidade do lote 2") as HTMLInputElement).value).toBe("3");
+    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/confirmacao"))).toBe(false);
+    expect(onSalvo).not.toHaveBeenCalled();
+  });
+
+  it("foca a quantidade inválida da primeira linha sem o aviso tomar o foco", async () => {
+    preparar([{ quantidade: "", validade: null }, { quantidade: "10", validade: null }]);
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar operação" }));
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText("Quantidade do lote 1")));
+    expect(document.getElementById("campo-itens.0.partidas.0")?.getAttribute("aria-invalid")).toBe("true");
+    expect(screen.getByTestId("confirmacao-operacao").textContent).toContain("Informe a quantidade de cada lote.");
+  });
+
+  it.each(["itens.0.partidas", "itens.0.partidas.1.quantidade"])("localiza o campo da API %s após renderizar a mensagem", async (campo) => {
+    const { onSalvo } = preparar([{ quantidade: "4", validade: null }, { quantidade: "6", validade: null }], campo);
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar operação" }));
+    await screen.findAllByText("Confira a quantidade deste lote.");
+    const alvo = campo.endsWith("quantidade") ? screen.getByLabelText("Quantidade do lote 2") : document.getElementById("erro-itens.0.partidas");
+    await waitFor(() => expect(document.activeElement).toBe(alvo));
+    if (campo.endsWith("quantidade")) expect(document.getElementById("campo-itens.0.partidas.1")?.querySelector('[role="alert"]')?.textContent).toBe("Confira a quantidade deste lote.");
+    expect(onSalvo).not.toHaveBeenCalled();
+    expect((screen.getByLabelText("Quantidade do lote 2") as HTMLInputElement).value).toBe("6");
+  });
+
+  it("localiza a distribuição pelo índice do segundo item e limpa o erro ao corrigir sua soma", async () => {
+    const { fetchMock } = preparar(undefined, undefined, true);
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar operação" }));
+    const grupo = document.getElementById("campo-itens.1.partidas")!;
+    await waitFor(() => expect(document.activeElement).toBe(grupo.querySelector('[role="alert"]')));
+    expect(document.getElementById("item-900")?.contains(grupo)).toBe(true);
+    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/confirmacao"))).toBe(false);
+    fireEvent.change(screen.getByLabelText("Quantidade do lote 2"), { target: { value: "6" } });
+    expect(grupo.getAttribute("aria-invalid")).toBeNull();
+    expect(screen.queryAllByText(mensagemSoma)).toHaveLength(0);
+    expect((screen.getByLabelText("Quantidade do item 1") as HTMLInputElement).value).toBe("10");
+  });
+
+  it("erro da API no segundo item preserva validade e quantidades até a edição da linha indicada", async () => {
+    preparar([{ quantidade: "4", validade: null }, { quantidade: "6", validade: null }], "itens.1.partidas.1.quantidade", true);
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar operação" }));
+    await screen.findAllByText("Confira a quantidade deste lote.");
+    const quantidade = screen.getByLabelText("Quantidade do lote 2");
+    await waitFor(() => expect(document.activeElement).toBe(quantidade));
+    expect(quantidade.getAttribute("aria-invalid")).toBe("true");
+    expect((screen.getByLabelText("Situação da validade 2") as HTMLSelectElement).value).toBe("NAO_INFORMADA");
+    expect((screen.getByLabelText("Quantidade do lote 1") as HTMLInputElement).value).toBe("4");
+    fireEvent.change(quantidade, { target: { value: "5" } });
+    expect(quantidade.getAttribute("aria-invalid")).toBeNull();
+    expect(screen.queryAllByText("Confira a quantidade deste lote.")).toHaveLength(0);
+  });
+
+  it("remover o item anterior limpa o erro da API cujo índice deixou de representar a distribuição", async () => {
+    preparar([{ quantidade: "4", validade: null }, { quantidade: "6", validade: null }], "itens.1.partidas.1.quantidade", true);
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar operação" }));
+    await screen.findAllByText("Confira a quantidade deste lote.");
+    fireEvent.click(screen.getByRole("button", { name: "Remover item 1" }));
+    expect(document.getElementById("campo-itens.1.partidas")).toBeNull();
+    expect(document.getElementById("campo-itens.0.partidas")?.getAttribute("aria-invalid")).toBeNull();
+    expect(screen.queryAllByText("Confira a quantidade deste lote.")).toHaveLength(0);
+    expect((screen.getByLabelText("Quantidade do lote 1") as HTMLInputElement).value).toBe("4");
+    expect((screen.getByLabelText("Quantidade do lote 2") as HTMLInputElement).value).toBe("6");
+  });
+});
+
+it("apresenta produto e quantidade antes dos lotes por validade na compra", async () => {
+  vi.stubGlobal("fetch", vi.fn(async (url: unknown) => ({ ok: true, json: async () => String(url).includes("/estoque/partidas?") ? [] : { custoMedio: null } })));
+  render(<FormOperacao config={{ ...config, produtos: [{ ...config.produtos[0], rastrearPartidas: true }] }} tipoInicial="COMPRA_ESTOQUE" onSalvo={vi.fn()} />);
+  const produto = screen.getByLabelText("Produto do item 1");
+  fireEvent.change(produto, { target: { value: uid(1) } });
+  const validade = await screen.findByLabelText("Situação da validade 1");
+  expect(produto.compareDocumentPosition(validade) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(screen.getByLabelText("Quantidade do item 1").compareDocumentPosition(validade) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+});
+
+it("retry após resposta perdida repete chave e versão sem recriar o rascunho", async () => {
+  const confirmacoes: Array<{ chave: string; versao: number }> = [];
+  let salvamentos = 0;
+  const fetchMock = vi.fn(async (url: unknown, init?: RequestInit) => {
+    if (String(url).endsWith("/financeiro/operacoes/rascunho") && init?.method === "PUT") {
+      salvamentos++;
+      return { ok: true, json: async () => ({ id: "draft", dados: {}, versao: 4, documentos: [] }) };
+    }
+    if (String(url).endsWith("/financeiro/operacoes/rascunho/confirmacao")) {
+      confirmacoes.push(JSON.parse(String(init?.body)));
+      if (confirmacoes.length === 1) throw new Error("Resposta da confirmação não chegou. Tente novamente.");
+      return { ok: true, json: async () => ({ id: "operacao", numero: 7, documentos: [] }) };
+    }
+    return { ok: true, json: async () => ({}) };
+  });
+  vi.stubGlobal("fetch", fetchMock);
+  const onSalvo = vi.fn();
+  render(<FormOperacao config={config} tipoInicial="SERVICO" onSalvo={onSalvo} />);
+  fireEvent.change(screen.getByLabelText("Descrição"), { target: { value: "Consulta sanitária" } });
+  fireEvent.change(screen.getByLabelText("Valor total da operação"), { target: { value: "100" } });
+  fireEvent.change(screen.getByLabelText("Prestador de serviço"), { target: { value: uid(1) } });
+  fireEvent.change(screen.getByLabelText("Conta financeira"), { target: { value: uid(1) } });
+  fireEvent.click(screen.getByRole("button", { name: "Confirmar operação" }));
+  await screen.findAllByText("Resposta da confirmação não chegou. Tente novamente.");
+  const antesDoRetry = salvamentos;
+  fireEvent.click(screen.getByRole("button", { name: "Confirmar operação" }));
+  await waitFor(() => expect(onSalvo).toHaveBeenCalled());
+  expect(confirmacoes).toHaveLength(2);
+  expect(confirmacoes[1]).toEqual(confirmacoes[0]);
+  expect(confirmacoes[0].chave).toMatch(/^[0-9a-f-]{36}$/);
+  expect(salvamentos).toBe(antesDoRetry);
+  const persistido = fetchMock.mock.calls.find(([url, init]) => String(url).endsWith("/rascunho") && init?.method === "PUT");
+  expect(JSON.parse(String(persistido?.[1]?.body)).dados.operacao.chave).toBe(confirmacoes[0].chave);
+});
 
 describe("FormOperacao", () => {
   it("oferece ajuste de estoque como tipo de operação", () => {
@@ -55,8 +251,8 @@ describe("FormOperacao", () => {
 
   it("não bloqueia o botão com parceiro que perdeu o papel necessário — ao clicar, rola e foca o campo em vez de deixar o usuário procurando", () => {
     const scroll = vi.fn();
-    const originalScroll = HTMLElement.prototype.scrollIntoView;
-    HTMLElement.prototype.scrollIntoView = scroll;
+    const originalScroll = HTMLElement.prototype.scrollTo;
+    HTMLElement.prototype.scrollTo = scroll;
     try {
       render(<FormOperacao config={config} rascunho={{ id: uid(8), versao: 1, updatedAt: "2026-09-11", documentos: [], dados: { formulario: { tipo: "SERVICO", condicao: "A_VISTA", descricao: "Manutenção", valorOperacao: "100", parceiroId: uid(2), contaId: uid(1), formaPagamento: "PIX", data: "2026-09-11" } } }} onSalvo={vi.fn()} />);
       expect(screen.getByRole("alert").textContent).toContain("não tem um papel compatível");
@@ -69,7 +265,7 @@ describe("FormOperacao", () => {
       expect(parceiroSelect.id).toBe("campo-parceiroId");
       expect(scroll).toHaveBeenCalled();
       expect(document.activeElement).toBe(parceiroSelect);
-    } finally { HTMLElement.prototype.scrollIntoView = originalScroll; }
+    } finally { HTMLElement.prototype.scrollTo = originalScroll; }
   });
 
   it("abre como página e remove campos físicos quando o tipo é serviço", () => {
@@ -376,9 +572,9 @@ it("'Separar por item' deixa vazio (herda a operação) quando o produto não te
 });
 
 it("erro do servidor itens.N.centroCustoId no modo Único marca e rola até o centro da operação", async () => {
-  const originalScroll = HTMLElement.prototype.scrollIntoView;
+  const originalScroll = HTMLElement.prototype.scrollTo;
   const scroll = vi.fn();
-  HTMLElement.prototype.scrollIntoView = scroll;
+  HTMLElement.prototype.scrollTo = scroll;
   const fetchMock = vi.fn(async (url: unknown, init?: RequestInit) => {
     const caminho = String(url);
     if (caminho.endsWith("/financeiro/operacoes/rascunho") && init?.method === "PUT") {
@@ -405,7 +601,7 @@ it("erro do servidor itens.N.centroCustoId no modo Único marca e rola até o ce
     expect(campo.id).toBe("campo-centroCustoId");
     expect(scroll).toHaveBeenCalled();
   } finally {
-    HTMLElement.prototype.scrollIntoView = originalScroll;
+    HTMLElement.prototype.scrollTo = originalScroll;
   }
 });
 
@@ -617,14 +813,12 @@ describe("FormOperacao — erro de confirmação por campo", () => {
 });
 
 describe("FormOperacao — botão sempre ativo; erro rola e foca o campo (não fica escondido/desabilitado)", () => {
-  // jsdom não faz layout: scrollIntoView existe como stub, mas trocamos por
-  // um mock pra provar que ele foi chamado — o foco real (document.activeElement)
-  // é o que garante de verdade que o usuário foi levado até o campo.
+  // jsdom não faz layout; verificamos a rolagem interna e o foco real.
   const comScrollStub = <T,>(rodar: () => T): [T, ReturnType<typeof vi.fn>] => {
     const scroll = vi.fn();
-    const original = HTMLElement.prototype.scrollIntoView;
-    HTMLElement.prototype.scrollIntoView = scroll;
-    try { return [rodar(), scroll]; } finally { HTMLElement.prototype.scrollIntoView = original; }
+    const original = HTMLElement.prototype.scrollTo;
+    HTMLElement.prototype.scrollTo = scroll;
+    try { return [rodar(), scroll]; } finally { HTMLElement.prototype.scrollTo = original; }
   };
 
   it("formulário em branco: o botão de confirmar nunca fica desabilitado", () => {

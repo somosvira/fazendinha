@@ -17,6 +17,7 @@ describe("Popover", () => {
       ),
     );
     expect(screen.getByText("Conteúdo do popover")).toBeTruthy();
+    expect(screen.getByText("Conteúdo do popover").closest("[data-slot='popover-content']")?.className).toContain("z-[1200]");
   });
 
   it("não mostra o conteúdo quando fechado", () => {

@@ -17,7 +17,6 @@ type Painel = { modo: "novo" } | { modo: "editar"; id: number } | null;
 
 const colunas = (editar: (s: PropriedadeDTO) => void, alternar: (s: PropriedadeDTO) => void): ColunaTabela<PropriedadeDTO>[] => [
   { chave: "sitio", titulo: "Sítio", larguraMinima: 200, principal: true, celula: (s) => <strong className="break-words">{s.nome}</strong> },
-  { chave: "apelido", titulo: "Apelido", larguraMinima: 140, celula: (s) => <span className="break-words">{s.apelido || "—"}</span> },
   { chave: "local", titulo: "Cidade", larguraMinima: 160, celula: (s) => <span className="break-words">{[s.cidade, s.uf].filter(Boolean).join(" — ") || "—"}</span> },
   { chave: "principal", titulo: "Principal", alinhamento: "centro", larguraMinima: 100, celula: (s) => s.principal ? <Pill tone="blue">Principal</Pill> : "—" },
   { chave: "situacao", titulo: "Situação", alinhamento: "direita", larguraMinima: 100, celula: (s) => <Pill tone={s.ativo ? "green" : "neutral"}>{s.ativo ? "Ativo" : "Inativo"}</Pill> },

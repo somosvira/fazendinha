@@ -30,8 +30,9 @@ import { FormRaca } from "../cadastros/FormRaca";
 import { FormGenitor } from "../cadastros/FormGenitor";
 import { FormMaterialGenetico } from "../cadastros/FormMaterialGenetico";
 import { FormCategoria, type DadosFormCategoria } from "../cadastros/FormCategoria";
+import { CadastrosSanitarios } from "../sanidade/CadastrosSanitarios";
 
-type Aba = "categorias" | "racas" | "motivos" | "genitores" | "material-genetico";
+type Aba = "categorias" | "racas" | "motivos" | "genitores" | "material-genetico" | "sanidade";
 type EntidadePainel = "raca" | "motivo" | "genitor" | "material";
 type Painel = { entidade: EntidadePainel; modo: "novo" } | { entidade: EntidadePainel; modo: "editar"; id: string | number } | null;
 type PainelCategoria = { modo: "novo" } | { modo: "editar"; categoria: CategoriaDTO } | null;
@@ -309,6 +310,7 @@ export function Cadastros({ podeLancar = true }: { podeLancar?: boolean }) {
   const chavePainelCategoria = painelCategoria ? (painelCategoria.modo === "editar" ? `editar-${painelCategoria.categoria.id}` : "novo") : "fechado";
 
   const acao = !podeLancar ? undefined
+    : aba === "sanidade" ? undefined
     : aba === "categorias" ? <div className="flex flex-wrap gap-2"><Button secondary onClick={restaurarPadroes}>Restaurar padrões</Button><Button onClick={() => setPainelCategoria({ modo: "novo" })}><Plus size={16} /> Nova categoria</Button></div>
     : aba === "racas" ? <Button onClick={() => abrirNovo("raca")}><Plus size={16} /> Nova raça</Button>
     : aba === "genitores" ? <Button onClick={() => abrirNovo("genitor")}><Plus size={16} /> Novo genitor externo</Button>
@@ -329,8 +331,10 @@ export function Cadastros({ podeLancar = true }: { podeLancar?: boolean }) {
       { valor: "motivos", rotulo: "Motivos de baixa", icon: LogOut },
       { valor: "genitores", rotulo: "Genitores externos", icon: Users },
       { valor: "material-genetico", rotulo: "Material genético", icon: FlaskConical },
+      { valor: "sanidade", rotulo: "Sanidade", icon: FlaskConical },
     ]} ativa={aba} onSelecionar={trocarAba} />
 
+    {aba === "sanidade" && <CadastrosSanitarios podeLancar={podeLancar} />}
     {carregando
       ? <div className="mt-5"><Loader label={`Carregando ${aba === "categorias" ? "categorias" : aba === "racas" ? "raças" : aba === "genitores" ? "genitores externos" : aba === "material-genetico" ? "material genético" : "motivos de baixa"}`} /></div>
       // os filtros ("Mostrar inativas/os") ficam fora do fieldset de escrita — quem só pode ver

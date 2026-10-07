@@ -143,6 +143,27 @@ describe("ListaAnimais", () => {
     expect((primeiro("checkbox", "Selecionar 0001") as HTMLInputElement).checked).toBe(true);
   });
 
+  it("mantém a seleção coletiva ao refinar a busca", async () => {
+    const primeiroAnimal = criarAnimal({ id: "a1", brinco: "GV3-S1" });
+    const segundoAnimal = criarAnimal({ id: "a2", brinco: "GV3-S2" });
+    vi.mocked(listarAnimais).mockImplementation(async ({ busca }) => ({
+      itens: busca === "GV3-S2" ? [segundoAnimal] : [primeiroAnimal, segundoAnimal],
+      total: busca === "GV3-S2" ? 1 : 2,
+      painel: painelVazio,
+    } as never));
+    montar();
+    await screen.findAllByText("GV3-S1");
+
+    fireEvent.click(primeiro("checkbox", "Selecionar GV3-S1"));
+    expect(screen.getByText("1 selecionado")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Buscar por brinco ou nome"), { target: { value: "GV3-S2" } });
+    await new Promise((resolve) => setTimeout(resolve, 350));
+    await screen.findAllByText("GV3-S2");
+
+    expect(screen.getByText("1 selecionado")).toBeTruthy();
+    expect((primeiro("checkbox", "Selecionar GV3-S2") as HTMLInputElement).checked).toBe(false);
+  });
+
   it("movimentar mostra o toast com Desfazer, igual ao da página do lote (K8)", async () => {
     const itens = [criarAnimal({ id: "a1", brinco: "0001" })];
     vi.mocked(listarAnimais).mockResolvedValue({ itens, total: 1, painel: painelVazio });

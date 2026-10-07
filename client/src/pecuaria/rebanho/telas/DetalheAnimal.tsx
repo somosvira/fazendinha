@@ -35,6 +35,9 @@ import { HistoricoBaixas } from "../components/HistoricoBaixas";
 import { AuditoriaAnimal } from "../components/AuditoriaAnimal";
 import { HistoricoMovimentacoes } from "../components/HistoricoMovimentacoes";
 import { DetalheMovimentacao } from "../components/DetalheMovimentacao";
+import { SanidadeAnimal } from "../sanidade/SanidadeAnimal";
+import { ManejoAnimal } from "../manejo/ManejoAnimal";
+import { NutricaoAnimal } from "../nutricao/NutricaoAnimal";
 
 /** Nome/brinco de mãe ou pai na seção Filiação — link para a ficha quando é animal nosso,
  *  selo "externo" quando é genitor de fora. */
@@ -309,6 +312,10 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
       />
 
       <HistoricoBaixas historicoBaixas={animal.historicoBaixas} />
+
+      <SanidadeAnimal animalId={animal.id} propriedadeId={localizacaoAtual?.propriedade?.id ?? null} podeLancar={podeLancar} recarregarToken={refreshToken} onMudou={() => { void carregar(); }} />
+      <ManejoAnimal animalId={animal.id} propriedadeId={localizacaoAtual?.propriedade?.id ?? null} localizacoes={animal.historicoLocalizacoes} baixaData={animal.baixa?.data ?? null} podeLancar={podeLancar} onSalvo={() => { void carregar(); }} />
+      <NutricaoAnimal animalId={animal.id} recarregarToken={refreshToken} />
 
       <CardFicha icon={ArrowLeftRight} titulo="Movimentações" className="lg:col-span-2">
         <div className="-m-5">

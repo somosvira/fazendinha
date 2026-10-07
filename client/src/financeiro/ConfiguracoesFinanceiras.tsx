@@ -41,23 +41,20 @@ const colunasParceiros = (editar: (p: Parceiro) => void, alternar: (p: Parceiro)
   { chave: "acoes", titulo: "Ações", alinhamento: "direita", larguraMinima: 110, acoes: true, celula: (p) => <AcoesLinha nome={p.nome} ativo={p.ativo} onEditar={() => editar(p)} onAlternar={() => alternar(p)} /> },
 ];
 
-const colunasProdutos = (editar: (p: Produto) => void, alternar: (p: Produto) => void): ColunaTabela<Produto>[] => [
+const colunasProdutos = (editar: (p: Produto) => void, alternar: (p: Produto) => void, podeEditar: boolean): ColunaTabela<Produto>[] => [
   { chave: "nome", titulo: "Produto", larguraMinima: 200, principal: true, celula: (p) => <strong className="break-words font-semibold">{p.nome}</strong> },
   { chave: "categoria", titulo: "Categoria", larguraMinima: 130, celula: (p) => p.categoriaNome ?? "Sem categoria" },
+  { chave: "uso", titulo: "Tipos de uso", larguraMinima: 130, celula: (p) => [p.usoAgricola && "Agrícola", p.usoGenetico && "Genético", p.usoSanitario && "Sanitário", p.usoNutricional && "Nutricional"].filter(Boolean).join(" · ") || "Geral" },
   { chave: "unidade", titulo: "Unidade", larguraMinima: 80, celula: (p) => rotuloUnidade(p.unidade) },
   { chave: "centrosCusto", titulo: "Centros de custo", larguraMinima: 150, celula: (p) => <span className="break-words text-ink-3">{p.centrosCusto?.map((c) => `${c.nome}${c.ativo ? "" : " (inativo)"}`).join(" · ") || "—"}</span> },
   { chave: "fornecedores", titulo: "Fornecedores", larguraMinima: 150, celula: (p) => <span className="break-words text-ink-3">{p.fornecedores?.map((f) => `${f.nome}${f.ativo ? "" : " (inativo)"}`).join(" · ") || "Sem fornecedor"}</span> },
   { chave: "situacao", titulo: "Situação", alinhamento: "direita", larguraMinima: 100, celula: (p) => <Pill tone={p.ativo !== false ? "green" : "neutral"}>{p.ativo !== false ? "Ativo" : "Inativo"}</Pill> },
-  { chave: "acoes", titulo: "Ações", alinhamento: "direita", larguraMinima: 110, acoes: true, celula: (p) => <AcoesLinha nome={p.nome} ativo={p.ativo !== false} onEditar={() => editar(p)} onAlternar={() => alternar(p)} /> },
+  { chave: "acoes", titulo: "Ações", alinhamento: "direita", larguraMinima: 150, acoes: true, celula: (p) => <div className="flex items-center justify-end gap-2"><a href={`/estoque/produtos/${p.id}`} onClick={(e) => e.stopPropagation()} className="whitespace-nowrap text-sm underline">Ver no estoque</a>{podeEditar && <AcoesLinha nome={p.nome} ativo={p.ativo !== false} onEditar={() => editar(p)} onAlternar={() => alternar(p)} />}</div> },
 ];
 
 const colunasCategorias = (editar: (c: Categoria) => void, alternar: (c: Categoria) => void): ColunaTabela<Categoria>[] => [
   { chave: "categoria", titulo: "Categoria", principal: true, larguraMinima: 210, celula: (c) => <strong>{c.nome}</strong> },
   { chave: "classificacao", titulo: "Classificação", alinhamento: "centro", larguraMinima: 130, celula: (c) => c.classificacao === "INVESTIMENTO" ? "Investimento" : c.classificacao === "CUSTEIO" ? "Custeio" : "Não classificada" },
-  { chave: "uso", titulo: "Uso", alinhamento: "centro", larguraMinima: 150, celula: (c) => {
-    if (!c.usoAgricola && !c.usoGenetico) return "—";
-    return <span className="flex flex-wrap justify-center gap-1">{c.usoAgricola && <Pill tone="neutral">Agrícola</Pill>}{c.usoGenetico && <Pill tone="neutral">Genético</Pill>}</span>;
-  } },
   { chave: "referencias", titulo: "Em uso", alinhamento: "centro", larguraMinima: 100, celula: (c) => (c._count?.operacoes ?? 0) + (c._count?.produtos ?? 0) + (c._count?.itens ?? 0) },
   { chave: "situacao", titulo: "Situação", alinhamento: "centro", larguraMinima: 100, celula: (c) => <Pill tone={c.ativo ? "green" : "neutral"}>{c.ativo ? "Ativa" : "Inativa"}</Pill> },
   { chave: "acoes", titulo: "Ações", alinhamento: "direita", larguraMinima: 110, acoes: true, celula: (c) => <AcoesLinha nome={c.nome} ativo={c.ativo} onEditar={() => editar(c)} onAlternar={() => alternar(c)} /> },
@@ -84,7 +81,7 @@ function mensagemDesativar(confirmacao: NonNullable<Confirmacao>) {
 export function ConfiguracoesFinanceiras({ abaInicial = "contas", podeEditar = true }: { abaInicial?: Aba; podeEditar?: boolean }) {
   const [config, setConfig] = useState<Config | null>(null);
   const [erro, setErro] = useState<string | null>(null);
-  const [aba, setAba] = useState<Aba>(abaInicial);
+  const [aba, setAba] = useState<Aba>(() => { const alvo = new URLSearchParams(window.location.search).get("aba"); return alvo === "parceiros" || alvo === "produtos" ? alvo : abaInicial; });
   const [painel, setPainel] = useState<Painel>(null);
   const [confirmando, setConfirmando] = useState<Confirmacao>(null);
   const [processando, setProcessando] = useState(false);
@@ -108,7 +105,7 @@ export function ConfiguracoesFinanceiras({ abaInicial = "contas", podeEditar = t
 
   const trocarAba = (nova: Aba) => { setAba(nova); setPainel(null); setConfirmando(null); };
   const abrirNovo = (entidade: EntidadePainel) => { if (podeEditar && !emCurso.current) setPainel({ entidade, modo: "novo" }); };
-  const editar = (entidade: EntidadePainel, item: { id: string }) => { if (podeEditar && !emCurso.current) setPainel({ entidade, modo: "editar", id: item.id }); };
+  const editar = (entidade: EntidadePainel, item: { id: string }) => { if ((podeEditar || entidade === "produto") && !emCurso.current) setPainel({ entidade, modo: "editar", id: item.id }); };
   const alternarConta = async (c: Conta) => {
     if (emCurso.current) return;
     if (c.ativo) { setConfirmando({ tipo: "conta", item: c }); return; }
@@ -162,8 +159,8 @@ export function ConfiguracoesFinanceiras({ abaInicial = "contas", podeEditar = t
     const fornecedorOk = filtroFornecedor === "SEM" ? !produto.fornecedores?.length : !filtroFornecedor || produto.fornecedores?.some((f) => f.id === filtroFornecedor);
     const centroOk = filtroCentro === "SEM" ? !produto.centrosCusto?.length : !filtroCentro || produto.centrosCusto?.some((c) => c.id === filtroCentro);
     const situacaoOk = filtroSituacao === "TODOS" || (filtroSituacao === "ATIVOS" ? produto.ativo !== false : produto.ativo === false);
-    const usoOk = !filtroUso || (filtroUso === "SEM" ? !produto.categoria?.usoAgricola && !produto.categoria?.usoGenetico
-      : filtroUso === "usoGenetico" ? !!produto.categoria?.usoGenetico : !!produto.categoria?.usoAgricola);
+    const usoOk = !filtroUso || (filtroUso === "SEM" ? !produto.usoAgricola && !produto.usoGenetico && !produto.usoSanitario && !produto.usoNutricional
+      : !!produto[filtroUso as "usoAgricola" | "usoGenetico" | "usoSanitario" | "usoNutricional"]);
     return buscaOk && fornecedorOk && centroOk && situacaoOk && usoOk;
   });
   const acao = aba === "categorias"
@@ -175,17 +172,17 @@ export function ConfiguracoesFinanceiras({ abaInicial = "contas", podeEditar = t
     <ErrorBox erro={erro} />
     {!podeEditar && <p className="mt-4 rounded-lg border border-border bg-[#faf9f4] px-4 py-3 text-sm text-ink-3">Você tem acesso de consulta a estes cadastros.</p>}
     <div role="tablist" aria-label="Cadastros financeiros" className="mt-6 flex max-w-full gap-1 overflow-x-auto rounded-lg border border-border bg-white p-1 [scrollbar-width:none] sm:inline-flex">{([["contas", "Contas financeiras", Building2], ["parceiros", "Clientes e fornecedores", Users], ["produtos", "Produtos", Package], ["categorias", "Categorias", Tags], ["centros", "Centros de custo", Target]] as const).map(([k, label, Icon]) => <button key={k} type="button" role="tab" aria-selected={aba === k} onClick={() => trocarAba(k)} className={`flex shrink-0 items-center gap-2 whitespace-nowrap rounded-md px-3 py-2 text-sm font-semibold transition-colors ${aba === k ? "bg-mast text-white" : "text-ink-3 hover:bg-surface-2 hover:text-ink"}`}><Icon size={16} className="shrink-0" />{label}</button>)}</div>
-    <fieldset disabled={processando || !podeEditar} aria-busy={processando} className="min-w-0">
+    <fieldset disabled={processando || (!podeEditar && aba !== "produtos")} aria-busy={processando} className="min-w-0">
       {aba === "contas" && <Panel className="mt-5 overflow-hidden"><TabelaFinanceira rotulo="Contas financeiras" itens={config.contas} colunas={colunasContas((c) => editar("conta", c), alternarConta)} chaveDe={(c) => c.id} onAbrir={(c) => editar("conta", c)} classeLinha={(c) => !c.ativo ? "opacity-55" : ""} /></Panel>}
       {aba === "parceiros" && <Panel className="mt-5 overflow-hidden"><TabelaFinanceira rotulo="Clientes e fornecedores" itens={config.parceiros} colunas={colunasParceiros((p) => editar("parceiro", p), alternarParceiro)} chaveDe={(p) => p.id} onAbrir={(p) => editar("parceiro", p)} classeLinha={(p) => !p.ativo ? "opacity-55" : ""} /></Panel>}
-      {aba === "produtos" && <><div className="mt-5 flex flex-wrap gap-3"><input aria-label="Buscar produto" value={buscaProduto} onChange={(e) => setBuscaProduto(e.target.value)} placeholder="Buscar por nome…" className="h-10 min-w-[200px] flex-1 rounded-lg border border-border bg-white px-3 text-sm" /><SelectFiltro rotulo="Filtrar por fornecedor" valor={filtroFornecedor} onChange={setFiltroFornecedor} opcoes={[{ valor: "", texto: "Todos os fornecedores" }, { valor: "SEM", texto: "Sem fornecedor" }, ...config.parceiros.filter((p) => papeisDoParceiro(p).includes("FORNECEDOR")).map((p) => ({ valor: String(p.id), texto: p.nome }))]} /><SelectFiltro rotulo="Filtrar por centro de custo" valor={filtroCentro} onChange={setFiltroCentro} opcoes={[{ valor: "", texto: "Todos os centros" }, { valor: "SEM", texto: "Sem centro" }, ...config.centrosCusto.filter((c) => c.ativo).map((c) => ({ valor: String(c.id), texto: c.nome }))]} /><SelectFiltro rotulo="Filtrar por uso" valor={filtroUso} onChange={setFiltroUso} opcoes={[{ valor: "", texto: "Todos" }, { valor: "usoAgricola", texto: "Uso agrícola" }, { valor: "usoGenetico", texto: "Uso genético" }, { valor: "SEM", texto: "Sem uso específico" }]} /><SelectFiltro rotulo="Filtrar por situação" valor={filtroSituacao} onChange={setFiltroSituacao} opcoes={[{ valor: "TODOS", texto: "Ativos e inativos" }, { valor: "ATIVOS", texto: "Ativos" }, { valor: "INATIVOS", texto: "Inativos" }]} /></div><Panel className="mt-3 overflow-hidden"><TabelaFinanceira rotulo="Produtos" itens={produtosFiltrados} colunas={colunasProdutos((p) => editar("produto", p), alternarProduto)} chaveDe={(p) => p.id} onAbrir={(p) => editar("produto", p)} classeLinha={(p) => p.ativo === false ? "opacity-55" : ""} /></Panel></>}
+      {aba === "produtos" && <><div className="mt-5 flex flex-wrap gap-3"><input aria-label="Buscar produto" value={buscaProduto} onChange={(e) => setBuscaProduto(e.target.value)} placeholder="Buscar por nome…" className="h-10 min-w-[200px] flex-1 rounded-lg border border-border bg-white px-3 text-sm" /><SelectFiltro rotulo="Filtrar por fornecedor" valor={filtroFornecedor} onChange={setFiltroFornecedor} opcoes={[{ valor: "", texto: "Todos os fornecedores" }, { valor: "SEM", texto: "Sem fornecedor" }, ...config.parceiros.filter((p) => papeisDoParceiro(p).includes("FORNECEDOR")).map((p) => ({ valor: String(p.id), texto: p.nome }))]} /><SelectFiltro rotulo="Filtrar por centro de custo" valor={filtroCentro} onChange={setFiltroCentro} opcoes={[{ valor: "", texto: "Todos os centros" }, { valor: "SEM", texto: "Sem centro" }, ...config.centrosCusto.filter((c) => c.ativo).map((c) => ({ valor: String(c.id), texto: c.nome }))]} /><SelectFiltro rotulo="Filtrar por uso" valor={filtroUso} onChange={setFiltroUso} opcoes={[{ valor: "", texto: "Todos" }, { valor: "usoAgricola", texto: "Uso agrícola" }, { valor: "usoGenetico", texto: "Uso genético" }, { valor: "usoSanitario", texto: "Uso sanitário" }, { valor: "usoNutricional", texto: "Uso nutricional" }, { valor: "SEM", texto: "Sem uso específico" }]} /><SelectFiltro rotulo="Filtrar por situação" valor={filtroSituacao} onChange={setFiltroSituacao} opcoes={[{ valor: "TODOS", texto: "Ativos e inativos" }, { valor: "ATIVOS", texto: "Ativos" }, { valor: "INATIVOS", texto: "Inativos" }]} /></div><Panel className="mt-3 overflow-hidden"><TabelaFinanceira rotulo="Produtos" itens={produtosFiltrados} colunas={colunasProdutos((p) => editar("produto", p), alternarProduto, podeEditar)} chaveDe={(p) => p.id} onAbrir={(p) => editar("produto", p)} classeLinha={(p) => p.ativo === false ? "opacity-55" : ""} /></Panel></>}
       {aba === "categorias" && <Panel className="mt-5 overflow-hidden"><TabelaFinanceira rotulo="Categorias financeiras" itens={categorias} colunas={colunasCategorias((c) => editar("categoria", c), alternarCategoria)} chaveDe={(c) => c.id} onAbrir={(c) => editar("categoria", c)} classeLinha={(c) => !c.ativo ? "opacity-55" : ""} /></Panel>}
       {aba === "centros" && <Panel className="mt-5 overflow-hidden"><TabelaFinanceira rotulo="Centros de custo" itens={config.centrosCusto} colunas={colunasCentros((c) => editar("centro", c), alternarCentro)} chaveDe={(c) => c.id} onAbrir={(c) => editar("centro", c)} classeLinha={(c) => !c.ativo ? "opacity-55" : ""} /></Panel>}
     </fieldset>
 
     {painel?.entidade === "conta" && <FormConta key={chavePainel} aberto conta={contaSelecionada} ordemInicial={config.contas.reduce((maior, conta) => Math.max(maior, conta.ordem ?? 0), -1) + 1} onSalvo={aoSalvar} onFechar={() => setPainel(null)} />}
     {painel?.entidade === "parceiro" && <FormParceiro key={chavePainel} aberto parceiro={parceiroSelecionado} onSalvo={aoSalvar} onFechar={() => setPainel(null)} />}
-    {painel?.entidade === "produto" && <FormProduto key={chavePainel} produto={produtoSelecionado} parceiros={config.parceiros} categorias={categorias} centros={config.centrosCusto} onSalvo={aoSalvar} onFechar={() => setPainel(null)} />}
+    {painel?.entidade === "produto" && <FormProduto key={chavePainel} somenteLeitura={!podeEditar} produto={produtoSelecionado} parceiros={config.parceiros} categorias={categorias} centros={config.centrosCusto} onSalvo={aoSalvar} onFechar={() => setPainel(null)} />}
     {painel?.entidade === "categoria" && <FormCategoria key={chavePainel} categoria={categoriaSelecionada} ordemInicial={categorias.reduce((maior, categoria) => Math.max(maior, categoria.ordem), -1) + 1} onSalvo={aoSalvar} onFechar={() => setPainel(null)} />}
     {painel?.entidade === "centro" && <FormCentroCusto key={chavePainel} centro={centroSelecionado} ordemInicial={config.centrosCusto.reduce((maior, centro) => Math.max(maior, centro.ordem), -1) + 1} onSalvo={aoSalvar} onFechar={() => setPainel(null)} />}
 

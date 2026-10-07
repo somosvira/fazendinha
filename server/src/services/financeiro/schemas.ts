@@ -87,6 +87,8 @@ export const categoriaCadastroSchema = z.object({
   ordem: z.number().int().min(0).max(9999).default(0),
   usoAgricola: z.boolean().optional(),
   usoGenetico: z.boolean().optional(),
+  usoSanitario: z.boolean().optional(),
+  usoNutricional: z.boolean().optional(),
 });
 
 export const patchCategoriaCadastroSchema = categoriaCadastroSchema.partial().extend({ ativo: z.boolean().optional() });
@@ -134,6 +136,14 @@ export const itemOperacaoSchema = z.object({
   valorUnitario: z.coerce.number().nonnegative().optional(),
   valorTotal: z.coerce.number().positive().optional(),
   estocavel: z.boolean().default(false),
+  partidas: z.array(z.object({
+    partidaId: z.string().uuid().optional(),
+    codigo: z.string().trim().min(1).max(100).optional(),
+    nome: z.string().trim().min(1, "Informe o nome do lote").max(160, "O nome do lote aceita até 160 caracteres").optional(),
+    cienciaValidadeDesconhecida: z.boolean().optional(),
+    validade: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Informe uma validade válida").nullish(),
+    quantidade: z.coerce.number().finite(),
+  })).optional(),
 }).refine((item) => item.valorUnitario !== undefined || item.valorTotal !== undefined, { message: "Informe o valor unitário ou total do item", path: ["valorUnitario"] });
 
 const parcelaSchema = z.object({
@@ -153,6 +163,7 @@ export const simulacaoParcelasSchema = z.object({
 });
 
 export const operacaoSchema = z.object({
+  chave: z.string().uuid("Atualize a confirmação e tente novamente").optional(),
   classificacao: z.enum(["CUSTEIO", "INVESTIMENTO"]).nullable().optional(),
   tipo: z.enum([
     "COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO", "SERVICO", "VENDA", "APORTE", "RETIRADA",

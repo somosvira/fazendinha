@@ -38,12 +38,14 @@ Distinção que precisa ficar cristalina, porque muda o design:
 
 ### 3.1 Entidade `Propriedade` (NOVO)
 
+Atualização em 03/10/2026: a interface usa sempre `Propriedade.nome` na sidebar, seletores, filtros, relatórios e fichas. O apelido era um rótulo curto opcional; não tem papel operacional. Seu campo permanece no banco e na API para compatibilidade com cadastros anteriores, mas foi retirado do formulário e da tabela de Sítios. A indicação de sítio principal continua sendo definida exclusivamente por `principal`.
+
 ```prisma
 // PROPOSTO — sítio físico da fazenda-cliente. Default single-tenant: 1 linha.
 model Propriedade {
   id         Int      @id @default(autoincrement())
   nome       String   @unique
-  apelido    String?  // rótulo curto p/ o seletor do shell ("Sede", "Recria")
+  apelido    String?  // compatibilidade histórica; a interface usa nome
   cidade     String?
   uf         String?
   principal  Boolean  @default(false) // a default quando não há filtro

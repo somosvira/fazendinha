@@ -4,6 +4,34 @@ import { prepararPublicacaoRascunho } from "./rascunhoAtivo";
 import { prepararPublicacaoRascunhoRelatorio } from "./rascunhoRelatorioAtivo";
 import type { UnidadeMedida } from "../lib/unidades";
 import { SEM_VINCULO } from "../lib/ids";
+import { reqSanidade } from "../pecuaria/rebanho/sanidade/api";
+
+export type ProcedimentoServico = {
+  id: string; tipo: "APLICACAO" | "EXAME" | "PROTOCOLO"; animalId: string;
+  animal: { id: string; brinco: string; nome: string | null }; propriedade: { id: number; nome: string } | null;
+  nome: string; dataHora: string; status: string; origem: string; valor: string | null;
+  vinculado: boolean; podeEditar: boolean; execucaoId: string | null; operacaoServicoId: string | null;
+};
+export type ConsultaProcedimentosServico = {
+  servico: { id: string; numero: number; descricao: string | null; status: string; propriedadeId: number; propriedade?: { id: number; nome: string }; data?: string; valorConfirmado: string | null; totalAtribuido: string | null; disponivel: string | null };
+  itens: ProcedimentoServico[]; total: number; pagina: number; limite: number; paginas: number;
+};
+export type FiltroProcedimentosServico = { grupo?: "VINCULADOS" | "ELEGIVEIS"; animalBusca?: string; tipo?: string; inicio?: string; fim?: string; pagina?: number; limite?: number };
+export function listarProcedimentosServico(servicoId: string, propriedadeId: number, filtro: FiltroProcedimentosServico = {}, signal?: AbortSignal) {
+  const params = new URLSearchParams({ propriedadeId: String(propriedadeId) });
+  Object.entries(filtro).forEach(([chave, valor]) => { if (valor !== undefined && valor !== "") params.set(chave, String(valor)); });
+  return reqSanidade<ConsultaProcedimentosServico>(`/servicos/${encodeURIComponent(servicoId)}/procedimentos?${params}`, { signal });
+}
+export function confirmarProcedimentosServico(servicoId: string, input: { propriedadeId: number; chaveIdempotencia: string; motivo: string; itens: Array<{ id: string; tipo: ProcedimentoServico["tipo"]; valor?: string | null }> }) {
+  return reqSanidade<{ servicoId: string; quantidade: number; salvo: boolean; reenvio: boolean; itens?: Array<{ id: string; tipo: ProcedimentoServico["tipo"]; valor: string | null }> }>(`/servicos/${encodeURIComponent(servicoId)}/procedimentos`, { method: "POST", body: JSON.stringify(input) });
+}
+export function linkProcedimentoServico(item: ProcedimentoServico, retorno?: string) {
+  const tipo = item.tipo === "APLICACAO" ? "aplicacao" : item.tipo === "EXAME" ? "exame" : "execucao";
+  const params = new URLSearchParams({ aba: item.tipo === "APLICACAO" ? "aplicacoes" : item.tipo === "EXAME" ? "exames" : "agenda", animalId: item.animalId, detalheTipo: tipo, detalheId: item.id });
+  if (item.propriedade) params.set("propriedadeId", String(item.propriedade.id));
+  if (retorno) params.set("returnTo", retorno);
+  return `/pecuaria/rebanho/sanidade?${params}`;
+}
 
 export type TipoConta = "BANCO" | "CAIXA" | "APLICACAO";
 export type PapelParceiro = "CLIENTE" | "FORNECEDOR" | "PRESTADOR_SERVICO" | "FUNCIONARIO" | "PROPRIETARIO" | "OUTRO";
@@ -27,13 +55,16 @@ export type ContaInput = { nome: string; tipo: TipoConta; instituicao?: string |
 export type ContaPatch = Partial<ContaInput> & DadosConta & { ativo?: boolean };
 export type ParceiroInput = DadosParceiro & { nome: string; documento?: string | null; tipo?: TipoParceiro; telefone?: string | null; email?: string | null };
 export type ParceiroPatch = Partial<ParceiroInput> & { ativo?: boolean };
-export type Categoria = { id: string; nome: string; classificacao: "CUSTEIO" | "INVESTIMENTO" | null; ativo: boolean; ordem: number; usoAgricola: boolean; usoGenetico: boolean; _count?: { operacoes: number; produtos: number; itens?: number } };
+export type Categoria = { id: string; nome: string; classificacao: "CUSTEIO" | "INVESTIMENTO" | null; ativo: boolean; ordem: number; usoAgricola: boolean; usoGenetico: boolean; usoSanitario?: boolean; usoNutricional?: boolean; _count?: { operacoes: number; produtos: number; itens?: number } };
 export type CentroCusto = { id: string; nome: string; ativo: boolean; ordem: number; _count?: { operacoes: number; produtos: number; safras: number } };
-// Comportamento (agrícola/genético) é da categoria do produto — mesmo que ela
-// esteja inativa (situação é do produto, uso é da categoria).
-export type ProdutoCategoria = { id: string; nome: string; usoAgricola: boolean; usoGenetico: boolean };
+// Categoria organiza o financeiro; os tipos de uso pertencem ao Produto.
+export type ProdutoCategoria = { id: string; nome: string; usoAgricola: boolean; usoGenetico: boolean; usoSanitario?: boolean; usoNutricional?: boolean };
 export type Produto = {
   id: string; nome: string;
+  usoAgricola?: boolean; usoGenetico?: boolean; usoSanitario?: boolean; usoNutricional?: boolean;
+  rastrearPartidas?: boolean;
+  perfilSanitario?: { carenciaLeiteHoras: number | null; carenciaCarneHoras: number | null; viaPadrao: string | null; referenciaTecnica: string | null } | null;
+  perfilNutricional?: { materiaSecaPercentual: string | null } | null;
   unidade: UnidadeMedida;
   minimoEstoque?: string | null; ativo?: boolean;
   categoriaId?: string | null; categoriaNome?: string | null; classificacao?: "CUSTEIO" | "INVESTIMENTO" | null;
@@ -43,7 +74,8 @@ export type Produto = {
 };
 export type ProdutoInput = {
   nome: string; unidade: UnidadeMedida;
-  // Categoria obrigatória (define o uso). Se o produto entra no estoque quem decide é a operação.
+  usoAgricola?: boolean; usoGenetico?: boolean; usoSanitario?: boolean; usoNutricional?: boolean; rastrearPartidas?: boolean;
+  // Categoria obrigatória para classificação financeira. Se o produto entra no estoque quem decide é a operação.
   minimoEstoque: number | null; categoriaId: string; centroCustoIds: string[]; fornecedorIds: string[];
 };
 export type ConfiguracoesFinanceiras = { contas: Conta[]; parceiros: Parceiro[]; categorias: Categoria[]; centrosCusto: CentroCusto[]; produtos: Produto[]; produtosCadastro?: Produto[]; centrosAtividade?: { cafe: string | null } };
@@ -54,12 +86,16 @@ export type TransacaoOperacao = { id: string; seq: number; tipo: string; status:
 export type Liquidacao = { id: string; valor: string; transacao: TransacaoOperacao };
 export type Compromisso = { id: string; seq: number; tipo: "PAGAR" | "RECEBER"; status: string; valorOriginal: string; valorLiquidado: string; saldoPendente: string; saldoExigivel?: string; dataVencimento: string; numeroParcela: number | null; totalParcelas: number | null; vencido?: boolean; parceiro: ParceiroBase | null; operacao: { id: string; numero: number; tipo: string; descricao: string | null }; liquidacoes?: Liquidacao[] };
 export type ItemOperacao = { categoriaId?: string | null; categoriaNome?: string | null; classificacao?: "CUSTEIO" | "INVESTIMENTO" | null; centroCustoId?: string | null; centroCustoNome?: string | null; id: string; ordem: number; descricao: string; quantidade: string; unidade: string; valorUnitario: string; valorTotal: string; estocavel: boolean; produtoId: string | null };
-export type MovimentoEstoqueOperacao = { id: string; seq: number; tipo: string; status: string; quantidade: string; valorTotal: string; produtoId: string; reversaoDeId?: string | null; revertidoPor?: { id: string } | null };
+export type MovimentoEstoqueOperacao = { id: string; seq: number; tipo: string; status: string; quantidade: string; valorTotal: string | null; produtoId: string; reversaoDeId?: string | null; revertidoPor?: { id: string } | null };
+export type PerdaOperacao = { movimentoId: string; produtoId: string; produtoNome: string; quantidade: string; unidade: string; sitio: { id: number; nome: string } | null; motivo: string | null; custoUnitario: string | null; valorTotal: string | null; lotes: { id: string; codigo: string; nome: string | null; validade: string | null; quantidade: string }[] };
+export type MovimentoTransferencia = { id: string; seq: number; tipo: string; status: string; data: string; reversaoDeId: string | null };
+export type PontaTransferencia = MovimentoTransferencia & { sitio: { id: number; nome: string } | null; lotes: (PerdaOperacao["lotes"][number] & { partidaId: string })[]; reversao: MovimentoTransferencia | null };
+export type TransferenciaOperacao = { produtoId: string; produtoNome: string; quantidade: string; unidade: string; motivo: string | null; custoUnitario: string | null; valorTotal: string | null; origem: PontaTransferencia; destino: PontaTransferencia | null };
 export type DocumentoFinanceiro = { id: string; tipo: string; nome: string; numero: string | null; mimeType: string | null; tamanhoBytes: number | null };
 export type RascunhoOperacao = { id: string; dados: { formulario?: Record<string, unknown>; operacao?: Record<string, unknown> }; versao: number; updatedAt: string; documentos: DocumentoFinanceiro[] };
 export type SimulacaoParcelas = { totalOperacao: string; valorPagoAgora: string; saldoAPrazo: string; parcelas: { valor: string; dataVencimento: string }[] };
 export type ResumoCancelamento = { compromissos: { id: string; numeroParcela: number | null; status: string; valorOriginal: string; valorLiquidado: string; saldoExigivel: string }[]; transacoes: { id: string; seq: number; tipo: string; data: string; valorTotal: string; movimentos: (MovimentoOperacao & { direcaoInversa: "ENTRADA" | "SAIDA" })[] }[]; estoque: { id: string; produtoId: string; produtoNome: string; quantidade: string; unidade: string; tipo: string }[]; impactosPorConta: { conta: ContaHistorico; entrada: string; saida: string }[]; documentosPreservados: number };
-export type Operacao = { categoriaNome?: string | null; classificacao?: "CUSTEIO" | "INVESTIMENTO" | null; id: string; numero: number; tipo: string; status: string; data: string; descricao: string | null; valorTotal: string; parceiro: ParceiroBase | null; parceiroId?: string | null; categoriaId?: string | null; centroCustoId?: string | null; centroCusto?: { id: string; nome: string } | null; corrigeOperacaoId?: string | null; corrigeOperacao?: { id: string; numero: number; descricao: string | null } | null; correcoes?: { id: string; numero: number; descricao: string | null; status: string }[]; itens: ItemOperacao[]; compromissos: Compromisso[]; transacoes: TransacaoOperacao[]; movimentosEstoque: MovimentoEstoqueOperacao[]; documentos: DocumentoFinanceiro[]; resumoCancelamento?: ResumoCancelamento };
+export type Operacao = { propriedadeId?: number; procedimentosServico?: ProcedimentoServico[]; categoriaNome?: string | null; classificacao?: "CUSTEIO" | "INVESTIMENTO" | null; id: string; numero: number; tipo: string; status: string; data: string; descricao: string | null; valorTotal: string | null; parceiro: ParceiroBase | null; parceiroId?: string | null; categoriaId?: string | null; centroCustoId?: string | null; centroCusto?: { id: string; nome: string } | null; corrigeOperacaoId?: string | null; corrigeOperacao?: { id: string; numero: number; descricao: string | null } | null; correcoes?: { id: string; numero: number; descricao: string | null; status: string }[]; itens: ItemOperacao[]; compromissos: Compromisso[]; transacoes: TransacaoOperacao[]; movimentosEstoque: MovimentoEstoqueOperacao[]; perdas?: PerdaOperacao[]; transferencias?: TransferenciaOperacao[]; documentos: DocumentoFinanceiro[]; resumoCancelamento?: ResumoCancelamento };
 export type MovimentoConta = { id: string; seq: number; contaId?: string; direcao: "ENTRADA" | "SAIDA"; valor: string; transacao: { id: string; seq: number; tipo: string; status: string; data: string; descricao: string | null; formaPagamento: string | null; parceiro: ParceiroBase | null; operacao: { id: string; numero: number; descricao: string | null; tipo: string } | null; reversaoDe?: { id?: string; tipo: string; descricao?: string | null; operacaoId?: string | null } | null } };
 export type BaseFinanceira = {
   operacoes: { total: number; estados: Record<string, number>; comEstoque: number; semParceiro: number; semEfeitos: number };
@@ -116,7 +152,7 @@ export const obterOperacao = (id: string) => req<Operacao>(`/financeiro/operacoe
 export const listarCompromissos = (periodo?: { inicio: string; fim: string }) => req<Compromisso[]>(`/financeiro/compromissos${periodo?.inicio && periodo.fim ? `?${new URLSearchParams(periodo)}` : ""}`);
 export const obterExtratoConta = (id: string) => req<MovimentoConta[]>(`/financeiro/contas/${id}/extrato`);
 export const criarOperacao = (input: unknown) => req<Operacao>("/financeiro/operacoes", { method: "POST", body: JSON.stringify(input) });
-export type AjusteEstoqueInput = { produtoId: string; quantidadeContada: number; saldoEsperado: number; observacao: string; centroCustoId?: string | null };
+export type AjusteEstoqueInput = { produtoId: string; quantidadeContada: number; saldoEsperado: number; observacao: string; centroCustoId?: string | null; partidas?: Array<{ partidaId?: string; codigo?: string; nome?: string; validade?: string | null; cienciaValidadeDesconhecida?: boolean; quantidade: number }> };
 export type AjusteEstoqueResultado = { id: string; operacaoId: string; saldoAnterior: number; quantidadeContada: number; diferenca: number };
 /** Ajuste por contagem de estoque: o servidor recalcula o saldo, recusa (CONFLITO/409) se ele mudou desde `saldoEsperado` e cria a Operacao AJUSTE_ESTOQUE + movimento físico. */
 export const registrarAjusteEstoque = (input: AjusteEstoqueInput) => req<AjusteEstoqueResultado>("/estoque/ajustes", { method: "POST", body: JSON.stringify(input) });
@@ -135,9 +171,9 @@ export const descartarRascunhoOperacao = () => {
   const publicar = prepararPublicacaoRascunho("escrita");
   return req<void>("/financeiro/operacoes/rascunho", { method: "DELETE" }).then(() => { publicar(null); });
 };
-export const confirmarRascunhoOperacao = (versao?: number) => {
+export const confirmarRascunhoOperacao = (versao?: number, chave?: string) => {
   const publicar = prepararPublicacaoRascunho("escrita");
-  return req<Operacao>("/financeiro/operacoes/rascunho/confirmacao", { method: "POST", body: JSON.stringify({ versao }) }).then((operacao) => { publicar(null); return operacao; });
+  return req<Operacao>("/financeiro/operacoes/rascunho/confirmacao", { method: "POST", body: JSON.stringify({ versao, chave }) }).then((operacao) => { publicar(null); return operacao; });
 };
 export const listarRelatoriosFinanceiros = () => req<RelatorioFinanceiro[]>("/financeiro/relatorios");
 export const obterRascunhoRelatorioFinanceiro = () => {
@@ -207,7 +243,7 @@ export const criarConta = (input: ContaInput & DadosConta) => req<Conta>("/finan
 export const atualizarConta = (id: string, input: ContaPatch) => req<Conta>(`/financeiro/contas/${id}`, { method: "PATCH", body: JSON.stringify(input) });
 export const criarParceiro = (input: ParceiroInput) => req<Parceiro>("/financeiro/parceiros", { method: "POST", body: JSON.stringify(input) });
 export const atualizarParceiro = (id: string, input: ParceiroPatch) => req<Parceiro>(`/financeiro/parceiros/${id}`, { method: "PATCH", body: JSON.stringify(input) });
-export type CategoriaInput = { nome: string; classificacao?: "CUSTEIO" | "INVESTIMENTO" | null; ordem?: number; usoAgricola?: boolean; usoGenetico?: boolean };
+export type CategoriaInput = { nome: string; classificacao?: "CUSTEIO" | "INVESTIMENTO" | null; ordem?: number; usoAgricola?: boolean; usoGenetico?: boolean; usoSanitario?: boolean; usoNutricional?: boolean };
 export type CentroCustoInput = { nome: string; ordem?: number };
 export const criarCategoria = (input: CategoriaInput) => req<Categoria>("/financeiro/categorias", { method: "POST", body: JSON.stringify(input) });
 export const atualizarCategoria = (id: string, input: Partial<CategoriaInput> & { ativo?: boolean }) => req<Categoria>(`/financeiro/categorias/${id}`, { method: "PATCH", body: JSON.stringify(input) });

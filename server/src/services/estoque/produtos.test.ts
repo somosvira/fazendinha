@@ -4,10 +4,16 @@ const mocks = vi.hoisted(() => ({
   produtoCreate: vi.fn(), produtoFindUnique: vi.fn(), produtoUpdate: vi.fn(), produtoFindMany: vi.fn(),
   parceiroFindMany: vi.fn(), centroCustoFindMany: vi.fn(), auditoria: vi.fn(), transaction: vi.fn(), itemFindFirst: vi.fn(),
   movimentoCount: vi.fn(), itemOperacaoCount: vi.fn(), operacaoAgricolaCount: vi.fn(),
+  itemDietaCount: vi.fn().mockResolvedValue(0), categoriaFindUnique: vi.fn(),
 }));
 
 vi.mock("../../db.js", () => {
   const tx = {
+    $executeRaw: vi.fn().mockResolvedValue(0),
+    materialGenetico: { count: vi.fn().mockResolvedValue(0) },
+    aplicacaoProduto: { count: vi.fn().mockResolvedValue(0) },
+    etapaProtocoloSanitario: { count: vi.fn().mockResolvedValue(0) },
+    itemFechamentoConsumo: { count: vi.fn().mockResolvedValue(0) },
     produto: { create: mocks.produtoCreate, findUnique: mocks.produtoFindUnique, update: mocks.produtoUpdate },
     parceiro: { findMany: mocks.parceiroFindMany },
     centroCusto: { findMany: mocks.centroCustoFindMany },
@@ -15,6 +21,8 @@ vi.mock("../../db.js", () => {
     movimentoEstoque: { count: mocks.movimentoCount },
     itemOperacao: { count: mocks.itemOperacaoCount },
     operacaoAgricola: { count: mocks.operacaoAgricolaCount },
+    itemDieta: { count: mocks.itemDietaCount },
+    categoria: { findUnique: mocks.categoriaFindUnique },
   };
   mocks.transaction.mockImplementation(async (fn: (db: unknown) => unknown) => fn(tx));
   return { prisma: { produto: { findMany: mocks.produtoFindMany }, itemOperacao: { findFirst: mocks.itemFindFirst }, $transaction: mocks.transaction } };

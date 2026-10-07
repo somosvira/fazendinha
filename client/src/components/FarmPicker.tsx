@@ -120,7 +120,7 @@ export function SidebarFarmPicker({ propAtiva, onTrocarProp, onGerenciar }: {
   const ativos = props.filter((p) => p.ativo);
   const sitioAtual = propAtiva != null ? ativos.find((p) => p.id === propAtiva) : null;
   const consolidado = propAtiva == null && ativos.length >= 2;
-  const rotulo = sitioAtual ? (sitioAtual.apelido || sitioAtual.nome) : (ativos.length >= 2 ? "Consolidado" : "Rio Novo");
+  const rotulo = sitioAtual ? sitioAtual.nome : (ativos.length >= 2 ? "Consolidado" : ativos[0]?.nome ?? "Fazenda");
   const glyph = consolidado ? "▦" : "🌿";
   const kicker = sitioAtual ? "Sítio" : "Fazenda";
 

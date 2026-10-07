@@ -52,6 +52,8 @@ export interface EntradaAuditoria {
   /** Animal ao qual o registro pertence; obrigatório para tudo que é do animal (ver buscarAuditoriaAnimal). */
   animalId?: string | null;
   usuarioId?: number | null;
+  propriedadeId?: number | null;
+  requisicaoId?: string | null;
   antes?: unknown;
   depois?: unknown;
 }
@@ -63,6 +65,8 @@ export function dadosAuditoria(input: EntradaAuditoria) {
     animalId: input.animalId ?? null,
     acao: input.acao,
     usuarioId: input.usuarioId && input.usuarioId > 0 ? input.usuarioId : null,
+    ...(input.propriedadeId != null ? { propriedadeId: input.propriedadeId } : {}),
+    ...(input.requisicaoId != null ? { requisicaoId: input.requisicaoId } : {}),
     antes: input.antes == null ? Prisma.JsonNull : JSON.parse(JSON.stringify(input.antes)),
     depois: input.depois == null ? Prisma.JsonNull : JSON.parse(JSON.stringify(input.depois)),
   };

@@ -1,0 +1,1 @@
+ALTER TYPE public."OrigemMovimentoEstoque" ADD VALUE 'IDENTIFICACAO_PARTIDA';

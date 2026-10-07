@@ -14,6 +14,7 @@ import {
   parseLoteId,
   parseOperacaoFinanceiraId,
   parseContaFinanceiraId,
+  parseProdutoEstoqueId,
   parseRelatorioFinanceiroId,
   pathToTab,
   tabToPath,
@@ -21,6 +22,12 @@ import {
 import { uid } from "./lib/uid.fixture";
 
 describe("roteamento do estoque", () => {
+  it("abre a ficha do produto sob o Estoque e preserva a identidade", () => {
+    expect(parseProdutoEstoqueId(`/estoque/produtos/${uid(3)}`)).toBe(uid(3));
+    expect(pathToTab(`/estoque/produtos/${uid(3)}`)).toBe("estoque");
+    expect(parseProdutoEstoqueId("/estoque")).toBeNull();
+    expect(parseProdutoEstoqueId(`/estoque/produtos/${uid(3)}/lotes`)).toBeNull();
+  });
   it("mapeia a aba estoque para /estoque e volta", () => {
     expect(tabToPath("estoque")).toBe("/estoque");
     expect(pathToTab("/estoque")).toBe("estoque");

@@ -20,6 +20,9 @@ const mocks = vi.hoisted(() => ({
   movimentoEstoqueUpdate: vi.fn(),
   auditoriaCreate: vi.fn(),
   contaFindFirst: vi.fn(),
+  aplicacaoFindFirst: vi.fn(),
+  exameFindFirst: vi.fn(),
+  execucaoFindFirst: vi.fn(),
   queryRaw: vi.fn(),
 }));
 
@@ -33,6 +36,9 @@ vi.mock("../../db.js", () => {
     movimentoEstoque: { create: mocks.movimentoEstoqueCreate, update: mocks.movimentoEstoqueUpdate },
     auditoriaFinanceira: { create: mocks.auditoriaCreate },
     contaFinanceira: { findFirst: mocks.contaFindFirst },
+    aplicacaoProduto: { findFirst: mocks.aplicacaoFindFirst },
+    exameAnimal: { findFirst: mocks.exameFindFirst },
+    execucaoProtocoloSanitario: { findFirst: mocks.execucaoFindFirst },
     $queryRaw: mocks.queryRaw,
   };
   mocks.transaction.mockImplementation(async (fn: (t: unknown) => unknown) => fn(tx));
@@ -47,6 +53,9 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.queryRaw.mockResolvedValue([{ id: uid(5) }]); // bloqueio FOR NO KEY UPDATE encontra a linha
   mocks.periodo.mockResolvedValue(null); // sem PeriodoFinanceiro cadastrado = mês aberto
+  mocks.aplicacaoFindFirst.mockResolvedValue(null);
+  mocks.exameFindFirst.mockResolvedValue(null);
+  mocks.execucaoFindFirst.mockResolvedValue(null);
   mocks.transacaoCreate.mockImplementation(async ({ data }: { data: Record<string, unknown> }) => ({ id: uid(900), ...data, movimentos: [] }));
   mocks.transacaoUpdate.mockResolvedValue({});
   mocks.compromissoUpdate.mockResolvedValue({});
@@ -122,7 +131,7 @@ describe("estornarOperacao", () => {
     id: uid(5), numero: 5, propriedadeId: 1, status: "CONFIRMADA",
     transacoes: [{ id: uid(10), status: "CONFIRMADA", tipo: "PAGAMENTO" }],
     compromissos: [{ id: uid(78), status: "PENDENTE" }],
-    movimentosEstoque: [{ id: uid(30), status: "CONFIRMADO", tipo: "ENTRADA", produtoId: uid(4), quantidade: decimal("10"), custoUnitario: decimal("5"), valorTotal: decimal("50"), propriedadeId: 1, reversaoDeId: null, revertidoPor: null }],
+    movimentosEstoque: [{ id: uid(30), status: "CONFIRMADO", tipo: "ENTRADA", produtoId: uid(4), quantidade: decimal("10"), custoUnitario: decimal("5"), valorTotal: decimal("50"), propriedadeId: 1, reversaoDeId: null, revertidoPor: null, alocacaoPartidaEstoques: [] }],
   };
 
   it("com parcela paga: estorna a transação, reverte o estoque e cancela os compromissos pendentes numa única transação", async () => {

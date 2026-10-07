@@ -10,7 +10,6 @@ import { CampoFormulario, classeInput, PainelCadastro } from "../../financeiro/P
 
 export function FormSitio({ sitio, onSalvo, onFechar }: { sitio: PropriedadeDTO | null; onSalvo: () => Promise<void> | void; onFechar: () => void }) {
   const [nome, setNome] = useState(sitio?.nome ?? "");
-  const [apelido, setApelido] = useState(sitio?.apelido ?? "");
   const [cidade, setCidade] = useState(sitio?.cidade ?? "");
   const [uf, setUf] = useState(sitio?.uf ?? "");
   const [principal, setPrincipal] = useState(sitio?.principal ?? false);
@@ -32,7 +31,7 @@ export function FormSitio({ sitio, onSalvo, onFechar }: { sitio: PropriedadeDTO 
     setErroGeral(null);
     emCurso.current = true; setSalvando(true);
     const dados = {
-      nome: nome.trim(), apelido: apelido.trim() || undefined, cidade: cidade.trim() || undefined, uf: ufLimpa || undefined,
+      nome: nome.trim(), cidade: cidade.trim() || undefined, uf: ufLimpa || undefined,
       principal, ativo: sitio?.ativo ?? true,
     };
     try {
@@ -50,7 +49,6 @@ export function FormSitio({ sitio, onSalvo, onFechar }: { sitio: PropriedadeDTO 
     <form id={formId} onSubmit={submeter} className="grid gap-4" noValidate>
       <ErrorBox erro={erroGeral} />
       <CampoFormulario id="sitio-nome" rotulo="Nome do sítio" obrigatorio erro={erroNome}>{(p) => <input {...p} required maxLength={80} value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Fazenda Recria" className={classeInput} />}</CampoFormulario>
-      <CampoFormulario id="sitio-apelido" rotulo="Apelido" ajuda="Rótulo curto usado no seletor de sítio.">{(p) => <input {...p} maxLength={40} value={apelido} onChange={(e) => setApelido(e.target.value)} placeholder="Ex.: Recria" className={classeInput} />}</CampoFormulario>
       <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_96px]">
         <CampoFormulario id="sitio-cidade" rotulo="Cidade">{(p) => <input {...p} maxLength={80} value={cidade} onChange={(e) => setCidade(e.target.value)} className={classeInput} />}</CampoFormulario>
         <CampoFormulario id="sitio-uf" rotulo="UF" erro={erroUf}>{(p) => <input {...p} maxLength={2} value={uf} onChange={(e) => setUf(e.target.value.toUpperCase())} placeholder="MG" className={classeInput} />}</CampoFormulario>

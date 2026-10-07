@@ -2,7 +2,8 @@
 // trocar de sítio via PATCH); editar só muda nome/observação/ativo.
 // Mesmo padrão de client/src/financeiro/FormCadastrosGerenciais.tsx.
 
-import { FormEvent, useRef, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
+import { listarCentrosCusto, type CentroCusto } from "../../../estoque/api";
 import { criarLote, editarLote, RebanhoApiError } from "../api";
 import type { Lote, Propriedade } from "../types";
 import { Button, ErrorBox } from "../../../financeiro/financeiro-ui";
@@ -20,6 +21,8 @@ export function FormLote({ lote, propriedades, propriedadeInicialId, onSalvo, on
   onFechar: () => void;
 }) {
   const [nome, setNome] = useState(lote?.nome ?? "");
+  const [centros, setCentros] = useState<CentroCusto[]>([]);
+  const [centroCustoId, setCentroCustoId] = useState(lote?.centroCustoId ?? "");
   const [propriedadeId, setPropriedadeId] = useState<string>(
     lote ? String(lote.propriedadeId) : propriedadeInicialId != null ? String(propriedadeInicialId) : "",
   );
@@ -28,6 +31,7 @@ export function FormLote({ lote, propriedades, propriedadeInicialId, onSalvo, on
   const [erroGeral, setErroGeral] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
   const emCurso = useRef(false);
+  useEffect(() => { let vivo = true; listarCentrosCusto(true).then((c) => { if (vivo) setCentros(c); }).catch((e: unknown) => { if (vivo) setErroGeral(e instanceof Error ? e.message : String(e)); }); return () => { vivo = false; }; }, []);
 
   const submeter = async (e: FormEvent) => {
     e.preventDefault();
@@ -39,8 +43,8 @@ export function FormLote({ lote, propriedades, propriedadeInicialId, onSalvo, on
     if (Object.keys(novosErros).length) return;
     emCurso.current = true; setSalvando(true);
     try {
-      if (!lote) await criarLote({ nome: nome.trim(), propriedadeId: Number(propriedadeId), observacao: observacao.trim() || null });
-      else await editarLote(lote.id, { nome: nome.trim(), observacao: observacao.trim() || null });
+      if (!lote) await criarLote({ nome: nome.trim(), propriedadeId: Number(propriedadeId), observacao: observacao.trim() || null, centroCustoId: centroCustoId || null });
+      else await editarLote(lote.id, { nome: nome.trim(), observacao: observacao.trim() || null, centroCustoId: centroCustoId || null });
       await onSalvo();
     } catch (erro) {
       if (erro instanceof RebanhoApiError && erro.campo) setErros({ [erro.campo]: erro.message });
@@ -58,8 +62,9 @@ export function FormLote({ lote, propriedades, propriedadeInicialId, onSalvo, on
         ? <CampoFormulario id="lote-sitio" rotulo="Sítio" ajuda="O sítio de um lote não pode ser alterado depois de criado.">{(p) => <input {...p} disabled value={lote.propriedade.nome} className={classeInput} />}</CampoFormulario>
         : <CampoFormulario id="lote-sitio" rotulo="Sítio" obrigatorio erro={erros.propriedadeId}>{(p) => <select {...p} required value={propriedadeId} onChange={(e) => setPropriedadeId(e.target.value)} className={classeInput}>
             <option value="">Selecione</option>
-            {propriedades.map((prop) => <option key={prop.id} value={prop.id}>{prop.apelido || prop.nome}</option>)}
+            {propriedades.map((prop) => <option key={prop.id} value={prop.id}>{prop.nome}</option>)}
           </select>}</CampoFormulario>}
+      <CampoFormulario id="lote-centro" rotulo="Centro de custo do consumo" ajuda="Será o padrão dos fechamentos, com possibilidade de substituição na conferência.">{(p) => <select {...p} className={classeInput} value={centroCustoId} onChange={(e) => setCentroCustoId(e.target.value)}><option value="">Não definido</option>{centros.filter((c) => c.ativo || c.id === centroCustoId).map((c) => <option key={c.id} value={c.id} disabled={!c.ativo}>{c.nome}{c.ativo ? "" : " (inativo)"}</option>)}</select>}</CampoFormulario>
       <CampoFormulario id="lote-observacao" rotulo="Observação" erro={erros.observacao}>{(p) => <textarea {...p} maxLength={500} value={observacao} onChange={(e) => setObservacao(e.target.value)} className={classeInput} />}</CampoFormulario>
     </form>
   </PainelCadastro>;

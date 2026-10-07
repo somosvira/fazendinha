@@ -14,7 +14,7 @@ vi.mock("../api", async (importOriginal) => ({
 const catalogos: Catalogos = {
   racas: [],
   motivosBaixa: [],
-  propriedades: [{ id: 1, nome: "Sede", apelido: null }],
+  propriedades: [{ id: 1, nome: "Sede", apelido: "Apelido antigo" }],
   lotes: [{ id: "lote-1", nome: "Lote A", propriedadeId: 1 }, { id: "lote-2", nome: "Lote B", propriedadeId: 1 }],
 };
 
@@ -48,6 +48,8 @@ describe("SeletorAnimais", () => {
 
     render(<SeletorAnimais onConfirmar={vi.fn()} onCancelar={vi.fn()} />);
     await screen.findAllByText("0001");
+    expect(within(screen.getByLabelText("Filtrar por sítio")).getByRole("option", { name: "Sede" })).toBeTruthy();
+    expect(screen.queryByRole("option", { name: "Apelido antigo" })).toBeNull();
     fireEvent.click(screen.getAllByRole("checkbox", { name: "Selecionar 0001" })[0]);
     expect(await screen.findByText(/1 animal selecionado/)).toBeTruthy();
 

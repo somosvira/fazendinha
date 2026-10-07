@@ -22,6 +22,8 @@ import { PlantioContent, type PlaSub } from "./plantio/PlantioContent";
 import { EquipeContent, type EqpSub } from "./equipe/EquipeContent";
 import { CultivoContent, type MilSub } from "./cultivo/CultivoContent";
 import { EstoqueContent } from "./estoque/EstoqueContent";
+import { ProdutoEstoqueDetalhe } from "./estoque/ProdutoEstoqueDetalhe";
+import { parseProdutoEstoqueId } from "./router";
 import { CommandPalette } from "./components/CommandPalette";
 import { ChatWidget } from "./components/ChatWidget";
 import { ASSISTENTE_ATIVO } from "./featureFlags";
@@ -114,6 +116,8 @@ const MIL: Record<string, MilSub> = {
   "mil-silos": "silos",
   "mil-custo": "custo",
 };
+
+
 
 export function App() {
   // Atualiza o parser de rotas públicas após replaceState().
@@ -342,7 +346,7 @@ export function App() {
     const filtrosUrl = deepLinkFiltros?.tab === tab
       ? `${tabToPath(tab)}?${new URLSearchParams(deepLinkFiltros.filtros).toString()}`
       : null;
-    const subrotaUrl = (isSubrotaFinanceira(tab, window.location.pathname) || isSubrotaRebanho(tab, window.location.pathname)) ? window.location.pathname + window.location.search : null;
+    const subrotaUrl = (isSubrotaFinanceira(tab, window.location.pathname) || isSubrotaRebanho(tab, window.location.pathname) || (tab === "estoque" && parseProdutoEstoqueId(window.location.pathname))) ? window.location.pathname + window.location.search : null;
     // sub-rota (ex.: /pecuaria/rebanho/animais?situacao=…) já traz a própria query:
     // tem prioridade, senão os filtros do deep-link reescreveriam o caminho para a raiz da aba
     const alvo = subrotaUrl ?? filtrosUrl ?? tabToPath(tab);
@@ -524,7 +528,7 @@ export function App() {
         ? <EquipeContent aba={EQP[tab]} onNavEqp={(s) => setTab(("eqp-" + s) as Tab)} />
         : <GatedTab user={effectiveUser} abaLabel="Equipe & Ponto" />)
     : tab === "estoque"
-    ? <EstoqueContent />
+    ? (parseProdutoEstoqueId(window.location.pathname) ? <ProdutoEstoqueDetalhe key={window.location.pathname} produtoId={parseProdutoEstoqueId(window.location.pathname)!} onSelecionarSitio={trocarPropriedade} /> : <EstoqueContent />)
     : (["dashboard", "gastos", "lancar", "caixinha", "cadastros", "plano", "relatorio"] as Tab[]).includes(tab)
     ? <FinanceiroContent tab={tab} onNav={setTab} podeEditarCadastros={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} podeExportar={!!effectiveUser.dono || effectiveUser.flags.includes("exportar")} />
     : (

@@ -8,10 +8,13 @@ export { ApiError };
 // mesmo contrato de `financeiro/novo-api.ts`, reusado aqui para não duplicar.
 export type { Categoria, CentroCusto, Parceiro };
 
-async function req<T>(path: string, init?: RequestInit): Promise<T> {
+async function req<T>(path: string, init?: RequestInit, escopo?: number | null): Promise<T> {
   const headers: Record<string, string> = { ...((init?.headers as Record<string, string>) || {}) };
   if (init?.body) headers["content-type"] = "application/json";
-  const res = await fetch(`/api${path}`, { ...init, headers: comPropriedade(headers) });
+  const envelope = comPropriedade(headers);
+  if (escopo === null) delete envelope["X-Propriedade-Id"];
+  else if (escopo != null) envelope["X-Propriedade-Id"] = String(escopo);
+  const res = await fetch(`/api${path}`, { ...init, headers: envelope });
   if (!res.ok) {
     const b: any = await res.json().catch(() => null);
     let msg = `HTTP ${res.status}`;
@@ -39,13 +42,19 @@ export const obterCentrosAtividade = () => req<CentrosAtividadeDTO>("/estoque/ce
 
 // ── Estoque: saldos + movimentos ───────────────────────────
 export interface SaldoDTO { produtoId: string; nome: string; materialGeneticoId: string | null; categoria: { id: string; nome: string; usoAgricola: boolean; usoGenetico: boolean } | null; unidade: UnidadeMedida; centrosCusto: { id: string; nome: string }[]; saldo: number;
+  usoAgricola?: boolean; usoGenetico?: boolean; usoSanitario?: boolean; usoNutricional?: boolean;
   /** Média ponderada das entradas valorizadas no sítio; null sem base (nenhuma compra/inventário com valor). */
   custoMedio: number | null;
   /** saldo × custoMedio (0 quando custoMedio é null). */
-  valor: number; minimoEstoque: number | null; abaixoMinimo: boolean; }
-export type OrigemMovimento = "COMPRA" | "CONSUMO_DIRETO" | "TRANSFERENCIA" | "PRODUCAO" | "DEVOLUCAO" | "BONIFICACAO" | "INVENTARIO_INICIAL" | "PERDA" | "AJUSTE_INVENTARIO" | "APLICACAO";
-export type VinculoMovimento = { tipo: "TALHAO"; id: number; codigo: string };
-export interface MovimentoDTO { id: string; seq: number; produtoId: string; produto: string; materialGeneticoId: string | null; centrosCusto: { id: string; nome: string }[]; tipo: "ENTRADA" | "SAIDA" | "AJUSTE"; origem: OrigemMovimento; status: "CONFIRMADO" | "REVERTIDO"; reversaoDeId: string | null; data: string; quantidade: number; custoUnitario: number; valorTotal: number; fornecedor: string | null; observacao: string | null;
+  valor: number | null; minimoEstoque: number | null; abaixoMinimo: boolean; }
+export type OrigemMovimento = "COMPRA" | "CONSUMO_DIRETO" | "TRANSFERENCIA" | "PRODUCAO" | "DEVOLUCAO" | "BONIFICACAO" | "INVENTARIO_INICIAL" | "PERDA" | "AJUSTE_INVENTARIO" | "APLICACAO" | "SANIDADE" | "NUTRICAO" | "IDENTIFICACAO_PARTIDA";
+export type VinculoMovimento =
+  | { tipo: "TALHAO"; id: number; codigo: string }
+  | { tipo: "APLICACAO_SANITARIA"; id: string; animalId: string }
+  | { tipo: "FECHAMENTO_NUTRICIONAL"; id: string; loteId: string };
+export interface MovimentoDTO { id: string; propriedadeId?: number | null; seq: number; produtoId: string; produto: string; materialGeneticoId: string | null; centrosCusto: { id: string; nome: string }[]; tipo: "ENTRADA" | "SAIDA" | "AJUSTE"; origem: OrigemMovimento; status: "CONFIRMADO" | "REVERTIDO"; reversaoDeId: string | null; data: string; quantidade: number; custoUnitario: number | null; valorTotal: number | null; fornecedor: string | null; observacao: string | null;
+  estorno?: { id: string } | null;
+  partidas?: { partidaId: string; codigo: string; validade: string | null; quantidade: string }[];
   /** Operação financeira de origem (compra, ajuste, inventário…); null nas saídas automáticas. */
   operacaoId: string | null;
   operacaoNumero: number | null;
@@ -54,20 +63,21 @@ export interface MovimentoDTO { id: string; seq: number; produtoId: string; prod
 export interface MovimentoInput { produtoId: string; tipo: "AJUSTE"; data: string; quantidade: number; custoUnitario?: number; observacao?: string; centroCustoId?: string; }
 export interface MovimentoResult { id: string; operacaoId: string; }
 
-export const listarSaldos = (f?: { centroCustoId?: string }) => req<SaldoDTO[]>(`/estoque/saldos${qs(f)}`);
+export const listarSaldos = (f?: { centroCustoId?: string; propriedadeId?: number }) => req<SaldoDTO[]>(`/estoque/saldos${qs(f?.centroCustoId ? { centroCustoId: f.centroCustoId } : undefined)}`, undefined, f?.propriedadeId);
 export type FiltroMovimentos = {
-  produtoId?: string; tipo?: string; q?: string; origem?: string;
+  movimentoId?: string; produtoId?: string; partidaId?: string; tipo?: string; q?: string; origem?: string;
+  propriedadeId?: number;
   centroCustoId?: string;
   de?: string; ate?: string; pagina?: number; porPagina?: number;
 };
 export type PaginaMovimentos = { itens: MovimentoDTO[]; total: number };
-export const listarMovimentos = (f?: FiltroMovimentos) => req<PaginaMovimentos>(`/estoque/movimentos${qs(f)}`);
+export const listarMovimentos = (f?: FiltroMovimentos) => req<PaginaMovimentos>(`/estoque/movimentos${qs(f)}`, undefined, f?.propriedadeId);
 export const registrarMovimento = (p: MovimentoInput) => req<MovimentoResult>(`/estoque/movimentos`, { method: "POST", body: JSON.stringify(p) });
 
 // Descarta uma resposta que chegou depois de o filtro/parâmetro já ter mudado
 // (ou o hook ter desmontado) — sem isso, uma busca sem filtro que só termina
 // depois de uma busca já filtrada sobrescreveria a lista filtrada.
-export function useSaldos(f?: { centroCustoId?: string }) {
+export function useSaldos(f?: { centroCustoId?: string; propriedadeId?: number }) {
   const [data, setData] = useState<SaldoDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
@@ -91,15 +101,30 @@ export function useSaldos(f?: { centroCustoId?: string }) {
 // Mesmo tipo de `financeiro/novo-api.ts` (contrato único de Produto na API) —
 // `/estoque/produtos` e `/financeiro/produtos` são a mesma tabela e o mesmo service.
 export type ProdutoDTO = Produto;
-export type UsoProduto = "agricola" | "genetico";
+export type UsoProduto = "agricola" | "genetico" | "sanitario" | "nutricional";
 export interface ProdutoInput {
   nome: string; unidade: UnidadeMedida;
-  // Categoria obrigatória (define o uso). Se o produto entra no estoque quem decide é a operação.
+  usoAgricola?: boolean; usoGenetico?: boolean; usoSanitario?: boolean; usoNutricional?: boolean; rastrearPartidas?: boolean;
+  // Categoria obrigatória para classificação financeira. Se o produto entra no estoque quem decide é a operação.
   minimoEstoque?: number | null; ativo?: boolean; categoriaId: string; centroCustoIds?: string[]; fornecedorIds?: string[];
+  perfilSanitario?: { carenciaLeiteHoras: number | null; carenciaCarneHoras: number | null; viaPadrao?: string | null; referenciaTecnica?: string | null };
+  perfilNutricional?: { materiaSecaPercentual: number | null };
 }
 export const listarProdutos = (f?: { uso?: UsoProduto; q?: string; ativo?: boolean }) => req<ProdutoDTO[]>(`/estoque/produtos${qs(f)}`);
 export const criarProduto = (p: ProdutoInput) => req<ProdutoDTO>(`/estoque/produtos`, { method: "POST", body: JSON.stringify(p) });
 export const editarProduto = (id: string, p: Partial<ProdutoInput>) => req<ProdutoDTO>(`/estoque/produtos/${id}`, { method: "PATCH", body: JSON.stringify(p) });
+
+export type ProdutoEstoqueDTO = ProdutoDTO & { saldo: string; custoMedio: string | null; valor: string | null; propriedadeId: number | null; totalLotes: number; lotesComSaldo: number };
+export type LoteProdutoDTO = import("../pecuaria/rebanho/nutricao/api").PartidaNutricional;
+export type PaginaLotesProduto = { itens: LoteProdutoDTO[]; total: number; pagina: number; porPagina: number };
+export type OrigemProdutoDTO = { id: string; movimentoId: string; seq: number; data: string; propriedadeId: number | null; origem: OrigemMovimento; status: string; quantidade: string; quantidadeMovimento?: string; custoUnitario: string | null; valorTotal: string | null; valorTotalMovimento?: string | null; fornecedor: string | null; fornecedorId: string | null; operacaoId: string | null; operacaoNumero: number | null; partidas: Array<{ partidaId: string; lotePrincipalId: string; nome: string; codigo: string; validade: string | null; quantidade: string }> };
+export type PaginaOrigensProduto = { itens: OrigemProdutoDTO[]; total: number; pagina: number; porPagina: number };
+export const obterProdutoEstoque = (id: string, propriedadeId?: number) => req<ProdutoEstoqueDTO>(`/estoque/produtos/${id}`, undefined, propriedadeId ?? null);
+export const listarLotesProduto = (id: string, filtros: { propriedadeId?: number; pagina?: number; porPagina?: number }) => req<PaginaLotesProduto>(`/estoque/produtos/${id}/lotes${qs(filtros)}`, undefined, filtros.propriedadeId ?? null);
+export const listarOrigensProduto = (id: string, filtros: { propriedadeId?: number; partidaId?: string; pagina?: number; porPagina?: number }) => req<PaginaOrigensProduto>(`/estoque/produtos/${id}/origens${qs(filtros)}`, undefined, filtros.propriedadeId ?? null);
+export const listarMovimentosProduto = (id: string, filtros: { propriedadeId?: number; partidaId?: string; pagina?: number; porPagina?: number }) => req<PaginaMovimentos>(`/estoque/produtos/${id}/movimentos${qs(filtros)}`, undefined, filtros.propriedadeId ?? null);
+export const renomearLoteProduto = (id: string, nome: string) => req<LoteProdutoDTO>(`/estoque/partidas/${id}`, { method: "PATCH", body: JSON.stringify({ nome }) });
+export const previaLoteProduto = (id: string, validade: string | null) => req<{ existente: LoteProdutoDTO | null }>(`/estoque/produtos/${id}/lotes/previa${qs({ validade: validade ?? "nao-informada" })}`, undefined, null);
 
 // Sugestão de preço na compra: último item comprado (operação confirmada) do
 // produto, preferindo o fornecedor informado. null quando não há histórico.

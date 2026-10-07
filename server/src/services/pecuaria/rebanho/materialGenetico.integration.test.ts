@@ -72,12 +72,13 @@ describeComBanco("material genético (banco real)", () => {
     }, null)).rejects.toMatchObject({ campo: "touro" });
   });
 
-  it("recusa categoria sem uso genético e nome de produto repetido", async () => {
+  it("aceita categoria financeira sem tipagem e recusa nome de produto repetido", async () => {
     const semUso = await categoria(false);
     const comUso = await categoria(true);
     const touro = await genitor("M", "Hermes");
-    await expect(criarMaterialGenetico({ tipo: "SEMEN", touro: { tipo: "EXTERNO", id: touro.id }, produto: { categoriaId: semUso } }, null))
-      .rejects.toBeInstanceOf(RebanhoError);
+    const geral = await criarMaterialGenetico({ tipo: "SEMEN", touro: { tipo: "EXTERNO", id: touro.id }, produto: { categoriaId: semUso, nome: `Genética categoria geral ${RUN}` } }, null);
+    materiais.push(geral.id);
+    expect((await prisma.produto.findUniqueOrThrow({ where: { id: geral.produto.id } })).usoGenetico).toBe(true);
 
     const m = await criarMaterialGenetico({ tipo: "SEMEN", touro: { tipo: "EXTERNO", id: touro.id }, produto: { categoriaId: comUso } }, null);
     materiais.push(m.id);
