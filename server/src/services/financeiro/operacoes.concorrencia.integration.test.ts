@@ -100,7 +100,7 @@ describeComBanco("operações financeiras concorrentes com PostgreSQL", () => {
     expect(Number((await listarContas(f.propriedadeId, true))[0].saldoAtual)).toBe(1_000);
   });
 
-  // Estorno avulso de um movimento (o que plantio/sanidade fazem) disputando o
+  // Estorno avulso de um movimento (o que sanidade fazem) disputando o
   // lock da Operacao com o cancelamento financeiro.
   const estornarMovimento = (id: string, propriedadeId: number) =>
     prisma.$transaction((tx) => estornarMovimentoTx(tx, id, { propriedadeId }), { isolationLevel: "Serializable" });

@@ -61,7 +61,6 @@ export function podeAcessarTab(usuario: UsuarioSessao, tab: Tab): boolean {
     if (tab === "caixinha" && usuario.abas.includes("cadastros")) return true;
     return abasFinanceiras.has(tab) && usuario.abas.includes(tab);
   }
-  if (area === "equipe" && tab === "eqp-folha") return dono || usuario.flags.includes("verSalarios");
   return area !== null;
 }
 
@@ -71,8 +70,6 @@ export function paginaInicialAutorizada(usuario: UsuarioSessao): string {
     if (podeAcessarTab(usuario, tab)) return tabToPath(tab);
   }
   if (temAcessoArea(usuario.areas, "pecuaria", !!usuario.dono)) return tabToPath("pec-rebanho");
-  if (temAcessoArea(usuario.areas, "agricultura", !!usuario.dono)) return tabToPath("pla-dashboard");
-  if (temAcessoArea(usuario.areas, "equipe", !!usuario.dono)) return tabToPath("eqp-dashboard");
   return tabToPath("config");
 }
 

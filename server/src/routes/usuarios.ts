@@ -12,7 +12,7 @@ const patchSchema = z.object({
   abas: z.array(z.string()).optional(),
   // `rebanho`/`gado_corte` seguem aceitos durante a transição; o serviço
   // persiste ambos como a área canônica `pecuaria`.
-  areas: z.array(z.enum(["financeiro", "pecuaria", "agricultura", "equipe", "rebanho", "gado_corte"])).optional(),
+  areas: z.array(z.enum(["financeiro", "pecuaria", "rebanho", "gado_corte"])).optional(),
   flags: z.array(z.string()).optional(),
   status: z.enum(["PENDENTE", "ATIVO", "INATIVO"]).optional(),
 });

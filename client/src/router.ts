@@ -7,7 +7,6 @@
  *
  * Os módulos operacionais têm sub-abas com
  * prefixo (pec-, pla-, mil-, eqp-) e viram caminhos aninhados
- * /pecuaria/<sub>, /plantio/<sub>, etc. As abas financeiras/administração têm
  * slug fixo no mapa abaixo.
  */
 
@@ -30,25 +29,6 @@ const PATH_BY_TAB: Record<Tab, string> = {
   cadastros: "/financeiro/configuracoes",
   "pec-rebanho": "/pecuaria/rebanho",
   estoque: "/estoque",
-  "pla-dashboard": "/plantio/dashboard",
-  "pla-talhao": "/plantio/talhao",
-  "pla-fenologia": "/plantio/fenologia",
-  "pla-fitossanidade": "/plantio/fitossanidade",
-  "pla-nutricao": "/plantio/nutricao",
-  "pla-colheita": "/plantio/colheita",
-  "pla-planejamento": "/plantio/planejamento",
-  "pla-estoque": "/plantio/estoque",
-  "pla-custo": "/plantio/custo",
-  "eqp-dashboard": "/equipe/dashboard",
-  "eqp-funcionarios": "/equipe/funcionarios",
-  "eqp-ponto": "/equipe/ponto",
-  "eqp-folha": "/equipe/folha",
-  "mil-dashboard": "/milho/dashboard",
-  "mil-safras": "/milho/safras",
-  "mil-custos": "/milho/custos",
-  "mil-producao": "/milho/producao",
-  "mil-silos": "/milho/silos",
-  "mil-custo": "/milho/custo",
 };
 
 const TAB_BY_PATH: Record<string, Tab> = Object.fromEntries(
@@ -57,9 +37,6 @@ const TAB_BY_PATH: Record<string, Tab> = Object.fromEntries(
 
 const DEFAULT_TAB_BY_PATH: Record<string, Tab> = {
   "/pecuaria": "pec-rebanho",
-  "/plantio": "pla-dashboard",
-  "/milho": "mil-dashboard",
-  "/equipe": "eqp-dashboard",
 };
 
 const TAB_BY_PATH_LEGADO: Record<string, Tab> = {

@@ -32,7 +32,7 @@ describe("cadastros gerenciais", () => {
   it("lista ativos antes dos inativos com contadores de uso", async () => {
     await listarCadastrosGerenciais();
     expect(mocks.categoriasFindMany).toHaveBeenCalledWith(expect.objectContaining({ orderBy: [{ ativo: "desc" }, { ordem: "asc" }, { nome: "asc" }] }));
-    expect(mocks.centrosFindMany).toHaveBeenCalledWith(expect.objectContaining({ include: { _count: { select: { operacoes: true, produtos: true, safras: true } } } }));
+    expect(mocks.centrosFindMany).toHaveBeenCalledWith(expect.objectContaining({ include: { _count: { select: { operacoes: true, produtos: true } } } }));
   });
 
   it("cria categoria sem grupo e registra auditoria", async () => {

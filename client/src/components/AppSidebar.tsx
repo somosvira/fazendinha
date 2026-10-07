@@ -2,7 +2,6 @@
  *
  * A sidebar é organizada por ÁREAS DE TRABALHO, não pela estrutura interna dos
  * módulos. Pecuária hoje é só a v1 Rebanho (Animais · Lotes · Cadastros, uma
- * área com um único ponto de entrada); Agronomia reúne Plantio e Milho com
  * várias rotinas em um clique. Recursos de configuração ou análise menos
  * frequentes ficam em "Mais opções" dentro da área correspondente.
  * A marca Terrano e o seletor de fazenda/sítio vivem no topo da sidebar.
@@ -39,31 +38,9 @@ const ICON: Partial<Record<Tab, JSX.Element>> = {
   cadastros: <><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></>,
   estoque: <><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M3 8l9 5 9-5"/></>,
   config: <><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></>,
-  // — Plantio — ícones simbólicos para cada sub-aba.
-  "pla-dashboard": <><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></>,
-  "pla-talhao": <><path d="M3 12h18M12 3v18"/><rect x="3" y="3" width="18" height="18" rx="2"/></>,
-  "pla-fenologia": <><circle cx="12" cy="12" r="9"/><path d="M12 3v9l5 3"/></>,
-  "pla-fitossanidade": <><path d="M12 2c2 4 5 7 5 11a5 5 0 0 1-10 0c0-4 3-7 5-11z"/><path d="M9 11c0-2 1.5-3 3-3"/></>,
-  "pla-nutricao": <><path d="M4 19l4-4 3 3 5-5 4 4"/><path d="M4 4h16v16H4z" fill="none"/></>,
-  "pla-colheita": <><path d="M4 14l8-10 8 10"/><path d="M6 14h12l-2 7H8z"/></>,
-  "pla-planejamento": <><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 3v4M16 3v4M4 9h16M9 14l2 2 4-4"/></>,
-  "pla-estoque": <><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M3 8l9 5 9-5"/></>,
-  "pla-custo": <><path d="M12 2v20"/><path d="M17 6.5a4 4 0 0 0-4-2.5h-2a3.5 3.5 0 0 0 0 7h2a3.5 3.5 0 0 1 0 7h-2a4 4 0 0 1-4-2.5"/></>,
-  // — Milho (cultivo) — ícones simbólicos.
-  "mil-dashboard": <><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></>,
-  "mil-safras": <><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 11h18"/></>,
-  "mil-custos": <><path d="M5 3h14v18l-2-1.5L15 21l-2-1.5L11 21l-2-1.5L7 21l-2-1.5z"/><path d="M9 8h6M9 12h6"/></>,
-  "mil-producao": <><path d="M12 21V8"/><path d="M12 12c-2 0-4-1.5-4-4 2 0 4 1.5 4 4zM12 12c2 0 4-1.5 4-4-2 0-4 1.5-4 4zM12 17c-2 0-4-1.5-4-4 2 0 4 1.5 4 4zM12 17c2 0 4-1.5 4-4-2 0-4 1.5-4 4z"/></>,
-  "mil-silos": <><path d="M6 21V8a6 6 0 0 1 12 0v13"/><path d="M6 12h12M6 16h12"/><path d="M4 21h16"/></>,
-  "mil-custo": <><path d="M12 2v20"/><path d="M17 6.5a4 4 0 0 0-4-2.5h-2a3.5 3.5 0 0 0 0 7h2a3.5 3.5 0 0 1 0 7h-2a4 4 0 0 1-4-2.5"/></>,
-  // — Equipe & Ponto — ícones simbólicos.
-  "eqp-dashboard": <><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></>,
-  "eqp-funcionarios": <><circle cx="9" cy="8" r="3.5"/><path d="M2 20c1-4 3.5-6 7-6s6 2 7 6"/><path d="M16 4a3.5 3.5 0 0 1 0 7"/></>,
-  "eqp-ponto": <><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></>,
-  "eqp-folha": <><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></>,
 };
 
-type AreaTrabalhoId = "pecuaria" | "agronomia" | "equipe";
+type AreaTrabalhoId = "pecuaria";
 type NavItem = { id: Tab; label: string };
 type AreaTrabalho = {
   id: AreaTrabalhoId;
@@ -71,7 +48,6 @@ type AreaTrabalho = {
   permissao: string;
   principais: NavItem[];
   extras?: NavItem[];
-  exigeFolha?: boolean;
 };
 
 /**
@@ -87,42 +63,7 @@ const AREAS_TRABALHO: AreaTrabalho[] = [
       { id: "pec-rebanho", label: "Rebanho" },
     ],
   },
-  {
-    id: "agronomia",
-    label: "Agronomia",
-    permissao: "agricultura",
-    principais: [
-      { id: "pla-dashboard", label: "Agronomia" },
-      { id: "pla-talhao", label: "Talhões" },
-      { id: "pla-fitossanidade", label: "Fitossanidade" },
-      { id: "pla-nutricao", label: "Solo & nutrição" },
-      { id: "pla-planejamento", label: "Manejo & planejamento" },
-      { id: "mil-dashboard", label: "Milho & safras" },
-    ],
-    extras: [
-      { id: "pla-fenologia", label: "Fenologia do café" },
-      { id: "pla-colheita", label: "Colheita do café" },
-      { id: "pla-estoque", label: "Estoque agrícola" },
-      { id: "pla-custo", label: "Custos do café" },
-      { id: "mil-safras", label: "Safras de milho" },
-      { id: "mil-custos", label: "Lançar custos do milho" },
-      { id: "mil-producao", label: "Produção de milho" },
-      { id: "mil-silos", label: "Silos" },
-      { id: "mil-custo", label: "Custo de produção do milho" },
-    ],
-  },
-  {
-    id: "equipe",
-    label: "Equipe",
-    permissao: "equipe",
-    exigeFolha: true,
-    principais: [
-      { id: "eqp-dashboard", label: "Visão da equipe" },
-      { id: "eqp-funcionarios", label: "Funcionários" },
-      { id: "eqp-ponto", label: "Ponto" },
-      { id: "eqp-folha", label: "Folha" },
-    ],
-  },
+
 ];
 
 const STORAGE_KEY = "rionovo:sidebar:openExtras";
@@ -284,8 +225,6 @@ export function TrabalhoAtivo({ resumo, ativo, onAbrir, vazio = "Nova operação
 const GROUP_ICON: Record<SidebarGroupId, JSX.Element> = {
   financeiro: <><path d="M12 2v20"/><path d="M17 6.5A4 4 0 0 0 13 4h-2a3.5 3.5 0 0 0 0 7h2a3.5 3.5 0 0 1 0 7h-2a4 4 0 0 1-4-2.5"/></>,
   pecuaria: <><path d="M7.5 8C5 8 3.5 6.5 3 4c2.8.2 4.7 1.2 6 3M16.5 8c2.5 0 4-1.5 4.5-4-2.8.2-4.7 1.2-6 3"/><path d="M7 9.5C7 6.5 9 5 12 5s5 1.5 5 4.5V15c0 3-2 5-5 5s-5-2-5-5z"/><circle cx="9.5" cy="12" r=".65" fill="currentColor" stroke="none"/><circle cx="14.5" cy="12" r=".65" fill="currentColor" stroke="none"/><path d="M9.5 16c1.5-1 3.5-1 5 0"/></>,
-  agronomia: <><path d="M12 21c5-3 8-7 8-12 0-1.5-.5-3-1-4-3 0-7 1-9 4s-2 8-2 12"/><path d="M6 21c3-5 6-8 10-10"/></>,
-  equipe: <><circle cx="9" cy="8" r="3"/><path d="M3 20c.7-4 3-6 6-6s5.3 2 6 6"/><path d="M16 5.5a3 3 0 0 1 0 5.5M17 14c2 .5 3.5 2.5 4 5"/></>,
 };
 
 function GroupToggle({ id, label, isOpen, onToggle }: { id: SidebarGroupId; label: string; isOpen: boolean; onToggle: () => void }) {
@@ -344,14 +283,12 @@ function MoreToggle({ context, isOpen, onToggle }: { context: string; isOpen: bo
 }
 
 export function AppSidebar({
-  current, onNav, financeiro, isAdmin, podeVerFolha, areas,
+  current, onNav, financeiro, isAdmin, areas,
   mobileOpen, onMobileToggle, onAbrirBusca, propAtiva, onTrocarProp,
   user, colapsada, onToggleColapsar, onAcessos, onSair, trabalhoAtivo, trabalhoAtivoRelatorio,
 }: {
   current: Tab; onNav: (t: Tab) => void; financeiro: { id: Tab; label: string }[];
   isAdmin: boolean;
-  // Sem essa flag o módulo Equipe & Ponto (salário/CPF/Pix) não aparece na sidebar.
-  podeVerFolha: boolean;
   areas?: string[];
   mobileOpen: boolean; onMobileToggle: (open: boolean) => void;
   onAbrirBusca: () => void;
@@ -363,9 +300,9 @@ export function AppSidebar({
   trabalhoAtivo?: { resumo: ResumoTrabalhoAtivo | null; ativo: boolean; onAbrir: () => void } | null;
   trabalhoAtivoRelatorio?: { resumo: ResumoTrabalhoAtivo; ativo: boolean; onAbrir: () => void } | null;
 }) {
-  const areasEfetivas = areas ?? ["pecuaria", "agricultura", "equipe"];
+  const areasEfetivas = areas ?? ["pecuaria"];
   const areasVisiveis = AREAS_TRABALHO.filter(
-    (area) => temAcessoArea(areasEfetivas, area.permissao as "pecuaria" | "agricultura" | "equipe") && (!area.exigeFolha || podeVerFolha),
+    (area) => temAcessoArea(areasEfetivas, area.permissao as "pecuaria"),
   );
   const [openExtras, setOpenExtras] = useState<AreaTrabalhoId | null>(() => {
     try {

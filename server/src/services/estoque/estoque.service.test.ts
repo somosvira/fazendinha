@@ -279,8 +279,8 @@ describe("listarSaldos", () => {
 
   it("consolidado lista produto com movimento em qualquer sítio e mantém o filtro de uso", async () => {
     mocks.produtoFindMany.mockResolvedValue([]);
-    await listarSaldos({ propriedadeId: null, uso: "agricola" });
-    expect(mocks.produtoFindMany.mock.calls[0][0].where).toEqual({ ativo: true, movimentos: { some: {} }, usoAgricola: true });
+    await listarSaldos({ propriedadeId: null, uso: "genetico" });
+    expect(mocks.produtoFindMany.mock.calls[0][0].where).toEqual({ ativo: true, movimentos: { some: {} }, usoGenetico: true });
   });
 
   const mov = (tipo: string, quantidade: string, valorTotal: string) => ({ tipo, quantidade: new Prisma.Decimal(quantidade), valorTotal: new Prisma.Decimal(valorTotal), data: new Date("2026-01-10") });
@@ -322,7 +322,7 @@ describe("listarMovimentos — origem para navegação", () => {
   it("expõe o vínculo genético no movimento apenas para quem pode ver pecuária", async () => {
     mocks.movFindMany.mockResolvedValue([{ ...base, id: uid(4), produto: { ...base.produto, materialGenetico: { id: uid(8) } } }]);
     expect((await listarMovimentos()).itens[0].materialGeneticoId).toBe(uid(8));
-    expect((await listarMovimentos({ vinculosVisiveis: { agricultura: true, pecuaria: false } })).itens[0].materialGeneticoId).toBeNull();
+    expect((await listarMovimentos({ vinculosVisiveis: { pecuaria: false } })).itens[0].materialGeneticoId).toBeNull();
   });
 
   it("usa o mesmo escopo de sítio de listarSaldos (principal inclui movimento sem propriedade)", async () => {
@@ -344,29 +344,8 @@ describe("listarMovimentos — origem para navegação", () => {
     expect(m.fornecedor).toBe("Agro");
   });
 
-  it("resolve o talhão das saídas automáticas com uma única consulta", async () => {
-    mocks.movFindMany.mockResolvedValue([
-      { ...base, id: uid(4), origem: "APLICACAO", operacaoAgricola: { talhaoId: 5, talhao: { codigo: "T-05" } } },
-    ]);
-    const { itens: ms } = await listarMovimentos();
-    expect(ms.map((m) => m.operacaoId)).toEqual([null]);
-    expect(ms[0].vinculo).toEqual({ tipo: "TALHAO", id: 5, codigo: "T-05" });
-    expect(mocks.movFindMany).toHaveBeenCalledTimes(1);
-    expect(mocks.movFindMany.mock.calls[0][0].include).toMatchObject({ operacaoAgricola: expect.anything() });
-  });
 
-  it("omite vínculo e observação automática de área que o leitor não tem", async () => {
-    const linhas = [
-      { ...base, id: uid(4), origem: "APLICACAO", observacao: "Aplicação em T-05", operacaoAgricola: { talhaoId: 5, talhao: { codigo: "T-05" } } },
-    ];
-    mocks.movFindMany.mockResolvedValue(linhas);
-    const { itens: soFinanceiro } = await listarMovimentos({ vinculosVisiveis: { agricultura: false } });
-    expect(soFinanceiro.map((m) => [m.vinculo, m.observacao])).toEqual([[null, null]]);
 
-    const { itens: soAgricultura } = await listarMovimentos({ vinculosVisiveis: { agricultura: true } });
-    expect(soAgricultura.map((m) => m.vinculo?.tipo ?? null)).toEqual(["TALHAO"]);
-    expect(soAgricultura[0].observacao).toBe("Aplicação em T-05");
-  });
   it("filtra por busca (produto, fornecedor e operação), origem, centro e período, e pagina no servidor", async () => {
     mocks.movFindMany.mockResolvedValue([]);
     mocks.movCount.mockResolvedValue(31);

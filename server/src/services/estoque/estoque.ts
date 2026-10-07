@@ -172,7 +172,7 @@ export async function obterCustoMedio(db: DbCusto, produtoId: string, propriedad
   return (await obterCustosMedios(db, [produtoId], propriedadeId)).get(produtoId) ?? null;
 }
 
-const USO_CAMPO = { agricola: "usoAgricola", genetico: "usoGenetico" } as const;
+const USO_CAMPO = { genetico: "usoGenetico" } as const;
 
 export async function listarSaldos(f?: { centroCustoId?: string; propriedadeId?: number | null; uso?: keyof typeof USO_CAMPO; produtoIds?: string[]; materialGeneticoVisivel?: boolean }) {
   // O estoque lista os produtos ativos que já tiveram movimento no sítio (qualquer
@@ -211,11 +211,11 @@ export async function listarSaldos(f?: { centroCustoId?: string; propriedadeId?:
     const minimo = p.minimoEstoque != null ? Number(p.minimoEstoque) : null;
     return {
       produtoId: p.id,
+      usoGenetico: p.usoGenetico, usoSanitario: p.usoSanitario, usoNutricional: p.usoNutricional,
       nome: p.nome,
-      usoAgricola: p.usoAgricola, usoGenetico: p.usoGenetico, usoSanitario: p.usoSanitario, usoNutricional: p.usoNutricional,
       materialGeneticoId: f?.materialGeneticoVisivel === false ? null : p.materialGenetico?.id ?? null,
       categoria: p.categoria
-        ? { id: p.categoria.id, nome: p.categoria.nome, usoAgricola: p.categoria.usoAgricola, usoGenetico: p.categoria.usoGenetico }
+        ? { id: p.categoria.id, nome: p.categoria.nome, usoGenetico: p.categoria.usoGenetico }
         : null,
       unidade: p.unidade,
       centrosCusto: p.centrosCusto.map(({ centroCusto }) => ({ id: centroCusto.id, nome: centroCusto.nome })),
@@ -233,12 +233,11 @@ export async function listarSaldos(f?: { centroCustoId?: string; propriedadeId?:
 
 /** Para onde levar o usuário quando o movimento NÃO nasceu de uma operação financeira (saídas automáticas). */
 export type VinculoMovimento =
-  | { tipo: "TALHAO"; id: number; codigo: string }
   | { tipo: "APLICACAO_SANITARIA"; id: string; animalId: string }
   | { tipo: "FECHAMENTO_NUTRICIONAL"; id: string; loteId: string };
 
-/** Quais vínculos operacionais o leitor pode ver (quem só tem financeiro não vê talhão). Ausente = todos. */
-export type VinculosVisiveis = { agricultura: boolean; pecuaria?: boolean };
+/** Quais vínculos operacionais o leitor pode ver (quem só tem financeiro não vê o fato da pecuária). Ausente = todos. */
+export type VinculosVisiveis = { pecuaria?: boolean };
 
 export type FiltroMovimentos = {
   movimentoId?: string; produtoId?: string; partidaId?: string; tipo?: string; q?: string; origem?: string; centroCustoId?: string;
@@ -253,7 +252,7 @@ function numeroOperacaoDaBusca(q: string): number | null {
 }
 
 export async function listarMovimentos(f?: FiltroMovimentos) {
-  const visiveis = f?.vinculosVisiveis ?? { agricultura: true, pecuaria: true };
+  const visiveis = f?.vinculosVisiveis ?? { pecuaria: true };
   const pagina = f?.pagina ?? 1;
   const porPagina = f?.porPagina ?? 15;
   const and: Prisma.MovimentoEstoqueWhereInput[] = [
@@ -296,7 +295,6 @@ export async function listarMovimentos(f?: FiltroMovimentos) {
         operacao: { include: { parceiro: true } },
         revertidoPor: { select: { id: true } },
         // Origem das saídas automáticas (sem operação financeira): um único join por relação, sem N+1.
-        operacaoAgricola: { select: { talhaoId: true, talhao: { select: { codigo: true } } } },
         aplicacaoProduto: { select: { id: true, animalId: true } },
         itemFechamentoConsumo: { select: { fechamento: { select: { id: true, loteId: true } } } },
         alocacaoPartidaEstoques: { include: { partida: { select: { codigo: true, nome: true, validade: true, lotePrincipalId: true, lotePrincipal: { select: { nome: true } } } } } },
@@ -309,13 +307,8 @@ export async function listarMovimentos(f?: FiltroMovimentos) {
     // nem atribuir um método de custeio independente ao lote.
     const valorConsulta = idsGrupo && !m.quantidade.isZero() ? m.valorTotal.mul(quantidadeConsulta).div(m.quantidade).toDecimalPlaces(2) : m.valorTotal;
     let vinculo: VinculoMovimento | null = null;
-    // Dado de área que o leitor não tem (talhão → agricultura) não sai: nem o
-    // vínculo, nem a observação gerada pela saída automática (que cita talhão).
     let oculto = false;
-    if (m.operacaoAgricola) {
-      if (visiveis.agricultura) vinculo = { tipo: "TALHAO", id: m.operacaoAgricola.talhaoId, codigo: m.operacaoAgricola.talhao.codigo };
-      else oculto = true;
-    } else if (m.aplicacaoProduto) {
+    if (m.aplicacaoProduto) {
       if (visiveis.pecuaria !== false) vinculo = { tipo: "APLICACAO_SANITARIA", id: m.aplicacaoProduto.id, animalId: m.aplicacaoProduto.animalId };
       else oculto = true;
     } else if (m.itemFechamentoConsumo) {
@@ -453,8 +446,7 @@ export async function ajustarContagem(input: z.infer<typeof ajusteContagemSchema
 /**
  * Estorna um movimento de estoque dentro de uma transação já aberta: cria o
  * movimento inverso (reversaoDeId) copiando centro/propriedade/operação e marca
- * o original como REVERTIDO. Não decide se a origem PODE ser estornada — essa
- * checagem fica com quem chama (plantio, sanidade...).
+ * o original como REVERTIDO. A validação da origem cabe ao domínio que chama.
  */
 export async function estornarMovimentoTx(
   tx: Prisma.TransactionClient,

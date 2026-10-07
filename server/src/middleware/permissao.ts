@@ -15,7 +15,7 @@ export function exigeArea(area: Area): MiddlewareHandler {
   };
 }
 
-/** Gate por qualquer uma das áreas informadas (ex.: Estoque, visível a pecuária/agricultura/financeiro). */
+/** Gate por qualquer uma das áreas informadas (ex.: Estoque, visível a pecuária/financeiro). */
 export function exigeQualquerArea(areas: Area[]): MiddlewareHandler {
   return async (c, next) => {
     const u = getUsuario(c);

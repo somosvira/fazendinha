@@ -13,7 +13,6 @@ const idsSchema = (campo: string) =>
 export const produtoSchema = z.object({
   nome: z.string().trim().min(2).max(80),
   unidade: z.nativeEnum(UnidadeMedida).default("UN"),
-  usoAgricola: z.boolean().optional(),
   usoGenetico: z.boolean().optional(),
   usoSanitario: z.boolean().optional(),
   usoNutricional: z.boolean().optional(),
@@ -33,7 +32,7 @@ export type ProdutoPatchInput = z.infer<typeof patchProdutoSchema>;
 
 // Filtro de produtos por seus tipos de uso — usado por
 // /estoque/produtos para validar o query param `uso`.
-export const usoQuerySchema = z.enum(["agricola", "genetico", "sanitario", "nutricional"]);
+export const usoQuerySchema = z.enum(["genetico", "sanitario", "nutricional"]);
 export const produtosQuerySchema = z.object({
   uso: usoQuerySchema.optional(),
   q: z.string().optional(),

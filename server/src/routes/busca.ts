@@ -12,8 +12,6 @@ export const buscaRouter = new Hono().get("/busca", zValidator("query", buscaQue
   const usuario = getUsuario(c);
   const resultados = await buscarEntidades(c.req.valid("query").q ?? "");
   const areaDaTab = (tab: string): Area => tab.startsWith("pec-") ? "pecuaria"
-    : tab.startsWith("pla-") || tab.startsWith("mil-") ? "agricultura"
-    : tab.startsWith("eqp-") ? "equipe"
     : "financeiro";
   return c.json(usuario ? resultados.filter((r) => temArea(usuario, areaDaTab(r.tab))) : []);
 });

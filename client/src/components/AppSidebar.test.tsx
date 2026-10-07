@@ -22,7 +22,7 @@ const resumo = { titulo: "Ração para o gado", tipo: "Compra para estoque", det
 function renderSidebar(props: Partial<ComponentProps<typeof AppSidebar>> = {}) {
   const base: ComponentProps<typeof AppSidebar> = {
     current: "dashboard", onNav: vi.fn(), financeiro: [{ id: "dashboard", label: "Visão geral" }, { id: "lancar", label: "Operações" }],
-    isAdmin: false, podeVerFolha: false, areas: ["financeiro"], mobileOpen: false, onMobileToggle: vi.fn(), onAbrirBusca: vi.fn(),
+    isAdmin: false, areas: ["financeiro"], mobileOpen: false, onMobileToggle: vi.fn(), onAbrirBusca: vi.fn(),
     propAtiva: null, onTrocarProp: vi.fn(), user: usuario, colapsada: false, onToggleColapsar: vi.fn(), onAcessos: vi.fn(),
   };
   const final = { ...base, ...props };

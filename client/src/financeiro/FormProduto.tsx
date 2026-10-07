@@ -7,13 +7,13 @@ import { MultiSelect, type MultiSelectOption } from "@/components/MultiSelect";
 import { UNIDADES_ORDENADAS, rotuloUnidadeCompleto, type UnidadeMedida } from "../lib/unidades";
 import { PartidasProduto } from "../estoque/PartidasProduto";
 
-const TIPOS = [{ campo: "usoAgricola", nome: "Agrícola" }, { campo: "usoGenetico", nome: "Genético" }, { campo: "usoSanitario", nome: "Sanitário" }, { campo: "usoNutricional", nome: "Nutricional" }] as const;
+const TIPOS = [{ campo: "usoGenetico", nome: "Genético" }, { campo: "usoSanitario", nome: "Sanitário" }, { campo: "usoNutricional", nome: "Nutricional" }] as const;
 
 /* `parceiros`/`categorias`/`centros` são opcionais: quando quem abre o painel já
  * tem essas listas em mãos (ex.: `ConfiguracoesFinanceiras`), passa-as direto;
- * caso contrário (cadastro rápido a partir do estoque/plantio), o formulário
+ * caso contrário (cadastro rápido a partir do estoque), o formulário
  * carrega sozinho de `estoque/api.ts` — mesmas rotas liberadas às três áreas
- * (pecuária/agricultura/financeiro). */
+ * (pecuária/financeiro). */
 export function FormProduto({ produto, parceiros: parceirosProp, categorias: categoriasProp, centros: centrosProp, onSalvo, onFechar, somenteLeitura = false }: {
   produto: Produto | null; parceiros?: Parceiro[]; categorias?: Categoria[]; centros?: CentroCusto[];
   onSalvo: (salvo: Produto) => Promise<void> | void; onFechar: () => void; somenteLeitura?: boolean;
@@ -54,7 +54,7 @@ export function FormProduto({ produto, parceiros: parceirosProp, categorias: cat
   const [carne, setCarne] = useState(produto?.perfilSanitario?.carenciaCarneHoras?.toString() ?? "");
   const [via, setVia] = useState(produto?.perfilSanitario?.viaPadrao ?? "");
   const [materiaSeca, setMateriaSeca] = useState(produto?.perfilNutricional?.materiaSecaPercentual ?? "");
-  const [usos, setUsos] = useState({ usoAgricola: produto?.usoAgricola ?? false, usoGenetico: produto?.usoGenetico ?? false, usoSanitario: produto?.usoSanitario ?? false, usoNutricional: produto?.usoNutricional ?? false });
+  const [usos, setUsos] = useState({ usoGenetico: produto?.usoGenetico ?? false, usoSanitario: produto?.usoSanitario ?? false, usoNutricional: produto?.usoNutricional ?? false });
   const [rastrearPartidas, setRastrearPartidas] = useState(produto?.rastrearPartidas ?? false);
   const [centroCustoIds, setCentroCustoIds] = useState<string[]>(() => produto?.centroCustoIds ?? []);
   const [fornecedorIds, setFornecedorIds] = useState<string[]>(() => produto?.fornecedores?.map((f) => f.id) ?? []);

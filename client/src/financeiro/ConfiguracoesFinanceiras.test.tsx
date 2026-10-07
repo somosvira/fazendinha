@@ -32,10 +32,10 @@ const config: Config = {
     { id: uid(7), nome: "Cooperativa", documento: "11222333000181", tipo: "FORNECEDOR", telefone: "3499990000", email: "coop@x.com", ativo: true, referencias: 2 },
     { id: uid(8), nome: "Agro Minas", documento: null, tipo: "FORNECEDOR", telefone: null, email: null, ativo: true, referencias: 0 },
   ],
-  categorias: [{ id: uid(11), nome: "Insumos", classificacao: "CUSTEIO", ativo: true, ordem: 0, usoAgricola: false, usoGenetico: false, _count: { operacoes: 2, produtos: 1 } }],
-  centrosCusto: [{ id: uid(20), nome: "Atividade leiteira", ativo: true, ordem: 0, _count: { operacoes: 3, produtos: 0, safras: 0 } }],
+  categorias: [{ id: uid(11), nome: "Insumos", classificacao: "CUSTEIO", ativo: true, ordem: 0, usoGenetico: false, _count: { operacoes: 2, produtos: 1 } }],
+  centrosCusto: [{ id: uid(20), nome: "Atividade leiteira", ativo: true, ordem: 0, _count: { operacoes: 3, produtos: 0 } }],
   produtos: [],
-  produtosCadastro: [{ id: uid(30), nome: "Ração 22%", unidade: "KG", minimoEstoque: "500", usoAgricola: true, categoriaId: uid(11), categoriaNome: "Insumos", categoria: { id: uid(11), nome: "Insumos", usoAgricola: false, usoGenetico: false }, ativo: true, centroCustoIds: [uid(20)], centrosCusto: [{ id: uid(20), nome: "Atividade leiteira", ativo: true }], fornecedores: [{ id: uid(7), nome: "Cooperativa", ativo: true }] }],
+  produtosCadastro: [{ id: uid(30), nome: "Ração 22%", usoNutricional: true, unidade: "KG", minimoEstoque: "500", categoriaId: uid(11), categoriaNome: "Insumos", categoria: { id: uid(11), nome: "Insumos", usoGenetico: false }, ativo: true, centroCustoIds: [uid(20)], centrosCusto: [{ id: uid(20), nome: "Atividade leiteira", ativo: true }], fornecedores: [{ id: uid(7), nome: "Cooperativa", ativo: true }] }],
 };
 
 /* A tabela responsiva renderiza tabela E cartões (CSS decide o que aparece);
@@ -296,7 +296,7 @@ describe("ConfiguracoesFinanceiras — produtos", () => {
 
   it("filtra produtos pelo próprio uso sem depender da categoria", async () => {
     await montar("produtos");
-    await escolherSelect(document.body, "Filtrar por uso", "Uso agrícola");
+    await escolherSelect(document.body, "Filtrar por uso", "Uso nutricional");
     expect(screen.getAllByText("Ração 22%").length).toBeGreaterThan(0);
     await escolherSelect(document.body, "Filtrar por uso", "Sem uso específico");
     expect(screen.queryByText("Ração 22%")).toBeNull();

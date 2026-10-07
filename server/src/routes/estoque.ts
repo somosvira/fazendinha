@@ -30,8 +30,7 @@ function fail(e: unknown): { status: Status; body: { error: string; code?: strin
 }
 
 // Mapeamento de erro dos cadastros de referência (produto) para status HTTP —
-// essas rotas ficam sob o gate mais amplo de /api/estoque/*: pecuária, agricultura
-// ou financeiro.
+// essas rotas ficam sob o gate mais amplo de /api/estoque/*: pecuária ou financeiro.
 function failCadastro(e: unknown): { status: 400 | 404 | 409 | 500; body: { error: string; campo?: string } } {
   if (e instanceof FinanceiroError) {
     const map = { VALIDACAO: 400, NAO_ENCONTRADO: 404, CONFLITO: 409, PERIODO_FECHADO: 409, SALDO_INSUFICIENTE: 409, JA_REVERTIDO: 409 } as const;
@@ -96,10 +95,9 @@ export const estoqueRouter = new Hono()
   })
   .get("/estoque/movimentos", zValidator("query", movimentosQuerySchema), async (c) => {
     const { movimentoId, produtoId, partidaId, propriedadeId, tipo, q, origem, centroCustoId, de, ate, pagina, porPagina } = c.req.valid("query");
-    // O gate de /estoque aceita pecuária, agricultura ou financeiro; o vínculo
-    // (talhão) das saídas automáticas só vai para quem tem a área.
+    // Vínculos sanitários/nutricionais só saem para quem tem acesso à pecuária.
     const u = getUsuario(c);
-    const vinculosVisiveis = u ? { agricultura: temArea(u, "agricultura"), pecuaria: temArea(u, "pecuaria") } : undefined;
+    const vinculosVisiveis = u ? { pecuaria: temArea(u, "pecuaria") } : undefined;
     const movimentos = await svc.listarMovimentos({ movimentoId, produtoId, partidaId, tipo, q, origem, centroCustoId, de, ate, pagina, porPagina, propriedadeId: propriedadeId ?? await resolverEscopoLeitura(c), vinculosVisiveis });
     return c.json(apresentarMovimentos(c, movimentos));
   })
@@ -172,7 +170,7 @@ export const estoqueRouter = new Hono()
     catch (e) { const f = fail(e); return c.json(f.body, f.status); }
   })
   .get("/estoque/produtos/:id/movimentos", zValidator("query", movimentosQuerySchema), async (c) => {
-    try { const u = getUsuario(c); const resultado = await svc.listarMovimentos({ ...c.req.valid("query"), produtoId: c.req.param("id"), propriedadeId: await resolverEscopoLeitura(c), vinculosVisiveis: u ? { agricultura: temArea(u, "agricultura"), pecuaria: temArea(u, "pecuaria") } : undefined });
+    try { const u = getUsuario(c); const resultado = await svc.listarMovimentos({ ...c.req.valid("query"), produtoId: c.req.param("id"), propriedadeId: await resolverEscopoLeitura(c), vinculosVisiveis: u ? { pecuaria: temArea(u, "pecuaria") } : undefined });
       return c.json(apresentarMovimentos(c, resultado)); }
     catch (e) { const f = fail(e); return c.json(f.body, f.status); }
   })

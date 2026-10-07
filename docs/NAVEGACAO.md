@@ -1,7 +1,7 @@
 # Navegação da dashboard (deep-links da IA)
 
 > **Gerado por `scripts/gen-nav-doc.ts` a partir de `server/src/services/bot/navegacao.ts`.**
-> Não editar à mão — mexer no catálogo e rodar `pnpm gen:nav-doc`. Gerado em 2026-09-23.
+> Não editar à mão — mexer no catálogo e rodar `pnpm gen:nav-doc`. Gerado em 2026-10-03.
 
 Este é o guia que a IA recebe no contexto (via `navegacaoResumo()`) para responder com
 links internos que levam o usuário à tela/tabela certa, já com o recorte aplicado.

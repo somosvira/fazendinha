@@ -59,7 +59,7 @@ function baseProps(overrides: Partial<{
   onNav: (t: Tab) => void;
   financeiro: { id: Tab; label: string }[];
   isAdmin: boolean;
-  podeVerFolha: boolean;
+
   areas: string[];
   mobileOpen: boolean;
   onMobileToggle: (open: boolean) => void;
@@ -83,7 +83,6 @@ function baseProps(overrides: Partial<{
       { id: "cadastros" as Tab, label: "Configurações financeiras" },
     ],
     isAdmin: true,
-    podeVerFolha: true,
     areas: ["pecuaria", "agricultura", "equipe"],
     mobileOpen: false,
     onMobileToggle: vi.fn(),
@@ -104,8 +103,8 @@ describe("AppSidebar", () => {
     render(h(AppSidebar, baseProps()));
     const pecuaria = screen.getByRole("button", { name: "Expandir Pecuária" });
     expect(pecuaria.querySelector("svg")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Expandir Agronomia" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Expandir Equipe" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Expandir Agronomia" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Expandir Equipe" })).toBeNull();
     expect(screen.getByText("Visão geral")).toBeTruthy();
     expect(screen.getByText("Operações")).toBeTruthy();
     expect(screen.getByText("Compromissos")).toBeTruthy();
@@ -146,15 +145,13 @@ describe("AppSidebar", () => {
   });
 
   it("esconde o módulo Equipe & Ponto quando podeVerFolha=false", () => {
-    render(h(AppSidebar, baseProps({ podeVerFolha: false })));
+    render(h(AppSidebar, baseProps({ })));
     expect(screen.queryByText("Equipe")).toBeNull();
   });
 
-  it("mostra o módulo Equipe & Ponto quando podeVerFolha=true", () => {
-    render(h(AppSidebar, baseProps({ podeVerFolha: true })));
-    expect(screen.getByText("Equipe")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Expandir Equipe" }));
-    expect(screen.getByText("Ponto")).toBeTruthy();
+  it("não oferece Equipe mesmo com permissão antiga", () => {
+    render(h(AppSidebar, baseProps({ })));
+    expect(screen.queryByText("Equipe")).toBeNull();
   });
 
   it("mostra somente módulos pertencentes às áreas autorizadas", () => {
@@ -189,18 +186,6 @@ describe("AppSidebar", () => {
     expect(screen.getByText("Rebanho")).toBeTruthy();
   });
 
-  it("persiste as opções abertas e revela automaticamente uma rota secundária ativa", () => {
-    const { rerender } = render(h(AppSidebar, baseProps()));
-
-    fireEvent.click(screen.getByRole("button", { name: "Expandir Agronomia" }));
-    fireEvent.click(screen.getByTitle("Mais opções de agronomia"));
-    expect(localStorage.getItem("rionovo:sidebar:openExtras")).toBe("agronomia");
-    expect(screen.getByText("Safras de milho")).toBeTruthy();
-
-    // Deep-link para uma opção secundária da mesma área mantém o bloco aberto.
-    rerender(h(AppSidebar, baseProps({ current: "mil-safras" as Tab })));
-    expect(screen.getByText("Safras de milho")).toBeTruthy();
-  });
 
   it("monta o drawer mobile (Sheet) quando mobileOpen=true e não quando false", () => {
     const { rerender } = render(h(AppSidebar, baseProps({ mobileOpen: false })));

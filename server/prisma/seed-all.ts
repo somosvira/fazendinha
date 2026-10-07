@@ -11,9 +11,6 @@ const serverDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const passos = [
   ["Financeiro", "prisma/seed.ts"],
   ["Catálogos da pecuária", "prisma/seed-pecuaria.ts"],
-  ["Plantio", "prisma/seed-plantio.ts"],
-  ["Plantios reais", "prisma/seed-plantios-reais.ts"],
-  ["Equipe e ponto", "prisma/seed-ponto.ts"],
   ["Usuários", "prisma/seed-usuarios.ts"],
   ["Propriedade dos registros", "src/scripts/backfill-propriedade.ts"],
 ] as const;

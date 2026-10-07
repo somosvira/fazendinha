@@ -8,7 +8,7 @@ import type {
   patchCentroCustoSchema,
 } from "./schemas.js";
 
-const includeCentro = { _count: { select: { operacoes: true, produtos: true, safras: true } } };
+const includeCentro = { _count: { select: { operacoes: true, produtos: true } } };
 
 export async function listarCadastrosGerenciais() {
   const [categorias, centrosCusto] = await Promise.all([

@@ -18,7 +18,6 @@ import * as cadastros from "../services/financeiro/cadastros-gerenciais.js";
 import * as produtos from "../services/estoque/produtos.js";
 import { exigePermissao, getUsuario } from "../middleware/permissao.js";
 import { prisma } from "../db.js";
-import { obterCentrosAtividade } from "../services/estoque/centros-atividade.js";
 import { listarOrigemFinanceira } from "../services/pecuaria/sanidade/origem-financeira.js";
 import { temArea, temPermissao } from "../services/auth/papeis.js";
 
@@ -101,17 +100,15 @@ function validarCadastro<T extends z.ZodTypeAny>(schema: T) {
 export const financeiroRouter = new Hono()
   .get("/financeiro/configuracoes", async (c) => {
     const propriedadeId = await resolverEscopoLeitura(c);
-    const [contasFinanceiras, parceirosLista, gerenciais, produtosCadastro, centrosAtividade] = await Promise.all([
+    const [contasFinanceiras, parceirosLista, gerenciais, produtosCadastro] = await Promise.all([
       contas.listarContas(propriedadeId, true), parceiros.listarParceiros(true),
       cadastros.listarCadastrosGerenciais(),
       produtos.listarProdutosCadastro(),
-      obterCentrosAtividade(prisma),
     ]);
     const produtosAtivos = produtosCadastro.filter((p) => p.ativo);
     return c.json({
       contas: contasFinanceiras, parceiros: parceirosLista, ...gerenciais,
       produtos: produtosAtivos, produtosCadastro,
-      centrosAtividade,
     });
   })
   .post("/financeiro/produtos", exigePermissao("lancar"), validarCadastro(produtoSchema), async (c) => {

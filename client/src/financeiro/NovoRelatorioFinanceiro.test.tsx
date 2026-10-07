@@ -21,7 +21,7 @@ afterEach(() => { cleanup(); vi.useRealTimers(); vi.clearAllMocks(); vi.unstubAl
 
 const cadastros: ConfiguracoesFinanceiras = {
   contas: [], parceiros: [], produtos: [],
-  categorias: [{ id: uid(3), nome: "Nutrição", ativo: true, ordem: 0, classificacao: "CUSTEIO", usoAgricola: false, usoGenetico: false }, { id: uid(4), nome: "Silagem antiga", ativo: false, ordem: 1, classificacao: null, usoAgricola: false, usoGenetico: false }],
+  categorias: [{ id: uid(3), nome: "Nutrição", ativo: true, ordem: 0, classificacao: "CUSTEIO", usoGenetico: false }, { id: uid(4), nome: "Silagem antiga", ativo: false, ordem: 1, classificacao: null, usoGenetico: false }],
   centrosCusto: [{ id: uid(1), nome: "Pecuária", ativo: true, ordem: 0 }],
 };
 const configuracao = { nome: "Pecuária — agosto", dataInicio: "2026-08-01", dataFim: "2026-08-31", regime: "ambos" as const, tipos: [], status: ["CONFIRMADA"], centroCustoIds: [], categoriaIds: [], classificacoes: [] };

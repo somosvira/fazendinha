@@ -51,7 +51,7 @@ describeComBanco("protocolo e exame com PostgreSQL", () => {
     const protocolo = await criarProtocolo({ nome: `Protocolo V3 ${run}`, etapas: [{ tipo: "EXAME", diaRelativo: 0, tipoExameId: tipo.id }] }, null);
     protocoloIds.push(protocolo.id);
     await publicarProtocolo(protocolo.id, null);
-    const antes = await prisma.movimentoEstoque.count();
+    const antes = await prisma.movimentoEstoque.count({ where: { propriedadeId: propriedade.id } });
     const data = hojeFazenda();
     const servico = await prisma.operacao.create({ data: { tipo: "SERVICO", status: "CONFIRMADA", data: new Date(data), valorTotal: 1000, propriedadeId: propriedade.id } });
     servicoIds.push(servico.id);
@@ -59,7 +59,7 @@ describeComBanco("protocolo e exame com PostgreSQL", () => {
     execucaoIds.push(execucao.id);
     expect(execucao.tarefas).toHaveLength(1);
     expect((await listarTarefas(propriedade.id, animal.id))[0].situacao).toBe("PENDENTE");
-    expect(await prisma.movimentoEstoque.count()).toBe(antes);
+    expect(await prisma.movimentoEstoque.count({ where: { propriedadeId: propriedade.id } })).toBe(antes);
     const exame = await registrarExame({ animalId: animal.id, propriedadeId: propriedade.id, tipoExameId: tipo.id, data,
       resultadoOpcao: "NEGATIVO", tarefaId: execucao.tarefas[0].id }, null);
     await salvarRateio({ servicoId: servico.id, propriedadeId: propriedade.id, tipo: "PROTOCOLO", id: execucao.id, valor: "100", motivo: "Rateio do atendimento completo" }, null);
@@ -67,7 +67,7 @@ describeComBanco("protocolo e exame com PostgreSQL", () => {
     await salvarRateio({ servicoId: servico.id, propriedadeId: propriedade.id, tipo: "PROTOCOLO", id: execucao.id, valor: null, motivo: "Retirar antes de atribuir aos fatos" }, null);
     await salvarRateio({ servicoId: servico.id, propriedadeId: propriedade.id, tipo: "EXAME", id: exame.id, valor: "100", motivo: "Atribuição ao exame confirmado" }, null);
     expect((await listarTarefas(propriedade.id, animal.id))[0].situacao).toBe("REALIZADA");
-    expect(await prisma.movimentoEstoque.count()).toBe(antes);
+    expect(await prisma.movimentoEstoque.count({ where: { propriedadeId: propriedade.id } })).toBe(antes);
   });
   it("coletivos de protocolos e exames são atômicos e o reenvio não duplica fatos", async () => {
     const propriedadeId = propriedadeIds[0];

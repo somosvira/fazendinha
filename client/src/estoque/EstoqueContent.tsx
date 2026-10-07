@@ -85,10 +85,7 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
   const consolidado = getPropriedadeAtiva() == null;
   const sitioEfetivo = consolidado ? sitioFiltro : getPropriedadeAtiva() ?? undefined;
   const sitioMovimento = sitioEfetivo;
-  // `centroCustoIdInicial` já chega resolvido: quem chama com um centro de
-  // atividade (rebanho/plantio) só monta este componente depois de resolver o
-  // centro (ver RebanhoContent/PlantioContent, que usam `key` para remontar);
-  // o menu `/estoque` chama sem prop nenhuma (undefined = sem filtro).
+  // O menu `/estoque` começa sem filtro; atalhos podem informar um centro inicial.
   const [centroFiltro, setCentroFiltro] = useState(centroCustoIdInicial != null ? String(centroCustoIdInicial) : "");
   const saldos = useSaldos({ ...(centroFiltro ? { centroCustoId: centroFiltro } : {}), ...(sitioEfetivo ? { propriedadeId: sitioEfetivo } : {}) });
   useEffect(() => {

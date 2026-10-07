@@ -64,7 +64,7 @@ comBanco("contratos da interface sanitária V3", () => {
   it("reconcilia estoque sem mudar o fato e preserva a justificativa original", async () => {
     await salvarTipoAplicacao({ ativo: true }, null, ids.tipo);
     const produto = await prisma.produto.findUniqueOrThrow({ where: { id: ids.produto } });
-    const input = { animalId: ids.animal, propriedadeId: ids.sitio, data: hoje, aplicadaEm: `${hoje}T10:00:00-03:00`, tipoAplicacaoId: ids.tipo, origemInsumo: "SEM_ORIGEM_JUSTIFICADA" as const, nomeProdutoAplicado: produto.nome, dose: "10", unidadeDose: "ML" as const, justificativaSemOrigem: "Aplicado em campo; origem ainda não localizada", carenciaLeiteHoras: 0, carenciaCarneHoras: 0 };
+    const input = { animalId: ids.animal, propriedadeId: ids.sitio, data: hoje, aplicadaEm: `${hoje}T00:00:00-03:00`, tipoAplicacaoId: ids.tipo, origemInsumo: "SEM_ORIGEM_JUSTIFICADA" as const, nomeProdutoAplicado: produto.nome, dose: "10", unidadeDose: "ML" as const, justificativaSemOrigem: "Aplicado em campo; origem ainda não localizada", carenciaLeiteHoras: 0, carenciaCarneHoras: 0 };
     const aplicada = await criarAplicacao(input, null);
     const reconciliada = await reconciliarOrigem(aplicada.id, ids.sitio, { origemInsumo: "BAIXA_ESTOQUE", produtoId: ids.produto, partidaId: ids.partida, motivo: "Conferência do medicamento no almoxarifado" }, null);
     expect(reconciliada.justificativaSemOrigem).toBe(input.justificativaSemOrigem);
@@ -76,7 +76,7 @@ comBanco("contratos da interface sanitária V3", () => {
     expect(auditoria).not.toBeNull();
   });
   it("confirma coletivo uma única vez e desfaz integralmente o conjunto inválido", async () => {
-    const item = { animalId: ids.animal, propriedadeId: ids.sitio, data: hoje, aplicadaEm: `${hoje}T11:00:00-03:00`, tipoAplicacaoId: ids.tipo, origemInsumo: "BAIXA_ESTOQUE" as const, produtoId: ids.produto, partidaId: ids.partida, nomeProdutoAplicado: "Medicamento", dose: "1", unidadeDose: "ML" as const, carenciaLeiteHoras: 0, carenciaCarneHoras: 0 };
+    const item = { animalId: ids.animal, propriedadeId: ids.sitio, data: hoje, aplicadaEm: `${hoje}T00:00:00-03:00`, tipoAplicacaoId: ids.tipo, origemInsumo: "BAIXA_ESTOQUE" as const, produtoId: ids.produto, partidaId: ids.partida, nomeProdutoAplicado: "Medicamento", dose: "1", unidadeDose: "ML" as const, carenciaLeiteHoras: 0, carenciaCarneHoras: 0 };
     const input = { chave: crypto.randomUUID(), propriedadeId: ids.sitio, itens: [item] };
     const resultado = await criarAplicacoesColetivas(input, null);
     expect(await criarAplicacoesColetivas(input, null)).toEqual(resultado);
@@ -89,7 +89,7 @@ comBanco("contratos da interface sanitária V3", () => {
     const raiz = await prisma.partidaProduto.create({ data: { produtoId: ids.produto, codigo: `SEM-VALIDADE-${run}`, validade: null } });
     const alias = await prisma.partidaProduto.create({ data: { produtoId: ids.produto, codigo: `SEM-VALIDADE-ALIAS-${run}`, validade: null, lotePrincipalId: raiz.id } });
     await prisma.movimentoEstoque.create({ data: { produtoId: ids.produto, propriedadeId: ids.sitio, tipo: "ENTRADA", origem: "INVENTARIO_INICIAL", data: new Date(antes(1)), quantidade: 50, custoUnitario: 2, valorTotal: 100, alocacaoPartidaEstoques: { create: { partidaId: alias.id, quantidade: 50 } } } });
-    const input = { animalId: ids.animal, propriedadeId: ids.sitio, data: hoje, aplicadaEm: `${hoje}T11:00:00-03:00`, tipoAplicacaoId: ids.tipo, origemInsumo: "BAIXA_ESTOQUE" as const, produtoId: ids.produto, partidaId: alias.id, nomeProdutoAplicado: "Medicamento", dose: "10", unidadeDose: "ML" as const, carenciaLeiteHoras: 0, carenciaCarneHoras: 0 };
+    const input = { animalId: ids.animal, propriedadeId: ids.sitio, data: hoje, aplicadaEm: `${hoje}T00:00:00-03:00`, tipoAplicacaoId: ids.tipo, origemInsumo: "BAIXA_ESTOQUE" as const, produtoId: ids.produto, partidaId: alias.id, nomeProdutoAplicado: "Medicamento", dose: "10", unidadeDose: "ML" as const, carenciaLeiteHoras: 0, carenciaCarneHoras: 0 };
     await expect(criarAplicacao(input, null)).rejects.toThrow(/ciência/);
     const aplicada = await criarAplicacao({ ...input, cienciaValidadeDesconhecida: true }, null);
     const nomeProduto = (await prisma.produto.findUniqueOrThrow({ where: { id: ids.produto } })).nome;

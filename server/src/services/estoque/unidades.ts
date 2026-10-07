@@ -1,6 +1,5 @@
 // Conversão entre unidades de medida da mesma base (KG/G/T, L/ML). As demais
 // unidades (UN, SC, DOSE, CX, M, HA) são bases próprias, sem conversão entre
-// si. Puro, sem I/O — usado pela baixa de estoque do plantio e por qualquer
 // tela que precise exibir/validar unidade de Produto.
 import { Prisma } from "@prisma/client";
 import type { UnidadeMedida } from "@prisma/client";

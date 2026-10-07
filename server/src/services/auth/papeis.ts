@@ -8,7 +8,7 @@ export type Flag =
   | "exportar"
   | "gerenciarAcessos";
 
-export const AREAS_IDS = ["financeiro", "pecuaria", "agricultura", "equipe"] as const;
+export const AREAS_IDS = ["financeiro", "pecuaria"] as const;
 export type Area = (typeof AREAS_IDS)[number];
 const AREAS_LEGADAS_PECUARIA = new Set(["rebanho", "gado_corte"]);
 

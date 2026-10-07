@@ -27,21 +27,23 @@ comBanco("Produto com usos próprios", () => {
     categorias.push(origem.id, destino.id);
     const p = await criarProduto(produtoSchema.parse({ nome: `Produto usos ${run}`, categoriaId: origem.id, unidade: "KG", usoSanitario: true, usoNutricional: true, rastrearPartidas: true, perfilSanitario: { carenciaLeiteHoras: null, carenciaCarneHoras: 0 }, perfilNutricional: { materiaSecaPercentual: 90.25 } }), null);
     produtos.push(p.id);
-    expect(p).toMatchObject({ usoSanitario: true, usoNutricional: true, usoAgricola: false, rastrearPartidas: true });
+    expect(p).toMatchObject({ usoSanitario: true, usoNutricional: true, rastrearPartidas: true });
     expect((await listarProdutos({ uso: "nutricional", q: run })).map((i) => i.id)).toContain(p.id);
-    const trocado = await atualizarProduto(p.id, { categoriaId: destino.id }, null);
+    await prisma.perfilSanitarioProduto.update({ where: { produtoId: p.id }, data: { referenciaTecnica: "Histórico preservado" } });
+    const trocado = await atualizarProduto(p.id, { nome: p.nome, unidade: "KG", categoriaId: destino.id, usoSanitario: true, usoNutricional: true, usoGenetico: false, fornecedorIds: [], centroCustoIds: [], perfilSanitario: { carenciaLeiteHoras: null, carenciaCarneHoras: 0 }, perfilNutricional: { materiaSecaPercentual: 90.25 } }, null);
+    expect(trocado.perfilSanitario?.referenciaTecnica).toBe("Histórico preservado");
     expect(trocado).toMatchObject({ usoSanitario: true, usoNutricional: true, perfilSanitario: { carenciaCarneHoras: 0 }, perfilNutricional: { materiaSecaPercentual: "90.25" } });
     await expect(atualizarProduto(p.id, { usoSanitario: false }, null)).rejects.toMatchObject({ campo: "usoSanitario", code: "CONFLITO" });
     await expect(atualizarProduto(p.id, { usoNutricional: false }, null)).rejects.toMatchObject({ campo: "usoNutricional", code: "CONFLITO" });
     await expect(atualizarProduto(p.id, { rastrearPartidas: false }, null)).rejects.toMatchObject({ campo: "rastrearPartidas", code: "CONFLITO" });
   });
   it("categoria marcada não habilita usos silenciosamente em produtos novos", async () => {
-    const categoria = await prisma.categoria.create({ data: { nome: `Categoria legado usos ${run}`, usoAgricola: true, usoSanitario: true } });
+    const categoria = await prisma.categoria.create({ data: { nome: `Categoria legado usos ${run}`, usoSanitario: true } });
     categorias.push(categoria.id);
     const p = await criarProduto(produtoSchema.parse({ nome: `Geral sem uso ${run}`, categoriaId: categoria.id }), null);
     produtos.push(p.id);
-    expect(p).toMatchObject({ usoAgricola: false, usoSanitario: false, usoNutricional: false, rastrearPartidas: false });
-    expect((await listarProdutos({ uso: "agricola", q: run })).map((i) => i.id)).not.toContain(p.id);
+    expect(p).toMatchObject({ usoSanitario: false, usoNutricional: false, rastrearPartidas: false });
+    expect((await listarProdutos({ uso: "sanitario", q: run })).map((i) => i.id)).not.toContain(p.id);
   });
   it("categorias padrão existem sem alterar classificações de outras categorias", async () => {
     expect(await prisma.categoria.count({ where: { nome: { in: ["Sanidade", "Nutrição"] } } })).toBe(2);

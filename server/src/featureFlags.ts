@@ -5,5 +5,5 @@
 export const ASSISTENTE_ATIVO = false;
 
 export function rotaDoAssistente(pathname: string) {
-  return /^\/api\/(?:bot(?:\/|$)|whatsapp(?:\/|$)|plantio\/ia(?:\/|$))/.test(pathname);
+  return /^\/api\/(?:bot(?:\/|$)|whatsapp(?:\/|$))/.test(pathname);
 }

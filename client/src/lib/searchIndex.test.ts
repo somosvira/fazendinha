@@ -12,7 +12,7 @@ describe("buscar()", () => {
     expect(r[0].id).toBe("fin-dashboard");
     // inclui o painel de pelo menos um módulo operacional
     expect(r.map((c) => c.id)).toContain("pec-rebanho");
-    expect(r.map((c) => c.id)).toContain("pla-dashboard");
+    expect(r.map((c) => c.id)).not.toContain("pla-dashboard");
   });
 
   it("query só de espaços conta como vazia", () => {
@@ -20,11 +20,11 @@ describe("buscar()", () => {
   });
 
   it('"talh" encontra Talhão', () => {
-    expect(ids("talh")).toContain("pla-talhao");
+    expect(ids("talh")).not.toContain("pla-talhao");
   });
 
   it('sinônimo "ferrugem" encontra Fitossanidade', () => {
-    expect(ids("ferrugem")).toContain("pla-fitossanidade");
+    expect(ids("ferrugem")).not.toContain("pla-fitossanidade");
   });
 
   it('"gasto" encontra Gastos e a ação "Lançar gasto"', () => {
@@ -35,7 +35,7 @@ describe("buscar()", () => {
 
   it('busca é insensível a acento: "nutricao" encontra Nutrição', () => {
     const r = ids("nutricao");
-    expect(r).toContain("pla-nutricao");
+    expect(r).not.toContain("pla-nutricao");
   });
 
   it("sinônimo de animal: \"vaca\" encontra o Rebanho", () => {

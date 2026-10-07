@@ -27,13 +27,13 @@ beforeEach(() => {
 });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
-const categorias = [{ id: uid(11), nome: "Insumos", classificacao: "CUSTEIO" as const, ativo: true, ordem: 0, usoAgricola: true, usoGenetico: false }];
+const categorias = [{ id: uid(11), nome: "Insumos", classificacao: "CUSTEIO" as const, ativo: true, ordem: 0, usoGenetico: false }];
 const centros = [{ id: uid(20), nome: "Atividade leiteira", ativo: true, ordem: 0 }];
 const fornecedores = [{ id: uid(7), nome: "Cooperativa", documento: null, tipo: "FORNECEDOR" as const, telefone: null, email: null, ativo: true, referencias: 0 }];
 const produtoCriado = {
   id: uid(99), nome: "Sal mineral", unidade: "KG",
   categoriaId: uid(11), categoriaNome: "Insumos", classificacao: "CUSTEIO" as const, ativo: true,
-  categoria: { id: uid(11), nome: "Insumos", usoAgricola: true, usoGenetico: false },
+  categoria: { id: uid(11), nome: "Insumos", usoGenetico: false },
   centroCustoIds: [], centrosCusto: [], fornecedores: [],
 };
 
@@ -71,7 +71,7 @@ describe("tipos de uso e validação dos perfis", () => {
     fireEvent.click(screen.getByLabelText("Sanitário"));
     fireEvent.click(screen.getByLabelText("Controlar lotes por validade"));
     fireEvent.click(screen.getByRole("button", { name: "Criar produto" }));
-    await waitFor(() => expect(mocks.criarProduto).toHaveBeenCalledWith(expect.objectContaining({ usoNutricional: true, usoSanitario: true, usoAgricola: false, rastrearPartidas: true, perfilNutricional: { materiaSecaPercentual: esperado } })));
+    await waitFor(() => expect(mocks.criarProduto).toHaveBeenCalledWith(expect.objectContaining({ usoNutricional: true, usoSanitario: true, rastrearPartidas: true, perfilNutricional: { materiaSecaPercentual: esperado } })));
   });
 });
 
@@ -102,7 +102,7 @@ describe("FormProduto sem props", () => {
     fireEvent.change(screen.getByLabelText("Nome do produto"), { target: { value: "Sal mineral" } });
     fireEvent.change(screen.getByLabelText("Unidade"), { target: { value: "KG" } });
     fireEvent.change(screen.getByLabelText(/^Categoria/), { target: { value: uid(11) } });
-    fireEvent.click(screen.getByLabelText("Agrícola"));
+    fireEvent.click(screen.getByLabelText("Genético"));
     fireEvent.click(screen.getByRole("button", { name: "Criar produto" }));
 
     await waitFor(() => expect(mocks.criarProduto).toHaveBeenCalledWith(expect.objectContaining({ nome: "Sal mineral", unidade: "KG", categoriaId: uid(11), fornecedorIds: [uid(7)], centroCustoIds: [uid(20)] })));
