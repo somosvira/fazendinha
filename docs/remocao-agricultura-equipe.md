@@ -1,6 +1,6 @@
 # Retirada de agricultura e equipe — 03/10/2026
 
-Base: `codex/pecuaria-v3`, PR #308, incluindo alterações locais de lotes por validade. Esta limpeza não implica homologação da V3 nem altera marcações do roteiro manual.
+Base atualizada em 07/10/2026: `main` (`beada40`) e V3 final (`72d5866`, incorporada pelo merge `757ae0b` do PR #308). O #308 foi mesclado em `claude/zen-fermat-ypdneu`, ainda não na `main` consultada; o PR #310 aponta para `main` e inclui a V3 enquanto ela não estiver nessa base. Esta limpeza não implica homologação da V3 nem altera marcações do roteiro manual.
 
 ## Resultado
 
@@ -53,3 +53,24 @@ Resultados desta revisão (retestes têm sobreposição com as baterias):
 - Estoque/pecuária com PostgreSQL: 497 de 502 passaram inicialmente; as cinco falhas de fixtures descritas acima foram resolvidas, e os sete testes dos dois arquivos afetados passaram.
 - Interface: 602 de 604 passaram na bateria de 69 arquivos. Os dois casos afetados pelo timeout de carregamento passaram no reteste do arquivo de responsividade (21/21), sem mudança no código financeiro. Os 21 casos focados de Produto, aplicação sanitária e ativação de lotes também passaram.
 - Compilação TypeScript do servidor, build de produção da interface e `git diff --check` passaram. Conferência visual manual completa não foi refeita.
+
+## Conciliação com a V3 final — 07/10/2026
+
+Conflitos resolvidos preservando os fluxos finais da V3, inclusive ciclos/participantes, prévia e execução de etapas com desvios, procedimentos vinculados a Serviço, revisões de ocorrências/exames, fechamento nutricional e validação com foco nos campos. O código operacional de pecuária e de operações financeiras permanece igual à base V3 final; diferenças nos testes da pecuária são a retirada de `usoAgricola` de uma fixture e correções anteriores de horário/contagem isolada por sítio.
+
+Apenas arquivos exclusivos de Plantio/Cultivo/Equipe/Ponto continuam excluídos. O filtro agrícola do cadastro de Produtos não retorna com o merge. A consulta geral de partidas, retirada pela própria V3 final em favor da ficha do Produto, permanece retirada. Permissões finais de escrita financeira e proteção de valores são preservadas. Rotas agrícolas/ponto respondem 404 após autenticação; não ficam tratadas como canais suspensos do assistente.
+
+Prevalecem as decisões de produto da V3 final sobre a restauração histórica de 04/10: referência técnica não volta aos formulários; valores históricos continuam armazenados e protegidos ao editar. Cadastro/edição compartilham a opção de ativar controle de lotes, com prévia obrigatória em Produto existente. Nenhuma funcionalidade final da V3 foi retirada para acomodar a limpeza.
+
+A migration original de remoção não foi reescrita. Sua cadeia foi executada em banco descartável vazio, incluindo a migration posterior de ciclos. Staging, produção e o banco de trabalho manual não participam desta aplicação.
+
+Validação desta conciliação:
+
+- Servidor sem integração: 1.026 testes aprovados, 115 casos PostgreSQL desabilitados nessa execução. Configuração de banco inerte explícita, sem conexão ao banco manual.
+- Servidor em PostgreSQL descartável: 1.136 aprovados na suíte completa; os cinco casos de concorrência financeira, habilitados por `FINANCE_DB_INTEGRATION`, passaram separadamente. Total de 1.141 casos distintos aprovados, sem casos restantes ignorados. A rodada sem integração é um subconjunto e não se soma a esse total.
+- Interface: 936 testes aprovados em 121 arquivos. Builds de servidor e interface e `git diff --check` aprovados.
+- Comparação com a V3 final: código operacional em `client/src/pecuaria`, `server/src/services/pecuaria` e `server/src/routes/pecuaria` idêntico; as 55 definições Prisma de modelos/enums do schema `pecuaria` também são idênticas.
+- Preservação: uma segunda base descartável recebeu todas as migrations da V3, inclusive ciclos, antes da remoção, seeds financeiros/rebanho e um ciclo com participante. Conteúdo das 70 tabelas mantidas comparado antes/depois por contagem e digest de cada linha: idêntico, descontando somente `usoAgricola` e `Usuario.areas`, cuja normalização foi conferida separadamente. Permaneceram 21 animais, 101 auditorias, 39 pesagens, cinco operações, dois movimentos de estoque, um ciclo e uma participação. As 23 tabelas retiradas deixaram de existir.
+- A cadeia também passou na ordem de instalação desde zero, com a remoção anterior à migration de ciclos. Os dois bancos descartáveis foram removidos ao finalizar a validação.
+
+Homologação visual/manual completa da V3 e carga IDEAGRI continuam fora desta conciliação; nenhuma marcação do guia foi aprovada ou resetada.

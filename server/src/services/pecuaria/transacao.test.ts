@@ -6,6 +6,7 @@ vi.mock("../../db.js", () => ({ prisma: { $transaction: transacao } }));
 import { transacaoPecuaria } from "./transacao.js";
 
 const conflito = () => new Prisma.PrismaClientKnownRequestError("serialização", { code: "P2034", clientVersion: "6" });
+const conflitoAdapter = () => Object.assign(new Error("TransactionWriteConflict"), { name: "DriverAdapterError", cause: { kind: "TransactionWriteConflict" } });
 beforeEach(() => { transacao.mockReset(); });
 
 describe("confirmação pecuária serializável", () => {
@@ -22,6 +23,19 @@ describe("confirmação pecuária serializável", () => {
     expect(transacao).toHaveBeenCalledTimes(3);
     transacao.mockReset().mockRejectedValue(new Error("dose inválida"));
     await expect(transacaoPecuaria(vi.fn())).rejects.toThrow("dose inválida");
+    expect(transacao).toHaveBeenCalledTimes(1);
+  });
+  it("repete conflito do adapter no commit sem ultrapassar três tentativas", async () => {
+    transacao.mockRejectedValueOnce(conflitoAdapter()).mockResolvedValueOnce({ id: "fato-confirmado" });
+    await expect(transacaoPecuaria(vi.fn())).resolves.toEqual({ id: "fato-confirmado" });
+    expect(transacao).toHaveBeenCalledTimes(2);
+    transacao.mockReset().mockRejectedValue(conflitoAdapter());
+    await expect(transacaoPecuaria(vi.fn())).rejects.toMatchObject({ name: "DriverAdapterError", cause: { kind: "TransactionWriteConflict" } });
+    expect(transacao).toHaveBeenCalledTimes(3);
+  });
+  it("não repete erro de adapter que não seja conflito transacional", async () => {
+    transacao.mockRejectedValue(Object.assign(new Error("ConnectionClosed"), { name: "DriverAdapterError", cause: { kind: "ConnectionClosed" } }));
+    await expect(transacaoPecuaria(vi.fn())).rejects.toThrow("ConnectionClosed");
     expect(transacao).toHaveBeenCalledTimes(1);
   });
 });

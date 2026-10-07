@@ -15,6 +15,13 @@ describe("carência por animal", () => {
     expect(calcularPrazoCarencia([{ ...primeira, carenciaLeiteHoras: null }], "LEITE")).toEqual({ estado: "NAO_INFORMADO" });
     expect(calcularPrazoCarencia([{ ...primeira, carenciaLeiteHoras: 0 }], "LEITE")).toMatchObject({ estado: "CONHECIDO", ate: primeira.aplicadaEm });
   });
+  it("indica prazo zero somente quando todas as aplicações relevantes confirmam zero", () => {
+    const zero = { ...primeira, carenciaLeiteHoras: 0 };
+    expect(calcularPrazoCarencia([zero], "LEITE")).toMatchObject({ estado: "CONHECIDO", prazoZero: true });
+    expect(calcularPrazoCarencia([zero, { ...primeira, estadoCarenciaLeite: "NAO_APLICAVEL" }], "LEITE")).toMatchObject({ prazoZero: true });
+    expect(calcularPrazoCarencia([zero, primeira], "LEITE")).not.toHaveProperty("prazoZero");
+    expect(calcularPrazoCarencia([zero, { ...primeira, carenciaLeiteHoras: null }], "LEITE")).toEqual({ estado: "NAO_INFORMADO" });
+  });
   it("distingue não aplicabilidade confirmada e não informação por destino", () => {
     const a = { ...primeira, carenciaLeiteHoras: null, estadoCarenciaLeite: "NAO_APLICAVEL", estadoCarenciaCarne: "INFORMADO" };
     expect(calcularPrazoCarencia([a], "LEITE")).toEqual({ estado: "NAO_APLICAVEL" });

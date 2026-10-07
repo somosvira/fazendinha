@@ -25,7 +25,7 @@ A primeira propriedade rodando o produto é a **Fazenda Rio Novo**, que migrou s
 
 ---
 
-> Em 03/10/2026, agricultura (café/plantio e milho/cultivo) e equipe/ponto foram retiradas para reconstrução. A base preserva financeiro, pecuária V3 e estoque único. Consulte [a análise da remoção](./docs/remocao-agricultura-equipe.md).
+> Nesta branch, agricultura (café/plantio e milho/cultivo) e equipe/ponto foram retiradas para reconstrução. A conciliação de 07/10/2026 preserva a V3 final, financeiro e estoque único. Consulte [a análise da remoção, bases e validações](./docs/remocao-agricultura-equipe.md).
 
 ## Visão Geral
 

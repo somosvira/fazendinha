@@ -108,11 +108,15 @@ export async function corrigirVigencia(id: string, propriedadeId: number, input:
     const maior = desde > original.desde ? desde : original.desde;
     const afetados = maior > menor ? await tx.fechamentoConsumo.findMany({ where: { loteId: original.loteId, status: "CONFIRMADO", inicio: { lt: maior }, fim: { gte: menor } }, select: { id: true } }) : [];
     if (afetados.length) throw new RebanhoError("CONFLITO", `Estorne os fechamentos afetados antes de corrigir: ${afetados.map((f) => f.id).join(", ")}`);
+    // Encolhe primeiro o intervalo que cede dias: a restrição de sobreposição
+    // é imediata, mesmo quando ambas as alterações pertencem à mesma transação.
+    const adiada = desde > original.desde;
+    let salva = adiada ? await tx.vigenciaDietaLote.update({ where: { id }, data: { desde } }) : original;
     if (anterior && anterior.ate?.getTime() === original.desde.getTime()) {
       const salvo = await tx.vigenciaDietaLote.update({ where: { id: anterior.id }, data: { ate: desde } });
       await auditar(tx, { entidade: "VigenciaDietaLote", entidadeId: anterior.id, propriedadeId, acao: "VIGENCIA_CORRIGIDA", usuarioId, antes: anterior, depois: { ...salvo, motivo: input.motivo } });
     }
-    const salva = await tx.vigenciaDietaLote.update({ where: { id }, data: { desde } });
+    if (!adiada) salva = await tx.vigenciaDietaLote.update({ where: { id }, data: { desde } });
     await auditar(tx, { entidade: "VigenciaDietaLote", entidadeId: id, propriedadeId, acao: "VIGENCIA_CORRIGIDA", usuarioId, antes: original, depois: { ...salva, motivo: input.motivo } });
     return salva;
   });

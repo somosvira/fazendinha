@@ -1,5 +1,5 @@
 import { type ChangeEvent, type FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { SelecaoPartidas, conferirDistribuicaoPartidas, type DistribuicaoPartida } from "../estoque/SelecaoPartidas";
+import { SelecaoPartidas, conferirDistribuicaoPartidas, ErroDistribuicaoPartidas, type DistribuicaoPartida } from "../estoque/SelecaoPartidas";
 import { CircleAlert, FileText, Loader2, Paperclip, Plus, Trash2, Wand2 } from "lucide-react";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { Popover, PopoverContent, PopoverTrigger } from "../components/ui/popover";
@@ -153,6 +153,46 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   const erroConfirmacaoRef = useRef<HTMLDivElement>(null);
   const [erroConfirmacao, setErroConfirmacao] = useState<string | null>(null);
   const [campoInvalido, setCampoInvalido] = useState<string | null>(null);
+  const [erroPartidas, setErroPartidas] = useState<{ campo: string; mensagem: string } | null>(null);
+  const [focoPendente, setFocoPendente] = useState<{ elementId: string; campo: string } | null>(null);
+  const paginaRef = useRef<HTMLDivElement>(null);
+  const formularioRef = useRef<HTMLFormElement>(null);
+  const [alturaFormulario, setAlturaFormulario] = useState<number>();
+  useEffect(() => {
+    // Descendentes de grids roláveis podem ampliar o overflow do documento.
+    const anteriores = [document.documentElement, document.body].map((elemento) => ({
+      elemento, estilos: Array.from(elemento.style).filter((propriedade) => /^overflow(?:-[xy])?$/.test(propriedade)).map((propriedade) => ({
+        propriedade, valor: elemento.style.getPropertyValue(propriedade), prioridade: elemento.style.getPropertyPriority(propriedade),
+      })),
+    }));
+    for (const { elemento } of anteriores) elemento.style.setProperty("overflow", "hidden");
+    return () => {
+      for (const { elemento, estilos } of anteriores) {
+        for (const propriedade of ["overflow", "overflow-x", "overflow-y"]) elemento.style.removeProperty(propriedade);
+        for (const { propriedade, valor, prioridade } of estilos) elemento.style.setProperty(propriedade, valor, prioridade);
+      }
+    };
+  }, []);
+  useEffect(() => {
+    const medir = () => {
+      const pagina = paginaRef.current;
+      if (pagina) setAlturaFormulario(Math.max(0, (window.visualViewport?.height ?? window.innerHeight) - pagina.getBoundingClientRect().top - window.scrollY));
+    };
+    medir();
+    const observador = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(medir);
+    // Avisos do shell podem mudar de altura sem alterar a largura da página.
+    const observarShell = () => {
+      for (let ancestral = paginaRef.current?.parentElement; ancestral; ancestral = ancestral.parentElement) {
+        for (const irmao of ancestral.children) if (!irmao.contains(paginaRef.current)) observador?.observe(irmao);
+      }
+    };
+    observarShell();
+    const mudancasShell = new MutationObserver(() => { observarShell(); medir(); });
+    if (paginaRef.current?.closest("main")?.parentElement) mudancasShell.observe(paginaRef.current.closest("main")!.parentElement!, { childList: true, subtree: true });
+    window.addEventListener("resize", medir);
+    window.visualViewport?.addEventListener("resize", medir);
+    return () => { observador?.disconnect(); mudancasShell.disconnect(); window.removeEventListener("resize", medir); window.visualViewport?.removeEventListener("resize", medir); };
+  }, []);
   const [simulacao, setSimulacao] = useState<{ assinatura: string; resultado: SimulacaoParcelas } | null>(null);
   // Ajuste de estoque: o saldo lido (`saldos`) é o `saldoEsperado` enviado; se ele
   // mudar no servidor antes da confirmação, o POST responde CONFLITO.
@@ -321,6 +361,16 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   const atualizarItem = (id: number, patch: Partial<ItemForm>) => {
     setItens((atuais) => atuais.map((item) => item.id === id ? { ...item, ...patch } : item));
     limparCampoInvalido(`item-${id}`);
+    const indice = itens.findIndex((item) => item.id === id);
+    if (erroPartidas?.campo.startsWith(`itens.${indice}.partidas`) && ("partidas" in patch || "quantidade" in patch || "produtoId" in patch)) {
+      setErroPartidas(null); setErroConfirmacao(null); setErro(null); setCampoInvalido(null);
+    }
+  };
+  const alterarListaItens: React.Dispatch<React.SetStateAction<ItemForm[]>> = (alteracao) => {
+    setItens(alteracao);
+    if (erroPartidas) {
+      setErroPartidas(null); setErroConfirmacao(null); setErro(null); setCampoInvalido(null);
+    }
   };
   // Centro único sugerido a partir do produto de cada item (quando o produto
   // aponta para exatamente um centro ativo). Usado para pré-preencher tanto o
@@ -503,6 +553,24 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
     if (indiceItem !== undefined) return { campo, elementId: `campo-itens-${indiceItem}-centroCustoId` };
     return { campo, elementId: `campo-${campo}` };
   };
+  const mapearCampo = (campo: string) => {
+    const partida = campo.match(/^(itens\.\d+\.partidas|partidas)(?:\.(\d+))?/);
+    return partida ? { campo, elementId: `campo-${partida[1]}${partida[2] === undefined ? "" : `.${partida[2]}`}` } : mapearCampoCentro(campo);
+  };
+  useEffect(() => {
+    if (!focoPendente) return;
+    const elemento = document.getElementById(focoPendente.elementId);
+    const sufixo = focoPendente.campo.split(".").at(-1);
+    const seletor = sufixo === "quantidade" ? 'input[type="number"]' : sufixo === "cienciaValidadeDesconhecida" ? 'input[type="checkbox"]' : sufixo === "nome" ? 'input[maxlength]' : sufixo === "validade" ? 'input[type="date"], select' : "select";
+    const alvo = elemento?.tagName === "FIELDSET"
+      ? document.getElementById(`erro-${focoPendente.campo}`) ?? elemento
+      : elemento?.tagName === "DIV" && /partidas\.\d+/.test(focoPendente.campo)
+      ? (sufixo === "validade" ? elemento.querySelector<HTMLElement>('input[type="date"]') : null) ?? elemento.querySelector<HTMLElement>(seletor) ?? elemento
+      : elemento;
+    if (alvo) rolarAteCampo(alvo);
+    alvo?.focus({ preventScroll: true });
+    setFocoPendente(null);
+  }, [focoPendente]);
 
   // Em vez de manter o botão desabilitado até tudo estar certo, deixamos o
   // usuário clicar e, se faltar algo, achamos o primeiro campo com problema
@@ -542,20 +610,23 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
       const invalido = encontrarPrimeiroCampoInvalido();
       if (invalido) {
         setCampoInvalido(invalido.campo);
-        const elemento = document.getElementById(invalido.elementId);
-        elemento?.scrollIntoView({ behavior: "smooth", block: "center" });
-        elemento?.focus?.();
+        setFocoPendente(invalido);
       }
       return;
     }
     setErroConfirmacao(null);
     if (autosaveTimerRef.current != null) { window.clearTimeout(autosaveTimerRef.current); autosaveTimerRef.current = null; }
     setCampoInvalido(null);
+    setErroPartidas(null);
     setSalvando(true);
     try {
-      if (ehAjuste && saldoProduto && config.produtos.find((p) => p.id === ajusteProdutoId)?.rastrearPartidas && diferencaMilesimos) conferirDistribuicaoPartidas(partidasAjuste, diferencaMilesimos / 1000, diferencaMilesimos < 0);
-      if (movimentaEstoque && !ehAjuste) for (const item of itens) {
-        if (config.produtos.find((p) => p.id === item.produtoId)?.rastrearPartidas) conferirDistribuicaoPartidas(item.partidas ?? [], Number(item.quantidade), tipo === "VENDA" || tipo === "DEVOLUCAO");
+      const conferir = (partidas: DistribuicaoPartida[], quantidade: number, saida: boolean, campo: string) => {
+        try { conferirDistribuicaoPartidas(partidas, quantidade, saida); }
+        catch (falha) { if (falha instanceof ErroDistribuicaoPartidas) falha.campo = `${campo}${falha.campo ? `.${falha.campo}` : ""}`; throw falha; }
+      };
+      if (ehAjuste && saldoProduto && config.produtos.find((p) => p.id === ajusteProdutoId)?.rastrearPartidas && diferencaMilesimos) conferir(partidasAjuste, diferencaMilesimos / 1000, diferencaMilesimos < 0, "partidas");
+      if (movimentaEstoque && !ehAjuste) for (const [indice, item] of itens.entries()) {
+        if (config.produtos.find((p) => p.id === item.produtoId)?.rastrearPartidas) conferir(item.partidas ?? [], Number(item.quantidade), tipo === "VENDA" || tipo === "DEVOLUCAO", `itens.${indice}.partidas`);
       }
       if (ehAjuste && saldoProduto) {
         const resultado = await registrarAjusteEstoque({ produtoId: saldoProduto.produtoId, quantidadeContada: contadaMilesimos / 1000, saldoEsperado: Math.round(saldoProduto.saldo * 1000) / 1000, observacao: descricao.trim(), centroCustoId: centroCustoId || undefined, ...(partidasAjuste.length ? { partidas: partidasAjuste.map((p) => ({ ...p, quantidade: Number(p.quantidade) * (diferencaMilesimos! < 0 ? -1 : 1) })) } : {}) });
@@ -590,23 +661,26 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
       const mensagem = falha instanceof Error ? falha.message : String(falha);
       setErroConfirmacao(mensagem);
       setErro(mensagem);
-      if (falha instanceof ApiError && falha.campo) {
+      if ((falha instanceof ApiError || falha instanceof ErroDistribuicaoPartidas) && falha.campo) {
         // Erros de centro de custo por item (`itens.<i>.centroCustoId`) recebem o
         // mesmo tratamento da validação local: no modo Único esse select nem
         // existe na tela, então o campo e o foco vão para o centro da operação.
-        const ehErroDeCentro = /^itens\.\d+\.centroCustoId$/.test(falha.campo);
-        const mapeado = ehErroDeCentro ? mapearCampoCentro(falha.campo) : { campo: falha.campo, elementId: `campo-${falha.campo}` };
+        const mapeado = mapearCampo(falha.campo);
+        if (/^(itens\.\d+\.partidas|partidas)(\.|$)/.test(falha.campo)) setErroPartidas({ campo: falha.campo, mensagem });
         setCampoInvalido(mapeado.campo);
-        if (ehErroDeCentro) {
-          const elemento = document.getElementById(mapeado.elementId);
-          elemento?.scrollIntoView({ behavior: "smooth", block: "center" });
-          elemento?.focus?.();
-        }
+        setFocoPendente(mapeado);
       }
     } finally { setSalvando(false); }
   };
 
-  useEffect(() => { if (erroConfirmacao) erroConfirmacaoRef.current?.focus(); }, [erroConfirmacao]);
+  const rolarAteCampo = (alvo: HTMLElement) => {
+    const painel = window.innerWidth >= 1024 ? alvo.closest<HTMLElement>('[data-testid="campos-operacao"], [data-testid="conteudo-resumo-operacao"]') : formularioRef.current;
+    if (painel) painel.scrollTo?.({ top: painel.scrollTop + alvo.getBoundingClientRect().top - painel.getBoundingClientRect().top - painel.clientHeight / 2 + alvo.offsetHeight / 2, behavior: "smooth" });
+  };
+  useEffect(() => {
+    const alvo = erroConfirmacaoRef.current;
+    if (erroConfirmacao && !campoInvalido && alvo) { rolarAteCampo(alvo); alvo.focus({ preventScroll: true }); }
+  }, [erroConfirmacao, campoInvalido]);
 
   const limparRascunho = async () => {
     setConfirmarLimpeza(false);
@@ -636,21 +710,22 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
       <label className="text-sm font-medium">Quantidade contada *<div className="mt-1.5 flex"><input id="campo-quantidadeContada" aria-label="Quantidade contada" aria-invalid={campoInvalido === "quantidadeContada" || undefined} aria-describedby={campoInvalido === "quantidadeContada" ? "erro-quantidadeContada" : undefined} required min="0" max={MAX_QTD_AJUSTE} step="0.001" type="number" className={`min-w-0 flex-1 rounded-l-lg border border-[#d8cfbb] bg-white px-3 py-2.5 font-normal outline-none focus:border-[#6f7d68] focus:ring-2 focus:ring-[#6f7d68]/15${classeCampoErro("quantidadeContada")}`} value={quantidadeContada} onChange={(e) => { setQuantidadeContada(e.target.value); limparCampoInvalido("quantidadeContada"); }} /><span aria-hidden className="inline-flex min-w-14 items-center justify-center rounded-r-lg border border-l-0 border-[#d8cfbb] bg-[#f0ede4] px-3 text-sm text-ink-3">{unidadeAjuste || "un"}</span></div>{campoInvalido === "quantidadeContada" && <CampoErro id="erro-quantidadeContada">{quantidadeContada.trim() === "" ? "Informe a quantidade contada." : "Informe um número entre 0 e 999.999.999,999, com até 3 casas decimais."}</CampoErro>}</label>
     </div>
     <div role="status" aria-label="Diferença do ajuste" className={`mt-4 rounded-lg border px-4 py-3 text-sm ${ajusteSemDiferenca ? "border-amber-200 bg-amber-50 text-amber-950" : "border-[#e5dfd0] bg-[#faf9f4]"}`}>{diferencaMilesimos === null ? <span className="text-ink-3">Selecione o produto e informe a quantidade contada para ver a diferença.</span> : ajusteSemDiferenca ? <strong>Nenhum ajuste necessário: a quantidade contada é igual ao saldo atual.</strong> : <>Diferença: <strong>{fmtDiferenca(diferencaMilesimos / 1000)} {unidadeAjuste}</strong> <span className="text-ink-3">({diferencaMilesimos > 0 ? "entrada" : "saída"} de ajuste)</span></>}</div>
-    {config.produtos.find((p) => p.id === ajusteProdutoId)?.rastrearPartidas && diferencaMilesimos != null && diferencaMilesimos !== 0 && <><p className="mt-3 text-sm">Distribua somente a diferença absoluta {Math.abs(diferencaMilesimos) / 1000} {unidadeAjuste}. Saídas preservam os lotes selecionados; o sinal será aplicado ao ajuste.</p><SelecaoPartidas produtoId={ajusteProdutoId} dataFato={data} quantidade={String(Math.abs(diferencaMilesimos) / 1000)} unidade={unidadeAjuste} saida={diferencaMilesimos < 0} valor={partidasAjuste} onChange={setPartidasAjuste} /></>}
+    {config.produtos.find((p) => p.id === ajusteProdutoId)?.rastrearPartidas && diferencaMilesimos != null && diferencaMilesimos !== 0 && <><p className="mt-3 text-sm">Distribua somente a diferença absoluta {Math.abs(diferencaMilesimos) / 1000} {unidadeAjuste}. Saídas preservam os lotes selecionados; o sinal será aplicado ao ajuste.</p><SelecaoPartidas produtoId={ajusteProdutoId} dataFato={data} quantidade={String(Math.abs(diferencaMilesimos) / 1000)} unidade={unidadeAjuste} saida={diferencaMilesimos < 0} valor={partidasAjuste} campo="partidas" erroValidacao={erroPartidas?.campo.startsWith("partidas") ? erroPartidas : undefined} onChange={(partidas) => { setPartidasAjuste(partidas); setErroPartidas(null); setCampoInvalido(null); setErroConfirmacao(null); }} /></>}
     {saldosErro && <CampoErro className="mt-3">{saldosErro}</CampoErro>}
     <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">{campoDescricao}</div>
     </>}
   </section>;
-  return <div className="shell-wide pb-10">
-    <div className="mb-5 flex min-h-[82px] flex-wrap items-center justify-between gap-4 border-b border-border pb-5 pt-3"><div><div className="text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Registro orientado</div><h1 className="mt-1 font-serif text-3xl text-ink md:text-4xl">{operacaoBase ? "Criar operação de correção" : "Nova operação"}</h1></div>{!operacaoBase && !ehAjuste && !atalhoAjuste && temConteudoRascunho && <div className="flex items-center gap-3"><span aria-live="polite" className={`text-xs font-medium ${estadoSalvamento === "ERRO" ? "text-red-700" : "text-ink-3"}`}>{estadoSalvamento === "SALVANDO" ? "Salvando…" : estadoSalvamento === "SALVO" ? "Rascunho salvo" : estadoSalvamento === "ERRO" ? "Falha ao salvar" : "Alterações não salvas"}</span><Button type="button" secondary disabled={salvando} onClick={() => setConfirmarLimpeza(true)}>Limpar rascunho</Button></div>}</div>
+  return <div ref={paginaRef} className="shell-wide pagina-operacao" style={{ height: alturaFormulario == null ? "100dvh" : `${alturaFormulario}px` }}>
     {/* noValidate: a validação é 100% nossa (encontrarPrimeiroCampoInvalido) —
      * sem isso, a validação nativa do navegador bloqueia o evento de submit
      * antes do nosso onSubmit rodar sempre que um campo `required` estiver
      * vazio (ou, pior, quando um <select required> perde a opção selecionada
      * — o valor no DOM cai para "" e o navegador trata como vazio), o que
      * impediria exatamente o comportamento de rolar+focar que construímos. */}
-    <form onSubmit={submit} noValidate className="grid min-h-[calc(100vh-180px)] overflow-hidden rounded-xl border border-border bg-white xl:grid-cols-[minmax(0,1fr)_330px]">
-      <div className="space-y-7 p-5 md:p-7 xl:min-h-0 xl:overflow-y-auto">
+    <style>{`.shell-wide.pagina-operacao { box-sizing: border-box; padding-top: 16px; padding-bottom: 16px; overflow: hidden; } @media (max-width: 900px) { .shell-wide.pagina-operacao { padding-top: 56px; } }`}</style>
+    <form ref={formularioRef} onSubmit={submit} noValidate className="form-operacao grid h-full min-h-0 grid-cols-1 content-start overflow-y-auto overscroll-contain rounded-xl border border-border bg-white lg:grid-cols-[minmax(0,1fr)_330px] lg:grid-rows-[minmax(0,1fr)] lg:content-normal lg:overflow-hidden">
+      <div data-testid="campos-operacao" className="min-w-0 space-y-7 p-5 md:p-7 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-5"><div><div className="text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Registro orientado</div><h1 className="mt-1 font-serif text-3xl text-ink md:text-4xl">{operacaoBase ? "Criar operação de correção" : "Nova operação"}</h1></div>{!operacaoBase && !ehAjuste && !atalhoAjuste && temConteudoRascunho && <div className="flex flex-wrap items-center gap-3"><span aria-live="polite" className={`text-xs font-medium ${estadoSalvamento === "ERRO" ? "text-red-700" : "text-ink-3"}`}>{estadoSalvamento === "SALVANDO" ? "Salvando…" : estadoSalvamento === "SALVO" ? "Rascunho salvo" : estadoSalvamento === "ERRO" ? "Falha ao salvar" : "Alterações não salvas"}</span><Button type="button" secondary disabled={salvando} onClick={() => setConfirmarLimpeza(true)}>Limpar rascunho</Button></div>}</div>
         <ErrorBox erro={erro} />
         {operacaoBase && <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm leading-5 text-amber-950"><strong>Nova operação baseada na {codigoOperacao(operacaoBase.numero)}</strong><p className="mt-1 text-xs">Revise todos os dados e efeitos antes de confirmar. A operação cancelada permanecerá preservada no histórico.</p></div>}
         <section>
@@ -662,7 +737,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
             {!ehAjuste && campoDescricao}
           </div>
         </section>
-        {ehAjuste ? secaoAjuste : comItens ? <ItensOperacao dataFato={data} itens={itens} setItens={setItens} config={config} ultimosPrecos={ultimosPrecos} custosMedios={custosMedios} movimentaEstoque={movimentaEstoque} saidaEstoque={tipo === "VENDA" || tipo === "DEVOLUCAO"} atualizarItem={atualizarItem} alterarProduto={alterarProduto} itemInvalidoId={itemInvalidoId} porItem={porItem} centroCustoOperacao={centroCustoId} campoInvalido={campoInvalido} limparCampoInvalido={limparCampoInvalido} /> :<section><h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Valor do serviço</h3><label className="block max-w-xs text-sm font-medium">Valor total *<input id="campo-valorOperacao" aria-label="Valor total da operação" aria-invalid={campoInvalido === "valorOperacao" || undefined} aria-describedby={campoInvalido === "valorOperacao" ? "erro-valorOperacao" : undefined} required min="0.01" step="0.01" type="number" className={CAMPO + classeCampoErro("valorOperacao")} value={valorOperacao} onChange={(e) => { setValorOperacao(e.target.value); limparCampoInvalido("valorOperacao"); }} onBlur={(e) => setValorOperacao(normalizarMoeda(e.target.value))} />{campoInvalido === "valorOperacao" && <CampoErro id="erro-valorOperacao">Informe um valor total maior que zero.</CampoErro>}</label></section>}
+        {ehAjuste ? secaoAjuste : comItens ? <ItensOperacao dataFato={data} itens={itens} setItens={alterarListaItens} config={config} ultimosPrecos={ultimosPrecos} custosMedios={custosMedios} movimentaEstoque={movimentaEstoque} saidaEstoque={tipo === "VENDA" || tipo === "DEVOLUCAO"} atualizarItem={atualizarItem} alterarProduto={alterarProduto} itemInvalidoId={itemInvalidoId} porItem={porItem} centroCustoOperacao={centroCustoId} campoInvalido={campoInvalido} limparCampoInvalido={limparCampoInvalido} erroPartidas={erroPartidas} /> :<section><h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Valor do serviço</h3><label className="block max-w-xs text-sm font-medium">Valor total *<input id="campo-valorOperacao" aria-label="Valor total da operação" aria-invalid={campoInvalido === "valorOperacao" || undefined} aria-describedby={campoInvalido === "valorOperacao" ? "erro-valorOperacao" : undefined} required min="0.01" step="0.01" type="number" className={CAMPO + classeCampoErro("valorOperacao")} value={valorOperacao} onChange={(e) => { setValorOperacao(e.target.value); limparCampoInvalido("valorOperacao"); }} onBlur={(e) => setValorOperacao(normalizarMoeda(e.target.value))} />{campoInvalido === "valorOperacao" && <CampoErro id="erro-valorOperacao">Informe um valor total maior que zero.</CampoErro>}</label></section>}
         <section><h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Classificação</h3>
           {comItens && <div role="radiogroup" aria-label="Modo do centro de custo" className="mb-4 flex flex-wrap items-center gap-5 text-sm font-medium">
             <span className="text-ink-3">Centro de custo:</span>
@@ -681,7 +756,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
         <EfeitoFinanceiro permite={permiteFinanceiro} condicao={condicao} alterarCondicao={alterarCondicao} contaId={contaId} setContaId={setContaId} formaPagamento={formaPagamento} setFormaPagamento={setFormaPagamento} config={config} valorAgora={valorAgora} setValorAgora={setValorAgora} total={totalFinanceiro} parcelas={parcelas} setParcelas={setParcelas} somaParcelasConfere={somaParcelasConfere} saldoFuturo={saldoFuturoFinanceiro} entradaSimulacao={entradaSimulacao} assinaturaSimulacao={assinaturaSimulacao} onSimulacao={(resultado) => setSimulacao({ assinatura: assinaturaSimulacao, resultado })} geradorParcelas={geradorParcelas} setGeradorParcelas={setGeradorParcelas} campoInvalido={campoInvalido} limparCampoInvalido={limparCampoInvalido} />
         {!ehAjuste && !atalhoAjuste && <Documentos anexos={anexos} setAnexos={setAnexos} anexosEnviando={anexosEnviando} documentosSalvos={documentosSalvos}atualizarDocumentoSalvo={atualizarDocumentoSalvo} removerDocumentoSalvo={removerDocumentoSalvo} selecionarAnexos={selecionarAnexos} />}
       </div>
-      <aside className="flex h-full flex-col border-t border-border bg-[#1f2b21] p-6 text-white xl:border-l xl:border-t-0"><div><div className="text-[11px] font-semibold uppercase tracking-[.14em] text-[#aeb9aa]">Revisão dos efeitos</div><div className="mt-3 font-serif text-3xl">{ehAjuste ? (diferencaMilesimos === null ? "—" : `${fmtDiferenca(diferencaMilesimos / 1000)} ${unidadeAjuste}`) : brl(total)}</div>{ehAjuste && <div className="mt-1 text-xs text-[#aeb9aa]">Diferença de estoque</div>}{comItens && <div className="mt-5 border-y border-white/10 py-4"><div className="mb-2 text-[10px] font-semibold uppercase tracking-[.14em] text-[#aeb9aa]">Itens da operação</div><div className="space-y-2">{itens.map((item) => { const produto = config.produtos.find((produtoAtual) => produtoAtual.id === item.produtoId); return <div key={item.id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 text-xs leading-4"><div className="min-w-0"><div className="truncate font-medium text-white">{produto?.nome || item.descricao || "Produto não selecionado"}</div><div className="text-[#aeb9aa]">{Number(item.quantidade || 0).toLocaleString("pt-BR")} {produto ? rotuloUnidade(produto.unidade) : (item.unidade || "un")}</div></div><strong className="self-center whitespace-nowrap text-white">{brl(totalItem(item))}</strong></div>; })}</div></div>}<div className={ehAjuste ? "hidden" : "mt-4 flex flex-wrap gap-6 text-xs"}><div className="space-y-2"><p className="font-semibold text-[#aeb9aa]">Valores por categoria</p>{resumoCategorias.map(([nome, centavos]) => <div key={nome} className="flex justify-between gap-3"><span>{nome}</span><strong>{brl(centavos / 100)}</strong></div>)}</div>{porItem && resumoCentros.length > 0 && <div className="space-y-2"><p className="font-semibold text-[#aeb9aa]">Valores por centro de custo</p>{resumoCentros.map(([nome, centavos]) => <div key={nome} className="flex justify-between gap-3"><span>{nome}</span><strong>{brl(centavos / 100)}</strong></div>)}</div>}</div><div className="mt-5 space-y-3 text-sm leading-5"><ReviewLine>Registrar {TIPO_OPERACAO[tipo]?.toLowerCase()}.</ReviewLine>{ehAjuste && <ReviewLine tone="brown">{saldoProduto && diferencaMilesimos !== null && !ajusteSemDiferenca ? <>Gerar 1 movimento físico de ajuste em {saldoProduto.nome}: saldo de {fmtQuantidade(saldoProduto.saldo)} para {fmtQuantidade(contadaMilesimos / 1000)} {unidadeAjuste}.</> : "Nenhum movimento físico de estoque será gerado."}</ReviewLine>}{movimentaEstoque && <ReviewLine tone="brown">{tipo === "VENDA" || tipo === "DEVOLUCAO" ? "Movimenta o estoque dos produtos que já tiveram entrada nesta fazenda." : movimentosEstoque > 0 ? <>Gerar {movimentosEstoque} movimento{movimentosEstoque === 1 ? "" : "s"} físico{movimentosEstoque === 1 ? "" : "s"} de estoque.</> : "Nenhum movimento físico de estoque será gerado."}</ReviewLine>}{condicao === "A_VISTA" && <ReviewLine>Registrar {entradaFinanceira ? "recebimento" : "pagamento"} integral de {brl(total)}.</ReviewLine>}{condicao === "A_PRAZO" && <ReviewLine tone="amber">Criar {parcelas.length} compromisso{parcelas.length === 1 ? "" : "s"} {entradaFinanceira ? "a receber" : "a pagar"}, totalizando {brl(totalParcelas)}. O saldo não muda agora.</ReviewLine>}{condicao === "PARCIAL" && <><ReviewLine>Registrar {entradaFinanceira ? "recebimento" : "pagamento"} de {brl(realizadoAgora)} agora.</ReviewLine><ReviewLine tone="amber">Criar {parcelas.length} compromisso{parcelas.length === 1 ? "" : "s"} para o saldo de {brl(totalParcelas)}.</ReviewLine></>}{condicao === "SEM_EFEITO_FINANCEIRO" && <ReviewLine tone="neutral">Nenhuma conta financeira ou compromisso será movimentado.</ReviewLine>}{!ehAjuste && (anexos.length + documentosSalvos.length) > 0 && <ReviewLine tone="neutral">Anexar {anexos.length + documentosSalvos.length} documento{anexos.length + documentosSalvos.length === 1 ? "" : "s"} à operação.</ReviewLine>}</div></div><div className="mt-auto border-t border-white/10 pt-5">{erroConfirmacao && <div id="erro-confirmacao" ref={erroConfirmacaoRef} role="alert" tabIndex={-1} className="mb-3 rounded-lg border border-red-300/50 bg-red-950/50 p-3 text-sm text-red-100">{erroConfirmacao}</div>}<p className="mb-3 text-center text-[11px] leading-4 text-[#aeb9aa]">A confirmação cria somente os efeitos descritos acima.</p><Button type="submit" disabled={salvando || anexosEnviando.length > 0 || (ehAjuste && (ajusteSemDiferenca || ajusteConsolidado))} ariaDescribedby={[erroConfirmacao ? "erro-confirmacao" : null, !podeConfirmar ? "motivo-pendencia" : null].filter(Boolean).join(" ") || undefined} className="w-full !bg-[#e9e3d2] !text-[#1f2b21]">{salvando ? "Confirmando…" : anexosEnviando.length ? "Anexando documento…" : ehAjuste ? "Confirmar ajuste" : "Confirmar operação"}</Button>{!podeConfirmar && <p id="motivo-pendencia" role="status" className="mt-3 flex items-start justify-center gap-1.5 text-center text-xs leading-5 text-[#e3c66f]"><CircleAlert size={14} className="mt-px shrink-0" aria-hidden /><span>{ehAjuste && ajusteSemDiferenca ? "Nenhum ajuste necessário: a quantidade contada é igual ao saldo atual." : "Ainda há campos pendentes ou incompletos nesta operação. Revise os itens destacados para confirmar."}</span></p>}</div></aside>
+      <aside data-testid="resumo-operacao" className="flex min-h-0 min-w-0 flex-col border-t border-border bg-[#1f2b21] text-white lg:border-l lg:border-t-0"><div data-testid="conteudo-resumo-operacao" className="min-h-0 p-6 lg:flex-1 lg:overflow-y-auto"><div className="text-[11px] font-semibold uppercase tracking-[.14em] text-[#aeb9aa]">Revisão dos efeitos</div><div className="mt-3 font-serif text-3xl">{ehAjuste ? (diferencaMilesimos === null ? "—" : `${fmtDiferenca(diferencaMilesimos / 1000)} ${unidadeAjuste}`) : brl(total)}</div>{ehAjuste && <div className="mt-1 text-xs text-[#aeb9aa]">Diferença de estoque</div>}{comItens && <div className="mt-5 border-y border-white/10 py-4"><div className="mb-2 text-[10px] font-semibold uppercase tracking-[.14em] text-[#aeb9aa]">Itens da operação</div><div className="space-y-2">{itens.map((item) => { const produto = config.produtos.find((produtoAtual) => produtoAtual.id === item.produtoId); return <div key={item.id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 text-xs leading-4"><div className="min-w-0"><div className="truncate font-medium text-white">{produto?.nome || item.descricao || "Produto não selecionado"}</div><div className="text-[#aeb9aa]">{Number(item.quantidade || 0).toLocaleString("pt-BR")} {produto ? rotuloUnidade(produto.unidade) : (item.unidade || "un")}</div></div><strong className="self-center whitespace-nowrap text-white">{brl(totalItem(item))}</strong></div>; })}</div></div>}<div className={ehAjuste ? "hidden" : "mt-4 flex flex-wrap gap-6 text-xs"}><div className="space-y-2"><p className="font-semibold text-[#aeb9aa]">Valores por categoria</p>{resumoCategorias.map(([nome, centavos]) => <div key={nome} className="flex justify-between gap-3"><span>{nome}</span><strong>{brl(centavos / 100)}</strong></div>)}</div>{porItem && resumoCentros.length > 0 && <div className="space-y-2"><p className="font-semibold text-[#aeb9aa]">Valores por centro de custo</p>{resumoCentros.map(([nome, centavos]) => <div key={nome} className="flex justify-between gap-3"><span>{nome}</span><strong>{brl(centavos / 100)}</strong></div>)}</div>}</div><div className="mt-5 space-y-3 text-sm leading-5"><ReviewLine>Registrar {TIPO_OPERACAO[tipo]?.toLowerCase()}.</ReviewLine>{ehAjuste && <ReviewLine tone="brown">{saldoProduto && diferencaMilesimos !== null && !ajusteSemDiferenca ? <>Gerar 1 movimento físico de ajuste em {saldoProduto.nome}: saldo de {fmtQuantidade(saldoProduto.saldo)} para {fmtQuantidade(contadaMilesimos / 1000)} {unidadeAjuste}.</> : "Nenhum movimento físico de estoque será gerado."}</ReviewLine>}{movimentaEstoque && <ReviewLine tone="brown">{tipo === "VENDA" || tipo === "DEVOLUCAO" ? "Movimenta o estoque dos produtos que já tiveram entrada nesta fazenda." : movimentosEstoque > 0 ? <>Gerar {movimentosEstoque} movimento{movimentosEstoque === 1 ? "" : "s"} físico{movimentosEstoque === 1 ? "" : "s"} de estoque.</> : "Nenhum movimento físico de estoque será gerado."}</ReviewLine>}{condicao === "A_VISTA" && <ReviewLine>Registrar {entradaFinanceira ? "recebimento" : "pagamento"} integral de {brl(total)}.</ReviewLine>}{condicao === "A_PRAZO" && <ReviewLine tone="amber">Criar {parcelas.length} compromisso{parcelas.length === 1 ? "" : "s"} {entradaFinanceira ? "a receber" : "a pagar"}, totalizando {brl(totalParcelas)}. O saldo não muda agora.</ReviewLine>}{condicao === "PARCIAL" && <><ReviewLine>Registrar {entradaFinanceira ? "recebimento" : "pagamento"} de {brl(realizadoAgora)} agora.</ReviewLine><ReviewLine tone="amber">Criar {parcelas.length} compromisso{parcelas.length === 1 ? "" : "s"} para o saldo de {brl(totalParcelas)}.</ReviewLine></>}{condicao === "SEM_EFEITO_FINANCEIRO" && <ReviewLine tone="neutral">Nenhuma conta financeira ou compromisso será movimentado.</ReviewLine>}{!ehAjuste && (anexos.length + documentosSalvos.length) > 0 && <ReviewLine tone="neutral">Anexar {anexos.length + documentosSalvos.length} documento{anexos.length + documentosSalvos.length === 1 ? "" : "s"} à operação.</ReviewLine>}</div></div><div data-testid="confirmacao-operacao" className="shrink-0 border-t border-white/10 p-6">{erroConfirmacao && <div id="erro-confirmacao" ref={erroConfirmacaoRef} role="alert" tabIndex={-1} className="mb-3 rounded-lg border border-red-300/50 bg-red-950/50 p-3 text-sm text-red-100">{erroConfirmacao}</div>}<p className="mb-3 text-center text-[11px] leading-4 text-[#aeb9aa]">A confirmação cria somente os efeitos descritos acima.</p><Button type="submit" disabled={salvando || anexosEnviando.length > 0 || (ehAjuste && (ajusteSemDiferenca || ajusteConsolidado))} ariaDescribedby={[erroConfirmacao ? "erro-confirmacao" : null, !podeConfirmar ? "motivo-pendencia" : null].filter(Boolean).join(" ") || undefined} className="w-full !bg-[#e9e3d2] !text-[#1f2b21]">{salvando ? "Confirmando…" : anexosEnviando.length ? "Anexando documento…" : ehAjuste ? "Confirmar ajuste" : "Confirmar operação"}</Button>{!podeConfirmar && <p id="motivo-pendencia" role="status" className="mt-3 flex items-start justify-center gap-1.5 text-center text-xs leading-5 text-[#e3c66f]"><CircleAlert size={14} className="mt-px shrink-0" aria-hidden /><span>{ehAjuste && ajusteSemDiferenca ? "Nenhum ajuste necessário: a quantidade contada é igual ao saldo atual." : "Ainda há campos pendentes ou incompletos nesta operação. Revise os itens destacados para confirmar."}</span></p>}</div></aside>
     </form>
     <ConfirmDialog open={confirmarSugestao} title="Usar a sugestão do parceiro?" message="As condições sugeridas substituirão as condições e parcelas correspondentes já preenchidas. Depois você poderá editá-las livremente." confirmLabel="Aplicar sugestão" onConfirm={aplicarSugestao} onCancel={() => setConfirmarSugestao(false)} />
     <ConfirmDialog
@@ -697,7 +772,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   </div>;
 }
 
-function ItensOperacao({ dataFato, itens, setItens, config, ultimosPrecos, custosMedios, movimentaEstoque, saidaEstoque, atualizarItem, alterarProduto, itemInvalidoId, porItem, centroCustoOperacao, campoInvalido, limparCampoInvalido }: { dataFato: string; itens: ItemForm[]; setItens: React.Dispatch<React.SetStateAction<ItemForm[]>>; config: ConfiguracoesFinanceiras; ultimosPrecos: Record<number, UltimoPrecoDTO & { produtoId: string }>; custosMedios: Record<number, number | null>; movimentaEstoque: boolean; saidaEstoque: boolean; atualizarItem: (id: number, patch: Partial<ItemForm>) => void; alterarProduto: (id: number, produtoId: string) => void; itemInvalidoId: number | null; porItem: boolean; centroCustoOperacao: string; campoInvalido: string | null; limparCampoInvalido: (campo: string) => void }) {
+function ItensOperacao({ dataFato, itens, setItens, config, ultimosPrecos, custosMedios, movimentaEstoque, saidaEstoque, atualizarItem, alterarProduto, itemInvalidoId, porItem, centroCustoOperacao, campoInvalido, limparCampoInvalido, erroPartidas }: { erroPartidas: { campo: string; mensagem: string } | null; dataFato: string; itens: ItemForm[]; setItens: React.Dispatch<React.SetStateAction<ItemForm[]>>; config: ConfiguracoesFinanceiras; ultimosPrecos: Record<number, UltimoPrecoDTO & { produtoId: string }>; custosMedios: Record<number, number | null>; movimentaEstoque: boolean; saidaEstoque: boolean; atualizarItem: (id: number, patch: Partial<ItemForm>) => void; alterarProduto: (id: number, produtoId: string) => void; itemInvalidoId: number | null; porItem: boolean; centroCustoOperacao: string; campoInvalido: string | null; limparCampoInvalido: (campo: string) => void }) {
   return <section>
     <div className="mb-4 flex items-center justify-between gap-3"><div><h3 className="text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Itens da operação</h3><p className="mt-1 text-xs text-ink-3">Informe o valor unitário ou alterne para o valor total de cada item.</p></div><Button type="button" secondary onClick={() => setItens((atuais) => [...atuais, novoItem()])}><Plus size={15} /> Adicionar item</Button></div>
     <div className="space-y-3">{itens.map((item, indice) => {
@@ -726,7 +801,7 @@ function ItensOperacao({ dataFato, itens, setItens, config, ultimosPrecos, custo
           {item.modoValor === "UNITARIO" ? <label className="text-sm font-medium">Valor unitário *<input aria-label={`Valor unitário do item ${indice + 1}`} required min="0" step="0.0001" type="number" className={CAMPO} value={item.valorUnitario} onChange={(e) => atualizarItem(item.id, { valorUnitario: e.target.value })} onBlur={(e) => atualizarItem(item.id, { valorUnitario: normalizarPreco(e.target.value) })} />{ultimo && <span className="mt-1 block text-xs font-normal text-ink-3">Última compra: {brlPreciso(ultimo.valorUnitario)} em {dataCurta(ultimo.data)}{ultimo.parceiro ? ` (${ultimo.parceiro.nome})` : ""}</span>}{!ultimo && custoMedio != null && <span className="mt-1 block text-xs font-normal text-ink-3">Custo médio atual: {brlPreciso(custoMedio)}</span>}</label> : <label className="text-sm font-medium">Valor total do item *<input aria-label={`Valor total do item ${indice + 1}`} required min="0" step="0.01" type="number" className={CAMPO} value={item.valorTotal} onChange={(e) => atualizarItem(item.id, { valorTotal: e.target.value })} onBlur={(e) => atualizarItem(item.id, { valorTotal: normalizarMoeda(e.target.value) })} /></label>}
           <div className="self-end rounded-lg border border-[#e5dfd0] bg-white px-3 py-2.5 text-sm"><span className="text-ink-3">Total do item</span><strong className="float-right">{brl(totalItem(item))}</strong></div>
         </div>
-        {movimentaEstoque && produto?.rastrearPartidas && <SelecaoPartidas produtoId={produto.id} dataFato={dataFato} quantidade={item.quantidade} unidade={produto.unidade} saida={saidaEstoque} valor={item.partidas ?? []} onChange={(partidas) => atualizarItem(item.id, { partidas })} />}
+        {movimentaEstoque && produto?.rastrearPartidas && <SelecaoPartidas produtoId={produto.id} dataFato={dataFato} quantidade={item.quantidade} unidade={produto.unidade} saida={saidaEstoque} valor={item.partidas ?? []} campo={`itens.${indice}.partidas`} erroValidacao={erroPartidas?.campo === `itens.${indice}.partidas` || erroPartidas?.campo.startsWith(`itens.${indice}.partidas.`) ? erroPartidas : undefined} onChange={(partidas) => atualizarItem(item.id, { partidas })} />}
       </div>;
     })}</div>
   </section>;

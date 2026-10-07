@@ -87,6 +87,8 @@ function GatedTab({ user, abaLabel }: { user: User; abaLabel: string }) {
 }
 
 
+
+
 export function App() {
   // Atualiza o parser de rotas públicas após replaceState().
   const [locationRevision, setLocationRevision] = useState(0);

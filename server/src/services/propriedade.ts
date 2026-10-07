@@ -29,7 +29,17 @@ export async function listarPropriedades(incluirInativos = false): Promise<Propr
 // não muda em runtime; invalida sozinho se o processo reiniciar.
 let _principalId: number | null = null;
 export async function propriedadePrincipalId(): Promise<number> {
-  if (_principalId != null) return _principalId;
+  // O cache evita consultas repetidas no fluxo normal, mas não pode transformar
+  // uma mudança administrativa (ou a recriação do banco local) em um ID órfão.
+  // Se o sítio deixou de existir ou deixou de ser o principal, recalculamos.
+  if (_principalId != null) {
+    const emCache = await prisma.propriedade.findFirst({
+      where: { id: _principalId, principal: true, ativo: true },
+      select: { id: true },
+    });
+    if (emCache) return emCache.id;
+    _principalId = null;
+  }
   const p =
     (await prisma.propriedade.findFirst({ where: { principal: true }, orderBy: { id: "asc" } })) ??
     (await prisma.propriedade.findFirst({ orderBy: { id: "asc" } }));

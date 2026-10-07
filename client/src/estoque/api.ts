@@ -45,6 +45,7 @@ export type VinculoMovimento =
   | { tipo: "APLICACAO_SANITARIA"; id: string; animalId: string }
   | { tipo: "FECHAMENTO_NUTRICIONAL"; id: string; loteId: string };
 export interface MovimentoDTO { id: string; propriedadeId?: number | null; seq: number; produtoId: string; produto: string; materialGeneticoId: string | null; centrosCusto: { id: string; nome: string }[]; tipo: "ENTRADA" | "SAIDA" | "AJUSTE"; origem: OrigemMovimento; status: "CONFIRMADO" | "REVERTIDO"; reversaoDeId: string | null; data: string; quantidade: number; custoUnitario: number | null; valorTotal: number | null; fornecedor: string | null; observacao: string | null;
+  estorno?: { id: string } | null;
   partidas?: { partidaId: string; codigo: string; validade: string | null; quantidade: string }[];
   /** Operação financeira de origem (compra, ajuste, inventário…); null nas saídas automáticas. */
   operacaoId: string | null;
@@ -54,7 +55,7 @@ export interface MovimentoDTO { id: string; propriedadeId?: number | null; seq: 
 export interface MovimentoInput { produtoId: string; tipo: "AJUSTE"; data: string; quantidade: number; custoUnitario?: number; observacao?: string; centroCustoId?: string; }
 export interface MovimentoResult { id: string; operacaoId: string; }
 
-export const listarSaldos = (f?: { centroCustoId?: string }) => req<SaldoDTO[]>(`/estoque/saldos${qs(f)}`);
+export const listarSaldos = (f?: { centroCustoId?: string; propriedadeId?: number }) => req<SaldoDTO[]>(`/estoque/saldos${qs(f?.centroCustoId ? { centroCustoId: f.centroCustoId } : undefined)}`, undefined, f?.propriedadeId);
 export type FiltroMovimentos = {
   movimentoId?: string; produtoId?: string; partidaId?: string; tipo?: string; q?: string; origem?: string;
   propriedadeId?: number;
@@ -62,13 +63,13 @@ export type FiltroMovimentos = {
   de?: string; ate?: string; pagina?: number; porPagina?: number;
 };
 export type PaginaMovimentos = { itens: MovimentoDTO[]; total: number };
-export const listarMovimentos = (f?: FiltroMovimentos) => req<PaginaMovimentos>(`/estoque/movimentos${qs(f)}`);
+export const listarMovimentos = (f?: FiltroMovimentos) => req<PaginaMovimentos>(`/estoque/movimentos${qs(f)}`, undefined, f?.propriedadeId);
 export const registrarMovimento = (p: MovimentoInput) => req<MovimentoResult>(`/estoque/movimentos`, { method: "POST", body: JSON.stringify(p) });
 
 // Descarta uma resposta que chegou depois de o filtro/parâmetro já ter mudado
 // (ou o hook ter desmontado) — sem isso, uma busca sem filtro que só termina
 // depois de uma busca já filtrada sobrescreveria a lista filtrada.
-export function useSaldos(f?: { centroCustoId?: string }) {
+export function useSaldos(f?: { centroCustoId?: string; propriedadeId?: number }) {
   const [data, setData] = useState<SaldoDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);

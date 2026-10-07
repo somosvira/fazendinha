@@ -8,15 +8,16 @@ vi.mock("../api/propriedades", () => ({ listarPropriedades: vi.fn().mockResolved
 beforeEach(() => { vi.clearAllMocks(); vi.mocked(listarPartidasNutricionais).mockResolvedValue([]); });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 describe("controle de lotes por validade", () => {
-  it("edição exige confirmação da prévia para ativar o controle", async () => {
+  it("edição usa a mesma opção do cadastro, mas exige confirmação da prévia", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({ revisao: "r", movimentosLegados: 0, saldos: [] }) }));
     const onMudou = vi.fn();
     render(<PartidasProduto configuracao produtoId="p" propriedadeId={2} rastreado={false} onMudou={onMudou} />);
-    fireEvent.click(screen.getByRole("button", { name: "Ativar controle de lotes por validade" }));
+    expect(screen.queryByRole("button", { name: "Ativar controle de lotes por validade" })).toBeNull();
+    fireEvent.click(screen.getByLabelText("Controlar lotes por validade"));
     await screen.findByRole("button", { name: "Confirmar ativação" });
     expect(onMudou).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
-    expect(screen.getByRole("button", { name: "Ativar controle de lotes por validade" })).toBeTruthy();
+    expect((screen.getByLabelText("Controlar lotes por validade") as HTMLInputElement).checked).toBe(false);
   });
   it("ativo sem saldo não oferece identificação nem cria lote", async () => {
     render(<PartidasProduto produtoId="p" propriedadeId={2} rastreado onMudou={vi.fn()} />);

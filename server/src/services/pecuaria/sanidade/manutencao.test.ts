@@ -33,11 +33,11 @@ describe("manutenção sanitária preserva fatos e decisões", () => {
     expect(mocks.auditar).toHaveBeenCalledWith(mocks.tx, expect.objectContaining({ entidade: "Doenca", usuarioId: 7, antes: { id: "doenca", nome: "Mastite", ativo: true }, depois: { id: "doenca", nome: "Mastite clínica", ativo: false } }));
   });
 
-  it("trocar formato do exame conserva nome e formato anteriores da coleta", async () => {
+  it("permite mudar formato somente antes da primeira coleta", async () => {
     mocks.tx.tipoExame.findUnique.mockResolvedValue({ id: "tipo", nome: "Teste rápido", tipoResultado: "OPCAO", opcoes: ["Positivo", "Negativo"] });
     mocks.tx.tipoExame.update.mockResolvedValue({ id: "tipo", nome: "Teste quantitativo", tipoResultado: "NUMERO" });
     await editarTipoExame("tipo", { nome: "Teste quantitativo", tipoResultado: "NUMERO", unidade: "mg" }, 7);
-    expect(mocks.tx.$executeRaw).toHaveBeenCalledOnce();
+    expect(mocks.tx.$executeRaw).toHaveBeenCalledTimes(2);
     expect(mocks.tx.tipoExame.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ tipoResultado: "NUMERO", opcoes: Prisma.JsonNull }) }));
     expect(nomeExameHistorico({ nome: "Teste rápido", tipoResultado: "OPCAO", opcoes: ["Positivo", "Negativo"] }, "Teste quantitativo")).toBe("Teste rápido");
   });

@@ -63,6 +63,7 @@ export async function encerrarOcorrencia(id: string, propriedadeId: number, inpu
     if (!original) throw new RebanhoError("NAO_ENCONTRADO", "Ocorrência não encontrada");
     await travarAnimais(tx, [original.animalId]);
     const atual = await tx.ocorrenciaSanitaria.findUniqueOrThrow({ where: { id } });
+    if (atual.status !== "VALIDO") throw new RebanhoError("CONFLITO", "A ocorrência foi anulada; atualize a consulta");
     if (atual.fim) throw new RebanhoError("CONFLITO", "Ocorrência já encerrada");
     const fim = dia(input.fim);
     if (fim < atual.inicio) throw new RebanhoError("VALIDACAO", "O fim não pode anteceder o início", "fim");
@@ -80,6 +81,8 @@ export async function anularOcorrencia(id: string, propriedadeId: number, motivo
     const original = await tx.ocorrenciaSanitaria.findFirst({ where: { id, propriedadeId, status: "VALIDO" } });
     if (!original) throw new RebanhoError("NAO_ENCONTRADO", "Ocorrência não encontrada");
     await travarAnimais(tx, [original.animalId]);
+    const atual = await tx.ocorrenciaSanitaria.findUniqueOrThrow({ where: { id } });
+    if (atual.status !== "VALIDO") throw new RebanhoError("CONFLITO", "A ocorrência já foi anulada; atualize a consulta");
     const fatos = await Promise.all([
       tx.aplicacaoProduto.count({ where: { ocorrenciaId: id, status: "VALIDO" } }),
       tx.exameAnimal.count({ where: { ocorrenciaId: id, status: "VALIDO" } }),
@@ -88,7 +91,7 @@ export async function anularOcorrencia(id: string, propriedadeId: number, motivo
     if (fatos.some(Boolean)) throw new RebanhoError("CONFLITO", "A ocorrência tem fatos clínicos ativos; revise-os antes de anular");
     const salva = await tx.ocorrenciaSanitaria.update({ where: { id }, data: { status: "ANULADO", motivoAnulacao: motivo, anuladoEm: new Date() } });
     await auditar(tx, { entidade: "OcorrenciaSanitaria", entidadeId: id, animalId: original.animalId, propriedadeId, acao: "ANULACAO", usuarioId,
-      antes: original, depois: { status: salva.status, motivo } });
+      antes: atual, depois: { status: salva.status, motivo } });
     return salva;
   });
 }

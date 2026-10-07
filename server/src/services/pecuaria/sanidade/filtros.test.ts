@@ -1,19 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  ocorrencias: vi.fn(), exames: vi.fn(), aplicacoes: vi.fn(), tarefas: vi.fn(),
+  ocorrencias: vi.fn(), exames: vi.fn(), aplicacoes: vi.fn(), contarAplicacoes: vi.fn(), tarefas: vi.fn(), animais: vi.fn(), animal: vi.fn(), localizacao: vi.fn(),
 }));
 vi.mock("../../../db.js", () => ({ prisma: {
   ocorrenciaSanitaria: { findMany: mocks.ocorrencias },
   exameAnimal: { findMany: mocks.exames },
-  aplicacaoProduto: { findMany: mocks.aplicacoes },
+  aplicacaoProduto: { findMany: mocks.aplicacoes, count: mocks.contarAplicacoes },
   tarefaSanitaria: { findMany: mocks.tarefas },
+  animal: { findMany: mocks.animais, findUnique: mocks.animal },
+  localizacaoAnimal: { findFirst: mocks.localizacao },
 } }));
 
 import { consultaSanitariaSchema } from "./consulta.js";
 import { listarOcorrencias } from "./ocorrencias.js";
 import { listarExames } from "./exames.js";
-import { listarAplicacoes } from "./aplicacoes.js";
+import { carenciaAnimal, listarCarencias, listarAplicacoes, listarAplicacoesPaginadas } from "./aplicacoes.js";
 import { listarTarefas } from "./protocolos.js";
 
 beforeEach(() => {
@@ -21,10 +23,45 @@ beforeEach(() => {
   mocks.ocorrencias.mockResolvedValue([]);
   mocks.exames.mockResolvedValue([]);
   mocks.aplicacoes.mockResolvedValue([]);
+  mocks.contarAplicacoes.mockResolvedValue(0);
   mocks.tarefas.mockResolvedValue([]);
+  mocks.animais.mockResolvedValue([]);
+  mocks.animal.mockResolvedValue({ sexo: "F", destinos: [{ aptidao: "LEITE" }] });
+  mocks.localizacao.mockResolvedValue({ propriedadeId: 2 });
 });
 
 describe("filtros operacionais antes da paginação", () => {
+  it("busca carências por brinco/nome, lote e sítio na seleção dos animais", async () => {
+    const filtro = consultaSanitariaSchema.parse({ buscaAnimal: "GV3", loteId: "00000000-0000-4000-8000-000000000001", pagina: "3" });
+    await listarCarencias(2, filtro);
+    expect(mocks.animais).toHaveBeenCalledWith(expect.objectContaining({ skip: 100, take: 50, where: expect.objectContaining({ OR: expect.arrayContaining([{ brinco: { contains: "GV3", mode: "insensitive" } }]), localizacoes: { some: { propriedadeId: 2, ate: null } }, aplicacaoProdutos: { some: expect.objectContaining({ animal: expect.objectContaining({ localizacoes: expect.any(Object) }) }) } }) }));
+  });
+  it("consulta a carência e aptidão histórica na data da baixa", async () => {
+    await carenciaAnimal("animal", 2, "2026-10-06");
+    expect(mocks.aplicacoes).toHaveBeenCalledWith(expect.objectContaining({ where: { animalId: "animal", status: "VALIDO", data: { lte: new Date("2026-10-06T00:00:00Z") } } }));
+    expect(mocks.animal).toHaveBeenCalledWith(expect.objectContaining({ select: expect.objectContaining({ destinos: expect.objectContaining({ where: expect.objectContaining({ desde: { lte: new Date("2026-10-06T00:00:00Z") } }) }) }) }));
+  });
+  it("combina busca insensível, lote e sítio antes da paginação em fatos e agenda", async () => {
+    const filtro = consultaSanitariaSchema.parse({ buscaAnimal: " Mimosa ", loteId: "00000000-0000-4000-8000-000000000001", pagina: "2" });
+    const busca = { OR: [{ brinco: { contains: "Mimosa", mode: "insensitive" } }, { nome: { contains: "Mimosa", mode: "insensitive" } }] };
+    await listarAplicacoes(undefined, 2, filtro);
+    await listarOcorrencias(undefined, 2, filtro);
+    await listarExames(undefined, 2, filtro);
+    for (const mock of [mocks.aplicacoes, mocks.ocorrencias, mocks.exames]) {
+      expect(mock).toHaveBeenCalledWith(expect.objectContaining({ skip: 50, take: 50, where: expect.objectContaining({ propriedadeId: 2, animal: expect.objectContaining({ ...busca, localizacoes: expect.any(Object) }) }) }));
+    }
+    await listarTarefas(2, undefined, filtro);
+    expect(mocks.tarefas).toHaveBeenCalledWith(expect.objectContaining({ skip: 50, where: expect.objectContaining({ execucao: expect.objectContaining({ animal: expect.objectContaining({ ...busca, localizacoes: { some: { ate: null, propriedadeId: 2, loteId: filtro.loteId } } }) }) }) }));
+  });
+  it("conta todos os fatos filtrados e devolve identificação do animal na página", async () => {
+    const animal = { id: "animal", brinco: "GV3-01", nome: "Mimosa" };
+    mocks.aplicacoes.mockResolvedValue([{ id: "fato", animal, movimentoEstoque: null }]);
+    mocks.contarAplicacoes.mockResolvedValue(51);
+    const filtro = consultaSanitariaSchema.parse({ pagina: "2", situacao: "ORIGEM_PENDENTE" });
+    expect(await listarAplicacoesPaginadas(undefined, 2, filtro)).toMatchObject({ total: 51, pagina: 2, porPagina: 50, itens: [{ id: "fato", animal }] });
+    expect(mocks.contarAplicacoes.mock.calls[0][0].where).toEqual(mocks.aplicacoes.mock.calls[0][0].where);
+    expect(mocks.aplicacoes).toHaveBeenCalledWith(expect.objectContaining({ skip: 50, take: 50, include: expect.objectContaining({ animal: { select: { id: true, brinco: true, nome: true } } }) }));
+  });
   it("separa ocorrência aberta de encerrada no banco", async () => {
     await listarOcorrencias(undefined, 2, consultaSanitariaSchema.parse({ situacao: "ABERTA", pagina: "3" }));
     expect(mocks.ocorrencias).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ fim: null, status: "VALIDO", propriedadeId: 2 }), skip: 100, take: 50 }));

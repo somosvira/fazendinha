@@ -10,7 +10,7 @@ import { SEM_VINCULO } from "../../lib/ids.js";
 import { conferirSaldoEstornoPartidasTx, idsGrupoPartidaTx, prepararPartidasTx } from "./partidas.js";
 
 export class EstoqueError extends Error {
-  constructor(public code: "NAO_ENCONTRADO" | "MES_FECHADO" | "ORIGEM_AUTOMATICA" | "CONFLITO" | "VALIDACAO", m: string) {
+  constructor(public code: "NAO_ENCONTRADO" | "MES_FECHADO" | "ORIGEM_AUTOMATICA" | "CONFLITO" | "VALIDACAO", m: string, public campo?: string) {
     super(m);
   }
 }
@@ -293,6 +293,7 @@ export async function listarMovimentos(f?: FiltroMovimentos) {
       include: {
         produto: { include: { centrosCusto: { include: { centroCusto: true } }, materialGenetico: { select: { id: true } } } },
         operacao: { include: { parceiro: true } },
+        revertidoPor: { select: { id: true } },
         // Origem das saídas automáticas (sem operação financeira): um único join por relação, sem N+1.
         aplicacaoProduto: { select: { id: true, animalId: true } },
         itemFechamentoConsumo: { select: { fechamento: { select: { id: true, loteId: true } } } },
@@ -327,6 +328,7 @@ export async function listarMovimentos(f?: FiltroMovimentos) {
       origem: m.origem, // COMPRA | CONSUMO_DIRETO | TRANSFERENCIA | PRODUCAO | DEVOLUCAO | BONIFICACAO | INVENTARIO_INICIAL | APLICACAO | PERDA | AJUSTE_INVENTARIO
       status: m.status,
       reversaoDeId: m.reversaoDeId,
+      estorno: m.revertidoPor ?? null,
       data: iso(m.data),
       quantidade: Number(quantidadeConsulta),
       quantidadeMovimento: Number(m.quantidade),

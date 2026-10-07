@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { SelecaoPartidas, conferirDistribuicaoPartidas, nomeLoteProduto, type DistribuicaoPartida } from "./SelecaoPartidas";
+import { SelecaoPartidas, conferirDistribuicaoPartidas, ErroDistribuicaoPartidas, nomeLoteProduto, type DistribuicaoPartida } from "./SelecaoPartidas";
 import { listarPartidasNutricionais } from "../pecuaria/rebanho/nutricao/api";
 import { previaLoteProduto } from "./api";
 vi.mock("../pecuaria/rebanho/nutricao/api", () => ({ listarPartidasNutricionais: vi.fn() }));
@@ -10,11 +10,59 @@ vi.mock("./api", () => ({ previaLoteProduto: vi.fn() }));
 beforeEach(() => { vi.mocked(previaLoteProduto).mockImplementation(async (_, validade) => ({ existente: validade === "2026-12-31" ? { id: "abc", codigo: "ABC", validade, saldo: "0", origemRastreio: "INFORMADA" } : null })); });
 beforeEach(() => { vi.clearAllMocks(); vi.mocked(listarPartidasNutricionais).mockResolvedValue([{ id: "abc", codigo: "ABC", validade: "2026-12-31", saldo: "50", origemRastreio: "INFORMADA" }, { id: "sem", codigo: "SEM", validade: null, saldo: "5", origemRastreio: "INFORMADA" }]); });
 afterEach(cleanup);
-function Cenário({ saida = false, quantidade = "10" }: { saida?: boolean; quantidade?: string }) {
+function Cenário({ saida = false, quantidade = "10", dataFato = "2026-10-02" }: { saida?: boolean; quantidade?: string; dataFato?: string }) {
   const [valor, setValor] = useState<DistribuicaoPartida[]>([]);
-  return <><SelecaoPartidas produtoId="p" propriedadeId={1} dataFato="2026-10-02" quantidade={quantidade} unidade="ML" saida={saida} valor={valor} onChange={setValor} /><output data-testid="escolhas">{JSON.stringify(valor)}</output></>;
+  return <><SelecaoPartidas produtoId="p" propriedadeId={1} dataFato={dataFato} quantidade={quantidade} unidade="ML" saida={saida} valor={valor} onChange={setValor} /><output data-testid="escolhas">{JSON.stringify(valor)}</output></>;
 }
 describe("lotes do produto", () => {
+  it("exige nova ciência ao mudar a data sem apagar a escolha do lote", async () => {
+    const tela = render(<Cenário saida />);
+    await screen.findByText(/Vencimento conhecido mais próximo/);
+    fireEvent.change(screen.getByLabelText("Lote 1"), { target: { value: "sem" } });
+    fireEvent.click(screen.getByRole("switch"));
+    expect((screen.getByRole("switch") as HTMLInputElement).checked).toBe(true);
+    tela.rerender(<Cenário saida dataFato="2026-10-03" />);
+    await waitFor(() => expect((screen.getByRole("switch") as HTMLInputElement).checked).toBe(false));
+    expect((screen.getByLabelText("Lote 1") as HTMLSelectElement).value).toBe("sem");
+  });
+  it("informa soma esperada e atual e conserva contrato de Error", () => {
+    try {
+      conferirDistribuicaoPartidas([{ quantidade: "4", validade: null }, { quantidade: "3", validade: null }], 10, false);
+      throw new Error("A distribuição deveria falhar");
+    } catch (erro) {
+      expect(erro).toBeInstanceOf(ErroDistribuicaoPartidas);
+      expect(erro).toBeInstanceOf(Error);
+      expect((erro as ErroDistribuicaoPartidas).campo).toBe("");
+      expect((erro as Error).message).toContain("esperado 10; soma informada 7");
+    }
+  });
+  it("localiza quantidade, validade e ciência na linha correspondente", () => {
+    const casos: Array<[DistribuicaoPartida[], boolean, string]> = [
+      [[{ quantidade: "0" }], false, "0.quantidade"],
+      [[{ quantidade: "10" }], false, "0.validade"],
+      [[{ quantidade: "10" }], true, "0.partidaId"],
+      [[{ quantidade: "10", partidaId: "sem", validade: null }], true, "0.cienciaValidadeDesconhecida"],
+    ];
+    for (const [valor, saida, campo] of casos) {
+      expect(() => conferirDistribuicaoPartidas(valor, 10, saida)).toThrow(ErroDistribuicaoPartidas);
+      try { conferirDistribuicaoPartidas(valor, 10, saida); }
+      catch (erro) { expect((erro as ErroDistribuicaoPartidas).campo).toBe(campo); }
+    }
+  });
+  it("conserva a precisão de milésimos e soma linhas com a mesma validade", () => {
+    expect(() => conferirDistribuicaoPartidas([{ quantidade: "0.1", validade: null }, { quantidade: "0.2", validade: null }], 0.3, false)).not.toThrow();
+    expect(() => conferirDistribuicaoPartidas([{ quantidade: "0.001", validade: null }, { quantidade: "0.002", validade: null }], -0.003, false)).not.toThrow();
+    expect(() => conferirDistribuicaoPartidas([{ quantidade: "0.001", validade: null }, { quantidade: "0.001", validade: null }], 0.003, false)).toThrow(/esperado 0,003; soma informada 0,002/);
+  });
+  it.each(["", "0", "-1", "NaN", "Infinity"])("indica a segunda linha quando sua quantidade é inválida: %s", (quantidade) => {
+    try {
+      conferirDistribuicaoPartidas([{ quantidade: "10", validade: null }, { quantidade, validade: null }], 10, false);
+      throw new Error("A distribuição deveria falhar");
+    } catch (erro) {
+      expect(erro).toBeInstanceOf(ErroDistribuicaoPartidas);
+      expect((erro as ErroDistribuicaoPartidas).campo).toBe("1.quantidade");
+    }
+  });
   it("inicia um lote com a quantidade do item; divisão é explícita", async () => {
     render(<Cenário />);
     await waitFor(() => expect((screen.getByLabelText("Quantidade do lote 1") as HTMLInputElement).value).toBe("10"));
@@ -81,13 +129,13 @@ describe("lotes do produto", () => {
     render(<Cenário saida />);
     await screen.findByRole("option", { name: /SEM.*não informada/ });
     fireEvent.change(screen.getByLabelText("Lote 1"), { target: { value: "sem" } });
-    const ciencia = screen.getByRole("checkbox", { name: /Estou ciente/ }) as HTMLInputElement;
+    const ciencia = screen.getByRole("switch", { name: /Estou ciente/ }) as HTMLInputElement;
     expect(ciencia.required).toBe(true);
     expect(ciencia.checked).toBe(false);
     fireEvent.click(ciencia);
     expect(screen.getByTestId("escolhas").textContent).toContain('"cienciaValidadeDesconhecida":true');
     fireEvent.change(screen.getByLabelText("Lote 1"), { target: { value: "abc" } });
     expect(screen.getByTestId("escolhas").textContent).toContain('"cienciaValidadeDesconhecida":false');
-    expect(screen.queryByRole("checkbox")).toBeNull();
+    expect(screen.queryByRole("switch")).toBeNull();
   });
 });

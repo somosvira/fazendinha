@@ -6,7 +6,13 @@ import { prepararPartidasTx, type SelecaoPartida } from "./partidas.js";
 import { auditar, exigirPeriodoAberto } from "../financeiro/regras.js";
 import { valorSaidaDaBase } from "./estoque.calc.js";
 import { propriedadePrincipalId } from "../propriedade.js";
+import { motivoPerdaSchema } from "./transferencias.schemas.js";
 export async function transferirEstoque(input: { chave: string; produtoId: string; origemId: number; destinoId: number; quantidade: string; data: string; motivo: string; partidas?: SelecaoPartida[]; modo?: "PERDA" }, usuarioId: number | null) {
+  if (input.modo === "PERDA") {
+    const motivo = motivoPerdaSchema.safeParse(input.motivo);
+    if (!motivo.success) throw new EstoqueError("VALIDACAO", motivo.error.issues[0].message, "motivo");
+    input = { ...input, motivo: motivo.data };
+  }
   if (!input.modo && input.origemId === input.destinoId) throw new EstoqueError("VALIDACAO", "Origem e destino devem ser diferentes");
   const hash = crypto.createHash("sha256").update(JSON.stringify(input)).digest("hex");
   return prisma.$transaction(async (tx) => {

@@ -313,7 +313,7 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
 
       <HistoricoBaixas historicoBaixas={animal.historicoBaixas} />
 
-      <SanidadeAnimal animalId={animal.id} propriedadeId={localizacaoAtual?.propriedade?.id ?? null} podeLancar={podeLancar} recarregarToken={refreshToken} />
+      <SanidadeAnimal animalId={animal.id} propriedadeId={localizacaoAtual?.propriedade?.id ?? null} podeLancar={podeLancar} recarregarToken={refreshToken} onMudou={() => { void carregar(); }} />
       <ManejoAnimal animalId={animal.id} propriedadeId={localizacaoAtual?.propriedade?.id ?? null} localizacoes={animal.historicoLocalizacoes} baixaData={animal.baixa?.data ?? null} podeLancar={podeLancar} onSalvo={() => { void carregar(); }} />
       <NutricaoAnimal animalId={animal.id} recarregarToken={refreshToken} />
 

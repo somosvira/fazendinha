@@ -63,7 +63,7 @@ describeComBanco("protocolo e exame com PostgreSQL", () => {
     const exame = await registrarExame({ animalId: animal.id, propriedadeId: propriedade.id, tipoExameId: tipo.id, data,
       resultadoOpcao: "NEGATIVO", tarefaId: execucao.tarefas[0].id }, null);
     await salvarRateio({ servicoId: servico.id, propriedadeId: propriedade.id, tipo: "PROTOCOLO", id: execucao.id, valor: "100", motivo: "Rateio do atendimento completo" }, null);
-    await expect(salvarRateio({ servicoId: servico.id, propriedadeId: propriedade.id, tipo: "EXAME", id: exame.id, valor: "10", motivo: "Tentativa de duplicar protocolo e exame" }, null)).rejects.toThrow(/protocolo e/);
+    await expect(salvarRateio({ servicoId: servico.id, propriedadeId: propriedade.id, tipo: "EXAME", id: exame.id, valor: "10", motivo: "Tentativa de duplicar protocolo e exame" }, null)).rejects.toMatchObject({ code: "CONFLITO", message: "Retire o valor do protocolo ou dos procedimentos dele" });
     await salvarRateio({ servicoId: servico.id, propriedadeId: propriedade.id, tipo: "PROTOCOLO", id: execucao.id, valor: null, motivo: "Retirar antes de atribuir aos fatos" }, null);
     await salvarRateio({ servicoId: servico.id, propriedadeId: propriedade.id, tipo: "EXAME", id: exame.id, valor: "100", motivo: "Atribuição ao exame confirmado" }, null);
     expect((await listarTarefas(propriedade.id, animal.id))[0].situacao).toBe("REALIZADA");
@@ -112,7 +112,8 @@ describeComBanco("protocolo e exame com PostgreSQL", () => {
     await movimentar({ animalIds: [animal.id], propriedadeId: destino.id, data: "2026-09-10" }, null);
     expect(await listarTarefas(origem, animal.id)).toEqual([]);
     expect((await listarTarefas(destino.id, animal.id))[0]).toMatchObject({ propriedadeAtualId: destino.id, execucao: { propriedadeId: origem } });
-    const entrada = { chave: crypto.randomUUID(), animalId: animal.id, propriedadeId: destino.id, data: "2026-09-10", tipoExameId: tipoIds[0], tarefaId };
+    const entrada = { chave: crypto.randomUUID(), animalId: animal.id, propriedadeId: destino.id, data: "2026-09-10", tipoExameId: tipoIds[0], tarefaId,
+      desvio: { motivo: "Coleta refeita após transferência do animal" } };
     const segundo = await registrarExame(entrada, null);
     expect((await registrarExame(entrada, null)).id).toBe(segundo.id);
     expect(segundo.id).not.toBe(primeiro.id);

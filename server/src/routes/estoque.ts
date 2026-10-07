@@ -8,6 +8,7 @@ import * as produtosSvc from "../services/estoque/produtos.js";
 import * as partidasSvc from "../services/estoque/partidas.js";
 import * as fichaSvc from "../services/estoque/ficha-produto.js";
 import { transferirEstoque } from "../services/estoque/transferencias.js";
+import { perdaEstoqueSchema, transferenciaEstoqueSchema } from "../services/estoque/transferencias.schemas.js";
 import { produtoSchema, patchProdutoSchema, produtosQuerySchema } from "../services/estoque/produtos.schemas.js";
 import * as refSvc from "../services/estoque/referencias.js";
 import { listarParceiros } from "../services/financeiro/parceiros.js";
@@ -18,19 +19,18 @@ import { temArea, temPermissao } from "../services/auth/papeis.js";
 import { SEM_VINCULO } from "../lib/ids.js";
 
 type Status = 400 | 404 | 409 | 500;
-function fail(e: unknown): { status: Status; body: { error: string; code?: string } } {
+function fail(e: unknown): { status: Status; body: { error: string; code?: string; campo?: string } } {
   if (e instanceof svc.EstoqueError) {
     const map = { NAO_ENCONTRADO: 404, MES_FECHADO: 409, ORIGEM_AUTOMATICA: 409, CONFLITO: 409, VALIDACAO: 400 } as const;
     // `code` deixa o cliente distinguir CONFLITO (saldo mudou) de MES_FECHADO, ambos 409.
-    return { status: map[e.code], body: { error: e.message, code: e.code } };
+    return { status: map[e.code], body: { error: e.message, code: e.code, ...(e.campo ? { campo: e.campo } : {}) } };
   }
   console.error("[estoque]", e);
   return { status: 500, body: { error: "Erro inesperado ao processar. Tente novamente." } };
 }
 
 // Mapeamento de erro dos cadastros de referência (produto) para status HTTP —
-// essas rotas ficam sob o gate mais amplo de /api/estoque/*: pecuária, agricultura
-// ou financeiro.
+// essas rotas ficam sob o gate mais amplo de /api/estoque/*: pecuária ou financeiro.
 function failCadastro(e: unknown): { status: 400 | 404 | 409 | 500; body: { error: string; campo?: string } } {
   if (e instanceof FinanceiroError) {
     const map = { VALIDACAO: 400, NAO_ENCONTRADO: 404, CONFLITO: 409, PERIODO_FECHADO: 409, SALDO_INSUFICIENTE: 409, JA_REVERTIDO: 409 } as const;
@@ -81,10 +81,10 @@ function validarProduto<T extends z.ZodTypeAny>(schema: T) {
 
 // Leituras ficam só com o gate de área (app.ts); escritas exigem a flag `lancar`.
 export const estoqueRouter = new Hono()
-  .post("/estoque/perdas", exigePermissao("lancar"), zValidator("json", z.object({ chave: z.string().uuid(), produtoId: z.string().uuid(), origemId: z.number().int().positive(), quantidade: z.string().regex(/^\d+(\.\d{1,3})?$/), data: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), motivo: z.string().trim().min(5).max(200), partidas: z.array(z.object({ partidaId: z.string().uuid(), quantidade: z.number().positive() })).optional() }).strict()), async (c) => {
+  .post("/estoque/perdas", exigePermissao("lancar"), validarProduto(perdaEstoqueSchema), async (c) => {
     try { const body = c.req.valid("json"); const origemId = await resolverEscopoEscrita(c, body.origemId); return c.json(await transferirEstoque({ ...body, origemId, destinoId: origemId, modo: "PERDA" }, usuarioId(c)), 201); } catch (e) { const f = fail(e); return c.json(f.body, f.status); }
   })
-  .post("/estoque/transferencias", exigePermissao("lancar"), zValidator("json", z.object({ chave: z.string().uuid(), produtoId: z.string().uuid(), origemId: z.number().int().positive(), destinoId: z.number().int().positive(), quantidade: z.string().regex(/^\d+(\.\d{1,3})?$/), data: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), motivo: z.string().trim().min(5).max(200), partidas: z.array(z.object({ partidaId: z.string().uuid(), quantidade: z.number().positive() })).optional() }).strict()), async (c) => {
+  .post("/estoque/transferencias", exigePermissao("lancar"), validarProduto(transferenciaEstoqueSchema), async (c) => {
     try { const body = c.req.valid("json"); const origemId = await resolverEscopoEscrita(c, body.origemId); const destinoId = await resolverEscopoEscrita(c, body.destinoId); return c.json(await transferirEstoque({ ...body, origemId, destinoId }, usuarioId(c)), 201); } catch (e) { const f = fail(e); return c.json(f.body, f.status); }
   })
   .get("/estoque/saldos", zValidator("query", saldosQuerySchema), async (c) => {
