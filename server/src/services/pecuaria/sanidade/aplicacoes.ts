@@ -1,4 +1,4 @@
-import { buscaAnimal, filtrosFatos, limites, type ConsultaSanitaria } from "./consulta.js";
+import { buscaAnimal, filtrosFatos, filtrarSituacoes, statusSituacao, animaisSelecionados, situacoesSelecionadas, limites, type ConsultaSanitaria } from "./consulta.js";
 import crypto from "node:crypto";
 import { Prisma, UnidadeMedida, type OrigemInsumoSanitario, type FinalidadeAplicacao } from "@prisma/client";
 import { prisma } from "../../../db.js";
@@ -322,7 +322,7 @@ export async function reconciliarOrigem(id: string, propriedadeId: number, input
 }
 
 function filtroAplicacoes(animalId: string | undefined, propriedadeId: number | null, filtro?: ConsultaSanitaria) {
-  return { ...filtrosFatos(filtro), ...(filtro?.situacao === "ORIGEM_PENDENTE" ? { origemInsumo: "SEM_ORIGEM_JUSTIFICADA" as const } : {}), ...(animalId ? { animalId } : {}), ...(propriedadeId == null ? {} : { propriedadeId }) };
+  return { ...filtrosFatos(filtro), ...filtrarSituacoes(filtro, (s): Prisma.AplicacaoProdutoWhereInput => ({ ...statusSituacao(s), ...(s === "ORIGEM_PENDENTE" ? { origemInsumo: "SEM_ORIGEM_JUSTIFICADA" } : {}) })), ...(animalId && !filtro?.animalIds ? { animalId } : {}), ...(propriedadeId == null ? {} : { propriedadeId }) };
 }
 
 export async function listarAplicacoes(animalId: string | undefined, propriedadeId: number | null, filtro?: ConsultaSanitaria) {
@@ -349,17 +349,34 @@ export async function carenciaAnimal(animalId: string, propriedadeId: number | n
 }
 
 export async function listarCarencias(propriedadeId: number | null, filtro: ConsultaSanitaria) {
+  const ids = animaisSelecionados(filtro);
+  const situacoes = situacoesSelecionadas(filtro);
   const animais = await prisma.animal.findMany({
     where: {
       ...buscaAnimal(filtro),
-      ...(filtro.animalId ? { id: filtro.animalId } : {}),
+      ...(ids.length ? { id: { in: ids } } : {}),
       ...(propriedadeId == null ? {} : { localizacoes: { some: { propriedadeId, ate: null } } }),
       aplicacaoProdutos: { some: { ...filtrosFatos(filtro) } },
     },
-    select: { id: true, brinco: true, nome: true }, orderBy: [{ brinco: "asc" }, { id: "asc" }], ...limites(filtro),
+    select: { id: true, brinco: true, nome: true, sexo: true, destinos: { where: { ate: null }, select: { aptidao: true }, take: 1 } }, orderBy: [{ brinco: "asc" }, { id: "asc" }],
   });
   // O período filtra os animais consultados, não elimina doses ainda relevantes.
-  return Promise.all(animais.map(async (animal) => ({ animal, ...await carenciaAnimalTx(prisma, animal.id) })));
+  const aplicacoes = await prisma.aplicacaoProduto.findMany({ where: { animalId: { in: animais.map((a) => a.id) }, status: "VALIDO" },
+    select: { animalId: true, data: true, aplicadaEm: true, precisaoTemporal: true, carenciaLeiteHoras: true, carenciaCarneHoras: true, estadoCarenciaLeite: true, estadoCarenciaCarne: true, aptidaoCarenciaSnapshot: true } });
+  const resultados = animais.map((a) => ({ animal: { id: a.id, brinco: a.brinco, nome: a.nome }, ...resumirCarencia(a, aplicacoes.filter((p) => p.animalId === a.id)) }));
+  const agora = new Date();
+  const filtrados = resultados.filter((r) => !situacoes.length || situacoes.some((s) => {
+    if (s === "CARÊNCIA_DESCONHECIDA") return r.revisaoLeitePendente || [r.leite, r.carne].some((c) => c.estado === "NAO_INFORMADO");
+    if (s === "CARÊNCIA_VIGENTE") return [r.leite, r.carne].some((c) => c.estado === "CONHECIDO" && c.ate > agora);
+    return true;
+  })).sort((a, b) => a.animal.brinco.localeCompare(b.animal.brinco, "pt-BR", { numeric: true, sensitivity: "base" }) || a.animal.id.localeCompare(b.animal.id));
+  const { skip, take } = limites(filtro);
+  return filtrados.slice(skip, skip + take);
+}
+
+function resumirCarencia(animal: { sexo: string; destinos: Array<{ aptidao: string }> }, aplicacoes: Array<Parameters<typeof calcularPrazoCarencia>[0][number] & { aptidaoCarenciaSnapshot: string | null }>) {
+  const revisaoLeitePendente = animal.sexo === "F" && animal.destinos[0]?.aptidao === "LEITE" && aplicacoes.some((a) => a.estadoCarenciaLeite === "NAO_APLICAVEL" && a.aptidaoCarenciaSnapshot !== "LEITE");
+  return { leite: revisaoLeitePendente ? { estado: "NAO_INFORMADO" as const } : calcularPrazoCarencia(aplicacoes, "LEITE"), carne: calcularPrazoCarencia(aplicacoes, "CARNE"), revisaoLeitePendente };
 }
 
 export async function carenciaAnimalTx(tx: Prisma.TransactionClient, animalId: string, dataReferencia?: string) {
@@ -369,8 +386,7 @@ export async function carenciaAnimalTx(tx: Prisma.TransactionClient, animalId: s
     select: { data: true, aplicadaEm: true, precisaoTemporal: true, carenciaLeiteHoras: true, carenciaCarneHoras: true, estadoCarenciaLeite: true, estadoCarenciaCarne: true, aptidaoCarenciaSnapshot: true } });
   const animal = await tx.animal.findUnique({ where: { id: animalId }, select: { sexo: true, destinos: { where: dataReferencia ? { desde: { lte: new Date(dataReferencia + "T00:00:00Z") }, OR: [{ ate: null }, { ate: { gt: new Date(dataReferencia + "T00:00:00Z") } }] } : { ate: null }, take: 1 } } });
   if (!animal) throw new RebanhoError("NAO_ENCONTRADO", "Animal não encontrado");
-  const revisarLeite = animal?.sexo === "F" && animal.destinos[0]?.aptidao === "LEITE" && aplicacoes.some((a) => a.estadoCarenciaLeite === "NAO_APLICAVEL" && a.aptidaoCarenciaSnapshot !== "LEITE");
-  return { leite: revisarLeite ? { estado: "NAO_INFORMADO" as const } : calcularPrazoCarencia(aplicacoes, "LEITE"), carne: calcularPrazoCarencia(aplicacoes, "CARNE"), revisaoLeitePendente: revisarLeite };
+  return resumirCarencia(animal, aplicacoes);
 }
 
 export async function anularAplicacao(id: string, propriedadeId: number, motivo: string, usuarioId: number | null) {

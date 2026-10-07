@@ -2,6 +2,16 @@
 
 # ARCHITECTURE.md — Arquitetura do Sistema
 
+## Redesign operacional da Pecuária (PR #312)
+
+O [plano de execução](./docs/pecuaria/redesign-pecuaria.md) reorganiza o módulo V3 sem substituir seus fatos, auditorias ou permissões. A única aba autorizada `pec-rebanho` expõe oito destinos na sidebar; as fichas mantêm contexto local e as URLs anteriores continuam acessíveis. Ver [navegação](./docs/NAVEGACAO.md).
+
+`pecuaria.ColetaCampo` persiste sítio, data, rotina, snapshot dos lotes/animais/ordem, rascunho e versão, conclusão e referências aos fatos. A impressão e o preenchimento compartilham esse snapshot. Rotas em `/api/pecuaria/rebanho/coletas`: GET/POST raiz, GET `/:id`, PUT `/:id/rascunho`, POST `/:id/confirmacao` e GET `/:id/impressao` (flag `exportar`). Escritas exigem `lancar`; escopo segue o resolvedor padrão. Pesagens, exames e aplicações são concluídos atomicamente, com validação histórica e auditoria; retry da mesma versão concluída não duplica fatos. Rascunho não movimenta estoque.
+
+Nutrição mantém `Dieta`, `VigenciaDietaLote` e `FechamentoConsumo`. Nomes normalizados novos e versões explícitas são serializados pelo catálogo; versões publicadas permanecem imutáveis. Atribuições anuladas conservam histórico e ficam fora da restrição de sobreposição. Correção/anulação requer motivo, prévia e revisão dos consumos afetados; consumo confirmado exige estorno antes. APIs adicionais: POST `/nutricao/dietas/:id/versoes`, DELETE `/dietas/:id`, PATCH `/dietas/:id/estado`, POST `/vigencias/:id/correcao/previa` e `/correcao`, POST `/vigencias/:id/anulacao/previa` e `/anulacao`; GET `/consumo/resumo-mensal?mes=YYYY-MM`. Todas sob o prefixo de Nutrição. Consumo diário continua sendo um intervalo de um dia conferido por pessoa; resumo mensal somente agrega fatos existentes, sem baixa adicional.
+
+Migrations aditivas: `20261007200000_redesign_pecuaria` e `20261007203000_validar_motivo_atribuicao`. Não executar reset para adotar o redesign. Homologação manual do guia V3 permanece distinta dos testes automatizados.
+
 > **Como o Fazendinha (Terrano) está organizado e por quê.**
 > Este documento descreve a arquitetura *atual* e as **convenções obrigatórias** que mantêm o código coerente.
 > Em caso de conflito, prevalecem `CLAUDE.md` e `server/prisma/schema.prisma`.

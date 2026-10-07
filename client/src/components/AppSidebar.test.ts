@@ -119,13 +119,15 @@ describe("AppSidebar", () => {
     expect(props.onNav).toHaveBeenCalledWith("gastos");
   });
 
-  it("a área Pecuária leva ao Rebanho (v1)", () => {
-    const props = baseProps({ areas: ["pecuaria"] });
+  it("a área Pecuária oferece as oito páginas e preserva a subrota após navegar", () => {
+    const props = baseProps({ areas: ["pecuaria"], onNav: vi.fn(() => window.history.pushState(null, "", "/pecuaria/rebanho")) });
     render(h(AppSidebar, props));
     expect(screen.getAllByText("Pecuária")).toHaveLength(1);
     fireEvent.click(screen.getByRole("button", { name: "Expandir Pecuária" }));
-    fireEvent.click(screen.getByText("Rebanho"));
+    for (const label of ["Coletas de campo", "Animais", "Lotes", "Pesagens", "Sanidade", "Nutrição", "Cadastros"]) expect(screen.getByRole("button", { name: label })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Pesagens" }));
     expect(props.onNav).toHaveBeenCalledWith("pec-rebanho");
+    expect(window.location.pathname).toBe("/pecuaria/rebanho/pesagens");
     expect(screen.queryByText("Gado de corte")).toBeNull();
   });
 
@@ -133,7 +135,17 @@ describe("AppSidebar", () => {
     render(h(AppSidebar, baseProps({ areas: ["rebanho", "gado_corte"] })));
     expect(screen.getAllByText("Pecuária")).toHaveLength(1);
     fireEvent.click(screen.getByRole("button", { name: "Expandir Pecuária" }));
-    expect(screen.getByText("Rebanho")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Animais" })).toBeTruthy();
+  });
+
+  it("marca somente a seção da ficha e acompanha a navegação entre páginas da pecuária", () => {
+    window.history.replaceState(null, "", "/pecuaria/rebanho/animais/animal");
+    render(h(AppSidebar, baseProps({ current: "pec-rebanho", areas: ["pecuaria"] })));
+    expect(screen.getByRole("button", { name: "Animais" }).getAttribute("aria-current")).toBe("page");
+    expect(document.querySelectorAll('[aria-current="page"]')).toHaveLength(1);
+    fireEvent.click(screen.getByRole("button", { name: "Pesagens" }));
+    expect(screen.getByRole("button", { name: "Pesagens" }).getAttribute("aria-current")).toBe("page");
+    expect(document.querySelectorAll('[aria-current="page"]')).toHaveLength(1);
   });
 
   it("abre a busca global pelo atalho visível da sidebar", () => {
@@ -167,7 +179,7 @@ describe("AppSidebar", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Expandir Pecuária" }));
     fireEvent.click(screen.getByRole("button", { name: "Recolher Pecuária" }));
-    expect(screen.queryByText("Rebanho")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Animais" })).toBeNull();
     expect(screen.getByRole("button", { name: "Expandir Pecuária" })).toBeTruthy();
     expect(localStorage.getItem("rionovo:sidebar:collapsedGroups:v2")).toContain("pecuaria");
 
@@ -180,10 +192,10 @@ describe("AppSidebar", () => {
   it("reabre o domínio recolhido quando a navegação entra nele", () => {
     localStorage.setItem("rionovo:sidebar:collapsedGroups:v2", JSON.stringify(["pecuaria"]));
     const { rerender } = render(h(AppSidebar, baseProps({ current: "dashboard" as Tab })));
-    expect(screen.queryByText("Rebanho")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Animais" })).toBeNull();
 
     rerender(h(AppSidebar, baseProps({ current: "pec-rebanho" as Tab })));
-    expect(screen.getByText("Rebanho")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Animais" })).toBeTruthy();
   });
 
 

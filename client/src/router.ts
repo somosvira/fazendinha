@@ -134,7 +134,7 @@ export function isSubrotaRebanho(tab: Tab, pathname: string): boolean {
   if (tab !== "pec-rebanho") return false;
   return isListaAnimaisRebanho(pathname) || isNovoAnimalRebanho(pathname) || isCadastrosRebanho(pathname)
     || isListaLotesRebanho(pathname) || parseAnimalId(pathname) != null || parseLoteId(pathname) != null
-    || pathname === "/pecuaria/rebanho/sanidade" || pathname === "/pecuaria/rebanho/nutricao";
+    || /^\/pecuaria\/rebanho\/(sanidade|nutricao|coletas|pesagens)\/?$/i.test(pathname);
 }
 
 export const URL_NOVA_OPERACAO = "/financeiro/operacoes/nova";

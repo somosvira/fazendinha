@@ -1,8 +1,8 @@
 /* Rio Novo — navegação global (rail persistente no desktop + drawer no mobile).
  *
  * A sidebar é organizada por ÁREAS DE TRABALHO, não pela estrutura interna dos
- * módulos. Pecuária hoje é só a v1 Rebanho (Animais · Lotes · Cadastros, uma
- * várias rotinas em um clique. Recursos de configuração ou análise menos
+ * módulos. Pecuária mantém uma aba autorizada, com destinos operacionais
+ * para as várias rotinas. Recursos de configuração ou análise menos
  * frequentes ficam em "Mais opções" dentro da área correspondente.
  * A marca Terrano e o seletor de fazenda/sítio vivem no topo da sidebar.
  *
@@ -21,6 +21,7 @@ import { SidebarFarmPicker } from "./FarmPicker";
 import { temAcessoArea, temAcessoEstoque } from "@/lib/areas";
 import { PAPEIS, type User } from "@/data/acessos";
 import { quandoSalvo, type ResumoRascunho } from "@/financeiro/lib/rascunho";
+import { navegarPara } from "@/router";
 
 type ResumoTrabalhoAtivo = Pick<ResumoRascunho, "titulo" | "tipo" | "detalhe" | "atualizadoEm">;
 
@@ -40,8 +41,19 @@ const ICON: Partial<Record<Tab, JSX.Element>> = {
   config: <><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></>,
 };
 
+const ICON_PECUARIA: Record<string, JSX.Element | undefined> = {
+  "/pecuaria/rebanho": ICON.dashboard,
+  "/pecuaria/rebanho/coletas": ICON.relatorio,
+  "/pecuaria/rebanho/animais": <><path d="M7 7 3 3v6l4 2m10-4 4-4v6l-4 2M7 7h10v9a5 5 0 0 1-10 0z"/><path d="M9 17h6M9 12h.01M15 12h.01"/></>,
+  "/pecuaria/rebanho/lotes": <><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></>,
+  "/pecuaria/rebanho/pesagens": <><path d="M6 8h12l3 13H3z"/><path d="M9 8V6a3 3 0 0 1 6 0v2M12 12v4"/></>,
+  "/pecuaria/rebanho/sanidade": <><path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6zM12 8v8M8 12h8"/></>,
+  "/pecuaria/rebanho/nutricao": <><path d="M20 3C7 3 3 9 5 15s13 7 15-12ZM4 21l11-11"/></>,
+  "/pecuaria/rebanho/cadastros": ICON.cadastros,
+};
+
 type AreaTrabalhoId = "pecuaria";
-type NavItem = { id: Tab; label: string };
+type NavItem = { id: Tab; label: string; href?: string };
 type AreaTrabalho = {
   id: AreaTrabalhoId;
   label: string;
@@ -60,7 +72,14 @@ const AREAS_TRABALHO: AreaTrabalho[] = [
     label: "Pecuária",
     permissao: "pecuaria",
     principais: [
-      { id: "pec-rebanho", label: "Rebanho" },
+      { id: "pec-rebanho", label: "Visão geral", href: "/pecuaria/rebanho" },
+      { id: "pec-rebanho", label: "Coletas de campo", href: "/pecuaria/rebanho/coletas" },
+      { id: "pec-rebanho", label: "Animais", href: "/pecuaria/rebanho/animais" },
+      { id: "pec-rebanho", label: "Lotes", href: "/pecuaria/rebanho/lotes" },
+      { id: "pec-rebanho", label: "Pesagens", href: "/pecuaria/rebanho/pesagens" },
+      { id: "pec-rebanho", label: "Sanidade", href: "/pecuaria/rebanho/sanidade" },
+      { id: "pec-rebanho", label: "Nutrição", href: "/pecuaria/rebanho/nutricao" },
+      { id: "pec-rebanho", label: "Cadastros", href: "/pecuaria/rebanho/cadastros" },
     ],
   },
 
@@ -103,14 +122,14 @@ const RAIL_HIDE =
  *  itens que abrem uma página/sub-página. `activeWhen` acende o item também
  *  quando a aba atual é uma das sub-abas dobradas nele (ex.: "Gastos" fica ativo
  *  em `caixinha`; "Configurações" em `cadastros`/`plano`/`acessos`). */
-function Item({ id, label, current, onNav, nested, chevron, activeWhen }: {
-  id: Tab; label: string; current: Tab; onNav: (t: Tab) => void; nested?: boolean; chevron?: boolean; activeWhen?: Tab[];
+function Item({ id, label, current, onNav, nested, chevron, activeWhen, href, pathname }: {
+  id: Tab; label: string; current: Tab; onNav: (t: Tab) => void; nested?: boolean; chevron?: boolean; activeWhen?: Tab[]; href?: string; pathname?: string;
 }) {
-  const isOn = current === id || (activeWhen?.includes(current) ?? false);
+  const isOn = href ? current === id && (pathname === href || (href !== "/pecuaria/rebanho" && pathname?.startsWith(`${href}/`))) : current === id || (activeWhen?.includes(current) ?? false);
   return (
     <button
       type="button"
-      onClick={() => onNav(id)}
+      onClick={() => { onNav(id); if (href) navegarPara(href); }}
       title={label}
       aria-label={label}
       aria-current={isOn ? "page" : undefined}
@@ -125,7 +144,7 @@ function Item({ id, label, current, onNav, nested, chevron, activeWhen }: {
         isOn && RAIL_ACTIVE,
       )}
     >
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} aria-hidden>{ICON[id]}</svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} aria-hidden>{(href ? ICON_PECUARIA[href] : undefined) ?? ICON[id]}</svg>
       <span className={cn("flex-1", RAIL_LABEL)}>{label}</span>
       {chevron && (
         <span className={cn("flex-none text-[11px] text-[var(--side-mute,#8B8672)]", RAIL_HIDE)} aria-hidden>›</span>
@@ -301,6 +320,12 @@ export function AppSidebar({
   trabalhoAtivoRelatorio?: { resumo: ResumoTrabalhoAtivo; ativo: boolean; onAbrir: () => void } | null;
 }) {
   const areasEfetivas = areas ?? ["pecuaria"];
+  const [pathname, setPathname] = useState(() => window.location.pathname.replace(/\/$/, ""));
+  useEffect(() => {
+    const atualizar = () => setPathname(window.location.pathname.replace(/\/$/, ""));
+    window.addEventListener("popstate", atualizar);
+    return () => window.removeEventListener("popstate", atualizar);
+  }, []);
   const areasVisiveis = AREAS_TRABALHO.filter(
     (area) => temAcessoArea(areasEfetivas, area.permissao as "pecuaria"),
   );
@@ -442,7 +467,7 @@ export function AppSidebar({
             {groupOpen && (
               <div className="ml-[19px] mt-1 flex flex-col gap-px border-l border-[rgba(232,220,196,0.14)] pl-1 min-[901px]:max-[1100px]:ml-0 min-[901px]:max-[1100px]:border-l-0 min-[901px]:max-[1100px]:pl-0 [.side-collapsed_&]:ml-0 [.side-collapsed_&]:border-l-0 [.side-collapsed_&]:pl-0">
                 {area.principais.map((item) => (
-                  <Item key={item.id} id={item.id} label={item.label} current={current} onNav={nav} nested />
+                  <Item key={item.href ?? item.id} {...item} pathname={pathname} current={current} onNav={nav} nested />
                 ))}
                 {!!area.extras?.length && <>
                 <MoreToggle

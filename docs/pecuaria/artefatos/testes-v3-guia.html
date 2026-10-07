@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>V3 — Guia de testes</title>
+<title>Pecuária V3 — Guia de testes</title>
 <style>
 :root{--papel:#faf9f6;--cartao:#fff;--texto:#24382e;--secundario:#59665e;--linha:#d8dfd8;--verde:#286347;--suave:#eef5ef;--erro:#a53932;--amarelo:#765915}
 *{box-sizing:border-box}body{margin:0;background:var(--papel);color:var(--texto);font:17px/1.65 system-ui,sans-serif}a{color:var(--verde)}button,input,select,textarea{font:inherit}button,select{border:1px solid var(--linha);border-radius:7px;background:var(--cartao);padding:8px 12px;color:var(--texto)}button{cursor:pointer}button:hover{border-color:var(--verde)}:focus-visible{outline:3px solid var(--verde);outline-offset:3px}.shell{max-width:1160px;margin:auto;padding:32px 24px}header{max-width:850px;margin-bottom:28px}h1{font:700 clamp(30px,4vw,45px)/1.15 Georgia,serif;margin:10px 0 16px}h2{font:700 28px/1.3 Georgia,serif;margin:0}h3{font-size:21px;line-height:1.4;margin:0}.intro{color:var(--secundario);max-width:750px}.layout{display:grid;grid-template-columns:210px minmax(0,1fr);gap:32px}nav{position:sticky;top:20px;align-self:start;max-height:90vh;overflow:auto}nav a{display:block;padding:8px 10px;text-decoration:none;border-left:2px solid var(--linha);font-size:15px}nav a:hover{background:var(--suave)}.tools{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:20px 0}#progresso{font-weight:600}.grupo{margin-bottom:50px;scroll-margin-top:20px}.grupo>p{color:var(--secundario)}article{background:var(--cartao);border:1px solid var(--linha);border-radius:12px;padding:26px;margin-top:20px;scroll-margin-top:20px}article[data-status="passou"]{border-left:5px solid var(--verde)}article[data-status="falhou"]{border-left:5px solid var(--erro)}article[data-status="bloqueado"]{border-left:5px solid var(--amarelo)}.num{color:var(--verde);font-size:14px;font-weight:700;letter-spacing:.06em;display:block;margin-bottom:5px}.onde{font-size:15px;color:var(--secundario);border-bottom:1px solid var(--linha);padding-bottom:14px;margin:12px 0 18px}.passos{padding-left:24px}.passos li{margin:10px 0}.confira{background:var(--suave);border-radius:8px;padding:15px 18px;margin-top:18px}.confira strong{display:block;color:var(--verde);font-size:14px;margin-bottom:5px}.marcar{display:flex;align-items:center;gap:10px;margin-top:20px;font-size:14px;flex-wrap:wrap}details{margin-top:12px;font-size:14px}summary{cursor:pointer}textarea{display:block;width:100%;min-height:90px;padding:10px;border:1px solid var(--linha);border-radius:6px;margin-top:8px}.nota{border-left:3px solid var(--verde);padding-left:15px;font-size:15px}.aviso{color:var(--erro)}[hidden]{display:none!important}#relatorio{width:min(850px,94vw);max-height:85vh;border:1px solid var(--linha);border-radius:12px;padding:24px}#relatorio textarea{min-height:45vh;font-size:14px}footer{color:var(--secundario);font-size:14px;margin-top:20px}code{font-family:inherit;font-weight:650;overflow-wrap:anywhere}
@@ -11,15 +11,16 @@
 </style>
 </head>
 <body><div class="shell">
-<header><span class="num">V3 · TESTES PELA INTERFACE</span><h1>Um passo de cada vez.</h1>
-<p class="intro">Siga a ordem abaixo. Cada item traz a tela, os dados para preencher e o resultado para conferir naquele momento. Os dados de apoio desta rodada já estão preparados.</p>
+<header><span class="num">PECUÁRIA V3 · TESTES PELA INTERFACE</span><h1>Um passo de cada vez.</h1>
+<p class="intro">Siga a ordem abaixo. Cada item traz a tela, os dados para preencher e o critério para conferir. Os dados de apoio dos casos 1–107 pertencem ao cenário V3; os casos de redesign usam dados descartáveis criados pelo testador, sem limpar o cenário.</p>
 <p class="nota">Use o sítio <b>Guia V3 — Principal</b>, salvo quando o passo pedir outro. Os nomes <b>Guia V3</b> e brincos <b>GV3-</b> identificam esta rodada. As quantidades esperadas consideram uma execução na ordem indicada. Se um passo falhar, registre a falha; não repita confirmações já concluídas para tentar seguir.</p>
-<p class="nota"><strong>Reteste manual indicado:</strong> os itens com selo vermelho foram afetados por ajustes de interface ou contratos da V3; os itens 49–57 também merecem conferir a distinção entre execução individual/coletiva antiga e a nova visão de Ciclos. Esta revisão conferiu os casos antigos 1–93 e manteve seus identificadores e resultados salvos. Se a ação já foi confirmada, reteste consultas, detalhes, filtros e navegação nos fatos existentes; não repita criação, compra ou aplicação para tentar recuperar saldo inicial. Em 19, 4 destinados/6 disponíveis é o ponto antes do teste 20; se 20 já foi concluído, 10 destinados/0 disponíveis é o saldo correto. Preserve fatos, saldos, marcações e anotações existentes.</p>
+<p class="nota"><strong>Reteste manual indicado:</strong> os selos vermelhos marcam contratos V3 que pedem reteste; os casos 49–57 cobrem fluxos coletivos anteriores à visão de Ciclos. Os casos 94–107 cobrem Ciclos e desvios. Se uma ação já foi confirmada, consulte os fatos existentes em vez de repetir criação, compra ou aplicação. Preserve fatos, saldos, marcações e anotações.</p>
+<p class="nota"><strong>Redesign em planejamento:</strong> os casos 108 em diante registram critérios de aceite do plano, ainda sem declarar implementação pronta. Use somente registros descartáveis criados por você com prefixo “Redesign teste”; crie-os pela interface no sítio de teste autorizado, anote os identificadores e não altere GV3-*, operações financeiras ou fatos anteriores. Não limpe o banco. Se não houver sítio/animais/produtos descartáveis autorizados ou um critério ainda não estiver implementado, marque Bloqueado/Falhou conforme a evidência e anote a limitação; novos casos começam pendentes.</p>
 <a href="http://localhost:41875" target="_blank" rel="noopener">Abrir o projeto local ↗</a>
 <div class="tools"><span id="progresso" role="status"></span><label>Mostrar <select id="filtro"><option value="todos">Todos os testes</option><option value="pendente">Pendentes</option><option value="falhou">Falhas</option><option value="bloqueado">Bloqueados</option></select></label><button id="exportar">Ver relatório</button><button id="imprimir">Imprimir</button></div>
 <p id="persistencia" class="aviso" role="status" hidden></p>
 </header><div class="layout"><nav aria-label="Etapas do roteiro" id="indice"></nav><main id="roteiro"></main></div>
-<footer>Guia preparado em 04/10/2026; retestes atualizados em 06/10/2026. Suítes automatizadas não aprovam estes passos manuais nem mudam suas marcações. As marcações pertencem somente a este roteiro e a este navegador. Se um pré-requisito falhou, marque o teste dependente como Bloqueado e descreva o motivo.</footer>
+<footer>Guia preparado em 04/10/2026; critérios de redesign acrescentados em 07/10/2026 e ainda pendentes de validação manual. Suítes automatizadas não aprovam estes passos manuais nem mudam suas marcações. As marcações pertencem somente a este roteiro e a este navegador. Se um pré-requisito falhou, marque o teste dependente como Bloqueado e descreva o motivo.</footer>
 </div><dialog id="relatorio"><h2>Relatório desta rodada</h2><textarea id="texto-relatorio" readonly aria-label="Relatório para copiar"></textarea><p>Selecione e copie o texto para compartilhar os resultados.</p><button id="fechar-relatorio">Fechar</button></dialog>
 <script>
 const grupos = [
@@ -535,6 +536,113 @@ const grupos = [
 'Entre com guia.v3.leitura@example.test e senha GuiaV3!2026; consulte o ciclo/ficha/histórico. Procure Iniciar ciclo de protocolo, adicionar, remover, associar e executar. Depois consulte os mesmos fatos com guia.v3.semvalores@example.test e senha GuiaV3!2026; não grave nada.',
 'Volte ao usuário habitual. Quando houver mais de 100 tarefas, confira que uma confirmação aceita no máximo 100 animais distintos da mesma etapa/sítio histórico; sem esse cenário, anote limite de cobertura manual.'
 ],'Campos e ações são legíveis/acessíveis nas duas larguras; Voltar ao planejamento restaura parâmetros. Usuário de consulta não dispõe de escrita; dados operacionais permanecem visíveis sem valores financeiros no perfil sem valores. Limite de 100 e concorrência têm cobertura automatizada; falta de cenário manual não equivale a aprovação.']
+]},
+{id:'redesign',nome:'15. Redesign da Pecuária — critérios pendentes',descricao:'Casos 108 em diante são critérios do plano de 07/10/2026, não evidência de implementação. Use somente animais, lotes, produtos, fichas e dietas descartáveis criados por você com prefixo “Redesign teste” em sítio autorizado. Registre os identificadores nas notas; não use GV3-*, não repita fatos/lançamentos preexistentes e não limpe o banco. Para operações que consumam estoque ou alterem histórico, crie saldo de teste próprio e anote-o antes/depois. Um fluxo ausente deve ser marcado Falhou; falta de permissão ou cenário seguro, Bloqueado.',testes:[
+['redesign-sidebar','Conferir destinos da sidebar e URLs existentes','Sidebar Pecuária e URLs de Pecuária',[
+'Confira os oito destinos: Visão geral, Coletas de campo, Animais, Lotes, Pesagens, Sanidade, Nutrição e Cadastros. Anote destino ausente, repetido ou inacessível por permissão.',
+'Abra uma URL antiga conhecida de animal, lote, Sanidade e Nutrição; recarregue e use Voltar. Confira que o detalhe oferece retorno ao contexto de origem e que a permissão pec-rebanho continua valendo.',
+'Navegue para cada destino pela sidebar e registre estado que se perde, se houver.'
+],'Critério do plano: oito destinos na sidebar, sem segunda navegação global horizontal; URLs antigas continuam acessíveis e detalhes retornam ao contexto de origem. Registre o observado, sem inferir implementação.'],
+['redesign-filtros-multiselect','Filtrar tabelas por várias categorias antes da paginação','Tabelas de Animais, Lotes, Sanidade e Nutrição',[
+'Crie dados descartáveis “Redesign teste” que produzam mais de uma página e contemplem ao menos duas categorias de filtro. Anote a contagem inicial.',
+'Selecione múltiplos valores em cada categoria, combine busca textual e datas e avance páginas. Confira URL e contagem da combinação.',
+'Limpe uma categoria por vez; recarregue e confira OR dentro de cada categoria, AND entre categorias e aplicação do filtro antes da paginação.'
+],'Critério: filtros independentes por tabela; OR dentro da categoria, AND entre categorias, totais/páginas correspondentes ao resultado filtrado. Sem volume suficiente, registre a limitação sem aprovar paginação.'],
+['redesign-carencia-refresh','Atualizar carência após salvar aplicação','Ficha de animal descartável → Sanidade',[
+'Crie animal e produto sanitário descartáveis no sítio autorizado; registre o resumo inicial. Use produto/lote próprios com saldo conhecido e prazo de teste explícito.',
+'Registre uma aplicação válida de teste, anote o identificador e volte à ficha sem recarregar manualmente.',
+'Confira cards de leite/carne e histórico; atualize a página e compare. Não reutilize aplicações GV3.'
+],'Critério: ficha e consulta de carências atualizam após salvar; recarga conserva resultado e resposta atrasada não reverte dados. Prazo desconhecido não vira zero. Não é orientação clínica.'],
+['redesign-erro-foco','Levar foco e rolagem ao primeiro erro sem perder dados','Formulário sanitário ou de manejo descartável',[
+'Abra formulário de teste com animal descartável, preencha campos válidos e deixe obrigatório vazio ou provoque validação segura.',
+'Tente salvar. Observe resumo, mensagem junto ao campo, foco visível e rolagem até o primeiro erro; confira abertura de seção recolhida com erro.',
+'Corrija e confira que os outros dados digitados permanecem. Cancele ou conclua somente o registro de teste identificado.'
+],'Critério: erro próximo ao campo, resumo visível, foco/rolagem para o primeiro erro e abertura da seção recolhida; dados digitados são preservados.'],
+['redesign-desmama-unica','Impedir segunda desmama válida e permitir após anulação','Ficha de animal descartável → Manejo',[
+'Crie animal descartável elegível e registre desmama de teste. Anote identificador e pesagem vinculada, se houver.',
+'Volte ao formulário e confira que Desmama não aparece como opção enquanto o fato estiver ativo; não confirme duplicidade.',
+'Anule a desmama de teste com motivo, sem apagar pesagem. Reabra Manejo e confira opção, histórico, motivo e vínculo.'
+],'Critério: uma desmama válida por animal; opção some após confirmação e retorna após anulação motivada. Anular conserva pesagem e histórico. Não anule fato preexistente.'],
+['redesign-coleta-preparar','Preparar ficha descartável com seleção e ordem congeladas','Coletas de campo → Preparar ficha',[
+'Crie animais descartáveis com brincos que testem ordem natural (sufixos 2, 10 e 11) e ficha de coleta com rotina/data.',
+'Selecione os animais, prepare a ficha e anote código, sítio, data, rotina, identificação, títulos e ordem.',
+'Saia sem concluir e reabra a ficha; compare seleção, ordem e campos.'
+],'Critério: ficha persistida com sítio, data, rotina, identificação, lista e ordem congeladas; rascunho versionado e código consultável. Ordem natural coloca 2 antes de 10.'],
+['redesign-coleta-imprimir','Imprimir e reimprimir ficha A4 em preto e branco','Coletas de campo → ficha descartável',[
+'Use ficha criada pelo testador. Abra visualização de impressão e confira A4, legibilidade em preto e branco, código, identificação dos animais e espaço para anotações.',
+'Imprima ou salve cópia local de teste; reabra a mesma ficha e imprima novamente.',
+'Compare lista, ordem, código e títulos.'
+],'Critério: impressão A4 legível em preto e branco; reimpressão mantém código, seleção e ordem. Não precisa anexar nem compartilhar a impressão.'],
+['redesign-coleta-retomar','Retomar rascunho versionado depois de sair','Coletas de campo → ficha descartável',[
+'Na ficha, preencha alguns campos e deixe outros vazios. Saia normalmente sem apagar o rascunho.',
+'Volte a Coletas de campo e retome pelo código; confira sítio, ficha, ordem, valores e versão.',
+'Abra em outra janela/sessão para consulta e observe se conflito de versão é identificado.'
+],'Critério: rascunho persiste no servidor e retoma corretamente; versão antiga não sobrescreve edição concorrente silenciosamente. Navegador não é fonte de verdade.'],
+['redesign-coleta-nao-realizado','Distinguir não realizado, vazio e zero','Preenchimento de coleta descartável',[
+'Na ficha descartável, informe zero numérico para um animal, marque Não realizado para outro e deixe o terceiro campo vazio.',
+'Salve rascunho, retome e confira os três estados na tabela e edição.',
+'Não conclua ainda; anote como cada situação é representada.'
+],'Critério: zero é valor, Não realizado é estado explícito e campo vazio fica pendente; nenhum se confunde com procedimento confirmado.'],
+['redesign-coleta-concluir','Revisar e concluir coleta descartável','Coleta de campo → Revisar e concluir',[
+'Preencha ficha teste com pesagem ou rotina sanitária permitida; revise animais adicionais e mudanças.',
+'Confira prévia e conclua uma vez. Anote IDs dos fatos; consulte fichas/históricos e saldo descartável antes/depois.',
+'Use retry da mesma confirmação se houver mecanismo acessível; compare IDs e efeitos.'
+],'Critério: revisão exige aceitar mudanças/adicionais; conclusão usa fatos V3 com atomicidade/idempotência e não duplica fatos, estoque ou financeiro.'],
+['redesign-coleta-reenvio','Reenviar conclusão sem duplicar fatos','Coleta descartável já concluída',[
+'Use somente a ficha concluída no caso anterior. Consulte fatos e saldo antes do retry.',
+'Reenvie a mesma requisição/idempotência sem editar conteúdo ou criar outra ficha.',
+'Reabra fatos, histórico e saldo; compare IDs e contagens.'
+],'Critério: reenvio idêntico devolve os mesmos fatos sem duplicata ou novo movimento. Se não houver retry acessível, anote a limitação; não simule nova confirmação.'],
+['redesign-dieta-nome-versao','Proteger nome normalizado e preservar família de versões','Nutrição → Dietas',[
+'Crie dieta descartável “Redesign teste”, salve rascunho e tente criar outra com mesmo nome variando caixa/espaços.',
+'Edite o rascunho; crie nova versão pela ação explícita e publique conforme fluxo de teste.',
+'Consulte família/histórico e compare ingredientes e versão anterior.'
+],'Critério: nome normalizado não pode ser reutilizado por outra dieta; nova versão conserva família; edição/publicação são explícitas e publicação congela ingredientes.'],
+['redesign-dieta-exclusao','Excluir rascunho sem uso e preservar dieta usada','Nutrição → Dietas',[
+'Crie dois registros descartáveis: rascunho nunca atribuído e dieta publicada atribuída a lote descartável. Anote IDs.',
+'Tente excluir rascunho sem uso e confira confirmação/auditoria. Na dieta atribuída, não confirme uma ação que apagaria histórico.',
+'Confira que dieta usada pode ser inativada e sua família/atribuição continua consultável.'
+],'Critério: excluir somente rascunho/dieta sem uso operacional, com auditoria; dieta usada conserva história e permite inativação.'],
+['redesign-atribuicao-corrigir','Corrigir atribuição com conferência de impacto','Lote descartável → Nutrição → Histórico de dietas',[
+'Atribua dieta publicada descartável ao lote de teste; anote período, dieta e ID.',
+'Corrija dieta ou data e confira prévia de impacto. Se houver consumo confirmado afetado, interrompa e estorne somente fechamento descartável conforme fluxo autorizado.',
+'Reabra atribuição e histórico; confira mudança e motivo auditados.'
+],'Critério: correção exige prévia de impacto, motivo/auditoria e preserva períodos; consumo confirmado exige estorno antes da correção.'],
+['redesign-atribuicao-anular','Anular atribuição com motivo e preservar histórico','Lote descartável → Nutrição → atribuição de teste',[
+'Selecione somente atribuição criada pelo testador e confira que não há consumo confirmado dependente.',
+'Anule com motivo e consulte histórico, dieta atual/programada e ficha do lote.',
+'Confira que atribuição e consumo anteriores não foram apagados ou alterados.'
+],'Critério: anulação auditada preserva histórico; impactos de consumo confirmado são bloqueados até estorno apropriado.'],
+['redesign-consumo-previa','Conferir prévia humana e previsão diária','Nutrição → Consumos → Nova conferência',[
+'Prepare lote descartável com animais, dieta publicada vigente, ingredientes disponíveis e centro de custo. Confira sítio, vigência, quantidades e permissão.',
+'Abra consulta global sem selecionar lote; inicie nova conferência, selecione lote e confira ontem como data inicial sugerida.',
+'Revise previsão de produtos/custos por lote, cabeça e dia, distinguindo estimativa/incompletude. Não confirme antes da revisão.'
+],'Critério: consulta global não exige lote; formulário de conferência exige seleção. Prévia mostra sítio/data e previsão humana antes de confirmar.'],
+['redesign-consumo-ordem','Ordenar participantes por brinco natural','Prévia de consumo descartável',[
+'Use lote de teste com brincos como 2, 10 e 11; abra prévia e detalhe de participantes.',
+'Compare ordem em participantes, revisão e detalhe do fechamento.',
+'Reabra e confira que ordem e contagem permanecem.'
+],'Critério: participantes aparecem em ordem natural dos brincos nas consultas de consumo.'],
+['redesign-consumo-sem-baixa','Confirmar sem baixa física sem inventar custo','Fechamento descartável → modo sem baixa',[
+'Use lote/ingredientes descartáveis, modo sem baixa e motivo. Confira quantidades previstas e confirmadas.',
+'Antes de confirmar, confira que previsão não aparece como custo realizado; confirme uma vez e anote ID.',
+'Abra detalhe, relatório e estoque; confira quantidade/motivo, custo não apurado e ausência de movimento.'
+],'Critério: sem baixa mostra quantidade/motivo e custo não apurado; confirmação não exibe previsão como custo realizado nem cria movimento.'],
+['redesign-consumo-periodo','Impedir sobreposição entre consumo diário e período','Consumos descartáveis do mesmo lote e vigência',[
+'Registre consumo diário de teste em uma data e anote intervalo confirmado.',
+'Abra conferência por período sobre essa data e confira prévia/validação; depois teste intervalo adjacente em registros descartáveis.',
+'Não force confirmação de intervalo sobreposto; confira que fechamentos originais permanecem intactos.'
+],'Critério: lançamentos diários e por período não se sobrepõem; atrasos podem ser registrados em outro período sem duplicar dias.'],
+['redesign-consumo-mensal','Consolidar mês sem nova baixa de estoque','Nutrição → Consumos → consolidação mensal',[
+'Use consumos descartáveis já confirmados no mês; anote movimentos/saldos antes da consolidação.',
+'Abra consolidação mensal e confira quais consumos existentes compõem o mês. Confirme somente se a ação for agregadora.',
+'Reabra consolidação e estoque; compare movimentos e valores com estado anterior.'
+],'Critério: mês consolida consumos existentes sem nova baixa de estoque ou despesa.'],
+['redesign-consumo-mensal-sem-baixa','Preservar custo não apurado na consolidação mensal','Mês com consumo descartável sem baixa',[
+'Inclua na consulta mensal fechamento de teste sem baixa com quantidade e justificativa.',
+'Confira mês e detalhe com usuário autorizado a ver valores e com usuário sem essa permissão.',
+'Verifique que consolidação preserva quantidade/motivo e não transforma estimativa em custo apurado.'
+],'Critério: consolidação preserva custo não apurado em itens sem baixa e respeita permissão de valores.']
 ]}
 ];
 const chave='fazendinha:guia-v3:20261004:1';

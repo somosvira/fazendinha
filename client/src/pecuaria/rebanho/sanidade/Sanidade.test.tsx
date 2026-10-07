@@ -19,7 +19,7 @@ describe("busca e atualização da Sanidade", () => {
     render(<Sanidade podeLancar />);
     fireEvent.click(screen.getByRole("button", { name: "Gerenciar procedimentos" }));
     await screen.findByText("Gerenciador aberto");
-    expect(screen.getByRole("combobox", { name: "Animal" })).toHaveProperty("value", "");
+    expect(screen.getByRole("button", { name: "Animal" })).toHaveProperty("textContent", "Todos os animais");
     localStorage.removeItem("rionovo:usuario");
   });
   it("exige nova ciência quando troca o protocolo após conflito confirmado", async () => {
@@ -50,7 +50,7 @@ describe("busca e atualização da Sanidade", () => {
     expect((screen.getByRole("switch", { name: /Confirmo iniciar outro protocolo/ }) as HTMLInputElement).checked).toBe(false);
     expect((screen.getByLabelText(/Motivo da sobreposição/) as HTMLTextAreaElement).value).toBe("Sobreposição revisada com responsável");
   });
-  it("restaura busca da URL e envia a todas as abas, reiniciando a página ao editar", async () => {
+  it("restaura busca da URL, reinicia a página e conserva filtros próprios ao trocar tabela", async () => {
     mocks.req.mockResolvedValue([]);
     window.history.replaceState(null, "", "/pecuaria/rebanho/sanidade?aba=agenda&buscaAnimal=Mimosa&pagina=3");
     render(<Sanidade podeLancar={false} />);
@@ -60,9 +60,13 @@ describe("busca e atualização da Sanidade", () => {
     fireEvent.change(busca, { target: { value: "GV3" } });
     await waitFor(() => expect(mocks.req).toHaveBeenCalledWith(expect.stringMatching(/tarefas.*pagina=1.*buscaAnimal=GV3/)));
     for (const [rotulo, recurso] of [["Ocorrências", "ocorrencias"], ["Aplicações", "aplicacoes"], ["Exames", "exames"], ["Carências", "carencias"]]) {
+      if (rotulo === "Ocorrências") fireEvent.click(screen.getByText("Mais consultas"));
       fireEvent.click(screen.getByRole("button", { name: rotulo }));
-      await waitFor(() => expect(mocks.req).toHaveBeenCalledWith(expect.stringMatching(`${recurso}.*buscaAnimal=GV3`)));
+      await waitFor(() => expect(mocks.req).toHaveBeenCalledWith(expect.stringMatching(`${recurso}.*pagina=1`)));
+      expect(screen.getByPlaceholderText("Brinco ou nome")).toHaveProperty("value", "");
     }
+    fireEvent.click(screen.getByRole("button", { name: "Agenda" }));
+    expect(screen.getByPlaceholderText("Brinco ou nome")).toHaveProperty("value", "GV3");
     expect(new URLSearchParams(window.location.search).get("buscaAnimal")).toBe("GV3");
     expect(new URLSearchParams(window.location.search).get("pagina")).toBeNull();
   });

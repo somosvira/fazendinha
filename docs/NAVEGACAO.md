@@ -81,15 +81,28 @@ Formato do link: `[rótulo curto](/caminho?param=valor&param2=valor2)`.
 **Exemplos:**
   - [Abrir as configurações financeiras](/financeiro/configuracoes)
 
-### `/pecuaria/rebanho` — Rebanho — lista de animais
+### Pecuária — destinos operacionais
 
-**Quando linkar:** Quando a resposta é sobre o rebanho/animais e o usuário pode querer ver a lista.
+Os destinos pertencem à mesma área/aba autorizada `pec-rebanho`; a sidebar oferece uma navegação global única.
 
-**Filtros:**
-  - (sem filtros de deep-link)
+| Destino | URL |
+|---|---|
+| Visão geral | `/pecuaria/rebanho` |
+| Coletas de campo | `/pecuaria/rebanho/coletas` (detalhe: `?coletaId=UUID`) |
+| Animais / ficha | `/pecuaria/rebanho/animais` / `/animais/:id` |
+| Lotes / ficha | `/pecuaria/rebanho/lotes` / `/lotes/:id` |
+| Pesagens | `/pecuaria/rebanho/pesagens` |
+| Sanidade | `/pecuaria/rebanho/sanidade` |
+| Nutrição | `/pecuaria/rebanho/nutricao` |
+| Cadastros | `/pecuaria/rebanho/cadastros` |
+
+Sanidade conserva filtros por tabela, inclusive ao voltar/recarregar. Categorias plurais CSV: `animalIds`, `loteIds`, `situacoes`; busca e datas permanecem próprias. Agenda divide Ciclos/Tarefas; Ocorrências fica em Mais consultas. Aliases singulares antigos permanecem válidos.
+
+Nutrição divide Dietas/Atribuições/Consumos; aliases antigos `receitas`, `lotes` e `fechamentos` permanecem aceitos. Consultas globais não exigem escolher um lote antecipadamente; a nova atribuição/conferência usa lote como campo do formulário.
 
 **Exemplos:**
-  - [Ver o rebanho](/pecuaria/rebanho)
+  - [Ver os animais](/pecuaria/rebanho/animais)
+  - [Preparar uma ficha de campo](/pecuaria/rebanho/coletas)
 
 ## Plano de implementação no client (filtros)
 

@@ -20,6 +20,8 @@ import {
   PainelCadastro,
 } from "../../../financeiro/PainelCadastro";
 import { DatePicker } from "../../../components/DatePicker";
+import { MultiSelect } from "../../../components/MultiSelect";
+import { consultaFiltrosSanidade, gravarFiltrosSanidade, lerFiltrosSanidade, type FiltrosSanidade } from "./filtrosSanidade";
 import { ConfirmacaoCiencia } from "../../../components/ConfirmacaoCiencia";
 import { getUsuario } from "../../../lib/auth";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
@@ -184,16 +186,22 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
   const [erroDetalhe, setErroDetalhe] = useState<string | null>(null);
   const [recarregarDetalhe, setRecarregarDetalhe] = useState(0);
   const [animais, setAnimais] = useState<AnimalResumo[]>([]);
-  const [buscaAnimal, setBuscaAnimal] = useState(() => estadoDaUrl().buscaAnimal);
+  const [filtrosPorAba, setFiltrosPorAba] = useState(() => lerFiltrosSanidade(new URLSearchParams(window.location.search), estadoDaUrl().aba));
+  const filtros = filtrosPorAba[aba];
+  const { buscaAnimal, animalIds, loteIds, situacoes, de, ate, pagina } = filtros;
+  const animalId = animalIds.length === 1 ? animalIds[0] : "";
+  function mudarFiltro(patch: Partial<FiltrosSanidade>) {
+    setFiltrosPorAba((atual) => ({ ...atual, [aba]: { ...atual[aba], pagina: 1, ...patch } }));
+  }
+  function setPagina(valor: number | ((anterior: number) => number)) {
+    mudarFiltro({ pagina: typeof valor === "function" ? valor(pagina) : valor });
+  }
   const [carencias, setCarencias] = useState<
     (CarenciaAnimal & {
       animal: { id: string; brinco: string; nome: string | null };
     })[]
   >([]);
-  const [animalId, setAnimalId] = useState(() => estadoDaUrl().animalId);
-  const [loteId, setLoteId] = useState(() => estadoDaUrl().loteId);
   const [lotes, setLotes] = useState<Lote[]>([]);
-  const [pagina, setPagina] = useState(() => estadoDaUrl().pagina);
   const [servicos, setServicos] = useState<ServicoSanitario[]>([]);
   const [servicoId, setServicoId] = useState("");
   const [responsavel, setResponsavel] = useState("");
@@ -227,9 +235,6 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
   const [confirmarSobreposicao, setConfirmarSobreposicao] = useState(false);
   const [exigeSobreposicao, setExigeSobreposicao] = useState(false);
   const [resultado, setResultado] = useState("");
-  const [de, setDe] = useState(() => estadoDaUrl().de);
-  const [ate, setAte] = useState(() => estadoDaUrl().ate);
-  const [situacao, setSituacao] = useState(() => estadoDaUrl().situacao);
   const [erro, setErro] = useState<string | null>(null);
   const [carregandoAba, setCarregandoAba] = useState(false);
   const [erroAba, setErroAba] = useState<string | null>(null);
@@ -242,10 +247,10 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
   useEffect(() => {
     const restaurar = () => {
       const url = estadoDaUrl();
-      setAba(url.aba); setAnimalId(url.animalId); setLoteId(url.loteId); setBuscaAnimal(url.buscaAnimal);
+      setAba(url.aba);
+      setFiltrosPorAba(lerFiltrosSanidade(new URLSearchParams(window.location.search), url.aba));
       setVisaoAgenda(new URLSearchParams(window.location.search).get("visaoAgenda") === "tarefas" ? "tarefas" : "rodadas");
       setRodadaId(new URLSearchParams(window.location.search).get("rodadaId") ?? "");
-      setDe(url.de); setAte(url.ate); setSituacao(url.situacao); setPagina(url.pagina);
       setAplicacaoId(url.aplicacaoId); setDetalhePropriedadeId(url.detalhePropriedadeId);
       setDetalhe(url.detalheTipo && url.detalheId ? { tipo: url.detalheTipo, id: url.detalheId } : url.aplicacaoId ? { tipo: "aplicacao", id: url.aplicacaoId } : null);
     };
@@ -257,17 +262,8 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
     if (aba === "agenda" && rodadaId) { const atual = new URLSearchParams(window.location.search); for (const chave of ["etapaId", "paginaEtapas", "paginaParticipantes", "paginaTarefas"]) { const v = atual.get(chave); if (v) params.set(chave, v); } }
     params.set("aba", aba);
     if (aba === "agenda") { params.set("visaoAgenda", visaoAgenda); if (rodadaId) params.set("rodadaId", rodadaId); }
-    for (const [k, v] of Object.entries({
-      animalId,
-      buscaAnimal,
-      loteId,
-      de,
-      ate,
-      situacao,
-      aplicacaoId,
-    }))
-      if (v) params.set(k, v);
-    if (pagina > 1) params.set("pagina", String(pagina));
+    gravarFiltrosSanidade(params, filtrosPorAba, aba);
+    if (aplicacaoId) params.set("aplicacaoId", aplicacaoId);
     if (detalhe) {
       params.set("detalheTipo", detalhe.tipo);
       params.set("detalheId", detalhe.id);
@@ -276,7 +272,7 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
     const url = `${window.location.pathname}?${params}`;
     if (url !== `${window.location.pathname}${window.location.search}`)
       window.history.replaceState(null, "", url);
-  }, [aba, animalId, buscaAnimal, loteId, de, ate, situacao, pagina, aplicacaoId, detalhe, detalhePropriedadeId, visaoAgenda, rodadaId]);
+  }, [aba, filtrosPorAba, aplicacaoId, detalhe, detalhePropriedadeId, visaoAgenda, rodadaId]);
   useEffect(() => {
     if (!detalhe) {
       setDetalheConteudo(null);
@@ -313,18 +309,15 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
     Promise.allSettled([
       listarAnimais({ pageSize: 100, busca: buscaAnimal }),
       listarLotes(),
-      animalId ? buscarFichaAnimal(animalId) : Promise.resolve(null),
+      Promise.allSettled(animalIds.map((id) => buscarFichaAnimal(id))),
     ])
       .then(([a, l, ficha]) => {
         if (!vivo) return;
         if (a.status === "fulfilled") {
-          const itens = a.value.itens;
-          if (
-            ficha.status === "fulfilled" &&
-            ficha.value &&
-            !itens.some((i) => i.id === ficha.value!.id)
-          )
-            itens.push(ficha.value);
+          const itens = [...a.value.itens];
+          if (ficha.status === "fulfilled") for (const resultado of ficha.value) {
+            if (resultado.status === "fulfilled" && resultado.value && !itens.some((i) => i.id === resultado.value.id)) itens.push(resultado.value);
+          }
           setAnimais(itens);
         }
         if (l.status === "fulfilled") setLotes(l.value);
@@ -339,26 +332,12 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
     return () => {
       vivo = false;
     };
-  }, [animalId, buscaAnimal]);
+  }, [animalIds, buscaAnimal]);
   useEffect(() => {
     let vivo = true;
     setCarregandoAba(true);
     setErroAba(null);
-    const params = new URLSearchParams({
-      pagina: String(pagina),
-      porPagina: "50",
-    });
-    if (animalId) params.set("animalId", animalId);
-    if (buscaAnimal.trim()) params.set("buscaAnimal", buscaAnimal.trim());
-    if (loteId) params.set("loteId", loteId);
-    if (de) params.set("de", de);
-    if (ate) params.set("ate", ate);
-    if (situacao) {
-      const situacaoApi = ["CARÊNCIA_VIGENTE", "CARÊNCIA_DESCONHECIDA"].includes(situacao)
-          ? ""
-          : situacao;
-      if (situacaoApi) params.set("situacao", situacaoApi);
-    }
+    const params = consultaFiltrosSanidade(filtros);
     const q = "?" + params.toString();
     const requisicoes: Record<Aba, () => Promise<unknown>> = {
       agenda: () => reqSanidade<PaginaSanitaria<Tarefa>>(`/tarefas${q}&paginado=true`),
@@ -427,7 +406,7 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
     return () => {
       vivo = false;
     };
-  }, [aba, animalId, buscaAnimal, loteId, de, ate, situacao, pagina, revisao]);
+  }, [aba, filtros, revisao]);
   useEffect(() => {
     setServicos([]);
     setServicoId("");
@@ -471,32 +450,8 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
     setDetalhe({ tipo, id });
   };
   function fecharDetalhe() { setDetalhe(null); setAplicacaoId(""); }
-  const situacaoCorresponde = (
-    s: string,
-    fim?: string | null,
-    resultado?: unknown,
-  ) => {
-    if (!situacao) return true;
-    if (situacao === "ABERTA") return !fim;
-    if (situacao === "ENCERRADA") return !!fim;
-    if (situacao === "AGUARDANDO_RESULTADO")
-      return resultado == null || resultado === "";
-    if (situacao === "RESULTADO_INFORMADO") return resultado != null && resultado !== "";
-    if (situacao === "ORIGEM_PENDENTE") return true;
-    if (situacao === "ATRASADA") return s === "PENDENTE";
-    if (situacao === "CARÊNCIA_VIGENTE" || situacao === "CARÊNCIA_DESCONHECIDA")
-      return true;
-    return s === situacao;
-  };
-  const noPeriodo = (
-    d: string,
-    s: string,
-    fim?: string | null,
-    resultado?: unknown,
-  ) =>
-    (!de || d.slice(0, 10) >= de) &&
-    (!ate || d.slice(0, 10) <= ate) &&
-    situacaoCorresponde(s, fim, resultado);
+  const noPeriodo = (d: string, _s: string, _fim?: string | null, _resultado?: unknown) =>
+    (!de || d.slice(0, 10) >= de) && (!ate || d.slice(0, 10) <= ate);
   async function salvar() {
     if (!painel || ocupado) return;
     const propriedadeId = animalDaAcao?.propriedadeId ?? animal?.propriedade?.id;
@@ -641,140 +596,30 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
           Tentar novamente
         </Button>
       )}
-      <div className="mt-5 grid gap-3 sm:grid-cols-4">
-        <label className="text-sm">
-          Buscar animal
-          <input
-            className={classeInput}
-            value={buscaAnimal}
-            onChange={(e) => {
-              setBuscaAnimal(e.target.value);
-              setPagina(1);
-            }}
-            placeholder="Brinco ou nome"
-          />
-        </label>
-        <label className="text-sm">
-          Animal
-          <select
-            className={classeInput}
-            value={animalId}
-            onChange={(e) => {
-              setAnimalId(e.target.value);
-              setPagina(1);
-            }}
-          >
-            <option value="">Todos os animais</option>
-            {animais.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.brinco} · {a.nome ?? ""}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="text-sm">
-          Lote
-          <select
-            className={classeInput}
-            value={loteId}
-            onChange={(e) => {
-              setLoteId(e.target.value);
-              setPagina(1);
-            }}
-          >
-            <option value="">Todos os lotes</option>
-            {lotes.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.nome}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="text-sm">
-          De
-          <DatePicker
-            value={de}
-            onChange={(v) => {
-              setDe(v);
-              setPagina(1);
-            }}
-          />
-        </label>
-        <label className="text-sm">
-          Até
-          <DatePicker
-            value={ate}
-            onChange={(v) => {
-              setAte(v);
-              setPagina(1);
-            }}
-          />
-        </label>
-        <label className="text-sm">
-          Situação
-          <select
-            className={classeInput}
-            value={situacao}
-            onChange={(e) => {
-              setSituacao(e.target.value);
-              setPagina(1);
-            }}
-          >
-            <option value="">Todas</option>
-            {(aba === "agenda"
-              ? [
-                  ["PENDENTE", "Pendente"],
-                  ["ATRASADA", "Atrasada"],
-                  ["REALIZADA", "Realizada"],
-                  ["DISPENSADA", "Dispensada"],
-                  ["EXECUCAO_CANCELADA", "Execução cancelada"],
-                ]
-              : aba === "ocorrencias"
-                ? [
-                    ["ABERTA", "Aberta"],
-                    ["ENCERRADA", "Encerrada"],
-                    ["ANULADO", "Anulada"],
-                  ]
-                : aba === "exames"
-                  ? [
-                      ["AGUARDANDO_RESULTADO", "Aguardando resultado"],
-                      ["RESULTADO_INFORMADO", "Resultado informado"],
-                      ["ANULADO", "Anulado"],
-                    ]
-                  : aba === "carencias"
-                    ? [
-                        ["CARÊNCIA_VIGENTE", "Carência vigente"],
-                        ["CARÊNCIA_DESCONHECIDA", "Prazo não informado"],
-                      ]
-                    : [
-                        ["VALIDO", "Válida"],
-                        ["ORIGEM_PENDENTE", "Origem pendente"],
-                        ["ANULADO", "Anulada"],
-                      ]
-            ).map(([s, rotulo]) => (
-              <option key={s} value={s}>
-                {rotulo}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-      <SubAbas
-        ativa={aba}
-        onSelecionar={(v) => {
-          setAba(v);
-          setPagina(1);
-          setSituacao("");
-          if (v !== "aplicacoes") setAplicacaoId("");
-        }}
-        abas={[
+      <div className="mt-5 flex flex-wrap items-end justify-between gap-3">
+        <SubAbas ativa={aba} onSelecionar={(v) => { setAba(v); if (v !== "aplicacoes") setAplicacaoId(""); }} abas={[
           { valor: "agenda", rotulo: "Agenda", icon: Calendar },
-          { valor: "ocorrencias", rotulo: "Ocorrências", icon: ClipboardList },
           { valor: "aplicacoes", rotulo: "Aplicações", icon: Syringe },
           { valor: "exames", rotulo: "Exames", icon: FlaskConical },
           { valor: "carencias", rotulo: "Carências", icon: Shield },
-        ]}
-      />
+        ]} />
+        <details open={aba === "ocorrencias"} className="relative pb-2">
+          <summary className="cursor-pointer rounded-lg border border-border px-3 py-2 text-sm font-semibold">Mais consultas</summary>
+          <Button secondary className="mt-2" onClick={() => { setAba("ocorrencias"); setAplicacaoId(""); }}><ClipboardList size={16} />Ocorrências</Button>
+        </details>
+      </div>
+      <section aria-label={`Filtros de ${aba}`} className="mt-5 grid gap-3 rounded-lg border border-border p-4 sm:grid-cols-2 xl:grid-cols-3">
+        <label className="text-sm">Buscar animal<input className={classeInput} value={buscaAnimal} onChange={(e) => mudarFiltro({ buscaAnimal: e.target.value })} placeholder="Brinco ou nome" /></label>
+        <MultiSelect label="Animal" placeholder="Todos os animais" options={animais.map((a) => ({ value: a.id, label: `${a.brinco}${a.nome ? ` · ${a.nome}` : ""}` }))} value={animalIds} onValueChange={(animalIds) => mudarFiltro({ animalIds })} />
+        <MultiSelect label="Lote" placeholder="Todos os lotes" options={lotes.map((l) => ({ value: l.id, label: l.nome }))} value={loteIds} onValueChange={(loteIds) => mudarFiltro({ loteIds })} />
+        <label className="text-sm">De<DatePicker value={de} onChange={(de) => mudarFiltro({ de })} /></label>
+        <label className="text-sm">Até<DatePicker value={ate} onChange={(ate) => mudarFiltro({ ate })} /></label>
+        <MultiSelect label="Situação" options={(aba === "agenda" ? [["PENDENTE", "Pendente"], ["ATRASADA", "Atrasada"], ["REALIZADA", "Realizada"], ["DISPENSADA", "Dispensada"], ["EXECUCAO_CANCELADA", "Execução cancelada"]]
+        : aba === "ocorrencias" ? [["ABERTA", "Aberta"], ["ENCERRADA", "Encerrada"], ["ANULADO", "Anulada"]]
+        : aba === "exames" ? [["AGUARDANDO_RESULTADO", "Aguardando resultado"], ["RESULTADO_INFORMADO", "Resultado informado"], ["ANULADO", "Anulado"]]
+        : aba === "carencias" ? [["CARÊNCIA_VIGENTE", "Carência vigente"], ["CARÊNCIA_DESCONHECIDA", "Prazo não informado"]]
+        : [["VALIDO", "Válida"], ["ORIGEM_PENDENTE", "Origem pendente"], ["ANULADO", "Anulada"]]).map(([value, label]) => ({ value, label }))} value={situacoes} onValueChange={(situacoes) => mudarFiltro({ situacoes })} />
+      </section>
       {erroAba && (
         <div className="mt-4">
           <ErrorBox erro={erroAba} />
@@ -802,7 +647,7 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
           {aba === "agenda" && (
             <>
               <SubAbas ativa={visaoAgenda} onSelecionar={(v) => { setVisaoAgenda(v); setPagina(1); }} abas={[{ valor: "rodadas", rotulo: "Ciclos", icon: Calendar }, { valor: "tarefas", rotulo: "Tarefas", icon: ClipboardList }]} />
-              {visaoAgenda === "rodadas" ? <AgendaRodadas filtros={{ animalId, buscaAnimal, loteId, de, ate, situacao, pagina, porPagina: 20 }} podeLancar={podeLancar} recarregarToken={revisao} onAcao={(acao, t) => { if (acao === "consultar") { abrirDetalhe("execucao", t.execucaoId, t.execucao.propriedadeId); return; } setAnimalDaAcao({ animalId: t.execucao.animalId, propriedadeId: t.propriedadeAtualId ?? t.execucao.propriedadeId }); abrir({ tipo: acao, id: acao === "cancelar" ? t.execucaoId : t.id }); }} rodadaId={rodadaId} onAbrir={setRodadaId} onExecutar={setExecutandoEtapa} /> : <>
+              {visaoAgenda === "rodadas" ? <AgendaRodadas filtros={{ ...Object.fromEntries(consultaFiltrosSanidade(filtros)), porPagina: 20 }} podeLancar={podeLancar} recarregarToken={revisao} onAcao={(acao, t) => { if (acao === "consultar") { abrirDetalhe("execucao", t.execucaoId, t.execucao.propriedadeId); return; } setAnimalDaAcao({ animalId: t.execucao.animalId, propriedadeId: t.propriedadeAtualId ?? t.execucao.propriedadeId }); abrir({ tipo: acao, id: acao === "cancelar" ? t.execucaoId : t.id }); }} rodadaId={rodadaId} onAbrir={setRodadaId} onExecutar={setExecutandoEtapa} /> : <>
               {podeLancar && (
                 <Button onClick={() => abrir({ tipo: "protocolo" })}>
                   Iniciar protocolo
@@ -932,15 +777,6 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
           {aba === "carencias" && !animal && (
             <>
               {carencias
-                .filter(
-                  (c) =>
-                    !situacao ||
-                    (situacao === "CARÊNCIA_VIGENTE"
-                      ? [c.leite, c.carne].some((p) => p.estado === "CONHECIDO" && new Date(p.ate).getTime() > Date.now())
-                      : [c.leite, c.carne].some(
-                          (p) => p.estado === "NAO_INFORMADO",
-                        )),
-                )
                 .map((c) => (
                   <div
                     key={c.animal.id}

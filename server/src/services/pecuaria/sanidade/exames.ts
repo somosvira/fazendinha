@@ -2,7 +2,7 @@ import { confirmarColetivo } from "./coletivos.js";
 import { conferirAnimalNoFato } from "../fatos.js";
 import { transacaoPecuaria } from "../transacao.js";
 import { confirmarFato } from "../idempotencia.js";
-import { filtrosFatos, limites, type ConsultaSanitaria } from "./consulta.js";
+import { filtrosFatos, filtrarSituacoes, statusSituacao, limites, type ConsultaSanitaria } from "./consulta.js";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../../db.js";
 import { RebanhoError, auditar, travarAnimais } from "../rebanho/regras.js";
@@ -60,9 +60,7 @@ export async function criarTipoExame(input: { nome: string; tipoResultado: TipoR
 }
 
 export async function listarExames(animalId: string | undefined, propriedadeId: number | null, filtro?: ConsultaSanitaria) {
-  const aguardando = filtro?.situacao === "AGUARDANDO_RESULTADO";
-  const informado = filtro?.situacao === "RESULTADO_INFORMADO";
-  const lista = await prisma.exameAnimal.findMany({ where: { ...filtrosFatos(filtro), ...(aguardando ? { resultadoTexto: null, resultadoNumero: null, resultadoOpcao: null } : informado ? { OR: [{ resultadoTexto: { not: null } }, { resultadoNumero: { not: null } }, { resultadoOpcao: { not: null } }] } : {}), ...(animalId ? { animalId } : {}), ...(propriedadeId == null ? {} : { propriedadeId }) },
+  const lista = await prisma.exameAnimal.findMany({ where: { ...filtrosFatos(filtro), ...filtrarSituacoes(filtro, (s): Prisma.ExameAnimalWhereInput => ({ ...statusSituacao(s), ...(s === "AGUARDANDO_RESULTADO" ? { resultadoTexto: null, resultadoNumero: null, resultadoOpcao: null } : s === "RESULTADO_INFORMADO" ? { OR: [{ resultadoTexto: { not: null } }, { resultadoNumero: { not: null } }, { resultadoOpcao: { not: null } }] } : {}) })), ...(animalId && !filtro?.animalIds ? { animalId } : {}), ...(propriedadeId == null ? {} : { propriedadeId }) },
     include: { tipoExame: { select: { nome: true } } }, orderBy: [{ data: "desc" }, { criadoEm: "desc" }], ...limites(filtro) });
   return lista.map((e) => ({ ...e, tipoExame: { nome: nomeExameHistorico(e.formatoSnapshot, e.tipoExame.nome) } }));
 }

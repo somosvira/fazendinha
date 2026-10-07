@@ -650,6 +650,7 @@ model AuditoriaFinanceira {
 // Sítio físico da fazenda-cliente (multi-propriedade). Default single-tenant: 1
 // linha (principal). O mesmo seam serve de base p/ multi-tenant (Organizacao) depois.
 model Propriedade {
+  coletasCampo               ColetaCampo[]
   rodadasProtocolo            RodadaProtocoloSanitario[]
   id                    Int                           @id @default(autoincrement())
   nome                  String                        @unique
@@ -1903,10 +1904,34 @@ model VigenciaDietaLote {
   dieta       Dieta               @relation(fields: [dietaId], references: [id], onDelete: Restrict)
   desde       DateTime            @db.Date
   ate         DateTime?           @db.Date
+  status      StatusFatoPecuariaV3 @default(VALIDO)
+  motivoAnulacao String?
+  anuladoEm   DateTime?
   fechamentos FechamentoConsumo[]
   criadoEm    DateTime            @default(now())
 
   @@index([loteId, desde])
+  @@schema("pecuaria")
+}
+
+model ColetaCampo {
+  id             String       @id @default(uuid())
+  propriedadeId  Int
+  propriedade    Propriedade  @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
+  tipo           String
+  data           DateTime     @db.Date
+  titulo         String
+  status         String       @default("PREPARADA")
+  versao         Int          @default(1)
+  snapshot       Json
+  rascunho       Json
+  resultados     Json?
+  criadoPorId    Int?
+  criadoEm       DateTime     @default(now())
+  atualizadoEm   DateTime     @updatedAt
+  concluidoEm    DateTime?
+
+  @@index([propriedadeId, status, data])
   @@schema("pecuaria")
 }
 

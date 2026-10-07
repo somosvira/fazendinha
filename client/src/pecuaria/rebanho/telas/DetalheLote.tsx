@@ -169,6 +169,7 @@ export function DetalheLote({ id, podeLancar = true, onVoltar }: { id: string; p
       titulo={lote.nome}
       descricao={`${lote.propriedade.nome}${lote.observacao ? ` · ${lote.observacao}` : ""}`}
       acao={podeLancar ? <div className="flex flex-wrap gap-2">
+        {lote.ativo && <Button secondary onClick={() => navegarPara(`/pecuaria/rebanho/coletas?preparar=1&loteId=${encodeURIComponent(lote.id)}&propriedadeId=${lote.propriedadeId}`)}>Preparar coleta deste lote</Button>}
         <Button secondary onClick={() => setTrazendo(true)}><ArrowRightLeft size={16} /> Trazer animais</Button>
         <Button secondary onClick={() => setEditando(true)}>Editar lote</Button>
         {lote.ativo

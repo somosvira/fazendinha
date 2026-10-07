@@ -23,6 +23,8 @@ import { DetalheLote } from "./telas/DetalheLote";
 import { Cadastros } from "./telas/Cadastros";
 import { Sanidade } from "./sanidade/Sanidade";
 import { Nutricao } from "./nutricao/Nutricao";
+import { ColetasCampo } from "./telas/ColetasCampo";
+import { Pesagens } from "./telas/Pesagens";
 
 type Tela =
   | { tipo: "visao-geral" }
@@ -32,9 +34,12 @@ type Tela =
   | { tipo: "lotes" }
   | { tipo: "detalhe-lote"; id: string }
   | { tipo: "cadastros" };
-type TelaV3 = Tela | { tipo: "sanidade" | "nutricao" };
+type TelaV3 = Tela | { tipo: "sanidade" | "nutricao" | "coletas" | "pesagens" };
 
 function telaDaUrl(pathname: string): TelaV3 {
+  pathname = pathname.replace(/\/$/, "").toLowerCase();
+  if (pathname === "/pecuaria/rebanho/coletas") return { tipo: "coletas" };
+  if (pathname === "/pecuaria/rebanho/pesagens") return { tipo: "pesagens" };
   if (pathname === "/pecuaria/rebanho/sanidade") return { tipo: "sanidade" };
   if (pathname === "/pecuaria/rebanho/nutricao") return { tipo: "nutricao" };
   const animalId = parseAnimalId(pathname);
@@ -85,6 +90,8 @@ export function RebanhoContent({ podeLancar = true }: { podeLancar?: boolean }) 
     return <Cadastros podeLancar={podeLancar} />;
   }
   if (tela.tipo === "sanidade") return <Sanidade podeLancar={podeLancar} />;
+  if (tela.tipo === "coletas") return <ColetasCampo podeLancar={podeLancar} />;
+  if (tela.tipo === "pesagens") return <Pesagens podeLancar={podeLancar} />;
   if (tela.tipo === "nutricao") return <Nutricao podeLancar={podeLancar} />;
   return <VisaoGeral podeLancar={podeLancar} />;
 }

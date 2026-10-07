@@ -19,6 +19,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { Tab } from "./Shell";
 import { COMANDOS, buscar, type Comando, type GrupoComando, type ResultadoBusca } from "../lib/searchIndex";
 import { comPropriedade } from "../propriedadeScope";
+import { navegarPara } from "../router";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Command, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { X } from "lucide-react";
@@ -216,7 +217,7 @@ export function CommandPalette({ aberto, onFechar, onNav, podeVer }: Props) {
                       <CommandItem
                         key={c.id}
                         value={c.id}
-                        onSelect={() => escolher(c.tab)}
+                        onSelect={() => { escolher(c.tab); if (c.href) navegarPara(c.href); }}
                         className={LINHA_CLASSE}
                       >
                         <Dot cor={COR_GRUPO[c.grupo]} />

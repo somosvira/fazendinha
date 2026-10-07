@@ -9,7 +9,7 @@ import { RebanhoError } from "../../services/pecuaria/rebanho/regras.js";
 import { EstoqueError } from "../../services/estoque/estoque.js";
 import * as dietas from "../../services/pecuaria/nutricao/dietas.js";
 import * as consumo from "../../services/pecuaria/nutricao/consumo.js";
-import { listaNutricaoSchema, paginaNutricaoSchema } from "../../services/pecuaria/nutricao/schemas.js";
+import { listaNutricaoSchema, paginaNutricaoSchema, correcaoVigenciaSchema, anulacaoVigenciaSchema, resumoMensalSchema } from "../../services/pecuaria/nutricao/schemas.js";
 
 const uuid = z.string().uuid();
 const data = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
@@ -26,9 +26,33 @@ const contexto = z.object({ loteId: uuid, propriedadeId: z.number().int().positi
 const itemConsumo = z.object({ produtoId: uuid, quantidadeConfirmada: z.number().nonnegative().optional(), motivoAjuste: z.string().trim().max(500).nullish(), modoEstoque: z.enum(["BAIXA_ESTOQUE", "SEM_BAIXA_JUSTIFICADA"]), justificativaSemBaixa: z.string().trim().max(500).nullish(), partidas: z.array(z.object({ partidaId: uuid, quantidade: z.number().positive(), cienciaValidadeDesconhecida: z.boolean().optional() })).optional() }).strict();
 
 export const nutricaoRouter = new Hono()
-  .post("/vigencias/:id/correcao", validar(z.object({ propriedadeId: z.number().int().positive(), desde: data, motivo: z.string().trim().min(5).max(500) }).strict()), async (c) => {
+  .post("/vigencias/:id/correcao/previa", validar(correcaoVigenciaSchema), async (c) => {
+    try { const { propriedadeId: solicitado, ...input } = c.req.valid("json"); const propriedadeId = await resolverEscopoEscrita(c, solicitado);
+      return c.json(await dietas.previaAlteracaoVigencia(c.req.param("id"), propriedadeId, input)); } catch (e) { return falha(c, e); }
+  })
+  .post("/vigencias/:id/correcao", validar(correcaoVigenciaSchema), async (c) => {
     try { const { propriedadeId: solicitado, ...input } = c.req.valid("json"); const propriedadeId = await resolverEscopoEscrita(c, solicitado);
       return c.json(await dietas.corrigirVigencia(c.req.param("id"), propriedadeId, input, getUsuario(c)?.id ?? null)); } catch (e) { return falha(c, e); }
+  })
+  .post("/vigencias/:id/anulacao/previa", validar(anulacaoVigenciaSchema), async (c) => {
+    try { const { propriedadeId: solicitado, ...input } = c.req.valid("json"); const propriedadeId = await resolverEscopoEscrita(c, solicitado);
+      return c.json(await dietas.previaAlteracaoVigencia(c.req.param("id"), propriedadeId, { ...input, anular: true })); } catch (e) { return falha(c, e); }
+  })
+  .post("/vigencias/:id/anulacao", validar(anulacaoVigenciaSchema.extend({ revisao: z.string().regex(/^[a-f0-9]{64}$/) })), async (c) => {
+    try { const { propriedadeId: solicitado, ...input } = c.req.valid("json"); const propriedadeId = await resolverEscopoEscrita(c, solicitado);
+      return c.json(await dietas.anularVigencia(c.req.param("id"), propriedadeId, input, getUsuario(c)?.id ?? null)); } catch (e) { return falha(c, e); }
+  })
+  .post("/dietas/:id/versoes", async (c) => {
+    try { return c.json(await dietas.criarVersaoDieta(c.req.param("id"), getUsuario(c)?.id ?? null), 201); } catch (e) { return falha(c, e); }
+  })
+  .patch("/dietas/:id/estado", validar(z.object({ ativo: z.boolean() }).strict()), async (c) => {
+    try { return c.json(await dietas.alterarEstadoDieta(c.req.param("id"), c.req.valid("json").ativo, getUsuario(c)?.id ?? null)); } catch (e) { return falha(c, e); }
+  })
+  .delete("/dietas/:id", async (c) => {
+    try { return c.json(await dietas.excluirDieta(c.req.param("id"), getUsuario(c)?.id ?? null)); } catch (e) { return falha(c, e); }
+  })
+  .get("/consumo/resumo-mensal", validarQuery(resumoMensalSchema), async (c) => {
+    try { return c.json(await consumo.resumoMensal(c.req.valid("query"), await resolverEscopoLeitura(c), verValores(c))); } catch (e) { return falha(c, e); }
   })
   .post("/consumo/periodos/previa", validar(contexto), async (c) => {
     try { const body = c.req.valid("json"); const propriedadeId = await resolverEscopoEscrita(c, body.propriedadeId); const previa = await consumo.previaPeriodos({ ...body, propriedadeId });

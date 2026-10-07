@@ -24,6 +24,7 @@ export interface Comando {
   sinonimos?: string[];
   acao?: boolean;
   descricao?: string;
+  href?: string;
 }
 
 // Resultado de entidade real vinda do backend (GET /api/busca?q=). Espelha o
@@ -52,8 +53,12 @@ export const COMANDOS: Comando[] = [
   { id: "estoque", tab: "estoque", label: "Estoque", grupo: "Financeiro", sinonimos: ["insumo", "insumos", "saldo", "almoxarifado", "medicamento", "produto", "defensivo", "fertilizante"], descricao: "Estoque de insumos — saldos, movimentos e ajustes" },
 
   // — Pecuária: cadastro individual único, independentemente da finalidade —
-  { id: "pec-rebanho", tab: "pec-rebanho", label: "Rebanho", grupo: "Pecuária", sinonimos: ["rebanho", "pecuária", "vaca", "vacas", "boi", "gado", "bovino", "animais", "brinco", "ficha do animal", "lote", "movimentar", "saída", "pesagem"], descricao: "Cadastro de animais do rebanho" },
-  { id: "acao-novo-animal", tab: "pec-rebanho", label: "Novo animal", grupo: "Ações", acao: true, sinonimos: ["cadastrar animal", "novo animal", "cadastrar gado", "nova vaca", "registrar gado", "novo bovino"], descricao: "Cadastrar um novo animal no rebanho" },
+  { id: "pec-rebanho", tab: "pec-rebanho", label: "Visão geral da pecuária", href: "/pecuaria/rebanho", grupo: "Pecuária", sinonimos: ["rebanho", "pecuária", "vaca", "vacas", "boi", "gado", "bovino", "animais", "brinco", "ficha do animal", "lote", "movimentar", "saída", "pesagem"], descricao: "Cadastro de animais do rebanho" },
+  ...[
+    ["coletas", "Coletas de campo"], ["animais", "Animais"], ["lotes", "Lotes"],
+    ["pesagens", "Pesagens"], ["sanidade", "Sanidade"], ["nutricao", "Nutrição"], ["cadastros", "Cadastros da pecuária"],
+  ].map(([slug, label]): Comando => ({ id: `pec-${slug}`, tab: "pec-rebanho", label, grupo: "Pecuária", href: `/pecuaria/rebanho/${slug}` })),
+  { id: "acao-novo-animal", tab: "pec-rebanho", label: "Novo animal", href: "/pecuaria/rebanho/animais/novo", grupo: "Ações", acao: true, sinonimos: ["cadastrar animal", "novo animal", "cadastrar gado", "nova vaca", "registrar gado", "novo bovino"], descricao: "Cadastrar um novo animal no rebanho" },
 
 
   // Registros coletivos preexistentes permanecem acessíveis dentro de Pecuária.

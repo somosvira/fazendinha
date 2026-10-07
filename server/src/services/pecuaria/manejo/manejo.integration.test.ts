@@ -51,4 +51,15 @@ describeComBanco("manejo e pesagem coletiva com PostgreSQL", () => {
     expect(await prisma.pesagem.findUnique({ where: { id: registrado.pesagemId! } })).toBeTruthy();
     expect((await registrarManejo(inputManejo, null)).id).toBe(registrado.id);
   });
+
+  it("desmama válida é única; anulação com motivo preserva histórico e libera novo lançamento", async () => {
+    const input = { animalId: animais[0], propriedadeId: propriedades[0], data: hojeFazenda(), tipo: "DESMAMA" as const };
+    const primeira = await registrarManejo(input, null);
+    await expect(registrarManejo(input, null)).rejects.toThrow(/já consta/);
+    await anularManejo(primeira.id, propriedades[0], "Desmama lançada por engano", null);
+    const segunda = await registrarManejo(input, null);
+    expect(segunda.id).not.toBe(primeira.id);
+    expect(await prisma.manejoAnimal.count({ where: { animalId: animais[0], tipo: "DESMAMA", status: "VALIDO" } })).toBe(1);
+    expect(await prisma.manejoAnimal.count({ where: { animalId: animais[0], tipo: "DESMAMA", status: "ANULADO" } })).toBe(1);
+  });
 });

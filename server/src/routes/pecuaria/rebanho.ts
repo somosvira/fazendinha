@@ -18,6 +18,7 @@ import * as materialGenetico from "../../services/pecuaria/rebanho/materialGenet
 import { sanidadeRouter } from "./sanidade.js";
 import { manejoRouter } from "./manejo.js";
 import { nutricaoRouter } from "./nutricao.js";
+import { coletasRouter } from "./coletas.js";
 import {
   cadastrarAnimalSchema, editarAnimalSchema, movimentarSchema, mudarDestinoSchema,
   baixaSchema, estornoBaixaSchema, pesagemSchema, editarPesagemSchema, listarFiltrosSchema,
@@ -409,3 +410,4 @@ export const rebanhoRouter = new Hono()
 rebanhoRouter.route("/sanidade", sanidadeRouter);
 rebanhoRouter.route("/manejo", manejoRouter);
 rebanhoRouter.route("/nutricao", nutricaoRouter);
+rebanhoRouter.route("/coletas", coletasRouter);

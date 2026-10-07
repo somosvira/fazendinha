@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { FormAplicacaoServico } from "./FormAplicacaoServico";
-import { listarComprasDiretas, listarServicos, reqSanidade } from "./api";
+import { listarComprasDiretas, listarServicos, reqSanidade, type AplicacaoInput } from "./api";
 import { listarProdutos } from "../../../estoque/api";
 import { listarPartidasNutricionais } from "../nutricao/api";
 import { buscarFichaAnimal } from "../api";
@@ -232,4 +232,28 @@ it("devolve a aplicação criada para atualizar a ficha e abrir o fato salvo", a
   render(<FormAplicacaoServico animalId="animal" propriedadeId={1} onFechar={vi.fn()} onSalvo={onSalvo} />);
   await screen.findByText("Tratamento personalizado"); preencher(); submeter();
   await waitFor(() => expect(onSalvo).toHaveBeenCalledWith("aplicacao-criada", 1));
+});
+
+it("restaura a ficha sanitária e salva rascunho sem registrar aplicações", async () => {
+  const salvar = vi.fn().mockResolvedValue(undefined);
+  const confirmar = vi.fn();
+  const fechar = vi.fn();
+  const salvo: AplicacaoInput = {
+    animalId: "a", propriedadeId: 1, data: "2026-09-10", aplicadaEm: "2026-09-10T13:00:00.000Z",
+    tipoAplicacaoId: "tipo", origemInsumo: "BAIXA_ESTOQUE", produtoId: "produto",
+    nomeProdutoAplicado: "Medicamento teste", dose: "2.5", unidadeDose: "ML",
+    estadoCarenciaLeite: "INFORMADO", carenciaLeiteHoras: 0,
+    estadoCarenciaCarne: "INFORMADO", carenciaCarneHoras: 48,
+  };
+  render(<FormAplicacaoServico animalId="a" propriedadeId={1} animais={[{ id: "a", brinco: "RN01", propriedadeId: 1 }]} dataInicial="2026-09-10" rascunhoInicial={[salvo]} salvarRascunhoColeta={salvar} confirmarColeta={confirmar} onSalvo={vi.fn()} onFechar={fechar} />);
+  await waitFor(() => expect(screen.getByLabelText(/Medicamento do estoque/)).toHaveProperty("value", "produto"));
+  expect(screen.getByLabelText(/Hora/)).toHaveProperty("value", "10:00");
+  expect(screen.getByLabelText(/^Data/)).toHaveProperty("disabled", true);
+  submeter();
+  expect(screen.getByLabelText(/Quantidade aplicada em RN01/)).toHaveProperty("value", "2.5");
+  fireEvent.click(screen.getByRole("button", { name: "Salvar dados e continuar depois" }));
+  await waitFor(() => expect(salvar).toHaveBeenCalledWith([expect.objectContaining({ animalId: "a", dose: "2.5", data: "2026-09-10" })]));
+  expect(confirmar).not.toHaveBeenCalled();
+  expect(vi.mocked(reqSanidade).mock.calls.some(([path]) => path === "/aplicacoes/coletivas")).toBe(false);
+  expect(fechar).toHaveBeenCalledOnce();
 });

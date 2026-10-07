@@ -1,8 +1,8 @@
 import { comPropriedade } from "../../../propriedadeScope";
 
 export type Ingrediente = { produtoId: string; quantidadeCabecaDia: string; unidade: string; materiaSecaPercentualSnapshot?: string | null; produto?: { nome: string } };
-export type Dieta = { id: string; nome: string; versao: number; publicadaEm: string | null; itens: Ingrediente[] };
-export type Vigencia = { id: string; desde: string; ate: string | null; dieta: { id: string; nome: string; versao: number } };
+export type Dieta = { id: string; nome: string; versao: number; publicadaEm: string | null; ativo?: boolean; podeExcluir?: boolean; _count?: { vigencias: number }; itens: Ingrediente[] };
+export type Vigencia = { id: string; desde: string; ate: string | null; propriedadeId?: number; status?: "VALIDO" | "ANULADO"; lote?: { id: string; nome: string; propriedadeId: number }; dieta: { id: string; nome: string; versao: number } };
 export type Pagina<T> = { itens: T[]; total: number; pagina: number; limite: number };
 export type PaginaVigencias = Pagina<Vigencia> & { vigente: Vigencia | null; programada: Vigencia | null };
 export type ParcelaConsumo = { produtoId: string; unidade: string; quantidadeAtribuida: string; quantidadePorDia: string; custoConhecido: string | null };
@@ -38,18 +38,28 @@ export const criarDieta = (body: { nome: string; itens: Array<{ produtoId: strin
   post<Dieta>("/pecuaria/rebanho/nutricao/dietas", body);
 export const publicarDieta = (id: string) => post<Dieta>(`/pecuaria/rebanho/nutricao/dietas/${id}/publicacao`, {});
 export const editarDieta = (id: string, body: { nome: string; itens: Array<{ produtoId: string; quantidadeCabecaDia: number }> }) => req<Dieta>(`/pecuaria/rebanho/nutricao/dietas/${id}`, { method: "PATCH", body: JSON.stringify(body) });
+export const criarVersaoDieta = (id: string) => post<Dieta>(`/pecuaria/rebanho/nutricao/dietas/${id}/versoes`, {});
+export const alterarEstadoDieta = (id: string, ativo: boolean) => req<Dieta>(`/pecuaria/rebanho/nutricao/dietas/${id}/estado`, { method: "PATCH", body: JSON.stringify({ ativo }) });
+export const excluirDieta = (id: string) => req(`/pecuaria/rebanho/nutricao/dietas/${id}`, { method: "DELETE" });
 export const estornarConsumo = (id: string, body: { propriedadeId: number; motivo: string }) => post(`/pecuaria/rebanho/nutricao/consumo/fechamentos/${id}/estorno`, body);
-export const listarVigencias = (loteId: string, pagina = 1) => req<PaginaVigencias>(`/pecuaria/rebanho/nutricao/vigencias?loteId=${encodeURIComponent(loteId)}&pagina=${pagina}`);
+export const listarVigencias = (loteId?: string, pagina = 1, filtros?: Record<string, string>) => req<PaginaVigencias>(`/pecuaria/rebanho/nutricao/vigencias?${new URLSearchParams({ ...(loteId ? { loteId } : {}), pagina: String(pagina), ...filtros })}`);
 export const atribuirDieta = (body: { loteId: string; propriedadeId: number; dietaId: string; desde: string }) =>
   post<Vigencia>("/pecuaria/rebanho/nutricao/vigencias", body);
-export const corrigirVigencia = (id: string, body: { propriedadeId: number; desde: string; motivo: string }) => post<Vigencia>(`/pecuaria/rebanho/nutricao/vigencias/${id}/correcao`, body);
+export type CorrecaoVigenciaInput = { propriedadeId: number; desde: string; dietaId?: string; motivo: string; revisao?: string };
+export type PreviaVigencia = { original: Vigencia; proposta: { desde: string; dietaId?: string; status?: string }; anterior: Vigencia | null; fechamentosAfetados: Array<{ id: string; inicio: string; fim: string }>; bloqueada: boolean; revisao: string };
+export const previaCorrecaoVigencia = (id: string, body: CorrecaoVigenciaInput) => post<PreviaVigencia>(`/pecuaria/rebanho/nutricao/vigencias/${id}/correcao/previa`, body);
+export const corrigirVigencia = (id: string, body: CorrecaoVigenciaInput) => post<Vigencia>(`/pecuaria/rebanho/nutricao/vigencias/${id}/correcao`, body);
+export const previaAnulacaoVigencia = (id: string, body: { propriedadeId: number; motivo: string }) => post<PreviaVigencia>(`/pecuaria/rebanho/nutricao/vigencias/${id}/anulacao/previa`, body);
+export const anularVigencia = (id: string, body: { propriedadeId: number; motivo: string; revisao: string }) => post<Vigencia>(`/pecuaria/rebanho/nutricao/vigencias/${id}/anulacao`, body);
 export const previaConsumo = (body: { loteId: string; propriedadeId: number; inicio: string; fim: string; centroCustoId?: string | null }) =>
   post<Previa>("/pecuaria/rebanho/nutricao/consumo/previa", body);
 export const confirmarConsumo = (body: { loteId: string; propriedadeId: number; inicio: string; fim: string; centroCustoId?: string | null;
   itens: Array<{ produtoId: string; quantidadeConfirmada: number; motivoAjuste?: string; modoEstoque: "BAIXA_ESTOQUE" | "SEM_BAIXA_JUSTIFICADA"; justificativaSemBaixa?: string;
     partidas?: Array<{ partidaId: string; quantidade: number; cienciaValidadeDesconhecida?: boolean }> }> }) =>
   post<Pick<Fechamento, "id" | "inicio" | "fim" | "animalDias" | "status">>("/pecuaria/rebanho/nutricao/consumo/confirmacao", body);
-export const listarFechamentos = (loteId: string, pagina = 1) => req<Pagina<Fechamento>>(`/pecuaria/rebanho/nutricao/consumo/fechamentos?loteId=${encodeURIComponent(loteId)}&pagina=${pagina}`);
+export const listarFechamentos = (loteId?: string, pagina = 1, filtros?: Record<string, string>) => req<Pagina<Fechamento>>(`/pecuaria/rebanho/nutricao/consumo/fechamentos?${new URLSearchParams({ ...(loteId ? { loteId } : {}), pagina: String(pagina), ...filtros })}`);
+export type ResumoMensal = { mes: string; verValores: boolean; fechamentos: number; animalDias: number; custoConhecido: string | null; coberturaCustoCompleta: boolean; itens: Array<{ produtoId: string; nome: string; unidade: string; quantidadeConfirmada: string }> };
+export const consultarResumoMensal = (mes: string, loteIds: string[] = []) => req<ResumoMensal>(`/pecuaria/rebanho/nutricao/consumo/resumo-mensal?${new URLSearchParams({ mes, ...(loteIds.length ? { loteIds: loteIds.join(",") } : {}) })}`);
 export const obterFechamento = (id: string) => req<Fechamento>(`/pecuaria/rebanho/nutricao/consumo/fechamentos/${encodeURIComponent(id)}`);
 export type ConsumoAnimal = Omit<ParticipacaoConsumo, "itens"> & { id: string; inicio: string; fim: string; status: Fechamento["status"]; lote: Fechamento["lote"]; dieta: Fechamento["vigencia"]["dieta"]; propriedadeId: number; itens: Array<ParcelaConsumo & { nome: string }> };
 export const consultarConsumoAnimal = (animalId: string, pagina = 1) => req<Pagina<ConsumoAnimal> & { verValores: boolean }>(`/pecuaria/rebanho/nutricao/consumo/animais/${encodeURIComponent(animalId)}?pagina=${pagina}`);

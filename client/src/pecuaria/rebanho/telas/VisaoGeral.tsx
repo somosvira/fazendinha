@@ -77,9 +77,15 @@ export function VisaoGeral({ podeLancar = true }: { podeLancar?: boolean }) {
   const hrefTipoBaixa = (tipo: TipoBaixa) => filtrosAnimais({ situacao: "BAIXADO", tipoBaixa: tipo, baixaDe: emDias(-periodoBaixas) });
 
   return <PaginaFinanceira>
-    <PageHeader eyebrow="Pecuária" titulo="Rebanho" descricao="Efetivo, receptoras, sítios e últimos eventos do rebanho." acao={podeLancar ? <Button onClick={() => navegarPara(URL_NOVO_ANIMAL)}><Plus size={16} /> Novo animal</Button> : undefined} />
+    <PageHeader eyebrow="Pecuária" titulo="Visão geral" descricao="Acesse as rotinas do campo e acompanhe o rebanho." acao={podeLancar ? <Button onClick={() => navegarPara(URL_NOVO_ANIMAL)}><Plus size={16} /> Novo animal</Button> : undefined} />
     <NavRebanho ativa="visao-geral" />
     <ErrorBox erro={erro} />
+    <Panel className="mt-6 p-5"><h2 className="h2">Por onde começar?</h2><p className="mt-2 text-sm text-ink-3">Escolha a rotina. Os indicadores do rebanho continuam abaixo.</p><div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{[
+      { titulo: "Fichas de campo", descricao: "Prepare a impressão ou retome uma ficha para preencher.", href: "/pecuaria/rebanho/coletas" },
+      { titulo: "Tarefas sanitárias", descricao: "Consulte a agenda e registre o que foi realizado.", href: "/pecuaria/rebanho/sanidade?aba=agenda&visaoAgenda=tarefas" },
+      { titulo: "Resultados de exames", descricao: "Consulte as coletas e complete os resultados pendentes.", href: "/pecuaria/rebanho/sanidade?aba=exames" },
+      { titulo: "Consumo dos lotes", descricao: "Confira o consumo diário e consulte o histórico global.", href: "/pecuaria/rebanho/nutricao?aba=consumos" },
+    ].map((item) => <LinhaClicavel key={item.href} href={item.href} className="rounded-lg border border-border p-4"><strong className="block text-sm">{item.titulo} →</strong><span className="mt-2 block text-sm text-ink-3">{item.descricao}</span></LinhaClicavel>)}</div></Panel>
     {painel && <>
       <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Metric label="Animais ativos" valor={painel.ativos.toLocaleString("pt-BR")} detalhe="Efetivo atual do rebanho" icon={Users} />

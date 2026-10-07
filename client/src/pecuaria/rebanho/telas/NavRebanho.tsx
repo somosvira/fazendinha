@@ -2,21 +2,10 @@
 // Animais · Cadastros) — mesmo visual das abas de ConfiguracoesFinanceiras,
 // mas baseada em URL (cada seção é uma rota própria, não um estado local).
 
-import { navegarPara } from "../../../router";
+export type SecaoRebanho = "visao-geral" | "animais" | "lotes" | "cadastros" | "sanidade" | "nutricao" | "coletas" | "pesagens";
 
-export type SecaoRebanho = "visao-geral" | "animais" | "lotes" | "cadastros" | "sanidade" | "nutricao";
-
-const SECOES: { valor: SecaoRebanho; rotulo: string; href: string }[] = [
-  { valor: "visao-geral", rotulo: "Visão geral", href: "/pecuaria/rebanho" },
-  { valor: "animais", rotulo: "Animais", href: "/pecuaria/rebanho/animais" },
-  { valor: "lotes", rotulo: "Lotes", href: "/pecuaria/rebanho/lotes" },
-  { valor: "sanidade", rotulo: "Sanidade", href: "/pecuaria/rebanho/sanidade" },
-  { valor: "nutricao", rotulo: "Nutrição", href: "/pecuaria/rebanho/nutricao" },
-  { valor: "cadastros", rotulo: "Cadastros", href: "/pecuaria/rebanho/cadastros" },
-];
-
-export function NavRebanho({ ativa }: { ativa: SecaoRebanho }) {
-  return <div className="mt-6 flex gap-2 overflow-x-auto border-b border-border">
-    {SECOES.map((secao) => <button key={secao.valor} type="button" onClick={() => navegarPara(secao.href)} className={`shrink-0 whitespace-nowrap border-b-2 px-4 py-3 text-sm font-semibold ${ativa === secao.valor ? "border-mast text-ink" : "border-transparent text-ink-3"}`}>{secao.rotulo}</button>)}
-  </div>;
+// Os consumidores antigos são preservados enquanto a navegação principal
+// passa a ser única na sidebar, inclusive no menu móvel.
+export function NavRebanho(_props: { ativa: SecaoRebanho }) {
+  return null;
 }

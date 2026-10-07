@@ -118,6 +118,17 @@ beforeEach(() => {
 });
 
 describe("DetalheLote — animais do lote", () => {
+  it("prepara coleta com lote e sítio preenchidos sem remover ações existentes", async () => {
+    await montar();
+    fireEvent.click(screen.getByText("Preparar coleta deste lote"));
+    const url = new URL(window.location.href);
+    expect(url.pathname).toBe("/pecuaria/rebanho/coletas");
+    expect(url.searchParams.get("preparar")).toBe("1");
+    expect(url.searchParams.get("loteId")).toBe("lote-1");
+    expect(url.searchParams.get("propriedadeId")).toBe("1");
+    expect(screen.getByText("Trazer animais")).toBeTruthy();
+    expect(screen.getByText("Editar lote")).toBeTruthy();
+  });
   it("lista os animais ativos do lote", async () => {
     await montar();
     await screen.findAllByText("0001");

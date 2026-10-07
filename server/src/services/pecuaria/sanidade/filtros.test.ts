@@ -34,7 +34,8 @@ describe("filtros operacionais antes da paginação", () => {
   it("busca carências por brinco/nome, lote e sítio na seleção dos animais", async () => {
     const filtro = consultaSanitariaSchema.parse({ buscaAnimal: "GV3", loteId: "00000000-0000-4000-8000-000000000001", pagina: "3" });
     await listarCarencias(2, filtro);
-    expect(mocks.animais).toHaveBeenCalledWith(expect.objectContaining({ skip: 100, take: 50, where: expect.objectContaining({ OR: expect.arrayContaining([{ brinco: { contains: "GV3", mode: "insensitive" } }]), localizacoes: { some: { propriedadeId: 2, ate: null } }, aplicacaoProdutos: { some: expect.objectContaining({ animal: expect.objectContaining({ localizacoes: expect.any(Object) }) }) } }) }));
+    expect(mocks.animais).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ OR: expect.arrayContaining([{ brinco: { contains: "GV3", mode: "insensitive" } }]), localizacoes: { some: { propriedadeId: 2, ate: null } }, aplicacaoProdutos: { some: expect.objectContaining({ animal: expect.objectContaining({ localizacoes: expect.any(Object) }) }) } }) }));
+    expect(mocks.animais.mock.calls[0][0]).not.toHaveProperty("skip");
   });
   it("consulta a carência e aptidão histórica na data da baixa", async () => {
     await carenciaAnimal("animal", 2, "2026-10-06");
@@ -81,5 +82,33 @@ describe("filtros operacionais antes da paginação", () => {
     expect(mocks.aplicacoes).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ origemInsumo: "SEM_ORIGEM_JUSTIFICADA", status: "VALIDO" }) }));
     await listarTarefas(2, undefined, consultaSanitariaSchema.parse({ situacao: "ATRASADA" }));
     expect(mocks.tarefas).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ AND: expect.arrayContaining([{ previstaPara: { lt: expect.any(Date) } }]) }) }));
+  });
+
+  it("combina OR dentro de animais, lotes e situações, mantendo AND entre os campos", async () => {
+    const ids = ["00000000-0000-4000-8000-000000000001", "00000000-0000-4000-8000-000000000002"];
+    const filtro = consultaSanitariaSchema.parse({ animalIds: ids.join(","), loteIds: ids.join(","), situacoes: "ABERTA,ENCERRADA", pagina: "2" });
+    await listarOcorrencias(undefined, 2, filtro);
+    expect(mocks.ocorrencias).toHaveBeenCalledWith(expect.objectContaining({ skip: 50, take: 50, where: expect.objectContaining({
+      animalId: { in: ids }, animal: { localizacoes: { some: { loteId: { in: ids } } } }, propriedadeId: 2,
+      OR: [{ status: "VALIDO", fim: null }, { status: "VALIDO", fim: { not: null } }],
+    }) }));
+    await listarTarefas(2, undefined, { ...filtro, situacoes: ["PENDENTE", "REALIZADA"] });
+    expect(mocks.tarefas).toHaveBeenCalledWith(expect.objectContaining({ skip: 50, where: expect.objectContaining({ OR: expect.any(Array), execucao: expect.objectContaining({ animalId: { in: ids }, animal: expect.objectContaining({ localizacoes: { some: { ate: null, propriedadeId: 2, loteId: { in: ids } } } }) }) }) }));
+  });
+
+  it("filtra situação de carência e ordena brinco naturalmente antes de paginar sem consultas por animal", async () => {
+    const animais = ["RN10", "RN2", "RN1"].map((brinco) => ({ id: brinco, brinco, nome: null, sexo: "F", destinos: [{ aptidao: "LEITE" }] }));
+    mocks.animais.mockResolvedValue(animais);
+    mocks.aplicacoes.mockResolvedValue(animais.map((a) => ({ animalId: a.id, data: new Date("2026-09-01"), aplicadaEm: null, precisaoTemporal: "DIA", carenciaLeiteHoras: a.id === "RN1" ? 0 : null, carenciaCarneHoras: 0, estadoCarenciaLeite: a.id === "RN1" ? "INFORMADO" : "NAO_INFORMADO", estadoCarenciaCarne: "INFORMADO", aptidaoCarenciaSnapshot: "LEITE" })));
+    const resultado = await listarCarencias(2, consultaSanitariaSchema.parse({ situacoes: "CARÊNCIA_DESCONHECIDA", porPagina: "1" }));
+    expect(resultado.map((r) => r.animal.brinco)).toEqual(["RN2"]);
+    expect(mocks.aplicacoes).toHaveBeenCalledTimes(1);
+    expect(mocks.animal).not.toHaveBeenCalled();
+  });
+
+  it("preserva aliases singulares e rejeita valores inválidos nas listas", () => {
+    expect(consultaSanitariaSchema.parse({ animalId: "00000000-0000-4000-8000-000000000001", situacao: "ABERTA" }).situacao).toBe("ABERTA");
+    expect(consultaSanitariaSchema.safeParse({ animalIds: "animal-invalido" }).success).toBe(false);
+    expect(consultaSanitariaSchema.safeParse({ situacoes: "ABERTA,INEXISTENTE" }).success).toBe(false);
   });
 });

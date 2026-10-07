@@ -1,4 +1,4 @@
-import { filtrosFatos, limites, type ConsultaSanitaria } from "./consulta.js";
+import { filtrosFatos, filtrarSituacoes, statusSituacao, limites, type ConsultaSanitaria } from "./consulta.js";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../../db.js";
 import { RebanhoError, auditar, travarAnimais } from "../rebanho/regras.js";
@@ -37,7 +37,7 @@ export async function criarDoenca(nome: string, motivoBaixaSugeridoId: string | 
 }
 
 export async function listarOcorrencias(animalId: string | undefined, propriedadeId: number | null, filtro?: ConsultaSanitaria) {
-  const lista = await prisma.ocorrenciaSanitaria.findMany({ where: { ...filtrosFatos(filtro, "inicio"), ...(filtro?.situacao === "ABERTA" ? { fim: null } : filtro?.situacao === "ENCERRADA" ? { fim: { not: null } } : {}), ...(animalId ? { animalId } : {}), ...(propriedadeId == null ? {} : { propriedadeId }) },
+  const lista = await prisma.ocorrenciaSanitaria.findMany({ where: { ...filtrosFatos(filtro, "inicio"), ...filtrarSituacoes(filtro, (s): Prisma.OcorrenciaSanitariaWhereInput => ({ ...statusSituacao(s), ...(s === "ABERTA" ? { fim: null } : s === "ENCERRADA" ? { fim: { not: null } } : {}) })), ...(animalId && !filtro?.animalIds ? { animalId } : {}), ...(propriedadeId == null ? {} : { propriedadeId }) },
     include: { doenca: { select: { id: true, nome: true } }, _count: { select: { aplicacoes: true, exames: true, execucoes: true } } },
     orderBy: [{ inicio: "desc" }, { criadoEm: "desc" }], ...limites(filtro) });
   return lista.map((o) => ({ ...o, doenca: { ...o.doenca, nome: o.doencaNomeSnapshot ?? o.doenca.nome } }));

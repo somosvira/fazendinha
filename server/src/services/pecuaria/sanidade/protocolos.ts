@@ -1,5 +1,5 @@
 import { confirmarColetivo } from "./coletivos.js";
-import { buscaAnimal, intervalo, limites, type ConsultaSanitaria } from "./consulta.js";
+import { buscaAnimal, intervalo, limites, animaisSelecionados, lotesSelecionados, filtrarSituacoes, type ConsultaSanitaria } from "./consulta.js";
 import { Prisma, type FinalidadeAplicacao } from "@prisma/client";
 import { prisma } from "../../../db.js";
 import { RebanhoError, auditar, hojeFazenda, travarAnimais } from "../rebanho/regras.js";
@@ -125,17 +125,20 @@ export async function iniciarExecucaoColetivo(input: { chave: string; propriedad
 }
 
 function whereTarefas(propriedadeId: number | null, animalId?: string, filtro?: ConsultaSanitaria) {
-  const where: Prisma.TarefaSanitariaWhereInput = { execucao: { ...(animalId ? { animalId } : {}),
+  const animais = animaisSelecionados(filtro); const lotes = lotesSelecionados(filtro);
+  const where: Prisma.TarefaSanitariaWhereInput = { execucao: { ...(animais.length ? { animalId: { in: animais } } : animalId ? { animalId } : {}),
     ...(filtro?.rodadaId ? { rodadaId: filtro.rodadaId } : filtro?.semRodada === "true" ? { rodadaId: null } : {}),
-    ...(propriedadeId != null || filtro?.loteId || filtro?.buscaAnimal ? { animal: { ...buscaAnimal(filtro), ...(propriedadeId != null || filtro?.loteId ? { localizacoes: { some: { ate: null,
-      ...(propriedadeId == null ? {} : { propriedadeId }), ...(filtro?.loteId ? { loteId: filtro.loteId } : {}) } } } : {}) } } : {}) },
+    ...(propriedadeId != null || lotes.length || filtro?.buscaAnimal ? { animal: { ...buscaAnimal(filtro), ...(propriedadeId != null || lotes.length ? { localizacoes: { some: { ate: null,
+      ...(propriedadeId == null ? {} : { propriedadeId }), ...(lotes.length ? { loteId: lotes.length === 1 ? lotes[0] : { in: lotes } } : {}) } } } : {}) } } : {}) },
     ...(filtro?.de || filtro?.ate ? { previstaPara: intervalo(filtro) } : {}) };
   const realizada: Prisma.TarefaSanitariaWhereInput = { OR: [{ aplicacoes: { some: { status: "VALIDO" } } }, { exames: { some: { status: "VALIDO" } } }] };
-  if (filtro?.situacao === "EXECUCAO_CANCELADA") where.AND = [{ execucao: { canceladaEm: { not: null } } }, { NOT: realizada }];
-  else if (filtro?.situacao === "DISPENSADA") where.AND = [{ execucao: { canceladaEm: null } }, { dispensadaEm: { not: null } }];
-  else if (filtro?.situacao === "REALIZADA") where.AND = [realizada];
-  else if (filtro?.situacao === "PENDENTE" || filtro?.situacao === "ATRASADA") where.AND = [{ execucao: { canceladaEm: null } }, { dispensadaEm: null }, { NOT: realizada }, ...(filtro.situacao === "ATRASADA" ? [{ previstaPara: { lt: dia(hojeFazenda()) } }] : [])];
-  return where;
+  return { ...where, ...filtrarSituacoes(filtro, (s): Prisma.TarefaSanitariaWhereInput => {
+    if (s === "EXECUCAO_CANCELADA") return { AND: [{ execucao: { canceladaEm: { not: null } } }, { NOT: realizada }] };
+    if (s === "DISPENSADA") return { AND: [{ execucao: { canceladaEm: null } }, { dispensadaEm: { not: null } }, { NOT: realizada }] };
+    if (s === "REALIZADA") return { AND: [realizada] };
+    if (s === "PENDENTE" || s === "ATRASADA") return { AND: [{ execucao: { canceladaEm: null } }, { dispensadaEm: null }, { NOT: realizada }, ...(s === "ATRASADA" ? [{ previstaPara: { lt: dia(hojeFazenda()) } }] : [])] };
+    return {};
+  }) };
 }
 export async function listarTarefasPaginadas(propriedadeId: number | null, animalId: string | undefined, filtro: ConsultaSanitaria) {
   const [itens, total] = await Promise.all([listarTarefas(propriedadeId, animalId, filtro), prisma.tarefaSanitaria.count({ where: whereTarefas(propriedadeId, animalId, filtro) })]);

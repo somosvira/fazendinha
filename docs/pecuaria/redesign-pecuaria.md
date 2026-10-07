@@ -15,11 +15,11 @@ Manter a área/permissão `pec-rebanho` e distribuir seus destinos na sidebar, s
 
 | Sidebar | Divisão e propósito |
 |---|---|
-| Visão geral | Pendências acionáveis de campo, sanidade, exames e consumo; indicadores ligados às consultas. |
-| Coletas de campo | Preparar ficha, imprimir, retomar preenchimento, revisar e concluir. Pesagens e rotinas sanitárias existentes compatíveis. |
+| Visão geral | Acessos às rotinas de campo, sanidade, exames e consumo; indicadores ligados às consultas do rebanho. |
+| Coletas de campo | Preparar ficha, imprimir, retomar preenchimento, revisar e concluir. Pesagem corporal, aplicações e exames avulsos. Tarefas de protocolo são executadas na Agenda. |
 | Animais | Lista e ficha: resumo, histórico, sanidade, peso/manejo, nutrição e genética. |
 | Lotes | Integrantes, nutrição e histórico; movimentar, preparar coleta, atribuir dieta e conferir consumo. |
-| Pesagens | Preparação/lançamento coletivo e consulta dos mesmos pesos presentes nas fichas. |
+| Pesagens | Fichas coletivas e histórico completo consultável por animal (inclusive baixados), usando os mesmos pesos das fichas. |
 | Sanidade | Agenda (Ciclos/Tarefas), Aplicações, Exames e Carências. Ocorrências em consulta secundária e ações contextuais. |
 | Nutrição | Dietas, Atribuições e Consumos; consulta global, consumo diário e consolidação mensal. |
 | Cadastros | Rebanho, Genética e Sanidade; versões de protocolos conservadas. |
@@ -46,6 +46,7 @@ Manter a área/permissão `pec-rebanho` e distribuir seus destinos na sidebar, s
 - Impressão A4 legível em preto e branco, código da ficha, identificação dos animais e espaço de anotação. Reimpressão conserva a mesma seleção/ordem.
 - Preenchimento acompanha a impressão, ordenação natural dos brincos, vírgula decimal e teclado. Não medido/não realizado é explícito; campo vazio não vira zero nem procedimento confirmado.
 - Animais adicionais/mudanças exigem revisão. Concluir reutiliza os serviços da V3 e sua atomicidade/idempotência, sem duplicar estoque ou fatos em reenvio.
+- Aplicações/exames desta coleta são avulsos: não concluem tarefas pendentes de protocolo. Ciclos, tarefas e desvios continuam na Agenda, sem substituição ou inferência automática.
 
 ### Nutrição
 

@@ -3,13 +3,23 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { ConferenciaPeriodos } from "./ConferenciaPeriodos";
 import { previaPeriodos, confirmarPeriodos, type Previa } from "./api";
+import { ontemConsumo } from "./datasConsumo";
+import { conferirDistribuicaoPartidas } from "../../../estoque/SelecaoPartidas";
 vi.mock("./api", () => ({ previaPeriodos: vi.fn(), confirmarPeriodos: vi.fn() }));
-vi.mock("../../../components/DatePicker", () => ({ DatePicker: ({ value, onChange }: { value: string; onChange: (v: string) => void }) => <input type="date" value={value} onChange={(e) => onChange(e.target.value)} /> }));
-vi.mock("../../../estoque/SelecaoPartidas", () => ({ SelecaoPartidas: () => <p>Distribuição por partida</p> }));
+vi.mock("../../../components/DatePicker", () => ({ DatePicker: ({ value, onChange, ...props }: { value: string; onChange: (v: string) => void }) => <input {...props} type="date" value={value} onChange={(e) => onChange(e.target.value)} /> }));
+vi.mock("../../../estoque/SelecaoPartidas", () => ({ conferirDistribuicaoPartidas: vi.fn(), SelecaoPartidas: ({ erroValidacao }: { erroValidacao?: { mensagem: string } }) => <label>Quantidade do lote<input aria-invalid={!!erroValidacao} />{erroValidacao && <span>{erroValidacao.mensagem}</span>}</label> }));
 const previa: Previa = { loteId: "lote", vigenciaId: "vigencia", inicio: "2026-09-01", fim: "2026-09-10", centroCustoId: "centro", dieta: { nome: "Dieta V3", versao: 1 }, animalDias: 110, participantes: [{ animalId: "animal", brinco: "RN01", dias: 10 }], materiaSecaConhecidaKg: "297", coberturaMateriaSecaCompleta: false, itens: [{ produtoId: "produto", nome: "Ração V3", unidade: "KG", quantidadePrevista: "330", saldo: "400", materiaSecaKg: "297", custoPrevisto: null, rastrearPartidas: false }] };
 beforeEach(() => { vi.clearAllMocks(); vi.mocked(previaPeriodos).mockResolvedValue({ revisao: "r".repeat(64), periodos: [previa], lacunas: [] }); vi.mocked(confirmarPeriodos).mockResolvedValue({}); });
 afterEach(cleanup);
 describe("conferência nutricional dividida", () => {
+  it("inicia conferência diária ontem e envia sempre um único dia à prévia", async () => {
+    render(<ConferenciaPeriodos diario loteId="lote" propriedadeId={1} centros={[]} onSalvo={vi.fn()} />);
+    expect((screen.getByLabelText("Data do consumo") as HTMLInputElement).value).toBe(ontemConsumo());
+    fireEvent.change(screen.getByLabelText("Data do consumo"), { target: { value: "2026-09-05" } });
+    fireEvent.click(screen.getByText("Conferir dia"));
+    await waitFor(() => expect(previaPeriodos).toHaveBeenCalledWith({ loteId: "lote", propriedadeId: 1, inicio: "2026-09-05", fim: "2026-09-05", centroCustoId: null }));
+    expect(confirmarPeriodos).not.toHaveBeenCalled();
+  });
   it("atualiza MS e custo conferidos quando a quantidade e a origem mudam", async () => {
     vi.mocked(previaPeriodos).mockResolvedValue({ revisao: "r".repeat(64), periodos: [{ ...previa, itens: [{ ...previa.itens[0], custoPrevisto: "660" }] }], lacunas: [] });
     render(<ConferenciaPeriodos loteId="lote" propriedadeId={1} centros={[]} onSalvo={vi.fn()} />);
@@ -19,8 +29,11 @@ describe("conferência nutricional dividida", () => {
     expect(screen.getByText(/MS conferida conhecida ≈ 288.000 kg/)).toBeTruthy();
     expect(screen.getByText(/Custo conferido estimado: ≈ R\$\s640,00/)).toBeTruthy();
     expect(screen.getByText(/custo previsto R\$\s660/)).toBeTruthy();
+    expect(screen.getByText(/Custo estimado do lote\/dia: ≈ R\$\s64,00/)).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Origem"), { target: { value: "SEM_BAIXA_JUSTIFICADA" } });
     expect(screen.getByText(/Custo conferido estimado: não apurado/)).toBeTruthy();
+    expect(screen.queryByText(/custo previsto/)).toBeNull();
+    expect(screen.queryByText(/Custo estimado do lote\/dia/)).toBeNull();
   });
   it("mostra previsão, participantes e cobertura incompleta; exige motivo até para consumo zero", async () => {
     const onSalvo = vi.fn().mockResolvedValue(undefined);
@@ -31,7 +44,9 @@ describe("conferência nutricional dividida", () => {
     expect(screen.getByText(/cobertura incompleta/)).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Quantidade conferida (KG)"), { target: { value: "0" } });
     fireEvent.click(screen.getByText("Confirmar conjunto conferido"));
-    await screen.findByText(/justifique a diferença/);
+    await screen.findAllByText(/justifique a diferença/);
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText("Motivo da diferença")));
+    expect(screen.getByLabelText("Motivo da diferença").getAttribute("aria-invalid")).toBe("true");
     expect(confirmarPeriodos).not.toHaveBeenCalled();
     fireEvent.change(screen.getByLabelText("Motivo da diferença"), { target: { value: "Consumo real conferido em zero" } });
     fireEvent.click(screen.getByText("Confirmar conjunto conferido"));
@@ -45,5 +60,55 @@ describe("conferência nutricional dividida", () => {
     await screen.findByText(/Sem dieta de 30\/08\/2026/);
     expect(screen.getByText("Confirmar conjunto conferido").hasAttribute("disabled")).toBe(true);
     expect(confirmarPeriodos).not.toHaveBeenCalled();
+  });
+  it("destaca quantidade inválida com foco, rolagem e resumo próximo à confirmação", async () => {
+    const rolar = vi.fn();
+    render(<ConferenciaPeriodos loteId="lote" propriedadeId={1} centros={[]} onSalvo={vi.fn()} />);
+    fireEvent.click(screen.getByText("Conferir período"));
+    await screen.findByText("Ração V3: previsto 330 KG");
+    const quantidade = screen.getByLabelText("Quantidade conferida (KG)");
+    quantidade.scrollIntoView = rolar;
+    fireEvent.change(quantidade, { target: { value: "" } });
+    fireEvent.click(screen.getByText("Confirmar conjunto conferido"));
+    await waitFor(() => expect(document.activeElement).toBe(quantidade));
+    expect(quantidade.getAttribute("aria-invalid")).toBe("true");
+    expect(rolar).toHaveBeenCalledWith({ block: "center", behavior: "smooth" });
+    expect(screen.getByRole("alert").textContent).toContain("Os dados foram preservados");
+    expect(confirmarPeriodos).not.toHaveBeenCalled();
+  });
+  it("leva foco à justificativa sem baixa e preserva quantidade", async () => {
+    render(<ConferenciaPeriodos loteId="lote" propriedadeId={1} centros={[]} onSalvo={vi.fn()} />);
+    fireEvent.click(screen.getByText("Conferir período"));
+    await screen.findByText("Ração V3: previsto 330 KG");
+    fireEvent.change(screen.getByLabelText("Origem"), { target: { value: "SEM_BAIXA_JUSTIFICADA" } });
+    fireEvent.click(screen.getByText("Confirmar conjunto conferido"));
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText("Justificativa sem baixa")));
+    expect((screen.getByLabelText("Quantidade conferida (KG)") as HTMLInputElement).value).toBe("330");
+    expect(confirmarPeriodos).not.toHaveBeenCalled();
+  });
+  it("repasse erro de partidas ao seletor e foca o controle inválido", async () => {
+    vi.mocked(previaPeriodos).mockResolvedValue({ revisao: "r".repeat(64), periodos: [{ ...previa, itens: [{ ...previa.itens[0], rastrearPartidas: true }] }], lacunas: [] });
+    vi.mocked(conferirDistribuicaoPartidas).mockImplementationOnce(() => { throw Object.assign(new Error("Informe a quantidade de cada lote."), { campo: "0.quantidade" }); });
+    render(<ConferenciaPeriodos loteId="lote" propriedadeId={1} centros={[]} onSalvo={vi.fn()} />);
+    fireEvent.click(screen.getByText("Conferir período"));
+    await screen.findByText("Ração V3: previsto 330 KG");
+    fireEvent.click(screen.getByText("Confirmar conjunto conferido"));
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("textbox")));
+    expect(screen.getByRole("textbox").getAttribute("aria-invalid")).toBe("true");
+    expect(confirmarPeriodos).not.toHaveBeenCalled();
+  });
+  it("indica data final invertida no campo e foca resumo para erro remoto", async () => {
+    render(<ConferenciaPeriodos loteId="lote" propriedadeId={1} centros={[]} onSalvo={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText("De"), { target: { value: "2026-09-10" } });
+    fireEvent.change(screen.getByLabelText("Até"), { target: { value: "2026-09-01" } });
+    fireEvent.click(screen.getByText("Conferir período"));
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText("Até")));
+    expect(previaPeriodos).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByLabelText("Até"), { target: { value: "2026-09-12" } });
+    vi.mocked(previaPeriodos).mockRejectedValueOnce(new Error("Saldo mudou; confira novamente"));
+    fireEvent.click(screen.getByText("Conferir período"));
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("alert")));
+    expect(screen.getByRole("alert").textContent).toContain("Saldo mudou");
+    expect((screen.getByLabelText("Até") as HTMLInputElement).value).toBe("2026-09-12");
   });
 });
