@@ -4,6 +4,10 @@
 
 O [plano de redesign da Pecuária](./redesign-pecuaria.md) parte da `main@f0604707`, já com a V3 e a retirada de agricultura/equipe. A branch `codex/pecuaria-redesign` reorganiza navegação, sanidade, manejo, coletas de campo e nutrição, preservando as capacidades da V3. A coleta impressa e sua tela de retorno compartilham identificação, ordem e agrupamento. O consumo diário será conferido por uma pessoa; consolidação mensal não cria nova baixa. O documento acompanha execução e validação, sem declarar etapas futuras como entregues nem alterar as marcações do guia.
 
+Implementação no [PR #312, em rascunho](https://github.com/somosvira/fazendinha/pull/312): oito destinos na sidebar; filtros multiselect independentes por tabela; formulários sanitários e desmama; coletas persistidas/versionadas com impressão, retorno e conclusão atômica; histórico completo de pesos consultável por animal; Dietas/Atribuições/Consumos globais e ações contextuais no lote. Aplicações/exames das coletas são avulsos; tarefas de protocolo permanecem na Agenda.
+
+Evidência desta rodada, distinta dos resultados históricos abaixo: **970/970 testes da interface (129 arquivos)** e **1.173/1.173 do servidor (131 arquivos)** com integrações PostgreSQL/Pecuária/Financeiro/Auth habilitadas em execução sequencial. A execução paralela do servidor teve cinco conflitos/falhas transacionais; o reteste integral sequencial passou. Builds e TypeScript passaram; permanece o aviso de tamanho do bundle. Migrations somente no banco isolado. O guia tem 128 casos, com os 21 novos pendentes; não se aprovou nem resetou homologação manual. Detalhes, limites, QA e parada obrigatória em 75% de uso restante estão no plano.
+
 ## Integração da remoção com a V3 final — 07/10/2026
 
 O PR #311 incorporou a V3 à `main` em `517f33f`, em 07/10/2026. O PR #310 foi atualizado exclusivamente a partir dessa `main`, que passa a ser a única base de integração e comparação. A incorporação desse merge não mudou a árvore de código já validada; o diff do #310 agora contém somente a limpeza e seus ajustes/documentação, sem incluir as entregas da V3 como novidades.

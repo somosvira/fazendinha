@@ -76,13 +76,32 @@ Proprietário único por arquivo compartilhado; frontend/backend paralelos somen
 
 - [x] Criar branch isolada a partir da `main` atualizada e registrar o plano.
 - [x] Abrir PR em rascunho e vinculá-lo ao chat.
-- [ ] Etapa 1: navegação, padrões comuns, sanidade e manejo.
-- [ ] Etapa 2: coletas persistidas, impressão e retorno para pesagem/rotinas sanitárias.
-- [ ] Etapa 3: dietas, atribuições, consumo diário/global e consolidação.
-- [ ] Integração, documentação e regressão da V3/Estoque/Financeiro.
-- [ ] Conferência visual/teclado a 1440, 1180 e 720 px e impressão A4.
+- [x] Etapa 1: navegação, padrões comuns, sanidade e manejo.
+- [x] Etapa 2: coletas persistidas, impressão e retorno para pesagem/aplicações e exames avulsos.
+- [x] Etapa 3: dietas, atribuições, consumo diário/global e consolidação.
+- [x] Integração, documentação e regressão automatizada da V3/Estoque/Financeiro.
+- [ ] Homologação manual integral, teclado/leitor de tela e impressão de fichas longas. QA automatizado parcial descrito abaixo não substitui este aceite.
 
 Cada marco será atualizado apenas com evidência da execução. PR em rascunho não significa redesign concluído nem homologação manual.
+
+### Evidências de implementação — 07/10/2026
+
+- Interface: **970/970 testes em 129 arquivos**. Inclui sidebar, filtros por tabela, formulários sanitários, desmama, rascunho de coleta, histórico de pesos e nutrição.
+- Servidor: **1.173/1.173 testes em 131 arquivos**, com `PECUARIA_DB_INTEGRATION`, `FINANCE_DB_INTEGRATION` e `AUTH_DB_INTEGRATION` habilitados, PostgreSQL isolado e execução sequencial. A tentativa com quatro arquivos paralelos teve cinco falhas em quatro arquivos por contenção/conflito transacional; o reteste integral sequencial passou. Não se alterou o núcleo herdado de transações/associação de procedimentos para esconder essa limitação.
+- TypeScript e builds de interface/servidor passaram. Vite mantém aviso de bundle acima de 500 kB, não tratado como erro nem otimização entregue.
+- As 19 migrations, incluindo as duas novas aditivas, foram aplicadas somente no banco isolado `codex_pecuaria_redesign_20261007`. Nenhum reset ou migração no banco operacional.
+- Navegador, cenário fictício: preparar ficha de três animais, ordenar brincos 2/10/101, imprimir A4, preencher pesos com vírgula, salvar, recarregar, revisar e concluir. Navegação pelos oito destinos; ficha a 1440/1180/720 px sem overflow horizontal do documento. PDF A4 gerado; não equivale à conferência física de páginas longas.
+- QA somente leitura adicional a 1440/1180/720 px: Dietas (formulário novo), Atribuições, Consumos (formulário com lote selecionado) e Sanidade/Exames. Sem overflow horizontal do documento nos três destinos de nutrição, sem erro de JavaScript ou resposta de erro das APIs Pecuária/Auth no roteiro final. Tabelas vazias neste cenário não comprovam todos os estados populados.
+- Guia ampliado de 107 para **128 casos**, sem mudar IDs existentes, chave de armazenamento, resultados ou anotações. Os novos 21 casos estão pendentes de homologação manual.
+- Checkpoints de uso restante: **89% → 88% → 87% → 86%**. Limite obrigatório continua em 75%, compartilhado com outros chats.
+
+### Limitações e aceite pendente
+
+- Pesagens consulta o histórico completo por animal; não foi criada uma API global paginada de todos os pesos. Ações antigas de registro/correção/exclusão seguem nas fichas.
+- Coletas sanitárias são avulsas; não substituem execução de tarefas/ciclos e seus desvios na Agenda. A lista congelada não aceita novos animais silenciosamente.
+- Visão geral fornece acessos operacionais e mantém indicadores existentes; não calcula novas contagens universais de pendências.
+- Não há baixa automática de dieta em horário agendado. O fluxo diário exige conferência humana; o mês agrega consumos já confirmados sem nova baixa.
+- Falta homologar o guia completo com a equipe, perfis reais, nutrição populada e impressão extensa. Não houve deploy, merge nem alteração de dados operacionais.
 
 ### Limite de execução solicitado
 
