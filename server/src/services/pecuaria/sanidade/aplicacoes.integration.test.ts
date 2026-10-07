@@ -104,7 +104,7 @@ describeComBanco("aplicação com doses inclusas em Serviço", () => {
     const protocolo = await criarProtocolo({ nome: `Vacinação ${run}`, etapas: [{ tipo: "APLICACAO", diaRelativo: 0, produtoId: produto.id, finalidade: "VACINA", dose: 2, unidade: "ML" }] }, null);
     protocoloIds.push(protocolo.id);
     await publicarProtocolo(protocolo.id, null);
-    const data = diasAntes(1);
+    const data = diasAntes(10);
     const execucao = await iniciarExecucao({ animalId: animal.id, propriedadeId, inicio: data, protocoloId: protocolo.id }, null);
     execucaoIds.push(execucao.id);
     const input = { animalId: animal.id, propriedadeId, data, aplicadaEm: `${data}T14:00:00-03:00`, finalidade: "VACINA" as const, origemInsumo: "SEM_ORIGEM_JUSTIFICADA" as const,
@@ -118,8 +118,11 @@ describeComBanco("aplicação com doses inclusas em Serviço", () => {
     expect(segunda.id).not.toBe(primeira.id);
     expect((await listarTarefas(propriedadeId, animal.id))[0].aplicacoes).toHaveLength(2);
     await expect(criarAplicacao(input, null)).rejects.toThrow(/não está disponível/);
-    await expect(darBaixa({ animalId: animal.id, tipo: "VENDA", data: hojeFazenda() }, null)).rejects.toThrow(/Confirme ciência/);
-    await darBaixa({ animalId: animal.id, tipo: "VENDA", data: hojeFazenda(), cienciaSanitaria: true, justificativaSanitaria: "Revisado com responsável pela saída" }, null);
+    // Já encerrada hoje, mas ainda vigente na data histórica da saída.
+    const dataBaixa = diasAntes(9);
+    expect((await carenciaAnimal(animal.id, propriedadeId)).carne).toMatchObject({ estado: "CONHECIDO" });
+    await expect(darBaixa({ animalId: animal.id, tipo: "VENDA", data: dataBaixa }, null)).rejects.toThrow(/Confirme ciência/);
+    await darBaixa({ animalId: animal.id, tipo: "VENDA", data: dataBaixa, cienciaSanitaria: true, justificativaSanitaria: "Revisado com responsável pela saída" }, null);
     const baixa = await prisma.baixaAnimal.findFirstOrThrow({ where: { animalId: animal.id, estornadaEm: null } });
     expect(baixa.cienciaCarenciaSnapshot).toMatchObject({ ciente: true, propriedadeId, usuarioId: null, justificativa: "Revisado com responsável pela saída", carencias: { carne: { estado: "CONHECIDO" } } });
     await anularAplicacao(segunda.id, propriedadeId, "Correção posterior à baixa documentada", null);

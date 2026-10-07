@@ -1,4 +1,4 @@
-import { filtrosFatos, limites, type ConsultaSanitaria } from "./consulta.js";
+import { buscaAnimal, filtrosFatos, limites, type ConsultaSanitaria } from "./consulta.js";
 import crypto from "node:crypto";
 import { Prisma, UnidadeMedida, type OrigemInsumoSanitario, type FinalidadeAplicacao } from "@prisma/client";
 import { prisma } from "../../../db.js";
@@ -12,6 +12,10 @@ import { calcularPrazoCarencia } from "./carencia.calc.js";
 import { conferirAnimalNoFato } from "../fatos.js";
 import { transacaoPecuaria } from "../transacao.js";
 import { confirmarFato } from "../idempotencia.js";
+import { resolverLotePrincipalTx, saldoPartidaTx, validadeVencida } from "../../estoque/partidas.js";
+import { alocacaoLoteSanitario, loteAplicacaoDTO } from "./lotes.js";
+import { conferirTarefaProtocoloTx, tipoAplicacaoLegadaId, type DesvioInput } from "./desvios.js";
+import { travarUsosProduto } from "../../estoque/usos.js";
 
 export type AplicacaoInput = {
   chave?: string;
@@ -36,9 +40,12 @@ export type AplicacaoInput = {
   referenciaCarencia?: string | null;
   ocorrenciaId?: string | null;
   tarefaId?: string | null;
+  via?: string | null;
+  desvio?: DesvioInput;
   operacaoServicoId?: string | null;
   itemCompraDiretaId?: string | null;
   partidaId?: string | null;
+  cienciaValidadeDesconhecida?: boolean;
   partidaCodigo?: string | null;
   partidaValidade?: string | null;
   justificativaSemOrigem?: string | null;
@@ -50,6 +57,15 @@ const dia = (valor: string) => new Date(`${valor}T00:00:00.000Z`);
 
 function erro(mensagem: string, campo?: string): never {
   throw new RebanhoError("VALIDACAO", mensagem, campo);
+}
+
+export async function travarOrigensAplicacoesTx(tx: Prisma.TransactionClient, itens: AplicacaoInput[]) {
+  if (!itens.length) return;
+  const origens = [...new Set(itens.map((i) => i.itemCompraDiretaId ? `pec-compra-direta:${i.itemCompraDiretaId}` : `pec-produto:${i.propriedadeId}:${i.produtoId ?? "sem-produto"}`))].sort();
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(h) FROM (SELECT DISTINCT hashtext(k) AS h FROM unnest(${origens}::text[]) AS k) AS chaves ORDER BY h`;
+  await travarUsosProduto(tx, itens.flatMap((i) => i.produtoId ? [i.produtoId] : []));
+  const produtosEstoque = [...new Set(itens.flatMap((i) => i.origemInsumo === "BAIXA_ESTOQUE" && i.produtoId ? [`pec-produto:${i.produtoId}`] : []))].sort();
+  if (produtosEstoque.length) await tx.$executeRaw`SELECT pg_advisory_xact_lock(h) FROM (SELECT DISTINCT hashtext(k) AS h FROM unnest(${produtosEstoque}::text[]) AS k) AS chaves ORDER BY h`;
 }
 
 async function conferirLocalizacao(tx: Prisma.TransactionClient, input: AplicacaoInput) {
@@ -77,7 +93,8 @@ async function validarServico(tx: Prisma.TransactionClient, id: string, propried
   return servico;
 }
 
-async function obterSaldo(tx: Prisma.TransactionClient, produtoId: string, propriedadeId: number, partidaId?: string | null) {
+export async function obterSaldo(tx: Prisma.TransactionClient, produtoId: string, propriedadeId: number, partidaId?: string | null) {
+  if (partidaId) return saldoPartidaTx(tx, partidaId, propriedadeId);
   const principal = await propriedadePrincipalId();
   const movimentos = await tx.movimentoEstoque.findMany({
     where: { produtoId, status: statusSaldoEstoque, ...(propriedadeId === principal ? { OR: [{ propriedadeId }, { propriedadeId: null }] } : { propriedadeId }),
@@ -90,7 +107,7 @@ async function obterSaldo(tx: Prisma.TransactionClient, produtoId: string, propr
   }, new Prisma.Decimal(0));
 }
 
-async function prepararOrigem(tx: Prisma.TransactionClient, input: AplicacaoInput, data: Date, usuarioId: number | null) {
+async function prepararOrigem(tx: Prisma.TransactionClient, input: AplicacaoInput, data: Date, usuarioId: number | null, previa = false) {
   if (input.produtoId) await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`produto-usos:${input.produtoId}`}))`;
   const produto = input.produtoId ? await tx.produto.findUnique({ where: { id: input.produtoId } }) : null;
   if (input.produtoId && !produto) erro("Produto não encontrado", "produtoId");
@@ -141,9 +158,11 @@ async function prepararOrigem(tx: Prisma.TransactionClient, input: AplicacaoInpu
     if (quantidade!.decimalPlaces() > 3) erro("Cadastre o Produto em unidade menor: esta dose perderia precisão", "dose");
     if (produto.rastrearPartidas && !input.partidaId) erro("Selecione o lote do produto", "partidaId");
     if (!produto.rastrearPartidas && input.partidaId) erro("Este Produto não usa lotes", "partidaId");
-    const partida = input.partidaId ? await tx.partidaProduto.findFirst({ where: { id: input.partidaId, produtoId: produto.id } }) : null;
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`pec-produto:${produto.id}`}))`;
+    const partida = input.partidaId ? await resolverLotePrincipalTx(tx, input.partidaId, produto.id) : null;
     if (input.partidaId && !partida) erro("Lote não pertence a este Produto", "partidaId");
-    if (partida?.validade && partida.validade < data) {
+    if (partida && !partida.validade && !input.cienciaValidadeDesconhecida) erro("Confirme a ciência de uso do lote com validade não informada", "cienciaValidadeDesconhecida");
+    if (partida?.validade && validadeVencida(partida.validade, data)) {
       if (!input.documentacaoExcepcional || (input.motivoDocumentacaoExcepcional?.trim().length ?? 0) < 5 || new Date(input.aplicadaEm) > new Date()) erro("Lote vencido: uso operacional bloqueado; documentação de fato já ocorrido exige ciência e justificativa", "partidaId");
     } else if (input.documentacaoExcepcional) erro("Documentação excepcional só cabe para fato já ocorrido com lote vencido", "documentacaoExcepcional");
     if ((await obterSaldo(tx, produto.id, input.propriedadeId)).lt(quantidade!)) erro("Saldo de estoque insuficiente neste sítio", "dose");
@@ -151,14 +170,14 @@ async function prepararOrigem(tx: Prisma.TransactionClient, input: AplicacaoInpu
     await exigirPeriodoAberto(tx, input.propriedadeId, data);
     const base = await obterBaseCusto(tx, produto.id, input.propriedadeId);
     const valores = valorSaidaDaBase(quantidade!, base);
-    const movimento = await tx.movimentoEstoque.create({ data: {
+    const movimento = previa ? null : await tx.movimentoEstoque.create({ data: {
       produtoId: produto.id, tipo: "SAIDA", origem: "SANIDADE", data, quantidade: quantidade!,
       custoUnitario: valores.custoUnitario, valorTotal: valores.valorTotal,
       propriedadeId: input.propriedadeId, criadoPorId: usuarioId,
       observacao: `Aplicação sanitária em ${input.animalId}${input.documentacaoExcepcional ? ` · DOCUMENTAÇÃO EXCEPCIONAL: ${input.motivoDocumentacaoExcepcional}` : ""}`,
       ...(partida ? { alocacaoPartidaEstoques: { create: { partidaId: partida.id, quantidade: quantidade! } } } : {}),
     } });
-    movimentoEstoqueId = movimento.id;
+    movimentoEstoqueId = movimento?.id ?? null;
     valorProdutoAtribuido = base ? valores.valorTotal : null;
     situacaoCusto = base ? "CONHECIDO" : "SEM_BASE";
     partidaCodigo = partida?.codigo ?? null;
@@ -172,11 +191,11 @@ async function prepararOrigem(tx: Prisma.TransactionClient, input: AplicacaoInpu
     partidaValidadeSnapshot: partidaValidade };
 }
 
-async function criarAplicacaoTx(tx: Prisma.TransactionClient, input: AplicacaoInput, usuarioId: number | null) {
+export async function prepararAplicacaoTx(tx: Prisma.TransactionClient, input: AplicacaoInput, usuarioId: number | null, previa = false) {
     await travarAnimais(tx, [input.animalId]);
     const data = await conferirLocalizacao(tx, input);
     const destino = await tx.destinoAnimal.findFirst({ where: { animalId: input.animalId, desde: { lte: data }, OR: [{ ate: null }, { ate: { gt: data } }] } });
-    const tipoLegadoId = input.finalidade === "VACINA" ? "a0300000-0000-4000-8000-000000000002" : input.finalidade === "VERMIFUGO" ? "a0300000-0000-4000-8000-000000000003" : "a0300000-0000-4000-8000-000000000001";
+    const tipoLegadoId = tipoAplicacaoLegadaId(input.finalidade);
     const tipoAplicacao = await tx.tipoAplicacaoSanitaria.findFirst({ where: {
       id: input.tipoAplicacaoId ?? tipoLegadoId, ativo: true } });
     if (!tipoAplicacao) erro("Selecione um tipo de aplicação ativo", "tipoAplicacaoId");
@@ -188,16 +207,13 @@ async function criarAplicacaoTx(tx: Prisma.TransactionClient, input: AplicacaoIn
     }
     if (estadoCarne === "NAO_APLICAVEL" && !input.justificativaCarenciaCarne?.trim()) erro("Justifique por que a carência de carne não se aplica", "justificativaCarenciaCarne");
     let dados = input;
+    let desvioProtocoloSnapshot: Awaited<ReturnType<typeof conferirTarefaProtocoloTx>>["desvioProtocoloSnapshot"] | null = null;
     if (input.tarefaId) {
-      const tarefa = await tx.tarefaSanitaria.findUnique({ where: { id: input.tarefaId },
-        include: { etapa: true, execucao: true, aplicacoes: { where: { status: "VALIDO" } }, exames: { where: { status: "VALIDO" } } } });
-      if (!tarefa || tarefa.execucao.animalId !== input.animalId || tarefa.execucao.canceladaEm || tarefa.dispensadaEm || tarefa.aplicacoes.length || tarefa.exames.length || tarefa.etapa.tipo !== "APLICACAO") {
-        erro("A tarefa não está disponível para esta aplicação", "tarefaId");
-      }
-      if (tarefa!.etapa.produtoId !== input.produtoId || (tarefa!.etapa.tipoAplicacaoId ? tarefa!.etapa.tipoAplicacaoId !== tipoAplicacao!.id : tarefa!.etapa.finalidade !== input.finalidade)
-        || !tarefa!.etapa.dose?.equals(input.dose) || tarefa!.etapa.unidade !== input.unidadeDose) {
-        erro("A aplicação deve corresponder ao Produto, finalidade e dose da etapa", "tarefaId");
-      }
+      const conferida = await conferirTarefaProtocoloTx(tx, input.tarefaId, input.animalId, { tipo: "APLICACAO", data: input.data,
+        produtoId: input.produtoId, dose: input.dose, unidade: input.unidadeDose, via: input.via,
+        tipoAplicacaoId: tipoAplicacao!.id, finalidade: input.finalidade }, input.desvio, !previa);
+      const tarefa = conferida.tarefa;
+      desvioProtocoloSnapshot = conferida.desvioProtocoloSnapshot;
       const servicoDoSitio = tarefa!.execucao.propriedadeId === input.propriedadeId ? tarefa!.execucao.operacaoServicoId : null;
       if (servicoDoSitio && input.operacaoServicoId && servicoDoSitio !== input.operacaoServicoId) {
         erro("O Serviço da aplicação diverge do protocolo", "operacaoServicoId");
@@ -206,10 +222,13 @@ async function criarAplicacaoTx(tx: Prisma.TransactionClient, input: AplicacaoIn
     }
     // Ordem global: animal antes de Produto/sítio. A trava serializa consumo
     // concorrente e reserva de quantidade da mesma compra direta.
-    const trava = input.itemCompraDiretaId ? `pec-compra-direta:${input.itemCompraDiretaId}` : `pec-produto:${input.propriedadeId}:${input.produtoId ?? "sem-produto"}`;
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${trava}))`;
-    const origem = await prepararOrigem(tx, dados, data, usuarioId);
-    const criada = await tx.aplicacaoProduto.create({ data: {
+    await travarOrigensAplicacoesTx(tx, [input]);
+    const origem = await prepararOrigem(tx, dados, data, usuarioId, previa);
+    if (desvioProtocoloSnapshot) {
+      desvioProtocoloSnapshot.exibicao.realizado.produtoId = origem.nomeProdutoAplicado;
+      desvioProtocoloSnapshot.exibicao.realizado.tipoAplicacaoId = tipoAplicacao!.nome;
+    }
+    const dadosCriacao: Prisma.AplicacaoProdutoUncheckedCreateInput = {
       animalId: dados.animalId, propriedadeId: dados.propriedadeId, produtoId: dados.produtoId ?? null,
       nomeProdutoAplicado: origem.nomeProdutoAplicado, ocorrenciaId: dados.ocorrenciaId ?? null, tarefaId: dados.tarefaId ?? null,
       data, aplicadaEm: new Date(dados.aplicadaEm), precisaoTemporal: "HORA", finalidade: dados.finalidade,
@@ -218,6 +237,8 @@ async function criarAplicacaoTx(tx: Prisma.TransactionClient, input: AplicacaoIn
       justificativaCarenciaLeite: input.justificativaCarenciaLeite ?? null, justificativaCarenciaCarne: input.justificativaCarenciaCarne ?? null,
       aptidaoCarenciaSnapshot: destino?.aptidao ?? null,
       dose: new Prisma.Decimal(dados.dose), unidadeDose: dados.unidadeDose,
+      via: dados.via?.trim() || null,
+      ...(desvioProtocoloSnapshot ? { desvioProtocoloSnapshot } : {}),
       carenciaLeiteHoras: dados.carenciaLeiteHoras ?? null, carenciaCarneHoras: dados.carenciaCarneHoras ?? null,
       referenciaCarencia: dados.referenciaCarencia ?? null, origemInsumo: dados.origemInsumo,
       quantidadeUtilizada: new Prisma.Decimal(dados.dose),
@@ -226,9 +247,15 @@ async function criarAplicacaoTx(tx: Prisma.TransactionClient, input: AplicacaoIn
       valorProdutoAtribuido: origem.valorProdutoAtribuido, situacaoCusto: origem.situacaoCusto,
       partidaCodigoSnapshot: origem.partidaCodigoSnapshot, partidaValidadeSnapshot: origem.partidaValidadeSnapshot,
       justificativaSemOrigem: dados.justificativaSemOrigem ?? null,
-    } });
+    };
+    return { dadosCriacao, desvioProtocoloSnapshot };
+}
+
+export async function criarAplicacaoTx(tx: Prisma.TransactionClient, input: AplicacaoInput, usuarioId: number | null) {
+    const { dadosCriacao } = await prepararAplicacaoTx(tx, input, usuarioId);
+    const criada = await tx.aplicacaoProduto.create({ data: dadosCriacao });
     await auditar(tx, { entidade: "AplicacaoProduto", entidadeId: criada.id, animalId: input.animalId, propriedadeId: input.propriedadeId, acao: "REGISTRO", usuarioId,
-      depois: { origemInsumo: criada.origemInsumo, operacaoServicoId: criada.operacaoServicoId, itemCompraDiretaId: criada.itemCompraDiretaId, movimentoEstoqueId: criada.movimentoEstoqueId, cienciaPartidaVencida: !!input.documentacaoExcepcional, motivoDocumentacaoExcepcional: input.motivoDocumentacaoExcepcional ?? null } });
+      depois: { origemInsumo: criada.origemInsumo, operacaoServicoId: criada.operacaoServicoId, itemCompraDiretaId: criada.itemCompraDiretaId, movimentoEstoqueId: criada.movimentoEstoqueId, via: criada.via, desvioProtocoloSnapshot: criada.desvioProtocoloSnapshot, cienciaValidadeDesconhecida: !!input.cienciaValidadeDesconhecida, cienciaPartidaVencida: !!input.documentacaoExcepcional, motivoDocumentacaoExcepcional: input.motivoDocumentacaoExcepcional ?? null } });
     return criada;
 }
 
@@ -248,6 +275,7 @@ export async function criarAplicacoesColetivas(input: { chave: string; proprieda
       if (anterior.hashPayload !== hashPayload || anterior.usuarioId !== usuarioId || anterior.propriedadeId !== input.propriedadeId || anterior.operacao !== "APLICACAO_COLETIVA") throw new RebanhoError("CONFLITO", "Chave já utilizada com outros dados");
       return { aplicacoes: anterior.resultadoIds };
     }
+    await travarOrigensAplicacoesTx(tx, input.itens);
     const aplicacoes = [];
     for (const [linha, item] of input.itens.entries()) {
       try { const a = await criarAplicacaoTx(tx, item, usuarioId); aplicacoes.push({ id: a.id, animalId: a.animalId }); }
@@ -258,46 +286,72 @@ export async function criarAplicacoesColetivas(input: { chave: string; proprieda
   });
 }
 
-export type ReconciliacaoInput = Pick<AplicacaoInput, "origemInsumo" | "produtoId" | "operacaoServicoId" | "itemCompraDiretaId" | "partidaId" | "partidaCodigo" | "partidaValidade"> & { motivo: string };
+export type ReconciliacaoInput = Pick<AplicacaoInput, "origemInsumo" | "produtoId" | "operacaoServicoId" | "itemCompraDiretaId" | "partidaId" | "partidaCodigo" | "partidaValidade" | "cienciaValidadeDesconhecida"> & { motivo: string; confirmarEquivalencia?: boolean };
 export async function reconciliarOrigem(id: string, propriedadeId: number, input: ReconciliacaoInput, usuarioId: number | null) {
   return transacaoPecuaria(async (tx) => {
+    const referencia = await tx.aplicacaoProduto.findFirst({ where: { id, propriedadeId } });
+    if (!referencia) throw new RebanhoError("NAO_ENCONTRADO", "Aplicação não encontrada neste sítio");
+    await travarAnimais(tx, [referencia.animalId]);
     const antes = await tx.aplicacaoProduto.findFirst({ where: { id, propriedadeId, status: "VALIDO", origemInsumo: "SEM_ORIGEM_JUSTIFICADA" } });
     if (!antes) throw new RebanhoError("CONFLITO", "Somente aplicação válida com origem pendente pode ser reconciliada");
-    await travarAnimais(tx, [antes.animalId]);
-    if (input.origemInsumo === "SEM_ORIGEM_JUSTIFICADA") erro("Selecione a origem localizada");
-    if (antes.produtoId && input.produtoId !== antes.produtoId) erro("Não é permitido trocar o medicamento; anule e registre novamente");
-    const produto = input.produtoId ? await tx.produto.findUnique({ where: { id: input.produtoId } }) : null;
-    if (produto && produto.nome.trim().toLocaleLowerCase() !== antes.nomeProdutoAplicado.trim().toLocaleLowerCase()) erro("Produto deve corresponder ao medicamento registrado; anule para corrigir o medicamento", "produtoId");
+    await conferirAnimalNoFato(tx, antes.animalId, propriedadeId, antes.data);
+    if ((input.motivo?.trim().length ?? 0) < 5) erro("Explique como a origem foi conferida", "motivo");
+    if (input.origemInsumo === "SEM_ORIGEM_JUSTIFICADA") erro("Selecione a origem localizada", "origemInsumo");
+    if (antes.produtoId && input.produtoId !== antes.produtoId) erro("Não é permitido trocar o medicamento; anule e registre novamente", "produtoId");
     const trava = input.itemCompraDiretaId ? `pec-compra-direta:${input.itemCompraDiretaId}` : `pec-produto:${propriedadeId}:${input.produtoId ?? "sem-produto"}`;
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${trava}))`;
+    if (input.produtoId) await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`produto-usos:${input.produtoId}`}))`;
+    const produto = input.produtoId ? await tx.produto.findUnique({ where: { id: input.produtoId } }) : null;
+    if (!antes.produtoId && produto && produto.nome.trim().toLocaleLowerCase("pt-BR") !== antes.nomeProdutoAplicado.trim().toLocaleLowerCase("pt-BR") && input.confirmarEquivalencia !== true) {
+      erro("Confirme que o Produto corresponde ao medicamento aplicado", "confirmarEquivalencia");
+    }
     const unidade = Object.values(UnidadeMedida).find((u) => u === antes.unidadeDose);
     if (!unidade || !antes.aplicadaEm || !antes.dose) erro("Registro histórico sem quantidade/unidade/horário deve ser corrigido por anulação");
+    if (produto) {
+      try { converterQuantidade(antes.dose!, unidade!, produto.unidade); }
+      catch { erro("A dose e o Produto têm unidades incompatíveis", "produtoId"); }
+    }
     const origem = await prepararOrigem(tx, { ...input, animalId: antes.animalId, propriedadeId, data: antes.data.toISOString().slice(0, 10), aplicadaEm: antes.aplicadaEm!.toISOString(), nomeProdutoAplicado: antes.nomeProdutoAplicado, dose: antes.dose!.toString(), unidadeDose: unidade! }, antes.data, usuarioId);
     const { nomeProdutoAplicado: _nome, ...vinculos } = origem;
     const depois = await tx.aplicacaoProduto.update({ where: { id }, data: { ...vinculos, origemInsumo: input.origemInsumo, produtoId: input.produtoId ?? null, operacaoServicoId: input.operacaoServicoId ?? null } });
     // A justificativa original permanece no registro e na auditoria. Não há nova
     // despesa: a origem aponta para estoque/compra/Serviço já existente.
-    await auditar(tx, { entidade: "AplicacaoProduto", entidadeId: id, animalId: antes.animalId, propriedadeId, acao: "ORIGEM_RECONCILIADA", usuarioId, antes, depois: { ...depois, motivo: input.motivo } });
+    await auditar(tx, { entidade: "AplicacaoProduto", entidadeId: id, animalId: antes.animalId, propriedadeId, acao: "ORIGEM_RECONCILIADA", usuarioId, antes, depois: { ...depois, motivo: input.motivo.trim(), confirmarEquivalencia: input.confirmarEquivalencia === true, cienciaValidadeDesconhecida: !!input.cienciaValidadeDesconhecida } });
     return depois;
   });
 }
 
-export async function listarAplicacoes(animalId: string | undefined, propriedadeId: number | null, filtro?: ConsultaSanitaria) {
-  return prisma.aplicacaoProduto.findMany({ where: { ...filtrosFatos(filtro), ...(filtro?.situacao === "ORIGEM_PENDENTE" ? { origemInsumo: "SEM_ORIGEM_JUSTIFICADA" } : {}), ...(animalId ? { animalId } : {}), ...(propriedadeId == null ? {} : { propriedadeId }) },
-    orderBy: [{ data: "desc" }, { criadoEm: "desc" }], ...limites(filtro) });
+function filtroAplicacoes(animalId: string | undefined, propriedadeId: number | null, filtro?: ConsultaSanitaria) {
+  return { ...filtrosFatos(filtro), ...(filtro?.situacao === "ORIGEM_PENDENTE" ? { origemInsumo: "SEM_ORIGEM_JUSTIFICADA" as const } : {}), ...(animalId ? { animalId } : {}), ...(propriedadeId == null ? {} : { propriedadeId }) };
 }
 
-export async function carenciaAnimal(animalId: string, propriedadeId: number | null) {
+export async function listarAplicacoes(animalId: string | undefined, propriedadeId: number | null, filtro?: ConsultaSanitaria) {
+  const fatos = await prisma.aplicacaoProduto.findMany({ where: filtroAplicacoes(animalId, propriedadeId, filtro),
+    include: { animal: { select: { id: true, brinco: true, nome: true } }, produto: { select: { id: true, nome: true, unidade: true } }, movimentoEstoque: { select: { alocacaoPartidaEstoques: alocacaoLoteSanitario } } },
+    orderBy: [{ data: "desc" }, { criadoEm: "desc" }], ...limites(filtro) });
+  return fatos.map((fato) => { const { movimentoEstoque: _movimento, ...historico } = fato; return { ...historico, ...loteAplicacaoDTO(fato) }; });
+}
+
+export async function listarAplicacoesPaginadas(animalId: string | undefined, propriedadeId: number | null, filtro: ConsultaSanitaria) {
+  const [itens, total] = await Promise.all([
+    listarAplicacoes(animalId, propriedadeId, filtro),
+    prisma.aplicacaoProduto.count({ where: filtroAplicacoes(animalId, propriedadeId, filtro) }),
+  ]);
+  return { itens, total, pagina: filtro.pagina, porPagina: filtro.porPagina };
+}
+
+export async function carenciaAnimal(animalId: string, propriedadeId: number | null, dataReferencia?: string) {
   if (propriedadeId != null) {
     const ultima = await prisma.localizacaoAnimal.findFirst({ where: { animalId }, orderBy: [{ desde: "desc" }, { criadoEm: "desc" }], select: { propriedadeId: true } });
     if (ultima?.propriedadeId !== propriedadeId) throw new RebanhoError("NAO_ENCONTRADO", "Animal não encontrado neste sítio");
   }
-  return carenciaAnimalTx(prisma, animalId);
+  return carenciaAnimalTx(prisma, animalId, dataReferencia);
 }
 
 export async function listarCarencias(propriedadeId: number | null, filtro: ConsultaSanitaria) {
   const animais = await prisma.animal.findMany({
     where: {
+      ...buscaAnimal(filtro),
       ...(filtro.animalId ? { id: filtro.animalId } : {}),
       ...(propriedadeId == null ? {} : { localizacoes: { some: { propriedadeId, ate: null } } }),
       aplicacaoProdutos: { some: { ...filtrosFatos(filtro) } },
@@ -308,12 +362,12 @@ export async function listarCarencias(propriedadeId: number | null, filtro: Cons
   return Promise.all(animais.map(async (animal) => ({ animal, ...await carenciaAnimalTx(prisma, animal.id) })));
 }
 
-export async function carenciaAnimalTx(tx: Prisma.TransactionClient, animalId: string) {
+export async function carenciaAnimalTx(tx: Prisma.TransactionClient, animalId: string, dataReferencia?: string) {
   // A carência acompanha o animal. Uma dose aplicada no sítio anterior ainda
   // importa para o leite/carne no sítio atual; o acesso, porém, é pelo local atual.
-  const aplicacoes = await tx.aplicacaoProduto.findMany({ where: { animalId, status: "VALIDO" },
+  const aplicacoes = await tx.aplicacaoProduto.findMany({ where: { animalId, status: "VALIDO", ...(dataReferencia ? { data: { lte: new Date(dataReferencia + "T00:00:00Z") } } : {}) },
     select: { data: true, aplicadaEm: true, precisaoTemporal: true, carenciaLeiteHoras: true, carenciaCarneHoras: true, estadoCarenciaLeite: true, estadoCarenciaCarne: true, aptidaoCarenciaSnapshot: true } });
-  const animal = await tx.animal.findUnique({ where: { id: animalId }, select: { sexo: true, destinos: { where: { ate: null }, take: 1 } } });
+  const animal = await tx.animal.findUnique({ where: { id: animalId }, select: { sexo: true, destinos: { where: dataReferencia ? { desde: { lte: new Date(dataReferencia + "T00:00:00Z") }, OR: [{ ate: null }, { ate: { gt: new Date(dataReferencia + "T00:00:00Z") } }] } : { ate: null }, take: 1 } } });
   if (!animal) throw new RebanhoError("NAO_ENCONTRADO", "Animal não encontrado");
   const revisarLeite = animal?.sexo === "F" && animal.destinos[0]?.aptidao === "LEITE" && aplicacoes.some((a) => a.estadoCarenciaLeite === "NAO_APLICAVEL" && a.aptidaoCarenciaSnapshot !== "LEITE");
   return { leite: revisarLeite ? { estado: "NAO_INFORMADO" as const } : calcularPrazoCarencia(aplicacoes, "LEITE"), carne: calcularPrazoCarencia(aplicacoes, "CARNE"), revisaoLeitePendente: revisarLeite };

@@ -14,6 +14,8 @@ afterAll(async () => {
   if (!ids.propriedade) return;
   const fechamentos = await prisma.fechamentoConsumo.findMany({ where: { loteId: ids.lote }, select: { id: true } });
   const fechamentoIds = fechamentos.map((f) => f.id);
+  const movimentos = await prisma.movimentoEstoque.findMany({ where: { produtoId: ids.produto }, select: { id: true } });
+  await prisma.auditoriaFinanceira.deleteMany({ where: { entidade: "MovimentoEstoque", entidadeId: { in: movimentos.map((m) => m.id) } } });
   await prisma.auditoriaPecuaria.deleteMany({ where: { OR: [{ animalId: ids.animal }, { entidadeId: { in: [ids.dieta, ids.vigencia, ...fechamentoIds] } }] } });
   await prisma.itemFechamentoConsumo.deleteMany({ where: { fechamentoId: { in: fechamentoIds } } });
   await prisma.participacaoConsumoAnimal.deleteMany({ where: { fechamentoId: { in: fechamentoIds } } });

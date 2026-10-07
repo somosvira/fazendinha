@@ -1,0 +1,570 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>V3 — Guia de testes</title>
+<style>
+:root{--papel:#faf9f6;--cartao:#fff;--texto:#24382e;--secundario:#59665e;--linha:#d8dfd8;--verde:#286347;--suave:#eef5ef;--erro:#a53932;--amarelo:#765915}
+*{box-sizing:border-box}body{margin:0;background:var(--papel);color:var(--texto);font:17px/1.65 system-ui,sans-serif}a{color:var(--verde)}button,input,select,textarea{font:inherit}button,select{border:1px solid var(--linha);border-radius:7px;background:var(--cartao);padding:8px 12px;color:var(--texto)}button{cursor:pointer}button:hover{border-color:var(--verde)}:focus-visible{outline:3px solid var(--verde);outline-offset:3px}.shell{max-width:1160px;margin:auto;padding:32px 24px}header{max-width:850px;margin-bottom:28px}h1{font:700 clamp(30px,4vw,45px)/1.15 Georgia,serif;margin:10px 0 16px}h2{font:700 28px/1.3 Georgia,serif;margin:0}h3{font-size:21px;line-height:1.4;margin:0}.intro{color:var(--secundario);max-width:750px}.layout{display:grid;grid-template-columns:210px minmax(0,1fr);gap:32px}nav{position:sticky;top:20px;align-self:start;max-height:90vh;overflow:auto}nav a{display:block;padding:8px 10px;text-decoration:none;border-left:2px solid var(--linha);font-size:15px}nav a:hover{background:var(--suave)}.tools{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:20px 0}#progresso{font-weight:600}.grupo{margin-bottom:50px;scroll-margin-top:20px}.grupo>p{color:var(--secundario)}article{background:var(--cartao);border:1px solid var(--linha);border-radius:12px;padding:26px;margin-top:20px;scroll-margin-top:20px}article[data-status="passou"]{border-left:5px solid var(--verde)}article[data-status="falhou"]{border-left:5px solid var(--erro)}article[data-status="bloqueado"]{border-left:5px solid var(--amarelo)}.num{color:var(--verde);font-size:14px;font-weight:700;letter-spacing:.06em;display:block;margin-bottom:5px}.onde{font-size:15px;color:var(--secundario);border-bottom:1px solid var(--linha);padding-bottom:14px;margin:12px 0 18px}.passos{padding-left:24px}.passos li{margin:10px 0}.confira{background:var(--suave);border-radius:8px;padding:15px 18px;margin-top:18px}.confira strong{display:block;color:var(--verde);font-size:14px;margin-bottom:5px}.marcar{display:flex;align-items:center;gap:10px;margin-top:20px;font-size:14px;flex-wrap:wrap}details{margin-top:12px;font-size:14px}summary{cursor:pointer}textarea{display:block;width:100%;min-height:90px;padding:10px;border:1px solid var(--linha);border-radius:6px;margin-top:8px}.nota{border-left:3px solid var(--verde);padding-left:15px;font-size:15px}.aviso{color:var(--erro)}[hidden]{display:none!important}#relatorio{width:min(850px,94vw);max-height:85vh;border:1px solid var(--linha);border-radius:12px;padding:24px}#relatorio textarea{min-height:45vh;font-size:14px}footer{color:var(--secundario);font-size:14px;margin-top:20px}code{font-family:inherit;font-weight:650;overflow-wrap:anywhere}
+@media(max-width:850px){.layout{display:block}nav{position:static;max-height:none;display:flex;gap:4px;flex-wrap:wrap;margin-bottom:24px}nav a{font-size:13px;border:1px solid var(--linha);border-radius:5px}.shell{padding:22px 16px}article{padding:20px}body{font-size:16px}}
+@media print{nav,.tools,.marcar,article details,header>a,dialog{display:none!important}.layout{display:block}.shell{max-width:none;padding:0}article{break-inside:avoid}article[hidden]{display:block!important}body{font-size:11pt;background:white}.grupo{margin-bottom:20px}}
+</style>
+</head>
+<body><div class="shell">
+<header><span class="num">V3 · TESTES PELA INTERFACE</span><h1>Um passo de cada vez.</h1>
+<p class="intro">Siga a ordem abaixo. Cada item traz a tela, os dados para preencher e o resultado para conferir naquele momento. Os dados de apoio desta rodada já estão preparados.</p>
+<p class="nota">Use o sítio <b>Guia V3 — Principal</b>, salvo quando o passo pedir outro. Os nomes <b>Guia V3</b> e brincos <b>GV3-</b> identificam esta rodada. As quantidades esperadas consideram uma execução na ordem indicada. Se um passo falhar, registre a falha; não repita confirmações já concluídas para tentar seguir.</p>
+<p class="nota"><strong>Reteste manual indicado:</strong> os itens com selo vermelho foram afetados por ajustes de interface ou contratos da V3; os itens 49–57 também merecem conferir a distinção entre execução individual/coletiva antiga e a nova visão de Ciclos. Esta revisão conferiu os casos antigos 1–93 e manteve seus identificadores e resultados salvos. Se a ação já foi confirmada, reteste consultas, detalhes, filtros e navegação nos fatos existentes; não repita criação, compra ou aplicação para tentar recuperar saldo inicial. Em 19, 4 destinados/6 disponíveis é o ponto antes do teste 20; se 20 já foi concluído, 10 destinados/0 disponíveis é o saldo correto. Preserve fatos, saldos, marcações e anotações existentes.</p>
+<a href="http://localhost:41875" target="_blank" rel="noopener">Abrir o projeto local ↗</a>
+<div class="tools"><span id="progresso" role="status"></span><label>Mostrar <select id="filtro"><option value="todos">Todos os testes</option><option value="pendente">Pendentes</option><option value="falhou">Falhas</option><option value="bloqueado">Bloqueados</option></select></label><button id="exportar">Ver relatório</button><button id="imprimir">Imprimir</button></div>
+<p id="persistencia" class="aviso" role="status" hidden></p>
+</header><div class="layout"><nav aria-label="Etapas do roteiro" id="indice"></nav><main id="roteiro"></main></div>
+<footer>Guia preparado em 04/10/2026; retestes atualizados em 06/10/2026. Suítes automatizadas não aprovam estes passos manuais nem mudam suas marcações. As marcações pertencem somente a este roteiro e a este navegador. Se um pré-requisito falhou, marque o teste dependente como Bloqueado e descreva o motivo.</footer>
+</div><dialog id="relatorio"><h2>Relatório desta rodada</h2><textarea id="texto-relatorio" readonly aria-label="Relatório para copiar"></textarea><p>Selecione e copie o texto para compartilhar os resultados.</p><button id="fechar-relatorio">Fechar</button></dialog>
+<script>
+const grupos = [
+{id:'acesso',nome:'1. Acesso e cenário',descricao:'Comece conferindo que está usando os dados desta rodada.',testes:[
+['acessar','Abrir o cenário preparado','Projeto local → seletor de sítio',[
+'Abra o projeto. Se aparecer a tela de entrada, use testdev@rionovo.com.br e a senha local senha123.',
+'No seletor de sítio da barra lateral, escolha Guia V3 — Principal. Abra Pecuária → Rebanho → Animais e busque GV3-S1.',
+'Abra a ficha de GV3-S1 e confira o sítio e o lote.'
+],'A ficha mostra GV3-S1, fêmea, finalidade Leite, sítio Guia V3 — Principal e lote Guia V3 — Sanidade. O mesmo nome do sítio aparece no seletor e na ficha.'],
+['cenario-nutricao','Conferir os animais da nutrição','Pecuária → Rebanho → Lotes',[
+'Abra Guia V3 — Nutrição e confira a lista de animais.',
+'Abra GV3-N01 e depois GV3-N11. Em cada ficha, confira a data de entrada e o início da permanência no lote.'
+],'O lote tem 12 animais: GV3-N01 a GV3-N12. N01 entrou em 01/09/2026; N11 entrou em 06/09/2026. Não é preciso calcular consumo nesta etapa.']
+]},
+{id:'produtos',nome:'2. Produtos e perfis',descricao:'O produto criado aqui será usado somente na sequência de compras, saldo e perdas.',testes:[
+['criar-produto','Criar um produto com controle de lotes','Financeiro → Configurações financeiras → Produtos',[
+'Clique em Novo produto. Nome: Guia V3 — Vacina teste. Categoria: Sanidade. Marque uso Sanitário. Unidade: mL. Estoque mínimo: 0.',
+'No perfil sanitário, informe via Intramuscular, carência do leite 0 horas e abate/carne 48 horas. Ative Controle de lotes. Deixe centros de custo e fornecedores vazios. Salve.',
+'Clique no nome do produto criado. Confira os campos e depois use Ver no estoque.'
+],'O nome abre o painel do produto; Ver no estoque abre a ficha de estoque separadamente. O perfil conserva 0 h/48 h e Intramuscular. O saldo é zero e nenhum lote vazio foi criado. Não há campo Referência técnica.'],
+['categoria','Trocar categoria sem mudar o uso','Financeiro → Configurações financeiras → Produtos → Guia V3 — Vacina teste',[
+'Abra o produto pelo nome. Troque somente a categoria de Sanidade para Nutrição e salve.',
+'Reabra o produto: confira o uso Sanitário e o perfil. Restaure a categoria Sanidade, salve e reabra.'
+],'As duas trocas são aceitas. O uso Sanitário, mL, controle de lotes, via e carências permanecem iguais. A categoria não ativa nem remove um tipo de uso.'],
+['multiplos-usos','Combinar dois usos no mesmo produto','Financeiro → Configurações financeiras → Produtos → Guia V3 — Vacina teste',[
+'Mantenha Sanitário e acrescente Nutricional. No perfil nutricional, informe matéria seca 90%. Salve e reabra.',
+'Confira os dois perfis. Mantenha os dois usos para os próximos testes.'
+],'Sanitário e Nutricional aparecem juntos. O perfil sanitário mantém 0 h/48 h; o nutricional mostra 90%. Criação e edição seguem a mesma ordem de campos.'],
+['ms-invalida','Recusar matéria seca inválida','Mesmo painel → Perfil nutricional',[
+'Troque 90 por -1 e tente salvar. Leia a mensagem abaixo do campo.',
+'Troque por 101 e tente salvar novamente. Feche sem salvar e reabra o produto.'
+],'As duas tentativas são recusadas em português, junto ao campo. O formulário não perde os demais valores e, ao reabrir, a matéria seca continua em 90%.'],
+['ms-limites','Distinguir zero, decimal e vazio','Mesmo painel → Perfil nutricional',[
+'Salve matéria seca 0 e reabra. Depois salve 100 e reabra.',
+'Salve 90,25 e reabra. Apague o campo, salve e reabra.',
+'Por último, restaure 90 e salve.'
+],'Cada valor é preservado: 0%, 100%, 90,25% e vazio. Vazio não vira 0 nem 100. Ao terminar, o perfil está em 90%.']
+]},
+{id:'compras',nome:'3. Compras e lotes',descricao:'Use sempre Guia V3 — Vacina teste. As compras ficam a prazo; não é necessário efetuar pagamento.',testes:[
+['compra-50','Comprar 50 mL em um lote','Financeiro → Operações → Nova operação',[
+'Escolha Compra para estoque, sítio Guia V3 — Principal, data 01/09/2026 e parceiro Guia V3 — Fornecedor A. Descrição: Guia V3 — Compra A.',
+'Adicione Guia V3 — Vacina teste: quantidade 50 mL, valor unitário R$ 2,00. No bloco do lote, informe validade 17/09/2027 e deixe o nome vazio.',
+'Escolha pagamento A prazo: uma parcela de R$ 100,00 para 01/12/2026. Confira e confirme a operação.',
+'Abra Estoque, busque o produto e clique nele para consultar a ficha.'
+],'Saldo de 50 mL, um lote com validade 17/09/2027 e nome automático. A origem leva à compra de R$ 100,00 do Fornecedor A.'],
+['compra-mesma-validade','Reunir compras da mesma validade','Financeiro → Operações → Nova operação',[
+'Repita a compra para estoque com o mesmo produto e sítio. Data 02/09/2026, parceiro Guia V3 — Fornecedor B, descrição Guia V3 — Compra B.',
+'Informe 20 mL a R$ 2,00, validade 17/09/2027, sem nome de lote. Confira a indicação de acréscimo ao lote existente.',
+'Use A prazo, uma parcela de R$ 40,00 em 01/12/2026. Confirme e abra a ficha do produto no Estoque, incluindo as operações de origem.'
+],'O produto tem 70 mL em um único lote de validade 17/09/2027. As duas compras/origens permanecem identificadas separadamente; fornecedor diferente não cria outro agrupamento.'],
+['erro-distribuicao','Localizar erro na soma dos lotes','Financeiro → Operações → Nova operação',[
+'Inicie Compra para estoque, data 03/09/2026, Fornecedor A, descrição Guia V3 — Compra dividida. Adicione 30 mL da Vacina teste a R$ 2,00.',
+'Use a ação de dividir entre validades. Informe 10 mL com validade 17/10/2027 e 10 mL com validade 17/11/2027: a soma ficará 20, embora o item tenha 30.',
+'Informe A prazo, parcela única de R$ 60,00 em 01/12/2026. Tente confirmar e mantenha o formulário aberto.'
+],'Não confirma. O erro junto à distribuição informa a diferença entre 30 mL e 20 mL, com destaque e texto vermelho. A tela leva o foco/rolagem ao erro e mostra aviso próximo à confirmação. Os dados preenchidos permanecem.'],
+['corrigir-distribuicao','Corrigir a distribuição e confirmar','Continue na compra dividida do item anterior',[
+'Mantenha 10 mL em 17/10/2027 e altere o segundo lote para 20 mL em 17/11/2027.',
+'Confirme a compra uma única vez e abra a ficha de estoque da Vacina teste.'
+],'Saldo total de 100 mL: 70 em 17/09/2027, 10 em 17/10/2027 e 20 em 17/11/2027. A compra de R$ 60,00 aparece entre as origens.'],
+['unidade-bloqueada','Proteger a unidade de um produto movimentado','Financeiro → Configurações financeiras → Produtos → Guia V3 — Vacina teste',[
+'Tente trocar a unidade de mL para kg e salvar.',
+'Feche sem insistir e reabra o produto.'
+],'A mudança é bloqueada com explicação de que existem movimentos. A unidade continua mL; os lotes e os saldos não mudam.'],
+['rolagens','Conferir formulário e resumo longos','Financeiro → Operações → Nova operação',[
+'Inicie uma compra apenas para conferência visual. Adicione vários itens do produto Guia V3 — Vacina teste até formulário e resumo ultrapassarem a altura da tela. Não confirme.',
+'Com a janela larga (≥1024 px), confira que o formulário fica à esquerda e o resumo à direita. Role cada painel até o fim e confirme que o rodapé de ações permanece fixo.',
+'Estreite a janela até virar mobile. Role a área interna única do formulário/resumo; confira que não aparece uma segunda rolagem na página. Saia sem confirmar a operação.'
+],'Em desktop, a página externa permanece sem rolagem; formulário esquerdo e resumo rolam separadamente, com rodapé fixo. Em mobile existe uma área interna rolável única, sem rolagem externa. Nenhuma nova operação foi confirmada.']
+]},
+{id:'sanidade',nome:'4. Aplicações sanitárias',descricao:'Use os animais GV3-S1 a GV3-S6 e o produto de apoio Guia V3 — Sanidade, que começa com 200 mL. Estes testes não usam a Vacina teste das compras.',testes:[
+['tipo-aplicacao','Cadastrar um tipo de aplicação','Pecuária → Rebanho → Cadastros → Sanidade',[
+'Em Tipos de aplicação, crie Guia V3 — Preventivo.',
+'Abra Pecuária → Rebanho → Animais → GV3-S1 → Sanidade → Registrar aplicação sanitária. Abra a lista Tipo de aplicação.'
+],'Guia V3 — Preventivo aparece nas opções. Data e hora vêm antes do tipo e da origem; a aplicação não exige Serviço em todos os casos.'],
+['aplicar-estoque','Aplicar medicamento do estoque sem Serviço','Continue no formulário de GV3-S1',[
+'Informe primeiro 10/09/2026 às 10:00 e aguarde as opções do sítio naquela data. Selecione Guia V3 — Preventivo e origem Estoque da fazenda; Produto Guia V3 — Sanidade e lote de validade 17/09/2027.',
+'Quantidade aplicada: 10 mL. Responsável: Funcionário de teste. Não escolha Serviço.',
+'Revise a via Intramuscular e a carência: leite Prazo informado 0 h; abate/carne Prazo informado 48 h. Registre.',
+'Abra a ficha de GV3-S1 e confira os cards separados Leite e Abate/carne. Abra a aplicação no histórico para conferir os prazos registrados, use Ver movimento e depois abra a ficha do Produto no Estoque para conferir o saldo.'
+],'Os cards separam leite e abate/carne. Na data atual deste roteiro (06/10/2026), ambos mostram “Sem carência”: leite por prazo zero confirmado e carne porque o prazo terminou em 12/09/2026 às 10:00. No detalhe do fato, 0 h e 48 h continuam distintos de prazo desconhecido; responsável e sítio permanecem visíveis. A ficha do Produto mostra 190 mL após a única aplicação.'],
+['erro-saldo','Recusar aplicação maior que o saldo','GV3-S2 → Sanidade → Registrar aplicação sanitária',[
+'Escolha Tratamento, Estoque da fazenda, Guia V3 — Sanidade e lote 17/09/2027. Informe 999 mL, data 10/09/2026 às 11:00 e os prazos sugeridos.',
+'Tente registrar; leia o erro. Cancele o formulário e reabra o histórico e o saldo do Produto.'
+],'O erro aparece no campo associado à quantidade/lote e junto ao botão de registro, com foco/rolagem. O formulário conserva os dados. Não há aplicação nova em S2 e o saldo continua 190 mL.'],
+['servico-incluso','Registrar dose incluída no atendimento e abrir detalhe','GV3-S2 → Sanidade → Registrar aplicação sanitária',[
+'Escolha Tratamento e origem Incluído em Serviço. Selecione Guia V3 — Atendimento veterinário, já confirmado por R$ 1.000,00.',
+'Deixe Produto cadastrado vazio. Medicamento utilizado: Medicamento de demonstração. Quantidade: 2 mL. Data: 10/09/2026 às 11:00. Leite e carne: Não informado.',
+'Após registrar, abra Aplicações, filtre GV3-S2 e clique em Ver detalhes na aplicação de 10/09 às 11:00. Confira o modal e feche com Escape; confirme que o foco voltou ao botão Ver detalhes. Reabra o mesmo modal e use Ver origem financeira para abrir o Serviço.'
+],'Abre um modal de detalhe com títulos legíveis para animal, sítio, data/hora, tipo, medicamento, origem, situação e carências. Escape fecha o modal e devolve o foco ao botão Ver detalhes que o abriu. No modal reaberto, Ver origem financeira abre o Serviço, que continua em R$ 1.000,00 e lista o vínculo com S2; os prazos não informados não viram zero e não há saída de estoque.'],
+['servico-estoque','Separar atendimento e dose da fazenda','GV3-S3 → Sanidade → Registrar aplicação sanitária',[
+'Escolha Tratamento, Estoque da fazenda, Guia V3 — Sanidade, lote 17/09/2027 e 2 mL.',
+'Associe também o Serviço Guia V3 — Atendimento veterinário. Data: 10/09/2026 às 12:00. Revise leite 0 h/carne 48 h e registre.',
+'Na ficha de GV3-S3 → Sanidade, clique Ver detalhes na aplicação de 10/09 às 12:00. Confira os dados e use Ver origem financeira para abrir o Serviço. Volte ao fato, use Ver movimento para abrir o movimento exato e confira o destaque no histórico; abra também a ficha do Produto no Estoque. Depois abra Sanidade → Aplicações, filtre GV3-S3 e abra Ver detalhes para o mesmo fato.'
+],'A ficha e a visão geral abrem o mesmo modal de detalhe. O fato mostra data/hora, tipo, nome histórico, sítio e origem; o Serviço vinculado permanece em R$ 1.000,00. Ver movimento abre o movimento exato da saída de 2 mL no sítio do fato e destaca a linha no histórico. A ficha do Produto confirma saldo de 188 mL.'],
+['compra-direta','Destinar parte de uma compra direta','GV3-S4 → Sanidade → Registrar aplicação sanitária',[
+'Escolha Tratamento e Compra para consumo direto. Selecione o item Guia V3 — Direto da operação Guia V3 — preparação Direto.',
+'Aplique 4 mL em 10/09/2026 às 13:00 e registre uma vez. Abra Ver detalhes da aplicação e siga o link da compra até a operação financeira. A checagem de visibilidade de valores para usuário sem permissão é dependente do teste “Lançar sem visualizar custos”, mais adiante.'
+],'Na visão deste usuário, a quantidade destinada é exatamente 4 mL; não há rateio/quantidade adicional para informar. O detalhe identifica o brinco GV3-S4 e liga à operação de compra direta: 10 mL comprados, 4 destinados e 6 disponíveis. Não é criado movimento de estoque nem nova despesa. Valores em R$ só aparecem se a permissão financeira estiver disponível; a ausência de valores para acesso sem permissão é checada no teste dependente indicado.'],
+['limite-direto','Impedir destinação acima da compra','GV3-S5 → Sanidade → Registrar aplicação sanitária',[
+'Escolha a mesma compra direta, quantidade 7 mL, data 10/09/2026 às 14:00. Tente registrar.',
+'Confira a recusa. Altere somente a quantidade para 6 mL e registre.',
+'Abra o detalhe da aplicação confirmada e siga o vínculo para a operação financeira. Confira a quantidade comprada, a destinação acumulada e o saldo disponível.'
+],'7 mL são recusados porque restam 6. A confirmação de 6 é aceita; o item fica com 10 destinados e 0 disponíveis, sem estoque físico ou despesa adicional. O brinco e a operação vinculada continuam identificáveis no detalhe.'],
+['origem-justificada','Registrar origem desconhecida com justificativa','GV3-S6 → Sanidade → Registrar aplicação sanitária',[
+'Escolha Tratamento e Origem não localizada. Nome: Medicamento de campo. Quantidade: 1 mL. Data: 10/09/2026 às 15:00. Leite e carne: Não informado.',
+'Tente registrar sem justificativa. Depois preencha Aplicação de campo sem comprovante de origem e registre.',
+'Abra Sanidade → Aplicações e filtre origem pendente; localize GV3-S6.'
+],'Sem justificativa, o formulário recusa e indica o campo. Depois de preenchida, a aplicação aparece como pendência de origem, sem fabricar compra ou saída de estoque.'],
+['reconciliar','Reconciliar pela linha e confirmar equivalência','Sanidade → Aplicações → linha de GV3-S6',[
+'Na própria linha da aplicação pendente de origem de GV3-S6, clique Reconciliar origem. Não procure essa ação dentro do modal de detalhe.',
+'Escolha Estoque da fazenda. Selecione o Produto sanitário ativo Guia V3 — Sanidade, com unidade compatível mL, e o lote com validade 17/09/2027. O nome do Produto é diferente do nome histórico “Medicamento de campo”.',
+'Deixe desligado o controle “Confirmo que ‘Guia V3 — Sanidade’ corresponde ao medicamento ‘Medicamento de campo’ utilizado.” Informe o motivo “Comprovada a retirada do estoque da fazenda” e tente confirmar. Depois ligue o controle e confirme o vínculo uma vez.',
+'Reabra o detalhe e confira a origem atual e a justificativa/nome histórico preservados.'
+],'Sem a confirmação de equivalência, o vínculo não é salvo e o erro aponta o controle de ciência, junto à ação de confirmar. Depois, a origem passa a estoque; o detalhe mostra Produto vinculado “Guia V3 — Sanidade”, nome registrado “Medicamento de campo” e a justificativa original, enquanto a auditoria conserva o motivo da reconciliação. O saldo fica 187 mL e há uma única saída de 1 mL.'],
+['nome-historico','Preservar o tipo usado no passado','Rebanho → Cadastros → Sanidade → Tipos de aplicação',[
+'Renomeie Guia V3 — Preventivo para Guia V3 — Preventivo revisado e inative-o.',
+ 'Em Sanidade → Aplicações, localize a aplicação de GV3-S1. Confira data e hora 10/09/2026 às 10:00 e abra Ver detalhes para conferir o tipo registrado. Abra uma nova aplicação sem salvar; confirme que o tipo inativo não aparece e cancele o formulário.',
+ 'Volte a Cadastros → Tipos de aplicação, reative o tipo e confira o feedback e o estado Ativo. Abra uma nova aplicação sem salvar, confirme que o nome revisado está disponível e cancele o formulário.'
+],'A tabela de aplicações mostra a data e hora 10/09/2026 às 10:00 e o tipo. O detalhe também conserva “Guia V3 — Preventivo” como nome histórico, mesmo após renomear. O cadastro mostra o estado Ativo/Inativo; a ação apresenta feedback e “Atualizando…” enquanto carrega. Depois da reativação, o estado volta a Ativo e o tipo aparece nas novas escolhas.'],
+['corrigir-carencia','Corrigir somente a carência','GV3-S1 → Sanidade → aplicação de 10/09 às 10:00',[
+'Abra a correção de carência. Mude carne de 48 para 72 h e informe Revisão do prazo informado. Confirme.',
+'Reabra o detalhe e confira as alterações.'
+],'Carne passa a terminar em 13/09/2026 às 10:00; leite mantém 0 h. O histórico mostra o motivo e a alteração. Produto, dose, data e sítio originais permanecem.'],
+['ciencia-baixa','Exigir ciência de carência na venda','GV3-S1 → Dar baixa',[
+'Escolha Venda com data 11/09/2026. Confira a restrição sanitária e tente prosseguir sem ciência/justificativa.',
+'Quando a tela pedir ciência, aceite, altere a data e confira que a confirmação anterior é desmarcada; retorne a 11/09/2026. Dê ciência novamente, justifique Venda de demonstração com restrição reconhecida e confirme.',
+'Reabra a baixa para conferir o registro. Estorne a baixa com motivo Restaurar animal após teste de ciência e reabra a ficha.'
+],'A primeira tentativa não conclui a baixa. A baixa confirmada guarda a ciência e justificativa. Depois do estorno S1 volta a ativo; a aplicação e seu prazo de 72 h permanecem no histórico.'],
+['anular-dose','Anular aplicação e devolver a dose','GV3-S3 → Sanidade → aplicação de 10/09 às 12:00',[
+'Anule a aplicação com motivo Dose registrada no animal incorreto.',
+'Reabra o histórico do animal, o Serviço e o estoque de Guia V3 — Sanidade.'
+],'A aplicação permanece identificada como anulada. Retornam exatamente 2 mL ao lote original, elevando o saldo de 187 para 189 mL. O Serviço continua confirmado por R$ 1.000,00.'],
+['liberar-direto','Liberar destinação de compra após anulação','GV3-S4 → Sanidade → aplicação de 4 mL',[
+'Anule com motivo Destinação registrada no animal incorreto.',
+'Abra a compra Guia V3 — preparação Direto e confira os vínculos.'
+],'A aplicação anulada continua consultável. A compra mostra 6 mL destinados e 4 disponíveis; o gasto confirmado permanece R$ 30,00.'],
+['historico-sitio','Lançar no sítio da data do fato','Selecione Guia V3 — Destino → Rebanho → Animais → GV3-H1',[
+'Confira que H1 está no Destino desde 15/09/2026. Abra Registrar aplicação sanitária, informe 10/09/2026 às 10:00 e aguarde atualizar as opções de Produto/estoque para o sítio da data do fato. Troque a data para 11/09 e volte a 10/09; não continue com opções de uma consulta anterior.',
+'Escolha Tratamento, Estoque da fazenda, Guia V3 — Sanidade, lote 17/09/2027 e 1 mL. Revise carências e confirme.',
+'Abra o detalhe: confira o sítio do fato e o movimento. Volte ao seletor e escolha Guia V3 — Principal antes de continuar.'
+],'O lançamento é aceito no Principal, onde H1 estava em 10/09. A localização atual continua Destino. O saldo do produto no Principal cai de 189 para 188 mL; nenhum estoque é retirado do Destino.']
+]},
+{id:'validade',nome:'5. Validade, perda e transferência',descricao:'Os Produtos de apoio vencido, sem validade e legado já têm 20 mL cada. A Vacina teste mantém os 100 mL das compras.',testes:[
+['vencido','Recusar uso operacional vencido','GV3-S3 → Sanidade → Registrar aplicação sanitária',[
+'Escolha Tratamento, Estoque da fazenda e Produto Guia V3 — Vencido. Data: 10/09/2026 às 10:00. Quantidade: 1 mL.',
+'Confira o lote de validade 05/09/2026. Tente o registro normal; não escolha documentação excepcional. Cancele.'
+],'O lote aparece vencido e não pode ser usado no fluxo normal. Não é criada aplicação; o saldo desse Produto permanece 20 mL.'],
+['validade-desconhecida','Confirmar uso de validade não informada','GV3-S3 → Sanidade → Registrar aplicação sanitária',[
+'Escolha Tratamento, estoque e Guia V3 — Sem validade. Informe 1 mL em 10/09/2026 às 10:00.',
+'Observe que o lote desconhecido não é escolhido silenciosamente. Selecione-o e tente registrar sem ciência.',
+'Confirme explicitamente a ciência exigida, revise as carências e registre.'
+],'Sem ciência não registra. Após a confirmação, há uma aplicação de 1 mL e o lote de validade não informada fica com 19 mL.'],
+['ativar-legado','Ativar lotes em produto com saldo','Financeiro → Configurações financeiras → Produtos → Guia V3 — Legado',[
+'Confira que o controle de lotes está desligado. Ative a opção e abra a prévia.',
+'Confira os 20 mL existentes no sítio Principal. Confirme a ativação e use Ver no estoque.'
+],'O controle é ativado; o saldo continua 20 mL e o valor conhecido continua R$ 40,00. O estoque anterior aparece no agrupamento de validade não informada, sem nova compra.'],
+['identificar-legado','Identificar parte do estoque anterior','Estoque → Guia V3 — Legado → Resumo → Opções avançadas → Identificar estoque sem validade',[
+'Clique Identificar validade do estoque existente.',
+'Redistribua 5 mL do saldo não identificado para validade 17/09/2027. Nome opcional: Identificado. Motivo: Validade conferida na embalagem.',
+'Confirme e consulte os lotes e os movimentos.'
+],'O saldo total permanece 20 mL: 5 identificados com validade 17/09/2027 e 15 sem validade informada. O valor total permanece R$ 40,00 e a redistribuição fica registrada.'],
+['perda-motivo','Exigir motivo da perda','Estoque → Registrar perda (no topo da listagem)',[
+'Selecione sítio de origem Guia V3 — Principal e Produto Guia V3 — Vacina teste. Informe data 10/09/2026, quantidade 3 mL e lote 17/09/2027. Deixe Motivo vazio e tente registrar.',
+'Digite abcd e tente novamente. Confira a mensagem e depois escreva Frasco danificado durante armazenamento.',
+'Confirme uma vez e abra a operação gerada pelo lançamento.'
+],'Vazio e motivo de quatro caracteres são recusados junto ao campo. A perda válida mostra Produto, 3 mL, sítio, validade e o motivo informado. O Produto passa de 100 para 97 mL; o lote 17/09/2027 passa de 70 para 67 mL.'],
+['cancelar-perda','Cancelar perda preservando o detalhe','Financeiro → Operações → perda da Vacina teste',[
+'Cancele a operação com motivo Perda lançada para teste de cancelamento.',
+'Confira o detalhe cancelado e volte à ficha do produto no Estoque.'
+],'A perda cancelada continua mostrando item e motivo. O estoque volta a 100 mL no total e 70 mL em 17/09/2027. Não aparece Criar correção por ajuste genérico; uma nova perda usa o fluxo do Estoque.'],
+['transferir','Transferir mantendo a validade','Estoque → Transferir estoque (no topo da listagem)',[
+'Selecione Produto Guia V3 — Vacina teste. Transfira 5 mL do lote 17/09/2027 do Principal para Guia V3 — Destino, em 11/09/2026. Motivo: Teste de transferência entre sítios.',
+'Abra o detalhe da transferência em Financeiro → Operações. Confira Produto, 5 mL, lote/validade, Principal como origem e Destino como destino; a saída e a entrada representam uma única transferência. Volte ao Estoque e consulte o produto em cada sítio e no consolidado. Use o filtro local de destino para ver o saldo no destino.'
+],'O detalhe identifica a quantidade transferida uma vez, sem criar nova despesa. Principal mostra 95 mL; Destino, 5 mL com a mesma validade. Consolidado mostra 100 mL, sem duplicar os 5 transferidos.'],
+['estornar-transferencia','Estornar a transferência','Financeiro → Operações → transferência criada no item anterior',[
+'Cancele com motivo Restaurar estoque após teste de transferência.',
+'No detalhe da operação cancelada, confira os itens originais e o estorno separado; abra os links dos movimentos. Consulte novamente o produto nos dois sítios. No Estoque consolidado, filtre Guia V3 — Destino e confira zero; retorne ao Principal sem sair do consolidado.'
+],'Principal volta a 100 mL e Destino a zero. O detalhe mantém os 5 mL originalmente transferidos e identifica os movimentos inversos separadamente, sem somá-los como outra transferência; a validade do lote devolvido é 17/09/2027.'],
+['produto-inativo','Inativar sem apagar estoque e origens','Financeiro → Configurações financeiras → Produtos → Guia V3 — Vacina teste',[
+'Inative o produto. Abra a compra Guia V3 — Compra A e confira o item e o nome do Produto.',
+'Abra uma nova aplicação sanitária por estoque em GV3-S1 e procure a Vacina teste, sem registrar. Cancele o formulário.',
+'Volte a Produtos, mostre os inativos e reative a Vacina teste. Use Ver no estoque.'
+],'O Produto inativo não entra em novas aplicações, mas a compra antiga continua legível. Ao reativar, o Produto conserva os 100 mL, seus lotes e as origens.']
+]},
+{id:'ocorrencias',nome:'6. Ocorrências e exames',descricao:'Use S2 para ocorrência e exames; o estoque não é alterado por esses lançamentos.',testes:[
+['doenca','Cadastrar doença e abrir ocorrência','Rebanho → Cadastros → Sanidade',[
+'Em Doenças, clique Nova doença e salve Guia V3 — Observação clínica.',
+'No topo de Sanidade, abra Ocorrências sem selecionar animal no filtro e clique Nova ocorrência. No formulário, informe a data 10/09/2026 antes de escolher animal e doença; selecione GV3-S2 e Guia V3 — Observação clínica. Salve.',
+'Abra o detalhe pela linha e depois siga o brinco até a ficha de S2.'
+],'A ocorrência fica aberta, ligada a S2 e ao sítio Principal. O detalhe e a ficha permitem consultar o mesmo caso. Não há saída de medicamento.'],
+['encerrar','Encerrar sem apagar os procedimentos','Sanidade → Ocorrências → linha do caso de GV3-S2',[
+'Após o teste anterior, selecione GV3-S2 ou Todos no filtro para que a ocorrência apareça na tabela. Na linha do caso, use Encerrar; informe o desfecho Recuperado e confirme.',
+'Filtre ocorrências abertas e depois encerradas. Abra novamente o caso e a aplicação com origem no Serviço feita em S2.'
+],'A ação de linha encerra a ocorrência identificada. O caso sai das abertas e aparece nas encerradas. A aplicação continua no animal com as carências Não informado; encerrar ocorrência não transforma prazo desconhecido em liberação.'],
+['inativar-doenca','Inativar doença sem perder histórico','Cadastros → Sanidade → Doenças',[
+'Edite Guia V3 — Observação clínica para Guia V3 — Observação revisada e inative.',
+'Abra o caso encerrado e depois tente abrir novo caso, sem salvar. Reative o cadastro ao terminar.'
+],'O caso antigo permanece legível com seus dados históricos. A doença inativa deixa as novas escolhas e volta após a reativação.'],
+['tipos-exame','Criar os formatos de exame','Cadastros → Sanidade → Tipos de exame',[
+'Crie Guia V3 — Texto no formato Texto.',
+'Crie Guia V3 — Número no formato Número, unidade mg/dL.',
+'Crie Guia V3 — Opção no formato Opção. Informe Negativo e Positivo, um por linha. Salve cada cadastro.'
+],'Os três tipos aparecem com seus respectivos formatos; Número mostra mg/dL e Opção preserva as duas escolhas.'],
+['coleta','Registrar coleta sem resultado','Sanidade → Exames, sem filtro de animal',[
+'Clique Registrar coleta / exame. No formulário, informe data 12/09/2026, selecione GV3-S2 e Guia V3 — Texto; deixe Serviço e resultado vazios. Confirme.',
+'Na lista de exames, localize a coleta e abra o detalhe/histórico.'
+],'A coleta aparece como Aguardando resultado, ligada a GV3-S2 e ao sítio Principal. A data veio antes dos campos dependentes. Nenhum Serviço ou saída de estoque foi criado.'],
+['resultados','Informar resultado e conferir número/opção','Sanidade → Exames',[
+'Na coleta Texto de GV3-S2 criada no teste anterior, use a ação Informar resultado. Informe Amostra adequada para análise, motivo Laudo recebido, e confirme.',
+'Clique Registrar coleta / exame para GV3-S2 em 12/09/2026. Crie uma coleta Guia V3 — Número com 12,5 mg/dL e outra Guia V3 — Opção com Negativo; deixe Serviço vazio.',
+'Abra o detalhe/histórico das três coletas.'
+],'Informar resultado é ação separada da coleta. Texto, 12,5 mg/dL e Negativo aparecem nos snapshots correspondentes; Opção oferece apenas escolhas cadastradas, sem inferir diagnóstico.'],
+['corrigir-exame','Corrigir e anular em ações separadas','Sanidade → Exames → resultado numérico de GV3-S2 criado no teste anterior',[
+'Na linha do resultado 12,5, use Corrigir resultado; informe 13,5 mg/dL e motivo Correção de transcrição do laudo. Confirme e abra Histórico do exame.',
+'Na mesma linha atualizada, use Anular exame; informe Amostra identificada incorretamente e confirme. Reabra Histórico do exame.'
+],'Corrigir resultado e Anular exame são ações distintas, cada uma com motivo. A auditoria conserva 12,5 → 13,5 e a anulação posterior; o fato permanece consultável e os exames Texto e Opção não são alterados.'],
+['exame-historico','Proteger formato de exame utilizado','Cadastros → Sanidade → Tipos de exame → Guia V3 — Texto',[
+'Abra Editar e tente mudar o formato de Texto para Número depois da coleta pendente e do resultado informado nos testes anteriores.',
+'Confira a explicação e feche sem modificar formato, unidade ou opções. Inative o tipo, consulte a coleta de S2 e depois reative.'
+],'Formato, unidade e opções não podem ser alterados após a primeira coleta, mesmo que ainda estivesse pendente. A mensagem orienta criar outro tipo. O exame existente conserva o snapshot e resultado textual enquanto o tipo está inativo.'],
+['rateio-servico','Associar exame sem Serviço à operação existente','Sanidade → botão Gerenciar procedimentos → Serviço confirmado',[
+'Crie uma coleta numérica nova para GV3-S2, data 12/09/2026, resultado 14,0 mg/dL e sem Serviço. Não use o exame 12,5 corrigido e anulado no teste anterior.',
+'Abra Gerenciar procedimentos e selecione Guia V3 — Atendimento veterinário do sítio Principal. Anote os totais atribuído/disponível atuais. Se não houver R$ 200,00 disponíveis, marque Bloqueado; não altere vínculos anteriores para forçar o teste. Em Adicionar realizados, filtre GV3-S2, Tipo Exame e data 12/09/2026; selecione somente a coleta nova de 14,0 mg/dL. Informe valor individual 200,00 e motivo Associação do exame ao atendimento; confirme uma vez.',
+'Confira o card, o grupo Vinculados e o histórico financeiro. Compare os totais com os anotados antes; não reenvie a operação nem repita a confirmação do vínculo.'
+],'A nova coleta passa a vinculada com R$ 200,00 e links para exame e GV3-S2. O total atribuído aumenta R$ 200,00 e o disponível diminui R$ 200,00 em relação aos valores anotados; o valor confirmado da operação não muda. Não há nova despesa, movimento de estoque ou segundo exame.']
+]},
+{id:'protocolos',nome:'7. Protocolos e agenda',descricao:'Um protocolo planeja tarefas. O estoque só muda ao registrar uma aplicação usando dose da fazenda.',testes:[
+['rascunho-protocolo','Montar um protocolo','Cadastros → Sanidade → Protocolos',[
+'Crie Guia V3 — Acompanhamento. Adicione uma etapa de Aplicação no dia 0, tipo Tratamento, Produto Guia V3 — Sanidade, quantidade 1 mL.',
+'Adicione outra Aplicação igual no dia 7 e um Exame no dia 14, tipo Guia V3 — Texto. Salve o rascunho e reabra.'
+],'O rascunho tem três etapas nos dias 0, 7 e 14. Nenhuma tarefa foi criada para um animal e não houve consumo.'],
+['publicar-protocolo','Publicar uma versão','Cadastros → Sanidade → Guia V3 — Acompanhamento',[
+'Publique a versão 1 e confira seu estado.',
+'Use Criar nova versão a partir desta. Mantenha a versão 2 em rascunho e volte à versão 1.'
+],'A versão 1 fica publicada e seus itens não são editáveis diretamente. A nova versão é um rascunho separado, com as etapas copiadas.'],
+['iniciar-protocolo','Iniciar execução no animal','Sanidade → Agenda → Tarefas → Iniciar protocolo, sem selecionar animal no filtro',[
+'No formulário, informe início em 15/09/2026, selecione GV3-S4 e protocolo Guia V3 — Acompanhamento versão 1. Antes de confirmar, altere animal, protocolo e data, um por vez, e retorne aos valores originais; quando a ciência for solicitada, confirme que a seleção anterior foi limpa. Não associe Serviço. Confirme uma vez.',
+'Abra a execução e consulte suas tarefas.'
+],'A execução possui aplicação em 15/09, aplicação em 22/09 e exame em 29/09. As tarefas pendentes não retiram estoque nem geram cobrança.'],
+['duplicar-protocolo','Pedir confirmação para execução equivalente','Sanidade → Agenda → Tarefas → Iniciar protocolo',[
+'Tente iniciar novamente a mesma versão para GV3-S4 com início em 15/09/2026.',
+'Confira a execução ativa apontada. Não autorize a duplicação; cancele esta tentativa.'
+],'O sistema identifica a execução existente e exige confirmação explícita com justificativa. Ao cancelar, S4 continua com apenas a execução anterior.'],
+['adiar','Adiar e dispensar tarefas','Sanidade → Agenda → Tarefas → execução de GV3-S4',[
+'Adie a aplicação prevista em 22/09 para 23/09/2026 com motivo Reprogramação da visita.',
+'Dispense a tarefa de exame de 29/09 com motivo Exame dispensado neste acompanhamento.',
+'Reabra as tarefas e o histórico da execução.'
+],'A aplicação mostra a nova data e o motivo; o exame fica dispensado. Nenhuma das ações cria aplicação, resultado ou saída de estoque.'],
+['realizar-tarefa','Realizar, anular e repetir uma tarefa','Sanidade → Agenda → Tarefas → aplicação de 15/09 em GV3-S4',[
+'Abra a tarefa e confira o plano fixo: GV3-S4, aplicação em 15/09/2026, Guia V3 — Sanidade e 1 mL. Não use Registrar desvio neste caso. Informe hora 10:00 e origem Estoque da fazenda, escolha o lote 17/09/2027 e revise as carências antes de conferir e confirmar.',
+'Abra o fato e anule com motivo Quantidade registrada para conferência. Volte à tarefa.',
+'Registre novamente 1 mL com os mesmos dados e consulte o histórico.'
+],'A primeira realização muda a tarefa para realizada; anular a devolve a pendente. Depois da nova realização, existe um fato válido e o anterior anulado. O efeito líquido é uma saída de 1 mL, sem apagar o histórico.'],
+['cancelar-protocolo','Cancelar pendências preservando o realizado','Sanidade → Agenda → Tarefas → execução de GV3-S4',[
+'Cancele a execução com motivo Encerrar plano de acompanhamento de teste.',
+'Consulte a aplicação realizada e a tarefa de 23/09. Tente abrir a realização dessa tarefa pendente cancelada.'
+],'A aplicação realizada permanece válida. As pendências ficam canceladas/dispensadas e não podem ser executadas; cancelar o plano não devolve automaticamente uma dose já aplicada.']
+]},
+{id:'coletivos',nome:'8. Ações coletivas',descricao:'Revise cada animal antes de confirmar. A seleção permanece marcada mesmo quando você refina a busca ou muda de página; Limpar seleção é a única ação que a remove. Os testes 54–56 lançam fatos coletivos; o 57 usa o início coletivo antigo, que cria execuções individuais sem ciclo. Ciclos nomeados e etapas agrupadas são testados nos itens 94–107. Não repita um início coletivo já confirmado.',testes:[
+['coletivo','Aplicar para dois animais','Rebanho → Animais → selecione S1 e S2 → Aplicação sanitária coletiva',[
+'Busque GV3-S, marque somente GV3-S1 e GV3-S2 e clique Aplicação sanitária coletiva. Escolha Tratamento, Incluído em Serviço e Guia V3 — Atendimento veterinário. Na revisão, altere a seleção de animais e retorne a S1/S2; quando a ciência for solicitada, confira que as confirmações anteriores foram limpas.',
+'Sem Produto cadastrado, informe Medicamento coletivo de demonstração, 1 mL por animal, data 20/09/2026 às 10:00; leite e carne Não informado.',
+'Confira as duas linhas da revisão e confirme. Abra a aplicação de cada animal.'
+],'Cada animal recebe uma aplicação com sua quantidade de 1 mL e o mesmo Serviço. O Serviço permanece R$ 1.000,00, sem movimentar medicamento do estoque.'],
+['coletivo-invalido','Impedir gravação parcial de coletivo','Rebanho → Animais → selecione S1 e S2 → Aplicação sanitária coletiva',[
+'Marque somente GV3-S1 e GV3-S2 e clique Aplicação sanitária coletiva. Configure Tratamento, estoque, Guia V3 — Sanidade, lote 17/09/2027 e 999 mL por animal em 21/09/2026 às 10:00.',
+'Confira e tente confirmar. Leia o erro e as linhas indicadas. Cancele e consulte as aplicações dessa data.'
+],'A quantidade indisponível impede o conjunto. Nenhum dos dois animais recebe aplicação em 21/09; o erro identifica os dados a corrigir e a revisão não desaparece antes do cancelamento.'],
+['coleta-coletiva','Coletar exames para dois animais','Rebanho → Animais → selecione GV3-S5 e GV3-S6 → Coleta coletiva',[
+'Escolha Guia V3 — Texto, data comum 22/09/2026, responsável Coletador de teste, sem Serviço. Clique Conferir por animal.',
+'Confira os dois brincos e suas datas. Confirme o conjunto e abra Sanidade → Exames, filtrando cada animal.'
+],'Há uma coleta para cada animal em 22/09, ambas aguardando resultado. A confirmação não gera aplicação de medicamento nem saída de estoque.'],
+['protocolos-coletivos','Conferir início coletivo sem rodada','Rebanho → Animais → selecione GV3-S5 e GV3-S6 → Protocolos coletivos',[
+'Marque GV3-S5, filtre por GV3-S6 e marque-o também; confira que GV3-S5 continua selecionado fora da lista filtrada. Escolha Guia V3 — Acompanhamento v1, data comum 20/09/2026, sem Serviço. Não informe motivo: sem protocolo pendente, a prévia e a confirmação não devem pedi-lo. Confira por animal e confirme.',
+'Abra Sanidade → Agenda → Tarefas. Selecione S5 e depois S6 no filtro Animal; confira as datas das tarefas. Em seguida, abra Ciclos e confira que este início antigo não foi agrupado automaticamente por coincidência de protocolo/data.'
+],'Cada animal tem uma execução sem ciclo, com tarefas em 20/09, 27/09 e 04/10. O planejamento não consome medicamento nem cria cobrança. Para acompanhamento agrupado, use Iniciar ciclo de protocolo nos itens 94–107; a associação de execuções antigas é sempre explícita.']
+]},
+{id:'manejo',nome:'9. Peso e manejo',descricao:'Use somente GV3-M1 e GV3-M2 para não interferir nos animais da nutrição.',testes:[
+['pesar','Registrar pesagem coletiva','Rebanho → Animais',[
+'Busque GV3-M, selecione M1 e M2 e abra Pesagem coletiva.',
+'Data 10/09/2026; informe M1 = 100 kg e M2 = 120 kg. Confira os dois animais antes de confirmar.',
+'Abra a ficha de cada um e a seção de pesagens.'
+],'M1 tem pesagem de 100 kg e M2 de 120 kg em 10/09. Cada pesagem aparece no animal correto e no gráfico.'],
+['gmd','Conferir evolução do peso','Rebanho → Animais → seleção GV3-M1 e GV3-M2 → Pesagem coletiva',[
+'Registre nova pesagem em 20/09/2026: M1 = 110 kg e M2 = 130 kg.',
+'Abra M1, escolha o período desde a entrada e consulte o gráfico e o GMD.'
+],'M1 mostra 100 e 110 kg separados por dez dias, com ganho médio de 1 kg/dia entre as pesagens. O peso não altera lote, sexo nem filiação.'],
+['desmama','Registrar desmama com peso','GV3-M1 → Manejo',[
+'Confira o estado de desmama antes de registrar. Registre Desmama em 21/09/2026 com peso 111 kg.',
+'Consulte Manejo e Pesagens. Tente registrar outra desmama válida para M1; cancele após a recusa.'
+],'Antes, a desmama está não informada. Depois, há manejo de desmama e pesagem vinculada de 111 kg. A segunda desmama é recusada.'],
+['anular-manejo','Anular manejo sem apagar pesagem','GV3-M1 → Manejo → desmama de 21/09',[
+'Anule com motivo Desmama lançada em data incorreta.',
+'Abra Pesagens e o histórico de Manejo.'
+],'A desmama está anulada, mas a pesagem de 111 kg continua no histórico e no cálculo do peso.'],
+['castracao','Validar sexo e duplicidade na castração','GV3-M2 → Manejo',[
+'Registre Castração em 21/09/2026. Tente repetir uma castração válida no mesmo animal.',
+'Abra M1 e tente registrar Castração, sem forçar envio se a opção estiver indisponível.'
+],'M2 recebe uma castração; a duplicada é bloqueada. M1, fêmea, não permite castração. O sexo de M2 continua Macho.'],
+['nao-aplica','Confirmar quando a carência não se aplica','GV3-M2 → Sanidade → Registrar aplicação sanitária',[
+'Escolha Tratamento, Incluído em Serviço, Guia V3 — Atendimento veterinário, sem Produto cadastrado. Nome: Medicamento de demonstração. Quantidade: 1 mL. Data: 22/09/2026 às 10:00.',
+'Abra a seção Leite, que aparece resumida para este animal. Escolha explicitamente Não se aplica. Em Abate/carne, escolha Não se aplica e tente registrar sem justificativa.',
+'Preencha a justificativa Cenário fictício de validação de aplicabilidade e registre. Abra o fato.'
+],'Leite exige a escolha explícita, sem converter vazio em zero. Carne exige justificativa para Não se aplica. O fato conserva os dois estados e a justificativa; não retira medicamento do estoque.']
+]},
+{id:'dietas',nome:'10. Receitas e vigências',descricao:'A Ração de apoio começa com 500 kg, MS 90%, custo R$ 2/kg. Mineral começa com 30 kg, custo R$ 4/kg e MS não informada.',testes:[
+['receita','Criar e editar uma receita','Rebanho → Nutrição → Receitas',[
+'Em Nova versão de dieta, nomeie Guia V3 — Crescimento. Adicione Guia V3 — Ração, 3 kg/cabeça/dia, e Guia V3 — Mineral, 0,1 kg/cabeça/dia. Clique Criar rascunho.',
+'Em Receitas e ingredientes, abra Editar rascunho; troque Ração para 2,5, salve e confira. Depois restaure 3 e salve.'
+],'O rascunho conserva os ingredientes e mostra a alteração para 2,5 e o retorno a 3. Nenhum estoque é retirado pelo planejamento.'],
+['publicar-dieta','Publicar e congelar os ingredientes','Nutrição → Receitas → Guia V3 — Crescimento',[
+'Publique a versão 1. Abra Receitas e ingredientes e confira Ração e Mineral.',
+'No cadastro financeiro de Guia V3 — Ração, mude MS para 85%, salve e volte à receita publicada.',
+'Confira a versão 1 e depois restaure MS 90% no Produto.'
+],'A receita publicada continua com Ração 3 kg e MS 90%, Mineral 0,1 kg com MS não informada. Alterar o perfil atual não reescreve a versão publicada.'],
+['atribuir','Atribuir dieta ao lote','Nutrição → Lotes',[
+'Selecione Guia V3 — Nutrição. Em Atribuir dieta ao lote, escolha Guia V3 — Crescimento v1 e início 01/09/2026. Clique Aplicar ao lote.',
+'Abra o histórico de dietas e a ficha do lote.'
+],'A vigência começa em 01/09/2026 e aparece nos dois caminhos. Ração continua 500 kg e Mineral 30 kg: atribuição de dieta não é consumo.'],
+['troca-dieta','Programar uma troca de versão','Nutrição → Receitas e depois Lotes',[
+'Na v1, clique Criar nova versão a partir desta. Altere Ração para 4 kg/cabeça/dia, mantenha Mineral 0,1 e publique a versão 2.',
+'Em Lotes, selecione Guia V3 — Transição. Aplique v1 desde 01/09/2026; depois aplique v2 desde 06/09/2026.',
+'Confira o histórico desse lote e depois o lote Guia V3 — Nutrição.'
+],'Transição tem v1 até a troca de 06/09 e v2 a partir de 06/09. Nutrição continua na v1. Nenhuma saída de estoque foi criada.'],
+['corrigir-vigencia','Corrigir vigência ainda não consumida','Nutrição → Lotes → Guia V3 — Transição',[
+'No histórico, corrija início da v2 para 07/09/2026, motivo Ajuste da programação. Confirme e confira.',
+'Corrija de volta para 06/09/2026 com motivo Restaurar período do teste.'
+],'O início da v2 e o fim da v1 se ajustam juntos. Ao terminar, a troca volta a 06/09, sem sobreposição.'],
+['dieta-futura','Distinguir dieta atual de programada','Nutrição → Lotes → Guia V3 — Transição → Atribuir dieta ao lote',[
+'Se o formulário Corrigir início da vigência estiver aberto após o teste 68, clique Cancelar. No bloco Atribuir dieta ao lote, selecione Guia V3 — Crescimento · v1 em Versão publicada.',
+'Nesse mesmo bloco, preencha Início da vigência com uma data 30 dias depois do dia em que estiver testando e clique Aplicar ao lote uma vez. Anote a data na observação deste item. Esta ação acrescenta uma nova vigência da v1; Corrigir vigência altera uma linha antiga e não programa uma nova troca.',
+'Confira o cabeçalho Dieta vigente, a indicação Programada e a nova linha da v1 no histórico.'
+],'A versão 2 continua vigente hoje; a versão 1 aparece como programada para a data futura escolhida. O simples agendamento não substitui a dieta atual.']
+]},
+{id:'consumo',nome:'11. Conferência e fechamento',descricao:'Agora os dias de permanência entram no cálculo. Não movimente N01–N12 durante esta sequência.',testes:[
+['110-dias','Conferir 110 animal-dias e 330 kg','Nutrição → Fechamentos → lote Guia V3 — Nutrição',[
+'Em Fechamento do consumo, informe De 01/09/2026 e Até 10/09/2026. Clique Conferir período e abra Conferir participantes.',
+'Confira N01–N10 com dez dias cada e N11–N12 com cinco dias cada. Examine as quantidades por ingrediente; não confirme ainda.'
+],'A prévia soma 110 animal-dias: 10 × 10 + 2 × 5. Prevê 330 kg de Ração (110 × 3) e 11 kg de Mineral (110 × 0,1). São dias de permanência, não 110 animais nem peso corporal.'],
+['motivo-diferenca','Exigir motivo para quantidade diferente','Continue na mesma conferência de 01 a 10/09',[
+'Altere a quantidade confirmada de Ração de 330 para 320 kg. Mantenha Mineral 11 kg. Selecione os respectivos lotes de validade 17/09/2027.',
+'Deixe o motivo da diferença vazio e tente confirmar. Não saia da tela.'
+],'A confirmação é recusada com indicação do motivo obrigatório. Nenhum fechamento foi gravado nem ingrediente baixado; a edição permanece para correção.'],
+['materia-seca','Conferir matéria seca incompleta','Continue na conferência de 01 a 10/09, antes de confirmar',[
+'Mantenha Ração conferida 320 kg e Mineral 11 kg. Confira os textos MS prevista e MS conferida em cada ingrediente e no total. Não confirme ainda.'
+],'Ração tem 297 kg de MS prevista (330 × 90%) e aproximadamente 288 kg conferida (320 × 90%). Mineral continua com MS não informada; o total informa cobertura incompleta, sem presumir 100%.'],
+['fechar','Confirmar o fornecimento ajustado','Continue na mesma conferência',[
+'Preencha o motivo 10 kg não fornecidos. Confira Ração 320 kg, Mineral 11 kg e centro Guia V3 — Pecuária.',
+'Confirme o conjunto uma única vez. Em Nutrição → Fechamentos, mantenha o lote Guia V3 — Nutrição selecionado. No Histórico de fechamentos, acima de Novo fechamento do consumo, localize 01/09/2026 – 10/09/2026 e clique Ver detalhes do fechamento. Depois abra a ficha dos dois Produtos no Estoque. Se já confirmou, consulte essa linha; não repita a confirmação.'
+],'O fechamento guarda 110 animal-dias, Ração prevista 330/confirmada 320 e Mineral 11 kg. Saldos: Ração 180 kg; Mineral 19 kg. Custos conhecidos: R$ 640,00 e R$ 44,00, total R$ 684,00.'],
+['atribuicao','Consultar a atribuição por animal','Detalhe do fechamento e fichas GV3-N01/GV3-N11 → Nutrição',[
+'Abra os participantes do fechamento e depois a seção Nutrição de N01 e N11.',
+'Compare os dias e as quantidades atribuídas de Ração e Mineral.'
+],'N01 participa dez dias e N11 cinco. Mineral: 1 kg para N01 e 0,5 kg para N11. Ração: aproximadamente 29,091 kg e 14,545 kg, com arredondamentos no total. A tela identifica atribuição por permanência, sem afirmar consumo individual medido.'],
+['proteger-fechamento','Bloquear alteração que mudaria o fechamento','Nutrição → Lotes → Guia V3 — Nutrição → Histórico de dietas',[
+'Tente corrigir o início de v1 para 02/09/2026, motivo Teste de proteção do fechamento.',
+'Confira a mensagem e reabra o fechamento de 01 a 10/09.'
+],'A alteração é recusada por afetar um fechamento confirmado. A vigência continua em 01/09 e o fechamento conserva 110 animal-dias e as quantidades confirmadas.'],
+['periodos','Dividir períodos por dieta e mês','Nutrição → Fechamentos → Guia V3 — Transição',[
+'Confira 01 a 10/09/2026, sem confirmar.',
+'Confira também 29/09 a 02/10/2026, sem confirmar.'
+],'A primeira prévia separa 01–05/09 (v1) e 06–10/09 (v2). A segunda separa setembro e outubro. Não é criado consumo só por conferir.'],
+['sem-dieta','Mostrar falta de dieta e de participantes','Nutrição → Fechamentos',[
+'Selecione Guia V3 — Sem dieta e confira 01 a 10/09/2026. Observe a lacuna e tente prosseguir.',
+'Selecione Guia V3 — Vazio e confira as mesmas datas.'
+],'Sem dieta aponta ausência de vigência para D1. Vazio informa que não há participantes. Nenhum dos dois permite confirmar consumo.'],
+['consumo-zero','Confirmar quantidade zero com motivo','Nutrição → Fechamentos → Guia V3 — Nutrição',[
+'Confira 11 a 12/09/2026. Ração prevista 72 kg; mantenha 72 e escolha o lote 17/09/2027.',
+'Troque Mineral de 2,4 para 0 kg e informe Mineral não fornecido neste período. Confirme e abra o detalhe.'
+],'O fechamento mostra Ração 72 kg e Mineral 0 com motivo. Estoque fica Ração 108 kg e Mineral 19 kg. Não surge movimento de quantidade zero para Mineral.'],
+['sem-baixa','Registrar consumo sem baixa física','Nutrição → Fechamentos → Guia V3 — Nutrição',[
+'Confira 13 a 14/09/2026. Mantenha Ração 72 kg e Mineral 2,4 kg.',
+'Para ambos, escolha Sem baixa — justificar e informe Fornecimento de campo sem entrada no estoque. Confirme e abra o detalhe.'
+],'As quantidades e justificativas ficam no fechamento. Saldos permanecem Ração 108 kg e Mineral 19 kg; o custo desses consumos sem baixa permanece não apurado.'],
+['estornar-consumo','Estornar devolvendo aos lotes originais','Nutrição → Fechamentos → período 11 a 12/09',[
+'Clique Conferir estorno. Confira a devolução prevista de 72 kg de Ração e nenhum movimento de Mineral.',
+'Informe Teste de devolução do consumo e confirme. Abra o detalhe e o estoque.'
+],'O fechamento fica estornado. Ração volta a 180 kg no lote original; Mineral continua 19 kg. O fechamento de 01 a 10/09 permanece confirmado e inalterado.'],
+['saldo-nutricional','Recusar fechamento sem saldo suficiente','Nutrição → Fechamentos → Guia V3 — Nutrição',[
+'Confira 15 a 20/09/2026. São 12 animais durante seis dias: Ração prevista 216 kg e Mineral 7,2 kg.',
+'Mantenha Baixar estoque nos dois ingredientes. Tente selecionar/confirmar 216 kg no lote da Ração, cujo saldo é 180 kg. Não mude para Sem baixa.',
+'Depois da recusa, consulte o histórico de fechamentos e os saldos dos dois Produtos.'
+],'A insuficiência da Ração impede o conjunto. Não existe fechamento confirmado de 15 a 20/09; Ração permanece 180 kg e Mineral 19 kg, sem baixa parcial do segundo ingrediente.'],
+['uso-vinculado','Proteger o uso exigido por receita','Financeiro → Configurações financeiras → Produtos → Guia V3 — Ração',[
+'Tente remover o uso Nutricional e salvar. Leia a mensagem e feche sem alterar os demais dados.',
+'Reabra o Produto e a versão 1 da receita Guia V3 — Crescimento.'
+],'A remoção é bloqueada pelos vínculos com receita/consumo. O Produto permanece Nutricional e a receita publicada continua íntegra.']
+]},
+{id:'acessos',nome:'12. Consulta e navegação',descricao:'As contas locais abaixo já estão prontas. Ao terminar, volte ao seu usuário habitual.',testes:[
+['leitura','Consultar sem permissão de lançamento','Menu do usuário → Sair → Entrar',[
+'Entre com guia.v3.leitura@example.test e senha GuiaV3!2026. Escolha Guia V3 — Principal.',
+'Abra Produtos, a ficha da Vacina teste, Sanidade, Nutrição e o detalhe da perda cancelada.',
+'Confira os dados e procure as ações de salvar, registrar, anular e cancelar.'
+],'A consulta funciona, mas ações de escrita não estão disponíveis. O painel do produto permite ler seus dados sem salvar alterações.'],
+['sem-valores','Lançar sem visualizar custos','Saia e entre com guia.v3.semvalores@example.test, senha GuiaV3!2026',[
+'Escolha Guia V3 — Principal. Abra a perda cancelada, aplicações, fechamento de 01 a 10/09 e ficha do Produto.',
+'Confira quantidades, nomes, lotes e motivos. Procure valores monetários e totais financeiros desses registros. Não faça novo lançamento neste teste.'
+],'Dados operacionais permanecem visíveis, enquanto custos e valores financeiros ficam ocultos. Ações de lançamento autorizadas podem aparecer; ausência de custo não significa R$ 0.'],
+['navegacao','Percorrer vínculos sem perder o contexto','Volte a testdev@rionovo.com.br, senha senha123',[
+'Abra a aplicação de estoque de GV3-S1 e navegue até o Produto/movimento; use Voltar do navegador.',
+'Abra uma aplicação com Serviço e siga até a operação financeira. Depois abra um fechamento pela ficha do lote.',
+'Recarregue cada tela de detalhe e confira que o mesmo registro reaparece.'
+],'Os vínculos levam ao fato, Produto, animal/lote e origem financeira correspondentes. URLs de detalhe continuam funcionando ao recarregar.'],
+['teclado','Conferir uso em janela estreita e por teclado','Cadastro de Produto, aplicação sanitária e compra',[
+'Estreite a janela até a interface usar uma coluna. Abra cada formulário sem confirmar novos lançamentos.',
+'Use Tab e Shift+Tab para percorrer os campos, abrir listas e chegar ao botão final. Provoque uma validação vazia e confira a localização do aviso.',
+'Volte à janela larga e confira novamente. Cancele os formulários de teste.'
+],'O foco é visível, os rótulos são legíveis e as ações permanecem acessíveis. Erros explicam o que corrigir junto ao campo; não dependem somente da cor. Não há corte horizontal impedindo a leitura.']
+]},
+{id:'contratos-novos',nome:'13. Ocorrências, exames e procedimentos',descricao:'Reteste documental de 06/10. Use fatos novos nos casos que criam fatos. Ocorrências dependem da doença criada no caso Cadastrar doença; exames dependem dos tipos do caso Criar os formatos de exame. Para procedimentos, use o Serviço confirmado Guia V3 — Atendimento veterinário e fatos novos ainda sem Serviço; não crie nem reenvie operação financeira. A associação de protocolo depende da versão publicada no caso Publicar uma versão e da tarefa recém-realizada no caso Associar fatos novos ao Serviço confirmado. Não reutilize fatos anulados. Se o fluxo não existir, marque Falhou; não aprove por inferência.',testes:[
+['novo-fato-sem-filtro','Abrir novos formulários sem selecionar animal','Pecuária → Rebanho → Sanidade',[
+'Sem selecionar animal nem aplicar filtro, abra Ocorrências e clique Nova ocorrência; depois Exames e clique Registrar coleta / exame; por fim Agenda → Tarefas e clique Iniciar protocolo. Em Agenda → Ciclos, abra também Iniciar ciclo de protocolo. Confira os nomes reais das ações e abra cada formulário sem confirmar.',
+'Abra também os formulários equivalentes a partir da ficha de um animal ativo. Compare os campos e confirme que o animal fica fixado nessa entrada.',
+'No formulário geral, escolha primeiro a data 10/09/2026 e depois GV3-H1, que mudou de sítio em 15/09/2026; confira o sítio Principal e as opções dependentes para a data histórica. Cancele os rascunhos sem salvar.'
+],'As três criações podem ser iniciadas sem filtro/animal. Formulário próprio e entrada pela ficha compartilham os mesmos campos; animal fixo não pode ser trocado. Data é solicitada antes das opções dependentes, que respeitam o sítio histórico.'],
+['ocorrencia-linha','Encerrar ocorrência pela linha sem depender do filtro','Sanidade → Ocorrências',[
+'Crie uma ocorrência nova para GV3-S2, com data de hoje, doença Guia V3 — Observação revisada (cadastro renomeado e reativado no caso Inativar doença sem perder histórico) e descrição Reteste de encerramento 06/10. No formulário, escolha GV3-S2 no campo Animal sem selecionar animal no filtro superior. Salve e anote identificador/horário.',
+'Depois de salvar, selecione Todos ou GV3-S2 no filtro superior para que o fato apareça na tabela. Use a ação de linha para encerrar e informe Reteste manual de encerramento.',
+'Abra o link do brinco na ficha e consulte a ocorrência.'
+],'A ocorrência é criada pelo animal escolhido dentro do formulário, sem filtro prévio, e pode ser encerrada pela ação de sua linha. A ficha mostra o fato ligado ao brinco; “Encerrado” é texto operacional, sem badge de situação.'],
+['snapshot-exame','Conferir snapshots numéricos, pendência e opção','Sanidade → Exames',[
+'Crie uma coleta nova de tipo Guia V3 — Número para GV3-S2, data de hoje, resultado numérico 0. Salve e reabra; confira o zero e a unidade.',
+'Crie outra coleta do mesmo tipo, sem resultado. Confirme que está aguardando resultado. Preencha depois 12,5 e salve.',
+'Crie uma coleta nova de Guia V3 — Opção e escolha Negativo. Abra o histórico das três coletas.'
+],'Zero permanece resultado numérico, unidade é exibida e `null` aparece como pendente até o preenchimento. Opção conserva o texto selecionado. O histórico mostra coleta e preenchimento separadamente com data e autor; ausência histórica é explícita.'],
+['auditoria-exame','Corrigir e anular uma coleta nova','Sanidade → Exames → coleta numérica de 12,5 recém-criada',[
+'Corrija o resultado recém-criado para 13,0 e informe o motivo Reteste de correção 06/10. Salve e abra o histórico.',
+'Anule essa mesma coleta recém-criada, com motivo Reteste de anulação 06/10. Reabra o histórico.',
+'Tente alterar o formato de Guia V3 — Número para Opção; confira a explicação e feche sem renomear nem inativar o tipo.'
+],'Histórico discrimina coleta, preenchimento, correção e anulação com data, autor, motivo e antes/depois. Formato fica bloqueado após qualquer coleta, inclusive pendente/anulada, e explica que outro formato exige criar outro tipo. Número permanece ativo para os casos seguintes.'],
+['acoes-exame-ocorrencia','Usar ações de linha e links de animal','Sanidade → Exames e Ocorrências',[
+'Com filtro Todos ou GV3-S2, localize a ocorrência encerrada no caso Encerrar ocorrência pela linha e a coleta anulada no caso Corrigir e anular uma coleta nova. Não execute outra ação: apenas confira as linhas e abra os links de brinco para as fichas.',
+'Leia os indicadores de situação nas tabelas.'
+],'As fichas abrem para os animais corretos. Badge aparece apenas para Anulado/Cancelado; Aberto, Encerrado e Aguardando resultado são textos operacionais. Encerrar foi realizado pela ação da linha, sem usar o filtro para selecionar o alvo da ação.'],
+['servico-novo-procedimentos','Associar fatos novos ao Serviço confirmado','Pecuária → Rebanho → Sanidade → Agenda → Tarefas e Exames',[
+'Em Agenda → Tarefas, clique Iniciar protocolo. Use GV3-S1, Guia V3 — Acompanhamento v1, início em 01/10/2026 e nenhum Serviço. Abra a tarefa de aplicação do dia 0 e registre 1 mL de Guia V3 — Sanidade no lote 17/09/2027; não anule o fato. Anote a execução e o identificador da aplicação.',
+'Em Exames, clique Registrar coleta / exame. Para GV3-S2, crie uma coleta Guia V3 — Número em 02/10/2026 sem Serviço e com resultado 0. Anote o identificador.',
+'Em Aplicações, registre para GV3-S3 uma aplicação nova de origem não localizada, nome Medicamento de demonstração, 1 mL, data 03/10/2026, sem Serviço; informe justificativa Reteste de associação sem comprovante. Anote o identificador. Esta aplicação não baixa estoque.',
+'Anote saldo do produto e valor confirmado do Serviço. Abra Gerenciar procedimentos, selecione o Serviço confirmado Guia V3 — Atendimento veterinário; confira sítio Principal e data 01/09/2026 no painel. Em Adicionar realizados, filtre por Animal/Tipo/Data e selecione somente a execução de protocolo de GV3-S1, o exame numérico de GV3-S2 e a aplicação independente de origem não localizada de GV3-S3. Não selecione a aplicação que realizou a tarefa do protocolo. Informe motivo Associação de procedimentos realizados e confirme uma vez; não reenvie nem edite a operação financeira.',
+'Abra Vinculados e o card de sucesso. Compare o saldo do produto e o valor do Serviço com os valores anotados imediatamente antes de associar.'
+],'Os três procedimentos realizados, sem vínculo anterior, aparecem como elegíveis no mesmo sítio: a execução com tarefa válida, o exame e a aplicação independente. Após confirmar, ficam vinculados ao Serviço existente, com links para fato e animal. O valor da operação permanece igual ao anotado antes; associar não cria despesa nem reconciliação. A baixa de 1 mL ocorreu ao registrar a tarefa, antes da associação; associar a aplicação independente de origem não localizada não cria movimento físico.'],
+['valor-opcional-historico','Distinguir valor ausente de zero e consultar histórico','Serviço Guia V3 — Atendimento veterinário → Gerenciar procedimentos',[
+'Em Vinculados, edite os três fatos do caso Associar fatos novos ao Serviço confirmado: mantenha vazio o valor da aplicação, informe 0,00 no exame e deixe o protocolo sem valor. Confirme uma vez com motivo Reteste de valor opcional.',
+'Reabra Gerenciar procedimentos e confira que os três vínculos continuam listados, com valor ausente distinto de zero explícito. Não refaça a associação nem toque na operação financeira.',
+'Abra o histórico financeiro do Serviço com usuário autorizado a ver valores; confira procedimentos, origens e links para fatos/animais. Repita a consulta com guia.v3.semvalores@example.test.',
+'Consulte o histórico do exame e a lista de elegíveis/vinculados; avance uma página quando houver mais resultados que o limite.'
+],'Remover valor mantém o vínculo e resulta em ausência (`null`); zero continua valor explícito. Histórico inclui aplicações, exame e protocolo sem “rateio”; valores ficam ocultos sem permissão e badges são reservados a anulado/cancelado. Histórico do exame e listas de procedimentos paginam sem duplicar itens.' ]
+]},
+{id:'rodadas-desvios',nome:'14. Ciclos e desvios de protocolo',descricao:'Casos novos 94–107, ainda pendentes de execução manual. Use Guia V3 — Principal, protocolo Guia V3 — Acompanhamento v1 publicado no grupo 7 e tipos de exame Texto/Número do grupo 6. Consulte o saldo atual de Guia V3 — Sanidade: estes casos aplicam 6 mL novos ao todo; use o lote conhecido 17/09/2027, válido nas datas abaixo, com saldo suficiente. Se faltar pré-requisito, marque Bloqueado pelo passo correspondente; não refaça compra, migration, carga ou limpeza. Reutilize o ciclo/fatos se um caso já foi concluído e registre seus identificadores nas notas. Sobreposição com outro protocolo só pode ser confirmada com motivo explícito de teste; não reenvie fatos nem operações financeiras. Nenhum destes passos é orientação clínica.',testes:[
+['rodada-calendario','Conferir calendário antes de iniciar ciclo','Sanidade → Agenda → Ciclos → Iniciar ciclo de protocolo',[
+'Confira que Ciclos é a subaba inicial. Abra Iniciar ciclo de protocolo sem filtro de animal. Informe nome Guia V3 — Ciclo 06/10, protocolo Guia V3 — Acompanhamento v1, início de referência 01/09/2026 e escolha explicitamente Guia V3 — Principal em Sítio na data de início.',
+'Em Selecionar animais, escolha somente GV3-S1 e GV3-S2. Confira os inícios individuais iguais à referência. Se houver aviso de execução sobreposta, leia o alvo e use a confirmação explícita com motivo Ciclo adicional para teste manual; nunca aceite sem identificar a participação anterior.',
+'Clique Conferir calendário. Confira datas 01/09, 08/09 e 15/09 para ambos, Produto 1 mL nas duas aplicações e tipo Texto no exame. Antes de confirmar, consulte as participações e saldo em outra aba.'
+],'A prévia identifica os dois animais e v1. Etapas passadas aparecem como planejamento pendente/atrasado; ainda não existe este ciclo salvo, aplicação, exame ou consumo novo. O calendário não declara tarefas passadas realizadas.'],
+['rodada-confirmar','Confirmar ciclo uma vez e consultar etapas','No formulário do caso anterior → Confirmar ciclo',[
+'Volte à prévia conferida e clique Confirmar ciclo uma vez. Anote o identificador/URL do ciclo e o saldo atual do Produto.',
+'Reabra o ciclo. Em Etapas do ciclo, confira três etapas; em Participações e histórico, confira S1 e S2, início 01/09/2026. Abra as tarefas da etapa do dia 0.'
+],'O ciclo tem nome próprio e v1, duas participações e seis tarefas previstas. Dia 0 tem duas pendentes; nenhum fato ou baixa física é criado só por confirmar o planejamento.'],
+['rodada-adicionar','Adicionar participante com início próprio','Guia V3 — Ciclo 06/10 → Adicionar participantes',[
+'Anote as datas de S1/S2. Selecione somente GV3-S3 e altere seu início para 02/09/2026. Tente conferir sem motivo; depois preencha Motivo da data diferente com Entrada em acompanhamento no dia seguinte.',
+'Confira calendário 02/09, 09/09 e 16/09. Confirme uma vez e reabra o ciclo.'
+],'A data diferente exige motivo. S3 tem suas três tarefas no calendário próprio; as seis tarefas de S1/S2 conservam 01/09, 08/09 e 15/09. Não há execução automática ou baixa.'],
+['rodada-filtros-contexto','Conferir filtro, URL e ação da linha','Sanidade → Agenda → Ciclos → Guia V3 — Ciclo 06/10',[
+'Abra a etapa do dia 0 e anote a contagem No sítio consultado, usando Principal. Filtre por GV3-S2 e compare Filtro atual; recarregue a página e reabra o mesmo ciclo/etapa se necessário.',
+'Na linha de S2, abra Executar tarefa e confira o brinco; cancele sem salvar. Limpe o filtro e abra a ação de S1, confira o brinco e cancele.',
+'Abra Agenda → Tarefas e volte a Ciclos. Quando existir mais de uma página de resultados, avance e volte; confira itens e total. Se só existir uma página, registre essa limitação nas notas.'
+],'Filtro persiste na URL ao recarregar. No sítio consultado conserva três pendências do dia 0 em Principal; Filtro atual de S2 mostra uma. Não aparecem animais/totais de outros sítios. Cada ação abre a tarefa da linha correta. Paginação não duplica itens nem troca o alvo de ação.'],
+['rodada-executar-plano','Executar uma tarefa conforme o plano','Ciclo → dia 0 → linha GV3-S1 → Executar tarefa',[
+'Confira planejamento bloqueado: 01/09/2026, Guia V3 — Sanidade, 1 mL, tipo e via da versão. Animal, versão e natureza Aplicação ficam fixos.',
+'Use Estoque da fazenda, lote 17/09/2027, hora 10:00 e responsável Testador do ciclo; revise as carências sem confundir desconhecido com zero. Clique Conferir execução.',
+'Confira S1 em Planejado e realizado, sem diferença, e consumo total de 1 mL. Confirme uma vez; abra o fato e anote seu identificador.'
+],'S1 passa a realizado no dia 0, com fato válido e avaliação conforme o planejamento. Saldo reduz exatamente 1 mL em relação ao anotado no caso Confirmar ciclo. As próximas etapas conservam 08/09 e 15/09.'],
+['rodada-remover','Remover preservando aplicação realizada','Ciclo → Participações e histórico → GV3-S1 → Remover com motivo',[
+'Anote identificador da participação, aplicação válida e próximas datas. Tente Confirmar remoção com motivo abc; depois use Saída do acompanhamento para teste manual e confirme uma vez.',
+'Abra a aplicação anterior, a participação removida e suas tarefas pendentes. Consulte também o saldo do Produto.'
+],'Motivo curto bloqueia a remoção. Depois, a participação fica Removida com motivo; somente pendências deixam de ser executáveis. A aplicação realizada permanece válida e o saldo não recebe devolução automática.'],
+['rodada-reentrada','Reentrar mantendo a participação removida','Mesmo ciclo → Adicionar participantes',[
+'Selecione somente GV3-S1, início 01/09/2026. Leia o aviso de reentrada e confira o calendário. Se houver sobreposição pendente de outra execução, confirme explicitamente com motivo Reentrada para teste com histórico preservado.',
+'Confirme uma vez e consulte Participações e histórico. Abra a ficha de S1 → Sanidade → Participações em ciclos.'
+],'S1 tem outra participação com identificador novo e tarefas pendentes em 01/09, 08/09 e 15/09. A participação removida, motivo e aplicação anterior continuam consultáveis; reentrada não reativa nem copia seu fato realizado.'],
+['rodada-desvio-individual','Registrar desvio individual com motivo','Ciclo → dia 0 → GV3-S2 → Executar tarefa',[
+'Confira que campos do plano estão bloqueados. Clique Registrar desvio; mantenha Produto/tipo/via/unidade e altere data para 02/09/2026 e dose para 2 mL.',
+'Tente conferir com motivo abc: confira o aviso e que nada foi salvo. Troque para Aplicação realizada no dia seguinte com dose revista; use Estoque da fazenda, lote 17/09/2027, hora 10:00 e revise carências.',
+'Clique Conferir execução: compare data 01/09 → 02/09 e dose 1 → 2, motivo e consumo total 2 mL. Confirme uma vez e abra o detalhe do fato.'
+],'Motivo exige 5–500 caracteres. O fato conserva planejado, realizado, diferenças e motivo; S2 continua com próximas etapas em 08/09 e 15/09. Saldo reduz mais 2 mL, total novo de 3 mL até este ponto.'],
+['rodada-coletivo-desvio','Revisar desvio comum e individual em coletivo','Ciclo → etapa Aplicação dia 7 → Abrir tarefas da etapa',[
+'Selecione somente a participação nova de GV3-S1 e a original de GV3-S2. Clique Executar selecionadas (2). Não selecione S3 nem a participação removida de S1.',
+'Clique Registrar desvio; use data comum 09/09/2026, Produto Guia V3 — Sanidade, dose comum 1 mL, Estoque da fazenda e lote 17/09/2027. Motivo comum Visita realizada no dia seguinte. Revise cada animal e ajuste só S2 para 2 mL com motivo individual Dose individual revista para o teste.',
+'Em Conferir execução, compare cada brinco, diferenças e motivo; o total deve ser 3 mL. Confirme uma vez e abra os dois fatos.'
+],'O conjunto gera um fato válido por tarefa selecionada: S1 1 mL e S2 2 mL em 09/09, com motivos correspondentes. Consumo adicional 3 mL; total novo 6 mL desde Confirmar ciclo. Exames continuam previstos em 15/09, sem alteração automática.'],
+['rodada-exame-coletivo','Executar exames com revisão individual','Ciclo → etapa Exame dia 14',[
+'Selecione somente GV3-S1 (participação nova) e GV3-S2; clique Executar selecionadas (2). Confira tipo Texto e data 15/09 bloqueados; animal, versão e natureza Exame são fixos.',
+'Clique Registrar desvio. Use data comum 16/09/2026, tipo Guia V3 — Número e motivo comum Coleta realizada no dia seguinte. Em S1, informe resultado 0. Nos Ajustes individuais de S2, escolha Guia V3 — Texto, resultado Conferência manual e motivo Tipo individual mantido para acompanhamento.',
+'Confira execução: S1 muda data e tipo; S2 muda data e mantém o tipo original. Confirme uma vez e abra cada exame/histórico.'
+],'Cada exame congela seu planejamento, resultado e avaliação: S1 zero numérico, S2 texto. Diferenças/motivos correspondem a cada linha; exame não cria consumo físico. O saldo permanece o consultado após o coletivo de aplicações.'],
+['rodada-legado-associacao','Associar execução antiga sem recriar fatos','Ciclo → Associar execuções existentes',[
+'Antes de associar, em Agenda → Tarefas consulte a execução antiga de GV3-S4 iniciada em 15/09 no grupo 7 (cancelada, mas com aplicação válida), mesma v1 e sítio Principal. Anote identificador, tarefas, fato realizado e datas. Se o grupo 7 não foi executado, marque Bloqueado; não recrie esta execução para avançar.',
+'Volte ao ciclo e abra Associar execuções existentes. Selecione somente essa execução sem ciclo de S4 e clique Confirmar associação uma vez.',
+'Reabra Participações e histórico e a aplicação antiga. Confira que nenhuma execução de outra versão/sítio foi oferecida para esta associação.'
+],'A execução antiga passa a pertencer ao ciclo com os mesmos identificadores, cancelamento, tarefas, datas e aplicação válida. Associação não copia fatos, não retira estoque e não cria despesa. Antes da ação, o legado permanecia sem ciclo.'],
+['rodada-historico-avaliacao','Distinguir avaliação nova de fato antigo','Detalhe de aplicações/exames e ficha do animal → Sanidade',[
+'Abra o fato conforme de S1, o desvio individual de S2 e os coletivos recém-criados. Confira planejado/realizado, diferenças, motivos, autor e vínculos para participação/animal quando disponíveis.',
+'Abra um fato de protocolo anterior à atualização, por exemplo a aplicação válida de S4 do grupo 7, se seu detalhe informar ausência de avaliação. Compare a indicação com a realização nova conforme. Se não existir fato antigo sem avaliação, registre esta parte como Bloqueado por cenário indisponível; não crie nem altere snapshot antigo.',
+'Na ficha de S1, consulte suas participações removida e nova, sem realizar ações.'
+],'Fato novo conforme tem avaliação sem diferenças; fato novo desviado tem diferenças e motivo congelados, com nomes de Produto/unidades históricos. Ausência antiga mostra Desvio não aferido no registro original, nunca convertida em conforme. Ficha mantém participações e fatos anteriores.'],
+['rodada-bloqueio-conjunto','Impedir gravação parcial de um coletivo inválido','Ciclo → dia 0 → tarefas ainda pendentes de S1 novo e S3',[
+'Anote fatos e saldo atuais. Selecione somente S1 na participação nova e S3. Abra Executar selecionadas (2), clique Registrar desvio e use Estoque da fazenda, Produto Guia V3 — Sanidade e lote 17/09/2027.',
+'Informe motivo Conferência de insuficiência em conjunto e dose 999999 mL apenas em S3; mantenha 1 mL em S1. Tente Conferir execução; se a prévia permitir, tente Confirmar execução uma vez. Leia o erro e depois cancele.',
+'Reabra as duas tarefas, aplicações e saldo. Não corrija e confirme o conjunto neste caso.'
+],'Insuficiência/validação de S3 impede o conjunto. S1 e S3 continuam pendentes, sem fatos novos ou baixa parcial; saldo permanece igual ao anotado. O erro identifica os dados a corrigir e mantém a revisão.'],
+['rodada-permissoes-mobile','Conferir acesso de consulta e campos em janela estreita','Agenda, detalhe de ciclo e Executar tarefa',[
+'Com usuário habitual, abra somente rascunhos de execução em janela larga e estreita, use Tab/Shift+Tab, teste Registrar desvio e Voltar ao planejamento; cancele sem gravar.',
+'Entre com guia.v3.leitura@example.test e senha GuiaV3!2026; consulte o ciclo/ficha/histórico. Procure Iniciar ciclo de protocolo, adicionar, remover, associar e executar. Depois consulte os mesmos fatos com guia.v3.semvalores@example.test e senha GuiaV3!2026; não grave nada.',
+'Volte ao usuário habitual. Quando houver mais de 100 tarefas, confira que uma confirmação aceita no máximo 100 animais distintos da mesma etapa/sítio histórico; sem esse cenário, anote limite de cobertura manual.'
+],'Campos e ações são legíveis/acessíveis nas duas larguras; Voltar ao planejamento restaura parâmetros. Usuário de consulta não dispõe de escrita; dados operacionais permanecem visíveis sem valores financeiros no perfil sem valores. Limite de 100 e concorrência têm cobertura automatizada; falta de cenário manual não equivale a aprovação.']
+]}
+];
+const chave='fazendinha:guia-v3:20261004:1';
+const testesReteste=new Set([13,14,15,17,18,19,21,22,23,25,28,29,30,35,36,38,39,40,41,42,43,44,45,46,49,50,51,52,53,54,57,87,88,89,90,91,92,93]);
+let estado={};try{estado=JSON.parse(localStorage.getItem(chave)||'{}');if(!estado||Array.isArray(estado)||typeof estado!=='object')estado={};}catch{document.getElementById('persistencia').hidden=false;document.getElementById('persistencia').textContent='Não foi possível ler as marcações salvas. Use Ver relatório para guardar os resultados.';}
+function salvar(){try{localStorage.setItem(chave,JSON.stringify(estado));}catch{const p=document.getElementById('persistencia');p.hidden=false;p.textContent='Este navegador não está salvando as marcações. Copie o relatório antes de fechar.';}}
+const roteiro=document.getElementById('roteiro'),indice=document.getElementById('indice');
+let numero=0;
+for(const grupo of grupos){
+ const link=document.createElement('a');link.href='#'+grupo.id;link.textContent=grupo.nome;indice.append(link);
+ const section=document.createElement('section');section.className='grupo';section.id=grupo.id;
+ const h=document.createElement('h2');h.textContent=grupo.nome;section.append(h);
+ const desc=document.createElement('p');desc.textContent=grupo.descricao;section.append(desc);
+ for(const [id,titulo,onde,acoes,esperado] of grupo.testes){
+  numero++;const item=document.createElement('article');item.id='teste-'+id;item.dataset.status=estado[id]?.status||'pendente';item.dataset.numero=String(numero);
+  const num=document.createElement('span');num.className='num';num.textContent='TESTE '+String(numero).padStart(2,'0');item.append(num);
+  if(testesReteste.has(numero)){const reteste=document.createElement('span');reteste.className='num aviso';reteste.textContent='RETESTE MANUAL · ajustes de 06/10';item.append(reteste);}
+  const heading=document.createElement('h3');heading.textContent=titulo;item.append(heading);
+  const lugar=document.createElement('p');lugar.className='onde';lugar.textContent='Onde: '+onde;item.append(lugar);
+  const lista=document.createElement('ol');lista.className='passos';for(const acao of acoes){const li=document.createElement('li');li.textContent=acao;lista.append(li);}item.append(lista);
+  const resultado=document.createElement('div');resultado.className='confira';const rotulo=document.createElement('strong');rotulo.textContent='CONFIRA AGORA';resultado.append(rotulo,document.createTextNode(esperado));item.append(resultado);
+  const marca=document.createElement('div');marca.className='marcar';const label=document.createElement('label');label.htmlFor='status-'+id;label.textContent='Resultado:';const select=document.createElement('select');select.id='status-'+id;select.setAttribute('aria-label','Resultado do teste '+numero);
+  for(const [value,text] of [['pendente','Ainda não testei'],['passou','Passou'],['falhou','Falhou'],['bloqueado','Bloqueado por outro passo']]){const op=document.createElement('option');op.value=value;op.textContent=text;select.append(op);}select.value=item.dataset.status;marca.append(label,select);item.append(marca);
+  const details=document.createElement('details');const summary=document.createElement('summary');summary.textContent='Anotar o que aconteceu';const note=document.createElement('textarea');note.setAttribute('aria-label','Observação do teste '+numero);note.placeholder='O que apareceu? Qual dado ficou diferente?';note.value=estado[id]?.nota||'';details.append(summary,note);if(note.value)details.open=true;item.append(details);
+  const guardar=()=>{estado[id]={status:select.value,nota:note.value};item.dataset.status=select.value;salvar();atualizar();};select.addEventListener('change',guardar);note.addEventListener('input',guardar);section.append(item);
+ }
+ roteiro.append(section);
+}
+function atualizar(){const itens=[...document.querySelectorAll('article')];const aprovados=itens.filter(i=>i.dataset.status==='passou').length;const falhas=itens.filter(i=>i.dataset.status==='falhou').length;document.getElementById('progresso').textContent=aprovados+' de '+itens.length+' passaram · '+falhas+' falharam';const filtro=document.getElementById('filtro').value;for(const i of itens)i.hidden=filtro!=='todos'&&i.dataset.status!==filtro;for(const s of document.querySelectorAll('.grupo'))s.hidden=![...s.querySelectorAll('article')].some(i=>!i.hidden);}
+document.getElementById('filtro').addEventListener('change',atualizar);
+document.getElementById('exportar').addEventListener('click',()=>{let n=0;const linhas=['V3 — Guia de testes','Resultados em '+new Date().toLocaleString('pt-BR'),''];for(const g of grupos){linhas.push(g.nome);for(const [id,titulo] of g.testes){n++;const e=estado[id]||{};linhas.push(n+'. '+titulo+' — '+(e.status||'pendente')+(testesReteste.has(n)?' · RETESTE MANUAL 06/10':'')+(e.nota?'\n   '+e.nota:''));}linhas.push('');}document.getElementById('texto-relatorio').value=linhas.join('\n');document.getElementById('relatorio').showModal();});
+document.getElementById('fechar-relatorio').addEventListener('click',()=>document.getElementById('relatorio').close());document.getElementById('imprimir').addEventListener('click',()=>window.print());atualizar();
+</script></body></html>

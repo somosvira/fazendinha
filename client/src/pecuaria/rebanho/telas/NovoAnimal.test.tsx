@@ -29,7 +29,7 @@ vi.mock("../../../propriedadeScope", async (importOriginal) => ({
 const catalogos: Catalogos = {
   racas: [{ id: "raca-1", nome: "Nelore", sigla: "NE", base: true }],
   motivosBaixa: [],
-  propriedades: [{ id: 1, nome: "Sede", apelido: null }],
+  propriedades: [{ id: 1, nome: "Sede", apelido: "Apelido antigo" }],
   lotes: [{ id: "lote-1", nome: "Lote A", propriedadeId: 1 }],
 };
 
@@ -47,6 +47,8 @@ async function montar() {
   render(<NovoAnimal onVoltar={vi.fn()} />);
   await screen.findByRole("heading", { name: "Novo animal" });
   await screen.findByLabelText("Sítio");
+  expect(screen.getByRole("option", { name: "Sede" })).toBeTruthy();
+  expect(screen.queryByRole("option", { name: "Apelido antigo" })).toBeNull();
 }
 
 describe("NovoAnimal", () => {

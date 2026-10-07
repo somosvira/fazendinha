@@ -139,7 +139,9 @@ export const itemOperacaoSchema = z.object({
   partidas: z.array(z.object({
     partidaId: z.string().uuid().optional(),
     codigo: z.string().trim().min(1).max(100).optional(),
-    validade: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullish(),
+    nome: z.string().trim().min(1, "Informe o nome do lote").max(160, "O nome do lote aceita até 160 caracteres").optional(),
+    cienciaValidadeDesconhecida: z.boolean().optional(),
+    validade: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Informe uma validade válida").nullish(),
     quantidade: z.coerce.number().finite(),
   })).optional(),
 }).refine((item) => item.valorUnitario !== undefined || item.valorTotal !== undefined, { message: "Informe o valor unitário ou total do item", path: ["valorUnitario"] });
@@ -161,6 +163,7 @@ export const simulacaoParcelasSchema = z.object({
 });
 
 export const operacaoSchema = z.object({
+  chave: z.string().uuid("Atualize a confirmação e tente novamente").optional(),
   classificacao: z.enum(["CUSTEIO", "INVESTIMENTO"]).nullable().optional(),
   tipo: z.enum([
     "COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO", "SERVICO", "VENDA", "APORTE", "RETIRADA",

@@ -4,7 +4,8 @@ import { prisma } from "../../../db.js";
 import { cadastrar, mudarDestino } from "../rebanho/animais.js";
 import { cadastrarAnimalSchema } from "../rebanho/schemas.js";
 import { hojeFazenda } from "../rebanho/regras.js";
-import { anularAplicacao, carenciaAnimal, criarAplicacao, criarAplicacoesColetivas, reconciliarOrigem } from "./aplicacoes.js";
+import { anularAplicacao, carenciaAnimal, criarAplicacao, criarAplicacoesColetivas, listarAplicacoes, reconciliarOrigem } from "./aplicacoes.js";
+import { obterAplicacao } from "./detalhes.js";
 import { salvarTipoAplicacao } from "./tiposAplicacao.js";
 import { listarPartidas } from "../../estoque/partidas.js";
 
@@ -22,8 +23,9 @@ afterAll(async () => {
   await prisma.auditoriaFinanceira.deleteMany({ where: { entidadeId: { in: movimentos.map((m) => m.id) } } });
   // Desmonta somente a fixture descartável; a UI não permite desligar rastreio.
   await prisma.produto.update({ where: { id: ids.produto }, data: { rastrearPartidas: false } });
-  await prisma.alocacaoPartidaEstoque.deleteMany({ where: { partidaId: ids.partida } });
+  await prisma.alocacaoPartidaEstoque.deleteMany({ where: { partida: { produtoId: ids.produto } } });
   await prisma.movimentoEstoque.deleteMany({ where: { produtoId: ids.produto } });
+  await prisma.partidaProduto.deleteMany({ where: { produtoId: ids.produto, lotePrincipalId: { not: null } } });
   await prisma.partidaProduto.deleteMany({ where: { produtoId: ids.produto } });
   await prisma.produto.deleteMany({ where: { id: ids.produto } });
   await prisma.destinoAnimal.deleteMany({ where: { animalId: ids.animal } });
@@ -82,5 +84,21 @@ comBanco("contratos da interface sanitária V3", () => {
     const antes = await prisma.aplicacaoProduto.count({ where: { animalId: ids.animal } });
     await expect(criarAplicacoesColetivas({ chave: crypto.randomUUID(), propriedadeId: ids.sitio, itens: [item, { ...item, animalId: crypto.randomUUID() }] }, null)).rejects.toThrow(/Linha 2/);
     expect(await prisma.aplicacaoProduto.count({ where: { animalId: ids.animal } })).toBe(antes);
+  });
+  it("aplicação em alias desconhecido exige ciência e consome saldo da raiz", async () => {
+    const raiz = await prisma.partidaProduto.create({ data: { produtoId: ids.produto, codigo: `SEM-VALIDADE-${run}`, validade: null } });
+    const alias = await prisma.partidaProduto.create({ data: { produtoId: ids.produto, codigo: `SEM-VALIDADE-ALIAS-${run}`, validade: null, lotePrincipalId: raiz.id } });
+    await prisma.movimentoEstoque.create({ data: { produtoId: ids.produto, propriedadeId: ids.sitio, tipo: "ENTRADA", origem: "INVENTARIO_INICIAL", data: new Date(antes(1)), quantidade: 50, custoUnitario: 2, valorTotal: 100, alocacaoPartidaEstoques: { create: { partidaId: alias.id, quantidade: 50 } } } });
+    const input = { animalId: ids.animal, propriedadeId: ids.sitio, data: hoje, aplicadaEm: `${hoje}T11:00:00-03:00`, tipoAplicacaoId: ids.tipo, origemInsumo: "BAIXA_ESTOQUE" as const, produtoId: ids.produto, partidaId: alias.id, nomeProdutoAplicado: "Medicamento", dose: "10", unidadeDose: "ML" as const, carenciaLeiteHoras: 0, carenciaCarneHoras: 0 };
+    await expect(criarAplicacao(input, null)).rejects.toThrow(/ciência/);
+    const aplicada = await criarAplicacao({ ...input, cienciaValidadeDesconhecida: true }, null);
+    const nomeProduto = (await prisma.produto.findUniqueOrThrow({ where: { id: ids.produto } })).nome;
+    expect((await listarAplicacoes(ids.animal, ids.sitio)).find((a) => a.id === aplicada.id)?.loteNome).toBe(`${nomeProduto} — validade não informada`);
+    expect(await obterAplicacao(aplicada.id, ids.sitio)).toMatchObject({ loteNome: `${nomeProduto} — validade não informada`, lotePrincipalId: raiz.id, partidaCodigoSnapshot: raiz.codigo });
+    expect((await prisma.alocacaoPartidaEstoque.findFirstOrThrow({ where: { movimentoEstoqueId: aplicada.movimentoEstoqueId! } })).partidaId).toBe(raiz.id);
+    expect((await listarPartidas(ids.produto, ids.sitio)).find((p) => p.id === raiz.id)?.saldo).toBe("40");
+    expect((await prisma.auditoriaPecuaria.findFirstOrThrow({ where: { entidadeId: aplicada.id, acao: "REGISTRO" } })).depois).toMatchObject({ cienciaValidadeDesconhecida: true });
+    await anularAplicacao(aplicada.id, ids.sitio, "Correção da aplicação sem validade", null);
+    expect((await listarPartidas(ids.produto, ids.sitio)).find((p) => p.id === raiz.id)?.saldo).toBe("50");
   });
 });

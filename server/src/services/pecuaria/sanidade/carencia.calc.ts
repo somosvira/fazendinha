@@ -12,7 +12,7 @@ export type PrazoCarencia =
   | { estado: "NENHUMA" }
   | { estado: "NAO_INFORMADO" }
   | { estado: "NAO_APLICAVEL" }
-  | { estado: "CONHECIDO"; ate: Date; precisaoAproximada: boolean };
+  | { estado: "CONHECIDO"; ate: Date; precisaoAproximada: boolean; prazoZero?: boolean };
 
 function baseDaAplicacao(a: AplicacaoCarencia): Date {
   if (a.precisaoTemporal === "HORA" && a.aplicadaEm) return a.aplicadaEm;
@@ -41,5 +41,5 @@ export function calcularPrazoCarencia(
       aproximada = a.precisaoTemporal !== "HORA";
     }
   }
-  return { estado: "CONHECIDO", ate: maior, precisaoAproximada: aproximada };
+  return { estado: "CONHECIDO", ate: maior, precisaoAproximada: aproximada, ...(relevantes.every((a) => a[chave] === 0) ? { prazoZero: true } : {}) };
 }

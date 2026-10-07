@@ -1486,7 +1486,7 @@ export async function darBaixa(input: BaixaInput & { animalId: string }, usuario
     // esperaria aqui e depois veria o animal baixado (sem trava, ficava baixado com linha aberta)
     await travarAnimais(tx, [animalId]);
     const { carenciaAnimalTx } = await import("../sanidade/aplicacoes.js");
-    const carencias = await carenciaAnimalTx(tx, animalId);
+    const carencias = await carenciaAnimalTx(tx, animalId, input.data);
     await conferirFatosNaBaixa(tx, animalId, new Date(input.data));
     const fimDia = new Date(`${input.data}T00:00:00-03:00`);
     const restricoes = [carencias.leite, carencias.carne].filter((p) => p.estado === "NAO_INFORMADO" || (p.estado === "CONHECIDO" && p.ate > fimDia));

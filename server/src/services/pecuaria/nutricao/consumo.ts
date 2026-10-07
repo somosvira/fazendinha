@@ -106,7 +106,7 @@ async function confirmarConsumoTx(tx: Prisma.TransactionClient, input: Fechament
           throw new RebanhoError("CONFLITO", `Saldo insuficiente para ${previsto.nome}`);
         }
         const distribuicao = await prepararPartidasTx(tx, { produtoId: previsto.produtoId, rastrearPartidas: previsto.rastrearPartidas,
-          propriedadeId: input.propriedadeId, tipo: "SAIDA", data: c.fim, quantidade, partidas: informado.partidas });
+          propriedadeId: input.propriedadeId, tipo: "SAIDA", data: c.fim, quantidade, partidas: informado.partidas, usuarioId });
         const base = await obterBaseCusto(tx, previsto.produtoId, input.propriedadeId);
         const valores = valorSaidaDaBase(quantidade, base);
         const mov = await tx.movimentoEstoque.create({ data: { produtoId: previsto.produtoId, propriedadeId: input.propriedadeId,
@@ -197,7 +197,7 @@ const detalheInclude = {
   lote: { select: { id: true, nome: true } }, centroCusto: { select: { nome: true } },
   vigencia: { select: { dieta: { select: { nome: true, versao: true } } } },
   itens: { include: { produto: { select: { nome: true } }, movimentoEstoque: { select: { id: true, quantidade: true, valorTotal: true, custoUnitario: true,
-    alocacaoPartidaEstoques: { select: { quantidade: true, partida: { select: { codigo: true, validade: true } } } } } } } },
+    alocacaoPartidaEstoques: { select: { partidaId: true, quantidade: true, partida: { select: { id: true, codigo: true, nome: true, validade: true, lotePrincipalId: true, lotePrincipal: { select: { nome: true } } } } } } } } } },
   participacoes: { include: { animal: { select: { brinco: true } } } },
 } satisfies Prisma.FechamentoConsumoInclude;
 type Detalhe = Prisma.FechamentoConsumoGetPayload<{ include: typeof detalheInclude }>;
@@ -210,6 +210,7 @@ export function apresentarFechamento(f: Detalhe, verValores: boolean) {
   })));
   return { ...f, verValores, custoConhecido: verValores ? atribuicao.custoConhecido : null, coberturaCustoCompleta: atribuicao.coberturaCustoCompleta,
     itens: f.itens.map((i) => ({ ...i, movimentoEstoque: i.movimentoEstoque ? { ...i.movimentoEstoque,
+      alocacaoPartidaEstoques: i.movimentoEstoque.alocacaoPartidaEstoques.map((a) => ({ ...a, partida: { ...a.partida, nome: a.partida.lotePrincipal?.nome ?? a.partida.nome, lotePrincipalId: a.partida.lotePrincipalId ?? a.partidaId } })),
       valorTotal: verValores && i.situacaoCusto === "CONHECIDO" ? i.movimentoEstoque.valorTotal : null,
       custoUnitario: verValores && i.situacaoCusto === "CONHECIDO" ? i.movimentoEstoque.custoUnitario : null } : null })),
     participacoes: atribuicao.participacoes.map((p) => ({ ...p, animal: f.participacoes.find((a) => a.animalId === p.animalId)!.animal,

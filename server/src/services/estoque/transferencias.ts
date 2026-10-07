@@ -6,7 +6,13 @@ import { prepararPartidasTx, type SelecaoPartida } from "./partidas.js";
 import { auditar, exigirPeriodoAberto } from "../financeiro/regras.js";
 import { valorSaidaDaBase } from "./estoque.calc.js";
 import { propriedadePrincipalId } from "../propriedade.js";
+import { motivoPerdaSchema } from "./transferencias.schemas.js";
 export async function transferirEstoque(input: { chave: string; produtoId: string; origemId: number; destinoId: number; quantidade: string; data: string; motivo: string; partidas?: SelecaoPartida[]; modo?: "PERDA" }, usuarioId: number | null) {
+  if (input.modo === "PERDA") {
+    const motivo = motivoPerdaSchema.safeParse(input.motivo);
+    if (!motivo.success) throw new EstoqueError("VALIDACAO", motivo.error.issues[0].message, "motivo");
+    input = { ...input, motivo: motivo.data };
+  }
   if (!input.modo && input.origemId === input.destinoId) throw new EstoqueError("VALIDACAO", "Origem e destino devem ser diferentes");
   const hash = crypto.createHash("sha256").update(JSON.stringify(input)).digest("hex");
   return prisma.$transaction(async (tx) => {
@@ -30,7 +36,7 @@ export async function transferirEstoque(input: { chave: string; produtoId: strin
     const movimentos = await tx.movimentoEstoque.findMany({ where: { produtoId: produto.id, status: statusSaldoEstoque, ...(input.origemId === principal ? { OR: [{ propriedadeId: input.origemId }, { propriedadeId: null }] } : { propriedadeId: input.origemId }) }, select: { tipo: true, quantidade: true } });
     const saldo = movimentos.reduce((s, m) => m.tipo === "SAIDA" ? s.minus(m.quantidade) : s.plus(m.quantidade), new Prisma.Decimal(0));
     if (saldo.lt(quantidade)) throw new EstoqueError("CONFLITO", "Saldo insuficiente no sítio de origem");
-    const partidas = await prepararPartidasTx(tx, { produtoId: produto.id, rastrearPartidas: produto.rastrearPartidas, propriedadeId: input.origemId, tipo: "SAIDA", quantidade, data, partidas: input.partidas, descarte: input.modo === "PERDA" });
+    const partidas = await prepararPartidasTx(tx, { produtoId: produto.id, rastrearPartidas: produto.rastrearPartidas, propriedadeId: input.origemId, tipo: "SAIDA", quantidade, data, partidas: input.partidas, descarte: true });
     const valores = valorSaidaDaBase(quantidade, await obterBaseCusto(tx, produto.id, input.origemId));
     const operacao = await tx.operacao.create({ data: { tipo: input.modo ? "AJUSTE_ESTOQUE" : "TRANSFERENCIA_ESTOQUE", status: "CONFIRMADA", propriedadeId: input.origemId, data, descricao: input.modo ? `Perda: ${input.motivo}` : input.motivo, valorTotal: valores.valorTotal, criadoPorId: usuarioId } });
     const destinos: Array<["SAIDA" | "ENTRADA", number]> = input.modo ? [["SAIDA", input.origemId]] : [["SAIDA", input.origemId], ["ENTRADA", input.destinoId]];

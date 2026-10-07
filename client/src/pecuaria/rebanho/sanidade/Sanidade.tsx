@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import {
-  Calendar,
+  Calendar, Eye, Check, Ban,
   ClipboardList,
   FlaskConical,
   Shield,
@@ -12,7 +12,7 @@ import {
   hoje,
   PageHeader,
   PaginaFinanceira,
-  Panel,
+  Panel, TabelaFinanceira,
 } from "../../../financeiro/financeiro-ui";
 import {
   CampoFormulario,
@@ -20,9 +20,11 @@ import {
   PainelCadastro,
 } from "../../../financeiro/PainelCadastro";
 import { DatePicker } from "../../../components/DatePicker";
+import { ConfirmacaoCiencia } from "../../../components/ConfirmacaoCiencia";
+import { getUsuario } from "../../../lib/auth";
+import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import { NavRebanho } from "../telas/NavRebanho";
-import { podeAcessarArea } from "../../../estoque/navegacao";
-import { SubAbas } from "../ui";
+import { Paginacao, SubAbas } from "../ui";
 import { buscarFichaAnimal, listarAnimais, listarLotes } from "../api";
 import type { AnimalResumo, Lote } from "../types";
 import {
@@ -33,7 +35,7 @@ import {
   type CarenciaAnimal,
 } from "./api";
 import { RateioServico } from "./RateioServico";
-import { SanidadeAnimal, resumoCarencia } from "./SanidadeAnimal";
+import { SanidadeAnimal } from "./SanidadeAnimal";
 import type { Doenca, TipoExame } from "./CadastrosSanitarios";
 import { ResultadoExame, type ExameResultado } from "./ResultadoExame";
 import {
@@ -43,6 +45,7 @@ import {
 
 type Ocorrencia = {
   id: string;
+  propriedadeId: number;
   animalId: string;
   inicio: string;
   fim: string | null;
@@ -52,6 +55,7 @@ type Ocorrencia = {
   _count: { aplicacoes: number; exames: number; execucoes: number };
 };
 type Exame = ExameResultado & {
+  propriedadeId: number;
   animalId: string;
   data: string;
   status: string;
@@ -59,6 +63,9 @@ type Exame = ExameResultado & {
 };
 type Tarefa = {
   id: string;
+  etapaId: string;
+  propriedadeAtualId?: number | null;
+  rodada?: { id: string; nome: string } | null;
   execucaoId: string;
   previstaPara: string;
   situacao: string;
@@ -73,6 +80,7 @@ type Tarefa = {
   };
   execucao: {
     animalId: string;
+    animal?: { id: string; brinco: string; nome: string | null };
     propriedadeId: number;
     protocolo: { nome: string; versao: number };
   };
@@ -100,6 +108,7 @@ type Painel =
       id: string;
     };
 
+const classeAcao = "inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg border border-border text-ink hover:bg-surface-2";
 const ABAS: Aba[] = [
   "agenda",
   "ocorrencias",
@@ -118,6 +127,7 @@ const estadoDaUrl = () => {
         : ("agenda" as Aba),
     aplicacaoId: p.get("aplicacaoId") ?? "",
     animalId: p.get("animalId") ?? "",
+    buscaAnimal: p.get("buscaAnimal") ?? "",
     loteId: p.get("loteId") ?? "",
     de: p.get("de") ?? "",
     ate: p.get("ate") ?? "",
@@ -129,51 +139,35 @@ const estadoDaUrl = () => {
   };
 };
 
-type RegistroDetalhe = Record<string, unknown>;
-const registro = (valor: unknown): RegistroDetalhe => valor && typeof valor === "object" ? valor as RegistroDetalhe : {};
-const textoDetalhe = (valor: unknown) => valor == null || valor === "" ? "Não informado" : String(valor);
-const dadosDetalhe: Record<string, Array<[string, string]>> = {
-  ocorrencia: [["Início", "inicio"], ["Fim", "fim"], ["Situação", "status"], ["Desfecho", "desfecho"]],
-  aplicacao: [["Data", "data"], ["Situação", "status"], ["Medicamento", "nomeProdutoAplicado"], ["Quantidade", "dose"], ["Unidade", "unidadeDose"], ["Origem", "origemInsumo"], ["Responsável", "responsavel"], ["Via", "via"], ["Referência técnica", "referenciaCarencia"], ["Lote", "partidaCodigoSnapshot"], ["Validade do lote", "partidaValidadeSnapshot"], ["Carência leite", "estadoCarenciaLeite"], ["Prazo leite (h)", "carenciaLeiteHoras"], ["Carência carne", "estadoCarenciaCarne"], ["Prazo carne (h)", "carenciaCarneHoras"]],
-  exame: [["Data", "data"], ["Situação", "status"], ["Resultado", "resultadoTexto"], ["Resultado numérico", "resultadoNumero"], ["Opção", "resultadoOpcao"]],
-  execucao: [["Início", "inicio"], ["Situação", "status"], ["Cancelada em", "canceladaEm"]],
-};
-function DetalheSanitario({ tipo, valor, abrir }: { tipo: string; valor: unknown; abrir: (tipo: string, id: string) => void }) {
-  const fato = registro(valor);
-  const animal = registro(fato.animal);
-  const protocolo = registro(fato.protocolo);
-  const doenca = registro(fato.doenca);
-  const tipoExame = registro(fato.tipoExame);
-  const ocorrencia = registro(fato.ocorrencia);
-  const tarefa = registro(fato.tarefa);
-  const movimento = registro(fato.movimentoEstoque);
-  const links: Array<[string, string, string]> = [];
-  if (ocorrencia.id) links.push(["Ocorrência relacionada", "ocorrencia", String(ocorrencia.id)]);
-  if (tarefa.execucaoId) links.push(["Execução do protocolo", "execucao", String(tarefa.execucaoId)]);
-  for (const [chave, nome, destino] of [["aplicacoes", "Aplicação", "aplicacao"], ["exames", "Exame", "exame"], ["execucoes", "Execução", "execucao"]] as const) {
-    for (const item of Array.isArray(fato[chave]) ? fato[chave] : []) {
-      const vinculo = registro(item);
-      if (vinculo.id) links.push([`${nome} · ${textoDetalhe(vinculo.data ?? vinculo.inicio)}`, destino, String(vinculo.id)]);
-    }
-  }
-  return <div className="space-y-4 text-sm">
-    <p><strong>Animal:</strong> {animal.id ? <a className="underline" href={`/pecuaria/rebanho/animais/${encodeURIComponent(String(animal.id))}`}>{textoDetalhe(animal.brinco)} · {textoDetalhe(animal.nome)}</a> : "Não informado"}</p>
-    {!!doenca.nome && <p><strong>Doença:</strong> {String(doenca.nome)}</p>}
-    {!!tipoExame.nome && <p><strong>Tipo de exame:</strong> {String(tipoExame.nome)}</p>}
-    {!!protocolo.nome && <p><strong>Protocolo:</strong> {String(protocolo.nome)} · versão {textoDetalhe(protocolo.versao)}</p>}
-    <dl className="grid gap-2 sm:grid-cols-2">{(dadosDetalhe[tipo] ?? []).map(([rotulo, chave]) => <div key={chave} className="rounded-lg bg-surface p-2"><dt className="text-ink-3">{rotulo}</dt><dd>{textoDetalhe(fato[chave])}</dd></div>)}</dl>
-    {!!movimento.id && <p><strong>Saída do estoque:</strong> <a className="underline" href={`/estoque?movimentoId=${encodeURIComponent(String(movimento.id))}${fato.propriedadeId ? `&propriedadeId=${encodeURIComponent(String(fato.propriedadeId))}` : ""}`}>Ver movimento</a></p>}
-    {!!fato.operacaoServicoId && podeAcessarArea("financeiro") && <p><strong>Serviço:</strong> <a className="underline" href={`/financeiro/operacoes/${encodeURIComponent(String(fato.operacaoServicoId))}`}>Ver origem financeira</a></p>}
-    {fato.valorProdutoAtribuido != null && <p><strong>Custo atribuído do medicamento:</strong> R$ {String(fato.valorProdutoAtribuido)}</p>}
-    {fato.valorServicoAtribuido != null && <p><strong>Rateio atribuído do Serviço:</strong> R$ {String(fato.valorServicoAtribuido)}</p>}
-    {links.length > 0 && <section><h3 className="font-semibold">Fatos relacionados</h3><div className="mt-2 flex flex-wrap gap-2">{links.map(([rotulo, destino, id]) => <button key={`${destino}-${id}`} type="button" className="rounded-lg border border-border px-3 py-2 underline" onClick={() => abrir(destino, id)}>{rotulo}</button>)}</div></section>}
-    {Array.isArray(fato.tarefas) && <section><h3 className="font-semibold">Tarefas</h3><div className="mt-2 space-y-2">{fato.tarefas.map((item) => { const t = registro(item); return <p key={String(t.id)} className="rounded-lg border border-border p-2">{textoDetalhe(t.previstaPara)} · {t.dispensadaEm ? "Dispensada" : (Array.isArray(t.aplicacoes) && t.aplicacoes.length) || (Array.isArray(t.exames) && t.exames.length) ? "Realizada" : "Pendente"}</p>; })}</div></section>}
-  </div>;
-}
+import { DetalheSanitario } from "./DetalheSanitario";
+import { PainelDetalheSanitario } from "./PainelDetalheSanitario";
+import { dataAplicacaoSanitaria, dataSanitaria, nomeAnimalSanitario, resultadoExameSanitario } from "./rotulos";
+import { CarenciasSanitarias } from "./CarenciasSanitarias";
+import { AgendaRodadas } from "./AgendaRodadas";
+import { FormRodada } from "./FormRodada";
+import { ExecutarEtapa } from "./ExecutarEtapa";
+import type { TarefaRodada } from "./rodadas-api";
+import type { PaginaSanitaria } from "./rodadas-api";
+import { FormFatoSanitario, type TipoFatoSanitario } from "./FormFatoSanitario";
 
 export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
   const [rateando, setRateando] = useState(false);
+  const [servicosGerenciamento, setServicosGerenciamento] = useState<ServicoSanitario[]>([]);
+  const [erroServicos, setErroServicos] = useState<string | null>(null);
+  const [carregandoServicos, setCarregandoServicos] = useState(false);
+  const [repetirServicos, setRepetirServicos] = useState(0);
+  const usuario = getUsuario();
+  const podeGerenciarServicos = podeLancar && !!usuario && (usuario.dono || (usuario.areas.includes("financeiro") && usuario.areas.includes("pecuaria")));
+  useEffect(() => {
+    if (!rateando) return;
+    let vivo = true; setCarregandoServicos(true); setErroServicos(null);
+    listarServicos().then((lista) => { if (vivo) setServicosGerenciamento(lista); }).catch((e: unknown) => { if (vivo) setErroServicos(e instanceof Error ? e.message : String(e)); }).finally(() => { if (vivo) setCarregandoServicos(false); });
+    return () => { vivo = false; };
+  }, [rateando, repetirServicos]);
   const [aba, setAba] = useState<Aba>(() => estadoDaUrl().aba);
+  const [visaoAgenda, setVisaoAgenda] = useState(() => new URLSearchParams(window.location.search).get("visaoAgenda") === "tarefas" ? "tarefas" : "rodadas");
+  const [rodadaId, setRodadaId] = useState(() => new URLSearchParams(window.location.search).get("rodadaId") ?? "");
+  const [executandoEtapa, setExecutandoEtapa] = useState<TarefaRodada[] | null>(null);
   const [aplicacaoId, setAplicacaoId] = useState(
     () => estadoDaUrl().aplicacaoId,
   );
@@ -182,7 +176,7 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
       const url = estadoDaUrl();
       return url.detalheTipo && url.detalheId
         ? { tipo: url.detalheTipo, id: url.detalheId }
-        : null;
+        : url.aplicacaoId ? { tipo: "aplicacao", id: url.aplicacaoId } : null;
     },
   );
   const [detalheConteudo, setDetalheConteudo] = useState<unknown>(null);
@@ -190,7 +184,7 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
   const [erroDetalhe, setErroDetalhe] = useState<string | null>(null);
   const [recarregarDetalhe, setRecarregarDetalhe] = useState(0);
   const [animais, setAnimais] = useState<AnimalResumo[]>([]);
-  const [buscaAnimal, setBuscaAnimal] = useState("");
+  const [buscaAnimal, setBuscaAnimal] = useState(() => estadoDaUrl().buscaAnimal);
   const [carencias, setCarencias] = useState<
     (CarenciaAnimal & {
       animal: { id: string; brinco: string; nome: string | null };
@@ -209,11 +203,20 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
   const [ocorrencias, setOcorrencias] = useState<Ocorrencia[]>([]);
   const [exames, setExames] = useState<Exame[]>([]);
   const [tarefas, setTarefas] = useState<Tarefa[]>([]);
+  const [totalTarefas, setTotalTarefas] = useState(0);
   const [doencas, setDoencas] = useState<Doenca[]>([]);
   const [tiposExame, setTiposExame] = useState<TipoExame[]>([]);
   const [protocolos, setProtocolos] = useState<Protocolo[]>([]);
   const [revisao, setRevisao] = useState(0);
+  const [aplicacaoSalvaId, setAplicacaoSalvaId] = useState<string | null>(null);
+  const [aplicacaoSalvaPropriedadeId, setAplicacaoSalvaPropriedadeId] = useState<number | undefined>();
+  function atualizarAplicacao(id?: string, propriedadeIdFato?: number) {
+    if (id) { setAplicacaoSalvaId(id); setAplicacaoSalvaPropriedadeId(propriedadeIdFato); }
+    setRevisao((v) => v + 1);
+  }
   const [painel, setPainel] = useState<Painel | null>(null);
+  const [novoFato, setNovoFato] = useState<TipoFatoSanitario | null>(null);
+  const [animalDaAcao, setAnimalDaAcao] = useState<{ animalId: string; propriedadeId: number } | null>(null);
   const [tarefaAplicacao, setTarefaAplicacao] =
     useState<TarefaAplicacao | null>(null);
   const [tarefaExameId, setTarefaExameId] = useState<string | null>(null);
@@ -222,6 +225,7 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
   const [texto, setTexto] = useState("");
   const [dataAdiamento, setDataAdiamento] = useState("");
   const [confirmarSobreposicao, setConfirmarSobreposicao] = useState(false);
+  const [exigeSobreposicao, setExigeSobreposicao] = useState(false);
   const [resultado, setResultado] = useState("");
   const [de, setDe] = useState(() => estadoDaUrl().de);
   const [ate, setAte] = useState(() => estadoDaUrl().ate);
@@ -232,10 +236,30 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
   const [ocupado, setOcupado] = useState(false);
   const animal = animais.find((a) => a.id === animalId);
   useEffect(() => {
+    setConfirmarSobreposicao(false);
+    setExigeSobreposicao(false);
+  }, [cadastroId, data, animalId]);
+  useEffect(() => {
+    const restaurar = () => {
+      const url = estadoDaUrl();
+      setAba(url.aba); setAnimalId(url.animalId); setLoteId(url.loteId); setBuscaAnimal(url.buscaAnimal);
+      setVisaoAgenda(new URLSearchParams(window.location.search).get("visaoAgenda") === "tarefas" ? "tarefas" : "rodadas");
+      setRodadaId(new URLSearchParams(window.location.search).get("rodadaId") ?? "");
+      setDe(url.de); setAte(url.ate); setSituacao(url.situacao); setPagina(url.pagina);
+      setAplicacaoId(url.aplicacaoId); setDetalhePropriedadeId(url.detalhePropriedadeId);
+      setDetalhe(url.detalheTipo && url.detalheId ? { tipo: url.detalheTipo, id: url.detalheId } : url.aplicacaoId ? { tipo: "aplicacao", id: url.aplicacaoId } : null);
+    };
+    window.addEventListener("popstate", restaurar);
+    return () => window.removeEventListener("popstate", restaurar);
+  }, []);
+  useEffect(() => {
     const params = new URLSearchParams();
+    if (aba === "agenda" && rodadaId) { const atual = new URLSearchParams(window.location.search); for (const chave of ["etapaId", "paginaEtapas", "paginaParticipantes", "paginaTarefas"]) { const v = atual.get(chave); if (v) params.set(chave, v); } }
     params.set("aba", aba);
+    if (aba === "agenda") { params.set("visaoAgenda", visaoAgenda); if (rodadaId) params.set("rodadaId", rodadaId); }
     for (const [k, v] of Object.entries({
       animalId,
+      buscaAnimal,
       loteId,
       de,
       ate,
@@ -252,7 +276,7 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
     const url = `${window.location.pathname}?${params}`;
     if (url !== `${window.location.pathname}${window.location.search}`)
       window.history.replaceState(null, "", url);
-  }, [aba, animalId, loteId, de, ate, situacao, pagina, aplicacaoId, detalhe, detalhePropriedadeId]);
+  }, [aba, animalId, buscaAnimal, loteId, de, ate, situacao, pagina, aplicacaoId, detalhe, detalhePropriedadeId, visaoAgenda, rodadaId]);
   useEffect(() => {
     if (!detalhe) {
       setDetalheConteudo(null);
@@ -272,6 +296,7 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
       return;
     }
     setErroDetalhe(null);
+    setDetalheConteudo(null);
     reqSanidade<unknown>(`/${recurso}/${encodeURIComponent(detalhe.id)}${detalhePropriedadeId ? `?propriedadeId=${encodeURIComponent(detalhePropriedadeId)}` : ""}`)
       .then((v) => {
         if (vivo) setDetalheConteudo(v);
@@ -324,6 +349,7 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
       porPagina: "50",
     });
     if (animalId) params.set("animalId", animalId);
+    if (buscaAnimal.trim()) params.set("buscaAnimal", buscaAnimal.trim());
     if (loteId) params.set("loteId", loteId);
     if (de) params.set("de", de);
     if (ate) params.set("ate", ate);
@@ -334,12 +360,12 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
       if (situacaoApi) params.set("situacao", situacaoApi);
     }
     const q = "?" + params.toString();
-    const requisicoes: Partial<Record<Aba, Promise<unknown>>> = {
-      agenda: reqSanidade<Tarefa[]>(`/tarefas${q}`),
-      ocorrencias: reqSanidade<Ocorrencia[]>(`/ocorrencias${q}`),
-      aplicacoes: reqSanidade<AplicacaoSanitaria[]>(`/aplicacoes${q}`),
-      exames: reqSanidade<Exame[]>(`/exames${q}`),
-      carencias: reqSanidade<
+    const requisicoes: Record<Aba, () => Promise<unknown>> = {
+      agenda: () => reqSanidade<PaginaSanitaria<Tarefa>>(`/tarefas${q}&paginado=true`),
+      ocorrencias: () => reqSanidade<Ocorrencia[]>(`/ocorrencias${q}`),
+      aplicacoes: () => reqSanidade<AplicacaoSanitaria[]>(`/aplicacoes${q}`),
+      exames: () => reqSanidade<Exame[]>(`/exames${q}`),
+      carencias: () => reqSanidade<
         (CarenciaAnimal & {
           animal: { id: string; brinco: string; nome: string | null };
         })[]
@@ -355,9 +381,9 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
       if (te.status === "fulfilled") setTiposExame(te.value);
       if (p.status === "fulfilled") setProtocolos(p.value);
     });
-    requisicoes[aba]!.then(async (value) => {
+    requisicoes[aba]().then(async (value) => {
       if (!vivo) return;
-      if (aba === "agenda") setTarefas(value as Tarefa[]);
+      if (aba === "agenda") { const p = value as PaginaSanitaria<Tarefa>; setTarefas(p.itens ?? []); setTotalTarefas(p.total ?? 0); }
       if (aba === "ocorrencias") setOcorrencias(value as Ocorrencia[]);
       if (aba === "aplicacoes") {
         const lista = value as AplicacaoSanitaria[];
@@ -365,6 +391,7 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
         const ids = [
           ...new Set(
             lista
+              .filter((i) => !i.animal)
               .map((i) => i.animalId)
               .filter(
                 (id): id is string => !!id && !animais.some((a) => a.id === id),
@@ -391,7 +418,7 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
         );
     })
       .catch((e: unknown) => {
-        if (vivo) setErroAba(e instanceof Error ? e.message : String(e));
+        if (vivo) setErroAba(`${aplicacaoSalvaId ? "Aplicação salva. Não conseguimos atualizar a consulta. Tente novamente. " : ""}${e instanceof Error ? e.message : String(e)}`);
       })
       .finally(() => {
         if (vivo) setCarregandoAba(false);
@@ -400,7 +427,7 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
     return () => {
       vivo = false;
     };
-  }, [aba, animalId, loteId, de, ate, situacao, pagina, revisao]);
+  }, [aba, animalId, buscaAnimal, loteId, de, ate, situacao, pagina, revisao]);
   useEffect(() => {
     setServicos([]);
     setServicoId("");
@@ -412,6 +439,7 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
         );
   }, [animal?.propriedade?.id]);
   function abrir(p: Painel) {
+    if (p.tipo === "ocorrencia" || p.tipo === "exame" || p.tipo === "protocolo") { setNovoFato(p.tipo); setCadastroId(""); setTarefaExameId(null); setAnimalDaAcao(null); return; }
     setPainel(p);
     setCadastroId("");
     setTexto("");
@@ -419,6 +447,7 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
     setData(hoje());
     setDataAdiamento("");
     setConfirmarSobreposicao(false);
+    setExigeSobreposicao(false);
     setTarefaExameId(null);
     setServicoId("");
     setResponsavel("");
@@ -434,7 +463,14 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
   const aplicacaoSelecionada = aplicacoes.find((a) => a.id === aplicacaoId);
   const linkFato = (id: string, fatoId?: string) =>
     `/pecuaria/rebanho/sanidade?aba=${aba}&animalId=${encodeURIComponent(id)}${fatoId ? `&aplicacaoId=${encodeURIComponent(fatoId)}` : ""}`;
-  const abrirDetalhe = (tipo: string, id: string) => setDetalhe({ tipo, id });
+  const abrirDetalhe = (tipo: string, id: string, propriedadeId?: number | null) => {
+    const params = new URLSearchParams(window.location.search);
+    params.set("detalheTipo", tipo); params.set("detalheId", id);
+    if (propriedadeId != null) { params.set("propriedadeId", String(propriedadeId)); setDetalhePropriedadeId(String(propriedadeId)); }
+    if (!detalhe) window.history.pushState(null, "", `${window.location.pathname}?${params}`);
+    setDetalhe({ tipo, id });
+  };
+  function fecharDetalhe() { setDetalhe(null); setAplicacaoId(""); }
   const situacaoCorresponde = (
     s: string,
     fim?: string | null,
@@ -463,7 +499,7 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
     situacaoCorresponde(s, fim, resultado);
   async function salvar() {
     if (!painel || ocupado) return;
-    const propriedadeId = animal?.propriedade?.id;
+    const propriedadeId = animalDaAcao?.propriedadeId ?? animal?.propriedade?.id;
     if (!propriedadeId) {
       setErro("Selecione um animal neste sítio antes de registrar uma ação.");
       return;
@@ -516,7 +552,7 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
       };
     } else if (painel.tipo === "adiar") {
       path = `/tarefas/${painel.id}/adiamento`;
-      body = { previstaPara: dataAdiamento, motivo: texto };
+      body = { propriedadeId, previstaPara: dataAdiamento, motivo: texto };
     } else if (painel.tipo === "encerrar") {
       path = `/ocorrencias/${painel.id}/encerramento`;
       body = { propriedadeId, fim: data, desfecho: texto };
@@ -531,7 +567,7 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
               : `/tarefas/${painel.id}/dispensa`;
       body =
         painel.tipo === "dispensar"
-          ? { motivo: texto }
+          ? { propriedadeId, motivo: texto }
           : { propriedadeId, motivo: texto };
     }
     try {
@@ -558,7 +594,7 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
         painel.tipo === "protocolo" &&
         /protocolo pendente|sobreposição/i.test(msg)
       ) {
-        setConfirmarSobreposicao(true);
+        setExigeSobreposicao(true);
         setErro(
           "Já existe uma execução deste protocolo com tarefas pendentes. Confirme a sobreposição e informe o motivo para prosseguir.",
         );
@@ -569,37 +605,37 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
   }
   return (
     <PaginaFinanceira>
-      {rateando && animal?.propriedade && (
+      {executandoEtapa && <ExecutarEtapa tarefas={executandoEtapa} onFechar={() => setExecutandoEtapa(null)} onSalvo={() => { setExecutandoEtapa(null); setRevisao((v) => v + 1); }} />}
+      {rateando && !carregandoServicos && !erroServicos && (
         <RateioServico
-          propriedadeId={animal.propriedade.id}
-          servicos={servicos.filter((s) => s.valorTotal !== undefined)}
+          propriedadeId={getPropriedadeAtiva()}
+          servicos={servicosGerenciamento}
           onFechar={() => setRateando(false)}
+          onSalvo={() => setRevisao((v) => v + 1)}
         />
       )}
-      {podeLancar && servicos.some((s) => s.valorTotal !== undefined) && (
-        <Button secondary onClick={() => setRateando(true)}>
-          Ratear Serviço (opcional)
-        </Button>
-      )}
-      {tarefaAplicacao && animal?.propriedade && (
+      {rateando && (carregandoServicos || erroServicos) && <PainelCadastro aberto titulo="Gerenciar procedimentos" onFechar={() => setRateando(false)} rodape={<Button secondary onClick={() => setRateando(false)}>Fechar</Button>}>{carregandoServicos ? <p role="status">Carregando atendimentos…</p> : <><ErrorBox erro={erroServicos} /><Button secondary onClick={() => setRepetirServicos((v) => v + 1)}>Tentar novamente</Button></>}</PainelCadastro>}
+      {tarefaAplicacao && animalDaAcao && (
         <FormAplicacaoServico
-          animalId={animalId}
-          propriedadeId={animal.propriedade.id}
+          animalId={animalDaAcao.animalId}
+          propriedadeId={animalDaAcao.propriedadeId}
           tarefa={tarefaAplicacao}
           onFechar={() => setTarefaAplicacao(null)}
-          onSalvo={() => {
+          onSalvo={(id, propriedadeIdFato) => {
             setTarefaAplicacao(null);
-            setRevisao((v) => v + 1);
+            atualizarAplicacao(id, propriedadeIdFato);
           }}
         />
       )}
       <PageHeader
         eyebrow="Pecuária"
         titulo="Sanidade"
-        descricao="Agenda e fatos sanitários. Selecione um animal para lançar e consultar suas carências."
+        descricao="Agenda, ocorrências, aplicações, exames e carências dos animais."
+        acao={podeGerenciarServicos ? <Button secondary onClick={() => setRateando(true)}>Gerenciar procedimentos</Button> : undefined}
       />
       <NavRebanho ativa="sanidade" />
       <ErrorBox erro={erro} />
+      {aplicacaoSalvaId && <p role="status" className="mt-3">Aplicação salva. A lista segue os filtros atuais. <button type="button" className="underline" onClick={() => abrirDetalhe("aplicacao", aplicacaoSalvaId, aplicacaoSalvaPropriedadeId)}>Ver aplicação salva</button></p>}
       {erro && (
         <Button secondary onClick={() => setRevisao((v) => v + 1)}>
           Tentar novamente
@@ -765,7 +801,9 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
         <Panel className="mt-5 space-y-3 p-5">
           {aba === "agenda" && (
             <>
-              {podeLancar && animal && (
+              <SubAbas ativa={visaoAgenda} onSelecionar={(v) => { setVisaoAgenda(v); setPagina(1); }} abas={[{ valor: "rodadas", rotulo: "Ciclos", icon: Calendar }, { valor: "tarefas", rotulo: "Tarefas", icon: ClipboardList }]} />
+              {visaoAgenda === "rodadas" ? <AgendaRodadas filtros={{ animalId, buscaAnimal, loteId, de, ate, situacao, pagina, porPagina: 20 }} podeLancar={podeLancar} recarregarToken={revisao} onAcao={(acao, t) => { if (acao === "consultar") { abrirDetalhe("execucao", t.execucaoId, t.execucao.propriedadeId); return; } setAnimalDaAcao({ animalId: t.execucao.animalId, propriedadeId: t.propriedadeAtualId ?? t.execucao.propriedadeId }); abrir({ tipo: acao, id: acao === "cancelar" ? t.execucaoId : t.id }); }} rodadaId={rodadaId} onAbrir={setRodadaId} onExecutar={setExecutandoEtapa} /> : <>
+              {podeLancar && (
                 <Button onClick={() => abrir({ tipo: "protocolo" })}>
                   Iniciar protocolo
                 </Button>
@@ -781,11 +819,12 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
                       {t.execucao.protocolo.nome} · v
                       {t.execucao.protocolo.versao}
                     </strong>
+                    <p className="text-sm text-ink-3">{t.rodada?.nome ?? "Sem ciclo"}</p>
                     <p className="text-sm">
-                      {nomeAnimal(t.execucao.animalId)} ·{" "}
-                      {t.previstaPara.slice(0, 10)} ·{" "}
+                      {t.execucao.animal ? nomeAnimalSanitario(t.execucao.animal) : nomeAnimal(t.execucao.animalId)} ·{" "}
+                      {dataSanitaria(t.previstaPara)} ·{" "}
                       {t.parametros.tipoAplicacaoNomeSnapshot ??
-                        t.parametros.tipo}{" "}
+                        (t.parametros.tipo === "APLICACAO" ? "Aplicação" : "Exame")}{" "}
                       ·{" "}
                       {t.situacao === "PENDENTE"
                         ? "Pendente"
@@ -796,45 +835,32 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
                             : "Execução cancelada"}
                     </p>
                     {podeLancar &&
-                      animalId === t.execucao.animalId &&
                       t.situacao === "PENDENTE" && (
                         <div className="mt-2 flex flex-wrap gap-2">
                           <Button
                             secondary
                             onClick={() => {
-                              if (t.parametros.tipo === "APLICACAO")
-                                setTarefaAplicacao({
-                                  id: t.id,
-                                  ...t.parametros,
-                                });
-                              else {
-                                abrir({ tipo: "exame" });
-                                setCadastroId(t.parametros.tipoExameId);
-                                setTarefaExameId(t.id);
-                              }
+                              setAnimalDaAcao({ animalId: t.execucao.animalId, propriedadeId: t.propriedadeAtualId ?? t.execucao.propriedadeId });
+                              setExecutandoEtapa([{ ...t, parametros: { ...t.parametros, tipo: t.parametros.tipo === "APLICACAO" ? "APLICACAO" : "EXAME" } }]);
                             }}
                           >
                             Executar tarefa
                           </Button>
                           <Button
                             secondary
-                            onClick={() =>
-                              abrir({ tipo: "dispensar", id: t.id })
-                            }
+                            onClick={() => { setAnimalDaAcao({ animalId: t.execucao.animalId, propriedadeId: t.propriedadeAtualId ?? t.execucao.propriedadeId }); abrir({ tipo: "dispensar", id: t.id }); }}
                           >
                             Dispensar com motivo
                           </Button>
                           <Button
                             secondary
-                            onClick={() =>
-                              abrir({ tipo: "cancelar", id: t.execucaoId })
-                            }
+                            onClick={() => { setAnimalDaAcao({ animalId: t.execucao.animalId, propriedadeId: t.propriedadeAtualId ?? t.execucao.propriedadeId }); abrir({ tipo: "cancelar", id: t.execucaoId }); }}
                           >
                             Cancelar execução
                           </Button>
                           <Button
                             secondary
-                            onClick={() => abrir({ tipo: "adiar", id: t.id })}
+                            onClick={() => { setAnimalDaAcao({ animalId: t.execucao.animalId, propriedadeId: t.propriedadeAtualId ?? t.execucao.propriedadeId }); abrir({ tipo: "adiar", id: t.id }); }}
                           >
                             Adiar tarefa
                           </Button>
@@ -848,73 +874,29 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
                   antes de iniciar uma execução.
                 </p>
               )}
+              {totalTarefas > 0 && <Paginacao paginaAtual={pagina} totalPaginas={Math.max(1, Math.ceil(totalTarefas / 50))} totalItens={totalTarefas} itensPorPagina={50} onPaginaChange={setPagina} rotulo="tarefas" idSelect="agenda-pagina-tarefas" />}
               <p className="text-sm text-ink-3">
                 Planejamento não consome estoque. Aplicações e exames são fatos
                 independentes.
               </p>
+              </>}
             </>
           )}
           {aba === "ocorrencias" && (
             <>
-              {podeLancar && animal && (
+              {podeLancar && (
                 <Button onClick={() => abrir({ tipo: "ocorrencia" })}>
                   Nova ocorrência
                 </Button>
               )}
-              {ocorrencias
-                .filter((o) => noPeriodo(o.inicio, o.status, o.fim))
-                .map((o) => (
-                  <div
-                    key={o.id}
-                    className="rounded-lg border border-border p-3"
-                  >
-                    <strong>
-                      {o.doenca.nome} ·{" "}
-                      <a className="underline" href={linkFato(o.animalId)}>
-                        {nomeAnimal(o.animalId)}
-                      </a>
-                    </strong>
-                    <p>
-                      {o._count.aplicacoes} aplicações · {o._count.exames}{" "}
-                      exames · {o._count.execucoes} protocolos
-                    </p>
-                    <p>
-                      {o.inicio.slice(0, 10)} ·{" "}
-                      {o.fim ? `Encerrada: ${o.desfecho}` : "Aberta"} ·{" "}
-                      {o.status === "ANULADO" ? "Anulada" : "Válida"}
-                    </p>
-                    <Button
-                      secondary
-                      onClick={() => abrirDetalhe("ocorrencia", o.id)}
-                    >
-                      Ver detalhes
-                    </Button>
-                    {podeLancar &&
-                      animalId === o.animalId &&
-                      o.status === "VALIDO" && (
-                        <div className="mt-2 flex gap-2">
-                          {!o.fim && (
-                            <Button
-                              secondary
-                              onClick={() =>
-                                abrir({ tipo: "encerrar", id: o.id })
-                              }
-                            >
-                              Encerrar
-                            </Button>
-                          )}
-                          <Button
-                            secondary
-                            onClick={() =>
-                              abrir({ tipo: "anular-ocorrencia", id: o.id })
-                            }
-                          >
-                            Anular
-                          </Button>
-                        </div>
-                      )}
-                  </div>
-                ))}
+              <TabelaFinanceira rotulo="Ocorrências sanitárias" itens={ocorrencias.filter((o) => noPeriodo(o.inicio, o.status, o.fim))} chaveDe={(o) => o.id} barraRolagemSuperior onAbrir={(o) => abrirDetalhe("ocorrencia", o.id, o.propriedadeId)} colunas={[
+                { chave: "animal", titulo: "Animal", principal: true, celula: (o) => <a className="underline" href={`/pecuaria/rebanho/animais/${encodeURIComponent(o.animalId)}`} onClick={(e) => e.stopPropagation()}>{nomeAnimal(o.animalId)}</a> },
+                { chave: "doenca", titulo: "Doença", celula: (o) => o.doenca.nome },
+                { chave: "inicio", titulo: "Início", celula: (o) => dataSanitaria(o.inicio) },
+                { chave: "fim", titulo: "Fim", celula: (o) => o.fim ? dataSanitaria(o.fim) : "—" },
+                { chave: "situacao", titulo: "Situação", celula: (o) => <>{o.fim ? "Encerrada" : "Aberta"}{o.status === "ANULADO" && <span className="ml-2 rounded bg-surface px-2 py-1">Anulada</span>}</> },
+                { chave: "acoes", titulo: "Ações", acoes: true, celula: (o) => <div className="flex gap-2" onClick={(e) => e.stopPropagation()}><button type="button" className={classeAcao} aria-label="Ver detalhes da ocorrência" title="Ver detalhes" onClick={() => abrirDetalhe("ocorrencia", o.id, o.propriedadeId)}><Eye size={16} /></button>{podeLancar && o.status === "VALIDO" && <>{!o.fim && <button type="button" className={classeAcao} aria-label="Encerrar ocorrência" title="Encerrar" onClick={() => { setAnimalDaAcao({ animalId: o.animalId, propriedadeId: o.propriedadeId }); abrir({ tipo: "encerrar", id: o.id }); }}><Check size={16} /></button>}<button type="button" className={classeAcao} aria-label="Anular ocorrência" title="Anular" onClick={() => { setAnimalDaAcao({ animalId: o.animalId, propriedadeId: o.propriedadeId }); abrir({ tipo: "anular-ocorrencia", id: o.id }); }}><Ban size={16} /></button></>}</div> },
+              ]} />
               {!ocorrencias.length && (
                 <p>Nenhuma ocorrência encontrada para os filtros atuais.</p>
               )}
@@ -936,7 +918,7 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
                     "Aplicação"}{" "}
                   · {aplicacaoSelecionada.nomeProdutoAplicado} ·{" "}
                   {aplicacaoSelecionada.dose} {aplicacaoSelecionada.unidadeDose}{" "}
-                  · {aplicacaoSelecionada.data.slice(0, 10)}
+                  · {dataAplicacaoSanitaria(aplicacaoSelecionada)}
                 </p>
               ) : (
                 <p>
@@ -946,22 +928,7 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
               )}
             </div>
           )}
-          {(aba === "aplicacoes" || (aba === "carencias" && animal)) &&
-            (animal ? (
-              <SanidadeAnimal
-                animalId={animalId}
-                propriedadeId={animal.propriedade?.id ?? null}
-                podeLancar={podeLancar}
-                recarregarToken={revisao}
-                lista={aplicacoes}
-                onMudou={() => setRevisao((v) => v + 1)}
-              />
-            ) : (
-              <p>
-                Selecione um animal para consultar carências e registrar uma
-                aplicação.
-              </p>
-            ))}
+          {aba === "carencias" && animal && <SanidadeAnimal animalId={animalId} propriedadeId={animal.propriedade?.id ?? null} podeLancar={podeLancar} recarregarToken={revisao} onMudou={atualizarAplicacao} />}
           {aba === "carencias" && !animal && (
             <>
               {carencias
@@ -969,7 +936,7 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
                   (c) =>
                     !situacao ||
                     (situacao === "CARÊNCIA_VIGENTE"
-                      ? [c.leite, c.carne].some((p) => p.estado === "CONHECIDO")
+                      ? [c.leite, c.carne].some((p) => p.estado === "CONHECIDO" && new Date(p.ate).getTime() > Date.now())
                       : [c.leite, c.carne].some(
                           (p) => p.estado === "NAO_INFORMADO",
                         )),
@@ -983,10 +950,9 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
                       className="underline"
                       href={`/pecuaria/rebanho/sanidade?aba=carencias&animalId=${c.animal.id}`}
                     >
-                      {c.animal.brinco} · {c.animal.nome ?? ""}
+                      {nomeAnimalSanitario(c.animal)}
                     </a>
-                    <p>Leite: {resumoCarencia(c.leite)}</p>
-                    <p>Abate/carne: {resumoCarencia(c.carne)}</p>
+                    <CarenciasSanitarias carencia={c} />
                   </div>
                 ))}
               {!carencias.length && (
@@ -994,99 +960,28 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
               )}
             </>
           )}
-          {aba === "aplicacoes" &&
-            !animal &&
-            aplicacoes
-              .filter((a) => noPeriodo(a.data, a.status))
-              .map((a) => (
-                <div
-                  key={a.id}
-                  id={`aplicacao-${a.id}`}
-                  className={`rounded-lg border p-3 ${a.id === aplicacaoId ? "border-green-700 bg-green-50 ring-2 ring-green-700" : "border-border"}`}
-                >
-                  <strong>
-                    <a className="underline" href={linkFato(a.animalId, a.id)}>
-                      {nomeAnimal(a.animalId)}
-                    </a>
-                    {a.id === aplicacaoId && (
-                      <span className="ml-2 font-normal">
-                        · aplicação selecionada
-                      </span>
-                    )}
-                  </strong>
-                  <p>
-                    {a.tipoAplicacaoNomeSnapshot ?? a.finalidade ?? "Aplicação"}{" "}
-                    · {a.nomeProdutoAplicado} · {a.dose} {a.unidadeDose} ·{" "}
-                    {a.data.slice(0, 10)} ·{" "}
-                    {a.status === "VALIDO" ? "Válida" : "Anulada"}
-                  </p>
-                  <Button
-                    secondary
-                    onClick={() => abrirDetalhe("aplicacao", a.id)}
-                  >
-                    Ver detalhes
-                  </Button>
-                </div>
-              ))}
+          {aba === "aplicacoes" && <SanidadeAnimal geral animalId={animalId} propriedadeId={animal?.propriedade?.id ?? null} podeLancar={podeLancar} recarregarToken={revisao} lista={aplicacoes.map((a) => ({ ...a, animal: a.animal ?? animais.find((v) => v.id === a.animalId) }))} abrirDetalhe={abrirDetalhe} onMudou={atualizarAplicacao} />}
           {aba === "exames" && (
             <>
-              {podeLancar && animal && (
+              {podeLancar && (
                 <Button onClick={() => abrir({ tipo: "exame" })}>
                   Registrar coleta / exame
                 </Button>
               )}
-              {exames
-                .filter((e) =>
-                  noPeriodo(
-                    e.data,
-                    e.status,
-                    null,
-                    e.resultadoTexto ?? e.resultadoNumero ?? e.resultadoOpcao,
-                  ),
-                )
-                .map((e) => (
-                  <div
-                    key={e.id}
-                    className="rounded-lg border border-border p-3"
-                  >
-                    <strong>
-                      {e.tipoExame.nome} ·{" "}
-                      <a className="underline" href={linkFato(e.animalId)}>
-                        {nomeAnimal(e.animalId)}
-                      </a>
-                    </strong>
-                    <p>
-                      {e.data.slice(0, 10)} ·{" "}
-                      {e.status === "VALIDO" ? "Válido" : "Anulado"} ·{" "}
-                      {e.resultadoTexto ??
-                        e.resultadoNumero ??
-                        e.resultadoOpcao ??
-                        "Aguardando resultado"}
-                    </p>
-                    <Button
-                      secondary
-                      onClick={() => abrirDetalhe("exame", e.id)}
-                    >
-                      Ver detalhes
-                    </Button>
-                    {podeLancar &&
-                      animalId === e.animalId &&
-                      animal?.propriedade &&
-                      e.status === "VALIDO" && (
-                        <ResultadoExame
-                          exame={e}
-                          propriedadeId={animal.propriedade.id}
-                          onSalvo={() => setRevisao((v) => v + 1)}
-                        />
-                      )}
-                  </div>
-                ))}
+              <TabelaFinanceira rotulo="Exames sanitários" itens={exames.filter((e) => noPeriodo(e.data, e.status, null, e.resultadoTexto ?? e.resultadoNumero ?? e.resultadoOpcao))} chaveDe={(e) => e.id} barraRolagemSuperior onAbrir={(e) => abrirDetalhe("exame", e.id, e.propriedadeId)} colunas={[
+                { chave: "animal", titulo: "Animal", principal: true, celula: (e) => <a className="underline" href={`/pecuaria/rebanho/animais/${encodeURIComponent(e.animalId)}`} onClick={(v) => v.stopPropagation()}>{nomeAnimal(e.animalId)}</a> },
+                { chave: "tipo", titulo: "Tipo de exame", celula: (e) => e.tipoExame.nome },
+                { chave: "data", titulo: "Data", celula: (e) => dataSanitaria(e.data) },
+                { chave: "resultado", titulo: "Resultado", celula: resultadoExameSanitario },
+                { chave: "situacao", titulo: "Situação", celula: (e) => <>{resultadoExameSanitario(e) === "Aguardando resultado" ? "Aguardando resultado" : "Resultado informado"}{e.status === "ANULADO" && <span className="ml-2 rounded bg-surface px-2 py-1">Anulado</span>}</> },
+                { chave: "acoes", titulo: "Ações", acoes: true, celula: (e) => <div className="flex gap-2" onClick={(v) => v.stopPropagation()}><button type="button" className={classeAcao} aria-label="Ver detalhes do exame" title="Ver detalhes" onClick={() => abrirDetalhe("exame", e.id, e.propriedadeId)}><Eye size={16} /></button>{podeLancar && e.status === "VALIDO" && <ResultadoExame exame={e} propriedadeId={e.propriedadeId} onSalvo={() => { setRevisao((v) => v + 1); setRecarregarDetalhe((v) => v + 1); }} />}</div> },
+              ]} />
               {!exames.length && (
                 <p>Nenhum exame encontrado para os filtros atuais.</p>
               )}
             </>
           )}
-          {
+          {aba !== "agenda" &&
             <div className="flex items-center gap-3">
               <Button
                 secondary
@@ -1099,9 +994,9 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
               <Button
                 secondary
                 disabled={
-                  (aba === "agenda"
-                    ? tarefas.length
-                    : aba === "ocorrencias"
+                  (aba === "ocorrencias"
+
+
                       ? ocorrencias.length
                       : aba === "exames"
                         ? exames.length
@@ -1118,13 +1013,7 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
         </Panel>
       )}
       {detalhe && (
-        <Panel className="mt-5 space-y-3 p-5">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="font-semibold">Detalhe do fato sanitário</h2>
-            <Button secondary onClick={() => setDetalhe(null)}>
-              Voltar à lista
-            </Button>
-          </div>
+        <PainelDetalheSanitario onFechar={fecharDetalhe}>
           {erroDetalhe ? (
             <><ErrorBox erro={erroDetalhe} /><Button secondary onClick={() => setRecarregarDetalhe((v) => v + 1)}>Tentar novamente</Button></>
           ) : detalheConteudo == null ? (
@@ -1132,7 +1021,7 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
           ) : (
             <DetalheSanitario tipo={detalhe.tipo} valor={detalheConteudo} abrir={abrirDetalhe} />
           )}
-        </Panel>
+        </PainelDetalheSanitario>
       )}
       {painel && (
         <PainelCadastro
@@ -1173,7 +1062,7 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
             }}
           >
             <ErrorBox erro={erro} />
-            <p>{animal ? nomeAnimal(animal.id) : "Selecione um animal"}</p>
+            <p>{animalDaAcao ? nomeAnimal(animalDaAcao.animalId) : animal ? nomeAnimal(animal.id) : "Selecione um animal"}</p>
             {(painel.tipo === "ocorrencia" ||
               painel.tipo === "exame" ||
               painel.tipo === "protocolo") && (
@@ -1261,7 +1150,7 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
                       )
                       .map((o) => (
                         <option key={o.id} value={o.id}>
-                          {o.doenca.nome} · {o.inicio.slice(0, 10)}
+                          {o.doenca.nome} · {dataSanitaria(o.inicio)}
                         </option>
                       ))}
                   </select>
@@ -1322,7 +1211,7 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
                 }
               </CampoFormulario>
             ) : (
-              (painel.tipo !== "protocolo" || confirmarSobreposicao) && (
+              (painel.tipo !== "protocolo" || exigeSobreposicao) && (
                 <CampoFormulario
                   id="san-motivo"
                   rotulo={
@@ -1350,6 +1239,7 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
                 </CampoFormulario>
               )
             )}
+            {painel.tipo === "protocolo" && exigeSobreposicao && <ConfirmacaoCiencia id="san-sobreposicao" checked={confirmarSobreposicao} onChange={setConfirmarSobreposicao} obrigatorio disabled={ocupado}>Confirmo iniciar outro protocolo com tarefas pendentes.</ConfirmacaoCiencia>}
             {painel.tipo === "adiar" && (
               <CampoFormulario
                 id="san-adiamento-data"
@@ -1369,6 +1259,7 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
           </form>
         </PainelCadastro>
       )}
+      {novoFato === "protocolo" ? <FormRodada animalInicial={animalId || undefined} onFechar={() => setNovoFato(null)} onSalvo={(id) => { setNovoFato(null); setVisaoAgenda("rodadas"); setRodadaId(id); setRevisao((v) => v + 1); }} /> : novoFato && <FormFatoSanitario tipo={novoFato} animalInicial={animalDaAcao?.animalId ?? animalId} fixo={!!tarefaExameId} cadastroInicial={cadastroId} tarefaId={tarefaExameId} onFechar={() => setNovoFato(null)} onSalvo={() => { setNovoFato(null); setRevisao((v) => v + 1); }} />}
     </PaginaFinanceira>
   );
 }

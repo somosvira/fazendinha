@@ -22,7 +22,7 @@ vi.mock("../../../estoque/api", async (importOriginal) => ({ ...(await importOri
 
 vi.mock("../../../api/propriedades", () => ({
   usePropriedades: () => ({
-    data: [{ id: 1, nome: "Sede", apelido: null, cidade: null, uf: null, principal: true, ativo: true, ordem: 0 }],
+    data: [{ id: 1, nome: "Sede", apelido: "Apelido antigo", cidade: null, uf: null, principal: true, ativo: true, ordem: 0 }],
     loading: false,
     recarregar: vi.fn(),
   }),
@@ -42,7 +42,7 @@ const primeiro = (role: string, name: string | RegExp) => screen.getAllByRole(ro
 
 const catalogosMock: Catalogos = {
   racas: [], motivosBaixa: [],
-  propriedades: [{ id: 1, nome: "Sede", apelido: null }],
+  propriedades: [{ id: 1, nome: "Sede", apelido: "Apelido antigo" }],
   lotes: [{ id: "l1", nome: "Lote 1", propriedadeId: 1 }, { id: "l2", nome: "Lote 2", propriedadeId: 1 }],
 };
 

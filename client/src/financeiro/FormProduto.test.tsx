@@ -38,6 +38,19 @@ const produtoCriado = {
 };
 
 describe("tipos de uso e validação dos perfis", () => {
+  it("editar categoria conserva usos e perfil, sem reenviar referência técnica histórica", async () => {
+    const produto = { ...produtoCriado, unidade: "ML" as const, rastrearPartidas: true, usoSanitario: true, perfilSanitario: { carenciaLeiteHoras: 0, carenciaCarneHoras: 48, viaPadrao: "Intramuscular", referenciaTecnica: "Referência histórica" } };
+    mocks.editarProduto.mockResolvedValue(produto);
+    render(<FormProduto produto={produto} categorias={[...categorias, { ...categorias[0], id: uid(12), nome: "Nutrição" }]} centros={[]} parceiros={[]} onSalvo={vi.fn()} onFechar={vi.fn()} />);
+    expect(screen.queryByLabelText(/Referência técnica/)).toBeNull();
+    expect((screen.getByLabelText("Controlar lotes por validade") as HTMLInputElement).disabled).toBe(true);
+    fireEvent.change(screen.getByLabelText("Categoria"), { target: { value: uid(12) } });
+    fireEvent.click(screen.getByRole("button", { name: "Salvar produto" }));
+    await waitFor(() => expect(mocks.editarProduto).toHaveBeenCalledWith(produto.id, expect.objectContaining({
+      categoriaId: uid(12), usoSanitario: true,
+      perfilSanitario: { carenciaLeiteHoras: 0, carenciaCarneHoras: 48, viaPadrao: "Intramuscular" },
+    })));
+  });
   beforeEach(() => { vi.clearAllMocks(); mocks.criarProduto.mockResolvedValue(produtoCriado); });
   const montar = () => {
     render(<FormProduto produto={null} categorias={categorias} centros={[]} parceiros={[]} onSalvo={vi.fn()} onFechar={vi.fn()} />);
@@ -56,7 +69,7 @@ describe("tipos de uso e validação dos perfis", () => {
   it.each([["0", 0], ["100", 100], ["90,25", 90.25], ["", null]])("aceita MS %s preservando o significado", async (valor, esperado) => {
     montar(); fireEvent.change(screen.getByLabelText("Matéria seca (%)"), { target: { value: valor } });
     fireEvent.click(screen.getByLabelText("Sanitário"));
-    fireEvent.click(screen.getByLabelText("Controlar lotes e validade"));
+    fireEvent.click(screen.getByLabelText("Controlar lotes por validade"));
     fireEvent.click(screen.getByRole("button", { name: "Criar produto" }));
     await waitFor(() => expect(mocks.criarProduto).toHaveBeenCalledWith(expect.objectContaining({ usoNutricional: true, usoSanitario: true, usoAgricola: false, rastrearPartidas: true, perfilNutricional: { materiaSecaPercentual: esperado } })));
   });

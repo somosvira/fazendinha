@@ -4,8 +4,13 @@ import { classeInput, PainelCadastro } from "../../../financeiro/PainelCadastro"
 import { DatePicker } from "../../../components/DatePicker";
 import type { AnimalResumo } from "../types";
 import { listarServicos, reqSanidade, type ServicoSanitario } from "./api";
+import { FormRodada } from "./FormRodada";
 type Cadastro = { id: string; nome: string; versao?: number; publicadoEm?: string | null; ativo?: boolean };
 export function FormColetivoSanitario({ tipo, animais, onFechar, onSalvo }: { tipo: "exame" | "protocolo"; animais: AnimalResumo[]; onFechar: () => void; onSalvo: () => void }) {
+  if (tipo === "protocolo") return <FormRodada animaisIniciais={animais} onFechar={onFechar} onSalvo={onSalvo} />;
+  return <FormColetaColetiva tipo={tipo} animais={animais} onFechar={onFechar} onSalvo={onSalvo} />;
+}
+function FormColetaColetiva({ tipo, animais, onFechar, onSalvo }: { tipo: "exame" | "protocolo"; animais: AnimalResumo[]; onFechar: () => void; onSalvo: () => void }) {
   const propriedadeId = animais[0]?.propriedade?.id;
   const [cadastros, setCadastros] = useState<Cadastro[]>([]);
   const [servicos, setServicos] = useState<ServicoSanitario[]>([]);

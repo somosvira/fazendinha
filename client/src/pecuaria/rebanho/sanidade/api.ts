@@ -1,31 +1,49 @@
 import { comPropriedade } from "../../../propriedadeScope";
 
-type EstadoCarencia = { estado: "NENHUMA" | "NAO_APLICAVEL" | "NAO_INFORMADO" } | { estado: "CONHECIDO"; ate: string; precisaoAproximada: boolean };
-export type CarenciaAnimal = { leite: EstadoCarencia; carne: EstadoCarencia };
+type EstadoCarencia = { estado: "NENHUMA" | "NAO_APLICAVEL" | "NAO_INFORMADO" } | { estado: "CONHECIDO"; ate: string; precisaoAproximada: boolean; prazoZero?: boolean };
+export type CarenciaAnimal = { leite: EstadoCarencia; carne: EstadoCarencia; revisaoLeitePendente?: boolean };
 export type AplicacaoSanitaria = {
+  animal?: { id: string; brinco: string; nome: string | null }; produtoId?: string | null;
+  produto?: { id: string; nome: string; unidade: string } | null;
   id: string; animalId: string; propriedadeId?: number | null; data: string; aplicadaEm: string | null; finalidade: "TRATAMENTO" | "VACINA" | "VERMIFUGO" | null;
   nomeProdutoAplicado: string; dose: string; unidadeDose: string | null; origemInsumo: string;
   operacaoServicoId: string | null; status: "VALIDO" | "ANULADO";
-  partidaCodigoSnapshot: string | null; partidaValidadeSnapshot: string | null; justificativaSemOrigem: string | null;
+  loteNome?: string | null; partidaCodigoSnapshot: string | null; partidaValidadeSnapshot: string | null; justificativaSemOrigem: string | null;
   tipoAplicacaoNomeSnapshot: string | null; responsavel: string | null;
   estadoCarenciaLeite: EstadoPrazo; estadoCarenciaCarne: EstadoPrazo;
   carenciaLeiteHoras: number | null; carenciaCarneHoras: number | null; justificativaCarenciaCarne: string | null;
 };
-export type ServicoSanitario = { id: string; numero: number; data: string; descricao: string | null; valorTotal?: string; parceiro: { nome: string } | null };
+export type ServicoSanitario = { id: string; numero: number; data: string; descricao: string | null; propriedadeId?: number | null; propriedade?: { id: number; nome: string } | null; valorTotal?: string; parceiro: { nome: string } | null };
+
+export class SanidadeApiError extends Error {
+  constructor(message: string, public readonly code?: string, public readonly campo?: string) {
+    super(message);
+    this.name = "SanidadeApiError";
+  }
+}
 
 export async function reqSanidade<T>(caminho: string, init?: RequestInit): Promise<T> {
   const resposta = await fetch(`/api/pecuaria/rebanho/sanidade${caminho}`, {
     ...init, headers: comPropriedade({ ...(init?.body ? { "content-type": "application/json" } : {}), ...((init?.headers as Record<string, string>) ?? {}) }),
   });
   const dados = await resposta.json().catch(() => ({}));
-  if (!resposta.ok) throw new Error(dados.error ?? `Erro HTTP ${resposta.status}`);
+  if (!resposta.ok) throw new SanidadeApiError(dados.error ?? `Erro HTTP ${resposta.status}`, dados.code, dados.campo);
   return dados as T;
 }
 const req = reqSanidade;
 
+export type AlteracaoExame = {
+  id: string; acao: string; criadoEm: string; usuarioId: number | null;
+  autor: { id: number; nome: string } | null; motivo: string | null;
+  antes: unknown; depois: unknown;
+};
+export type HistoricoExame = { exameId: string; itens: AlteracaoExame[]; total: number; pagina: number; tamanho: number };
+export const consultarHistoricoExame = (id: string, propriedadeId?: number, pagina = 1, tamanho = 20) =>
+  req<HistoricoExame>(`/exames/${encodeURIComponent(id)}/historico?pagina=${pagina}&tamanho=${tamanho}${propriedadeId != null ? `&propriedadeId=${propriedadeId}` : ""}`);
+
 export const listarAplicacoes = (animalId: string) => req<AplicacaoSanitaria[]>(`/aplicacoes?animalId=${encodeURIComponent(animalId)}`);
-export const consultarCarencia = (animalId: string) => req<CarenciaAnimal>(`/animais/${encodeURIComponent(animalId)}/carencia`);
-export const listarServicos = (propriedadeId: number) => req<ServicoSanitario[]>(`/servicos?propriedadeId=${propriedadeId}`);
+export const consultarCarencia = (animalId: string, dataReferencia?: string) => req<CarenciaAnimal>(`/animais/${encodeURIComponent(animalId)}/carencia${dataReferencia ? `?dataReferencia=${encodeURIComponent(dataReferencia)}` : ""}`);
+export const listarServicos = (propriedadeId?: number) => req<ServicoSanitario[]>(`/servicos${propriedadeId != null ? `?propriedadeId=${propriedadeId}` : ""}`);
 export type TipoAplicacao = { id: string; nome: string; ativo: boolean };
 export type CompraDireta = { id: string; produtoId: string; disponivel: string; unidade: string; produto: { nome: string }; operacao: { numero: number; data: string } };
 export const listarTiposAplicacao = () => req<TipoAplicacao[]>("/tipos-aplicacao");
@@ -38,7 +56,7 @@ export type AplicacaoInput = {
   ocorrenciaId?: string;
   origemInsumo: "BAIXA_ESTOQUE" | "INCLUSO_SERVICO" | "COMPRA_CONSUMO_DIRETO" | "SEM_ORIGEM_JUSTIFICADA";
   nomeProdutoAplicado: string; produtoId?: string; dose: string; unidadeDose: string; responsavel?: string; via?: string; referenciaCarencia?: string;
-  operacaoServicoId?: string; itemCompraDiretaId?: string; partidaId?: string; partidaCodigo?: string; partidaValidade?: string;
+  operacaoServicoId?: string; itemCompraDiretaId?: string; partidaId?: string; partidaCodigo?: string; partidaValidade?: string; cienciaValidadeDesconhecida?: boolean;
   justificativaSemOrigem?: string; estadoCarenciaLeite: EstadoPrazo; estadoCarenciaCarne: EstadoPrazo;
   documentacaoExcepcional?: boolean; motivoDocumentacaoExcepcional?: string;
   carenciaLeiteHoras: number | null; carenciaCarneHoras: number | null; justificativaCarenciaCarne?: string;

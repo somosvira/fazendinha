@@ -23,7 +23,7 @@ function falha(c: Context, e: unknown) {
   return c.json({ error: "Erro inesperado ao processar nutrição" }, 500);
 }
 const contexto = z.object({ loteId: uuid, propriedadeId: z.number().int().positive(), inicio: data, fim: data, centroCustoId: uuid.nullish() });
-const itemConsumo = z.object({ produtoId: uuid, quantidadeConfirmada: z.number().nonnegative().optional(), motivoAjuste: z.string().trim().max(500).nullish(), modoEstoque: z.enum(["BAIXA_ESTOQUE", "SEM_BAIXA_JUSTIFICADA"]), justificativaSemBaixa: z.string().trim().max(500).nullish(), partidas: z.array(z.object({ partidaId: uuid, quantidade: z.number().positive() })).optional() }).strict();
+const itemConsumo = z.object({ produtoId: uuid, quantidadeConfirmada: z.number().nonnegative().optional(), motivoAjuste: z.string().trim().max(500).nullish(), modoEstoque: z.enum(["BAIXA_ESTOQUE", "SEM_BAIXA_JUSTIFICADA"]), justificativaSemBaixa: z.string().trim().max(500).nullish(), partidas: z.array(z.object({ partidaId: uuid, quantidade: z.number().positive(), cienciaValidadeDesconhecida: z.boolean().optional() })).optional() }).strict();
 
 export const nutricaoRouter = new Hono()
   .post("/vigencias/:id/correcao", validar(z.object({ propriedadeId: z.number().int().positive(), desde: data, motivo: z.string().trim().min(5).max(500) }).strict()), async (c) => {
@@ -71,7 +71,7 @@ export const nutricaoRouter = new Hono()
     quantidadeConfirmada: z.number().nonnegative().optional(), motivoAjuste: z.string().trim().max(500).nullish(),
     modoEstoque: z.enum(["BAIXA_ESTOQUE", "SEM_BAIXA_JUSTIFICADA"]), justificativaSemBaixa: z.string().trim().max(500).nullish(),
     partidas: z.array(z.object({ partidaId: uuid.optional(), codigo: z.string().trim().min(1).max(100).optional(),
-      validade: data.nullish(), quantidade: z.number().positive() })).optional() })).min(1) })), async (c) => {
+      validade: data.nullish(), quantidade: z.number().positive(), cienciaValidadeDesconhecida: z.boolean().optional() })).optional() })).min(1) })), async (c) => {
     try { const body = c.req.valid("json"); const propriedadeId = await resolverEscopoEscrita(c, body.propriedadeId);
       return c.json(await consumo.confirmarConsumo({ ...body, propriedadeId }, getUsuario(c)?.id ?? null), 201); }
     catch (e) { return falha(c, e); }

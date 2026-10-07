@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button, ErrorBox, hoje } from "../../../financeiro/financeiro-ui";
 import { DatePicker } from "../../../components/DatePicker";
 import { classeInput } from "../../../financeiro/PainelCadastro";
-import { SelecaoPartidas, type DistribuicaoPartida } from "../../../estoque/SelecaoPartidas";
+import { SelecaoPartidas, conferirDistribuicaoPartidas, type DistribuicaoPartida } from "../../../estoque/SelecaoPartidas";
 import { confirmarPeriodos, previaPeriodos, type CentroNutricional, type Previa } from "./api";
 import { estimativaConferida, somarEstimativas } from "./conferencia.calc";
 import { formatarDataBR } from "../lib/rotulos";
@@ -18,10 +18,11 @@ export function ConferenciaPeriodos({ loteId, propriedadeId, centros, onSalvo }:
   const [chave, setChave] = useState(() => crypto.randomUUID());
   const [ocupado, setOcupado] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const [salvo, setSalvo] = useState(false);
   const chaveItem = (p: Previa, produtoId: string) => p.inicio.slice(0, 10) + ":" + produtoId;
   function mudar(k: string, patch: Partial<Escolha>) { setEscolhas((e) => ({ ...e, [k]: { ...e[k], ...patch } })); setChave(crypto.randomUUID()); }
   async function conferir() {
-    if (ocupado) return; setOcupado(true); setErro(null); setPrevia(null);
+    if (ocupado) return; setOcupado(true); setErro(null); setPrevia(null); setSalvo(false);
     try { const p = await previaPeriodos({ loteId, propriedadeId, inicio, fim, centroCustoId: centroCustoId || null }); setPrevia(p); setChave(crypto.randomUUID()); setEscolhas(Object.fromEntries(p.periodos.flatMap((p) => p.itens.map((i) => [chaveItem(p, i.produtoId), { quantidade: i.quantidadePrevista, motivo: "", modo: "BAIXA_ESTOQUE", justificativa: "", partidas: [] }])))); } catch (e) { setErro(e instanceof Error ? e.message : String(e)); } finally { setOcupado(false); }
   }
   async function confirmar() {
@@ -33,13 +34,15 @@ export function ConferenciaPeriodos({ loteId, propriedadeId, centros, onSalvo }:
         if (!e.quantidade.trim() || !Number.isFinite(Number(e.quantidade)) || Number(e.quantidade) < 0) throw new Error(`${i.nome}: informe a quantidade, inclusive zero se confirmado.`);
         if (Number(e.quantidade) !== Number(i.quantidadePrevista) && !e.motivo.trim()) throw new Error(`${i.nome}: justifique a diferença da previsão.`);
         if (e.modo === "SEM_BAIXA_JUSTIFICADA" && !e.justificativa.trim()) throw new Error(`${i.nome}: justifique o consumo sem baixa.`);
-        return { produtoId: i.produtoId, quantidadeConfirmada: Number(e.quantidade), motivoAjuste: e.motivo || undefined, modoEstoque: e.modo, justificativaSemBaixa: e.justificativa || undefined, ...(i.rastrearPartidas && e.modo === "BAIXA_ESTOQUE" && Number(e.quantidade) > 0 ? { partidas: e.partidas.map((s) => ({ partidaId: s.partidaId!, quantidade: Number(s.quantidade) })) } : {}) };
+        if (i.rastrearPartidas && e.modo === "BAIXA_ESTOQUE" && Number(e.quantidade) > 0) conferirDistribuicaoPartidas(e.partidas, Number(e.quantidade), true);
+        return { produtoId: i.produtoId, quantidadeConfirmada: Number(e.quantidade), motivoAjuste: e.motivo || undefined, modoEstoque: e.modo, justificativaSemBaixa: e.justificativa || undefined, ...(i.rastrearPartidas && e.modo === "BAIXA_ESTOQUE" && Number(e.quantidade) > 0 ? { partidas: e.partidas.map((s) => ({ partidaId: s.partidaId!, quantidade: Number(s.quantidade), cienciaValidadeDesconhecida: s.cienciaValidadeDesconhecida })) } : {}) };
       }) }));
-      await confirmarPeriodos({ chave, revisao: previa.revisao, loteId, propriedadeId, inicio, fim, centroCustoId: centroCustoId || null, periodos }); setPrevia(null); await onSalvo();
+      await confirmarPeriodos({ chave, revisao: previa.revisao, loteId, propriedadeId, inicio, fim, centroCustoId: centroCustoId || null, periodos }); setPrevia(null); setSalvo(true); await onSalvo();
     } catch (e) { setErro(e instanceof Error ? e.message : String(e)); } finally { setOcupado(false); }
   }
   return <section className="mt-4 grid gap-4">
     <ErrorBox erro={erro} />
+    {salvo && <p role="status" className="text-sm font-medium">Fechamento salvo. Consulte o Histórico de fechamentos acima para ver os detalhes e participantes.</p>}
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       <label>De<DatePicker value={inicio} onChange={(v) => { setInicio(v); setPrevia(null); }} /></label>
       <label>Até<DatePicker value={fim} onChange={(v) => { setFim(v); setPrevia(null); }} /></label>

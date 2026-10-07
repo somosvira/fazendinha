@@ -1,6 +1,8 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../../db.js";
 import { auditar, RebanhoError, travarAnimais } from "../rebanho/regras.js";
+import { confirmarProcedimentosServico } from "./servicos.js";
+import crypto from "node:crypto";
 type TipoRateio = "APLICACAO" | "EXAME" | "PROTOCOLO";
 async function contexto(tx: Prisma.TransactionClient, servicoId: string, propriedadeId: number) {
   const servico = await tx.operacao.findFirst({ where: { id: servicoId, propriedadeId, tipo: "SERVICO", status: "CONFIRMADA" } });
@@ -25,22 +27,7 @@ export async function listarRateios(servicoId: string, propriedadeId: number) {
   });
 }
 export async function salvarRateio(input: { servicoId: string; propriedadeId: number; tipo: TipoRateio; id: string; valor: string | null; motivo: string }, usuarioId: number | null) {
-  return prisma.$transaction(async (tx) => {
-    const original = await contexto(tx, input.servicoId, input.propriedadeId);
-    const item = original.itens.find((i) => i.id === input.id && i.tipo === input.tipo);
-    if (!item) throw new RebanhoError("NAO_ENCONTRADO", "Fato válido não vinculado a este Serviço");
-    await travarAnimais(tx, [item.animalId]);
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`pec-servico-rateio:${input.servicoId}`}))`;
-    const c = await contexto(tx, input.servicoId, input.propriedadeId);
-    const valor = input.valor == null ? null : new Prisma.Decimal(input.valor);
-    if (valor && (!valor.isFinite() || valor.lt(0) || valor.decimalPlaces() > 2)) throw new RebanhoError("VALIDACAO", "Valor de rateio inválido");
-    const total = c.itens.filter((i) => i.id !== item.id).reduce((s, i) => s.plus(i.valor ?? 0), new Prisma.Decimal(0)).plus(valor ?? 0);
-    if (total.gt(c.servico.valorTotal)) throw new RebanhoError("CONFLITO", "O rateio ultrapassa o valor confirmado do Serviço");
-    if (valor?.gt(0) && c.itens.some((i) => i.id !== item.id && i.valor?.gt(0) && i.execucaoId === item.execucaoId && item.execucaoId && (item.tipo === "PROTOCOLO" || i.tipo === "PROTOCOLO"))) throw new RebanhoError("CONFLITO", "Não atribua o mesmo Serviço ao protocolo e aos seus fatos; retire o rateio anterior");
-    if (input.tipo === "APLICACAO") await tx.aplicacaoProduto.update({ where: { id: item.id }, data: { valorServicoAtribuido: valor } });
-    else if (input.tipo === "EXAME") await tx.exameAnimal.update({ where: { id: item.id }, data: { valorServicoAtribuido: valor } });
-    else await tx.execucaoProtocoloSanitario.update({ where: { id: item.id }, data: { valorServicoAtribuido: valor } });
-    await auditar(tx, { entidade: input.tipo === "APLICACAO" ? "AplicacaoProduto" : input.tipo === "EXAME" ? "ExameAnimal" : "ExecucaoProtocoloSanitario", entidadeId: item.id, animalId: item.animalId, propriedadeId: input.propriedadeId, acao: "RATEIO_SERVICO", usuarioId, antes: { valor: item.valor }, depois: { valor, motivo: input.motivo, servicoId: input.servicoId, totalAtribuido: total } });
-    return { id: item.id, valor: valor?.toString() ?? null, totalAtribuido: total.toString() };
-  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  await confirmarProcedimentosServico({ servicoId: input.servicoId, propriedadeId: input.propriedadeId, chaveIdempotencia: crypto.randomUUID(), motivo: input.motivo, itens: [{ id: input.id, tipo: input.tipo, valor: input.valor }] }, usuarioId);
+  const consulta = await listarRateios(input.servicoId, input.propriedadeId);
+  return { id: input.id, valor: input.valor, totalAtribuido: consulta.totalAtribuido };
 }

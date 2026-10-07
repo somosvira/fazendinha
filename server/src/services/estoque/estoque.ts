@@ -7,10 +7,10 @@ import { propriedadePrincipalId, escopoPadraoLeitura } from "../propriedade.js";
 import { resolverCentroSaida } from "./centro.calc.js";
 import { rotuloUnidade } from "./unidades.js";
 import { SEM_VINCULO } from "../../lib/ids.js";
-import { prepararPartidasTx, saldoPartidaTx } from "./partidas.js";
+import { conferirSaldoEstornoPartidasTx, idsGrupoPartidaTx, prepararPartidasTx } from "./partidas.js";
 
 export class EstoqueError extends Error {
-  constructor(public code: "NAO_ENCONTRADO" | "MES_FECHADO" | "ORIGEM_AUTOMATICA" | "CONFLITO" | "VALIDACAO", m: string) {
+  constructor(public code: "NAO_ENCONTRADO" | "MES_FECHADO" | "ORIGEM_AUTOMATICA" | "CONFLITO" | "VALIDACAO", m: string, public campo?: string) {
     super(m);
   }
 }
@@ -27,7 +27,8 @@ const MAX_QTD = 999_999_999.999;
 const MAX_CUSTO = 9_999_999_999.99;
 const distribuicaoPartidasSchema = z.array(z.object({
   partidaId: z.string().uuid().optional(), codigo: z.string().trim().min(1).max(100).optional(),
-  validade: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullish(), quantidade: z.number().finite(),
+  nome: z.string().trim().min(1, "Informe o nome do lote").max(160, "O nome do lote aceita até 160 caracteres").optional(), cienciaValidadeDesconhecida: z.boolean().optional(),
+  validade: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Informe uma validade válida").nullish(), quantidade: z.number().finite(),
 })).optional();
 
 export const movimentoSchema = z
@@ -260,9 +261,10 @@ export async function listarMovimentos(f?: FiltroMovimentos) {
     await filtroSitioCusto(f?.propriedadeId ?? null),
   ];
   const where: Prisma.MovimentoEstoqueWhereInput = { status: statusSaldoEstoque, AND: and };
+  const idsGrupo = f?.partidaId ? await idsGrupoPartidaTx(prisma, f.partidaId) : null;
   if (f?.movimentoId) where.id = f.movimentoId;
   if (f?.produtoId) where.produtoId = f.produtoId;
-  if (f?.partidaId) where.alocacaoPartidaEstoques = { some: { partidaId: f.partidaId } };
+  if (idsGrupo) where.alocacaoPartidaEstoques = { some: { partidaId: { in: idsGrupo } } };
   if (f?.tipo) where.tipo = f.tipo as TipoMovimento;
   if (f?.origem) where.origem = f.origem as OrigemMovimentoEstoque;
   if (f?.centroCustoId === SEM_VINCULO) and.push({ produto: { centrosCusto: { none: {} } } });
@@ -292,15 +294,20 @@ export async function listarMovimentos(f?: FiltroMovimentos) {
       include: {
         produto: { include: { centrosCusto: { include: { centroCusto: true } }, materialGenetico: { select: { id: true } } } },
         operacao: { include: { parceiro: true } },
+        revertidoPor: { select: { id: true } },
         // Origem das saídas automáticas (sem operação financeira): um único join por relação, sem N+1.
         operacaoAgricola: { select: { talhaoId: true, talhao: { select: { codigo: true } } } },
         aplicacaoProduto: { select: { id: true, animalId: true } },
         itemFechamentoConsumo: { select: { fechamento: { select: { id: true, loteId: true } } } },
-        alocacaoPartidaEstoques: { include: { partida: { select: { codigo: true, validade: true } } } },
+        alocacaoPartidaEstoques: { include: { partida: { select: { codigo: true, nome: true, validade: true, lotePrincipalId: true, lotePrincipal: { select: { nome: true } } } } } },
       },
     }),
   ]);
   const itens = ms.map((m) => {
+    const quantidadeConsulta = idsGrupo ? (m.alocacaoPartidaEstoques ?? []).filter((a) => idsGrupo.includes(a.partidaId)).reduce((s, a) => s.plus(a.quantidade), new Prisma.Decimal(0)) : m.quantidade;
+    // Apenas recorte de exibição do valor já gravado, sem recalcular o custo médio
+    // nem atribuir um método de custeio independente ao lote.
+    const valorConsulta = idsGrupo && !m.quantidade.isZero() ? m.valorTotal.mul(quantidadeConsulta).div(m.quantidade).toDecimalPlaces(2) : m.valorTotal;
     let vinculo: VinculoMovimento | null = null;
     // Dado de área que o leitor não tem (talhão → agricultura) não sai: nem o
     // vínculo, nem a observação gerada pela saída automática (que cita talhão).
@@ -320,7 +327,7 @@ export async function listarMovimentos(f?: FiltroMovimentos) {
       propriedadeId: m.propriedadeId,
       seq: m.seq,
       produtoId: m.produtoId,
-      partidas: (m.alocacaoPartidaEstoques ?? []).map((a) => ({ partidaId: a.partidaId, codigo: a.partida.codigo, validade: a.partida.validade, quantidade: a.quantidade.toString() })),
+      partidas: (m.alocacaoPartidaEstoques ?? []).filter((a) => !idsGrupo || idsGrupo.includes(a.partidaId)).map((a) => ({ partidaId: a.partidaId, lotePrincipalId: a.partida.lotePrincipalId ?? a.partidaId, nome: a.partida.lotePrincipal?.nome ?? a.partida.nome, codigo: a.partida.codigo, validade: a.partida.validade, quantidade: a.quantidade.toString() })),
       produto: m.produto.nome,
       materialGeneticoId: visiveis.pecuaria !== false ? m.produto.materialGenetico?.id ?? null : null,
       centrosCusto: m.produto.centrosCusto.map(({ centroCusto }) => ({ id: centroCusto.id, nome: centroCusto.nome })),
@@ -328,11 +335,14 @@ export async function listarMovimentos(f?: FiltroMovimentos) {
       origem: m.origem, // COMPRA | CONSUMO_DIRETO | TRANSFERENCIA | PRODUCAO | DEVOLUCAO | BONIFICACAO | INVENTARIO_INICIAL | APLICACAO | PERDA | AJUSTE_INVENTARIO
       status: m.status,
       reversaoDeId: m.reversaoDeId,
+      estorno: m.revertidoPor ?? null,
       data: iso(m.data),
-      quantidade: Number(m.quantidade),
+      quantidade: Number(quantidadeConsulta),
+      quantidadeMovimento: Number(m.quantidade),
       custoUnitario: Number(m.custoUnitario),
-      valorTotal: Number(m.valorTotal),
-      fornecedor: m.operacao?.parceiro?.nome ?? null,
+      valorTotal: Number(valorConsulta),
+      valorTotalMovimento: Number(m.valorTotal),
+      fornecedor: m.tipo === "ENTRADA" && !m.reversaoDeId ? m.operacao?.parceiro?.nome ?? null : null,
       observacao: oculto ? null : m.observacao ?? null,
       /** Operação financeira de origem (compra, ajuste, inventário…); null nas saídas automáticas. */
       operacaoId: m.operacaoId ?? null,
@@ -470,11 +480,7 @@ export async function estornarMovimentoTx(
 
   const pid = mov.propriedadeId ?? await propriedadePrincipalId();
   if (mov.tipo === "ENTRADA" || (mov.tipo === "AJUSTE" && mov.quantidade.gt(0))) {
-    for (const alocacao of alocacoes) {
-      if ((await saldoPartidaTx(tx, alocacao.partidaId, pid)).lt(alocacao.quantidade)) {
-        throw new EstoqueError("CONFLITO", "O lote da entrada já foi consumido; reconcilie o estoque antes de estornar.");
-      }
-    }
+    await conferirSaldoEstornoPartidasTx(tx, alocacoes, pid);
   }
   const data = opts.data ?? new Date();
   if (await mesFechado(tx, pid, data)) throw new EstoqueError("MES_FECHADO", "período financeiro fechado");

@@ -659,9 +659,10 @@ model AuditoriaFinanceira {
 // Sítio físico da fazenda-cliente (multi-propriedade). Default single-tenant: 1
 // linha (principal). O mesmo seam serve de base p/ multi-tenant (Organizacao) depois.
 model Propriedade {
+  rodadasProtocolo            RodadaProtocoloSanitario[]
   id                    Int                           @id @default(autoincrement())
   nome                  String                        @unique
-  apelido               String? // rótulo curto p/ o seletor ("Sede", "Recria")
+  apelido               String? // compatibilidade histórica; a interface identifica sítios por nome
   cidade                String?
   uf                    String?
   principal             Boolean                       @default(false) // a default quando não há filtro
@@ -2315,13 +2316,18 @@ model PartidaProduto {
   produtoId      String
   produto        Produto                  @relation(fields: [produtoId], references: [id], onDelete: Restrict)
   codigo         String
+  nome           String?
   validade       DateTime?                @db.Date
+  lotePrincipalId String?
+  lotePrincipal   PartidaProduto?          @relation("AgrupamentoValidade", fields: [lotePrincipalId], references: [id], onDelete: Restrict)
+  aliases         PartidaProduto[]         @relation("AgrupamentoValidade")
   fabricante     String?
   origemRastreio String                   @default("INFORMADA")
   alocacoes      AlocacaoPartidaEstoque[]
   criadoEm       DateTime                 @default(now())
 
   @@unique([produtoId, codigo])
+  @@index([lotePrincipalId])
   @@schema("public")
 }
 
@@ -2440,6 +2446,7 @@ model TipoAplicacaoSanitaria {
 }
 
 model AplicacaoProduto {
+  desvioProtocoloSnapshot Json?
   id                         String                  @id @default(uuid())
   animalId                   String
   animal                     Animal                  @relation(fields: [animalId], references: [id], onDelete: Restrict)
@@ -2503,6 +2510,7 @@ model AplicacaoProduto {
 }
 
 model ProtocoloSanitario {
+  rodadas      RodadaProtocoloSanitario[]
   id           String                       @id @default(uuid())
   nome         String
   versao       Int                          @default(1)
@@ -2542,7 +2550,26 @@ model EtapaProtocoloSanitario {
   @@schema("pecuaria")
 }
 
+model RodadaProtocoloSanitario {
+  id               String @id @default(uuid())
+  nome             String
+  protocoloId      String
+  protocolo        ProtocoloSanitario @relation(fields: [protocoloId], references: [id], onDelete: Restrict)
+  propriedadeId    Int
+  propriedade      Propriedade @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
+  inicioReferencia DateTime @db.Date
+  execucoes        ExecucaoProtocoloSanitario[]
+  criadoEm         DateTime @default(now())
+  atualizadoEm     DateTime @updatedAt
+
+  @@index([propriedadeId, inicioReferencia])
+  @@index([protocoloId])
+  @@schema("pecuaria")
+}
+
 model ExecucaoProtocoloSanitario {
+  rodadaId              String?
+  rodada                RodadaProtocoloSanitario? @relation(fields: [rodadaId], references: [id], onDelete: Restrict)
   id                    String               @id @default(uuid())
   protocoloId           String
   protocolo             ProtocoloSanitario   @relation(fields: [protocoloId], references: [id], onDelete: Restrict)
@@ -2562,6 +2589,7 @@ model ExecucaoProtocoloSanitario {
   criadoEm              DateTime             @default(now())
 
   @@index([animalId, inicio])
+  @@index([rodadaId])
   @@index([operacaoServicoId])
   @@schema("pecuaria")
 }
@@ -2598,6 +2626,7 @@ model TipoExame {
 }
 
 model ExameAnimal {
+  desvioProtocoloSnapshot Json?
   id                    String               @id @default(uuid())
   animalId              String
   animal                Animal               @relation(fields: [animalId], references: [id], onDelete: Restrict)

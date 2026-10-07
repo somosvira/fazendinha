@@ -217,6 +217,38 @@ describe("ConfiguracoesFinanceiras — contas", () => {
 });
 
 describe("ConfiguracoesFinanceiras — produtos", () => {
+  it("abre a edição pelo nome/linha e mantém Ver no estoque como navegação separada", async () => {
+    await montar("produtos");
+    const tabela = screen.getByRole("table", { name: "Produtos" });
+    fireEvent.click(within(tabela).getByText("Ração 22%").closest("tr")!);
+    const painel = await screen.findByRole("dialog");
+    expect(within(painel).getByRole("heading", { name: "Editar Ração 22%" })).toBeTruthy();
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+    const link = screen.getAllByRole("link", { name: "Ver no estoque" })[0];
+    expect(link.getAttribute("href")).toBe(`/estoque/produtos/${uid(30)}`);
+    link.addEventListener("click", (evento) => evento.preventDefault(), { once: true });
+    fireEvent.click(link);
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("mantém os controles de cadastro indisponíveis para quem não pode lançar", async () => {
+    render(<ConfiguracoesFinanceiras podeEditar={false} />);
+    await screen.findByRole("table", { name: "Contas financeiras" });
+    fireEvent.click(screen.getByRole("tab", { name: /^Produtos$/ }));
+    const link = (await screen.findAllByRole("link", { name: "Ver no estoque" }))[0];
+    expect(link.getAttribute("href")).toBe(`/estoque/produtos/${uid(30)}`);
+    expect(screen.queryByRole("button", { name: "Desativar Ração 22%" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: /Desativar Ração/ })).toBeNull();
+    fireEvent.click(within(screen.getByRole("table", { name: "Produtos" })).getByText("Ração 22%").closest("tr")!);
+    expect(await screen.findByRole("dialog")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Consultar Ração 22%" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Salvar produto" })).toBeNull();
+    expect((screen.getByLabelText("Nome do produto") as HTMLInputElement).closest("fieldset")?.disabled).toBe(true);
+    expect(atualizarProduto).not.toHaveBeenCalled();
+  });
+
   it("cadastra produto sem exigir fornecedor", async () => {
     vi.mocked(criarProdutoEstoque).mockResolvedValue(config.produtosCadastro![0]);
     await montar("produtos");

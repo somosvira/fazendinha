@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { uid } from "../lib/uid.fixture";
 import { SEM_VINCULO } from "../lib/ids";
+import { getPropriedadeAtiva, setPropriedadeAtiva } from "../propriedadeScope";
 
 vi.mock("../financeiro/FormProduto", () => ({ FormProduto: () => null }));
 
@@ -15,7 +16,7 @@ type Dados = { saldos?: unknown[]; movimentos?: unknown[]; entradas?: unknown[] 
 // dentro do mesmo arquivo, então mockar só o export não intercepta a chamada.
 function mockFetch(d: Dados = {}) {
   const pagina = (itens: unknown[]) => ({ itens, total: itens.length });
-  return vi.fn((url: string) => {
+  return vi.fn((url: string, _init?: RequestInit) => {
     const body = /\/estoque\/saldos/.test(url) ? d.saldos ?? []
       : /\/estoque\/movimentos\?tipo=ENTRADA/.test(url) ? pagina(d.entradas ?? [])
       : /\/estoque\/movimentos/.test(url) ? pagina(d.movimentos ?? [])
@@ -34,7 +35,7 @@ function sessao(areas: string[], flags: string[] = [], dono = false) {
   localStorage.setItem("rionovo:usuario", JSON.stringify({ id: 1, nome: "T", email: "t@x", papel: "x", abas: [], areas, flags, status: "ATIVO", dono }));
 }
 
-afterEach(() => { cleanup(); localStorage.clear(); vi.unstubAllGlobals(); });
+afterEach(() => { cleanup(); localStorage.clear(); vi.unstubAllGlobals(); setPropriedadeAtiva(null); window.history.replaceState({}, "", "/"); });
 beforeEach(() => {
   vi.stubGlobal("fetch", mockFetch());
 });
@@ -44,6 +45,54 @@ function chamouSaldos(fetchMock: ReturnType<typeof mockFetch>) {
 }
 
 describe("EstoqueContent — filtro inicial vindo do módulo", () => {
+  it("filtra saldo, histórico e entradas pelo sítio da URL sem mudar o consolidado", async () => {
+    window.history.replaceState(null, "", "/estoque?propriedadeId=7");
+    const consulta = mockFetch();
+    vi.stubGlobal("fetch", consulta);
+    render(<EstoqueContent />);
+    await waitFor(() => expect(consulta.mock.calls.filter(([url]) => /\/estoque\/(saldos|movimentos)/.test(url)).length).toBe(3));
+    for (const [, init] of consulta.mock.calls.filter(([url]) => /\/estoque\/(saldos|movimentos)/.test(url))) expect(init?.headers).toMatchObject({ "X-Propriedade-Id": "7" });
+    expect(getPropriedadeAtiva()).toBeNull();
+  });
+  it("mantém consulta no sítio ativo e descarta filtro URL incompatível", async () => {
+    setPropriedadeAtiva(2);
+    window.history.replaceState(null, "", "/estoque?propriedadeId=7");
+    const consulta = mockFetch();
+    vi.stubGlobal("fetch", consulta);
+    render(<EstoqueContent />);
+    await waitFor(() => expect(consulta.mock.calls.some(([url]) => /\/estoque\/saldos/.test(url))).toBe(true));
+    for (const [, init] of consulta.mock.calls.filter(([url]) => /\/estoque\/(saldos|movimentos)/.test(url))) expect(init?.headers).toMatchObject({ "X-Propriedade-Id": "2" });
+    expect(new URLSearchParams(window.location.search).get("propriedadeId")).toBeNull();
+    expect(screen.queryByRole("combobox", { name: "Sítio no estoque" })).toBeNull();
+    expect(getPropriedadeAtiva()).toBe(2);
+  });
+  it("abre o movimento exato no sítio histórico e oferece o estorno", async () => {
+    window.history.replaceState({}, "", `/estoque?movimentoId=${uid(10)}&propriedadeId=7`);
+    const scroll = vi.fn();
+    const descriptor = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollIntoView");
+    Object.defineProperty(HTMLElement.prototype, "scrollIntoView", { configurable: true, value: scroll });
+    try {
+      sessao(["pecuaria"]);
+      vi.stubGlobal("fetch", mockFetch({ movimentos: [mov({ propriedadeId: 7, status: "REVERTIDO", estorno: { id: uid(11) } })] }));
+      render(<EstoqueContent />);
+      const link = (await screen.findAllByRole("link", { name: "Ver estorno" }))[0];
+      expect(link.getAttribute("href")).toBe(`/estoque?movimentoId=${uid(11)}&propriedadeId=7`);
+      const historico = screen.getByRole("region", { name: "Histórico de movimentos" });
+      await waitFor(() => expect(document.activeElement).toBe(historico));
+      expect(scroll).toHaveBeenCalled();
+      const chamada = (fetch as unknown as ReturnType<typeof mockFetch>).mock.calls.find(([url]) => String(url).includes("movimentoId="));
+      expect(String(chamada?.[0])).toContain("propriedadeId=7");
+    } finally {
+      if (descriptor) Object.defineProperty(HTMLElement.prototype, "scrollIntoView", descriptor);
+      else Reflect.deleteProperty(HTMLElement.prototype, "scrollIntoView");
+    }
+  });
+
+  it("explica quando o movimento indicado não está disponível", async () => {
+    window.history.replaceState({}, "", `/estoque?movimentoId=${uid(10)}`);
+    render(<EstoqueContent />);
+    expect(await screen.findByText("Movimento não encontrado neste sítio ou indisponível para seu acesso.")).toBeTruthy();
+  });
   it("busca saldos já com o centro quando `centroCustoIdInicial` é passado (string)", () => {
     const fetchMock = fetch as unknown as ReturnType<typeof mockFetch>;
     render(<EstoqueContent centroCustoIdInicial={centroId} />);
@@ -79,12 +128,13 @@ describe("EstoqueContent — filtro inicial vindo do módulo", () => {
 });
 
 describe("EstoqueContent — saldos e custo médio", () => {
-  it("produto genético leva ao cadastro da sua identidade genética", async () => {
+  it("nome abre a ficha do produto e preserva o atalho da identidade genética", async () => {
     const materialId = uid(8);
     vi.stubGlobal("fetch", mockFetch({ saldos: [saldo({ nome: "Sêmen Zeus", materialGeneticoId: materialId })] }));
     render(<EstoqueContent />);
     const link = (await screen.findAllByRole("link", { name: "Sêmen Zeus" }))[0] as HTMLAnchorElement;
-    expect(link.getAttribute("href")).toBe(`/pecuaria/rebanho/cadastros?aba=material-genetico&material=${materialId}`);
+    expect(link.getAttribute("href")).toBe(`/estoque/produtos/${produtoId}`);
+    expect(screen.getAllByRole("link", { name: "Identidade genética" })[0].getAttribute("href")).toBe(`/pecuaria/rebanho/cadastros?aba=material-genetico&material=${materialId}`);
   });
   it("mostra custo médio e valor (saldo × médio); sem custo, '—'", async () => {
     vi.stubGlobal("fetch", mockFetch({ saldos: [
@@ -108,6 +158,14 @@ describe("EstoqueContent — saldos e custo médio", () => {
     const card = (await screen.findByText("Valor em estoque")).closest("section")!;
     expect(card.textContent?.replace(/\u00a0/g, " ")).toContain("R$ 100,50");
     expect(within(card).queryByText(/produtos? com movimento/)).toBeNull();
+  });
+
+  it("não carrega a antiga consulta geral de lotes dos produtos", async () => {
+    const fetchMock = fetch as unknown as ReturnType<typeof mockFetch>;
+    render(<EstoqueContent />);
+    await screen.findByText("Valor em estoque");
+    expect(screen.queryByRole("heading", { name: "Lotes dos produtos" })).toBeNull();
+    expect(fetchMock.mock.calls.some(([url]) => /\/pecuaria\/nutricao\/partidas|\/estoque\/produtos.*lotes/.test(String(url)))).toBe(false);
   });
 
   it("card Valor em estoque ignora valores negativos e avisa (com filtro) os produtos com saldo negativo", async () => {

@@ -12,6 +12,7 @@ import { obterDashboard } from "../services/financeiro/dashboard.js";
 import { categoriaCadastroSchema, centroCustoSchema, contaSchema, estornoSchema, liquidacaoSchema, operacaoSchema, parceiroSchema, patchCategoriaCadastroSchema, patchCentroCustoSchema, patchContaSchema, patchParceiroSchema, rascunhoOperacaoSchema, simulacaoParcelasSchema, tipoDocumentoFinanceiroSchema, transacaoAvulsaSchema, transferenciaSchema } from "../services/financeiro/schemas.js";
 import { patchProdutoSchema, produtoSchema } from "../services/estoque/produtos.schemas.js";
 import { FinanceiroError } from "../services/financeiro/regras.js";
+import { EstoqueError } from "../services/estoque/estoque.js";
 import { getStorage } from "../lib/storage.js";
 import * as cadastros from "../services/financeiro/cadastros-gerenciais.js";
 import * as produtos from "../services/estoque/produtos.js";
@@ -23,6 +24,36 @@ import { temArea, temPermissao } from "../services/auth/papeis.js";
 
 export const filtroPeriodoSchema = z.object({ inicio: z.string().date().optional(), fim: z.string().date().optional() }).refine(p => (!p.inicio && !p.fim) || (!!p.inicio && !!p.fim && p.inicio <= p.fim), { message: "Informe um intervalo válido, com início igual ou anterior ao fim." });
 const validarPeriodo = zValidator("query", filtroPeriodoSchema, (resultado, c) => { if (!resultado.success) return c.json({ error: resultado.error.issues[0].message }, 422); });
+
+function apresentarOperacao<T extends {
+  tipo?: string;
+  valorTotal: unknown;
+  movimentosEstoque: { origem: string; custoUnitario: unknown; valorTotal: unknown }[];
+  perdas?: { custoUnitario: unknown; valorTotal: unknown }[];
+  transferencias?: { custoUnitario: unknown; valorTotal: unknown }[];
+  procedimentosServico?: { valor: unknown }[];
+}>(c: Context, dados: T) {
+  const usuario = getUsuario(c);
+  const custosVisiveis = !!usuario && temArea(usuario, "financeiro") && temPermissao(usuario, "verValores");
+  // O detalhe do atendimento inclui parcelas, itens e atribuições analíticas.
+  // Ocultar só a coluna na interface deixaria esses valores na resposta da API.
+  if (dados.tipo === "SERVICO" && !custosVisiveis) return ocultarValoresServico(dados);
+  const estoqueFisico = dados.tipo === "TRANSFERENCIA_ESTOQUE" || dados.movimentosEstoque.some((m) => m.origem === "PERDA" || m.origem === "TRANSFERENCIA");
+  if (!estoqueFisico || custosVisiveis) return dados;
+  return {
+    ...dados, valorTotal: null,
+    ...(dados.perdas ? { perdas: dados.perdas.map((perda) => ({ ...perda, custoUnitario: null, valorTotal: null })) } : {}),
+    ...(dados.transferencias ? { transferencias: dados.transferencias.map((transferencia) => ({ ...transferencia, custoUnitario: null, valorTotal: null })) } : {}),
+    movimentosEstoque: dados.movimentosEstoque.map((movimento) => ({ ...movimento, custoUnitario: null, valorTotal: null })),
+  };
+}
+
+function ocultarValoresServico<T>(dados: T): T {
+  if (Array.isArray(dados)) return dados.map(ocultarValoresServico) as T;
+  if (!dados || typeof dados !== "object" || dados instanceof Date || "toJSON" in dados) return dados;
+  const campos = new Set(["valor", "valorTotal", "valorUnitario", "valorProdutoAtribuido", "valorServicoAtribuido", "custoUnitario", "valorPago", "valorLiquidado", "valorRestante", "valorOriginal", "saldoPendente", "saldoExigivel", "entrada", "saida"]);
+  return Object.fromEntries(Object.entries(dados).map(([campo, valor]) => [campo, campos.has(campo) ? null : ocultarValoresServico(valor)])) as T;
+}
 
 const uploadIntentSchema = z.object({
   tipo: tipoDocumentoFinanceiroSchema,
@@ -46,6 +77,10 @@ function exigirUsuarioId(c: Context): number {
 }
 
 function falha(c: Context, erro: unknown) {
+  if (erro instanceof EstoqueError) {
+    const status = erro.code === "NAO_ENCONTRADO" ? 404 : erro.code === "VALIDACAO" ? 422 : 409;
+    return c.json({ error: erro.message, code: erro.code }, status);
+  }
   if (erro instanceof FinanceiroError) {
     const status = erro.code === "NAO_ENCONTRADO" ? 404 : erro.code === "VALIDACAO" ? 422 : 409;
     return c.json({ error: erro.message, code: erro.code, ...(erro.campo ? { campo: erro.campo } : {}) }, status);
@@ -152,32 +187,33 @@ export const financeiroRouter = new Hono()
   .get("/financeiro/operacoes", async (c) => {
     const inicio = c.req.query("inicio") ? new Date(`${c.req.query("inicio")}T00:00:00`) : undefined;
     const fim = c.req.query("fim") ? new Date(`${c.req.query("fim")}T00:00:00`) : undefined;
-    return c.json(await operacoes.listarOperacoes(await resolverEscopoLeitura(c), inicio, fim));
+    const dados = await operacoes.listarOperacoes(await resolverEscopoLeitura(c), inicio, fim);
+    return c.json(dados.map((operacao) => apresentarOperacao(c, operacao)));
   })
   .get("/financeiro/operacoes/rascunho", async (c) => {
     try { return c.json(await rascunhos.obterRascunho(await resolverEscopoEscrita(c), exigirUsuarioId(c))); }
     catch (e) { return falha(c, e); }
   })
-  .put("/financeiro/operacoes/rascunho", zValidator("json", rascunhoOperacaoSchema), async (c) => {
+  .put("/financeiro/operacoes/rascunho", exigePermissao("lancar"), zValidator("json", rascunhoOperacaoSchema), async (c) => {
     try {
       return c.json(await rascunhos.salvarRascunho({
         ...c.req.valid("json"), propriedadeId: await resolverEscopoEscrita(c), usuarioId: exigirUsuarioId(c),
       }));
     } catch (e) { return falha(c, e); }
   })
-  .delete("/financeiro/operacoes/rascunho", async (c) => {
+  .delete("/financeiro/operacoes/rascunho", exigePermissao("lancar"), async (c) => {
     try { await rascunhos.descartarRascunho(await resolverEscopoEscrita(c), exigirUsuarioId(c)); return c.body(null, 204); }
     catch (e) { return falha(c, e); }
   })
-  .post("/financeiro/operacoes/rascunho/confirmacao", zValidator("json", z.object({ versao: z.number().int().positive().optional() })), async (c) => {
-    try { return c.json(await rascunhos.confirmarRascunho(await resolverEscopoEscrita(c), exigirUsuarioId(c), c.req.valid("json").versao), 201); }
+  .post("/financeiro/operacoes/rascunho/confirmacao", exigePermissao("lancar"), zValidator("json", z.object({ versao: z.number().int().positive().optional(), chave: z.string().uuid().optional() })), async (c) => {
+    try { const body = c.req.valid("json"); return c.json(await rascunhos.confirmarRascunho(await resolverEscopoEscrita(c), exigirUsuarioId(c), body.versao, body.chave), 201); }
     catch (e) { return falha(c, e); }
   })
   .post("/financeiro/operacoes/simulacao-parcelas", exigePermissao("lancar"), validarCadastro(simulacaoParcelasSchema), async (c) => {
     try { return c.json(operacoes.simularParcelas(c.req.valid("json"))); }
     catch (e) { return falha(c, e); }
   })
-  .post("/financeiro/operacoes/rascunho/documentos/intencao", zValidator("json", uploadIntentSchema), async (c) => {
+  .post("/financeiro/operacoes/rascunho/documentos/intencao", exigePermissao("lancar"), zValidator("json", uploadIntentSchema), async (c) => {
     try {
       const propriedadeId = await resolverEscopoEscrita(c); const uid = exigirUsuarioId(c);
       const rascunho = await rascunhos.obterRascunho(propriedadeId, uid);
@@ -185,11 +221,11 @@ export const financeiroRouter = new Hono()
       return c.json(await documentos.solicitarUploadRascunho(rascunho.id, propriedadeId, uid, c.req.valid("json")), 201);
     } catch (e) { return falha(c, e); }
   })
-  .post("/financeiro/operacoes/rascunho/documentos/confirmacao-upload", zValidator("json", uploadConfirmacaoSchema), async (c) => {
+  .post("/financeiro/operacoes/rascunho/documentos/confirmacao-upload", exigePermissao("lancar"), zValidator("json", uploadConfirmacaoSchema), async (c) => {
     try { return c.json(await documentos.confirmarUpload(c.req.valid("json").uploadToken, await resolverEscopoEscrita(c), exigirUsuarioId(c)), 201); }
     catch (e) { return falha(c, e); }
   })
-  .delete("/financeiro/operacoes/rascunho/documentos/:id", async (c) => {
+  .delete("/financeiro/operacoes/rascunho/documentos/:id", exigePermissao("lancar"), async (c) => {
     try {
       const propriedadeId = await resolverEscopoEscrita(c); const uid = exigirUsuarioId(c);
       const rascunho = await rascunhos.obterRascunho(propriedadeId, uid);
@@ -198,7 +234,7 @@ export const financeiroRouter = new Hono()
       return c.body(null, 204);
     } catch (e) { return falha(c, e); }
   })
-  .patch("/financeiro/operacoes/rascunho/documentos/:id", zValidator("json", z.object({ tipo: tipoDocumentoFinanceiroSchema.optional(), numero: z.string().max(80).nullable().optional() })), async (c) => {
+  .patch("/financeiro/operacoes/rascunho/documentos/:id", exigePermissao("lancar"), zValidator("json", z.object({ tipo: tipoDocumentoFinanceiroSchema.optional(), numero: z.string().max(80).nullable().optional() })), async (c) => {
     try {
       const propriedadeId = await resolverEscopoEscrita(c); const uid = exigirUsuarioId(c);
       const rascunho = await rascunhos.obterRascunho(propriedadeId, uid);
@@ -207,7 +243,10 @@ export const financeiroRouter = new Hono()
     } catch (e) { return falha(c, e); }
   })
   .get("/financeiro/operacoes/:id", async (c) => {
-    try { return c.json(await operacoes.obterOperacao(c.req.param("id"), await resolverEscopoLeitura(c))); }
+    try {
+      const dados = await operacoes.obterOperacao(c.req.param("id"), await resolverEscopoLeitura(c));
+      return c.json(apresentarOperacao(c, dados));
+    }
     catch (e) { return falha(c, e); }
   })
   .get("/financeiro/operacoes/:id/vinculos-pecuaria", async (c) => {
@@ -219,7 +258,7 @@ export const financeiroRouter = new Hono()
     }
     catch (e) { return falha(c, e); }
   })
-  .post("/financeiro/operacoes", zValidator("json", operacaoSchema), async (c) => {
+  .post("/financeiro/operacoes", exigePermissao("lancar"), zValidator("json", operacaoSchema), async (c) => {
     try {
       const input = c.req.valid("json");
       const propriedadeId = await resolverEscopoEscrita(c, input.propriedadeId ?? null);
@@ -229,15 +268,17 @@ export const financeiroRouter = new Hono()
   .post("/financeiro/operacoes/:id/estorno", exigePermissao("lancar"), zValidator("json", estornoSchema), async (c) => {
     try {
       const propriedadeId = await resolverEscopoEscrita(c);
-      return c.json(await operacoes.estornarOperacao(c.req.param("id"), c.req.valid("json").motivo, { propriedadeId, usuarioId: usuarioId(c) }), 201);
+      const cancelada = await operacoes.estornarOperacao(c.req.param("id"), c.req.valid("json").motivo, { propriedadeId, usuarioId: usuarioId(c) });
+      const dados = await operacoes.obterOperacao(cancelada.id, propriedadeId);
+      return c.json(apresentarOperacao(c, dados), 201);
     }
     catch (e) { return falha(c, e); }
   })
-  .post("/financeiro/operacoes/:id/documentos/intencao", zValidator("json", uploadIntentSchema), async (c) => {
+  .post("/financeiro/operacoes/:id/documentos/intencao", exigePermissao("lancar"), zValidator("json", uploadIntentSchema), async (c) => {
     try { return c.json(await documentos.solicitarUploadOperacao(c.req.param("id"), await resolverEscopoEscrita(c), usuarioId(c), c.req.valid("json")), 201); }
     catch (e) { return falha(c, e); }
   })
-  .post("/financeiro/operacoes/:id/documentos/confirmacao-upload", zValidator("json", uploadConfirmacaoSchema), async (c) => {
+  .post("/financeiro/operacoes/:id/documentos/confirmacao-upload", exigePermissao("lancar"), zValidator("json", uploadConfirmacaoSchema), async (c) => {
     try { return c.json(await documentos.confirmarUpload(c.req.valid("json").uploadToken, await resolverEscopoEscrita(c), usuarioId(c)), 201); }
     catch (e) { return falha(c, e); }
   })
@@ -252,18 +293,18 @@ export const financeiroRouter = new Hono()
     const periodo = c.req.valid("query");
     return c.json(await operacoes.listarCompromissos(await resolverEscopoLeitura(c), periodo.inicio && periodo.fim ? { inicio: new Date(`${periodo.inicio}T00:00:00Z`), fim: new Date(`${periodo.fim}T23:59:59.999Z`) } : undefined));
   })
-  .post("/financeiro/compromissos/:id/liquidacoes", zValidator("json", liquidacaoSchema), async (c) => {
+  .post("/financeiro/compromissos/:id/liquidacoes", exigePermissao("lancar"), zValidator("json", liquidacaoSchema), async (c) => {
     try { return c.json(await operacoes.liquidarCompromisso(c.req.param("id"), { ...c.req.valid("json"), usuarioId: usuarioId(c) }), 201); }
     catch (e) { return falha(c, e); }
   })
-  .post("/financeiro/transferencias", zValidator("json", transferenciaSchema), async (c) => {
+  .post("/financeiro/transferencias", exigePermissao("lancar"), zValidator("json", transferenciaSchema), async (c) => {
     try {
       const input = c.req.valid("json");
       const propriedadeId = await resolverEscopoEscrita(c, input.propriedadeId ?? null);
       return c.json(await operacoes.transferir({ ...input, propriedadeId, usuarioId: usuarioId(c) }), 201);
     } catch (e) { return falha(c, e); }
   })
-  .post("/financeiro/transacoes", zValidator("json", transacaoAvulsaSchema), async (c) => {
+  .post("/financeiro/transacoes", exigePermissao("lancar"), zValidator("json", transacaoAvulsaSchema), async (c) => {
     try {
       const input = c.req.valid("json");
       const propriedadeId = await resolverEscopoEscrita(c, input.propriedadeId ?? null);

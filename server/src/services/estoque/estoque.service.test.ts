@@ -313,6 +313,12 @@ describe("listarSaldos", () => {
 describe("listarMovimentos — origem para navegação", () => {
   const base = { seq: 1, produtoId: uid(3), produto: { nome: "Ureia", centrosCusto: [], materialGenetico: null }, tipo: "SAIDA", origem: "APLICACAO", status: "CONFIRMADO", reversaoDeId: null, data: new Date("2026-09-01"), quantidade: new Prisma.Decimal(2), custoUnitario: new Prisma.Decimal(3), valorTotal: new Prisma.Decimal(6), operacao: null, observacao: null, operacaoId: null, operacaoAgricola: null };
 
+  it("consulta pelo ID preserva o movimento revertido e aponta para seu inverso", async () => {
+    mocks.movFindMany.mockResolvedValue([{ ...base, id: uid(1), status: "REVERTIDO", revertidoPor: { id: uid(2) } }]);
+    expect((await listarMovimentos({ movimentoId: uid(1), propriedadeId: 2 })).itens[0]).toMatchObject({ id: uid(1), status: "REVERTIDO", estorno: { id: uid(2) } });
+    expect(mocks.movFindMany).toHaveBeenCalledWith(expect.objectContaining({ where: { id: uid(1), status: { in: ["CONFIRMADO", "REVERTIDO"] }, AND: [{ propriedadeId: 2 }] } }));
+  });
+
   it("expõe o vínculo genético no movimento apenas para quem pode ver pecuária", async () => {
     mocks.movFindMany.mockResolvedValue([{ ...base, id: uid(4), produto: { ...base.produto, materialGenetico: { id: uid(8) } } }]);
     expect((await listarMovimentos()).itens[0].materialGeneticoId).toBe(uid(8));

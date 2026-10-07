@@ -88,6 +88,11 @@ export function parseContaFinanceiraId(pathname: string): string | null {
   return match ? match[1] : null;
 }
 
+export function parseProdutoEstoqueId(pathname: string): string | null {
+  const match = /^\/estoque\/produtos\/([^/]+)\/?$/i.exec(pathname);
+  return match ? match[1] : null;
+}
+
 export function parseOperacaoFinanceiraId(pathname: string): string | null {
   const match = /^\/financeiro\/operacoes\/([^/]+)\/?$/.exec(pathname);
   return match && !isNovaOperacaoFinanceira(pathname) ? match[1] : null;
@@ -198,6 +203,7 @@ export function pathToTab(pathname: string): Tab | null {
 
   if (path === "/" || path === "") return DEFAULT_TAB;
   if (path === "/ia" && !ASSISTENTE_ATIVO) return DEFAULT_TAB;
+  if (parseProdutoEstoqueId(path) != null) return "estoque";
   if (parseContaFinanceiraId(path) != null) return "caixinha";
   if (parseOperacaoFinanceiraId(path) != null) return "lancar";
   if (isNovaOperacaoFinanceira(path)) return "lancar";

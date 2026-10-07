@@ -62,7 +62,7 @@ export function FormLote({ lote, propriedades, propriedadeInicialId, onSalvo, on
         ? <CampoFormulario id="lote-sitio" rotulo="Sítio" ajuda="O sítio de um lote não pode ser alterado depois de criado.">{(p) => <input {...p} disabled value={lote.propriedade.nome} className={classeInput} />}</CampoFormulario>
         : <CampoFormulario id="lote-sitio" rotulo="Sítio" obrigatorio erro={erros.propriedadeId}>{(p) => <select {...p} required value={propriedadeId} onChange={(e) => setPropriedadeId(e.target.value)} className={classeInput}>
             <option value="">Selecione</option>
-            {propriedades.map((prop) => <option key={prop.id} value={prop.id}>{prop.apelido || prop.nome}</option>)}
+            {propriedades.map((prop) => <option key={prop.id} value={prop.id}>{prop.nome}</option>)}
           </select>}</CampoFormulario>}
       <CampoFormulario id="lote-centro" rotulo="Centro de custo do consumo" ajuda="Será o padrão dos fechamentos, com possibilidade de substituição na conferência.">{(p) => <select {...p} className={classeInput} value={centroCustoId} onChange={(e) => setCentroCustoId(e.target.value)}><option value="">Não definido</option>{centros.filter((c) => c.ativo || c.id === centroCustoId).map((c) => <option key={c.id} value={c.id} disabled={!c.ativo}>{c.nome}{c.ativo ? "" : " (inativo)"}</option>)}</select>}</CampoFormulario>
       <CampoFormulario id="lote-observacao" rotulo="Observação" erro={erros.observacao}>{(p) => <textarea {...p} maxLength={500} value={observacao} onChange={(e) => setObservacao(e.target.value)} className={classeInput} />}</CampoFormulario>
