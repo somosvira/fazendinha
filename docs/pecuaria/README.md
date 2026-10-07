@@ -1,5 +1,9 @@
 # Pecuária — base de documentação
 
+## Redesign operacional — 07/10/2026
+
+O [plano de redesign da Pecuária](./redesign-pecuaria.md) parte da `main@f0604707`, já com a V3 e a retirada de agricultura/equipe. A branch `codex/pecuaria-redesign` reorganiza navegação, sanidade, manejo, coletas de campo e nutrição, preservando as capacidades da V3. A coleta impressa e sua tela de retorno compartilham identificação, ordem e agrupamento. O consumo diário será conferido por uma pessoa; consolidação mensal não cria nova baixa. O documento acompanha execução e validação, sem declarar etapas futuras como entregues nem alterar as marcações do guia.
+
 ## Integração da remoção com a V3 final — 07/10/2026
 
 O PR #311 incorporou a V3 à `main` em `517f33f`, em 07/10/2026. O PR #310 foi atualizado exclusivamente a partir dessa `main`, que passa a ser a única base de integração e comparação. A incorporação desse merge não mudou a árvore de código já validada; o diff do #310 agora contém somente a limpeza e seus ajustes/documentação, sem incluir as entregas da V3 como novidades.
