@@ -43,3 +43,9 @@ Reproduzida tela em branco ao clicar no card: a URL era correta, mas o adaptador
 A API cliente agora rejeita estruturas inválidas no detalhe, com mensagem e nova tentativa. Testes de regressão cobrem a resposta vazia, operação válida e recuperação do erro. Nenhuma liquidação, upload ou outra escrita foi feita na produção.
 
 Após a correção, a suite completa passou: 123 arquivos, 949 testes; build do frontend aprovado.
+
+## Detalhe da operação e skeleton
+
+Reorganizado o detalhe em resumo compacto e grid de compromissos/histórico/documentos/procedimentos. Removida a repetição das transações, preservando movimentos de conta e estorno. A operação OP-2482 foi inspecionada com leitura real: em 1440 × 900, o último painel termina em aproximadamente 664px, sem rolagem da página. Também verificado sem overflow horizontal em 1180px e 720px. Listas maiores continuam integralmente acessíveis por rolagem.
+
+Skeleton shadcn verificado no navegador com leitura temporariamente retida, com `aria-busy=true`; instrumentação removida depois. Teste cobre entrada/saída do carregamento. Review apontou botões de confirmação sem quebra no celular; rodapés corrigidos para empilhar antes de 640px. Regressão adicional verifica que a transação aparece uma vez e a conta abre o movimento correto. Verificação focada: 26 testes aprovados e build frontend aprovado. Capturas locais: `operation-compact-desktop.png`, `operation-compact-mobile.png`, `operation-skeleton.png`.

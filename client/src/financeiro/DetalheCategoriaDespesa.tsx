@@ -3,6 +3,7 @@ import { ArrowDownRight, CornerUpLeft, ChevronRight, Layers } from "lucide-react
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { SkeletonCategorias } from "./CarregamentoFinanceiro";
 import { DialogFinanceiro } from "./DialogFinanceiro";
 import { obterAnaliseCategorias, type AnaliseCategorias } from "./novo-api";
 import { brl, dataBR } from "./financeiro-ui";
@@ -51,7 +52,7 @@ export function DetalheCategoriaDespesa({ categorias, inicio, fim, onClose }: {
   const total = linhas.reduce((soma, linha) => soma + Math.round(Number(linha.valor) * 100), 0) / 100;
   return <DialogFinanceiro titulo={categorias.length === 1 ? categorias[0].label : "Outras categorias"} eyebrow={`Despesas realizadas · ${dataBR(inicio)} a ${dataBR(fim)}`} onClose={onClose} className="max-w-5xl grid-rows-[auto_minmax(0,1fr)] overflow-hidden">
     <div className="min-h-0 min-w-0 overflow-auto p-4 sm:p-5">
-      {erro ? <div role="alert" className="text-sm"><p>{erro}</p><Button variant="outline" onClick={() => setTentativa(valor => valor + 1)}>Tentar novamente</Button></div> : !dados ? <p role="status" className="py-6">Carregando lançamentos…</p> : <>
+      {erro ? <div role="alert" className="text-sm"><p>{erro}</p><Button variant="outline" onClick={() => setTentativa(valor => valor + 1)}>Tentar novamente</Button></div> : !dados ? <SkeletonCategorias /> : <>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-primary p-4 text-primary-foreground"><div><p className="text-sm opacity-80">Total líquido</p><strong className="font-serif text-2xl tabular-nums">{brl(total)}</strong></div><Badge variant="secondary">{linhas.length} lançamentos</Badge></div>
         <p className="mb-4 text-sm text-muted-foreground">Estornos abatem o total. Clique em um lançamento para consultar seus documentos e detalhes completos.</p>
         {linhas.length ? <ul aria-label="Lançamentos da categoria" className="space-y-3">{linhas.slice((pagina - 1) * 15, pagina * 15).map((linha, indice) => <li key={`${linha.movimentoId ?? linha.operacaoId}-${indice}`}><LancamentoCategoria linha={linha} inicio={inicio} fim={fim} /></li>)}</ul> : <p role="status" className="py-6">Nenhum lançamento nesta categoria no período.</p>}

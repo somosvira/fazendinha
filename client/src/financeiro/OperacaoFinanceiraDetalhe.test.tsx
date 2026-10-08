@@ -103,8 +103,10 @@ describe("OperacaoFinanceiraDetalhe", () => {
     const props = { onVoltar: vi.fn(), onAbrir: vi.fn(), onCorrigir: vi.fn(), rotuloVoltar: "Voltar à Sanidade" };
     const tela = render(<OperacaoFinanceiraDetalhe {...props} operacaoId={uid(6)} />);
     expect(screen.getByRole("button", { name: "Voltar à Sanidade" })).toBeTruthy();
+    expect(screen.getByRole("status", { name: "Carregando operação" }).getAttribute("aria-busy")).toBe("true");
     tela.rerender(<OperacaoFinanceiraDetalhe {...props} operacaoId={uid(7)} />);
     await screen.findByRole("heading", { name: "Reposição entre sítios" });
+    expect(screen.queryByRole("status", { name: "Carregando operação" })).toBeNull();
     await act(async () => { liberar(operacao); });
     expect(screen.queryByRole("heading", { name: "Compra de ração" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Voltar à Sanidade" })); expect(props.onVoltar).toHaveBeenCalledOnce();
@@ -276,4 +278,16 @@ it("mostra erro recuperável e permite tentar carregar a operação novamente", 
   fireEvent.click(screen.getByRole("button", { name: "Tentar novamente" }));
   expect(await screen.findByRole("heading", { name: operacao.descricao! })).toBeTruthy();
   expect(screen.queryByText("Dados da operação indisponíveis")).toBeNull();
+});
+
+it("consolida a transação no histórico e preserva o link da movimentação", async () => {
+  obterOperacao.mockResolvedValue({ ...operacao, transacoes: [{ ...operacao.transacoes[0], movimentos: [{ id: uid(9), seq: 9, contaId: contaBanco.id, direcao: "SAIDA", valor: "360", conta: contaBanco }] }] });
+  render(<OperacaoFinanceiraDetalhe operacaoId={operacao.id} onVoltar={vi.fn()} onAbrir={vi.fn()} onCorrigir={vi.fn()} />);
+  await screen.findByRole("heading", { name: "Compra de ração" });
+  expect(screen.getAllByText("Pagamento #1")).toHaveLength(1);
+  expect(screen.getAllByRole("button", { name: "Banco principal" })).toHaveLength(1);
+  fireEvent.click(screen.getByRole("button", { name: "Banco principal" }));
+  expect(window.location.pathname).toBe(`/financeiro/contas/${contaBanco.id}`);
+  expect(window.location.hash).toBe(`#movimento-${uid(9)}`);
+  expect(screen.getByRole("button", { name: "Estornar pagamento #1" })).toBeTruthy();
 });

@@ -35,3 +35,9 @@ A leitura `GET /financeiro/analise-categorias`, na base `pagamentos`, agora usa 
 ## Falha ao abrir a origem
 
 A leitura de uma operação exige ID e as coleções essenciais antes de renderizar o detalhe. Uma resposta inválida gera mensagem recuperável e botão “Tentar novamente”, em vez de derrubar a tela. A prévia local anterior só tinha respostas capturadas do dashboard e retornava uma lista vazia para consultas não preparadas; foi substituída por consultas reais de leitura com todas as gravações bloqueadas. Isso é configuração local de revisão, sem mudança no deploy.
+
+## Detalhe compacto da operação
+
+O detalhe usa resumo com valor, categoria e contagens no topo, seguido por grid de duas colunas para compromissos, histórico, documentos e procedimentos. Itens/perdas/transferências só ocupam um painel quando existem; todos os registros continuam visíveis, sem truncar descrições ou ocultar dados em abas. Transações aparecem uma única vez no histórico, incluindo links das movimentações e ação de estorno. As contagens do resumo apresentam todos os registros vinculados; a confirmação de cancelamento continua usando somente os efeitos elegíveis.
+
+O objetivo é reduzir rolagem pela organização e remoção de duplicações. Listas extensas e telas menores continuam permitindo rolagem para preservar legibilidade e todos os dados. No carregamento, Skeleton shadcn acompanha o grid e a composição de categorias, com anúncio acessível e respeito à preferência por movimento reduzido. Erro e nova tentativa permanecem disponíveis.

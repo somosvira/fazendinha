@@ -563,3 +563,7 @@ Convencionar `DD/mmm/YY` em headers, `DD/MM/YYYY` em tabelas longas.
 - [`DESIGN.md`](./DESIGN.md) — tokens, princípios visuais.
 - [`AI_RULES.md`](./AI_RULES.md) — como IAs devem usar este catálogo.
 - [`ARCHITECTURE.md`](./ARCHITECTURE.md) — onde cada componente encaixa no fluxo.
+
+## Skeleton de carregamento financeiro
+
+`client/src/components/ui/skeleton.tsx` é a primitiva shadcn para placeholders; respeita movimento reduzido. `financeiro/CarregamentoFinanceiro.tsx` compõe `SkeletonOperacao` e `SkeletonCategorias` na mesma organização do conteúdo, com `role="status"`, `aria-busy` e placeholders ocultos de leitores de tela.
