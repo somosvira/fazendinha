@@ -1,7 +1,8 @@
+import type { Lote } from "../types";
 import { comPropriedade } from "../../../propriedadeScope";
 
 export type Ingrediente = { produtoId: string; quantidadeCabecaDia: string; unidade: string; materiaSecaPercentualSnapshot?: string | null; produto?: { nome: string } };
-export type Dieta = { id: string; nome: string; versao: number; publicadaEm: string | null; itens: Ingrediente[] };
+export type Dieta = { id: string; nome: string; versao: number; publicadaEm: string | null; itens: Ingrediente[]; lotesEmUso?: Array<{ id: string; nome: string; propriedade: { id: number; nome: string } }> };
 export type Vigencia = { id: string; desde: string; ate: string | null; dieta: { id: string; nome: string; versao: number } };
 export type Pagina<T> = { itens: T[]; total: number; pagina: number; limite: number };
 export type PaginaVigencias = Pagina<Vigencia> & { vigente: Vigencia | null; programada: Vigencia | null };
@@ -16,8 +17,9 @@ export type Previa = { loteId: string; vigenciaId: string; dieta: { nome: string
   materiaSecaConhecidaKg: string; coberturaMateriaSecaCompleta: boolean;
   itens: Array<{ produtoId: string; nome: string; unidade: string; quantidadePrevista: string; rastrearPartidas: boolean; saldo: string; materiaSecaKg: string | null; custoPrevisto: string | null }> };
 export type Fechamento = { id: string; inicio: string; fim: string; animalDias: number; status: "CONFIRMADO" | "ESTORNADO";
-  propriedadeId: number; lote: { id: string; nome: string }; verValores: boolean; custoConhecido: string | null; coberturaCustoCompleta: boolean;
+  propriedadeId: number; propriedade: { id: number; nome: string }; lote: { id: string; nome: string }; verValores: boolean; custoConhecido: string | null; coberturaCustoCompleta: boolean;
   centroCusto: { nome: string }; vigencia: { dieta: { nome: string; versao: number } }; participacoes: ParticipacaoConsumo[];
+  motivoEstorno?: string | null; estornadoEm?: string | null;
   itens: Array<{ produtoId: string; quantidadePrevista: string; quantidadeConfirmada: string; unidade: string; situacaoCusto: string; produto: { nome: string }; movimentoEstoque: { quantidade: string; valorTotal: string | null; custoUnitario: string | null; alocacaoPartidaEstoques: Array<{ quantidade: string; partida: { codigo: string; nome?: string | null; validade: string | null } }> } | null }> };
 
 async function req<T>(path: string, init?: RequestInit, consolidado = false): Promise<T> {
@@ -49,9 +51,17 @@ export const confirmarConsumo = (body: { loteId: string; propriedadeId: number; 
   itens: Array<{ produtoId: string; quantidadeConfirmada: number; motivoAjuste?: string; modoEstoque: "BAIXA_ESTOQUE" | "SEM_BAIXA_JUSTIFICADA"; justificativaSemBaixa?: string;
     partidas?: Array<{ partidaId: string; quantidade: number; cienciaValidadeDesconhecida?: boolean }> }> }) =>
   post<Pick<Fechamento, "id" | "inicio" | "fim" | "animalDias" | "status">>("/pecuaria/rebanho/nutricao/consumo/confirmacao", body);
-export const listarFechamentos = (loteId: string, pagina = 1) => req<Pagina<Fechamento>>(`/pecuaria/rebanho/nutricao/consumo/fechamentos?loteId=${encodeURIComponent(loteId)}&pagina=${pagina}`);
+export const listarFechamentos = (loteId?: string, pagina = 1, status?: Fechamento["status"]) => req<Pagina<Fechamento>>(`/pecuaria/rebanho/nutricao/consumo/fechamentos?${loteId ? `loteId=${encodeURIComponent(loteId)}&` : ""}pagina=${pagina}${status ? `&status=${status}` : ""}`);
 export const obterFechamento = (id: string) => req<Fechamento>(`/pecuaria/rebanho/nutricao/consumo/fechamentos/${encodeURIComponent(id)}`);
 export type ConsumoAnimal = Omit<ParticipacaoConsumo, "itens"> & { id: string; inicio: string; fim: string; status: Fechamento["status"]; lote: Fechamento["lote"]; dieta: Fechamento["vigencia"]["dieta"]; propriedadeId: number; itens: Array<ParcelaConsumo & { nome: string }> };
 export const consultarConsumoAnimal = (animalId: string, pagina = 1) => req<Pagina<ConsumoAnimal> & { verValores: boolean }>(`/pecuaria/rebanho/nutricao/consumo/animais/${encodeURIComponent(animalId)}?pagina=${pagina}`);
 export const previaPeriodos = (body: Parameters<typeof previaConsumo>[0]) => post<{ revisao: string; periodos: Previa[]; lacunas: Array<{ inicio: string; fim: string }> }>("/pecuaria/rebanho/nutricao/consumo/periodos/previa", body);
 export const confirmarPeriodos = (body: { chave: string; revisao: string; loteId: string; propriedadeId: number; inicio: string; fim: string; centroCustoId?: string | null; periodos: Array<{ inicio: string; fim: string; itens: Parameters<typeof confirmarConsumo>[0]["itens"] }> }) => post("/pecuaria/rebanho/nutricao/consumo/periodos/confirmacao", body);
+
+export type ResumoCusto = { fechamentos: number; animalDias: number; custoConhecido: string | null; custoPorAnimalDia: string | null; coberturaCustoCompleta: boolean };
+export type ResumoNutricional = { lote: Lote; vigente: Vigencia | null; programada: Vigencia | null; verValores: boolean; custos: ResumoCusto };
+export type VisaoNutricional = { lotes: ResumoNutricional[]; verValores: boolean };
+export const consultarVisaoNutricional = () => req<VisaoNutricional>("/pecuaria/rebanho/nutricao/visao-geral");
+export const consultarResumoNutricional = (loteId: string) => req<ResumoNutricional>(`/pecuaria/rebanho/nutricao/lotes/${encodeURIComponent(loteId)}/resumo`);
+
+export const obterVigencia = (id: string) => req<Vigencia & { loteId: string }>(`/pecuaria/rebanho/nutricao/vigencias/${encodeURIComponent(id)}`);

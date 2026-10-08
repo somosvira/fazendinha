@@ -3,36 +3,59 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { NutricaoLote } from "./NutricaoLote";
 import * as api from "./api";
-vi.mock("./api", () => ({ listarDietas: vi.fn(), listarVigencias: vi.fn(), listarFechamentos: vi.fn(), listarProdutosNutricionais: vi.fn(), listarCentrosNutricionais: vi.fn() }));
-vi.mock("./ConferenciaPeriodos", () => ({ ConferenciaPeriodos: () => <p>Conferência do consumo</p> }));
+vi.mock("./api", () => ({ consultarResumoNutricional: vi.fn(), listarVigencias: vi.fn() }));
+vi.mock("./FechamentosNutricao", () => ({ FechamentosNutricao: () => <p>Histórico de fechamentos</p> }));
 const vigente: api.Vigencia = { id: "atual", desde: "2026-09-01", ate: "2026-11-01", dieta: { id: "d1", nome: "Dieta atual", versao: 1 } };
 const programada: api.Vigencia = { id: "futura", desde: "2026-11-01", ate: null, dieta: { id: "d2", nome: "Dieta futura", versao: 2 } };
+const resumo: api.ResumoNutricional = { lote: { id: "lote", nome: "Matrizes", propriedadeId: 1, propriedade: { id: 1, nome: "Principal" }, ativo: true, animaisAtivos: 5, observacao: null }, vigente, programada, verValores: true, custos: { custoConhecido: "379.50", custoPorAnimalDia: "6.90", animalDias: 55, fechamentos: 1, coberturaCustoCompleta: true } };
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.mocked(api.listarDietas).mockResolvedValue([]);
+  vi.mocked(api.consultarResumoNutricional).mockResolvedValue(resumo);
   vi.mocked(api.listarVigencias).mockResolvedValue({ itens: [programada, vigente], total: 121, pagina: 1, limite: 25, vigente, programada });
-  vi.mocked(api.listarFechamentos).mockResolvedValue({ itens: [], total: 0, pagina: 1, limite: 25 });
-  vi.mocked(api.listarProdutosNutricionais).mockResolvedValue([]);
-  vi.mocked(api.listarCentrosNutricionais).mockResolvedValue([]);
 });
 afterEach(cleanup);
 describe("nutrição do lote", () => {
-  it("separa dieta vigente da futura e mantém vigências acessíveis sem permissão de escrita", async () => {
-    render(<NutricaoLote loteId="lote" propriedadeId={1} podeLancar={false} vista="lotes" />);
-    await screen.findByText(/Dieta vigente: Dieta atual/);
-    expect(screen.getByText(/Programada: Dieta futura/)).toBeTruthy();
-    expect(screen.queryByText("Aplicar ao lote")).toBeNull();
+  it("mostra custos completos e base histórica, com ligação direta à ficha do lote", async () => {
+    render(<NutricaoLote loteId="lote" podeLancar vista="lotes" />);
+    await screen.findByText("Custo total da nutrição");
+    expect(screen.getByText(/379,50/)).toBeTruthy();
+    expect(screen.getByText(/6,90/)).toBeTruthy();
+    expect(screen.getByText(/55 animal-dias/)).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Ver lote e animais/ }).getAttribute("href")).toBe("/pecuaria/rebanho/lotes/lote");
+    expect(screen.queryByLabelText("Versão publicada")).toBeNull();
+    expect(screen.getByRole("link", { name: "Trocar dieta" }).getAttribute("href")).toContain("acao=atribuir");
+  });
+  it("separa vigente/futura e pagina o histórico sem permissão de escrita", async () => {
+    render(<NutricaoLote loteId="lote" podeLancar={false} vista="lotes" />);
+    await screen.findByText(/Programada: Dieta futura/);
+    expect(screen.getByText("Em uso")).toBeTruthy();
+    expect(screen.queryByRole("link", { name: "Trocar dieta" })).toBeNull();
     fireEvent.click(screen.getByText("Mais dietas"));
     await waitFor(() => expect(api.listarVigencias).toHaveBeenLastCalledWith("lote", 2));
-    expect(screen.getByText(/Página 2 · 121 vigências/)).toBeTruthy();
+    await screen.findByText(/Página 2 · 121 dietas/);
+    expect(screen.getByText(/379,50/)).toBeTruthy();
   });
-  it("informa carregamento e permite recuperar uma consulta que falhou", async () => {
-    vi.mocked(api.listarDietas).mockRejectedValueOnce(new Error("Não foi possível carregar as receitas"));
-    render(<NutricaoLote loteId="lote" propriedadeId={1} podeLancar={false} />);
-    expect(screen.getByRole("status").textContent).toContain("Carregando");
-    await screen.findByText("Não foi possível carregar as receitas");
+  it("oculta os valores sem permissão financeira mesmo diante de um payload com valores", async () => {
+    vi.mocked(api.consultarResumoNutricional).mockResolvedValue({ ...resumo, verValores: false });
+    render(<NutricaoLote loteId="lote" podeLancar={false} vista="lotes" />);
+    await screen.findByText("Em uso");
+    expect(screen.queryByText("Custo total da nutrição")).toBeNull();
+    expect(screen.queryByText(/379,50/)).toBeNull();
+    expect(screen.queryByText(/6,90/)).toBeNull();
+  });
+  it("marca custos parciais e recupera uma consulta que falhou", async () => {
+    vi.mocked(api.consultarResumoNutricional).mockRejectedValueOnce(new Error("Consulta indisponível")).mockResolvedValueOnce({ ...resumo, custos: { ...resumo.custos, coberturaCustoCompleta: false } });
+    render(<NutricaoLote loteId="lote" podeLancar={false} />);
+    await screen.findByText("Consulta indisponível");
     fireEvent.click(screen.getByText("Tentar novamente"));
-    await screen.findByText(/Dieta vigente: Dieta atual/);
-    expect(screen.queryByText("Não foi possível carregar as receitas")).toBeNull();
+    await screen.findByText(/Valor parcial/);
+    expect(screen.queryByText("Consulta indisponível")).toBeNull();
+  });
+  it("ausência de custo não se apresenta como gasto zero", async () => {
+    vi.mocked(api.consultarResumoNutricional).mockResolvedValue({ ...resumo, custos: { custoConhecido: null, custoPorAnimalDia: null, animalDias: 0, fechamentos: 0, coberturaCustoCompleta: false } });
+    render(<NutricaoLote loteId="lote" podeLancar={false} />);
+    await screen.findByText("Em uso");
+    expect(screen.getAllByText("Não apurado")).toHaveLength(2);
+    expect(screen.queryByText(/R\$.*0,00/)).toBeNull();
   });
 });

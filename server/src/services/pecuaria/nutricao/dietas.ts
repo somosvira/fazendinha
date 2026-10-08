@@ -7,9 +7,17 @@ import { travarUsosProduto } from "../../estoque/usos.js";
 
 const dia = (s: string) => new Date(`${s}T00:00:00Z`);
 
-export async function listarDietas() {
-  return prisma.dieta.findMany({ include: { itens: { include: { produto: { select: { nome: true, unidade: true } } } } },
-    orderBy: [{ nome: "asc" }, { versao: "desc" }] });
+/** O catálogo é compartilhado; os lotes em uso pertencem ao sítio consultado. */
+export async function listarDietas(propriedadeId: number | null = null) {
+  const hoje = hojeFazendaDate();
+  const [dietas, vigencias] = await Promise.all([
+    prisma.dieta.findMany({ include: { itens: { include: { produto: { select: { nome: true, unidade: true } } } } }, orderBy: [{ nome: "asc" }, { versao: "desc" }] }),
+    prisma.vigenciaDietaLote.findMany({ where: { desde: { lte: hoje }, OR: [{ ate: null }, { ate: { gt: hoje } }], lote: { ativo: true, ...(propriedadeId == null ? {} : { propriedadeId }) } },
+      select: { dietaId: true, lote: { select: { id: true, nome: true, propriedade: { select: { id: true, nome: true } } } } }, orderBy: { lote: { nome: "asc" } } }),
+  ]);
+  const usos = new Map<string, Array<(typeof vigencias)[number]["lote"]>>();
+  for (const v of vigencias) { const lotes = usos.get(v.dietaId) ?? []; lotes.push(v.lote); usos.set(v.dietaId, lotes); }
+  return dietas.map((d) => ({ ...d, lotesEmUso: usos.get(d.id) ?? [] }));
 }
 
 export async function criarDieta(input: { nome: string; observacao?: string | null;
@@ -120,4 +128,13 @@ export async function corrigirVigencia(id: string, propriedadeId: number, input:
     await auditar(tx, { entidade: "VigenciaDietaLote", entidadeId: id, propriedadeId, acao: "VIGENCIA_CORRIGIDA", usuarioId, antes: original, depois: { ...salva, motivo: input.motivo } });
     return salva;
   });
+}
+
+export async function obterVigencia(id: string, propriedadeId: number | null) {
+  const vigencia = await prisma.vigenciaDietaLote.findFirst({
+    where: { id, ...(propriedadeId == null ? {} : { lote: { propriedadeId } }) },
+    select: { id: true, loteId: true, desde: true, ate: true, dieta: { select: { id: true, nome: true, versao: true } } },
+  });
+  if (!vigencia) throw new RebanhoError("NAO_ENCONTRADO", "Vigência não encontrada neste sítio");
+  return vigencia;
 }

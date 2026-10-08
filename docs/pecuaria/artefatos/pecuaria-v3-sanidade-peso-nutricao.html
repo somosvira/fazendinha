@@ -13,7 +13,16 @@
     @media print{body{background:white}.wrap{max-width:none;padding:0}nav,.actions,.toolbar{display:none}section{break-before:auto}h2,h3,h4{break-after:avoid}.card,.phase{break-inside:avoid}.grid{display:block}.card{margin:12px 0}.tw{overflow:visible}table{font-size:11px}.technical td{min-width:0}code{font-size:11px}.viewport{overflow:visible;padding:0}.viewport svg{width:100%!important}.diagram{break-inside:avoid}header{padding-top:0}a{color:inherit}}
   </style>
 </head>
-<body><div class="wrap">
+<body>
+<section class="section" id="redesign-nutricao-20261008">
+  <h2>Nutrição: visão geral e páginas por lote — 08/10/2026</h2>
+  <p>Atualização operacional posterior à auditoria histórica abaixo. <code>/pecuaria/nutricao</code> abre uma visão geral do sítio ou consolidado, sem lote obrigatório. A tabela apresenta lotes ativos, animais atuais, dieta vigente e custo conhecido; cada lote tem subpágina e ligação direta <strong>Ver lote e animais</strong> à ficha do Rebanho.</p>
+  <p><strong>Custo total da nutrição e custo médio por animal-dia</strong> usam todos os fechamentos confirmados do lote, excluindo estornos, independentemente da paginação. A média é custo conhecido total dividido pela soma dos animal-dias dos mesmos fechamentos; não usa o número atual de animais. Sem custo conhecido: <strong>Não apurado</strong>. Cobertura incompleta: total e média <strong>parciais</strong>. Valores exigem área Financeiro e <code>verValores</code> no servidor.</p>
+  <p>Receitas são cards com versão, situação, ingredientes e links dos lotes com uso vigente no sítio consultado. Composição, criação, edição de rascunho, nova versão e publicação têm telas próprias. Atribuição/troca, correção de vigência, conferência de consumo e revisão de estorno também ficam em formulários próprios. As regras V3 de fatos, estoque, revisão da base, idempotência e auditoria permanecem. Configurações reutiliza a gestão de receitas.</p>
+  <p>Fechamentos identificam o sítio no consolidado e têm consulta geral paginada, filtro de situação no servidor e filtros/página persistidos na URL; detalhe em cards de resumo, consumo/estoque e atribuição aos animais. Adicionados <code>GET /visao-geral</code>, <code>GET /lotes/:id/resumo</code> e <code>GET /vigencias/:id</code> ao prefixo <code>/api/pecuaria/rebanho/nutricao</code>; <code>GET /consumo/fechamentos</code> aceita lote opcional e <code>status=CONFIRMADO|ESTORNADO</code>. Links antigos e histórico do navegador permanecem válidos. Sem migration ou nova lista de animais.</p>
+  <p>Validação: builds, testes de interface e 29 testes nutricionais de servidor, incluindo PostgreSQL temporário com dois sítios, mais de 25 fechamentos e exclusão de estorno. Conferência visual somente leitura: Matrizes R$ 379,50 / 55 animal-dias = R$ 6,90; Novilhas R$ 165,60 / 38 = R$ 4,36. Não declara homologação manual do roteiro nem carga IDEAGRI.</p>
+</section>
+<div class="wrap">
 <div class="callout good"><strong>Testar a V3 pela interface:</strong> use o <a href="testes-v3-guia.html">novo guia sequencial de testes</a>, com cenário próprio preparado em 04/10/2026, instruções por tela e resultados conferíveis após cada ação. O roteiro histórico permanece disponível com suas marcações anteriores.</div>
 <section id="rodadas-protocolos-desvios">
   <h2>Ciclos de protocolos e desvios · 06/10/2026</h2>

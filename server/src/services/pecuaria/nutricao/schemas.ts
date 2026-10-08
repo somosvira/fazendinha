@@ -6,3 +6,5 @@ export const paginaNutricaoSchema = z.object({
 });
 export const listaNutricaoSchema = paginaNutricaoSchema.extend({ loteId: z.string().uuid().optional() });
 export type PaginaNutricao = z.infer<typeof paginaNutricaoSchema>;
+
+export const listaFechamentosSchema = listaNutricaoSchema.extend({ status: z.enum(["CONFIRMADO", "ESTORNADO"]).optional() });

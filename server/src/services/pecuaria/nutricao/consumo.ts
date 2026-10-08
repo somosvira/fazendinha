@@ -194,7 +194,7 @@ export async function confirmarPeriodos(input: { chave: string; revisao: string;
 }
 
 const detalheInclude = {
-  lote: { select: { id: true, nome: true } }, centroCusto: { select: { nome: true } },
+  propriedade: { select: { id: true, nome: true } }, lote: { select: { id: true, nome: true } }, centroCusto: { select: { nome: true } },
   vigencia: { select: { dieta: { select: { nome: true, versao: true } } } },
   itens: { include: { produto: { select: { nome: true } }, movimentoEstoque: { select: { id: true, quantidade: true, valorTotal: true, custoUnitario: true,
     alocacaoPartidaEstoques: { select: { partidaId: true, quantidade: true, partida: { select: { id: true, codigo: true, nome: true, validade: true, lotePrincipalId: true, lotePrincipal: { select: { nome: true } } } } } } } } } },
@@ -221,8 +221,8 @@ export function apresentarFechamento(f: Detalhe, verValores: boolean) {
   };
 }
 
-export async function listarFechamentos(loteId: string | undefined, propriedadeId: number | null, pagina: PaginaNutricao = { pagina: 1, limite: 25 }, verValores = false, animalId?: string) {
-  const where: Prisma.FechamentoConsumoWhereInput = { ...(loteId ? { loteId } : {}), ...(propriedadeId == null ? {} : { propriedadeId }), ...(animalId ? { participacoes: { some: { animalId } } } : {}) };
+export async function listarFechamentos(loteId: string | undefined, propriedadeId: number | null, pagina: PaginaNutricao = { pagina: 1, limite: 25 }, verValores = false, animalId?: string, status?: "CONFIRMADO" | "ESTORNADO") {
+  const where: Prisma.FechamentoConsumoWhereInput = { ...(status ? { status } : {}), ...(loteId ? { loteId } : {}), ...(propriedadeId == null ? {} : { propriedadeId }), ...(animalId ? { participacoes: { some: { animalId } } } : {}) };
   return prisma.$transaction(async (tx) => {
     const [fechamentos, total] = await Promise.all([
       tx.fechamentoConsumo.findMany({ where, include: detalheInclude, orderBy: [{ inicio: "desc" }, { id: "asc" }], skip: (pagina.pagina - 1) * pagina.limite, take: pagina.limite }),

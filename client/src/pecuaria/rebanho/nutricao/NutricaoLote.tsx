@@ -1,147 +1,39 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Button, ErrorBox, hoje, Panel } from "../../../financeiro/financeiro-ui";
-import { ConferenciaPeriodos } from "./ConferenciaPeriodos";
-import { DatePicker } from "../../../components/DatePicker";
+import { useCallback, useState } from "react";
+import { PageHeader, Panel, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
 import { formatarDataBR } from "../lib/rotulos";
-import { DetalhesFechamento } from "./DetalhesFechamento";
-import {
-  atribuirDieta, corrigirVigencia, criarDieta, editarDieta, estornarConsumo, listarCentrosNutricionais, listarDietas, listarFechamentos,
-  listarProdutosNutricionais, listarVigencias, publicarDieta,
-  type CentroNutricional, type Dieta, type Fechamento, type ProdutoNutricional, type Vigencia,
-} from "./api";
+import { consultarResumoNutricional, listarVigencias } from "./api";
+import { rotaOperacaoNutricional } from "./navegacao";
+import { useConsulta } from "./consulta";
+import { CustosLote, EstadoConsulta, LinkNutricional, rotaNutricao } from "./componentes";
+import { FechamentosNutricao } from "./FechamentosNutricao";
+import { PaginacaoNutricao } from "./PaginacaoNutricao";
+import "./nutricao.css";
 
-
-export function NutricaoLote({ loteId, propriedadeId, podeLancar, vista }: { loteId?: string; propriedadeId?: number; podeLancar: boolean; vista?: "lotes" | "receitas" | "fechamentos" }) {
-  const [vigenciaCorrecao, setVigenciaCorrecao] = useState<Vigencia | null>(null);
-  const [dataCorrecao, setDataCorrecao] = useState("");
-  const [motivoCorrecao, setMotivoCorrecao] = useState("");
-  const [editandoReceita, setEditandoReceita] = useState(false);
-  const [rascunhoId, setRascunhoId] = useState<string | null>(null);
-  const [estornando, setEstornando] = useState<string | null>(null);
-  const [motivoEstorno, setMotivoEstorno] = useState("");
-  const [dietas, setDietas] = useState<Dieta[]>([]);
-  const [vigencias, setVigencias] = useState<Vigencia[]>([]);
-  const [fechamentos, setFechamentos] = useState<Fechamento[]>([]);
-  const [paginaVigencias, setPaginaVigencias] = useState(1);
-  const [paginaFechamentos, setPaginaFechamentos] = useState(1);
-  const [totalVigencias, setTotalVigencias] = useState(0);
-  const [totalFechamentos, setTotalFechamentos] = useState(0);
-  const [dietaAtual, setDietaAtual] = useState<Vigencia | null>(null);
-  const [dietaProgramada, setDietaProgramada] = useState<Vigencia | null>(null);
-  const [carregando, setCarregando] = useState(true);
-  const carga = useRef(0);
-  const [produtos, setProdutos] = useState<ProdutoNutricional[]>([]);
-  const [centros, setCentros] = useState<CentroNutricional[]>([]);
-  const [erro, setErro] = useState<string | null>(null);
-  const [ocupado, setOcupado] = useState(false);
-  const [nome, setNome] = useState("");
-  const [ingredientes, setIngredientes] = useState([{ produtoId: "", quantidadeCabecaDia: "" }]);
-  const [dietaId, setDietaId] = useState("");
-  const [desde, setDesde] = useState(hoje());
-
-  const carregar = useCallback(async () => {
-    const sequencia = ++carga.current; setCarregando(true); setErro(null);
-    try {
-      const [ds, vs, fs, ps, cs] = await Promise.all([listarDietas(), loteId ? listarVigencias(loteId, paginaVigencias) : null, loteId ? listarFechamentos(loteId, paginaFechamentos) : null,
-        podeLancar ? listarProdutosNutricionais() : Promise.resolve([]), podeLancar ? listarCentrosNutricionais() : Promise.resolve([])]);
-      if (sequencia !== carga.current) return;
-      setDietas(ds); setVigencias(vs?.itens ?? []); setFechamentos(fs?.itens ?? []); setProdutos(ps); setCentros(cs.filter((c) => c.ativo));
-      setTotalVigencias(vs?.total ?? 0); setTotalFechamentos(fs?.total ?? 0); setDietaAtual(vs?.vigente ?? null); setDietaProgramada(vs?.programada ?? null);
-    } catch (e) { if (sequencia === carga.current) setErro(e instanceof Error ? e.message : String(e)); }
-    finally { if (sequencia === carga.current) setCarregando(false); }
-  }, [loteId, paginaVigencias, paginaFechamentos, podeLancar]);
-  useEffect(() => { void carregar(); return () => { carga.current++; }; }, [carregar]);
-
-  async function executar(fn: () => Promise<unknown>, depois?: () => void) {
-    if (ocupado) return;
-    setOcupado(true); setErro(null);
-    try { await fn(); depois?.(); await carregar(); }
-    catch (e) { setErro(e instanceof Error ? e.message : String(e)); }
-    finally { setOcupado(false); }
-  }
-
-  const publicadas = dietas.filter((d) => d.publicadaEm);
-  function limparReceita() {
-    setRascunhoId(null); setNome("");
-    setIngredientes([{ produtoId: "", quantidadeCabecaDia: "" }]);
-    setEditandoReceita(false);
-  }
-
-  async function criarReceita() {
-    if (!nome.trim() || ingredientes.some((i) => !i.produtoId || !(Number(i.quantidadeCabecaDia) > 0))) {
-      setErro("Informe o nome, os ingredientes e a quantidade por cabeça/dia."); return;
-    }
-    const body = { nome: nome.trim(), itens: ingredientes.map((i) => ({ produtoId: i.produtoId, quantidadeCabecaDia: Number(i.quantidadeCabecaDia) })) };
-    await executar(() => rascunhoId ? editarDieta(rascunhoId, body) : criarDieta(body),
-      limparReceita);
-  }
-
-  const classe = "min-h-10 w-full rounded-lg border border-border bg-white px-3 py-2 text-sm";
-
-  return <Panel className="mt-6 p-5">
-    <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="font-serif text-xl">{vista === "receitas" ? "Receitas de dieta" : "Nutrição do lote"}</h2>
-      {loteId && !carregando && <p className="mt-1 text-sm text-ink-3">Dieta vigente: {dietaAtual ? `${dietaAtual.dieta.nome} · versão ${dietaAtual.dieta.versao}` : "nenhuma"}.
-        {dietaProgramada && <> Programada: {dietaProgramada.dieta.nome} · versão {dietaProgramada.dieta.versao}, a partir de {formatarDataBR(dietaProgramada.desde)}.</>} Consumo é estimado por animal-dia e confirmado após conferência.</p>}</div></div>
-    <ErrorBox erro={erro} />
-    {erro && <Button secondary onClick={() => void carregar()}>Tentar novamente</Button>}
-    {carregando && <p className="mt-4" role="status">Carregando nutrição…</p>}
-    {(vista == null || vista === "receitas") && <section className="receitas-lista mt-4">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
-        <h3 className="h3">Receitas e ingredientes ({dietas.length})</h3>
-        {podeLancar && <Button onClick={() => { limparReceita(); setEditandoReceita(true); }}>Nova receita</Button>}
-      </div>
-      {!carregando && !dietas.length && <p className="py-4">Nenhuma receita cadastrada.{podeLancar ? " Crie uma receita para preparar a dieta dos lotes." : " As receitas serão exibidas aqui."}</p>}
-      {dietas.map((d) => <article key={d.id} className="receita-versao border-b border-border py-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <strong>{d.nome} · v{d.versao}</strong>
-          <span className={`receita-situacao ${d.publicadaEm ? "receita-publicada" : ""}`}>{d.publicadaEm ? "Publicada" : "Rascunho"}</span>
-          {podeLancar && <div className="flex flex-wrap gap-3">
-            <button type="button" className="receita-acao" disabled={ocupado} onClick={() => { setEditandoReceita(true); setRascunhoId(d.publicadaEm ? null : d.id); setNome(d.nome); setIngredientes(d.itens.map((i) => ({ produtoId: i.produtoId, quantidadeCabecaDia: i.quantidadeCabecaDia }))); }}>{d.publicadaEm ? "Criar nova versão a partir desta" : "Editar rascunho"}</button>
-            {!d.publicadaEm && <button type="button" className="receita-acao" disabled={ocupado} onClick={() => { void executar(() => publicarDieta(d.id), () => { if (rascunhoId === d.id) limparReceita(); }); }}>Publicar</button>}
-          </div>}
+export function NutricaoLote({ loteId, podeLancar, vista }: { loteId: string; propriedadeId?: number; podeLancar: boolean; vista?: "lotes" }) {
+  const [pagina, setPagina] = useState(1);
+  const consulta = useConsulta(useCallback(() => consultarResumoNutricional(loteId), [loteId]));
+  const historico = useConsulta(useCallback(() => listarVigencias(loteId, pagina), [loteId, pagina]));
+  const r = consulta.dados;
+  const completa = vista === "lotes";
+  const escrever = podeLancar && r?.lote.ativo;
+  return <div className="nutricao-lote"><EstadoConsulta erro={consulta.erro} carregando={consulta.carregando} recarregar={consulta.carregar} />{r && <>
+    {completa ? <><nav className="nutricao-breadcrumb" aria-label="Navegação"><LinkNutricional href={rotaNutricao()}>Nutrição</LinkNutricional><span>/</span><span>{r.lote.nome}</span></nav><PageHeader eyebrow={`Nutrição · ${r.lote.propriedade.nome}`} titulo={r.lote.nome} descricao={`Dieta, consumo e custos deste lote${r.lote.ativo ? "." : " · lote inativo."}`} acao={<LinkNutricional className="nutricao-botao-secundario" href={`/pecuaria/rebanho/lotes/${r.lote.id}`}>Ver lote e animais</LinkNutricional>} /></> : <div className="nutricao-card-cabecalho"><h2 className="h3">Nutrição do lote</h2><LinkNutricional href={rotaNutricao({ loteId })}>Abrir nutrição do lote →</LinkNutricional></div>}
+    <div className="nutricao-conteudo"><CustosLote resumo={r} />
+      <Panel><div className="nutricao-card-cabecalho"><div><h2 className="h3">Dieta vigente</h2><p>{r.vigente ? `Desde ${formatarDataBR(r.vigente.desde)}` : "Nenhuma dieta vigente atribuída a este lote."}</p></div><Pill tone={r.vigente ? "green" : "amber"}>{r.vigente ? "Em uso" : "Sem dieta"}</Pill></div>
+        <div className="nutricao-card-corpo">{r.vigente && <p className="font-serif text-xl">{r.vigente.dieta.nome} <span className="nutricao-secundario">· v{r.vigente.dieta.versao}</span></p>}{r.programada && <p className="nutricao-aviso">Programada: {r.programada.dieta.nome} · v{r.programada.dieta.versao}, a partir de {formatarDataBR(r.programada.desde)}.</p>}
+          {completa && escrever && <div className="nutricao-acoes"><LinkNutricional className="nutricao-botao" href={rotaOperacaoNutricional("atribuir", loteId)}>{r.vigente ? "Trocar dieta" : "Atribuir dieta"}</LinkNutricional><LinkNutricional className="nutricao-botao-secundario" href={rotaOperacaoNutricional("consumo", loteId)}>Conferir consumo</LinkNutricional></div>}
         </div>
-        <details className="mt-2 text-sm"><summary className="cursor-pointer">Ingredientes e matéria seca</summary>{d.itens.map((i) => <p className="mt-2" key={i.produtoId}>{i.produto?.nome} · {i.quantidadeCabecaDia} {i.unidade}/cabeça/dia · MS {i.materiaSecaPercentualSnapshot == null ? "não informada" : `${i.materiaSecaPercentualSnapshot}%`}</p>)}</details>
-      </article>)}
-    </section>}
-    {podeLancar && <div className={`mt-5 grid gap-5 ${vista == null ? "lg:grid-cols-2" : ""}`}>
-      {(vista == null || vista === "receitas") && editandoReceita && <section className="receita-form rounded-xl border border-border p-5"><h3 className="h3">{rascunhoId ? "Editar rascunho de dieta" : "Nova versão de dieta"}</h3>
-        <label className="mt-3 block text-sm">Nome da dieta<input className={classe} value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Dieta de lactação" /></label>
-        <p className="mt-3 text-sm font-medium">Ingredientes por cabeça/dia</p>
-        {ingredientes.map((item, indice) => <div key={indice} className="mt-2 grid gap-2 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_auto]">
-          <select aria-label={`Ingrediente ${indice + 1}`} className={classe} value={item.produtoId} onChange={(e) => setIngredientes((xs) => xs.map((x, j) => j === indice ? { ...x, produtoId: e.target.value } : x))}>
-            <option value="">Selecione o Produto</option>{produtos.map((p) => <option key={p.id} value={p.id}>{p.nome} ({p.unidade})</option>)}</select>
-          <input aria-label={`Quantidade por cabeça/dia ${indice + 1}`} className={classe} type="number" min="0.001" step="0.001" value={item.quantidadeCabecaDia}
-            onChange={(e) => setIngredientes((xs) => xs.map((x, j) => j === indice ? { ...x, quantidadeCabecaDia: e.target.value } : x))} />
-          <Button secondary onClick={() => setIngredientes((xs) => xs.filter((_, j) => j !== indice))} disabled={ingredientes.length === 1}>Remover</Button>
-        </div>)}
-        <div className="mt-3 flex flex-wrap gap-2"><Button secondary onClick={() => setIngredientes((xs) => [...xs, { produtoId: "", quantidadeCabecaDia: "" }])}>Adicionar ingrediente</Button>
-          <Button secondary onClick={limparReceita} disabled={ocupado}>Cancelar</Button>
-          <Button onClick={() => { void criarReceita(); }} disabled={ocupado}>{rascunhoId ? "Salvar rascunho" : "Criar rascunho"}</Button></div>
-        <p className="mt-5 text-sm text-ink-3">Versões publicadas são preservadas. Alterações geram uma nova versão.</p>
-      </section>}
-      {loteId && propriedadeId != null && (vista == null || vista === "lotes") && <section className="rounded-xl border border-border p-4"><h3 className="font-semibold">Atribuir dieta ao lote</h3>
-        <label className="mt-3 block text-sm">Versão publicada<select className={classe} value={dietaId} onChange={(e) => setDietaId(e.target.value)}><option value="">Selecione</option>{publicadas.map((d) => <option key={d.id} value={d.id}>{d.nome} · v{d.versao}</option>)}</select></label>
-        <label className="mt-3 block text-sm">Início da vigência<DatePicker value={desde} onChange={setDesde} className="mt-1.5" /></label>
-        <Button className="mt-3" onClick={() => { if (!dietaId) { setErro("Selecione a dieta publicada."); return; } void executar(() => atribuirDieta({ loteId, propriedadeId, dietaId, desde })); }} disabled={ocupado}>Aplicar ao lote</Button>
-      </section>}
-    </div>}
-    {loteId && !carregando && (vista == null || vista === "lotes") && <section className="mt-4 space-y-3 rounded-lg border border-border p-4"><h3 className="font-semibold">Histórico de dietas</h3>
-      {vigencias.length ? vigencias.map((v) => <p className="text-sm" key={v.id}>{v.dieta.nome} v{v.dieta.versao}: {formatarDataBR(v.desde)} – {v.ate ? `${formatarDataBR(v.ate)} (troca de dieta)` : "sem fim programado"}
-        {podeLancar && <Button secondary className="ml-2" onClick={() => { setVigenciaCorrecao(v); setDataCorrecao(v.desde.slice(0, 10)); setMotivoCorrecao(""); }}>Corrigir vigência</Button>}</p>) : <p>Nenhuma dieta atribuída. Selecione uma receita publicada para aplicar ao lote.</p>}
-      {totalVigencias > 25 && <div className="flex flex-wrap items-center gap-3"><Button secondary disabled={paginaVigencias === 1} onClick={() => setPaginaVigencias((p) => p - 1)}>Dietas anteriores</Button><span>Página {paginaVigencias} · {totalVigencias} vigências</span><Button secondary disabled={paginaVigencias * 25 >= totalVigencias} onClick={() => setPaginaVigencias((p) => p + 1)}>Mais dietas</Button></div>}
-    </section>}
-    {loteId && propriedadeId != null && (vista == null || vista === "fechamentos") && <section className="mt-5 rounded-xl border border-border p-4"><h3 className="font-semibold">Histórico de fechamentos ({totalFechamentos})</h3>
-      <div className="mt-5 space-y-2">{fechamentos.length ? fechamentos.map((f) => <div key={f.id} className="rounded-lg border border-border p-3 text-sm">
-        <strong>{formatarDataBR(f.inicio)} – {formatarDataBR(f.fim)}</strong> · {f.animalDias} animal-dias · {f.status === "CONFIRMADO" ? "Confirmado" : "Estornado"}
-        <p className="text-ink-3">{f.itens.map((i) => `${i.produto.nome}: ${i.quantidadeConfirmada} (previsto ${i.quantidadePrevista})`).join(" · ")}</p>
-        <a className="mt-2 inline-block underline" href={`/pecuaria/nutricao?aba=fechamentos&loteId=${encodeURIComponent(loteId)}&fechamentoId=${encodeURIComponent(f.id)}`}>Ver detalhes do fechamento</a>
-        <details className="mt-2"><summary>Detalhes do fechamento</summary><DetalhesFechamento fechamento={f} /></details>
-        {podeLancar && f.status === "CONFIRMADO" && <Button secondary className="mt-2" onClick={() => { setEstornando(f.id); setMotivoEstorno(""); }}>Conferir estorno</Button>}
-      </div>) : !carregando && <p className="text-sm text-ink-3">Nenhum fechamento registrado. Confira um período para lançar o consumo.</p>}</div>
-      {totalFechamentos > 25 && <div className="mt-3 flex flex-wrap items-center gap-3"><Button secondary disabled={carregando || paginaFechamentos === 1} onClick={() => setPaginaFechamentos((p) => p - 1)}>Fechamentos anteriores</Button><span>Página {paginaFechamentos} · {totalFechamentos} fechamentos</span><Button secondary disabled={carregando || paginaFechamentos * 25 >= totalFechamentos} onClick={() => setPaginaFechamentos((p) => p + 1)}>Mais fechamentos</Button></div>}
-      {podeLancar && <div className="mt-5 border-t border-border pt-4"><h3 className="font-semibold">Novo fechamento do consumo</h3><ConferenciaPeriodos loteId={loteId} propriedadeId={propriedadeId} centros={centros} onSalvo={carregar} /></div>}
-    </section>}
-    {vigenciaCorrecao && propriedadeId != null && <section className="mt-4 grid gap-3 rounded-lg border border-amber-300 p-4"><h3>Corrigir início da vigência · {vigenciaCorrecao.dieta.nome}</h3><p className="text-sm">Ajusta também o fim da vigência anterior contígua. Fechamentos afetados devem ser estornados antes.</p><DatePicker value={dataCorrecao} onChange={setDataCorrecao} /><label>Motivo<textarea className={classe} minLength={5} maxLength={500} value={motivoCorrecao} onChange={(e) => setMotivoCorrecao(e.target.value)} /></label><div className="flex gap-2"><Button secondary onClick={() => setVigenciaCorrecao(null)} disabled={ocupado}>Cancelar</Button><Button disabled={ocupado || motivoCorrecao.trim().length < 5 || !dataCorrecao} onClick={() => void executar(() => corrigirVigencia(vigenciaCorrecao.id, { propriedadeId, desde: dataCorrecao, motivo: motivoCorrecao }), () => setVigenciaCorrecao(null))}>Confirmar correção</Button></div></section>}
-    {estornando && propriedadeId != null && <section className="mt-4 rounded-lg border border-amber-300 p-4"><h3 className="font-semibold">Prévia do estorno</h3><p className="text-sm">Serão devolvidas ao estoque as quantidades que tiveram baixa, nos lotes originais. Consumos sem baixa não geram entrada. O histórico permanece registrado.</p>{fechamentos.find((f) => f.id === estornando)?.itens.map((i) => <p key={i.produtoId} className="mt-2 text-sm">{i.produto.nome}: {i.movimentoEstoque ? `${i.movimentoEstoque.quantidade} ${i.unidade} a devolver${i.movimentoEstoque.alocacaoPartidaEstoques.map((a) => ` · ${a.partida.nome || a.partida.codigo}: ${a.quantidade}`).join("")}` : "sem devolução — não houve baixa"}</p>)}<label className="mt-3 block text-sm">Motivo<textarea className={classe} maxLength={500} value={motivoEstorno} onChange={(e) => setMotivoEstorno(e.target.value)} /></label><div className="mt-3 flex gap-2"><Button secondary disabled={ocupado} onClick={() => setEstornando(null)}>Cancelar</Button><Button disabled={ocupado || motivoEstorno.trim().length < 5} onClick={() => { void executar(() => estornarConsumo(estornando, { propriedadeId, motivo: motivoEstorno }), () => { setEstornando(null); }); }}>Confirmar estorno com motivo</Button></div></section>}
-  </Panel>;
+      </Panel>
+      {completa && <Panel><div className="nutricao-card-cabecalho"><div><h2 className="h3">Histórico de dietas</h2><p>Vigências anteriores, atuais e programadas.</p></div></div><div className="px-5"><EstadoConsulta erro={historico.erro} carregando={historico.carregando} recarregar={historico.carregar} /></div>
+        {historico.dados && <>{!historico.dados.itens.length ? <p className="nutricao-vazio">Nenhuma dieta atribuída.</p> : <TabelaFinanceira rotulo="Histórico de dietas do lote" itens={historico.dados.itens} chaveDe={(v) => v.id} colunas={[
+          { chave: "receita", titulo: "Receita / versão", principal: true, celula: (v) => <strong>{v.dieta.nome} · v{v.dieta.versao}</strong> },
+          { chave: "inicio", titulo: "Início", celula: (v) => formatarDataBR(v.desde) },
+          { chave: "fim", titulo: "Fim (troca)", celula: (v) => v.ate ? formatarDataBR(v.ate) : "Sem fim programado" },
+          { chave: "situacao", titulo: "Situação", celula: (v) => <Pill tone={r.vigente?.id === v.id ? "green" : r.programada?.id === v.id ? "blue" : "neutral"}>{r.vigente?.id === v.id ? "Vigente" : r.programada != null && v.desde >= r.programada.desde ? "Programada" : "Histórica"}</Pill> },
+          ...(escrever ? [{ chave: "acao", titulo: "", acoes: true, celula: (v: typeof historico.dados.itens[number]) => <LinkNutricional href={rotaOperacaoNutricional("corrigir", loteId, v.id)}>Corrigir vigência</LinkNutricional> }] : []),
+        ]} />}<PaginacaoNutricao pagina={pagina} total={historico.dados.total} limite={historico.dados.limite} onPagina={setPagina} nome="dietas" /></>}
+      </Panel>}
+      {completa && <FechamentosNutricao loteId={loteId} />}
+    </div>
+  </>}</div>;
 }

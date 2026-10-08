@@ -101,6 +101,15 @@ cliente antes de o gate de permissões validar o destino. Essa mudança só
 reorganiza a apresentação e não altera schema, APIs, escopo por sítio ou
 auditoria.
 
+Nutrição acrescenta consultas de visão geral e resumo por lote ao prefixo
+`/api/pecuaria/rebanho/nutricao`. `consultas.ts` agrega os custos no PostgreSQL:
+primeiro por fechamento (evita multiplicar animal-dias por ingrediente), depois
+por lote, sempre sobre o histórico confirmado e dentro do sítio resolvido.
+Total e média são mascarados no DTO pela mesma permissão financeira dos
+detalhes. Listas de vigências/fechamentos continuam paginadas; o resumo não
+depende da página. Formulários próprios reutilizam as escritas V3 e sua auditoria,
+sem migration. Configurações e Nutrição usam o mesmo componente de receitas.
+
 A modelagem segue uma divisão em **contextos de domínio**. Cada contexto tem seu próprio conjunto de tipos, regras e fluxos. Cruzar contexto só por contrato explícito (DTOs e IDs).
 
 ```mermaid

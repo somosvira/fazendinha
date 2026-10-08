@@ -4,12 +4,13 @@ import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { getUsuario } from "../../middleware/permissao.js";
 import { temArea, temPermissao } from "../../services/auth/papeis.js";
-import { resolverEscopoEscrita, resolverEscopoLeitura } from "../../services/propriedade.js";
+import { PropriedadeError, resolverEscopoEscrita, resolverEscopoLeitura } from "../../services/propriedade.js";
 import { RebanhoError } from "../../services/pecuaria/rebanho/regras.js";
 import { EstoqueError } from "../../services/estoque/estoque.js";
 import * as dietas from "../../services/pecuaria/nutricao/dietas.js";
+import * as consultas from "../../services/pecuaria/nutricao/consultas.js";
 import * as consumo from "../../services/pecuaria/nutricao/consumo.js";
-import { listaNutricaoSchema, paginaNutricaoSchema } from "../../services/pecuaria/nutricao/schemas.js";
+import { listaFechamentosSchema, listaNutricaoSchema, paginaNutricaoSchema } from "../../services/pecuaria/nutricao/schemas.js";
 
 const uuid = z.string().uuid();
 const data = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
@@ -17,6 +18,7 @@ const validar = <T extends z.ZodTypeAny>(s: T) => zValidator("json", s, (r, c) =
 const validarQuery = <T extends z.ZodTypeAny>(s: T) => zValidator("query", s, (r, c) => !r.success ? c.json({ error: r.error.issues[0].message, code: "VALIDACAO" }, 422) : undefined);
 const verValores = (c: Context) => { const u = getUsuario(c); return !!u && temArea(u, "financeiro") && temPermissao(u, "verValores"); };
 function falha(c: Context, e: unknown) {
+  if (e instanceof PropriedadeError) return c.json({ error: e.message, code: e.code }, e.code === "ESCOPO_INVALIDO" ? 400 : e.code === "NAO_ENCONTRADO" ? 404 : 409);
   if (e instanceof RebanhoError || e instanceof EstoqueError) return c.json({ error: e.message, code: e.code }, e.code === "NAO_ENCONTRADO" ? 404 : e.code === "VALIDACAO" ? 422 : 409);
   if (e instanceof Prisma.PrismaClientKnownRequestError && ["P2002", "P2034"].includes(e.code)) return c.json({ error: "Conflito de atualização; recarregue e tente novamente", code: "CONFLITO" }, 409);
   console.error("[pecuaria/nutricao]", e);
@@ -26,6 +28,16 @@ const contexto = z.object({ loteId: uuid, propriedadeId: z.number().int().positi
 const itemConsumo = z.object({ produtoId: uuid, quantidadeConfirmada: z.number().nonnegative().optional(), motivoAjuste: z.string().trim().max(500).nullish(), modoEstoque: z.enum(["BAIXA_ESTOQUE", "SEM_BAIXA_JUSTIFICADA"]), justificativaSemBaixa: z.string().trim().max(500).nullish(), partidas: z.array(z.object({ partidaId: uuid, quantidade: z.number().positive(), cienciaValidadeDesconhecida: z.boolean().optional() })).optional() }).strict();
 
 export const nutricaoRouter = new Hono()
+  .get("/visao-geral", async (c) => {
+    try { return c.json(await consultas.visaoGeral(await resolverEscopoLeitura(c), verValores(c))); }
+    catch (e) { return falha(c, e); }
+  })
+  .get("/lotes/:id/resumo", async (c) => {
+    try {
+      if (!uuid.safeParse(c.req.param("id")).success) return c.json({ error: "Lote inválido", code: "VALIDACAO" }, 422);
+      return c.json(await consultas.resumoLote(c.req.param("id"), await resolverEscopoLeitura(c), verValores(c)));
+    } catch (e) { return falha(c, e); }
+  })
   .post("/vigencias/:id/correcao", validar(z.object({ propriedadeId: z.number().int().positive(), desde: data, motivo: z.string().trim().min(5).max(500) }).strict()), async (c) => {
     try { const { propriedadeId: solicitado, ...input } = c.req.valid("json"); const propriedadeId = await resolverEscopoEscrita(c, solicitado);
       return c.json(await dietas.corrigirVigencia(c.req.param("id"), propriedadeId, input, getUsuario(c)?.id ?? null)); } catch (e) { return falha(c, e); }
@@ -41,7 +53,7 @@ export const nutricaoRouter = new Hono()
   .patch("/dietas/:id", validar(z.object({ nome: z.string().trim().min(2).max(160), observacao: z.string().trim().max(500).nullish(), itens: z.array(z.object({ produtoId: uuid, quantidadeCabecaDia: z.number().positive() })).min(1) })), async (c) => {
     try { return c.json(await dietas.criarDieta(c.req.valid("json"), getUsuario(c)?.id ?? null, c.req.param("id"))); } catch (e) { return falha(c, e); }
   })
-  .get("/dietas", async (c) => { try { return c.json(await dietas.listarDietas()); } catch (e) { return falha(c, e); } })
+  .get("/dietas", async (c) => { try { return c.json(await dietas.listarDietas(await resolverEscopoLeitura(c))); } catch (e) { return falha(c, e); } })
   .post("/dietas", validar(z.object({ nome: z.string().trim().min(2).max(160), observacao: z.string().trim().max(500).nullish(),
     itens: z.array(z.object({ produtoId: uuid, quantidadeCabecaDia: z.number().positive() })).min(1) })), async (c) => {
     try { return c.json(await dietas.criarDieta(c.req.valid("json"), getUsuario(c)?.id ?? null), 201); }
@@ -55,6 +67,12 @@ export const nutricaoRouter = new Hono()
     try { const { loteId, ...pagina } = c.req.valid("query");
       return c.json(await dietas.listarVigencias(loteId, await resolverEscopoLeitura(c), pagina)); }
     catch (e) { return falha(c, e); }
+  })
+  .get("/vigencias/:id", async (c) => {
+    try {
+      if (!uuid.safeParse(c.req.param("id")).success) return c.json({ error: "Vigência inválida", code: "VALIDACAO" }, 422);
+      return c.json(await dietas.obterVigencia(c.req.param("id"), await resolverEscopoLeitura(c)));
+    } catch (e) { return falha(c, e); }
   })
   .post("/vigencias", validar(z.object({ loteId: uuid, propriedadeId: z.number().int().positive(), dietaId: uuid, desde: data })), async (c) => {
     try { const body = c.req.valid("json"); const propriedadeId = await resolverEscopoEscrita(c, body.propriedadeId);
@@ -76,9 +94,9 @@ export const nutricaoRouter = new Hono()
       return c.json(await consumo.confirmarConsumo({ ...body, propriedadeId }, getUsuario(c)?.id ?? null), 201); }
     catch (e) { return falha(c, e); }
   })
-  .get("/consumo/fechamentos", validarQuery(listaNutricaoSchema), async (c) => {
-    try { const { loteId, ...pagina } = c.req.valid("query");
-      return c.json(await consumo.listarFechamentos(loteId, await resolverEscopoLeitura(c), pagina, verValores(c))); }
+  .get("/consumo/fechamentos", validarQuery(listaFechamentosSchema), async (c) => {
+    try { const { loteId, status, ...pagina } = c.req.valid("query");
+      return c.json(await consumo.listarFechamentos(loteId, await resolverEscopoLeitura(c), pagina, verValores(c), undefined, status)); }
     catch (e) { return falha(c, e); }
   })
   .get("/consumo/fechamentos/:id", async (c) => {

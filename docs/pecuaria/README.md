@@ -1,5 +1,71 @@
 # Pecuária — base de documentação
 
+## Redesign de Nutrição — 08/10/2026
+
+Nutrição abre em **Visão geral**, com os lotes ativos do sítio selecionado ou
+consolidado, animais atuais e dieta vigente. Busca e situação facilitam a
+comparação; clicar no lote abre sua página nutricional. **Ver lote e animais**
+leva à ficha existente do Rebanho, sem duplicar a lista de animais.
+
+A página do lote prioriza **Custo total da nutrição** e **Custo médio por
+animal-dia**. A base é todo o histórico de fechamentos **CONFIRMADOS**, sem
+estornos e independente da paginação de 25 registros. O total soma apenas
+custos conhecidos; a média divide esse total pela soma dos animal-dias dos
+mesmos fechamentos, sem usar a composição atual do lote ou a média simples de
+médias. Consumo sem base de custo não equivale a gratuidade; ausência de custo
+conhecido mostra **Não apurado**, e cobertura incompleta identifica o valor e a
+média como **parciais**. Quantidade confirmada zero tem custo zero. Os valores
+só saem do servidor com área Financeiro **e** flag `verValores` (ou dono).
+
+Receitas usam cards de versões com situação, ingredientes e links dos lotes
+com uso vigente da versão no sítio consultado; **Ver composição**
+abre o detalhe. Criar, editar rascunho, criar versão e publicar têm telas
+próprias, compartilhadas com Configurações. Atribuição/troca de dieta,
+correção de vigência, conferência de consumo e revisão de estorno também têm
+formulários próprios. Correção restaura a data original e exige motivo;
+conferência reutiliza a divisão por mês/vigência, revisão da base, alocação de
+estoque e confirmação atômica/idempotente. A visão de fechamentos consulta
+todos os lotes sem seleção obrigatória e filtra situação no servidor. Seu
+detalhe separa resumo, consumo/estoque e atribuição aos animais em cards. Cada
+fechamento identifica o sítio, inclusive no consolidado; filtros e paginação
+ficam na URL e são restaurados ao retornar do detalhe ou de um formulário.
+
+Consultas adicionadas ao prefixo `/api/pecuaria/rebanho/nutricao`:
+`GET /visao-geral`, `GET /lotes/:id/resumo` e `GET /vigencias/:id`.
+`GET /consumo/fechamentos` mantém paginação e aceita `status=CONFIRMADO|ESTORNADO`
+com `loteId` opcional. As consultas resolvem o sítio no servidor. Links antigos
+com `aba`, `loteId` e `fechamentoId` continuam válidos; formulários usam parâmetros
+próprios na URL e permitem retorno pelo navegador. Sem migration ou mudança
+nos contratos de escrita, estoque, fatos ou auditoria.
+
+Validação deste redesign: TypeScript e builds de cliente/servidor,
+**32/32 testes focados de interface** e **29/29 testes nutricionais de servidor**, incluindo
+PostgreSQL isolado com mais de 25 fechamentos e dois sítios. O banco temporário
+foi removido; nenhuma confirmação/atribuição/estorno foi executada no banco de
+desenvolvimento durante a inspeção visual. Matrizes: **R$ 379,50 / 55 =
+R$ 6,90 por animal-dia**, sem o estorno de R$ 124,20. Novilhas: **R$ 165,60 /
+38 = R$ 4,36**, mesmo com um animal atualmente no lote. Esta evidência não
+aprova marcações do roteiro manual nem a carga IDEAGRI.
+
+As suítes gerais desta mudança registraram **1.034 testes de servidor
+aprovados e 118 ignorados** e **962 testes de cliente aprovados e uma falha
+preexistente** em `ConfiguracoesFinanceiras.test.tsx` (filtro de produtos por
+centro de custo), também reproduzida antes do redesign. As integrações reais
+de nutrição são executadas separadamente no banco PostgreSQL temporário.
+Revisões independentes de contrato e padrões terminaram sem pendências.
+
+Inspeção autenticada em 390, 720 e 1440 px: nenhum transbordamento horizontal
+nas telas conferidas; escopo Principal/Destino/Consolidado, filtros, retorno,
+formulários próprios e links para lote foram conferidos sem gravar operações.
+Capturas da implementação: [visão geral](./evidencias/nutricao-20261008/visao-geral-desktop.png),
+[lote](./evidencias/nutricao-20261008/lote-desktop.png),
+[receitas](./evidencias/nutricao-20261008/receitas-desktop.png),
+[formulário](./evidencias/nutricao-20261008/nova-receita-desktop.png),
+[fechamentos](./evidencias/nutricao-20261008/fechamentos-desktop.png) e
+[detalhe](./evidencias/nutricao-20261008/detalhe-fechamento-desktop.png),
+com versões mobile na mesma pasta. A inspeção visual usou perfil proprietário;
+as restrições financeiras e de escrita foram verificadas pelos testes.
+
 ## Reorganização da interface operacional — 07/10/2026
 
 A navegação separa os eixos de uso diário em **Rebanho**, **Sanidade**,
