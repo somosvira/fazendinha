@@ -110,14 +110,14 @@ Convenções de leitura:
   desktop e no drawer mobile.
 - **Acesso rápido:** busca global visível, visão geral e novo lançamento quando
   autorizados.
-- **Rotinas diretas:** Pecuária (v1 Rebanho) hoje é um único ponto de entrada
-  (`pec-rebanho`); as telas de Animais, Lotes e Cadastros vivem dentro do
-  módulo, não como itens separados na sidebar. Agronomia é quem tem várias
-  rotinas em um clique (Talhões, Fitossanidade, Solo & nutrição, Manejo,
-  Milho).
-- **Rotinas secundárias:** itens menos frequentes ficam em “Mais opções”; o
-  bloco abre automaticamente quando uma rota secundária está ativa e persiste
-  a preferência no `localStorage`.
+- **Eixos diretos:** Financeiro reúne Visão geral, Operações, Compromissos,
+  Contas e extratos e Relatórios. Pecuária reúne Rebanho, Sanidade, Pesagem e
+  manejo e Nutrição. Os grupos começam abertos e a preferência de recolhimento
+  permanece no `localStorage`.
+- **Cadastros:** Configurações reúne as abas Sítios, Acessos, Financeiro e
+  Pecuária. Categorias, raças, motivos, protocolos e doenças ficam na central;
+  Produtos continuam acessíveis também no Estoque e receitas também na
+  Nutrição, usando os mesmos formulários e contratos.
 - **Permissão:** filtra as áreas usando `user.areas` e protege Equipe/Folha com
   `podeVerFolha`; `pecuaria` é a permissão canônica e as antigas `rebanho` e
   `gado_corte` são normalizadas por compatibilidade. As rotas continuam

@@ -20,14 +20,17 @@ const PATH_BY_TAB: Record<Tab, string> = {
   gastos: "/financeiro/compromissos",
   lancar: "/financeiro/operacoes",
   caixinha: "/financeiro/contas",
-  plano: "/financeiro/configuracoes/categorias",
+  plano: "/configuracoes/financeiro/categorias",
   ia: "/ia",
   relatorio: "/financeiro/relatorios",
-  acessos: "/acessos",
+  acessos: "/configuracoes/acessos",
   config: "/configuracoes",
   sitios: "/configuracoes/sitios",
-  cadastros: "/financeiro/configuracoes",
+  cadastros: "/configuracoes/financeiro",
   "pec-rebanho": "/pecuaria/rebanho",
+  "pec-sanidade": "/pecuaria/sanidade",
+  "pec-pesagem": "/pecuaria/pesagem-manejo",
+  "pec-nutricao": "/pecuaria/nutricao",
   estoque: "/estoque",
 };
 
@@ -54,9 +57,58 @@ const TAB_BY_PATH_LEGADO: Record<string, Tab> = {
 
 export const DEFAULT_TAB: Tab = "dashboard";
 
+const CADASTROS_PECUARIA: Record<string, string> = {
+  categorias: "rebanho/categorias", motivos: "rebanho/motivos", racas: "genetica/racas",
+  genitores: "genetica/genitores", "material-genetico": "genetica/material-genetico",
+};
+const CADASTROS_SANITARIOS: Record<string, string> = {
+  protocolos: "protocolos", doenca: "doencas", aplicacao: "tipos-aplicacao", exame: "tipos-exame",
+};
+
+/** Mantém links antigos e seus parâmetros, sem empilhar uma segunda entrada. */
+export function normalizarRotaInterface(caminho: string): string {
+  const url = new URL(caminho, "https://terrano.internal");
+  const path = url.pathname.replace(/\/$/, "").toLowerCase();
+  url.pathname = path || "/";
+  if (path === "/acessos") url.pathname = "/configuracoes/acessos";
+  if (path === "/financeiro/configuracoes/categorias" || path === "/categorias") url.pathname = "/configuracoes/financeiro/categorias";
+  if (path === "/financeiro/configuracoes") {
+    const aba = url.searchParams.get("aba");
+    url.pathname = `/configuracoes/financeiro${aba && ["contas", "parceiros", "produtos", "categorias", "centros"].includes(aba) ? `/${aba}` : ""}`;
+    url.searchParams.delete("aba");
+  }
+  if (path === "/pecuaria/rebanho/sanidade") url.pathname = "/pecuaria/sanidade";
+  if (path === "/pecuaria/rebanho/nutricao") url.pathname = "/pecuaria/nutricao";
+  if (path === "/pecuaria/rebanho/cadastros") {
+    const aba = url.searchParams.get("material") ? "material-genetico" : url.searchParams.get("aba") ?? "categorias";
+    const destino = aba === "sanidade"
+      ? `sanidade/${CADASTROS_SANITARIOS[url.searchParams.get("cadastroSanitario") ?? "protocolos"] ?? "protocolos"}`
+      : CADASTROS_PECUARIA[aba] ?? "rebanho/categorias";
+    url.pathname = `/configuracoes/pecuaria/${destino}`;
+    url.searchParams.delete("aba");
+    url.searchParams.delete("cadastroSanitario");
+  }
+  return `${url.pathname}${url.search}${url.hash}`;
+}
+
+export function normalizarLocalizacaoAtual(): void {
+  const atual = window.location.pathname + window.location.search + window.location.hash;
+  const destino = normalizarRotaInterface(atual);
+  if (atual !== destino) window.history.replaceState(window.history.state, "", destino);
+}
+
+export function isSubrotaConfiguracoes(tab: Tab, pathname: string): boolean {
+  return ["config", "cadastros", "plano", "sitios", "acessos"].includes(tab)
+    && /^\/configuracoes(?:\/|$)/.test(pathname) && pathToTab(pathname) === tab;
+}
+
+export function isSubrotaPecuaria(tab: Tab, pathname: string): boolean {
+  return ["pec-sanidade", "pec-pesagem", "pec-nutricao"].includes(tab) && pathToTab(pathname) === tab;
+}
+
 /** Atualiza a URL e notifica o roteador leve da aplicação. */
 export function navegarPara(pathname: string): void {
-  window.history.pushState(null, "", pathname);
+  window.history.pushState(null, "", normalizarRotaInterface(pathname));
   window.dispatchEvent(new PopStateEvent("popstate"));
 }
 
@@ -180,6 +232,15 @@ export function pathToTab(pathname: string): Tab | null {
 
   if (path === "/" || path === "") return DEFAULT_TAB;
   if (path === "/ia" && !ASSISTENTE_ATIVO) return DEFAULT_TAB;
+  if (path === "/acessos") return "acessos";
+  if (path === "/categorias" || path === "/financeiro/configuracoes/categorias") return "plano";
+  if (path === "/financeiro/configuracoes") return "cadastros";
+  if (path === "/pecuaria/rebanho/sanidade") return "pec-sanidade";
+  if (path === "/pecuaria/rebanho/nutricao") return "pec-nutricao";
+  if (path === "/pecuaria/rebanho/cadastros") return "config";
+  if (/^\/configuracoes\/pecuaria(?:\/|$)/.test(path)) return "config";
+  if (path === "/configuracoes/financeiro/categorias") return "plano";
+  if (/^\/configuracoes\/financeiro(?:\/(contas|parceiros|produtos|centros))?$/.test(path)) return "cadastros";
   if (parseProdutoEstoqueId(path) != null) return "estoque";
   if (parseContaFinanceiraId(path) != null) return "caixinha";
   if (parseOperacaoFinanceiraId(path) != null) return "lancar";

@@ -321,6 +321,13 @@ Sempre deixar claro:
 - Qual lote?
 - Qual período?
 
+Na rotina de campo, a navegação acompanha a ordem de trabalho: consultar o
+rebanho e emitir a relação; registrar o que voltou do campo em **Sanidade**,
+**Pesagem e manejo** ou **Nutrição**; manter classificações duráveis em
+**Configurações**. Produtos e receitas continuam com entrada própria em
+Estoque e Nutrição, pois são registros pontuais do trabalho, e também podem
+ser mantidos na central de Configurações.
+
 ---
 
 ## Acessibilidade

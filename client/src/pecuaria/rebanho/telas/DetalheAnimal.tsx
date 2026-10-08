@@ -29,7 +29,6 @@ import { ConfirmDialog } from "../../../components/ConfirmDialog";
 import { Loader } from "../../../components/Loading";
 import { Button, ErrorBox, hoje, Panel, Pill } from "../../../financeiro/financeiro-ui";
 import { navegarPara } from "../../../router";
-import { NavRebanho } from "./NavRebanho";
 import { PesoEGanho } from "../components/PesoEGanho";
 import { HistoricoBaixas } from "../components/HistoricoBaixas";
 import { AuditoriaAnimal } from "../components/AuditoriaAnimal";
@@ -58,7 +57,7 @@ function LinkLote({ id, nome }: { id: string; nome: string }) {
 
 function ResumoFicha({ icon: Icon, rotulo, valor, detalhe }: { icon: LucideIcon; rotulo: string; valor: string; detalhe: string }) {
   return <div className="flex min-w-0 items-start gap-3 border-b border-border p-5 lg:border-b-0">
-    <span aria-hidden="true" className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[#eef1e9] text-mast"><Icon size={17} /></span>
+    <span aria-hidden="true" className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-surface-2 text-mast"><Icon size={17} /></span>
     <div className="min-w-0">
       <dt className="text-[11px] font-semibold uppercase tracking-[.12em] text-ink-3">{rotulo}</dt>
       <dd className="mt-1 break-words font-serif text-xl leading-tight text-ink">{valor}</dd>
@@ -68,6 +67,8 @@ function ResumoFicha({ icon: Icon, rotulo, valor, detalhe }: { icon: LucideIcon;
 }
 
 export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string; onVoltar: () => void; podeLancar?: boolean }) {
+  const [secaoAtiva, setSecaoAtiva] = useState("resumo");
+  const [acoesAbertas, setAcoesAbertas] = useState(false);
   const [animal, setAnimal] = useState<AnimalFicha | null>(null);
   const [catalogos, setCatalogos] = useState<Catalogos | null>(null);
   const [categorias, setCategorias] = useState<CategoriaDTO[]>([]);
@@ -172,10 +173,10 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
 
   return <div className="shell-wide pagina-financeira">
     <button onClick={onVoltar} className="mb-5 inline-flex items-center gap-2 text-sm font-semibold text-ink-2 hover:text-ink"><ArrowLeft size={17} /> Voltar para animais</button>
-    <NavRebanho ativa="animais" />
+    <p className="caption mb-4 text-ink-3">Pecuária / Rebanho / Animais</p>
     <div className="mt-6"><ErrorBox erro={erro} /></div>
-    <Panel className="mt-6 overflow-hidden">
-      <div className="flex flex-wrap items-start justify-between gap-5 border-b border-border bg-[#f4f2e9] p-6">
+    <Panel className="mt-6 overflow-visible ficha-animal-cabecalho">
+      <div className="flex flex-wrap items-start justify-between gap-5 border-b border-border bg-surface p-6">
         <div className="min-w-0 flex-[1_1_280px]">
           <div className="flex flex-wrap items-center gap-2">
             <span className="eyebrow">{animal.brinco}</span>
@@ -184,22 +185,27 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
             {animal.aptidao && <Pill tone="brown">{rotuloAptidao(animal.aptidao)}{!ativo && " · na baixa"}</Pill>}
             {animal.papelReprodutivo && animal.papelReprodutivo !== "NENHUM" && <Pill tone="amber">{rotuloPapelReprodutivo(animal.papelReprodutivo)}{!ativo && " · na baixa"}</Pill>}
           </div>
-          <h1 className="mt-2 break-words font-serif text-[clamp(22px,5vw,30px)] leading-tight">{animal.nome || animal.brinco}</h1>
-          <p className="mt-2 break-words text-sm text-ink-3">{animal.sexo === "F" ? "Fêmea" : "Macho"} · {animal.origem === "NASCIDO" ? "nascido na propriedade" : "comprado"}</p>
+          <h1 className="h1 mt-2 break-words">{animal.brinco}{animal.nome && <> · <span>{animal.nome}</span></>}</h1>
+          <p className="mt-2 break-words text-sm text-ink-3">{animal.categoria?.nome ?? "Sem categoria"} · {animal.propriedade?.nome ?? "Sem sítio"} · {animal.lote?.nome ?? "Sem lote"}</p>
           {animal.categoriaOrigem === "MANUAL" && animal.categoriaCalculada?.id === animal.categoria?.id && <p className="mt-2 text-xs text-ink-3">O cálculo já concorda — pode voltar ao automático.</p>}
         </div>
         {podeLancar && <div className="flex max-w-full flex-wrap gap-2 lg:max-w-[560px] lg:justify-end">
           {ativo ? <>
-            <Button secondary onClick={() => setDefinindoFiliacao(true)}>Definir filiação</Button>
+            <Button onClick={() => setPesagemForm({ modo: "novo" })}>Registrar pesagem</Button>
             <Button secondary onClick={() => setMovimentando(true)}>Movimentar</Button>
-            <Button secondary onClick={() => setPesagemForm({ modo: "novo" })}>Registrar pesagem</Button>
-            <Button secondary onClick={() => setMudandoDestino(true)}>Mudar finalidade</Button>
-            <Button secondary onClick={() => setAlterandoCategoria(true)}>Alterar categoria</Button>
-            {animal.categoriaOrigem === "MANUAL" && <Button secondary onClick={() => { setErroAcao(null); setVoltandoAutomatico(true); }}>Voltar ao automático</Button>}
-            <Button secondary onClick={() => setEditandoDados(true)}>Editar dados</Button>
-            <Button secondary onClick={() => setEditandoComposicao(true)}>Editar composição</Button>
-            <Button danger onClick={() => setDandoBaixa(true)}>Dar baixa</Button>
-            <Button danger onClick={() => setExcluindoCadastro(true)}>Excluir cadastro</Button>
+            <div className="relative">
+              <button type="button" aria-expanded={acoesAbertas} aria-controls="acoes-secundarias-animal" onClick={() => setAcoesAbertas((abertas) => !abertas)} className="min-h-10 rounded-lg border border-border px-4 py-2 text-sm font-semibold hover:bg-surface-2">Mais ações</button>
+              {acoesAbertas && <div id="acoes-secundarias-animal" className="absolute right-0 z-20 mt-2 flex w-60 flex-col gap-2 rounded-lg border border-border bg-surface p-3 shadow-lg">
+                <Button secondary onClick={() => { setAcoesAbertas(false); setDefinindoFiliacao(true); }}>Definir filiação</Button>
+                <Button secondary onClick={() => { setAcoesAbertas(false); setMudandoDestino(true); }}>Mudar finalidade</Button>
+                <Button secondary onClick={() => { setAcoesAbertas(false); setAlterandoCategoria(true); }}>Alterar categoria</Button>
+                {animal.categoriaOrigem === "MANUAL" && <Button secondary onClick={() => { setAcoesAbertas(false); setErroAcao(null); setVoltandoAutomatico(true); }}>Voltar ao automático</Button>}
+                <Button secondary onClick={() => { setAcoesAbertas(false); setEditandoDados(true); }}>Editar dados</Button>
+                <Button secondary onClick={() => { setAcoesAbertas(false); setEditandoComposicao(true); }}>Editar composição</Button>
+                <Button danger onClick={() => { setAcoesAbertas(false); setDandoBaixa(true); }}>Dar baixa</Button>
+                <Button danger onClick={() => { setAcoesAbertas(false); setExcluindoCadastro(true); }}>Excluir cadastro</Button>
+              </div>}
+            </div>
           </> : <Button onClick={() => { setErroAcao(null); setEstornandoBaixa(true); }}>Estornar baixa</Button>}
         </div>}
       </div>
@@ -219,8 +225,11 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
         </div>
       </div>}
 
+    <nav aria-label="Seções da ficha" className="ficha-animal-nav mt-6 flex gap-2 overflow-x-auto border-b border-border">
+      {[["resumo", "Resumo"], ["identificacao-genetica", "Identificação e genética"], ["sanidade", "Sanidade"], ["peso-manejo", "Peso e manejo"], ["nutricao", "Nutrição"], ["historico", "Histórico"]].map(([ancora, rotulo]) => <a key={ancora} href={`#${ancora}`} aria-current={secaoAtiva === ancora ? "location" : undefined} onClick={() => setSecaoAtiva(ancora)} className={`shrink-0 border-b-2 px-3 py-3 text-sm ${secaoAtiva === ancora ? "border-mast font-semibold text-ink" : "border-transparent text-ink-3"}`}>{rotulo}</a>)}
+    </nav>
       {/* resumo de leitura rápida: o que se procura primeiro ao abrir a ficha */}
-      <dl className="grid grid-cols-2 divide-border lg:grid-cols-4 lg:divide-x">
+      <dl id="resumo" className="scroll-mt-6 grid grid-cols-2 divide-border lg:grid-cols-4 lg:divide-x">
         <ResumoFicha icon={CalendarDays} rotulo={animal.idadeNaBaixa ? "Idade na baixa" : "Idade"} valor={formatarIdade(animal.idadeMeses)} detalhe={`Nascimento ${formatarDataBR(animal.dataNascimento)}${animal.nascimentoEstimado ? " (estimado)" : ""}`} />
         <ResumoFicha icon={Scale} rotulo={ativo ? "Peso atual" : "Último peso"} valor={animal.peso.ultimo ? formatarKg(animal.peso.ultimo.kg) : "—"} detalhe={animal.peso.ultimo ? `${formatarDataBR(animal.peso.ultimo.data)}${animal.peso.gmdRecente != null ? ` · ${formatarGmd(animal.peso.gmdRecente)}` : ""}` : "Sem pesagem"} />
         <ResumoFicha icon={Tags} rotulo="Categoria" valor={animal.categoria?.nome ?? "Sem categoria"} detalhe={animal.categoriaOrigem === "MANUAL" ? "Definida manualmente" : animal.categoriaOrigem === "SEM_CATEGORIA" ? "Nenhuma regra se aplica" : "Calculada pelas regras"} />
@@ -228,7 +237,10 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
       </dl>
     </Panel>
 
-    <div className="mt-6 grid gap-6 lg:grid-cols-2">
+    <div className="ficha-animal-secoes mt-6 grid gap-6">
+      <section id="identificacao-genetica" className="scroll-mt-6 rounded-lg border border-border bg-surface p-5">
+        <h2 className="h2 mb-5">Identificação e genética</h2>
+        <div className="grid gap-5 lg:grid-cols-2">
       <CardFicha icon={IdCard} titulo="Identificação">
         <dl className="grid gap-4 sm:grid-cols-2">
           <DadoFicha icon={Nfc} rotulo="Brinco eletrônico">{animal.brincoEletronico ?? "—"}</DadoFicha>
@@ -265,6 +277,7 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
       <CardFicha
         icon={Dna}
         titulo="Composição racial"
+        className="lg:col-span-2"
         acao={podeLancar && ativo && (animal.filiacao.mae || animal.filiacao.pai) ? <button type="button" disabled={calculandoSugestao} onClick={() => void calcularComposicaoPelosGenitores()} className="text-xs font-semibold text-green-800 disabled:text-ink-3">{calculandoSugestao ? "Calculando…" : "Calcular pelos genitores"}</button> : undefined}
       >
         {composicaoOrdenada.length ? <>
@@ -276,6 +289,28 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
         </> : <p className="text-sm text-ink-3">Sem composição racial informada.</p>}
       </CardFicha>
 
+        </div>
+      </section>
+      <section id="sanidade" className="scroll-mt-6"><h2 className="h2 mb-4">Sanidade</h2>
+      <SanidadeAnimal animalId={animal.id} propriedadeId={localizacaoAtual?.propriedade?.id ?? null} podeLancar={podeLancar} recarregarToken={refreshToken} onMudou={() => { void carregar(); }} />
+      </section>
+      <section id="peso-manejo" className="scroll-mt-6"><h2 className="h2 mb-4">Peso e manejo</h2><div className="grid gap-5 lg:grid-cols-2">
+      <PesoEGanho
+        animal={animal}
+        periodo={periodoGmd}
+        onPeriodoChange={setPeriodoGmd}
+        podeLancar={podeLancar && ativo}
+        onEditarPesagem={(pesagem) => setPesagemForm({ modo: "editar", pesagem })}
+        onExcluirPesagem={(pesagem) => { setErroAcao(null); setExcluindoPesagem(pesagem); }}
+      />
+
+      <ManejoAnimal animalId={animal.id} propriedadeId={localizacaoAtual?.propriedade?.id ?? null} localizacoes={animal.historicoLocalizacoes} baixaData={animal.baixa?.data ?? null} podeLancar={podeLancar} onSalvo={() => { void carregar(); }} />
+      </div></section>
+      <section id="nutricao" className="scroll-mt-6"><h2 className="h2 mb-4">Nutrição</h2>
+      <NutricaoAnimal animalId={animal.id} recarregarToken={refreshToken} />
+
+      </section>
+      <section id="historico" className="scroll-mt-6"><h2 className="h2 mb-4">Histórico</h2><div className="grid gap-5 lg:grid-cols-2">
       <CardFicha icon={MapPin} titulo="Localização" acao={podeLancar && ativo && animal.historicoLocalizacoes.length >= 2 ? <button className="text-xs font-semibold text-green-800" onClick={() => { setErroAcao(null); setDesfazendoLocalizacao(true); }}>Desfazer última movimentação</button> : undefined}>
         <DestaqueFicha>{localizacaoAtual ? <><strong>{localizacaoAtual.propriedade?.nome ?? "Sem sítio"}{localizacaoAtual.lote ? <> · <LinkLote id={localizacaoAtual.lote.id} nome={localizacaoAtual.lote.nome} /></> : ""}</strong> <span className="text-ink-3">desde {formatarDataBR(localizacaoAtual.desde)}</span></> : "Sem localização registrada."}</DestaqueFicha>
         {animal.historicoLocalizacoes.length > 0 && <div className="mt-4 overflow-x-auto"><table className="w-full text-left text-xs"><thead className="text-ink-3"><tr><th className="py-1 pr-3 font-semibold">Sítio</th><th className="py-1 pr-3 font-semibold">Lote</th><th className="py-1 pr-3 font-semibold">Desde</th><th className="py-1 pr-3 font-semibold">Até</th><th className="py-1 pr-3 font-semibold">Motivo</th></tr></thead><tbody className="divide-y divide-border">{animal.historicoLocalizacoes.map((loc) => <tr key={loc.id}><td className="py-1.5 pr-3">{loc.propriedade?.nome ?? "—"}</td><td className="py-1.5 pr-3">{loc.lote ? <LinkLote id={loc.lote.id} nome={loc.lote.nome} /> : "—"}</td><td className="py-1.5 pr-3">{formatarDataBR(loc.desde)}</td><td className="py-1.5 pr-3">{loc.ate ? formatarDataBR(loc.ate) : "—"}</td><td className="py-1.5 pr-3 break-words">{loc.motivo ?? "—"}</td></tr>)}</tbody></table></div>}
@@ -302,21 +337,7 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
         </>}
       </CardFicha>
 
-      <PesoEGanho
-        animal={animal}
-        periodo={periodoGmd}
-        onPeriodoChange={setPeriodoGmd}
-        podeLancar={podeLancar && ativo}
-        onEditarPesagem={(pesagem) => setPesagemForm({ modo: "editar", pesagem })}
-        onExcluirPesagem={(pesagem) => { setErroAcao(null); setExcluindoPesagem(pesagem); }}
-      />
-
       <HistoricoBaixas historicoBaixas={animal.historicoBaixas} />
-
-      <SanidadeAnimal animalId={animal.id} propriedadeId={localizacaoAtual?.propriedade?.id ?? null} podeLancar={podeLancar} recarregarToken={refreshToken} onMudou={() => { void carregar(); }} />
-      <ManejoAnimal animalId={animal.id} propriedadeId={localizacaoAtual?.propriedade?.id ?? null} localizacoes={animal.historicoLocalizacoes} baixaData={animal.baixa?.data ?? null} podeLancar={podeLancar} onSalvo={() => { void carregar(); }} />
-      <NutricaoAnimal animalId={animal.id} recarregarToken={refreshToken} />
-
       <CardFicha icon={ArrowLeftRight} titulo="Movimentações" className="lg:col-span-2">
         <div className="-m-5">
           <HistoricoMovimentacoes
@@ -333,6 +354,7 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
       <CardFicha icon={History} titulo="Auditoria" className="lg:col-span-2">
         <AuditoriaAnimal id={animal.id} recarregarToken={refreshToken} />
       </CardFicha>
+      </div></section>
     </div>
 
     {editandoDados && <FormDadosAnimal animal={animal} onFechar={() => setEditandoDados(false)} onSalvo={async (atualizado) => { setAnimal(atualizado); tocar(); setEditandoDados(false); }} />}

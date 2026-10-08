@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { UsuarioSessao } from "./lib/auth";
-import { destinoDepoisDoLogin, interpretarRotaAuth, paginaInicialAutorizada, podeAcessarTab, returnToInterna, urlSigninPara } from "./navegacaoAuth";
+import { destinoDepoisDoLogin, interpretarRotaAuth, paginaInicialAutorizada, podeAcessarCaminho, podeAcessarTab, returnToInterna, urlSigninPara } from "./navegacaoAuth";
 
 const usuarioPecuaria: UsuarioSessao = {
   id: 20,
@@ -67,6 +67,11 @@ describe("returnTo", () => {
     expect(podeAcessarTab({ ...usuarioPecuaria, flags: ["gerenciarAcessos"] }, "sitios")).toBe(true);
     expect(podeAcessarTab({ ...usuarioPecuaria, dono: true }, "sitios")).toBe(true);
     expect(destinoDepoisDoLogin("/configuracoes/sitios", usuarioPecuaria)).toBe("/pecuaria/rebanho");
+  });
+
+  it("permite os cadastros de pecuária só a quem pode acessar a área", () => {
+    expect(podeAcessarCaminho(usuarioPecuaria, "/configuracoes/pecuaria/sanidade/protocolos")).toBe(true);
+    expect(podeAcessarCaminho(usuarioFinanceiro, "/configuracoes/pecuaria/sanidade/protocolos")).toBe(false);
   });
 });
 

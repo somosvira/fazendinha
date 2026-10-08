@@ -10,9 +10,6 @@ const SECOES: { valor: SecaoRebanho; rotulo: string; href: string }[] = [
   { valor: "visao-geral", rotulo: "Visão geral", href: "/pecuaria/rebanho" },
   { valor: "animais", rotulo: "Animais", href: "/pecuaria/rebanho/animais" },
   { valor: "lotes", rotulo: "Lotes", href: "/pecuaria/rebanho/lotes" },
-  { valor: "sanidade", rotulo: "Sanidade", href: "/pecuaria/rebanho/sanidade" },
-  { valor: "nutricao", rotulo: "Nutrição", href: "/pecuaria/rebanho/nutricao" },
-  { valor: "cadastros", rotulo: "Cadastros", href: "/pecuaria/rebanho/cadastros" },
 ];
 
 export function NavRebanho({ ativa }: { ativa: SecaoRebanho }) {

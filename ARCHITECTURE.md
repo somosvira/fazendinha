@@ -93,6 +93,14 @@ ESM em **todos os pacotes** (`"type": "module"`). **Não há** `react-router`, `
 
 A composição atual contém Financeiro, Estoque único, Pecuária V1–V3, Contas/Acessos, Propriedade e infraestrutura do assistente suspenso. `/api/plantio/*`, `/api/cultivo/*` e `/api/ponto/*` não têm roteadores; o estoque aceita somente Financeiro/Pecuária. A Pecuária conserva genética, sanidade, peso, nutrição e ciclos de protocolos com participantes, tarefas e snapshots auditados de desvios. A migration `20261006180000_rodadas_protocolos_desvios` é aditiva e convive com a retirada das tabelas exclusivamente agrícolas/ponto. Os diagramas anteriores abaixo ficam como referência histórica, não como catálogo de módulos disponíveis.
 
+Na interface, as rotas canônicas separam os eixos operacionais da Pecuária em
+`/pecuaria/rebanho`, `/pecuaria/sanidade`, `/pecuaria/pesagem-manejo` e
+`/pecuaria/nutricao`. A central `/configuracoes` reúne sítios, acessos e
+cadastros de Financeiro/Pecuária; os caminhos antigos são normalizados no
+cliente antes de o gate de permissões validar o destino. Essa mudança só
+reorganiza a apresentação e não altera schema, APIs, escopo por sítio ou
+auditoria.
+
 A modelagem segue uma divisão em **contextos de domínio**. Cada contexto tem seu próprio conjunto de tipos, regras e fluxos. Cruzar contexto só por contrato explícito (DTOs e IDs).
 
 ```mermaid

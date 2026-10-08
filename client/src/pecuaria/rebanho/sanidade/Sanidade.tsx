@@ -2,9 +2,6 @@ import { useEffect, useState } from "react";
 import {
   Calendar, Eye, Check, Ban,
   ClipboardList,
-  FlaskConical,
-  Shield,
-  Syringe,
 } from "lucide-react";
 import {
   Button,
@@ -23,7 +20,7 @@ import { DatePicker } from "../../../components/DatePicker";
 import { ConfirmacaoCiencia } from "../../../components/ConfirmacaoCiencia";
 import { getUsuario } from "../../../lib/auth";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
-import { NavRebanho } from "../telas/NavRebanho";
+import "./sanidade.css";
 import { Paginacao, SubAbas } from "../ui";
 import { buscarFichaAnimal, listarAnimais, listarLotes } from "../api";
 import type { AnimalResumo, Lote } from "../types";
@@ -462,7 +459,7 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
   };
   const aplicacaoSelecionada = aplicacoes.find((a) => a.id === aplicacaoId);
   const linkFato = (id: string, fatoId?: string) =>
-    `/pecuaria/rebanho/sanidade?aba=${aba}&animalId=${encodeURIComponent(id)}${fatoId ? `&aplicacaoId=${encodeURIComponent(fatoId)}` : ""}`;
+    `/pecuaria/sanidade?aba=${aba}&animalId=${encodeURIComponent(id)}${fatoId ? `&aplicacaoId=${encodeURIComponent(fatoId)}` : ""}`;
   const abrirDetalhe = (tipo: string, id: string, propriedadeId?: number | null) => {
     const params = new URLSearchParams(window.location.search);
     params.set("detalheTipo", tipo); params.set("detalheId", id);
@@ -604,7 +601,7 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
     }
   }
   return (
-    <PaginaFinanceira>
+    <PaginaFinanceira><div className="sanidade-pagina">
       {executandoEtapa && <ExecutarEtapa tarefas={executandoEtapa} onFechar={() => setExecutandoEtapa(null)} onSalvo={() => { setExecutandoEtapa(null); setRevisao((v) => v + 1); }} />}
       {rateando && !carregandoServicos && !erroServicos && (
         <RateioServico
@@ -630,10 +627,28 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
       <PageHeader
         eyebrow="Pecuária"
         titulo="Sanidade"
-        descricao="Agenda, ocorrências, aplicações, exames e carências dos animais."
-        acao={podeGerenciarServicos ? <Button secondary onClick={() => setRateando(true)}>Gerenciar procedimentos</Button> : undefined}
+        descricao="Agenda e acompanhamento sanitário do rebanho."
+        acao={<a className="sanidade-link" href="/configuracoes/pecuaria/sanidade/protocolos">Gerenciar protocolos →</a>}
       />
-      <NavRebanho ativa="sanidade" />
+      <div className="sanidade-abas">
+      <SubAbas
+        ativa={aba}
+        onSelecionar={(v) => {
+          setAba(v);
+          setPagina(1);
+          setSituacao("");
+          if (v !== "aplicacoes") setAplicacaoId("");
+        }}
+        abas={[
+          { valor: "agenda", rotulo: "Agenda" },
+          { valor: "ocorrencias", rotulo: "Ocorrências" },
+          { valor: "aplicacoes", rotulo: "Aplicações" },
+          { valor: "exames", rotulo: "Exames" },
+          { valor: "carencias", rotulo: "Carências" },
+        ]}
+      />
+      </div>
+      {podeGerenciarServicos && <div className="mt-4 flex justify-end"><Button secondary onClick={() => setRateando(true)}>Gerenciar procedimentos</Button></div>}
       <ErrorBox erro={erro} />
       {aplicacaoSalvaId && <p role="status" className="mt-3">Aplicação salva. A lista segue os filtros atuais. <button type="button" className="underline" onClick={() => abrirDetalhe("aplicacao", aplicacaoSalvaId, aplicacaoSalvaPropriedadeId)}>Ver aplicação salva</button></p>}
       {erro && (
@@ -759,22 +774,6 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
           </select>
         </label>
       </div>
-      <SubAbas
-        ativa={aba}
-        onSelecionar={(v) => {
-          setAba(v);
-          setPagina(1);
-          setSituacao("");
-          if (v !== "aplicacoes") setAplicacaoId("");
-        }}
-        abas={[
-          { valor: "agenda", rotulo: "Agenda", icon: Calendar },
-          { valor: "ocorrencias", rotulo: "Ocorrências", icon: ClipboardList },
-          { valor: "aplicacoes", rotulo: "Aplicações", icon: Syringe },
-          { valor: "exames", rotulo: "Exames", icon: FlaskConical },
-          { valor: "carencias", rotulo: "Carências", icon: Shield },
-        ]}
-      />
       {erroAba && (
         <div className="mt-4">
           <ErrorBox erro={erroAba} />
@@ -948,7 +947,7 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
                   >
                     <a
                       className="underline"
-                      href={`/pecuaria/rebanho/sanidade?aba=carencias&animalId=${c.animal.id}`}
+                      href={`/pecuaria/sanidade?aba=carencias&animalId=${c.animal.id}`}
                     >
                       {nomeAnimalSanitario(c.animal)}
                     </a>
@@ -1260,6 +1259,6 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
         </PainelCadastro>
       )}
       {novoFato === "protocolo" ? <FormRodada animalInicial={animalId || undefined} onFechar={() => setNovoFato(null)} onSalvo={(id) => { setNovoFato(null); setVisaoAgenda("rodadas"); setRodadaId(id); setRevisao((v) => v + 1); }} /> : novoFato && <FormFatoSanitario tipo={novoFato} animalInicial={animalDaAcao?.animalId ?? animalId} fixo={!!tarefaExameId} cadastroInicial={cadastroId} tarefaId={tarefaExameId} onFechar={() => setNovoFato(null)} onSalvo={() => { setNovoFato(null); setRevisao((v) => v + 1); }} />}
-    </PaginaFinanceira>
+    </div></PaginaFinanceira>
   );
 }

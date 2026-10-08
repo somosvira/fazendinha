@@ -65,6 +65,8 @@ async function montar(animal: AnimalFicha) {
   vi.mocked(buscarFichaAnimal).mockResolvedValue(animal);
   render(<DetalheAnimal id={animal.id} onVoltar={vi.fn()} />, { wrapper: Wrapper });
   await screen.findByText(animal.nome ?? animal.brinco);
+  const menu = screen.queryByText("Mais ações");
+  if (menu) fireEvent.click(menu);
 }
 
 describe("DetalheAnimal — ações conforme situação", () => {
@@ -390,5 +392,25 @@ describe("DetalheAnimal — filiação", () => {
     await montar({ ...base, filhosCount: 1 });
     await waitFor(() => expect(listarFilhosAnimal).toHaveBeenCalledWith("animal-1"));
     expect(await screen.findByRole("button", { name: "500" })).toBeTruthy();
+  });
+});
+
+
+describe("Ficha contínua", () => {
+  it("mantém todas as seções montadas e agrupa ações secundárias", async () => {
+    vi.mocked(buscarFichaAnimal).mockResolvedValue(base);
+    render(<DetalheAnimal id={base.id} onVoltar={vi.fn()} />, { wrapper: Wrapper });
+    await screen.findByRole("heading", { name: "1234 · Mimosa" });
+    const nav = screen.getByRole("navigation", { name: "Seções da ficha" });
+    for (const id of ["resumo", "identificacao-genetica", "sanidade", "peso-manejo", "nutricao", "historico"]) {
+      expect(document.getElementById(id)).toBeTruthy();
+      expect(nav.querySelector(`a[href="#${id}"]`)).toBeTruthy();
+    }
+    expect(screen.queryByRole("button", { name: "Editar dados" })).toBeNull();
+    fireEvent.click(screen.getByText("Mais ações"));
+    expect(screen.getByRole("button", { name: "Editar dados" })).toBeTruthy();
+    fireEvent.click(within(nav).getByRole("link", { name: "Peso e manejo" }));
+    expect(within(nav).getByRole("link", { name: "Peso e manejo" }).getAttribute("aria-current")).toBe("location");
+    expect(screen.getByRole("button", { name: "Registrar pesagem" })).toBeTruthy();
   });
 });

@@ -16,6 +16,7 @@ import {
   parseContaFinanceiraId,
   parseProdutoEstoqueId,
   parseRelatorioFinanceiroId,
+  normalizarRotaInterface,
   pathToTab,
   tabToPath,
 } from "./router";
@@ -81,6 +82,28 @@ describe("roteamento da pecuária", () => {
     expect(tabToPath("pec-rebanho")).toBe("/pecuaria/rebanho");
     expect(pathToTab("/pecuaria/rebanho")).toBe("pec-rebanho");
     expect(pathToTab("/pecuaria")).toBe("pec-rebanho");
+  });
+
+  it("separa os eixos de operação da pecuária e preserva links antigos", () => {
+    expect(tabToPath("pec-sanidade")).toBe("/pecuaria/sanidade");
+    expect(tabToPath("pec-pesagem")).toBe("/pecuaria/pesagem-manejo");
+    expect(tabToPath("pec-nutricao")).toBe("/pecuaria/nutricao");
+    expect(pathToTab("/pecuaria/sanidade")).toBe("pec-sanidade");
+    expect(pathToTab("/pecuaria/pesagem-manejo")).toBe("pec-pesagem");
+    expect(pathToTab("/pecuaria/nutricao")).toBe("pec-nutricao");
+    expect(normalizarRotaInterface("/pecuaria/rebanho/sanidade?aba=agenda")).toBe("/pecuaria/sanidade?aba=agenda");
+    expect(normalizarRotaInterface("/pecuaria/rebanho/nutricao?aba=receitas")).toBe("/pecuaria/nutricao?aba=receitas");
+    expect(normalizarRotaInterface("/pecuaria/sanidade/")).toBe("/pecuaria/sanidade");
+  });
+
+  it("centraliza os cadastros em Configurações sem perder os endereços antigos", () => {
+    expect(tabToPath("cadastros")).toBe("/configuracoes/financeiro");
+    expect(tabToPath("plano")).toBe("/configuracoes/financeiro/categorias");
+    expect(pathToTab("/configuracoes/financeiro/produtos")).toBe("cadastros");
+    expect(pathToTab("/configuracoes/financeiro/categorias")).toBe("plano");
+    expect(pathToTab("/configuracoes/pecuaria/sanidade/protocolos")).toBe("config");
+    expect(normalizarRotaInterface("/financeiro/configuracoes?aba=produtos")).toBe("/configuracoes/financeiro/produtos");
+    expect(normalizarRotaInterface("/pecuaria/rebanho/cadastros?aba=sanidade&cadastroSanitario=protocolos")).toBe("/configuracoes/pecuaria/sanidade/protocolos");
   });
 
   it("redireciona os endereços do módulo legado (rebanho/corte) para o rebanho v1", () => {

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Building2, Package, Plus, Tags, Target, Users } from "lucide-react";
+import { Building2, Package, Plus, SlidersHorizontal, Tags, Target, Users } from "lucide-react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { atualizarCategoria, atualizarCentroCusto, atualizarConta, atualizarParceiro, atualizarProduto, obterConfiguracoesFinanceiras, type Categoria, type CentroCusto, type Conta, type ConfiguracoesFinanceiras as Config, type Parceiro, type Produto } from "./novo-api";
 import { AcoesLinha, brl, Button, type ColunaTabela, dataBR, ErrorBox, PageHeader, PaginaFinanceira, PaginaSemDados, Panel, Pill, SelectFiltro, TabelaFinanceira } from "./financeiro-ui";
@@ -10,8 +10,9 @@ import { formatarDocumento } from "./lib/validacao";
 import { FormCategoria, FormCentroCusto } from "./FormCadastrosGerenciais";
 import { rotuloUnidade } from "../lib/unidades";
 import { FormProduto } from "./FormProduto";
+import { navegarPara } from "../router";
 
-type Aba = "contas" | "parceiros" | "produtos" | "categorias" | "centros";
+export type AbaFinanceira = "contas" | "parceiros" | "produtos" | "categorias" | "centros";
 type EntidadePainel = "conta" | "parceiro" | "produto" | "categoria" | "centro";
 type Painel = { entidade: EntidadePainel; modo: "novo" } | { entidade: EntidadePainel; modo: "editar"; id: string } | null;
 type Confirmacao =
@@ -49,7 +50,7 @@ const colunasProdutos = (editar: (p: Produto) => void, alternar: (p: Produto) =>
   { chave: "centrosCusto", titulo: "Centros de custo", larguraMinima: 150, celula: (p) => <span className="break-words text-ink-3">{p.centrosCusto?.map((c) => `${c.nome}${c.ativo ? "" : " (inativo)"}`).join(" · ") || "—"}</span> },
   { chave: "fornecedores", titulo: "Fornecedores", larguraMinima: 150, celula: (p) => <span className="break-words text-ink-3">{p.fornecedores?.map((f) => `${f.nome}${f.ativo ? "" : " (inativo)"}`).join(" · ") || "Sem fornecedor"}</span> },
   { chave: "situacao", titulo: "Situação", alinhamento: "direita", larguraMinima: 100, celula: (p) => <Pill tone={p.ativo !== false ? "green" : "neutral"}>{p.ativo !== false ? "Ativo" : "Inativo"}</Pill> },
-  { chave: "acoes", titulo: "Ações", alinhamento: "direita", larguraMinima: 150, acoes: true, celula: (p) => <div className="flex items-center justify-end gap-2"><a href={`/estoque/produtos/${p.id}`} onClick={(e) => e.stopPropagation()} className="whitespace-nowrap text-sm underline">Ver no estoque</a>{podeEditar && <AcoesLinha nome={p.nome} ativo={p.ativo !== false} onEditar={() => editar(p)} onAlternar={() => alternar(p)} />}</div> },
+  { chave: "acoes", titulo: "Ações", alinhamento: "direita", larguraMinima: 150, acoes: true, celula: (p) => <div className="flex items-center justify-end gap-2"><a href={`/estoque/produtos/${p.id}`} onClick={(e) => { e.stopPropagation(); if (e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey) { e.preventDefault(); navegarPara(`/estoque/produtos/${p.id}`); } }} className="whitespace-nowrap text-sm underline">Ver no estoque</a>{podeEditar && <AcoesLinha nome={p.nome} ativo={p.ativo !== false} onEditar={() => editar(p)} onAlternar={() => alternar(p)} />}</div> },
 ];
 
 const colunasCategorias = (editar: (c: Categoria) => void, alternar: (c: Categoria) => void): ColunaTabela<Categoria>[] => [
@@ -78,18 +79,19 @@ function mensagemDesativar(confirmacao: NonNullable<Confirmacao>) {
     : `${nome} deixa de aparecer em novas operações. Nenhum registro está ligado a este cadastro.`;
 }
 
-export function ConfiguracoesFinanceiras({ abaInicial = "contas", podeEditar = true }: { abaInicial?: Aba; podeEditar?: boolean }) {
+export function ConfiguracoesFinanceiras({ abaInicial = "contas", podeEditar = true, embutido = false, onSelecionarAba }: { abaInicial?: AbaFinanceira; podeEditar?: boolean; embutido?: boolean; onSelecionarAba?: (aba: AbaFinanceira) => void }) {
   const [config, setConfig] = useState<Config | null>(null);
   const [erro, setErro] = useState<string | null>(null);
-  const [aba, setAba] = useState<Aba>(() => { const alvo = new URLSearchParams(window.location.search).get("aba"); return alvo === "parceiros" || alvo === "produtos" ? alvo : abaInicial; });
+  const [aba, setAba] = useState<AbaFinanceira>(() => { const alvo = new URLSearchParams(window.location.search).get("aba"); return alvo === "parceiros" || alvo === "produtos" ? alvo : abaInicial; });
   const [painel, setPainel] = useState<Painel>(null);
   const [confirmando, setConfirmando] = useState<Confirmacao>(null);
   const [processando, setProcessando] = useState(false);
   const [buscaProduto, setBuscaProduto] = useState("");
+  const [maisFiltros, setMaisFiltros] = useState(false);
   const [filtroFornecedor, setFiltroFornecedor] = useState("");
   const [filtroCentro, setFiltroCentro] = useState("");
   const [filtroUso, setFiltroUso] = useState("");
-  const [filtroSituacao, setFiltroSituacao] = useState("TODOS");
+  const [filtroSituacao, setFiltroSituacao] = useState("ATIVOS");
   const emCurso = useRef(false);
   const executar = async (acao: () => Promise<unknown>) => {
     if (emCurso.current) return;
@@ -101,9 +103,11 @@ export function ConfiguracoesFinanceiras({ abaInicial = "contas", podeEditar = t
   const carregar = useCallback(() => obterConfiguracoesFinanceiras().then(setConfig).catch((e) => setErro(e.message)), []);
   useEffect(() => { carregar(); }, [carregar]);
 
+  useEffect(() => { setAba(abaInicial); setPainel(null); setConfirmando(null); }, [abaInicial]);
+
   if (!config) return <PaginaSemDados titulo="Configurações financeiras" descricao="Cadastros que sustentam as operações. Desativar preserva todo o histórico e permite reativação." label="Carregando configurações financeiras" erro={erro} />;
 
-  const trocarAba = (nova: Aba) => { setAba(nova); setPainel(null); setConfirmando(null); };
+  const trocarAba = (nova: AbaFinanceira) => { setAba(nova); onSelecionarAba?.(nova); setPainel(null); setConfirmando(null); };
   const abrirNovo = (entidade: EntidadePainel) => { if (podeEditar && !emCurso.current) setPainel({ entidade, modo: "novo" }); };
   const editar = (entidade: EntidadePainel, item: { id: string }) => { if ((podeEditar || entidade === "produto") && !emCurso.current) setPainel({ entidade, modo: "editar", id: item.id }); };
   const alternarConta = async (c: Conta) => {
@@ -167,15 +171,18 @@ export function ConfiguracoesFinanceiras({ abaInicial = "contas", podeEditar = t
     ? <Button onClick={() => abrirNovo("categoria")}><Plus size={16} /> Nova categoria</Button>
     : <Button onClick={() => abrirNovo(aba === "contas" ? "conta" : aba === "parceiros" ? "parceiro" : aba === "produtos" ? "produto" : "centro")}><Plus size={16} /> {aba === "contas" ? "Nova conta" : aba === "parceiros" ? "Novo parceiro" : aba === "produtos" ? "Novo produto" : "Novo centro de custo"}</Button>;
 
-  return <PaginaFinanceira>
-    <PageHeader titulo="Configurações financeiras" descricao="Cadastros que sustentam as operações. Desativar preserva todo o histórico e permite reativação." acao={podeEditar ? acao : undefined} />
+  const Moldura = embutido ? "section" : PaginaFinanceira;
+  const titulo = { contas: "Contas financeiras", parceiros: "Clientes e fornecedores", produtos: "Produtos", categorias: "Categorias", centros: "Centros de custo" }[aba];
+  return <Moldura>
+    {!embutido && <PageHeader titulo="Configurações financeiras" descricao="Cadastros que sustentam as operações. Desativar preserva todo o histórico e permite reativação." acao={podeEditar ? acao : undefined} />}
     <ErrorBox erro={erro} />
     {!podeEditar && <p className="mt-4 rounded-lg border border-border bg-[#faf9f4] px-4 py-3 text-sm text-ink-3">Você tem acesso de consulta a estes cadastros.</p>}
-    <div role="tablist" aria-label="Cadastros financeiros" className="mt-6 flex max-w-full gap-1 overflow-x-auto rounded-lg border border-border bg-white p-1 [scrollbar-width:none] sm:inline-flex">{([["contas", "Contas financeiras", Building2], ["parceiros", "Clientes e fornecedores", Users], ["produtos", "Produtos", Package], ["categorias", "Categorias", Tags], ["centros", "Centros de custo", Target]] as const).map(([k, label, Icon]) => <button key={k} type="button" role="tab" aria-selected={aba === k} onClick={() => trocarAba(k)} className={`flex shrink-0 items-center gap-2 whitespace-nowrap rounded-md px-3 py-2 text-sm font-semibold transition-colors ${aba === k ? "bg-mast text-white" : "text-ink-3 hover:bg-surface-2 hover:text-ink"}`}><Icon size={16} className="shrink-0" />{label}</button>)}</div>
+    <div role="tablist" aria-label="Cadastros financeiros" className="mb-7 flex max-w-full gap-1 overflow-x-auto border-b border-border [scrollbar-width:none]">{([["contas", "Contas financeiras", Building2], ["parceiros", "Clientes e fornecedores", Users], ["produtos", "Produtos", Package], ["categorias", "Categorias", Tags], ["centros", "Centros de custo", Target]] as const).map(([k, label, Icon]) => <button key={k} type="button" role="tab" aria-selected={aba === k} onClick={() => trocarAba(k)} className={`flex shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-4 py-4 text-sm transition-colors ${aba === k ? "border-mast font-semibold text-mast" : "border-transparent text-ink-3 hover:text-ink"}`}>{!embutido && <Icon size={16} className="shrink-0" />}{label}</button>)}</div>
+    {embutido && <PageHeader eyebrow="" titulo={titulo} descricao={aba === "produtos" ? "Produtos compartilhados por compras, estoque e pecuária." : "Desativar preserva todo o histórico e permite reativação."} acao={podeEditar ? acao : undefined} />}
     <fieldset disabled={processando || (!podeEditar && aba !== "produtos")} aria-busy={processando} className="min-w-0">
       {aba === "contas" && <Panel className="mt-5 overflow-hidden"><TabelaFinanceira rotulo="Contas financeiras" itens={config.contas} colunas={colunasContas((c) => editar("conta", c), alternarConta)} chaveDe={(c) => c.id} onAbrir={(c) => editar("conta", c)} classeLinha={(c) => !c.ativo ? "opacity-55" : ""} /></Panel>}
       {aba === "parceiros" && <Panel className="mt-5 overflow-hidden"><TabelaFinanceira rotulo="Clientes e fornecedores" itens={config.parceiros} colunas={colunasParceiros((p) => editar("parceiro", p), alternarParceiro)} chaveDe={(p) => p.id} onAbrir={(p) => editar("parceiro", p)} classeLinha={(p) => !p.ativo ? "opacity-55" : ""} /></Panel>}
-      {aba === "produtos" && <><div className="mt-5 flex flex-wrap gap-3"><input aria-label="Buscar produto" value={buscaProduto} onChange={(e) => setBuscaProduto(e.target.value)} placeholder="Buscar por nome…" className="h-10 min-w-[200px] flex-1 rounded-lg border border-border bg-white px-3 text-sm" /><SelectFiltro rotulo="Filtrar por fornecedor" valor={filtroFornecedor} onChange={setFiltroFornecedor} opcoes={[{ valor: "", texto: "Todos os fornecedores" }, { valor: "SEM", texto: "Sem fornecedor" }, ...config.parceiros.filter((p) => papeisDoParceiro(p).includes("FORNECEDOR")).map((p) => ({ valor: String(p.id), texto: p.nome }))]} /><SelectFiltro rotulo="Filtrar por centro de custo" valor={filtroCentro} onChange={setFiltroCentro} opcoes={[{ valor: "", texto: "Todos os centros" }, { valor: "SEM", texto: "Sem centro" }, ...config.centrosCusto.filter((c) => c.ativo).map((c) => ({ valor: String(c.id), texto: c.nome }))]} /><SelectFiltro rotulo="Filtrar por uso" valor={filtroUso} onChange={setFiltroUso} opcoes={[{ valor: "", texto: "Todos" }, { valor: "usoGenetico", texto: "Uso genético" }, { valor: "usoSanitario", texto: "Uso sanitário" }, { valor: "usoNutricional", texto: "Uso nutricional" }, { valor: "SEM", texto: "Sem uso específico" }]} /><SelectFiltro rotulo="Filtrar por situação" valor={filtroSituacao} onChange={setFiltroSituacao} opcoes={[{ valor: "TODOS", texto: "Ativos e inativos" }, { valor: "ATIVOS", texto: "Ativos" }, { valor: "INATIVOS", texto: "Inativos" }]} /></div><Panel className="mt-3 overflow-hidden"><TabelaFinanceira rotulo="Produtos" itens={produtosFiltrados} colunas={colunasProdutos((p) => editar("produto", p), alternarProduto, podeEditar)} chaveDe={(p) => p.id} onAbrir={(p) => editar("produto", p)} classeLinha={(p) => p.ativo === false ? "opacity-55" : ""} /></Panel></>}
+      {aba === "produtos" && <><div className="mt-5 flex flex-wrap gap-3"><input type="search" aria-label="Buscar produto" value={buscaProduto} onChange={(e) => setBuscaProduto(e.target.value)} placeholder="Buscar por nome…" className="h-10 min-w-[200px] flex-1 rounded-lg border border-border bg-white px-3 text-sm" /><SelectFiltro rotulo="Filtrar por uso" valor={filtroUso} onChange={setFiltroUso} opcoes={[{ valor: "", texto: "Todos" }, { valor: "usoGenetico", texto: "Uso genético" }, { valor: "usoSanitario", texto: "Uso sanitário" }, { valor: "usoNutricional", texto: "Uso nutricional" }, { valor: "SEM", texto: "Sem uso específico" }]} /><SelectFiltro rotulo="Filtrar por situação" valor={filtroSituacao} onChange={setFiltroSituacao} opcoes={[{ valor: "TODOS", texto: "Ativos e inativos" }, { valor: "ATIVOS", texto: "Ativos" }, { valor: "INATIVOS", texto: "Inativos" }]} /><Button secondary aria-expanded={maisFiltros} onClick={() => setMaisFiltros((v) => !v)}><SlidersHorizontal size={16} />Mais filtros</Button></div>{maisFiltros && <div className="mt-3 flex flex-wrap gap-3"><SelectFiltro rotulo="Filtrar por fornecedor" valor={filtroFornecedor} onChange={setFiltroFornecedor} opcoes={[{ valor: "", texto: "Todos os fornecedores" }, { valor: "SEM", texto: "Sem fornecedor" }, ...config.parceiros.filter((p) => papeisDoParceiro(p).includes("FORNECEDOR")).map((p) => ({ valor: String(p.id), texto: p.nome }))]} /><SelectFiltro rotulo="Filtrar por centro de custo" valor={filtroCentro} onChange={setFiltroCentro} opcoes={[{ valor: "", texto: "Todos os centros" }, { valor: "SEM", texto: "Sem centro" }, ...config.centrosCusto.filter((c) => c.ativo).map((c) => ({ valor: String(c.id), texto: c.nome }))]} /></div>}<Panel className="mt-3 overflow-hidden"><TabelaFinanceira rotulo="Produtos" itens={produtosFiltrados} colunas={colunasProdutos((p) => editar("produto", p), alternarProduto, podeEditar).filter((coluna) => maisFiltros || !["categoria", "centrosCusto", "fornecedores"].includes(coluna.chave))} chaveDe={(p) => p.id} onAbrir={(p) => editar("produto", p)} classeLinha={(p) => p.ativo === false ? "opacity-55" : ""} /></Panel></>}
       {aba === "categorias" && <Panel className="mt-5 overflow-hidden"><TabelaFinanceira rotulo="Categorias financeiras" itens={categorias} colunas={colunasCategorias((c) => editar("categoria", c), alternarCategoria)} chaveDe={(c) => c.id} onAbrir={(c) => editar("categoria", c)} classeLinha={(c) => !c.ativo ? "opacity-55" : ""} /></Panel>}
       {aba === "centros" && <Panel className="mt-5 overflow-hidden"><TabelaFinanceira rotulo="Centros de custo" itens={config.centrosCusto} colunas={colunasCentros((c) => editar("centro", c), alternarCentro)} chaveDe={(c) => c.id} onAbrir={(c) => editar("centro", c)} classeLinha={(c) => !c.ativo ? "opacity-55" : ""} /></Panel>}
     </fieldset>
@@ -197,5 +204,6 @@ export function ConfiguracoesFinanceiras({ abaInicial = "contas", podeEditar = t
       onConfirm={() => { void confirmarDesativacao(); }}
       onCancel={() => setConfirmando(null)}
     />
-  </PaginaFinanceira>;
+    {aba === "produtos" && <p className="mt-4 text-sm text-ink-3">Você também pode cadastrar e editar produtos no Estoque.</p>}
+  </Moldura>;
 }

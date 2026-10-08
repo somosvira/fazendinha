@@ -1,5 +1,23 @@
 # Pecuária — base de documentação
 
+## Reorganização da interface operacional — 07/10/2026
+
+A navegação separa os eixos de uso diário em **Rebanho**, **Sanidade**,
+**Pesagem e manejo** e **Nutrição**. A ficha do animal passou a apresentar as
+seções continuamente, com âncoras e ações principais de campo antes das ações
+secundárias. Os cadastros de categorias, genética e sanidade foram agrupados
+em Configurações › Pecuária; receitas continuam disponíveis tanto na central
+quanto na Nutrição, e Produtos continuam disponíveis tanto no Estoque quanto
+em Configurações › Financeiro. Não houve migration, mudança de API, alteração
+de dados, auditoria ou escopo por sítio.
+
+Links antigos de Sanidade, Nutrição e cadastros do Rebanho são normalizados
+para as novas rotas antes da autorização. A evidência automatizada desta
+reorganização é composta pelos testes de navegação, sidebar, ficha, Sanidade,
+Nutrição e receitas. A inspeção visual autenticada permanece pendente porque o
+login local de QA respondeu HTTP 500 durante a execução; ver `design-qa.md` na
+raiz do projeto.
+
 ## Integração da remoção com a V3 final — 07/10/2026
 
 O PR #311 incorporou a V3 à `main` em `517f33f`, em 07/10/2026. O PR #310 foi atualizado exclusivamente a partir dessa `main`, que passa a ser a única base de integração e comparação. A incorporação desse merge não mudou a árvore de código já validada; o diff do #310 agora contém somente a limpeza e seus ajustes/documentação, sem incluir as entregas da V3 como novidades.

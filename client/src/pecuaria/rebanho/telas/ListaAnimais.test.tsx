@@ -276,3 +276,32 @@ describe("ListaAnimais", () => {
     expect(screen.getByText(/Sem categoria: 12/)).toBeTruthy();
   });
 });
+
+
+describe("Pesagem e manejo", () => {
+  it("reutiliza a seleção da lista e abre a pesagem coletiva existente", async () => {
+    vi.mocked(listarAnimais).mockResolvedValue({ itens: [criarAnimal({ nome: "Aurora" })], total: 1, painel: painelVazio });
+    montar({ variante: "pesagem" });
+    await screen.findByRole("heading", { name: "Pesagem e manejo" });
+    fireEvent.click(primeiro("checkbox", "Selecionar 0001"));
+    expect(screen.queryByRole("button", { name: "Aplicação sanitária coletiva" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Novo animal" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Pesagem coletiva" }));
+    const painel = await screen.findByRole("dialog");
+    expect(within(painel).getByLabelText(/0001 · Aurora · peso/)).toBeTruthy();
+    expect(within(painel).getByRole("button", { name: "Conferir pesos" })).toBeTruthy();
+  });
+
+  it("mantém os filtros adicionais e dá acesso às colunas completas", async () => {
+    vi.mocked(listarAnimais).mockResolvedValue({ itens: [criarAnimal({})], total: 1, painel: painelVazio });
+    montar();
+    await screen.findByRole("heading", { name: "Rebanho" });
+    expect(screen.queryByRole("columnheader", { name: "Idade" })).toBeNull();
+    fireEvent.click(screen.getByText("Mais filtros"));
+    expect(screen.getByRole("combobox", { name: "Filtrar por papel reprodutivo" })).toBeTruthy();
+    fireEvent.click(screen.getByLabelText("Mostrar todas as colunas"));
+    expect(screen.getByRole("columnheader", { name: "Idade" })).toBeTruthy();
+    const nav = screen.getByText("Animais", { selector: "button" }).parentElement!;
+    expect(within(nav).getAllByRole("button").map((b) => b.textContent)).toEqual(["Visão geral", "Animais", "Lotes"]);
+  });
+});
