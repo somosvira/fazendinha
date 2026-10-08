@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { Button, ErrorBox, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
-import { classeInput, PainelCadastro } from "../../../financeiro/PainelCadastro";
+import { classeInput } from "../../../financeiro/PainelCadastro";
 import { Paginacao } from "../ui";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import { reqSanidade } from "./api";
@@ -19,19 +19,23 @@ export function AgendaRodadas({ filtros, podeLancar, rodadaId, onAbrir, onExecut
   const consulta = consultaRodadas(filtros);
   useEffect(() => { let vivo = true; setCarregando(true); setErro(null); listarRodadas(Object.fromEntries(new URLSearchParams(consulta))).then((v) => { if (vivo) setPagina(v); }).catch((e: unknown) => { if (vivo) setErro(`${salvo ? "Ciclo salvo. A consulta não atualizou. " : ""}${e instanceof Error ? e.message : String(e)}`); }).finally(() => { if (vivo) setCarregando(false); }); return () => { vivo = false; }; }, [consulta, revisao, recarregarToken]);
   return <section className="grid gap-4">
-    {podeLancar && <div><Button onClick={() => setCriando(true)}>Iniciar ciclo de protocolo</Button></div>}
+    {podeLancar && <div className="flex justify-end"><Button onClick={() => setCriando(true)}>Novo ciclo</Button></div>}
     {salvo && <p role="status">Ciclo salvo.</p>}
     {erro && <><ErrorBox erro={erro} /><Button secondary onClick={() => setRevisao((v) => v + 1)}>Tentar novamente</Button></>}
-    {carregando ? <p>Carregando ciclos…</p> : <><TabelaFinanceira rotulo="Ciclos de protocolos" itens={pagina?.itens ?? []} chaveDe={(r) => r.id} onAbrir={(r) => onAbrir(r.id)} colunas={[
-      { chave: "nome", titulo: "Ciclo", principal: true, celula: (r) => r.nome },
-      { chave: "protocolo", titulo: "Protocolo / versão", celula: (r) => `${r.protocolo.nome} · v${r.protocolo.versao}` },
-      { chave: "inicio", titulo: "Início", celula: (r) => dataSanitaria(r.inicioReferencia) },
-      { chave: "participantes", titulo: "Participantes", celula: (r) => r.participantes ?? "—" },
-      { chave: "pendentes", titulo: "Pendentes / realizadas", celula: (r) => r.contagens ? `${r.contagens.pendentes} / ${r.contagens.realizadas}` : "—" },
-      { chave: "acao", titulo: "Ações", acoes: true, celula: (r) => <Button secondary onClick={() => onAbrir(r.id)}>Abrir ciclo</Button> },
-    ]} />{pagina && pagina.total > 0 && <Paginacao paginaAtual={pagina.pagina} totalPaginas={Math.max(1, Math.ceil(pagina.total / pagina.porPagina))} totalItens={pagina.total} itensPorPagina={pagina.porPagina} onPaginaChange={(p) => { const url = new URL(window.location.href); url.searchParams.set("pagina", String(p)); window.history.pushState(null, "", url); window.dispatchEvent(new PopStateEvent("popstate")); }} rotulo="ciclos" idSelect="pagina-rodadas" />}{!pagina?.itens?.length && <p>Nenhum ciclo encontrado. Inicie um ciclo para planejar o cuidado dos animais.</p>}</>}
+    {carregando ? <p>Carregando ciclos…</p> : <><div className="sanidade-ciclos">
+      <h2 className="h2 p-4">Ciclos de protocolos</h2>
+      <div className="sanidade-ciclo-linha sanidade-ciclo-cabecalho text-sm text-ink-3" aria-hidden="true"><span>Ciclo</span><span>Protocolo</span><span>Início</span><span>Participantes</span><span>Ação</span></div>
+      {(pagina?.itens ?? []).map((r) => <Fragment key={r.id}>
+        <div className={`sanidade-ciclo-linha ${rodadaId === r.id ? "sanidade-ciclo-ativo" : ""}`}>
+          <button type="button" className="text-left" aria-expanded={rodadaId === r.id} aria-controls={`ciclo-${r.id}`} onClick={() => onAbrir(rodadaId === r.id ? "" : r.id)}>{rodadaId === r.id ? "⌄" : "›"} {r.nome}</button>
+          <span>{r.protocolo.nome} · v{r.protocolo.versao}</span><span>{dataSanitaria(r.inicioReferencia)}</span><span>{r.participantes ?? "—"} animais</span>
+          <button type="button" className="sanidade-link underline text-left" onClick={() => onAbrir(rodadaId === r.id ? "" : r.id)}>{rodadaId === r.id ? "Fechar ciclo" : "Abrir ciclo"}</button>
+        </div>
+        {rodadaId === r.id && <div id={`ciclo-${r.id}`} className="sanidade-ciclo-ativo"><DetalheRodada id={rodadaId} filtros={filtros} podeLancar={podeLancar} onFechar={() => onAbrir("")} onExecutar={onExecutar} onAcao={onAcao} recarregarToken={recarregarToken} onMudou={() => setRevisao((v) => v + 1)} /></div>}
+      </Fragment>)}
+    </div>{pagina && pagina.total > 0 && <Paginacao paginaAtual={pagina.pagina} totalPaginas={Math.max(1, Math.ceil(pagina.total / pagina.porPagina))} totalItens={pagina.total} itensPorPagina={pagina.porPagina} onPaginaChange={(p) => { const url = new URL(window.location.href); url.searchParams.set("pagina", String(p)); window.history.pushState(null, "", url); window.dispatchEvent(new PopStateEvent("popstate")); }} rotulo="ciclos" idSelect="pagina-rodadas" />}{!pagina?.itens?.length && <p>Nenhum ciclo encontrado. Inicie um ciclo para planejar o cuidado dos animais.</p>}</>}
     {criando && <FormRodada onFechar={() => setCriando(false)} onSalvo={(id) => { setCriando(false); setSalvo(true); setRevisao((v) => v + 1); onAbrir(id); }} />}
-    {rodadaId && <DetalheRodada id={rodadaId} filtros={filtros} podeLancar={podeLancar} onFechar={() => onAbrir("")} onExecutar={onExecutar} onAcao={onAcao} recarregarToken={recarregarToken} onMudou={() => setRevisao((v) => v + 1)} />}
+    {rodadaId && !pagina?.itens.some((r) => r.id === rodadaId) && <DetalheRodada id={rodadaId} filtros={filtros} podeLancar={podeLancar} onFechar={() => onAbrir("")} onExecutar={onExecutar} onAcao={onAcao} recarregarToken={recarregarToken} onMudou={() => setRevisao((v) => v + 1)} />}
   </section>;
 }
 
@@ -72,7 +76,8 @@ function DetalheRodada({ id, filtros, podeLancar, onFechar, onExecutar, onMudou,
   async function abrirAssociacao(pagina = 1) { if (!rodada) return; setAssociando(true); setPaginaLegadas(pagina); setLegadas(null); setErro(null); try { setLegadas(await reqSanidade<PaginaSanitaria<ParticipanteRodada>>(`/execucoes-sem-rodada${consultaRodadas({ propriedadeId: rodada.propriedadeId, protocoloId: rodada.protocoloId, pagina, porPagina: 20 })}`)); } catch (e: unknown) { setErro(e instanceof Error ? e.message : String(e)); } }
   async function associar() { if (!rodada || ocupado) return; setOcupado(true); setErro(null); try { await reqSanidade(`/rodadas/${encodeURIComponent(id)}/associacao`, { method: "POST", body: JSON.stringify({ propriedadeId: rodada.propriedadeId, chave: chave.current, execucaoIds: associadas }) }); setAssociando(false); setAssociadas([]); atualizar(true); } catch (e: unknown) { setErro(e instanceof Error ? e.message : String(e)); } finally { setOcupado(false); } }
   if (adicionando && rodada) return <FormRodada rodada={rodada} onFechar={() => setAdicionando(false)} onSalvo={() => { setAdicionando(false); atualizar(true); }} />;
-  return <PainelCadastro aberto titulo={rodada?.nome ?? "Ciclo de protocolo"} largura="sm:max-w-5xl" onFechar={() => { if (!ocupado) onFechar(); }} rodape={<><ErrorBox erro={erro} /><Button secondary onClick={onFechar} disabled={ocupado}>Fechar</Button></>}>
+  return <section className="sanidade-ciclo-detalhe" aria-label={rodada?.nome ?? "Ciclo de protocolo"}>
+    <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><h3 className="h3">Etapas e tarefas do ciclo</h3><Button secondary onClick={onFechar} disabled={ocupado}>Fechar</Button></div>
     <ErrorBox erro={erro} />{alteracaoSalva && <p role="status">Alteração salva.</p>}{erro && <Button secondary onClick={() => atualizar()}>Atualizar consulta</Button>}
     {carregando ? <p>Carregando ciclo…</p> : rodada && <div className="grid gap-5"><p>{rodada.protocolo.nome} · v{rodada.protocolo.versao} · início de referência {dataSanitaria(rodada.inicioReferencia)}</p>{podeLancar && <div className="flex flex-wrap gap-2"><Button secondary onClick={() => setAdicionando(true)}>Adicionar participantes</Button><Button secondary onClick={() => { chave.current = crypto.randomUUID(); setNovoNome(rodada.nome); setRenomeando(true); }}>Renomear ciclo</Button><Button secondary onClick={() => { chave.current = crypto.randomUUID(); void abrirAssociacao(); }}>Associar execuções existentes</Button></div>}
       <section><h3 className="font-semibold">Etapas do ciclo</h3><p className="text-sm text-ink-3">Contagens do ciclo inteiro e do filtro atual são apresentadas separadamente.</p><TabelaFinanceira rotulo="Etapas do ciclo" itens={etapas?.itens ?? []} chaveDe={(e) => e.id} onAbrir={(e) => { setEtapaId(e.id); setPaginaTarefas(1); }} colunas={[
@@ -105,5 +110,5 @@ function DetalheRodada({ id, filtros, podeLancar, onFechar, onExecutar, onMudou,
       {associando && <section className="grid gap-3"><h3 className="font-semibold">Associar execuções existentes</h3><p>Somente execuções sem ciclo da mesma versão e sítio são elegíveis. Datas e fatos existentes serão preservados.</p>{!legadas ? <p>Consultando execuções…</p> : legadas.itens.map((p) => <label key={p.id}><input type="checkbox" checked={associadas.includes(p.id)} onChange={(e) => { chave.current = crypto.randomUUID(); setAssociadas((v) => e.target.checked ? [...v, p.id] : v.filter((id) => id !== p.id)); }} /> {nomeAnimalSanitario(p.animal)} · {dataSanitaria(p.inicio)}</label>)}{legadas && legadas.total > legadas.porPagina && <Paginacao paginaAtual={paginaLegadas} totalPaginas={Math.max(1, Math.ceil(legadas.total / legadas.porPagina))} totalItens={legadas.total} itensPorPagina={legadas.porPagina} onPaginaChange={(p) => void abrirAssociacao(p)} rotulo="execuções sem ciclo" idSelect="pagina-sem-rodada" />}<Button disabled={ocupado || !associadas.length || associadas.length > 100} onClick={() => void associar()}>Confirmar associação</Button><Button secondary onClick={() => setAssociando(false)}>Voltar</Button></section>}
     </div>}
     {renomeando && <form className="grid gap-3" onSubmit={(e) => { e.preventDefault(); void renomear(); }}><label>Novo nome do ciclo<input required maxLength={120} className={classeInput} value={novoNome} onChange={(e) => { chave.current = crypto.randomUUID(); setNovoNome(e.target.value); }} /></label><Button type="submit" disabled={ocupado}>Salvar nome</Button><Button secondary onClick={() => setRenomeando(false)}>Voltar</Button></form>}
-  </PainelCadastro>;
+  </section>;
 }

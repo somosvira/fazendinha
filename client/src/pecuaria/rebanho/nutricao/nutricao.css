@@ -1,0 +1,11 @@
+.nutricao-abas { display: flex; gap: 1rem; overflow-x: auto; border-bottom: 1px solid var(--border); margin-top: 1.5rem; }
+.nutricao-abas button { white-space: nowrap; padding: .8rem .75rem; border-bottom: 3px solid transparent; color: var(--ink-3); }
+.nutricao-abas button[aria-selected="true"] { border-color: var(--pos); color: var(--pos); font-weight: 600; }
+.nutricao-link, .receita-acao { color: var(--pos); font-weight: 500; }
+.receita-acao { text-align: left; }
+.receita-acao:hover, .nutricao-link:hover { text-decoration: underline; }
+.receita-situacao { border-radius: 999px; padding: .3rem 1rem; background: var(--surface-2); }
+.receita-publicada { color: var(--pos); background: color-mix(in srgb, var(--pos) 12%, var(--surface)); }
+.nutricao-receitas > section { border-radius: .25rem; }
+.receita-form { background: var(--surface); }
+@media (max-width: 720px) { .nutricao-abas { gap: .25rem; } .receita-versao > div { align-items: flex-start; } }

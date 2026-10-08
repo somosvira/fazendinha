@@ -229,7 +229,7 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
   </div>;
 
   return <PaginaFinanceira>
-    <PageHeader eyebrow="" titulo={titulo ?? "Estoque"} descricao="Saldos e custo médio dos produtos. Quem põe um produto no estoque é a operação: compra, inventário, produção ou ajuste." acao={acao} />
+    <PageHeader eyebrow="" titulo={titulo ?? "Estoque"} descricao="Saldos, lotes e movimentações por sítio." acao={acao} />
     {consolidado && <label className="mt-4 flex items-center gap-3 text-sm">Sítio no estoque<select aria-label="Sítio no estoque" className={CAMPO} value={sitioFiltro ?? ""} onChange={(e) => {
       const sitio = Number(e.target.value) || undefined;
       setSitioFiltro(sitio); setPaginaMov(1); setPaginaSaldos(1);

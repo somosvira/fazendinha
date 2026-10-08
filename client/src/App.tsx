@@ -6,7 +6,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { type Tab, type NavTab } from "./components/Shell";
-import { abrirRotaNovaOperacao, isNovaOperacaoFinanceira, isSubrotaFinanceira, isSubrotaRebanho, tabToPath, pathToTab, DEFAULT_TAB } from "./router";
+import { abrirRotaNovaOperacao, isNovaOperacaoFinanceira, isSubrotaFinanceira, isSubrotaRebanho, isSubrotaConfiguracoes, isSubrotaPecuaria, normalizarLocalizacaoAtual, normalizarRotaInterface, tabToPath, pathToTab, DEFAULT_TAB } from "./router";
 import { AppSidebar } from "./components/AppSidebar";
 import { ConfiguracoesHub } from "./components/ConfiguracoesHub";
 import { IA } from "./components/IA";
@@ -17,6 +17,9 @@ import { resumoRascunho } from "./financeiro/lib/rascunho";
 import { limparRascunhoRelatorioAtivo, useRascunhoRelatorioAtivo } from "./financeiro/rascunhoRelatorioAtivo";
 import { resumoRascunhoRelatorio } from "./financeiro/lib/rascunho-relatorio";
 import { RebanhoContent } from "./pecuaria/rebanho/RebanhoContent";
+import { Sanidade } from "./pecuaria/rebanho/sanidade/Sanidade";
+import { Nutricao } from "./pecuaria/rebanho/nutricao/Nutricao";
+import { PesagemManejo } from "./pecuaria/rebanho/telas/PesagemManejo";
 import { setPropriedadeAtiva, getPropriedadeAtiva } from "./propriedadeScope";
 import { EstoqueContent } from "./estoque/EstoqueContent";
 import { ProdutoEstoqueDetalhe } from "./estoque/ProdutoEstoqueDetalhe";
@@ -29,7 +32,7 @@ import { DefinirSenha } from "./components/DefinirSenha";
 import { RecuperarSenha } from "./components/RecuperarSenha";
 import { getToken, getUsuario, setSessao, clearSessao, type UsuarioSessao } from "./lib/auth";
 import { fetchMe, logout } from "./api/auth";
-import { destinoDepoisDoLogin, interpretarRotaAuth, paginaInicialAutorizada, podeAcessarTab, urlSigninPara } from "./navegacaoAuth";
+import { destinoDepoisDoLogin, interpretarRotaAuth, paginaInicialAutorizada, podeAcessarCaminho, podeAcessarTab, urlSigninPara } from "./navegacaoAuth";
 import { ABAS, type User } from "./data/acessos";
 import { temAcessoArea, TODAS_AREAS } from "./lib/areas";
 import { BootSplash } from "./components/Loading";
@@ -110,9 +113,11 @@ export function App() {
 
   // Aba inicial vem da URL (deep-link / reload); cai no dashboard se a rota não
   // casar. Guard de `window` p/ render fora do browser (smoke test SSR).
-  const [tab, setTab] = useState<Tab>(() =>
-    (typeof window === "undefined" ? null : pathToTab(window.location.pathname)) ?? DEFAULT_TAB,
-  );
+  const [tab, setTab] = useState<Tab>(() => {
+    if (typeof window === "undefined") return DEFAULT_TAB;
+    normalizarLocalizacaoAtual();
+    return pathToTab(window.location.pathname) ?? DEFAULT_TAB;
+  });
   // Abertura Terrano: no boot quando abre já no dashboard (ver INTRO_MODE). No
   // clique de "Entrar" ela também é (re)disparada — aí a música toca junto com a
   // logo, porque o clique libera o áudio.
@@ -196,8 +201,9 @@ export function App() {
     const filtros = Object.fromEntries(new URLSearchParams(query).entries());
     setDeepLinkFiltros(Object.keys(filtros).length ? { tab: t, filtros } : null);
     setTab(t);
-    const alvo = tabToPath(t) + (query ? `?${query}` : "");
+    const alvo = normalizarRotaInterface(url);
     if (window.location.pathname + window.location.search !== alvo) window.history.pushState(null, "", alvo);
+    window.dispatchEvent(new PopStateEvent("popstate"));
   };
 
   // Navegação MANUAL (sidebar/conteúdo) — limpa filtros de deep-link p/ não reaplicar stale.
@@ -206,6 +212,7 @@ export function App() {
     setTab(t);
     const alvo = tabToPath(t);
     if (window.location.pathname + window.location.search !== alvo) window.history.pushState(null, "", alvo);
+    window.dispatchEvent(new PopStateEvent("popstate"));
   };
 
   // Atalho "Trabalho ativo" da sidebar: abre o formulário de operação, que
@@ -304,7 +311,7 @@ export function App() {
     const filtrosUrl = deepLinkFiltros?.tab === tab
       ? `${tabToPath(tab)}?${new URLSearchParams(deepLinkFiltros.filtros).toString()}`
       : null;
-    const subrotaUrl = (isSubrotaFinanceira(tab, window.location.pathname) || isSubrotaRebanho(tab, window.location.pathname) || (tab === "estoque" && parseProdutoEstoqueId(window.location.pathname))) ? window.location.pathname + window.location.search : null;
+    const subrotaUrl = (isSubrotaFinanceira(tab, window.location.pathname) || isSubrotaRebanho(tab, window.location.pathname) || isSubrotaConfiguracoes(tab, window.location.pathname) || isSubrotaPecuaria(tab, window.location.pathname) || (tab === "estoque" && parseProdutoEstoqueId(window.location.pathname))) ? window.location.pathname + window.location.search + window.location.hash : null;
     // sub-rota (ex.: /pecuaria/rebanho/animais?situacao=…) já traz a própria query:
     // tem prioridade, senão os filtros do deep-link reescreveriam o caminho para a raiz da aba
     const alvo = subrotaUrl ?? filtrosUrl ?? tabToPath(tab);
@@ -318,6 +325,7 @@ export function App() {
   // Botões voltar/avançar restauram pathname + filtros como uma única rota.
   useEffect(() => {
     const onPop = () => {
+      normalizarLocalizacaoAtual();
       setTab(pathToTab(window.location.pathname) ?? DEFAULT_TAB);
       setLocationRevision((valor) => valor + 1);
       const sp = new URLSearchParams(window.location.search);
@@ -387,9 +395,13 @@ export function App() {
 
   // URL direta, histórico e deep links também respeitam a mesma matriz da sidebar.
   useEffect(() => {
-    if (!usuario || podeAcessarTab(usuario, tab)) return;
-    setTab(pathToTab(paginaInicialAutorizada(usuario)) ?? DEFAULT_TAB);
-  }, [usuario, tab]);
+    if (!usuario || podeAcessarCaminho(usuario, window.location.pathname)) return;
+    const destino = paginaInicialAutorizada(usuario);
+    window.history.replaceState(null, "", destino);
+    setTab(pathToTab(destino) ?? DEFAULT_TAB);
+    setLocationRevision((valor) => valor + 1);
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  }, [usuario, tab, locationRevision]);
 
   // Rascunho de operação do usuário no sítio ativo, oferecido como "Trabalho
   // ativo" no topo da sidebar (sem rascunho, o atalho vira "+ Nova operação").
@@ -460,24 +472,33 @@ export function App() {
     return <Login onEntrar={(novoToken, u) => entrar(novoToken, u)} />;
   }
 
-  const conteudo = !canAccessTab(tab)
+  const conteudo = !podeAcessarCaminho(usuario, window.location.pathname)
     ? <GatedTab user={effectiveUser} abaLabel="esta área" />
     : tab === "pec-rebanho"
     ? <RebanhoContent podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} />
+    : tab === "pec-sanidade"
+    ? <Sanidade podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} />
+    : tab === "pec-nutricao"
+    ? <Nutricao podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} />
+    : tab === "pec-pesagem"
+    ? <PesagemManejo podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} />
     : tab === "estoque"
     ? (parseProdutoEstoqueId(window.location.pathname) ? <ProdutoEstoqueDetalhe key={window.location.pathname} produtoId={parseProdutoEstoqueId(window.location.pathname)!} onSelecionarSitio={trocarPropriedade} /> : <EstoqueContent />)
-    : (["dashboard", "gastos", "lancar", "caixinha", "cadastros", "plano", "relatorio"] as Tab[]).includes(tab)
+    : (["dashboard", "gastos", "lancar", "caixinha", "relatorio"] as Tab[]).includes(tab)
     ? <FinanceiroContent tab={tab} onNav={setTab} podeEditarCadastros={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} podeExportar={!!effectiveUser.dono || effectiveUser.flags.includes("exportar")} />
     : (
       <>
         {ASSISTENTE_ATIVO && tab === "ia" && (canSee("ia") ? <IA /> : <GatedTab user={effectiveUser} abaLabel="IA" />)}
-        {/* Configurações mantém somente setup global: categorias, sítios e acessos. */}
-        {(tab === "config" || tab === "acessos" || tab === "sitios") && (
+        {(["config", "acessos", "sitios", "cadastros", "plano"] as Tab[]).includes(tab) && (
           <ConfiguracoesHub
             tab={tab}
-            onNav={setTab}
+            onNav={navegarTab}
             isAdmin={isAdmin}
-            podeCategorias={canSee("plano")}
+            podeCategorias={canAccessTab("plano")}
+            podeFinanceiro={canAccessTab("cadastros")}
+            podePecuaria={canAccessTab("pec-rebanho")}
+            podeEditarCadastros={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")}
+            podeLancarPecuaria={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")}
           />
         )}
       </>
@@ -512,7 +533,7 @@ export function App() {
         user={effectiveUser}
         colapsada={sideColapsada}
         onToggleColapsar={toggleSidebar}
-        onAcessos={() => setTab("acessos")}
+        onAcessos={() => navegarTab("acessos")}
         onSair={onSair}
         // O atalho só aparece depois de se saber se há rascunho, para o "+" não
         // piscar antes de o rascunho existente carregar.
@@ -524,7 +545,7 @@ export function App() {
           : null}
       />
       <main id="main-content" className="app-main" {...(mobileOpen ? { inert: "" } : {})}>
-        <div key={propAtiva ?? "all"} style={{ display: "contents" }}>
+        <div key={propAtiva ?? "all"} className={(["config", "cadastros", "plano", "sitios", "acessos", "estoque", "pec-rebanho", "pec-sanidade", "pec-pesagem", "pec-nutricao"] as Tab[]).includes(tab) ? "remanejamento-ui" : undefined} style={{ display: "contents" }}>
           {conteudo}
         </div>
       </main>
@@ -532,8 +553,7 @@ export function App() {
         aberto={buscaAberta}
         onFechar={() => setBuscaAberta(false)}
         onNav={(t) => {
-          setDeepLinkFiltros(null);
-          setTab(t);
+          navegarTab(t);
         }}
         podeVer={(t) => {
           return canAccessTab(t);

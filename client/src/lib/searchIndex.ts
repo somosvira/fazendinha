@@ -53,6 +53,9 @@ export const COMANDOS: Comando[] = [
 
   // — Pecuária: cadastro individual único, independentemente da finalidade —
   { id: "pec-rebanho", tab: "pec-rebanho", label: "Rebanho", grupo: "Pecuária", sinonimos: ["rebanho", "pecuária", "vaca", "vacas", "boi", "gado", "bovino", "animais", "brinco", "ficha do animal", "lote", "movimentar", "saída", "pesagem"], descricao: "Cadastro de animais do rebanho" },
+  { id: "pec-sanidade", tab: "pec-sanidade", label: "Sanidade", grupo: "Pecuária", sinonimos: ["agenda", "protocolo", "aplicação", "exame", "carência"], descricao: "Agenda e acompanhamento sanitário" },
+  { id: "pec-pesagem", tab: "pec-pesagem", label: "Pesagem e manejo", grupo: "Pecuária", sinonimos: ["peso", "pesagem coletiva", "manejo"], descricao: "Selecionar animais e conferir pesos" },
+  { id: "pec-nutricao", tab: "pec-nutricao", label: "Nutrição", grupo: "Pecuária", sinonimos: ["dieta", "receitas", "ingredientes", "consumo", "fechamentos"], descricao: "Receitas, dietas dos lotes e fechamentos" },
   { id: "acao-novo-animal", tab: "pec-rebanho", label: "Novo animal", grupo: "Ações", acao: true, sinonimos: ["cadastrar animal", "novo animal", "cadastrar gado", "nova vaca", "registrar gado", "novo bovino"], descricao: "Cadastrar um novo animal no rebanho" },
 
 

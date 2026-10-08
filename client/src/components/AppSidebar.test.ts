@@ -99,17 +99,21 @@ function baseProps(overrides: Partial<{
 }
 
 describe("AppSidebar", () => {
-  it("inicia os demais domínios recolhidos e reúne todas as páginas financeiras", () => {
+  it("abre os eixos principais e concentra os cadastros em Configurações", () => {
     render(h(AppSidebar, baseProps()));
-    const pecuaria = screen.getByRole("button", { name: "Expandir Pecuária" });
+    const pecuaria = screen.getByRole("button", { name: "Recolher Pecuária" });
     expect(pecuaria.querySelector("svg")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Expandir Agronomia" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Expandir Equipe" })).toBeNull();
+    expect(screen.queryByText("Agronomia")).toBeNull();
+    expect(screen.queryByText("Equipe")).toBeNull();
     expect(screen.getByText("Visão geral")).toBeTruthy();
     expect(screen.getByText("Operações")).toBeTruthy();
     expect(screen.getByText("Compromissos")).toBeTruthy();
     expect(screen.getByText("Contas e extratos")).toBeTruthy();
-    expect(screen.getByText("Configurações financeiras")).toBeTruthy();
+    expect(screen.getByText("Configurações")).toBeTruthy();
+    expect(screen.queryByText("Configurações financeiras")).toBeNull();
+    expect(screen.getByText("Sanidade")).toBeTruthy();
+    expect(screen.getByText("Pesagem e manejo")).toBeTruthy();
+    expect(screen.getByText("Nutrição")).toBeTruthy();
   });
 
   it("chama onNav com a Tab certa ao clicar num item", () => {
@@ -123,7 +127,6 @@ describe("AppSidebar", () => {
     const props = baseProps({ areas: ["pecuaria"] });
     render(h(AppSidebar, props));
     expect(screen.getAllByText("Pecuária")).toHaveLength(1);
-    fireEvent.click(screen.getByRole("button", { name: "Expandir Pecuária" }));
     fireEvent.click(screen.getByText("Rebanho"));
     expect(props.onNav).toHaveBeenCalledWith("pec-rebanho");
     expect(screen.queryByText("Gado de corte")).toBeNull();
@@ -132,7 +135,6 @@ describe("AppSidebar", () => {
   it("normaliza permissões antigas sem duplicar a área", () => {
     render(h(AppSidebar, baseProps({ areas: ["rebanho", "gado_corte"] })));
     expect(screen.getAllByText("Pecuária")).toHaveLength(1);
-    fireEvent.click(screen.getByRole("button", { name: "Expandir Pecuária" }));
     expect(screen.getByText("Rebanho")).toBeTruthy();
   });
 
@@ -165,7 +167,6 @@ describe("AppSidebar", () => {
   it("permite recolher os domínios da sidebar e persiste a escolha", () => {
     render(h(AppSidebar, baseProps()));
 
-    fireEvent.click(screen.getByRole("button", { name: "Expandir Pecuária" }));
     fireEvent.click(screen.getByRole("button", { name: "Recolher Pecuária" }));
     expect(screen.queryByText("Rebanho")).toBeNull();
     expect(screen.getByRole("button", { name: "Expandir Pecuária" })).toBeTruthy();

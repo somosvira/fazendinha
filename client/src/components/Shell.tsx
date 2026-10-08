@@ -5,7 +5,7 @@ import { DateRangePicker, DateRange } from "./DateRangePicker";
 
 export type Tab =
   | "dashboard" | "gastos" | "lancar" | "caixinha" | "plano" | "ia" | "relatorio" | "acessos" | "config" | "sitios" | "cadastros" | "estoque"
-  | "pec-rebanho";
+  | "pec-rebanho" | "pec-sanidade" | "pec-pesagem" | "pec-nutricao";
 
 export type NavTab = { id: Tab; label: string };
 

@@ -11,7 +11,7 @@
  * shadcn `Sheet` (Radix Dialog) — overlay, foco-trap e Escape de graça. */
 
 import { useEffect, useState } from "react";
-import { FilePenLine, Plus } from "lucide-react";
+import { Beef, FilePenLine, Plus, HeartPulse, Scale, Leaf, type LucideIcon } from "lucide-react";
 import type { Tab } from "./Shell";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
@@ -41,6 +41,9 @@ const ICON: Partial<Record<Tab, JSX.Element>> = {
 };
 
 type AreaTrabalhoId = "pecuaria";
+const ICON_PECUARIA: Partial<Record<Tab, LucideIcon>> = {
+  "pec-rebanho": Beef, "pec-sanidade": HeartPulse, "pec-pesagem": Scale, "pec-nutricao": Leaf,
+};
 type NavItem = { id: Tab; label: string };
 type AreaTrabalho = {
   id: AreaTrabalhoId;
@@ -61,6 +64,9 @@ const AREAS_TRABALHO: AreaTrabalho[] = [
     permissao: "pecuaria",
     principais: [
       { id: "pec-rebanho", label: "Rebanho" },
+      { id: "pec-sanidade", label: "Sanidade" },
+      { id: "pec-pesagem", label: "Pesagem e manejo" },
+      { id: "pec-nutricao", label: "Nutrição" },
     ],
   },
 
@@ -107,6 +113,7 @@ function Item({ id, label, current, onNav, nested, chevron, activeWhen }: {
   id: Tab; label: string; current: Tab; onNav: (t: Tab) => void; nested?: boolean; chevron?: boolean; activeWhen?: Tab[];
 }) {
   const isOn = current === id || (activeWhen?.includes(current) ?? false);
+  const IconPecuaria = ICON_PECUARIA[id];
   return (
     <button
       type="button"
@@ -115,7 +122,7 @@ function Item({ id, label, current, onNav, nested, chevron, activeWhen }: {
       aria-label={label}
       aria-current={isOn ? "page" : undefined}
       className={cn(
-        "relative flex w-full cursor-pointer items-center gap-3 rounded-[7px] bg-transparent px-2.5 py-[9px] text-left font-sans text-[13.5px] text-[var(--mast-ink)]",
+        "relative flex w-full cursor-pointer items-center gap-3 rounded-[7px] bg-transparent px-2.5 py-[9px] text-left font-sans text-base text-[var(--mast-ink)]",
         "[&_svg]:h-[18px] [&_svg]:w-[18px] [&_svg]:flex-none [&_svg]:opacity-[.82]",
         "hover:bg-[rgba(232,220,196,0.06)]",
         RAIL_ICON_BTN,
@@ -125,7 +132,7 @@ function Item({ id, label, current, onNav, nested, chevron, activeWhen }: {
         isOn && RAIL_ACTIVE,
       )}
     >
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} aria-hidden>{ICON[id]}</svg>
+      {IconPecuaria ? <IconPecuaria strokeWidth={1.7} aria-hidden /> : <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} aria-hidden>{ICON[id]}</svg>}
       <span className={cn("flex-1", RAIL_LABEL)}>{label}</span>
       {chevron && (
         <span className={cn("flex-none text-[11px] text-[var(--side-mute,#8B8672)]", RAIL_HIDE)} aria-hidden>›</span>
@@ -319,7 +326,7 @@ export function AppSidebar({
         if (Array.isArray(stored)) return new Set(stored.filter((id): id is SidebarGroupId => id === "financeiro" || AREAS_TRABALHO.some((area) => area.id === id)));
       }
     } catch { /* ignora SSR / storage inválido */ }
-    return new Set<SidebarGroupId>(["financeiro", ...AREAS_TRABALHO.map((area) => area.id)]);
+    return new Set<SidebarGroupId>();
   });
 
   // Se um deep-link cair numa opção secundária, abre o bloco certo para manter
@@ -355,7 +362,7 @@ export function AppSidebar({
 
   // IDs antigos de caixinha/categorias continuam aceitos por links históricos,
   // mas não aparecem como áreas financeiras independentes.
-  const DOBRADAS = new Set<Tab>(["plano"]);
+  const DOBRADAS = new Set<Tab>(["plano", "cadastros"]);
   const itensFinanceiros = financeiro.filter((t) => !DOBRADAS.has(t.id));
   // wrapper: clicar em qualquer aba fecha o drawer no mobile
   const nav = (t: Tab) => { onNav(t); onMobileToggle(false); };
@@ -368,7 +375,7 @@ export function AppSidebar({
   });
 
   useEffect(() => {
-    const grupoAtivo: SidebarGroupId | null = itensFinanceiros.some((item) => item.id === current) || current === "plano"
+    const grupoAtivo: SidebarGroupId | null = itensFinanceiros.some((item) => item.id === current)
       ? "financeiro"
       : areasVisiveis.find((area) => area.principais.some((item) => item.id === current) || area.extras?.some((item) => item.id === current))?.id ?? null;
     if (grupoAtivo && collapsedGroups.has(grupoAtivo)) {
@@ -415,7 +422,7 @@ export function AppSidebar({
         <div className="flex flex-col gap-px">
           <GroupToggle id="financeiro" label="Financeiro" isOpen={!collapsedGroups.has("financeiro")} onToggle={() => toggleGroup("financeiro")} />
           {!collapsedGroups.has("financeiro") && (
-            <div className="ml-[19px] mt-1 flex flex-col gap-px border-l border-[rgba(232,220,196,0.14)] pl-1 min-[901px]:max-[1100px]:ml-0 min-[901px]:max-[1100px]:border-l-0 min-[901px]:max-[1100px]:pl-0 [.side-collapsed_&]:ml-0 [.side-collapsed_&]:border-l-0 [.side-collapsed_&]:pl-0">
+            <div className="mt-1 flex flex-col gap-1">
               {itensFinanceiros.map((t) => (
                 <Item
                   key={t.id}
@@ -423,9 +430,6 @@ export function AppSidebar({
                   label={t.id === "dashboard" ? "Visão geral" : t.id === "lancar" ? "Operações" : t.id === "gastos" ? "Compromissos" : t.id === "caixinha" ? "Contas e extratos" : t.id === "cadastros" ? "Configurações financeiras" : t.label}
                   current={current}
                   onNav={nav}
-                  nested
-                  chevron={t.id !== "dashboard" && t.id !== "lancar"}
-                  activeWhen={t.id === "cadastros" ? ["plano"] : undefined}
                 />
               ))}
             </div>
@@ -440,9 +444,9 @@ export function AppSidebar({
           <div key={area.id} className="mt-3 flex flex-col gap-px border-t border-dashed border-[rgba(232,220,196,0.16)] pt-3">
             <GroupToggle id={area.id} label={area.label} isOpen={groupOpen} onToggle={() => toggleGroup(area.id)} />
             {groupOpen && (
-              <div className="ml-[19px] mt-1 flex flex-col gap-px border-l border-[rgba(232,220,196,0.14)] pl-1 min-[901px]:max-[1100px]:ml-0 min-[901px]:max-[1100px]:border-l-0 min-[901px]:max-[1100px]:pl-0 [.side-collapsed_&]:ml-0 [.side-collapsed_&]:border-l-0 [.side-collapsed_&]:pl-0">
+              <div className="mt-1 flex flex-col gap-1">
                 {area.principais.map((item) => (
-                  <Item key={item.id} id={item.id} label={item.label} current={current} onNav={nav} nested />
+                  <Item key={item.id} id={item.id} label={item.label} current={current} onNav={nav} />
                 ))}
                 {!!area.extras?.length && <>
                 <MoreToggle
@@ -471,7 +475,7 @@ export function AppSidebar({
       )}
 
       <div className="mt-3 flex flex-col gap-px border-t border-dashed border-[rgba(232,220,196,0.16)] pt-3">
-        <Item id="config" label="Configurações" current={current} onNav={nav} chevron activeWhen={[...(isAdmin ? (["sitios", "acessos"] as Tab[]) : [])]} />
+        <Item id="config" label="Configurações" current={current} onNav={nav} activeWhen={["cadastros", "plano", ...(isAdmin ? (["sitios", "acessos"] as Tab[]) : [])]} />
       </div>
     </div>
   );

@@ -13,16 +13,16 @@ const abas = [
   { id: "doenca", nome: "Doenças" },
   { id: "exame", nome: "Tipos de exame" },
 ] as const;
-type Aba = typeof abas[number]["id"];
-type Tipo = Exclude<Aba, "protocolos">;
+export type AbaCadastroSanitario = typeof abas[number]["id"];
+type Tipo = Exclude<AbaCadastroSanitario, "protocolos">;
 type Item = TipoAplicacao | Doenca | TipoExame;
 const formatos = { TEXTO: "Texto", NUMERO: "Número", OPCAO: "Opção" };
-const lerAba = (): Aba => {
+const lerAba = (): AbaCadastroSanitario => {
   const valor = new URLSearchParams(window.location.search).get("cadastroSanitario");
   return abas.find((aba) => aba.id === valor)?.id ?? "protocolos";
 };
-export function CadastrosSanitarios({ podeLancar }: { podeLancar: boolean }) {
-  const [aba, setAba] = useState<Aba>(lerAba);
+export function CadastrosSanitarios({ podeLancar, cadastro, embutido = false }: { podeLancar: boolean; cadastro?: AbaCadastroSanitario; embutido?: boolean }) {
+  const [aba, setAba] = useState<AbaCadastroSanitario>(() => cadastro ?? lerAba());
   const [itens, setItens] = useState<Item[]>([]);
   const [versao, setVersao] = useState(0);
   const [painel, setPainel] = useState<{ tipo: Tipo; id?: string } | null>(null);
@@ -38,10 +38,10 @@ export function CadastrosSanitarios({ podeLancar }: { podeLancar: boolean }) {
   const geracao = useRef(0);
   const trava = useRef(false);
   useEffect(() => {
-    const voltar = () => { setAba(lerAba()); setPainel(null); };
+    const voltar = () => { setAba(cadastro ?? lerAba()); setPainel(null); };
     window.addEventListener("popstate", voltar);
     return () => window.removeEventListener("popstate", voltar);
-  }, []);
+  }, [cadastro]);
   useEffect(() => {
     const atual = ++geracao.current;
     setItens([]); setErro(null); setAviso(null); setPainel(null);
@@ -53,7 +53,7 @@ export function CadastrosSanitarios({ podeLancar }: { podeLancar: boolean }) {
       .finally(() => { if (geracao.current === atual) setCarregando(false); });
     return () => { geracao.current++; };
   }, [aba, versao]);
-  function selecionar(proxima: Aba) {
+  function selecionar(proxima: AbaCadastroSanitario) {
     if (trava.current) return;
     const url = new URL(window.location.href);
     url.searchParams.set("cadastroSanitario", proxima);
@@ -92,9 +92,9 @@ export function CadastrosSanitarios({ podeLancar }: { podeLancar: boolean }) {
       : { nome });
   }
   return <section className="mt-5 grid gap-5">
-    <div role="tablist" aria-label="Cadastros sanitários" className="flex flex-wrap gap-2">
+    {!embutido && <div role="tablist" aria-label="Cadastros sanitários" className="flex flex-wrap gap-2">
       {abas.map((a) => <button key={a.id} type="button" role="tab" aria-selected={aba === a.id} aria-controls={`cadastro-${a.id}`} disabled={ocupado} onClick={() => selecionar(a.id)} className={`rounded-lg px-4 py-2 text-sm font-semibold ${aba === a.id ? "bg-mast text-white" : "border border-border text-ink-2"}`}>{a.nome}</button>)}
-    </div>
+    </div>}
     <div role="tabpanel" id={`cadastro-${aba}`} aria-label={titulo}>
       {aba === "protocolos" ? <ProtocolosCadastro podeLancar={podeLancar} /> : <section className="rounded-xl border border-border">
         <div className="flex flex-wrap items-center justify-between gap-3 p-4">
