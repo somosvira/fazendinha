@@ -81,8 +81,8 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
   if (!periodoDados && carregando && !erro) return <PaginaCarregando label="Carregando financeiro" />;
 
   return <PaginaFinanceira colorida><div className="dashboard-financeiro">
-    <header className="flex flex-wrap items-center justify-between gap-3 py-3">
-      <div><div className="eyebrow">Financeiro</div><h1 className="h2">Visão geral financeira</h1></div>
+    <header className="flex flex-wrap items-center justify-end gap-3 pb-3 pt-3 max-[900px]:pt-0">
+      <h1 className="sr-only">Visão geral financeira</h1>
       <div className="flex flex-wrap items-center gap-2"><PeriodoFinanceiroControl inicio={inicioPeriodo} fim={fimPeriodo} onChange={periodo => { setInicioPeriodo(periodo.inicio); setFimPeriodo(periodo.fim); setMesCalendario(periodo.inicio.slice(0, 7)); }} />{podeLancar && <Button disabled={preparando} onClick={() => { void iniciarNovaOperacao(); }}><Plus />Nova operação</Button>}</div>
     </header>
     <ErrorBox erro={erro} />

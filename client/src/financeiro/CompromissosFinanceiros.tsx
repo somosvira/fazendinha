@@ -59,7 +59,7 @@ export function CompromissosFinanceiros({ onNav, podeLancar = true }: { onNav: (
   if (carregando && !config && !erro) return <PaginaCarregando label="Carregando compromissos" />;
 
   return <PaginaFinanceira colorida>
-    <PageHeader titulo="Compromissos" descricao="Agenda de valores futuros. Vencimento indica prazo; o status informa se a obrigação está pendente, parcial ou liquidada." acao={podeLancar ? <div className="flex flex-wrap gap-2"><Button secondary disabled={preparando} onClick={() => { void prepararNovoCompromisso("RECEBER"); }}>Criar a receber</Button><Button disabled={preparando} onClick={() => { void prepararNovoCompromisso("PAGAR"); }}>Criar a pagar</Button></div> : undefined} />
+    <PageHeader compacto titulo="Compromissos" descricao="Agenda de valores futuros. Vencimento indica prazo; o status informa se a obrigação está pendente, parcial ou liquidada." acao={podeLancar ? <div className="flex flex-wrap gap-2"><Button secondary disabled={preparando} onClick={() => { void prepararNovoCompromisso("RECEBER"); }}>Criar a receber</Button><Button disabled={preparando} onClick={() => { void prepararNovoCompromisso("PAGAR"); }}>Criar a pagar</Button></div> : undefined} />
     <ErrorBox erro={erro} />
     <div className="mt-4 flex flex-wrap items-center gap-3"><PeriodoFinanceiroControl inicio={periodo.inicio} fim={periodo.fim} allowAll label="Período de vencimento" onChange={p => { setPeriodo(p); if (p.inicio) setMes(p.inicio.slice(0, 7)); }} /><span className="text-xs text-ink-3">Filtro pela data de vencimento, inclusive nos liquidados.</span></div>
     {carregando && <p role="status">Carregando compromissos do período…</p>}

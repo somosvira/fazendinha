@@ -43,7 +43,7 @@ export function PaginaFinanceira({ children, colorida = false }: { children: Rea
 
 /* Skeleton compartilhado preserva o envelope e a folga do menu. */
 export function PaginaCarregando({ label }: { label: string }) {
-  return <div className="shell-wide pagina-financeira"><SkeletonListaFinanceira label={label} /></div>;
+  return <div className="shell-wide pagina-financeira"><SkeletonListaFinanceira label={label} paginaInteira /></div>;
 }
 
 /* Página cujos dados ainda não chegaram: carrega, ou mostra o erro. Existe para
@@ -52,10 +52,11 @@ export function PaginaCarregando({ label }: { label: string }) {
  * dados continuam nulos e o ErrorBox lá embaixo nunca é alcançado. */
 export function PaginaSemDados({ titulo, descricao, label, erro }: { titulo: string; descricao: string; label: string; erro: string | null }) {
   if (!erro) return <PaginaCarregando label={label} />;
-  return <PaginaFinanceira><PageHeader titulo={titulo} descricao={descricao} /><ErrorBox erro={erro} /></PaginaFinanceira>;
+  return <PaginaFinanceira><PageHeader compacto titulo={titulo} descricao={descricao} /><ErrorBox erro={erro} /></PaginaFinanceira>;
 }
 
-export function PageHeader({ titulo, descricao, acao, eyebrow = "Financeiro" }: { titulo: string; descricao: string; acao?: React.ReactNode; /** rótulo acima do título; padrão "Financeiro" */ eyebrow?: string }) {
+export function PageHeader({ titulo, descricao, acao, eyebrow = "Financeiro", compacto = false }: { titulo: string; descricao: string; acao?: React.ReactNode; compacto?: boolean; /** rótulo acima do título; padrão "Financeiro" */ eyebrow?: string }) {
+  if (compacto) return <header className={acao ? "flex min-w-0 flex-wrap justify-end gap-2 pb-2 pt-3 max-[900px]:pt-0" : "sr-only"}><h1 className="sr-only">{titulo}</h1>{acao}</header>;
   return <header className="fin-cabecalho-pagina flex flex-wrap items-end justify-between gap-3 border-b border-border pb-3 pt-3 max-[900px]:pt-0">
     <div className="min-w-0 max-w-3xl flex-[1_1_320px]">{eyebrow && <div className="eyebrow">{eyebrow}</div>}<h1 className={`h1 break-words hyphens-auto ${eyebrow ? "mt-2" : ""}`}>{titulo}</h1><p className="mt-2 break-words text-sm leading-6 text-ink-3">{descricao}</p></div>{acao}
   </header>;

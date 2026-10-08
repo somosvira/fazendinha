@@ -52,3 +52,9 @@
 
 /* Contraste sobre o fundo quente, inclusive no mínimo do pulse shadcn. */
 .fin-carregamento [data-slot="skeleton"] { background: color-mix(in srgb, var(--ink-3) 32%, var(--color-white)); }
+
+/* Abas shadcn com seleção inequívoca sobre o fundo creme. */
+.fin-abas { background: white; border: 1px solid var(--border); padding: 6px; }
+.fin-abas [role="tab"] { color: var(--ink-2); border: 1px solid transparent; }
+.fin-abas [role="tab"]:hover { background: color-mix(in srgb, var(--info) 10%, white); color: var(--info); }
+.fin-abas [role="tab"][data-state="active"] { background: var(--info); color: white; border-color: var(--info); box-shadow: 0 1px 3px #0002; }

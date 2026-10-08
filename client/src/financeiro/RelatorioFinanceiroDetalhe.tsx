@@ -66,11 +66,12 @@ export function RelatorioFinanceiroDetalhe({ id, podeExportar, onVoltar }: { id:
   const acao = <div className="flex flex-wrap gap-2"><Button secondary onClick={onVoltar}><ArrowLeft size={16} /> Relatórios</Button>{podeExportar && dados.status === "CONCLUIDO" && <Button onClick={() => void baixar()}><Download size={16} /> Baixar PDF</Button>}</div>;
 
   return <PaginaFinanceira colorida>
-    <PageHeader titulo={dados.nome} descricao={`${dados.propriedade} · ${periodo} · gerado em ${dataHora(dados.geradoEm)} por ${dados.autor}`} acao={acao} />
+    <PageHeader compacto titulo={dados.nome} descricao={`${dados.propriedade} · ${periodo} · gerado em ${dataHora(dados.geradoEm)} por ${dados.autor}`} acao={acao} />
     <ErrorBox erro={erro} />
     {!snapshot ? <ErrorBox erro={dados.erro ?? "Este relatório não foi concluído e não tem conteúdo salvo."} /> : <>
       <Panel tom="info" className="mt-3 p-4">
-        <div className="flex flex-wrap items-center gap-2"><h2 className="font-serif text-xl">Recorte usado na emissão</h2><StatusPill status={dados.status} /></div>
+        <div className="flex flex-wrap items-center gap-2"><h2 className="font-serif text-xl">{dados.nome}</h2><StatusPill status={dados.status} /></div>
+        <p className="mt-2 text-xs text-ink-3">{dados.propriedade} · {periodo} · gerado em {dataHora(dados.geradoEm)} por {dados.autor}</p>
         <dl className="mt-4 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
           {([
             ["Leitura", REGIMES_RELATORIO.find((r) => r.id === snapshot.configuracao.regime)?.rotulo ?? snapshot.configuracao.regime],

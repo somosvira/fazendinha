@@ -136,8 +136,8 @@ export function NovoRelatorioFinanceiro({ cadastros, rascunho, onVoltar, onGerad
   const destino = ativas.length > 1 ? (idAtivo != null ? ativas.find((p) => p.id === idAtivo)?.nome : `${ativas.find((p) => p.principal)?.nome ?? "Propriedade principal"} (principal)`) : null;
 
   return <PaginaFinanceira colorida>
-    <div className="mb-3 flex min-h-10 flex-wrap items-center justify-between gap-4 border-b border-border pb-3 pt-0">
-      <div><div className="text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Relatórios financeiros</div><h1 className="mt-1 font-serif text-3xl text-ink md:text-4xl">Novo relatório</h1></div>
+    <div className="mb-3 flex min-h-10 flex-wrap items-center justify-end gap-3 pb-2">
+      <h1 className="sr-only">Novo relatório</h1>
       <div className="flex flex-wrap items-center gap-3">
         {temRascunho && <span aria-live="polite" className={`text-xs font-medium ${estado === "ERRO" ? "text-red-700" : "text-ink-3"}`}>{estado === "SALVANDO" ? "Salvando…" : estado === "SALVO" ? "Rascunho salvo" : estado === "ERRO" ? "Falha ao salvar" : "Alterações não salvas"}</span>}
         {temRascunho && <Button secondary disabled={gerando} onClick={() => void limpar()}><Trash2 size={15} /> Limpar rascunho</Button>}

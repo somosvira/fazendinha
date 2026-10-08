@@ -34,6 +34,6 @@ export function SkeletonCategorias() {
   </div>;
 }
 
-export function SkeletonListaFinanceira({ label = "Carregando cadastros" }: { label?: string }) {
-  return <div role="status" aria-label={label} aria-busy="true" className="fin-carregamento rounded-xl border border-border bg-white p-4"><span className="sr-only">{label}…</span><IndicadorCarregamento label={label} /><div aria-hidden="true" className="space-y-3">{Array.from({ length: 8 }, (_, indice) => <div key={indice} className="grid grid-cols-[2fr_1fr_1fr] gap-4"><Skeleton className="h-8" /><Skeleton className="h-8" /><Skeleton className="h-8" /></div>)}</div></div>;
+export function SkeletonListaFinanceira({ label = "Carregando cadastros", paginaInteira = false }: { label?: string; paginaInteira?: boolean }) {
+  return <div role="status" aria-label={label} aria-busy="true" className={`fin-carregamento rounded-xl border border-border bg-white p-4 ${paginaInteira ? "flex min-h-[calc(100dvh-5rem)] flex-col max-[900px]:min-h-[calc(100dvh-6rem)]" : ""}`}><span className="sr-only">{label}…</span><IndicadorCarregamento label={label} /><div aria-hidden="true" className={paginaInteira ? "grid flex-1 grid-rows-8 gap-3" : "space-y-3"}>{Array.from({ length: 8 }, (_, indice) => <div key={indice} className="grid grid-cols-[2fr_1fr_1fr] gap-4"><Skeleton className={paginaInteira ? "h-full min-h-8" : "h-8"} /><Skeleton className={paginaInteira ? "h-full min-h-8" : "h-8"} /><Skeleton className={paginaInteira ? "h-full min-h-8" : "h-8"} /></div>)}</div></div>;
 }

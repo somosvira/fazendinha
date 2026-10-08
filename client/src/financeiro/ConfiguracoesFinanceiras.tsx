@@ -167,11 +167,11 @@ export function ConfiguracoesFinanceiras({ abaInicial = "contas", podeEditar = t
     : <Button onClick={() => abrirNovo(aba === "contas" ? "conta" : aba === "parceiros" ? "parceiro" : aba === "produtos" ? "produto" : "centro")}><Plus size={16} /> {aba === "contas" ? "Nova conta" : aba === "parceiros" ? "Novo parceiro" : aba === "produtos" ? "Novo produto" : "Novo centro de custo"}</Button>;
 
   return <PaginaFinanceira colorida>
-    <PageHeader titulo="Configurações financeiras" descricao="Cadastros que sustentam as operações. Desativar preserva todo o histórico e permite reativação." acao={podeEditar ? acao : undefined} />
+    <PageHeader compacto titulo="Configurações financeiras" descricao="Cadastros que sustentam as operações. Desativar preserva todo o histórico e permite reativação." acao={podeEditar ? acao : undefined} />
     <ErrorBox erro={erro} />
     {!podeEditar && <p className="mt-4 rounded-lg border border-border bg-[#faf9f4] px-4 py-3 text-sm text-ink-3">Você tem acesso de consulta a estes cadastros.</p>}
     <Tabs value={aba} onValueChange={v => trocarAba(v as Aba)} className="mt-3 min-w-0">
-      <TabsList aria-label="Cadastros financeiros" className="grid h-auto group-data-[orientation=horizontal]/tabs:h-auto w-full grid-cols-2 gap-1 sm:grid-cols-3 xl:grid-cols-5">{([["contas", "Contas financeiras", Building2], ["parceiros", "Clientes e fornecedores", Users], ["produtos", "Produtos", Package], ["categorias", "Categorias", Tags], ["centros", "Centros de custo", Target]] as const).map(([k, label, Icon]) => <TabsTrigger key={k} value={k} onClick={() => trocarAba(k)} className="min-h-10 whitespace-normal px-3 text-left"><Icon size={16} />{label}</TabsTrigger>)}</TabsList>
+      <TabsList aria-label="Cadastros financeiros" className="fin-abas grid h-auto group-data-[orientation=horizontal]/tabs:h-auto w-full grid-cols-2 gap-1 sm:grid-cols-3 xl:grid-cols-5">{([["contas", "Contas financeiras", Building2], ["parceiros", "Clientes e fornecedores", Users], ["produtos", "Produtos", Package], ["categorias", "Categorias", Tags], ["centros", "Centros de custo", Target]] as const).map(([k, label, Icon]) => <TabsTrigger key={k} value={k} onClick={() => trocarAba(k)} className="min-h-10 whitespace-normal px-3 text-left"><Icon size={16} />{label}</TabsTrigger>)}</TabsList>
       <TabsContent value={aba}>
     <fieldset disabled={processando} aria-busy={processando} className="min-w-0">
       {aba === "contas" && <ListaCadastroFinanceiro key="contas" rotulo="Contas financeiras" itens={config.contas} colunas={colunasContas((c) => editar("conta", c), alternarConta).filter(coluna => podeEditar || !coluna.acoes)} onAbrir={podeEditar ? item => editar("conta", item) : undefined} />}

@@ -73,3 +73,12 @@ Evidências locais em `/Users/toledo/.codex/visualizations/2026/10/08/financeiro
 ## Contraste do carregamento
 
 Skeleton financeiro com contraste reforçado sobre superfície branca, combinado com Loader temático e mensagem visível. Inspeção com leituras temporariamente retidas confirmou ambos em 1440 × 900 sem overflow; instrumentação removida ao concluir. Um único status acessível por área. Verificação: 47 testes focados e build frontend aprovados. Evidência local: `financeiro-correcoes/16-loading-contraste.png`.
+
+
+## Cabeçalhos compactos, abas e carregamento de página
+
+Removida a apresentação visual repetida das páginas financeiras; ações permanecem no topo e títulos continuam acessíveis sem consumir altura. Nome, período e autoria dos relatórios ficam no conteúdo do snapshot. Cabeçalhos de outros módulos preservam sua apresentação. Configurações usam abas shadcn sobre superfície branca com seleção azul e texto branco.
+
+O carregamento inicial combina Loader e Skeleton shadcn preenchendo a área útil da janela; atualizações parciais mantêm a versão compacta. Capturas `17-abas-sem-cabecalho.png`, `18-loading-pagina-inteira.png`, `19-loading-mobile-inteiro.png`, `20-abas-mobile.png` e `21-contas-sem-cabecalho.png` inspecionadas. Loading medido em 1440 × 900 e 391 × 844 sem overflow da página. Gravações permanecem bloqueadas na prévia.
+
+Validação final: 123 arquivos / 955 testes aprovados (`vitest run --maxWorkers=2 --minWorkers=1`) e build frontend aprovado.
