@@ -285,8 +285,8 @@ it("consolida a transação no histórico e preserva o link da movimentação", 
   render(<OperacaoFinanceiraDetalhe operacaoId={operacao.id} onVoltar={vi.fn()} onAbrir={vi.fn()} onCorrigir={vi.fn()} />);
   await screen.findByRole("heading", { name: "Compra de ração" });
   expect(screen.getAllByText("Pagamento #1")).toHaveLength(1);
-  expect(screen.getAllByRole("button", { name: "Banco principal" })).toHaveLength(1);
-  fireEvent.click(screen.getByRole("button", { name: "Banco principal" }));
+  expect(screen.getAllByRole("link", { name: "Banco principal" })).toHaveLength(1);
+  fireEvent.click(screen.getByRole("link", { name: "Banco principal" }));
   expect(window.location.pathname).toBe(`/financeiro/contas/${contaBanco.id}`);
   expect(window.location.hash).toBe(`#movimento-${uid(9)}`);
   expect(screen.getByRole("button", { name: "Estornar pagamento #1" })).toBeTruthy();

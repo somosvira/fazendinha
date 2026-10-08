@@ -4,7 +4,7 @@ import { ArrowLeft, CircleDollarSign, Download, Hammer, Sprout, TrendingDown, Wa
 import { RelatorioGerencialDocumento } from "../components/relatorio-gerencial/RelatorioGerencialDocumento";
 import { templatePadrao } from "../components/relatorio-gerencial/template";
 import { obterRelatorioFinanceiro, salvarPdfRelatorioFinanceiro, type LinhaComposicaoRelatorio, type RelatorioFinanceiroDetalhe as Detalhe, type TotalGrupoRelatorio } from "./novo-api";
-import { brl, Button, ErrorBox, Metric, PageHeader, PaginaFinanceira, PaginaSemDados, Panel, StatusPill, TabelaFinanceira, TIPO_OPERACAO, type ColunaTabela } from "./financeiro-ui";
+import { brl, Button, ErrorBox, Metric, PageHeader, PaginaFinanceira, PaginaSemDados, Panel, StatusPill, Paginacao, TabelaFinanceira, TIPO_OPERACAO, type ColunaTabela } from "./financeiro-ui";
 import { dataCurta, REGIMES_RELATORIO } from "./lib/relatorios";
 import { codigoOperacao } from "../estoque/navegacao";
 
@@ -13,7 +13,7 @@ function OperacaoDaLinha({ linha }: { linha: LinhaComposicaoRelatorio }) {
   return null;
 }
 
-const LINHAS_INICIAIS = 200;
+const POR_PAGINA = 15;
 const percentual = (valor: number) => `${valor.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%`;
 const dataHora = (valor: string) => new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(valor));
 const CLASSIFICACAO: Record<string, string> = { CUSTEIO: "Custeio", INVESTIMENTO: "Investimento" };
@@ -51,9 +51,10 @@ function Cabecalho({ titulo, descricao }: { titulo: string; descricao: string })
 export function RelatorioFinanceiroDetalhe({ id, podeExportar, onVoltar }: { id: string; podeExportar: boolean; onVoltar: () => void }) {
   const [dados, setDados] = useState<Detalhe | null>(null);
   const [erro, setErro] = useState<string | null>(null);
-  const [todas, setTodas] = useState(false);
+  const [pagina, setPagina] = useState(1);
   useEffect(() => {
     let atual = true;
+    setDados(null); setErro(null); setPagina(1);
     obterRelatorioFinanceiro(id).then((d) => { if (atual) setDados(d); }).catch((e) => { if (atual) setErro(e instanceof Error ? e.message : String(e)); });
     return () => { atual = false; };
   }, [id]);
@@ -69,8 +70,7 @@ export function RelatorioFinanceiroDetalhe({ id, podeExportar, onVoltar }: { id:
     <PageHeader eyebrow="" titulo={dados.nome} descricao={`${dados.propriedade} · ${periodo} · gerado em ${dataHora(dados.geradoEm)} por ${dados.autor}`} acao={acao} />
     <ErrorBox erro={erro} />
     {!snapshot ? <ErrorBox erro={dados.erro ?? "Este relatório não foi concluído e não tem conteúdo salvo."} /> : <>
-      <Panel tom="info" className="mt-3 p-4">
-        <div className="flex flex-wrap items-center gap-2"><h2 className="font-serif text-xl">Recorte usado na emissão</h2><StatusPill status={dados.status} /></div>
+      <div className="mt-3"><SecaoFinanceira titulo="Recorte usado na emissão" abrirNoDesktop detalhe={<StatusPill status={dados.status} />}>
         <dl className="mt-4 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
           {([
             ["Leitura", REGIMES_RELATORIO.find((r) => r.id === snapshot.configuracao.regime)?.rotulo ?? snapshot.configuracao.regime],
@@ -82,15 +82,15 @@ export function RelatorioFinanceiroDetalhe({ id, podeExportar, onVoltar }: { id:
             ["Classificação", snapshot.filtros.classificacoes.join(", ") || "Todas"],
           ] as const).map(([rotulo, valor]) => <div key={rotulo} className="min-w-0"><dt className="text-[11px] font-semibold uppercase tracking-[.1em] text-ink-3">{rotulo}</dt><dd className="mt-1 break-words">{valor}</dd></div>)}
         </dl>
-      </Panel>
+      </SecaoFinanceira></div>
 
-      <div className="mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Metric tom="saida" label="Compras e serviços" valor={brl(snapshot.composicao.despesas.total)} detalhe="Itens confirmados, pela data da operação" icon={CircleDollarSign} />
-        <Metric tom="saida" label="Custeio" valor={brl(snapshot.composicao.despesas.custeio)} detalhe="Itens classificados como custeio" icon={Sprout} />
-        <Metric tom="info" label="Investimento" valor={brl(snapshot.composicao.despesas.investimento)} detalhe="Itens classificados como investimento" icon={Hammer} />
+      <div className="mt-3 grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <Metric compacto tom="saida" label="Compras e serviços" valor={brl(snapshot.composicao.despesas.total)} detalhe="Itens confirmados, pela data da operação" icon={CircleDollarSign} />
+        <Metric compacto tom="saida" label="Custeio" valor={brl(snapshot.composicao.despesas.custeio)} detalhe="Itens classificados como custeio" icon={Sprout} />
+        <Metric compacto tom="info" label="Investimento" valor={brl(snapshot.composicao.despesas.investimento)} detalhe="Itens classificados como investimento" icon={Hammer} />
         {snapshot.gerencial.resumo.saidas != null
-          ? <Metric tom="saida" label="Pagamentos" valor={brl(snapshot.gerencial.resumo.saidas)} detalhe="Saídas de caixa no recorte" icon={TrendingDown} tone="red" />
-          : <Metric tom="pendente" label="A pagar" valor={brl(snapshot.gerencial.resumo.aPagar)} detalhe="Compromissos em aberto no recorte" icon={WalletCards} />}
+          ? <Metric compacto tom="saida" label="Pagamentos" valor={brl(snapshot.gerencial.resumo.saidas)} detalhe="Saídas de caixa no recorte" icon={TrendingDown} tone="red" />
+          : <Metric compacto tom="pendente" label="A pagar" valor={brl(snapshot.gerencial.resumo.aPagar)} detalhe="Compromissos em aberto no recorte" icon={WalletCards} />}
       </div>
 
       <div className="mt-3 grid gap-6 xl:grid-cols-[1.4fr_1fr]">
@@ -105,9 +105,9 @@ export function RelatorioFinanceiroDetalhe({ id, podeExportar, onVoltar }: { id:
 
       <Panel className="mt-3"><Cabecalho titulo="Itens das operações" descricao={snapshot.composicao.truncado ? `As primeiras ${snapshot.composicao.linhas.length} de ${snapshot.composicao.totalLinhas} linhas ficaram salvas; os totais consideram todas.` : `${snapshot.composicao.totalLinhas} linha(s), uma por item de operação no recorte.`} />
         {snapshot.composicao.linhas.length
-          ? <TabelaFinanceira compacta rotulo="Itens das operações" colunas={colunasItens} itens={todas ? linhas : linhas.slice(0, LINHAS_INICIAIS)} chaveDe={(l) => l.indice} />
+          ? <TabelaFinanceira compacta rotulo="Itens das operações" colunas={colunasItens} itens={linhas.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA)} chaveDe={(l) => l.indice} />
           : <p className="p-3 text-sm text-ink-3">Nenhum item no recorte.</p>}
-        {!todas && snapshot.composicao.linhas.length > LINHAS_INICIAIS && <div className="border-t border-border p-4 text-center"><Button secondary onClick={() => setTodas(true)}>Mostrar todas as {snapshot.composicao.linhas.length} linhas</Button></div>}
+        {linhas.length > 0 && <Paginacao pagina={pagina} totalPaginas={Math.max(1, Math.ceil(linhas.length / POR_PAGINA))} total={linhas.length} porPagina={POR_PAGINA} rotulo="Paginação dos itens do relatório" substantivo="itens salvos" idSelect="pagina-itens-relatorio" onPagina={setPagina} />}
       </Panel>
 
       <section className="mt-3" aria-label="Leitura de caixa e compromissos">

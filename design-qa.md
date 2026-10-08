@@ -117,3 +117,26 @@ Não houve overflow horizontal da página nas capturas aceitas; o calendário m�
 Limites: auditoria visual e navegação de leitura, sem certificação WCAG. Abrir calendário, pagamento, abas, operações e relatórios foi verificado; não foram confirmados liquidação, upload, cancelamento, geração ou gravação de cadastros. Autosave da nova operação/novo relatório recebe “Gravação desativada na prévia local”, deliberadamente: não é falha atribuída ao produto. Testes com mocks cobrem essas gravações.
 
 Validação desta implementação: suíte completa com 123 arquivos / 961 testes aprovados; após ajuste visual final, 48 testes focados e TypeScript/build aprovados. Permanece o aviso de bundle acima de 500 kB. Revisão independente identificou aninhamento de links nos botões dos cartões móveis; corrigido e coberto por teste, sem outros achados importantes na revisão do código alterado.
+
+
+## Fechamento da reauditoria financeira — 08/10/2026
+
+Critérios usados para a meta de qualidade: hierarquia e cores semânticas; leitura compacta; todos os registros alcançáveis; totais independentes da paginação; controles shadcn; navegação por teclado; estados de carregamento, erro e vazio; ausência de overflow horizontal da página. Não se atribui nota 10 automaticamente por implementação: a avaliação abaixo registra o que foi efetivamente conferido.
+
+| Área | Correções e resultado conferido | Evidências |
+| --- | --- | --- |
+| Visão geral | Indicadores móveis em grid; Agenda/Análises/Contas por abas móveis e grid no desktop; lista prioritária com valores e ação sem arraste lateral; calendário centralizado com agenda mensal móvel. | `52-dashboard-desktop`, `57-dashboard-mobile-compacto`, `58-agenda-modal-mobile`, `69-dashboard-tablet` |
+| Operações | Lista paginada, detalhe compacto e documentos preservados; controles e confirmações financeiras restantes migrados para shadcn; estados de loading e erro mantidos. | `53-operacoes` e `64-operacao-detalhe` (desktop/mobile), `65-nova-operacao` (desktop/mobile), `70-operacoes-tablet` |
+| Compromissos | 173 pendentes acessíveis em 12 páginas de 15; busca e filtros antes da paginação, totais completos. Avançar mostrou 16–30. Enter na linha → detalhe → pagamento → cancelar restaurou foco na mesma TR. Altura da página: 915px no desktop e 1147px no celular, ante 28097px/62525px na auditoria anterior. | `68-compromissos` (desktop/mobile), `71-compromissos-tablet` |
+| Contas e extratos | Saldo integrado ao cabeçalho, quatro colunas no extrato geral, gráfico recolhível, contas/extratos paginados; listas com altura interna menor. | `54-contas` (desktop/mobile), `72-contas-tablet`; testes preservam busca, navegação por hash e totais completos. |
+| Configurações | Cinco abas contrastantes; todas as listas paginadas; Produtos com busca antes dos filtros adicionais, contagem e limpeza, filtros recolhidos no celular. | `55-configuracoes`, `60-parceiros`, `61-produtos`, `62-categorias`, `63-centros` (desktop/mobile), `73-configuracoes-tablet` |
+| Relatórios | Histórico paginado e filtrável; recorte recolhível e indicadores móveis em grid no detalhe; composição paginada; geração e revisão preservadas. | `56-relatorios`, `66-relatorio-detalhe`, `67-novo-relatorio` (desktop/mobile), `74-relatorios-tablet`; composição com 31 itens coberta por teste. |
+| Pagamento | Campos em grid móvel, nota fiscal por seleção/drag and drop, corpo rolável e confirmação fixa visível. O botão foi medido entre y=753 e 789 em viewport de 844px; diálogo com largura interna de 357px sem overflow. | `59-pagamento-mobile-rodape` |
+
+Capturas aceitas usam 1440 × 900, 1180 × 820 e 391 × 844. As seis áreas foram conferidas no tablet e em desktop/celular; as cinco abas de cadastros e telas de operação/relatório foram observadas em desktop/celular. Não houve overflow horizontal da página nos estados capturados. Evidências ficam em `/Users/toledo/.codex/visualizations/2026/10/08/financeiro-correcoes/`.
+
+A revisão independente encontrou perda de foco ao fechar detalhes e após a transição para pagamento; corrigida com cadeia de acionadores e testes de fechamento/transição. Revisão final sem novos achados importantes. As verificações mantêm os limites da auditoria anterior: prévia somente de leitura, sem liquidação, cancelamento, transferência, upload ou geração real contra produção. Esses contratos continuam cobertos por testes de API mockada; o snapshot real observado no relatório não contém itens. Não é certificação WCAG nem avaliação com usuários finais.
+
+Validação final: 124 arquivos / 967 testes aprovados; build frontend (TypeScript + Vite) aprovado. Após o ajuste final do breakpoint do dashboard, os testes focados de visualização e responsividade foram repetidos. Permanece o aviso anterior de bundle acima de 500 kB. As regras de React foram revisadas quanto a ordem de hooks, limpeza de listeners, conteúdo acessível e ausência de duplicação dos painéis.
+
+Também conferida no navegador a sequência calendário móvel → compromisso → pagamento → cancelar: nenhum diálogo permaneceu aberto e o foco retornou ao botão Calendário.

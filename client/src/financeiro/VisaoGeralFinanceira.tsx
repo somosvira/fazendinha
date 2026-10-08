@@ -1,3 +1,5 @@
+import { useTelaPequena } from "./useTelaPequena";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import "./dashboard-grid.css";
 import { useEffect, useState } from "react";
 import { ArrowDownLeft, ArrowUpRight, Plus, TrendingDown, TrendingUp, WalletCards, ChevronDown, ShieldCheck } from "lucide-react";
@@ -77,8 +79,20 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
   const recarregar = async () => { setRevisao(value => value + 1); };
   // Preserva o período do topo ao abrir a lista completa — mesmo padrão de
   // navegação usado pelos links da Base financeira.
+  const pequena = useTelaPequena();
   const hrefCompromissos = `/financeiro/compromissos?${new URLSearchParams({ inicio: inicioPeriodo, fim: fimPeriodo })}`;
   if (!periodoDados && carregando && !erro) return <PaginaCarregando label="Carregando financeiro" />;
+
+  const painelAgenda = dadosAtuais && (<DashboardCompromissos itens={pendentes} href={hrefCompromissos} mes={mesCalendario} onChangeMes={setMesCalendario} onLiquidar={podeLancar ? setLiquidando : undefined} />);
+  const painelContas = dadosAtuais && (<ContasDisponibilidade contas={dadosAtuais.contas} onAbrir={() => onNav("caixinha")} />);
+  const painelFluxo = dadosAtuais && (<Card data-fin-tom="info" className="fin-painel min-w-0 gap-0 overflow-hidden rounded-lg border-border py-0 shadow-none">
+          <div className="fin-cabecalho flex flex-wrap items-center justify-between gap-2 p-4 pb-2"><div><h2 className="font-serif text-xl">Recebimentos e pagamentos</h2><p className="mt-1 text-sm text-muted-foreground">{tipoGraficoFluxo === "line" ? "Acumulado no período" : "Realizado por dia ou mês"}</p></div><ChartTypeControl value={tipoGraficoFluxo} onChange={setTipoGraficoFluxo} label="Tipo do gráfico de receitas e despesas" /></div>
+          <div className="mx-4 flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-muted/30 px-3 py-2"><span className="text-sm">Resultado de caixa</span><strong className={`font-serif text-2xl tabular-nums ${Number(dadosAtuais.realizado.resultado) < 0 ? "text-destructive" : "text-[var(--pos)]"}`}>{Number(dadosAtuais.realizado.resultado) > 0 ? "+" : ""}{brl(dadosAtuais.realizado.resultado)}</strong><p className="w-full text-sm text-muted-foreground">Recebimentos − pagamentos · inclui aportes e retiradas</p></div>
+          {dadosAtuais.fluxo.some(ponto => Number(ponto.entradas) !== 0 || Number(ponto.saidas) !== 0)
+            ? <div className="p-3"><EntradaSaidaChart compacto tipo={tipoGraficoFluxo} data={dadosAtuais.fluxo.map(ponto => ({ data: ponto.data, entradas: Number(ponto.entradas), saidas: Number(ponto.saidas) }))} /></div>
+            : <Empty>Nenhum recebimento ou pagamento realizado no período.</Empty>}
+        </Card>);
+  const painelCategorias = dadosAtuais && (<AnaliseCategorias compacto inicio={inicioPeriodo} fim={fimPeriodo} despesas={dadosAtuais.despesasPorCategoria} categorias={config?.categorias ?? []} />);
 
   return <PaginaFinanceira colorida><div className="dashboard-financeiro">
     <header className="flex flex-wrap items-center justify-between gap-3 py-3">
@@ -89,27 +103,31 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
     {(carregando || (!dadosAtuais && !erro)) && <p role="status" className="mt-6">Carregando financeiro do período…</p>}
     {erro && !dadosAtuais && <Button variant="outline" onClick={() => setRevisao(value => value + 1)}>Tentar novamente</Button>}
     {dadosAtuais && <>
-      <div className="grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-5">
-        <IndicadorFinanceiro tom={Number(dadosAtuais.saldoGeral) < 0 ? "alerta" : "entrada"} label="Saldo disponível" valor={dadosAtuais.saldoGeral} detalhe={`${contasIncluidas.length} ${contasIncluidas.length === 1 ? "conta incluída" : "contas incluídas"} · saldo atual`} icon={WalletCards} />
+      <div className="grid min-w-0 grid-cols-2 gap-3 lg:grid-cols-5">
+        <IndicadorFinanceiro className="col-span-2 lg:col-span-1" tom={Number(dadosAtuais.saldoGeral) < 0 ? "alerta" : "entrada"} label="Saldo disponível" valor={dadosAtuais.saldoGeral} detalhe={`${contasIncluidas.length} ${contasIncluidas.length === 1 ? "conta incluída" : "contas incluídas"} · saldo atual`} icon={WalletCards} />
         <IndicadorFinanceiro tom="entrada" label="Recebimentos" href={`/financeiro/contas?${new URLSearchParams({ inicio: inicioPeriodo, fim: fimPeriodo, natureza: "recebimentos" })}#extrato-geral`} valor={dadosAtuais.realizado.entradas} detalhe="Realizados no período" icon={TrendingUp} />
         <IndicadorFinanceiro tom="saida" label="Pagamentos" href={`/financeiro/contas?${new URLSearchParams({ inicio: inicioPeriodo, fim: fimPeriodo, natureza: "pagamentos" })}#extrato-geral`} valor={dadosAtuais.realizado.saidas} detalhe="Realizados no período" icon={TrendingDown} />
         <IndicadorFinanceiro tom="pendente" label="A pagar" href={`${hrefCompromissos}&situacao=pagar`} valor={dadosAtuais.compromissos.aPagar} detalhe={resumoVencidos(pendentes, "PAGAR")} alerta={pendentes.some(item => item.vencido && item.tipo === "PAGAR")} icon={ArrowUpRight} />
         <IndicadorFinanceiro tom="entrada" label="A receber" href={`${hrefCompromissos}&situacao=receber`} valor={dadosAtuais.compromissos.aReceber} detalhe={resumoVencidos(pendentes, "RECEBER")} alerta={pendentes.some(item => item.vencido && item.tipo === "RECEBER")} icon={ArrowDownLeft} />
       </div>
-      <div className="mt-4 grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)]">
-        <DashboardCompromissos itens={pendentes} href={hrefCompromissos} mes={mesCalendario} onChangeMes={setMesCalendario} onLiquidar={podeLancar ? setLiquidando : undefined} />
-        <ContasDisponibilidade contas={dadosAtuais.contas} onAbrir={() => onNav("caixinha")} />
+      {pequena ? <Tabs defaultValue="agenda" className="mt-3 min-w-0">
+        <TabsList aria-label="Seções da visão geral" className="fin-abas grid h-auto w-full grid-cols-3"><TabsTrigger value="agenda">Agenda</TabsTrigger><TabsTrigger value="analises">Análises</TabsTrigger><TabsTrigger value="contas">Contas</TabsTrigger></TabsList>
+        <TabsContent value="agenda">{painelAgenda}</TabsContent>
+        <TabsContent value="analises">      <div className="mt-4 grid min-w-0 gap-4 lg:grid-cols-2">
+        {painelFluxo}
+        {painelCategorias}
       </div>
-      <div className="mt-4 grid min-w-0 gap-4 xl:grid-cols-2">
-        <Card data-fin-tom="info" className="fin-painel min-w-0 gap-0 overflow-hidden rounded-lg border-border py-0 shadow-none">
-          <div className="fin-cabecalho flex flex-wrap items-center justify-between gap-2 p-4 pb-2"><div><h2 className="font-serif text-xl">Recebimentos e pagamentos</h2><p className="mt-1 text-sm text-muted-foreground">{tipoGraficoFluxo === "line" ? "Acumulado no período" : "Realizado por dia ou mês"}</p></div><ChartTypeControl value={tipoGraficoFluxo} onChange={setTipoGraficoFluxo} label="Tipo do gráfico de receitas e despesas" /></div>
-          <div className="mx-4 flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-muted/30 px-3 py-2"><span className="text-sm">Resultado de caixa</span><strong className={`font-serif text-2xl tabular-nums ${Number(dadosAtuais.realizado.resultado) < 0 ? "text-destructive" : "text-[var(--pos)]"}`}>{Number(dadosAtuais.realizado.resultado) > 0 ? "+" : ""}{brl(dadosAtuais.realizado.resultado)}</strong><p className="w-full text-sm text-muted-foreground">Recebimentos − pagamentos · inclui aportes e retiradas</p></div>
-          {dadosAtuais.fluxo.some(ponto => Number(ponto.entradas) !== 0 || Number(ponto.saidas) !== 0)
-            ? <div className="p-3"><EntradaSaidaChart compacto tipo={tipoGraficoFluxo} data={dadosAtuais.fluxo.map(ponto => ({ data: ponto.data, entradas: Number(ponto.entradas), saidas: Number(ponto.saidas) }))} /></div>
-            : <Empty>Nenhum recebimento ou pagamento realizado no período.</Empty>}
-        </Card>
-        <AnaliseCategorias compacto inicio={inicioPeriodo} fim={fimPeriodo} despesas={dadosAtuais.despesasPorCategoria} categorias={config?.categorias ?? []} />
+</TabsContent>
+        <TabsContent value="contas">{painelContas}</TabsContent>
+      </Tabs> : <>      <div className="mt-4 grid min-w-0 items-start gap-4 lg:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)]">
+        {painelAgenda}
+        {painelContas}
       </div>
+      <div className="mt-4 grid min-w-0 gap-4 lg:grid-cols-2">
+        {painelFluxo}
+        {painelCategorias}
+      </div>
+</>}
       <ErrorBox erro={erroConfig} />
       <Collapsible data-fin-tom="info" className="fin-painel mt-4 overflow-hidden rounded-lg border border-border bg-card">
         <CollapsibleTrigger asChild><Button variant="ghost" className="h-auto w-full flex-wrap justify-start gap-3 rounded-none p-3 text-left whitespace-normal"><ShieldCheck /><span className="font-serif text-lg">Rastreabilidade e integridade</span><span className="text-sm font-normal text-muted-foreground">{dadosAtuais.base.operacoes.total} operações · {dadosAtuais.base.compromissos.total} compromissos · {dadosAtuais.base.transacoes.total} transações</span><ChevronDown className="ml-auto" /></Button></CollapsibleTrigger>

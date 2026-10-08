@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { comPropriedade } from "../propriedadeScope";
 import { navegarPara } from "../router";
@@ -23,7 +24,7 @@ export function VinculosPecuaria({ operacaoId, compacto = false }: { operacaoId:
   return <section className={compacto ? "fin-painel min-w-0 rounded-xl border border-border bg-card p-4" : "border-t border-border p-6"} data-fin-tom="info" aria-label="Vínculos com a Pecuária">
     <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-3">Procedimentos vinculados</h2>
     <p className="mt-1 text-xs text-ink-3">Esta é a origem financeira dos procedimentos, sem nova despesa. O custo do medicamento e o rateio do Serviço são separados.</p>
-    {erro && <p className="mt-3 text-sm text-red-800">{erro} <button type="button" className="underline" onClick={() => setRevisao((v) => v + 1)}>Tentar novamente</button></p>}
+    {erro && <p className="mt-3 text-sm text-red-800">{erro} <Button variant="link" type="button" className="h-auto p-0 underline" onClick={() => setRevisao((v) => v + 1)}>Tentar novamente</Button></p>}
     {!dados && !erro && <p className="mt-3 text-sm">Carregando vínculos…</p>}
     {dados && <>
       {dados.itensDiretos.map((i) => <p key={i.id} className="mt-3 rounded-lg bg-surface-2 p-3 text-sm"><strong>{i.descricao}</strong> · comprado {i.quantidadeComprada} {i.unidade} · destinado {i.quantidadeDestinada} {i.unidade} · disponível {i.quantidadeDisponivel} {i.unidade}</p>)}

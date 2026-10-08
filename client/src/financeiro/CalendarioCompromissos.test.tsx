@@ -50,3 +50,19 @@ describe("calendário de compromissos", () => {
     expect(deslocarMes("2026-01", -1)).toBe("2025-12");
   });
 });
+
+
+it("usa agenda mensal no celular e mantém detalhes e liquidação acessíveis", () => {
+  const largura = window.innerWidth;
+  Object.defineProperty(window, "innerWidth", { configurable: true, value: 391 });
+  try {
+    const liquidar = vi.fn();
+    render(<CalendarioCompromissos itens={itens} mes="2026-09" onChangeMes={vi.fn()} onLiquidar={liquidar} />);
+    const agenda = within(screen.getByRole("list", { name: "Agenda do mês" }));
+    expect(agenda.getAllByRole("listitem")).toHaveLength(itens.filter(c => c.dataVencimento.startsWith("2026-09")).length);
+    expect(screen.queryByRole("region", { name: "Dias do calendário" })).toBeNull();
+    fireEvent.click(agenda.getByRole("button", { name: /Veterinário/ }));
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Registrar pagamento" }));
+    expect(liquidar).toHaveBeenCalledWith(itens[0]);
+  } finally { Object.defineProperty(window, "innerWidth", { configurable: true, value: largura }); }
+});

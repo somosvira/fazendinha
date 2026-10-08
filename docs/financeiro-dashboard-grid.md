@@ -78,3 +78,19 @@ Este ajuste substitui o grid lateral de gráfico e extrato descrito acima. O sal
 O gráfico consolidado começa recolhido em Collapsible shadcn (“Mostrar receitas e despesas”), preservando alternância Linhas/Barras e todos os movimentos do período. O extrato geral ocupa a largura disponível e apresenta data, movimentação, conta e valor com direção e sinal. Instituição e link de operação ficam junto da descrição; a ficha da conta preserva seus dados completos. Os controles de paginação de contas/extratos só aparecem quando existe mais de uma página; a contagem permanece visível. No celular, a área clicável dos cartões e os links são elementos irmãos, evitando links dentro de botões.
 
 Nenhuma alteração financeira de cálculo, filtros, payload ou persistência. A reauditoria das demais telas, com prioridades e limites, está em `design-qa.md`.
+
+
+## Fechamento dos achados da reauditoria
+
+A revisão seguinte aplica os critérios de densidade, utilidade e componentes shadcn a todas as áreas financeiras auditadas:
+
+- **Compromissos:** busca por descrição, parceiro e código da operação; paginação de 15 após os filtros; tabela compacta no desktop e cartões com rolagem contida no celular. A linha abre os detalhes; o link da operação e a liquidação continuam independentes. Totais são calculados sobre todo o recorte, antes da paginação. O calendário recebe todos os compromissos filtrados.
+- **Visão geral:** indicadores em duas colunas no celular, com saldo disponível em largura completa. Agenda, Análises e Contas usam abas shadcn no celular; o desktop mantém o grid simultâneo. A agenda prioritária móvel usa cartões com descrição, vencimento, valor e ação, sem tabela lateral.
+- **Calendário:** mês em grid no desktop e agenda mensal ordenada por vencimento no celular. Todos os eventos do mês continuam disponíveis; detalhes e liquidação respeitam a permissão existente.
+- **Configurações:** filtros de Produtos ficam em Collapsible, aberto no desktop e recolhido no celular, com contagem dos filtros ativos e limpeza explícita. Busca continua visível. Paginações de uma única página mostram a contagem sem controles redundantes.
+- **Relatórios:** recorte da emissão expansível, aberto no desktop e recolhido no celular; quatro indicadores em duas colunas móveis. Itens salvos paginados em 15, preservando totais, PDF e o aviso de truncamento do snapshot quando aplicável.
+- **Diálogos e detalhe:** controles restantes do financeiro usam Button, Checkbox, ToggleGroup, Textarea e Dialog locais shadcn. Pagamento mantém ações no rodapé e corpo rolável; nota fiscal continua usando o contrato anterior. O retorno de foco acompanha a cadeia de diálogos: fechar o detalhe ou cancelar o pagamento devolve o foco ao acionador conectado, inclusive após desmontar o calendário.
+
+As listas compactas limitam a altura interna para reduzir rolagem da página. Paginação e áreas roláveis preservam todos os registros; não se reduzem fontes até tornar os valores ilegíveis nem se promete exibir um histórico ilimitado em uma única janela. Nenhuma alteração no backend, cálculo, payload ou política de permissão. A reauditoria e suas limitações estão registradas em `design-qa.md`.
+
+O grid simultâneo da visão geral se aplica a partir de 1024px; em larguras menores os painéis se adaptam, e abaixo de 768px são organizados nas três abas. Valores monetários não são truncados.

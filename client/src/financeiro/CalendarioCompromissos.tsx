@@ -8,7 +8,8 @@ import type { Compromisso } from "./novo-api";
 import { brl, dataBR, hoje, mesAtual, STATUS } from "./financeiro-ui";
 import { diasDoCalendario, deslocarMes, nomeMes } from "./lib/calendario";
 import { tituloCompromisso } from "./lib/compromissos";
-import { LinkOperacaoFinanceira } from "./LinkOperacaoFinanceira";
+import { CompromissoDetalheDialog } from "./CompromissoDetalheDialog";
+import { useTelaPequena } from "./useTelaPequena";
 
 export function CalendarioCompromissos({ itens, mes, onChangeMes, onLiquidar, compacto = false }: {
   compacto?: boolean;
@@ -20,6 +21,7 @@ export function CalendarioCompromissos({ itens, mes, onChangeMes, onLiquidar, co
   const [selecionadoId, setSelecionadoId] = useState<string | null>(null);
   const [diaSelecionado, setDiaSelecionado] = useState<string | null>(null);
   const selecionado = itens.find(c => c.id === selecionadoId);
+  const telaPequena = useTelaPequena();
   const dias = diasDoCalendario(mes);
   const porDia = new Map<string, Compromisso[]>();
   for (const item of itens) {
@@ -42,8 +44,14 @@ export function CalendarioCompromissos({ itens, mes, onChangeMes, onLiquidar, co
     </div>
     <div className="flex flex-wrap gap-x-4 gap-y-2 px-4 py-3 text-sm text-ink-3"><span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[var(--fin-pendente)]" />A pagar</span><span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[var(--fin-entrada)]" />A receber</span><span>Clique em um compromisso para consultar os detalhes.</span></div>
     {!temCompromissosNoMes && <p role="status" className="px-4 pb-3 text-sm text-ink-3">Nenhum compromisso neste mês para a visão selecionada.</p>}
-    <p className="px-4 pb-3 text-sm text-ink-3 md:hidden">Deslize o calendário para ver os outros dias da semana.</p>
-    <div role="region" aria-label="Dias do calendário" tabIndex={0} className="overflow-x-auto">
+    {telaPequena ? <ul aria-label="Agenda do mês" className="max-h-[60dvh] divide-y divide-border overflow-y-auto">
+      {itens.filter(c => c.dataVencimento.startsWith(mes)).sort((a, b) => a.dataVencimento.localeCompare(b.dataVencimento)).map(c => <li key={c.id}>
+        <Button type="button" variant="ghost" data-fin-tom={c.tipo === "PAGAR" ? "pendente" : "entrada"} onClick={() => setSelecionadoId(c.id)} className="fin-evento h-auto w-full items-start justify-start gap-3 whitespace-normal rounded-none border-l-2 p-3 text-left">
+          <time dateTime={c.dataVencimento} className="shrink-0 rounded-md border border-border bg-card p-2 text-sm font-semibold">{dataBR(c.dataVencimento).slice(0, 5)}</time>
+          <span className="min-w-0 flex-1"><strong className="block break-words">{tituloCompromisso(c)}</strong><span className="mt-1 block text-sm">{c.tipo === "PAGAR" ? "A pagar" : "A receber"} · {brl(c.saldoPendente)}</span><span className="mt-1 flex flex-wrap gap-1"><Badge variant="outline">{STATUS[c.status] ?? c.status}</Badge>{c.vencido && <Badge variant="destructive">Vencido</Badge>}</span></span>
+        </Button>
+      </li>)}
+    </ul> : <div role="region" aria-label="Dias do calendário" tabIndex={0} className="overflow-x-auto">
       <Table className="w-full table-fixed border-collapse text-left [&_td]:whitespace-normal" style={{ minWidth: 700 }}>
         <TableCaption className="sr-only">Calendário de compromissos — {nomeMes(mes)}</TableCaption>
         <TableHeader><TableRow>{["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map(dia => <TableHead key={dia} scope="col" className="border border-border bg-surface-2 px-3 py-2 text-sm font-semibold text-ink-3">{dia}</TableHead>)}</TableRow></TableHeader>
@@ -62,17 +70,10 @@ export function CalendarioCompromissos({ itens, mes, onChangeMes, onLiquidar, co
           </div>
         </TableCell>)}</TableRow>)}</TableBody>
       </Table>
-    </div>
+    </div>}
     {diaSelecionado && <Modal tom="pendente" titulo={`Compromissos de ${dataBR(diaSelecionado)}`} eyebrow="Agenda financeira" onClose={() => setDiaSelecionado(null)}>
       <ul className="divide-y divide-border">{(porDia.get(diaSelecionado) ?? []).map(c => <li key={c.id}><Button type="button" onClick={() => { setDiaSelecionado(null); setSelecionadoId(c.id); }} variant="ghost" className="h-auto w-full flex-col items-start whitespace-normal space-y-2 p-5 text-left hover:bg-surface-2"><strong className="block break-words text-sm">{tituloCompromisso(c)}</strong><span className="block text-sm">{c.tipo === "PAGAR" ? "A pagar" : "A receber"} · {brl(c.saldoPendente)}</span><Badge variant="outline">{STATUS[c.status] ?? c.status}</Badge>{c.vencido && <Badge variant="outline" className="border-destructive/20 text-destructive">Vencido</Badge>}</Button></li>)}</ul>
     </Modal>}
-    {selecionado && <Modal tom="pendente" titulo="Detalhes do compromisso" eyebrow="Agenda financeira" onClose={() => setSelecionadoId(null)}>
-      <div className="space-y-5 p-5">
-        <div><h3 className="break-words font-serif text-xl">{tituloCompromisso(selecionado)}</h3><p className="mt-2 text-sm text-ink-3">{selecionado.parceiro?.nome ?? "Sem parceiro"}</p></div>
-        <div className="flex flex-wrap gap-2"><Badge variant="outline">{STATUS[selecionado.status] ?? selecionado.status}</Badge>{selecionado.vencido && <Badge variant="outline" className="border-destructive/20 text-destructive">Vencido</Badge>}</div>
-        <dl className="grid grid-cols-2 gap-4 text-sm"><div><dt className="text-ink-3">Vencimento</dt><dd className="mt-1 font-semibold">{dataBR(selecionado.dataVencimento)}</dd></div><div><dt className="text-ink-3">{selecionado.tipo === "PAGAR" ? "A pagar" : "A receber"}</dt><dd className="mt-1 font-semibold">{brl(selecionado.saldoPendente)}</dd></div><div><dt className="text-ink-3">Valor original</dt><dd className="mt-1">{brl(selecionado.valorOriginal)}</dd></div><div><dt className="text-ink-3">Operação</dt><dd className="mt-1"><LinkOperacaoFinanceira id={selecionado.operacao.id} numero={selecionado.operacao.numero} /></dd></div></dl>
-        {onLiquidar && ["PENDENTE", "PARCIAL"].includes(selecionado.status) && <div className="flex justify-end"><Button onClick={() => { setSelecionadoId(null); onLiquidar(selecionado); }}>{selecionado.tipo === "PAGAR" ? "Registrar pagamento" : "Registrar recebimento"}</Button></div>}
-      </div>
-    </Modal>}
+    {selecionado && <CompromissoDetalheDialog compromisso={selecionado} onClose={() => setSelecionadoId(null)} onLiquidar={onLiquidar} />}
   </div>;
 }

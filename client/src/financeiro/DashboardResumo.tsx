@@ -13,15 +13,15 @@ export function resumoVencidos(itens: Compromisso[], tipo: Compromisso["tipo"]) 
   return `Vencido: ${brl(centavos / 100)} · ${vencidos.length} ${vencidos.length === 1 ? "item" : "itens"}`;
 }
 
-export function IndicadorFinanceiro({ label, valor, detalhe, icon: Icon, alerta = false, href, tom = "info" }: {
-  label: string; valor: string; detalhe: string; icon: LucideIcon; alerta?: boolean; href?: string; tom?: TomFinanceiro;
+export function IndicadorFinanceiro({ label, valor, detalhe, icon: Icon, alerta = false, href, tom = "info", className = "" }: {
+  label: string; valor: string; detalhe: string; icon: LucideIcon; alerta?: boolean; href?: string; tom?: TomFinanceiro; className?: string;
 }) {
-  const card = <Card data-fin-tom={tom} className="fin-indicador h-full @container min-w-0 gap-1 rounded-lg border-border p-3 shadow-none">
+  const card = <Card data-fin-tom={tom} className={`fin-indicador h-full @container min-w-0 gap-1 rounded-lg border-border p-3 shadow-none ${href ? "" : className}`}>
     <div className="flex items-center gap-2 text-sm text-muted-foreground"><Icon size={16} aria-hidden="true" />{label}</div>
-    <strong className="whitespace-nowrap font-serif text-[clamp(20px,12cqw,26px)] leading-tight tabular-nums">{brl(valor)}</strong>
-    <p className={`text-sm ${alerta ? "text-destructive" : "text-muted-foreground"}`}>{detalhe}</p>
+    <strong className="whitespace-nowrap font-serif text-[clamp(18px,10cqw,26px)] leading-tight tabular-nums">{brl(valor)}</strong>
+    <p className={`text-xs ${alerta ? "text-destructive" : "text-muted-foreground"}`}>{detalhe}</p>
   </Card>;
-  return href ? <a href={href} aria-label={`Ver ${label.toLocaleLowerCase("pt-BR")}`} className="min-w-0 rounded-lg outline-none transition hover:brightness-95 focus-visible:ring-2 focus-visible:ring-ring" onClick={event => { if (!event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) { event.preventDefault(); navegarPara(href); } }}>{card}</a> : card;
+  return href ? <a href={href} aria-label={`Ver ${label.toLocaleLowerCase("pt-BR")}`} className={`min-w-0 rounded-lg outline-none transition hover:brightness-95 focus-visible:ring-2 focus-visible:ring-ring ${className}`} onClick={event => { if (!event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) { event.preventDefault(); navegarPara(href); } }}>{card}</a> : card;
 }
 
 function ListaContas({ contas, onAbrir }: { contas: Conta[]; onAbrir: () => void }) {
