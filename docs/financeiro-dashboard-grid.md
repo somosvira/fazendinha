@@ -31,3 +31,7 @@ Recebimentos e Pagamentos abrem o extrato geral com o período e a natureza esco
 A legenda e as fatias de despesas abrem um Dialog com lançamentos, total líquido e paginação de 15 itens. “Outras” mostra apenas as categorias que compõem o grupo; estornos negativos também abrem detalhes. Categoria é identificada por ID e nome histórico, conforme o agrupamento do dashboard, para preservar snapshots após renomeações. Cada lançamento inteiro é um link acessível para a operação ou movimento avulso, com clique modificado/nova aba preservados. O desenho usa Card e Badge shadcn, cores de investimento/custeio e estorno, e cabeçalho visível no modal.
 
 A leitura `GET /financeiro/analise-categorias`, na base `pagamentos`, agora usa os mesmos movimentos e rateio do dashboard, incluindo retiradas, avulsos e estornos e todas as horas do último dia. Bases de compras e pendentes permanecem com seus contratos existentes. Não há nova rota ou gravação.
+
+## Falha ao abrir a origem
+
+A leitura de uma operação exige ID e as coleções essenciais antes de renderizar o detalhe. Uma resposta inválida gera mensagem recuperável e botão “Tentar novamente”, em vez de derrubar a tela. A prévia local anterior só tinha respostas capturadas do dashboard e retornava uma lista vazia para consultas não preparadas; foi substituída por consultas reais de leitura com todas as gravações bloqueadas. Isso é configuração local de revisão, sem mudança no deploy.

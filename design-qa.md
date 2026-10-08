@@ -20,7 +20,7 @@ Com o mesmo viewport desktop, a página tem aproximadamente 1164px de altura, co
 
 ## Verificação técnica e limites
 
-`pnpm --filter rionovo-client test`: 122 arquivos, 946 testes aprovados (base atualizada com `origin/main`). `pnpm --filter rionovo-client build`: aprovado; permanece o aviso de bundle acima de 500kB, já existente.
+`pnpm --filter rionovo-client test`: 123 arquivos, 949 testes aprovados (base atualizada com `origin/main`). `pnpm --filter rionovo-client build`: aprovado; permanece o aviso de bundle acima de 500kB, já existente.
 
 A verificação visual local utilizou um snapshot de respostas de leitura, com gravações bloqueadas. Não foram efetuadas liquidações na produção. Os testes automatizados exercitam validação, seleção de conta, permissões, filtros, período, modal e dados obsoletos de requisições anteriores. Não houve alteração de API ou persistência.
 
@@ -35,3 +35,11 @@ Categorias, fatias e estornos abrem composição dos valores. “Outras” filtr
 Recebimentos/Pagamentos levam ao extrato com a natureza e o período; A pagar/A receber levam à aba correta de compromissos. Testes verificam URLs, estornos, transferências excluídas, clique no card, categorias renomeadas, grupo Outras, erro/retry e paginação. Frontend: 946 testes aprovados; backend: 11 testes focados de análise, classificação e série do dashboard; builds frontend e backend aprovados. Prisma Client foi regenerado para refletir o schema existente, sem migration ou gravação no banco.
 
 A captura visual dos detalhes usa respostas de leitura da API atual. O novo cálculo de reconciliação no servidor foi validado por testes locais e ainda depende da publicação do PR; nenhuma escrita em produção foi efetuada.
+
+## Correção da navegação na prévia
+
+Reproduzida tela em branco ao clicar no card: a URL era correta, mas o adaptador local de snapshots retornava HTTP 200 com `[]` para o detalhe não capturado. A prévia agora encaminha leituras reais à API e bloqueia POST/PUT/PATCH/DELETE. Validado no navegador o percurso categoria → card → detalhe completo da operação, com histórico financeiro e documentos. Captura local: `operation-click-fixed.png`.
+
+A API cliente agora rejeita estruturas inválidas no detalhe, com mensagem e nova tentativa. Testes de regressão cobrem a resposta vazia, operação válida e recuperação do erro. Nenhuma liquidação, upload ou outra escrita foi feita na produção.
+
+Após a correção, a suite completa passou: 123 arquivos, 949 testes; build do frontend aprovado.

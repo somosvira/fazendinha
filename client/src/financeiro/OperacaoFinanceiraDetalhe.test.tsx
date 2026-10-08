@@ -268,3 +268,12 @@ describe("OperacaoFinanceiraDetalhe — revisão do cancelamento", () => {
     expect(dialog.getByText(/Banco principal: impacto no saldo \+R\$\s?80,00/)).toBeTruthy();
   });
 });
+
+it("mostra erro recuperável e permite tentar carregar a operação novamente", async () => {
+  obterOperacao.mockRejectedValueOnce(new Error("Dados da operação indisponíveis")).mockResolvedValue(operacao);
+  render(<OperacaoFinanceiraDetalhe operacaoId={uid(6)} onVoltar={vi.fn()} onAbrir={vi.fn()} onCorrigir={vi.fn()} />);
+  expect(await screen.findByText("Dados da operação indisponíveis")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Tentar novamente" }));
+  expect(await screen.findByRole("heading", { name: operacao.descricao! })).toBeTruthy();
+  expect(screen.queryByText("Dados da operação indisponíveis")).toBeNull();
+});

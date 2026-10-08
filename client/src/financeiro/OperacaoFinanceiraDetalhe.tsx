@@ -66,7 +66,7 @@ export function OperacaoFinanceiraDetalhe({ operacaoId, onVoltar, onAbrir, onCor
 
   // `.pagina-carregando` mede exatamente uma viewport e o loader toma a sobra —
   // com PaginaFinanceira o botão e o padding somariam por fora dos 100dvh.
-  if (!operacao) return <div className="shell-wide pagina-carregando"><button onClick={onVoltar} className="mt-6 mb-5 inline-flex shrink-0 items-center gap-2 self-start text-sm font-semibold text-ink-2"><ArrowLeft size={17} /> {rotuloVoltar}</button><ErrorBox erro={erro} />{!erro && <Loader label="Carregando operação" full />}</div>;
+  if (!operacao) return <div className="shell-wide pagina-carregando"><button onClick={onVoltar} className="mt-6 mb-5 inline-flex shrink-0 items-center gap-2 self-start text-sm font-semibold text-ink-2"><ArrowLeft size={17} /> {rotuloVoltar}</button><ErrorBox erro={erro} />{erro ? <Button secondary onClick={() => { void carregar(); }}>Tentar novamente</Button> : <Loader label="Carregando operação" full />}</div>;
 
   const resumoCancelamento = operacao.resumoCancelamento;
   const transacoesOriginais = resumoCancelamento ? resumoCancelamento.transacoes : operacao.transacoes.filter((item) => item.tipo !== "REVERSAO" && item.status === "CONFIRMADA");
