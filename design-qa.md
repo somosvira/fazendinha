@@ -49,3 +49,11 @@ Após a correção, a suite completa passou: 123 arquivos, 949 testes; build do 
 Reorganizado o detalhe em resumo compacto e grid de compromissos/histórico/documentos/procedimentos. Removida a repetição das transações, preservando movimentos de conta e estorno. A operação OP-2482 foi inspecionada com leitura real: em 1440 × 900, o último painel termina em aproximadamente 664px, sem rolagem da página. Também verificado sem overflow horizontal em 1180px e 720px. Listas maiores continuam integralmente acessíveis por rolagem.
 
 Skeleton shadcn verificado no navegador com leitura temporariamente retida, com `aria-busy=true`; instrumentação removida depois. Teste cobre entrada/saída do carregamento. Review apontou botões de confirmação sem quebra no celular; rodapés corrigidos para empilhar antes de 640px. Regressão adicional verifica que a transação aparece uma vez e a conta abre o movimento correto. Verificação focada: 26 testes aprovados e build frontend aprovado. Capturas locais: `operation-compact-desktop.png`, `operation-compact-mobile.png`, `operation-skeleton.png`.
+
+## Cores semânticas nas páginas revisadas
+
+Cards claros sobre o fundo quente, com tokens centrais de entrada (verde), saída (terracota), pendência (âmbar), informação/anexo (azul) e alerta (vermelho). Aplicado ao dashboard, compromissos/calendário, contas/extratos, detalhe da operação, categoria, liquidação e upload. A camada é opt-in para preservar módulos fora do PR. Nenhum dado, ação ou espaço do grid foi removido para acomodar cor.
+
+Inspecionados dashboard e contas/extratos sem overflow horizontal em 1440, 1180, 720 e 390/391px. Diálogo de pagamento com nota fiscal verificado em 391px: área útil de 357px, scrollWidth=clientWidth. Detalhe da operação conserva todos os blocos na primeira tela do exemplo. Review identificou saldo disponível negativo em verde; corrigido para tom de alerta. Acessibilidade mantém rótulos, status, datas e traçados das séries; texto âmbar usa marrom escuro sobre fundo suave.
+
+Validação final: 123 arquivos / 950 testes frontend aprovados e build frontend aprovado. O teste do gráfico foi atualizado para a cor de saída, mantendo suas verificações de valores exatos e alternativa acessível. Capturas locais: `dashboard-colors.png`, `operation-colors.png`, `compromissos-colors.png`, `contas-colors.png`, `payment-colors.png`.

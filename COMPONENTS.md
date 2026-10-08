@@ -567,3 +567,5 @@ Convencionar `DD/mmm/YY` em headers, `DD/MM/YYYY` em tabelas longas.
 ## Skeleton de carregamento financeiro
 
 `client/src/components/ui/skeleton.tsx` é a primitiva shadcn para placeholders; respeita movimento reduzido. `financeiro/CarregamentoFinanceiro.tsx` compõe `SkeletonOperacao` e `SkeletonCategorias` na mesma organização do conteúdo, com `role="status"`, `aria-busy` e placeholders ocultos de leitores de tela.
+
+A camada `financeiro/cores-financeiro.css` define `fin-painel`, `fin-cabecalho`, `fin-indicador`, `fin-valor`, `fin-selo` e `fin-dropzone`, com `data-fin-tom` (`entrada`, `saida`, `pendente`, `info`, `alerta`, `neutro`). Use `PaginaFinanceira colorida`, `Panel tom` e `Metric tom` para ativar o padrão nas páginas financeiras revisadas. `DialogFinanceiro tom` inclui a superfície clara também quando renderizado em portal.

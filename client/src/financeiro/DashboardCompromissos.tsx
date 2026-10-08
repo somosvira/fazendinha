@@ -24,16 +24,16 @@ export function DashboardCompromissos({ itens, href, mes, onChangeMes, onLiquida
   const proximos = itens.filter(item => !item.vencido && item.dataVencimento.slice(0, 10) >= hoje && item.dataVencimento.slice(0, 10) <= fim);
   const [calendario, setCalendario] = useState(false);
   const grupos = [{ id: "vencidos", label: `Vencidos (${vencidos.length})`, itens: vencidos, vazio: "Nenhum compromisso vencido no período." }, { id: "proximos", label: `Próximos 7 dias (${proximos.length})`, itens: proximos, vazio: "Nenhum compromisso nos próximos 7 dias dentro do período selecionado." }];
-  return <Card className="min-w-0 gap-0 overflow-hidden rounded-lg border-border py-0 shadow-none">
+  return <Card data-fin-tom="pendente" className="fin-painel min-w-0 gap-0 overflow-hidden rounded-lg border-border py-0 shadow-none">
     <Tabs defaultValue={vencidos.length ? "vencidos" : "proximos"} className="gap-0">
-      <div className="flex flex-wrap items-center justify-between gap-3 p-4">
+      <div className="fin-cabecalho flex flex-wrap items-center justify-between gap-3 p-4">
         <h2 className="font-serif text-xl">Compromissos</h2>
         <div className="flex flex-wrap items-center gap-2">
           <TabsList className="h-9">{grupos.map(grupo => <TabsTrigger key={grupo.id} value={grupo.id} className="text-sm">{grupo.label}</TabsTrigger>)}</TabsList>
           <Dialog open={calendario} onOpenChange={setCalendario}>
             <DialogTrigger asChild><Button variant="outline"><CalendarDays aria-hidden="true" />Calendário</Button></DialogTrigger>
-            <DialogContent className="z-[1100] max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-5xl grid-cols-1 grid-rows-[auto_minmax(0,1fr)] overflow-hidden" overlayClassName="z-[1090]">
-              <DialogHeader className="min-w-0 border-b border-border p-4 pr-12"><DialogTitle>Calendário de compromissos</DialogTitle><DialogDescription>Vencimentos pendentes no período selecionado, de {dataBR(hrefPeriodo(href, "inicio"))} a {dataBR(hrefPeriodo(href, "fim"))}.</DialogDescription></DialogHeader>
+            <DialogContent data-fin-tom="pendente" className="financeiro-colorido z-[1100] max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-5xl grid-cols-1 grid-rows-[auto_minmax(0,1fr)] overflow-hidden" overlayClassName="z-[1090]">
+              <DialogHeader className="fin-cabecalho min-w-0 border-b border-border p-4 pr-12"><DialogTitle>Calendário de compromissos</DialogTitle><DialogDescription>Vencimentos pendentes no período selecionado, de {dataBR(hrefPeriodo(href, "inicio"))} a {dataBR(hrefPeriodo(href, "fim"))}.</DialogDescription></DialogHeader>
               <div className="min-h-0 min-w-0 overflow-auto"><CalendarioCompromissos compacto itens={itens} mes={mes} onChangeMes={onChangeMes} onLiquidar={onLiquidar ? item => { setCalendario(false); onLiquidar(item); } : undefined} /></div>
             </DialogContent>
           </Dialog>
@@ -43,9 +43,9 @@ export function DashboardCompromissos({ itens, href, mes, onChangeMes, onLiquida
       {grupos.map(grupo => <TabsContent key={grupo.id} value={grupo.id} className="m-0">
         {grupo.itens.length ? <Table containerLabel="Tabela de compromissos" className="text-sm"><TableCaption className="sr-only">Compromissos do período</TableCaption>
           <TableHeader><TableRow><TableHead>Descrição</TableHead><TableHead>Vencimento</TableHead><TableHead className="text-right">Valor</TableHead>{onLiquidar && <TableHead className="text-right">Ação</TableHead>}</TableRow></TableHeader>
-          <TableBody>{grupo.itens.slice(0, 5).map(item => <TableRow key={item.id}>
+          <TableBody>{grupo.itens.slice(0, 5).map(item => <TableRow key={item.id} data-fin-tom={item.vencido ? "alerta" : item.tipo === "RECEBER" ? "entrada" : "saida"} className="fin-linha">
             <TableCell className="max-w-48 whitespace-normal px-4 py-2"><span className="block truncate font-semibold" title={tituloCompromisso(item)}>{tituloCompromisso(item)}</span><p className="mt-1 truncate text-muted-foreground" title={item.parceiro?.nome}>{item.parceiro?.nome ?? "Sem parceiro"}</p></TableCell>
-            <TableCell><span className="block">{dataBR(item.dataVencimento)}</span>{item.vencido && <Badge variant="outline" className="mt-1 border-destructive/20 bg-destructive/10 text-destructive">Vencido</Badge>}</TableCell><TableCell className={`text-right font-semibold tabular-nums ${item.tipo === "RECEBER" ? "text-[var(--pos)]" : ""}`}>{brl(item.saldoPendente)}</TableCell>
+            <TableCell><span className="block">{dataBR(item.dataVencimento)}</span>{item.vencido && <Badge variant="outline" className="mt-1 border-destructive/20 bg-destructive/10 text-destructive">Vencido</Badge>}</TableCell><TableCell className={`text-right font-semibold tabular-nums ${item.tipo === "RECEBER" ? "text-[var(--fin-entrada)]" : "text-[var(--fin-saida)]"}`}>{brl(item.saldoPendente)}</TableCell>
             {onLiquidar && <TableCell className="text-right"><Button variant="link" className="px-2" aria-label={item.tipo === "PAGAR" ? "Registrar pagamento" : "Registrar recebimento"} onClick={() => onLiquidar(item)}>{item.tipo === "PAGAR" ? "Pagar" : "Receber"}</Button></TableCell>}
           </TableRow>)}</TableBody>
         </Table> : <p role="status" className="p-6 text-center text-sm text-muted-foreground">{grupo.vazio}</p>}

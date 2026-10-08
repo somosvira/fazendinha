@@ -41,3 +41,7 @@ A leitura de uma operação exige ID e as coleções essenciais antes de renderi
 O detalhe usa resumo com valor, categoria e contagens no topo, seguido por grid de duas colunas para compromissos, histórico, documentos e procedimentos. Itens/perdas/transferências só ocupam um painel quando existem; todos os registros continuam visíveis, sem truncar descrições ou ocultar dados em abas. Transações aparecem uma única vez no histórico, incluindo links das movimentações e ação de estorno. As contagens do resumo apresentam todos os registros vinculados; a confirmação de cancelamento continua usando somente os efeitos elegíveis.
 
 O objetivo é reduzir rolagem pela organização e remoção de duplicações. Listas extensas e telas menores continuam permitindo rolagem para preservar legibilidade e todos os dados. No carregamento, Skeleton shadcn acompanha o grid e a composição de categorias, com anúncio acessível e respeito à preferência por movimento reduzido. Erro e nova tentativa permanecem disponíveis.
+
+## Hierarquia por cor
+
+Dashboard, compromissos/calendário, contas/extratos, detalhe da operação e seus diálogos usam cards claros sobre o fundo quente. A camada `cores-financeiro.css` centraliza entrada (verde), saída (terracota), pendência (âmbar), informação/anexos (azul) e alerta (vermelho), reaproveitando tokens Terrano. Valores e status mantêm rótulos e datas; o gráfico conserva os traçados distintos. A camada é opt-in nas páginas revisadas, sem aplicar novos estilos aos demais módulos. O grid, a densidade e os contratos de dados permanecem os mesmos.

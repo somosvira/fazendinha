@@ -1,3 +1,4 @@
+import "./cores-financeiro.css";
 import { forwardRef, useEffect, useRef, useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import { ArrowDown, ArrowUp, Check, Pencil, Power, PowerOff, X } from "lucide-react";
@@ -29,8 +30,10 @@ export const STATUS: Record<string, string> = {
  * folga que impede o botão flutuante de menu de cobrir o cabeçalho em ≤900px)
  * vêm de `.shell-wide.pagina-financeira` em base.css — utilitário Tailwind de
  * padding não funciona aqui, `.shell-wide` é regra não-camada e vence a camada. */
-export function PaginaFinanceira({ children }: { children: React.ReactNode }) {
-  return <div className="shell-wide pagina-financeira">{children}</div>;
+export type TomFinanceiro = "entrada" | "saida" | "pendente" | "info" | "alerta" | "neutro";
+
+export function PaginaFinanceira({ children, colorida = false }: { children: React.ReactNode; colorida?: boolean }) {
+  return <div className={`shell-wide pagina-financeira ${colorida ? "financeiro-colorido" : ""}`}>{children}</div>;
 }
 
 /* Carregamento em nível de página: ocupa a área de conteúdo (.app-main, que já
@@ -51,7 +54,7 @@ export function PaginaSemDados({ titulo, descricao, label, erro }: { titulo: str
 }
 
 export function PageHeader({ titulo, descricao, acao, eyebrow = "Financeiro" }: { titulo: string; descricao: string; acao?: React.ReactNode; /** rótulo acima do título; padrão "Financeiro" */ eyebrow?: string }) {
-  return <header className="flex flex-wrap items-end justify-between gap-5 border-b border-border pb-6 pt-7 max-[900px]:pt-0">
+  return <header className="fin-cabecalho-pagina flex flex-wrap items-end justify-between gap-5 border-b border-border pb-6 pt-7 max-[900px]:pt-0">
     <div className="min-w-0 max-w-3xl flex-[1_1_320px]">{eyebrow && <div className="eyebrow">{eyebrow}</div>}<h1 className={`h1 break-words hyphens-auto ${eyebrow ? "mt-2" : ""}`}>{titulo}</h1><p className="mt-2 break-words text-sm leading-6 text-ink-3">{descricao}</p></div>{acao}
   </header>;
 }
@@ -67,13 +70,13 @@ export const Button = forwardRef<HTMLButtonElement, { children: React.ReactNode;
 );
 Button.displayName = "Button";
 
-export function Panel({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <section className={`rounded-xl border border-border bg-white shadow-[0_1px_2px_rgba(30,35,28,.04)] ${className}`}>{children}</section>;
+export function Panel({ children, className = "", tom }: { children: React.ReactNode; className?: string; tom?: TomFinanceiro }) {
+  return <section data-fin-tom={tom} data-slot="financeiro-panel" className={`rounded-xl border border-border bg-white shadow-[0_1px_2px_rgba(30,35,28,.04)] ${className}`}>{children}</section>;
 }
 
 export function Pill({ children, tone = "neutral" }: { children: React.ReactNode; tone?: "neutral" | "green" | "amber" | "red" | "blue" | "brown" }) {
   const tons = { neutral: "bg-stone-100 text-stone-700", green: "bg-green-100 text-green-800", amber: "bg-amber-100 text-amber-900", red: "bg-red-100 text-red-800", blue: "bg-blue-100 text-blue-800", brown: "bg-[#eee7d8] text-[#63543c]" };
-  return <span className={`inline-flex shrink-0 items-center whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-semibold ${tons[tone]}`}>{children}</span>;
+  return <span data-fin-tom={tone === "green" ? "entrada" : tone === "red" ? "alerta" : tone === "amber" ? "pendente" : tone === "blue" ? "info" : tone === "brown" ? "saida" : "neutro"} className={`fin-selo inline-flex shrink-0 items-center whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-semibold ${tons[tone]}`}>{children}</span>;
 }
 
 export function StatusPill({ status }: { status: string }) {
@@ -81,9 +84,9 @@ export function StatusPill({ status }: { status: string }) {
   return <Pill tone={tone}>{STATUS[status] ?? status}</Pill>;
 }
 
-export function Metric({ label, valor, detalhe, icon: Icon, tone = "default" }: { label: string; valor: string; detalhe?: string; icon: LucideIcon; tone?: "default" | "green" | "red" }) {
+export function Metric({ label, valor, detalhe, icon: Icon, tone = "default", tom }: { label: string; valor: string; detalhe?: string; icon: LucideIcon; tone?: "default" | "green" | "red"; tom?: TomFinanceiro }) {
   const iconTone = tone === "green" ? "bg-green-50 text-green-800" : tone === "red" ? "bg-red-50 text-red-800" : "bg-[#eef1e9] text-mast";
-  return <Panel className="@container p-5"><div className="flex items-start justify-between gap-4"><div className="min-w-0 flex-1"><div className="text-[11px] font-semibold uppercase tracking-[.12em] text-ink-3">{label}</div><div className="mt-3 break-words font-serif text-[clamp(19px,8cqw,28px)] leading-none tracking-tight text-ink">{valor}</div></div><div className={`shrink-0 rounded-lg p-2.5 @max-[240px]:hidden ${iconTone}`}><Icon size={18} /></div></div>{detalhe && <div className="mt-3 break-words text-xs text-ink-3">{detalhe}</div>}</Panel>;
+  return <Panel tom={tom} className={`@container p-5 ${tom ? "fin-indicador" : ""}`}><div className="flex items-start justify-between gap-4"><div className="min-w-0 flex-1"><div className="text-[11px] font-semibold uppercase tracking-[.12em] text-ink-3">{label}</div><div className={`mt-3 break-words font-serif text-[clamp(19px,8cqw,28px)] leading-none tracking-tight ${tom ? "fin-valor" : "text-ink"}`}>{valor}</div></div><div className={`shrink-0 rounded-lg p-2.5 @max-[240px]:hidden ${iconTone}`}><Icon size={18} /></div></div>{detalhe && <div className="mt-3 break-words text-xs text-ink-3">{detalhe}</div>}</Panel>;
 }
 
 /* Rodapé de paginação das tabelas: intervalo exibido, Anterior/Próxima e salto
@@ -142,8 +145,8 @@ export function Empty({ children }: { children: React.ReactNode }) {
   return <div className="p-10 text-center text-sm text-ink-3">{children}</div>;
 }
 
-export function Modal({ titulo, eyebrow, onClose, children, width = "max-w-xl", semCabecalho = false }: { titulo: string; eyebrow: string; onClose: () => void; children: React.ReactNode; width?: string; semCabecalho?: boolean }) {
-  return <div className="fixed inset-0 z-[1100] grid place-items-center bg-black/45 p-4" role="dialog" aria-modal="true" aria-label={titulo}><Panel className={`${semCabecalho ? "h-[92vh] overflow-hidden" : "max-h-[92vh] overflow-auto"} w-full ${width}`}>{!semCabecalho && <div className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-border bg-[#f4f2e9] p-5"><div className="min-w-0"><div className="eyebrow">{eyebrow}</div><h2 className="mt-1 break-words font-serif text-2xl">{titulo}</h2></div><button onClick={onClose} aria-label="Fechar" className="shrink-0 rounded-lg p-2 hover:bg-white"><X size={18} /></button></div>}{children}</Panel></div>;
+export function Modal({ titulo, eyebrow, onClose, children, width = "max-w-xl", semCabecalho = false, colorida = false, tom = "info" }: { titulo: string; eyebrow: string; onClose: () => void; children: React.ReactNode; width?: string; semCabecalho?: boolean; colorida?: boolean; tom?: TomFinanceiro }) {
+  return <div data-fin-tom={tom} className={`fixed inset-0 z-[1100] grid place-items-center bg-black/45 p-4 ${colorida ? "financeiro-colorido" : ""}`} role="dialog" aria-modal="true" aria-label={titulo}><Panel className={`${semCabecalho ? "h-[92vh] overflow-hidden" : "max-h-[92vh] overflow-auto"} w-full ${width}`}>{!semCabecalho && <div className="fin-modal-cabecalho sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-border bg-[#f4f2e9] p-5"><div className="min-w-0"><div className="eyebrow">{eyebrow}</div><h2 className="mt-1 break-words font-serif text-2xl">{titulo}</h2></div><button onClick={onClose} aria-label="Fechar" className="shrink-0 rounded-lg p-2 hover:bg-white"><X size={18} /></button></div>}{children}</Panel></div>;
 }
 
 export function ReviewLine({ children, tone = "green" }: { children: React.ReactNode; tone?: "green" | "amber" | "brown" | "neutral" }) {

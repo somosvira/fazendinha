@@ -1,0 +1,47 @@
+/* A mesma natureza mantém a mesma cor nas páginas e nos diálogos do PR. */
+:root {
+  --fin-entrada: var(--lucro);
+  --fin-saida: var(--cafe-2);
+  --fin-pendente: var(--atencao);
+  --fin-info: var(--info);
+  --fin-alerta: var(--prejuizo);
+  --fin-superficie: var(--color-white);
+}
+.financeiro-colorido {
+  --card: var(--fin-superficie);
+  --popover: var(--fin-superficie);
+  --fin-cor: var(--fin-info);
+  --fin-texto: var(--fin-info);
+}
+[data-fin-tom="entrada"] { --fin-cor: var(--fin-entrada); --fin-texto: var(--fin-entrada); }
+[data-fin-tom="saida"] { --fin-cor: var(--fin-saida); --fin-texto: var(--fin-saida); }
+[data-fin-tom="pendente"] { --fin-cor: var(--fin-pendente); --fin-texto: var(--cafe); }
+[data-fin-tom="info"] { --fin-cor: var(--fin-info); --fin-texto: var(--fin-info); }
+[data-fin-tom="alerta"] { --fin-cor: var(--fin-alerta); --fin-texto: var(--fin-alerta); }
+[data-fin-tom="neutro"] { --fin-cor: var(--ink-3); --fin-texto: var(--ink-2); }
+.fin-painel { border-top: 3px solid var(--fin-cor); }
+.fin-cabecalho { background: color-mix(in srgb, var(--fin-cor) 7%, var(--fin-superficie)); }
+.fin-cabecalho h2, .fin-cabecalho h3 { color: var(--fin-texto); }
+.fin-valor { color: var(--fin-texto); }
+.fin-icone { color: var(--fin-texto); background: color-mix(in srgb, var(--fin-cor) 12%, var(--fin-superficie)); }
+.financeiro-colorido .fin-selo, .fin-selo.financeiro-colorido {
+  color: var(--fin-texto);
+  background: color-mix(in srgb, var(--fin-cor) 13%, var(--fin-superficie));
+  border-color: color-mix(in srgb, var(--fin-cor) 28%, transparent);
+}
+.financeiro-colorido [data-slot="financeiro-panel"] { background: var(--fin-superficie); }
+.financeiro-colorido .fin-cabecalho-pagina { border-bottom-color: color-mix(in srgb, var(--fin-info) 30%, var(--border)); }
+.financeiro-colorido .fin-cabecalho-pagina .eyebrow { color: var(--fin-info); }
+.financeiro-colorido .fin-modal-cabecalho { background: color-mix(in srgb, var(--fin-cor) 7%, var(--fin-superficie)); }
+.financeiro-colorido .fin-modal-cabecalho .eyebrow { color: var(--fin-texto); }
+.fin-indicador { border-top: 3px solid var(--fin-cor); background: linear-gradient(135deg, color-mix(in srgb, var(--fin-cor) 9%, var(--fin-superficie)), var(--fin-superficie) 80%); }
+.fin-indicador svg { color: var(--fin-texto); }
+.fin-indicador > strong { color: var(--fin-texto); }
+.fin-linha { border-left: 3px solid var(--fin-cor); }
+.fin-linha:hover { background: color-mix(in srgb, var(--fin-cor) 5%, var(--fin-superficie)); }
+.fin-dropzone { border-color: color-mix(in srgb, var(--fin-info) 45%, var(--border)); background: color-mix(in srgb, var(--fin-info) 5%, var(--fin-superficie)); }
+.fin-dropzone[data-arrastando="true"] { border-color: var(--fin-info); background: color-mix(in srgb, var(--fin-info) 12%, var(--fin-superficie)); }
+.fin-dropzone svg { color: var(--fin-info); }
+.financeiro-colorido .fin-indicador { background: linear-gradient(135deg, color-mix(in srgb, var(--fin-cor) 9%, var(--fin-superficie)), var(--fin-superficie) 80%); }
+.fin-painel > h2, .fin-painel > div:first-child h2 { color: var(--fin-texto); }
+.fin-evento { color: var(--fin-texto); background: color-mix(in srgb, var(--fin-cor) 12%, var(--fin-superficie)); border-left-color: var(--fin-cor); }

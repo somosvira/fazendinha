@@ -45,8 +45,8 @@ export function ExtratoGeral({ contas, movimentos, filtros, onChangeFiltros, car
   return <section id="extrato-geral" className="mt-8 scroll-mt-6" aria-labelledby="titulo-extrato-geral">
     <h2 id="titulo-extrato-geral" className="font-serif text-2xl">Extrato geral</h2>
     <p className="mt-2 text-sm text-ink-3">Movimentações de todas as contas da fazenda selecionada, da mais recente à mais antiga. Clique para localizar o registro na conta.</p>
-    <Panel className="mt-4 overflow-hidden">
-      <div className="grid gap-4 border-b border-border p-5 sm:grid-cols-2">
+    <Panel tom="info" className="fin-painel mt-4 overflow-hidden">
+      <div className="fin-cabecalho grid gap-4 border-b border-border p-5 sm:grid-cols-2">
         <label className="text-sm font-medium">Conta<select value={conta} onChange={e => onChangeFiltros({ ...filtros, conta: e.target.value })} className={CAMPO}><option value="">Todas as contas</option>{contas.map(c => <option key={c.id} value={c.id}>{c.nome}{!c.ativo ? " (inativa)" : ""}</option>)}</select></label>
         <label className="text-sm font-medium">Instituição<select value={instituicao} onChange={e => onChangeFiltros({ ...filtros, instituicao: e.target.value })} className={CAMPO}><option value="">Todas as instituições</option>{Array.from(new Set(contas.map(c => c.instituicao).filter((i): i is string => !!i))).sort().map(i => <option key={i} value={i}>{i}</option>)}<option value="__sem__">Sem instituição</option></select></label>
       </div>
@@ -58,8 +58,8 @@ export function ExtratoGeral({ contas, movimentos, filtros, onChangeFiltros, car
         { chave: "conta", titulo: "Conta", alinhamento: "centro", larguraMinima: 160, celula: m => m.conta.nome },
         { chave: "instituicao", titulo: "Instituição", alinhamento: "centro", larguraMinima: 140, celula: m => m.conta.instituicao || "—" },
         { chave: "operacao", titulo: "Operação", alinhamento: "centro", larguraMinima: 140, acoes: true, celula: m => m.transacao.operacao ? <LinkOperacaoFinanceira id={m.transacao.operacao.id} numero={m.transacao.operacao.numero} /> : <span className="text-xs text-ink-3">Transação avulsa</span> },
-        { chave: "entrada", titulo: "Entrada", alinhamento: "centro", larguraMinima: 130, celula: m => <span className="whitespace-nowrap text-green-800">{m.direcao === "ENTRADA" ? brl(m.valor) : "—"}</span> },
-        { chave: "saida", titulo: "Saída", alinhamento: "centro", larguraMinima: 130, celula: m => <span className="whitespace-nowrap">{m.direcao === "SAIDA" ? brl(m.valor) : "—"}</span> },
+        { chave: "entrada", titulo: "Entrada", alinhamento: "centro", larguraMinima: 130, celula: m => <span className="whitespace-nowrap text-[var(--fin-entrada)]">{m.direcao === "ENTRADA" ? brl(m.valor) : "—"}</span> },
+        { chave: "saida", titulo: "Saída", alinhamento: "centro", larguraMinima: 130, celula: m => <span className="whitespace-nowrap text-[var(--fin-saida)]">{m.direcao === "SAIDA" ? brl(m.valor) : "—"}</span> },
       ]} /> : <Empty>Nenhuma movimentação encontrada para os filtros selecionados.</Empty>}
     </Panel>
   </section>;

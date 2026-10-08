@@ -20,7 +20,7 @@ export function VinculosPecuaria({ operacaoId, compacto = false }: { operacaoId:
     return () => controle.abort();
   }, [operacaoId, revisao]);
   if (!podeAcessarArea("pecuaria")) return null;
-  return <section className={compacto ? "min-w-0 rounded-xl border border-border bg-card p-4" : "border-t border-border p-6"} aria-label="Vínculos com a Pecuária">
+  return <section className={compacto ? "fin-painel min-w-0 rounded-xl border border-border bg-card p-4" : "border-t border-border p-6"} data-fin-tom="info" aria-label="Vínculos com a Pecuária">
     <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-3">Procedimentos vinculados</h2>
     <p className="mt-1 text-xs text-ink-3">Esta é a origem financeira dos procedimentos, sem nova despesa. O custo do medicamento e o rateio do Serviço são separados.</p>
     {erro && <p className="mt-3 text-sm text-red-800">{erro} <button type="button" className="underline" onClick={() => setRevisao((v) => v + 1)}>Tentar novamente</button></p>}

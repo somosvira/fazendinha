@@ -290,7 +290,7 @@ export function pontosEntradaSaida(data: EntradaSaidaPoint[], tipo: ChartType) {
 export function EntradaSaidaChart({ data, tipo = "line", compacto = false }: { data: EntradaSaidaPoint[]; tipo?: ChartType; compacto?: boolean }) {
   const pontos = pontosEntradaSaida(data, tipo);
   return <>
-    <ChartContainer config={fluxoConfig} className={`${compacto ? "h-[210px]" : "h-[300px]"} w-full aspect-auto overflow-hidden`} role="img" aria-label={tipo === "line" ? "Totais acumulados de receitas e despesas por dia ou mês" : "Entradas e saídas por dia ou mês, apresentadas como receitas e despesas em reais"}>
+    <ChartContainer config={{ ...fluxoConfig, despesas: { label: "Despesas", color: "var(--fin-saida, var(--cafe-2))" } }} className={`${compacto ? "h-[210px]" : "h-[300px]"} w-full aspect-auto overflow-hidden`} role="img" aria-label={tipo === "line" ? "Totais acumulados de receitas e despesas por dia ou mês" : "Entradas e saídas por dia ou mês, apresentadas como receitas e despesas em reais"}>
       <ComposedChart data={pontos} margin={{ top: 18, right: 18, bottom: 8, left: 24 }} accessibilityLayer>
         <CartesianGrid vertical={false} stroke="var(--rule-soft)" />
         <XAxis dataKey="rotuloEixo" minTickGap={18} interval="preserveStartEnd" {...axisProps} />

@@ -66,7 +66,7 @@ export function LiquidarCompromissoModal({ compromisso, contas, onClose, onLiqui
     }
   };
 
-  return <Modal titulo={`Registrar ${compromisso.tipo === "PAGAR" ? "pagamento" : "recebimento"}`} eyebrow="Confirmação financeira" onClose={fechar}>
+  return <Modal tom={compromisso.tipo === "PAGAR" ? "saida" : "entrada"} titulo={`Registrar ${compromisso.tipo === "PAGAR" ? "pagamento" : "recebimento"}`} eyebrow="Confirmação financeira" onClose={fechar}>
     <div className="p-5">
       <ErrorBox erro={erro} />
       <div className="rounded-lg bg-surface-2 p-4">

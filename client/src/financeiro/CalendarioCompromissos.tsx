@@ -40,7 +40,7 @@ export function CalendarioCompromissos({ itens, mes, onChangeMes, onLiquidar, co
       </div>
       <Button variant="outline" onClick={() => mudarMes(mesAtual())}>Hoje</Button>
     </div>
-    <div className="flex flex-wrap gap-x-4 gap-y-2 px-4 py-3 text-sm text-ink-3"><span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-amber-600" />A pagar</span><span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-green-700" />A receber</span><span>Clique em um compromisso para consultar os detalhes.</span></div>
+    <div className="flex flex-wrap gap-x-4 gap-y-2 px-4 py-3 text-sm text-ink-3"><span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[var(--fin-pendente)]" />A pagar</span><span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[var(--fin-entrada)]" />A receber</span><span>Clique em um compromisso para consultar os detalhes.</span></div>
     {!temCompromissosNoMes && <p role="status" className="px-4 pb-3 text-sm text-ink-3">Nenhum compromisso neste mês para a visão selecionada.</p>}
     <p className="px-4 pb-3 text-sm text-ink-3 md:hidden">Deslize o calendário para ver os outros dias da semana.</p>
     <div role="region" aria-label="Dias do calendário" tabIndex={0} className="overflow-x-auto">
@@ -51,7 +51,7 @@ export function CalendarioCompromissos({ itens, mes, onChangeMes, onLiquidar, co
           <div className={compacto ? "min-h-[clamp(64px,calc((100dvh-300px)/6),96px)]" : "min-h-[130px]"}>
             <time dateTime={data} aria-label={dataBR(data)} aria-current={data === hoje() ? "date" : undefined} className={`mb-2 inline-flex h-7 w-7 items-center justify-center rounded-full text-sm font-semibold ${data === hoje() ? "bg-mast text-white" : ""}`}>{dia}</time>
             <ul className="max-h-48 space-y-1 overflow-y-auto" aria-label={`Compromissos de ${dataBR(data)}`}>{(porDia.get(data) ?? []).map(c => <li key={c.id}>
-              <Button type="button" onClick={() => setSelecionadoId(c.id)} aria-label={`${tituloCompromisso(c)}, ${c.tipo === "PAGAR" ? "a pagar" : "a receber"}, ${brl(c.saldoPendente)}${c.vencido ? ", vencido" : ""}`} variant="ghost" className={`h-auto w-full flex-col items-start gap-0 whitespace-normal rounded-md border-l-2 p-2 text-left text-sm leading-snug hover:brightness-95 ${c.tipo === "PAGAR" ? "border-amber-600 bg-amber-50 text-amber-950" : "border-green-700 bg-green-50 text-green-950"}`}>
+              <Button data-fin-tom={c.tipo === "PAGAR" ? "pendente" : "entrada"} type="button" onClick={() => setSelecionadoId(c.id)} aria-label={`${tituloCompromisso(c)}, ${c.tipo === "PAGAR" ? "a pagar" : "a receber"}, ${brl(c.saldoPendente)}${c.vencido ? ", vencido" : ""}`} variant="ghost" className={`fin-evento h-auto w-full flex-col items-start gap-0 whitespace-normal rounded-md border-l-2 p-2 text-left text-sm leading-snug hover:brightness-95 `}>
                 <span className="line-clamp-2 break-words font-semibold">{tituloCompromisso(c)}</span>
                 <span className="mt-1 block">{c.tipo === "PAGAR" ? "A pagar" : "A receber"} · {brl(c.saldoPendente)}</span>
                 {c.vencido && <span className="mt-1 block font-semibold text-red-800">Vencido</span>}
@@ -63,10 +63,10 @@ export function CalendarioCompromissos({ itens, mes, onChangeMes, onLiquidar, co
         </TableCell>)}</TableRow>)}</TableBody>
       </Table>
     </div>
-    {diaSelecionado && <Modal titulo={`Compromissos de ${dataBR(diaSelecionado)}`} eyebrow="Agenda financeira" onClose={() => setDiaSelecionado(null)}>
+    {diaSelecionado && <Modal tom="pendente" titulo={`Compromissos de ${dataBR(diaSelecionado)}`} eyebrow="Agenda financeira" onClose={() => setDiaSelecionado(null)}>
       <ul className="divide-y divide-border">{(porDia.get(diaSelecionado) ?? []).map(c => <li key={c.id}><Button type="button" onClick={() => { setDiaSelecionado(null); setSelecionadoId(c.id); }} variant="ghost" className="h-auto w-full flex-col items-start whitespace-normal space-y-2 p-5 text-left hover:bg-surface-2"><strong className="block break-words text-sm">{tituloCompromisso(c)}</strong><span className="block text-sm">{c.tipo === "PAGAR" ? "A pagar" : "A receber"} · {brl(c.saldoPendente)}</span><Badge variant="outline">{STATUS[c.status] ?? c.status}</Badge>{c.vencido && <Badge variant="outline" className="border-destructive/20 text-destructive">Vencido</Badge>}</Button></li>)}</ul>
     </Modal>}
-    {selecionado && <Modal titulo="Detalhes do compromisso" eyebrow="Agenda financeira" onClose={() => setSelecionadoId(null)}>
+    {selecionado && <Modal tom="pendente" titulo="Detalhes do compromisso" eyebrow="Agenda financeira" onClose={() => setSelecionadoId(null)}>
       <div className="space-y-5 p-5">
         <div><h3 className="break-words font-serif text-xl">{tituloCompromisso(selecionado)}</h3><p className="mt-2 text-sm text-ink-3">{selecionado.parceiro?.nome ?? "Sem parceiro"}</p></div>
         <div className="flex flex-wrap gap-2"><Badge variant="outline">{STATUS[selecionado.status] ?? selecionado.status}</Badge>{selecionado.vencido && <Badge variant="outline" className="border-destructive/20 text-destructive">Vencido</Badge>}</div>

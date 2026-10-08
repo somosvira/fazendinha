@@ -370,3 +370,9 @@ Antes de implementar qualquer tela, componente ou funcionalidade, pergunte:
 > **"Isso ajuda o produtor a tomar uma decisão melhor?"**
 
 Se a resposta for **não**, repense a implementação.
+
+## Cores nas páginas financeiras em grid
+
+Nas páginas financeiras revisadas no PR do dashboard, o fundo mantém o bege Terrano e os cards usam branco para separar conteúdo e superfície. `financeiro/cores-financeiro.css` centraliza os aliases semânticos da paleta existente: entrada/disponibilidade (`--lucro`), saída/despesa (`--cafe-2`, terracota), pendência (`--atencao`, com texto marrom escuro), informação/documentos (`--info`) e alerta/atraso/ação destrutiva (`--prejuizo`). Verde de status significa confirmado/liquidado; o rótulo sempre explicita o significado.
+
+Aplique cor em faixas finas, cabeçalhos suaves, ícones, valores e badges. Mantenha descrições em tinta escura e preserve rótulos, sinais, status e traçados de gráfico: cor nunca é a única indicação. A camada é ativada por `PaginaFinanceira colorida` e pelos diálogos das páginas revisadas, sem mudar o tema de módulos fora desse escopo. Não acrescente alturas ou espaçamentos para acomodar cores.
