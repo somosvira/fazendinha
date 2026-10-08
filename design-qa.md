@@ -68,3 +68,8 @@ Suíte completa: 123 arquivos / 955 testes aprovados. Checagem TypeScript e buil
 Inspeção visual em 1440, 1180, 720 e 391px, sem overflow horizontal das páginas inspecionadas. A nova operação conserva a altura da janela e mantém confirmação visível; campos e revisão dos efeitos rolam internamente. Em desktop, parceiros passou de cerca de 22717px para 903px, com todos os registros acessíveis por paginação e rolagem da tabela. A listagem de relatórios cabe em 900px; a prévia gerencial do detalhe é aberta sob demanda. No celular, listas e formulários preservam rolagem para não comprimir textos e controles.
 
 Evidências locais em `/Users/toledo/.codex/visualizations/2026/10/08/financeiro-correcoes/`. A prévia encaminha somente leituras e bloqueia gravações: autosave, geração, upload e liquidação foram exercitados com mocks nos testes, sem escrita na produção.
+
+
+## Contraste do carregamento
+
+Skeleton financeiro com contraste reforçado sobre superfície branca, combinado com Loader temático e mensagem visível. Inspeção com leituras temporariamente retidas confirmou ambos em 1440 × 900 sem overflow; instrumentação removida ao concluir. Um único status acessível por área. Verificação: 47 testes focados e build frontend aprovados. Evidência local: `financeiro-correcoes/16-loading-contraste.png`.

@@ -58,3 +58,5 @@ Operações, cadastros e relatórios seguem o mesmo padrão de densidade e cores
 - Carregamento de página e atualização de operações usam Skeleton shadcn com anúncio acessível. Tabs shadcn garante navegação por setas e associação ao painel; os destinos ficam visíveis em grid também no celular.
 
 Nenhuma alteração de cálculo, payload financeiro, backend, permissão ou persistência. As verificações de escrita usam mocks de API; a revisão visual usa prévia local com gravações bloqueadas.
+
+O carregamento combina Skeleton shadcn com o Loader temático existente. Placeholders financeiros usam contraste próprio sobre cards claros; o indicador e sua mensagem permanecem visíveis. Há um único anúncio acessível por área, e as animações respeitam movimento reduzido.

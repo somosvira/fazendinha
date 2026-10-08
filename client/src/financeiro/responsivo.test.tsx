@@ -171,6 +171,7 @@ describe("telas financeiras — envelope e carregamento", () => {
     const { container, getByRole } = render(renderizar());
 
     expect(container.querySelector('[data-slot="skeleton"]'), "carrega com a primitiva shadcn").toBeTruthy();
+    expect(container.querySelector(".loader-figure"), "preserva o indicador de carregamento existente").toBeTruthy();
     const estado = getByRole("status");
     expect(estado.getAttribute("aria-busy")).toBe("true");
     const raiz = container.firstElementChild!;

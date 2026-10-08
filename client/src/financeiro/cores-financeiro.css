@@ -49,3 +49,6 @@
 /* Grupos extensos ocupam a linha; campos simples compartilham o grid. */
 .cadastro-grid > :is(fieldset, p, details, .grid, [role="alert"]),
 .cadastro-grid > div:has(textarea) { grid-column: 1 / -1; }
+
+/* Contraste sobre o fundo quente, inclusive no mínimo do pulse shadcn. */
+.fin-carregamento [data-slot="skeleton"] { background: color-mix(in srgb, var(--ink-3) 32%, var(--color-white)); }
