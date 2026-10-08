@@ -18,7 +18,10 @@
     "bootstrap:dono": "tsx --env-file=.env src/scripts/bootstrap-dono.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "seed": "tsx --env-file=.env prisma/seed.ts",
+    "seed": "tsx --env-file=.env prisma/seedatev3.ts",
+    "seedatev3": "tsx --env-file=.env prisma/seedatev3.ts",
+    "seed:financeiro-legado": "tsx --env-file=.env prisma/seed.ts",
+    "seedatev3:typecheck": "tsc -p tsconfig.seedatev3.json",
     "seed:pecuaria": "tsx --env-file=.env prisma/seed-pecuaria.ts",
     "seed:rebanho": "tsx --env-file=.env prisma/seed-rebanho-demo.ts",
     "seed:usuarios": "tsx --env-file=.env prisma/seed-usuarios.ts",
@@ -33,7 +36,7 @@
     "seed:relatorios": "tsx --env-file=.env prisma/seed-relatorios.ts"
   },
   "prisma": {
-    "seed": "tsx prisma/seed-all.ts"
+    "seed": "tsx --env-file=.env prisma/seedatev3.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1057.0",

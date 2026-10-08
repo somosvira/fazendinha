@@ -1,5 +1,5 @@
-// Seed completo de desenvolvimento. Não altera o schema nem apaga o banco:
-// `prisma migrate reset` faz o reset e chama este arquivo automaticamente.
+// Orquestrador histórico, disponível somente por execução explícita de seed:all.
+// O seed padrão de desenvolvimento/prisma agora é seedatev3.ts; não combiná-los.
 // A pecuária v1 recebe só os catálogos (raças, motivos de baixa); a carga de
 // animais é o `import:pecuaria` (JSON do IDEAGRI), rodado à parte.
 import { execFileSync } from "node:child_process";

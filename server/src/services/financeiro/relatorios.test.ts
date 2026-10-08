@@ -17,6 +17,7 @@ vi.mock("../../db.js", () => ({ prisma: {
   categoria: mocks.categoria, centroCusto: mocks.centroCusto, operacao: mocks.operacao,
 } }));
 vi.mock("../../lib/storage.js", () => ({ getStorage: vi.fn(async () => ({ putObject: mocks.putObject, getObjectBuffer: mocks.getObjectBuffer })) }));
+vi.mock("../../env.js", () => ({ env: { STORAGE_NAMESPACE: "test" } }));
 vi.mock("../relatorio-gerencial.js", () => ({ gerarRelatorioGerencial: mocks.gerencial }));
 
 import { baixarRelatorio, gerarRelatorio, listarRelatorios, salvarRascunho } from "./relatorios.js";
@@ -50,13 +51,32 @@ beforeEach(() => {
 });
 
 describe("geração de relatório financeiro", () => {
+  it("retoma emissão interna interrompida no mesmo registro e arquivo", async () => {
+    mocks.relatorio.findFirst.mockResolvedValue({ ...linhaLista, autorId: 2, status: 'PROCESSANDO' });
+    await gerarRelatorio(7, { id: 2, nome: 'Rafael' }, config, undefined, uid(5));
+    expect(mocks.relatorio.create).not.toHaveBeenCalled();
+    expect(mocks.putObject).toHaveBeenCalledWith(expect.objectContaining({ key: `test/relatorios-financeiros/7/${uid(5)}.pdf` }));
+    expect(mocks.relatorio.update).toHaveBeenCalledWith({ where: { id: uid(5) }, data: { status: 'PROCESSANDO', erro: null } });
+  });
+
+  it("não reemite nem sobrescreve emissão interna já concluída", async () => {
+    mocks.relatorio.findFirst.mockResolvedValue({ ...linhaLista, autorId: 2 });
+    await gerarRelatorio(7, { id: 2, nome: 'Rafael' }, config, undefined, uid(5));
+    expect(mocks.relatorio.create).not.toHaveBeenCalled(); expect(mocks.putObject).not.toHaveBeenCalled();
+  });
+
+  it("recusa reaproveitar emissão de outro autor", async () => {
+    mocks.relatorio.findFirst.mockResolvedValue({ ...linhaLista, autorId: 99 });
+    await expect(gerarRelatorio(7, { id: 2, nome: 'Rafael' }, config, undefined, uid(5))).rejects.toMatchObject({ code: 'CONFLITO' });
+    expect(mocks.putObject).not.toHaveBeenCalled();
+  });
   it("monta o snapshot filtrado por item, grava o PDF e consome o rascunho", async () => {
     const r = await gerarRelatorio(7, { id: 2, nome: "Rafael" }, config, 1);
 
     expect(mocks.relatorio.create).toHaveBeenCalledWith({ data: expect.objectContaining({ propriedadeId: 7, autorId: 2, autorNome: "Rafael", parametros: config }) });
     expect(mocks.gerencial).toHaveBeenCalledWith({ inicio: "2026-09-01", fim: "2026-09-30", regime: "ambos" }, 7, config);
     expect(mocks.operacao.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ propriedadeId: 7, status: { in: ["CONFIRMADA"] } }) }));
-    expect(mocks.putObject).toHaveBeenCalledWith(expect.objectContaining({ key: `relatorios-financeiros/7/${uid(5)}.pdf`, contentType: "application/pdf" }));
+    expect(mocks.putObject).toHaveBeenCalledWith(expect.objectContaining({ key: `test/relatorios-financeiros/7/${uid(5)}.pdf`, contentType: "application/pdf" }));
     expect(mocks.putObject.mock.calls[0][0].body.subarray(0, 8).toString()).toBe("%PDF-1.4");
 
     const { data } = mocks.relatorio.update.mock.calls[0][0];

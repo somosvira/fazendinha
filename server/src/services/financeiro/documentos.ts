@@ -239,7 +239,7 @@ export async function anexarDocumentoOperacao(input: NovoDocumentoOperacao) {
   if (duplicado) throw new FinanceiroError("CONFLITO", `Este arquivo já está anexado ao documento "${duplicado.nome}"`);
 
   const storage = await getStorage();
-  const storageKey = `financeiro/operacoes/${input.operacaoId}/${sha256}.${extensao}`;
+  const storageKey = `${env.STORAGE_NAMESPACE}/financeiro/operacoes/${input.operacaoId}/${sha256}.${extensao}`;
   const put = await storage.putObject({ key: storageKey, body: input.buffer, contentType: mimeType });
 
   try {
@@ -272,7 +272,7 @@ export async function anexarDocumentoRascunho(input: NovoDocumentoRascunho) {
   const duplicado = await prisma.documentoFinanceiro.findUnique({ where: { sha256 } });
   if (duplicado) throw new FinanceiroError("CONFLITO", `Este arquivo já está anexado ao documento "${duplicado.nome}"`);
   const storage = await getStorage();
-  const storageKey = `financeiro/rascunhos/${input.rascunhoId}/${sha256}.${extensao}`;
+  const storageKey = `${env.STORAGE_NAMESPACE}/financeiro/rascunhos/${input.rascunhoId}/${sha256}.${extensao}`;
   const put = await storage.putObject({ key: storageKey, body: input.buffer, contentType: mimeType });
   try {
     return await prisma.documentoFinanceiro.create({ data: {
