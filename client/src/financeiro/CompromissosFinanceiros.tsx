@@ -14,7 +14,7 @@ import { LiquidarCompromissoModal } from "./LiquidarCompromissoModal";
 import { codigoOperacao } from "../estoque/navegacao";
 
 export function CompromissosFinanceiros({ onNav, podeLancar = true }: { onNav: (tab: Tab) => void; podeLancar?: boolean }) {
-  const [itens, setItens] = useState<Compromisso[]>([]); const [config, setConfig] = useState<ConfiguracoesFinanceiras | null>(null); const [pagando, setPagando] = useState<Compromisso | null>(null); const [erro, setErro] = useState<string | null>(null); const [aba, setAba] = useState<"PAGAR" | "RECEBER" | "LIQUIDADOS" | "TODOS">(() => new URLSearchParams(window.location.search).get("situacao") === "todos" ? "TODOS" : "PAGAR"); const [soVencidos, setSoVencidos] = useState(false);
+  const [itens, setItens] = useState<Compromisso[]>([]); const [config, setConfig] = useState<ConfiguracoesFinanceiras | null>(null); const [pagando, setPagando] = useState<Compromisso | null>(null); const [erro, setErro] = useState<string | null>(null); const [aba, setAba] = useState<"PAGAR" | "RECEBER" | "LIQUIDADOS" | "TODOS">(() => new URLSearchParams(window.location.search).get("situacao") === "todos" ? "TODOS" : new URLSearchParams(window.location.search).get("situacao") === "receber" ? "RECEBER" : "PAGAR"); const [soVencidos, setSoVencidos] = useState(false);
   const [periodo, setPeriodo] = useState(() => periodoInicial({ inicio: "", fim: "" }, { permitirVazio: true }));
   const [carregando, setCarregando] = useState(true);
   const [visao, setVisao] = useState<VisaoCompromissos>("lista");

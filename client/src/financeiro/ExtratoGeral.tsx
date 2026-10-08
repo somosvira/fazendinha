@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/button";
 import type { Conta, MovimentoGeral } from "./novo-api";
 import { brl, dataBR, Empty, ErrorBox, Panel, TabelaFinanceira } from "./financeiro-ui";
 import { LinkOperacaoFinanceira } from "./LinkOperacaoFinanceira";
@@ -10,14 +11,20 @@ export type FiltrosExtratoGeral = {
   fim: string;
   conta: string;
   instituicao: string;
+  natureza?: string;
 };
 
 export const FILTROS_EXTRATO_GERAL_INICIAIS: FiltrosExtratoGeral = { inicio: "", fim: "", conta: "", instituicao: "" };
 
 export function filtrarMovimentosExtratoGeral(movimentos: MovimentoGeral[], filtros: FiltrosExtratoGeral): MovimentoGeral[] {
-  const { inicio, fim, conta, instituicao } = filtros;
+  const { inicio, fim, conta, instituicao, natureza } = filtros;
   return movimentos.filter(m => {
     const data = m.transacao.data.slice(0, 10);
+    if (natureza) {
+      const tipo = m.transacao.reversaoDe?.tipo ?? m.transacao.tipo;
+      const entradaOriginal = m.transacao.tipo === "REVERSAO" ? m.direcao === "SAIDA" : m.direcao === "ENTRADA";
+      if (tipo === "TRANSFERENCIA" || !["CONFIRMADA", "REVERTIDA"].includes(m.transacao.status) || (natureza === "recebimentos") !== entradaOriginal) return false;
+    }
     return (!inicio || data >= inicio) && (!fim || data <= fim) && (!conta || String(m.contaId) === conta)
       && (!instituicao || (instituicao === "__sem__" ? !m.conta.instituicao : m.conta.instituicao === instituicao));
   });
@@ -43,6 +50,7 @@ export function ExtratoGeral({ contas, movimentos, filtros, onChangeFiltros, car
         <label className="text-sm font-medium">Conta<select value={conta} onChange={e => onChangeFiltros({ ...filtros, conta: e.target.value })} className={CAMPO}><option value="">Todas as contas</option>{contas.map(c => <option key={c.id} value={c.id}>{c.nome}{!c.ativo ? " (inativa)" : ""}</option>)}</select></label>
         <label className="text-sm font-medium">Instituição<select value={instituicao} onChange={e => onChangeFiltros({ ...filtros, instituicao: e.target.value })} className={CAMPO}><option value="">Todas as instituições</option>{Array.from(new Set(contas.map(c => c.instituicao).filter((i): i is string => !!i))).sort().map(i => <option key={i} value={i}>{i}</option>)}<option value="__sem__">Sem instituição</option></select></label>
       </div>
+      {filtros.natureza && <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border p-4 text-sm"><span>{filtros.natureza === "recebimentos" ? "Recebimentos" : "Pagamentos"} realizados, líquidos de estornos · transferências excluídas</span><Button variant="link" onClick={() => onChangeFiltros({ ...filtros, natureza: undefined })}>Mostrar todas as movimentações</Button></div>}
       <ErrorBox erro={erro} />
       {intervaloInvalido ? <p role="alert" className="p-5">A data final deve ser igual ou posterior à data inicial.</p> : carregando ? <p role="status" className="p-5">Carregando extrato geral…</p> : erro ? <p className="p-5">Não foi possível carregar as movimentações.</p> : filtrados.length ? <TabelaFinanceira rotulo="Extrato geral" itens={filtrados} chaveDe={m => m.id} onAbrir={onAbrir} colunas={[
         { chave: "data", titulo: "Data", alinhamento: "centro", larguraMinima: 110, celula: m => dataBR(m.transacao.data) },

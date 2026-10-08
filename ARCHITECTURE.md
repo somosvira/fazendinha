@@ -700,3 +700,6 @@ Detalhe operacional em `DEPLOY.md`.
 - [`DEPLOY.md`](./DEPLOY.md) — operação de deploy.
 - `server/prisma/schema.prisma` — fonte de verdade do banco.
 - `server/src/index.ts` — bootstrap.
+
+
+A análise financeira por categoria na base `pagamentos` deriva de movimentos de conta usando `movimentoRealizado` e `ratearTransacao`, como o dashboard. Preserva propriedade, período inclusivo até o fim do último dia, natureza original dos estornos e o nome histórico da categoria. Ver [dashboard financeiro](docs/financeiro-dashboard-grid.md).

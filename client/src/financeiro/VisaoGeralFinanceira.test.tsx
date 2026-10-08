@@ -161,3 +161,15 @@ describe("Visão geral — grid operacional", () => {
     expect(screen.getByText(/Nenhum compromisso nos próximos 7 dias/)).toBeTruthy();
   });
 });
+
+it("indicadores navegam com o período e a natureza correspondente", async () => {
+  render(<VisaoGeralFinanceira onNav={vi.fn()} />);
+  expect((await screen.findByRole("link", { name: "Ver recebimentos" })).getAttribute("href")).toContain("natureza=recebimentos");
+  expect(screen.getByRole("link", { name: "Ver pagamentos" }).getAttribute("href")).toContain("natureza=pagamentos");
+  expect(screen.getByRole("link", { name: "Ver a pagar" }).getAttribute("href")).toContain("situacao=pagar");
+  const receber = screen.getByRole("link", { name: "Ver a receber" });
+  expect(receber.getAttribute("href")).toContain("inicio=2026-01-01&fim=2026-12-31&situacao=receber");
+  fireEvent.click(receber);
+  expect(window.location.pathname).toBe("/financeiro/compromissos");
+  expect(new URLSearchParams(window.location.search).get("situacao")).toBe("receber");
+});

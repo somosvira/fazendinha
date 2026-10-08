@@ -20,10 +20,18 @@ Com o mesmo viewport desktop, a página tem aproximadamente 1164px de altura, co
 
 ## Verificação técnica e limites
 
-`pnpm --filter rionovo-client test`: 122 arquivos, 941 testes aprovados (base atualizada com `origin/main`). `pnpm --filter rionovo-client build`: aprovado; permanece o aviso de bundle acima de 500kB, já existente.
+`pnpm --filter rionovo-client test`: 122 arquivos, 946 testes aprovados (base atualizada com `origin/main`). `pnpm --filter rionovo-client build`: aprovado; permanece o aviso de bundle acima de 500kB, já existente.
 
 A verificação visual local utilizou um snapshot de respostas de leitura, com gravações bloqueadas. Não foram efetuadas liquidações na produção. Os testes automatizados exercitam validação, seleção de conta, permissões, filtros, período, modal e dados obsoletos de requisições anteriores. Não houve alteração de API ou persistência.
 
 ## Revisão após ajustes solicitados
 
 Calendário centralizado e limitado à janela, com cabeçalho fixo e células menores. Em desktop 1440 × 900, centro vertical medido com desvio de 0px. Registro de pagamento com nota selecionada verificado em desktop e celular (390 × 844). Rodapé do pagamento empilha botões no celular para conter o conteúdo. Capturas locais adicionais: `calendar-centered.png`, `payment-invoice.png` e `payment-invoice-mobile.png`. Os três novos testes cobrem drop, validação, remoção, envio anterior à liquidação, erro e nova tentativa sem repetir nota salva. Upload em produção não efetuado.
+
+## Detalhamento e navegação dos indicadores
+
+Categorias, fatias e estornos abrem composição dos valores. “Outras” filtra por ID e nome histórico, preservando renomeações. Cards coloridos shadcn mostram data, descrição, categoria, classificação, centro e valor; todo o item é um link para a origem, sem “Ver operação”. Paginação de 15 mantém o total completo. O modal foi inspecionado em desktop e 390 × 844, sem overflow horizontal (clientWidth e scrollWidth de 356px no celular). Capturas locais: `category-detail-color.png` e `category-detail-color-mobile.png`.
+
+Recebimentos/Pagamentos levam ao extrato com a natureza e o período; A pagar/A receber levam à aba correta de compromissos. Testes verificam URLs, estornos, transferências excluídas, clique no card, categorias renomeadas, grupo Outras, erro/retry e paginação. Frontend: 946 testes aprovados; backend: 11 testes focados de análise, classificação e série do dashboard; builds frontend e backend aprovados. Prisma Client foi regenerado para refletir o schema existente, sem migration ou gravação no banco.
+
+A captura visual dos detalhes usa respostas de leitura da API atual. O novo cálculo de reconciliação no servidor foi validado por testes locais e ainda depende da publicação do PR; nenhuma escrita em produção foi efetuada.

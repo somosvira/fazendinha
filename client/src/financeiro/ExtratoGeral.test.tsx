@@ -55,3 +55,12 @@ it("abre a operação da transferência sem acionar a navegação da linha", () 
   expect(window.location.pathname).toBe(`/financeiro/operacoes/${uid(123)}`);
   expect(abrir).not.toHaveBeenCalled();
 });
+
+it("atalhos de realizados incluem estornos da natureza original e excluem transferências", async () => {
+  const { filtrarMovimentosExtratoGeral } = await import("./ExtratoGeral");
+  const estorno = { ...movimentos[1], id: uid(15), direcao: "ENTRADA" as const, transacao: { ...movimentos[1].transacao, tipo: "REVERSAO", reversaoDe: { tipo: "PAGAMENTO" } } } as MovimentoGeral;
+  const transferencia = { ...movimentos[0], transacao: { ...movimentos[0].transacao, tipo: "TRANSFERENCIA" } };
+  const filtros = { ...FILTROS_EXTRATO_GERAL_INICIAIS, natureza: "pagamentos" };
+  expect(filtrarMovimentosExtratoGeral([...movimentos, estorno, transferencia], filtros).map(item => item.id)).toEqual([uid(12), uid(15)]);
+  expect(filtrarMovimentosExtratoGeral([...movimentos, estorno, transferencia], { ...filtros, natureza: "recebimentos" }).map(item => item.id)).toEqual([uid(11)]);
+});

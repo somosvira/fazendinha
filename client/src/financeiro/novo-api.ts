@@ -260,6 +260,6 @@ export const obterExtratoGeral = () => req<MovimentoGeral[]>("/financeiro/extrat
 export type AnaliseCategorias = {
   base: string; total: string;
   categorias: { categoria: string; valor: string }[];
-  linhas: { operacaoId: string | null; contaId?: string; movimentoId?: string; descricao: string | null; data: string; categoria: string; centroCusto: string; classificacao: string | null; valor: string }[];
+  linhas: { categoriaId?: string | null; operacaoId: string | null; contaId?: string; movimentoId?: string; descricao: string | null; data: string; categoria: string; centroCusto: string; classificacao: string | null; valor: string }[];
 };
 export const obterAnaliseCategorias = (filtros: Record<string, string>) => req<AnaliseCategorias>(`/financeiro/analise-categorias?${new URLSearchParams(Object.entries(filtros).filter(([, v]) => v !== ""))}`);

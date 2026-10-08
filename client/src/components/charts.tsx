@@ -15,6 +15,7 @@ import {
   YAxis,
 } from "recharts";
 import { useState } from "react";
+import { Button } from "./ui/button";
 import { ToggleGroup, ToggleGroupItem } from "./ui/toggle-group";
 import { ChartContainer, ChartLegend, ChartTooltip, type ChartConfig } from "./ui/chart";
 
@@ -325,8 +326,11 @@ export function CategoryValueChart({ data, tipo = "bar" }: { data: { categoria: 
 }
 
 /** Distribuição monetária com legenda textual acessível e sem fatias zeradas. */
-export function MonetaryDonutChart({ data, label, emptyLabel, compacto = false }: {
-  data: { label: string; value: number }[];
+export type MonetaryChartItem = { id?: string; label: string; value: number };
+
+export function MonetaryDonutChart({ data, label, emptyLabel, compacto = false, onSelect }: {
+  data: MonetaryChartItem[];
+  onSelect?: (items: MonetaryChartItem[]) => void;
   label: string;
   emptyLabel: string;
   compacto?: boolean;
@@ -337,7 +341,8 @@ export function MonetaryDonutChart({ data, label, emptyLabel, compacto = false }
   const positivos = data.filter(item => item.value > 0).sort((a, b) => b.value - a.value);
   const visiveis = positivos.length > colors.length ? positivos.slice(0, colors.length - 1) : positivos;
   const agrupados = positivos.slice(visiveis.length);
-  const consolidados = agrupados.length ? [...visiveis, { label: `Outras (${agrupados.length})`, value: agrupados.reduce((sum, item) => sum + Math.round(item.value * 100), 0) / 100 }] : visiveis;
+  const individuais = visiveis.map(item => ({ ...item, items: [item] }));
+  const consolidados = agrupados.length ? [...individuais, { label: `Outras (${agrupados.length})`, value: agrupados.reduce((sum, item) => sum + Math.round(item.value * 100), 0) / 100, items: agrupados }] : individuais;
   const points = consolidados.map((item, index) => ({ ...item, key: `segmento${index}`, color: colors[index] }));
   const adjustments = data.filter(item => item.value < 0);
   const total = data.reduce((sum, point) => sum + Math.round(point.value * 100), 0) / 100;
@@ -348,14 +353,15 @@ export function MonetaryDonutChart({ data, label, emptyLabel, compacto = false }
     {points.length ? <div className={`grid min-w-0 items-center gap-3 ${compacto ? "@min-[440px]:grid-cols-[140px_minmax(0,1fr)]" : "md:grid-cols-[minmax(200px,.8fr)_minmax(0,1fr)]"}`}>
       <ChartContainer config={config} className={`${compacto ? "h-[170px]" : "h-[260px]"} w-full aspect-auto overflow-hidden`} role="img" aria-label={label}>
         <PieChart accessibilityLayer><Pie data={points} dataKey="value" nameKey="label" innerRadius="58%" outerRadius="85%" stroke="none" paddingAngle={points.length > 1 ? 2 : 0} isAnimationActive={false}>
-          {points.map(point => <Cell key={point.key} fill={`var(--color-${point.key})`} />)}
+          {points.map(point => <Cell key={point.key} fill={`var(--color-${point.key})`} onClick={onSelect ? () => onSelect(point.items) : undefined} cursor={onSelect ? "pointer" : undefined} />)}
         </Pie><ChartTooltip formatter={tooltipMoney} /></PieChart>
       </ChartContainer>
       <ul aria-label={`Legenda: ${label}`} className={`${compacto ? "space-y-2" : "space-y-3"} text-sm`}>{points.map(point => <li key={point.key} className="flex flex-wrap items-start justify-between gap-2">
+        {onSelect ? <Button variant="ghost" className="h-auto w-full flex-wrap justify-between gap-2 whitespace-normal px-0 py-1 text-left font-normal" onClick={() => onSelect(point.items)} aria-label={`Detalhar ${point.label}`}><span className="flex min-w-0 items-center gap-2"><span aria-hidden="true" className="h-3 w-3 shrink-0 rounded-sm" style={{ backgroundColor: point.color }} />{point.label}</span><span className="tabular-nums">{fmtMoneyExact(point.value)} · {(point.value / positiveTotal * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%</span></Button> : <>
         <span className="flex min-w-0 items-center gap-2"><span aria-hidden="true" className="h-3 w-3 shrink-0 rounded-sm" style={{ backgroundColor: point.color }} /><span className="break-words">{point.label}</span></span>
-        <span className="tabular-nums">{fmtMoneyExact(point.value)} · {(point.value / positiveTotal * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%</span>
+        <span className="tabular-nums">{fmtMoneyExact(point.value)} · {(point.value / positiveTotal * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%</span></> }
       </li>)}</ul>
     </div> : <p role="status" className="py-6 text-sm text-ink-3">{emptyLabel}</p>}
-    {adjustments.length > 0 && <div className="mt-3 space-y-2 text-sm text-ink-3"><p>Estornos de despesas de outros períodos abatem o total. O gráfico mostra a participação nos valores positivos.</p><ul aria-label="Estornos por categoria">{adjustments.map((item, index) => <li key={index}>{item.label}: {fmtMoneyExact(item.value)}</li>)}</ul></div>}
+    {adjustments.length > 0 && <div className="mt-3 space-y-2 text-sm text-ink-3"><p>Estornos de despesas de outros períodos abatem o total. O gráfico mostra a participação nos valores positivos.</p><ul aria-label="Estornos por categoria">{adjustments.map((item, index) => <li key={index}>{onSelect ? <Button variant="ghost" className="h-auto whitespace-normal px-0 py-1" onClick={() => onSelect([item])} aria-label={`Detalhar ${item.label}`}>{item.label}: {fmtMoneyExact(item.value)}</Button> : <>{item.label}: {fmtMoneyExact(item.value)}</>}</li>)}</ul></div>}
   </div>;
 }

@@ -29,7 +29,7 @@ export function ContasFinanceiras({ onNav }: { onNav: (tab: Tab) => void }) {
   const fecharTransferencia = () => { if (!transferenciaEmCurso.current) setTransferindo(false); };
   const [buscaConta, setBuscaConta] = useState(""); const [tipoConta, setTipoConta] = useState(""); const [instituicaoConta, setInstituicaoConta] = useState(""); const [statusConta, setStatusConta] = useState("");
   const [movimentosGerais, setMovimentosGerais] = useState<MovimentoGeral[]>([]);
-  const [filtrosExtratoGeral, setFiltrosExtratoGeral] = useState<FiltrosExtratoGeral>(() => ({ ...FILTROS_EXTRATO_GERAL_INICIAIS, ...periodoInicial(periodoDoAnoAtual(), { permitirVazio: true }) }));
+  const [filtrosExtratoGeral, setFiltrosExtratoGeral] = useState<FiltrosExtratoGeral>(() => ({ ...FILTROS_EXTRATO_GERAL_INICIAIS, natureza: ["recebimentos", "pagamentos"].includes(new URLSearchParams(window.location.search).get("natureza") ?? "") ? new URLSearchParams(window.location.search).get("natureza")! : undefined, ...periodoInicial(periodoDoAnoAtual(), { permitirVazio: true }) }));
   const [periodoConta, setPeriodoConta] = useState(() => periodoInicial(periodoDoAnoAtual(), { permitirVazio: true }));
   const extratoFiltrado = extrato.filter(m => (!periodoConta.inicio || m.transacao.data.slice(0, 10) >= periodoConta.inicio) && (!periodoConta.fim || m.transacao.data.slice(0, 10) <= periodoConta.fim));
   const carregar = useCallback(() => obterConfiguracoesFinanceiras().then((cfg) => { setConfig(cfg);  }).catch((e) => setErro(e.message)), []);

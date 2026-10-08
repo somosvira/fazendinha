@@ -91,10 +91,10 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
     {dadosAtuais && <>
       <div className="grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <IndicadorFinanceiro label="Saldo disponível" valor={dadosAtuais.saldoGeral} detalhe={`${contasIncluidas.length} ${contasIncluidas.length === 1 ? "conta incluída" : "contas incluídas"} · saldo atual`} icon={WalletCards} />
-        <IndicadorFinanceiro label="Recebimentos" valor={dadosAtuais.realizado.entradas} detalhe="Realizados no período" icon={TrendingUp} />
-        <IndicadorFinanceiro label="Pagamentos" valor={dadosAtuais.realizado.saidas} detalhe="Realizados no período" icon={TrendingDown} />
-        <IndicadorFinanceiro label="A pagar" valor={dadosAtuais.compromissos.aPagar} detalhe={resumoVencidos(pendentes, "PAGAR")} alerta={pendentes.some(item => item.vencido && item.tipo === "PAGAR")} icon={ArrowUpRight} />
-        <IndicadorFinanceiro label="A receber" valor={dadosAtuais.compromissos.aReceber} detalhe={resumoVencidos(pendentes, "RECEBER")} alerta={pendentes.some(item => item.vencido && item.tipo === "RECEBER")} icon={ArrowDownLeft} />
+        <IndicadorFinanceiro label="Recebimentos" href={`/financeiro/contas?${new URLSearchParams({ inicio: inicioPeriodo, fim: fimPeriodo, natureza: "recebimentos" })}#extrato-geral`} valor={dadosAtuais.realizado.entradas} detalhe="Realizados no período" icon={TrendingUp} />
+        <IndicadorFinanceiro label="Pagamentos" href={`/financeiro/contas?${new URLSearchParams({ inicio: inicioPeriodo, fim: fimPeriodo, natureza: "pagamentos" })}#extrato-geral`} valor={dadosAtuais.realizado.saidas} detalhe="Realizados no período" icon={TrendingDown} />
+        <IndicadorFinanceiro label="A pagar" href={`${hrefCompromissos}&situacao=pagar`} valor={dadosAtuais.compromissos.aPagar} detalhe={resumoVencidos(pendentes, "PAGAR")} alerta={pendentes.some(item => item.vencido && item.tipo === "PAGAR")} icon={ArrowUpRight} />
+        <IndicadorFinanceiro label="A receber" href={`${hrefCompromissos}&situacao=receber`} valor={dadosAtuais.compromissos.aReceber} detalhe={resumoVencidos(pendentes, "RECEBER")} alerta={pendentes.some(item => item.vencido && item.tipo === "RECEBER")} icon={ArrowDownLeft} />
       </div>
       <div className="mt-4 grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)]">
         <DashboardCompromissos itens={pendentes} href={hrefCompromissos} mes={mesCalendario} onChangeMes={setMesCalendario} onLiquidar={podeLancar ? setLiquidando : undefined} />
@@ -108,7 +108,7 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
             ? <div className="p-3"><EntradaSaidaChart compacto tipo={tipoGraficoFluxo} data={dadosAtuais.fluxo.map(ponto => ({ data: ponto.data, entradas: Number(ponto.entradas), saidas: Number(ponto.saidas) }))} /></div>
             : <Empty>Nenhum recebimento ou pagamento realizado no período.</Empty>}
         </Card>
-        <AnaliseCategorias compacto despesas={dadosAtuais.despesasPorCategoria} categorias={config?.categorias ?? []} />
+        <AnaliseCategorias compacto inicio={inicioPeriodo} fim={fimPeriodo} despesas={dadosAtuais.despesasPorCategoria} categorias={config?.categorias ?? []} />
       </div>
       <ErrorBox erro={erroConfig} />
       <Collapsible className="mt-4 overflow-hidden rounded-lg border border-border bg-card">
