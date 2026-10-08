@@ -54,6 +54,7 @@ const total = (titulo: string) => screen.getByText(titulo).parentElement!.textCo
 describe("visualizações financeiras integradas", () => {
   it("mantém o gráfico alinhado aos filtros do extrato geral, não aos da listagem", async () => {
     render(<ContasFinanceiras onNav={vi.fn()} />);
+    if (window.location.pathname === "/financeiro/contas") fireEvent.click(await screen.findByRole("button", { name: "Mostrar receitas e despesas" }));
     await waitFor(() => expect(total("Receitas no período")).toContain("R$ 160,00"));
     expect(total("Despesas no período")).toContain("R$ 65,00");
     // Um único seletor compartilhado governa o gráfico e o extrato geral —
@@ -88,6 +89,7 @@ describe("visualizações financeiras integradas", () => {
   it("mantém um único seletor de período no detalhe da conta, ligado ao gráfico e ao extrato", async () => {
     window.history.replaceState(null, "", `/financeiro/contas/${uid(1)}`);
     render(<ContasFinanceiras onNav={vi.fn()} />);
+    if (window.location.pathname === "/financeiro/contas") fireEvent.click(await screen.findByRole("button", { name: "Mostrar receitas e despesas" }));
     await waitFor(() => expect(total("Receitas no período")).toContain("R$ 210,00"));
     const controles = screen.getAllByRole("button", { name: /^Período do extrato da conta:/ });
     expect(controles).toHaveLength(1);
@@ -251,6 +253,7 @@ it("o acesso pela rastreabilidade preserva o período e mostra também compromis
 it("paginar o extrato mantém os totais e o gráfico do período completo", async () => {
   vi.mocked(obterExtratoGeral).mockResolvedValue(Array.from({ length: 31 }, (_, i) => movimento(100 + i, 1, "120", "ENTRADA", "RECEBIMENTO")));
   render(<ContasFinanceiras onNav={vi.fn()} />);
+    if (window.location.pathname === "/financeiro/contas") fireEvent.click(await screen.findByRole("button", { name: "Mostrar receitas e despesas" }));
   await waitFor(() => expect(total("Receitas no período")).toContain("R$ 3.720,00"));
   fireEvent.click(within(screen.getByRole("navigation", { name: "Paginação do extrato geral" })).getByRole("button", { name: "Próxima" }));
   expect(total("Receitas no período")).toContain("R$ 3.720,00");

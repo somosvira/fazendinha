@@ -234,3 +234,11 @@ describe("telas financeiras — envelope e carregamento", () => {
     }
   });
 });
+
+
+it("mantém links de origem fora do botão que abre o cartão", () => {
+  const { container } = render(<TabelaFinanceira cartaoComLinks rotulo="Origens" itens={[{ id: 1 }]} chaveDe={l => l.id} onAbrir={vi.fn()} colunas={[{ chave: "nome", titulo: "Nome", principal: true, celula: () => <a href="/financeiro/operacoes/1">Origem</a> }]} />);
+  expect(container.querySelector("ul button")).toBeTruthy();
+  expect(container.querySelector("ul button a")).toBeNull();
+  expect(container.querySelector("ul a")?.getAttribute("href")).toBe("/financeiro/operacoes/1");
+});

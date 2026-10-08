@@ -69,3 +69,12 @@ As páginas financeiras mostram título, descrição e ações no topo, sem o r�
 A listagem de contas, o extrato geral e o extrato de cada conta usam paginação shadcn de 15 registros após os filtros. Alterar filtros ou período retorna à primeira página; abrir um movimento seleciona a página que o contém e preserva o foco na origem. Os gráficos e totais continuam calculados sobre todos os movimentos do período, independentemente da página visível.
 
 Saldo, filtros, tabelas e gráfico têm espaçamentos menores. No desktop amplo, gráfico consolidado e extrato geral ficam lado a lado; no celular, os dados usam os cartões responsivos existentes. A última movimentação da listagem de contas mostra um resumo de duas linhas, com texto completo no título e no extrato da conta. Valores por dia/mês ficam em Collapsible. Transferência usa Dialog, Input e Select shadcn, com rodapé empilhado no celular. Não há mudança em cálculos, payloads ou persistência.
+
+
+## Organização final de Contas e extratos
+
+Este ajuste substitui o grid lateral de gráfico e extrato descrito acima. O saldo geral fica junto das ações do cabeçalho; o título redundante da seção de contas fica apenas acessível. Os filtros da conta usam duas colunas no celular. O nome da conta é o link explícito, e a linha inteira continua acionável, sem coluna “Ver conta”.
+
+O gráfico consolidado começa recolhido em Collapsible shadcn (“Mostrar receitas e despesas”), preservando alternância Linhas/Barras e todos os movimentos do período. O extrato geral ocupa a largura disponível e apresenta data, movimentação, conta e valor com direção e sinal. Instituição e link de operação ficam junto da descrição; a ficha da conta preserva seus dados completos. Os controles de paginação de contas/extratos só aparecem quando existe mais de uma página; a contagem permanece visível. No celular, a área clicável dos cartões e os links são elementos irmãos, evitando links dentro de botões.
+
+Nenhuma alteração financeira de cálculo, filtros, payload ou persistência. A reauditoria das demais telas, com prioridades e limites, está em `design-qa.md`.

@@ -143,3 +143,16 @@ it("pagina contas e busca em todos os registros antes de paginar", async () => {
   expect(tabela.getByText("Conta 01")).toBeTruthy();
   expect(screen.getByRole("navigation", { name: "Paginação das contas" }).textContent).toContain("1–1 de 1");
 });
+
+
+it("prioriza contas e extrato com gráfico recolhido e sem ações redundantes", async () => {
+  render(<ContasFinanceiras onNav={vi.fn()} />);
+  const grafico = await screen.findByRole("button", { name: "Mostrar receitas e despesas" });
+  expect(grafico.getAttribute("aria-expanded")).toBe("false");
+  expect(screen.queryByRole("region", { name: "Gráfico de receitas e despesas" })).toBeNull();
+  const paginacao = screen.getByRole("navigation", { name: "Paginação das contas" });
+  expect(within(paginacao).queryByRole("button", { name: "Próxima" })).toBeNull();
+  expect(screen.queryByRole("columnheader", { name: "Ação" })).toBeNull();
+  fireEvent.click(grafico);
+  expect(grafico.getAttribute("aria-expanded")).toBe("true");
+});

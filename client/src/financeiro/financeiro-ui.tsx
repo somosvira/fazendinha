@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableCaption } from "@/components/ui/table";
 import { SkeletonListaFinanceira } from "./CarregamentoFinanceiro";
 import "./cores-financeiro.css";
-import { forwardRef, useEffect, useRef, useState } from "react";
+import { forwardRef, useEffect, useId, useRef, useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import { ArrowDown, ArrowUp, Check, Pencil, Power, PowerOff, X } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -93,21 +93,21 @@ export function Metric({ label, valor, detalhe, icon: Icon, tone = "default", to
 
 /* Rodapé de paginação das tabelas: intervalo exibido, Anterior/Próxima e salto
  * direto por página. `substantivo` completa "1–15 de N …" (ex.: "operações"). */
-export function Paginacao({ pagina, totalPaginas, total, porPagina, rotulo, substantivo, idSelect, onPagina }: {
-  pagina: number; totalPaginas: number; total: number; porPagina: number;
+export function Paginacao({ pagina, totalPaginas, total, porPagina, rotulo, substantivo, idSelect, onPagina, ocultarControlesPaginaUnica = false }: {
+  pagina: number; totalPaginas: number; total: number; porPagina: number; ocultarControlesPaginaUnica?: boolean;
   /** aria-label da <nav> */ rotulo: string; substantivo: string; idSelect: string;
   onPagina: (pagina: number) => void;
 }) {
   return <nav aria-label={rotulo} className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3 text-sm">
     <span className="text-ink-3">{total ? (pagina - 1) * porPagina + 1 : 0}–{Math.min(pagina * porPagina, total)} de {total} {substantivo}</span>
-    <div className="flex items-center gap-2">
+    {(!ocultarControlesPaginaUnica || totalPaginas > 1) && <div className="flex items-center gap-2">
       <Button secondary disabled={pagina === 1} onClick={() => onPagina(pagina - 1)}>Anterior</Button>
       <label className="sr-only" htmlFor={idSelect}>Ir para a página</label>
       <SelectCampo id={idSelect} aria-label="Ir para a página" value={pagina} onValueChange={valor => onPagina(Number(valor))} className="h-10 rounded-lg border border-border bg-white px-2 text-sm">
         {Array.from({ length: totalPaginas }, (_, indice) => <option key={indice + 1} value={indice + 1}>Página {indice + 1} de {totalPaginas}</option>)}
       </SelectCampo>
       <Button secondary disabled={pagina === totalPaginas} onClick={() => onPagina(pagina + 1)}>Próxima</Button>
-    </div>
+    </div>}
   </nav>;
 }
 
@@ -188,8 +188,10 @@ export type ColunaTabela<T> = {
 
 const alinhaCelula = (alinhamento?: "esquerda" | "centro" | "direita") => alinhamento === "direita" ? "text-right" : alinhamento === "centro" ? "text-center" : "text-left";
 
-export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLinha, rotulo, ancoraDe, barraRolagemSuperior = false, compacta = false }: {
+export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLinha, rotulo, ancoraDe, barraRolagemSuperior = false, compacta = false, cartaoComLinks = false }: {
   compacta?: boolean;
+  /** Mantém links independentes da área clicável do cartão. */
+  cartaoComLinks?: boolean;
   colunas: ColunaTabela<T>[];
   itens: T[];
   chaveDe: (item: T) => React.Key;
@@ -200,6 +202,7 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
   /** Exibe uma barra horizontal acima da tabela em telas intermediárias. */
   barraRolagemSuperior?: boolean;
 }) {
+  const idCartao = useId();
   const larguraMinima = colunas.reduce((soma, coluna) => soma + (coluna.larguraMinima ?? 120), 0);
   const principal = colunas.find((coluna) => coluna.principal) ?? colunas[0];
   const secundarias = colunas.filter((coluna) => coluna !== principal && !coluna.ocultarNoCartao && !coluna.acoes && coluna.titulo);
@@ -271,7 +274,7 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
     <ul className={`divide-y divide-border md:hidden ${compacta ? "max-h-72 overflow-y-auto sm:max-h-[max(18rem,calc(100dvh-28rem))]" : ""}`} tabIndex={compacta ? 0 : undefined} aria-label={rotulo}>
       {itens.map((item) => {
         const corpo = <>
-          <div className="min-w-0 break-words text-left">{principal.celula(item)}</div>
+          <div id={`${idCartao}-${chaveDe(item)}`} className="min-w-0 break-words text-left">{principal.celula(item)}</div>
           <dl className={compacta ? "mt-2 grid grid-cols-2 gap-x-4 gap-y-2" : "mt-3 space-y-2"}>
             {secundarias.map((coluna) => <div key={coluna.chave} className={compacta ? "min-w-0" : "flex items-start justify-between gap-3"}>
               <dt className="shrink-0 pt-0.5 text-[11px] font-semibold uppercase tracking-[.08em] text-ink-3">{coluna.titulo}</dt>
@@ -281,7 +284,10 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
         </>;
         return <li key={chaveDe(item)} data-ancora={ancoraDe?.(item)} className={classeLinha?.(item) ?? ""}>
           {onAbrir
-            ? <ShadcnButton variant="ghost" type="button" onClick={() => onAbrir(item)} className="block h-auto w-full whitespace-normal p-3 text-left">{corpo}</ShadcnButton>
+            ? cartaoComLinks ? <div className="relative">
+              <ShadcnButton variant="ghost" type="button" aria-labelledby={`${idCartao}-${chaveDe(item)}`} onClick={() => onAbrir(item)} className="absolute inset-0 h-full w-full rounded-none" />
+              <div className="pointer-events-none relative p-3 [&_a]:pointer-events-auto [&_a]:relative [&_a]:z-10">{corpo}</div>
+            </div> : <ShadcnButton variant="ghost" type="button" onClick={() => onAbrir(item)} className="block h-auto w-full whitespace-normal p-3 text-left">{corpo}</ShadcnButton>
             : <div className="p-4">{corpo}</div>}
           {acoes.length > 0 && <div className="flex justify-end gap-2 px-4 pb-4">{acoes.map((coluna) => <div key={coluna.chave}>{coluna.celula(item)}</div>)}</div>}
         </li>;
