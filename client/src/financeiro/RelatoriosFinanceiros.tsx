@@ -114,7 +114,7 @@ export function RelatoriosFinanceiros({ podeExportar = true }: { podeExportar?: 
   </div> : undefined;
 
   return <PaginaFinanceira colorida>
-    <PageHeader compacto titulo="Relatórios financeiros" descricao={DESCRICAO} acao={acoes} />
+    <PageHeader eyebrow="" titulo="Relatórios financeiros" descricao={DESCRICAO} acao={acoes} />
     <ErrorBox erro={erro} />
     {aviso && <div role="status" className="mt-5 rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-900">{aviso}</div>}
     <Panel className="mt-6">

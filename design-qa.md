@@ -82,3 +82,9 @@ Removida a apresentação visual repetida das páginas financeiras; ações perm
 O carregamento inicial combina Loader e Skeleton shadcn preenchendo a área útil da janela; atualizações parciais mantêm a versão compacta. Capturas `17-abas-sem-cabecalho.png`, `18-loading-pagina-inteira.png`, `19-loading-mobile-inteiro.png`, `20-abas-mobile.png` e `21-contas-sem-cabecalho.png` inspecionadas. Loading medido em 1440 × 900 e 391 × 844 sem overflow da página. Gravações permanecem bloqueadas na prévia.
 
 Validação final: 123 arquivos / 955 testes aprovados (`vitest run --maxWorkers=2 --minWorkers=1`) e build frontend aprovado.
+
+
+## Cabeçalho final com título e descrição
+
+Conforme ajuste solicitado, títulos e descrições voltam às páginas financeiras; somente o rótulo acima do título permanece removido. Relatórios voltam a apresentar nome, período e autoria no cabeçalho, sem duplicação no card do recorte. Abas contrastantes e loading de página inteira preservados. Captura `22-titulo-sem-rotulo.png` inspecionada em 1440 × 900. Verificação focada: 155 testes em seis arquivos aprovados.
+Build frontend aprovado após o ajuste.
