@@ -6,6 +6,7 @@
  */
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../db.js";
+import { env } from "../../env.js";
 import { SEM_VINCULO } from "../../lib/ids.js";
 import { getStorage } from "../../lib/storage.js";
 import { gerarRelatorioGerencial } from "../relatorio-gerencial.js";
@@ -13,6 +14,7 @@ import { FinanceiroError } from "./regras.js";
 import { comporItens, descreverFiltros, type SnapshotRelatorio } from "./relatorios.calc.js";
 import { gerarPdfRelatorio } from "./relatorios.pdf.js";
 import { TIPOS_RELATORIO, type ConfiguracaoRelatorioFinanceiro, type RascunhoConfiguracaoRelatorio } from "./relatorios.schemas.js";
+import { hashConfirmacao } from "./idempotencia.js";
 
 const json = (valor: unknown) => valor as Prisma.InputJsonValue;
 const inicioDoDia = (dia: string) => new Date(`${dia}T00:00:00.000Z`);
@@ -89,11 +91,19 @@ async function carregarCadastros(configuracao: ConfiguracaoRelatorioFinanceiro) 
   return { categorias, centrosCusto, parceiros };
 }
 
-export async function gerarRelatorio(propriedadeId: number, usuario: { id: number | null; nome: string }, configuracao: ConfiguracaoRelatorioFinanceiro, versaoRascunho?: number) {
+export async function gerarRelatorio(propriedadeId: number, usuario: { id: number | null; nome: string }, configuracao: ConfiguracaoRelatorioFinanceiro, versaoRascunho?: number, idReenvio?: string) {
   const filtros = descreverFiltros(configuracao, await carregarCadastros(configuracao));
-  const criado = await prisma.relatorioFinanceiro.create({
-    data: { nome: configuracao.nome, parametros: json(configuracao), propriedadeId, autorId: usuario.id, autorNome: usuario.nome },
+  // Chamadores internos podem retomar uma emissão interrompida sem duplicar o registro/PDF.
+  // A interface mantém o comportamento anterior (uma emissão nova por pedido).
+  const existente = idReenvio ? await prisma.relatorioFinanceiro.findFirst({ where: { id: idReenvio }, include: { propriedade: { select: { nome: true } } } }) : null;
+  if (existente && (existente.propriedadeId !== propriedadeId || existente.autorId !== usuario.id || hashConfirmacao(existente.parametros) !== hashConfirmacao(configuracao))) {
+    throw new FinanceiroError("CONFLITO", "Identificador de emissão utilizado com outro autor, sítio ou configuração.");
+  }
+  if (existente?.status === "CONCLUIDO") return mapear(existente);
+  const criado = existente ?? await prisma.relatorioFinanceiro.create({
+    data: { ...(idReenvio ? { id: idReenvio } : {}), nome: configuracao.nome, parametros: json(configuracao), propriedadeId, autorId: usuario.id, autorNome: usuario.nome },
   });
+  if (existente) await prisma.relatorioFinanceiro.update({ where: { id: existente.id }, data: { status: "PROCESSANDO", erro: null } });
   try {
     const [gerencial, operacoes, centros] = await Promise.all([
       gerarRelatorioGerencial({ inicio: configuracao.dataInicio, fim: configuracao.dataFim, regime: configuracao.regime }, propriedadeId, configuracao),
@@ -117,7 +127,7 @@ export async function gerarRelatorio(propriedadeId: number, usuario: { id: numbe
       versao: 1, nome: configuracao.nome, geradoEm: criado.geradoEm.toISOString(), autor: usuario.nome,
       propriedade: gerencial.meta.propriedade, configuracao, filtros, gerencial, composicao: comporItens(operacoes, configuracao, nomesCentro),
     };
-    const storageKey = `relatorios-financeiros/${propriedadeId}/${criado.id}.pdf`;
+    const storageKey = `${env.STORAGE_NAMESPACE}/relatorios-financeiros/${propriedadeId}/${criado.id}.pdf`;
     await (await getStorage()).putObject({ key: storageKey, body: gerarPdfRelatorio(snapshot), contentType: "application/pdf" });
     const concluido = await prisma.relatorioFinanceiro.update({
       where: { id: criado.id },

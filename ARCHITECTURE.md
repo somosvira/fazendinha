@@ -532,8 +532,9 @@ O legado calculava custo/litro em `services/rebanho/custo-producao.ts` (somava `
 
 ### 8.3 Object Storage
 
-- **Driver** por `STORAGE_DRIVER`: `local` (`LOCAL_STORAGE_DIR`, links assinados com `LOCAL_DOWNLOAD_SECRET`) ou `r2` (Cloudflare R2 via `@aws-sdk/client-s3`, exige `R2_*`).
+- **Driver atual único: Cloudflare R2**, via `@aws-sdk/client-s3`, em desenvolvimento, testes e produção; exige `R2_*` e `STORAGE_NAMESPACE`. As referências históricas a disco local neste documento não representam a implementação atual.
 - `DocumentoFinanceiro.storageDriver/bucket/storageKey/sha256` registram onde e o quê. Sempre gravar `sha256`.
+- Documentos gravados pelo servidor e relatórios novos usam o prefixo `${STORAGE_NAMESPACE}/`, assim como os documentos de upload direto. Downloads antigos continuam usando a `storageKey` persistida, sem renomear objetos existentes. O seed unificado aceita somente `dev`/`test` e verifica o prefixo dos arquivos que criou.
 
 ### 8.4 Neon
 
@@ -649,9 +650,8 @@ Detalhe operacional em `DEPLOY.md`.
 | `AUTH_SESSAO_DIAS` | não (default 30) | Validade sliding da sessão |
 | `OPENAI_API_KEY` / `OPENAI_MODEL` | não | IA; sem chave = bot 503 + IA demo; model default `gpt-4o` |
 | `WHATSAPP_VERIFY_TOKEN` / `ACCESS_TOKEN` / `PHONE_NUMBER_ID` / `APP_SECRET` | não (todos p/ webhook) | Meta Cloud API |
-| `STORAGE_DRIVER` | não (default `local`) | `local` \| `r2` |
-| `LOCAL_STORAGE_DIR` / `LOCAL_DOWNLOAD_SECRET` | não | Storage local + assinatura de download |
-| `R2_ACCOUNT_ID` / `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` / `R2_BUCKET_NOTAS` | se `r2` | Cloudflare R2 (`superRefine`) |
+| `R2_ACCOUNT_ID` / `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` / `R2_BUCKET_NOTAS` | sim | Cloudflare R2 em todos os ambientes |
+| `STORAGE_NAMESPACE` | sim | `dev`, `staging`, `prod` ou `test`; sem padrão implícito |
 | `DASHBOARD_MESES_QUEIMA` | não (default 6) | Média de queima mensal |
 
 `env.ts` valida via Zod e **falha rápido** (`process.exit(1)`) se inválido. **Sempre importar de `env.ts`**, nunca `process.env`. Client: `VITE_HOJE_ISO` fixa a data "hoje" em builds de demo.

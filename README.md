@@ -137,10 +137,11 @@ cp server/.env.example server/.env
 # 3. Subir tudo (`dev:server` roda `prisma migrate deploy` antes do watch)
 pnpm dev
 
-# 4. (Opcional) Dados de exemplo
-pnpm --filter rionovo-server run seed:all        # todos os módulos, sem apagar o banco
-pnpm --filter rionovo-server run seed:rebanho    # 4 sítios de demonstração da pecuária v1
-pnpm --filter rionovo-server run import:pecuaria # carga real do IDEAGRI (server/prisma/pecuaria_v1.json, gerado)
+# 4. Dados de desenvolvimento até a V3 (somente PostgreSQL local fazendinha_seedatev3)
+# Configure DATABASE_URL e DIRECT_URL para esse banco e aplique as migrations primeiro.
+pnpm --filter rionovo-server exec prisma migrate deploy
+pnpm --filter rionovo-server run seedatev3
+pnpm --filter rionovo-server run seedatev3 --verificar
 ```
 
 | Porta | Serviço |
@@ -149,6 +150,38 @@ pnpm --filter rionovo-server run import:pecuaria # carga real do IDEAGRI (server
 | 41875 | Frontend Vite (proxy /api → 41873) |
 
 Abra `http://localhost:41875`.
+
+### Cenário unificado `seedatev3`
+
+O ponto de entrada é `server/prisma/seedatev3.ts`; `seed` e o seed padrão do Prisma apontam para ele. Só aceita o banco **local** `fazendinha_seedatev3`, fora de produção, com todas as migrations aplicadas e inalteradas. Não cria nem exclui bancos. Não execute `migrate reset` para retomar: ele apagaria dados e invalidaria a identidade do manifesto.
+
+A massa tem duas fazendas (**Principal** e **Destino**), 18 animais (16 ativos e duas baixas), seis lotes, genitores externos, sêmen/embrião comprados, parceiros usados nos fatos, três contas com abertura zero e aportes. Compras, vendas, compromissos, liquidações, transferências, cancelamento e estorno sustentam o financeiro e o estoque. Sanidade inclui quatro protocolos (três publicados), quatro ciclos, oito aplicações, quatro exames e ocorrências abertas/encerrada. Nutrição inclui quatro receitas (três publicadas), cinco vigências e seis fechamentos (um estornado). Documentos demonstrativos em PDF/XML e dois relatórios são preparados pelos serviços existentes; não são documentos fiscais reais.
+
+Os padrões ficam **na carga inicial**, não como listas imutáveis do produto: quatro centros de custo (Pecuária, Agronomia, Equipe, Gestão), 39 categorias financeiras, dez raças, 29 motivos de baixa, sete categorias animais das migrations, 34 doenças, três tipos de aplicação e quatro exames mais um demonstrativo por opções. A lista completa está em `server/prisma/seedatev3/catalogos.ts`. Centros/categorias financeiros de Agronomia/Equipe não reintroduzem os módulos removidos. IDs e cadastros das migrations são reaproveitados; o seed não restaura ou sobrescreve configurações do usuário.
+
+Credenciais **fictícias, exclusivas deste ambiente**; senha inicial das três contas: `SeedateV3!Local2026`.
+
+| Acesso | E-mail | Permissões |
+|---|---|---|
+| Proprietário | `seedatev3.dono@example.test` | Dono com acesso completo |
+| Consulta | `seedatev3.consulta@example.test` | Consulta das duas áreas, sem lançamentos |
+| Operador | `seedatev3.operador@example.test` | Lançamentos nas duas áreas; flag de valores desabilitada (ver ressalva abaixo) |
+
+Exemplos: **DEV-001 Aurora** (doadora), **DEV-002 Brisa** (receptora, papel separado da filiação), **DEV-008 Hera** (descendência e desmama), **DEV-011 Kairo** (castração), **DEV-013 Monte** (reprodutor), **DEV-007 Gaia** (transferência), **DEV-017 Rubí** (venda) e **DEV-018 Sol** (morte). O lote Novilhas troca dieta no dia 16 do mês anterior; Flora muda de lote no dia 6 e Gaia de fazenda no dia 20, alterando os participantes reais dos fechamentos. Produtos, doses, dietas, doenças e carências são demonstrações, **não prescrições**.
+
+A data-base é calculada uma única vez em `America/Sao_Paulo` e guardada em `server/.seedatev3/manifesto.json` (ignorado pelo Git), junto de versão, identidade do banco, IDs, ações e etapas concluídas. Neste ambiente: **07/10/2026**. Reexecuções mantêm a data, não duplicam fatos e não refazem etapas concluídas. Um registro removido manualmente não é recriado. Preserve o manifesto junto do banco; se restaurar/recriar o banco, confira a identidade antes de reaproveitá-lo. A trava de execução é liberada pelo PostgreSQL inclusive se o processo morrer.
+
+`--verificar` utiliza conexões de banco somente leitura e confere relações, dinheiro, estoque por sítio/validade, carências na data-base, animal-dias, custos e arquivos. Para testar retomada, `--interromper-apos=catalogos` provoca uma falha controlada; rodar sem a opção continua da etapa seguinte. Etapas: catalogos, rebanho, financeiro, sanidade, nutricao, financeiro-atual, dados-verificados, arquivos, periodo. Não há eventos de reprodução ou produção de leite de versões futuras. O período financeiro do primeiro dos três meses só fecha depois dos lançamentos e arquivos; como ainda não há serviço de fechamento administrativo, a fixture registra período e auditoria na mesma transação. A emissão de relatório ganhou identificador interno opcional de reenvio, sem mudar o fluxo da interface.
+
+**Armazenamento e consolidação local — concluídos em 07/10/2026:** documentos e relatórios foram gerados no R2 autorizado, dentro de `dev/`, e seus downloads/conteúdos foram conferidos. Os dois documentos de operações e os dois relatórios passaram pela API autenticada; o XML do rascunho foi conferido no armazenamento, pois não há rota de download de anexos de rascunho antes da confirmação. Arquivos antigos continuam sendo lidos pelos caminhos persistidos. O período de agosto/2026 da Principal está fechado com auditoria, após seus lançamentos. `DATABASE_URL` e `DIRECT_URL` locais agora apontam para `fazendinha_seedatev3`; as demais configurações foram preservadas. Somente os 13 bancos autorizados foram removidos, após novos backups integrais; `postgres`, templates, containers e volumes foram preservados.
+
+Validação: cenário completo em banco inicialmente vazio, retomada após interrupção e reexecução completa sem diferenças em 68 tabelas de negócio ou nos saldos. `--verificar` passou sem alterar banco/manifesto. As 27 páginas/visões foram conferidas com dados reais da API; capturas de financeiro, sanidade e nutrição foram inspecionadas. Servidor: 1.044 testes aprovados, 115 integrações PostgreSQL puladas (não habilitadas nesta rodada); builds e tipos passaram. Isso não substitui a homologação manual integral da V3. Evidências locais ficam em `server/.seedatev3/`, ignorado pelo Git.
+
+**Falha de acesso registrada para entrega separada, por decisão do usuário:** o operador é cadastrado sem `verValores`, mas a conferência com sessão real revelou que a API financeira existente ainda devolve valores de operações comuns a esse perfil. A configuração do seed não corrige essa exposição. Não considerar esse acesso seguro para dados sensíveis antes de corrigir e retestar a autorização/mascaramento das consultas financeiras. A consulta sem permissão de lançamento foi bloqueada corretamente na API. Essa correção não integra a entrega do seed.
+
+Backups finais da consolidação: `.backups/seedatev3-final-E5pdI7/`, ignorados pelo Git, com 13 dumps dos bancos removidos e um do novo cenário, listagens e `manifesto.json` contendo tamanhos/SHA-256 e exclusões efetuadas. Todos tiveram catálogo e conteúdo integral conferidos. Inclui o manifesto do seed e a configuração anterior, mantida privada. Os backups iniciais em `.backups/seedatev3-2026-10-07T23-55-22-089Z/` também foram preservados. Para recuperar um banco, crie-o explicitamente e restaure seu dump com `pg_restore`; não remova o volume Docker. A mudança de `POSTGRES_DB` só vale para inicialização de um volume novo, não renomeia bancos de um volume existente. Não combinar esse cenário com os seeds históricos ou com a preparação destrutiva do guia manual.
+
+A falha de inicialização do Docker foi recuperada sem reset ou exclusão de dados: somente as pastas temporárias de comunicação `Docker/run` e `docker-secrets-engine`, em `%LOCALAPPDATA%`, foram renomeadas para `run.seedatev3-preservado-20261007` e `docker-secrets-engine.seedatev3-preservado-20261007`. O Docker recriou os pontos de comunicação e o mesmo container PostgreSQL voltou a responder. As pastas antigas permanecem preservadas; não são backups de volumes.
 
 ### Pré-requisitos
 
@@ -223,10 +256,13 @@ fazendinha/
 | `pnpm prisma:studio` | Abre Prisma Studio. |
 | `pnpm gen:nav-doc` | Regera `docs/NAVEGACAO.md` a partir da navegação. |
 | `pnpm --filter rionovo-server run db:push` | Sincroniza o schema sem migration — não usar com o schema `pecuaria` (apaga os índices parciais). |
-| `pnpm --filter rionovo-server run seed` | Dados de exemplo do financeiro. |
+| `pnpm --filter rionovo-server run seed` / `seedatev3` | Cenário unificado até a V3, somente no banco local autorizado. |
+| `pnpm --filter rionovo-server run seedatev3 --verificar` | Confere dados e arquivos sem criar registros. |
+| `pnpm --filter rionovo-server run seedatev3:typecheck` | Confere tipos do seed e seus módulos auxiliares. |
+| `pnpm --filter rionovo-server run seed:financeiro-legado` | Seed financeiro antigo, apenas execução explícita. |
 | `pnpm --filter rionovo-server run seed:usuarios` | Usuários de exemplo. |
 | `pnpm --filter rionovo-server run seed:pecuaria` / `seed:rebanho` | Seeds por módulo (`seed:pecuaria` = catálogos; `seed:rebanho` = 4 sítios de demonstração). |
-| `pnpm --filter rionovo-server run seed:all` | Todos os seeds, sem resetar o banco; também roda automaticamente após `prisma migrate reset`. |
+| `pnpm --filter rionovo-server run seed:all` | Orquestrador histórico; não é mais o seed padrão e não deve ser combinado com seedatev3. |
 | `pnpm --filter rionovo-server run import:pecuaria` | Importa a carga do IDEAGRI (`server/prisma/pecuaria_v1.json`, gerado por `scripts/build-pecuaria-json.mjs`). |
 | `pnpm --filter rionovo-server run whatsapp:user` | Gerencia a allowlist de números do bot. |
 | `pnpm --filter rionovo-server run bateria:gabarito` / `bateria:run` | Bateria de consultas de IA (gera gabarito / executa). |

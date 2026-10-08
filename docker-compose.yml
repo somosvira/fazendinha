@@ -14,13 +14,13 @@ services:
     environment:
       POSTGRES_USER: fazendinha
       POSTGRES_PASSWORD: fazendinha
-      POSTGRES_DB: fazendinha
+      POSTGRES_DB: fazendinha_seedatev3
     ports:
       - "54332:5432"
     volumes:
       - fazendinha_postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U fazendinha -d fazendinha"]
+      test: ["CMD-SHELL", "pg_isready -U fazendinha -d fazendinha_seedatev3"]
       interval: 2s
       timeout: 5s
       retries: 20

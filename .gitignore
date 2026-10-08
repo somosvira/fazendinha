@@ -24,5 +24,9 @@ bateria-respostas.json
 # Ambiente persistente de QA manual #249 (conexao, uploads e manifesto locais).
 server/.qa249/
 
+# Estado recuperável do cenário de desenvolvimento e backups locais.
+server/.seedatev3/
+.backups/
+
 # Carga real da Pecuária v1 (extraída do IDEAGRI) — dado de fazenda, não commitar.
 server/prisma/pecuaria_v1.json
