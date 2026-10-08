@@ -10,7 +10,8 @@ import { diasDoCalendario, deslocarMes, nomeMes } from "./lib/calendario";
 import { tituloCompromisso } from "./lib/compromissos";
 import { LinkOperacaoFinanceira } from "./LinkOperacaoFinanceira";
 
-export function CalendarioCompromissos({ itens, mes, onChangeMes, onLiquidar }: {
+export function CalendarioCompromissos({ itens, mes, onChangeMes, onLiquidar, compacto = false }: {
+  compacto?: boolean;
   itens: Compromisso[];
   mes: string;
   onChangeMes: (mes: string) => void;
@@ -47,7 +48,7 @@ export function CalendarioCompromissos({ itens, mes, onChangeMes, onLiquidar }: 
         <TableCaption className="sr-only">Calendário de compromissos — {nomeMes(mes)}</TableCaption>
         <TableHeader><TableRow>{["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map(dia => <TableHead key={dia} scope="col" className="border border-border bg-surface-2 px-3 py-2 text-sm font-semibold text-ink-3">{dia}</TableHead>)}</TableRow></TableHeader>
         <TableBody>{Array.from({ length: dias.length / 7 }, (_, semana) => <TableRow key={semana}>{dias.slice(semana * 7, semana * 7 + 7).map(({ data, dia }) => <TableCell key={data} data-dia={data} className={`border border-border p-2 align-top ${data.startsWith(mes) ? "bg-white" : "bg-stone-50 text-ink-3"}`}>
-          <div className="min-h-[130px]">
+          <div className={compacto ? "min-h-[clamp(64px,calc((100dvh-300px)/6),96px)]" : "min-h-[130px]"}>
             <time dateTime={data} aria-label={dataBR(data)} aria-current={data === hoje() ? "date" : undefined} className={`mb-2 inline-flex h-7 w-7 items-center justify-center rounded-full text-sm font-semibold ${data === hoje() ? "bg-mast text-white" : ""}`}>{dia}</time>
             <ul className="max-h-48 space-y-1 overflow-y-auto" aria-label={`Compromissos de ${dataBR(data)}`}>{(porDia.get(data) ?? []).map(c => <li key={c.id}>
               <Button type="button" onClick={() => setSelecionadoId(c.id)} aria-label={`${tituloCompromisso(c)}, ${c.tipo === "PAGAR" ? "a pagar" : "a receber"}, ${brl(c.saldoPendente)}${c.vencido ? ", vencido" : ""}`} variant="ghost" className={`h-auto w-full flex-col items-start gap-0 whitespace-normal rounded-md border-l-2 p-2 text-left text-sm leading-snug hover:brightness-95 ${c.tipo === "PAGAR" ? "border-amber-600 bg-amber-50 text-amber-950" : "border-green-700 bg-green-50 text-green-950"}`}>

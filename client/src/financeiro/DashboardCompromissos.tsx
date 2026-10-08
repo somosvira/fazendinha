@@ -32,9 +32,9 @@ export function DashboardCompromissos({ itens, href, mes, onChangeMes, onLiquida
           <TabsList className="h-9">{grupos.map(grupo => <TabsTrigger key={grupo.id} value={grupo.id} className="text-sm">{grupo.label}</TabsTrigger>)}</TabsList>
           <Dialog open={calendario} onOpenChange={setCalendario}>
             <DialogTrigger asChild><Button variant="outline"><CalendarDays aria-hidden="true" />Calendário</Button></DialogTrigger>
-            <DialogContent className="z-[1100] max-h-[90dvh] w-[calc(100%-2rem)] max-w-5xl grid-cols-1 overflow-y-auto" overlayClassName="z-[1090]">
+            <DialogContent className="z-[1100] max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-5xl grid-cols-1 grid-rows-[auto_minmax(0,1fr)] overflow-hidden" overlayClassName="z-[1090]">
               <DialogHeader className="min-w-0 border-b border-border p-4 pr-12"><DialogTitle>Calendário de compromissos</DialogTitle><DialogDescription>Vencimentos pendentes no período selecionado, de {dataBR(hrefPeriodo(href, "inicio"))} a {dataBR(hrefPeriodo(href, "fim"))}.</DialogDescription></DialogHeader>
-              <CalendarioCompromissos itens={itens} mes={mes} onChangeMes={onChangeMes} onLiquidar={onLiquidar ? item => { setCalendario(false); onLiquidar(item); } : undefined} />
+              <div className="min-h-0 min-w-0 overflow-auto"><CalendarioCompromissos compacto itens={itens} mes={mes} onChangeMes={onChangeMes} onLiquidar={onLiquidar ? item => { setCalendario(false); onLiquidar(item); } : undefined} /></div>
             </DialogContent>
           </Dialog>
           <Button variant="link" asChild><a href={href} onClick={event => { if (!event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) { event.preventDefault(); navegarPara(href); } }}>Ver todos</a></Button>

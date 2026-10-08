@@ -20,6 +20,10 @@ Com o mesmo viewport desktop, a página tem aproximadamente 1164px de altura, co
 
 ## Verificação técnica e limites
 
-`pnpm --filter rionovo-client test`: 121 arquivos, 938 testes aprovados (base atualizada com `origin/main`). `pnpm --filter rionovo-client build`: aprovado; permanece o aviso de bundle acima de 500kB, já existente.
+`pnpm --filter rionovo-client test`: 122 arquivos, 941 testes aprovados (base atualizada com `origin/main`). `pnpm --filter rionovo-client build`: aprovado; permanece o aviso de bundle acima de 500kB, já existente.
 
 A verificação visual local utilizou um snapshot de respostas de leitura, com gravações bloqueadas. Não foram efetuadas liquidações na produção. Os testes automatizados exercitam validação, seleção de conta, permissões, filtros, período, modal e dados obsoletos de requisições anteriores. Não houve alteração de API ou persistência.
+
+## Revisão após ajustes solicitados
+
+Calendário centralizado e limitado à janela, com cabeçalho fixo e células menores. Em desktop 1440 × 900, centro vertical medido com desvio de 0px. Registro de pagamento com nota selecionada verificado em desktop e celular (390 × 844). Rodapé do pagamento empilha botões no celular para conter o conteúdo. Capturas locais adicionais: `calendar-centered.png`, `payment-invoice.png` e `payment-invoice-mobile.png`. Os três novos testes cobrem drop, validação, remoção, envio anterior à liquidação, erro e nova tentativa sem repetir nota salva. Upload em produção não efetuado.

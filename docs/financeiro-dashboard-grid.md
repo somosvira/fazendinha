@@ -17,3 +17,9 @@ A página usa as primitivas locais shadcn (Card, Table, Badge, Tabs, Collapsible
 O grid divide painéis a partir de 1280px; abaixo disso, empilha. As tabelas e o calendário têm rolagem horizontal contida, sem expandir a página. A rosca compacta usa o tamanho do painel para alternar entre legenda lateral e empilhada. Diminuímos espaços e altura dos gráficos, preservando valores e ações legíveis.
 
 Não há alteração de API, schema, persistência, cálculos contábeis, auditoria ou autorização. Loading, erro, retry e descarte confirmado de rascunho continuam existentes. As imagens aprovadas usam dados ilustrativos; a implementação só apresenta dados da API.
+
+## Ajustes de calendário e nota fiscal
+
+O calendário do dashboard usa células compactas e modal centralizado limitado à altura da janela, com cabeçalho visível e rolagem interna. O calendário da listagem mantém a densidade anterior.
+
+Registrar pagamento aceita uma nota fiscal opcional por arrastar/soltar ou seleção de arquivo (PDF, XML, JPG, PNG ou WEBP, não vazio e até 10 MB). O envio ocorre ao confirmar, pela API existente, nos documentos da operação vinculada ao compromisso. Se falhar, a liquidação não é solicitada. Se a nota for salva e a liquidação falhar, o modal informa que o documento permanece na operação e uma nova tentativa no mesmo modal não repete o upload. Cancelar antes de confirmar não envia o arquivo. O registro de recebimento mantém seu fluxo atual.
