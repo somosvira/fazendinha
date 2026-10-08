@@ -1,3 +1,5 @@
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { ListaCadastroFinanceiro } from "./ListaCadastroFinanceiro";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Building2, Package, Plus, Tags, Target, Users } from "lucide-react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -27,7 +29,7 @@ const colunasContas = (editar: (c: Conta) => void, alternar: (c: Conta) => void)
   { chave: "tipo", titulo: "Tipo", larguraMinima: 110, celula: (c) => <span className="whitespace-nowrap">{TIPO_CONTA[c.tipo] ?? c.tipo}</span> },
   { chave: "instituicao", titulo: "Instituição", larguraMinima: 150, celula: (c) => <span className="break-words">{c.instituicao || "—"}</span> },
   { chave: "abertura", titulo: "Abertura", alinhamento: "direita", larguraMinima: 120, celula: (c) => <span className="whitespace-nowrap">{dataBR(c.dataSaldoAbertura)}</span> },
-  { chave: "saldo", titulo: "Saldo atual", alinhamento: "direita", larguraMinima: 130, celula: (c) => <strong className="whitespace-nowrap font-semibold">{brl(c.saldoAtual)}</strong> },
+  { chave: "saldo", titulo: "Saldo atual", alinhamento: "direita", larguraMinima: 130, celula: (c) => <strong data-fin-tom={Number(c.saldoAtual) < 0 ? "saida" : "entrada"} className="fin-valor whitespace-nowrap font-semibold tabular-nums">{brl(c.saldoAtual)}</strong> },
   { chave: "situacao", titulo: "Situação", alinhamento: "direita", larguraMinima: 100, celula: (c) => <Pill tone={c.ativo ? "green" : "neutral"}>{c.ativo ? "Ativa" : "Inativa"}</Pill> },
   { chave: "acoes", titulo: "Ações", alinhamento: "direita", larguraMinima: 110, acoes: true, celula: (c) => <AcoesLinha nome={c.nome} ativo={c.ativo} onEditar={() => editar(c)} onAlternar={() => alternar(c)} /> },
 ];
@@ -46,23 +48,21 @@ const colunasProdutos = (editar: (p: Produto) => void, alternar: (p: Produto) =>
   { chave: "categoria", titulo: "Categoria", larguraMinima: 130, celula: (p) => p.categoriaNome ?? "Sem categoria" },
   { chave: "uso", titulo: "Tipos de uso", larguraMinima: 130, celula: (p) => [p.usoGenetico && "Genético", p.usoSanitario && "Sanitário", p.usoNutricional && "Nutricional"].filter(Boolean).join(" · ") || "Geral" },
   { chave: "unidade", titulo: "Unidade", larguraMinima: 80, celula: (p) => rotuloUnidade(p.unidade) },
-  { chave: "centrosCusto", titulo: "Centros de custo", larguraMinima: 150, celula: (p) => <span className="break-words text-ink-3">{p.centrosCusto?.map((c) => `${c.nome}${c.ativo ? "" : " (inativo)"}`).join(" · ") || "—"}</span> },
-  { chave: "fornecedores", titulo: "Fornecedores", larguraMinima: 150, celula: (p) => <span className="break-words text-ink-3">{p.fornecedores?.map((f) => `${f.nome}${f.ativo ? "" : " (inativo)"}`).join(" · ") || "Sem fornecedor"}</span> },
   { chave: "situacao", titulo: "Situação", alinhamento: "direita", larguraMinima: 100, celula: (p) => <Pill tone={p.ativo !== false ? "green" : "neutral"}>{p.ativo !== false ? "Ativo" : "Inativo"}</Pill> },
-  { chave: "acoes", titulo: "Ações", alinhamento: "direita", larguraMinima: 150, acoes: true, celula: (p) => <div className="flex items-center justify-end gap-2"><a href={`/estoque/produtos/${p.id}`} onClick={(e) => e.stopPropagation()} className="whitespace-nowrap text-sm underline">Ver no estoque</a>{podeEditar && <AcoesLinha nome={p.nome} ativo={p.ativo !== false} onEditar={() => editar(p)} onAlternar={() => alternar(p)} />}</div> },
+  { chave: "acoes", titulo: "Ações", alinhamento: "direita", larguraMinima: 140, acoes: true, celula: (p) => <div className="flex items-center justify-end gap-2"><a href={`/estoque/produtos/${p.id}`} onClick={(e) => e.stopPropagation()} className="whitespace-nowrap text-sm underline">Ver no estoque</a>{podeEditar && <AcoesLinha nome={p.nome} ativo={p.ativo !== false} onEditar={() => editar(p)} onAlternar={() => alternar(p)} />}</div> },
 ];
 
 const colunasCategorias = (editar: (c: Categoria) => void, alternar: (c: Categoria) => void): ColunaTabela<Categoria>[] => [
   { chave: "categoria", titulo: "Categoria", principal: true, larguraMinima: 210, celula: (c) => <strong>{c.nome}</strong> },
-  { chave: "classificacao", titulo: "Classificação", alinhamento: "centro", larguraMinima: 130, celula: (c) => c.classificacao === "INVESTIMENTO" ? "Investimento" : c.classificacao === "CUSTEIO" ? "Custeio" : "Não classificada" },
-  { chave: "referencias", titulo: "Em uso", alinhamento: "centro", larguraMinima: 100, celula: (c) => (c._count?.operacoes ?? 0) + (c._count?.produtos ?? 0) + (c._count?.itens ?? 0) },
+  { chave: "classificacao", titulo: "Classificação", alinhamento: "centro", larguraMinima: 130, celula: (c) => <Pill tone={c.classificacao === "INVESTIMENTO" ? "blue" : c.classificacao === "CUSTEIO" ? "brown" : "neutral"}>{c.classificacao === "INVESTIMENTO" ? "Investimento" : c.classificacao === "CUSTEIO" ? "Custeio" : "Não classificada"}</Pill> },
+  { chave: "referencias", titulo: "Vínculos", alinhamento: "centro", larguraMinima: 100, celula: (c) => (c._count?.operacoes ?? 0) + (c._count?.produtos ?? 0) + (c._count?.itens ?? 0) },
   { chave: "situacao", titulo: "Situação", alinhamento: "centro", larguraMinima: 100, celula: (c) => <Pill tone={c.ativo ? "green" : "neutral"}>{c.ativo ? "Ativa" : "Inativa"}</Pill> },
   { chave: "acoes", titulo: "Ações", alinhamento: "direita", larguraMinima: 110, acoes: true, celula: (c) => <AcoesLinha nome={c.nome} ativo={c.ativo} onEditar={() => editar(c)} onAlternar={() => alternar(c)} /> },
 ];
 
 const colunasCentros = (editar: (c: CentroCusto) => void, alternar: (c: CentroCusto) => void): ColunaTabela<CentroCusto>[] => [
   { chave: "centro", titulo: "Centro de custo", principal: true, larguraMinima: 230, celula: (c) => <strong>{c.nome}</strong> },
-  { chave: "referencias", titulo: "Em uso", alinhamento: "centro", larguraMinima: 100, celula: (c) => (c._count?.operacoes ?? 0) + (c._count?.produtos ?? 0) },
+  { chave: "referencias", titulo: "Vínculos", alinhamento: "centro", larguraMinima: 100, celula: (c) => (c._count?.operacoes ?? 0) + (c._count?.produtos ?? 0) },
   { chave: "situacao", titulo: "Situação", alinhamento: "centro", larguraMinima: 100, celula: (c) => <Pill tone={c.ativo ? "green" : "neutral"}>{c.ativo ? "Ativo" : "Inativo"}</Pill> },
   { chave: "acoes", titulo: "Ações", alinhamento: "direita", larguraMinima: 110, acoes: true, celula: (c) => <AcoesLinha nome={c.nome} ativo={c.ativo} onEditar={() => editar(c)} onAlternar={() => alternar(c)} /> },
 ];
@@ -85,7 +85,7 @@ export function ConfiguracoesFinanceiras({ abaInicial = "contas", podeEditar = t
   const [painel, setPainel] = useState<Painel>(null);
   const [confirmando, setConfirmando] = useState<Confirmacao>(null);
   const [processando, setProcessando] = useState(false);
-  const [buscaProduto, setBuscaProduto] = useState("");
+  const [filtroPapel, setFiltroPapel] = useState("");
   const [filtroFornecedor, setFiltroFornecedor] = useState("");
   const [filtroCentro, setFiltroCentro] = useState("");
   const [filtroUso, setFiltroUso] = useState("");
@@ -107,27 +107,27 @@ export function ConfiguracoesFinanceiras({ abaInicial = "contas", podeEditar = t
   const abrirNovo = (entidade: EntidadePainel) => { if (podeEditar && !emCurso.current) setPainel({ entidade, modo: "novo" }); };
   const editar = (entidade: EntidadePainel, item: { id: string }) => { if ((podeEditar || entidade === "produto") && !emCurso.current) setPainel({ entidade, modo: "editar", id: item.id }); };
   const alternarConta = async (c: Conta) => {
-    if (emCurso.current) return;
+    if (!podeEditar || emCurso.current) return;
     if (c.ativo) { setConfirmando({ tipo: "conta", item: c }); return; }
     await executar(() => atualizarConta(c.id, { ativo: true }));
   };
   const alternarParceiro = async (p: Parceiro) => {
-    if (emCurso.current) return;
+    if (!podeEditar || emCurso.current) return;
     if (p.ativo) { setConfirmando({ tipo: "parceiro", item: p }); return; }
     await executar(() => atualizarParceiro(p.id, { ativo: true }));
   };
   const alternarCategoria = async (c: Categoria) => {
-    if (emCurso.current) return;
+    if (!podeEditar || emCurso.current) return;
     if (c.ativo) { setConfirmando({ tipo: "categoria", item: c }); return; }
     await executar(() => atualizarCategoria(c.id, { ativo: true }));
   };
   const alternarCentro = async (c: CentroCusto) => {
-    if (emCurso.current) return;
+    if (!podeEditar || emCurso.current) return;
     if (c.ativo) { setConfirmando({ tipo: "centro", item: c }); return; }
     await executar(() => atualizarCentroCusto(c.id, { ativo: true }));
   };
   const alternarProduto = async (p: Produto) => {
-    if (emCurso.current) return;
+    if (!podeEditar || emCurso.current) return;
     if (p.ativo !== false) { setConfirmando({ tipo: "produto", item: p }); return; }
     await executar(() => atualizarProduto(p.id, { ativo: true }));
   };
@@ -155,30 +155,33 @@ export function ConfiguracoesFinanceiras({ abaInicial = "contas", podeEditar = t
 
   const categorias = config.categorias;
   const produtosFiltrados = produtosCadastro.filter((produto) => {
-    const buscaOk = produto.nome.toLocaleLowerCase("pt-BR").includes(buscaProduto.trim().toLocaleLowerCase("pt-BR"));
     const fornecedorOk = filtroFornecedor === "SEM" ? !produto.fornecedores?.length : !filtroFornecedor || produto.fornecedores?.some((f) => f.id === filtroFornecedor);
     const centroOk = filtroCentro === "SEM" ? !produto.centrosCusto?.length : !filtroCentro || produto.centrosCusto?.some((c) => c.id === filtroCentro);
     const situacaoOk = filtroSituacao === "TODOS" || (filtroSituacao === "ATIVOS" ? produto.ativo !== false : produto.ativo === false);
     const usoOk = !filtroUso || (filtroUso === "SEM" ? !produto.usoGenetico && !produto.usoSanitario && !produto.usoNutricional
       : !!produto[filtroUso as "usoGenetico" | "usoSanitario" | "usoNutricional"]);
-    return buscaOk && fornecedorOk && centroOk && situacaoOk && usoOk;
+    return fornecedorOk && centroOk && situacaoOk && usoOk;
   });
   const acao = aba === "categorias"
     ? <Button onClick={() => abrirNovo("categoria")}><Plus size={16} /> Nova categoria</Button>
     : <Button onClick={() => abrirNovo(aba === "contas" ? "conta" : aba === "parceiros" ? "parceiro" : aba === "produtos" ? "produto" : "centro")}><Plus size={16} /> {aba === "contas" ? "Nova conta" : aba === "parceiros" ? "Novo parceiro" : aba === "produtos" ? "Novo produto" : "Novo centro de custo"}</Button>;
 
-  return <PaginaFinanceira>
+  return <PaginaFinanceira colorida>
     <PageHeader titulo="Configurações financeiras" descricao="Cadastros que sustentam as operações. Desativar preserva todo o histórico e permite reativação." acao={podeEditar ? acao : undefined} />
     <ErrorBox erro={erro} />
     {!podeEditar && <p className="mt-4 rounded-lg border border-border bg-[#faf9f4] px-4 py-3 text-sm text-ink-3">Você tem acesso de consulta a estes cadastros.</p>}
-    <div role="tablist" aria-label="Cadastros financeiros" className="mt-6 flex max-w-full gap-1 overflow-x-auto rounded-lg border border-border bg-white p-1 [scrollbar-width:none] sm:inline-flex">{([["contas", "Contas financeiras", Building2], ["parceiros", "Clientes e fornecedores", Users], ["produtos", "Produtos", Package], ["categorias", "Categorias", Tags], ["centros", "Centros de custo", Target]] as const).map(([k, label, Icon]) => <button key={k} type="button" role="tab" aria-selected={aba === k} onClick={() => trocarAba(k)} className={`flex shrink-0 items-center gap-2 whitespace-nowrap rounded-md px-3 py-2 text-sm font-semibold transition-colors ${aba === k ? "bg-mast text-white" : "text-ink-3 hover:bg-surface-2 hover:text-ink"}`}><Icon size={16} className="shrink-0" />{label}</button>)}</div>
-    <fieldset disabled={processando || (!podeEditar && aba !== "produtos")} aria-busy={processando} className="min-w-0">
-      {aba === "contas" && <Panel className="mt-5 overflow-hidden"><TabelaFinanceira rotulo="Contas financeiras" itens={config.contas} colunas={colunasContas((c) => editar("conta", c), alternarConta)} chaveDe={(c) => c.id} onAbrir={(c) => editar("conta", c)} classeLinha={(c) => !c.ativo ? "opacity-55" : ""} /></Panel>}
-      {aba === "parceiros" && <Panel className="mt-5 overflow-hidden"><TabelaFinanceira rotulo="Clientes e fornecedores" itens={config.parceiros} colunas={colunasParceiros((p) => editar("parceiro", p), alternarParceiro)} chaveDe={(p) => p.id} onAbrir={(p) => editar("parceiro", p)} classeLinha={(p) => !p.ativo ? "opacity-55" : ""} /></Panel>}
-      {aba === "produtos" && <><div className="mt-5 flex flex-wrap gap-3"><input aria-label="Buscar produto" value={buscaProduto} onChange={(e) => setBuscaProduto(e.target.value)} placeholder="Buscar por nome…" className="h-10 min-w-[200px] flex-1 rounded-lg border border-border bg-white px-3 text-sm" /><SelectFiltro rotulo="Filtrar por fornecedor" valor={filtroFornecedor} onChange={setFiltroFornecedor} opcoes={[{ valor: "", texto: "Todos os fornecedores" }, { valor: "SEM", texto: "Sem fornecedor" }, ...config.parceiros.filter((p) => papeisDoParceiro(p).includes("FORNECEDOR")).map((p) => ({ valor: String(p.id), texto: p.nome }))]} /><SelectFiltro rotulo="Filtrar por centro de custo" valor={filtroCentro} onChange={setFiltroCentro} opcoes={[{ valor: "", texto: "Todos os centros" }, { valor: "SEM", texto: "Sem centro" }, ...config.centrosCusto.filter((c) => c.ativo).map((c) => ({ valor: String(c.id), texto: c.nome }))]} /><SelectFiltro rotulo="Filtrar por uso" valor={filtroUso} onChange={setFiltroUso} opcoes={[{ valor: "", texto: "Todos" }, { valor: "usoGenetico", texto: "Uso genético" }, { valor: "usoSanitario", texto: "Uso sanitário" }, { valor: "usoNutricional", texto: "Uso nutricional" }, { valor: "SEM", texto: "Sem uso específico" }]} /><SelectFiltro rotulo="Filtrar por situação" valor={filtroSituacao} onChange={setFiltroSituacao} opcoes={[{ valor: "TODOS", texto: "Ativos e inativos" }, { valor: "ATIVOS", texto: "Ativos" }, { valor: "INATIVOS", texto: "Inativos" }]} /></div><Panel className="mt-3 overflow-hidden"><TabelaFinanceira rotulo="Produtos" itens={produtosFiltrados} colunas={colunasProdutos((p) => editar("produto", p), alternarProduto, podeEditar)} chaveDe={(p) => p.id} onAbrir={(p) => editar("produto", p)} classeLinha={(p) => p.ativo === false ? "opacity-55" : ""} /></Panel></>}
-      {aba === "categorias" && <Panel className="mt-5 overflow-hidden"><TabelaFinanceira rotulo="Categorias financeiras" itens={categorias} colunas={colunasCategorias((c) => editar("categoria", c), alternarCategoria)} chaveDe={(c) => c.id} onAbrir={(c) => editar("categoria", c)} classeLinha={(c) => !c.ativo ? "opacity-55" : ""} /></Panel>}
-      {aba === "centros" && <Panel className="mt-5 overflow-hidden"><TabelaFinanceira rotulo="Centros de custo" itens={config.centrosCusto} colunas={colunasCentros((c) => editar("centro", c), alternarCentro)} chaveDe={(c) => c.id} onAbrir={(c) => editar("centro", c)} classeLinha={(c) => !c.ativo ? "opacity-55" : ""} /></Panel>}
+    <Tabs value={aba} onValueChange={v => trocarAba(v as Aba)} className="mt-3 min-w-0">
+      <TabsList aria-label="Cadastros financeiros" className="grid h-auto group-data-[orientation=horizontal]/tabs:h-auto w-full grid-cols-2 gap-1 sm:grid-cols-3 xl:grid-cols-5">{([["contas", "Contas financeiras", Building2], ["parceiros", "Clientes e fornecedores", Users], ["produtos", "Produtos", Package], ["categorias", "Categorias", Tags], ["centros", "Centros de custo", Target]] as const).map(([k, label, Icon]) => <TabsTrigger key={k} value={k} onClick={() => trocarAba(k)} className="min-h-10 whitespace-normal px-3 text-left"><Icon size={16} />{label}</TabsTrigger>)}</TabsList>
+      <TabsContent value={aba}>
+    <fieldset disabled={processando} aria-busy={processando} className="min-w-0">
+      {aba === "contas" && <ListaCadastroFinanceiro key="contas" rotulo="Contas financeiras" itens={config.contas} colunas={colunasContas((c) => editar("conta", c), alternarConta).filter(coluna => podeEditar || !coluna.acoes)} onAbrir={podeEditar ? item => editar("conta", item) : undefined} />}
+      {aba === "parceiros" && <ListaCadastroFinanceiro key="parceiros" rotulo="Clientes e fornecedores" itens={config.parceiros.filter(p => !filtroPapel || papeisDoParceiro(p).includes(filtroPapel as keyof typeof PAPEIS_PARCEIRO))} colunas={colunasParceiros((p) => editar("parceiro", p), alternarParceiro).filter(coluna => podeEditar || !coluna.acoes)} onAbrir={podeEditar ? item => editar("parceiro", item) : undefined} termosDe={p => `${p.nome} ${p.documento ?? ""} ${p.email ?? ""} ${p.telefone ?? ""}`} filtros={<label className="text-sm font-medium">Papel<SelectFiltro rotulo="Papel do parceiro" valor={filtroPapel} onChange={setFiltroPapel} opcoes={[{ valor: "", texto: "Todos os papéis" }, ...Object.entries(PAPEIS_PARCEIRO).map(([valor, texto]) => ({ valor, texto }))]} className="mt-1" /></label>} />}
+      {aba === "produtos" && <><div className="mt-5 flex flex-wrap gap-3"><SelectFiltro rotulo="Filtrar por fornecedor" valor={filtroFornecedor} onChange={setFiltroFornecedor} opcoes={[{ valor: "", texto: "Todos os fornecedores" }, { valor: "SEM", texto: "Sem fornecedor" }, ...config.parceiros.filter((p) => papeisDoParceiro(p).includes("FORNECEDOR")).map((p) => ({ valor: String(p.id), texto: p.nome }))]} /><SelectFiltro rotulo="Filtrar por centro de custo" valor={filtroCentro} onChange={setFiltroCentro} opcoes={[{ valor: "", texto: "Todos os centros" }, { valor: "SEM", texto: "Sem centro" }, ...config.centrosCusto.filter((c) => c.ativo).map((c) => ({ valor: String(c.id), texto: c.nome }))]} /><SelectFiltro rotulo="Filtrar por uso" valor={filtroUso} onChange={setFiltroUso} opcoes={[{ valor: "", texto: "Todos os usos" }, { valor: "usoGenetico", texto: "Uso genético" }, { valor: "usoSanitario", texto: "Uso sanitário" }, { valor: "usoNutricional", texto: "Uso nutricional" }, { valor: "SEM", texto: "Sem uso específico" }]} /><SelectFiltro rotulo="Filtrar por situação" valor={filtroSituacao} onChange={setFiltroSituacao} opcoes={[{ valor: "TODOS", texto: "Ativos e inativos" }, { valor: "ATIVOS", texto: "Ativos" }, { valor: "INATIVOS", texto: "Inativos" }]} /></div><ListaCadastroFinanceiro rotulo="Produtos" rotuloBusca="Buscar produto" mostrarSituacao={false} itens={produtosFiltrados} colunas={colunasProdutos((p) => editar("produto", p), alternarProduto, podeEditar)} onAbrir={p => editar("produto", p)} /></>}
+      {aba === "categorias" && <ListaCadastroFinanceiro key="categorias" rotulo="Categorias financeiras" itens={categorias} colunas={colunasCategorias((c) => editar("categoria", c), alternarCategoria).filter(coluna => podeEditar || !coluna.acoes)} onAbrir={podeEditar ? item => editar("categoria", item) : undefined} />}
+      {aba === "centros" && <ListaCadastroFinanceiro key="centros" rotulo="Centros de custo" itens={config.centrosCusto} colunas={colunasCentros((c) => editar("centro", c), alternarCentro).filter(coluna => podeEditar || !coluna.acoes)} onAbrir={podeEditar ? item => editar("centro", item) : undefined} />}
     </fieldset>
+      </TabsContent>
+    </Tabs>
 
     {painel?.entidade === "conta" && <FormConta key={chavePainel} aberto conta={contaSelecionada} ordemInicial={config.contas.reduce((maior, conta) => Math.max(maior, conta.ordem ?? 0), -1) + 1} onSalvo={aoSalvar} onFechar={() => setPainel(null)} />}
     {painel?.entidade === "parceiro" && <FormParceiro key={chavePainel} aberto parceiro={parceiroSelecionado} onSalvo={aoSalvar} onFechar={() => setPainel(null)} />}

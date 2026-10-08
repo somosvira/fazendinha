@@ -1,22 +1,10 @@
 import * as React from "react"
 import { cn } from "@/lib/utils"
 
-function Table({ className, containerLabel, ...props }: React.ComponentProps<"table"> & { containerLabel?: string }) {
-  return (
-    <div
-      data-slot="table-container"
-      role={containerLabel ? "region" : undefined}
-      aria-label={containerLabel}
-      tabIndex={containerLabel ? 0 : undefined}
-      className="relative w-full overflow-x-auto"
-    >
-      <table
-        data-slot="table"
-        className={cn("w-full caption-bottom text-sm", className)}
-        {...props}
-      />
-    </div>
-  )
+function Table({ className, containerLabel, semContainer = false, ...props }: React.ComponentProps<"table"> & { containerLabel?: string; semContainer?: boolean }) {
+  const tabela = <table data-slot="table" className={cn("w-full caption-bottom text-sm", className)} {...props} />;
+  return semContainer ? tabela : <div data-slot="table-container" role={containerLabel ? "region" : undefined} aria-label={containerLabel} tabIndex={containerLabel ? 0 : undefined} className="relative w-full overflow-x-auto">{tabela}</div>;
+
 }
 
 function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {

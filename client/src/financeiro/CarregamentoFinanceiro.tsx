@@ -26,3 +26,7 @@ export function SkeletonCategorias() {
     <div aria-hidden="true" className="space-y-4"><Skeleton className="h-20 w-full" /><Skeleton className="h-4 w-3/4" /><LinhasSkeleton /></div>
   </div>;
 }
+
+export function SkeletonListaFinanceira({ label = "Carregando cadastros" }: { label?: string }) {
+  return <div role="status" aria-label={label} aria-busy="true" className="p-4"><span className="sr-only">{label}…</span><div aria-hidden="true" className="space-y-3">{Array.from({ length: 8 }, (_, indice) => <div key={indice} className="grid grid-cols-[2fr_1fr_1fr] gap-4"><Skeleton className="h-8" /><Skeleton className="h-8" /><Skeleton className="h-8" /></div>)}</div></div>;
+}

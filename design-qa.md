@@ -57,3 +57,14 @@ Cards claros sobre o fundo quente, com tokens centrais de entrada (verde), saíd
 Inspecionados dashboard e contas/extratos sem overflow horizontal em 1440, 1180, 720 e 390/391px. Diálogo de pagamento com nota fiscal verificado em 391px: área útil de 357px, scrollWidth=clientWidth. Detalhe da operação conserva todos os blocos na primeira tela do exemplo. Review identificou saldo disponível negativo em verde; corrigido para tom de alerta. Acessibilidade mantém rótulos, status, datas e traçados das séries; texto âmbar usa marrom escuro sobre fundo suave.
 
 Validação final: 123 arquivos / 950 testes frontend aprovados e build frontend aprovado. O teste do gráfico foi atualizado para a cor de saída, mantendo suas verificações de valores exatos e alternativa acessível. Capturas locais: `dashboard-colors.png`, `operation-colors.png`, `compromissos-colors.png`, `contas-colors.png`, `payment-colors.png`.
+
+
+## Auditoria das demais telas financeiras
+
+Corrigidos os cadastros (busca, filtros e paginação de 15), busca por código de operação, formulários em grid com ações persistentes, modais compactos para categoria/centro e organização dos relatórios. Input, Textarea, Select, Checkbox, RadioGroup, Button, Table, Tabs, Sheet, Dialog e Collapsible usam as primitivas shadcn locais. As abas móveis não sobrepõem o conteúdo; mudanças exclusivas nos vínculos do produto também pedem confirmação antes de descarte.
+
+Suíte completa: 123 arquivos / 955 testes aprovados. Checagem TypeScript e build frontend aprovados; permanece o aviso pré-existente de bundle acima de 500 kB. Testes focados foram repetidos após os ajustes visuais finais. A revisão independente de código foi encerrada sem achados importantes pendentes.
+
+Inspeção visual em 1440, 1180, 720 e 391px, sem overflow horizontal das páginas inspecionadas. A nova operação conserva a altura da janela e mantém confirmação visível; campos e revisão dos efeitos rolam internamente. Em desktop, parceiros passou de cerca de 22717px para 903px, com todos os registros acessíveis por paginação e rolagem da tabela. A listagem de relatórios cabe em 900px; a prévia gerencial do detalhe é aberta sob demanda. No celular, listas e formulários preservam rolagem para não comprimir textos e controles.
+
+Evidências locais em `/Users/toledo/.codex/visualizations/2026/10/08/financeiro-correcoes/`. A prévia encaminha somente leituras e bloqueia gravações: autosave, geração, upload e liquidação foram exercitados com mocks nos testes, sem escrita na produção.

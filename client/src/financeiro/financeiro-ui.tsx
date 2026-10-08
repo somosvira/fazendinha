@@ -1,8 +1,13 @@
+import { SelectCampo } from "./SelectCampo";
+import { Button as ShadcnButton } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableCaption } from "@/components/ui/table";
+import { SkeletonListaFinanceira } from "./CarregamentoFinanceiro";
 import "./cores-financeiro.css";
 import { forwardRef, useEffect, useRef, useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import { ArrowDown, ArrowUp, Check, Pencil, Power, PowerOff, X } from "lucide-react";
-import { Loader } from "../components/Loading";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export const brl = (valor: string | number | null | undefined) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(valor ?? 0));
@@ -36,12 +41,9 @@ export function PaginaFinanceira({ children, colorida = false }: { children: Rea
   return <div className={`shell-wide pagina-financeira ${colorida ? "financeiro-colorido" : ""}`}>{children}</div>;
 }
 
-/* Carregamento em nível de página: ocupa a área de conteúdo (.app-main, que já
- * exclui a sidebar) e centraliza o loader nos dois eixos. Usa `.pagina-carregando`
- * em vez de `PaginaFinanceira` de propósito — o padding vertical da página somaria
- * POR FORA dos 100dvh do loader e criaria barra de rolagem. Ver base.css. */
+/* Skeleton compartilhado preserva o envelope e a folga do menu. */
 export function PaginaCarregando({ label }: { label: string }) {
-  return <div className="shell-wide pagina-carregando"><Loader label={label} full /></div>;
+  return <div className="shell-wide pagina-financeira"><SkeletonListaFinanceira label={label} /></div>;
 }
 
 /* Página cujos dados ainda não chegaram: carrega, ou mostra o erro. Existe para
@@ -54,7 +56,7 @@ export function PaginaSemDados({ titulo, descricao, label, erro }: { titulo: str
 }
 
 export function PageHeader({ titulo, descricao, acao, eyebrow = "Financeiro" }: { titulo: string; descricao: string; acao?: React.ReactNode; /** rótulo acima do título; padrão "Financeiro" */ eyebrow?: string }) {
-  return <header className="fin-cabecalho-pagina flex flex-wrap items-end justify-between gap-5 border-b border-border pb-6 pt-7 max-[900px]:pt-0">
+  return <header className="fin-cabecalho-pagina flex flex-wrap items-end justify-between gap-3 border-b border-border pb-3 pt-3 max-[900px]:pt-0">
     <div className="min-w-0 max-w-3xl flex-[1_1_320px]">{eyebrow && <div className="eyebrow">{eyebrow}</div>}<h1 className={`h1 break-words hyphens-auto ${eyebrow ? "mt-2" : ""}`}>{titulo}</h1><p className="mt-2 break-words text-sm leading-6 text-ink-3">{descricao}</p></div>{acao}
   </header>;
 }
@@ -65,18 +67,18 @@ export function PageHeader({ titulo, descricao, acao, eyebrow = "Financeiro" }: 
 export const Button = forwardRef<HTMLButtonElement, { children: React.ReactNode; onClick?: () => void; type?: "button" | "submit"; disabled?: boolean; danger?: boolean; secondary?: boolean; className?: string; /** id do form a submeter quando o botão vive fora dele (rodapé de painel) */ form?: string; /** associa o botão a uma mensagem de erro/ajuda (ex.: o alerta de confirmação) */ ariaDescribedby?: string }>(
   ({ children, onClick, type = "button", disabled, danger, secondary, className = "", form, ariaDescribedby }, ref) => {
     const cor = danger ? "bg-red-800 text-white hover:bg-red-900" : secondary ? "border border-border bg-white text-ink hover:bg-surface-2" : "bg-mast text-white hover:opacity-90";
-    return <button ref={ref} type={type} form={form} onClick={onClick} disabled={disabled} aria-describedby={ariaDescribedby} className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-45 ${cor} ${className}`}>{children}</button>;
+    return <ShadcnButton ref={ref} type={type} form={form} onClick={onClick} disabled={disabled} aria-describedby={ariaDescribedby} className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-45 ${cor} ${className}`}>{children}</ShadcnButton>;
   },
 );
 Button.displayName = "Button";
 
 export function Panel({ children, className = "", tom }: { children: React.ReactNode; className?: string; tom?: TomFinanceiro }) {
-  return <section data-fin-tom={tom} data-slot="financeiro-panel" className={`rounded-xl border border-border bg-white shadow-[0_1px_2px_rgba(30,35,28,.04)] ${className}`}>{children}</section>;
+  return <Card asChild className={`rounded-xl border border-border bg-white shadow-[0_1px_2px_rgba(30,35,28,.04)] gap-0 py-0 ${className}`}><section data-fin-tom={tom} data-slot="financeiro-panel">{children}</section></Card>;
 }
 
 export function Pill({ children, tone = "neutral" }: { children: React.ReactNode; tone?: "neutral" | "green" | "amber" | "red" | "blue" | "brown" }) {
   const tons = { neutral: "bg-stone-100 text-stone-700", green: "bg-green-100 text-green-800", amber: "bg-amber-100 text-amber-900", red: "bg-red-100 text-red-800", blue: "bg-blue-100 text-blue-800", brown: "bg-[#eee7d8] text-[#63543c]" };
-  return <span data-fin-tom={tone === "green" ? "entrada" : tone === "red" ? "alerta" : tone === "amber" ? "pendente" : tone === "blue" ? "info" : tone === "brown" ? "saida" : "neutro"} className={`fin-selo inline-flex shrink-0 items-center whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-semibold ${tons[tone]}`}>{children}</span>;
+  return <Badge data-fin-tom={tone === "green" ? "entrada" : tone === "red" ? "alerta" : tone === "amber" ? "pendente" : tone === "blue" ? "info" : tone === "brown" ? "saida" : "neutro"} className={`fin-selo inline-flex shrink-0 items-center whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-semibold ${tons[tone]}`}>{children}</Badge>;
 }
 
 export function StatusPill({ status }: { status: string }) {
@@ -97,13 +99,13 @@ export function Paginacao({ pagina, totalPaginas, total, porPagina, rotulo, subs
   onPagina: (pagina: number) => void;
 }) {
   return <nav aria-label={rotulo} className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3 text-sm">
-    <span className="text-ink-3">{(pagina - 1) * porPagina + 1}–{Math.min(pagina * porPagina, total)} de {total} {substantivo}</span>
+    <span className="text-ink-3">{total ? (pagina - 1) * porPagina + 1 : 0}–{Math.min(pagina * porPagina, total)} de {total} {substantivo}</span>
     <div className="flex items-center gap-2">
       <Button secondary disabled={pagina === 1} onClick={() => onPagina(pagina - 1)}>Anterior</Button>
       <label className="sr-only" htmlFor={idSelect}>Ir para a página</label>
-      <select id={idSelect} aria-label="Ir para a página" value={pagina} onChange={(e) => onPagina(Number(e.target.value))} className="h-10 rounded-lg border border-border bg-white px-2 text-sm">
+      <SelectCampo id={idSelect} aria-label="Ir para a página" value={pagina} onValueChange={valor => onPagina(Number(valor))} className="h-10 rounded-lg border border-border bg-white px-2 text-sm">
         {Array.from({ length: totalPaginas }, (_, indice) => <option key={indice + 1} value={indice + 1}>Página {indice + 1} de {totalPaginas}</option>)}
-      </select>
+      </SelectCampo>
       <Button secondary disabled={pagina === totalPaginas} onClick={() => onPagina(pagina + 1)}>Próxima</Button>
     </div>
   </nav>;
@@ -115,7 +117,7 @@ export function Paginacao({ pagina, totalPaginas, total, porPagina, rotulo, subs
 const FILTRO_TODOS = "__todos__";
 export function SelectFiltro({ rotulo, valor, onChange, opcoes, className = "" }: { rotulo: string; valor: string; onChange: (valor: string) => void; opcoes: { valor: string; texto: string }[]; className?: string }) {
   return <Select value={valor === "" ? FILTRO_TODOS : valor} onValueChange={(v) => onChange(v === FILTRO_TODOS ? "" : v)}>
-    <SelectTrigger aria-label={rotulo} title={opcoes.find((o) => o.valor === valor)?.texto} className={`h-10 w-full justify-between rounded-lg bg-white px-3 text-left text-sm font-normal sm:w-auto sm:min-w-[170px] [&>span]:whitespace-nowrap ${className}`}><SelectValue /></SelectTrigger>
+    <SelectTrigger aria-label={rotulo} title={opcoes.find((o) => o.valor === valor)?.texto} className={`h-10 w-full justify-between rounded-lg bg-white px-3 text-left text-sm font-normal sm:w-auto sm:w-44 [&>span]:whitespace-nowrap ${className}`}><SelectValue /></SelectTrigger>
     <SelectContent>{opcoes.map((o) => <SelectItem key={o.valor || FILTRO_TODOS} value={o.valor === "" ? FILTRO_TODOS : o.valor}>{o.texto}</SelectItem>)}</SelectContent>
   </Select>;
 }
@@ -130,10 +132,10 @@ export function AcoesLinha({ nome, ativo, onEditar, onAlternar, onSubir, onDesce
   const cls = "rounded-lg p-2 text-ink-2 hover:bg-surface-2 hover:text-ink";
   const alternar = ativo ? "Desativar" : "Reativar";
   return <div className="flex items-center justify-end gap-1">
-    {onSubir && <button type="button" disabled={!podeSubir} onClick={parar(onSubir)} aria-label={`Mover ${nome} para cima`} className={`${cls} disabled:cursor-not-allowed disabled:opacity-30`}><ArrowUp size={16} /></button>}
-    {onDescer && <button type="button" disabled={!podeDescer} onClick={parar(onDescer)} aria-label={`Mover ${nome} para baixo`} className={`${cls} disabled:cursor-not-allowed disabled:opacity-30`}><ArrowDown size={16} /></button>}
-    <button type="button" onClick={parar(onEditar)} title="Editar" aria-label={`Editar ${nome}`} className={cls}><Pencil size={16} /></button>
-    <button type="button" onClick={parar(onAlternar)} title={alternar} aria-label={`${alternar} ${nome}`} className={ativo ? `${cls} hover:text-red-700` : cls}>{ativo ? <PowerOff size={16} /> : <Power size={16} />}</button>
+    {onSubir && <ShadcnButton variant="ghost" type="button" disabled={!podeSubir} onClick={parar(onSubir)} aria-label={`Mover ${nome} para cima`} className={`${cls} disabled:cursor-not-allowed disabled:opacity-30`}><ArrowUp size={16} /></ShadcnButton>}
+    {onDescer && <ShadcnButton variant="ghost" type="button" disabled={!podeDescer} onClick={parar(onDescer)} aria-label={`Mover ${nome} para baixo`} className={`${cls} disabled:cursor-not-allowed disabled:opacity-30`}><ArrowDown size={16} /></ShadcnButton>}
+    <ShadcnButton variant="ghost" type="button" onClick={parar(onEditar)} title="Editar" aria-label={`Editar ${nome}`} className={cls}><Pencil size={16} /></ShadcnButton>
+    <ShadcnButton variant="ghost" type="button" onClick={parar(onAlternar)} title={alternar} aria-label={`${alternar} ${nome}`} className={ativo ? `${cls} hover:text-red-700` : cls}>{ativo ? <PowerOff size={16} /> : <Power size={16} />}</ShadcnButton>
   </div>;
 }
 
@@ -186,7 +188,8 @@ export type ColunaTabela<T> = {
 
 const alinhaCelula = (alinhamento?: "esquerda" | "centro" | "direita") => alinhamento === "direita" ? "text-right" : alinhamento === "centro" ? "text-center" : "text-left";
 
-export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLinha, rotulo, ancoraDe, barraRolagemSuperior = false }: {
+export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLinha, rotulo, ancoraDe, barraRolagemSuperior = false, compacta = false }: {
+  compacta?: boolean;
   colunas: ColunaTabela<T>[];
   itens: T[];
   chaveDe: (item: T) => React.Key;
@@ -246,39 +249,39 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
     {barraRolagemSuperior && temRolagem && <div ref={barraRef} role="group" aria-label={`Rolagem horizontal: ${rotulo}`} tabIndex={0} onKeyDown={roladaPorTeclado} className="sticky top-0 z-10 hidden overflow-x-auto border-b border-border bg-surface-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#6f7d68]/40 md:block" onScroll={() => sincronizarRolagem("barra")}>
       <div style={{ width: larguraRolagem, height: 1 }} />
     </div>}
-    <div ref={tabelaRef} className={`hidden overflow-x-auto md:block ${barraRolagemSuperior && temRolagem ? "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden" : ""}`} onScroll={() => sincronizarRolagem("tabela")}>
-      <table className="w-full text-left text-sm" style={{ minWidth: larguraMinima }}>
-        <caption className="sr-only">{rotulo}</caption>
-        <thead className="bg-[#f4f2e9] text-[11px] uppercase tracking-[.08em] text-ink-3">
-          <tr>{colunas.map((coluna) => <th key={coluna.chave} scope="col" className={`p-4 font-semibold ${alinhaCelula(coluna.alinhamento)}`}>{coluna.titulo}</th>)}</tr>
-        </thead>
-        <tbody className="divide-y divide-border">
-          {itens.map((item) => <tr
+    <div ref={tabelaRef} className={`hidden overflow-x-auto md:block ${compacta ? "max-h-[max(18rem,calc(100dvh-25rem))] overflow-y-auto" : ""} ${barraRolagemSuperior && temRolagem ? "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden" : ""}`} onScroll={() => sincronizarRolagem("tabela")}>
+      <Table semContainer className="w-full text-left text-sm" style={{ minWidth: larguraMinima }}>
+        <TableCaption className="sr-only">{rotulo}</TableCaption>
+        <TableHeader className="sticky top-0 z-[1] bg-[#f4f2e9] text-[11px] uppercase tracking-[.08em] text-ink-3">
+          <TableRow>{colunas.map((coluna) => <TableHead key={coluna.chave} scope="col" className={`${compacta ? "px-3 py-2" : "p-4"} font-semibold ${alinhaCelula(coluna.alinhamento)}`}>{coluna.titulo}</TableHead>)}</TableRow>
+        </TableHeader>
+        <TableBody className="divide-y divide-border">
+          {itens.map((item) => <TableRow
             key={chaveDe(item)} data-ancora={ancoraDe?.(item)}
             /* linha acionável pelo teclado sem sobrescrever o role="row" — trocar
                por role="button" quebraria a semântica de tabela para leitores de tela */
             {...(onAbrir ? { onClick: () => onAbrir(item), tabIndex: 0, onKeyDown: (e: React.KeyboardEvent) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onAbrir(item); } } } : {})}
             className={`${onAbrir ? "cursor-pointer hover:bg-[#faf9f4]" : ""} ${classeLinha?.(item) ?? ""}`}
-          >{colunas.map((coluna) => <td key={coluna.chave} className={`p-4 align-middle ${alinhaCelula(coluna.alinhamento)}`}>{coluna.celula(item)}</td>)}</tr>)}
-        </tbody>
-      </table>
+          >{colunas.map((coluna) => <TableCell key={coluna.chave} className={`whitespace-normal ${compacta ? "px-3 py-2" : "p-4"} align-middle ${alinhaCelula(coluna.alinhamento)}`}>{coluna.celula(item)}</TableCell>)}</TableRow>)}
+        </TableBody>
+      </Table>
     </div>
 
     {/* <768px — cartões: nada de rolagem lateral, nada de coluna espremida */}
-    <ul className="divide-y divide-border md:hidden" aria-label={rotulo}>
+    <ul className={`divide-y divide-border md:hidden ${compacta ? "max-h-72 overflow-y-auto sm:max-h-[max(18rem,calc(100dvh-28rem))]" : ""}`} tabIndex={compacta ? 0 : undefined} aria-label={rotulo}>
       {itens.map((item) => {
         const corpo = <>
           <div className="min-w-0 break-words text-left">{principal.celula(item)}</div>
-          <dl className="mt-3 space-y-2">
-            {secundarias.map((coluna) => <div key={coluna.chave} className="flex items-start justify-between gap-3">
+          <dl className={compacta ? "mt-2 grid grid-cols-2 gap-x-4 gap-y-2" : "mt-3 space-y-2"}>
+            {secundarias.map((coluna) => <div key={coluna.chave} className={compacta ? "min-w-0" : "flex items-start justify-between gap-3"}>
               <dt className="shrink-0 pt-0.5 text-[11px] font-semibold uppercase tracking-[.08em] text-ink-3">{coluna.titulo}</dt>
-              <dd className="min-w-0 flex-1 break-words text-right text-sm">{coluna.celula(item)}</dd>
+              <dd className={`min-w-0 flex-1 break-words text-sm ${compacta ? "text-left" : "text-right"}`}>{coluna.celula(item)}</dd>
             </div>)}
           </dl>
         </>;
         return <li key={chaveDe(item)} data-ancora={ancoraDe?.(item)} className={classeLinha?.(item) ?? ""}>
           {onAbrir
-            ? <button type="button" onClick={() => onAbrir(item)} className="w-full p-4 text-left hover:bg-[#faf9f4]">{corpo}</button>
+            ? <ShadcnButton variant="ghost" type="button" onClick={() => onAbrir(item)} className="block h-auto w-full whitespace-normal p-3 text-left">{corpo}</ShadcnButton>
             : <div className="p-4">{corpo}</div>}
           {acoes.length > 0 && <div className="flex justify-end gap-2 px-4 pb-4">{acoes.map((coluna) => <div key={coluna.chave}>{coluna.celula(item)}</div>)}</div>}
         </li>;

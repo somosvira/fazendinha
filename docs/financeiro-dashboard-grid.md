@@ -45,3 +45,16 @@ O objetivo é reduzir rolagem pela organização e remoção de duplicações. L
 ## Hierarquia por cor
 
 Dashboard, compromissos/calendário, contas/extratos, detalhe da operação e seus diálogos usam cards claros sobre o fundo quente. A camada `cores-financeiro.css` centraliza entrada (verde), saída (terracota), pendência (âmbar), informação/anexos (azul) e alerta (vermelho), reaproveitando tokens Terrano. Valores e status mantêm rótulos e datas; o gráfico conserva os traçados distintos. A camada é opt-in nas páginas revisadas, sem aplicar novos estilos aos demais módulos. O grid, a densidade e os contratos de dados permanecem os mesmos.
+
+## Correções da auditoria das demais telas
+
+Operações, cadastros e relatórios seguem o mesmo padrão de densidade e cores. Use sempre as primitivas shadcn locais, inclusive para controles simples; `SelectCampo` compõe Select com as opções já usadas pelos formulários e callbacks de valor, sem simular eventos de DOM.
+
+- Os cinco cadastros têm busca, situação e paginação de 15 itens. Parceiros aceitam nome, documento com ou sem máscara, e-mail e telefone, além de filtro por papel. Produtos preservam filtros de fornecedor, centro, uso e situação; vínculos completos ficam disponíveis na ficha.
+- A busca de operações aceita número, código exibido e variações de separadores/caixa, sem depender de descrição ou UUID. Os demais filtros continuam combinados. A ação de procedimentos fica em DropdownMenu por serviço elegível; as linhas mantêm clique e abertura por teclado.
+- Tabelas compactas usam Table shadcn, cabeçalho visível e rolagem contida no desktop. A paginação dos cadastros fica acima dos dados. No celular, todos os dados da linha continuam disponíveis em cartões com pares organizados em grid e rolagem contida. Canceladas/inativas usam status explícito, sem reduzir a opacidade do texto inteiro.
+- Contas, parceiros e produtos usam Sheet de até 768 px com campos em grid e ações persistentes. Categoria e centro de custo usam Dialog de altura natural. Fechar um cadastro alterado por Escape, clique fora ou botão de fechar pede descarte; cancelar no rodapé continua sendo descarte explícito. Durante salvamento, o fechamento fica bloqueado.
+- Nova operação compacta os espaçamentos, mantém campos roláveis e confirmação acessível. A revisão dos efeitos pode ser expandida no celular; no desktop fica aberta. Novo relatório reserva o espaço do menu, reúne filtros opcionais em Collapsible e mantém a geração junto de uma revisão compacta. O histórico ganha busca por nome/autor e paginação; o detalhe preserva o snapshot salvo e abre a prévia gerencial sob demanda.
+- Carregamento de página e atualização de operações usam Skeleton shadcn com anúncio acessível. Tabs shadcn garante navegação por setas e associação ao painel; os destinos ficam visíveis em grid também no celular.
+
+Nenhuma alteração de cálculo, payload financeiro, backend, permissão ou persistência. As verificações de escrita usam mocks de API; a revisão visual usa prévia local com gravações bloqueadas.

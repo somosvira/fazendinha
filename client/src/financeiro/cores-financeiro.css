@@ -45,3 +45,7 @@
 .financeiro-colorido .fin-indicador { background: linear-gradient(135deg, color-mix(in srgb, var(--fin-cor) 9%, var(--fin-superficie)), var(--fin-superficie) 80%); }
 .fin-painel > h2, .fin-painel > div:first-child h2 { color: var(--fin-texto); }
 .fin-evento { color: var(--fin-texto); background: color-mix(in srgb, var(--fin-cor) 12%, var(--fin-superficie)); border-left-color: var(--fin-cor); }
+
+/* Grupos extensos ocupam a linha; campos simples compartilham o grid. */
+.cadastro-grid > :is(fieldset, p, details, .grid, [role="alert"]),
+.cadastro-grid > div:has(textarea) { grid-column: 1 / -1; }

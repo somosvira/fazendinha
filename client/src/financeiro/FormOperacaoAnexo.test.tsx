@@ -1,3 +1,4 @@
+import { alterarControle } from "../lib/controles.fixture";
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -20,8 +21,8 @@ afterEach(() => { cleanup(); vi.clearAllMocks(); });
 const config: ConfiguracoesFinanceiras = { contas: [], parceiros: [], categorias: [], centrosCusto: [], produtos: [] };
 const documento = { id: 7, nome: "nota.pdf", tipo: "NOTA_FISCAL", numero: null } as unknown as DocumentoFinanceiro;
 
-function anexar(arquivo: File) {
-  fireEvent.change(screen.getByLabelText("Anexar documentos"), { target: { files: [arquivo] } });
+async function anexar(arquivo: File) {
+  await alterarControle(screen.getByLabelText("Anexar documentos"), { target: { files: [arquivo] } });
 }
 
 describe("FormOperacao — anexo de documento", () => {
@@ -31,7 +32,7 @@ describe("FormOperacao — anexo de documento", () => {
     anexarDocumentoRascunho.mockReturnValue(new Promise<DocumentoFinanceiro>((resolve) => { concluir = resolve; }));
     render(<FormOperacao config={config} onSalvo={vi.fn()} />);
 
-    anexar(new File(["conteudo"], "nota.pdf", { type: "application/pdf" }));
+    await anexar(new File(["conteudo"], "nota.pdf", { type: "application/pdf" }));
 
     const pendente = await screen.findByRole("status", { name: "Anexando documento nota.pdf" });
     expect(pendente.getAttribute("aria-busy")).toBe("true");
@@ -50,7 +51,7 @@ describe("FormOperacao — anexo de documento", () => {
     anexarDocumentoRascunho.mockRejectedValue(new Error("Falha no armazenamento"));
     render(<FormOperacao config={config} onSalvo={vi.fn()} />);
 
-    anexar(new File(["conteudo"], "nota.pdf", { type: "application/pdf" }));
+    await anexar(new File(["conteudo"], "nota.pdf", { type: "application/pdf" }));
 
     await waitFor(() => expect(screen.queryByRole("status", { name: "Anexando documento nota.pdf" })).toBeNull());
     expect(await screen.findByText("Falha no armazenamento")).toBeTruthy();
