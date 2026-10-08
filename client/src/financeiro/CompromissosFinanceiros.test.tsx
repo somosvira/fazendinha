@@ -14,6 +14,7 @@ vi.mock("./novo-api", () => ({
 }));
 
 beforeEach(() => {
+  HTMLElement.prototype.scrollIntoView = vi.fn();
   window.history.replaceState(null, "", "/financeiro/compromissos");
   vi.clearAllMocks();
 });
@@ -91,6 +92,7 @@ describe("CompromissosFinanceiros — criação", () => {
 
     expect(await screen.findByText("(1/2) Serviço veterinário")).toBeTruthy();
     fireEvent.click(await screen.findByRole("button", { name: "Registrar pagamento" }));
+    fireEvent.keyDown(screen.getByRole("combobox", { name: "Conta" }), { key: "Enter" });
     expect(await screen.findByRole("option", { name: /Conta ativa/ })).toBeTruthy();
     expect(screen.queryByRole("option", { name: /Conta inativa/ })).toBeNull();
   });

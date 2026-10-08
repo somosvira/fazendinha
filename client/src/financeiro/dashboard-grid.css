@@ -1,0 +1,12 @@
+/* Densidade da visão geral: conserva a escala e os tokens do tema. */
+.dashboard-financeiro h1 {
+  font-family: var(--serif);
+  font-size: 32px;
+  font-weight: 500;
+}
+.dashboard-financeiro [data-slot="card"] {
+  --card: var(--color-white);
+}
+@media (max-width: 720px) {
+  .dashboard-financeiro h1 { font-size: 28px; }
+}

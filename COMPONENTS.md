@@ -370,7 +370,7 @@ Todos em `client/src/components/charts.tsx` — **SVG inline próprio, sem depen
 - Donut chart para composição (% das categorias).
 - **Quando usar:** breakdown de custos, mix de produção.
 
-> **Regra:** se precisar de outro tipo de gráfico, **criar SVG próprio** seguindo o padrão. Não introduzir `recharts`/`d3` no bundle do produtor.
+> **Regra atual:** reutilizar `charts.tsx` (Recharts) e `components/ui/chart.tsx` (shadcn-style), respeitando os tokens Terrano. O dashboard usa variantes compactas sem alterar os cálculos. Não introduzir D3. Ver [visão geral em grid](docs/financeiro-dashboard-grid.md).
 
 ---
 

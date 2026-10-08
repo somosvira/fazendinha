@@ -85,7 +85,7 @@ flowchart TB
 | Tipos | TypeScript | 5.7.x |
 | Testes | Vitest | 2.1.x |
 
-ESM em **todos os pacotes** (`"type": "module"`). **Não há** `react-router`, `recharts` nem SDK da Anthropic.
+ESM em **todos os pacotes** (`"type": "module"`). **Não há** `react-router` nem SDK da Anthropic. Os gráficos compartilhados usam Recharts com primitivas shadcn locais.
 
 ---
 

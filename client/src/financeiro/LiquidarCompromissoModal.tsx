@@ -1,6 +1,10 @@
+import { Input } from "@/components/ui/input";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { DialogFinanceiro as Modal } from "./DialogFinanceiro";
 import { useRef, useState } from "react";
 import { liquidarCompromisso, type Compromisso, type Conta } from "./novo-api";
-import { brl, Button, ErrorBox, hoje, Modal } from "./financeiro-ui";
+import { brl, ErrorBox, hoje } from "./financeiro-ui";
 import { FORMAS_PAGAMENTO } from "./lib/parceiros";
 import { tituloCompromisso } from "./lib/compromissos";
 
@@ -58,20 +62,17 @@ export function LiquidarCompromissoModal({ compromisso, contas, onClose, onLiqui
       </div>
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
         <label className="text-sm font-medium">Conta
-          <select disabled={processando} className="mt-1.5 w-full rounded-lg border border-border bg-white p-2.5 font-normal" value={contaId} onChange={(e) => setContaId(e.target.value)}>
-            <option value="">Selecione</option>
-            {contas.filter((conta) => conta.ativo).map((conta) => <option key={conta.id} value={conta.id}>{conta.nome} · {brl(conta.saldoAtual)}</option>)}
-          </select>
+          <Select disabled={processando} value={contaId} onValueChange={setContaId}><SelectTrigger className="mt-1.5 w-full" aria-label="Conta"><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent className="z-[1300]">{contas.filter(conta => conta.ativo).map(conta => <SelectItem key={conta.id} value={conta.id}>{conta.nome} · {brl(conta.saldoAtual)}</SelectItem>)}</SelectContent></Select>
         </label>
         <label className="text-sm font-medium">Valor
-          <input disabled={processando} type="number" min="0.01" max={Number(compromisso.saldoPendente)} step="0.01" className="mt-1.5 w-full rounded-lg border border-border p-2.5 font-normal" value={valor} onChange={(e) => setValor(e.target.value)} />
+          <Input disabled={processando} type="number" min="0.01" max={Number(compromisso.saldoPendente)} step="0.01" className="mt-1.5 w-full rounded-lg border border-border p-2.5 font-normal" value={valor} onChange={(e) => setValor(e.target.value)} />
         </label>
-        <label className="text-sm font-medium">Data da liquidação<input disabled={processando} required type="date" max={hoje()} value={data} onChange={e => setData(e.target.value)} className="mt-1.5 w-full rounded-lg border border-border p-2.5 font-normal" /></label>
-        <label className="text-sm font-medium">Forma de liquidação<select disabled={processando} value={formaPagamento} onChange={e => setFormaPagamento(e.target.value)} className="mt-1.5 w-full rounded-lg border border-border bg-white p-2.5 font-normal">{Object.entries(FORMAS_PAGAMENTO).map(([chave, nome]) => <option key={chave} value={chave}>{nome}</option>)}</select></label>
+        <label className="text-sm font-medium">Data da liquidação<Input disabled={processando} required type="date" max={hoje()} value={data} onChange={e => setData(e.target.value)} className="mt-1.5 w-full rounded-lg border border-border p-2.5 font-normal" /></label>
+        <label className="text-sm font-medium">Forma de liquidação<Select disabled={processando} value={formaPagamento} onValueChange={setFormaPagamento}><SelectTrigger className="mt-1.5 w-full" aria-label="Forma de liquidação"><SelectValue /></SelectTrigger><SelectContent className="z-[1300]">{Object.entries(FORMAS_PAGAMENTO).map(([chave, nome]) => <SelectItem key={chave} value={chave}>{nome}</SelectItem>)}</SelectContent></Select></label>
       </div>
       <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">Ao confirmar, o saldo da conta será alterado e o compromisso ficará parcial ou liquidado. O registro poderá ser revertido posteriormente com histórico.</div>
       <div className="mt-5 flex justify-end gap-2">
-        <Button secondary disabled={processando} onClick={fechar}>Cancelar</Button>
+        <Button variant="outline" disabled={processando} onClick={fechar}>Cancelar</Button>
         <Button disabled={!contaId || !valorValido || !data || data > hoje() || processando} onClick={() => { void confirmar(); }}>{processando ? "Registrando…" : "Confirmar liquidação"}</Button>
       </div>
     </div>

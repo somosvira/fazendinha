@@ -76,11 +76,11 @@ describe("Visão geral — período global", () => {
     const snapshot = (total: string): DashboardFinanceiro => ({ periodo: { inicio: "2026-01-01", fim: "2026-12-31" }, saldoGeral: "0", contas: [], realizado: { entradas: total, saidas: "0", resultado: total }, fluxo: [], compromissos: { aPagar: "0", aReceber: "0" }, despesasPorCategoria: [], proximosCompromissos: [], base: { ...baseFinanceiraVazia(), volumeEconomico: total, porTipo: [{ tipo: "VENDA", valor: total }] } });
     vi.mocked(obterDashboardFinanceiro).mockResolvedValueOnce(snapshot("321"));
     render(<VisaoGeralFinanceira onNav={vi.fn()} />);
-    await screen.findByRole("heading", { name: "Base financeira" });
+    await screen.findByRole("button", { name: /Rastreabilidade e integridade/ });
     expect(screen.queryByRole("heading", { name: "Despesas realizadas" })).toBeNull();
     expect(listarOperacoes).not.toHaveBeenCalled();
     const headings = Array.from(document.querySelectorAll("h2")).map(h => h.textContent);
-    expect(headings.filter(h => ["Próximos compromissos", "Base financeira", "Receitas e despesas", "Contas e disponibilidade", "Despesas por categoria"].includes(h!))).toEqual(["Próximos compromissos", "Base financeira", "Receitas e despesas", "Contas e disponibilidade", "Despesas por categoria"]);
+    expect(headings.filter(h => ["Compromissos", "Recebimentos e pagamentos", "Contas e disponibilidade", "Despesas por categoria"].includes(h!))).toEqual(["Compromissos", "Contas e disponibilidade", "Recebimentos e pagamentos", "Despesas por categoria"]);
     let resolveOld!: (value: DashboardFinanceiro) => void;
     vi.mocked(obterDashboardFinanceiro).mockReturnValueOnce(new Promise(resolve => { resolveOld = resolve; }));
     fireEvent.click(screen.getByRole("button", { name: /^Período:/ }));
@@ -104,6 +104,7 @@ describe("Visão geral — período global", () => {
       base: { ...baseFinanceiraVazia(), operacoes: { total: 5, estados: {}, comEstoque: 0, semParceiro: 1, semEfeitos: 3 } },
     });
     render(<VisaoGeralFinanceira onNav={vi.fn()} />);
+    fireEvent.click(await screen.findByRole("button", { name: /Rastreabilidade e integridade/ }));
     const linha = (await screen.findByText(/Sem efeitos vinculados/)).closest("div")!;
     const link = within(linha).getByRole("link");
     expect(link.textContent).toBe("3");
@@ -117,6 +118,7 @@ describe("Visão geral — período global", () => {
       base: { ...baseFinanceiraVazia(), operacoes: { total: 5, estados: {}, comEstoque: 2, semParceiro: 1, semEfeitos: 0 }, transacoes: { ...baseFinanceiraVazia().transacoes, avulsas: 2, semMovimentos: 1, transferenciasIncompletas: 0 } },
     });
     render(<VisaoGeralFinanceira onNav={vi.fn()} />);
+    fireEvent.click(await screen.findByRole("button", { name: /Rastreabilidade e integridade/ }));
     const card = async (rotulo: string) => (await screen.findByText(rotulo)).closest("div")!;
     expect((await card("Com efeito de estoque")).textContent).toContain("2");
     expect((await card("Avulsas (sem operação)")).textContent).toContain("2");
@@ -130,6 +132,32 @@ describe("Visão geral — período global", () => {
     expect((await screen.findByRole("alert")).textContent).toContain("Falha de rede");
     expect(screen.queryByRole("heading", { name: "Base financeira" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Tentar novamente" }));
-    await screen.findByRole("heading", { name: "Base financeira" });
+    await screen.findByRole("button", { name: /Rastreabilidade e integridade/ });
+  });
+});
+
+
+describe("Visão geral — grid operacional", () => {
+  it("mantém rastreabilidade recolhida, remove volume e abre calendário em modal", async () => {
+    render(<VisaoGeralFinanceira onNav={vi.fn()} podeLancar={false} />);
+    const trigger = await screen.findByRole("button", { name: /Rastreabilidade e integridade/ });
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+    expect(screen.queryByText("Sem movimento de conta")).toBeNull();
+    expect(screen.queryByText("Volume por tipo de operação")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Nova operação" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Calendário" }));
+    expect(screen.getByRole("dialog", { name: "Calendário de compromissos" })).toBeTruthy();
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
+  it("soma vencidos além das cinco linhas visíveis e usa resultado líquido da API", async () => {
+    const compromisso = (i: number) => ({ id: uid(i + 100), seq: i, tipo: "PAGAR" as const, status: "PARCIAL", saldoPendente: "0.10", valorOriginal: "20", valorLiquidado: "19.90", dataVencimento: "2026-01-01", numeroParcela: 1, totalParcelas: 1, vencido: true, parceiro: null, operacao: { id: uid(i + 200), numero: i, tipo: "SERVICO", descricao: `Serviço ${i}` } });
+    vi.mocked(obterDashboardFinanceiro).mockResolvedValueOnce({ periodo: { inicio: "2026-01-01", fim: "2026-12-31" }, saldoGeral: "0", contas: [], realizado: { entradas: "10", saidas: "12.33", resultado: "-2.33" }, fluxo: [], compromissos: { aPagar: "0.60", aReceber: "0" }, despesasPorCategoria: [], proximosCompromissos: Array.from({ length: 6 }, (_, i) => compromisso(i)), base: baseFinanceiraVazia() });
+    render(<VisaoGeralFinanceira onNav={vi.fn()} />);
+    expect(await screen.findByText(/Vencido:.*0,60.*6 itens/)).toBeTruthy();
+    expect(screen.getByText(/-R\$.*2,33/)).toBeTruthy();
+    expect(screen.getByRole("table", { name: "Compromissos do período" }).querySelectorAll("tbody tr")).toHaveLength(5);
+    fireEvent.mouseDown(screen.getByRole("tab", { name: /Próximos 7 dias/ }), { button: 0, ctrlKey: false });
+    expect(screen.getByText(/Nenhum compromisso nos próximos 7 dias/)).toBeTruthy();
   });
 });
