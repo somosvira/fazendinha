@@ -1,3 +1,4 @@
+import { alterarControle } from "../lib/controles.fixture";
 // @vitest-environment jsdom
 import { baseFinanceiraVazia } from "./dashboard.fixture";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -68,17 +69,17 @@ describe("visualizações financeiras integradas", () => {
     fireEvent.click(screen.getByRole("button", { name: /^Período do fluxo e extrato geral:/ }));
     fireEvent.click(screen.getByRole("button", { name: "Mês atual" }));
     expect(obterExtratoGeral).toHaveBeenCalledOnce();
-    fireEvent.change(screen.getByLabelText("Tipo"), { target: { value: "CAIXA" } });
+    await alterarControle(screen.getByLabelText("Tipo"), { target: { value: "CAIXA" } });
     expect(total("Receitas no período")).toContain("R$ 160,00");
     expect(total("Despesas no período")).toContain("R$ 65,00");
     const secaoExtrato = screen.getByRole("heading", { name: "Extrato geral" }).closest("section")!;
-    fireEvent.change(within(secaoExtrato).getByLabelText("Instituição"), { target: { value: "__sem__" } });
+    await alterarControle(within(secaoExtrato).getByLabelText("Instituição"), { target: { value: "__sem__" } });
     expect(total("Receitas no período")).toContain("R$ 0,00");
     expect(total("Despesas no período")).toContain("R$ 25,00");
     fireEvent.click(screen.getByRole("button", { name: /^Período do fluxo e extrato geral:/ }));
     fireEvent.click(screen.getByRole("button", { name: "Período personalizado" }));
-    fireEvent.change(screen.getByLabelText("Data inicial"), { target: { value: "2026-09-15" } });
-    fireEvent.change(screen.getByLabelText("Data final"), { target: { value: "2026-09-30" } });
+    await alterarControle(screen.getByLabelText("Data inicial"), { target: { value: "2026-09-15" } });
+    await alterarControle(screen.getByLabelText("Data final"), { target: { value: "2026-09-30" } });
     fireEvent.click(screen.getByRole("button", { name: "Aplicar período" }));
     expect(screen.getByText("Sem movimentações no período selecionado para este escopo.")).toBeTruthy();
     expect(within(secaoExtrato).getByText("Nenhuma movimentação encontrada para os filtros selecionados.")).toBeTruthy();
@@ -244,4 +245,14 @@ it("o acesso pela rastreabilidade preserva o período e mostra também compromis
   expect(screen.getByText("Valor original (cancelado)")).toBeTruthy();
   expect(screen.getAllByRole("button", { name: "Registrar pagamento" })).toHaveLength(1);
   expect(screen.getByText(/Total pendente:/).textContent).toContain("100,00");
+});
+
+
+it("paginar o extrato mantém os totais e o gráfico do período completo", async () => {
+  vi.mocked(obterExtratoGeral).mockResolvedValue(Array.from({ length: 31 }, (_, i) => movimento(100 + i, 1, "120", "ENTRADA", "RECEBIMENTO")));
+  render(<ContasFinanceiras onNav={vi.fn()} />);
+  await waitFor(() => expect(total("Receitas no período")).toContain("R$ 3.720,00"));
+  fireEvent.click(within(screen.getByRole("navigation", { name: "Paginação do extrato geral" })).getByRole("button", { name: "Próxima" }));
+  expect(total("Receitas no período")).toContain("R$ 3.720,00");
+  expect(within(screen.getByRole("table", { name: "Extrato geral" })).getAllByRole("row")).toHaveLength(16);
 });

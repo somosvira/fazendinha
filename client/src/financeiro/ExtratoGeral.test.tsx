@@ -1,3 +1,4 @@
+import { alterarControle } from "../lib/controles.fixture";
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
@@ -26,15 +27,15 @@ function ExtratoControlado({ itens = movimentos, erro = null, onAbrir = vi.fn() 
 it("combina filtros inclusivos de data, conta e instituição e abre o movimento exato", async () => {
   const abrir = vi.fn(); render(<ExtratoControlado onAbrir={abrir} />);
   const tabela = within(await screen.findByRole("table", { name: "Extrato geral" }));
-  fireEvent.change(screen.getByLabelText("Início do teste"), { target: { value: "2026-09-13" } });
-  fireEvent.change(screen.getByLabelText("Fim do teste"), { target: { value: "2026-09-13" } });
-  fireEvent.change(screen.getByLabelText("Conta"), { target: { value: uid(1) } });
-  fireEvent.change(screen.getByLabelText("Instituição"), { target: { value: "Instituição A" } });
+  await alterarControle(screen.getByLabelText("Início do teste"), { target: { value: "2026-09-13" } });
+  await alterarControle(screen.getByLabelText("Fim do teste"), { target: { value: "2026-09-13" } });
+  await alterarControle(screen.getByLabelText("Conta"), { target: { value: uid(1) } });
+  await alterarControle(screen.getByLabelText("Instituição"), { target: { value: "Instituição A" } });
   expect(tabela.queryByText("Compra B")).toBeNull();
   fireEvent.click(tabela.getByText("Venda A")); expect(abrir).toHaveBeenCalledWith(movimentos[0]);
-  fireEvent.change(screen.getByLabelText("Instituição"), { target: { value: "__sem__" } });
+  await alterarControle(screen.getByLabelText("Instituição"), { target: { value: "__sem__" } });
   expect(screen.getByText(/Nenhuma movimentação encontrada/)).toBeTruthy();
-  fireEvent.change(screen.getByLabelText("Fim do teste"), { target: { value: "2026-09-11" } });
+  await alterarControle(screen.getByLabelText("Fim do teste"), { target: { value: "2026-09-11" } });
   expect(screen.getByRole("alert").textContent).toContain("data final");
 });
 it("distingue erro de carregamento de extrato vazio", async () => {
@@ -63,4 +64,19 @@ it("atalhos de realizados incluem estornos da natureza original e excluem transf
   const filtros = { ...FILTROS_EXTRATO_GERAL_INICIAIS, natureza: "pagamentos" };
   expect(filtrarMovimentosExtratoGeral([...movimentos, estorno, transferencia], filtros).map(item => item.id)).toEqual([uid(12), uid(15)]);
   expect(filtrarMovimentosExtratoGeral([...movimentos, estorno, transferencia], { ...filtros, natureza: "recebimentos" }).map(item => item.id)).toEqual([uid(11)]);
+});
+
+
+it("pagina o extrato depois de filtrar e volta à primeira página ao mudar o filtro", async () => {
+  const itens = Array.from({ length: 31 }, (_, i) => ({ ...movimentos[i === 30 ? 1 : 0], id: uid(100 + i), transacao: { ...movimentos[i === 30 ? 1 : 0].transacao, descricao: `Lançamento ${i + 1}` } }));
+  render(<ExtratoControlado itens={itens} />);
+  const tabela = () => within(screen.getByRole("table", { name: "Extrato geral" }));
+  expect(tabela().getAllByRole("row")).toHaveLength(16);
+  expect(tabela().queryByText("Lançamento 16")).toBeNull();
+  fireEvent.click(within(screen.getByRole("navigation", { name: "Paginação do extrato geral" })).getByRole("button", { name: "Próxima" }));
+  expect(tabela().getByText("Lançamento 16")).toBeTruthy();
+  expect(tabela().queryByText("Lançamento 1")).toBeNull();
+  await alterarControle(screen.getByLabelText("Conta"), { target: { value: uid(2) } });
+  expect(tabela().getByText("Lançamento 31")).toBeTruthy();
+  expect(screen.getByRole("navigation", { name: "Paginação do extrato geral" }).textContent).toContain("1–1 de 1");
 });

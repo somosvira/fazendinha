@@ -1,3 +1,4 @@
+import { alterarControle } from "../lib/controles.fixture";
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, within, waitFor } from "@testing-library/react";
@@ -38,9 +39,10 @@ describe("ContasFinanceiras — cadastros ativos", () => {
     expect(obterExtratoConta).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Transferir" }));
     expect(await screen.findByRole("heading", { name: "Nova transferência" })).toBeTruthy();
+    fireEvent.click(screen.getByLabelText("Conta de origem"));
     expect(screen.getAllByRole("option", { name: /Banco principal/ }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole("option", { name: /Caixa auxiliar/ }).length).toBeGreaterThan(0);
-    expect(within(screen.getByRole("dialog")).queryByRole("option", { name: /Conta inativa/ })).toBeNull();
+    expect(screen.queryByRole("option", { name: /Conta inativa/ })).toBeNull();
   });
   it("permite consultar o histórico de uma conta inativa", async () => {
     render(<ContasFinanceiras onNav={vi.fn()} />);
@@ -54,16 +56,16 @@ describe("ContasFinanceiras — cadastros ativos", () => {
     render(<ContasFinanceiras onNav={vi.fn()} />);
     const secao = (await screen.findByRole("heading", { name: "Contas" })).closest("section")!;
     const tabela = () => within(secao).queryByRole("table", { name: "Contas financeiras" });
-    fireEvent.change(within(secao).getByLabelText("Buscar conta"), { target: { value: "001" } });
+    await alterarControle(within(secao).getByLabelText("Buscar conta"), { target: { value: "001" } });
     expect(within(tabela()!).getByText("Banco principal")).toBeTruthy();
     expect(within(tabela()!).queryByText("Caixa auxiliar")).toBeNull();
-    fireEvent.change(within(secao).getByLabelText("Buscar conta"), { target: { value: "" } });
-    fireEvent.change(within(secao).getByLabelText("Tipo"), { target: { value: "CAIXA" } });
+    await alterarControle(within(secao).getByLabelText("Buscar conta"), { target: { value: "" } });
+    await alterarControle(within(secao).getByLabelText("Tipo"), { target: { value: "CAIXA" } });
     expect(within(tabela()!).getByText("Caixa auxiliar")).toBeTruthy();
-    fireEvent.change(within(secao).getByLabelText("Tipo"), { target: { value: "" } });
-    fireEvent.change(within(secao).getByLabelText("Instituição"), { target: { value: "Banco A" } });
+    await alterarControle(within(secao).getByLabelText("Tipo"), { target: { value: "" } });
+    await alterarControle(within(secao).getByLabelText("Instituição"), { target: { value: "Banco A" } });
     expect(within(tabela()!).getByText("Banco principal")).toBeTruthy();
-    fireEvent.change(within(secao).getByLabelText("Situação"), { target: { value: "INATIVA" } });
+    await alterarControle(within(secao).getByLabelText("Situação"), { target: { value: "INATIVA" } });
     expect(within(secao).getByText("Nenhuma conta encontrada para os filtros selecionados.")).toBeTruthy();
   });
 });
@@ -105,4 +107,39 @@ it("identifica no extrato que a reversão veio do cancelamento de uma operação
   render(<ContasFinanceiras onNav={vi.fn()} />);
   expect((await screen.findAllByText(/Estorno pelo cancelamento da OP-0005/)).length).toBeGreaterThan(0);
   expect(screen.getAllByRole("link", { name: "OP-0005" }).length).toBeGreaterThan(0);
+});
+
+
+it("abre a página que contém o movimento indicado no endereço", async () => {
+  const scroll = vi.fn();
+  const originalScroll = HTMLElement.prototype.scrollIntoView;
+  HTMLElement.prototype.scrollIntoView = scroll;
+  const rects = vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([{}] as unknown as DOMRectList);
+  const itens = Array.from({ length: 20 }, (_, i) => ({ id: uid(100 + i), seq: i + 1, direcao: "ENTRADA" as const, valor: "10", transacao: { id: uid(200 + i), seq: i + 1, tipo: "RECEBIMENTO", status: "CONFIRMADA", data: "2026-09-13", descricao: `Movimento paginado ${i + 1}`, formaPagamento: null, parceiro: null, operacao: null } }));
+  vi.mocked(obterExtratoConta).mockResolvedValue(itens);
+  window.history.replaceState(null, "", `/financeiro/contas/${uid(1)}#movimento-${itens[17].id}`);
+  try {
+    render(<ContasFinanceiras onNav={vi.fn()} />);
+    await waitFor(() => expect(document.activeElement?.getAttribute("data-ancora")).toBe(`movimento-${itens[17].id}`));
+    const tabela = within(screen.getByRole("table", { name: "Extrato de Banco principal" }));
+    expect(tabela.getAllByRole("row")).toHaveLength(6);
+    expect(tabela.queryByText("Movimento paginado 1")).toBeNull();
+    fireEvent.click(within(screen.getByRole("navigation", { name: "Paginação do extrato da conta" })).getByRole("button", { name: "Anterior" }));
+    expect(tabela.getByText("Movimento paginado 1")).toBeTruthy();
+  } finally { rects.mockRestore(); HTMLElement.prototype.scrollIntoView = originalScroll; }
+});
+
+
+it("pagina contas e busca em todos os registros antes de paginar", async () => {
+  const cfg = await obterConfiguracoesFinanceiras();
+  vi.mocked(obterConfiguracoesFinanceiras).mockResolvedValue({ ...cfg, contas: Array.from({ length: 17 }, (_, i) => ({ ...cfg.contas[0], id: uid(i + 1), nome: `Conta ${String(i + 1).padStart(2, "0")}` })) });
+  render(<ContasFinanceiras onNav={vi.fn()} />);
+  const tabela = within(await screen.findByRole("table", { name: "Contas financeiras" }));
+  expect(tabela.getAllByRole("row")).toHaveLength(16);
+  fireEvent.click(within(screen.getByRole("navigation", { name: "Paginação das contas" })).getByRole("button", { name: "Próxima" }));
+  expect(tabela.getByText("Conta 17")).toBeTruthy();
+  expect(tabela.queryByText("Conta 01")).toBeNull();
+  await alterarControle(screen.getByLabelText("Buscar conta"), { target: { value: "Conta 01" } });
+  expect(tabela.getByText("Conta 01")).toBeTruthy();
+  expect(screen.getByRole("navigation", { name: "Paginação das contas" }).textContent).toContain("1–1 de 1");
 });

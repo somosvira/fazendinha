@@ -88,3 +88,10 @@ Validação final: 123 arquivos / 955 testes aprovados (`vitest run --maxWorkers
 
 Conforme ajuste solicitado, títulos e descrições voltam às páginas financeiras; somente o rótulo acima do título permanece removido. Relatórios voltam a apresentar nome, período e autoria no cabeçalho, sem duplicação no card do recorte. Abas contrastantes e loading de página inteira preservados. Captura `22-titulo-sem-rotulo.png` inspecionada em 1440 × 900. Verificação focada: 155 testes em seis arquivos aprovados.
 Build frontend aprovado após o ajuste.
+
+
+## Contas e extratos: densidade e paginação
+
+Contas, extrato geral e extrato da conta paginados em 15 registros; filtros reiniciam a paginação. Regressões cobrem busca além da primeira página, navegação por hash para movimento na segunda página e totais do gráfico preservados ao paginar. Suíte completa: 123 arquivos / 959 testes aprovados; TypeScript e build aprovados, com o aviso anterior de bundle acima de 500 kB. Revisão independente sem achados importantes.
+
+Inspeção em 1440 × 900, 1180 × 820 e 391 × 844 sem overflow horizontal da página. Extrato real com 1188 movimentos mostrou 80 páginas; avançar exibiu os registros 16–30. Altura total em desktop: 1800px, mantendo todos os registros acessíveis por paginação e rolagem contida da tabela. Transferência no celular: Dialog com clientWidth=scrollWidth=357px. Prévia somente de leitura; nenhuma transferência registrada. Evidências locais `23-contas-paginadas-desktop.png` a `29-transferencia-mobile.png` em `financeiro-correcoes`.

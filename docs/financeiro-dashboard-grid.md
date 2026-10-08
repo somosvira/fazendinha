@@ -62,3 +62,10 @@ Nenhuma alteração de cálculo, payload financeiro, backend, permissão ou pers
 O carregamento combina Skeleton shadcn com o Loader temático existente. Placeholders financeiros usam contraste próprio sobre cards claros; o indicador e sua mensagem permanecem visíveis. Há um único anúncio acessível por área, e as animações respeitam movimento reduzido.
 
 As páginas financeiras mostram título, descrição e ações no topo, sem o rótulo “Financeiro” acima do título. Nomes, períodos e autoria de relatórios permanecem no cabeçalho, sem duplicação no conteúdo do snapshot. Cabeçalhos de outros módulos não mudam. As abas de configurações usam superfície branca e seleção azul com texto branco. O carregamento inicial ocupa a altura útil da janela, mantendo o menu disponível; atualizações parciais usam a versão compacta.
+
+
+## Contas e extratos compactos e paginados
+
+A listagem de contas, o extrato geral e o extrato de cada conta usam paginação shadcn de 15 registros após os filtros. Alterar filtros ou período retorna à primeira página; abrir um movimento seleciona a página que o contém e preserva o foco na origem. Os gráficos e totais continuam calculados sobre todos os movimentos do período, independentemente da página visível.
+
+Saldo, filtros, tabelas e gráfico têm espaçamentos menores. No desktop amplo, gráfico consolidado e extrato geral ficam lado a lado; no celular, os dados usam os cartões responsivos existentes. A última movimentação da listagem de contas mostra um resumo de duas linhas, com texto completo no título e no extrato da conta. Valores por dia/mês ficam em Collapsible. Transferência usa Dialog, Input e Select shadcn, com rodapé empilhado no celular. Não há mudança em cálculos, payloads ou persistência.
