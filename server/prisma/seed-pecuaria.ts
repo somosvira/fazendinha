@@ -1,10 +1,10 @@
 // Seed de catálogos do novo schema `pecuaria`:
 // - Raças (base + composta)
-// - Motivos de saída
+// - Motivos de baixa
 //
 // Não cria Propriedade: em produção quem cria os sítios é a própria carga do IDEAGRI
-// (server/prisma/import-pecuaria.ts, pelo nome que vem no JSON); em dev, os 4 sítios de
-// demonstração ficam em seed-rebanho-demo.ts (só para a demo, nunca em produção).
+// (server/prisma/import-pecuaria.ts, pelo nome que vem no JSON). O cenário de
+// desenvolvimento completo fica em seedatev3.ts, restrito ao banco local.
 //
 // Idempotente por chave natural (upsert).
 
