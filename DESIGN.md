@@ -378,3 +378,7 @@ Nas páginas financeiras revisadas, preserve o bege Terrano, cards claros e os d
 `financeiro/cores-financeiro.css` usa verde (`--lucro`) para entradas/disponibilidade e confirmação, vermelho (`--prejuizo`) para saídas, atrasos e ações destrutivas, e marrom (`--rural`/`--cafe`) para informação, classificação e pendência. A diferenciação de categorias nos gráficos continua discreta. Preserve rótulos, sinais e status: cor nunca é a única indicação. A camada se aplica às telas e diálogos revisados, mantendo o grid compacto e as primitivas shadcn.
 
 Nas demais telas financeiras auditadas, aplique o mesmo padrão: sempre primitivas shadcn locais, tabela compacta com rolagem contida e paginação, formulários extensos em Sheet largo com grid e cadastros simples em Dialog. Compactar significa organizar e reduzir repetições; não reduzir legibilidade nem retirar dados da consulta.
+
+## Visão geral e sidebar — modelo aprovado em 09/10/2026
+
+Nesta etapa, somente a página inicial financeira e a sidebar adotam a direção clara: fundo cinza suave, painéis brancos sem faixas coloridas, títulos sans-serif compactos, bordas discretas e ações primárias em grafite. Saldo positivo usa verde; saldo negativo e avisos de atraso usam vermelho. Os demais indicadores e valores das contas usam grafite. Categorias mantêm cores terrosas discretas para identificação no gráfico. A sidebar clara mantém navegação, permissões, seletor de sítio, rascunhos, colapso e Sheet móvel, com Button shadcn. As outras páginas conservam a direção anterior.

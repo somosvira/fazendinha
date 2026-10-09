@@ -10,6 +10,8 @@
  * ao passar o mouse/focar (hover/focus-within). MOBILE (<=900px): drawer via
  * shadcn `Sheet` (Radix Dialog) — overlay, foco-trap e Escape de graça. */
 
+import "./sidebar-clara.css";
+import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { FilePenLine, Plus } from "lucide-react";
 import type { Tab } from "./Shell";
@@ -108,7 +110,7 @@ function Item({ id, label, current, onNav, nested, chevron, activeWhen }: {
 }) {
   const isOn = current === id || (activeWhen?.includes(current) ?? false);
   return (
-    <button
+    <Button variant="ghost"
       type="button"
       onClick={() => onNav(id)}
       title={label}
@@ -130,13 +132,13 @@ function Item({ id, label, current, onNav, nested, chevron, activeWhen }: {
       {chevron && (
         <span className={cn("flex-none text-[11px] text-[var(--side-mute,#8B8672)]", RAIL_HIDE)} aria-hidden>›</span>
       )}
-    </button>
+    </Button>
   );
 }
 
 function SearchControl({ onClick }: { onClick: () => void }) {
   return (
-    <button
+    <Button variant="ghost"
       type="button"
       onClick={onClick}
       title="Buscar"
@@ -147,7 +149,7 @@ function SearchControl({ onClick }: { onClick: () => void }) {
         <circle cx="11" cy="11" r="7" />
         <path d="m20 20-4-4" />
       </svg>
-    </button>
+    </Button>
   );
 }
 
@@ -156,11 +158,11 @@ function UserMenu({ user, onAcessos, onSair }: { user: User; onAcessos: () => vo
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button type="button" aria-label="Menu da conta" className={cn("flex w-full items-center gap-3 rounded-[8px] px-2 py-2 text-left hover:bg-[rgba(232,220,196,0.08)]", RAIL_ICON_BTN)}>
+        <Button variant="ghost" type="button" aria-label="Menu da conta" className={cn("flex w-full items-center gap-3 rounded-[8px] px-2 py-2 text-left hover:bg-[rgba(232,220,196,0.08)]", RAIL_ICON_BTN)}>
           <span className="grid h-8 w-8 flex-none place-items-center rounded-full bg-leite text-sm font-semibold text-ink">{user.inicial}</span>
           <span className={cn("min-w-0 flex-1", RAIL_LABEL)}><span className="block truncate text-[13px] font-semibold text-mast-ink">{user.nome}</span><span className="mt-0.5 block truncate text-[10.5px] text-[var(--side-mute)]">{papel}</span></span>
           <span className={cn("text-xs text-[var(--side-mute)]", RAIL_HIDE)} aria-hidden>⌃</span>
-        </button>
+        </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent side="right" align="end" sideOffset={8} className="w-[240px] rounded-[11px] p-1.5">
         <div className="mb-1 border-b border-rule-soft px-2.5 pb-2.5 pt-2"><div className="text-sm font-semibold text-ink">{user.nome}</div>{user.email && <div className="mt-0.5 text-xs text-ink-mute">{user.email}</div>}</div>
@@ -195,7 +197,7 @@ export function TrabalhoAtivo({ resumo, ativo, onAbrir, vazio = "Nova operação
     ? `${ativo ? "Rascunho em edição" : "Continuar rascunho"}: ${resumo.titulo}`
     : ativo ? `${vazio} em edição` : vazio;
   return (
-    <button
+    <Button variant="ghost"
       type="button"
       onClick={onAbrir}
       aria-label={rotulo}
@@ -218,7 +220,7 @@ export function TrabalhoAtivo({ resumo, ativo, onAbrir, vazio = "Nova operação
         <span className="block truncate text-[13px] font-medium leading-4">{resumo ? resumo.titulo : vazio}</span>
         {resumo?.tipo && <span className="block truncate text-[11px] leading-[14px] text-[var(--side-mute)]">{resumo.tipo}</span>}
       </span>
-    </button>
+    </Button>
   );
 }
 
@@ -229,7 +231,7 @@ const GROUP_ICON: Record<SidebarGroupId, JSX.Element> = {
 
 function GroupToggle({ id, label, isOpen, onToggle }: { id: SidebarGroupId; label: string; isOpen: boolean; onToggle: () => void }) {
   return (
-    <button
+    <Button variant="ghost"
       type="button"
       onClick={onToggle}
       aria-expanded={isOpen}
@@ -248,13 +250,13 @@ function GroupToggle({ id, label, isOpen, onToggle }: { id: SidebarGroupId; labe
       >
         <path d="M9 6l6 6-6 6" />
       </svg>
-    </button>
+    </Button>
   );
 }
 
 function MoreToggle({ context, isOpen, onToggle }: { context: string; isOpen: boolean; onToggle: () => void }) {
   return (
-    <button
+    <Button variant="ghost"
       type="button"
       onClick={onToggle}
       aria-expanded={isOpen}
@@ -278,7 +280,7 @@ function MoreToggle({ context, isOpen, onToggle }: { context: string; isOpen: bo
       >
         <path d="M9 6l6 6-6 6" />
       </svg>
-    </button>
+    </Button>
   );
 }
 
@@ -384,13 +386,13 @@ export function AppSidebar({
     <div className="flex-none">
       <div className="border-b border-[var(--side-hair,rgba(232,220,196,0.1))] px-3.5 pb-3.5 pt-4 min-[901px]:max-[1100px]:px-2 min-[901px]:max-[1100px]:pb-2 min-[901px]:max-[1100px]:pt-3 [.side-collapsed_&]:px-2 [.side-collapsed_&]:pb-2 [.side-collapsed_&]:pt-3">
         <div className="ah-brand flex items-center gap-2.5 px-1.5 min-[901px]:max-[1100px]:flex-col min-[901px]:max-[1100px]:gap-1.5 min-[901px]:max-[1100px]:px-0 [.side-collapsed_&]:flex-col [.side-collapsed_&]:gap-1.5 [.side-collapsed_&]:px-0">
-          <TerranoSymbol size={30} tone="dark" strokeWidth={4.4} className="ah-brand-symbol flex-none" />
-          <span className={cn("font-serif text-[21px] font-medium leading-none tracking-[-0.01em] text-[var(--mast-ink)]", RAIL_LABEL)}>Terrano</span>
+          <TerranoSymbol size={30} tone="light" strokeWidth={4.4} className="ah-brand-symbol flex-none" />
+          <span className={cn("font-sans text-[21px] font-semibold leading-none tracking-[-0.01em] text-[var(--mast-ink)]", RAIL_LABEL)}>Terrano</span>
           <div className="ml-auto hidden items-center gap-1 min-[901px]:flex min-[901px]:max-[1100px]:ml-0 min-[901px]:max-[1100px]:flex-col [.side-collapsed_&]:ml-0 [.side-collapsed_&]:flex-col">
             <SearchControl onClick={abrirBusca} />
-            <button type="button" onClick={onToggleColapsar} aria-label={colapsada ? "Expandir menu lateral" : "Recolher menu lateral"} title={colapsada ? "Expandir menu lateral" : "Recolher menu lateral"} className="order-2 grid h-8 w-8 flex-none place-items-center rounded-lg text-[var(--side-mute)] hover:bg-white/5 hover:text-mast-ink min-[901px]:max-[1100px]:order-1 [.side-collapsed_&]:order-1">
+            <Button variant="ghost" type="button" onClick={onToggleColapsar} aria-label={colapsada ? "Expandir menu lateral" : "Recolher menu lateral"} title={colapsada ? "Expandir menu lateral" : "Recolher menu lateral"} className="order-2 grid h-8 w-8 flex-none place-items-center rounded-lg text-[var(--side-mute)] hover:bg-white/5 hover:text-mast-ink min-[901px]:max-[1100px]:order-1 [.side-collapsed_&]:order-1">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} className="h-[18px] w-[18px]" aria-hidden><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/>{colapsada ? <path d="m13 9 3 3-3 3"/> : <path d="m16 9-3 3 3 3"/>}</svg>
-            </button>
+            </Button>
           </div>
         </div>
         <div className="mt-3.5 min-[901px]:max-[1100px]:mt-1.5 [.side-collapsed_&]:mt-1.5">
@@ -487,12 +489,12 @@ export function AppSidebar({
 
   return (
     <>
-      {!mobileOpen && <button type="button" onClick={() => onMobileToggle(true)} aria-label="Abrir menu" className="fixed left-3 top-3 z-30 hidden h-10 w-10 items-center justify-center rounded-lg border border-border bg-bg-card text-ink shadow-sm max-[900px]:flex print:hidden"><svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden><path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/></svg></button>}
+      {!mobileOpen && <Button variant="ghost" type="button" onClick={() => onMobileToggle(true)} aria-label="Abrir menu" className="fixed left-3 top-3 z-30 hidden h-10 w-10 items-center justify-center rounded-lg border border-border bg-bg-card text-ink shadow-sm max-[900px]:flex print:hidden"><svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden><path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/></svg></Button>}
       {/* DESKTOP — trilho persistente (sempre no DOM, >=901px). `group` habilita
          o hover/focus-within-expande dos filhos na faixa 901–1100px. */}
       <aside
         className={cn(
-          "group fixed inset-y-0 left-0 z-[11] hidden w-[var(--side-w)] flex-col overflow-hidden bg-mast text-mast-ink print:hidden",
+          "sidebar-clara group fixed inset-y-0 left-0 z-[11] hidden w-[var(--side-w)] flex-col overflow-hidden bg-mast text-mast-ink print:hidden",
           "min-[901px]:flex",
           "min-[901px]:max-[1100px]:w-[64px]",
           "min-[901px]:max-[1100px]:transition-[width,box-shadow] min-[901px]:max-[1100px]:duration-[180ms] min-[901px]:max-[1100px]:ease-in-out",
@@ -512,9 +514,9 @@ export function AppSidebar({
         <SheetContent
           side="left"
           showCloseButton={false}
-          className="max-w-none w-[min(288px,88vw)] gap-0 border-r-0 bg-mast p-0 text-mast-ink shadow-[8px_0_30px_rgba(0,0,0,0.18)] sm:max-w-none min-[901px]:hidden print:hidden"
+          className="sidebar-clara max-w-none w-[min(288px,88vw)] gap-0 border-r-0 bg-mast p-0 text-mast-ink shadow-[8px_0_30px_rgba(0,0,0,0.18)] sm:max-w-none min-[901px]:hidden print:hidden"
         >
-          <button type="button" onClick={() => onMobileToggle(false)} aria-label="Fechar menu" className="absolute right-3 top-3 z-10 grid h-9 w-9 place-items-center rounded-lg text-mast-ink hover:bg-white/5"><svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden><path d="M6 6l12 12"/><path d="M18 6L6 18"/></svg></button>
+          <Button variant="ghost" type="button" onClick={() => onMobileToggle(false)} aria-label="Fechar menu" className="absolute right-3 top-3 z-10 grid h-9 w-9 place-items-center rounded-lg text-mast-ink hover:bg-white/5"><svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden><path d="M6 6l12 12"/><path d="M18 6L6 18"/></svg></Button>
           <SheetTitle className="sr-only">Menu de navegação</SheetTitle>
           <SheetDescription className="sr-only">Navegação principal do Rio Novo</SheetDescription>
           <div className="flex h-full flex-col overflow-hidden">

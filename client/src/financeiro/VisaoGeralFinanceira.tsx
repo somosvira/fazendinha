@@ -87,7 +87,7 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
   const painelContas = dadosAtuais && (<ContasDisponibilidade contas={dadosAtuais.contas} onAbrir={() => onNav("caixinha")} />);
   const painelFluxo = dadosAtuais && (<Card data-fin-tom="info" className="fin-painel min-w-0 gap-0 overflow-hidden rounded-lg border-border py-0 shadow-none">
           <div className="fin-cabecalho flex flex-wrap items-center justify-between gap-2 p-4 pb-2"><div><h2 className="font-serif text-xl">Recebimentos e pagamentos</h2><p className="mt-1 text-sm text-muted-foreground">{tipoGraficoFluxo === "line" ? "Acumulado no período" : "Realizado por dia ou mês"}</p></div><ChartTypeControl value={tipoGraficoFluxo} onChange={setTipoGraficoFluxo} label="Tipo do gráfico de receitas e despesas" /></div>
-          <div className="mx-4 flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-muted/30 px-3 py-2"><span className="text-sm">Resultado de caixa</span><strong className={`font-serif text-2xl tabular-nums ${Number(dadosAtuais.realizado.resultado) < 0 ? "text-destructive" : "text-[var(--pos)]"}`}>{Number(dadosAtuais.realizado.resultado) > 0 ? "+" : ""}{brl(dadosAtuais.realizado.resultado)}</strong><p className="w-full text-sm text-muted-foreground">Recebimentos − pagamentos · inclui aportes e retiradas</p></div>
+          <div className="dashboard-resultado mx-4 flex flex-wrap items-center justify-between gap-2 px-0 py-2"><span className="text-sm">Resultado de caixa</span><strong className={`font-serif text-2xl tabular-nums ${Number(dadosAtuais.realizado.resultado) < 0 ? "text-destructive" : "text-[var(--pos)]"}`}>{Number(dadosAtuais.realizado.resultado) > 0 ? "+" : ""}{brl(dadosAtuais.realizado.resultado)}</strong><p className="sr-only">Recebimentos − pagamentos · inclui aportes e retiradas</p></div>
           {dadosAtuais.fluxo.some(ponto => Number(ponto.entradas) !== 0 || Number(ponto.saidas) !== 0)
             ? <div className="p-3"><EntradaSaidaChart compacto tipo={tipoGraficoFluxo} data={dadosAtuais.fluxo.map(ponto => ({ data: ponto.data, entradas: Number(ponto.entradas), saidas: Number(ponto.saidas) }))} /></div>
             : <Empty>Nenhum recebimento ou pagamento realizado no período.</Empty>}
@@ -96,7 +96,7 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
 
   return <PaginaFinanceira colorida><div className="dashboard-financeiro">
     <header className="flex flex-wrap items-center justify-between gap-3 py-3">
-      <h1 className="h2">Visão geral financeira</h1>
+      <div><h1 className="h2">Visão geral financeira</h1><p className="mt-1 text-sm text-muted-foreground">Seu caixa, compromissos e movimentações em um só lugar.</p></div>
       <div className="flex flex-wrap items-center gap-2"><PeriodoFinanceiroControl inicio={inicioPeriodo} fim={fimPeriodo} onChange={periodo => { setInicioPeriodo(periodo.inicio); setFimPeriodo(periodo.fim); setMesCalendario(periodo.inicio.slice(0, 7)); }} />{podeLancar && <Button disabled={preparando} onClick={() => { void iniciarNovaOperacao(); }}><Plus />Nova operação</Button>}</div>
     </header>
     <ErrorBox erro={erro} />
@@ -104,7 +104,7 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
     {erro && !dadosAtuais && <Button variant="outline" onClick={() => setRevisao(value => value + 1)}>Tentar novamente</Button>}
     {dadosAtuais && <>
       <div className="grid min-w-0 grid-cols-2 gap-3 lg:grid-cols-5">
-        <IndicadorFinanceiro className="col-span-2 lg:col-span-1" tom={Number(dadosAtuais.saldoGeral) < 0 ? "alerta" : "entrada"} label="Saldo disponível" valor={dadosAtuais.saldoGeral} detalhe={`${contasIncluidas.length} ${contasIncluidas.length === 1 ? "conta incluída" : "contas incluídas"} · saldo atual`} icon={WalletCards} />
+        <IndicadorFinanceiro className="dashboard-saldo col-span-2 lg:col-span-1" tom={Number(dadosAtuais.saldoGeral) < 0 ? "alerta" : "entrada"} label="Saldo disponível" valor={dadosAtuais.saldoGeral} detalhe={`${contasIncluidas.length} ${contasIncluidas.length === 1 ? "conta incluída" : "contas incluídas"} · saldo atual`} icon={WalletCards} />
         <IndicadorFinanceiro tom="entrada" label="Recebimentos" href={`/financeiro/contas?${new URLSearchParams({ inicio: inicioPeriodo, fim: fimPeriodo, natureza: "recebimentos" })}#extrato-geral`} valor={dadosAtuais.realizado.entradas} detalhe="Realizados no período" icon={TrendingUp} />
         <IndicadorFinanceiro tom="saida" label="Pagamentos" href={`/financeiro/contas?${new URLSearchParams({ inicio: inicioPeriodo, fim: fimPeriodo, natureza: "pagamentos" })}#extrato-geral`} valor={dadosAtuais.realizado.saidas} detalhe="Realizados no período" icon={TrendingDown} />
         <IndicadorFinanceiro tom="pendente" label="A pagar" href={`${hrefCompromissos}&situacao=pagar`} valor={dadosAtuais.compromissos.aPagar} detalhe={resumoVencidos(pendentes, "PAGAR")} alerta={pendentes.some(item => item.vencido && item.tipo === "PAGAR")} icon={ArrowUpRight} />
@@ -119,13 +119,14 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
       </div>
 </TabsContent>
         <TabsContent value="contas">{painelContas}</TabsContent>
-      </Tabs> : <>      <div className="mt-4 grid min-w-0 items-start gap-4 lg:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)]">
-        {painelAgenda}
-        {painelContas}
-      </div>
-      <div className="mt-4 grid min-w-0 gap-4 lg:grid-cols-2">
+      </Tabs> : <>
+      <div className="dashboard-analises mt-4 grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)]">
         {painelFluxo}
         {painelCategorias}
+      </div>
+      <div className="mt-4 grid min-w-0 items-start gap-4 lg:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)]">
+        {painelAgenda}
+        {painelContas}
       </div>
 </>}
       <ErrorBox erro={erroConfig} />

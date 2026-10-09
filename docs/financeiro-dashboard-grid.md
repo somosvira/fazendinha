@@ -109,3 +109,7 @@ Esta direção substitui a aplicação anterior de cores decorativas nas telas r
 A preferência esclarecida substitui a neutralização excessiva anterior: manter faixas vermelhas, cards de efeitos, ícones/cabeçalhos suaves e os detalhes em marrom/verde/vermelho. Remover o azul; informação, classificação e pendência usam marrom suave. Abas selecionadas e ações primárias permanecem preto/grafite. Os três efeitos do resumo da operação usam Card shadcn compacto, preservando os contadores e a organização em grid.
 
 Os títulos “Contas” e “Extrato geral” usam a mesma escala tipográfica responsiva (`h1` visual), com descrições no mesmo tamanho. A hierarquia semântica permanece h1 na página e h2 na seção do extrato.
+
+## Nova direção da página inicial e sidebar — 09/10/2026
+
+O mockup aprovado limita esta etapa à visão geral e à navegação global. Desktop organiza recebimentos/pagamentos e categorias no primeiro grid, compromissos e disponibilidade no segundo. O saldo disponível recebe destaque verde (vermelho quando negativo); os demais indicadores são neutros. Painéis brancos substituem faixas e cabeçalhos coloridos nessa página. A lista de disponibilidade mostra o total das contas incluídas e o acesso ao módulo de contas. Linhas/Barras, filtros, detalhamento por categoria, calendário, links dos indicadores e abas móveis permanecem funcionais. A sidebar clara usa Button shadcn e preserva todos os destinos, controles de acesso, rascunhos, seletor de sítio e comportamento móvel. Não há mudanças em APIs, cálculos do dashboard ou nas outras páginas financeiras.

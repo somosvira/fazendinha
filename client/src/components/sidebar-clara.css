@@ -1,0 +1,38 @@
+/* Navegação global clara; preserva rail, colapso, permissões e Sheet móvel. */
+.sidebar-clara {
+  --mast-bg: #fafbfa;
+  --mast-ink: #202723;
+  --mast-ink-2: #626b66;
+  --side-mute: #626b66;
+  --side-hair: #e1e5e2;
+  --border: #e1e5e2;
+  --leite: #e8ece9;
+  background: #fafbfa;
+  color: #202723;
+  border-right: 1px solid #e1e5e2;
+}
+.sidebar-clara button { height: auto; white-space: normal; font-weight: 400; justify-content: flex-start; box-shadow: none; }
+.sidebar-clara button:hover { background: #eef1ef; color: #202723; }
+.sidebar-clara button[aria-current="page"] { background: #e8eeea; color: #202723; font-weight: 600; }
+.sidebar-clara button[aria-current="page"]::before { display: none; }
+.sidebar-clara button[aria-expanded] { color: #626b66; }
+.sidebar-clara button[aria-label="Menu da conta"] { color: #202723; }
+.sidebar-clara button[aria-label="Menu da conta"] > span:first-child { color: #202723; background: #e8ece9; }
+.sidebar-clara button[aria-label="Propriedade / sítio ativo"] { border-color: #e1e5e2; background: #fff; }
+.sidebar-clara .ah-brand-symbol { color: #80634e; }
+.sidebar-clara .ah-brand > span { text-transform: uppercase; letter-spacing: .035em; }
+.sidebar-clara button[aria-label^="Recolher Financeiro"], .sidebar-clara button[aria-label^="Expandir Financeiro"],
+.sidebar-clara button[aria-label^="Recolher Pecuária"], .sidebar-clara button[aria-label^="Expandir Pecuária"] { font-size: 12px; text-transform: none; letter-spacing: 0; font-weight: 600; color: #202723; }
+
+.sidebar-clara h2 { color: #626b66; }
+@media (min-width: 1101px) {
+  .app:not(.side-collapsed):has(.sidebar-clara) { --side-w: 224px; }
+}
+
+.sidebar-clara button[aria-label="Propriedade / sítio ativo"] > span:first-child { color: #626b66; }
+.sidebar-clara .ah-brand { gap: 6px; padding-inline: 0; }
+.sidebar-clara .ah-brand > span { font-size: 18px; }
+.sidebar-clara .ah-brand-symbol { width: 24px; height: 24px; }
+.sidebar-clara .ah-brand button { width: 24px; height: 28px; padding: 4px; justify-content: center; }
+.sidebar-clara nav button { gap: 8px; }
+.sidebar-clara button[aria-label="Contas e extratos"] { gap: 6px; font-size: 12.5px; }

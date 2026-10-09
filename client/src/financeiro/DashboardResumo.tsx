@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { ChevronDown, Landmark, WalletCards } from "lucide-react";
+import { ChevronDown, ChevronRight, Landmark, WalletCards } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -16,8 +16,8 @@ export function resumoVencidos(itens: Compromisso[], tipo: Compromisso["tipo"]) 
 export function IndicadorFinanceiro({ label, valor, detalhe, icon: Icon, alerta = false, href, tom = "info", className = "" }: {
   label: string; valor: string; detalhe: string; icon: LucideIcon; alerta?: boolean; href?: string; tom?: TomFinanceiro; className?: string;
 }) {
-  const card = <Card data-fin-tom={tom} className={`fin-indicador h-full @container min-w-0 gap-1 rounded-lg border-border p-3 shadow-none ${href ? "" : className}`}>
-    <div className="flex items-center gap-2 text-sm text-muted-foreground"><Icon size={16} aria-hidden="true" />{label}</div>
+  const card = <Card data-fin-tom={tom} className={`fin-indicador dashboard-indicador h-full @container min-w-0 gap-1 rounded-lg border-border p-3 shadow-none ${href ? "" : className}`}>
+    <div className="flex items-center gap-2 text-sm text-muted-foreground"><Icon size={16} aria-hidden="true" />{label}{href && <ChevronRight className="ml-auto" size={14} aria-hidden="true" />}</div>
     <strong className="whitespace-nowrap font-serif text-[clamp(18px,10cqw,26px)] leading-tight tabular-nums">{brl(valor)}</strong>
     <p className={`text-xs ${alerta ? "text-destructive" : "text-muted-foreground"}`}>{detalhe}</p>
   </Card>;
@@ -36,6 +36,7 @@ function ListaContas({ contas, onAbrir }: { contas: Conta[]; onAbrir: () => void
 export function ContasDisponibilidade({ contas, onAbrir }: { contas: Conta[]; onAbrir: () => void }) {
   const incluidas = contas.filter(conta => conta.incluirNoSaldoGeral);
   const excluidas = contas.filter(conta => !conta.incluirNoSaldoGeral);
+  const saldo = incluidas.reduce((total, conta) => total + Math.round(Number(conta.saldoAtual) * 100), 0) / 100;
   return <Card data-fin-tom="entrada" className="fin-painel min-w-0 gap-0 overflow-hidden rounded-lg border-border py-0 shadow-none">
     <div className="fin-cabecalho p-4"><h2 className="font-serif text-xl">Contas e disponibilidade</h2><p className="mt-1 text-sm text-muted-foreground">Saldos atuais · contas incluídas no saldo disponível</p></div>
     {incluidas.length ? <ListaContas contas={incluidas} onAbrir={onAbrir} /> : <p className="px-4 pb-4 text-sm text-muted-foreground">Nenhuma conta incluída no saldo disponível.</p>}
@@ -43,6 +44,6 @@ export function ContasDisponibilidade({ contas, onAbrir }: { contas: Conta[]; on
       <CollapsibleTrigger asChild><Button variant="ghost" className="h-auto w-full justify-between whitespace-normal rounded-none p-4 text-left">{excluidas.length} {excluidas.length === 1 ? "conta fora do saldo" : "contas fora do saldo"}<ChevronDown aria-hidden="true" /></Button></CollapsibleTrigger>
       <CollapsibleContent><ListaContas contas={excluidas} onAbrir={onAbrir} /></CollapsibleContent>
     </Collapsible>}
-    <Button variant="link" className="mt-auto self-end p-4" onClick={onAbrir}>Ver extratos</Button>
+    <div className="mx-4 mt-3 flex items-center justify-between gap-3 border-t border-border pt-3 text-sm"><span>Saldo disponível</span><strong className={saldo < 0 ? "text-destructive" : "text-[var(--pos)]"}>{brl(saldo)}</strong></div><Button variant="outline" className="m-4 mt-3" onClick={onAbrir}>Ver contas e extratos</Button>
   </Card>;
 }

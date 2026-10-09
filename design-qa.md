@@ -152,3 +152,39 @@ Validação atual: 124 arquivos / 967 testes frontend aprovados; TypeScript e bu
 ## Paleta corrigida após esclarecimento — 09/10/2026
 
 Mantidas faixas de destaque e superfícies suaves na paleta marrom/verde/vermelho/preto. Azul informativo e amarelo forte substituídos por marrom. Contadores de efeitos em Card shadcn compacto. Validação: 31 arquivos / 330 testes financeiros aprovados, TypeScript e build aprovados. Prévia local responde 200; inspeção visual automática continua indisponível por acesso ao Chrome, conforme registro anterior.
+
+## Modelo claro da visão geral e sidebar — 09/10/2026
+
+final result: passed
+
+Escopo desta iteração: somente `/financeiro` e sidebar global. Fonte visual: mockup aprovado `exec-15e3d8d4-a31c-4967-939d-fd4ff8a0448b.png` (1487 × 1058). Implementação autenticada com API local em `http://localhost:41875/financeiro`. Evidências: `/tmp/financeiro-design-qa/desktop.jpg`, `desktop-match.jpg`, `desktop-normalizado.jpg`, `comparacao.jpg`, `mobile.jpg` e `mobile-sidebar.jpg`.
+
+A comparação lado a lado usa `comparacao.jpg`. O viewport observado de 1486 × 1058 foi alinhado à referência. A captura do IAB com override inclui uma margem externa (1651 × 1174); a normalização remove apenas essa margem, usando os limites do viewport observados no DOM. A conferência móvel usou override 390 × 844. O override foi restaurado ao final.
+
+### Achados corrigidos e nova comparação
+
+- P2: indicadores de recebimentos/a receber herdavam verde por um seletor `first-child`. Corrigido com classe explícita de saldo; demais indicadores em grafite, alertas preservados em vermelho.
+- P2: títulos de painéis ainda herdavam cores do tema anterior. Corrigida a precedência local e verificada a cor computada `rgb(32,39,35)` nos quatro títulos.
+- P2: cabeçalho da sidebar estreita ocultava o controle de colapso. Marca e controles compactados; busca e colapso visíveis e colapso/expansão funcionando.
+- P2: legenda da rosca poderia empilhar no painel estreito de desktop. Grid local de duas colunas aplicado; sem mudar gráficos das outras páginas.
+
+A captura posterior confirma painéis brancos, grafite, tipografia sans-serif e grid análises/categorias acima de compromissos/contas. A sidebar clara conserva marca real, rascunhos, áreas e seletor de sítio. Não há achados P0/P1/P2 pendentes.
+
+### Superfícies de fidelidade
+
+- Tipografia: sans-serif existente, títulos compactos e valores legíveis, sem truncar dinheiro.
+- Ritmo: grid 1,65:1, gaps de 16px, cinco indicadores e bordas discretas; abas preservadas no celular.
+- Tokens: fundo cinza claro, branco, grafite; verde nos saldos/resultados e vermelho nos alertas. Categorias terrosas discretas.
+- Assets: marca oficial Terrano preservada; ícones existentes e Lucide no seletor/indicadores. Sem assets gerados novos.
+- Conteúdo: dados reais locais, período global, totais, filtros e legendas preservados. O conteúdo ilustrativo da imagem não substitui os dados da API.
+
+Diferenças deliberadas: o banco local possui uma categoria e nenhum compromisso vencido/nos próximos sete dias, gerando rosca única e estado vazio. O calendário mostra compromissos posteriores; não criamos dados para preencher a imagem. As funções já existentes de rascunhos, permissões e filtros permanecem disponíveis, mesmo quando ausentes no mockup. A explicação contábil do resultado permanece no conteúdo acessível.
+
+### Validação
+
+- Suíte cliente: a expectativa da ordem anterior dos painéis foi atualizada para o modelo aprovado; os 32 testes de dashboard e sidebar passaram. Na repetição completa, 966 de 967 testes passaram e o caso existente de centro de custo por item excedeu 5 segundos. Esse caso passou isoladamente em 947ms, sem alteração de código ou aumento do limite. Não há falha funcional pendente identificada.
+- Build de produção e TypeScript aprovados.
+- Navegador: Linhas/Barras, detalhes de Alimentação animal com lançamento carregado, calendário com compromissos, abas móveis, sidebar em Sheet e colapso/expansão conferidos.
+- Desktop sem overflow horizontal: `scrollWidth === innerWidth`. Nenhuma transação ou dado financeiro foi alterado durante QA.
+
+Checklist: tema limitado ao escopo aprovado; shadcn mantido; navegação e dados preservados; documentação atualizada; comparação visual posterior aprovada.

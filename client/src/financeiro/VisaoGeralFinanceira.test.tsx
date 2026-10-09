@@ -80,7 +80,7 @@ describe("Visão geral — período global", () => {
     expect(screen.queryByRole("heading", { name: "Despesas realizadas" })).toBeNull();
     expect(listarOperacoes).not.toHaveBeenCalled();
     const headings = Array.from(document.querySelectorAll("h2")).map(h => h.textContent);
-    expect(headings.filter(h => ["Compromissos", "Recebimentos e pagamentos", "Contas e disponibilidade", "Despesas por categoria"].includes(h!))).toEqual(["Compromissos", "Contas e disponibilidade", "Recebimentos e pagamentos", "Despesas por categoria"]);
+    expect(headings.filter(h => ["Compromissos", "Recebimentos e pagamentos", "Contas e disponibilidade", "Despesas por categoria"].includes(h!))).toEqual(["Recebimentos e pagamentos", "Despesas por categoria", "Compromissos", "Contas e disponibilidade"]);
     let resolveOld!: (value: DashboardFinanceiro) => void;
     vi.mocked(obterDashboardFinanceiro).mockReturnValueOnce(new Promise(resolve => { resolveOld = resolve; }));
     fireEvent.click(screen.getByRole("button", { name: /^Período:/ }));
