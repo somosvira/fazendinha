@@ -85,8 +85,9 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
   const hrefCompromissos = `/financeiro/compromissos?${new URLSearchParams({ inicio: inicioPeriodo, fim: fimPeriodo })}`;
   if (!periodoDados && carregando && !erro) return <PaginaCarregando label="Carregando financeiro" />;
 
-  const painelAgenda = dadosAtuais && (<DashboardCompromissos resumo={<div className="grid grid-cols-2 gap-2"><IndicadorFinanceiro label="A pagar" valor={dadosAtuais.compromissos.aPagar} detalhe={resumoVencidos(pendentes, "PAGAR")} alerta={pendentes.some(item => item.vencido && item.tipo === "PAGAR")} icon={ArrowUpRight} onClick={() => setListaAberta("pagar")} /><IndicadorFinanceiro label="A receber" valor={dadosAtuais.compromissos.aReceber} detalhe={resumoVencidos(pendentes, "RECEBER")} alerta={pendentes.some(item => item.vencido && item.tipo === "RECEBER")} icon={ArrowDownLeft} onClick={() => setListaAberta("receber")} /></div>} itens={pendentes} href={hrefCompromissos} onLiquidar={podeLancar ? setLiquidando : undefined} />);
-  const painelCalendario = dadosAtuais && <DashboardCalendario itens={pendentes} href={hrefCompromissos} mes={mesCalendario} onChangeMes={setMesCalendario} onLiquidar={podeLancar ? setLiquidando : undefined} />;
+  const painelAgenda = dadosAtuais && (<DashboardCompromissos integrado resumo={<div className="grid grid-cols-2 gap-2"><IndicadorFinanceiro label="A pagar" valor={dadosAtuais.compromissos.aPagar} detalhe={resumoVencidos(pendentes, "PAGAR")} alerta={pendentes.some(item => item.vencido && item.tipo === "PAGAR")} icon={ArrowUpRight} onClick={() => setListaAberta("pagar")} /><IndicadorFinanceiro label="A receber" valor={dadosAtuais.compromissos.aReceber} detalhe={resumoVencidos(pendentes, "RECEBER")} alerta={pendentes.some(item => item.vencido && item.tipo === "RECEBER")} icon={ArrowDownLeft} onClick={() => setListaAberta("receber")} /></div>} itens={pendentes} href={hrefCompromissos} onLiquidar={podeLancar ? setLiquidando : undefined} />);
+  const painelCalendario = dadosAtuais && <DashboardCalendario integrado itens={pendentes} href={hrefCompromissos} mes={mesCalendario} onChangeMes={setMesCalendario} onLiquidar={podeLancar ? setLiquidando : undefined} />;
+  const painelCompromissos = dadosAtuais && <Card className="fin-painel dashboard-compromissos min-w-0 gap-0 overflow-hidden rounded-lg py-0 shadow-none"><h2 className="px-4 pt-4">Compromissos</h2><div className="grid min-w-0 items-start lg:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)]">{painelAgenda}{painelCalendario}</div></Card>;
   const painelContas = dadosAtuais && (<ContasDisponibilidade contas={dadosAtuais.contas} onAbrir={() => onNav("caixinha")} />);
   const painelFluxo = dadosAtuais && (<Card data-fin-tom="info" className="fin-painel min-w-0 gap-0 overflow-hidden rounded-lg border-border py-0 shadow-none">
           <div className="fin-cabecalho flex flex-wrap items-center justify-between gap-2 p-4 pb-2"><div><h2 className="font-serif text-xl">Recebimentos e pagamentos</h2><p className="mt-1 text-sm text-muted-foreground">{tipoGraficoFluxo === "line" ? "Acumulado no período" : "Realizado por dia ou mês"}</p></div><div className="flex flex-wrap items-center gap-3"><ChartTypeControl value={tipoGraficoFluxo} onChange={setTipoGraficoFluxo} label="Tipo do gráfico de receitas e despesas" />          <div className="dashboard-resultado flex flex-col items-end gap-0 border-l border-border pl-3"><span className="text-xs text-muted-foreground">Resultado de caixa</span><strong className={`font-serif text-2xl tabular-nums ${Number(dadosAtuais.realizado.resultado) < 0 ? "text-destructive" : "text-[var(--pos)]"}`}>{Number(dadosAtuais.realizado.resultado) > 0 ? "+" : ""}{brl(dadosAtuais.realizado.resultado)}</strong><p className="sr-only">Recebimentos − pagamentos · inclui aportes e retiradas</p></div></div></div>
@@ -109,7 +110,7 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
     {dadosAtuais && <>
       {pequena ? <Tabs defaultValue="agenda" className="mt-3 min-w-0">
         <TabsList aria-label="Seções da visão geral" className="fin-abas grid h-auto w-full grid-cols-3"><TabsTrigger value="agenda">Agenda</TabsTrigger><TabsTrigger value="analises">Análises</TabsTrigger><TabsTrigger value="contas">Contas</TabsTrigger></TabsList>
-        <TabsContent value="agenda"><div className="grid gap-4">{painelCalendario}{painelAgenda}</div></TabsContent>
+        <TabsContent value="agenda">{painelCompromissos}</TabsContent>
         <TabsContent value="analises">      <div className="mt-4 grid min-w-0 gap-4 lg:grid-cols-2">
         {painelFluxo}
         {painelCategorias}
@@ -117,13 +118,12 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
 </TabsContent>
         <TabsContent value="contas">{painelContas}</TabsContent>
       </Tabs> : <>
-      <div className="dashboard-principal mt-4 grid min-w-0 items-start gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1.2fr)]">
+      <div className="dashboard-principal mt-4 grid min-w-0 items-start gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,1fr)]">
         {painelFluxo}
         {painelContas}
-        {painelAgenda}
       </div>
-      <div className="dashboard-analises mt-4 grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)]">
-        {painelCalendario}
+      <div className="dashboard-analises mt-4 grid min-w-0 gap-4 lg:grid-cols-[minmax(0,4fr)_minmax(0,1fr)]">
+        {painelCompromissos}
         {painelCategorias}
       </div>
 </>}

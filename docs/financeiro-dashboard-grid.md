@@ -123,3 +123,7 @@ Quando não há vencimentos nos próximos sete dias, a agenda informa o próximo
 ## Indicadores integrados ao contexto — 09/10/2026
 
 A faixa de cinco indicadores acima do grid foi removida. Recebimentos e pagamentos ficam no painel do gráfico; saldo disponível e quantidade de contas incluídas antecedem a lista de contas; a pagar e a receber ficam no painel de compromissos, junto da agenda prioritária. O saldo não se repete no rodapé. A ordem dos dois grids, o calendário independente, filtros, totais e permissões permanecem os mesmos. Na versão móvel, os valores acompanham seus respectivos painéis nas abas.
+
+## Grid integrado aprovado — 09/10/2026
+
+Esta organização substitui a divisão anterior de três painéis na primeira linha: recebimentos/pagamentos ocupam 75% e contas/disponibilidade 25%. Na segunda, compromissos e calendário aberto por padrão compartilham um único Card shadcn com 80% da largura; despesas por categoria ficam nos 20% restantes, com rosca e legenda empilhadas. Dentro do painel maior, os próximos compromissos aparecem primeiro, ao lado do mês. No celular, a agenda integrada empilha a lista antes do calendário. Expansão, detalhes, liquidação e modais dos valores permanecem disponíveis.

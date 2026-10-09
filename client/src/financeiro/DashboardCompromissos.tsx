@@ -12,8 +12,8 @@ import { brl, dataBR } from "./financeiro-ui";
 import { tituloCompromisso } from "./lib/compromissos";
 import type { Compromisso } from "./novo-api";
 
-export function DashboardCompromissos({ itens, href, onLiquidar, resumo }: {
-  itens: Compromisso[]; href: string; resumo?: ReactNode; onLiquidar?: (item: Compromisso) => void;
+export function DashboardCompromissos({ itens, href, onLiquidar, resumo, integrado = false }: {
+  itens: Compromisso[]; href: string; resumo?: ReactNode; integrado?: boolean; onLiquidar?: (item: Compromisso) => void;
 }) {
   const pequena = useTelaPequena();
   const [selecionado, setSelecionado] = useState<Compromisso | null>(null);
@@ -25,10 +25,11 @@ export function DashboardCompromissos({ itens, href, onLiquidar, resumo }: {
   const proximos = itens.filter(item => !item.vencido && item.dataVencimento.slice(0, 10) >= hoje && item.dataVencimento.slice(0, 10) <= fim);
   const proximoFuturo = itens.filter(item => !item.vencido && item.dataVencimento.slice(0, 10) > fim).sort((a, b) => a.dataVencimento.localeCompare(b.dataVencimento))[0];
   const grupos = [{ id: "vencidos", label: `Vencidos (${vencidos.length})`, itens: vencidos, vazio: "Nenhum compromisso vencido no período." }, { id: "proximos", label: `Próximos 7 dias (${proximos.length})`, itens: proximos, vazio: "Nenhum compromisso nos próximos 7 dias dentro do período selecionado." }];
-  return <Card data-fin-tom="pendente" className="fin-painel min-w-0 gap-0 overflow-hidden rounded-lg border-border py-0 shadow-none">
+  const Container = integrado ? "section" : Card;
+  return <Container data-fin-tom="pendente" className={`${integrado ? "" : "fin-painel"} min-w-0 gap-0 overflow-hidden rounded-lg border-border py-0 shadow-none`}>
     <Tabs defaultValue={vencidos.length ? "vencidos" : "proximos"} className="gap-0">
       <div className="fin-cabecalho flex flex-wrap items-center justify-between gap-3 p-4">
-        <h2 className="font-serif text-xl">Compromissos</h2>
+        {integrado ? <h3 className="text-sm font-semibold">Próximos compromissos</h3> : <h2 className="font-serif text-xl">Compromissos</h2>}
         <Button variant="link" asChild><a href={href} onClick={event => { if (!event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) { event.preventDefault(); navegarPara(href); } }}>Ver todos</a></Button>
         {resumo && <div className="w-full">{resumo}</div>}
         <div className="w-full"><TabsList className="h-9 max-w-full">{grupos.map(grupo => <TabsTrigger key={grupo.id} value={grupo.id} className="px-2 text-xs">{grupo.label}</TabsTrigger>)}</TabsList></div>
@@ -50,5 +51,5 @@ export function DashboardCompromissos({ itens, href, onLiquidar, resumo }: {
       </TabsContent>)}
     </Tabs>
     {selecionado && <CompromissoDetalheDialog compromisso={selecionado} onClose={() => setSelecionado(null)} onLiquidar={onLiquidar} />}
-  </Card>;
+  </Container>;
 }

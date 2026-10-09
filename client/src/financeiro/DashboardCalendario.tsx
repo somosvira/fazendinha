@@ -8,14 +8,15 @@ import { CalendarioCompromissos } from "./CalendarioCompromissos";
 import { dataBR } from "./financeiro-ui";
 import type { Compromisso } from "./novo-api";
 
-export function DashboardCalendario({ itens, href, mes, onChangeMes, onLiquidar }: {
-  itens: Compromisso[]; href: string; mes: string; onChangeMes: (mes: string) => void; onLiquidar?: (item: Compromisso) => void;
+export function DashboardCalendario({ itens, href, mes, onChangeMes, onLiquidar, integrado = false }: {
+  integrado?: boolean; itens: Compromisso[]; href: string; mes: string; onChangeMes: (mes: string) => void; onLiquidar?: (item: Compromisso) => void;
 }) {
   const acionadorCalendario = useRef<HTMLButtonElement>(null);
   const [calendario, setCalendario] = useState(false);
   const quantidade = itens.filter(item => item.dataVencimento.startsWith(mes)).length;
-  return <Card className="fin-painel dashboard-calendario min-w-0 gap-0 overflow-hidden rounded-lg py-0 shadow-none">
-    <div className="fin-cabecalho flex items-center justify-between gap-2 px-4 pt-3"><h2>Calendário</h2>
+  const Container = integrado ? "section" : Card;
+  return <Container className={`${integrado ? "" : "fin-painel"} dashboard-calendario min-w-0 gap-0 overflow-hidden rounded-lg py-0 shadow-none`}>
+    <div className="fin-cabecalho flex items-center justify-between gap-2 px-4 pt-3">{integrado ? <h3 className="text-sm font-semibold">Calendário</h3> : <h2>Calendário</h2>}
           <Dialog open={calendario} onOpenChange={setCalendario}>
             <DialogTrigger asChild><Button ref={acionadorCalendario} variant="ghost" size="sm" aria-label="Expandir calendário"><Maximize2 aria-hidden="true" />Expandir</Button></DialogTrigger>
             <DialogContent ref={elemento => registrarOrigemDialogo(elemento, acionadorCalendario.current)} data-fin-tom="pendente" className="financeiro-colorido z-[1100] max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-5xl grid-cols-1 grid-rows-[auto_minmax(0,1fr)] overflow-hidden" overlayClassName="z-[1090]">
@@ -26,7 +27,7 @@ export function DashboardCalendario({ itens, href, mes, onChangeMes, onLiquidar 
     </div>
     <p className="px-4 pb-2 text-xs text-muted-foreground">{quantidade} {quantidade === 1 ? "compromisso pendente no mês" : "compromissos pendentes no mês"}</p>
     <div aria-hidden={calendario || undefined}><CalendarioCompromissos resumo itens={itens} mes={mes} onChangeMes={onChangeMes} onLiquidar={onLiquidar} /></div>
-  </Card>;
+  </Container>;
 }
 function hrefPeriodo(href: string, chave: string) {
   return new URLSearchParams(href.split("?")[1]).get(chave) ?? "";

@@ -209,3 +209,7 @@ Validação: 51 testes focados de visão geral, calendário, agenda, visualizaç
 A faixa superior foi removida e os valores foram integrados a gráfico, disponibilidade e compromissos. Saldo aparece uma única vez, junto das contas incluídas. Os quatro indicadores abrem Dialog shadcn com listas do período, sem navegação automática para extratos. Recebimentos/pagamentos consultam a API existente sob demanda; compromissos reaproveitam os dados já carregados. Paginação de 15 mantém todos os itens.
 
 Conferência no navegador local: recebimento e pagamento reais, quatro compromissos a pagar, estado vazio de a receber e modal móvel; nenhuma escrita financeira. Sem rolagem horizontal da página em 1602px e 351px. Evidências locais em `/tmp/financeiro-design-qa/indicadores-integrados-desktop.jpg` e `indicadores-integrados-mobile.jpg`. 55 testes focados passaram, incluindo carregamento, filtros do período, estornos, exclusão de transferências, erro/nova tentativa, paginação e detalhe de compromisso.
+
+### Grid 75/25 e agenda integrada 80/20 — 09/10/2026
+
+Gráfico ampliado e contas na primeira linha; prioridades e calendário aberto em Card único na segunda, junto de categorias em coluna de 20%. Verificado no navegador local: expansão do calendário, ordem móvel lista/mês e ausência de rolagem lateral em 351px. Capturas em `/tmp/financeiro-design-qa/grid-integrado-desktop.jpg` e `grid-integrado-mobile.jpg`. Os 55 testes focados de dashboard, modais, calendário e responsividade passaram; build aprovado com o aviso existente de tamanho do bundle.
