@@ -54,7 +54,7 @@ describe("ContasFinanceiras — cadastros ativos", () => {
 
   it("filtra a tabela de contas por busca, tipo, instituição e situação", async () => {
     render(<ContasFinanceiras onNav={vi.fn()} />);
-    const secao = (await screen.findByRole("heading", { name: "Contas" })).closest("section")!;
+    const secao = await screen.findByRole("region", { name: "Contas" });
     const tabela = () => within(secao).queryByRole("table", { name: "Contas financeiras" });
     await alterarControle(within(secao).getByLabelText("Buscar conta"), { target: { value: "001" } });
     expect(within(tabela()!).getByText("Banco principal")).toBeTruthy();

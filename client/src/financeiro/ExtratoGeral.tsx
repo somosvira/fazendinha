@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { SkeletonListaFinanceira } from "./CarregamentoFinanceiro";
 import { SelectCampo } from "./SelectCampo";
 import { Button } from "@/components/ui/button";
@@ -33,7 +33,8 @@ export function filtrarMovimentosExtratoGeral(movimentos: MovimentoGeral[], filt
   });
 }
 
-export function ExtratoGeral({ contas, movimentos, filtros, onChangeFiltros, carregando, erro, onAbrir }: {
+export function ExtratoGeral({ contas, movimentos, filtros, onChangeFiltros, carregando, erro, onAbrir, controles }: {
+  controles?: ReactNode;
   contas: Conta[];
   movimentos: MovimentoGeral[];
   filtros: FiltrosExtratoGeral;
@@ -52,6 +53,7 @@ export function ExtratoGeral({ contas, movimentos, filtros, onChangeFiltros, car
   return <section id="extrato-geral" className="mt-3 min-w-0 scroll-mt-6" aria-labelledby="titulo-extrato-geral">
     <h2 id="titulo-extrato-geral" className="font-serif text-xl">Extrato geral</h2>
     <p className="mt-1 text-xs text-ink-3">Movimentações de todas as contas da fazenda selecionada, da mais recente à mais antiga. Clique para localizar o registro na conta.</p>
+    {controles}
     <Panel tom="info" className="fin-painel mt-3 overflow-hidden">
       <div className="fin-cabecalho grid gap-3 border-b border-border p-3 sm:grid-cols-2">
         <label className="text-sm font-medium">Conta<SelectCampo value={conta} onValueChange={valor => onChangeFiltros({ ...filtros, conta: valor })} className={CAMPO}><option value="">Todas as contas</option>{contas.map(c => <option key={c.id} value={c.id}>{c.nome}{!c.ativo ? " (inativa)" : ""}</option>)}</SelectCampo></label>

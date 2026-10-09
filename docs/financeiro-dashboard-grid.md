@@ -94,3 +94,8 @@ A revisão seguinte aplica os critérios de densidade, utilidade e componentes s
 As listas compactas limitam a altura interna para reduzir rolagem da página. Paginação e áreas roláveis preservam todos os registros; não se reduzem fontes até tornar os valores ilegíveis nem se promete exibir um histórico ilimitado em uma única janela. Nenhuma alteração no backend, cálculo, payload ou política de permissão. A reauditoria e suas limitações estão registradas em `design-qa.md`.
 
 O grid simultâneo da visão geral se aplica a partir de 1024px; em larguras menores os painéis se adaptam, e abaixo de 768px são organizados nas três abas. Valores monetários não são truncados.
+
+
+## Seções de Contas e extrato geral
+
+A sidebar mantém “Contas e extratos”. O conteúdo inicia com o título “Contas”, sua descrição e a listagem. A seção “Extrato geral” vem abaixo, com sua explicação, período, gráfico expansível e tabela de movimentações. O título do extrato antecede seus controles; o destino `#extrato-geral` permanece na seção completa. O detalhe de cada conta mantém o nome próprio no cabeçalho.
