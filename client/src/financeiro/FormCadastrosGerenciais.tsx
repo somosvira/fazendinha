@@ -43,7 +43,7 @@ export function FormCategoria({ categoria, ordemInicial, onSalvo, onFechar }: { 
   };
   const formId = "form-categoria";
   return <PainelCadastro compacto bloqueado={salvando} aberto titulo={categoria ? `Editar ${categoria.nome}` : "Nova categoria"} onFechar={onFechar}
-    rodape={<><Button secondary onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form={formId} disabled={salvando}>{salvando ? "Salvando…" : categoria ? "Salvar categoria" : "Criar categoria"}</Button></>}>
+    rodape={<><Button secondary onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form={formId} disabled={salvando} carregando={salvando}>{salvando ? "Salvando…" : categoria ? "Salvar categoria" : "Criar categoria"}</Button></>}>
     <form id={formId} onSubmit={submeter} className="grid gap-4" noValidate>
       <ErrorBox erro={erroGeral || null} />
       <CampoFormulario id="categoria-nome" rotulo="Nome da categoria" obrigatorio erro={erros.nome}>{(p) => <Input {...p} required maxLength={80} value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Insumos" className={classeInput} />}</CampoFormulario>
@@ -74,7 +74,7 @@ export function FormCentroCusto({ centro, ordemInicial, onSalvo, onFechar }: { c
   };
   const formId = "form-centro-custo";
   return <PainelCadastro compacto bloqueado={salvando} aberto titulo={centro ? `Editar ${centro.nome}` : "Novo centro de custo"} onFechar={onFechar}
-    rodape={<><Button secondary onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form={formId} disabled={salvando}>{salvando ? "Salvando…" : centro ? "Salvar centro" : "Criar centro"}</Button></>}>
+    rodape={<><Button secondary onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form={formId} disabled={salvando} carregando={salvando}>{salvando ? "Salvando…" : centro ? "Salvar centro" : "Criar centro"}</Button></>}>
     <form id={formId} onSubmit={submeter} className="grid gap-4" noValidate>
       <ErrorBox erro={erroGeral || null} />
       <CampoFormulario id="centro-nome" rotulo="Nome do centro de custo" obrigatorio erro={erros.nome}>{(p) => <Input {...p} required maxLength={80} value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Atividade leiteira" className={classeInput} />}</CampoFormulario>

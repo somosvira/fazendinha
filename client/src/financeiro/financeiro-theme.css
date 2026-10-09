@@ -3,6 +3,7 @@
  * tokens das outras áreas, sem estado de tema duplicado em JavaScript. */
 :root:has(.financeiro-content) {
   --radius: 0.375rem;
+  --fin-skeleton: #dce1de;
   --background: #f6f7f6;
   --foreground: #202723;
   --card: #ffffff;

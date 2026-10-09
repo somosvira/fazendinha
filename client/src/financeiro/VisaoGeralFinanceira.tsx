@@ -1,3 +1,4 @@
+import { AtualizandoFinanceiro } from "./CarregamentoFinanceiro";
 import { useTelaPequena } from "./useTelaPequena";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import "./dashboard-grid.css";
@@ -58,7 +59,7 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
 
   useEffect(() => {
     let vigente = true;
-    setDados(null); setCarregando(true); setErro(null);
+    setCarregando(true); setErro(null);
     obterDashboardFinanceiro(inicioPeriodo, fimPeriodo)
       .then(d => { if (vigente) { setDados(d); setPeriodoDados(`${inicioPeriodo}/${fimPeriodo}`); } })
       .catch(e => { if (vigente) setErro(e.message); })
@@ -73,7 +74,7 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
     obterConfiguracoesFinanceiras().then(cfg => { if (vigente) setConfig(cfg); }).catch(e => { if (vigente) setErroConfig(e instanceof Error ? e.message : String(e)); });
     return () => { vigente = false; };
   }, []);
-  const dadosAtuais = periodoDados === `${inicioPeriodo}/${fimPeriodo}` ? dados : null;
+  const dadosAtuais = (periodoDados === `${inicioPeriodo}/${fimPeriodo}` || carregando) ? dados : null;
   const pendentes = (dadosAtuais?.proximosCompromissos ?? []).filter(c => ["PENDENTE", "PARCIAL"].includes(c.status))
     .sort((a, b) => a.dataVencimento.localeCompare(b.dataVencimento) || a.seq - b.seq);
   const recarregar = async () => { setRevisao(value => value + 1); };
@@ -81,7 +82,7 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
   // navegação usado pelos links da Base financeira.
   const pequena = useTelaPequena();
   const hrefCompromissos = `/financeiro/compromissos?${new URLSearchParams({ inicio: inicioPeriodo, fim: fimPeriodo })}`;
-  if (!periodoDados && carregando && !erro) return <PaginaCarregando label="Carregando financeiro" />;
+  if (!periodoDados && carregando && !erro) return <PaginaCarregando label="Carregando financeiro" estrutura="dashboard" />;
 
   const painelAgenda = dadosAtuais && (<DashboardCompromissos integrado resumo={<div className="grid grid-cols-2 gap-2"><IndicadorFinanceiro label="A pagar" valor={dadosAtuais.compromissos.aPagar} detalhe={resumoVencidos(pendentes, "PAGAR")} alerta={pendentes.some(item => item.vencido && item.tipo === "PAGAR")} icon={ArrowUpRight} onClick={() => setListaAberta("pagar")} /><IndicadorFinanceiro label="A receber" valor={dadosAtuais.compromissos.aReceber} detalhe={resumoVencidos(pendentes, "RECEBER")} alerta={pendentes.some(item => item.vencido && item.tipo === "RECEBER")} icon={ArrowDownLeft} onClick={() => setListaAberta("receber")} /></div>} itens={pendentes} href={hrefCompromissos} onLiquidar={podeLancar ? setLiquidando : undefined} />);
   const painelCalendario = dadosAtuais && <DashboardCalendario integrado itens={pendentes} href={hrefCompromissos} mes={mesCalendario} onChangeMes={setMesCalendario} onLiquidar={podeLancar ? setLiquidando : undefined} />;
@@ -103,9 +104,9 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
       <div className="flex flex-wrap items-center gap-2"><PeriodoFinanceiroControl inicio={inicioPeriodo} fim={fimPeriodo} onChange={periodo => { setInicioPeriodo(periodo.inicio); setFimPeriodo(periodo.fim); setMesCalendario(periodo.inicio.slice(0, 7)); }} />{podeLancar && <Button disabled={preparando} onClick={() => { void iniciarNovaOperacao(); }}><Plus />Nova operação</Button>}</div>
     </header>
     <ErrorBox erro={erro} />
-    {(carregando || (!dadosAtuais && !erro)) && <p role="status" className="mt-6">Carregando financeiro do período…</p>}
+    {(carregando || (!dadosAtuais && !erro)) && <div className="mt-3"><AtualizandoFinanceiro label="Atualizando… Os dados anteriores permanecem visíveis." /></div>}
     {erro && !dadosAtuais && <Button variant="outline" onClick={() => setRevisao(value => value + 1)}>Tentar novamente</Button>}
-    {dadosAtuais && <>
+    {dadosAtuais && <div aria-busy={carregando} {...(carregando ? { inert: "" } : {})}>
       {pequena ? <Tabs defaultValue="agenda" className="mt-3 min-w-0">
         <TabsList aria-label="Seções da visão geral" className="fin-abas grid h-auto w-full grid-cols-3"><TabsTrigger value="agenda">Agenda</TabsTrigger><TabsTrigger value="analises">Análises</TabsTrigger><TabsTrigger value="contas">Contas</TabsTrigger></TabsList>
         <TabsContent value="agenda">{painelCompromissos}</TabsContent>
@@ -127,7 +128,7 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
 </>}
       <ErrorBox erro={erroConfig} />
 
-    </>}
+    </div>}
     {listaAberta && <DashboardListaModal tipo={listaAberta} inicio={inicioPeriodo} fim={fimPeriodo} pendentes={pendentes} onClose={() => setListaAberta(null)} />}
     {podeLancar && liquidando && <LiquidarCompromissoModal key={liquidando.id} compromisso={liquidando} contas={config?.contas ?? []} onClose={() => setLiquidando(null)} onLiquidado={recarregar} onErro={setErro} />}
     <ConfirmDialog

@@ -1,3 +1,4 @@
+import { LoaderCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -68,7 +69,7 @@ export function LiquidarCompromissoModal({ compromisso, contas, onClose, onLiqui
 
   return <Modal tom={compromisso.tipo === "PAGAR" ? "saida" : "entrada"} titulo={`Registrar ${compromisso.tipo === "PAGAR" ? "pagamento" : "recebimento"}`} eyebrow="Confirmação financeira" onClose={fechar} rodape={<div className="flex justify-end gap-2">
         <Button variant="outline" disabled={processando} onClick={fechar}>Cancelar</Button>
-        <Button disabled={!contaId || !valorValido || !data || data > hoje() || processando} onClick={() => { void confirmar(); }}>{processando ? (enviandoNota ? "Enviando nota…" : "Registrando…") : "Confirmar liquidação"}</Button>
+        <Button disabled={!contaId || !valorValido || !data || data > hoje() || processando} aria-busy={processando || undefined} onClick={() => { void confirmar(); }}>{processando && <LoaderCircle aria-hidden="true" className="size-4 animate-spin motion-reduce:animate-none" />}{processando ? (enviandoNota ? "Enviando nota…" : "Registrando…") : "Confirmar liquidação"}</Button>
       </div>}>
     <div className="p-3">
       <ErrorBox erro={erro} />

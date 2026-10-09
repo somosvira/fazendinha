@@ -7,7 +7,7 @@ import { SkeletonListaFinanceira } from "./CarregamentoFinanceiro";
 import "./cores-financeiro.css";
 import { forwardRef, useEffect, useId, useRef, useState } from "react";
 import type { LucideIcon } from "lucide-react";
-import { ArrowDown, ArrowUp, Check, Pencil, Power, PowerOff, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, LoaderCircle, Pencil, Power, PowerOff, X } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export const brl = (valor: string | number | null | undefined) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(valor ?? 0));
@@ -42,8 +42,8 @@ export function PaginaFinanceira({ children, colorida = false }: { children: Rea
 }
 
 /* Skeleton compartilhado preserva o envelope e a folga do menu. */
-export function PaginaCarregando({ label }: { label: string }) {
-  return <div className="shell-wide pagina-financeira"><SkeletonListaFinanceira label={label} paginaInteira /></div>;
+export function PaginaCarregando({ label, estrutura = "lista" }: { label: string; estrutura?: "lista" | "dashboard" }) {
+  return <div className="shell-wide pagina-financeira"><SkeletonListaFinanceira label={label} estrutura={estrutura} paginaInteira /></div>;
 }
 
 /* Página cujos dados ainda não chegaram: carrega, ou mostra o erro. Existe para
@@ -64,10 +64,10 @@ export function PageHeader({ titulo, descricao, acao, eyebrow = "Financeiro" }: 
 // forwardRef (não ref-as-prop): um <Button> usado como `asChild` de um
 // PopoverTrigger/DialogTrigger do Radix precisa repassar a ref de verdade
 // para o <button> nativo, senão o Radix não consegue posicionar/focar nele.
-export const Button = forwardRef<HTMLButtonElement, { children: React.ReactNode; onClick?: () => void; type?: "button" | "submit"; disabled?: boolean; danger?: boolean; secondary?: boolean; className?: string; /** id do form a submeter quando o botão vive fora dele (rodapé de painel) */ form?: string; /** associa o botão a uma mensagem de erro/ajuda (ex.: o alerta de confirmação) */ ariaDescribedby?: string }>(
-  ({ children, onClick, type = "button", disabled, danger, secondary, className = "", form, ariaDescribedby }, ref) => {
+export const Button = forwardRef<HTMLButtonElement, { children: React.ReactNode; onClick?: () => void; type?: "button" | "submit"; disabled?: boolean; carregando?: boolean; danger?: boolean; secondary?: boolean; className?: string; /** id do form a submeter quando o botão vive fora dele (rodapé de painel) */ form?: string; /** associa o botão a uma mensagem de erro/ajuda (ex.: o alerta de confirmação) */ ariaDescribedby?: string }>(
+  ({ children, onClick, type = "button", disabled, carregando = false, danger, secondary, className = "", form, ariaDescribedby }, ref) => {
     const cor = danger ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : secondary ? "border border-border bg-white text-ink hover:bg-surface-2" : "bg-primary text-primary-foreground hover:bg-primary/90";
-    return <ShadcnButton ref={ref} type={type} form={form} onClick={onClick} disabled={disabled} aria-describedby={ariaDescribedby} className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-45 ${cor} ${className}`}>{children}</ShadcnButton>;
+    return <ShadcnButton ref={ref} type={type} form={form} onClick={onClick} disabled={disabled || carregando} aria-busy={carregando || undefined} aria-describedby={ariaDescribedby} className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-45 ${cor} ${className}`}>{carregando && <LoaderCircle aria-hidden="true" className="size-4 animate-spin motion-reduce:animate-none" />}{children}</ShadcnButton>;
   },
 );
 Button.displayName = "Button";

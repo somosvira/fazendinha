@@ -109,7 +109,7 @@ export function FormProduto({ produto, parceiros: parceirosProp, categorias: cat
 
   const formId = "form-produto-financeiro";
   return <PainelCadastro alteracoesExternas={JSON.stringify(centroCustoIds) !== JSON.stringify(produto?.centroCustoIds ?? []) || JSON.stringify(fornecedorIds) !== JSON.stringify(produto?.fornecedores?.map(f => f.id) ?? [])} bloqueado={salvando} aberto titulo={produto ? `${somenteLeitura ? "Consultar" : "Editar"} ${produto.nome}` : "Novo produto"} onFechar={() => { if (!emCurso.current) onFechar(); }}
-    rodape={<><Button secondary onClick={onFechar} disabled={salvando}>{somenteLeitura ? "Fechar" : "Cancelar"}</Button>{!somenteLeitura && <Button type="submit" form={formId} disabled={salvando || carregando}>{salvando ? "Salvando…" : produto ? "Salvar produto" : "Criar produto"}</Button>}</>}>
+    rodape={<><Button secondary onClick={onFechar} disabled={salvando}>{somenteLeitura ? "Fechar" : "Cancelar"}</Button>{!somenteLeitura && <Button type="submit" form={formId} disabled={salvando || carregando} carregando={salvando}>{salvando ? "Salvando…" : produto ? "Salvar produto" : "Criar produto"}</Button>}</>}>
     <form id={formId} onSubmit={submeter} className="grid gap-4" noValidate>
       <fieldset disabled={somenteLeitura} className="cadastro-grid grid min-w-0 gap-3 sm:grid-cols-2">
       <p className="text-sm text-ink-3">A categoria organiza o financeiro. Escolha os tipos de uso e as propriedades do produto. Compras e outras operações dão entrada no estoque.</p>

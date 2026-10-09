@@ -1,3 +1,4 @@
+import { AtualizandoFinanceiro } from "./CarregamentoFinanceiro";
 import { Input } from "@/components/ui/input";
 import { normalizarBuscaFinanceira } from "./ListaCadastroFinanceiro";
 import { Button as UiButton } from "@/components/ui/button";
@@ -42,6 +43,7 @@ export function RelatoriosFinanceiros({ podeExportar = true }: { podeExportar?: 
   const [erro, setErro] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [recente, setRecente] = useState<string | null>(null);
+  const [atualizando, setAtualizando] = useState(false);
   const [iniciando, setIniciando] = useState(false);
   const [periodoEmissao, setPeriodoEmissao] = useState({ inicio: "", fim: "" });
   const [busca, setBusca] = useState("");
@@ -49,7 +51,7 @@ export function RelatoriosFinanceiros({ podeExportar = true }: { podeExportar?: 
   const [confirmarNovo, setConfirmarNovo] = useState(false);
 
   const carregar = useCallback(async () => {
-    setErro(null);
+    setErro(null); setAtualizando(true);
     try {
       const [lista, dados, draft] = await Promise.all([
         listarRelatoriosFinanceiros(), obterConfiguracoesFinanceiras(),
@@ -57,6 +59,7 @@ export function RelatoriosFinanceiros({ podeExportar = true }: { podeExportar?: 
       ]);
       setRelatorios(lista); setCadastros(dados); setRascunho(draft);
     } catch (falha) { setErro(mensagem(falha)); }
+    finally { setAtualizando(false); }
   }, [podeExportar]);
   useEffect(() => { void carregar(); }, [carregar]);
   useEffect(() => {
@@ -110,7 +113,7 @@ export function RelatoriosFinanceiros({ podeExportar = true }: { podeExportar?: 
   ];
   const acoes = podeExportar ? <div className="flex flex-wrap gap-2">
     {rascunho && <Button secondary onClick={() => void abrirNovo(true)}><FilePenLine size={16} /> Continuar rascunho</Button>}
-    <Button disabled={iniciando} onClick={pedirNovo}><FilePlus2 size={16} /> {iniciando ? "Iniciando…" : "Novo relatório"}</Button>
+    <Button disabled={iniciando} onClick={pedirNovo} carregando={iniciando}>{!iniciando && <FilePlus2 size={16} />} {iniciando ? "Iniciando…" : "Novo relatório"}</Button>
   </div> : undefined;
 
   return <PaginaFinanceira colorida>
@@ -121,7 +124,7 @@ export function RelatoriosFinanceiros({ podeExportar = true }: { podeExportar?: 
       <div className="flex flex-wrap items-end gap-3 border-b border-border p-3">
         <label className="min-w-0 flex-[1_1_240px] text-sm font-medium">Buscar relatório<Input aria-label="Buscar relatório" placeholder="Nome ou autor…" value={busca} onChange={e => { setBusca(e.target.value); setPagina(1); }} className="mt-1" /></label>
         <PeriodoFinanceiroControl inicio={periodoEmissao.inicio} fim={periodoEmissao.fim} allowAll label="Período de emissão" onChange={periodo => { setPeriodoEmissao(periodo); setPagina(1); }} />
-        <UiButton variant="outline" onClick={() => void carregar()} aria-label="Atualizar histórico"><RotateCcw size={17} /> Atualizar</UiButton>
+        <UiButton variant="outline" disabled={atualizando} aria-busy={atualizando || undefined} onClick={() => void carregar()} aria-label="Atualizar histórico">{atualizando ? <AtualizandoFinanceiro /> : <><RotateCcw size={17} /> Atualizar</>}</UiButton>
       </div>
       <Paginacao pagina={paginaAtual} totalPaginas={totalPaginas} total={relatoriosFiltrados.length} porPagina={15} rotulo="Paginação de relatórios" substantivo="relatórios" idSelect="pagina-relatorios" onPagina={setPagina} />
       {relatoriosFiltrados.length === 0

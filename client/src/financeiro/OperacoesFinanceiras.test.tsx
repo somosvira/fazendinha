@@ -157,3 +157,24 @@ describe("OperacoesFinanceiras — busca por código", () => {
     }
   });
 });
+
+
+it("mantém operações anteriores ao atualizar o período de um perfil somente leitura", async () => {
+  vi.mocked(listarOperacoes).mockResolvedValueOnce([{
+    id: uid(91), numero: 16, data: "2026-10-01", descricao: "Compra de ração", tipo: "SERVICO", status: "CONFIRMADA", valorTotal: "200.00",
+    parceiro: null, movimentosEstoque: [], transacoes: [], compromissos: [], itens: [], documentos: [],
+  }]);
+  const { container } = render(<OperacoesFinanceiras podeLancar={false} />);
+  await screen.findAllByText("Compra de ração");
+  let concluir!: (itens: Awaited<ReturnType<typeof listarOperacoes>>) => void;
+  vi.mocked(listarOperacoes).mockReturnValueOnce(new Promise(resolve => { concluir = resolve; }));
+  fireEvent.click(screen.getByRole("button", { name: /^Período:/ }));
+  fireEvent.click(screen.getByRole("button", { name: "Ano anterior" }));
+  expect(await screen.findByText("Atualizando…")).toBeTruthy();
+  expect(screen.getAllByText("Compra de ração").length).toBeGreaterThan(0);
+  expect(container.querySelector('[aria-busy="true"][inert]')).toBeTruthy();
+  await act(async () => concluir([]));
+  expect(screen.queryByText("Atualizando…")).toBeNull();
+  expect(screen.queryByText("Compra de ração")).toBeNull();
+  expect(container.querySelector("[inert]")).toBeNull();
+});

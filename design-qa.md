@@ -247,3 +247,12 @@ Separada a ação de cada conta do botão geral: navegação usa ID da conta e p
 - Cinco áreas conferidas em larguras reais de 1180, 720 e 390px (ajustadas ao zoom de 90% do navegador). Largura do documento igual à viewport em todos os casos; tabelas têm rolagem própria e no celular usam cartões existentes. Não é certificação de acessibilidade nem garantia de exibir históricos ilimitados sem rolagem.
 - Verificação: **354 testes em 36 arquivos passaram** (financeiro, DateRangePicker e MultiSelect); build passou, com o aviso preexistente de bundle acima de 500KB. `git diff --check` passou.
 - Capturas: `/tmp/financeiro-design-qa/financeiro-neutro-operacoes.jpg`, `financeiro-neutro-dropdown.jpg`, `financeiro-neutro-mobile.jpg`.
+
+## Carregamento financeiro discreto — 09/10/2026
+
+- Primeira carga: skeleton shadcn sem loader de grãos nem texto grande em itálico; estruturas específicas para dashboard, listas, gráfico de contas e detalhes. Contraste neutro via token e pulso respeitando movimento reduzido. Loader global de inicialização do aplicativo não faz parte desta alteração.
+- Mudança de período em visão geral, operações e compromissos mantém a última consulta visível com indicador de atualização e `inert` até a resposta; respostas antigas continuam descartadas. Testes cobrem leitura sem permissão de lançamento, retenção, liberação após resposta, erro e tentativa novamente. Compromissos não apresenta totais zerados após falha de consulta.
+- Botões de salvar cadastros, confirmar operação/liquidação, transferência, cancelamento/estorno e gerar relatório têm spinner, rótulo de progresso, bloqueio e `aria-busy`. Histórico de relatórios sinaliza a atualização sem substituir os dados.
+- Verificação: **356 testes em 36 arquivos passaram**; TypeScript/build passaram, com aviso preexistente do bundle acima de 500KB; `git diff --check` passou. Nenhuma transação ou emissão real executada nesta rodada; estados de gravação validados nos testes com mocks.
+- Navegador local: skeleton real capturado ao abrir a visão geral (1180px) e operações (720px), largura do documento igual à viewport; filtro de período de operações conferido até retornar 11 itens. API local rápida não permitiu capturar o spinner de atualização na imagem; retenção e bloqueio de dados verificados pelos testes com promessa pendente.
+- Capturas: `/tmp/financeiro-design-qa/loading-dashboard.jpg`, `/tmp/financeiro-design-qa/loading-mobile.jpg`, `/tmp/financeiro-design-qa/loading-atualizacao.jpg`. Viewport temporária restaurada.

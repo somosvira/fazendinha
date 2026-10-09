@@ -193,7 +193,7 @@ export function NovoRelatorioFinanceiro({ cadastros, rascunho, onVoltar, onGerad
           </div>
           <div className="mt-auto shrink-0 border-t border-border bg-card p-3">
             <p className="text-[11px] leading-4 text-ink-3">O PDF é baixado ao gerar e fica salvo no histórico da propriedade.</p>
-            <Button onClick={() => void gerar()} disabled={!!bloqueio || gerando} className="mt-2 w-full"><FileDown size={16} /> {gerando ? "Gerando…" : "Gerar relatório"}</Button>
+            <Button carregando={gerando} onClick={() => void gerar()} disabled={!!bloqueio || gerando} className="mt-2 w-full">{!gerando && <FileDown size={16} />} {gerando ? "Gerando…" : "Gerar relatório"}</Button>
             {bloqueio && <p className="mt-2 text-center text-[11px] text-[#e3c66f]">{bloqueio}</p>}
           </div>
         </div>

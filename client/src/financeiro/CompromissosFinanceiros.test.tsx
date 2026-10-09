@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { CompromissosFinanceiros } from "./CompromissosFinanceiros";
 import { descartarRascunhoOperacao, listarCompromissos, obterConfiguracoesFinanceiras, obterRascunhoOperacao } from "./novo-api";
 import { uid } from "../lib/uid.fixture";
@@ -114,4 +114,26 @@ it("pagina compromissos após busca e filtros sem recortar os totais", async () 
   expect(tabela.getAllByRole("row")).toHaveLength(2);
   expect(tabela.getByText("Compromisso 31")).toBeTruthy();
   expect(screen.getByRole("navigation", { name: "Paginação dos compromissos" }).textContent).toContain("1–1 de 1");
+});
+
+
+it("preserva compromissos durante a atualização e mostra erro sem apresentar totais zerados", async () => {
+  vi.mocked(listarCompromissos).mockResolvedValueOnce([{
+    id: uid(11), seq: 11, tipo: "PAGAR", status: "PENDENTE", valorOriginal: "100", valorLiquidado: "0", saldoPendente: "100",
+    dataVencimento: "2026-09-30", numeroParcela: 1, totalParcelas: 1, vencido: false, parceiro: null,
+    operacao: { id: uid(5), numero: 5, tipo: "SERVICO", descricao: "Serviço veterinário" },
+  }]);
+  const { container } = render(<CompromissosFinanceiros onNav={vi.fn()} podeLancar={false} />);
+  await screen.findByRole("table", { name: "Compromissos financeiros" });
+  let falhar!: (erro: Error) => void;
+  vi.mocked(listarCompromissos).mockReturnValueOnce(new Promise((_, reject) => { falhar = reject; }));
+  fireEvent.click(screen.getByRole("button", { name: /^Período de vencimento:/ }));
+  fireEvent.click(screen.getByRole("button", { name: "Ano anterior" }));
+  expect(await screen.findByText("Atualizando…")).toBeTruthy();
+  expect(screen.getAllByText("Serviço veterinário").length).toBeGreaterThan(0);
+  expect(container.querySelector('[aria-busy="true"][inert]')).toBeTruthy();
+  await act(async () => falhar(new Error("Falha de rede")));
+  expect(screen.getByText("Falha de rede")).toBeTruthy();
+  expect(screen.queryByRole("table", { name: "Compromissos financeiros" })).toBeNull();
+  expect(screen.getByRole("button", { name: "Tentar novamente" })).toBeTruthy();
 });

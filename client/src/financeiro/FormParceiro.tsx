@@ -61,7 +61,7 @@ export function FormParceiro({ parceiro, aberto, onSalvo, onFechar }: { parceiro
 
   const formId = "form-parceiro";
   return <PainelCadastro bloqueado={salvando} aberto={aberto} titulo={parceiro ? `Editar ${parceiro.nome}` : "Novo parceiro"} onFechar={() => { if (!emCurso.current) onFechar(); }}
-    rodape={<><Button secondary onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form={formId} disabled={salvando}>{salvando ? "Salvando…" : parceiro ? "Salvar parceiro" : "Criar parceiro"}</Button></>}>
+    rodape={<><Button secondary onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form={formId} disabled={salvando} carregando={salvando}>{salvando ? "Salvando…" : parceiro ? "Salvar parceiro" : "Criar parceiro"}</Button></>}>
     <form id={formId} onSubmit={submeter} noValidate className="cadastro-grid grid gap-3 sm:grid-cols-2">
       <p className="text-sm text-ink-3">* Campos obrigatórios</p>
       <ErrorBox erro={erroGeral} />

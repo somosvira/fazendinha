@@ -3,7 +3,7 @@ import { Button as UiButton } from "@/components/ui/button";
 import { SelectCampo } from "./SelectCampo";
 import { Input } from "@/components/ui/input";
 import { normalizarBuscaFinanceira } from "./ListaCadastroFinanceiro";
-import { SkeletonListaFinanceira } from "./CarregamentoFinanceiro";
+import { AtualizandoFinanceiro } from "./CarregamentoFinanceiro";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronRight, MoreHorizontal, FilePenLine, Plus, Search } from "lucide-react";
 import { PeriodoFinanceiroControl } from "./PeriodoFinanceiroControl";
@@ -61,6 +61,7 @@ const COLUNAS: ColunaTabela<Operacao>[] = [
 ];
 
 export function OperacoesFinanceiras({ podeLancar = true }: { podeLancar?: boolean }) {
+  const [carregou, setCarregou] = useState(false);
   const [itens, setItens] = useState<Operacao[]>([]); const [config, setConfig] = useState<ConfiguracoesFinanceiras | null>(null); const { rascunho } = useRascunhoAtivo(); const [form, setForm] = useState(() => typeof window !== "undefined" && isNovaOperacaoFinanceira(window.location.pathname)); const [operacaoBase, setOperacaoBase] = useState<Operacao | null>(null); const [loading, setLoading] = useState(true); const [erro, setErro] = useState<string | null>(null);
   const [iniciandoNova, setIniciandoNova] = useState(false);
   const [servicoGerenciado, setServicoGerenciado] = useState<Operacao | null>(null);
@@ -70,7 +71,7 @@ export function OperacoesFinanceiras({ podeLancar = true }: { podeLancar?: boole
   const [retorno, setRetorno] = useState(() => validarRetornoInterno(new URLSearchParams(window.location.search).get("returnTo")));
   // O rascunho vem da store compartilhada (a mesma do atalho da sidebar):
   // obterRascunhoOperacao a atualiza, e cada autosave também.
-  const carregar = useCallback(async (vigente: () => boolean = () => true) => { setLoading(true); setErro(null); try { const [ops, cfg] = await Promise.all([listarOperacoes({ inicio, fim }), podeLancar ? obterConfiguracoesFinanceiras() : Promise.resolve(null), podeLancar ? obterRascunhoOperacao() : Promise.resolve(null)]); if (vigente()) { setItens(ops); setConfig(cfg); } } catch (e) { if (vigente()) setErro(e instanceof Error ? e.message : String(e)); } finally { if (vigente()) setLoading(false); } }, [inicio, fim, podeLancar]);
+  const carregar = useCallback(async (vigente: () => boolean = () => true) => { setLoading(true); setErro(null); try { const [ops, cfg] = await Promise.all([listarOperacoes({ inicio, fim }), podeLancar ? obterConfiguracoesFinanceiras() : Promise.resolve(null), podeLancar ? obterRascunhoOperacao() : Promise.resolve(null)]); if (vigente()) { setItens(ops); setConfig(cfg); } } catch (e) { if (vigente()) setErro(e instanceof Error ? e.message : String(e)); } finally { if (vigente()) { setLoading(false); setCarregou(true); } } }, [inicio, fim, podeLancar]);
   useEffect(() => { let ativo = true; void carregar(() => ativo); return () => { ativo = false; }; }, [carregar]);
   useEffect(() => {
     const onPop = (evento: PopStateEvent) => {
@@ -102,7 +103,7 @@ export function OperacoesFinanceiras({ podeLancar = true }: { podeLancar?: boole
   const corrigir = (operacao: Operacao) => abrirFormulario(operacao);
 
   if (detalheId != null) return <OperacaoFinanceiraDetalhe operacaoId={detalheId} onVoltar={voltar} rotuloVoltar={retorno?.startsWith("/pecuaria/rebanho/sanidade") ? "Voltar à Sanidade" : retorno?.startsWith("/estoque") ? "Voltar ao Estoque" : undefined} onAbrir={abrirDetalhe} onCorrigir={corrigir} podeLancar={podeLancar} />;
-  if (loading && !config) return <PaginaCarregando label="Carregando operações" />;
+  if (loading && !carregou) return <PaginaCarregando label="Carregando operações" />;
   const parametrosUrl = typeof window === "undefined" ? new URLSearchParams() : new URLSearchParams(window.location.search);
   const compromissoInicial = parametrosUrl.get("compromisso");
   // Atalho do Estoque: /financeiro/operacoes/nova?tipo=AJUSTE_ESTOQUE&produto=<id>.
@@ -120,6 +121,7 @@ export function OperacoesFinanceiras({ podeLancar = true }: { podeLancar?: boole
      * contêiner de rolagem do `position: sticky` da barra de TabelaFinanceira,
      * o que a prenderia ao topo do Panel em vez de à viewport. */}
     <Panel className="mt-6 overflow-clip">
+      {loading && carregou && <div className="px-4 pt-3"><AtualizandoFinanceiro /></div>}
       <div className="flex flex-wrap items-center gap-3 border-b border-border p-4">
         <label className="relative w-full min-w-0 flex-[1_1_260px] sm:w-auto"><Search size={16} className="absolute left-3 top-3 text-ink-3" /><Input aria-label="Buscar operações" value={busca} onChange={(e) => { setBusca(e.target.value); setPagina(1); }} placeholder="Buscar por operação, parceiro ou número" className="h-[42px] w-full rounded-lg border border-border bg-white py-2.5 pl-9 pr-3 text-sm" /></label>
         <PeriodoFinanceiroControl inicio={inicio} fim={fim} allowAll onChange={(periodo) => { setInicio(periodo.inicio); setFim(periodo.fim); setPagina(1); }} />
@@ -127,9 +129,9 @@ export function OperacoesFinanceiras({ podeLancar = true }: { podeLancar?: boole
         <SelectCampo aria-label="Filtrar por efeito" value={efeito} onValueChange={(valor) => { setEfeito(valor as EfeitoFiltro); setPagina(1); }} className="h-[42px] w-full min-w-0 flex-[1_1_170px] rounded-lg border border-border bg-white px-3 text-sm sm:w-auto"><option value="TODOS">Todos os efeitos</option><option value="ESTOQUE">Estoque</option><option value="PAGAMENTO">Pagamento</option><option value="RECEBIMENTO">Recebimento</option><option value="A_PAGAR">A pagar</option><option value="A_RECEBER">A receber</option><option value="TRANSFERENCIA">Transferência</option><option value="SEM_EFEITOS">Sem efeitos</option></SelectCampo>
         <SelectCampo aria-label="Filtrar por status" value={status} onValueChange={(valor) => { setStatus(valor); setPagina(1); }} className="h-[42px] w-full min-w-0 flex-[1_1_150px] rounded-lg border border-border bg-white px-3 text-sm sm:w-auto"><option value="TODOS">Todos os status</option><option value="CONFIRMADA">Confirmadas</option><option value="CANCELADA">Canceladas</option></SelectCampo>
       </div>
-      {loading ? <SkeletonListaFinanceira label="Carregando operações do período" /> : erro ? <Empty>Não foi possível carregar as operações.</Empty> : filtradas.length ? <><TabelaFinanceira rotulo="Operações do período" itens={operacoesDaPagina} colunas={colunas} chaveDe={(operacao) => operacao.id} onAbrir={(operacao) => abrirDetalhe(operacao.id)} compacta barraRolagemSuperior />
+      <div aria-busy={loading} {...(loading ? { inert: "" } : {})}>{erro ? <Empty>Não foi possível carregar as operações.</Empty> : filtradas.length ? <><TabelaFinanceira rotulo="Operações do período" itens={operacoesDaPagina} colunas={colunas} chaveDe={(operacao) => operacao.id} onAbrir={(operacao) => abrirDetalhe(operacao.id)} compacta barraRolagemSuperior />
         <Paginacao pagina={paginaAtual} totalPaginas={totalPaginas} total={filtradas.length} porPagina={ITENS_POR_PAGINA} rotulo="Paginação de operações" substantivo="operações" idSelect="pagina-operacoes" onPagina={setPagina} /></> : <Empty>Nenhuma operação encontrada no período e filtros selecionados.</Empty>}
-    </Panel>
+    </div></Panel>
     {servicoGerenciado?.propriedadeId && <GerenciarProcedimentosServico key={servicoGerenciado.id} servicoId={servicoGerenciado.id} propriedadeId={servicoGerenciado.propriedadeId} onFechar={() => setServicoGerenciado(null)} onSalvo={async () => { setItens(await listarOperacoes({ inicio, fim })); }} />}
   </PaginaFinanceira>;
 }
