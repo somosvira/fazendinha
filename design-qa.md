@@ -217,3 +217,7 @@ Gráfico ampliado e contas na primeira linha; prioridades e calendário aberto e
 ### Comentários no navegador — 09/10/2026
 
 Categorias passam para baixo em largura completa; rastreabilidade removida da visão geral. Calendário ampliado mostra nome, direção e saldo de cada compromisso no dia, usando a agenda textual existente no celular. Contas e gráfico conferidos com a mesma altura (414px). Sem rolagem lateral da página em 1602px e 351px. 53 testes focados passaram; dois testes da faixa de rastreabilidade removida deixaram de se aplicar. Build aprovado. Evidências: `/tmp/financeiro-design-qa/calendario-ampliado-desktop.jpg` e `calendario-ampliado-mobile.jpg`.
+
+### Ranking compacto de categorias — 09/10/2026
+
+Rosca substituída por ranking de até cinco, em ordem decrescente, com acesso a todas e filtro no modal. Estado com uma categoria medido em 108px de altura. Conferidos clique no lançamento real, filtro sem resultados e versão móvel sem overflow lateral (351px). 63 testes focados passaram; build aprovado com aviso de bundle existente. Capturas em `/tmp/financeiro-design-qa/ranking-desktop.jpg` e `ranking-mobile.jpg`.
