@@ -5,9 +5,9 @@ import { RankingCategorias } from "./RankingCategorias";
 import { obterAnaliseCategorias } from "./novo-api";
 vi.mock("./novo-api", () => ({ obterAnaliseCategorias: vi.fn().mockResolvedValue({ total: "0", categorias: [], linhas: [] }) }));
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
-it("mostra uma única categoria sem rosca e abre seus lançamentos", async () => {
+it("mostra pizza e uma única categoria e abre seus lançamentos", async () => {
   render(<RankingCategorias despesas={[{ categoriaId: "c1", categoria: "Alimentação", valor: "12000" }]} categorias={[]} inicio="2026-10-01" fim="2026-10-31" />);
-  expect(screen.queryByRole("img")).toBeNull();
+  expect(screen.getByRole("img", { name: "Distribuição das despesas por categoria" })).toBeTruthy();
   expect(screen.getAllByRole("listitem")).toHaveLength(1);
   expect(screen.getByText(/100%/)).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Detalhar Alimentação" }));
@@ -26,7 +26,7 @@ it("limita o ranking a cinco, ordena valores e preserva todas no modal", () => {
 });
 it("preserva total líquido e identifica estornos sem percentuais negativos", () => {
   render(<RankingCategorias despesas={[{ categoriaId: "c1", categoria: "Ração", valor: "100" }, { categoriaId: "c2", categoria: "Frete", valor: "-20" }]} categorias={[]} />);
-  expect(screen.getByText(/total líquido R\$\s*80,00/)).toBeTruthy();
+  expect(screen.getByText(/^Total líquido/).textContent).toMatch(/R\$\s*80,00/);
   fireEvent.click(screen.getByRole("button", { name: "Ver todas" }));
   const modal = screen.getByRole("dialog");
   expect(within(modal).getByText(/Estorno/, { selector: "span" })).toBeTruthy();

@@ -271,7 +271,7 @@ it("organiza a visão geral móvel por agenda, análises e contas sem cortar val
     expect(await screen.findByRole("list", { name: "Compromissos prioritários" })).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "Contas e disponibilidade" })).toBeNull();
     fireEvent.mouseDown(screen.getByRole("tab", { name: "Análises" }), { button: 0, ctrlKey: false });
-    expect(screen.getByRole("heading", { name: "Onde estamos gastando" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Despesas por categoria" })).toBeTruthy();
     expect(screen.getByRole("radiogroup", { name: "Tipo do gráfico de receitas e despesas" })).toBeTruthy();
     fireEvent.mouseDown(screen.getByRole("tab", { name: "Contas" }), { button: 0, ctrlKey: false });
     expect(screen.getByRole("heading", { name: "Contas e disponibilidade" })).toBeTruthy();

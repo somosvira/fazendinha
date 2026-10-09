@@ -221,3 +221,7 @@ Categorias passam para baixo em largura completa; rastreabilidade removida da vi
 ### Ranking compacto de categorias — 09/10/2026
 
 Rosca substituída por ranking de até cinco, em ordem decrescente, com acesso a todas e filtro no modal. Estado com uma categoria medido em 108px de altura. Conferidos clique no lançamento real, filtro sem resultados e versão móvel sem overflow lateral (351px). 63 testes focados passaram; build aprovado com aviso de bundle existente. Capturas em `/tmp/financeiro-design-qa/ranking-desktop.jpg` e `ranking-mobile.jpg`.
+
+### Pizza ao lado do ranking — 09/10/2026
+
+Título restaurado para “Despesas por categoria”, com total líquido abaixo. Pizza shadcn/Recharts de 144px ao lado do ranking; painel medido em 212px no desktop. Categorias extras agrupadas na pizza com acesso à lista completa; estornos continuam fora das fatias positivas e abatem o total. 63 testes focados e build passaram. Sem rolagem lateral no celular (351px). Evidências: `/tmp/financeiro-design-qa/pizza-ranking-desktop.jpg` e `pizza-ranking-mobile.jpg`.
