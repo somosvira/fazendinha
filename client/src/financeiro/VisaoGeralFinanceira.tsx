@@ -11,6 +11,7 @@ import { brl, Empty, ErrorBox, mesAtual, PaginaCarregando, PaginaFinanceira } fr
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { abrirRotaNovaOperacao, navegarPara } from "../router";
 import { IndicadorFinanceiro, ContasDisponibilidade, resumoVencidos } from "./DashboardResumo";
+import { DashboardCalendario } from "./DashboardCalendario";
 import { DashboardCompromissos } from "./DashboardCompromissos";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -83,11 +84,12 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
   const hrefCompromissos = `/financeiro/compromissos?${new URLSearchParams({ inicio: inicioPeriodo, fim: fimPeriodo })}`;
   if (!periodoDados && carregando && !erro) return <PaginaCarregando label="Carregando financeiro" />;
 
-  const painelAgenda = dadosAtuais && (<DashboardCompromissos itens={pendentes} href={hrefCompromissos} mes={mesCalendario} onChangeMes={setMesCalendario} onLiquidar={podeLancar ? setLiquidando : undefined} />);
+  const painelAgenda = dadosAtuais && (<DashboardCompromissos itens={pendentes} href={hrefCompromissos} onLiquidar={podeLancar ? setLiquidando : undefined} />);
+  const painelCalendario = dadosAtuais && <DashboardCalendario itens={pendentes} href={hrefCompromissos} mes={mesCalendario} onChangeMes={setMesCalendario} onLiquidar={podeLancar ? setLiquidando : undefined} />;
   const painelContas = dadosAtuais && (<ContasDisponibilidade contas={dadosAtuais.contas} onAbrir={() => onNav("caixinha")} />);
   const painelFluxo = dadosAtuais && (<Card data-fin-tom="info" className="fin-painel min-w-0 gap-0 overflow-hidden rounded-lg border-border py-0 shadow-none">
-          <div className="fin-cabecalho flex flex-wrap items-center justify-between gap-2 p-4 pb-2"><div><h2 className="font-serif text-xl">Recebimentos e pagamentos</h2><p className="mt-1 text-sm text-muted-foreground">{tipoGraficoFluxo === "line" ? "Acumulado no período" : "Realizado por dia ou mês"}</p></div><ChartTypeControl value={tipoGraficoFluxo} onChange={setTipoGraficoFluxo} label="Tipo do gráfico de receitas e despesas" /></div>
-          <div className="dashboard-resultado mx-4 flex flex-wrap items-center justify-between gap-2 px-0 py-2"><span className="text-sm">Resultado de caixa</span><strong className={`font-serif text-2xl tabular-nums ${Number(dadosAtuais.realizado.resultado) < 0 ? "text-destructive" : "text-[var(--pos)]"}`}>{Number(dadosAtuais.realizado.resultado) > 0 ? "+" : ""}{brl(dadosAtuais.realizado.resultado)}</strong><p className="sr-only">Recebimentos − pagamentos · inclui aportes e retiradas</p></div>
+          <div className="fin-cabecalho flex flex-wrap items-center justify-between gap-2 p-4 pb-2"><div><h2 className="font-serif text-xl">Recebimentos e pagamentos</h2><p className="mt-1 text-sm text-muted-foreground">{tipoGraficoFluxo === "line" ? "Acumulado no período" : "Realizado por dia ou mês"}</p></div><div className="flex flex-wrap items-center gap-3"><ChartTypeControl value={tipoGraficoFluxo} onChange={setTipoGraficoFluxo} label="Tipo do gráfico de receitas e despesas" />          <div className="dashboard-resultado flex flex-col items-end gap-0 border-l border-border pl-3"><span className="text-xs text-muted-foreground">Resultado de caixa</span><strong className={`font-serif text-2xl tabular-nums ${Number(dadosAtuais.realizado.resultado) < 0 ? "text-destructive" : "text-[var(--pos)]"}`}>{Number(dadosAtuais.realizado.resultado) > 0 ? "+" : ""}{brl(dadosAtuais.realizado.resultado)}</strong><p className="sr-only">Recebimentos − pagamentos · inclui aportes e retiradas</p></div></div></div>
+
           {dadosAtuais.fluxo.some(ponto => Number(ponto.entradas) !== 0 || Number(ponto.saidas) !== 0)
             ? <div className="p-3"><EntradaSaidaChart compacto tipo={tipoGraficoFluxo} data={dadosAtuais.fluxo.map(ponto => ({ data: ponto.data, entradas: Number(ponto.entradas), saidas: Number(ponto.saidas) }))} /></div>
             : <Empty>Nenhum recebimento ou pagamento realizado no período.</Empty>}
@@ -112,7 +114,7 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
       </div>
       {pequena ? <Tabs defaultValue="agenda" className="mt-3 min-w-0">
         <TabsList aria-label="Seções da visão geral" className="fin-abas grid h-auto w-full grid-cols-3"><TabsTrigger value="agenda">Agenda</TabsTrigger><TabsTrigger value="analises">Análises</TabsTrigger><TabsTrigger value="contas">Contas</TabsTrigger></TabsList>
-        <TabsContent value="agenda">{painelAgenda}</TabsContent>
+        <TabsContent value="agenda"><div className="grid gap-4">{painelCalendario}{painelAgenda}</div></TabsContent>
         <TabsContent value="analises">      <div className="mt-4 grid min-w-0 gap-4 lg:grid-cols-2">
         {painelFluxo}
         {painelCategorias}
@@ -120,13 +122,14 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
 </TabsContent>
         <TabsContent value="contas">{painelContas}</TabsContent>
       </Tabs> : <>
-      <div className="dashboard-analises mt-4 grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)]">
+      <div className="dashboard-principal mt-4 grid min-w-0 items-start gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1.2fr)]">
         {painelFluxo}
-        {painelCategorias}
-      </div>
-      <div className="mt-4 grid min-w-0 items-start gap-4 lg:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)]">
-        {painelAgenda}
         {painelContas}
+        {painelAgenda}
+      </div>
+      <div className="dashboard-analises mt-4 grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)]">
+        {painelCalendario}
+        {painelCategorias}
       </div>
 </>}
       <ErrorBox erro={erroConfig} />

@@ -66,3 +66,15 @@ it("usa agenda mensal no celular e mantém detalhes e liquidação acessíveis",
     expect(liquidar).toHaveBeenCalledWith(itens[0]);
   } finally { Object.defineProperty(window, "innerWidth", { configurable: true, value: largura }); }
 });
+
+it("resume o mês por dia e mantém todos os compromissos e a liquidação nos detalhes", () => {
+  const liquidar = vi.fn();
+  render(<CalendarioCompromissos resumo itens={itens} mes="2026-09" onChangeMes={vi.fn()} onLiquidar={liquidar} />);
+  fireEvent.click(screen.getByRole("button", { name: "01/09/2026: 2 compromissos" }));
+  const dia = within(screen.getByRole("dialog", { name: "Compromissos de 01/09/2026" }));
+  expect(dia.getByRole("button", { name: /Veterinário/ })).toBeTruthy();
+  expect(dia.getByRole("button", { name: /Venda de leite/ })).toBeTruthy();
+  fireEvent.click(dia.getByRole("button", { name: /Veterinário/ }));
+  fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Registrar pagamento" }));
+  expect(liquidar).toHaveBeenCalledWith(itens[0]);
+});

@@ -188,3 +188,17 @@ Diferenças deliberadas: o banco local possui uma categoria e nenhum compromisso
 - Desktop sem overflow horizontal: `scrollWidth === innerWidth`. Nenhuma transação ou dado financeiro foi alterado durante QA.
 
 Checklist: tema limitado ao escopo aprovado; shadcn mantido; navegação e dados preservados; documentação atualizada; comparação visual posterior aprovada.
+
+## Calendário separado e grid solicitado — 09/10/2026
+
+final result: passed
+
+Esta iteração usa a instrução de organização do usuário como referência: recebimentos/pagamentos, contas/disponibilidade e compromissos na primeira linha; calendário e categorias na segunda. Evidências em `/tmp/financeiro-design-qa/calendario-desktop.jpg` e `calendario-mobile.jpg`. A captura desktop observou viewport 1440 × 1000; o celular observou 390px e `scrollWidth === innerWidth`. Override restaurado ao final.
+
+Calendário shadcn em Card próprio, contadores de todos os compromissos por dia, botões de mês/Hoje e expansão completa. O clique em 17/10 abriu a manutenção do trator, sem gravações financeiras. Regressões verificam lista completa do dia, detalhes e liquidação por callback; o calendário expandido conserva todos os registros além das cinco linhas da agenda. A agenda vazia mostra o próximo vencimento fora dos sete dias com indicação explícita. Resultado líquido fica junto ao controle do gráfico; categoria mantém rosca e legenda lateral maior.
+
+Correções da conferência: reduzida a altura do mês compacto, cabeçalho da agenda organizado em duas linhas e sem duplicar o mês acessível quando o Dialog expandido está aberto. A ordem desktop é preservada a partir de 1024px. No celular, abas mantidas e calendário compacto sem largura mínima de 700px; os outros calendários continuam com o modo anterior.
+
+Tipografia e superfícies neutras mantidas; valores sem truncamento, contadores com rótulos, navegação por Button e tabelas shadcn. Sem achados P0/P1/P2 pendentes na conferência dos estados cobertos. Os dados locais contêm dois vencimentos em outubro; o teste de agrupamento cobre mais de cinco compromissos no mesmo dia. Históricos maiores continuam usando as áreas roláveis e Dialog existentes.
+
+Validação: 51 testes focados de visão geral, calendário, agenda, visualizações integradas e responsividade aprovados; TypeScript e build de produção aprovados. Sem mudanças em APIs, persistência ou autorização.

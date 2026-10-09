@@ -43,5 +43,11 @@
 .dashboard-financeiro .fin-valor { color: #202723; }
 .dashboard-financeiro [aria-label="Legenda: Despesas por categoria"] button { font-size: 12px; }
 @media (min-width: 1101px) {
-  .dashboard-financeiro .dashboard-analises div:has(> ul[aria-label="Legenda: Despesas por categoria"]) { grid-template-columns: 120px minmax(0,1fr); }
+  .dashboard-financeiro .dashboard-analises div:has(> ul[aria-label="Legenda: Despesas por categoria"]) { grid-template-columns: 160px minmax(0,1fr); }
 }
+
+.dashboard-financeiro .dashboard-calendario h3 { font-family: var(--sans); }
+.dashboard-financeiro .dashboard-calendario table { font-size: 12px; }
+.dashboard-financeiro .dashboard-calendario [role="region"] { overflow: visible; }
+.dashboard-financeiro .dashboard-calendario td button:hover { background: var(--muted); }
+.dashboard-financeiro .dashboard-calendario [data-slot="badge"] { background: white; }

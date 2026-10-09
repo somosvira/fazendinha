@@ -382,3 +382,5 @@ Nas demais telas financeiras auditadas, aplique o mesmo padrão: sempre primitiv
 ## Visão geral e sidebar — modelo aprovado em 09/10/2026
 
 Nesta etapa, somente a página inicial financeira e a sidebar adotam a direção clara: fundo cinza suave, painéis brancos sem faixas coloridas, títulos sans-serif compactos, bordas discretas e ações primárias em grafite. Saldo positivo usa verde; saldo negativo e avisos de atraso usam vermelho. Os demais indicadores e valores das contas usam grafite. Categorias mantêm cores terrosas discretas para identificação no gráfico. A sidebar clara mantém navegação, permissões, seletor de sítio, rascunhos, colapso e Sheet móvel, com Button shadcn. As outras páginas conservam a direção anterior.
+
+Na visão geral, o calendário é um Card independente com mês compacto e contadores por dia. A primeira linha reúne gráfico financeiro, contas e compromissos; a segunda reúne calendário e categorias. Células com compromissos têm acionador visível e rótulo com data/quantidade; cor distingue a pagar/a receber e atrasos, acompanhada de texto acessível. A expansão preserva o calendário completo em Dialog.

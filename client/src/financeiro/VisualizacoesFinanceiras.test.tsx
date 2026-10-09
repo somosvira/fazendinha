@@ -122,7 +122,7 @@ describe("visualizações financeiras integradas", () => {
     fireEvent.click(screen.getAllByRole("button", { name: "Registrar pagamento" })[0]);
     expect(screen.getByRole("dialog", { name: "Registrar pagamento" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Fechar" }));
-    fireEvent.click(screen.getByRole("button", { name: "Calendário" }));
+    fireEvent.click(screen.getByRole("button", { name: "Expandir calendário" }));
     expect(screen.getAllByRole("button", { name: /Compromisso \d, a pagar/ })).toHaveLength(6);
     expect(obterDashboardFinanceiro).toHaveBeenCalledOnce();
     fireEvent.click(screen.getByRole("button", { name: "Próximo mês" }));
@@ -133,7 +133,7 @@ describe("visualizações financeiras integradas", () => {
     fireEvent.click(screen.getByRole("button", { name: "Registrar pagamento" }));
     expect(screen.getByRole("dialog", { name: "Registrar pagamento" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Fechar" }));
-    fireEvent.click(screen.getByRole("button", { name: "Calendário" }));
+    fireEvent.click(screen.getByRole("button", { name: "Expandir calendário" }));
     fireEvent.click(screen.getByRole("button", { name: "Ver 6 compromissos" }));
     const dia = screen.getByRole("dialog", { name: "Compromissos de 14/09/2026" });
     expect(dia.querySelectorAll("li button")).toHaveLength(6);
@@ -166,7 +166,7 @@ describe("visualizações financeiras integradas", () => {
     // deve fazer uma segunda consulta para preparar a liquidação sem permissão.
     expect(obterConfiguracoesFinanceiras).toHaveBeenCalledOnce();
 
-    fireEvent.click(screen.getByRole("button", { name: "Calendário" }));
+    fireEvent.click(screen.getByRole("button", { name: "Expandir calendário" }));
     fireEvent.click(screen.getByRole("button", { name: /Compromisso 1, a pagar/ }));
     expect(screen.getByRole("dialog", { name: "Detalhes do compromisso" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Registrar pagamento" })).toBeNull();

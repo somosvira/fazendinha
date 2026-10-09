@@ -80,7 +80,7 @@ describe("Visão geral — período global", () => {
     expect(screen.queryByRole("heading", { name: "Despesas realizadas" })).toBeNull();
     expect(listarOperacoes).not.toHaveBeenCalled();
     const headings = Array.from(document.querySelectorAll("h2")).map(h => h.textContent);
-    expect(headings.filter(h => ["Compromissos", "Recebimentos e pagamentos", "Contas e disponibilidade", "Despesas por categoria"].includes(h!))).toEqual(["Recebimentos e pagamentos", "Despesas por categoria", "Compromissos", "Contas e disponibilidade"]);
+    expect(headings.filter(h => ["Compromissos", "Recebimentos e pagamentos", "Contas e disponibilidade", "Despesas por categoria"].includes(h!))).toEqual(["Recebimentos e pagamentos", "Contas e disponibilidade", "Compromissos", "Despesas por categoria"]);
     let resolveOld!: (value: DashboardFinanceiro) => void;
     vi.mocked(obterDashboardFinanceiro).mockReturnValueOnce(new Promise(resolve => { resolveOld = resolve; }));
     fireEvent.click(screen.getByRole("button", { name: /^Período:/ }));
@@ -145,7 +145,7 @@ describe("Visão geral — grid operacional", () => {
     expect(screen.queryByText("Sem movimento de conta")).toBeNull();
     expect(screen.queryByText("Volume por tipo de operação")).toBeNull();
     expect(screen.queryByRole("button", { name: "Nova operação" })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Calendário" }));
+    fireEvent.click(screen.getByRole("button", { name: "Expandir calendário" }));
     expect(screen.getByRole("dialog", { name: "Calendário de compromissos" })).toBeTruthy();
     fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
