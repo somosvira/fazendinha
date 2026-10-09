@@ -229,3 +229,7 @@ Título restaurado para “Despesas por categoria”, com total líquido abaixo.
 ### Sidebar com mais presença — 09/10/2026
 
 Fundo cinza esverdeado mais definido, hover próprio e seleção verde acinzentada. Conferida aberta, colapsada e no Sheet móvel. Contraste calculado: texto secundário/fundo 4,60:1, seleção 8,28:1 e texto principal 12,76:1; isso não equivale a auditoria WCAG completa. 25 testes de navegação/shell e build passaram. Evidências: `/tmp/financeiro-design-qa/sidebar-presenca-desktop.jpg` e `sidebar-presenca-mobile.jpg`.
+
+### Correção da sidebar para cinza neutro — 09/10/2026
+
+Verde removido dos tokens de fundo, hover, seleção e texto da sidebar, conforme correção explícita do usuário. Conferido no navegador local e build aprovado. Captura: `/tmp/financeiro-design-qa/sidebar-cinza-desktop.jpg`.

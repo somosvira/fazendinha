@@ -17,3 +17,5 @@ Esta organização substitui a divisão anterior de três painéis na primeira l
 - Refinamento aprovado: manter o título “Despesas por categoria”, seguido do total líquido, e pizza compacta à esquerda do ranking no desktop. No celular, pizza e ranking se empilham. Pizza usa as mesmas cinco categorias do ranking e agrupa as restantes em “Outras categorias”; total e participações consideram todo o período. Filtro/lista completa continuam no modal.
 
 - Sidebar: dar personalidade com fundo cinza esverdeado discretamente mais forte e seleção mais contrastante; manter aspecto profissional, grafite e verde suave. Evitar voltar ao quase branco ou acrescentar cores saturadas.
+
+- Correção explícita da sidebar: usuário rejeitou o cinza esverdeado. Usar cinza neutro um pouco mais escuro, sem verde no fundo, hover, seleção ou texto da navegação. Essa preferência substitui a nota anterior sobre verde suave na sidebar.

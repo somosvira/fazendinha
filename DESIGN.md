@@ -388,3 +388,7 @@ Na visão geral, o calendário é um Card independente com mês compacto e conta
 ### Sidebar com maior presença — 09/10/2026
 
 A navegação global usa fundo cinza esverdeado discreto (`--mast-bg`), borda de separação mais definida e seleção em verde acinzentado com texto verde profundo. Hover e seleção têm tokens próprios em `sidebar-clara.css`. Mantém superfícies brancas no seletor de sítio e conteúdo, sem azul, saturação forte ou faixas decorativas. A mesma paleta acompanha a sidebar colapsada e o Sheet móvel, preservando primitivas shadcn e controles existentes.
+
+### Correção da sidebar — cinza neutro
+
+O usuário rejeitou o fundo esverdeado. A sidebar usa cinza neutro um pouco mais escuro, com hover e seleção em cinzas, texto grafite e separadores neutros. Essa decisão substitui a paleta esverdeada descrita acima; mantém navegação, colapso e Sheet móvel.
