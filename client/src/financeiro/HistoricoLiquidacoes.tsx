@@ -9,7 +9,7 @@ import { navegarPara } from "../router";
 /** Nome de conta clicável que abre o extrato já posicionado no movimento correspondente. */
 export function LinkConta({ contaId, movimentoId, nome }: { contaId: string; movimentoId: string; nome: string }) {
   const href = `/financeiro/contas/${contaId}#movimento-${movimentoId}`;
-  return <ShadcnButton asChild variant="link" className="h-auto whitespace-normal p-0 font-semibold text-ink-2 underline underline-offset-4"><a href={href} onClick={event => { if (!event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) { event.preventDefault(); navegarPara(href); } }}>{nome}</a></ShadcnButton>;
+  return <ShadcnButton asChild variant="link" className="h-auto whitespace-normal p-0 font-semibold text-green-800 underline underline-offset-4"><a href={href} onClick={event => { if (!event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) { event.preventDefault(); navegarPara(href); } }}>{nome}</a></ShadcnButton>;
 }
 
 /**

@@ -77,8 +77,8 @@ export function Panel({ children, className = "", tom }: { children: React.React
 }
 
 export function Pill({ children, tone = "neutral" }: { children: React.ReactNode; tone?: "neutral" | "green" | "amber" | "red" | "blue" | "brown" }) {
-  const tons = { neutral: "bg-stone-100 text-stone-700", green: "bg-green-100 text-green-800", amber: "bg-amber-100 text-amber-900", red: "bg-red-100 text-red-800", blue: "bg-stone-100 text-stone-700", brown: "bg-stone-100 text-stone-700" };
-  return <Badge data-fin-tom={tone === "green" ? "entrada" : tone === "red" ? "alerta" : tone === "amber" ? "pendente" : tone === "blue" ? "info" : "neutro"} className={`fin-selo inline-flex shrink-0 items-center whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-semibold ${tons[tone]}`}>{children}</Badge>;
+  const tons = { neutral: "bg-stone-100 text-stone-700", green: "bg-green-100 text-green-800", amber: "bg-[#eee7d8] text-[#63543c]", red: "bg-red-100 text-red-800", blue: "bg-[#eee7d8] text-[#63543c]", brown: "bg-[#eee7d8] text-[#63543c]" };
+  return <Badge data-fin-tom={tone === "green" ? "entrada" : tone === "red" ? "alerta" : tone === "amber" ? "pendente" : tone === "blue" ? "info" : tone === "brown" ? "info" : "neutro"} className={`fin-selo inline-flex shrink-0 items-center whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-semibold ${tons[tone]}`}>{children}</Badge>;
 }
 
 export function StatusPill({ status }: { status: string }) {
@@ -86,8 +86,8 @@ export function StatusPill({ status }: { status: string }) {
   return <Pill tone={tone}>{STATUS[status] ?? status}</Pill>;
 }
 
-export function Metric({ label, valor, detalhe, icon: Icon, tom, compacto = false }: { compacto?: boolean; label: string; valor: string; detalhe?: string; icon: LucideIcon; tone?: "default" | "green" | "red"; tom?: TomFinanceiro }) {
-  const iconTone = "bg-surface-2 text-ink-2";
+export function Metric({ label, valor, detalhe, icon: Icon, tone = "default", tom, compacto = false }: { compacto?: boolean; label: string; valor: string; detalhe?: string; icon: LucideIcon; tone?: "default" | "green" | "red"; tom?: TomFinanceiro }) {
+  const iconTone = tone === "green" ? "bg-green-50 text-green-800" : tone === "red" ? "bg-red-50 text-red-800" : "bg-[#eef1e9] text-mast";
   return <Panel tom={tom} className={`@container ${compacto ? "p-3" : "p-5"} ${tom ? "fin-indicador" : ""}`}><div className="flex items-start justify-between gap-4"><div className="min-w-0 flex-1"><div className="text-[11px] font-semibold uppercase tracking-[.12em] text-ink-3">{label}</div><div className={`${compacto ? "mt-1" : "mt-3"} break-words font-serif text-[clamp(19px,8cqw,28px)] leading-none tracking-tight ${tom ? "fin-valor" : "text-ink"}`}>{valor}</div></div><div className={`shrink-0 rounded-lg p-2.5 @max-[240px]:hidden ${iconTone}`}><Icon size={18} /></div></div>{detalhe && <div className={`${compacto ? "mt-2" : "mt-3"} break-words text-xs text-ink-3`}>{detalhe}</div>}</Panel>;
 }
 

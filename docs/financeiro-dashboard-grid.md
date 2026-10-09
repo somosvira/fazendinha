@@ -103,3 +103,7 @@ A sidebar mantém “Contas e extratos”. O conteúdo inicia com o título “C
 ## Tema financeiro sóbrio
 
 Esta direção substitui a aplicação anterior de cores decorativas nas telas revisadas do PR. Cards, títulos, ícones, cabeçalhos, anexos e filtros ficam neutros; a seleção das abas usa grafite sobre branco. Verde e vermelho permanecem nos valores financeiros e estados correspondentes; âmbar indica pendência/atenção. Classificações e documentos não recebem cores decorativas. Gráficos preservam as séries semânticas e a diferenciação discreta das categorias. O ajuste abrange dashboard, operações/detalhes/formulários, compromissos/calendário/pagamento, contas/extratos, cadastros e relatórios por meio das primitivas shadcn e da camada compartilhada de estilo.
+
+## Correção da paleta aprovada — 09/10/2026
+
+A preferência esclarecida substitui a neutralização excessiva anterior: manter faixas vermelhas, cards de efeitos, ícones/cabeçalhos suaves e os detalhes em marrom/verde/vermelho. Remover o azul; informação, classificação e pendência usam marrom suave. Abas selecionadas e ações primárias permanecem preto/grafite. Os três efeitos do resumo da operação usam Card shadcn compacto, preservando os contadores e a organização em grid.

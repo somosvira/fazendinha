@@ -87,7 +87,7 @@ export function LiquidarCompromissoModal({ compromisso, contas, onClose, onLiqui
         <label className="col-span-2 text-sm font-medium">Forma de liquidação<Select disabled={processando} value={formaPagamento} onValueChange={setFormaPagamento}><SelectTrigger className="mt-1.5 w-full" aria-label="Forma de liquidação"><SelectValue /></SelectTrigger><SelectContent className="z-[1300]">{Object.entries(FORMAS_PAGAMENTO).map(([chave, nome]) => <SelectItem key={chave} value={chave}>{nome}</SelectItem>)}</SelectContent></Select></label>
       </div>
       {compromisso.tipo === "PAGAR" && <NotaFiscalAnexo arquivo={nota} salvo={notaSalva} disabled={processando} onArquivo={setNota} />}
-      <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">Ao confirmar, o saldo da conta será alterado e o compromisso ficará parcial ou liquidado. O registro poderá ser revertido posteriormente com histórico.</div>
+      <div className="mt-3 rounded-lg border border-[color-mix(in_srgb,var(--rural)_25%,white)] bg-[color-mix(in_srgb,var(--rural)_7%,white)] p-3 text-xs leading-5 text-[var(--rural)]">Ao confirmar, o saldo da conta será alterado e o compromisso ficará parcial ou liquidado. O registro poderá ser revertido posteriormente com histórico.</div>
 
     </div>
   </Modal>;

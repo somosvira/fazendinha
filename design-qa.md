@@ -148,3 +148,7 @@ Aplicada a direção aprovada para todas as telas financeiras revisadas: superf�
 A nova inspeção visual no navegador ficou indisponível nesta sessão: o browser-harness retornou `Operation not permitted` ao acessar `DevToolsActivePort` do Chrome local. As capturas anteriores não comprovam este ajuste de cor. A validação automatizada atual está registrada na descrição do PR.
 
 Validação atual: 124 arquivos / 967 testes frontend aprovados; TypeScript e build aprovados. Permanece o aviso anterior de bundle acima de 500 kB. `git diff --check` sem erros.
+
+## Paleta corrigida após esclarecimento — 09/10/2026
+
+Mantidas faixas de destaque e superfícies suaves na paleta marrom/verde/vermelho/preto. Azul informativo e amarelo forte substituídos por marrom. Contadores de efeitos em Card shadcn compacto. Validação: 31 arquivos / 330 testes financeiros aprovados, TypeScript e build aprovados. Prévia local responde 200; inspeção visual automática continua indisponível por acesso ao Chrome, conforme registro anterior.
