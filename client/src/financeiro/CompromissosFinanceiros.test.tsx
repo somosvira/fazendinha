@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { CompromissosFinanceiros } from "./CompromissosFinanceiros";
 import { descartarRascunhoOperacao, listarCompromissos, obterConfiguracoesFinanceiras, obterRascunhoOperacao } from "./novo-api";
 import { uid } from "../lib/uid.fixture";
@@ -14,6 +14,7 @@ vi.mock("./novo-api", () => ({
 }));
 
 beforeEach(() => {
+  HTMLElement.prototype.scrollIntoView = vi.fn();
   window.history.replaceState(null, "", "/financeiro/compromissos");
   vi.clearAllMocks();
 });
@@ -89,9 +90,28 @@ describe("CompromissosFinanceiros — criação", () => {
     });
     render(<CompromissosFinanceiros onNav={vi.fn()} />);
 
-    expect(await screen.findByText("(1/2) Serviço veterinário")).toBeTruthy();
-    fireEvent.click(await screen.findByRole("button", { name: "Registrar pagamento" }));
+    const tabela = within(await screen.findByRole("table", { name: "Compromissos financeiros" }));
+    expect(tabela.getByText("(1/2) Serviço veterinário")).toBeTruthy();
+    fireEvent.click(tabela.getByRole("button", { name: "Registrar pagamento" }));
+    fireEvent.keyDown(screen.getByRole("combobox", { name: "Conta" }), { key: "Enter" });
     expect(await screen.findByRole("option", { name: /Conta ativa/ })).toBeTruthy();
     expect(screen.queryByRole("option", { name: /Conta inativa/ })).toBeNull();
   });
+});
+
+
+it("pagina compromissos após busca e filtros sem recortar os totais", async () => {
+  const itens = Array.from({ length: 31 }, (_, i) => ({ id: uid(100 + i), seq: 100 + i, tipo: "PAGAR" as const, status: "PENDENTE" as const, valorOriginal: "100", valorLiquidado: "0", saldoPendente: "100", dataVencimento: "2026-10-10", numeroParcela: 1, totalParcelas: 1, vencido: false, parceiro: null, operacao: { id: uid(200 + i), numero: 200 + i, tipo: "SERVICO", descricao: `Compromisso ${i + 1}` } }));
+  vi.mocked(listarCompromissos).mockResolvedValue(itens);
+  render(<CompromissosFinanceiros onNav={vi.fn()} />);
+  const tabela = within(await screen.findByRole("table", { name: "Compromissos financeiros" }));
+  expect(tabela.getAllByRole("row")).toHaveLength(16);
+  expect(screen.getByText(/Total pendente:/).textContent).toContain("3.100,00");
+  fireEvent.click(within(screen.getByRole("navigation", { name: "Paginação dos compromissos" })).getByRole("button", { name: "Próxima" }));
+  expect(tabela.getByText("Compromisso 16")).toBeTruthy();
+  expect(screen.getByText(/Total pendente:/).textContent).toContain("3.100,00");
+  fireEvent.change(screen.getByRole("searchbox", { name: "Buscar compromisso" }), { target: { value: "OP-0230" } });
+  expect(tabela.getAllByRole("row")).toHaveLength(2);
+  expect(tabela.getByText("Compromisso 31")).toBeTruthy();
+  expect(screen.getByRole("navigation", { name: "Paginação dos compromissos" }).textContent).toContain("1–1 de 1");
 });

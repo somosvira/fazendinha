@@ -1,0 +1,40 @@
+/* Ajustes de composição específicos da visão geral; o tema é compartilhado. */
+.dashboard-financeiro { color: #202723; font-family: var(--sans); }
+.dashboard-financeiro h1 { font-family: var(--sans); font-size: 28px; line-height: 1.2; font-weight: 650; }
+.dashboard-financeiro h2 { font-family: var(--sans); font-size: 16px; line-height: 1.4; font-weight: 650; color: #202723; }
+.dashboard-financeiro .font-serif { font-family: var(--sans); }
+.dashboard-financeiro [data-slot="card"] { --card: #fff; border: 1px solid var(--border); background: #fff; border-radius: 6px; box-shadow: none; }
+.dashboard-financeiro .fin-cabecalho { background: #fff; }
+.dashboard-financeiro .fin-indicador { background: #fff; }
+.dashboard-financeiro .fin-indicador svg { color: #626b66; }
+.dashboard-financeiro .dashboard-indicador > strong { color: #202723; font-size: clamp(18px,9cqw,24px); font-weight: 650; }
+.dashboard-financeiro .dashboard-saldo[data-fin-tom="entrada"] > strong { color: var(--pos); }
+.dashboard-financeiro .dashboard-saldo[data-fin-tom="alerta"] > strong { color: var(--destructive); }
+.dashboard-financeiro .fin-linha { border-left: 0; }
+.dashboard-financeiro .fin-linha .fin-valor, .dashboard-financeiro td.font-semibold { color: #202723; }
+.dashboard-financeiro .fin-linha:hover { background: #f6f7f6; }
+.dashboard-financeiro .dashboard-resultado strong { font-size: 18px; font-weight: 650; }
+.dashboard-financeiro .fin-abas { border-top-width: 1px; }
+.dashboard-financeiro button { font-family: var(--sans); }
+.dashboard-financeiro > [data-slot="collapsible"] { border-top: 1px solid var(--border); background: #fff; }
+@media (max-width: 720px) {
+  .dashboard-financeiro h1 { font-size: 24px; }
+}
+
+.dashboard-financeiro .fin-painel[data-slot="card"] h2, .dashboard-financeiro .fin-painel[data-slot="card"] h3 { color: #202723; }
+.dashboard-financeiro .fin-valor { color: #202723; }
+.dashboard-financeiro [aria-label="Legenda: Despesas por categoria"] button { font-size: 12px; }
+@media (min-width: 1101px) {
+  .dashboard-financeiro .dashboard-analises div:has(> ul[aria-label="Legenda: Despesas por categoria"]) { grid-template-columns: 160px minmax(0,1fr); }
+}
+
+.dashboard-financeiro .dashboard-calendario h3 { font-family: var(--sans); }
+.dashboard-financeiro .dashboard-calendario table { font-size: 12px; }
+.dashboard-financeiro .dashboard-calendario [role="region"] { overflow-x: auto; }
+.dashboard-financeiro .dashboard-calendario td button:hover { background: var(--muted); }
+.dashboard-financeiro .dashboard-calendario [data-slot="badge"] { background: white; }
+
+@media (min-width: 1024px) {
+  .dashboard-compromissos .dashboard-calendario { border-left: 1px solid var(--border); }
+}
+.dashboard-compromissos section { border-radius: 0; }

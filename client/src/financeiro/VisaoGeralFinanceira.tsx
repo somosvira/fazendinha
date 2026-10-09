@@ -1,15 +1,20 @@
+import { useTelaPequena } from "./useTelaPequena";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import "./dashboard-grid.css";
 import { useEffect, useState } from "react";
-import { ArrowDownLeft, ArrowUpRight, ChevronRight, Landmark, Plus, TrendingDown, TrendingUp, WalletCards } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Plus, TrendingDown, TrendingUp } from "lucide-react";
 import type { Tab } from "../components/Shell";
 import { AnaliseCategorias } from "./AnaliseCategorias";
-import { BaseFinanceiraResumo } from "./BaseFinanceiraResumo";
 import { descartarRascunhoOperacao, obterConfiguracoesFinanceiras, obterDashboardFinanceiro, obterRascunhoOperacao, type Compromisso, type ConfiguracoesFinanceiras, type DashboardFinanceiro } from "./novo-api";
-import { brl, Button, dataBR, Empty, ErrorBox, mesAtual, Metric, PageHeader, PaginaCarregando, PaginaFinanceira, Panel, Pill } from "./financeiro-ui";
+import { brl, Empty, ErrorBox, mesAtual, PaginaCarregando, PaginaFinanceira } from "./financeiro-ui";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { abrirRotaNovaOperacao, navegarPara } from "../router";
-import { tituloCompromisso } from "./lib/compromissos";
-import { CalendarioCompromissos } from "./CalendarioCompromissos";
-import { ControleVisaoCompromissos, type VisaoCompromissos } from "./ControleVisaoCompromissos";
+import { IndicadorFinanceiro, ContasDisponibilidade, resumoVencidos } from "./DashboardResumo";
+import { DashboardListaModal, type TipoListaDashboard } from "./DashboardListaModal";
+import { DashboardCalendario } from "./DashboardCalendario";
+import { DashboardCompromissos } from "./DashboardCompromissos";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { LiquidarCompromissoModal } from "./LiquidarCompromissoModal";
 import { ChartTypeControl, EntradaSaidaChart, type ChartType } from "../components/charts";
 import { PeriodoFinanceiroControl } from "./PeriodoFinanceiroControl";
@@ -20,10 +25,10 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
   const [fimPeriodo, setFimPeriodo] = useState(() => periodoDoAnoAtual().fim);
   const [dados, setDados] = useState<DashboardFinanceiro | null>(null);
   const [config, setConfig] = useState<ConfiguracoesFinanceiras | null>(null);
+  const [listaAberta, setListaAberta] = useState<TipoListaDashboard | null>(null);
   const [liquidando, setLiquidando] = useState<Compromisso | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [erroConfig, setErroConfig] = useState<string | null>(null);
-  const [visao, setVisao] = useState<VisaoCompromissos>("lista");
   const [mesCalendario, setMesCalendario] = useState(mesAtual());
   const [carregando, setCarregando] = useState(true);
   const [revisao, setRevisao] = useState(0);
@@ -71,48 +76,59 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
   const dadosAtuais = periodoDados === `${inicioPeriodo}/${fimPeriodo}` ? dados : null;
   const pendentes = (dadosAtuais?.proximosCompromissos ?? []).filter(c => ["PENDENTE", "PARCIAL"].includes(c.status))
     .sort((a, b) => a.dataVencimento.localeCompare(b.dataVencimento) || a.seq - b.seq);
-  const proximos = pendentes.slice(0, 5);
   const recarregar = async () => { setRevisao(value => value + 1); };
   // Preserva o período do topo ao abrir a lista completa — mesmo padrão de
   // navegação usado pelos links da Base financeira.
+  const pequena = useTelaPequena();
   const hrefCompromissos = `/financeiro/compromissos?${new URLSearchParams({ inicio: inicioPeriodo, fim: fimPeriodo })}`;
   if (!periodoDados && carregando && !erro) return <PaginaCarregando label="Carregando financeiro" />;
 
-  return <PaginaFinanceira>
-    <PageHeader titulo="Visão geral financeira" descricao="Disponibilidade atual, dinheiro realizado no período e compromissos com vencimento no período selecionado." acao={<div className="flex flex-wrap items-end gap-2"><PeriodoFinanceiroControl inicio={inicioPeriodo} fim={fimPeriodo} onChange={(periodo) => { setInicioPeriodo(periodo.inicio); setFimPeriodo(periodo.fim); setMesCalendario(periodo.inicio.slice(0, 7)); }} />{podeLancar && <Button disabled={preparando} onClick={() => { void iniciarNovaOperacao(); }}><Plus size={16} /> Nova operação</Button>}</div>} />
+  const painelAgenda = dadosAtuais && (<DashboardCompromissos integrado resumo={<div className="grid grid-cols-2 gap-2"><IndicadorFinanceiro label="A pagar" valor={dadosAtuais.compromissos.aPagar} detalhe={resumoVencidos(pendentes, "PAGAR")} alerta={pendentes.some(item => item.vencido && item.tipo === "PAGAR")} icon={ArrowUpRight} onClick={() => setListaAberta("pagar")} /><IndicadorFinanceiro label="A receber" valor={dadosAtuais.compromissos.aReceber} detalhe={resumoVencidos(pendentes, "RECEBER")} alerta={pendentes.some(item => item.vencido && item.tipo === "RECEBER")} icon={ArrowDownLeft} onClick={() => setListaAberta("receber")} /></div>} itens={pendentes} href={hrefCompromissos} onLiquidar={podeLancar ? setLiquidando : undefined} />);
+  const painelCalendario = dadosAtuais && <DashboardCalendario integrado itens={pendentes} href={hrefCompromissos} mes={mesCalendario} onChangeMes={setMesCalendario} onLiquidar={podeLancar ? setLiquidando : undefined} />;
+  const painelCompromissos = dadosAtuais && <Card className="fin-painel dashboard-compromissos min-w-0 gap-0 overflow-hidden rounded-lg py-0 shadow-none"><h2 className="px-4 pt-4">Compromissos</h2><div className="grid min-w-0 items-start lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">{painelAgenda}{painelCalendario}</div></Card>;
+  const painelContas = dadosAtuais && (<ContasDisponibilidade contas={dadosAtuais.contas} onAbrirConta={conta => navegarPara(`/financeiro/contas/${conta.id}?${new URLSearchParams({ inicio: inicioPeriodo, fim: fimPeriodo })}`)} onAbrir={() => onNav("caixinha")} />);
+  const painelFluxo = dadosAtuais && (<Card data-fin-tom="info" className="fin-painel min-w-0 gap-0 overflow-hidden rounded-lg border-border py-0 shadow-none">
+          <div className="fin-cabecalho flex flex-wrap items-center justify-between gap-2 p-4 pb-2"><div><h2 className="font-serif text-xl">Recebimentos e pagamentos</h2><p className="mt-1 text-sm text-muted-foreground">{tipoGraficoFluxo === "line" ? "Acumulado no período" : "Realizado por dia ou mês"}</p></div><div className="flex flex-wrap items-center gap-3"><ChartTypeControl value={tipoGraficoFluxo} onChange={setTipoGraficoFluxo} label="Tipo do gráfico de receitas e despesas" />          <div className="dashboard-resultado flex flex-col items-end gap-0 border-l border-border pl-3"><span className="text-xs text-muted-foreground">Resultado de caixa</span><strong className={`font-serif text-2xl tabular-nums ${Number(dadosAtuais.realizado.resultado) < 0 ? "text-destructive" : "text-[var(--pos)]"}`}>{Number(dadosAtuais.realizado.resultado) > 0 ? "+" : ""}{brl(dadosAtuais.realizado.resultado)}</strong><p className="sr-only">Recebimentos − pagamentos · inclui aportes e retiradas</p></div></div></div>
+
+          <div className="grid grid-cols-2 gap-2 px-4 pb-2"><IndicadorFinanceiro label="Recebimentos" valor={dadosAtuais.realizado.entradas} detalhe="Realizados no período" icon={TrendingUp} onClick={() => setListaAberta("recebimentos")} /><IndicadorFinanceiro label="Pagamentos" valor={dadosAtuais.realizado.saidas} detalhe="Realizados no período" icon={TrendingDown} onClick={() => setListaAberta("pagamentos")} /></div>
+          {dadosAtuais.fluxo.some(ponto => Number(ponto.entradas) !== 0 || Number(ponto.saidas) !== 0)
+            ? <div className="p-3"><EntradaSaidaChart compacto tipo={tipoGraficoFluxo} data={dadosAtuais.fluxo.map(ponto => ({ data: ponto.data, entradas: Number(ponto.entradas), saidas: Number(ponto.saidas) }))} /></div>
+            : <Empty>Nenhum recebimento ou pagamento realizado no período.</Empty>}
+        </Card>);
+  const painelCategorias = dadosAtuais && (<AnaliseCategorias compacto inicio={inicioPeriodo} fim={fimPeriodo} despesas={dadosAtuais.despesasPorCategoria} categorias={config?.categorias ?? []} />);
+
+  return <PaginaFinanceira colorida><div className="dashboard-financeiro">
+    <header className="flex flex-wrap items-center justify-between gap-3 py-3">
+      <div><h1 className="h2">Visão geral financeira</h1><p className="mt-1 text-sm text-muted-foreground">Seu caixa, compromissos e movimentações em um só lugar.</p></div>
+      <div className="flex flex-wrap items-center gap-2"><PeriodoFinanceiroControl inicio={inicioPeriodo} fim={fimPeriodo} onChange={periodo => { setInicioPeriodo(periodo.inicio); setFimPeriodo(periodo.fim); setMesCalendario(periodo.inicio.slice(0, 7)); }} />{podeLancar && <Button disabled={preparando} onClick={() => { void iniciarNovaOperacao(); }}><Plus />Nova operação</Button>}</div>
+    </header>
     <ErrorBox erro={erro} />
     {(carregando || (!dadosAtuais && !erro)) && <p role="status" className="mt-6">Carregando financeiro do período…</p>}
-    {erro && !dadosAtuais && <Button secondary onClick={() => setRevisao(value => value + 1)}>Tentar novamente</Button>}
+    {erro && !dadosAtuais && <Button variant="outline" onClick={() => setRevisao(value => value + 1)}>Tentar novamente</Button>}
     {dadosAtuais && <>
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <Metric label="Saldo geral" valor={brl(dadosAtuais.saldoGeral)} detalhe="Fotografia atual das contas ativas" icon={WalletCards} />
-        <Metric label="Recebimentos" valor={brl(dadosAtuais.realizado.entradas)} detalhe="Realizados no período" icon={TrendingUp} tone="green" />
-        <Metric label="Pagamentos" valor={brl(dadosAtuais.realizado.saidas)} detalhe="Realizados no período" icon={TrendingDown} tone="red" />
-        <Metric label="A pagar" valor={brl(dadosAtuais.compromissos.aPagar)} detalhe="Saldo pendente por vencimento no período" icon={ArrowUpRight} />
-        <Metric label="A receber" valor={brl(dadosAtuais.compromissos.aReceber)} detalhe="Saldo pendente por vencimento no período" icon={ArrowDownLeft} />
+      {pequena ? <Tabs defaultValue="agenda" className="mt-3 min-w-0">
+        <TabsList aria-label="Seções da visão geral" className="fin-abas grid h-auto w-full grid-cols-3"><TabsTrigger value="agenda">Agenda</TabsTrigger><TabsTrigger value="analises">Análises</TabsTrigger><TabsTrigger value="contas">Contas</TabsTrigger></TabsList>
+        <TabsContent value="agenda">{painelCompromissos}</TabsContent>
+        <TabsContent value="analises">      <div className="mt-4 grid min-w-0 gap-4 lg:grid-cols-2">
+        {painelFluxo}
+        {painelCategorias}
       </div>
-
-      <Panel className="mt-6 overflow-hidden">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-5"><div className="min-w-0"><h2 className="font-serif text-xl">Próximos compromissos</h2><p className="mt-1 text-xs text-ink-3">Vencimentos no período selecionado no topo; não compõem o saldo atual</p></div><div className="flex flex-wrap items-center gap-4"><ControleVisaoCompromissos visao={visao} onChange={setVisao} /><a href={hrefCompromissos} onClick={event => { if (!event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) { event.preventDefault(); navegarPara(hrefCompromissos); } }} className="flex shrink-0 items-center gap-1 whitespace-nowrap text-sm font-semibold text-green-800">Ver todos <ChevronRight size={15} /></a></div></div>
-        {visao === "calendario" ? <CalendarioCompromissos itens={pendentes} mes={mesCalendario} onChangeMes={setMesCalendario} onLiquidar={podeLancar ? setLiquidando : undefined} /> : proximos.length ? <div className="divide-y divide-border">{proximos.map((c) => <div key={c.id} className={`grid items-center gap-3 px-5 py-4 ${podeLancar ? "md:grid-cols-[minmax(0,1fr)_auto_auto_auto]" : "md:grid-cols-[minmax(0,1fr)_auto_auto]"}`}><div className="min-w-0"><div className="break-words font-semibold">{tituloCompromisso(c)}</div><div className="mt-1 break-words text-xs text-ink-3">{c.parceiro?.nome ?? "Sem parceiro"} · vence em {dataBR(c.dataVencimento)}</div></div>{/* div sempre presente: um `display:none` aqui tiraria a trilha do grid e o valor escorregaria de coluna, desalinhando as linhas sem pill */}<div>{c.vencido && <Pill tone="red">Vencido</Pill>}</div><strong className={`whitespace-nowrap md:text-right ${c.tipo === "RECEBER" ? "text-green-800" : "text-ink"}`}>{brl(c.saldoPendente)}</strong>{podeLancar && <Button className="w-full md:w-auto" secondary onClick={() => setLiquidando(c)}>{c.tipo === "PAGAR" ? "Registrar pagamento" : "Registrar recebimento"}</Button>}</div>)}</div> : <Empty>Não há compromissos pendentes com vencimento no período.</Empty>}
-      </Panel>
-
-      <BaseFinanceiraResumo base={dadosAtuais.base} realizado={dadosAtuais.realizado} compromissos={dadosAtuais.compromissos} inicio={inicioPeriodo} fim={fimPeriodo} />
-
-      <Panel className="mt-6 overflow-hidden">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-5"><div><h2 className="font-serif text-xl">Receitas e despesas</h2><p className="mt-1 text-xs text-ink-3">Realizado no período selecionado no topo</p></div><ChartTypeControl value={tipoGraficoFluxo} onChange={setTipoGraficoFluxo} label="Tipo do gráfico de receitas e despesas" /></div>
-        {dadosAtuais.fluxo.some((ponto) => Number(ponto.entradas) !== 0 || Number(ponto.saidas) !== 0)
-          ? <div className="p-3 sm:p-5"><EntradaSaidaChart tipo={tipoGraficoFluxo} data={dadosAtuais.fluxo.map((ponto) => ({ data: ponto.data, entradas: Number(ponto.entradas), saidas: Number(ponto.saidas) }))} /></div>
-          : <Empty>Nenhuma receita ou despesa realizada no período.</Empty>}
-      </Panel>
-
-        <Panel className="mt-6 overflow-hidden">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-5"><div className="min-w-0"><h2 className="font-serif text-xl">Contas e disponibilidade</h2><p className="mt-1 text-xs text-ink-3">Fotografia dos saldos atuais calculados pelo extrato; não é uma soma no período</p></div><button onClick={() => onNav("caixinha")} className="flex shrink-0 items-center gap-1 whitespace-nowrap text-sm font-semibold text-green-800">Ver extratos <ChevronRight size={15} /></button></div>
-          <div className="divide-y divide-border">{dadosAtuais.contas.map((c) => <button key={c.id} onClick={() => onNav("caixinha")} className="flex w-full flex-wrap items-center justify-between gap-x-4 gap-y-2 px-5 py-4 text-left hover:bg-surface-2"><div className="flex min-w-0 flex-[1_1_180px] items-center gap-3"><div className="shrink-0 rounded-lg bg-[#eef1e9] p-2 text-mast">{c.tipo === "BANCO" ? <Landmark size={17} /> : <WalletCards size={17} />}</div><div className="min-w-0"><div className="break-words font-semibold text-ink">{c.nome}</div><div className="mt-0.5 break-words text-xs text-ink-3">{c.tipo}{c.instituicao ? ` · ${c.instituicao}` : ""}{!c.incluirNoSaldoGeral ? " · fora do saldo geral" : ""}</div></div></div><div className="shrink-0 text-right"><strong className="whitespace-nowrap text-base">{brl(c.saldoAtual)}</strong><div className="mt-1 text-[11px] text-ink-3">saldo atual</div></div></button>)}</div>
-        </Panel>
+</TabsContent>
+        <TabsContent value="contas">{painelContas}</TabsContent>
+      </Tabs> : <>
+      <div className="dashboard-principal mt-4 grid min-w-0 items-stretch gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,1fr)]">
+        {painelFluxo}
+        {painelContas}
+      </div>
+      <div className="dashboard-analises mt-4 grid min-w-0 gap-4">
+        {painelCompromissos}
+        {painelCategorias}
+      </div>
+</>}
       <ErrorBox erro={erroConfig} />
-      <AnaliseCategorias despesas={dadosAtuais.despesasPorCategoria} categorias={config?.categorias ?? []} />
+
     </>}
+    {listaAberta && <DashboardListaModal tipo={listaAberta} inicio={inicioPeriodo} fim={fimPeriodo} pendentes={pendentes} onClose={() => setListaAberta(null)} />}
     {podeLancar && liquidando && <LiquidarCompromissoModal key={liquidando.id} compromisso={liquidando} contas={config?.contas ?? []} onClose={() => setLiquidando(null)} onLiquidado={recarregar} onErro={setErro} />}
     <ConfirmDialog
       open={substituirRascunho}
@@ -127,5 +143,5 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
       onDismiss={() => setSubstituirRascunho(false)}
       onConfirm={() => { void descartarEIniciar(); }}
     />
-  </PaginaFinanceira>;
+  </div></PaginaFinanceira>;
 }

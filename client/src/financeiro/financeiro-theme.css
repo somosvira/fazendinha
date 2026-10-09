@@ -1,0 +1,138 @@
+/* Tema aprovado da visão geral, compartilhado por todo o módulo.
+ * O escopo no root alcança os portais Radix; sair do financeiro restaura os
+ * tokens das outras áreas, sem estado de tema duplicado em JavaScript. */
+:root:has(.financeiro-content) {
+  --radius: 0.375rem;
+  --background: #f6f7f6;
+  --foreground: #202723;
+  --card: #ffffff;
+  --card-foreground: var(--foreground);
+  --popover: #ffffff;
+  --popover-foreground: var(--foreground);
+  --primary: #0e1311;
+  --primary-foreground: #ffffff;
+  --secondary: #f1f3f2;
+  --secondary-foreground: var(--foreground);
+  --muted: #f1f3f2;
+  --muted-foreground: #626b66;
+  --accent: var(--muted);
+  --accent-foreground: var(--foreground);
+  --border: #e1e5e2;
+  --input: var(--border);
+  --ring: var(--foreground);
+  --bg: var(--background);
+  --bg-card: var(--card);
+  --bg-card-2: var(--muted);
+  --rule: var(--border);
+  --rule-soft: #e9ecea;
+  --ink: var(--foreground);
+  --ink-2: #424b46;
+  --ink-3: var(--muted-foreground);
+  --lucro: #28734f;
+  --pos: var(--lucro);
+  --prejuizo: #b9433b;
+  --neg: var(--prejuizo);
+  --destructive: var(--prejuizo);
+  --destructive-foreground: #ffffff;
+  --fin-entrada: var(--pos);
+  --fin-saida: var(--foreground);
+  --fin-alerta: var(--destructive);
+  --fin-info: var(--ink-2);
+  --fin-pendente: #80634e;
+  --fin-superficie: var(--card);
+  --leite: #80634e;
+  --leite-soft: var(--muted);
+  --cafe: #55715e;
+  --outros: #818568;
+  --cafe-2: #ac987e;
+  --outros-2: #aab0a6;
+}
+:root:has(.financeiro-content) :is([data-slot="select-content"], [data-slot="popover-content"], [data-slot="dropdown-menu-content"]) {
+  background: var(--popover);
+  border-radius: var(--radius);
+}
+
+.app-main:has(.financeiro-content) {
+  background: var(--background);
+  min-height: 100dvh;
+}
+.financeiro-content,
+:root:has(.financeiro-content) .financeiro-colorido {
+  color: var(--foreground);
+  font-family: var(--sans);
+}
+.financeiro-content .font-serif,
+:root:has(.financeiro-content) .financeiro-colorido .font-serif {
+  font-family: var(--sans);
+}
+.financeiro-content .fin-cabecalho-pagina {
+  border-bottom: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+.financeiro-content .pagina-financeira { padding-top: 24px; }
+.financeiro-content .h1 {
+  font-family: var(--sans);
+  font-size: 28px;
+  font-weight: 650;
+  line-height: 1.2;
+}
+.financeiro-content :is(h2.font-serif, h3.font-serif) {
+  font-size: 16px;
+  font-weight: 650;
+  line-height: 1.4;
+}
+.financeiro-content :is([data-slot="card"], [data-slot="financeiro-panel"]),
+:root:has(.financeiro-content) .financeiro-colorido:is([data-slot="dialog-content"], [data-slot="sheet-content"]) {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: none;
+}
+.financeiro-content .fin-painel,
+:root:has(.financeiro-content) .financeiro-colorido .fin-painel {
+  border-top: 1px solid var(--border);
+}
+.financeiro-content .fin-indicador,
+:root:has(.financeiro-content) .financeiro-colorido .fin-indicador {
+  background: var(--card);
+  border-top: 1px solid var(--border);
+}
+.financeiro-content :is(.fin-cabecalho, .fin-modal-cabecalho),
+:root:has(.financeiro-content) .financeiro-colorido :is(.fin-cabecalho, .fin-modal-cabecalho) {
+  background: var(--card);
+}
+.financeiro-content :is(.fin-cabecalho, .fin-painel) :is(h2, h3),
+:root:has(.financeiro-content) .financeiro-colorido :is(.fin-cabecalho, .fin-painel) :is(h2, h3) {
+  color: var(--foreground);
+}
+.financeiro-content .fin-linha,
+:root:has(.financeiro-content) .financeiro-colorido .fin-linha {
+  border-left: 1px solid var(--border);
+}
+.financeiro-content .fin-linha:hover,
+:root:has(.financeiro-content) .financeiro-colorido .fin-linha:hover {
+  background: var(--muted);
+}
+.financeiro-content :is(.fin-icone, .fin-metric-icone) {
+  color: var(--muted-foreground);
+  background: var(--muted);
+}
+.financeiro-content .fin-indicador svg {
+  color: var(--muted-foreground);
+}
+.financeiro-content .fin-abas [role="tab"]:hover {
+  background: var(--muted);
+  color: var(--foreground);
+}
+.financeiro-content .fin-abas [role="tab"][data-state="active"] {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  box-shadow: none;
+}
+@media (max-width: 720px) {
+  .financeiro-content .h1 { font-size: 24px; }
+}
+@media (max-width: 900px) {
+  .financeiro-content .pagina-financeira { padding-top: 56px; }
+}

@@ -9,7 +9,7 @@
  *   1. largura mínima só existe DENTRO de um contêiner com rolagem própria;
  *   2. cabeçalho e conteúdo de uma coluna nascem do mesmo `alinhamento`;
  *   3. toda tabela tem representação de cartão no mobile;
- *   4. o carregamento é o loader de página centralizado, não um bloco solto;
+ *   4. o carregamento usa skeleton shadcn e anúncio acessível;
  *   5. toda página financeira usa o mesmo envelope (gutter + folga do menu).
  */
 import { baseFinanceiraVazia } from "./dashboard.fixture";
@@ -164,25 +164,20 @@ describe("telas financeiras — envelope e carregamento", () => {
     ["Relatórios", async () => { const m = await import("./RelatoriosFinanceiros"); return { render: () => <m.RelatoriosFinanceiros /> }; }],
   ];
 
-  it.each(telas)("%s centraliza o carregamento na área de conteúdo", async (_nome, carregar) => {
+  it.each(telas)("%s preserva o envelope e anuncia o skeleton de carregamento", async (_nome, carregar) => {
     for (const mock of [obterDashboardFinanceiro, obterConfiguracoesFinanceiras, listarCompromissos, listarOperacoes, obterExtratoConta, listarRelatoriosFinanceiros]) mock.mockImplementation(pendente);
     obterRascunhoOperacao.mockResolvedValue(null);
     const { render: renderizar } = await carregar();
     const { container, getByRole } = render(renderizar());
 
-    const loader = container.querySelector(".loader")!;
-    expect(loader, "toda tela usa o mesmo dialeto de loading").toBeTruthy();
-    expect(loader.className).toContain("loader--pagina");
-    expect(getByRole("status")).toBeTruthy();
-
-    // A coluna de carregamento mede uma viewport e o loader toma a sobra. Ela NÃO
-    // pode ser a `.pagina-financeira`: o padding vertical daquela somaria por fora
-    // dos 100dvh e criaria barra de rolagem (medido: +40px desktop, +96px mobile).
+    expect(container.querySelector('[data-slot="skeleton"]'), "carrega com a primitiva shadcn").toBeTruthy();
+    expect(container.querySelector(".loader-figure"), "preserva o indicador de carregamento existente").toBeTruthy();
+    const estado = getByRole("status");
+    expect(estado.getAttribute("aria-busy")).toBe("true");
     const raiz = container.firstElementChild!;
     expect(raiz.className).toContain("shell-wide");
-    expect(raiz.className).toContain("pagina-carregando");
-    expect(raiz.className).not.toContain("pagina-financeira");
-    expect(loader.parentElement, "o loader é filho direto da coluna que mede a viewport").toBe(raiz);
+    expect(raiz.className).toContain("pagina-financeira");
+
   }, 60_000);
 
   it.each([
@@ -238,4 +233,12 @@ describe("telas financeiras — envelope e carregamento", () => {
       expect(temAncestralRolavel(el, container), `${el.tagName}.${el.className} força largura mínima sem contêiner rolável`).toBe(true);
     }
   });
+});
+
+
+it("mantém links de origem fora do botão que abre o cartão", () => {
+  const { container } = render(<TabelaFinanceira cartaoComLinks rotulo="Origens" itens={[{ id: 1 }]} chaveDe={l => l.id} onAbrir={vi.fn()} colunas={[{ chave: "nome", titulo: "Nome", principal: true, celula: () => <a href="/financeiro/operacoes/1">Origem</a> }]} />);
+  expect(container.querySelector("ul button")).toBeTruthy();
+  expect(container.querySelector("ul button a")).toBeNull();
+  expect(container.querySelector("ul a")?.getAttribute("href")).toBe("/financeiro/operacoes/1");
 });

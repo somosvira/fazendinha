@@ -1,3 +1,5 @@
+import { House, Layers } from "lucide-react";
+import { Button } from "@/components/ui/button";
 /* Rio Novo — seletor de propriedade/sítio (context switcher de fazenda).
  *
  * Fonte única de contexto de workspace. No layout novo (handoff "Shell") ele mora
@@ -121,13 +123,13 @@ export function SidebarFarmPicker({ propAtiva, onTrocarProp, onGerenciar }: {
   const sitioAtual = propAtiva != null ? ativos.find((p) => p.id === propAtiva) : null;
   const consolidado = propAtiva == null && ativos.length >= 2;
   const rotulo = sitioAtual ? sitioAtual.nome : (ativos.length >= 2 ? "Consolidado" : ativos[0]?.nome ?? "Fazenda");
-  const glyph = consolidado ? "▦" : "🌿";
+  const glyph = consolidado ? <Layers size={16} /> : <House size={16} />;
   const kicker = sitioAtual ? "Sítio" : "Fazenda";
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button
+        <Button variant="ghost"
           className="flex w-full cursor-pointer items-center gap-2.5 rounded-[9px] border border-[var(--side-hair,rgba(232,220,196,0.1))] bg-[rgba(232,220,196,0.05)] px-2.5 py-2.5 font-sans text-[var(--mast-ink)] hover:bg-[rgba(232,220,196,0.09)] min-[901px]:max-[1100px]:justify-center min-[901px]:max-[1100px]:border-0 min-[901px]:max-[1100px]:bg-transparent min-[901px]:max-[1100px]:px-1.5 min-[901px]:max-[1100px]:py-1 [.side-collapsed_&]:justify-center [.side-collapsed_&]:border-0 [.side-collapsed_&]:bg-transparent [.side-collapsed_&]:px-1.5 [.side-collapsed_&]:py-1"
           aria-label="Propriedade / sítio ativo"
         >
@@ -137,7 +139,7 @@ export function SidebarFarmPicker({ propAtiva, onTrocarProp, onGerenciar }: {
             <span className="max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-sm font-semibold text-[var(--mast-ink)]">{rotulo}</span>
           </span>
           <Chevron className="flex-none text-[var(--side-mute,#8B8672)] min-[901px]:max-[1100px]:hidden min-[901px]:max-[1100px]:group-hover:block min-[901px]:max-[1100px]:group-focus-within:block [.side-collapsed_&]:hidden" />
-        </button>
+        </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="min-w-[280px] max-w-[360px] rounded-[6px] p-0">
         <FarmMenuItems propAtiva={propAtiva} onTrocarProp={onTrocarProp} onGerenciar={onGerenciar} />

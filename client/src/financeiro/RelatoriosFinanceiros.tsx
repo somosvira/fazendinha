@@ -1,3 +1,6 @@
+import { Input } from "@/components/ui/input";
+import { normalizarBuscaFinanceira } from "./ListaCadastroFinanceiro";
+import { Button as UiButton } from "@/components/ui/button";
 import { PeriodoFinanceiroControl } from "./PeriodoFinanceiroControl";
 import { isoDate } from "../components/DateRangePicker";
 import { useCallback, useEffect, useState } from "react";
@@ -5,7 +8,7 @@ import { ChevronRight, Download, FilePenLine, FilePlus2, RotateCcw } from "lucid
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { isNovoRelatorioFinanceiro, parseRelatorioFinanceiroId } from "../router";
 import { descartarRascunhoRelatorioFinanceiro, listarRelatoriosFinanceiros, obterConfiguracoesFinanceiras, obterRascunhoRelatorioFinanceiro, salvarPdfRelatorioFinanceiro, type ConfiguracoesFinanceiras, type RascunhoRelatorioFinanceiro, type RelatorioFinanceiro } from "./novo-api";
-import { Button, Empty, ErrorBox, PageHeader, PaginaFinanceira, PaginaSemDados, Panel, StatusPill, TabelaFinanceira, type ColunaTabela } from "./financeiro-ui";
+import { Button, Empty, ErrorBox, PageHeader, PaginaFinanceira, PaginaSemDados, Panel, StatusPill, TabelaFinanceira, Paginacao, type ColunaTabela } from "./financeiro-ui";
 import { dataCurta } from "./lib/relatorios";
 import { NovoRelatorioFinanceiro } from "./NovoRelatorioFinanceiro";
 import { RelatorioFinanceiroDetalhe } from "./RelatorioFinanceiroDetalhe";
@@ -41,6 +44,8 @@ export function RelatoriosFinanceiros({ podeExportar = true }: { podeExportar?: 
   const [recente, setRecente] = useState<string | null>(null);
   const [iniciando, setIniciando] = useState(false);
   const [periodoEmissao, setPeriodoEmissao] = useState({ inicio: "", fim: "" });
+  const [busca, setBusca] = useState("");
+  const [pagina, setPagina] = useState(1);
   const [confirmarNovo, setConfirmarNovo] = useState(false);
 
   const carregar = useCallback(async () => {
@@ -91,8 +96,10 @@ export function RelatoriosFinanceiros({ podeExportar = true }: { podeExportar?: 
   }
   if (!relatorios) return <PaginaSemDados titulo="Relatórios financeiros" descricao={DESCRICAO} label="Carregando relatórios" erro={erro} />;
 
-  const relatoriosFiltrados = relatorios.filter(r => { const dia = isoDate(new Date(r.geradoEm)); return (!periodoEmissao.inicio || dia >= periodoEmissao.inicio) && (!periodoEmissao.fim || dia <= periodoEmissao.fim); });
+  const relatoriosFiltrados = relatorios.filter(r => { const dia = isoDate(new Date(r.geradoEm)); return normalizarBuscaFinanceira(`${r.nome} ${r.autor}`).includes(normalizarBuscaFinanceira(busca)) && (!periodoEmissao.inicio || dia >= periodoEmissao.inicio) && (!periodoEmissao.fim || dia <= periodoEmissao.fim); });
   const variasPropriedades = new Set(relatorios.map((r) => r.propriedadeId)).size > 1;
+  const totalPaginas = Math.max(1, Math.ceil(relatoriosFiltrados.length / 15));
+  const paginaAtual = Math.min(pagina, totalPaginas);
   const colunas: ColunaTabela<RelatorioFinanceiro>[] = [
     { chave: "nome", titulo: "Relatório", principal: true, larguraMinima: 240, celula: (r) => <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><strong className="break-words">{r.nome}</strong>{r.status !== "CONCLUIDO" && <StatusPill status={r.status} />}{r.id === recente && <span className="text-[11px] font-semibold uppercase tracking-[.1em] text-green-800">Novo</span>}</div><div className="mt-0.5 text-xs text-ink-3">{recorte(r)}</div>{r.erro && <div className="mt-1 text-xs text-red-700">{r.erro}</div>}</div> },
     { chave: "periodo", titulo: "Período", larguraMinima: 190, celula: (r) => <span className="whitespace-nowrap">{dataCurta(r.parametros.dataInicio)} a {dataCurta(r.parametros.dataFim)}</span> },
@@ -106,19 +113,20 @@ export function RelatoriosFinanceiros({ podeExportar = true }: { podeExportar?: 
     <Button disabled={iniciando} onClick={pedirNovo}><FilePlus2 size={16} /> {iniciando ? "Iniciando…" : "Novo relatório"}</Button>
   </div> : undefined;
 
-  return <PaginaFinanceira>
-    <PageHeader titulo="Relatórios financeiros" descricao={DESCRICAO} acao={acoes} />
+  return <PaginaFinanceira colorida>
+    <PageHeader eyebrow="" titulo="Relatórios financeiros" descricao={DESCRICAO} acao={acoes} />
     <ErrorBox erro={erro} />
     {aviso && <div role="status" className="mt-5 rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-900">{aviso}</div>}
     <Panel className="mt-6">
-      <div className="flex items-center justify-between gap-4 border-b border-border p-5">
-        <div><h2 className="font-serif text-xl">Histórico</h2><p className="mt-1 text-xs text-ink-3">Do mais recente para o mais antigo. Abra um relatório para ver o conteúdo salvo.</p></div>
-        <button onClick={() => void carregar()} aria-label="Atualizar histórico" className="rounded-lg p-2 hover:bg-surface-2"><RotateCcw size={17} /></button>
+      <div className="flex flex-wrap items-end gap-3 border-b border-border p-3">
+        <label className="min-w-0 flex-[1_1_240px] text-sm font-medium">Buscar relatório<Input aria-label="Buscar relatório" placeholder="Nome ou autor…" value={busca} onChange={e => { setBusca(e.target.value); setPagina(1); }} className="mt-1" /></label>
+        <PeriodoFinanceiroControl inicio={periodoEmissao.inicio} fim={periodoEmissao.fim} allowAll label="Período de emissão" onChange={periodo => { setPeriodoEmissao(periodo); setPagina(1); }} />
+        <UiButton variant="outline" onClick={() => void carregar()} aria-label="Atualizar histórico"><RotateCcw size={17} /> Atualizar</UiButton>
       </div>
-      <div className="border-b border-border p-5"><PeriodoFinanceiroControl inicio={periodoEmissao.inicio} fim={periodoEmissao.fim} allowAll label="Período de emissão" onChange={setPeriodoEmissao} /><p className="mt-2 text-xs text-ink-3">Filtro pela data de emissão; o recorte salvo de cada relatório aparece na tabela.</p></div>
+      <Paginacao pagina={paginaAtual} totalPaginas={totalPaginas} total={relatoriosFiltrados.length} porPagina={15} rotulo="Paginação de relatórios" substantivo="relatórios" idSelect="pagina-relatorios" onPagina={setPagina} />
       {relatoriosFiltrados.length === 0
         ? <Empty>{relatorios.length ? "Nenhum relatório emitido no período selecionado." : "Nenhum relatório foi gerado ainda."}</Empty>
-        : <TabelaFinanceira rotulo="Relatórios gerados" colunas={colunas} itens={relatoriosFiltrados} chaveDe={(r) => r.id} onAbrir={abrir} classeLinha={(r) => r.id === recente ? "bg-[#f6f9f2]" : ""} />}
+        : <TabelaFinanceira rotulo="Relatórios gerados" colunas={colunas} compacta itens={relatoriosFiltrados.slice((paginaAtual - 1) * 15, paginaAtual * 15)} chaveDe={(r) => r.id} onAbrir={abrir} classeLinha={(r) => r.id === recente ? "bg-muted" : ""} />}
     </Panel>
     <ConfirmDialog
       open={confirmarNovo}

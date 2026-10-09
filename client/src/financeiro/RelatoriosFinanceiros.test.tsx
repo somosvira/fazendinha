@@ -1,3 +1,4 @@
+import { alterarControle } from "../lib/controles.fixture";
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -94,8 +95,8 @@ it("filtra o histórico pela emissão sem alterar o período do documento salvo"
   await screen.findAllByRole("table", { name: "Relatórios gerados" });
   fireEvent.click(screen.getByRole("button", { name: /^Período de emissão:/ }));
   fireEvent.click(screen.getByRole("button", { name: "Período personalizado" }));
-  fireEvent.change(screen.getByLabelText("Data inicial"), { target: { value: "2026-09-01" } });
-  fireEvent.change(screen.getByLabelText("Data final"), { target: { value: "2026-09-30" } });
+  await alterarControle(screen.getByLabelText("Data inicial"), { target: { value: "2026-09-01" } });
+  await alterarControle(screen.getByLabelText("Data final"), { target: { value: "2026-09-30" } });
   fireEvent.click(screen.getByRole("button", { name: "Aplicar período" }));
   expect(screen.queryByText("Fechamento julho")).toBeNull();
   expect(screen.getAllByText("Pecuária — agosto").length).toBeGreaterThan(0);

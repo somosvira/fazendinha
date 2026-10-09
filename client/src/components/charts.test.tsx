@@ -10,7 +10,7 @@ describe("EntradaSaidaChart", () => {
     expect(html).toContain("recharts-responsive-container");
     expect(html).toContain('data-slot="chart"');
     expect(html).toContain("--color-receitas: var(--pos)");
-    expect(html).toContain("--color-despesas: var(--neg)");
+    expect(html).toContain("--color-despesas: var(--fin-saida, var(--cafe-2))");
   });
 
   it("usa totais acumulados nas linhas e valores diários nas barras", () => {

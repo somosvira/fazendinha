@@ -250,7 +250,7 @@ Importar de `env.ts`. Erros de configuração devem ser **fail-fast**.
 
 ### 6.5 Sem nova lib UI
 
-Não introduzir Material, Antd, Chakra, ShadCN, etc. Não introduzir Recharts/D3 — usar SVG próprio em `charts.tsx`.
+Reutilizar as primitivas shadcn de `client/src/components/ui/`, os tokens Terrano e os gráficos Recharts já existentes em `charts.tsx`. Não introduzir outro sistema visual (Material, Antd, Chakra etc.) ou D3. O padrão atual substitui a orientação histórica de SVG próprio.
 
 ### 6.6 Sem react-router (ainda)
 

@@ -370,3 +370,32 @@ Antes de implementar qualquer tela, componente ou funcionalidade, pergunte:
 > **"Isso ajuda o produtor a tomar uma decisão melhor?"**
 
 Se a resposta for **não**, repense a implementação.
+
+## Cores nas páginas financeiras em grid
+
+Nas páginas financeiras revisadas, preserve o bege Terrano, cards claros e os detalhes aprovados: faixas finas, cabeçalhos suaves, ícones e cards de efeitos. A paleta de interface fica restrita a marrom, verde, vermelho e preto/grafite, além das superfícies neutras. Não usar azul informativo nem amarelo forte. Abas selecionadas mantêm grafite com texto branco.
+
+`financeiro/cores-financeiro.css` usa verde (`--lucro`) para entradas/disponibilidade e confirmação, vermelho (`--prejuizo`) para saídas, atrasos e ações destrutivas, e marrom (`--rural`/`--cafe`) para informação, classificação e pendência. A diferenciação de categorias nos gráficos continua discreta. Preserve rótulos, sinais e status: cor nunca é a única indicação. A camada se aplica às telas e diálogos revisados, mantendo o grid compacto e as primitivas shadcn.
+
+Nas demais telas financeiras auditadas, aplique o mesmo padrão: sempre primitivas shadcn locais, tabela compacta com rolagem contida e paginação, formulários extensos em Sheet largo com grid e cadastros simples em Dialog. Compactar significa organizar e reduzir repetições; não reduzir legibilidade nem retirar dados da consulta.
+
+## Visão geral e sidebar — modelo aprovado em 09/10/2026
+
+Nesta etapa, somente a página inicial financeira e a sidebar adotam a direção clara: fundo cinza suave, painéis brancos sem faixas coloridas, títulos sans-serif compactos, bordas discretas e ações primárias em grafite. Saldo positivo usa verde; saldo negativo e avisos de atraso usam vermelho. Os demais indicadores e valores das contas usam grafite. Categorias mantêm cores terrosas discretas para identificação no gráfico. A sidebar clara mantém navegação, permissões, seletor de sítio, rascunhos, colapso e Sheet móvel, com Button shadcn. As outras páginas conservam a direção anterior.
+
+Na visão geral, o calendário é um Card independente com mês compacto e contadores por dia. A primeira linha reúne gráfico financeiro, contas e compromissos; a segunda reúne calendário e categorias. Células com compromissos têm acionador visível e rótulo com data/quantidade; cor distingue a pagar/a receber e atrasos, acompanhada de texto acessível. A expansão preserva o calendário completo em Dialog.
+
+### Sidebar com maior presença — 09/10/2026
+
+A navegação global usa fundo cinza esverdeado discreto (`--mast-bg`), borda de separação mais definida e seleção em verde acinzentado com texto verde profundo. Hover e seleção têm tokens próprios em `sidebar-clara.css`. Mantém superfícies brancas no seletor de sítio e conteúdo, sem azul, saturação forte ou faixas decorativas. A mesma paleta acompanha a sidebar colapsada e o Sheet móvel, preservando primitivas shadcn e controles existentes.
+
+### Correção da sidebar — cinza neutro
+
+O usuário rejeitou o fundo esverdeado. A sidebar usa cinza neutro um pouco mais escuro, com hover e seleção em cinzas, texto grafite e separadores neutros. Essa decisão substitui a paleta esverdeada descrita acima; mantém navegação, colapso e Sheet móvel.
+
+
+## Tema compartilhado de todo o financeiro — 09/10/2026
+
+A direção neutra aprovada da visão geral agora abrange operações, detalhes e formulário; compromissos, calendário e liquidação; contas e extratos; todas as abas de configurações; relatórios, emissão e detalhes. Esta decisão substitui a limitação anterior à página inicial e as faixas/gradientes decorativos do tema anterior. Fundo cinza claro, superfícies brancas, bordas discretas, tipografia sans e títulos compactos. Verde sinaliza entradas/saldos positivos e confirmações; vermelho sinaliza alertas, estornos e cancelamentos; marrom permanece discreto em pendências e categorias. Valores de saída podem ser neutros, como na visão geral, mantendo direção e sinal escritos.
+
+`FinanceiroContent` delimita o módulo e `financeiro-theme.css` compartilha os tokens. O escopo CSS no root também alcança os portais Radix dos modais e seletores; ao sair do financeiro, os tokens das demais áreas são restaurados. Dropdowns usam `bg-popover` branco, incluindo o seletor de período, e o Select usa estados `accent` do shadcn. Não alterar dados, filtros, paginação, cálculos, permissões ou rotas nesta atualização.

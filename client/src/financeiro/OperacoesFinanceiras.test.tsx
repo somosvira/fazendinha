@@ -1,3 +1,4 @@
+import { alterarControle } from "../lib/controles.fixture";
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -134,9 +135,25 @@ describe("OperacoesFinanceiras — paginação", () => {
     expect(screen.queryAllByText("Operação 16")).toHaveLength(0);
     expect(screen.getByText("1–15 de 16 operações")).toBeTruthy();
 
-    fireEvent.change(screen.getByLabelText("Ir para a página"), { target: { value: "2" } });
+    await alterarControle(screen.getByLabelText("Ir para a página"), { target: { value: "2" } });
     expect((await screen.findAllByText("Operação 16")).length).toBe(2);
     expect(screen.queryAllByText("Operação 15")).toHaveLength(0);
     expect(screen.getByText("16–16 de 16 operações")).toBeTruthy();
+  });
+});
+
+describe("OperacoesFinanceiras — busca por código", () => {
+  it("encontra o número exibido sem depender do UUID ou da descrição", async () => {
+    vi.mocked(listarOperacoes).mockResolvedValue([{
+      id: uid(91), numero: 16, data: "2026-10-01", descricao: "Compra de ração", tipo: "SERVICO", status: "CONFIRMADA", valorTotal: "200.00",
+      parceiro: null, movimentosEstoque: [], transacoes: [], compromissos: [], itens: [],
+    }] as never);
+    render(<OperacoesFinanceiras />);
+    const campo = await screen.findByRole("textbox", { name: "Buscar operações" });
+    for (const consulta of ["OP-0016", "16", "op 0016"]) {
+      await alterarControle(campo, { target: { value: consulta } });
+      expect(screen.queryByText(/Nenhuma operação encontrada/)).toBeNull();
+      expect(screen.getAllByText("Compra de ração").length).toBeGreaterThan(0);
+    }
   });
 });

@@ -15,6 +15,8 @@ import {
   YAxis,
 } from "recharts";
 import { useState } from "react";
+import { Button } from "./ui/button";
+import { ToggleGroup, ToggleGroupItem } from "./ui/toggle-group";
 import { ChartContainer, ChartLegend, ChartTooltip, type ChartConfig } from "./ui/chart";
 
 export const fmt = (
@@ -87,15 +89,10 @@ export function ChartTypeControl({ value, onChange, label = "Tipo do gráfico" }
   onChange: (value: ChartType) => void;
   label?: string;
 }) {
-  return <div role="group" aria-label={label} className="inline-flex overflow-hidden rounded-lg border border-border bg-white p-0.5">
-    {([['line', 'Linhas'], ['bar', 'Barras']] as const).map(([tipo, texto]) => <button
-      key={tipo}
-      type="button"
-      aria-pressed={value === tipo}
-      onClick={() => onChange(tipo)}
-      className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${value === tipo ? "bg-mast text-white" : "text-ink-2 hover:bg-surface-2"}`}
-    >{texto}</button>)}
-  </div>;
+  return <ToggleGroup type="single" value={value} onValueChange={next => { if (next === "line" || next === "bar") onChange(next); }} aria-label={label} className="rounded-md border border-border bg-card p-0.5">
+    <ToggleGroupItem value="line" className="h-8 px-3 text-sm data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">Linhas</ToggleGroupItem>
+    <ToggleGroupItem value="bar" className="h-8 px-3 text-sm data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">Barras</ToggleGroupItem>
+  </ToggleGroup>;
 }
 
 const tooltipMoney = (value: number | string | readonly (number | string)[] | undefined, name: string | number | undefined): [string, string] => [fmtMoneyExact(Number(value ?? 0)), String(name ?? "Valor")];
@@ -290,10 +287,10 @@ export function pontosEntradaSaida(data: EntradaSaidaPoint[], tipo: ChartType) {
 }
 
 /** Receitas e despesas em reais, com valores exatos no tooltip. */
-export function EntradaSaidaChart({ data, tipo = "line" }: { data: EntradaSaidaPoint[]; tipo?: ChartType }) {
+export function EntradaSaidaChart({ data, tipo = "line", compacto = false }: { data: EntradaSaidaPoint[]; tipo?: ChartType; compacto?: boolean }) {
   const pontos = pontosEntradaSaida(data, tipo);
   return <>
-    <ChartContainer config={fluxoConfig} className="h-[300px] w-full aspect-auto overflow-hidden" role="img" aria-label={tipo === "line" ? "Totais acumulados de receitas e despesas por dia ou mês" : "Entradas e saídas por dia ou mês, apresentadas como receitas e despesas em reais"}>
+    <ChartContainer config={{ ...fluxoConfig, despesas: { label: "Despesas", color: "var(--fin-saida, var(--cafe-2))" } }} className={`${compacto ? "h-[210px]" : "h-[300px]"} w-full aspect-auto overflow-hidden`} role="img" aria-label={tipo === "line" ? "Totais acumulados de receitas e despesas por dia ou mês" : "Entradas e saídas por dia ou mês, apresentadas como receitas e despesas em reais"}>
       <ComposedChart data={pontos} margin={{ top: 18, right: 18, bottom: 8, left: 24 }} accessibilityLayer>
         <CartesianGrid vertical={false} stroke="var(--rule-soft)" />
         <XAxis dataKey="rotuloEixo" minTickGap={18} interval="preserveStartEnd" {...axisProps} />
@@ -302,7 +299,7 @@ export function EntradaSaidaChart({ data, tipo = "line" }: { data: EntradaSaidaP
         <ChartLegend />
         {tipo === "line" ? <>
           <Line type="linear" dataKey="entradas" name="Receitas" stroke="var(--color-receitas)" strokeWidth={2.5} dot={pontos.length <= 31 ? { r: 2.5 } : false} activeDot={{ r: 5 }} isAnimationActive={false} />
-          <Line type="linear" dataKey="saidas" name="Despesas" stroke="var(--color-despesas)" strokeWidth={2.5} dot={pontos.length <= 31 ? { r: 2.5 } : false} activeDot={{ r: 5 }} isAnimationActive={false} />
+          <Line type="linear" dataKey="saidas" name="Despesas" stroke="var(--color-despesas)" strokeDasharray="5 4" strokeWidth={2.5} dot={pontos.length <= 31 ? { r: 2.5 } : false} activeDot={{ r: 5 }} isAnimationActive={false} />
         </> : <>
           <Bar dataKey="entradas" name="Receitas" fill="var(--color-receitas)" radius={[3, 3, 0, 0]} isAnimationActive={false} />
           <Bar dataKey="saidas" name="Despesas" fill="var(--color-despesas)" radius={[3, 3, 0, 0]} isAnimationActive={false} />
@@ -329,10 +326,14 @@ export function CategoryValueChart({ data, tipo = "bar" }: { data: { categoria: 
 }
 
 /** Distribuição monetária com legenda textual acessível e sem fatias zeradas. */
-export function MonetaryDonutChart({ data, label, emptyLabel }: {
-  data: { label: string; value: number }[];
+export type MonetaryChartItem = { id?: string; label: string; value: number };
+
+export function MonetaryDonutChart({ data, label, emptyLabel, compacto = false, onSelect }: {
+  data: MonetaryChartItem[];
+  onSelect?: (items: MonetaryChartItem[]) => void;
   label: string;
   emptyLabel: string;
+  compacto?: boolean;
 }) {
   // Só tokens neutros (sem --pos/--neg, que significam ganho/perda) e sem repetir cor:
   // passando de 6 fatias, as menores viram "Outras (N)" para gráfico e legenda casarem.
@@ -340,25 +341,27 @@ export function MonetaryDonutChart({ data, label, emptyLabel }: {
   const positivos = data.filter(item => item.value > 0).sort((a, b) => b.value - a.value);
   const visiveis = positivos.length > colors.length ? positivos.slice(0, colors.length - 1) : positivos;
   const agrupados = positivos.slice(visiveis.length);
-  const consolidados = agrupados.length ? [...visiveis, { label: `Outras (${agrupados.length})`, value: agrupados.reduce((sum, item) => sum + Math.round(item.value * 100), 0) / 100 }] : visiveis;
+  const individuais = visiveis.map(item => ({ ...item, items: [item] }));
+  const consolidados = agrupados.length ? [...individuais, { label: `Outras (${agrupados.length})`, value: agrupados.reduce((sum, item) => sum + Math.round(item.value * 100), 0) / 100, items: agrupados }] : individuais;
   const points = consolidados.map((item, index) => ({ ...item, key: `segmento${index}`, color: colors[index] }));
   const adjustments = data.filter(item => item.value < 0);
   const total = data.reduce((sum, point) => sum + Math.round(point.value * 100), 0) / 100;
   const positiveTotal = points.reduce((sum, point) => sum + Math.round(point.value * 100), 0) / 100;
   const config: ChartConfig = Object.fromEntries(points.map(point => [point.key, { label: point.label, color: point.color }]));
-  return <div className="p-5">
+  return <div className={compacto ? "p-4 pt-2" : "p-5"}>
     <p className="text-xs text-ink-3">Total do período</p><strong className="mt-1 block font-serif text-2xl">{fmtMoneyExact(total)}</strong>
-    {points.length ? <div className="grid min-w-0 items-center gap-4 md:grid-cols-[minmax(200px,.8fr)_minmax(0,1fr)]">
-      <ChartContainer config={config} className="h-[260px] w-full aspect-auto overflow-hidden" role="img" aria-label={label}>
+    {points.length ? <div className={`grid min-w-0 items-center gap-3 ${compacto ? "@min-[440px]:grid-cols-[140px_minmax(0,1fr)]" : "md:grid-cols-[minmax(200px,.8fr)_minmax(0,1fr)]"}`}>
+      <ChartContainer config={config} className={`${compacto ? "h-[170px]" : "h-[260px]"} w-full aspect-auto overflow-hidden`} role="img" aria-label={label}>
         <PieChart accessibilityLayer><Pie data={points} dataKey="value" nameKey="label" innerRadius="58%" outerRadius="85%" stroke="none" paddingAngle={points.length > 1 ? 2 : 0} isAnimationActive={false}>
-          {points.map(point => <Cell key={point.key} fill={`var(--color-${point.key})`} />)}
+          {points.map(point => <Cell key={point.key} fill={`var(--color-${point.key})`} onClick={onSelect ? () => onSelect(point.items) : undefined} cursor={onSelect ? "pointer" : undefined} />)}
         </Pie><ChartTooltip formatter={tooltipMoney} /></PieChart>
       </ChartContainer>
-      <ul aria-label={`Legenda: ${label}`} className="space-y-3 text-sm">{points.map(point => <li key={point.key} className="flex flex-wrap items-start justify-between gap-2">
+      <ul aria-label={`Legenda: ${label}`} className={`${compacto ? "space-y-2" : "space-y-3"} text-sm`}>{points.map(point => <li key={point.key} className="flex flex-wrap items-start justify-between gap-2">
+        {onSelect ? <Button variant="ghost" className="h-auto w-full flex-wrap justify-between gap-2 whitespace-normal px-0 py-1 text-left font-normal" onClick={() => onSelect(point.items)} aria-label={`Detalhar ${point.label}`}><span className="flex min-w-0 items-center gap-2"><span aria-hidden="true" className="h-3 w-3 shrink-0 rounded-sm" style={{ backgroundColor: point.color }} />{point.label}</span><span className="tabular-nums">{fmtMoneyExact(point.value)} · {(point.value / positiveTotal * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%</span></Button> : <>
         <span className="flex min-w-0 items-center gap-2"><span aria-hidden="true" className="h-3 w-3 shrink-0 rounded-sm" style={{ backgroundColor: point.color }} /><span className="break-words">{point.label}</span></span>
-        <span className="tabular-nums">{fmtMoneyExact(point.value)} · {(point.value / positiveTotal * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%</span>
+        <span className="tabular-nums">{fmtMoneyExact(point.value)} · {(point.value / positiveTotal * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%</span></> }
       </li>)}</ul>
     </div> : <p role="status" className="py-6 text-sm text-ink-3">{emptyLabel}</p>}
-    {adjustments.length > 0 && <div className="mt-3 space-y-2 text-sm text-ink-3"><p>Estornos de despesas de outros períodos abatem o total. O gráfico mostra a participação nos valores positivos.</p><ul aria-label="Estornos por categoria">{adjustments.map((item, index) => <li key={index}>{item.label}: {fmtMoneyExact(item.value)}</li>)}</ul></div>}
+    {adjustments.length > 0 && <div className="mt-3 space-y-2 text-sm text-ink-3"><p>Estornos de despesas de outros períodos abatem o total. O gráfico mostra a participação nos valores positivos.</p><ul aria-label="Estornos por categoria">{adjustments.map((item, index) => <li key={index}>{onSelect ? <Button variant="ghost" className="h-auto whitespace-normal px-0 py-1" onClick={() => onSelect([item])} aria-label={`Detalhar ${item.label}`}>{item.label}: {fmtMoneyExact(item.value)}</Button> : <>{item.label}: {fmtMoneyExact(item.value)}</>}</li>)}</ul></div>}
   </div>;
 }

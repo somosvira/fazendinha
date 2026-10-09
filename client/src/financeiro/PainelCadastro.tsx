@@ -1,14 +1,11 @@
-/* Painel lateral direito usado pelos cadastros financeiros (conta e parceiro).
- * Envolve o Sheet (Radix) com cabeçalho/rodapé padronizados para não repetir
- * a estrutura em cada formulário. Escape e clique fora descartam sem
- * confirmar — os formulários são curtos e não há rascunho aqui. */
-
-import type { ReactNode } from "react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { useRef, useState, type ReactNode } from "react";
 import { CircleAlert } from "lucide-react";
 import { AjudaCampo } from "@/components/Dica";
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
-export function PainelCadastro({ aberto, titulo, onFechar, children, rodape, largura = "sm:max-w-lg" }: {
+export function PainelCadastro({ aberto, titulo, onFechar, children, rodape, largura = "sm:max-w-3xl", compacto = false, bloqueado = false, alteracoesExternas = false }: {
   aberto: boolean;
   titulo: string;
   onFechar: () => void;
@@ -16,17 +13,27 @@ export function PainelCadastro({ aberto, titulo, onFechar, children, rodape, lar
   rodape: ReactNode;
   /** classe Tailwind de largura máxima do painel — mais largo para conteúdo com tabela (ex.: seletor de animais). */
   largura?: string;
+  compacto?: boolean;
+  bloqueado?: boolean;
+  alteracoesExternas?: boolean;
 }) {
-  return <Sheet open={aberto} onOpenChange={(v) => { if (!v) onFechar(); }}>
-    <SheetContent side="right" overlayClassName="z-[1100]" className={`z-[1100] flex w-full flex-col gap-0 overflow-y-auto p-0 ${largura}`}>
-      <SheetHeader className="border-b border-border p-5 text-left">
-        <SheetTitle className="font-serif text-2xl font-normal">{titulo}</SheetTitle>
-        <SheetDescription className="sr-only">{titulo}</SheetDescription>
-      </SheetHeader>
-      <div className="flex-1 p-5">{children}</div>
-      <SheetFooter className="sticky bottom-0 flex-row justify-end gap-2 border-t border-border bg-card p-5">{rodape}</SheetFooter>
+  const alterado = useRef(false);
+  const [confirmarSaida, setConfirmarSaida] = useState(false);
+  const fechar = () => { if (bloqueado) return; if (alterado.current || alteracoesExternas) setConfirmarSaida(true); else onFechar(); };
+  const corpo = <div className="min-h-0 flex-1 overflow-y-auto p-4" onChangeCapture={() => { alterado.current = true; }}>{children}</div>;
+  const confirmar = <ConfirmDialog open={confirmarSaida} title="Descartar alterações?" message="Os dados preenchidos não serão salvos." confirmLabel="Descartar alterações" cancelLabel="Continuar editando" tone="danger" onConfirm={onFechar} onCancel={() => setConfirmarSaida(false)} />;
+  return <>{compacto ? <Dialog open={aberto} onOpenChange={v => { if (!v) fechar(); }}>
+    <DialogContent className="financeiro-colorido z-[1100] max-h-[90dvh] max-w-lg overflow-hidden p-0" overlayClassName="z-[1090]" onEscapeKeyDown={e => { if (bloqueado) e.preventDefault(); }}>
+      <DialogHeader className="fin-cabecalho border-b border-border p-4 pr-12"><DialogTitle>{titulo}</DialogTitle><DialogDescription className="sr-only">{titulo}</DialogDescription></DialogHeader>
+      {corpo}<DialogFooter className="border-t border-border bg-card p-4">{rodape}</DialogFooter>
+    </DialogContent>
+  </Dialog> : <Sheet open={aberto} onOpenChange={v => { if (!v) fechar(); }}>
+    <SheetContent side="right" overlayClassName="z-[1090]" className={`financeiro-colorido z-[1100] flex w-full flex-col gap-0 overflow-hidden p-0 ${largura}`}>
+      <SheetHeader className="fin-cabecalho shrink-0 border-b border-border p-4 pr-12 text-left"><SheetTitle className="font-serif text-2xl font-normal">{titulo}</SheetTitle><SheetDescription className="sr-only">{titulo}</SheetDescription></SheetHeader>
+      {corpo}<SheetFooter className="shrink-0 flex-row justify-end gap-2 border-t border-border bg-card p-4">{rodape}</SheetFooter>
     </SheetContent>
-  </Sheet>;
+  </Sheet>}{confirmar}</>;
+
 }
 
 /* Rótulo + controle + mensagem de erro junto ao campo. O controle recebe

@@ -1,12 +1,19 @@
+import { Table, TableHeader, TableHead, TableBody, TableRow, TableCell, TableCaption } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { DialogFinanceiro as Modal } from "./DialogFinanceiro";
 import { useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { Compromisso } from "./novo-api";
-import { brl, Button, dataBR, hoje, mesAtual, Modal, Pill, StatusPill } from "./financeiro-ui";
+import { brl, dataBR, hoje, mesAtual, STATUS } from "./financeiro-ui";
 import { diasDoCalendario, deslocarMes, nomeMes } from "./lib/calendario";
 import { tituloCompromisso } from "./lib/compromissos";
-import { LinkOperacaoFinanceira } from "./LinkOperacaoFinanceira";
+import { CompromissoDetalheDialog } from "./CompromissoDetalheDialog";
+import { useTelaPequena } from "./useTelaPequena";
 
-export function CalendarioCompromissos({ itens, mes, onChangeMes, onLiquidar }: {
+export function CalendarioCompromissos({ itens, mes, onChangeMes, onLiquidar, compacto = false, resumo = false }: {
+  compacto?: boolean;
+  resumo?: boolean;
   itens: Compromisso[];
   mes: string;
   onChangeMes: (mes: string) => void;
@@ -15,6 +22,7 @@ export function CalendarioCompromissos({ itens, mes, onChangeMes, onLiquidar }: 
   const [selecionadoId, setSelecionadoId] = useState<string | null>(null);
   const [diaSelecionado, setDiaSelecionado] = useState<string | null>(null);
   const selecionado = itens.find(c => c.id === selecionadoId);
+  const telaPequena = useTelaPequena();
   const dias = diasDoCalendario(mes);
   const porDia = new Map<string, Compromisso[]>();
   for (const item of itens) {
@@ -26,48 +34,61 @@ export function CalendarioCompromissos({ itens, mes, onChangeMes, onLiquidar }: 
   const mudarMes = (valor: string) => { setSelecionadoId(null); setDiaSelecionado(null); onChangeMes(valor); };
   const temCompromissosNoMes = itens.some(c => c.dataVencimento.startsWith(mes));
 
-  return <div>
-    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
+  return <div className="min-w-0">
+    <div className={`flex flex-wrap items-center justify-between gap-3 border-b border-border ${resumo ? "px-3 py-2" : "px-4 py-3"}`}>
       <div className="flex items-center gap-2">
-        <button type="button" aria-label="Mês anterior" onClick={() => mudarMes(deslocarMes(mes, -1))} className="rounded-lg border border-border p-2 hover:bg-surface-2"><ChevronLeft size={18} /></button>
-        <button type="button" aria-label="Próximo mês" onClick={() => mudarMes(deslocarMes(mes, 1))} className="rounded-lg border border-border p-2 hover:bg-surface-2"><ChevronRight size={18} /></button>
+        <Button variant="outline" size="icon" type="button" aria-label="Mês anterior" onClick={() => mudarMes(deslocarMes(mes, -1))} className={`rounded-lg border border-border hover:bg-surface-2 ${resumo ? "h-7 w-7 p-1" : "p-2"}`}><ChevronLeft size={18} /></Button>
+        <Button variant="outline" size="icon" type="button" aria-label="Próximo mês" onClick={() => mudarMes(deslocarMes(mes, 1))} className={`rounded-lg border border-border hover:bg-surface-2 ${resumo ? "h-7 w-7 p-1" : "p-2"}`}><ChevronRight size={18} /></Button>
         <h3 className="ml-1 text-sm font-semibold capitalize" aria-live="polite">{nomeMes(mes)}</h3>
       </div>
-      <Button secondary onClick={() => mudarMes(mesAtual())}>Hoje</Button>
+      <Button variant="outline" size={resumo ? "sm" : "default"} onClick={() => mudarMes(mesAtual())}>Hoje</Button>
     </div>
-    <div className="flex flex-wrap gap-x-4 gap-y-2 px-4 py-3 text-xs text-ink-3"><span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-amber-600" />A pagar</span><span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-green-700" />A receber</span><span>Clique em um compromisso para consultar os detalhes.</span></div>
+    <div className={`flex flex-wrap gap-x-4 gap-y-2 text-ink-3 ${resumo ? "px-3 py-2 text-xs" : "px-4 py-3 text-sm"}`}><span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[var(--fin-pendente)]" />A pagar</span><span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[var(--fin-entrada)]" />A receber</span><span className={resumo ? "sr-only" : undefined}>Clique em um compromisso para consultar os detalhes.</span></div>
     {!temCompromissosNoMes && <p role="status" className="px-4 pb-3 text-sm text-ink-3">Nenhum compromisso neste mês para a visão selecionada.</p>}
-    <div role="region" aria-label="Dias do calendário" tabIndex={0} className="overflow-x-auto">
-      <table className="w-full table-fixed border-collapse text-left" style={{ minWidth: 700 }}>
-        <caption className="sr-only">Calendário de compromissos — {nomeMes(mes)}</caption>
-        <thead><tr>{["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map(dia => <th key={dia} scope="col" className="border border-border bg-surface-2 px-3 py-2 text-xs font-semibold text-ink-3">{dia}</th>)}</tr></thead>
-        <tbody>{Array.from({ length: dias.length / 7 }, (_, semana) => <tr key={semana}>{dias.slice(semana * 7, semana * 7 + 7).map(({ data, dia }) => <td key={data} data-dia={data} className={`border border-border p-2 align-top ${data.startsWith(mes) ? "bg-white" : "bg-stone-50 text-ink-3"}`}>
-          <div className="min-h-[130px]">
-            <time dateTime={data} aria-label={dataBR(data)} aria-current={data === hoje() ? "date" : undefined} className={`mb-2 inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold ${data === hoje() ? "bg-mast text-white" : ""}`}>{dia}</time>
+    {telaPequena && !resumo ? <ul aria-label="Agenda do mês" className="max-h-[60dvh] divide-y divide-border overflow-y-auto">
+      {itens.filter(c => c.dataVencimento.startsWith(mes)).sort((a, b) => a.dataVencimento.localeCompare(b.dataVencimento)).map(c => <li key={c.id}>
+        <Button type="button" variant="ghost" data-fin-tom={c.tipo === "PAGAR" ? "pendente" : "entrada"} onClick={() => setSelecionadoId(c.id)} className="fin-evento h-auto w-full items-start justify-start gap-3 whitespace-normal rounded-none border-l-2 p-3 text-left">
+          <time dateTime={c.dataVencimento} className="shrink-0 rounded-md border border-border bg-card p-2 text-sm font-semibold">{dataBR(c.dataVencimento).slice(0, 5)}</time>
+          <span className="min-w-0 flex-1"><strong className="block break-words">{tituloCompromisso(c)}</strong><span className="mt-1 block text-sm">{c.tipo === "PAGAR" ? "A pagar" : "A receber"} · {brl(c.saldoPendente)}</span><span className="mt-1 flex flex-wrap gap-1"><Badge variant="outline">{STATUS[c.status] ?? c.status}</Badge>{c.vencido && <Badge variant="destructive">Vencido</Badge>}</span></span>
+        </Button>
+      </li>)}
+    </ul> : <div role="region" aria-label="Dias do calendário" tabIndex={0} className="overflow-x-auto">
+      <Table className="w-full table-fixed border-collapse text-left [&_td]:whitespace-normal" style={{ minWidth: resumo ? undefined : 700 }}>
+        <TableCaption className="sr-only">Calendário de compromissos — {nomeMes(mes)}</TableCaption>
+        <TableHeader><TableRow>{["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map(dia => <TableHead key={dia} scope="col" className={`border border-border bg-surface-2 ${resumo ? "px-1 py-1 text-xs" : "px-3 py-2 text-sm"} font-semibold text-ink-3`}>{dia}</TableHead>)}</TableRow></TableHeader>
+        <TableBody>{Array.from({ length: dias.length / 7 }, (_, semana) => <TableRow key={semana}>{dias.slice(semana * 7, semana * 7 + 7).map(({ data, dia }) => <TableCell key={data} data-dia={data} className={`border border-border ${resumo ? "p-1" : "p-2"} align-top ${data.startsWith(mes) ? "bg-white" : "bg-stone-50 text-ink-3"}`}>
+          {resumo ? <ResumoDia data={data} dia={dia} itens={porDia.get(data) ?? []} onSelect={() => setDiaSelecionado(data)} /> : <div className={compacto ? "min-h-[clamp(64px,calc((100dvh-300px)/6),96px)]" : "min-h-[130px]"}>
+            <time dateTime={data} aria-label={dataBR(data)} aria-current={data === hoje() ? "date" : undefined} className={`mb-2 inline-flex h-7 w-7 items-center justify-center rounded-full text-sm font-semibold ${data === hoje() ? "bg-mast text-white" : ""}`}>{dia}</time>
             <ul className="max-h-48 space-y-1 overflow-y-auto" aria-label={`Compromissos de ${dataBR(data)}`}>{(porDia.get(data) ?? []).map(c => <li key={c.id}>
-              <button type="button" onClick={() => setSelecionadoId(c.id)} aria-label={`${tituloCompromisso(c)}, ${c.tipo === "PAGAR" ? "a pagar" : "a receber"}, ${brl(c.saldoPendente)}${c.vencido ? ", vencido" : ""}`} className={`w-full rounded-md border-l-2 p-2 text-left text-[11px] leading-snug hover:brightness-95 ${c.tipo === "PAGAR" ? "border-amber-600 bg-amber-50 text-amber-950" : "border-green-700 bg-green-50 text-green-950"}`}>
+              <Button data-fin-tom={c.tipo === "PAGAR" ? "pendente" : "entrada"} type="button" onClick={() => setSelecionadoId(c.id)} aria-label={`${tituloCompromisso(c)}, ${c.tipo === "PAGAR" ? "a pagar" : "a receber"}, ${brl(c.saldoPendente)}${c.vencido ? ", vencido" : ""}`} variant="ghost" className={`fin-evento h-auto w-full flex-col items-start gap-0 whitespace-normal rounded-md border-l-2 p-2 text-left text-sm leading-snug hover:brightness-95 `}>
                 <span className="line-clamp-2 break-words font-semibold">{tituloCompromisso(c)}</span>
                 <span className="mt-1 block">{c.tipo === "PAGAR" ? "A pagar" : "A receber"} · {brl(c.saldoPendente)}</span>
                 {c.vencido && <span className="mt-1 block font-semibold text-red-800">Vencido</span>}
                 {c.status === "LIQUIDADO" && <span className="mt-1 block">Liquidado</span>}
-              </button>
+              </Button>
             </li>)}</ul>
-            {(porDia.get(data)?.length ?? 0) > 3 && <button type="button" onClick={() => setDiaSelecionado(data)} className="mt-2 text-left text-[11px] font-semibold text-green-800 underline underline-offset-2">Ver {porDia.get(data)!.length} compromissos</button>}
-          </div>
-        </td>)}</tr>)}</tbody>
-      </table>
-    </div>
-    <p className="px-4 py-3 text-xs text-ink-3 md:hidden">Deslize o calendário para ver os outros dias da semana.</p>
-    {diaSelecionado && <Modal titulo={`Compromissos de ${dataBR(diaSelecionado)}`} eyebrow="Agenda financeira" onClose={() => setDiaSelecionado(null)}>
-      <ul className="divide-y divide-border">{(porDia.get(diaSelecionado) ?? []).map(c => <li key={c.id}><button type="button" onClick={() => { setDiaSelecionado(null); setSelecionadoId(c.id); }} className="w-full space-y-2 p-5 text-left hover:bg-surface-2"><strong className="block break-words text-sm">{tituloCompromisso(c)}</strong><span className="block text-sm">{c.tipo === "PAGAR" ? "A pagar" : "A receber"} · {brl(c.saldoPendente)}</span><StatusPill status={c.status} />{c.vencido && <Pill tone="red">Vencido</Pill>}</button></li>)}</ul>
+            {(porDia.get(data)?.length ?? 0) > 3 && <Button type="button" onClick={() => setDiaSelecionado(data)} variant="link" className="mt-2 h-auto whitespace-normal px-0 text-left text-sm font-semibold text-green-800 underline underline-offset-2">Ver {porDia.get(data)!.length} compromissos</Button>}
+          </div>}
+        </TableCell>)}</TableRow>)}</TableBody>
+      </Table>
+    </div>}
+    {diaSelecionado && <Modal tom="pendente" titulo={`Compromissos de ${dataBR(diaSelecionado)}`} eyebrow="Agenda financeira" onClose={() => setDiaSelecionado(null)}>
+      <ul className="divide-y divide-border">{(porDia.get(diaSelecionado) ?? []).map(c => <li key={c.id}><Button type="button" onClick={() => { setDiaSelecionado(null); setSelecionadoId(c.id); }} variant="ghost" className="h-auto w-full flex-col items-start whitespace-normal space-y-2 p-5 text-left hover:bg-surface-2"><strong className="block break-words text-sm">{tituloCompromisso(c)}</strong><span className="block text-sm">{c.tipo === "PAGAR" ? "A pagar" : "A receber"} · {brl(c.saldoPendente)}</span><Badge variant="outline">{STATUS[c.status] ?? c.status}</Badge>{c.vencido && <Badge variant="outline" className="border-destructive/20 text-destructive">Vencido</Badge>}</Button></li>)}</ul>
     </Modal>}
-    {selecionado && <Modal titulo="Detalhes do compromisso" eyebrow="Agenda financeira" onClose={() => setSelecionadoId(null)}>
-      <div className="space-y-5 p-5">
-        <div><h3 className="break-words font-serif text-xl">{tituloCompromisso(selecionado)}</h3><p className="mt-2 text-sm text-ink-3">{selecionado.parceiro?.nome ?? "Sem parceiro"}</p></div>
-        <div className="flex flex-wrap gap-2"><StatusPill status={selecionado.status} />{selecionado.vencido && <Pill tone="red">Vencido</Pill>}</div>
-        <dl className="grid grid-cols-2 gap-4 text-sm"><div><dt className="text-ink-3">Vencimento</dt><dd className="mt-1 font-semibold">{dataBR(selecionado.dataVencimento)}</dd></div><div><dt className="text-ink-3">{selecionado.tipo === "PAGAR" ? "A pagar" : "A receber"}</dt><dd className="mt-1 font-semibold">{brl(selecionado.saldoPendente)}</dd></div><div><dt className="text-ink-3">Valor original</dt><dd className="mt-1">{brl(selecionado.valorOriginal)}</dd></div><div><dt className="text-ink-3">Operação</dt><dd className="mt-1"><LinkOperacaoFinanceira id={selecionado.operacao.id} numero={selecionado.operacao.numero} /></dd></div></dl>
-        {onLiquidar && ["PENDENTE", "PARCIAL"].includes(selecionado.status) && <div className="flex justify-end"><Button onClick={() => { setSelecionadoId(null); onLiquidar(selecionado); }}>{selecionado.tipo === "PAGAR" ? "Registrar pagamento" : "Registrar recebimento"}</Button></div>}
-      </div>
-    </Modal>}
+    {selecionado && <CompromissoDetalheDialog compromisso={selecionado} onClose={() => setSelecionadoId(null)} onLiquidar={onLiquidar} />}
+  </div>;
+}
+
+function ResumoDia({ data, dia, itens, onSelect }: { data: string; dia: number; itens: Compromisso[]; onSelect: () => void }) {
+  const classeHoje = data === hoje() ? "rounded-full bg-mast px-1.5 text-white" : "";
+  return <div className="min-h-7 text-center">
+    {itens.length ? <Button variant="ghost" title="Ver compromissos deste dia" className="h-auto w-full flex-col gap-0.5 rounded border border-border bg-muted/40 px-0 py-0.5 text-xs leading-4" aria-label={`${dataBR(data)}: ${itens.length} ${itens.length === 1 ? "compromisso" : "compromissos"}`} onClick={onSelect}>
+      <time dateTime={data} className={classeHoje}>{dia}</time>
+      <span className="flex gap-1">{(["PAGAR", "RECEBER"] as const).map(tipo => {
+        const compromissos = itens.filter(item => item.tipo === tipo);
+        const vencido = compromissos.some(item => item.vencido);
+        return compromissos.length > 0 && <Badge key={tipo} variant="outline" title={vencido ? "Inclui compromissos vencidos" : undefined} className={`px-1 py-0 text-[10px] leading-3 ${vencido ? "border-red-200 text-red-800" : tipo === "PAGAR" ? "border-stone-300 text-stone-700" : "border-green-200 text-green-800"}`}>{compromissos.length}<span className="sr-only"> {tipo === "PAGAR" ? "a pagar" : "a receber"}{vencido ? ", inclui vencidos" : ""}</span></Badge>;
+      })}</span>
+    </Button> : <time dateTime={data} className={`inline-block px-1.5 text-xs ${classeHoje}`}>{dia}</time>}
   </div>;
 }

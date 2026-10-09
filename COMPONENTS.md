@@ -370,7 +370,7 @@ Todos em `client/src/components/charts.tsx` — **SVG inline próprio, sem depen
 - Donut chart para composição (% das categorias).
 - **Quando usar:** breakdown de custos, mix de produção.
 
-> **Regra:** se precisar de outro tipo de gráfico, **criar SVG próprio** seguindo o padrão. Não introduzir `recharts`/`d3` no bundle do produtor.
+> **Regra atual:** reutilizar `charts.tsx` (Recharts) e `components/ui/chart.tsx` (shadcn-style), respeitando os tokens Terrano. O dashboard usa variantes compactas sem alterar os cálculos. Não introduzir D3. Ver [visão geral em grid](docs/financeiro-dashboard-grid.md).
 
 ---
 
@@ -563,3 +563,11 @@ Convencionar `DD/mmm/YY` em headers, `DD/MM/YYYY` em tabelas longas.
 - [`DESIGN.md`](./DESIGN.md) — tokens, princípios visuais.
 - [`AI_RULES.md`](./AI_RULES.md) — como IAs devem usar este catálogo.
 - [`ARCHITECTURE.md`](./ARCHITECTURE.md) — onde cada componente encaixa no fluxo.
+
+## Skeleton de carregamento financeiro
+
+`client/src/components/ui/skeleton.tsx` é a primitiva shadcn para placeholders; respeita movimento reduzido. `financeiro/CarregamentoFinanceiro.tsx` compõe `SkeletonOperacao` e `SkeletonCategorias` na mesma organização do conteúdo, com `role="status"`, `aria-busy` e placeholders ocultos de leitores de tela.
+
+A camada `financeiro/cores-financeiro.css` define `fin-painel`, `fin-cabecalho`, `fin-indicador`, `fin-valor`, `fin-selo` e `fin-dropzone`, com `data-fin-tom` (`entrada`, `saida`, `pendente`, `info`, `alerta`, `neutro`). Use `PaginaFinanceira colorida`, `Panel tom` e `Metric tom` para ativar o padrão nas páginas financeiras revisadas. `DialogFinanceiro tom` inclui a superfície clara também quando renderizado em portal. Preserve faixas finas, cabeçalhos suaves, ícones e cards de efeitos usando marrom, verde e vermelho. Informação e pendência usam marrom; abas ativas usam grafite. Não usar azul ou amarelo forte.
+
+`ListaCadastroFinanceiro` compõe Input, Select, Table e paginação para todos os cadastros financeiros; normaliza busca textual/documental. `SelectCampo` compõe as opções existentes sobre Select shadcn e conserva rótulos, erros, required e disabled. `SecaoFinanceira` usa Collapsible para conteúdo secundário. Checkbox e RadioGroup locais completam os controles shadcn. `PainelCadastro compacto` usa Dialog; o padrão usa Sheet largo com rolagem no corpo, footer persistente e confirmação de descarte por fechamento incidental. `SkeletonListaFinanceira` atende páginas e listas em atualização. Card permite `asChild` para preservar section e Table permite `semContainer` quando o domínio já fornece seu contêiner acessível de rolagem.

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { RelatorioFinanceiroDetalhe } from "./RelatorioFinanceiroDetalhe";
 import { obterRelatorioFinanceiro, salvarPdfRelatorioFinanceiro, type RelatorioFinanceiroDetalhe as Detalhe } from "./novo-api";
 import { uid } from "../lib/uid.fixture";
@@ -57,4 +57,19 @@ describe("detalhe do relatório emitido", () => {
     expect((await screen.findByRole("alert")).textContent).toContain("Não foi possível montar");
     expect(screen.queryByRole("button", { name: /Baixar PDF/ })).toBeNull();
   });
+});
+
+
+it("pagina os itens salvos sem alterar os totais do snapshot", async () => {
+  const snapshot = detalhe.snapshot!;
+  const linhas = Array.from({ length: 31 }, (_, i) => ({ ...snapshot.composicao.linhas[0], item: `Item salvo ${i + 1}` }));
+  vi.mocked(obterRelatorioFinanceiro).mockResolvedValue({ ...detalhe, snapshot: { ...snapshot, composicao: { ...snapshot.composicao, linhas, totalLinhas: 31 } } });
+  render(<RelatorioFinanceiroDetalhe id={uid(12)} podeExportar onVoltar={vi.fn()} />);
+  const tabela = within(await screen.findByRole("table", { name: "Itens das operações" }));
+  expect(tabela.getAllByRole("row")).toHaveLength(16);
+  expect(tabela.queryByText("Item salvo 16")).toBeNull();
+  fireEvent.click(within(screen.getByRole("navigation", { name: "Paginação dos itens do relatório" })).getByRole("button", { name: "Próxima" }));
+  expect(tabela.getByText("Item salvo 16")).toBeTruthy();
+  expect(tabela.queryByText("Item salvo 1")).toBeNull();
+  expect(screen.getByText("Compras e serviços").parentElement?.textContent).toContain("500,00");
 });
