@@ -118,7 +118,7 @@ describe("visualizações financeiras integradas", () => {
     render(<VisaoGeralFinanceira onNav={onNav} />);
     await screen.findAllByText("Compromisso 1");
     expect(within(screen.getByRole("radiogroup", { name: "Tipo do gráfico de receitas e despesas" })).getByRole("radio", { name: "Linhas" }).getAttribute("aria-checked")).toBe("true");
-    expect(screen.queryByText("Compromisso 6")).toBeNull();
+    expect(screen.getByRole("button", { name: /Compromisso 6, a pagar/ })).toBeTruthy();
     fireEvent.click(screen.getAllByRole("button", { name: "Registrar pagamento" })[0]);
     expect(screen.getByRole("dialog", { name: "Registrar pagamento" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Fechar" }));

@@ -37,7 +37,7 @@ export function ContasDisponibilidade({ contas, onAbrir }: { contas: Conta[]; on
   const incluidas = contas.filter(conta => conta.incluirNoSaldoGeral);
   const excluidas = contas.filter(conta => !conta.incluirNoSaldoGeral);
   const saldo = incluidas.reduce((total, conta) => total + Math.round(Number(conta.saldoAtual) * 100), 0) / 100;
-  return <Card data-fin-tom="entrada" className="fin-painel min-w-0 gap-0 overflow-hidden rounded-lg border-border py-0 shadow-none">
+  return <Card data-fin-tom="entrada" className="fin-painel h-full min-w-0 gap-0 overflow-hidden rounded-lg border-border py-0 shadow-none">
     <div className="fin-cabecalho p-4"><h2 className="font-serif text-xl">Contas e disponibilidade</h2><p className="mt-1 text-sm text-muted-foreground">Saldos atuais das contas incluídas</p></div>
     <div className="px-4 pb-3"><p className="text-xs text-muted-foreground">Saldo disponível · {incluidas.length} {incluidas.length === 1 ? "conta incluída" : "contas incluídas"}</p><strong className={`text-2xl tabular-nums ${saldo < 0 ? "text-destructive" : "text-[var(--pos)]"}`}>{brl(saldo)}</strong></div>
     {incluidas.length ? <ListaContas contas={incluidas} onAbrir={onAbrir} /> : <p className="px-4 pb-4 text-sm text-muted-foreground">Nenhuma conta incluída no saldo disponível.</p>}
@@ -45,6 +45,6 @@ export function ContasDisponibilidade({ contas, onAbrir }: { contas: Conta[]; on
       <CollapsibleTrigger asChild><Button variant="ghost" className="h-auto w-full justify-between whitespace-normal rounded-none p-4 text-left">{excluidas.length} {excluidas.length === 1 ? "conta fora do saldo" : "contas fora do saldo"}<ChevronDown aria-hidden="true" /></Button></CollapsibleTrigger>
       <CollapsibleContent><ListaContas contas={excluidas} onAbrir={onAbrir} /></CollapsibleContent>
     </Collapsible>}
-    <Button variant="outline" className="m-4 mt-3" onClick={onAbrir}>Ver contas e extratos</Button>
+    <Button variant="outline" className="m-4 mt-auto" onClick={onAbrir}>Ver contas e extratos</Button>
   </Card>;
 }

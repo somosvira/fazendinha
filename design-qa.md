@@ -213,3 +213,7 @@ Conferência no navegador local: recebimento e pagamento reais, quatro compromis
 ### Grid 75/25 e agenda integrada 80/20 — 09/10/2026
 
 Gráfico ampliado e contas na primeira linha; prioridades e calendário aberto em Card único na segunda, junto de categorias em coluna de 20%. Verificado no navegador local: expansão do calendário, ordem móvel lista/mês e ausência de rolagem lateral em 351px. Capturas em `/tmp/financeiro-design-qa/grid-integrado-desktop.jpg` e `grid-integrado-mobile.jpg`. Os 55 testes focados de dashboard, modais, calendário e responsividade passaram; build aprovado com o aviso existente de tamanho do bundle.
+
+### Comentários no navegador — 09/10/2026
+
+Categorias passam para baixo em largura completa; rastreabilidade removida da visão geral. Calendário ampliado mostra nome, direção e saldo de cada compromisso no dia, usando a agenda textual existente no celular. Contas e gráfico conferidos com a mesma altura (414px). Sem rolagem lateral da página em 1602px e 351px. 53 testes focados passaram; dois testes da faixa de rastreabilidade removida deixaram de se aplicar. Build aprovado. Evidências: `/tmp/financeiro-design-qa/calendario-ampliado-desktop.jpg` e `calendario-ampliado-mobile.jpg`.

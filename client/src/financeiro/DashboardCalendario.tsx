@@ -26,7 +26,7 @@ export function DashboardCalendario({ itens, href, mes, onChangeMes, onLiquidar,
           </Dialog>
     </div>
     <p className="px-4 pb-2 text-xs text-muted-foreground">{quantidade} {quantidade === 1 ? "compromisso pendente no mês" : "compromissos pendentes no mês"}</p>
-    <div aria-hidden={calendario || undefined}><CalendarioCompromissos resumo itens={itens} mes={mes} onChangeMes={onChangeMes} onLiquidar={onLiquidar} /></div>
+    <div aria-hidden={calendario || undefined}><CalendarioCompromissos compacto itens={itens} mes={mes} onChangeMes={onChangeMes} onLiquidar={onLiquidar} /></div>
   </Container>;
 }
 function hrefPeriodo(href: string, chave: string) {

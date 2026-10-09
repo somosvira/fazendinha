@@ -2,10 +2,9 @@ import { useTelaPequena } from "./useTelaPequena";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import "./dashboard-grid.css";
 import { useEffect, useState } from "react";
-import { ArrowDownLeft, ArrowUpRight, Plus, TrendingDown, TrendingUp, ChevronDown, ShieldCheck } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Plus, TrendingDown, TrendingUp } from "lucide-react";
 import type { Tab } from "../components/Shell";
 import { AnaliseCategorias } from "./AnaliseCategorias";
-import { BaseFinanceiraResumo } from "./BaseFinanceiraResumo";
 import { descartarRascunhoOperacao, obterConfiguracoesFinanceiras, obterDashboardFinanceiro, obterRascunhoOperacao, type Compromisso, type ConfiguracoesFinanceiras, type DashboardFinanceiro } from "./novo-api";
 import { brl, Empty, ErrorBox, mesAtual, PaginaCarregando, PaginaFinanceira } from "./financeiro-ui";
 import { ConfirmDialog } from "../components/ConfirmDialog";
@@ -16,7 +15,6 @@ import { DashboardCalendario } from "./DashboardCalendario";
 import { DashboardCompromissos } from "./DashboardCompromissos";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { LiquidarCompromissoModal } from "./LiquidarCompromissoModal";
 import { ChartTypeControl, EntradaSaidaChart, type ChartType } from "../components/charts";
 import { PeriodoFinanceiroControl } from "./PeriodoFinanceiroControl";
@@ -87,7 +85,7 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
 
   const painelAgenda = dadosAtuais && (<DashboardCompromissos integrado resumo={<div className="grid grid-cols-2 gap-2"><IndicadorFinanceiro label="A pagar" valor={dadosAtuais.compromissos.aPagar} detalhe={resumoVencidos(pendentes, "PAGAR")} alerta={pendentes.some(item => item.vencido && item.tipo === "PAGAR")} icon={ArrowUpRight} onClick={() => setListaAberta("pagar")} /><IndicadorFinanceiro label="A receber" valor={dadosAtuais.compromissos.aReceber} detalhe={resumoVencidos(pendentes, "RECEBER")} alerta={pendentes.some(item => item.vencido && item.tipo === "RECEBER")} icon={ArrowDownLeft} onClick={() => setListaAberta("receber")} /></div>} itens={pendentes} href={hrefCompromissos} onLiquidar={podeLancar ? setLiquidando : undefined} />);
   const painelCalendario = dadosAtuais && <DashboardCalendario integrado itens={pendentes} href={hrefCompromissos} mes={mesCalendario} onChangeMes={setMesCalendario} onLiquidar={podeLancar ? setLiquidando : undefined} />;
-  const painelCompromissos = dadosAtuais && <Card className="fin-painel dashboard-compromissos min-w-0 gap-0 overflow-hidden rounded-lg py-0 shadow-none"><h2 className="px-4 pt-4">Compromissos</h2><div className="grid min-w-0 items-start lg:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)]">{painelAgenda}{painelCalendario}</div></Card>;
+  const painelCompromissos = dadosAtuais && <Card className="fin-painel dashboard-compromissos min-w-0 gap-0 overflow-hidden rounded-lg py-0 shadow-none"><h2 className="px-4 pt-4">Compromissos</h2><div className="grid min-w-0 items-start lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">{painelAgenda}{painelCalendario}</div></Card>;
   const painelContas = dadosAtuais && (<ContasDisponibilidade contas={dadosAtuais.contas} onAbrir={() => onNav("caixinha")} />);
   const painelFluxo = dadosAtuais && (<Card data-fin-tom="info" className="fin-painel min-w-0 gap-0 overflow-hidden rounded-lg border-border py-0 shadow-none">
           <div className="fin-cabecalho flex flex-wrap items-center justify-between gap-2 p-4 pb-2"><div><h2 className="font-serif text-xl">Recebimentos e pagamentos</h2><p className="mt-1 text-sm text-muted-foreground">{tipoGraficoFluxo === "line" ? "Acumulado no período" : "Realizado por dia ou mês"}</p></div><div className="flex flex-wrap items-center gap-3"><ChartTypeControl value={tipoGraficoFluxo} onChange={setTipoGraficoFluxo} label="Tipo do gráfico de receitas e despesas" />          <div className="dashboard-resultado flex flex-col items-end gap-0 border-l border-border pl-3"><span className="text-xs text-muted-foreground">Resultado de caixa</span><strong className={`font-serif text-2xl tabular-nums ${Number(dadosAtuais.realizado.resultado) < 0 ? "text-destructive" : "text-[var(--pos)]"}`}>{Number(dadosAtuais.realizado.resultado) > 0 ? "+" : ""}{brl(dadosAtuais.realizado.resultado)}</strong><p className="sr-only">Recebimentos − pagamentos · inclui aportes e retiradas</p></div></div></div>
@@ -118,20 +116,17 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
 </TabsContent>
         <TabsContent value="contas">{painelContas}</TabsContent>
       </Tabs> : <>
-      <div className="dashboard-principal mt-4 grid min-w-0 items-start gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,1fr)]">
+      <div className="dashboard-principal mt-4 grid min-w-0 items-stretch gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,1fr)]">
         {painelFluxo}
         {painelContas}
       </div>
-      <div className="dashboard-analises mt-4 grid min-w-0 gap-4 lg:grid-cols-[minmax(0,4fr)_minmax(0,1fr)]">
+      <div className="dashboard-analises mt-4 grid min-w-0 gap-4">
         {painelCompromissos}
         {painelCategorias}
       </div>
 </>}
       <ErrorBox erro={erroConfig} />
-      <Collapsible data-fin-tom="info" className="fin-painel mt-4 overflow-hidden rounded-lg border border-border bg-card">
-        <CollapsibleTrigger asChild><Button variant="ghost" className="h-auto w-full flex-wrap justify-start gap-3 rounded-none p-3 text-left whitespace-normal"><ShieldCheck /><span className="font-serif text-lg">Rastreabilidade e integridade</span><span className="text-sm font-normal text-muted-foreground">{dadosAtuais.base.operacoes.total} operações · {dadosAtuais.base.compromissos.total} compromissos · {dadosAtuais.base.transacoes.total} transações</span><ChevronDown className="ml-auto" /></Button></CollapsibleTrigger>
-        <CollapsibleContent><BaseFinanceiraResumo base={dadosAtuais.base} realizado={dadosAtuais.realizado} compromissos={dadosAtuais.compromissos} inicio={inicioPeriodo} fim={fimPeriodo} /></CollapsibleContent>
-      </Collapsible>
+
     </>}
     {listaAberta && <DashboardListaModal tipo={listaAberta} inicio={inicioPeriodo} fim={fimPeriodo} pendentes={pendentes} onClose={() => setListaAberta(null)} />}
     {podeLancar && liquidando && <LiquidarCompromissoModal key={liquidando.id} compromisso={liquidando} contas={config?.contas ?? []} onClose={() => setLiquidando(null)} onLiquidado={recarregar} onErro={setErro} />}

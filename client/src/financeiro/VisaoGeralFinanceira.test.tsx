@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { baseFinanceiraVazia } from "./dashboard.fixture";
 import { VisaoGeralFinanceira } from "./VisaoGeralFinanceira";
 import { descartarRascunhoOperacao, obterRascunhoOperacao } from "./novo-api";
@@ -76,7 +76,7 @@ describe("Visão geral — período global", () => {
     const snapshot = (total: string): DashboardFinanceiro => ({ periodo: { inicio: "2026-01-01", fim: "2026-12-31" }, saldoGeral: "0", contas: [], realizado: { entradas: total, saidas: "0", resultado: total }, fluxo: [], compromissos: { aPagar: "0", aReceber: "0" }, despesasPorCategoria: [], proximosCompromissos: [], base: { ...baseFinanceiraVazia(), volumeEconomico: total, porTipo: [{ tipo: "VENDA", valor: total }] } });
     vi.mocked(obterDashboardFinanceiro).mockResolvedValueOnce(snapshot("321"));
     render(<VisaoGeralFinanceira onNav={vi.fn()} />);
-    await screen.findByRole("button", { name: /Rastreabilidade e integridade/ });
+    await screen.findByRole("heading", { name: "Compromissos" });
     expect(screen.queryByRole("heading", { name: "Despesas realizadas" })).toBeNull();
     expect(listarOperacoes).not.toHaveBeenCalled();
     const headings = Array.from(document.querySelectorAll("h2")).map(h => h.textContent);
@@ -96,52 +96,22 @@ describe("Visão geral — período global", () => {
     expect(screen.getAllByText("R$ 876,00").length).toBeGreaterThan(0);
     expect(obterDashboardFinanceiro).toHaveBeenCalledTimes(3);
   });
-  it("linka \"sem efeitos vinculados\" da Base financeira para Operações filtradas, no mesmo período", async () => {
-    vi.mocked(obterDashboardFinanceiro).mockResolvedValueOnce({
-      periodo: { inicio: "2026-01-01", fim: "2026-12-31" }, saldoGeral: "0", contas: [],
-      realizado: { entradas: "0", saidas: "0", resultado: "0" }, fluxo: [], compromissos: { aPagar: "0", aReceber: "0" },
-      despesasPorCategoria: [], proximosCompromissos: [],
-      base: { ...baseFinanceiraVazia(), operacoes: { total: 5, estados: {}, comEstoque: 0, semParceiro: 1, semEfeitos: 3 } },
-    });
-    render(<VisaoGeralFinanceira onNav={vi.fn()} />);
-    fireEvent.click(await screen.findByRole("button", { name: /Rastreabilidade e integridade/ }));
-    const linha = (await screen.findByText(/Sem efeitos vinculados/)).closest("div")!;
-    const link = within(linha).getByRole("link");
-    expect(link.textContent).toBe("3");
-    expect(link.getAttribute("href")).toBe("/financeiro/operacoes?inicio=2026-01-01&fim=2026-12-31&efeito=SEM_EFEITOS");
-  });
-  it("mostra os indicadores de apoio da rastreabilidade como cards e destaca só os vínculos ausentes", async () => {
-    vi.mocked(obterDashboardFinanceiro).mockResolvedValueOnce({
-      periodo: { inicio: "2026-01-01", fim: "2026-12-31" }, saldoGeral: "0", contas: [],
-      realizado: { entradas: "0", saidas: "0", resultado: "0" }, fluxo: [], compromissos: { aPagar: "0", aReceber: "0" },
-      despesasPorCategoria: [], proximosCompromissos: [],
-      base: { ...baseFinanceiraVazia(), operacoes: { total: 5, estados: {}, comEstoque: 2, semParceiro: 1, semEfeitos: 0 }, transacoes: { ...baseFinanceiraVazia().transacoes, avulsas: 2, semMovimentos: 1, transferenciasIncompletas: 0 } },
-    });
-    render(<VisaoGeralFinanceira onNav={vi.fn()} />);
-    fireEvent.click(await screen.findByRole("button", { name: /Rastreabilidade e integridade/ }));
-    const card = async (rotulo: string) => (await screen.findByText(rotulo)).closest("div")!;
-    expect((await card("Com efeito de estoque")).textContent).toContain("2");
-    expect((await card("Avulsas (sem operação)")).textContent).toContain("2");
-    expect((await card("Sem movimento de conta")).className).toContain("bg-red-50");
-    expect((await card("Transferências sem as duas pontas")).className).not.toContain("bg-red-50");
-    expect((await card("Sem parceiro")).className).not.toContain("bg-red-50");
-  });
   it("mostra erro e permite tentar novamente sem restaurar o período antigo", async () => {
     vi.mocked(obterDashboardFinanceiro).mockRejectedValueOnce(new Error("Falha de rede"));
     render(<VisaoGeralFinanceira onNav={vi.fn()} />);
     expect((await screen.findByRole("alert")).textContent).toContain("Falha de rede");
     expect(screen.queryByRole("heading", { name: "Base financeira" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Tentar novamente" }));
-    await screen.findByRole("button", { name: /Rastreabilidade e integridade/ });
+    await screen.findByRole("heading", { name: "Compromissos" });
   });
 });
 
 
 describe("Visão geral — grid operacional", () => {
-  it("mantém rastreabilidade recolhida, remove volume e abre calendário em modal", async () => {
+  it("remove rastreabilidade e volume e abre calendário em modal", async () => {
     render(<VisaoGeralFinanceira onNav={vi.fn()} podeLancar={false} />);
-    const trigger = await screen.findByRole("button", { name: /Rastreabilidade e integridade/ });
-    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+    await screen.findByRole("heading", { name: "Compromissos" });
+    expect(screen.queryByText("Rastreabilidade e integridade")).toBeNull();
     expect(screen.queryByText("Sem movimento de conta")).toBeNull();
     expect(screen.queryByText("Volume por tipo de operação")).toBeNull();
     expect(screen.queryByRole("button", { name: "Nova operação" })).toBeNull();
