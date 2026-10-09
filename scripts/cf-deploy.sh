@@ -1,23 +1,21 @@
 #!/bin/sh
 
 # Roda como "Deploy command" no Cloudflare Workers Builds (Settings > Builds),
-# substituindo o default `npx wrangler deploy`. Baseado no scripts/deploy.sh
-# do kumon (~/dev/kumon), adaptado pro monorepo (schema/migrations vivem em
-# server/, não na raiz) e pra fazendinha não ter as vars BACKEND_*/FRONTEND_*.
+# substituindo o default `npx wrangler deploy`. Schema e migrations vivem
+# em server/; interface e API são publicadas no mesmo Worker.
 #
 # Sem `set -e` de propósito: com `set -e`, `OUTPUT=$(cmd)` aborta o script na
 # hora se `cmd` falhar, antes de chegar no echo/case abaixo — perderia
 # justamente a mensagem de diagnóstico que este script existe pra mostrar.
 # Cada passo abaixo checa o próprio exit code manualmente.
 #
-# Pegadinha conhecida deste repo (ver DEPLOY.md §1.4, "Histórico consolidado"):
+# Pegadinha conhecida deste repo (ver DEPLOY.md, seção "Banco e bootstrap"):
 # as migrations foram consolidadas em 25/09/2026 numa baseline + a migration da
 # pecuária v1. Um banco com o histórico anterior (ou materializado por
 # `db push`) faz a baseline falhar com "already exists" e este script aborta
-# aqui, antes do `wrangler deploy`. Resolver uma vez como descrito lá (recriar
-# o banco, ou registrar a baseline com `migrate resolve --applied`) antes de
-# repetir. Não é bug do script: é o mesmo estado que bloquearia um
-# `migrate deploy` manual.
+# aqui, antes do `wrangler deploy`. Reconcilie o schema e o histórico antes
+# de repetir, verificando equivalência antes de registrar uma baseline como
+# aplicada. Preserve os dados; reset não é uma etapa deste deploy.
 OUTPUT=$(cd server && npx prisma migrate deploy 2>&1)
 STATUS=$?
 echo "$OUTPUT"
@@ -67,7 +65,7 @@ if [ "$DEPLOY_STATUS" -ne 0 ]; then
 fi
 
 # Prefere APP_BASE_URL (mesma env de server/src/env.ts, já usada pros links de
-# convite/reset — DEPLOY.md §1.2) em vez de inventar uma env só pra isso: no
+# convite/reset — DEPLOY.md, seção "Configuração") em vez de inventar uma env só pra isso: no
 # Worker único, front e back são o mesmo host, então a URL pública do app já É
 # a base do health check. Setar em Build variables assim que souber a URL
 # definitiva do Worker (custom domain, se tiver um).

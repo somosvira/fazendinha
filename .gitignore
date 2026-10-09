@@ -2,6 +2,7 @@ node_modules/
 dist/
 .env
 .env.local
+.dev.vars
 *.log
 *.tsbuildinfo
 coverage/
@@ -13,10 +14,10 @@ __pycache__/
 .superpowers/
 .worktrees/
 
-# Tesseract.js — language data baixado no primeiro recognize(), fica no cwd do server.
+# Arquivos privados/locais de execuções antigas; manter fora do Git.
 *.traineddata
 
-# Driver de storage local (STORAGE_DRIVER=local) grava notas aqui em dev.
+# Anexos locais anteriores ao uso exclusivo de R2.
 .uploads/
 bateria-gabarito.json
 bateria-respostas.json

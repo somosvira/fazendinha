@@ -1,58 +1,48 @@
-# Contrato funcional — reconstrução do Financeiro
+# Contrato atual de Financeiro e Estoque
 
-Este documento fixa as regras que orientam a reconstrução local do Financeiro. Ele é deliberadamente independente do modelo legado e da importação do Excel.
+Este contrato descreve a implementação atual, independente do financeiro anterior e do Excel. Estrutura em `server/prisma/schema.prisma`; regras em `server/src/services/financeiro/` e `services/estoque/`; rotas em `server/src/routes/financeiro.ts` e `estoque.ts`.
 
-## Fonte da verdade
+## Fatos e efeitos
 
-- `Operacao` explica o fato de negócio.
-- `CompromissoFinanceiro` representa apenas valor ainda pendente, a pagar ou receber.
-- `TransacaoFinanceira` representa dinheiro realizado.
-- `MovimentoConta` é a única fonte de alteração do saldo de uma conta.
-- `MovimentoEstoque` representa alteração física e sempre possui uma origem justificável.
-- `Documento` comprova uma operação ou uma transação.
+| Entidade | Significado |
+|---|---|
+| `Operacao` / `ItemOperacao` | Fato de negócio e seus itens |
+| `CompromissoFinanceiro` | Valor pendente a pagar/receber |
+| `Liquidacao` | Vínculo do pagamento/recebimento posterior ao compromisso |
+| `TransacaoFinanceira` | Dinheiro realizado |
+| `MovimentoConta` | Efeito no saldo da conta |
+| `MovimentoEstoque` | Efeito físico com origem justificável |
+| `DocumentoFinanceiro` | Comprovante/anexo da operação ou transação |
+| `AuditoriaFinanceira` | Autoria, ação, motivo e estados anteriores/posteriores |
 
-## Cardinalidades
+Itens, compromissos, transações, movimentos físicos e documentos só existem quando exigidos pelo fato. Rascunho não deve produzir efeitos de uma operação confirmada.
 
-Uma operação possui, opcionalmente, muitos itens, compromissos, transações, movimentos de estoque e documentos. Nenhuma dessas relações é obrigatória por conveniência técnica: elas existem somente quando o fato de negócio as exige.
+## Dinheiro e histórico
 
-## Regras monetárias
+1. Saldo da conta resulta da abertura e do razão de movimentos; `MovimentoConta` é a fonte dos efeitos de dinheiro. Saldo geral respeita contas ativas incluídas na disponibilidade e o escopo consultado.
+2. Compromisso não altera saldo. Compra/serviço integralmente pago no ato não cria compromisso; pagamento parcial cria transação pelo pago e compromisso somente pelo restante.
+3. Liquidação não supera o pendente. Transferência entre contas próprias gera duas pontas equivalentes, sem criar receita/despesa pela circulação do dinheiro.
+4. Use `Prisma.Decimal` e `dinheiro()` em `regras.ts`; preserve precisão e os formatos dos DTOs existentes.
+5. Escritas financeiras respeitam o sítio e `PeriodoFinanceiro` fechado, usam transação e registram auditoria. Confirmados são cancelados/estornados com eventos inversos, sem apagar o fato original.
+6. Relatórios/visão geral distinguem competência do fato, dinheiro realizado e pendências. Não use custo de consumo pecuário como nova compra/despesa. Cálculos atuais ficam em `services/financeiro/dashboard.calc.ts` e `services/relatorio-gerencial.calc.ts`, com seus testes.
 
-1. Saldo da conta = saldo de abertura + entradas confirmadas - saídas confirmadas.
-2. Saldo geral = soma das contas ativas incluídas na disponibilidade.
-3. Compromisso não altera saldo.
-4. Compra ou serviço integralmente pago no ato não cria compromisso.
-5. Pagamento parcial imediato cria transação pelo valor pago e compromisso somente pelo restante.
-6. Liquidação posterior nunca pode superar o saldo pendente do compromisso.
-7. Transferência entre contas próprias possui duas pontas de mesmo valor e impacto zero no saldo geral.
-8. Registros financeiros confirmados não são apagados; são revertidos com evento inverso e trilha de auditoria.
+## Estoque compartilhado
 
-## Regras de estoque
+- Recebimento físico independe de pagamento. Compra para estoque recebida gera entrada vinculada à operação; compra a prazo pode aumentar estoque sem alterar conta. Serviço não gera quantidade física.
+- Produto não tem setor único: possui centros por `ProdutoCentroCusto`. Categoria é classificação financeira; usos genético, sanitário e nutricional são atributos independentes do Produto e podem coexistir.
+- O sítio distingue saldos e custos. Transferência conserva origem/destino, quantidade, unidade, vínculos e custo congelado; não cria nova despesa nem duplica custo no consolidado.
+- Ajuste e perda precisam de justificativa e trilha. Estorno conserva o original e seu inverso. O cálculo físico considera o par conforme `statusSaldoEstoque`/`estoque.calc.ts`; não filtre indiscriminadamente apenas confirmados.
+- `PartidaProduto` é o lote do produto, distinto do lote de animais. Saldo rastreado exige alocação por partida, compatibilidade de unidade e tratamento explícito de validade desconhecida/vencida na data do fato.
+- Ativar rastreio de estoque existente exige prévia; não altera saldo/valor nem cria lote vazio. A identificação de partidas redistribui o histórico sem efeito líquido. Não desative rastreio para contornar uma validação.
+- Aplicações sanitárias/fechamentos nutricionais usam o estoque único. Origens de compra direta, aplicação documentada e reconciliação têm efeitos próprios; não substitua uma pela outra para criar saldo fictício.
+- Centros, categorias e movimentos de atividades agrícolas anteriores podem permanecer. A remoção dos módulos não autoriza apagar a história financeira ou seus cadastros pelo nome.
 
-1. Compra de item estocável gera movimento físico apenas quando houver recebimento.
-2. Recebimento não depende de pagamento.
-3. Entrada de origem `COMPRA` exige vínculo com operação de compra.
-4. Ajuste exige justificativa e usuário responsável.
-5. Transferência de estoque gera saída e entrada vinculadas.
-6. Movimento confirmado não é apagado; é revertido.
+## Permissões e documentos
 
-## Cenários obrigatórios
+Rotas exigem sessão, área/ação e escopo; custos e exportações devem respeitar a visibilidade financeira. Há uma limitação atual de exposição de valores em operações comuns ao operador sem `verValores`. Em `server/src/routes/financeiro.ts`, `apresentarOperacao()` mascara Serviço e efeitos de transferência/perda quando não há visibilidade de custos, mas retorna outras operações sem o mesmo mascaramento. Isso confirma que a proteção não é uniforme; a correção e o reteste desse acesso permanecem pendentes.
 
-1. Compra à vista: estoque aumenta, conta diminui, nenhum compromisso é criado.
-2. Compra a prazo: estoque aumenta, compromisso é criado, saldo não muda.
-3. Compra parcialmente paga: saldo diminui pelo valor pago e compromisso representa somente o restante.
-4. Serviço à vista: conta diminui e estoque não muda.
-5. Serviço a prazo: compromisso é criado e estoque e saldo não mudam.
-6. Venda à vista: estoque diminui quando aplicável e conta aumenta.
-7. Venda a prazo: compromisso a receber é criado e saldo não muda.
-8. Transferência financeira: duas contas mudam e o saldo geral permanece igual.
-9. Aporte de caixinha: transferência de uma conta para uma conta do tipo `CAIXA`.
-10. Reversão: efeitos são neutralizados sem apagar histórico.
+Documentos e relatórios usam R2 e chaves persistidas. Rascunhos com anexo e operações confirmadas têm fluxos distintos de acesso; não suponha rota de download onde ela não existe. Confira rotas e `services/financeiro/documentos.ts` antes de mudar esse contrato.
 
-## Restrições desta execução
+## Validação
 
-- somente branch local `financeiro-rebuild`;
-- somente banco `fazendinha_local`;
-- nenhum push ou deploy;
-- nenhum compromisso de compatibilidade com o modelo antigo;
-- nenhuma importação do Excel nesta fase;
-- seed pequeno e determinístico como única massa inicial.
+Invariantes, estornos e concorrência ficam nos testes ao lado dos serviços e em `server/tests/financeiro/invariantes.test.ts`. A bateria `test:financeiro:integration` prepara seu próprio banco temporário com migrations. Não depende de seeds antigos nem de checklist de PR. Consulte [desenvolvimento](desenvolvimento.md) para o cenário integrado atual.

@@ -3,19 +3,16 @@
 //
 // Por que existe: o bot já sabe RESPONDER com números (ferramentas curadas), mas não
 // sabe MANDAR o usuário para a tela com o recorte certo. Este arquivo descreve, de
-// forma estática, as rotas do app e os filtros de deep-link de cada uma. É consumido
-// em dois lugares:
-//   1) `navegacaoResumo()` → bloco NAVEGAÇÃO injetado no system prompt do bot
-//      (agent.ts), do mesmo jeito que taxonomiaResumo().
-//   2) `gerarDocMarkdown()` → o script scripts/gen-nav-doc.ts escreve docs/NAVEGACAO.md.
+// forma estática, as rotas do app e os filtros de deep-link de cada uma.
+// `navegacaoResumo()` injeta o catálogo no system prompt do bot (agent.ts).
+// O assistente está suspenso por featureFlags.ts; este catálogo não é o sitemap.
 //
 // Formato do link que a IA emite: markdown `[rótulo curto](/caminho?param=valor)`.
 // As ROTAS (path) são as reais de client/src/router.ts.
 //
-// Sobre os FILTROS (query params): são um ESQUEMA PLANEJADO — o client ainda não lê query string nas telas
-//     do financeiro (navegação é useState + History API só com path). Os nomes abaixo
-//     espelham o estado real de cada tela para a implementação ser mecânica; o plano
-//     está em PLANO_CLIENT no fim do arquivo.
+// Filtros e exemplos deste catálogo precisam ser conferidos contra a tela atual
+// antes de reativar o assistente. A presença de um param aqui não garante que o
+// client aplique esse recorte; router.ts e os componentes são a implementação.
 
 export interface FiltroNav {
   /** nome do query param, ex.: "status" */
@@ -138,62 +135,4 @@ export function navegacaoResumo(): string {
     "REGRA DE OURO (link): SEMPRE que sua resposta trouxer dados/números que tenham uma tela correspondente na lista abaixo, TERMINE a mensagem com um deep-link markdown [rótulo curto](/caminho?param=valor) pro usuário ver os detalhes. Esse é o comportamento PADRÃO — inclua o link por padrão; só OMITA se nenhuma rota da lista casar com o assunto, ou se sua resposta for uma pergunta de esclarecimento (sem dados). Escolha a rota + filtros que melhor refletem o que você respondeu (status, categoria, mês, pessoa…), usando os NOMES exatos dos dados reais que você buscou. Use SÓ caminhos e params desta lista (não invente). Até 2 links.",
     ...linhas,
   ].join("\n");
-}
-
-// ---------------------------------------------------------------------------
-// PLANO DE IMPLEMENTAÇÃO NO CLIENT (a parte "planejar os filtros" — ainda não feita).
-// Emitido no docs/NAVEGACAO.md pelo gerador. Resumo do que falta para os deep-links
-// realmente aplicarem filtro (hoje o client só navega por path, sem query string):
-export const PLANO_CLIENT = `## Plano de implementação no client (filtros)
-
-O que **falta**: as telas do financeiro ainda não leem query string. A navegação é
-\`useState<Tab>\` + History API gravando só o path (client/src/router.ts, App.tsx), e cada
-tela inicializa os próprios filtros em \`useState\`. Para os links do financeiro aplicarem
-filtro:
-
-1. **Parsear a query string na entrada** (App.tsx, junto de \`pathToTab\`): ler
-   \`window.location.search\` -> objeto de filtros e passar para a tela via prop
-   (ex.: \`deepLinkFiltros\`).
-2. **Cada tela consome os params na montagem**, usando os nomes que ela já tem em estado:
-   - \`CompromissosFinanceiros\` -> \`aba\` (PAGAR | RECEBER | LIQUIDADOS) e \`soVencidos\`;
-   - \`OperacoesFinanceiras\` -> \`busca\`, \`tipo\`, \`status\`, \`efeito\`, \`inicio\`/\`fim\`;
-   - \`VisaoGeralFinanceira\` -> período (\`de\`/\`ate\`), que já vai à API como inicio/fim.
-3. **Refletir filtro->URL** (opcional, fase 2): ao mudar um filtro, \`replaceState\` com a
-   query atualizada, para o link ser compartilhável e recarregável.
-4. **Tornar o link clicável no chat**: o \`Formatado\` (client/src/components/ChatWidget.tsx)
-   só entende \`**negrito**\`. Estender para detectar \`[rótulo](/caminho?filtros)\` e renderizar
-   um \`<button>\` que chama um callback de navegação in-app (setTab + aplicar filtros) — **não**
-   um \`<a href>\` puro (recarregaria a página).
-
-Ordem sugerida: 4 -> 1 -> 2 (clicável primeiro, depois os filtros de fato). Cada tela pode
-entrar incrementalmente; enquanto uma não lê os params, o link ainda abre a aba certa.`;
-
-/** Documento markdown completo (rotas + filtros + plano) — usado pelo gerador. */
-export function gerarDocMarkdown(geradoEm: string): string {
-  const rotas = NAV_CATALOG.map((r) => {
-    const filtros = r.filtros.length
-      ? r.filtros
-          .map((f) => `  - \`${f.param}\`${f.valores ? ` (${f.valores.join(" | ")})` : ""} — ${f.desc}`)
-          .join("\n")
-      : "  - (sem filtros de deep-link)";
-    const exemplos = r.exemplos.map((e) => `  - ${e}`).join("\n");
-    return `### \`${r.path}\` — ${r.titulo}\n\n**Quando linkar:** ${r.quando}\n\n**Filtros:**\n${filtros}\n\n**Exemplos:**\n${exemplos}`;
-  }).join("\n\n");
-
-  return `# Navegação da dashboard (deep-links da IA)
-
-> **Gerado por \`scripts/gen-nav-doc.ts\` a partir de \`server/src/services/bot/navegacao.ts\`.**
-> Não editar à mão — mexer no catálogo e rodar \`pnpm gen:nav-doc\`. Gerado em ${geradoEm}.
-
-Este é o guia que a IA recebe no contexto (via \`navegacaoResumo()\`) para responder com
-links internos que levam o usuário à tela/tabela certa, já com o recorte aplicado.
-
-Formato do link: \`[rótulo curto](/caminho?param=valor&param2=valor2)\`.
-
-## Rotas e filtros
-
-${rotas}
-
-${PLANO_CLIENT}
-`;
 }

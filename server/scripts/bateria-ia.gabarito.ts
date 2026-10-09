@@ -1,4 +1,4 @@
-// Gabarito da bateria de regressão da IA (docs/bateria-ia-consultas-2026-07-14.md):
+// Gabarito da bateria de regressão da IA (assistente suspenso; ver ARCHITECTURE.md):
 // calcula cada valor esperado DIRETO no Postgres (SQL cru, independente do motor
 // de consulta e dos where do Prisma). Recalcula sozinho — sobrevive a mudanças
 // de dados. Rodar: pnpm --filter rionovo-server run bateria:gabarito [saida.json]
