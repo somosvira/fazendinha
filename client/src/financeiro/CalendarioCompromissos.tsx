@@ -66,7 +66,7 @@ export function CalendarioCompromissos({ itens, mes, onChangeMes, onLiquidar, co
                 {c.status === "LIQUIDADO" && <span className="mt-1 block">Liquidado</span>}
               </Button>
             </li>)}</ul>
-            {(porDia.get(data)?.length ?? 0) > 3 && <Button type="button" onClick={() => setDiaSelecionado(data)} variant="link" className="mt-2 h-auto whitespace-normal px-0 text-left text-sm font-semibold text-green-800 underline underline-offset-2">Ver {porDia.get(data)!.length} compromissos</Button>}
+            {(porDia.get(data)?.length ?? 0) > 3 && <Button type="button" onClick={() => setDiaSelecionado(data)} variant="link" className="mt-2 h-auto whitespace-normal px-0 text-left text-sm font-semibold text-ink-2 underline underline-offset-2">Ver {porDia.get(data)!.length} compromissos</Button>}
           </div>
         </TableCell>)}</TableRow>)}</TableBody>
       </Table>

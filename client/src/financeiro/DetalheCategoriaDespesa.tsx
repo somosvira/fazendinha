@@ -16,7 +16,7 @@ function LancamentoCategoria({ linha, inicio, fim }: { linha: Linha; inicio: str
   const estorno = Number(linha.valor) < 0;
   const href = linha.operacaoId ? `/financeiro/operacoes/${linha.operacaoId}` : linha.contaId ? `/financeiro/contas/${linha.contaId}?${new URLSearchParams({ inicio, fim })}#movimento-${linha.movimentoId}` : null;
   const Icon = estorno ? CornerUpLeft : ArrowDownRight;
-  const conteudo = <Card data-fin-tom={estorno ? "info" : "saida"} className={`gap-3 rounded-lg border-l-4 bg-white p-4 shadow-none ${estorno ? "border-l-[var(--fin-info)]" : "border-l-[var(--fin-saida)]"}`}>
+  const conteudo = <Card data-fin-tom={estorno ? "info" : "saida"} className="gap-3 rounded-lg border-border bg-white p-4 shadow-none">
     <div className="flex items-start gap-3">
       <span className={`flex size-9 shrink-0 items-center justify-center rounded-lg fin-icone`}><Icon className="size-5" aria-hidden="true" /></span>
       <div className="min-w-0 flex-1"><div className="mb-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground"><time dateTime={linha.data}>{dataBR(linha.data)}</time><Badge variant="outline" className="fin-selo">{estorno ? "Estorno" : "Pagamento"}</Badge></div><p className="line-clamp-2 break-words text-sm font-semibold leading-6" title={linha.descricao ?? undefined}>{linha.descricao ?? "Movimento financeiro"}</p></div>
@@ -24,7 +24,7 @@ function LancamentoCategoria({ linha, inicio, fim }: { linha: Linha; inicio: str
     </div>
     <div className="flex flex-wrap items-center gap-2 text-sm sm:pl-12">
       <Badge variant="secondary" className="max-w-full whitespace-normal break-words"><Layers className="size-3" aria-hidden="true" />{linha.categoria}</Badge>
-      <Badge variant="outline" className={`whitespace-normal ${linha.classificacao === "INVESTIMENTO" ? "border-[var(--leite)] bg-[color-mix(in_srgb,var(--leite)_12%,transparent)]" : linha.classificacao === "CUSTEIO" ? "border-[var(--outros)] bg-[color-mix(in_srgb,var(--outros)_12%,transparent)]" : ""}`}>{linha.classificacao === "CUSTEIO" ? "Custeio" : linha.classificacao === "INVESTIMENTO" ? "Investimento" : "Sem classificação"}</Badge>
+      <Badge variant="outline" className="whitespace-normal border-border bg-surface-2 text-ink-2">{linha.classificacao === "CUSTEIO" ? "Custeio" : linha.classificacao === "INVESTIMENTO" ? "Investimento" : "Sem classificação"}</Badge>
       <span className="break-words text-muted-foreground">Centro: {linha.centroCusto}</span>
     </div>
     <div className="flex items-center justify-between border-t border-border pt-2 sm:hidden"><strong className="fin-valor tabular-nums">{brl(linha.valor)}</strong>{href && <ChevronRight className="size-4 text-muted-foreground" aria-hidden="true" />}</div>

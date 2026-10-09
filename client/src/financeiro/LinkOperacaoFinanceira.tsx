@@ -9,7 +9,7 @@ export function LinkOperacaoFinanceira({ id, numero }: { id: string; numero: num
     evento.preventDefault();
     navegarPara(`/financeiro/operacoes/${id}`);
   };
-  return <a href={`/financeiro/operacoes/${id}`} onClick={navegar} className="whitespace-nowrap font-semibold text-green-800 underline underline-offset-4 hover:text-green-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4">
+  return <a href={`/financeiro/operacoes/${id}`} onClick={navegar} className="whitespace-nowrap font-semibold text-ink-2 underline underline-offset-4 hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4">
     {codigoOperacao(numero)}
   </a>;
 }

@@ -99,3 +99,7 @@ O grid simultâneo da visão geral se aplica a partir de 1024px; em larguras men
 ## Seções de Contas e extrato geral
 
 A sidebar mantém “Contas e extratos”. O conteúdo inicia com o título “Contas”, sua descrição e a listagem. A seção “Extrato geral” vem abaixo, com sua explicação, período, gráfico expansível e tabela de movimentações. O título do extrato antecede seus controles; o destino `#extrato-geral` permanece na seção completa. O detalhe de cada conta mantém o nome próprio no cabeçalho.
+
+## Tema financeiro sóbrio
+
+Esta direção substitui a aplicação anterior de cores decorativas nas telas revisadas do PR. Cards, títulos, ícones, cabeçalhos, anexos e filtros ficam neutros; a seleção das abas usa grafite sobre branco. Verde e vermelho permanecem nos valores financeiros e estados correspondentes; âmbar indica pendência/atenção. Classificações e documentos não recebem cores decorativas. Gráficos preservam as séries semânticas e a diferenciação discreta das categorias. O ajuste abrange dashboard, operações/detalhes/formulários, compromissos/calendário/pagamento, contas/extratos, cadastros e relatórios por meio das primitivas shadcn e da camada compartilhada de estilo.

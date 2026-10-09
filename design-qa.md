@@ -140,3 +140,11 @@ A revisão independente encontrou perda de foco ao fechar detalhes e após a tra
 Validação final: 124 arquivos / 967 testes aprovados; build frontend (TypeScript + Vite) aprovado. Após o ajuste final do breakpoint do dashboard, os testes focados de visualização e responsividade foram repetidos. Permanece o aviso anterior de bundle acima de 500 kB. As regras de React foram revisadas quanto a ordem de hooks, limpeza de listeners, conteúdo acessível e ausência de duplicação dos painéis.
 
 Também conferida no navegador a sequência calendário móvel → compromisso → pagamento → cancelar: nenhum diálogo permaneceu aberto e o foco retornou ao botão Calendário.
+
+## Ajuste de sobriedade — 09/10/2026
+
+Aplicada a direção aprovada para todas as telas financeiras revisadas: superfícies brancas, ícones/títulos neutros, abas selecionadas em grafite, classificações e links sem azul/verde decorativo. Cores semânticas permanecem nos valores e estados; gráficos preservam diferenciação de séries/categorias. Nenhuma alteração de cálculo, navegação ou contrato de dados.
+
+A nova inspeção visual no navegador ficou indisponível nesta sessão: o browser-harness retornou `Operation not permitted` ao acessar `DevToolsActivePort` do Chrome local. As capturas anteriores não comprovam este ajuste de cor. A validação automatizada atual está registrada na descrição do PR.
+
+Validação atual: 124 arquivos / 967 testes frontend aprovados; TypeScript e build aprovados. Permanece o aviso anterior de bundle acima de 500 kB. `git diff --check` sem erros.
