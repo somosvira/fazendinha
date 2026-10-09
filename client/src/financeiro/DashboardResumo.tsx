@@ -24,26 +24,26 @@ export function IndicadorFinanceiro({ label, valor, detalhe, icon: Icon, alerta 
   return onClick ? <Button variant="ghost" aria-label={`Ver ${label.toLocaleLowerCase("pt-BR")}`} onClick={onClick} className={`h-auto min-w-0 w-full whitespace-normal p-0 text-left ${className}`}>{card}</Button> : href ? <a href={href} aria-label={`Ver ${label.toLocaleLowerCase("pt-BR")}`} className={`min-w-0 rounded-lg outline-none transition hover:brightness-95 focus-visible:ring-2 focus-visible:ring-ring ${className}`} onClick={event => { if (!event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) { event.preventDefault(); navegarPara(href); } }}>{card}</a> : card;
 }
 
-function ListaContas({ contas, onAbrir }: { contas: Conta[]; onAbrir: () => void }) {
+function ListaContas({ contas, onAbrir }: { contas: Conta[]; onAbrir: (conta: Conta) => void }) {
   return <ul className="divide-y divide-border">{contas.map(conta => <li key={conta.id}>
-    <Button variant="ghost" onClick={onAbrir} className="h-auto w-full justify-between gap-3 whitespace-normal rounded-none px-4 py-3 text-left">
+    <Button variant="ghost" onClick={() => onAbrir(conta)} className="h-auto w-full justify-between gap-3 whitespace-normal rounded-none px-4 py-3 text-left">
       <span className="flex min-w-0 items-center gap-2">{conta.tipo === "BANCO" ? <Landmark aria-hidden="true" /> : <WalletCards aria-hidden="true" />}<span className="min-w-0 break-words">{conta.nome}</span></span>
       <strong className={`shrink-0 tabular-nums ${Number(conta.saldoAtual) < 0 ? "text-destructive" : "fin-valor"}`}>{brl(conta.saldoAtual)}</strong>
     </Button>
   </li>)}</ul>;
 }
 
-export function ContasDisponibilidade({ contas, onAbrir }: { contas: Conta[]; onAbrir: () => void }) {
+export function ContasDisponibilidade({ contas, onAbrir, onAbrirConta }: { contas: Conta[]; onAbrir: () => void; onAbrirConta: (conta: Conta) => void }) {
   const incluidas = contas.filter(conta => conta.incluirNoSaldoGeral);
   const excluidas = contas.filter(conta => !conta.incluirNoSaldoGeral);
   const saldo = incluidas.reduce((total, conta) => total + Math.round(Number(conta.saldoAtual) * 100), 0) / 100;
   return <Card data-fin-tom="entrada" className="fin-painel h-full min-w-0 gap-0 overflow-hidden rounded-lg border-border py-0 shadow-none">
     <div className="fin-cabecalho p-4"><h2 className="font-serif text-xl">Contas e disponibilidade</h2><p className="mt-1 text-sm text-muted-foreground">Saldos atuais das contas incluídas</p></div>
     <div className="px-4 pb-3"><p className="text-xs text-muted-foreground">Saldo disponível · {incluidas.length} {incluidas.length === 1 ? "conta incluída" : "contas incluídas"}</p><strong className={`text-2xl tabular-nums ${saldo < 0 ? "text-destructive" : "text-[var(--pos)]"}`}>{brl(saldo)}</strong></div>
-    {incluidas.length ? <ListaContas contas={incluidas} onAbrir={onAbrir} /> : <p className="px-4 pb-4 text-sm text-muted-foreground">Nenhuma conta incluída no saldo disponível.</p>}
+    {incluidas.length ? <ListaContas contas={incluidas} onAbrir={onAbrirConta} /> : <p className="px-4 pb-4 text-sm text-muted-foreground">Nenhuma conta incluída no saldo disponível.</p>}
     {!!excluidas.length && <Collapsible className="border-t border-border">
       <CollapsibleTrigger asChild><Button variant="ghost" className="h-auto w-full justify-between whitespace-normal rounded-none p-4 text-left">{excluidas.length} {excluidas.length === 1 ? "conta fora do saldo" : "contas fora do saldo"}<ChevronDown aria-hidden="true" /></Button></CollapsibleTrigger>
-      <CollapsibleContent><ListaContas contas={excluidas} onAbrir={onAbrir} /></CollapsibleContent>
+      <CollapsibleContent><ListaContas contas={excluidas} onAbrir={onAbrirConta} /></CollapsibleContent>
     </Collapsible>}
     <Button variant="outline" className="m-4 mt-auto" onClick={onAbrir}>Ver contas e extratos</Button>
   </Card>;

@@ -233,3 +233,7 @@ Fundo cinza esverdeado mais definido, hover próprio e seleção verde acinzenta
 ### Correção da sidebar para cinza neutro — 09/10/2026
 
 Verde removido dos tokens de fundo, hover, seleção e texto da sidebar, conforme correção explícita do usuário. Conferido no navegador local e build aprovado. Captura: `/tmp/financeiro-design-qa/sidebar-cinza-desktop.jpg`.
+
+### Conta individual direto da visão geral — 09/10/2026
+
+Separada a ação de cada conta do botão geral: navegação usa ID da conta e período do dashboard, inclusive para contas fora do saldo. Conferido no navegador com Banco principal e extrato correspondente; teste cobre ambas as listas e botão geral. 22 testes focados e build passaram. Captura em `/tmp/financeiro-design-qa/conta-direta.jpg`.

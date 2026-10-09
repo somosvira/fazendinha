@@ -277,3 +277,19 @@ it("organiza a visão geral móvel por agenda, análises e contas sem cortar val
     expect(screen.getByRole("heading", { name: "Contas e disponibilidade" })).toBeTruthy();
   } finally { Object.defineProperty(window, "innerWidth", { configurable: true, value: largura }); }
 });
+
+it("abre diretamente cada conta, inclusive fora do saldo, e reserva o botão geral para a lista", async () => {
+  vi.mocked(obterDashboardFinanceiro).mockResolvedValueOnce({ periodo: { inicio: "2026-01-01", fim: "2026-12-31" }, saldoGeral: "120", contas, realizado: { entradas: "0", saidas: "0", resultado: "0" }, fluxo: [], compromissos: { aPagar: "0", aReceber: "0" }, despesasPorCategoria: [], base: baseFinanceiraVazia(), proximosCompromissos: [] });
+  const onNav = vi.fn();
+  render(<VisaoGeralFinanceira onNav={onNav} />);
+  fireEvent.click(await screen.findByRole("button", { name: /Banco.*120,00/ }));
+  expect(window.location.pathname).toBe(`/financeiro/contas/${contas[0].id}`);
+  expect(new URLSearchParams(window.location.search).get("inicio")).toBe("2026-01-01");
+  expect(new URLSearchParams(window.location.search).get("fim")).toBe("2026-12-31");
+  expect(onNav).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: /1 conta fora do saldo/ }));
+  fireEvent.click(screen.getByRole("button", { name: /Caixa.*0,00/ }));
+  expect(window.location.pathname).toBe(`/financeiro/contas/${contas[1].id}`);
+  fireEvent.click(screen.getByRole("button", { name: "Ver contas e extratos" }));
+  expect(onNav).toHaveBeenCalledWith("caixinha");
+});
