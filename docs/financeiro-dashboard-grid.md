@@ -135,3 +135,10 @@ Esta organização substitui a divisão anterior de três painéis na primeira l
 - Refinamento aprovado: manter o título “Despesas por categoria”, seguido do total líquido, e pizza compacta à esquerda do ranking no desktop. No celular, pizza e ranking se empilham. Pizza usa as mesmas cinco categorias do ranking e agrupa as restantes em “Outras categorias”; total e participações consideram todo o período. Filtro/lista completa continuam no modal.
 
 - Contas/disponibilidade: cada conta abre diretamente seu detalhe pelo ID, preservando início/fim do período do dashboard. Vale para contas incluídas e fora do saldo geral. “Ver contas e extratos” permanece como acesso à lista geral.
+
+
+## Tema compartilhado de todo o financeiro — 09/10/2026
+
+A direção neutra aprovada da visão geral agora abrange operações, detalhes e formulário; compromissos, calendário e liquidação; contas e extratos; todas as abas de configurações; relatórios, emissão e detalhes. Esta decisão substitui a limitação anterior à página inicial e as faixas/gradientes decorativos do tema anterior. Fundo cinza claro, superfícies brancas, bordas discretas, tipografia sans e títulos compactos. Verde sinaliza entradas/saldos positivos e confirmações; vermelho sinaliza alertas, estornos e cancelamentos; marrom permanece discreto em pendências e categorias. Valores de saída podem ser neutros, como na visão geral, mantendo direção e sinal escritos.
+
+`FinanceiroContent` delimita o módulo e `financeiro-theme.css` compartilha os tokens. O escopo CSS no root também alcança os portais Radix dos modais e seletores; ao sair do financeiro, os tokens das demais áreas são restaurados. Dropdowns usam `bg-popover` branco, incluindo o seletor de período, e o Select usa estados `accent` do shadcn. Não alterar dados, filtros, paginação, cálculos, permissões ou rotas nesta atualização.

@@ -1,22 +1,4 @@
-/* Direção aprovada da visão geral: escopo local, sem retocar as demais páginas. */
-.app-main:has(.dashboard-financeiro) { background: #f6f7f6; min-height: 100dvh; }
-.pagina-financeira:has(.dashboard-financeiro) {
-  --border: #e1e5e2;
-  --muted: #f1f3f2;
-  --muted-foreground: #626b66;
-  --pos: #28734f;
-  --fin-entrada: #28734f;
-  --fin-saida: #26322d;
-  --fin-alerta: #b9433b;
-  --destructive: #b9433b;
-  --rule-soft: #e9ecea;
-  --leite: #80634e;
-  --cafe: #55715e;
-  --outros: #818568;
-  --cafe-2: #ac987e;
-  --outros-2: #aab0a6;
-  --ink-3: #626b66;
-}
+/* Ajustes de composição específicos da visão geral; o tema é compartilhado. */
 .dashboard-financeiro { color: #202723; font-family: var(--sans); }
 .dashboard-financeiro h1 { font-family: var(--sans); font-size: 28px; line-height: 1.2; font-weight: 650; }
 .dashboard-financeiro h2 { font-family: var(--sans); font-size: 16px; line-height: 1.4; font-weight: 650; color: #202723; }

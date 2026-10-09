@@ -15,7 +15,7 @@
 }
 [data-fin-tom="entrada"] { --fin-cor: var(--fin-entrada); --fin-texto: var(--fin-entrada); }
 [data-fin-tom="saida"] { --fin-cor: var(--fin-saida); --fin-texto: var(--fin-saida); }
-[data-fin-tom="pendente"] { --fin-cor: var(--fin-pendente); --fin-texto: var(--cafe); }
+[data-fin-tom="pendente"] { --fin-cor: var(--fin-pendente); --fin-texto: var(--fin-pendente); }
 [data-fin-tom="info"] { --fin-cor: var(--fin-info); --fin-texto: var(--fin-info); }
 [data-fin-tom="alerta"] { --fin-cor: var(--fin-alerta); --fin-texto: var(--fin-alerta); }
 [data-fin-tom="neutro"] { --fin-cor: var(--ink-3); --fin-texto: var(--ink-2); }

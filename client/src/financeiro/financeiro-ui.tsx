@@ -66,7 +66,7 @@ export function PageHeader({ titulo, descricao, acao, eyebrow = "Financeiro" }: 
 // para o <button> nativo, senão o Radix não consegue posicionar/focar nele.
 export const Button = forwardRef<HTMLButtonElement, { children: React.ReactNode; onClick?: () => void; type?: "button" | "submit"; disabled?: boolean; danger?: boolean; secondary?: boolean; className?: string; /** id do form a submeter quando o botão vive fora dele (rodapé de painel) */ form?: string; /** associa o botão a uma mensagem de erro/ajuda (ex.: o alerta de confirmação) */ ariaDescribedby?: string }>(
   ({ children, onClick, type = "button", disabled, danger, secondary, className = "", form, ariaDescribedby }, ref) => {
-    const cor = danger ? "bg-red-800 text-white hover:bg-red-900" : secondary ? "border border-border bg-white text-ink hover:bg-surface-2" : "bg-mast text-white hover:opacity-90";
+    const cor = danger ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : secondary ? "border border-border bg-white text-ink hover:bg-surface-2" : "bg-primary text-primary-foreground hover:bg-primary/90";
     return <ShadcnButton ref={ref} type={type} form={form} onClick={onClick} disabled={disabled} aria-describedby={ariaDescribedby} className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-45 ${cor} ${className}`}>{children}</ShadcnButton>;
   },
 );
@@ -87,8 +87,8 @@ export function StatusPill({ status }: { status: string }) {
 }
 
 export function Metric({ label, valor, detalhe, icon: Icon, tone = "default", tom, compacto = false }: { compacto?: boolean; label: string; valor: string; detalhe?: string; icon: LucideIcon; tone?: "default" | "green" | "red"; tom?: TomFinanceiro }) {
-  const iconTone = tone === "green" ? "bg-green-50 text-green-800" : tone === "red" ? "bg-red-50 text-red-800" : "bg-[#eef1e9] text-mast";
-  return <Panel tom={tom} className={`@container ${compacto ? "p-3" : "p-5"} ${tom ? "fin-indicador" : ""}`}><div className="flex items-start justify-between gap-4"><div className="min-w-0 flex-1"><div className="text-[11px] font-semibold uppercase tracking-[.12em] text-ink-3">{label}</div><div className={`${compacto ? "mt-1" : "mt-3"} break-words font-serif text-[clamp(19px,8cqw,28px)] leading-none tracking-tight ${tom ? "fin-valor" : "text-ink"}`}>{valor}</div></div><div className={`shrink-0 rounded-lg p-2.5 @max-[240px]:hidden ${iconTone}`}><Icon size={18} /></div></div>{detalhe && <div className={`${compacto ? "mt-2" : "mt-3"} break-words text-xs text-ink-3`}>{detalhe}</div>}</Panel>;
+  const iconTone = tone === "green" ? "bg-green-50 text-green-800" : tone === "red" ? "bg-red-50 text-red-800" : "bg-muted text-mast";
+  return <Panel tom={tom} className={`@container ${compacto ? "p-3" : "p-5"} ${tom ? "fin-indicador" : ""}`}><div className="flex items-start justify-between gap-4"><div className="min-w-0 flex-1"><div className="text-[11px] font-semibold uppercase tracking-[.12em] text-ink-3">{label}</div><div className={`${compacto ? "mt-1" : "mt-3"} break-words font-serif text-[clamp(19px,8cqw,28px)] leading-none tracking-tight ${tom ? "fin-valor" : "text-ink"}`}>{valor}</div></div><div className={`fin-metric-icone shrink-0 rounded-lg p-2.5 @max-[240px]:hidden ${iconTone}`}><Icon size={18} /></div></div>{detalhe && <div className={`${compacto ? "mt-2" : "mt-3"} break-words text-xs text-ink-3`}>{detalhe}</div>}</Panel>;
 }
 
 /* Rodapé de paginação das tabelas: intervalo exibido, Anterior/Próxima e salto
@@ -148,7 +148,7 @@ export function Empty({ children }: { children: React.ReactNode }) {
 }
 
 export function Modal({ titulo, eyebrow, onClose, children, width = "max-w-xl", semCabecalho = false, colorida = false, tom = "info" }: { titulo: string; eyebrow: string; onClose: () => void; children: React.ReactNode; width?: string; semCabecalho?: boolean; colorida?: boolean; tom?: TomFinanceiro }) {
-  return <div data-fin-tom={tom} className={`fixed inset-0 z-[1100] grid place-items-center bg-black/45 p-4 ${colorida ? "financeiro-colorido" : ""}`} role="dialog" aria-modal="true" aria-label={titulo}><Panel className={`${semCabecalho ? "h-[92vh] overflow-hidden" : "max-h-[92vh] overflow-auto"} w-full ${width}`}>{!semCabecalho && <div className="fin-modal-cabecalho sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-border bg-[#f4f2e9] p-5"><div className="min-w-0"><div className="eyebrow">{eyebrow}</div><h2 className="mt-1 break-words font-serif text-2xl">{titulo}</h2></div><ShadcnButton variant="ghost" size="icon" onClick={onClose} aria-label="Fechar" className="shrink-0 rounded-lg p-2 hover:bg-white"><X size={18} /></ShadcnButton></div>}{children}</Panel></div>;
+  return <div data-fin-tom={tom} className={`fixed inset-0 z-[1100] grid place-items-center bg-black/45 p-4 ${colorida ? "financeiro-colorido" : ""}`} role="dialog" aria-modal="true" aria-label={titulo}><Panel className={`${semCabecalho ? "h-[92vh] overflow-hidden" : "max-h-[92vh] overflow-auto"} w-full ${width}`}>{!semCabecalho && <div className="fin-modal-cabecalho sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-border bg-muted p-5"><div className="min-w-0"><div className="eyebrow">{eyebrow}</div><h2 className="mt-1 break-words font-serif text-2xl">{titulo}</h2></div><ShadcnButton variant="ghost" size="icon" onClick={onClose} aria-label="Fechar" className="shrink-0 rounded-lg p-2 hover:bg-white"><X size={18} /></ShadcnButton></div>}{children}</Panel></div>;
 }
 
 export function ReviewLine({ children, tone = "green" }: { children: React.ReactNode; tone?: "green" | "amber" | "brown" | "neutral" }) {
@@ -255,7 +255,7 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
     <div ref={tabelaRef} className={`hidden overflow-x-auto md:block ${compacta ? "max-h-[max(16rem,calc(100dvh-31rem))] overflow-y-auto" : ""} ${barraRolagemSuperior && temRolagem ? "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden" : ""}`} onScroll={() => sincronizarRolagem("tabela")}>
       <Table semContainer className="w-full text-left text-sm" style={{ minWidth: larguraMinima }}>
         <TableCaption className="sr-only">{rotulo}</TableCaption>
-        <TableHeader className="sticky top-0 z-[1] bg-[#f4f2e9] text-[11px] uppercase tracking-[.08em] text-ink-3">
+        <TableHeader className="sticky top-0 z-[1] bg-muted text-[11px] uppercase tracking-[.08em] text-ink-3">
           <TableRow>{colunas.map((coluna) => <TableHead key={coluna.chave} scope="col" className={`${compacta ? "px-3 py-2" : "p-4"} font-semibold ${alinhaCelula(coluna.alinhamento)}`}>{coluna.titulo}</TableHead>)}</TableRow>
         </TableHeader>
         <TableBody className="divide-y divide-border">
@@ -264,7 +264,7 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
             /* linha acionável pelo teclado sem sobrescrever o role="row" — trocar
                por role="button" quebraria a semântica de tabela para leitores de tela */
             {...(onAbrir ? { onClick: () => onAbrir(item), tabIndex: 0, onKeyDown: (e: React.KeyboardEvent) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onAbrir(item); } } } : {})}
-            className={`${onAbrir ? "cursor-pointer hover:bg-[#faf9f4]" : ""} ${classeLinha?.(item) ?? ""}`}
+            className={`${onAbrir ? "cursor-pointer hover:bg-muted" : ""} ${classeLinha?.(item) ?? ""}`}
           >{colunas.map((coluna) => <TableCell key={coluna.chave} className={`whitespace-normal ${compacta ? "px-3 py-2" : "p-4"} align-middle ${alinhaCelula(coluna.alinhamento)}`}>{coluna.celula(item)}</TableCell>)}</TableRow>)}
         </TableBody>
       </Table>

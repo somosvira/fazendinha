@@ -392,3 +392,10 @@ A navegação global usa fundo cinza esverdeado discreto (`--mast-bg`), borda de
 ### Correção da sidebar — cinza neutro
 
 O usuário rejeitou o fundo esverdeado. A sidebar usa cinza neutro um pouco mais escuro, com hover e seleção em cinzas, texto grafite e separadores neutros. Essa decisão substitui a paleta esverdeada descrita acima; mantém navegação, colapso e Sheet móvel.
+
+
+## Tema compartilhado de todo o financeiro — 09/10/2026
+
+A direção neutra aprovada da visão geral agora abrange operações, detalhes e formulário; compromissos, calendário e liquidação; contas e extratos; todas as abas de configurações; relatórios, emissão e detalhes. Esta decisão substitui a limitação anterior à página inicial e as faixas/gradientes decorativos do tema anterior. Fundo cinza claro, superfícies brancas, bordas discretas, tipografia sans e títulos compactos. Verde sinaliza entradas/saldos positivos e confirmações; vermelho sinaliza alertas, estornos e cancelamentos; marrom permanece discreto em pendências e categorias. Valores de saída podem ser neutros, como na visão geral, mantendo direção e sinal escritos.
+
+`FinanceiroContent` delimita o módulo e `financeiro-theme.css` compartilha os tokens. O escopo CSS no root também alcança os portais Radix dos modais e seletores; ao sair do financeiro, os tokens das demais áreas são restaurados. Dropdowns usam `bg-popover` branco, incluindo o seletor de período, e o Select usa estados `accent` do shadcn. Não alterar dados, filtros, paginação, cálculos, permissões ou rotas nesta atualização.

@@ -137,7 +137,7 @@ export function NovoRelatorioFinanceiro({ cadastros, rascunho, onVoltar, onGerad
 
   return <PaginaFinanceira colorida>
     <div className="mb-3 flex min-h-10 flex-wrap items-center justify-between gap-4 border-b border-border pb-3 pt-0">
-      <h1 className="font-serif text-3xl text-ink md:text-4xl">Novo relatório</h1>
+      <h1 className="h1 text-ink">Novo relatório</h1>
       <div className="flex flex-wrap items-center gap-3">
         {temRascunho && <span aria-live="polite" className={`text-xs font-medium ${estado === "ERRO" ? "text-red-700" : "text-ink-3"}`}>{estado === "SALVANDO" ? "Salvando…" : estado === "SALVO" ? "Rascunho salvo" : estado === "ERRO" ? "Falha ao salvar" : "Alterações não salvas"}</span>}
         {temRascunho && <Button secondary disabled={gerando} onClick={() => void limpar()}><Trash2 size={15} /> Limpar rascunho</Button>}
@@ -164,7 +164,7 @@ export function NovoRelatorioFinanceiro({ cadastros, rascunho, onVoltar, onGerad
 
         <fieldset>
           <legend className={TITULO_SECAO}>Leitura financeira</legend>
-          <RadioGroup aria-label="Leitura financeira" value={config.regime} onValueChange={valor => alterar("regime", valor as typeof config.regime)} className="grid gap-2 md:grid-cols-3">{REGIMES_RELATORIO.map((regime) => <label key={regime.id} className="flex cursor-pointer gap-3 rounded-lg border border-border p-3 text-sm has-checked:border-mast has-checked:bg-[#eef1e9]">
+          <RadioGroup aria-label="Leitura financeira" value={config.regime} onValueChange={valor => alterar("regime", valor as typeof config.regime)} className="grid gap-2 md:grid-cols-3">{REGIMES_RELATORIO.map((regime) => <label key={regime.id} className="flex cursor-pointer gap-3 rounded-lg border border-border p-3 text-sm has-checked:border-mast has-checked:bg-muted">
             <RadioGroupItem value={regime.id} className="mt-1" />
             <span><strong className="block">{regime.rotulo}</strong><span className="mt-0.5 block text-xs text-ink-3">{regime.dica}</span></span>
           </label>)}</RadioGroup>

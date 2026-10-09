@@ -246,7 +246,7 @@ export function DateRangePicker({ value, onChange, anchor = "left", triggerLabel
     <PopoverTrigger asChild><button ref={triggerRef} type="button" aria-label={nomeAcessivel} className={cn("inline-flex min-h-10 max-w-full items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground focus-visible:outline-2 focus-visible:outline-mast", triggerClassName)}>
       <span className="truncate">{rotulo}</span><span aria-hidden="true">▾</span>
     </button></PopoverTrigger>
-    <PopoverContent onCloseAutoFocus={event => { event.preventDefault(); triggerRef.current?.focus(); }} align={anchor === "right" ? "end" : "start"} className={cn("max-h-[min(680px,85vh)] overflow-y-auto bg-background p-4", custom ? "w-[min(540px,calc(100vw-24px))]" : "w-[min(280px,calc(100vw-24px))]")}>
+    <PopoverContent onCloseAutoFocus={event => { event.preventDefault(); triggerRef.current?.focus(); }} align={anchor === "right" ? "end" : "start"} className={cn("max-h-[min(680px,85vh)] overflow-y-auto bg-popover p-4", custom ? "w-[min(540px,calc(100vw-24px))]" : "w-[min(280px,calc(100vw-24px))]")}>
       {!custom ? <div className="flex flex-col gap-1" role="group" aria-label="Períodos predefinidos">
         {allowAll && <Button type="button" variant="ghost" className="justify-start" onClick={() => { onChange({ start: null, end: null }); setOpen(false); }}>Todo o período</Button>}
         {presets.map(p => <Button type="button" variant="ghost" key={p.id} aria-pressed={matched?.id === p.id} className="justify-start" onClick={() => { onChange(p.range); setOpen(false); }}>{p.label}</Button>)}

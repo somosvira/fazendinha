@@ -19,3 +19,5 @@ Esta organização substitui a divisão anterior de três painéis na primeira l
 - Sidebar: dar personalidade com fundo cinza esverdeado discretamente mais forte e seleção mais contrastante; manter aspecto profissional, grafite e verde suave. Evitar voltar ao quase branco ou acrescentar cores saturadas.
 
 - Correção explícita da sidebar: usuário rejeitou o cinza esverdeado. Usar cinza neutro um pouco mais escuro, sem verde no fundo, hover, seleção ou texto da navegação. Essa preferência substitui a nota anterior sobre verde suave na sidebar.
+
+- 09/10/2026: usuário autorizou estender o novo design neutro da visão geral a TODAS as telas financeiras, inclusive detalhes, formulários, calendários e modais. Substitui a limitação anterior à inicial e as faixas/gradientes decorativos. Fundo cinza claro, cards brancos, sans, layout compacto; verde/vermelho semânticos, marrom discreto. Dropdowns com fundo branco padrão shadcn (incluindo período), seleção neutra. Sidebar permanece cinza neutro, sem verde.

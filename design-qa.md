@@ -237,3 +237,13 @@ Verde removido dos tokens de fundo, hover, seleção e texto da sidebar, conform
 ### Conta individual direto da visão geral — 09/10/2026
 
 Separada a ação de cada conta do botão geral: navegação usa ID da conta e período do dashboard, inclusive para contas fora do saldo. Conferido no navegador com Banco principal e extrato correspondente; teste cobre ambas as listas e botão geral. 22 testes focados e build passaram. Captura em `/tmp/financeiro-design-qa/conta-direta.jpg`.
+
+
+## Extensão do tema neutro ao financeiro — 09/10/2026
+
+- As cinco áreas (Operações, Compromissos, Contas, Configurações e Relatórios) usam o mesmo tema da visão geral, com superfícies brancas e títulos/ícones neutros. Abas mantêm seleção grafite. Formulários e modais compartilham os tokens, sem alterações nos contratos financeiros.
+- Inspeção no navegador: lista e detalhe de operação, formulário do rascunho sem edição, todas as cinco abas de configurações, cadastro de conta aberto/cancelado, compromissos, contas/extrato e lista/formulário de relatório. Nenhuma confirmação de operação, liquidação ou emissão executada. O histórico local de relatório já continha um item falho; emissão/PDF de sucesso validados pelos testes existentes, não por geração real nesta rodada.
+- Select e Popover de período: fundo computado `rgb(255, 255, 255)`. Saída para Estoque restaura o token `--background: #F2EDE2`; retorno ao financeiro restaura o tema neutro.
+- Cinco áreas conferidas em larguras reais de 1180, 720 e 390px (ajustadas ao zoom de 90% do navegador). Largura do documento igual à viewport em todos os casos; tabelas têm rolagem própria e no celular usam cartões existentes. Não é certificação de acessibilidade nem garantia de exibir históricos ilimitados sem rolagem.
+- Verificação: **354 testes em 36 arquivos passaram** (financeiro, DateRangePicker e MultiSelect); build passou, com o aviso preexistente de bundle acima de 500KB. `git diff --check` passou.
+- Capturas: `/tmp/financeiro-design-qa/financeiro-neutro-operacoes.jpg`, `financeiro-neutro-dropdown.jpg`, `financeiro-neutro-mobile.jpg`.
