@@ -202,3 +202,10 @@ Correções da conferência: reduzida a altura do mês compacto, cabeçalho da a
 Tipografia e superfícies neutras mantidas; valores sem truncamento, contadores com rótulos, navegação por Button e tabelas shadcn. Sem achados P0/P1/P2 pendentes na conferência dos estados cobertos. Os dados locais contêm dois vencimentos em outubro; o teste de agrupamento cobre mais de cinco compromissos no mesmo dia. Históricos maiores continuam usando as áreas roláveis e Dialog existentes.
 
 Validação: 51 testes focados de visão geral, calendário, agenda, visualizações integradas e responsividade aprovados; TypeScript e build de produção aprovados. Sem mudanças em APIs, persistência ou autorização.
+
+
+### Indicadores integrados e listas em modal — 09/10/2026
+
+A faixa superior foi removida e os valores foram integrados a gráfico, disponibilidade e compromissos. Saldo aparece uma única vez, junto das contas incluídas. Os quatro indicadores abrem Dialog shadcn com listas do período, sem navegação automática para extratos. Recebimentos/pagamentos consultam a API existente sob demanda; compromissos reaproveitam os dados já carregados. Paginação de 15 mantém todos os itens.
+
+Conferência no navegador local: recebimento e pagamento reais, quatro compromissos a pagar, estado vazio de a receber e modal móvel; nenhuma escrita financeira. Sem rolagem horizontal da página em 1602px e 351px. Evidências locais em `/tmp/financeiro-design-qa/indicadores-integrados-desktop.jpg` e `indicadores-integrados-mobile.jpg`. 55 testes focados passaram, incluindo carregamento, filtros do período, estornos, exclusão de transferências, erro/nova tentativa, paginação e detalhe de compromisso.

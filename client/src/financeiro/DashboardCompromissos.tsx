@@ -1,6 +1,6 @@
 import { useTelaPequena } from "./useTelaPequena";
 import { CompromissoDetalheDialog } from "./CompromissoDetalheDialog";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,8 +12,8 @@ import { brl, dataBR } from "./financeiro-ui";
 import { tituloCompromisso } from "./lib/compromissos";
 import type { Compromisso } from "./novo-api";
 
-export function DashboardCompromissos({ itens, href, onLiquidar }: {
-  itens: Compromisso[]; href: string; onLiquidar?: (item: Compromisso) => void;
+export function DashboardCompromissos({ itens, href, onLiquidar, resumo }: {
+  itens: Compromisso[]; href: string; resumo?: ReactNode; onLiquidar?: (item: Compromisso) => void;
 }) {
   const pequena = useTelaPequena();
   const [selecionado, setSelecionado] = useState<Compromisso | null>(null);
@@ -30,6 +30,7 @@ export function DashboardCompromissos({ itens, href, onLiquidar }: {
       <div className="fin-cabecalho flex flex-wrap items-center justify-between gap-3 p-4">
         <h2 className="font-serif text-xl">Compromissos</h2>
         <Button variant="link" asChild><a href={href} onClick={event => { if (!event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) { event.preventDefault(); navegarPara(href); } }}>Ver todos</a></Button>
+        {resumo && <div className="w-full">{resumo}</div>}
         <div className="w-full"><TabsList className="h-9 max-w-full">{grupos.map(grupo => <TabsTrigger key={grupo.id} value={grupo.id} className="px-2 text-xs">{grupo.label}</TabsTrigger>)}</TabsList></div>
       </div>
       {grupos.map(grupo => <TabsContent key={grupo.id} value={grupo.id} className="m-0">

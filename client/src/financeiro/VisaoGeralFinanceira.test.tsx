@@ -162,14 +162,13 @@ describe("Visão geral — grid operacional", () => {
   });
 });
 
-it("indicadores navegam com o período e a natureza correspondente", async () => {
+it("integra os indicadores aos painéis e abre lista sem navegar", async () => {
   render(<VisaoGeralFinanceira onNav={vi.fn()} />);
-  expect((await screen.findByRole("link", { name: "Ver recebimentos" })).getAttribute("href")).toContain("natureza=recebimentos");
-  expect(screen.getByRole("link", { name: "Ver pagamentos" }).getAttribute("href")).toContain("natureza=pagamentos");
-  expect(screen.getByRole("link", { name: "Ver a pagar" }).getAttribute("href")).toContain("situacao=pagar");
-  const receber = screen.getByRole("link", { name: "Ver a receber" });
-  expect(receber.getAttribute("href")).toContain("inicio=2026-01-01&fim=2026-12-31&situacao=receber");
-  fireEvent.click(receber);
-  expect(window.location.pathname).toBe("/financeiro/compromissos");
-  expect(new URLSearchParams(window.location.search).get("situacao")).toBe("receber");
+  const pagar = await screen.findByRole("button", { name: "Ver a pagar" });
+  expect(screen.getAllByText(/^Saldo disponível ·/)).toHaveLength(1);
+  expect(screen.getByRole("button", { name: "Ver recebimentos" }).closest(".fin-painel")?.textContent).toContain("Recebimentos e pagamentos");
+  const caminho = window.location.pathname;
+  fireEvent.click(pagar);
+  expect(await screen.findByRole("dialog", { name: "Compromissos a pagar" })).toBeTruthy();
+  expect(window.location.pathname).toBe(caminho);
 });

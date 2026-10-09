@@ -2,7 +2,7 @@ import { useTelaPequena } from "./useTelaPequena";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import "./dashboard-grid.css";
 import { useEffect, useState } from "react";
-import { ArrowDownLeft, ArrowUpRight, Plus, TrendingDown, TrendingUp, WalletCards, ChevronDown, ShieldCheck } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Plus, TrendingDown, TrendingUp, ChevronDown, ShieldCheck } from "lucide-react";
 import type { Tab } from "../components/Shell";
 import { AnaliseCategorias } from "./AnaliseCategorias";
 import { BaseFinanceiraResumo } from "./BaseFinanceiraResumo";
@@ -11,6 +11,7 @@ import { brl, Empty, ErrorBox, mesAtual, PaginaCarregando, PaginaFinanceira } fr
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { abrirRotaNovaOperacao, navegarPara } from "../router";
 import { IndicadorFinanceiro, ContasDisponibilidade, resumoVencidos } from "./DashboardResumo";
+import { DashboardListaModal, type TipoListaDashboard } from "./DashboardListaModal";
 import { DashboardCalendario } from "./DashboardCalendario";
 import { DashboardCompromissos } from "./DashboardCompromissos";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,7 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
   const [fimPeriodo, setFimPeriodo] = useState(() => periodoDoAnoAtual().fim);
   const [dados, setDados] = useState<DashboardFinanceiro | null>(null);
   const [config, setConfig] = useState<ConfiguracoesFinanceiras | null>(null);
+  const [listaAberta, setListaAberta] = useState<TipoListaDashboard | null>(null);
   const [liquidando, setLiquidando] = useState<Compromisso | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [erroConfig, setErroConfig] = useState<string | null>(null);
@@ -76,7 +78,6 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
   const dadosAtuais = periodoDados === `${inicioPeriodo}/${fimPeriodo}` ? dados : null;
   const pendentes = (dadosAtuais?.proximosCompromissos ?? []).filter(c => ["PENDENTE", "PARCIAL"].includes(c.status))
     .sort((a, b) => a.dataVencimento.localeCompare(b.dataVencimento) || a.seq - b.seq);
-  const contasIncluidas = dadosAtuais?.contas.filter(conta => conta.incluirNoSaldoGeral) ?? [];
   const recarregar = async () => { setRevisao(value => value + 1); };
   // Preserva o período do topo ao abrir a lista completa — mesmo padrão de
   // navegação usado pelos links da Base financeira.
@@ -84,12 +85,13 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
   const hrefCompromissos = `/financeiro/compromissos?${new URLSearchParams({ inicio: inicioPeriodo, fim: fimPeriodo })}`;
   if (!periodoDados && carregando && !erro) return <PaginaCarregando label="Carregando financeiro" />;
 
-  const painelAgenda = dadosAtuais && (<DashboardCompromissos itens={pendentes} href={hrefCompromissos} onLiquidar={podeLancar ? setLiquidando : undefined} />);
+  const painelAgenda = dadosAtuais && (<DashboardCompromissos resumo={<div className="grid grid-cols-2 gap-2"><IndicadorFinanceiro label="A pagar" valor={dadosAtuais.compromissos.aPagar} detalhe={resumoVencidos(pendentes, "PAGAR")} alerta={pendentes.some(item => item.vencido && item.tipo === "PAGAR")} icon={ArrowUpRight} onClick={() => setListaAberta("pagar")} /><IndicadorFinanceiro label="A receber" valor={dadosAtuais.compromissos.aReceber} detalhe={resumoVencidos(pendentes, "RECEBER")} alerta={pendentes.some(item => item.vencido && item.tipo === "RECEBER")} icon={ArrowDownLeft} onClick={() => setListaAberta("receber")} /></div>} itens={pendentes} href={hrefCompromissos} onLiquidar={podeLancar ? setLiquidando : undefined} />);
   const painelCalendario = dadosAtuais && <DashboardCalendario itens={pendentes} href={hrefCompromissos} mes={mesCalendario} onChangeMes={setMesCalendario} onLiquidar={podeLancar ? setLiquidando : undefined} />;
   const painelContas = dadosAtuais && (<ContasDisponibilidade contas={dadosAtuais.contas} onAbrir={() => onNav("caixinha")} />);
   const painelFluxo = dadosAtuais && (<Card data-fin-tom="info" className="fin-painel min-w-0 gap-0 overflow-hidden rounded-lg border-border py-0 shadow-none">
           <div className="fin-cabecalho flex flex-wrap items-center justify-between gap-2 p-4 pb-2"><div><h2 className="font-serif text-xl">Recebimentos e pagamentos</h2><p className="mt-1 text-sm text-muted-foreground">{tipoGraficoFluxo === "line" ? "Acumulado no período" : "Realizado por dia ou mês"}</p></div><div className="flex flex-wrap items-center gap-3"><ChartTypeControl value={tipoGraficoFluxo} onChange={setTipoGraficoFluxo} label="Tipo do gráfico de receitas e despesas" />          <div className="dashboard-resultado flex flex-col items-end gap-0 border-l border-border pl-3"><span className="text-xs text-muted-foreground">Resultado de caixa</span><strong className={`font-serif text-2xl tabular-nums ${Number(dadosAtuais.realizado.resultado) < 0 ? "text-destructive" : "text-[var(--pos)]"}`}>{Number(dadosAtuais.realizado.resultado) > 0 ? "+" : ""}{brl(dadosAtuais.realizado.resultado)}</strong><p className="sr-only">Recebimentos − pagamentos · inclui aportes e retiradas</p></div></div></div>
 
+          <div className="grid grid-cols-2 gap-2 px-4 pb-2"><IndicadorFinanceiro label="Recebimentos" valor={dadosAtuais.realizado.entradas} detalhe="Realizados no período" icon={TrendingUp} onClick={() => setListaAberta("recebimentos")} /><IndicadorFinanceiro label="Pagamentos" valor={dadosAtuais.realizado.saidas} detalhe="Realizados no período" icon={TrendingDown} onClick={() => setListaAberta("pagamentos")} /></div>
           {dadosAtuais.fluxo.some(ponto => Number(ponto.entradas) !== 0 || Number(ponto.saidas) !== 0)
             ? <div className="p-3"><EntradaSaidaChart compacto tipo={tipoGraficoFluxo} data={dadosAtuais.fluxo.map(ponto => ({ data: ponto.data, entradas: Number(ponto.entradas), saidas: Number(ponto.saidas) }))} /></div>
             : <Empty>Nenhum recebimento ou pagamento realizado no período.</Empty>}
@@ -105,13 +107,6 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
     {(carregando || (!dadosAtuais && !erro)) && <p role="status" className="mt-6">Carregando financeiro do período…</p>}
     {erro && !dadosAtuais && <Button variant="outline" onClick={() => setRevisao(value => value + 1)}>Tentar novamente</Button>}
     {dadosAtuais && <>
-      <div className="grid min-w-0 grid-cols-2 gap-3 lg:grid-cols-5">
-        <IndicadorFinanceiro className="dashboard-saldo col-span-2 lg:col-span-1" tom={Number(dadosAtuais.saldoGeral) < 0 ? "alerta" : "entrada"} label="Saldo disponível" valor={dadosAtuais.saldoGeral} detalhe={`${contasIncluidas.length} ${contasIncluidas.length === 1 ? "conta incluída" : "contas incluídas"} · saldo atual`} icon={WalletCards} />
-        <IndicadorFinanceiro tom="entrada" label="Recebimentos" href={`/financeiro/contas?${new URLSearchParams({ inicio: inicioPeriodo, fim: fimPeriodo, natureza: "recebimentos" })}#extrato-geral`} valor={dadosAtuais.realizado.entradas} detalhe="Realizados no período" icon={TrendingUp} />
-        <IndicadorFinanceiro tom="saida" label="Pagamentos" href={`/financeiro/contas?${new URLSearchParams({ inicio: inicioPeriodo, fim: fimPeriodo, natureza: "pagamentos" })}#extrato-geral`} valor={dadosAtuais.realizado.saidas} detalhe="Realizados no período" icon={TrendingDown} />
-        <IndicadorFinanceiro tom="pendente" label="A pagar" href={`${hrefCompromissos}&situacao=pagar`} valor={dadosAtuais.compromissos.aPagar} detalhe={resumoVencidos(pendentes, "PAGAR")} alerta={pendentes.some(item => item.vencido && item.tipo === "PAGAR")} icon={ArrowUpRight} />
-        <IndicadorFinanceiro tom="entrada" label="A receber" href={`${hrefCompromissos}&situacao=receber`} valor={dadosAtuais.compromissos.aReceber} detalhe={resumoVencidos(pendentes, "RECEBER")} alerta={pendentes.some(item => item.vencido && item.tipo === "RECEBER")} icon={ArrowDownLeft} />
-      </div>
       {pequena ? <Tabs defaultValue="agenda" className="mt-3 min-w-0">
         <TabsList aria-label="Seções da visão geral" className="fin-abas grid h-auto w-full grid-cols-3"><TabsTrigger value="agenda">Agenda</TabsTrigger><TabsTrigger value="analises">Análises</TabsTrigger><TabsTrigger value="contas">Contas</TabsTrigger></TabsList>
         <TabsContent value="agenda"><div className="grid gap-4">{painelCalendario}{painelAgenda}</div></TabsContent>
@@ -138,6 +133,7 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
         <CollapsibleContent><BaseFinanceiraResumo base={dadosAtuais.base} realizado={dadosAtuais.realizado} compromissos={dadosAtuais.compromissos} inicio={inicioPeriodo} fim={fimPeriodo} /></CollapsibleContent>
       </Collapsible>
     </>}
+    {listaAberta && <DashboardListaModal tipo={listaAberta} inicio={inicioPeriodo} fim={fimPeriodo} pendentes={pendentes} onClose={() => setListaAberta(null)} />}
     {podeLancar && liquidando && <LiquidarCompromissoModal key={liquidando.id} compromisso={liquidando} contas={config?.contas ?? []} onClose={() => setLiquidando(null)} onLiquidado={recarregar} onErro={setErro} />}
     <ConfirmDialog
       open={substituirRascunho}

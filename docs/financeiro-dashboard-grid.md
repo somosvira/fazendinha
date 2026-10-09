@@ -26,7 +26,7 @@ Registrar pagamento aceita uma nota fiscal opcional por arrastar/soltar ou sele�
 
 ## Detalhamento por clique
 
-Recebimentos e Pagamentos abrem o extrato geral com o período e a natureza escolhidos. O filtro inclui o original e seu estorno na mesma natureza, exclui transferências e pode ser removido. A pagar e A receber abrem a aba correspondente de compromissos por vencimento, preservando o período.
+Recebimentos e Pagamentos abrem Dialog shadcn com os movimentos mais recentes do período, incluindo estornos identificados e excluindo transferências. A pagar e A receber abrem listas de compromissos pendentes, ordenadas por vencimento, no mesmo período. As listas têm paginação de 15, carregamento com Skeleton e Loader, erro com nova tentativa e estado vazio. O clique no indicador não muda de página; movimentos com operação vinculada preservam o acesso à origem, e compromissos abrem seu detalhe em diálogo.
 
 A legenda e as fatias de despesas abrem um Dialog com lançamentos, total líquido e paginação de 15 itens. “Outras” mostra apenas as categorias que compõem o grupo; estornos negativos também abrem detalhes. Categoria é identificada por ID e nome histórico, conforme o agrupamento do dashboard, para preservar snapshots após renomeações. Cada lançamento inteiro é um link acessível para a operação ou movimento avulso, com clique modificado/nova aba preservados. O desenho usa Card e Badge shadcn, cores de investimento/custeio e estorno, e cabeçalho visível no modal.
 
@@ -119,3 +119,7 @@ O mockup aprovado limita esta etapa à visão geral e à navegação global. Des
 A organização desktop aprovada é: primeira linha com recebimentos/pagamentos, contas/disponibilidade e compromissos; segunda linha com calendário e despesas por categoria. O calendário ganha Card próprio, mês sempre visível, contadores de pagamentos/recebimentos por dia e expansão em Dialog para o calendário completo. Selecionar um dia abre todos os compromissos daquele dia; selecionar um compromisso mantém o detalhe e a liquidação existentes. Os contadores e o calendário usam todos os pendentes do recorte, sem limitar aos cinco itens da lista. No celular, o mês compacto aparece na aba Agenda, antes da lista prioritária.
 
 Quando não há vencimentos nos próximos sete dias, a agenda informa o próximo vencimento futuro existente no período, explicitamente separado do grupo de sete dias. Não amplia o filtro, os contadores ou os totais. O resultado de caixa da API passa ao cabeçalho do gráfico e a rosca aproveita melhor o painel com legenda lateral. Calendários das demais páginas mantêm seu comportamento.
+
+## Indicadores integrados ao contexto — 09/10/2026
+
+A faixa de cinco indicadores acima do grid foi removida. Recebimentos e pagamentos ficam no painel do gráfico; saldo disponível e quantidade de contas incluídas antecedem a lista de contas; a pagar e a receber ficam no painel de compromissos, junto da agenda prioritária. O saldo não se repete no rodapé. A ordem dos dois grids, o calendário independente, filtros, totais e permissões permanecem os mesmos. Na versão móvel, os valores acompanham seus respectivos painéis nas abas.
