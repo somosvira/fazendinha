@@ -384,3 +384,7 @@ Nas demais telas financeiras auditadas, aplique o mesmo padrão: sempre primitiv
 Nesta etapa, somente a página inicial financeira e a sidebar adotam a direção clara: fundo cinza suave, painéis brancos sem faixas coloridas, títulos sans-serif compactos, bordas discretas e ações primárias em grafite. Saldo positivo usa verde; saldo negativo e avisos de atraso usam vermelho. Os demais indicadores e valores das contas usam grafite. Categorias mantêm cores terrosas discretas para identificação no gráfico. A sidebar clara mantém navegação, permissões, seletor de sítio, rascunhos, colapso e Sheet móvel, com Button shadcn. As outras páginas conservam a direção anterior.
 
 Na visão geral, o calendário é um Card independente com mês compacto e contadores por dia. A primeira linha reúne gráfico financeiro, contas e compromissos; a segunda reúne calendário e categorias. Células com compromissos têm acionador visível e rótulo com data/quantidade; cor distingue a pagar/a receber e atrasos, acompanhada de texto acessível. A expansão preserva o calendário completo em Dialog.
+
+### Sidebar com maior presença — 09/10/2026
+
+A navegação global usa fundo cinza esverdeado discreto (`--mast-bg`), borda de separação mais definida e seleção em verde acinzentado com texto verde profundo. Hover e seleção têm tokens próprios em `sidebar-clara.css`. Mantém superfícies brancas no seletor de sítio e conteúdo, sem azul, saturação forte ou faixas decorativas. A mesma paleta acompanha a sidebar colapsada e o Sheet móvel, preservando primitivas shadcn e controles existentes.

@@ -225,3 +225,7 @@ Rosca substituída por ranking de até cinco, em ordem decrescente, com acesso a
 ### Pizza ao lado do ranking — 09/10/2026
 
 Título restaurado para “Despesas por categoria”, com total líquido abaixo. Pizza shadcn/Recharts de 144px ao lado do ranking; painel medido em 212px no desktop. Categorias extras agrupadas na pizza com acesso à lista completa; estornos continuam fora das fatias positivas e abatem o total. 63 testes focados e build passaram. Sem rolagem lateral no celular (351px). Evidências: `/tmp/financeiro-design-qa/pizza-ranking-desktop.jpg` e `pizza-ranking-mobile.jpg`.
+
+### Sidebar com mais presença — 09/10/2026
+
+Fundo cinza esverdeado mais definido, hover próprio e seleção verde acinzentada. Conferida aberta, colapsada e no Sheet móvel. Contraste calculado: texto secundário/fundo 4,60:1, seleção 8,28:1 e texto principal 12,76:1; isso não equivale a auditoria WCAG completa. 25 testes de navegação/shell e build passaram. Evidências: `/tmp/financeiro-design-qa/sidebar-presenca-desktop.jpg` e `sidebar-presenca-mobile.jpg`.

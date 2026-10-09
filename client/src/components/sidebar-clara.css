@@ -1,19 +1,22 @@
 /* Navegação global clara; preserva rail, colapso, permissões e Sheet móvel. */
 .sidebar-clara {
-  --mast-bg: #fafbfa;
+  --mast-bg: #e7ece7;
+  --side-hover: #dce4dc;
+  --side-active: #cddbcf;
+  --side-active-ink: #253c2f;
   --mast-ink: #202723;
   --mast-ink-2: #626b66;
   --side-mute: #626b66;
-  --side-hair: #e1e5e2;
-  --border: #e1e5e2;
+  --side-hair: #ced7ce;
+  --border: #ced7ce;
   --leite: #e8ece9;
-  background: #fafbfa;
+  background: var(--mast-bg);
   color: #202723;
-  border-right: 1px solid #e1e5e2;
+  border-right: 1px solid var(--side-hair);
 }
 .sidebar-clara button { height: auto; white-space: normal; font-weight: 400; justify-content: flex-start; box-shadow: none; }
-.sidebar-clara button:hover { background: #eef1ef; color: #202723; }
-.sidebar-clara button[aria-current="page"] { background: #e8eeea; color: #202723; font-weight: 600; }
+.sidebar-clara button:hover { background: var(--side-hover); color: var(--mast-ink); }
+.sidebar-clara button[aria-current="page"] { background: var(--side-active); color: var(--side-active-ink); font-weight: 600; }
 .sidebar-clara button[aria-current="page"]::before { display: none; }
 .sidebar-clara button[aria-expanded] { color: #626b66; }
 .sidebar-clara button[aria-label="Menu da conta"] { color: #202723; }
