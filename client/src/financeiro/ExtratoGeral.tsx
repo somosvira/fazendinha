@@ -51,8 +51,8 @@ export function ExtratoGeral({ contas, movimentos, filtros, onChangeFiltros, car
   const totalPaginas = Math.max(1, Math.ceil(filtrados.length / 15));
   const paginaAtual = Math.min(pagina, totalPaginas);
   return <section id="extrato-geral" className="mt-3 min-w-0 scroll-mt-6" aria-labelledby="titulo-extrato-geral">
-    <h2 id="titulo-extrato-geral" className="font-serif text-xl">Extrato geral</h2>
-    <p className="mt-1 text-xs text-ink-3">Movimentações de todas as contas da fazenda selecionada, da mais recente à mais antiga. Clique para localizar o registro na conta.</p>
+    <h2 id="titulo-extrato-geral" className="h1 break-words hyphens-auto">Extrato geral</h2>
+    <p className="mt-2 break-words text-sm leading-6 text-ink-3">Movimentações de todas as contas da fazenda selecionada, da mais recente à mais antiga. Clique para localizar o registro na conta.</p>
     {controles}
     <Panel tom="info" className="fin-painel mt-3 overflow-hidden">
       <div className="fin-cabecalho grid gap-3 border-b border-border p-3 sm:grid-cols-2">

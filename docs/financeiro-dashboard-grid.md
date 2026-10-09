@@ -107,3 +107,5 @@ Esta direção substitui a aplicação anterior de cores decorativas nas telas r
 ## Correção da paleta aprovada — 09/10/2026
 
 A preferência esclarecida substitui a neutralização excessiva anterior: manter faixas vermelhas, cards de efeitos, ícones/cabeçalhos suaves e os detalhes em marrom/verde/vermelho. Remover o azul; informação, classificação e pendência usam marrom suave. Abas selecionadas e ações primárias permanecem preto/grafite. Os três efeitos do resumo da operação usam Card shadcn compacto, preservando os contadores e a organização em grid.
+
+Os títulos “Contas” e “Extrato geral” usam a mesma escala tipográfica responsiva (`h1` visual), com descrições no mesmo tamanho. A hierarquia semântica permanece h1 na página e h2 na seção do extrato.
