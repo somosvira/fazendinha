@@ -28,6 +28,8 @@ const PATH_BY_TAB: Record<Tab, string> = {
   sitios: "/configuracoes/sitios",
   cadastros: "/financeiro/configuracoes",
   "pec-rebanho": "/pecuaria/rebanho",
+  "pec-sanidade": "/pecuaria/sanidade",
+  "pec-nutricao": "/pecuaria/nutricao",
   estoque: "/estoque",
 };
 
@@ -54,9 +56,37 @@ const TAB_BY_PATH_LEGADO: Record<string, Tab> = {
 
 export const DEFAULT_TAB: Tab = "dashboard";
 
+/** Alias da navegação V3: mantém parâmetros, fragmento e uma única entrada de histórico. */
+export function normalizarRotaPecuaria(caminho: string): string {
+  const url = new URL(caminho, "https://terrano.internal");
+  const path = url.pathname.replace(/\/$/, "").toLowerCase();
+  if (path === "/pecuaria/pesagem-manejo") url.pathname = "/pecuaria/rebanho/animais";
+  if (path === "/pecuaria/rebanho/sanidade") url.pathname = "/pecuaria/sanidade";
+  if (path === "/pecuaria/rebanho/nutricao") url.pathname = "/pecuaria/nutricao";
+  if (path === "/pecuaria/rebanho/cadastros") {
+    const rebanho: Record<string, string> = { categorias: "rebanho/categorias", motivos: "rebanho/motivos", racas: "genetica/racas", genitores: "genetica/genitores", "material-genetico": "genetica/material-genetico" };
+    const sanidade: Record<string, string> = { protocolos: "protocolos", doenca: "doencas", aplicacao: "tipos-aplicacao", exame: "tipos-exame" };
+    const aba = url.searchParams.has("material") ? "material-genetico" : url.searchParams.get("aba") ?? "categorias";
+    const destino = aba === "sanidade" ? "sanidade/" + (sanidade[url.searchParams.get("cadastroSanitario") ?? "protocolos"] ?? "protocolos") : rebanho[aba] ?? "rebanho/categorias";
+    url.pathname = "/configuracoes/pecuaria/" + destino;
+    url.searchParams.delete("aba"); url.searchParams.delete("cadastroSanitario");
+  }
+  return url.pathname + url.search + url.hash;
+}
+export function normalizarLocalizacaoPecuaria(): void {
+  const atual = window.location.pathname + window.location.search + window.location.hash;
+  const destino = normalizarRotaPecuaria(atual);
+  if (destino !== atual) window.history.replaceState(window.history.state, "", destino);
+}
+export function isSubrotaPecuaria(tab: Tab, pathname: string): boolean {
+  return ["pec-sanidade", "pec-nutricao"].includes(tab) && pathToTab(pathname) === tab
+    || tab === "config" && pathname.startsWith("/configuracoes/pecuaria");
+}
+
+
 /** Atualiza a URL e notifica o roteador leve da aplicação. */
 export function navegarPara(pathname: string): void {
-  window.history.pushState(null, "", pathname);
+  window.history.pushState(null, "", normalizarRotaPecuaria(pathname));
   window.dispatchEvent(new PopStateEvent("popstate"));
 }
 
@@ -180,6 +210,9 @@ export function pathToTab(pathname: string): Tab | null {
 
   if (path === "/" || path === "") return DEFAULT_TAB;
   if (path === "/ia" && !ASSISTENTE_ATIVO) return DEFAULT_TAB;
+  if (path === "/pecuaria/rebanho/sanidade") return "pec-sanidade";
+  if (path === "/pecuaria/rebanho/nutricao") return "pec-nutricao";
+  if (path === "/pecuaria/rebanho/cadastros" || path.startsWith("/configuracoes/pecuaria")) return "config";
   if (parseProdutoEstoqueId(path) != null) return "estoque";
   if (parseContaFinanceiraId(path) != null) return "caixinha";
   if (parseOperacaoFinanceiraId(path) != null) return "lancar";

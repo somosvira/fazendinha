@@ -1,15 +1,23 @@
+import { Button as BotaoMenu } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import "./estoque-theme.css";
+import { Boxes, Package, Pencil, SlidersHorizontal, MoreHorizontal } from "lucide-react";
+import { SubTabs } from "../components/SubTabs";
+import { DialogFinanceiro } from "../financeiro/DialogFinanceiro";
+import { navegarPara } from "../router";
+import { rotuloUnidade } from "../lib/unidades";
 import { useEffect, useState } from "react";
 import { listarPropriedades, type PropriedadeDTO } from "../api/propriedades";
 import { getPropriedadeAtiva } from "../propriedadeScope";
 import { getUsuario } from "../lib/auth";
-import { Button, dataBR, brl, ErrorBox, PageHeader, PaginaFinanceira, Panel } from "../financeiro/financeiro-ui";
+import { Button, dataBR, brl, ErrorBox, PageHeader, PaginaFinanceira, Panel, TabelaFinanceira, Paginacao, Pill, Empty, type ColunaTabela } from "../financeiro/financeiro-ui";
 import { classeInput } from "../financeiro/PainelCadastro";
 import { FormProduto } from "../financeiro/FormProduto";
 import { PartidasProduto } from "./PartidasProduto";
 import { nomeLoteProduto } from "./SelecaoPartidas";
 import { destinoDoMovimento, podeAcessarArea, podeAjustarEstoque, abrirAjusteEstoque } from "./navegacao";
 import { ROTULO_ORIGEM } from "./rotulos";
-import { obterProdutoEstoque, listarProdutos, listarLotesProduto, listarMovimentosProduto, listarOrigensProduto, renomearLoteProduto, type ProdutoDTO, type ProdutoEstoqueDTO, type PaginaLotesProduto, type PaginaMovimentos, type PaginaOrigensProduto } from "./api";
+import { obterProdutoEstoque, listarProdutos, listarLotesProduto, listarMovimentosProduto, listarOrigensProduto, renomearLoteProduto, type LoteProdutoDTO, type MovimentoDTO, type OrigemProdutoDTO, type ProdutoDTO, type ProdutoEstoqueDTO, type PaginaLotesProduto, type PaginaMovimentos, type PaginaOrigensProduto } from "./api";
 
 type Aba = "resumo" | "lotes" | "movimentos" | "origens";
 export function ProdutoEstoqueDetalhe({ produtoId, onSelecionarSitio }: { produtoId: string; onSelecionarSitio?: (id: number) => void }) {
@@ -58,21 +66,56 @@ export function ProdutoEstoqueDetalhe({ produtoId, onSelecionarSitio }: { produt
   const produto = dados;
   const total = lotes?.total ?? movimentos?.total ?? origens?.total ?? 0;
   const vazio = !carregando && !erro && aba !== "resumo" && total === 0;
+
+  const unidade = produto ? rotuloUnidade(produto.unidade) : "";
+  const colunasLotes: ColunaTabela<LoteProdutoDTO>[] = [
+    { chave: "lote", titulo: "Lote", principal: true, celula: l => <strong>{nomeLoteProduto(l)}</strong> },
+    { chave: "validade", titulo: "Validade", celula: l => l.validade ? dataBR(l.validade) : <Pill tone="amber">Não informada</Pill> },
+    { chave: "saldo", titulo: "Saldo", alinhamento: "direita", celula: l => <strong className="tabular-nums">{Number(l.saldo).toLocaleString("pt-BR", { maximumFractionDigits: 3 })} {unidade}</strong> },
+    { chave: "acoes", titulo: "Ações", alinhamento: "direita", acoes: true, celula: l => <DropdownMenu><DropdownMenuTrigger asChild><BotaoMenu variant="outline" aria-label={`Ações do lote ${nomeLoteProduto(l)}`} className="gap-2 bg-card text-sm font-semibold"><MoreHorizontal size={16} />Ações</BotaoMenu></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onSelect={() => abrirAba("movimentos", l.id)}>Ver movimentos</DropdownMenuItem><DropdownMenuItem onSelect={() => abrirAba("origens", l.id)}>Ver origens</DropdownMenuItem>{podeEditar && <DropdownMenuItem onSelect={() => { setRenomeando(l.id); setNome(l.nome || ""); }}>Renomear lote</DropdownMenuItem>}</DropdownMenuContent></DropdownMenu> },
+  ];
+  const colunasMovimentos: ColunaTabela<MovimentoDTO>[] = [
+    { chave: "data", titulo: "Data", celula: m => dataBR(m.data) },
+    { chave: "origem", titulo: "Origem", principal: true, celula: m => <strong>{ROTULO_ORIGEM[m.origem] ?? m.origem}</strong> },
+    { chave: "tipo", titulo: "Tipo", celula: m => <Pill tone={m.tipo === "ENTRADA" ? "green" : m.tipo === "SAIDA" ? "amber" : "neutral"}>{m.tipo === "ENTRADA" ? "Entrada" : m.tipo === "SAIDA" ? "Saída" : "Ajuste"}</Pill> },
+    { chave: "quantidade", titulo: "Quantidade", alinhamento: "direita", celula: m => <span className="tabular-nums">{Number(m.quantidade).toLocaleString("pt-BR", { maximumFractionDigits: 3 })} {unidade}</span> },
+    { chave: "situacao", titulo: "Situação", celula: m => <Pill tone={m.status === "REVERTIDO" || m.reversaoDeId ? "red" : "green"}>{m.status === "REVERTIDO" ? "Estornado" : m.reversaoDeId ? "Estorno" : "Confirmado"}</Pill> },
+    { chave: "vinculo", titulo: "Origem / destino", celula: m => { const destino = destinoDoMovimento(m); return destino && podeAcessarArea(destino.area) ? <a href={destino.href} className="text-primary hover:underline">{destino.rotulo}</a> : "—"; } },
+  ];
+  const colunasOrigens: ColunaTabela<OrigemProdutoDTO>[] = [
+    { chave: "data", titulo: "Data", celula: o => dataBR(o.data) },
+    { chave: "fornecedor", titulo: "Fornecedor", principal: true, celula: o => <strong>{o.fornecedor ?? "Sem fornecedor"}</strong> },
+    { chave: "quantidade", titulo: "Quantidade", alinhamento: "direita", celula: o => <span className="tabular-nums">{Number(o.quantidade).toLocaleString("pt-BR", { maximumFractionDigits: 3 })} {unidade}</span> },
+    { chave: "vinculos", titulo: "Documentos de origem", celula: o => <div className="flex flex-wrap gap-x-4 gap-y-2">{o.operacaoId && podeAcessarArea("financeiro") && <a href={`/financeiro/operacoes/${o.operacaoId}`} className="text-primary hover:underline">Compra {o.operacaoNumero ? `OP-${String(o.operacaoNumero).padStart(4, "0")}` : "de origem"}</a>}{o.fornecedorId && podeAcessarArea("financeiro") && <a href={`/financeiro/configuracoes?aba=parceiros&parceiroId=${o.fornecedorId}`} className="text-primary hover:underline">Consultar fornecedor</a>}</div> },
+  ];
   return <PaginaFinanceira>
-    <a href="/estoque" className="text-sm underline">Voltar ao Estoque</a>
-    <PageHeader eyebrow="Estoque" titulo={produto?.nome ?? "Ficha do produto"} descricao="Saldo, lotes por validade e origem das entradas do mesmo produto." acao={produto && podeEditar ? <Button secondary disabled={salvando} onClick={() => { void abrirEdicao(); }}>Editar produto</Button> : undefined} />
-    <label className="mt-5 grid max-w-sm gap-1 text-sm">Sítio<select aria-label="Sítio da ficha" className={classeInput} value={sitioId ?? ""} onChange={(e) => { setSitioId(Number(e.target.value) || undefined); setPagina(1); setPartidaId(""); }}><option value="">Consolidado</option>{sitios.map((s) => <option key={s.id} value={s.id}>{s.nome}{s.ativo ? "" : " (inativo)"}</option>)}</select></label>
-    <div role="tablist" aria-label="Ficha do produto" className="mt-5 flex flex-wrap gap-2">{([["resumo", "Resumo"], ["lotes", "Lotes"], ["movimentos", "Movimentos"], ["origens", "Origens das entradas"]] as const).map(([a, texto]) => <button key={a} role="tab" aria-selected={aba === a} type="button" className={`rounded-lg border border-border px-4 py-2 text-sm ${aba === a ? "bg-mast text-white" : "bg-white"}`} onClick={() => abrirAba(a)}>{texto}</button>)}</div>
-    <ErrorBox erro={erro} />{erro && <Button secondary onClick={() => setRevisao((r) => r + 1)}>Tentar novamente</Button>}
-    {carregando ? <p className="mt-5">Carregando produto…</p> : produto && dados && <>
-      {aba === "resumo" && <Panel className="mt-5 grid gap-4 p-5"><h2 className="h2">Saldo {sitioId ? `em ${sitios.find((s) => s.id === sitioId)?.nome ?? "sítio selecionado"}` : "consolidado"}</h2><p className="body">{Number(dados.saldo).toLocaleString("pt-BR", { maximumFractionDigits: 3 })} {produto.unidade}</p><p className="text-sm">Categoria: {produto.categoria?.nome ?? produto.categoriaNome ?? "Sem categoria"} · {produto.rastrearPartidas ? "Controle de lotes por validade ativo" : "Sem controle de lotes por validade"}</p>{dados.custoMedio != null && <p className="text-sm">Custo médio: {brl(dados.custoMedio)} · Valor: {brl(dados.valor ?? 0)}</p>}{!podeEditar && <p className="text-sm text-ink-3">Você tem acesso de consulta.</p>}{podeAjustarEstoque() && (sitioId ? <Button secondary onClick={() => { onSelecionarSitio?.(sitioId); abrirAjusteEstoque(produto.id); }}>Ajustar quantidade</Button> : <p className="text-sm">Selecione um sítio acima para registrar movimentos.</p>)}{podeEditar && sitioId && <details><summary className="cursor-pointer text-sm">Opções avançadas</summary><div className="mt-3"><PartidasProduto key={`${produto.id}-${sitioId}`} produtoId={produto.id} propriedadeId={sitioId} rastreado={!!produto.rastrearPartidas} configuracao onMudou={() => setRevisao((r) => r + 1)} /></div></details>}</Panel>}
-      {partidaId && <p className="mt-4 text-sm">Consulta filtrada por lote. <button type="button" className="underline" onClick={() => { setPartidaId(""); setPagina(1); }}>Ver todos</button></p>}
-      {aba === "lotes" && lotes?.itens.map((l) => <Panel key={l.id} className="mt-3 grid gap-2 p-4"><h2 className="h3">{nomeLoteProduto(l)}</h2><p className="text-sm">Validade: {l.validade ? dataBR(l.validade) : "não informada"} · Saldo: {Number(l.saldo).toLocaleString("pt-BR")} {produto.unidade}</p><div className="flex flex-wrap gap-2"><Button secondary onClick={() => abrirAba("movimentos", l.id)}>Ver movimentos</Button><Button secondary onClick={() => abrirAba("origens", l.id)}>Ver origens</Button>{podeEditar && <Button secondary onClick={() => { setRenomeando(l.id); setNome(l.nome || ""); }}>Renomear lote</Button>}</div>{renomeando === l.id && <form onSubmit={(e) => { e.preventDefault(); void salvarNome(); }} className="grid gap-2"><label className="text-sm">Novo nome<input required maxLength={160} className={classeInput} value={nome} onChange={(e) => setNome(e.target.value)} /></label><p className="text-sm">A alteração ficará no histórico de auditoria.</p><div className="flex gap-2"><Button type="submit" disabled={salvando || !nome.trim()}>Salvar nome</Button><Button secondary disabled={salvando} onClick={() => setRenomeando(null)}>Cancelar</Button></div></form>}</Panel>)}
-      {aba === "movimentos" && movimentos?.itens.map((m) => { const destino = destinoDoMovimento(m); return <Panel key={m.id} className="mt-3 p-4"><p className="text-sm">{dataBR(m.data)} · {ROTULO_ORIGEM[m.origem]} · {m.tipo} · {m.quantidade} {produto.unidade}{m.status === "REVERTIDO" ? " · revertido" : ""}</p>{destino && podeAcessarArea(destino.area) && <a href={destino.href} className="text-sm underline">{destino.rotulo}</a>}</Panel>; })}
-      {aba === "origens" && origens?.itens.map((o) => <Panel key={o.id} className="mt-3 grid gap-2 p-4"><p className="text-sm">{dataBR(o.data)} · {o.quantidade} {produto.unidade} · {o.fornecedor ?? "Sem fornecedor"}</p>{o.operacaoId && podeAcessarArea("financeiro") && <a href={`/financeiro/operacoes/${o.operacaoId}`} className="text-sm underline">Compra {o.operacaoNumero ? `OP-${String(o.operacaoNumero).padStart(4, "0")}` : "de origem"}</a>}{o.fornecedorId && podeAcessarArea("financeiro") && <a href={`/financeiro/configuracoes?aba=parceiros&parceiroId=${o.fornecedorId}`} className="text-sm underline">Consultar fornecedor</a>}</Panel>)}
-      {vazio && <Panel className="mt-5 grid gap-3 p-5"><p>Nenhum {aba === "lotes" ? "lote" : aba === "origens" ? "recebimento" : "movimento"} neste escopo.</p>{podeAjustarEstoque() && <a href="/financeiro/operacoes/nova?tipo=COMPRA_ESTOQUE" className="text-sm underline">Registrar primeira entrada</a>}<a href="/estoque" className="text-sm underline">Consultar Estoque</a></Panel>}
-      {aba !== "resumo" && total > 0 && <div className="mt-5 flex flex-wrap items-center gap-3"><span className="text-sm">Página {pagina} · {total} itens</span><Button secondary disabled={pagina <= 1} onClick={() => setPagina((p) => p - 1)}>Anterior</Button><Button secondary disabled={pagina * 15 >= total} onClick={() => setPagina((p) => p + 1)}>Próxima</Button></div>}
+    <nav className="fin-breadcrumb" aria-label="Navegação estrutural"><a href="/estoque" onClick={e => { if (e.button === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) { e.preventDefault(); navegarPara("/estoque"); } }}>Estoque</a><span aria-hidden="true">/</span><span aria-current="page">{produto?.nome ?? "Ficha do produto"}</span></nav>
+    <PageHeader eyebrow="" titulo={produto?.nome ?? "Ficha do produto"} descricao="Saldo, lotes por validade e origem das entradas do mesmo produto." acao={produto && podeEditar ? <Button secondary disabled={salvando} onClick={() => { void abrirEdicao(); }}><Pencil size={16} />Editar produto</Button> : undefined} />
+    <div className="estoque-filtro-ficha"><label className="grid gap-1 text-sm">Sítio<select aria-label="Sítio da ficha" className={classeInput} value={sitioId ?? ""} onChange={(e) => { setSitioId(Number(e.target.value) || undefined); setPagina(1); setPartidaId(""); }}><option value="">Consolidado</option>{sitios.map(s => <option key={s.id} value={s.id}>{s.nome}{s.ativo ? "" : " (inativo)"}</option>)}</select></label>{partidaId && <p className="text-sm text-ink-3">Consulta filtrada por lote. <Button secondary onClick={() => { setPartidaId(""); setPagina(1); }}>Ver todos</Button></p>}</div>
+    <SubTabs variant="financeiro" ariaLabel="Ficha do produto" tabs={[{ id: "resumo", label: "Resumo" }, { id: "lotes", label: "Lotes" }, { id: "movimentos", label: "Movimentos" }, { id: "origens", label: "Origens das entradas" }]} active={aba} onSelect={abrirAba} className="mt-5" />
+    <ErrorBox erro={erro} />{erro && <Button secondary onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button>}
+    {carregando ? <p role="status" className="mt-5">Carregando produto…</p> : produto && dados && <>
+      {aba === "resumo" && <Panel className="mt-5 overflow-hidden">
+        <div className="estoque-secao-cabecalho"><span className="fin-section-icon"><Package aria-hidden="true" /></span><h2 className="h2">Saldo {sitioId ? `em ${sitios.find(s => s.id === sitioId)?.nome ?? "sítio selecionado"}` : "consolidado"}</h2></div>
+        <div className="estoque-ficha-resumo">
+          <div><p className="estoque-ficha-saldo tabular-nums">{Number(dados.saldo).toLocaleString("pt-BR", { maximumFractionDigits: 3 })} {unidade}</p><p className="mt-2 text-sm text-ink-3">{produto.rastrearPartidas ? "Controle de lotes por validade ativo" : "Sem controle de lotes por validade"}</p>{!podeEditar && <p className="mt-3 text-sm text-ink-3">Você tem acesso de consulta.</p>}</div>
+          <dl className="estoque-ficha-dados"><div><dt>Categoria</dt><dd>{produto.categoria?.nome ?? produto.categoriaNome ?? "Sem categoria"}</dd></div>{dados.custoMedio != null && <><div><dt>Custo médio</dt><dd>{brl(dados.custoMedio)}</dd></div><div><dt>Valor em estoque</dt><dd>{brl(dados.valor ?? 0)}</dd></div></>}</dl>
+        </div>
+        {podeAjustarEstoque() && <div className="estoque-ficha-opcoes">{sitioId ? <Button secondary onClick={() => { onSelecionarSitio?.(sitioId); abrirAjusteEstoque(produto.id); }}><SlidersHorizontal size={16} />Ajustar quantidade</Button> : <p className="text-sm text-ink-3">Selecione um sítio acima para registrar movimentos.</p>}</div>}
+        {podeEditar && sitioId && <details className="estoque-ficha-opcoes"><summary className="cursor-pointer text-sm font-medium">Opções avançadas</summary><div className="mt-3"><PartidasProduto key={`${produto.id}-${sitioId}`} produtoId={produto.id} propriedadeId={sitioId} rastreado={!!produto.rastrearPartidas} configuracao onMudou={() => setRevisao(r => r + 1)} /></div></details>}
+      </Panel>}
+      {aba !== "resumo" && <Panel className="mt-5 overflow-hidden">
+        <div className="estoque-secao-cabecalho"><span className="fin-section-icon"><Boxes aria-hidden="true" /></span><h2 className="h2">{aba === "lotes" ? "Lotes do produto" : aba === "movimentos" ? "Movimentos do produto" : "Origens das entradas"}</h2></div>
+        {vazio ? <Empty><p>Nenhum {aba === "lotes" ? "lote" : aba === "origens" ? "recebimento" : "movimento"} neste escopo.</p><div className="mt-3 flex flex-wrap justify-center gap-3">{podeAjustarEstoque() && <a href="/financeiro/operacoes/nova?tipo=COMPRA_ESTOQUE" className="text-primary hover:underline">Registrar primeira entrada</a>}<a href="/estoque" className="text-primary hover:underline">Consultar Estoque</a></div></Empty>
+          : aba === "lotes" && lotes ? <TabelaFinanceira rotulo="Lotes do produto" itens={lotes.itens} colunas={colunasLotes} chaveDe={l => l.id} />
+          : aba === "movimentos" && movimentos ? <TabelaFinanceira rotulo="Movimentos do produto" itens={movimentos.itens} colunas={colunasMovimentos} chaveDe={m => m.id} />
+          : aba === "origens" && origens ? <TabelaFinanceira rotulo="Origens das entradas" itens={origens.itens} colunas={colunasOrigens} chaveDe={o => o.id} /> : null}
+        {total > 0 && <Paginacao pagina={pagina} totalPaginas={Math.max(1, Math.ceil(total / 15))} total={total} porPagina={15} rotulo="Paginação da ficha" substantivo="itens" idSelect="pagina-ficha-produto" onPagina={setPagina} />}
+      </Panel>}
     </>}
-    {editando && produtoEdicao && <FormProduto produto={produtoEdicao} onSalvo={() => { setEditando(false); setRevisao((r) => r + 1); }} onFechar={() => setEditando(false)} />}
+    {renomeando && <DialogFinanceiro titulo="Renomear lote" eyebrow="Estoque" icon={Pencil} onClose={() => { if (!salvando) setRenomeando(null); }} rodape={<><Button secondary disabled={salvando} onClick={() => setRenomeando(null)}>Cancelar</Button><Button type="submit" form="renomear-lote" carregando={salvando} disabled={!nome.trim()}>Salvar nome</Button></>}>
+      <form id="renomear-lote" className="grid gap-3 p-5" onSubmit={e => { e.preventDefault(); void salvarNome(); }}><ErrorBox erro={erro} /><label className="text-sm">Novo nome<input required maxLength={160} className={classeInput} value={nome} onChange={e => setNome(e.target.value)} /></label><p className="text-sm text-ink-3">A alteração ficará no histórico de auditoria.</p></form>
+    </DialogFinanceiro>}
+    {editando && produtoEdicao && <FormProduto produto={produtoEdicao} onSalvo={() => { setEditando(false); setRevisao(r => r + 1); }} onFechar={() => setEditando(false)} />}
   </PaginaFinanceira>;
 }

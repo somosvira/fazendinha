@@ -399,3 +399,22 @@ O usuário rejeitou o fundo esverdeado. A sidebar usa cinza neutro um pouco mais
 A direção neutra aprovada da visão geral agora abrange operações, detalhes e formulário; compromissos, calendário e liquidação; contas e extratos; todas as abas de configurações; relatórios, emissão e detalhes. Esta decisão substitui a limitação anterior à página inicial e as faixas/gradientes decorativos do tema anterior. Fundo cinza claro, superfícies brancas, bordas discretas, tipografia sans e títulos compactos. Verde sinaliza entradas/saldos positivos e confirmações; vermelho sinaliza alertas, estornos e cancelamentos; marrom permanece discreto em pendências e categorias. Valores de saída podem ser neutros, como na visão geral, mantendo direção e sinal escritos.
 
 `FinanceiroContent` delimita o módulo e `financeiro-theme.css` compartilha os tokens. O escopo CSS no root também alcança os portais Radix dos modais e seletores; ao sair do financeiro, os tokens das demais áreas são restaurados. Dropdowns usam `bg-popover` branco, incluindo o seletor de período, e o Select usa estados `accent` do shadcn. Não alterar dados, filtros, paginação, cálculos, permissões ou rotas nesta atualização.
+
+## Financeiro — Cooperativa contemporânea (11/10/2026)
+
+O Financeiro segue [o guia Cooperativa contemporânea](docs/design/financeiro-cooperativa/design.md) e seu [inventário de ícones](docs/design/financeiro-cooperativa/iconografia.md). O tema de sálvia/floresta, DM Sans, superfícies brancas e raios de 16/8 px é aplicado apenas enquanto `.financeiro-content` está montado, incluindo portais e sidebar. As primitivas continuam compartilhadas com os demais módulos; o redesign não altera seus contratos nem redefine a apresentação externa. A paisagem discreta da sidebar é um recorte decorativo da referência aprovada; a marca Terrano usa o vetor original.
+
+
+## Pecuária V3 — Cooperativa contemporânea (11/10/2026)
+
+A mesma direção aprovada no Financeiro agora abrange a Pecuária, conforme o [guia específico](docs/design/pecuaria-cooperativa/design.md). A paleta foi extraída para `styles/cooperativa-theme.css`; o escopo inclui `.financeiro-content` e `.pecuaria-content`, portais e sidebar, preservando a aparência financeira. A Pecuária tem quatro rotinas e configurações agrupadas, ficha do animal contínua, tabelas de densidade uniforme e formulários com revisão lateral. Esta decisão amplia o escopo visual descrito na seção anterior; não altera os contratos de domínio nem introduz uma feature de seleção de temas.
+
+
+### Refinamento da navegação Pecuária — 11/10/2026
+
+Pesagem coletiva é uma ação da seleção em `/pecuaria/rebanho/animais`. `/pecuaria/pesagem-manejo` é um alias de compatibilidade, preservando filtros e fragmento. As rotinas na sidebar são Rebanho, Sanidade e Nutrição. As abas dessas páginas reutilizam as primitivas e a estilização de Configurações financeiras. Busca e chips de filtros ficam na lista; critérios completos ficam no diálogo Filtros. Ver [guia de design](docs/design/pecuaria-cooperativa/design.md).
+
+
+## Design unificado — 11/10/2026
+
+Financeiro, Pecuária e Estoque foram consolidados em `codex/redesign-unificado-cooperativa`. O tema compartilhado alcança `.financeiro-content`, `.pecuaria-content`, `.estoque-content` e `.cooperativa-content` (demais telas autenticadas). Paleta e tokens permanecem em `styles/cooperativa-theme.css`; composição de Estoque em `estoque/estoque-theme.css`. A ficha de produto usa breadcrumb, SubTabs e TabelaFinanceira, preservando os contratos de leitura/gravação. Ver [guia unificado](docs/design/cooperativa-unificada.md).

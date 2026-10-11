@@ -321,11 +321,21 @@ Não usamos `react-router`. O `App.tsx` mantém `useState<Tab>` e `router.ts` si
 | `cadastros` / `plano` | `/financeiro/configuracoes` / `/financeiro/configuracoes/categorias` |
 | `relatorio` | `/financeiro/relatorios` |
 | `ia` · `acessos` · `config` | `/ia` · `/acessos` · `/configuracoes` |
-| `pec-rebanho` | `/pecuaria/rebanho` (subtela decidida pelo pathname: Visão geral · Animais · Lotes · Cadastros) |
+| `pec-rebanho` | `/pecuaria/rebanho` (Visão geral · Animais · Lotes; fichas e novo animal pelo pathname) |
+| `pec-sanidade` | `/pecuaria/sanidade` |
+| `pec-pesagem` | `/pecuaria/pesagem-manejo` |
+| `pec-nutricao` | `/pecuaria/nutricao` (consulta e formulários na query) |
+| `config` · Pecuária | `/configuracoes/pecuaria/:grupo/:cadastro` |
 | `pla-*` · `mil-*` · `eqp-*` | `/plantio/<sub>` · `/milho/<sub>` · `/equipe/<sub>` |
 | auth | `/convite/:token` e `/senha/:token` renderizam `DefinirSenha` mesmo deslogado |
 
 `/rebanho/*` e `/corte/*` são caminhos legados redirecionados. Os ids de `Tab` do financeiro mantêm nomes antigos (`lancar`, `gastos`, `caixinha`) por compatibilidade com `Usuario.abas` persistido.
+
+### Direção Cooperativa e compatibilidade V3 — 11/10/2026
+
+`router.ts` normaliza os links antigos de Sanidade, Nutrição e Cadastros sem perder query/fragmento. `navegacaoAuth.ts` protege também as subrotas de Configurações da Pecuária pelo gate de área. Não há nova biblioteca de roteamento.
+
+Financeiro e Pecuária usam os tokens de `styles/cooperativa-theme.css`, a composição de `financeiro-theme.css` e as primitivas existentes; `pecuaria/pecuaria-theme.css` contém os detalhes do módulo. O [guia da Pecuária](docs/design/pecuaria-cooperativa/design.md) registra rotas, iconografia e a adaptação do PR #313. Os novos resumos nutricionais do cliente consultam endpoints V3 existentes, respeitam o mascaramento da API e usam centavos inteiros na agregação de apresentação. Não alteram serviços de domínio, schema ou gravações.
 
 ### Padrões obrigatórios
 
@@ -703,3 +713,13 @@ Detalhe operacional em `DEPLOY.md`.
 
 
 A análise financeira por categoria na base `pagamentos` deriva de movimentos de conta usando `movimentoRealizado` e `ratearTransacao`, como o dashboard. Preserva propriedade, período inclusivo até o fim do último dia, natureza original dos estornos e o nome histórico da categoria. Ver [dashboard financeiro](docs/financeiro-dashboard-grid.md).
+
+
+### Refinamento da navegação Pecuária — 11/10/2026
+
+Pesagem coletiva é uma ação da seleção em `/pecuaria/rebanho/animais`. `/pecuaria/pesagem-manejo` é um alias de compatibilidade, preservando filtros e fragmento. As rotinas na sidebar são Rebanho, Sanidade e Nutrição. As abas dessas páginas reutilizam as primitivas e a estilização de Configurações financeiras. Busca e chips de filtros ficam na lista; critérios completos ficam no diálogo Filtros. Ver [guia de design](docs/design/pecuaria-cooperativa/design.md).
+
+
+## Design unificado — 11/10/2026
+
+Financeiro, Pecuária e Estoque foram consolidados em `codex/redesign-unificado-cooperativa`. O tema compartilhado alcança `.financeiro-content`, `.pecuaria-content`, `.estoque-content` e `.cooperativa-content` (demais telas autenticadas). Paleta e tokens permanecem em `styles/cooperativa-theme.css`; composição de Estoque em `estoque/estoque-theme.css`. A ficha de produto usa breadcrumb, SubTabs e TabelaFinanceira, preservando os contratos de leitura/gravação. Ver [guia unificado](docs/design/cooperativa-unificada.md).

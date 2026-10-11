@@ -65,10 +65,10 @@ export function CardFicha({ icon: Icon, titulo, acao, children, className = "" }
   children: ReactNode;
   className?: string;
 }) {
-  return <Panel className={`min-w-0 overflow-hidden ${className}`}>
+  return <Panel className={`pec-card-ficha min-w-0 overflow-hidden ${className}`}>
     <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3.5">
       <h2 className="flex items-center gap-2.5 text-sm font-semibold text-ink">
-        <span aria-hidden="true" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[#eef1e9] text-mast"><Icon size={16} /></span>
+        <span aria-hidden="true" className="pec-icone shrink-0"><Icon size={16} /></span>
         {titulo}
       </h2>
       {acao}
@@ -123,7 +123,7 @@ export function Paginacao({ paginaAtual, totalPaginas, totalItens, itensPorPagin
 }) {
   const inicio = totalItens === 0 ? 0 : (paginaAtual - 1) * itensPorPagina + 1;
   const fim = Math.min(paginaAtual * itensPorPagina, totalItens);
-  return <nav aria-label={`Paginação de ${rotulo}`} className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3 text-sm">
+  return <nav aria-label={`Paginação de ${rotulo}`} className="pec-paginacao flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3 text-sm">
     <span className="text-ink-3">{totalItens === 0 ? `0 ${rotulo}` : `${inicio}–${fim} de ${totalItens} ${rotulo}`}</span>
     <div className="flex items-center gap-2">
       <Button secondary disabled={paginaAtual <= 1} onClick={() => onPaginaChange(paginaAtual - 1)}>Anterior</Button>

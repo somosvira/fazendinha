@@ -3,7 +3,7 @@ import { alterarControle } from "../lib/controles.fixture";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, within, waitFor } from "@testing-library/react";
 import { ContasFinanceiras } from "./ContasFinanceiras";
-import { obterConfiguracoesFinanceiras, obterExtratoConta } from "./novo-api";
+import { obterConfiguracoesFinanceiras, obterExtratoConta, obterExtratoGeral, transferir } from "./novo-api";
 import { uid } from "../lib/uid.fixture";
 
 vi.mock("./novo-api", async (importOriginal) => ({
@@ -18,6 +18,7 @@ beforeEach(() => {
   window.history.replaceState(null, "", "/financeiro/contas");
   vi.clearAllMocks();
   vi.mocked(obterExtratoConta).mockResolvedValue([]);
+  vi.mocked(obterExtratoGeral).mockResolvedValue([]);
   vi.mocked(obterConfiguracoesFinanceiras).mockResolvedValue({
     contas: [
       { id: uid(1), nome: "Banco principal", tipo: "BANCO", instituicao: "Banco A", identificacao: "001", saldoAbertura: "100", dataSaldoAbertura: "2026-09-01", saldoAtual: "100", incluirNoSaldoGeral: true, ativo: true, temMovimentos: false },
@@ -74,7 +75,7 @@ it("abre uma conta diretamente e não substitui uma conta inexistente", async ()
   window.history.replaceState(null, "", `/financeiro/contas/${uid(2)}`);
   render(<ContasFinanceiras onNav={vi.fn()} />);
   await waitFor(() => expect(obterExtratoConta).toHaveBeenLastCalledWith(uid(2)));
-  fireEvent.click(screen.getByRole("button", { name: /Voltar para contas/ }));
+  fireEvent.click(screen.getByRole("link", { name: /Voltar para contas/ }));
   expect(window.location.pathname).toBe("/financeiro/contas");
   expect(screen.getAllByRole("link", { name: "Ver conta Banco principal" })[0]).toBeTruthy();
   cleanup();
@@ -145,14 +146,50 @@ it("pagina contas e busca em todos os registros antes de paginar", async () => {
 });
 
 
-it("prioriza contas e extrato com gráfico recolhido e sem ações redundantes", async () => {
+it("mostra fluxo consolidado antes das contas e usa filtros compartilhados com o extrato", async () => {
+  const transacao = { id: uid(70), seq: 70, tipo: "RECEBIMENTO", status: "CONFIRMADA", data: "2026-09-13", descricao: "Recebimento no banco", formaPagamento: null, parceiro: null, operacao: null };
+  const config = await obterConfiguracoesFinanceiras();
+  vi.mocked(obterExtratoGeral).mockResolvedValue([
+    { id: uid(71), seq: 71, contaId: uid(1), conta: config.contas[0], direcao: "ENTRADA", valor: "25", transacao },
+    { id: uid(72), seq: 72, contaId: uid(2), conta: config.contas[1], direcao: "ENTRADA", valor: "10", transacao: { ...transacao, id: uid(73), descricao: "Recebimento no caixa" } },
+  ]);
   render(<ContasFinanceiras onNav={vi.fn()} />);
-  const grafico = await screen.findByRole("button", { name: "Mostrar receitas e despesas" });
-  expect(grafico.getAttribute("aria-expanded")).toBe("false");
-  expect(screen.queryByRole("region", { name: "Gráfico de receitas e despesas" })).toBeNull();
-  const paginacao = screen.getByRole("navigation", { name: "Paginação das contas" });
-  expect(within(paginacao).queryByRole("button", { name: "Próxima" })).toBeNull();
-  expect(screen.queryByRole("columnheader", { name: "Ação" })).toBeNull();
-  fireEvent.click(grafico);
-  expect(grafico.getAttribute("aria-expanded")).toBe("true");
+  const grafico = await screen.findByRole("region", { name: "Gráfico de receitas e despesas" });
+  const contas = screen.getByRole("region", { name: "Contas" });
+  expect(grafico.compareDocumentPosition(contas) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Mostrar receitas e despesas" })).toBeNull();
+  expect(screen.getByText(/Todas as contas da fazenda, conforme os filtros/)).toBeTruthy();
+  await alterarControle(screen.getByLabelText("Conta"), { target: { value: uid(1) } });
+  const extrato = within(screen.getByRole("table", { name: "Extrato geral" }));
+  expect(extrato.queryByText("Recebimento no caixa")).toBeNull();
+  await waitFor(() => expect(within(grafico).getByRole("list", { name: "Totais acumulados do gráfico" }).textContent).toContain("25,00"));
+  expect(within(screen.getByRole("navigation", { name: "Paginação das contas" })).queryByRole("button", { name: "Próxima" })).toBeNull();
+});
+
+it("breadcrumb mantém o período ao abrir a conta e retornar ao consolidado", async () => {
+  window.history.replaceState(null, "", "/financeiro/contas?inicio=2026-09-01&fim=2026-09-30");
+  render(<ContasFinanceiras onNav={vi.fn()} />);
+  fireEvent.click((await screen.findAllByRole("link", { name: "Ver conta Banco principal" }))[0]);
+  await waitFor(() => expect(obterExtratoConta).toHaveBeenLastCalledWith(uid(1)));
+  expect(screen.getByRole("navigation", { name: "Caminho da página" }).textContent).toContain("Banco principal");
+  expect(screen.getByRole("link", { name: "Voltar para contas" }).getAttribute("href")).toBe("/financeiro/contas?inicio=2026-09-01&fim=2026-09-30");
+  fireEvent.click(screen.getByRole("link", { name: "Voltar para contas" }));
+  expect(window.location.search).toBe("?inicio=2026-09-01&fim=2026-09-30");
+});
+
+
+it("confirma a transferência pelo rodapé associado ao formulário", async () => {
+  vi.mocked(transferir).mockResolvedValue({ id: uid(90) });
+  render(<ContasFinanceiras onNav={vi.fn()} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Transferir" }));
+  const dialogo = screen.getByRole("dialog", { name: "Nova transferência" });
+  await alterarControle(within(dialogo).getByLabelText("Conta de origem"), { target: { value: uid(1) } });
+  await alterarControle(within(dialogo).getByLabelText("Conta de destino"), { target: { value: uid(2) } });
+  fireEvent.change(within(dialogo).getByLabelText("Valor"), { target: { value: "25" } });
+  fireEvent.change(within(dialogo).getByLabelText("Data da transferência"), { target: { value: "2026-09-10" } });
+  fireEvent.click(within(dialogo).getByRole("button", { name: "Registrar transferência" }));
+  await waitFor(() => expect(transferir).toHaveBeenCalledWith({
+    contaOrigemId: uid(1), contaDestinoId: uid(2), valor: 25, data: "2026-09-10", descricao: "Transferência entre contas",
+  }));
+  await waitFor(() => expect(screen.queryByRole("dialog", { name: "Nova transferência" })).toBeNull());
 });

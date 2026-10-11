@@ -26,7 +26,7 @@ export function DashboardCompromissos({ itens, href, onLiquidar, resumo, integra
   const proximoFuturo = itens.filter(item => !item.vencido && item.dataVencimento.slice(0, 10) > fim).sort((a, b) => a.dataVencimento.localeCompare(b.dataVencimento))[0];
   const grupos = [{ id: "vencidos", label: `Vencidos (${vencidos.length})`, itens: vencidos, vazio: "Nenhum compromisso vencido no período." }, { id: "proximos", label: `Próximos 7 dias (${proximos.length})`, itens: proximos, vazio: "Nenhum compromisso nos próximos 7 dias dentro do período selecionado." }];
   const Container = integrado ? "section" : Card;
-  return <Container data-fin-tom="pendente" className={`${integrado ? "" : "fin-painel"} min-w-0 gap-0 overflow-hidden rounded-lg border-border py-0 shadow-none`}>
+  return <Container data-fin-tom="pendente" className={`${integrado ? "dashboard-agenda" : "fin-painel"} min-w-0 gap-0 overflow-hidden rounded-lg border-border py-0 shadow-none`}>
     <Tabs defaultValue={vencidos.length ? "vencidos" : "proximos"} className="gap-0">
       <div className="fin-cabecalho flex flex-wrap items-center justify-between gap-3 p-4">
         {integrado ? <h3 className="text-sm font-semibold">Próximos compromissos</h3> : <h2 className="font-serif text-xl">Compromissos</h2>}

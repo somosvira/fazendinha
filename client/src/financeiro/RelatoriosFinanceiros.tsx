@@ -1,13 +1,12 @@
-import { AtualizandoFinanceiro } from "./CarregamentoFinanceiro";
+import { enfileirarSalvamentoRascunhoRelatorio, estadoRascunhoRelatorioAtivo, limparRascunhoRelatorioAtivo, useRascunhoRelatorioAtivo } from "./rascunhoRelatorioAtivo";
 import { Input } from "@/components/ui/input";
 import { normalizarBuscaFinanceira } from "./ListaCadastroFinanceiro";
-import { Button as UiButton } from "@/components/ui/button";
 import { PeriodoFinanceiroControl } from "./PeriodoFinanceiroControl";
 import { isoDate } from "../components/DateRangePicker";
-import { useCallback, useEffect, useState } from "react";
-import { ChevronRight, Download, FilePenLine, FilePlus2, RotateCcw } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ChevronRight, Download, FileText, Search } from "lucide-react";
 import { ConfirmDialog } from "../components/ConfirmDialog";
-import { isNovoRelatorioFinanceiro, parseRelatorioFinanceiroId } from "../router";
+import { isNovoRelatorioFinanceiro, navegarPara, parseRelatorioFinanceiroId } from "../router";
 import { descartarRascunhoRelatorioFinanceiro, listarRelatoriosFinanceiros, obterConfiguracoesFinanceiras, obterRascunhoRelatorioFinanceiro, salvarPdfRelatorioFinanceiro, type ConfiguracoesFinanceiras, type RascunhoRelatorioFinanceiro, type RelatorioFinanceiro } from "./novo-api";
 import { Button, Empty, ErrorBox, PageHeader, PaginaFinanceira, PaginaSemDados, Panel, StatusPill, TabelaFinanceira, Paginacao, type ColunaTabela } from "./financeiro-ui";
 import { dataCurta } from "./lib/relatorios";
@@ -36,6 +35,7 @@ function recorte(r: RelatorioFinanceiro) {
 }
 
 export function RelatoriosFinanceiros({ podeExportar = true }: { podeExportar?: boolean }) {
+  const trabalho = useRascunhoRelatorioAtivo();
   const [vista, setVista] = useState<Vista>(() => typeof window === "undefined" ? { tipo: "lista" } : vistaDaUrl(window.location.pathname));
   const [relatorios, setRelatorios] = useState<RelatorioFinanceiro[] | null>(null);
   const [cadastros, setCadastros] = useState<ConfiguracoesFinanceiras | null>(null);
@@ -50,38 +50,59 @@ export function RelatoriosFinanceiros({ podeExportar = true }: { podeExportar?: 
   const [pagina, setPagina] = useState(1);
   const [confirmarNovo, setConfirmarNovo] = useState(false);
 
+  const carregandoRef = useRef(false);
   const carregar = useCallback(async () => {
+    if (carregandoRef.current) return;
+    carregandoRef.current = true;
     setErro(null); setAtualizando(true);
     try {
       const [lista, dados, draft] = await Promise.all([
         listarRelatoriosFinanceiros(), obterConfiguracoesFinanceiras(),
         podeExportar ? obterRascunhoRelatorioFinanceiro() : Promise.resolve(null),
       ]);
-      setRelatorios(lista); setCadastros(dados); setRascunho(draft);
+      setRelatorios(lista); setCadastros(dados);
+      const atual = estadoRascunhoRelatorioAtivo();
+      setRascunho(atual.conhecido ? atual.rascunho : draft);
     } catch (falha) { setErro(mensagem(falha)); }
-    finally { setAtualizando(false); }
+    finally { carregandoRef.current = false; setAtualizando(false); }
   }, [podeExportar]);
   useEffect(() => { void carregar(); }, [carregar]);
   useEffect(() => {
-    const onPop = () => setVista(vistaDaUrl(window.location.pathname));
+    const onPop = () => {
+      const destino = vistaDaUrl(window.location.pathname);
+      setVista(destino);
+      if (destino.tipo === "lista") void carregar();
+    };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
-  }, []);
+  }, [carregar]);
 
-  const ir = (caminho: string, destino: Vista) => { window.history.pushState(null, "", caminho); setVista(destino); };
-  const voltar = () => { ir("/financeiro/relatorios", { tipo: "lista" }); void carregar(); };
+  useEffect(() => {
+    if (vista.tipo !== "lista" || erro || atualizando || !relatorios?.some(r => r.status === "PROCESSANDO")) return;
+    let timer: number | undefined;
+    const agendar = () => {
+      window.clearTimeout(timer);
+      if (document.visibilityState !== "hidden") timer = window.setTimeout(() => void carregar(), 4000);
+    };
+    agendar();
+    document.addEventListener("visibilitychange", agendar);
+    return () => { window.clearTimeout(timer); document.removeEventListener("visibilitychange", agendar); };
+  }, [vista.tipo, erro, atualizando, relatorios, carregar]);
+
+  const ir = (caminho: string, destino: Vista) => { navegarPara(caminho); setVista(destino); };
+  const voltar = () => ir("/financeiro/relatorios", { tipo: "lista" });
   const abrirNovo = async (continuar: boolean) => {
     setErro(null); setAviso(null);
-    if (!continuar && rascunho) {
+    if (!continuar && (rascunho || estadoRascunhoRelatorioAtivo().recuperacao)) {
       setIniciando(true);
-      try { await descartarRascunhoRelatorioFinanceiro(); setRascunho(null); }
+      try { await enfileirarSalvamentoRascunhoRelatorio(descartarRascunhoRelatorioFinanceiro); limparRascunhoRelatorioAtivo(); setRascunho(null); }
       catch (falha) { setErro(mensagem(falha)); return; }
       finally { setIniciando(false); }
     }
     ir("/financeiro/relatorios/novo", { tipo: "novo" });
   };
   const pedirNovo = () => {
-    if (rascunho) setConfirmarNovo(true);
+    if (rascunho || trabalho.recuperacao) setConfirmarNovo(true);
     else void abrirNovo(false);
   };
   const aoGerar = (relatorio: RelatorioFinanceiro, avisoDownload: string | null) => {
@@ -97,7 +118,7 @@ export function RelatoriosFinanceiros({ podeExportar = true }: { podeExportar?: 
     if (!cadastros) return <PaginaSemDados titulo="Novo relatório" descricao={DESCRICAO} label="Preparando relatório" erro={erro} />;
     return <NovoRelatorioFinanceiro cadastros={cadastros} rascunho={rascunho} onVoltar={voltar} onGerado={aoGerar} />;
   }
-  if (!relatorios) return <PaginaSemDados titulo="Relatórios financeiros" descricao={DESCRICAO} label="Carregando relatórios" erro={erro} />;
+  if (!relatorios) return <><PaginaSemDados titulo="Relatórios financeiros" descricao={DESCRICAO} label="Carregando relatórios" erro={erro} />{erro && <PaginaFinanceira><Button secondary disabled={atualizando} onClick={() => void carregar()}>Tentar novamente</Button></PaginaFinanceira>}</>;
 
   const relatoriosFiltrados = relatorios.filter(r => { const dia = isoDate(new Date(r.geradoEm)); return normalizarBuscaFinanceira(`${r.nome} ${r.autor}`).includes(normalizarBuscaFinanceira(busca)) && (!periodoEmissao.inicio || dia >= periodoEmissao.inicio) && (!periodoEmissao.fim || dia <= periodoEmissao.fim); });
   const variasPropriedades = new Set(relatorios.map((r) => r.propriedadeId)).size > 1;
@@ -109,27 +130,27 @@ export function RelatoriosFinanceiros({ podeExportar = true }: { podeExportar?: 
     ...(variasPropriedades ? [{ chave: "propriedade", titulo: "Propriedade", larguraMinima: 150, celula: (r: RelatorioFinanceiro) => r.propriedade }] : []),
     { chave: "gerado", titulo: "Gerado em", larguraMinima: 140, celula: (r) => <span className="whitespace-nowrap">{dataHora(r.geradoEm)}</span> },
     { chave: "autor", titulo: "Autor", larguraMinima: 140, celula: (r) => r.autor },
-    { chave: "acoes", titulo: "", alinhamento: "direita", larguraMinima: podeExportar ? 170 : 60, acoes: true, celula: (r) => <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>{podeExportar && r.status === "CONCLUIDO" && <Button secondary onClick={() => void baixar(r)}><Download size={15} /> Baixar PDF</Button>}<ChevronRight size={16} className="hidden text-ink-3 md:inline" aria-hidden /></div> },
+    { chave: "acoes", titulo: "", alinhamento: "direita", larguraMinima: podeExportar ? 170 : 60, acoes: true, celula: (r) => <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>{podeExportar && r.status === "CONCLUIDO" && <Button secondary onClick={() => void baixar(r)}><Download size={16} strokeWidth={1.8} aria-hidden="true" /> Baixar PDF</Button>}<ChevronRight size={16} className="hidden text-ink-3 md:inline" aria-hidden="true" /></div> },
   ];
   const acoes = podeExportar ? <div className="flex flex-wrap gap-2">
-    {rascunho && <Button secondary onClick={() => void abrirNovo(true)}><FilePenLine size={16} /> Continuar rascunho</Button>}
-    <Button disabled={iniciando} onClick={pedirNovo} carregando={iniciando}>{!iniciando && <FilePlus2 size={16} />} {iniciando ? "Iniciando…" : "Novo relatório"}</Button>
+    {(rascunho || trabalho.recuperacao) && <Button secondary onClick={() => void abrirNovo(true)}><FileText size={16} strokeWidth={1.8} aria-hidden="true" /> Continuar rascunho</Button>}
+    <Button disabled={iniciando} onClick={pedirNovo} carregando={iniciando}>{!iniciando && <FileText size={16} strokeWidth={1.8} aria-hidden="true" />} {iniciando ? "Iniciando…" : "Novo relatório"}</Button>
   </div> : undefined;
 
   return <PaginaFinanceira colorida>
     <PageHeader eyebrow="" titulo="Relatórios financeiros" descricao={DESCRICAO} acao={acoes} />
     <ErrorBox erro={erro} />
-    {aviso && <div role="status" className="mt-5 rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-900">{aviso}</div>}
-    <Panel className="mt-6">
-      <div className="flex flex-wrap items-end gap-3 border-b border-border p-3">
-        <label className="min-w-0 flex-[1_1_240px] text-sm font-medium">Buscar relatório<Input aria-label="Buscar relatório" placeholder="Nome ou autor…" value={busca} onChange={e => { setBusca(e.target.value); setPagina(1); }} className="mt-1" /></label>
-        <PeriodoFinanceiroControl inicio={periodoEmissao.inicio} fim={periodoEmissao.fim} allowAll label="Período de emissão" onChange={periodo => { setPeriodoEmissao(periodo); setPagina(1); }} />
-        <UiButton variant="outline" disabled={atualizando} aria-busy={atualizando || undefined} onClick={() => void carregar()} aria-label="Atualizar histórico">{atualizando ? <AtualizandoFinanceiro /> : <><RotateCcw size={17} /> Atualizar</>}</UiButton>
+    {erro && <Button secondary disabled={atualizando} onClick={() => void carregar()}>Tentar novamente</Button>}
+    {aviso && <div role="status" className="mt-4 rounded-lg border border-[color-mix(in_srgb,var(--pos)_30%,var(--card))] bg-[var(--fin-positive-bg)] p-4 text-sm text-[var(--pos)]">{aviso}</div>}
+    <Panel className="mt-4 overflow-hidden">
+      <div className="fin-filtros-barra border-b border-border p-4">
+        <label className="fin-filtro-busca text-sm font-medium">Buscar relatório<span className="relative mt-1 block"><Search size={18} strokeWidth={1.8} aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-3" /><Input aria-label="Buscar relatório" placeholder="Nome ou autor…" value={busca} onChange={e => { setBusca(e.target.value); setPagina(1); }} className="pl-10" /></span></label>
+        <div className="fin-filtro-controle"><PeriodoFinanceiroControl inicio={periodoEmissao.inicio} fim={periodoEmissao.fim} allowAll label="Período de emissão" onChange={periodo => { setPeriodoEmissao(periodo); setPagina(1); }} /></div>
       </div>
-      <Paginacao pagina={paginaAtual} totalPaginas={totalPaginas} total={relatoriosFiltrados.length} porPagina={15} rotulo="Paginação de relatórios" substantivo="relatórios" idSelect="pagina-relatorios" onPagina={setPagina} />
       {relatoriosFiltrados.length === 0
         ? <Empty>{relatorios.length ? "Nenhum relatório emitido no período selecionado." : "Nenhum relatório foi gerado ainda."}</Empty>
         : <TabelaFinanceira rotulo="Relatórios gerados" colunas={colunas} compacta itens={relatoriosFiltrados.slice((paginaAtual - 1) * 15, paginaAtual * 15)} chaveDe={(r) => r.id} onAbrir={abrir} classeLinha={(r) => r.id === recente ? "bg-muted" : ""} />}
+      <Paginacao pagina={paginaAtual} totalPaginas={totalPaginas} total={relatoriosFiltrados.length} porPagina={15} rotulo="Paginação de relatórios" substantivo="relatórios" idSelect="pagina-relatorios" onPagina={setPagina} />
     </Panel>
     <ConfirmDialog
       open={confirmarNovo}

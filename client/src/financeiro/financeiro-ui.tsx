@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableCaption } from "@/components/ui/table";
 import { SkeletonListaFinanceira } from "./CarregamentoFinanceiro";
 import "./cores-financeiro.css";
-import { forwardRef, useEffect, useId, useRef, useState } from "react";
+import { forwardRef, useEffect, useId, useRef, useState, type CSSProperties } from "react";
 import type { LucideIcon } from "lucide-react";
 import { ArrowDown, ArrowUp, Check, LoaderCircle, Pencil, Power, PowerOff, X } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -98,7 +98,7 @@ export function Paginacao({ pagina, totalPaginas, total, porPagina, rotulo, subs
   /** aria-label da <nav> */ rotulo: string; substantivo: string; idSelect: string;
   onPagina: (pagina: number) => void;
 }) {
-  return <nav aria-label={rotulo} className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3 text-sm">
+  return <nav aria-label={rotulo} className="fin-paginacao flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3 text-sm">
     <span className="text-ink-3">{total ? (pagina - 1) * porPagina + 1 : 0}–{Math.min(pagina * porPagina, total)} de {total} {substantivo}</span>
     {(!ocultarControlesPaginaUnica || totalPaginas > 1) && <div className="flex items-center gap-2">
       <Button secondary disabled={pagina === 1} onClick={() => onPagina(pagina - 1)}>Anterior</Button>
@@ -140,7 +140,7 @@ export function AcoesLinha({ nome, ativo, onEditar, onAlternar, onSubir, onDesce
 }
 
 export function ErrorBox({ erro }: { erro: string | null }) {
-  return erro ? <div role="alert" className="mt-5 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{erro}</div> : null;
+  return erro ? <div role="alert" className="fin-erro mt-5 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{erro}</div> : null;
 }
 
 export function Empty({ children }: { children: React.ReactNode }) {
@@ -153,7 +153,7 @@ export function Modal({ titulo, eyebrow, onClose, children, width = "max-w-xl", 
 
 export function ReviewLine({ children, tone = "green" }: { children: React.ReactNode; tone?: "green" | "amber" | "brown" | "neutral" }) {
   const cor = { green: "text-[#9fc28d]", amber: "text-[#e3c66f]", brown: "text-[#d3bd8c]", neutral: "text-[#aeb9aa]" }[tone];
-  return <div className="flex gap-2"><Check size={16} className={`mt-0.5 shrink-0 ${cor}`} /><span>{children}</span></div>;
+  return <div data-fin-review={tone} className="flex gap-2"><Check size={16} className={`mt-0.5 shrink-0 ${cor}`} /><span>{children}</span></div>;
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -179,6 +179,8 @@ export type ColunaTabela<T> = {
   larguraMinima?: number;
   /** coluna que vira o título do cartão no mobile (uma por tabela) */
   principal?: boolean;
+  /** Recebe a largura restante no desktop; o título do cartão permanece independente. */
+  larguraFlexivel?: boolean;
   /** já representada no título do cartão — não repetir como par rótulo/valor */
   ocultarNoCartao?: boolean;
   /** célula com botões próprios: no cartão é renderizada FORA do botão que abre
@@ -205,6 +207,7 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
   const idCartao = useId();
   const larguraMinima = colunas.reduce((soma, coluna) => soma + (coluna.larguraMinima ?? 120), 0);
   const principal = colunas.find((coluna) => coluna.principal) ?? colunas[0];
+  const flexivel = colunas.find((coluna) => coluna.larguraFlexivel) ?? principal;
   const secundarias = colunas.filter((coluna) => coluna !== principal && !coluna.ocultarNoCartao && !coluna.acoes && coluna.titulo);
   const acoes = colunas.filter((coluna) => coluna.acoes);
   const tabelaRef = useRef<HTMLDivElement>(null);
@@ -253,10 +256,11 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
       <div style={{ width: larguraRolagem, height: 1 }} />
     </div>}
     <div ref={tabelaRef} className={`hidden overflow-x-auto md:block ${compacta ? "max-h-[max(16rem,calc(100dvh-31rem))] overflow-y-auto" : ""} ${barraRolagemSuperior && temRolagem ? "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden" : ""}`} onScroll={() => sincronizarRolagem("tabela")}>
-      <Table semContainer className="w-full text-left text-sm" style={{ minWidth: larguraMinima }}>
+      <Table semContainer className="fin-tabela w-full text-left text-sm" style={{ minWidth: larguraMinima }}>
         <TableCaption className="sr-only">{rotulo}</TableCaption>
+        <colgroup>{colunas.map((coluna) => <col key={coluna.chave} style={coluna === flexivel ? undefined : { "--fin-coluna-largura": `${coluna.larguraMinima ?? 120}px` } as CSSProperties} />)}</colgroup>
         <TableHeader className="sticky top-0 z-[1] bg-muted text-[11px] uppercase tracking-[.08em] text-ink-3">
-          <TableRow>{colunas.map((coluna) => <TableHead key={coluna.chave} scope="col" className={`${compacta ? "px-3 py-2" : "p-4"} font-semibold ${alinhaCelula(coluna.alinhamento)}`}>{coluna.titulo}</TableHead>)}</TableRow>
+          <TableRow>{colunas.map((coluna) => <TableHead key={coluna.chave} data-fin-coluna={coluna.chave} scope="col" className={`${compacta ? "px-3 py-2" : "p-4"} font-semibold ${alinhaCelula(coluna.alinhamento)}`}>{coluna.titulo}</TableHead>)}</TableRow>
         </TableHeader>
         <TableBody className="divide-y divide-border">
           {itens.map((item) => <TableRow
@@ -265,7 +269,7 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
                por role="button" quebraria a semântica de tabela para leitores de tela */
             {...(onAbrir ? { onClick: () => onAbrir(item), tabIndex: 0, onKeyDown: (e: React.KeyboardEvent) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onAbrir(item); } } } : {})}
             className={`${onAbrir ? "cursor-pointer hover:bg-muted" : ""} ${classeLinha?.(item) ?? ""}`}
-          >{colunas.map((coluna) => <TableCell key={coluna.chave} className={`whitespace-normal ${compacta ? "px-3 py-2" : "p-4"} align-middle ${alinhaCelula(coluna.alinhamento)}`}>{coluna.celula(item)}</TableCell>)}</TableRow>)}
+          >{colunas.map((coluna) => <TableCell key={coluna.chave} data-fin-coluna={coluna.chave} className={`whitespace-normal ${compacta ? "px-3 py-2" : "p-4"} align-middle ${alinhaCelula(coluna.alinhamento)}`}>{coluna.celula(item)}</TableCell>)}</TableRow>)}
         </TableBody>
       </Table>
     </div>

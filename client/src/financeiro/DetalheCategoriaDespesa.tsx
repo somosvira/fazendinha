@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowDownRight, CornerUpLeft, ChevronRight, Layers } from "lucide-react";
+import { ArrowDownRight, CornerUpLeft, ChartPie, ChevronRight, Layers } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -50,7 +50,7 @@ export function DetalheCategoriaDespesa({ categorias, inicio, fim, onClose }: {
   const chaves = new Set(categorias.map(item => JSON.stringify([item.id ?? SEM_VINCULO, item.label])));
   const linhas = dados?.linhas.filter(linha => chaves.has(JSON.stringify([linha.categoriaId ?? SEM_VINCULO, linha.categoria]))) ?? [];
   const total = linhas.reduce((soma, linha) => soma + Math.round(Number(linha.valor) * 100), 0) / 100;
-  return <DialogFinanceiro tom="saida" titulo={categorias.length === 1 ? categorias[0].label : "Outras categorias"} eyebrow={`Despesas realizadas · ${dataBR(inicio)} a ${dataBR(fim)}`} onClose={onClose} className="max-w-5xl grid-rows-[auto_minmax(0,1fr)] overflow-hidden">
+  return <DialogFinanceiro icon={ChartPie} tom="saida" titulo={categorias.length === 1 ? categorias[0].label : "Outras categorias"} eyebrow={`Despesas realizadas · ${dataBR(inicio)} a ${dataBR(fim)}`} onClose={onClose} className="max-w-5xl grid-rows-[auto_minmax(0,1fr)] overflow-hidden">
     <div className="min-h-0 min-w-0 overflow-auto p-4 sm:p-5">
       {erro ? <div role="alert" className="text-sm"><p>{erro}</p><Button variant="outline" onClick={() => setTentativa(valor => valor + 1)}>Tentar novamente</Button></div> : !dados ? <SkeletonCategorias /> : <>
         <div data-fin-tom="saida" className="fin-cabecalho fin-painel mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg p-4"><div><p className="text-sm text-muted-foreground">Total líquido</p><strong className="fin-valor font-serif text-2xl tabular-nums">{brl(total)}</strong></div><Badge variant="secondary">{linhas.length} lançamentos</Badge></div>

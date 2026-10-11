@@ -1,6 +1,7 @@
+import { navegarPara } from "../router";
 import { SecaoFinanceira } from "./SecaoFinanceira";
 import { useEffect, useState } from "react";
-import { ArrowLeft, CircleDollarSign, Download, Hammer, Sprout, TrendingDown, WalletCards } from "lucide-react";
+import { CircleDollarSign, Download, Hammer, Sprout, TrendingDown, WalletCards } from "lucide-react";
 import { RelatorioGerencialDocumento } from "../components/relatorio-gerencial/RelatorioGerencialDocumento";
 import { templatePadrao } from "../components/relatorio-gerencial/template";
 import { obterRelatorioFinanceiro, salvarPdfRelatorioFinanceiro, type LinhaComposicaoRelatorio, type RelatorioFinanceiroDetalhe as Detalhe, type TotalGrupoRelatorio } from "./novo-api";
@@ -64,9 +65,10 @@ export function RelatorioFinanceiroDetalhe({ id, podeExportar, onVoltar }: { id:
   const linhas: LinhaIndexada[] = snapshot?.composicao.linhas.map((linha, indice) => ({ ...linha, indice })) ?? [];
   const periodo = `${dataCurta(dados.parametros.dataInicio)} a ${dataCurta(dados.parametros.dataFim)}`;
   const baixar = () => salvarPdfRelatorioFinanceiro(dados).catch((e) => setErro(e instanceof Error ? e.message : String(e)));
-  const acao = <div className="flex flex-wrap gap-2"><Button secondary onClick={onVoltar}><ArrowLeft size={16} /> Relatórios</Button>{podeExportar && dados.status === "CONCLUIDO" && <Button onClick={() => void baixar()}><Download size={16} /> Baixar PDF</Button>}</div>;
+  const acao = <div className="flex flex-wrap gap-2">{podeExportar && dados.status === "CONCLUIDO" && <Button onClick={() => void baixar()}><Download size={16} strokeWidth={1.8} aria-hidden="true" /> Baixar PDF</Button>}</div>;
 
   return <PaginaFinanceira colorida>
+    <nav className="fin-breadcrumb" aria-label="Caminho da página"><ol className="flex flex-wrap items-center gap-2"><li><a href="/financeiro" onClick={e => { if (!e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey && e.button === 0) { e.preventDefault(); navegarPara("/financeiro"); } }}>Financeiro</a></li><li className="flex items-center gap-2"><span aria-hidden="true">/</span><a href="/financeiro/relatorios" onClick={e => { if (!e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey && e.button === 0) { e.preventDefault(); onVoltar(); } }}>Relatórios</a></li><li className="flex min-w-0 items-center gap-2" aria-current="page"><span aria-hidden="true">/</span>{dados.nome}</li></ol></nav>
     <PageHeader eyebrow="" titulo={dados.nome} descricao={`${dados.propriedade} · ${periodo} · gerado em ${dataHora(dados.geradoEm)} por ${dados.autor}`} acao={acao} />
     <ErrorBox erro={erro} />
     {!snapshot ? <ErrorBox erro={dados.erro ?? "Este relatório não foi concluído e não tem conteúdo salvo."} /> : <>

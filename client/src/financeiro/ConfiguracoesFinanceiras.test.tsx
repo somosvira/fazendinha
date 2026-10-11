@@ -302,9 +302,29 @@ describe("ConfiguracoesFinanceiras — produtos", () => {
     await escolherSelect(document.body, "Filtrar por uso", "Sem uso específico");
     expect(screen.queryByText("Ração 22%")).toBeNull();
   });
+
+  it("mantém busca e filtros na mesma barra e limpa os filtros sem perder a lista", async () => {
+    await montar("produtos");
+    const busca = screen.getByRole("textbox", { name: "Buscar produto" });
+    const barra = busca.closest<HTMLElement>("div.border-b")!;
+    for (const nome of ["Filtrar por fornecedor", "Filtrar por centro de custo", "Filtrar por uso", "Filtrar por situação"]) {
+      expect(within(barra).getByRole("combobox", { name: nome })).toBeTruthy();
+    }
+    await escolherSelect(barra, "Filtrar por centro de custo", "Sem centro");
+    expect(screen.queryByText("Ração 22%")).toBeNull();
+    fireEvent.click(within(barra).getByRole("button", { name: "Limpar filtros" }));
+    expect(screen.getAllByText("Ração 22%").length).toBeGreaterThan(0);
+  });
 });
 
 describe("ConfiguracoesFinanceiras — parceiros", () => {
+  it("mantém o filtro de papel junto à busca", async () => {
+    await montar("parceiros");
+    const busca = screen.getByRole("textbox", { name: /Buscar clientes e fornecedores/i });
+    const barra = busca.closest<HTMLElement>("div.border-b")!;
+    expect(within(barra).getByRole("combobox", { name: "Papel do parceiro" })).toBeTruthy();
+  });
+
   it("edita múltiplos papéis e preferências sem reenviar dados que não mudaram", async () => {
     await montar("parceiros");
     fireEvent.click(primeiro("button", "Editar Cooperativa"));

@@ -99,8 +99,8 @@ const tooltipMoney = (value: number | string | readonly (number | string)[] | un
 const chartMargin = { top: 18, right: 18, bottom: 8, left: 18 };
 const axisProps = { tick: { fill: "var(--ink-2)", fontSize: 12 }, tickLine: false, axisLine: false } as const;
 const fluxoConfig = {
-  receitas: { label: "Receitas", color: "var(--pos)" },
-  despesas: { label: "Despesas", color: "var(--neg)" },
+  receitas: { label: "Receitas", color: "var(--fin-chart-entrada, var(--pos))" },
+  despesas: { label: "Despesas", color: "var(--fin-chart-saida, var(--neg))" },
 } satisfies ChartConfig;
 const waterfallConfig = {
   receita: { label: "Receita", color: "var(--pos)" },
@@ -134,7 +134,7 @@ export function MonthlyFlowChart({ data, tipo = "line" }: { data: FluxoMensal[];
       <ChartLegend />
       {tipo === "line" ? <>
         <Line type="monotone" dataKey="receitas" name="Receitas" stroke="var(--color-receitas)" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} isAnimationActive={false} />
-        <Line type="monotone" dataKey="despesas" name="Despesas" stroke="var(--color-despesas)" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} isAnimationActive={false} />
+        <Line type="monotone" dataKey="despesas" name="Despesas" stroke="var(--color-despesas)" strokeDasharray="5 4" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} isAnimationActive={false} />
       </> : <>
         <Bar dataKey="receitas" name="Receitas" fill="var(--color-receitas)" radius={[3, 3, 0, 0]} isAnimationActive={false} />
         <Bar dataKey="despesas" name="Despesas" fill="var(--color-despesas)" radius={[3, 3, 0, 0]} isAnimationActive={false} />
@@ -290,7 +290,7 @@ export function pontosEntradaSaida(data: EntradaSaidaPoint[], tipo: ChartType) {
 export function EntradaSaidaChart({ data, tipo = "line", compacto = false }: { data: EntradaSaidaPoint[]; tipo?: ChartType; compacto?: boolean }) {
   const pontos = pontosEntradaSaida(data, tipo);
   return <>
-    <ChartContainer config={{ ...fluxoConfig, despesas: { label: "Despesas", color: "var(--fin-saida, var(--cafe-2))" } }} className={`${compacto ? "h-[210px]" : "h-[300px]"} w-full aspect-auto overflow-hidden`} role="img" aria-label={tipo === "line" ? "Totais acumulados de receitas e despesas por dia ou mês" : "Entradas e saídas por dia ou mês, apresentadas como receitas e despesas em reais"}>
+    <ChartContainer config={fluxoConfig} className={`${compacto ? "h-[210px]" : "h-[300px]"} w-full aspect-auto overflow-hidden`} role="img" aria-label={tipo === "line" ? "Totais acumulados de receitas e despesas por dia ou mês" : "Entradas e saídas por dia ou mês, apresentadas como receitas e despesas em reais"}>
       <ComposedChart data={pontos} margin={{ top: 18, right: 18, bottom: 8, left: 24 }} accessibilityLayer>
         <CartesianGrid vertical={false} stroke="var(--rule-soft)" />
         <XAxis dataKey="rotuloEixo" minTickGap={18} interval="preserveStartEnd" {...axisProps} />
@@ -311,7 +311,7 @@ export function EntradaSaidaChart({ data, tipo = "line", compacto = false }: { d
 }
 
 export function CategoryValueChart({ data, tipo = "bar" }: { data: { categoria: string; valor: number }[]; tipo?: ChartType }) {
-  const config = { despesas: { label: "Despesas", color: "var(--neg)" } } satisfies ChartConfig;
+  const config = { despesas: { label: "Despesas", color: "var(--fin-chart-saida, var(--neg))" } } satisfies ChartConfig;
   return <ChartContainer config={config} className="h-[300px] w-full aspect-auto overflow-hidden" role="img" aria-label="Despesas realizadas por categoria">
     <ComposedChart data={data} margin={{ top: 18, right: 14, bottom: 38, left: 18 }} accessibilityLayer>
       <CartesianGrid vertical={false} stroke="var(--rule-soft)" />

@@ -1,5 +1,10 @@
 # Pecuária — base de documentação
 
+## Navegação e apresentação Cooperativa — 11/10/2026
+
+A interface nesta branch passa a separar Rebanho, Sanidade, Pesagem e manejo e Nutrição, com cadastros em Configurações → Pecuária. O [guia visual e de rotas](../design/pecuaria-cooperativa/design.md) documenta a aplicação da direção aprovada no Financeiro e a adaptação do PR #313. Links antigos são normalizados preservando o contexto. Os contratos de fatos, histórico, sítios, custos e permissões da V1–V3 continuam os mesmos. Essa atualização de interface não muda o estado de homologação documentado abaixo.
+
+
 ## Cenário unificado de desenvolvimento até a V3 — 07/10/2026
 
 `pnpm --filter rionovo-server run seedatev3` prepara somente o PostgreSQL local `fazendinha_seedatev3`; `--verificar` confere sem escrever. O [README do projeto](../../README.md#cenário-unificado-seedatev3) documenta acessos fictícios, data-base, catálogos, exemplos, manifesto e backups. O cenário é independente do banco IDEAGRI e dos seeds antigos, reaproveita IDs das migrations e usa os serviços operacionais para fatos, histórico, custos e auditoria. A exceção administrativa é a fixture de período fechado, criada com auditoria transacional por não haver comando público de fechamento.
@@ -237,3 +242,8 @@ Os quatro HTMLs originais (v1, v2, roteiro de testes e mapa IDEAGRI) foram expor
 A limpeza começou sobre a V3 local e foi reconciliada em 07/10 com a V3 final publicada. Preserva genética, sanidade, peso, nutrição, financeiro e estoque único. A retirada de `usoAgricola` elimina a dependência de aplicações agrícolas na validação de Produtos; os demais usos e suas proteções permanecem. Ver [análise e migração](../remocao-agricultura-equipe.md).
 
 A revisão de 04/10 restaurava referência técnica e a interface anterior de ativação de lotes. Essa decisão foi superada pela V3 final, conforme a integração de 07/10 acima. A retirada de agricultura/equipe não simplifica nem reduz funcionalidades da V3.
+
+
+### Refinamento da navegação Pecuária — 11/10/2026
+
+Pesagem coletiva é uma ação da seleção em `/pecuaria/rebanho/animais`. `/pecuaria/pesagem-manejo` é um alias de compatibilidade, preservando filtros e fragmento. As rotinas na sidebar são Rebanho, Sanidade e Nutrição. As abas dessas páginas reutilizam as primitivas e a estilização de Configurações financeiras. Busca e chips de filtros ficam na lista; critérios completos ficam no diálogo Filtros. Ver [guia de design](../design/pecuaria-cooperativa/design.md).

@@ -1,4 +1,4 @@
-import { LoaderCircle } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Info, LoaderCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -6,7 +6,7 @@ import { DialogFinanceiro as Modal } from "./DialogFinanceiro";
 import { useRef, useState } from "react";
 import { NotaFiscalAnexo } from "./NotaFiscalAnexo";
 import { anexarDocumentoOperacao, liquidarCompromisso, type Compromisso, type Conta } from "./novo-api";
-import { brl, ErrorBox, hoje } from "./financeiro-ui";
+import { brl, dataBR, ErrorBox, hoje } from "./financeiro-ui";
 import { FORMAS_PAGAMENTO } from "./lib/parceiros";
 import { tituloCompromisso } from "./lib/compromissos";
 
@@ -67,28 +67,29 @@ export function LiquidarCompromissoModal({ compromisso, contas, onClose, onLiqui
     }
   };
 
-  return <Modal tom={compromisso.tipo === "PAGAR" ? "saida" : "entrada"} titulo={`Registrar ${compromisso.tipo === "PAGAR" ? "pagamento" : "recebimento"}`} eyebrow="Confirmação financeira" onClose={fechar} rodape={<div className="flex justify-end gap-2">
+  return <Modal icon={compromisso.tipo === "PAGAR" ? ArrowUpRight : ArrowDownLeft} tom={compromisso.tipo === "PAGAR" ? "saida" : "entrada"} titulo={`Registrar ${compromisso.tipo === "PAGAR" ? "pagamento" : "recebimento"}`} eyebrow="Confirmação financeira" onClose={fechar} rodape={<div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
         <Button variant="outline" disabled={processando} onClick={fechar}>Cancelar</Button>
         <Button disabled={!contaId || !valorValido || !data || data > hoje() || processando} aria-busy={processando || undefined} onClick={() => { void confirmar(); }}>{processando && <LoaderCircle aria-hidden="true" className="size-4 animate-spin motion-reduce:animate-none" />}{processando ? (enviandoNota ? "Enviando nota…" : "Registrando…") : "Confirmar liquidação"}</Button>
       </div>}>
-    <div className="p-3">
+    <div className="p-5">
       <ErrorBox erro={erro} />
-      <div className="rounded-lg bg-surface-2 p-4">
+      <div className="fin-compromisso-resumo rounded-lg bg-muted p-4">
         <strong className="break-words">{tituloCompromisso(compromisso)}</strong>
-        <div className="mt-1 break-words text-sm text-ink-3">{compromisso.parceiro?.nome ?? "Sem parceiro"} · pendente {brl(compromisso.saldoPendente)}</div>
+        <div className="mt-1 break-words text-sm text-ink-3">{compromisso.parceiro?.nome ?? "Sem parceiro"}</div>
+        <div className="mt-4 flex flex-wrap items-end justify-between gap-4"><div><div className="text-sm text-ink-3">{compromisso.tipo === "PAGAR" ? "Saldo a pagar" : "Saldo a receber"}</div><strong className="fin-valor mt-1 block text-3xl tabular-nums">{brl(compromisso.saldoPendente)}</strong></div><div><div className="text-sm text-ink-3">Vencimento</div><strong className="mt-1 block tabular-nums">{dataBR(compromisso.dataVencimento)}</strong></div></div>
       </div>
-      <div className="mt-3 grid grid-cols-2 gap-3">
-        <label className="col-span-2 text-sm font-medium">Conta
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <label className="sm:col-span-2 text-sm font-medium">Conta
           <Select disabled={processando} value={contaId} onValueChange={setContaId}><SelectTrigger className="mt-1.5 w-full" aria-label="Conta"><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent className="z-[1300]">{contas.filter(conta => conta.ativo).map(conta => <SelectItem key={conta.id} value={conta.id}>{conta.nome} · {brl(conta.saldoAtual)}</SelectItem>)}</SelectContent></Select>
         </label>
         <label className="text-sm font-medium">Valor
           <Input disabled={processando} type="number" min="0.01" max={Number(compromisso.saldoPendente)} step="0.01" className="mt-1.5 w-full rounded-lg border border-border p-2.5 font-normal" value={valor} onChange={(e) => setValor(e.target.value)} />
         </label>
         <label className="text-sm font-medium">Data da liquidação<Input disabled={processando} required type="date" max={hoje()} value={data} onChange={e => setData(e.target.value)} className="mt-1.5 w-full rounded-lg border border-border p-2.5 font-normal" /></label>
-        <label className="col-span-2 text-sm font-medium">Forma de liquidação<Select disabled={processando} value={formaPagamento} onValueChange={setFormaPagamento}><SelectTrigger className="mt-1.5 w-full" aria-label="Forma de liquidação"><SelectValue /></SelectTrigger><SelectContent className="z-[1300]">{Object.entries(FORMAS_PAGAMENTO).map(([chave, nome]) => <SelectItem key={chave} value={chave}>{nome}</SelectItem>)}</SelectContent></Select></label>
+        <label className="sm:col-span-2 text-sm font-medium">Forma de liquidação<Select disabled={processando} value={formaPagamento} onValueChange={setFormaPagamento}><SelectTrigger className="mt-1.5 w-full" aria-label="Forma de liquidação"><SelectValue /></SelectTrigger><SelectContent className="z-[1300]">{Object.entries(FORMAS_PAGAMENTO).map(([chave, nome]) => <SelectItem key={chave} value={chave}>{nome}</SelectItem>)}</SelectContent></Select></label>
       </div>
       {compromisso.tipo === "PAGAR" && <NotaFiscalAnexo arquivo={nota} salvo={notaSalva} disabled={processando} onArquivo={setNota} />}
-      <div className="mt-3 rounded-lg border border-[color-mix(in_srgb,var(--rural)_25%,white)] bg-[color-mix(in_srgb,var(--rural)_7%,white)] p-3 text-xs leading-5 text-[var(--rural)]">Ao confirmar, o saldo da conta será alterado e o compromisso ficará parcial ou liquidado. O registro poderá ser revertido posteriormente com histórico.</div>
+      <div className="mt-4 flex items-start gap-3 rounded-lg border border-[var(--fin-pendente)]/25 bg-[var(--fin-warning-bg)] p-4 text-xs leading-5 text-[var(--fin-pendente)]"><Info aria-hidden="true" size={18} strokeWidth={1.8} className="mt-0.5 shrink-0" /><p>Ao confirmar, o saldo da conta será alterado e o compromisso ficará parcial ou liquidado. O registro poderá ser revertido posteriormente com histórico.</p></div>
 
     </div>
   </Modal>;

@@ -5,9 +5,11 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import { FormOperacao } from "./FormOperacao";
 import { setPropriedadeAtiva } from "../propriedadeScope";
 import type { ConfiguracoesFinanceiras } from "./novo-api";
+import { enfileirarSalvamentoRascunho, estadoRascunhoAtivo, limparRascunhoAtivo } from "./rascunhoAtivo";
 import { uid } from "../lib/uid.fixture";
 
-afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers(); });
+beforeEach(() => limparRascunhoAtivo());
+afterEach(() => { limparRascunhoAtivo(); cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 
 const config: ConfiguracoesFinanceiras = {
   contas: [
@@ -874,7 +876,7 @@ describe("FormOperacao — botão sempre ativo; erro rola e foca o campo (não f
       await alterarControle(screen.getByLabelText("Conta financeira"), { target: { value: uid(1) } });
       fireEvent.click(screen.getByRole("button", { name: "Confirmar operação" }));
       const itemCard = screen.getByLabelText("Descrição do item 1").closest('[id^="item-"]') as HTMLElement;
-      expect(itemCard.className).toContain("border-red-400");
+      expect(itemCard.getAttribute("aria-invalid")).toBe("true");
       expect(document.activeElement).toBe(itemCard);
     });
     expect(scroll).toHaveBeenCalled();
@@ -1222,4 +1224,58 @@ describe("painel de revisão — movimentos de estoque", () => {
     expect(screen.queryByText(/Movimenta o estoque dos produtos/)).toBeNull();
     expect(screen.getByText("Nenhum movimento físico de estoque será gerado.")).toBeTruthy();
   });
+});
+
+
+describe("última edição ao sair", () => {
+  it("salva antes do debounce e recupera os campos enquanto a gravação não terminou", async () => {
+    let concluir!: (resposta: Response) => void;
+    const fetchMock = vi.fn((_entrada: RequestInfo | URL, _init?: RequestInit) => new Promise<Response>((resolve) => { concluir = resolve; }));
+    vi.stubGlobal("fetch", fetchMock);
+    const tela = render(<FormOperacao config={config} onSalvo={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText("Descrição"), { target: { value: "Última edição antes de sair" } });
+    tela.unmount();
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body)).dados.formulario.descricao).toBe("Última edição antes de sair");
+    render(<FormOperacao config={config} onSalvo={vi.fn()} />);
+    expect((screen.getByLabelText("Descrição") as HTMLTextAreaElement).value).toBe("Última edição antes de sair");
+    concluir(new Response(JSON.stringify({ id: uid(88), versao: 1, dados: {}, documentos: [], updatedAt: "2026-10-11" }), { status: 200 }));
+    await enfileirarSalvamentoRascunho(async () => undefined);
+  });
+
+  it("mantém a última edição recuperável após falha ao sair", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ error: "Falha de gravação" }), { status: 503 })));
+    const tela = render(<FormOperacao config={config} onSalvo={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText("Descrição"), { target: { value: "Editar novamente após falha" } });
+    tela.unmount();
+    await waitFor(() => expect(estadoRascunhoAtivo().recuperacao?.erro).toBe("Falha de gravação"));
+    render(<FormOperacao config={config} onSalvo={vi.fn()} />);
+    expect((screen.getByLabelText("Descrição") as HTMLTextAreaElement).value).toBe("Editar novamente após falha");
+    expect(screen.getByText("Falha de gravação")).toBeTruthy();
+  });
+});
+
+it("salvamento pendente, saída e nova edição respeitam ordem e versão", async () => {
+  let liberarPrimeira!: (resposta: Response) => void;
+  const gravacoes: Array<{ dados: Record<string, unknown>; versao?: number }> = [];
+  vi.stubGlobal("fetch", vi.fn(async (_entrada: RequestInfo | URL, init?: RequestInit) => {
+    const corpo = JSON.parse(String(init?.body));
+    gravacoes.push(corpo);
+    const resposta = () => new Response(JSON.stringify({ id: uid(88), dados: corpo.dados, versao: gravacoes.length, documentos: [], updatedAt: "2026-10-11" }), { status: 200 });
+    if (gravacoes.length === 1) return new Promise<Response>(r => { liberarPrimeira = r; });
+    return resposta();
+  }));
+  const tela = render(<FormOperacao config={config} onSalvo={vi.fn()} />);
+  fireEvent.change(screen.getByLabelText("Descrição"), { target: { value: "Primeira edição" } });
+  await waitFor(() => expect(gravacoes).toHaveLength(1), { timeout: 1500 });
+  fireEvent.change(screen.getByLabelText("Descrição"), { target: { value: "Edição ao sair" } });
+  tela.unmount();
+  render(<FormOperacao config={config} onSalvo={vi.fn()} />);
+  fireEvent.change(screen.getByLabelText("Descrição"), { target: { value: "Última edição após retomar" } });
+  await act(async () => { await new Promise(r => setTimeout(r, 900)); });
+  expect(gravacoes).toHaveLength(1);
+  liberarPrimeira(new Response(JSON.stringify({ id: uid(88), dados: gravacoes[0].dados, versao: 1, documentos: [], updatedAt: "2026-10-11" }), { status: 200 }));
+  await waitFor(() => expect(gravacoes).toHaveLength(3));
+  expect(gravacoes.map(g => (g.dados.formulario as Record<string, unknown>).descricao)).toEqual(["Primeira edição", "Edição ao sair", "Última edição após retomar"]);
+  expect(gravacoes.map(g => g.versao)).toEqual([undefined, 1, 2]);
 });

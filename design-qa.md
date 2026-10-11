@@ -1,258 +1,192 @@
-# QA — dashboard financeiro compacto
+# Conferência visual — Financeiro Cooperativa contemporânea
 
-final result: passed
+Data: 11/10/2026. Branch: `codex/financeiro-cooperativa-contemporanea`, criada a partir de `codex/financeiro-dashboard-grid`. Implementação local em http://localhost:41875/financeiro.
 
-Referência: mockup aprovado nesta conversa em 08/out/2026. Comparação visual com captura local em desktop (1440 × 1024), além de verificações responsivas em 390, 720 e 1180px. Evidências locais em `/tmp/fazendinha-dashboard-qa/`: `desktop.png`, `calendar.png`, `mobile.png`, `mobile-calendar.png` e capturas de tablet.
+## Fonte e estado observado
 
-## Resultado
+Fonte visual: `output/design/financeiro-cooperativa-2026-10-10/01-visao-geral.png` e os outros 28 PNGs da mesma pasta. O 01 corresponde ao modelo 03 selecionado. Contratos de aplicação: [design.md](docs/design/financeiro-cooperativa/design.md), [iconografia.md](docs/design/financeiro-cooperativa/iconografia.md) e regras financeiras existentes.
 
-- Cinco indicadores compactos, compromissos e contas lado a lado, gráficos na segunda linha e rastreabilidade recolhida.
-- Categorias mantêm rosca, legenda, filtro e estornos; Linhas/Barras preserva acumulado versus movimento do intervalo.
-- Calendário abre em Dialog, com título e descrição acessíveis, fechamento por Escape e consulta de detalhes. Liquidação mantém permissões e validações existentes.
-- Corrigidos durante a revisão: quebra de valores dos indicadores, descrições longas ampliando linhas, botões de eventos com conteúdo horizontal e expansão indevida do modal no celular.
-- Nenhum erro de execução capturado no navegador. Sem overflow horizontal da página. Tabelas/calendário usam rolagem horizontal contida e indicação no celular.
+Captura principal da implementação: [01-visao-geral-1440.png](output/qa/financeiro-cooperativa/01-visao-geral-1440.png). As demais capturas são nomeadas com o mesmo identificador da fonte e sufixo `-1440.png`. O [manifesto de dimensões](output/qa/financeiro-cooperativa/comparacoes-manifesto.json) registra tamanho e modalidade da captura. O detalhe 27 usa o viewport, após estabilização e retorno da página ao topo, para não distorcer elementos fixos numa captura de página inteira.
 
-## Diferenças deliberadas da imagem
+Navegador Chromium com viewport CSS 1440 × 1180, `deviceScaleFactor: 1`; capturas de página inteira têm altura variável. O 01 de referência possui 1322 × 1190 pixels; o 01 implementado possui 1440 × 1610 pixels. Os PNGs gerados não informam uma viewport CSS original nem densidade de dispositivo. A comparação de composição normaliza ambos à mesma largura, preservando proporção, sem interpretar a rasterização gerada como uma medida exata de CSS. Recortes ampliados permitem conferir desenho, orientação e tratamento dos ícones.
 
-A imagem usa dados ilustrativos; a tela usa os dados reais retornados pela API, incluindo 47 vencidos e descrições maiores. Rótulos e valores completos permanecem acessíveis. O tema Terrano e os componentes existentes do aplicativo foram preservados. O link ilustrativo de pagamentos por categoria não ganhou uma rota artificial: o filtro funcional continua no próprio painel.
+Estado: usuário proprietário do cenário demonstrativo existente, sítio consolidado, datas e registros vindos da API. Nenhuma confirmação financeira foi feita. As chamadas de escrita foram bloqueadas; apenas o salvamento automático dos dois rascunhos recebeu uma resposta simulada no navegador, usando leitura do rascunho existente, sem persistir alterações no banco.
 
-Com o mesmo viewport desktop, a página tem aproximadamente 1164px de altura, contra 3843px da versão anterior capturada em largura semelhante (1512px). Redução aproximada de 70%; não se exige que toda a página caiba em uma única tela para preservar legibilidade.
+## Evidências e cobertura
 
-## Verificação técnica e limites
+- [Comparação da visão geral](output/qa/financeiro-cooperativa/comparacao-01.png), [comparação de formulários](output/qa/financeiro-cooperativa/comparacao-formularios.png) e [recortes de iconografia](output/qa/financeiro-cooperativa/comparacao-iconografia.png).
+- Seis pranchas `comparacao-lote-1.jpg` a `comparacao-lote-6.jpg`: fonte e implementação para os 29 estados, incluindo abertura efetiva de diálogos/folhas, calendário, liquidados, cinco cadastros, cinco formulários, relatório expandido, detalhe de categoria, cancelamento e procedimentos.
+- [estados-final.json](output/qa/financeiro-cooperativa/estados-final.json): rodada consolidada dos 29 estados, com recapturas identificadas; sem falhas de captura, exceções de página ou erros de console. O detalhe 27 foi confirmado aberto na recaptura; o arquivo da primeira rodada permanece como histórico.
+- [responsivo.json](output/qa/financeiro-cooperativa/responsivo.json): 24 combinações de seis páginas com larguras 375/768/1024/1440 px; abertura e Escape do menu móvel; foco, contenção de Tab e retorno de foco da transferência; saída do tema em Estoque/Pecuária e retorno ao Financeiro; viewport equivalente a zoom de 200%.
+- [dialogos-mobile.json](output/qa/financeiro-cooperativa/dialogos-mobile.json): 14 combinações de sete diálogos/folhas com 375/768 px; limites da tela, foco inicial, rodapés disponíveis, fechamento com alvos de 44/40 px e movimento reduzido. Nenhum caso com rodapé ou diálogo fora da tela; nenhuma exceção de página.
 
-`pnpm --filter rionovo-client test`: 123 arquivos, 949 testes aprovados (base atualizada com `origin/main`). `pnpm --filter rionovo-client build`: aprovado; permanece o aviso de bundle acima de 500kB, já existente.
+Os 29 estados representam os exemplos da galeria, não 29 rotas independentes. Estados adicionais e contratos condicionais são cobertos pelos testes existentes; não foram todos repetidos manualmente no navegador.
 
-A verificação visual local utilizou um snapshot de respostas de leitura, com gravações bloqueadas. Não foram efetuadas liquidações na produção. Os testes automatizados exercitam validação, seleção de conta, permissões, filtros, período, modal e dados obsoletos de requisições anteriores. Não houve alteração de API ou persistência.
+## Resultado por superfície
 
-## Revisão após ajustes solicitados
+| Superfície | Conferência e decisão |
+| --- | --- |
+| Tipografia | DM Sans em títulos e conteúdo, inclusive nos portais. Hierarquia por peso e tamanho, dinheiro tabular. Corrigida a herança da fonte antiga no título de páginas. Textos ilustrativos dos PNGs não substituem dados reais. |
+| Espaçamento e composição | Contas à esquerda do fluxo; calendário à esquerda da agenda; categorias abaixo. Formulário e revisão separados, agrupamentos, tabelas e rodapés preservados. Calendário integrado cabe na coluna. A altura acompanha os títulos e valores reais; listas e formulários extensos mantêm rolagem e paginação. |
+| Cores e controles | Tokens sálvia/branco/floresta, estados positivos/pendentes/destrutivos legíveis. Campos usam contorno essencial mais escuro que divisórias decorativas. Saldo de abertura corrigido para usar o mesmo contorno, com estados inválido, foco e desabilitado. Radios e checkboxes mantêm geometria de 16 × 16 px. |
+| Imagens e ícones | Marca Terrano original preservada. Paisagem decorativa extraída do próprio PNG aprovado. Inventário canônico aplicado; setas do fluxo corrigidas para cima à esquerda/baixo à direita, engrenagem financeira, documento em Documentos, elo em vínculos e estetoscópio no contexto financeiro de procedimentos. PNG gerado não fornece SVG original: a aprovação cobre correspondência visual e reutilização consistente, sem alegar igualdade pixel a pixel. |
+| Conteúdo e comportamento | Nenhum campo ou ação financeira removido para imitar o PNG. Status, valores, anexos, vínculos, cálculos, permissões e navegação preservados. Transferência mantém a submissão do formulário a partir do rodapé. Histórico e relatórios conservam seus dados; PDF não recebeu redesign. |
 
-Calendário centralizado e limitado à janela, com cabeçalho fixo e células menores. Em desktop 1440 × 900, centro vertical medido com desvio de 0px. Registro de pagamento com nota selecionada verificado em desktop e celular (390 × 844). Rodapé do pagamento empilha botões no celular para conter o conteúdo. Capturas locais adicionais: `calendar-centered.png`, `payment-invoice.png` e `payment-invoice-mobile.png`. Os três novos testes cobrem drop, validação, remoção, envio anterior à liquidação, erro e nova tentativa sem repetir nota salva. Upload em produção não efetuado.
+Diferenças esperadas: marca original frente à marca reinterpretada na imagem gerada; nomes e datas demonstrativos reais; campos condicionais; maior altura com conteúdo longo; contorno de controles reforçado para legibilidade; fundos e ícones normalizados pelo guia. O mockup 27 contém a composição anterior do dashboard ao fundo; prevalece a composição aprovada do 01.
 
-## Detalhamento e navegação dos indicadores
+## Histórico das correções
 
-Categorias, fatias e estornos abrem composição dos valores. “Outras” filtra por ID e nome histórico, preservando renomeações. Cards coloridos shadcn mostram data, descrição, categoria, classificação, centro e valor; todo o item é um link para a origem, sem “Ver operação”. Paginação de 15 mantém o total completo. O modal foi inspecionado em desktop e 390 × 844, sem overflow horizontal (clientWidth e scrollWidth de 356px no celular). Capturas locais: `category-detail-color.png` e `category-detail-color-mobile.png`.
-
-Recebimentos/Pagamentos levam ao extrato com a natureza e o período; A pagar/A receber levam à aba correta de compromissos. Testes verificam URLs, estornos, transferências excluídas, clique no card, categorias renomeadas, grupo Outras, erro/retry e paginação. Frontend: 946 testes aprovados; backend: 11 testes focados de análise, classificação e série do dashboard; builds frontend e backend aprovados. Prisma Client foi regenerado para refletir o schema existente, sem migration ou gravação no banco.
-
-A captura visual dos detalhes usa respostas de leitura da API atual. O novo cálculo de reconciliação no servidor foi validado por testes locais e ainda depende da publicação do PR; nenhuma escrita em produção foi efetuada.
-
-## Correção da navegação na prévia
-
-Reproduzida tela em branco ao clicar no card: a URL era correta, mas o adaptador local de snapshots retornava HTTP 200 com `[]` para o detalhe não capturado. A prévia agora encaminha leituras reais à API e bloqueia POST/PUT/PATCH/DELETE. Validado no navegador o percurso categoria → card → detalhe completo da operação, com histórico financeiro e documentos. Captura local: `operation-click-fixed.png`.
-
-A API cliente agora rejeita estruturas inválidas no detalhe, com mensagem e nova tentativa. Testes de regressão cobrem a resposta vazia, operação válida e recuperação do erro. Nenhuma liquidação, upload ou outra escrita foi feita na produção.
-
-Após a correção, a suite completa passou: 123 arquivos, 949 testes; build do frontend aprovado.
-
-## Detalhe da operação e skeleton
-
-Reorganizado o detalhe em resumo compacto e grid de compromissos/histórico/documentos/procedimentos. Removida a repetição das transações, preservando movimentos de conta e estorno. A operação OP-2482 foi inspecionada com leitura real: em 1440 × 900, o último painel termina em aproximadamente 664px, sem rolagem da página. Também verificado sem overflow horizontal em 1180px e 720px. Listas maiores continuam integralmente acessíveis por rolagem.
-
-Skeleton shadcn verificado no navegador com leitura temporariamente retida, com `aria-busy=true`; instrumentação removida depois. Teste cobre entrada/saída do carregamento. Review apontou botões de confirmação sem quebra no celular; rodapés corrigidos para empilhar antes de 640px. Regressão adicional verifica que a transação aparece uma vez e a conta abre o movimento correto. Verificação focada: 26 testes aprovados e build frontend aprovado. Capturas locais: `operation-compact-desktop.png`, `operation-compact-mobile.png`, `operation-skeleton.png`.
-
-## Cores semânticas nas páginas revisadas
-
-Cards claros sobre o fundo quente, com tokens centrais de entrada (verde), saída (terracota), pendência (âmbar), informação/anexo (azul) e alerta (vermelho). Aplicado ao dashboard, compromissos/calendário, contas/extratos, detalhe da operação, categoria, liquidação e upload. A camada é opt-in para preservar módulos fora do PR. Nenhum dado, ação ou espaço do grid foi removido para acomodar cor.
-
-Inspecionados dashboard e contas/extratos sem overflow horizontal em 1440, 1180, 720 e 390/391px. Diálogo de pagamento com nota fiscal verificado em 391px: área útil de 357px, scrollWidth=clientWidth. Detalhe da operação conserva todos os blocos na primeira tela do exemplo. Review identificou saldo disponível negativo em verde; corrigido para tom de alerta. Acessibilidade mantém rótulos, status, datas e traçados das séries; texto âmbar usa marrom escuro sobre fundo suave.
-
-Validação final: 123 arquivos / 950 testes frontend aprovados e build frontend aprovado. O teste do gráfico foi atualizado para a cor de saída, mantendo suas verificações de valores exatos e alternativa acessível. Capturas locais: `dashboard-colors.png`, `operation-colors.png`, `compromissos-colors.png`, `contas-colors.png`, `payment-colors.png`.
-
-
-## Auditoria das demais telas financeiras
-
-Corrigidos os cadastros (busca, filtros e paginação de 15), busca por código de operação, formulários em grid com ações persistentes, modais compactos para categoria/centro e organização dos relatórios. Input, Textarea, Select, Checkbox, RadioGroup, Button, Table, Tabs, Sheet, Dialog e Collapsible usam as primitivas shadcn locais. As abas móveis não sobrepõem o conteúdo; mudanças exclusivas nos vínculos do produto também pedem confirmação antes de descarte.
-
-Suíte completa: 123 arquivos / 955 testes aprovados. Checagem TypeScript e build frontend aprovados; permanece o aviso pré-existente de bundle acima de 500 kB. Testes focados foram repetidos após os ajustes visuais finais. A revisão independente de código foi encerrada sem achados importantes pendentes.
-
-Inspeção visual em 1440, 1180, 720 e 391px, sem overflow horizontal das páginas inspecionadas. A nova operação conserva a altura da janela e mantém confirmação visível; campos e revisão dos efeitos rolam internamente. Em desktop, parceiros passou de cerca de 22717px para 903px, com todos os registros acessíveis por paginação e rolagem da tabela. A listagem de relatórios cabe em 900px; a prévia gerencial do detalhe é aberta sob demanda. No celular, listas e formulários preservam rolagem para não comprimir textos e controles.
-
-Evidências locais em `/Users/toledo/.codex/visualizations/2026/10/08/financeiro-correcoes/`. A prévia encaminha somente leituras e bloqueia gravações: autosave, geração, upload e liquidação foram exercitados com mocks nos testes, sem escrita na produção.
-
-
-## Contraste do carregamento
-
-Skeleton financeiro com contraste reforçado sobre superfície branca, combinado com Loader temático e mensagem visível. Inspeção com leituras temporariamente retidas confirmou ambos em 1440 × 900 sem overflow; instrumentação removida ao concluir. Um único status acessível por área. Verificação: 47 testes focados e build frontend aprovados. Evidência local: `financeiro-correcoes/16-loading-contraste.png`.
-
-
-## Cabeçalhos compactos, abas e carregamento de página
-
-Removida a apresentação visual repetida das páginas financeiras; ações permanecem no topo e títulos continuam acessíveis sem consumir altura. Nome, período e autoria dos relatórios ficam no conteúdo do snapshot. Cabeçalhos de outros módulos preservam sua apresentação. Configurações usam abas shadcn sobre superfície branca com seleção azul e texto branco.
-
-O carregamento inicial combina Loader e Skeleton shadcn preenchendo a área útil da janela; atualizações parciais mantêm a versão compacta. Capturas `17-abas-sem-cabecalho.png`, `18-loading-pagina-inteira.png`, `19-loading-mobile-inteiro.png`, `20-abas-mobile.png` e `21-contas-sem-cabecalho.png` inspecionadas. Loading medido em 1440 × 900 e 391 × 844 sem overflow da página. Gravações permanecem bloqueadas na prévia.
-
-Validação final: 123 arquivos / 955 testes aprovados (`vitest run --maxWorkers=2 --minWorkers=1`) e build frontend aprovado.
-
-
-## Cabeçalho final com título e descrição
-
-Conforme ajuste solicitado, títulos e descrições voltam às páginas financeiras; somente o rótulo acima do título permanece removido. Relatórios voltam a apresentar nome, período e autoria no cabeçalho, sem duplicação no card do recorte. Abas contrastantes e loading de página inteira preservados. Captura `22-titulo-sem-rotulo.png` inspecionada em 1440 × 900. Verificação focada: 155 testes em seis arquivos aprovados.
-Build frontend aprovado após o ajuste.
-
-
-## Contas e extratos: densidade e paginação
-
-Contas, extrato geral e extrato da conta paginados em 15 registros; filtros reiniciam a paginação. Regressões cobrem busca além da primeira página, navegação por hash para movimento na segunda página e totais do gráfico preservados ao paginar. Suíte completa: 123 arquivos / 959 testes aprovados; TypeScript e build aprovados, com o aviso anterior de bundle acima de 500 kB. Revisão independente sem achados importantes.
-
-Inspeção em 1440 × 900, 1180 × 820 e 391 × 844 sem overflow horizontal da página. Extrato real com 1188 movimentos mostrou 80 páginas; avançar exibiu os registros 16–30. Altura total em desktop: 1800px, mantendo todos os registros acessíveis por paginação e rolagem contida da tabela. Transferência no celular: Dialog com clientWidth=scrollWidth=357px. Prévia somente de leitura; nenhuma transferência registrada. Evidências locais `23-contas-paginadas-desktop.png` a `29-transferencia-mobile.png` em `financeiro-correcoes`.
-
-
-## Reauditoria financeira após reorganização de Contas — 08/10/2026
-
-Avaliação de UI/UX, com notas subjetivas orientadas à consulta de dados, densidade e ações claras. Capturas novas em 1440 × 900 e 391 × 844, na prévia com gravações bloqueadas. Os seis passos abaixo incluem suas telas auxiliares observadas. Evidências em `/Users/toledo/.codex/visualizations/2026/10/08/financeiro-correcoes/`.
-
-| Passo | Área e saúde | Evidências | Achados e próximos ajustes |
-| --- | --- | --- | --- |
-| 1 | Visão geral — 8/10 | `33-auditoria-dashboard`, `48-auditoria-calendario-modal`, `49-auditoria-registrar-pagamento` (desktop/mobile) | Hierarquia de valores e cores clara; calendário centralizado e anexo visível. No celular, cinco indicadores empilhados consomem quase toda a primeira tela; calendário requer deslocamento horizontal interno para outros dias. Priorizar indicadores em grid e alternativa de agenda diária. |
-| 2 | Operações — 8/10 | `34-auditoria-operacoes`, `43-auditoria-nova-operacao`, `46-auditoria-detalhe-operacao` (desktop/mobile) | Lista compacta com filtros, status e valor; detalhe do exemplo cabe no desktop, mantém documentos e histórico. Nova operação conserva confirmação visível e campos com rolagem interna. A listagem observada tem apenas um registro no período padrão; massas maiores são cobertas pelos testes existentes. |
-| 3 | Compromissos — 5/10, prioridade alta | `35-auditoria-compromissos` (desktop/mobile) | 173 itens a pagar renderizados de uma vez; altura observada de 28097px em desktop e 62525px no celular. Ainda não há paginação nem rolagem contida da lista; descrições, valores e ações usam linhas grandes. Paginar após filtros, compactar linhas, preservar totais completos e calendário sem recortar seus eventos. Controles de situação, checkbox e alternância de visualização ainda têm elementos nativos: migrar para as primitivas shadcn. |
-| 4 | Contas e extratos — 8,5/10 | `36-auditoria-contas`, `45-extrato-largura-total` | Saldo integrado às ações, gráfico recolhível e extrato com quatro colunas, incluindo valor sem rolagem lateral no desktop. Os 1188 movimentos continuam acessíveis por 80 páginas. Links e cartão móveis independentes; filtros em duas colunas. Não cabe todo o histórico na janela: paginação e rolagem interna preservam legibilidade. |
-| 5 | Configurações — 8/10 | `37-auditoria-configuracoes`, `39-auditoria-parceiros` a `42-auditoria-centros` (desktop/mobile) | Cinco abas com seleção azul; parceiros com 345 cadastros em 23 páginas, produtos com 18 em duas, categorias com 52 em quatro. Listas contidas e ações identificadas. Produtos no celular empilha quatro filtros antes da busca e dos dados: reunir filtros adicionais em Collapsible. Controles de página única ainda aparecem aqui. |
-| 6 | Relatórios — 8/10 | `38-auditoria-relatorios`, `44-auditoria-novo-relatorio`, `47-auditoria-detalhe-relatorio` (desktop/mobile) | Histórico compacto, geração com revisão e filtros avançados recolhidos. O snapshot observado tem zero itens: é estado vazio, não falha confirmada. No celular, metadados e quatro indicadores empilhados aumentam altura; usar resumo em grid e recorte expansível. Controles de página única permanecem na listagem. |
-
-Ordem recomendada: (1) Compromissos, por volume sem paginação; (2) indicadores móveis do dashboard e de relatórios; (3) filtros móveis de Produtos e calendário em agenda; (4) simplificar controles de página única nas demais listas. Esses são achados da reauditoria, não alterações já implementadas nesta etapa. Nota geral aproximada: 7,5/10.
-
-Não houve overflow horizontal da página nas capturas aceitas; o calendário móvel tem deslocamento lateral próprio e instrução visível. A aparente sobreposição inicial de título/menu não foi reproduzida ao voltar ao topo: h1 inicia em 56px, menu termina em 52px (`50-cabecalho-mobile-topo`). Algumas capturas de abas preservam rolagem por foco; não foram usadas para afirmar defeito no cabeçalho inicial.
-
-Limites: auditoria visual e navegação de leitura, sem certificação WCAG. Abrir calendário, pagamento, abas, operações e relatórios foi verificado; não foram confirmados liquidação, upload, cancelamento, geração ou gravação de cadastros. Autosave da nova operação/novo relatório recebe “Gravação desativada na prévia local”, deliberadamente: não é falha atribuída ao produto. Testes com mocks cobrem essas gravações.
-
-Validação desta implementação: suíte completa com 123 arquivos / 961 testes aprovados; após ajuste visual final, 48 testes focados e TypeScript/build aprovados. Permanece o aviso de bundle acima de 500 kB. Revisão independente identificou aninhamento de links nos botões dos cartões móveis; corrigido e coberto por teste, sem outros achados importantes na revisão do código alterado.
-
-
-## Fechamento da reauditoria financeira — 08/10/2026
-
-Critérios usados para a meta de qualidade: hierarquia e cores semânticas; leitura compacta; todos os registros alcançáveis; totais independentes da paginação; controles shadcn; navegação por teclado; estados de carregamento, erro e vazio; ausência de overflow horizontal da página. Não se atribui nota 10 automaticamente por implementação: a avaliação abaixo registra o que foi efetivamente conferido.
-
-| Área | Correções e resultado conferido | Evidências |
+| Rodada | Achado | Correção e evidência posterior |
 | --- | --- | --- |
-| Visão geral | Indicadores móveis em grid; Agenda/Análises/Contas por abas móveis e grid no desktop; lista prioritária com valores e ação sem arraste lateral; calendário centralizado com agenda mensal móvel. | `52-dashboard-desktop`, `57-dashboard-mobile-compacto`, `58-agenda-modal-mobile`, `69-dashboard-tablet` |
-| Operações | Lista paginada, detalhe compacto e documentos preservados; controles e confirmações financeiras restantes migrados para shadcn; estados de loading e erro mantidos. | `53-operacoes` e `64-operacao-detalhe` (desktop/mobile), `65-nova-operacao` (desktop/mobile), `70-operacoes-tablet` |
-| Compromissos | 173 pendentes acessíveis em 12 páginas de 15; busca e filtros antes da paginação, totais completos. Avançar mostrou 16–30. Enter na linha → detalhe → pagamento → cancelar restaurou foco na mesma TR. Altura da página: 915px no desktop e 1147px no celular, ante 28097px/62525px na auditoria anterior. | `68-compromissos` (desktop/mobile), `71-compromissos-tablet` |
-| Contas e extratos | Saldo integrado ao cabeçalho, quatro colunas no extrato geral, gráfico recolhível, contas/extratos paginados; listas com altura interna menor. | `54-contas` (desktop/mobile), `72-contas-tablet`; testes preservam busca, navegação por hash e totais completos. |
-| Configurações | Cinco abas contrastantes; todas as listas paginadas; Produtos com busca antes dos filtros adicionais, contagem e limpeza, filtros recolhidos no celular. | `55-configuracoes`, `60-parceiros`, `61-produtos`, `62-categorias`, `63-centros` (desktop/mobile), `73-configuracoes-tablet` |
-| Relatórios | Histórico paginado e filtrável; recorte recolhível e indicadores móveis em grid no detalhe; composição paginada; geração e revisão preservadas. | `56-relatorios`, `66-relatorio-detalhe`, `67-novo-relatorio` (desktop/mobile), `74-relatorios-tablet`; composição com 31 itens coberta por teste. |
-| Pagamento | Campos em grid móvel, nota fiscal por seleção/drag and drop, corpo rolável e confirmação fixa visível. O botão foi medido entre y=753 e 789 em viewport de 844px; diálogo com largura interna de 357px sem overflow. | `59-pagamento-mobile-rodape` |
+| Integração | Estilos compartilhados poderiam alterar Pills, avisos, revisão e título de folha na Pecuária. | Restauradas classes externas; ajustes aplicados somente no Financeiro. Navegação para Estoque/Pecuária registra tema ausente e fundo original em `responsivo.json`. |
+| Visual 1 | Título ainda herdava fonte antiga; radios Radix recebiam altura de campo. | Família definida na `.h1`; excluídos controles de seleção do mínimo de altura. Capturas responsivas e medidas de 16 × 16 px. |
+| Visual 1 | Campo do parceiro criava coluna implícita; calendário integrado mantinha largura mínima de 700 px. | Grade de uma coluna no parceiro; removida largura mínima no modo compacto e ajustada densidade do calendário. Capturas 01/20 e ausência de overflow na amostragem. |
+| Visual 2 | Configurações financeiras usava cubo; cabeçalho financeiro de procedimentos sem o desenho canônico; campo monetário com borda clara. | `Settings` no contexto financeiro, `Stethoscope` condicional, contorno `--input` no wrapper monetário. Recapturas 01/19/29 e revisão independente encerrada sem P1/P2 nesses ajustes. |
+| Visual 3 | Orientação do par de setas invertida; ícone de anexo usado para Documentos preservados; estetoscópio usado nos vínculos. | `ArrowUpDown`, `FileText` e elo diagonal `Link`, respectivamente. Inventário atualizado; recortes finais confirmam as orientações. Conferência independente dirigida concluída sem P1/P2. |
+| Evidências | Capturas durante animação cortavam lateral da folha; bloqueio de autosave mostrava erro de rede; detalhe 27 capturado antes da abertura efetiva. | Movimento reduzido e screenshot com animações finalizadas; fixture somente no navegador para autosave; espera pelo diálogo e pelos dados no 27. Capturas consolidadas substituem as preliminares. |
 
-Capturas aceitas usam 1440 × 900, 1180 × 820 e 391 × 844. As seis áreas foram conferidas no tablet e em desktop/celular; as cinco abas de cadastros e telas de operação/relatório foram observadas em desktop/celular. Não houve overflow horizontal da página nos estados capturados. Evidências ficam em `/Users/toledo/.codex/visualizations/2026/10/08/financeiro-correcoes/`.
+## Validação funcional
 
-A revisão independente encontrou perda de foco ao fechar detalhes e após a transição para pagamento; corrigida com cadeia de acionadores e testes de fechamento/transição. Revisão final sem novos achados importantes. As verificações mantêm os limites da auditoria anterior: prévia somente de leitura, sem liquidação, cancelamento, transferência, upload ou geração real contra produção. Esses contratos continuam cobertos por testes de API mockada; o snapshot real observado no relatório não contém itens. Não é certificação WCAG nem avaliação com usuários finais.
+Suíte completa do frontend: **127 arquivos e 978 testes passaram**. Após os ajustes finais de ícones e contorno, **115 testes focados passaram** nos quatro arquivos existentes de visão geral, formulário de operação, detalhe e procedimentos de serviço. Esses focos não são somados à suíte completa. TypeScript e build de produção passaram. `git diff --check` sem erros.
 
-Validação final: 124 arquivos / 967 testes aprovados; build frontend (TypeScript + Vite) aprovado. Após o ajuste final do breakpoint do dashboard, os testes focados de visualização e responsividade foram repetidos. Permanece o aviso anterior de bundle acima de 500 kB. As regras de React foram revisadas quanto a ordem de hooks, limpeza de listeners, conteúdo acessível e ausência de duplicação dos painéis.
+A suite inclui contratos de formulário, submissão de transferência, ações, anexos, permissões e estados financeiros. Nenhuma API, migration, regra monetária, schema ou cálculo de saldo foi alterado. O build mantém o aviso existente sobre o tamanho do bundle; o aviso não impediu a geração.
 
-Também conferida no navegador a sequência calendário móvel → compromisso → pagamento → cancelar: nenhum diálogo permaneceu aberto e o foco retornou ao botão Calendário.
+## Limites da conferência
 
-## Ajuste de sobriedade — 09/10/2026
+Sem homologação manual de leitor de tela, todos os perfis em navegador ou confirmações financeiras no banco. O teste de zoom usa viewport equivalente; não comprova o comando de zoom do navegador nativo. A revisão de contraste verifica tokens e controles encontrados, não certifica conformidade integral de acessibilidade. Formulários longos continuam com rolagem; screenshots individuais não exibem simultaneamente todos os campos de uma folha.
 
-Aplicada a direção aprovada para todas as telas financeiras revisadas: superfícies brancas, ícones/títulos neutros, abas selecionadas em grafite, classificações e links sem azul/verde decorativo. Cores semânticas permanecem nos valores e estados; gráficos preservam diferenciação de séries/categorias. Nenhuma alteração de cálculo, navegação ou contrato de dados.
-
-A nova inspeção visual no navegador ficou indisponível nesta sessão: o browser-harness retornou `Operation not permitted` ao acessar `DevToolsActivePort` do Chrome local. As capturas anteriores não comprovam este ajuste de cor. A validação automatizada atual está registrada na descrição do PR.
-
-Validação atual: 124 arquivos / 967 testes frontend aprovados; TypeScript e build aprovados. Permanece o aviso anterior de bundle acima de 500 kB. `git diff --check` sem erros.
-
-## Paleta corrigida após esclarecimento — 09/10/2026
-
-Mantidas faixas de destaque e superfícies suaves na paleta marrom/verde/vermelho/preto. Azul informativo e amarelo forte substituídos por marrom. Contadores de efeitos em Card shadcn compacto. Validação: 31 arquivos / 330 testes financeiros aprovados, TypeScript e build aprovados. Prévia local responde 200; inspeção visual automática continua indisponível por acesso ao Chrome, conforme registro anterior.
-
-## Modelo claro da visão geral e sidebar — 09/10/2026
+Achados P0/P1/P2 pendentes: nenhum nos casos conferidos. Refinamentos P3: ajustes futuros de rasterização e densidade com dados maiores, mantendo valores e ações íntegros.
 
 final result: passed
 
-Escopo desta iteração: somente `/financeiro` e sidebar global. Fonte visual: mockup aprovado `exec-15e3d8d4-a31c-4967-939d-fd4ff8a0448b.png` (1487 × 1058). Implementação autenticada com API local em `http://localhost:41875/financeiro`. Evidências: `/tmp/financeiro-design-qa/desktop.jpg`, `desktop-match.jpg`, `desktop-normalizado.jpg`, `comparacao.jpg`, `mobile.jpg` e `mobile-sidebar.jpg`.
+## Refinamentos dos 13 feedbacks — 11/10/2026
 
-A comparação lado a lado usa `comparacao.jpg`. O viewport observado de 1486 × 1058 foi alinhado à referência. A captura do IAB com override inclui uma margem externa (1651 × 1174); a normalização remove apenas essa margem, usando os limites do viewport observados no DOM. A conferência móvel usou override 390 × 844. O override foi restaurado ao final.
+Implementação autorizada pelo usuário nesta mesma branch. O [plano de refinamentos](docs/design/financeiro-cooperativa/plano-refinamentos.md) está concluído, e as decisões foram incorporadas ao [guia vigente](docs/design/financeiro-cooperativa/design.md). Esta seção registra a rodada posterior; as evidências acima permanecem como histórico da entrega inicial.
 
-### Achados corrigidos e nova comparação
+| Feedback | Resultado e evidência |
+| --- | --- |
+| 1 — Resumo da operação | Superfície contínua com divisórias internas, contadores em linha e vínculos preservados. [Detalhe](output/qa/financeiro-refinamentos-2026-10-11/04-detalhe-operacao-1876.png). |
+| 2 — Hierarquia do gráfico | Entradas em verde discreto, saídas em ocre, linha contínua/tracejada, legenda coerente. [Visão geral](output/qa/financeiro-refinamentos-2026-10-11/01-visao-geral-1876.png). |
+| 3 — Navegação com trabalho ativo | Rota e tela sincronizadas pela navegação existente; última edição enviada ao sair, com fila/versionamento e recuperação por sessão/sítio. Testes de sidebar, voltar/avançar, gravação lenta e falha; [checagens no navegador](output/qa/financeiro-refinamentos-2026-10-11/checks.json). |
+| 4 — Tabelas | Células com 10×16 px, colunas conforme conteúdo, datas sem quebra, dinheiro à direita e paginação inferior. Em Contas, a movimentação recebe largura flexível e o nome mantém largura controlada/título móvel. Conferidas operações, contas, compromissos, cadastros, relatórios e extratos. |
+| 5–6 — Filtros e busca | Uma barra no desktop, limites de largura e quebra responsiva. Ações de produto têm espaço próprio. [Produtos](output/qa/financeiro-refinamentos-2026-10-11/07-config-produtos-1876.png) e [parceiros](output/qa/financeiro-refinamentos-2026-10-11/08-config-parceiros-1876.png). |
+| 7 — Modais | Cabeçalhos sálvia, ícones canônicos com contraste, rodapé separado e overlay reforçado, incluindo confirmações. [Cadastro](output/qa/financeiro-refinamentos-2026-10-11/09-modal-conta-1876.png) e [confirmação](output/qa/financeiro-refinamentos-2026-10-11/16-confirmacao-1876.png). |
+| 8 — Histórico de relatórios | Botão habitual removido; atualização na entrada/retorno, recuperação de erro e atualização a cada 4 s somente enquanto houver PROCESSANDO na lista visível. [Histórico](output/qa/financeiro-refinamentos-2026-10-11/13-relatorios-1876.png). |
+| 9 — Nova operação/relatório | Título dentro do formulário à esquerda; resumo e confirmação à direita; ações secundárias no rodapé. [Operação](output/qa/financeiro-refinamentos-2026-10-11/03-nova-operacao-1876.png) e [relatório](output/qa/financeiro-refinamentos-2026-10-11/14-novo-relatorio-1876.png). No celular, composição empilhada e ação disponível. |
+| 10 — Compromisso/pagamento | Descrição, saldo pendente, vencimento e ação com hierarquia comum. [Detalhe](output/qa/financeiro-refinamentos-2026-10-11/11-compromisso-modal-1876.png) e [pagamento](output/qa/financeiro-refinamentos-2026-10-11/12-pagamento-modal-1876.png). |
+| 11 — Retorno contextual | Breadcrumbs nos detalhes de operação, conta e relatório; período/parâmetros e origem válidos preservados. [Conta](output/qa/financeiro-refinamentos-2026-10-11/06-conta-detalhe-1876.png). |
+| 12 — Gráfico em Contas | Fluxo consolidado existente visível antes da lista; período, conta e instituição compartilhados com extrato. Saldo atual e fluxo têm escopo explícito; transferências e estornos mantêm os cálculos anteriores. [Contas](output/qa/financeiro-refinamentos-2026-10-11/05-contas-1876.png). |
+| 13 — Documento monocromático | Papel branco, texto e marca em preto/cinza, rótulos e sinais preservados. [Prévia](output/qa/financeiro-refinamentos-2026-10-11/documento-monocromatico.png) e [PDF efetivamente baixado](output/qa/financeiro-refinamentos-2026-10-11/relatorio-baixado.pdf). |
 
-- P2: indicadores de recebimentos/a receber herdavam verde por um seletor `first-child`. Corrigido com classe explícita de saldo; demais indicadores em grafite, alertas preservados em vermelho.
-- P2: títulos de painéis ainda herdavam cores do tema anterior. Corrigida a precedência local e verificada a cor computada `rgb(32,39,35)` nos quatro títulos.
-- P2: cabeçalho da sidebar estreita ocultava o controle de colapso. Marca e controles compactados; busca e colapso visíveis e colapso/expansão funcionando.
-- P2: legenda da rosca poderia empilhar no painel estreito de desktop. Grid local de duas colunas aplicado; sem mudar gráficos das outras páginas.
+### Validação desta rodada
 
-A captura posterior confirma painéis brancos, grafite, tipografia sans-serif e grid análises/categorias acima de compromissos/contas. A sidebar clara conserva marca real, rascunhos, áreas e seletor de sítio. Não há achados P0/P1/P2 pendentes.
+Suíte completa do frontend: **128 arquivos e 1.007 testes passaram**. Após as últimas integrações, passaram também 46 testes de configurações/novo relatório, 12 de navegação/autenticação e 38 de contas/extrato/componentes responsivos. Os conjuntos se sobrepõem e não são somados ao total. TypeScript e build final passaram; `git diff --check` sem erros.
 
-### Superfícies de fidelidade
+O [manifesto consolidado](output/qa/financeiro-refinamentos-2026-10-11/verificacao.json) reúne 36 capturas de página/diálogo: 16 em 1876×877 e 20 combinações de operação nova/detalhe, contas, produtos e relatório novo nas larguras 375/768/1024/1440 px. As capturas responsivas usam altura de viewport de 950 px. Não foram encontrados transbordamento horizontal da página, exceções de execução ou falhas de captura nas rodadas finais. Tabelas extensas mantêm rolagem localizada. As recapturas finais substituem os estados preliminares do mesmo identificador.
 
-- Tipografia: sans-serif existente, títulos compactos e valores legíveis, sem truncar dinheiro.
-- Ritmo: grid 1,65:1, gaps de 16px, cinco indicadores e bordas discretas; abas preservadas no celular.
-- Tokens: fundo cinza claro, branco, grafite; verde nos saldos/resultados e vermelho nos alertas. Categorias terrosas discretas.
-- Assets: marca oficial Terrano preservada; ícones existentes e Lucide no seletor/indicadores. Sem assets gerados novos.
-- Conteúdo: dados reais locais, período global, totais, filtros e legendas preservados. O conteúdo ilustrativo da imagem não substitui os dados da API.
+O navegador confirmou retorno às listas e recuperação do texto recém-editado nos dois rascunhos. Todas as chamadas de escrita financeira foram bloqueadas; PUT dos rascunhos recebeu resposta simulada no navegador. Os testes isolados cobrem falha, fila, versão, resposta tardia e edição imediatamente anterior à navegação.
 
-Diferenças deliberadas: o banco local possui uma categoria e nenhum compromisso vencido/nos próximos sete dias, gerando rosca única e estado vazio. O calendário mostra compromissos posteriores; não criamos dados para preencher a imagem. As funções já existentes de rascunhos, permissões e filtros permanecem disponíveis, mesmo quando ausentes no mockup. A explicação contábil do resultado permanece no conteúdo acessível.
+A conferência do documento encontrou **zero cores fora de escala de cinza** nos estilos de texto, fundos, bordas e marca SVG da prévia. Na mídia de impressão, papel branco e sombra ausente. O PDF baixado tem duas páginas, não contém comandos RGB nem imagens, e os quatro valores monetários distintos da prévia foram encontrados no conteúdo do arquivo. O gerador do servidor já era monocromático e não foi alterado; documentos históricos permanecem intactos.
 
-### Validação
+### Limites e continuidade
 
-- Suíte cliente: a expectativa da ordem anterior dos painéis foi atualizada para o modelo aprovado; os 32 testes de dashboard e sidebar passaram. Na repetição completa, 966 de 967 testes passaram e o caso existente de centro de custo por item excedeu 5 segundos. Esse caso passou isoladamente em 947ms, sem alteração de código ou aumento do limite. Não há falha funcional pendente identificada.
-- Build de produção e TypeScript aprovados.
-- Navegador: Linhas/Barras, detalhes de Alimentação animal com lançamento carregado, calendário com compromissos, abas móveis, sidebar em Sheet e colapso/expansão conferidos.
-- Desktop sem overflow horizontal: `scrollWidth === innerWidth`. Nenhuma transação ou dado financeiro foi alterado durante QA.
+Esta rodada não inclui impressão física, rasterização do PDF, homologação com leitor de tela ou medição completa de acessibilidade. A configuração de mídia print e a inspeção do conteúdo do PDF não equivalem a testar todas as impressoras. A revisão manual usou telas representativas; as demais capturas receberam conferência automática de carregamento e limites.
 
-Checklist: tema limitado ao escopo aprovado; shadcn mantido; navegação e dados preservados; documentação atualizada; comparação visual posterior aprovada.
+Se a gravação do rascunho falhar, a última edição pode ser retomada em memória na mesma sessão/sítio enquanto a aplicação permanecer aberta. Recarregar ou fechar o navegador perde essa recuperação temporária; apenas a versão confirmada pelo servidor é persistente. O estado de falha permanece visível. Não há novo contrato de persistência offline.
 
-## Calendário separado e grid solicitado — 09/10/2026
+Nenhum schema, migration, cálculo contábil ou gerador do servidor foi alterado. A direção visual e a geometria canônica dos ícones foram preservadas; esta rodada ajusta seu contraste em cabeçalhos e torna a marca monocromática somente no documento. Sem pendências nos 13 comentários dentro dos casos conferidos.
 
 final result: passed
 
-Esta iteração usa a instrução de organização do usuário como referência: recebimentos/pagamentos, contas/disponibilidade e compromissos na primeira linha; calendário e categorias na segunda. Evidências em `/tmp/financeiro-design-qa/calendario-desktop.jpg` e `calendario-mobile.jpg`. A captura desktop observou viewport 1440 × 1000; o celular observou 390px e `scrollWidth === innerWidth`. Override restaurado ao final.
 
-Calendário shadcn em Card próprio, contadores de todos os compromissos por dia, botões de mês/Hoje e expansão completa. O clique em 17/10 abriu a manutenção do trator, sem gravações financeiras. Regressões verificam lista completa do dia, detalhes e liquidação por callback; o calendário expandido conserva todos os registros além das cinco linhas da agenda. A agenda vazia mostra o próximo vencimento fora dos sete dias com indicação explícita. Resultado líquido fica junto ao controle do gráfico; categoria mantém rosca e legenda lateral maior.
+## Pecuária V3 — Cooperativa contemporânea · 11/10/2026
 
-Correções da conferência: reduzida a altura do mês compacto, cabeçalho da agenda organizado em duas linhas e sem duplicar o mês acessível quando o Dialog expandido está aberto. A ordem desktop é preservada a partir de 1024px. No celular, abas mantidas e calendário compacto sem largura mínima de 700px; os outros calendários continuam com o modo anterior.
+**Escopo:** aplicação da referência financeira selecionada à Pecuária V1–V3 na branch `codex/pecuaria-cooperativa-contemporanea`, criada da branch financeira atual com seu trabalho local preservado. PR #313 usado como referência de organização, com adaptação à API desta branch. [Guia de design](docs/design/pecuaria-cooperativa/design.md).
 
-Tipografia e superfícies neutras mantidas; valores sem truncamento, contadores com rótulos, navegação por Button e tabelas shadcn. Sem achados P0/P1/P2 pendentes na conferência dos estados cobertos. Os dados locais contêm dois vencimentos em outubro; o teste de agrupamento cobre mais de cinco compromissos no mesmo dia. Históricos maiores continuam usando as áreas roláveis e Dialog existentes.
+### Evidências e comparação
 
-Validação: 51 testes focados de visão geral, calendário, agenda, visualizações integradas e responsividade aprovados; TypeScript e build de produção aprovados. Sem mudanças em APIs, persistência ou autorização.
+- [Referência aprovada](output/design/financeiro-cooperativa-2026-10-10/01-visao-geral.png).
+- [Comparação da referência com a Nutrição implementada](output/qa/pecuaria-cooperativa-2026-10-11/comparacao.png); paleta, tipografia, superfícies, sidebar e controles. Como a referência é do Financeiro, não se trata de correspondência pixel a pixel de conteúdo pecuário.
+- [Galeria](output/qa/pecuaria-cooperativa-2026-10-11/index.html) e [PNGs em pacote](output/qa/pecuaria-cooperativa-2026-10-11/pecuaria-cooperativa-evidencias.zip).
+- Capturas anteriores à alteração em `output/qa/pecuaria-cooperativa-2026-10-11/antes/`.
+- Capturas finais: 12 páginas/detalhes em `depois/`; 27 estados desktop, 27 estados responsivos e cinco capturas de perfis/erro em `estados/`. Total: 71 capturas finais, além da comparação.
+
+As páginas finais abrangem Rebanho, Animais, Novo animal, Lotes, ficha de animal, detalhe de lote, Sanidade, Nutrição, receitas, fechamentos, Pesagem e manejo e Configurações. Os estados desktop incluem as abas sanitárias, os nove cadastros, Nutrição por lote, atribuição, consumo, nova receita, fechamento/estorno, busca vazia, três painéis laterais do animal e regressão visual de Financeiro/Contas/Estoque.
+
+Os 27 estados responsivos repetem nove páginas em 375, 768 e 1024 px; desktop em 1440 px. Os manifestos registram URL, títulos, carregamento, limites de largura, erros JS e respostas HTTP de falha. Capturas finais sem falha de carregamento, erro JS ou erro real de API nos percursos testados.
+
+### Inspeção manual e correções
+
+Foram abertos e comparados os PNGs da referência, do estado anterior e de telas representativas da implementação: Rebanho, Nutrição, ficha contínua do animal, novo animal, Sanidade, detalhe de lote, protocolos, receitas e modal de pesagem, incluindo móvel e 1024 px.
+
+Correções encerradas nesta rodada:
+
+1. Consulta nutricional do PR dependia de endpoints ausentes. Adaptada às consultas V3 existentes; resumos completos por paginação, uso vigente de receitas e sítio dos fechamentos.
+2. A API de fechamentos desta branch não retorna a relação `propriedade`; a apresentação a resolve pelos lotes consultados, evitando falha ao renderizar.
+3. Ficha visualmente fragmentada: uma superfície contínua com separadores, âncoras e histórias preservadas.
+4. Formulário de novo animal com painel escuro e cabeçalho externo: título dentro do formulário, revisão clara lateral e ações no resumo.
+5. Abas sanitárias, células e protocolos sem a composição comum: controles ativos floresta, cabeçalhos sálvia e corpo branco, densidade compartilhada.
+6. Agenda móvel e paginação cortavam controles apesar de não provocar largura excedente no documento. Grade com largura mínima zerada, quebra de conteúdo e paginação em mais de uma linha. PNG de 375 px reinspecionado após corrigir.
+7. Excesso de espaço entre filtros e tabela de fechamentos: removido o gap de grade aplicado indevidamente ao painel.
+8. Formulários nutricionais com dois títulos e ajuda genérica: título dentro do formulário e resumo lateral do lote/receita.
+9. Navegação de retorno de animal/lote: breadcrumbs mantendo os callbacks de retorno à consulta.
+
+Nenhuma pendência P0/P1/P2 identificada nos casos inspecionados desta rodada. Não representa auditoria exaustiva de todas as combinações de dados.
+
+### Comportamento e permissões
+
+Conferências automáticas de navegador:
+
+- Link antigo sanitário normaliza sem perder filtros.
+- Back de Fechamentos restaura Receitas.
+- Escape fecha “Mais ações” e devolve foco ao acionador.
+- Perfil real Consulta não recebe ações de cadastrar animal, conferir consumo ou criar categoria.
+- Perfil real Operador mantém lançamento e omite custos nutricionais quando `verValores` está desabilitado.
+- Falha 503 simulada somente na leitura nutricional mostra mensagem e ação “Tentar novamente”, sem fabricar indicadores.
+
+As sessões usam as fixtures públicas documentadas no README. Escritas de negócio são bloqueadas durante as capturas; apenas o login cria a sessão local. Nenhum seed, migration, alteração de cenário ou envio de formulário de negócio foi executado. Tokens e estado autenticado ficam somente em arquivo privado temporário fora dos artefatos.
+
+### Validação técnica e limites
+
+- Suíte completa final do cliente: **135 arquivos / 1.045 testes aprovados**, inclusive Financeiro e Estoque.
+- Novos testes: sete de rotas/aliases/gates; seis do adaptador nutricional (histórico paginado, moeda em centavos inteiros, estornos, custo parcial/mascarado, uso de receitas e vigência de página posterior).
+- TypeScript e build de produção aprovados. Aviso de bundle principal grande emitido pelo Vite; otimização de chunks fora do escopo desta rodada.
+- `git diff --check` aprovado.
+
+O navegador validou leitura, navegação, filtros, apresentação e acesso a formulários. As gravações e regras V3 estão cobertas pelos testes existentes do cliente; não foi feita nova homologação operacional de ponta a ponta nem suíte de integração do servidor, que não foi alterado. Não houve homologação com leitor de tela ou auditoria completa de WCAG.
+
+Os novos agregados de leitura percorrem o histórico completo da API atual; o trabalho cresce com suas páginas, e consultas por lote são limitadas a quatro simultâneas. A evolução para históricos grandes deve oferecer agregação própria no servidor. Não há novo cálculo contábil, baixa de estoque, serviço de gravação, schema ou persistência de tema nesta entrega.
+
+final result: passed
+
+## Pecuária — refinamentos dos 15 comentários — 11/10/2026
+
+**Resultado: passou nos cenários conferidos.** Mantida a direção Cooperativa contemporânea. Não foram alteradas regras, endpoints ou dados de negócio.
+
+- Comentários 1, 5, 15: abas com a variante financeira compartilhada de SubTabs, reutilizando Tabs/TabsList/TabsTrigger e fin-abas de Configurações financeiras.
+- Comentários 2–4: painéis categoria/sítio com alturas iguais; baixas e quatro últimos eventos lado a lado; percentual ligado ao descarte voluntário e denominador explícito.
+- Comentários 6–11: botões de gestão reunidos no cabeçalho, sem eyebrow redundante; filtros alinhados com controles de 42 px; Novo ciclo no cabeçalho da tabela; espaço interno reduzido.
+- Comentários 12–14: diálogo de filtros com critérios completos; chips ativos removíveis; checkbox de 20 px e alvo de 44 px; pesagem coletiva em Animais e endereço antigo como alias.
+
+Verificação real em 1538 × 877, 768 × 877 e 375 × 877: 18 capturas de Rebanho, Sanidade, Nutrição, Animais, filtro aberto e seleção. Sem erros JavaScript ou transbordamento horizontal da página nos cenários. Conferidos manualmente alinhamento sanitário, painéis do dashboard, Nutrição no tablet e diálogo de filtros no celular. Conteúdo do modal rola com rodapé disponível.
+
+Interações verificadas: abrir filtros, escolher sexo, concluir e remover chip; clicar na borda do alvo de seleção sem abrir a ficha; disponibilizar Pesagem coletiva; redirecionar /pecuaria/pesagem-manejo preservando consulta. O carregamento de filtros em consulta vazia conserva o modal. Testes de regressão cobrem seleção sem navegação, chips, requisições de filtros e alias de pesagem.
+
+Galeria: [18 capturas dos refinamentos](output/qa/pecuaria-refinamentos-2026-10-11/index.html). Manifesto de execução ao lado. Escritas de negócio bloqueadas durante a conferência no navegador; esta rodada não homologa todos os formulários ou combinações de dados.
+
+Validação automatizada desta rodada: build de produção aprovado; 50 testes direcionados passaram antes da última proteção de ativação das abas e 39 testes das quatro telas passaram depois dela. A primeira suíte completa passou com 135 arquivos / 1.047 testes. Na repetição concorrente com o build, uma consulta assíncrona em VisualizacoesFinanceiras falhou; o arquivo inteiro passou isoladamente (14 testes), sem alteração daquele código. Aviso já existente de tamanho do bundle mantido.
 
 
-### Indicadores integrados e listas em modal — 09/10/2026
+## Unificação de Financeiro, Pecuária e Estoque — 11/10/2026
 
-A faixa superior foi removida e os valores foram integrados a gráfico, disponibilidade e compromissos. Saldo aparece uma única vez, junto das contas incluídas. Os quatro indicadores abrem Dialog shadcn com listas do período, sem navegação automática para extratos. Recebimentos/pagamentos consultam a API existente sob demanda; compromissos reaproveitam os dados já carregados. Paginação de 15 mantém todos os itens.
+Branch: `codex/redesign-unificado-cooperativa`. Os dois trabalhos locais foram preservados e consolidados; suas referências de branch partiam do mesmo commit.
 
-Conferência no navegador local: recebimento e pagamento reais, quatro compromissos a pagar, estado vazio de a receber e modal móvel; nenhuma escrita financeira. Sem rolagem horizontal da página em 1602px e 351px. Evidências locais em `/tmp/financeiro-design-qa/indicadores-integrados-desktop.jpg` e `indicadores-integrados-mobile.jpg`. 55 testes focados passaram, incluindo carregamento, filtros do período, estornos, exclusão de transferências, erro/nova tentativa, paginação e detalhe de compromisso.
+Validado:
+- Estoque e ficha de produto nas larguras 1538, 1180, 720 e 375 px: sem transbordamento horizontal nas oito telas principais.
+- Resumo, lotes, movimentos, origens e modais de cadastro, transferência, perda e renomeação; revisão visual representativa de desktop e celular.
+- Paleta compartilhada em Financeiro, Rebanho e Configurações. Corrigido o escopo dos cartões de configurações ao acessar diretamente a página.
+- 39 capturas finais e duas capturas anteriores na galeria `output/qa/redesign-unificado-2026-10-11/index.html`.
+- Suíte completa do cliente: 135 arquivos, 1.048 testes aprovados. Após os ajustes funcionais finais: nove arquivos, 96 testes aprovados.
+- Build de produção aprovado; diferenças sem erros de whitespace.
 
-### Grid 75/25 e agenda integrada 80/20 — 09/10/2026
-
-Gráfico ampliado e contas na primeira linha; prioridades e calendário aberto em Card único na segunda, junto de categorias em coluna de 20%. Verificado no navegador local: expansão do calendário, ordem móvel lista/mês e ausência de rolagem lateral em 351px. Capturas em `/tmp/financeiro-design-qa/grid-integrado-desktop.jpg` e `grid-integrado-mobile.jpg`. Os 55 testes focados de dashboard, modais, calendário e responsividade passaram; build aprovado com o aviso existente de tamanho do bundle.
-
-### Comentários no navegador — 09/10/2026
-
-Categorias passam para baixo em largura completa; rastreabilidade removida da visão geral. Calendário ampliado mostra nome, direção e saldo de cada compromisso no dia, usando a agenda textual existente no celular. Contas e gráfico conferidos com a mesma altura (414px). Sem rolagem lateral da página em 1602px e 351px. 53 testes focados passaram; dois testes da faixa de rastreabilidade removida deixaram de se aplicar. Build aprovado. Evidências: `/tmp/financeiro-design-qa/calendario-ampliado-desktop.jpg` e `calendario-ampliado-mobile.jpg`.
-
-### Ranking compacto de categorias — 09/10/2026
-
-Rosca substituída por ranking de até cinco, em ordem decrescente, com acesso a todas e filtro no modal. Estado com uma categoria medido em 108px de altura. Conferidos clique no lançamento real, filtro sem resultados e versão móvel sem overflow lateral (351px). 63 testes focados passaram; build aprovado com aviso de bundle existente. Capturas em `/tmp/financeiro-design-qa/ranking-desktop.jpg` e `ranking-mobile.jpg`.
-
-### Pizza ao lado do ranking — 09/10/2026
-
-Título restaurado para “Despesas por categoria”, com total líquido abaixo. Pizza shadcn/Recharts de 144px ao lado do ranking; painel medido em 212px no desktop. Categorias extras agrupadas na pizza com acesso à lista completa; estornos continuam fora das fatias positivas e abatem o total. 63 testes focados e build passaram. Sem rolagem lateral no celular (351px). Evidências: `/tmp/financeiro-design-qa/pizza-ranking-desktop.jpg` e `pizza-ranking-mobile.jpg`.
-
-### Sidebar com mais presença — 09/10/2026
-
-Fundo cinza esverdeado mais definido, hover próprio e seleção verde acinzentada. Conferida aberta, colapsada e no Sheet móvel. Contraste calculado: texto secundário/fundo 4,60:1, seleção 8,28:1 e texto principal 12,76:1; isso não equivale a auditoria WCAG completa. 25 testes de navegação/shell e build passaram. Evidências: `/tmp/financeiro-design-qa/sidebar-presenca-desktop.jpg` e `sidebar-presenca-mobile.jpg`.
-
-### Correção da sidebar para cinza neutro — 09/10/2026
-
-Verde removido dos tokens de fundo, hover, seleção e texto da sidebar, conforme correção explícita do usuário. Conferido no navegador local e build aprovado. Captura: `/tmp/financeiro-design-qa/sidebar-cinza-desktop.jpg`.
-
-### Conta individual direto da visão geral — 09/10/2026
-
-Separada a ação de cada conta do botão geral: navegação usa ID da conta e período do dashboard, inclusive para contas fora do saldo. Conferido no navegador com Banco principal e extrato correspondente; teste cobre ambas as listas e botão geral. 22 testes focados e build passaram. Captura em `/tmp/financeiro-design-qa/conta-direta.jpg`.
-
-
-## Extensão do tema neutro ao financeiro — 09/10/2026
-
-- As cinco áreas (Operações, Compromissos, Contas, Configurações e Relatórios) usam o mesmo tema da visão geral, com superfícies brancas e títulos/ícones neutros. Abas mantêm seleção grafite. Formulários e modais compartilham os tokens, sem alterações nos contratos financeiros.
-- Inspeção no navegador: lista e detalhe de operação, formulário do rascunho sem edição, todas as cinco abas de configurações, cadastro de conta aberto/cancelado, compromissos, contas/extrato e lista/formulário de relatório. Nenhuma confirmação de operação, liquidação ou emissão executada. O histórico local de relatório já continha um item falho; emissão/PDF de sucesso validados pelos testes existentes, não por geração real nesta rodada.
-- Select e Popover de período: fundo computado `rgb(255, 255, 255)`. Saída para Estoque restaura o token `--background: #F2EDE2`; retorno ao financeiro restaura o tema neutro.
-- Cinco áreas conferidas em larguras reais de 1180, 720 e 390px (ajustadas ao zoom de 90% do navegador). Largura do documento igual à viewport em todos os casos; tabelas têm rolagem própria e no celular usam cartões existentes. Não é certificação de acessibilidade nem garantia de exibir históricos ilimitados sem rolagem.
-- Verificação: **354 testes em 36 arquivos passaram** (financeiro, DateRangePicker e MultiSelect); build passou, com o aviso preexistente de bundle acima de 500KB. `git diff --check` passou.
-- Capturas: `/tmp/financeiro-design-qa/financeiro-neutro-operacoes.jpg`, `financeiro-neutro-dropdown.jpg`, `financeiro-neutro-mobile.jpg`.
-
-## Carregamento financeiro discreto — 09/10/2026
-
-- Primeira carga: skeleton shadcn sem loader de grãos nem texto grande em itálico; estruturas específicas para dashboard, listas, gráfico de contas e detalhes. Contraste neutro via token e pulso respeitando movimento reduzido. Loader global de inicialização do aplicativo não faz parte desta alteração.
-- Mudança de período em visão geral, operações e compromissos mantém a última consulta visível com indicador de atualização e `inert` até a resposta; respostas antigas continuam descartadas. Testes cobrem leitura sem permissão de lançamento, retenção, liberação após resposta, erro e tentativa novamente. Compromissos não apresenta totais zerados após falha de consulta.
-- Botões de salvar cadastros, confirmar operação/liquidação, transferência, cancelamento/estorno e gerar relatório têm spinner, rótulo de progresso, bloqueio e `aria-busy`. Histórico de relatórios sinaliza a atualização sem substituir os dados.
-- Verificação: **356 testes em 36 arquivos passaram**; TypeScript/build passaram, com aviso preexistente do bundle acima de 500KB; `git diff --check` passou. Nenhuma transação ou emissão real executada nesta rodada; estados de gravação validados nos testes com mocks.
-- Navegador local: skeleton real capturado ao abrir a visão geral (1180px) e operações (720px), largura do documento igual à viewport; filtro de período de operações conferido até retornar 11 itens. API local rápida não permitiu capturar o spinner de atualização na imagem; retenção e bloqueio de dados verificados pelos testes com promessa pendente.
-- Capturas: `/tmp/financeiro-design-qa/loading-dashboard.jpg`, `/tmp/financeiro-design-qa/loading-mobile.jpg`, `/tmp/financeiro-design-qa/loading-atualizacao.jpg`. Viewport temporária restaurada.
+As capturas bloquearam requisições de escrita dos fluxos de negócio. Não houve alterações de contratos de API, permissões ou cálculos financeiros. A revisão visual cobre os estados descritos; não equivale a uma auditoria completa de acessibilidade ou de todas as combinações de dados.

@@ -1,7 +1,8 @@
+import { limparRascunhoRelatorioAtivo, estadoRascunhoRelatorioAtivo, prepararPublicacaoRascunhoRelatorio } from "./rascunhoRelatorioAtivo";
 import { alterarControle } from "../lib/controles.fixture";
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { NovoRelatorioFinanceiro } from "./NovoRelatorioFinanceiro";
 import { descartarRascunhoRelatorioFinanceiro, gerarRelatorioFinanceiro, salvarPdfRelatorioFinanceiro, salvarRascunhoRelatorioFinanceiro, type ConfiguracoesFinanceiras, type RascunhoRelatorioFinanceiro, type RelatorioFinanceiro } from "./novo-api";
 import { uid } from "../lib/uid.fixture";
@@ -13,12 +14,14 @@ vi.mock("./novo-api", () => ({
 }));
 class ResizeObserverMock { observe() {} unobserve() {} disconnect() {} }
 beforeEach(() => {
+  limparRascunhoRelatorioAtivo();
+  vi.mocked(salvarRascunhoRelatorioFinanceiro).mockReset().mockResolvedValue({ ...rascunho, versao: 4 });
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2026-09-14T12:00:00-03:00"));
   vi.stubGlobal("ResizeObserver", ResizeObserverMock);
   if (!window.HTMLElement.prototype.scrollIntoView) window.HTMLElement.prototype.scrollIntoView = () => {};
 });
-afterEach(() => { cleanup(); vi.useRealTimers(); vi.clearAllMocks(); vi.unstubAllGlobals(); });
+afterEach(async () => { cleanup(); await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); }); limparRascunhoRelatorioAtivo(); vi.useRealTimers(); vi.clearAllMocks(); vi.unstubAllGlobals(); });
 
 const cadastros: ConfiguracoesFinanceiras = {
   contas: [], parceiros: [], produtos: [],
@@ -79,18 +82,14 @@ describe("novo relatório financeiro", () => {
     expect(screen.queryByText("Presets")).toBeNull();
   });
 
-  it("mantém a ação de gerar fora da área rolável do resumo", () => {
+  it("apresenta formulário antes do resumo e mantém uma única ação de gerar", () => {
     renderizar();
+    const titulo = screen.getByRole("heading", { name: "Novo relatório" });
     const resumo = screen.getByRole("complementary", { name: "Resumo do relatório" });
-    const gerar = within(resumo).getByRole("button", { name: "Gerar relatório" });
-    const aviso = within(resumo).getByText("O PDF é baixado ao gerar e fica salvo no histórico da propriedade.");
-    expect(gerar.parentElement?.className).toContain("shrink-0");
-    expect(gerar.parentElement).toBe(aviso.parentElement);
-    expect(gerar.parentElement?.className).toContain("border-t");
-    expect(gerar.parentElement?.className).toContain("p-3");
-    expect(gerar.closest(".overflow-y-auto")).toBeNull();
-    expect(resumo.className).toContain("sticky");
-    expect(resumo.className).toContain("lg:top-3");
+    expect(titulo.compareDocumentPosition(resumo) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: "Gerar relatório" })).toHaveLength(1);
+    expect(within(resumo).queryByRole("button", { name: "Relatórios" })).toBeNull();
+    expect(within(resumo).getByText("Todas as categorias")).toBeTruthy();
   });
 
   it("salva o rascunho sozinho, com a versão lida", async () => {
@@ -179,4 +178,38 @@ describe("novo relatório financeiro", () => {
     expect(onGerado).not.toHaveBeenCalled();
     expect(screen.getByRole<HTMLButtonElement>("button", { name: "Gerar relatório" }).disabled).toBe(false);
   });
+});
+
+it("sair antes do autosave preserva a configuração recente mesmo quando a gravação falha", async () => {
+  vi.mocked(salvarRascunhoRelatorioFinanceiro).mockRejectedValue(new Error("Rede indisponível"));
+  const tela = render(<NovoRelatorioFinanceiro cadastros={cadastros} rascunho={rascunho} onVoltar={vi.fn()} onGerado={vi.fn()} />);
+  await alterarControle(screen.getByLabelText("Nome do relatório"), { target: { value: "Última edição" } });
+  tela.unmount();
+  await waitFor(() => expect(estadoRascunhoRelatorioAtivo().recuperacao?.erro).toBe("Rede indisponível"));
+  expect(salvarRascunhoRelatorioFinanceiro).toHaveBeenCalledWith(expect.objectContaining({ nome: "Última edição" }), 3);
+  renderizar();
+  expect(screen.getByLabelText<HTMLInputElement>("Nome do relatório").value).toBe("Última edição");
+  expect(screen.getByRole("alert").textContent).toContain("Rede indisponível");
+});
+
+it("reabrir durante a gravação conserva a última edição e usa a versão confirmada", async () => {
+  let concluir!: (valor: RascunhoRelatorioFinanceiro) => void;
+  vi.mocked(salvarRascunhoRelatorioFinanceiro).mockImplementationOnce(() => new Promise(resolve => { concluir = resolve; })).mockResolvedValue({ ...rascunho, versao: 5 });
+  const tela = render(<NovoRelatorioFinanceiro cadastros={cadastros} rascunho={rascunho} onVoltar={vi.fn()} onGerado={vi.fn()} />);
+  await alterarControle(screen.getByLabelText("Nome do relatório"), { target: { value: "Primeira edição" } });
+  await waitFor(() => expect(salvarRascunhoRelatorioFinanceiro).toHaveBeenCalledTimes(1), { timeout: 2000 });
+  await alterarControle(screen.getByLabelText("Nome do relatório"), { target: { value: "Última edição antes de sair" } });
+  tela.unmount();
+  renderizar();
+  expect(screen.getByLabelText<HTMLInputElement>("Nome do relatório").value).toBe("Última edição antes de sair");
+  await alterarControle(screen.getByLabelText("Nome do relatório"), { target: { value: "Edição após voltar" } });
+  await act(async () => { concluir({ ...rascunho, versao: 4 }); });
+  await waitFor(() => expect(salvarRascunhoRelatorioFinanceiro).toHaveBeenCalledTimes(2), { timeout: 2000 });
+  expect(salvarRascunhoRelatorioFinanceiro).toHaveBeenLastCalledWith(expect.objectContaining({ nome: "Edição após voltar" }), 4);
+});
+
+it("reabrir usa a versão confirmada em memória em vez de uma leitura atrasada", () => {
+  prepararPublicacaoRascunhoRelatorio("escrita")({ ...rascunho, versao: 5, configuracao: { ...configuracao, nome: "Confirmado após a saída" } });
+  renderizar(rascunho);
+  expect(screen.getByLabelText<HTMLInputElement>("Nome do relatório").value).toBe("Confirmado após a saída");
 });

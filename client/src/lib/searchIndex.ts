@@ -52,7 +52,9 @@ export const COMANDOS: Comando[] = [
   { id: "estoque", tab: "estoque", label: "Estoque", grupo: "Financeiro", sinonimos: ["insumo", "insumos", "saldo", "almoxarifado", "medicamento", "produto", "defensivo", "fertilizante"], descricao: "Estoque de insumos — saldos, movimentos e ajustes" },
 
   // — Pecuária: cadastro individual único, independentemente da finalidade —
-  { id: "pec-rebanho", tab: "pec-rebanho", label: "Rebanho", grupo: "Pecuária", sinonimos: ["rebanho", "pecuária", "vaca", "vacas", "boi", "gado", "bovino", "animais", "brinco", "ficha do animal", "lote", "movimentar", "saída", "pesagem"], descricao: "Cadastro de animais do rebanho" },
+  { id: "pec-rebanho", tab: "pec-rebanho", label: "Rebanho", grupo: "Pecuária", sinonimos: ["rebanho", "pecuária", "vaca", "vacas", "boi", "gado", "bovino", "animais", "brinco", "ficha do animal", "lote", "movimentar", "saída", "pesagem", "peso", "gmd", "manejo"], descricao: "Cadastro de animais do rebanho" },
+  { id: "pec-sanidade", tab: "pec-sanidade", label: "Sanidade", grupo: "Pecuária", sinonimos: ["vacina", "tratamento", "protocolo", "exame"], descricao: "Agenda e registros sanitários" },
+  { id: "pec-nutricao", tab: "pec-nutricao", label: "Nutrição", grupo: "Pecuária", sinonimos: ["dieta", "receita", "consumo"], descricao: "Dietas e consumo por lote" },
   { id: "acao-novo-animal", tab: "pec-rebanho", label: "Novo animal", grupo: "Ações", acao: true, sinonimos: ["cadastrar animal", "novo animal", "cadastrar gado", "nova vaca", "registrar gado", "novo bovino"], descricao: "Cadastrar um novo animal no rebanho" },
 
 

@@ -16,7 +16,7 @@
 import { useSyncExternalStore } from "react";
 import { getToken } from "../lib/auth";
 import { getPropriedadeAtiva } from "../propriedadeScope";
-import type { RascunhoOperacao } from "./novo-api";
+import type { DocumentoFinanceiro, RascunhoOperacao } from "./novo-api";
 
 export type EstadoRascunhoAtivo = {
   /** Rascunho salvo no servidor para o usuário no sítio ativo; `null` quando não há. */
@@ -26,15 +26,19 @@ export type EstadoRascunhoAtivo = {
   conhecido: boolean;
   /** O formulário de nova operação está aberto, editando o rascunho. */
   editando: boolean;
+  recuperacao: { dados: RascunhoOperacao["dados"]; erro: string | null } | null;
 };
 
-let estado: EstadoRascunhoAtivo = { rascunho: null, conhecido: false, editando: false };
+let estado: EstadoRascunhoAtivo = { rascunho: null, conhecido: false, editando: false, recuperacao: null };
+let contextoRecuperacao: string | null = null;
+let estadoSemRecuperacao: EstadoRascunhoAtivo = estado;
 let geracao = 0;
 const ouvintes = new Set<() => void>();
 const contextoAtual = () => `${getToken() ?? ""}|${getPropriedadeAtiva() ?? ""}`;
 
 function atualizar(proximo: Partial<EstadoRascunhoAtivo>) {
   estado = { ...estado, ...proximo };
+  estadoSemRecuperacao = estado.recuperacao ? { ...estado, recuperacao: null } : estado;
   ouvintes.forEach((ouvinte) => ouvinte());
 }
 
@@ -48,7 +52,7 @@ export function prepararPublicacaoRascunho(tipo: "leitura" | "escrita") {
     const nadaMaisNovo = tipo === "escrita" || geracao === saida;
     if (mesmoContexto && nadaMaisNovo) {
       geracao += 1;
-      atualizar({ rascunho, conhecido: true });
+      atualizar({ rascunho, conhecido: true, ...(tipo === "escrita" && !rascunho ? { recuperacao: null } : {}) });
     }
     return rascunho;
   };
@@ -60,7 +64,7 @@ export function prepararPublicacaoRascunho(tipo: "leitura" | "escrita") {
  *  rodam antes dos do App: a tela de operações dispara a sua leitura antes deste
  *  limpar, e perdê-la faria o formulário montar vazio sobre um rascunho salvo. */
 export function limparRascunhoAtivo() {
-  if (estado.rascunho || estado.conhecido) atualizar({ rascunho: null, conhecido: false });
+  if (estado.rascunho || estado.conhecido || estado.recuperacao) atualizar({ rascunho: null, conhecido: false, recuperacao: null });
 }
 
 /** Marca o formulário de nova operação como aberto; devolve a função que desmarca. */
@@ -70,7 +74,7 @@ export function marcarEdicaoRascunho(): () => void {
 }
 
 export function estadoRascunhoAtivo(): EstadoRascunhoAtivo {
-  return estado;
+  return contextoRecuperacao == null || contextoRecuperacao === contextoAtual() ? estado : estadoSemRecuperacao;
 }
 
 function assinar(ouvinte: () => void) {
@@ -80,4 +84,35 @@ function assinar(ouvinte: () => void) {
 
 export function useRascunhoAtivo(): EstadoRascunhoAtivo {
   return useSyncExternalStore(assinar, estadoRascunhoAtivo, estadoRascunhoAtivo);
+}
+
+/** A edição ainda não salva pertence à mesma sessão e sítio do formulário. */
+export function contextoEdicaoRascunho() {
+  const contexto = contextoAtual();
+  return () => contexto === contextoAtual();
+}
+
+export function guardarEdicaoRascunho(dados: RascunhoOperacao["dados"]) {
+  contextoRecuperacao = contextoAtual();
+  atualizar({ recuperacao: { dados, erro: null } });
+}
+
+export function concluirEdicaoRascunho(dados: RascunhoOperacao["dados"], erro: string | null = null) {
+  if (contextoRecuperacao !== contextoAtual() || estado.recuperacao?.dados !== dados) return;
+  atualizar({ recuperacao: erro ? { dados, erro } : null });
+}
+
+let filaSalvamento: Promise<unknown> = Promise.resolve();
+/** Serializa instâncias desmontadas e reabertas sem perder a versão anterior. */
+export function enfileirarSalvamentoRascunho<T>(salvar: () => Promise<T>): Promise<T> {
+  const requisicao = filaSalvamento.catch(() => undefined).then(salvar);
+  filaSalvamento = requisicao;
+  return requisicao;
+}
+
+
+export function atualizarDocumentosRascunho(alterar: (documentos: DocumentoFinanceiro[]) => DocumentoFinanceiro[]) {
+  if (!estado.rascunho) return;
+  geracao += 1;
+  atualizar({ rascunho: { ...estado.rascunho, documentos: alterar(estado.rascunho.documentos) } });
 }

@@ -3,14 +3,14 @@ import { PaginaFinanceira } from "./financeiro-ui";
 import { SecaoFinanceira } from "./SecaoFinanceira";
 import { Input } from "@/components/ui/input";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, FileDown, Trash2 } from "lucide-react";
+import { ArrowLeft, FileText, Trash2 } from "lucide-react";
 import { MultiSelect, type MultiSelectOption } from "@/components/MultiSelect";
 import { DateRangePicker, type DateRange } from "@/components/DateRangePicker";
 import { getPropriedadeAtiva } from "../propriedadeScope";
 import { usePropriedades } from "../api/propriedades";
 import { descartarRascunhoRelatorioFinanceiro, gerarRelatorioFinanceiro, salvarPdfRelatorioFinanceiro, salvarRascunhoRelatorioFinanceiro, type ConfiguracaoRelatorioFinanceiro, type ConfiguracoesFinanceiras, type RascunhoRelatorioFinanceiro, type RelatorioFinanceiro } from "./novo-api";
 import { Button, ErrorBox, TIPO_OPERACAO } from "./financeiro-ui";
-import { marcarEdicaoRascunhoRelatorio } from "./rascunhoRelatorioAtivo";
+import { concluirEdicaoRascunhoRelatorio, contextoEdicaoRascunhoRelatorio, enfileirarSalvamentoRascunhoRelatorio, estadoRascunhoRelatorioAtivo, guardarEdicaoRascunhoRelatorio, limparRascunhoRelatorioAtivo, marcarEdicaoRascunhoRelatorio } from "./rascunhoRelatorioAtivo";
 import { SEM_VINCULO } from "../lib/ids";
 import { CLASSIFICACOES_RELATORIO, REGIMES_RELATORIO, SEM_CATEGORIA, SEM_CENTRO, STATUS_RELATORIO, TIPOS_RELATORIO, configuracaoPadrao, erroPeriodo, isoLocal, mesclarRascunho, podeGerar, resumoConfiguracao, secoesDoRelatorio } from "./lib/relatorios";
 
@@ -33,47 +33,66 @@ export function NovoRelatorioFinanceiro({ cadastros, rascunho, onVoltar, onGerad
   onVoltar: () => void;
   onGerado: (relatorio: RelatorioFinanceiro, avisoDownload: string | null) => void;
 }) {
-  const [config, setConfig] = useState(() => mesclarRascunho(rascunho?.configuracao));
-  const [estado, setEstado] = useState<Estado>(rascunho ? "SALVO" : "ALTERADO");
-  const [temRascunho, setTemRascunho] = useState(!!rascunho);
+  const [rascunhoInicial] = useState(() => { const atual = estadoRascunhoRelatorioAtivo(); return atual.conhecido ? atual.rascunho : rascunho; });
+  const [recuperacao] = useState(() => estadoRascunhoRelatorioAtivo().recuperacao);
+  const [mesmoContexto] = useState(contextoEdicaoRascunhoRelatorio);
+  const [config, setConfig] = useState(() => recuperacao?.configuracao ?? mesclarRascunho(rascunhoInicial?.configuracao));
+  const [estado, setEstado] = useState<Estado>(recuperacao ? "ALTERADO" : rascunhoInicial ? "SALVO" : "ALTERADO");
+  const [temRascunho, setTemRascunho] = useState(!!rascunhoInicial || !!recuperacao);
   const [erro, setErro] = useState<string | null>(null);
-  const [erroRascunho, setErroRascunho] = useState<string | null>(null);
+  const [erroRascunho, setErroRascunho] = useState<string | null>(recuperacao?.erro ?? null);
   const [gerando, setGerando] = useState(false);
   const { data: propriedades } = usePropriedades();
   const configRef = useRef(config);
   configRef.current = config;
-  const versaoRef = useRef(rascunho?.versao);
+  const versaoRef = useRef(rascunhoInicial?.versao);
   // Um salvamento por vez, sempre com a configuração mais recente: dois
   // salvamentos sobre a mesma versão gerariam conflito falso.
   const filaRef = useRef<Promise<void>>(Promise.resolve());
   const timerRef = useRef<number | null>(null);
-  const pendenteRef = useRef(false);
+  const pendenteRef = useRef(!!recuperacao);
   // Enquanto gera ou descarta, nada grava: o servidor consome ou apaga o rascunho.
   const pausadoRef = useRef(false);
   const iniciouRef = useRef(false);
 
   const executarSalvamento = async () => {
-    if (pausadoRef.current || !pendenteRef.current) return;
+    if (!mesmoContexto() || pausadoRef.current || !pendenteRef.current || estadoRascunhoRelatorioAtivo().recuperacao?.configuracao !== configRef.current) return;
     pendenteRef.current = false;
     setEstado("SALVANDO");
     try {
-      const salvo = await salvarRascunhoRelatorioFinanceiro(configRef.current, versaoRef.current);
+      const configuracao = configRef.current;
+      const versao = estadoRascunhoRelatorioAtivo().rascunho?.versao ?? versaoRef.current;
+      const salvo = await salvarRascunhoRelatorioFinanceiro(configuracao, versao);
+      if (!mesmoContexto()) return;
+      concluirEdicaoRascunhoRelatorio(configuracao, salvo);
       versaoRef.current = salvo.versao;
       setTemRascunho(true); setErroRascunho(null); setEstado(pendenteRef.current ? "ALTERADO" : "SALVO");
-    } catch (falha) { pendenteRef.current = true; setEstado("ERRO"); setErroRascunho(mensagem(falha)); }
+    } catch (falha) {
+      if (!mesmoContexto()) return;
+      pendenteRef.current = true;
+      concluirEdicaoRascunhoRelatorio(configRef.current, null, mensagem(falha));
+      setEstado("ERRO"); setErroRascunho(mensagem(falha));
+    }
   };
-  const enfileirar = () => { filaRef.current = filaRef.current.then(executarSalvamento); return filaRef.current; };
+  const enfileirar = () => { filaRef.current = enfileirarSalvamentoRascunhoRelatorio(executarSalvamento); return filaRef.current; };
   const cancelarTimer = () => { if (timerRef.current != null) { window.clearTimeout(timerRef.current); timerRef.current = null; } };
 
   useEffect(() => {
-    if (!iniciouRef.current) { iniciouRef.current = true; return; }
-    pendenteRef.current = true; setEstado("ALTERADO");
+    if (!iniciouRef.current) { iniciouRef.current = true; if (!pendenteRef.current) return; }
+    pendenteRef.current = true; guardarEdicaoRascunhoRelatorio(config); setTemRascunho(true); setEstado("ALTERADO");
     cancelarTimer();
     timerRef.current = window.setTimeout(() => { timerRef.current = null; void enfileirar(); }, 700);
     return cancelarTimer;
     // `config` é todo o estado editável; o resto são refs.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [config]);
+
+  useEffect(() => () => {
+    cancelarTimer();
+    if (pendenteRef.current && !pausadoRef.current && mesmoContexto()) void enfileirar();
+    // Refs guardam a última edição; a fila continua mesmo após desmontar.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Mantém a sidebar e o leitor de tela informados sobre qual trabalho está aberto.
   useEffect(() => marcarEdicaoRascunhoRelatorio(), []);
@@ -95,7 +114,8 @@ export function NovoRelatorioFinanceiro({ cadastros, rascunho, onVoltar, onGerad
     setErro(null); cancelarTimer(); pausadoRef.current = true;
     try {
       await filaRef.current;
-      await descartarRascunhoRelatorioFinanceiro();
+      await enfileirarSalvamentoRascunhoRelatorio(descartarRascunhoRelatorioFinanceiro);
+      limparRascunhoRelatorioAtivo();
       versaoRef.current = undefined; pendenteRef.current = false; iniciouRef.current = false;
       setTemRascunho(false); setErroRascunho(null); setEstado("ALTERADO"); setConfig(configuracaoPadrao());
     } catch (falha) { setErro(mensagem(falha)); }
@@ -111,6 +131,7 @@ export function NovoRelatorioFinanceiro({ cadastros, rascunho, onVoltar, onGerad
       await filaRef.current;
       pausadoRef.current = true;
       const relatorio = await gerarRelatorioFinanceiro(configRef.current, versaoRef.current);
+      limparRascunhoRelatorioAtivo();
       let aviso: string | null = null;
       try { await salvarPdfRelatorioFinanceiro(relatorio); }
       catch { aviso = `O relatório “${relatorio.nome}” foi gerado, mas o download não começou. Use “Baixar PDF” no histórico.`; }
@@ -136,25 +157,21 @@ export function NovoRelatorioFinanceiro({ cadastros, rascunho, onVoltar, onGerad
   const destino = ativas.length > 1 ? (idAtivo != null ? ativas.find((p) => p.id === idAtivo)?.nome : `${ativas.find((p) => p.principal)?.nome ?? "Propriedade principal"} (principal)`) : null;
 
   return <PaginaFinanceira colorida>
-    <div className="mb-3 flex min-h-10 flex-wrap items-center justify-between gap-4 border-b border-border pb-3 pt-0">
-      <h1 className="h1 text-ink">Novo relatório</h1>
-      <div className="flex flex-wrap items-center gap-3">
-        {temRascunho && <span aria-live="polite" className={`text-xs font-medium ${estado === "ERRO" ? "text-red-700" : "text-ink-3"}`}>{estado === "SALVANDO" ? "Salvando…" : estado === "SALVO" ? "Rascunho salvo" : estado === "ERRO" ? "Falha ao salvar" : "Alterações não salvas"}</span>}
-        {temRascunho && <Button secondary disabled={gerando} onClick={() => void limpar()}><Trash2 size={15} /> Limpar rascunho</Button>}
-        <Button secondary disabled={gerando} onClick={() => void sair()}><ArrowLeft size={15} /> Relatórios</Button>
-      </div>
-    </div>
-
-    <div className="grid items-start gap-3 lg:grid-cols-[minmax(0,1fr)_300px]">
-      <div className="space-y-4 rounded-xl border border-border bg-card p-4">
+    <div className="fin-criacao-layout">
+      <div className="fin-criacao-form space-y-5 rounded-[var(--fin-radius-panel)] border border-border bg-card p-4">
+        <header className="border-b border-border pb-4">
+          <h1 className="h1 text-ink">Novo relatório</h1>
+          <p className="mt-1 text-sm text-ink-3">Escolha o período e o recorte para emitir o documento.</p>
+          {temRascunho && <p aria-live="polite" className={`mt-2 text-xs font-medium ${estado === "ERRO" ? "text-red-700" : "text-ink-3"}`}>{estado === "SALVANDO" ? "Salvando…" : estado === "SALVO" ? "Rascunho salvo" : estado === "ERRO" ? "Falha ao salvar" : "Alterações não salvas"}</p>}
+        </header>
         <ErrorBox erro={erro} />
         <ErrorBox erro={erroRascunho} />
-        <section>
+        <section className="grid gap-3">
           <h3 className={TITULO_SECAO}>Identificação</h3>
           <label className="block text-sm font-medium">Nome do relatório *<Input aria-label="Nome do relatório" maxLength={120} className={CAMPO} value={config.nome} onChange={(e) => alterar("nome", e.target.value)} /></label>
         </section>
 
-        <section>
+        <section className="grid gap-3 border-t border-border pt-4">
           <h3 className={TITULO_SECAO}>Período</h3>
           <DateRangePicker value={range} triggerAriaLabel="Período do relatório" onChange={({ start, end }) => {
             if (start && end) setConfig(atual => ({ ...atual, dataInicio: isoLocal(start), dataFim: isoLocal(end) }));
@@ -162,8 +179,8 @@ export function NovoRelatorioFinanceiro({ cadastros, rascunho, onVoltar, onGerad
           {problemaPeriodo && <p role="alert" className="mt-2 text-sm text-red-700">{problemaPeriodo}</p>}
         </section>
 
-        <fieldset>
-          <legend className={TITULO_SECAO}>Leitura financeira</legend>
+        <fieldset className="border-t border-border pt-4">
+          <legend className={`${TITULO_SECAO} pt-4`}>Leitura financeira</legend>
           <RadioGroup aria-label="Leitura financeira" value={config.regime} onValueChange={valor => alterar("regime", valor as typeof config.regime)} className="grid gap-2 md:grid-cols-3">{REGIMES_RELATORIO.map((regime) => <label key={regime.id} className="flex cursor-pointer gap-3 rounded-lg border border-border p-3 text-sm has-checked:border-mast has-checked:bg-muted">
             <RadioGroupItem value={regime.id} className="mt-1" />
             <span><strong className="block">{regime.rotulo}</strong><span className="mt-0.5 block text-xs text-ink-3">{regime.dica}</span></span>
@@ -171,7 +188,7 @@ export function NovoRelatorioFinanceiro({ cadastros, rascunho, onVoltar, onGerad
         </fieldset>
 
         <SecaoFinanceira titulo="Filtros avançados" detalhe={`${config.tipos.length + config.status.length + config.centroCustoIds.length + config.parceiroIds.length + config.categoriaIds.length + config.classificacoes.length} selecionados`}>
-        <div className="grid gap-5 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2">
           <MultiSelect label="Tipos de operação" placeholder="Todos os tipos" helpText="Sem seleção, inclui todos os tipos." options={opcoesMultiSelect(tipos)} value={config.tipos} onValueChange={(value) => alterar("tipos", value)} />
           <MultiSelect label="Situação da operação" placeholder="Todas as situações" helpText="O filtro vale para operações e itens; o caixa inclui todo movimento." options={opcoesMultiSelect(STATUS_RELATORIO)} value={config.status} onValueChange={(value) => alterar("status", value)} />
           <MultiSelect label="Centro de custo" placeholder="Todos os centros de custo" helpText="Sem seleção, inclui todos os centros." options={opcoesMultiSelect(centros)} value={config.centroCustoIds} onValueChange={(value) => alterar("centroCustoIds", value)} />
@@ -181,20 +198,24 @@ export function NovoRelatorioFinanceiro({ cadastros, rascunho, onVoltar, onGerad
         </div>
         </SecaoFinanceira>
         <p className="text-xs leading-5 text-ink-3">Categoria e classificação valem por item: numa compra com itens de categorias diferentes, entra só a parte de cada item que corresponde ao filtro.</p>
+        <footer className="flex flex-wrap gap-3 border-t border-border pt-4">
+          <Button secondary disabled={gerando} onClick={() => void sair()}><ArrowLeft size={15} /> Relatórios</Button>
+          {temRascunho && <Button secondary disabled={gerando} onClick={() => void limpar()}><Trash2 size={15} /> Limpar rascunho</Button>}
+        </footer>
       </div>
 
-      <aside aria-label="Resumo do relatório" className="sticky top-0 order-first z-10 lg:order-last overflow-hidden rounded-xl border border-border bg-card text-ink shadow-sm lg:top-3 lg:bottom-auto">
+      <aside aria-label="Resumo do relatório" className="fin-criacao-resumo overflow-hidden rounded-[var(--fin-radius-panel)] border border-border bg-card text-ink">
         <div className="flex flex-col">
           <div className="min-h-0 p-4">
-          <div className="text-[11px] font-semibold uppercase tracking-[.14em] text-ink-3">Resumo do relatório</div>
+          <div className="flex items-center gap-3"><span className="fin-section-icon" aria-hidden="true"><FileText /></span><span className="text-[11px] font-semibold uppercase tracking-[.14em] text-ink-3">Resumo do relatório</span></div>
           <div className="mt-2 break-words font-serif text-xl">{config.nome.trim() || "Sem nome"}</div>
-          <dl className="mt-3 hidden grid-cols-2 lg:grid gap-2 border-y border-border py-3 text-sm">{(destino ? [["Propriedade", destino] as [string, string], ...resumo] : resumo).map(([rotulo, valor]) => <div key={rotulo}><dt className="text-[10px] font-semibold uppercase tracking-[.14em] text-ink-3">{rotulo}</dt><dd className="mt-0.5 break-words leading-5 text-ink">{valor}</dd></div>)}</dl>
-          <div className="mt-3 hidden lg:block"><SecaoFinanceira titulo="Conteúdo do PDF"><div className="space-y-2 text-sm">{secoesDoRelatorio(config).map(secao => <p key={secao}>{secao}</p>)}</div></SecaoFinanceira></div>
+          <dl className="mt-3 grid grid-cols-2 gap-2 border-y border-border py-3 text-sm">{(destino ? [["Propriedade", destino] as [string, string], ...resumo] : resumo).map(([rotulo, valor]) => <div key={rotulo}><dt className="text-[10px] font-semibold uppercase tracking-[.14em] text-ink-3">{rotulo}</dt><dd className="mt-0.5 break-words leading-5 text-ink">{valor}</dd></div>)}</dl>
+          <div className="mt-3"><SecaoFinanceira titulo="Conteúdo do PDF"><div className="space-y-2 text-sm">{secoesDoRelatorio(config).map(secao => <p key={secao}>{secao}</p>)}</div></SecaoFinanceira></div>
           </div>
           <div className="mt-auto shrink-0 border-t border-border bg-card p-3">
             <p className="text-[11px] leading-4 text-ink-3">O PDF é baixado ao gerar e fica salvo no histórico da propriedade.</p>
-            <Button carregando={gerando} onClick={() => void gerar()} disabled={!!bloqueio || gerando} className="mt-2 w-full">{!gerando && <FileDown size={16} />} {gerando ? "Gerando…" : "Gerar relatório"}</Button>
-            {bloqueio && <p className="mt-2 text-center text-[11px] text-[#e3c66f]">{bloqueio}</p>}
+            <Button carregando={gerando} onClick={() => void gerar()} disabled={!!bloqueio || gerando} className="mt-2 w-full">{!gerando && <FileText size={16} strokeWidth={1.8} aria-hidden="true" />} {gerando ? "Gerando…" : "Gerar relatório"}</Button>
+            {bloqueio && <p className="mt-2 text-center text-[11px] text-[var(--fin-pendente)]">{bloqueio}</p>}
           </div>
         </div>
       </aside>

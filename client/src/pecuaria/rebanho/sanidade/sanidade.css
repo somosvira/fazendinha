@@ -1,0 +1,10 @@
+.sanidade-link { color: var(--pos); font-weight: 500; }
+.sanidade-link:hover { text-decoration: underline; }
+.sanidade-abas { margin-bottom: 1.5rem; }
+.sanidade-abas button { font-weight: 500; }
+.sanidade-abas button.border-mast { color: var(--pos); border-color: var(--pos); font-weight: 600; }
+.sanidade-ciclos { border: 1px solid var(--border); border-radius: .25rem; overflow: hidden; }
+.sanidade-ciclo-linha { display: grid; grid-template-columns: minmax(0,1.4fr) minmax(0,1.4fr) minmax(0,1fr) minmax(0,.8fr) auto; align-items: center; gap: 1rem; padding: 1rem; border-top: 1px solid var(--border); }
+.sanidade-ciclo-ativo { background: color-mix(in srgb, var(--pos) 6%, var(--surface)); border-left: 2px solid var(--pos); }
+.sanidade-ciclo-detalhe { margin: 0 1rem 1rem; padding: 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: .25rem; }
+@media (max-width: 720px) { .sanidade-ciclo-linha { grid-template-columns: 1fr 1fr; } .sanidade-ciclo-cabecalho { display: none; } .sanidade-ciclo-detalhe { margin: 0 .5rem .5rem; padding: .75rem; } }

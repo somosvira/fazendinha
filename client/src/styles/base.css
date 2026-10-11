@@ -1192,9 +1192,22 @@ body.no-scroll { overflow: hidden; }
 }
 
 /* Relatório financeiro gerencial: documento (pré-visualização = PDF).
-   Papel creme, Newsreader nos títulos, DM Sans no corpo, latão nos eyebrows. */
+   Papel branco e escala de cinza isolados do tema de navegação. */
 .rg-previa { display: flex; justify-content: center; }
 .rg-doc {
+  --bg: #fff;
+  --ink: #171717;
+  --ink-2: #333;
+  --ink-3: #555;
+  --leite: #333;
+  --cafe: #555;
+  --lucro: #171717;
+  --prejuizo: #171717;
+  --bg-card: #fff;
+  --bg-card-2: #f2f2f2;
+  --rule: #777;
+  --rule-soft: #d6d6d6;
+  --border: var(--rule-soft);
   width: 190mm;
   max-width: 100%;
   box-sizing: border-box;
@@ -1204,7 +1217,7 @@ body.no-scroll { overflow: hidden; }
   font-family: var(--sans);
   font-size: 11px;
   line-height: 1.4;
-  box-shadow: 0 1px 0 var(--rule), 0 12px 32px rgba(20, 25, 26, .08);
+  box-shadow: 0 1px 0 var(--rule), 0 12px 32px rgba(0, 0, 0, .08);
 }
 .rg-capa { border-bottom: 1.5px solid var(--ink); padding-bottom: 5mm; margin-bottom: 6mm; }
 .rg-marca { display: flex; align-items: center; gap: 8px; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 6mm; }
@@ -1242,4 +1255,16 @@ body.no-scroll { overflow: hidden; }
 .rg-lista dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
 .rg-observacoes { white-space: pre-wrap; margin: 0; }
 .rg-rodape { margin-top: 6mm; padding-top: 2mm; border-top: 1px solid var(--rule); }
-.rg-bloco { break-inside: avoid; page-break-inside: avoid; }
+.rg-bloco { break-inside: auto; page-break-inside: auto; }
+.rg-capa, .rg-kpis { break-inside: avoid; page-break-inside: avoid; }
+.rg-marca .terrano-symbol path { stroke: var(--ink); }
+.rg-marca .terrano-symbol circle { fill: var(--ink); }
+
+/* Seções extensas podem atravessar páginas; cabeçalhos e linhas permanecem juntos. */
+.rg-secao-cabecalho, .rg-secao h3 { break-after: avoid; page-break-after: avoid; }
+.rg-tabela thead { display: table-header-group; }
+.rg-tabela tr { break-inside: avoid; page-break-inside: avoid; }
+@media print {
+  .rg-doc { width: 100%; max-width: none; padding: 0; box-shadow: none; }
+  .rg-previa { display: block; overflow: visible; }
+}

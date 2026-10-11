@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { ChevronDown, ChevronRight, Landmark, WalletCards } from "lucide-react";
+import { ChevronDown, ChevronRight, Landmark, ClipboardCheck } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -27,7 +27,7 @@ export function IndicadorFinanceiro({ label, valor, detalhe, icon: Icon, alerta 
 function ListaContas({ contas, onAbrir }: { contas: Conta[]; onAbrir: (conta: Conta) => void }) {
   return <ul className="divide-y divide-border">{contas.map(conta => <li key={conta.id}>
     <Button variant="ghost" onClick={() => onAbrir(conta)} className="h-auto w-full justify-between gap-3 whitespace-normal rounded-none px-4 py-3 text-left">
-      <span className="flex min-w-0 items-center gap-2">{conta.tipo === "BANCO" ? <Landmark aria-hidden="true" /> : <WalletCards aria-hidden="true" />}<span className="min-w-0 break-words">{conta.nome}</span></span>
+      <span className="flex min-w-0 items-center gap-2">{conta.tipo === "BANCO" ? <Landmark aria-hidden="true" /> : <ClipboardCheck aria-hidden="true" />}<span className="min-w-0 break-words">{conta.nome}</span></span>
       <strong className={`shrink-0 tabular-nums ${Number(conta.saldoAtual) < 0 ? "text-destructive" : "fin-valor"}`}>{brl(conta.saldoAtual)}</strong>
     </Button>
   </li>)}</ul>;
@@ -38,7 +38,7 @@ export function ContasDisponibilidade({ contas, onAbrir, onAbrirConta }: { conta
   const excluidas = contas.filter(conta => !conta.incluirNoSaldoGeral);
   const saldo = incluidas.reduce((total, conta) => total + Math.round(Number(conta.saldoAtual) * 100), 0) / 100;
   return <Card data-fin-tom="entrada" className="fin-painel h-full min-w-0 gap-0 overflow-hidden rounded-lg border-border py-0 shadow-none">
-    <div className="fin-cabecalho p-4"><h2 className="font-serif text-xl">Contas e disponibilidade</h2><p className="mt-1 text-sm text-muted-foreground">Saldos atuais das contas incluídas</p></div>
+    <div className="fin-cabecalho flex items-center gap-3 p-4"><span className="fin-section-icon"><Landmark aria-hidden="true" /></span><div><h2 className="font-serif text-xl">Contas e disponibilidade</h2><p className="mt-1 text-sm text-muted-foreground">Saldos atuais das contas incluídas</p></div></div>
     <div className="px-4 pb-3"><p className="text-xs text-muted-foreground">Saldo disponível · {incluidas.length} {incluidas.length === 1 ? "conta incluída" : "contas incluídas"}</p><strong className={`text-2xl tabular-nums ${saldo < 0 ? "text-destructive" : "text-[var(--pos)]"}`}>{brl(saldo)}</strong></div>
     {incluidas.length ? <ListaContas contas={incluidas} onAbrir={onAbrirConta} /> : <p className="px-4 pb-4 text-sm text-muted-foreground">Nenhuma conta incluída no saldo disponível.</p>}
     {!!excluidas.length && <Collapsible className="border-t border-border">

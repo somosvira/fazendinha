@@ -27,20 +27,21 @@ export function FluxoContasFinanceiras({ movimentos, consolidado = false, carreg
   const entradas = dados.reduce((soma, dia) => soma + Math.round(dia.entradas * 100), 0) / 100;
   const saidas = dados.reduce((soma, dia) => soma + Math.round(dia.saidas * 100), 0) / 100;
   const rotuloPeriodo = inicio && fim ? `${dataBR(inicio)} a ${dataBR(fim)}` : "Todo o período";
-  return <Panel tom="info" className="fin-painel mt-3 min-w-0 overflow-hidden">
-    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-3">
+  const intervaloInvalido = !!inicio && !!fim && inicio > fim;
+  return <Panel tom="info" className="fin-painel mt-4 min-w-0 overflow-hidden">
+    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-4">
       <div className="min-w-0"><h2 className="font-serif text-xl">Receitas e despesas</h2><p className="mt-1 text-xs text-ink-3">{escopo} · <span className="capitalize">{rotuloPeriodo}</span></p></div>
       <ChartTypeControl value={tipoGrafico} onChange={setTipoGrafico} />
     </div>
-    {carregando ? <SkeletonGraficoFinanceiro /> : erro ? <p className="p-5 text-sm text-red-800">Não foi possível carregar os dados do gráfico.</p> : entradas === 0 && saidas === 0 ? <Empty>Sem movimentações no período selecionado para este escopo.</Empty> : <>
-      <div className="grid gap-3 p-3 sm:grid-cols-2"><div className="rounded-lg bg-green-50 p-3"><div className="flex items-center gap-2 text-xs font-semibold text-green-900"><span className="h-2.5 w-2.5 rounded-sm bg-[var(--pos)]" />Receitas no período</div><strong className="mt-2 block break-words font-serif text-xl text-green-900">{brl(entradas)}</strong></div><div className="rounded-lg bg-[color-mix(in_srgb,var(--fin-saida)_8%,white)] p-3"><div className="flex items-center gap-2 text-xs font-semibold text-[var(--fin-saida)]"><span className="h-2.5 w-2.5 rounded-sm bg-[var(--fin-saida)]" />Despesas no período</div><strong className="mt-2 block break-words font-serif text-xl text-[var(--fin-saida)]">{brl(saidas)}</strong></div></div>
+    {intervaloInvalido ? <p role="alert" className="p-4 text-sm">A data final deve ser igual ou posterior à data inicial.</p> : carregando ? <SkeletonGraficoFinanceiro /> : erro ? <p className="p-5 text-sm text-destructive">Não foi possível carregar os dados do gráfico.</p> : entradas === 0 && saidas === 0 ? <Empty>Sem movimentações no período selecionado para este escopo.</Empty> : <>
+      <div className="grid gap-4 p-4 sm:grid-cols-2"><div className="rounded-lg bg-[var(--fin-positive-bg)] p-4"><div className="flex items-center gap-2 text-xs font-semibold text-[var(--fin-entrada)]"><span className="h-2.5 w-2.5 rounded-sm bg-[var(--fin-chart-entrada)]" />Receitas no período</div><strong className="mt-2 block tabular-nums font-serif text-2xl text-[var(--fin-entrada)]">{brl(entradas)}</strong></div><div className="rounded-lg bg-muted p-4"><div className="flex items-center gap-2 text-xs font-semibold text-[var(--fin-saida)]"><span className="h-2.5 w-2.5 rounded-sm bg-[var(--fin-chart-saida)]" />Despesas no período</div><strong className="mt-2 block tabular-nums font-serif text-2xl text-[var(--fin-saida)]">{brl(saidas)}</strong></div></div>
       <div role="region" aria-label="Gráfico de receitas e despesas" tabIndex={0} className="px-2 sm:px-3"><EntradaSaidaChart compacto data={dados} tipo={tipoGrafico} /></div>
-      <div className="m-3"><SecaoFinanceira titulo={`Ver valores por ${diario ? "dia" : "mês"}`}><TabelaFinanceira compacta rotulo={`Valores de receitas e despesas por ${diario ? "dia" : "mês"}`} itens={dados} chaveDe={dia => dia.data} colunas={[
+      <div className="m-4"><SecaoFinanceira titulo={`Ver valores por ${diario ? "dia" : "mês"}`}><TabelaFinanceira compacta rotulo={`Valores de receitas e despesas por ${diario ? "dia" : "mês"}`} itens={dados} chaveDe={dia => dia.data} colunas={[
         { chave: "data", titulo: diario ? "Dia" : "Mês", principal: true, celula: dia => dia.rotulo ?? dataBR(dia.data) },
         { chave: "entradas", titulo: "Receitas", alinhamento: "direita", celula: dia => brl(dia.entradas) },
         { chave: "saidas", titulo: "Despesas", alinhamento: "direita", celula: dia => brl(dia.saidas) },
       ]} /></SecaoFinanceira></div>
     </>}
-    <p className="border-t border-border px-3 py-2 text-xs text-ink-3">{consolidado ? "Transferências entre contas próprias não compõem este gráfico." : "Inclui transferências de entrada e saída desta conta."} Estornos aparecem como movimentos na direção oposta, na data em que foram registrados; por isso, os cards mostram movimentações brutas, não valores líquidos de estornos.</p>
+    <p className="border-t border-border px-4 py-3 text-xs text-ink-3">{consolidado ? "Transferências entre contas próprias não compõem este gráfico." : "Inclui transferências de entrada e saída desta conta."} Estornos aparecem como movimentos na direção oposta, na data em que foram registrados; por isso, os cards mostram movimentações brutas, não valores líquidos de estornos.</p>
   </Panel>;
 }

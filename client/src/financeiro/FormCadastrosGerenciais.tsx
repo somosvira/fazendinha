@@ -12,6 +12,7 @@ import {
 } from "./novo-api";
 import { Button, ErrorBox } from "./financeiro-ui";
 import { CampoFormulario, classeInput, PainelCadastro } from "./PainelCadastro";
+import { Tags, Target } from "lucide-react";
 
 type Erros = Record<string, string>;
 
@@ -42,7 +43,7 @@ export function FormCategoria({ categoria, ordemInicial, onSalvo, onFechar }: { 
     finally { emCurso.current = false; setSalvando(false); }
   };
   const formId = "form-categoria";
-  return <PainelCadastro compacto bloqueado={salvando} aberto titulo={categoria ? `Editar ${categoria.nome}` : "Nova categoria"} onFechar={onFechar}
+  return <PainelCadastro icon={Tags} compacto bloqueado={salvando} aberto titulo={categoria ? `Editar ${categoria.nome}` : "Nova categoria"} onFechar={onFechar}
     rodape={<><Button secondary onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form={formId} disabled={salvando} carregando={salvando}>{salvando ? "Salvando…" : categoria ? "Salvar categoria" : "Criar categoria"}</Button></>}>
     <form id={formId} onSubmit={submeter} className="grid gap-4" noValidate>
       <ErrorBox erro={erroGeral || null} />
@@ -73,7 +74,7 @@ export function FormCentroCusto({ centro, ordemInicial, onSalvo, onFechar }: { c
     finally { emCurso.current = false; setSalvando(false); }
   };
   const formId = "form-centro-custo";
-  return <PainelCadastro compacto bloqueado={salvando} aberto titulo={centro ? `Editar ${centro.nome}` : "Novo centro de custo"} onFechar={onFechar}
+  return <PainelCadastro icon={Target} compacto bloqueado={salvando} aberto titulo={centro ? `Editar ${centro.nome}` : "Novo centro de custo"} onFechar={onFechar}
     rodape={<><Button secondary onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form={formId} disabled={salvando} carregando={salvando}>{salvando ? "Salvando…" : centro ? "Salvar centro" : "Criar centro"}</Button></>}>
     <form id={formId} onSubmit={submeter} className="grid gap-4" noValidate>
       <ErrorBox erro={erroGeral || null} />

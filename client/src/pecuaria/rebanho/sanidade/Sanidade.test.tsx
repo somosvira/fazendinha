@@ -60,7 +60,7 @@ describe("busca e atualização da Sanidade", () => {
     fireEvent.change(busca, { target: { value: "GV3" } });
     await waitFor(() => expect(mocks.req).toHaveBeenCalledWith(expect.stringMatching(/tarefas.*pagina=1.*buscaAnimal=GV3/)));
     for (const [rotulo, recurso] of [["Ocorrências", "ocorrencias"], ["Aplicações", "aplicacoes"], ["Exames", "exames"], ["Carências", "carencias"]]) {
-      fireEvent.click(screen.getByRole("button", { name: rotulo }));
+      fireEvent.click(screen.getByRole("tab", { name: rotulo }));
       await waitFor(() => expect(mocks.req).toHaveBeenCalledWith(expect.stringMatching(`${recurso}.*buscaAnimal=GV3`)));
     }
     expect(new URLSearchParams(window.location.search).get("buscaAnimal")).toBe("GV3");

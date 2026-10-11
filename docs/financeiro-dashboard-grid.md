@@ -1,5 +1,7 @@
 # Visão geral financeira em grid
 
+> Referência visual selecionada em 10/10/2026 para evolução do módulo: [Financeiro — Cooperativa contemporânea](design/financeiro-cooperativa/design.md), com mockups de páginas e diálogos. Trata-se de proposta visual; a estilização ainda não foi aplicada ao runtime. As seções abaixo descrevem a implementação desta branch.
+
 A visão geral responde quanto está disponível e quais compromissos exigem ação. O desenho compacto foi aprovado em 08/out/2026.
 
 - Cinco indicadores: saldo disponível atual, recebimentos e pagamentos realizados, saldo a pagar e a receber por vencimento no período. Os últimos dois também mostram o saldo pendente vencido e a quantidade; incluem todos os pendentes/parciais retornados, não apenas as cinco linhas visíveis.
@@ -142,3 +144,9 @@ Esta organização substitui a divisão anterior de três painéis na primeira l
 A direção neutra aprovada da visão geral agora abrange operações, detalhes e formulário; compromissos, calendário e liquidação; contas e extratos; todas as abas de configurações; relatórios, emissão e detalhes. Esta decisão substitui a limitação anterior à página inicial e as faixas/gradientes decorativos do tema anterior. Fundo cinza claro, superfícies brancas, bordas discretas, tipografia sans e títulos compactos. Verde sinaliza entradas/saldos positivos e confirmações; vermelho sinaliza alertas, estornos e cancelamentos; marrom permanece discreto em pendências e categorias. Valores de saída podem ser neutros, como na visão geral, mantendo direção e sinal escritos.
 
 `FinanceiroContent` delimita o módulo e `financeiro-theme.css` compartilha os tokens. O escopo CSS no root também alcança os portais Radix dos modais e seletores; ao sair do financeiro, os tokens das demais áreas são restaurados. Dropdowns usam `bg-popover` branco, incluindo o seletor de período, e o Select usa estados `accent` do shadcn. Não alterar dados, filtros, paginação, cálculos, permissões ou rotas nesta atualização.
+
+## Direção Cooperativa contemporânea — 11/10/2026
+
+A branch `codex/financeiro-cooperativa-contemporanea` aplica o [guia selecionado](design/financeiro-cooperativa/design.md) ao módulo completo. Na visão geral, contas precedem o fluxo, calendário precede a lista prioritária e categorias ocupam a largura completa. A ordem do DOM acompanha essa composição; as abas móveis Agenda/Análises/Contas permanecem. Nenhuma nova faixa de métricas ou componente funcional foi acrescentada. O tema inclui portais financeiros e sidebar e restaura os tokens externos ao sair do módulo. O [plano de execução](design/financeiro-cooperativa/implementacao.md) registra a distribuição entre agentes e a verificação final.
+
+Os [13 feedbacks posteriores](design/financeiro-cooperativa/plano-refinamentos.md) refinam essa entrega: operação como resumo contínuo, breadcrumbs nos detalhes, formulário esquerdo/resumo direito sem ações no topo, densidade e alinhamento comuns nas tabelas, busca/filtros na mesma barra e modais com cabeçalho sálvia. Gráficos usam verde para entradas e ocre para saídas, com traço contínuo/tracejado; Contas mostra fluxo consolidado aberto com escopo e filtros do extrato. Documento financeiro e impressão são monocromáticos. Relatórios revalidam automaticamente apenas durante processamento e oferecem nova tentativa em falha, sem botão habitual de atualizar. Rascunhos de operação/relatório salvam ao sair e mantêm recuperação temporária em memória por sessão/sítio, sem novo storage; a navegação da sidebar notifica a rota mesmo ao permanecer na mesma aba.

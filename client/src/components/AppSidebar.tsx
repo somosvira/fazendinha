@@ -13,7 +13,7 @@
 import "./sidebar-clara.css";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
-import { FilePenLine, Plus } from "lucide-react";
+import { Beef, HeartPulse,  Leaf, CircleDollarSign, FileText, FilePenLine, Plus, Settings, Wallet, type LucideIcon } from "lucide-react";
 import type { Tab } from "./Shell";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
@@ -42,6 +42,10 @@ const ICON: Partial<Record<Tab, JSX.Element>> = {
   config: <><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></>,
 };
 
+const ICON_FINANCEIRO: Partial<Record<Tab, LucideIcon>> = { gastos: CircleDollarSign, caixinha: Wallet, cadastros: Settings, plano: Settings, relatorio: FileText };
+
+const ICON_PECUARIA: Partial<Record<Tab, LucideIcon>> = { "pec-rebanho": Beef, "pec-sanidade": HeartPulse, "pec-nutricao": Leaf };
+
 type AreaTrabalhoId = "pecuaria";
 type NavItem = { id: Tab; label: string };
 type AreaTrabalho = {
@@ -63,6 +67,8 @@ const AREAS_TRABALHO: AreaTrabalho[] = [
     permissao: "pecuaria",
     principais: [
       { id: "pec-rebanho", label: "Rebanho" },
+      { id: "pec-sanidade", label: "Sanidade" },
+      { id: "pec-nutricao", label: "Nutrição" },
     ],
   },
 
@@ -109,6 +115,7 @@ function Item({ id, label, current, onNav, nested, chevron, activeWhen }: {
   id: Tab; label: string; current: Tab; onNav: (t: Tab) => void; nested?: boolean; chevron?: boolean; activeWhen?: Tab[];
 }) {
   const isOn = current === id || (activeWhen?.includes(current) ?? false);
+  const Icone = ICON_PECUARIA[id] ?? ICON_FINANCEIRO[id];
   return (
     <Button variant="ghost"
       type="button"
@@ -127,7 +134,7 @@ function Item({ id, label, current, onNav, nested, chevron, activeWhen }: {
         isOn && RAIL_ACTIVE,
       )}
     >
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} aria-hidden>{ICON[id]}</svg>
+      {Icone ? <Icone strokeWidth={1.7} aria-hidden /> : <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} aria-hidden>{ICON[id]}</svg>}
       <span className={cn("flex-1", RAIL_LABEL)}>{label}</span>
       {chevron && (
         <span className={cn("flex-none text-[11px] text-[var(--side-mute,#8B8672)]", RAIL_HIDE)} aria-hidden>›</span>

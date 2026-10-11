@@ -1,3 +1,4 @@
+import { ArrowRightLeft, TriangleAlert } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Button, ErrorBox, hoje } from "../financeiro/financeiro-ui";
 import { CampoFormulario, classeInput, PainelCadastro } from "../financeiro/PainelCadastro";
@@ -48,7 +49,7 @@ export function TransferirEstoque({ onFechar, onSalvo, perda = false }: { perda?
       onSalvo();
     } catch (e) { setErro(e instanceof Error ? e.message : String(e)); } finally { enviando.current = false; setOcupado(false); }
   }
-  return <PainelCadastro aberto titulo={perda ? "Registrar perda de estoque" : "Transferir estoque entre sítios"} onFechar={() => { if (!ocupado) onFechar(); }} rodape={<Button type="submit" form="transferir-estoque" disabled={ocupado}>{perda ? "Confirmar perda" : "Confirmar transferência"}</Button>}>
+  return <PainelCadastro icon={perda ? TriangleAlert : ArrowRightLeft} aberto titulo={perda ? "Registrar perda de estoque" : "Transferir estoque entre sítios"} onFechar={() => { if (!ocupado) onFechar(); }} bloqueado={ocupado} rodape={<Button type="submit" form="transferir-estoque" carregando={ocupado}>{perda ? "Confirmar perda" : "Confirmar transferência"}</Button>}>
     <form ref={formularioRef} id="transferir-estoque" className="grid gap-4" noValidate onChange={() => setChave(crypto.randomUUID())} onSubmit={(e) => { e.preventDefault(); void confirmar(); }}>
       <fieldset disabled={ocupado} className="contents">
       <ErrorBox erro={erro} />

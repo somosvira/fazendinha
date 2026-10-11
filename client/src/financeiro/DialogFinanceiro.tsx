@@ -1,3 +1,4 @@
+import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { TomFinanceiro } from "./financeiro-ui";
 import { useState, type ReactNode } from "react";
@@ -9,7 +10,7 @@ export function registrarOrigemDialogo(elemento: HTMLElement | null, acionador: 
   if (elemento && acionador) origensDialogo.set(elemento, [acionador]);
 }
 
-export function DialogFinanceiro({ titulo, eyebrow, onClose, children, className = "", tom = "info", rodape }: { titulo: string; eyebrow: string; onClose: () => void; children: ReactNode; className?: string; tom?: TomFinanceiro; rodape?: ReactNode }) {
+export function DialogFinanceiro({ titulo, eyebrow, onClose, children, className = "", tom = "info", rodape, icon: Icon }: { titulo: string; eyebrow: string; onClose: () => void; children: ReactNode; className?: string; tom?: TomFinanceiro; rodape?: ReactNode; icon?: LucideIcon }) {
   const [acionadores] = useState(() => {
     const atual = document.activeElement;
     if (!(atual instanceof HTMLElement)) return [];
@@ -28,9 +29,9 @@ export function DialogFinanceiro({ titulo, eyebrow, onClose, children, className
         acionador?.focus();
       });
     }} data-fin-tom={tom} className={cn("financeiro-colorido z-[1200] max-h-[90dvh] w-[calc(100%-2rem)] max-w-xl grid-cols-1 overflow-y-auto", rodape && "flex flex-col overflow-hidden", className)} overlayClassName="z-[1190]">
-      <DialogHeader className="fin-cabecalho shrink-0 border-b border-border p-4 pr-12"><DialogDescription>{eyebrow}</DialogDescription><DialogTitle>{titulo}</DialogTitle></DialogHeader>
+      <DialogHeader className="fin-cabecalho fin-dialogo-cabecalho shrink-0 border-b border-border p-5 pr-12"><div className="flex items-center gap-3">{Icon && <span className="fin-section-icon"><Icon aria-hidden="true" /></span>}<div className="min-w-0"><DialogDescription>{eyebrow}</DialogDescription><DialogTitle className="mt-1">{titulo}</DialogTitle></div></div></DialogHeader>
       {rodape ? <div className="min-h-0 overflow-y-auto">{children}</div> : children}
-      {rodape && <div className="shrink-0 border-t border-border bg-card p-3">{rodape}</div>}
+      {rodape && <div className="fin-dialogo-rodape shrink-0 border-t border-border bg-card p-4">{rodape}</div>}
     </DialogContent>
   </Dialog>;
 }

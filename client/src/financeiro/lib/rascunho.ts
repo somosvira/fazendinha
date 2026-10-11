@@ -33,7 +33,7 @@ function valorDoRascunho(operacao: Registro | null, formulario: Registro | null)
   return numero(operacao?.valorTotal ?? formulario?.valorOperacao);
 }
 
-export function resumoRascunho(rascunho: RascunhoOperacao): ResumoRascunho {
+export function resumoRascunho(rascunho: Pick<RascunhoOperacao, "dados" | "updatedAt">): ResumoRascunho {
   const operacao = registro(rascunho.dados?.operacao);
   const formulario = registro(rascunho.dados?.formulario);
   const primeiroItem = Array.isArray(operacao?.itens)
@@ -53,6 +53,7 @@ const inicioDoDia = (instante: number) => { const dia = new Date(instante); dia.
 
 /** Quando o rascunho foi salvo, em linguagem de gente: "agora", "há 5 min", "ontem"… */
 export function quandoSalvo(iso: string, agora: number = Date.now()): string {
+  if (!iso) return "Alterações preservadas nesta sessão";
   const instante = new Date(iso).getTime();
   if (!Number.isFinite(instante)) return "Rascunho salvo";
   const minutos = Math.max(0, Math.floor((agora - instante) / 60_000));

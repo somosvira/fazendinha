@@ -5,7 +5,7 @@ import { LiquidarCompromissoModal } from "./LiquidarCompromissoModal";
 import { anexarDocumentoOperacao, liquidarCompromisso, type Compromisso, type Conta } from "./novo-api";
 
 vi.mock("./novo-api", () => ({ anexarDocumentoOperacao: vi.fn(), liquidarCompromisso: vi.fn() }));
-const compromisso = { id: "compromisso", tipo: "PAGAR", saldoPendente: "100.00", parceiro: null, operacao: { id: "operacao", descricao: "Energia" } } as Compromisso;
+const compromisso = { id: "compromisso", tipo: "PAGAR", saldoPendente: "100.00", dataVencimento: "2026-09-30", parceiro: null, operacao: { id: "operacao", descricao: "Energia" } } as Compromisso;
 const contas = [{ id: "conta", nome: "Banco", ativo: true, saldoAtual: "500" }] as Conta[];
 beforeEach(() => { vi.resetAllMocks(); HTMLElement.prototype.scrollIntoView = vi.fn(); });
 afterEach(cleanup);

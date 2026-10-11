@@ -39,3 +39,31 @@
 .sidebar-clara .ah-brand button { width: 24px; height: 28px; padding: 4px; justify-content: center; }
 .sidebar-clara nav button { gap: 8px; }
 .sidebar-clara button[aria-label="Contas e extratos"] { gap: 6px; font-size: 12.5px; }
+
+/* Tema cooperativa apenas enquanto o módulo financeiro está montado. */
+:root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) .sidebar-clara {
+  --mast-bg: var(--fin-sidebar);
+  --side-hover: var(--fin-nav-selected);
+  --side-active: var(--fin-nav-selected);
+  --side-active-ink: var(--fin-heading);
+  --mast-ink: var(--fin-heading);
+  --mast-ink-2: var(--muted-foreground);
+  --side-mute: var(--muted-foreground);
+  --side-hair: var(--border);
+  --leite: var(--fin-nav-selected);
+  color: var(--foreground);
+  border-color: var(--border);
+}
+:root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) .sidebar-clara :is(button[aria-expanded],h2) { color: var(--muted-foreground); }
+:root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) .sidebar-clara :is(button[aria-label="Menu da conta"],button[aria-label^="Recolher"],button[aria-label^="Expandir"]) { color: var(--fin-heading); }
+:root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) .sidebar-clara button[aria-label="Menu da conta"] > span:first-child { color: var(--fin-heading); background: var(--fin-nav-selected); }
+:root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) .sidebar-clara button[aria-label="Propriedade / sítio ativo"] { background: var(--card); border-color: var(--border); }
+:root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) .sidebar-clara button[aria-label="Propriedade / sítio ativo"] > span:first-child { color: var(--primary); }
+:root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) .sidebar-clara nav svg { stroke-linecap: round; stroke-linejoin: round; }
+:root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) .sidebar-clara {
+  background-image: url('../assets/financeiro/paisagem-cooperativa.png');
+  background-repeat: no-repeat;
+  background-position: left bottom 64px;
+  background-size: 100% auto;
+}
+@media (min-width: 1101px) { .app:not(.side-collapsed):has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) { --side-w: 224px; } }

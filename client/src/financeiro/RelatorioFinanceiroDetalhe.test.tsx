@@ -73,3 +73,14 @@ it("pagina os itens salvos sem alterar os totais do snapshot", async () => {
   expect(tabela.queryByText("Item salvo 1")).toBeNull();
   expect(screen.getByText("Compras e serviços").parentElement?.textContent).toContain("500,00");
 });
+
+it("breadcrumb identifica a página e retorna à origem sem nova emissão", async () => {
+  vi.mocked(obterRelatorioFinanceiro).mockResolvedValue(detalhe);
+  const voltar = vi.fn();
+  render(<RelatorioFinanceiroDetalhe id={uid(12)} podeExportar onVoltar={voltar} />);
+  const caminho = within(await screen.findByRole("navigation", { name: "Caminho da página" }));
+  expect(caminho.getByText(detalhe.nome).getAttribute("aria-current")).toBe("page");
+  fireEvent.click(caminho.getByRole("link", { name: "Relatórios" }));
+  expect(voltar).toHaveBeenCalledTimes(1);
+  expect(obterRelatorioFinanceiro).toHaveBeenCalledTimes(1);
+});

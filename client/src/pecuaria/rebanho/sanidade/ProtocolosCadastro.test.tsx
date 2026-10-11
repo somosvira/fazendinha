@@ -26,7 +26,7 @@ describe("Protocolos sanitários", () => {
     await screen.findAllByText("Controle CCS");
     fireEvent.click(screen.getAllByRole("button", { name: "Publicar Controle CCS v1" })[0]);
     await screen.findByText("Versão publicada.");
-    expect(screen.getAllByText("Publicado")).toHaveLength(2);
+    expect(screen.getAllByText("Publicado")).toHaveLength(1);
     fireEvent.click(screen.getAllByRole("button", { name: "Ver etapas de Controle CCS v1" })[0]);
     expect(screen.getByText("Etapa 1 · Dia 0")).toBeTruthy();
     expect(screen.getByText("Exame · CCS")).toBeTruthy();

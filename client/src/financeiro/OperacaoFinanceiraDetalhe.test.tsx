@@ -100,16 +100,16 @@ describe("OperacaoFinanceiraDetalhe", () => {
   it("ignora resposta antiga ao navegar para outra operação e preserva rótulo de retorno", async () => {
     let liberar!: (dados: unknown) => void;
     obterOperacao.mockImplementationOnce(() => new Promise((resolve) => { liberar = resolve; })).mockResolvedValueOnce(transferencia);
-    const props = { onVoltar: vi.fn(), onAbrir: vi.fn(), onCorrigir: vi.fn(), rotuloVoltar: "Voltar à Sanidade" };
+    const props = { onVoltar: vi.fn(), onAbrir: vi.fn(), onCorrigir: vi.fn(), rotuloVoltar: "Voltar à Sanidade", urlVoltar: "/pecuaria/rebanho/sanidade?aba=aplicacoes&animalId=3" };
     const tela = render(<OperacaoFinanceiraDetalhe {...props} operacaoId={uid(6)} />);
-    expect(screen.getByRole("button", { name: "Voltar à Sanidade" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Sanidade" })).toBeTruthy();
     expect(screen.getByRole("status", { name: "Carregando operação" }).getAttribute("aria-busy")).toBe("true");
     tela.rerender(<OperacaoFinanceiraDetalhe {...props} operacaoId={uid(7)} />);
     await screen.findByRole("heading", { name: "Reposição entre sítios" });
     expect(screen.queryByRole("status", { name: "Carregando operação" })).toBeNull();
     await act(async () => { liberar(operacao); });
     expect(screen.queryByRole("heading", { name: "Compra de ração" })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Voltar à Sanidade" })); expect(props.onVoltar).toHaveBeenCalledOnce();
+    fireEvent.click(screen.getByRole("link", { name: "Sanidade" })); expect(props.onVoltar).toHaveBeenCalledOnce();
   });
   it.each(["cancelamento", "estorno"])("%s pendente da operação anterior não recarrega nem sobrescreve a nova operação", async (acao) => {
     let liberar!: (dados: unknown) => void;

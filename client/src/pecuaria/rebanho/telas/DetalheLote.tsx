@@ -163,7 +163,7 @@ export function DetalheLote({ id, podeLancar = true, onVoltar }: { id: string; p
   ];
 
   return <PaginaFinanceira>
-    <button onClick={onVoltar} className="mb-5 inline-flex items-center gap-2 text-sm font-semibold text-ink-2 hover:text-ink"><ArrowLeft size={17} /> Voltar para lotes</button>
+    <nav aria-label="Navegação" className="pec-breadcrumb"><button type="button" onClick={() => navegarPara("/pecuaria/rebanho")}>Rebanho</button><span aria-hidden="true">/</span><button type="button" onClick={onVoltar}>Lotes</button><span aria-hidden="true">/</span><span aria-current="page">{lote.nome}</span></nav>
     <PageHeader
       eyebrow="Lote"
       titulo={lote.nome}

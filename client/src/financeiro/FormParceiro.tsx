@@ -10,6 +10,7 @@ import { PAPEIS_PARCEIRO, papeisDoParceiro, FORMAS_PAGAMENTO } from "./lib/parce
 import { Button, ErrorBox } from "./financeiro-ui";
 import { CampoFormulario, classeInput, PainelCadastro } from "./PainelCadastro";
 import { formatarDocumento, somenteDigitos, validarDocumento, validarParceiro, type ErrosCampo } from "./lib/validacao";
+import { Users } from "lucide-react";
 
 const ENDERECO = [["cep", "CEP", 9], ["logradouro", "Logradouro", 160], ["numero", "Número", 20], ["complemento", "Complemento", 100], ["bairro", "Bairro", 100], ["cidade", "Cidade", 100], ["uf", "UF", 2], ["referencia", "Referência", 240]] as const;
 
@@ -60,24 +61,30 @@ export function FormParceiro({ parceiro, aberto, onSalvo, onFechar }: { parceiro
   };
 
   const formId = "form-parceiro";
-  return <PainelCadastro bloqueado={salvando} aberto={aberto} titulo={parceiro ? `Editar ${parceiro.nome}` : "Novo parceiro"} onFechar={() => { if (!emCurso.current) onFechar(); }}
+  return <PainelCadastro icon={Users} bloqueado={salvando} aberto={aberto} titulo={parceiro ? `Editar ${parceiro.nome}` : "Novo parceiro"} onFechar={() => { if (!emCurso.current) onFechar(); }}
     rodape={<><Button secondary onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form={formId} disabled={salvando} carregando={salvando}>{salvando ? "Salvando…" : parceiro ? "Salvar parceiro" : "Criar parceiro"}</Button></>}>
-    <form id={formId} onSubmit={submeter} noValidate className="cadastro-grid grid gap-3 sm:grid-cols-2">
+    <form id={formId} onSubmit={submeter} noValidate className="cadastro-grid grid grid-cols-1 gap-5">
       <p className="text-sm text-ink-3">* Campos obrigatórios</p>
       <ErrorBox erro={erroGeral} />
+      <section className="grid gap-4">
+        <h3 className="text-sm font-semibold text-ink">Identificação e papéis</h3>
       <CampoFormulario id="parceiro-nome" rotulo="Nome / razão social" obrigatorio erro={erros.nome}>{(p) => <Input {...p} required maxLength={120} value={nome} onChange={(e) => setNome(e.target.value)} className={classeInput} />}</CampoFormulario>
       <div className="grid gap-4 sm:grid-cols-2">
         <CampoFormulario id="parceiro-documento" rotulo="CPF/CNPJ" erro={erros.documento} ajuda="Opcional. Informe somente quando estiver disponível; não consultamos a situação cadastral.">{(p) => <Input {...p} inputMode="numeric" value={documento} onChange={(e) => setDocumento(e.target.value)} onBlur={() => { if (!validarDocumento(documento)) setDocumento(formatarDocumento(documento)); }} placeholder="Opcional" className={classeInput} />}</CampoFormulario>
         {(somenteDigitos(documento).length === 14 || extras.nomeFantasia) && <CampoFormulario id="parceiro-fantasia" rotulo="Nome fantasia" erro={erros.nomeFantasia}>{(p) => <Input {...p} maxLength={120} value={extras.nomeFantasia} onChange={(e) => setExtras((s) => ({ ...s, nomeFantasia: e.target.value }))} className={classeInput} />}</CampoFormulario>}
       </div>
       <fieldset aria-describedby={erros.papeis ? "papeis-erro" : "papeis-ajuda"}><legend className="mb-2 text-sm font-medium">Papéis do parceiro *</legend><div className="grid gap-3 sm:grid-cols-2">{(Object.keys(PAPEIS_PARCEIRO) as PapelParceiro[]).map((papel) => <label key={papel} className="flex items-center gap-2 text-sm"><Checkbox  checked={papeis.includes(papel)} onCheckedChange={(checked) => setPapeis((atual) => checked === true ? [...atual, papel] : atual.filter((p) => p !== papel))} />{PAPEIS_PARCEIRO[papel]}</label>)}</div>{erros.papeis ? <p id="papeis-erro" role="alert" className="mt-2 text-sm text-red-700">{erros.papeis}</p> : <p id="papeis-ajuda" className="mt-2 text-xs text-ink-3">Para um cliente, somente o nome e o papel Cliente são necessários. Contatos e documento podem ser completados depois.</p>}</fieldset>
+      </section>
+      <section className="grid gap-4 border-t border-border pt-4">
+        <h3 className="text-sm font-semibold text-ink">Contato</h3>
       <CampoFormulario id="parceiro-contato" rotulo="Pessoa de contato" erro={erros.pessoaContato}>{(p) => <Input {...p} maxLength={120} value={extras.pessoaContato} onChange={(e) => setExtras((s) => ({ ...s, pessoaContato: e.target.value }))} className={classeInput} />}</CampoFormulario>
       <div className="grid gap-4 sm:grid-cols-2">
         <CampoFormulario id="parceiro-telefone" rotulo="Telefone" erro={erros.telefone}>{(p) => <Input {...p} type="tel" value={telefone} onChange={(e) => setTelefone(e.target.value)} placeholder="Opcional" className={classeInput} />}</CampoFormulario>
         <CampoFormulario id="parceiro-email" rotulo="E-mail" erro={erros.email}>{(p) => <Input {...p} type="text" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Opcional" className={classeInput} />}</CampoFormulario>
       </div>
       <label className="flex items-center gap-2 text-sm"><Checkbox  checked={telefoneWhatsapp} onCheckedChange={(checked) => setTelefoneWhatsapp(checked === true)} />Este telefone possui WhatsApp</label>
-      <div className="sm:col-span-2"><SecaoFinanceira titulo="Endereço" abrir={ENDERECO.some(([campo]) => Boolean(erros[campo]))}><CamposCadastro prefixo="parceiro" campos={ENDERECO} valores={extras} onChange={(k, v) => setExtras((s) => ({ ...s, [k]: v }))} erros={erros} /></SecaoFinanceira></div>
+      </section>
+      <div><SecaoFinanceira titulo="Endereço" abrir={ENDERECO.some(([campo]) => Boolean(erros[campo]))}><CamposCadastro prefixo="parceiro" campos={ENDERECO} valores={extras} onChange={(k, v) => setExtras((s) => ({ ...s, [k]: v }))} erros={erros} /></SecaoFinanceira></div>
       <fieldset className="grid gap-3 border-t border-border pt-3 sm:grid-cols-2"><legend className="font-medium">Preferências de pagamento</legend>
         <p className="text-sm text-ink-3">Sugestões opcionais. Você pode escolher outras condições em cada operação.</p>
         <CampoFormulario id="parceiro-condicao" rotulo="Condição sugerida" erro={erros.condicaoPagamentoPreferida}>{(p) => <SelectCampo {...p} value={condicaoPreferida} onValueChange={(valor) => setCondicaoPreferida(valor as typeof condicaoPreferida)} className={classeInput}><option value="">Sem preferência</option><option value="A_VISTA">À vista</option><option value="A_PRAZO">A prazo</option></SelectCampo>}</CampoFormulario>

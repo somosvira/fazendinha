@@ -2,7 +2,7 @@ import type { Tab } from "./components/Shell";
 import { ABAS } from "./data/acessos";
 import type { UsuarioSessao } from "./lib/auth";
 import { areaDaTab, temAcessoArea, temAcessoEstoque } from "./lib/areas";
-import { pathToTab, tabToPath } from "./router";
+import { pathToTab, tabToPath, normalizarRotaPecuaria } from "./router";
 
 export type RotaAuth =
   | { kind: "signin"; returnTo: string | null }
@@ -64,6 +64,13 @@ export function podeAcessarTab(usuario: UsuarioSessao, tab: Tab): boolean {
   return area !== null;
 }
 
+export function podeAcessarCaminho(usuario: UsuarioSessao, caminho: string): boolean {
+  const url = new URL(normalizarRotaPecuaria(caminho), "https://terrano.internal");
+  const tab = pathToTab(url.pathname);
+  return !!tab && podeAcessarTab(usuario, tab)
+    && (!url.pathname.startsWith("/configuracoes/pecuaria") || podeAcessarTab(usuario, "pec-rebanho"));
+}
+
 export function paginaInicialAutorizada(usuario: UsuarioSessao): string {
   for (const aba of ABAS) {
     const tab = aba.id as Tab;
@@ -78,7 +85,7 @@ export function destinoDepoisDoLogin(rawReturnTo: string | null | undefined, usu
   if (!interno) return paginaInicialAutorizada(usuario);
   const pathname = new URL(interno, "https://terrano.internal").pathname;
   const tab = pathToTab(pathname);
-  return tab && podeAcessarTab(usuario, tab) ? interno : paginaInicialAutorizada(usuario);
+  return tab && podeAcessarCaminho(usuario, interno) ? normalizarRotaPecuaria(interno) : paginaInicialAutorizada(usuario);
 }
 
 export function urlSigninPara(pathname: string, search = ""): string {

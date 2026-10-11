@@ -1,3 +1,4 @@
+import { Link } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { comPropriedade } from "../propriedadeScope";
@@ -21,14 +22,14 @@ export function VinculosPecuaria({ operacaoId, compacto = false }: { operacaoId:
     return () => controle.abort();
   }, [operacaoId, revisao]);
   if (!podeAcessarArea("pecuaria")) return null;
-  return <section className={compacto ? "fin-painel min-w-0 rounded-xl border border-border bg-card p-4" : "border-t border-border p-6"} data-fin-tom="info" aria-label="Vínculos com a Pecuária">
-    <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-3">Procedimentos vinculados</h2>
+  return <section className={compacto ? "fin-painel min-w-0 rounded-2xl border border-border bg-card p-4 sm:p-6" : "border-t border-border p-6"} data-fin-tom="info" aria-label="Vínculos com a Pecuária">
+    <h2 className="flex items-center gap-3 text-base font-semibold text-ink"><span className="fin-section-icon"><Link aria-hidden /></span>Procedimentos vinculados</h2>
     <p className="mt-1 text-xs text-ink-3">Esta é a origem financeira dos procedimentos, sem nova despesa. O custo do medicamento e o rateio do Serviço são separados.</p>
-    {erro && <p className="mt-3 text-sm text-red-800">{erro} <Button variant="link" type="button" className="h-auto p-0 underline" onClick={() => setRevisao((v) => v + 1)}>Tentar novamente</Button></p>}
+    {erro && <p className="mt-3 text-sm text-destructive">{erro} <Button variant="link" type="button" className="h-auto p-0 underline" onClick={() => setRevisao((v) => v + 1)}>Tentar novamente</Button></p>}
     {!dados && !erro && <p className="mt-3 text-sm">Carregando vínculos…</p>}
     {dados && <>
       {dados.itensDiretos.map((i) => <p key={i.id} className="mt-3 rounded-lg bg-surface-2 p-3 text-sm"><strong>{i.descricao}</strong> · comprado {i.quantidadeComprada} {i.unidade} · destinado {i.quantidadeDestinada} {i.unidade} · disponível {i.quantidadeDisponivel} {i.unidade}</p>)}
-      {dados.fatos.length === 0 ? <p className="mt-3 text-sm text-ink-3">Nenhum procedimento vinculado.</p> : <div className="mt-3 grid gap-2">{dados.fatos.map((f) => {
+      {dados.fatos.length === 0 ? <p className="mt-4 rounded-lg border border-border bg-muted p-4 text-sm text-ink-3">Nenhum procedimento vinculado.</p> : <div className="mt-3 grid gap-2">{dados.fatos.map((f) => {
         const tipo = f.tipo === "APLICACAO" ? "aplicacao" : f.tipo === "EXAME" ? "exame" : "execucao";
         const param = `aba=${f.tipo === "APLICACAO" ? "aplicacoes" : f.tipo === "EXAME" ? "exames" : "agenda"}&detalheTipo=${tipo}&detalheId=${encodeURIComponent(f.id)}`;
         const href = `/pecuaria/rebanho/sanidade?${param}&animalId=${encodeURIComponent(f.animalId)}&propriedadeId=${f.propriedadeId}`;

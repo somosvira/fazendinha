@@ -131,8 +131,8 @@ export async function exportarRelatorioGerencialPdf(elemento: HTMLElement, dto: 
     margin: [10, 10, 12, 10],
     filename: nomeArquivoRelatorio(dto, "pdf"),
     image: { type: "jpeg", quality: 0.98 },
-    html2canvas: { scale: 2, useCORS: true, backgroundColor: "#F2EDE2" },
+    html2canvas: { scale: 2, useCORS: true, backgroundColor: "#FFFFFF" },
     jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-    pagebreak: { mode: ["css", "legacy"], avoid: [".rg-bloco", "tr"] },
+    pagebreak: { mode: ["css", "legacy"], avoid: [".rg-capa", ".rg-kpis", ".rg-secao-cabecalho", "tr"] },
   }).from(elemento).save();
 }
