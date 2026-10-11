@@ -418,3 +418,12 @@ Pesagem coletiva é uma ação da seleção em `/pecuaria/rebanho/animais`. `/pe
 ## Design unificado — 11/10/2026
 
 Financeiro, Pecuária e Estoque foram consolidados em `codex/redesign-unificado-cooperativa`. O tema compartilhado alcança `.financeiro-content`, `.pecuaria-content`, `.estoque-content` e `.cooperativa-content` (demais telas autenticadas). Paleta e tokens permanecem em `styles/cooperativa-theme.css`; composição de Estoque em `estoque/estoque-theme.css`. A ficha de produto usa breadcrumb, SubTabs e TabelaFinanceira, preservando os contratos de leitura/gravação. Ver [guia unificado](docs/design/cooperativa-unificada.md).
+
+
+## Cabeçalho único de páginas — 11/10/2026
+
+Todas as páginas de Financeiro, Pecuária e Estoque usam `PageHeader` de `financeiro-ui.tsx`. A identidade fica à esquerda: título, descrição opcional e contexto (status ou informações específicas). À direita, `extra` recebe período ou resumo e `acao` recebe os botões. Usar tokens e classes `fin-cabecalho-*`, sem recriar alturas, espaçamentos ou tipografia por página.
+
+O título tem a mesma escala .h1; a descrição usa 14 px, linha 1.5 e distância de 8 px. Ações têm altura mínima de 40 px e intervalo de 8 px. O cabeçalho deixa 24 px até o conteúdo (16 px em telas pequenas). Até 900 px os comandos passam para uma linha abaixo, alinhada à esquerda.
+
+Fichas contínuas mantêm o mesmo cabeçalho dentro do painel com `integrado` (24 px de preenchimento; 16 px no celular). Formulários de criação usam a mesma identidade dentro da coluna do formulário, preservando o resumo e as ações de conclusão na coluna à direita. Não adicionar o nome do módulo acima do título quando a navegação já identifica a área.

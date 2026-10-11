@@ -54,7 +54,7 @@ function irParaPrimeiroErro(erros: Erros): boolean {
 export function NovoAnimal({ onVoltar, podeLancar = true }: { onVoltar: () => void; podeLancar?: boolean }) {
   if (!podeLancar) {
     return <PaginaFinanceira>
-      <PageHeader eyebrow="Pecuária" titulo="Novo animal" descricao="O seu perfil pode consultar o rebanho, mas não pode cadastrar animais." />
+      <PageHeader eyebrow="" titulo="Novo animal" descricao="O seu perfil pode consultar o rebanho, mas não pode cadastrar animais." />
       <ErrorBox erro="Você não tem permissão para cadastrar animais." />
     </PaginaFinanceira>;
   }
@@ -182,7 +182,7 @@ function FormNovoAnimal({ onVoltar }: { onVoltar: () => void }) {
     <ErrorBox erro={erroCatalogos} />
     {catalogos && <form onSubmit={submeter} noValidate className="pec-novo-animal">
       <div className="pec-form-corpo space-y-7 p-5 md:p-7">
-        <header className="pec-form-cabecalho"><div className="eyebrow mb-2">Pecuária · Rebanho</div><h1 className="h1">Novo animal</h1><p className="mt-2 text-sm text-muted-foreground">Identifique o animal e confira o cadastro antes de salvar.</p></header>
+        <PageHeader titulo="Novo animal" descricao="Identifique o animal e confira o cadastro antes de salvar." />
         <div id="novo-animal-erro" tabIndex={-1} className="outline-none"><ErrorBox erro={erroGeral} /></div>
         <section>
           <h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Identificação</h3>

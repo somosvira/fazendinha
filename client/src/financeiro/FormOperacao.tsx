@@ -1,3 +1,4 @@
+import { PageHeader } from "./financeiro-ui";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
@@ -764,7 +765,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
     <style>{`.shell-wide.pagina-operacao { box-sizing: border-box; padding-top: 16px; padding-bottom: 16px; overflow: hidden; } @media (max-width: 900px) { .shell-wide.pagina-operacao { padding-top: 56px; } }`}</style>
     <form ref={formularioRef} onSubmit={submit} noValidate className="form-operacao fin-criacao-layout grid h-full min-h-0 grid-cols-1 grid-rows-[minmax(0,1fr)_auto] content-start gap-4 overflow-hidden overscroll-contain lg:grid-cols-[minmax(0,1fr)_340px] lg:grid-rows-[minmax(0,1fr)] lg:content-normal lg:overflow-hidden">
       <div data-testid="campos-operacao" className="fin-criacao-form relative min-h-0 min-w-0 space-y-6 overflow-y-auto overscroll-contain rounded-2xl border border-border bg-card p-4 sm:p-6">
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-5"><div><h1 className="h1 text-ink">{operacaoBase ? "Criar operação de correção" : "Nova operação"}</h1></div>{!operacaoBase && !ehAjuste && !atalhoAjuste && temConteudoRascunho && <div className="flex flex-wrap items-center gap-3"><span aria-live="polite" className={`text-xs font-medium ${estadoSalvamento === "ERRO" ? "text-destructive" : "text-ink-3"}`}>{estadoSalvamento === "SALVANDO" ? "Salvando…" : estadoSalvamento === "SALVO" ? "Rascunho salvo" : estadoSalvamento === "ERRO" ? "Falha ao salvar" : "Alterações não salvas"}</span></div>}</div>
+        <PageHeader titulo={operacaoBase ? "Criar operação de correção" : "Nova operação"}>{!operacaoBase && !ehAjuste && !atalhoAjuste && temConteudoRascunho && <div className="flex flex-wrap items-center gap-3"><span aria-live="polite" className={`text-xs font-medium ${estadoSalvamento === "ERRO" ? "text-destructive" : "text-ink-3"}`}>{estadoSalvamento === "SALVANDO" ? "Salvando…" : estadoSalvamento === "SALVO" ? "Rascunho salvo" : estadoSalvamento === "ERRO" ? "Falha ao salvar" : "Alterações não salvas"}</span></div>}</PageHeader>
         <ErrorBox erro={erro} />
         {operacaoBase && <div className="rounded-lg border border-border bg-muted p-4 text-sm leading-5 text-[var(--warn)]"><strong>Nova operação baseada na {codigoOperacao(operacaoBase.numero)}</strong><p className="mt-1 text-xs">Revise todos os dados e efeitos antes de confirmar. A operação cancelada permanecerá preservada no histórico.</p></div>}
         <section>

@@ -277,7 +277,7 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
   if (carregando && !jaCarregou.current && !itens.length && !erro && !filtrosAbertos) return <PaginaCarregando label="Carregando animais" />;
 
   return <PaginaFinanceira>
-    <PageHeader eyebrow="" titulo={pesagem ? "Pesagem e manejo" : "Rebanho"} descricao={pesagem ? "Selecione os animais para pesar. Manejos individuais continuam na ficha." : ""} acao={!pesagem ? <div className="flex flex-wrap gap-2"><Button secondary onClick={() => navegarPara("/configuracoes/pecuaria/rebanho/categorias")}>Gerenciar categorias <ExternalLink size={14} /></Button>{podeLancar && <Button onClick={onNovoAnimal}><Plus size={16} /> Novo animal</Button>}</div> : undefined} />
+    <PageHeader eyebrow="" titulo={pesagem ? "Pesagem e manejo" : "Rebanho"} descricao={pesagem ? "Selecione os animais para pesar. Manejos individuais continuam na ficha." : "Consulte os animais, seus lotes e o histórico do rebanho."} acao={!pesagem ? <div className="flex flex-wrap gap-2"><Button secondary onClick={() => navegarPara("/configuracoes/pecuaria/rebanho/categorias")}>Gerenciar categorias <ExternalLink size={14} /></Button>{podeLancar && <Button onClick={onNovoAnimal}><Plus size={16} /> Novo animal</Button>}</div> : undefined} />
     {!pesagem && <NavRebanho ativa="animais" />}
     <ErrorBox erro={erro} />
 

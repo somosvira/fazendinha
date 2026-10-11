@@ -7,7 +7,7 @@ import { ArrowDownLeft, ArrowDownRight, ArrowUpRight, ArrowUpDown, CalendarDays,
 import type { Tab } from "../components/Shell";
 import { AnaliseCategorias } from "./AnaliseCategorias";
 import { descartarRascunhoOperacao, obterConfiguracoesFinanceiras, obterDashboardFinanceiro, obterRascunhoOperacao, type Compromisso, type ConfiguracoesFinanceiras, type DashboardFinanceiro } from "./novo-api";
-import { brl, Empty, ErrorBox, mesAtual, PaginaCarregando, PaginaFinanceira } from "./financeiro-ui";
+import { brl, Empty, ErrorBox, mesAtual, PageHeader, PaginaCarregando, PaginaFinanceira } from "./financeiro-ui";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { abrirRotaNovaOperacao, navegarPara } from "../router";
 import { IndicadorFinanceiro, ContasDisponibilidade, resumoVencidos } from "./DashboardResumo";
@@ -99,10 +99,7 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
   const painelCategorias = dadosAtuais && (<AnaliseCategorias compacto inicio={inicioPeriodo} fim={fimPeriodo} despesas={dadosAtuais.despesasPorCategoria} categorias={config?.categorias ?? []} />);
 
   return <PaginaFinanceira colorida><div className="dashboard-financeiro">
-    <header className="flex flex-wrap items-center justify-between gap-3 py-3">
-      <div><h1 className="h2">Visão geral financeira</h1><p className="mt-1 text-sm text-muted-foreground">Seu caixa, compromissos e movimentações em um só lugar.</p></div>
-      <div className="flex flex-wrap items-center gap-2"><PeriodoFinanceiroControl inicio={inicioPeriodo} fim={fimPeriodo} onChange={periodo => { setInicioPeriodo(periodo.inicio); setFimPeriodo(periodo.fim); setMesCalendario(periodo.inicio.slice(0, 7)); }} />{podeLancar && <Button disabled={preparando} onClick={() => { void iniciarNovaOperacao(); }}><Plus />Nova operação</Button>}</div>
-    </header>
+    <PageHeader titulo="Visão geral financeira" descricao="Seu caixa, compromissos e movimentações em um só lugar." extra={<PeriodoFinanceiroControl inicio={inicioPeriodo} fim={fimPeriodo} onChange={periodo => { setInicioPeriodo(periodo.inicio); setFimPeriodo(periodo.fim); setMesCalendario(periodo.inicio.slice(0, 7)); }} />} acao={podeLancar && <Button disabled={preparando} onClick={() => { void iniciarNovaOperacao(); }}><Plus />Nova operação</Button>} />
     <ErrorBox erro={erro} />
     {(carregando || (!dadosAtuais && !erro)) && <div className="mt-3"><AtualizandoFinanceiro label="Atualizando… Os dados anteriores permanecem visíveis." /></div>}
     {erro && !dadosAtuais && <Button variant="outline" onClick={() => setRevisao(value => value + 1)}>Tentar novamente</Button>}

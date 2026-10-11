@@ -140,3 +140,25 @@
   :is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content) :is(.fin-filtro-busca, .fin-filtro-campo, .fin-filtro-controle, .fin-filtro-periodo) { flex-basis: 100%; max-width: none; }
   :is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content) .fin-operacao-secao { padding: 16px; }
 }
+
+
+/* Uma estrutura para títulos, contexto e ações em todas as áreas. */
+.fin-cabecalho-pagina { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px 24px; min-width: 0; }
+.fin-cabecalho-identidade { flex: 1 1 320px; min-width: 0; }
+.fin-cabecalho-identidade > .h1 { margin: 0; overflow-wrap: anywhere; hyphens: auto; }
+.fin-cabecalho-identidade > .eyebrow { margin-bottom: 8px; }
+.fin-cabecalho-descricao { margin-top: 8px; max-width: 72ch; color: var(--muted-foreground); font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+.fin-cabecalho-contexto { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
+.fin-cabecalho-comandos { display: flex; flex: 0 1 auto; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 12px; min-width: 0; max-width: 50%; padding-top: 0; }
+.fin-cabecalho-acoes, .fin-cabecalho-extra { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; min-width: 0; max-width: 100%; }
+.fin-cabecalho-acoes > div { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.fin-cabecalho-acoes :is(button, a.nutricao-botao, a.nutricao-botao-secundario) { min-height: 40px; font-size: 14px; }
+:is(.financeiro-content,.pecuaria-content,.estoque-content,.cooperativa-content) .fin-cabecalho-integrado { margin-bottom: 0; padding: 24px; }
+@media (max-width: 900px) {
+ .fin-cabecalho-pagina { flex-wrap: wrap; }
+ .fin-cabecalho-comandos { max-width: 100%; flex: 1 1 100%; justify-content: flex-start; }
+ .fin-cabecalho-acoes, .fin-cabecalho-extra { justify-content: flex-start; }
+}
+@media (max-width: 720px) {
+ :is(.financeiro-content,.pecuaria-content,.estoque-content,.cooperativa-content) .fin-cabecalho-integrado { padding: 16px; }
+}

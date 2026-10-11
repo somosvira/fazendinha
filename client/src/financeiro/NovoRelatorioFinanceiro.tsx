@@ -1,3 +1,4 @@
+import { PageHeader } from "./financeiro-ui";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { PaginaFinanceira } from "./financeiro-ui";
 import { SecaoFinanceira } from "./SecaoFinanceira";
@@ -159,11 +160,9 @@ export function NovoRelatorioFinanceiro({ cadastros, rascunho, onVoltar, onGerad
   return <PaginaFinanceira colorida>
     <div className="fin-criacao-layout">
       <div className="fin-criacao-form space-y-5 rounded-[var(--fin-radius-panel)] border border-border bg-card p-4">
-        <header className="border-b border-border pb-4">
-          <h1 className="h1 text-ink">Novo relatório</h1>
-          <p className="mt-1 text-sm text-ink-3">Escolha o período e o recorte para emitir o documento.</p>
+        <PageHeader titulo="Novo relatório" descricao="Escolha o período e o recorte para emitir o documento.">
           {temRascunho && <p aria-live="polite" className={`mt-2 text-xs font-medium ${estado === "ERRO" ? "text-red-700" : "text-ink-3"}`}>{estado === "SALVANDO" ? "Salvando…" : estado === "SALVO" ? "Rascunho salvo" : estado === "ERRO" ? "Falha ao salvar" : "Alterações não salvas"}</p>}
-        </header>
+        </PageHeader>
         <ErrorBox erro={erro} />
         <ErrorBox erro={erroRascunho} />
         <section className="grid gap-3">

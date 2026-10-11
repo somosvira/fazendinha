@@ -190,3 +190,12 @@ Validado:
 - Build de produção aprovado; diferenças sem erros de whitespace.
 
 As capturas bloquearam requisições de escrita dos fluxos de negócio. Não houve alterações de contratos de API, permissões ou cálculos financeiros. A revisão visual cobre os estados descritos; não equivale a uma auditoria completa de acessibilidade ou de todas as combinações de dados.
+
+
+## Cabeçalhos padronizados — 11/10/2026
+
+- Componente PageHeader compartilhado com slots de identidade, descrição, contexto, extras e ações. Dashboard, fichas de operação/animal e formulários reutilizam a mesma base, além das listagens já existentes.
+- 262 testes aprovados em 13 arquivos dos fluxos afetados; build de produção aprovado.
+- Capturas de nove rotas em 1538, 1180, 720 e 375 px: 36 estados sem transbordamento horizontal e sem erros JavaScript. Capturas sem escrita de negócio.
+- Inspeção visual representativa: Contas em desktop, Rebanho a 720 px e visão geral financeira a 375 px. Galeria em `output/qa/cabecalhos-unificados/index.html`.
+- A revisão cobre os cabeçalhos e os estados mencionados; não é uma auditoria completa de todos os componentes e estados das páginas.

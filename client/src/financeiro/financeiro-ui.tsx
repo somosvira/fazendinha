@@ -55,9 +55,19 @@ export function PaginaSemDados({ titulo, descricao, label, erro }: { titulo: str
   return <PaginaFinanceira><PageHeader eyebrow="" titulo={titulo} descricao={descricao} /><ErrorBox erro={erro} /></PaginaFinanceira>;
 }
 
-export function PageHeader({ titulo, descricao, acao, eyebrow = "Financeiro" }: { titulo: string; descricao: string; acao?: React.ReactNode; /** rótulo acima do título; padrão "Financeiro" */ eyebrow?: string }) {
-  return <header className="fin-cabecalho-pagina flex flex-wrap items-end justify-between gap-3 border-b border-border pb-3 pt-3 max-[900px]:pt-0">
-    <div className="min-w-0 max-w-3xl flex-[1_1_320px]">{eyebrow && <div className="eyebrow">{eyebrow}</div>}<h1 className={`h1 break-words hyphens-auto ${eyebrow ? "mt-2" : ""}`}>{titulo}</h1><p className="mt-2 break-words text-sm leading-6 text-ink-3">{descricao}</p></div>{acao}
+export function PageHeader({ titulo, descricao, acao, extra, contexto, children, eyebrow = "", integrado = false }: { titulo: React.ReactNode; descricao?: React.ReactNode; acao?: React.ReactNode; extra?: React.ReactNode; contexto?: React.ReactNode; children?: React.ReactNode; eyebrow?: string; integrado?: boolean }) {
+  return <header className={`fin-cabecalho-pagina ${integrado ? "fin-cabecalho-integrado" : ""}`}>
+    <div className="fin-cabecalho-identidade">
+      {eyebrow && <div className="eyebrow">{eyebrow}</div>}
+      <h1 className="h1">{titulo}</h1>
+      {descricao && <p className="fin-cabecalho-descricao">{descricao}</p>}
+      {contexto && <div className="fin-cabecalho-contexto">{contexto}</div>}
+      {children}
+    </div>
+    {(extra || acao) && <div className="fin-cabecalho-comandos">
+      {extra && <div className="fin-cabecalho-extra">{extra}</div>}
+      {acao && <div className="fin-cabecalho-acoes">{acao}</div>}
+    </div>}
   </header>;
 }
 

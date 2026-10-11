@@ -18,6 +18,7 @@ import { SubTabs, type SubTab } from "./SubTabs";
 import { EmptyState } from "./EmptyState";
 import { PlanoContas } from "./PlanoContas";
 import { Acessos } from "./Acessos";
+import { PageHeader } from "../financeiro/financeiro-ui";
 import { Sitios } from "./configuracoes/Sitios";
 
 type ConfSub = "categorias" | "sitios" | "acessos" | "pecuaria";
@@ -71,7 +72,7 @@ export function ConfiguracoesHub({ tab, onNav, isAdmin, podeCategorias = true, p
       <div className={cn("pt-7", "px-[var(--gutter)]")}>
         <SubTabs tabs={tabs} active={atual} onSelect={(id) => id === "pecuaria" ? navegarPara("/configuracoes/pecuaria") : onNav(TAB_BY_SUB[id])} />
       </div>
-      {atual === "pecuaria" && <div className="shell-wide pagina-financeira financeiro-colorido"><header className="mb-6"><h1 className="h1">Configurações da Pecuária</h1><p className="mt-2 text-sm text-ink-3">Cadastros de rebanho, genética e sanidade.</p></header><ConfiguracoesPecuaria podeLancar={podeLancarPecuaria} /></div>}
+      {atual === "pecuaria" && <div className="shell-wide pagina-financeira financeiro-colorido"><PageHeader titulo="Configurações da Pecuária" descricao="Cadastros de rebanho, genética e sanidade." /><ConfiguracoesPecuaria podeLancar={podeLancarPecuaria} /></div>}
       {atual === "categorias" && <PlanoContas onNav={onNav} />}
       {atual === "sitios" && isAdmin && <Sitios />}
       {atual === "acessos" && isAdmin && <Acessos />}

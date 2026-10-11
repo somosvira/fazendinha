@@ -24,7 +24,7 @@ import { FormPesagem } from "../forms/FormPesagem";
 import { FormBaixa } from "../forms/FormBaixa";
 import { ConfirmDialog } from "../../../components/ConfirmDialog";
 import { Loader } from "../../../components/Loading";
-import { Button, ErrorBox, hoje, Panel, Pill } from "../../../financeiro/financeiro-ui";
+import { Button, ErrorBox, hoje, PageHeader, Panel, Pill } from "../../../financeiro/financeiro-ui";
 import { navegarPara } from "../../../router";
 import { PesoEGanho } from "../components/PesoEGanho";
 import { HistoricoBaixas } from "../components/HistoricoBaixas";
@@ -189,20 +189,17 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
     <div className="mt-6"><ErrorBox erro={erro} /></div>
     <article className="pec-ficha">
     <div className="ficha-animal-cabecalho">
-      <div className="flex flex-wrap items-start justify-between gap-5 border-b border-border bg-surface p-6">
-        <div className="min-w-0 flex-[1_1_280px]">
-          <div className="flex flex-wrap items-center gap-2">
+      <PageHeader integrado
+        titulo={<>{animal.brinco}{animal.nome && <> · <span>{animal.nome}</span></>}</>}
+        descricao={`${animal.categoria?.nome ?? "Sem categoria"} · ${animal.propriedade?.nome ?? "Sem sítio"} · ${animal.lote?.nome ?? "Sem lote"}`}
+        contexto={<div className="flex flex-wrap items-center gap-2">
             <span className="eyebrow">{animal.brinco}</span>
             <Pill tone={ativo ? "green" : "neutral"}>{rotuloSituacao(animal.situacao)}</Pill>
             <CategoriaPill categoria={animal.categoria} categoriaOrigem={animal.categoriaOrigem} categoriaCalculada={animal.categoriaCalculada} />
             {animal.aptidao && <Pill tone="brown">{rotuloAptidao(animal.aptidao)}{!ativo && " · na baixa"}</Pill>}
             {animal.papelReprodutivo && animal.papelReprodutivo !== "NENHUM" && <Pill tone="amber">{rotuloPapelReprodutivo(animal.papelReprodutivo)}{!ativo && " · na baixa"}</Pill>}
-          </div>
-          <h1 className="h1 mt-2 break-words">{animal.brinco}{animal.nome && <> · <span>{animal.nome}</span></>}</h1>
-          <p className="mt-2 break-words text-sm text-ink-3">{animal.categoria?.nome ?? "Sem categoria"} · {animal.propriedade?.nome ?? "Sem sítio"} · {animal.lote?.nome ?? "Sem lote"}</p>
-          {animal.categoriaOrigem === "MANUAL" && animal.categoriaCalculada?.id === animal.categoria?.id && <p className="mt-2 text-xs text-ink-3">O cálculo já concorda — pode voltar ao automático.</p>}
-        </div>
-        {podeLancar && <div className="flex max-w-full flex-wrap gap-2 lg:max-w-[560px] lg:justify-end">
+          </div>}
+        acao={podeLancar && <div className="flex max-w-full flex-wrap gap-2 lg:max-w-[560px] lg:justify-end">
           {ativo ? <>
             <Button onClick={() => setPesagemForm({ modo: "novo" })}>Registrar pesagem</Button>
             <Button secondary onClick={() => setMovimentando(true)}>Movimentar</Button>
@@ -221,7 +218,7 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
             </div>
           </> : <Button onClick={() => { setErroAcao(null); setEstornandoBaixa(true); }}>Estornar baixa</Button>}
         </div>}
-      </div>
+      >          {animal.categoriaOrigem === "MANUAL" && animal.categoriaCalculada?.id === animal.categoria?.id && <p className="mt-2 text-xs text-ink-3">O cálculo já concorda — pode voltar ao automático.</p>}</PageHeader>
 
       {/* animal baixado: a baixa em vigor é a informação principal da ficha */}
       {!ativo && animal.baixa && <div role="status" className="flex flex-wrap items-start gap-4 border-b border-red-200 bg-red-50 px-6 py-4 text-red-950">

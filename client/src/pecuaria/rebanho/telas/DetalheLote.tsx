@@ -165,7 +165,7 @@ export function DetalheLote({ id, podeLancar = true, onVoltar }: { id: string; p
   return <PaginaFinanceira>
     <nav aria-label="Navegação" className="pec-breadcrumb"><button type="button" onClick={() => navegarPara("/pecuaria/rebanho")}>Rebanho</button><span aria-hidden="true">/</span><button type="button" onClick={onVoltar}>Lotes</button><span aria-hidden="true">/</span><span aria-current="page">{lote.nome}</span></nav>
     <PageHeader
-      eyebrow="Lote"
+      eyebrow=""
       titulo={lote.nome}
       descricao={`${lote.propriedade.nome}${lote.observacao ? ` · ${lote.observacao}` : ""}`}
       acao={podeLancar ? <div className="flex flex-wrap gap-2">
