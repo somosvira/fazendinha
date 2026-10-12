@@ -1,8 +1,7 @@
 name: CI
 
-# Build e testes são o gate da `main`. Os deploys são feitos pelas integrações
-# Git nativas de cada provedor: Cloudflare Pages para o frontend e Render para
-# a API. Isso evita credenciais e deploy hooks de infra antiga no GitHub Actions.
+# Build e testes são o gate da `main`. A publicação em Cloudflare Workers é
+# configurada separadamente deste workflow; aqui não há etapa de deploy.
 
 on:
   push:

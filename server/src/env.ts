@@ -19,7 +19,7 @@ const envSchema = z
     PORT: z.coerce.number().int().positive().default(41873),
     JWT_SECRET: z.string().min(8).default("dev-secret-trocar-em-producao"),
     NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
-    // Lista separada por vírgula de origens permitidas (ex.: https://rionovo.pages.dev,https://rionovo.com.br).
+    // Lista separada por vírgula de origens permitidas (domínio público do app).
     // Vazio = libera tudo (útil em dev). Em prod sempre setar.
     CORS_ORIGIN: z.string().optional(),
 

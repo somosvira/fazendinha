@@ -6,7 +6,6 @@
   },
   "include": [
     "tests/financeiro/**/*.ts",
-    "vitest.financeiro.config.ts",
-    "prisma/seed-qa249.ts"
+    "vitest.financeiro.config.ts"
   ]
 }

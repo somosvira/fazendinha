@@ -6,9 +6,8 @@
  * + entidades reais do backend (GET /api/busca?q=). Teclado (setas/enter) é
  * do cmdk; Escape/backdrop/foco-trap vêm do shadcn Dialog (Radix).
  *
- * Reescrito sobre shadcn `command` (cmdk) + `Dialog` — ver
- * docs/superpowers/specs/2026-07-08-shadcn-migration-playbook.md (Fase 1,
- * Tarefa 5). A busca é SERVIDOR + índice estático (não é fuzzy-filter do
+ * Usa os primitivos compartilhados `command` (cmdk) + `Dialog`. A busca é
+ * SERVIDOR + índice estático (não é fuzzy-filter do
  * cmdk), então `shouldFilter={false}` no `Command` e os resultados são
  * filtrados/agrupados por nós mesmos; o cmdk só cuida de seleção/teclado.
  *

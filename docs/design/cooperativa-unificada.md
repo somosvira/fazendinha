@@ -48,3 +48,11 @@ Nutrição usa a saída Cancelar do formulário, sem o link superior redundante.
 Estoque usa o sítio da sidebar em saldos, entradas e histórico. O seletor paralelo foi removido; propriedadeId na URL é conservado somente para localizar um movimento histórico específico no consolidado. Com sítio selecionado, ele prevalece. Links Ver estorno/Ver movimento original ficam em Ações, separados dos rótulos de tipo e situação. As quatro ações do topo compartilham uma linha quando há espaço.
 
 [Capturas desta rodada](../../output/qa/feedbacks-tabelas-2026-10-11/index.html). Não houve alteração de API, schema, migrations, permissões ou cálculos financeiros.
+
+## Componentes compartilhados
+
+PageHeader mantém identidade (título e descrição) e comandos (contexto, extras e ações) na mesma base, inclusive em fichas e formulários. Usa slots para não duplicar composições entre módulos; comandos podem ocupar a largura necessária no desktop e quebram em telas pequenas.
+
+CabecalhoTabela reúne título, ícone opcional e ação antes dos filtros. TabelaFinanceira inclui separação superior e alinhamento de valores; CardFicha oferece a variante `tabela` sem preenchimento externo duplicado. A primeira carga financeira usa skeletons das primitivas locais; atualizações preservam os dados anteriores com indicação de progresso e bloqueio da interação até a resposta.
+
+Os guias por módulo substituem as referências estéticas antigas de DESIGN.md e COMPONENTS.md retiradas na limpeza de documentação da main. Contratos de domínio permanecem nos documentos atuais de Financeiro e Pecuária.

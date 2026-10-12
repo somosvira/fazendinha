@@ -26,8 +26,8 @@ function bearer(h: string | undefined): string | null {
 }
 
 function origem(c: Context): string {
-  // O Render acrescenta o hop recebido ao fim da cadeia; usar o último evita
-  // confiar no primeiro valor, que o cliente pode forjar ao acessar a API direta.
+  // Identificador usado pelo limitador existente: último valor de encaminhamento
+  // ou chave compartilhada quando o header não está presente.
   const encaminhados = c.req.header("x-forwarded-for")?.split(",").map((item) => item.trim()).filter(Boolean);
   const valor = encaminhados?.at(-1) ?? "desconhecida";
   return valor.slice(0, 128);

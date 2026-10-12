@@ -1,8 +1,7 @@
 // Peças compartilhadas pelas telas do Rebanho que NÃO existem no financeiro
 // (as que existem — PaginaFinanceira, PageHeader, Panel, Modal, TabelaFinanceira,
 // etc. — vêm de client/src/financeiro/financeiro-ui.tsx e devem ser importadas
-// de lá, não recriadas aqui). Mesmo padrão visual: ver docs/design do plano
-// "Pecuária v1 — interface completa no padrão do Financeiro".
+// de lá, não recriadas aqui).
 
 import { useCallback, useState, type ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";

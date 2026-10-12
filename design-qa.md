@@ -215,3 +215,9 @@ Validação: suíte completa com 135 arquivos e **1.050 testes aprovados**, exec
 Navegador: 12 rotas em 1538, 1180, 720 e 375 px, total de 48 capturas, mais menu da tarefa e formulário de adiamento no desktop. Sem overflow horizontal da página ou erros JavaScript nas verificações. Revisão visual representativa de Compromissos, Estoque, Ciclos/Tarefas, Aplicações, Carências, Contas no tablet e Ocorrências no celular. Conferidos período sem alterar cards, seleção múltipla, foco de busca sanitária preservado durante consulta, cores primária/secundária, alinhamento das quatro ações de Estoque e abertura de adiamento pelo menu da tarefa.
 
 [Galeria local e arquivos para baixar](output/qa/feedbacks-tabelas-2026-10-11/index.html); manifesto de execução no mesmo diretório. Requisições de escrita de negócio foram bloqueadas no navegador. Não houve alteração de API, schema, migrations ou regras de cálculo. Esta rodada não homologa novas gravações operacionais nem constitui auditoria completa de acessibilidade.
+
+## Conciliação com a main para publicação — 12/10/2026
+
+Incorporada a limpeza de documentação do PR #316. Os contratos atuais de arquitetura e Pecuária foram preservados com notas de navegação/design vigentes; o índice aponta para os guias específicos da direção Cooperativa. DESIGN.md e COMPONENTS.md antigos continuam retirados, sem reintroduzir regras estéticas superadas. Nenhuma resolução alterou o comportamento do redesign; em CardFicha foi conciliada somente a referência comentada a um plano antigo.
+
+Após a conciliação: builds do cliente e servidor aprovados; 48 testes de CommandPalette, navegação de Pecuária, DetalheAnimal e Sanidade passaram; `git diff --check` aprovado. Permanece o aviso existente de bundle. Não foram repetidas a suíte completa nem as capturas de navegador nesta conciliação; a evidência anterior de 1.050 testes e 50 capturas refere-se ao commit 9332a08. O projeto local permanece parado.

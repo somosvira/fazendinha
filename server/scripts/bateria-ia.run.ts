@@ -1,4 +1,4 @@
-// Bateria de regressão da IA (docs/bateria-ia-consultas-2026-07-14.md): dispara
+// Bateria de regressão da IA (assistente suspenso; ver ARCHITECTURE.md): dispara
 // as perguntas contra POST /api/bot/ask (stateless, sem sessão) e grava as
 // respostas para comparar com o gabarito (bateria-ia.gabarito.ts, mesmos ids).
 // Requer o server de pé e OPENAI_API_KEY configurada.
