@@ -1,0 +1,34 @@
+/* Composição da referência 03; as cores e superfícies vêm do tema financeiro. */
+.dashboard-financeiro { color: var(--foreground); font-family: var(--sans); }
+.dashboard-financeiro h1 { color: var(--fin-heading); font-size: 28px; line-height: 1.2; font-weight: 650; }
+.dashboard-financeiro h2 { font-size: 18px; line-height: 1.4; font-weight: 600; }
+.dashboard-financeiro .font-serif { font-family: var(--sans); }
+.dashboard-financeiro .dashboard-indicador > strong { color: var(--foreground); font-size: clamp(18px,9cqw,24px); font-weight: 650; }
+.dashboard-financeiro .dashboard-saldo[data-fin-tom="entrada"] > strong { color: var(--pos); }
+.dashboard-financeiro .dashboard-saldo[data-fin-tom="alerta"] > strong { color: var(--destructive); }
+.dashboard-financeiro .fin-linha { border-left: 0; }
+.dashboard-financeiro .fin-linha .fin-valor { color: var(--foreground); }
+.dashboard-financeiro .dashboard-resultado strong { font-size: 18px; font-weight: 650; }
+.dashboard-financeiro .dashboard-indicador { border-radius: var(--radius); }
+.dashboard-financeiro .dashboard-calendario h3 { font-family: var(--sans); }
+.dashboard-financeiro .dashboard-calendario table { font-size: 12px; }
+.dashboard-financeiro .dashboard-calendario [role="region"] { overflow-x: auto; }
+.dashboard-financeiro .dashboard-calendario td button:hover { background: var(--muted); }
+.dashboard-financeiro .dashboard-calendario [data-slot="badge"] { background: var(--card); }
+.dashboard-compromissos section { border-radius: 0; }
+@media (min-width: 1024px) {
+  .dashboard-compromissos .dashboard-agenda { border-left: 1px solid var(--border); }
+}
+@media (max-width: 720px) { .dashboard-financeiro h1 { font-size: 24px; } }
+/* A grade do calendário cabe no painel integrado, sem uma tabela de 700px. */
+.dashboard-financeiro .dashboard-calendario .fin-evento { font-size: 10px; line-height: 1.25; padding: 4px; }
+.dashboard-financeiro .dashboard-calendario .fin-evento span { font-weight: 400; }
+.dashboard-financeiro .dashboard-calendario .fin-evento span + span { margin-top: 2px; }
+.dashboard-financeiro .dashboard-calendario [role="region"] { padding: 0 16px 16px; }
+.dashboard-financeiro .dashboard-principal [data-slot="chart"] { height: 180px; }
+.dashboard-financeiro .dashboard-principal { margin-top: 8px; }
+.dashboard-financeiro .fin-cabecalho > div > p { margin-top: 2px; }
+.dashboard-financeiro .dashboard-calendario [data-slot="table-head"] { font-size: 10px; padding: 6px; }
+.dashboard-financeiro .dashboard-calendario time { font-size: 10px; }
+.dashboard-financeiro .dashboard-calendario td { padding: 4px; }
+.dashboard-financeiro .dashboard-calendario td > div { min-height: 48px; }

@@ -15,6 +15,8 @@ let chamadasRascunho: { propriedade: string | null }[] = [];
 // Descrição do rascunho da sede; `null` = sem rascunho. `segurarRascunho` atrasa o GET.
 let descricaoRascunho: string | null = "Compra de ração";
 let segurarRascunho: Promise<void> | null = null;
+let segurarGravacao: Promise<void> | null = null;
+let falharGravacao = false;
 
 const rascunhoCom = (descricao: string) => ({
   id: 8, versao: 1, updatedAt: new Date().toISOString(), documentos: [],
@@ -35,6 +37,13 @@ function servidor(usuario: UsuarioSessao) {
     if (pathname === "/api/financeiro/operacoes/rascunho") {
       const propriedade = new Headers(init?.headers).get("X-Propriedade-Id");
       const metodo = init?.method ?? "GET";
+      if (metodo === "PUT") {
+        const payload = JSON.parse(String(init?.body));
+        if (segurarGravacao) await segurarGravacao;
+        if (falharGravacao) return new Response(JSON.stringify({ error: "Falha temporária ao salvar" }), { status: 503 });
+        descricaoRascunho = payload.dados.formulario.descricao;
+        return json({ ...rascunhoCom(descricaoRascunho ?? ""), dados: payload.dados, versao: 2 });
+      }
       if (metodo !== "GET") return json(rascunhoCom(""));
       chamadasRascunho.push({ propriedade });
       if (segurarRascunho) await segurarRascunho;
@@ -57,13 +66,13 @@ beforeEach(() => {
   history.replaceState(null, "", "/financeiro/compromissos");
   chamadasRascunho = [];
   descricaoRascunho = "Compra de ração";
-  segurarRascunho = null;
+  segurarRascunho = null; segurarGravacao = null; falharGravacao = false;
   Object.defineProperty(document, "visibilityState", { configurable: true, get: () => "visible" });
   if (!("ResizeObserver" in globalThis)) vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
 });
 
 afterEach(() => {
-  cleanup();
+  limparRascunhoAtivo(); cleanup();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
   setPropriedadeAtiva(null);
@@ -138,4 +147,39 @@ describe("App — trabalho ativo", () => {
     document.dispatchEvent(new Event("visibilitychange"));
     expect(chamadasRascunho).toHaveLength(2);
   });
+});
+
+
+it("Operações na sidebar volta à lista dentro da mesma aba e o trabalho recupera a última edição", async () => {
+  entrarComo(usuarioBase);
+  fireEvent.click(await screen.findByRole("button", { name: "Continuar rascunho: Compra de ração" }));
+  await screen.findByRole("heading", { name: "Nova operação" });
+  fireEvent.change(screen.getByLabelText("Descrição"), { target: { value: "Compra alterada antes de 800 ms" } });
+  fireEvent.click(screen.getByRole("button", { name: "Operações" }));
+  expect(await screen.findByRole("heading", { name: "Operações" })).toBeTruthy();
+  expect(location.pathname).toBe("/financeiro/operacoes");
+  expect(screen.queryByRole("heading", { name: "Nova operação" })).toBeNull();
+  fireEvent.click(await screen.findByRole("button", { name: "Continuar rascunho: Compra alterada antes de 800 ms" }));
+  expect((await screen.findByLabelText("Descrição") as HTMLTextAreaElement).value).toBe("Compra alterada antes de 800 ms");
+});
+
+
+it.each(["pendente", "falha"])("retoma o trabalho com gravação %s e permite voltar/avançar", async (estado) => {
+  let liberar!: () => void;
+  if (estado === "pendente") segurarGravacao = new Promise<void>(r => { liberar = r; });
+  else falharGravacao = true;
+  entrarComo(usuarioBase);
+  fireEvent.click(await screen.findByRole("button", { name: "Continuar rascunho: Compra de ração" }));
+  await screen.findByRole("heading", { name: "Nova operação" });
+  fireEvent.change(screen.getByLabelText("Descrição"), { target: { value: "Edição final recuperável" } });
+  fireEvent.click(screen.getByRole("button", { name: "Operações" }));
+  await screen.findByRole("heading", { name: "Operações" });
+  if (estado === "falha") await screen.findByText(/Não foi possível salvar:/);
+  fireEvent.click(await screen.findByRole("button", { name: "Continuar rascunho: Edição final recuperável" }));
+  expect((await screen.findByLabelText("Descrição") as HTMLTextAreaElement).value).toBe("Edição final recuperável");
+  history.back();
+  await screen.findByRole("heading", { name: "Operações" });
+  history.forward();
+  expect((await screen.findByLabelText("Descrição") as HTMLTextAreaElement).value).toBe("Edição final recuperável");
+  if (estado === "pendente") liberar();
 });

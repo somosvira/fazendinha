@@ -60,7 +60,7 @@ export function Sitios() {
   const carregando = sitios.loading && sitios.data.length === 0;
 
   return <PaginaFinanceira>
-    <PageHeader eyebrow="Configurações" titulo="Sítios" descricao="As propriedades da fazenda. Cada animal, lote e lançamento pertence a um sítio."
+    <PageHeader eyebrow="" titulo="Sítios" descricao="As propriedades da fazenda. Cada animal, lote e lançamento pertence a um sítio."
       acao={<Button onClick={abrirNovo}><Plus size={16} /> Novo sítio</Button>} />
     <ErrorBox erro={erro} />
 

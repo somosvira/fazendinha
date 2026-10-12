@@ -7,7 +7,7 @@ import { useCallback, useState, type ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { X } from "lucide-react";
 import { useToast } from "../../components/Toast";
-import { Button, ErrorBox, Modal, Panel, Pill } from "../../financeiro/financeiro-ui";
+import { Button, CabecalhoTabela, ErrorBox, Modal, Panel, Pill } from "../../financeiro/financeiro-ui";
 import { classeInput } from "../../financeiro/PainelCadastro";
 import { desfazerMovimentacao, RebanhoApiError } from "./api";
 import { fracaoReduzida, PRESETS_FRACAO, somaFracoes } from "./lib/composicao";
@@ -57,22 +57,24 @@ export function CategoriaPill({ categoria, categoriaOrigem, categoriaCalculada }
 /** Card de seção da ficha do animal: cabeçalho com ícone + título (e uma ação opcional à direita,
  *  ex. "Desfazer última movimentação") separado do conteúdo por uma régua — cada bloco de dados
  *  fica visualmente isolado e identificável pelo ícone. */
-export function CardFicha({ icon: Icon, titulo, acao, children, className = "" }: {
+export function CardFicha({ icon: Icon, titulo, acao, children, className = "", tabela = false }: {
   icon: LucideIcon;
   titulo: string;
   acao?: ReactNode;
   children: ReactNode;
   className?: string;
+  /** Cabeçalho compartilhado e tabela junto às bordas do painel. */
+  tabela?: boolean;
 }) {
-  return <Panel className={`min-w-0 overflow-hidden ${className}`}>
-    <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3.5">
+  return <Panel className={`pec-card-ficha min-w-0 overflow-hidden ${className}`}>
+    {tabela ? <CabecalhoTabela titulo={titulo} acao={acao} icon={Icon} /> : <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3.5">
       <h2 className="flex items-center gap-2.5 text-sm font-semibold text-ink">
-        <span aria-hidden="true" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[#eef1e9] text-mast"><Icon size={16} /></span>
+        <span aria-hidden="true" className="pec-icone shrink-0"><Icon size={16} /></span>
         {titulo}
       </h2>
       {acao}
-    </header>
-    <div className="p-5">{children}</div>
+    </header>}
+    <div className={tabela ? "" : "p-5"}>{children}</div>
   </Panel>;
 }
 
@@ -122,7 +124,7 @@ export function Paginacao({ paginaAtual, totalPaginas, totalItens, itensPorPagin
 }) {
   const inicio = totalItens === 0 ? 0 : (paginaAtual - 1) * itensPorPagina + 1;
   const fim = Math.min(paginaAtual * itensPorPagina, totalItens);
-  return <nav aria-label={`Paginação de ${rotulo}`} className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3 text-sm">
+  return <nav aria-label={`Paginação de ${rotulo}`} className="pec-paginacao flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3 text-sm">
     <span className="text-ink-3">{totalItens === 0 ? `0 ${rotulo}` : `${inicio}–${fim} de ${totalItens} ${rotulo}`}</span>
     <div className="flex items-center gap-2">
       <Button secondary disabled={paginaAtual <= 1} onClick={() => onPaginaChange(paginaAtual - 1)}>Anterior</Button>

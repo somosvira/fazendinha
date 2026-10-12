@@ -77,7 +77,7 @@ describe("VisaoGeral do rebanho", () => {
     expect(within(porClasse).getByText("Descarte involuntário")).toBeTruthy();
     expect(within(porClasse).getByText("Morte")).toBeTruthy();
     // 3 voluntárias de 4 baixas de descarte classificadas (3 + 1) = 75%
-    expect(within(porClasse).getByText(/75% das baixas por descarte classificado foram voluntárias/)).toBeTruthy();
+    expect(within(porClasse).getByText(/75% de descarte voluntário/)).toBeTruthy();
   });
 
   it("alternar para 12 meses refaz a busca do painel com o novo período", async () => {

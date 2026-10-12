@@ -31,7 +31,8 @@ suite("rodadas preservam calendário, participação e reenvio",()=>{
    expect(p1.total).toBe(101);expect(new Set([...p1.itens,...p2.itens].map(e=>e.id)).size).toBe(101);
    const etapas=await listarEtapas(r.id,propriedadeId,consultaSanitariaSchema.parse({porPagina:1}));expect(etapas.total).toBe(2);expect(etapas.itens[0].contagens.pendentes).toBe(101);
    const tarefas=await listarTarefasEtapa(r.id,etapas.itens[0].id,propriedadeId,consultaSanitariaSchema.parse({porPagina:100,pagina:2}));expect(tarefas.total).toBe(101);expect(tarefas.itens).toHaveLength(1);
- });
+ // Cria 101 participações e 202 tarefas reais; não é um caso unitário de 5 s.
+ },30_000);
  it("filtros de tarefa restringem rodadas antes da paginação",async()=>{
    const vazias=await listarRodadas(propriedadeId,consultaSanitariaSchema.parse({de:"2027-01-01",porPagina:1}));expect(vazias.total).toBe(0);
    const realizadas=await listarRodadas(propriedadeId,consultaSanitariaSchema.parse({situacao:"REALIZADA",porPagina:1}));expect(realizadas.total).toBe(1);

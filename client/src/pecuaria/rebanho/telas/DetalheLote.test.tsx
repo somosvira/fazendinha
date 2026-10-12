@@ -99,7 +99,7 @@ function Wrapper({ children }: { children: React.ReactNode }) {
 
 async function montar(onVoltar = vi.fn()) {
   render(<DetalheLote id="lote-1" onVoltar={onVoltar} />, { wrapper: Wrapper });
-  await screen.findByText("Lote 1");
+  await screen.findByRole("heading", { name: "Lote 1", level: 1 });
 }
 
 /* A TabelaFinanceira renderiza tabela E cartões simultaneamente no jsdom;

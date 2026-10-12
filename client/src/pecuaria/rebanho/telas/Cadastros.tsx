@@ -32,7 +32,7 @@ import { FormMaterialGenetico } from "../cadastros/FormMaterialGenetico";
 import { FormCategoria, type DadosFormCategoria } from "../cadastros/FormCategoria";
 import { CadastrosSanitarios } from "../sanidade/CadastrosSanitarios";
 
-type Aba = "categorias" | "racas" | "motivos" | "genitores" | "material-genetico" | "sanidade";
+export type AbaCadastroRebanho = "categorias" | "racas" | "motivos" | "genitores" | "material-genetico" | "sanidade";
 type EntidadePainel = "raca" | "motivo" | "genitor" | "material";
 type Painel = { entidade: EntidadePainel; modo: "novo" } | { entidade: EntidadePainel; modo: "editar"; id: string | number } | null;
 type PainelCategoria = { modo: "novo" } | { modo: "editar"; categoria: CategoriaDTO } | null;
@@ -137,11 +137,11 @@ function mensagemDesativar(confirmacao: NonNullable<Confirmacao>): string {
   return "O motivo deixa de aparecer para novas baixas. Baixas já registradas continuam intactas.";
 }
 
-export function Cadastros({ podeLancar = true }: { podeLancar?: boolean }) {
+export function Cadastros({ podeLancar = true, cadastro, embutido = false }: { podeLancar?: boolean; cadastro?: AbaCadastroRebanho; embutido?: boolean }) {
   const parametrosIniciais = typeof window === "undefined" ? new URLSearchParams() : new URLSearchParams(window.location.search);
   const materialInicial = parametrosIniciais.get("material");
   const abaInicial = parametrosIniciais.get("aba");
-  const [aba, setAba] = useState<Aba>(abaInicial === "material-genetico" || materialInicial ? "material-genetico" : abaInicial === "genitores" ? "genitores" : "categorias");
+  const [aba, setAba] = useState<AbaCadastroRebanho>(cadastro ?? (abaInicial === "material-genetico" || materialInicial ? "material-genetico" : abaInicial === "genitores" ? "genitores" : "categorias"));
   const [mostrarInativos, setMostrarInativos] = useState(false);
   const [racas, setRacas] = useState<Raca[] | null>(null);
   const [motivos, setMotivos] = useState<MotivoBaixa[] | null>(null);
@@ -206,7 +206,7 @@ export function Cadastros({ podeLancar = true }: { podeLancar?: boolean }) {
     finally { emCurso.current = false; setProcessando(false); }
   };
 
-  const trocarAba = (nova: Aba) => { setAba(nova); setMostrarInativos(false); setPainel(null); setConfirmando(null); setPainelCategoria(null); setConfirmacaoCategoria(null); setErro(null); };
+  const trocarAba = (nova: AbaCadastroRebanho) => { setAba(nova); setMostrarInativos(false); setPainel(null); setConfirmando(null); setPainelCategoria(null); setConfirmacaoCategoria(null); setErro(null); };
   const abrirNovo = (entidade: EntidadePainel) => { if (!emCurso.current) setPainel({ entidade, modo: "novo" }); };
   const editar = (entidade: EntidadePainel, item: { id: string | number }) => { if (!emCurso.current) setPainel({ entidade, modo: "editar", id: item.id }); };
 
@@ -321,18 +321,20 @@ export function Cadastros({ podeLancar = true }: { podeLancar?: boolean }) {
   const bloqueado = processando || simulando || aplicando;
   const motivosExibidos = [...(motivos ?? [])].sort(compararMotivos);
 
-  return <PaginaFinanceira>
-    <PageHeader eyebrow="Pecuária" titulo="Cadastros" descricao="Categorias, raças, motivos de baixa, genitores externos e material genético usados pelo rebanho." acao={acao} />
-    <NavRebanho ativa="cadastros" />
+  const Moldura = embutido ? "section" : PaginaFinanceira;
+  const titulo = { categorias: "Categorias de animais", racas: "Raças", motivos: "Motivos de baixa", genitores: "Genitores externos", "material-genetico": "Materiais genéticos", sanidade: "Sanidade" }[aba];
+  return <Moldura>
+    <PageHeader eyebrow={embutido ? "" : "Pecuária"} titulo={embutido ? titulo : "Cadastros"} descricao={embutido ? "" : "Categorias, raças, motivos de baixa, genitores externos e material genético usados pelo rebanho."} acao={acao} />
+    {!embutido && <NavRebanho ativa="cadastros" />}
     <ErrorBox erro={painelCategoria ? null : erro} />
-    <SubAbas abas={[
+    {!embutido && <SubAbas abas={[
       { valor: "categorias", rotulo: "Categorias", icon: Tags },
       { valor: "racas", rotulo: "Raças", icon: Dna },
       { valor: "motivos", rotulo: "Motivos de baixa", icon: LogOut },
       { valor: "genitores", rotulo: "Genitores externos", icon: Users },
       { valor: "material-genetico", rotulo: "Material genético", icon: FlaskConical },
       { valor: "sanidade", rotulo: "Sanidade", icon: FlaskConical },
-    ]} ativa={aba} onSelecionar={trocarAba} />
+    ]} ativa={aba} onSelecionar={trocarAba} />}
 
     {aba === "sanidade" && <CadastrosSanitarios podeLancar={podeLancar} />}
     {carregando
@@ -446,5 +448,5 @@ export function Cadastros({ podeLancar = true }: { podeLancar?: boolean }) {
       onConfirm={() => { void confirmarAplicacaoCategoria(); }}
       onCancel={() => setConfirmacaoCategoria(null)}
     />
-  </PaginaFinanceira>;
+  </Moldura>;
 }

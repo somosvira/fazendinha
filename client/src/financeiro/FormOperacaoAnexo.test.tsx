@@ -1,6 +1,8 @@
+import { alterarControle } from "../lib/controles.fixture";
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { limparRascunhoAtivo, prepararPublicacaoRascunho, useRascunhoAtivo } from "./rascunhoAtivo";
 import { FormOperacao } from "./FormOperacao";
 import type { ConfiguracoesFinanceiras, DocumentoFinanceiro } from "./novo-api";
 
@@ -15,13 +17,13 @@ vi.mock("./novo-api", async (importOriginal) => ({
   salvarRascunhoOperacao,
 }));
 
-afterEach(() => { cleanup(); vi.clearAllMocks(); });
+afterEach(() => { limparRascunhoAtivo(); cleanup(); vi.clearAllMocks(); });
 
 const config: ConfiguracoesFinanceiras = { contas: [], parceiros: [], categorias: [], centrosCusto: [], produtos: [] };
 const documento = { id: 7, nome: "nota.pdf", tipo: "NOTA_FISCAL", numero: null } as unknown as DocumentoFinanceiro;
 
-function anexar(arquivo: File) {
-  fireEvent.change(screen.getByLabelText("Anexar documentos"), { target: { files: [arquivo] } });
+async function anexar(arquivo: File) {
+  await alterarControle(screen.getByLabelText("Anexar documentos"), { target: { files: [arquivo] } });
 }
 
 describe("FormOperacao — anexo de documento", () => {
@@ -31,7 +33,7 @@ describe("FormOperacao — anexo de documento", () => {
     anexarDocumentoRascunho.mockReturnValue(new Promise<DocumentoFinanceiro>((resolve) => { concluir = resolve; }));
     render(<FormOperacao config={config} onSalvo={vi.fn()} />);
 
-    anexar(new File(["conteudo"], "nota.pdf", { type: "application/pdf" }));
+    await anexar(new File(["conteudo"], "nota.pdf", { type: "application/pdf" }));
 
     const pendente = await screen.findByRole("status", { name: "Anexando documento nota.pdf" });
     expect(pendente.getAttribute("aria-busy")).toBe("true");
@@ -50,10 +52,29 @@ describe("FormOperacao — anexo de documento", () => {
     anexarDocumentoRascunho.mockRejectedValue(new Error("Falha no armazenamento"));
     render(<FormOperacao config={config} onSalvo={vi.fn()} />);
 
-    anexar(new File(["conteudo"], "nota.pdf", { type: "application/pdf" }));
+    await anexar(new File(["conteudo"], "nota.pdf", { type: "application/pdf" }));
 
     await waitFor(() => expect(screen.queryByRole("status", { name: "Anexando documento nota.pdf" })).toBeNull());
     expect(await screen.findByText("Falha no armazenamento")).toBeTruthy();
     expect(screen.getByText("Nenhum documento anexado.")).toBeTruthy();
   });
+});
+
+
+it("mostra o anexo ao retomar enquanto o envio original ainda estava pendente", async () => {
+  let finalizar!: (documento: DocumentoFinanceiro) => void;
+  anexarDocumentoRascunho.mockImplementation(() => new Promise(r => { finalizar = r; }));
+  salvarRascunhoOperacao.mockImplementation(async (dados) => prepararPublicacaoRascunho("escrita")({ id: "rascunho", dados, versao: 1, updatedAt: "2026-10-11", documentos: [] }));
+  function TelaRascunho() {
+    const { rascunho } = useRascunhoAtivo();
+    return <FormOperacao config={config} rascunho={rascunho} onSalvo={() => undefined} />;
+  }
+  const tela = render(<TelaRascunho />);
+  await anexar(new File(["nota"], "nota.pdf", { type: "application/pdf" }));
+  await waitFor(() => expect(anexarDocumentoRascunho).toHaveBeenCalled());
+  tela.unmount();
+  render(<TelaRascunho />);
+  finalizar(documento);
+  expect(await screen.findByText("nota.pdf")).toBeTruthy();
+  expect(screen.getByLabelText("Número do documento nota.pdf")).toBeTruthy();
 });

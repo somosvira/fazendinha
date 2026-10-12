@@ -1,3 +1,4 @@
+import { alterarControle } from "../lib/controles.fixture";
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -44,7 +45,7 @@ describe("tipos de uso e validação dos perfis", () => {
     render(<FormProduto produto={produto} categorias={[...categorias, { ...categorias[0], id: uid(12), nome: "Nutrição" }]} centros={[]} parceiros={[]} onSalvo={vi.fn()} onFechar={vi.fn()} />);
     expect(screen.queryByLabelText(/Referência técnica/)).toBeNull();
     expect((screen.getByLabelText("Controlar lotes por validade") as HTMLInputElement).disabled).toBe(true);
-    fireEvent.change(screen.getByLabelText("Categoria"), { target: { value: uid(12) } });
+    await alterarControle(screen.getByLabelText("Categoria"), { target: { value: uid(12) } });
     fireEvent.click(screen.getByRole("button", { name: "Salvar produto" }));
     await waitFor(() => expect(mocks.editarProduto).toHaveBeenCalledWith(produto.id, expect.objectContaining({
       categoriaId: uid(12), usoSanitario: true,
@@ -52,14 +53,14 @@ describe("tipos de uso e validação dos perfis", () => {
     })));
   });
   beforeEach(() => { vi.clearAllMocks(); mocks.criarProduto.mockResolvedValue(produtoCriado); });
-  const montar = () => {
+  const montar = async () => {
     render(<FormProduto produto={null} categorias={categorias} centros={[]} parceiros={[]} onSalvo={vi.fn()} onFechar={vi.fn()} />);
-    fireEvent.change(screen.getByLabelText("Nome do produto"), { target: { value: "Produto de teste" } });
-    fireEvent.change(screen.getByLabelText("Categoria"), { target: { value: uid(11) } });
+    await alterarControle(screen.getByLabelText("Nome do produto"), { target: { value: "Produto de teste" } });
+    await alterarControle(screen.getByLabelText("Categoria"), { target: { value: uid(11) } });
     fireEvent.click(screen.getByLabelText("Nutricional"));
   };
   it.each(["-1", "101", "abc", "90,255"])("recusa MS %s no campo e mantém o formulário", async (valor) => {
-    montar(); fireEvent.change(screen.getByLabelText("Matéria seca (%)"), { target: { value: valor } });
+    await montar(); await alterarControle(screen.getByLabelText("Matéria seca (%)"), { target: { value: valor } });
     fireEvent.click(screen.getByRole("button", { name: "Criar produto" }));
     expect(await screen.findByText("Informe a matéria seca entre 0% e 100%.")).toBeTruthy();
     await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText("Matéria seca (%)")));
@@ -67,7 +68,7 @@ describe("tipos de uso e validação dos perfis", () => {
     expect((screen.getByLabelText("Nome do produto") as HTMLInputElement).value).toBe("Produto de teste");
   });
   it.each([["0", 0], ["100", 100], ["90,25", 90.25], ["", null]])("aceita MS %s preservando o significado", async (valor, esperado) => {
-    montar(); fireEvent.change(screen.getByLabelText("Matéria seca (%)"), { target: { value: valor } });
+    await montar(); await alterarControle(screen.getByLabelText("Matéria seca (%)"), { target: { value: valor } });
     fireEvent.click(screen.getByLabelText("Sanitário"));
     fireEvent.click(screen.getByLabelText("Controlar lotes por validade"));
     fireEvent.click(screen.getByRole("button", { name: "Criar produto" }));
@@ -99,9 +100,9 @@ describe("FormProduto sem props", () => {
     fireEvent.click(await screen.findByRole("option", { name: "Atividade leiteira" }));
     await waitFor(() => expect(screen.getByRole("button", { name: "Remover Atividade leiteira" })).toBeTruthy());
 
-    fireEvent.change(screen.getByLabelText("Nome do produto"), { target: { value: "Sal mineral" } });
-    fireEvent.change(screen.getByLabelText("Unidade"), { target: { value: "KG" } });
-    fireEvent.change(screen.getByLabelText(/^Categoria/), { target: { value: uid(11) } });
+    await alterarControle(screen.getByLabelText("Nome do produto"), { target: { value: "Sal mineral" } });
+    await alterarControle(screen.getByLabelText("Unidade"), { target: { value: "KG" } });
+    await alterarControle(screen.getByLabelText(/^Categoria/), { target: { value: uid(11) } });
     fireEvent.click(screen.getByLabelText("Genético"));
     fireEvent.click(screen.getByRole("button", { name: "Criar produto" }));
 
@@ -120,7 +121,7 @@ describe("FormProduto sem props", () => {
     render(<FormProduto produto={null} onSalvo={vi.fn()} onFechar={vi.fn()} />);
     await waitFor(() => expect(mocks.listarFornecedores).toHaveBeenCalled());
 
-    fireEvent.change(screen.getByLabelText("Nome do produto"), { target: { value: "Sal mineral" } });
+    await alterarControle(screen.getByLabelText("Nome do produto"), { target: { value: "Sal mineral" } });
     fireEvent.click(screen.getByRole("button", { name: "Criar produto" }));
 
     expect(await screen.findByText("Produto precisa de uma categoria")).toBeTruthy();
@@ -154,7 +155,7 @@ describe("FormProduto — multiselects de centros e fornecedores", () => {
     expect(screen.queryByRole("option", { name: "Descontinuado" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Centros de custo" }));
 
-    fireEvent.change(screen.getByLabelText(/^Categoria/), { target: { value: uid(11) } });
+    await alterarControle(screen.getByLabelText(/^Categoria/), { target: { value: uid(11) } });
     fireEvent.click(screen.getByRole("button", { name: "Salvar produto" }));
     await waitFor(() => expect(mocks.editarProduto).toHaveBeenCalledWith(uid(99), expect.objectContaining({ centroCustoIds: [uid(21)], fornecedorIds: [uid(8)] })));
   });
@@ -164,11 +165,27 @@ describe("FormProduto — multiselects de centros e fornecedores", () => {
     const { ApiError } = await import("../estoque/api");
     mocks.criarProduto.mockRejectedValue(new ApiError("Fornecedor inválido", 400, "VALIDACAO", "fornecedorIds"));
     render(<FormProduto produto={null} parceiros={fornecedores} categorias={categorias} centros={centros} onSalvo={vi.fn()} onFechar={vi.fn()} />);
-    fireEvent.change(screen.getByLabelText("Nome do produto"), { target: { value: "Sal mineral" } });
-    fireEvent.change(screen.getByLabelText(/^Categoria/), { target: { value: uid(11) } });
+    await alterarControle(screen.getByLabelText("Nome do produto"), { target: { value: "Sal mineral" } });
+    await alterarControle(screen.getByLabelText(/^Categoria/), { target: { value: uid(11) } });
     fireEvent.click(screen.getByRole("button", { name: "Criar produto" }));
     const alerta = await screen.findByText("Fornecedor inválido");
     expect(alerta.getAttribute("role")).toBe("alert");
     expect(screen.getByRole("button", { name: "Fornecedores do produto" }).getAttribute("aria-invalid")).toBe("true");
+  });
+});
+
+
+describe("proteção dos vínculos ao fechar", () => {
+  it.each([["Fornecedores do produto", "Cooperativa"], ["Centros de custo", "Atividade leiteira"]])("confirma descarte após alterar somente %s", async (controle, opcao) => {
+    const fechar = vi.fn();
+    render(<FormProduto produto={null} parceiros={fornecedores} categorias={categorias} centros={centros} onSalvo={vi.fn()} onFechar={fechar} />);
+    fireEvent.click(screen.getByRole("button", { name: controle }));
+    fireEvent.click(await screen.findByRole("option", { name: opcao }));
+    fireEvent.click(screen.getByRole("button", { name: controle }));
+    fireEvent.click(screen.getByRole("button", { name: "Fechar" }));
+    expect(await screen.findByRole("heading", { name: "Descartar alterações?" })).toBeTruthy();
+    expect(fechar).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Continuar editando" }));
+    expect(screen.getByRole("button", { name: `Remover ${opcao}` })).toBeTruthy();
   });
 });

@@ -1,3 +1,4 @@
+import { Input } from "@/components/ui/input";
 import { CampoFormulario, classeInput } from "./PainelCadastro";
 
 export function CamposCadastro<K extends string>({ prefixo, campos, valores, onChange, erros }: {
@@ -9,6 +10,6 @@ export function CamposCadastro<K extends string>({ prefixo, campos, valores, onC
 }) {
   return <div className="grid gap-4 sm:grid-cols-2">{campos.map(([campo, rotulo, limite, placeholder]) =>
     <CampoFormulario key={campo} id={`${prefixo}-${campo}`} rotulo={rotulo} erro={erros[campo]}>{(props) =>
-      <input {...props} maxLength={limite} placeholder={placeholder} value={valores[campo]} onChange={(e) => onChange(campo, e.target.value)} className={classeInput} />
+      <Input {...props} maxLength={limite} placeholder={placeholder} value={valores[campo]} onChange={(e) => onChange(campo, e.target.value)} className={classeInput} />
     }</CampoFormulario>)}</div>;
 }

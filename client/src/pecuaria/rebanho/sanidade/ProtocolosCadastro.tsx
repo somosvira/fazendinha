@@ -1,12 +1,13 @@
-import { useEffect, useRef, useState } from "react";
-import { Eye, Pencil, Copy, Send, PowerOff } from "lucide-react";
-import { Button, ErrorBox, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
+import { Fragment, useEffect, useRef, useState } from "react";
+import { ChevronDown, ChevronRight, Pencil, Copy, Send, PowerOff } from "lucide-react";
+import { Button, ErrorBox, Pill } from "../../../financeiro/financeiro-ui";
 import {
   classeInput,
   PainelCadastro,
 } from "../../../financeiro/PainelCadastro";
 import { listarProdutos, type ProdutoDTO } from "../../../estoque/api";
 import { listarTiposAplicacao, reqSanidade, type TipoAplicacao } from "./api";
+import { navegarPara } from "../../../router";
 import type { TipoExame } from "./CadastrosSanitarios";
 type Etapa = {
   diaRelativo: number;
@@ -151,50 +152,40 @@ export function ProtocolosCadastro({ podeLancar }: { podeLancar: boolean }) {
   const mudar = (i: number, patch: Partial<Etapa>) =>
     setEtapas((es) => es.map((e, j) => (i === j ? { ...e, ...patch } : e)));
   return (
-    <section className="rounded-xl border border-border p-4">
+    <section>
       <ErrorBox erro={erro} />
       <ErrorBox erro={erroLista} />
       <ErrorBox erro={erroCatalogos} />
       {aviso && <p role="status" className="py-3 text-sm">{aviso}</p>}
       {ocupado && <p role="status" className="py-3 text-sm">Atualizando protocolo…</p>}
       {(erroLista || erroCatalogos) && <Button secondary disabled={ocupado} onClick={() => setRevisao((v) => v + 1)}>Tentar novamente</Button>}
-      <h2 className="font-semibold">Protocolos sanitários</h2>
-      {podeLancar && (
-        <Button className="mt-3" disabled={ocupado || !catalogosProntos || carregando} onClick={() => editar()}>
-          Novo protocolo
-        </Button>
-      )}
-      {carregando ? <p role="status" className="py-4">Carregando protocolos…</p> : <TabelaFinanceira
-        rotulo="Protocolos sanitários" itens={protocolos} chaveDe={(p) => p.id}
-        colunas={[
-          { chave: "nome", titulo: "Nome", principal: true, celula: (p) => p.nome },
-          { chave: "versao", titulo: "Versão", celula: (p) => `v${p.versao}` },
-          { chave: "publicacao", titulo: "Publicação", celula: (p) => <Pill tone={p.publicadoEm ? "blue" : "amber"}>{p.publicadoEm ? "Publicado" : "Rascunho"}</Pill> },
-          { chave: "situacao", titulo: "Situação", celula: (p) => <Pill tone={p.ativo ? "green" : "neutral"}>{p.ativo ? "Ativo" : "Inativo"}</Pill> },
-          { chave: "etapas", titulo: "Etapas", celula: (p) => p.etapas.length },
-          { chave: "acoes", titulo: "Ações", acoes: true, celula: (p) => <div className="flex justify-end gap-1">
-            <button type="button" aria-label={`Ver etapas de ${p.nome} v${p.versao}`} onClick={() => setDetalhe(p)} className="rounded-lg p-2 text-ink-2 hover:bg-surface-2"><Eye size={16} /></button>
-            {podeLancar && <>
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3"><h2 className="h2">Protocolos sanitários</h2>
+        {podeLancar && <Button disabled={ocupado || !catalogosProntos || carregando} onClick={() => editar()}>Novo protocolo</Button>}
+      </div>
+      {carregando ? <p role="status" className="py-4">Carregando protocolos…</p> : <div className="overflow-x-auto rounded border border-border"><table aria-label="Protocolos sanitários" className="w-full text-left text-sm">
+        <thead className="bg-surface-2"><tr><th className="p-4">Nome</th><th className="p-4">Tipo</th><th className="p-4">Versão</th><th className="p-4">Situação</th><th className="p-4">Etapas</th><th className="p-4">Ações</th></tr></thead>
+        <tbody className="divide-y divide-border">{protocolos.map((p) => <Fragment key={p.id}>
+          <tr><td className="p-4"><button type="button" aria-expanded={detalhe?.id === p.id} aria-controls={`protocolo-${p.id}`} aria-label={`Ver etapas de ${p.nome} v${p.versao}`} onClick={() => setDetalhe(detalhe?.id === p.id ? null : p)} className="flex items-center gap-3 text-left">{detalhe?.id === p.id ? <ChevronDown size={16} /> : <ChevronRight size={16} />}<span>{p.nome}</span></button></td>
+            <td className="p-4">{p.etapas.every((e) => e.tipo === "EXAME") ? "Protocolo de exames" : "Protocolo sanitário"}</td>
+            <td className="whitespace-nowrap p-4">v{p.versao} · <Pill tone={p.publicadoEm ? "blue" : "amber"}>{p.publicadoEm ? "Publicado" : "Rascunho"}</Pill></td>
+            <td className="p-4"><Pill tone={p.ativo ? "green" : "neutral"}>{p.ativo ? "Ativo" : "Inativo"}</Pill></td><td className="p-4">{p.etapas.length}</td><td className="p-4"><div className="flex justify-end gap-1">            {podeLancar && <>
               <button type="button" disabled={ocupado || !catalogosProntos} aria-label={`${p.publicadoEm ? "Nova versão de" : "Editar rascunho de"} ${p.nome} v${p.versao}`} onClick={() => editar(p)} className="rounded-lg p-2 text-ink-2 hover:bg-surface-2 disabled:opacity-45">{p.publicadoEm ? <Copy size={16} /> : <Pencil size={16} />}</button>
               {!p.publicadoEm && <button type="button" disabled={ocupado} aria-label={`Publicar ${p.nome} v${p.versao}`} onClick={() => void enviar(`/protocolos/${p.id}/publicacao`, {})} className="rounded-lg p-2 text-ink-2 hover:bg-surface-2 disabled:opacity-45"><Send size={16} /></button>}
               {p.ativo && <button type="button" disabled={ocupado} aria-label={`Inativar ${p.nome} v${p.versao}`} onClick={() => void enviar(`/protocolos/${p.id}/inativacao`, {})} className="rounded-lg p-2 text-ink-2 hover:bg-surface-2 disabled:opacity-45"><PowerOff size={16} /></button>}
-            </>}
-          </div> },
-        ]} />}
+            </>}</div></td>
+          </tr>
+          {detalhe?.id === p.id && <tr><td colSpan={6} id={`protocolo-${p.id}`} className="bg-surface p-5">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-4"><div><h3 className="h2">{p.nome} · v{p.versao}</h3><Pill tone={p.publicadoEm ? "green" : "amber"}>{p.publicadoEm ? "Versão publicada" : "Rascunho"}</Pill></div><div className="flex flex-wrap items-center gap-4">{podeLancar && <Button secondary disabled={ocupado || !catalogosProntos} onClick={() => editar(p)}>{p.publicadoEm ? "Criar nova versão" : "Editar rascunho"}</Button>}<a href="/pecuaria/sanidade" className="text-mast underline" onClick={(e) => { if (e.button === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) { e.preventDefault(); navegarPara("/pecuaria/sanidade"); } }}>Abrir agenda sanitária</a></div></div>
+            {p.descricao && <p className="mb-4 text-sm">{p.descricao}</p>}
+            <table aria-label={`Etapas de ${p.nome}`} className="w-full border border-border text-sm"><thead><tr><th className="p-3">Etapa</th><th className="p-3">Tipo e produto ou exame</th><th className="p-3">Dia relativo</th></tr></thead><tbody className="divide-y divide-border">{p.etapas.map((e, i) => <tr key={i}><td className="p-3"><span className="sr-only">Etapa {i + 1} · Dia {e.diaRelativo}</span>{i + 1}</td><td className="p-3">{e.tipoAplicacaoNomeSnapshot ?? (e.tipo === "EXAME" ? "Exame" : "Aplicação")} · {produtos.find((pr) => pr.id === e.produtoId)?.nome ?? exames.find((t) => t.id === e.tipoExameId)?.nome ?? (e.produtoId ? "Produto do histórico" : "Exame do histórico")} {e.dose} {e.unidade}</td><td className="p-3">D{e.diaRelativo}</td></tr>)}</tbody></table>
+          </td></tr>}
+        </Fragment>)}</tbody>
+      </table></div>}
       {!carregando && !erroLista && !protocolos.length && (
         <p className="mt-3 text-sm">
           Nenhum protocolo. Planejar etapas não baixa medicamentos do estoque.
         </p>
       )}
-      {detalhe && <PainelCadastro aberto titulo={`${detalhe.nome} · v${detalhe.versao}`} onFechar={() => setDetalhe(null)} rodape={<Button secondary onClick={() => setDetalhe(null)}>Fechar</Button>}>
-        {detalhe.descricao && <p className="text-sm">{detalhe.descricao}</p>}
-        <ol className="grid gap-3">
-          {detalhe.etapas.map((e, i) => <li key={i} className="rounded-lg border border-border p-3">
-            <p className="font-semibold">Etapa {i + 1} · Dia {e.diaRelativo}</p>
-            <p className="text-sm">{e.tipoAplicacaoNomeSnapshot ?? (e.tipo === "EXAME" ? "Exame" : "Aplicação")} · {produtos.find((pr) => pr.id === e.produtoId)?.nome ?? exames.find((t) => t.id === e.tipoExameId)?.nome ?? (e.produtoId ? "Produto do histórico" : "Exame do histórico")} {e.dose} {e.unidade}</p>
-          </li>)}
-        </ol>
-      </PainelCadastro>}
       {aberto && podeLancar && (
         <PainelCadastro
           aberto

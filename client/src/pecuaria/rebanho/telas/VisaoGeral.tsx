@@ -77,7 +77,7 @@ export function VisaoGeral({ podeLancar = true }: { podeLancar?: boolean }) {
   const hrefTipoBaixa = (tipo: TipoBaixa) => filtrosAnimais({ situacao: "BAIXADO", tipoBaixa: tipo, baixaDe: emDias(-periodoBaixas) });
 
   return <PaginaFinanceira>
-    <PageHeader eyebrow="Pecuária" titulo="Rebanho" descricao="Efetivo, receptoras, sítios e últimos eventos do rebanho." acao={podeLancar ? <Button onClick={() => navegarPara(URL_NOVO_ANIMAL)}><Plus size={16} /> Novo animal</Button> : undefined} />
+    <PageHeader eyebrow="" titulo="Rebanho" descricao="Efetivo, receptoras, sítios e últimos eventos do rebanho." acao={podeLancar ? <Button onClick={() => navegarPara(URL_NOVO_ANIMAL)}><Plus size={16} /> Novo animal</Button> : undefined} />
     <NavRebanho ativa="visao-geral" />
     <ErrorBox erro={erro} />
     {painel && <>
@@ -91,17 +91,18 @@ export function VisaoGeral({ podeLancar = true }: { podeLancar?: boolean }) {
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
-        <Panel className="overflow-hidden">
+        <Panel className="h-full overflow-hidden">
           <div className="border-b border-border p-5"><h2 className="font-serif text-xl">Por categoria</h2></div>
           {painel.porCategoria.length ? <div className="divide-y divide-border">{painel.porCategoria.map((c) => <LinhaClicavel key={c.categoriaId ?? "sem-categoria"} href={filtrosAnimais(c.categoriaId ? { categoriaId: c.categoriaId } : { semCategoria: true })} className="px-5 py-4"><div className="flex items-center justify-between gap-3 text-sm"><span>{c.categoria}</span><strong>{c.qtd}</strong></div><BarraProporcional valor={c.qtd} maximo={maxCategoria} /></LinhaClicavel>)}</div> : <Empty>Nenhum animal ativo.</Empty>}
         </Panel>
-        <Panel className="overflow-hidden">
+        <Panel className="h-full overflow-hidden">
           <div className="border-b border-border p-5"><h2 className="font-serif text-xl">Por sítio</h2></div>
           {painel.porSitio.length ? <div className="divide-y divide-border">{painel.porSitio.map((s) => <LinhaClicavel key={s.propriedadeId ?? "sem-sitio"} href={filtrosAnimais({ propriedadeId: s.propriedadeId ?? undefined })} className="px-5 py-4"><div className="flex items-center justify-between gap-3 text-sm"><span className="min-w-0 break-words">{s.nome}</span><strong>{s.qtd}</strong></div><BarraProporcional valor={s.qtd} maximo={maxSitio} /></LinhaClicavel>)}</div> : <Empty>Nenhum animal ativo.</Empty>}
         </Panel>
       </div>
 
-      <Panel className="mt-6 overflow-hidden">
+      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+      <Panel className="h-full overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-5">
           <h2 className="font-serif text-xl">Baixas no período</h2>
           <div role="group" aria-label="Período das baixas" className="inline-flex overflow-hidden rounded-lg border border-border bg-white p-0.5">
@@ -122,16 +123,17 @@ export function VisaoGeral({ podeLancar = true }: { podeLancar?: boolean }) {
           </div>
           <div>
             <h3 className="text-[11px] font-semibold uppercase tracking-[.08em] text-ink-3">Por classe</h3>
-            {painel.baixasPorClasse.length ? <ul className="mt-3 space-y-1">{painel.baixasPorClasse.map((item) => <li key={item.classe} className="flex items-center justify-between gap-3 px-2 py-1.5 text-sm"><span>{item.classe === "SEM_MOTIVO" ? "Sem motivo" : rotuloClasseMotivo(item.classe)}</span><strong>{item.qtd}</strong></li>)}</ul> : <Empty>Nenhuma baixa classificada no período.</Empty>}
-            {pctVoluntario !== null && <p className="mt-3 px-2 text-xs text-ink-3">{pctVoluntario}% das baixas por descarte classificado foram voluntárias ({voluntario} de {totalDescarteClassificado}).</p>}
+            {painel.baixasPorClasse.length ? <ul className="mt-3 space-y-1">{painel.baixasPorClasse.map((item) => <li key={item.classe} className="px-2 py-1.5 text-sm"><div className="flex items-center justify-between gap-3"><span>{item.classe === "SEM_MOTIVO" ? "Sem motivo" : rotuloClasseMotivo(item.classe)}</span><strong>{item.qtd}</strong></div>{item.classe === "DESCARTE_VOLUNTARIO" && pctVoluntario !== null && <p className="mt-2 rounded-md bg-surface-2 p-2 text-xs text-ink-2"><strong>{pctVoluntario}% de descarte voluntário</strong><br />{voluntario} de {totalDescarteClassificado} descartes classificados no período. Mortes e baixas sem classificação não entram neste cálculo.</p>}</li>)}</ul> : <Empty>Nenhuma baixa classificada no período.</Empty>}
+
           </div>
         </div>
       </Panel>
 
-      <Panel className="mt-6 overflow-hidden">
+      <Panel className="h-full overflow-hidden">
         <div className="flex items-center justify-between gap-3 border-b border-border p-5"><h2 className="font-serif text-xl">Últimos cadastros e baixas</h2><button onClick={() => navegarPara(URL_ANIMAIS)} className="flex shrink-0 items-center gap-1 whitespace-nowrap text-sm font-semibold text-green-800">Ver todos <ChevronRight size={15} /></button></div>
-        {painel.ultimosEventos.length ? <div className="divide-y divide-border">{painel.ultimosEventos.map((evento, indice) => <button key={`${evento.animalId}-${indice}`} onClick={() => navegarPara(`${URL_ANIMAIS}/${evento.animalId}`)} className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left hover:bg-surface-2"><div className="min-w-0"><strong className="break-words">{evento.brinco}</strong><div className="mt-1 text-xs text-ink-3">{ROTULO_EVENTO[evento.tipo] ?? evento.tipo}</div></div><span className="shrink-0 text-xs text-ink-3">{formatarDataBR(evento.data)}</span></button>)}</div> : <Empty>Nenhum evento recente.</Empty>}
+        {painel.ultimosEventos.length ? <div className="divide-y divide-border">{painel.ultimosEventos.slice(0, 4).map((evento, indice) => <button key={`${evento.animalId}-${indice}`} onClick={() => navegarPara(`${URL_ANIMAIS}/${evento.animalId}`)} className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left hover:bg-surface-2"><div className="min-w-0"><strong className="break-words">{evento.brinco}</strong><div className="mt-1 text-xs text-ink-3">{ROTULO_EVENTO[evento.tipo] ?? evento.tipo}</div></div><span className="shrink-0 text-xs text-ink-3">{formatarDataBR(evento.data)}</span></button>)}</div> : <Empty>Nenhum evento recente.</Empty>}
       </Panel>
+      </div>
     </>}
   </PaginaFinanceira>;
 }

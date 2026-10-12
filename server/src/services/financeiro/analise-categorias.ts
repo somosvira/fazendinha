@@ -1,7 +1,8 @@
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../../db.js";
-import { classificarFluxo, incluirClassificacao, ratearCategorias, ratearCompromissos } from "./classificacao.js";
+import { ratearTransacao, incluirClassificacao, ratearCategorias, ratearCompromissos } from "./classificacao.js";
+import { movimentoRealizado } from "./dashboard.calc.js";
 import { SEM_VINCULO } from "../../lib/ids.js";
 
 const data = z.string({ required_error: "Informe as datas inicial e final" }).regex(/^\d{4}-\d{2}-\d{2}$/, "Use uma data válida").refine((v) => !Number.isNaN(Date.parse(v)) && new Date(v).toISOString().slice(0, 10) === v, "Data inválida");
@@ -17,6 +18,7 @@ export type FiltroAnalise = z.infer<typeof analiseCategoriasSchema>;
 const idDoFiltro = (valor: string) => (valor === SEM_VINCULO ? null : valor);
 
 export async function analisarCategorias(filtro: FiltroAnalise, propriedadeId: number | null) {
+  if (filtro.base === "pagamentos") return analisarPagamentos(filtro, propriedadeId);
   const periodo = { gte: new Date(filtro.inicio), lte: new Date(filtro.fim) };
   const centroFiltro = filtro.centroCustoId !== undefined ? idDoFiltro(filtro.centroCustoId) : undefined;
   const categoriaFiltro = filtro.categoriaId !== undefined ? idDoFiltro(filtro.categoriaId) : undefined;
@@ -28,7 +30,6 @@ export async function analisarCategorias(filtro: FiltroAnalise, propriedadeId: n
       ...(centroFiltro !== undefined ? { OR: [{ centroCustoId: centroFiltro }, { itens: { some: { centroCustoId: centroFiltro } } }] } : {}),
       tipo: { in: ["COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO", "SERVICO"] },
       ...(filtro.base === "compras" ? { status: "CONFIRMADA", data: periodo }
-        : filtro.base === "pagamentos" ? { transacoes: { some: { data: periodo, tipo: { in: ["PAGAMENTO", "REVERSAO"] } } } }
         : { compromissos: { some: { status: { in: ["PENDENTE", "PARCIAL"] }, dataVencimento: periodo } } }),
     },
     include: { ...incluirClassificacao, centroCusto: true, transacoes: { orderBy: { seq: "asc" } }, compromissos: { include: { liquidacoes: true } } },
@@ -45,31 +46,10 @@ export async function analisarCategorias(filtro: FiltroAnalise, propriedadeId: n
       }
     };
     if (filtro.base === "compras") incluir(ratearCategorias(op, op.valorTotal), op.data);
-    else if (filtro.base === "pagamentos") {
-      const fluxo = classificarFluxo(op);
-      for (const t of op.transacoes) if (t.data >= periodo.gte && t.data <= periodo.lte) incluir(fluxo.transacoes.get(t.id) ?? [], t.data);
-    } else {
+    else {
       const rateios = ratearCompromissos(op);
       for (const c of op.compromissos) if (c.dataVencimento >= periodo.gte && c.dataVencimento <= periodo.lte) incluir(rateios.get(c.id) ?? [], c.dataVencimento);
     }
-  }
-  // Pagamentos sem operação pertencem a "Sem categoria" e "Sem centro".
-  // O livro mantém o original e a reversão, cada um na sua data de caixa.
-  if (filtro.base === "pagamentos" && !categoriaFiltro && !centroFiltro) {
-    const avulsos = await prisma.movimentoConta.findMany({
-      where: { transacao: {
-        operacaoId: null, data: periodo,
-        ...(propriedadeId !== null ? { propriedadeId } : {}),
-        OR: [{ tipo: "PAGAMENTO" }, { tipo: "REVERSAO", reversaoDe: { tipo: "PAGAMENTO" } }],
-      } },
-      include: { transacao: true },
-    });
-    for (const m of avulsos) linhas.push({
-      operacaoId: null, contaId: m.contaId, movimentoId: m.id,
-      descricao: m.transacao.descricao, data: m.transacao.data.toISOString().slice(0, 10),
-      categoriaId: null, categoria: "Sem categoria", centroCusto: "Sem centro de custo", classificacao: null,
-      valor: (m.direcao === "SAIDA" ? m.valor : m.valor.negated()).toFixed(2),
-    });
   }
   const categorias = new Map<string, { categoria: string; valor: Prisma.Decimal }>();
   for (const l of linhas) {
@@ -83,4 +63,33 @@ export async function analisarCategorias(filtro: FiltroAnalise, propriedadeId: n
     categorias: [...categorias.values()].sort((a, b) => b.valor.comparedTo(a.valor)).map((c) => ({ ...c, valor: c.valor.toFixed(2) })),
     linhas: linhas.sort((a, b) => b.data.localeCompare(a.data)),
   };
+}
+
+/** Mesma origem e rateio do dashboard, inclusive retiradas, avulsos e estornos. */
+async function analisarPagamentos(filtro: FiltroAnalise, propriedadeId: number | null) {
+  const movimentos = await prisma.movimentoConta.findMany({
+    where: { transacao: { ...(propriedadeId !== null ? { propriedadeId } : {}), data: { gte: new Date(`${filtro.inicio}T00:00:00Z`), lte: new Date(`${filtro.fim}T23:59:59.999Z`) } } },
+    include: { transacao: { include: { reversaoDe: { select: { tipo: true } }, operacao: { include: incluirClassificacao } } } },
+    orderBy: [{ transacao: { data: "desc" } }, { id: "asc" }],
+  });
+  const linhas = movimentos.flatMap(movimento => {
+    const realizado = movimentoRealizado(movimento);
+    if (!realizado || realizado.campo !== "saidas") return [];
+    return ratearTransacao(movimento.transacao.operacao, movimento.transacao.id, movimento.valor)
+      .filter(parte => (filtro.categoriaId === undefined || parte.categoriaId === idDoFiltro(filtro.categoriaId)) && (filtro.centroCustoId === undefined || parte.centroCustoId === idDoFiltro(filtro.centroCustoId)))
+      .map(parte => ({
+        operacaoId: movimento.transacao.operacaoId, contaId: movimento.contaId, movimentoId: movimento.id,
+        descricao: movimento.transacao.descricao ?? movimento.transacao.operacao?.descricao ?? null,
+        data: movimento.transacao.data.toISOString().slice(0, 10), categoriaId: parte.categoriaId,
+        categoria: parte.categoriaNome, centroCusto: parte.centroCustoNome ?? "Sem centro de custo", classificacao: parte.classificacao,
+        valor: parte.valor.abs().mul(realizado.valor.isNegative() ? -1 : 1).toFixed(2),
+      })).filter(parte => !new Prisma.Decimal(parte.valor).isZero());
+  });
+  const categorias = new Map<string, { categoria: string; valor: Prisma.Decimal }>();
+  for (const linha of linhas) {
+    const chave = `${linha.categoriaId}:${linha.categoria}`;
+    const categoria = categorias.get(chave) ?? { categoria: linha.categoria, valor: new Prisma.Decimal(0) };
+    categoria.valor = categoria.valor.plus(linha.valor); categorias.set(chave, categoria);
+  }
+  return { base: filtro.base, total: linhas.reduce((total, linha) => total.plus(linha.valor), new Prisma.Decimal(0)).toFixed(2), categorias: [...categorias.values()].sort((a, b) => b.valor.comparedTo(a.valor)).map(item => ({ ...item, valor: item.valor.toFixed(2) })), linhas };
 }

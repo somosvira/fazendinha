@@ -57,6 +57,14 @@ Vitest em ambos os workspaces; teste perto do código. O servidor inclui `src/**
 
 As flags `AUTH_DB_INTEGRATION=1`, `PECUARIA_DB_INTEGRATION=1` e `FINANCE_DB_INTEGRATION=1` habilitam casos com PostgreSQL real. Use exclusivamente banco descartável com todas as migrations. `test:financeiro:integration` cria e remove seu próprio banco temporário a partir de uma conexão local `fazendinha_local`; não depende de seed manual. Seus tipos podem ser conferidos por `tsc -p server/tsconfig.financeiro.json`.
 
+Quando qualquer flag de integração está habilitada, o Vitest do servidor executa os arquivos em sequência: compartilham o banco e transações Serializable de cenários independentes podem conflitar mesmo com fixtures distintas. Os testes de concorrência mantêm suas operações simultâneas dentro de cada caso. Sem as flags, os arquivos unitários continuam paralelos. O cenário sanitário com 101 participantes tem limite próprio de 30 segundos para criar e consultar os fatos reais; os demais conservam o limite padrão.
+
 `.github/workflows/staging.yml` compila os dois workspaces, testa o transformador e o servidor com banco efêmero, além de executar a bateria financeira separada. A suíte do cliente é comando explícito; não está nesse workflow. Testes unitários, integrações e homologação visual/manual são evidências distintas.
 
 Configuração e fluxo de publicação em Cloudflare ficam em [DEPLOY.md](DEPLOY.md).
+
+## Interface unificada
+
+Financeiro, Pecuária, Estoque e as demais telas autenticadas compartilham os tokens de `client/src/styles/cooperativa-theme.css`. A direção desta entrega está documentada no [guia Cooperativa contemporânea](docs/design/cooperativa-unificada.md), com referências específicas para Financeiro e Pecuária. PageHeader, CabecalhoTabela, SubTabs e TabelaFinanceira compõem cabeçalhos, abas e listagens reutilizando as primitivas existentes. Seleção e persistência de temas não estão implementadas.
+
+A navegação de Pecuária mantém Rebanho, Sanidade e Nutrição; pesagem coletiva é ação da seleção em Animais, e `/pecuaria/pesagem-manejo` permanece alias que conserva consulta e fragmento. Os resumos nutricionais usam os endpoints V3 existentes, percorrem o histórico paginado, respeitam o mascaramento de custos e agregam valores de apresentação em centavos inteiros. A entrega não altera as gravações de domínio; o custo de consultas cresce com o histórico, conforme o [guia específico](docs/design/pecuaria-cooperativa/design.md).

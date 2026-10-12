@@ -1,6 +1,8 @@
+import { limparRascunhoRelatorioAtivo, estadoRascunhoRelatorioAtivo, prepararPublicacaoRascunhoRelatorio } from "./rascunhoRelatorioAtivo";
+import { alterarControle } from "../lib/controles.fixture";
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { NovoRelatorioFinanceiro } from "./NovoRelatorioFinanceiro";
 import { descartarRascunhoRelatorioFinanceiro, gerarRelatorioFinanceiro, salvarPdfRelatorioFinanceiro, salvarRascunhoRelatorioFinanceiro, type ConfiguracoesFinanceiras, type RascunhoRelatorioFinanceiro, type RelatorioFinanceiro } from "./novo-api";
 import { uid } from "../lib/uid.fixture";
@@ -12,12 +14,14 @@ vi.mock("./novo-api", () => ({
 }));
 class ResizeObserverMock { observe() {} unobserve() {} disconnect() {} }
 beforeEach(() => {
+  limparRascunhoRelatorioAtivo();
+  vi.mocked(salvarRascunhoRelatorioFinanceiro).mockReset().mockResolvedValue({ ...rascunho, versao: 4 });
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2026-09-14T12:00:00-03:00"));
   vi.stubGlobal("ResizeObserver", ResizeObserverMock);
   if (!window.HTMLElement.prototype.scrollIntoView) window.HTMLElement.prototype.scrollIntoView = () => {};
 });
-afterEach(() => { cleanup(); vi.useRealTimers(); vi.clearAllMocks(); vi.unstubAllGlobals(); });
+afterEach(async () => { cleanup(); await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); }); limparRascunhoRelatorioAtivo(); vi.useRealTimers(); vi.clearAllMocks(); vi.unstubAllGlobals(); });
 
 const cadastros: ConfiguracoesFinanceiras = {
   contas: [], parceiros: [], produtos: [],
@@ -35,6 +39,7 @@ function renderizar(inicial: RascunhoRelatorioFinanceiro | null = rascunho) {
 }
 
 function selecionar(filtro: string, opcao: string) {
+  if (!screen.queryByRole("button", { name: filtro })) fireEvent.click(screen.getByRole("button", { name: /Filtros avançados/ }));
   fireEvent.click(screen.getByRole("button", { name: filtro }));
   fireEvent.click(screen.getByRole("option", { name: opcao }));
   fireEvent.keyDown(document, { key: "Escape" });
@@ -44,6 +49,7 @@ describe("novo relatório financeiro", () => {
   it("continua o rascunho e resume as escolhas em tempo real", () => {
     const { resumo } = renderizar();
     expect(screen.getByLabelText<HTMLInputElement>("Nome do relatório").value).toBe("Pecuária — agosto");
+    fireEvent.click(screen.getByRole("button", { name: /Filtros avançados/ }));
     fireEvent.click(screen.getByRole("button", { name: "Categoria dos itens" }));
     expect(screen.getByRole("option", { name: "Silagem antiga (inativa)" })).toBeTruthy();
     expect(screen.getByRole("option", { name: "Sem categoria" })).toBeTruthy();
@@ -57,6 +63,7 @@ describe("novo relatório financeiro", () => {
     expect(resumo().getByText("Nutrição")).toBeTruthy();
     expect(resumo().getByText("Sem centro de custo")).toBeTruthy();
     expect(resumo().getByText("Investimento")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Conteúdo do PDF" }));
     expect(resumo().getByText("Saldo das contas (sempre sem filtros)")).toBeTruthy();
   });
 
@@ -75,24 +82,20 @@ describe("novo relatório financeiro", () => {
     expect(screen.queryByText("Presets")).toBeNull();
   });
 
-  it("mantém a ação de gerar fora da área rolável do resumo", () => {
+  it("apresenta formulário antes do resumo e mantém uma única ação de gerar", () => {
     renderizar();
+    const titulo = screen.getByRole("heading", { name: "Novo relatório" });
     const resumo = screen.getByRole("complementary", { name: "Resumo do relatório" });
-    const gerar = within(resumo).getByRole("button", { name: "Gerar relatório" });
-    const aviso = within(resumo).getByText("O PDF é baixado ao gerar e fica salvo no histórico da propriedade.");
-    expect(gerar.parentElement?.className).toContain("shrink-0");
-    expect(gerar.parentElement).toBe(aviso.parentElement);
-    expect(gerar.parentElement?.className).toContain("border-t");
-    expect(gerar.parentElement?.className).toContain("pb-2");
-    expect(gerar.closest(".overflow-y-auto")).toBeNull();
-    expect(resumo.className).toContain("xl:absolute");
-    expect(resumo.className).toContain("xl:inset-y-0");
+    expect(titulo.compareDocumentPosition(resumo) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: "Gerar relatório" })).toHaveLength(1);
+    expect(within(resumo).queryByRole("button", { name: "Relatórios" })).toBeNull();
+    expect(within(resumo).getByText("Todas as categorias")).toBeTruthy();
   });
 
   it("salva o rascunho sozinho, com a versão lida", async () => {
     vi.mocked(salvarRascunhoRelatorioFinanceiro).mockResolvedValue({ ...rascunho, versao: 4 });
     renderizar();
-    fireEvent.change(screen.getByLabelText("Nome do relatório"), { target: { value: "Pecuária — agosto revisado" } });
+    await alterarControle(screen.getByLabelText("Nome do relatório"), { target: { value: "Pecuária — agosto revisado" } });
     await waitFor(() => expect(salvarRascunhoRelatorioFinanceiro).toHaveBeenCalledWith(expect.objectContaining({ nome: "Pecuária — agosto revisado" }), 3), { timeout: 2000 });
     expect(await screen.findByText("Rascunho salvo")).toBeTruthy();
   });
@@ -103,11 +106,11 @@ describe("novo relatório financeiro", () => {
       .mockImplementationOnce(() => new Promise((resolver) => { concluir = resolver; }))
       .mockResolvedValue({ ...rascunho, versao: 5 });
     renderizar();
-    fireEvent.change(screen.getByLabelText("Nome do relatório"), { target: { value: "A" } });
+    await alterarControle(screen.getByLabelText("Nome do relatório"), { target: { value: "A" } });
     await waitFor(() => expect(salvarRascunhoRelatorioFinanceiro).toHaveBeenCalledTimes(1), { timeout: 2000 });
-    fireEvent.change(screen.getByLabelText("Nome do relatório"), { target: { value: "AB" } });
+    await alterarControle(screen.getByLabelText("Nome do relatório"), { target: { value: "AB" } });
     await new Promise((r) => setTimeout(r, 800));
-    fireEvent.change(screen.getByLabelText("Nome do relatório"), { target: { value: "ABC" } });
+    await alterarControle(screen.getByLabelText("Nome do relatório"), { target: { value: "ABC" } });
     await new Promise((r) => setTimeout(r, 800));
     expect(salvarRascunhoRelatorioFinanceiro).toHaveBeenCalledTimes(1);
     concluir({ ...rascunho, versao: 4 });
@@ -121,7 +124,7 @@ describe("novo relatório financeiro", () => {
     vi.mocked(salvarRascunhoRelatorioFinanceiro).mockResolvedValue({ ...rascunho, versao: 4 });
     const onVoltar = vi.fn();
     render(<NovoRelatorioFinanceiro cadastros={cadastros} rascunho={rascunho} onVoltar={onVoltar} onGerado={vi.fn()} />);
-    fireEvent.change(screen.getByLabelText("Nome do relatório"), { target: { value: "Editado agora" } });
+    await alterarControle(screen.getByLabelText("Nome do relatório"), { target: { value: "Editado agora" } });
     fireEvent.click(screen.getByRole("button", { name: "Relatórios" }));
     await waitFor(() => expect(onVoltar).toHaveBeenCalled());
     expect(salvarRascunhoRelatorioFinanceiro).toHaveBeenCalledWith(expect.objectContaining({ nome: "Editado agora" }), 3);
@@ -131,7 +134,7 @@ describe("novo relatório financeiro", () => {
   it("limpar logo após editar não deixa o salvamento pendente recriar o rascunho", async () => {
     vi.mocked(descartarRascunhoRelatorioFinanceiro).mockResolvedValue(undefined);
     renderizar();
-    fireEvent.change(screen.getByLabelText("Nome do relatório"), { target: { value: "Quase" } });
+    await alterarControle(screen.getByLabelText("Nome do relatório"), { target: { value: "Quase" } });
     fireEvent.click(screen.getByRole("button", { name: "Limpar rascunho" }));
     await waitFor(() => expect(descartarRascunhoRelatorioFinanceiro).toHaveBeenCalled());
     await new Promise((r) => setTimeout(r, 900));
@@ -175,4 +178,38 @@ describe("novo relatório financeiro", () => {
     expect(onGerado).not.toHaveBeenCalled();
     expect(screen.getByRole<HTMLButtonElement>("button", { name: "Gerar relatório" }).disabled).toBe(false);
   });
+});
+
+it("sair antes do autosave preserva a configuração recente mesmo quando a gravação falha", async () => {
+  vi.mocked(salvarRascunhoRelatorioFinanceiro).mockRejectedValue(new Error("Rede indisponível"));
+  const tela = render(<NovoRelatorioFinanceiro cadastros={cadastros} rascunho={rascunho} onVoltar={vi.fn()} onGerado={vi.fn()} />);
+  await alterarControle(screen.getByLabelText("Nome do relatório"), { target: { value: "Última edição" } });
+  tela.unmount();
+  await waitFor(() => expect(estadoRascunhoRelatorioAtivo().recuperacao?.erro).toBe("Rede indisponível"));
+  expect(salvarRascunhoRelatorioFinanceiro).toHaveBeenCalledWith(expect.objectContaining({ nome: "Última edição" }), 3);
+  renderizar();
+  expect(screen.getByLabelText<HTMLInputElement>("Nome do relatório").value).toBe("Última edição");
+  expect(screen.getByRole("alert").textContent).toContain("Rede indisponível");
+});
+
+it("reabrir durante a gravação conserva a última edição e usa a versão confirmada", async () => {
+  let concluir!: (valor: RascunhoRelatorioFinanceiro) => void;
+  vi.mocked(salvarRascunhoRelatorioFinanceiro).mockImplementationOnce(() => new Promise(resolve => { concluir = resolve; })).mockResolvedValue({ ...rascunho, versao: 5 });
+  const tela = render(<NovoRelatorioFinanceiro cadastros={cadastros} rascunho={rascunho} onVoltar={vi.fn()} onGerado={vi.fn()} />);
+  await alterarControle(screen.getByLabelText("Nome do relatório"), { target: { value: "Primeira edição" } });
+  await waitFor(() => expect(salvarRascunhoRelatorioFinanceiro).toHaveBeenCalledTimes(1), { timeout: 2000 });
+  await alterarControle(screen.getByLabelText("Nome do relatório"), { target: { value: "Última edição antes de sair" } });
+  tela.unmount();
+  renderizar();
+  expect(screen.getByLabelText<HTMLInputElement>("Nome do relatório").value).toBe("Última edição antes de sair");
+  await alterarControle(screen.getByLabelText("Nome do relatório"), { target: { value: "Edição após voltar" } });
+  await act(async () => { concluir({ ...rascunho, versao: 4 }); });
+  await waitFor(() => expect(salvarRascunhoRelatorioFinanceiro).toHaveBeenCalledTimes(2), { timeout: 2000 });
+  expect(salvarRascunhoRelatorioFinanceiro).toHaveBeenLastCalledWith(expect.objectContaining({ nome: "Edição após voltar" }), 4);
+});
+
+it("reabrir usa a versão confirmada em memória em vez de uma leitura atrasada", () => {
+  prepararPublicacaoRascunhoRelatorio("escrita")({ ...rascunho, versao: 5, configuracao: { ...configuracao, nome: "Confirmado após a saída" } });
+  renderizar(rascunho);
+  expect(screen.getByLabelText<HTMLInputElement>("Nome do relatório").value).toBe("Confirmado após a saída");
 });

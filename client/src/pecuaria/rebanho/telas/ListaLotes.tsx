@@ -123,7 +123,7 @@ export function ListaLotes({ podeLancar = true, onAbrirLote }: { podeLancar?: bo
   const propriedadeInicial = getPropriedadeAtiva() ?? sitiosAtivos[0]?.id ?? null;
 
   return <PaginaFinanceira>
-    <PageHeader eyebrow="Pecuária" titulo="Lotes" descricao="Grupos de animais por sítio, usados na movimentação e nos filtros do rebanho." acao={podeLancar ? <div className="flex flex-wrap gap-2">
+    <PageHeader eyebrow="" titulo="Lotes" descricao="Grupos de animais por sítio, usados na movimentação e nos filtros do rebanho." acao={podeLancar ? <div className="flex flex-wrap gap-2">
       <Button secondary onClick={() => setSelecionandoAnimais(true)}><ArrowRightLeft size={16} /> Movimentar animais</Button>
       <Button onClick={abrirNovo}><Plus size={16} /> Novo lote</Button>
     </div> : undefined} />

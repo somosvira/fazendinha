@@ -1,0 +1,98 @@
+/* Extensão da Cooperativa para a Pecuária V3; paleta e primitivas vêm do tema compartilhado. */
+.pecuaria-content { color: var(--foreground); font-family: var(--sans); --mast-bg: var(--primary); }
+.pecuaria-content :is(h1,h2,h3,h4,.h1,.h2,.h3,.font-serif) { font-family: var(--sans); color: var(--fin-heading); }
+.pecuaria-content .h2 { font-size: 20px; font-weight: 650; line-height: 1.3; }
+.pecuaria-content .pec-nav,
+.pecuaria-content :is(.nutricao-abas,.sanidade-abas) { display: flex; gap: 8px; margin: 24px 0; padding: 6px; border: 1px solid var(--border); border-radius: 12px; background: var(--card); overflow-x: auto; }
+.pecuaria-content .pec-nav button,
+.pecuaria-content :is(.nutricao-abas,.sanidade-abas) button { border: 0; border-radius: 8px; padding: 10px 16px; font-family: var(--sans); font-size: 14px; font-weight: 600; white-space: nowrap; }
+.pecuaria-content .pec-nav button[aria-current="page"],
+.pecuaria-content :is(.nutricao-abas,.sanidade-abas) button[aria-selected="true"] { background: var(--primary); color: var(--primary-foreground); }
+.pecuaria-content .pec-nav button:hover:not([aria-current]),
+.pecuaria-content :is(.nutricao-abas,.sanidade-abas) button:hover:not([aria-selected="true"]) { background: var(--muted); }
+.pecuaria-content :is(.pec-nav button,.pec-ancoras a):focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
+.pecuaria-content .pec-card-ficha > header { background: var(--card); }
+.pecuaria-content .pec-card-ficha .pec-icone { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: var(--fin-sidebar); color: var(--primary); }
+.pecuaria-content :is(.nutricao-card,.sanidade-card) { border: 1px solid var(--border); border-radius: var(--fin-radius-panel); background: var(--card); box-shadow: var(--fin-shadow); overflow: hidden; }
+.pecuaria-content :is(.nutricao-card-cabecalho,.sanidade-card-cabecalho) { border-color: var(--border); padding: 18px 24px; }
+.pecuaria-content :is(.nutricao-card-corpo,.sanidade-card-corpo) { padding: 20px 24px; }
+.pecuaria-content .nutricao-metrica { border-radius: 12px; }
+.pecuaria-content :is(.nutricao-metrica strong,.nutricao-metrica-valor) { font-family: var(--sans); font-weight: 650; font-variant-numeric: tabular-nums; }
+.pecuaria-content .nutricao-botao { background: var(--primary); }
+.pecuaria-content .nutricao-botao:hover { background: var(--fin-primary-hover); opacity: 1; }
+.pecuaria-content :is(.nutricao-tabela,.sanidade-tabela) :is(th,td) { padding: 10px 16px; }
+.pecuaria-content :is(.nutricao-tabela,.sanidade-tabela) th { background: var(--muted); }
+.pecuaria-content .pec-ficha { background: var(--card); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--fin-shadow); overflow: hidden; margin-top: 24px; }
+.pecuaria-content .pec-ficha > section { border-top: 1px solid var(--border); padding: 24px; }
+.pecuaria-content .pec-ficha > section > .h2 { margin-bottom: 20px; }
+.pecuaria-content .pec-ficha .pec-card-ficha { border: 0; border-radius: 0; box-shadow: none; }
+.pecuaria-content .pec-ficha .pec-card-ficha > header { padding: 0 0 12px; }
+.pecuaria-content .pec-ficha .pec-card-ficha > header + div { padding: 16px 0 0; }
+.pecuaria-content .pec-ficha > .pec-ancoras { margin: 0; padding: 12px 24px; background: var(--muted); border-block: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 12px 24px; font-size: 13px; font-weight: 600; }
+.pecuaria-content .pec-ancoras a { color: var(--primary); text-decoration: none; }
+.pecuaria-content .pec-ancoras a:hover { text-decoration: underline; }
+:is(.pecuaria-content,.cooperativa-content) .pec-breadcrumb { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; color: var(--muted-foreground); margin-bottom: 20px; }
+:is(.pecuaria-content,.cooperativa-content) .pec-breadcrumb :is(a,button) { color: var(--primary); font-weight: 500; }
+:is(.pecuaria-content,.cooperativa-content) .pec-breadcrumb :is(a,button):hover { text-decoration: underline; }
+:is(.pecuaria-content,.cooperativa-content) .pec-config-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 20px; }
+:is(.pecuaria-content,.cooperativa-content) .pec-config-grupo { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; }
+:is(.pecuaria-content,.cooperativa-content) .pec-config-grupo h2 { font-size: 17px; font-weight: 650; margin-bottom: 16px; display: flex; align-items: center; gap: 12px; }
+:is(.pecuaria-content,.cooperativa-content) .pec-config-grupo a { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-top: 1px solid var(--border); padding: 14px 0; color: var(--foreground); font-size: 14px; }
+:is(.pecuaria-content,.cooperativa-content) .pec-config-grupo a:hover { color: var(--primary); }
+.pecuaria-content .pec-novo-animal { display: grid; grid-template-columns: minmax(0,1fr) 340px; border: 0; gap: 24px; background: transparent; align-items: start; margin-top: 0; }
+.pecuaria-content .pec-novo-animal > .pec-form-corpo,
+.pecuaria-content .pec-novo-animal > aside { border: 1px solid var(--border); border-radius: 16px; background: var(--card); color: var(--foreground); box-shadow: var(--fin-shadow); }
+.pecuaria-content .pec-novo-animal > aside { position: sticky; top: 24px; height: auto; }
+.pecuaria-content .pec-novo-animal > aside > div:last-child { margin-top: 24px; border-color: var(--border); }
+.pecuaria-content .pec-novo-animal aside .pec-revisao-titulo { color: var(--muted-foreground); }
+.pecuaria-content .pec-form-cabecalho { padding-bottom: 24px; border-bottom: 1px solid var(--border); margin-bottom: 24px; }
+.pecuaria-content .pec-form-cabecalho .h1 { margin: 0; }
+@media (max-width: 1100px) { .pecuaria-content .pec-novo-animal { grid-template-columns: minmax(0,1fr) 300px; } }
+@media (max-width: 1023px) { .pecuaria-content .pec-novo-animal { grid-template-columns: minmax(0,1fr); } .pecuaria-content .pec-novo-animal > aside { position: static; } }
+@media (max-width: 767px) {
+ :is(.pecuaria-content,.cooperativa-content) .pec-config-grid { grid-template-columns: minmax(0,1fr); }
+ .pecuaria-content .pec-ficha > section { padding: 20px 16px; }
+ .pecuaria-content .pec-ficha > .pec-ancoras { padding-inline: 16px; gap: 12px; }
+ :is(.pecuaria-content,.cooperativa-content) :is(.nutricao-card-cabecalho,.nutricao-card-corpo,.pec-config-grupo) { padding: 20px 16px; }
+}
+
+/* Mesma densidade de leitura nas tabelas legadas e nas tabelas compartilhadas. */
+.pecuaria-content table { font-size: 14px; line-height: 1.45; }
+.pecuaria-content table th { background: var(--muted); color: var(--foreground); font-size: 12px; font-weight: 600; }
+.pecuaria-content table :is(th,td) { padding: 10px 16px; }
+.pecuaria-content .sanidade-abas button.border-mast { background: var(--primary); color: var(--primary-foreground); }
+.pecuaria-content .sanidade-abas > div { border: 0; }
+.pecuaria-content .sanidade-ciclos { border-radius: 12px; font-size: 14px; }
+.pecuaria-content .sanidade-ciclo-linha { padding: 12px 16px; }
+.pecuaria-content .sanidade-ciclo-cabecalho { background: var(--muted); font-size: 12px; font-weight: 600; color: var(--foreground); }
+@media (min-width: 1200px) { .pecuaria-content .pec-filtros-sanidade { grid-template-columns: repeat(6,minmax(0,1fr)); } }
+
+.pecuaria-content [data-slot="financeiro-panel"].nutricao-conteudo { gap: 0; }
+.pecuaria-content .pec-paginacao > div { flex-wrap: wrap; max-width: 100%; }
+.pecuaria-content .sanidade-ciclos { min-width: 0; }
+.pecuaria-content .sanidade-ciclo-linha > * { min-width: 0; overflow-wrap: anywhere; }
+
+.pecuaria-content table { background: var(--card); }
+.pecuaria-content .nutricao-ajuda { position: sticky; top: 24px; }
+@media (min-width: 1024px) { .pecuaria-content .nutricao-formulario { grid-template-columns: minmax(0,1fr) 340px; } }
+@media (max-width: 1023px) { .pecuaria-content .nutricao-ajuda { position: static; } }
+
+/* Filtros sanitários: rótulos e controles compartilham a mesma linha de base. */
+.pec-filtros-sanidade { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.pec-filtros-sanidade > label { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.pec-filtros-sanidade > label > input,
+.pec-filtros-sanidade > label > select,
+.pec-filtros-sanidade > label > button { margin-top: 0; height: 42px; width: 100%; }
+.pec-filtros-animais > select { width: 100%; }
+@media (min-width: 768px) { .pec-filtros-sanidade { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 1200px) { .pec-filtros-sanidade { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+@media (max-width: 479px) { .pec-filtros-sanidade { grid-template-columns: minmax(0, 1fr); } }
+
+.pec-filtros-sanidade > label > div { width: 100%; margin-top: 0; }
+.pec-filtros-sanidade > label > div > input { height: 42px; }
+
+/* Listagens sanitárias usam uma superfície contínua, sem molduras internas. */
+.pecuaria-content .sanidade-lista .sanidade-ciclos { border: 0; border-radius: 0; }
+.pecuaria-content .sanidade-lista .sanidade-ciclo-cabecalho { border-top: 1px solid var(--border); }
+.pecuaria-content .sanidade-lista .sanidade-aplicacoes-geral { border: 0; border-radius: 0; box-shadow: none; }
+.pecuaria-content .sanidade-aplicacoes-geral > header { padding: 16px; }

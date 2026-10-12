@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { ProdutoEstoqueDetalhe } from "./ProdutoEstoqueDetalhe";
 import { obterProdutoEstoque, listarLotesProduto, listarMovimentosProduto, listarOrigensProduto, renomearLoteProduto } from "./api";
 import { getUsuario } from "../lib/auth";
@@ -24,7 +24,7 @@ describe("ficha do produto", () => {
   it("monta o resumo consolidado e troca o sítio sem criar estoque", async () => {
     render(<ProdutoEstoqueDetalhe produtoId="p" />);
     await screen.findByText("Saldo consolidado");
-    expect(screen.getByText("25 KG")).toBeTruthy();
+    expect(screen.getByText("25 kg")).toBeTruthy();
     expect(screen.queryByText(/Custo médio:/)).toBeNull();
     fireEvent.change(screen.getByLabelText("Sítio da ficha"), { target: { value: "2" } });
     await waitFor(() => expect(obterProdutoEstoque).toHaveBeenLastCalledWith("p", 2));
@@ -33,21 +33,32 @@ describe("ficha do produto", () => {
   it("pagina lotes e abre origens filtradas por lote", async () => {
     render(<ProdutoEstoqueDetalhe produtoId="p" />); await screen.findByText("Saldo consolidado");
     fireEvent.click(screen.getByRole("tab", { name: "Lotes" }));
-    await screen.findByRole("heading", { name: "Vence dezembro" });
+    await screen.findByRole("table", { name: "Lotes do produto" });
     fireEvent.click(screen.getByRole("button", { name: "Próxima" }));
     await waitFor(() => expect(listarLotesProduto).toHaveBeenLastCalledWith("p", expect.objectContaining({ pagina: 2 })));
-    await screen.findByRole("button", { name: "Ver origens" });
-    fireEvent.click(screen.getByRole("button", { name: "Ver origens" }));
+    fireEvent.pointerDown((await screen.findAllByRole("button", { name: "Ações do lote Vence dezembro" }))[0], { button: 0, ctrlKey: false });
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Ver origens" }));
     await waitFor(() => expect(listarOrigensProduto).toHaveBeenLastCalledWith("p", expect.objectContaining({ partidaId: "l", pagina: 1 })));
     await screen.findByText("Nenhum recebimento neste escopo.");
   });
   it("renomeia por ação explícita auditada", async () => {
     render(<ProdutoEstoqueDetalhe produtoId="p" />); await screen.findByText("Saldo consolidado");
-    fireEvent.click(screen.getByRole("tab", { name: "Lotes" })); await screen.findByRole("heading", { name: "Vence dezembro" });
-    fireEvent.click(screen.getByRole("button", { name: "Renomear lote" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Lotes" })); await screen.findByRole("table", { name: "Lotes do produto" });
+    fireEvent.pointerDown(screen.getAllByRole("button", { name: "Ações do lote Vence dezembro" })[0], { button: 0, ctrlKey: false });
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Renomear lote" }));
     fireEvent.change(screen.getByLabelText("Novo nome"), { target: { value: "Lote dezembro" } });
     fireEvent.click(screen.getByRole("button", { name: "Salvar nome" }));
     await waitFor(() => expect(renomearLoteProduto).toHaveBeenCalledWith("l", "Lote dezembro"));
+  });
+  it("mostra o breadcrumb e preserva origem e estado dos movimentos na tabela", async () => {
+    vi.mocked(listarMovimentosProduto).mockResolvedValue({ total: 1, itens: [{ id: "mov", seq: 1, produtoId: "p", produto: "Ração", materialGeneticoId: null, centrosCusto: [], tipo: "SAIDA", origem: "PERDA", status: "REVERTIDO", reversaoDeId: null, data: "2026-10-01", quantidade: 2, custoUnitario: null, valorTotal: null, fornecedor: null, observacao: null, operacaoId: null, operacaoNumero: null, vinculo: null }] });
+    render(<ProdutoEstoqueDetalhe produtoId="p" />);
+    await screen.findByText("Saldo consolidado");
+    expect(within(screen.getByRole("navigation", { name: "Navegação estrutural" })).getByRole("link", { name: "Estoque" }).getAttribute("href")).toBe("/estoque");
+    fireEvent.click(screen.getByRole("tab", { name: "Movimentos" }));
+    const tabela = within(await screen.findByRole("table", { name: "Movimentos do produto" }));
+    expect(tabela.getByText("Estornado")).toBeTruthy();
+    expect(tabela.getByText("2 kg")).toBeTruthy();
   });
   it("oferece nova tentativa quando a ficha falha", async () => {
     vi.mocked(obterProdutoEstoque).mockRejectedValueOnce(new Error("Não conseguimos carregar."));
@@ -60,14 +71,14 @@ describe("ficha do produto", () => {
     render(<ProdutoEstoqueDetalhe produtoId="p" />); await screen.findByText("Saldo consolidado");
     expect(screen.queryByRole("button", { name: "Editar produto" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Ajustar quantidade" })).toBeNull();
-    fireEvent.click(screen.getByRole("tab", { name: "Lotes" })); await screen.findByRole("heading", { name: "Vence dezembro" });
+    fireEvent.click(screen.getByRole("tab", { name: "Lotes" })); await screen.findByRole("table", { name: "Lotes do produto" });
     expect(screen.queryByRole("button", { name: "Renomear lote" })).toBeNull();
   });
   it("liga origens à compra e ao fornecedor quando o Financeiro está permitido", async () => {
     vi.mocked(listarOrigensProduto).mockResolvedValue({ total: 1, pagina: 1, porPagina: 15, itens: [{ id: "e", movimentoId: "e", seq: 1, data: "2026-10-02", propriedadeId: 1, origem: "COMPRA", status: "CONFIRMADO", quantidade: "25", custoUnitario: null, valorTotal: null, fornecedor: "Cooperativa", fornecedorId: "f", operacaoId: "op", operacaoNumero: 5, partidas: [] }] });
     render(<ProdutoEstoqueDetalhe produtoId="p" />); await screen.findByText("Saldo consolidado");
     fireEvent.click(screen.getByRole("tab", { name: "Origens das entradas" }));
-    expect((await screen.findByRole("link", { name: "Compra OP-0005" })).getAttribute("href")).toBe("/financeiro/operacoes/op");
-    expect(screen.getByRole("link", { name: "Consultar fornecedor" }).getAttribute("href")).toBe("/financeiro/configuracoes?aba=parceiros&parceiroId=f");
+    expect((await screen.findAllByRole("link", { name: "Compra OP-0005" }))[0].getAttribute("href")).toBe("/financeiro/operacoes/op");
+    expect(screen.getAllByRole("link", { name: "Consultar fornecedor" })[0].getAttribute("href")).toBe("/financeiro/configuracoes?aba=parceiros&parceiroId=f");
   });
 });

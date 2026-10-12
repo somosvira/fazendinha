@@ -1,5 +1,5 @@
 // Cadastro de animal — página cheia no layout de FormOperacao.tsx: form em
-// card + aside de revisão escuro. POST /pecuaria/rebanho/animais.
+// card + resumo de revisão à direita. POST /pecuaria/rebanho/animais.
 
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { cadastrarAnimal, listarCategorias, obterCatalogos, preverComposicaoAnimal, RebanhoApiError } from "../api";
@@ -13,7 +13,6 @@ import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import { navegarPara } from "../../../router";
 import { Button, ErrorBox, hoje, PageHeader, PaginaCarregando, PaginaFinanceira, ReviewLine } from "../../../financeiro/financeiro-ui";
 import { CampoFormulario, classeInput } from "../../../financeiro/PainelCadastro";
-import { NavRebanho } from "./NavRebanho";
 import { DatePicker } from "../../../components/DatePicker";
 import { useToast } from "../../../components/Toast";
 
@@ -55,7 +54,7 @@ function irParaPrimeiroErro(erros: Erros): boolean {
 export function NovoAnimal({ onVoltar, podeLancar = true }: { onVoltar: () => void; podeLancar?: boolean }) {
   if (!podeLancar) {
     return <PaginaFinanceira>
-      <PageHeader eyebrow="Pecuária" titulo="Novo animal" descricao="O seu perfil pode consultar o rebanho, mas não pode cadastrar animais." />
+      <PageHeader eyebrow="" titulo="Novo animal" descricao="O seu perfil pode consultar o rebanho, mas não pode cadastrar animais." />
       <ErrorBox erro="Você não tem permissão para cadastrar animais." />
     </PaginaFinanceira>;
   }
@@ -179,15 +178,11 @@ function FormNovoAnimal({ onVoltar }: { onVoltar: () => void }) {
 
   if (!catalogos && !erroCatalogos) return <PaginaCarregando label="Carregando cadastro" />;
 
-  return <div className="shell-wide pb-10">
-    <div className="mb-5 flex min-h-[82px] flex-wrap items-center justify-between gap-4 border-b border-border pb-5 pt-3">
-      <div><div className="eyebrow">Pecuária</div><h1 className="mt-1 font-serif text-3xl text-ink md:text-4xl">Novo animal</h1></div>
-      <Button secondary onClick={onVoltar} disabled={salvando}>Cancelar</Button>
-    </div>
-    <NavRebanho ativa="animais" />
+  return <div className="shell-wide pagina-financeira pb-10">
     <ErrorBox erro={erroCatalogos} />
-    {catalogos && <form onSubmit={submeter} noValidate className="mt-6 grid overflow-hidden rounded-xl border border-border bg-white xl:grid-cols-[minmax(0,1fr)_330px]">
-      <div className="space-y-7 p-5 md:p-7 xl:min-h-0 xl:overflow-y-auto">
+    {catalogos && <form onSubmit={submeter} noValidate className="pec-novo-animal">
+      <div className="pec-form-corpo space-y-7 p-5 md:p-7">
+        <PageHeader titulo="Novo animal" descricao="Identifique o animal e confira o cadastro antes de salvar." />
         <div id="novo-animal-erro" tabIndex={-1} className="outline-none"><ErrorBox erro={erroGeral} /></div>
         <section>
           <h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Identificação</h3>
@@ -235,9 +230,9 @@ function FormNovoAnimal({ onVoltar }: { onVoltar: () => void }) {
         </section>
         <CampoFormulario id="novo-animal-observacao" rotulo="Observação">{(p) => <textarea {...p} maxLength={500} className={classeInput} value={observacao} onChange={(e) => setObservacao(e.target.value)} />}</CampoFormulario>
       </div>
-      <aside className="flex h-full flex-col border-t border-border bg-[#1f2b21] p-6 text-white xl:border-l xl:border-t-0">
+      <aside className="flex flex-col p-6">
         <div>
-          <div className="text-[11px] font-semibold uppercase tracking-[.14em] text-[#aeb9aa]">Revisão do cadastro</div>
+          <div className="pec-revisao-titulo text-[11px] font-semibold uppercase tracking-[.14em]">Revisão do cadastro</div>
           <div className="mt-3 font-serif text-3xl">{brinco.trim() || "Sem brinco"}</div>
           <div className="mt-5 space-y-3 text-sm leading-5">
             {categoriaPrevista && <ReviewLine>Categoria calculada: {categoriaPrevista.nome}.</ReviewLine>}
@@ -248,8 +243,9 @@ function FormNovoAnimal({ onVoltar }: { onVoltar: () => void }) {
             {pesoEntradaKg && <ReviewLine>Peso de entrada: {Number(pesoEntradaKg).toLocaleString("pt-BR")} kg.</ReviewLine>}
           </div>
         </div>
-        <div className="mt-auto border-t border-white/10 pt-5">
-          <Button type="submit" disabled={salvando} className="w-full !bg-[#e9e3d2] !text-[#1f2b21]">{salvando ? "Salvando…" : "Salvar animal"}</Button>
+        <div className="mt-auto space-y-3 border-t border-border pt-5">
+          <Button type="submit" disabled={salvando} className="w-full">{salvando ? "Salvando…" : "Salvar animal"}</Button>
+          <Button secondary type="button" onClick={onVoltar} disabled={salvando} className="w-full">Cancelar</Button>
         </div>
       </aside>
     </form>}

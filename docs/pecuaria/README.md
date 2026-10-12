@@ -65,3 +65,9 @@ Esse guia usa `fazendinha_v3_teste`. O cenário unificado `seedatev3` usa **outr
 ## Evolução
 
 Uma feature nova deve declarar fatos, histórico/snapshots, sítio na data, efeitos em estoque/financeiro, permissões e critérios de validação. Verifique schema, migrations e testes antes de afirmar disponibilidade. Atualize este contrato quando mudar o comportamento; planos antigos de versão não direcionam a implementação atual.
+
+## Navegação e apresentação
+
+A interface desta entrega segue o [guia Cooperativa contemporânea](../design/pecuaria-cooperativa/design.md), compartilhado com Financeiro e Estoque. Rebanho, Sanidade e Nutrição usam o mesmo padrão de abas e tabelas. Pesagem coletiva fica na seleção de Animais; `/pecuaria/pesagem-manejo` é alias de compatibilidade, preservando filtros e fragmento. Configurações próprias ficam em `/configuracoes/pecuaria/*`, com compatibilidade para os endereços sanitários anteriores.
+
+Listagens sanitárias reúnem título, ação, filtros, tabela e paginação no mesmo painel. Tarefas e Carências preservam os estados de domínio, localização histórica e ações existentes. Consulta, mascaramento e gravações continuam sujeitos às permissões do contrato acima.

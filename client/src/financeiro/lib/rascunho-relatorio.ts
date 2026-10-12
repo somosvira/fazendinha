@@ -8,7 +8,7 @@ export type ResumoRascunhoRelatorio = {
   atualizadoEm: string;
 };
 
-export function resumoRascunhoRelatorio(rascunho: RascunhoRelatorioFinanceiro): ResumoRascunhoRelatorio {
+export function resumoRascunhoRelatorio(rascunho: Pick<RascunhoRelatorioFinanceiro, "configuracao" | "updatedAt">): ResumoRascunhoRelatorio {
   const config = rascunho.configuracao;
   const periodo = config.dataInicio && config.dataFim ? `${dataCurta(config.dataInicio)} a ${dataCurta(config.dataFim)}` : "Período a definir";
   const regime = REGIMES_RELATORIO.find((item) => item.id === config.regime)?.rotulo ?? "Relatório financeiro";

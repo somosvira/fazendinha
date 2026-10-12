@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button, ErrorBox, hoje } from "../../../financeiro/financeiro-ui";
 import { DatePicker } from "../../../components/DatePicker";
 import { classeInput } from "../../../financeiro/PainelCadastro";
@@ -9,7 +9,7 @@ import { formatarDataBR } from "../lib/rotulos";
 import { fmtMoneyExact } from "../../../components/charts";
 
 type Escolha = { quantidade: string; motivo: string; modo: "BAIXA_ESTOQUE" | "SEM_BAIXA_JUSTIFICADA"; justificativa: string; partidas: DistribuicaoPartida[] };
-export function ConferenciaPeriodos({ loteId, propriedadeId, centros, onSalvo }: { loteId: string; propriedadeId: number; centros: CentroNutricional[]; onSalvo: () => Promise<void> }) {
+export function ConferenciaPeriodos({ loteId, propriedadeId, centros, onSalvo, onOcupado }: { loteId: string; propriedadeId: number; centros: CentroNutricional[]; onSalvo: () => Promise<void>; onOcupado?: (v: boolean) => void }) {
   const [inicio, setInicio] = useState(hoje().slice(0, 7) + "-01");
   const [fim, setFim] = useState(hoje());
   const [centroCustoId, setCentro] = useState("");
@@ -17,6 +17,7 @@ export function ConferenciaPeriodos({ loteId, propriedadeId, centros, onSalvo }:
   const [escolhas, setEscolhas] = useState<Record<string, Escolha>>({});
   const [chave, setChave] = useState(() => crypto.randomUUID());
   const [ocupado, setOcupado] = useState(false);
+  useEffect(() => { onOcupado?.(ocupado); }, [ocupado, onOcupado]);
   const [erro, setErro] = useState<string | null>(null);
   const [salvo, setSalvo] = useState(false);
   const chaveItem = (p: Previa, produtoId: string) => p.inicio.slice(0, 10) + ":" + produtoId;
@@ -42,13 +43,13 @@ export function ConferenciaPeriodos({ loteId, propriedadeId, centros, onSalvo }:
   }
   return <section className="mt-4 grid gap-4">
     <ErrorBox erro={erro} />
-    {salvo && <p role="status" className="text-sm font-medium">Fechamento salvo. Consulte o Histórico de fechamentos acima para ver os detalhes e participantes.</p>}
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    {salvo && <p role="status" className="text-sm font-medium">Fechamento salvo. Consulte os fechamentos para ver os detalhes e participantes.</p>}
+    <fieldset disabled={ocupado} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       <label>De<DatePicker value={inicio} onChange={(v) => { setInicio(v); setPrevia(null); }} /></label>
       <label>Até<DatePicker value={fim} onChange={(v) => { setFim(v); setPrevia(null); }} /></label>
       <label>Centro de custo<select className={classeInput} value={centroCustoId} onChange={(e) => { setCentro(e.target.value); setPrevia(null); }}><option value="">Usar o centro do lote</option>{centros.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}</select></label>
       <div className="flex items-end"><Button disabled={ocupado} onClick={() => void conferir()}>Conferir período</Button></div>
-    </div>
+    </fieldset>
     {previa && <>
       <p className="text-sm">A confirmação inclui {previa.periodos.length} fechamento(s), separados por mês e vigência. Consumo/custo por animal são atribuições por permanência.</p>
       {previa.lacunas.map((l) => <p key={l.inicio} className="rounded-lg bg-amber-50 p-3 text-sm">Sem dieta de {formatarDataBR(l.inicio)} a {formatarDataBR(l.fim)}. Corrija a vigência e confira novamente; o conjunto não pode ser confirmado.</p>)}

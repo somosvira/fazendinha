@@ -25,6 +25,7 @@ export function MultiSelect<T extends MultiSelectValue>({
   value,
   onValueChange,
   disabled = false,
+  compacto = false,
 }: {
   label: string;
   helpText?: string;
@@ -41,6 +42,8 @@ export function MultiSelect<T extends MultiSelectValue>({
   value: readonly T[];
   onValueChange: (value: T[]) => void;
   disabled?: boolean;
+  /** Uma linha de seleção para barras de filtros; mantém as opções múltiplas. */
+  compacto?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -64,8 +67,8 @@ export function MultiSelect<T extends MultiSelectValue>({
   return (
     <div>
       <div className="mb-2 flex items-center justify-between gap-3">
-        <div className="flex items-center text-xs font-semibold uppercase tracking-[.12em] text-ink-3">{label}{ajuda && <AjudaCampo texto={ajuda} rotulo={`Ajuda: ${label}`} />}</div>
-        {value.length > 0 ? (
+        <div className={compacto ? "flex items-center text-sm font-medium" : "flex items-center text-xs font-semibold uppercase tracking-[.12em] text-ink-3"}>{label}{ajuda && <AjudaCampo texto={ajuda} rotulo={`Ajuda: ${label}`} />}</div>
+        {!compacto && value.length > 0 ? (
           <button type="button" onClick={() => onValueChange([])} className="text-xs font-semibold text-green-800 hover:underline">
             Limpar ({value.length})
           </button>
@@ -81,7 +84,7 @@ export function MultiSelect<T extends MultiSelectValue>({
             disabled && "cursor-not-allowed opacity-50",
           )}
         >
-          {selectedOptions.map((option) => (
+          {!compacto && selectedOptions.map((option) => (
             <span key={String(option.value)} className="relative z-10 inline-flex max-w-full items-center gap-1 rounded-full border border-[#bcc8b7] bg-[#eef1e9] py-1 pl-2.5 pr-1 text-xs font-medium text-ink-2">
               <span className="max-w-52 truncate">{option.label}</span>
               <button
@@ -105,7 +108,7 @@ export function MultiSelect<T extends MultiSelectValue>({
               disabled={disabled}
               className="absolute inset-0 z-0 flex w-full items-center justify-between gap-3 rounded-md px-3 text-left outline-none disabled:cursor-not-allowed"
             >
-              {value.length === 0 ? <span className="truncate text-ink-3">{placeholder}</span> : <span className="sr-only">{value.length} {value.length === 1 ? "selecionado" : "selecionados"}</span>}
+              {value.length === 0 ? <span className="truncate text-ink-3">{placeholder}</span> : compacto ? <span className="truncate">{selectedOptions.map(o => o.label).join(", ")}</span> : <span className="sr-only">{value.length} {value.length === 1 ? "selecionado" : "selecionados"}</span>}
               <ChevronsUpDown className="ml-auto size-4 shrink-0 text-ink-3" aria-hidden="true" />
             </button>
           </PopoverTrigger>
@@ -116,6 +119,7 @@ export function MultiSelect<T extends MultiSelectValue>({
             <CommandList className="max-h-64">
               <CommandEmpty>{emptyText}</CommandEmpty>
               <CommandGroup>
+                {compacto && value.length > 0 && <CommandItem value={`${placeholder} limpar seleção`} onSelect={() => onValueChange([])} className="cursor-pointer py-2.5">Limpar seleção</CommandItem>}
                 {options.map((option) => {
                   const checked = selected.has(option.value);
                   return (

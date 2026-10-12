@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { setToken } from "../lib/auth";
 import { setPropriedadeAtiva } from "../propriedadeScope";
 import { confirmarRascunhoOperacao, descartarRascunhoOperacao, obterRascunhoOperacao, salvarRascunhoOperacao, type RascunhoOperacao } from "./novo-api";
-import { estadoRascunhoAtivo, limparRascunhoAtivo, marcarEdicaoRascunho, prepararPublicacaoRascunho } from "./rascunhoAtivo";
+import { concluirEdicaoRascunho, contextoEdicaoRascunho, enfileirarSalvamentoRascunho, guardarEdicaoRascunho, estadoRascunhoAtivo, limparRascunhoAtivo, marcarEdicaoRascunho, prepararPublicacaoRascunho } from "./rascunhoAtivo";
 import { uid } from "../lib/uid.fixture";
 
 const rascunho = (versao: number): RascunhoOperacao => ({ id: uid(8), versao, updatedAt: "2026-09-14T12:00:00Z", documentos: [], dados: {} });
@@ -92,4 +92,37 @@ describe("rascunhoAtivo", () => {
     await expect(salvarRascunhoOperacao({}, 1)).rejects.toThrow("Conflito");
     expect(estadoRascunhoAtivo().rascunho?.versao).toBe(4);
   });
+});
+
+
+it("uma gravação anterior não remove a edição mais recente da recuperação", () => {
+  const primeiro = { formulario: { descricao: "Primeira edição" } };
+  const ultimo = { formulario: { descricao: "Edição final" } };
+  guardarEdicaoRascunho(primeiro); guardarEdicaoRascunho(ultimo);
+  concluirEdicaoRascunho(primeiro);
+  expect(estadoRascunhoAtivo().recuperacao?.dados).toBe(ultimo);
+  concluirEdicaoRascunho(ultimo, "Falhou");
+  expect(estadoRascunhoAtivo().recuperacao?.erro).toBe("Falhou");
+  limparRascunhoAtivo();
+  expect(estadoRascunhoAtivo().recuperacao).toBeNull();
+});
+
+it("serializa gravações entre instâncias e continua depois de uma falha", async () => {
+  let liberar!: () => void;
+  const ordem: number[] = [];
+  const primeira = enfileirarSalvamentoRascunho(async () => { ordem.push(1); await new Promise<void>(r => { liberar = r; }); throw new Error("falha"); });
+  const resultadoPrimeira = primeira.catch(() => undefined);
+  const segunda = enfileirarSalvamentoRascunho(async () => { ordem.push(2); });
+  await new Promise(r => setTimeout(r, 0));
+  expect(ordem).toEqual([1]); liberar();
+  await resultadoPrimeira; await segunda;
+  expect(ordem).toEqual([1, 2]);
+});
+
+it("o contexto da edição deixa de valer ao trocar sítio ou sessão", () => {
+  setToken("sessao1"); setPropriedadeAtiva(1);
+  const vigente = contextoEdicaoRascunho();
+  guardarEdicaoRascunho({ formulario: { descricao: "Privado do sítio 1" } });
+  setPropriedadeAtiva(2); expect(estadoRascunhoAtivo().recuperacao).toBeNull(); expect(vigente()).toBe(false);
+  setPropriedadeAtiva(1); setToken("sessao2"); expect(vigente()).toBe(false);
 });

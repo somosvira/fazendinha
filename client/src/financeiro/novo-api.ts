@@ -149,7 +149,13 @@ export const listarOperacoes = (filtros?: { inicio?: string; fim?: string }) => 
   const query = new URLSearchParams(Object.entries(filtros ?? {}).filter(([, valor]) => !!valor) as [string, string][]).toString();
   return req<Operacao[]>(`/financeiro/operacoes${query ? `?${query}` : ""}`);
 };
-export const obterOperacao = (id: string) => req<Operacao>(`/financeiro/operacoes/${id}`);
+export async function obterOperacao(id: string) {
+  const operacao = await req<Operacao>(`/financeiro/operacoes/${id}`);
+  if (!operacao || typeof operacao.id !== "string" || ![operacao.itens, operacao.transacoes, operacao.compromissos, operacao.documentos, operacao.movimentosEstoque].every(Array.isArray)) {
+    throw new ApiError("Não foi possível carregar os dados da operação. Tente novamente.", 502);
+  }
+  return operacao;
+}
 export const listarCompromissos = (periodo?: { inicio: string; fim: string }) => req<Compromisso[]>(`/financeiro/compromissos${periodo?.inicio && periodo.fim ? `?${new URLSearchParams(periodo)}` : ""}`);
 export const obterExtratoConta = (id: string) => req<MovimentoConta[]>(`/financeiro/contas/${id}/extrato`);
 export const criarOperacao = (input: unknown) => req<Operacao>("/financeiro/operacoes", { method: "POST", body: JSON.stringify(input) });
@@ -260,6 +266,6 @@ export const obterExtratoGeral = () => req<MovimentoGeral[]>("/financeiro/extrat
 export type AnaliseCategorias = {
   base: string; total: string;
   categorias: { categoria: string; valor: string }[];
-  linhas: { operacaoId: string | null; contaId?: string; movimentoId?: string; descricao: string | null; data: string; categoria: string; centroCusto: string; classificacao: string | null; valor: string }[];
+  linhas: { categoriaId?: string | null; operacaoId: string | null; contaId?: string; movimentoId?: string; descricao: string | null; data: string; categoria: string; centroCusto: string; classificacao: string | null; valor: string }[];
 };
 export const obterAnaliseCategorias = (filtros: Record<string, string>) => req<AnaliseCategorias>(`/financeiro/analise-categorias?${new URLSearchParams(Object.entries(filtros).filter(([, v]) => v !== ""))}`);

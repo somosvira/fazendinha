@@ -8,20 +8,28 @@
  * Usado para dobrar telas dentro de uma página só (Gastos › Contas|Caixinha;
  * Configurações › Geral|Cadastros|Categorias|Acessos). */
 
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 
 export type SubTab<T extends string> = { id: T; label: string };
 
-export function SubTabs<T extends string>({ tabs, active, onSelect, className }: {
+export function SubTabs<T extends string>({ tabs, active, onSelect, className, ariaLabel, variant }: {
   tabs: SubTab<T>[];
   active: T;
   onSelect: (id: T) => void;
   className?: string;
+  ariaLabel?: string;
+  variant?: "financeiro";
 }) {
+  if (variant === "financeiro") return <Tabs value={active} onValueChange={id => onSelect(id as T)} className={cn("min-w-0", className)}>
+    <TabsList aria-label={ariaLabel} className={cn("fin-abas grid h-auto group-data-[orientation=horizontal]/tabs:h-auto w-full gap-1 p-1", tabs.length === 4 ? "grid-cols-2 lg:grid-cols-4" : tabs.length > 4 ? "grid-cols-2 sm:grid-cols-3 xl:grid-cols-5" : tabs.length === 3 ? "grid-cols-3" : "grid-cols-2")}>
+      {tabs.map(t => <TabsTrigger key={t.id} value={t.id} onClick={event => { if (event.detail === 0 && active !== t.id) onSelect(t.id); }} className="min-h-11 whitespace-normal px-3 text-left">{t.label}</TabsTrigger>)}
+    </TabsList>
+  </Tabs>;
   return (
     <div className={cn("mb-5 flex", className)}>
       <div
-        role="tablist"
+        role="tablist" aria-label={ariaLabel}
         className="inline-flex max-w-full gap-1 overflow-x-auto rounded-[11px] border border-[color:var(--rule-soft)] bg-[var(--bg-card-2)] p-1 [scrollbar-width:none]"
       >
         {tabs.map((t) => {
