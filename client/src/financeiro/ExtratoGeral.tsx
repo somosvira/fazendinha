@@ -1,9 +1,10 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { SkeletonListaFinanceira } from "./CarregamentoFinanceiro";
 import { SelectCampo } from "./SelectCampo";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import type { Conta, MovimentoGeral } from "./novo-api";
-import { brl, dataBR, Empty, ErrorBox, Panel, Paginacao, TabelaFinanceira } from "./financeiro-ui";
+import { brl, CabecalhoTabela, dataBR, Empty, ErrorBox, Panel, Paginacao, TabelaFinanceira } from "./financeiro-ui";
 import { LinkOperacaoFinanceira } from "./LinkOperacaoFinanceira";
 import { infoReversao } from "./lib/reversao";
 
@@ -15,12 +16,13 @@ export type FiltrosExtratoGeral = {
   conta: string;
   instituicao: string;
   natureza?: string;
+  busca?: string;
 };
 
 export const FILTROS_EXTRATO_GERAL_INICIAIS: FiltrosExtratoGeral = { inicio: "", fim: "", conta: "", instituicao: "" };
 
 export function filtrarMovimentosExtratoGeral(movimentos: MovimentoGeral[], filtros: FiltrosExtratoGeral): MovimentoGeral[] {
-  const { inicio, fim, conta, instituicao, natureza } = filtros;
+  const { inicio, fim, conta, instituicao, natureza, busca } = filtros;
   return movimentos.filter(m => {
     const data = m.transacao.data.slice(0, 10);
     if (natureza) {
@@ -28,7 +30,9 @@ export function filtrarMovimentosExtratoGeral(movimentos: MovimentoGeral[], filt
       const entradaOriginal = m.transacao.tipo === "REVERSAO" ? m.direcao === "SAIDA" : m.direcao === "ENTRADA";
       if (tipo === "TRANSFERENCIA" || !["CONFIRMADA", "REVERTIDA"].includes(m.transacao.status) || (natureza === "recebimentos") !== entradaOriginal) return false;
     }
-    return (!inicio || data >= inicio) && (!fim || data <= fim) && (!conta || String(m.contaId) === conta)
+    const termo = busca?.trim().toLocaleLowerCase("pt-BR");
+    const texto = [m.transacao.descricao, m.conta.nome, m.conta.instituicao, m.transacao.parceiro?.nome].join(" ").toLocaleLowerCase("pt-BR");
+    return (!termo || texto.includes(termo)) && (!inicio || data >= inicio) && (!fim || data <= fim) && (!conta || String(m.contaId) === conta)
       && (!instituicao || (instituicao === "__sem__" ? !m.conta.instituicao : m.conta.instituicao === instituicao));
   });
 }
@@ -42,6 +46,7 @@ export function FiltrosExtratoGeralControl({ contas, filtros, onChangeFiltros, c
   const { conta, instituicao } = filtros;
   return <>
       <div className="fin-filtros-barra flex flex-wrap items-end gap-3 p-4">
+        <label className="fin-filtro-busca text-sm font-medium">Buscar movimento<Input type="search" placeholder="Descrição, conta ou parceiro" value={filtros.busca ?? ""} onChange={e => onChangeFiltros({ ...filtros, busca: e.target.value })} className={CAMPO} /></label>
         {children}
         <label className="fin-filtro-controle text-sm font-medium">Conta<SelectCampo value={conta} onValueChange={valor => onChangeFiltros({ ...filtros, conta: valor })} className={CAMPO}><option value="">Todas as contas</option>{contas.map(c => <option key={c.id} value={c.id}>{c.nome}{!c.ativo ? " (inativa)" : ""}</option>)}</SelectCampo></label>
         <label className="fin-filtro-controle text-sm font-medium">Instituição<SelectCampo value={instituicao} onValueChange={valor => onChangeFiltros({ ...filtros, instituicao: valor })} className={CAMPO}><option value="">Todas as instituições</option>{Array.from(new Set(contas.map(c => c.instituicao).filter((i): i is string => !!i))).sort().map(i => <option key={i} value={i}>{i}</option>)}<option value="__sem__">Sem instituição</option></SelectCampo></label>
@@ -63,17 +68,15 @@ export function ExtratoGeral({ contas, movimentos, filtros, onChangeFiltros, car
 }) {
   const { inicio, fim, conta, instituicao } = filtros;
   const [pagina, setPagina] = useState(1);
-  useEffect(() => setPagina(1), [inicio, fim, conta, instituicao, filtros.natureza, movimentos]);
+  useEffect(() => setPagina(1), [inicio, fim, conta, instituicao, filtros.natureza, filtros.busca, movimentos]);
   const intervaloInvalido = !!inicio && !!fim && inicio > fim;
   const filtrados = filtrarMovimentosExtratoGeral(movimentos, filtros);
   const totalPaginas = Math.max(1, Math.ceil(filtrados.length / 15));
   const paginaAtual = Math.min(pagina, totalPaginas);
-  return <section id="extrato-geral" className="mt-6 min-w-0 scroll-mt-6 rounded-[var(--fin-radius-panel)] border border-border bg-card p-4 sm:p-5" aria-labelledby="titulo-extrato-geral">
-    <h2 id="titulo-extrato-geral" className="h2 break-words hyphens-auto">Extrato geral</h2>
-    <p className="mt-2 break-words text-sm leading-6 text-ink-3">Movimentações de todas as contas da fazenda selecionada, da mais recente à mais antiga. Clique para localizar o registro na conta.</p>
-    {controles}
-    <Panel tom="info" className="fin-painel mt-3 overflow-hidden">
-      {!ocultarFiltros && <FiltrosExtratoGeralControl contas={contas} filtros={filtros} onChangeFiltros={onChangeFiltros} />}
+  return <section id="extrato-geral" className="mt-6 min-w-0 scroll-mt-6" aria-label="Extrato geral">
+    <Panel tom="info" className="fin-painel overflow-hidden">
+      <CabecalhoTabela titulo="Extrato geral" descricao="Movimentações da fazenda, da mais recente à mais antiga. Clique para consultar na conta." />
+      {!ocultarFiltros && <FiltrosExtratoGeralControl contas={contas} filtros={filtros} onChangeFiltros={onChangeFiltros}>{controles}</FiltrosExtratoGeralControl>}
       <ErrorBox erro={erro} />
       {intervaloInvalido ? <p role="alert" className="p-3">A data final deve ser igual ou posterior à data inicial.</p> : carregando ? <SkeletonListaFinanceira label="Carregando extrato geral" /> : erro ? <p className="p-3">Não foi possível carregar as movimentações.</p> : filtrados.length ? <><TabelaFinanceira cartaoComLinks compacta barraRolagemSuperior rotulo="Extrato geral" itens={filtrados.slice((paginaAtual - 1) * 15, paginaAtual * 15)} chaveDe={m => m.id} onAbrir={onAbrir} colunas={[
         { chave: "data", titulo: "Data", alinhamento: "centro", larguraMinima: 110, celula: m => dataBR(m.transacao.data) },

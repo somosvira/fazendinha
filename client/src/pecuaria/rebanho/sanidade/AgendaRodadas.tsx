@@ -1,5 +1,5 @@
-import { Fragment, useEffect, useRef, useState } from "react";
-import { Button, ErrorBox, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
+import { Fragment, type ReactNode, useEffect, useRef, useState } from "react";
+import { Button, CabecalhoTabela, ErrorBox, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
 import { classeInput } from "../../../financeiro/PainelCadastro";
 import { Paginacao } from "../ui";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
@@ -9,7 +9,7 @@ import { consultaRodadas, consultarRodada, listarEtapasRodada, listarParticipant
 import { dataSanitaria, nomeAnimalSanitario, unidadeSanitaria } from "./rotulos";
 const paginaUrl = (chave: string) => Math.max(1, Number(new URLSearchParams(window.location.search).get(chave)) || 1);
 
-export function AgendaRodadas({ filtros, podeLancar, rodadaId, onAbrir, onExecutar, onAcao, recarregarToken }: { filtros: Record<string, string | number | undefined>; podeLancar: boolean; rodadaId: string; onAbrir: (id: string) => void; onExecutar: (tarefas: TarefaRodada[]) => void; onAcao: (acao: "adiar" | "dispensar" | "cancelar" | "consultar", tarefa: TarefaRodada) => void; recarregarToken: number }) {
+export function AgendaRodadas({ filtrosUI, filtros, podeLancar, rodadaId, onAbrir, onExecutar, onAcao, recarregarToken }: { filtrosUI?: ReactNode; filtros: Record<string, string | number | undefined>; podeLancar: boolean; rodadaId: string; onAbrir: (id: string) => void; onExecutar: (tarefas: TarefaRodada[]) => void; onAcao: (acao: "adiar" | "dispensar" | "cancelar" | "consultar", tarefa: TarefaRodada) => void; recarregarToken: number }) {
   const [pagina, setPagina] = useState<PaginaSanitaria<RodadaSanitaria> | null>(null);
   const [criando, setCriando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -18,11 +18,12 @@ export function AgendaRodadas({ filtros, podeLancar, rodadaId, onAbrir, onExecut
   const [salvo, setSalvo] = useState(false);
   const consulta = consultaRodadas(filtros);
   useEffect(() => { let vivo = true; setCarregando(true); setErro(null); listarRodadas(Object.fromEntries(new URLSearchParams(consulta))).then((v) => { if (vivo) setPagina(v); }).catch((e: unknown) => { if (vivo) setErro(`${salvo ? "Ciclo salvo. A consulta não atualizou. " : ""}${e instanceof Error ? e.message : String(e)}`); }).finally(() => { if (vivo) setCarregando(false); }); return () => { vivo = false; }; }, [consulta, revisao, recarregarToken]);
-  return <section className="grid min-w-0 gap-4">
+  return <section className="min-w-0">
+    <CabecalhoTabela titulo="Ciclos de protocolos" acao={podeLancar ? <Button onClick={() => setCriando(true)}>Novo ciclo</Button> : undefined} />
+    {filtrosUI}
     {salvo && <p role="status">Ciclo salvo.</p>}
     {erro && <><ErrorBox erro={erro} /><Button secondary onClick={() => setRevisao((v) => v + 1)}>Tentar novamente</Button></>}
     {carregando ? <p>Carregando ciclos…</p> : <><div className="sanidade-ciclos">
-      <div className="flex flex-wrap items-center justify-between gap-3 p-4"><h2 className="h2">Ciclos de protocolos</h2>{podeLancar && <Button onClick={() => setCriando(true)}>Novo ciclo</Button>}</div>
       <div className="sanidade-ciclo-linha sanidade-ciclo-cabecalho text-sm text-ink-3" aria-hidden="true"><span>Ciclo</span><span>Protocolo</span><span>Início</span><span>Participantes</span><span>Ação</span></div>
       {(pagina?.itens ?? []).map((r) => <Fragment key={r.id}>
         <div className={`sanidade-ciclo-linha ${rodadaId === r.id ? "sanidade-ciclo-ativo" : ""}`}>

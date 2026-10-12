@@ -14,7 +14,6 @@ import { useSaldos, listarMovimentos, listarCentrosCusto, type FiltroMovimentos,
 import { abrirAjusteEstoque, destinoDoMovimento, podeAcessarArea, podeAjustarEstoque } from "./navegacao";
 import { SEM_VINCULO } from "../lib/ids";
 import { ROTULO_ORIGEM } from "./rotulos";
-import { listarPropriedades, type PropriedadeDTO } from "../api/propriedades";
 import { getPropriedadeAtiva } from "../propriedadeScope";
 
 const qtd = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 3 });
@@ -75,28 +74,19 @@ function useMovimentos(f: FiltroMovimentos) {
 export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { centroCustoIdInicial?: string | null; titulo?: string; avisoFiltro?: string } = {}) {
   const urlEstoque = new URLSearchParams(window.location.search);
   const movimentoId = urlEstoque.get("movimentoId") ?? "";
-  const [sitioFiltro, setSitioFiltro] = useState(() => Number(urlEstoque.get("propriedadeId")) || undefined);
-  const [sitios, setSitios] = useState<PropriedadeDTO[]>([]);
   const consolidado = getPropriedadeAtiva() == null;
-  const sitioEfetivo = consolidado ? sitioFiltro : getPropriedadeAtiva() ?? undefined;
-  const sitioMovimento = sitioEfetivo;
+  const sitioEfetivo = getPropriedadeAtiva() ?? undefined;
+  const sitioHistorico = Number(urlEstoque.get("propriedadeId")) || undefined;
+  const sitioMovimento = movimentoId && consolidado ? sitioHistorico : sitioEfetivo;
   // O menu `/estoque` começa sem filtro; atalhos podem informar um centro inicial.
   const [centroFiltro, setCentroFiltro] = useState(centroCustoIdInicial != null ? String(centroCustoIdInicial) : "");
   const saldos = useSaldos({ ...(centroFiltro ? { centroCustoId: centroFiltro } : {}), ...(sitioEfetivo ? { propriedadeId: sitioEfetivo } : {}) });
   useEffect(() => {
-    if (consolidado || sitioFiltro == null || sitioFiltro === sitioEfetivo) return;
+    if (!sitioHistorico || (movimentoId && consolidado)) return;
     const params = new URLSearchParams(window.location.search);
     params.delete("propriedadeId");
     window.history.replaceState(null, "", `${window.location.pathname}${params.size ? `?${params}` : ""}${window.location.hash}`);
-    setSitioFiltro(undefined);
-  }, [consolidado, sitioFiltro, sitioEfetivo]);
-  useEffect(() => {
-    let vivo = true;
-    listarPropriedades().then((dados) => { if (vivo) setSitios(dados); }).catch(() => { if (vivo) setSitios([]); });
-    const restaurar = () => setSitioFiltro(Number(new URLSearchParams(window.location.search).get("propriedadeId")) || undefined);
-    window.addEventListener("popstate", restaurar);
-    return () => { vivo = false; window.removeEventListener("popstate", restaurar); };
-  }, []);
+  }, [consolidado, movimentoId, sitioHistorico]);
   // Histórico: filtros e paginação vão para o servidor (a lista cresce sem limite).
   const [buscaMov, setBuscaMov] = useState("");
   const [buscaMovAplicada, setBuscaMovAplicada] = useState("");
@@ -202,8 +192,6 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
         <span title={TIPO_MOV[m.tipo].rotulo}><Pill tone={TIPO_MOV[m.tipo].tom}>{ROTULO_ORIGEM[m.origem] ?? m.origem}</Pill></span>
         {m.reversaoDeId != null && <Pill tone="red">Estorno</Pill>}
         {m.status === "REVERTIDO" && <Pill tone="red">Estornado</Pill>}
-        {m.estorno && <LinkInterno href={`/estoque?movimentoId=${encodeURIComponent(m.estorno.id)}${m.propriedadeId != null ? `&propriedadeId=${m.propriedadeId}` : ""}`} area="estoque">Ver estorno</LinkInterno>}
-        {m.reversaoDeId && <LinkInterno href={`/estoque?movimentoId=${encodeURIComponent(m.reversaoDeId)}${m.propriedadeId != null ? `&propriedadeId=${m.propriedadeId}` : ""}`} area="estoque">Ver movimento original</LinkInterno>}
       </span>
     ) },
     { chave: "qtd", titulo: "Qtde", alinhamento: "direita", larguraMinima: 110, celula: (m) => { const un = unidadePorProduto.get(m.produtoId); return <span className="whitespace-nowrap">{qtd(m.quantidade)}{un ? ` ${rotuloUnidade(un)}` : ""}</span>; } },
@@ -213,6 +201,10 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
       if (!destino) return <span className="break-words text-ink-3">{m.fornecedor ?? "—"}</span>;
       return <span className="break-words"><LinkInterno href={destino.href} area={destino.area}>{destino.rotulo}</LinkInterno>{m.fornecedor && <span className="text-ink-3"> · {m.fornecedor}</span>}</span>;
     } },
+    { chave: "acoes", titulo: "Ações", acoes: true, larguraMinima: 170, celula: m => <div className="flex flex-wrap gap-2">
+        {m.estorno && <LinkInterno href={`/estoque?movimentoId=${encodeURIComponent(m.estorno.id)}${m.propriedadeId != null ? `&propriedadeId=${m.propriedadeId}` : ""}`} area="estoque">Ver estorno</LinkInterno>}
+        {m.reversaoDeId && <LinkInterno href={`/estoque?movimentoId=${encodeURIComponent(m.reversaoDeId)}${m.propriedadeId != null ? `&propriedadeId=${m.propriedadeId}` : ""}`} area="estoque">Ver movimento original</LinkInterno>}
+      </div> },
   ];
 
   const filtrosAtivos = busca.trim() !== "" || soAbaixoMin || soNegativos;
@@ -225,14 +217,6 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
 
   return <PaginaFinanceira>
     <PageHeader eyebrow="" titulo={titulo ?? "Estoque"} descricao="Saldos, reposição e movimentações dos produtos da fazenda." acao={acao} />
-    {consolidado && <label className="estoque-escopo mt-4 flex flex-wrap items-center gap-3 text-sm">Sítio no estoque<select aria-label="Sítio no estoque" className={`${CAMPO} max-w-xs`} value={sitioFiltro ?? ""} onChange={(e) => {
-      const sitio = Number(e.target.value) || undefined;
-      setSitioFiltro(sitio); setPaginaMov(1); setPaginaSaldos(1);
-      const params = new URLSearchParams(window.location.search);
-      if (sitio) params.set("propriedadeId", String(sitio)); else params.delete("propriedadeId");
-      const query = params.toString();
-      window.history.replaceState(null, "", `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`);
-    }}><option value="">Todos os sítios</option>{sitios.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}</select></label>}
     {avisoFiltro && <p className="mt-4 text-sm text-amber-800">{avisoFiltro}</p>}
     <ErrorBox erro={erroCentros ? `Erro ao carregar centros de custo: ${erroCentros}` : null} />
 

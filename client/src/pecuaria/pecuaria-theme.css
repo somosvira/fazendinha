@@ -90,3 +90,9 @@
 
 .pec-filtros-sanidade > label > div { width: 100%; margin-top: 0; }
 .pec-filtros-sanidade > label > div > input { height: 42px; }
+
+/* Listagens sanitárias usam uma superfície contínua, sem molduras internas. */
+.pecuaria-content .sanidade-lista .sanidade-ciclos { border: 0; border-radius: 0; }
+.pecuaria-content .sanidade-lista .sanidade-ciclo-cabecalho { border-top: 1px solid var(--border); }
+.pecuaria-content .sanidade-lista .sanidade-aplicacoes-geral { border: 0; border-radius: 0; box-shadow: none; }
+.pecuaria-content .sanidade-aplicacoes-geral > header { padding: 16px; }

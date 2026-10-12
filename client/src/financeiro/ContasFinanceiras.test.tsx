@@ -146,7 +146,7 @@ it("pagina contas e busca em todos os registros antes de paginar", async () => {
 });
 
 
-it("mostra fluxo consolidado antes das contas e usa filtros compartilhados com o extrato", async () => {
+it("mantém fluxo consolidado independente dos filtros dentro do extrato", async () => {
   const transacao = { id: uid(70), seq: 70, tipo: "RECEBIMENTO", status: "CONFIRMADA", data: "2026-09-13", descricao: "Recebimento no banco", formaPagamento: null, parceiro: null, operacao: null };
   const config = await obterConfiguracoesFinanceiras();
   vi.mocked(obterExtratoGeral).mockResolvedValue([
@@ -158,11 +158,12 @@ it("mostra fluxo consolidado antes das contas e usa filtros compartilhados com o
   const contas = screen.getByRole("region", { name: "Contas" });
   expect(grafico.compareDocumentPosition(contas) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   expect(screen.queryByRole("button", { name: "Mostrar receitas e despesas" })).toBeNull();
-  expect(screen.getByText(/Todas as contas da fazenda, conforme os filtros/)).toBeTruthy();
+  expect(screen.getByText(/Todas as contas da fazenda; inclui contas/)).toBeTruthy();
   await alterarControle(screen.getByLabelText("Conta"), { target: { value: uid(1) } });
+  expect(screen.getByLabelText("Conta").closest("#extrato-geral")).toBeTruthy();
   const extrato = within(screen.getByRole("table", { name: "Extrato geral" }));
   expect(extrato.queryByText("Recebimento no caixa")).toBeNull();
-  await waitFor(() => expect(within(grafico).getByRole("list", { name: "Totais acumulados do gráfico" }).textContent).toContain("25,00"));
+  await waitFor(() => expect(within(grafico).getByRole("list", { name: "Totais acumulados do gráfico" }).textContent).toContain("35,00"));
   expect(within(screen.getByRole("navigation", { name: "Paginação das contas" })).queryByRole("button", { name: "Próxima" })).toBeNull();
 });
 

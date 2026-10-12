@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { Syringe, Eye, Link2, Pencil, Ban } from "lucide-react";
 import { CardFicha } from "../ui";
 import { consultarCarencia, listarAplicacoes, type AplicacaoSanitaria, type CarenciaAnimal } from "./api";
@@ -20,9 +20,9 @@ import { PainelDetalheSanitario } from "./PainelDetalheSanitario";
 import { dataAplicacaoSanitaria, unidadeSanitaria, tipoSanitario, origemSanitaria, nomeAnimalSanitario } from "./rotulos";
 import { TabelaFinanceira } from "../../../financeiro/financeiro-ui";
 
-export function SanidadeAnimal({ animalId, propriedadeId, podeLancar, recarregarToken, lista, onMudou, geral = false, abrirDetalhe }: {
+export function SanidadeAnimal({ filtrosUI, animalId, propriedadeId, podeLancar, recarregarToken, lista, onMudou, geral = false, abrirDetalhe }: {
   animalId: string; propriedadeId: number | null; podeLancar: boolean; recarregarToken: number;
-  lista?: AplicacaoSanitaria[]; onMudou?: (id?: string, propriedadeIdFato?: number) => void; geral?: boolean; abrirDetalhe?: (tipo: string, id: string, propriedadeId?: number | null) => void;
+  filtrosUI?: ReactNode; lista?: AplicacaoSanitaria[]; onMudou?: (id?: string, propriedadeIdFato?: number) => void; geral?: boolean; abrirDetalhe?: (tipo: string, id: string, propriedadeId?: number | null) => void;
 }) {
   const [aplicacoes, setAplicacoes] = useState<AplicacaoSanitaria[]>([]);
   const [carencia, setCarencia] = useState<CarenciaAnimal | null>(null);
@@ -71,14 +71,15 @@ export function SanidadeAnimal({ animalId, propriedadeId, podeLancar, recarregar
     return () => { vivo = false; };
   }, [animalId, recarregarToken, versao, lista]);
 
-  return <CardFicha icon={Syringe} titulo={geral ? "Aplicações" : "Sanidade"} className="lg:col-span-2"
-    acao={podeLancar && (geral || propriedadeId != null) ? <div className="flex flex-wrap gap-2"><Button secondary onClick={() => setAberto(true)}>Registrar aplicação sanitária</Button>{!geral && <><Button secondary onClick={() => setNovoFato("ocorrencia")}>Nova ocorrência</Button><Button secondary onClick={() => setNovoFato("exame")}>Registrar exame</Button><Button secondary onClick={() => setNovoFato("protocolo")}>Iniciar protocolo</Button></>}</div> : undefined}>
+  return <CardFicha icon={Syringe} titulo={geral ? "Aplicações" : "Sanidade"} tabela={geral} className={geral ? "sanidade-aplicacoes-geral" : "lg:col-span-2"}
+    acao={podeLancar && (geral || propriedadeId != null) ? <div className="flex flex-wrap gap-2"><Button onClick={() => setAberto(true)}>Registrar aplicação sanitária</Button>{!geral && <><Button secondary onClick={() => setNovoFato("ocorrencia")}>Nova ocorrência</Button><Button secondary onClick={() => setNovoFato("exame")}>Registrar exame</Button><Button secondary onClick={() => setNovoFato("protocolo")}>Iniciar protocolo</Button></>}</div> : undefined}>
     {erro && <p className="text-sm text-red-700">{erro}</p>}
     {erroConsulta && <><ErrorBox erro={erroConsulta} /><Button secondary onClick={() => atualizar()}>Tentar novamente</Button></>}
     {carregando && <p>Carregando aplicações…</p>}
     {animalId && <CarenciasSanitarias carencia={carencia} />}
+    {filtrosUI}
     {!geral && animalId && <RodadasAnimal animalId={animalId} revisao={versao + recarregarToken} />}
-    {<TabelaFinanceira rotulo="Aplicações sanitárias" itens={aplicacoes} chaveDe={(a) => a.id} onAbrir={verDetalhe} barraRolagemSuperior colunas={[
+    {<TabelaFinanceira rotulo="Aplicações sanitárias" itens={geral && lista ? lista : aplicacoes} chaveDe={(a) => a.id} onAbrir={verDetalhe} barraRolagemSuperior colunas={[
       { chave: "animal", titulo: "Animal", principal: true, celula: (a) => a.animal ? nomeAnimalSanitario(a.animal) : "Animal não identificado" },
       { chave: "data", titulo: "Data e hora", larguraMinima: 170, celula: (a) => dataAplicacaoSanitaria(a) },
       { chave: "tipo", titulo: "Tipo", celula: tipoSanitario },

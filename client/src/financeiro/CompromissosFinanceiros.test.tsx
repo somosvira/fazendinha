@@ -15,10 +15,11 @@ vi.mock("./novo-api", () => ({
 
 beforeEach(() => {
   HTMLElement.prototype.scrollIntoView = vi.fn();
+  vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
   window.history.replaceState(null, "", "/financeiro/compromissos");
   vi.clearAllMocks();
 });
-afterEach(cleanup);
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 describe("CompromissosFinanceiros — criação", () => {
   it("pede confirmação antes de substituir um rascunho", async () => {
@@ -117,18 +118,51 @@ it("pagina compromissos após busca e filtros sem recortar os totais", async () 
 });
 
 
+it("combina situações e filtra vencimentos somente na listagem, mantendo os cards gerais", async () => {
+  window.history.replaceState(null, "", "/financeiro/compromissos?inicio=2026-09-01&fim=2026-09-30");
+  const compromisso = (id: number, tipo: "PAGAR" | "RECEBER", data: string, valor: string, descricao: string) => ({
+    id: uid(id), seq: id, tipo, status: "PENDENTE" as const, valorOriginal: valor, valorLiquidado: "0", saldoPendente: valor,
+    dataVencimento: data, numeroParcela: 1, totalParcelas: 1, vencido: false, parceiro: null,
+    operacao: { id: uid(id + 100), numero: id, tipo: "SERVICO", descricao },
+  });
+  vi.mocked(listarCompromissos).mockResolvedValue([
+    compromisso(11, "PAGAR", "2026-09-15", "100", "Custeio setembro"),
+    compromisso(12, "PAGAR", "2026-10-15", "200", "Custeio outubro"),
+    compromisso(13, "RECEBER", "2026-09-20", "70", "Receita setembro"),
+  ]);
+  const { container } = render(<CompromissosFinanceiros onNav={vi.fn()} podeLancar={false} />);
+  const tabela = within(await screen.findByRole("table", { name: "Compromissos financeiros" }));
+  const cards = [...container.querySelectorAll("section.fin-indicador")].map(c => c.textContent);
+  expect(cards).toHaveLength(3);
+  expect(cards[0]).toContain("300,00");
+  expect(cards[1]).toContain("70,00");
+  expect(tabela.getByText("Custeio setembro")).toBeTruthy();
+  expect(tabela.queryByText("Custeio outubro")).toBeNull();
+  expect(tabela.queryByText("Receita setembro")).toBeNull();
+
+  fireEvent.click(screen.getByRole("button", { name: "Situação dos compromissos" }));
+  fireEvent.click(await screen.findByRole("option", { name: "A receber" }));
+  expect(tabela.getByText("Custeio setembro")).toBeTruthy();
+  expect(tabela.getByText("Receita setembro")).toBeTruthy();
+  fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+  fireEvent.click(screen.getByRole("button", { name: /Período de vencimento/ }));
+  fireEvent.click(screen.getByRole("button", { name: "Todo o período" }));
+  expect(tabela.getByText("Custeio outubro")).toBeTruthy();
+  expect([...container.querySelectorAll("section.fin-indicador")].map(c => c.textContent)).toEqual(cards);
+  expect(listarCompromissos).toHaveBeenCalledTimes(1);
+});
+
 it("preserva compromissos durante a atualização e mostra erro sem apresentar totais zerados", async () => {
   vi.mocked(listarCompromissos).mockResolvedValueOnce([{
     id: uid(11), seq: 11, tipo: "PAGAR", status: "PENDENTE", valorOriginal: "100", valorLiquidado: "0", saldoPendente: "100",
     dataVencimento: "2026-09-30", numeroParcela: 1, totalParcelas: 1, vencido: false, parceiro: null,
     operacao: { id: uid(5), numero: 5, tipo: "SERVICO", descricao: "Serviço veterinário" },
   }]);
-  const { container } = render(<CompromissosFinanceiros onNav={vi.fn()} podeLancar={false} />);
+  const { container, rerender } = render(<CompromissosFinanceiros onNav={vi.fn()} podeLancar={false} />);
   await screen.findByRole("table", { name: "Compromissos financeiros" });
   let falhar!: (erro: Error) => void;
   vi.mocked(listarCompromissos).mockReturnValueOnce(new Promise((_, reject) => { falhar = reject; }));
-  fireEvent.click(screen.getByRole("button", { name: /^Período de vencimento:/ }));
-  fireEvent.click(screen.getByRole("button", { name: "Ano anterior" }));
+  rerender(<CompromissosFinanceiros onNav={vi.fn()} podeLancar />);
   expect(await screen.findByText("Atualizando…")).toBeTruthy();
   expect(screen.getAllByText("Serviço veterinário").length).toBeGreaterThan(0);
   expect(container.querySelector('[aria-busy="true"][inert]')).toBeTruthy();

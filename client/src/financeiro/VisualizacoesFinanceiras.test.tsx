@@ -40,6 +40,8 @@ const compromisso = (id: number, extra: Partial<Compromisso> = {}): Compromisso 
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
+  HTMLElement.prototype.scrollIntoView = vi.fn();
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2026-09-14T12:00:00Z"));
   window.history.replaceState(null, "", "/financeiro/contas");
@@ -48,40 +50,41 @@ beforeEach(() => {
   vi.mocked(obterExtratoConta).mockImplementation(async id => movimentos.filter(m => m.contaId === id));
   vi.mocked(liquidarCompromisso).mockResolvedValue({});
 });
-afterEach(() => { cleanup(); vi.useRealTimers(); });
+afterEach(() => { cleanup(); vi.useRealTimers(); vi.unstubAllGlobals(); });
 const total = (titulo: string) => screen.getByText(titulo).parentElement!.textContent!.replace(/\s/g, " ");
 
 describe("visualizações financeiras integradas", () => {
-  it("mantém o gráfico alinhado aos filtros do extrato geral, não aos da listagem", async () => {
+  it("mantém o gráfico geral independente dos filtros das duas tabelas", async () => {
     render(<ContasFinanceiras onNav={vi.fn()} />);
     await waitFor(() => expect(total("Receitas no período")).toContain("R$ 160,00"));
     expect(total("Despesas no período")).toContain("R$ 65,00");
-    // Um único seletor compartilhado governa o gráfico e o extrato geral —
-    // não há mais um controle de período por bloco (issue #284 / review #287).
-    expect(screen.getByRole("button", { name: /^Período do fluxo e extrato geral:/ }).textContent).toContain("Ano atual");
+    // O período pertence ao extrato geral; o fluxo consolidado conserva o ano atual.
+    expect(screen.getByRole("button", { name: /^Período do extrato geral:/ }).textContent).toContain("Ano atual");
     expect(screen.queryByLabelText("Data inicial")).toBeNull();
     expect(screen.getByRole("radio", { name: "Linhas" }).getAttribute("aria-checked")).toBe("true");
     fireEvent.click(screen.getByRole("radio", { name: "Barras" }));
     expect(screen.getByRole("radio", { name: "Barras" }).getAttribute("aria-checked")).toBe("true");
-    fireEvent.click(screen.getByRole("button", { name: /^Período do fluxo e extrato geral:/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Período do extrato geral:/ }));
     fireEvent.click(screen.getByRole("button", { name: "Últimos 3 meses" }));
-    expect(screen.getByRole("button", { name: /^Período do fluxo e extrato geral:/ }).textContent).toContain("Últimos 3 meses");
-    fireEvent.click(screen.getByRole("button", { name: /^Período do fluxo e extrato geral:/ }));
+    expect(screen.getByRole("button", { name: /^Período do extrato geral:/ }).textContent).toContain("Últimos 3 meses");
+    fireEvent.click(screen.getByRole("button", { name: /^Período do extrato geral:/ }));
     fireEvent.click(screen.getByRole("button", { name: "Mês atual" }));
     expect(obterExtratoGeral).toHaveBeenCalledOnce();
     await alterarControle(screen.getByLabelText("Tipo"), { target: { value: "CAIXA" } });
     expect(total("Receitas no período")).toContain("R$ 160,00");
     expect(total("Despesas no período")).toContain("R$ 65,00");
     const secaoExtrato = screen.getByRole("heading", { name: "Extrato geral" }).closest("section")!;
-    await alterarControle(within(screen.getByRole("region", { name: "Fluxo consolidado e filtros do extrato" })).getByLabelText("Instituição"), { target: { value: "__sem__" } });
-    expect(total("Receitas no período")).toContain("R$ 0,00");
-    expect(total("Despesas no período")).toContain("R$ 25,00");
-    fireEvent.click(screen.getByRole("button", { name: /^Período do fluxo e extrato geral:/ }));
+    await alterarControle(within(screen.getByRole("region", { name: "Extrato geral" })).getByLabelText("Instituição"), { target: { value: "__sem__" } });
+    expect(total("Receitas no período")).toContain("R$ 160,00");
+    expect(total("Despesas no período")).toContain("R$ 65,00");
+    expect(within(screen.getByRole("table", { name: "Extrato geral" })).queryByText("Movimento 1")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /^Período do extrato geral:/ }));
     fireEvent.click(screen.getByRole("button", { name: "Período personalizado" }));
     await alterarControle(screen.getByLabelText("Data inicial"), { target: { value: "2026-09-15" } });
     await alterarControle(screen.getByLabelText("Data final"), { target: { value: "2026-09-30" } });
     fireEvent.click(screen.getByRole("button", { name: "Aplicar período" }));
-    expect(screen.getByText("Sem movimentações no período selecionado para este escopo.")).toBeTruthy();
+    expect(total("Receitas no período")).toContain("R$ 160,00");
+    expect(total("Despesas no período")).toContain("R$ 65,00");
     expect(within(secaoExtrato).getByText("Nenhuma movimentação encontrada para os filtros selecionados.")).toBeTruthy();
   });
 
@@ -202,7 +205,7 @@ describe("visualizações financeiras integradas", () => {
     expect(await screen.findByText("Falha ao atualizar painel")).toBeTruthy();
   });
 
-  it("aplica as abas e o filtro de vencidos ao calendário e mantém a liquidação disponível", async () => {
+  it("aplica a seleção múltipla e o filtro de vencidos ao calendário e mantém a liquidação disponível", async () => {
     vi.mocked(listarCompromissos).mockResolvedValue([
       compromisso(1, { vencido: true, status: "PARCIAL", saldoPendente: "50", valorLiquidado: "50", numeroParcela: 1, totalParcelas: 2 }),
       compromisso(2), compromisso(3, { tipo: "RECEBER" }), compromisso(4, { status: "LIQUIDADO", saldoPendente: "0" }), compromisso(5, { status: "CANCELADO" }),
@@ -217,9 +220,15 @@ describe("visualizações financeiras integradas", () => {
     expect(screen.getByRole("dialog", { name: "Registrar pagamento" }).textContent).toContain("(1/2) Compromisso 1");
     fireEvent.click(screen.getByRole("button", { name: "Fechar" }));
     fireEvent.click(screen.getByRole("checkbox", { name: "Mostrar somente vencidos" }));
-    fireEvent.click(screen.getByRole("radio", { name: "A receber" }));
+    fireEvent.click(screen.getByRole("button", { name: "Situação dos compromissos" }));
+    fireEvent.click(screen.getByRole("option", { name: "A pagar" }));
+    fireEvent.click(screen.getByRole("option", { name: "A receber" }));
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
     expect(screen.getByRole("button", { name: /Compromisso 3, a receber/ })).toBeTruthy();
-    fireEvent.click(screen.getByRole("radio", { name: "Liquidados" }));
+    fireEvent.click(screen.getByRole("button", { name: "Situação dos compromissos" }));
+    fireEvent.click(screen.getByRole("option", { name: "A receber" }));
+    fireEvent.click(screen.getByRole("option", { name: "Liquidados" }));
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
     expect(screen.getByRole("button", { name: /Compromisso 4, a pagar/ })).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Compromisso 5/ })).toBeNull();
   });
@@ -238,10 +247,12 @@ describe("visualizações financeiras integradas", () => {
 
 it("o acesso pela rastreabilidade preserva o período e mostra também compromissos cancelados", async () => {
   window.history.replaceState(null, "", "/financeiro/compromissos?inicio=2026-09-12&fim=2026-09-15&situacao=todos");
-  vi.mocked(listarCompromissos).mockResolvedValue([compromisso(1), compromisso(2, { status: "CANCELADO" })]);
+  vi.mocked(listarCompromissos).mockResolvedValue([compromisso(1), compromisso(2, { status: "CANCELADO" }), compromisso(3, { dataVencimento: "2026-10-15" })]);
   render(<CompromissosFinanceiros onNav={vi.fn()} />);
   await screen.findAllByText("Compromisso 2");
-  expect(listarCompromissos).toHaveBeenCalledWith({ inicio: "2026-09-12", fim: "2026-09-15" });
+  expect(listarCompromissos).toHaveBeenCalledWith();
+  expect(screen.getByRole("button", { name: /^Período de vencimento:/ }).textContent).toContain("12–15 set/26");
+  expect(within(screen.getByRole("table", { name: "Compromissos financeiros" })).queryByText("Compromisso 3")).toBeNull();
   expect(screen.getAllByText("Valor original (cancelado)").length).toBeGreaterThan(0);
   expect(within(screen.getByRole("table", { name: "Compromissos financeiros" })).getAllByRole("button", { name: "Registrar pagamento" })).toHaveLength(1);
   expect(screen.getByText(/Total pendente:/).textContent).toContain("100,00");

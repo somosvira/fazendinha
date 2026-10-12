@@ -199,3 +199,19 @@ As capturas bloquearam requisições de escrita dos fluxos de negócio. Não hou
 - Capturas de nove rotas em 1538, 1180, 720 e 375 px: 36 estados sem transbordamento horizontal e sem erros JavaScript. Capturas sem escrita de negócio.
 - Inspeção visual representativa: Contas em desktop, Rebanho a 720 px e visão geral financeira a 375 px. Galeria em `output/qa/cabecalhos-unificados/index.html`.
 - A revisão cobre os cabeçalhos e os estados mencionados; não é uma auditoria completa de todos os componentes e estados das páginas.
+
+## Tabelas, filtros e ações — 18 comentários de 11/10/2026
+
+Branch: `codex/redesign-unificado-cooperativa`. Os 18 comentários foram tratados mantendo a direção Cooperativa contemporânea.
+
+- Títulos acima dos filtros; título e ação à direita no cabeçalho compartilhado. Tabela junto às bordas do painel e borda superior separando as colunas dos controles. Extrato geral e listas sanitárias sem segundo preenchimento externo.
+- Compromissos: busca primeiro, seleção múltipla das situações e período de vencimento dentro da listagem. Os três cards conservam o conjunto completo do sítio. Teste novo cobre combinação de situações, recorte de período e invariância dos cards; calendário, liquidação e links com cancelados continuam cobertos.
+- Contas: filtros dentro de Extrato geral, sem alterar a lista de contas ou o fluxo consolidado anual. Busca opera antes da paginação. O detalhe individual conserva o período compartilhado entre seu gráfico e extrato.
+- Sanidade: filtros dentro de cada lista; Tarefas e Carências em tabela. Ações principais à direita; ações secundárias da tarefa em menu. Colunas de tarefas/carências dimensionadas para evitar identificação excessiva e textos comprimidos. Desconhecido, não aplicabilidade e revisão de finalidade preservados e cobertos por regressão.
+- Estoque: sítio controlado pela sidebar, com exceção contextual para localizar movimento histórico específico no consolidado. Botões alinhados no desktop; estorno/original em coluna de ações. Retirados link superior de retorno da Nutrição e caminho redundante nos cadastros específicos da Pecuária.
+
+Validação: suíte completa com 135 arquivos e **1.050 testes aprovados**, executada com até dois trabalhadores. A execução anterior com concorrência padrão aprovou 1.049 e teve um timeout de consulta assíncrona em VisualizacoesFinanceiras; o mesmo arquivo passou isoladamente e na suíte com concorrência limitada. Após os últimos ajustes, oito testes de ExtratoGeral/SanidadeAnimal também passaram. Build final de produção e `git diff --check` aprovados; permanece o aviso existente de tamanho do bundle.
+
+Navegador: 12 rotas em 1538, 1180, 720 e 375 px, total de 48 capturas, mais menu da tarefa e formulário de adiamento no desktop. Sem overflow horizontal da página ou erros JavaScript nas verificações. Revisão visual representativa de Compromissos, Estoque, Ciclos/Tarefas, Aplicações, Carências, Contas no tablet e Ocorrências no celular. Conferidos período sem alterar cards, seleção múltipla, foco de busca sanitária preservado durante consulta, cores primária/secundária, alinhamento das quatro ações de Estoque e abertura de adiamento pelo menu da tarefa.
+
+[Galeria local e arquivos para baixar](output/qa/feedbacks-tabelas-2026-10-11/index.html); manifesto de execução no mesmo diretório. Requisições de escrita de negócio foram bloqueadas no navegador. Não houve alteração de API, schema, migrations ou regras de cálculo. Esta rodada não homologa novas gravações operacionais nem constitui auditoria completa de acessibilidade.

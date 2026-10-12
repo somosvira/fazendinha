@@ -12,8 +12,8 @@ const movimentos: MovimentoGeral[] = [
   { id: uid(11), seq: 11, contaId: uid(1), conta: contas[0], direcao: "ENTRADA", valor: "25", transacao: { id: uid(21), seq: 21, tipo: "RECEBIMENTO", formaPagamento: null, parceiro: null, operacao: null, data: "2026-09-13", descricao: "Venda A", status: "CONFIRMADA" } },
   { id: uid(12), seq: 12, contaId: uid(2), conta: contas[1], direcao: "SAIDA", valor: "10", transacao: { id: uid(22), seq: 22, tipo: "PAGAMENTO", formaPagamento: null, parceiro: null, operacao: null, data: "2026-09-12", descricao: "Compra B", status: "CONFIRMADA" } },
 ];
-// O período agora é um único controle compartilhado, renderizado pelo
-// componente pai (ContasFinanceiras) — ver ContasFinanceiras.test/VisualizacoesFinanceiras.test.
+// O período é renderizado dentro do extrato pelo componente pai
+// (ContasFinanceiras) e afeta somente esta listagem.
 // Este harness expõe inicio/fim diretamente para testar a combinação de
 // filtros e a mensagem de intervalo inválido que ExtratoGeral ainda calcula.
 function ExtratoControlado({ itens = movimentos, erro = null, onAbrir = vi.fn() }: { itens?: MovimentoGeral[]; erro?: string | null; onAbrir?: (movimento: MovimentoGeral) => void }) {
@@ -76,6 +76,10 @@ it("pagina o extrato depois de filtrar e volta à primeira página ao mudar o fi
   fireEvent.click(within(screen.getByRole("navigation", { name: "Paginação do extrato geral" })).getByRole("button", { name: "Próxima" }));
   expect(tabela().getByText("Lançamento 16")).toBeTruthy();
   expect(tabela().queryByText("Lançamento 1")).toBeNull();
+  fireEvent.change(screen.getByRole("searchbox", { name: "Buscar movimento" }), { target: { value: "LANÇAMENTO 31" } });
+  expect(tabela().getByText("Lançamento 31")).toBeTruthy();
+  expect(screen.getByRole("navigation", { name: "Paginação do extrato geral" }).textContent).toContain("1–1 de 1");
+  fireEvent.change(screen.getByRole("searchbox", { name: "Buscar movimento" }), { target: { value: "" } });
   await alterarControle(screen.getByLabelText("Conta"), { target: { value: uid(2) } });
   expect(tabela().getByText("Lançamento 31")).toBeTruthy();
   expect(screen.getByRole("navigation", { name: "Paginação do extrato geral" }).textContent).toContain("1–1 de 1");

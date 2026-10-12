@@ -1,7 +1,7 @@
 import { Button as ShadcnButton } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { MultiSelect } from "../components/MultiSelect";
 import { CompromissoDetalheDialog } from "./CompromissoDetalheDialog";
 import { LinkOperacaoFinanceira } from "./LinkOperacaoFinanceira";
 import { normalizarBuscaFinanceira } from "./ListaCadastroFinanceiro";
@@ -12,7 +12,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ArrowDownLeft, ArrowUpRight, CalendarDays, Search } from "lucide-react";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { descartarRascunhoOperacao, listarCompromissos, obterConfiguracoesFinanceiras, obterRascunhoOperacao, type Compromisso, type ConfiguracoesFinanceiras } from "./novo-api";
-import { brl, Button, dataBR, Empty, ErrorBox, mesAtual, Metric, PageHeader, PaginaCarregando, PaginaFinanceira, Panel, Pill, StatusPill, Paginacao, TabelaFinanceira } from "./financeiro-ui";
+import { brl, Button, CabecalhoTabela, dataBR, Empty, ErrorBox, mesAtual, Metric, PageHeader, PaginaCarregando, PaginaFinanceira, Panel, Pill, StatusPill, Paginacao, TabelaFinanceira } from "./financeiro-ui";
 import type { Tab } from "../components/Shell";
 import { abrirRotaNovaOperacao } from "../router";
 import { tituloCompromisso } from "./lib/compromissos";
@@ -23,25 +23,26 @@ import { codigoOperacao } from "../estoque/navegacao";
 
 export function CompromissosFinanceiros({ onNav, podeLancar = true }: { onNav: (tab: Tab) => void; podeLancar?: boolean }) {
   const [carregou, setCarregou] = useState(false);
-  const [itens, setItens] = useState<Compromisso[]>([]); const [config, setConfig] = useState<ConfiguracoesFinanceiras | null>(null); const [pagando, setPagando] = useState<Compromisso | null>(null); const [erro, setErro] = useState<string | null>(null); const [aba, setAba] = useState<"PAGAR" | "RECEBER" | "LIQUIDADOS" | "TODOS">(() => new URLSearchParams(window.location.search).get("situacao") === "todos" ? "TODOS" : new URLSearchParams(window.location.search).get("situacao") === "receber" ? "RECEBER" : "PAGAR"); const [soVencidos, setSoVencidos] = useState(false);
+  const [itens, setItens] = useState<Compromisso[]>([]); const [config, setConfig] = useState<ConfiguracoesFinanceiras | null>(null); const [pagando, setPagando] = useState<Compromisso | null>(null); const [erro, setErro] = useState<string | null>(null); const [situacoes, setSituacoes] = useState<string[]>(() => { const situacao = new URLSearchParams(window.location.search).get("situacao"); return situacao === "todos" ? [] : [situacao === "receber" ? "RECEBER" : "PAGAR"]; }); const [soVencidos, setSoVencidos] = useState(false);
   const [periodo, setPeriodo] = useState(() => periodoInicial({ inicio: "", fim: "" }, { permitirVazio: true }));
   const [carregando, setCarregando] = useState(true);
   const [visao, setVisao] = useState<VisaoCompromissos>("lista");
   const [busca, setBusca] = useState("");
   const [pagina, setPagina] = useState(1);
   const [selecionado, setSelecionado] = useState<Compromisso | null>(null);
-  useEffect(() => setPagina(1), [aba, soVencidos, busca, periodo.inicio, periodo.fim]);
+  useEffect(() => setPagina(1), [situacoes, soVencidos, busca, periodo.inicio, periodo.fim]);
   const [mes, setMes] = useState(() => periodo.inicio.slice(0, 7) || mesAtual());
   const [novoCompromissoPendente, setNovoCompromissoPendente] = useState<"PAGAR" | "RECEBER" | null>(null); const [preparando, setPreparando] = useState(false);
   const carregar = useCallback(async (vigente: () => boolean = () => true) => {
     setCarregando(true); setErro(null);
-    try { const [c, cfg] = await Promise.all([listarCompromissos(periodo), podeLancar ? obterConfiguracoesFinanceiras() : Promise.resolve(null)]); if (vigente()) { setItens(c); setConfig(cfg); } }
+    try { const [c, cfg] = await Promise.all([listarCompromissos(), podeLancar ? obterConfiguracoesFinanceiras() : Promise.resolve(null)]); if (vigente()) { setItens(c); setConfig(cfg); } }
     catch (e) { if (vigente()) { setItens([]); setErro(e instanceof Error ? e.message : String(e)); } }
     finally { if (vigente()) { setCarregando(false); setCarregou(true); } }
-  }, [podeLancar, periodo]);
+  }, [podeLancar]);
   useEffect(() => { let vigente = true; void carregar(() => vigente); return () => { vigente = false; }; }, [carregar]);
   const lista = itens
-    .filter((c) => aba === "TODOS" || (aba === "LIQUIDADOS" ? c.status === "LIQUIDADO" : c.tipo === aba && ["PENDENTE", "PARCIAL"].includes(c.status)))
+    .filter(c => !situacoes.length || situacoes.some(s => s === "LIQUIDADOS" ? c.status === "LIQUIDADO" : c.tipo === s && ["PENDENTE", "PARCIAL"].includes(c.status)))
+    .filter(c => (!periodo.inicio || c.dataVencimento.slice(0, 10) >= periodo.inicio) && (!periodo.fim || c.dataVencimento.slice(0, 10) <= periodo.fim))
     .filter((c) => !soVencidos || c.vencido)
     .filter(c => normalizarBuscaFinanceira(`${tituloCompromisso(c)} ${c.parceiro?.nome ?? ""} ${codigoOperacao(c.operacao.numero)}`).includes(normalizarBuscaFinanceira(busca)));
   const totalPaginas = Math.max(1, Math.ceil(lista.length / 15));
@@ -75,20 +76,19 @@ export function CompromissosFinanceiros({ onNav, podeLancar = true }: { onNav: (
   if (carregando && !carregou && !erro) return <PaginaCarregando label="Carregando compromissos" />;
 
   return <PaginaFinanceira colorida>
-    <PageHeader eyebrow="" titulo="Compromissos" descricao="Consulte vencimentos, saldos e liquidações do período." acao={podeLancar ? <div className="flex flex-wrap gap-2"><Button secondary disabled={preparando} onClick={() => { void prepararNovoCompromisso("RECEBER"); }}>Criar a receber</Button><Button disabled={preparando} onClick={() => { void prepararNovoCompromisso("PAGAR"); }}>Criar a pagar</Button></div> : undefined} />
+    <PageHeader eyebrow="" titulo="Compromissos" descricao="Acompanhe saldos pendentes e consulte os vencimentos e liquidações." acao={podeLancar ? <div className="flex flex-wrap gap-2"><Button secondary disabled={preparando} onClick={() => { void prepararNovoCompromisso("RECEBER"); }}>Criar a receber</Button><Button disabled={preparando} onClick={() => { void prepararNovoCompromisso("PAGAR"); }}>Criar a pagar</Button></div> : undefined} />
     <ErrorBox erro={erro} />
     {erro && <Button secondary onClick={() => { void carregar(); }}>Tentar novamente</Button>}
-    <div className="mt-4 flex flex-wrap items-center gap-3"><PeriodoFinanceiroControl inicio={periodo.inicio} fim={periodo.fim} allowAll label="Período de vencimento" onChange={p => { setPeriodo(p); if (p.inicio) setMes(p.inicio.slice(0, 7)); }} /><span className="text-xs text-ink-3">Filtro pela data de vencimento, inclusive nos liquidados.</span></div>
     {carregando && <AtualizandoFinanceiro />}
     {!erro && <div aria-busy={carregando} {...(carregando ? { inert: "" } : {})}>
     <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-3 [&>section:last-child]:col-span-2 md:[&>section:last-child]:col-span-1"><Metric compacto tom="pendente" label="A pagar" valor={brl(itens.filter((c) => c.tipo === "PAGAR" && !["LIQUIDADO", "CANCELADO"].includes(c.status)).reduce((s, c) => s + Number(c.saldoPendente), 0))} detalhe="Saldo pendente" icon={ArrowUpRight} /><Metric compacto tom="entrada" label="A receber" valor={brl(itens.filter((c) => c.tipo === "RECEBER" && !["LIQUIDADO", "CANCELADO"].includes(c.status)).reduce((s, c) => s + Number(c.saldoPendente), 0))} detalhe="Saldo pendente" icon={ArrowDownLeft} /><Metric compacto tom="alerta" label="Vencidos" valor={String(itens.filter((c) => c.vencido).length)} detalhe="Condição de prazo, não status" icon={CalendarDays} tone="red" /></div>
     <Panel tom="pendente" className="fin-painel mt-4 overflow-hidden">
+      <CabecalhoTabela titulo="Compromissos financeiros" />
       <div className="fin-cabecalho fin-filtros-barra flex flex-wrap items-center gap-3 border-b border-border p-4">
-        <ToggleGroup type="single" value={aba} onValueChange={v => { if (v) setAba(v as typeof aba); }} aria-label="Situação dos compromissos" className="flex-wrap justify-start rounded-md border border-border bg-card">
-          {([['PAGAR', 'A pagar'], ['RECEBER', 'A receber'], ['LIQUIDADOS', 'Liquidados'], ['TODOS', 'Todos']] as const).map(([k, label]) => <ToggleGroupItem key={k} value={k} className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">{label}</ToggleGroupItem>)}
-        </ToggleGroup>
-        <div className="fin-filtro-busca relative min-w-0"><Search aria-hidden="true" size={16} strokeWidth={1.8} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-3" /><Input aria-label="Buscar compromisso" type="search" placeholder="Buscar descrição, parceiro ou operação…" value={busca} onChange={e => setBusca(e.target.value)} className="w-full bg-card pl-9" /></div>
-        <label className="flex items-center gap-2 text-sm"><Checkbox aria-label="Mostrar somente vencidos" checked={soVencidos} onCheckedChange={v => setSoVencidos(v === true)} />Somente vencidos</label>
+        <label className="fin-filtro-busca min-w-0 text-sm font-medium">Buscar compromisso<span className="relative mt-2 block"><Search aria-hidden="true" size={16} strokeWidth={1.8} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-3" /><Input type="search" placeholder="Descrição, parceiro ou operação…" value={busca} onChange={e => setBusca(e.target.value)} className="w-full bg-card pl-9 font-normal" /></span></label>
+        <div className="fin-filtro-controle"><MultiSelect compacto label="Situação dos compromissos" placeholder="Todas as situações" value={situacoes} onValueChange={setSituacoes} options={[{ value: "PAGAR", label: "A pagar" }, { value: "RECEBER", label: "A receber" }, { value: "LIQUIDADOS", label: "Liquidados" }]} /></div>
+        <div className="fin-filtro-controle"><span className="mb-2 block text-sm font-medium">Vencimento</span><PeriodoFinanceiroControl inicio={periodo.inicio} fim={periodo.fim} allowAll label="Período de vencimento" onChange={p => { setPeriodo(p); if (p.inicio) setMes(p.inicio.slice(0, 7)); }} /></div>
+        <label className="flex min-h-10 items-center gap-2 text-sm"><Checkbox aria-label="Mostrar somente vencidos" checked={soVencidos} onCheckedChange={v => setSoVencidos(v === true)} />Somente vencidos</label>
       </div>
       <div className="flex flex-wrap items-center justify-between gap-3 bg-muted px-4 py-3 text-sm"><div className="flex flex-wrap items-center gap-x-4 gap-y-2"><span className="text-ink-3">{itensNaVisao.length} compromissos {visao === "calendario" ? "no mês" : "na visão"}</span><strong className="whitespace-nowrap">Total pendente: {brl(total)}</strong></div><ControleVisaoCompromissos visao={visao} onChange={setVisao} /></div>
       {visao === "calendario" ? <CalendarioCompromissos itens={lista} mes={mes} onChangeMes={setMes} onLiquidar={podeLancar ? setPagando : undefined} /> : <>

@@ -83,3 +83,10 @@ Os testes cobrem rotas/aliases, gates de área, paginação do adaptador, custos
 - A pesagem coletiva permanece na barra de seleção de Animais. A sidebar não repete uma página apenas para selecionar os mesmos animais; links antigos redirecionam preservando query e fragmento.
 
 Capturas desta rodada: [galeria dos refinamentos](../../../output/qa/pecuaria-refinamentos-2026-10-11/index.html).
+
+
+### Tabelas sanitárias e navegação — segunda rodada de 11/10/2026
+
+Ciclos, Tarefas, Ocorrências, Aplicações, Exames e Carências reúnem título/ação, filtros e conteúdo no mesmo painel. A busca inicia a barra de filtros e a tabela ocupa as bordas do painel. Tarefas usam a tabela compartilhada, com Executar tarefa e menu de ações secundárias por linha; os fluxos e o sítio de cada ação são preservados. Carências passam a colunas Animal, Leite, Abate/carne e Orientação, mantendo revisão de finalidade, desconhecido, não aplicabilidade, prazo zero e atualização de expiração.
+
+O formulário de consumo não repete um link de voltar acima do título; Cancelar preserva o retorno e os parâmetros. Cadastros específicos não repetem o breadcrumb Caminho do cadastro nem o título geral de configurações. Ver [guia unificado](../cooperativa-unificada.md) e [evidências](../../../output/qa/feedbacks-tabelas-2026-10-11/index.html).

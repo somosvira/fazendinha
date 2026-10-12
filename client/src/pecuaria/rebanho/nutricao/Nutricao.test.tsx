@@ -7,7 +7,7 @@ vi.mock("./ReceitasDieta", () => ({ ReceitasDieta: () => <p>Gestão compartilhad
 vi.mock("./NutricaoLote", () => ({ NutricaoLote: () => <p>Nutrição específica do lote</p> }));
 vi.mock("./FechamentosNutricao", () => ({ FechamentosNutricao: () => <p>Fechamentos gerais</p> }));
 vi.mock("./ConsultaFechamento", () => ({ ConsultaFechamento: ({ onVoltar }: { onVoltar: () => void }) => <><p>Fechamento consultado</p><button type="button" onClick={onVoltar}>Voltar à consulta</button></> }));
-vi.mock("./FormOperacaoNutricional", () => ({ FormOperacaoNutricional: () => <p>Formulário próprio</p> }));
+vi.mock("./FormOperacaoNutricional", () => ({ FormOperacaoNutricional: ({ onVoltar }: { onVoltar: () => void }) => <><p>Formulário próprio</p><button type="button" onClick={onVoltar}>Cancelar</button></> }));
 afterEach(() => { cleanup(); window.history.replaceState(null, "", "/"); });
 describe("navegação da Nutrição", () => {
   it("abre no contexto geral sem seleção de lote e consulta os fechamentos gerais", () => {
@@ -38,13 +38,14 @@ describe("navegação da Nutrição", () => {
     expect(params.get("filtroLoteId")).toBe("l"); expect(params.get("statusFechamento")).toBe("CONFIRMADO"); expect(params.get("paginaFechamentos")).toBe("2");
     expect(screen.getByText("Fechamentos gerais")).toBeTruthy();
   });
-  it("conferência global preserva filtros e página na entrada e no link de retorno", () => {
+  it("conferência preserva filtros ao cancelar sem link de retorno redundante", () => {
     window.history.replaceState(null, "", "/pecuaria/nutricao?aba=fechamentos&filtroLoteId=l&statusFechamento=ESTORNADO&paginaFechamentos=2");
     render(<Nutricao podeLancar />);
     fireEvent.click(screen.getByRole("link", { name: "Conferir consumo" }));
     let params = new URLSearchParams(window.location.search);
     expect(params.get("acao")).toBe("consumo"); expect(params.get("statusFechamento")).toBe("ESTORNADO"); expect(params.get("paginaFechamentos")).toBe("2");
-    fireEvent.click(screen.getByRole("link", { name: /Voltar à nutrição/ }));
+    expect(screen.queryByRole("link", { name: /Voltar à nutrição/ })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
     params = new URLSearchParams(window.location.search);
     expect(params.get("acao")).toBeNull(); expect(params.get("filtroLoteId")).toBe("l"); expect(params.get("statusFechamento")).toBe("ESTORNADO"); expect(params.get("paginaFechamentos")).toBe("2");
   });

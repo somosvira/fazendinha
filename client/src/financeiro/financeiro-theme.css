@@ -149,7 +149,7 @@
 .fin-cabecalho-identidade > .eyebrow { margin-bottom: 8px; }
 .fin-cabecalho-descricao { margin-top: 8px; max-width: 72ch; color: var(--muted-foreground); font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
 .fin-cabecalho-contexto { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
-.fin-cabecalho-comandos { display: flex; flex: 0 1 auto; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 12px; min-width: 0; max-width: 50%; padding-top: 0; }
+.fin-cabecalho-comandos { display: flex; flex: 0 1 auto; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 12px; min-width: 0; max-width: 100%; padding-top: 0; }
 .fin-cabecalho-acoes, .fin-cabecalho-extra { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; min-width: 0; max-width: 100%; }
 .fin-cabecalho-acoes > div { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .fin-cabecalho-acoes :is(button, a.nutricao-botao, a.nutricao-botao-secundario) { min-height: 40px; font-size: 14px; }
@@ -162,3 +162,10 @@
 @media (max-width: 720px) {
  :is(.financeiro-content,.pecuaria-content,.estoque-content,.cooperativa-content) .fin-cabecalho-integrado { padding: 16px; }
 }
+
+.fin-tabela-cabecalho { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding: 16px; border-bottom: 1px solid var(--border); }
+.fin-tabela-acoes { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-left: auto; }
+.fin-tabela-acoes > button { width: auto; }
+.fin-filtros-barra [data-slot="multi-select-control"] { background: var(--card); min-height: 40px; }
+.fin-filtros-barra [data-slot="multi-select-control"] > span { background: var(--muted); border-color: var(--border); }
+.fin-tabela-filtros { padding: 16px; }

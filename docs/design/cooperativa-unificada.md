@@ -31,3 +31,20 @@ Preservados: escopo por sítio, permissões, mascaramento de custos, paginação
 ## Evidências locais
 
 [Galeria da unificação](../../output/qa/redesign-unificado-2026-10-11/index.html), com capturas antes/depois e estados responsivos. O [relatório de QA](../../design-qa.md) registra testes e limites da verificação. As imagens são artefatos locais de revisão.
+
+
+## Refinamento dos 18 comentários — 11/10/2026
+
+O cabeçalho da tabela precede os filtros, com ação à direita e busca primeiro. Tabela e paginação ficam junto às bordas do mesmo painel, sem uma segunda margem interna. A borda superior da tabela separa suas colunas dos controles. Operações, Compromissos, Contas/Extrato geral e as listagens sanitárias reutilizam essa composição. Botões respeitam as variantes default, outline e destructive das primitivas locais.
+
+Em Compromissos, período de vencimento, busca, seleção múltipla e vencidos filtram a lista e o calendário; os três cards continuam mostrando o conjunto completo do sítio. A pagar/A receber incluem pendentes e parciais; Liquidados inclui títulos liquidados. Seleção vazia mostra todos, inclusive cancelados. As opções selecionadas são combinadas por OU. A consulta carrega o conjunto uma vez e o período é aplicado na listagem, preservando os parâmetros de rastreabilidade.
+
+Em Contas, filtros do Extrato geral ficam dentro dele e não alteram a tabela de contas nem o fluxo consolidado do ano atual. Esta decisão substitui o gráfico dependente dos filtros do extrato descrito anteriormente. O detalhe individual da conta conserva seu período compartilhado entre gráfico e extrato.
+
+Sanidade mantém os filtros dentro de cada listagem. Tarefas e Carências usam TabelaFinanceira; carências desconhecidas, não aplicáveis, prazo zero, expiração e revisão de finalidade continuam explícitos. Ações secundárias das tarefas ficam em menu, preservando sítio histórico, motivos e confirmação. Os controles permanecem montados durante a consulta para manter a digitação e o foco.
+
+Nutrição usa a saída Cancelar do formulário, sem o link superior redundante. Cadastros específicos de Pecuária mostram o próprio título, sem repetir o cabeçalho geral e o caminho do cadastro.
+
+Estoque usa o sítio da sidebar em saldos, entradas e histórico. O seletor paralelo foi removido; propriedadeId na URL é conservado somente para localizar um movimento histórico específico no consolidado. Com sítio selecionado, ele prevalece. Links Ver estorno/Ver movimento original ficam em Ações, separados dos rótulos de tipo e situação. As quatro ações do topo compartilham uma linha quando há espaço.
+
+[Capturas desta rodada](../../output/qa/feedbacks-tabelas-2026-10-11/index.html). Não houve alteração de API, schema, migrations, permissões ou cálculos financeiros.

@@ -427,3 +427,10 @@ Todas as páginas de Financeiro, Pecuária e Estoque usam `PageHeader` de `finan
 O título tem a mesma escala .h1; a descrição usa 14 px, linha 1.5 e distância de 8 px. Ações têm altura mínima de 40 px e intervalo de 8 px. O cabeçalho deixa 24 px até o conteúdo (16 px em telas pequenas). Até 900 px os comandos passam para uma linha abaixo, alinhada à esquerda.
 
 Fichas contínuas mantêm o mesmo cabeçalho dentro do painel com `integrado` (24 px de preenchimento; 16 px no celular). Formulários de criação usam a mesma identidade dentro da coluna do formulário, preservando o resumo e as ações de conclusão na coluna à direita. Não adicionar o nome do módulo acima do título quando a navegação já identifica a área.
+
+
+## Composição única de tabelas — 11/10/2026
+
+O painel reúne, nesta ordem: `CabecalhoTabela` com título e ação à direita, filtros começando pela busca, tabela e paginação. Filtros pertencem ao painel que consultam. Preenchimento de 16 px fica nos cabeçalhos, filtros e rodapés; a tabela ocupa as bordas do painel, com borda superior separando o cabeçalho de colunas. Evitar um segundo painel ou margem ao redor da tabela. Distribuir larguras de colunas conforme o conteúdo, evitando uma coluna de identificação excessiva e descrições comprimidas.
+
+Ações principais usam Button com variante default; gestão e ações secundárias usam outline; ações destrutivas usam destructive. Sanidade adota esse padrão em Ciclos, Tarefas, Ocorrências, Aplicações, Exames e Carências. Ações secundárias das tarefas ficam em menu na linha. Os comandos do PageHeader podem ocupar a largura necessária no desktop e quebram em telas pequenas. Ver [decisões e escopo dos filtros](docs/design/cooperativa-unificada.md).

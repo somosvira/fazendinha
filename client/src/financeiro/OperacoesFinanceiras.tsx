@@ -17,7 +17,7 @@ import { GerenciarProcedimentosServico, podeGerenciarProcedimentosServico } from
 import { codigoOperacao } from "../estoque/navegacao";
 import { navegarPara } from "../router";
 import { linkOperacaoFinanceira, validarRetornoInterno } from "./navegacao";
-import { brl, Button, type ColunaTabela, dataBR, Empty, ErrorBox, PageHeader, PaginaCarregando, PaginaFinanceira, Paginacao, Panel, Pill, StatusPill, TabelaFinanceira, TIPO_OPERACAO } from "./financeiro-ui";
+import { brl, Button, CabecalhoTabela, type ColunaTabela, dataBR, Empty, ErrorBox, PageHeader, PaginaCarregando, PaginaFinanceira, Paginacao, Panel, Pill, StatusPill, TabelaFinanceira, TIPO_OPERACAO } from "./financeiro-ui";
 
 type EfeitoFiltro = "TODOS" | "ESTOQUE" | "PAGAMENTO" | "RECEBIMENTO" | "A_PAGAR" | "A_RECEBER" | "TRANSFERENCIA" | "SEM_EFEITOS";
 function Efeitos({ operacao }: { operacao: Operacao }) {
@@ -122,6 +122,7 @@ export function OperacoesFinanceiras({ podeLancar = true }: { podeLancar?: boole
      * contêiner de rolagem do `position: sticky` da barra de TabelaFinanceira,
      * o que a prenderia ao topo do Panel em vez de à viewport. */}
     <Panel className="overflow-clip">
+      <CabecalhoTabela titulo="Operações do período" icon={Layers} />
       {loading && carregou && <div className="px-4 pt-3"><AtualizandoFinanceiro /></div>}
       <div className="fin-filtros-barra border-b border-border p-4">
         <label className="fin-filtro-busca relative w-full sm:w-auto"><Search aria-hidden size={16} className="absolute left-3 top-3 text-ink-3" /><Input aria-label="Buscar operações" value={busca} onChange={(e) => { setBusca(e.target.value); setPagina(1); }} placeholder="Buscar por operação, parceiro ou número" className="h-[42px] w-full rounded-lg border border-border bg-white py-2.5 pl-9 pr-3 text-sm" /></label>
@@ -130,7 +131,6 @@ export function OperacoesFinanceiras({ podeLancar = true }: { podeLancar?: boole
         <SelectCampo aria-label="Filtrar por efeito" value={efeito} onValueChange={(valor) => { setEfeito(valor as EfeitoFiltro); setPagina(1); }} className="fin-filtro-controle h-[42px] w-full rounded-lg border border-border bg-white px-3 text-sm sm:w-auto"><option value="TODOS">Todos os efeitos</option><option value="ESTOQUE">Estoque</option><option value="PAGAMENTO">Pagamento</option><option value="RECEBIMENTO">Recebimento</option><option value="A_PAGAR">A pagar</option><option value="A_RECEBER">A receber</option><option value="TRANSFERENCIA">Transferência</option><option value="SEM_EFEITOS">Sem efeitos</option></SelectCampo>
         <SelectCampo aria-label="Filtrar por status" value={status} onValueChange={(valor) => { setStatus(valor); setPagina(1); }} className="fin-filtro-controle h-[42px] w-full rounded-lg border border-border bg-white px-3 text-sm sm:w-auto"><option value="TODOS">Todos os status</option><option value="CONFIRMADA">Confirmadas</option><option value="CANCELADA">Canceladas</option></SelectCampo>
       </div>
-      <div className="flex items-center gap-3 px-4 py-4"><span className="fin-section-icon"><Layers aria-hidden /></span><h2 className="h3 font-semibold">Operações do período</h2></div>
       <div aria-busy={loading} {...(loading ? { inert: "" } : {})}>{erro ? <Empty>Não foi possível carregar as operações.</Empty> : filtradas.length ? <><TabelaFinanceira rotulo="Operações do período" itens={operacoesDaPagina} colunas={colunas} chaveDe={(operacao) => operacao.id} onAbrir={(operacao) => abrirDetalhe(operacao.id)} compacta barraRolagemSuperior />
         <Paginacao pagina={paginaAtual} totalPaginas={totalPaginas} total={filtradas.length} porPagina={ITENS_POR_PAGINA} rotulo="Paginação de operações" substantivo="operações" idSelect="pagina-operacoes" onPagina={setPagina} /></> : <Empty>Nenhuma operação encontrada no período e filtros selecionados.</Empty>}
     </div></Panel>

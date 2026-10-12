@@ -22,7 +22,6 @@ export function ConfiguracoesPecuaria({ podeLancar }: { podeLancar: boolean }) {
  const grupo = GRUPOS.find(g => g.id === partes[2]);
  const item = grupo?.itens.find(i => i.id === partes[3]);
  if (item && grupo) return <>
-   <nav aria-label="Caminho do cadastro" className="pec-breadcrumb"><LinkCadastro href="/configuracoes/pecuaria">Pecuária</LinkCadastro><ChevronRight size={14} aria-hidden /><span>{grupo.nome}</span><ChevronRight size={14} aria-hidden /><span aria-current="page">{item.nome}</span></nav>
    {"rebanho" in item ? <Cadastros key={item.id} cadastro={item.rebanho} embutido podeLancar={podeLancar} /> : "sanitario" in item ? <CadastrosSanitarios key={item.id} cadastro={item.sanitario} embutido podeLancar={podeLancar} /> : null}
  </>;
  return <div className="pec-config-grid">

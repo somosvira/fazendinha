@@ -45,14 +45,16 @@ function chamouSaldos(fetchMock: ReturnType<typeof mockFetch>) {
 }
 
 describe("EstoqueContent — filtro inicial vindo do módulo", () => {
-  it("filtra saldo, histórico e entradas pelo sítio da URL sem mudar o consolidado", async () => {
+  it("usa o escopo consolidado da sidebar e descarta filtro de sítio redundante", async () => {
     window.history.replaceState(null, "", "/estoque?propriedadeId=7");
     const consulta = mockFetch();
     vi.stubGlobal("fetch", consulta);
     render(<EstoqueContent />);
     await waitFor(() => expect(consulta.mock.calls.filter(([url]) => /\/estoque\/(saldos|movimentos)/.test(url)).length).toBe(3));
-    for (const [, init] of consulta.mock.calls.filter(([url]) => /\/estoque\/(saldos|movimentos)/.test(url))) expect(init?.headers).toMatchObject({ "X-Propriedade-Id": "7" });
+    for (const [, init] of consulta.mock.calls.filter(([url]) => /\/estoque\/(saldos|movimentos)/.test(url))) expect(init?.headers).not.toHaveProperty("X-Propriedade-Id");
     expect(getPropriedadeAtiva()).toBeNull();
+    expect(screen.queryByRole("combobox", { name: "Sítio no estoque" })).toBeNull();
+    expect(new URLSearchParams(window.location.search).get("propriedadeId")).toBeNull();
   });
   it("mantém consulta no sítio ativo e descarta filtro URL incompatível", async () => {
     setPropriedadeAtiva(2);

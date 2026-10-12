@@ -1,11 +1,13 @@
+import { Button as UiButton } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { SubTabs } from "../../../components/SubTabs";
 import { navegarPara } from "../../../router";
 import { useEffect, useState } from "react";
 import {
-  Eye, Check, Ban,
+  Eye, Check, Ban, MoreHorizontal,
 } from "lucide-react";
 import {
-  Button,
+  Button, CabecalhoTabela,
   ErrorBox,
   hoje,
   PageHeader,
@@ -140,7 +142,7 @@ const estadoDaUrl = () => {
 import { DetalheSanitario } from "./DetalheSanitario";
 import { PainelDetalheSanitario } from "./PainelDetalheSanitario";
 import { dataAplicacaoSanitaria, dataSanitaria, nomeAnimalSanitario, resultadoExameSanitario } from "./rotulos";
-import { CarenciasSanitarias } from "./CarenciasSanitarias";
+import { resumoCarencia } from "./CarenciasSanitarias";
 import { AgendaRodadas } from "./AgendaRodadas";
 import { FormRodada } from "./FormRodada";
 import { ExecutarEtapa } from "./ExecutarEtapa";
@@ -342,6 +344,7 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
     let vivo = true;
     setCarregandoAba(true);
     setErroAba(null);
+    setTarefas([]); setTotalTarefas(0); setOcorrencias([]); setAplicacoes([]); setExames([]); setCarencias([]);
     const params = new URLSearchParams({
       pagina: String(pagina),
       porPagina: "50",
@@ -601,61 +604,16 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
       setOcupado(false);
     }
   }
-  return (
-    <PaginaFinanceira><div className="sanidade-pagina">
-      {executandoEtapa && <ExecutarEtapa tarefas={executandoEtapa} onFechar={() => setExecutandoEtapa(null)} onSalvo={() => { setExecutandoEtapa(null); setRevisao((v) => v + 1); }} />}
-      {rateando && !carregandoServicos && !erroServicos && (
-        <RateioServico
-          propriedadeId={getPropriedadeAtiva()}
-          servicos={servicosGerenciamento}
-          onFechar={() => setRateando(false)}
-          onSalvo={() => setRevisao((v) => v + 1)}
-        />
-      )}
-      {rateando && (carregandoServicos || erroServicos) && <PainelCadastro aberto titulo="Gerenciar procedimentos" onFechar={() => setRateando(false)} rodape={<Button secondary onClick={() => setRateando(false)}>Fechar</Button>}>{carregandoServicos ? <p role="status">Carregando atendimentos…</p> : <><ErrorBox erro={erroServicos} /><Button secondary onClick={() => setRepetirServicos((v) => v + 1)}>Tentar novamente</Button></>}</PainelCadastro>}
-      {tarefaAplicacao && animalDaAcao && (
-        <FormAplicacaoServico
-          animalId={animalDaAcao.animalId}
-          propriedadeId={animalDaAcao.propriedadeId}
-          tarefa={tarefaAplicacao}
-          onFechar={() => setTarefaAplicacao(null)}
-          onSalvo={(id, propriedadeIdFato) => {
-            setTarefaAplicacao(null);
-            atualizarAplicacao(id, propriedadeIdFato);
-          }}
-        />
-      )}
-      <PageHeader eyebrow=""
-        titulo="Sanidade"
-        descricao="Agenda e acompanhamento sanitário do rebanho."
-        acao={<div className="flex flex-wrap gap-2"><Button secondary onClick={() => navegarPara("/configuracoes/pecuaria/sanidade/protocolos")}>Gerenciar protocolos</Button>{podeGerenciarServicos && <Button secondary onClick={() => setRateando(true)}>Gerenciar procedimentos</Button>}</div>}
-      />
-      <div className="mt-5">
-      <SubTabs variant="financeiro" ariaLabel="Sanidade"
-        active={aba}
-        onSelect={(v) => {
-          setAba(v);
-          setPagina(1);
-          setSituacao("");
-          if (v !== "aplicacoes") setAplicacaoId("");
-        }}
-        tabs={[
-          { id: "agenda", label: "Agenda" },
-          { id: "ocorrencias", label: "Ocorrências" },
-          { id: "aplicacoes", label: "Aplicações" },
-          { id: "exames", label: "Exames" },
-          { id: "carencias", label: "Carências" },
-        ]}
-      />
-      </div>
-      <ErrorBox erro={erro} />
-      {aplicacaoSalvaId && <p role="status" className="mt-3">Aplicação salva. A lista segue os filtros atuais. <button type="button" className="underline" onClick={() => abrirDetalhe("aplicacao", aplicacaoSalvaId, aplicacaoSalvaPropriedadeId)}>Ver aplicação salva</button></p>}
-      {erro && (
-        <Button secondary onClick={() => setRevisao((v) => v + 1)}>
-          Tentar novamente
-        </Button>
-      )}
-      <div className="pec-filtros-sanidade mt-5 grid gap-3 sm:grid-cols-4">
+  const [agoraCarencias, setAgoraCarencias] = useState(Date.now());
+  useEffect(() => {
+    if (aba !== "carencias") return;
+    const atualizar = () => setAgoraCarencias(Date.now());
+    const timer = window.setInterval(atualizar, 1000);
+    window.addEventListener("focus", atualizar);
+    return () => { window.clearInterval(timer); window.removeEventListener("focus", atualizar); };
+  }, [aba]);
+  const filtrosTabela = (
+      <div className="pec-filtros-sanidade fin-tabela-filtros grid gap-3 sm:grid-cols-4">
         <label className="text-sm">
           Buscar animal
           <input
@@ -773,6 +731,67 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
           </select>
         </label>
       </div>
+  );
+  return (
+    <PaginaFinanceira><div className="sanidade-pagina">
+      {executandoEtapa && <ExecutarEtapa tarefas={executandoEtapa} onFechar={() => setExecutandoEtapa(null)} onSalvo={() => { setExecutandoEtapa(null); setRevisao((v) => v + 1); }} />}
+      {rateando && !carregandoServicos && !erroServicos && (
+        <RateioServico
+          propriedadeId={getPropriedadeAtiva()}
+          servicos={servicosGerenciamento}
+          onFechar={() => setRateando(false)}
+          onSalvo={() => setRevisao((v) => v + 1)}
+        />
+      )}
+      {rateando && (carregandoServicos || erroServicos) && <PainelCadastro aberto titulo="Gerenciar procedimentos" onFechar={() => setRateando(false)} rodape={<Button secondary onClick={() => setRateando(false)}>Fechar</Button>}>{carregandoServicos ? <p role="status">Carregando atendimentos…</p> : <><ErrorBox erro={erroServicos} /><Button secondary onClick={() => setRepetirServicos((v) => v + 1)}>Tentar novamente</Button></>}</PainelCadastro>}
+      {tarefaAplicacao && animalDaAcao && (
+        <FormAplicacaoServico
+          animalId={animalDaAcao.animalId}
+          propriedadeId={animalDaAcao.propriedadeId}
+          tarefa={tarefaAplicacao}
+          onFechar={() => setTarefaAplicacao(null)}
+          onSalvo={(id, propriedadeIdFato) => {
+            setTarefaAplicacao(null);
+            atualizarAplicacao(id, propriedadeIdFato);
+          }}
+        />
+      )}
+      <PageHeader eyebrow=""
+        titulo="Sanidade"
+        descricao="Agenda e acompanhamento sanitário do rebanho."
+        acao={<div className="flex flex-wrap gap-2"><Button secondary onClick={() => navegarPara("/configuracoes/pecuaria/sanidade/protocolos")}>Gerenciar protocolos</Button>{podeGerenciarServicos && <Button secondary onClick={() => setRateando(true)}>Gerenciar procedimentos</Button>}</div>}
+      />
+      <div className="mt-5">
+      <SubTabs variant="financeiro" ariaLabel="Sanidade"
+        active={aba}
+        onSelect={(v) => {
+          setAba(v);
+          setPagina(1);
+          setSituacao("");
+          if (v !== "aplicacoes") setAplicacaoId("");
+        }}
+        tabs={[
+          { id: "agenda", label: "Agenda" },
+          { id: "ocorrencias", label: "Ocorrências" },
+          { id: "aplicacoes", label: "Aplicações" },
+          { id: "exames", label: "Exames" },
+          { id: "carencias", label: "Carências" },
+        ]}
+      />
+      </div>
+      <ErrorBox erro={erro} />
+      {aplicacaoSalvaId && <p role="status" className="mt-3">Aplicação salva. A lista segue os filtros atuais. <button type="button" className="underline" onClick={() => abrirDetalhe("aplicacao", aplicacaoSalvaId, aplicacaoSalvaPropriedadeId)}>Ver aplicação salva</button></p>}
+      {erro && (
+        <Button secondary onClick={() => setRevisao((v) => v + 1)}>
+          Tentar novamente
+        </Button>
+      )}
+      <Panel className="mt-4 overflow-hidden sanidade-lista">
+        {aba === "agenda" && <div className="border-b border-border p-4"><SubTabs variant="financeiro" ariaLabel="Visão da agenda" active={visaoAgenda} onSelect={v => { setVisaoAgenda(v); setPagina(1); }} tabs={[{ id: "rodadas", label: "Ciclos" }, { id: "tarefas", label: "Tarefas" }]} /></div>}
+        {!(aba === "agenda" && visaoAgenda === "rodadas") && aba !== "aplicacoes" && <>
+          <CabecalhoTabela titulo={aba === "agenda" ? "Tarefas de protocolos" : aba === "ocorrencias" ? "Ocorrências sanitárias" : aba === "exames" ? "Exames sanitários" : "Carências sanitárias"} acao={podeLancar && aba !== "carencias" ? <Button onClick={() => abrir({ tipo: aba === "agenda" ? "protocolo" : aba === "ocorrencias" ? "ocorrencia" : "exame" })}>{aba === "agenda" ? "Iniciar protocolo" : aba === "ocorrencias" ? "Nova ocorrência" : "Registrar coleta / exame"}</Button> : undefined} />
+          {filtrosTabela}
+        </>}
       {erroAba && (
         <div className="mt-4">
           <ErrorBox erro={erroAba} />
@@ -781,7 +800,7 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
           </Button>
         </div>
       )}
-      {carregandoAba ? (
+      {carregandoAba && (
         <p className="mt-5">
           Carregando{" "}
           {aba === "ocorrencias"
@@ -795,85 +814,27 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
                   : "agenda"}
           …
         </p>
-      ) : (
-        <Panel className="mt-4 gap-3 p-4">
+      )}
+        <>
           {aba === "agenda" && (
             <>
-              <SubTabs variant="financeiro" ariaLabel="Visão da agenda" active={visaoAgenda} onSelect={(v) => { setVisaoAgenda(v); setPagina(1); }} tabs={[{ id: "rodadas", label: "Ciclos" }, { id: "tarefas", label: "Tarefas" }]} className="mb-0" />
-              {visaoAgenda === "rodadas" ? <AgendaRodadas filtros={{ animalId, buscaAnimal, loteId, de, ate, situacao, pagina, porPagina: 20 }} podeLancar={podeLancar} recarregarToken={revisao} onAcao={(acao, t) => { if (acao === "consultar") { abrirDetalhe("execucao", t.execucaoId, t.execucao.propriedadeId); return; } setAnimalDaAcao({ animalId: t.execucao.animalId, propriedadeId: t.propriedadeAtualId ?? t.execucao.propriedadeId }); abrir({ tipo: acao, id: acao === "cancelar" ? t.execucaoId : t.id }); }} rodadaId={rodadaId} onAbrir={setRodadaId} onExecutar={setExecutandoEtapa} /> : <>
-              {podeLancar && (
-                <Button onClick={() => abrir({ tipo: "protocolo" })}>
-                  Iniciar protocolo
-                </Button>
-              )}
-              {tarefas
-                .filter((t) => noPeriodo(t.previstaPara, t.situacao))
-                .map((t) => (
-                  <div
-                    key={t.id}
-                    className="rounded-lg border border-border p-3"
-                  >
-                    <strong>
-                      {t.execucao.protocolo.nome} · v
-                      {t.execucao.protocolo.versao}
-                    </strong>
-                    <p className="text-sm text-ink-3">{t.rodada?.nome ?? "Sem ciclo"}</p>
-                    <p className="text-sm">
-                      {t.execucao.animal ? nomeAnimalSanitario(t.execucao.animal) : nomeAnimal(t.execucao.animalId)} ·{" "}
-                      {dataSanitaria(t.previstaPara)} ·{" "}
-                      {t.parametros.tipoAplicacaoNomeSnapshot ??
-                        (t.parametros.tipo === "APLICACAO" ? "Aplicação" : "Exame")}{" "}
-                      ·{" "}
-                      {t.situacao === "PENDENTE"
-                        ? "Pendente"
-                        : t.situacao === "REALIZADA"
-                          ? "Realizada"
-                          : t.situacao === "DISPENSADA"
-                            ? "Dispensada"
-                            : "Execução cancelada"}
-                    </p>
-                    {podeLancar &&
-                      t.situacao === "PENDENTE" && (
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          <Button
-                            secondary
-                            onClick={() => {
-                              setAnimalDaAcao({ animalId: t.execucao.animalId, propriedadeId: t.propriedadeAtualId ?? t.execucao.propriedadeId });
-                              setExecutandoEtapa([{ ...t, parametros: { ...t.parametros, tipo: t.parametros.tipo === "APLICACAO" ? "APLICACAO" : "EXAME" } }]);
-                            }}
-                          >
-                            Executar tarefa
-                          </Button>
-                          <Button
-                            secondary
-                            onClick={() => { setAnimalDaAcao({ animalId: t.execucao.animalId, propriedadeId: t.propriedadeAtualId ?? t.execucao.propriedadeId }); abrir({ tipo: "dispensar", id: t.id }); }}
-                          >
-                            Dispensar com motivo
-                          </Button>
-                          <Button
-                            secondary
-                            onClick={() => { setAnimalDaAcao({ animalId: t.execucao.animalId, propriedadeId: t.propriedadeAtualId ?? t.execucao.propriedadeId }); abrir({ tipo: "cancelar", id: t.execucaoId }); }}
-                          >
-                            Cancelar execução
-                          </Button>
-                          <Button
-                            secondary
-                            onClick={() => { setAnimalDaAcao({ animalId: t.execucao.animalId, propriedadeId: t.propriedadeAtualId ?? t.execucao.propriedadeId }); abrir({ tipo: "adiar", id: t.id }); }}
-                          >
-                            Adiar tarefa
-                          </Button>
-                        </div>
-                      )}
-                  </div>
-                ))}
-              {!tarefas.length && (
-                <p>
+              {visaoAgenda === "rodadas" ? <AgendaRodadas filtrosUI={filtrosTabela} filtros={{ animalId, buscaAnimal, loteId, de, ate, situacao, pagina, porPagina: 20 }} podeLancar={podeLancar} recarregarToken={revisao} onAcao={(acao, t) => { if (acao === "consultar") { abrirDetalhe("execucao", t.execucaoId, t.execucao.propriedadeId); return; } setAnimalDaAcao({ animalId: t.execucao.animalId, propriedadeId: t.propriedadeAtualId ?? t.execucao.propriedadeId }); abrir({ tipo: acao, id: acao === "cancelar" ? t.execucaoId : t.id }); }} rodadaId={rodadaId} onAbrir={setRodadaId} onExecutar={setExecutandoEtapa} /> : <>
+              <TabelaFinanceira rotulo="Tarefas de protocolos" itens={tarefas.filter(t => noPeriodo(t.previstaPara, t.situacao))} chaveDe={t => t.id} barraRolagemSuperior colunas={[
+                { chave: "animal", titulo: "Animal", principal: true, larguraMinima: 210, celula: t => t.execucao.animal ? nomeAnimalSanitario(t.execucao.animal) : nomeAnimal(t.execucao.animalId) },
+                { chave: "protocolo", titulo: "Protocolo / ciclo", larguraMinima: 260, celula: t => <>{t.execucao.protocolo.nome} · v{t.execucao.protocolo.versao}<div className="mt-1 text-xs text-muted-foreground">{t.rodada?.nome ?? "Sem ciclo"}</div></> },
+                { chave: "prevista", titulo: "Prevista", larguraMinima: 140, celula: t => dataSanitaria(t.previstaPara) },
+                { chave: "tipo", titulo: "Tipo", larguraMinima: 140, celula: t => t.parametros.tipoAplicacaoNomeSnapshot ?? (t.parametros.tipo === "APLICACAO" ? "Aplicação" : "Exame") },
+                { chave: "situacao", titulo: "Situação", larguraMinima: 150, celula: t => t.situacao === "PENDENTE" ? "Pendente" : t.situacao === "REALIZADA" ? "Realizada" : t.situacao === "DISPENSADA" ? "Dispensada" : "Execução cancelada" },
+                { chave: "acoes", titulo: "Ações", acoes: true, larguraMinima: 210, celula: t => podeLancar && t.situacao === "PENDENTE" ? <div className="flex items-center gap-2"><Button secondary onClick={() => { setAnimalDaAcao({ animalId: t.execucao.animalId, propriedadeId: t.propriedadeAtualId ?? t.execucao.propriedadeId }); setExecutandoEtapa([{ ...t, parametros: { ...t.parametros, tipo: t.parametros.tipo === "APLICACAO" ? "APLICACAO" : "EXAME" } }]); }}>Executar tarefa</Button><DropdownMenu><DropdownMenuTrigger asChild><UiButton variant="outline" size="icon" aria-label={`Mais ações da tarefa de ${t.execucao.animal ? nomeAnimalSanitario(t.execucao.animal) : nomeAnimal(t.execucao.animalId)}`}><MoreHorizontal aria-hidden /></UiButton></DropdownMenuTrigger><DropdownMenuContent align="end">{([['dispensar', 'Dispensar com motivo'], ['cancelar', 'Cancelar execução'], ['adiar', 'Adiar tarefa']] as const).map(([tipo, rotulo]) => <DropdownMenuItem key={tipo} onSelect={() => { setAnimalDaAcao({ animalId: t.execucao.animalId, propriedadeId: t.propriedadeAtualId ?? t.execucao.propriedadeId }); abrir({ tipo, id: tipo === 'cancelar' ? t.execucaoId : t.id }); }}>{rotulo}</DropdownMenuItem>)}</DropdownMenuContent></DropdownMenu></div> : null },
+              ]} />
+              {!carregandoAba && !erroAba && !tarefas.length && (
+                <p className="p-4">
                   Nenhuma tarefa planejada. Cadastre e publique um protocolo
                   antes de iniciar uma execução.
                 </p>
               )}
               {totalTarefas > 0 && <Paginacao paginaAtual={pagina} totalPaginas={Math.max(1, Math.ceil(totalTarefas / 50))} totalItens={totalTarefas} itensPorPagina={50} onPaginaChange={setPagina} rotulo="tarefas" idSelect="agenda-pagina-tarefas" />}
-              <p className="text-sm text-ink-3">
+              <p className="p-4 text-sm text-ink-3">
                 Planejamento não consome estoque. Aplicações e exames são fatos
                 independentes.
               </p>
@@ -882,11 +843,6 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
           )}
           {aba === "ocorrencias" && (
             <>
-              {podeLancar && (
-                <Button onClick={() => abrir({ tipo: "ocorrencia" })}>
-                  Nova ocorrência
-                </Button>
-              )}
               <TabelaFinanceira rotulo="Ocorrências sanitárias" itens={ocorrencias.filter((o) => noPeriodo(o.inicio, o.status, o.fim))} chaveDe={(o) => o.id} barraRolagemSuperior onAbrir={(o) => abrirDetalhe("ocorrencia", o.id, o.propriedadeId)} colunas={[
                 { chave: "animal", titulo: "Animal", principal: true, celula: (o) => <a className="underline" href={`/pecuaria/rebanho/animais/${encodeURIComponent(o.animalId)}`} onClick={(e) => e.stopPropagation()}>{nomeAnimal(o.animalId)}</a> },
                 { chave: "doenca", titulo: "Doença", celula: (o) => o.doenca.nome },
@@ -895,8 +851,8 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
                 { chave: "situacao", titulo: "Situação", celula: (o) => <>{o.fim ? "Encerrada" : "Aberta"}{o.status === "ANULADO" && <span className="ml-2 rounded bg-surface px-2 py-1">Anulada</span>}</> },
                 { chave: "acoes", titulo: "Ações", acoes: true, celula: (o) => <div className="flex gap-2" onClick={(e) => e.stopPropagation()}><button type="button" className={classeAcao} aria-label="Ver detalhes da ocorrência" title="Ver detalhes" onClick={() => abrirDetalhe("ocorrencia", o.id, o.propriedadeId)}><Eye size={16} /></button>{podeLancar && o.status === "VALIDO" && <>{!o.fim && <button type="button" className={classeAcao} aria-label="Encerrar ocorrência" title="Encerrar" onClick={() => { setAnimalDaAcao({ animalId: o.animalId, propriedadeId: o.propriedadeId }); abrir({ tipo: "encerrar", id: o.id }); }}><Check size={16} /></button>}<button type="button" className={classeAcao} aria-label="Anular ocorrência" title="Anular" onClick={() => { setAnimalDaAcao({ animalId: o.animalId, propriedadeId: o.propriedadeId }); abrir({ tipo: "anular-ocorrencia", id: o.id }); }}><Ban size={16} /></button></>}</div> },
               ]} />
-              {!ocorrencias.length && (
-                <p>Nenhuma ocorrência encontrada para os filtros atuais.</p>
+              {!carregandoAba && !erroAba && !ocorrencias.length && (
+                <p className="p-4">Nenhuma ocorrência encontrada para os filtros atuais.</p>
               )}
             </>
           )}
@@ -929,43 +885,20 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
           {aba === "carencias" && animal && <SanidadeAnimal animalId={animalId} propriedadeId={animal.propriedade?.id ?? null} podeLancar={podeLancar} recarregarToken={revisao} onMudou={atualizarAplicacao} />}
           {aba === "carencias" && !animal && (
             <>
-              {carencias
-                .filter(
-                  (c) =>
-                    !situacao ||
-                    (situacao === "CARÊNCIA_VIGENTE"
-                      ? [c.leite, c.carne].some((p) => p.estado === "CONHECIDO" && new Date(p.ate).getTime() > Date.now())
-                      : [c.leite, c.carne].some(
-                          (p) => p.estado === "NAO_INFORMADO",
-                        )),
-                )
-                .map((c) => (
-                  <div
-                    key={c.animal.id}
-                    className="rounded-lg border border-border p-3"
-                  >
-                    <a
-                      className="underline"
-                      href={`/pecuaria/sanidade?aba=carencias&animalId=${c.animal.id}`}
-                    >
-                      {nomeAnimalSanitario(c.animal)}
-                    </a>
-                    <CarenciasSanitarias carencia={c} />
-                  </div>
-                ))}
-              {!carencias.length && (
-                <p>Nenhuma carência encontrada para os filtros atuais.</p>
+              <TabelaFinanceira rotulo="Carências sanitárias" itens={carencias.filter(c => !situacao || (situacao === "CARÊNCIA_VIGENTE" ? [c.leite, c.carne].some(p => p.estado === "CONHECIDO" && new Date(p.ate).getTime() > agoraCarencias) : [c.leite, c.carne].some(p => p.estado === "NAO_INFORMADO")))} chaveDe={c => c.animal.id} barraRolagemSuperior colunas={[
+                { chave: "animal", titulo: "Animal", principal: true, larguraMinima: 240, celula: c => <a className="font-medium text-primary hover:underline" href={`/pecuaria/sanidade?aba=carencias&animalId=${c.animal.id}`}>{nomeAnimalSanitario(c.animal)}</a> },
+                { chave: "leite", titulo: "Leite", larguraMinima: 300, celula: c => c.revisaoLeitePendente ? "Aplicabilidade pendente — revisar" : resumoCarencia(c.leite, agoraCarencias) },
+                { chave: "carne", titulo: "Abate / carne", larguraMinima: 300, celula: c => resumoCarencia(c.carne, agoraCarencias) },
+                { chave: "revisao", titulo: "Orientação", larguraMinima: 320, celula: c => c.revisaoLeitePendente ? "Finalidade alterada: revise a aplicabilidade da carência de leite." : "O tratamento e seus lançamentos permanecem no histórico." },
+              ]} />
+              {!carregandoAba && !erroAba && !carencias.length && (
+                <p className="p-4">Nenhuma carência encontrada para os filtros atuais.</p>
               )}
             </>
           )}
-          {aba === "aplicacoes" && <SanidadeAnimal geral animalId={animalId} propriedadeId={animal?.propriedade?.id ?? null} podeLancar={podeLancar} recarregarToken={revisao} lista={aplicacoes.map((a) => ({ ...a, animal: a.animal ?? animais.find((v) => v.id === a.animalId) }))} abrirDetalhe={abrirDetalhe} onMudou={atualizarAplicacao} />}
+          {aba === "aplicacoes" && <SanidadeAnimal filtrosUI={filtrosTabela} geral animalId={animalId} propriedadeId={animal?.propriedade?.id ?? null} podeLancar={podeLancar} recarregarToken={revisao} lista={aplicacoes.map((a) => ({ ...a, animal: a.animal ?? animais.find((v) => v.id === a.animalId) }))} abrirDetalhe={abrirDetalhe} onMudou={atualizarAplicacao} />}
           {aba === "exames" && (
             <>
-              {podeLancar && (
-                <Button onClick={() => abrir({ tipo: "exame" })}>
-                  Registrar coleta / exame
-                </Button>
-              )}
               <TabelaFinanceira rotulo="Exames sanitários" itens={exames.filter((e) => noPeriodo(e.data, e.status, null, e.resultadoTexto ?? e.resultadoNumero ?? e.resultadoOpcao))} chaveDe={(e) => e.id} barraRolagemSuperior onAbrir={(e) => abrirDetalhe("exame", e.id, e.propriedadeId)} colunas={[
                 { chave: "animal", titulo: "Animal", principal: true, celula: (e) => <a className="underline" href={`/pecuaria/rebanho/animais/${encodeURIComponent(e.animalId)}`} onClick={(v) => v.stopPropagation()}>{nomeAnimal(e.animalId)}</a> },
                 { chave: "tipo", titulo: "Tipo de exame", celula: (e) => e.tipoExame.nome },
@@ -974,13 +907,13 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
                 { chave: "situacao", titulo: "Situação", celula: (e) => <>{resultadoExameSanitario(e) === "Aguardando resultado" ? "Aguardando resultado" : "Resultado informado"}{e.status === "ANULADO" && <span className="ml-2 rounded bg-surface px-2 py-1">Anulado</span>}</> },
                 { chave: "acoes", titulo: "Ações", acoes: true, celula: (e) => <div className="flex gap-2" onClick={(v) => v.stopPropagation()}><button type="button" className={classeAcao} aria-label="Ver detalhes do exame" title="Ver detalhes" onClick={() => abrirDetalhe("exame", e.id, e.propriedadeId)}><Eye size={16} /></button>{podeLancar && e.status === "VALIDO" && <ResultadoExame exame={e} propriedadeId={e.propriedadeId} onSalvo={() => { setRevisao((v) => v + 1); setRecarregarDetalhe((v) => v + 1); }} />}</div> },
               ]} />
-              {!exames.length && (
-                <p>Nenhum exame encontrado para os filtros atuais.</p>
+              {!carregandoAba && !erroAba && !exames.length && (
+                <p className="p-4">Nenhum exame encontrado para os filtros atuais.</p>
               )}
             </>
           )}
           {aba !== "agenda" &&
-            <div className="flex items-center gap-3">
+            <div className="flex items-center justify-end gap-3 border-t border-border p-4">
               <Button
                 secondary
                 disabled={pagina === 1}
@@ -1008,8 +941,8 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
               </Button>
             </div>
           }
-        </Panel>
-      )}
+        </>
+      </Panel>
       {detalhe && (
         <PainelDetalheSanitario onFechar={fecharDetalhe}>
           {erroDetalhe ? (

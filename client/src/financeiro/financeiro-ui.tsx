@@ -76,11 +76,15 @@ export function PageHeader({ titulo, descricao, acao, extra, contexto, children,
 // para o <button> nativo, senão o Radix não consegue posicionar/focar nele.
 export const Button = forwardRef<HTMLButtonElement, { children: React.ReactNode; onClick?: () => void; type?: "button" | "submit"; disabled?: boolean; carregando?: boolean; danger?: boolean; secondary?: boolean; className?: string; /** id do form a submeter quando o botão vive fora dele (rodapé de painel) */ form?: string; /** associa o botão a uma mensagem de erro/ajuda (ex.: o alerta de confirmação) */ ariaDescribedby?: string }>(
   ({ children, onClick, type = "button", disabled, carregando = false, danger, secondary, className = "", form, ariaDescribedby }, ref) => {
-    const cor = danger ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : secondary ? "border border-border bg-white text-ink hover:bg-surface-2" : "bg-primary text-primary-foreground hover:bg-primary/90";
-    return <ShadcnButton ref={ref} type={type} form={form} onClick={onClick} disabled={disabled || carregando} aria-busy={carregando || undefined} aria-describedby={ariaDescribedby} className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-45 ${cor} ${className}`}>{carregando && <LoaderCircle aria-hidden="true" className="size-4 animate-spin motion-reduce:animate-none" />}{children}</ShadcnButton>;
+    const cor = secondary && !danger ? "border-border bg-card text-foreground hover:bg-muted hover:text-foreground" : "";
+    return <ShadcnButton variant={danger ? "destructive" : secondary ? "outline" : "default"} ref={ref} type={type} form={form} onClick={onClick} disabled={disabled || carregando} aria-busy={carregando || undefined} aria-describedby={ariaDescribedby} className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-45 ${cor} ${className}`}>{carregando && <LoaderCircle aria-hidden="true" className="size-4 animate-spin motion-reduce:animate-none" />}{children}</ShadcnButton>;
   },
 );
 Button.displayName = "Button";
+
+export function CabecalhoTabela({ titulo, descricao, acao, icon: Icon }: { titulo: string; descricao?: string; acao?: React.ReactNode; icon?: LucideIcon }) {
+  return <header className="fin-tabela-cabecalho"><div className="min-w-0"><h2 className="h3 flex items-center gap-3 font-semibold">{Icon && <span className="fin-section-icon"><Icon aria-hidden size={18} /></span>}{titulo}</h2>{descricao && <p className="mt-1 text-sm text-muted-foreground">{descricao}</p>}</div>{acao && <div className="fin-tabela-acoes">{acao}</div>}</header>;
+}
 
 export function Panel({ children, className = "", tom }: { children: React.ReactNode; className?: string; tom?: TomFinanceiro }) {
   return <Card asChild className={`rounded-xl border border-border bg-white shadow-[0_1px_2px_rgba(30,35,28,.04)] gap-0 py-0 ${className}`}><section data-fin-tom={tom} data-slot="financeiro-panel">{children}</section></Card>;
@@ -265,7 +269,7 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
     {barraRolagemSuperior && temRolagem && <div ref={barraRef} role="group" aria-label={`Rolagem horizontal: ${rotulo}`} tabIndex={0} onKeyDown={roladaPorTeclado} className="sticky top-0 z-10 hidden overflow-x-auto border-b border-border bg-surface-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#6f7d68]/40 md:block" onScroll={() => sincronizarRolagem("barra")}>
       <div style={{ width: larguraRolagem, height: 1 }} />
     </div>}
-    <div ref={tabelaRef} className={`hidden overflow-x-auto md:block ${compacta ? "max-h-[max(16rem,calc(100dvh-31rem))] overflow-y-auto" : ""} ${barraRolagemSuperior && temRolagem ? "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden" : ""}`} onScroll={() => sincronizarRolagem("tabela")}>
+    <div ref={tabelaRef} className={`hidden overflow-x-auto border-t border-border md:block ${compacta ? "max-h-[max(16rem,calc(100dvh-31rem))] overflow-y-auto" : ""} ${barraRolagemSuperior && temRolagem ? "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden" : ""}`} onScroll={() => sincronizarRolagem("tabela")}>
       <Table semContainer className="fin-tabela w-full text-left text-sm" style={{ minWidth: larguraMinima }}>
         <TableCaption className="sr-only">{rotulo}</TableCaption>
         <colgroup>{colunas.map((coluna) => <col key={coluna.chave} style={coluna === flexivel ? undefined : { "--fin-coluna-largura": `${coluna.larguraMinima ?? 120}px` } as CSSProperties} />)}</colgroup>
@@ -285,7 +289,7 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
     </div>
 
     {/* <768px — cartões: nada de rolagem lateral, nada de coluna espremida */}
-    <ul className={`divide-y divide-border md:hidden ${compacta ? "max-h-64 overflow-y-auto sm:max-h-[max(16rem,calc(100dvh-31rem))]" : ""}`} tabIndex={compacta ? 0 : undefined} aria-label={rotulo}>
+    <ul className={`divide-y divide-border border-t border-border md:hidden ${compacta ? "max-h-64 overflow-y-auto sm:max-h-[max(16rem,calc(100dvh-31rem))]" : ""}`} tabIndex={compacta ? 0 : undefined} aria-label={rotulo}>
       {itens.map((item) => {
         const corpo = <>
           <div id={`${idCartao}-${chaveDe(item)}`} className="min-w-0 break-words text-left">{principal.celula(item)}</div>
