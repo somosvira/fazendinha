@@ -76,6 +76,8 @@ As restrições aplicáveis são revalidadas na execução; preparar ou iniciar 
 
 Anular um fato vinculado deixa sua tarefa ou atendimento pendente de regularização, preservando a execução original e o histórico. A regularização exige motivo e pode vincular um substituto válido, encerrar sem substituição ou reabrir quando o procedimento não aconteceu e os efeitos físicos permitem isso. Não produz consumo automático nem apaga o lançamento original.
 
+Outra lista apenas preparada para a mesma tarefa não é uma execução confirmada: sua participação continua pendente, sem receber uma regularização de fato que ainda não registrou.
+
 A escolha do substituto apresenta fatos válidos do mesmo tipo, animal, sítio e data, sem exigir digitação de identificadores internos. Consumo mantido impede reabertura para nova execução. Visita encerrada permite vincular substituto ou encerrar a regularização, mas não reabrir atendimento. Anulação de tentativa vinculada a Serviço respeita os períodos da tentativa e do Serviço.
 
 ## Carga técnica e reconciliação

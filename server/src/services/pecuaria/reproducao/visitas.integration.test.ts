@@ -4,6 +4,7 @@ import { prisma } from "../../../db.js";
 import { criarVisita, adicionarAtividade, salvarRascunho, previaAtividade, confirmarAtividade, sugestoesVisita } from "./visitas.js";
 import { executarTarefa, regularizarTarefa } from "./iatf.js";
 import { anularFato, previaAnulacao } from "./correcoes.js";
+import { marcarRegularizacaoFatoTx } from "./marcacao-regularizacao.js";
 const suite = process.env.PECUARIA_DB_INTEGRATION === "1" ? describe : describe.skip;
 async function fixture() {
   const token=randomUUID();
@@ -13,6 +14,23 @@ async function fixture() {
   return {sitio,animal,visita};
 }
 suite("visitas V4 — correções e planejamento as-of",()=>{
+  it("anular tarefa confirmada não marca como realizado outro atendimento apenas preparado", async () => {
+    const { sitio, animal, visita } = await fixture();
+    const protocolo = await prisma.protocoloIatf.create({ data: { nome: `Protocolo ${randomUUID()}`, versao: 1, etapas: [] } });
+    const programacao = await prisma.programacaoIatf.create({ data: { propriedadeId: sitio.id, protocoloId: protocolo.id, nome: "Rodada", inicioPrevisto: visita.data } });
+    const participante = await prisma.participanteIatf.create({ data: { programacaoId: programacao.id, animalId: animal.id, inicioPrevisto: visita.data } });
+    const tarefa = await prisma.tarefaIatf.create({ data: { participanteId: participante.id, etapa: 0, tipo: "AVALIACAO", nome: "Diagnóstico", previstaEm: visita.data, previsaoOriginal: visita.data } });
+    const contexto = { propriedadeId: sitio.id, tipo: "TAREFA_IATF" as const, nome: "Avaliação", extra: false, contexto: {}, participantes: [{ animalId: animal.id, tarefaIatfId: tarefa.id }] };
+    const atendida = await adicionarAtividade(visita.id, contexto, null);
+    const outraVisita = await criarVisita({ propriedadeId: sitio.id, data: "2026-10-10", nome: "Segunda lista preparada" }, null);
+    const preparada = await adicionarAtividade(outraVisita.id, contexto, null);
+    const avaliacao = await prisma.avaliacaoReprodutiva.create({ data: { animalId: animal.id, propriedadeId: sitio.id, data: visita.data, resultado: "INCONCLUSIVO", status: "ANULADO" } });
+    await prisma.tarefaIatf.update({ where: { id: tarefa.id }, data: { realizadaEm: visita.data, avaliacaoId: avaliacao.id } });
+    await prisma.participanteVisita.update({ where: { id: atendida.participantes[0].id }, data: { status: "CONFIRMADO", fatoTipo: "TarefaIatf", fatoId: tarefa.id } });
+    await prisma.$transaction(tx => marcarRegularizacaoFatoTx(tx, { fatoTipo: "AVALIACAO", fatoId: avaliacao.id, destinoConsumo: null, motivo: "Correção de avaliação registrada", usuarioId: null }));
+    expect((await prisma.participanteVisita.findUniqueOrThrow({ where: { id: atendida.participantes[0].id } })).regularizacaoPendente).toBe(true);
+    expect(await prisma.participanteVisita.findUniqueOrThrow({ where: { id: preparada.participantes[0].id } })).toMatchObject({ status: "PENDENTE", regularizacaoPendente: false, historicoRegularizacao: [] });
+  });
   it("rejeita autosave obsoleto sem perder versão nova, e revisão detecta restrição/paridade",async()=>{
     const {sitio,animal,visita}=await fixture();
     const atividade=await adicionarAtividade(visita.id,{propriedadeId:sitio.id,tipo:"AVALIACAO_REPRODUTIVA",nome:"Avaliação",extra:false,contexto:{},participantes:[{animalId:animal.id}]},null);

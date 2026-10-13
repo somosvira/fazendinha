@@ -12,7 +12,7 @@ export async function marcarRegularizacaoFatoTx(tx: Prisma.TransactionClient, in
   const vinculo = input.fatoTipo === "TENTATIVA" ? { tentativaId: input.fatoId } : input.fatoTipo === "AVALIACAO" ? { avaliacaoId: input.fatoId } : { aplicacaoId: input.fatoId };
   const tarefas = input.fatoTipo === "EXAME" ? [] : await tx.tarefaIatf.findMany({ where: vinculo });
   const fatoModelo = { TENTATIVA: "TentativaReprodutiva", AVALIACAO: "AvaliacaoReprodutiva", APLICACAO: "AplicacaoProduto", EXAME: "ExameAnimal" }[input.fatoTipo];
-  const participantes = await tx.participanteVisita.findMany({ where: { OR: [
+  const participantes = await tx.participanteVisita.findMany({ where: { status: "CONFIRMADO", OR: [
     { fatoTipo: fatoModelo, fatoId: input.fatoId },
     { tarefaIatfId: { in: tarefas.map((t) => t.id) } },
     { fatoTipo: "TarefaIatf", fatoId: { in: tarefas.map((t) => t.id) } },
