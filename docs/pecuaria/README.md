@@ -1,6 +1,6 @@
 # Pecuária — contrato atual
 
-O domínio atual usa o schema PostgreSQL `pecuaria` e as rotas `/api/pecuaria/rebanho/*`. A interface está em `client/src/pecuaria/rebanho/`; serviços em `server/src/services/pecuaria/`. A cadeia de migrations entrega Rebanho V1, Genética V2 e Sanidade/Peso/Nutrição V3, incluindo ciclos e desvios sanitários.
+O domínio atual usa o schema PostgreSQL `pecuaria` e as rotas `/api/pecuaria/rebanho/*`. A interface está em `client/src/pecuaria/rebanho/`; serviços em `server/src/services/pecuaria/`. A cadeia de migrations entrega Rebanho V1, Genética V2 e Sanidade/Peso/Nutrição V3, incluindo ciclos e desvios sanitários, e Reprodução V4. O [contrato de reprodução e visitas](reproducao.md) detalha as novas regras.
 
 ## Disponibilidade e limites
 
@@ -9,22 +9,24 @@ O domínio atual usa o schema PostgreSQL `pecuaria` e as rotas `/api/pecuaria/re
 | Rebanho | Identidade, lotes, localização/destino históricos, movimentação, categorias, baixa e auditoria |
 | Genética | Filiação, genitores externos, composição racial e materiais genéticos ligados a Produto |
 | Sanidade | Ocorrências, aplicações, carências, tipos/doenças/exames, protocolos publicados, ciclos, participantes e tarefas |
+| Reprodução V4 | IA, cobertura/exposição, TE, avaliação/gestação, parto/crias, lactação mínima, visitas e IATF |
 | Peso e manejo | Pesagem individual/coletiva, GMD, desmama e castração com histórico |
 | Nutrição | Receitas versionadas, vigências por lote, conferência/fechamento, participação animal e estorno |
 
-Reprodução operacional (IA/IATF/FIV/TE) e produção de leite não estão implementadas. Materiais genéticos e papéis de doadora/receptora não comprovam esses fluxos. Formulação automática de dieta, prescrição clínica e integração com balança não fazem parte deste contrato.
+Produção/qualidade do leite e laboratório/FIV não estão implementados. Lactação mínima não equivale a controle leiteiro; papéis de doadora/receptora continuam distintos de situação reprodutiva. Formulação automática de dieta, prescrição clínica e integração com balança não fazem parte deste contrato.
 
-O IDEAGRI é fonte da carga inicial e de reconciliação. O importador existente cobre Rebanho/Genética; carga histórica V3 continua pendente. Não reintroduza o módulo anterior no schema `public`, sincronização contínua ou estruturas de estoque paralelo.
+O IDEAGRI é fonte da carga inicial e de reconciliação. O importador original cobre Rebanho/Genética; a ferramenta técnica V4 acrescenta prévia e reconciliação de reprodução. Executá-la em produção exige preparação própria; a entrega de código não significa carga realizada. Carga histórica V3 continua pendente. Não reintroduza o módulo anterior no schema `public`, sincronização contínua ou estruturas de estoque paralelo.
 
 ## Rebanho e genética
 
+- A contagem de partos soma o saldo de entrada aos partos válidos não incluídos nesse saldo, incluindo aborto e natimorto, conforme a regra aprovada da V4.
 - Categoria vem das regras configuráveis `CategoriaAnimal`, avaliadas em ordem; exceção manual tem histórico em `CategoriaManualAnimal`. Não grave categoria calculada como atributo fixo do animal.
 - Movimentação reúne cabeçalho, itens com origem por animal e histórico de localização. Desfazer preserva itens e respeita atomicidade; não apaga movimentos antigos.
 - Use a localização na data do fato. Transferência/baixa não podem apagar eventos, consumos ou consultas históricas no sítio de origem.
 - Baixa tem tipo e motivo compatível pela classe, conforme `baixa.calc.ts`. Excluir cadastro indevido não equivale a apagar animal com fatos reais.
 - Cada lado da filiação aponta para animal da fazenda **ou** genitor externo. Constraints da migration protegem a exclusividade. Animal interno não ganha um cadastro externo duplicado.
 - Composição calculada dos genitores não sobrescreve composição informada sem aceite. Papel de receptora não altera filiação genética.
-- `MaterialGenetico` liga sêmen/embrião ao Produto do estoque único. A existência desse cadastro não significa consumo reprodutivo implementado.
+- `MaterialGenetico` liga sêmen/embrião ao Produto do estoque único. A V4 usa esse vínculo para validar e consumir material nas tentativas, preservando a genética da época.
 
 Cálculos e regras: `services/pecuaria/rebanho/` (`categoria.calc.ts`, `movimentacao.calc.ts`, `baixa.calc.ts`, `composicao.calc.ts`, `genetica.calc.ts`, `peso.calc.ts`).
 
@@ -66,8 +68,10 @@ Esse guia usa `fazendinha_v3_teste`. O cenário unificado `seedatev3` usa **outr
 
 Uma feature nova deve declarar fatos, histórico/snapshots, sítio na data, efeitos em estoque/financeiro, permissões e critérios de validação. Verifique schema, migrations e testes antes de afirmar disponibilidade. Atualize este contrato quando mudar o comportamento; planos antigos de versão não direcionam a implementação atual.
 
+O contrato vigente da V4 está em [Reprodução e visitas](reproducao.md). O caderno local de estudo não substitui o contrato nem comprova homologação.
+
 ## Navegação e apresentação
 
-A interface desta entrega segue o [guia Cooperativa contemporânea](../design/pecuaria-cooperativa/design.md), compartilhado com Financeiro e Estoque. Rebanho, Sanidade e Nutrição usam o mesmo padrão de abas e tabelas. Pesagem coletiva fica na seleção de Animais; `/pecuaria/pesagem-manejo` é alias de compatibilidade, preservando filtros e fragmento. Configurações próprias ficam em `/configuracoes/pecuaria/*`, com compatibilidade para os endereços sanitários anteriores.
+A interface desta entrega segue o [guia Cooperativa contemporânea](../design/pecuaria-cooperativa/design.md), compartilhado com Financeiro e Estoque. Rebanho, Reprodução, Visitas, Sanidade e Nutrição compartilham componentes de navegação e tabelas. Pesagem coletiva fica na seleção de Animais; `/pecuaria/pesagem-manejo` é alias de compatibilidade, preservando filtros e fragmento. Configurações próprias ficam em `/configuracoes/pecuaria/*`, com compatibilidade para os endereços sanitários anteriores.
 
 Listagens sanitárias reúnem título, ação, filtros, tabela e paginação no mesmo painel. Tarefas e Carências preservam os estados de domínio, localização histórica e ações existentes. Consulta, mascaramento e gravações continuam sujeitos às permissões do contrato acima.

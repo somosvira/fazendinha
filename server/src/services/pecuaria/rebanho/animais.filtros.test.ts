@@ -64,8 +64,8 @@ describe("whereSemCategoria", () => {
     expect(whereSemCategoria(regras, HOJE)).toEqual({
       AND: [
         { categoriasManuais: { none: { ate: null } } },
-        { NOT: { sexo: "F", partosAntesDaEntrada: { gt: 0 } } },
-        { NOT: { sexo: "F", partosAntesDaEntrada: 0, dataNascimento: { gt: nascimentoLimiteParaIdade(HOJE, 12) } } },
+        { NOT: { sexo: "F", OR: [{ partosAntesDaEntrada: { gt: 0 } }, { partos: { some: { status: "VALIDO", incluidoSaldoAnterior: false, data: { lte: HOJE } } } }] } },
+        { NOT: { sexo: "F", partosAntesDaEntrada: 0, partos: { none: { status: "VALIDO", incluidoSaldoAnterior: false, data: { lte: HOJE } } }, dataNascimento: { gt: nascimentoLimiteParaIdade(HOJE, 12) } } },
         { NOT: { sexo: "M", dataNascimento: { lte: nascimentoLimiteParaIdade(HOJE, 6) } } },
       ],
     });

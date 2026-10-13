@@ -8,11 +8,11 @@ Confira comportamento em rotas/serviços/interface, estrutura no schema e garant
 
 ## Escopo atual
 
-- Domínios ativos: Financeiro, Estoque, Pecuária V1–V3, Sítios e Contas/Acessos.
+- Domínios ativos: Financeiro, Estoque, Pecuária V1–V4, Sítios e Contas/Acessos.
 - Deploy exclusivamente em Cloudflare Workers, com interface e API no mesmo Worker, Neon para o banco e R2 para arquivos. Node atende desenvolvimento local e testes; não introduza outro provedor como pressuposto de implementação.
 - Agricultura, Cultivo e Equipe/Ponto foram removidos. Não reintroduza seus módulos, rotas ou seeds como dependência de outra entrega. Categorias/centros financeiros e movimentos históricos dessas atividades podem permanecer.
 - A pecuária anterior no schema `public` foi substituída pela base no schema `pecuaria`. Preserve a implementação atual; não recupere o rebanho legado.
-- Reprodução operacional e produção de leite ainda não estão implementadas. Genética e sanidade atuais não significam que esses fluxos estejam disponíveis.
+- Reprodução V4 inclui tentativas, avaliações, gestação, partos/crias, visitas e IATF. Confira `docs/pecuaria/reproducao.md`; produção/qualidade do leite e laboratório/FIV permanecem fora do escopo. Partos, incluindo aborto e natimorto, reiniciam o ciclo de tentativas; genética da doadora não se confunde com a receptora.
 - O IDEAGRI serve à carga inicial e reconciliação. O Fazendinha é a fonte operacional após importar; não crie sincronização contínua por pressuposto.
 - O assistente está suspenso em `client/src/featureFlags.ts` e `server/src/featureFlags.ts`. Não o reative incidentalmente.
 

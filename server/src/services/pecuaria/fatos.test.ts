@@ -6,6 +6,18 @@ const dia = (s: string) => new Date(s);
 const animal = { id: "animal", sexo: "M", dataNascimento: dia("2024-01-01"), dataEntrada: dia("2026-08-01") };
 const local = { id: "local", animalId: animal.id, propriedadeId: 1, desde: animal.dataEntrada, ate: null };
 const db = {
+  tentativaReprodutiva: { count: vi.fn(), findMany: vi.fn() },
+  avaliacaoReprodutiva: { count: vi.fn(), findMany: vi.fn() },
+  partoAnimal: { count: vi.fn(), findMany: vi.fn() },
+  situacaoInicialReprodutiva: { count: vi.fn(), findMany: vi.fn() },
+  restricaoReprodutiva: { count: vi.fn(), findMany: vi.fn() },
+  gestacaoAnimal: { count: vi.fn(), findMany: vi.fn() },
+  lactacaoAnimal: { count: vi.fn(), findMany: vi.fn() },
+  criaParto: { count: vi.fn(), findMany: vi.fn() },
+  participanteIatf: { count: vi.fn(), findMany: vi.fn() },
+  participanteVisita: { count: vi.fn(), findMany: vi.fn() },
+  participacaoExposicao: { count: vi.fn(), findMany: vi.fn() },
+  periodoReprodutivoAnimal: { count: vi.fn(), findMany: vi.fn() },
   animal: { findUnique: vi.fn(), findMany: vi.fn() },
   localizacaoAnimal: { findFirst: vi.fn(), findMany: vi.fn() },
   baixaAnimal: { findFirst: vi.fn(), findMany: vi.fn() },
@@ -24,7 +36,7 @@ beforeEach(() => {
   db.localizacaoAnimal.findMany.mockResolvedValue([local]);
   db.baixaAnimal.findFirst.mockResolvedValue(null);
   db.baixaAnimal.findMany.mockResolvedValue([]);
-  for (const modelo of [db.aplicacaoProduto, db.exameAnimal, db.manejoAnimal, db.ocorrenciaSanitaria]) {
+  for (const modelo of [db.aplicacaoProduto, db.exameAnimal, db.manejoAnimal, db.ocorrenciaSanitaria, db.tentativaReprodutiva, db.avaliacaoReprodutiva, db.partoAnimal, db.situacaoInicialReprodutiva, db.restricaoReprodutiva, db.gestacaoAnimal, db.lactacaoAnimal, db.criaParto, db.participanteIatf, db.participanteVisita, db.participacaoExposicao, db.periodoReprodutivoAnimal]) {
     modelo.count.mockResolvedValue(0);
     modelo.findMany.mockResolvedValue([]);
   }

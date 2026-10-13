@@ -88,7 +88,7 @@ describe("roteamento da pecuária", () => {
     expect(pathToTab("/rebanho/reproducao")).toBe("pec-rebanho");
     expect(pathToTab("/corte/lote")).toBe("pec-rebanho");
     expect(pathToTab("/pecuaria/lotes/pesagens")).toBe("pec-rebanho");
-    expect(pathToTab("/pecuaria/reproducao")).toBe("pec-rebanho");
+    expect(pathToTab("/pecuaria/reproducao")).toBe("pec-reproducao");
   });
 
   it("leva o estoque antigo da pecuária para o Estoque único", () => {
@@ -173,4 +173,13 @@ it("redireciona a rota do assistente enquanto a feature está inativa", () => {
 
 it.each(["/plantio", "/plantio/talhao", "/milho", "/milho/safras", "/equipe", "/equipe/ponto"])("módulo removido não resolve %s", (path) => {
   expect(pathToTab(path)).toBeNull();
+});
+
+describe("navegação operacional V4", () => {
+  it("abre reprodução e visita em deep links sem cair no Rebanho", () => {
+    expect(tabToPath("pec-reproducao")).toBe("/pecuaria/reproducao");
+    expect(pathToTab("/pecuaria/reproducao/animais/abc")).toBe("pec-reproducao");
+    expect(tabToPath("pec-visitas")).toBe("/pecuaria/visitas");
+    expect(pathToTab("/pecuaria/visitas/abc")).toBe("pec-visitas");
+  });
 });

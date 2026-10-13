@@ -54,7 +54,7 @@ export interface AvaliacaoCategoria {
 export interface AnimalParaCategoria {
   sexo: Sexo;
   dataNascimento: Date | string;
-  /** hoje: partosAntesDaEntrada; depois, partos registrados */
+  /** Saldo anterior à entrada + partos válidos não representados nesse saldo. */
   partos: number;
 }
 

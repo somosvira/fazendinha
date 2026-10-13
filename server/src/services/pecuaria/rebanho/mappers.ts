@@ -10,6 +10,7 @@ function iso(v: Date | string): string {
 export interface AnimalResumo {
   id: string;
   brinco: string;
+  identificacaoProvisoria: boolean;
   nome: string | null;
   sexo: "F" | "M";
   // Dimensão básica apenas; as demais (produtiva, reprodutiva…) entram como campos próprios —
@@ -42,6 +43,7 @@ export interface AnimalResumo {
 type AnimalBase = {
   id: string;
   brinco: string;
+  identificacaoProvisoria?: boolean;
   nome: string | null;
   sexo: "F" | "M";
   dataNascimento: Date;
@@ -72,6 +74,7 @@ export function mapearAnimalResumo(input: {
   return {
     id: animal.id,
     brinco: animal.brinco,
+    identificacaoProvisoria: animal.identificacaoProvisoria ?? false,
     nome: animal.nome,
     sexo: animal.sexo,
     categoria: input.categoria.categoria,

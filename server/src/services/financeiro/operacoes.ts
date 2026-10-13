@@ -429,6 +429,9 @@ export async function estornarOperacao(id: string, motivo: string, contexto: Con
       tx.execucaoProtocoloSanitario.findFirst({ where: { canceladaEm: null, operacaoServicoId: id }, select: { id: true } }),
     ]);
     if (aplicacaoVinculada || exameVinculado || protocoloVinculado) throw new FinanceiroError("CONFLITO", "Esta operação financia aplicações, exames ou protocolos ativos. Revise os vínculos antes de cancelá-la.");
+    if (operacao.tipo === "SERVICO" && await tx.tentativaReprodutiva.findFirst({ where: { status: "VALIDO", operacaoServicoId: id }, select: { id: true } })) {
+      throw new FinanceiroError("CONFLITO", "Esta operação financia uma tentativa reprodutiva válida. Revise o vínculo na reprodução antes de cancelar o Serviço.");
+    }
     await exigirPeriodoAberto(tx, operacao.propriedadeId, new Date());
 
     for (const transacao of operacao.transacoes.filter((item) => item.status === "CONFIRMADA" && item.tipo !== "REVERSAO")) {

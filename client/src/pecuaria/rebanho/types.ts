@@ -19,6 +19,7 @@ export type PropriedadeRef = { id: number; nome: string };
 export type LoteRef = { id: string; nome: string };
 
 export type AnimalResumo = {
+  identificacaoProvisoria?: boolean;
   id: string;
   brinco: string;
   nome: string | null;

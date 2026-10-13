@@ -18,6 +18,8 @@ import { limparRascunhoRelatorioAtivo, useRascunhoRelatorioAtivo } from "./finan
 import { resumoRascunhoRelatorio } from "./financeiro/lib/rascunho-relatorio";
 import { RebanhoContent } from "./pecuaria/rebanho/RebanhoContent";
 import { Sanidade } from "./pecuaria/rebanho/sanidade/Sanidade";
+import { Reproducao } from "./pecuaria/rebanho/reproducao/Reproducao";
+import { Visitas } from "./pecuaria/rebanho/reproducao/Visitas";
 import { Nutricao } from "./pecuaria/rebanho/nutricao/Nutricao";
 import "./pecuaria/pecuaria-theme.css";
 import { setPropriedadeAtiva, getPropriedadeAtiva } from "./propriedadeScope";
@@ -470,6 +472,10 @@ export function App() {
     ? <RebanhoContent podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} />
     : tab === "pec-sanidade"
     ? <Sanidade podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} />
+    : tab === "pec-reproducao"
+    ? <Reproducao podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} />
+    : tab === "pec-visitas"
+    ? <Visitas podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} />
     : tab === "pec-nutricao"
     ? <Nutricao podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} />
     : tab === "estoque"

@@ -14,9 +14,9 @@ export function podeGerenciarProcedimentosServico() {
 }
 type Escolha = { item: ProcedimentoServico; valor?: string | null };
 const chaveItem = (i: Pick<ProcedimentoServico, "id" | "tipo">) => `${i.tipo}:${i.id}`;
-const rotuloTipo = { APLICACAO: "Aplicação", EXAME: "Exame", PROTOCOLO: "Protocolo" };
+const rotuloTipo = { APLICACAO: "Aplicação", EXAME: "Exame", PROTOCOLO: "Protocolo", TENTATIVA: "Reprodução" };
 export const dataProcedimentoServico = (item: Pick<ProcedimentoServico, "tipo" | "dataHora">) => item.tipo === "APLICACAO" ? dataHoraSanitaria(item.dataHora) : dataSanitaria(item.dataHora);
-export const origemProcedimentoServico = (item: Pick<ProcedimentoServico, "tipo" | "origem">) => item.tipo === "APLICACAO" ? origemSanitaria(item.origem) : item.tipo === "EXAME" ? "Coleta de exame" : "Execução do protocolo";
+export const origemProcedimentoServico = (item: Pick<ProcedimentoServico, "tipo" | "origem">) => item.tipo === "APLICACAO" ? origemSanitaria(item.origem) : item.tipo === "EXAME" ? "Coleta de exame" : item.tipo === "TENTATIVA" ? "Tentativa reprodutiva" : "Execução do protocolo";
 function LinhaProcedimento({ item, escolha, podeLancar, podeValores, salvando, erro, onSelecionar, onValor }: {
   item: ProcedimentoServico; escolha?: Escolha; podeLancar: boolean; podeValores: boolean; salvando: boolean; erro: string | null;
   onSelecionar: (valor: boolean) => void; onValor: (valor: string | null) => void;

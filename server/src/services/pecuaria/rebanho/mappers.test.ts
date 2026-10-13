@@ -97,7 +97,7 @@ describe("agregarPainel", () => {
   const EC_F = { id: "c-ecf", nome: "Em crescimento" };
   const REPRODUTOR = { id: "c-rep", nome: "Reprodutor" };
   const base = (over: Partial<AnimalResumo>): AnimalResumo => ({
-    id: "x", brinco: "1", nome: null, sexo: "F", categoria: VACA, categoriaOrigem: "AUTOMATICA", categoriaCalculada: VACA, idadeMeses: 40, idadeNaBaixa: false, dataNascimento: "2023-01-01",
+    id: "x", brinco: "1", identificacaoProvisoria: false, nome: null, sexo: "F", categoria: VACA, categoriaOrigem: "AUTOMATICA", categoriaCalculada: VACA, idadeMeses: 40, idadeNaBaixa: false, dataNascimento: "2023-01-01",
     dataEntrada: "2023-01-01", origem: "NASCIDO", propriedade: { id: 1, nome: "Principal" }, lote: null,
     aptidao: "LEITE", papelReprodutivo: "NENHUM", composicaoRotulo: "", ultimoPeso: null, gmdRecente: null, noLocalDesde: null, baixa: null, situacao: "ATIVO", ...over,
   });

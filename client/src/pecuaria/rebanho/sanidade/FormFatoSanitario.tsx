@@ -10,15 +10,17 @@ import type { Doenca, TipoExame } from "./CadastrosSanitarios";
 import { dataSanitaria, nomeAnimalSanitario } from "./rotulos";
 
 export type TipoFatoSanitario = "ocorrencia" | "exame" | "protocolo";
-export function FormFatoSanitario({ tipo, animalInicial = "", fixo = false, cadastroInicial = "", tarefaId, onFechar, onSalvo }: {
+export function FormFatoSanitario({ tipo, animalInicial = "", fixo = false, cadastroInicial = "", tarefaId, onFechar, onSalvo, onRegistrar, dataInicial }: {
   tipo: TipoFatoSanitario; animalInicial?: string; fixo?: boolean; cadastroInicial?: string; tarefaId?: string | null;
   onFechar: () => void; onSalvo: () => void;
+  dataInicial?: string;
+  onRegistrar?: (input: Record<string, unknown>) => Promise<void>;
 }) {
   const [animalId, setAnimalId] = useState(animalInicial);
   const [busca, setBusca] = useState("");
   const [animais, setAnimais] = useState<AnimalResumo[]>([]);
   const [ficha, setFicha] = useState<AnimalFicha | null>(null);
-  const [data, setData] = useState(hoje());
+  const [data, setData] = useState(dataInicial ?? hoje());
   const [cadastros, setCadastros] = useState<(Doenca | TipoExame)[]>([]);
   const [cadastroId, setCadastroId] = useState(cadastroInicial);
   const [servicos, setServicos] = useState<ServicoSanitario[]>([]);
@@ -58,7 +60,7 @@ export function FormFatoSanitario({ tipo, animalInicial = "", fixo = false, cada
     trava.current = true; setOcupado(true); setErro(null); setCampoErro("");
     const base = { animalId, propriedadeId: sitio };
     const body = tipo === "ocorrencia" ? { ...base, doencaId: cadastroId, inicio: data, observacao: texto.trim() || null } : tipo === "exame" ? { ...base, tipoExameId: cadastroId, data, tarefaId, operacaoServicoId: servicoId || null, ocorrenciaId: ocorrenciaId || null, responsavel: responsavel.trim() || null, ...(resultado === "" ? {} : formato?.tipoResultado === "NUMERO" ? { resultadoNumero: Number(resultado) } : formato?.tipoResultado === "OPCAO" ? { resultadoOpcao: resultado } : { resultadoTexto: resultado }) } : { ...base, protocoloId: cadastroId, inicio: data, operacaoServicoId: servicoId || null, ocorrenciaId: ocorrenciaId || null, ...(ciencia ? { confirmarSobreposicao: true, justificativaSobreposicao: texto.trim() } : {}) };
-    try { await reqSanidade(tipo === "ocorrencia" ? "/ocorrencias" : tipo === "exame" ? "/exames/coletivos" : "/execucoes/coletivas", { method: "POST", body: JSON.stringify(tipo === "ocorrencia" ? body : { chave: chave.current, propriedadeId: sitio, itens: [body] }) }); onSalvo(); }
+    try { if (onRegistrar) { await onRegistrar(body); onSalvo(); return; } await reqSanidade(tipo === "ocorrencia" ? "/ocorrencias" : tipo === "exame" ? "/exames/coletivos" : "/execucoes/coletivas", { method: "POST", body: JSON.stringify(tipo === "ocorrencia" ? body : { chave: chave.current, propriedadeId: sitio, itens: [body] }) }); onSalvo(); }
     catch (e) { const mensagem = e instanceof Error ? e.message : String(e); setErro(mensagem); const recebido = e instanceof SanidadeApiError ? (e.campo ?? "").replace(/^itens\.\d+\./, "") : ""; setCampoErro(({ inicio: "data", doencaId: "cadastro", tipoExameId: "cadastro", protocoloId: "cadastro", operacaoServicoId: "servico", resultadoNumero: "resultado", resultadoTexto: "resultado", resultadoOpcao: "resultado", observacao: "texto", justificativaSobreposicao: "texto", motivo: "texto", confirmarSobreposicao: "ciencia", propriedadeId: "data" } as Record<string, string>)[recebido] ?? recebido); if (tipo === "protocolo" && /protocolo pendente|sobreposição/i.test(mensagem)) setSobreposicao(true); }
     finally { trava.current = false; setOcupado(false); }
   }

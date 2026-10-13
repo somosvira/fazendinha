@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { conferirFatosNaBaixa, conferirHistoricoDosFatos } from "../fatos.js";
+import { conferirCadastroIndevidoSemFatosTx, conferirFatosNaBaixa, conferirHistoricoDosFatos } from "../fatos.js";
 import { transacaoPecuaria } from "../transacao.js";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../../db.js";
@@ -7,13 +7,14 @@ import {
   auditar, dadosAuditoria, exigirAfetadas, hojeFazenda, hojeFazendaDate, traduzirConflitoUnico, travarAnimais, travarBrinco, travarBrincos, travarLoteAtivo,
   RebanhoError, type DbPecuaria,
 } from "./regras.js";
+import { totalPartosCategoria } from "./partos.calc.js";
 import { brincoDisponivel, normalizarBrinco } from "./brinco.calc.js";
 import { validarDatasAnimal, validarDataBaixa, validarDataPesagem, validarDataDestino, planejarAjusteEntrada } from "./datas.calc.js";
 import { validarComposicao, rotuloComposicao, composicaoRespeitaHerdanca, type FracaoRaca } from "./composicao.calc.js";
 import { validarFiliacao, validarIntervaloPartos, genitorEhDescendente, composicaoDosGenitores, type GenitorRef } from "./genetica.calc.js";
 import { planejarDestino, planejarDesfazer, planejarDesfazerMovimentacao, planejarMovimentacaoEmMassa, MovimentacaoError, type LinhaHistorico } from "./movimentacao.calc.js";
 import { avaliarCategoria, faixaNascimentoParaIdade, validarDataCategoriaManual, type RegraCategoria } from "./categoria.calc.js";
-import { carregarRegras, manualDe, SELECT_MANUAL_ABERTA, whereCategoria, whereSemCategoria } from "./categorias.js";
+import { carregarRegras, manualDe, SELECT_MANUAL_ABERTA, SELECT_PARTOS_CATEGORIA, whereCategoria, whereSemCategoria } from "./categorias.js";
 import { planejarBaixa, planejarEstornoBaixa, motivoAceito, mensagemMotivoRecusado, BaixaError } from "./baixa.calc.js";
 import { agregarPainel, mapearAnimalResumo, resumoAuditoria, type AnimalResumo, type AnimalFicha, type ItemComposicaoFicha, type PainelRebanho, type FiliacaoLadoDTO } from "./mappers.js";
 import { resumoPeso } from "./peso.calc.js";
@@ -294,7 +295,9 @@ async function rotularComposicaoCalculada(db: DbPecuaria, itens: FracaoRaca[] | 
 
 // ---------- cadastrar ----------
 
-export async function cadastrar(input: CadastrarAnimalInput, usuarioId: number | null): Promise<AnimalResumo & { avisos: Array<{ campo: string; mensagem: string }> }> {
+export async function cadastrar(input: CadastrarAnimalInput, usuarioId: number | null, contextoTecnico?: { nascimentoHistorico: true }): Promise<AnimalResumo & { avisos: Array<{ campo: string; mensagem: string }> }> {
+  // A exceção existe apenas para preparação técnica de históricos/seeds; não é campo da API.
+  if (input.origem === "NASCIDO" && !contextoTecnico?.nascimentoHistorico) throw new RebanhoError("VALIDACAO", "Registre o parto da matriz para cadastrar as crias nascidas na fazenda", "origem");
   const erosDatas = validarDatasAnimal({ dataNascimento: input.dataNascimento, dataEntrada: input.dataEntrada, origem: input.origem });
   if (erosDatas.length) throw new RebanhoError("VALIDACAO", erosDatas[0].mensagem, erosDatas[0].campo);
 
@@ -772,7 +775,7 @@ export async function removerCategoriaManual(animalId: string, input: RemoverCat
 // ---------- ficha ----------
 
 export async function buscarFicha(id: string, propriedadeEscopo: number | null, periodoDias: number | null = 90): Promise<AnimalFicha> {
-  const animal = await prisma.animal.findUnique({ where: { id } });
+  const animal = await prisma.animal.findUnique({ where: { id }, include: { partos: SELECT_PARTOS_CATEGORIA } });
   if (!animal) throw new RebanhoError("NAO_ENCONTRADO", "Animal não encontrado");
 
   const [localizacoes, destinos, pesagens, baixas, composicao, manuais, regras] = await Promise.all([
@@ -823,7 +826,7 @@ export async function buscarFicha(id: string, propriedadeEscopo: number | null, 
 
   const resumo = mapearAnimalResumo({
     animal,
-    categoria: avaliarCategoria({ sexo: animal.sexo, dataNascimento: animal.dataNascimento, partos: animal.partosAntesDaEntrada }, regras, manualAberta, hoje),
+    categoria: avaliarCategoria({ sexo: animal.sexo, dataNascimento: animal.dataNascimento, partos: totalPartosCategoria(animal, hoje) }, regras, manualAberta, hoje),
     hoje,
     propriedade: propriedadeFicha,
     lote: loteFicha,
@@ -1031,6 +1034,7 @@ const INCLUDE_RESUMO = {
   // 2 mais recentes: a última pesagem (ultimoPeso) e a anterior a ela (gmdRecente)
   pesagens: { orderBy: { data: "desc" as const }, take: 2 },
   categoriasManuais: SELECT_MANUAL_ABERTA,
+  partos: SELECT_PARTOS_CATEGORIA,
 } satisfies Prisma.AnimalInclude;
 
 type AnimalComResumo = Prisma.AnimalGetPayload<{ include: typeof INCLUDE_RESUMO }>;
@@ -1043,7 +1047,7 @@ function resumoDe(animal: AnimalComResumo, regras: RegraCategoria[], hoje: Date)
   const hojeReferencia = baixa ? baixa.data : hoje;
   return mapearAnimalResumo({
     animal,
-    categoria: avaliarCategoria({ sexo: animal.sexo, dataNascimento: animal.dataNascimento, partos: animal.partosAntesDaEntrada }, regras, manualDe(animal.categoriasManuais), hojeReferencia),
+    categoria: avaliarCategoria({ sexo: animal.sexo, dataNascimento: animal.dataNascimento, partos: totalPartosCategoria(animal, hojeReferencia) }, regras, manualDe(animal.categoriasManuais), hojeReferencia),
     hoje: hojeReferencia,
     propriedade: loc ? { id: loc.propriedade.id, nome: loc.propriedade.nome } : null,
     lote: loc?.lote ? { id: loc.lote.id, nome: loc.lote.nome } : null,
@@ -1111,13 +1115,15 @@ export async function listar(filtros: ListarEntrada, propriedadeEscopo: number |
         destinos: { orderBy: ORDEM_HISTORICO, take: 1, select: { aptidao: true, papelReprodutivo: true } },
         baixas: { where: { estornadaEm: null }, take: 1, select: { id: true } },
         categoriasManuais: SELECT_MANUAL_ABERTA,
+        partos: SELECT_PARTOS_CATEGORIA,
+        identificacaoProvisoria: true,
       },
     }),
   ]);
 
   const leves = paraPainel.map((a) => mapearAnimalResumo({
     animal: a,
-    categoria: avaliarCategoria({ sexo: a.sexo, dataNascimento: a.dataNascimento, partos: a.partosAntesDaEntrada }, regras, manualDe(a.categoriasManuais), hoje),
+    categoria: avaliarCategoria({ sexo: a.sexo, dataNascimento: a.dataNascimento, partos: totalPartosCategoria(a, hoje) }, regras, manualDe(a.categoriasManuais), hoje),
     hoje,
     propriedade: a.localizacoes[0]?.propriedade ?? null,
     lote: null,
@@ -1488,6 +1494,7 @@ export async function darBaixa(input: BaixaInput & { animalId: string }, usuario
     const { carenciaAnimalTx } = await import("../sanidade/aplicacoes.js");
     const carencias = await carenciaAnimalTx(tx, animalId, input.data);
     await conferirFatosNaBaixa(tx, animalId, new Date(input.data));
+    if (input.tipo === "CADASTRO_INDEVIDO") await conferirCadastroIndevidoSemFatosTx(tx, animalId);
     const fimDia = new Date(`${input.data}T00:00:00-03:00`);
     const restricoes = [carencias.leite, carencias.carne].filter((p) => p.estado === "NAO_INFORMADO" || (p.estado === "CONHECIDO" && p.ate > fimDia));
     if (["VENDA", "ABATE"].includes(input.tipo) && restricoes.length && (!input.cienciaSanitaria || !input.justificativaSanitaria?.trim())) throw new RebanhoError("VALIDACAO", "Há carência vigente ou desconhecida. Confirme ciência e justifique a baixa", "justificativaSanitaria");

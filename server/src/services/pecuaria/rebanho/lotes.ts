@@ -1,7 +1,8 @@
+import { totalPartosCategoria } from "./partos.calc.js";
 import { prisma } from "../../../db.js";
 import { auditar, hojeFazendaDate, traduzirConflitoUnico, RebanhoError, type DbPecuaria } from "./regras.js";
 import { avaliarCategoria, idadeEmMeses, type CategoriaRef } from "./categoria.calc.js";
-import { carregarRegras, manualDe, SELECT_MANUAL_ABERTA } from "./categorias.js";
+import { carregarRegras, manualDe, SELECT_MANUAL_ABERTA, SELECT_PARTOS_CATEGORIA } from "./categorias.js";
 import { agregarPesoLote, resumoPeso, type ItemPesoLote } from "./peso.calc.js";
 import type { CriarLoteInput, EditarLoteInput } from "./schemas.js";
 
@@ -132,7 +133,7 @@ export async function buscarResumoLote(id: string, periodoDias: number | null, e
   const [animais, regras] = await Promise.all([
     prisma.animal.findMany({
       where: { localizacoes: { some: { ate: null, loteId: id } }, baixas: { none: { estornadaEm: null } } },
-      select: { id: true, sexo: true, dataNascimento: true, partosAntesDaEntrada: true, categoriasManuais: SELECT_MANUAL_ABERTA },
+      select: { id: true, sexo: true, dataNascimento: true, partosAntesDaEntrada: true, partos: SELECT_PARTOS_CATEGORIA, categoriasManuais: SELECT_MANUAL_ABERTA },
     }),
     carregarRegras(),
   ]);
@@ -160,7 +161,7 @@ export async function buscarResumoLote(id: string, periodoDias: number | null, e
     somaIdadeMeses += idadeEmMeses(a.dataNascimento, hoje);
 
     const { categoria } = avaliarCategoria(
-      { sexo: a.sexo, dataNascimento: a.dataNascimento, partos: a.partosAntesDaEntrada }, regras, manualDe(a.categoriasManuais), hoje,
+      { sexo: a.sexo, dataNascimento: a.dataNascimento, partos: totalPartosCategoria(a, hoje) }, regras, manualDe(a.categoriasManuais), hoje,
     );
     const chave = categoria?.id ?? "";
     const atual = porCategoriaMap.get(chave);

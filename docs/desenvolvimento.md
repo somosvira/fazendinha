@@ -12,7 +12,7 @@ pnpm --filter rionovo-server run seedatev3
 pnpm --filter rionovo-server run seedatev3 --verificar
 ```
 
-O cenário reúne Principal/Destino, 18 animais, seis lotes, genética, pesagens/manejos, transferências/baixas, contas, operações/compromissos/liquidações/estornos, protocolos/ciclos/aplicações/exames e receitas/vigências/fechamentos. Documentos e relatórios demonstrativos usam R2; não são documentos fiscais reais. Reprodução e leite de versões futuras não são criados.
+O cenário reúne Principal/Destino, 18 animais, seis lotes, genética, pesagens/manejos, transferências/baixas, contas, operações/compromissos/liquidações/estornos, protocolos/ciclos/aplicações/exames e receitas/vigências/fechamentos. Documentos e relatórios demonstrativos usam R2; não são documentos fiscais reais. O seed permanece limitado à V3: não cria cenários de reprodução V4 nem produção de leite.
 
 Catálogos demonstrativos ficam em `server/prisma/seedatev3/catalogos.ts`. Padrões são carga inicial editável, não regra clínica fixa. IDs existentes das migrations são reaproveitados, sem sobrescrever configurações do usuário. Centros financeiros chamados Agronomia/Equipe não reintroduzem os módulos retirados.
 
@@ -75,3 +75,31 @@ Os utilitários mantidos formam a cadeia existente de Rebanho/Genética:
 A importação não sincroniza alterações do IDEAGRI: animal já importado é ignorado; a passada de genética preenche lados vazios sem sobrescrever filiação editada. O importador trata animais em transações individuais e relata falhas; execução parcial não significa carga integral concluída. A carga histórica de Sanidade/Nutrição V3 ainda não está entregue.
 
 Seeds de demonstração por módulo/PR e a massa do Excel anterior foram retirados. Fixtures dos testes, catálogos das migrations e importador atual continuam disponíveis.
+
+## Carga técnica V4 e testes de reprodução
+
+A V4 tem ferramentas separadas do seed V3. Não rode `seed`, `db push` ou uma carga histórica para testar uma mudança comum. Para integração, crie um PostgreSQL descartável e passe **`DATABASE_URL` e `DIRECT_URL` apontando para o mesmo banco** em todos os comandos: o Prisma usa a conexão direta para migrations e pode ler `DIRECT_URL` de `server/.env` mesmo quando somente `DATABASE_URL` foi sobrescrita.
+
+```bash
+# Use a conexão de um banco descartável criado especificamente para o teste.
+export PECUARIA_QA_URL='postgresql://usuario:senha@127.0.0.1:porta/banco_descartavel'
+DATABASE_URL="$PECUARIA_QA_URL" DIRECT_URL="$PECUARIA_QA_URL" pnpm --filter rionovo-server exec prisma migrate deploy
+DATABASE_URL="$PECUARIA_QA_URL" DIRECT_URL="$PECUARIA_QA_URL" PECUARIA_DB_INTEGRATION=1 pnpm --filter rionovo-server test
+```
+
+O extrator `scripts/extract-pecuaria-v4.sh` exige caminho explícito de uma **cópia** Firebird e diretório de saída fora do Git, ambos acessíveis pelo Windows em `/mnt/c`. Recusa o diretório operacional `Ideagri/dados`. Consultas usam transação somente de leitura; erros SQL/UDF interrompem a transformação automática, conservando o dump para inspeção. `scripts/build-pecuaria-v4-json.mjs` verifica sentinelas e totais das tabelas antes de gerar o JSON. A presença de um dump não prova que a extração terminou integralmente.
+
+```bash
+scripts/extract-pecuaria-v4.sh '/mnt/c/copia/DADOS777.FDB' '/mnt/c/copia/saida-v4'
+pnpm --filter rionovo-server run import:pecuaria:v4:typecheck
+```
+
+O contrato de carga e mapeamento fica em `server/prisma/import-v4/contrato.ts`. A prévia é o padrão e escreve somente o relatório solicitado; ela não cria animais nem importa fatos no banco. Informe carga, mapeamento e relatório explicitamente:
+
+```bash
+DATABASE_URL="$PECUARIA_QA_URL" DIRECT_URL="$PECUARIA_QA_URL" pnpm --filter rionovo-server run import:pecuaria:v4 --arquivo=/caminho/carga.json --mapeamento=/caminho/mapa.json --relatorio=/caminho/previa.json
+```
+
+Para executar no banco **local** escolhido, acrescentam-se `--executar --banco-confirmado=nome_do_banco`. O importador recusa execução em ambiente de produção ou banco remoto; publicar código não autoriza aplicar a carga. Conflitos causam saída não zero e precisam de leitura do relatório, inclusive quando uma execução foi parcial. Reexecutar respeita chaves de origem e detecta mudanças de hash, sem sobrescrever silenciosamente fatos operacionais.
+
+A carga conserva anotações e dados originais de IATF, relações comprovadas, períodos e lactações. Referências sem correspondência, origens desconhecidas, paridade sem reconciliação e protocolos sem precisão operacional suficiente aparecem como pendências. Os arquivos extraídos, mapas com dados da fazenda e relatórios não devem ser versionados.

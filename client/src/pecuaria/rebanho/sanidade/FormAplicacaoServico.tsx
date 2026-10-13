@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useRef, useState } from "react";
+import { type FormEvent, type ReactNode, useEffect, useRef, useState } from "react";
 import { Button, hoje } from "../../../financeiro/financeiro-ui";
 import { CampoFormulario, classeInput, PainelCadastro } from "../../../financeiro/PainelCadastro";
 import { DatePicker } from "../../../components/DatePicker";
@@ -15,8 +15,12 @@ import { AjusteIndividualAplicacao, type AjusteEtapaAplicacao } from "./AjusteIn
 import { dataSanitaria, unidadeSanitaria } from "./rotulos";
 
 export type TarefaAplicacao = { id: string; produtoId: string; tipoAplicacaoId: string; dose: string; unidade: string; previstaPara?: string; via?: string; protocoloNome?: string; protocoloVersao?: number; animalId?: string };
-export function FormAplicacaoServico({ animalId, propriedadeId, onSalvo, onFechar, tarefa, tarefas, animais }: {
+export function FormAplicacaoServico({ animalId, propriedadeId, onSalvo, onFechar, tarefa, tarefas, animais, onRegistrar, dataInicial, conteudoExtra }: {
   animalId: string; propriedadeId: number; onSalvo: (id?: string, propriedadeIdFato?: number) => void; onFechar: () => void;
+  /** Coordena registro atômico a partir de uma visita ou tarefa reprodutiva. */
+  dataInicial?: string;
+  conteudoExtra?: ReactNode;
+  onRegistrar?: (input: AplicacaoInput) => Promise<void>;
   tarefa?: TarefaAplicacao;
   tarefas?: TarefaAplicacao[];
   animais?: Array<{ id: string; brinco: string; propriedadeId: number | null }>;
@@ -46,7 +50,7 @@ export function FormAplicacaoServico({ animalId, propriedadeId, onSalvo, onFecha
   const [motivoVencida, setMotivoVencida] = useState("");
   const [partidaId, setPartidaId] = useState("");
   useEffect(() => { setCienciaVencida(false); setMotivoVencida(""); }, [partidaId]);
-  const [data, setData] = useState(tarefa?.previstaPara?.slice(0, 10) ?? hoje());
+  const [data, setData] = useState(dataInicial ?? tarefa?.previstaPara?.slice(0, 10) ?? hoje());
   const [hora, setHora] = useState("");
   useEffect(() => { setCienciaVencida(false); setMotivoVencida(""); setCienciaValidadeDesconhecida(false); }, [data, hora]);
   const [nome, setNome] = useState("");
@@ -168,6 +172,7 @@ export function FormAplicacaoServico({ animalId, propriedadeId, onSalvo, onFecha
         estadoCarenciaLeite: estadoLeite, estadoCarenciaCarne: estadoCarne,
         carenciaLeiteHoras: estadoLeite === "INFORMADO" ? Number(leite) : null, carenciaCarneHoras: estadoCarne === "INFORMADO" ? Number(carne) : null,
         justificativaCarenciaCarne: estadoCarne === "NAO_APLICAVEL" ? motivoCarne.trim() : undefined };
+      if (onRegistrar) { await onRegistrar(input); onSalvo(undefined, sitioDoFato); return; }
       const entradas = animais?.length ? animais.map((a) => {
         const t = tarefas?.find((t) => t.animalId === a.id);
         const { motivoDesvio: _motivo, ...ajuste } = ajustesEtapa[a.id] ?? {};
@@ -193,6 +198,7 @@ export function FormAplicacaoServico({ animalId, propriedadeId, onSalvo, onFecha
   }
   return <PainelCadastro aberto titulo={animais?.length ? "Aplicação sanitária coletiva" : "Registrar aplicação sanitária"} onFechar={() => { if (!salvando) onFechar(); }} rodape={<div className="grid w-full gap-2">{erro && <p role="alert" className="flex items-start gap-2 text-sm text-red-700"><CircleAlert size={16} className="shrink-0" aria-hidden />{erro}</p>}<div className="flex justify-end gap-2"><Button secondary onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form="form-aplicacao-sanitaria" disabled={salvando || carregando}>{salvando ? "Salvando…" : tarefa ? previaExecucao ? "Confirmar execução" : "Conferir execução" : animais?.length ? conferindo ? "Confirmar todas as aplicações" : "Conferir por animal" : "Registrar aplicação"}</Button></div></div>}>
     <form ref={formulario} noValidate id="form-aplicacao-sanitaria" onSubmit={submeter} onChange={() => { setChave(crypto.randomUUID()); setPreviaExecucao(null); }} className="grid gap-4">
+      {conteudoExtra}
       {carregando && <p>Carregando cadastros…</p>}
       {tarefa && <section className="grid gap-3 rounded-lg border border-border p-3"><strong>{tarefa.protocoloNome ?? "Protocolo"} · v{tarefa.protocoloVersao ?? "—"} · Aplicação</strong><p>Animal: {animais?.map((a) => a.brinco).join(", ") ?? ficha?.brinco ?? "Carregando animal…"}. Versão e natureza são fixas. Planejado: {tarefa.previstaPara ? dataSanitaria(tarefa.previstaPara) : "Data não registrada"} · {produto?.nome ?? "Produto planejado"} · {tarefa.dose} {unidadeSanitaria(tarefa.unidade)} · {tarefa.via ?? "Via não informada"}</p><Button secondary disabled={salvando} onClick={() => { setDesvio((v) => !v); setPreviaExecucao(null); if (desvio) { setData(tarefa.previstaPara?.slice(0, 10) ?? hoje()); setTipoId(tarefa.tipoAplicacaoId); setProdutoId(tarefa.produtoId); setDose(tarefa.dose); setUnidade(tarefa.unidade); setVia(tarefa.via ?? ""); setMotivoDesvio(""); setAjustesEtapa({}); } }}>{desvio ? "Voltar ao planejamento" : "Registrar desvio"}</Button>{desvio && <CampoFormulario id="san-desvio" erro={errosCampos["san-desvio"]} rotulo="Motivo do desvio" obrigatorio>{(p) => <textarea {...p} minLength={5} maxLength={500} className={classeInput} value={motivoDesvio} onChange={(e) => setMotivoDesvio(e.target.value)} />}</CampoFormulario>}</section>}
       <fieldset disabled={salvando} className="grid gap-4">

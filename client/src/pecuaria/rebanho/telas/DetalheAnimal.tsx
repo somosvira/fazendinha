@@ -33,6 +33,8 @@ import { HistoricoMovimentacoes } from "../components/HistoricoMovimentacoes";
 import { DetalheMovimentacao } from "../components/DetalheMovimentacao";
 import { SanidadeAnimal } from "../sanidade/SanidadeAnimal";
 import { ManejoAnimal } from "../manejo/ManejoAnimal";
+import { IdentificarCria } from "../reproducao/IdentificarCria";
+import { ReproducaoAnimal } from "../reproducao/Reproducao";
 import { NutricaoAnimal } from "../nutricao/NutricaoAnimal";
 
 /** Nome/brinco de mãe ou pai na seção Filiação — link para a ficha quando é animal nosso,
@@ -64,6 +66,7 @@ function ResumoFicha({ icon: Icon, rotulo, valor, detalhe }: { icon: LucideIcon;
 }
 
 export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string; onVoltar: () => void; podeLancar?: boolean }) {
+  const [identificandoCria,setIdentificandoCria]=useState(false);
   const [secaoAtiva, setSecaoAtiva] = useState("resumo");
   const [acoesAbertas, setAcoesAbertas] = useState(false);
   useEffect(() => {
@@ -195,12 +198,14 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
         contexto={<div className="flex flex-wrap items-center gap-2">
             <span className="eyebrow">{animal.brinco}</span>
             <Pill tone={ativo ? "green" : "neutral"}>{rotuloSituacao(animal.situacao)}</Pill>
+            {animal.identificacaoProvisoria && <Pill tone="amber">Brinco pendente · cadastro provisório</Pill>}
             <CategoriaPill categoria={animal.categoria} categoriaOrigem={animal.categoriaOrigem} categoriaCalculada={animal.categoriaCalculada} />
             {animal.aptidao && <Pill tone="brown">{rotuloAptidao(animal.aptidao)}{!ativo && " · na baixa"}</Pill>}
             {animal.papelReprodutivo && animal.papelReprodutivo !== "NENHUM" && <Pill tone="amber">{rotuloPapelReprodutivo(animal.papelReprodutivo)}{!ativo && " · na baixa"}</Pill>}
           </div>}
         acao={podeLancar && <div className="flex max-w-full flex-wrap gap-2 lg:max-w-[560px] lg:justify-end">
           {ativo ? <>
+            {animal.identificacaoProvisoria && <Button secondary onClick={()=>setIdentificandoCria(true)}>Completar identificação</Button>}
             <Button onClick={() => setPesagemForm({ modo: "novo" })}>Registrar pesagem</Button>
             <Button secondary onClick={() => setMovimentando(true)}>Movimentar</Button>
             <div className="relative">
@@ -237,7 +242,7 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
 
     </div>
     <nav aria-label="Seções da ficha" className="pec-ancoras">
-      {[["resumo", "Resumo"], ["identificacao-genetica", "Identificação e genética"], ["sanidade", "Sanidade"], ["peso-manejo", "Peso e manejo"], ["nutricao", "Nutrição"], ["historico", "Histórico"]].map(([ancora, rotulo]) => <a key={ancora} href={`#${ancora}`} aria-current={secaoAtiva === ancora ? "location" : undefined} onClick={() => setSecaoAtiva(ancora)} className={`shrink-0 border-b-2 px-3 py-3 text-sm ${secaoAtiva === ancora ? "border-mast font-semibold text-ink" : "border-transparent text-ink-3"}`}>{rotulo}</a>)}
+      {[["resumo", "Resumo"], ["identificacao-genetica", "Identificação e genética"], ["reproducao", "Reprodução"], ["sanidade", "Sanidade"], ["peso-manejo", "Peso e manejo"], ["nutricao", "Nutrição"], ["historico", "Histórico"]].filter(([ancora])=>ancora!=="reproducao"||animal.sexo==="F").map(([ancora, rotulo]) => <a key={ancora} href={`#${ancora}`} aria-current={secaoAtiva === ancora ? "location" : undefined} onClick={() => setSecaoAtiva(ancora)} className={`shrink-0 border-b-2 px-3 py-3 text-sm ${secaoAtiva === ancora ? "border-mast font-semibold text-ink" : "border-transparent text-ink-3"}`}>{rotulo}</a>)}
     </nav>
       {/* resumo de leitura rápida: o que se procura primeiro ao abrir a ficha */}
       <dl id="resumo" className="scroll-mt-6 grid grid-cols-2 divide-border lg:grid-cols-4 lg:divide-x">
@@ -300,6 +305,7 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
 
         </div>
       </section>
+      {animal.sexo==="F"&&<section id="reproducao" className="scroll-mt-6"><h2 className="h2 mb-4">Reprodução</h2><ReproducaoAnimal animalId={animal.id} podeLancar={podeLancar} recarregarToken={refreshToken} /></section>}
       <section id="sanidade" className="scroll-mt-6"><h2 className="h2 mb-4">Sanidade</h2>
       <SanidadeAnimal animalId={animal.id} propriedadeId={localizacaoAtual?.propriedade?.id ?? null} podeLancar={podeLancar} recarregarToken={refreshToken} onMudou={() => { void carregar(); }} />
       </section>
@@ -333,6 +339,7 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
       <CardFicha icon={Tags} titulo="Categoria" className="lg:col-span-2">
         <DestaqueFicha>
           <div className="flex flex-wrap items-center gap-2">
+            {animal.identificacaoProvisoria && <Pill tone="amber">Brinco pendente · cadastro provisório</Pill>}
             <CategoriaPill categoria={animal.categoria} categoriaOrigem={animal.categoriaOrigem} categoriaCalculada={animal.categoriaCalculada} />
             {animal.categoriaOrigem === "AUTOMATICA" && <span className="text-ink-3">calculada pela regra{categoriaRegra?.regra ? ` "${categoriaRegra.regra}"` : " da fazenda"}{animal.idadeNaBaixa ? ", na data da baixa" : ""}.</span>}
             {animal.categoriaOrigem === "SEM_CATEGORIA" && <span className="text-ink-3">nenhuma regra ativa se aplica a este animal — ajuste as regras em Configurações › Pecuária › Categorias ou defina manualmente.</span>}
@@ -364,6 +371,7 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
         <AuditoriaAnimal id={animal.id} recarregarToken={refreshToken} />
       </CardFicha>
       </div></section>
+    {identificandoCria && <IdentificarCria animalId={animal.id} propriedadeId={localizacaoAtual?.propriedade?.id??null} nomeInicial={animal.nome} onFechar={()=>setIdentificandoCria(false)} onSalvo={()=>{setIdentificandoCria(false);void carregar();}} />}
     </article>
 
     {editandoDados && <FormDadosAnimal animal={animal} onFechar={() => setEditandoDados(false)} onSalvo={async (atualizado) => { setAnimal(atualizado); tocar(); setEditandoDados(false); }} />}

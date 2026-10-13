@@ -17,6 +17,8 @@ import * as genitores from "../../services/pecuaria/rebanho/genitores.js";
 import * as materialGenetico from "../../services/pecuaria/rebanho/materialGenetico.js";
 import { sanidadeRouter } from "./sanidade.js";
 import { manejoRouter } from "./manejo.js";
+import { reproducaoRouter } from "./reproducao.js";
+import { visitasRouter } from "./visitas.js";
 import { nutricaoRouter } from "./nutricao.js";
 import {
   cadastrarAnimalSchema, editarAnimalSchema, movimentarSchema, mudarDestinoSchema,
@@ -409,3 +411,6 @@ export const rebanhoRouter = new Hono()
 rebanhoRouter.route("/sanidade", sanidadeRouter);
 rebanhoRouter.route("/manejo", manejoRouter);
 rebanhoRouter.route("/nutricao", nutricaoRouter);
+
+rebanhoRouter.route("/reproducao", reproducaoRouter);
+rebanhoRouter.route("/visitas", visitasRouter);

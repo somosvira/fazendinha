@@ -1,14 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Prisma } from "@prisma/client";
 
-const mocks = vi.hoisted(() => ({ operacao: vi.fn(), aplicacoes: vi.fn(), exames: vi.fn(), execucoes: vi.fn() }));
+const mocks = vi.hoisted(() => ({ operacao: vi.fn(), aplicacoes: vi.fn(), exames: vi.fn(), execucoes: vi.fn(), tentativas: vi.fn() }));
 vi.mock("../../../db.js", () => ({ prisma: {
+  tentativaReprodutiva: { findMany: mocks.tentativas },
   operacao: { findFirst: mocks.operacao }, aplicacaoProduto: { findMany: mocks.aplicacoes },
   exameAnimal: { findMany: mocks.exames }, execucaoProtocoloSanitario: { findMany: mocks.execucoes },
 } }));
 import { listarOrigemFinanceira } from "./origem-financeira.js";
 
-beforeEach(() => { vi.clearAllMocks(); mocks.exames.mockResolvedValue([]); mocks.execucoes.mockResolvedValue([]); });
+beforeEach(() => { vi.clearAllMocks(); mocks.tentativas.mockResolvedValue([]); mocks.exames.mockResolvedValue([]); mocks.execucoes.mockResolvedValue([]); });
 
 describe("origem financeira dos fatos sanitários", () => {
   it("distingue destinação válida da anulada sem criar nova despesa", async () => {

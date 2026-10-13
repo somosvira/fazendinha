@@ -3,6 +3,8 @@ import { Prisma } from "@prisma/client";
 import { uid } from "../../lib/uid.fixture.js";
 
 const mocks = vi.hoisted(() => ({
+  tentativaFindMany: vi.fn(),
+  tentativaFindFirst: vi.fn(),
   produtoFindUnique: vi.fn(),
   produtoFindFirst: vi.fn(),
   centroFindFirst: vi.fn(),
@@ -23,6 +25,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("../../db.js", () => ({ prisma: {
   $transaction: mocks.transaction,
+  tentativaReprodutiva: { findMany: mocks.tentativaFindMany },
   produto: { findMany: mocks.produtoFindMany },
   movimentoEstoque: { groupBy: mocks.movGroupBy, findMany: mocks.movFindMany, count: mocks.movCount },
 } }));
@@ -31,6 +34,7 @@ vi.mock("../propriedade.js", () => ({ propriedadePrincipalId: mocks.propriedadeP
 import { ajustarContagem, estornarMovimentoTx, listarMovimentos, listarSaldos, produtosComEstoque, produtoTemEstoque, registrarMovimento } from "./estoque.js";
 
 const tx = () => ({
+  tentativaReprodutiva: { findFirst: mocks.tentativaFindFirst },
   produto: { findUnique: mocks.produtoFindUnique, findFirst: mocks.produtoFindFirst },
   centroCusto: { findFirst: mocks.centroFindFirst },
   periodoFinanceiro: { findUnique: mocks.periodoFindUnique },
@@ -44,6 +48,8 @@ const produto = { id: uid(3), nome: "Ureia", unidade: "KG", ativo: true, centros
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.tentativaFindMany.mockResolvedValue([]);
+  mocks.tentativaFindFirst.mockResolvedValue(null);
   mocks.transaction.mockImplementation(async (fn: (t: unknown) => unknown) => fn(tx()));
   mocks.produtoFindUnique.mockResolvedValue(produto);
   mocks.produtoFindFirst.mockResolvedValue(produto);
@@ -159,6 +165,17 @@ describe("estornarMovimentoTx", () => {
     expect(mocks.movCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ tipo: "ENTRADA", reversaoDeId: uid(40), observacao: "Estorno: operação agrícola #9 excluída", criadoPorId: null }) });
     expect(r.inverso.id).toBe(uid(100));
     expect(mocks.movUpdate).toHaveBeenCalledWith({ where: { id: uid(40) }, data: { status: "REVERTIDO" } });
+  });
+  it("bloqueia consumo reprodutivo enquanto a tentativa permanece válida", async () => {
+    mocks.movFindFirst.mockResolvedValue({ ...movBase, tipo: "SAIDA", origem: "REPRODUCAO", operacaoId: null });
+    mocks.tentativaFindFirst.mockResolvedValue({ id: uid(80) });
+    await expect(estornarMovimentoTx(tx() as never, uid(40))).rejects.toMatchObject({ code: "CONFLITO" });
+    expect(mocks.movCreate).not.toHaveBeenCalled(); expect(mocks.movUpdate).not.toHaveBeenCalled();
+  });
+  it("permite o domínio estornar após anular a tentativa na mesma transação", async () => {
+    mocks.movFindFirst.mockResolvedValue({ ...movBase, tipo: "SAIDA", origem: "REPRODUCAO", operacaoId: null });
+    await estornarMovimentoTx(tx() as never, uid(40));
+    expect(mocks.movCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ tipo: "ENTRADA", reversaoDeId: uid(40) }) });
   });
   it("AJUSTE é invertido negando a quantidade", async () => {
     mocks.movFindFirst.mockResolvedValue({ ...movBase, tipo: "AJUSTE", quantidade: new Prisma.Decimal(-3), valorTotal: new Prisma.Decimal(-6) });
@@ -313,6 +330,15 @@ describe("listarSaldos", () => {
 describe("listarMovimentos — origem para navegação", () => {
   const base = { seq: 1, produtoId: uid(3), produto: { nome: "Ureia", centrosCusto: [], materialGenetico: null }, tipo: "SAIDA", origem: "APLICACAO", status: "CONFIRMADO", reversaoDeId: null, data: new Date("2026-09-01"), quantidade: new Prisma.Decimal(2), custoUnitario: new Prisma.Decimal(3), valorTotal: new Prisma.Decimal(6), operacao: null, observacao: null, operacaoId: null, operacaoAgricola: null };
 
+  it("liga procedimento reprodutivo e estorno ao animal no sítio histórico, sem expor pecuária a leitor financeiro", async () => {
+    mocks.movFindMany.mockResolvedValue([{ ...base, id: uid(81), propriedadeId: 7, origem: "REPRODUCAO", observacao: "Tentativa IA animal 1" }, { ...base, id: uid(82), propriedadeId: 7, origem: "AJUSTE_INVENTARIO", reversaoDeId: uid(81), observacao: "Anulação IA animal 1" }]);
+    mocks.tentativaFindMany.mockResolvedValue([{ id: uid(90), animalId: uid(91), movimentoEstoqueId: uid(81) }]);
+    const r = await listarMovimentos({ propriedadeId: 7 });
+    for (const m of r.itens) expect(m).toMatchObject({ propriedadeId: 7, vinculo: { tipo: "TENTATIVA_REPRODUTIVA", id: uid(90), animalId: uid(91) } });
+    expect(mocks.tentativaFindMany).toHaveBeenCalledWith({ where: { movimentoEstoqueId: { in: [uid(81)] } }, select: { id: true, animalId: true, movimentoEstoqueId: true } });
+    const oculto = await listarMovimentos({ propriedadeId: 7, vinculosVisiveis: { pecuaria: false } });
+    for (const m of oculto.itens) expect(m).toMatchObject({ vinculo: null, observacao: null });
+  });
   it("consulta pelo ID preserva o movimento revertido e aponta para seu inverso", async () => {
     mocks.movFindMany.mockResolvedValue([{ ...base, id: uid(1), status: "REVERTIDO", revertidoPor: { id: uid(2) } }]);
     expect((await listarMovimentos({ movimentoId: uid(1), propriedadeId: 2 })).itens[0]).toMatchObject({ id: uid(1), status: "REVERTIDO", estorno: { id: uid(2) } });

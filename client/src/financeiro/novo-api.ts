@@ -7,9 +7,10 @@ import { SEM_VINCULO } from "../lib/ids";
 import { reqSanidade } from "../pecuaria/rebanho/sanidade/api";
 
 export type ProcedimentoServico = {
-  id: string; tipo: "APLICACAO" | "EXAME" | "PROTOCOLO"; animalId: string;
+  id: string; tipo: "APLICACAO" | "EXAME" | "PROTOCOLO" | "TENTATIVA"; animalId: string;
   animal: { id: string; brinco: string; nome: string | null }; propriedade: { id: number; nome: string } | null;
   nome: string; dataHora: string; status: string; origem: string; valor: string | null;
+  consumoMantido?: boolean;
   vinculado: boolean; podeEditar: boolean; execucaoId: string | null; operacaoServicoId: string | null;
 };
 export type ConsultaProcedimentosServico = {
@@ -26,6 +27,12 @@ export function confirmarProcedimentosServico(servicoId: string, input: { propri
   return reqSanidade<{ servicoId: string; quantidade: number; salvo: boolean; reenvio: boolean; itens?: Array<{ id: string; tipo: ProcedimentoServico["tipo"]; valor: string | null }> }>(`/servicos/${encodeURIComponent(servicoId)}/procedimentos`, { method: "POST", body: JSON.stringify(input) });
 }
 export function linkProcedimentoServico(item: ProcedimentoServico, retorno?: string) {
+  if (item.tipo === "TENTATIVA") {
+    const params = new URLSearchParams({ animalId: item.animalId, tentativaId: item.id });
+    if (item.propriedade) params.set("propriedadeId", String(item.propriedade.id));
+    if (retorno) params.set("returnTo", retorno);
+    return `/pecuaria/reproducao?${params}`;
+  }
   const tipo = item.tipo === "APLICACAO" ? "aplicacao" : item.tipo === "EXAME" ? "exame" : "execucao";
   const params = new URLSearchParams({ aba: item.tipo === "APLICACAO" ? "aplicacoes" : item.tipo === "EXAME" ? "exames" : "agenda", animalId: item.animalId, detalheTipo: tipo, detalheId: item.id });
   if (item.propriedade) params.set("propriedadeId", String(item.propriedade.id));

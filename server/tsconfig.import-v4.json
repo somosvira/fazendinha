@@ -1,0 +1,5 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {"rootDir": ".", "noEmit": true},
+  "include": ["prisma/import-pecuaria-v4.ts", "prisma/import-v4/**/*.ts", "src/env.ts", "src/db.ts"]
+}
