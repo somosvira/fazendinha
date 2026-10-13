@@ -49,8 +49,9 @@ export function AcoesReprodutivas({
   const [motivo, setMotivo] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState(false);
-  const [chave] = useState(() => crypto.randomUUID());
+  const [chave, setChave] = useState(() => crypto.randomUUID());
   const abrir = (a: Acao) => {
+    setChave(crypto.randomUUID());
     setAcao(a);
     setData(hoje());
     setMotivo("");

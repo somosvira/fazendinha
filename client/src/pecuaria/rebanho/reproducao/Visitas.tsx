@@ -43,7 +43,7 @@ export function Visitas({ podeLancar }: { podeLancar: boolean }) {
       /^\/pecuaria\/visitas\/([^/]+)$/.exec(window.location.pathname)?.[1] ??
       null,
   );
-  const [impressao, setImpressao] = useState<AtividadeVisita[] | null>(null);
+  const [impressao, setImpressao] = useState<{ atividades: AtividadeVisita[]; nome?: string; data?: string } | null>(null);
   const carregar = useCallback(async () => {
     setCarregando(true);
     setErro(null);
@@ -90,9 +90,9 @@ export function Visitas({ podeLancar }: { podeLancar: boolean }) {
   async function imprimir() {
     await executar(async () => {
       const registro = await reqV4<{
-        snapshot: { atividades: AtividadeVisita[] };
+        snapshot: { atividades: AtividadeVisita[]; nome?: string; data?: string };
       }>(`/visitas/${id}/impressoes`, { propriedadeId: prop() });
-      setImpressao(registro.snapshot.atividades);
+      setImpressao(registro.snapshot);
     });
   }
   useEffect(() => {
@@ -183,6 +183,7 @@ export function Visitas({ podeLancar }: { podeLancar: boolean }) {
                 visita={visita}
                 atividade={a}
                 podeLancar={podeLancar && visita.status !== "ENCERRADA"}
+                podeRegularizar={podeLancar}
                 onMudou={carregar}
               />
             ))}
@@ -193,7 +194,7 @@ export function Visitas({ podeLancar }: { podeLancar: boolean }) {
                   <Button
                     secondary
                     key={i.id}
-                    onClick={() => setImpressao(i.snapshot.atividades ?? [])}
+                    onClick={() => setImpressao({ ...i.snapshot, atividades: i.snapshot.atividades ?? [] })}
                   >
                     Reimprimir lista{" "}
                     {i.criadoEm?.slice(0, 10) ?? i.id.slice(0, 8)}
@@ -314,29 +315,37 @@ export function Visitas({ podeLancar }: { podeLancar: boolean }) {
       {impressao && (
         <div className="hidden print:block">
           <h1>
-            {visita?.nome ?? "Visita veterinária"} · {visita?.data.slice(0, 10)}
+            {impressao.nome ?? "Visita veterinária — cabeçalho não preservado"} · {impressao.data?.slice(0, 10) ?? "Data não preservada"}
           </h1>
-          {impressao.map((a) => (
+          {impressao.atividades.map((a) => (
             <section key={a.id}>
-              <h2 className="mt-6 mb-3">{a.nome}</h2>
+              <h2 className="mt-6 mb-3">{a.nome}{a.extra ? " · Atividade extra" : ""}</h2>
+              <p className="text-xs mb-3">Data de referência: {impressao.data?.slice(0,10) ?? "não preservada"} · Critérios de preparação: {criteriosImpressao({...(a.contexto?.criterios as object ?? {}), ...(a.contexto?.apresentacao as object ?? {})})}</p>
               <table className="w-full border-collapse text-sm">
-                <thead>
+                <thead className="table-header-group">
                   <tr>
                     <th>Ordem</th>
                     <th>Animal</th>
-                    <th>Motivos</th>
+                    <th>Lote / motivos</th>
+                    <th>Tentativa / touro / último parto</th>
                     <th>Resultado / conduta / anotações</th>
                   </tr>
                 </thead>
                 <tbody>
                   {ordenarParticipantes(a.participantes).map((p) => (
-                    <tr key={p.id}>
+                    <tr key={p.id} className="break-inside-avoid">
                       <td className="border p-3">{p.ordem}</td>
                       <td className="border p-3">
                         {p.snapshot.brinco ?? p.animalId} {p.snapshot.nome}
                       </td>
                       <td className="border p-3">
+                        <p>{p.snapshot.lote?.nome ?? "Lote não informado"}</p>
                         {motivosParticipante(p).join("; ")}
+                      </td>
+                      <td className="border p-3 text-xs">
+                        <p>{p.snapshot.tentativa ? `${p.snapshot.tentativa.tipo} · ${p.snapshot.tentativa.data.slice(0,10)}` : "Tentativa não comprovada"}</p>
+                        <p>Touro: {p.snapshot.tentativa?.geneticaSnapshot?.pai?.nome ?? "não informado"}</p>
+                        <p>Último parto: {p.snapshot.ultimoParto?.data.slice(0,10) ?? "não informado"}</p>
                       </td>
                       <td className="border p-3 h-16" />
                     </tr>
@@ -349,4 +358,17 @@ export function Visitas({ podeLancar }: { podeLancar: boolean }) {
       )}
     </PaginaFinanceira>
   );
+}
+
+function criteriosImpressao(valor: unknown): string {
+  if (!valor || typeof valor !== "object") return "Não preservados";
+  const c = valor as Record<string, unknown>;
+  const partes: string[] = [];
+  for (const [campo, nome] of [["categoriaNome", "Categoria"], ["loteNome", "Lote"], ["situacao", "Situação"], ["busca", "Busca"]]) if (c[campo]) partes.push(`${nome}: ${c[campo]}`);
+  for (const [campo, nome] of [["diasTentativa", "tentativa"], ["diasParto", "último parto"], ["diasGestacao", "confirmação da gestação"]]) {
+    const min = c[campo+"Min"], max = c[campo+"Max"];
+    if (min != null || max != null) partes.push(`Dias desde ${nome}: ${min ?? "sem mínimo"} a ${max ?? "sem máximo"}`);
+  }
+  if (Array.isArray(c.motivos) && c.motivos.length) partes.push(`Motivos: ${c.motivos.join("; ")}`);
+  return partes.join(" · ") || "Sem filtros adicionais";
 }

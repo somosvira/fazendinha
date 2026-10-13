@@ -1,12 +1,14 @@
 import { comPropriedade } from "../../../propriedadeScope";
 
 type EstadoCarencia = { estado: "NENHUMA" | "NAO_APLICAVEL" | "NAO_INFORMADO" } | { estado: "CONHECIDO"; ate: string; precisaoAproximada: boolean; prazoZero?: boolean };
-export type CarenciaAnimal = { leite: EstadoCarencia; carne: EstadoCarencia; revisaoLeitePendente?: boolean };
+export type CarenciaAnimal = { leite: EstadoCarencia; carne: EstadoCarencia; revisaoLeitePendente?: boolean; revisaoAdministracaoPendente?: boolean };
 export type AplicacaoSanitaria = {
   animal?: { id: string; brinco: string; nome: string | null }; produtoId?: string | null;
   produto?: { id: string; nome: string; unidade: string } | null;
   id: string; animalId: string; propriedadeId?: number | null; data: string; aplicadaEm: string | null; finalidade: "TRATAMENTO" | "VACINA" | "VERMIFUGO" | null;
   nomeProdutoAplicado: string; dose: string; unidadeDose: string | null; origemInsumo: string;
+  consumoMantido?: boolean;
+  administracaoMantida?: boolean | null;
   operacaoServicoId: string | null; status: "VALIDO" | "ANULADO";
   loteNome?: string | null; partidaCodigoSnapshot: string | null; partidaValidadeSnapshot: string | null; justificativaSemOrigem: string | null;
   tipoAplicacaoNomeSnapshot: string | null; responsavel: string | null;

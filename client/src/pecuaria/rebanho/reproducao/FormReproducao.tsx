@@ -1,3 +1,4 @@
+import { AlertasSanitarios } from "./AlertasSanitarios";
 import { useEffect, useState, type ReactNode } from "react";
 import { Button, ErrorBox, hoje } from "../../../financeiro/financeiro-ui";
 import {
@@ -103,6 +104,7 @@ export function FormReproducao({
   const [anotacao, setAnotacao] = useState("");
   const [retorno, setRetorno] = useState("");
   const [previsao, setPrevisao] = useState("");
+  useEffect(() => setCienciaSanitaria(false), [animalId, data, tipo, conduta]);
   const [tipoParto, setTipoParto] = useState<
     "NORMAL" | "DISTOCICO" | "ABORTO" | "NATIMORTO"
   >("NORMAL");
@@ -121,15 +123,9 @@ export function FormReproducao({
   ]);
   const [restricao, setRestricao] = useState("TEMPORARIA");
   const animal = painel.animais.find((a) => a.animalId === animalId);
-  const gestacaoDoFato = painel.gestacoes
-    ? painel.gestacoes.find(
-        (g) =>
-          g.animalId === animalId &&
-          g.status === "VALIDO" &&
-          (!g.confirmadaEm || g.confirmadaEm.slice(0, 10) <= data) &&
-          (!g.encerradaEm || g.encerradaEm.slice(0, 10) >= data),
-      )
-    : animal?.gestacao;
+  const gestacoesClinicas = [...(painel.gestacoes ?? []), ...(animal?.gestacao ? [{...animal.gestacao, animalId}] : [])];
+  const tentativasClinicas = [...painel.tentativas, ...(animal?.ultimaTentativa && !painel.tentativas.some(t => t.id === animal.ultimaTentativa!.id) ? [{...animal.ultimaTentativa, animalId}] : [])];
+  const gestacaoDoFato = gestacoesClinicas.find(g => g.animalId === animalId && g.status === "VALIDO" && (!g.confirmadaEm || g.confirmadaEm.slice(0,10) <= data) && (!g.encerradaEm || (acao === "avaliacao" && resultado === "NEGATIVO" ? g.encerradaEm.slice(0,10) > data : g.encerradaEm.slice(0,10) >= data)));
   const negativoBloqueado =
     acao === "avaliacao" && resultado === "NEGATIVO" && !!gestacaoDoFato;
   const exigeMotivo =
@@ -279,6 +275,7 @@ export function FormReproducao({
         await (onRegistrar ?? registrarAvaliacao)({
           ...base,
           resultado,
+          cienciaSanitaria,
           conduta,
           ...(tentativaId ? { tentativaId } : {}),
           ...(gestacaoDoFato ? { gestacaoId: gestacaoDoFato.id } : {}),
@@ -485,6 +482,7 @@ export function FormReproducao({
                 )}
               </>
             )}
+            <AlertasSanitarios animalId={animalId} data={data} acao={tipo} />
             <ConfirmacaoCiencia
               id="rep-ciencia-sanitaria"
               checked={cienciaSanitaria}
@@ -528,7 +526,7 @@ export function FormReproducao({
               "Tentativa relacionada",
               tentativaId,
               setTentativaId,
-              painel.tentativas
+              tentativasClinicas
                 .filter((t) => t.animalId === animalId)
                 .map((t) => [t.id, `${t.data.slice(0, 10)} · ${t.tipo}`]),
               false,
@@ -601,6 +599,14 @@ export function FormReproducao({
               false,
               "date",
             )}
+          </>
+        )}
+        {acao === "avaliacao" && conduta === "IATF" && (
+          <>
+          <AlertasSanitarios animalId={animalId} data={data} acao="IATF" />
+          <ConfirmacaoCiencia id="rep-ciencia-indicacao" checked={cienciaSanitaria} onChange={setCienciaSanitaria}>
+            Revisei os alertas sanitários configurados para indicar IATF.
+          </ConfirmacaoCiencia>
           </>
         )}
         {acao === "parto" && (

@@ -27,6 +27,7 @@ describe("horário e estados de IATF", () => {
       status: "",
     };
     expect(statusTarefaIatf(t)).toBe("Pendente");
+    expect(statusTarefaIatf({...t,realizadaEm:"2026-10-01T12:00:00Z",historicoRegularizacao:[{acao:"ENCERRAR_SEM_SUBSTITUICAO"}]})).toBe("Encerrada sem substituição");
     expect(
       statusTarefaIatf({ ...t, dispensadaEm: "2026-10-01T13:00:00Z" }),
     ).toBe("Dispensada");

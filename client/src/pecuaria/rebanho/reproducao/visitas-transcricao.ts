@@ -12,6 +12,7 @@ export function dadosConfirmacaoVisita(
   tipo: TipoAtividade,
   r: RascunhoVisita,
 ): Record<string, unknown> {
+  if (r.status === "ADIADO" || r.status === "NAO_ATENDIDO") return {};
   const { status: _status, dados, inicioEfetivo, realizadaEm, ...campos } = r;
   if (tipo === "TAREFA_IATF")
     return {
@@ -23,6 +24,7 @@ export function dadosConfirmacaoVisita(
     return {
       participanteIatfId: r.participanteIatfId,
       inicioEfetivo: momentoBR(inicioEfetivo),
+      cienciaSanitaria: r.cienciaSanitaria,
     };
   if (tipo === "AVALIACAO_REPRODUTIVA")
     return Object.fromEntries(

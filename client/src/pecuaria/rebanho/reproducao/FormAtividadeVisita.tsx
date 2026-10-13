@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button, ErrorBox } from "../../../financeiro/financeiro-ui";
 import {
   classeInput,
@@ -32,14 +32,18 @@ export function FormAtividade({
   const [sugestoes, setSugestoes] = useState<SugestoesVisita | null>(null);
   const [origem, setOrigem] = useState("animais");
   const [contextoId, setContextoId] = useState("");
+  const conhecidos = useRef(new Map<string, AnimalReprodutivo>());
   const [animais, setAnimais] = useState<AnimalReprodutivo[]>([]);
   const [escolhidos, setEscolhidos] = useState<string[]>([]);
   const [tipo, setTipo] = useState<TipoAtividade>("AVALIACAO_REPRODUTIVA");
   const [nome, setNome] = useState("Avaliação reprodutiva");
   const [extra, setExtra] = useState(false);
+  const [filtros, setFiltros] = useState<Record<string, string>>({});
   const [situacaoFiltro, setSituacaoFiltro] = useState("");
   const [motivosFiltro, setMotivosFiltro] = useState<string[]>([]);
   const motivosDoAnimal = (a: AnimalReprodutivo) => [
+    ...(a.motivos ?? []),
+    ...(a.motivosInclusao ?? []),
     ...(a.gestacao ? ["Gestação conhecida"] : []),
     ...(a.situacao === "AGUARDANDO_DIAGNOSTICO"
       ? ["Diagnóstico pós-tentativa"]
@@ -52,13 +56,18 @@ export function FormAtividade({
   const [erro, setErro] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState(false);
   useEffect(() => {
-    obterSugestoesVisita(visita.data.slice(0, 10))
+    let vigente = true;
+    obterSugestoesVisita(visita.data.slice(0, 10), filtros)
       .then((p) => {
+        if (!vigente) return;
         setSugestoes(p);
-        setAnimais(Array.isArray(p.animais) ? p.animais : p.animais.animais);
+        const lista = Array.isArray(p.animais) ? p.animais : p.animais.animais;
+        lista.forEach(a => conhecidos.current.set(a.animalId, a));
+        setAnimais(lista);
       })
       .catch((e) => setErro(e.message));
-  }, [visita.data]);
+    return () => { vigente = false; };
+  }, [visita.data, filtros]);
   const tarefas =
     origem === "sanidade"
       ? (sugestoes?.tarefasSanitarias ?? [])
@@ -105,6 +114,7 @@ export function FormAtividade({
         className="grid gap-4"
         onSubmit={(e) => {
           e.preventDefault();
+          if (origem === "animais" && escolhidos.some(id => !disponiveis.some(a => a.animalId === id))) { setErro("Revise os animais selecionados fora dos filtros atuais antes de adicionar a atividade."); return; }
           setOcupado(true);
           setErro(null);
           adicionarAtividade(visita.id, {
@@ -117,13 +127,15 @@ export function FormAtividade({
               busca: q,
               situacao: situacaoFiltro,
               motivos: motivosFiltro,
+              criterios: { ...Object.fromEntries(Object.entries(filtros).filter(([,v]) => v !== "").map(([k,v]) => [k, k.startsWith("dias") ? Number(v) : v])), ...(situacaoFiltro ? {situacao: situacaoFiltro} : {}) },
+              apresentacao: { situacao: situacaoFiltro, motivos: motivosFiltro, busca: q, categoriaNome: sugestoes?.categorias?.find(c => c.id === filtros.categoriaId)?.nome, loteNome: sugestoes?.lotes?.find(l => l.id === filtros.loteId)?.nome },
             },
             participantes: escolhidos.map((id) => {
               if (origem === "animais")
                 return {
                   animalId: id,
                   motivos: motivosDoAnimal(
-                    animais.find((a) => a.animalId === id)!,
+                    conhecidos.current.get(id)!,
                   ),
                 };
               const t = tarefasCompativeis.find((t) => t.id === id)!;
@@ -214,6 +226,21 @@ export function FormAtividade({
         )}
         {origem === "animais" && (
           <>
+            <p className="text-sm">Contexto dos animais na data da visita: {visita.data.slice(0, 10)}. Janelas em dias são inclusivas e exigem referência conhecida.</p>
+            {([ ["categoriaId", "Categoria", sugestoes?.categorias ?? []], ["loteId", "Lote", sugestoes?.lotes ?? []] ] as const).map(([campo, rotulo, opcoes]) => (
+              <label key={campo} className="text-sm">{rotulo}<select className={classeInput} value={filtros[campo] ?? ""}
+                onChange={e => setFiltros(v => ({...v, [campo]: e.target.value}))}>
+                <option value="">Todos</option>{opcoes.map(o => <option key={o.id} value={o.id}>{o.nome}</option>)}
+              </select></label>
+            ))}
+            {([ ["Tentativa", "diasTentativa"], ["Último parto", "diasParto"], ["Gestação", "diasGestacao"] ] as const).map(([rotulo, campo]) => (
+              <fieldset key={campo} className="grid grid-cols-2 gap-3"><legend className="text-sm">Dias desde {campo === "diasGestacao" ? "confirmação da gestação" : rotulo.toLowerCase()}</legend>
+                {([ ["Min", "Mínimo"], ["Max", "Máximo"] ] as const).map(([sufixo, label]) => <label key={sufixo} className="text-sm">{label}
+                  <input type="number" min="0" step="1" className={classeInput} value={filtros[campo+sufixo] ?? ""}
+                    onChange={e => setFiltros(v => ({...v, [campo+sufixo]: e.target.value}))} />
+                </label>)}
+              </fieldset>
+            ))}
             <label className="text-sm">
               Situação reprodutiva
               <select
@@ -224,7 +251,7 @@ export function FormAtividade({
                 <option value="">Todas</option>
                 {Array.from(new Set(animais.map((a) => a.situacao))).map(
                   (s) => (
-                    <option key={s}>{s}</option>
+                    <option key={s} value={s}>{({VAZIA:"Vazia",GESTANTE:"Gestante",DESCONHECIDA:"Desconhecida",APTA:"Apta",AGUARDANDO_DIAGNOSTICO:"Aguardando diagnóstico"} as Record<string,string>)[s] ?? s}</option>
                   ),
                 )}
               </select>
@@ -264,6 +291,9 @@ export function FormAtividade({
             onChange={(e) => setQ(e.target.value)}
           />
         </label>
+        {origem === "animais" && escolhidos.filter(id => !disponiveis.some(a => a.animalId === id)).map(id => (
+          <p key={id} className="text-sm">Selecionado fora dos filtros: {conhecidos.current.get(id)?.brinco ?? id} <button type="button" className="underline" onClick={() => setEscolhidos(v => v.filter(x => x !== id))}>Remover seleção</button></p>
+        ))}
         <div className="max-h-96 overflow-auto divide-y divide-border border border-border rounded-lg">
           {origem !== "animais"
             ? tarefasCompativeis

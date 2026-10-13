@@ -7,6 +7,7 @@ export type TipoAtividade =
   | "EXAME_SANITARIO"
   | "INICIAR_SANITARIO";
 export type RascunhoVisita = {
+  cienciaSanitaria?: boolean;
   participanteIatfId?: string;
   tentativaId?: string;
   gestacaoId?: string;
@@ -28,6 +29,9 @@ export type ParticipanteVisita = {
   ordem: number;
   status: string;
   rascunho: RascunhoVisita | null;
+  versaoRascunho?: number;
+  regularizacaoPendente?: boolean;
+  historicoRegularizacao?: Array<{acao?: string; destinoConsumo?: string | null}>;
   snapshot: {
     brinco?: string;
     nome?: string | null;
@@ -37,7 +41,7 @@ export type ParticipanteVisita = {
       confirmadaEm?: string;
       encerradaEm?: string | null;
     } | null;
-    tentativa?: { id: string; data: string; tipo: string } | null;
+    tentativa?: { id: string; data: string; tipo: string; geneticaSnapshot?: {pai?: {nome?: string | null}} } | null;
     ultimoParto?: { id: string; data: string; tipo: string } | null;
     restricoes?: Array<{ id: string; tipo: string; motivo: string }>;
     lote?: { id: string; nome: string } | null;
@@ -66,7 +70,7 @@ export type Visita = {
   impressoes: Array<{
     id: string;
     criadoEm?: string;
-    snapshot: { atividades?: AtividadeVisita[] };
+    snapshot: { atividades?: AtividadeVisita[]; nome?: string; data?: string };
   }>;
 };
 export const listarVisitas = () => reqV4<Visita[]>("/visitas");
@@ -98,10 +102,11 @@ export const salvarRascunhoVisita = (
   participanteId: string,
   propriedadeId: number,
   rascunho: RascunhoVisita,
+  versaoRascunho: number,
 ) =>
-  reqV4(
+  reqV4<ParticipanteVisita>(
     `/visitas/${id}/participantes/${participanteId}/rascunho`,
-    { propriedadeId, rascunho },
+    { propriedadeId, rascunho, versaoRascunho },
     "PUT",
   );
 export const confirmarVisita = (
@@ -138,6 +143,10 @@ export type SugestaoTarefa = {
   participanteId?: string;
 };
 export type SugestoesVisita = {
+  categorias?: Array<{id: string; nome: string}>;
+  lotes?: Array<{id: string; nome: string}>;
+  criterios?: Record<string, unknown>;
+  retornos?: Array<{origem: string; origemId: string | null; origemConsultavel?: boolean; animalId: string; data: string | null; status: string; propriedadeId: number; programacaoId?: string}>;
   animais:
     | import("./api").AnimalReprodutivo[]
     | import("./api").PainelReprodutivo;
@@ -159,5 +168,5 @@ export type SugestoesVisita = {
     participanteId?: string;
   }>;
 };
-export const obterSugestoesVisita = (data: string) =>
-  reqV4<SugestoesVisita>(`/visitas/sugestoes?data=${encodeURIComponent(data)}`);
+export const obterSugestoesVisita = (data: string, filtros: Record<string, string> = {}) =>
+  reqV4<SugestoesVisita>(`/visitas/sugestoes?${new URLSearchParams({ data, ...Object.fromEntries(Object.entries(filtros).filter(([,v]) => v !== "")) })}`);

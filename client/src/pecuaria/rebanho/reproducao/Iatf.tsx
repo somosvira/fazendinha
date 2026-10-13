@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { RegularizarOrigem, consumoMantidoUltimaAnulacao } from "./RegularizarOrigem";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Button,
   CabecalhoTabela,
@@ -73,6 +74,8 @@ export type TarefaIatf = {
   tentativaId?: string | null;
   avaliacaoId?: string | null;
   fatoId?: string | null;
+  regularizacaoPendente?: boolean;
+  historicoRegularizacao?: Array<{acao?: string; destinoConsumo?: string | null}>;
 };
 export type ParticipanteIatf = {
   id: string;
@@ -120,17 +123,19 @@ export const inputHorarioIatf = (valor: string) => {
   return `${p("year")}-${p("month")}-${p("day")}T${p("hour")}:${p("minute")}`;
 };
 export const statusTarefaIatf = (t: TarefaIatf) =>
-  t.realizadaEm ? "Realizada" : t.dispensadaEm ? "Dispensada" : "Pendente";
+  t.historicoRegularizacao?.at(-1)?.acao === "ENCERRAR_SEM_SUBSTITUICAO" ? "Encerrada sem substituição" : t.realizadaEm ? "Realizada" : t.dispensadaEm ? "Dispensada" : "Pendente";
 export const statusParticipanteIatf = (p: ParticipanteIatf) =>
   p.encerradoEm ? "Encerrada" : p.inicioEfetivo ? "Iniciada" : "Prevista";
 export function Iatf({
   animais,
   painel,
   podeLancar,
+  onMudou,
 }: {
   animais: AnimalReprodutivo[];
   painel: PainelReprodutivo;
   podeLancar: boolean;
+  onMudou?: () => Promise<void>;
 }) {
   const [protocolos, setProtocolos] = useState<ProtocoloIatf[]>([]);
   const [programacoes, setProgramacoes] = useState<ProgramacaoIatf[]>([]);
@@ -191,15 +196,26 @@ export function Iatf({
       })
       .catch((e) => setErro(e instanceof Error ? e.message : String(e)));
   }, []);
+  const aberturaAtual = useRef(0);
   const abrir = async (id: string) => {
+    const sequencia = ++aberturaAtual.current;
     try {
-      setDetalhe(
-        await reqV4<ProgramacaoIatf>(`/reproducao/programacoes/${id}`),
-      );
+      const resultado = await reqV4<ProgramacaoIatf>(`/reproducao/programacoes/${id}`);
+      if (sequencia === aberturaAtual.current) setDetalhe(resultado);
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
     }
   };
+  useEffect(() => {
+    const atualizar = () => {
+      const id = new URLSearchParams(window.location.search).get("programacaoId");
+      if (id) void abrir(id);
+      else { aberturaAtual.current++; setDetalhe(null); }
+    };
+    atualizar();
+    window.addEventListener("popstate", atualizar);
+    return () => window.removeEventListener("popstate", atualizar);
+  }, []);
   const prop = () => {
     const p = getPropriedadeAtiva();
     if (!p) throw new Error("Selecione um sítio.");
@@ -210,6 +226,7 @@ export function Iatf({
     setErro(null);
     try {
       await fn();
+      await onMudou?.();
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
     } finally {
@@ -379,6 +396,7 @@ export function Iatf({
                             Registrar execução
                           </Button>
                         )}
+                      {podeLancar && t.regularizacaoPendente && getPropriedadeAtiva() && <RegularizarOrigem path={`/reproducao/tarefas-iatf/${t.id}/regularizacao`} propriedadeId={getPropriedadeAtiva()!} consumoMantido={consumoMantidoUltimaAnulacao(t.historicoRegularizacao)} onMudou={async()=>{if(detalhe) await abrir(detalhe.id); await onMudou?.();}} />}
                       {(t.planejadoSnapshot || t.realizadoSnapshot) && (
                         <DetalheEtapa tarefa={t} />
                       )}
@@ -834,7 +852,7 @@ export function Iatf({
           onFechar={() => setExecucao(null)}
           onSalvo={() => {
             setExecucao(null);
-            if (detalhe) void abrir(detalhe.id);
+            void Promise.all([detalhe ? abrir(detalhe.id) : Promise.resolve(), onMudou?.()]);
           }}
         />
       )}

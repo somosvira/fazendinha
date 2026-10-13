@@ -24,7 +24,7 @@ export function CarenciasSanitarias({ carencia }: { carencia: CarenciaAnimal | n
     <div className="mt-2 grid gap-2 sm:grid-cols-2">{(["leite", "carne"] as const).map((destino) => {
       return <p key={destino}><strong>{destino === "leite" ? "Leite" : "Abate/carne"}:</strong> {destino === "leite" && carencia?.revisaoLeitePendente ? "Aplicabilidade pendente — revisar" : carencia ? resumoCarencia(carencia[destino], agora) : "Carregando…"}</p>;
     })}</div>
-    {carencia?.revisaoLeitePendente && <p className="mt-2 text-ink-3">Finalidade alterada: revise a aplicabilidade da carência de leite.</p>}
+    {carencia?.revisaoAdministracaoPendente ? <p className="mt-2 text-ink-3">Administração não confirmada: revise os dados da aplicação e das carências.</p> : carencia?.revisaoLeitePendente && <p className="mt-2 text-ink-3">Finalidade alterada: revise a aplicabilidade da carência de leite.</p>}
     <p className="mt-2 text-xs text-ink-3">Carência é o prazo para leite ou abate. O tratamento e seus lançamentos permanecem no histórico.</p>
   </section>;
 }

@@ -42,6 +42,8 @@ const painel: PainelReprodutivo = {
       restricoes: [],
     },
   ],
+  // O sítio atual pode consultar o resumo clínico após transferência, sem histórico externo.
+  gestacoes: [],
   tentativas: [],
   avaliacoes: [],
   partos: [],
@@ -83,6 +85,7 @@ describe("registros reprodutivos", () => {
     ).toBe("Reavaliação pelo veterinário");
     expect(salvo).not.toHaveBeenCalled();
     const primeira = vi.mocked(registrarAvaliacao).mock.calls[0][0];
+    expect(primeira.gestacaoId).toBe("g");
     vi.mocked(registrarAvaliacao).mockResolvedValueOnce({
       id: "e",
       animalId: "a",
@@ -111,6 +114,7 @@ describe("registros reprodutivos", () => {
     );
     fireEvent.submit(document.getElementById("form-reproducao")!);
     await waitFor(() => expect(registrarParto).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(registrarParto).mock.calls[0][0].gestacaoId).toBe("g");
     expect(vi.mocked(registrarParto).mock.calls[0][0].crias).toEqual([
       { viva: true, sexo: "F", aptidao: "LEITE" },
     ]);
@@ -134,4 +138,14 @@ describe("registros reprodutivos", () => {
       crias: [],
     });
   });
+});
+
+it("perda no mesmo dia permite negativo, preservando fronteira inclusiva para reconfirmação histórica", async () => {
+  const p = {...painel, gestacoes: [{id:"g",animalId:"a",status:"VALIDO",confirmadaEm:"2026-10-01",encerradaEm:"2026-10-13"}], animais: painel.animais.map(a=>({...a,gestacao:null}))};
+  vi.mocked(registrarAvaliacao).mockResolvedValue({id:"av",animalId:"a",data:"2026-10-13"});
+  render(<FormReproducao acao="avaliacao" painel={p} animalInicial="a" dataInicial="2026-10-13" onFechar={vi.fn()} onSalvo={vi.fn()} />);
+  fireEvent.change(screen.getByLabelText("Resultado"),{target:{value:"NEGATIVO"}});
+  fireEvent.submit(document.getElementById("form-reproducao")!);
+  await waitFor(()=>expect(registrarAvaliacao).toHaveBeenCalled());
+  expect(vi.mocked(registrarAvaliacao).mock.calls[0][0].gestacaoId).toBeUndefined();
 });

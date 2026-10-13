@@ -29,8 +29,16 @@ export type AnimalReprodutivo = {
   brinco: string;
   nome: string | null;
   situacao: string;
+  categoria?: { id: string; nome: string } | null;
+  lote?: { id: string; nome: string } | null;
+  diasTentativa?: number | null;
+  diasParto?: number | null;
+  diasGestacao?: number | null;
+  motivos?: string[];
+  motivosInclusao?: string[];
   partos: number;
   tentativasCiclo: number;
+  ultimaTentativa?: FatoReprodutivo | null;
   gestacao: Gestacao | null;
   restricoes: Restricao[];
 };
@@ -143,6 +151,7 @@ export type TentativaInput = FatoBase & {
   motivoDocumentacaoExcepcional?: string;
 };
 export type AvaliacaoInput = FatoBase & {
+  cienciaSanitaria?: boolean;
   resultado:
     | "POSITIVO"
     | "NEGATIVO"

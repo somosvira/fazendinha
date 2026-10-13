@@ -1,3 +1,5 @@
+import { RegularizarOrigem, consumoMantidoUltimaAnulacao } from "./RegularizarOrigem";
+import { AlertasSanitarios } from "./AlertasSanitarios";
 import { useEffect, useRef, useState } from "react";
 import {
   Button,
@@ -36,11 +38,13 @@ export function Transcricao({
   visita,
   atividade,
   podeLancar,
+  podeRegularizar = podeLancar,
   onMudou,
 }: {
   visita: Visita;
   atividade: AtividadeVisita;
   podeLancar: boolean;
+  podeRegularizar?: boolean;
   onMudou: () => Promise<void>;
 }) {
   const [cienciaAlteracoes, setCienciaAlteracoes] = useState(false);
@@ -113,30 +117,31 @@ export function Transcricao({
     input: Parameters<typeof confirmarVisita>[2];
   } | null>(null);
   const [preparar, setPreparar] = useState<ParticipanteVisita | null>(null);
+  const rascunhosAtuais = useRef(rascunhos);
+  const versoes = useRef<Record<string, number>>(Object.fromEntries(atividade.participantes.map(p => [p.id, p.versaoRascunho ?? 0])));
+  const conflitos = useRef(new Set<string>());
   const gravações = useRef<Record<string, Promise<unknown>>>({});
   useEffect(() => {
-    setRascunhos(
-      Object.fromEntries(
-        atividade.participantes.map((p) => [p.id, p.rascunho ?? {}]),
-      ),
-    );
+    for (const p of atividade.participantes) {
+      if (p.status === "CONFIRMADO" || !gravações.current[p.id]) {
+        rascunhosAtuais.current[p.id] = p.rascunho ?? {};
+        versoes.current[p.id] = p.versaoRascunho ?? 0;
+        conflitos.current.delete(p.id);
+      }
+    }
+    setRascunhos({ ...rascunhosAtuais.current });
   }, [atividade.participantes]);
   const tarefaPreparada = preparar?.tarefaIatfId
     ? sugestoes?.tarefasIatf.find((t) => t.id === preparar.tarefaIatfId)
     : null;
   async function guardarProcedimento(dados: object) {
     if (!preparar) return;
-    const r = {
-      ...rascunhos[preparar.id],
-      dados: { ...dados },
-      status: "CONFIRMADO",
+    const p = preparar;
+    rascunhosAtuais.current[p.id] = {
+      ...rascunhosAtuais.current[p.id], dados: { ...dados }, status: "CONFIRMADO",
     };
-    await salvarRascunhoVisita(visita.id, preparar.id, visita.propriedadeId, r);
-    setRascunhos((v) => ({ ...v, [preparar.id]: r }));
-    setAvisos((v) => ({
-      ...v,
-      [preparar.id]: "Procedimento preparado e salvo",
-    }));
+    setRascunhos({ ...rascunhosAtuais.current });
+    if (!(await persistir(p))) throw new Error("Não foi possível salvar o procedimento. Revise o rascunho.");
   }
   const itens = filtrarParticipantes(atividade.participantes, {
     q,
@@ -149,19 +154,27 @@ export function Transcricao({
   const atualizar = (
     p: ParticipanteVisita,
     campo: keyof RascunhoVisita,
-    valor: string,
+    valor: string | boolean,
   ) => {
-    setRascunhos((r) => ({ ...r, [p.id]: { ...r[p.id], [campo]: valor } }));
+    rascunhosAtuais.current[p.id] = { ...rascunhosAtuais.current[p.id], ...(["conduta", "participanteIatfId", "inicioEfetivo"].includes(campo) ? { cienciaSanitaria: false } : {}), [campo]: valor };
+    setRascunhos({ ...rascunhosAtuais.current });
     setAvisos((r) => ({ ...r, [p.id]: "Alterações não salvas" }));
   };
   async function persistir(p: ParticipanteVisita) {
-    const r = rascunhos[p.id] ?? {};
     const anterior = gravações.current[p.id] ?? Promise.resolve();
     const proxima = anterior
       .catch(() => {})
-      .then(() =>
-        salvarRascunhoVisita(visita.id, p.id, visita.propriedadeId, r),
-      );
+      .then(async () => {
+        if (conflitos.current.has(p.id)) throw new Error("Rascunho alterado em outra sessão. Reabra a visita para revisar antes de salvar.");
+        try {
+          const salvo = await salvarRascunhoVisita(visita.id, p.id, visita.propriedadeId,
+            { ...rascunhosAtuais.current[p.id] }, versoes.current[p.id] ?? 0);
+          versoes.current[p.id] = salvo?.versaoRascunho ?? (versoes.current[p.id] ?? 0) + 1;
+        } catch (e) {
+          if (e instanceof RebanhoApiError && e.status === 409) conflitos.current.add(p.id);
+          throw e;
+        }
+      });
     gravações.current[p.id] = proxima;
     try {
       await proxima;
@@ -437,7 +450,7 @@ export function Transcricao({
                   <strong>{p.snapshot.brinco ?? p.animalId}</strong>
                   <p>{p.snapshot.nome}</p>
                   <p className="text-xs">{motivosParticipante(p).join("; ")}</p>
-                  <Pill>{p.status}</Pill>
+                  <Pill>{p.historicoRegularizacao?.at(-1)?.acao === "ENCERRAR_SEM_SUBSTITUICAO" ? "Encerrado sem substituição" : p.status}</Pill>
                 </td>
                 <td className="p-3 min-w-56">
                   {select(p, "status", "Atendimento", [
@@ -446,6 +459,7 @@ export function Transcricao({
                     ["NAO_ATENDIDO", "Não atendido"],
                   ])}
                   {atividade.tipo === "TAREFA_IATF" &&
+                    !["ADIADO", "NAO_ATENDIDO"].includes(rascunhos[p.id]?.status ?? "") &&
                     input(
                       p,
                       "realizadaEm",
@@ -507,11 +521,11 @@ export function Transcricao({
                         p,
                         "tentativaId",
                         "Tentativa comprovada",
-                        (painel?.tentativas ?? [])
+                        [...(painel?.tentativas ?? []), ...(painel?.animais.find(a => a.animalId === p.animalId)?.ultimaTentativa ? [{...painel.animais.find(a => a.animalId === p.animalId)!.ultimaTentativa!, animalId:p.animalId}] : [])]
                           .filter(
-                            (t) =>
+                            (t, indice, lista) =>
                               t.animalId === p.animalId &&
-                              t.status !== "ANULADO",
+                              t.status !== "ANULADO" && lista.findIndex(item => item.id === t.id) === indice,
                           )
                           .map((t) => [
                             t.id,
@@ -532,10 +546,10 @@ export function Transcricao({
                       p,
                       "gestacaoId",
                       "Gestação conhecida",
-                      (painel?.gestacoes ?? [])
+                      [...(painel?.gestacoes ?? []), ...(painel?.animais.find(a => a.animalId === p.animalId)?.gestacao ? [{...painel.animais.find(a => a.animalId === p.animalId)!.gestacao!, animalId:p.animalId}] : [])]
                         .filter(
-                          (g) =>
-                            g.animalId === p.animalId && g.status === "VALIDO",
+                          (g, indice, lista) =>
+                            g.animalId === p.animalId && g.status === "VALIDO" && lista.findIndex(item => item.id === g.id) === indice,
                         )
                         .map((g) => [
                           g.id,
@@ -562,6 +576,19 @@ export function Transcricao({
                       ["IATF", "Indicar IATF"],
                       ["DESCARTE", "Descarte reprodutivo"],
                     ])}
+                  {["AVALIACAO_REPRODUTIVA", "INICIAR_IATF"].includes(atividade.tipo) && (
+                    <>
+                    {((atividade.tipo === "AVALIACAO_REPRODUTIVA" && rascunhos[p.id]?.conduta === "IATF") || atividade.tipo === "INICIAR_IATF") && <AlertasSanitarios animalId={p.animalId} data={visita.data.slice(0,10)} acao="IATF" />}
+                    <label className="flex gap-2 text-sm my-2">
+                      <input type="checkbox" aria-label={`Ciência sanitária · ${p.snapshot.brinco ?? p.ordem}`}
+                        checked={rascunhos[p.id]?.cienciaSanitaria === true}
+                        disabled={!podeLancar || ocupado || p.status === "CONFIRMADO"}
+                        onChange={(e) => atualizar(p, "cienciaSanitaria", e.target.checked)}
+                        onBlur={() => void persistir(p)} />
+                      Revisei os alertas sanitários informados para este procedimento.
+                    </label>
+                    </>
+                  )}
                   {input(p, "anotacaoOriginal", "Anotação original")}
                   {input(
                     p,
@@ -573,6 +600,7 @@ export function Transcricao({
                 </td>
                 <td className="p-3 min-w-44">
                   <p role="status">{avisos[p.id]}</p>
+                  {podeRegularizar && p.regularizacaoPendente && <RegularizarOrigem path={`/visitas/${visita.id}/participantes/${p.id}/regularizacao`} propriedadeId={visita.propriedadeId} reabrirPermitido={visita.status !== "ENCERRADA"} consumoMantido={consumoMantidoUltimaAnulacao(p.historicoRegularizacao)} onMudou={onMudou} />}
                   {p.fatoId ? (
                     <p className="text-xs text-ink-3">Fato registrado</p>
                   ) : (
@@ -604,24 +632,7 @@ export function Transcricao({
             propriedadeId={visita.propriedadeId}
             onFechar={() => setPreparar(null)}
             onSalvo={() => setPreparar(null)}
-            onRegistrar={async (dados) => {
-              const r = {
-                ...rascunhos[preparar.id],
-                dados: { ...dados },
-                status: "CONFIRMADO",
-              };
-              await salvarRascunhoVisita(
-                visita.id,
-                preparar.id,
-                visita.propriedadeId,
-                r,
-              );
-              setRascunhos((v) => ({ ...v, [preparar.id]: r }));
-              setAvisos((v) => ({
-                ...v,
-                [preparar.id]: "Procedimento preparado e salvo",
-              }));
-            }}
+            onRegistrar={guardarProcedimento}
           />
         )}
       {preparar &&
@@ -677,24 +688,7 @@ export function Transcricao({
             fixo
             onFechar={() => setPreparar(null)}
             onSalvo={() => setPreparar(null)}
-            onRegistrar={async (dados) => {
-              const r = {
-                ...rascunhos[preparar.id],
-                dados,
-                status: "CONFIRMADO",
-              };
-              await salvarRascunhoVisita(
-                visita.id,
-                preparar.id,
-                visita.propriedadeId,
-                r,
-              );
-              setRascunhos((v) => ({ ...v, [preparar.id]: r }));
-              setAvisos((v) => ({
-                ...v,
-                [preparar.id]: "Procedimento preparado e salvo",
-              }));
-            }}
+            onRegistrar={guardarProcedimento}
           />
         )}
     </Panel>

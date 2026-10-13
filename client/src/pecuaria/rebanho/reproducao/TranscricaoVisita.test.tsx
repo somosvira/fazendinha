@@ -15,6 +15,9 @@ import {
   type Visita,
 } from "./visitas-api";
 import { reqV4 } from "./api";
+vi.mock("../sanidade/FormAplicacaoServico", () => ({
+  FormAplicacaoServico: ({onRegistrar}: {onRegistrar: (dados: object) => Promise<void>}) => <button onClick={() => void onRegistrar({produtoId: "novo"})}>Preparar aplicação teste</button>,
+}));
 vi.mock("./api", () => ({
   obterReproducao: vi
     .fn()
@@ -77,7 +80,7 @@ beforeEach(() => {
     fingerprint: "a".repeat(64),
     participantes: [],
   });
-  vi.mocked(salvarRascunhoVisita).mockResolvedValue({});
+  vi.mocked(salvarRascunhoVisita).mockResolvedValue({...atividade.participantes[0], versaoRascunho: 1});
 });
 describe("confirmação da transcrição", () => {
   it("resposta perdida repete o mesmo envelope sem regravar rascunho já confirmado", async () => {
@@ -143,4 +146,31 @@ describe("confirmação da transcrição", () => {
       fingerprintPrevia: "b".repeat(64),
     });
   });
+});
+
+it("serializa formulário e autosave com versão e conserva edições enquanto a resposta está pendente", async () => {
+  let liberar!: (p: typeof atividade.participantes[number]) => void;
+  vi.mocked(salvarRascunhoVisita).mockImplementationOnce(() => new Promise(resolve => { liberar = resolve; })).mockResolvedValue({...atividade.participantes[0], versaoRascunho: 2});
+  const a = {...atividade, tipo: "APLICACAO_SANITARIA" as const};
+  render(<Transcricao visita={visita} atividade={a} podeLancar onMudou={vi.fn()} />);
+  const anotacao = screen.getByRole("textbox", {name: "Anotação original · 100"});
+  fireEvent.change(anotacao, {target: {value: "Primeira edição"}});
+  fireEvent.blur(anotacao);
+  await waitFor(() => expect(salvarRascunhoVisita).toHaveBeenCalledTimes(1));
+  fireEvent.click(screen.getByRole("button", {name: "Preencher procedimento"}));
+  fireEvent.click(screen.getByRole("button", {name: "Preparar aplicação teste"}));
+  fireEvent.change(anotacao, {target: {value: "Edição durante salvamento"}});
+  fireEvent.blur(anotacao);
+  expect(salvarRascunhoVisita).toHaveBeenCalledTimes(1);
+  liberar({...atividade.participantes[0], versaoRascunho: 1});
+  await waitFor(() => expect(salvarRascunhoVisita).toHaveBeenCalledTimes(3));
+  expect(vi.mocked(salvarRascunhoVisita).mock.calls[1].slice(3)).toEqual([{...atividade.participantes[0].rascunho, anotacaoOriginal: "Edição durante salvamento", dados: {produtoId: "novo"}, status: "CONFIRMADO"}, 1]);
+  expect(anotacao).toHaveProperty("value", "Edição durante salvamento");
+});
+it("visita encerrada permite regularizar vínculo sem permitir reabrir atendimento", async () => {
+  const a = {...atividade, participantes: atividade.participantes.map(p => ({...p,status:"CONFIRMADO",fatoId:"av",regularizacaoPendente:true}))};
+  render(<Transcricao visita={{...visita,status:"ENCERRADA"}} atividade={a} podeLancar={false} podeRegularizar onMudou={vi.fn()} />);
+  fireEvent.click(screen.getByRole("button",{name:"Regularizar origem do fato anulado"}));
+  expect(screen.getByRole("option",{name:"Reabrir pendência"})).toHaveProperty("disabled",true);
+  expect(screen.getByRole("option",{name:"Vincular fato substituto comprovado"})).toHaveProperty("disabled",false);
 });

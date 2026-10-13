@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { AcompanhamentoReprodutivo } from "./AcompanhamentoReprodutivo";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Button,
   CabecalhoTabela,
@@ -91,23 +92,25 @@ function ConteudoReproducao({
   const [situacao, setSituacao] = useState(
     () => new URLSearchParams(window.location.search).get("situacao") ?? "",
   );
+  const [consultaUrl, setConsultaUrl] = useState(window.location.search);
+  const consultaAtual = useRef(0);
   const carregar = useCallback(async () => {
+    const sequencia = ++consultaAtual.current;
     setCarregando(true);
     setErro(null);
     try {
-      setPainel(
-        await obterReproducao(
+      const resultado = await obterReproducao(
           animalId ??
-            new URLSearchParams(window.location.search).get("animalId") ??
+            new URLSearchParams(consultaUrl).get("animalId") ??
             undefined,
-        ),
-      );
+        );
+      if (sequencia === consultaAtual.current) setPainel(resultado);
     } catch (e) {
-      setErro(e instanceof Error ? e.message : String(e));
+      if (sequencia === consultaAtual.current) setErro(e instanceof Error ? e.message : String(e));
     } finally {
-      setCarregando(false);
+      if (sequencia === consultaAtual.current) setCarregando(false);
     }
-  }, [animalId]);
+  }, [animalId, consultaUrl]);
   useEffect(() => {
     void carregar();
   }, [carregar, recarregarToken]);
@@ -115,6 +118,9 @@ function ConteudoReproducao({
     if (animalId) return;
     const pop = () => {
       const p = new URLSearchParams(window.location.search);
+      setConsultaUrl(window.location.search);
+      setAnimalAcao(p.get("animalId") ?? undefined);
+      setAcao(p.get("acao") === "parto" ? "parto" : null);
       setQ(p.get("q") ?? "");
       setSituacao(p.get("situacao") ?? "");
     };
@@ -160,6 +166,10 @@ function ConteudoReproducao({
         })),
       ].sort((a, b) => b.data.localeCompare(a.data))
     : [];
+  useEffect(() => {
+    const id = new URLSearchParams(consultaUrl).get("fatoId");
+    if (id && painel) setFatoAberto(fatos.find(f => f.id === id) ?? null);
+  }, [painel, consultaUrl]);
   return (
     <div className="space-y-5">
       <ErrorBox erro={erro} />
@@ -366,8 +376,10 @@ function ConteudoReproducao({
           onFechar={() => setFatoAberto(null)}
         />
       )}
+      {!animalId && painel && <AcompanhamentoReprodutivo atualizacao={painel} />}
       {!animalId && painel && (
         <Iatf
+          onMudou={carregar}
           animais={painel.animais}
           painel={painel}
           podeLancar={podeLancar}
