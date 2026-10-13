@@ -3,7 +3,10 @@ import { prisma } from "../../../db.js";
 import { auditar, RebanhoError, travarAnimais } from "../rebanho/regras.js";
 import { transacaoPecuaria } from "../transacao.js";
 import { estornarMovimentoTx } from "../../estoque/estoque.js";
+import { exigirPeriodoAberto } from "../../financeiro/regras.js";
 import { erro } from "./registros.js";
+import { marcarRegularizacaoFatoTx } from "./marcacao-regularizacao.js";
+import { intervalosSobrepostos } from "./regras.calc.js";
 import { hashDados, operacaoIdempotenteTx } from "./operacoes.js";
 export type TipoAnulacao =
   | "tentativas"
@@ -59,7 +62,7 @@ async function previaTx(
     const tentativa = await tx.tentativaReprodutiva.findUniqueOrThrow({
       where: { id },
     });
-    if (tentativa.movimentoEstoqueId) {
+    if (tentativa.movimentoEstoqueId || tentativa.operacaoServicoId) {
       exigeDestinoConsumo = true;
       efeitos.push(
         "Escolha obrigatória: devolver ao estoque somente se não houve uso/perda física; manter consumo se o material foi usado/descartado, sem recompor saldo",
@@ -114,6 +117,18 @@ async function previaTx(
       impedimentos.push(
         "Existem tentativas no ciclo posterior; revise os ciclos antes",
       );
+    const parto = await tx.partoAnimal.findUniqueOrThrow({ where: { id } });
+    if (parto.gestacaoId) {
+      const gestacao = await tx.gestacaoAnimal.findUniqueOrThrow({ where: { id: parto.gestacaoId } });
+      const [outrasGestacoes, outrosPartos] = await Promise.all([
+        tx.gestacaoAnimal.findMany({ where: { animalId: fato.animalId, status: "VALIDO", id: { not: gestacao.id } } }),
+        tx.partoAnimal.count({ where: { animalId: fato.animalId, status: "VALIDO", id: { not: id }, data: { gte: gestacao.inicio ?? gestacao.confirmadaEm } } }),
+      ]);
+      if (gestacao.status !== "VALIDO" || !gestacao.motivoEncerramento?.startsWith("PARTO_") || gestacao.encerradaEm?.getTime() !== parto.data.getTime())
+        impedimentos.push("O encerramento da gestação vinculada já foi revisto; regularize antes de anular o parto");
+      if (outrasGestacoes.some((g) => intervalosSobrepostos({ inicio: gestacao.inicio ?? gestacao.confirmadaEm, fim: null }, { inicio: g.inicio ?? g.confirmadaEm, fim: g.encerradaEm })) || outrosPartos)
+        impedimentos.push("Reabrir a gestação conflita com outra gestação ou parto; revise a cronologia antes");
+    }
     const lactacao = await tx.lactacaoAnimal.findFirst({
       where: { partoId: id },
     });
@@ -133,6 +148,15 @@ async function previaTx(
       "Parto deixa de contar na paridade; a gestação vinculada volta a aberta quando compatível",
     );
   }
+  const vinculo = tipo === "tentativas" ? { tentativaId: id } : tipo === "avaliacoes" ? { avaliacaoId: id } : null;
+  const tarefasIatf = vinculo ? await tx.tarefaIatf.findMany({ where: vinculo }) : [];
+  const atendimentosVisita = vinculo ? await tx.participanteVisita.findMany({ where: { OR: [
+    { fatoTipo: tipo === "tentativas" ? "TentativaReprodutiva" : "AvaliacaoReprodutiva", fatoId: id },
+    { tarefaIatfId: { in: tarefasIatf.map((t) => t.id) } },
+    { fatoTipo: "TarefaIatf", fatoId: { in: tarefasIatf.map((t) => t.id) } },
+  ] } }) : [];
+  if (tarefasIatf.length || atendimentosVisita.length)
+    efeitos.push("A execução original permanece; tarefas IATF e atendimentos da visita exigirão regularização explícita");
   return {
     tipo,
     id,
@@ -148,6 +172,8 @@ async function previaTx(
       efeitos,
       criasIds,
       exigeDestinoConsumo,
+      tarefasIatf,
+      atendimentosVisita,
     }),
   };
 }
@@ -210,6 +236,14 @@ export async function anularFato(
           anuladoEm: new Date(),
         };
         if (tipo === "tentativas") {
+          const tentativa = await tx.tentativaReprodutiva.findUniqueOrThrow({ where: { id } });
+          if (tentativa.operacaoServicoId) {
+            await tx.$queryRaw`SELECT id FROM "public"."Operacao" WHERE id = ${tentativa.operacaoServicoId} FOR UPDATE`;
+            const servico = await tx.operacao.findFirst({ where: { id: tentativa.operacaoServicoId, propriedadeId: input.propriedadeId, tipo: "SERVICO" } });
+            if (!servico) erro("Serviço vinculado não encontrado neste sítio", "operacaoServicoId");
+            await exigirPeriodoAberto(tx, input.propriedadeId, tentativa.data);
+            await exigirPeriodoAberto(tx, input.propriedadeId, servico.data);
+          }
           const t = await tx.tentativaReprodutiva.update({
             where: { id },
             data: {
@@ -263,6 +297,8 @@ export async function anularFato(
         } else if (tipo === "situacoes-iniciais")
           await tx.situacaoInicialReprodutiva.update({ where: { id }, data });
         else await tx.restricaoReprodutiva.update({ where: { id }, data });
+        if (tipo === "tentativas" || tipo === "avaliacoes")
+          await marcarRegularizacaoFatoTx(tx, { fatoTipo: tipo === "tentativas" ? "TENTATIVA" : "AVALIACAO", fatoId: id, destinoConsumo: input.destinoConsumo ?? null, motivo: input.motivo, usuarioId });
         await auditar(tx, {
           entidade: tipo,
           entidadeId: id,

@@ -28,10 +28,12 @@ export const visitasRouter = new Hono()
   .get("/sugestoes", async (c) => {
     try {
       const data = s.data.parse(c.req.query("data"));
+      const { data: _data, propriedadeId: _sitio, ...filtros } = c.req.query();
+      const criterios = s.criteriosVisitaSchema.parse(filtros);
       return c.json(
         apresentarV4(
           c,
-          await visitas.sugestoesVisita(await resolverEscopoLeitura(c), data),
+          await visitas.sugestoesVisita(await resolverEscopoLeitura(c), data, criterios),
         ),
       );
     } catch (e) {
@@ -92,7 +94,7 @@ export const visitasRouter = new Hono()
     "/:id/participantes/:participanteId/rascunho",
     validarV4(
       z
-        .object({ propriedadeId: s.sitio, rascunho: z.record(z.unknown()) })
+        .object({ propriedadeId: s.sitio, rascunho: z.record(z.unknown()), versaoRascunho: z.number().int().nonnegative() })
         .strict(),
     ),
     async (c) => {
@@ -107,6 +109,7 @@ export const visitasRouter = new Hono()
               await resolverEscopoEscrita(c, b.propriedadeId),
               b.rascunho,
               usuarioV4(c),
+              b.versaoRascunho,
             ),
           ),
         );
@@ -184,4 +187,13 @@ visitasRouter.get("/:id/atividades/:atividadeId/previa", async (c) => {
   } catch (e) {
     return falhaV4(c, e);
   }
+});
+
+visitasRouter.post("/:id/participantes/:participanteId/regularizacao",validarV4(s.regularizacaoSchema),async c=>{
+  try{const b=c.req.valid("json");return c.json(apresentarV4(c,await visitas.regularizarParticipanteVisita(c.req.param("id"),c.req.param("participanteId"),{...b,propriedadeId:await resolverEscopoEscrita(c,b.propriedadeId)},usuarioV4(c))));}catch(e){return falhaV4(c,e);}
+});
+
+visitasRouter.get("/:id/participantes/:participanteId/substitutos", async c => {
+  try { return c.json(await visitas.substitutosParticipanteVisita(s.uuid.parse(c.req.param("id")), s.uuid.parse(c.req.param("participanteId")), await resolverEscopoEscrita(c, Number(c.req.query("propriedadeId")) || undefined))); }
+  catch (e) { return falhaV4(c, e); }
 });

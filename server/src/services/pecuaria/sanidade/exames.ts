@@ -1,3 +1,4 @@
+import { marcarRegularizacaoFatoTx } from "../reproducao/marcacao-regularizacao.js";
 import { confirmarColetivo } from "./coletivos.js";
 import { conferirAnimalNoFato } from "../fatos.js";
 import { transacaoPecuaria } from "../transacao.js";
@@ -151,6 +152,7 @@ export async function corrigirExame(id: string, propriedadeId: number, input: { 
       if (preenchidos.length !== 1 || (formato.tipoResultado === "TEXTO" && !input.resultadoTexto?.trim()) || (formato.tipoResultado === "NUMERO" && input.resultadoNumero == null) || (formato.tipoResultado === "OPCAO" && !formato.opcoes?.includes(input.resultadoOpcao ?? ""))) throw new RebanhoError("VALIDACAO", "Informe resultado no formato preservado na coleta", "resultado");
     }
     const salvo = await tx.exameAnimal.update({ where: { id }, data: input.anular ? { status: "ANULADO", motivoAnulacao: input.motivo, anuladoEm: new Date() } : { resultadoTexto: input.resultadoTexto?.trim() || null, resultadoNumero: input.resultadoNumero ?? null, resultadoOpcao: input.resultadoOpcao ?? null } });
+    if (input.anular) await marcarRegularizacaoFatoTx(tx, { fatoTipo: "EXAME", fatoId: id, destinoConsumo: null, motivo: input.motivo, usuarioId });
     await auditar(tx, { entidade: "ExameAnimal", entidadeId: id, animalId: original.animalId, propriedadeId, acao: input.anular ? "ANULACAO" : "RESULTADO_CORRIGIDO", usuarioId, antes: original, depois: { ...salvo, motivo: input.motivo } });
     return salvo;
   });

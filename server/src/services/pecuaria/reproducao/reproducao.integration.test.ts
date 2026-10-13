@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "../../../db.js";
+import { estornarOperacao } from "../../financeiro/operacoes.js";
 import { cadastrar, editar, movimentar, darBaixa } from "../rebanho/animais.js";
 import {
   cadastrarAnimalSchema,
@@ -21,8 +22,11 @@ import {
   atualizarPrevisao,
   corrigirVinculoGestacao,
   corrigirLactacao,
+  encerrarLactacao,
+  obterEstadoReprodutivoTx,
 } from "./registros.js";
 import { previaAnulacao, anularFato } from "./correcoes.js";
+import { totalAtribuidoServicoTx } from "./atribuicoes-servico.js";
 import {
   criarVisita,
   adicionarAtividade,
@@ -46,7 +50,8 @@ const animais: string[] = [],
   produtos: string[] = [],
   protocolos: string[] = [],
   tiposExame: string[] = [],
-  doencas: string[] = [];
+  doencas: string[] = [],
+  operacoes: string[] = [];
 async function animal(sexo: "F" | "M" = "F", loteId?: string) {
   const a = await cadastrar(
     cadastrarAnimalSchema.parse({
@@ -211,6 +216,8 @@ afterAll(async () => {
     where: { propriedadeDestinoId: props },
   });
   await prisma.lote.deleteMany({ where: { propriedadeId: props } });
+  await prisma.operacao.deleteMany({ where: { id: { in: operacoes } } });
+  await prisma.periodoFinanceiro.deleteMany({ where: { propriedadeId: props } });
   await prisma.propriedade.deleteMany({ where: { id: props } });
 });
 suite("reprodução V4 integra fatos, estoque e visita sem duplicação", () => {
@@ -323,6 +330,151 @@ suite("reprodução V4 integra fatos, estoque e visita sem duplicação", () => 
     expect((await painelReproducao(propriedadeId, a)).animais[0].situacao).toBe(
       "VAZIA",
     );
+  });
+  it("P+ retroativo não abre intervalo sobre gestação fechada e não produz avaliação parcial", async () => {
+    const a = await animal();
+    const p = await criarAvaliacao({ ...base(a, "2026-06-01"), resultado: "POSITIVO", motivoVinculoDesconhecido: "Histórico comprovado sem tentativa" }, null);
+    await registrarPerda({ ...base(a, "2026-07-01"), gestacaoId: p.gestacaoId!, motivo: "Perda clínica" }, null);
+    const antes = await prisma.avaliacaoReprodutiva.count({ where: { animalId: a } });
+    await expect(criarAvaliacao({ ...base(a, "2026-05-01"), resultado: "POSITIVO", motivoVinculoDesconhecido: "Registro retroativo" }, null)).rejects.toThrow(/sobrepõe/);
+    expect(await prisma.avaliacaoReprodutiva.count({ where: { animalId: a } })).toBe(antes);
+    expect(await prisma.gestacaoAnimal.count({ where: { animalId: a } })).toBe(1);
+  });
+  it("perda permite diagnóstico negativo no mesmo dia, mantendo bloqueio para data anterior e nova intervenção no dia", async () => {
+    const a = await animal(), m = await material();
+    const p = await criarAvaliacao({ ...base(a, "2026-08-01"), resultado: "POSITIVO", motivoVinculoDesconhecido: "Tentativa desconhecida" }, null);
+    await registrarPerda({ ...base(a, "2026-09-01"), gestacaoId: p.gestacaoId!, motivo: "Perda observada antes do diagnóstico" }, null);
+    await criarAvaliacao({ ...base(a, "2026-09-01"), resultado: "NEGATIVO" }, null);
+    await expect(criarAvaliacao({ ...base(a, "2026-08-31"), resultado: "NEGATIVO" }, null)).rejects.toThrow(/gestação/);
+    await expect(criarTentativa({ ...base(a), tipo: "IA", origem: "ESTOQUE", materialId: m.id, quantidade: 1 }, null)).rejects.toThrow(/gestação/);
+    expect((await obterEstadoReprodutivoTx(prisma, a, new Date("2026-09-01"))).situacao).toBe("VAZIA");
+  });
+  it("anular parto antigo não reabre gestação sobre ciclo posterior documentado sem tentativas", async () => {
+    const a = await animal();
+    const p = await criarAvaliacao({ ...base(a, "2026-02-01"), resultado: "POSITIVO", motivoVinculoDesconhecido: "Sem vínculo de tentativa" }, null);
+    const parto = await criarParto({ ...base(a, "2026-04-01"), gestacaoId: p.gestacaoId!, tipo: "ABORTO", iniciarLactacao: false, crias: [] }, null);
+    const posterior = await criarAvaliacao({ ...base(a, "2026-06-01"), resultado: "POSITIVO", motivoVinculoDesconhecido: "Novo ciclo sem vínculo de tentativa" }, null);
+    await criarParto({ ...base(a, "2026-09-01"), gestacaoId: posterior.gestacaoId!, tipo: "ABORTO", iniciarLactacao: false, crias: [] }, null);
+    const previa = await previaAnulacao("partos", parto.id, propriedadeId);
+    expect(previa.impedimentos.join(" ")).toMatch(/gestação ou parto/);
+    await expect(anularFato("partos", parto.id, { propriedadeId, motivo: "Correção retroativa", chave: crypto.randomUUID(), fingerprint: previa.fingerprint }, null)).rejects.toThrow(/cronologia/);
+    expect((await prisma.gestacaoAnimal.findUniqueOrThrow({ where: { id: p.gestacaoId! } })).encerradaEm).toEqual(new Date("2026-04-01"));
+    expect((await prisma.partoAnimal.findUniqueOrThrow({ where: { id: parto.id } })).status).toBe("VALIDO");
+  });
+  it("lactação histórica não se sobrepõe a lactação posterior encerrada", async () => {
+    const a = await animal();
+    const parto = await criarParto({ ...base(a, "2026-09-01"), tipo: "NATIMORTO", iniciarLactacao: true, crias: [] }, null);
+    const lactacao = await prisma.lactacaoAnimal.findFirstOrThrow({ where: { partoId: parto.id } });
+    await encerrarLactacao(lactacao.id, propriedadeId, "2026-10-01", "Secagem observada", null);
+    await expect(criarParto({ ...base(a, "2026-08-01"), tipo: "NATIMORTO", iniciarLactacao: true, crias: [] }, null)).rejects.toThrow(/sobrepõe/);
+    expect(await prisma.partoAnimal.count({ where: { animalId: a } })).toBe(1);
+    expect(await prisma.lactacaoAnimal.count({ where: { animalId: a } })).toBe(1);
+  });
+  it("projeção clínica e paridade acompanham transferência sem expor fatos ou custos do sítio anterior", async () => {
+    const a = await animal();
+    const p = await criarAvaliacao({ ...base(a, "2026-02-01"), resultado: "POSITIVO", motivoVinculoDesconhecido: "Histórico clínico" }, null);
+    await criarParto({ ...base(a, "2026-08-01"), gestacaoId: p.gestacaoId!, tipo: "ABORTO", iniciarLactacao: false, crias: [] }, null);
+    await criarRestricao({ ...base(a, "2026-08-10"), tipo: "DESCARTE", motivo: "Restrição que acompanha matriz", acoes: ["IA", "IATF"] }, null);
+    const atual = await criarAvaliacao({ ...base(a, "2026-08-20"), resultado: "POSITIVO", motivoVinculoDesconhecido: "Gestação constatada" }, null);
+    await movimentar(movimentarSchema.parse({ animalIds: [a], propriedadeId: propriedade2, data: "2026-09-01", motivo: "Transferência autorizada" }), null);
+    const painel = await painelReproducao(propriedade2, a);
+    expect(painel.animais[0]).toMatchObject({ situacao: "GESTANTE", partos: 1, restricoes: [{ motivo: "Restrição que acompanha matriz" }] });
+    expect(painel.gestacoes).toEqual([]);
+    expect(painel.avaliacoes).toEqual([]);
+    expect(painel.partos).toEqual([]);
+    expect(painel.restricoes).toEqual([]);
+    expect(painel.animais[0].gestacao).not.toHaveProperty("propriedadeId");
+    expect(painel.animais[0].gestacao).not.toHaveProperty("valorServicoAtribuido");
+    expect((await painelReproducao(propriedadeId, a)).animais).toEqual([]);
+    expect((await obterEstadoReprodutivoTx(prisma, a, new Date("2026-07-01"))).situacao).toBe("GESTANTE");
+    expect((await obterEstadoReprodutivoTx(prisma, a, new Date("2026-08-01"))).partos).toBe(1);
+    await expect(criarAvaliacao({ ...base(a, "2026-09-15"), resultado: "RECONFIRMACAO", gestacaoId: atual.gestacaoId! }, null)).rejects.toThrow(/não estava neste sítio/);
+    const ok = await criarAvaliacao({ ...base(a, "2026-09-15"), propriedadeId: propriedade2, resultado: "RECONFIRMACAO", gestacaoId: atual.gestacaoId! }, null);
+    expect(ok.propriedadeId).toBe(propriedade2);
+    const partoDestino = await criarParto({ ...base(a, "2026-09-20"), propriedadeId: propriedade2, gestacaoId: atual.gestacaoId!, tipo: "ABORTO", iniciarLactacao: false, crias: [] }, null);
+    expect(partoDestino.propriedadeId).toBe(propriedade2);
+    const aposParto = await painelReproducao(propriedade2, a);
+    expect(aposParto.animais[0]).toMatchObject({ situacao: "VAZIA", partos: 2 });
+    expect(aposParto.partos.map((p) => p.id)).toEqual([partoDestino.id]);
+  });
+  it("atribuição mantida após anulação disputa o mesmo limite do Serviço na criação da próxima tentativa", async () => {
+    const a = await animal(), b = await animal(), m = await material();
+    const servico = await prisma.operacao.create({ data: { propriedadeId, tipo: "SERVICO", status: "CONFIRMADA", data: new Date("2026-09-01"), valorTotal: "100" } });
+    operacoes.push(servico.id);
+    const t = await criarTentativa({ ...base(a), tipo: "IA", origem: "ESTOQUE", materialId: m.id, quantidade: 1, operacaoServicoId: servico.id, valorServicoAtribuido: 60 }, null);
+    const previa = await previaAnulacao("tentativas", t.id, propriedadeId);
+    await anularFato("tentativas", t.id, { propriedadeId, chave: crypto.randomUUID(), motivo: "Material usado com identificação corrigida", fingerprint: previa.fingerprint, destinoConsumo: "MANTER_CONSUMO" }, null);
+    await expect(estornarOperacao(servico.id, "Revisão de cobrança", { propriedadeId })).rejects.toThrow(/tentativa/);
+    await expect(criarTentativa({ ...base(b), tipo: "IA", origem: "ESTOQUE", materialId: m.id, quantidade: 1, operacaoServicoId: servico.id, valorServicoAtribuido: 60 }, null)).rejects.toThrow(/valor confirmado/);
+    expect(await prisma.movimentoEstoque.count({ where: { produtoId: m.produtoId, tipo: "SAIDA" } })).toBe(1);
+    const nova = await criarTentativa({ ...base(b), tipo: "IA", origem: "ESTOQUE", materialId: m.id, quantidade: 1, operacaoServicoId: servico.id, valorServicoAtribuido: 40 }, null);
+    expect(nova.valorServicoAtribuido?.toString()).toBe("40");
+  });
+  it("origem Serviço preserva atribuição e consumo mantido sem movimento físico fictício", async () => {
+    const a = await animal(), b = await animal(), m = await material();
+    const servico = await prisma.operacao.create({ data: { propriedadeId, tipo: "SERVICO", status: "CONFIRMADA", data: new Date("2026-09-01"), valorTotal: "100" } });
+    operacoes.push(servico.id);
+    const t = await criarTentativa({ ...base(a), tipo: "IA", origem: "SERVICO", materialId: m.id, quantidade: 1, operacaoServicoId: servico.id, valorServicoAtribuido: 60 }, null);
+    expect(t.movimentoEstoqueId).toBeNull();
+    const previa = await previaAnulacao("tentativas", t.id, propriedadeId);
+    const input = { propriedadeId, chave: crypto.randomUUID(), motivo: "Dose aplicada pelo prestador com animal informado incorretamente", fingerprint: previa.fingerprint, destinoConsumo: "MANTER_CONSUMO" as const };
+    await anularFato("tentativas", t.id, input, null);
+    await anularFato("tentativas", t.id, input, null);
+    expect(await prisma.tentativaReprodutiva.findUniqueOrThrow({ where: { id: t.id } })).toMatchObject({ status: "ANULADO", consumoMantido: true, movimentoEstoqueId: null, operacaoServicoId: servico.id });
+    expect((await totalAtribuidoServicoTx(prisma, servico.id, propriedadeId)).toString()).toBe("60");
+    await expect(estornarOperacao(servico.id, "Revisar cobrança", { propriedadeId })).rejects.toThrow(/consumo mantido/);
+    await expect(criarTentativa({ ...base(b), tipo: "IA", origem: "SERVICO", materialId: m.id, quantidade: 1, operacaoServicoId: servico.id, valorServicoAtribuido: 60 }, null)).rejects.toThrow(/valor confirmado/);
+    await criarTentativa({ ...base(b), tipo: "IA", origem: "SERVICO", materialId: m.id, quantidade: 1, operacaoServicoId: servico.id, valorServicoAtribuido: 40 }, null);
+    expect((await totalAtribuidoServicoTx(prisma, servico.id, propriedadeId)).toString()).toBe("100");
+    expect(await prisma.movimentoEstoque.count({ where: { produtoId: m.produtoId } })).toBe(1);
+    expect(await prisma.requisicaoPecuaria.count({ where: { chave: input.chave } })).toBe(1);
+  });
+  it.each([
+    { mes: 1, destinoConsumo: "MANTER_CONSUMO" as const },
+    { mes: 1, destinoConsumo: "DEVOLVER_ESTOQUE" as const },
+    { mes: 2, destinoConsumo: "MANTER_CONSUMO" as const },
+    { mes: 2, destinoConsumo: "DEVOLVER_ESTOQUE" as const },
+  ])("anulação por Serviço rejeita período $mes fechado e destino $destinoConsumo sem efeitos em retry", async ({ mes, destinoConsumo }) => {
+    const a = await animal(), m = await material();
+    const servico = await prisma.operacao.create({ data: { propriedadeId, tipo: "SERVICO", status: "CONFIRMADA", data: new Date("2026-01-01"), valorTotal: "100" } });
+    operacoes.push(servico.id);
+    const t = await criarTentativa({ ...base(a, "2026-02-01"), tipo: "IA", origem: "SERVICO", materialId: m.id, quantidade: 1, operacaoServicoId: servico.id, valorServicoAtribuido: 60 }, null);
+    const previa = await previaAnulacao("tentativas", t.id, propriedadeId);
+    const input = { propriedadeId, chave: crypto.randomUUID(), motivo: "Correção de identificação do prestador", fingerprint: previa.fingerprint, destinoConsumo };
+    const periodo = await prisma.periodoFinanceiro.create({ data: { propriedadeId, ano: 2026, mes, status: "FECHADO", fechadoEm: new Date() } });
+    try {
+      await expect(anularFato("tentativas", t.id, input, null)).rejects.toMatchObject({ code: "PERIODO_FECHADO" });
+      await expect(anularFato("tentativas", t.id, input, null)).rejects.toMatchObject({ code: "PERIODO_FECHADO" });
+      expect(await prisma.tentativaReprodutiva.findUniqueOrThrow({ where: { id: t.id } })).toMatchObject({ status: "VALIDO", consumoMantido: false, anuladoEm: null, movimentoEstoqueId: null });
+      expect((await totalAtribuidoServicoTx(prisma, servico.id, propriedadeId)).toString()).toBe("60");
+      expect(await prisma.requisicaoPecuaria.count({ where: { chave: input.chave } })).toBe(0);
+      expect(await prisma.auditoriaPecuaria.count({ where: { entidadeId: t.id, acao: "ANULACAO" } })).toBe(0);
+      expect(await prisma.movimentoEstoque.count({ where: { produtoId: m.produtoId } })).toBe(1);
+      await prisma.periodoFinanceiro.update({ where: { id: periodo.id }, data: { status: "ABERTO" } });
+      await anularFato("tentativas", t.id, input, null);
+      await anularFato("tentativas", t.id, input, null);
+      expect(await prisma.requisicaoPecuaria.count({ where: { chave: input.chave } })).toBe(1);
+      expect((await totalAtribuidoServicoTx(prisma, servico.id, propriedadeId)).toString()).toBe(destinoConsumo === "MANTER_CONSUMO" ? "60" : "0");
+      expect(await prisma.movimentoEstoque.count({ where: { produtoId: m.produtoId } })).toBe(1);
+    } finally {
+      await prisma.periodoFinanceiro.delete({ where: { id: periodo.id } });
+    }
+  });
+  it("ocorrência acompanha transferência e indicação IATF aplica regra do sítio na data com ciência auditada", async () => {
+    const a = await animal();
+    const doenca = await prisma.doenca.create({ data: { nome: `Alerta transferida ${run}` } });
+    doencas.push(doenca.id);
+    await prisma.ocorrenciaSanitaria.create({ data: { animalId: a, propriedadeId, doencaId: doenca.id, inicio: new Date("2026-07-01") } });
+    await movimentar(movimentarSchema.parse({ animalIds: [a], propriedadeId: propriedade2, data: "2026-08-01", motivo: "Transferência autorizada" }), null);
+    await configurarRegraSanitaria({ propriedadeId: propriedade2, doencaId: doenca.id, acao: "IATF", efeito: "ALERTAR", motivo: "Avaliar condição antes da indicação", ativo: true }, null);
+    const input = { ...base(a), propriedadeId: propriedade2, resultado: "NEGATIVO" as const, conduta: "IATF" as const };
+    await expect(criarAvaliacao(input, null)).rejects.toThrow(/ciência/);
+    expect(await prisma.avaliacaoReprodutiva.count({ where: { animalId: a } })).toBe(0);
+    const avaliacao = await criarAvaliacao({ ...input, cienciaSanitaria: true }, null);
+    const auditoria = await prisma.auditoriaPecuaria.findFirstOrThrow({ where: { entidadeId: avaliacao.id, acao: "REGISTRO" } });
+    expect(auditoria.depois).toMatchObject({ cienciaSanitaria: true });
+    await configurarRegraSanitaria({ propriedadeId: propriedade2, doencaId: doenca.id, acao: "IATF", efeito: "BLOQUEAR", motivo: "Intervenção suspensa por condição vigente", ativo: true }, null);
+    await expect(criarAvaliacao({ ...input, chave: crypto.randomUUID(), cienciaSanitaria: true }, null)).rejects.toThrow(/sanitária/);
   });
   it("TE cria provisória atomicamente, mãe genética distinta da receptora; corrige identificação", async () => {
     const doadora = await animal(),
@@ -529,6 +681,7 @@ suite("reprodução V4 integra fatos, estoque e visita sem duplicação", () => 
         motivoVinculoDesconhecido: "Tentativa não identificada",
       },
       null,
+      0,
     );
     const entrada = {
       propriedadeId,

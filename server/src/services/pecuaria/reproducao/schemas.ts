@@ -10,7 +10,7 @@ export const situacaoInicialSchema = z.object({ ...base, situacao: z.enum(["VAZI
 export const restricaoSchema = z.object({ ...base, tipo: z.enum(["TEMPORARIA", "PERMANENTE", "DESCARTE"]), motivo, acoes: z.array(z.enum(["IA", "TE", "COBERTURA", "IATF"])).min(1).default(["IA", "TE", "COBERTURA", "IATF"]), ate: data.nullish() }).strict();
 export const regraSanitariaSchema = z.object({ propriedadeId: sitio, doencaId: uuid, acao: z.enum(["IA", "TE", "COBERTURA", "IATF"]), efeito: z.enum(["BLOQUEAR", "ALERTAR"]), motivo, ativo: z.boolean().default(true) }).strict();
 export const tentativaSchema = z.object({ ...base, tipo: z.enum(["IA", "TE", "COBERTURA"]), materialId: uuid.nullish(), touroId: uuid.nullish(), touroExternoId: uuid.nullish(), origem: z.enum(["ESTOQUE", "SERVICO", "DOCUMENTADA"]), quantidade: z.coerce.number().positive().max(99999999).nullish(), partidaId: uuid.nullish(), operacaoServicoId: uuid.nullish(), valorServicoAtribuido: z.coerce.number().nonnegative().nullish(), responsavel: z.string().trim().max(160).nullish(), observacao: texto, cienciaValidadeDesconhecida: z.boolean().optional(), documentacaoExcepcional: z.boolean().optional(), motivoDocumentacaoExcepcional: motivo.optional(), cienciaSanitaria: z.boolean().optional(), justificativaSemOrigem: motivo.optional() }).strict();
-export const avaliacaoSchema = z.object({ ...base, motivoVinculoDesconhecido: motivo.optional(), resultado: z.enum(["POSITIVO", "NEGATIVO", "RECONFIRMACAO", "SEXAGEM", "INCONCLUSIVO", "NAO_AVALIADO"]), tentativaId: uuid.nullish(), gestacaoId: uuid.nullish(), sexoFetal: z.enum(["F", "M"]).nullish(), conduta: z.enum(["AGUARDAR", "IATF", "DESCARTE"]).nullish(), motivo: motivo.nullish(), anotacaoOriginal: texto, retornoEm: data.nullish(), previsaoParto: data.nullish(), observacao: texto }).strict();
+export const avaliacaoSchema = z.object({ ...base, cienciaSanitaria: z.boolean().optional(), motivoVinculoDesconhecido: motivo.optional(), resultado: z.enum(["POSITIVO", "NEGATIVO", "RECONFIRMACAO", "SEXAGEM", "INCONCLUSIVO", "NAO_AVALIADO"]), tentativaId: uuid.nullish(), gestacaoId: uuid.nullish(), sexoFetal: z.enum(["F", "M"]).nullish(), conduta: z.enum(["AGUARDAR", "IATF", "DESCARTE"]).nullish(), motivo: motivo.nullish(), anotacaoOriginal: texto, retornoEm: data.nullish(), previsaoParto: data.nullish(), observacao: texto }).strict();
 export const partoSchema = z.object({ ...base, gestacaoId: uuid.nullish(), tipo: z.enum(["NORMAL", "DISTOCICO", "ABORTO", "NATIMORTO"]), responsavel: z.string().trim().max(160).nullish(), observacao: texto, iniciarLactacao: z.boolean().default(false), crias: z.array(z.object({ viva: z.boolean(), sexo: z.enum(["F", "M"]), aptidao: z.enum(["LEITE", "CORTE"]), brinco: z.string().trim().min(1).max(39).nullish(), nome: z.string().trim().max(120).nullish(), loteId: uuid.nullish(), pesoKg: z.number().positive().max(99999).nullish() }).strict()).max(10).default([]) }).strict();
 export const perdaSchema = z.object({ ...base, gestacaoId: uuid, motivo }).strict();
 export const exposicaoSchema = z.object({ chave: uuid, propriedadeId: sitio, loteId: uuid, touroId: uuid.nullish(), touroExternoId: uuid.nullish(), inicio: data, fim: data.nullish(), observacao: texto }).strict();
@@ -33,3 +33,27 @@ export type TentativaInput = z.infer<typeof tentativaSchema>;
 export type AvaliacaoInput = z.infer<typeof avaliacaoSchema>;
 export type PartoInput = z.infer<typeof partoSchema>;
 export type EtapaIatf = z.infer<typeof etapaIatfSchema>;
+
+const diasFiltro = z.coerce.number().int().nonnegative().max(100000).optional();
+export const criteriosVisitaSchema = z.object({
+  categoriaId: uuid.optional(), loteId: uuid.optional(),
+  situacao: z.enum(["VAZIA", "GESTANTE", "DESCONHECIDA", "APTA", "AGUARDANDO_DIAGNOSTICO"]).optional(),
+  diasTentativaMin: diasFiltro, diasTentativaMax: diasFiltro,
+  diasPartoMin: diasFiltro, diasPartoMax: diasFiltro,
+  diasGestacaoMin: diasFiltro, diasGestacaoMax: diasFiltro,
+}).strict().superRefine((v, c) => {
+  for (const eixo of ["Tentativa", "Parto", "Gestacao"] as const) {
+    const min = v[`dias${eixo}Min`], max = v[`dias${eixo}Max`];
+    if (min != null && max != null && min > max)
+      c.addIssue({ code: "custom", path: [`dias${eixo}Max`], message: "Limite final deve ser maior ou igual ao inicial" });
+  }
+});
+export type CriteriosVisita = z.infer<typeof criteriosVisitaSchema>;
+export const regularizacaoSchema = z.object({
+  propriedadeId: sitio, chave: uuid, motivo,
+  acao: z.enum(["REABRIR", "ENCERRAR_SEM_SUBSTITUICAO", "VINCULAR_SUBSTITUTO"]),
+  fatoId: uuid.optional(), cienciaNaoExecutado: z.boolean().optional(),
+}).strict().superRefine((v,c)=>{
+  if(v.acao === "VINCULAR_SUBSTITUTO" && !v.fatoId)c.addIssue({code:"custom",path:["fatoId"],message:"Informe o fato substituto"});
+  if(v.acao === "REABRIR" && !v.cienciaNaoExecutado)c.addIssue({code:"custom",path:["cienciaNaoExecutado"],message:"Confirme que o procedimento não aconteceu"});
+});

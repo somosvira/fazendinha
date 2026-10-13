@@ -1,10 +1,9 @@
-import crypto from "node:crypto";
+import { eventoRegularizacao, validarSubstitutoTx, substituirEvidenciaAplicacaoTx, listarSubstitutosTx, type RegularizacaoInput } from "./regularizacao.js";
 import { z } from "zod";
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { prisma } from "../../../db.js";
 import { auditar, RebanhoError, travarAnimais } from "../rebanho/regras.js";
 import { transacaoPecuaria } from "../transacao.js";
-import { conferirAnimalNoFato } from "../fatos.js";
 import {
   criarAplicacaoTx,
   travarOrigensAplicacoesTx,
@@ -18,13 +17,18 @@ import {
   avaliacaoSchema,
   confirmacaoVisitaSchema,
   visitaSchema,
+  criteriosVisitaSchema,
+  type CriteriosVisita,
 } from "./schemas.js";
-import { criarAvaliacaoTx, dia, erro, painelReproducao } from "./registros.js";
+import { criarAvaliacaoTx, dia, erro, obterEstadosReprodutivosTx } from "./registros.js";
 import {
   contextoTarefaTx,
+  regularizarTarefaTx,
+  substitutosTarefa,
   executarTarefaTx,
   iniciarParticipanteTx,
 } from "./iatf.js";
+import { avaliarCategoria } from "../rebanho/categoria.calc.js";
 import { hashDados, operacaoIdempotenteTx } from "./operacoes.js";
 const json = (v: unknown): Prisma.InputJsonValue =>
   JSON.parse(JSON.stringify(v));
@@ -95,6 +99,7 @@ export async function adicionarAtividade(
       },
     });
     const participantes = [];
+    const cache = await carregarContextosVisitaTx(tx, input.participantes.map(p => p.animalId), v.data);
     for (const [i, item] of input.participantes.entries()) {
       const animal = await tx.animal.findUnique({
         where: { id: item.animalId },
@@ -149,77 +154,12 @@ export async function adicionarAtividade(
       }
       if (input.tipo === "TAREFA_IATF" && !item.tarefaIatfId)
         erro("Selecione tarefa IATF", "participantes");
-      const [tentativa, gestacao, parto, contagemPartos, restricoes] =
-        await Promise.all([
-          tx.tentativaReprodutiva.findFirst({
-            where: {
-              animalId: animal.id,
-              status: "VALIDO",
-              data: { lte: v.data },
-            },
-            orderBy: { data: "desc" },
-          }),
-          tx.gestacaoAnimal.findFirst({
-            where: {
-              animalId: animal.id,
-              status: "VALIDO",
-              confirmadaEm: { lte: v.data },
-              OR: [{ encerradaEm: null }, { encerradaEm: { gt: v.data } }],
-            },
-            orderBy: { confirmadaEm: "desc" },
-          }),
-          tx.partoAnimal.findFirst({
-            where: {
-              animalId: animal.id,
-              status: "VALIDO",
-              data: { lte: v.data },
-            },
-            orderBy: { data: "desc" },
-          }),
-          tx.partoAnimal.count({
-            where: {
-              animalId: animal.id,
-              status: "VALIDO",
-              incluidoSaldoAnterior: false,
-              data: { lte: v.data },
-            },
-          }),
-          tx.restricaoReprodutiva.findMany({
-            where: {
-              animalId: animal.id,
-              status: "VALIDO",
-              data: { lte: v.data },
-              OR: [{ ate: null }, { ate: { gt: v.data } }],
-            },
-          }),
-        ]);
-      const snapshot = {
-        motivos: item.motivos ?? [],
-        tentativa: tentativa
-          ? {
-              id: tentativa.id,
-              data: tentativa.data,
-              tipo: tentativa.tipo,
-              ordem: tentativa.ordem,
-              ciclo: tentativa.ciclo,
-              geneticaSnapshot: tentativa.geneticaSnapshot,
-            }
-          : null,
-        gestacao,
-        ultimoParto: parto
-          ? { id: parto.id, data: parto.data, tipo: parto.tipo }
-          : null,
-        partos: animal.partosAntesDaEntrada + contagemPartos,
-        restricoes,
-        animalId: animal.id,
-        brinco: animal.brinco,
-        nome: animal.nome,
-        lote: local.lote ? { id: local.lote.id, nome: local.lote.nome } : null,
-        localizacaoId: local.id,
-        dataReferencia: v.data.toISOString().slice(0, 10),
-        filtros: input.contexto,
-        atualizadoEm: animal.atualizadoEm.toISOString(),
-      };
+      const snapshot = await contextoAnimalVisitaTx(tx, animal.id, input.propriedadeId, v.data, cache);
+      const criterios = criteriosVisitaSchema.parse(Object.fromEntries(Object.entries((input.contexto.criterios ?? {}) as Record<string, unknown>).filter(([k,v]) => ["categoriaId","loteId","situacao","diasTentativaMin","diasTentativaMax","diasPartoMin","diasPartoMax","diasGestacaoMin","diasGestacaoMax"].includes(k) && v !== "" && v != null)));
+      Object.assign(snapshot, {
+        motivos: [...(item.motivos ?? []), ...motivosCriterios(criterios)],
+        criterios, filtros: input.contexto,
+      });
       participantes.push(
         await tx.participanteVisita.create({
           data: {
@@ -297,6 +237,7 @@ export async function salvarRascunho(
   propriedadeId: number,
   rascunho: Record<string, unknown>,
   usuarioId: number | null,
+  versaoRascunho: number,
 ) {
   return transacaoPecuaria(async (tx) => {
     const visita = await visitaTx(tx, id, propriedadeId);
@@ -317,10 +258,13 @@ export async function salvarRascunho(
     await travarAnimais(tx, [participante.animalId]);
     if (participante.status === "CONFIRMADO")
       erro("Fato confirmado não pode ser sobrescrito por rascunho");
-    const salva = await tx.participanteVisita.update({
-      where: { id: participanteId },
-      data: { rascunho: json(rascunho) },
+    const alteracao = await tx.participanteVisita.updateMany({
+      where: { id: participanteId, versaoRascunho, status: { not: "CONFIRMADO" } },
+      data: { rascunho: json(rascunho), versaoRascunho: { increment: 1 } },
     });
+    if (alteracao.count !== 1)
+      throw new RebanhoError("CONFLITO", "O rascunho mudou; recarregue antes de salvar novamente", "versaoRascunho");
+    const salva = await tx.participanteVisita.findUniqueOrThrow({ where: { id: participanteId } });
     await auditar(tx, {
       entidade: "ParticipanteVisita",
       entidadeId: participanteId,
@@ -540,7 +484,7 @@ export async function confirmarAtividade(
                 tx,
                 esquema.parse({
                   protocoloId: bruto.protocoloId ?? contexto.protocoloId,
-                  inicio: dados.data,
+                  inicio: bruto.inicio ?? dados.data,
                   animalId: p.animalId,
                   propriedadeId: input.propriedadeId,
                   responsavel: bruto.responsavel,
@@ -593,6 +537,7 @@ export async function confirmarAtividade(
               where: { id: p.id },
               data: {
                 status: "CONFIRMADO",
+                versaoRascunho: { increment: 1 },
                 fatoTipo,
                 fatoId: fato.id,
                 rascunho: json(bruto),
@@ -664,9 +609,62 @@ export async function encerrarVisita(
     return v;
   });
 }
+function motivosCriterios(c: CriteriosVisita) {
+  return Object.entries(c).map(([campo, valor]) => `Critério ${campo}: ${valor}`);
+}
+function correspondeCriterios(a: Record<string, unknown>, c: CriteriosVisita) {
+  if(c.categoriaId && (a.categoria as {id:string}|null)?.id !== c.categoriaId)return false;
+  if(c.loteId && (a.lote as {id:string}|null)?.id !== c.loteId)return false;
+  if(c.situacao && a.situacao !== c.situacao)return false;
+  for(const eixo of ["Tentativa", "Parto", "Gestacao"] as const){
+    const valor = a[`dias${eixo}`] as number|null, min = c[`dias${eixo}Min`], max = c[`dias${eixo}Max`];
+    if((min != null || max != null) && (valor == null || (min != null && valor < min) || (max != null && valor > max)))return false;
+  }
+  return true;
+}
+async function carregarContextosVisitaTx(tx: Prisma.TransactionClient, ids: string[], data: Date) {
+  const periodo = { desde: { lte: data }, OR: [{ ate: null }, { ate: { gt: data } }] };
+  const [animais, locais, estados, categorias, manuais, destinos, ocorrencias, regras] = await Promise.all([
+    tx.animal.findMany({ where: { id: { in: ids } } }),
+    tx.localizacaoAnimal.findMany({ where: { animalId: { in: ids }, ...periodo }, include: { lote: true } }),
+    obterEstadosReprodutivosTx(tx, ids, data),
+    tx.categoriaAnimal.findMany({ orderBy: [{ ordem: "asc" }, { nome: "asc" }] }),
+    tx.categoriaManualAnimal.findMany({ where: { animalId: { in: ids }, ...periodo }, include: { categoria: true } }),
+    tx.destinoAnimal.findMany({ where: { animalId: { in: ids }, ...periodo } }),
+    tx.ocorrenciaSanitaria.findMany({ where: { animalId: { in: ids }, status: "VALIDO", inicio: { lte: data }, OR: [{ fim: null }, { fim: { gte: data } }] } }),
+    tx.regraSanitariaReprodutiva.findMany({ where: { ativo: true }, orderBy: { id: "asc" } }),
+  ]);
+  return { animais, locais, estados, categorias, manuais, destinos, ocorrencias, regras };
+}
+async function contextoAnimalVisitaTx(tx: Prisma.TransactionClient, animalId: string, propriedadeId: number, data: Date, cache?: Awaited<ReturnType<typeof carregarContextosVisitaTx>>): Promise<Record<string, unknown>> {
+  const dados = cache ?? await carregarContextosVisitaTx(tx, [animalId], data);
+  const animal = dados.animais.find(a => a.id === animalId);
+  if(!animal)throw new RebanhoError("NAO_ENCONTRADO", "Animal não encontrado");
+  const local = dados.locais.find(l => l.animalId === animalId && l.propriedadeId === propriedadeId);
+  const estado = dados.estados.get(animalId)!;
+  const manual = dados.manuais.find(m => m.animalId === animalId);
+  const destino = dados.destinos.find(d => d.animalId === animalId);
+  const ocorrencias = dados.ocorrencias.filter(o => o.animalId === animalId);
+  const regras = dados.regras.filter(r => r.propriedadeId === propriedadeId);
+  const categorias = dados.categorias;
+  const dias = (referencia: Date|null|undefined) => referencia ? Math.floor((data.getTime()-referencia.getTime())/86400000) : null;
+  return JSON.parse(JSON.stringify({
+    animalId, brinco: animal.brinco, nome: animal.nome, propriedadeId,
+    situacao: estado.situacao, partos: estado.partos, tentativasCiclo: estado.tentativasCiclo,
+    tentativa: estado.ultimaTentativa, ultimaTentativa: estado.ultimaTentativa,
+    gestacao: estado.gestacao, ultimoParto: estado.ultimoParto, restricoes: estado.restricoes,
+    restricoesSanitarias: regras.filter(r => ocorrencias.some(o => o.doencaId === r.doencaId)),
+    categoria: avaliarCategoria({ ...animal, partos: estado.partos }, categorias, manual?.categoria ?? null, data).categoria,
+    aptidao: destino?.aptidao ?? null, papelReprodutivo: destino?.papelReprodutivo ?? null,
+    lote: local?.lote ? { id: local.lote.id, nome: local.lote.nome } : null,
+    localizacaoId: local?.id ?? null, dataReferencia: data.toISOString().slice(0,10), atualizadoEm: animal.atualizadoEm.toISOString(),
+    diasTentativa: dias(estado.ultimaTentativa?.data), diasParto: dias(estado.ultimoParto?.data), diasGestacao: dias(estado.gestacao?.confirmadaEm),
+  }));
+}
 export async function sugestoesVisita(
   propriedadeId: number | null,
   data: string,
+  criterios: CriteriosVisita = {},
 ) {
   const scope = propriedadeId == null ? {} : { propriedadeId };
   const [
@@ -674,7 +672,7 @@ export async function sugestoesVisita(
     programacoes,
     protocolosSanitarios,
     protocolosIatf,
-    painel,
+    locais, categorias,
   ] = await Promise.all([
     prisma.tarefaSanitaria.findMany({
       where: {
@@ -691,7 +689,7 @@ export async function sugestoesVisita(
       orderBy: { previstaPara: "asc" },
       take: 500,
     }),
-    prisma.programacaoIatf.findMany({ where: scope }),
+    prisma.programacaoIatf.findMany({ where: { ...scope, status: "ABERTA" } }),
     prisma.protocoloSanitario.findMany({
       where: { publicadoEm: { not: null }, ativo: true },
       orderBy: { nome: "asc" },
@@ -700,7 +698,11 @@ export async function sugestoesVisita(
       where: { publicado: true },
       orderBy: { nome: "asc" },
     }),
-    painelReproducao(propriedadeId),
+    prisma.localizacaoAnimal.findMany({
+      where: { ...scope, desde: { lte: dia(data) }, OR: [{ ate: null }, { ate: { gt: dia(data) } }], animal: { sexo: "F", dataEntrada: { lte: dia(data) }, dataNascimento: { lte: dia(data) }, baixas: { none: { estornadaEm: null, data: { lt: dia(data) } } } } },
+      include: { lote: true }, orderBy: { animalId: "asc" },
+    }),
+    prisma.categoriaAnimal.findMany({ where: { ativo: true }, orderBy: { ordem: "asc" } }),
   ]);
   const participantes = await prisma.participanteIatf.findMany({
     where: {
@@ -713,10 +715,18 @@ export async function sugestoesVisita(
       participanteId: { in: participantes.map((p) => p.id) },
       realizadaEm: null,
       dispensadaEm: null,
-      previstaEm: { lte: new Date(`${data}T23:59:59-03:00`) },
     },
     orderBy: { previstaEm: "asc" },
   });
+  const cache = await carregarContextosVisitaTx(prisma, locais.map(l => l.animalId), dia(data));
+  const candidatos: Array<Record<string, unknown>> = await Promise.all(locais.map(l => contextoAnimalVisitaTx(prisma, l.animalId, l.propriedadeId, dia(data), cache).then(a => ({ ...a, motivos: motivosCriterios(criterios), criterios }))));
+  const [avaliacoesHistorico, gestacoesPrevistas, tentativasDiagnostico] = await Promise.all([
+    prisma.avaliacaoReprodutiva.findMany({ where: { animalId: { in: locais.map(l => l.animalId) }, status: "VALIDO", data: { lte: dia(data) } }, orderBy: [{ data: "desc" }, { criadoEm: "desc" }] }),
+    prisma.gestacaoAnimal.findMany({ where: { animalId: { in: locais.map(l => l.animalId) }, status: "VALIDO", confirmadaEm: { lte: dia(data) }, OR: [{ encerradaEm: null }, { encerradaEm: { gt: dia(data) } }], previsaoParto: { not: null } } }),
+    prisma.tentativaReprodutiva.findMany({where:{id:{in:candidatos.flatMap(a=>(a.ultimaTentativa as {id:string}|null)?.id ? [(a.ultimaTentativa as {id:string}).id] : [])}},select:{id:true,animalId:true,propriedadeId:true}}),
+  ]);
+  // Uma avaliação válida posterior substitui o retorno anterior do mesmo animal.
+  const avaliacoesRetorno = avaliacoesHistorico.filter((a, i, todas) => a.retornoEm && todas.findIndex(v => v.animalId === a.animalId) === i);
   return {
     tarefasSanitarias: tarefasSanitarias.map((t) => ({
       ...t,
@@ -724,14 +734,23 @@ export async function sugestoesVisita(
       nome: `${t.etapa.tipo} · etapa ${t.etapa.ordem}`,
       tipo: t.etapa.tipo,
     })),
-    tarefasIatf: tarefasIatf.map((t) => ({
+    tarefasIatf: tarefasIatf.filter(t => t.previstaEm <= new Date(`${data}T23:59:59-03:00`)).map((t) => ({
       ...t,
       animalId: participantes.find((p) => p.id === t.participanteId)?.animalId,
     })),
     protocolosSanitarios,
     protocolosIatf,
     participantesIatf: participantes,
-    animais: painel.animais,
+    animais: candidatos.filter(a => correspondeCriterios(a, criterios)),
+    categorias: categorias.map(c => ({ id: c.id, nome: c.nome })),
+    lotes: [...new Map(locais.flatMap(l => l.lote ? [[l.lote.id, { id: l.lote.id, nome: l.lote.nome }] as const] : [])).values()],
+    criterios,
+    retornos: [
+      ...tentativasDiagnostico.filter(t => candidatos.some(a => a.animalId === t.animalId && a.situacao === "AGUARDANDO_DIAGNOSTICO" && (a.ultimaTentativa as {id:string})?.id === t.id)).map(t => ({ origem: "TENTATIVA", origemConsultavel:propriedadeId == null || t.propriedadeId === propriedadeId, origemId:propriedadeId == null || t.propriedadeId === propriedadeId ? t.id : null, animalId:t.animalId, propriedadeId:locais.find(l=>l.animalId === t.animalId)!.propriedadeId, data:null, status:"AGUARDANDO_DIAGNOSTICO" })),
+      ...avaliacoesRetorno.map(a => ({ origem: "AVALIACAO", origemConsultavel: propriedadeId == null || a.propriedadeId === propriedadeId, origemId: propriedadeId == null || a.propriedadeId === propriedadeId ? a.id : null, animalId: a.animalId, propriedadeId: locais.find(l => l.animalId === a.animalId)!.propriedadeId, data: a.retornoEm, status: a.retornoEm! < dia(data) ? "ATRASADO" : "PENDENTE" })),
+      ...tarefasIatf.map(t => ({ origem: "TAREFA_IATF", origemConsultavel: true, origemId: t.id, programacaoId: participantes.find(p => p.id === t.participanteId)?.programacaoId, animalId: participantes.find(p => p.id === t.participanteId)?.animalId, propriedadeId: programacoes.find(p => p.id === participantes.find(a => a.id === t.participanteId)?.programacaoId)?.propriedadeId, data: t.previstaEm, status: t.previstaEm < new Date(`${data}T00:00:00-03:00`) ? "ATRASADO" : "PENDENTE" })),
+      ...gestacoesPrevistas.map(g => ({ origem: "PREVISAO_PARTO", origemConsultavel: propriedadeId == null || g.propriedadeId === propriedadeId, origemId: propriedadeId == null || g.propriedadeId === propriedadeId ? g.id : null, animalId: g.animalId, propriedadeId: locais.find(l => l.animalId === g.animalId)!.propriedadeId, data: g.previsaoParto, status: "PREVISTO" })),
+    ],
   };
 }
 async function compararSnapshotTx(
@@ -740,63 +759,20 @@ async function compararSnapshotTx(
   data: Date,
   propriedadeId: number,
 ) {
-  const snapshot = participante.snapshot as {
-    atualizadoEm?: string;
-    localizacaoId?: string;
-    tentativa?: { id: string } | null;
-    gestacao?: {
-      id: string;
-      encerradaEm?: string | null;
-      sexoFetal?: string | null;
-    } | null;
-  };
-  const [animal, local, tentativa, gestacao] = await Promise.all([
-    tx.animal.findUnique({ where: { id: participante.animalId } }),
-    tx.localizacaoAnimal.findFirst({
-      where: {
-        animalId: participante.animalId,
-        propriedadeId,
-        desde: { lte: data },
-        OR: [{ ate: null }, { ate: { gt: data } }],
-      },
-    }),
-    tx.tentativaReprodutiva.findFirst({
-      where: {
-        animalId: participante.animalId,
-        status: "VALIDO",
-        data: { lte: data },
-      },
-      orderBy: { data: "desc" },
-    }),
-    tx.gestacaoAnimal.findFirst({
-      where: {
-        animalId: participante.animalId,
-        status: "VALIDO",
-        confirmadaEm: { lte: data },
-        OR: [{ encerradaEm: null }, { encerradaEm: { gt: data } }],
-      },
-      orderBy: { confirmadaEm: "desc" },
-    }),
-  ]);
-  const alteracoes = [];
-  if (
-    snapshot.atualizadoEm &&
-    animal?.atualizadoEm.toISOString() !== snapshot.atualizadoEm
-  )
-    alteracoes.push("identidade do animal alterada");
-  if (snapshot.localizacaoId && local?.id !== snapshot.localizacaoId)
-    alteracoes.push("localização na data alterada");
-  if ((snapshot.tentativa?.id ?? null) !== (tentativa?.id ?? null))
-    alteracoes.push("tentativa relevante alterada");
-  if (
-    (snapshot.gestacao?.id ?? null) !== (gestacao?.id ?? null) ||
-    (snapshot.gestacao?.sexoFetal ?? null) !== (gestacao?.sexoFetal ?? null)
-  )
-    alteracoes.push("gestação alterada");
-  return {
-    alteracoes,
-    fingerprintAtual: hashDados({ animal, local, tentativa, gestacao }),
-  };
+  const snapshot = participante.snapshot as Record<string, unknown>;
+  const atual = await contextoAnimalVisitaTx(tx, participante.animalId, propriedadeId, data);
+  const alteracoes: string[] = [];
+  for (const [campo, mensagem] of [
+    ["atualizadoEm", "identidade do animal alterada"], ["localizacaoId", "localização na data alterada"],
+    ["tentativa", "tentativa relevante alterada"], ["gestacao", "gestação alterada"],
+    ["restricoes", "restrições reprodutivas alteradas"], ["restricoesSanitarias", "restrições sanitárias alteradas"],
+    ["ultimoParto", "último parto alterado"], ["partos", "contagem de partos alterada"],
+    ["categoria", "categoria alterada"], ["papelReprodutivo", "papel reprodutivo alterado"],
+    ["situacao", "situação reprodutiva alterada"],
+  ]) {
+    if (hashDados(snapshot[campo] ?? null) !== hashDados(atual[campo] ?? null)) alteracoes.push(mensagem);
+  }
+  return { alteracoes, fingerprintAtual: hashDados(atual) };
 }
 async function previaAtividadeTx(
   tx: Prisma.TransactionClient,
@@ -833,3 +809,45 @@ export const previaAtividade = (
   atividadeId: string,
   propriedadeId: number,
 ) => previaAtividadeTx(prisma, id, atividadeId, propriedadeId);
+
+export async function regularizarParticipanteVisita(id:string, participanteId:string,input:RegularizacaoInput,usuarioId:number|null){
+  return transacaoPecuaria(async tx=>{
+    const visita = await visitaTx(tx,id,input.propriedadeId);
+    if(input.acao === "REABRIR" && visita.encerradaEm)erro("Visita encerrada não pode reabrir um atendimento");
+    const p=await tx.participanteVisita.findUnique({where:{id:participanteId}});
+    if(!p || !await tx.atividadeVisita.count({where:{id:p.atividadeId,visitaId:id}}))throw new RebanhoError("NAO_ENCONTRADO","Participante não pertence à visita");
+    await travarAnimais(tx,[p.animalId]);
+    return operacaoIdempotenteTx(tx,{...input,participanteId},usuarioId,"REGULARIZACAO_VISITA",async()=>{
+      const atual=await tx.participanteVisita.findUniqueOrThrow({where:{id:participanteId}});
+      if(!atual.regularizacaoPendente || atual.status !== "CONFIRMADO")erro("Participante não exige regularização");
+      if(atual.tarefaIatfId){
+        await regularizarTarefaTx(tx,atual.tarefaIatfId,input,usuarioId);
+        return tx.participanteVisita.findUniqueOrThrow({where:{id:participanteId}});
+      }
+      const historicoRegularizacao=eventoRegularizacao(atual.historicoRegularizacao,input,atual,usuarioId);
+      if(input.acao === "VINCULAR_SUBSTITUTO"){
+        const original = atual.fatoTipo === "TentativaReprodutiva" ? await tx.tentativaReprodutiva.findUnique({where:{id:atual.fatoId!}}) : atual.fatoTipo === "AplicacaoProduto" ? await tx.aplicacaoProduto.findUnique({where:{id:atual.fatoId!}}) : atual.fatoTipo === "ExameAnimal" ? await tx.exameAnimal.findUnique({where:{id:atual.fatoId!}}) : await tx.avaliacaoReprodutiva.findUnique({where:{id:atual.fatoId!}});
+        if(!original)erro("Fato original não encontrado");
+        await validarSubstitutoTx(tx,atual.fatoTipo!,input,atual.animalId,original.data,atual.fatoId);
+        if(await tx.participanteVisita.count({where:{id:{not:participanteId},fatoId:input.fatoId,fatoTipo:atual.fatoTipo}}))erro("Substituto já pertence a outro participante", "fatoId");
+        if (atual.fatoTipo === "AplicacaoProduto") await substituirEvidenciaAplicacaoTx(tx, atual.fatoId, input, usuarioId);
+      }
+      const salvo=await tx.participanteVisita.update({where:{id:participanteId},data:{
+        regularizacaoPendente:false,historicoRegularizacao,
+        ...(input.acao === "REABRIR" ? {status:"PENDENTE",fatoId:null,fatoTipo:null,rascunho:{},versaoRascunho:{increment:1}} : input.acao === "VINCULAR_SUBSTITUTO" ? {fatoId:input.fatoId} : {}),
+      }});
+      if(input.acao === "REABRIR")await tx.visitaVeterinaria.update({where:{id},data:{status:"PARCIAL"}});
+      await auditar(tx,{entidade:"ParticipanteVisita",entidadeId:participanteId,animalId:p.animalId,propriedadeId:input.propriedadeId,acao:"REGULARIZACAO",usuarioId,antes:atual,depois:salvo});
+      return salvo;
+    });
+  });
+}
+
+export async function substitutosParticipanteVisita(id: string, participanteId: string, propriedadeId: number) {
+  await visitaTx(prisma, id, propriedadeId);
+  const p = await prisma.participanteVisita.findUnique({ where: { id: participanteId } });
+  if (!p || !await prisma.atividadeVisita.count({ where: { id: p.atividadeId, visitaId: id } })) throw new RebanhoError("NAO_ENCONTRADO", "Participante não pertence à visita");
+  if (!p.regularizacaoPendente) return [];
+  if (p.tarefaIatfId) return substitutosTarefa(p.tarefaIatfId, propriedadeId);
+  return listarSubstitutosTx(prisma, p.fatoTipo ?? "", p.fatoId, p.animalId, propriedadeId);
+}

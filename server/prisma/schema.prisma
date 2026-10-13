@@ -1681,6 +1681,8 @@ model AplicacaoProduto {
   partidaValidadeSnapshot    DateTime?               @db.Date
   justificativaSemOrigem     String?
   status                     StatusFatoPecuariaV3    @default(VALIDO)
+  consumoMantido             Boolean                 @default(false)
+  administracaoMantida       Boolean?
   motivoAnulacao             String?
   anuladoEm                  DateTime?
   origem                     String                  @default("MANUAL")
@@ -2292,6 +2294,8 @@ model TarefaIatf {
   planejadoSnapshot      Json?
   realizadoSnapshot      Json?
   desviosSnapshot        Json?
+  regularizacaoPendente  Boolean   @default(false)
+  historicoRegularizacao Json      @default("[]")
 
   @@unique([participanteId, etapa])
   @@schema("pecuaria")
@@ -2326,19 +2330,22 @@ model AtividadeVisita {
 }
 
 model ParticipanteVisita {
-  id                String   @id @default(uuid())
-  atividadeId       String
-  animalId          String
-  ordem             Int
-  status            String   @default("PENDENTE")
-  tarefaSanitariaId String?
-  tarefaIatfId      String?
-  rascunho          Json     @default("{}")
-  fatoTipo          String?
-  fatoId            String?
-  motivo            String?
-  snapshot          Json
-  atualizadoEm      DateTime @updatedAt
+  id                     String   @id @default(uuid())
+  atividadeId            String
+  animalId               String
+  ordem                  Int
+  status                 String   @default("PENDENTE")
+  tarefaSanitariaId      String?
+  tarefaIatfId           String?
+  rascunho               Json     @default("{}")
+  versaoRascunho         Int      @default(0)
+  regularizacaoPendente  Boolean  @default(false)
+  historicoRegularizacao Json     @default("[]")
+  fatoTipo               String?
+  fatoId                 String?
+  motivo                 String?
+  snapshot               Json
+  atualizadoEm           DateTime @updatedAt
 
   @@unique([atividadeId, animalId])
   @@unique([atividadeId, ordem])

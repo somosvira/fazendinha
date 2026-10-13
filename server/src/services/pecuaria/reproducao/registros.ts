@@ -23,7 +23,8 @@ import {
 import { travarUsosProduto } from "../../estoque/usos.js";
 import { calcularComposicaoFilho } from "../rebanho/composicao.calc.js";
 import { operacaoIdempotenteTx } from "./operacoes.js";
-import { contadoresCiclo, situacaoReprodutiva } from "./regras.calc.js";
+import { totalAtribuidoServicoTx } from "./atribuicoes-servico.js";
+import { contadoresCiclo, situacaoReprodutiva, intervalosSobrepostos } from "./regras.calc.js";
 import type { AvaliacaoInput, PartoInput, TentativaInput } from "./schemas.js";
 import type { z } from "zod";
 import {
@@ -39,6 +40,21 @@ export function erro(message: string, campo?: string): never {
 export const dia = (d: string) => new Date(`${d}T00:00:00Z`);
 const json = (v: unknown): Prisma.InputJsonValue =>
   JSON.parse(JSON.stringify(v));
+/** Chamador deve travar o animal antes de conferir e escrever o intervalo. */
+export async function conferirIntervaloGestacaoTx(
+  tx: Prisma.TransactionClient, animalId: string, inicio: Date, fim: Date | null, ignorarId?: string,
+) {
+  const gestacoes = await tx.gestacaoAnimal.findMany({ where: { animalId, status: "VALIDO", ...(ignorarId ? { id: { not: ignorarId } } : {}) } });
+  if (gestacoes.some((g) => intervalosSobrepostos({ inicio, fim }, { inicio: g.inicio ?? g.confirmadaEm, fim: g.encerradaEm })))
+    erro("Gestação proposta se sobrepõe a uma gestação conhecida; revise o vínculo e a cronologia", "gestacaoId");
+}
+
+async function conferirIntervaloLactacaoTx(tx: Prisma.TransactionClient, animalId: string, inicio: Date, fim: Date | null, ignorarId?: string) {
+  const lactacoes = await tx.lactacaoAnimal.findMany({ where: { animalId, ...(ignorarId ? { id: { not: ignorarId } } : {}) } });
+  if (lactacoes.some((l) => intervalosSobrepostos({ inicio, fim }, { inicio: l.inicio, fim: l.encerradaEm })))
+    erro("A lactação proposta se sobrepõe ao histórico; revise os intervalos antes", "iniciarLactacao");
+}
+
 export async function conferirMatrizTx(
   tx: Prisma.TransactionClient,
   animalId: string,
@@ -115,21 +131,7 @@ export async function conferirDisponibilidadeTx(
       "Há evidência de gestação nesta data; reconcilie o diagnóstico/perda antes de intervir",
       "animalId",
     );
-  const regras = await tx.regraSanitariaReprodutiva.findMany({
-    where: { propriedadeId, acao, ativo: true },
-  });
-  const ocorrencias = await tx.ocorrenciaSanitaria.findMany({
-    where: {
-      animalId,
-      status: "VALIDO",
-      inicio: { lte: data },
-      OR: [{ fim: null }, { fim: { gte: data } }],
-      doencaId: { in: regras.map((r) => r.doencaId) },
-    },
-  });
-  const aplicaveis = regras.filter((r) =>
-    ocorrencias.some((o) => o.doencaId === r.doencaId),
-  );
+  const aplicaveis = await consultaAlertasSanitariosTx(tx, animalId, propriedadeId, data, acao);
   if (aplicaveis.some((r) => r.efeito === "BLOQUEAR"))
     erro(
       `Regra sanitária impede esta ação: ${aplicaveis
@@ -144,6 +146,46 @@ export async function conferirDisponibilidadeTx(
       "cienciaSanitaria",
     );
   return animal;
+}
+/** Projeção clínica acompanha o animal; o chamador autoriza sua localização na data consultada. */
+export async function obterEstadosReprodutivosTx(tx: Prisma.TransactionClient, animalIds: string[], data: Date) {
+  const base = { animalId: { in: animalIds }, status: "VALIDO" as const, data: { lte: data } };
+  const [animais, tentativas, avaliacoes, partos, restricoes, gestacoes, iniciais] = await Promise.all([
+    tx.animal.findMany({ where: { id: { in: animalIds } }, select: { id: true, partosAntesDaEntrada: true } }),
+    tx.tentativaReprodutiva.findMany({ where: base, orderBy: [{ data: "desc" }, { criadoEm: "desc" }], select: { id: true, animalId: true, data: true, tipo: true, status: true, ordem: true, ciclo: true, touroId: true, touroExternoId: true, geneticaSnapshot: true } }),
+    tx.avaliacaoReprodutiva.findMany({ where: base, orderBy: [{ data: "desc" }, { criadoEm: "desc" }], select: { animalId: true, data: true, resultado: true, sexoFetal: true, gestacaoId: true } }),
+    tx.partoAnimal.findMany({ where: base, orderBy: { data: "desc" }, select: { id: true, animalId: true, data: true, tipo: true, status: true, incluidoSaldoAnterior: true } }),
+    tx.restricaoReprodutiva.findMany({ where: { ...base, OR: [{ ate: null }, { ate: { gt: data } }] }, select: { id: true, animalId: true, tipo: true, data: true, ate: true, motivo: true, acoes: true, status: true } }),
+    tx.gestacaoAnimal.findMany({ where: { animalId: { in: animalIds }, status: "VALIDO", confirmadaEm: { lte: data } }, orderBy: { confirmadaEm: "desc" }, select: { id: true, animalId: true, confirmadaEm: true, encerradaEm: true, previsaoParto: true, sexoFetal: true, status: true } }),
+    tx.situacaoInicialReprodutiva.findMany({ where: base, orderBy: { data: "desc" }, select: { animalId: true, data: true, situacao: true } }),
+  ]);
+  return new Map(animais.map((a) => {
+    const gestacaoConhecida = gestacoes.find((g) => g.animalId === a.id) ?? null;
+    const avaliacoesAnimal = avaliacoes.filter((v) => v.animalId === a.id);
+    const tentativasAnimal = tentativas.filter((t) => t.animalId === a.id);
+    const partosAnimal = partos.filter((p) => p.animalId === a.id);
+    const gestacao = gestacaoConhecida && (!gestacaoConhecida.encerradaEm || gestacaoConhecida.encerradaEm > data)
+      ? { ...gestacaoConhecida, encerradaEm: null, sexoFetal: avaliacoesAnimal.find((v) => v.gestacaoId === gestacaoConhecida.id && v.sexoFetal)?.sexoFetal ?? null }
+      : null;
+    const ultimaTentativa = tentativasAnimal[0] ?? null;
+    const ultimoParto = partosAnimal[0] ?? null;
+    return [a.id, {
+      situacao: situacaoReprodutiva({ referencia: data, gestacao: gestacaoConhecida, avaliacoes: avaliacoesAnimal, ultimaTentativa, ultimoParto, inicial: iniciais.find((i) => i.animalId === a.id) }),
+      ...contadoresCiclo(a.partosAntesDaEntrada, partosAnimal, tentativasAnimal, data),
+      gestacao, ultimaTentativa, ultimoParto, avaliacoes: avaliacoesAnimal,
+      restricoes: restricoes.filter((r) => r.animalId === a.id),
+    }] as const;
+  }));
+}
+export async function obterEstadoReprodutivoTx(tx: Prisma.TransactionClient, animalId: string, data: Date) {
+  const estado = (await obterEstadosReprodutivosTx(tx, [animalId], data)).get(animalId);
+  if (!estado) throw new RebanhoError("NAO_ENCONTRADO", "Animal não encontrado");
+  return estado;
+}
+export async function consultaAlertasSanitariosTx(tx: Prisma.TransactionClient, animalId: string, propriedadeId: number, data: Date, acao: string) {
+  const regras = await tx.regraSanitariaReprodutiva.findMany({ where: { propriedadeId, acao, ativo: true } });
+  const ocorrencias = await tx.ocorrenciaSanitaria.findMany({ where: { animalId, status: "VALIDO", inicio: { lte: data }, OR: [{ fim: null }, { fim: { gte: data } }], doencaId: { in: regras.map((r) => r.doencaId) } } });
+  return regras.filter((r) => ocorrencias.some((o) => o.doencaId === r.doencaId)).map((r) => ({ motivo: r.motivo, efeito: r.efeito, doencaId: r.doencaId }));
 }
 async function genitorTx(
   tx: Prisma.TransactionClient,
@@ -337,6 +379,7 @@ export async function criarTentativaTx(
   else if (input.origem === "DOCUMENTADA" && !input.justificativaSemOrigem)
     erro("Justifique a origem documentada", "justificativaSemOrigem");
   if (input.operacaoServicoId) {
+    await tx.$queryRaw`SELECT id FROM "public"."Operacao" WHERE id = ${input.operacaoServicoId} FOR UPDATE`;
     const servico = await tx.operacao.findFirst({
       where: {
         id: input.operacaoServicoId,
@@ -351,43 +394,10 @@ export async function criarTentativaTx(
         "Serviço confirmado incompatível com sítio/data",
         "operacaoServicoId",
       );
-    await tx.$queryRaw`SELECT id FROM "public"."Operacao" WHERE id = ${input.operacaoServicoId} FOR UPDATE`;
     if (input.valorServicoAtribuido != null) {
-      const [a, e, p, t] = await Promise.all([
-        tx.aplicacaoProduto.aggregate({
-          where: {
-            operacaoServicoId: input.operacaoServicoId,
-            status: "VALIDO",
-          },
-          _sum: { valorServicoAtribuido: true },
-        }),
-        tx.exameAnimal.aggregate({
-          where: {
-            operacaoServicoId: input.operacaoServicoId,
-            status: "VALIDO",
-          },
-          _sum: { valorServicoAtribuido: true },
-        }),
-        tx.execucaoProtocoloSanitario.aggregate({
-          where: {
-            operacaoServicoId: input.operacaoServicoId,
-            canceladaEm: null,
-          },
-          _sum: { valorServicoAtribuido: true },
-        }),
-        tx.tentativaReprodutiva.aggregate({
-          where: {
-            operacaoServicoId: input.operacaoServicoId,
-            status: "VALIDO",
-          },
-          _sum: { valorServicoAtribuido: true },
-        }),
-      ]);
-      const total = dinheiro(input.valorServicoAtribuido)
-        .plus(a._sum.valorServicoAtribuido ?? 0)
-        .plus(e._sum.valorServicoAtribuido ?? 0)
-        .plus(p._sum.valorServicoAtribuido ?? 0)
-        .plus(t._sum.valorServicoAtribuido ?? 0);
+      const total = dinheiro(input.valorServicoAtribuido).plus(
+        await totalAtribuidoServicoTx(tx, input.operacaoServicoId, input.propriedadeId),
+      );
       if (total.gt(servico.valorTotal))
         erro(
           "Atribuição supera o valor confirmado do Serviço",
@@ -514,18 +524,9 @@ export async function criarAvaliacaoTx(
           "Vincule a tentativa comprovada ou explique por que o vínculo é desconhecido",
           "motivoVinculoDesconhecido",
         );
-      const existente = await tx.gestacaoAnimal.findFirst({
-        where: {
-          animalId: input.animalId,
-          status: "VALIDO",
-          encerradaEm: null,
-        },
-      });
-      if (existente)
-        erro(
-          "Gestação já conhecida: selecione o vínculo correto",
-          "gestacaoId",
-        );
+      await conferirIntervaloGestacaoTx(tx, input.animalId, tentativa?.data ?? data, null);
+      if (await tx.partoAnimal.count({ where: { animalId: input.animalId, status: "VALIDO", data: { gte: tentativa?.data ?? data } } }))
+        erro("O diagnóstico aberto conflita com parto já registrado; reconcilie a cronologia antes", "data");
       gestacaoCriada = true;
       gestacao = await tx.gestacaoAnimal.create({
         data: {
@@ -549,7 +550,7 @@ export async function criarAvaliacaoTx(
         animalId: input.animalId,
         status: "VALIDO",
         confirmadaEm: { lte: data },
-        OR: [{ encerradaEm: null }, { encerradaEm: { gte: data } }],
+        OR: [{ encerradaEm: null }, { encerradaEm: { gt: data } }],
       },
     });
     if (conhecida)
@@ -577,8 +578,14 @@ export async function criarAvaliacaoTx(
         data: { sexoFetal: input.sexoFetal },
       });
   }
-  if (input.conduta === "IATF" && input.resultado !== "NEGATIVO")
-    erro("Indicação IATF exige avaliação vazia explícita", "resultado");
+  if (input.conduta === "IATF") {
+    if (input.resultado !== "NEGATIVO") erro("Indicação IATF exige avaliação vazia explícita", "resultado");
+    const restricoes = await tx.restricaoReprodutiva.findMany({ where: { animalId: input.animalId, status: "VALIDO", data: { lte: data }, OR: [{ ate: null }, { ate: { gt: data } }], acoes: { has: "IATF" } } });
+    if (restricoes.length) erro(`Indicação IATF bloqueada: ${restricoes.map((r) => r.motivo).join("; ")}`, "conduta");
+    const alertas = await consultaAlertasSanitariosTx(tx, input.animalId, input.propriedadeId, data, "IATF");
+    if (alertas.some((a) => a.efeito === "BLOQUEAR")) erro("Regra sanitária impede indicação IATF", "conduta");
+    if (alertas.length && !input.cienciaSanitaria) erro("Confirme ciência dos alertas sanitários para indicar IATF", "cienciaSanitaria");
+  }
   if (input.conduta === "DESCARTE") {
     if (!input.motivo) erro("Descarte exige motivo", "motivo");
     restricaoId = (
@@ -625,7 +632,7 @@ export async function criarAvaliacaoTx(
     propriedadeId: input.propriedadeId,
     acao: "REGISTRO",
     usuarioId,
-    depois: criada,
+    depois: { ...criada, cienciaSanitaria: input.cienciaSanitaria === true },
   });
   return criada;
 }
@@ -694,6 +701,8 @@ export async function criarPartoTx(
     }))
   )
     erro("Vincule a gestação em aberto ao parto", "gestacaoId");
+  if (gestacao && await tx.avaliacaoReprodutiva.count({ where: { gestacaoId: gestacao.id, status: "VALIDO", data: { gt: data } } }))
+    erro("O parto antecede avaliações da gestação; revise a cronologia antes", "data");
   const tentativa = gestacao?.tentativaId
     ? await tx.tentativaReprodutiva.findUniqueOrThrow({
         where: { id: gestacao.tentativaId },
@@ -878,15 +887,7 @@ export async function criarPartoTx(
       data: { encerradaEm: data, motivoEncerramento: `PARTO_${input.tipo}` },
     });
   if (input.iniciarLactacao) {
-    if (
-      await tx.lactacaoAnimal.count({
-        where: { animalId: input.animalId, encerradaEm: null },
-      })
-    )
-      erro(
-        "Encerre a lactação anterior antes de iniciar outra",
-        "iniciarLactacao",
-      );
+    await conferirIntervaloLactacaoTx(tx, input.animalId, data, null);
     const destino = await tx.destinoAnimal.findFirst({
       where: {
         animalId: input.animalId,
@@ -1036,6 +1037,8 @@ export async function registrarPerda(
           "Gestação não está aberta ou data antecede confirmação",
           "gestacaoId",
         );
+      if (await tx.avaliacaoReprodutiva.count({ where: { gestacaoId: g.id, status: "VALIDO", data: { gt: dia(input.data) } } }))
+        erro("Perda antecede avaliações vinculadas; revise a cronologia antes", "data");
       const fato = await tx.gestacaoAnimal.update({
         where: { id: g.id },
         data: {
@@ -1252,6 +1255,7 @@ export async function painelReproducao(
   propriedadeId: number | null,
   animalId?: string,
 ) {
+  const hoje = hojeFazendaDate();
   const scope = propriedadeId == null ? {} : { propriedadeId };
   const fatos = { ...scope, ...(animalId ? { animalId } : {}) };
   const [
@@ -1272,7 +1276,7 @@ export async function painelReproducao(
         ...(animalId ? { id: animalId } : {}),
         ...(propriedadeId == null
           ? {}
-          : { localizacoes: { some: { propriedadeId } } }),
+          : { localizacoes: { some: { propriedadeId, desde: { lte: hoje }, OR: [{ ate: null }, { ate: { gt: hoje } }] } } }),
       },
       select: {
         id: true,
@@ -1313,7 +1317,7 @@ export async function painelReproducao(
       orderBy: { inicio: "desc" },
     }),
   ]);
-  const hoje = hojeFazendaDate();
+  const estados = await obterEstadosReprodutivosTx(prisma, animais.map((a) => a.id), hoje);
   if (
     animalId &&
     !animais.length &&
@@ -1367,45 +1371,13 @@ export async function painelReproducao(
   });
   return {
     animais: animais.map((a) => {
-      const gestacao =
-        gestacoes.find(
-          (g) => g.animalId === a.id && g.status === "VALIDO" && !g.encerradaEm,
-        ) ?? null;
+      const estado = estados.get(a.id)!;
       return {
-        animalId: a.id,
-        brinco: a.brinco,
-        nome: a.nome,
-        situacao: situacaoReprodutiva({
-          gestacao: gestacoes.find(
-            (g) => g.animalId === a.id && g.status === "VALIDO",
-          ),
-          avaliacoes: avaliacoes.filter(
-            (v) => v.animalId === a.id && v.status === "VALIDO",
-          ),
-          ultimoParto: partos.find(
-            (p) => p.animalId === a.id && p.status === "VALIDO",
-          ),
-          ultimaTentativa: tentativas.find(
-            (t) => t.animalId === a.id && t.status === "VALIDO",
-          ),
-          inicial: situacoesIniciais.find(
-            (i) => i.animalId === a.id && i.status === "VALIDO",
-          ),
-        }),
-        ...contadoresCiclo(
-          a.partosAntesDaEntrada,
-          partos.filter((p) => p.animalId === a.id),
-          tentativas.filter((t) => t.animalId === a.id),
-          hoje,
-        ),
-        gestacao,
-        restricoes: restricoes.filter(
-          (r) =>
-            r.animalId === a.id &&
-            r.status === "VALIDO" &&
-            r.data <= hoje &&
-            (!r.ate || r.ate > hoje),
-        ),
+        animalId: a.id, brinco: a.brinco, nome: a.nome,
+        situacao: estado.situacao, partos: estado.partos, tentativasCiclo: estado.tentativasCiclo,
+        gestacao: estado.gestacao,
+        ultimaTentativa: estado.ultimaTentativa,
+        restricoes: estado.restricoes,
       };
     }),
     tentativas,
@@ -1619,6 +1591,7 @@ export async function corrigirVinculoGestacao(
       : null;
     if (tentativaId && !tentativa)
       erro("Tentativa incompatível com animal/data", "tentativaId");
+    await conferirIntervaloGestacaoTx(tx, antes.animalId, tentativa?.data ?? antes.confirmadaEm, antes.encerradaEm, antes.id);
     const salva = await tx.gestacaoAnimal.update({
       where: { id },
       data: { tentativaId, inicio: tentativa?.data ?? null },
@@ -1794,17 +1767,7 @@ export async function corrigirLactacao(
           "partoId",
         );
     }
-    if (
-      await tx.lactacaoAnimal.count({
-        where: {
-          animalId: referencia.animalId,
-          id: { not: id },
-          inicio: { lte: fim ?? hojeFazendaDate() },
-          OR: [{ encerradaEm: null }, { encerradaEm: { gte: inicio } }],
-        },
-      })
-    )
-      erro("A correção sobrepõe outra lactação", "inicio");
+    await conferirIntervaloLactacaoTx(tx, referencia.animalId, inicio, fim, id);
     const salva = await tx.lactacaoAnimal.update({
       where: { id },
       data: {

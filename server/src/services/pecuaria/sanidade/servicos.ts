@@ -1,3 +1,4 @@
+import { totalAtribuidoServicoTx } from "../reproducao/atribuicoes-servico.js";
 import { exigirPeriodoAberto } from "../../financeiro/regras.js";
 import crypto from "node:crypto";
 import { Prisma } from "@prisma/client";
@@ -57,27 +58,18 @@ async function fatos(tx: Db, id: string, propriedadeId: number, filtro?: Consult
       origem: t.origemMaterial, valor: t.valorServicoAtribuido?.toString() ?? null, vinculado: t.operacaoServicoId === id,
       consumoMantido: t.consumoMantido, podeEditar: t.status === "VALIDO", execucaoId: null, operacaoServicoId: t.operacaoServicoId,
     })),
-    ...aplicacoes.map((a) => ({ ...comum(a), tipo: "APLICACAO" as const, nome: a.nomeProdutoAplicado, dataHora: (a.aplicadaEm ?? a.data).toISOString(), status: a.status, origem: a.origemInsumo, podeEditar: a.status === "VALIDO", execucaoId: a.tarefa?.execucaoId ?? null })),
+    ...aplicacoes.map((a) => ({ ...comum(a), consumoMantido: a.consumoMantido, tipo: "APLICACAO" as const, nome: a.nomeProdutoAplicado, dataHora: (a.aplicadaEm ?? a.data).toISOString(), status: a.status, origem: a.origemInsumo, podeEditar: a.status === "VALIDO", execucaoId: a.tarefa?.execucaoId ?? null })),
     ...exames.map((e) => ({ ...comum(e), tipo: "EXAME" as const, nome: nomeExameHistorico(e.formatoSnapshot, e.tipoExame.nome), dataHora: e.data.toISOString(), status: e.status, origem: e.origem, podeEditar: e.status === "VALIDO", execucaoId: e.tarefa?.execucaoId ?? null })),
     ...protocolos.map((p) => ({ ...comum(p), tipo: "PROTOCOLO" as const, nome: p.protocolo.nome, dataHora: p.inicio.toISOString(), status: p.canceladaEm ? "CANCELADO" : p.tarefas.length ? "REALIZADO" : "PENDENTE", origem: "PROTOCOLO", podeEditar: !p.canceladaEm && p.tarefas.length > 0, execucaoId: p.id })),
   ];
   itens.sort((a, b) => b.dataHora.slice(0, 10).localeCompare(a.dataHora.slice(0, 10)) || a.id.localeCompare(b.id));
   return { itens, total: filtro ? na + ne + np + nt : itens.length };
 }
-async function totalAtribuido(tx: Db, id: string, propriedadeId: number) {
-  const [a, e, p, t] = await Promise.all([
-    tx.aplicacaoProduto.aggregate({ where: { operacaoServicoId: id, propriedadeId, status: "VALIDO" }, _sum: { valorServicoAtribuido: true } }),
-    tx.exameAnimal.aggregate({ where: { operacaoServicoId: id, propriedadeId, status: "VALIDO" }, _sum: { valorServicoAtribuido: true } }),
-    tx.execucaoProtocoloSanitario.aggregate({ where: { operacaoServicoId: id, propriedadeId, canceladaEm: null }, _sum: { valorServicoAtribuido: true } }),
-    tx.tentativaReprodutiva.aggregate({ where: { operacaoServicoId: id, propriedadeId, OR: [{ status: "VALIDO" }, { consumoMantido: true }] }, _sum: { valorServicoAtribuido: true } }),
-  ]);
-  return new Prisma.Decimal(a._sum.valorServicoAtribuido ?? 0).plus(e._sum.valorServicoAtribuido ?? 0).plus(p._sum.valorServicoAtribuido ?? 0).plus(t._sum.valorServicoAtribuido ?? 0);
-}
 export async function listarProcedimentosServico(servicoId: string, propriedadeId: number, query: Partial<ConsultaProcedimentosServico> = {}, verValores = true) {
   const filtro = consultaProcedimentosServicoSchema.parse(query);
   return prisma.$transaction(async (tx) => {
     const op = await servico(tx, servicoId, propriedadeId);
-    const [consulta, total] = await Promise.all([fatos(tx, servicoId, propriedadeId, filtro), totalAtribuido(tx, servicoId, propriedadeId)]);
+    const [consulta, total] = await Promise.all([fatos(tx, servicoId, propriedadeId, filtro), totalAtribuidoServicoTx(tx, servicoId, propriedadeId)]);
     const itens = consulta.itens.slice((filtro.pagina - 1) * filtro.limite, filtro.pagina * filtro.limite).map((i) => ({ ...i, podeEditar: i.podeEditar && op.status === "CONFIRMADA", valor: verValores ? i.valor : null }));
     return { servico: { id: op.id, numero: op.numero, descricao: op.descricao, status: op.status, propriedadeId, propriedade: op.propriedade, data: op.data.toISOString(), valorConfirmado: verValores ? op.valorTotal.toString() : null, totalAtribuido: verValores ? total.toString() : null, disponivel: verValores ? op.valorTotal.minus(total).toString() : null }, itens, total: consulta.total, pagina: filtro.pagina, limite: filtro.limite, paginas: Math.max(1, Math.ceil(consulta.total / filtro.limite)) };
   });

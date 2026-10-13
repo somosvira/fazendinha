@@ -24,6 +24,10 @@ As anotações confirmadas pela fazenda têm os seguintes significados:
 
 Um negativo após uma gestação confirmada exige tratar a perda ou corrigir o diagnóstico, preservando o resultado anterior. Ausência de atendimento, resultado inconclusivo e falta de informação não tornam automaticamente uma vaca vazia. A situação apresentada deriva da cronologia: parto ou perda encerra a gestação; nova tentativa passa a aguardar diagnóstico.
 
+Lançamentos retroativos conferem também os ciclos encerrados: uma nova gestação ou lactação não pode se sobrepor a um período conhecido. Uma perda registrada permite o diagnóstico negativo no mesmo dia; isso não libera automaticamente outra intervenção reprodutiva nesse dia. Anular um parto antigo exige revisar os fatos posteriores antes de reabrir sua gestação.
+
+A situação clínica acompanha o animal após a transferência entre sítios. Gestação, restrições, paridade e tentativa relevante são consultadas para o animal autorizado na data de referência. Listas de fatos e custos conservam o sítio do evento; acompanhar a condição clínica não concede acesso a custos de outros sítios. Reconfirmação, sexagem e parto no destino podem se vincular à gestação anterior.
+
 ## Material, estoque e genética
 
 IA e TE usam `MaterialGenetico`, ligado ao Produto do estoque único. Consumo de estoque valida produto, lote/validade, quantidade, saldo e período financeiro; fato e saída são gravados na mesma transação. Material incluído em Serviço confirmado não cria saldo fictício na fazenda. Origem documentada exige justificativa. Um vínculo ao Serviço não lança outra despesa.
@@ -33,6 +37,10 @@ A tentativa preserva um retrato da genética e da origem: alterações posterior
 Cobertura observada é diferente de exposição de um touro a um lote. A exposição registra touro, lote e intervalo, respeitando a permanência histórica das fêmeas. Ela não comprova uma data exata de fecundação nem determina automaticamente a paternidade.
 
 Anulação de lançamento e perda física de material têm efeitos diferentes. Uma dose usada ou descartada não pode voltar ao estoque utilizável por simples cancelamento do procedimento. Correções exigem motivo e conferência dos fatos dependentes.
+
+Uma tentativa anulada com consumo mantido continua compondo o total atribuído ao Serviço. Criação de tentativas, consulta e edição dos procedimentos usam a mesma regra de soma; o valor confirmado continua sendo o limite para atribuições concorrentes.
+
+Aplicações sanitárias também distinguem devolução de material não utilizado e manutenção de material utilizado/descartado. Ao manter consumo, o usuário informa separadamente se a administração e os dados/carências registrados foram confirmados, se o material foi descartado sem administração ou se a informação não pôde ser confirmada. Administração confirmada conserva a carência registrada; informação não confirmada deixa leite e carne em revisão. Vincular uma aplicação substituta válida transfere a evidência clínica para ela, mantendo o consumo e a auditoria originais.
 
 ## Parto, cria e lactação
 
@@ -50,13 +58,25 @@ A visita organiza atividades e participantes; cada procedimento continua sendo u
 
 Cada atividade preserva participantes, ordem e contexto. Atividades extras não substituem a folha original. Rascunhos ficam no servidor. Atendimento confirmado, adiado e não atendido são diferentes; finalizar a visita não executa automaticamente as pendências.
 
+A seleção usa a localização, categoria e situação reprodutiva na data da visita. Filtros permitem lote, categoria e intervalos informados desde tentativa, parto ou confirmação de gestação. A preparação conserva os critérios e motivos de inclusão. A folha de campo apresenta o lote e o contexto reprodutivo conhecido, com informação ausente explicitamente indicada e espaço para o resultado.
+
+Rascunhos têm versão por participante. Um salvamento baseado em versão antiga é rejeitado como conflito, sem substituir os dados mais recentes. Adiado e não atendido exigem motivo, mas não data de execução. A prévia compara também restrições, paridade, parto e categoria; alterações posteriores à revisão exigem uma nova conferência.
+
 Uma confirmação pode abranger um animal ou um subconjunto de até 100 participantes da mesma atividade. A confirmação do subconjunto é atômica e idempotente. O restante da visita pode continuar pendente. Aplicações, exames e tarefas existentes são reutilizados, evitando duplicar consumo ou procedimentos entre os módulos.
+
+O acompanhamento apresenta retornos informados, diagnóstico pendente, tarefas IATF futuras/vencidas e previsões de parto. Uma avaliação válida posterior substitui o retorno anterior do mesmo animal. Parto/perda encerram a previsão ligada à gestação. Links abrem o animal, fato consultável, programação ou registro de parto; fatos de outro sítio não recebem acesso por esse caminho. Ausência de data de diagnóstico permanece explícita, sem gerar um prazo clínico presumido.
 
 ## IATF
 
 Uma programação usa uma versão publicada do protocolo, com participações individuais. Os intervalos de 10/11 dias até a inseminação são contados a partir do início efetivo de cada participante, conforme confirmação da fazenda, e dependem da versão do protocolo. Indicação, início previsto, início efetivo e execução são informações distintas.
 
 Etapas admitem intervalos em dias ou horas. Atraso de uma execução não desloca silenciosamente as demais; reprogramar exige motivo. Retirada conserva o histórico e a reentrada constitui outra participação. A aplicação, avaliação ou tentativa executada permanece ligada à tarefa, com um único efeito operacional.
+
+As restrições aplicáveis são revalidadas na execução; preparar ou iniciar o protocolo não autoriza executar uma etapa posteriormente bloqueada. Alertas configurados exigem ciência explícita. O início informado de um protocolo sanitário pela visita é preservado, sem substituição silenciosa pela data da visita.
+
+Anular um fato vinculado deixa sua tarefa ou atendimento pendente de regularização, preservando a execução original e o histórico. A regularização exige motivo e pode vincular um substituto válido, encerrar sem substituição ou reabrir quando o procedimento não aconteceu e os efeitos físicos permitem isso. Não produz consumo automático nem apaga o lançamento original.
+
+A escolha do substituto apresenta fatos válidos do mesmo tipo, animal, sítio e data, sem exigir digitação de identificadores internos. Consumo mantido impede reabertura para nova execução. Visita encerrada permite vincular substituto ou encerrar a regularização, mas não reabrir atendimento. Anulação de tentativa vinculada a Serviço respeita os períodos da tentativa e do Serviço.
 
 ## Carga técnica e reconciliação
 

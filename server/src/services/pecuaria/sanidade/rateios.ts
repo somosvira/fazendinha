@@ -1,3 +1,4 @@
+import { tentativaComAtribuicaoServico, aplicacaoComConsumoOuAtribuicao } from "../reproducao/atribuicoes-servico.js";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../../db.js";
 import { auditar, RebanhoError, travarAnimais } from "../rebanho/regras.js";
@@ -8,10 +9,10 @@ async function contexto(tx: Prisma.TransactionClient, servicoId: string, proprie
   const servico = await tx.operacao.findFirst({ where: { id: servicoId, propriedadeId, tipo: "SERVICO", status: "CONFIRMADA" } });
   if (!servico) throw new RebanhoError("VALIDACAO", "Serviço confirmado não encontrado neste sítio");
   const [aplicacoes, exames, protocolos, tentativas] = await Promise.all([
-    tx.aplicacaoProduto.findMany({ where: { operacaoServicoId: servicoId, propriedadeId, status: "VALIDO" }, include: { tarefa: { select: { execucaoId: true } } } }),
+    tx.aplicacaoProduto.findMany({ where: { operacaoServicoId: servicoId, propriedadeId, ...aplicacaoComConsumoOuAtribuicao }, include: { tarefa: { select: { execucaoId: true } } } }),
     tx.exameAnimal.findMany({ where: { operacaoServicoId: servicoId, propriedadeId, status: "VALIDO" }, include: { tarefa: { select: { execucaoId: true } }, tipoExame: { select: { nome: true } } } }),
     tx.execucaoProtocoloSanitario.findMany({ where: { operacaoServicoId: servicoId, propriedadeId, canceladaEm: null }, include: { protocolo: { select: { nome: true } } } }),
-    tx.tentativaReprodutiva.findMany({ where: { operacaoServicoId: servicoId, propriedadeId, OR: [{ status: "VALIDO" }, { consumoMantido: true }] } }),
+    tx.tentativaReprodutiva.findMany({ where: { operacaoServicoId: servicoId, propriedadeId, ...tentativaComAtribuicaoServico } }),
   ]);
   const itens = [
     ...tentativas.map((t) => ({ id: t.id, tipo: "TENTATIVA" as const, animalId: t.animalId, nome: `${t.tipo} · tentativa ${t.ordem}`, valor: t.valorServicoAtribuido, execucaoId: undefined })),

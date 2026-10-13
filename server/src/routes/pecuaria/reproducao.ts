@@ -12,6 +12,7 @@ import {
 } from "../../services/propriedade.js";
 import { FinanceiroError } from "../../services/financeiro/regras.js";
 import { RebanhoError } from "../../services/pecuaria/rebanho/regras.js";
+import { conferirAnimalNoFato } from "../../services/pecuaria/fatos.js";
 import { conflitoTransacaoPecuaria } from "../../services/pecuaria/transacao.js";
 import * as s from "../../services/pecuaria/reproducao/schemas.js";
 import * as registros from "../../services/pecuaria/reproducao/registros.js";
@@ -762,3 +763,23 @@ reproducaoRouter.post(
     }
   },
 );
+
+reproducaoRouter.get("/alertas-sanitarios", async c => {
+  try {
+    const animalId = s.uuid.parse(c.req.query("animalId"));
+    const data = s.data.parse(c.req.query("data"));
+    const acao = z.enum(["IA", "TE", "COBERTURA", "IATF"]).parse(c.req.query("acao"));
+    const propriedadeId = await resolverEscopoEscrita(c, Number(c.req.query("propriedadeId")) || undefined);
+    await conferirAnimalNoFato(prisma, animalId, propriedadeId, registros.dia(data));
+    return c.json(await registros.consultaAlertasSanitariosTx(prisma, animalId, propriedadeId, registros.dia(data), acao));
+  } catch(e) { return falhaV4(c,e); }
+});
+
+reproducaoRouter.post("/tarefas-iatf/:id/regularizacao",validarV4(s.regularizacaoSchema),async c=>{
+  try{const b=c.req.valid("json");return c.json(apresentarV4(c,await iatf.regularizarTarefa(c.req.param("id"),{...b,propriedadeId:await resolverEscopoEscrita(c,b.propriedadeId)},usuarioV4(c))));}catch(e){return falhaV4(c,e);}
+});
+
+reproducaoRouter.get("/tarefas-iatf/:id/substitutos", async c => {
+  try { return c.json(await iatf.substitutosTarefa(s.uuid.parse(c.req.param("id")), await resolverEscopoEscrita(c, Number(c.req.query("propriedadeId")) || undefined))); }
+  catch (e) { return falhaV4(c, e); }
+});

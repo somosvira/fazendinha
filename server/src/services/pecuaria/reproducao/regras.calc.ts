@@ -15,6 +15,7 @@ type Gestacao = { confirmadaEm: Date; encerradaEm: Date | null; status: string }
 
 /** A última evidência conclusiva prevalece. Uma anotação de campo não apaga o diagnóstico anterior. */
 export function situacaoReprodutiva(input: {
+  referencia?: Date;
   gestacao?: Gestacao | null;
   ultimaAvaliacao?: Avaliacao | null;
   avaliacoes?: Avaliacao[];
@@ -22,6 +23,21 @@ export function situacaoReprodutiva(input: {
   ultimoParto?: { data: Date } | null;
   inicial?: { data: Date; situacao: string } | null;
 }) {
+  if (input.referencia) {
+    const referencia = input.referencia;
+    return situacaoReprodutiva({
+      ...input,
+      referencia: undefined,
+      gestacao: input.gestacao && input.gestacao.confirmadaEm <= referencia
+        ? { ...input.gestacao, encerradaEm: input.gestacao.encerradaEm && input.gestacao.encerradaEm <= referencia ? input.gestacao.encerradaEm : null }
+        : null,
+      avaliacoes: input.avaliacoes?.filter((a) => a.data <= referencia),
+      ultimaAvaliacao: input.ultimaAvaliacao && input.ultimaAvaliacao.data <= referencia ? input.ultimaAvaliacao : null,
+      ultimaTentativa: input.ultimaTentativa && input.ultimaTentativa.data <= referencia ? input.ultimaTentativa : null,
+      ultimoParto: input.ultimoParto && input.ultimoParto.data <= referencia ? input.ultimoParto : null,
+      inicial: input.inicial && input.inicial.data <= referencia ? input.inicial : null,
+    });
+  }
   // Uma situação de entrada não desfaz uma gestação operacional ainda aberta.
   if (input.gestacao?.status === "VALIDO" && !input.gestacao.encerradaEm) return "GESTANTE";
   const evidencias: Array<{ data: Date; situacao: string; prioridade: number }> = [];
@@ -38,4 +54,15 @@ export function situacaoReprodutiva(input: {
   }
   if (input.ultimoParto) evidencias.push({ ...input.ultimoParto, situacao: "VAZIA", prioridade: 4 });
   return evidencias.sort((a, b) => b.data.getTime() - a.data.getTime() || b.prioridade - a.prioridade)[0]?.situacao ?? "DESCONHECIDA";
+}
+
+/** Encerramento libera o intervalo a partir da data final; intervenção no dia continua sendo regra própria. */
+export function intervalosSobrepostos(
+  a: { inicio: Date; fim: Date | null },
+  b: { inicio: Date; fim: Date | null },
+) {
+  // Um fato de início e encerramento no mesmo dia ainda ocupa aquele dia clínico.
+  const fimA = a.fim && a.fim <= a.inicio ? new Date(a.inicio.getTime() + 86400000) : a.fim;
+  const fimB = b.fim && b.fim <= b.inicio ? new Date(b.inicio.getTime() + 86400000) : b.fim;
+  return (!fimA || b.inicio < fimA) && (!fimB || a.inicio < fimB);
 }

@@ -286,12 +286,12 @@ export const sanidadeRouter = new Hono()
       return c.json(await aplicacoes.carenciaAnimal(c.req.param("id"), await resolverEscopoLeitura(c), c.req.valid("query").dataReferencia));
     } catch (e) { return falha(c, e); }
   })
-  .post("/aplicacoes/:id/anulacao", validar(z.object({ motivo: z.string().trim().min(5).max(500), propriedadeId: z.number().int().positive() })), async (c) => {
+  .post("/aplicacoes/:id/anulacao", validar(z.object({ motivo: z.string().trim().min(5).max(500), propriedadeId: z.number().int().positive(), destinoConsumo: z.enum(["DEVOLVER_ESTOQUE", "MANTER_CONSUMO"]), administracaoMantida: z.boolean().nullable().optional() })), async (c) => {
     try {
       if (!uuid.safeParse(c.req.param("id")).success) return c.json({ error: "Aplicação inválida", code: "VALIDACAO" }, 422);
       const body = c.req.valid("json");
       const propriedadeId = await resolverEscopoEscrita(c, body.propriedadeId);
-      return c.json(ocultarCustos(await aplicacoes.anularAplicacao(c.req.param("id"), propriedadeId, body.motivo, getUsuario(c)?.id ?? null), c));
+      return c.json(ocultarCustos(await aplicacoes.anularAplicacao(c.req.param("id"), propriedadeId, body.motivo, getUsuario(c)?.id ?? null, body.destinoConsumo, body.administracaoMantida), c));
     } catch (e) { return falha(c, e); }
   })
   .get("/servicos", async (c) => {

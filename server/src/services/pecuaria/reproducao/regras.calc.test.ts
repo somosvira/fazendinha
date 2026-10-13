@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calendarioIatf, contadoresCiclo, situacaoReprodutiva } from "./regras.calc.js";
+import { calendarioIatf, contadoresCiclo, situacaoReprodutiva, intervalosSobrepostos } from "./regras.calc.js";
 const dia = (n: number) => new Date(`2026-10-${String(n).padStart(2, "0")}T00:00:00Z`);
 
 describe("evidências reprodutivas e calendário", () => {
@@ -35,5 +35,20 @@ describe("evidências reprodutivas e calendário", () => {
     expect(situacaoReprodutiva({ avaliacoes: [{ data: dia(1), resultado: "NEGATIVO" }, { data: dia(5), resultado: "INCONCLUSIVO" }] })).toBe("VAZIA");
     expect(situacaoReprodutiva({ avaliacoes: [{ data: dia(5), resultado: "NAO_AVALIADO" }] })).toBe("DESCONHECIDA");
     expect(situacaoReprodutiva({ inicial: { data: dia(10), situacao: "DESCONHECIDA" }, ultimaAvaliacao: { data: dia(1), resultado: "NEGATIVO" } })).toBe("DESCONHECIDA");
+  });
+});
+
+describe("cronologia clínica na data consultada", () => {
+  it("gestação encerrada depois da referência ainda está ativa naquela data", () => {
+    const gestacao = { confirmadaEm: dia(1), encerradaEm: dia(8), status: "VALIDO" };
+    expect(situacaoReprodutiva({ gestacao, referencia: dia(5) })).toBe("GESTANTE");
+    expect(situacaoReprodutiva({ gestacao, referencia: dia(8) })).toBe("VAZIA");
+    expect(situacaoReprodutiva({ gestacao, referencia: dia(1), ultimaTentativa: { data: dia(9) }, ultimoParto: { data: dia(10) } })).toBe("GESTANTE");
+    expect(situacaoReprodutiva({ gestacao, referencia: new Date("2026-09-30") })).toBe("DESCONHECIDA");
+  });
+  it("novo intervalo aberto conflita com intervalo fechado posterior, mas aceita ciclo encerrado antes", () => {
+    expect(intervalosSobrepostos({ inicio: dia(1), fim: null }, { inicio: dia(5), fim: dia(8) })).toBe(true);
+    expect(intervalosSobrepostos({ inicio: dia(8), fim: null }, { inicio: dia(1), fim: dia(8) })).toBe(false);
+    expect(intervalosSobrepostos({ inicio: dia(8), fim: null }, { inicio: dia(8), fim: dia(8) })).toBe(true);
   });
 });

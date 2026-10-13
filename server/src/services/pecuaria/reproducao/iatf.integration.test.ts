@@ -9,7 +9,12 @@ import {
   executarTarefa,
   retirarParticipante,
   adicionarParticipantes,
+  regularizarTarefa,
 } from "./iatf.js";
+import { anularFato, previaAnulacao } from "./correcoes.js";
+import { anularAplicacao, criarAplicacao, carenciaAnimal } from "../sanidade/aplicacoes.js";
+import { aplicacaoSchema } from "../sanidade/aplicacoes.schemas.js";
+import { substitutosTarefa } from "./iatf.js";
 import { atualizarProduto } from "../../estoque/produtos.js";
 const comBanco =
   process.env.PECUARIA_DB_INTEGRATION === "1" ? describe : describe.skip;
@@ -253,6 +258,36 @@ comBanco("IATF planejada, executada e reentrada — banco descartável", () => {
       aferido: true,
       diferencas: [],
     });
+    await anularAplicacao(salva.aplicacaoId!, sitio.id, "Aplicação não realizada: corrigir lançamento e devolver insumo", null, "DEVOLVER_ESTOQUE");
+    const tarefaAnulada = await prisma.tarefaIatf.findUniqueOrThrow({where:{id:inicial.id}});
+    expect(tarefaAnulada.regularizacaoPendente).toBe(true);
+    expect(tarefaAnulada.aplicacaoId).toBe(salva.aplicacaoId);
+    expect(tarefaAnulada.realizadaEm).toEqual(salva.realizadaEm);
+    await regularizarTarefa(inicial.id,{propriedadeId:sitio.id,chave:randomUUID(),acao:"REABRIR",motivo:"Confirmado lançamento indevido sem aplicação física",cienciaNaoExecutado:true},null);
+    const reexecutada = await executarTarefa(inicial.id,{...confirmada,chave:randomUUID()},null);
+    expect(reexecutada.aplicacaoId).not.toBe(salva.aplicacaoId);
+    expect(reexecutada.historicoRegularizacao).toEqual(expect.arrayContaining([expect.objectContaining({acao:"REABRIR",anterior:expect.objectContaining({aplicacaoId:salva.aplicacaoId,realizadoSnapshot:salva.realizadoSnapshot})})]));
+    expect(await prisma.aplicacaoProduto.count({where:{animalId:animal.id,status:"VALIDO"}})).toBe(1);
+    expect(await prisma.movimentoEstoque.count({where:{produtoId:produto.id,tipo:"SAIDA",status:"CONFIRMADO"}})).toBe(1);
+    const reversoesAntes = await prisma.movimentoEstoque.count({where:{produtoId:produto.id,reversaoDeId:{not:null}}});
+    await anularAplicacao(reexecutada.aplicacaoId!,sitio.id,"Registro anulado preservando aplicação física comprovada",null,"MANTER_CONSUMO");
+    expect(await prisma.movimentoEstoque.count({where:{produtoId:produto.id,reversaoDeId:{not:null}}})).toBe(reversoesAntes);
+    expect((await prisma.aplicacaoProduto.findUniqueOrThrow({where:{id:reexecutada.aplicacaoId!}})).consumoMantido).toBe(true);
+    await expect(regularizarTarefa(inicial.id,{propriedadeId:sitio.id,chave:randomUUID(),acao:"REABRIR",motivo:"Não repetir consumo que aconteceu fisicamente",cienciaNaoExecutado:true},null)).rejects.toMatchObject({code:"VALIDACAO",campo:"cienciaNaoExecutado"});
+    expect((await carenciaAnimal(animal.id, sitio.id)).carne.estado).toBe("NAO_INFORMADO");
+    const substituto = await criarAplicacao(aplicacaoSchema.parse({ ...execucao.dados, origemInsumo: "SEM_ORIGEM_JUSTIFICADA", justificativaSemOrigem: "Correção documentada, sem nova administração ou baixa de estoque" }), null);
+    expect(await substitutosTarefa(inicial.id, sitio.id)).toEqual(expect.arrayContaining([expect.objectContaining({ id: substituto.id })]));
+    await expect(substitutosTarefa(inicial.id, sitio.id + 999999)).rejects.toMatchObject({ code: "NAO_ENCONTRADO" });
+    await regularizarTarefa(inicial.id,{propriedadeId:sitio.id,chave:randomUUID(),acao:"VINCULAR_SUBSTITUTO",fatoId:substituto.id,motivo:"Substituto documentado representa a mesma administração física"},null);
+    expect((await prisma.tarefaIatf.findUniqueOrThrow({ where: { id: inicial.id } })).aplicacaoId).toBe(substituto.id);
+    expect((await carenciaAnimal(animal.id, sitio.id)).carne.estado).toBe("CONHECIDO");
+    expect((await prisma.aplicacaoProduto.findUniqueOrThrow({ where: { id: reexecutada.aplicacaoId! } })).consumoMantido).toBe(true);
+    expect(await prisma.movimentoEstoque.count({where:{produtoId:produto.id,tipo:"SAIDA",status:"CONFIRMADO"}})).toBe(1);
+    const previaTentativa = await previaAnulacao("tentativas", iaRealizada.tentativaId!, sitio.id);
+    await anularFato("tentativas",iaRealizada.tentativaId!,{propriedadeId:sitio.id,chave:randomUUID(),motivo:"Registro revisto, mas dose foi usada fisicamente",fingerprint:previaTentativa.fingerprint,destinoConsumo:"MANTER_CONSUMO"},null);
+    await expect(regularizarTarefa(ia.id,{propriedadeId:sitio.id,chave:randomUUID(),acao:"REABRIR",motivo:"Tentativa de reabrir com consumo conservado",cienciaNaoExecutado:true},null)).rejects.toMatchObject({code:"VALIDACAO",campo:"cienciaNaoExecutado"});
+    await regularizarTarefa(ia.id,{propriedadeId:sitio.id,chave:randomUUID(),acao:"ENCERRAR_SEM_SUBSTITUICAO",motivo:"Conservar dose utilizada e encerrar correção"},null);
+    expect(await prisma.movimentoEstoque.count({where:{produtoId:semen.id,reversaoDeId:{not:null}}})).toBe(0);
     await retirarParticipante(
       participante.id,
       sitio.id,
@@ -290,6 +325,6 @@ comBanco("IATF planejada, executada e reentrada — banco descartável", () => {
     expect(
       (await prisma.tarefaIatf.findUniqueOrThrow({ where: { id: inicial.id } }))
         .realizadoSnapshot,
-    ).toEqual(salva.realizadoSnapshot);
+    ).toEqual(reexecutada.realizadoSnapshot);
   }, 30000);
 });

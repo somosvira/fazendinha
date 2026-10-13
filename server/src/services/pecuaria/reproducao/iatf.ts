@@ -1,3 +1,4 @@
+import { eventoRegularizacao, validarSubstitutoTx, substituirEvidenciaAplicacaoTx, listarSubstitutosTx, type RegularizacaoInput } from "./regularizacao.js";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../../db.js";
@@ -486,12 +487,13 @@ export async function executarTarefaTx(
       "Execução deve ocorrer após início efetivo e até agora",
       "realizadaEm",
     );
-  await conferirMatrizTx(
-    tx,
-    participante.animalId,
-    input.propriedadeId,
-    dia(data),
-  );
+  if (["APLICACAO", "MANEJO", "TENTATIVA"].includes(tarefa.tipo))
+    await conferirDisponibilidadeTx(
+      tx, participante.animalId, input.propriedadeId, dia(data), "IATF",
+      input.dados.cienciaSanitaria === true,
+    );
+  else
+    await conferirMatrizTx(tx, participante.animalId, input.propriedadeId, dia(data));
   const dados = {
     ...input.dados,
     animalId: participante.animalId,
@@ -501,7 +503,7 @@ export async function executarTarefaTx(
   let preparado: Record<string, unknown>;
   if (tarefa.tipo === "APLICACAO")
     preparado = aplicacaoSchema.parse({
-      ...dados,
+      ...Object.fromEntries(Object.entries(dados).filter(([k]) => k !== "cienciaSanitaria")),
       aplicadaEm: input.realizadaEm,
     });
   else if (tarefa.tipo === "TENTATIVA")
@@ -515,7 +517,7 @@ export async function executarTarefaTx(
         responsavel: z.string().trim().max(160).nullish(),
       })
       .strict()
-      .parse(input.dados);
+      .parse(Object.fromEntries(Object.entries(input.dados).filter(([k]) => k !== "cienciaSanitaria")));
   else erro("Tipo de tarefa desconhecido; revise a versão do protocolo");
   const plano = tarefa.planejadoSnapshot as SnapshotIatf | null;
   const desvio = compararExecucaoIatf(
@@ -853,3 +855,51 @@ export async function adicionarParticipantes(
     );
   });
 }
+
+export async function regularizarTarefaTx(tx: Prisma.TransactionClient, id: string, input: RegularizacaoInput, usuarioId: number | null) {
+  const { tarefa, participante, programacao } = await contextoTarefaTx(tx, id, input.propriedadeId);
+  if(!tarefa.regularizacaoPendente || !tarefa.realizadaEm)
+    erro("Tarefa não exige regularização");
+  if(input.acao === "REABRIR" && (participante.encerradoEm || programacao.status !== "ABERTA"))
+    erro("A participação precisa estar aberta para reabrir uma tarefa");
+  const historicoRegularizacao = eventoRegularizacao(tarefa.historicoRegularizacao, input, tarefa, usuarioId);
+  const tipo = tarefa.tipo === "TENTATIVA" ? "TentativaReprodutiva" : tarefa.tipo === "APLICACAO" ? "AplicacaoProduto" : "AvaliacaoReprodutiva";
+  const campoVinculo = tarefa.tipo === "TENTATIVA" ? "tentativaId" : tarefa.tipo === "APLICACAO" ? "aplicacaoId" : "avaliacaoId";
+  if(input.acao === "VINCULAR_SUBSTITUTO") {
+    await validarSubstitutoTx(tx, tipo, input, participante.animalId, dia(dataNoBrasil(tarefa.realizadaEm)), tarefa[campoVinculo]);
+    if(await tx.tarefaIatf.count({where: {id: {not:id}, [campoVinculo]: input.fatoId}}))
+      erro("Substituto já pertence a outra tarefa", "fatoId");
+    if (tipo === "AplicacaoProduto") await substituirEvidenciaAplicacaoTx(tx, tarefa.aplicacaoId, input, usuarioId);
+  }
+  const salva = await tx.tarefaIatf.update({where:{id},data:{
+    regularizacaoPendente:false, historicoRegularizacao,
+    ...(input.acao === "REABRIR" ? {realizadaEm:null, tentativaId:null, avaliacaoId:null, aplicacaoId:null, realizadoSnapshot:Prisma.DbNull, desviosSnapshot:Prisma.DbNull, motivo:input.motivo}
+      : input.acao === "VINCULAR_SUBSTITUTO" ? {[campoVinculo]: input.fatoId} : {}),
+  }});
+  const originalId = tarefa[campoVinculo];
+  const vinculados = await tx.participanteVisita.findMany({where:{regularizacaoPendente:true,OR:[{tarefaIatfId:id},{fatoTipo:"TarefaIatf",fatoId:id},...(originalId ? [{fatoTipo:tipo,fatoId:originalId}] : [])]}});
+  const atividadesVinculadas = await tx.atividadeVisita.findMany({where:{id:{in:vinculados.map(v=>v.atividadeId)}}});
+  const visitasVinculadas = await tx.visitaVeterinaria.findMany({where:{id:{in:atividadesVinculadas.map(a=>a.visitaId)}}});
+  if(input.acao === "REABRIR" && visitasVinculadas.some(v=>v.encerradaEm))
+    erro("Atendimento pertence a visita encerrada; registre a nova intervenção em outra atividade");
+  for(const visita of vinculados) await tx.participanteVisita.update({where:{id:visita.id},data:{
+    regularizacaoPendente:false,
+    historicoRegularizacao:eventoRegularizacao(visita.historicoRegularizacao,input,visita,usuarioId),
+    ...(input.acao === "REABRIR" ? {status:"PENDENTE",fatoId:null,fatoTipo:null,rascunho:{},versaoRascunho:{increment:1}} : input.acao === "VINCULAR_SUBSTITUTO" && visita.fatoTipo !== "TarefaIatf" ? {fatoId:input.fatoId} : {}),
+  }});
+  if(input.acao === "REABRIR") await tx.visitaVeterinaria.updateMany({where:{id:{in:visitasVinculadas.map(v=>v.id)}},data:{status:"PARCIAL"}});
+  await auditar(tx,{entidade:"TarefaIatf",entidadeId:id,animalId:participante.animalId,propriedadeId:input.propriedadeId,acao:"REGULARIZACAO",usuarioId,antes:tarefa,depois:salva});
+  return salva;
+}
+
+export async function substitutosTarefa(id: string, propriedadeId: number) {
+  const { tarefa, participante } = await contextoTarefaTx(prisma, id, propriedadeId);
+  if (!tarefa.regularizacaoPendente) return [];
+  const tipo = tarefa.tipo === "TENTATIVA" ? "TentativaReprodutiva" : tarefa.tipo === "APLICACAO" ? "AplicacaoProduto" : "AvaliacaoReprodutiva";
+  return listarSubstitutosTx(prisma, tipo, tarefa.tentativaId ?? tarefa.aplicacaoId ?? tarefa.avaliacaoId, participante.animalId, propriedadeId);
+}
+export const regularizarTarefa = (id:string,input:RegularizacaoInput,usuarioId:number|null) => transacaoPecuaria(async tx=>{
+  const contexto=await contextoTarefaTx(tx,id,input.propriedadeId);
+  await travarAnimais(tx,[contexto.participante.animalId]);
+  return operacaoIdempotenteTx(tx,{...input,tarefaId:id},usuarioId,"REGULARIZACAO_IATF",()=>regularizarTarefaTx(tx,id,input,usuarioId));
+});
