@@ -6,7 +6,7 @@ import { Loader } from "../components/Loading";
 import { navegarPara } from "../router";
 import { rotuloUnidade, type UnidadeMedida } from "../lib/unidades";
 import { fmtMoneyExact } from "@/components/charts";
-import { brl, Button, type ColunaTabela, dataBR, Empty, ErrorBox, Metric, PageHeader, PaginaFinanceira, Paginacao, Panel, Pill, TabelaFinanceira } from "../financeiro/financeiro-ui";
+import { brl, Button, type ColunaTabela, dataBR, Empty, ErrorBox, Metric, PageHeader, PaginaFinanceira, Paginacao, Panel, Pill, SelectFiltro, TabelaFinanceira } from "../financeiro/financeiro-ui";
 import { TransferirEstoque } from "./TransferirEstoque";
 import { FormProduto } from "../financeiro/FormProduto";
 import { PeriodoFinanceiroControl } from "../financeiro/PeriodoFinanceiroControl";
@@ -252,16 +252,8 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
       <div className="estoque-secao-cabecalho"><span className="fin-section-icon"><Boxes aria-hidden="true" /></span><h2 className="font-serif text-2xl">Saldos de estoque<AjudaCampo rotulo="Como o valor é calculado" texto="O custo médio é a média ponderada das entradas neste sítio; valor = saldo × custo médio." /></h2></div>
       <div className="estoque-filtros grid gap-3 md:grid-cols-[minmax(0,2fr)_repeat(2,minmax(0,1fr))_auto]">
         <input type="search" aria-label="Buscar produto" value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar por nome ou categoria…" className={CAMPO} />
-        <select aria-label="Filtrar por centro de custo" value={centroFiltro} onChange={(e) => setCentroFiltro(e.target.value)} className={CAMPO}>
-          <option value="">Todos os centros</option>
-          <option value={SEM_VINCULO}>Sem centro</option>
-          {centros.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
-        </select>
-        <select aria-label="Ordenar por" value={ordem} onChange={(e) => setOrdem(e.target.value as Ordem)} className={CAMPO}>
-          <option value="nome">Ordenar por nome</option>
-          <option value="categoria">Ordenar por categoria</option>
-          <option value="valor">Ordenar por maior valor</option>
-        </select>
+        <SelectFiltro rotulo="Filtrar por centro de custo" valor={centroFiltro} onChange={setCentroFiltro} opcoes={[{ valor: "", texto: "Todos os centros" }, { valor: SEM_VINCULO, texto: "Sem centro" }, ...centros.map((c) => ({ valor: c.id, texto: c.nome }))]} className="w-full sm:!w-full" />
+        <SelectFiltro rotulo="Ordenar por" valor={ordem} onChange={(valor) => setOrdem(valor as Ordem)} opcoes={[{ valor: "nome", texto: "Ordenar por nome" }, { valor: "categoria", texto: "Ordenar por categoria" }, { valor: "valor", texto: "Ordenar por maior valor" }]} className="w-full sm:!w-full" />
         <button type="button" aria-pressed={soAbaixoMin} onClick={() => setSoAbaixoMin((v) => !v)} className={`${CAMPO} inline-flex items-center gap-2 whitespace-nowrap font-medium ${soAbaixoMin ? "border-[var(--fin-pendente)] bg-[var(--fin-warning-bg)] text-[var(--fin-pendente)]" : "text-ink-2"}`}><IconeAbaixoMinimo />Só abaixo do mínimo{nAbaixoMin > 0 ? ` (${nAbaixoMin})` : ""}</button>
       </div>
       <div className="min-w-0">
@@ -283,15 +275,8 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
       {movimentoId && <p className="mt-2 rounded-lg border border-border bg-surface p-3 text-sm">Movimento selecionado · <a href="/estoque" className="underline">Voltar ao histórico completo</a></p>}
       <div className="estoque-filtros flex flex-wrap items-center gap-3">
         <label className="relative w-full min-w-0 flex-[2_1_260px] sm:w-auto"><Search size={16} className="absolute left-3 top-3 text-ink-3" aria-hidden="true" /><input type="search" aria-label="Buscar movimento" value={buscaMov} onChange={(e) => setBuscaMov(e.target.value)} placeholder="Buscar por produto, operação ou fornecedor…" className={`${CAMPO} w-full pl-9`} /></label>
-        <select aria-label="Filtrar por origem" value={origemMov} onChange={(e) => { setOrigemMov(e.target.value); setPaginaMov(1); }} className={`${CAMPO} min-w-0 flex-[1_1_160px]`}>
-          <option value="">Todas as origens</option>
-          {Object.entries(ROTULO_ORIGEM).map(([chave, nome]) => <option key={chave} value={chave}>{nome}</option>)}
-        </select>
-        <select aria-label="Filtrar histórico por centro de custo" value={centroMov} onChange={(e) => { setCentroMov(e.target.value); setPaginaMov(1); }} className={`${CAMPO} min-w-0 flex-[1_1_160px]`}>
-          <option value="">Todos os centros</option>
-          <option value={SEM_VINCULO}>Sem centro</option>
-          {centros.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
-        </select>
+        <SelectFiltro rotulo="Filtrar por origem" valor={origemMov} onChange={(valor) => { setOrigemMov(valor); setPaginaMov(1); }} opcoes={[{ valor: "", texto: "Todas as origens" }, ...Object.entries(ROTULO_ORIGEM).map(([valor, texto]) => ({ valor, texto }))]} className="min-w-0 flex-[1_1_160px]" />
+        <SelectFiltro rotulo="Filtrar histórico por centro de custo" valor={centroMov} onChange={(valor) => { setCentroMov(valor); setPaginaMov(1); }} opcoes={[{ valor: "", texto: "Todos os centros" }, { valor: SEM_VINCULO, texto: "Sem centro" }, ...centros.map((c) => ({ valor: c.id, texto: c.nome }))]} className="min-w-0 flex-[1_1_160px]" />
         <PeriodoFinanceiroControl inicio={periodoMov.inicio} fim={periodoMov.fim} allowAll label="Período do histórico" onChange={(periodo) => { setPeriodoMov(periodo); setPaginaMov(1); }} />
       </div>
       <div className="min-w-0">

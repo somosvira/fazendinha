@@ -178,7 +178,7 @@ function FormNovoAnimal({ onVoltar }: { onVoltar: () => void }) {
 
   if (!catalogos && !erroCatalogos) return <PaginaCarregando label="Carregando cadastro" />;
 
-  return <div className="shell-wide pagina-financeira pb-10">
+  return <PaginaFinanceira><div className="pb-10">
     <ErrorBox erro={erroCatalogos} />
     {catalogos && <form onSubmit={submeter} noValidate className="pec-novo-animal">
       <div className="pec-form-corpo space-y-7 p-5 md:p-7">
@@ -249,5 +249,5 @@ function FormNovoAnimal({ onVoltar }: { onVoltar: () => void }) {
         </div>
       </aside>
     </form>}
-  </div>;
+  </div></PaginaFinanceira>;
 }

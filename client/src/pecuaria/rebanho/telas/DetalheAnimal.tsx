@@ -24,7 +24,7 @@ import { FormPesagem } from "../forms/FormPesagem";
 import { FormBaixa } from "../forms/FormBaixa";
 import { ConfirmDialog } from "../../../components/ConfirmDialog";
 import { Loader } from "../../../components/Loading";
-import { Button, ErrorBox, hoje, PageHeader, Panel, Pill } from "../../../financeiro/financeiro-ui";
+import { Button, ErrorBox, hoje, PageHeader, PaginaFinanceira, Panel, Pill } from "../../../financeiro/financeiro-ui";
 import { navegarPara } from "../../../router";
 import { PesoEGanho } from "../components/PesoEGanho";
 import { HistoricoBaixas } from "../components/HistoricoBaixas";
@@ -152,7 +152,7 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
   };
   const carregarMovimentacoes = useCallback((pagina: number) => listarMovimentacoes({ animalId: id, incluirDesfeitas: true, page: pagina, pageSize: 20 }), [id]);
 
-  if (!animal) return <div className="shell-wide pagina-carregando"><button onClick={onVoltar} className="mt-6 mb-5 inline-flex shrink-0 items-center gap-2 self-start text-sm font-semibold text-ink-2"><ArrowLeft size={17} /> Voltar para animais</button><ErrorBox erro={erro} />{!erro && <Loader label="Carregando animal" full />}</div>;
+  if (!animal) return <PaginaFinanceira><div className="pagina-carregando"><button onClick={onVoltar} className="mt-6 mb-5 inline-flex shrink-0 items-center gap-2 self-start text-sm font-semibold text-ink-2"><ArrowLeft size={17} /> Voltar para animais</button><ErrorBox erro={erro} />{!erro && <Loader label="Carregando animal" full />}</div></PaginaFinanceira>;
 
   const ativo = animal.situacao === "ATIVO";
   // a atual é a linha aberta; para quem saiu, a última fechada
@@ -184,7 +184,7 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
   const composicaoOrdenada = [...animal.composicao].sort((a, b) => b.fracao64 - a.fracao64);
   const somaComposicao = animal.composicao.reduce((total, item) => total + item.fracao64, 0);
 
-  return <div className="shell-wide pagina-financeira">
+  return <PaginaFinanceira>
     <nav aria-label="Navegação" className="pec-breadcrumb"><button type="button" onClick={() => navegarPara("/pecuaria/rebanho")}>Rebanho</button><span aria-hidden="true">/</span><button type="button" onClick={onVoltar}>Animais</button><span aria-hidden="true">/</span><span aria-current="page">{animal.brinco}</span></nav>
     <div className="mt-6"><ErrorBox erro={erro} /></div>
     <article className="pec-ficha">
@@ -401,5 +401,5 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
       onConfirm={() => { void aplicarComposicaoSugerida(); }}
       onCancel={() => setSugestaoComposicao(null)}
     />
-  </div>;
+  </PaginaFinanceira>;
 }

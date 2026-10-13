@@ -35,9 +35,15 @@ function sessao(areas: string[], flags: string[] = [], dono = false) {
   localStorage.setItem("rionovo:usuario", JSON.stringify({ id: 1, nome: "T", email: "t@x", papel: "x", abas: [], areas, flags, status: "ATIVO", dono }));
 }
 
+async function selecionarFiltro(rotulo: string, opcao: string) {
+  fireEvent.click(screen.getByLabelText(rotulo));
+  fireEvent.click(await screen.findByRole("option", { name: opcao }));
+}
+
 afterEach(() => { cleanup(); localStorage.clear(); vi.unstubAllGlobals(); setPropriedadeAtiva(null); window.history.replaceState({}, "", "/"); });
 beforeEach(() => {
   vi.stubGlobal("fetch", mockFetch());
+  if (!HTMLElement.prototype.scrollIntoView) HTMLElement.prototype.scrollIntoView = vi.fn();
 });
 
 function chamouSaldos(fetchMock: ReturnType<typeof mockFetch>) {
@@ -316,9 +322,9 @@ describe("EstoqueContent — histórico de movimentos", () => {
 
     fireEvent.change(screen.getByLabelText("Buscar movimento"), { target: { value: "OP-0011" } });
     await waitFor(() => expect(urlsMovimentos(f).at(-1)).toContain("q=OP-0011"));
-    fireEvent.change(screen.getByLabelText("Filtrar por origem"), { target: { value: "COMPRA" } });
+    await selecionarFiltro("Filtrar por origem", "Compra");
     await waitFor(() => expect(urlsMovimentos(f).at(-1)).toContain("origem=COMPRA"));
-    fireEvent.change(screen.getByLabelText("Filtrar histórico por centro de custo"), { target: { value: SEM_VINCULO } });
+    await selecionarFiltro("Filtrar histórico por centro de custo", "Sem centro");
     await waitFor(() => expect(urlsMovimentos(f).at(-1)).toContain(`centroCustoId=${SEM_VINCULO}`));
   });
 
@@ -326,7 +332,7 @@ describe("EstoqueContent — histórico de movimentos", () => {
     vi.stubGlobal("fetch", mockFetch({ saldos: [saldo({})], movimentos: [] }));
     render(<EstoqueContent />);
     await screen.findByText("Nenhum movimento registrado ainda.");
-    fireEvent.change(screen.getByLabelText("Filtrar por origem"), { target: { value: "COMPRA" } });
+    await selecionarFiltro("Filtrar por origem", "Compra");
     expect(await screen.findByText("Nenhum movimento bate com os filtros.")).toBeTruthy();
   });
 });

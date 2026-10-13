@@ -10,8 +10,9 @@
 
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import type { LucideIcon } from "lucide-react";
 
-export type SubTab<T extends string> = { id: T; label: string };
+export type SubTab<T extends string> = { id: T; label: string; icon?: LucideIcon };
 
 export function SubTabs<T extends string>({ tabs, active, onSelect, className, ariaLabel, variant }: {
   tabs: SubTab<T>[];
@@ -23,7 +24,7 @@ export function SubTabs<T extends string>({ tabs, active, onSelect, className, a
 }) {
   if (variant === "financeiro") return <Tabs value={active} onValueChange={id => onSelect(id as T)} className={cn("min-w-0", className)}>
     <TabsList aria-label={ariaLabel} className={cn("fin-abas grid h-auto group-data-[orientation=horizontal]/tabs:h-auto w-full gap-1 p-1", tabs.length === 4 ? "grid-cols-2 lg:grid-cols-4" : tabs.length > 4 ? "grid-cols-2 sm:grid-cols-3 xl:grid-cols-5" : tabs.length === 3 ? "grid-cols-3" : "grid-cols-2")}>
-      {tabs.map(t => <TabsTrigger key={t.id} value={t.id} onClick={event => { if (event.detail === 0 && active !== t.id) onSelect(t.id); }} className="min-h-11 whitespace-normal px-3 text-left">{t.label}</TabsTrigger>)}
+      {tabs.map(({ id, label, icon: Icon }) => <TabsTrigger key={id} value={id} onClick={event => { if (event.detail === 0 && active !== id) onSelect(id); }} className="min-h-11 whitespace-normal px-3 text-left">{Icon && <Icon size={16} strokeWidth={1.8} aria-hidden="true" />}{label}</TabsTrigger>)}
     </TabsList>
   </Tabs>;
   return (
@@ -34,6 +35,7 @@ export function SubTabs<T extends string>({ tabs, active, onSelect, className, a
       >
         {tabs.map((t) => {
           const on = t.id === active;
+          const Icon = t.icon;
           return (
             <button
               key={t.id}
@@ -48,6 +50,7 @@ export function SubTabs<T extends string>({ tabs, active, onSelect, className, a
                   "bg-card font-semibold text-ink shadow-[0_1px_2px_rgba(30,20,8,0.10),0_2px_5px_rgba(30,20,8,0.05)]",
               )}
             >
+              {Icon && <Icon size={16} aria-hidden="true" />}
               {t.label}
             </button>
           );

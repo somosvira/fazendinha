@@ -12,8 +12,8 @@
 
 import "./sidebar-clara.css";
 import { Button } from "@/components/ui/button";
-import { useEffect, useState } from "react";
-import { Beef, HeartPulse,  Leaf, CircleDollarSign, FileText, FilePenLine, Plus, Settings, Wallet, type LucideIcon } from "lucide-react";
+import { useEffect, useState, type ComponentType, type SVGProps } from "react";
+import { HeartPulse, Leaf, CircleDollarSign, FileText, FilePenLine, Plus, Settings, Wallet } from "lucide-react";
 import type { Tab } from "./Shell";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
@@ -42,9 +42,22 @@ const ICON: Partial<Record<Tab, JSX.Element>> = {
   config: <><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></>,
 };
 
-const ICON_FINANCEIRO: Partial<Record<Tab, LucideIcon>> = { gastos: CircleDollarSign, caixinha: Wallet, cadastros: Settings, plano: Settings, relatorio: FileText };
+type IconeNavegacao = ComponentType<SVGProps<SVGSVGElement>>;
 
-const ICON_PECUARIA: Partial<Record<Tab, LucideIcon>> = { "pec-rebanho": Beef, "pec-sanidade": HeartPulse, "pec-nutricao": Leaf };
+/** Vaca de perfil, para diferenciar o acesso Rebanho da área Pecuária. */
+function VacaIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...props}>
+      <path d="M3 10h3l1-3h7l1.5 2 2-2 2 .5-.7 1.4 1.7.5-1.4 1.3 1 1.3-2.2.5L16 11v2h-1v4h-2v-4H9v4H7v-4H5.5A2.5 2.5 0 0 1 3 10Z" />
+      <path d="m6 10-2-2-1 1M16.5 7l.8-2 1.2.8M18 10h.01" />
+      <path d="M11 13v1.5h2V13" />
+    </svg>
+  );
+}
+
+const ICON_FINANCEIRO: Partial<Record<Tab, IconeNavegacao>> = { gastos: CircleDollarSign, caixinha: Wallet, cadastros: Settings, plano: Settings, relatorio: FileText };
+
+const ICON_PECUARIA: Partial<Record<Tab, IconeNavegacao>> = { "pec-rebanho": VacaIcon, "pec-sanidade": HeartPulse, "pec-nutricao": Leaf };
 
 type AreaTrabalhoId = "pecuaria";
 type NavItem = { id: Tab; label: string };

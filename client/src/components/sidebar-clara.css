@@ -43,7 +43,8 @@
 /* Tema cooperativa apenas enquanto o módulo financeiro está montado. */
 :root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) .sidebar-clara {
   --mast-bg: var(--fin-sidebar);
-  --side-hover: var(--fin-nav-selected);
+  /* Hover indica o item sem disputar com o verde reservado à página atual. */
+  --side-hover: #d9e3da;
   --side-active: var(--fin-nav-selected);
   --side-active-ink: var(--fin-heading);
   --mast-ink: var(--fin-heading);

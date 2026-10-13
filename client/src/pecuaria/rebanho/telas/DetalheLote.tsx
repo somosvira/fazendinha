@@ -136,7 +136,7 @@ export function DetalheLote({ id, podeLancar = true, onVoltar }: { id: string; p
     finally { setProcessandoLote(false); }
   };
 
-  if (!lote) return <div className="shell-wide pagina-carregando"><button onClick={onVoltar} className="mt-6 mb-5 inline-flex shrink-0 items-center gap-2 self-start text-sm font-semibold text-ink-2"><ArrowLeft size={17} /> Voltar para lotes</button><ErrorBox erro={erro} />{!erro && <Loader label="Carregando lote" full />}</div>;
+  if (!lote) return <PaginaFinanceira><div className="pagina-carregando"><button onClick={onVoltar} className="mt-6 mb-5 inline-flex shrink-0 items-center gap-2 self-start text-sm font-semibold text-ink-2"><ArrowLeft size={17} /> Voltar para lotes</button><ErrorBox erro={erro} />{!erro && <Loader label="Carregando lote" full />}</div></PaginaFinanceira>;
 
   const totalPaginasAnimais = Math.max(1, Math.ceil(totalAnimais / ITENS_POR_PAGINA));
   const totalPaginasBaixados = Math.max(1, Math.ceil(totalBaixados / ITENS_POR_PAGINA));

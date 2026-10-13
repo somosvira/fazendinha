@@ -6,6 +6,7 @@
  * As CONSTANTES de UI (ABAS/FLAGS/PAPEIS) continuam vindo de data/acessos. */
 
 import { useEffect, useState } from "react";
+import { Clock3, ShieldCheck, UserCheck, UserPlus } from "lucide-react";
 import { ABAS, AREAS, FLAGS, PAPEIS } from "../data/acessos";
 import {
   listarUsuarios,
@@ -17,6 +18,7 @@ import {
 import type { UsuarioSessao } from "../lib/auth";
 import { useToast } from "./Toast";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { Button, Metric, PageHeader, PaginaFinanceira } from "../financeiro/financeiro-ui";
 
 /* validação simples de email (suficiente p/ feedback antes do envio real) */
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -530,28 +532,20 @@ export function Acessos() {
   const existingEmails = users.map((u) => u.email.trim().toLowerCase()).filter(Boolean);
 
   return (
-    <div className="shell-wide">
-      <div className="mt-[18px] mb-7 grid grid-cols-[repeat(3,1fr)_auto] items-center border border-[color:var(--rule)] bg-[color:var(--bg-card)] max-[1100px]:grid-cols-2">
-        <div className="flex flex-col gap-[5px] border-r border-[color:var(--rule-soft)] px-6 py-[18px]">
-          <span className="text-[12px] uppercase tracking-[0.14em] text-ink-3">Pessoas com acesso</span>
-          <span className="mono-nums font-serif text-[32px] leading-none tracking-[-0.015em]">{ativos}</span>
-        </div>
-        <div className="flex flex-col gap-[5px] border-r border-[color:var(--rule-soft)] px-6 py-[18px]">
-          <span className="text-[12px] uppercase tracking-[0.14em] text-ink-3">Convites pendentes</span>
-          <span className="mono-nums font-serif text-[32px] leading-none tracking-[-0.015em]">{pendentes}</span>
-        </div>
-        <div className="flex flex-col gap-[5px] border-r border-[color:var(--rule-soft)] px-6 py-[18px]">
-          <span className="text-[12px] uppercase tracking-[0.14em] text-ink-3">Papéis disponíveis</span>
-          <span className="mono-nums font-serif text-[32px] leading-none tracking-[-0.015em]">{Object.keys(PAPEIS).length}</span>
-        </div>
-        <div className="flex flex-col gap-[5px] px-6 py-[18px]">
-          <button className="btn-primary" onClick={() => setShowInvite(true)}>
-            + Convidar pessoa
-          </button>
-        </div>
+    <PaginaFinanceira>
+      <PageHeader
+        eyebrow="Administração"
+        titulo="Acessos"
+        descricao="Convide pessoas e defina quais áreas e informações cada perfil pode consultar ou operar."
+        acao={<Button onClick={() => setShowInvite(true)}><UserPlus size={16} /> Convidar pessoa</Button>}
+      />
+      <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <Metric compacto label="Pessoas com acesso" valor={String(ativos)} detalhe="Perfis ativos" icon={UserCheck} tone="green" />
+        <Metric compacto label="Convites pendentes" valor={String(pendentes)} detalhe="Aguardando criação de senha" icon={Clock3} />
+        <Metric compacto label="Papéis disponíveis" valor={String(Object.keys(PAPEIS).length)} detalhe="Perfis-base para permissões" icon={ShieldCheck} />
       </div>
 
-      <div className="flex flex-col gap-8 pb-[60px]">
+      <div className="mt-6 flex flex-col gap-8 pb-[60px]">
         {/* Faixa horizontal: a equipe inteira numa linha só, com rolagem
             lateral quando não couber. A ficha de quem está selecionado ocupa
             a largura toda logo abaixo. */}
@@ -636,6 +630,6 @@ export function Acessos() {
         onConfirm={doRevoke}
         onCancel={() => setRevoking(null)}
       />
-    </div>
+    </PaginaFinanceira>
   );
 }
