@@ -1,3 +1,4 @@
+import { condicaoSituacaoTarefa, situacaoTarefaComum, propriedadeRegularizacao, vinculoRegularizacaoSelect } from "../protocolos/situacao.js";
 import { deslocarCalendario } from "../protocolos/calendario.calc.js";
 import { carregarVersaoTx, reservarVersaoTx, publicarVersaoTx, inativarVersaoTx } from "../protocolos/versoes.js";
 import { confirmarColetivo } from "./coletivos.js";
@@ -87,7 +88,7 @@ export async function iniciarExecucaoTx(tx: Prisma.TransactionClient, input: { c
     if (!protocolo) throw new RebanhoError("VALIDACAO", "Selecione uma versão publicada do protocolo", "protocoloId");
     const simultaneas = await tx.participacaoProtocolo.findMany({ where: { animalId: input.animalId, canceladaEm: null,
       protocolo: { nome: { equals: protocolo.nome, mode: "insensitive" } },
-      tarefas: { some: { dispensadaEm: null, aplicacoes: { none: { status: "VALIDO" } }, exames: { none: { status: "VALIDO" } } } },
+      tarefas: { some: { OR: [condicaoSituacaoTarefa("PENDENTE"), { regularizacaoPendente: true }] } },
     }, select: { id: true } });
     if (simultaneas.length && (!input.confirmarSobreposicao || (input.justificativaSobreposicao?.trim().length ?? 0) < 5)) {
       throw new RebanhoError("CONFLITO", "O animal já tem este protocolo pendente. Confirme a sobreposição com justificativa", "confirmarSobreposicao");
@@ -126,11 +127,7 @@ function whereTarefas(propriedadeId: number | null, animalId?: string, filtro?: 
     ...(propriedadeId != null || filtro?.loteId || filtro?.buscaAnimal ? { animal: { ...buscaAnimal(filtro), ...(propriedadeId != null || filtro?.loteId ? { localizacoes: { some: { ate: null,
       ...(propriedadeId == null ? {} : { propriedadeId }), ...(filtro?.loteId ? { loteId: filtro.loteId } : {}) } } } : {}) } } : {}) },
     ...(filtro?.de || filtro?.ate ? { previstaPara: intervalo(filtro) } : {}) };
-  const realizada: Prisma.TarefaProtocoloWhereInput = { OR: [{ aplicacoes: { some: { status: "VALIDO" } } }, { exames: { some: { status: "VALIDO" } } }] };
-  if (filtro?.situacao === "EXECUCAO_CANCELADA") where.AND = [{ execucao: { canceladaEm: { not: null } } }, { NOT: realizada }];
-  else if (filtro?.situacao === "DISPENSADA") where.AND = [{ execucao: { canceladaEm: null } }, { dispensadaEm: { not: null } }];
-  else if (filtro?.situacao === "REALIZADA") where.AND = [realizada];
-  else if (filtro?.situacao === "PENDENTE" || filtro?.situacao === "ATRASADA") where.AND = [{ execucao: { canceladaEm: null } }, { dispensadaEm: null }, { NOT: realizada }, ...(filtro.situacao === "ATRASADA" ? [{ previstaPara: { lt: dia(hojeFazenda()) } }] : [])];
+  Object.assign(where, condicaoSituacaoTarefa(filtro?.situacao, dia(hojeFazenda())));
   return where;
 }
 export async function listarTarefasPaginadas(propriedadeId: number | null, animalId: string | undefined, filtro: ConsultaSanitaria) {
@@ -139,16 +136,16 @@ export async function listarTarefasPaginadas(propriedadeId: number | null, anima
 }
 export async function listarTarefas(propriedadeId: number | null, animalId?: string, filtro?: ConsultaSanitaria) {
   const where = whereTarefas(propriedadeId, animalId, filtro);
-  const tarefas = await prisma.tarefaProtocolo.findMany({ where, include: {
+  const tarefas = await prisma.tarefaProtocolo.findMany({ where, include: { vinculos: vinculoRegularizacaoSelect,
     execucao: { select: { animalId: true, propriedadeId: true, rodadaId: true, rodada: { select: { id: true, nome: true } }, canceladaEm: true, protocolo: { select: { nome: true, versao: true } }, animal: { select: { id: true, brinco: true, nome: true, localizacoes: { where: { ate: null }, select: { propriedadeId: true } } } } } },
-    aplicacoes: { select: { id: true, status: true }, orderBy: { criadoEm: "desc" } }, exames: { select: { id: true, status: true }, orderBy: { criadoEm: "desc" } },
+    aplicacoes: { select: { id: true, status: true, propriedadeId: true }, orderBy: { criadoEm: "desc" } }, exames: { select: { id: true, status: true, propriedadeId: true }, orderBy: { criadoEm: "desc" } },
   }, orderBy: [{ previstaPara: "asc" }, { id: "asc" }], ...limites(filtro) });
   return tarefas.map((t) => {
     const aplicacao = t.aplicacoes.find((a) => a.status === "VALIDO") ?? null;
     const exame = t.exames.find((e) => e.status === "VALIDO") ?? null;
     const { animal, ...execucao } = t.execucao;
     return { ...t, execucao: { ...execucao, animal: { id: animal.id, brinco: animal.brinco, nome: animal.nome } }, propriedadeAtualId: animal.localizacoes[0]?.propriedadeId ?? null, aplicacao, exame,
-      situacao: aplicacao || exame ? "REALIZADA" : t.execucao.canceladaEm ? "EXECUCAO_CANCELADA" : t.dispensadaEm ? "DISPENSADA" : "PENDENTE" };
+      situacao: situacaoTarefaComum(t), propriedadeRegularizacaoId: propriedadeRegularizacao(t) };
   });
 }
 
@@ -160,7 +157,7 @@ export async function dispensarTarefa(id: string, motivo: string, usuarioId: num
     const original = await tx.tarefaProtocolo.findUnique({ where: { id }, include: { execucao: true, aplicacoes: { where: { status: "VALIDO" } }, exames: { where: { status: "VALIDO" } } } });
     if (!original) throw new RebanhoError("NAO_ENCONTRADO", "Tarefa não encontrada");
     if (propriedadeId != null && !(await tx.localizacaoAnimal.findFirst({ where: { animalId: original.execucao.animalId, propriedadeId, ate: null } }))) throw new RebanhoError("NAO_ENCONTRADO", "Tarefa não encontrada neste sítio");
-    if (original.dispensadaEm || original.execucao.canceladaEm || original.aplicacoes.length || original.exames.length) {
+    if (original.regularizacaoPendente || original.realizadaEm || original.dispensadaEm || original.execucao.canceladaEm || original.aplicacoes.length || original.exames.length) {
       throw new RebanhoError("CONFLITO", "A tarefa já foi realizada, dispensada ou cancelada");
     }
     const salva = await tx.tarefaProtocolo.update({ where: { id }, data: { dispensadaEm: new Date(), motivoDispensa: motivo } });
@@ -195,7 +192,7 @@ export async function adiarTarefa(id: string, input: { previstaPara: string; mot
     await travarAnimais(tx, [previa.execucao.animalId]);
     const antes = await tx.tarefaProtocolo.findUnique({ where: { id }, include: { execucao: true, aplicacoes: { where: { status: "VALIDO" } }, exames: { where: { status: "VALIDO" } } } });
     if (!antes || !(await tx.localizacaoAnimal.findFirst({ where: { animalId: previa.execucao.animalId, propriedadeId, ate: null } }))) throw new RebanhoError("NAO_ENCONTRADO", "Tarefa não encontrada neste sítio");
-    if (antes.dispensadaEm || antes.execucao.canceladaEm || antes.aplicacoes.length || antes.exames.length) throw new RebanhoError("CONFLITO", "Só uma tarefa pendente pode ser adiada");
+    if (antes.regularizacaoPendente || antes.realizadaEm || antes.dispensadaEm || antes.execucao.canceladaEm || antes.aplicacoes.length || antes.exames.length) throw new RebanhoError("CONFLITO", "Só uma tarefa pendente pode ser adiada");
     const previstaPara = dia(input.previstaPara);
     if (!Number.isFinite(previstaPara.getTime()) || previstaPara.toISOString().slice(0, 10) !== input.previstaPara || previstaPara <= antes.previstaPara) throw new RebanhoError("VALIDACAO", "Escolha uma data posterior à previsão atual", "previstaPara");
     if (input.motivo.trim().length < 5) throw new RebanhoError("VALIDACAO", "Informe o motivo do adiamento", "motivo");

@@ -68,6 +68,8 @@ Uma confirmação pode abranger um animal ou um subconjunto de até 100 particip
 
 O acompanhamento apresenta retornos informados, diagnóstico pendente, tarefas IATF futuras/vencidas e previsões de parto. Uma avaliação válida posterior substitui o retorno anterior do mesmo animal. Parto/perda encerram a previsão ligada à gestação. Links abrem o animal, fato consultável, programação ou registro de parto; fatos de outro sítio não recebem acesso por esse caminho. Ausência de data de diagnóstico permanece explícita, sem gerar um prazo clínico presumido.
 
+Na avaliação coletiva, o tipo de exame pode ser escolhido por animal, com os campos adicionais de sua versão. O rascunho conserva essas informações; mudança de formato exige revisão antes da confirmação. Conclusão e sexo fetal usam os campos clínicos existentes, sem criar outra avaliação paralela. Consulte os detalhes de snapshots no [contrato comum](protocolos-exames.md).
+
 ## IATF
 
 Protocolos reprodutivos são mantidos em Configurações → Pecuária → Reprodução. Rascunho admite edição; publicação/utilização exige nova versão para alterar as etapas. Inativação impede novas programações sem apagar as existentes. O grupo usa `ProgramacaoProtocolo`, cada animal usa `ParticipacaoProtocolo` e suas ações usam `TarefaProtocolo`.
@@ -77,6 +79,8 @@ Uma programação usa uma versão publicada do protocolo, com participações in
 Etapas admitem intervalos em dias ou horas. Atraso de uma execução não desloca silenciosamente as demais; reprogramar exige motivo. Retirada conserva o histórico e a reentrada constitui outra participação. A aplicação, avaliação ou tentativa executada permanece ligada à tarefa, com um único efeito operacional.
 
 As restrições aplicáveis são revalidadas na execução; preparar ou iniciar o protocolo não autoriza executar uma etapa posteriormente bloqueada. Alertas configurados exigem ciência explícita. O início informado de um protocolo sanitário pela visita é preservado, sem substituição silenciosa pela data da visita.
+
+O protocolo reprodutivo permite planejar o tipo e a finalidade do exame. A tarefa inicia o formulário com essa referência; mudança explícita do tipo exige justificativa de desvio. Versões anteriores sem seleção específica usam o exame padrão.
 
 Anular um fato vinculado deixa sua tarefa ou atendimento pendente de regularização, preservando a execução original e o histórico. A regularização exige motivo e pode vincular um substituto válido, encerrar sem substituição ou reabrir quando o procedimento não aconteceu e os efeitos físicos permitem isso. Não produz consumo automático nem apaga o lançamento original.
 

@@ -355,7 +355,7 @@ export async function anularAplicacao(id: string, propriedadeId: number, motivo:
     await travarAnimais(tx, [existente.animalId]);
     const atual = await tx.aplicacaoProduto.findUnique({ where: { id } });
     if (atual?.status !== "VALIDO") throw new RebanhoError("CONFLITO", "A aplicação já foi anulada");
-    const ligadaRotina = await tx.tarefaIatf.count({ where: { aplicacaoId: id } }) || await tx.participanteVisita.count({ where: { fatoTipo: "AplicacaoProduto", fatoId: id } });
+    const ligadaRotina = await tx.vinculoTarefaProtocolo.count({ where: { aplicacaoId: id, estado: "ATUAL" } }) || await tx.participanteVisita.count({ where: { fatoTipo: "AplicacaoProduto", fatoId: id } });
     if (ligadaRotina && !destinoConsumo) throw new RebanhoError("VALIDACAO", "Informe se o material foi utilizado/descartado ou se pode ser devolvido", "destinoConsumo");
     const destino = destinoConsumo ?? "DEVOLVER_ESTOQUE";
     if (existente.operacaoServicoId) await tx.$queryRaw`SELECT id FROM "public"."Operacao" WHERE id = ${existente.operacaoServicoId} FOR UPDATE`;

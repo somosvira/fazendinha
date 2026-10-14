@@ -1,11 +1,12 @@
-import { validarObservacoesExame, type ObservacaoExame } from "./formatos.js";
+import { hashFormatoExame } from "./formato-snapshot.js";
+import { validarObservacoesExame, conferirFormatoReprodutivo, type ObservacaoExame } from "./formatos.js";
 import crypto from "node:crypto";
 import { Prisma, type AvaliacaoReprodutiva } from "@prisma/client";
 import { RebanhoError } from "../rebanho/regras.js";
 
 export const TIPO_EXAME_REPRODUTIVO = "b0400000-0000-4000-8000-000000000001";
 type DadosAvaliacao = Pick<AvaliacaoReprodutiva, "animalId" | "data" | "resultado"> &
-  Partial<Omit<AvaliacaoReprodutiva, "animalId" | "data" | "resultado">> & { responsavel?: string | null; tipoExameId?: string; finalidade?: "DIAGNOSTICO" | "RECONFIRMACAO" | "SEXAGEM"; resultados?: ObservacaoExame[] };
+  Partial<Omit<AvaliacaoReprodutiva, "animalId" | "data" | "resultado">> & { responsavel?: string | null; tipoExameId?: string; formatoExameHash?: string; finalidade?: "DIAGNOSTICO" | "RECONFIRMACAO" | "SEXAGEM"; resultados?: ObservacaoExame[] };
 
 /** Persiste somente a evidência e sua interpretação. Efeitos clínicos pertencem ao executor de domínio. */
 export async function registrarEvidenciaAvaliacaoTx(tx: Prisma.TransactionClient, dados: DadosAvaliacao): Promise<AvaliacaoReprodutiva> {
@@ -15,6 +16,9 @@ export async function registrarEvidenciaAvaliacaoTx(tx: Prisma.TransactionClient
   const tipo = await tx.tipoExame.findUnique({ where: { id: tipoExameId } });
   if (!tipo || tipo.tipoResultado !== "MULTIPLO" || tipo.contexto === "SANITARIO" || (!tipo.ativo && (dados.origem ?? "MANUAL") !== "IDEAGRI"))
     throw new RebanhoError("VALIDACAO", "Selecione um tipo de exame reprodutivo ativo com formato compatível", "tipoExameId");
+  conferirFormatoReprodutivo(tipo.tipoResultado, tipo.campos);
+  if (dados.formatoExameHash && dados.formatoExameHash !== hashFormatoExame(tipo))
+    throw new RebanhoError("CONFLITO", "O formato do exame mudou desde o preenchimento. Atualize o formulário e revise os resultados antes de confirmar", "tipoExameId");
   const finalidade = dados.finalidade ?? (["RECONFIRMACAO", "SEXAGEM"].includes(dados.resultado) ? dados.resultado : "DIAGNOSTICO");
   const finalidades = dados.sexoFetal && finalidade !== "SEXAGEM" ? [finalidade, "SEXAGEM"] : [finalidade];
   const observacoes: ObservacaoExame[] = [];

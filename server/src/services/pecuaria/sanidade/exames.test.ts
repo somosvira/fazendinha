@@ -47,7 +47,7 @@ describe("integridade de exames", () => {
 
   it("lista bloqueio sem filtrar resultados ou status e sem devolver contagem interna", async () => {
     mocks.tx.tipoExame.findMany.mockResolvedValue([{ ...tipo, _count: { exames: 1, etapas: 0 } }, { ...tipo, id: "novo", _count: { exames: 0, etapas: 0 } }]);
-    expect(await listarTiposExame()).toEqual([{ ...tipo, padraoReprodutivo: false, formatoBloqueado: true }, { ...tipo, id: "novo", padraoReprodutivo: false, formatoBloqueado: false }]);
+    expect(await listarTiposExame()).toEqual([{ ...tipo, formatoExameHash: expect.stringMatching(/^[a-f0-9]{64}$/), padraoReprodutivo: false, formatoBloqueado: true }, { ...tipo, id: "novo", formatoExameHash: expect.stringMatching(/^[a-f0-9]{64}$/), padraoReprodutivo: false, formatoBloqueado: false }]);
   });
 
   it("aceita zero na coleta e preserva snapshot após adquirir a trava do tipo", async () => {

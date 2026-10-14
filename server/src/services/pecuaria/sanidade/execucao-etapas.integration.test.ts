@@ -1,3 +1,4 @@
+import { regularizarTarefaSanitaria } from "../protocolos/regularizacao.js";
 import crypto from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
 import { prisma } from "../../../db.js";
@@ -101,13 +102,15 @@ describeBanco("execução da etapa no PostgreSQL", () => {
     expect(await prisma.movimentoEstoque.count({ where: { produtoId, tipo: "SAIDA" } })).toBe(1);
     expect(await prisma.requisicaoPecuaria.count({ where: { propriedadeId: input.propriedadeId } })).toBe(0);
   });
-  it("anulação permite outra tentativa, conserva desvio e não altera etapas seguintes", async () => {
+  it("anulação exige reabertura explícita antes de nova execução e preserva próximas etapas", async () => {
     const { input } = await preparar(); const primeiroInput = input.itens[0]; if (primeiroInput.tipo !== "APLICACAO") throw new Error("fixture");
     const seguinte = await prisma.tarefaProtocolo.findFirstOrThrow({ where: { execucao: { animalId: primeiroInput.animalId }, id: { not: primeiroInput.tarefaId } } });
     await expect(criarAplicacao({ ...primeiroInput, desvio: undefined }, null)).rejects.toMatchObject({ campo: "desvio.motivo" });
     const primeiro = await criarAplicacao({ ...primeiroInput, dose: "3", via: "Intramuscular" }, null);
     expect(primeiro.desvioProtocoloSnapshot).toMatchObject({ diferencas: [{ campo: "data" }, { campo: "dose" }, { campo: "via" }], motivo: primeiroInput.desvio?.motivo });
-    await anularAplicacao(primeiro.id, input.propriedadeId, "Dose anotada para o animal errado", null);
+    await anularAplicacao(primeiro.id, input.propriedadeId, "Dose anotada para o animal errado", null, "DEVOLVER_ESTOQUE");
+    await expect(criarAplicacao(primeiroInput, null)).rejects.toMatchObject({ code: "CONFLITO", campo: "tarefaId" });
+    await regularizarTarefaSanitaria(primeiroInput.tarefaId, { propriedadeId: input.propriedadeId, chave: crypto.randomUUID(), acao: "REABRIR", motivo: "Procedimento não realizado; estoque devolvido", cienciaNaoExecutado: true }, null);
     const nova = await criarAplicacao(primeiroInput, null);
     expect(nova.id).not.toBe(primeiro.id);
     expect((await prisma.tarefaProtocolo.findUniqueOrThrow({ where: { id: seguinte.id } })).previstaPara).toEqual(seguinte.previstaPara);

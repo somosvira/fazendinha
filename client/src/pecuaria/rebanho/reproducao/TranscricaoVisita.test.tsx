@@ -76,10 +76,10 @@ afterEach(cleanup);
 beforeEach(() => {
   vi.clearAllMocks();
   window.history.replaceState(null, "", "/pecuaria/visitas/v");
-  vi.mocked(reqV4).mockResolvedValue({
+  vi.mocked(reqV4).mockImplementation(async url => url.includes("tipos-exame") ? [] : ({
     fingerprint: "a".repeat(64),
     participantes: [],
-  });
+  }));
   vi.mocked(salvarRascunhoVisita).mockResolvedValue({...atividade.participantes[0], versaoRascunho: 1});
 });
 describe("confirmação da transcrição", () => {
@@ -118,12 +118,12 @@ describe("confirmação da transcrição", () => {
     ]);
   });
   it("mudança de contexto exige revisão explícita e leva fingerprint na confirmação", async () => {
-    vi.mocked(reqV4).mockResolvedValue({
+    vi.mocked(reqV4).mockImplementation(async url => url.includes("tipos-exame") ? [] : ({
       fingerprint: "b".repeat(64),
       participantes: [
         { participanteId: "p", animalId: "a", alteracoes: ["Gestação mudou"] },
       ],
-    });
+    }));
     vi.mocked(confirmarVisita).mockResolvedValue({});
     render(
       <Transcricao
@@ -173,4 +173,22 @@ it("visita encerrada permite regularizar vínculo sem permitir reabrir atendimen
   fireEvent.click(screen.getByRole("button",{name:"Regularizar origem do fato anulado"}));
   expect(screen.getByRole("option",{name:"Reabrir pendência"})).toHaveProperty("disabled",true);
   expect(screen.getByRole("option",{name:"Vincular fato substituto comprovado"})).toHaveProperty("disabled",false);
+});
+it("seleciona exame personalizado por animal e preserva zero e falso no rascunho e na confirmação", async () => {
+  vi.mocked(reqV4).mockImplementation(async url => url.includes("tipos-exame") ? [{ id: "tipo-custom", nome: "Ultrassom detalhado", ativo: true, versaoFormato: 2, formatoExameHash: "c".repeat(64), campos: [
+    { codigo: "MEDIDA", rotulo: "Medida", tipo: "NUMERO", unidade: "mm", obrigatorio: true },
+    { codigo: "ACHADO", rotulo: "Achado", tipo: "BOOLEANO", obrigatorio: false },
+  ] }] : { fingerprint: "a".repeat(64), participantes: [] });
+  const a = { ...atividade, participantes: [{ ...atividade.participantes[0], rascunho: { resultado: "NEGATIVO", finalidade: "DIAGNOSTICO" } }] };
+  vi.mocked(confirmarVisita).mockResolvedValue({});
+  render(<Transcricao visita={visita} atividade={a} podeLancar onMudou={vi.fn().mockResolvedValue(undefined)} />);
+  await screen.findByRole("option", { name: "Ultrassom detalhado · v2" });
+  fireEvent.change(screen.getByLabelText("Tipo de exame · 100"), { target: { value: "tipo-custom" } });
+  fireEvent.change(screen.getByLabelText(/Medida · mm/), { target: { value: "0" } });
+  fireEvent.change(screen.getByLabelText(/Achado/), { target: { value: "false" } });
+  fireEvent.click(screen.getByRole("button", { name: "Confirmar animal" }));
+  await waitFor(() => expect(confirmarVisita).toHaveBeenCalledTimes(1));
+  const dados = { tipoExameId: "tipo-custom", formatoExameHash: "c".repeat(64), resultados: [{ campo: "MEDIDA", valor: "0" }, { campo: "ACHADO", valor: false }] };
+  expect(vi.mocked(salvarRascunhoVisita).mock.calls.at(-1)?.[3]).toMatchObject(dados);
+  expect(vi.mocked(confirmarVisita).mock.calls[0][2].itens[0].dados).toMatchObject(dados);
 });

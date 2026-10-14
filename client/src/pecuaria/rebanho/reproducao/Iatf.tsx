@@ -40,7 +40,7 @@ export type EtapaIatf = {
     quantidade: number;
   };
   planoExame?: { tipoExameId: string };
-  planoAvaliacao?: { tipo: "DIAGNOSTICO" | "RECONFIRMACAO" | "SEXAGEM" };
+  planoAvaliacao?: { tipoExameId?: string; tipo: "DIAGNOSTICO" | "RECONFIRMACAO" | "SEXAGEM" };
 };
 export type ProtocoloIatf = {
   id: string;
@@ -933,6 +933,8 @@ function ExecucaoIatf({
         acao={tarefa.tipo === "TENTATIVA" ? "tentativa" : "avaliacao"}
         painel={painel}
         animalInicial={animalId}
+        tipoExameInicial={tarefa.planejadoSnapshot?.etapa.planoAvaliacao?.tipoExameId}
+        finalidadeInicial={tarefa.planejadoSnapshot?.etapa.planoAvaliacao?.tipo}
         onFechar={onFechar}
         onSalvo={onSalvo}
         onRegistrar={registrar}
@@ -1028,7 +1030,15 @@ function PlanoEtapa({
 }) {
   const [exames, setExames] = useState<TipoExame[]>([]);
   const [erroExames, setErroExames] = useState<string | null>(null);
-  useEffect(() => { if (etapa.tipo === "EXAME") reqSanidade<TipoExame[]>("/tipos-exame").then(setExames).catch(e => setErroExames(e.message)); }, [etapa.tipo]);
+  useEffect(() => {
+    let ativo = true;
+    if (["EXAME", "AVALIACAO"].includes(etapa.tipo)) {
+      setExames([]); setErroExames(null);
+      (etapa.tipo === "EXAME" ? reqSanidade<TipoExame[]>("/tipos-exame") : reqV4<TipoExame[]>("/reproducao/tipos-exame"))
+        .then(itens => { if (ativo) setExames(itens); }).catch(e => { if (ativo) setErroExames(e.message); });
+    }
+    return () => { ativo = false; };
+  }, [etapa.tipo]);
   if (etapa.tipo === "EXAME") return <><ErrorBox erro={erroExames} /><label>Exame sanitário planejado<select className={classeInput} value={etapa.planoExame?.tipoExameId ?? ""} onChange={e => onChange({ ...etapa, planoExame: e.target.value ? { tipoExameId: e.target.value } : undefined })}><option value="">Selecione o exame</option>{exames.map(e => <option key={e.id} value={e.id}>{e.nome}</option>)}</select></label></>;
   if (etapa.tipo === "APLICACAO") {
     const p = etapa.planoAplicacao;
@@ -1185,7 +1195,13 @@ function PlanoEtapa({
   }
   if (etapa.tipo === "AVALIACAO")
     return (
-      <label className="col-span-full">
+      <div className="col-span-full grid gap-3">
+      <ErrorBox erro={erroExames} />
+      <label>Tipo de exame reprodutivo<select className={classeInput} value={etapa.planoAvaliacao?.tipoExameId ?? ""} onChange={e => onChange({ ...etapa, planoAvaliacao: { tipo: etapa.planoAvaliacao?.tipo ?? "DIAGNOSTICO", tipoExameId: e.target.value || undefined } })}>
+        <option value="">Avaliação reprodutiva padrão (compatibilidade)</option>
+        {exames.filter(t => t.tipoResultado === "MULTIPLO").map(t => <option key={t.id} value={t.id}>{t.nome} · v{t.versaoFormato ?? 1}</option>)}
+      </select></label>
+      <label>
         Avaliação planejada
         <select
           className={classeInput}
@@ -1195,6 +1211,7 @@ function PlanoEtapa({
               ...etapa,
               planoAvaliacao: e.target.value
                 ? {
+                    tipoExameId: etapa.planoAvaliacao?.tipoExameId,
                     tipo: e.target.value as
                       | "DIAGNOSTICO"
                       | "RECONFIRMACAO"
@@ -1213,7 +1230,7 @@ function PlanoEtapa({
           </option>
           <option value="SEXAGEM">Sexagem de gestação conhecida</option>
         </select>
-      </label>
+      </label></div>
     );
   return (
     <p className="col-span-full text-sm">
@@ -1231,15 +1248,18 @@ const nomesCampos: Record<string, string> = {
   tipoTentativa: "Tentativa",
   materialId: "Material genético",
   quantidade: "Quantidade",
-  tipoAvaliacao: "Tipo de avaliação",
+  tipoAvaliacao: "Finalidade do exame",
+  tipoExameId: "Tipo de exame",
 };
 function DetalheEtapa({ tarefa }: { tarefa: TarefaIatf }) {
   const plano = tarefa.planejadoSnapshot?.etapa;
   const referencias = tarefa.planejadoSnapshot?.referencias;
   const produto = referencias?.produto as { nome?: string } | undefined,
     material = referencias?.material as { produtoNome?: string } | undefined;
+  const exame = referencias?.exame as { id?: string; nome?: string; versao?: number } | undefined;
   const apresentacao = (campo: string, v: unknown) => {
     if (v === null || v === undefined) return "Não informado";
+    if (campo === "tipoExameId" && v === exame?.id) return `${exame.nome ?? "Exame planejado"} · v${exame.versao ?? 1}`;
     if (campo === "dataHora" && typeof v === "string") return horarioIatf(v);
     return String(v);
   };
@@ -1264,8 +1284,7 @@ function DetalheEtapa({ tarefa }: { tarefa: TarefaIatf }) {
         )}
         {plano?.planoAvaliacao && (
           <p>
-            Avaliação prevista: {plano.planoAvaliacao.tipo}. O resultado é
-            registrado após atendimento.
+            Exame previsto: {exame?.nome ?? "Avaliação reprodutiva padrão"}{exame?.versao ? ` · v${exame.versao}` : ""}. Finalidade: {plano.planoAvaliacao.tipo}. O resultado é registrado após atendimento.
           </p>
         )}
         {!plano && (

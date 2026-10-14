@@ -48,7 +48,7 @@ export function compararExecucaoProtocolo(tarefa: Tarefa, realizado: RealizadoPr
 export async function conferirTarefaProtocoloTx(tx: Prisma.TransactionClient, tarefaId: string, animalId: string, realizado: RealizadoProtocolo, desvio?: DesvioInput, exigirMotivo = true) {
   const tarefa = await tx.tarefaProtocolo.findUnique({ where: { id: tarefaId, execucao: { protocolo: { tipo: "SANITARIO" } } }, include: { etapa: true, execucao: true,
     aplicacoes: { where: { status: "VALIDO" }, select: { id: true } }, exames: { where: { status: "VALIDO" }, select: { id: true } } } });
-  if (!tarefa || tarefa.execucao.animalId !== animalId || tarefa.execucao.canceladaEm || tarefa.dispensadaEm || tarefa.aplicacoes.length || tarefa.exames.length) {
+  if (!tarefa || tarefa.regularizacaoPendente || tarefa.realizadaEm || tarefa.execucao.animalId !== animalId || tarefa.execucao.canceladaEm || tarefa.dispensadaEm || tarefa.aplicacoes.length || tarefa.exames.length) {
     throw new RebanhoError("CONFLITO", realizado.tipo === "APLICACAO" ? "A tarefa não está disponível para esta aplicação" : "Tarefa de exame inválida ou já realizada", "tarefaId");
   }
   if (tarefa.etapa.protocoloId !== tarefa.execucao.protocoloId) throw new RebanhoError("CONFLITO", "A etapa não pertence à versão desta execução", "tarefaId");

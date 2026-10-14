@@ -152,3 +152,8 @@ describe("planejado e realizado IATF", () => {
     ).toBe(false);
   });
 });
+it("tipos de exames diferentes exigem desvio sem prever o resultado clínico", () => {
+  const p = snapshotIatf({ nome: "Ultrassom", tipo: "AVALIACAO", intervalo: 0, unidade: "DIAS", planoAvaliacao: { tipo: "DIAGNOSTICO", tipoExameId: produto } }, {}, momento, momento, momento);
+  expect(compararExecucaoIatf(p, momento.toISOString(), { finalidade: "DIAGNOSTICO", tipoExameId: produto, resultado: "NEGATIVO" }).diferencas).toEqual([]);
+  expect(compararExecucaoIatf(p, momento.toISOString(), { finalidade: "DIAGNOSTICO", tipoExameId: material, resultado: "POSITIVO" }).diferencas).toMatchObject([{ campo: "tipoExameId", planejado: produto, realizado: material }]);
+});

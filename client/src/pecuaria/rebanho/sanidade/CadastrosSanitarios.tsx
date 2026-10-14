@@ -8,7 +8,7 @@ import { listarTiposAplicacao, reqSanidade, salvarTipoAplicacao, type TipoAplica
 import { ProtocolosCadastro } from "./ProtocolosCadastro";
 
 export type Doenca = { id: string; nome: string; ativo: boolean };
-export type TipoExame = Doenca & { padraoReprodutivo?: boolean; versaoFormato?: number; versaoAnteriorId?: string | null; tipoResultado: "TEXTO" | "NUMERO" | "OPCAO" | "MULTIPLO"; campos?: CampoExame[] | null; contexto?: string; unidade: string | null; opcoes: string[] | null; formatoBloqueado: boolean };
+export type TipoExame = Doenca & { formatoExameHash?: string; padraoReprodutivo?: boolean; versaoFormato?: number; versaoAnteriorId?: string | null; tipoResultado: "TEXTO" | "NUMERO" | "OPCAO" | "MULTIPLO"; campos?: CampoExame[] | null; contexto?: string; unidade: string | null; opcoes: string[] | null; formatoBloqueado: boolean };
 const abas = [
   { id: "protocolos", nome: "Protocolos sanitários" },
   { id: "aplicacao", nome: "Tipos de aplicação" },

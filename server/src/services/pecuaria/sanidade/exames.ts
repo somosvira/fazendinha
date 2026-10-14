@@ -1,5 +1,6 @@
+import { hashFormatoExame } from "../exames/formato-snapshot.js";
 import { vincularFatoTarefaTx } from "../protocolos/vinculos.js";
-import { camposExameSchema, validarObservacoesExame, type CampoExame, type ObservacaoExame } from "../exames/formatos.js";
+import { camposExameSchema, validarObservacoesExame, conferirFormatoReprodutivo, formatoReprodutivoCompativel, type CampoExame, type ObservacaoExame } from "../exames/formatos.js";
 import { marcarRegularizacaoFatoTx } from "../reproducao/marcacao-regularizacao.js";
 import { confirmarColetivo } from "./coletivos.js";
 import { conferirAnimalNoFato } from "../fatos.js";
@@ -14,18 +15,11 @@ import { conferirTarefaProtocoloTx, type DesvioInput } from "./desvios.js";
 type TipoResultado = "TEXTO" | "NUMERO" | "OPCAO" | "MULTIPLO";
 const dia = (s: string) => new Date(`${s}T00:00:00Z`);
 
-function conferirFormatoReprodutivo(tipoResultado: string, campos: CampoExame[] | null) {
-  if (tipoResultado !== "MULTIPLO") throw new RebanhoError("VALIDACAO", "Exames reprodutivos exigem observações estruturadas", "tipoResultado");
-  for (const [codigo, opcoes] of [["CONCLUSAO_GESTACIONAL", ["POSITIVO","NEGATIVO","INCONCLUSIVO"]], ["SEXO_FETAL", ["M","F"]]] as const) {
-    const campo = campos?.find(c => c.codigo === codigo);
-    if (!campo || campo.tipo !== "OPCAO" || campo.obrigatorio || JSON.stringify([...campo.opcoes ?? []].sort()) !== JSON.stringify([...opcoes].sort())) throw new RebanhoError("VALIDACAO", "Preserve os campos clínicos opcionais de conclusão e sexo fetal; acrescente observações específicas sem alterar sua semântica", "campos");
-  }
-}
 
 export async function listarTiposExame(incluirInativos = false, contexto?: "SANITARIO" | "REPRODUTIVO") {
   const tipos = await prisma.tipoExame.findMany({ where: { ...(incluirInativos ? {} : { ativo: true }), ...(contexto ? { contexto: { in: [contexto, "COMPARTILHADO"] } } : {}) }, orderBy: { nome: "asc" },
     include: { _count: { select: { exames: true, etapas: { where: { protocolo: { OR: [{ publicado: true }, { execucoes: { some: {} } }] } } } } } } });
-  return tipos.map(({ _count, ...tipo }) => ({ ...tipo, padraoReprodutivo: tipo.id === "b0400000-0000-4000-8000-000000000001", formatoBloqueado: _count.exames > 0 || _count.etapas > 0 }));
+  return tipos.filter(tipo => contexto !== "REPRODUTIVO" || formatoReprodutivoCompativel(tipo.tipoResultado, tipo.campos)).map(({ _count, ...tipo }) => ({ ...tipo, formatoExameHash: hashFormatoExame(tipo), padraoReprodutivo: tipo.id === "b0400000-0000-4000-8000-000000000001", formatoBloqueado: _count.exames > 0 || _count.etapas > 0 }));
 }
 
 export async function travarTiposExame(tx: Prisma.TransactionClient, ids: string[]) {

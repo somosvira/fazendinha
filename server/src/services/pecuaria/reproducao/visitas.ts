@@ -1,3 +1,9 @@
+import { condicaoSituacaoTarefa } from "../protocolos/situacao.js";
+import { conferirFormatoReprodutivo } from "../exames/formatos.js";
+import { hashFormatoExame } from "../exames/formato-snapshot.js";
+import { TIPO_EXAME_REPRODUTIVO } from "../exames/evidencia-reprodutiva.js";
+import { travarTiposExame } from "../sanidade/exames.js";
+import { regularizarTarefaComumTx, substitutosTarefaComum } from "../protocolos/regularizacao.js";
 import { resolverIdReprodutivoTx } from "../protocolos/reproducao.js";
 import { resolverPapelReprodutivo } from "../rebanho/papel-reprodutivo.calc.js";
 import { eventoRegularizacao, validarSubstitutoTx, substituirEvidenciaAplicacaoTx, listarSubstitutosTx, type RegularizacaoInput } from "./regularizacao.js";
@@ -25,8 +31,6 @@ import {
 import { criarAvaliacaoTx, dia, erro, obterEstadosReprodutivosTx } from "./registros.js";
 import {
   contextoTarefaTx,
-  regularizarTarefaTx,
-  substitutosTarefa,
   executarTarefaTx,
   iniciarParticipanteTx,
 } from "./iatf.js";
@@ -128,15 +132,13 @@ export async function adicionarAtividade(
         const tarefa = await tx.tarefaProtocolo.findFirst({
           where: {
             id: item.tarefaSanitariaId,
-            dispensadaEm: null,
+            AND: [condicaoSituacaoTarefa("PENDENTE")],
             execucao: {
               protocolo: { tipo: "SANITARIO" },
               animalId: item.animalId,
               propriedadeId: input.propriedadeId,
               canceladaEm: null,
             },
-            aplicacoes: { none: { status: "VALIDO" } },
-            exames: { none: { status: "VALIDO" } },
           },
         });
         if (!tarefa)
@@ -263,6 +265,16 @@ export async function salvarRascunho(
     await travarAnimais(tx, [participante.animalId]);
     if (participante.status === "CONFIRMADO")
       erro("Fato confirmado não pode ser sobrescrito por rascunho");
+    const atividade = await tx.atividadeVisita.findUniqueOrThrow({ where: { id: participante.atividadeId } });
+    if (atividade.tipo === "AVALIACAO_REPRODUTIVA" && typeof rascunho.tipoExameId === "string") {
+      await travarTiposExame(tx, [rascunho.tipoExameId]);
+      const tipo = await tx.tipoExame.findFirst({ where: { id: rascunho.tipoExameId, ativo: true, tipoResultado: "MULTIPLO", contexto: { in: ["REPRODUTIVO", "COMPARTILHADO"] } } });
+      if (!tipo) erro("Selecione um tipo de exame reprodutivo ativo", "tipoExameId");
+      conferirFormatoReprodutivo(tipo.tipoResultado, tipo.campos);
+      const formatoExameHash = hashFormatoExame(tipo);
+      if (rascunho.formatoExameHash && rascunho.formatoExameHash !== formatoExameHash) erro("O formato do exame mudou. Atualize a lista de tipos e revise os resultados", "tipoExameId");
+      rascunho = { ...rascunho, formatoExameHash };
+    }
     const alteracao = await tx.participanteVisita.updateMany({
       where: { id: participanteId, versaoRascunho, status: { not: "CONFIRMADO" } },
       data: { rascunho: json(rascunho), versaoRascunho: { increment: 1 } },
@@ -387,6 +399,11 @@ export async function confirmarAtividade(
                 })
             : [];
         await travarOrigensAplicacoesTx(tx, aplicacoes);
+        if (atividade.tipo === "AVALIACAO_REPRODUTIVA") await travarTiposExame(tx, input.itens.filter(i => i.status === "CONFIRMADO").map(i => {
+          const p = participantes.find(p => p.id === i.participanteId)!;
+          const dados = i.dados ?? p.rascunho as Record<string, unknown>;
+          return typeof dados.tipoExameId === "string" ? dados.tipoExameId : TIPO_EXAME_REPRODUTIVO;
+        }));
         const resultados = [];
         for (const [indice, item] of input.itens.entries()) {
           try {
@@ -425,7 +442,7 @@ export async function confirmarAtividade(
                 bruto.propriedadeId !== input.propriedadeId)
             )
               erro("Os dados não pertencem ao participante/sítio");
-            const dados = {
+            const dados: Record<string, unknown> = {
               ...bruto,
               chave: input.chave,
               animalId: p.animalId,
@@ -436,9 +453,14 @@ export async function confirmarAtividade(
             };
             let fato: { id: string }, fatoTipo: string;
             if (atividade.tipo === "AVALIACAO_REPRODUTIVA") {
+              const salvo = p.rascunho as Record<string, unknown>;
+              const tipoExameId = typeof dados.tipoExameId === "string" ? dados.tipoExameId : TIPO_EXAME_REPRODUTIVO;
+              if (tipoExameId !== TIPO_EXAME_REPRODUTIVO && (salvo.tipoExameId !== tipoExameId || typeof salvo.formatoExameHash !== "string"))
+                erro("Salve e revise o rascunho deste tipo de exame antes de confirmar", "tipoExameId");
+              const { status: _status, dados: _procedimento, inicioEfetivo: _inicio, realizadaEm: _realizada, ...clinicos } = dados;
               fato = await criarAvaliacaoTx(
                 tx,
-                avaliacaoSchema.parse(dados),
+                avaliacaoSchema.parse({ ...clinicos, ...(salvo.tipoExameId === tipoExameId ? { formatoExameHash: salvo.formatoExameHash } : {}) }),
                 usuarioId,
               );
               fatoTipo = "AvaliacaoReprodutiva";
@@ -508,6 +530,7 @@ export async function confirmarAtividade(
                 {
                   propriedadeId: input.propriedadeId,
                   realizadaEm: bruto.realizadaEm,
+                  chave: input.chave,
                   dados: (bruto.dados as Record<string, unknown>) ?? {},
                   motivo:
                     typeof bruto.motivo === "string" ? bruto.motivo : undefined,
@@ -684,10 +707,8 @@ export async function sugestoesVisita(
     prisma.tarefaProtocolo.findMany({
       where: {
         previstaPara: { lte: dia(data) },
-        dispensadaEm: null,
-        execucao: { ...scope, canceladaEm: null },
-        aplicacoes: { none: { status: "VALIDO" } },
-        exames: { none: { status: "VALIDO" } },
+        AND: [condicaoSituacaoTarefa("PENDENTE")],
+        execucao: { ...scope, protocolo: { tipo: "SANITARIO" } },
       },
       include: {
         execucao: { select: { animalId: true, propriedadeId: true } },
@@ -827,9 +848,8 @@ export async function regularizarParticipanteVisita(id:string, participanteId:st
     return operacaoIdempotenteTx(tx,{...input,participanteId},usuarioId,"REGULARIZACAO_VISITA",async()=>{
       const atual=await tx.participanteVisita.findUniqueOrThrow({where:{id:participanteId}});
       if(!atual.regularizacaoPendente || atual.status !== "CONFIRMADO")erro("Participante não exige regularização");
-      const atividade = await tx.atividadeVisita.findUniqueOrThrow({ where: { id: atual.atividadeId } });
-      if(atividade.tipo === "TAREFA_IATF" && atual.tarefaId){
-        await regularizarTarefaTx(tx,atual.tarefaId,input,usuarioId);
+      if(atual.tarefaId){
+        await regularizarTarefaComumTx(tx,atual.tarefaId,input,usuarioId);
         return tx.participanteVisita.findUniqueOrThrow({where:{id:participanteId}});
       }
       const historicoRegularizacao=eventoRegularizacao(atual.historicoRegularizacao,input,atual,usuarioId);
@@ -856,7 +876,6 @@ export async function substitutosParticipanteVisita(id: string, participanteId: 
   const p = await prisma.participanteVisita.findUnique({ where: { id: participanteId } });
   if (!p || !await prisma.atividadeVisita.count({ where: { id: p.atividadeId, visitaId: id } })) throw new RebanhoError("NAO_ENCONTRADO", "Participante não pertence à visita");
   if (!p.regularizacaoPendente) return [];
-  const atividade = await prisma.atividadeVisita.findUniqueOrThrow({ where: { id: p.atividadeId } });
-  if (atividade.tipo === "TAREFA_IATF" && p.tarefaId) return substitutosTarefa(p.tarefaId, propriedadeId);
+  if (p.tarefaId) return substitutosTarefaComum(p.tarefaId, propriedadeId);
   return listarSubstitutosTx(prisma, p.fatoTipo ?? "", p.fatoId, p.animalId, propriedadeId);
 }

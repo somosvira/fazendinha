@@ -152,6 +152,7 @@ export type TentativaInput = FatoBase & {
   motivoDocumentacaoExcepcional?: string;
 };
 export type AvaliacaoInput = FatoBase & {
+  formatoExameHash?: string;
   finalidade?: "DIAGNOSTICO" | "RECONFIRMACAO" | "SEXAGEM";
   tipoExameId?: string;
   resultados?: Array<{ campo: string; valor: string | number | boolean }>;

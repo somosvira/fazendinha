@@ -7,6 +7,9 @@ export type TipoAtividade =
   | "EXAME_SANITARIO"
   | "INICIAR_SANITARIO";
 export type RascunhoVisita = {
+  tipoExameId?: string;
+  formatoExameHash?: string;
+  resultados?: import("../sanidade/CamposExame").ObservacaoExame[];
   finalidade?: string;
   cienciaSanitaria?: boolean;
   participanteIatfId?: string;
@@ -127,6 +130,7 @@ export const confirmarVisita = (
   },
 ) => reqV4(`/visitas/${id}/atividades/${atividadeId}/confirmacao`, input);
 export type SugestaoTarefa = {
+  planejadoSnapshot?: { etapa: { planoAvaliacao?: { tipoExameId?: string; tipo?: "DIAGNOSTICO" | "RECONFIRMACAO" | "SEXAGEM" } } } | null;
   id: string;
   animalId: string;
   nome?: string;

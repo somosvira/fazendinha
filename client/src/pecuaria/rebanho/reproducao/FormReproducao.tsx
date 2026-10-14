@@ -62,6 +62,8 @@ export function FormReproducao({
   onRegistrar,
   dataInicial,
   conteudoExtra,
+  tipoExameInicial,
+  finalidadeInicial,
 }: {
   acao: AcaoReprodutiva;
   painel: PainelReprodutivo;
@@ -70,6 +72,8 @@ export function FormReproducao({
   onSalvo: () => void;
   dataInicial?: string;
   conteudoExtra?: ReactNode;
+  tipoExameInicial?: string;
+  finalidadeInicial?: AvaliacaoInput["finalidade"];
   onRegistrar?: (
     input: TentativaInput | AvaliacaoInput | PartoInput,
   ) => Promise<void>;
@@ -102,16 +106,16 @@ export function FormReproducao({
     useState<AvaliacaoInput["resultado"] | "">("");
   const [conduta, setConduta] = useState<AvaliacaoInput["conduta"] | null>(null);
   const [sexoFetal, setSexoFetal] = useState<"F" | "M" | "">("");
-  const [finalidade, setFinalidade] = useState<AvaliacaoInput["finalidade"]>("DIAGNOSTICO");
+  const [finalidade, setFinalidade] = useState<AvaliacaoInput["finalidade"]>(finalidadeInicial ?? "DIAGNOSTICO");
   const [tiposExame, setTiposExame] = useState<TipoExame[]>([]);
-  const [tipoExameId, setTipoExameId] = useState("");
+  const [tipoExameId, setTipoExameId] = useState(tipoExameInicial ?? "");
   const [resultados, setResultados] = useState<ObservacaoExame[]>([]);
   useEffect(() => {
     if (acao !== "avaliacao") return;
     let ativo = true;
-    reqV4<TipoExame[]>("/reproducao/tipos-exame").then(tipos => { if (ativo) { setTiposExame(tipos); setTipoExameId(tipos.find(t => t.padraoReprodutivo)?.id ?? tipos[0]?.id ?? ""); } }).catch(e => { if (ativo) setErro(e.message); });
+    reqV4<TipoExame[]>("/reproducao/tipos-exame?incluirInativos=true").then(tipos => { if (ativo) { setTiposExame(tipos); setTipoExameId(tipoExameInicial ?? tipos.find(t => t.ativo && t.padraoReprodutivo)?.id ?? tipos.find(t => t.ativo)?.id ?? ""); } }).catch(e => { if (ativo) setErro(e.message); });
     return () => { ativo = false; };
-  }, [acao]);
+  }, [acao, tipoExameInicial]);
   const tipoExame = tiposExame.find(t => t.id === tipoExameId);
   const [tentativaId, setTentativaId] = useState("");
   const [motivo, setMotivo] = useState("");
@@ -291,7 +295,7 @@ export function FormReproducao({
       if (acao === "avaliacao" && resultado)
         await (onRegistrar ?? registrarAvaliacao)({
           ...base,
-          resultado, finalidade, tipoExameId, resultados,
+          resultado, finalidade, tipoExameId, resultados, formatoExameHash: tipoExame?.formatoExameHash,
           cienciaSanitaria,
           conduta: conduta ?? undefined,
           ...(tentativaId ? { tentativaId } : {}),
@@ -524,7 +528,7 @@ export function FormReproducao({
         )}
         {acao === "avaliacao" && (
           <>
-            {seletor("tipo-exame", "Tipo de exame", tipoExameId, v => { setTipoExameId(v); setResultados([]); }, tiposExame.map(t => [t.id, t.nome]))}
+            {seletor("tipo-exame", "Tipo de exame", tipoExameId, v => { setTipoExameId(v); setResultados([]); }, tiposExame.filter(t => t.ativo || t.id === tipoExameId).map(t => [t.id, `${t.nome} · v${t.versaoFormato ?? 1}${t.ativo ? "" : " (inativo)"}`]))}
             {!tiposExame.length && <p role="status">Nenhum tipo de exame disponível. Confira os cadastros de Reprodução.</p>}
             <CamposAvaliacao dados={{ resultado, finalidade, sexoFetal, conduta }} onChange={mudanca => {
               if (mudanca.resultado !== undefined) setResultado(mudanca.resultado as AvaliacaoInput["resultado"] | "");

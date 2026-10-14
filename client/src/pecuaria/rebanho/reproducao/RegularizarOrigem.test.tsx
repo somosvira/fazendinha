@@ -26,7 +26,7 @@ it("seleciona procedimento legível e envia só vínculo, preservando motivo/cha
   fireEvent.click(screen.getByRole("button",{name:"Confirmar regularização"}));
   await waitFor(()=>expect(mudou).toHaveBeenCalled());
   const chamadas=vi.mocked(reqV4).mock.calls;
-  expect(chamadas[0][0]).toBe("/reproducao/tarefas-iatf/t/substitutos");
+  expect(chamadas[0][0]).toBe("/reproducao/tarefas-iatf/t/substitutos?propriedadeId=1");
   expect(chamadas).toHaveLength(3);
   expect(chamadas[1][0]).toBe(path);
   expect(chamadas[1][1]).toEqual(chamadas[2][1]);

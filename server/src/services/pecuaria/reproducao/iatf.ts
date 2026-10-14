@@ -1,10 +1,13 @@
+import { conferirFormatoReprodutivo } from "../exames/formatos.js";
+import { TIPO_EXAME_REPRODUTIVO } from "../exames/evidencia-reprodutiva.js";
+import { regularizarTarefaComumTx, substitutosTarefaComum } from "../protocolos/regularizacao.js";
 import { registrarExameTx, travarTiposExame } from "../sanidade/exames.js";
 import { executarExameEtapaSchema } from "../sanidade/execucao-etapas.schemas.js";
 import { carregarVersaoTx, publicarVersaoTx, inativarVersaoTx } from "../protocolos/versoes.js";
 import { etapasReprodutivasDoContrato } from "../protocolos/reproducao.js";
 import { resolverIdReprodutivoTx } from "../protocolos/reproducao.js";
 import { atualizarParticipacaoReprodutivaTx, atualizarTarefaReprodutivaTx, criarParticipacaoReprodutivaTx, criarProgramacaoReprodutivaTx, criarProtocoloReprodutivoTx, criarTarefasReprodutivasTx, dispensarPendenciasReprodutivasTx } from "../protocolos/reproducao.js";
-import { eventoRegularizacao, validarSubstitutoTx, substituirEvidenciaAplicacaoTx, listarSubstitutosTx, type RegularizacaoInput } from "./regularizacao.js";
+import type { RegularizacaoInput } from "./regularizacao.js";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../../db.js";
@@ -60,6 +63,7 @@ async function congelarEtapasTx(
     ),
     ...materiais.map((m) => m.produtoId),
   ]);
+  await travarTiposExame(tx, etapas.flatMap(e => e.planoAvaliacao ? [e.planoAvaliacao.tipoExameId ?? TIPO_EXAME_REPRODUTIVO] : e.planoExame ? [e.planoExame.tipoExameId] : []));
   const congeladas: EtapaFonte[] = [];
   for (const [indice, e] of etapas.entries()) {
     const referencias: Record<string, unknown> = {};
@@ -117,12 +121,18 @@ async function congelarEtapasTx(
       };
     }
     if (e.planoExame) {
-      await travarTiposExame(tx, [e.planoExame.tipoExameId]);
       const tipo = await tx.tipoExame.findFirst({ where: { id: e.planoExame.tipoExameId, ativo: true, contexto: { not: "REPRODUTIVO" } } });
       if (!tipo) erro(`Etapa ${indice + 1}: selecione exame sanitário ativo`, "etapas");
       referencias.exame = { id: tipo.id, nome: tipo.nome, versao: tipo.versaoFormato, tipoResultado: tipo.tipoResultado, campos: tipo.campos, unidade: tipo.unidade, opcoes: tipo.opcoes };
     }
-    congeladas.push({ ...e, referencias });
+    if (e.planoAvaliacao) {
+      const tipoExameId = e.planoAvaliacao.tipoExameId ?? TIPO_EXAME_REPRODUTIVO;
+      const tipo = await tx.tipoExame.findFirst({ where: { id: tipoExameId, ativo: true, tipoResultado: "MULTIPLO", contexto: { in: ["REPRODUTIVO", "COMPARTILHADO"] } } });
+      if (!tipo) erro(`Etapa ${indice + 1}: selecione exame reprodutivo ativo com vários resultados`, "etapas");
+      conferirFormatoReprodutivo(tipo.tipoResultado, tipo.campos);
+      referencias.exame = { id: tipo.id, nome: tipo.nome, versao: tipo.versaoFormato, tipoResultado: tipo.tipoResultado, campos: tipo.campos };
+      congeladas.push({ ...e, planoAvaliacao: { ...e.planoAvaliacao, tipoExameId }, referencias });
+    } else congeladas.push({ ...e, referencias });
   }
   return congeladas;
 }
@@ -516,6 +526,7 @@ export async function executarTarefaTx(
   tx: Prisma.TransactionClient,
   id: string,
   input: {
+    chave: string;
     propriedadeId: number;
     realizadaEm: string;
     dados: Record<string, unknown>;
@@ -554,8 +565,11 @@ export async function executarTarefaTx(
     );
   else
     await conferirMatrizTx(tx, participante.animalId, input.propriedadeId, dia(data));
+  const plano = tarefa.planejadoSnapshot as SnapshotIatf | null;
   const dados = {
+    ...(tarefa.tipo === "AVALIACAO" ? { tipoExameId: plano?.etapa.planoAvaliacao?.tipoExameId ?? TIPO_EXAME_REPRODUTIVO } : {}),
     ...input.dados,
+    chave: input.chave,
     animalId: participante.animalId,
     propriedadeId: input.propriedadeId,
     data,
@@ -581,7 +595,6 @@ export async function executarTarefaTx(
       .strict()
       .parse(Object.fromEntries(Object.entries(input.dados).filter(([k]) => k !== "cienciaSanitaria")));
   else erro("Tipo de tarefa desconhecido; revise a versão do protocolo");
-  const plano = tarefa.planejadoSnapshot as SnapshotIatf | null;
   const desvio = compararExecucaoIatf(
     plano,
     realizada.toISOString(),
@@ -929,47 +942,16 @@ export async function adicionarParticipantes(
 
 export async function regularizarTarefaTx(tx: Prisma.TransactionClient, id: string, input: RegularizacaoInput, usuarioId: number | null) {
   id = await resolverIdReprodutivoTx(tx, "tarefa", id);
-  const { tarefa, participante, programacao } = await contextoTarefaTx(tx, id, input.propriedadeId);
-  if(!tarefa.regularizacaoPendente || !tarefa.realizadaEm)
-    erro("Tarefa não exige regularização");
-  if(input.acao === "REABRIR" && (participante.encerradoEm || programacao.status !== "ABERTA"))
-    erro("A participação precisa estar aberta para reabrir uma tarefa");
-  const historicoRegularizacao = eventoRegularizacao(tarefa.historicoRegularizacao, input, tarefa, usuarioId);
-  const tipo = tarefa.tipo === "TENTATIVA" ? "TentativaReprodutiva" : tarefa.tipo === "APLICACAO" ? "AplicacaoProduto" : tarefa.tipo === "EXAME" ? "ExameAnimal" : "AvaliacaoReprodutiva";
-  const campoVinculo = tarefa.tipo === "TENTATIVA" ? "tentativaId" : tarefa.tipo === "APLICACAO" ? "aplicacaoId" : tarefa.tipo === "EXAME" ? "exameId" : "avaliacaoId";
-  if(input.acao === "VINCULAR_SUBSTITUTO") {
-    await validarSubstitutoTx(tx, tipo, input, participante.animalId, dia(dataNoBrasil(tarefa.realizadaEm)), tarefa[campoVinculo]);
-    if(await tx.tarefaIatf.count({where: {id: {not:id}, [campoVinculo]: input.fatoId}}))
-      erro("Substituto já pertence a outra tarefa", "fatoId");
-    if (tipo === "AplicacaoProduto") await substituirEvidenciaAplicacaoTx(tx, tarefa.aplicacaoId, input, usuarioId);
-  }
-  const salva = await atualizarTarefaReprodutivaTx(tx, { usuarioId,regularizacao:{acao:input.acao,motivo:input.motivo},where:{id},data:{
-    regularizacaoPendente:false, historicoRegularizacao,
-    ...(input.acao === "REABRIR" ? {realizadaEm:null, tentativaId:null, avaliacaoId:null, exameId:null, aplicacaoId:null, realizadoSnapshot:Prisma.DbNull, desviosSnapshot:Prisma.DbNull, motivo:input.motivo}
-      : input.acao === "VINCULAR_SUBSTITUTO" ? {[campoVinculo]: input.fatoId} : {}),
-  }});
-  const originalId = tarefa[campoVinculo];
-  const vinculados = await tx.participanteVisita.findMany({where:{regularizacaoPendente:true,OR:[{tarefaId:id},{fatoTipo:"TarefaIatf",fatoId:id},...(originalId ? [{fatoTipo:tipo,fatoId:originalId}] : [])]}});
-  const atividadesVinculadas = await tx.atividadeVisita.findMany({where:{id:{in:vinculados.map(v=>v.atividadeId)}}});
-  const visitasVinculadas = await tx.visitaVeterinaria.findMany({where:{id:{in:atividadesVinculadas.map(a=>a.visitaId)}}});
-  if(input.acao === "REABRIR" && visitasVinculadas.some(v=>v.encerradaEm))
-    erro("Atendimento pertence a visita encerrada; registre a nova intervenção em outra atividade");
-  for(const visita of vinculados) await tx.participanteVisita.update({where:{id:visita.id},data:{
-    regularizacaoPendente:false,
-    historicoRegularizacao:eventoRegularizacao(visita.historicoRegularizacao,input,visita,usuarioId),
-    ...(input.acao === "REABRIR" ? {status:"PENDENTE",fatoId:null,fatoTipo:null,rascunho:{},versaoRascunho:{increment:1}} : input.acao === "VINCULAR_SUBSTITUTO" && visita.fatoTipo !== "TarefaIatf" ? {fatoId:input.fatoId} : {}),
-  }});
-  if(input.acao === "REABRIR") await tx.visitaVeterinaria.updateMany({where:{id:{in:visitasVinculadas.map(v=>v.id)}},data:{status:"PARCIAL"}});
-  await auditar(tx,{entidade:"TarefaIatf",entidadeId:id,animalId:participante.animalId,propriedadeId:input.propriedadeId,acao:"REGULARIZACAO",usuarioId,antes:tarefa,depois:salva});
-  return salva;
+  const { tarefa } = await contextoTarefaTx(tx, id, input.propriedadeId);
+  await regularizarTarefaComumTx(tx, id, input, usuarioId, "REPRODUTIVO", tarefa);
+  return tx.tarefaIatf.findUniqueOrThrow({ where: { id } });
 }
 
 export async function substitutosTarefa(id: string, propriedadeId: number) {
-  const { tarefa, participante } = await contextoTarefaTx(prisma, id, propriedadeId);
-  if (!tarefa.regularizacaoPendente) return [];
-  const tipo = tarefa.tipo === "TENTATIVA" ? "TentativaReprodutiva" : tarefa.tipo === "APLICACAO" ? "AplicacaoProduto" : tarefa.tipo === "EXAME" ? "ExameAnimal" : "AvaliacaoReprodutiva";
-  return listarSubstitutosTx(prisma, tipo, tarefa.tentativaId ?? tarefa.aplicacaoId ?? tarefa.avaliacaoId, participante.animalId, propriedadeId);
+  const identidade = await resolverIdReprodutivoTx(prisma, "tarefa", id);
+  return substitutosTarefaComum(identidade, propriedadeId, "REPRODUTIVO");
 }
+
 export const regularizarTarefa = (id:string,input:RegularizacaoInput,usuarioId:number|null) => transacaoPecuaria(async tx=>{
   const contexto=await contextoTarefaTx(tx,id,input.propriedadeId);
   await travarAnimais(tx,[contexto.participante.animalId]);

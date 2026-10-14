@@ -1,3 +1,4 @@
+import { rotuloSituacaoTarefa } from "./RegularizacaoTarefa";
 import { linkOperacaoFinanceira } from "../../../financeiro/navegacao";
 import { podeAcessarArea } from "../../../estoque/navegacao";
 import { dataHoraSanitaria, dataSanitaria, origemSanitaria, estadoSanitario, unidadeSanitaria } from "./rotulos";
@@ -78,6 +79,6 @@ export function DetalheSanitario({ tipo, valor, abrir }: { tipo: string; valor: 
     {fato.valorProdutoAtribuido != null && <p><strong>Custo atribuído do medicamento:</strong> {fmtMoneyExact(Number(fato.valorProdutoAtribuido))}</p>}
     {fato.valorServicoAtribuido != null && <p><strong>Rateio atribuído do Serviço:</strong> {fmtMoneyExact(Number(fato.valorServicoAtribuido))}</p>}
     {links.length > 0 && <section><h3 className="font-semibold">Fatos relacionados</h3><div className="mt-2 flex flex-wrap gap-2">{links.map(([rotulo, destino, id]) => <button key={`${destino}-${id}`} type="button" className="rounded-lg border border-border px-3 py-2 underline" onClick={() => abrir(destino, id)}>{rotulo}</button>)}</div></section>}
-    {Array.isArray(fato.tarefas) && <section><h3 className="font-semibold">Tarefas</h3><div className="mt-2 space-y-2">{fato.tarefas.map((item) => { const t = registro(item); return <p key={String(t.id)} className="rounded-lg border border-border p-2">{dataSanitaria(String(t.previstaPara ?? ""))} · {t.dispensadaEm ? "Dispensada" : (Array.isArray(t.aplicacoes) && t.aplicacoes.length) || (Array.isArray(t.exames) && t.exames.length) ? "Realizada" : "Pendente"}</p>; })}</div></section>}
+    {Array.isArray(fato.tarefas) && <section><h3 className="font-semibold">Tarefas</h3><div className="mt-2 space-y-2">{fato.tarefas.map((item) => { const t = registro(item); return <p key={String(t.id)} className="rounded-lg border border-border p-2">{dataSanitaria(String(t.previstaPara ?? ""))} · {rotuloSituacaoTarefa(String(t.situacao ?? (t.regularizacaoPendente ? "REGULARIZACAO_PENDENTE" : t.dispensadaEm ? "DISPENSADA" : "PENDENTE")))}</p>; })}</div></section>}
   </div>;
 }

@@ -68,6 +68,7 @@ export function compararExecucaoIatf(
       ? dados.resultado
       : "DIAGNOSTICO");
     comparar("tipoAvaliacao", e.planoAvaliacao.tipo, tipo);
+    if (e.planoAvaliacao.tipoExameId) comparar("tipoExameId", e.planoAvaliacao.tipoExameId, dados.tipoExameId ?? null);
   }
   if (e.tipo === "EXAME" && e.planoExame) comparar("tipoExameId", e.planoExame.tipoExameId, dados.tipoExameId ?? null);
   const aferido =

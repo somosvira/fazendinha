@@ -554,7 +554,7 @@ export async function criarAvaliacaoTx(
   if (input.previsaoParto && dia(input.previsaoParto) < data)
     erro("Previsão de parto não pode anteceder o diagnóstico", "previsaoParto");
   const criada = await registrarEvidenciaAvaliacaoTx(tx, {
-      tipoExameId: input.tipoExameId, responsavel: input.responsavel, finalidade: input.finalidade, resultados: input.resultados,
+      tipoExameId: input.tipoExameId, formatoExameHash: input.formatoExameHash, responsavel: input.responsavel, finalidade: input.finalidade, resultados: input.resultados,
       animalId: input.animalId,
       propriedadeId: input.propriedadeId,
       data,

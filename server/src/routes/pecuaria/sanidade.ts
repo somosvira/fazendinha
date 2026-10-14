@@ -1,3 +1,5 @@
+import { regularizacaoSchema } from "../../services/pecuaria/reproducao/schemas.js";
+import { regularizarTarefaSanitaria, substitutosTarefaComum } from "../../services/pecuaria/protocolos/regularizacao.js";
 import { camposExameSchema, observacoesExameSchema } from "../../services/pecuaria/exames/formatos.js";
 import { Hono, type Context } from "hono";
 import { zValidator } from "@hono/zod-validator";
@@ -114,6 +116,14 @@ export const sanidadeRouter = new Hono()
   .post("/protocolos/:id/inativacao", validar(z.object({}).strict()), async (c) => {
     try { return c.json(await protocolos.inativarProtocolo(uuid.parse(c.req.param("id")), getUsuario(c)?.id ?? null)); } catch (e) { return falha(c, e); }
   })
+  .get("/tarefas/:id/substitutos", async c => {
+    try { const propriedadeId = await resolverEscopoEscrita(c, Number(c.req.query("propriedadeId")) || undefined); return c.json(await substitutosTarefaComum(uuid.parse(c.req.param("id")), propriedadeId, "SANITARIO")); }
+    catch (e) { return falha(c,e); }
+  })
+  .post("/tarefas/:id/regularizacao", validar(regularizacaoSchema), async c => {
+    try { const body=c.req.valid("json");const propriedadeId=await resolverEscopoEscrita(c,body.propriedadeId);const salvo=await regularizarTarefaSanitaria(uuid.parse(c.req.param("id")),{...body,propriedadeId},getUsuario(c)?.id??null);return c.json(podeVerCustos(c)?salvo:detalhes.ocultarCustosDetalhe(salvo)); }
+    catch(e){return falha(c,e);}
+  })
   .post("/tarefas/:id/adiamento", validar(z.object({ previstaPara: data, motivo: z.string().trim().min(5).max(500) }).strict()), async (c) => {
     try { const propriedadeId = await resolverEscopoEscrita(c); return c.json(await protocolos.adiarTarefa(uuid.parse(c.req.param("id")), c.req.valid("json"), getUsuario(c)?.id ?? null, propriedadeId)); } catch (e) { return falha(c, e); }
   })
@@ -226,7 +236,8 @@ export const sanidadeRouter = new Hono()
     try { const animalId = c.req.query("animalId"); if (animalId && !uuid.safeParse(animalId).success) return c.json({ error: "Animal inválido", code: "VALIDACAO" }, 422);
       const filtro = consultaSanitariaSchema.parse(c.req.query());
       const propriedadeId = await resolverEscopoLeitura(c);
-      return c.json(filtro.paginado === "true" ? await protocolos.listarTarefasPaginadas(propriedadeId, animalId, filtro) : await protocolos.listarTarefas(propriedadeId, animalId, filtro)); }
+      const tarefas = filtro.paginado === "true" ? await protocolos.listarTarefasPaginadas(propriedadeId, animalId, filtro) : await protocolos.listarTarefas(propriedadeId, animalId, filtro);
+      return c.json(podeVerCustos(c) ? tarefas : detalhes.ocultarCustosDetalhe(tarefas)); }
     catch (e) { return falha(c, e); }
   })
   .post("/tarefas/:id/dispensa", validar(z.object({ motivo: z.string().trim().min(5).max(500) })), async (c) => {

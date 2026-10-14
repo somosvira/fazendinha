@@ -38,7 +38,7 @@ export function etapasReprodutivasDoContrato(etapasEntrada: Prisma.InputJsonValu
     return { ordem: indice + 1, nome: e.nome, tipo: e.tipo === "AVALIACAO" ? "EXAME" : e.tipo,
       diaRelativo: e.intervalo, unidadeIntervalo: e.unidade,
       produtoId: e.planoAplicacao?.produtoId, materialId: e.planoTentativa?.materialId,
-      tipoExameId: e.tipo === "AVALIACAO" ? TIPO_EXAME_REPRODUTIVO : e.planoExame?.tipoExameId,
+      tipoExameId: e.tipo === "AVALIACAO" ? e.planoAvaliacao?.tipoExameId ?? TIPO_EXAME_REPRODUTIVO : e.planoExame?.tipoExameId,
       dose: e.planoAplicacao?.dose, unidade: e.planoAplicacao?.unidadeDose, via: e.planoAplicacao?.via,
       configuracao: json({ ...e, ...(referencias ? { referencias } : {}) }) };
   });

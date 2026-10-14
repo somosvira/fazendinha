@@ -19,12 +19,12 @@ export function RegularizarOrigem({path, propriedadeId, consumoMantido, reabrirP
     if (!aberto || acao !== "VINCULAR_SUBSTITUTO") return;
     let vigente = true;
     setCarregando(true); setErroConsulta(null); setSubstitutos([]);
-    reqV4<Array<{id:string;descricao:string}>>(path.replace(/\/regularizacao$/, "/substitutos"))
+    reqV4<Array<{id:string;descricao:string}>>(path.replace(/\/regularizacao$/, "/substitutos") + `?propriedadeId=${propriedadeId}`)
       .then(r => { if (vigente) setSubstitutos(r); })
       .catch(e => { if (vigente) setErroConsulta(e.message); })
       .finally(() => { if (vigente) setCarregando(false); });
     return () => { vigente = false; };
-  }, [aberto, acao, path, revisao]);
+  }, [aberto, acao, path, propriedadeId, revisao]);
   const semSubstituto = acao === "VINCULAR_SUBSTITUTO" && (carregando || !!erroConsulta || !substitutos.some(s => s.id === fatoId));
   return <><Button secondary onClick={()=>{setChave(crypto.randomUUID());setMotivo("");setCiencia(false);setErro(null);setAcao("ENCERRAR_SEM_SUBSTITUICAO");setFatoId("");setAberto(true);}}>Regularizar origem do fato anulado</Button>
     {aberto && <PainelCadastro aberto titulo="Regularizar origem" onFechar={()=>setAberto(false)} bloqueado={ocupado}

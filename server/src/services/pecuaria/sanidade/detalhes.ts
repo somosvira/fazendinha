@@ -1,3 +1,4 @@
+import { situacaoTarefaComum } from "../protocolos/situacao.js";
 import { prisma } from "../../../db.js";
 import { Prisma } from "@prisma/client";
 import { RebanhoError } from "../rebanho/regras.js";
@@ -57,7 +58,7 @@ export async function obterExecucao(id: string, propriedadeId: number | null) {
     } },
   } });
   if (!fato) throw new RebanhoError("NAO_ENCONTRADO", "Execução não encontrada neste sítio");
-  return fato;
+  return { ...fato, tarefas: fato.tarefas.map(t => ({ ...t, situacao: situacaoTarefaComum({ ...t, execucao: fato }) })) };
 }
 
 /** Valores podem aparecer também nos fatos vinculados de uma ocorrência. */

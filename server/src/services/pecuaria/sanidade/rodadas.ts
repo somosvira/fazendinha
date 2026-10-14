@@ -1,3 +1,4 @@
+import { condicaoSituacaoTarefa, situacaoTarefaComum, propriedadeRegularizacao, vinculoRegularizacaoSelect } from "../protocolos/situacao.js";
 import { deslocarCalendario } from "../protocolos/calendario.calc.js";
 import crypto from "node:crypto";
 import { Prisma } from "@prisma/client";
@@ -12,14 +13,12 @@ import { criarRodadaSchema, adicionarParticipantesSchema, associarExecucoesSchem
 const dia = (s: string) => new Date(`${s}T00:00:00Z`);
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 const animal = { select: { id: true, brinco: true, nome: true, localizacoes: { where: { ate: null }, select: { propriedadeId: true, propriedade: { select: { id: true, nome: true } } } }, baixas: { where: { estornadaEm: null }, select: { localizacaoFechada: { select: { propriedadeId: true } } } } } } as const;
-const includeTarefa = { execucao: { include: { animal, protocolo: { select: { nome: true, versao: true } } } }, aplicacoes: { select: { id: true, status: true, data: true, aplicadaEm: true, dose: true, unidadeDose: true, nomeProdutoAplicado: true, propriedadeId: true } }, exames: { select: { id: true, status: true, data: true, propriedadeId: true, formatoSnapshot: true } } } as const;
+const includeTarefa = { vinculos: vinculoRegularizacaoSelect, execucao: { include: { animal, protocolo: { select: { nome: true, versao: true } } } }, aplicacoes: { select: { id: true, status: true, data: true, aplicadaEm: true, dose: true, unidadeDose: true, nomeProdutoAplicado: true, propriedadeId: true } }, exames: { select: { id: true, status: true, data: true, propriedadeId: true, formatoSnapshot: true } } } as const;
 type Tarefa = Prisma.TarefaProtocoloGetPayload<{ include: typeof includeTarefa }>;
-export function situacaoTarefa(t: Pick<Tarefa, "execucao" | "dispensadaEm" | "aplicacoes" | "exames">) {
-  // A retirada encerra pendências, nunca invalida um fato realizado.
-  return t.aplicacoes.some(a => a.status === "VALIDO") || t.exames.some(e => e.status === "VALIDO") ? "REALIZADA" : t.execucao.canceladaEm ? "EXECUCAO_CANCELADA" : t.dispensadaEm ? "DISPENSADA" : "PENDENTE";
-}
+export const situacaoTarefa = situacaoTarefaComum;
+
 function contar(ts: Tarefa[]) {
-  return { total: ts.length, pendentes: ts.filter(t => situacaoTarefa(t) === "PENDENTE").length, atrasadas: ts.filter(t => situacaoTarefa(t) === "PENDENTE" && iso(t.previstaPara) < hojeFazenda()).length, realizadas: ts.filter(t => situacaoTarefa(t) === "REALIZADA").length, dispensadas: ts.filter(t => situacaoTarefa(t) === "DISPENSADA").length, canceladas: ts.filter(t => situacaoTarefa(t) === "EXECUCAO_CANCELADA").length };
+  return { total: ts.length, regularizacoes: ts.filter(t => situacaoTarefa(t) === "REGULARIZACAO_PENDENTE").length, encerradasSemSubstituicao: ts.filter(t => situacaoTarefa(t) === "ENCERRADA_SEM_SUBSTITUICAO").length, pendentes: ts.filter(t => situacaoTarefa(t) === "PENDENTE").length, atrasadas: ts.filter(t => situacaoTarefa(t) === "PENDENTE" && iso(t.previstaPara) < hojeFazenda()).length, realizadas: ts.filter(t => situacaoTarefa(t) === "REALIZADA").length, dispensadas: ts.filter(t => situacaoTarefa(t) === "DISPENSADA").length, canceladas: ts.filter(t => situacaoTarefa(t) === "EXECUCAO_CANCELADA").length };
 }
 function whereParticipante(sitio: number | null, f?: ConsultaSanitaria): Prisma.ParticipacaoProtocoloWhereInput {
   const local = { ...(sitio == null ? {} : { propriedadeId: sitio }), ...(f?.loteId ? { loteId: f.loteId } : {}) };
@@ -31,13 +30,9 @@ function whereParticipante(sitio: number | null, f?: ConsultaSanitaria): Prisma.
   return { protocolo: { tipo: "SANITARIO" }, ...(f?.animalId ? { animalId: f.animalId } : {}), ...(sitio != null || f?.buscaAnimal || f?.loteId ? { animal: { AND: [buscaAnimal(f), contexto] } } : {}) };
 }
 function estadoTarefa(f: ConsultaSanitaria): Prisma.TarefaProtocoloWhereInput {
-  const realizada: Prisma.TarefaProtocoloWhereInput = { OR: [{ aplicacoes: { some: { status: "VALIDO" } } }, { exames: { some: { status: "VALIDO" } } }] };
-  if (f.situacao === "REALIZADA") return realizada;
-  if (f.situacao === "EXECUCAO_CANCELADA") return { AND: [{ NOT: realizada }, { execucao: { canceladaEm: { not: null } } }] };
-  if (f.situacao === "DISPENSADA") return { AND: [{ NOT: realizada }, { execucao: { canceladaEm: null } }, { dispensadaEm: { not: null } }] };
-  if (f.situacao === "PENDENTE" || f.situacao === "ATRASADA") return { AND: [{ NOT: realizada }, { execucao: { canceladaEm: null } }, { dispensadaEm: null }, ...(f.situacao === "ATRASADA" ? [{ previstaPara: { lt: dia(hojeFazenda()) } }] : [])] };
-  return {};
+  return condicaoSituacaoTarefa(f.situacao, dia(hojeFazenda()));
 }
+
 async function buscarRodada(tx: Prisma.TransactionClient, id: string, sitio: number | null) {
   const r = await tx.programacaoProtocolo.findFirst({ where: { id, protocolo: { tipo: "SANITARIO" }, ...(sitio == null ? {} : { OR: [{ propriedadeId: sitio }, { execucoes: { some: whereParticipante(sitio) } }] }) }, include: { protocolo: { select: { id: true, nome: true, versao: true } } } });
   if (!r) throw new RebanhoError("NAO_ENCONTRADO", "Rodada não encontrada neste sítio");
@@ -171,7 +166,7 @@ export async function listarTarefasEtapa(id:string,etapaId:string,sitio:number|n
   const where:Prisma.TarefaProtocoloWhereInput={etapaId,execucao:{rodadaId:id,...whereParticipante(sitio,f)},...(f.de||f.ate?{previstaPara:intervalo(f)}:{}),AND:[estadoTarefa(f)]};
   const [ts,total]=await Promise.all([prisma.tarefaProtocolo.findMany({where,include:includeTarefa,orderBy:[{previstaPara:"asc"},{id:"asc"}],...limites(f)}),prisma.tarefaProtocolo.count({where})]);
   const localizacoes=await prisma.localizacaoAnimal.findMany({where:{animalId:{in:ts.map(t=>t.execucao.animalId)}},select:{animalId:true,desde:true,ate:true,propriedade:{select:{id:true,nome:true}}},orderBy:{desde:"desc"}});
-  return {itens:ts.map(t=>({...t,propriedadePrevista:localizacoes.find(l=>l.animalId===t.execucao.animalId&&l.desde<=t.previstaPara&&(!l.ate||l.ate>t.previstaPara))?.propriedade??null,propriedadeAtualId:t.execucao.animal.localizacoes[0]?.propriedadeId??null,propriedadeAtual:t.execucao.animal.localizacoes[0]?.propriedade??null,situacao:situacaoTarefa(t),aplicacao:t.aplicacoes.find(a=>a.status==="VALIDO")??null,exame:t.exames.find(e=>e.status==="VALIDO")??null})),total,pagina:f.pagina,porPagina:f.porPagina};
+  return {itens:ts.map(t=>({...t,propriedadePrevista:localizacoes.find(l=>l.animalId===t.execucao.animalId&&l.desde<=t.previstaPara&&(!l.ate||l.ate>t.previstaPara))?.propriedade??null,propriedadeAtualId:t.execucao.animal.localizacoes[0]?.propriedadeId??null,propriedadeAtual:t.execucao.animal.localizacoes[0]?.propriedade??null,situacao:situacaoTarefa(t),propriedadeRegularizacaoId:propriedadeRegularizacao(t),aplicacao:t.aplicacoes.find(a=>a.status==="VALIDO")??null,exame:t.exames.find(e=>e.status==="VALIDO")??null})),total,pagina:f.pagina,porPagina:f.porPagina};
 }
 export async function listarSemRodada(sitio:number|null,f:ConsultaSanitaria,protocoloId?:string){
   const where={rodadaId:null,...whereParticipante(sitio,f),...(protocoloId?{protocoloId}:{})};

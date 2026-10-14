@@ -1,3 +1,5 @@
+import { CamposResultadoExame } from "../sanidade/CamposExame";
+import type { TipoExame } from "../sanidade/CadastrosSanitarios";
 import { CamposAvaliacao } from "./CamposAvaliacao";
 import { RegularizarOrigem, consumoMantidoUltimaAnulacao } from "./RegularizarOrigem";
 import { AlertasSanitarios } from "./AlertasSanitarios";
@@ -48,6 +50,12 @@ export function Transcricao({
   podeRegularizar?: boolean;
   onMudou: () => Promise<void>;
 }) {
+  const [tiposExame, setTiposExame] = useState<TipoExame[]>([]);
+  useEffect(() => {
+    let ativo = true;
+    if (atividade.tipo === "AVALIACAO_REPRODUTIVA") reqV4<TipoExame[]>("/reproducao/tipos-exame?incluirInativos=true").then(t => { if (ativo) setTiposExame(t); }).catch(e => { if (ativo) setErro(e.message); });
+    return () => { ativo = false; };
+  }, [atividade.tipo]);
   const [cienciaAlteracoes, setCienciaAlteracoes] = useState(false);
   const [alteracoes, setAlteracoes] = useState<
     Array<{ participanteId: string; animalId: string; alteracoes: string[] }>
@@ -470,11 +478,21 @@ export function Transcricao({
                   {atividade.tipo === "AVALIACAO_REPRODUTIVA" ? (
                     <>
                       <fieldset disabled={!podeLancar || ocupado || p.status === "CONFIRMADO"} onBlur={() => void persistir(p)}>
+                        <label>Tipo de exame<select aria-label={`Tipo de exame · ${p.snapshot.brinco ?? p.ordem}`} className={classeInput} value={rascunhos[p.id]?.tipoExameId ?? ""} onChange={e => {
+                          const tipo = tiposExame.find(t => t.id === e.target.value);
+                          rascunhosAtuais.current[p.id] = { ...rascunhosAtuais.current[p.id], tipoExameId: tipo?.id, formatoExameHash: tipo?.formatoExameHash, resultados: [] };
+                          setRascunhos({ ...rascunhosAtuais.current });
+                          setAvisos(r => ({ ...r, [p.id]: "Alterações não salvas" }));
+                        }}><option value="">Avaliação reprodutiva padrão</option>{tiposExame.filter(t => t.ativo || t.id === rascunhos[p.id]?.tipoExameId).map(t => <option disabled={!t.ativo} key={t.id} value={t.id}>{t.nome} · v{t.versaoFormato ?? 1}{t.ativo ? "" : " (inativo)"}</option>)}</select></label>
                         <CamposAvaliacao dados={rascunhos[p.id] ?? {}} onChange={mudanca => {
                           rascunhosAtuais.current[p.id] = { ...rascunhosAtuais.current[p.id], ...Object.fromEntries(Object.entries(mudanca).map(([k,v]) => [k,v ?? ""])), cienciaSanitaria: false };
                           setRascunhos({ ...rascunhosAtuais.current });
                           setAvisos(r => ({ ...r, [p.id]: "Alterações não salvas" }));
                         }} />
+                        {rascunhos[p.id]?.resultado !== "NAO_AVALIADO" && <CamposResultadoExame campos={(tiposExame.find(t => t.id === rascunhos[p.id]?.tipoExameId)?.campos ?? []).filter(c => !["CONCLUSAO_GESTACIONAL", "SEXO_FETAL"].includes(c.codigo))} valores={rascunhos[p.id]?.resultados ?? []} onChange={valores => {
+                          rascunhosAtuais.current[p.id] = { ...rascunhosAtuais.current[p.id], resultados: valores };
+                          setRascunhos({ ...rascunhosAtuais.current }); setAvisos(r => ({ ...r, [p.id]: "Alterações não salvas" }));
+                        }} />}
                       </fieldset>
                     </>
                   ) : (
@@ -636,6 +654,8 @@ export function Transcricao({
             }
             painel={painel}
             animalInicial={preparar.animalId}
+            tipoExameInicial={tarefaPreparada.planejadoSnapshot?.etapa.planoAvaliacao?.tipoExameId}
+            finalidadeInicial={tarefaPreparada.planejadoSnapshot?.etapa.planoAvaliacao?.tipo}
             onFechar={() => setPreparar(null)}
             onSalvo={() => setPreparar(null)}
             onRegistrar={guardarProcedimento}

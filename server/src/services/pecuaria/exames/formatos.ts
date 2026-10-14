@@ -41,3 +41,16 @@ export function validarObservacoesExame(formato: unknown, observacoes: Observaca
     return { campo: r.campo, valor: campo.tipo === "NUMERO" ? new Prisma.Decimal(String(r.valor)).toString() : typeof r.valor === "string" ? r.valor.trim() : r.valor, unidade: campo.unidade ?? null };
   });
 }
+
+export function conferirFormatoReprodutivo(tipoResultado: string, formato: unknown) {
+  const campos = camposExameSchema.parse(formato);
+  if (tipoResultado !== "MULTIPLO") throw new RebanhoError("VALIDACAO", "Exames reprodutivos exigem observações estruturadas", "tipoResultado");
+  for (const [codigo, opcoes] of [["CONCLUSAO_GESTACIONAL", ["POSITIVO","NEGATIVO","INCONCLUSIVO"]], ["SEXO_FETAL", ["M","F"]]] as const) {
+    const campo = campos?.find(c => c.codigo === codigo);
+    if (!campo || campo.tipo !== "OPCAO" || campo.obrigatorio || JSON.stringify([...campo.opcoes ?? []].sort()) !== JSON.stringify([...opcoes].sort())) throw new RebanhoError("VALIDACAO", "Preserve os campos clínicos opcionais de conclusão e sexo fetal; acrescente observações específicas sem alterar sua semântica", "campos");
+  }
+}
+
+export function formatoReprodutivoCompativel(tipoResultado: string, formato: unknown): boolean {
+  try { conferirFormatoReprodutivo(tipoResultado, formato); return true; } catch { return false; }
+}

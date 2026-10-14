@@ -2,14 +2,9 @@
 
 Contrato da base comum de Sanidade e Reprodução. Complementa [Reprodução V4](reproducao.md) e o [contrato geral](README.md). A finalidade do protocolo é independente da ação de uma etapa: um protocolo reprodutivo pode conter aplicação sanitária, exame sanitário, tentativa, avaliação reprodutiva, manejo ou retirada.
 
-## Pendências de implementação
+## Estado da implementação
 
-A estrutura de banco e os fluxos principais foram entregues, mas o plano ainda não está integralmente concluído. A conferência do código identificou:
-
-- **Regularização sanitária na base comum:** a marcação de anulação ainda busca tarefas pela view `TarefaIatf`, e a listagem sanitária ainda deriva o estado dos fatos válidos. Falta completar a regularização e a apresentação do histórico para tarefas sanitárias pelo mesmo núcleo. Em especial, consumo mantido pode bloquear nova execução sem oferecer o mesmo percurso de substituição disponível na IATF.
-- **Tipo de exame configurável de ponta a ponta:** o formulário individual usa o catálogo e seus campos adicionais, mas a etapa reprodutiva ainda fixa o tipo padrão no adaptador, e a transcrição coletiva da avaliação não oferece seleção de tipo e observações adicionais. Falta transportar essa configuração por planejamento, snapshot, execução, rascunho e confirmação.
-
-Esses itens são trabalho de implementação. Homologação de campo e aplicação em produção também permanecem pendentes, como etapas distintas. As regras abaixo descrevem a base entregue; os pontos de unificação mencionados acima ainda exigem conclusão nos consumidores.
+A regularização sanitária e a seleção de exames personalizados foram concluídas na base comum, incluindo agenda, planejamento, snapshots, execução individual e transcrição coletiva. Homologação de campo e aplicação em produção permanecem etapas distintas e não foram realizadas por esta alteração.
 
 ## Estrutura e identidade
 
@@ -34,7 +29,9 @@ O núcleo em `services/pecuaria/protocolos/` reúne versões, calendário e vín
 
 `ParticipanteVisita.tarefaId` aponta para a tarefa comum. Os campos `tarefaSanitariaId`/`tarefaIatfId` continuam como aliases de entrada/saída no limite HTTP e na apresentação conforme a atividade; não são duas relações físicas. Uma linha não admite as duas referências. Impressões e snapshots antigos conservam os identificadores originais.
 
-Anulação deixa o atendimento/tarefa dependente de regularização. Reabertura exige ausência efetiva do procedimento e efeitos físicos compatíveis; consumo mantido impede repetir a baixa. Substituição vincula fato válido do mesmo tipo, animal, sítio e data, sem nova execução ou despesa. A ligação anterior continua consultável.
+Anulação deixa o atendimento/tarefa dependente de regularização. Reabertura exige ausência efetiva do procedimento e efeitos físicos compatíveis; consumo mantido impede repetir a baixa. Substituição vincula fato válido do mesmo tipo, animal, sítio e data, sem nova execução ou despesa. A ligação anterior continua consultável. A agenda sanitária distingue REGULARIZACAO_PENDENTE, ENCERRADA_SEM_SUBSTITUICAO, REALIZADA e PENDENTE; seus filtros e contagens usam a mesma regra. Anular não autoriza repetir automaticamente. O sítio da regularização vem do fato no último vínculo, mesmo após transferência do animal. Substitutos já usados por outra tarefa/atendimento não são oferecidos. O histórico fica disponível nas tarefas da agenda e do ciclo. Sugestões e inclusão em visitas usam a mesma pendência real: tarefas realizadas, encerradas ou aguardando regularização não são oferecidas para nova execução; a lista sanitária também restringe o tipo do protocolo.
+
+Reabrir também exige participação/programação aberta, tarefa não dispensada e ausência de visita encerrada entre os atendimentos confirmados vinculados. A operação limpa a referência operacional e os snapshots da realização, conservando-os no histórico; reabre os atendimentos vinculados, incrementa a versão de rascunho e preserva impressões. Vincular substituto ou encerrar a regularização não reabre uma visita encerrada. A validação e as escritas acontecem na mesma transação, com chave de reenvio.
 
 ## Exame e interpretação
 
@@ -43,6 +40,10 @@ Anulação deixa o atendimento/tarefa dependente de regularização. Reabertura 
 Formatos históricos TEXTO/NUMERO/OPCAO conservam os campos escalares existentes; o formato MULTIPLO usa as observações. O banco impede misturar resultado escalar e estruturado na mesma realização. Resultado ausente é diferente de zero, falso e negativo. Correção de resultado conserva as observações substituídas e audita o antes/depois, usando o formato da coleta.
 
 O formato fica bloqueado após coleta, mesmo pendente/anulada, ou referência em versão publicada/utilizada de protocolo. “Nova versão” cria outro TipoExame, vinculado por `versaoAnteriorId`, com número de formato reservado de modo concorrente. Coletas, tarefas e planos anteriores mantêm a referência e o snapshot anteriores. Renomear ou inativar não reescreve o histórico.
+
+O plano de avaliação da etapa reprodutiva aceita `tipoExameId` e finalidade independentes. Ao publicar, congela o tipo, número da versão e campos; tarefas herdam essa referência. Planos antigos sem esse campo mantêm o tipo padrão, sem reescrever seus snapshots/envelopes de reenvio. A execução usa o tipo planejado quando omitido; trocar explicitamente o tipo exige motivo de desvio, sem prever qual será a conclusão clínica. Novos fatos exigem tipo ativo; um tipo inativado continua legível no histórico.
+
+Na transcrição coletiva, cada animal pode escolher o tipo de exame e preencher suas observações adicionais. Conclusão gestacional e sexo fetal continuam nos campos clínicos próprios. Rascunhos preservam o tipo e os valores, incluindo zero/falso. O servidor registra e confere a assinatura do formato; se um formato ainda sem uso mudar entre o preenchimento e a confirmação, exige atualizar/revisar o formulário. A assinatura não substitui validação clínica nem autorização. A confirmação mantém atomicidade do subconjunto e reenvio idempotente.
 
 Na avaliação reprodutiva, finalidade (diagnosticar, reconfirmar ou sexar), conclusão gestacional, sexo fetal e conduta são informações independentes. Confirmação e sexo podem ocupar a mesma realização. “P+”, “OK” e “M/F” são anotações da fazenda, não o catálogo obrigatório. Texto desconhecido permanece texto. Campos clínicos têm códigos semânticos explícitos; mudar um rótulo ou adicionar observação não cria efeitos clínicos automáticos.
 
@@ -62,13 +63,15 @@ Configurações → Pecuária → Reprodução reúne protocolos reprodutivos, t
 
 ## Migração e retorno
 
-As migrations `20261014140000` a `20261014170000` convertem a estrutura em transações, preservam IDs quando possíveis e registram `legadoIatfId` quando há colisão. Aplicações, exames, tentativas, visitas e vínculos técnicos passam a referenciar a identidade comum. Impressões, auditorias, payloads e respostas de reenvio antigos permanecem intactos. Resolutores aceitam os IDs reprodutivos anteriores nos fluxos operacionais; a conversão não executa fatos, estoque, financeiro ou diagnósticos novamente.
+As migrations `20261014140000` a `20261014180000` convertem a estrutura em transações, preservam IDs quando possíveis e registram `legadoIatfId` quando há colisão. Aplicações, exames, tentativas, visitas e vínculos técnicos passam a referenciar a identidade comum. Impressões, auditorias, payloads e respostas de reenvio antigos permanecem intactos. Resolutores aceitam os IDs reprodutivos anteriores nos fluxos operacionais; a conversão não executa fatos, estoque, financeiro ou diagnósticos novamente.
 
 Antes de aplicar em outro ambiente: executar `pnpm --filter rionovo-server previa:pecuaria:padronizacao` e conferir conflitos/contagens/referências e a recuperação prevista. No desenvolvimento local, aplicar somente em `fazendinha_seedatev3`, sem criar outro banco ou clone para ensaio. A prévia só lê o banco e informa tabelas/views, colisões, papéis conflitantes e arquivos incompletos. A migração interrompe divergências e vínculos incompatíveis. Arquivos incompletos continuam arquivados; não recebem publicação, horário ou tarefas presumidas.
 
 Código e migrations devem ser publicados em janela coordenada: o código antigo não escreve nas novas views. Após iniciar escritas no modelo comum, retornar somente o código antigo é incompatível. Retorno exige interromper escritas e restaurar o backup compatível, conciliando os fatos posteriores; não existe down migration que descarte esses fatos automaticamente. Não executar seed, reset ou carga IDEAGRI para viabilizar a mudança.
 
 A remoção de `public.RegistroChuva` usa uma migration independente, sem CASCADE, que recusa tabela com registros. `btree_gist` e as garantias SQL dos outros domínios permanecem.
+
+A migration complementar `20261014180000` preenche metadados de realização e regularização das tarefas sanitárias históricas pelo último vínculo, sem executar fatos novamente. Usa a data original com precisão DIA; registra separadamente o momento da conferência e conserva anulações, motivos, consumo e impressões. Tarefas dispensadas/participações canceladas não são reabertas pela migração.
 
 ## Validação
 
