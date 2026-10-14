@@ -1,3 +1,4 @@
+import { SelectCampo } from "@/financeiro/SelectCampo";
 import { useEffect, useRef, useState } from "react";
 import { Pencil, Power, PowerOff } from "lucide-react";
 import { Button, ErrorBox, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
@@ -96,7 +97,7 @@ export function CadastrosSanitarios({ podeLancar, cadastro, embutido = false }: 
       {abas.map((a) => <button key={a.id} type="button" role="tab" aria-selected={aba === a.id} aria-controls={`cadastro-${a.id}`} disabled={ocupado} onClick={() => selecionar(a.id)} className={`rounded-lg px-4 py-2 text-sm font-semibold ${aba === a.id ? "bg-mast text-white" : "border border-border text-ink-2"}`}>{a.nome}</button>)}
     </div>}
     <div role="tabpanel" id={`cadastro-${aba}`} aria-label={titulo}>
-      {aba === "protocolos" ? <ProtocolosCadastro podeLancar={podeLancar} /> : <section className="rounded-xl border border-border">
+      {aba === "protocolos" ? <ProtocolosCadastro podeLancar={podeLancar} /> : <section className="pec-catalogo-sanitario rounded-xl border border-border">
         <div className="flex flex-wrap items-center justify-between gap-3 p-4">
           <h2 className="h2">{titulo}</h2>
           {podeLancar && <Button disabled={ocupado || carregando} onClick={() => abrir(aba)}>{novo}</Button>}
@@ -120,12 +121,12 @@ export function CadastrosSanitarios({ podeLancar, cadastro, embutido = false }: 
       </section>}
     </div>
     {painel && podeLancar && <PainelCadastro aberto titulo={painel.tipo === "aplicacao" ? "Tipo de aplicação" : painel.tipo === "doenca" ? "Doença" : "Tipo de exame"} onFechar={() => { if (!ocupado) setPainel(null); }} rodape={<><Button secondary disabled={ocupado} onClick={() => setPainel(null)}>Cancelar</Button><Button type="submit" form="cadastro-sanitario" disabled={ocupado}>{ocupado ? "Salvando…" : "Salvar"}</Button></>}>
-      <form id="cadastro-sanitario" className="grid gap-4" onSubmit={(e) => { e.preventDefault(); salvar(); }}>
+      <form data-pec-formulario id="cadastro-sanitario" className="grid gap-4" onSubmit={(e) => { e.preventDefault(); salvar(); }}>
         <ErrorBox erro={erro} />
         <CampoFormulario id="cad-san-nome" rotulo="Nome" obrigatorio>{(p) => <input {...p} required minLength={2} maxLength={120} className={classeInput} value={nome} onChange={(e) => setNome(e.target.value)} />}</CampoFormulario>
         {painel.tipo === "exame" && <>
           <p className="text-sm text-ink-3">{formatoBloqueado ? "Já houve coleta deste exame. Formato, unidade e opções estão bloqueados. Para mudar esses campos, crie outro tipo de exame." : "Após a primeira coleta, formato, unidade e opções ficam bloqueados."}</p>
-          <CampoFormulario id="cad-san-formato" rotulo="Formato do resultado">{(p) => <select {...p} disabled={formatoBloqueado || ocupado} className={classeInput} value={formato} onChange={(e) => setFormato(e.target.value as typeof formato)}>{Object.entries(formatos).map(([valor, label]) => <option key={valor} value={valor}>{label}</option>)}</select>}</CampoFormulario>
+          <CampoFormulario id="cad-san-formato" rotulo="Formato do resultado">{(p) => <SelectCampo {...p} disabled={formatoBloqueado || ocupado} className={classeInput} value={formato} onValueChange={(valorSelecionado) => setFormato(valorSelecionado as typeof formato)}>{Object.entries(formatos).map(([valor, label]) => <option key={valor} value={valor}>{label}</option>)}</SelectCampo>}</CampoFormulario>
           <CampoFormulario id="cad-san-unidade" rotulo="Unidade (opcional)">{(p) => <input {...p} disabled={formatoBloqueado || ocupado} className={classeInput} value={unidade} onChange={(e) => setUnidade(e.target.value)} />}</CampoFormulario>
           {formato === "OPCAO" && <CampoFormulario id="cad-san-opcoes" rotulo="Uma opção por linha" obrigatorio>{(p) => <textarea {...p} disabled={formatoBloqueado || ocupado} required className={classeInput} value={opcoes} onChange={(e) => setOpcoes(e.target.value)} />}</CampoFormulario>}
         </>}

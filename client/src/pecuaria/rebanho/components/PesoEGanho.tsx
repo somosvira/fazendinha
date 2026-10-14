@@ -39,7 +39,7 @@ export function PesoEGanho({ animal, periodo, onPeriodoChange, podeLancar, onEdi
     : `${peso.gmdPeriodo.pesagens} pesagens em ${peso.gmdPeriodo.dias ?? 0} dias · ${rotuloPeriodoGmd(periodo)}`;
 
   return <CardFicha icon={Scale} titulo="Peso e ganho" className="lg:col-span-2" acao={<SeletorPeriodoGmd id="periodo-gmd-animal" valor={periodo} onChange={onPeriodoChange} />}>
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="pec-metricas pec-metricas-peso grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <Metric label="Último peso" icon={Scale} valor={formatarKg(peso.ultimo?.kg)} detalhe={peso.ultimo ? formatarDataBR(peso.ultimo.data) : "Sem pesagem registrada"} />
       <Metric label="GMD recente" icon={TrendingUp} valor={formatarGmd(peso.gmdRecente)} detalhe="Entre as duas últimas pesagens" />
       <Metric label="GMD do período" icon={Weight} valor={formatarGmd(peso.gmdPeriodo.valor)} detalhe={detalhePeriodo} />

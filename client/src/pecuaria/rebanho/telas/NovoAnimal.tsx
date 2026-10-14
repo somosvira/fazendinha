@@ -1,3 +1,4 @@
+import { SelectCampo } from "@/financeiro/SelectCampo";
 // Cadastro de animal — página cheia no layout de FormOperacao.tsx: form em
 // card + resumo de revisão à direita. POST /pecuaria/rebanho/animais.
 
@@ -189,7 +190,7 @@ function FormNovoAnimal({ onVoltar }: { onVoltar: () => void }) {
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             <CampoFormulario id="novo-animal-brinco" rotulo="Brinco" obrigatorio erro={erros.brinco}>{(p) => <input {...p} required maxLength={40} value={brinco} onChange={(e) => setBrinco(e.target.value)} className={classeInput} />}</CampoFormulario>
             <CampoFormulario id="novo-animal-nome" rotulo="Nome">{(p) => <input {...p} maxLength={120} value={nome} onChange={(e) => setNome(e.target.value)} className={classeInput} />}</CampoFormulario>
-            <CampoFormulario id="novo-animal-sexo" rotulo="Sexo" obrigatorio>{(p) => <select {...p} value={sexo} onChange={(e) => alterarSexo(e.target.value as Sexo)} className={classeInput}><option value="F">Fêmea</option><option value="M">Macho</option></select>}</CampoFormulario>
+            <CampoFormulario id="novo-animal-sexo" rotulo="Sexo" obrigatorio>{(p) => <SelectCampo {...p} value={sexo} onValueChange={(valorSelecionado) => alterarSexo(valorSelecionado as Sexo)} className={classeInput}><option value="F">Fêmea</option><option value="M">Macho</option></SelectCampo>}</CampoFormulario>
             <CampoFormulario id="novo-animal-brinco-eletronico" rotulo="Brinco eletrônico">{(p) => <input {...p} maxLength={40} value={brincoEletronico} onChange={(e) => setBrincoEletronico(e.target.value)} className={classeInput} />}</CampoFormulario>
             <CampoFormulario id="novo-animal-sisbov" rotulo="SISBOV">{(p) => <input {...p} maxLength={40} value={sisbov} onChange={(e) => setSisbov(e.target.value)} className={classeInput} />}</CampoFormulario>
           </div>
@@ -197,7 +198,7 @@ function FormNovoAnimal({ onVoltar }: { onVoltar: () => void }) {
         <section>
           <h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Origem e datas</h3>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            <CampoFormulario id="novo-animal-origem" rotulo="Origem" obrigatorio>{(p) => <select {...p} value={origem} onChange={(e) => alterarOrigem(e.target.value as Origem)} className={classeInput}><option value="NASCIDO">Nascido na propriedade</option><option value="COMPRADO">Comprado</option></select>}</CampoFormulario>
+            <CampoFormulario id="novo-animal-origem" rotulo="Origem" obrigatorio>{(p) => <SelectCampo {...p} value={origem} onValueChange={(valorSelecionado) => alterarOrigem(valorSelecionado as Origem)} className={classeInput}><option value="NASCIDO">Nascido na propriedade</option><option value="COMPRADO">Comprado</option></SelectCampo>}</CampoFormulario>
             <CampoFormulario id="novo-animal-data-nascimento" rotulo="Data de nascimento" obrigatorio erro={erros.dataNascimento}>{(p) => <DatePicker {...p} required max={hoje()} value={dataNascimento} onChange={alterarDataNascimento} className="mt-1.5" />}</CampoFormulario>
             <CampoFormulario id="novo-animal-data-entrada" rotulo="Data de entrada" obrigatorio erro={erros.dataEntrada}>{(p) => <DatePicker {...p} required max={hoje()} disabled={origem === "NASCIDO"} value={dataEntrada} onChange={setDataEntrada} className="mt-1.5" />}</CampoFormulario>
             <CampoFormulario id="novo-animal-nascimento-estimado" rotulo="Nascimento estimado">{(p) => <label className="mt-1.5 flex h-[42px] items-center gap-2"><input id={p.id} type="checkbox" aria-label={p["aria-label"]} checked={nascimentoEstimado} onChange={(e) => setNascimentoEstimado(e.target.checked)} /><span className="text-sm font-normal text-ink-3">A data é uma estimativa</span></label>}</CampoFormulario>
@@ -211,10 +212,10 @@ function FormNovoAnimal({ onVoltar }: { onVoltar: () => void }) {
         <section>
           <h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Localização e finalidade</h3>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            <CampoFormulario id="novo-animal-propriedade" rotulo="Sítio" obrigatorio erro={erros.propriedadeId}>{(p) => <select {...p} required value={propriedadeId} onChange={(e) => alterarPropriedade(e.target.value)} className={classeInput}><option value="">Selecione</option>{catalogos.propriedades.map((prop) => <option key={prop.id} value={prop.id}>{prop.nome}</option>)}</select>}</CampoFormulario>
-            <CampoFormulario id="novo-animal-lote" rotulo="Lote" ajuda={!propriedadeId ? "Selecione o sítio para escolher o lote." : undefined}>{(p) => <select {...p} disabled={!propriedadeId} value={loteId} onChange={(e) => setLoteId(e.target.value)} className={classeInput}><option value="">Sem lote</option>{lotesDoSitio.map((lote) => <option key={lote.id} value={lote.id}>{lote.nome}</option>)}</select>}</CampoFormulario>
-            <CampoFormulario id="novo-animal-aptidao" rotulo="Aptidão" obrigatorio>{(p) => <select {...p} required value={aptidao} onChange={(e) => setAptidao(e.target.value as Aptidao)} className={classeInput}><option value="LEITE">Leite</option><option value="CORTE">Corte</option></select>}</CampoFormulario>
-            {sexo === "F" && <CampoFormulario id="novo-animal-papel" rotulo="Papel reprodutivo">{(p) => <select {...p} value={papelReprodutivo} onChange={(e) => setPapelReprodutivo(e.target.value as PapelReprodutivo)} className={classeInput}><option value="NENHUM">Nenhum</option><option value="RECEPTORA">Receptora</option><option value="DOADORA">Doadora</option></select>}</CampoFormulario>}
+            <CampoFormulario id="novo-animal-propriedade" rotulo="Sítio" obrigatorio erro={erros.propriedadeId}>{(p) => <SelectCampo {...p} required value={propriedadeId} onValueChange={(valorSelecionado) => alterarPropriedade(valorSelecionado)} className={classeInput}><option value="">Selecione</option>{catalogos.propriedades.map((prop) => <option key={prop.id} value={prop.id}>{prop.nome}</option>)}</SelectCampo>}</CampoFormulario>
+            <CampoFormulario id="novo-animal-lote" rotulo="Lote" ajuda={!propriedadeId ? "Selecione o sítio para escolher o lote." : undefined}>{(p) => <SelectCampo {...p} disabled={!propriedadeId} value={loteId} onValueChange={(valorSelecionado) => setLoteId(valorSelecionado)} className={classeInput}><option value="">Sem lote</option>{lotesDoSitio.map((lote) => <option key={lote.id} value={lote.id}>{lote.nome}</option>)}</SelectCampo>}</CampoFormulario>
+            <CampoFormulario id="novo-animal-aptidao" rotulo="Aptidão" obrigatorio>{(p) => <SelectCampo {...p} required value={aptidao} onValueChange={(valorSelecionado) => setAptidao(valorSelecionado as Aptidao)} className={classeInput}><option value="LEITE">Leite</option><option value="CORTE">Corte</option></SelectCampo>}</CampoFormulario>
+            {sexo === "F" && <CampoFormulario id="novo-animal-papel" rotulo="Papel reprodutivo">{(p) => <SelectCampo {...p} value={papelReprodutivo} onValueChange={(valorSelecionado) => setPapelReprodutivo(valorSelecionado as PapelReprodutivo)} className={classeInput}><option value="NENHUM">Nenhum</option><option value="RECEPTORA">Receptora</option><option value="DOADORA">Doadora</option></SelectCampo>}</CampoFormulario>}
           </div>
         </section>
         <section>

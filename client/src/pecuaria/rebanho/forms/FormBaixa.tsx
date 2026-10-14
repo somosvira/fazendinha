@@ -1,3 +1,4 @@
+import { SelectCampo } from "@/financeiro/SelectCampo";
 // Modal "Dar baixa" — POST /pecuaria/rebanho/animais/:id/baixa. Ação
 // irreversível (mas estornável) com caixa de impacto, no padrão do
 // cancelamento de OperacaoFinanceiraDetalhe.tsx — por isso é um Modal, não
@@ -83,11 +84,11 @@ export function FormBaixa({ animal, motivos, onSalvo, onFechar }: {
       </div>
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
         <label className="text-sm font-medium">Data da baixa *<DatePicker id="baixa-data" required aria-label="Data da baixa" max={hoje()} value={data} onChange={setData} aria-invalid={erroData ? true : undefined} aria-describedby={erroData ? "baixa-data-erro" : undefined} className="mt-1.5" />{erroData && <p id="baixa-data-erro" role="alert" className="mt-1 text-xs font-normal text-red-700">{erroData}</p>}</label>
-        <label className="text-sm font-medium">Tipo *<select required value={tipo} onChange={(e) => mudarTipo(e.target.value as TipoBaixa)} className={classeInput}>{TIPOS_BAIXA.map((t) => <option key={t} value={t}>{rotuloTipoBaixa(t)}</option>)}</select></label>
-        {grupos.length > 0 && <label className="text-sm font-medium sm:col-span-2">Motivo do catálogo<select value={motivoId} onChange={(e) => setMotivoId(e.target.value)} className={classeInput}>
+        <label className="text-sm font-medium">Tipo *<SelectCampo required value={tipo} onValueChange={(valorSelecionado) => mudarTipo(valorSelecionado as TipoBaixa)} className={classeInput}>{TIPOS_BAIXA.map((t) => <option key={t} value={t}>{rotuloTipoBaixa(t)}</option>)}</SelectCampo></label>
+        {grupos.length > 0 && <label className="text-sm font-medium sm:col-span-2">Motivo do catálogo<SelectCampo value={motivoId} onValueChange={(valorSelecionado) => setMotivoId(valorSelecionado)} className={classeInput}>
           <option value="">Sem motivo específico</option>
           {grupos.map((grupo) => <optgroup key={grupo.classe} label={rotuloClasseMotivo(grupo.classe)}>{grupo.motivos.map((motivo) => <option key={motivo.id} value={motivo.id}>{motivo.nome}</option>)}</optgroup>)}
-        </select></label>}
+        </SelectCampo></label>}
         <label className="text-sm font-medium sm:col-span-2">Observação<textarea maxLength={500} value={observacao} onChange={(e) => setObservacao(e.target.value)} className={classeInput} /></label>
       </div>
       <div className="mt-5 flex justify-end gap-2">

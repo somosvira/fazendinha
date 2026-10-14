@@ -33,7 +33,9 @@ Financeiro separa operação, compromisso, transação, movimento de conta e efe
 
 Pecuária V1–V3 reúne rebanho, genética, sanidade, peso/manejo e nutrição, com auditoria e localização histórica. Confira [seu contrato](docs/pecuaria/README.md). Agricultura/Cultivo/Equipe não têm módulos operacionais atuais. Centros/categorias e origens físicas de atividades retiradas podem existir no histórico financeiro.
 
-OpenAI, motor estruturado de consulta e WhatsApp conservam código. `ASSISTENTE_ATIVO=false` nos dois lados suspende os canais; o servidor devolve `FEATURE_DISABLED`/503. A configuração de credenciais não reativa a feature.
+O [assistente de consulta](docs/assistente-consulta.md) usa OpenAI para interpretar perguntas e um registro de ferramentas autorizadas para formatar respostas com dados dos serviços financeiros e artigos de ajuda revisados. O backend nunca envia os resultados financeiros ao modelo. O canal `/api/assistente/*` é separado, exige usuário real ativo e pode ser desativado com `ASSISTENTE_CONSULTA_ENABLED=false`. Guias e consultas rápidas funcionam sem chave de IA. Os agregados exigem as flags de valores, salários e investimento até haver mascaramento granular confiável.
+
+O bot anterior, motor estruturado legado e WhatsApp conservam código. `ASSISTENTE_ATIVO=false` nos dois lados mantém esses canais e `/ia` suspensos; o servidor devolve `FEATURE_DISABLED`/503 para bot/WhatsApp. A configuração de credenciais não os reativa.
 
 ## Sessão, permissões e sítio
 
@@ -66,5 +68,7 @@ Configuração e fluxo de publicação em Cloudflare ficam em [DEPLOY.md](DEPLOY
 ## Interface unificada
 
 Financeiro, Pecuária, Estoque e as demais telas autenticadas compartilham os tokens de `client/src/styles/cooperativa-theme.css`. A direção desta entrega está documentada no [guia Cooperativa contemporânea](docs/design/cooperativa-unificada.md), com referências específicas para Financeiro e Pecuária. PageHeader, CabecalhoTabela, SubTabs e TabelaFinanceira compõem cabeçalhos, abas e listagens reutilizando as primitivas existentes. Seleção e persistência de temas não estão implementadas.
+
+Os seletores de opção única usam o popup compartilhado `components/ui/select`, com busca por rótulo sem distinguir maiúsculas ou acentos, estado sem resultados e navegação por teclado. Digitar não troca o valor selecionado; fechar limpa a busca e devolve o foco ao gatilho. Itens filtrados continuam montados para conservar rótulo e valor nativo do formulário, mas não ficam visíveis nem recebem foco na navegação. `SelectCampo` adapta os filhos `option`/`optgroup`, preserva grupos, opções desativadas, valores numéricos e opções sem `value` explícito; vazio continua vazio para a validação de campos obrigatórios. A busca é local às opções já disponíveis, não amplia o escopo autorizado nem consulta outros registros no servidor. Menus de ações não são seletores e não recebem busca.
 
 A navegação de Pecuária mantém Rebanho, Sanidade e Nutrição; pesagem coletiva é ação da seleção em Animais, e `/pecuaria/pesagem-manejo` permanece alias que conserva consulta e fragmento. Os resumos nutricionais usam os endpoints V3 existentes, percorrem o histórico paginado, respeitam o mascaramento de custos e agregam valores de apresentação em centavos inteiros. A entrega não altera as gravações de domínio; o custo de consultas cresce com o histórico, conforme o [guia específico](docs/design/pecuaria-cooperativa/design.md).

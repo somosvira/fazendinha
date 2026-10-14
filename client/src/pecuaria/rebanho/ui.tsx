@@ -1,3 +1,4 @@
+import { SelectCampo } from "@/financeiro/SelectCampo";
 // Peças compartilhadas pelas telas do Rebanho que NÃO existem no financeiro
 // (as que existem — PaginaFinanceira, PageHeader, Panel, Modal, TabelaFinanceira,
 // etc. — vêm de client/src/financeiro/financeiro-ui.tsx e devem ser importadas
@@ -159,10 +160,10 @@ export function CampoComposicao({ racas, itens, onChange, erro, limite64 = 64 }:
     {itens.map((item, indice) => <div key={indice} className="flex flex-wrap items-end gap-3 rounded-lg border border-border p-3">
       <div className="min-w-[180px] flex-1 text-sm font-medium">
         <label htmlFor={`composicao-raca-${indice}`}>Raça</label>
-        <select id={`composicao-raca-${indice}`} className={classeInput} value={item.racaId} onChange={(e) => atualizar(indice, { racaId: e.target.value })}>
+        <SelectCampo id={`composicao-raca-${indice}`} className={classeInput} value={item.racaId} onValueChange={(valorSelecionado) => atualizar(indice, { racaId: valorSelecionado })}>
           <option value="">Selecione</option>
           {racas.map((raca) => <option key={raca.id} value={raca.id}>{raca.nome} ({raca.sigla})</option>)}
-        </select>
+        </SelectCampo>
       </div>
       <div className="w-28 text-sm font-medium">
         <label htmlFor={`composicao-fracao-${indice}`}>Fração (/64)</label>

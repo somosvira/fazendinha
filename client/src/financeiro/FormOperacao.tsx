@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button as UiButton } from "@/components/ui/button";
 import { SelectCampo } from "./SelectCampo";
 import { Textarea } from "@/components/ui/textarea";
+import { DatePicker } from "@/components/DatePicker";
 import { type ChangeEvent, type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { SelecaoPartidas, conferirDistribuicaoPartidas, ErroDistribuicaoPartidas, type DistribuicaoPartida } from "../estoque/SelecaoPartidas";
 import { ArrowUpDown, ChartPie, CircleAlert, FileText, Info, ListChecks, Loader2, Package, Paperclip, Plus, Trash2, Wand2 } from "lucide-react";
@@ -772,7 +773,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
           <h3 className="mb-3 flex items-center gap-3 text-sm font-semibold text-ink"><span className="fin-section-icon fin-form-icon"><Info aria-hidden /></span>Identificação</h3>
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             <label className="text-sm font-medium">Tipo de operação<SelectCampo aria-label="Tipo de operação" disabled={atalhoAjuste} className={SELECT} value={tipo} onValueChange={(valor) => alterarTipo(valor)}>{Object.entries(TIPO_OPERACAO).filter(([chave]) => !["TRANSFERENCIA_FINANCEIRA", "TRANSFERENCIA_ESTOQUE", "APORTE", "RETIRADA"].includes(chave)).map(([chave, nome]) => <option key={chave} value={chave}>{nome}</option>)}</SelectCampo>{atalhoAjuste && <span className="mt-1 block text-xs font-normal text-ink-3">Ajuste de estoque — para outro tipo de operação, abra Nova operação.</span>}</label>
-            {!ehAjuste && <label className="text-sm font-medium">Data<Input aria-label="Data" required type="date" className={CAMPO} value={data} onChange={(e) => setData(e.target.value)} /></label>}
+            {!ehAjuste && <label className="text-sm font-medium">Data<DatePicker id="campo-data" aria-label="Data" required className="mt-1.5" value={data} onChange={setData} /></label>}
             {exigeParceiro && <label className="text-sm font-medium">{parceiroLabel(tipo)} *<SelectCampo id="campo-parceiroId" aria-label={parceiroLabel(tipo)} aria-invalid={campoInvalido === "parceiroId" || undefined} aria-describedby={campoInvalido === "parceiroId" ? "erro-parceiroId" : undefined} required className={SELECT + classeCampoErro("parceiroId")} value={parceiroId} onValueChange={(valor) => { setParceiroId(valor); limparCampoInvalido("parceiroId"); }}><option value="">Selecione</option>{parceiros.map((parceiro) => <option key={parceiro.id} value={parceiro.id}>{parceiro.nome}</option>)}</SelectCampo>{campoInvalido === "parceiroId" && <CampoErro id="erro-parceiroId">Selecione um parceiro válido.</CampoErro>}</label>}
             {!ehAjuste && campoDescricao}
           </div>

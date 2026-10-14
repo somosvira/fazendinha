@@ -1,12 +1,31 @@
 import { Children, isValidElement, type ReactNode, type AriaAttributes } from "react";
 import { cn } from "@/lib/utils";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-type Opcao = { value?: string | number; children?: ReactNode; disabled?: boolean };
-function opcoesDe(children: ReactNode): Opcao[] {
+type Opcao = { value?: string | number; children?: ReactNode; disabled?: boolean; label?: string };
+function textoDe(children: ReactNode): string {
+  return Children.toArray(children).map(child => isValidElement<Opcao>(child) ? textoDe(child.props.children) : String(child ?? "")).join("");
+}
+function valorDe(opcao: Opcao): string {
+  return String(opcao.value ?? textoDe(opcao.children));
+}
+function opcoesDe(children: ReactNode, disabled = false): Opcao[] {
   return Children.toArray(children).flatMap(child => {
     if (!isValidElement<Opcao>(child)) return [];
-    return child.type === "option" ? [child.props] : opcoesDe(child.props.children);
+    return child.type === "option" ? [{ ...child.props, disabled: disabled || child.props.disabled }] : opcoesDe(child.props.children, disabled || child.props.disabled);
+  });
+}
+const VAZIO = "__sem_valor__";
+function renderOpcoes(children: ReactNode, disabled = false): ReactNode {
+  return Children.toArray(children).map((child, indice) => {
+    if (!isValidElement<Opcao>(child)) return null;
+    const bloqueada = disabled || child.props.disabled;
+    if (child.type === "option") {
+      const valor = valorDe(child.props);
+      return <SelectItem key={child.key ?? indice} data-value={valor} value={valor || VAZIO} disabled={bloqueada}>{child.props.children}</SelectItem>;
+    }
+    const itens = renderOpcoes(child.props.children, bloqueada);
+    return child.type === "optgroup" ? <SelectGroup key={child.key ?? indice}>{child.props.label && <SelectLabel>{child.props.label}</SelectLabel>}{itens}</SelectGroup> : itens;
   });
 }
 
@@ -15,9 +34,10 @@ export function SelectCampo({ children, value, onValueChange, className, id, nam
   children: ReactNode; value?: string | number; onValueChange?: (valor: string) => void;
   className?: string; id?: string; name?: string; disabled?: boolean; required?: boolean;
 }) {
-  const vazio = "__sem_valor__";
-  return <Select value={String(value ?? "") || vazio} onValueChange={v => onValueChange?.(v === vazio ? "" : v)} name={name} disabled={disabled} required={required}>
-    <SelectTrigger value={value} id={id} {...aria} className={cn(className, "flex")}><SelectValue /></SelectTrigger>
-    <SelectContent className="z-[1300]">{opcoesDe(children).map(opcao => <SelectItem key={String(opcao.value ?? "")} data-value={String(opcao.value ?? "")} value={String(opcao.value ?? "") || vazio} disabled={opcao.disabled}>{opcao.children}</SelectItem>)}</SelectContent>
+  const opcoes = opcoesDe(children);
+  const selecionada = opcoes.find(opcao => valorDe(opcao) === String(value ?? ""));
+  return <Select value={String(value ?? "")} onValueChange={v => onValueChange?.(v === VAZIO ? "" : v)} name={name} disabled={disabled} required={required}>
+    <SelectTrigger value={value} id={id} {...aria} className={cn(className, "flex")}><SelectValue placeholder={selecionada?.children}>{selecionada?.children}</SelectValue></SelectTrigger>
+    <SelectContent className="z-[1300]">{renderOpcoes(children)}</SelectContent>
   </Select>;
 }

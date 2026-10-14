@@ -1,5 +1,5 @@
 import { beforeEach, vi } from "vitest";
-import { fireEvent, screen } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 
 if (!Element.prototype.scrollIntoView) Element.prototype.scrollIntoView = () => {};
 
@@ -19,4 +19,7 @@ export async function alterarControle(campo: HTMLElement, evento: { target: { va
   const opcao = opcoes.find(item => item.getAttribute("data-value") === String(evento.target.value));
   if (!opcao) throw new Error(`Opção ausente: ${evento.target.value}`);
   fireEvent.click(opcao);
+  await waitFor(() => {
+    if (campo.isConnected && !campo.matches(":disabled") && document.activeElement !== campo) throw new Error("Aguardando o foco voltar ao seletor");
+  });
 }

@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { alterarControle } from "../../../lib/controles.fixture";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { ToastProvider } from "@/components/Toast";
@@ -185,8 +186,8 @@ describe("DetalheAnimal — categoria", () => {
     await montar(base);
     fireEvent.click(screen.getByRole("button", { name: "Alterar categoria" }));
     const painel = await screen.findByRole("dialog");
-    fireEvent.change(within(painel).getByLabelText("Nova categoria"), { target: { value: "cat-novilha" } });
-    fireEvent.change(within(painel).getByLabelText("Motivo"), { target: { value: "Reclassificação manual" } });
+    await alterarControle(within(painel).getByLabelText("Nova categoria"), { target: { value: "cat-novilha" } });
+    await alterarControle(within(painel).getByLabelText("Motivo"), { target: { value: "Reclassificação manual" } });
     fireEvent.click(within(painel).getByRole("button", { name: "Salvar categoria" }));
     await waitFor(() => expect(definirCategoriaManual).toHaveBeenCalledWith("animal-1", { categoriaId: "cat-novilha", data: expect.any(String), motivo: "Reclassificação manual" }));
   });
@@ -195,8 +196,8 @@ describe("DetalheAnimal — categoria", () => {
     await montar(base);
     fireEvent.click(screen.getByRole("button", { name: "Alterar categoria" }));
     const painel = await screen.findByRole("dialog");
-    expect(within(painel).queryByRole("option", { name: "Vaca" })).toBeNull();
-    expect(within(painel).getByRole("option", { name: "Novilha" })).toBeTruthy();
+    expect(within(painel).queryByRole("option", { hidden: true,  name: "Vaca" })).toBeNull();
+    expect(within(painel).getByRole("option", { hidden: true,  name: "Novilha" })).toBeTruthy();
   });
 
   it("voltar ao automático mostra o impacto e envia o motivo", async () => {
@@ -205,7 +206,7 @@ describe("DetalheAnimal — categoria", () => {
     fireEvent.click(screen.getByRole("button", { name: "Voltar ao automático" }));
     const modal = await screen.findByRole("dialog");
     expect(within(modal).getByText(/O animal passa a ser Vaca pelo cálculo\./)).toBeTruthy();
-    fireEvent.change(within(modal).getByLabelText("Motivo"), { target: { value: "Volta ao cálculo" } });
+    await alterarControle(within(modal).getByLabelText("Motivo"), { target: { value: "Volta ao cálculo" } });
     fireEvent.click(within(modal).getByRole("button", { name: "Confirmar" }));
     await waitFor(() => expect(removerCategoriaManual).toHaveBeenCalledWith("animal-1", { motivo: "Volta ao cálculo" }));
   });
@@ -232,7 +233,7 @@ describe("DetalheAnimal — editar dados (R1)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Editar dados" }));
     const painel = await screen.findByRole("dialog");
     expect(within(painel).getByLabelText("Partos antes da entrada")).toBeTruthy();
-    fireEvent.change(within(painel).getByLabelText("Sexo"), { target: { value: "M" } });
+    await alterarControle(within(painel).getByLabelText("Sexo"), { target: { value: "M" } });
     expect(within(painel).queryByLabelText("Partos antes da entrada")).toBeNull();
     fireEvent.click(within(painel).getByRole("button", { name: "Salvar dados" }));
     await waitFor(() => expect(editarAnimal).toHaveBeenCalledWith("animal-1", expect.objectContaining({ sexo: "M", partosAntesDaEntrada: 0 })));
@@ -302,7 +303,7 @@ describe("DetalheAnimal — movimentar (K8)", () => {
     await montar(base);
     fireEvent.click(screen.getByRole("button", { name: "Movimentar" }));
     const painel = await screen.findByRole("dialog");
-    fireEvent.change(within(painel).getByLabelText("Sítio de destino"), { target: { value: "1" } });
+    await alterarControle(within(painel).getByLabelText("Sítio de destino"), { target: { value: "1" } });
     fireEvent.click(within(painel).getByRole("button", { name: "Movimentar" }));
 
     await screen.findByText("1 animal movimentado");
@@ -331,15 +332,15 @@ describe("DetalheAnimal — seletor de período do GMD", () => {
     // padrão: desde a entrada (a curva inteira do animal)
     expect(buscarFichaAnimal).toHaveBeenLastCalledWith("animal-1", { periodoDias: "entrada" });
 
-    fireEvent.change(screen.getByLabelText("Período do GMD"), { target: { value: "30" } });
+    await alterarControle(screen.getByLabelText("Período do GMD"), { target: { value: "30" } });
     await waitFor(() => expect(buscarFichaAnimal).toHaveBeenLastCalledWith("animal-1", { periodoDias: 30 }));
   });
 
   it("voltar para 'Desde a entrada' busca com periodoDias=entrada (sem o parâmetro o servidor usa 90 dias)", async () => {
     await montar(base);
-    fireEvent.change(screen.getByLabelText("Período do GMD"), { target: { value: "90" } });
+    await alterarControle(screen.getByLabelText("Período do GMD"), { target: { value: "90" } });
     await waitFor(() => expect(buscarFichaAnimal).toHaveBeenLastCalledWith("animal-1", { periodoDias: 90 }));
-    fireEvent.change(screen.getByLabelText("Período do GMD"), { target: { value: "entrada" } });
+    await alterarControle(screen.getByLabelText("Período do GMD"), { target: { value: "entrada" } });
     await waitFor(() => expect(buscarFichaAnimal).toHaveBeenLastCalledWith("animal-1", { periodoDias: "entrada" }));
   });
 });

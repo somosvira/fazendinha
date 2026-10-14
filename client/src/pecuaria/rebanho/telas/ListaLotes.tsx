@@ -1,3 +1,4 @@
+import { SelectCampo } from "@/financeiro/SelectCampo";
 // Lista de lotes — duas seções empilhadas (Lotes · Histórico de movimentações),
 // no padrão das seções de DetalheLote.tsx (Panel com cabeçalho <h2 className=
 // "font-serif text-xl">). Antes eram sub-abas; agora o histórico fica sempre
@@ -19,6 +20,7 @@ import { FormMovimentar } from "../forms/FormMovimentar";
 import { SeletorAnimais } from "../components/SeletorAnimais";
 import { HistoricoMovimentacoes } from "../components/HistoricoMovimentacoes";
 import { DetalheMovimentacao } from "../components/DetalheMovimentacao";
+import { ComparacaoPecuaria } from "../components/DistribuicaoPecuaria";
 
 type Painel = { modo: "novo" } | { modo: "editar"; id: string } | null;
 
@@ -130,16 +132,18 @@ export function ListaLotes({ podeLancar = true, onAbrirLote }: { podeLancar?: bo
     <NavRebanho ativa="lotes" />
     <ErrorBox erro={erro} />
 
+    {lotes && <div className="mt-5"><ComparacaoPecuaria titulo="Distribuição dos animais nos lotes" descricao={`${lotesFiltrados.filter(l => l.ativo).length} lotes ativos no filtro · até 6 lotes com maior efetivo`} itens={[...lotesFiltrados].filter(l => l.ativo).sort((a, b) => b.animaisAtivos - a.animaisAtivos).slice(0, 6).map(l => ({ id: l.id, nome: l.nome, qtd: l.animaisAtivos, href: `/pecuaria/rebanho/lotes/${l.id}` }))} /></div>}
+
     <Panel className="mt-5 overflow-hidden">
       <div className="border-b border-border p-5"><h2 className="font-serif text-xl">Lotes</h2></div>
       {/* filtros ficam fora do fieldset de escrita — quem só pode ver continua podendo filtrar (K7) */}
       <BarraFiltros>
         <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" disabled={processando} checked={mostrarInativos} onChange={(e) => setMostrarInativos(e.target.checked)} />Mostrar inativos</label>
         <label className="flex items-center gap-2 text-sm font-medium">Sítio
-          <select aria-label="Filtrar por sítio" disabled={processando} value={filtroSitio} onChange={(e) => setFiltroSitio(e.target.value)} className="rounded-lg border border-border bg-white p-2 text-sm font-normal">
+          <SelectCampo aria-label="Filtrar por sítio" disabled={processando} value={filtroSitio} onValueChange={(valorSelecionado) => setFiltroSitio(valorSelecionado)} className="rounded-lg border border-border bg-white p-2 text-sm font-normal">
             <option value="">Todos</option>
             {sitiosAtivos.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}
-          </select>
+          </SelectCampo>
         </label>
       </BarraFiltros>
       <fieldset disabled={processando || !podeLancar} aria-busy={processando} className="min-w-0">
@@ -153,16 +157,16 @@ export function ListaLotes({ podeLancar = true, onAbrirLote }: { podeLancar?: bo
       <div className="border-b border-border p-5"><h2 className="font-serif text-xl">Histórico de movimentações</h2></div>
       <BarraFiltros>
         <label className="flex items-center gap-2 text-sm font-medium">Sítio
-          <select aria-label="Filtrar histórico por sítio" value={filtroSitioHistorico} onChange={(e) => { setFiltroSitioHistorico(e.target.value); setFiltroLoteHistorico(""); }} className="rounded-lg border border-border bg-white p-2 text-sm font-normal">
+          <SelectCampo aria-label="Filtrar histórico por sítio" value={filtroSitioHistorico} onValueChange={(valorSelecionado) => { setFiltroSitioHistorico(valorSelecionado); setFiltroLoteHistorico(""); }} className="rounded-lg border border-border bg-white p-2 text-sm font-normal">
             <option value="">Todos</option>
             {sitiosAtivos.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}
-          </select>
+          </SelectCampo>
         </label>
         <label className="flex items-center gap-2 text-sm font-medium">Lote
-          <select aria-label="Filtrar histórico por lote" value={filtroLoteHistorico} onChange={(e) => setFiltroLoteHistorico(e.target.value)} className="rounded-lg border border-border bg-white p-2 text-sm font-normal">
+          <SelectCampo aria-label="Filtrar histórico por lote" value={filtroLoteHistorico} onValueChange={(valorSelecionado) => setFiltroLoteHistorico(valorSelecionado)} className="rounded-lg border border-border bg-white p-2 text-sm font-normal">
             <option value="">Todos</option>
             {lotesDoSitioHistorico.map((l) => <option key={l.id} value={l.id}>{l.nome}</option>)}
-          </select>
+          </SelectCampo>
         </label>
         <label className="flex items-center gap-2 text-sm font-medium">De
           <input aria-label="Data inicial do histórico" type="date" value={dataDeHistorico} onChange={(e) => setDataDeHistorico(e.target.value)} className="rounded-lg border border-border bg-white p-2 text-sm font-normal" />

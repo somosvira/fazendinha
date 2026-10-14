@@ -1,9 +1,11 @@
+import { SelectCampo } from "@/financeiro/SelectCampo";
 // Cadastro de material genético (v2 · Genética · Fase 4) — sêmen ou embrião. O
 // material entra no estoque via compra (Financeiro › Nova operação); aqui só se
 // registra de quem é (touro/doadora) e a categoria financeira usada nas compras.
 // Edição só permite trocar tipo de sêmen e observação — o resto define o produto
 // do estoque e não muda depois de criado.
 
+import { Dna } from "lucide-react";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { criarMaterialGenetico, editarMaterialGenetico, RebanhoApiError } from "../api";
 import { listarCategorias, type Categoria } from "../../../estoque/api";
@@ -109,9 +111,9 @@ export function FormMaterialGenetico({ material, onSalvo, onFechar }: {
   };
 
   const formId = "form-material-genetico";
-  return <PainelCadastro aberto titulo={material ? `Editar ${material.produto.nome}` : "Novo material genético"} onFechar={() => { if (!salvando) onFechar(); }}
+  return <PainelCadastro aberto icon={Dna} titulo={material ? `Editar ${material.produto.nome}` : "Novo material genético"} onFechar={() => { if (!salvando) onFechar(); }}
     rodape={<><Button secondary onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form={formId} disabled={salvando}>{salvando ? "Salvando…" : material ? "Salvar" : "Criar material"}</Button></>}>
-    <form id={formId} onSubmit={submeter} className="grid gap-4" noValidate>
+    <form data-pec-formulario id={formId} onSubmit={submeter} className="grid gap-4" noValidate>
       <ErrorBox erro={erroGeral} />
 
       {!editando && <div className="space-y-2">
@@ -126,9 +128,9 @@ export function FormMaterialGenetico({ material, onSalvo, onFechar }: {
       </div>}
 
       {(tipo === "SEMEN" || material?.tipo === "SEMEN") && <CampoFormulario id="material-tipo-semen" rotulo="Tipo de sêmen" obrigatorio>
-        {(p) => <select {...p} value={tipoSemen} onChange={(e) => setTipoSemen(e.target.value as TipoSemen)} className={classeInput}>
+        {(p) => <SelectCampo {...p} value={tipoSemen} onValueChange={(valorSelecionado) => setTipoSemen(valorSelecionado as TipoSemen)} className={classeInput}>
           {(Object.keys(ROTULO_SEMEN) as TipoSemen[]).map((k) => <option key={k} value={k}>{ROTULO_SEMEN[k]}</option>)}
-        </select>}
+        </SelectCampo>}
       </CampoFormulario>}
 
       {!editando && <>
@@ -145,10 +147,10 @@ export function FormMaterialGenetico({ material, onSalvo, onFechar }: {
         {categorias && categoriasGeneticas.length === 0
           ? <p className="text-sm text-amber-700">Cadastre uma categoria financeira em Financeiro › Configurações.</p>
           : <CampoFormulario id="material-categoria" rotulo="Categoria" obrigatorio ajuda="Categoria financeira usada nas compras deste material." erro={erros.categoriaId}>
-              {(p) => <select {...p} value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)} className={classeInput}>
+              {(p) => <SelectCampo {...p} value={categoriaId} onValueChange={(valorSelecionado) => setCategoriaId(valorSelecionado)} className={classeInput}>
                 <option value="">Selecione</option>
                 {categoriasGeneticas.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
-              </select>}
+              </SelectCampo>}
             </CampoFormulario>}
 
         <CampoFormulario id="material-nome" rotulo="Nome do produto" ajuda="Opcional — se vazio, é gerado a partir do touro e da doadora, quando conhecida.">

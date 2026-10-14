@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { alterarControle } from "../../../lib/controles.fixture";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { FechamentosNutricao } from "./FechamentosNutricao";
@@ -16,7 +17,7 @@ describe("fechamentos gerais", () => {
     await screen.findByText(/Página 2 · 51 fechamentos/);
     expect(api.listarFechamentos).toHaveBeenLastCalledWith(undefined, 2, undefined);
     expect(new URLSearchParams(window.location.search).get("paginaFechamentos")).toBe("2");
-    fireEvent.change(screen.getByLabelText("Situação"), { target: { value: "ESTORNADO" } });
+    await alterarControle(screen.getByLabelText("Situação"), { target: { value: "ESTORNADO" } });
     await waitFor(() => expect(api.listarFechamentos).toHaveBeenLastCalledWith(undefined, 1, "ESTORNADO"));
   });
   it("restaura lote, situação e página por deep link", async () => {

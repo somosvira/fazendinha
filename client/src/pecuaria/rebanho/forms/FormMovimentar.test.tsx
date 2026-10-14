@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { alterarControle } from "../../../lib/controles.fixture";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { FormMovimentar } from "./FormMovimentar";
@@ -58,7 +59,7 @@ describe("FormMovimentar", () => {
     expect(screen.getByRole("heading", { name: "Movimentar animal" })).toBeTruthy();
     expect(screen.queryByText(/está em: Sede, sem lote/)).toBeNull();
 
-    fireEvent.change(screen.getByLabelText("Sítio de destino"), { target: { value: "2" } });
+    await alterarControle(screen.getByLabelText("Sítio de destino"), { target: { value: "2" } });
     fireEvent.click(screen.getByRole("button", { name: "Movimentar" }));
     await waitFor(() => expect(movimentarAnimais).toHaveBeenCalledWith(expect.objectContaining({ animalIds: ["a1"] })));
   });
@@ -81,11 +82,11 @@ describe("FormMovimentar", () => {
   it("filtra o lote pelo sítio escolhido e envia a movimentação", async () => {
     const onSalvo = vi.fn();
     render(<FormMovimentar animais={[animal1, animal3]} propriedades={propriedades} lotes={lotes} onSalvo={onSalvo} onFechar={vi.fn()} />);
-    fireEvent.change(screen.getByLabelText("Sítio de destino"), { target: { value: "2" } });
-    expect(screen.queryByRole("option", { name: "Lote A" })).toBeNull();
-    expect(screen.getByRole("option", { name: "Lote B" })).toBeTruthy();
-    fireEvent.change(screen.getByLabelText("Lote"), { target: { value: "lote-2" } });
-    fireEvent.change(screen.getByLabelText("Data"), { target: { value: "2026-02-01" } });
+    await alterarControle(screen.getByLabelText("Sítio de destino"), { target: { value: "2" } });
+    expect(screen.queryByRole("option", { hidden: true,  name: "Lote A" })).toBeNull();
+    expect(screen.getByRole("option", { hidden: true,  name: "Lote B" })).toBeTruthy();
+    await alterarControle(screen.getByLabelText("Lote"), { target: { value: "lote-2" } });
+    await alterarControle(screen.getByLabelText("Data"), { target: { value: "2026-02-01" } });
     fireEvent.click(screen.getByRole("button", { name: "Movimentar" }));
     await waitFor(() => expect(movimentarAnimais).toHaveBeenCalledWith({ animalIds: ["a1", "a3"], propriedadeId: 2, loteId: "lote-2", data: "2026-02-01", motivo: null }));
     await waitFor(() => expect(onSalvo).toHaveBeenCalled());

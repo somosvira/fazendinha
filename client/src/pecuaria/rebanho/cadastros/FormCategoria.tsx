@@ -1,7 +1,9 @@
+import { SelectCampo } from "@/financeiro/SelectCampo";
 // Cadastro de categoria — a validação de campo (nome, sexo, idades) é local; salvar de fato
 // (simular impacto, confirmar se há mudança, aplicar) é feito por quem chama (Cadastros.tsx),
 // que também controla `salvando`/`erro` — por isso este form não fala com a API diretamente.
 
+import { Tags } from "lucide-react";
 import { FormEvent, useState } from "react";
 import type { CategoriaDTO, CriterioPartos, Sexo } from "../types";
 import { Button, ErrorBox } from "../../../financeiro/financeiro-ui";
@@ -51,12 +53,12 @@ export function FormCategoria({ categoria, salvando, erro, onSalvar, onFechar }:
   };
 
   const formId = "form-categoria";
-  return <PainelCadastro aberto titulo={categoria ? `Editar ${categoria.nome}` : "Nova categoria"} onFechar={() => { if (!salvando) onFechar(); }}
+  return <PainelCadastro aberto icon={Tags} titulo={categoria ? `Editar ${categoria.nome}` : "Nova categoria"} onFechar={() => { if (!salvando) onFechar(); }}
     rodape={<><Button secondary onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form={formId} disabled={salvando}>{salvando ? "Salvando…" : categoria ? "Salvar categoria" : "Criar categoria"}</Button></>}>
-    <form id={formId} onSubmit={submeter} className="grid gap-4" noValidate>
+    <form data-pec-formulario id={formId} onSubmit={submeter} className="grid gap-4" noValidate>
       <ErrorBox erro={erro} />
       <CampoFormulario id="categoria-nome" rotulo="Nome da categoria" obrigatorio erro={erros.nome}>{(p) => <input {...p} required maxLength={60} value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Novilha" className={classeInput} />}</CampoFormulario>
-      <CampoFormulario id="categoria-sexo" rotulo="Sexo" obrigatorio>{(p) => <select {...p} value={sexo} onChange={(e) => { const novo = e.target.value as Sexo; setSexo(novo); if (novo === "M") setPartos("QUALQUER"); }} className={classeInput}><option value="F">Fêmea</option><option value="M">Macho</option></select>}</CampoFormulario>
+      <CampoFormulario id="categoria-sexo" rotulo="Sexo" obrigatorio>{(p) => <SelectCampo {...p} value={sexo} onValueChange={(valorSelecionado) => { const novo = valorSelecionado as Sexo; setSexo(novo); if (novo === "M") setPartos("QUALQUER"); }} className={classeInput}><option value="F">Fêmea</option><option value="M">Macho</option></SelectCampo>}</CampoFormulario>
       <label className="flex items-start gap-3 text-sm font-medium">
         <input type="checkbox" aria-label="Calculada por regra" checked={automatica} onChange={(e) => setAutomatica(e.target.checked)} className="mt-1" />
         <span>Calculada por regra<span className="block text-xs font-normal text-ink-3">Desmarque para uma categoria só manual (ex.: Reprodutor, Boi carreiro) — sem regra automática, atribuída só pela ficha do animal.</span></span>
@@ -65,11 +67,11 @@ export function FormCategoria({ categoria, salvando, erro, onSalvar, onFechar }:
         <CampoFormulario id="categoria-idade-min" rotulo="Idade mínima (meses)" erro={erros.idadeMinMeses} ajuda="Em branco = sem mínimo.">{(p) => <input {...p} type="number" min={0} step={1} placeholder="Sem mínimo" value={idadeMinMeses} onChange={(e) => setIdadeMinMeses(e.target.value)} className={classeInput} />}</CampoFormulario>
         <CampoFormulario id="categoria-idade-max" rotulo="Idade máxima (meses)" erro={erros.idadeMaxMeses} ajuda="Até antes de — em branco = sem máximo.">{(p) => <input {...p} type="number" min={1} step={1} placeholder="Sem máximo" value={idadeMaxMeses} onChange={(e) => setIdadeMaxMeses(e.target.value)} className={classeInput} />}</CampoFormulario>
       </div>}
-      {automatica && sexo === "F" && <CampoFormulario id="categoria-partos" rotulo="Partos" obrigatorio>{(p) => <select {...p} value={partos} onChange={(e) => setPartos(e.target.value as CriterioPartos)} className={classeInput}>
+      {automatica && sexo === "F" && <CampoFormulario id="categoria-partos" rotulo="Partos" obrigatorio>{(p) => <SelectCampo {...p} value={partos} onValueChange={(valorSelecionado) => setPartos(valorSelecionado as CriterioPartos)} className={classeInput}>
         <option value="QUALQUER">Qualquer</option>
         <option value="SEM">Sem parto</option>
         <option value="COM">Com parto</option>
-      </select>}</CampoFormulario>}
+      </SelectCampo>}</CampoFormulario>}
     </form>
   </PainelCadastro>;
 }

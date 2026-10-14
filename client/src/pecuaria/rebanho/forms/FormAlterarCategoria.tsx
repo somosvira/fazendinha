@@ -1,3 +1,5 @@
+import { SelectCampo } from "@/financeiro/SelectCampo";
+import { Tags } from "lucide-react";
 // Sheet "Alterar categoria" — POST /pecuaria/rebanho/animais/:id/categoria. Troca manual: vale
 // sobre o cálculo automático até ser removida (ver "Voltar ao automático" em DetalheAnimal).
 
@@ -44,15 +46,15 @@ export function FormAlterarCategoria({ animal, categorias, onSalvo, onFechar }: 
   };
 
   const formId = "form-alterar-categoria";
-  return <PainelCadastro aberto titulo={`Alterar categoria de ${animal.brinco}`} onFechar={() => { if (!salvando) onFechar(); }}
+  return <PainelCadastro icon={Tags} compacto aberto titulo={`Alterar categoria de ${animal.brinco}`} onFechar={() => { if (!salvando) onFechar(); }}
     rodape={<><Button secondary onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form={formId} disabled={salvando}>{salvando ? "Salvando…" : "Salvar categoria"}</Button></>}>
-    <form id={formId} onSubmit={submeter} noValidate className="grid gap-4">
+    <form data-pec-formulario  id={formId} onSubmit={submeter} noValidate className="grid gap-4">
       <ErrorBox erro={erroGeral} />
       <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">Isto muda só a classificação. Não registra parto nem altera a reprodução.</p>
-      <CampoFormulario id="categoria-nova" rotulo="Nova categoria" obrigatorio erro={erros.categoriaId}>{(p) => <select {...p} required value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)} className={classeInput}>
+      <CampoFormulario id="categoria-nova" rotulo="Nova categoria" obrigatorio erro={erros.categoriaId}>{(p) => <SelectCampo {...p} required value={categoriaId} onValueChange={(valorSelecionado) => setCategoriaId(valorSelecionado)} className={classeInput}>
         <option value="">Selecione</option>
         {categorias.map((c) => <option key={c.id} value={c.id}>{rotuloOpcaoCategoria(categorias, c)}</option>)}
-      </select>}</CampoFormulario>
+      </SelectCampo>}</CampoFormulario>
       <CampoFormulario id="categoria-data" rotulo="Data" obrigatorio erro={erros.data}>{(p) => <DatePicker {...p} required max={hoje()} value={data} onChange={setData} className="mt-1.5" />}</CampoFormulario>
       <CampoFormulario id="categoria-motivo" rotulo="Motivo" obrigatorio erro={erros.motivo}>{(p) => <textarea {...p} required maxLength={300} value={motivo} onChange={(e) => setMotivo(e.target.value)} className={classeInput} />}</CampoFormulario>
     </form>

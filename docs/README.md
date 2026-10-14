@@ -6,6 +6,7 @@ A base documenta o código atual. Setup e comandos ficam no [README](../README.m
 |---|---|
 | [Design unificado](design/cooperativa-unificada.md) | Direção Cooperativa contemporânea desta entrega, padrões compartilhados e guias por módulo |
 | [Arquitetura](../ARCHITECTURE.md) | Organização, runtimes, autenticação, escopo e testes |
+| [Assistente de consulta](assistente-consulta.md) | Chat de leitura, permissões, ajuda de uso, ferramentas e extensão por domínio |
 | [Financeiro e estoque](financeiro-rebuild-contrato.md) | Dinheiro, efeitos físicos, estornos, períodos e rastreabilidade |
 | [Pecuária](pecuaria/README.md) | Rebanho, genética, sanidade, peso, nutrição e limites atuais |
 | [Desenvolvimento](desenvolvimento.md) | Seed unificado, carga IDEAGRI e preparação do guia manual |

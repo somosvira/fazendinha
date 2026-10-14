@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { alterarControle } from "../../../lib/controles.fixture";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { ConferenciaPeriodos } from "./ConferenciaPeriodos";
@@ -15,11 +16,11 @@ describe("conferência nutricional dividida", () => {
     render(<ConferenciaPeriodos loteId="lote" propriedadeId={1} centros={[]} onSalvo={vi.fn()} />);
     fireEvent.click(screen.getByText("Conferir período"));
     await screen.findByText("Ração V3: previsto 330 KG");
-    fireEvent.change(screen.getByLabelText("Quantidade conferida (KG)"), { target: { value: "320" } });
+    await alterarControle(screen.getByLabelText("Quantidade conferida (KG)"), { target: { value: "320" } });
     expect(screen.getByText(/MS conferida conhecida ≈ 288.000 kg/)).toBeTruthy();
     expect(screen.getByText(/Custo conferido estimado: ≈ R\$\s640,00/)).toBeTruthy();
     expect(screen.getByText(/custo previsto R\$\s660/)).toBeTruthy();
-    fireEvent.change(screen.getByLabelText("Origem"), { target: { value: "SEM_BAIXA_JUSTIFICADA" } });
+    await alterarControle(screen.getByLabelText("Origem"), { target: { value: "SEM_BAIXA_JUSTIFICADA" } });
     expect(screen.getByText(/Custo conferido estimado: não apurado/)).toBeTruthy();
   });
   it("mostra previsão, participantes e cobertura incompleta; exige motivo até para consumo zero", async () => {
@@ -29,11 +30,11 @@ describe("conferência nutricional dividida", () => {
     await screen.findByText("Ração V3: previsto 330 KG");
     expect(screen.getByText(/110 animal-dias/)).toBeTruthy();
     expect(screen.getByText(/cobertura incompleta/)).toBeTruthy();
-    fireEvent.change(screen.getByLabelText("Quantidade conferida (KG)"), { target: { value: "0" } });
+    await alterarControle(screen.getByLabelText("Quantidade conferida (KG)"), { target: { value: "0" } });
     fireEvent.click(screen.getByText("Confirmar conjunto conferido"));
     await screen.findByText(/justifique a diferença/);
     expect(confirmarPeriodos).not.toHaveBeenCalled();
-    fireEvent.change(screen.getByLabelText("Motivo da diferença"), { target: { value: "Consumo real conferido em zero" } });
+    await alterarControle(screen.getByLabelText("Motivo da diferença"), { target: { value: "Consumo real conferido em zero" } });
     fireEvent.click(screen.getByText("Confirmar conjunto conferido"));
     await waitFor(() => expect(onSalvo).toHaveBeenCalledOnce());
     expect(confirmarPeriodos).toHaveBeenCalledWith(expect.objectContaining({ chave: expect.any(String), revisao: "r".repeat(64), periodos: [expect.objectContaining({ inicio: "2026-09-01", fim: "2026-09-10", itens: [expect.objectContaining({ quantidadeConfirmada: 0, motivoAjuste: "Consumo real conferido em zero" })] })] }));

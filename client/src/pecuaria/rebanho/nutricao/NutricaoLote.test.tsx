@@ -18,6 +18,10 @@ describe("nutrição do lote", () => {
   it("mostra custos completos e base histórica, com ligação direta à ficha do lote", async () => {
     render(<NutricaoLote loteId="lote" podeLancar vista="lotes" />);
     await screen.findByText("Custo total da nutrição");
+    expect(document.querySelector(".nutricao-metricas")).toBeNull();
+    const dieta = screen.getByRole("heading", { name: "Dieta vigente" });
+    const consumo = screen.getByRole("heading", { name: "Consumo confirmado" });
+    expect(dieta.compareDocumentPosition(consumo) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.getByText(/379,50/)).toBeTruthy();
     expect(screen.getByText(/6,90/)).toBeTruthy();
     expect(screen.getByText(/55 animal-dias/)).toBeTruthy();

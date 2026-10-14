@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { alterarControle } from "../lib/controles.fixture";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { ProdutoEstoqueDetalhe } from "./ProdutoEstoqueDetalhe";
@@ -26,7 +27,7 @@ describe("ficha do produto", () => {
     await screen.findByText("Saldo consolidado");
     expect(screen.getByText("25 kg")).toBeTruthy();
     expect(screen.queryByText(/Custo médio:/)).toBeNull();
-    fireEvent.change(screen.getByLabelText("Sítio da ficha"), { target: { value: "2" } });
+    await alterarControle(screen.getByLabelText("Sítio da ficha"), { target: { value: "2" } });
     await waitFor(() => expect(obterProdutoEstoque).toHaveBeenLastCalledWith("p", 2));
     await screen.findByText("Saldo em Sítio Novo");
   });
@@ -46,7 +47,7 @@ describe("ficha do produto", () => {
     fireEvent.click(screen.getByRole("tab", { name: "Lotes" })); await screen.findByRole("table", { name: "Lotes do produto" });
     fireEvent.pointerDown(screen.getAllByRole("button", { name: "Ações do lote Vence dezembro" })[0], { button: 0, ctrlKey: false });
     fireEvent.click(await screen.findByRole("menuitem", { name: "Renomear lote" }));
-    fireEvent.change(screen.getByLabelText("Novo nome"), { target: { value: "Lote dezembro" } });
+    await alterarControle(screen.getByLabelText("Novo nome"), { target: { value: "Lote dezembro" } });
     fireEvent.click(screen.getByRole("button", { name: "Salvar nome" }));
     await waitFor(() => expect(renomearLoteProduto).toHaveBeenCalledWith("l", "Lote dezembro"));
   });

@@ -1,3 +1,4 @@
+import { SelectCampo } from "@/financeiro/SelectCampo";
 import { useCallback, useState } from "react";
 import { Button, ErrorBox, Panel } from "../../../financeiro/financeiro-ui";
 import { classeInput } from "../../../financeiro/PainelCadastro";
@@ -29,7 +30,7 @@ export function FormReceitaDieta({ dieta, editar, onVoltar, onSalvo }: { dieta?:
       {itens.map((i, indice) => {
         const produto = produtos.dados?.find((p) => p.id === i.produtoId);
         return <div key={indice} className="nutricao-ingrediente-form">
-          <label>Ingrediente {indice + 1}<select className={classeInput} value={i.produtoId} required onChange={(e) => setItens((xs) => xs.map((x, j) => j === indice ? { ...x, produtoId: e.target.value } : x))}><option value="">Selecione o produto</option>{i.produtoId && !produto && <option value={i.produtoId}>{dieta?.itens.find((x) => x.produtoId === i.produtoId)?.produto?.nome ?? "Produto indisponível"} · indisponível</option>}{produtos.dados?.map((p) => <option value={p.id} key={p.id}>{p.nome} ({p.unidade})</option>)}</select></label>
+          <label>Ingrediente {indice + 1}<SelectCampo className={classeInput} value={i.produtoId} required onValueChange={(valorSelecionado) => setItens((xs) => xs.map((x, j) => j === indice ? { ...x, produtoId: valorSelecionado } : x))}><option value="">Selecione o produto</option>{i.produtoId && !produto && <option value={i.produtoId}>{dieta?.itens.find((x) => x.produtoId === i.produtoId)?.produto?.nome ?? "Produto indisponível"} · indisponível</option>}{produtos.dados?.map((p) => <option value={p.id} key={p.id}>{p.nome} ({p.unidade})</option>)}</SelectCampo></label>
           <label>Quantidade por cabeça/dia {indice + 1}<div className="flex items-center gap-2"><input className={classeInput} required type="number" min="0.001" max="999999999.999" step="0.001" value={i.quantidadeCabecaDia} onChange={(e) => setItens((xs) => xs.map((x, j) => j === indice ? { ...x, quantidadeCabecaDia: e.target.value } : x))} /><span>{produto?.unidade ?? dieta?.itens.find((x) => x.produtoId === i.produtoId)?.unidade ?? "—"}</span></div></label>
           <Button secondary disabled={itens.length === 1} onClick={() => setItens((xs) => xs.filter((_, j) => indice !== j))}>Remover</Button>
         </div>;

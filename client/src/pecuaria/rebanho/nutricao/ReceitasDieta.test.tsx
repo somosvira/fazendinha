@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { ReceitasDieta } from "./ReceitasDieta";
 import * as api from "./api";
 vi.mock("./api", () => ({ listarDietas: vi.fn(), listarProdutosNutricionais: vi.fn(), listarCentrosNutricionais: vi.fn(), criarDieta: vi.fn(), editarDieta: vi.fn(), publicarDieta: vi.fn() }));
@@ -39,6 +39,7 @@ describe("gestão compartilhada de receitas", () => {
     expect(api.publicarDieta).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Confirmar publicação" }));
     await waitFor(() => expect(api.publicarDieta).toHaveBeenCalledWith("rascunho"));
+    await waitFor(() => expect(window.location.search).not.toContain("formReceita"));
     expect(api.criarDieta).not.toHaveBeenCalled();
     expect(api.editarDieta).not.toHaveBeenCalled();
   });
@@ -54,9 +55,9 @@ describe("gestão compartilhada de receitas", () => {
     expect(screen.getByLabelText("Buscar receita")).toHaveProperty("value", "lactação");
   });
   it("leitura mantém versões e ingredientes sem ações de escrita", async () => {
-    render(<ReceitasDieta podeLancar={false} />);
+    const { container } = render(<ReceitasDieta podeLancar={false} />);
     await screen.findByText("Publicada");
-    expect(screen.getAllByText("Milho")).toHaveLength(2);
+    expect(within(container).getAllByText("Milho")).toHaveLength(2);
     expect(screen.getAllByText("MS 85%")).toHaveLength(2);
     expect(screen.queryByRole("button", { name: "Nova receita" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Publicar" })).toBeNull();

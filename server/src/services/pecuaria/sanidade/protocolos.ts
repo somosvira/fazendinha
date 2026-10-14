@@ -124,6 +124,10 @@ export async function iniciarExecucaoColetivo(input: { chave: string; propriedad
   return confirmarColetivo(input, usuarioId, "PROTOCOLO_COLETIVO", iniciarExecucaoTx);
 }
 
+const tarefaPendente: Prisma.TarefaSanitariaWhereInput = {
+  execucao: { canceladaEm: null }, dispensadaEm: null,
+  aplicacoes: { none: { status: "VALIDO" } }, exames: { none: { status: "VALIDO" } },
+};
 function whereTarefas(propriedadeId: number | null, animalId?: string, filtro?: ConsultaSanitaria) {
   const where: Prisma.TarefaSanitariaWhereInput = { execucao: { ...(animalId ? { animalId } : {}),
     ...(filtro?.rodadaId ? { rodadaId: filtro.rodadaId } : filtro?.semRodada === "true" ? { rodadaId: null } : {}),
@@ -134,7 +138,7 @@ function whereTarefas(propriedadeId: number | null, animalId?: string, filtro?: 
   if (filtro?.situacao === "EXECUCAO_CANCELADA") where.AND = [{ execucao: { canceladaEm: { not: null } } }, { NOT: realizada }];
   else if (filtro?.situacao === "DISPENSADA") where.AND = [{ execucao: { canceladaEm: null } }, { dispensadaEm: { not: null } }];
   else if (filtro?.situacao === "REALIZADA") where.AND = [realizada];
-  else if (filtro?.situacao === "PENDENTE" || filtro?.situacao === "ATRASADA") where.AND = [{ execucao: { canceladaEm: null } }, { dispensadaEm: null }, { NOT: realizada }, ...(filtro.situacao === "ATRASADA" ? [{ previstaPara: { lt: dia(hojeFazenda()) } }] : [])];
+  else if (filtro?.situacao === "PENDENTE" || filtro?.situacao === "ATRASADA") where.AND = [tarefaPendente, ...(filtro.situacao === "ATRASADA" ? [{ previstaPara: { lt: dia(hojeFazenda()) } }] : [])];
   return where;
 }
 export async function listarTarefasPaginadas(propriedadeId: number | null, animalId: string | undefined, filtro: ConsultaSanitaria) {
@@ -143,10 +147,25 @@ export async function listarTarefasPaginadas(propriedadeId: number | null, anima
 }
 export async function listarTarefas(propriedadeId: number | null, animalId?: string, filtro?: ConsultaSanitaria) {
   const where = whereTarefas(propriedadeId, animalId, filtro);
-  const tarefas = await prisma.tarefaSanitaria.findMany({ where, include: {
+  const include = {
     execucao: { select: { animalId: true, propriedadeId: true, rodadaId: true, rodada: { select: { id: true, nome: true } }, canceladaEm: true, protocolo: { select: { nome: true, versao: true } }, animal: { select: { id: true, brinco: true, nome: true, localizacoes: { where: { ate: null }, select: { propriedadeId: true } } } } } },
     aplicacoes: { select: { id: true, status: true }, orderBy: { criadoEm: "desc" } }, exames: { select: { id: true, status: true }, orderBy: { criadoEm: "desc" } },
-  }, orderBy: [{ previstaPara: "asc" }, { id: "asc" }], ...limites(filtro) });
+  } satisfies Prisma.TarefaSanitariaInclude;
+  const orderBy: Prisma.TarefaSanitariaOrderByWithRelationInput[] = [{ previstaPara: "asc" }, { id: "asc" }];
+  const { skip, take } = limites(filtro);
+  const tarefas = filtro?.ordenacaoTarefas === "prioridade"
+    ? await prisma.$transaction(async (tx) => {
+      // A ordem é global, antes de paginar: pendentes por previsão (atrasadas
+      // primeiro), depois histórico. Não carregamos todas as tarefas em memória.
+      const wherePendentes: Prisma.TarefaSanitariaWhereInput = { AND: [where, tarefaPendente] };
+      const totalPendentes = await tx.tarefaSanitaria.count({ where: wherePendentes });
+      const pendentes = skip < totalPendentes
+        ? await tx.tarefaSanitaria.findMany({ where: wherePendentes, include, orderBy, skip, take }) : [];
+      const historico = pendentes.length < take
+        ? await tx.tarefaSanitaria.findMany({ where: { AND: [where, { NOT: tarefaPendente }] }, include, orderBy, skip: Math.max(0, skip - totalPendentes), take: take - pendentes.length }) : [];
+      return [...pendentes, ...historico];
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead })
+    : await prisma.tarefaSanitaria.findMany({ where, include, orderBy, skip, take });
   return tarefas.map((t) => {
     const aplicacao = t.aplicacoes.find((a) => a.status === "VALIDO") ?? null;
     const exame = t.exames.find((e) => e.status === "VALIDO") ?? null;

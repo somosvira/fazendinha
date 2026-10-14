@@ -20,12 +20,13 @@ import { RebanhoContent } from "./pecuaria/rebanho/RebanhoContent";
 import { Sanidade } from "./pecuaria/rebanho/sanidade/Sanidade";
 import { Nutricao } from "./pecuaria/rebanho/nutricao/Nutricao";
 import "./pecuaria/pecuaria-theme.css";
+import "./pecuaria/pecuaria-refino.css";
 import { setPropriedadeAtiva, getPropriedadeAtiva } from "./propriedadeScope";
 import { EstoqueContent } from "./estoque/EstoqueContent";
 import { ProdutoEstoqueDetalhe } from "./estoque/ProdutoEstoqueDetalhe";
 import { parseProdutoEstoqueId } from "./router";
 import { CommandPalette } from "./components/CommandPalette";
-import { ChatWidget } from "./components/ChatWidget";
+import { AssistenteConsulta } from "./components/AssistenteConsulta";
 import { ASSISTENTE_ATIVO } from "./featureFlags";
 import { Login } from "./components/Login";
 import { DefinirSenha } from "./components/DefinirSenha";
@@ -49,9 +50,7 @@ const INTRO_SEEN_KEY = "terrano:intro:seen";
 // Intervalo mínimo entre recargas do rascunho ao voltar para a aba do navegador.
 const INTERVALO_MIN_RECARGA_RASCUNHO = 30_000;
 
-// Abas que já SÃO uma tela de chat com a IA. Nelas escondemos o botão flutuante
-// do Assistente (ChatWidget) — teria um botão de chat sobre o composer de chat,
-// além de colidir com o "Enviar/Perguntar" no canto inferior direito.
+// Se a IA legada voltar explicitamente, não sobrepor o novo chat ao composer.
 const ABAS_CHAT = new Set<Tab>(["ia"]);
 
 function deveTocarIntro(tabInicial: Tab): boolean {
@@ -549,7 +548,7 @@ export function App() {
           return canAccessTab(t);
         }}
       />
-      {ASSISTENTE_ATIVO && !ABAS_CHAT.has(tab) && <ChatWidget onNavegar={navegarDeepLink} />}
+      {!ABAS_CHAT.has(tab) && <AssistenteConsulta key={`${token}:${usuario.id}:${propAtiva ?? "all"}:${JSON.stringify([usuario.areas, usuario.abas, usuario.flags, usuario.dono])}`} />}
     </div>
     </>
   );

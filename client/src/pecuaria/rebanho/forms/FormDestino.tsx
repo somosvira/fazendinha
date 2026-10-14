@@ -1,3 +1,5 @@
+import { SelectCampo } from "@/financeiro/SelectCampo";
+import { Target } from "lucide-react";
 // Sheet "Mudar finalidade" (aptidão + papel reprodutivo; no banco, DestinoAnimal) — POST /pecuaria/rebanho/animais/:id/destino.
 
 import { type FormEvent, useRef, useState } from "react";
@@ -34,12 +36,12 @@ export function FormDestino({ animal, onSalvo, onFechar }: {
   };
 
   const formId = "form-destino-animal";
-  return <PainelCadastro aberto titulo={`Mudar finalidade de ${animal.brinco}`} onFechar={() => { if (!salvando) onFechar(); }}
+  return <PainelCadastro icon={Target} compacto aberto titulo={`Mudar finalidade de ${animal.brinco}`} onFechar={() => { if (!salvando) onFechar(); }}
     rodape={<><Button secondary onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form={formId} disabled={salvando}>{salvando ? "Salvando…" : "Salvar finalidade"}</Button></>}>
-    <form id={formId} onSubmit={submeter} noValidate className="grid gap-4">
+    <form data-pec-formulario  id={formId} onSubmit={submeter} noValidate className="grid gap-4">
       <ErrorBox erro={erroGeral} />
-      <CampoFormulario id="destino-aptidao" rotulo="Aptidão" obrigatorio>{(p) => <select {...p} required value={aptidao} onChange={(e) => setAptidao(e.target.value as Aptidao)} className={classeInput}><option value="LEITE">Leite</option><option value="CORTE">Corte</option></select>}</CampoFormulario>
-      {animal.sexo === "F" && <CampoFormulario id="destino-papel" rotulo="Papel reprodutivo">{(p) => <select {...p} value={papelReprodutivo} onChange={(e) => setPapelReprodutivo(e.target.value as PapelReprodutivo)} className={classeInput}><option value="NENHUM">Nenhum</option><option value="RECEPTORA">Receptora</option><option value="DOADORA">Doadora</option></select>}</CampoFormulario>}
+      <CampoFormulario id="destino-aptidao" rotulo="Aptidão" obrigatorio>{(p) => <SelectCampo {...p} required value={aptidao} onValueChange={(valorSelecionado) => setAptidao(valorSelecionado as Aptidao)} className={classeInput}><option value="LEITE">Leite</option><option value="CORTE">Corte</option></SelectCampo>}</CampoFormulario>
+      {animal.sexo === "F" && <CampoFormulario id="destino-papel" rotulo="Papel reprodutivo">{(p) => <SelectCampo {...p} value={papelReprodutivo} onValueChange={(valorSelecionado) => setPapelReprodutivo(valorSelecionado as PapelReprodutivo)} className={classeInput}><option value="NENHUM">Nenhum</option><option value="RECEPTORA">Receptora</option><option value="DOADORA">Doadora</option></SelectCampo>}</CampoFormulario>}
       <CampoFormulario id="destino-data" rotulo="Data da mudança" obrigatorio erro={erroData}>{(p) => <DatePicker {...p} required max={hoje()} value={data} onChange={setData} className="mt-1.5" />}</CampoFormulario>
     </form>
   </PainelCadastro>;

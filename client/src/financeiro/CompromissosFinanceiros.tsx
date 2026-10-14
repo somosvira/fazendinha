@@ -28,6 +28,16 @@ export function CompromissosFinanceiros({ onNav, podeLancar = true }: { onNav: (
   const [carregando, setCarregando] = useState(true);
   const [visao, setVisao] = useState<VisaoCompromissos>("lista");
   const [busca, setBusca] = useState("");
+  useEffect(() => {
+    const sincronizar = () => {
+      if (window.location.pathname !== "/financeiro/compromissos") return;
+      const proximo = periodoInicial({ inicio: "", fim: "" }, { permitirVazio: true });
+      const situacao = new URLSearchParams(window.location.search).get("situacao");
+      setPeriodo(proximo); setSituacoes(situacao === "todos" ? [] : [situacao === "receber" ? "RECEBER" : "PAGAR"]);
+    };
+    window.addEventListener("popstate", sincronizar);
+    return () => window.removeEventListener("popstate", sincronizar);
+  }, []);
   const [pagina, setPagina] = useState(1);
   const [selecionado, setSelecionado] = useState<Compromisso | null>(null);
   useEffect(() => setPagina(1), [situacoes, soVencidos, busca, periodo.inicio, periodo.fim]);

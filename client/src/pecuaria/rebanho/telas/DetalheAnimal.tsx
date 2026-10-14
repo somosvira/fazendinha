@@ -2,7 +2,7 @@
 // Ações principais no cabeçalho; alterações secundárias em Mais ações.
 // Finalidade representa DestinoAnimal (aptidão e papel reprodutivo).
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ArchiveX, ArrowLeft, ArrowLeftRight, Baby, CalendarDays, Dna, Hash, History, Home, IdCard, LogIn, MapPin, Mars, Nfc, Scale, StickyNote, Tags, Target, Venus, type LucideIcon } from "lucide-react";
 import { fracaoReduzida } from "../lib/composicao";
 import {
@@ -34,6 +34,7 @@ import { DetalheMovimentacao } from "../components/DetalheMovimentacao";
 import { SanidadeAnimal } from "../sanidade/SanidadeAnimal";
 import { ManejoAnimal } from "../manejo/ManejoAnimal";
 import { NutricaoAnimal } from "../nutricao/NutricaoAnimal";
+import { DistribuicaoPecuaria } from "../components/DistribuicaoPecuaria";
 
 /** Nome/brinco de mãe ou pai na seção Filiação — link para a ficha quando é animal nosso,
  *  selo "externo" quando é genitor de fora. */
@@ -53,7 +54,7 @@ function LinkLote({ id, nome }: { id: string; nome: string }) {
 }
 
 function ResumoFicha({ icon: Icon, rotulo, valor, detalhe }: { icon: LucideIcon; rotulo: string; valor: string; detalhe: string }) {
-  return <div className="flex min-w-0 items-start gap-3 border-b border-border p-5 lg:border-b-0">
+  return <div className="pec-resumo-ficha flex min-w-0 items-start gap-3 p-5">
     <span aria-hidden="true" className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-surface-2 text-mast"><Icon size={17} /></span>
     <div className="min-w-0">
       <dt className="text-[11px] font-semibold uppercase tracking-[.12em] text-ink-3">{rotulo}</dt>
@@ -64,6 +65,7 @@ function ResumoFicha({ icon: Icon, rotulo, valor, detalhe }: { icon: LucideIcon;
 }
 
 export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string; onVoltar: () => void; podeLancar?: boolean }) {
+  const fichaRef = useRef<HTMLElement>(null);
   const [secaoAtiva, setSecaoAtiva] = useState("resumo");
   const [acoesAbertas, setAcoesAbertas] = useState(false);
   useEffect(() => {
@@ -83,6 +85,13 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
   }, [acoesAbertas]);
 
   const [animal, setAnimal] = useState<AnimalFicha | null>(null);
+  useEffect(() => {
+    if (animal?.id !== id) return;
+    const ancora = window.location.hash.slice(1);
+    const alvo = ancora ? document.getElementById(ancora) : null;
+    const destino = alvo && fichaRef.current?.contains(alvo) ? alvo : fichaRef.current;
+    destino?.scrollIntoView?.({ block: "start" });
+  }, [id, animal?.id]);
   const [catalogos, setCatalogos] = useState<Catalogos | null>(null);
   const [categorias, setCategorias] = useState<CategoriaDTO[]>([]);
   const [periodoGmd, setPeriodoGmd] = useState<PeriodoGmd>(PERIODO_GMD_PADRAO);
@@ -187,13 +196,12 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
   return <PaginaFinanceira>
     <nav aria-label="Navegação" className="pec-breadcrumb"><button type="button" onClick={() => navegarPara("/pecuaria/rebanho")}>Rebanho</button><span aria-hidden="true">/</span><button type="button" onClick={onVoltar}>Animais</button><span aria-hidden="true">/</span><span aria-current="page">{animal.brinco}</span></nav>
     <div className="mt-6"><ErrorBox erro={erro} /></div>
-    <article className="pec-ficha">
+    <article ref={fichaRef} className="pec-ficha pec-ficha-organizada">
     <div className="ficha-animal-cabecalho">
       <PageHeader integrado
         titulo={<>{animal.brinco}{animal.nome && <> · <span>{animal.nome}</span></>}</>}
         descricao={`${animal.categoria?.nome ?? "Sem categoria"} · ${animal.propriedade?.nome ?? "Sem sítio"} · ${animal.lote?.nome ?? "Sem lote"}`}
         contexto={<div className="flex flex-wrap items-center gap-2">
-            <span className="eyebrow">{animal.brinco}</span>
             <Pill tone={ativo ? "green" : "neutral"}>{rotuloSituacao(animal.situacao)}</Pill>
             <CategoriaPill categoria={animal.categoria} categoriaOrigem={animal.categoriaOrigem} categoriaCalculada={animal.categoriaCalculada} />
             {animal.aptidao && <Pill tone="brown">{rotuloAptidao(animal.aptidao)}{!ativo && " · na baixa"}</Pill>}
@@ -240,7 +248,7 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
       {[["resumo", "Resumo"], ["identificacao-genetica", "Identificação e genética"], ["sanidade", "Sanidade"], ["peso-manejo", "Peso e manejo"], ["nutricao", "Nutrição"], ["historico", "Histórico"]].map(([ancora, rotulo]) => <a key={ancora} href={`#${ancora}`} aria-current={secaoAtiva === ancora ? "location" : undefined} onClick={() => setSecaoAtiva(ancora)} className={`shrink-0 border-b-2 px-3 py-3 text-sm ${secaoAtiva === ancora ? "border-mast font-semibold text-ink" : "border-transparent text-ink-3"}`}>{rotulo}</a>)}
     </nav>
       {/* resumo de leitura rápida: o que se procura primeiro ao abrir a ficha */}
-      <dl id="resumo" className="scroll-mt-6 grid grid-cols-2 divide-border lg:grid-cols-4 lg:divide-x">
+      <dl id="resumo" className="pec-resumo-grade scroll-mt-6 grid grid-cols-2 lg:grid-cols-4">
         <ResumoFicha icon={CalendarDays} rotulo={animal.idadeNaBaixa ? "Idade na baixa" : "Idade"} valor={formatarIdade(animal.idadeMeses)} detalhe={`Nascimento ${formatarDataBR(animal.dataNascimento)}${animal.nascimentoEstimado ? " (estimado)" : ""}`} />
         <ResumoFicha icon={Scale} rotulo={ativo ? "Peso atual" : "Último peso"} valor={animal.peso.ultimo ? formatarKg(animal.peso.ultimo.kg) : "—"} detalhe={animal.peso.ultimo ? `${formatarDataBR(animal.peso.ultimo.data)}${animal.peso.gmdRecente != null ? ` · ${formatarGmd(animal.peso.gmdRecente)}` : ""}` : "Sem pesagem"} />
         <ResumoFicha icon={Tags} rotulo="Categoria" valor={animal.categoria?.nome ?? "Sem categoria"} detalhe={animal.categoriaOrigem === "MANUAL" ? "Definida manualmente" : animal.categoriaOrigem === "SEM_CATEGORIA" ? "Nenhuma regra se aplica" : "Calculada pelas regras"} />
@@ -286,21 +294,27 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
       <CardFicha
         icon={Dna}
         titulo="Composição racial"
-        className="lg:col-span-2"
+        className="lg:col-span-2 pec-composicao-racial"
         acao={podeLancar && ativo && (animal.filiacao.mae || animal.filiacao.pai) ? <button type="button" disabled={calculandoSugestao} onClick={() => void calcularComposicaoPelosGenitores()} className="text-xs font-semibold text-green-800 disabled:text-ink-3">{calculandoSugestao ? "Calculando…" : "Calcular pelos genitores"}</button> : undefined}
       >
-        {composicaoOrdenada.length ? <>
+        {composicaoOrdenada.length ? <div className="pec-genetica-grade">
+          <DistribuicaoPecuaria titulo="Participação racial" descricao="Composição registrada, em 64 avos" total={64} centro="100%" rotuloCentro="da composição" unidade="avos" itens={[
+            ...composicaoOrdenada.map(i => ({ id: i.racaId, nome: i.sigla, qtd: i.fracao64, detalhe: `${i.nome} · ${fracaoReduzida(i.fracao64)}` })),
+            ...(somaComposicao < 64 ? [{ id: "nao-informada", nome: "Não informada", qtd: 64 - somaComposicao }] : []),
+          ]} />
+          <div>
           <ul className="space-y-3.5 text-sm">{composicaoOrdenada.map((item) => <li key={item.racaId}>
             <div className="flex flex-wrap items-baseline justify-between gap-3"><span className="min-w-0 break-words">{item.nome} <span className="text-ink-3">({item.sigla})</span>{!item.racaAtiva && <span className="text-ink-3"> · inativa</span>}</span><span className="flex items-center gap-2"><strong className="shrink-0 tabular-nums">{fracaoReduzida(item.fracao64)}</strong><Pill tone={item.fracaoCalculada64 === item.fracao64 || item.origem === "CALCULADA" ? "blue" : "neutral"}>{item.fracaoCalculada64 > 0 && item.fracaoCalculada64 < item.fracao64 ? "Calculada + informada" : item.origem === "CALCULADA" ? "Calculada" : "Informada"}</Pill></span></div>
             <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-surface-2" aria-hidden="true"><div className="h-full rounded-full bg-[var(--cafe)]" style={{ width: `${(item.fracao64 / 64) * 100}%` }} /></div>
           </li>)}</ul>
           {somaComposicao < 64 && <p className="mt-4 text-xs text-ink-3">Restante ({fracaoReduzida(64 - somaComposicao)}) sem raça informada.</p>}
-        </> : <p className="text-sm text-ink-3">Sem composição racial informada.</p>}
+          </div>
+        </div> : <p className="text-sm text-ink-3">Sem composição racial informada.</p>}
       </CardFicha>
 
         </div>
       </section>
-      <section id="sanidade" className="scroll-mt-6"><h2 className="h2 mb-4">Sanidade</h2>
+      <section id="sanidade" className="scroll-mt-6" aria-label="Sanidade do animal">
       <SanidadeAnimal animalId={animal.id} propriedadeId={localizacaoAtual?.propriedade?.id ?? null} podeLancar={podeLancar} recarregarToken={refreshToken} onMudou={() => { void carregar(); }} />
       </section>
       <section id="peso-manejo" className="scroll-mt-6"><h2 className="h2 mb-4">Peso e manejo</h2><div className="grid gap-5 lg:grid-cols-2">
@@ -315,7 +329,7 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
 
       <ManejoAnimal animalId={animal.id} propriedadeId={localizacaoAtual?.propriedade?.id ?? null} localizacoes={animal.historicoLocalizacoes} baixaData={animal.baixa?.data ?? null} podeLancar={podeLancar} onSalvo={() => { void carregar(); }} />
       </div></section>
-      <section id="nutricao" className="scroll-mt-6"><h2 className="h2 mb-4">Nutrição</h2>
+      <section id="nutricao" className="scroll-mt-6" aria-label="Nutrição do animal">
       <NutricaoAnimal animalId={animal.id} recarregarToken={refreshToken} />
 
       </section>

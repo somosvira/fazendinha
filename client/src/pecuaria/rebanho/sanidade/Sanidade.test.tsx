@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { alterarControle } from "../../../lib/controles.fixture";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 const mocks = vi.hoisted(() => ({ req: vi.fn() }));
@@ -12,6 +13,52 @@ import { listarAnimais, buscarFichaAnimal } from "../api";
 
 afterEach(() => { cleanup(); vi.clearAllMocks(); vi.mocked(listarAnimais).mockResolvedValue({ itens: [] } as unknown as Awaited<ReturnType<typeof listarAnimais>>); window.history.replaceState(null, "", "/"); });
 describe("busca e atualização da Sanidade", () => {
+  it("recolhe filtros sem apagar os critérios e abre os da URL", async () => {
+    mocks.req.mockResolvedValue([]);
+    window.history.replaceState(null, "", "/pecuaria/sanidade?aba=agenda&visaoAgenda=tarefas&situacao=ATRASADA");
+    render(<Sanidade podeLancar={false} />);
+    const botao = screen.getByRole("button", { name: /Filtros/ });
+    expect(botao.getAttribute("aria-expanded")).toBe("true");
+    expect(screen.getByRole("combobox", { name: "Situação" })).toHaveProperty("value", "ATRASADA");
+    fireEvent.click(botao);
+    expect(botao.getAttribute("aria-expanded")).toBe("false");
+    expect(screen.queryByRole("combobox", { name: "Situação" })).toBeNull();
+    expect(new URLSearchParams(window.location.search).get("situacao")).toBe("ATRASADA");
+    expect(screen.getByPlaceholderText("Brinco ou nome")).toBeTruthy();
+    fireEvent.click(botao);
+    expect(screen.getByRole("combobox", { name: "Situação" })).toHaveProperty("value", "ATRASADA");
+  });
+
+  it("reúne previsão e estado, mostra o ciclo entregue pela API e mantém ações", async () => {
+    mocks.req.mockImplementation((caminho: string) => Promise.resolve(caminho.startsWith("/tarefas?") ? { total: 1, itens: [{
+      id: "tarefa", execucaoId: "participacao", previstaPara: "2020-01-01", situacao: "PENDENTE", propriedadeAtualId: 2,
+      parametros: { tipo: "APLICACAO", tipoAplicacaoNomeSnapshot: "Vacina" },
+      execucao: { animalId: "animal", propriedadeId: 1, animal: { id: "animal", brinco: "DEV-001", nome: "Aurora" }, protocolo: { nome: "Vacinação", versao: 1 }, rodada: { id: "ciclo", nome: "Ciclo de vacinação" } },
+    }] } : []));
+    window.history.replaceState(null, "", "/pecuaria/sanidade?aba=agenda&visaoAgenda=tarefas");
+    render(<Sanidade podeLancar />);
+    const tabela = within(await screen.findByRole("table", { name: "Tarefas de protocolos" }));
+    const estado = await tabela.findByText("Atrasada");
+    expect(estado.closest("td")?.textContent).toContain("01/01/2020");
+    expect(tabela.getByText("Ciclo de vacinação · Vacina")).toBeTruthy();
+    expect(tabela.queryByRole("columnheader", { name: "Tipo" })).toBeNull();
+    expect(tabela.getByRole("button", { name: "Executar tarefa" }).closest("td")?.getAttribute("data-fin-coluna")).toBe("acoes");
+    expect(tabela.getByRole("button", { name: "Mais ações da tarefa de DEV-001 · Aurora" })).toBeTruthy();
+  });
+
+  it("não oferece execução ou menu de escrita para uma consulta sem lançar", async () => {
+    mocks.req.mockImplementation((caminho: string) => Promise.resolve(caminho.startsWith("/tarefas?") ? { total: 1, itens: [{
+      id: "tarefa", previstaPara: "2020-01-01", situacao: "PENDENTE", parametros: { tipo: "EXAME" },
+      execucao: { animalId: "animal", propriedadeId: 2, animal: { id: "animal", brinco: "DEV-001", nome: "Aurora" }, protocolo: { nome: "Exame", versao: 1 } },
+    }] } : []));
+    window.history.replaceState(null, "", "/pecuaria/sanidade?aba=agenda&visaoAgenda=tarefas");
+    render(<Sanidade podeLancar={false} />);
+    const tabela = within(await screen.findByRole("table", { name: "Tarefas de protocolos" }));
+    await tabela.findByText("Atrasada");
+    expect(tabela.queryByRole("button", { name: "Executar tarefa" })).toBeNull();
+    expect(tabela.queryByRole("button", { name: /Mais ações/ })).toBeNull();
+  });
+
   it("mantém carências desconhecidas e revisão de finalidade explícitas na tabela", async () => {
     mocks.req.mockImplementation((caminho: string) => Promise.resolve(caminho.startsWith("/carencias?") ? [
       { animal: { id: "um", brinco: "DEV-001", nome: "Aurora" }, leite: { estado: "NAO_INFORMADO" }, carne: { estado: "NAO_APLICAVEL" } },
@@ -25,6 +72,9 @@ describe("busca e atualização da Sanidade", () => {
     expect(tabela.getByText("Aplicabilidade pendente — revisar")).toBeTruthy();
     expect(tabela.queryByText("Sem carência · prazo zero confirmado")).toBeNull();
     expect(tabela.getByText("Finalidade alterada: revise a aplicabilidade da carência de leite.")).toBeTruthy();
+    expect(tabela.queryByRole("columnheader", { name: "Orientação" })).toBeNull();
+    expect(tabela.queryByText("O tratamento e seus lançamentos permanecem no histórico.")).toBeNull();
+    expect(screen.getAllByText("O tratamento e seus lançamentos permanecem no histórico.")).toHaveLength(1);
     expect(tabela.getByRole("link", { name: "DEV-001 · Aurora" }).getAttribute("href")).toBe("/pecuaria/sanidade?aba=carencias&animalId=um");
   });
   it("abre gerenciador sem filtro de animal e sem permissão de valores", async () => {
@@ -34,6 +84,7 @@ describe("busca e atualização da Sanidade", () => {
     render(<Sanidade podeLancar />);
     fireEvent.click(screen.getByRole("button", { name: "Gerenciar procedimentos" }));
     await screen.findByText("Gerenciador aberto");
+    fireEvent.click(screen.getByRole("button", { name: "Filtros" }));
     expect(screen.getByRole("combobox", { name: "Animal" })).toHaveProperty("value", "");
     localStorage.removeItem("rionovo:usuario");
   });
@@ -48,13 +99,13 @@ describe("busca e atualização da Sanidade", () => {
     window.history.replaceState(null, "", "/pecuaria/rebanho/sanidade?aba=agenda");
     render(<FormFatoSanitario tipo="protocolo" animalInicial="animal" fixo onFechar={vi.fn()} onSalvo={vi.fn()} />);
     await screen.findByText(/Sítio na data: Sítio B/);
-    fireEvent.change(screen.getByLabelText(/Protocolo publicado/), { target: { value: "A" } });
+    await alterarControle(screen.getByLabelText(/Protocolo publicado/), { target: { value: "A" } });
     fireEvent.submit(document.getElementById("novo-fato-sanitario")!);
     const ciencia = await screen.findByRole("switch", { name: /Confirmo iniciar outro protocolo/ });
     fireEvent.click(ciencia);
-    fireEvent.change(screen.getByLabelText(/Motivo da sobreposição/), { target: { value: "Sobreposição revisada com responsável" } });
+    await alterarControle(screen.getByLabelText(/Motivo da sobreposição/), { target: { value: "Sobreposição revisada com responsável" } });
     expect((ciencia as HTMLInputElement).checked).toBe(true);
-    fireEvent.change(screen.getByLabelText(/Protocolo publicado/), { target: { value: "B" } });
+    await alterarControle(screen.getByLabelText(/Protocolo publicado/), { target: { value: "B" } });
     expect(screen.queryByRole("switch", { name: /Confirmo iniciar outro protocolo/ })).toBeNull();
     fireEvent.submit(document.getElementById("novo-fato-sanitario")!);
     await screen.findByRole("switch", { name: /Confirmo iniciar outro protocolo/ });
@@ -72,7 +123,8 @@ describe("busca e atualização da Sanidade", () => {
     const busca = screen.getByPlaceholderText("Brinco ou nome");
     expect((busca as HTMLInputElement).value).toBe("Mimosa");
     await waitFor(() => expect(mocks.req).toHaveBeenCalledWith(expect.stringMatching(/tarefas.*pagina=3.*buscaAnimal=Mimosa/)));
-    fireEvent.change(busca, { target: { value: "GV3" } });
+    expect(mocks.req).toHaveBeenCalledWith(expect.stringMatching(/tarefas.*ordenacaoTarefas=prioridade/));
+    await alterarControle(busca, { target: { value: "GV3" } });
     await waitFor(() => expect(mocks.req).toHaveBeenCalledWith(expect.stringMatching(/tarefas.*pagina=1.*buscaAnimal=GV3/)));
     for (const [rotulo, recurso] of [["Ocorrências", "ocorrencias"], ["Aplicações", "aplicacoes"], ["Exames", "exames"], ["Carências", "carencias"]]) {
       fireEvent.click(screen.getByRole("tab", { name: rotulo }));

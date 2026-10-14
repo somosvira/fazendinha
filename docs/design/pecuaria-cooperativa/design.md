@@ -39,7 +39,7 @@ Usar as primitivas existentes de `financeiro-ui.tsx`, os componentes shadcn-styl
 | Ícones de seções | Ícone existente em círculo sálvia de 36 px |
 | Modais / painéis laterais | Cabeçalho sálvia, conteúdo branco, rodapé e ações com contraste |
 
-A ficha do animal é um documento contínuo: uma superfície externa, separadores internos e âncoras para as seis seções. Os dados e ações de cada seção permanecem montados; os históricos não foram removidos. Pesagem e movimentação ficam no cabeçalho; ações secundárias ficam em “Mais ações”, com fechamento por Escape e retorno de foco ao acionador.
+A ficha do animal é um documento contínuo com superfícies separadas para resumo e seções, navegação interna fixa e gráficos de peso/composição racial. Os dados e ações de cada seção permanecem montados; os históricos não foram removidos. Ao abrir uma ficha, a interface posiciona seu início ou a âncora válida da URL; atualizar pesagens não reposiciona a leitura. Pesagem e movimentação ficam no cabeçalho; ações secundárias ficam em “Mais ações”, com fechamento por Escape e retorno de foco ao acionador.
 
 Formulários de novo animal e Nutrição ocupam a largura disponível, com título dentro do formulário e revisão à direita. No novo animal, salvar/cancelar ficam na revisão; as receitas e operações nutricionais mantêm as ações no rodapé do formulário. A revisão empilha abaixo do formulário em telas menores. Os painéis laterais existentes continuam sendo usados para ações de manejo, pesagens e cadastros auxiliares.
 
@@ -75,8 +75,8 @@ Os testes cobrem rotas/aliases, gates de área, paginação do adaptador, custos
 
 - Rebanho, Sanidade, Nutrição e Ciclos/Tarefas usam a variante financeira de `SubTabs`, composta pelas mesmas primitivas `Tabs`, `TabsList` e `TabsTrigger` de Configurações financeiras e a classe compartilhada `fin-abas`. A variante antiga permanece para os outros consumidores.
 - Não repetir o nome do módulo acima dos títulos principais. Ações de gestão ficam no cabeçalho, usando o botão padrão.
-- Categoria e sítio têm painéis com alturas iguais. Baixas e os quatro últimos eventos compartilham uma linha no desktop e empilham no celular.
-- A participação de descarte voluntário fica dentro da classe correspondente, com numerador, denominador e exclusões explícitos.
+- A visão geral de Rebanho começa pela rosca e legenda clicável por categoria, sem quatro cards de indicadores. O efetivo aparece no centro da rosca; receptoras fica no rodapé da composição, com contagem e percentual das fêmeas. Categorias homônimas distinguem sexo. Barras por sítio, proporcionais ao total ativo, aparecem apenas no Consolidado; em sítio específico, a composição ocupa toda a largura e a legenda usa o espaço disponível. Os painéis têm altura conforme o conteúdo, sem forçar espaço vazio. Baixas por tipo reúnem gráfico, contagens e links em um único painel; os quatro últimos eventos mantêm marcadores por tipo em Atividade recente. As duas seções compartilham uma linha no desktop e empilham no celular. As regras dos agregados estão no [contrato atual](../../pecuaria/README.md#navegação-e-apresentação).
+- A classificação dos motivos e a participação de descarte voluntário ficam em detalhes expansíveis do painel de baixas, com numerador, denominador e exclusões explícitos. Mortes não são repetidas na classificação. Totais e consultas seguem a mesma janela selecionada; não representam taxa de mortalidade.
 - Sanidade usa seis filtros de largura e altura uniformes no desktop, três no tablet e um no celular. Novo ciclo fica no cabeçalho da tabela.
 - Animais mantém busca, botão Filtros e apenas os filtros ativos como chips removíveis. O diálogo permite alterar os critérios; Concluir fecha o diálogo. Filtros e paginação continuam na URL. A atualização não desmonta os controles em consultas vazias.
 - Seleção individual tem checkbox de 20 px em alvo mínimo de 44 × 44 px. O clique na área de seleção não abre a ficha.

@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { TerranoSymbol } from "./TerranoLogo";
+import { VacaIcon } from "./icons/VacaIcon";
 import { SidebarFarmPicker } from "./FarmPicker";
 import { temAcessoArea, temAcessoEstoque } from "@/lib/areas";
 import { PAPEIS, type User } from "@/data/acessos";
@@ -43,17 +44,6 @@ const ICON: Partial<Record<Tab, JSX.Element>> = {
 };
 
 type IconeNavegacao = ComponentType<SVGProps<SVGSVGElement>>;
-
-/** Vaca de perfil, para diferenciar o acesso Rebanho da área Pecuária. */
-function VacaIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...props}>
-      <path d="M3 10h3l1-3h7l1.5 2 2-2 2 .5-.7 1.4 1.7.5-1.4 1.3 1 1.3-2.2.5L16 11v2h-1v4h-2v-4H9v4H7v-4H5.5A2.5 2.5 0 0 1 3 10Z" />
-      <path d="m6 10-2-2-1 1M16.5 7l.8-2 1.2.8M18 10h.01" />
-      <path d="M11 13v1.5h2V13" />
-    </svg>
-  );
-}
 
 const ICON_FINANCEIRO: Partial<Record<Tab, IconeNavegacao>> = { gastos: CircleDollarSign, caixinha: Wallet, cadastros: Settings, plano: Settings, relatorio: FileText };
 

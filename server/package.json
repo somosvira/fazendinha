@@ -21,6 +21,8 @@
     "seed": "tsx --env-file=.env prisma/seedatev3.ts",
     "seedatev3": "tsx --env-file=.env prisma/seedatev3.ts",
     "seedatev3:typecheck": "tsc -p tsconfig.seedatev3.json",
+    "seed:rio-novo": "tsx --env-file=.env prisma/seed-rio-novo.ts",
+    "seed:rio-novo:typecheck": "tsc -p tsconfig.seed-rio-novo.json",
     "seed:pecuaria": "tsx --env-file=.env prisma/seed-pecuaria.ts",
     "import:pecuaria": "tsx --env-file=.env prisma/import-pecuaria.ts",
     "validar:pecuaria": "tsx --env-file=.env src/scripts/validar-carga-pecuaria.ts",
@@ -53,6 +55,7 @@
     "prisma": "^6.1.0",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3",
-    "vitest": "^2.1.8"
+    "vitest": "^2.1.8",
+    "xlsx": "0.18.5"
   }
 }

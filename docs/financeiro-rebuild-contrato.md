@@ -43,6 +43,8 @@ Rotas exigem sessão, área/ação e escopo; custos e exportações devem respei
 
 Documentos e relatórios usam R2 e chaves persistidas. Rascunhos com anexo e operações confirmadas têm fluxos distintos de acesso; não suponha rota de download onde ela não existe. Confira rotas e `services/financeiro/documentos.ts` antes de mudar esse contrato.
 
+O [assistente de consulta](assistente-consulta.md) reutiliza dashboard, saldos e compromissos por período. Suas ferramentas agregadas exigem `verValores`, `verInvestimento` e `verSalarios`, além da área/aba correspondente, pois não há mascaramento granular confiável desses agregados. A ajuda de uso segue disponível por área/aba. O assistente não grava fatos; as respostas identificam sítio, regime/período e fontes para conferência. A Visão geral aceita `inicio`/`fim` inclusivos pela URL, inclusive navegação no mesmo componente, para manter o recorte do link de conferência.
+
 ## Validação
 
 Invariantes, estornos e concorrência ficam nos testes ao lado dos serviços e em `server/tests/financeiro/invariantes.test.ts`. A bateria `test:financeiro:integration` prepara seu próprio banco temporário com migrations. Não depende de seeds antigos nem de checklist de PR. Consulte [desenvolvimento](desenvolvimento.md) para o cenário integrado atual.

@@ -20,6 +20,7 @@ import { estoqueRouter } from "./routes/estoque.js";
 import { relatorioGerencialRouter } from "./routes/relatorio-gerencial.js";
 import { relatoriosFinanceirosRouter } from "./routes/relatorios-financeiros.js";
 import { buscaRouter } from "./routes/busca.js";
+import { assistenteRouter } from "./routes/assistente.js";
 import { whatsappRouter } from "./routes/whatsapp.js";
 import { ASSISTENTE_ATIVO, rotaDoAssistente } from "./featureFlags.js";
 
@@ -86,3 +87,4 @@ app.route("/api", estoqueRouter);
 app.route("/api", relatorioGerencialRouter);
 app.route("/api", relatoriosFinanceirosRouter);
 app.route("/api", buscaRouter);
+app.route("/api", assistenteRouter);

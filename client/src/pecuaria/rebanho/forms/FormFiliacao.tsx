@@ -1,3 +1,4 @@
+import { Baby } from "lucide-react";
 // Painel "Definir filiação" — PUT /pecuaria/rebanho/animais/:id/filiacao (substituição
 // completa de mãe e pai). O servidor reconcilia a composição na mesma transação;
 // mostra os avisos quando uma composição manual antiga precisou ser substituída.
@@ -51,9 +52,9 @@ export function FormFiliacao({ animal, onSalvo, onFechar }: {
 
   const formId = "form-filiacao-animal";
   return (
-    <PainelCadastro aberto titulo={`Filiação de ${animal.brinco}`} onFechar={() => { if (!salvando) onFechar(); }}
+    <PainelCadastro icon={Baby} aberto titulo={`Filiação de ${animal.brinco}`} onFechar={() => { if (!salvando) onFechar(); }}
       rodape={<><Button secondary onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form={formId} disabled={salvando}>{salvando ? "Salvando…" : "Salvar filiação"}</Button></>}>
-      <form id={formId} onSubmit={submeter} noValidate className="grid gap-5">
+      <form data-pec-formulario  id={formId} onSubmit={submeter} noValidate className="grid gap-5">
         <ErrorBox erro={erroGeral} />
         {avisos.length > 0 && <div role="status" className="space-y-1 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           {avisos.map((a, i) => <p key={i}>{a.mensagem}</p>)}

@@ -1,12 +1,13 @@
+import { SelectCampo } from "@/financeiro/SelectCampo";
 import { useCallback } from "react";
-import { Leaf, Layers3, Users, TriangleAlert } from "lucide-react";
-import { Metric, Panel, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
+import { Panel, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
 import { classeInput } from "../../../financeiro/PainelCadastro";
 import { formatarDataBR } from "../lib/rotulos";
 import { consultarVisaoNutricional } from "./api";
 import { useFiltrosNutricionais } from "./navegacao";
 import { useConsulta } from "./consulta";
 import { custoTexto, EstadoConsulta, LinkNutricional, rotaNutricao } from "./componentes";
+import { ComparacaoPecuaria, DistribuicaoPecuaria } from "../components/DistribuicaoPecuaria";
 
 export function VisaoGeralNutricao() {
   const { dados, erro, carregando, carregar } = useConsulta(useCallback(consultarVisaoNutricional, []));
@@ -15,15 +16,14 @@ export function VisaoGeralNutricao() {
   const situacao = params.get("situacaoDieta") ?? "";
   const itens = dados?.lotes.filter((r) => `${r.lote.nome} ${r.lote.propriedade.nome}`.toLocaleLowerCase("pt-BR").includes(busca.toLocaleLowerCase("pt-BR")) && (!situacao || (situacao === "com") === !!r.vigente)) ?? [];
   const comDieta = dados?.lotes.filter((r) => r.vigente).length ?? 0;
-  return <div className="nutricao-conteudo"><EstadoConsulta erro={erro} carregando={carregando} recarregar={carregar} />{dados && <>
-    <div className="nutricao-metricas">
-      <Metric icon={Layers3} label="Lotes ativos" valor={String(dados.lotes.length)} detalhe="No contexto de fazenda selecionado" />
-      <Metric icon={Users} label="Animais nos lotes" valor={String(dados.lotes.reduce((s, r) => s + r.lote.animaisAtivos, 0))} detalhe="Animais ativos hoje" />
-      <Metric icon={Leaf} label="Com dieta vigente" valor={String(comDieta)} detalhe="Receita publicada em uso" tone="green" />
-      <Metric icon={TriangleAlert} label="Sem dieta vigente" valor={String(dados.lotes.length - comDieta)} detalhe="Lotes que precisam de atenção" />
-    </div>
-    <Panel><div className="nutricao-card-cabecalho"><div><h2 className="h3">Nutrição por lote</h2><p>Compare as dietas e abra um lote para consultar seu histórico.</p></div><Pill>{dados.lotes.length} lotes</Pill></div>
-      <div className="nutricao-filtros"><label>Buscar lote ou sítio<input className={classeInput} type="search" value={busca} placeholder="Nome do lote ou sítio" onChange={(e) => atualizar({ buscaLote: e.target.value })} /></label><label>Situação da dieta<select className={classeInput} value={situacao} onChange={(e) => atualizar({ situacaoDieta: e.target.value })}><option value="">Todas as situações</option><option value="com">Com dieta vigente</option><option value="sem">Sem dieta vigente</option></select></label></div>
+  const animaisAtivos = dados?.lotes.reduce((soma, r) => soma + r.lote.animaisAtivos, 0) ?? 0;
+  return <div className="nutricao-conteudo"><EstadoConsulta erro={erro} carregando={carregando} recarregar={carregar} estrutura="panorama" label="Carregando panorama nutricional…" />{dados && <>
+    <Panel className="nutricao-panorama"><div className="nutricao-card-cabecalho"><div><h2 className="h3">Panorama nutricional</h2><p>{animaisAtivos} animais ativos nos lotes · contexto de hoje, independente dos filtros da tabela</p></div></div><div className="nutricao-panorama-graficos">
+      <DistribuicaoPecuaria embutido titulo="Cobertura das dietas" descricao="Lotes com e sem dieta vigente" total={dados.lotes.length} rotuloCentro="lotes ativos" unidade="lotes" itens={[{ id: "com", nome: "Com dieta vigente", qtd: comDieta, href: rotaNutricao({ ...Object.fromEntries(params), situacaoDieta: "com" }) }, { id: "sem", nome: "Sem dieta vigente", qtd: dados.lotes.length - comDieta, href: rotaNutricao({ ...Object.fromEntries(params), situacaoDieta: "sem" }) }]} />
+      <ComparacaoPecuaria embutido titulo="Efetivo por lote" descricao="Até 6 lotes com mais animais ativos" itens={[...dados.lotes].sort((a, b) => b.lote.animaisAtivos - a.lote.animaisAtivos).slice(0, 6).map(r => ({ id: r.lote.id, nome: r.lote.nome, qtd: r.lote.animaisAtivos, href: rotaNutricao({ loteId: r.lote.id }) }))} />
+    </div></Panel>
+    <Panel><div className="nutricao-card-cabecalho"><div><h2 className="h3">Nutrição por lote</h2><p>Compare as dietas e abra um lote para consultar seu histórico.{(busca || situacao) && <> Mostrando {itens.length} de {dados.lotes.length} lotes.</>}</p></div></div>
+      <div className="nutricao-filtros"><label>Buscar lote ou sítio<input className={classeInput} type="search" value={busca} placeholder="Nome do lote ou sítio" onChange={(e) => atualizar({ buscaLote: e.target.value })} /></label><label>Situação da dieta<SelectCampo className={classeInput} value={situacao} onValueChange={(valorSelecionado) => atualizar({ situacaoDieta: valorSelecionado })}><option value="">Todas as situações</option><option value="com">Com dieta vigente</option><option value="sem">Sem dieta vigente</option></SelectCampo></label></div>
       {!itens.length ? <div className="nutricao-vazio">{dados.lotes.length ? "Nenhum lote corresponde aos filtros." : <>Nenhum lote ativo neste contexto. <LinkNutricional href="/pecuaria/rebanho/lotes">Ver lotes do rebanho</LinkNutricional></>}</div> : <TabelaFinanceira rotulo="Nutrição por lote" itens={itens} chaveDe={(r) => r.lote.id} colunas={[
         { chave: "lote", titulo: "Lote / sítio", principal: true, celula: (r) => <><LinkNutricional href={rotaNutricao({ loteId: r.lote.id })}>{r.lote.nome}</LinkNutricional><p className="nutricao-secundario">{r.lote.propriedade.nome}</p></> },
         { chave: "animais", titulo: "Animais", celula: (r) => r.lote.animaisAtivos },

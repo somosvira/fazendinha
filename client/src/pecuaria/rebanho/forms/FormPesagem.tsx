@@ -1,3 +1,5 @@
+import { SelectCampo } from "@/financeiro/SelectCampo";
+import { Scale } from "lucide-react";
 // Sheet "Registrar pesagem" / "Editar pesagem" — POST /animais/:id/pesagens
 // (criar) e PATCH /pesagens/:id (editar); `pesagem` presente = edição.
 
@@ -48,17 +50,17 @@ export function FormPesagem({ animalId, pesagem = null, onSalvo, onFechar }: {
   };
 
   const formId = "form-pesagem-animal";
-  return <PainelCadastro aberto titulo={pesagem ? "Editar pesagem" : "Registrar pesagem"} onFechar={() => { if (!salvando) onFechar(); }}
+  return <PainelCadastro icon={Scale} compacto aberto titulo={pesagem ? "Editar pesagem" : "Registrar pesagem"} onFechar={() => { if (!salvando) onFechar(); }}
     rodape={<><Button secondary onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form={formId} disabled={salvando}>{salvando ? "Salvando…" : pesagem ? "Salvar pesagem" : "Registrar pesagem"}</Button></>}>
-    <form id={formId} onSubmit={submeter} noValidate className="grid gap-4">
+    <form data-pec-formulario  id={formId} onSubmit={submeter} noValidate className="grid gap-4">
       <ErrorBox erro={erroGeral} />
       <div className="grid gap-4 sm:grid-cols-2">
         <CampoFormulario id="pesagem-data" rotulo="Data" obrigatorio erro={erros.data}>{(p) => <DatePicker {...p} required max={hoje()} value={data} onChange={setData} className="mt-1.5" />}</CampoFormulario>
         <CampoFormulario id="pesagem-peso" rotulo="Peso (kg)" obrigatorio erro={erros.pesoKg}>{(p) => <input {...p} required type="number" min="0.01" step="0.01" value={pesoKg} onChange={(e) => setPesoKg(e.target.value)} className={classeInput} />}</CampoFormulario>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
-        <CampoFormulario id="pesagem-tipo" rotulo="Tipo" obrigatorio>{(p) => <select {...p} value={tipo} onChange={(e) => setTipo(e.target.value as TipoPesagem)} className={classeInput}>{Object.entries(ROTULO_TIPO_PESAGEM).map(([chave, nome]) => <option key={chave} value={chave}>{nome}</option>)}</select>}</CampoFormulario>
-        <CampoFormulario id="pesagem-origem" rotulo="Origem">{(p) => <select {...p} value={origem} onChange={(e) => setOrigem(e.target.value as OrigemPesagem)} className={classeInput}><option value="MANUAL">Manual</option><option value="BALANCA">Balança</option></select>}</CampoFormulario>
+        <CampoFormulario id="pesagem-tipo" rotulo="Tipo" obrigatorio>{(p) => <SelectCampo {...p} value={tipo} onValueChange={(valorSelecionado) => setTipo(valorSelecionado as TipoPesagem)} className={classeInput}>{Object.entries(ROTULO_TIPO_PESAGEM).map(([chave, nome]) => <option key={chave} value={chave}>{nome}</option>)}</SelectCampo>}</CampoFormulario>
+        <CampoFormulario id="pesagem-origem" rotulo="Origem">{(p) => <SelectCampo {...p} value={origem} onValueChange={(valorSelecionado) => setOrigem(valorSelecionado as OrigemPesagem)} className={classeInput}><option value="MANUAL">Manual</option><option value="BALANCA">Balança</option></SelectCampo>}</CampoFormulario>
       </div>
       <CampoFormulario id="pesagem-observacao" rotulo="Observação">{(p) => <textarea {...p} maxLength={500} value={observacao} onChange={(e) => setObservacao(e.target.value)} className={classeInput} />}</CampoFormulario>
     </form>

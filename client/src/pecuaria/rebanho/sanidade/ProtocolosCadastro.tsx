@@ -1,5 +1,6 @@
+import { SelectCampo } from "@/financeiro/SelectCampo";
 import { Fragment, useEffect, useRef, useState } from "react";
-import { ChevronDown, ChevronRight, Pencil, Copy, Send, PowerOff } from "lucide-react";
+import { ChevronDown, ChevronRight, Pencil, Copy, Send, PowerOff, ClipboardList } from "lucide-react";
 import { Button, ErrorBox, Pill } from "../../../financeiro/financeiro-ui";
 import {
   classeInput,
@@ -152,7 +153,7 @@ export function ProtocolosCadastro({ podeLancar }: { podeLancar: boolean }) {
   const mudar = (i: number, patch: Partial<Etapa>) =>
     setEtapas((es) => es.map((e, j) => (i === j ? { ...e, ...patch } : e)));
   return (
-    <section>
+    <section className="pec-protocolos-cadastro">
       <ErrorBox erro={erro} />
       <ErrorBox erro={erroLista} />
       <ErrorBox erro={erroCatalogos} />
@@ -162,6 +163,12 @@ export function ProtocolosCadastro({ podeLancar }: { podeLancar: boolean }) {
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3"><h2 className="h2">Protocolos sanitários</h2>
         {podeLancar && <Button disabled={ocupado || !catalogosProntos || carregando} onClick={() => editar()}>Novo protocolo</Button>}
       </div>
+      {!carregando && !erroLista && <div className="pec-resumo-consulta" aria-label="Resumo dos protocolos">
+        <span><strong>{protocolos.length}</strong> versões cadastradas</span>
+        <span><strong>{protocolos.filter((p) => p.ativo && p.publicadoEm).length}</strong> publicadas e ativas</span>
+        <span><strong>{protocolos.filter((p) => !p.publicadoEm).length}</strong> rascunhos</span>
+        <small>Versões distintas do mesmo protocolo são contadas separadamente.</small>
+      </div>}
       {carregando ? <p role="status" className="py-4">Carregando protocolos…</p> : <div className="overflow-x-auto rounded border border-border"><table aria-label="Protocolos sanitários" className="w-full text-left text-sm">
         <thead className="bg-surface-2"><tr><th className="p-4">Nome</th><th className="p-4">Tipo</th><th className="p-4">Versão</th><th className="p-4">Situação</th><th className="p-4">Etapas</th><th className="p-4">Ações</th></tr></thead>
         <tbody className="divide-y divide-border">{protocolos.map((p) => <Fragment key={p.id}>
@@ -177,6 +184,13 @@ export function ProtocolosCadastro({ podeLancar }: { podeLancar: boolean }) {
           {detalhe?.id === p.id && <tr><td colSpan={6} id={`protocolo-${p.id}`} className="bg-surface p-5">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-4"><div><h3 className="h2">{p.nome} · v{p.versao}</h3><Pill tone={p.publicadoEm ? "green" : "amber"}>{p.publicadoEm ? "Versão publicada" : "Rascunho"}</Pill></div><div className="flex flex-wrap items-center gap-4">{podeLancar && <Button secondary disabled={ocupado || !catalogosProntos} onClick={() => editar(p)}>{p.publicadoEm ? "Criar nova versão" : "Editar rascunho"}</Button>}<a href="/pecuaria/sanidade" className="text-mast underline" onClick={(e) => { if (e.button === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) { e.preventDefault(); navegarPara("/pecuaria/sanidade"); } }}>Abrir agenda sanitária</a></div></div>
             {p.descricao && <p className="mb-4 text-sm">{p.descricao}</p>}
+            <ol className="pec-protocolo-linha-tempo" aria-label="Sequência planejada">
+              {p.etapas.map((e, i) => <li key={i}>
+                <span>D{e.diaRelativo}</span>
+                <strong>Etapa {i + 1}</strong>
+                <small>{e.tipoAplicacaoNomeSnapshot ?? (e.tipo === "EXAME" ? "Exame" : "Aplicação")}</small>
+              </li>)}
+            </ol>
             <table aria-label={`Etapas de ${p.nome}`} className="w-full border border-border text-sm"><thead><tr><th className="p-3">Etapa</th><th className="p-3">Tipo e produto ou exame</th><th className="p-3">Dia relativo</th></tr></thead><tbody className="divide-y divide-border">{p.etapas.map((e, i) => <tr key={i}><td className="p-3"><span className="sr-only">Etapa {i + 1} · Dia {e.diaRelativo}</span>{i + 1}</td><td className="p-3">{e.tipoAplicacaoNomeSnapshot ?? (e.tipo === "EXAME" ? "Exame" : "Aplicação")} · {produtos.find((pr) => pr.id === e.produtoId)?.nome ?? exames.find((t) => t.id === e.tipoExameId)?.nome ?? (e.produtoId ? "Produto do histórico" : "Exame do histórico")} {e.dose} {e.unidade}</td><td className="p-3">D{e.diaRelativo}</td></tr>)}</tbody></table>
           </td></tr>}
         </Fragment>)}</tbody>
@@ -189,6 +203,7 @@ export function ProtocolosCadastro({ podeLancar }: { podeLancar: boolean }) {
       {aberto && podeLancar && (
         <PainelCadastro
           aberto
+          icon={ClipboardList}
           titulo={
             id ? "Editar protocolo em rascunho" : "Nova versão de protocolo"
           }
@@ -202,6 +217,7 @@ export function ProtocolosCadastro({ podeLancar }: { podeLancar: boolean }) {
           }
         >
           <form
+            data-pec-formulario
             id="form-protocolo"
             className="grid gap-4"
             onSubmit={(e) => {
@@ -266,27 +282,25 @@ export function ProtocolosCadastro({ podeLancar }: { podeLancar: boolean }) {
                 </label>
                 <label>
                   Ação
-                  <select
+                  <SelectCampo
                     value={et.tipo}
-                    onChange={(e) =>
-                      mudar(i, { tipo: e.target.value as Etapa["tipo"] })
-                    }
+                    onValueChange={(valorSelecionado) =>
+                      mudar(i, { tipo: valorSelecionado as Etapa["tipo"] })}
                     className={classeInput}
                   >
                     <option value="APLICACAO">Aplicação</option>
                     <option value="EXAME">Exame</option>
-                  </select>
+                  </SelectCampo>
                 </label>
                 {et.tipo === "APLICACAO" ? (
                   <>
                     <label>
                       Tipo de aplicação
-                      <select
+                      <SelectCampo
                         required
                         value={et.tipoAplicacaoId}
-                        onChange={(e) =>
-                          mudar(i, { tipoAplicacaoId: e.target.value })
-                        }
+                        onValueChange={(valorSelecionado) =>
+                          mudar(i, { tipoAplicacaoId: valorSelecionado })}
                         className={classeInput}
                       >
                         <option value="">Selecione</option>
@@ -295,21 +309,20 @@ export function ProtocolosCadastro({ podeLancar }: { podeLancar: boolean }) {
                             {t.nome}
                           </option>
                         ))}
-                      </select>
+                      </SelectCampo>
                     </label>
                     <label>
                       Produto
-                      <select
+                      <SelectCampo
                         required
                         value={et.produtoId}
-                        onChange={(e) =>
+                        onValueChange={(valorSelecionado) =>
                           mudar(i, {
-                            produtoId: e.target.value,
+                            produtoId: valorSelecionado,
                             unidade:
-                              produtos.find((p) => p.id === e.target.value)
+                              produtos.find((p) => p.id === valorSelecionado)
                                 ?.unidade ?? "ML",
-                          })
-                        }
+                          })}
                         className={classeInput}
                       >
                         <option value="">Selecione</option>
@@ -318,7 +331,7 @@ export function ProtocolosCadastro({ podeLancar }: { podeLancar: boolean }) {
                             {p.nome}
                           </option>
                         ))}
-                      </select>
+                      </SelectCampo>
                     </label>
                     <label>
                       Quantidade prevista ({et.unidade})
@@ -336,12 +349,11 @@ export function ProtocolosCadastro({ podeLancar }: { podeLancar: boolean }) {
                 ) : (
                   <label>
                     Tipo de exame
-                    <select
+                    <SelectCampo
                       required
                       value={et.tipoExameId}
-                      onChange={(e) =>
-                        mudar(i, { tipoExameId: e.target.value })
-                      }
+                      onValueChange={(valorSelecionado) =>
+                        mudar(i, { tipoExameId: valorSelecionado })}
                       className={classeInput}
                     >
                       <option value="">Selecione</option>
@@ -350,7 +362,7 @@ export function ProtocolosCadastro({ podeLancar }: { podeLancar: boolean }) {
                           {t.nome}
                         </option>
                       ))}
-                    </select>
+                    </SelectCampo>
                   </label>
                 )}
                 <Button

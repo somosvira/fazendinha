@@ -1,3 +1,4 @@
+import { SelectCampo } from "@/financeiro/SelectCampo";
 import { useEffect, useState } from "react";
 import { Button, ErrorBox, hoje } from "../../../financeiro/financeiro-ui";
 import { DatePicker } from "../../../components/DatePicker";
@@ -47,7 +48,7 @@ export function ConferenciaPeriodos({ loteId, propriedadeId, centros, onSalvo, o
     <fieldset disabled={ocupado} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       <label>De<DatePicker value={inicio} onChange={(v) => { setInicio(v); setPrevia(null); }} /></label>
       <label>Até<DatePicker value={fim} onChange={(v) => { setFim(v); setPrevia(null); }} /></label>
-      <label>Centro de custo<select className={classeInput} value={centroCustoId} onChange={(e) => { setCentro(e.target.value); setPrevia(null); }}><option value="">Usar o centro do lote</option>{centros.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}</select></label>
+      <label>Centro de custo<SelectCampo className={classeInput} value={centroCustoId} onValueChange={(valorSelecionado) => { setCentro(valorSelecionado); setPrevia(null); }}><option value="">Usar o centro do lote</option>{centros.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}</SelectCampo></label>
       <div className="flex items-end"><Button disabled={ocupado} onClick={() => void conferir()}>Conferir período</Button></div>
     </fieldset>
     {previa && <>
@@ -77,7 +78,7 @@ export function ConferenciaPeriodos({ loteId, propriedadeId, centros, onSalvo, o
               {mostrarValores && <p className="text-sm">Custo conferido estimado: {v.custo == null ? (e.modo === "SEM_BAIXA_JUSTIFICADA" ? "não apurado — sem baixa de estoque" : "não apurado — sem base de custo") : `≈ ${fmtMoneyExact(Number(v.custo))}`}</p>}
               <div className="grid gap-3 sm:grid-cols-2">
                 <label>Quantidade conferida ({i.unidade})<input type="number" min="0" step="0.001" className={classeInput} value={e.quantidade} onChange={(ev) => mudar(k, { quantidade: ev.target.value })} /></label>
-                <label>Origem<select className={classeInput} value={e.modo} onChange={(ev) => mudar(k, { modo: ev.target.value as Escolha["modo"] })}><option value="BAIXA_ESTOQUE">Baixar estoque</option><option value="SEM_BAIXA_JUSTIFICADA">Sem baixa — justificar</option></select></label>
+                <label>Origem<SelectCampo className={classeInput} value={e.modo} onValueChange={(valorSelecionado) => mudar(k, { modo: valorSelecionado as Escolha["modo"] })}><option value="BAIXA_ESTOQUE">Baixar estoque</option><option value="SEM_BAIXA_JUSTIFICADA">Sem baixa — justificar</option></SelectCampo></label>
               </div>
               {Number(e.quantidade) !== Number(i.quantidadePrevista) && <label>Motivo da diferença<input className={classeInput} value={e.motivo} onChange={(ev) => mudar(k, { motivo: ev.target.value })} /></label>}
               {e.modo === "SEM_BAIXA_JUSTIFICADA" && <label>Justificativa sem baixa<textarea className={classeInput} value={e.justificativa} onChange={(ev) => mudar(k, { justificativa: ev.target.value })} /></label>}

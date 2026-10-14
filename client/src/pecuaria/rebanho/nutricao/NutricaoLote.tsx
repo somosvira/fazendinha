@@ -16,15 +16,16 @@ export function NutricaoLote({ loteId, podeLancar, vista }: { loteId: string; pr
   const r = consulta.dados;
   const completa = vista === "lotes";
   const escrever = podeLancar && r?.lote.ativo;
-  return <div className="nutricao-lote"><EstadoConsulta erro={consulta.erro} carregando={consulta.carregando} recarregar={consulta.carregar} />{r && <>
+  return <div className="nutricao-lote"><EstadoConsulta erro={consulta.erro} carregando={consulta.carregando} recarregar={consulta.carregar} estrutura="detalhe" label="Carregando nutrição do lote…" />{r && <>
     {completa ? <><nav className="nutricao-breadcrumb" aria-label="Navegação"><LinkNutricional href={rotaNutricao()}>Nutrição</LinkNutricional><span>/</span><span>{r.lote.nome}</span></nav><PageHeader eyebrow="" titulo={r.lote.nome} descricao={`${r.lote.propriedade.nome} · Dieta, consumo e custos deste lote${r.lote.ativo ? "." : " · lote inativo."}`} acao={<LinkNutricional className="nutricao-botao-secundario" href={`/pecuaria/rebanho/lotes/${r.lote.id}`}>Ver lote e animais</LinkNutricional>} /></> : <div className="nutricao-card-cabecalho"><h2 className="h3">Nutrição do lote</h2><LinkNutricional href={rotaNutricao({ loteId })}>Abrir nutrição do lote →</LinkNutricional></div>}
-    <div className="nutricao-conteudo"><CustosLote resumo={r} />
-      <Panel><div className="nutricao-card-cabecalho"><div><h2 className="h3">Dieta vigente</h2><p>{r.vigente ? `Desde ${formatarDataBR(r.vigente.desde)}` : "Nenhuma dieta vigente atribuída a este lote."}</p></div><Pill tone={r.vigente ? "green" : "amber"}>{r.vigente ? "Em uso" : "Sem dieta"}</Pill></div>
+    <div className="nutricao-conteudo">
+      <Panel className="nutricao-dieta-vigente"><div className="nutricao-card-cabecalho"><div><h2 className="h3">Dieta vigente</h2><p>{r.lote.animaisAtivos} animais ativos hoje · {r.vigente ? `desde ${formatarDataBR(r.vigente.desde)}` : "nenhuma dieta vigente atribuída a este lote."}</p></div><Pill tone={r.vigente ? "green" : "amber"}>{r.vigente ? "Em uso" : "Sem dieta"}</Pill></div>
         <div className="nutricao-card-corpo">{r.vigente && <p className="font-serif text-xl">{r.vigente.dieta.nome} <span className="nutricao-secundario">· v{r.vigente.dieta.versao}</span></p>}{r.programada && <p className="nutricao-aviso">Programada: {r.programada.dieta.nome} · v{r.programada.dieta.versao}, a partir de {formatarDataBR(r.programada.desde)}.</p>}
           {completa && escrever && <div className="nutricao-acoes"><LinkNutricional className="nutricao-botao" href={rotaOperacaoNutricional("atribuir", loteId)}>{r.vigente ? "Trocar dieta" : "Atribuir dieta"}</LinkNutricional><LinkNutricional className="nutricao-botao-secundario" href={rotaOperacaoNutricional("consumo", loteId)}>Conferir consumo</LinkNutricional></div>}
         </div>
       </Panel>
-      {completa && <Panel><div className="nutricao-card-cabecalho"><div><h2 className="h3">Histórico de dietas</h2><p>Vigências anteriores, atuais e programadas.</p></div></div><div className="px-5"><EstadoConsulta erro={historico.erro} carregando={historico.carregando} recarregar={historico.carregar} /></div>
+      <CustosLote resumo={r} />
+      {completa && <Panel><div className="nutricao-card-cabecalho"><div><h2 className="h3">Histórico de dietas</h2><p>Vigências anteriores, atuais e programadas.</p></div></div><div className="px-5"><EstadoConsulta erro={historico.erro} carregando={historico.carregando} recarregar={historico.carregar} estrutura="lista" label="Carregando histórico de dietas…" /></div>
         {historico.dados && <>{!historico.dados.itens.length ? <p className="nutricao-vazio">Nenhuma dieta atribuída.</p> : <TabelaFinanceira rotulo="Histórico de dietas do lote" itens={historico.dados.itens} chaveDe={(v) => v.id} colunas={[
           { chave: "receita", titulo: "Receita / versão", principal: true, celula: (v) => <strong>{v.dieta.nome} · v{v.dieta.versao}</strong> },
           { chave: "inicio", titulo: "Início", celula: (v) => formatarDataBR(v.desde) },

@@ -28,7 +28,7 @@ describe("FormComposicao", () => {
     vi.mocked(substituirComposicaoAnimal).mockResolvedValue([]);
     const onSalvo = vi.fn();
     render(<FormComposicao animal={animal} racas={racasAtivas} onSalvo={onSalvo} onFechar={vi.fn()} />);
-    expect((await screen.findAllByRole("option", { name: "Girolando (inativa) (GL)" })).length).toBeGreaterThan(0);
+    expect((await screen.findAllByRole("option", { hidden: true,  name: "Girolando (inativa) (GL)" })).length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole("button", { name: /Salvar/ }));
     await waitFor(() => expect(onSalvo).toHaveBeenCalled());
     expect(substituirComposicaoAnimal).toHaveBeenCalledWith("animal-1", { itens: [{ racaId: "r-ho", fracao64: 32 }, { racaId: "r-gl", fracao64: 32 }] });

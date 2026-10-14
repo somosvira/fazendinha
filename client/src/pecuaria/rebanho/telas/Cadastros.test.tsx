@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { alterarControle } from "../../../lib/controles.fixture";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { Cadastros } from "./Cadastros";
@@ -158,11 +159,11 @@ describe("Cadastros do rebanho — categorias", () => {
     await montarCategorias();
     fireEvent.click(screen.getByRole("button", { name: /Nova categoria/ }));
     const painel = await screen.findByRole("dialog");
-    fireEvent.change(within(painel).getByLabelText("Partos"), { target: { value: "COM" } });
-    fireEvent.change(within(painel).getByLabelText("Sexo"), { target: { value: "M" } });
+    await alterarControle(within(painel).getByLabelText("Partos"), { target: { value: "COM" } });
+    await alterarControle(within(painel).getByLabelText("Sexo"), { target: { value: "M" } });
     expect(within(painel).queryByLabelText("Partos")).toBeNull();
-    fireEvent.change(within(painel).getByLabelText("Nome da categoria"), { target: { value: "Boi" } });
-    fireEvent.change(within(painel).getByLabelText("Idade mínima (meses)"), { target: { value: "24" } });
+    await alterarControle(within(painel).getByLabelText("Nome da categoria"), { target: { value: "Boi" } });
+    await alterarControle(within(painel).getByLabelText("Idade mínima (meses)"), { target: { value: "24" } });
     fireEvent.click(within(painel).getByRole("button", { name: "Criar categoria" }));
     await waitFor(() => expect(criarCategoria).toHaveBeenCalledWith({ nome: "Boi", sexo: "M", automatica: true, idadeMinMeses: 24, idadeMaxMeses: null, partos: "QUALQUER" }));
   });
@@ -172,7 +173,7 @@ describe("Cadastros do rebanho — categorias", () => {
     await montarCategorias();
     fireEvent.click(screen.getByRole("button", { name: /Nova categoria/ }));
     const painel = await screen.findByRole("dialog");
-    fireEvent.change(within(painel).getByLabelText("Nome da categoria"), { target: { value: "Nova" } });
+    await alterarControle(within(painel).getByLabelText("Nome da categoria"), { target: { value: "Nova" } });
     fireEvent.click(within(painel).getByRole("button", { name: "Criar categoria" }));
     await waitFor(() => expect(criarCategoria).toHaveBeenCalledWith({ nome: "Nova", sexo: "F", automatica: true, idadeMinMeses: null, idadeMaxMeses: null, partos: "QUALQUER" }));
     expect(screen.queryByRole("dialog", { name: "Aplicar esta mudança?" })).toBeNull();
@@ -189,7 +190,7 @@ describe("Cadastros do rebanho — categorias", () => {
     await montarCategorias();
     fireEvent.click(screen.getByRole("button", { name: /Nova categoria/ }));
     const painel = await screen.findByRole("dialog");
-    fireEvent.change(within(painel).getByLabelText("Nome da categoria"), { target: { value: "Nova" } });
+    await alterarControle(within(painel).getByLabelText("Nome da categoria"), { target: { value: "Nova" } });
     fireEvent.click(within(painel).getByRole("button", { name: "Criar categoria" }));
 
     const confirmacao = await screen.findByRole("dialog", { name: "Aplicar esta mudança?" });
@@ -247,8 +248,8 @@ describe("Cadastros do rebanho — raças", () => {
     fireEvent.click(screen.getByRole("button", { name: /Nova raça/ }));
     const painel = await screen.findByRole("dialog");
     expect((within(painel).getByLabelText(/Raça base/) as HTMLInputElement).checked).toBe(true);
-    fireEvent.change(within(painel).getByLabelText("Nome da raça"), { target: { value: "Girolando" } });
-    fireEvent.change(within(painel).getByLabelText("Sigla"), { target: { value: "gir" } });
+    await alterarControle(within(painel).getByLabelText("Nome da raça"), { target: { value: "Girolando" } });
+    await alterarControle(within(painel).getByLabelText("Sigla"), { target: { value: "gir" } });
     fireEvent.click(within(painel).getByRole("button", { name: "Criar raça" }));
     await waitFor(() => expect(criarRaca).toHaveBeenCalledWith({ nome: "Girolando", sigla: "GIR", base: true }));
   });
@@ -302,8 +303,8 @@ describe("Cadastros do rebanho — motivos de baixa", () => {
     await montarMotivos();
     fireEvent.click(screen.getByRole("button", { name: /Novo motivo de baixa/ }));
     const painel = await screen.findByRole("dialog");
-    fireEvent.change(within(painel).getByLabelText("Nome do motivo"), { target: { value: "Idade avançada" } });
-    fireEvent.change(within(painel).getByLabelText("Classe"), { target: { value: "DESCARTE_INVOLUNTARIO" } });
+    await alterarControle(within(painel).getByLabelText("Nome do motivo"), { target: { value: "Idade avançada" } });
+    await alterarControle(within(painel).getByLabelText("Classe"), { target: { value: "DESCARTE_INVOLUNTARIO" } });
     fireEvent.click(within(painel).getByRole("button", { name: "Criar motivo" }));
     await waitFor(() => expect(criarMotivoBaixa).toHaveBeenCalledWith({ nome: "Idade avançada", classe: "DESCARTE_INVOLUNTARIO" }));
   });

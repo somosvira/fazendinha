@@ -17,6 +17,7 @@ import { formatarDataBR, formatarIdade, rotuloAptidao, rotuloPapelReprodutivo, r
 import { formatarGmd, formatarKg, PERIODO_GMD_PADRAO } from "../lib/peso";
 import { navegarPara } from "../../../router";
 import { Button, type ColunaTabela, Empty, ErrorBox, Metric, PageHeader, PaginaFinanceira, Panel, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
+import { DistribuicaoPecuaria } from "../components/DistribuicaoPecuaria";
 import { CategoriaPill, Paginacao, useAoMovimentarComToast } from "../ui";
 import { NavRebanho } from "./NavRebanho";
 import { mensagemDesativar } from "./ListaLotes";
@@ -184,14 +185,15 @@ export function DetalheLote({ id, podeLancar = true, onVoltar }: { id: string; p
         <h2 className="font-serif text-xl">Resumo do lote</h2>
         <SeletorPeriodoGmd id="periodo-gmd-lote" valor={periodoGmd} onChange={setPeriodoGmd} />
       </div>
-      <div className="mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="pec-metricas mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Metric label="Animais ativos" valor={resumo.ativos.toLocaleString("pt-BR")} detalhe={`${resumo.porSexo.F} fêmeas · ${resumo.porSexo.M} machos`} icon={Users} />
         <Metric label="Peso médio" valor={formatarKg(resumo.peso.medioKg)} detalhe={`${formatarKg(resumo.peso.minKg)} – ${formatarKg(resumo.peso.maxKg)} · ${resumo.peso.semPeso} sem peso`} icon={Weight} />
         <Metric label="GMD do período" valor={formatarGmd(resumo.gmd.medio)} detalhe={`${resumo.gmd.comGmd} de ${resumo.ativos} animais com pesagem suficiente`} icon={TrendingUp} />
         <Metric label="Idade média" valor={resumo.idadeMediaMeses != null ? formatarIdade(resumo.idadeMediaMeses) : "—"} detalhe="Média dos animais ativos no lote" icon={Calendar} />
       </div>
-      {resumo.porCategoria.length > 0 && <div className="mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-border bg-white p-4 text-sm">
-        {resumo.porCategoria.map((c) => <Pill key={c.categoriaId ?? "sem-categoria"}>{c.categoria}: {c.qtd}</Pill>)}
+      {resumo.porCategoria.length > 0 && <div className="pec-graficos-grade">
+        <DistribuicaoPecuaria titulo="Composição do lote" descricao="Categorias dos animais ativos · conjunto completo do lote" total={resumo.ativos} rotuloCentro="animais no lote" itens={resumo.porCategoria.map(c => ({ id: c.categoriaId ?? "sem", nome: c.categoria, qtd: c.qtd }))} />
+        <DistribuicaoPecuaria titulo="Fêmeas e machos" descricao="Distribuição por sexo do efetivo atual" total={resumo.ativos} rotuloCentro="animais ativos" itens={[{ id: "F", nome: "Fêmeas", qtd: resumo.porSexo.F }, { id: "M", nome: "Machos", qtd: resumo.porSexo.M }]} />
       </div>}
     </>}
 
