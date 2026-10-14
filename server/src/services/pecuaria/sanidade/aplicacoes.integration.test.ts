@@ -1,3 +1,4 @@
+import { regularizarTarefaSanitaria } from "../protocolos/regularizacao.js";
 import crypto from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
 import { prisma } from "../../../db.js";
@@ -110,7 +111,9 @@ describeComBanco("aplicação com doses inclusas em Serviço", () => {
     const input = { animalId: animal.id, propriedadeId, data, aplicadaEm: `${data}T14:00:00-03:00`, finalidade: "VACINA" as const, origemInsumo: "SEM_ORIGEM_JUSTIFICADA" as const,
       produtoId: produto.id, nomeProdutoAplicado: produto.nome, dose: "2", unidadeDose: "ML" as const, carenciaLeiteHoras: 48, carenciaCarneHoras: 72, justificativaSemOrigem: "Caderno de campo sem nota da compra", tarefaId: execucao.tarefas[0].id };
     const primeira = await criarAplicacao(input, null);
-    await anularAplicacao(primeira.id, propriedadeId, "Aplicação vinculada ao caderno incorreto", null);
+    await anularAplicacao(primeira.id, propriedadeId, "Aplicação vinculada ao caderno incorreto", null, "DEVOLVER_ESTOQUE");
+    await expect(criarAplicacao(input, null)).rejects.toMatchObject({ code: "CONFLITO", campo: "tarefaId" });
+    await regularizarTarefaSanitaria(execucao.tarefas[0].id, { propriedadeId, chave: crypto.randomUUID(), acao: "REABRIR", motivo: "Procedimento não realizado; corrigir o registro", cienciaNaoExecutado: true }, null);
     const keyed = { ...input, chave: crypto.randomUUID() };
     const segunda = await criarAplicacao(keyed, null);
     expect((await criarAplicacao(keyed, null)).id).toBe(segunda.id);
@@ -125,7 +128,7 @@ describeComBanco("aplicação com doses inclusas em Serviço", () => {
     await darBaixa({ animalId: animal.id, tipo: "VENDA", data: dataBaixa, cienciaSanitaria: true, justificativaSanitaria: "Revisado com responsável pela saída" }, null);
     const baixa = await prisma.baixaAnimal.findFirstOrThrow({ where: { animalId: animal.id, estornadaEm: null } });
     expect(baixa.cienciaCarenciaSnapshot).toMatchObject({ ciente: true, propriedadeId, usuarioId: null, justificativa: "Revisado com responsável pela saída", carencias: { carne: { estado: "CONHECIDO" } } });
-    await anularAplicacao(segunda.id, propriedadeId, "Correção posterior à baixa documentada", null);
+    await anularAplicacao(segunda.id, propriedadeId, "Correção posterior à baixa documentada", null, "DEVOLVER_ESTOQUE");
     expect((await prisma.baixaAnimal.findUniqueOrThrow({ where: { id: baixa.id } })).cienciaCarenciaSnapshot).toEqual(baixa.cienciaCarenciaSnapshot);
   });
 });

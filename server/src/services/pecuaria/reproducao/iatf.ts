@@ -40,6 +40,7 @@ import { travarUsosProduto } from "../../estoque/usos.js";
 import { converterQuantidade } from "../../estoque/unidades.js";
 import { operacaoIdempotenteTx } from "./operacoes.js";
 import { exigeMotivoExecucao } from "../desvios.calc.js";
+const exameDaTarefaSchema = executarExameEtapaSchema.omit({ tipo: true, tarefaId: true }).extend({ chave: z.string().uuid().optional() });
 const json = (v: unknown): Prisma.InputJsonValue =>
   JSON.parse(JSON.stringify(v));
 type EtapaFonte = EtapaIatf & { referencias?: Record<string, unknown> };
@@ -581,7 +582,7 @@ export async function executarTarefaTx(
       aplicadaEm: input.realizadaEm,
     });
   else if (tarefa.tipo === "EXAME")
-    preparado = executarExameEtapaSchema.omit({ tipo: true, tarefaId: true }).extend({ chave: z.string().uuid().optional() }).parse(dados);
+    preparado = exameDaTarefaSchema.parse(dados);
   else if (tarefa.tipo === "TENTATIVA")
     preparado = tentativaSchema.parse(dados);
   else if (tarefa.tipo === "AVALIACAO")
@@ -698,7 +699,7 @@ export async function executarTarefaTx(
     vinculo = { avaliacaoId: fato.id };
   }
   if (tarefa.tipo === "EXAME") {
-    fato = await registrarExameTx(tx, executarExameEtapaSchema.omit({ tipo: true, tarefaId: true }).parse(preparado), usuarioId);
+    fato = await registrarExameTx(tx, exameDaTarefaSchema.parse(preparado), usuarioId);
     vinculo = { exameId: fato.id };
   }
   const realizadoSnapshot = json({

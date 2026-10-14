@@ -1,3 +1,4 @@
+import { regularizarTarefaSanitaria } from "../protocolos/regularizacao.js";
 import crypto from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
 import { prisma } from "../../../db.js";
@@ -108,12 +109,15 @@ describeComBanco("protocolo e exame com PostgreSQL", () => {
     const primeiro = await registrarExame({ animalId: animal.id, propriedadeId: origem, data: "2026-09-01", tipoExameId: tipoIds[0], tarefaId }, null);
     await expect(registrarExame({ animalId: animal.id, propriedadeId: origem, data: "2026-09-02", tipoExameId: tipoIds[0], tarefaId }, null)).rejects.toThrow(/já realizada/);
     await corrigirExame(primeiro.id, origem, { motivo: "Coleta descartada antes da análise", anular: true }, null);
-    expect((await listarTarefas(origem, animal.id))[0].situacao).toBe("PENDENTE");
+    expect((await listarTarefas(origem, animal.id))[0].situacao).toBe("REGULARIZACAO_PENDENTE");
     await movimentar({ animalIds: [animal.id], propriedadeId: destino.id, data: "2026-09-10" }, null);
     expect(await listarTarefas(origem, animal.id)).toEqual([]);
     expect((await listarTarefas(destino.id, animal.id))[0]).toMatchObject({ propriedadeAtualId: destino.id, execucao: { propriedadeId: origem } });
     const entrada = { chave: crypto.randomUUID(), animalId: animal.id, propriedadeId: destino.id, data: "2026-09-10", tipoExameId: tipoIds[0], tarefaId,
       desvio: { motivo: "Coleta refeita após transferência do animal" } };
+    await expect(registrarExame(entrada, null)).rejects.toMatchObject({ code: "CONFLITO", campo: "tarefaId" });
+    await expect(regularizarTarefaSanitaria(tarefaId, { propriedadeId: destino.id, chave: crypto.randomUUID(), acao: "REABRIR", motivo: "Procedimento não realizado", cienciaNaoExecutado: true }, null)).rejects.toMatchObject({ code: "NAO_ENCONTRADO" });
+    await regularizarTarefaSanitaria(tarefaId, { propriedadeId: origem, chave: crypto.randomUUID(), acao: "REABRIR", motivo: "Coleta não realizada, reabrir após transferência", cienciaNaoExecutado: true }, null);
     const segundo = await registrarExame(entrada, null);
     expect((await registrarExame(entrada, null)).id).toBe(segundo.id);
     expect(segundo.id).not.toBe(primeiro.id);

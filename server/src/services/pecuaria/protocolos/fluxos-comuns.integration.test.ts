@@ -162,12 +162,13 @@ comBanco("tarefas, regularização e exames personalizados na base comum", () =>
     expect((await prisma.participanteVisita.findUniqueOrThrow({ where: { id: a.participanteId } })).status).toBe("PENDENTE");
   });
   it("protocolo publica o tipo reprodutivo escolhido e a tarefa executa sua versão congelada", async () => {
-    const animalId = await animal(), t = await tipo(true);
+    const animalId = await animal(), t = await tipo(true), exameSanitario = await tipo();
     const produto = await prisma.produto.create({ data: { nome: `Sêmen plano ${run}`, usoGenetico: true } }); produtos.push(produto.id);
     const touro = await prisma.genitorExterno.create({ data: { nome: `Touro ${run}`, sexo: "M" } }); genitores.push(touro.id);
     const material = await prisma.materialGenetico.create({ data: { tipo: "SEMEN", produtoId: produto.id, touroExternoId: touro.id } });
     const p = await iatf.criarProtocolo(protocoloSchema.parse({ nome: `Reprodução ${run}`, versao: 1, publicado: true, etapas: [
       { nome: "Diagnóstico personalizado", tipo: "AVALIACAO", intervalo: 0, unidade: "DIAS", planoAvaliacao: { tipo: "DIAGNOSTICO", tipoExameId: t.id } },
+      { nome: "Exame sanitário", tipo: "EXAME", intervalo: 0, unidade: "DIAS", planoExame: { tipoExameId: exameSanitario.id } },
       { nome: "IA planejada", tipo: "TENTATIVA", intervalo: 10, unidade: "DIAS", planoTentativa: { tipo: "IA", materialId: material.id, quantidade: 1 } },
     ] }), null); protocolos.push(p.id);
     expect(await prisma.etapaProtocolo.findFirstOrThrow({ where: { protocoloId: p.id, ordem: 1 } })).toMatchObject({ tipoExameId: t.id, configuracao: { planoAvaliacao: { tipoExameId: t.id }, referencias: { exame: { nome: t.nome, versao: 1 } } } });
@@ -188,5 +189,9 @@ comBanco("tarefas, regularização e exames personalizados na base comum", () =>
     await iatf.executarTarefa(tarefa.id, { propriedadeId: sitio, chave: chave(), realizadaEm: instante, dados: { resultado: "NEGATIVO", finalidade: "DIAGNOSTICO", resultados: [{ campo: "MEDIDA", valor: 1 }] } }, null);
     expect(await prisma.exameAnimal.count({ where: { animalId } })).toBe(2);
     expect((await sugestoesVisita(sitio, data)).tarefasSanitarias.some(v => v.animalId === animalId)).toBe(false);
+    const tarefaSanitaria = await prisma.tarefaIatf.findFirstOrThrow({ where: { participanteId: part.id, tipo: "EXAME" } });
+    const realizada = await iatf.executarTarefa(tarefaSanitaria.id, { propriedadeId: sitio, chave: chave(), realizadaEm: instante, dados: { tipoExameId: exameSanitario.id, resultadoNumero: 0 } }, null);
+    expect(await prisma.exameAnimal.findUniqueOrThrow({ where: { id: realizada.exameId! } })).toMatchObject({ tipoExameId: exameSanitario.id, realizacao: "REALIZADO" });
+    expect((await prisma.exameAnimal.findUniqueOrThrow({ where: { id: realizada.exameId! } })).resultadoNumero?.toString()).toBe("0");
   });
 });
