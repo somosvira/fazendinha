@@ -23,7 +23,7 @@ export type AplicacaoInput = {
   animalId: string;
   propriedadeId: number;
   data: string;
-  aplicadaEm: string;
+  aplicadaEm?: string;
   finalidade?: FinalidadeAplicacao;
   tipoAplicacaoId?: string;
   responsavel?: string | null;
@@ -72,11 +72,11 @@ export async function travarOrigensAplicacoesTx(tx: Prisma.TransactionClient, it
 async function conferirLocalizacao(tx: Prisma.TransactionClient, input: AplicacaoInput) {
   const data = dia(input.data);
   await conferirAnimalNoFato(tx, input.animalId, input.propriedadeId, data);
-  const momento = new Date(input.aplicadaEm);
-  if (!Number.isFinite(momento.getTime()) || new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).format(momento) !== input.data) {
+  const momento = input.aplicadaEm ? new Date(input.aplicadaEm) : null;
+  if (momento && (!Number.isFinite(momento.getTime()) || new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).format(momento) !== input.data)) {
     erro("A data e o horário da aplicação devem corresponder ao mesmo dia no Brasil", "aplicadaEm");
   }
-  if (momento > new Date()) erro("A aplicação não pode ocorrer no futuro", "aplicadaEm");
+  if (momento && momento > new Date() || !momento && input.data > new Intl.DateTimeFormat("en-CA", {timeZone:"America/Sao_Paulo",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date())) erro("A aplicação não pode ocorrer no futuro", "aplicadaEm");
   if (input.ocorrenciaId) {
     const ocorrencia = await tx.ocorrenciaSanitaria.findFirst({ where: { id: input.ocorrenciaId, animalId: input.animalId, status: "VALIDO" } });
     if (!ocorrencia) erro("Ocorrência não pertence a este animal", "ocorrenciaId");
@@ -146,7 +146,7 @@ async function prepararOrigem(tx: Prisma.TransactionClient, input: AplicacaoInpu
     catch { erro("A dose não pode ser convertida para a unidade do Produto", "unidadeDose"); }
     if (quantidade!.decimalPlaces() > 3) erro("Cadastre o Produto em unidade menor: esta dose perderia precisão", "dose");
     const consumo = await consumirEstoqueTx(tx, { produto, propriedadeId: input.propriedadeId, quantidade: quantidade!, campoQuantidade: "dose",
-      data, instante: new Date(input.aplicadaEm), partidaId: input.partidaId,
+      data, instante: input.aplicadaEm ? new Date(input.aplicadaEm) : undefined, partidaId: input.partidaId,
       cienciaValidadeDesconhecida: input.cienciaValidadeDesconhecida, documentacaoExcepcional: input.documentacaoExcepcional,
       motivoDocumentacaoExcepcional: input.motivoDocumentacaoExcepcional, origem: "SANIDADE", usuarioId, previa,
       observacao: `Aplicação sanitária em ${input.animalId}${input.documentacaoExcepcional ? ` · DOCUMENTAÇÃO EXCEPCIONAL: ${input.motivoDocumentacaoExcepcional}` : ""}` });
@@ -204,7 +204,7 @@ export async function prepararAplicacaoTx(tx: Prisma.TransactionClient, input: A
     const dadosCriacao: Prisma.AplicacaoProdutoUncheckedCreateInput = {
       animalId: dados.animalId, propriedadeId: dados.propriedadeId, produtoId: dados.produtoId ?? null,
       nomeProdutoAplicado: origem.nomeProdutoAplicado, ocorrenciaId: dados.ocorrenciaId ?? null, tarefaId: dados.tarefaId ?? null,
-      data, aplicadaEm: new Date(dados.aplicadaEm), precisaoTemporal: "HORA", finalidade: dados.finalidade,
+      data, aplicadaEm: dados.aplicadaEm ? new Date(dados.aplicadaEm) : null, precisaoTemporal: dados.aplicadaEm ? "HORA" : "DIA", finalidade: dados.finalidade,
       tipoAplicacaoId: tipoAplicacao!.id, tipoAplicacaoNomeSnapshot: tipoAplicacao!.nome, responsavel: input.responsavel?.trim() || null,
       estadoCarenciaLeite: estadoLeite, estadoCarenciaCarne: estadoCarne,
       justificativaCarenciaLeite: input.justificativaCarenciaLeite ?? null, justificativaCarenciaCarne: input.justificativaCarenciaCarne ?? null,
@@ -280,12 +280,12 @@ export async function reconciliarOrigem(id: string, propriedadeId: number, input
       erro("Confirme que o Produto corresponde ao medicamento aplicado", "confirmarEquivalencia");
     }
     const unidade = Object.values(UnidadeMedida).find((u) => u === antes.unidadeDose);
-    if (!unidade || !antes.aplicadaEm || !antes.dose) erro("Registro histórico sem quantidade/unidade/horário deve ser corrigido por anulação");
+    if (!unidade || !antes.dose || !antes.aplicadaEm && antes.precisaoTemporal !== "DIA") erro("Registro sem quantidade, unidade ou precisão temporal válida deve ser corrigido por anulação");
     if (produto) {
       try { converterQuantidade(antes.dose!, unidade!, produto.unidade); }
       catch { erro("A dose e o Produto têm unidades incompatíveis", "produtoId"); }
     }
-    const origem = await prepararOrigem(tx, { ...input, animalId: antes.animalId, propriedadeId, data: antes.data.toISOString().slice(0, 10), aplicadaEm: antes.aplicadaEm!.toISOString(), nomeProdutoAplicado: antes.nomeProdutoAplicado, dose: antes.dose!.toString(), unidadeDose: unidade! }, antes.data, usuarioId);
+    const origem = await prepararOrigem(tx, { ...input, animalId: antes.animalId, propriedadeId, data: antes.data.toISOString().slice(0, 10), aplicadaEm: antes.aplicadaEm?.toISOString(), nomeProdutoAplicado: antes.nomeProdutoAplicado, dose: antes.dose!.toString(), unidadeDose: unidade! }, antes.data, usuarioId);
     const { nomeProdutoAplicado: _nome, ...vinculos } = origem;
     const depois = await tx.aplicacaoProduto.update({ where: { id }, data: { ...vinculos, origemInsumo: input.origemInsumo, produtoId: input.produtoId ?? null, operacaoServicoId: input.operacaoServicoId ?? null } });
     // A justificativa original permanece no registro e na auditoria. Não há nova

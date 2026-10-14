@@ -1,3 +1,4 @@
+import { horarioIatf } from "./CampoDataIatf";
 import { useEffect, useRef, useState } from "react";
 import { Button, ErrorBox } from "../../../financeiro/financeiro-ui";
 import {
@@ -320,7 +321,7 @@ export function FormAtividade({
                         animais.find((a) => a.animalId === t.animalId)
                           ?.brinco}{" "}
                       · {t.nome ?? t.tipo} ·{" "}
-                      {(t.previstaPara ?? t.previstaEm)?.slice(0, 10)}
+                      {t.previsaoPendente ? "Previsão a definir" : t.previstaEm ? horarioIatf(t.previstaEm, t.precisaoTemporal) : t.previstaPara?.slice(0, 10)}
                     </span>
                   </label>
                 ))

@@ -2,8 +2,14 @@ import { deslocarCalendario } from "../protocolos/calendario.calc.js";
 import type { EtapaIatf } from "./schemas.js";
 import { contarPartos } from "../rebanho/partos.calc.js";
 
-export function calendarioIatf(inicio: Date, etapas: EtapaIatf[]) {
-  return etapas.map((etapa, indice) => ({ ...etapa, etapa: indice, previstaEm: deslocarCalendario(inicio, etapa.intervalo, etapa.unidade, "HORA") }));
+export function calendarioIatf(inicio: Date, etapas: EtapaIatf[], precisao: "DIA" | "HORA" = "HORA") {
+  return etapas.map((etapa, indice) => {
+    const previsaoPendente = precisao === "DIA" && (etapa.unidade === "HORAS" || !Number.isInteger(etapa.intervalo));
+    // Sem hora de referência, conservar apenas a data do início como referência.
+    // Não converter 12h/36h em um dia de vencimento arbitrário.
+    const previstaEm = previsaoPendente ? inicio : deslocarCalendario(inicio, etapa.intervalo, etapa.unidade, precisao);
+    return { ...etapa, etapa: indice, previstaEm, precisaoTemporal: precisao, previsaoPendente };
+  });
 }
 
 export function contadoresCiclo(partosAnteriores: number, partos: { data: Date; status: string; incluidoSaldoAnterior: boolean }[], tentativas: { data: Date; status: string }[], referencia: Date) {

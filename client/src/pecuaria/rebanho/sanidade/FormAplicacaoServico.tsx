@@ -15,10 +15,12 @@ import { AjusteIndividualAplicacao, type AjusteEtapaAplicacao } from "./AjusteIn
 import { dataSanitaria, unidadeSanitaria } from "./rotulos";
 
 export type TarefaAplicacao = { id: string; produtoId: string; tipoAplicacaoId: string; dose: string; unidade: string; previstaPara?: string; via?: string; protocoloNome?: string; protocoloVersao?: number; animalId?: string };
-export function FormAplicacaoServico({ animalId, propriedadeId, onSalvo, onFechar, tarefa, tarefas, animais, onRegistrar, dataInicial, conteudoExtra }: {
+export function FormAplicacaoServico({ animalId, propriedadeId, onSalvo, onFechar, tarefa, tarefas, animais, onRegistrar, dataInicial, momentoIatf, conteudoExtra }: {
   animalId: string; propriedadeId: number; onSalvo: (id?: string, propriedadeIdFato?: number) => void; onFechar: () => void;
   /** Coordena registro atômico a partir de uma visita ou tarefa reprodutiva. */
   dataInicial?: string;
+  /** Data/hora já escolhida na execução IATF; não solicitar uma segunda hora. */
+  momentoIatf?: string;
   conteudoExtra?: ReactNode;
   onRegistrar?: (input: AplicacaoInput) => Promise<void>;
   tarefa?: TarefaAplicacao;
@@ -27,7 +29,7 @@ export function FormAplicacaoServico({ animalId, propriedadeId, onSalvo, onFecha
 }) {
   const [leiteRelevante, setLeiteRelevante] = useState<boolean | null>(null);
   const [ficha, setFicha] = useState<AnimalFicha | null>(null);
-  useEffect(() => { let vivo = true; setFicha(null); setLeiteRelevante(null); if (animais?.length) return; buscarFichaAnimal(animalId).then((a) => { if (vivo) { setFicha(a); setLeiteRelevante(a.sexo === "F" && a.aptidao === "LEITE"); if (a.baixa) setData(a.baixa.data.slice(0, 10)); } }).catch(() => { if (vivo) setLeiteRelevante(null); }); return () => { vivo = false; }; }, [animalId, animais?.length]);
+  useEffect(() => { let vivo = true; setFicha(null); setLeiteRelevante(null); if (animais?.length) return; buscarFichaAnimal(animalId).then((a) => { if (vivo) { setFicha(a); setLeiteRelevante(a.sexo === "F" && a.aptidao === "LEITE"); if (a.baixa && momentoIatf === undefined) setData(a.baixa.data.slice(0, 10)); } }).catch(() => { if (vivo) setLeiteRelevante(null); }); return () => { vivo = false; }; }, [animalId, animais?.length]);
   const [chave, setChave] = useState(() => crypto.randomUUID());
   const [desvio, setDesvio] = useState(false);
   const [motivoDesvio, setMotivoDesvio] = useState("");
@@ -51,7 +53,7 @@ export function FormAplicacaoServico({ animalId, propriedadeId, onSalvo, onFecha
   const [partidaId, setPartidaId] = useState("");
   useEffect(() => { setCienciaVencida(false); setMotivoVencida(""); }, [partidaId]);
   const [data, setData] = useState(dataInicial ?? tarefa?.previstaPara?.slice(0, 10) ?? hoje());
-  const [hora, setHora] = useState("");
+  const [hora, setHora] = useState(momentoIatf?.slice(11,16) ?? "");
   useEffect(() => { setCienciaVencida(false); setMotivoVencida(""); setCienciaValidadeDesconhecida(false); }, [data, hora]);
   const [nome, setNome] = useState("");
   const [dose, setDose] = useState(tarefa?.dose ?? "");
@@ -146,7 +148,7 @@ export function FormAplicacaoServico({ animalId, propriedadeId, onSalvo, onFecha
     if (!quantidadeValida(dose)) erros["san-dose"] = "Informe uma quantidade maior que zero com até três casas decimais.";
     if (!data || data > hoje()) erros["san-data"] = "Informe uma data até hoje.";
     if (tarefa && desvio && (motivoDesvio.trim().length < 5 || motivoDesvio.trim().length > 500)) erros["san-desvio"] = "Explique o desvio com 5 a 500 caracteres.";
-    if (!hora) erros["san-hora"] = "Informe a hora da aplicação.";
+    if (!hora && momentoIatf === undefined) erros["san-hora"] = "Informe a hora da aplicação.";
     if (ficha?.historicoLocalizacoes?.length && !localDoFato?.propriedade) erros["san-data"] = "Não há sítio comprovado nessa data. Confira o histórico de localização.";
     if (ficha?.baixa && data > ficha.baixa.data.slice(0, 10)) erros["san-data"] = "A aplicação histórica não pode ser posterior à baixa do animal.";
     [[estadoLeite, leite], [estadoCarne, carne]].forEach(([estado, prazo], i) => { if (estado === "INFORMADO" && (prazo === "" || !Number.isInteger(Number(prazo)) || Number(prazo) < 0)) erros[`san-prazo-${i}`] = "Informe horas inteiras. Zero é permitido; vazio não é zero."; });
@@ -160,7 +162,7 @@ export function FormAplicacaoServico({ animalId, propriedadeId, onSalvo, onFecha
     if (animais?.length && !conferindo) { setQuantidades((q) => Object.fromEntries(animais.map((a) => [a.id, q[a.id] ?? tarefas?.find((t) => t.animalId === a.id)?.dose ?? dose]))); setConferindo(true); setChave(crypto.randomUUID()); return; }
     emCurso.current = true; setSalvando(true);
     try {
-      const input: AplicacaoInput = { animalId, propriedadeId: sitioDoFato, tarefaId: tarefa?.id, data, aplicadaEm: new Date(`${data}T${hora}:00-03:00`).toISOString(), tipoAplicacaoId: tipoId, origemInsumo: origem,
+      const input: AplicacaoInput = { animalId, propriedadeId: sitioDoFato, tarefaId: tarefa?.id, data, aplicadaEm: hora ? new Date(`${data}T${hora}:00-03:00`).toISOString() : undefined, tipoAplicacaoId: tipoId, origemInsumo: origem,
         nomeProdutoAplicado: nomeAplicado.trim(), dose, unidadeDose: unidade, responsavel: responsavel.trim() || undefined, via: via.trim() || undefined, ocorrenciaId: ocorrenciaId || undefined,
         produtoId: origem === "SEM_ORIGEM_JUSTIFICADA" && !tarefa ? undefined : produtoId || undefined,
         operacaoServicoId: servicoId || undefined, itemCompraDiretaId: origem === "COMPRA_CONSUMO_DIRETO" ? compraId : undefined,
@@ -202,7 +204,7 @@ export function FormAplicacaoServico({ animalId, propriedadeId, onSalvo, onFecha
       {carregando && <p>Carregando cadastros…</p>}
       {tarefa && <section className="grid gap-3 rounded-lg border border-border p-3"><strong>{tarefa.protocoloNome ?? "Protocolo"} · v{tarefa.protocoloVersao ?? "—"} · Aplicação</strong><p>Animal: {animais?.map((a) => a.brinco).join(", ") ?? ficha?.brinco ?? "Carregando animal…"}. Versão e natureza são fixas. Planejado: {tarefa.previstaPara ? dataSanitaria(tarefa.previstaPara) : "Data não registrada"} · {produto?.nome ?? "Produto planejado"} · {tarefa.dose} {unidadeSanitaria(tarefa.unidade)} · {tarefa.via ?? "Via não informada"}</p><Button secondary disabled={salvando} onClick={() => { setDesvio((v) => !v); setPreviaExecucao(null); if (desvio) { setData(tarefa.previstaPara?.slice(0, 10) ?? hoje()); setTipoId(tarefa.tipoAplicacaoId); setProdutoId(tarefa.produtoId); setDose(tarefa.dose); setUnidade(tarefa.unidade); setVia(tarefa.via ?? ""); setMotivoDesvio(""); setAjustesEtapa({}); } }}>{desvio ? "Voltar ao planejamento" : "Registrar desvio"}</Button>{desvio && <CampoFormulario id="san-desvio" erro={errosCampos["san-desvio"]} rotulo="Motivo do desvio" obrigatorio>{(p) => <textarea {...p} minLength={5} maxLength={500} className={classeInput} value={motivoDesvio} onChange={(e) => setMotivoDesvio(e.target.value)} />}</CampoFormulario>}</section>}
       <fieldset disabled={salvando} className="grid gap-4">
-      <div className="grid gap-4 sm:grid-cols-2"><CampoFormulario id="san-data" erro={errosCampos["san-data"]} rotulo="Data" obrigatorio>{(p) => <DatePicker {...p} disabled={!!tarefa && !desvio} required max={ficha?.baixa?.data.slice(0, 10) ?? hoje()} value={data} onChange={setData} />}</CampoFormulario><CampoFormulario id="san-hora" erro={errosCampos["san-hora"]} rotulo="Hora" obrigatorio>{(p) => <input {...p} type="time" required value={hora} onChange={(e) => setHora(e.target.value)} className={classeInput} />}</CampoFormulario></div>
+      <div className="grid gap-4 sm:grid-cols-2"><CampoFormulario id="san-data" erro={errosCampos["san-data"]} rotulo="Data" obrigatorio>{(p) => <DatePicker {...p} disabled={momentoIatf !== undefined || !!tarefa && !desvio} required max={ficha?.baixa?.data.slice(0, 10) ?? hoje()} value={data} onChange={setData} />}</CampoFormulario><CampoFormulario id="san-hora" erro={errosCampos["san-hora"]} rotulo={momentoIatf !== undefined && !hora ? "Horário não informado na IATF" : "Hora"} obrigatorio={momentoIatf === undefined}>{(p) => <input {...p} type="time" required={momentoIatf === undefined} disabled={momentoIatf !== undefined} value={hora} onChange={(e) => setHora(e.target.value)} className={classeInput} />}</CampoFormulario></div>
       <CampoFormulario id="san-tipo" erro={errosCampos["san-tipo"]} rotulo="Tipo de aplicação" obrigatorio>{(p) => <select {...p} disabled={!!tarefa && !desvio} required value={tipoId} onChange={(e) => setTipoId(e.target.value)} className={classeInput}><option value="">Selecione</option>{tipos.map((t) => <option key={t.id} value={t.id}>{t.nome}</option>)}</select>}</CampoFormulario>
       <CampoFormulario id="san-origem" erro={errosCampos["san-origem"]} rotulo="Origem do medicamento" obrigatorio>{(p) => <select {...p} value={origem} onChange={(e) => { setOrigem(e.target.value as typeof origem); setServicoId(""); setCompraId(""); setJustificativa(""); limparProduto(); setErrosCampos({}); setErro(null); }} className={classeInput}><option value="BAIXA_ESTOQUE">Estoque da fazenda</option><option value="INCLUSO_SERVICO">Incluído em Serviço</option><option value="COMPRA_CONSUMO_DIRETO">Compra para consumo direto</option><option value="SEM_ORIGEM_JUSTIFICADA">Origem não localizada</option></select>}</CampoFormulario>
       {origem === "COMPRA_CONSUMO_DIRETO" && <CampoFormulario id="san-compra" erro={errosCampos["san-compra"]} rotulo="Item confirmado com quantidade disponível" obrigatorio>{(p) => <select {...p} required value={compraId} onChange={(e) => { setCompraId(e.target.value); const c = compras.find((v) => v.id === e.target.value); selecionarProduto(c?.produtoId ?? ""); const unidadeCompra = c && UNIDADES_ORDENADAS.find((u) => u === c.unidade.toUpperCase() || UNIDADES[u].rotulo.toLowerCase() === c.unidade.toLowerCase()); if (unidadeCompra) setUnidade(unidadeCompra); }} className={classeInput}><option value="">Selecione</option>{compras.map((c) => <option key={c.id} value={c.id}>#{c.operacao.numero} · {c.produto.nome} · disponível {c.disponivel} {c.unidade}</option>)}</select>}</CampoFormulario>}

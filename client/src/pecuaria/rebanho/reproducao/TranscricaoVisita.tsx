@@ -1,3 +1,4 @@
+import { CampoDataIatf } from "./CampoDataIatf";
 import { CamposResultadoExame } from "../sanidade/CamposExame";
 import type { TipoExame } from "../sanidade/CadastrosSanitarios";
 import { CamposAvaliacao } from "./CamposAvaliacao";
@@ -469,12 +470,7 @@ export function Transcricao({
                   ])}
                   {atividade.tipo === "TAREFA_IATF" &&
                     !["ADIADO", "NAO_ATENDIDO"].includes(rascunhos[p.id]?.status ?? "") &&
-                    input(
-                      p,
-                      "realizadaEm",
-                      "Data e hora realizada",
-                      "datetime-local",
-                    )}
+                    <CampoDataIatf rotulo={`Data realizada · ${p.snapshot.brinco ?? p.ordem}`} valor={rascunhos[p.id]?.realizadaEm ?? ""} onChange={v => atualizar(p,"realizadaEm",v)} onBlur={() => void persistir(p)} disabled={!podeLancar || ocupado || p.status === "CONFIRMADO"} />}
                   {atividade.tipo === "AVALIACAO_REPRODUTIVA" ? (
                     <>
                       <fieldset disabled={!podeLancar || ocupado || p.status === "CONFIRMADO"} onBlur={() => void persistir(p)}>
@@ -498,12 +494,7 @@ export function Transcricao({
                   ) : (
                     <>
                       {atividade.tipo === "INICIAR_IATF" ? (
-                        input(
-                          p,
-                          "inicioEfetivo",
-                          "Início efetivo",
-                          "datetime-local",
-                        )
+                        <CampoDataIatf rotulo={`Início efetivo · ${p.snapshot.brinco ?? p.ordem}`} valor={rascunhos[p.id]?.inicioEfetivo ?? ""} onChange={v => atualizar(p,"inicioEfetivo",v)} onBlur={() => void persistir(p)} disabled={!podeLancar || ocupado || p.status === "CONFIRMADO"} />
                       ) : (
                         <>
                           <Button
@@ -634,9 +625,10 @@ export function Transcricao({
         (atividade.tipo === "APLICACAO_SANITARIA" ||
           tarefaPreparada?.tipo === "APLICACAO") && (
           <FormAplicacaoServico
-            dataInicial={visita.data.slice(0, 10)}
             animalId={preparar.animalId}
             propriedadeId={visita.propriedadeId}
+            momentoIatf={atividade.tipo === "TAREFA_IATF" ? rascunhos[preparar.id]?.realizadaEm || visita.data.slice(0,10) : undefined}
+            dataInicial={atividade.tipo === "TAREFA_IATF" ? (rascunhos[preparar.id]?.realizadaEm || visita.data).slice(0,10) : visita.data.slice(0,10)}
             onFechar={() => setPreparar(null)}
             onSalvo={() => setPreparar(null)}
             onRegistrar={guardarProcedimento}

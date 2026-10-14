@@ -32,7 +32,7 @@ export async function regularizarTarefaComumTx(tx: Prisma.TransactionClient, id:
     throw new RebanhoError("CONFLITO", "A participação e a tarefa precisam estar abertas para reabrir a pendência");
   if (input.acao === "REABRIR" && tarefa.vinculos.some(v => v.aplicacao?.consumoMantido || v.tentativa?.consumoMantido))
     throw new RebanhoError("VALIDACAO", "Consumo mantido impede repetir a execução", "cienciaNaoExecutado");
-  const anterior = snapshotAnterior ?? { id, realizadaEm: tarefa.realizadaEm, realizadoSnapshot: tarefa.realizadoSnapshot, desviosSnapshot: tarefa.desviosSnapshot,
+  const anterior = snapshotAnterior ?? { id, realizadaEm: tarefa.realizadaEm, precisaoRealizacao: tarefa.precisaoRealizacao, realizadoSnapshot: tarefa.realizadoSnapshot, desviosSnapshot: tarefa.desviosSnapshot,
     aplicacaoId: vinculo.aplicacaoId, tentativaId: vinculo.tentativaId, exameId: vinculo.exameId, avaliacaoId: fatoTipo === "AvaliacaoReprodutiva" ? fatoId : null };
   const historicoRegularizacao = eventoRegularizacao(tarefa.historicoRegularizacao, input, anterior, usuarioId);
   const visitas = await tx.participanteVisita.findMany({ where: { status: "CONFIRMADO", regularizacaoPendente: true, OR: [{ tarefaId: id }, { fatoTipo: "TarefaIatf", fatoId: id }, { fatoTipo, fatoId }] } });
@@ -49,7 +49,7 @@ export async function regularizarTarefaComumTx(tx: Prisma.TransactionClient, id:
     await vincularFatoTarefaTx(tx, id, { ...(exameId ? { exameId } : {}), ...(fatoTipo === "AplicacaoProduto" ? { aplicacaoId: input.fatoId } : {}), ...(fatoTipo === "TentativaReprodutiva" ? { tentativaId: input.fatoId } : {}) }, usuarioId, "REGULARIZACAO", input.motivo);
   } else await tx.vinculoTarefaProtocolo.update({ where: { id: vinculo.id }, data: { estado: input.acao === "REABRIR" ? "REABERTO" : "ENCERRADO", encerradoEm: new Date(), motivo: input.motivo } });
   const salva = await tx.tarefaProtocolo.update({ where: { id }, data: { regularizacaoPendente: false, historicoRegularizacao,
-    ...(input.acao === "REABRIR" ? { realizadaEm: null, realizadoSnapshot: Prisma.DbNull, desviosSnapshot: Prisma.DbNull, motivoDispensa: input.motivo } : {}) } });
+    ...(input.acao === "REABRIR" ? { realizadaEm: null, precisaoRealizacao: null, realizadoSnapshot: Prisma.DbNull, desviosSnapshot: Prisma.DbNull, motivoDispensa: input.motivo } : {}) } });
   for (const v of visitas) await tx.participanteVisita.update({ where: { id: v.id }, data: { regularizacaoPendente: false,
     historicoRegularizacao: eventoRegularizacao(v.historicoRegularizacao, input, v, usuarioId),
     ...(input.acao === "REABRIR" ? { status: "PENDENTE", fatoId: null, fatoTipo: null, rascunho: {}, versaoRascunho: { increment: 1 } } : input.acao === "VINCULAR_SUBSTITUTO" && v.fatoTipo !== "TarefaIatf" ? { fatoId: input.fatoId } : {}) } });

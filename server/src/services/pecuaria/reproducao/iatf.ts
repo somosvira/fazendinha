@@ -1,3 +1,4 @@
+import { lerDataIatf, diaIatf, anteriorIatf, serializarDataIatf, type PrecisaoIatf } from "./horarios.calc.js";
 import { conferirFormatoReprodutivo } from "../exames/formatos.js";
 import { TIPO_EXAME_REPRODUTIVO } from "../exames/evidencia-reprodutiva.js";
 import { regularizarTarefaComumTx, substitutosTarefaComum } from "../protocolos/regularizacao.js";
@@ -139,19 +140,19 @@ async function congelarEtapasTx(
 }
 function dadosTarefa(
   participanteId: string,
-  e: EtapaFonte & { etapa: number; previstaEm: Date },
+  e: EtapaFonte & { etapa: number; previstaEm: Date; precisaoTemporal: PrecisaoIatf; previsaoPendente: boolean },
   inicio: Date,
 ) {
-  const { referencias = {}, etapa: indice, previstaEm, ...campos } = e;
+  const { referencias = {}, etapa: indice, previstaEm, precisaoTemporal, previsaoPendente, ...campos } = e;
   return {
     participanteId,
     etapa: indice,
     tipo: e.tipo,
     nome: e.nome,
     previstaEm,
-    previsaoOriginal: previstaEm,
+    previsaoOriginal: previstaEm, precisaoTemporal, previsaoPendente,
     planejadoSnapshot: json(
-      snapshotIatf(campos, referencias, previstaEm, previstaEm, inicio),
+      snapshotIatf(campos, referencias, previstaEm, previstaEm, inicio, precisaoTemporal, previsaoPendente),
     ),
   };
 }
@@ -245,14 +246,14 @@ export async function criarProgramacaoTx(
       propriedadeId: input.propriedadeId,
       protocoloId: protocolo.id,
       nome: input.nome,
-      inicioPrevisto: new Date(input.inicioPrevisto),
+      inicioPrevisto: lerDataIatf(input.inicioPrevisto).instante,
+      precisaoTemporal: lerDataIatf(input.inicioPrevisto).precisao,
       criadoPorId: usuarioId,
     },
   });
   for (const animal of input.animais) {
-    const inicioPrevisto = new Date(
-      animal.inicioPrevisto ?? input.inicioPrevisto,
-    );
+    const referenciaTemporal = lerDataIatf(animal.inicioPrevisto ?? input.inicioPrevisto);
+    const inicioPrevisto = referenciaTemporal.instante;
     const dataDisponibilidade =
       inicioPrevisto > new Date()
         ? new Date(
@@ -263,7 +264,7 @@ export async function criarProgramacaoTx(
               day: "2-digit",
             }).format(new Date()),
           )
-        : dia(dataNoBrasil(inicioPrevisto));
+        : dia(referenciaTemporal.data);
     await conferirDisponibilidadeTx(
       tx,
       animal.animalId,
@@ -276,13 +277,13 @@ export async function criarProgramacaoTx(
       data: {
         programacaoId: programacao.id,
         animalId: animal.animalId,
-        inicioPrevisto,
+        inicioPrevisto, precisaoTemporal: referenciaTemporal.precisao,
         criadoPorId: usuarioId,
       },
     });
     const calendario = calendarioIatf(
       inicioPrevisto,
-      protocolo.etapas as EtapaFonte[],
+      protocolo.etapas as EtapaFonte[], referenciaTemporal.precisao,
     );
     await criarTarefasReprodutivasTx(tx, {
       data: calendario.map((e) =>
@@ -313,14 +314,7 @@ export const criarProgramacao = (
       criarProgramacaoTx(tx, input, usuarioId),
     );
   });
-export function dataNoBrasil(momento: Date) {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Sao_Paulo",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(momento);
-}
+export const dataNoBrasil = diaIatf;
 export async function iniciarParticipanteTx(
   tx: Prisma.TransactionClient,
   id: string,
@@ -345,11 +339,12 @@ export async function iniciarParticipanteTx(
       "NAO_ENCONTRADO",
       "Participação não está aberta neste sítio",
     );
-  const inicio = new Date(inicioEfetivo);
-  if (inicio > new Date() || !Number.isFinite(inicio.getTime()))
+  const temporal = lerDataIatf(inicioEfetivo);
+  const inicio = temporal.instante;
+  if (anteriorIatf(new Date(), "HORA", inicio, temporal.precisao))
     erro("Início efetivo deve ser um momento já ocorrido", "inicioEfetivo");
   if (participante.inicioEfetivo) {
-    if (participante.inicioEfetivo.getTime() === inicio.getTime())
+    if (participante.inicioEfetivo.getTime() === inicio.getTime() && (participante.precisaoInicioEfetivo ?? "HORA") === temporal.precisao)
       return participante;
     erro(
       "O início efetivo já foi registrado; use reprogramação explícita das tarefas",
@@ -360,7 +355,7 @@ export async function iniciarParticipanteTx(
     tx,
     participante.animalId,
     propriedadeId,
-    dia(dataNoBrasil(inicio)),
+    dia(temporal.data),
     "IATF",
     cienciaSanitaria,
   );
@@ -369,7 +364,7 @@ export async function iniciarParticipanteTx(
   });
   for (const etapa of calendarioIatf(
     inicio,
-    protocolo.etapas as EtapaFonte[],
+    protocolo.etapas as EtapaFonte[], temporal.precisao,
   )) {
     const tarefa = await tx.tarefaIatf.findUniqueOrThrow({
       where: {
@@ -381,15 +376,16 @@ export async function iniciarParticipanteTx(
     await atualizarTarefaReprodutivaTx(tx, { usuarioId,
       where: { id: tarefa.id },
       data: {
-        previstaEm: etapa.previstaEm,
+        previstaEm: etapa.previstaEm, precisaoTemporal: etapa.precisaoTemporal, previsaoPendente: etapa.previsaoPendente,
         historicoReprogramacao: [
           ...(Array.isArray(tarefa.historicoReprogramacao)
             ? tarefa.historicoReprogramacao
             : []),
           {
             motivo: "INICIO_EFETIVO",
-            anterior: tarefa.previstaEm.toISOString(),
-            nova: etapa.previstaEm.toISOString(),
+            anterior: serializarDataIatf(tarefa.previstaEm, tarefa.precisaoTemporal),
+            nova: serializarDataIatf(etapa.previstaEm, etapa.precisaoTemporal),
+            precisaoAnterior: tarefa.precisaoTemporal, precisaoNova: etapa.precisaoTemporal, previsaoPendente: etapa.previsaoPendente,
             registradoEm: new Date().toISOString(),
             usuarioId,
           },
@@ -398,8 +394,8 @@ export async function iniciarParticipanteTx(
           ? {
               planejadoSnapshot: json({
                 ...(tarefa.planejadoSnapshot as object),
-                previstaEm: etapa.previstaEm.toISOString(),
-                inicioReferencia: inicio.toISOString(),
+                previstaEm: serializarDataIatf(etapa.previstaEm, etapa.precisaoTemporal),
+                inicioReferencia: inicioEfetivo, precisaoTemporal: etapa.precisaoTemporal, previsaoPendente: etapa.previsaoPendente,
               }),
             }
           : {}),
@@ -408,7 +404,7 @@ export async function iniciarParticipanteTx(
   }
   const salva = await atualizarParticipacaoReprodutivaTx(tx, {
     where: { id },
-    data: { inicioEfetivo: inicio },
+    data: { inicioEfetivo: inicio, precisaoInicioEfetivo: temporal.precisao },
   });
   await auditar(tx, {
     entidade: "ParticipanteIatf",
@@ -486,16 +482,17 @@ export async function reprogramarTarefa(
     const historico = Array.isArray(tarefa.historicoReprogramacao)
       ? tarefa.historicoReprogramacao
       : [];
+    const temporal = lerDataIatf(previstaEm);
     const salva = await atualizarTarefaReprodutivaTx(tx, { usuarioId,
       where: { id },
       data: {
-        previstaEm: new Date(previstaEm),
+        previstaEm: temporal.instante, precisaoTemporal: temporal.precisao, previsaoPendente: false,
         historicoReprogramacao: [
           ...historico,
           {
             motivo,
-            anterior: tarefa.previstaEm.toISOString(),
-            nova: previstaEm,
+            anterior: serializarDataIatf(tarefa.previstaEm, tarefa.precisaoTemporal),
+            nova: previstaEm, precisaoAnterior: tarefa.precisaoTemporal, precisaoNova: temporal.precisao,
             usuarioId,
             registradoEm: new Date().toISOString(),
           },
@@ -504,7 +501,7 @@ export async function reprogramarTarefa(
           ? {
               planejadoSnapshot: json({
                 ...(tarefa.planejadoSnapshot as object),
-                previstaEm: new Date(previstaEm).toISOString(),
+                previstaEm: serializarDataIatf(temporal.instante, temporal.precisao), precisaoTemporal: temporal.precisao, previsaoPendente: false,
               }),
             }
           : {}),
@@ -550,15 +547,11 @@ export async function executarTarefaTx(
     programacao.status !== "ABERTA"
   )
     erro("A tarefa exige participação iniciada e pendente");
-  const realizada = new Date(input.realizadaEm);
-  if (!Number.isFinite(realizada.getTime()))
-    erro("Momento de execução inválido", "realizadaEm");
-  const data = dataNoBrasil(realizada);
-  if (realizada > new Date() || realizada < participante.inicioEfetivo)
-    erro(
-      "Execução deve ocorrer após início efetivo e até agora",
-      "realizadaEm",
-    );
+  const temporal = lerDataIatf(input.realizadaEm);
+  const realizada = temporal.instante;
+  const data = temporal.data;
+  if (anteriorIatf(new Date(), "HORA", realizada, temporal.precisao) || anteriorIatf(realizada, temporal.precisao, participante.inicioEfetivo, participante.precisaoInicioEfetivo ?? "HORA"))
+    erro("Execução deve ocorrer após início efetivo e até agora", "realizadaEm");
   if (["APLICACAO", "MANEJO", "TENTATIVA"].includes(tarefa.tipo))
     await conferirDisponibilidadeTx(
       tx, participante.animalId, input.propriedadeId, dia(data), "IATF",
@@ -579,7 +572,7 @@ export async function executarTarefaTx(
   if (tarefa.tipo === "APLICACAO")
     preparado = aplicacaoSchema.parse({
       ...Object.fromEntries(Object.entries(dados).filter(([k]) => k !== "cienciaSanitaria")),
-      aplicadaEm: input.realizadaEm,
+      aplicadaEm: temporal.precisao === "HORA" ? input.realizadaEm : undefined,
     });
   else if (tarefa.tipo === "EXAME")
     preparado = exameDaTarefaSchema.parse(dados);
@@ -598,7 +591,7 @@ export async function executarTarefaTx(
   else erro("Tipo de tarefa desconhecido; revise a versão do protocolo");
   const desvio = compararExecucaoIatf(
     plano,
-    realizada.toISOString(),
+    input.realizadaEm,
     preparado,
   );
   const referenciasRealizadas: Record<string, unknown> = {};
@@ -705,7 +698,7 @@ export async function executarTarefaTx(
   const realizadoSnapshot = json({
     versao: 1,
     tipo: tarefa.tipo,
-    realizadaEm: realizada.toISOString(),
+    realizadaEm: serializarDataIatf(realizada, temporal.precisao), precisaoRealizacao: temporal.precisao,
     dados: preparado,
     referencias: referenciasRealizadas,
     fato,
@@ -723,7 +716,7 @@ export async function executarTarefaTx(
   const salva = await atualizarTarefaReprodutivaTx(tx, { usuarioId,
     where: { id },
     data: {
-      realizadaEm: realizada,
+      realizadaEm: realizada, precisaoRealizacao: temporal.precisao,
       motivo: input.motivo,
       realizadoSnapshot,
       desviosSnapshot,
@@ -898,11 +891,12 @@ export async function adicionarParticipantes(
               "Animal já tem participação aberta nesta programação",
               "animais",
             );
-          const inicio = new Date(animal.inicioPrevisto),
+          const temporal = lerDataIatf(animal.inicioPrevisto);
+          const inicio = temporal.instante,
             referencia =
               inicio > new Date()
                 ? dia(dataNoBrasil(new Date()))
-                : dia(dataNoBrasil(inicio));
+                : dia(temporal.data);
           await conferirDisponibilidadeTx(
             tx,
             animal.animalId,
@@ -915,12 +909,12 @@ export async function adicionarParticipantes(
             data: {
               programacaoId: programacao.id,
               animalId: animal.animalId,
-              inicioPrevisto: inicio,
+              inicioPrevisto: inicio, precisaoTemporal: temporal.precisao,
               criadoPorId: usuarioId,
             },
           });
           await criarTarefasReprodutivasTx(tx, {
-            data: calendarioIatf(inicio, protocolo.etapas as EtapaFonte[]).map(
+            data: calendarioIatf(inicio, protocolo.etapas as EtapaFonte[], temporal.precisao).map(
               (e) => dadosTarefa(p.id, e, inicio),
             ),
           });

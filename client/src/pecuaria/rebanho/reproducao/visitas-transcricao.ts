@@ -1,6 +1,8 @@
+import { dataHoraISO } from "./CampoDataIatf";
 import type { RascunhoVisita, TipoAtividade } from "./visitas-api";
 function momentoBR(valor: string | undefined): string {
-  if (!valor) throw new Error("Informe a data e hora realizada.");
+  if (!valor) throw new Error("Informe a data realizada.");
+  if (/^\d{4}-\d{2}-\d{2}$/.test(valor)) return dataHoraISO(valor);
   const data = new Date(
     /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(valor) ? `${valor}:00-03:00` : valor,
   );

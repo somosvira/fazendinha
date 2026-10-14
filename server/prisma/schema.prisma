@@ -1768,6 +1768,7 @@ model ProgramacaoProtocolo {
 }
 
 model ParticipacaoProtocolo {
+  precisaoInicioEfetivo PrecisaoCalendarioProtocolo?
   legadoIatfId String? @unique
   referenciaExterna String? @unique
   precisaoTemporal PrecisaoCalendarioProtocolo @default(DIA)
@@ -1800,6 +1801,8 @@ model ParticipacaoProtocolo {
 }
 
 model TarefaProtocolo {
+  precisaoRealizacao PrecisaoCalendarioProtocolo?
+  previsaoPendente Boolean @default(false)
   nomeSnapshot String?
   vinculos VinculoTarefaProtocolo[]
   legadoIatfId String? @unique
@@ -2352,6 +2355,7 @@ view ProtocoloIatf {
 }
 
 view ProgramacaoIatf {
+  precisaoTemporal PrecisaoCalendarioProtocolo
   id                String   @unique
   referenciaExterna String?  @unique
   propriedadeId     Int
@@ -2366,6 +2370,8 @@ view ProgramacaoIatf {
 }
 
 view ParticipanteIatf {
+  precisaoTemporal PrecisaoCalendarioProtocolo
+  precisaoInicioEfetivo PrecisaoCalendarioProtocolo?
   id                 String    @unique
   referenciaExterna  String?   @unique
   programacaoId      String
@@ -2381,6 +2387,9 @@ view ParticipanteIatf {
 }
 
 view TarefaIatf {
+  precisaoTemporal PrecisaoCalendarioProtocolo
+  precisaoRealizacao PrecisaoCalendarioProtocolo?
+  previsaoPendente Boolean
   id                     String    @unique
   participanteId         String
   etapa                  Int

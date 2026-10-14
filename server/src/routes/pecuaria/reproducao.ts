@@ -83,7 +83,7 @@ const execucao = z
   .object({
     propriedadeId: s.sitio,
     chave: s.uuid,
-    realizadaEm: z.string().datetime({ offset: true }),
+    realizadaEm: s.dataOuHorario,
     dados: z.record(z.unknown()),
     motivo: s.motivo.optional(),
   })
@@ -431,7 +431,7 @@ export const reproducaoRouter = new Hono()
       z
         .object({
           propriedadeId: s.sitio,
-          inicioEfetivo: z.string().datetime({ offset: true }),
+          inicioEfetivo: s.dataOuHorario,
           cienciaSanitaria: z.boolean().optional(),
         })
         .strict(),
@@ -478,7 +478,7 @@ export const reproducaoRouter = new Hono()
       z
         .object({
           propriedadeId: s.sitio,
-          previstaEm: z.string().datetime({ offset: true }),
+          previstaEm: s.dataOuHorario,
           motivo: s.motivo,
         })
         .strict(),
@@ -679,7 +679,7 @@ reproducaoRouter.post(
             z
               .object({
                 animalId: s.uuid,
-                inicioPrevisto: z.string().datetime({ offset: true }),
+                inicioPrevisto: s.dataOuHorario,
               })
               .strict(),
           )

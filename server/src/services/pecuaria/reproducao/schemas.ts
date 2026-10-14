@@ -3,6 +3,7 @@ import { z } from "zod";
 import { UnidadeMedida } from "@prisma/client";
 export const uuid = z.string().uuid();
 export const data = z.string().date();
+export const dataOuHorario = z.union([data, z.string().datetime({ offset: true })]);
 export const motivo = z.string().trim().min(5).max(1000);
 export const sitio = z.number().int().positive();
 const base = { chave: uuid, animalId: uuid, propriedadeId: sitio, data };
@@ -26,7 +27,7 @@ export const protocoloSchema = z.object({ descricao: texto, nome: z.string().tri
   if(!protocolo.etapas.some(e=>e.tipo==="TENTATIVA"))ctx.addIssue({code:"custom",path:["etapas"],message:"Protocolo publicado exige etapa de tentativa planejada"});
   protocolo.etapas.forEach((etapa,i)=>{const campo=etapa.tipo==="APLICACAO"?"planoAplicacao":etapa.tipo==="TENTATIVA"?"planoTentativa":etapa.tipo==="AVALIACAO"?"planoAvaliacao":etapa.tipo==="EXAME"?"planoExame":null;if(campo && !etapa[campo])ctx.addIssue({code:"custom",path:["etapas",i,campo],message:"Defina o planejamento desta etapa antes de publicar"});});
 });
-export const programacaoSchema = z.object({ chave: uuid, propriedadeId: sitio, cienciaSanitaria:z.boolean().optional(), protocoloId: uuid, nome: z.string().trim().min(2).max(120), inicioPrevisto: z.string().datetime({ offset: true }), animais: z.array(z.object({ animalId: uuid, inicioPrevisto: z.string().datetime({ offset: true }).optional() })).min(1).max(100) }).strict();
+export const programacaoSchema = z.object({ chave: uuid, propriedadeId: sitio, cienciaSanitaria:z.boolean().optional(), protocoloId: uuid, nome: z.string().trim().min(2).max(120), inicioPrevisto: dataOuHorario, animais: z.array(z.object({ animalId: uuid, inicioPrevisto: dataOuHorario.optional() })).min(1).max(100) }).strict();
 export const visitaSchema = z.object({ propriedadeId: sitio, data, nome: z.string().trim().min(2).max(120), responsavel: z.string().trim().max(160).nullish() }).strict();
 export const atividadeSchema = z.object({ propriedadeId: sitio, tipo: z.enum(["AVALIACAO_REPRODUTIVA", "APLICACAO_SANITARIA", "EXAME_SANITARIO", "INICIAR_SANITARIO", "TAREFA_IATF", "INICIAR_IATF"]), nome: z.string().trim().min(2).max(120), extra: z.boolean().default(false), contexto: z.record(z.unknown()).default({}), participantes: z.array(z.object({ animalId: uuid, tarefaSanitariaId: uuid.nullish(), tarefaIatfId: uuid.nullish(), motivos: z.array(z.string().trim().min(1).max(300)).max(20).optional() }).strict()).min(1).max(1000) }).strict();
 export const confirmacaoVisitaSchema = z.object({ propriedadeId: sitio, chave: uuid, cienciaAlteracoes: z.boolean().optional(), fingerprintPrevia: z.string().regex(/^[a-f0-9]{64}$/).optional(), itens: z.array(z.object({ participanteId: uuid, dados: z.record(z.unknown()).optional(), status: z.enum(["CONFIRMADO", "ADIADO", "NAO_ATENDIDO"]).default("CONFIRMADO"), motivo: motivo.optional() }).strict()).min(1).max(100) }).strict();

@@ -53,7 +53,7 @@ export const salvarTipoAplicacao = (body: { nome?: string; ativo?: boolean }, id
 export const listarComprasDiretas = (propriedadeId: number) => req<CompraDireta[]>(`/compras-diretas?propriedadeId=${propriedadeId}`);
 export type EstadoPrazo = "INFORMADO" | "NAO_INFORMADO" | "NAO_APLICAVEL";
 export type AplicacaoInput = {
-  animalId: string; propriedadeId: number; data: string; aplicadaEm: string; tipoAplicacaoId: string;
+  animalId: string; propriedadeId: number; data: string; aplicadaEm?: string; tipoAplicacaoId: string;
   tarefaId?: string;
   ocorrenciaId?: string;
   origemInsumo: "BAIXA_ESTOQUE" | "INCLUSO_SERVICO" | "COMPRA_CONSUMO_DIRETO" | "SEM_ORIGEM_JUSTIFICADA";

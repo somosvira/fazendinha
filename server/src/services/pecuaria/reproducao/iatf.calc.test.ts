@@ -31,7 +31,7 @@ describe("planejado e realizado IATF", () => {
         unidadeDose: "ML",
         via: "IM",
       }),
-    ).toEqual({ aferido: true, diferencas: [] });
+    ).toEqual({ aferido: true, diferencas: [], horarioAferido: true });
     expect(
       compararExecucaoIatf(p, "2026-10-01T13:00:00Z", {
         produtoId: null,

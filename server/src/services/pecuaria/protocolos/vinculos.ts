@@ -26,6 +26,6 @@ export async function vincularFatoTarefaTx(tx: Prisma.TransactionClient, tarefaI
   if (dados.aplicacaoId) await tx.aplicacaoProduto.update({ where: { id: dados.aplicacaoId }, data: { tarefaId } });
   if (dados.exameId) await tx.exameAnimal.update({ where: { id: dados.exameId }, data: { tarefaId } });
   if (dados.tentativaId) await tx.tentativaReprodutiva.update({ where: { id: dados.tentativaId }, data: { tarefaId } });
-  if (modo === "EXECUCAO" && !tarefa.realizadaEm) await tx.tarefaProtocolo.update({ where: { id: tarefaId }, data: { realizadaEm: tarefa.precisaoTemporal === "DIA" ? fato.data : "aplicadaEm" in fato && fato.aplicadaEm ? fato.aplicadaEm : fato.data } });
+  if (modo === "EXECUCAO" && !tarefa.realizadaEm) await tx.tarefaProtocolo.update({ where: { id: tarefaId }, data: { realizadaEm: "aplicadaEm" in fato && fato.aplicadaEm ? fato.aplicadaEm : fato.data, precisaoRealizacao: "aplicadaEm" in fato && fato.aplicadaEm ? "HORA" : "DIA" } });
   return tx.vinculoTarefaProtocolo.create({ data: { tarefaId, ordem: Math.max(0, ...tarefa.vinculos.map(v => v.ordem)) + 1, ...dados, origem: modo, registradoPorId: usuarioId, motivo } });
 }

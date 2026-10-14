@@ -1,3 +1,4 @@
+import { horarioIatf } from "./CampoDataIatf";
 import { useEffect, useState } from "react";
 import { CabecalhoTabela, ErrorBox, hoje, Panel } from "../../../financeiro/financeiro-ui";
 import { obterSugestoesVisita, type SugestoesVisita } from "./visitas-api";
@@ -17,7 +18,7 @@ export function AcompanhamentoReprodutivo({atualizacao}: {atualizacao: unknown})
     {dados && !dados.retornos?.length && <p>Nenhum retorno ou previsão com os critérios atuais.</p>}
     {(dados?.retornos ?? []).map(r => <div key={`${r.origem}-${r.origemId}`} className="flex flex-wrap gap-3 text-sm">
       <button className="underline" onClick={() => navegarPara(r.programacaoId ? `/pecuaria/reproducao?programacaoId=${encodeURIComponent(r.programacaoId)}` : `/pecuaria/reproducao?animalId=${encodeURIComponent(r.animalId)}${r.origem === "PREVISAO_PARTO" ? "&acao=parto" : r.origemConsultavel !== false && r.origemId ? `&fatoId=${encodeURIComponent(r.origemId)}` : ""}`)}>{animais.find(a => a.animalId === r.animalId)?.brinco ?? r.animalId}</button>
-      <span>{r.origem === "DIAGNOSTICO_PENDENTE" || r.origem === "TENTATIVA" ? "Diagnóstico pendente" : r.origem === "AVALIACAO" ? "Retorno da avaliação" : r.origem === "TAREFA_IATF" ? "Tarefa IATF" : "Previsão de parto"} · {r.data?.slice(0,10) ?? "Data de diagnóstico não informada"} · {({PENDENTE:"Pendente", PREVISTO:"Previsto", ATRASADO:"Atrasado", AGUARDANDO_DIAGNOSTICO:"Aguardando diagnóstico"} as Record<string,string>)[r.status] ?? r.status}</span>
+      <span>{r.origem === "DIAGNOSTICO_PENDENTE" || r.origem === "TENTATIVA" ? "Diagnóstico pendente" : r.origem === "AVALIACAO" ? "Retorno da avaliação" : r.origem === "TAREFA_IATF" ? "Tarefa IATF" : "Previsão de parto"} · {r.status === "PREVISAO_PENDENTE" ? "Data da etapa a definir" : r.origem === "TAREFA_IATF" && r.data ? horarioIatf(r.data, r.precisaoTemporal) : r.data?.slice(0,10) ?? "Data de diagnóstico não informada"} · {({PREVISAO_PENDENTE:"Previsão a definir: início sem horário",PENDENTE:"Pendente", PREVISTO:"Previsto", ATRASADO:"Atrasado", AGUARDANDO_DIAGNOSTICO:"Aguardando diagnóstico"} as Record<string,string>)[r.status] ?? r.status}</span>
     </div>)}
     <button className="underline text-sm" onClick={() => navegarPara("/pecuaria/visitas")}>Preparar ou retomar visita</button>
   </div></Panel>;

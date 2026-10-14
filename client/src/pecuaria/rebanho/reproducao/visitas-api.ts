@@ -130,6 +130,8 @@ export const confirmarVisita = (
   },
 ) => reqV4(`/visitas/${id}/atividades/${atividadeId}/confirmacao`, input);
 export type SugestaoTarefa = {
+  previsaoPendente?: boolean;
+  precisaoTemporal?: "DIA" | "HORA";
   planejadoSnapshot?: { etapa: { planoAvaliacao?: { tipoExameId?: string; tipo?: "DIAGNOSTICO" | "RECONFIRMACAO" | "SEXAGEM" } } } | null;
   id: string;
   animalId: string;
@@ -151,7 +153,7 @@ export type SugestoesVisita = {
   categorias?: Array<{id: string; nome: string}>;
   lotes?: Array<{id: string; nome: string}>;
   criterios?: Record<string, unknown>;
-  retornos?: Array<{origem: string; origemId: string | null; origemConsultavel?: boolean; animalId: string; data: string | null; status: string; propriedadeId: number; programacaoId?: string}>;
+  retornos?: Array<{precisaoTemporal?: "DIA" | "HORA"; previsaoPendente?: boolean; origem: string; origemId: string | null; origemConsultavel?: boolean; animalId: string; data: string | null; status: string; propriedadeId: number; programacaoId?: string}>;
   animais:
     | import("./api").AnimalReprodutivo[]
     | import("./api").PainelReprodutivo;

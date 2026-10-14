@@ -44,33 +44,33 @@ export function etapasReprodutivasDoContrato(etapasEntrada: Prisma.InputJsonValu
   });
 }
 
-type DadosProgramacao = Pick<ProgramacaoIatf, "propriedadeId" | "protocoloId" | "nome" | "inicioPrevisto"> & Partial<Pick<ProgramacaoIatf, "id" | "referenciaExterna" | "status" | "criadoEm" | "criadoPorId">>;
+type DadosProgramacao = Pick<ProgramacaoIatf, "propriedadeId" | "protocoloId" | "nome" | "inicioPrevisto"> & Partial<Pick<ProgramacaoIatf, "id" | "referenciaExterna" | "status" | "criadoEm" | "criadoPorId" | "precisaoTemporal">>;
 export async function criarProgramacaoReprodutivaTx(tx: Tx, { data }: { data: DadosProgramacao }): Promise<ProgramacaoIatf> {
   const protocoloId = await resolverIdReprodutivoTx(tx, "protocolo", data.protocoloId);
   const { inicioPrevisto, ...campos } = data;
-  const p = await tx.programacaoProtocolo.create({ data: { ...campos, protocoloId, inicioReferencia: inicioPrevisto, precisaoTemporal: "HORA" } });
+  const p = await tx.programacaoProtocolo.create({ data: { ...campos, protocoloId, inicioReferencia: inicioPrevisto, precisaoTemporal: data.precisaoTemporal ?? "HORA" } });
   return tx.programacaoIatf.findUniqueOrThrow({ where: { id: p.id } });
 }
 
-type DadosParticipacao = Pick<ParticipanteIatf, "programacaoId" | "animalId" | "inicioPrevisto"> & Partial<Pick<ParticipanteIatf, "id" | "referenciaExterna" | "inicioEfetivo" | "encerradoEm" | "motivoEncerramento" | "criadoEm" | "criadoPorId">>;
+type DadosParticipacao = Pick<ParticipanteIatf, "programacaoId" | "animalId" | "inicioPrevisto"> & Partial<Pick<ParticipanteIatf, "id" | "referenciaExterna" | "inicioEfetivo" | "encerradoEm" | "motivoEncerramento" | "criadoEm" | "criadoPorId" | "precisaoTemporal" | "precisaoInicioEfetivo">>;
 export async function criarParticipacaoReprodutivaTx(tx: Tx, { data }: { data: DadosParticipacao }): Promise<ParticipanteIatf> {
   const rodadaId = await resolverIdReprodutivoTx(tx, "programacao", data.programacaoId);
   const programa = await tx.programacaoProtocolo.findUniqueOrThrow({ where: { id: rodadaId } });
   const p = await tx.participacaoProtocolo.create({ data: { id: data.id, referenciaExterna: data.referenciaExterna,
     rodadaId, protocoloId: programa.protocoloId, propriedadeId: programa.propriedadeId, animalId: data.animalId,
-    inicio: data.inicioPrevisto, inicioEfetivo: data.inicioEfetivo, precisaoTemporal: "HORA",
+    inicio: data.inicioPrevisto, inicioEfetivo: data.inicioEfetivo, precisaoTemporal: data.precisaoTemporal ?? "HORA", precisaoInicioEfetivo: data.precisaoInicioEfetivo ?? (data.inicioEfetivo ? "HORA" : null),
     canceladaEm: data.encerradoEm, motivoCancelamento: data.motivoEncerramento, criadoEm: data.criadoEm, criadoPorId: data.criadoPorId } });
   return tx.participanteIatf.findUniqueOrThrow({ where: { id: p.id } });
 }
 
-export async function atualizarParticipacaoReprodutivaTx(tx: Tx, input: { where: { id: string }; data: { inicioEfetivo?: Date | null; encerradoEm?: Date | null; motivoEncerramento?: string | null } }): Promise<ParticipanteIatf> {
+export async function atualizarParticipacaoReprodutivaTx(tx: Tx, input: { where: { id: string }; data: { inicioEfetivo?: Date | null; precisaoInicioEfetivo?: "DIA" | "HORA"; encerradoEm?: Date | null; motivoEncerramento?: string | null } }): Promise<ParticipanteIatf> {
   const id = await resolverIdReprodutivoTx(tx, "participacao", input.where.id);
-  await tx.participacaoProtocolo.update({ where: { id }, data: { inicioEfetivo: input.data.inicioEfetivo, canceladaEm: input.data.encerradoEm, motivoCancelamento: input.data.motivoEncerramento } });
+  await tx.participacaoProtocolo.update({ where: { id }, data: { inicioEfetivo: input.data.inicioEfetivo, precisaoInicioEfetivo: input.data.precisaoInicioEfetivo, canceladaEm: input.data.encerradoEm, motivoCancelamento: input.data.motivoEncerramento } });
   return tx.participanteIatf.findUniqueOrThrow({ where: { id } });
 }
 
 type Vinculos = { aplicacaoId?: string | null; tentativaId?: string | null; avaliacaoId?: string | null; exameId?: string | null };
-type AtualizacaoTarefa = Pick<Prisma.TarefaProtocoloUncheckedUpdateInput, "previsaoOriginal" | "realizadaEm" | "dispensadaEm" | "historicoReprogramacao" | "realizadoSnapshot" | "desviosSnapshot" | "regularizacaoPendente" | "historicoRegularizacao"> & Vinculos & {
+type AtualizacaoTarefa = Pick<Prisma.TarefaProtocoloUncheckedUpdateInput, "previsaoOriginal" | "realizadaEm" | "dispensadaEm" | "historicoReprogramacao" | "realizadoSnapshot" | "desviosSnapshot" | "regularizacaoPendente" | "historicoRegularizacao" | "precisaoTemporal" | "precisaoRealizacao" | "previsaoPendente"> & Vinculos & {
   previstaEm?: Date; motivo?: string | null; planejadoSnapshot?: Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput;
 };
 async function vincularFatosTx(tx: Tx, tarefaId: string, data: Vinculos, usuarioId: number | null = null, regularizacao?: { acao: string; motivo: string }) {
@@ -88,7 +88,7 @@ export async function atualizarTarefaReprodutivaTx(tx: Tx, input: { where: { id:
 }
 
 type DadosTarefa = Pick<TarefaIatf, "participanteId" | "etapa" | "tipo" | "nome" | "previstaEm" | "previsaoOriginal"> & Vinculos & {
-  id?: string; realizadaEm?: Date | null; dispensadaEm?: Date | null; motivo?: string | null;
+  id?: string; precisaoTemporal?: "DIA" | "HORA"; precisaoRealizacao?: "DIA" | "HORA" | null; previsaoPendente?: boolean; realizadaEm?: Date | null; dispensadaEm?: Date | null; motivo?: string | null;
   planejadoSnapshot?: Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput;
   realizadoSnapshot?: Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput;
   desviosSnapshot?: Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput;
@@ -103,7 +103,7 @@ async function prepararTarefaTx(tx: Tx, data: DadosTarefa): Promise<Prisma.Taref
 }
 function dadosTarefaProtocolo(data: DadosTarefa, execucaoId: string, etapaId: string): Prisma.TarefaProtocoloUncheckedCreateInput {
   return { id: data.id, nomeSnapshot: data.nome, execucaoId, etapaId, previstaPara: data.previstaEm, previsaoOriginal: data.previsaoOriginal,
-    precisaoTemporal: "HORA", parametros: data.planejadoSnapshot, realizadaEm: data.realizadaEm,
+    precisaoTemporal: data.precisaoTemporal ?? "HORA", precisaoRealizacao: data.precisaoRealizacao ?? (data.realizadaEm ? "HORA" : null), previsaoPendente: data.previsaoPendente ?? false, parametros: data.planejadoSnapshot, realizadaEm: data.realizadaEm,
     dispensadaEm: data.dispensadaEm, motivoDispensa: data.motivo, realizadoSnapshot: data.realizadoSnapshot,
     desviosSnapshot: data.desviosSnapshot,
     historicoReprogramacao: data.historicoReprogramacao,

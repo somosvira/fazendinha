@@ -88,6 +88,16 @@ Outra lista apenas preparada para a mesma tarefa não é uma execução confirma
 
 A escolha do substituto apresenta fatos válidos do mesmo tipo, animal, sítio e data, sem exigir digitação de identificadores internos. Consumo mantido impede reabertura para nova execução. Visita encerrada permite vincular substituto ou encerrar a regularização, mas não reabrir atendimento. Anulação de tentativa vinculada a Serviço respeita os períodos da tentativa e do Serviço.
 
+## Horário opcional na IATF
+
+A data é obrigatória e o horário opcional no planejamento, início efetivo, reagendamento e execução dos protocolos reprodutivos. Uma fazenda que conhece apenas o dia consegue operar sem informar uma hora fictícia. A ausência de horário, isoladamente, não impede aproveitar um protocolo do IDEAGRI como modelo; dia da etapa e demais parâmetros necessários continuam sujeitos à conferência.
+
+Planejamento e realização conservam suas precisões independentemente: uma etapa planejada com hora pode ter sido realizada em um dia conhecido, sem hora conhecida. A interface e o histórico explicitam essa ausência; impressões conservam os dados e a precisão informados na transcrição. Meia-noite, horário do lançamento e horário previsto não substituem o horário real desconhecido.
+
+Sem referência horária conhecida, etapas em horas ou em dias fracionados ficam com previsão pendente; a data do início é conservada somente como referência interna, sem vencimento presumido. O operador pode definir a previsão por reagendamento explícito, com motivo, ou registrar a execução pela data conhecida. Etapas em dias inteiros continuam calculadas normalmente. Não se exige informar uma hora fictícia para registrar o fato ocorrido. Desvios e atrasos respeitam a precisão disponível, sem declarar conformidade horária ou atraso intradiário quando essa informação não existe. Uma aplicação sem hora conserva `aplicadaEm=null` e precisão DIA. Carências informadas usam a regra conservadora existente de fim do dia local, com prazo aproximado explícito; isso não preenche o horário real da aplicação.
+
+Os contratos HTTP aceitam `YYYY-MM-DD` ou instante ISO com fuso; payloads anteriores com hora continuam válidos. `precisaoTemporal` conserva a previsão; `precisaoInicioEfetivo` e `precisaoRealizacao` conservam os fatos independentemente, nas tabelas comuns e views IATF. A migration `20261014230000_iatf_horario_opcional` acrescenta esses metadados e `previsaoPendente`, sem alterar timestamps existentes. As verificações de cronologia usam apenas a data quando uma das horas é desconhecida. Comparações registram `horarioAferido=false` nesses casos, sem exigir motivo apenas pela ausência de horário. A confirmação coletiva usa os mesmos contratos; relatórios de visita já impressos permanecem intactos.
+
 ## Carga técnica e reconciliação
 
 O IDEAGRI serve à carga inicial; não existe sincronização contínua ou tela de reconciliação para o usuário final. A extração parte de uma cópia explicitamente fornecida. Transformação e importação têm prévia, chaves de origem, identificação de conflitos e reexecução sem duplicação. O Fazendinha passa a ser a fonte operacional após a carga.

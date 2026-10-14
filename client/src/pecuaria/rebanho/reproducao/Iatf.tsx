@@ -1,3 +1,5 @@
+import { CampoDataIatf, dataHoraISO, horarioIatf, inputHorarioIatf } from "./CampoDataIatf";
+export { dataHoraISO, horarioIatf, inputHorarioIatf } from "./CampoDataIatf";
 import { FormFatoSanitario } from "../sanidade/FormFatoSanitario";
 import type { TipoExame } from "../sanidade/CadastrosSanitarios";
 import { reqSanidade } from "../sanidade/api";
@@ -53,6 +55,9 @@ export type ProtocoloIatf = {
   etapas: EtapaIatf[];
 };
 export type TarefaIatf = {
+  precisaoTemporal?: "DIA" | "HORA";
+  precisaoRealizacao?: "DIA" | "HORA" | null;
+  previsaoPendente?: boolean;
   id: string;
   nome?: string;
   tipo: string;
@@ -61,6 +66,7 @@ export type TarefaIatf = {
   status: string;
   etapa?: number;
   planejadoSnapshot?: {
+    previsaoPendente?: boolean;
     etapa: EtapaIatf;
     referencias?: Record<string, unknown>;
     previstaEm: string;
@@ -69,11 +75,13 @@ export type TarefaIatf = {
   } | null;
   realizadoSnapshot?: {
     tipo: string;
+    precisaoRealizacao?: "DIA" | "HORA";
     realizadaEm: string;
     dados: Record<string, unknown>;
   } | null;
   desviosSnapshot?: {
     aferido: boolean;
+    horarioAferido?: boolean;
     diferencas: { campo: string; planejado: unknown; realizado: unknown }[];
     motivo?: string | null;
   } | null;
@@ -86,6 +94,8 @@ export type TarefaIatf = {
   historicoRegularizacao?: Array<{acao?: string; destinoConsumo?: string | null}>;
 };
 export type ParticipanteIatf = {
+  precisaoTemporal?: "DIA" | "HORA";
+  precisaoInicioEfetivo?: "DIA" | "HORA" | null;
   id: string;
   animalId: string;
   inicioPrevisto: string;
@@ -97,6 +107,7 @@ export type ParticipanteIatf = {
   animal?: { brinco: string; nome?: string | null };
 };
 export type ProgramacaoIatf = {
+  precisaoTemporal?: "DIA" | "HORA";
   id: string;
   nome: string;
   protocoloId: string;
@@ -104,31 +115,6 @@ export type ProgramacaoIatf = {
   status: string;
   protocolo?: ProtocoloIatf;
   participantes: ParticipanteIatf[];
-};
-export function dataHoraISO(valor: string): string {
-  const data = new Date(`${valor}-03:00`);
-  if (!valor || !Number.isFinite(data.getTime()))
-    throw new Error("Informe uma data e hora válida.");
-  return data.toISOString();
-}
-export const horarioIatf = (valor: string) =>
-  new Intl.DateTimeFormat("pt-BR", {
-    timeZone: "America/Sao_Paulo",
-    dateStyle: "short",
-    timeStyle: "short",
-  }).format(new Date(valor));
-export const inputHorarioIatf = (valor: string) => {
-  const partes = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Sao_Paulo",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-  }).formatToParts(new Date(valor));
-  const p = (tipo: string) => partes.find((p) => p.type === tipo)?.value;
-  return `${p("year")}-${p("month")}-${p("day")}T${p("hour")}:${p("minute")}`;
 };
 export const statusTarefaIatf = (t: TarefaIatf) =>
   t.historicoRegularizacao?.at(-1)?.acao === "ENCERRAR_SEM_SUBSTITUICAO" ? "Encerrada sem substituição" : t.realizadaEm ? "Realizada" : t.dispensadaEm ? "Dispensada" : "Pendente";
@@ -281,7 +267,7 @@ export function Iatf({
               onClick={() => void abrir(p.id)}
             >
               <span>
-                {p.nome} · {horarioIatf(p.inicioPrevisto)}
+                {p.nome} · {horarioIatf(p.inicioPrevisto, p.precisaoTemporal)}
               </span>
               <Pill>{p.status}</Pill>
             </button>
@@ -330,9 +316,9 @@ export function Iatf({
                   <Pill>{statusParticipanteIatf(p)}</Pill>
                 </div>
                 <p className="text-sm mt-2">
-                  Previsto: {horarioIatf(p.inicioPrevisto)} · Início efetivo:{" "}
+                  Previsto: {horarioIatf(p.inicioPrevisto, p.precisaoTemporal)} · Início efetivo:{" "}
                   {p.inicioEfetivo
-                    ? horarioIatf(p.inicioEfetivo)
+                    ? horarioIatf(p.inicioEfetivo, p.precisaoInicioEfetivo ?? "HORA")
                     : "não confirmado"}
                 </p>
                 {podeLancar && !p.inicioEfetivo && !p.encerradoEm && (
@@ -368,7 +354,7 @@ export function Iatf({
                     >
                       <span>
                         {t.nome ?? t.planejadoSnapshot?.etapa.nome ?? t.tipo} ·{" "}
-                        {horarioIatf(t.previstaEm)} · {statusTarefaIatf(t)}
+                        {t.previsaoPendente ? "Previsão a definir: início sem horário" : horarioIatf(t.previstaEm, t.precisaoTemporal)} · {statusTarefaIatf(t)}
                       </span>
                       {podeLancar &&
                         !t.realizadaEm &&
@@ -378,7 +364,7 @@ export function Iatf({
                             secondary
                             onClick={() => {
                               setAcao({ tipo: "revisao", id: t.id });
-                              setDataHora(inputHorarioIatf(t.previstaEm));
+                              setDataHora(t.previsaoPendente ? "" : inputHorarioIatf(t.previstaEm, t.precisaoTemporal));
                               setMotivo("");
                             }}
                           >
@@ -706,16 +692,7 @@ export function Iatf({
                     </select>
                   </label>
                 )}
-                <label className="text-sm">
-                  Início previsto
-                  <input
-                    type="datetime-local"
-                    required
-                    className={classeInput}
-                    value={inicio}
-                    onChange={(e) => setInicio(e.target.value)}
-                  />
-                </label>
+                <CampoDataIatf rotulo="Início previsto" valor={inicio} onChange={setInicio} />
                 <label className="text-sm">
                   <input
                     type="checkbox"
@@ -813,16 +790,7 @@ export function Iatf({
           >
             <ErrorBox erro={erro} />
             {acao.tipo !== "retirada" && (
-              <label className="text-sm">
-                Data e hora
-                <input
-                  className={classeInput}
-                  type="datetime-local"
-                  required
-                  value={dataHora}
-                  onChange={(e) => setDataHora(e.target.value)}
-                />
-              </label>
+              <CampoDataIatf rotulo="Data" valor={dataHora} onChange={setDataHora} />
             )}
             {acao.tipo === "inicio" && (
               <label className="text-sm">
@@ -910,6 +878,7 @@ function ExecucaoIatf({
         onSalvo={onSalvo}
         onRegistrar={registrar}
         dataInicial={realizada.slice(0, 10)}
+        momentoIatf={realizada}
         conteudoExtra={
           <>
             <DetalheEtapa tarefa={tarefa} />
@@ -990,20 +959,11 @@ function ExecucaoIatf({
       >
         <ErrorBox erro={erro} />
         <p className="text-sm">
-          Planejado: {horarioIatf(tarefa.previstaEm)}. A execução não desloca as
+          Planejado: {tarefa.previsaoPendente ? "Previsão a definir: início sem horário" : horarioIatf(tarefa.previstaEm, tarefa.precisaoTemporal)}. A execução não desloca as
           próximas etapas.
         </p>
         <DetalheEtapa tarefa={tarefa} />
-        <label className="text-sm">
-          Data e hora realizada
-          <input
-            className={classeInput}
-            required
-            type="datetime-local"
-            value={realizada}
-            onChange={(e) => setRealizada(e.target.value)}
-          />
-        </label>
+        <CampoDataIatf rotulo="Data realizada" valor={realizada} onChange={setRealizada} />
         <label className="text-sm">
           Motivo do desvio, se houver
           <input
@@ -1241,6 +1201,7 @@ function PlanoEtapa({
 }
 const nomesCampos: Record<string, string> = {
   dataHora: "Data e hora",
+  data: "Data",
   produtoId: "Produto",
   dose: "Dose",
   unidadeDose: "Unidade",
@@ -1294,15 +1255,16 @@ function DetalheEtapa({ tarefa }: { tarefa: TarefaIatf }) {
           </p>
         )}
         {tarefa.realizadaEm && (
-          <p>Realizada: {horarioIatf(tarefa.realizadaEm)}</p>
+          <p>Realizada: {horarioIatf(tarefa.realizadaEm, tarefa.precisaoRealizacao ?? tarefa.realizadoSnapshot?.precisaoRealizacao ?? "HORA")}</p>
         )}
+        {tarefa.desviosSnapshot?.horarioAferido === false && <p>{tarefa.planejadoSnapshot?.previsaoPendente ? "Data prevista e horário não aferidos: início sem horário conhecido." : "Horário não aferido: planejamento ou realização sem horário conhecido."}</p>}
         {tarefa.desviosSnapshot && (
           <p>
             {!tarefa.desviosSnapshot.aferido
               ? "Desvio não aferido por falta de planejamento completo"
               : tarefa.desviosSnapshot.diferencas.length
                 ? "Execução com desvio documentado"
-                : "Parâmetros realizados conforme planejamento"}
+                : tarefa.desviosSnapshot.horarioAferido === false ? "Parâmetros comparáveis sem desvio; horário não aferido" : "Parâmetros realizados conforme planejamento"}
           </p>
         )}
         {!!tarefa.desviosSnapshot?.diferencas.length && (

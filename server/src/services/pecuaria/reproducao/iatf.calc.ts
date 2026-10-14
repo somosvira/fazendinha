@@ -1,8 +1,11 @@
+import { lerDataIatf, diaIatf, serializarDataIatf, type PrecisaoIatf } from "./horarios.calc.js";
 import { Prisma } from "@prisma/client";
 import type { EtapaIatf } from "./schemas.js";
 import { compararParametros, type DiferencaExecucao } from "../desvios.calc.js";
 export type SnapshotIatf = {
   versao: 1;
+  precisaoTemporal?: PrecisaoIatf;
+  previsaoPendente?: boolean;
   etapa: EtapaIatf;
   referencias: Record<string, unknown>;
   previstaEm: string;
@@ -26,7 +29,7 @@ export function compararExecucaoIatf(
   plano: SnapshotIatf | null,
   realizadaEm: string,
   dados: Record<string, unknown>,
-): { aferido: boolean; diferencas: DiferencaIatf[] } {
+): { aferido: boolean; diferencas: DiferencaIatf[]; horarioAferido?: boolean } {
   if (!plano) return { aferido: false, diferencas: [] };
   const planejado: Record<string, unknown> = {};
   const realizado: Record<string, unknown> = {};
@@ -34,11 +37,12 @@ export function compararExecucaoIatf(
     planejado[campo] = esperado;
     realizado[campo] = atual;
   };
-  comparar(
-    "dataHora",
-    new Date(plano.previstaEm).toISOString(),
-    new Date(realizadaEm).toISOString(),
-  );
+  const execucao = lerDataIatf(realizadaEm);
+  const precisaoPlano = plano.precisaoTemporal ?? "HORA";
+  const horarioAferido = !plano.previsaoPendente && precisaoPlano === "HORA" && execucao.precisao === "HORA";
+  if (!plano.previsaoPendente) comparar(horarioAferido ? "dataHora" : "data",
+    horarioAferido ? new Date(plano.previstaEm).toISOString() : diaIatf(new Date(plano.previstaEm), precisaoPlano),
+    horarioAferido ? execucao.instante.toISOString() : execucao.data);
   const e = plano.etapa;
   if (e.tipo === "APLICACAO" && e.planoAplicacao) {
     comparar("produtoId", e.planoAplicacao.produtoId, dados.produtoId ?? null);
@@ -76,7 +80,7 @@ export function compararExecucaoIatf(
     (e.tipo !== "APLICACAO" || !!e.planoAplicacao) &&
     (e.tipo !== "TENTATIVA" || !!e.planoTentativa) &&
     (e.tipo !== "AVALIACAO" || !!e.planoAvaliacao);
-  return compararParametros(planejado, realizado, aferido);
+  return { ...compararParametros(planejado, realizado, aferido), horarioAferido };
 }
 export function snapshotIatf(
   etapa: EtapaIatf,
@@ -84,13 +88,15 @@ export function snapshotIatf(
   previstaEm: Date,
   previsaoOriginal: Date,
   inicioReferencia: Date,
+  precisaoTemporal: PrecisaoIatf = "HORA",
+  previsaoPendente = false,
 ): SnapshotIatf {
   return {
-    versao: 1,
+    versao: 1, precisaoTemporal, previsaoPendente,
     etapa,
     referencias,
-    previstaEm: previstaEm.toISOString(),
-    previsaoOriginal: previsaoOriginal.toISOString(),
-    inicioReferencia: inicioReferencia.toISOString(),
+    previstaEm: serializarDataIatf(previstaEm, precisaoTemporal),
+    previsaoOriginal: serializarDataIatf(previsaoOriginal, precisaoTemporal),
+    inicioReferencia: serializarDataIatf(inicioReferencia, precisaoTemporal),
   };
 }

@@ -3,11 +3,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { exigeArea } from "../../middleware/permissao.js";
 import { uid } from "../../lib/uid.fixture.js";
 
-const mocks = vi.hoisted(() => ({ leitura: vi.fn(), escrita: vi.fn(), painel: vi.fn(), tentativa: vi.fn(), avaliacao: vi.fn(), detalheVisita: vi.fn(), confirmar: vi.fn(), programacoes: vi.fn() }));
+const mocks = vi.hoisted(() => ({ leitura: vi.fn(), escrita: vi.fn(), painel: vi.fn(), tentativa: vi.fn(), avaliacao: vi.fn(), detalheVisita: vi.fn(), confirmar: vi.fn(), programacoes: vi.fn(), programar: vi.fn(), iniciar: vi.fn(), reprogramar: vi.fn(), executar: vi.fn() }));
 vi.mock("../../services/propriedade.js", async original => ({ ...await original<typeof import("../../services/propriedade.js")>(), resolverEscopoLeitura: mocks.leitura, resolverEscopoEscrita: mocks.escrita }));
 vi.mock("../../services/pecuaria/reproducao/registros.js", async original => ({ ...await original<typeof import("../../services/pecuaria/reproducao/registros.js")>(), painelReproducao: mocks.painel, criarTentativa: mocks.tentativa, criarAvaliacao: mocks.avaliacao }));
 vi.mock("../../services/pecuaria/reproducao/visitas.js", async original => ({ ...await original<typeof import("../../services/pecuaria/reproducao/visitas.js")>(), detalheVisita: mocks.detalheVisita, confirmarAtividade: mocks.confirmar }));
-vi.mock("../../services/pecuaria/reproducao/iatf.js", async original => ({ ...await original<typeof import("../../services/pecuaria/reproducao/iatf.js")>(), listarProgramacoes: mocks.programacoes }));
+vi.mock("../../services/pecuaria/reproducao/iatf.js", async original => ({ ...await original<typeof import("../../services/pecuaria/reproducao/iatf.js")>(), listarProgramacoes: mocks.programacoes, criarProgramacao: mocks.programar, iniciarParticipante: mocks.iniciar, reprogramarTarefa: mocks.reprogramar, executarTarefa: mocks.executar }));
 import { rebanhoRouter } from "./rebanho.js";
 import { PropriedadeError } from "../../services/propriedade.js";
 import { RebanhoError } from "../../services/pecuaria/rebanho/regras.js";
@@ -91,4 +91,21 @@ describe("V4: autorização e exposição de custos", () => {
     expect((await app().request(`/visitas/${uid(5)}/atividades/${uid(6)}/confirmacao`, { method: "POST", headers: json, body: JSON.stringify({ propriedadeId: 2, chave: uid(8), itens }) })).status).toBe(422);
     expect(mocks.confirmar).not.toHaveBeenCalled();
   });
+});
+
+it("IATF aceita somente data nos quatro fluxos HTTP e preserva autoria e escopo", async()=>{
+  for(const f of [mocks.programar,mocks.iniciar,mocks.reprogramar,mocks.executar])f.mockResolvedValue({id:uid(8)});
+  const entradas = [
+    {rota:"/reproducao/programacoes",corpo:{chave:uid(1),propriedadeId:2,protocoloId:uid(3),nome:"Programação",inicioPrevisto:"2026-10-01",animais:[{animalId:uid(2)}]}},
+    {rota:`/reproducao/participantes-iatf/${uid(3)}/inicio`,corpo:{propriedadeId:2,inicioEfetivo:"2026-10-01"}},
+    {rota:`/reproducao/tarefas-iatf/${uid(3)}/reprogramacao`,corpo:{propriedadeId:2,previstaEm:"2026-10-01",motivo:"Agenda revisada pela equipe"}},
+    {rota:`/reproducao/tarefas-iatf/${uid(3)}/execucao`,corpo:{chave:uid(1),propriedadeId:2,realizadaEm:"2026-10-01",dados:{}}},
+  ];
+  for(const {rota,corpo} of entradas){
+    const r=await app().request(rota,{method:"POST",headers:json,body:JSON.stringify(corpo)});
+    expect(r.status).toBeLessThan(300);
+  }
+  expect(mocks.programar).toHaveBeenCalledWith(expect.objectContaining({inicioPrevisto:"2026-10-01",propriedadeId:2}),7);
+  expect(mocks.iniciar).toHaveBeenCalledWith(uid(3),2,"2026-10-01",7,undefined);
+  expect(mocks.executar).toHaveBeenCalledWith(uid(3),expect.objectContaining({realizadaEm:"2026-10-01",propriedadeId:2}),7);
 });

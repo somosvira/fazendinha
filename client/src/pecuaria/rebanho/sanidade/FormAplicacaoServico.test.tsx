@@ -233,3 +233,17 @@ it("devolve a aplicação criada para atualizar a ficha e abrir o fato salvo", a
   await screen.findByText("Tratamento personalizado"); preencher(); submeter();
   await waitFor(() => expect(onSalvo).toHaveBeenCalledWith("aplicacao-criada", 1));
 });
+
+it("aplicação coordenada pela IATF não solicita outra hora nem fabrica aplicadaEm", async () => {
+  const registrar = vi.fn().mockResolvedValue(undefined);
+  render(<FormAplicacaoServico animalId="animal" propriedadeId={1} momentoIatf="2026-09-10" dataInicial="2026-09-10" onRegistrar={registrar} onFechar={vi.fn()} onSalvo={vi.fn()} />);
+  await screen.findByText("Tratamento personalizado");
+  fireEvent.change(screen.getByLabelText(/Tipo de aplicação/), {target:{value:"tipo"}});
+  fireEvent.change(screen.getByLabelText(/Medicamento do estoque/), {target:{value:"produto"}});
+  fireEvent.change(screen.getByLabelText(/^Quantidade aplicada$/), {target:{value:"2"}});
+  const hora=screen.getByLabelText(/Horário não informado na IATF/) as HTMLInputElement;
+  expect(hora.required).toBe(false);expect(hora.disabled).toBe(true);expect(hora.value).toBe("");
+  submeter();
+  await waitFor(()=>expect(registrar).toHaveBeenCalledWith(expect.objectContaining({data:"2026-09-10",aplicadaEm:undefined,dose:"2"})));
+  expect(vi.mocked(reqSanidade).mock.calls.some(([path])=>path==="/aplicacoes/coletivas")).toBe(false);
+});

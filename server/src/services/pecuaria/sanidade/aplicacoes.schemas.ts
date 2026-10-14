@@ -13,7 +13,7 @@ export const aplicacaoSchema = z
     animalId: uuid,
     propriedadeId: z.number().int().positive(),
     data,
-    aplicadaEm: z.string().datetime({ offset: true }),
+    aplicadaEm: z.string().datetime({ offset: true }).optional(),
     finalidade: z.enum(["TRATAMENTO", "VACINA", "VERMIFUGO"]).optional(),
     tipoAplicacaoId: uuid.optional(),
     responsavel: z.string().trim().max(160).nullish(),
