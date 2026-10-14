@@ -1,3 +1,5 @@
+import { papelReprodutivoNaDataTx, registrarPapelReprodutivoTx, desfazerPapelDoDestinoTx, idsComPapelReprodutivo } from "./papeis.js";
+import { resolverPapelReprodutivo } from "./papel-reprodutivo.calc.js";
 import crypto from "node:crypto";
 import { conferirCadastroIndevidoSemFatosTx, conferirFatosNaBaixa, conferirHistoricoDosFatos } from "../fatos.js";
 import { transacaoPecuaria } from "../transacao.js";
@@ -37,7 +39,8 @@ async function localizacaoAberta(db: DbPecuaria, animalId: string) {
 }
 
 async function destinoAberto(db: DbPecuaria, animalId: string) {
-  return db.destinoAnimal.findFirst({ where: { animalId, ate: null }, orderBy: { desde: "desc" } });
+  const destino = await db.destinoAnimal.findFirst({ where: { animalId, ate: null }, orderBy: { desde: "desc" } });
+  return destino ? { ...destino, papelReprodutivo: (await papelReprodutivoNaDataTx(db, animalId, hojeFazendaDate())).papel } : null;
 }
 
 async function baixaAberta(db: DbPecuaria, animalId: string) {
@@ -302,7 +305,7 @@ export async function cadastrar(input: CadastrarAnimalInput, usuarioId: number |
   if (erosDatas.length) throw new RebanhoError("VALIDACAO", erosDatas[0].mensagem, erosDatas[0].campo);
 
   // receptora/doadora e partos anteriores só existem em fêmea (R1)
-  if (input.sexo === "M" && input.papelReprodutivo !== "NENHUM") {
+  if (input.sexo === "M" && input.papelReprodutivo && input.papelReprodutivo !== "NENHUM") {
     throw new RebanhoError("VALIDACAO", "Receptora/doadora só se aplica a fêmeas", "papelReprodutivo");
   }
   if (input.sexo === "M" && input.partosAntesDaEntrada > 0) {
@@ -368,9 +371,10 @@ export async function cadastrar(input: CadastrarAnimalInput, usuarioId: number |
       data: { animalId: animal.id, propriedadeId: input.propriedadeId, loteId: input.loteId ?? null, desde: new Date(input.dataEntrada), criadoPorId: usuarioId },
     });
 
-    await tx.destinoAnimal.create({
-      data: { animalId: animal.id, aptidao: input.aptidao, papelReprodutivo: input.papelReprodutivo, desde: new Date(input.dataEntrada), criadoPorId: usuarioId },
+    const destinoInicial = await tx.destinoAnimal.create({
+      data: { animalId: animal.id, aptidao: input.aptidao, desde: new Date(input.dataEntrada), criadoPorId: usuarioId },
     });
+    if (input.papelReprodutivo) await registrarPapelReprodutivoTx(tx, { animalId: animal.id, tipo: input.papelReprodutivo, inicio: new Date(input.dataEntrada), destinoOrigemId: destinoInicial.id, usuarioId });
 
     if (input.composicao.length) {
       await tx.composicaoRacial.createMany({
@@ -479,15 +483,16 @@ export async function editar(id: string, input: EditarAnimalInput, usuarioId: nu
     // destino aberto com papel e abre outro igual (mesma aptidão) com papel NENHUM, e zera os
     // partos — mais amigável do que simplesmente recusar a edição.
     const trocaParaMacho = input.sexo === "M" && input.sexo !== animal.sexo;
-    let ajusteDestino: { fechado: { id: string; aptidao: string; papelReprodutivo: string; desde: Date }; aberto: { id: string; aptidao: string; papelReprodutivo: string; desde: Date } } | null = null;
+    let ajusteDestino: { fechado: { id: string; aptidao: string; papelReprodutivo?: string | null; desde: Date }; aberto: { id: string; aptidao: string; papelReprodutivo?: string | null; desde: Date } } | null = null;
     if (trocaParaMacho) {
       const destinoAtual = await destinoAberto(tx, id);
-      if (destinoAtual && destinoAtual.papelReprodutivo !== "NENHUM") {
+      if (destinoAtual?.papelReprodutivo && destinoAtual.papelReprodutivo !== "NENHUM") {
         const dataFechamento = new Date(hojeFazenda());
         exigirAfetadas(await tx.destinoAnimal.updateMany({ where: { id: destinoAtual.id, ate: null }, data: { ate: dataFechamento } }), 1);
         const novoDestino = await tx.destinoAnimal.create({
-          data: { animalId: id, aptidao: destinoAtual.aptidao, papelReprodutivo: "NENHUM", desde: dataFechamento, criadoPorId: usuarioId },
+          data: { animalId: id, aptidao: destinoAtual.aptidao, desde: dataFechamento, criadoPorId: usuarioId },
         });
+        await registrarPapelReprodutivoTx(tx, { animalId: id, tipo: "NENHUM", inicio: dataFechamento, destinoOrigemId: novoDestino.id, usuarioId });
         ajusteDestino = { fechado: destinoAtual, aberto: novoDestino };
       }
     }
@@ -545,7 +550,10 @@ export async function editar(id: string, input: EditarAnimalInput, usuarioId: nu
     // o histórico que começava na entrada/nascimento antigos acompanha as novas datas
     if (ajuste) {
       if (ajuste.moverLocalizacao) await tx.localizacaoAnimal.update({ where: { id: ajuste.moverLocalizacao }, data: { desde: entradaNova } });
-      if (ajuste.moverDestino) await tx.destinoAnimal.update({ where: { id: ajuste.moverDestino }, data: { desde: entradaNova } });
+      if (ajuste.moverDestino) {
+        await tx.destinoAnimal.update({ where: { id: ajuste.moverDestino }, data: { desde: entradaNova } });
+        await tx.periodoReprodutivoAnimal.updateMany({ where: { destinoOrigemId: ajuste.moverDestino, revogadoEm: null }, data: { inicio: entradaNova } });
+      }
       if (ajuste.moverPesagensEntrada.length) await tx.pesagem.updateMany({ where: { id: { in: ajuste.moverPesagensEntrada } }, data: { data: entradaNova } });
       if (ajuste.moverPesagensNascimento.length) await tx.pesagem.updateMany({ where: { id: { in: ajuste.moverPesagensNascimento } }, data: { data: nascimentoNovo } });
     }
@@ -778,7 +786,7 @@ export async function buscarFicha(id: string, propriedadeEscopo: number | null, 
   const animal = await prisma.animal.findUnique({ where: { id }, include: { partos: SELECT_PARTOS_CATEGORIA } });
   if (!animal) throw new RebanhoError("NAO_ENCONTRADO", "Animal não encontrado");
 
-  const [localizacoes, destinos, pesagens, baixas, composicao, manuais, regras] = await Promise.all([
+  const [localizacoes, destinos, pesagens, baixas, composicao, manuais, regras, papeis] = await Promise.all([
     prisma.localizacaoAnimal.findMany({ where: { animalId: id }, include: { propriedade: true, lote: true, movimentacao: { select: { motivo: true } } }, orderBy: [{ desde: "desc" }, { criadoEm: "desc" }] }),
     prisma.destinoAnimal.findMany({ where: { animalId: id }, orderBy: [{ desde: "desc" }, { criadoEm: "desc" }] }),
     prisma.pesagem.findMany({ where: { animalId: id }, orderBy: { data: "desc" } }),
@@ -790,6 +798,7 @@ export async function buscarFicha(id: string, propriedadeEscopo: number | null, 
     composicaoDaFicha(prisma, id),
     prisma.categoriaManualAnimal.findMany({ where: { animalId: id }, include: { categoria: { select: { id: true, nome: true } } }, orderBy: [{ desde: "desc" }, { criadoEm: "desc" }] }),
     carregarRegras(),
+    prisma.periodoReprodutivoAnimal.findMany({ where: { animalId: id } }),
   ]);
 
   const [mae, pai, filhosCount] = await Promise.all([
@@ -820,9 +829,10 @@ export async function buscarFicha(id: string, propriedadeEscopo: number | null, 
   const loteFicha = locAtual?.lote
     ? { id: locAtual.lote.id, nome: locAtual.lote.nome }
     : baixaAtual?.localizacaoFechada?.lote ? { id: baixaAtual.localizacaoFechada.lote.id, nome: baixaAtual.localizacaoFechada.lote.nome } : null;
+  const papelAtual = resolverPapelReprodutivo(papeis, hoje, !!baixaAtual);
   const destinoFicha = destinoAtual
-    ? { aptidao: destinoAtual.aptidao, papelReprodutivo: destinoAtual.papelReprodutivo }
-    : baixaAtual?.destinoFechado ? { aptidao: baixaAtual.destinoFechado.aptidao, papelReprodutivo: baixaAtual.destinoFechado.papelReprodutivo } : null;
+    ? { aptidao: destinoAtual.aptidao, papelReprodutivo: papelAtual.papel }
+    : baixaAtual?.destinoFechado ? { aptidao: baixaAtual.destinoFechado.aptidao, papelReprodutivo: papelAtual.papel } : null;
 
   const resumo = mapearAnimalResumo({
     animal,
@@ -848,6 +858,8 @@ export async function buscarFicha(id: string, propriedadeEscopo: number | null, 
 
   return {
     ...resumo,
+    papelReprodutivoEstado: papelAtual.estado,
+    historicoPapeisReprodutivos: papeis.map(p => ({ id: p.id, tipo: p.tipo, inicio: p.inicio.toISOString().slice(0, 10), fim: p.fim?.toISOString().slice(0, 10) ?? null, origem: p.origem, revogado: !!p.revogadoEm })),
     brincoEletronico: animal.brincoEletronico,
     sisbov: animal.sisbov,
     nascimentoEstimado: animal.nascimentoEstimado,
@@ -864,7 +876,7 @@ export async function buscarFicha(id: string, propriedadeEscopo: number | null, 
       movimentacaoId: l.movimentacaoId,
     })),
     historicoDestinos: destinos.map((d) => ({
-      id: d.id, aptidao: d.aptidao, papelReprodutivo: d.papelReprodutivo,
+      id: d.id, aptidao: d.aptidao, papelReprodutivo: resolverPapelReprodutivo(papeis, d.desde).papel,
       desde: d.desde.toISOString().slice(0, 10), ate: d.ate ? d.ate.toISOString().slice(0, 10) : null,
     })),
     historicoCategoriasManuais: manuais.map((m) => ({
@@ -906,7 +918,6 @@ export function whereSituacao(input: {
   propriedadeId?: number | null;
   loteId?: string | null;
   aptidao?: "LEITE" | "CORTE" | null;
-  papelReprodutivo?: "NENHUM" | "RECEPTORA" | "DOADORA" | null;
 }): Prisma.AnimalWhereInput {
   const lugar = {
     ...(input.propriedadeId != null ? { propriedadeId: input.propriedadeId } : {}),
@@ -914,7 +925,6 @@ export function whereSituacao(input: {
   };
   const destino = {
     ...(input.aptidao ? { aptidao: input.aptidao } : {}),
-    ...(input.papelReprodutivo ? { papelReprodutivo: input.papelReprodutivo } : {}),
   };
   const temDestino = Object.keys(destino).length > 0;
 
@@ -1029,6 +1039,7 @@ const ORDEM_HISTORICO = [{ desde: "desc" as const }, { criadoEm: "desc" as const
 const INCLUDE_RESUMO = {
   localizacoes: { orderBy: ORDEM_HISTORICO, take: 1, include: { propriedade: true, lote: true } },
   destinos: { orderBy: ORDEM_HISTORICO, take: 1 },
+  papeisReprodutivos: { where: { revogadoEm: null } },
   baixas: { where: { estornadaEm: null }, take: 1, select: { id: true, data: true, tipo: true } },
   composicao: { include: { raca: true } },
   // 2 mais recentes: a última pesagem (ultimoPeso) e a anterior a ela (gmdRecente)
@@ -1049,9 +1060,10 @@ function resumoDe(animal: AnimalComResumo, regras: RegraCategoria[], hoje: Date)
     animal,
     categoria: avaliarCategoria({ sexo: animal.sexo, dataNascimento: animal.dataNascimento, partos: totalPartosCategoria(animal, hojeReferencia) }, regras, manualDe(animal.categoriasManuais), hojeReferencia),
     hoje: hojeReferencia,
+    papelReprodutivoEstado: resolverPapelReprodutivo(animal.papeisReprodutivos, hojeReferencia, !!baixa).estado,
     propriedade: loc ? { id: loc.propriedade.id, nome: loc.propriedade.nome } : null,
     lote: loc?.lote ? { id: loc.lote.id, nome: loc.lote.nome } : null,
-    destino: destino ? { aptidao: destino.aptidao, papelReprodutivo: destino.papelReprodutivo } : null,
+    destino: destino ? { aptidao: destino.aptidao, papelReprodutivo: resolverPapelReprodutivo(animal.papeisReprodutivos, hojeReferencia, !!baixa).papel } : null,
     composicao: animal.composicao.map((c) => ({ sigla: c.raca.sigla, fracao64: c.fracao64 })),
     ultimoPeso: animal.pesagens[0] ? { pesoKg: Number(animal.pesagens[0].pesoKg), data: animal.pesagens[0].data } : null,
     pesagemAnterior: animal.pesagens[1] ? { pesoKg: Number(animal.pesagens[1].pesoKg), data: animal.pesagens[1].data } : null,
@@ -1081,13 +1093,13 @@ export async function listar(filtros: ListarEntrada, propriedadeEscopo: number |
         propriedadeId: propriedadeEscopo ?? filtros.propriedadeId ?? null,
         loteId: filtros.loteId ?? null,
         aptidao: filtros.aptidao ?? null,
-        papelReprodutivo: filtros.papelReprodutivo ?? null,
       }),
       // categoria/sem categoria contam em "hoje" para todos (inclusive baixados), como sempre fez o filtro de categoria
       whereCategoria(filtros.categoriaId, regras, hoje),
       filtros.semCategoria ? whereSemCategoria(regras, hoje) : {},
       ...whereAtributos(filtros),
       await whereIdade(filtros.situacao, hoje, filtros.idadeMinMeses, filtros.idadeMaxMeses),
+      filtros.papelReprodutivo ? { id: { in: await idsComPapelReprodutivo(prisma, filtros.papelReprodutivo, hoje) } } : {},
       filtros.busca ? { OR: [
         { brinco: { contains: filtros.busca, mode: "insensitive" } },
         { nome: { contains: filtros.busca, mode: "insensitive" } },
@@ -1112,8 +1124,9 @@ export async function listar(filtros: ListarEntrada, propriedadeEscopo: number |
       select: {
         id: true, brinco: true, nome: true, sexo: true, dataNascimento: true, dataEntrada: true, origem: true, partosAntesDaEntrada: true,
         localizacoes: { orderBy: ORDEM_HISTORICO, take: 1, select: { propriedade: { select: { id: true, nome: true } } } },
-        destinos: { orderBy: ORDEM_HISTORICO, take: 1, select: { aptidao: true, papelReprodutivo: true } },
-        baixas: { where: { estornadaEm: null }, take: 1, select: { id: true } },
+        destinos: { orderBy: ORDEM_HISTORICO, take: 1, select: { aptidao: true } },
+        papeisReprodutivos: { where: { revogadoEm: null } },
+        baixas: { where: { estornadaEm: null }, take: 1, select: { id: true, data: true } },
         categoriasManuais: SELECT_MANUAL_ABERTA,
         partos: SELECT_PARTOS_CATEGORIA,
         identificacaoProvisoria: true,
@@ -1123,11 +1136,12 @@ export async function listar(filtros: ListarEntrada, propriedadeEscopo: number |
 
   const leves = paraPainel.map((a) => mapearAnimalResumo({
     animal: a,
+    papelReprodutivoEstado: resolverPapelReprodutivo(a.papeisReprodutivos, a.baixas[0]?.data ?? hoje, !!a.baixas.length).estado,
     categoria: avaliarCategoria({ sexo: a.sexo, dataNascimento: a.dataNascimento, partos: totalPartosCategoria(a, hoje) }, regras, manualDe(a.categoriasManuais), hoje),
     hoje,
     propriedade: a.localizacoes[0]?.propriedade ?? null,
     lote: null,
-    destino: a.destinos[0] ?? null,
+    destino: a.destinos[0] ? { ...a.destinos[0], papelReprodutivo: resolverPapelReprodutivo(a.papeisReprodutivos, a.baixas[0]?.data ?? hoje, !!a.baixas.length).papel } : null,
     composicao: [],
     ultimoPeso: null,
     situacao: a.baixas.length ? "BAIXADO" : "ATIVO",
@@ -1254,17 +1268,20 @@ export async function mudarDestino(input: MudarDestinoInput & { animalId: string
     await travarAnimais(tx, [animalId]);
     const animal = await exigirAnimal(tx, animalId);
     // receptora/doadora só se aplica a fêmeas (R1)
-    if (input.papelReprodutivo !== "NENHUM" && animal.sexo === "M") {
+    if (input.papelReprodutivo && input.papelReprodutivo !== "NENHUM" && animal.sexo === "M") {
       throw new RebanhoError("VALIDACAO", "Receptora/doadora só se aplica a fêmeas", "papelReprodutivo");
     }
     const errosData = validarDataDestino({ dataEntrada: animal.dataEntrada, desde: input.data });
     if (errosData.length) throw new RebanhoError("VALIDACAO", errosData[0].mensagem, errosData[0].campo);
 
     await exigirAnimalAtivo(tx, input.animalId);
-    const atual = await destinoAberto(tx, input.animalId);
+    const atualDestino = await destinoAberto(tx, input.animalId);
+    const papel = await papelReprodutivoNaDataTx(tx, input.animalId, new Date(input.data));
+    if (papel.estado === "CONFLITO") throw new RebanhoError("CONFLITO", "Concilie os papéis reprodutivos conflitantes antes de alterar", "papelReprodutivo");
+    const atual = atualDestino ? { ...atualDestino, papelReprodutivo: papel.papel } : null;
     const plano = planejar(() => planejarDestino({
       atual: atual ? { aptidao: atual.aptidao, papelReprodutivo: atual.papelReprodutivo, desde: atual.desde } : null,
-      novo: { aptidao: input.aptidao, papelReprodutivo: input.papelReprodutivo },
+      novo: { aptidao: input.aptidao, papelReprodutivo: input.papelReprodutivo ?? papel.papel },
       data: input.data,
     }));
 
@@ -1274,9 +1291,10 @@ export async function mudarDestino(input: MudarDestinoInput & { animalId: string
       exigirAfetadas(await tx.destinoAnimal.updateMany({ where: { id: atual.id, ate: null }, data: { ate: new Date(plano.fechar.ate) } }), 1);
     }
     const novo = await tx.destinoAnimal.create({
-      data: { animalId: input.animalId, aptidao: plano.abrir.aptidao, papelReprodutivo: plano.abrir.papelReprodutivo, desde: new Date(plano.abrir.desde), criadoPorId: usuarioId },
+      data: { animalId: input.animalId, aptidao: plano.abrir.aptidao, desde: new Date(plano.abrir.desde), criadoPorId: usuarioId },
     });
 
+    if (input.papelReprodutivo && input.papelReprodutivo !== papel.papel) await registrarPapelReprodutivoTx(tx, { animalId: input.animalId, tipo: input.papelReprodutivo, inicio: new Date(plano.abrir.desde), destinoOrigemId: novo.id, usuarioId });
     await auditar(tx, { entidade: "DestinoAnimal", entidadeId: novo.id, animalId: input.animalId, acao: "MUDANCA_DESTINO", usuarioId, antes: atual, depois: novo });
   });
 
@@ -1464,6 +1482,7 @@ export async function desfazerDestino(animalId: string, usuarioId: number | null
     const removida = linhas.find((l) => l.id === plano.remover.id)!;
     const anterior = linhas.find((l) => l.id === plano.reabrir.id)!;
 
+    await desfazerPapelDoDestinoTx(tx, animalId, removida.id, usuarioId);
     exigirAfetadas(await tx.destinoAnimal.deleteMany({ where: { id: removida.id, ate: null } }), 1);
     exigirAfetadas(await tx.destinoAnimal.updateMany({ where: { id: anterior.id, ate: { not: null } }, data: { ate: null } }), 1);
     const reaberta = { ...anterior, ate: null };

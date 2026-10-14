@@ -258,7 +258,7 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
       ? <button type="button" onClick={(e) => { e.stopPropagation(); navegarPara(`/pecuaria/rebanho/lotes/${item.lote!.id}`); }} className="break-words font-semibold text-mast hover:underline">{item.lote.nome}</button>
       : "—" },
     { chave: "aptidao", titulo: "Aptidão", larguraMinima: 100, celula: (item) => item.aptidao ? <Pill tone="brown">{rotuloAptidao(item.aptidao)}</Pill> : "—" },
-    { chave: "papel", titulo: "Papel", larguraMinima: 110, celula: (item) => item.papelReprodutivo && item.papelReprodutivo !== "NENHUM" ? <Pill tone="amber">{rotuloPapelReprodutivo(item.papelReprodutivo)}</Pill> : "—" },
+    { chave: "papel", titulo: "Papel", larguraMinima: 110, celula: (item) => item.papelReprodutivoEstado === "CONFLITO" ? <Pill tone="amber">Papel em revisão</Pill> : item.papelReprodutivo && item.papelReprodutivo !== "NENHUM" ? <Pill tone="amber">{rotuloPapelReprodutivo(item.papelReprodutivo)}</Pill> : "—" },
     { chave: "peso", titulo: "Último peso", larguraMinima: 130, celula: (item) => item.ultimoPeso ? <>{item.ultimoPeso.kg.toLocaleString("pt-BR")} kg<div className="text-xs text-ink-3">{formatarDataBR(item.ultimoPeso.data)}</div></> : "—" },
     { chave: "gmd", titulo: "GMD", larguraMinima: 110, celula: (item) => formatarGmd(item.gmdRecente) },
     ...(mostrarBaixa ? [{ chave: "baixa", titulo: "Baixa", larguraMinima: 150, celula: (item: AnimalResumo) => item.baixa ? <>{rotuloTipoBaixa(item.baixa.tipo)}<div className="text-xs text-ink-3">{formatarDataBR(item.baixa.data)}</div></> : "—" } as ColunaTabela<AnimalResumo>] : []),

@@ -2,10 +2,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Prisma } from "@prisma/client";
 
 const mocks = vi.hoisted(() => ({
-  tx: { tarefaSanitaria: { findFirst: vi.fn(), findUnique: vi.fn() }, destinoAnimal: { findFirst: vi.fn() }, tipoAplicacaoSanitaria: { findFirst: vi.fn() }, produto: { findUnique: vi.fn() },
+  tx: { tarefaProtocolo: { findFirst: vi.fn(), findUnique: vi.fn() }, destinoAnimal: { findFirst: vi.fn() }, tipoAplicacaoSanitaria: { findFirst: vi.fn() }, produto: { findUnique: vi.fn() },
     movimentoEstoque: { findMany: vi.fn(), create: vi.fn() }, aplicacaoProduto: { create: vi.fn() }, $executeRaw: vi.fn() },
   conferir: vi.fn(), travar: vi.fn(), auditar: vi.fn(), periodo: vi.fn(), base: vi.fn(), partida: vi.fn(), saldoPartida: vi.fn(),
 }));
+vi.mock("../protocolos/vinculos.js", () => ({ vincularFatoTarefaTx: vi.fn() }));
 vi.mock("../../../db.js", () => ({ prisma: {} }));
 vi.mock("../rebanho/regras.js", async (original) => ({ ...await original<typeof import("../rebanho/regras.js")>(), auditar: mocks.auditar, travarAnimais: mocks.travar }));
 vi.mock("../fatos.js", () => ({ conferirAnimalNoFato: mocks.conferir }));
@@ -18,8 +19,8 @@ import { prepararAplicacaoTx, criarAplicacaoTx, travarOrigensAplicacoesTx, type 
 const input: AplicacaoInput = { animalId: "animal", propriedadeId: 2, tarefaId: "tarefa", data: "2026-10-05", aplicadaEm: "2026-10-05T12:00:00Z", produtoId: "produto", nomeProdutoAplicado: "Vacina", tipoAplicacaoId: "tipo", dose: "0.1", unidadeDose: "ML", via: "Subcutânea", origemInsumo: "BAIXA_ESTOQUE", partidaId: "partida", estadoCarenciaLeite: "INFORMADO", estadoCarenciaCarne: "INFORMADO", carenciaLeiteHoras: 0, carenciaCarneHoras: 0 };
 beforeEach(() => {
   vi.resetAllMocks();
-  mocks.tx.tarefaSanitaria.findFirst.mockResolvedValue({ id: "tarefa" });
-  mocks.tx.tarefaSanitaria.findUnique.mockResolvedValue({ id: "tarefa", etapaId: "etapa", previstaPara: new Date("2026-10-05"),
+  mocks.tx.tarefaProtocolo.findFirst.mockResolvedValue({ id: "tarefa" });
+  mocks.tx.tarefaProtocolo.findUnique.mockResolvedValue({ id: "tarefa", etapaId: "etapa", previstaPara: new Date("2026-10-05"),
     parametros: { tipo: "APLICACAO", produtoId: "produto", dose: "0.1", unidade: "ML", via: "Subcutânea", tipoAplicacaoId: "tipo" },
     execucao: { id: "execucao", protocoloId: "versao", animalId: "animal", propriedadeId: 2, canceladaEm: null, operacaoServicoId: null }, etapa: { protocoloId: "versao" }, aplicacoes: [], exames: [], dispensadaEm: null });
   mocks.tx.tipoAplicacaoSanitaria.findFirst.mockResolvedValue({ id: "tipo", nome: "Vacina" });
@@ -68,8 +69,8 @@ describe("preparação compartilhada da aplicação", () => {
     expect(mocks.tx.movimentoEstoque.create).not.toHaveBeenCalled();
   });
   it("não aceita finalidade legada como forma de ocultar troca do tipo efetivo", async () => {
-    const tarefa = await mocks.tx.tarefaSanitaria.findUnique();
-    mocks.tx.tarefaSanitaria.findUnique.mockResolvedValue({ ...tarefa, parametros: { ...tarefa.parametros, tipoAplicacaoId: null, finalidade: "VACINA" } });
+    const tarefa = await mocks.tx.tarefaProtocolo.findUnique();
+    mocks.tx.tarefaProtocolo.findUnique.mockResolvedValue({ ...tarefa, parametros: { ...tarefa.parametros, tipoAplicacaoId: null, finalidade: "VACINA" } });
     const alterado = { ...input, finalidade: "VACINA" as const, tipoAplicacaoId: "a0300000-0000-4000-8000-000000000001" };
     mocks.tx.tipoAplicacaoSanitaria.findFirst.mockResolvedValue({ id: alterado.tipoAplicacaoId, nome: "Tratamento" });
     const previa = await prepararAplicacaoTx(tx(), alterado, null, true);

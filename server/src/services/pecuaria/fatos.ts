@@ -297,7 +297,7 @@ export async function conferirCadastroIndevidoSemFatosTx(
     tx.participanteIatf.count({ where: { animalId } }),
     tx.participanteVisita.count({ where: { animalId } }),
     tx.participacaoExposicao.count({ where: { animalId } }),
-    tx.periodoReprodutivoAnimal.count({ where: { animalId } }),
+    tx.periodoReprodutivoAnimal.count({ where: { animalId, destinoOrigemId: null, origem: "IDEAGRI" } }),
   ]);
   if (fatos.some(Boolean))
     throw new RebanhoError(

@@ -1,3 +1,4 @@
+import { CamposAvaliacao } from "./CamposAvaliacao";
 import { RegularizarOrigem, consumoMantidoUltimaAnulacao } from "./RegularizarOrigem";
 import { AlertasSanitarios } from "./AlertasSanitarios";
 import { useEffect, useRef, useState } from "react";
@@ -312,7 +313,7 @@ export function Transcricao({
     label: string,
     opcoes: [string, string][],
   ) => (
-    <select
+    <label>{label}<select
       aria-label={`${label} · ${p.snapshot.brinco ?? p.ordem}`}
       className={classeInput}
       disabled={!podeLancar || ocupado || p.status === "CONFIRMADO"}
@@ -326,7 +327,7 @@ export function Transcricao({
           {r}
         </option>
       ))}
-    </select>
+    </select></label>
   );
   return (
     <Panel className="mt-5">
@@ -468,19 +469,13 @@ export function Transcricao({
                     )}
                   {atividade.tipo === "AVALIACAO_REPRODUTIVA" ? (
                     <>
-                      {select(p, "resultado", "Resultado", [
-                        ["POSITIVO", "P+"],
-                        ["RECONFIRMACAO", "OK"],
-                        ["SEXAGEM", "Sexo fetal"],
-                        ["NEGATIVO", "Negativo"],
-                        ["INCONCLUSIVO", "Inconclusivo"],
-                        ["NAO_AVALIADO", "Não avaliado"],
-                      ])}
-                      {rascunhos[p.id]?.resultado === "SEXAGEM" &&
-                        select(p, "sexoFetal", "Sexo fetal", [
-                          ["F", "Fêmea"],
-                          ["M", "Macho"],
-                        ])}
+                      <fieldset disabled={!podeLancar || ocupado || p.status === "CONFIRMADO"} onBlur={() => void persistir(p)}>
+                        <CamposAvaliacao dados={rascunhos[p.id] ?? {}} onChange={mudanca => {
+                          rascunhosAtuais.current[p.id] = { ...rascunhosAtuais.current[p.id], ...Object.fromEntries(Object.entries(mudanca).map(([k,v]) => [k,v ?? ""])), cienciaSanitaria: false };
+                          setRascunhos({ ...rascunhosAtuais.current });
+                          setAvisos(r => ({ ...r, [p.id]: "Alterações não salvas" }));
+                        }} />
+                      </fieldset>
                     </>
                   ) : (
                     <>
@@ -570,12 +565,6 @@ export function Transcricao({
                           `Previsto ${t.inicioPrevisto.slice(0, 10)}`,
                         ]),
                     )}
-                  {atividade.tipo === "AVALIACAO_REPRODUTIVA" &&
-                    select(p, "conduta", "Conduta", [
-                      ["AGUARDAR", "Aguardar"],
-                      ["IATF", "Indicar IATF"],
-                      ["DESCARTE", "Descarte reprodutivo"],
-                    ])}
                   {["AVALIACAO_REPRODUTIVA", "INICIAR_IATF"].includes(atividade.tipo) && (
                     <>
                     {((atividade.tipo === "AVALIACAO_REPRODUTIVA" && rascunhos[p.id]?.conduta === "IATF") || atividade.tipo === "INICIAR_IATF") && <AlertasSanitarios animalId={p.animalId} data={visita.data.slice(0,10)} acao="IATF" />}
@@ -680,10 +669,10 @@ export function Transcricao({
           </PainelCadastro>
         )}
       {preparar &&
-        ["EXAME_SANITARIO", "INICIAR_SANITARIO"].includes(atividade.tipo) && (
+        (["EXAME_SANITARIO", "INICIAR_SANITARIO"].includes(atividade.tipo) || (atividade.tipo === "TAREFA_IATF" && tarefaPreparada?.tipo === "EXAME")) && (
           <FormFatoSanitario
             dataInicial={visita.data.slice(0, 10)}
-            tipo={atividade.tipo === "EXAME_SANITARIO" ? "exame" : "protocolo"}
+            tipo={atividade.tipo === "EXAME_SANITARIO" || tarefaPreparada?.tipo === "EXAME" ? "exame" : "protocolo"}
             animalInicial={preparar.animalId}
             fixo
             onFechar={() => setPreparar(null)}

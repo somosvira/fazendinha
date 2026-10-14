@@ -5,6 +5,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../../../db.js";
 import { auditar, RebanhoError, travarAnimais } from "../rebanho/regras.js";
 import { transacaoPecuaria } from "../transacao.js";
+import { recuperarRequisicaoTx, guardarRequisicaoTx } from "../requisicoes.js";
 import { nomeExameHistorico } from "./exames.js";
 import { confirmarProcedimentosServicoSchema, consultaProcedimentosServicoSchema, type ConsultaProcedimentosServico, type ConfirmarProcedimentosServico } from "./servicos.schemas.js";
 
@@ -32,17 +33,17 @@ async function fatos(tx: Db, id: string, propriedadeId: number, filtro?: Consult
   const data = { ...(filtro?.inicio ? { gte: new Date(`${filtro.inicio}T00:00:00Z`) } : {}), ...(filtro?.fim ? { lte: new Date(`${filtro.fim}T00:00:00Z`) } : {}) };
   const take = filtro ? filtro.pagina * filtro.limite : undefined;
   const aWhere = { ...base, ...(elegiveis ? { status: "VALIDO" as const } : {}), ...(Object.keys(data).length ? { data } : {}) };
-  const pWhere = { ...base, ...(elegiveis ? { canceladaEm: null, ...realizado } : {}), ...(Object.keys(data).length ? { inicio: data } : {}) };
+  const pWhere = { ...base, protocolo: { tipo: "SANITARIO" as const }, ...(elegiveis ? { canceladaEm: null, ...realizado } : {}), ...(Object.keys(data).length ? { inicio: data } : {}) };
   const { animal: buscaAnimal, ...tentativaBase } = aWhere;
   const candidatos = buscaAnimal ? await tx.animal.findMany({ where: buscaAnimal, select: { id: true } }) : null;
   const tWhere = { ...tentativaBase, ...(candidatos ? { animalId: { in: candidatos.map((a) => a.id) } } : {}) };
   const [aplicacoes, exames, protocolos, na, ne, np, tentativas, nt] = await Promise.all([
     filtro?.tipo && filtro.tipo !== "APLICACAO" ? [] : tx.aplicacaoProduto.findMany({ where: aWhere, include: { ...identidade, tarefa: { select: { execucaoId: true } } }, orderBy: [{ data: "desc" }, { id: "asc" }], take }),
-    filtro?.tipo && filtro.tipo !== "EXAME" ? [] : tx.exameAnimal.findMany({ where: aWhere, include: { ...identidade, tarefa: { select: { execucaoId: true } }, tipoExame: { select: { nome: true } } }, orderBy: [{ data: "desc" }, { id: "asc" }], take }),
-    filtro?.tipo && filtro.tipo !== "PROTOCOLO" ? [] : tx.execucaoProtocoloSanitario.findMany({ where: pWhere, include: { ...identidade, protocolo: { select: { nome: true } }, tarefas: { where: realizado.tarefas.some, select: { id: true } } }, orderBy: [{ inicio: "desc" }, { id: "asc" }], take }),
+    filtro?.tipo && filtro.tipo !== "EXAME" ? [] : tx.exameAnimal.findMany({ where: { ...aWhere, realizacao: { not: "NAO_REALIZADO" } }, include: { ...identidade, tarefa: { select: { execucaoId: true } }, tipoExame: { select: { nome: true } } }, orderBy: [{ data: "desc" }, { id: "asc" }], take }),
+    filtro?.tipo && filtro.tipo !== "PROTOCOLO" ? [] : tx.participacaoProtocolo.findMany({ where: pWhere, include: { ...identidade, protocolo: { select: { nome: true } }, tarefas: { where: realizado.tarefas.some, select: { id: true } } }, orderBy: [{ inicio: "desc" }, { id: "asc" }], take }),
     !filtro || filtro.tipo && filtro.tipo !== "APLICACAO" ? 0 : tx.aplicacaoProduto.count({ where: aWhere }),
-    !filtro || filtro.tipo && filtro.tipo !== "EXAME" ? 0 : tx.exameAnimal.count({ where: aWhere }),
-    !filtro || filtro.tipo && filtro.tipo !== "PROTOCOLO" ? 0 : tx.execucaoProtocoloSanitario.count({ where: pWhere }),
+    !filtro || filtro.tipo && filtro.tipo !== "EXAME" ? 0 : tx.exameAnimal.count({ where: { ...aWhere, realizacao: { not: "NAO_REALIZADO" } } }),
+    !filtro || filtro.tipo && filtro.tipo !== "PROTOCOLO" ? 0 : tx.participacaoProtocolo.count({ where: pWhere }),
     filtro?.tipo && filtro.tipo !== "TENTATIVA" ? [] : tx.tentativaReprodutiva.findMany({ where: tWhere, orderBy: [{ data: "desc" }, { id: "asc" }], take }),
     !filtro || filtro.tipo && filtro.tipo !== "TENTATIVA" ? 0 : tx.tentativaReprodutiva.count({ where: tWhere }),
   ]);
@@ -91,12 +92,11 @@ export async function confirmarProcedimentosServico(input: ConfirmarProcedimento
   return transacaoPecuaria(async (tx) => {
     const previa = await fatos(tx, input.servicoId, input.propriedadeId, undefined, input.itens.map((i) => i.id));
     await travarAnimais(tx, previa.itens.map((i) => i.animalId));
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`pec-requisicao:${input.chaveIdempotencia}`}))`;
+    const identidadeRequisicao = { chave: input.chaveIdempotencia, usuarioId, propriedadeId: input.propriedadeId, operacao: "PROCEDIMENTOS_SERVICO", hashPayload };
+    const anterior = await recuperarRequisicaoTx(tx, identidadeRequisicao);
     await tx.$queryRaw`SELECT id FROM "Operacao" WHERE id = ${input.servicoId} FOR UPDATE`;
     const op = await servico(tx, input.servicoId, input.propriedadeId);
-    const anterior = await tx.requisicaoPecuaria.findUnique({ where: { chave: input.chaveIdempotencia } });
     if (anterior) {
-      if (anterior.hashPayload !== hashPayload || anterior.usuarioId !== usuarioId || anterior.propriedadeId !== input.propriedadeId || anterior.operacao !== "PROCEDIMENTOS_SERVICO") throw new RebanhoError("CONFLITO", "Chave de reenvio usada com outros dados");
       return { servicoId: op.id, quantidade: input.itens.length, salvo: true, reenvio: true, itens: previa.itens.map((i) => ({ id: i.id, tipo: i.tipo, valor: podeEditarValores ? i.valor : null })) };
     }
     if (op.status !== "CONFIRMADA") throw new RebanhoError("CONFLITO", "Este Serviço foi cancelado; recarregue a consulta");
@@ -113,7 +113,7 @@ export async function confirmarProcedimentosServico(input: ConfirmarProcedimento
       await exigirPeriodoAberto(tx, input.propriedadeId, dataFato);
     }
     const execucaoIds = [...new Set(alterados.flatMap((i) => i.execucaoId ? [i.execucaoId] : []))];
-    const conflitos = execucaoIds.length ? await tx.execucaoProtocoloSanitario.findMany({ where: { id: { in: execucaoIds }, propriedadeId: input.propriedadeId, operacaoServicoId: { not: op.id }, NOT: { operacaoServicoId: null } }, select: { id: true } }) : [];
+    const conflitos = execucaoIds.length ? await tx.participacaoProtocolo.findMany({ where: { id: { in: execucaoIds }, propriedadeId: input.propriedadeId, operacaoServicoId: { not: op.id }, NOT: { operacaoServicoId: null } }, select: { id: true } }) : [];
     if (conflitos.length) throw new RebanhoError("CONFLITO", "A execução está vinculada a outro Serviço");
     const protocolosAlterados = alterados.filter((i) => i.tipo === "PROTOCOLO").map((i) => i.id);
     if (protocolosAlterados.length) {
@@ -127,10 +127,10 @@ export async function confirmarProcedimentosServico(input: ConfirmarProcedimento
       if (item.tipo === "APLICACAO") await tx.aplicacaoProduto.update({ where: { id: item.id }, data });
       else if (item.tipo === "EXAME") await tx.exameAnimal.update({ where: { id: item.id }, data });
       else if (item.tipo === "TENTATIVA") await tx.tentativaReprodutiva.update({ where: { id: item.id }, data });
-      else await tx.execucaoProtocoloSanitario.update({ where: { id: item.id }, data });
+      else await tx.participacaoProtocolo.update({ where: { id: item.id }, data });
       await auditar(tx, { entidade: item.tipo === "APLICACAO" ? "AplicacaoProduto" : item.tipo === "EXAME" ? "ExameAnimal" : item.tipo === "TENTATIVA" ? "TentativaReprodutiva" : "ExecucaoProtocoloSanitario", entidadeId: item.id, animalId: item.animalId, propriedadeId: input.propriedadeId, usuarioId, acao: "PROCEDIMENTO_SERVICO", antes: selecionados.itens.find((i) => i.id === item.id), depois: { servicoId: op.id, valor: item.valor, motivo: input.motivo } });
     }
-    await tx.requisicaoPecuaria.create({ data: { chave: input.chaveIdempotencia, usuarioId, propriedadeId: input.propriedadeId, operacao: "PROCEDIMENTOS_SERVICO", hashPayload, resultadoIds: { servicoId: op.id, ids: alterados.map((i) => i.id) } } });
+    await guardarRequisicaoTx(tx, identidadeRequisicao, { servicoId: op.id, ids: alterados.map((i) => i.id) });
     return { servicoId: op.id, quantidade: alterados.length, salvo: true, reenvio: false, itens: alterados.map((i) => ({ id: i.id, tipo: i.tipo, valor: podeEditarValores ? i.valor : null })) };
   });
 }

@@ -30,7 +30,8 @@
     "test:financeiro:integration": "node --env-file=.env scripts/qa-financeiro.mjs",
     "import:pecuaria:v4": "tsx --env-file=.env prisma/import-pecuaria-v4.ts",
     "import:pecuaria:v4:typecheck": "tsc -p tsconfig.import-v4.json",
-    "test:import:pecuaria:v4": "vitest run --config vitest.import-v4.config.ts"
+    "test:import:pecuaria:v4": "vitest run --config vitest.import-v4.config.ts",
+    "previa:pecuaria:padronizacao": "tsx --env-file=.env scripts/previa-padronizacao.ts"
   },
   "prisma": {
     "seed": "tsx --env-file=.env prisma/seedatev3.ts"

@@ -1,3 +1,5 @@
+import * as exames from "../../services/pecuaria/sanidade/exames.js";
+import { camposExameSchema } from "../../services/pecuaria/exames/formatos.js";
 import { Hono, type Context, type MiddlewareHandler } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
@@ -326,15 +328,27 @@ export const reproducaoRouter = new Hono()
       return falhaV4(c, e);
     }
   })
+  .get("/tipos-exame", async c => {
+    try { await resolverEscopoLeitura(c); return c.json(await exames.listarTiposExame(c.req.query("incluirInativos") === "true", "REPRODUTIVO")); }
+    catch (e) { return falhaV4(c, e); }
+  })
+  .post("/tipos-exame", validarV4(z.object({ versaoAnteriorId: z.string().uuid().optional(), nome: z.string().trim().min(2).max(120), tipoResultado: z.literal("MULTIPLO"), campos: camposExameSchema, unidade: z.string().max(30).nullish(), opcoes: z.array(z.string()).nullish() }).strict()), async c => {
+    try { await resolverEscopoLeitura(c); return c.json(await exames.criarTipoExame(c.req.valid("json"), usuarioV4(c), "REPRODUTIVO"), 201); }
+    catch (e) { return falhaV4(c, e); }
+  })
+  .patch("/tipos-exame/:id", validarV4(z.object({ nome: z.string().trim().min(2).max(120).optional(), ativo: z.boolean().optional(), tipoResultado: z.literal("MULTIPLO").optional(), campos: camposExameSchema.optional(), unidade: z.string().max(30).nullish(), opcoes: z.array(z.string()).nullish() }).strict()), async c => {
+    try { await resolverEscopoLeitura(c); const id = z.string().uuid().parse(c.req.param("id"));
+      if (!await prisma.tipoExame.findFirst({ where: { id, contexto: { in: ["REPRODUTIVO", "COMPARTILHADO"] } } })) throw new RebanhoError("NAO_ENCONTRADO", "Tipo de exame reprodutivo não encontrado");
+      return c.json(await exames.editarTipoExame(id, c.req.valid("json"), usuarioV4(c)));
+    } catch (e) { return falhaV4(c, e); }
+  })
   .get("/protocolos", async (c) => {
     try {
       await resolverEscopoLeitura(c);
       return c.json(
         apresentarV4(
           c,
-          await prisma.protocoloIatf.findMany({
-            orderBy: [{ nome: "asc" }, { versao: "desc" }],
-          }),
+          await iatf.listarProtocolos(),
         ),
       );
     } catch (e) {
@@ -343,7 +357,7 @@ export const reproducaoRouter = new Hono()
   })
   .post("/protocolos", validarV4(s.protocoloSchema), async (c) => {
     try {
-      await resolverEscopoEscrita(c);
+      await resolverEscopoLeitura(c);
       return c.json(
         await iatf.criarProtocolo(c.req.valid("json"), usuarioV4(c)),
         201,
@@ -351,6 +365,18 @@ export const reproducaoRouter = new Hono()
     } catch (e) {
       return falhaV4(c, e);
     }
+  })
+  .patch("/protocolos/:id", validarV4(s.protocoloSchema), async c => {
+    try { await resolverEscopoLeitura(c); return c.json(await iatf.editarProtocolo(z.string().uuid().parse(c.req.param("id")), c.req.valid("json"), usuarioV4(c))); }
+    catch (e) { return falhaV4(c, e); }
+  })
+  .post("/protocolos/:id/publicar", async c => {
+    try { await resolverEscopoLeitura(c); return c.json(await iatf.publicarProtocolo(z.string().uuid().parse(c.req.param("id")), usuarioV4(c))); }
+    catch (e) { return falhaV4(c, e); }
+  })
+  .post("/protocolos/:id/inativar", async c => {
+    try { await resolverEscopoLeitura(c); return c.json(await iatf.inativarProtocolo(z.string().uuid().parse(c.req.param("id")), usuarioV4(c))); }
+    catch (e) { return falhaV4(c, e); }
   })
   .get("/programacoes", async (c) => {
     try {

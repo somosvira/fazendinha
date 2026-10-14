@@ -1,3 +1,4 @@
+import { criarTipoExame, editarTipoExame, corrigirExame } from "../sanidade/exames.js";
 import { randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { prisma } from "../../../db.js";
@@ -65,7 +66,7 @@ comBanco("IATF planejada, executada e reentrada — banco descartável", () => {
         destinos: {
           create: {
             aptidao: "LEITE",
-            papelReprodutivo: "NENHUM",
+
             desde: new Date("2024-01-01"),
           },
         },
@@ -95,6 +96,7 @@ comBanco("IATF planejada, executada e reentrada — banco descartável", () => {
         valorTotal: 200,
       },
     });
+    const tipoExame = await criarTipoExame({ nome: `Exame no protocolo reprodutivo ${token}`, tipoResultado:"NUMERO", unidade:"mg" }, null);
     const protocolo = await criarProtocolo(
       {
         nome: `Protocolo IATF ${token}`,
@@ -125,10 +127,12 @@ comBanco("IATF planejada, executada e reentrada — banco descartável", () => {
               quantidade: 1,
             },
           },
+          { nome:"Exame sanitário", tipo:"EXAME", intervalo:2, unidade:"DIAS", planoExame:{tipoExameId:tipoExame.id} },
         ],
       },
       null,
     );
+    await expect(editarTipoExame(tipoExame.id,{unidade:"kg"},null)).rejects.toMatchObject({code:"CONFLITO"});
     await expect(
       atualizarProduto(produto.id, { usoSanitario: false }),
     ).rejects.toMatchObject({ code: "CONFLITO" });
@@ -288,6 +292,15 @@ comBanco("IATF planejada, executada e reentrada — banco descartável", () => {
     await expect(regularizarTarefa(ia.id,{propriedadeId:sitio.id,chave:randomUUID(),acao:"REABRIR",motivo:"Tentativa de reabrir com consumo conservado",cienciaNaoExecutado:true},null)).rejects.toMatchObject({code:"VALIDACAO",campo:"cienciaNaoExecutado"});
     await regularizarTarefa(ia.id,{propriedadeId:sitio.id,chave:randomUUID(),acao:"ENCERRAR_SEM_SUBSTITUICAO",motivo:"Conservar dose utilizada e encerrar correção"},null);
     expect(await prisma.movimentoEstoque.count({where:{produtoId:semen.id,reversaoDeId:{not:null}}})).toBe(0);
+    const tarefaExame = await prisma.tarefaIatf.findUniqueOrThrow({ where: { id: tarefas[3].id } });
+    const exameExecutado = await executarTarefa(tarefaExame.id, { chave:randomUUID(), propriedadeId:sitio.id, realizadaEm:tarefaExame.previstaEm.toISOString(), dados:{tipoExameId:tipoExame.id,resultadoNumero:0} }, null);
+    expect(exameExecutado.exameId).toBeTruthy();
+    expect(exameExecutado.avaliacaoId).toBeNull();
+    expect((await prisma.exameAnimal.findUniqueOrThrow({where:{id:exameExecutado.exameId!}})).resultadoNumero?.toNumber()).toBe(0);
+    await corrigirExame(exameExecutado.exameId!,sitio.id,{anular:true,motivo:"Amostra de outro animal registrada indevidamente"},null);
+    expect((await prisma.tarefaIatf.findUniqueOrThrow({where:{id:tarefaExame.id}})).regularizacaoPendente).toBe(true);
+    await regularizarTarefa(tarefaExame.id,{propriedadeId:sitio.id,chave:randomUUID(),acao:"REABRIR",motivo:"Confirmada ausência de exame no animal",cienciaNaoExecutado:true},null);
+    expect((await prisma.tarefaIatf.findUniqueOrThrow({where:{id:tarefaExame.id}})).exameId).toBeNull();
     await retirarParticipante(
       participante.id,
       sitio.id,

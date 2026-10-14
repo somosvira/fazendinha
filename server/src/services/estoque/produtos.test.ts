@@ -14,7 +14,7 @@ vi.mock("../../db.js", () => {
     protocoloIatf: {count:mocks.protocoloIatfCount},
     materialGenetico: { count: vi.fn().mockResolvedValue(0) },
     aplicacaoProduto: { count: vi.fn().mockResolvedValue(0) },
-    etapaProtocoloSanitario: { count: vi.fn().mockResolvedValue(0) },
+    etapaProtocolo: { count: vi.fn().mockResolvedValue(0) },
     itemFechamentoConsumo: { count: vi.fn().mockResolvedValue(0) },
     produto: { create: mocks.produtoCreate, findUnique: mocks.produtoFindUnique, update: mocks.produtoUpdate },
     parceiro: { findMany: mocks.parceiroFindMany },

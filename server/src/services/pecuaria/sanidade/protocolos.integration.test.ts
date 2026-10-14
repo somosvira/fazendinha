@@ -23,14 +23,14 @@ afterAll(async () => {
   await prisma.auditoriaPecuaria.deleteMany({ where: { OR: [
     { animalId: { in: animalIds } }, { entidadeId: { in: [...protocoloIds, ...tipoIds, ...execucaoIds] } },
   ] } });
-  await prisma.exameAnimal.deleteMany({ where: { animalId: { in: animalIds } } });
+  await prisma.vinculoTarefaProtocolo.deleteMany({ where: { exame: { animalId: { in: animalIds } } } }); await prisma.exameAnimal.deleteMany({ where: { animalId: { in: animalIds } } });
   await prisma.baixaAnimal.deleteMany({ where: { animalId: { in: animalIds } } });
-  await prisma.tarefaSanitaria.deleteMany({ where: { execucaoId: { in: execucaoIds } } });
-  await prisma.execucaoProtocoloSanitario.deleteMany({ where: { id: { in: execucaoIds } } });
-  await prisma.etapaProtocoloSanitario.deleteMany({ where: { protocoloId: { in: protocoloIds } } });
-  await prisma.protocoloSanitario.deleteMany({ where: { id: { in: protocoloIds } } });
+  await prisma.tarefaProtocolo.deleteMany({ where: { execucaoId: { in: execucaoIds } } });
+  await prisma.participacaoProtocolo.deleteMany({ where: { id: { in: execucaoIds } } });
+  await prisma.etapaProtocolo.deleteMany({ where: { protocoloId: { in: protocoloIds } } });
+  await prisma.protocolo.deleteMany({ where: { id: { in: protocoloIds } } });
   await prisma.tipoExame.deleteMany({ where: { id: { in: tipoIds } } });
-  await prisma.destinoAnimal.deleteMany({ where: { animalId: { in: animalIds } } });
+  await prisma.periodoReprodutivoAnimal.deleteMany({ where: { animalId: { in: animalIds } } }); await prisma.destinoAnimal.deleteMany({ where: { animalId: { in: animalIds } } });
   await prisma.localizacaoAnimal.deleteMany({ where: { animalId: { in: animalIds } } });
   await prisma.movimentacaoAnimal.deleteMany({ where: { animalId: { in: animalIds } } });
   await prisma.movimentacao.deleteMany({ where: { propriedadeDestinoId: { in: propriedadeIds } } });
@@ -79,21 +79,21 @@ describeComBanco("protocolo e exame com PostgreSQL", () => {
     const exame = { animalId, propriedadeId, tipoExameId: tipoIds[0], data };
     const chaveProtocolo = crypto.randomUUID();
     const chaveExame = crypto.randomUUID();
-    const antesP = await prisma.execucaoProtocoloSanitario.count({ where: { animalId } });
+    const antesP = await prisma.participacaoProtocolo.count({ where: { animalId } });
     const antesE = await prisma.exameAnimal.count({ where: { animalId } });
     const invalidosP = { chave: crypto.randomUUID(), propriedadeId, itens: [protocolo, { ...protocolo, animalId: segundo.id, protocoloId: crypto.randomUUID() }] };
     const invalidosE = { chave: crypto.randomUUID(), propriedadeId, itens: [exame, { ...exame, animalId: segundo.id, tipoExameId: crypto.randomUUID() }] };
     await expect(iniciarExecucaoColetivo(invalidosP, null)).rejects.toThrow();
     await expect(registrarExameColetivo(invalidosE, null)).rejects.toThrow();
-    expect(await prisma.execucaoProtocoloSanitario.count({ where: { animalId } })).toBe(antesP);
+    expect(await prisma.participacaoProtocolo.count({ where: { animalId } })).toBe(antesP);
     expect(await prisma.exameAnimal.count({ where: { animalId } })).toBe(antesE);
     const p = { chave: chaveProtocolo, propriedadeId, itens: [protocolo] };
     const e = { chave: chaveExame, propriedadeId, itens: [exame] };
     expect(await iniciarExecucaoColetivo(p, null)).toEqual(await iniciarExecucaoColetivo(p, null));
     expect(await registrarExameColetivo(e, null)).toEqual(await registrarExameColetivo(e, null));
-    expect(await prisma.execucaoProtocoloSanitario.count({ where: { animalId } })).toBe(antesP + 1);
+    expect(await prisma.participacaoProtocolo.count({ where: { animalId } })).toBe(antesP + 1);
     expect(await prisma.exameAnimal.count({ where: { animalId } })).toBe(antesE + 1);
-    const execucoes = await prisma.execucaoProtocoloSanitario.findMany({ where: { animalId }, select: { id: true } });
+    const execucoes = await prisma.participacaoProtocolo.findMany({ where: { animalId }, select: { id: true } });
     execucaoIds.push(...execucoes.map((v) => v.id).filter((id) => !execucaoIds.includes(id)));
   });
   it("anulação preserva tentativa; agenda acompanha transferência e fatos mantêm sítio original", async () => {

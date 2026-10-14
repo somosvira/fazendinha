@@ -1,3 +1,5 @@
+import { resolverIdReprodutivoTx } from "../protocolos/reproducao.js";
+import { resolverPapelReprodutivo } from "../rebanho/papel-reprodutivo.calc.js";
 import { eventoRegularizacao, validarSubstitutoTx, substituirEvidenciaAplicacaoTx, listarSubstitutosTx, type RegularizacaoInput } from "./regularizacao.js";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
@@ -119,12 +121,16 @@ export async function adicionarAtividade(
           "Animal fora do sítio na data de referência da visita",
           "participantes",
         );
+      if (item.tarefaSanitariaId && item.tarefaIatfId) erro("Selecione somente uma tarefa por atendimento", "participantes");
+      if (item.tarefaSanitariaId && !["APLICACAO_SANITARIA", "EXAME_SANITARIO"].includes(input.tipo)) erro("Tarefa sanitária incompatível com a atividade", "participantes");
+      if (item.tarefaIatfId && input.tipo !== "TAREFA_IATF") erro("Tarefa reprodutiva incompatível com a atividade", "participantes");
       if (item.tarefaSanitariaId) {
-        const tarefa = await tx.tarefaSanitaria.findFirst({
+        const tarefa = await tx.tarefaProtocolo.findFirst({
           where: {
             id: item.tarefaSanitariaId,
             dispensadaEm: null,
             execucao: {
+              protocolo: { tipo: "SANITARIO" },
               animalId: item.animalId,
               propriedadeId: input.propriedadeId,
               canceladaEm: null,
@@ -166,8 +172,7 @@ export async function adicionarAtividade(
             atividadeId: atividade.id,
             animalId: animal.id,
             ordem: i + 1,
-            tarefaSanitariaId: item.tarefaSanitariaId,
-            tarefaIatfId: item.tarefaIatfId,
+            tarefaId: item.tarefaIatfId ? await resolverIdReprodutivoTx(tx, "tarefa", item.tarefaIatfId) : item.tarefaSanitariaId,
             snapshot: json(snapshot),
           },
         }),
@@ -226,7 +231,7 @@ export async function detalheVisita(
     ...visita,
     atividades: atividades.map((a) => ({
       ...a,
-      participantes: participantes.filter((p) => p.atividadeId === a.id),
+      participantes: participantes.filter((p) => p.atividadeId === a.id).map(p => ({ ...p, tarefaSanitariaId: a.tipo !== "TAREFA_IATF" ? p.tarefaId : null, tarefaIatfId: a.tipo === "TAREFA_IATF" ? p.tarefaId : null })),
     })),
     impressoes,
   };
@@ -375,8 +380,8 @@ export async function confirmarAtividade(
                     data:
                       (i.dados?.data as string | undefined) ??
                       v.data.toISOString().slice(0, 10),
-                    ...(p.tarefaSanitariaId
-                      ? { tarefaId: p.tarefaSanitariaId }
+                    ...(p.tarefaId
+                      ? { tarefaId: p.tarefaId }
                       : {}),
                   });
                 })
@@ -442,8 +447,8 @@ export async function confirmarAtividade(
                 tx,
                 aplicacaoSchema.parse({
                   ...dados,
-                  ...(p.tarefaSanitariaId
-                    ? { tarefaId: p.tarefaSanitariaId }
+                  ...(p.tarefaId
+                    ? { tarefaId: p.tarefaId }
                     : {}),
                 }),
                 usuarioId,
@@ -461,8 +466,8 @@ export async function confirmarAtividade(
                 tx,
                 exameSchema.parse({
                   ...camposExame,
-                  ...(p.tarefaSanitariaId
-                    ? { tarefaId: p.tarefaSanitariaId }
+                  ...(p.tarefaId
+                    ? { tarefaId: p.tarefaId }
                     : {}),
                 }),
                 usuarioId,
@@ -494,12 +499,12 @@ export async function confirmarAtividade(
               );
               fatoTipo = "ExecucaoProtocoloSanitario";
             } else if (atividade.tipo === "TAREFA_IATF") {
-              if (!p.tarefaIatfId) erro("Tarefa IATF não selecionada");
+              if (!p.tarefaId) erro("Tarefa IATF não selecionada");
               if (typeof bruto.realizadaEm !== "string")
                 erro("Informe horário da execução", "realizadaEm");
               fato = await executarTarefaTx(
                 tx,
-                p.tarefaIatfId,
+                p.tarefaId,
                 {
                   propriedadeId: input.propriedadeId,
                   realizadaEm: bruto.realizadaEm,
@@ -624,7 +629,7 @@ function correspondeCriterios(a: Record<string, unknown>, c: CriteriosVisita) {
 }
 async function carregarContextosVisitaTx(tx: Prisma.TransactionClient, ids: string[], data: Date) {
   const periodo = { desde: { lte: data }, OR: [{ ate: null }, { ate: { gt: data } }] };
-  const [animais, locais, estados, categorias, manuais, destinos, ocorrencias, regras] = await Promise.all([
+  const [animais, locais, estados, categorias, manuais, destinos, ocorrencias, regras, papeis] = await Promise.all([
     tx.animal.findMany({ where: { id: { in: ids } } }),
     tx.localizacaoAnimal.findMany({ where: { animalId: { in: ids }, ...periodo }, include: { lote: true } }),
     obterEstadosReprodutivosTx(tx, ids, data),
@@ -633,8 +638,9 @@ async function carregarContextosVisitaTx(tx: Prisma.TransactionClient, ids: stri
     tx.destinoAnimal.findMany({ where: { animalId: { in: ids }, ...periodo } }),
     tx.ocorrenciaSanitaria.findMany({ where: { animalId: { in: ids }, status: "VALIDO", inicio: { lte: data }, OR: [{ fim: null }, { fim: { gte: data } }] } }),
     tx.regraSanitariaReprodutiva.findMany({ where: { ativo: true }, orderBy: { id: "asc" } }),
+    tx.periodoReprodutivoAnimal.findMany({ where: { animalId: { in: ids }, revogadoEm: null } }),
   ]);
-  return { animais, locais, estados, categorias, manuais, destinos, ocorrencias, regras };
+  return { animais, locais, estados, categorias, manuais, destinos, ocorrencias, regras, papeis };
 }
 async function contextoAnimalVisitaTx(tx: Prisma.TransactionClient, animalId: string, propriedadeId: number, data: Date, cache?: Awaited<ReturnType<typeof carregarContextosVisitaTx>>): Promise<Record<string, unknown>> {
   const dados = cache ?? await carregarContextosVisitaTx(tx, [animalId], data);
@@ -655,7 +661,8 @@ async function contextoAnimalVisitaTx(tx: Prisma.TransactionClient, animalId: st
     gestacao: estado.gestacao, ultimoParto: estado.ultimoParto, restricoes: estado.restricoes,
     restricoesSanitarias: regras.filter(r => ocorrencias.some(o => o.doencaId === r.doencaId)),
     categoria: avaliarCategoria({ ...animal, partos: estado.partos }, categorias, manual?.categoria ?? null, data).categoria,
-    aptidao: destino?.aptidao ?? null, papelReprodutivo: destino?.papelReprodutivo ?? null,
+    aptidao: destino?.aptidao ?? null, papelReprodutivo: resolverPapelReprodutivo(dados.papeis.filter(p => p.animalId === animalId), data).papel,
+    papelReprodutivoEstado: resolverPapelReprodutivo(dados.papeis.filter(p => p.animalId === animalId), data).estado,
     lote: local?.lote ? { id: local.lote.id, nome: local.lote.nome } : null,
     localizacaoId: local?.id ?? null, dataReferencia: data.toISOString().slice(0,10), atualizadoEm: animal.atualizadoEm.toISOString(),
     diasTentativa: dias(estado.ultimaTentativa?.data), diasParto: dias(estado.ultimoParto?.data), diasGestacao: dias(estado.gestacao?.confirmadaEm),
@@ -674,7 +681,7 @@ export async function sugestoesVisita(
     protocolosIatf,
     locais, categorias,
   ] = await Promise.all([
-    prisma.tarefaSanitaria.findMany({
+    prisma.tarefaProtocolo.findMany({
       where: {
         previstaPara: { lte: dia(data) },
         dispensadaEm: null,
@@ -690,7 +697,7 @@ export async function sugestoesVisita(
       take: 500,
     }),
     prisma.programacaoIatf.findMany({ where: { ...scope, status: "ABERTA" } }),
-    prisma.protocoloSanitario.findMany({
+    prisma.protocolo.findMany({
       where: { publicadoEm: { not: null }, ativo: true },
       orderBy: { nome: "asc" },
     }),
@@ -820,8 +827,9 @@ export async function regularizarParticipanteVisita(id:string, participanteId:st
     return operacaoIdempotenteTx(tx,{...input,participanteId},usuarioId,"REGULARIZACAO_VISITA",async()=>{
       const atual=await tx.participanteVisita.findUniqueOrThrow({where:{id:participanteId}});
       if(!atual.regularizacaoPendente || atual.status !== "CONFIRMADO")erro("Participante não exige regularização");
-      if(atual.tarefaIatfId){
-        await regularizarTarefaTx(tx,atual.tarefaIatfId,input,usuarioId);
+      const atividade = await tx.atividadeVisita.findUniqueOrThrow({ where: { id: atual.atividadeId } });
+      if(atividade.tipo === "TAREFA_IATF" && atual.tarefaId){
+        await regularizarTarefaTx(tx,atual.tarefaId,input,usuarioId);
         return tx.participanteVisita.findUniqueOrThrow({where:{id:participanteId}});
       }
       const historicoRegularizacao=eventoRegularizacao(atual.historicoRegularizacao,input,atual,usuarioId);
@@ -848,6 +856,7 @@ export async function substitutosParticipanteVisita(id: string, participanteId: 
   const p = await prisma.participanteVisita.findUnique({ where: { id: participanteId } });
   if (!p || !await prisma.atividadeVisita.count({ where: { id: p.atividadeId, visitaId: id } })) throw new RebanhoError("NAO_ENCONTRADO", "Participante não pertence à visita");
   if (!p.regularizacaoPendente) return [];
-  if (p.tarefaIatfId) return substitutosTarefa(p.tarefaIatfId, propriedadeId);
+  const atividade = await prisma.atividadeVisita.findUniqueOrThrow({ where: { id: p.atividadeId } });
+  if (atividade.tipo === "TAREFA_IATF" && p.tarefaId) return substitutosTarefa(p.tarefaId, propriedadeId);
   return listarSubstitutosTx(prisma, p.fatoTipo ?? "", p.fatoId, p.animalId, propriedadeId);
 }

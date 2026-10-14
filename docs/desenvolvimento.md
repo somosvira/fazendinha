@@ -40,27 +40,9 @@ Backups e evidências locais ficam em `.backups/` e `server/.seedatev3/`, fora d
 
 ## Guia manual V3
 
-O [guia](pecuaria/artefatos/testes-v3-guia.html) e `server/scripts/preparar-guia-v3.ts` usam exclusivamente o PostgreSQL local **`fazendinha_v3_teste`**, independente do seed unificado. Os sítios são Guia V3 — Principal/Destino; brincos usam GV3.
+O [guia](pecuaria/artefatos/testes-v3-guia.html) conserva os casos, marcações e notas anteriores. A preparação histórica dependia de outro banco e está desativada no desenvolvimento local: **o único banco permitido é `fazendinha_seedatev3`**. Não crie `fazendinha_v3_teste` nem use a preparação antiga para limpar ou substituir o cenário atual.
 
-A preparação reproduzível está em `server/scripts/preparar-guia-v3.ts`: por padrão só consulta; `--preparar` inclui os pré-requisitos faltantes e `--verificar` confere os saldos **iniciais**, logins e 110 animal-dias. Para recomeçar o guia no banco Docker local, use `--limpar --preparar --verificar`: remove todos os dados operacionais locais, preserva uma conta financeira utilizável e recria somente os dois sítios, usuários e fixtures deste guia. A limpeza invalida sessões abertas, mas não altera migrations, código nem as marcações do HTML. O script bloqueia banco remoto ou outro nome de banco. A criação de animais/lotes/produtos e operações utiliza os serviços existentes, mantendo auditoria.
-
-Para consulta, sem preparar nem limpar, a partir da raiz do projeto:
-
-```bash
-cd server
-pnpm exec tsx --env-file=.env scripts/preparar-guia-v3.ts
-```
-
-No banco dedicado ao guia, acrescente as opções à chamada do script conforme a tarefa. Execute no diretório `server` para resolver corretamente os caminhos do script e do arquivo `.env`:
-
-| Opções | Efeito |
-|---|---|
-| `--preparar --verificar` | Completar pré-requisitos e conferir o cenário inicial |
-| `--limpar --preparar --verificar` | Reiniciar o banco local do guia e conferir saldos iniciais |
-
-O script exige `--preparar` junto de `--limpar`. A verificação é do cenário inicial. `--limpar` remove dados operacionais e só deve ser usado quando a tarefa autorizar reiniciar esse banco. Não execute a preparação no banco do seed.
-
-Marcações e notas do HTML ficam no navegador e não são prova de execução automatizada. O roteiro usa datas e nomes fixos de seu cenário; isso não define a data-base do seed nem o estado de outro ambiente.
+`server/scripts/preparar-guia-v3.ts` permite somente consulta no banco de desenvolvimento. As opções históricas de preparação, limpeza e verificação de saldos iniciais são recusadas. Use os dados existentes para a homologação; casos dependentes da massa antiga devem registrar a necessidade de adaptação, sem reset de dados ou de marcações do HTML. A verificação do seed atual continua disponível por `seedatev3 --verificar`.
 
 ## Carga inicial IDEAGRI
 
@@ -78,14 +60,9 @@ Seeds de demonstração por módulo/PR e a massa do Excel anterior foram retirad
 
 ## Carga técnica V4 e testes de reprodução
 
-A V4 tem ferramentas separadas do seed V3. Não rode `seed`, `db push` ou uma carga histórica para testar uma mudança comum. Para integração, crie um PostgreSQL descartável e passe **`DATABASE_URL` e `DIRECT_URL` apontando para o mesmo banco** em todos os comandos: o Prisma usa a conexão direta para migrations e pode ler `DIRECT_URL` de `server/.env` mesmo quando somente `DATABASE_URL` foi sobrescrita.
+A V4 tem ferramentas separadas do seed V3. Não rode `seed`, `db push` ou uma carga histórica para testar uma mudança comum. **Toda validação local usa somente `fazendinha_seedatev3`**, sem criar banco descartável, clone ou cópia para ensaio. `DATABASE_URL` e `DIRECT_URL` no `server/.env` devem apontar para esse mesmo banco; o Prisma usa a conexão direta nas migrations.
 
-```bash
-# Use a conexão de um banco descartável criado especificamente para o teste.
-export PECUARIA_QA_URL='postgresql://usuario:senha@127.0.0.1:porta/banco_descartavel'
-DATABASE_URL="$PECUARIA_QA_URL" DIRECT_URL="$PECUARIA_QA_URL" pnpm --filter rionovo-server exec prisma migrate deploy
-DATABASE_URL="$PECUARIA_QA_URL" DIRECT_URL="$PECUARIA_QA_URL" PECUARIA_DB_INTEGRATION=1 pnpm --filter rionovo-server test
-```
+As flags de integração habilitam escritas reais. Antes de executar uma suíte local, confira que sua preparação/limpeza altera somente fixtures próprias, sem colisão com dados existentes. Não rode indiscriminadamente a suíte inteira com todas as flags. Testes que recriam banco/estrutura e a bateria financeira que cria bancos estão restritos ao CI externo. Migrations locais são aplicadas diretamente no banco de desenvolvimento, sem recarregar o cenário. Testes unitários, builds e consultas de conferência continuam disponíveis.
 
 O extrator `scripts/extract-pecuaria-v4.sh` exige caminho explícito de uma **cópia** Firebird e diretório de saída fora do Git, ambos acessíveis pelo Windows em `/mnt/c`. Recusa o diretório operacional `Ideagri/dados`. Consultas usam transação somente de leitura; erros SQL/UDF interrompem a transformação automática, conservando o dump para inspeção. `scripts/build-pecuaria-v4-json.mjs` verifica sentinelas e totais das tabelas antes de gerar o JSON. A presença de um dump não prova que a extração terminou integralmente.
 
@@ -97,9 +74,9 @@ pnpm --filter rionovo-server run import:pecuaria:v4:typecheck
 O contrato de carga e mapeamento fica em `server/prisma/import-v4/contrato.ts`. A prévia é o padrão e escreve somente o relatório solicitado; ela não cria animais nem importa fatos no banco. Informe carga, mapeamento e relatório explicitamente:
 
 ```bash
-DATABASE_URL="$PECUARIA_QA_URL" DIRECT_URL="$PECUARIA_QA_URL" pnpm --filter rionovo-server run import:pecuaria:v4 --arquivo=/caminho/carga.json --mapeamento=/caminho/mapa.json --relatorio=/caminho/previa.json
+pnpm --filter rionovo-server run import:pecuaria:v4 --arquivo=/caminho/carga.json --mapeamento=/caminho/mapa.json --relatorio=/caminho/previa.json
 ```
 
-Para executar no banco **local** escolhido, acrescentam-se `--executar --banco-confirmado=nome_do_banco`. O importador recusa execução em ambiente de produção ou banco remoto; publicar código não autoriza aplicar a carga. Conflitos causam saída não zero e precisam de leitura do relatório, inclusive quando uma execução foi parcial. Reexecutar respeita chaves de origem e detecta mudanças de hash, sem sobrescrever silenciosamente fatos operacionais.
+Para executar no único banco de desenvolvimento, acrescentam-se `--executar --banco-confirmado=fazendinha_seedatev3`. O importador recusa execução em ambiente de produção ou banco remoto; publicar código não autoriza aplicar a carga. Conflitos causam saída não zero e precisam de leitura do relatório, inclusive quando uma execução foi parcial. Reexecutar respeita chaves de origem e detecta mudanças de hash, sem sobrescrever silenciosamente fatos operacionais.
 
 A carga conserva anotações e dados originais de IATF, relações comprovadas, períodos e lactações. Referências sem correspondência, origens desconhecidas, paridade sem reconciliação e protocolos sem precisão operacional suficiente aparecem como pendências. Os arquivos extraídos, mapas com dados da fazenda e relatórios não devem ser versionados.

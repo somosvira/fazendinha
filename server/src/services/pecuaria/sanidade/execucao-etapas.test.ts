@@ -3,7 +3,7 @@ import { Prisma } from "@prisma/client";
 import type { ExecucaoEtapasInput } from "./execucao-etapas.schemas.js";
 
 const mocks = vi.hoisted(() => ({
-  tx: { tarefaSanitaria: { findMany: vi.fn() }, produto: { findMany: vi.fn() }, itemOperacao: { findMany: vi.fn() }, partidaProduto: { findMany: vi.fn() },
+  tx: { tarefaProtocolo: { findMany: vi.fn() }, produto: { findMany: vi.fn() }, itemOperacao: { findMany: vi.fn() }, partidaProduto: { findMany: vi.fn() },
     aplicacaoProduto: { aggregate: vi.fn() }, requisicaoPecuaria: { findUnique: vi.fn(), create: vi.fn() }, $executeRaw: vi.fn() },
   prepararAplicacao: vi.fn(), criarAplicacao: vi.fn(), prepararExame: vi.fn(), criarExame: vi.fn(), saldo: vi.fn(), travar: vi.fn(), travarOrigens: vi.fn(), travarTipos: vi.fn(),
 }));
@@ -20,7 +20,7 @@ const input: ExecucaoEtapasInput = { propriedadeId: 2, itens: [aplicacao, { ...a
 const tarefas = input.itens.map((i) => ({ id: i.tarefaId, etapaId: "etapa", execucao: { protocoloId: "versao", rodadaId: "rodada" } }));
 beforeEach(() => {
   vi.resetAllMocks();
-  mocks.tx.tarefaSanitaria.findMany.mockResolvedValue(tarefas);
+  mocks.tx.tarefaProtocolo.findMany.mockResolvedValue(tarefas);
   mocks.tx.produto.findMany.mockResolvedValue([{ id: "produto", nome: "Vacina", unidade: "ML" }]);
   mocks.tx.itemOperacao.findMany.mockResolvedValue([]);
   mocks.tx.partidaProduto.findMany.mockResolvedValue([]);
@@ -65,14 +65,14 @@ describe("execução conjunta de etapa", () => {
   });
   it.each(["etapaId", "protocoloId", "rodadaId"])("recusa tarefas com %s diferentes", async (campo) => {
     const outra = campo === "etapaId" ? { ...tarefas[1], etapaId: "outro" } : { ...tarefas[1], execucao: { ...tarefas[1].execucao, [campo]: "outro" } };
-    mocks.tx.tarefaSanitaria.findMany.mockResolvedValue([tarefas[0], outra]);
+    mocks.tx.tarefaProtocolo.findMany.mockResolvedValue([tarefas[0], outra]);
     await expect(preverExecucaoEtapas(input)).rejects.toMatchObject({ campo: "itens" });
     expect(mocks.prepararAplicacao).not.toHaveBeenCalled();
   });
   it("trava animais antes de reler e grava apenas depois de validar toda a prévia", async () => {
     const previa = await preverExecucaoEtapas(input);
     await expect(confirmarExecucaoEtapas({ ...input, chave: "chave", fingerprint: previa.fingerprint }, 7)).resolves.toEqual({ resultados: [{ id: "fato-a1", animalId: "a1" }, { id: "fato-a2", animalId: "a2" }] });
-    expect(mocks.travar.mock.invocationCallOrder[0]).toBeLessThan(mocks.tx.tarefaSanitaria.findMany.mock.invocationCallOrder[0]);
+    expect(mocks.travar.mock.invocationCallOrder[0]).toBeLessThan(mocks.tx.tarefaProtocolo.findMany.mock.invocationCallOrder[0]);
     expect(mocks.travarOrigens.mock.invocationCallOrder[0]).toBeLessThan(mocks.prepararAplicacao.mock.invocationCallOrder[0]);
     expect(mocks.prepararAplicacao.mock.invocationCallOrder[3]).toBeLessThan(mocks.criarAplicacao.mock.invocationCallOrder[0]);
     expect(mocks.tx.requisicaoPecuaria.create).toHaveBeenCalledTimes(1);

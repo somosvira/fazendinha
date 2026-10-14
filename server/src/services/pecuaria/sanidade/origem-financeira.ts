@@ -11,7 +11,7 @@ export async function listarOrigemFinanceira(operacaoId: string, propriedadeId: 
     prisma.aplicacaoProduto.findMany({ where: { OR: [{ operacaoServicoId: operacaoId }, { itemCompraDiretaId: { in: operacao.itens.map((i) => i.id) } }] },
       select: { id: true, propriedadeId: true, animalId: true, animal: { select: { brinco: true } }, data: true, status: true, nomeProdutoAplicado: true, origemInsumo: true, quantidadeCompraDireta: true, itemCompraDiretaId: true, valorProdutoAtribuido: true, valorServicoAtribuido: true, operacaoServicoId: true } }),
     prisma.exameAnimal.findMany({ where: { operacaoServicoId: operacaoId }, select: { id: true, propriedadeId: true, animalId: true, animal: { select: { brinco: true } }, data: true, status: true, tipoExame: { select: { nome: true } }, valorServicoAtribuido: true } }),
-    prisma.execucaoProtocoloSanitario.findMany({ where: { operacaoServicoId: operacaoId }, select: { id: true, propriedadeId: true, animalId: true, animal: { select: { brinco: true } }, inicio: true, canceladaEm: true, protocolo: { select: { nome: true } }, valorServicoAtribuido: true } }),
+    prisma.participacaoProtocolo.findMany({ where: { operacaoServicoId: operacaoId }, select: { id: true, propriedadeId: true, animalId: true, animal: { select: { brinco: true } }, inicio: true, canceladaEm: true, protocolo: { select: { nome: true } }, valorServicoAtribuido: true } }),
     prisma.tentativaReprodutiva.findMany({ where: { operacaoServicoId: operacaoId, propriedadeId: operacao.propriedadeId } }),
   ]);
   const animais = tentativas.length ? await prisma.animal.findMany({ where: { id: { in: tentativas.map((t) => t.animalId) } }, select: { id: true, brinco: true } }) : [];

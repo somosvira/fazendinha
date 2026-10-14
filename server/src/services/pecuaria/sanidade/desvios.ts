@@ -1,8 +1,9 @@
-import { Prisma, type TarefaSanitaria, type EtapaProtocoloSanitario, type ExecucaoProtocoloSanitario } from "@prisma/client";
+import { Prisma, type TarefaProtocolo, type EtapaProtocolo, type ParticipacaoProtocolo } from "@prisma/client";
 import { RebanhoError } from "../rebanho/regras.js";
+import { compararParametros, exigeMotivoExecucao } from "../desvios.calc.js";
 
 export type DesvioInput = { motivo: string };
-type Tarefa = TarefaSanitaria & { etapa: EtapaProtocoloSanitario; execucao: ExecucaoProtocoloSanitario; aplicacoes: { id: string }[]; exames: { id: string }[] };
+type Tarefa = TarefaProtocolo & { etapa: EtapaProtocolo; execucao: ParticipacaoProtocolo; aplicacoes: { id: string }[]; exames: { id: string }[] };
 export type RealizadoProtocolo = { tipo: "APLICACAO" | "EXAME"; data: string; produtoId?: string | null; dose?: string | null; unidade?: string | null; via?: string | null; tipoAplicacaoId?: string | null; tipoExameId?: string | null; finalidade?: string | null };
 type Valor = string | null;
 
@@ -32,19 +33,20 @@ export function compararExecucaoProtocolo(tarefa: Tarefa, realizado: RealizadoPr
   }
   if (realizado.tipo === "APLICACAO" && planejado.tipoAplicacaoId) { delete planejado.finalidade; delete atual.finalidade; }
   if (realizado.tipo === "APLICACAO" && !planejado.tipoAplicacaoId) { delete planejado.tipoAplicacaoId; delete atual.tipoAplicacaoId; }
-  const diferencas = Object.keys(planejado).filter((campo) => planejado[campo] !== atual[campo]).map((campo) => ({ campo, planejado: planejado[campo], realizado: atual[campo] }));
+  const comparacao = compararParametros(planejado, atual, snapshot !== null);
+  const { diferencas } = comparacao;
   const motivo = desvio?.motivo?.trim() || null;
   if (motivo && (motivo.length < 5 || motivo.length > 500)) throw new RebanhoError("VALIDACAO", "Use de 5 a 500 caracteres no motivo do desvio", "desvio.motivo");
-  if (exigirMotivo && diferencas.length && !motivo) throw new RebanhoError("VALIDACAO", "Explique o desvio em relação à etapa planejada", "desvio.motivo");
+  if (exigirMotivo && exigeMotivoExecucao(comparacao) && !motivo) throw new RebanhoError("VALIDACAO", snapshot ? "Explique o desvio em relação à etapa planejada" : "Planejamento histórico não aferível: documente motivo antes da execução", "desvio.motivo");
   const exibicao = { planejado: {
     produtoId: texto(snapshot?.produtoNomeSnapshot), tipoAplicacaoId: texto(snapshot?.tipoAplicacaoNomeSnapshot), tipoExameId: texto(snapshot?.tipoExameNomeSnapshot),
   }, realizado: { produtoId: null as Valor, tipoAplicacaoId: null as Valor, tipoExameId: null as Valor } };
   return { tarefaId: tarefa.id, execucaoId: tarefa.execucao.id, protocoloId: tarefa.execucao.protocoloId, etapaId: tarefa.etapaId,
-    referencia: snapshot ? "SNAPSHOT_PLANEJADO" : "LEGADO_SEM_SNAPSHOT", planejado, realizado: atual, exibicao, diferencas, motivo, motivoObrigatorio: diferencas.length > 0 };
+    versao: 1, aferido: comparacao.aferido, referencia: snapshot ? "SNAPSHOT_PLANEJADO" : "LEGADO_SEM_SNAPSHOT", planejado, realizado: atual, exibicao, diferencas, motivo, motivoObrigatorio: exigeMotivoExecucao(comparacao) };
 }
 
 export async function conferirTarefaProtocoloTx(tx: Prisma.TransactionClient, tarefaId: string, animalId: string, realizado: RealizadoProtocolo, desvio?: DesvioInput, exigirMotivo = true) {
-  const tarefa = await tx.tarefaSanitaria.findUnique({ where: { id: tarefaId }, include: { etapa: true, execucao: true,
+  const tarefa = await tx.tarefaProtocolo.findUnique({ where: { id: tarefaId, execucao: { protocolo: { tipo: "SANITARIO" } } }, include: { etapa: true, execucao: true,
     aplicacoes: { where: { status: "VALIDO" }, select: { id: true } }, exames: { where: { status: "VALIDO" }, select: { id: true } } } });
   if (!tarefa || tarefa.execucao.animalId !== animalId || tarefa.execucao.canceladaEm || tarefa.dispensadaEm || tarefa.aplicacoes.length || tarefa.exames.length) {
     throw new RebanhoError("CONFLITO", realizado.tipo === "APLICACAO" ? "A tarefa não está disponível para esta aplicação" : "Tarefa de exame inválida ou já realizada", "tarefaId");

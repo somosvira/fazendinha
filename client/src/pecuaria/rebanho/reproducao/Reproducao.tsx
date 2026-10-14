@@ -18,7 +18,7 @@ import {
   type PainelReprodutivo,
 } from "./api";
 import { FormReproducao, type AcaoReprodutiva } from "./FormReproducao";
-import { RegrasSanitarias } from "./RegrasSanitarias";
+
 import { Exposicoes } from "./Exposicoes";
 import { Iatf } from "./Iatf";
 import { DetalheFato } from "./DetalheFato";
@@ -388,7 +388,7 @@ function ConteudoReproducao({
       {!animalId && (
         <>
           <Exposicoes podeLancar={podeLancar} />
-          <RegrasSanitarias podeEditar={podeLancar} />
+          <a className="text-sm underline" href="/configuracoes/pecuaria/reproducao/regras-sanitarias">Gerenciar regras sanitárias da reprodução</a>
         </>
       )}
       {acao && painel && (

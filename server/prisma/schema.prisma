@@ -6,6 +6,7 @@
 generator client {
   provider   = "prisma-client-js"
   engineType = "client"
+  previewFeatures = ["views"]
 }
 
 datasource db {
@@ -256,28 +257,10 @@ model Produto {
   perfilSanitarioProduto   PerfilSanitarioProduto?
   perfilNutricionalProduto PerfilNutricionalProduto?
   aplicacaoProdutos        AplicacaoProduto[]
-  etapaProtocoloSanitarios EtapaProtocoloSanitario[]
+  etapaProtocolos EtapaProtocolo[]
   itemDietas               ItemDieta[]
   itemFechamentoConsumos   ItemFechamentoConsumo[]
 
-  @@schema("public")
-}
-
-// Registro de chuva (pluviômetro) — mm por dia. Só o pluviômetro: sem estação meteorológica,
-// sem API de clima, sem temperatura. Alimenta o acumulado mensal. Espelha "Clima / registro de
-// chuva" (Análise) do IDEagri.
-model RegistroChuva {
-  id            Int          @id @default(autoincrement())
-  data          DateTime     @db.Date
-  mm            Decimal      @db.Decimal(6, 1) // milímetros de chuva no dia
-  observacao    String?
-  propriedade   Propriedade? @relation(fields: [propriedadeId], references: [id])
-  propriedadeId Int?
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-
-  @@index([data])
-  @@index([propriedadeId])
   @@schema("public")
 }
 
@@ -406,7 +389,7 @@ model Operacao {
   createdAt                   DateTime                     @default(now())
   updatedAt                   DateTime                     @updatedAt
   aplicacaoProdutos           AplicacaoProduto[]
-  execucaoProtocoloSanitarios ExecucaoProtocoloSanitario[]
+  execucaoProtocolos ParticipacaoProtocolo[]
   exameAnimals                ExameAnimal[]
 
   @@index([propriedadeId, data])
@@ -650,7 +633,7 @@ model AuditoriaFinanceira {
 // Sítio físico da fazenda-cliente (multi-propriedade). Default single-tenant: 1
 // linha (principal). O mesmo seam serve de base p/ multi-tenant (Organizacao) depois.
 model Propriedade {
-  rodadasProtocolo      RodadaProtocoloSanitario[]
+  rodadasProtocolo      ProgramacaoProtocolo[]
   id                    Int                           @id @default(autoincrement())
   nome                  String                        @unique
   apelido               String? // compatibilidade histórica; a interface identifica sítios por nome
@@ -667,7 +650,6 @@ model Propriedade {
   rascunhosRelatorios   RascunhoRelatorioFinanceiro[]
   transacoesFinanceiras TransacaoFinanceira[]
   periodosFinanceiros   PeriodoFinanceiro[]
-  registrosChuva        RegistroChuva[]
   createdAt             DateTime                      @default(now())
   updatedAt             DateTime                      @updatedAt
 
@@ -679,7 +661,7 @@ model Propriedade {
   auditoriaPecuarias          AuditoriaPecuaria[]
   ocorrenciaSanitarias        OcorrenciaSanitaria[]
   aplicacaoProdutos           AplicacaoProduto[]
-  execucaoProtocoloSanitarios ExecucaoProtocoloSanitario[]
+  execucaoProtocolos ParticipacaoProtocolo[]
   exameAnimals                ExameAnimal[]
   manejoAnimals               ManejoAnimal[]
   fechamentoConsumos          FechamentoConsumo[]
@@ -1057,6 +1039,7 @@ model Animal {
 
   composicao                  ComposicaoRacial[]
   localizacoes                LocalizacaoAnimal[]
+  papeisReprodutivos PeriodoReprodutivoAnimal[]
   destinos                    DestinoAnimal[]
   baixas                      BaixaAnimal[]
   pesagens                    Pesagem[]
@@ -1068,7 +1051,7 @@ model Animal {
   materiaisComoDoadora        MaterialGenetico[]           @relation("MaterialDoadora")
   ocorrenciaSanitarias        OcorrenciaSanitaria[]
   aplicacaoProdutos           AplicacaoProduto[]
-  execucaoProtocoloSanitarios ExecucaoProtocoloSanitario[]
+  execucaoProtocolos ParticipacaoProtocolo[]
   exameAnimals                ExameAnimal[]
   manejoAnimals               ManejoAnimal[]
   participacaoConsumoAnimals  ParticipacaoConsumoAnimal[]
@@ -1142,6 +1125,7 @@ model ComposicaoGenitorExterno {
 // Identidade genética de um produto do estoque (sêmen ou embrião). O produto diz quanto
 // tem, quanto custou e onde está; esta linha diz de quem é. Consumo (IA/TE) entra na v4.
 model MaterialGenetico {
+  etapasProtocolos EtapaProtocolo[]
   id               String               @id @default(uuid())
   tipo             TipoMaterialGenetico
   tipoSemen        TipoSemen?
@@ -1376,7 +1360,6 @@ model DestinoAnimal {
   animalId         String
   animal           Animal           @relation(fields: [animalId], references: [id], onDelete: Restrict)
   aptidao          AptidaoAnimal
-  papelReprodutivo PapelReprodutivo @default(NENHUM)
   desde            DateTime         @db.Date
   ate              DateTime?        @db.Date
   criadoEm         DateTime         @default(now())
@@ -1612,7 +1595,7 @@ model OcorrenciaSanitaria {
   atualizadoEm       DateTime                     @updatedAt
   aplicacoes         AplicacaoProduto[]
   exames             ExameAnimal[]
-  execucoes          ExecucaoProtocoloSanitario[]
+  execucoes          ParticipacaoProtocolo[]
 
   @@index([animalId, inicio])
   @@index([propriedadeId, inicio])
@@ -1624,7 +1607,7 @@ model TipoAplicacaoSanitaria {
   nome         String                    @unique
   ativo        Boolean                   @default(true)
   aplicacoes   AplicacaoProduto[]
-  etapas       EtapaProtocoloSanitario[]
+  etapas       EtapaProtocolo[]
   criadoEm     DateTime                  @default(now())
   atualizadoEm DateTime                  @updatedAt
 
@@ -1632,6 +1615,7 @@ model TipoAplicacaoSanitaria {
 }
 
 model AplicacaoProduto {
+  vinculosProtocolo VinculoTarefaProtocolo[]
   desvioProtocoloSnapshot    Json?
   id                         String                  @id @default(uuid())
   animalId                   String
@@ -1645,7 +1629,7 @@ model AplicacaoProduto {
   ocorrencia                 OcorrenciaSanitaria?    @relation(fields: [ocorrenciaId], references: [id], onDelete: Restrict)
   // Unicidade somente para fatos válidos, definida por índice parcial na migration.
   tarefaId                   String?
-  tarefa                     TarefaSanitaria?        @relation(fields: [tarefaId], references: [id], onDelete: Restrict)
+  tarefa                     TarefaProtocolo?        @relation(fields: [tarefaId], references: [id], onDelete: Restrict)
   data                       DateTime                @db.Date
   aplicadaEm                 DateTime?
   precisaoTemporal           String                  @default("HORA")
@@ -1697,29 +1681,52 @@ model AplicacaoProduto {
   @@schema("pecuaria")
 }
 
-model ProtocoloSanitario {
-  rodadas      RodadaProtocoloSanitario[]
+enum TipoProtocolo {
+  SANITARIO
+  REPRODUTIVO
+
+  @@schema("pecuaria")
+}
+
+enum PrecisaoCalendarioProtocolo {
+  DIA
+  HORA
+
+  @@schema("pecuaria")
+}
+
+model Protocolo {
+  tipo TipoProtocolo @default(SANITARIO)
+  legadoIatfId String? @unique
+  publicado Boolean @default(false)
+  criadoPorId Int?
+  rodadas      ProgramacaoProtocolo[]
   id           String                       @id @default(uuid())
   nome         String
   versao       Int                          @default(1)
   descricao    String?
   publicadoEm  DateTime?
   ativo        Boolean                      @default(true)
-  etapas       EtapaProtocoloSanitario[]
-  execucoes    ExecucaoProtocoloSanitario[]
+  etapas       EtapaProtocolo[]
+  execucoes    ParticipacaoProtocolo[]
   criadoEm     DateTime                     @default(now())
   atualizadoEm DateTime                     @updatedAt
 
-  @@unique([nome, versao])
+  @@unique([tipo, nome, versao])
   @@schema("pecuaria")
 }
 
-model EtapaProtocoloSanitario {
+model EtapaProtocolo {
+  nome String @default("Etapa")
+  unidadeIntervalo String @default("DIAS")
+  configuracao Json @default("{}")
+  materialId String?
+  material MaterialGenetico? @relation(fields: [materialId], references: [id], onDelete: Restrict)
   id                        String                  @id @default(uuid())
   protocoloId               String
-  protocolo                 ProtocoloSanitario      @relation(fields: [protocoloId], references: [id], onDelete: Restrict)
+  protocolo                 Protocolo      @relation(fields: [protocoloId], references: [id], onDelete: Restrict)
   ordem                     Int
-  diaRelativo               Int
+  diaRelativo               Float @map("intervalo")
   tipo                      String
   produtoId                 String?
   produto                   Produto?                @relation(fields: [produtoId], references: [id], onDelete: Restrict)
@@ -1732,21 +1739,26 @@ model EtapaProtocoloSanitario {
   dose                      Decimal?                @db.Decimal(12, 3)
   unidade                   String?
   via                       String?
-  tarefas                   TarefaSanitaria[]
+  tarefas                   TarefaProtocolo[]
 
   @@unique([protocoloId, ordem])
   @@schema("pecuaria")
 }
 
-model RodadaProtocoloSanitario {
+model ProgramacaoProtocolo {
+  legadoIatfId String? @unique
+  referenciaExterna String? @unique
+  precisaoTemporal PrecisaoCalendarioProtocolo @default(DIA)
+  status String @default("ABERTA")
+  criadoPorId Int?
   id               String                       @id @default(uuid())
   nome             String
   protocoloId      String
-  protocolo        ProtocoloSanitario           @relation(fields: [protocoloId], references: [id], onDelete: Restrict)
+  protocolo        Protocolo           @relation(fields: [protocoloId], references: [id], onDelete: Restrict)
   propriedadeId    Int
   propriedade      Propriedade                  @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
-  inicioReferencia DateTime                     @db.Date
-  execucoes        ExecucaoProtocoloSanitario[]
+  inicioReferencia DateTime
+  execucoes        ParticipacaoProtocolo[]
   criadoEm         DateTime                     @default(now())
   atualizadoEm     DateTime                     @updatedAt
 
@@ -1755,17 +1767,22 @@ model RodadaProtocoloSanitario {
   @@schema("pecuaria")
 }
 
-model ExecucaoProtocoloSanitario {
-  rodadaId              String?
-  rodada                RodadaProtocoloSanitario? @relation(fields: [rodadaId], references: [id], onDelete: Restrict)
+model ParticipacaoProtocolo {
+  legadoIatfId String? @unique
+  referenciaExterna String? @unique
+  precisaoTemporal PrecisaoCalendarioProtocolo @default(DIA)
+  inicioEfetivo DateTime?
+  criadoPorId Int?
+  rodadaId              String? @map("programacaoId")
+  rodada                ProgramacaoProtocolo? @relation(fields: [rodadaId], references: [id], onDelete: Restrict)
   id                    String                    @id @default(uuid())
   protocoloId           String
-  protocolo             ProtocoloSanitario        @relation(fields: [protocoloId], references: [id], onDelete: Restrict)
+  protocolo             Protocolo        @relation(fields: [protocoloId], references: [id], onDelete: Restrict)
   animalId              String
   animal                Animal                    @relation(fields: [animalId], references: [id], onDelete: Restrict)
   propriedadeId         Int?
   propriedade           Propriedade?              @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
-  inicio                DateTime                  @db.Date
+  inicio                DateTime @map("inicioReferencia")
   ocorrenciaId          String?
   ocorrencia            OcorrenciaSanitaria?      @relation(fields: [ocorrenciaId], references: [id], onDelete: Restrict)
   operacaoServicoId     String?
@@ -1773,7 +1790,7 @@ model ExecucaoProtocoloSanitario {
   canceladaEm           DateTime?
   motivoCancelamento    String?
   valorServicoAtribuido Decimal?                  @db.Decimal(14, 2)
-  tarefas               TarefaSanitaria[]
+  tarefas               TarefaProtocolo[]
   criadoEm              DateTime                  @default(now())
 
   @@index([animalId, inicio])
@@ -1782,21 +1799,58 @@ model ExecucaoProtocoloSanitario {
   @@schema("pecuaria")
 }
 
-model TarefaSanitaria {
+model TarefaProtocolo {
+  nomeSnapshot String?
+  vinculos VinculoTarefaProtocolo[]
+  legadoIatfId String? @unique
+  precisaoTemporal PrecisaoCalendarioProtocolo @default(DIA)
+  previsaoOriginal DateTime?
+  realizadaEm DateTime?
+  historicoReprogramacao Json @default("[]")
+  realizadoSnapshot Json?
+  desviosSnapshot Json?
+  regularizacaoPendente Boolean @default(false)
+  historicoRegularizacao Json @default("[]")
+  tentativas TentativaReprodutiva[]
   id             String                     @id @default(uuid())
-  execucaoId     String
-  execucao       ExecucaoProtocoloSanitario @relation(fields: [execucaoId], references: [id], onDelete: Restrict)
+  execucaoId     String @map("participacaoId")
+  execucao       ParticipacaoProtocolo @relation(fields: [execucaoId], references: [id], onDelete: Restrict)
   etapaId        String
-  etapa          EtapaProtocoloSanitario    @relation(fields: [etapaId], references: [id], onDelete: Restrict)
-  previstaPara   DateTime                   @db.Date
-  parametros     Json
+  etapa          EtapaProtocolo    @relation(fields: [etapaId], references: [id], onDelete: Restrict)
+  previstaPara   DateTime @map("previstaEm")
+  parametros     Json? @map("planejadoSnapshot")
   dispensadaEm   DateTime?
-  motivoDispensa String?
+  motivoDispensa String? @map("motivo")
   aplicacoes     AplicacaoProduto[]
   exames         ExameAnimal[]
 
   @@unique([execucaoId, etapaId])
   @@index([previstaPara])
+  @@schema("pecuaria")
+}
+
+model VinculoTarefaProtocolo {
+  id String @id @default(uuid())
+  tarefaId String
+  tarefa TarefaProtocolo @relation(fields: [tarefaId], references: [id], onDelete: Restrict)
+  ordem Int
+  aplicacaoId String?
+  aplicacao AplicacaoProduto? @relation(fields: [aplicacaoId], references: [id], onDelete: Restrict)
+  exameId String?
+  exame ExameAnimal? @relation(fields: [exameId], references: [id], onDelete: Restrict)
+  tentativaId String?
+  tentativa TentativaReprodutiva? @relation(fields: [tentativaId], references: [id], onDelete: Restrict)
+  estado String @default("ATUAL")
+  origem String @default("EXECUCAO")
+  registradoEm DateTime @default(now())
+  registradoPorId Int?
+  encerradoEm DateTime?
+  motivo String?
+
+  @@unique([tarefaId, ordem])
+  @@index([aplicacaoId])
+  @@index([exameId])
+  @@index([tentativaId])
   @@schema("pecuaria")
 }
 
@@ -1807,13 +1861,28 @@ model TipoExame {
   unidade       String?
   opcoes        Json?
   ativo         Boolean                   @default(true)
+  contexto      String                    @default("SANITARIO")
+  versaoFormato Int                       @default(1)
+  versaoAnteriorId String?
+  versaoAnterior TipoExame? @relation("VersoesFormato", fields: [versaoAnteriorId], references: [id], onDelete: Restrict)
+  versoesSeguintes TipoExame[] @relation("VersoesFormato")
+  campos        Json?
   exames        ExameAnimal[]
-  etapas        EtapaProtocoloSanitario[]
+  etapas        EtapaProtocolo[]
 
   @@schema("pecuaria")
 }
 
 model ExameAnimal {
+  vinculosProtocolo VinculoTarefaProtocolo[]
+  resultados              ResultadoExame[]
+  interpretacao           InterpretacaoReprodutiva?
+  finalidades             String[]             @default([])
+  finalidadePrincipal     String?
+  realizacao              String               @default("REALIZADO")
+  anotacaoOriginal        String?
+  observacao              String?
+  criadoPorId             Int?
   desvioProtocoloSnapshot Json?
   id                      String               @id @default(uuid())
   animalId                String
@@ -1826,7 +1895,7 @@ model ExameAnimal {
   ocorrencia              OcorrenciaSanitaria? @relation(fields: [ocorrenciaId], references: [id], onDelete: Restrict)
   // Unicidade somente para fatos válidos, definida por índice parcial na migration.
   tarefaId                String?
-  tarefa                  TarefaSanitaria?     @relation(fields: [tarefaId], references: [id], onDelete: Restrict)
+  tarefa                  TarefaProtocolo?     @relation(fields: [tarefaId], references: [id], onDelete: Restrict)
   operacaoServicoId       String?
   valorServicoAtribuido   Decimal?             @db.Decimal(14, 2)
   operacaoServico         Operacao?            @relation(fields: [operacaoServicoId], references: [id], onDelete: Restrict)
@@ -1846,6 +1915,39 @@ model ExameAnimal {
   @@index([animalId, data])
   @@index([tarefaId])
   @@index([operacaoServicoId])
+  @@schema("pecuaria")
+}
+
+model ResultadoExame {
+  id         String      @id @default(uuid())
+  exameId    String
+  exame      ExameAnimal @relation(fields: [exameId], references: [id], onDelete: Cascade)
+  campo      String
+  valor      Json
+  unidade    String?
+  criadoEm   DateTime    @default(now())
+  vigente    Boolean     @default(true)
+  substituidoEm DateTime?
+  criadoPorId Int?
+
+  // Unicidade somente entre observações vigentes, protegida na migration.
+  @@index([exameId, campo])
+  @@schema("pecuaria")
+}
+
+model InterpretacaoReprodutiva {
+  id                String      @id @default(uuid())
+  exameId           String      @unique
+  exame             ExameAnimal @relation(fields: [exameId], references: [id], onDelete: Restrict)
+  referenciaExterna String?     @unique
+  gestacaoCriada    Boolean     @default(false)
+  restricaoId       String?     @unique
+  tentativaId       String?
+  gestacaoId        String?
+  conduta           String?
+  motivo            String?
+  retornoEm         DateTime?   @db.Date
+
   @@schema("pecuaria")
 }
 
@@ -2069,6 +2171,9 @@ model RegraSanitariaReprodutiva {
 }
 
 model TentativaReprodutiva {
+  vinculosProtocolo VinculoTarefaProtocolo[]
+  tarefaId String?
+  tarefa TarefaProtocolo? @relation(fields: [tarefaId], references: [id], onDelete: Restrict)
   id                    String               @id @default(uuid())
   referenciaExterna     String?              @unique
   animalId              String
@@ -2123,19 +2228,20 @@ model GestacaoAnimal {
   @@schema("pecuaria")
 }
 
-model AvaliacaoReprodutiva {
-  id                String               @id @default(uuid())
+// Compatibilidade de leitura: evidência canônica em ExameAnimal; esta view não admite gravações.
+view AvaliacaoReprodutiva {
+  id                String               @unique
   referenciaExterna String?              @unique
   animalId          String
   propriedadeId     Int?
   data              DateTime             @db.Date
-  origem            String               @default("MANUAL")
-  status            StatusFatoPecuariaV3 @default(VALIDO)
+  origem            String
+  status            StatusFatoPecuariaV3
   motivoAnulacao    String?
   anuladoEm         DateTime?
-  criadoEm          DateTime             @default(now())
+  criadoEm          DateTime
   criadoPorId       Int?
-  gestacaoCriada    Boolean              @default(false)
+  gestacaoCriada    Boolean
   restricaoId       String?              @unique
   resultado         String
   tentativaId       String?
@@ -2147,7 +2253,6 @@ model AvaliacaoReprodutiva {
   retornoEm         DateTime?            @db.Date
   observacao        String?
 
-  @@index([animalId])
   @@schema("pecuaria")
 }
 
@@ -2233,35 +2338,35 @@ model ParticipacaoExposicao {
   @@schema("pecuaria")
 }
 
-model ProtocoloIatf {
-  id          String   @id @default(uuid())
+view ProtocoloIatf {
+  id          String   @unique
   nome        String
   versao      Int
-  publicado   Boolean  @default(false)
+  publicado   Boolean
   etapas      Json
-  criadoEm    DateTime @default(now())
+  criadoEm    DateTime
   criadoPorId Int?
 
   @@unique([nome, versao])
   @@schema("pecuaria")
 }
 
-model ProgramacaoIatf {
-  id                String   @id @default(uuid())
+view ProgramacaoIatf {
+  id                String   @unique
   referenciaExterna String?  @unique
   propriedadeId     Int
   protocoloId       String
   nome              String
   inicioPrevisto    DateTime
-  status            String   @default("ABERTA")
-  criadoEm          DateTime @default(now())
+  status            String
+  criadoEm          DateTime
   criadoPorId       Int?
 
   @@schema("pecuaria")
 }
 
-model ParticipanteIatf {
-  id                 String    @id @default(uuid())
+view ParticipanteIatf {
+  id                 String    @unique
   referenciaExterna  String?   @unique
   programacaoId      String
   animalId           String
@@ -2269,15 +2374,14 @@ model ParticipanteIatf {
   inicioEfetivo      DateTime?
   encerradoEm        DateTime?
   motivoEncerramento String?
-  criadoEm           DateTime  @default(now())
+  criadoEm           DateTime
   criadoPorId        Int?
 
-  @@index([animalId])
   @@schema("pecuaria")
 }
 
-model TarefaIatf {
-  id                     String    @id @default(uuid())
+view TarefaIatf {
+  id                     String    @unique
   participanteId         String
   etapa                  Int
   tipo                   String
@@ -2290,12 +2394,13 @@ model TarefaIatf {
   aplicacaoId            String?   @unique
   tentativaId            String?   @unique
   avaliacaoId            String?   @unique
-  historicoReprogramacao Json      @default("[]")
+  exameId                String?   @unique
+  historicoReprogramacao Json
   planejadoSnapshot      Json?
   realizadoSnapshot      Json?
   desviosSnapshot        Json?
-  regularizacaoPendente  Boolean   @default(false)
-  historicoRegularizacao Json      @default("[]")
+  regularizacaoPendente  Boolean
+  historicoRegularizacao Json
 
   @@unique([participanteId, etapa])
   @@schema("pecuaria")
@@ -2335,8 +2440,7 @@ model ParticipanteVisita {
   animalId               String
   ordem                  Int
   status                 String   @default("PENDENTE")
-  tarefaSanitariaId      String?
-  tarefaIatfId           String?
+  tarefaId               String?
   rascunho               Json     @default("{}")
   versaoRascunho         Int      @default(0)
   regularizacaoPendente  Boolean  @default(false)
@@ -2368,6 +2472,13 @@ model ImpressaoVisita {
 model PeriodoReprodutivoAnimal {
   id                String    @id @default(uuid())
   referenciaExterna String?   @unique
+  animal            Animal    @relation(fields: [animalId], references: [id], onDelete: Restrict)
+  destinoOrigemId    String?   @unique
+  encerradoPorDestinoId String?
+  fimAntesDaMudanca DateTime? @db.Date
+  proveniencia      Json?
+  revogadoEm        DateTime?
+  motivoRevogacao    String?
   animalId          String
   propriedadeId     Int?
   tipo              String

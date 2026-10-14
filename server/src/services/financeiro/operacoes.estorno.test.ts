@@ -40,7 +40,7 @@ vi.mock("../../db.js", () => {
     aplicacaoProduto: { findFirst: mocks.aplicacaoFindFirst },
     exameAnimal: { findFirst: mocks.exameFindFirst },
     tentativaReprodutiva: { findFirst: mocks.tentativaFindFirst },
-    execucaoProtocoloSanitario: { findFirst: mocks.execucaoFindFirst },
+    participacaoProtocolo: { findFirst: mocks.execucaoFindFirst },
     $queryRaw: mocks.queryRaw,
   };
   mocks.transaction.mockImplementation(async (fn: (t: unknown) => unknown) => fn(tx));

@@ -427,7 +427,7 @@ export async function estornarOperacao(id: string, motivo: string, contexto: Con
     const [aplicacaoVinculada, exameVinculado, protocoloVinculado] = await Promise.all([
       tx.aplicacaoProduto.findFirst({ where: { AND: [aplicacaoComConsumoOuAtribuicao, { OR: [{ operacaoServicoId: id }, { itemCompraDireta: { operacaoId: id } }] }] }, select: { id: true } }),
       tx.exameAnimal.findFirst({ where: { status: "VALIDO", operacaoServicoId: id }, select: { id: true } }),
-      tx.execucaoProtocoloSanitario.findFirst({ where: { canceladaEm: null, operacaoServicoId: id }, select: { id: true } }),
+      tx.participacaoProtocolo.findFirst({ where: { canceladaEm: null, operacaoServicoId: id }, select: { id: true } }),
     ]);
     if (aplicacaoVinculada || exameVinculado || protocoloVinculado) throw new FinanceiroError("CONFLITO", "Esta operação financia aplicações, exames ou protocolos ativos. Revise os vínculos antes de cancelá-la.");
     if (operacao.tipo === "SERVICO" && await tx.tentativaReprodutiva.findFirst({ where: { ...tentativaComAtribuicaoServico, operacaoServicoId: id }, select: { id: true } })) {

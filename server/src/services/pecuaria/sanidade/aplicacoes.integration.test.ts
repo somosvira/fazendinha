@@ -23,16 +23,16 @@ const diasAntes = (n: number) => new Date(Date.parse(hojeFazenda()) - n * 86_400
 afterAll(async () => {
   if (!propriedadeIds.length) return;
   await prisma.auditoriaPecuaria.deleteMany({ where: { animalId: { in: animalIds } } });
-  await prisma.aplicacaoProduto.deleteMany({ where: { animalId: { in: animalIds } } });
+  await prisma.vinculoTarefaProtocolo.deleteMany({ where: { aplicacao: { animalId: { in: animalIds } } } }); await prisma.aplicacaoProduto.deleteMany({ where: { animalId: { in: animalIds } } });
   await prisma.requisicaoPecuaria.deleteMany({ where: { propriedadeId: { in: propriedadeIds } } });
   await prisma.baixaAnimal.deleteMany({ where: { animalId: { in: animalIds } } });
-  await prisma.tarefaSanitaria.deleteMany({ where: { execucaoId: { in: execucaoIds } } });
-  await prisma.execucaoProtocoloSanitario.deleteMany({ where: { id: { in: execucaoIds } } });
-  await prisma.etapaProtocoloSanitario.deleteMany({ where: { protocoloId: { in: protocoloIds } } });
-  await prisma.protocoloSanitario.deleteMany({ where: { id: { in: protocoloIds } } });
+  await prisma.tarefaProtocolo.deleteMany({ where: { execucaoId: { in: execucaoIds } } });
+  await prisma.participacaoProtocolo.deleteMany({ where: { id: { in: execucaoIds } } });
+  await prisma.etapaProtocolo.deleteMany({ where: { protocoloId: { in: protocoloIds } } });
+  await prisma.protocolo.deleteMany({ where: { id: { in: protocoloIds } } });
   await prisma.produto.deleteMany({ where: { id: { in: produtoIds } } });
   await prisma.auditoriaPecuaria.deleteMany({ where: { entidadeId: { in: protocoloIds } } });
-  await prisma.destinoAnimal.deleteMany({ where: { animalId: { in: animalIds } } });
+  await prisma.periodoReprodutivoAnimal.deleteMany({ where: { animalId: { in: animalIds } } }); await prisma.destinoAnimal.deleteMany({ where: { animalId: { in: animalIds } } });
   await prisma.localizacaoAnimal.deleteMany({ where: { animalId: { in: animalIds } } });
   await prisma.animal.deleteMany({ where: { id: { in: animalIds } } });
   await prisma.auditoriaFinanceira.deleteMany({ where: { entidadeId: { in: operacaoIds } } });

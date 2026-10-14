@@ -7,6 +7,7 @@ export type TipoAtividade =
   | "EXAME_SANITARIO"
   | "INICIAR_SANITARIO";
 export type RascunhoVisita = {
+  finalidade?: string;
   cienciaSanitaria?: boolean;
   participanteIatfId?: string;
   tentativaId?: string;

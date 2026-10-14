@@ -1,13 +1,15 @@
+import { deslocarCalendario } from "../protocolos/calendario.calc.js";
 import type { EtapaIatf } from "./schemas.js";
+import { contarPartos } from "../rebanho/partos.calc.js";
 
 export function calendarioIatf(inicio: Date, etapas: EtapaIatf[]) {
-  return etapas.map((etapa, indice) => ({ ...etapa, etapa: indice, previstaEm: new Date(inicio.getTime() + etapa.intervalo * (etapa.unidade === "DIAS" ? 86400000 : 3600000)) }));
+  return etapas.map((etapa, indice) => ({ ...etapa, etapa: indice, previstaEm: deslocarCalendario(inicio, etapa.intervalo, etapa.unidade, "HORA") }));
 }
 
 export function contadoresCiclo(partosAnteriores: number, partos: { data: Date; status: string; incluidoSaldoAnterior: boolean }[], tentativas: { data: Date; status: string }[], referencia: Date) {
   const validos = partos.filter((p) => p.status === "VALIDO" && p.data <= referencia);
   const ultimo = validos.sort((a, b) => b.data.getTime() - a.data.getTime())[0];
-  return { partos: partosAnteriores + validos.filter((p) => !p.incluidoSaldoAnterior).length, tentativasCiclo: tentativas.filter((t) => t.status === "VALIDO" && t.data <= referencia && (!ultimo || t.data > ultimo.data)).length };
+  return { partos: contarPartos(partosAnteriores, partos, referencia), tentativasCiclo: tentativas.filter((t) => t.status === "VALIDO" && t.data <= referencia && (!ultimo || t.data > ultimo.data)).length };
 }
 
 type Avaliacao = { data: Date; resultado: string };

@@ -58,7 +58,7 @@ NODE_ENV=test DATABASE_URL=postgresql://test:test@127.0.0.1:1/fazendinha_unit \
   pnpm --filter rionovo-server run test
 ```
 
-O setup de testes fornece configurações inertes de R2. As integrações exigem banco descartável com migrations; veja [arquitetura](ARCHITECTURE.md#testes).
+O setup de testes fornece configurações inertes de R2. O único banco local é `fazendinha_seedatev3`; não crie bancos temporários ou clones para validação. Integrações locais exigem revisão das fixtures e da limpeza para preservar os dados existentes; casos que recriam banco ficam no CI externo. Veja [arquitetura](ARCHITECTURE.md#testes).
 
 ## Contexto para contribuir
 

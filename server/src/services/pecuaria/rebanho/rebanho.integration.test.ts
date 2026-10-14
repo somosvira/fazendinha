@@ -149,7 +149,7 @@ afterAll(async () => {
   await prisma.movimentacaoAnimal.deleteMany({ where: { OR: [{ animalId }, { movimentacaoId: { in: movs.map((m) => m.id) } }] } });
   await prisma.localizacaoAnimal.deleteMany({ where: { OR: [{ animalId }, { propriedadeId }] } });
   await prisma.movimentacao.deleteMany({ where: { id: { in: movs.map((m) => m.id) } } });
-  await prisma.destinoAnimal.deleteMany({ where: { animalId } });
+  await prisma.periodoReprodutivoAnimal.deleteMany({ where: { animalId } }); await prisma.destinoAnimal.deleteMany({ where: { animalId } });
   await prisma.pesagem.deleteMany({ where: { animalId } });
   await prisma.composicaoRacial.deleteMany({ where: { animalId } });
   await prisma.categoriaManualAnimal.deleteMany({ where: { OR: [{ animalId }, { categoriaId: { in: categoriasCriadas } }] } });

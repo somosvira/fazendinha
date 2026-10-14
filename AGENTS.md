@@ -13,6 +13,7 @@ Confira comportamento em rotas/serviços/interface, estrutura no schema e garant
 - Agricultura, Cultivo e Equipe/Ponto foram removidos. Não reintroduza seus módulos, rotas ou seeds como dependência de outra entrega. Categorias/centros financeiros e movimentos históricos dessas atividades podem permanecer.
 - A pecuária anterior no schema `public` foi substituída pela base no schema `pecuaria`. Preserve a implementação atual; não recupere o rebanho legado.
 - Reprodução V4 inclui tentativas, avaliações, gestação, partos/crias, visitas e IATF. Confira `docs/pecuaria/reproducao.md`; produção/qualidade do leite e laboratório/FIV permanecem fora do escopo. Partos, incluindo aborto e natimorto, reiniciam o ciclo de tentativas; genética da doadora não se confunde com a receptora.
+- Protocolos/tarefas e exames usam a base comum descrita em `docs/pecuaria/protocolos-exames.md`. As entidades IATF anteriores são views de leitura; escreva pelo núcleo comum. Papel por data vem de `PeriodoReprodutivoAnimal`, separado da aptidão.
 - O IDEAGRI serve à carga inicial e reconciliação. O Fazendinha é a fonte operacional após importar; não crie sincronização contínua por pressuposto.
 - O assistente está suspenso em `client/src/featureFlags.ts` e `server/src/featureFlags.ts`. Não o reative incidentalmente.
 
@@ -31,8 +32,8 @@ Confira comportamento em rotas/serviços/interface, estrutura no schema e garant
 ## Dados e validação
 
 - Preserve alterações locais de outras tarefas. Não faça reset do checkout, limpeza de bancos, remoção de volumes ou reexecução de cargas para validar uma mudança comum.
-- O seed de desenvolvimento é `seedatev3`, exclusivo do PostgreSQL local `fazendinha_seedatev3`. O guia manual V3 tem outra preparação e banco; leia [desenvolvimento](docs/desenvolvimento.md).
-- Testes de integração devem usar banco descartável. As flags `AUTH_DB_INTEGRATION`, `PECUARIA_DB_INTEGRATION` e `FINANCE_DB_INTEGRATION` habilitam escritas reais.
+- Use sempre e somente o PostgreSQL local `fazendinha_seedatev3` no desenvolvimento e na validação local. Não crie outro banco, clone ou cópia temporária para testes ou ensaio de migration. O seed é `seedatev3`; preserve seus dados e manifesto. Leia [desenvolvimento](docs/desenvolvimento.md).
+- As flags `AUTH_DB_INTEGRATION`, `PECUARIA_DB_INTEGRATION` e `FINANCE_DB_INTEGRATION` habilitam escritas reais. Antes de executar integração local, confira que cada teste cria/remove apenas suas próprias fixtures e usa `fazendinha_seedatev3`; não rode rotinas de reset, limpeza global ou criação de bancos. Casos que exigem recriar estrutura ou banco ficam restritos ao CI externo.
 - Rode os testes e builds proporcionais ao que mudou. Separe evidência automatizada de homologação manual e informe o que não foi executado. Não aprove nem resete marcações de roteiros pela atualização documental.
 - Commits seguem `tipo(escopo): descrição` em PT-BR. Não publique, faça deploy ou altere ambientes como efeito colateral de uma tarefa local.
 

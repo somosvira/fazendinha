@@ -43,6 +43,7 @@ export type AnimalReprodutivo = {
   restricoes: Restricao[];
 };
 export type FatoReprodutivo = {
+  exame?: { id: string; finalidades: string[]; finalidadePrincipal: string | null; realizacao: string; responsavel: string | null; formatoSnapshot: { nome?: string; campos?: import("../sanidade/CamposExame").CampoExame[] }; resultados: Array<{ campo:string; valor:string | number | boolean; unidade:string | null }> } | null;
   id: string;
   animalId: string;
   data: string;
@@ -151,6 +152,9 @@ export type TentativaInput = FatoBase & {
   motivoDocumentacaoExcepcional?: string;
 };
 export type AvaliacaoInput = FatoBase & {
+  finalidade?: "DIAGNOSTICO" | "RECONFIRMACAO" | "SEXAGEM";
+  tipoExameId?: string;
+  resultados?: Array<{ campo: string; valor: string | number | boolean }>;
   cienciaSanitaria?: boolean;
   resultado:
     | "POSITIVO"

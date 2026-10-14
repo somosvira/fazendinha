@@ -136,7 +136,7 @@ export async function atualizarProduto(id: string, input: ProdutoPatchInput, usu
       if ((perfilNutricional || anterior.perfilNutricionalProduto) && !(produto.usoNutricional ?? anterior.usoNutricional)) throw new FinanceiroError("CONFLITO", "O perfil nutricional exige uso nutricional", "usoNutricional");
       const vinculos = [
         ["usoGenetico", "material genético", () => tx.materialGenetico.count({ where: { produtoId: id } })],
-        ["usoSanitario", "aplicações ou protocolos sanitários", async () => (await tx.aplicacaoProduto.count({ where: { produtoId: id } })) + (await tx.etapaProtocoloSanitario.count({ where: { produtoId: id } })) + (await tx.protocoloIatf.count({where:{etapas:{array_contains:[{planoAplicacao:{produtoId:id}}]}}}))],
+        ["usoSanitario", "aplicações ou protocolos sanitários", async () => (await tx.aplicacaoProduto.count({ where: { produtoId: id } })) + (await tx.etapaProtocolo.count({ where: { produtoId: id } })) + (await tx.protocoloIatf.count({where:{etapas:{array_contains:[{planoAplicacao:{produtoId:id}}]}}}))],
         ["usoNutricional", "receitas ou fechamentos nutricionais", async () => (await tx.itemDieta.count({ where: { produtoId: id } })) + (await tx.itemFechamentoConsumo.count({ where: { produtoId: id } }))],
       ] as const;
       for (const [campo, descricao, contar] of vinculos) {

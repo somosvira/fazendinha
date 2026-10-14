@@ -1,3 +1,5 @@
+import { registrarEvidenciaAvaliacaoTx } from "../exames/evidencia-reprodutiva.js";
+import { papelReprodutivoNaDataTx } from "../rebanho/papeis.js";
 import crypto from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../../db.js";
@@ -12,15 +14,9 @@ import {
 import { conferirAnimalNoFato } from "../fatos.js";
 import { confirmarFato } from "../idempotencia.js";
 import { transacaoPecuaria } from "../transacao.js";
-import { obterSaldo } from "../sanidade/aplicacoes.js";
+import { consumirEstoqueTx } from "../consumo.js";
 import { dinheiro, exigirPeriodoAberto } from "../../financeiro/regras.js";
-import { obterBaseCusto, estornarMovimentoTx } from "../../estoque/estoque.js";
-import { valorSaidaDaBase } from "../../estoque/estoque.calc.js";
-import {
-  resolverLotePrincipalTx,
-  validadeVencida,
-} from "../../estoque/partidas.js";
-import { travarUsosProduto } from "../../estoque/usos.js";
+import { estornarMovimentoTx } from "../../estoque/estoque.js";
 import { calcularComposicaoFilho } from "../rebanho/composicao.calc.js";
 import { operacaoIdempotenteTx } from "./operacoes.js";
 import { totalAtribuidoServicoTx } from "./atribuicoes-servico.js";
@@ -314,66 +310,13 @@ export async function criarTentativaTx(
     const produto = material!.produto;
     if (!produto.ativo || !produto.usoGenetico)
       erro("Produto não está ativo para uso genético", "materialId");
-    await travarUsosProduto(tx, [produto.id]);
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`pec-produto:${input.propriedadeId}:${produto.id}`}))`;
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`pec-produto:${produto.id}`}))`;
-    if (produto.rastrearPartidas !== !!input.partidaId)
-      erro("Selecione lote do produto conforme rastreabilidade", "partidaId");
-    const partida = input.partidaId
-      ? await resolverLotePrincipalTx(tx, input.partidaId, produto.id)
-      : null;
-    if (input.partidaId && !partida)
-      erro("Lote do produto inválido", "partidaId");
-    partidaSnapshot = partida
-      ? { id: partida.id, codigo: partida.codigo, validade: partida.validade }
-      : null;
-    if (partida && !partida.validade && !input.cienciaValidadeDesconhecida)
-      erro(
-        "Confirme ciência da validade desconhecida",
-        "cienciaValidadeDesconhecida",
-      );
-    if (
-      partida?.validade &&
-      validadeVencida(partida.validade, data) &&
-      (!input.documentacaoExcepcional || !input.motivoDocumentacaoExcepcional)
-    )
-      erro(
-        "Lote vencido: documentar o fato exige motivo e ciência",
-        "partidaId",
-      );
-    if (
-      (await obterSaldo(tx, produto.id, input.propriedadeId)).lt(quantidade) ||
-      (partida &&
-        (await obterSaldo(tx, produto.id, input.propriedadeId, partida.id)).lt(
-          quantidade,
-        ))
-    )
-      erro("Saldo insuficiente de material genético", "quantidade");
-    await exigirPeriodoAberto(tx, input.propriedadeId, data);
-    const base = await obterBaseCusto(tx, produto.id, input.propriedadeId),
-      valores = valorSaidaDaBase(quantidade, base);
-    const movimento = await tx.movimentoEstoque.create({
-      data: {
-        produtoId: produto.id,
-        propriedadeId: input.propriedadeId,
-        tipo: "SAIDA",
-        origem: "REPRODUCAO",
-        data,
-        quantidade,
-        ...valores,
-        criadoPorId: usuarioId,
-        observacao: `Tentativa ${input.tipo} ${input.animalId}`,
-        ...(partida
-          ? {
-              alocacaoPartidaEstoques: {
-                create: { partidaId: partida.id, quantidade },
-              },
-            }
-          : {}),
-      },
-    });
-    movimentoEstoqueId = movimento.id;
-    valorProdutoAtribuido = base ? valores.valorTotal : null;
+    const consumo = await consumirEstoqueTx(tx, { produto, propriedadeId: input.propriedadeId, quantidade, campoQuantidade: "quantidade",
+      data, partidaId: input.partidaId, cienciaValidadeDesconhecida: input.cienciaValidadeDesconhecida,
+      documentacaoExcepcional: input.documentacaoExcepcional, motivoDocumentacaoExcepcional: input.motivoDocumentacaoExcepcional,
+      origem: "REPRODUCAO", observacao: `Tentativa ${input.tipo} ${input.animalId}`, usuarioId });
+    movimentoEstoqueId = consumo.movimentoEstoqueId;
+    valorProdutoAtribuido = consumo.valorProdutoAtribuido;
+    partidaSnapshot = consumo.partida ? { id: consumo.partida.id, codigo: consumo.partida.codigo, validade: consumo.partida.validade } : null;
   } else if (input.origem === "SERVICO" && !input.operacaoServicoId)
     erro("Vincule um Serviço confirmado", "operacaoServicoId");
   else if (input.origem === "DOCUMENTADA" && !input.justificativaSemOrigem)
@@ -487,6 +430,10 @@ export async function criarAvaliacaoTx(
 ) {
   await travarAnimais(tx, [input.animalId]);
   const data = dia(input.data);
+  if (input.sexoFetal && ["NAO_AVALIADO", "NEGATIVO"].includes(input.resultado)) erro("Sexo fetal exige exame realizado com evidência de gestação", "sexoFetal");
+  if ((input.resultado === "SEXAGEM" && input.finalidade && input.finalidade !== "SEXAGEM") || (input.finalidade === "SEXAGEM" && input.resultado !== "SEXAGEM" && input.resultado !== "NAO_AVALIADO") || (input.resultado === "RECONFIRMACAO" && input.finalidade && input.finalidade !== "RECONFIRMACAO")) erro("Finalidade e conclusão incompatíveis", "finalidade");
+  if (input.resultado !== "NAO_AVALIADO" && ["RECONFIRMACAO", "SEXAGEM"].includes(input.finalidade ?? "") && !input.gestacaoId)
+    erro("Vincule a gestação conhecida para esta finalidade", "gestacaoId");
   await conferirMatrizTx(tx, input.animalId, input.propriedadeId, data);
   const tentativa = input.tentativaId
     ? await tx.tentativaReprodutiva.findFirst({
@@ -606,8 +553,8 @@ export async function criarAvaliacaoTx(
     erro("Retorno não pode anteceder a avaliação", "retornoEm");
   if (input.previsaoParto && dia(input.previsaoParto) < data)
     erro("Previsão de parto não pode anteceder o diagnóstico", "previsaoParto");
-  const criada = await tx.avaliacaoReprodutiva.create({
-    data: {
+  const criada = await registrarEvidenciaAvaliacaoTx(tx, {
+      tipoExameId: input.tipoExameId, responsavel: input.responsavel, finalidade: input.finalidade, resultados: input.resultados,
       animalId: input.animalId,
       propriedadeId: input.propriedadeId,
       data,
@@ -623,7 +570,6 @@ export async function criarAvaliacaoTx(
       retornoEm: input.retornoEm ? dia(input.retornoEm) : null,
       observacao: input.observacao,
       criadoPorId: usuarioId,
-    },
   });
   await auditar(tx, {
     entidade: "AvaliacaoReprodutiva",
@@ -716,15 +662,10 @@ export async function criarPartoTx(
   const genetica = tentativa?.geneticaSnapshot as
     | { mae?: Gen | null; pai?: Gen | null }
     | undefined;
-  const destinoNoParto = await tx.destinoAnimal.findFirst({
-    where: {
-      animalId: input.animalId,
-      desde: { lte: data },
-      OR: [{ ate: null }, { ate: { gt: data } }],
-    },
-  });
-  const receptoraSemVinculo =
-    !tentativa && destinoNoParto?.papelReprodutivo === "RECEPTORA";
+  const papelNoParto = await papelReprodutivoNaDataTx(tx, input.animalId, data);
+  if (!tentativa && papelNoParto.estado === "CONFLITO") erro("Papel reprodutivo conflitante na data do parto; concilie o histórico antes de definir a filiação", "gestacaoId");
+  // Sem tentativa comprovada e sem papel conhecido, a mãe genética permanece desconhecida.
+  const receptoraSemVinculo = !tentativa && (papelNoParto.papel === "RECEPTORA" || papelNoParto.estado === "DESCONHECIDO");
   const mae =
       tentativa?.tipo === "TE" || receptoraSemVinculo
         ? (genetica?.mae ?? null)
@@ -806,10 +747,10 @@ export async function criarPartoTx(
               criadoPorId: usuarioId,
             },
           },
+          papeisReprodutivos: { create: { tipo: "NENHUM", inicio: data, origem: "MANUAL", criadoPorId: usuarioId } },
           destinos: {
             create: {
               aptidao: cria.aptidao,
-              papelReprodutivo: "NENHUM",
               desde: data,
               criadoPorId: usuarioId,
             },
@@ -1369,6 +1310,11 @@ export async function painelReproducao(
       animal: { sexo: "F" },
     },
   });
+  const evidencias = await prisma.interpretacaoReprodutiva.findMany({
+    where: { id: { in: avaliacoes.map(a => a.id) } },
+    select: { id: true, exame: { select: { id:true, finalidades:true, finalidadePrincipal:true, realizacao:true, responsavel:true, formatoSnapshot:true, resultados:{ where:{vigente:true}, select:{campo:true,valor:true,unidade:true} } } } },
+  });
+  const examesPorAvaliacao = new Map(evidencias.map(e => [e.id, e.exame]));
   return {
     animais: animais.map((a) => {
       const estado = estados.get(a.id)!;
@@ -1381,7 +1327,7 @@ export async function painelReproducao(
       };
     }),
     tentativas,
-    avaliacoes,
+    avaliacoes: avaliacoes.map(a => ({ ...a, exame: examesPorAvaliacao.get(a.id) ?? null })),
     partos: partos.map((p) => ({
       ...p,
       crias: crias

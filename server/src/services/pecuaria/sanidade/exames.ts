@@ -1,3 +1,5 @@
+import { vincularFatoTarefaTx } from "../protocolos/vinculos.js";
+import { camposExameSchema, validarObservacoesExame, type CampoExame, type ObservacaoExame } from "../exames/formatos.js";
 import { marcarRegularizacaoFatoTx } from "../reproducao/marcacao-regularizacao.js";
 import { confirmarColetivo } from "./coletivos.js";
 import { conferirAnimalNoFato } from "../fatos.js";
@@ -9,13 +11,21 @@ import { prisma } from "../../../db.js";
 import { RebanhoError, auditar, travarAnimais } from "../rebanho/regras.js";
 import { conferirTarefaProtocoloTx, type DesvioInput } from "./desvios.js";
 
-type TipoResultado = "TEXTO" | "NUMERO" | "OPCAO";
+type TipoResultado = "TEXTO" | "NUMERO" | "OPCAO" | "MULTIPLO";
 const dia = (s: string) => new Date(`${s}T00:00:00Z`);
 
-export async function listarTiposExame(incluirInativos = false) {
-  const tipos = await prisma.tipoExame.findMany({ where: incluirInativos ? {} : { ativo: true }, orderBy: { nome: "asc" },
-    include: { _count: { select: { exames: true } } } });
-  return tipos.map(({ _count, ...tipo }) => ({ ...tipo, formatoBloqueado: _count.exames > 0 }));
+function conferirFormatoReprodutivo(tipoResultado: string, campos: CampoExame[] | null) {
+  if (tipoResultado !== "MULTIPLO") throw new RebanhoError("VALIDACAO", "Exames reprodutivos exigem observações estruturadas", "tipoResultado");
+  for (const [codigo, opcoes] of [["CONCLUSAO_GESTACIONAL", ["POSITIVO","NEGATIVO","INCONCLUSIVO"]], ["SEXO_FETAL", ["M","F"]]] as const) {
+    const campo = campos?.find(c => c.codigo === codigo);
+    if (!campo || campo.tipo !== "OPCAO" || campo.obrigatorio || JSON.stringify([...campo.opcoes ?? []].sort()) !== JSON.stringify([...opcoes].sort())) throw new RebanhoError("VALIDACAO", "Preserve os campos clínicos opcionais de conclusão e sexo fetal; acrescente observações específicas sem alterar sua semântica", "campos");
+  }
+}
+
+export async function listarTiposExame(incluirInativos = false, contexto?: "SANITARIO" | "REPRODUTIVO") {
+  const tipos = await prisma.tipoExame.findMany({ where: { ...(incluirInativos ? {} : { ativo: true }), ...(contexto ? { contexto: { in: [contexto, "COMPARTILHADO"] } } : {}) }, orderBy: { nome: "asc" },
+    include: { _count: { select: { exames: true, etapas: { where: { protocolo: { OR: [{ publicado: true }, { execucoes: { some: {} } }] } } } } } } });
+  return tipos.map(({ _count, ...tipo }) => ({ ...tipo, padraoReprodutivo: tipo.id === "b0400000-0000-4000-8000-000000000001", formatoBloqueado: _count.exames > 0 || _count.etapas > 0 }));
 }
 
 export async function travarTiposExame(tx: Prisma.TransactionClient, ids: string[]) {
@@ -24,7 +34,7 @@ export async function travarTiposExame(tx: Prisma.TransactionClient, ids: string
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(h) FROM (SELECT DISTINCT hashtext(k) AS h FROM unnest(${chaves}::text[]) AS k) AS chaves ORDER BY h`;
 }
 
-export async function editarTipoExame(id: string, input: { nome?: string; ativo?: boolean; tipoResultado?: TipoResultado; unidade?: string | null; opcoes?: string[] | null }, usuarioId: number | null) {
+export async function editarTipoExame(id: string, input: { nome?: string; ativo?: boolean; tipoResultado?: TipoResultado; unidade?: string | null; opcoes?: string[] | null; campos?: CampoExame[] | null }, usuarioId: number | null) {
   return transacaoPecuaria(async (tx) => {
     await travarTiposExame(tx, [id]);
     const antes = await tx.tipoExame.findUnique({ where: { id } });
@@ -32,9 +42,13 @@ export async function editarTipoExame(id: string, input: { nome?: string; ativo?
     const tipoResultado = input.tipoResultado ?? antes.tipoResultado;
     const opcoes = input.opcoes !== undefined ? input.opcoes : tipoResultado === "OPCAO" ? antes.opcoes : null;
     const unidade = input.unidade !== undefined ? input.unidade?.trim() || null : antes.unidade;
-    const formatoBloqueado = Boolean(await tx.exameAnimal.findFirst({ where: { tipoExameId: id }, select: { id: true } }));
-    if (formatoBloqueado && (tipoResultado !== antes.tipoResultado || unidade !== antes.unidade || JSON.stringify(opcoes) !== JSON.stringify(antes.opcoes))) {
-      throw new RebanhoError("CONFLITO", "Tipo de exame com coleta não permite mudar formato, unidade ou opções. Crie outro tipo de exame.", "tipoResultado");
+    const campos = tipoResultado === "MULTIPLO" ? camposExameSchema.parse(input.campos ?? antes.campos) : null;
+    if (tipoResultado !== "MULTIPLO" && input.campos?.length) throw new RebanhoError("VALIDACAO", "Campos estruturados exigem formato de vários resultados", "campos");
+    if (antes.contexto === "REPRODUTIVO") conferirFormatoReprodutivo(tipoResultado, campos);
+    const camposAntes = antes.tipoResultado === "MULTIPLO" ? camposExameSchema.parse(antes.campos) : null;
+    const formatoBloqueado = Boolean(await tx.exameAnimal.findFirst({ where: { tipoExameId: id }, select: { id: true } }) || await tx.etapaProtocolo.findFirst({ where: { tipoExameId: id, protocolo: { OR: [{ publicado: true }, { execucoes: { some: {} } }] } }, select: { id: true } }));
+    if (formatoBloqueado && (tipoResultado !== antes.tipoResultado || unidade !== antes.unidade || JSON.stringify(opcoes) !== JSON.stringify(antes.opcoes) || JSON.stringify(campos) !== JSON.stringify(camposAntes))) {
+      throw new RebanhoError("CONFLITO", "Tipo de exame com coleta não permite mudar formato, unidade ou opções. Crie uma nova versão do formato.", "tipoResultado");
     }
     if (tipoResultado === "OPCAO" && (!Array.isArray(opcoes) || !opcoes.length)) throw new RebanhoError("VALIDACAO", "Informe as opções possíveis", "opcoes");
     if (tipoResultado !== "OPCAO" && Array.isArray(opcoes) && opcoes.length) throw new RebanhoError("VALIDACAO", "Opções só cabem em resultado por escolha", "opcoes");
@@ -42,6 +56,7 @@ export async function editarTipoExame(id: string, input: { nome?: string; ativo?
     const depois = await tx.tipoExame.update({ where: { id }, data: {
       ...input, tipoResultado, ...(input.nome ? { nome: input.nome.trim() } : {}),
       ...(input.unidade !== undefined ? { unidade: input.unidade?.trim() || null } : {}),
+      campos: campos == null ? Prisma.DbNull : campos,
       opcoes: opcoes == null ? Prisma.JsonNull : opcoes as Prisma.InputJsonValue,
     } });
     await auditar(tx, { entidade: "TipoExame", entidadeId: id, acao: "EDICAO", usuarioId, antes, depois });
@@ -49,12 +64,31 @@ export async function editarTipoExame(id: string, input: { nome?: string; ativo?
   });
 }
 
-export async function criarTipoExame(input: { nome: string; tipoResultado: TipoResultado; unidade?: string | null; opcoes?: string[] | null }, usuarioId: number | null) {
+export async function criarTipoExame(input: { versaoAnteriorId?: string; nome: string; tipoResultado: TipoResultado; unidade?: string | null; opcoes?: string[] | null; campos?: CampoExame[] | null }, usuarioId: number | null, contexto: "SANITARIO" | "REPRODUTIVO" | "COMPARTILHADO" = "SANITARIO") {
+  const campos = input.tipoResultado === "MULTIPLO" ? camposExameSchema.parse(input.campos) : null;
+  if (contexto === "REPRODUTIVO") conferirFormatoReprodutivo(input.tipoResultado, campos);
+  if (input.tipoResultado !== "MULTIPLO" && input.campos?.length) throw new RebanhoError("VALIDACAO", "Campos estruturados exigem formato de vários resultados", "campos");
   if (input.tipoResultado === "OPCAO" && !input.opcoes?.length) throw new RebanhoError("VALIDACAO", "Informe as opções possíveis", "opcoes");
   if (input.tipoResultado !== "OPCAO" && input.opcoes?.length) throw new RebanhoError("VALIDACAO", "Opções só cabem em resultado por escolha", "opcoes");
-  return prisma.$transaction(async (tx) => {
-    const criado = await tx.tipoExame.create({ data: { nome: input.nome.trim(), tipoResultado: input.tipoResultado,
-      unidade: input.unidade?.trim() || null, opcoes: input.opcoes ?? Prisma.JsonNull } });
+  return transacaoPecuaria(async (tx) => {
+    let versaoFormato = 1;
+    if (input.versaoAnteriorId) {
+      const anterior = await tx.tipoExame.findUnique({ where: { id: input.versaoAnteriorId } });
+      if (!anterior || anterior.contexto !== contexto) throw new RebanhoError("VALIDACAO", "Versão anterior incompatível com o cadastro", "versaoAnteriorId");
+      // Todas as derivações usam a mesma trava, inclusive duas criações simultâneas a partir de versões diferentes.
+      let raiz = anterior;
+      const visitados = new Set<string>([raiz.id]);
+      while (raiz.versaoAnteriorId) {
+        const pai = await tx.tipoExame.findUniqueOrThrow({ where: { id: raiz.versaoAnteriorId } });
+        if (visitados.has(pai.id)) throw new RebanhoError("CONFLITO", "Ciclo no histórico de versões do formato");
+        visitados.add(pai.id); raiz = pai;
+      }
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`pec-versao-exame:${raiz.id}`}))`;
+      const versoes = await tx.$queryRaw<{ versaoFormato: number }[]>`WITH RECURSIVE familia AS (SELECT id,"versaoFormato" FROM pecuaria."TipoExame" WHERE id=${raiz.id} UNION ALL SELECT t.id,t."versaoFormato" FROM pecuaria."TipoExame" t JOIN familia f ON t."versaoAnteriorId"=f.id) SELECT "versaoFormato" FROM familia`;
+      versaoFormato = Math.max(...versoes.map(v => v.versaoFormato)) + 1;
+    }
+    const criado = await tx.tipoExame.create({ data: { versaoAnteriorId: input.versaoAnteriorId, versaoFormato, nome: input.nome.trim(), tipoResultado: input.tipoResultado,
+      unidade: input.unidade?.trim() || null, contexto, campos: campos ?? Prisma.DbNull, opcoes: input.opcoes ?? Prisma.JsonNull } });
     await auditar(tx, { entidade: "TipoExame", entidadeId: criado.id, acao: "CADASTRO", usuarioId, depois: criado });
     return { ...criado, formatoBloqueado: false };
   });
@@ -63,8 +97,8 @@ export async function criarTipoExame(input: { nome: string; tipoResultado: TipoR
 export async function listarExames(animalId: string | undefined, propriedadeId: number | null, filtro?: ConsultaSanitaria) {
   const aguardando = filtro?.situacao === "AGUARDANDO_RESULTADO";
   const informado = filtro?.situacao === "RESULTADO_INFORMADO";
-  const lista = await prisma.exameAnimal.findMany({ where: { ...filtrosFatos(filtro), ...(aguardando ? { resultadoTexto: null, resultadoNumero: null, resultadoOpcao: null } : informado ? { OR: [{ resultadoTexto: { not: null } }, { resultadoNumero: { not: null } }, { resultadoOpcao: { not: null } }] } : {}), ...(animalId ? { animalId } : {}), ...(propriedadeId == null ? {} : { propriedadeId }) },
-    include: { tipoExame: { select: { nome: true } } }, orderBy: [{ data: "desc" }, { criadoEm: "desc" }], ...limites(filtro) });
+  const lista = await prisma.exameAnimal.findMany({ where: { tipoExame: { contexto: { not: "REPRODUTIVO" } }, ...filtrosFatos(filtro), ...(aguardando ? { resultadoTexto: null, resultadoNumero: null, resultadoOpcao: null, resultados: { none: { vigente: true } } } : informado ? { OR: [{ resultadoTexto: { not: null } }, { resultadoNumero: { not: null } }, { resultadoOpcao: { not: null } }, { resultados: { some: { vigente: true } } }] } : {}), ...(animalId ? { animalId } : {}), ...(propriedadeId == null ? {} : { propriedadeId }) },
+    include: { resultados: { where: { vigente: true } }, tipoExame: { select: { nome: true } } }, orderBy: [{ data: "desc" }, { criadoEm: "desc" }], ...limites(filtro) });
   return lista.map((e) => ({ ...e, tipoExame: { nome: nomeExameHistorico(e.formatoSnapshot, e.tipoExame.nome) } }));
 }
 
@@ -73,7 +107,7 @@ export function nomeExameHistorico(formato: Prisma.JsonValue, nomeAtual: string)
 }
 
 export type ExameInput = { chave?: string; animalId: string; propriedadeId: number; tipoExameId: string; data: string;
-  resultadoTexto?: string | null; resultadoNumero?: number | null; resultadoOpcao?: string | null;
+  resultadoTexto?: string | null; resultadoNumero?: number | null; resultadoOpcao?: string | null; resultados?: ObservacaoExame[];
   responsavel?: string | null; ocorrenciaId?: string | null; tarefaId?: string | null; operacaoServicoId?: string | null; desvio?: DesvioInput };
 
 export async function prepararExameTx(tx: Prisma.TransactionClient, input: ExameInput, usuarioId: number | null, previa = false) {
@@ -81,10 +115,12 @@ export async function prepararExameTx(tx: Prisma.TransactionClient, input: Exame
     const data = dia(input.data);
     await conferirAnimalNoFato(tx, input.animalId, input.propriedadeId, data);
     await travarTiposExame(tx, [input.tipoExameId]);
-    const tipo = await tx.tipoExame.findFirst({ where: { id: input.tipoExameId, ativo: true } });
+    const tipo = await tx.tipoExame.findFirst({ where: { id: input.tipoExameId, ativo: true, contexto: { not: "REPRODUTIVO" } } });
     if (!tipo) throw new RebanhoError("VALIDACAO", "Tipo de exame não encontrado", "tipoExameId");
+    const resultados = tipo.tipoResultado === "MULTIPLO" ? validarObservacoesExame(tipo.campos, input.resultados ?? [], (input.resultados?.length ?? 0) > 0) : [];
+    if (tipo.tipoResultado !== "MULTIPLO" && input.resultados?.length) throw new RebanhoError("VALIDACAO", "Este exame usa o resultado simples do formato histórico", "resultados");
     const preenchidos = [input.resultadoTexto, input.resultadoNumero, input.resultadoOpcao].filter((v) => v !== undefined && v !== null && v !== "");
-    if (preenchidos.length > 0 && (preenchidos.length !== 1 || (tipo.tipoResultado === "TEXTO" && !input.resultadoTexto?.trim())
+    if (preenchidos.length > 0 && (tipo.tipoResultado === "MULTIPLO" || preenchidos.length !== 1 || (tipo.tipoResultado === "TEXTO" && !input.resultadoTexto?.trim())
       || (tipo.tipoResultado === "NUMERO" && input.resultadoNumero == null)
       || (tipo.tipoResultado === "OPCAO" && !input.resultadoOpcao))) {
       throw new RebanhoError("VALIDACAO", "Informe um único resultado no formato deste exame", "resultado");
@@ -115,6 +151,8 @@ export async function prepararExameTx(tx: Prisma.TransactionClient, input: Exame
       tipoExameId: tipo.id, data, resultadoTexto: input.resultadoTexto?.trim() || null,
       resultadoNumero: input.resultadoNumero ?? null, resultadoOpcao: input.resultadoOpcao ?? null,
       formatoSnapshot: { nome: tipo.nome, tipoResultado: tipo.tipoResultado, unidade: tipo.unidade, opcoes: tipo.opcoes },
+      criadoPorId: usuarioId, realizacao: preenchidos.length || resultados.length ? "REALIZADO" : "COLETA_REGISTRADA",
+      ...(tipo.tipoResultado === "MULTIPLO" ? { formatoSnapshot: { nome: tipo.nome, tipoResultado: tipo.tipoResultado, versao: tipo.versaoFormato, campos: tipo.campos }, resultados: { create: resultados.map(r => ({ ...r, criadoPorId: usuarioId })) } } : {}),
       responsavel: input.responsavel?.trim() || null, ocorrenciaId: input.ocorrenciaId ?? null,
       tarefaId: input.tarefaId ?? null, operacaoServicoId, ...(desvioProtocoloSnapshot ? { desvioProtocoloSnapshot } : {}) };
     return { dadosCriacao, desvioProtocoloSnapshot };
@@ -123,6 +161,7 @@ export async function prepararExameTx(tx: Prisma.TransactionClient, input: Exame
 export async function registrarExameTx(tx: Prisma.TransactionClient, input: ExameInput, usuarioId: number | null) {
     const { dadosCriacao } = await prepararExameTx(tx, input, usuarioId);
     const criado = await tx.exameAnimal.create({ data: dadosCriacao });
+    if (input.tarefaId) await vincularFatoTarefaTx(tx, input.tarefaId, { exameId: criado.id }, usuarioId);
     await auditar(tx, { entidade: "ExameAnimal", entidadeId: criado.id, animalId: input.animalId, propriedadeId: input.propriedadeId, acao: "REGISTRO", usuarioId, depois: criado });
     return criado;
 }
@@ -138,20 +177,25 @@ export async function registrarExameColetivo(input: { chave: string; propriedade
   });
 }
 
-export async function corrigirExame(id: string, propriedadeId: number, input: { motivo: string; resultadoTexto?: string | null; resultadoNumero?: number | null; resultadoOpcao?: string | null; anular?: boolean }, usuarioId: number | null) {
+export async function corrigirExame(id: string, propriedadeId: number, input: { motivo: string; resultadoTexto?: string | null; resultadoNumero?: number | null; resultadoOpcao?: string | null; resultados?: ObservacaoExame[]; anular?: boolean }, usuarioId: number | null) {
   return transacaoPecuaria(async (tx) => {
     const referencia = await tx.exameAnimal.findFirst({ where: { id, propriedadeId }, select: { animalId: true } });
     if (!referencia) throw new RebanhoError("NAO_ENCONTRADO", "Exame não encontrado ou anulado");
     await travarAnimais(tx, [referencia.animalId]);
-    const original = await tx.exameAnimal.findFirst({ where: { id, propriedadeId, status: "VALIDO" } });
+    const original = await tx.exameAnimal.findFirst({ where: { id, propriedadeId, status: "VALIDO" }, include: { interpretacao: { select: { id: true } }, resultados: { where: { vigente: true } } } });
     if (!original) throw new RebanhoError("NAO_ENCONTRADO", "Exame não encontrado ou anulado");
-    const formato = original.formatoSnapshot as { tipoResultado: string; opcoes?: string[] };
-    if (!input.anular) {
+    if (original.interpretacao) throw new RebanhoError("CONFLITO", "Este exame tem efeitos reprodutivos. Revise a avaliação e seus vínculos de gestação antes de corrigir ou anular", "exameId");
+    const formato = original.formatoSnapshot as { tipoResultado: string; opcoes?: string[]; campos?: unknown };
+    const multiplos = !input.anular && formato.tipoResultado === "MULTIPLO" ? validarObservacoesExame(formato.campos, input.resultados ?? []) : null;
+    if (multiplos && !multiplos.length) throw new RebanhoError("VALIDACAO", "Informe os resultados do exame", "resultados");
+    if (multiplos && [input.resultadoTexto, input.resultadoNumero, input.resultadoOpcao].some(v => v != null && v !== "")) throw new RebanhoError("VALIDACAO", "Este formato usa observações estruturadas", "resultados");
+    if (!input.anular && !multiplos) {
       if (input.resultadoNumero != null && !Number.isFinite(input.resultadoNumero)) throw new RebanhoError("VALIDACAO", "Resultado numérico inválido", "resultadoNumero");
       const preenchidos = [input.resultadoTexto, input.resultadoNumero, input.resultadoOpcao].filter((v) => v != null && v !== "");
       if (preenchidos.length !== 1 || (formato.tipoResultado === "TEXTO" && !input.resultadoTexto?.trim()) || (formato.tipoResultado === "NUMERO" && input.resultadoNumero == null) || (formato.tipoResultado === "OPCAO" && !formato.opcoes?.includes(input.resultadoOpcao ?? ""))) throw new RebanhoError("VALIDACAO", "Informe resultado no formato preservado na coleta", "resultado");
     }
-    const salvo = await tx.exameAnimal.update({ where: { id }, data: input.anular ? { status: "ANULADO", motivoAnulacao: input.motivo, anuladoEm: new Date() } : { resultadoTexto: input.resultadoTexto?.trim() || null, resultadoNumero: input.resultadoNumero ?? null, resultadoOpcao: input.resultadoOpcao ?? null } });
+    if (multiplos) await tx.resultadoExame.updateMany({ where: { exameId: id, vigente: true }, data: { vigente: false, substituidoEm: new Date() } });
+    const salvo = await tx.exameAnimal.update({ where: { id }, include: { resultados: { where: { vigente: true } } }, data: input.anular ? { status: "ANULADO", motivoAnulacao: input.motivo, anuladoEm: new Date() } : { realizacao: "REALIZADO", ...(multiplos ? { resultados: { create: multiplos.map(r => ({ ...r, criadoPorId: usuarioId })) } } : { resultadoTexto: input.resultadoTexto?.trim() || null, resultadoNumero: input.resultadoNumero ?? null, resultadoOpcao: input.resultadoOpcao ?? null }) } });
     if (input.anular) await marcarRegularizacaoFatoTx(tx, { fatoTipo: "EXAME", fatoId: id, destinoConsumo: null, motivo: input.motivo, usuarioId });
     await auditar(tx, { entidade: "ExameAnimal", entidadeId: id, animalId: original.animalId, propriedadeId, acao: input.anular ? "ANULACAO" : "RESULTADO_CORRIGIDO", usuarioId, antes: original, depois: { ...salvo, motivo: input.motivo } });
     return salvo;

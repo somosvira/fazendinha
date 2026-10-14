@@ -9,6 +9,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FormReproducao } from "./FormReproducao";
 import {
+  reqV4,
   registrarAvaliacao,
   registrarParto,
   type PainelReprodutivo,
@@ -50,7 +51,7 @@ const painel: PainelReprodutivo = {
   restricoes: [],
 };
 afterEach(cleanup);
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => { vi.clearAllMocks(); vi.mocked(reqV4).mockResolvedValue([{ id:"tipo", nome:"Exame reprodutivo", padraoReprodutivo:true, tipoResultado:"MULTIPLO", campos:[], ativo:true }]); });
 describe("registros reprodutivos", () => {
   it("bloqueia negativo com gestação e preserva os dados/chave no retry de avaliação", async () => {
     vi.mocked(registrarAvaliacao).mockRejectedValueOnce(
@@ -66,15 +67,15 @@ describe("registros reprodutivos", () => {
         onSalvo={salvo}
       />,
     );
-    fireEvent.change(screen.getByLabelText("Resultado"), {
-      target: { value: "NEGATIVO" },
-    });
+    await screen.findByRole("option", { name: "Exame reprodutivo" });
+    fireEvent.change(screen.getByLabelText("Atendimento"), { target: { value: "REALIZADO" } });
+    fireEvent.change(screen.getByLabelText("Conclusão sobre a gestação"), { target: { value: "NEGATIVO" } });
     fireEvent.submit(document.getElementById("form-reproducao")!);
     await screen.findByText(/Registre a perda gestacional/);
     expect(registrarAvaliacao).not.toHaveBeenCalled();
-    fireEvent.change(screen.getByLabelText("Resultado"), {
-      target: { value: "RECONFIRMACAO" },
-    });
+    fireEvent.change(screen.getByLabelText("Finalidade do exame"), { target: { value: "RECONFIRMACAO" } });
+    fireEvent.change(screen.getByLabelText("Conclusão sobre a gestação"), { target: { value: "POSITIVO" } });
+    fireEvent.change(screen.getByLabelText("Sexo fetal (se observado)"), { target: { value: "F" } });
     fireEvent.change(screen.getByLabelText("Motivo / observação"), {
       target: { value: "Reavaliação pelo veterinário" },
     });
@@ -86,6 +87,8 @@ describe("registros reprodutivos", () => {
     expect(salvo).not.toHaveBeenCalled();
     const primeira = vi.mocked(registrarAvaliacao).mock.calls[0][0];
     expect(primeira.gestacaoId).toBe("g");
+    expect(primeira.sexoFetal).toBe("F");
+    expect(primeira.finalidade).toBe("RECONFIRMACAO");
     vi.mocked(registrarAvaliacao).mockResolvedValueOnce({
       id: "e",
       animalId: "a",
@@ -144,7 +147,9 @@ it("perda no mesmo dia permite negativo, preservando fronteira inclusiva para re
   const p = {...painel, gestacoes: [{id:"g",animalId:"a",status:"VALIDO",confirmadaEm:"2026-10-01",encerradaEm:"2026-10-13"}], animais: painel.animais.map(a=>({...a,gestacao:null}))};
   vi.mocked(registrarAvaliacao).mockResolvedValue({id:"av",animalId:"a",data:"2026-10-13"});
   render(<FormReproducao acao="avaliacao" painel={p} animalInicial="a" dataInicial="2026-10-13" onFechar={vi.fn()} onSalvo={vi.fn()} />);
-  fireEvent.change(screen.getByLabelText("Resultado"),{target:{value:"NEGATIVO"}});
+  await screen.findByRole("option", { name: "Exame reprodutivo" });
+  fireEvent.change(screen.getByLabelText("Atendimento"), { target: { value: "REALIZADO" } });
+  fireEvent.change(screen.getByLabelText("Conclusão sobre a gestação"),{target:{value:"NEGATIVO"}});
   fireEvent.submit(document.getElementById("form-reproducao")!);
   await waitFor(()=>expect(registrarAvaliacao).toHaveBeenCalled());
   expect(vi.mocked(registrarAvaliacao).mock.calls[0][0].gestacaoId).toBeUndefined();

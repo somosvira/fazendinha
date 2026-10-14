@@ -1,3 +1,4 @@
+import { anularEvidenciaAvaliacaoTx } from "../exames/evidencia-reprodutiva.js";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../../../db.js";
 import { auditar, RebanhoError, travarAnimais } from "../rebanho/regras.js";
@@ -152,7 +153,7 @@ async function previaTx(
   const tarefasIatf = vinculo ? await tx.tarefaIatf.findMany({ where: vinculo }) : [];
   const atendimentosVisita = vinculo ? await tx.participanteVisita.findMany({ where: { OR: [
     { fatoTipo: tipo === "tentativas" ? "TentativaReprodutiva" : "AvaliacaoReprodutiva", fatoId: id },
-    { tarefaIatfId: { in: tarefasIatf.map((t) => t.id) } },
+    { tarefaId: { in: tarefasIatf.map((t) => t.id) } },
     { fatoTipo: "TarefaIatf", fatoId: { in: tarefasIatf.map((t) => t.id) } },
   ] } }) : [];
   if (tarefasIatf.length || atendimentosVisita.length)
@@ -264,10 +265,7 @@ export async function anularFato(
               observacao: input.motivo,
             });
         } else if (tipo === "avaliacoes") {
-          const a = await tx.avaliacaoReprodutiva.update({
-            where: { id },
-            data,
-          });
+          const a = await anularEvidenciaAvaliacaoTx(tx, id, data);
           if (a.gestacaoId && a.gestacaoCriada)
             await tx.gestacaoAnimal.update({
               where: { id: a.gestacaoId },

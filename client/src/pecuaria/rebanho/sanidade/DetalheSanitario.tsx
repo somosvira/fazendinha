@@ -33,7 +33,8 @@ function DesvioProtocolo({ valor }: { valor: unknown }) {
   const exibicao = registro(snapshot.exibicao);
   const planejado = registro(exibicao.planejado);
   const realizado = registro(exibicao.realizado);
-  return <section className="grid gap-2 rounded-lg border border-border p-3"><h3 className="font-semibold">Planejado e realizado</h3>{snapshot.referencia === "LEGADO_SEM_SNAPSHOT" && <p>Planejamento antigo sem todos os parâmetros congelados.</p>}{diferencas.length ? <><ul className="list-inside list-disc">{diferencas.map((d, i) => <li key={i}>{rotulos[String(d.campo)] ?? String(d.campo)}: {valorComparacaoExecucao(String(d.campo), d.planejado, planejado[String(d.campo)])} → {valorComparacaoExecucao(String(d.campo), d.realizado, realizado[String(d.campo)])}</li>)}</ul><p><strong>Motivo do desvio:</strong> {textoDetalhe(snapshot.motivo)}</p></> : <p>Conforme o planejado.</p>}</section>;
+  const naoAferido = snapshot.aferido === false || snapshot.referencia === "LEGADO_SEM_SNAPSHOT";
+  return <section className="grid gap-2 rounded-lg border border-border p-3"><h3 className="font-semibold">Planejado e realizado</h3>{naoAferido && <p>Planejamento antigo sem todos os parâmetros congelados. Conformidade não aferida.</p>}{diferencas.length ? <ul className="list-inside list-disc">{diferencas.map((d, i) => <li key={i}>{rotulos[String(d.campo)] ?? String(d.campo)}: {valorComparacaoExecucao(String(d.campo), d.planejado, planejado[String(d.campo)])} → {valorComparacaoExecucao(String(d.campo), d.realizado, realizado[String(d.campo)])}</li>)}</ul> : !naoAferido && <p>Conforme o planejado.</p>}{(diferencas.length > 0 || naoAferido) && <p><strong>Motivo:</strong> {textoDetalhe(snapshot.motivo)}</p>}</section>;
 }
 export function DetalheSanitario({ tipo, valor, abrir }: { tipo: string; valor: unknown; abrir: (tipo: string, id: string) => void }) {
   const fato = registro(valor);

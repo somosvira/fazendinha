@@ -1,8 +1,9 @@
+import { corrigirExame } from "../sanidade/exames.js";
 import crypto from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "../../../db.js";
 import { estornarOperacao } from "../../financeiro/operacoes.js";
-import { cadastrar, editar, movimentar, darBaixa } from "../rebanho/animais.js";
+import { cadastrar, editar, movimentar, darBaixa, mudarDestino, desfazerDestino, buscarFicha, listar } from "../rebanho/animais.js";
 import {
   cadastrarAnimalSchema,
   editarAnimalSchema,
@@ -52,13 +53,14 @@ const animais: string[] = [],
   tiposExame: string[] = [],
   doencas: string[] = [],
   operacoes: string[] = [];
-async function animal(sexo: "F" | "M" = "F", loteId?: string) {
+async function animal(sexo: "F" | "M" = "F", loteId?: string, papelReprodutivo?: "NENHUM" | "DOADORA" | "RECEPTORA") {
   const a = await cadastrar(
     cadastrarAnimalSchema.parse({
       brinco: `V4-${run}-${animais.length}`,
       sexo,
       origem: "COMPRADO",
       aptidao: "LEITE",
+      papelReprodutivo,
       dataNascimento: "2024-01-01",
       dataEntrada: "2026-01-01",
       propriedadeId,
@@ -127,8 +129,8 @@ afterAll(async () => {
   await prisma.visitaVeterinaria.deleteMany({
     where: { propriedadeId: props },
   });
-  await prisma.avaliacaoReprodutiva.deleteMany({
-    where: { propriedadeId: props },
+  await prisma.interpretacaoReprodutiva.deleteMany({
+    where: { exame: { propriedadeId: props } },
   });
   const partos = await prisma.partoAnimal.findMany({
     where: { propriedadeId: props },
@@ -145,7 +147,7 @@ afterAll(async () => {
     where: { gestacaoId: { in: gs.map((g) => g.id) } },
   });
   await prisma.gestacaoAnimal.deleteMany({ where: { propriedadeId: props } });
-  await prisma.tentativaReprodutiva.deleteMany({
+  await prisma.vinculoTarefaProtocolo.deleteMany({ where: { tentativa: { propriedadeId: props } } }); await prisma.tentativaReprodutiva.deleteMany({
     where: { propriedadeId: props },
   });
   await prisma.situacaoInicialReprodutiva.deleteMany({
@@ -164,21 +166,21 @@ afterAll(async () => {
     where: { exposicaoId: { in: exps.map((e) => e.id) } },
   });
   await prisma.exposicaoTouro.deleteMany({ where: { propriedadeId: props } });
-  await prisma.aplicacaoProduto.deleteMany({ where: { propriedadeId: props } });
-  await prisma.exameAnimal.deleteMany({ where: { propriedadeId: props } });
+  await prisma.vinculoTarefaProtocolo.deleteMany({ where: { aplicacao: { propriedadeId: props } } }); await prisma.aplicacaoProduto.deleteMany({ where: { propriedadeId: props } });
+  await prisma.vinculoTarefaProtocolo.deleteMany({ where: { exame: { propriedadeId: props } } }); await prisma.exameAnimal.deleteMany({ where: { propriedadeId: props } });
   await prisma.ocorrenciaSanitaria.deleteMany({
     where: { propriedadeId: props },
   });
-  await prisma.tarefaSanitaria.deleteMany({
+  await prisma.tarefaProtocolo.deleteMany({
     where: { execucao: { propriedadeId: props } },
   });
-  await prisma.execucaoProtocoloSanitario.deleteMany({
+  await prisma.participacaoProtocolo.deleteMany({
     where: { propriedadeId: props },
   });
-  await prisma.etapaProtocoloSanitario.deleteMany({
+  await prisma.etapaProtocolo.deleteMany({
     where: { protocoloId: { in: protocolos } },
   });
-  await prisma.protocoloSanitario.deleteMany({
+  await prisma.protocolo.deleteMany({
     where: { id: { in: protocolos } },
   });
   await prisma.tipoExame.deleteMany({ where: { id: { in: tiposExame } } });
@@ -204,7 +206,7 @@ afterAll(async () => {
   await prisma.movimentacaoAnimal.deleteMany({ where: { animalId: ids } });
   await prisma.baixaAnimal.deleteMany({ where: { animalId: ids } });
   await prisma.localizacaoAnimal.deleteMany({ where: { animalId: ids } });
-  await prisma.destinoAnimal.deleteMany({ where: { animalId: ids } });
+  await prisma.periodoReprodutivoAnimal.deleteMany({ where: { animalId: ids } }); await prisma.destinoAnimal.deleteMany({ where: { animalId: ids } });
   await prisma.pesagem.deleteMany({ where: { animalId: ids } });
   await prisma.composicaoRacial.deleteMany({ where: { animalId: ids } });
   await prisma.animal.updateMany({
@@ -1201,4 +1203,58 @@ suite("reprodução V4 integra fatos, estoque e visita sem duplicação", () => 
       ).partoId,
     ).toBeNull();
   });
+  it("ausência de papel não vira nenhum e mudar apenas aptidão preserva desconhecimento", async () => {
+    const a = await animal();
+    expect(await buscarFicha(a, propriedadeId)).toMatchObject({ papelReprodutivo:null, papelReprodutivoEstado:"DESCONHECIDO" });
+    await mudarDestino({ animalId:a, aptidao:"CORTE", data:"2026-08-01" }, null, propriedadeId);
+    expect(await prisma.periodoReprodutivoAnimal.count({where:{animalId:a}})).toBe(0);
+  });
+
+  it("papel canônico preserva alteração, desfazer e evidência histórica sem duplicar aptidão", async () => {
+    const a = await animal("F", undefined, "NENHUM");
+    await mudarDestino({ animalId: a, data: "2026-08-01", aptidao: "LEITE", papelReprodutivo: "RECEPTORA" }, null, propriedadeId);
+    expect((await buscarFicha(a, propriedadeId)).papelReprodutivo).toBe("RECEPTORA");
+    const antes = await prisma.periodoReprodutivoAnimal.findMany({ where: { animalId: a } });
+    expect(antes).toHaveLength(2);
+    expect((await desfazerDestino(a, null, propriedadeId)).papelReprodutivo).toBe("NENHUM");
+    const depois = await prisma.periodoReprodutivoAnimal.findMany({ where: { animalId: a } });
+    expect(depois).toHaveLength(2);
+    expect(depois.find(p => p.tipo === "RECEPTORA")?.revogadoEm).toBeTruthy();
+    expect(depois.find(p => p.tipo === "NENHUM")?.fim).toBeNull();
+  });
+  it("receptora importada sem tentativa não se torna mãe genética por falta de DestinoAnimal", async () => {
+    const a = await animal();
+    await prisma.periodoReprodutivoAnimal.deleteMany({ where: { animalId: a } });
+    await prisma.periodoReprodutivoAnimal.create({ data: { animalId: a, tipo: "RECEPTORA", inicio: new Date("2026-01-01"), origem: "IDEAGRI" } });
+    expect((await buscarFicha(a, propriedadeId)).papelReprodutivo).toBe("RECEPTORA");
+    const parto = await criarParto({ ...base(a, "2026-09-01"), tipo: "NORMAL", iniciarLactacao: false, crias: [{ viva: true, sexo: "F", aptidao: "LEITE" }] }, null);
+    const cria = await prisma.animal.findUniqueOrThrow({ where: { id: parto.crias[0].animalId! } });
+    animais.push(cria.id);
+    expect(cria.maeId).toBeNull();
+    expect(cria.maeExternaId).toBeNull();
+  });
+  it("conflito de papel fica explícito e não escolhe automaticamente a filiação nem o filtro", async () => {
+    const a = await animal("F", undefined, "NENHUM");
+    await prisma.periodoReprodutivoAnimal.create({ data: { animalId: a, tipo: "RECEPTORA", inicio: new Date("2026-01-01"), origem: "IDEAGRI" } });
+    expect(await buscarFicha(a, propriedadeId)).toMatchObject({ papelReprodutivo: null, papelReprodutivoEstado: "CONFLITO" });
+    const consulta = await listar({ situacao: "ATIVO", papelReprodutivo: "RECEPTORA", page: 1, pageSize: 100 }, propriedadeId);
+    expect(consulta.itens.some(item => item.id === a)).toBe(false);
+    await expect(criarParto({ ...base(a, "2026-09-01"), tipo: "NORMAL", iniciarLactacao: false, crias: [{ viva: true, sexo: "F", aptidao: "LEITE" }] }, null)).rejects.toThrow(/conflitante/);
+    expect(await prisma.partoAnimal.count({ where: { animalId: a } })).toBe(0);
+  });
+
+  it("confirmação e sexo fetal compartilham um exame e a anulação revisa sua interpretação", async () => {
+    const a = await animal();
+    const avaliacao = await criarAvaliacao({ ...base(a, "2026-09-01"), resultado: "POSITIVO", sexoFetal: "F", motivoVinculoDesconhecido: "Tentativa desconhecida documentada na visita" }, null);
+    const interpretacao = await prisma.interpretacaoReprodutiva.findUniqueOrThrow({ where: { id: avaliacao.id }, include: { exame: { include: { resultados: true } } } });
+    expect(await prisma.exameAnimal.count({ where: { animalId: a } })).toBe(1);
+    expect(interpretacao.exame.finalidades).toEqual(["DIAGNOSTICO", "SEXAGEM"]);
+    expect(interpretacao.exame.resultados).toEqual(expect.arrayContaining([expect.objectContaining({ campo: "CONCLUSAO_GESTACIONAL", valor: "POSITIVO" }), expect.objectContaining({ campo: "SEXO_FETAL", valor: "F" })]));
+    await expect(corrigirExame(interpretacao.exameId, propriedadeId, { anular: true, motivo: "Correção exige revisar gestação" }, null)).rejects.toMatchObject({ code: "CONFLITO" });
+    const previa = await previaAnulacao("avaliacoes", avaliacao.id, propriedadeId);
+    await anularFato("avaliacoes", avaliacao.id, { propriedadeId, chave: crypto.randomUUID(), motivo: "Diagnóstico original invalidado após revisão", fingerprint: previa.fingerprint }, null);
+    expect((await prisma.exameAnimal.findUniqueOrThrow({ where: { id: interpretacao.exameId } })).status).toBe("ANULADO");
+    expect(await prisma.resultadoExame.count({ where: { exameId: interpretacao.exameId } })).toBe(2);
+  });
+
 });

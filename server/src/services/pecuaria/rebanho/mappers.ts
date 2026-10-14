@@ -8,6 +8,7 @@ function iso(v: Date | string): string {
 }
 
 export interface AnimalResumo {
+  papelReprodutivoEstado?: "CONHECIDO" | "DESCONHECIDO" | "CONFLITO";
   id: string;
   brinco: string;
   identificacaoProvisoria: boolean;
@@ -53,11 +54,12 @@ type AnimalBase = {
 
 export function mapearAnimalResumo(input: {
   animal: AnimalBase;
+  papelReprodutivoEstado?: "CONHECIDO" | "DESCONHECIDO" | "CONFLITO";
   categoria: AvaliacaoCategoria;
   hoje: Date;
   propriedade: { id: number; nome: string } | null;
   lote: { id: string; nome: string } | null;
-  destino: { aptidao: "LEITE" | "CORTE"; papelReprodutivo: "NENHUM" | "RECEPTORA" | "DOADORA" } | null;
+  destino: { aptidao: "LEITE" | "CORTE"; papelReprodutivo: "NENHUM" | "RECEPTORA" | "DOADORA" | null } | null;
   composicao: FracaoRaca[];
   ultimoPeso: { pesoKg: number; data: Date } | null;
   /** pesagem imediatamente anterior à última (para `gmdRecente`) — omitido quando não relevante (ex.: painel) */
@@ -89,6 +91,7 @@ export function mapearAnimalResumo(input: {
     lote: input.lote,
     aptidao: input.destino?.aptidao ?? null,
     papelReprodutivo: input.destino?.papelReprodutivo ?? null,
+    papelReprodutivoEstado: input.papelReprodutivoEstado ?? (input.destino?.papelReprodutivo ? "CONHECIDO" : "DESCONHECIDO"),
     composicaoRotulo: rotuloComposicao(normalizarComposicao(input.composicao)),
     ultimoPeso: input.ultimoPeso ? { kg: Number(input.ultimoPeso.pesoKg), data: input.ultimoPeso.data.toISOString().slice(0, 10) } : null,
     gmdRecente: input.ultimoPeso && input.pesagemAnterior
@@ -139,6 +142,7 @@ export interface HistoricoBaixaFicha {
 }
 
 export interface AnimalFicha extends AnimalResumo {
+  historicoPapeisReprodutivos?: Array<{ id: string; tipo: string; inicio: string; fim: string | null; origem: string; revogado: boolean }>;
   brincoEletronico: string | null;
   sisbov: string | null;
   nascimentoEstimado: boolean;
@@ -146,7 +150,7 @@ export interface AnimalFicha extends AnimalResumo {
   observacao: string | null;
   composicao: ItemComposicaoFicha[];
   historicoLocalizacoes: Array<{ id: string; propriedade: { id: number; nome: string } | null; lote: { id: string; nome: string } | null; desde: string; ate: string | null; motivo: string | null; movimentacaoId: string | null }>;
-  historicoDestinos: Array<{ id: string; aptidao: "LEITE" | "CORTE"; papelReprodutivo: "NENHUM" | "RECEPTORA" | "DOADORA"; desde: string; ate: string | null }>;
+  historicoDestinos: Array<{ id: string; aptidao: "LEITE" | "CORTE"; papelReprodutivo: "NENHUM" | "RECEPTORA" | "DOADORA" | null; desde: string; ate: string | null }>;
   historicoPesagens: Array<{ id: string; data: string; pesoKg: number; tipo: string; origem: string; observacao: string | null }>;
   historicoCategoriasManuais: Array<{ id: string; categoria: CategoriaRef; desde: string; ate: string | null; motivo: string; motivoEncerramento: string | null }>;
   /** mantido por compatibilidade — a baixa que vale, igual a `AnimalResumo.baixa` mas com id/motivo/observação */

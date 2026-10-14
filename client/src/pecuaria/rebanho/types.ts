@@ -19,6 +19,7 @@ export type PropriedadeRef = { id: number; nome: string };
 export type LoteRef = { id: string; nome: string };
 
 export type AnimalResumo = {
+  papelReprodutivoEstado?: "CONHECIDO" | "DESCONHECIDO" | "CONFLITO";
   identificacaoProvisoria?: boolean;
   id: string;
   brinco: string;
@@ -71,7 +72,7 @@ export type HistoricoLocalizacao = {
 export type HistoricoDestino = {
   id: string;
   aptidao: Aptidao;
-  papelReprodutivo: PapelReprodutivo;
+  papelReprodutivo: PapelReprodutivo | null;
   desde: string;
   ate: string | null;
 };
@@ -103,6 +104,7 @@ export type AnimalFicha = AnimalResumo & {
   composicao: ItemComposicaoFicha[];
   historicoLocalizacoes: HistoricoLocalizacao[];
   historicoDestinos: HistoricoDestino[];
+  historicoPapeisReprodutivos?: Array<{ id: string; tipo: string; inicio: string; fim: string | null; origem: string; revogado: boolean }>;
   historicoPesagens: HistoricoPesagem[];
   /** trocas manuais de categoria, mais recente primeiro */
   historicoCategoriasManuais: HistoricoCategoriaManual[];

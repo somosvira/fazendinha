@@ -30,15 +30,17 @@ O IDEAGRI é fonte da carga inicial e de reconciliação. O importador original 
 
 Cálculos e regras: `services/pecuaria/rebanho/` (`categoria.calc.ts`, `movimentacao.calc.ts`, `baixa.calc.ts`, `composicao.calc.ts`, `genetica.calc.ts`, `peso.calc.ts`).
 
+A fonte do papel reprodutivo por data é `PeriodoReprodutivoAnimal`; `DestinoAnimal` mantém aptidão. Ausência e conflito de papel ficam explícitos. O [contrato de protocolos, exames e papéis](protocolos-exames.md) detalha a estrutura comum, versões, compatibilidade e rollout.
+
 ## Sanidade e rastreabilidade
 
 Aplicações preservam nome/perfil histórico, data/hora, origem, produto/lote, quantidade/unidade, responsável e carências. Estoque, compra direta, origem documentada e reconciliação têm efeitos diferentes. Compra direta destina quantidade comprada sem criar movimento de estoque ou outra despesa; reconciliação conserva a origem e exige produto/unidade compatíveis e confirmação/motivo de equivalência quando aplicável.
 
 Carência zero/encerrada conhecida, desconhecida, não aplicável e em revisão são estados distintos. A baixa considera a situação na data informada e revalida a ciência quando os dados dependentes mudam. Carência é informação operacional, sem recomendação clínica automática.
 
-Ocorrências e exames permitem registro pela visão geral ou pela ficha de animal. Coleta, resultado, correção, encerramento e anulação conservam snapshots e autoria. Resultado pendente (`null`) não é zero. O formato de um tipo de exame fica congelado após a primeira coleta, inclusive pendente/anulada; alteração de cadastro não reescreve os resultados.
+Ocorrências e exames permitem registro pela visão geral ou pela ficha de animal. Coleta, resultado, correção, encerramento e anulação conservam snapshots e autoria. Resultado pendente (`null`) não é zero. O formato de um tipo de exame fica congelado após a primeira coleta, inclusive pendente/anulada, ou uso em protocolo publicado. Novas versões mantêm vínculo com a anterior; alteração de cadastro não reescreve os resultados. A realização comum admite múltiplas observações e interpretação reprodutiva vinculada.
 
-Um protocolo publicado define uma versão. Ciclo (`RodadaProtocoloSanitario`) associa essa versão a participações individuais (`ExecucaoProtocoloSanitario`), com datas, tarefas e fatos próprios. Adicionar participantes não recalcula os anteriores; remover exige motivo e encerra pendências; reentrada cria outra participação. Execuções anteriores sem ciclo só são associadas explicitamente, sem agrupamento inferido por data/lote.
+Um protocolo publicado define uma versão. Programação/ciclo (`ProgramacaoProtocolo`) associa essa versão a participações individuais (`ParticipacaoProtocolo`), com datas, tarefas e fatos próprios. Adicionar participantes não recalcula os anteriores; remover exige motivo e encerra pendências; reentrada cria outra participação. Execuções anteriores sem ciclo só são associadas explicitamente, sem agrupamento inferido por data/lote.
 
 Execução de etapa usa prévia/confirmação atômica e idempotente. Desvios de data/produto/dose/unidade/via/tipo exigem motivo e snapshots de planejado, realizado e diferenças; não mudam silenciosamente as próximas etapas. Snapshot antigo ausente significa desvio não aferido, não execução conforme. Listas e contagens respeitam paginação, filtros e sítio, sem revelar participantes externos ao escopo.
 
@@ -58,11 +60,13 @@ Serviços atuais: `services/pecuaria/manejo/`, `services/pecuaria/nutricao/`; c�
 
 ## Homologação e dados locais
 
+Para a V4, o [material de conceitos e interface](artefatos/conceitos-v4.html) explica os fatos, relacionamentos e sua correspondência com as telas. O [roteiro manual V4](artefatos/testes-v4-guia.html) reúne preparação, passos, resultados esperados e registro/exportação de evidências. Todas as marcações começam pendentes e usam armazenamento próprio, sem alterar o guia V3. Os esquemas de interface no material conceitual são explicativos, não capturas de um ambiente homologado.
+
 O [guia sequencial V3](artefatos/testes-v3-guia.html) permanece em uso. Seus IDs, chave de armazenamento, resultados e anotações do navegador devem ser preservados. Homologação manual integral e carga histórica IDEAGRI V3 permanecem pendentes; a revisão documental não aprova testes. Um seed demonstrativo não é evidência de homologação.
 
 A preparação, a verificação dos saldos iniciais e a demonstração preenchida estão descritas em [desenvolvimento](../desenvolvimento.md#guia-manual-v3), junto dos comandos. As opções do script não alteram as marcações do HTML.
 
-Esse guia usa `fazendinha_v3_teste`. O cenário unificado `seedatev3` usa **outro banco**, `fazendinha_seedatev3`, e conserva sua data-base/manifesto. Não combine as preparações. A configuração/retomada e os acessos fictícios estão em [desenvolvimento](../desenvolvimento.md).
+O único banco local é `fazendinha_seedatev3`, com sua data-base/manifesto preservados. A preparação histórica do guia V3 em banco separado está desativada; preserve as marcações e adapte os casos aos dados atuais, sem recarga. A configuração/retomada e os acessos fictícios estão em [desenvolvimento](../desenvolvimento.md).
 
 ## Evolução
 

@@ -72,7 +72,7 @@ export function ConfiguracoesHub({ tab, onNav, isAdmin, podeCategorias = true, p
       <div className={cn("pt-7", "px-[var(--gutter)]")}>
         <SubTabs tabs={tabs} active={atual} onSelect={(id) => id === "pecuaria" ? navegarPara("/configuracoes/pecuaria") : onNav(TAB_BY_SUB[id])} />
       </div>
-      {atual === "pecuaria" && <div className="shell-wide pagina-financeira financeiro-colorido">{path.split("/").filter(Boolean).length < 4 && <PageHeader titulo="Configurações da Pecuária" descricao="Cadastros de rebanho, genética e sanidade." />}<ConfiguracoesPecuaria podeLancar={podeLancarPecuaria} /></div>}
+      {atual === "pecuaria" && <div className="shell-wide pagina-financeira financeiro-colorido">{path.split("/").filter(Boolean).length < 4 && <PageHeader titulo="Configurações da Pecuária" descricao="Cadastros de rebanho, genética, sanidade e reprodução." />}<ConfiguracoesPecuaria podeLancar={podeLancarPecuaria} /></div>}
       {atual === "categorias" && <PlanoContas onNav={onNav} />}
       {atual === "sitios" && isAdmin && <Sitios />}
       {atual === "acessos" && isAdmin && <Acessos />}

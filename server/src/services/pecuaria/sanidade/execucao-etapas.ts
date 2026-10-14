@@ -56,7 +56,7 @@ async function conferirConsumos(tx: Prisma.TransactionClient, input: ExecucaoEta
 async function prepararPreviaTx(tx: Prisma.TransactionClient, input: ExecucaoEtapasInput) {
   validarConjunto(input);
   await travarAnimais(tx, input.itens.map((i) => i.animalId));
-  const tarefas = await tx.tarefaSanitaria.findMany({ where: { id: { in: input.itens.map((i) => i.tarefaId) } }, include: { execucao: true } });
+  const tarefas = await tx.tarefaProtocolo.findMany({ where: { id: { in: input.itens.map((i) => i.tarefaId) } }, include: { execucao: true } });
   if (tarefas.length !== input.itens.length || new Set(tarefas.map((t) => `${t.etapaId}:${t.execucao.protocoloId}:${t.execucao.rodadaId ?? "legado"}`)).size !== 1) throw new RebanhoError("VALIDACAO", "Selecione tarefas da mesma etapa e rodada", "itens");
   // Desvios individuais podem usar origens ou tipos diferentes; todas as travas entram antes do laço.
   await travarOrigensAplicacoesTx(tx, input.itens.filter((i) => i.tipo === "APLICACAO"));

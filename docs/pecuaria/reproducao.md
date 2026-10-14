@@ -2,6 +2,8 @@
 
 Este contrato descreve a implementação em `server/src/services/pecuaria/reproducao/`, no schema `pecuaria`, e a interface em `client/src/pecuaria/rebanho/reproducao/`. A publicação em produção e a homologação da rotina pela fazenda são etapas distintas da entrega de código.
 
+A padronização de protocolos, tarefas, exames e papéis está descrita no [contrato comum](protocolos-exames.md). Nomes IATF e avaliação permanecem em projeções de leitura/contratos HTTP; a escrita usa as entidades comuns.
+
 ## Fatos individuais e acompanhamento
 
 Uma tentativa de reprodução tem identidade própria, animal, sítio na data do fato, tipo (IA, TE ou cobertura observada), data, responsável, origem do material e posição no ciclo. A confirmação da gestação é um fato diferente da tentativa. Várias avaliações podem acompanhar a mesma gestação.
@@ -10,7 +12,7 @@ Categoria (vaca/novilha), aptidão (leite/corte), papel genético (doadora/recep
 
 Restrições sanitárias são configuradas por sítio, doença e ação, com efeito de alerta ou bloqueio. Não existem bloqueios clínicos presumidos. A vigência da ocorrência determina sua aplicação; encerrar uma ocorrência não elimina outra restrição. O sistema registra ciência dos alertas e mantém a auditoria de configurações.
 
-As anotações confirmadas pela fazenda têm os seguintes significados:
+As anotações confirmadas pela fazenda servem de referência para os significados abaixo. A interface separa finalidade, conclusão, sexo fetal e conduta e permite múltiplas observações no mesmo exame; essas siglas não são um catálogo obrigatório:
 
 | Anotação | Efeito |
 |---|---|
@@ -67,6 +69,8 @@ Uma confirmação pode abranger um animal ou um subconjunto de até 100 particip
 O acompanhamento apresenta retornos informados, diagnóstico pendente, tarefas IATF futuras/vencidas e previsões de parto. Uma avaliação válida posterior substitui o retorno anterior do mesmo animal. Parto/perda encerram a previsão ligada à gestação. Links abrem o animal, fato consultável, programação ou registro de parto; fatos de outro sítio não recebem acesso por esse caminho. Ausência de data de diagnóstico permanece explícita, sem gerar um prazo clínico presumido.
 
 ## IATF
+
+Protocolos reprodutivos são mantidos em Configurações → Pecuária → Reprodução. Rascunho admite edição; publicação/utilização exige nova versão para alterar as etapas. Inativação impede novas programações sem apagar as existentes. O grupo usa `ProgramacaoProtocolo`, cada animal usa `ParticipacaoProtocolo` e suas ações usam `TarefaProtocolo`.
 
 Uma programação usa uma versão publicada do protocolo, com participações individuais. Os intervalos de 10/11 dias até a inseminação são contados a partir do início efetivo de cada participante, conforme confirmação da fazenda, e dependem da versão do protocolo. Indicação, início previsto, início efetivo e execução são informações distintas.
 

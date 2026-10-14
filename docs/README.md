@@ -9,6 +9,9 @@ A base documenta o código atual. Setup e comandos ficam no [README](../README.m
 | [Financeiro e estoque](financeiro-rebuild-contrato.md) | Dinheiro, efeitos físicos, estornos, períodos e rastreabilidade |
 | [Pecuária](pecuaria/README.md) | Rebanho, genética, sanidade, peso, nutrição e limites atuais |
 | [Reprodução V4](pecuaria/reproducao.md) | Tentativas, gestação, parto/crias, visitas, IATF e reconciliação técnica |
+| [Conceitos e interface V4](pecuaria/artefatos/conceitos-v4.html) | Explicação da implementação, diagramas das tabelas e comparação entre plano, conceitos e telas |
+| [Guia manual V4](pecuaria/artefatos/testes-v4-guia.html) | Roteiro específico com pré-condições, resultados esperados e registro/exportação da execução; inicia pendente |
+| [Protocolos, exames e papéis](pecuaria/protocolos-exames.md) | Modelo comum implementado, versões, migração, compatibilidade e limites |
 | [Desenvolvimento](desenvolvimento.md) | Seed unificado, carga IDEAGRI e preparação do guia manual |
 | [Deploy](../DEPLOY.md) | Publicação exclusiva em Cloudflare Workers, configuração e migrations |
 | [Guia manual V3](pecuaria/artefatos/testes-v3-guia.html) | Homologação sequencial ainda em uso; marcações locais no navegador |

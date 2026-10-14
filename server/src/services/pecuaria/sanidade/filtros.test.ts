@@ -7,7 +7,7 @@ vi.mock("../../../db.js", () => ({ prisma: {
   ocorrenciaSanitaria: { findMany: mocks.ocorrencias },
   exameAnimal: { findMany: mocks.exames },
   aplicacaoProduto: { findMany: mocks.aplicacoes, count: mocks.contarAplicacoes },
-  tarefaSanitaria: { findMany: mocks.tarefas },
+  tarefaProtocolo: { findMany: mocks.tarefas },
   animal: { findMany: mocks.animais, findUnique: mocks.animal },
   localizacaoAnimal: { findFirst: mocks.localizacao },
 } }));

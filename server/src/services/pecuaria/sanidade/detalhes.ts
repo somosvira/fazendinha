@@ -43,13 +43,13 @@ export async function obterAplicacao(id: string, propriedadeId: number | null) {
 }
 
 export async function obterExame(id: string, propriedadeId: number | null) {
-  const fato = await prisma.exameAnimal.findFirst({ where: escopo(id, propriedadeId), include: { animal, propriedade, ocorrencia, tarefa, tipoExame: { select: { nome: true } } } });
+  const fato = await prisma.exameAnimal.findFirst({ where: escopo(id, propriedadeId), include: { animal, propriedade, ocorrencia, tarefa, resultados: { where: { vigente: true } }, interpretacao: { select: { id: true, gestacaoId: true } }, tipoExame: { select: { nome: true } } } });
   if (!fato) throw new RebanhoError("NAO_ENCONTRADO", "Exame não encontrado neste sítio");
   return { ...fato, tipoExame: { nome: nomeExameHistorico(fato.formatoSnapshot, fato.tipoExame.nome) } };
 }
 
 export async function obterExecucao(id: string, propriedadeId: number | null) {
-  const fato = await prisma.execucaoProtocoloSanitario.findFirst({ where: escopo(id, propriedadeId), include: {
+  const fato = await prisma.participacaoProtocolo.findFirst({ where: escopo(id, propriedadeId), include: {
     animal, propriedade, ocorrencia, protocolo: { include: { etapas: { orderBy: { ordem: "asc" } } } },
     tarefas: { orderBy: { previstaPara: "asc" }, include: {
       aplicacoes: { where: propriedadeId == null ? {} : { propriedadeId }, select: { id: true, data: true, status: true, nomeProdutoAplicado: true } },

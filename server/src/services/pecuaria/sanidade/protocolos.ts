@@ -1,3 +1,5 @@
+import { deslocarCalendario } from "../protocolos/calendario.calc.js";
+import { carregarVersaoTx, reservarVersaoTx, publicarVersaoTx, inativarVersaoTx } from "../protocolos/versoes.js";
 import { confirmarColetivo } from "./coletivos.js";
 import { buscaAnimal, intervalo, limites, type ConsultaSanitaria } from "./consulta.js";
 import { Prisma, type FinalidadeAplicacao } from "@prisma/client";
@@ -14,7 +16,7 @@ type Etapa = {
   tipoAplicacaoId?: string | null;
 };
 const dia = (s: string) => new Date(`${s}T00:00:00Z`);
-const somarDias = (data: Date, n: number) => new Date(data.getTime() + n * 86_400_000);
+const somarDias = (data: Date, n: number) => deslocarCalendario(data, n, "DIAS", "DIA");
 
 async function validarEtapas(tx: Prisma.TransactionClient, etapas: Etapa[]) {
   if (!etapas.length) throw new RebanhoError("VALIDACAO", "O protocolo precisa de ao menos uma etapa", "etapas");
@@ -31,22 +33,22 @@ async function validarEtapas(tx: Prisma.TransactionClient, etapas: Etapa[]) {
       e.tipoAplicacaoId = tipo.id;
     } else if (e.tipo === "EXAME") {
       if (!e.tipoExameId || e.produtoId || e.dose) throw new RebanhoError("VALIDACAO", "Etapa de exame precisa de Tipo de exame, sem Produto", `etapas.${indice}`);
-      if (!(await tx.tipoExame.findFirst({ where: { id: e.tipoExameId, ativo: true } }))) throw new RebanhoError("VALIDACAO", "Tipo de exame não encontrado", `etapas.${indice}.tipoExameId`);
+      if (!(await tx.tipoExame.findFirst({ where: { id: e.tipoExameId, ativo: true, contexto: { not: "REPRODUTIVO" } } }))) throw new RebanhoError("VALIDACAO", "Tipo de exame não encontrado", `etapas.${indice}.tipoExameId`);
     }
   }
 }
 
 export async function listarProtocolos() {
-  return prisma.protocoloSanitario.findMany({ include: { etapas: { orderBy: { ordem: "asc" } } }, orderBy: [{ nome: "asc" }, { versao: "desc" }] });
+  return prisma.protocolo.findMany({ where: { tipo: "SANITARIO" }, include: { etapas: { orderBy: { ordem: "asc" } } }, orderBy: [{ nome: "asc" }, { versao: "desc" }] });
 }
 
 export async function criarProtocolo(input: { nome: string; descricao?: string | null; etapas: Etapa[] }, usuarioId: number | null, id?: string) {
   return prisma.$transaction(async (tx) => {
     await validarEtapas(tx, input.etapas);
-    const existente = id ? await tx.protocoloSanitario.findUnique({ where: { id }, include: { etapas: true } }) : null;
+    const existente = id ? await carregarVersaoTx(tx, id, "SANITARIO", true) : null;
     if (id && !existente) throw new RebanhoError("NAO_ENCONTRADO", "Protocolo não encontrado");
     if (existente?.publicadoEm) throw new RebanhoError("CONFLITO", "Protocolo publicado é imutável; crie nova versão");
-    const ultima = await tx.protocoloSanitario.findFirst({ where: { nome: input.nome.trim() }, orderBy: { versao: "desc" } });
+    const versao = existente?.versao ?? await reservarVersaoTx(tx, "SANITARIO", input.nome.trim());
     const dados = { nome: input.nome.trim(),
       descricao: input.descricao?.trim() || null,
       etapas: { create: input.etapas.map((e, i) => ({ ordem: i + 1, diaRelativo: e.diaRelativo, tipo: e.tipo,
@@ -55,26 +57,20 @@ export async function criarProtocolo(input: { nome: string; descricao?: string |
         tipoAplicacaoId: e.tipo === "APLICACAO" ? e.tipoAplicacaoId : null,
         unidade: e.tipo === "APLICACAO" ? e.unidade : null, via: e.via?.trim() || null })) },
     };
-    const novo = existente ? await tx.protocoloSanitario.update({ where: { id: existente.id }, data: { ...dados, etapas: { deleteMany: {}, ...dados.etapas } }, include: { etapas: { orderBy: { ordem: "asc" } } } }) : await tx.protocoloSanitario.create({ data: { ...dados, versao: (ultima?.versao ?? 0) + 1 }, include: { etapas: { orderBy: { ordem: "asc" } } } });
+    const novo = existente ? await tx.protocolo.update({ where: { tipo: "SANITARIO", id: existente.id }, data: { ...dados, etapas: { deleteMany: {}, ...dados.etapas } }, include: { etapas: { orderBy: { ordem: "asc" } } } }) : await tx.protocolo.create({ data: { ...dados, versao }, include: { etapas: { orderBy: { ordem: "asc" } } } });
     await auditar(tx, { entidade: "ProtocoloSanitario", entidadeId: novo.id, acao: existente ? "RASCUNHO_EDITADO" : "VERSAO_CRIADA", usuarioId, ...(existente ? { antes: existente } : {}), depois: novo });
     return novo;
   });
 }
 
 export async function publicarProtocolo(id: string, usuarioId: number | null) {
-  return prisma.$transaction(async (tx) => {
-    const protocolo = await tx.protocoloSanitario.findUnique({ where: { id }, include: { etapas: true } });
-    if (!protocolo) throw new RebanhoError("NAO_ENCONTRADO", "Protocolo não encontrado");
-    if (protocolo.publicadoEm) throw new RebanhoError("CONFLITO", "Esta versão já foi publicada");
-    await validarEtapas(tx, protocolo.etapas.map((e) => ({ ...e, dose: e.dose?.toNumber() ?? null, tipo: e.tipo as Etapa["tipo"] })));
+  return prisma.$transaction(async tx => publicarVersaoTx(tx, id, "SANITARIO", usuarioId, async protocolo => {
+    await validarEtapas(tx, protocolo.etapas.map(e => ({ ...e, dose: e.dose?.toNumber() ?? null, tipo: e.tipo as Etapa["tipo"] })));
     for (const etapa of protocolo.etapas) if (etapa.tipoAplicacaoId) {
       const tipo = await tx.tipoAplicacaoSanitaria.findUniqueOrThrow({ where: { id: etapa.tipoAplicacaoId } });
-      await tx.etapaProtocoloSanitario.update({ where: { id: etapa.id }, data: { tipoAplicacaoNomeSnapshot: tipo.nome } });
+      await tx.etapaProtocolo.update({ where: { id: etapa.id }, data: { tipoAplicacaoNomeSnapshot: tipo.nome } });
     }
-    const publicado = await tx.protocoloSanitario.update({ where: { id }, data: { publicadoEm: new Date() } });
-    await auditar(tx, { entidade: "ProtocoloSanitario", entidadeId: id, acao: "PUBLICACAO", usuarioId, antes: protocolo, depois: publicado });
-    return publicado;
-  });
+  }));
 }
 
 export async function iniciarExecucaoTx(tx: Prisma.TransactionClient, input: { chave?: string; protocoloId: string; animalId: string; propriedadeId: number; inicio: string;
@@ -86,10 +82,10 @@ export async function iniciarExecucaoTx(tx: Prisma.TransactionClient, input: { c
       const local = await tx.localizacaoAnimal.findFirst({ where: { animalId: input.animalId, propriedadeId: input.propriedadeId, desde: { lte: data }, OR: [{ ate: null }, { ate: { gt: data } }] }, include: { animal: { select: { baixas: { where: { estornadaEm: null } } } } } });
       if (!local || local.animal.baixas.length) throw new RebanhoError("VALIDACAO", "Animal indisponível neste sítio no início do protocolo", "inicio");
     } else await conferirAnimalNoFato(tx, input.animalId, input.propriedadeId, data, "inicio");
-    const protocolo = await tx.protocoloSanitario.findFirst({ where: { id: input.protocoloId, ativo: true, publicadoEm: { not: null } },
+    const protocolo = await tx.protocolo.findFirst({ where: { tipo: "SANITARIO", id: input.protocoloId, ativo: true, publicadoEm: { not: null } },
       include: { etapas: { orderBy: { ordem: "asc" }, include: { produto: { select: { nome: true } }, tipoExame: { select: { nome: true } } } } } });
     if (!protocolo) throw new RebanhoError("VALIDACAO", "Selecione uma versão publicada do protocolo", "protocoloId");
-    const simultaneas = await tx.execucaoProtocoloSanitario.findMany({ where: { animalId: input.animalId, canceladaEm: null,
+    const simultaneas = await tx.participacaoProtocolo.findMany({ where: { animalId: input.animalId, canceladaEm: null,
       protocolo: { nome: { equals: protocolo.nome, mode: "insensitive" } },
       tarefas: { some: { dispensadaEm: null, aplicacoes: { none: { status: "VALIDO" } }, exames: { none: { status: "VALIDO" } } } },
     }, select: { id: true } });
@@ -102,7 +98,7 @@ export async function iniciarExecucaoTx(tx: Prisma.TransactionClient, input: { c
     if (input.operacaoServicoId && !(await tx.operacao.findFirst({ where: { id: input.operacaoServicoId, propriedadeId: input.propriedadeId, tipo: "SERVICO", status: "CONFIRMADA" } }))) {
       throw new RebanhoError("VALIDACAO", "Serviço inválido para este sítio", "operacaoServicoId");
     }
-    const execucao = await tx.execucaoProtocoloSanitario.create({ data: { protocoloId: protocolo.id,
+    const execucao = await tx.participacaoProtocolo.create({ data: { protocoloId: protocolo.id,
       animalId: input.animalId, propriedadeId: input.propriedadeId, inicio: data,
       ocorrenciaId: input.ocorrenciaId ?? null, operacaoServicoId: input.operacaoServicoId ?? null,
       tarefas: { create: protocolo.etapas.map((e) => ({ etapaId: e.id, previstaPara: somarDias(data, e.diaRelativo),
@@ -118,19 +114,19 @@ export async function iniciarExecucaoTx(tx: Prisma.TransactionClient, input: { c
 }
 
 export async function iniciarExecucao(input: Parameters<typeof iniciarExecucaoTx>[1], usuarioId: number | null) {
-  return confirmarFato(input, usuarioId, "PROTOCOLO", iniciarExecucaoTx, (tx, id) => tx.execucaoProtocoloSanitario.findUniqueOrThrow({ where: { id }, include: { tarefas: { orderBy: { previstaPara: "asc" } } } }));
+  return confirmarFato(input, usuarioId, "PROTOCOLO", iniciarExecucaoTx, (tx, id) => tx.participacaoProtocolo.findUniqueOrThrow({ where: { id }, include: { tarefas: { orderBy: { previstaPara: "asc" } } } }));
 }
 export async function iniciarExecucaoColetivo(input: { chave: string; propriedadeId: number; itens: Parameters<typeof iniciarExecucaoTx>[1][] }, usuarioId: number | null) {
   return confirmarColetivo(input, usuarioId, "PROTOCOLO_COLETIVO", iniciarExecucaoTx);
 }
 
 function whereTarefas(propriedadeId: number | null, animalId?: string, filtro?: ConsultaSanitaria) {
-  const where: Prisma.TarefaSanitariaWhereInput = { execucao: { ...(animalId ? { animalId } : {}),
+  const where: Prisma.TarefaProtocoloWhereInput = { execucao: { protocolo: { tipo: "SANITARIO" }, ...(animalId ? { animalId } : {}),
     ...(filtro?.rodadaId ? { rodadaId: filtro.rodadaId } : filtro?.semRodada === "true" ? { rodadaId: null } : {}),
     ...(propriedadeId != null || filtro?.loteId || filtro?.buscaAnimal ? { animal: { ...buscaAnimal(filtro), ...(propriedadeId != null || filtro?.loteId ? { localizacoes: { some: { ate: null,
       ...(propriedadeId == null ? {} : { propriedadeId }), ...(filtro?.loteId ? { loteId: filtro.loteId } : {}) } } } : {}) } } : {}) },
     ...(filtro?.de || filtro?.ate ? { previstaPara: intervalo(filtro) } : {}) };
-  const realizada: Prisma.TarefaSanitariaWhereInput = { OR: [{ aplicacoes: { some: { status: "VALIDO" } } }, { exames: { some: { status: "VALIDO" } } }] };
+  const realizada: Prisma.TarefaProtocoloWhereInput = { OR: [{ aplicacoes: { some: { status: "VALIDO" } } }, { exames: { some: { status: "VALIDO" } } }] };
   if (filtro?.situacao === "EXECUCAO_CANCELADA") where.AND = [{ execucao: { canceladaEm: { not: null } } }, { NOT: realizada }];
   else if (filtro?.situacao === "DISPENSADA") where.AND = [{ execucao: { canceladaEm: null } }, { dispensadaEm: { not: null } }];
   else if (filtro?.situacao === "REALIZADA") where.AND = [realizada];
@@ -138,12 +134,12 @@ function whereTarefas(propriedadeId: number | null, animalId?: string, filtro?: 
   return where;
 }
 export async function listarTarefasPaginadas(propriedadeId: number | null, animalId: string | undefined, filtro: ConsultaSanitaria) {
-  const [itens, total] = await Promise.all([listarTarefas(propriedadeId, animalId, filtro), prisma.tarefaSanitaria.count({ where: whereTarefas(propriedadeId, animalId, filtro) })]);
+  const [itens, total] = await Promise.all([listarTarefas(propriedadeId, animalId, filtro), prisma.tarefaProtocolo.count({ where: whereTarefas(propriedadeId, animalId, filtro) })]);
   return { itens, total, pagina: filtro.pagina, porPagina: filtro.porPagina };
 }
 export async function listarTarefas(propriedadeId: number | null, animalId?: string, filtro?: ConsultaSanitaria) {
   const where = whereTarefas(propriedadeId, animalId, filtro);
-  const tarefas = await prisma.tarefaSanitaria.findMany({ where, include: {
+  const tarefas = await prisma.tarefaProtocolo.findMany({ where, include: {
     execucao: { select: { animalId: true, propriedadeId: true, rodadaId: true, rodada: { select: { id: true, nome: true } }, canceladaEm: true, protocolo: { select: { nome: true, versao: true } }, animal: { select: { id: true, brinco: true, nome: true, localizacoes: { where: { ate: null }, select: { propriedadeId: true } } } } } },
     aplicacoes: { select: { id: true, status: true }, orderBy: { criadoEm: "desc" } }, exames: { select: { id: true, status: true }, orderBy: { criadoEm: "desc" } },
   }, orderBy: [{ previstaPara: "asc" }, { id: "asc" }], ...limites(filtro) });
@@ -158,16 +154,16 @@ export async function listarTarefas(propriedadeId: number | null, animalId?: str
 
 export async function dispensarTarefa(id: string, motivo: string, usuarioId: number | null, propriedadeId?: number) {
   return transacaoPecuaria(async (tx) => {
-    const previa = await tx.tarefaSanitaria.findUnique({ where: { id }, select: { execucao: { select: { animalId: true } } } });
+    const previa = await tx.tarefaProtocolo.findUnique({ where: { id, execucao: { protocolo: { tipo: "SANITARIO" } } }, select: { execucao: { select: { animalId: true } } } });
     if (!previa) throw new RebanhoError("NAO_ENCONTRADO", "Tarefa não encontrada");
     await travarAnimais(tx, [previa.execucao.animalId]);
-    const original = await tx.tarefaSanitaria.findUnique({ where: { id }, include: { execucao: true, aplicacoes: { where: { status: "VALIDO" } }, exames: { where: { status: "VALIDO" } } } });
+    const original = await tx.tarefaProtocolo.findUnique({ where: { id }, include: { execucao: true, aplicacoes: { where: { status: "VALIDO" } }, exames: { where: { status: "VALIDO" } } } });
     if (!original) throw new RebanhoError("NAO_ENCONTRADO", "Tarefa não encontrada");
     if (propriedadeId != null && !(await tx.localizacaoAnimal.findFirst({ where: { animalId: original.execucao.animalId, propriedadeId, ate: null } }))) throw new RebanhoError("NAO_ENCONTRADO", "Tarefa não encontrada neste sítio");
     if (original.dispensadaEm || original.execucao.canceladaEm || original.aplicacoes.length || original.exames.length) {
       throw new RebanhoError("CONFLITO", "A tarefa já foi realizada, dispensada ou cancelada");
     }
-    const salva = await tx.tarefaSanitaria.update({ where: { id }, data: { dispensadaEm: new Date(), motivoDispensa: motivo } });
+    const salva = await tx.tarefaProtocolo.update({ where: { id }, data: { dispensadaEm: new Date(), motivoDispensa: motivo } });
     await auditar(tx, { entidade: "TarefaSanitaria", entidadeId: id, animalId: original.execucao.animalId, acao: "DISPENSA", usuarioId,
       propriedadeId: propriedadeId ?? original.execucao.propriedadeId, antes: original, depois: salva });
     return salva;
@@ -176,40 +172,34 @@ export async function dispensarTarefa(id: string, motivo: string, usuarioId: num
 
 export async function cancelarExecucao(id: string, propriedadeId: number, motivo: string, usuarioId: number | null) {
   return transacaoPecuaria(async (tx) => {
-    const previa = await tx.execucaoProtocoloSanitario.findUnique({ where: { id }, select: { animalId: true } });
+    const previa = await tx.participacaoProtocolo.findUnique({ where: { id, protocolo: { tipo: "SANITARIO" } }, select: { animalId: true } });
     if (!previa) throw new RebanhoError("NAO_ENCONTRADO", "Execução não encontrada");
     await travarAnimais(tx, [previa.animalId]);
-    const original = await tx.execucaoProtocoloSanitario.findFirst({ where: { id, canceladaEm: null } });
+    const original = await tx.participacaoProtocolo.findFirst({ where: { id, canceladaEm: null } });
     if (!original) throw new RebanhoError("CONFLITO", "Execução já cancelada");
     if (!(await tx.localizacaoAnimal.findFirst({ where: { animalId: original.animalId, propriedadeId, ate: null } }))) throw new RebanhoError("NAO_ENCONTRADO", "Execução não encontrada neste sítio");
-    const salva = await tx.execucaoProtocoloSanitario.update({ where: { id }, data: { canceladaEm: new Date(), motivoCancelamento: motivo } });
+    const salva = await tx.participacaoProtocolo.update({ where: { id }, data: { canceladaEm: new Date(), motivoCancelamento: motivo } });
     await auditar(tx, { entidade: "ExecucaoProtocoloSanitario", entidadeId: id, animalId: original.animalId, propriedadeId, acao: "CANCELAMENTO", usuarioId, antes: original, depois: salva });
     return salva;
   });
 }
 
 export async function inativarProtocolo(id: string, usuarioId: number | null) {
-  return transacaoPecuaria(async (tx) => {
-    const antes = await tx.protocoloSanitario.findUnique({ where: { id } });
-    if (!antes) throw new RebanhoError("NAO_ENCONTRADO", "Protocolo não encontrado");
-    const depois = await tx.protocoloSanitario.update({ where: { id }, data: { ativo: false } });
-    await auditar(tx, { entidade: "ProtocoloSanitario", entidadeId: id, acao: "INATIVACAO", usuarioId, antes, depois });
-    return depois;
-  });
+  return transacaoPecuaria(tx => inativarVersaoTx(tx, id, "SANITARIO", usuarioId));
 }
 
 export async function adiarTarefa(id: string, input: { previstaPara: string; motivo: string }, usuarioId: number | null, propriedadeId: number) {
   return transacaoPecuaria(async (tx) => {
-    const previa = await tx.tarefaSanitaria.findUnique({ where: { id }, select: { execucao: { select: { animalId: true } } } });
+    const previa = await tx.tarefaProtocolo.findUnique({ where: { id, execucao: { protocolo: { tipo: "SANITARIO" } } }, select: { execucao: { select: { animalId: true } } } });
     if (!previa) throw new RebanhoError("NAO_ENCONTRADO", "Tarefa não encontrada");
     await travarAnimais(tx, [previa.execucao.animalId]);
-    const antes = await tx.tarefaSanitaria.findUnique({ where: { id }, include: { execucao: true, aplicacoes: { where: { status: "VALIDO" } }, exames: { where: { status: "VALIDO" } } } });
+    const antes = await tx.tarefaProtocolo.findUnique({ where: { id }, include: { execucao: true, aplicacoes: { where: { status: "VALIDO" } }, exames: { where: { status: "VALIDO" } } } });
     if (!antes || !(await tx.localizacaoAnimal.findFirst({ where: { animalId: previa.execucao.animalId, propriedadeId, ate: null } }))) throw new RebanhoError("NAO_ENCONTRADO", "Tarefa não encontrada neste sítio");
     if (antes.dispensadaEm || antes.execucao.canceladaEm || antes.aplicacoes.length || antes.exames.length) throw new RebanhoError("CONFLITO", "Só uma tarefa pendente pode ser adiada");
     const previstaPara = dia(input.previstaPara);
     if (!Number.isFinite(previstaPara.getTime()) || previstaPara.toISOString().slice(0, 10) !== input.previstaPara || previstaPara <= antes.previstaPara) throw new RebanhoError("VALIDACAO", "Escolha uma data posterior à previsão atual", "previstaPara");
     if (input.motivo.trim().length < 5) throw new RebanhoError("VALIDACAO", "Informe o motivo do adiamento", "motivo");
-    const depois = await tx.tarefaSanitaria.update({ where: { id }, data: { previstaPara } });
+    const depois = await tx.tarefaProtocolo.update({ where: { id }, data: { previstaPara } });
     await auditar(tx, { entidade: "TarefaSanitaria", entidadeId: id, animalId: antes.execucao.animalId, propriedadeId, acao: "ADIAMENTO", usuarioId, antes, depois: { ...depois, motivo: input.motivo.trim() } });
     return depois;
   });

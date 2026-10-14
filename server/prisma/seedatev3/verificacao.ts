@@ -155,7 +155,7 @@ export async function verificarCenario(c: Contexto) {
     sitios: await prisma.propriedade.findMany({ select: { nome: true, principal: true } }), animais: await prisma.animal.count(), lotes: await prisma.lote.count(),
     operacoes: await prisma.operacao.count(), transacoes: await prisma.transacaoFinanceira.count(), compromissos: await prisma.compromissoFinanceiro.count(),
     movimentosEstoque: await prisma.movimentoEstoque.count(), aplicacoes: await prisma.aplicacaoProduto.count(), exames: await prisma.exameAnimal.count(),
-    rodadas: await prisma.rodadaProtocoloSanitario.count(), fechamentos: await prisma.fechamentoConsumo.count(),
+    rodadas: await prisma.programacaoProtocolo.count(), fechamentos: await prisma.fechamentoConsumo.count(),
     contas: (await listarContas()).map(c => ({ nome: c.nome, saldo: c.saldoAtual.toFixed(2) })),
   };
   process.stdout.write(`${JSON.stringify({ verificacao: 'ok', ...resumo }, null, 2)}\n`); return resumo;

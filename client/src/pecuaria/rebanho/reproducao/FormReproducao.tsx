@@ -1,5 +1,8 @@
+import { CamposAvaliacao } from "./CamposAvaliacao";
+import { CamposResultadoExame, type ObservacaoExame } from "../sanidade/CamposExame";
+import type { TipoExame } from "../sanidade/CadastrosSanitarios";
 import { AlertasSanitarios } from "./AlertasSanitarios";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Button, ErrorBox, hoje } from "../../../financeiro/financeiro-ui";
 import {
   CampoFormulario,
@@ -71,7 +74,7 @@ export function FormReproducao({
     input: TentativaInput | AvaliacaoInput | PartoInput,
   ) => Promise<void>;
 }) {
-  const [chave] = useState(() => crypto.randomUUID());
+  const envio = useRef<{ payload: string; chave: string } | null>(null);
   const [animalId, setAnimalId] = useState(animalInicial ?? "");
   const [data, setData] = useState(dataInicial ?? hoje());
   const [erro, setErro] = useState<string | null>(null);
@@ -96,9 +99,20 @@ export function FormReproducao({
   const [quantidade, setQuantidade] = useState("1");
   const [responsavel, setResponsavel] = useState("");
   const [resultado, setResultado] =
-    useState<AvaliacaoInput["resultado"]>("NAO_AVALIADO");
-  const [conduta, setConduta] = useState<AvaliacaoInput["conduta"]>("AGUARDAR");
-  const [sexoFetal, setSexoFetal] = useState<"F" | "M">("F");
+    useState<AvaliacaoInput["resultado"] | "">("");
+  const [conduta, setConduta] = useState<AvaliacaoInput["conduta"] | null>(null);
+  const [sexoFetal, setSexoFetal] = useState<"F" | "M" | "">("");
+  const [finalidade, setFinalidade] = useState<AvaliacaoInput["finalidade"]>("DIAGNOSTICO");
+  const [tiposExame, setTiposExame] = useState<TipoExame[]>([]);
+  const [tipoExameId, setTipoExameId] = useState("");
+  const [resultados, setResultados] = useState<ObservacaoExame[]>([]);
+  useEffect(() => {
+    if (acao !== "avaliacao") return;
+    let ativo = true;
+    reqV4<TipoExame[]>("/reproducao/tipos-exame").then(tipos => { if (ativo) { setTiposExame(tipos); setTipoExameId(tipos.find(t => t.padraoReprodutivo)?.id ?? tipos[0]?.id ?? ""); } }).catch(e => { if (ativo) setErro(e.message); });
+    return () => { ativo = false; };
+  }, [acao]);
+  const tipoExame = tiposExame.find(t => t.id === tipoExameId);
   const [tentativaId, setTentativaId] = useState("");
   const [motivo, setMotivo] = useState("");
   const [anotacao, setAnotacao] = useState("");
@@ -240,9 +254,12 @@ export function FormReproducao({
       setErro("Informe um motivo com pelo menos 5 caracteres.");
       return;
     }
+    if (acao === "avaliacao" && (!resultado || !tipoExameId || (finalidade === "SEXAGEM" && !sexoFetal))) { setErro("Informe o tipo de exame, a conclusão e o sexo fetal quando houver sexagem."); return; }
     setOcupado(true);
     setErro(null);
-    const base = { chave, propriedadeId, animalId, data };
+    const payload = JSON.stringify({acao, propriedadeId, animalId, data, tipo, origem, materialId, touro, partidaId, cienciaValidade, cienciaSanitaria, cienciaVencida, motivoVencida, servicoId, quantidade, responsavel, resultado, conduta, sexoFetal, finalidade, tipoExameId, resultados, tentativaId, motivo, anotacao, retorno, previsao, motivoVinculo, tipoParto, crias, lactacao, situacao, aptaDesde, restricaoAte, acoesRestritas, restricao});
+    if (envio.current?.payload !== payload) envio.current = { payload, chave: crypto.randomUUID() };
+    const base = { chave: envio.current.chave, propriedadeId, animalId, data };
     try {
       if (acao === "tentativa")
         await (onRegistrar ?? registrarTentativa)({
@@ -271,15 +288,15 @@ export function FormReproducao({
             ? { justificativaSemOrigem: motivo, observacao: motivo }
             : {}),
         });
-      if (acao === "avaliacao")
+      if (acao === "avaliacao" && resultado)
         await (onRegistrar ?? registrarAvaliacao)({
           ...base,
-          resultado,
+          resultado, finalidade, tipoExameId, resultados,
           cienciaSanitaria,
-          conduta,
+          conduta: conduta ?? undefined,
           ...(tentativaId ? { tentativaId } : {}),
           ...(gestacaoDoFato ? { gestacaoId: gestacaoDoFato.id } : {}),
-          ...(resultado === "SEXAGEM" ? { sexoFetal } : {}),
+          ...(sexoFetal && resultado !== "NAO_AVALIADO" ? { sexoFetal } : {}),
           ...(motivo ? { motivo } : {}),
           ...(anotacao ? { anotacaoOriginal: anotacao } : {}),
           ...(retorno ? { retornoEm: retorno } : {}),
@@ -507,20 +524,15 @@ export function FormReproducao({
         )}
         {acao === "avaliacao" && (
           <>
-            {seletor(
-              "resultado",
-              "Resultado",
-              resultado,
-              (v) => setResultado(v as AvaliacaoInput["resultado"]),
-              [
-                ["NAO_AVALIADO", "Não avaliado"],
-                ["POSITIVO", "P+ · confirmação de gestação"],
-                ["RECONFIRMACAO", "OK · reconfirmação da mesma gestação"],
-                ["SEXAGEM", "Sexagem fetal"],
-                ["NEGATIVO", "Negativo"],
-                ["INCONCLUSIVO", "Inconclusivo"],
-              ],
-            )}
+            {seletor("tipo-exame", "Tipo de exame", tipoExameId, v => { setTipoExameId(v); setResultados([]); }, tiposExame.map(t => [t.id, t.nome]))}
+            {!tiposExame.length && <p role="status">Nenhum tipo de exame disponível. Confira os cadastros de Reprodução.</p>}
+            <CamposAvaliacao dados={{ resultado, finalidade, sexoFetal, conduta }} onChange={mudanca => {
+              if (mudanca.resultado !== undefined) setResultado(mudanca.resultado as AvaliacaoInput["resultado"] | "");
+              if (mudanca.finalidade !== undefined) setFinalidade(mudanca.finalidade as AvaliacaoInput["finalidade"]);
+              if (mudanca.sexoFetal !== undefined) setSexoFetal((mudanca.sexoFetal ?? "") as "F" | "M" | "");
+              if (mudanca.conduta !== undefined) setConduta(mudanca.conduta as AvaliacaoInput["conduta"]);
+            }} />
+            {tipoExame?.campos?.some(c => !["CONCLUSAO_GESTACIONAL", "SEXO_FETAL"].includes(c.codigo)) && resultado !== "NAO_AVALIADO" && <CamposResultadoExame campos={tipoExame.campos.filter(c => !["CONCLUSAO_GESTACIONAL", "SEXO_FETAL"].includes(c.codigo))} valores={resultados} onChange={setResultados} />}
             {seletor(
               "tentativa",
               "Tentativa relacionada",
@@ -541,28 +553,6 @@ export function FormReproducao({
                 setMotivoVinculo,
                 true,
               )}
-            {resultado === "SEXAGEM" &&
-              seletor(
-                "sexo",
-                "Sexo fetal",
-                sexoFetal,
-                (v) => setSexoFetal(v as "F" | "M"),
-                [
-                  ["F", "Fêmea"],
-                  ["M", "Macho"],
-                ],
-              )}
-            {seletor(
-              "conduta",
-              "Conduta",
-              conduta ?? "AGUARDAR",
-              (v) => setConduta(v as AvaliacaoInput["conduta"]),
-              [
-                ["AGUARDAR", "Aguardar"],
-                ["IATF", "Indicar IATF"],
-                ["DESCARTE", "Descarte reprodutivo"],
-              ],
-            )}
             {conduta === "IATF" && (
               <p className="text-sm text-ink-3">
                 Esta indicação não inicia protocolo nem confirma aplicação ou

@@ -11,7 +11,7 @@ async function contexto(tx: Prisma.TransactionClient, servicoId: string, proprie
   const [aplicacoes, exames, protocolos, tentativas] = await Promise.all([
     tx.aplicacaoProduto.findMany({ where: { operacaoServicoId: servicoId, propriedadeId, ...aplicacaoComConsumoOuAtribuicao }, include: { tarefa: { select: { execucaoId: true } } } }),
     tx.exameAnimal.findMany({ where: { operacaoServicoId: servicoId, propriedadeId, status: "VALIDO" }, include: { tarefa: { select: { execucaoId: true } }, tipoExame: { select: { nome: true } } } }),
-    tx.execucaoProtocoloSanitario.findMany({ where: { operacaoServicoId: servicoId, propriedadeId, canceladaEm: null }, include: { protocolo: { select: { nome: true } } } }),
+    tx.participacaoProtocolo.findMany({ where: { operacaoServicoId: servicoId, propriedadeId, canceladaEm: null }, include: { protocolo: { select: { nome: true } } } }),
     tx.tentativaReprodutiva.findMany({ where: { operacaoServicoId: servicoId, propriedadeId, ...tentativaComAtribuicaoServico } }),
   ]);
   const itens = [

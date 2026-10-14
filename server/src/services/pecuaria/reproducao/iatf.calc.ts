@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import type { EtapaIatf } from "./schemas.js";
+import { compararParametros, type DiferencaExecucao } from "../desvios.calc.js";
 export type SnapshotIatf = {
   versao: 1;
   etapa: EtapaIatf;
@@ -8,11 +9,7 @@ export type SnapshotIatf = {
   previsaoOriginal: string;
   inicioReferencia: string;
 };
-export type DiferencaIatf = {
-  campo: string;
-  planejado: unknown;
-  realizado: unknown;
-};
+export type DiferencaIatf = DiferencaExecucao;
 const decimal = (v: unknown) => {
   if (v === null || v === undefined) return null;
   try {
@@ -31,10 +28,11 @@ export function compararExecucaoIatf(
   dados: Record<string, unknown>,
 ): { aferido: boolean; diferencas: DiferencaIatf[] } {
   if (!plano) return { aferido: false, diferencas: [] };
-  const diferencas: DiferencaIatf[] = [];
-  const comparar = (campo: string, planejado: unknown, realizado: unknown) => {
-    if (JSON.stringify(planejado) !== JSON.stringify(realizado))
-      diferencas.push({ campo, planejado, realizado });
+  const planejado: Record<string, unknown> = {};
+  const realizado: Record<string, unknown> = {};
+  const comparar = (campo: string, esperado: unknown, atual: unknown) => {
+    planejado[campo] = esperado;
+    realizado[campo] = atual;
   };
   comparar(
     "dataHora",
@@ -66,16 +64,18 @@ export function compararExecucaoIatf(
     );
   }
   if (e.tipo === "AVALIACAO" && e.planoAvaliacao) {
-    const tipo = ["SEXAGEM", "RECONFIRMACAO"].includes(String(dados.resultado))
+    const tipo = dados.finalidade ?? (["SEXAGEM", "RECONFIRMACAO"].includes(String(dados.resultado))
       ? dados.resultado
-      : "DIAGNOSTICO";
+      : "DIAGNOSTICO");
     comparar("tipoAvaliacao", e.planoAvaliacao.tipo, tipo);
   }
+  if (e.tipo === "EXAME" && e.planoExame) comparar("tipoExameId", e.planoExame.tipoExameId, dados.tipoExameId ?? null);
   const aferido =
+    (e.tipo !== "EXAME" || !!e.planoExame) &&
     (e.tipo !== "APLICACAO" || !!e.planoAplicacao) &&
     (e.tipo !== "TENTATIVA" || !!e.planoTentativa) &&
     (e.tipo !== "AVALIACAO" || !!e.planoAvaliacao);
-  return { aferido, diferencas };
+  return compararParametros(planejado, realizado, aferido);
 }
 export function snapshotIatf(
   etapa: EtapaIatf,

@@ -5,7 +5,7 @@ const mocks = vi.hoisted(() => ({ operacao: vi.fn(), aplicacoes: vi.fn(), exames
 vi.mock("../../../db.js", () => ({ prisma: {
   tentativaReprodutiva: { findMany: mocks.tentativas },
   operacao: { findFirst: mocks.operacao }, aplicacaoProduto: { findMany: mocks.aplicacoes },
-  exameAnimal: { findMany: mocks.exames }, execucaoProtocoloSanitario: { findMany: mocks.execucoes },
+  exameAnimal: { findMany: mocks.exames }, participacaoProtocolo: { findMany: mocks.execucoes },
 } }));
 import { listarOrigemFinanceira } from "./origem-financeira.js";
 

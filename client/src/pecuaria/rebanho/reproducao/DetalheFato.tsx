@@ -1,3 +1,4 @@
+import { nomeCampoExame } from "../sanidade/CamposExame";
 import { CorrigirFato } from "./CorrigirFato";
 import { getUsuario } from "../../../lib/auth";
 import { temAcessoArea } from "../../../lib/areas";
@@ -65,6 +66,7 @@ export function DetalheFato({
     >
       <div className="p-5 space-y-4">
         <Pill>{fato.status ?? "Registrado"}</Pill>
+        {fato.exame && <section className="rounded-lg border border-border p-4"><h3 className="font-semibold">{fato.exame.formatoSnapshot.nome ?? "Exame reprodutivo"}</h3><p className="text-sm">Finalidades: {fato.exame.finalidades.map(f => ({DIAGNOSTICO:"Diagnóstico",RECONFIRMACAO:"Reconfirmação",SEXAGEM:"Sexagem"} as Record<string,string>)[f] ?? f).join(" · ")}</p><p className="text-sm">{fato.exame.realizacao === "NAO_REALIZADO" ? "Exame não realizado" : "Exame realizado"}</p><dl className="grid gap-3 mt-3">{fato.exame.resultados.map(r => { const campo=fato.exame?.formatoSnapshot.campos?.find(c => c.codigo===r.campo); const rotulos:Record<string,string>={POSITIVO:"Gestação confirmada",NEGATIVO:"Gestação não confirmada",INCONCLUSIVO:"Inconclusivo",M:"Macho",F:"Fêmea"}; return <div key={r.campo}><dt className="text-sm text-ink-3">{nomeCampoExame(campo ?? {codigo:r.campo})}</dt><dd>{typeof r.valor === "boolean" ? r.valor ? "Sim" : "Não" : ["CONCLUSAO_GESTACIONAL","SEXO_FETAL"].includes(r.campo) ? rotulos[String(r.valor)] ?? String(r.valor) : String(r.valor)}{r.unidade ? ` ${r.unidade}` : ""}</dd></div>; })}</dl></section>}
         <dl className="grid grid-cols-2 gap-4 text-sm">
           <div>
             <dt className="text-ink-3">Procedimento / resultado</dt>

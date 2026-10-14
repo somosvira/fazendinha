@@ -1,3 +1,4 @@
+import { registrarEvidenciaAvaliacaoTx } from "../../src/services/pecuaria/exames/evidencia-reprodutiva.js";
 import { createHash } from "node:crypto";
 import { Prisma, type PrismaClient } from "@prisma/client";
 import type { CargaV4, FatoV4, MapeamentoV4 } from "./contrato.js";
@@ -400,14 +401,12 @@ export async function importarV4(
           // O exame prova sua avaliação, mas não um encerramento de gestação histórica.
           // Não transformar vários positivos em gestações abertas/conflitantes.
           const gestacaoId = null;
-          const exame = await tx.avaliacaoReprodutiva.create({
-            data: {
+          const exame = await registrarEvidenciaAvaliacaoTx(tx, {
               ...b,
               resultado: f.resultado ?? "INCONCLUSIVO",
               tentativaId,
               gestacaoId,
               anotacaoOriginal: JSON.stringify(f.snapshot),
-            },
           });
           id = exame.id;
         } else {

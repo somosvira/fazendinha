@@ -86,7 +86,7 @@ export async function anularOcorrencia(id: string, propriedadeId: number, motivo
     const fatos = await Promise.all([
       tx.aplicacaoProduto.count({ where: { ocorrenciaId: id, status: "VALIDO" } }),
       tx.exameAnimal.count({ where: { ocorrenciaId: id, status: "VALIDO" } }),
-      tx.execucaoProtocoloSanitario.count({ where: { ocorrenciaId: id, canceladaEm: null } }),
+      tx.participacaoProtocolo.count({ where: { ocorrenciaId: id, canceladaEm: null } }),
     ]);
     if (fatos.some(Boolean)) throw new RebanhoError("CONFLITO", "A ocorrência tem fatos clínicos ativos; revise-os antes de anular");
     const salva = await tx.ocorrenciaSanitaria.update({ where: { id }, data: { status: "ANULADO", motivoAnulacao: motivo, anuladoEm: new Date() } });

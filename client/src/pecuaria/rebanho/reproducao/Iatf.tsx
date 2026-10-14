@@ -1,3 +1,7 @@
+import { FormFatoSanitario } from "../sanidade/FormFatoSanitario";
+import type { TipoExame } from "../sanidade/CadastrosSanitarios";
+import { reqSanidade } from "../sanidade/api";
+import { navegarPara } from "../../../router";
 import { RegularizarOrigem, consumoMantidoUltimaAnulacao } from "./RegularizarOrigem";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -21,7 +25,7 @@ import { UNIDADES, type UnidadeMedida } from "../../../lib/unidades";
 import { FormAplicacaoServico } from "../sanidade/FormAplicacaoServico";
 export type EtapaIatf = {
   nome: string;
-  tipo: "APLICACAO" | "MANEJO" | "RETIRADA" | "TENTATIVA" | "AVALIACAO";
+  tipo: "APLICACAO" | "MANEJO" | "RETIRADA" | "TENTATIVA" | "AVALIACAO" | "EXAME";
   intervalo: number;
   unidade: "DIAS" | "HORAS";
   planoAplicacao?: {
@@ -35,6 +39,7 @@ export type EtapaIatf = {
     materialId: string;
     quantidade: number;
   };
+  planoExame?: { tipoExameId: string };
   planoAvaliacao?: { tipo: "DIAGNOSTICO" | "RECONFIRMACAO" | "SEXAGEM" };
 };
 export type ProtocoloIatf = {
@@ -42,6 +47,9 @@ export type ProtocoloIatf = {
   nome: string;
   versao: number;
   publicado: boolean;
+  ativo?: boolean;
+  utilizada?: boolean;
+  descricao?: string | null;
   etapas: EtapaIatf[];
 };
 export type TarefaIatf = {
@@ -127,13 +135,15 @@ export const statusTarefaIatf = (t: TarefaIatf) =>
 export const statusParticipanteIatf = (p: ParticipanteIatf) =>
   p.encerradoEm ? "Encerrada" : p.inicioEfetivo ? "Iniciada" : "Prevista";
 export function Iatf({
-  animais,
+  animais = [],
   painel,
+  modo = "operacao",
   podeLancar,
   onMudou,
 }: {
-  animais: AnimalReprodutivo[];
-  painel: PainelReprodutivo;
+  animais?: AnimalReprodutivo[];
+  painel?: PainelReprodutivo;
+  modo?: "operacao" | "cadastros";
   podeLancar: boolean;
   onMudou?: () => Promise<void>;
 }) {
@@ -152,6 +162,7 @@ export function Iatf({
   const [chaveProgramacao, setChaveProgramacao] = useState(() =>
     crypto.randomUUID(),
   );
+  const [editando, setEditando] = useState<string | null>(null);
   const [versao, setVersao] = useState(1);
   const [publicado, setPublicado] = useState(false);
   const [protocoloId, setProtocoloId] = useState("");
@@ -174,14 +185,14 @@ export function Iatf({
     try {
       const [p, g] = await Promise.all([
         reqV4<ProtocoloIatf[]>("/reproducao/protocolos"),
-        reqV4<ProgramacaoIatf[]>("/reproducao/programacoes"),
+        modo === "cadastros" ? Promise.resolve([] as ProgramacaoIatf[]) : reqV4<ProgramacaoIatf[]>("/reproducao/programacoes"),
       ]);
       setProtocolos(p);
       setProgramacoes(g);
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
     }
-  }, []);
+  }, [modo]);
   useEffect(() => {
     void carregar();
   }, [carregar]);
@@ -236,21 +247,13 @@ export function Iatf({
   return (
     <div className="space-y-5">
       <ErrorBox erro={erro} />
-      <Panel>
+      {modo === "operacao" && <Panel>
         <CabecalhoTabela
           titulo="Programações de IATF"
           acao={
             podeLancar && (
               <div className="flex flex-wrap gap-2">
-                <Button
-                  secondary
-                  onClick={() => {
-                    setNome("");
-                    setNovo("protocolo");
-                  }}
-                >
-                  Nova versão de protocolo
-                </Button>
+                <a className="inline-flex items-center rounded-lg border border-border px-3 py-2 text-sm" href="/configuracoes/pecuaria/reproducao/protocolos" onClick={e => { if (!e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) { e.preventDefault(); navegarPara("/configuracoes/pecuaria/reproducao/protocolos"); } }}>Gerenciar protocolos reprodutivos</a>
                 <Button
                   onClick={() => {
                     setNome("");
@@ -287,8 +290,8 @@ export function Iatf({
             <p className="text-sm">Nenhuma programação.</p>
           )}
         </div>
-      </Panel>
-      {detalhe && (
+      </Panel>}
+      {modo === "operacao" && detalhe && (
         <Panel>
           <CabecalhoTabela
             titulo={`${detalhe.nome} · ${detalhe.protocolo?.nome ?? "Protocolo"} v${detalhe.protocolo?.versao ?? ""}`}
@@ -414,8 +417,8 @@ export function Iatf({
           </div>
         </Panel>
       )}
-      <Panel>
-        <CabecalhoTabela titulo="Versões de protocolo" />
+      {modo === "cadastros" && <Panel>
+        <CabecalhoTabela titulo="Protocolos reprodutivos" acao={podeLancar && <Button onClick={() => { setEditando(null); setNome(""); setVersao(1); setPublicado(false); setEtapas([{ nome: "", tipo: "MANEJO", intervalo: 0, unidade: "DIAS" }]); setNovo("protocolo"); }}>Novo protocolo reprodutivo</Button>} />
         <div className="p-4 grid gap-3">
           {protocolos.map((p) => (
             <section
@@ -424,7 +427,7 @@ export function Iatf({
             >
               <h3 className="font-semibold">
                 {p.nome} · versão {p.versao} ·{" "}
-                {p.publicado ? "Publicada" : "Rascunho"}
+                {p.ativo === false ? "Inativa" : p.publicado ? "Publicada" : "Rascunho"}
               </h3>
               <p>
                 {p.etapas
@@ -434,16 +437,22 @@ export function Iatf({
                   )
                   .join(" · ")}
               </p>
+              {podeLancar && <div className="mt-3 flex flex-wrap gap-2">
+                {!p.publicado && !p.utilizada && p.ativo !== false && <><Button secondary disabled={ocupado} onClick={() => { setEditando(p.id); setNome(p.nome); setVersao(p.versao); setEtapas(structuredClone(p.etapas)); setPublicado(false); setNovo("protocolo"); }}>Editar rascunho</Button><Button secondary disabled={ocupado} onClick={() => void executar(async () => { await reqV4(`/reproducao/protocolos/${p.id}/publicar`, {}); await carregar(); })}>Publicar versão</Button></>}
+                <Button secondary disabled={ocupado} onClick={() => { setEditando(null); setNome(p.nome); setVersao(Math.max(...protocolos.filter(v => v.nome === p.nome).map(v => v.versao)) + 1); setEtapas(structuredClone(p.etapas)); setPublicado(false); setNovo("protocolo"); }}>Nova versão</Button>
+                {p.ativo !== false && <Button secondary disabled={ocupado} onClick={() => void executar(async () => { await reqV4(`/reproducao/protocolos/${p.id}/inativar`, {}); await carregar(); })}>Inativar versão</Button>}
+              </div>}
             </section>
           ))}
+          {!protocolos.length && <p>Nenhum protocolo reprodutivo cadastrado.</p>}
         </div>
-      </Panel>
+      </Panel>}
       {novo && (
         <PainelCadastro
           aberto
           titulo={
             novo === "protocolo"
-              ? "Nova versão de protocolo IATF"
+              ? editando ? "Editar protocolo reprodutivo" : "Nova versão de protocolo reprodutivo"
               : "Nova programação IATF"
           }
           onFechar={() => setNovo(null)}
@@ -466,12 +475,12 @@ export function Iatf({
               e.preventDefault();
               void executar(async () => {
                 if (novo === "protocolo")
-                  await reqV4("/reproducao/protocolos", {
+                  await reqV4(`/reproducao/protocolos${editando ? `/${editando}` : ""}`, {
                     nome,
                     versao,
                     publicado,
                     etapas,
-                  });
+                  }, editando ? "PATCH" : "POST");
                 else if (novo === "participantes" && detalhe)
                   await reqV4(
                     `/reproducao/programacoes/${detalhe.id}/participantes`,
@@ -524,6 +533,7 @@ export function Iatf({
                     min={1}
                     className={classeInput}
                     value={versao}
+                    readOnly={!!editando}
                     onChange={(e) => setVersao(Number(e.target.value))}
                   />
                 </label>
@@ -585,7 +595,8 @@ export function Iatf({
                           ["MANEJO", "Manejo"],
                           ["RETIRADA", "Retirada de dispositivo"],
                           ["TENTATIVA", "Tentativa"],
-                          ["AVALIACAO", "Avaliação"],
+                          ["AVALIACAO", "Exame reprodutivo"],
+                          ["EXAME", "Exame sanitário"],
                         ].map(([v, r]) => (
                           <option key={v} value={v}>
                             {r}
@@ -686,7 +697,7 @@ export function Iatf({
                     >
                       <option value="">Selecione</option>
                       {protocolos
-                        .filter((p) => p.publicado)
+                        .filter((p) => p.publicado && p.ativo !== false)
                         .map((p) => (
                           <option key={p.id} value={p.id}>
                             {p.nome} · v{p.versao}
@@ -844,7 +855,7 @@ export function Iatf({
           </form>
         </PainelCadastro>
       )}
-      {execucao && (
+      {execucao && painel && (
         <ExecucaoIatf
           tarefa={execucao.tarefa}
           animalId={execucao.animalId}
@@ -915,6 +926,7 @@ function ExecucaoIatf({
         }
       />
     );
+  if (preparado && tarefa.tipo === "EXAME") return <FormFatoSanitario tipo="exame" animalInicial={animalId} fixo onFechar={onFechar} onSalvo={onSalvo} onRegistrar={registrar} dataInicial={realizada.slice(0,10)} conteudoExtra={<><DetalheEtapa tarefa={tarefa} /><label>Motivo do desvio<input className={classeInput} value={motivo} onChange={e => setMotivo(e.target.value)} /></label></>} />;
   if (preparado && (tarefa.tipo === "TENTATIVA" || tarefa.tipo === "AVALIACAO"))
     return (
       <FormReproducao
@@ -963,7 +975,7 @@ function ExecucaoIatf({
         className="grid gap-4"
         onSubmit={(e) => {
           e.preventDefault();
-          if (["APLICACAO", "TENTATIVA", "AVALIACAO"].includes(tarefa.tipo)) {
+          if (["APLICACAO", "TENTATIVA", "AVALIACAO", "EXAME"].includes(tarefa.tipo)) {
             setPreparado(true);
             return;
           }
@@ -1014,6 +1026,10 @@ function PlanoEtapa({
   materiais: MaterialGeneticoDTO[];
   onChange: (e: EtapaIatf) => void;
 }) {
+  const [exames, setExames] = useState<TipoExame[]>([]);
+  const [erroExames, setErroExames] = useState<string | null>(null);
+  useEffect(() => { if (etapa.tipo === "EXAME") reqSanidade<TipoExame[]>("/tipos-exame").then(setExames).catch(e => setErroExames(e.message)); }, [etapa.tipo]);
+  if (etapa.tipo === "EXAME") return <><ErrorBox erro={erroExames} /><label>Exame sanitário planejado<select className={classeInput} value={etapa.planoExame?.tipoExameId ?? ""} onChange={e => onChange({ ...etapa, planoExame: e.target.value ? { tipoExameId: e.target.value } : undefined })}><option value="">Selecione o exame</option>{exames.map(e => <option key={e.id} value={e.id}>{e.nome}</option>)}</select></label></>;
   if (etapa.tipo === "APLICACAO") {
     const p = etapa.planoAplicacao;
     const alterar = (
