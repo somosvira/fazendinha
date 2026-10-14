@@ -2,6 +2,15 @@
 
 Contrato da base comum de Sanidade e Reprodução. Complementa [Reprodução V4](reproducao.md) e o [contrato geral](README.md). A finalidade do protocolo é independente da ação de uma etapa: um protocolo reprodutivo pode conter aplicação sanitária, exame sanitário, tentativa, avaliação reprodutiva, manejo ou retirada.
 
+## Pendências de implementação
+
+A estrutura de banco e os fluxos principais foram entregues, mas o plano ainda não está integralmente concluído. A conferência do código identificou:
+
+- **Regularização sanitária na base comum:** a marcação de anulação ainda busca tarefas pela view `TarefaIatf`, e a listagem sanitária ainda deriva o estado dos fatos válidos. Falta completar a regularização e a apresentação do histórico para tarefas sanitárias pelo mesmo núcleo. Em especial, consumo mantido pode bloquear nova execução sem oferecer o mesmo percurso de substituição disponível na IATF.
+- **Tipo de exame configurável de ponta a ponta:** o formulário individual usa o catálogo e seus campos adicionais, mas a etapa reprodutiva ainda fixa o tipo padrão no adaptador, e a transcrição coletiva da avaliação não oferece seleção de tipo e observações adicionais. Falta transportar essa configuração por planejamento, snapshot, execução, rascunho e confirmação.
+
+Esses itens são trabalho de implementação. Homologação de campo e aplicação em produção também permanecem pendentes, como etapas distintas. As regras abaixo descrevem a base entregue; os pontos de unificação mencionados acima ainda exigem conclusão nos consumidores.
+
 ## Estrutura e identidade
 
 - `Protocolo`: versão do modelo, com `tipo` SANITARIO/REPRODUTIVO, publicação, atividade e autoria. O contexto da tela determina o tipo; não há seletor de tipo para o usuário.
