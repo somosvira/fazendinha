@@ -1,7 +1,8 @@
+import { obterContextosAnimaisNaDataTx } from "../reproducao/contexto-animal.js";
 import { papelReprodutivoNaDataTx, registrarPapelReprodutivoTx, desfazerPapelDoDestinoTx, idsComPapelReprodutivo } from "./papeis.js";
 import { resolverPapelReprodutivo } from "./papel-reprodutivo.calc.js";
 import crypto from "node:crypto";
-import { conferirCadastroIndevidoSemFatosTx, conferirFatosNaBaixa, conferirHistoricoDosFatos } from "../fatos.js";
+import { conferirAnimalNoFato, conferirCadastroIndevidoSemFatosTx, conferirFatosNaBaixa, conferirHistoricoDosFatos } from "../fatos.js";
 import { transacaoPecuaria } from "../transacao.js";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../../db.js";
@@ -18,7 +19,7 @@ import { planejarDestino, planejarDesfazer, planejarDesfazerMovimentacao, planej
 import { avaliarCategoria, faixaNascimentoParaIdade, validarDataCategoriaManual, type RegraCategoria } from "./categoria.calc.js";
 import { carregarRegras, manualDe, SELECT_MANUAL_ABERTA, SELECT_PARTOS_CATEGORIA, whereCategoria, whereSemCategoria } from "./categorias.js";
 import { planejarBaixa, planejarEstornoBaixa, motivoAceito, mensagemMotivoRecusado, BaixaError } from "./baixa.calc.js";
-import { agregarPainel, mapearAnimalResumo, resumoAuditoria, type AnimalResumo, type AnimalFicha, type ItemComposicaoFicha, type PainelRebanho, type FiliacaoLadoDTO } from "./mappers.js";
+import { agregarPainel, mapearAnimalResumo, mapearContextoProdutivoFicha, resumoAuditoria, type AnimalResumo, type AnimalFicha, type ItemComposicaoFicha, type PainelRebanho, type FiliacaoLadoDTO } from "./mappers.js";
 import { resumoPeso } from "./peso.calc.js";
 import { diferencas, type CampoAlteracao } from "./auditoria.calc.js";
 import type {
@@ -856,8 +857,12 @@ export async function buscarFicha(id: string, propriedadeEscopo: number | null, 
     ateData: baixaAtual ? baixaAtual.data : null,
   });
 
+  const contextoProdutivo = animal.sexo === "F"
+    ? (await obterContextosAnimaisNaDataTx(prisma, [id], hoje)).get(id) ?? null : null;
+
   return {
     ...resumo,
+    contextoProdutivo: contextoProdutivo ? mapearContextoProdutivoFicha(contextoProdutivo) : null,
     papelReprodutivoEstado: papelAtual.estado,
     historicoPapeisReprodutivos: papeis.map(p => ({ id: p.id, tipo: p.tipo, inicio: p.inicio.toISOString().slice(0, 10), fim: p.fim?.toISOString().slice(0, 10) ?? null, origem: p.origem, revogado: !!p.revogadoEm })),
     brincoEletronico: animal.brincoEletronico,
@@ -1602,21 +1607,26 @@ export async function estornarBaixa(animalId: string, input: EstornoBaixaInput, 
 // Pesagens também travam o animal: a data da pesagem é validada contra a baixa (e a baixa,
 // contra as pesagens), então as duas escritas não podem se cruzar.
 
+/** O chamador valida o sítio/data do fato e trava o animal antes de escrever. */
+export async function registrarPesagemTx(tx: Prisma.TransactionClient, input: PesagemInput & { animalId: string }, usuarioId: number | null) {
+  const animal = await exigirAnimal(tx, input.animalId);
+  const baixa = await baixaAberta(tx, input.animalId);
+  const errosData = validarDataPesagem({ dataNascimento: animal.dataNascimento, dataBaixa: baixa?.data ?? null, dataPesagem: input.data });
+  if (errosData.length) throw new RebanhoError("VALIDACAO", errosData[0].mensagem, errosData[0].campo);
+
+  const criada = await tx.pesagem.create({
+    data: { animalId: input.animalId, data: new Date(input.data), pesoKg: new Prisma.Decimal(input.pesoKg), tipo: input.tipo, origem: input.origem, observacao: input.observacao ?? null, criadoPorId: usuarioId },
+  });
+  await auditar(tx, { entidade: "Pesagem", entidadeId: criada.id, animalId: input.animalId, acao: "REGISTRO", usuarioId, depois: criada });
+  return criada;
+}
+
 export async function registrarPesagem(input: PesagemInput & { animalId: string }, usuarioId: number | null, escopo: number | null = null) {
   await exigirNoEscopo(prisma, input.animalId, escopo);
 
   const pesagem = await prisma.$transaction(async (tx) => {
     await travarAnimais(tx, [input.animalId]);
-    const animal = await exigirAnimal(tx, input.animalId);
-    const baixa = await baixaAberta(tx, input.animalId);
-    const errosData = validarDataPesagem({ dataNascimento: animal.dataNascimento, dataBaixa: baixa?.data ?? null, dataPesagem: input.data });
-    if (errosData.length) throw new RebanhoError("VALIDACAO", errosData[0].mensagem, errosData[0].campo);
-
-    const criada = await tx.pesagem.create({
-      data: { animalId: input.animalId, data: new Date(input.data), pesoKg: new Prisma.Decimal(input.pesoKg), tipo: input.tipo, origem: input.origem, observacao: input.observacao ?? null, criadoPorId: usuarioId },
-    });
-    await auditar(tx, { entidade: "Pesagem", entidadeId: criada.id, animalId: input.animalId, acao: "REGISTRO", usuarioId, depois: criada });
-    return criada;
+    return registrarPesagemTx(tx, input, usuarioId);
   });
 
   return { id: pesagem.id, animalId: pesagem.animalId, data: pesagem.data.toISOString().slice(0, 10), pesoKg: Number(pesagem.pesoKg), tipo: pesagem.tipo, origem: pesagem.origem };
@@ -1628,31 +1638,52 @@ async function exigirPesagem(db: DbPecuaria, id: string) {
   return pesagem;
 }
 
+/** O chamador já trava o animal e valida o sítio do fato. */
+export async function editarPesagemTx(tx: Prisma.TransactionClient, id: string, input: EditarPesagemInput, usuarioId: number | null) {
+  const referencia = await exigirPesagem(tx, id);
+  const animalId = referencia.animalId;
+  const existente = await exigirPesagem(tx, id);
+  const animal = await exigirAnimal(tx, animalId);
+  const baixa = await baixaAberta(tx, animalId);
+  const dataPesagem = input.data ?? existente.data;
+  const errosData = validarDataPesagem({ dataNascimento: animal.dataNascimento, dataBaixa: baixa?.data ?? null, dataPesagem });
+  if (errosData.length) throw new RebanhoError("VALIDACAO", errosData[0].mensagem, errosData[0].campo);
+
+  const vinculos = await tx.vinculoPesagemParto.findMany({
+    where: { pesagemId: id, revogadoEm: null }, include: { parto: true },
+  });
+  const dia = new Date(dataPesagem).getTime();
+  for (const vinculo of vinculos) {
+    if (vinculo.parto.propriedadeId != null)
+      await conferirAnimalNoFato(tx, animalId, vinculo.parto.propriedadeId, new Date(dataPesagem));
+    if (dia < vinculo.parto.data.getTime() || (vinculo.sujeito === "CRIA" &&
+        (dia !== vinculo.parto.data.getTime() || (input.tipo ?? existente.tipo) !== "NASCIMENTO"))) {
+      throw new RebanhoError("VALIDACAO", "Pesagem vinculada ao parto deve preservar a data e o tipo do nascimento; desvincule explicitamente antes de mudar sua finalidade", "data");
+    }
+  }
+
+  const salva = await tx.pesagem.update({
+    where: { id },
+    data: {
+      data: input.data != null ? new Date(input.data) : undefined,
+      pesoKg: input.pesoKg != null ? new Prisma.Decimal(input.pesoKg) : undefined,
+      tipo: input.tipo ?? undefined,
+      origem: input.origem ?? undefined,
+      observacao: input.observacao === undefined ? undefined : input.observacao,
+    },
+  });
+  await auditar(tx, { entidade: "Pesagem", entidadeId: id, animalId, acao: "EDICAO", usuarioId, antes: existente, depois: salva });
+  return salva;
+}
+
 export async function editarPesagem(id: string, input: EditarPesagemInput, usuarioId: number | null, escopo: number | null = null) {
   const { animalId } = await exigirPesagem(prisma, id);
   await exigirNoEscopo(prisma, animalId, escopo);
 
-  const atualizada = await prisma.$transaction(async (tx) => {
-    await travarAnimais(tx, [animalId]);
-    const existente = await exigirPesagem(tx, id);
-    const animal = await exigirAnimal(tx, animalId);
-    const baixa = await baixaAberta(tx, animalId);
-    const dataPesagem = input.data ?? existente.data;
-    const errosData = validarDataPesagem({ dataNascimento: animal.dataNascimento, dataBaixa: baixa?.data ?? null, dataPesagem });
-    if (errosData.length) throw new RebanhoError("VALIDACAO", errosData[0].mensagem, errosData[0].campo);
-
-    const salva = await tx.pesagem.update({
-      where: { id },
-      data: {
-        data: input.data != null ? new Date(input.data) : undefined,
-        pesoKg: input.pesoKg != null ? new Prisma.Decimal(input.pesoKg) : undefined,
-        tipo: input.tipo ?? undefined,
-        origem: input.origem ?? undefined,
-        observacao: input.observacao === undefined ? undefined : input.observacao,
-      },
-    });
-    await auditar(tx, { entidade: "Pesagem", entidadeId: id, animalId, acao: "EDICAO", usuarioId, antes: existente, depois: salva });
-    return salva;
+  const atualizada = await transacaoPecuaria(async (tx) => {
+    const vinculos = await tx.vinculoPesagemParto.findMany({ where: { pesagemId: id, revogadoEm: null }, select: { parto: { select: { animalId: true } } } });
+    await travarAnimais(tx, [animalId, ...vinculos.map(v => v.parto.animalId)]);
+    return editarPesagemTx(tx, id, input, usuarioId);
   });
 
   return { id: atualizada.id, animalId: atualizada.animalId, data: atualizada.data.toISOString().slice(0, 10), pesoKg: Number(atualizada.pesoKg), tipo: atualizada.tipo, origem: atualizada.origem, observacao: atualizada.observacao };
@@ -1665,6 +1696,8 @@ export async function excluirPesagem(id: string, usuarioId: number | null, escop
   await prisma.$transaction(async (tx) => {
     await travarAnimais(tx, [animalId]);
     const existente = await exigirPesagem(tx, id);
+    if (await tx.vinculoPesagemParto.count({ where: { pesagemId: id } }))
+      throw new RebanhoError("VALIDACAO", "Pesagem com histórico de parto deve ser corrigida, preservando o registro", "id");
     await tx.pesagem.delete({ where: { id } });
     await auditar(tx, { entidade: "Pesagem", entidadeId: id, animalId, acao: "EXCLUSAO", usuarioId, antes: existente });
   });

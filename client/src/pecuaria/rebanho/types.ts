@@ -96,6 +96,13 @@ export type BaixaAnimalResumo = {
  *  animal (cadastrar, editar, movimentar, mudar destino, desfazer, baixa,
  *  estorno), não só em GET /animais/:id. */
 export type AnimalFicha = AnimalResumo & {
+  contextoProdutivo?: {
+    dataReferencia: string;
+    situacaoProdutiva: "LACTANTE" | "SECA" | "SEM_LACTACAO" | "NAO_INFORMADA";
+    del: number | null; diasPosParto: number | null; diasDesdeConfirmacao: number | null;
+    idadeGestacionalDias: number | null; partosRealizados: number | null;
+    pendencias: string[];
+  } | null;
   brincoEletronico: string | null;
   sisbov: string | null;
   nascimentoEstimado: boolean;

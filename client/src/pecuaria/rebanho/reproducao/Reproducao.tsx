@@ -1,3 +1,9 @@
+import { SubTabs } from "../../../components/SubTabs";
+import { getPropriedadeAtiva } from "../../../propriedadeScope";
+import { IndicadoresReprodutivos } from "./IndicadoresReprodutivos";
+import { ConfiguracaoReprodutiva } from "./ConfiguracaoReprodutiva";
+import { RelatorioPartos } from "./RelatorioPartos";
+import { ElegibilidadeAnimal } from "./ElegibilidadeAnimal";
 import { AcompanhamentoReprodutivo } from "./AcompanhamentoReprodutivo";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -38,8 +44,10 @@ export function ReproducaoAnimal({
   animalId,
   podeLancar,
   recarregarToken = 0,
+  propriedadeId,
 }: {
   animalId: string;
+  propriedadeId?: number | null;
   podeLancar: boolean;
   recarregarToken?: number;
 }) {
@@ -48,27 +56,70 @@ export function ReproducaoAnimal({
       animalId={animalId}
       podeLancar={podeLancar}
       recarregarToken={recarregarToken}
+      propriedadeId={propriedadeId ?? null}
     />
   );
 }
+const ROTINAS = [
+  { id: "ciclos", label: "Ciclos e manejo" },
+  { id: "partos", label: "Partos e pós-parto" },
+  { id: "indicadores", label: "Indicadores" },
+  { id: "configuracao", label: "Política reprodutiva" },
+] as const;
+type Rotina = typeof ROTINAS[number]["id"];
+function rotinaDaUrl(): Rotina {
+  const valor = new URLSearchParams(window.location.search).get("rotina");
+  return ROTINAS.find(r => r.id === valor)?.id ?? "ciclos";
+}
 export function Reproducao({ podeLancar }: { podeLancar: boolean }) {
+  const [rotina, setRotina] = useState<Rotina>(rotinaDaUrl);
+  const propriedadeId = getPropriedadeAtiva();
+  useEffect(() => {
+    const atualizar = () => setRotina(rotinaDaUrl());
+    window.addEventListener("popstate", atualizar);
+    return () => window.removeEventListener("popstate", atualizar);
+  }, []);
+  function selecionarRotina(valor: Rotina) {
+    const url = new URL(window.location.href);
+    url.searchParams.set("rotina", valor);
+    navegarPara(url.pathname + url.search + url.hash);
+  }
+  function conteudoDaRotina() {
+    if (rotina === "ciclos") return <ConteudoReproducao podeLancar={podeLancar} propriedadeId={propriedadeId} />;
+    if (propriedadeId == null) {
+      const consulta = rotina === "partos" ? "a ficha de partos e pós-parto"
+        : rotina === "indicadores" ? "os indicadores reprodutivos" : "a política reprodutiva";
+      return <Panel>
+        <p className="p-5 text-sm" role="status">
+          Selecione um sítio para consultar {consulta}. A visão consolidada permanece disponível em Ciclos e manejo.
+        </p>
+      </Panel>;
+    }
+    if (rotina === "partos") return <RelatorioPartos key={propriedadeId} propriedadeId={propriedadeId} podeLancar={podeLancar} />;
+    if (rotina === "indicadores") return <IndicadoresReprodutivos key={propriedadeId} propriedadeId={propriedadeId} podeLancar={podeLancar} />;
+    return <ConfiguracaoReprodutiva key={propriedadeId} propriedadeId={propriedadeId} podeLancar={podeLancar} />;
+  }
   return (
     <PaginaFinanceira>
       <PageHeader
         eyebrow="Pecuária"
         titulo="Reprodução"
-        descricao="Ciclos individuais, avaliações, tentativas e partos."
+        descricao="Ciclos, partos e pós-parto, indicadores e regras de elegibilidade."
       />
-      <ConteudoReproducao podeLancar={podeLancar} />
+      <SubTabs variant="financeiro" ariaLabel="Rotinas da reprodução" tabs={[...ROTINAS]}
+        active={rotina} onSelect={selecionarRotina} />
+      {conteudoDaRotina()}
     </PaginaFinanceira>
   );
 }
 function ConteudoReproducao({
   animalId,
+  propriedadeId,
   podeLancar,
   recarregarToken = 0,
 }: {
   animalId?: string;
+  propriedadeId?: number | null;
   podeLancar: boolean;
   recarregarToken?: number;
 }) {
@@ -99,18 +150,17 @@ function ConteudoReproducao({
     setCarregando(true);
     setErro(null);
     try {
-      const resultado = await obterReproducao(
-          animalId ??
-            new URLSearchParams(consultaUrl).get("animalId") ??
-            undefined,
-        );
+      const animalConsultado = animalId ?? new URLSearchParams(consultaUrl).get("animalId") ?? undefined;
+      const resultado = propriedadeId
+        ? await obterReproducao(animalConsultado, propriedadeId)
+        : await obterReproducao(animalConsultado);
       if (sequencia === consultaAtual.current) setPainel(resultado);
     } catch (e) {
       if (sequencia === consultaAtual.current) setErro(e instanceof Error ? e.message : String(e));
     } finally {
       if (sequencia === consultaAtual.current) setCarregando(false);
     }
-  }, [animalId, consultaUrl]);
+  }, [animalId, consultaUrl, propriedadeId]);
   useEffect(() => {
     void carregar();
   }, [carregar, recarregarToken]);
@@ -357,10 +407,14 @@ function ConteudoReproducao({
           />
         </Panel>
       )}
+      {animalId && painel && (propriedadeId != null ? <ElegibilidadeAnimal
+        animalId={animalId} propriedadeId={propriedadeId} painel={painel} podeLancar={podeLancar} onMudou={() => void carregar()} />
+        : <p className="text-sm">A elegibilidade exige o sítio comprovado do animal. Confira seu histórico de localização.</p>)}
       {painel && (
         <AcoesReprodutivas
           painel={painel}
           animalId={animalId}
+          propriedadeId={propriedadeId ?? undefined}
           podeLancar={podeLancar}
           onMudou={carregar}
         />
@@ -381,6 +435,7 @@ function ConteudoReproducao({
         <Iatf
           onMudou={carregar}
           animais={painel.animais}
+          propriedadeId={propriedadeId ?? undefined}
           painel={painel}
           podeLancar={podeLancar}
         />
@@ -396,6 +451,7 @@ function ConteudoReproducao({
           acao={acao}
           painel={painel}
           animalInicial={animalAcao}
+          propriedadeId={propriedadeId ?? undefined}
           onFechar={fecharFormulario}
           onSalvo={() => {
             fecharFormulario();

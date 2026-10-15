@@ -114,4 +114,44 @@ Aplicam-se sessão, área Pecuária, ação de lançamento e escopo de sítio ex
 
 Datas usam a localização na data do fato e respeitam nascimento, entrada e baixa. Movimentação ou correção retroativa não pode tornar incoerentes fatos já registrados. Migrations e transações protegem integridade, concorrência, autoria e histórico.
 
-A validação automatizada cobre cálculos, filtros, serviços, contratos HTTP e persistência em PostgreSQL descartável. A homologação manual com o time da fazenda permanece pendente; nem testes automatizados nem esta documentação aprovam marcações dos roteiros V3 ou certificam o banco de produção.
+Validação automatizada concluída: testes e builds de servidor e cliente passaram, assim como os typechecks de seed e importação. Integrações locais foram executadas em `fazendinha_seedatev3` com fixtures próprias e rollback. A aplicação das migrations foi confirmada nesse banco. A revisão visual automatizada não foi concluída por indisponibilidade da ferramenta; homologação manual com a fazenda continua pendente. O roteiro manual não foi marcado como aprovado e não houve deploy.
+
+## Rotas operacionais
+
+As rotas V4 ficam sob `/api/pecuaria/rebanho/reproducao`: `POST /lactacoes` e `POST /partos`; `GET`/`POST /colostro`; configuração por `GET`/`POST /politicas-elegibilidade`, vínculo em `POST /vinculos-politica-ciclo` e decisão em `POST /decisoes-elegibilidade`; consultas por `GET /animais/:id/elegibilidade`, `GET /indicadores` e `GET /relatorios/partos`. Emissões são criadas por `POST /relatorios/emissoes`, listadas por `GET /relatorios/emissoes` e reimpressas por `GET /relatorios/emissoes/:id`. Visitas usam `/api/pecuaria/rebanho/visitas`, com `/selecoes`, `/planner`, prévia e inclusão de grupos, impressões e transcrição. Rotas validam entrada, autorização e escopo de sítio no servidor.
+
+## Contexto temporal, lactação e elegibilidade
+
+A ficha e os fluxos de reprodução consultam o contexto do animal na data de referência. O serviço compartilhado calcula lote/localização, categoria, situação produtiva, DEL, gestação, tentativa relevante e restrições, preservando o que é desconhecido. A secagem usa intervalo `[início, fim)`: no próprio dia de encerramento a lactação já não está ativa. Um estado desconhecido não é convertido em “seca”.
+
+A lactação mínima pode ser registrada como fato histórico sem parto conhecido. O endpoint não cria parto nem presume a origem; correções usam controle de versão e motivo. A lactação não representa produção ou qualidade do leite. Em TE, a idade/contexto da receptora não vira idade da doadora nem inventa uma data de nascimento ausente.
+
+## Parto e pós-parto
+
+`PartoAnimal` conserva desfecho, indução, dificuldade, assistência, responsável, observação, hora informada ou estimada, declaração trivalente de retenção de placenta (RP) e versão. Histórico sem dado de RP continua desconhecido. A ocorrência sanitária pode se ligar explicitamente ao parto; encerrar a ocorrência não apaga o registro histórico de RP.
+
+Cada cria é registrada em `CriaParto`; gêmeos permanecem linhas próprias sob um único parto da matriz. Pesagens usam `Pesagem` e vínculos auditáveis `VinculoPesagemParto`, que identificam matriz ou cria. Peso de nascimento da cria exige mesma data do parto e tipo NASCIMENTO; pesagem da matriz vinculada deve ocorrer no parto ou depois. Alterar data, peso, tipo, origem ou observação da pesagem vinculada incrementa a versão do parto e invalida uma correção concorrente baseada na versão anterior. Natimorto não recebe `Animal` ativo, mas conserva a pesagem possível como evidência do parto. O escore pós-parto usa `ExameAnimal` com vínculo ao parto e tipo de exame compartilhado; as observações precisam declarar “ESCORE”, escala mínima e máxima. Não há escala clínica universal inferida pelo sistema. A migration `20261015060000_integridade_pesagem_parto` confere os vínculos pendentes e protege a integridade no banco: peso de nascimento requer data do parto e tipo NASCIMENTO; edição da pesagem ativa avança a versão do parto para que correções concorrentes antigas sejam rejeitadas.
+
+A cria viva aceita vários fornecimentos de colostro. Quantidade é normalizada em litros, mantendo unidade informada; qualidade do alimento pode ser registrada por refratômetro Brix ou colostrômetro. Isso não representa proteína sérica, que exige outro exame. Correções conservam autoria e versões. Esses fatos não prescrevem conduta clínica. A referência operacional sobre colostragem está na [Central de Recursos IDEAGRI](https://centralderecursos.ideagri.com.br/posts/especifique-as-informacoes-de-colostragem-no-sistema-ideagri).
+
+## Visitas, seleções e planner
+
+Seleções salvas são versionadas e tipadas. Regras combinam grupos E/OU, faixas e limites, inclusões/exclusões explícitas e tratamento de desconhecidos. A prévia calcula os animais na data e guarda os critérios que motivaram o resultado; o grupo não é lote físico nem lista permanente de identificadores.
+
+O planner reúne grupos de protocolo, turma, etapa e previsão por dia anterior/futuro ou sem previsão. Uma tarefa compartilhada não aparece duas vezes quando grupos se sobrepõem. Grupos grandes são preparados integralmente e podem ser divididos em atividades, sem corte silencioso. Preparar a visita não executa tarefas nem grava fatos clínicos. A impressão usa snapshot, mantendo critérios, ordem e contexto do momento da emissão.
+
+Na transcrição, resultado principal fica visível e detalhes são condicionais. Confirmações usam controle otimista de versão (CAS) para proteger rascunhos contra atualização concorrente; CAS é controle técnico de versão, não dado clínico. Confirmar até 100 animais por subconjunto mantém atomicidade e idempotência. O botão de indicação IATF abre o formulário de programação, mas não inicia protocolo, tentativa ou consumo.
+
+## Elegibilidade e indicadores
+
+A elegibilidade usa três registros: `PoliticaElegibilidadeReprodutiva` versionada por sítio e vigência, `VinculoPoliticaCiclo` que congela a política aplicável ao ciclo e `DecisaoElegibilidadeCiclo` com evidência individual e histórico. Não existe regra clínica padrão. A configuração da política e a liberação individual são ações explícitas.
+
+Quando um parto inicia um novo ciclo, o vínculo automático só ocorre em sítios que já tenham configuração de política: se não houver versão vigente, o ciclo congela política nula. O ciclo inicial, sem parto de origem, exige vínculo explícito. Sítio nunca configurado fica pendente de configuração e exige vínculo histórico explícito; uma política nova não é aplicada silenciosamente a ciclos antigos.
+
+Indicadores usam a Base IDEAGRI/IILB — metodologia Fazendinha v1 (`FAZENDINHA_IDEAGRI_IILB_V1`), com regras explicitadas na emissão e sem alegar equivalência integral. A metodologia executada fica em `services/pecuaria/reproducao/indicadores.calc.ts`; o método é explicado na própria emissão. Janelas de 21 dias são inclusivas e retrocedem a partir da data final; sobra menor que 21 dias é descartada. TS é 100 × matrizes únicas servidas / elegíveis; TC é 100 × tentativas positivas / (tentativas − abertas); TP é TS × TC / 100. A saída proporcional do PEV no dia `d` contribui `(22 − d) / 21`; a conta não arredonda etapas intermediárias. Gestação confirmada no início exclui a matriz mesmo quando falta política congelada, sem converter essa exclusão clínica em pendência de elegibilidade. Para tentativas anteriores sem diagnóstico, percentual explícito de 0 a 100 contribui com 1 − q/100; sem esse valor, a contribuição fica pendente. TE analítica usa data factual menos sete dias por padrão, configurável entre zero e trinta, sem alterar a data real. Uma baixa dentro do período exclui o intervalo inteiro. Liberação válida durante o período conta a fração de dias restantes, após revalidar ciclo, restrições, localização e situação reprodutiva. Totais são recalculados sobre seus numeradores e denominadores, não pela média das taxas. Desconhecido é `null`, nunca zero.
+
+## Relatórios reprodutivos
+
+O relatório de partos é próprio e descreve matriz, desfecho, crias, peso, escore, RP, colostro e dados de assistência; gêmeos não multiplicam a contagem do parto. Indicadores apresentam método e detalhamento analítico. Emissões de PARTOS e INDICADORES usam `SnapshotRelatorioReprodutivo`, persistindo filtros, corte, políticas consideradas, dados emitidos e auditoria para reimpressão fiel.
+
+O [HTML de conceitos](artefatos/conceitos-v4.html) mostra os relacionamentos e a correspondência entre telas e registros. O [guia manual](artefatos/testes-v4-guia.html) recebe os cenários novos como pendentes; homologação pela fazenda continua separada da validação automatizada.

@@ -24,7 +24,44 @@ export type Restricao = {
   propriedadeId?: number | null;
   doencaId?: string | null;
 };
-export type AnimalReprodutivo = {
+export type ContextoTemporalAnimal = {
+  dataReferencia?: string;
+  versaoContexto?: number;
+  convencaoDel?: "D0";
+  del?: number | null;
+  situacaoProdutiva?: "LACTANTE" | "SECA" | "SEM_LACTACAO" | "NAO_INFORMADA";
+  diasPosParto?: number | null;
+  diasDesdeConfirmacao?: number | null;
+  idadeGestacionalDias?: number | null;
+  retencaoPlacenta?: boolean | null;
+  pendenciasContexto?: string[];
+};
+export type PesoPartoInput =
+  | { acao: "CORRIGIR"; vinculoId: string; data: string; pesoKg: number; observacao?: string | null }
+  | { acao: "VINCULAR"; pesagemId: string }
+  | { acao: "REGISTRAR"; data: string; pesoKg: number; observacao?: string | null }
+  | { acao: "DESVINCULAR"; vinculoId: string; motivo: string };
+export type OcorrenciaRetencaoInput =
+  | { acao: "VINCULAR"; ocorrenciaId: string }
+  | { acao: "CRIAR"; doencaId: string; inicio: string; observacao?: string | null }
+  | { acao: "DESVINCULAR"; ocorrenciaId: string; motivo: string };
+export type DadosEscoreParto = { data: string; valor: number; escalaMin: number; escalaMax: number; escalaDescricao?: string | null; responsavel?: string | null };
+export type EscorePartoInput =
+  | ({ acao: "REGISTRAR" } & DadosEscoreParto)
+  | ({ acao: "SUBSTITUIR"; exameId: string; motivo: string } & DadosEscoreParto)
+  | { acao: "ANULAR"; exameId: string; motivo: string };
+export type CamposParto = {
+  desfecho?: "NASCIMENTO" | "ABORTO" | null;
+  induzido?: boolean | null;
+  dificuldade?: boolean | null;
+  assistenciaDescricao?: string | null;
+  ocorridoEm?: string | null;
+  horarioEstimado?: boolean;
+  retencaoPlacenta?: boolean | null;
+  responsavel?: string | null;
+  observacao?: string | null;
+};
+export type AnimalReprodutivo = ContextoTemporalAnimal & {
   animalId: string;
   brinco: string;
   nome: string | null;
@@ -42,7 +79,12 @@ export type AnimalReprodutivo = {
   gestacao: Gestacao | null;
   restricoes: Restricao[];
 };
-export type FatoReprodutivo = {
+export type FatoReprodutivo = CamposParto & {
+  versao?: number;
+  vinculosPesagem?: Array<{ id: string; sujeito: "MATRIZ" | "CRIA"; criaId: string | null; revogadoEm: string | null; pesagem: { id: string; data: string; pesoKg: number | string } }>;
+  ocorrenciasRetencaoPlacenta?: Array<{ id: string; animalId: string; inicio: string; fim: string | null; status: string; doenca: { id: string; nome: string } }>;
+  examesPosParto?: Array<{ id: string; data: string; status: string; resultados: Array<{ campo: string; valor: string | number | boolean }> }>;
+  pesosMatriz?: Array<{ id: string; pesagemId: string; data: string; pesoKg: number | string; sujeito?: string }>;
   exame?: { id: string; finalidades: string[]; finalidadePrincipal: string | null; realizacao: string; responsavel: string | null; formatoSnapshot: { nome?: string; campos?: import("../sanidade/CamposExame").CampoExame[] }; resultados: Array<{ campo:string; valor:string | number | boolean; unidade:string | null }> } | null;
   id: string;
   animalId: string;
@@ -78,6 +120,9 @@ export type FatoReprodutivo = {
     ultimoPartoId?: string | null;
   };
   crias?: Array<{
+    id?: string;
+    pesoKg?: number | string | null;
+    filiacaoSnapshot?: { pesoKg?: number | null; brincoInformado?: string | null; nomeInformado?: string | null };
     animalId?: string | null;
     viva: boolean;
     sexo: string;
@@ -98,6 +143,7 @@ export type PainelReprodutivo = {
   restricoes: Restricao[];
   lactacoes?: Array<{
     id: string;
+    versao?: number;
     animalId: string;
     propriedadeId: number | null;
     inicio: string;
@@ -181,10 +227,14 @@ export type CriaInput = {
   brinco?: string;
   nome?: string;
   loteId?: string;
+  pesoKg?: number;
 };
-export type PartoInput = FatoBase & {
+export type PartoInput = FatoBase & CamposParto & {
+  escoreMatriz?: EscorePartoInput;
   gestacaoId?: string;
-  tipo: "NORMAL" | "DISTOCICO" | "ABORTO" | "NATIMORTO";
+  tipo?: "NORMAL" | "DISTOCICO" | "ABORTO" | "NATIMORTO" | "NASCIMENTO";
+  pesoMatriz?: PesoPartoInput;
+  ocorrenciaRetencao?: OcorrenciaRetencaoInput;
   crias: CriaInput[];
   iniciarLactacao?: boolean;
 };
@@ -192,10 +242,13 @@ export async function reqV4<T>(
   path: string,
   body?: object,
   method = "POST",
+  propriedadeId?: number,
 ): Promise<T> {
   const resposta = await fetch(`/api/pecuaria/rebanho${path}`, {
     method: body ? method : "GET",
-    headers: comPropriedade(body ? { "content-type": "application/json" } : {}),
+    headers: { ...comPropriedade(body ? { "content-type": "application/json" } : {}),
+      ...(propriedadeId ? { "X-Propriedade-Id": String(propriedadeId) } : {}),
+    },
     ...(body ? { body: JSON.stringify(body) } : {}),
   });
   const resultado = await resposta.json().catch(() => ({}));
@@ -208,9 +261,10 @@ export async function reqV4<T>(
     );
   return resultado as T;
 }
-export const obterReproducao = (animalId?: string) =>
+export const obterReproducao = (animalId?: string, propriedadeId?: number) =>
   reqV4<PainelReprodutivo>(
     `/reproducao${animalId ? `?animalId=${encodeURIComponent(animalId)}` : ""}`,
+    undefined, "GET", propriedadeId,
   );
 export const registrarTentativa = (input: TentativaInput) =>
   reqV4<FatoReprodutivo>("/reproducao/tentativas", input);

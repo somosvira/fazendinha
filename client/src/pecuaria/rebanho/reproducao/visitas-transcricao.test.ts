@@ -30,3 +30,14 @@ it.each(["TAREFA_IATF", "INICIAR_IATF"] as const)("%s não executa procedimento 
 it("preserva ciência explícita da indicação", () => {
   expect(dadosConfirmacaoVisita("AVALIACAO_REPRODUTIVA", {conduta: "IATF", cienciaSanitaria: false})).toEqual({conduta: "IATF", cienciaSanitaria: false});
 });
+
+it("contexto mantém DEL zero, RP não e dados históricos desconhecidos", async () => {
+  const { contextoTranscricao } = await import("./visitas-transcricao");
+  expect(contextoTranscricao({ situacaoProdutiva: "LACTANTE", del: 0,
+    ultimoParto: { id: "p", data: "2026-10-13", tipo: "NORMAL" }, retencaoPlacenta: false,
+    tentativa: { id: "t", data: "2026-09-13", tipo: "IA" },
+  }, "2026-10-13")).toMatchObject({ lactacao: "DEL 0", rp: "Não", tentativa: "IA há 30 dias" });
+  expect(contextoTranscricao({ ultimoParto: { id: "p", data: "2026-10-13", tipo: "NORMAL" } }, "2026-10-13"))
+    .toMatchObject({ rp: "Não informado", lactacao: "Lactação não informada" });
+  expect(contextoTranscricao({}, "2026-10-13").rp).toBe("Sem parto registrado");
+});

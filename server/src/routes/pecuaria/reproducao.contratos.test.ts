@@ -3,11 +3,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { exigeArea } from "../../middleware/permissao.js";
 import { uid } from "../../lib/uid.fixture.js";
 
-const mocks = vi.hoisted(() => ({ leitura: vi.fn(), escrita: vi.fn(), painel: vi.fn(), tentativa: vi.fn(), avaliacao: vi.fn(), detalheVisita: vi.fn(), confirmar: vi.fn(), programacoes: vi.fn(), programar: vi.fn(), iniciar: vi.fn(), reprogramar: vi.fn(), executar: vi.fn() }));
+const mocks = vi.hoisted(() => ({ leitura: vi.fn(), escrita: vi.fn(), painel: vi.fn(), tentativa: vi.fn(), avaliacao: vi.fn(), detalheVisita: vi.fn(), confirmar: vi.fn(), programacoes: vi.fn(), programar: vi.fn(), iniciar: vi.fn(), reprogramar: vi.fn(), executar: vi.fn(), previaPlanner: vi.fn(), tarefaVisita: vi.fn(), emitir: vi.fn(), obterEmissao: vi.fn(), indicadores: vi.fn(), partos: vi.fn() }));
 vi.mock("../../services/propriedade.js", async original => ({ ...await original<typeof import("../../services/propriedade.js")>(), resolverEscopoLeitura: mocks.leitura, resolverEscopoEscrita: mocks.escrita }));
 vi.mock("../../services/pecuaria/reproducao/registros.js", async original => ({ ...await original<typeof import("../../services/pecuaria/reproducao/registros.js")>(), painelReproducao: mocks.painel, criarTentativa: mocks.tentativa, criarAvaliacao: mocks.avaliacao }));
-vi.mock("../../services/pecuaria/reproducao/visitas.js", async original => ({ ...await original<typeof import("../../services/pecuaria/reproducao/visitas.js")>(), detalheVisita: mocks.detalheVisita, confirmarAtividade: mocks.confirmar }));
+vi.mock("../../services/pecuaria/reproducao/visitas.js", async original => ({ ...await original<typeof import("../../services/pecuaria/reproducao/visitas.js")>(), detalheVisita: mocks.detalheVisita, confirmarAtividade: mocks.confirmar, tarefaParticipanteVisita: mocks.tarefaVisita }));
 vi.mock("../../services/pecuaria/reproducao/iatf.js", async original => ({ ...await original<typeof import("../../services/pecuaria/reproducao/iatf.js")>(), listarProgramacoes: mocks.programacoes, criarProgramacao: mocks.programar, iniciarParticipante: mocks.iniciar, reprogramarTarefa: mocks.reprogramar, executarTarefa: mocks.executar }));
+vi.mock("../../services/pecuaria/reproducao/planner.js", async original => ({ ...await original<typeof import("../../services/pecuaria/reproducao/planner.js")>(), previaGrupoPlanner: mocks.previaPlanner }));
+vi.mock("../../services/pecuaria/reproducao/emissoes-relatorios.js", async original => ({ ...await original<typeof import("../../services/pecuaria/reproducao/emissoes-relatorios.js")>(), criarEmissaoReprodutiva: mocks.emitir, obterEmissaoReprodutiva: mocks.obterEmissao }));
+vi.mock("../../services/pecuaria/reproducao/indicadores.js", async original => ({ ...await original<typeof import("../../services/pecuaria/reproducao/indicadores.js")>(), consultarIndicadoresReprodutivos: mocks.indicadores }));
+vi.mock("../../services/pecuaria/reproducao/relatorio-partos.js", async original => ({ ...await original<typeof import("../../services/pecuaria/reproducao/relatorio-partos.js")>(), emitirRelatorioPartos: mocks.partos }));
 import { rebanhoRouter } from "./rebanho.js";
 import { PropriedadeError } from "../../services/propriedade.js";
 import { RebanhoError } from "../../services/pecuaria/rebanho/regras.js";
@@ -108,4 +112,41 @@ it("IATF aceita somente data nos quatro fluxos HTTP e preserva autoria e escopo"
   expect(mocks.programar).toHaveBeenCalledWith(expect.objectContaining({inicioPrevisto:"2026-10-01",propriedadeId:2}),7);
   expect(mocks.iniciar).toHaveBeenCalledWith(uid(3),2,"2026-10-01",7,undefined);
   expect(mocks.executar).toHaveBeenCalledWith(uid(3),expect.objectContaining({realizadaEm:"2026-10-01",propriedadeId:2}),7);
+});
+
+describe("manejo: consultas disponíveis ao leitor e emissão autorizada", () => {
+  it("consulta planner, tarefa futura específica, indicadores e partos sem lançar", async () => {
+    const leitor = app({ ...usuario, flags: [] });
+    mocks.previaPlanner.mockResolvedValue({ total: 1, animais: [] });
+    mocks.tarefaVisita.mockResolvedValue({ origem: "REPRODUTIVA", tarefa: { valorServicoAtribuido: 42, quantidade: 1 } });
+    mocks.indicadores.mockResolvedValue({ periodos: [] });
+    mocks.partos.mockResolvedValue({ partos: [] });
+    const grupo = { origem: "PROTOCOLO", identidade: "a".repeat(64) };
+    const consulta = new URLSearchParams({ grupo: JSON.stringify(grupo), propriedadeId: "999", data: "2026-10-14" });
+    expect((await leitor.request(`/visitas/planner/previa?${consulta}`)).status).toBe(200);
+    expect(mocks.previaPlanner).toHaveBeenCalledWith(expect.objectContaining({ propriedadeId: 2, grupo }));
+    const tarefa = await leitor.request(`/visitas/${uid(1)}/participantes/${uid(2)}/tarefa?propriedadeId=999`);
+    expect(tarefa.status).toBe(200);
+    expect(await tarefa.json()).toMatchObject({ tarefa: { valorServicoAtribuido: null, quantidade: 1 } });
+    expect(mocks.tarefaVisita).toHaveBeenCalledWith(uid(1), uid(2), 2);
+    expect((await leitor.request("/reproducao/indicadores?inicio=2026-01-01&fim=2026-01-21&corte=2026-03-01")).status).toBe(200);
+    expect((await leitor.request("/reproducao/relatorios/partos?inicio=2026-01-01&fim=2026-01-21")).status).toBe(200);
+  });
+  it("recusa prévia malformada e protege snapshots por sítio sem recalcular", async () => {
+    expect((await app().request("/visitas/planner/previa?data=2026-10-14&grupo=%7B")).status).toBe(422);
+    expect(mocks.previaPlanner).not.toHaveBeenCalled();
+    mocks.obterEmissao.mockRejectedValue(new RebanhoError("NAO_ENCONTRADO", "Emissão não encontrada neste sítio"));
+    expect((await app({ ...usuario, flags: [] }).request(`/reproducao/relatorios/emissoes/${uid(8)}`)).status).toBe(404);
+    expect(mocks.obterEmissao).toHaveBeenCalledWith(uid(8), 2);
+    expect(mocks.indicadores).not.toHaveBeenCalled(); expect(mocks.partos).not.toHaveBeenCalled();
+  });
+  it("salvar emissão exige lançamento, autoria e escopo de escrita", async () => {
+    const body = { chave: uid(3), propriedadeId: 2, tipo: "PARTOS", filtros: { inicio: "2026-01-01", fim: "2026-01-21" } };
+    const request = { method: "POST", headers: json, body: JSON.stringify(body) };
+    expect((await app({ ...usuario, flags: [] }).request("/reproducao/relatorios/emissoes", request)).status).toBe(403);
+    expect(mocks.emitir).not.toHaveBeenCalled();
+    mocks.emitir.mockResolvedValue({ id: uid(8) });
+    expect((await app().request("/reproducao/relatorios/emissoes", request)).status).toBe(201);
+    expect(mocks.emitir).toHaveBeenCalledWith(body, 7);
+  });
 });

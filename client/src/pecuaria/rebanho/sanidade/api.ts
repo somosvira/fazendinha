@@ -24,9 +24,9 @@ export class SanidadeApiError extends Error {
   }
 }
 
-export async function reqSanidade<T>(caminho: string, init?: RequestInit): Promise<T> {
+export async function reqSanidade<T>(caminho: string, init?: RequestInit, propriedadeId?: number): Promise<T> {
   const resposta = await fetch(`/api/pecuaria/rebanho/sanidade${caminho}`, {
-    ...init, headers: comPropriedade({ ...(init?.body ? { "content-type": "application/json" } : {}), ...((init?.headers as Record<string, string>) ?? {}) }),
+    ...init, headers: { ...comPropriedade({ ...(init?.body ? { "content-type": "application/json" } : {}), ...((init?.headers as Record<string, string>) ?? {}) }), ...(propriedadeId ? { "X-Propriedade-Id": String(propriedadeId) } : {}) },
   });
   const dados = await resposta.json().catch(() => ({}));
   if (!resposta.ok) throw new SanidadeApiError(dados.error ?? `Erro HTTP ${resposta.status}`, dados.code, dados.campo);
@@ -45,12 +45,12 @@ export const consultarHistoricoExame = (id: string, propriedadeId?: number, pagi
 
 export const listarAplicacoes = (animalId: string) => req<AplicacaoSanitaria[]>(`/aplicacoes?animalId=${encodeURIComponent(animalId)}`);
 export const consultarCarencia = (animalId: string, dataReferencia?: string) => req<CarenciaAnimal>(`/animais/${encodeURIComponent(animalId)}/carencia${dataReferencia ? `?dataReferencia=${encodeURIComponent(dataReferencia)}` : ""}`);
-export const listarServicos = (propriedadeId?: number) => req<ServicoSanitario[]>(`/servicos${propriedadeId != null ? `?propriedadeId=${propriedadeId}` : ""}`);
+export const listarServicos = (propriedadeId?: number) => req<ServicoSanitario[]>(`/servicos${propriedadeId != null ? `?propriedadeId=${propriedadeId}` : ""}`, undefined, propriedadeId);
 export type TipoAplicacao = { id: string; nome: string; ativo: boolean };
 export type CompraDireta = { id: string; produtoId: string; disponivel: string; unidade: string; produto: { nome: string }; operacao: { numero: number; data: string } };
-export const listarTiposAplicacao = () => req<TipoAplicacao[]>("/tipos-aplicacao");
+export const listarTiposAplicacao = (propriedadeId?: number) => req<TipoAplicacao[]>("/tipos-aplicacao", undefined, propriedadeId);
 export const salvarTipoAplicacao = (body: { nome?: string; ativo?: boolean }, id?: string) => req<TipoAplicacao>(`/tipos-aplicacao${id ? `/${id}` : ""}`, { method: id ? "PATCH" : "POST", body: JSON.stringify(body) });
-export const listarComprasDiretas = (propriedadeId: number) => req<CompraDireta[]>(`/compras-diretas?propriedadeId=${propriedadeId}`);
+export const listarComprasDiretas = (propriedadeId: number) => req<CompraDireta[]>(`/compras-diretas?propriedadeId=${propriedadeId}`, undefined, propriedadeId);
 export type EstadoPrazo = "INFORMADO" | "NAO_INFORMADO" | "NAO_APLICAVEL";
 export type AplicacaoInput = {
   animalId: string; propriedadeId: number; data: string; aplicadaEm?: string; tipoAplicacaoId: string;

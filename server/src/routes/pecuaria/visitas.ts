@@ -1,3 +1,6 @@
+import * as planner from "../../services/pecuaria/reproducao/planner.js";
+import * as selecoes from "../../services/pecuaria/reproducao/selecoes.js";
+import { consultaPlannerSchema, previaGrupoPlannerSchema, incluirGrupoPlannerSchema } from "../../services/pecuaria/reproducao/planner.schemas.js";
 import { Hono } from "hono";
 import { z } from "zod";
 import {
@@ -39,6 +42,46 @@ export const visitasRouter = new Hono()
     } catch (e) {
       return falhaV4(c, e);
     }
+  })
+  .get("/selecoes", async c => {
+    try { const propriedadeId = s.sitio.parse(await resolverEscopoLeitura(c));
+      return c.json(await selecoes.listarSelecoes(propriedadeId, ["1", "true"].includes(c.req.query("incluirInativas") ?? "")));
+    } catch (e) { return falhaV4(c,e); }
+  })
+  .post("/selecoes", validarV4(selecoes.criarSelecaoSchema), async c => {
+    try { const b=c.req.valid("json"); return c.json(await selecoes.criarSelecao({ ...b,
+      propriedadeId: await resolverEscopoEscrita(c,b.propriedadeId) },usuarioV4(c)),201);
+    } catch(e) { return falhaV4(c,e); }
+  })
+  .put("/selecoes/:id", validarV4(selecoes.atualizarSelecaoSchema), async c => {
+    try { const b=c.req.valid("json"); return c.json(await selecoes.atualizarSelecao(s.uuid.parse(c.req.param("id")),{ ...b,
+      propriedadeId: await resolverEscopoEscrita(c,b.propriedadeId) },usuarioV4(c)));
+    } catch(e) { return falhaV4(c,e); }
+  })
+  .get("/planner", async c => {
+    try { const b=consultaPlannerSchema.parse({ ...c.req.query(), propriedadeId: await resolverEscopoLeitura(c) });
+      return c.json(apresentarV4(c,await planner.consultarPlanner(b)));
+    } catch(e) { return falhaV4(c,e); }
+  })
+  .get("/planner/previa", async c => {
+    try {
+      const consulta = c.req.query();
+      let grupo: unknown;
+      try { grupo = JSON.parse(consulta.grupo ?? "null"); }
+      catch { throw new z.ZodError([{ code: "custom", path: ["grupo"], message: "Grupo inválido" }]); }
+      const b = previaGrupoPlannerSchema.parse({ ...consulta, grupo, propriedadeId: await resolverEscopoLeitura(c) });
+      return c.json(apresentarV4(c, await planner.previaGrupoPlanner(b)));
+    } catch (e) { return falhaV4(c, e); }
+  })
+  .post("/planner/previa", validarV4(previaGrupoPlannerSchema), async c => {
+    try { const b=c.req.valid("json"); return c.json(apresentarV4(c,await planner.previaGrupoPlanner({ ...b,
+      propriedadeId: await resolverEscopoEscrita(c,b.propriedadeId) })));
+    } catch(e) { return falhaV4(c,e); }
+  })
+  .post("/:id/grupos", validarV4(incluirGrupoPlannerSchema), async c => {
+    try { const b=c.req.valid("json"); return c.json(apresentarV4(c,await planner.incluirGrupoPlanner(s.uuid.parse(c.req.param("id")),{ ...b,
+      propriedadeId: await resolverEscopoEscrita(c,b.propriedadeId) },usuarioV4(c))),201);
+    } catch(e) { return falhaV4(c,e); }
   })
   .get("/:id", async (c) => {
     try {
@@ -196,4 +239,13 @@ visitasRouter.post("/:id/participantes/:participanteId/regularizacao",validarV4(
 visitasRouter.get("/:id/participantes/:participanteId/substitutos", async c => {
   try { return c.json(await visitas.substitutosParticipanteVisita(s.uuid.parse(c.req.param("id")), s.uuid.parse(c.req.param("participanteId")), await resolverEscopoEscrita(c, Number(c.req.query("propriedadeId")) || undefined))); }
   catch (e) { return falhaV4(c, e); }
+});
+
+visitasRouter.get("/:id/participantes/:participanteId/tarefa", async c => {
+  try {
+    return c.json(apresentarV4(c, await visitas.tarefaParticipanteVisita(
+      s.uuid.parse(c.req.param("id")), s.uuid.parse(c.req.param("participanteId")),
+      s.sitio.parse(await resolverEscopoLeitura(c)),
+    )));
+  } catch (e) { return falhaV4(c, e); }
 });

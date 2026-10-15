@@ -126,13 +126,22 @@ export function Iatf({
   modo = "operacao",
   podeLancar,
   onMudou,
+  animaisIndicadosInicialmente,
+  propriedadeId,
 }: {
-  animais?: AnimalReprodutivo[];
+  animais?: Array<Pick<AnimalReprodutivo, "animalId" | "brinco" | "nome">>;
+  animaisIndicadosInicialmente?: string[];
+  propriedadeId?: number;
   painel?: PainelReprodutivo;
   modo?: "operacao" | "cadastros";
   podeLancar: boolean;
   onMudou?: () => Promise<void>;
 }) {
+  const reqIatf = useCallback(<T,>(path: string, body?: object, method = "POST") => {
+    const consulta = propriedadeId && !body
+      ? `${path}${path.includes("?") ? "&" : "?"}propriedadeId=${propriedadeId}` : path;
+    return reqV4<T>(consulta, body, method, propriedadeId);
+  }, [propriedadeId]);
   const [protocolos, setProtocolos] = useState<ProtocoloIatf[]>([]);
   const [programacoes, setProgramacoes] = useState<ProgramacaoIatf[]>([]);
   const [detalhe, setDetalhe] = useState<ProgramacaoIatf | null>(null);
@@ -170,34 +179,34 @@ export function Iatf({
   const carregar = useCallback(async () => {
     try {
       const [p, g] = await Promise.all([
-        reqV4<ProtocoloIatf[]>("/reproducao/protocolos"),
-        modo === "cadastros" ? Promise.resolve([] as ProgramacaoIatf[]) : reqV4<ProgramacaoIatf[]>("/reproducao/programacoes"),
+        reqIatf<ProtocoloIatf[]>("/reproducao/protocolos"),
+        modo === "cadastros" ? Promise.resolve([] as ProgramacaoIatf[]) : reqIatf<ProgramacaoIatf[]>("/reproducao/programacoes"),
       ]);
       setProtocolos(p);
       setProgramacoes(g);
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
     }
-  }, [modo]);
+  }, [modo, reqIatf]);
   useEffect(() => {
     void carregar();
   }, [carregar]);
   useEffect(() => {
     void Promise.all([
-      listarProdutos({ uso: "sanitario", ativo: true }),
-      listarMaterialGenetico(),
+      listarProdutos({ uso: "sanitario", ativo: true }, propriedadeId),
+      listarMaterialGenetico({}, propriedadeId),
     ])
       .then(([p, m]) => {
         setProdutos(p);
         setMateriais(m);
       })
       .catch((e) => setErro(e instanceof Error ? e.message : String(e)));
-  }, []);
+  }, [propriedadeId]);
   const aberturaAtual = useRef(0);
   const abrir = async (id: string) => {
     const sequencia = ++aberturaAtual.current;
     try {
-      const resultado = await reqV4<ProgramacaoIatf>(`/reproducao/programacoes/${id}`);
+      const resultado = await reqIatf<ProgramacaoIatf>(`/reproducao/programacoes/${id}`);
       if (sequencia === aberturaAtual.current) setDetalhe(resultado);
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
@@ -213,8 +222,20 @@ export function Iatf({
     window.addEventListener("popstate", atualizar);
     return () => window.removeEventListener("popstate", atualizar);
   }, []);
+  const indicacaoAberta = useRef(false);
+  useEffect(() => {
+    if (!animaisIndicadosInicialmente?.length || indicacaoAberta.current || !podeLancar) return;
+    indicacaoAberta.current = true;
+    setSelecionados([...new Set(animaisIndicadosInicialmente)].slice(0, 100));
+    setNome("");
+    setInicio("");
+    setProtocoloId("");
+    setCienciaSanitaria(false);
+    setChaveProgramacao(crypto.randomUUID());
+    setNovo("programacao");
+  }, [animaisIndicadosInicialmente, podeLancar]);
   const prop = () => {
-    const p = getPropriedadeAtiva();
+    const p = propriedadeId ?? getPropriedadeAtiva();
     if (!p) throw new Error("Selecione um sítio.");
     return p;
   };
@@ -424,9 +445,9 @@ export function Iatf({
                   .join(" · ")}
               </p>
               {podeLancar && <div className="mt-3 flex flex-wrap gap-2">
-                {!p.publicado && !p.utilizada && p.ativo !== false && <><Button secondary disabled={ocupado} onClick={() => { setEditando(p.id); setNome(p.nome); setVersao(p.versao); setEtapas(structuredClone(p.etapas)); setPublicado(false); setNovo("protocolo"); }}>Editar rascunho</Button><Button secondary disabled={ocupado} onClick={() => void executar(async () => { await reqV4(`/reproducao/protocolos/${p.id}/publicar`, {}); await carregar(); })}>Publicar versão</Button></>}
+                {!p.publicado && !p.utilizada && p.ativo !== false && <><Button secondary disabled={ocupado} onClick={() => { setEditando(p.id); setNome(p.nome); setVersao(p.versao); setEtapas(structuredClone(p.etapas)); setPublicado(false); setNovo("protocolo"); }}>Editar rascunho</Button><Button secondary disabled={ocupado} onClick={() => void executar(async () => { await reqIatf(`/reproducao/protocolos/${p.id}/publicar`, {}); await carregar(); })}>Publicar versão</Button></>}
                 <Button secondary disabled={ocupado} onClick={() => { setEditando(null); setNome(p.nome); setVersao(Math.max(...protocolos.filter(v => v.nome === p.nome).map(v => v.versao)) + 1); setEtapas(structuredClone(p.etapas)); setPublicado(false); setNovo("protocolo"); }}>Nova versão</Button>
-                {p.ativo !== false && <Button secondary disabled={ocupado} onClick={() => void executar(async () => { await reqV4(`/reproducao/protocolos/${p.id}/inativar`, {}); await carregar(); })}>Inativar versão</Button>}
+                {p.ativo !== false && <Button secondary disabled={ocupado} onClick={() => void executar(async () => { await reqIatf(`/reproducao/protocolos/${p.id}/inativar`, {}); await carregar(); })}>Inativar versão</Button>}
               </div>}
             </section>
           ))}
@@ -461,14 +482,14 @@ export function Iatf({
               e.preventDefault();
               void executar(async () => {
                 if (novo === "protocolo")
-                  await reqV4(`/reproducao/protocolos${editando ? `/${editando}` : ""}`, {
+                  await reqIatf(`/reproducao/protocolos${editando ? `/${editando}` : ""}`, {
                     nome,
                     versao,
                     publicado,
                     etapas,
                   }, editando ? "PATCH" : "POST");
                 else if (novo === "participantes" && detalhe)
-                  await reqV4(
+                  await reqIatf(
                     `/reproducao/programacoes/${detalhe.id}/participantes`,
                     {
                       chave: chaveProgramacao,
@@ -481,7 +502,7 @@ export function Iatf({
                     },
                   );
                 else
-                  await reqV4("/reproducao/programacoes", {
+                  await reqIatf("/reproducao/programacoes", {
                     chave: chaveProgramacao,
                     propriedadeId: prop(),
                     nome,
@@ -702,6 +723,9 @@ export function Iatf({
                   Confirmo ciência dos alertas sanitários configurados para
                   estes animais, quando aplicáveis.
                 </label>
+                {(animaisIndicadosInicialmente?.length ?? 0) > 100 && <p className="text-sm">
+                  A programação aceita até 100 animais. Revise este subconjunto; os demais indicados continuam disponíveis para outra programação.
+                </p>}
                 <p className="text-sm">
                   Participantes: {selecionados.length}/100
                 </p>
@@ -767,7 +791,7 @@ export function Iatf({
             onSubmit={(e) => {
               e.preventDefault();
               void executar(async () => {
-                await reqV4(
+                await reqIatf(
                   `/reproducao/${acao.tipo === "revisao" ? "tarefas-iatf" : "participantes-iatf"}/${acao.id}/${acao.tipo === "inicio" ? "inicio" : acao.tipo === "retirada" ? "retirada" : "reprogramacao"}`,
                   acao.tipo === "inicio"
                     ? {

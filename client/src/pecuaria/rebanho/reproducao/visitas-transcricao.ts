@@ -34,3 +34,47 @@ export function dadosConfirmacaoVisita(
     );
   return dados ?? {};
 }
+
+export const rotulosResultadoAvaliacao: Record<string, string> = {
+  POSITIVO: "Prenhez confirmada",
+  NEGATIVO: "Vazia",
+  RECONFIRMACAO: "Continua gestante",
+  SEXAGEM: "Sexo fetal observado",
+  INCONCLUSIVO: "Inconclusivo",
+  NAO_AVALIADO: "Não avaliada",
+};
+
+export const rotulosCondutaAvaliacao: Record<string, string> = {
+  AGUARDAR: "Acompanhar / retorno",
+  IATF: "Indicar IATF",
+  DESCARTE: "Restringir reprodução / descarte",
+};
+
+/** Contexto congelado da lista: ausência de dado nunca é convertida em zero ou “não”. */
+export function contextoTranscricao(
+  snapshot: import("./visitas-api").ParticipanteVisita["snapshot"],
+  dataVisita: string,
+) {
+  const lactacao = snapshot.situacaoProdutiva === "SECA" ? "Seca"
+    : snapshot.situacaoProdutiva === "LACTANTE"
+      ? snapshot.del == null ? "Lactante · DEL não informado" : `DEL ${snapshot.del}`
+      : snapshot.situacaoProdutiva === "SEM_LACTACAO" ? "Sem lactação registrada"
+        : "Lactação não informada";
+  const rp = !snapshot.ultimoParto ? "Sem parto registrado"
+    : snapshot.retencaoPlacenta === true ? "Sim"
+      : snapshot.retencaoPlacenta === false ? "Não" : "Não informado";
+  const dias = snapshot.tentativa
+    ? Math.floor((Date.parse(dataVisita.slice(0, 10)) - Date.parse(snapshot.tentativa.data.slice(0, 10))) / 86_400_000)
+    : null;
+  return {
+    lactacao,
+    rp,
+    tentativa: snapshot.tentativa
+      ? `${snapshot.tentativa.tipo} ${dias != null && dias >= 0 ? `há ${dias} dias` : snapshot.tentativa.data.slice(0, 10)}`
+      : "Sem tentativa registrada",
+    situacao: snapshot.gestacao ? "Gestante"
+      : snapshot.restricoes?.length ? "Restrição reprodutiva"
+        : snapshot.tentativa && (!snapshot.ultimoParto || snapshot.tentativa.data > snapshot.ultimoParto.data)
+          ? "Aguardando diagnóstico" : "Sem gestação conhecida",
+  };
+}

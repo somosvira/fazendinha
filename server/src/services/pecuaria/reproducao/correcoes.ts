@@ -119,6 +119,16 @@ async function previaTx(
         "Existem tentativas no ciclo posterior; revise os ciclos antes",
       );
     const parto = await tx.partoAnimal.findUniqueOrThrow({ where: { id } });
+    const [ocorrenciasRetencao, pesagensVinculadas, colostroValido, escoresVigentes] = await Promise.all([
+      tx.ocorrenciaSanitaria.count({ where: { partoRetencaoPlacentaId: id, status: "VALIDO" } }),
+      tx.vinculoPesagemParto.count({ where: { partoId: id, revogadoEm: null } }),
+      tx.fornecimentoColostro.count({ where: { cria: { partoId: id }, status: "VALIDO" } }),
+      tx.exameAnimal.count({ where: { partoPosPartoId: id, status: "VALIDO" } }),
+    ]);
+    if (ocorrenciasRetencao) impedimentos.push("Desvincule as ocorrências de retenção de placenta antes de anular o parto");
+    if (escoresVigentes) impedimentos.push("Revise os escores pós-parto vinculados antes de anular o parto");
+    if (colostroValido) impedimentos.push("Revise os fornecimentos de colostro das crias antes de anular o parto");
+    if (pesagensVinculadas) impedimentos.push("Revogue os vínculos de pesagem antes de anular o parto; as pesagens serão preservadas");
     if (parto.gestacaoId) {
       const gestacao = await tx.gestacaoAnimal.findUniqueOrThrow({ where: { id: parto.gestacaoId } });
       const [outrasGestacoes, outrosPartos] = await Promise.all([

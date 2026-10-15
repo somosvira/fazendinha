@@ -1,4 +1,5 @@
 import { CorrigirFato } from "./CorrigirFato";
+import { FormLactacao } from "./FormLactacao";
 import { useState } from "react";
 import {
   Button,
@@ -31,16 +32,19 @@ export function AcoesReprodutivas({
   animalId,
   podeLancar,
   onMudou,
+  propriedadeId: propriedadeContexto,
 }: {
   painel: PainelReprodutivo;
   animalId?: string;
   podeLancar: boolean;
   onMudou: () => Promise<void>;
+  propriedadeId?: number;
 }) {
   const [lactacaoCorrigida, setLactacaoCorrigida] = useState<
     NonNullable<PainelReprodutivo["lactacoes"]>[number] | null
   >(null);
   const [acao, setAcao] = useState<Acao | null>(null);
+  const [historicoLactacao, setHistoricoLactacao] = useState<string | null>(null);
   const [previsao, setPrevisao] = useState("");
   const [tentativaId, setTentativaId] = useState("");
   const [brinco, setBrinco] = useState("");
@@ -72,6 +76,14 @@ export function AcoesReprodutivas({
           .map((a) => (
             <section className="text-sm space-y-2" key={a.animalId}>
               <h3 className="font-semibold">{a.brinco}</h3>
+              <div className="flex flex-wrap items-center gap-3">
+                <span>{a.situacaoProdutiva === "LACTANTE" && a.del != null
+                  ? `Em lactação · DEL ${a.del} (D0)`
+                  : a.situacaoProdutiva === "SECA" ? "Seca"
+                    : "Situação produtiva não informada"}</span>
+                {a.diasPosParto != null && <span>{a.diasPosParto} dias após o último parto</span>}
+                {podeLancar && <Button secondary onClick={() => setHistoricoLactacao(a.animalId)}>Informar lactação histórica</Button>}
+              </div>
               {a.gestacao && (
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <span>
@@ -218,6 +230,9 @@ export function AcoesReprodutivas({
               )),
           )}
       </div>
+      {historicoLactacao && <FormLactacao animalId={historicoLactacao} partos={painel.partos} propriedadeId={propriedadeContexto}
+        onFechar={() => setHistoricoLactacao(null)}
+        onSalvo={() => { setHistoricoLactacao(null); void onMudou(); }} />}
       {lactacaoCorrigida && (
         <CorrigirFato
           tipo="lactacao"
@@ -263,7 +278,7 @@ export function AcoesReprodutivas({
             className="grid gap-4"
             onSubmit={(e) => {
               e.preventDefault();
-              const propriedadeId = acao.propriedadeId ?? getPropriedadeAtiva();
+              const propriedadeId = acao.propriedadeId ?? propriedadeContexto ?? getPropriedadeAtiva();
               if (!propriedadeId) {
                 setErro("Selecione um sítio.");
                 return;

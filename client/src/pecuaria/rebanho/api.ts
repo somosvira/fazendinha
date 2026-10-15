@@ -69,13 +69,13 @@ export class RebanhoApiError extends Error {
   }
 }
 
-async function req<T>(path: string, init?: RequestInit): Promise<T> {
+async function req<T>(path: string, init?: RequestInit, propriedadeId?: number): Promise<T> {
   const resposta = await fetch(`/api/pecuaria/rebanho${path}`, {
     ...init,
-    headers: comPropriedade({
+    headers: { ...comPropriedade({
       ...(init?.body ? { "content-type": "application/json" } : {}),
       ...((init?.headers as Record<string, string>) ?? {}),
-    }),
+    }), ...(propriedadeId ? { "X-Propriedade-Id": String(propriedadeId) } : {}) },
   });
   const corpo = await resposta.json().catch(() => ({}));
   if (!resposta.ok) throw new RebanhoApiError(corpo.error ?? `Erro HTTP ${resposta.status}`, resposta.status, corpo.code, corpo.campo);
@@ -88,25 +88,25 @@ function comIncluirInativos(path: string, incluirInativos?: boolean): string {
 
 // ---------- animais ----------
 
-export const listarAnimais = (filtros: ListarFiltros) => {
+export const listarAnimais = (filtros: ListarFiltros, propriedadeId?: number) => {
   const params = new URLSearchParams();
   for (const [chave, valor] of Object.entries(filtros)) {
     if (valor !== undefined && valor !== null && valor !== "") params.set(chave, String(valor));
   }
   const query = params.toString();
-  return req<ListarResultado>(`/animais${query ? `?${query}` : ""}`);
+  return req<ListarResultado>(`/animais${query ? `?${query}` : ""}`, undefined, propriedadeId);
 };
 
 export const cadastrarAnimal = (input: CadastrarAnimalInput) =>
   req<CadastrarAnimalResultado>("/animais", { method: "POST", body: JSON.stringify(input) });
 
-export const buscarFichaAnimal = (id: string, opts?: { periodoDias?: PeriodoGmd }) => {
+export const buscarFichaAnimal = (id: string, opts?: { periodoDias?: PeriodoGmd }, propriedadeId?: number) => {
   const params = new URLSearchParams();
   if (opts?.periodoDias !== undefined) {
     params.set("periodoDias", String(opts.periodoDias));
   }
   const query = params.toString();
-  return req<AnimalFicha>(`/animais/${id}${query ? `?${query}` : ""}`);
+  return req<AnimalFicha>(`/animais/${id}${query ? `?${query}` : ""}`, undefined, propriedadeId);
 };
 
 export const editarAnimal = (id: string, input: EditarAnimalInput) =>
@@ -127,13 +127,13 @@ export const buscarComposicaoSugerida = (id: string) => req<ComposicaoSugerida |
 export const preverComposicaoAnimal = (input: FiliacaoInput & { dataNascimento: string }) =>
   req<ComposicaoSugerida | null>("/animais/composicao-prevista", { method: "POST", body: JSON.stringify(input) });
 
-export const listarGenitores = (filtros: ListarGenitoresQuery = {}) => {
+export const listarGenitores = (filtros: ListarGenitoresQuery = {}, propriedadeId?: number) => {
   const params = new URLSearchParams();
   for (const [chave, valor] of Object.entries(filtros)) {
     if (valor !== undefined && valor !== null && valor !== "") params.set(chave, String(valor));
   }
   const query = params.toString();
-  return req<GenitorDTO[]>(`/genitores${query ? `?${query}` : ""}`);
+  return req<GenitorDTO[]>(`/genitores${query ? `?${query}` : ""}`, undefined, propriedadeId);
 };
 
 export const criarGenitor = (input: CriarGenitorInput) => req<GenitorDTO>("/genitores", { method: "POST", body: JSON.stringify(input) });
@@ -146,13 +146,13 @@ export const substituirComposicaoGenitor = (id: string, input: SubstituirComposi
 
 // ---------- genética v2: material genético (sêmen/embrião) ----------
 
-export const listarMaterialGenetico = (filtros: ListarMaterialGeneticoQuery = {}) => {
+export const listarMaterialGenetico = (filtros: ListarMaterialGeneticoQuery = {}, propriedadeId?: number) => {
   const params = new URLSearchParams();
   for (const [chave, valor] of Object.entries(filtros)) {
     if (valor !== undefined && valor !== null) params.set(chave, String(valor));
   }
   const query = params.toString();
-  return req<MaterialGeneticoDTO[]>(`/material-genetico${query ? `?${query}` : ""}`);
+  return req<MaterialGeneticoDTO[]>(`/material-genetico${query ? `?${query}` : ""}`, undefined, propriedadeId);
 };
 
 export const criarMaterialGenetico = (input: CriarMaterialGeneticoInput) =>
@@ -207,8 +207,8 @@ export const excluirPesagem = (id: string) => req<{ ok: boolean }>(`/pesagens/${
 
 // ---------- lotes ----------
 
-export const listarLotes = (opts?: { incluirInativos?: boolean }) =>
-  req<Lote[]>(comIncluirInativos("/lotes", opts?.incluirInativos));
+export const listarLotes = (opts?: { incluirInativos?: boolean }, propriedadeId?: number) =>
+  req<Lote[]>(comIncluirInativos("/lotes", opts?.incluirInativos), undefined, propriedadeId);
 
 export const buscarLote = (id: string) => req<Lote>(`/lotes/${id}`);
 

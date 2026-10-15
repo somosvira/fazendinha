@@ -1,3 +1,4 @@
+import { PartoCampos, camposPartoPayload, dadosPartoVazios, validarDadosParto } from "./PartoCampos";
 import { CamposAvaliacao } from "./CamposAvaliacao";
 import { CamposResultadoExame, type ObservacaoExame } from "../sanidade/CamposExame";
 import type { TipoExame } from "../sanidade/CadastrosSanitarios";
@@ -64,10 +65,14 @@ export function FormReproducao({
   conteudoExtra,
   tipoExameInicial,
   finalidadeInicial,
+  propriedadeId: propriedadeIdInformada,
+  tentativaInicial,
 }: {
   acao: AcaoReprodutiva;
   painel: PainelReprodutivo;
   animalInicial?: string;
+  propriedadeId?: number;
+  tentativaInicial?: { tipo: "IA" | "TE"; materialId: string; quantidade: number };
   onFechar: () => void;
   onSalvo: () => void;
   dataInicial?: string;
@@ -78,6 +83,7 @@ export function FormReproducao({
     input: TentativaInput | AvaliacaoInput | PartoInput,
   ) => Promise<void>;
 }) {
+  const propriedadeId = propriedadeIdInformada ?? getPropriedadeAtiva();
   const envio = useRef<{ payload: string; chave: string } | null>(null);
   const [animalId, setAnimalId] = useState(animalInicial ?? "");
   const [data, setData] = useState(dataInicial ?? hoje());
@@ -88,9 +94,9 @@ export function FormReproducao({
   const [genitores, setGenitores] = useState<GenitorDTO[]>([]);
   const [lotes, setLotes] = useState<Lote[]>([]);
   const [servicos, setServicos] = useState<ServicoSanitario[]>([]);
-  const [tipo, setTipo] = useState("IA");
+  const [tipo, setTipo] = useState<string>(tentativaInicial?.tipo ?? "IA");
   const [origem, setOrigem] = useState("DOCUMENTADA");
-  const [materialId, setMaterialId] = useState("");
+  const [materialId, setMaterialId] = useState(tentativaInicial?.materialId ?? "");
   const [touro, setTouro] = useState("");
   const [partidas, setPartidas] = useState<PartidaNutricional[]>([]);
   const [partidaId, setPartidaId] = useState("");
@@ -100,7 +106,7 @@ export function FormReproducao({
   const [motivoVencida, setMotivoVencida] = useState("");
   const [motivoVinculo, setMotivoVinculo] = useState("");
   const [servicoId, setServicoId] = useState("");
-  const [quantidade, setQuantidade] = useState("1");
+  const [quantidade, setQuantidade] = useState(String(tentativaInicial?.quantidade ?? 1));
   const [responsavel, setResponsavel] = useState("");
   const [resultado, setResultado] =
     useState<AvaliacaoInput["resultado"] | "">("");
@@ -113,9 +119,9 @@ export function FormReproducao({
   useEffect(() => {
     if (acao !== "avaliacao") return;
     let ativo = true;
-    reqV4<TipoExame[]>("/reproducao/tipos-exame?incluirInativos=true").then(tipos => { if (ativo) { setTiposExame(tipos); setTipoExameId(tipoExameInicial ?? tipos.find(t => t.ativo && t.padraoReprodutivo)?.id ?? tipos.find(t => t.ativo)?.id ?? ""); } }).catch(e => { if (ativo) setErro(e.message); });
+    reqV4<TipoExame[]>("/reproducao/tipos-exame?incluirInativos=true", undefined, "GET", propriedadeId ?? undefined).then(tipos => { if (ativo) { setTiposExame(tipos); setTipoExameId(tipoExameInicial ?? tipos.find(t => t.ativo && t.padraoReprodutivo)?.id ?? tipos.find(t => t.ativo)?.id ?? ""); } }).catch(e => { if (ativo) setErro(e.message); });
     return () => { ativo = false; };
-  }, [acao, tipoExameInicial]);
+  }, [acao, tipoExameInicial, propriedadeId]);
   const tipoExame = tiposExame.find(t => t.id === tipoExameId);
   const [tentativaId, setTentativaId] = useState("");
   const [motivo, setMotivo] = useState("");
@@ -123,9 +129,7 @@ export function FormReproducao({
   const [retorno, setRetorno] = useState("");
   const [previsao, setPrevisao] = useState("");
   useEffect(() => setCienciaSanitaria(false), [animalId, data, tipo, conduta]);
-  const [tipoParto, setTipoParto] = useState<
-    "NORMAL" | "DISTOCICO" | "ABORTO" | "NATIMORTO"
-  >("NORMAL");
+  const [dadosParto, setDadosParto] = useState(dadosPartoVazios);
   const [crias, setCrias] = useState<CriaInput[]>([
     { viva: true, sexo: "F", aptidao: "LEITE" },
   ]);
@@ -154,11 +158,11 @@ export function FormReproducao({
   useEffect(() => {
     let ativo = true;
     Promise.all([
-      listarMaterialGenetico(),
-      listarGenitores({ sexo: "M" }),
-      listarLotes(),
-      listarServicos(getPropriedadeAtiva() ?? undefined),
-      listarAnimais({ sexo: "M", pageSize: 200 }),
+      listarMaterialGenetico({}, propriedadeId ?? undefined),
+      listarGenitores({ sexo: "M" }, propriedadeId ?? undefined),
+      listarLotes(undefined, propriedadeId ?? undefined),
+      listarServicos(propriedadeId ?? undefined),
+      listarAnimais({ sexo: "M", pageSize: 200 }, propriedadeId ?? undefined),
     ])
       .then(([m, g, l, s, t]) => {
         if (ativo) {
@@ -175,14 +179,14 @@ export function FormReproducao({
     return () => {
       ativo = false;
     };
-  }, []);
+  }, [propriedadeId]);
   useEffect(() => {
     const produto = materiais.find((m) => m.id === materialId)?.produto.id;
     setPartidaId("");
     setPartidas([]);
     if (!produto || origem !== "ESTOQUE") return;
     let ativo = true;
-    listarPartidasNutricionais(produto, getPropriedadeAtiva())
+    listarPartidasNutricionais(produto, propriedadeId)
       .then((p) => {
         if (ativo) setPartidas(p);
       })
@@ -192,7 +196,7 @@ export function FormReproducao({
     return () => {
       ativo = false;
     };
-  }, [materialId, materiais, origem]);
+  }, [materialId, materiais, origem, propriedadeId]);
   const campo = (
     id: string,
     rotulo: string,
@@ -243,7 +247,6 @@ export function FormReproducao({
     </CampoFormulario>
   );
   async function salvar() {
-    const propriedadeId = getPropriedadeAtiva();
     if (!propriedadeId) {
       setErro("Selecione um sítio para registrar o fato.");
       return;
@@ -259,9 +262,11 @@ export function FormReproducao({
       return;
     }
     if (acao === "avaliacao" && (!resultado || !tipoExameId || (finalidade === "SEXAGEM" && !sexoFetal))) { setErro("Informe o tipo de exame, a conclusão e o sexo fetal quando houver sexagem."); return; }
+    if (acao === "parto") { const erroParto = validarDadosParto(dadosParto); if (erroParto) { setErro(erroParto); return; } }
+    if (ocupado) return;
     setOcupado(true);
     setErro(null);
-    const payload = JSON.stringify({acao, propriedadeId, animalId, data, tipo, origem, materialId, touro, partidaId, cienciaValidade, cienciaSanitaria, cienciaVencida, motivoVencida, servicoId, quantidade, responsavel, resultado, conduta, sexoFetal, finalidade, tipoExameId, resultados, tentativaId, motivo, anotacao, retorno, previsao, motivoVinculo, tipoParto, crias, lactacao, situacao, aptaDesde, restricaoAte, acoesRestritas, restricao});
+    const payload = JSON.stringify({acao, propriedadeId, animalId, data, tipo, origem, materialId, touro, partidaId, cienciaValidade, cienciaSanitaria, cienciaVencida, motivoVencida, servicoId, quantidade, responsavel, resultado, conduta, sexoFetal, finalidade, tipoExameId, resultados, tentativaId, motivo, anotacao, retorno, previsao, motivoVinculo, dadosParto, crias, lactacao, situacao, aptaDesde, restricaoAte, acoesRestritas, restricao});
     if (envio.current?.payload !== payload) envio.current = { payload, chave: crypto.randomUUID() };
     const base = { chave: envio.current.chave, propriedadeId, animalId, data };
     try {
@@ -312,15 +317,9 @@ export function FormReproducao({
       if (acao === "parto")
         await (onRegistrar ?? registrarParto)({
           ...base,
-          tipo: tipoParto,
+          ...camposPartoPayload(dadosParto, data),
           ...(gestacaoDoFato ? { gestacaoId: gestacaoDoFato.id } : {}),
-          crias:
-            tipoParto === "ABORTO"
-              ? []
-              : crias.map((c) => ({
-                  ...c,
-                  viva: tipoParto === "NATIMORTO" ? false : c.viva,
-                })),
+          crias: dadosParto.desfecho === "ABORTO" ? [] : crias,
           iniciarLactacao: lactacao,
         });
       if (acao === "situacao")
@@ -329,7 +328,7 @@ export function FormReproducao({
           situacao,
           observacao: motivo || undefined,
           aptaDesde: aptaDesde || undefined,
-        });
+        }, "POST", propriedadeId);
       if (acao === "restricao")
         await reqV4("/reproducao/restricoes", {
           ...base,
@@ -337,7 +336,7 @@ export function FormReproducao({
           motivo,
           acoes: acoesRestritas,
           ate: restricaoAte || undefined,
-        });
+        }, "POST", propriedadeId);
       onSalvo();
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
@@ -503,7 +502,7 @@ export function FormReproducao({
                 )}
               </>
             )}
-            <AlertasSanitarios animalId={animalId} data={data} acao={tipo} />
+            <AlertasSanitarios animalId={animalId} data={data} acao={tipo} propriedadeId={propriedadeId ?? undefined} />
             <ConfirmacaoCiencia
               id="rep-ciencia-sanitaria"
               checked={cienciaSanitaria}
@@ -597,151 +596,13 @@ export function FormReproducao({
         )}
         {acao === "avaliacao" && conduta === "IATF" && (
           <>
-          <AlertasSanitarios animalId={animalId} data={data} acao="IATF" />
+          <AlertasSanitarios animalId={animalId} data={data} acao="IATF" propriedadeId={propriedadeId ?? undefined} />
           <ConfirmacaoCiencia id="rep-ciencia-indicacao" checked={cienciaSanitaria} onChange={setCienciaSanitaria}>
             Revisei os alertas sanitários configurados para indicar IATF.
           </ConfirmacaoCiencia>
           </>
         )}
-        {acao === "parto" && (
-          <>
-            {seletor(
-              "tipo-parto",
-              "Tipo de parto",
-              tipoParto,
-              (v) => setTipoParto(v as typeof tipoParto),
-              [
-                ["NORMAL", "Normal"],
-                ["DISTOCICO", "Distócico"],
-                ["ABORTO", "Aborto"],
-                ["NATIMORTO", "Natimorto"],
-              ],
-            )}
-            {tipoParto === "ABORTO" ? (
-              <p className="text-sm">
-                O aborto conta como parto, encerra a gestação e reinicia o ciclo
-                reprodutivo.
-              </p>
-            ) : (
-              <>
-                <p className="text-sm text-ink-3">
-                  Cada cria viva recebe um cadastro provisório utilizável.
-                  Brinco e peso podem ser completados depois.
-                </p>
-                {crias.map((c, i) => (
-                  <fieldset
-                    className="rounded-lg border border-border p-4 grid gap-3"
-                    key={i}
-                  >
-                    <legend>Cria {i + 1}</legend>
-                    <label className="text-sm">
-                      <input
-                        type="checkbox"
-                        checked={c.viva && tipoParto !== "NATIMORTO"}
-                        disabled={tipoParto === "NATIMORTO"}
-                        onChange={(e) =>
-                          setCrias(
-                            crias.map((v, j) =>
-                              j === i ? { ...v, viva: e.target.checked } : v,
-                            ),
-                          )
-                        }
-                      />{" "}
-                      Nascida viva
-                    </label>
-                    {seletor(
-                      `cria-sexo-${i}`,
-                      "Sexo da cria",
-                      c.sexo,
-                      (v) =>
-                        setCrias(
-                          crias.map((x, j) =>
-                            j === i ? { ...x, sexo: v as "F" | "M" } : x,
-                          ),
-                        ),
-                      [
-                        ["F", "Fêmea"],
-                        ["M", "Macho"],
-                      ],
-                    )}
-                    {seletor(
-                      `cria-aptidao-${i}`,
-                      "Aptidão",
-                      c.aptidao,
-                      (v) =>
-                        setCrias(
-                          crias.map((x, j) =>
-                            j === i
-                              ? { ...x, aptidao: v as CriaInput["aptidao"] }
-                              : x,
-                          ),
-                        ),
-                      [
-                        ["LEITE", "Leite"],
-                        ["CORTE", "Corte"],
-                      ],
-                    )}
-                    {campo(
-                      `cria-brinco-${i}`,
-                      "Brinco (pode ficar pendente)",
-                      c.brinco ?? "",
-                      (v) =>
-                        setCrias(
-                          crias.map((x, j) =>
-                            j === i ? { ...x, brinco: v || undefined } : x,
-                          ),
-                        ),
-                    )}
-                    {seletor(
-                      `cria-lote-${i}`,
-                      "Lote da cria",
-                      c.loteId ?? "",
-                      (v) =>
-                        setCrias(
-                          crias.map((x, j) =>
-                            j === i ? { ...x, loteId: v || undefined } : x,
-                          ),
-                        ),
-                      lotes.map((l) => [l.id, l.nome]),
-                      false,
-                    )}
-                    {crias.length > 1 && (
-                      <Button
-                        secondary
-                        type="button"
-                        onClick={() =>
-                          setCrias(crias.filter((_, j) => j !== i))
-                        }
-                      >
-                        Remover cria {i + 1}
-                      </Button>
-                    )}
-                  </fieldset>
-                ))}
-                <Button
-                  secondary
-                  type="button"
-                  onClick={() =>
-                    setCrias([
-                      ...crias,
-                      { viva: true, sexo: "F", aptidao: "LEITE" },
-                    ])
-                  }
-                >
-                  + Adicionar cria
-                </Button>
-              </>
-            )}
-            <label className="text-sm">
-              <input
-                type="checkbox"
-                checked={lactacao}
-                onChange={(e) => setLactacao(e.target.checked)}
-              />{" "}
-              Registrar início de lactação
-            </label>
-          </>
-        )}
+        {acao === "parto" && <PartoCampos valor={dadosParto} onChange={setDadosParto} crias={crias} setCrias={setCrias} lotes={lotes} lactacao={lactacao} setLactacao={setLactacao} animalId={animalId} propriedadeId={propriedadeId ?? undefined} />}
         {acao === "situacao" &&
           seletor("situacao", "Situação inicial", situacao, setSituacao, [
             ["VAZIA", "Vazia"],
@@ -798,7 +659,7 @@ export function FormReproducao({
             ["PERMANENTE", "Permanente"],
             ["DESCARTE", "Descarte reprodutivo"],
           ])}
-        {campo("motivo", "Motivo / observação", motivo, setMotivo, exigeMotivo)}
+        {acao !== "parto" && campo("motivo", "Motivo / observação", motivo, setMotivo, exigeMotivo)}
       </form>
     </PainelCadastro>
   );

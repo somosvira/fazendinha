@@ -26,7 +26,8 @@ import {
   type AtividadeVisita,
   type Visita,
 } from "./visitas-api";
-import { ordenarParticipantes, motivosParticipante } from "./visitas-regras";
+import { FolhaVisita } from "./FolhaVisita";
+import { PlannerVisita } from "./PlannerVisita";
 export function Visitas({ podeLancar }: { podeLancar: boolean }) {
   const [lista, setLista] = useState<Visita[]>([]);
   const [visita, setVisita] = useState<Visita | null>(null);
@@ -118,7 +119,7 @@ export function Visitas({ podeLancar }: { podeLancar: boolean }) {
                   setNome("");
                 }}
               >
-                Nova visita
+                Planejar visita
               </Button>
             )
           }
@@ -141,7 +142,7 @@ export function Visitas({ podeLancar }: { podeLancar: boolean }) {
               </Button>
               {podeLancar && visita.status !== "ENCERRADA" && (
                 <Button onClick={() => setAtividade(true)}>
-                  + Adicionar atividade
+                  + Adicionar outro atendimento
                 </Button>
               )}
               {podeLancar && (
@@ -170,10 +171,11 @@ export function Visitas({ podeLancar }: { podeLancar: boolean }) {
                 </Button>
               )}
             </div>
+            {visita.status !== "ENCERRADA" && <PlannerVisita key={visita.id} visita={visita} podeLancar={podeLancar} onMudou={carregar} onExtra={() => setAtividade(true)} />}
             {visita.atividades.length === 0 && (
               <Panel>
                 <p className="p-5 text-sm">
-                  Adicione a primeira atividade da visita.
+                  Selecione grupos no planner ou adicione outro atendimento.
                 </p>
               </Panel>
             )}
@@ -242,7 +244,7 @@ export function Visitas({ podeLancar }: { podeLancar: boolean }) {
                   Cancelar
                 </Button>
                 <Button form="nova-visita" type="submit" disabled={ocupado}>
-                  Criar visita
+                  Continuar para os grupos
                 </Button>
               </>
             }
@@ -313,62 +315,8 @@ export function Visitas({ podeLancar }: { podeLancar: boolean }) {
         )}
       </div>
       {impressao && (
-        <div className="hidden print:block">
-          <h1>
-            {impressao.nome ?? "Visita veterinária — cabeçalho não preservado"} · {impressao.data?.slice(0, 10) ?? "Data não preservada"}
-          </h1>
-          {impressao.atividades.map((a) => (
-            <section key={a.id}>
-              <h2 className="mt-6 mb-3">{a.nome}{a.extra ? " · Atividade extra" : ""}</h2>
-              <p className="text-xs mb-3">Data de referência: {impressao.data?.slice(0,10) ?? "não preservada"} · Critérios de preparação: {criteriosImpressao({...(a.contexto?.criterios as object ?? {}), ...(a.contexto?.apresentacao as object ?? {})})}</p>
-              <table className="w-full border-collapse text-sm">
-                <thead className="table-header-group">
-                  <tr>
-                    <th>Ordem</th>
-                    <th>Animal</th>
-                    <th>Lote / motivos</th>
-                    <th>Tentativa / touro / último parto</th>
-                    <th>Resultado / conduta / anotações</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {ordenarParticipantes(a.participantes).map((p) => (
-                    <tr key={p.id} className="break-inside-avoid">
-                      <td className="border p-3">{p.ordem}</td>
-                      <td className="border p-3">
-                        {p.snapshot.brinco ?? p.animalId} {p.snapshot.nome}
-                      </td>
-                      <td className="border p-3">
-                        <p>{p.snapshot.lote?.nome ?? "Lote não informado"}</p>
-                        {motivosParticipante(p).join("; ")}
-                      </td>
-                      <td className="border p-3 text-xs">
-                        <p>{p.snapshot.tentativa ? `${p.snapshot.tentativa.tipo} · ${p.snapshot.tentativa.data.slice(0,10)}` : "Tentativa não comprovada"}</p>
-                        <p>Touro: {p.snapshot.tentativa?.geneticaSnapshot?.pai?.nome ?? "não informado"}</p>
-                        <p>Último parto: {p.snapshot.ultimoParto?.data.slice(0,10) ?? "não informado"}</p>
-                      </td>
-                      <td className="border p-3 h-16" />
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </section>
-          ))}
-        </div>
+        <FolhaVisita snapshot={impressao} />
       )}
     </PaginaFinanceira>
   );
-}
-
-function criteriosImpressao(valor: unknown): string {
-  if (!valor || typeof valor !== "object") return "Não preservados";
-  const c = valor as Record<string, unknown>;
-  const partes: string[] = [];
-  for (const [campo, nome] of [["categoriaNome", "Categoria"], ["loteNome", "Lote"], ["situacao", "Situação"], ["busca", "Busca"]]) if (c[campo]) partes.push(`${nome}: ${c[campo]}`);
-  for (const [campo, nome] of [["diasTentativa", "tentativa"], ["diasParto", "último parto"], ["diasGestacao", "confirmação da gestação"]]) {
-    const min = c[campo+"Min"], max = c[campo+"Max"];
-    if (min != null || max != null) partes.push(`Dias desde ${nome}: ${min ?? "sem mínimo"} a ${max ?? "sem máximo"}`);
-  }
-  if (Array.isArray(c.motivos) && c.motivos.length) partes.push(`Motivos: ${c.motivos.join("; ")}`);
-  return partes.join(" · ") || "Sem filtros adicionais";
 }

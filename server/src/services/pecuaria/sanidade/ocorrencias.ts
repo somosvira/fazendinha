@@ -43,18 +43,21 @@ export async function listarOcorrencias(animalId: string | undefined, propriedad
   return lista.map((o) => ({ ...o, doenca: { ...o.doenca, nome: o.doencaNomeSnapshot ?? o.doenca.nome } }));
 }
 
-export async function criarOcorrencia(input: { animalId: string; propriedadeId: number; doencaId: string; inicio: string; observacao?: string | null }, usuarioId: number | null) {
-  return transacaoPecuaria(async (tx) => {
-    await travarAnimais(tx, [input.animalId]);
-    const inicio = dia(input.inicio);
-    await conferirAnimalNoFato(tx, input.animalId, input.propriedadeId, inicio, "inicio");
-    const doenca = await tx.doenca.findFirst({ where: { id: input.doencaId, ativo: true } });
-    if (!doenca) throw new RebanhoError("VALIDACAO", "Selecione uma doença ativa", "doencaId");
-    const criada = await tx.ocorrenciaSanitaria.create({ data: { animalId: input.animalId, propriedadeId: input.propriedadeId,
-      doencaId: input.doencaId, doencaNomeSnapshot: doenca.nome, inicio, observacao: input.observacao?.trim() || null } });
-    await auditar(tx, { entidade: "OcorrenciaSanitaria", entidadeId: criada.id, animalId: input.animalId, propriedadeId: input.propriedadeId, acao: "REGISTRO", usuarioId, depois: criada });
-    return criada;
-  });
+export type CriarOcorrenciaInput = { animalId: string; propriedadeId: number; doencaId: string; inicio: string; observacao?: string | null };
+/** Executor compartilhado: o chamador mantém a transação do fato de origem. */
+export async function criarOcorrenciaTx(tx: Prisma.TransactionClient, input: CriarOcorrenciaInput, usuarioId: number | null) {
+  await travarAnimais(tx, [input.animalId]);
+  const inicio = dia(input.inicio);
+  await conferirAnimalNoFato(tx, input.animalId, input.propriedadeId, inicio, "inicio");
+  const doenca = await tx.doenca.findFirst({ where: { id: input.doencaId, ativo: true } });
+  if (!doenca) throw new RebanhoError("VALIDACAO", "Selecione uma doença ativa", "doencaId");
+  const criada = await tx.ocorrenciaSanitaria.create({ data: { animalId: input.animalId, propriedadeId: input.propriedadeId,
+    doencaId: input.doencaId, doencaNomeSnapshot: doenca.nome, inicio, observacao: input.observacao?.trim() || null } });
+  await auditar(tx, { entidade: "OcorrenciaSanitaria", entidadeId: criada.id, animalId: input.animalId, propriedadeId: input.propriedadeId, acao: "REGISTRO", usuarioId, depois: criada });
+  return criada;
+}
+export async function criarOcorrencia(input: CriarOcorrenciaInput, usuarioId: number | null) {
+  return transacaoPecuaria((tx) => criarOcorrenciaTx(tx, input, usuarioId));
 }
 
 export async function encerrarOcorrencia(id: string, propriedadeId: number, input: { fim: string; desfecho: string }, usuarioId: number | null) {
@@ -83,6 +86,7 @@ export async function anularOcorrencia(id: string, propriedadeId: number, motivo
     await travarAnimais(tx, [original.animalId]);
     const atual = await tx.ocorrenciaSanitaria.findUniqueOrThrow({ where: { id } });
     if (atual.status !== "VALIDO") throw new RebanhoError("CONFLITO", "A ocorrência já foi anulada; atualize a consulta");
+    if (atual.partoRetencaoPlacentaId) throw new RebanhoError("CONFLITO", "Desvincule a ocorrência na correção do parto antes de anular");
     const fatos = await Promise.all([
       tx.aplicacaoProduto.count({ where: { ocorrenciaId: id, status: "VALIDO" } }),
       tx.exameAnimal.count({ where: { ocorrenciaId: id, status: "VALIDO" } }),

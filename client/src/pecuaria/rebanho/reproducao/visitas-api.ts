@@ -1,4 +1,5 @@
 import { reqV4 } from "./api";
+import type { ContextoTemporalAnimal } from "./api";
 export type TipoAtividade =
   | "AVALIACAO_REPRODUTIVA"
   | "APLICACAO_SANITARIA"
@@ -36,7 +37,10 @@ export type ParticipanteVisita = {
   versaoRascunho?: number;
   regularizacaoPendente?: boolean;
   historicoRegularizacao?: Array<{acao?: string; destinoConsumo?: string | null}>;
-  snapshot: {
+  snapshot: ContextoTemporalAnimal & {
+    tarefaPlanejada?: { origem: "REPRODUTIVA" | "SANITARIA"; tarefa: SugestaoTarefa };
+    partos?: number;
+    tentativasCiclo?: number;
     brinco?: string;
     nome?: string | null;
     motivos?: string[];
@@ -132,7 +136,11 @@ export const confirmarVisita = (
 export type SugestaoTarefa = {
   previsaoPendente?: boolean;
   precisaoTemporal?: "DIA" | "HORA";
-  planejadoSnapshot?: { etapa: { planoAvaliacao?: { tipoExameId?: string; tipo?: "DIAGNOSTICO" | "RECONFIRMACAO" | "SEXAGEM" } } } | null;
+  planejadoSnapshot?: { etapa: {
+    planoAplicacao?: { produtoId: string; dose: string; unidadeDose: string; via?: string | null };
+    planoTentativa?: { tipo: "IA" | "TE"; materialId: string; quantidade: number };
+    planoExame?: { tipoExameId: string };
+    planoAvaliacao?: { tipoExameId?: string; tipo?: "DIAGNOSTICO" | "RECONFIRMACAO" | "SEXAGEM" } } } | null;
   id: string;
   animalId: string;
   nome?: string;
@@ -145,6 +153,7 @@ export type SugestaoTarefa = {
   tipoExameId?: string;
   dose?: string;
   unidade?: string;
+  via?: string | null;
   protocoloNome?: string;
   protocoloId?: string;
   participanteId?: string;
@@ -175,5 +184,5 @@ export type SugestoesVisita = {
     participanteId?: string;
   }>;
 };
-export const obterSugestoesVisita = (data: string, filtros: Record<string, string> = {}) =>
-  reqV4<SugestoesVisita>(`/visitas/sugestoes?${new URLSearchParams({ data, ...Object.fromEntries(Object.entries(filtros).filter(([,v]) => v !== "")) })}`);
+export const obterSugestoesVisita = (data: string, filtros: Record<string, string> = {}, propriedadeId?: number) =>
+  reqV4<SugestoesVisita>(`/visitas/sugestoes?${new URLSearchParams({ data, ...Object.fromEntries(Object.entries(filtros).filter(([,v]) => v !== "")) })}`, undefined, "GET", propriedadeId);

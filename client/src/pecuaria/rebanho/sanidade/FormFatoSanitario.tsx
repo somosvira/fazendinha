@@ -11,10 +11,10 @@ import type { Doenca, TipoExame } from "./CadastrosSanitarios";
 import { dataSanitaria, nomeAnimalSanitario } from "./rotulos";
 
 export type TipoFatoSanitario = "ocorrencia" | "exame" | "protocolo";
-export function FormFatoSanitario({ tipo, animalInicial = "", fixo = false, cadastroInicial = "", tarefaId, onFechar, onSalvo, onRegistrar, dataInicial, conteudoExtra }: {
+export function FormFatoSanitario({ tipo, animalInicial = "", fixo = false, cadastroInicial = "", tarefaId, onFechar, onSalvo, onRegistrar, dataInicial, conteudoExtra, propriedadeId }: {
   tipo: TipoFatoSanitario; animalInicial?: string; fixo?: boolean; cadastroInicial?: string; tarefaId?: string | null;
   onFechar: () => void; onSalvo: () => void;
-  dataInicial?: string; conteudoExtra?: ReactNode;
+  dataInicial?: string; conteudoExtra?: ReactNode; propriedadeId?: number;
   onRegistrar?: (input: Record<string, unknown>) => Promise<void>;
 }) {
   const [animalId, setAnimalId] = useState(animalInicial);
@@ -46,12 +46,12 @@ export function FormFatoSanitario({ tipo, animalInicial = "", fixo = false, cada
   const formato = cadastros.find((c) => c.id === cadastroId) as TipoExame | undefined;
   const local = ficha?.historicoLocalizacoes.find((l) => l.desde.slice(0, 10) <= data && (!l.ate || l.ate.slice(0, 10) > data || ficha.baixa?.data.slice(0, 10) === data && l.ate.slice(0, 10) === data));
   const sitio = local?.propriedade?.id;
-  useEffect(() => { let vivo = true; listarAnimais({ pageSize: 100, busca }).then((v) => { if (vivo) setAnimais(v.itens); }).catch((e: unknown) => { if (vivo) setErro(e instanceof Error ? e.message : String(e)); }); return () => { vivo = false; }; }, [busca]);
-  useEffect(() => { let vivo = true; setFicha(null); if (animalId) buscarFichaAnimal(animalId).then((v) => { if (vivo) setFicha(v); }).catch((e: unknown) => { if (vivo) setErro(e instanceof Error ? e.message : String(e)); }); return () => { vivo = false; }; }, [animalId]);
-  useEffect(() => { let vivo = true; reqSanidade<(Doenca | TipoExame)[]>(tipo === "ocorrencia" ? "/doencas" : tipo === "exame" ? "/tipos-exame" : "/protocolos").then((v) => { if (vivo) setCadastros(v.filter((c) => c.ativo && (tipo !== "exame" || !("contexto" in c) || c.contexto !== "REPRODUTIVO") && (tipo !== "protocolo" || !!(c as Doenca & { publicadoEm?: string }).publicadoEm))); }).catch((e: unknown) => { if (vivo) setErro(e instanceof Error ? e.message : String(e)); }); return () => { vivo = false; }; }, [tipo]);
+  useEffect(() => { let vivo = true; listarAnimais({ pageSize: 100, busca }, propriedadeId).then((v) => { if (vivo) setAnimais(v.itens); }).catch((e: unknown) => { if (vivo) setErro(e instanceof Error ? e.message : String(e)); }); return () => { vivo = false; }; }, [busca, propriedadeId]);
+  useEffect(() => { let vivo = true; setFicha(null); if (animalId) buscarFichaAnimal(animalId, undefined, propriedadeId).then((v) => { if (vivo) setFicha(v); }).catch((e: unknown) => { if (vivo) setErro(e instanceof Error ? e.message : String(e)); }); return () => { vivo = false; }; }, [animalId, propriedadeId]);
+  useEffect(() => { let vivo = true; reqSanidade<(Doenca | TipoExame)[]>(tipo === "ocorrencia" ? "/doencas" : tipo === "exame" ? "/tipos-exame" : "/protocolos", undefined, propriedadeId).then((v) => { if (vivo) setCadastros(v.filter((c) => c.ativo && (tipo !== "exame" || !("contexto" in c) || c.contexto !== "REPRODUTIVO") && (tipo !== "protocolo" || !!(c as Doenca & { publicadoEm?: string }).publicadoEm))); }).catch((e: unknown) => { if (vivo) setErro(e instanceof Error ? e.message : String(e)); }); return () => { vivo = false; }; }, [tipo, propriedadeId]);
   useEffect(() => {
     let vivo = true; setServicos([]); setServicoId(""); setOcorrencias([]); setOcorrenciaId("");
-    if (sitio && animalId) Promise.all([listarServicos(sitio), reqSanidade<typeof ocorrencias>(`/ocorrencias?animalId=${encodeURIComponent(animalId)}&propriedadeId=${sitio}&situacao=VALIDO`)]).then(([s, o]) => { if (vivo) { setServicos(s); setOcorrencias(o); } }).catch((e: unknown) => { if (vivo) setErro(e instanceof Error ? e.message : String(e)); });
+    if (sitio && animalId) Promise.all([listarServicos(sitio), reqSanidade<typeof ocorrencias>(`/ocorrencias?animalId=${encodeURIComponent(animalId)}&propriedadeId=${sitio}&situacao=VALIDO`, undefined, sitio)]).then(([s, o]) => { if (vivo) { setServicos(s); setOcorrencias(o); } }).catch((e: unknown) => { if (vivo) setErro(e instanceof Error ? e.message : String(e)); });
     return () => { vivo = false; };
   }, [sitio, animalId]);
   useEffect(() => { setObservacoes([]); setResultado(""); }, [cadastroId]);
@@ -59,11 +59,12 @@ export function FormFatoSanitario({ tipo, animalInicial = "", fixo = false, cada
   useEffect(() => { chave.current = crypto.randomUUID(); }, [resultado, observacoes, responsavel, texto, servicoId, ocorrenciaId, ciencia]);
   async function salvar() {
     if (trava.current) return;
+    if (propriedadeId && sitio && sitio !== propriedadeId) { setErro("O sítio na data do fato difere do sítio da visita. Revise a data e a localização do animal."); setCampoErro("data"); return; }
     if (!sitio) { setErro("Confira o animal e a data: não há sítio histórico nesta data."); setCampoErro("data"); return; }
     trava.current = true; setOcupado(true); setErro(null); setCampoErro("");
     const base = { animalId, propriedadeId: sitio };
     const body = tipo === "ocorrencia" ? { ...base, doencaId: cadastroId, inicio: data, observacao: texto.trim() || null } : tipo === "exame" ? { ...base, tipoExameId: cadastroId, data, tarefaId, operacaoServicoId: servicoId || null, ocorrenciaId: ocorrenciaId || null, responsavel: responsavel.trim() || null, ...(formato?.tipoResultado === "MULTIPLO" ? { resultados: observacoes } : resultado === "" ? {} : formato?.tipoResultado === "NUMERO" ? { resultadoNumero: Number(resultado) } : formato?.tipoResultado === "OPCAO" ? { resultadoOpcao: resultado } : { resultadoTexto: resultado }) } : { ...base, protocoloId: cadastroId, inicio: data, operacaoServicoId: servicoId || null, ocorrenciaId: ocorrenciaId || null, ...(ciencia ? { confirmarSobreposicao: true, justificativaSobreposicao: texto.trim() } : {}) };
-    try { if (onRegistrar) { await onRegistrar(body); onSalvo(); return; } await reqSanidade(tipo === "ocorrencia" ? "/ocorrencias" : tipo === "exame" ? "/exames/coletivos" : "/execucoes/coletivas", { method: "POST", body: JSON.stringify(tipo === "ocorrencia" ? body : { chave: chave.current, propriedadeId: sitio, itens: [body] }) }); onSalvo(); }
+    try { if (onRegistrar) { await onRegistrar(body); onSalvo(); return; } await reqSanidade(tipo === "ocorrencia" ? "/ocorrencias" : tipo === "exame" ? "/exames/coletivos" : "/execucoes/coletivas", { method: "POST", body: JSON.stringify(tipo === "ocorrencia" ? body : { chave: chave.current, propriedadeId: sitio, itens: [body] }) }, sitio); onSalvo(); }
     catch (e) { const mensagem = e instanceof Error ? e.message : String(e); setErro(mensagem); const recebido = e instanceof SanidadeApiError ? (e.campo ?? "").replace(/^itens\.\d+\./, "") : ""; setCampoErro(({ inicio: "data", doencaId: "cadastro", tipoExameId: "cadastro", protocoloId: "cadastro", operacaoServicoId: "servico", resultadoNumero: "resultado", resultadoTexto: "resultado", resultadoOpcao: "resultado", observacao: "texto", justificativaSobreposicao: "texto", motivo: "texto", confirmarSobreposicao: "ciencia", propriedadeId: "data" } as Record<string, string>)[recebido] ?? recebido); if (tipo === "protocolo" && /protocolo pendente|sobreposição/i.test(mensagem)) setSobreposicao(true); }
     finally { trava.current = false; setOcupado(false); }
   }

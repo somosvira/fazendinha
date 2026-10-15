@@ -264,6 +264,11 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
           <DadoFicha icon={CalendarDays} rotulo="Nascimento">{formatarDataBR(animal.dataNascimento)}{animal.nascimentoEstimado ? " (estimado)" : ""}</DadoFicha>
           <DadoFicha icon={LogIn} rotulo="Entrada">{formatarDataBR(animal.dataEntrada)}</DadoFicha>
           {animal.sexo === "F" && <DadoFicha icon={Baby} rotulo="Partos antes da entrada">{animal.partosAntesDaEntrada}</DadoFicha>}
+          {animal.sexo === "F" && <DadoFicha icon={CalendarDays} rotulo="Lactação / DEL">{animal.contextoProdutivo?.situacaoProdutiva === "LACTANTE"
+            ? `DEL ${animal.contextoProdutivo.del ?? "não informado"} · início D0`
+            : animal.contextoProdutivo?.situacaoProdutiva === "SECA" ? "Seca" : "Histórico de lactação não informado"}</DadoFicha>}
+          {animal.contextoProdutivo?.diasPosParto != null && <DadoFicha icon={Baby} rotulo="Dias após parto">{animal.contextoProdutivo.diasPosParto}</DadoFicha>}
+
         </dl>
         {animal.observacao && <div className="mt-5 flex gap-2.5 rounded-lg border border-border bg-surface-2 px-4 py-3 text-sm text-ink-2"><StickyNote aria-hidden="true" size={16} className="mt-0.5 shrink-0 text-ink-3" /><p className="min-w-0 break-words">{animal.observacao}</p></div>}
       </CardFicha>
@@ -305,7 +310,7 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
 
         </div>
       </section>
-      {animal.sexo==="F"&&<section id="reproducao" className="scroll-mt-6"><h2 className="h2 mb-4">Reprodução</h2><ReproducaoAnimal animalId={animal.id} podeLancar={podeLancar} recarregarToken={refreshToken} /></section>}
+      {animal.sexo==="F"&&<section id="reproducao" className="scroll-mt-6"><h2 className="h2 mb-4">Reprodução</h2><ReproducaoAnimal animalId={animal.id} propriedadeId={localizacaoAtual?.propriedade?.id ?? null} podeLancar={podeLancar} recarregarToken={refreshToken} /></section>}
       <section id="sanidade" className="scroll-mt-6"><h2 className="h2 mb-4">Sanidade</h2>
       <SanidadeAnimal animalId={animal.id} propriedadeId={localizacaoAtual?.propriedade?.id ?? null} podeLancar={podeLancar} recarregarToken={refreshToken} onMudou={() => { void carregar(); }} />
       </section>

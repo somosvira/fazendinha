@@ -1,3 +1,4 @@
+import { ColostroCria } from "./ColostroCria";
 import { nomeCampoExame } from "../sanidade/CamposExame";
 import { CorrigirFato } from "./CorrigirFato";
 import { getUsuario } from "../../../lib/auth";
@@ -112,6 +113,14 @@ export function DetalheFato({
             </div>
           )}
         </dl>
+        {fato.grupo === "Parto" && <section className="grid gap-3 rounded-lg border border-border p-4"><h3 className="font-semibold">Parto e pós-parto</h3><dl className="grid grid-cols-2 gap-3 text-sm">{[
+          ["Desfecho", fato.desfecho ?? (fato.tipo === "ABORTO" ? "Aborto" : fato.tipo === "NORMAL" || fato.tipo === "DISTOCICO" || fato.tipo === "NATIMORTO" ? "Nascimento" : "Não informado")],
+          ["Horário", fato.ocorridoEm ? `${new Date(fato.ocorridoEm).toLocaleTimeString("pt-BR", {hour:"2-digit",minute:"2-digit"})}${fato.horarioEstimado ? " · estimado" : ""}` : "Não informado"],
+          ["Parto induzido", fato.induzido == null ? "Não informado" : fato.induzido ? "Sim" : "Não"],
+          ["Dificuldade", fato.dificuldade == null ? "Não informada" : fato.dificuldade ? "Sim" : "Não"],
+          ["Assistência", fato.assistenciaDescricao || "Não informada"],
+          ["Retenção de placenta", fato.retencaoPlacenta == null ? "Não informada" : fato.retencaoPlacenta ? "Sim" : "Não"],
+        ].map(([rotulo,valor])=><div key={rotulo}><dt className="text-ink-3">{rotulo}</dt><dd>{valor}</dd></div>)}</dl>{fato.vinculosPesagem?.filter(v=>!v.revogadoEm).map(v=><p key={v.id} className="text-sm">{v.sujeito === "MATRIZ" ? "Peso da matriz" : "Peso da cria"}: {v.pesagem.pesoKg} kg · pesagem em {v.pesagem.data.slice(0,10).split("-").reverse().join("/")}</p>)}{fato.examesPosParto?.map(exame=><div key={exame.id} className="text-sm rounded border border-border p-2"><p>Escore corporal · {exame.data.slice(0,10)} · {exame.status}</p><dl className="grid grid-cols-2 gap-2">{exame.resultados.map(r=><div key={r.campo}><dt className="text-ink-3">{({ESCORE:"Escore",ESCALA_MIN:"Mínimo da escala",ESCALA_MAX:"Máximo da escala",ESCALA_DESCRICAO:"Escala"} as Record<string,string>)[r.campo]??r.campo}</dt><dd>{String(r.valor)}</dd></div>)}</dl></div>)}{fato.ocorrenciasRetencaoPlacenta?.map(o=><p key={o.id} className="text-sm">Ocorrência vinculada: {o.doenca.nome}</p>)}</section>}
         {snapshot && (
           <section className="border-t border-border pt-4">
             <h3 className="font-semibold text-sm">
@@ -142,7 +151,8 @@ export function DetalheFato({
         {fato.crias?.map((c, i) => (
           <div key={i} className="border border-border p-3 rounded-lg text-sm">
             Cria {i + 1} · {c.viva ? "Viva" : "Sem sobrevivência"} ·{" "}
-            {c.sexo === "F" ? "Fêmea" : "Macho"}
+            {c.sexo === "F" ? "Fêmea" : "Macho"} · Peso ao nascer: {c.pesoKg == null ? "Não informado" : `${c.pesoKg} kg`}
+            {c.viva && c.id && fato.propriedadeId && fato.status !== "ANULADO" && <ColostroCria criaId={c.id} propriedadeId={fato.propriedadeId} dataParto={fato.data} podeLancar={podeLancar} onMudou={onMudou}/>}
             {c.animalId && (
               <Button
                 secondary
@@ -180,7 +190,7 @@ export function DetalheFato({
             fato.grupo === "Parto" &&
             fato.status !== "ANULADO" && (
               <Button secondary onClick={() => setCorrigindo(true)}>
-                Corrigir parto
+                Corrigir / completar parto
               </Button>
             )}
           {podeLancar && fato.status !== "ANULADO" && (

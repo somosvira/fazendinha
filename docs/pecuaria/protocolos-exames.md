@@ -73,8 +73,14 @@ A remoção de `public.RegistroChuva` usa uma migration independente, sem CASCAD
 
 A migration complementar `20261014180000` preenche metadados de realização e regularização das tarefas sanitárias históricas pelo último vínculo, sem executar fatos novamente. Usa a data original com precisão DIA; registra separadamente o momento da conferência e conserva anulações, motivos, consumo e impressões. Tarefas dispensadas/participações canceladas não são reabertas pela migração.
 
+## Integração com visitas, elegibilidade e relatórios
+
+As visitas usam tarefas comuns em `ParticipanteVisita`, seleções dinâmicas versionadas e snapshots de impressão. A transcrição individual pode usar o tipo de exame da tarefa; a coletiva preserva campos personalizados por animal. A confirmação é por subconjuntos de até 100 participantes. A indicação de IATF abre a programação, sem iniciar o protocolo.
+
+Elegibilidade reprodutiva não tem padrão clínico presumido. `PoliticaElegibilidadeReprodutiva` guarda versões por sítio/vigência; `VinculoPoliticaCiclo` congela a versão no ciclo; `DecisaoElegibilidadeCiclo` registra liberação ou exceção com evidência. Ciclos em sítios nunca configurados exigem setup e vínculo explícitos, sem aplicação retroativa silenciosa. Relatórios PARTOS e INDICADORES persistem emissões em `SnapshotRelatorioReprodutivo` para reimpressão auditável. O contrato de [Reprodução V4](reproducao.md) descreve metodologia e limites.
+
 ## Validação
 
-Testes automatizados exercitam a cadeia vazia e uma conversão com V3/V4 misturadas, colisões de IDs, períodos conflitantes, resultados históricos, programas arquivados, participação sem grupo, snapshots e impressões preservados; cobrem também calendário, versões concorrentes, exames com várias observações, regularização, estoque e reenvio. A migração foi aplicada no banco local sem recarga, com conferência de contagens. A política vigente exige usar somente `fazendinha_seedatev3` para toda validação local; ensaios que recriam estrutura ficam no CI externo. Isso não certifica produção nem homologa a rotina da fazenda.
+Validação automatizada concluída para esta entrega: testes e builds de servidor e cliente passaram; também passaram os typechecks de seed e importação. Integrações locais foram executadas somente em `fazendinha_seedatev3`, com fixtures próprias e rollback, e as migrations foram aplicadas sem recriar o banco. A revisão visual automatizada não foi concluída por indisponibilidade da ferramenta. Isso não certifica produção nem substitui a homologação da rotina pela fazenda, que permanece pendente.
 
-O [HTML de conceitos](artefatos/conceitos-v4.html) apresenta o modelo implementado e sua relação com as telas. O [roteiro manual](artefatos/testes-v4-guia.html) mantém as marcações anteriores e acrescenta casos de padronização pendentes. Homologação pela fazenda permanece pendente.
+O [HTML de conceitos](artefatos/conceitos-v4.html) apresenta o modelo implementado e sua relação com as telas, inclusive os fluxos novos de visita, parto, elegibilidade e relatórios. O [roteiro manual](artefatos/testes-v4-guia.html) mantém as marcações anteriores e acrescenta casos de padronização pendentes. Homologação pela fazenda permanece pendente.

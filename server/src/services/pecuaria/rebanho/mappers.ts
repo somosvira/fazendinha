@@ -141,7 +141,19 @@ export interface HistoricoBaixaFicha {
   criadoPor: string | null;
 }
 
+type ContextoTemporal = import("../reproducao/contexto-animal.calc.js").ContextoAnimalNaData;
+export type ContextoProdutivoFicha = Pick<ContextoTemporal,
+  "dataReferencia" | "situacaoProdutiva" | "del" | "diasPosParto" | "diasDesdeConfirmacao" | "idadeGestacionalDias" | "partosRealizados" | "pendencias">;
+/** A ficha recebe somente o resumo clínico; referências internas ficam no serviço temporal. */
+export function mapearContextoProdutivoFicha(contexto: ContextoProdutivoFicha): ContextoProdutivoFicha {
+  const { dataReferencia, situacaoProdutiva, del, diasPosParto, diasDesdeConfirmacao,
+    idadeGestacionalDias, partosRealizados, pendencias } = contexto;
+  return { dataReferencia, situacaoProdutiva, del, diasPosParto, diasDesdeConfirmacao,
+    idadeGestacionalDias, partosRealizados, pendencias };
+}
+
 export interface AnimalFicha extends AnimalResumo {
+  contextoProdutivo?: ContextoProdutivoFicha | null;
   historicoPapeisReprodutivos?: Array<{ id: string; tipo: string; inicio: string; fim: string | null; origem: string; revogado: boolean }>;
   brincoEletronico: string | null;
   sisbov: string | null;

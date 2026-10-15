@@ -9,11 +9,11 @@ O domínio atual usa o schema PostgreSQL `pecuaria` e as rotas `/api/pecuaria/re
 | Rebanho | Identidade, lotes, localização/destino históricos, movimentação, categorias, baixa e auditoria |
 | Genética | Filiação, genitores externos, composição racial e materiais genéticos ligados a Produto |
 | Sanidade | Ocorrências, aplicações, carências, tipos/doenças/exames, protocolos publicados, ciclos, participantes e tarefas |
-| Reprodução V4 | IA, cobertura/exposição, TE, avaliação/gestação, parto/crias, lactação mínima, visitas e IATF |
+| Reprodução V4 | IA, cobertura/exposição, TE, avaliação/gestação, parto/crias, lactação mínima, colostro, visitas, planner e IATF |
 | Peso e manejo | Pesagem individual/coletiva, GMD, desmama e castração com histórico |
 | Nutrição | Receitas versionadas, vigências por lote, conferência/fechamento, participação animal e estorno |
 
-Produção/qualidade do leite e laboratório/FIV não estão implementados. Lactação mínima não equivale a controle leiteiro; papéis de doadora/receptora continuam distintos de situação reprodutiva. Formulação automática de dieta, prescrição clínica e integração com balança não fazem parte deste contrato.
+Produção/qualidade do leite e laboratório/FIV não estão implementados. Lactação mínima e fornecimento de colostro não equivalem a controle leiteiro; papéis de doadora/receptora continuam distintos de situação reprodutiva. Formulação automática de dieta, prescrição clínica e integração com balança não fazem parte deste contrato.
 
 O IDEAGRI é fonte da carga inicial e de reconciliação. O importador original cobre Rebanho/Genética; a ferramenta técnica V4 acrescenta prévia e reconciliação de reprodução. Executá-la em produção exige preparação própria; a entrega de código não significa carga realizada. Carga histórica V3 continua pendente. Não reintroduza o módulo anterior no schema `public`, sincronização contínua ou estruturas de estoque paralelo.
 
@@ -60,7 +60,7 @@ Serviços atuais: `services/pecuaria/manejo/`, `services/pecuaria/nutricao/`; c�
 
 ## Homologação e dados locais
 
-Para a V4, o [material de conceitos e interface](artefatos/conceitos-v4.html) explica os fatos, relacionamentos e sua correspondência com as telas. O [roteiro manual V4](artefatos/testes-v4-guia.html) reúne preparação, passos, resultados esperados e registro/exportação de evidências. Todas as marcações começam pendentes e usam armazenamento próprio, sem alterar o guia V3. Os esquemas de interface no material conceitual são explicativos, não capturas de um ambiente homologado.
+Para a V4, o [material de conceitos e interface](artefatos/conceitos-v4.html) explica os fatos, relacionamentos e sua correspondência com as telas. O contrato de [reprodução](reproducao.md) registra contexto temporal, parto/pós-parto, visitas, elegibilidade e metodologia dos indicadores. O [roteiro manual V4](artefatos/testes-v4-guia.html) reúne preparação, passos, resultados esperados e registro/exportação de evidências. Todas as marcações começam pendentes e usam armazenamento próprio, sem alterar o guia V3. Os esquemas de interface no material conceitual são explicativos, não capturas de um ambiente homologado.
 
 O [guia sequencial V3](artefatos/testes-v3-guia.html) permanece em uso. Seus IDs, chave de armazenamento, resultados e anotações do navegador devem ser preservados. Homologação manual integral e carga histórica IDEAGRI V3 permanecem pendentes; a revisão documental não aprova testes. Um seed demonstrativo não é evidência de homologação.
 

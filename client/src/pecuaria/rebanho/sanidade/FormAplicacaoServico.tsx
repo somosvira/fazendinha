@@ -12,10 +12,11 @@ import { listarProdutos, type ProdutoDTO } from "../../../estoque/api";
 import { UNIDADES, UNIDADES_ORDENADAS, type UnidadeMedida } from "../../../lib/unidades";
 import { ConferenciaExecucao, type PreviaExecucao } from "./PreviaExecucao";
 import { AjusteIndividualAplicacao, type AjusteEtapaAplicacao } from "./AjusteIndividualAplicacao";
+import { dataHoraISO, inputHorarioIatf } from "../reproducao/CampoDataIatf";
 import { dataSanitaria, unidadeSanitaria } from "./rotulos";
 
 export type TarefaAplicacao = { id: string; produtoId: string; tipoAplicacaoId: string; dose: string; unidade: string; previstaPara?: string; via?: string; protocoloNome?: string; protocoloVersao?: number; animalId?: string };
-export function FormAplicacaoServico({ animalId, propriedadeId, onSalvo, onFechar, tarefa, tarefas, animais, onRegistrar, dataInicial, momentoIatf, conteudoExtra }: {
+export function FormAplicacaoServico({ animalId, propriedadeId, onSalvo, onFechar, tarefa, tarefas, animais, onRegistrar, dataInicial, momentoIatf, conteudoExtra, parametrosIniciais }: {
   animalId: string; propriedadeId: number; onSalvo: (id?: string, propriedadeIdFato?: number) => void; onFechar: () => void;
   /** Coordena registro atômico a partir de uma visita ou tarefa reprodutiva. */
   dataInicial?: string;
@@ -23,13 +24,14 @@ export function FormAplicacaoServico({ animalId, propriedadeId, onSalvo, onFecha
   momentoIatf?: string;
   conteudoExtra?: ReactNode;
   onRegistrar?: (input: AplicacaoInput) => Promise<void>;
+  parametrosIniciais?: { produtoId: string; dose: string; unidade: string; via?: string; tipoAplicacaoId?: string };
   tarefa?: TarefaAplicacao;
   tarefas?: TarefaAplicacao[];
   animais?: Array<{ id: string; brinco: string; propriedadeId: number | null }>;
 }) {
   const [leiteRelevante, setLeiteRelevante] = useState<boolean | null>(null);
   const [ficha, setFicha] = useState<AnimalFicha | null>(null);
-  useEffect(() => { let vivo = true; setFicha(null); setLeiteRelevante(null); if (animais?.length) return; buscarFichaAnimal(animalId).then((a) => { if (vivo) { setFicha(a); setLeiteRelevante(a.sexo === "F" && a.aptidao === "LEITE"); if (a.baixa && momentoIatf === undefined) setData(a.baixa.data.slice(0, 10)); } }).catch(() => { if (vivo) setLeiteRelevante(null); }); return () => { vivo = false; }; }, [animalId, animais?.length]);
+  useEffect(() => { let vivo = true; setFicha(null); setLeiteRelevante(null); if (animais?.length) return; buscarFichaAnimal(animalId, undefined, propriedadeId).then((a) => { if (vivo) { setFicha(a); setLeiteRelevante(a.sexo === "F" && a.aptidao === "LEITE"); if (a.baixa && momentoIatf === undefined) setData(a.baixa.data.slice(0, 10)); } }).catch(() => { if (vivo) setLeiteRelevante(null); }); return () => { vivo = false; }; }, [animalId, animais?.length, propriedadeId]);
   const [chave, setChave] = useState(() => crypto.randomUUID());
   const [desvio, setDesvio] = useState(false);
   const [motivoDesvio, setMotivoDesvio] = useState("");
@@ -42,10 +44,10 @@ export function FormAplicacaoServico({ animalId, propriedadeId, onSalvo, onFecha
   const [produtos, setProdutos] = useState<ProdutoDTO[]>([]);
   const [compras, setCompras] = useState<CompraDireta[]>([]);
   const [partidas, setPartidas] = useState<PartidaNutricional[]>([]);
-  const [tipoId, setTipoId] = useState(tarefa?.tipoAplicacaoId ?? "");
+  const [tipoId, setTipoId] = useState(tarefa?.tipoAplicacaoId ?? parametrosIniciais?.tipoAplicacaoId ?? "");
   const [origem, setOrigem] = useState<AplicacaoInput["origemInsumo"]>("BAIXA_ESTOQUE");
   const [servicoId, setServicoId] = useState("");
-  const [produtoId, setProdutoId] = useState(tarefa?.produtoId ?? "");
+  const [produtoId, setProdutoId] = useState(tarefa?.produtoId ?? parametrosIniciais?.produtoId ?? "");
   const [compraId, setCompraId] = useState("");
   const [cienciaValidadeDesconhecida, setCienciaValidadeDesconhecida] = useState(false);
   const [cienciaVencida, setCienciaVencida] = useState(false);
@@ -53,16 +55,18 @@ export function FormAplicacaoServico({ animalId, propriedadeId, onSalvo, onFecha
   const [partidaId, setPartidaId] = useState("");
   useEffect(() => { setCienciaVencida(false); setMotivoVencida(""); }, [partidaId]);
   const [data, setData] = useState(dataInicial ?? tarefa?.previstaPara?.slice(0, 10) ?? hoje());
-  const [hora, setHora] = useState(momentoIatf?.slice(11,16) ?? "");
+  const [hora, setHora] = useState(() => !momentoIatf || momentoIatf.length === 10 ? ""
+    : /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(momentoIatf) ? momentoIatf.slice(11, 16)
+      : inputHorarioIatf(momentoIatf).slice(11, 16));
   useEffect(() => { setCienciaVencida(false); setMotivoVencida(""); setCienciaValidadeDesconhecida(false); }, [data, hora]);
   const [nome, setNome] = useState("");
-  const [dose, setDose] = useState(tarefa?.dose ?? "");
-  const [unidade, setUnidade] = useState(tarefa?.unidade ?? "ML");
+  const [dose, setDose] = useState(tarefa?.dose ?? parametrosIniciais?.dose ?? "");
+  const [unidade, setUnidade] = useState(tarefa?.unidade ?? parametrosIniciais?.unidade ?? "ML");
   const [responsavel, setResponsavel] = useState("");
-  const [via, setVia] = useState(tarefa?.via ?? "");
+  const [via, setVia] = useState(tarefa?.via ?? parametrosIniciais?.via ?? "");
   const [ocorrenciaId, setOcorrenciaId] = useState("");
   const [ocorrencias, setOcorrencias] = useState<{ id: string; inicio: string; doenca: { nome: string } }[]>([]);
-  useEffect(() => { let vivo = true; setOcorrencias([]); setOcorrenciaId(""); if (animais?.length) return; reqSanidade<{ id: string; inicio: string; doenca: { nome: string } }[]>(`/ocorrencias?animalId=${animalId}&situacao=VALIDO`).then((v) => { if (vivo) setOcorrencias(v); }).catch((e: unknown) => { if (vivo) setErro(e instanceof Error ? e.message : String(e)); }); return () => { vivo = false; }; }, [animalId, animais]);
+  useEffect(() => { let vivo = true; setOcorrencias([]); setOcorrenciaId(""); if (animais?.length) return; reqSanidade<{ id: string; inicio: string; doenca: { nome: string } }[]>(`/ocorrencias?animalId=${animalId}&situacao=VALIDO`, undefined, propriedadeId).then((v) => { if (vivo) setOcorrencias(v); }).catch((e: unknown) => { if (vivo) setErro(e instanceof Error ? e.message : String(e)); }); return () => { vivo = false; }; }, [animalId, animais, propriedadeId]);
   const [justificativa, setJustificativa] = useState("");
   const [estadoLeite, setEstadoLeite] = useState<EstadoPrazo>("NAO_INFORMADO");
   const [estadoCarne, setEstadoCarne] = useState<EstadoPrazo>("NAO_INFORMADO");
@@ -97,7 +101,7 @@ export function FormAplicacaoServico({ animalId, propriedadeId, onSalvo, onFecha
     let vivo = true;
     setCarregando(true);
     setServicos([]); setCompras([]); setServicoId(""); setCompraId("");
-    Promise.all([listarServicos(sitioDoFato), listarTiposAplicacao(), listarProdutos({ ativo: true }), listarComprasDiretas(sitioDoFato)])
+    Promise.all([listarServicos(sitioDoFato), listarTiposAplicacao(sitioDoFato), listarProdutos({ ativo: true }, sitioDoFato), listarComprasDiretas(sitioDoFato)])
       .then(([s, t, p, c]) => { if (vivo) { setServicos(s); setTipos(t.filter((v) => v.ativo)); setProdutos(p); setCompras(c); setTipoId((id) => t.some((v) => v.id === id && v.ativo) ? id : ""); setProdutoId((id) => p.some((v) => v.id === id && v.usoSanitario) ? id : ""); } })
       .catch((e: unknown) => { if (vivo) setErro(e instanceof Error ? e.message : String(e)); })
       .finally(() => { if (vivo) setCarregando(false); });
@@ -162,7 +166,7 @@ export function FormAplicacaoServico({ animalId, propriedadeId, onSalvo, onFecha
     if (animais?.length && !conferindo) { setQuantidades((q) => Object.fromEntries(animais.map((a) => [a.id, q[a.id] ?? tarefas?.find((t) => t.animalId === a.id)?.dose ?? dose]))); setConferindo(true); setChave(crypto.randomUUID()); return; }
     emCurso.current = true; setSalvando(true);
     try {
-      const input: AplicacaoInput = { animalId, propriedadeId: sitioDoFato, tarefaId: tarefa?.id, data, aplicadaEm: hora ? new Date(`${data}T${hora}:00-03:00`).toISOString() : undefined, tipoAplicacaoId: tipoId, origemInsumo: origem,
+      const input: AplicacaoInput = { animalId, propriedadeId: sitioDoFato, tarefaId: tarefa?.id, data, aplicadaEm: hora ? dataHoraISO(`${data}T${hora}`) : undefined, tipoAplicacaoId: tipoId, origemInsumo: origem,
         nomeProdutoAplicado: nomeAplicado.trim(), dose, unidadeDose: unidade, responsavel: responsavel.trim() || undefined, via: via.trim() || undefined, ocorrenciaId: ocorrenciaId || undefined,
         produtoId: origem === "SEM_ORIGEM_JUSTIFICADA" && !tarefa ? undefined : produtoId || undefined,
         operacaoServicoId: servicoId || undefined, itemCompraDiretaId: origem === "COMPRA_CONSUMO_DIRETO" ? compraId : undefined,
@@ -182,18 +186,18 @@ export function FormAplicacaoServico({ animalId, propriedadeId, onSalvo, onFecha
       }) : [input];
       if (tarefa) {
         if (animais?.length) {
-          const fichas = await Promise.all(entradas.map((i) => buscarFichaAnimal(i.animalId)));
+          const fichas = await Promise.all(entradas.map((i) => buscarFichaAnimal(i.animalId, undefined, i.propriedadeId)));
           entradas.forEach((i, n) => { const f = fichas[n]; const l = f.historicoLocalizacoes?.find((l) => l.desde.slice(0, 10) <= i.data && (!l.ate || l.ate.slice(0, 10) > i.data || f.baixa?.data.slice(0, 10) === i.data && l.ate.slice(0, 10) === i.data)); if (!l?.propriedade) throw new Error(`${animais[n].brinco}: confira o sítio histórico na data realizada.`); i.propriedadeId = l.propriedade.id; });
         }
         const sitioExecucao = entradas[0].propriedadeId;
         if (entradas.some((i) => i.propriedadeId !== sitioExecucao)) throw new Error("As aplicações selecionadas precisam ocorrer no mesmo sítio nas datas realizadas.");
         const payload = { propriedadeId: sitioExecucao, itens: entradas.map((i) => ({ ...i, tipo: "APLICACAO", ...(desvio ? { desvio: { motivo: (ajustesEtapa[i.animalId]?.motivoDesvio || motivoDesvio).trim() } } : {}) })) };
-        if (!previaExecucao) { setPreviaExecucao(await reqSanidade<PreviaExecucao>("/tarefas/execucao/previa", { method: "POST", body: JSON.stringify(payload) })); return; }
+        if (!previaExecucao) { setPreviaExecucao(await reqSanidade<PreviaExecucao>("/tarefas/execucao/previa", { method: "POST", body: JSON.stringify(payload) }, sitioExecucao)); return; }
         if (previaExecucao.itens.some((i) => i.motivoObrigatorio && !i.motivo)) { setErro("Registre o motivo do desvio e confira uma nova prévia."); return; }
-        await reqSanidade("/tarefas/execucao/confirmacao", { method: "POST", body: JSON.stringify({ ...payload, chave, fingerprint: previaExecucao.fingerprint }) });
+        await reqSanidade("/tarefas/execucao/confirmacao", { method: "POST", body: JSON.stringify({ ...payload, chave, fingerprint: previaExecucao.fingerprint }) }, sitioExecucao);
         onSalvo(undefined, sitioExecucao); return;
       }
-      const resultado = await reqSanidade<{ aplicacoes: string[] }>("/aplicacoes/coletivas", { method: "POST", body: JSON.stringify({ chave, propriedadeId: animais?.length ? propriedadeId : sitioDoFato, itens: entradas }) });
+      const resultado = await reqSanidade<{ aplicacoes: string[] }>("/aplicacoes/coletivas", { method: "POST", body: JSON.stringify({ chave, propriedadeId: animais?.length ? propriedadeId : sitioDoFato, itens: entradas }) }, sitioDoFato);
       onSalvo(resultado?.aplicacoes?.[0], sitioDoFato);
     } catch (falha) { erroDaApi(falha); }
     finally { emCurso.current = false; setSalvando(false); }

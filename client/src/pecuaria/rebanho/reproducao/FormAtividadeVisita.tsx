@@ -38,7 +38,7 @@ export function FormAtividade({
   const [escolhidos, setEscolhidos] = useState<string[]>([]);
   const [tipo, setTipo] = useState<TipoAtividade>("AVALIACAO_REPRODUTIVA");
   const [nome, setNome] = useState("Avaliação reprodutiva");
-  const [extra, setExtra] = useState(false);
+  const [extra, setExtra] = useState(true);
   const [filtros, setFiltros] = useState<Record<string, string>>({});
   const [situacaoFiltro, setSituacaoFiltro] = useState("");
   const [motivosFiltro, setMotivosFiltro] = useState<string[]>([]);
@@ -92,7 +92,7 @@ export function FormAtividade({
   return (
     <PainelCadastro
       aberto
-      titulo="Adicionar atividade"
+      titulo="Adicionar outro atendimento"
       onFechar={onFechar}
       bloqueado={ocupado}
       rodape={

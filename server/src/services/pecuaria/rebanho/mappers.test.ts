@@ -133,3 +133,15 @@ describe("resumoAuditoria", () => {
     expect(resumoAuditoria("Raca", "XPTO")).toBe("Raca — XPTO");
   });
 });
+
+it("ficha conserva resumo produtivo sem referências ou fatos internos de outro sítio", async () => {
+  const { mapearContextoProdutivoFicha } = await import("./mappers.js");
+  const contexto = { dataReferencia: "2026-10-14", situacaoProdutiva: "LACTANTE" as const, del: 0,
+    diasPosParto: 0, diasDesdeConfirmacao: null, idadeGestacionalDias: null, partosRealizados: 1, pendencias: [],
+    lactacaoVigente: { id: "lactacao-anterior", propriedadeId: 99 }, gestacaoVigente: { id: "gestacao-anterior" },
+    ultimaTentativa: { id: "tentativa-anterior" } };
+  expect(mapearContextoProdutivoFicha(contexto)).toEqual({
+    dataReferencia: "2026-10-14", situacaoProdutiva: "LACTANTE" as const, del: 0, diasPosParto: 0,
+    diasDesdeConfirmacao: null, idadeGestacionalDias: null, partosRealizados: 1, pendencias: [],
+  });
+});

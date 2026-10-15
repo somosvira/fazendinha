@@ -1,3 +1,12 @@
+import * as elegibilidade from "../../services/pecuaria/reproducao/elegibilidade.js";
+import * as elegibilidadeSchemas from "../../services/pecuaria/reproducao/elegibilidade.schemas.js";
+import * as emissoes from "../../services/pecuaria/reproducao/emissoes-relatorios.js";
+import { consultaIndicadoresSchema } from "../../services/pecuaria/reproducao/indicadores.schemas.js";
+import { consultarIndicadoresReprodutivos } from "../../services/pecuaria/reproducao/indicadores.js";
+import { emitirRelatorioPartos, periodoRelatorioPartosSchema } from "../../services/pecuaria/reproducao/relatorio-partos.js";
+import * as colostro from "../../services/pecuaria/reproducao/colostro.js";
+import { fornecimentoColostroSchema, correcaoColostroSchema } from "../../services/pecuaria/reproducao/colostro.schemas.js";
+import { correcaoPartoAmpliadaSchema } from "../../services/pecuaria/reproducao/partos.schemas.js";
 import * as exames from "../../services/pecuaria/sanidade/exames.js";
 import { camposExameSchema } from "../../services/pecuaria/exames/formatos.js";
 import { Hono, type Context, type MiddlewareHandler } from "hono";
@@ -20,6 +29,7 @@ import * as s from "../../services/pecuaria/reproducao/schemas.js";
 import * as registros from "../../services/pecuaria/reproducao/registros.js";
 import * as correcoes from "../../services/pecuaria/reproducao/correcoes.js";
 import * as iatf from "../../services/pecuaria/reproducao/iatf.js";
+import { lactacaoHistoricaSchema, registrarLactacaoHistorica } from "../../services/pecuaria/reproducao/lactacoes.js";
 export const validarV4 = <T extends z.ZodTypeAny>(schema: T) =>
   zValidator("json", schema, (r, c) =>
     !r.success
@@ -127,6 +137,35 @@ export const protegerCustosV4: MiddlewareHandler = async (c, next) => {
 };
 export const reproducaoRouter = new Hono()
   .use("*", protegerCustosV4)
+  .get("/colostro", async (c) => {
+    try {
+      const criaId = s.uuid.parse(c.req.query("criaId"));
+      const propriedadeId = s.sitio.parse(await resolverEscopoLeitura(c));
+      return c.json(await colostro.listarColostro(criaId, propriedadeId));
+    } catch (e) { return falhaV4(c, e); }
+  })
+  .post("/colostro", validarV4(fornecimentoColostroSchema), async (c) => {
+    try { const b = c.req.valid("json");
+      return c.json(await colostro.registrarColostro({ ...b,
+        propriedadeId: await resolverEscopoEscrita(c, b.propriedadeId),
+      }, usuarioV4(c)), 201);
+    } catch (e) { return falhaV4(c, e); }
+  })
+  .patch("/colostro/:id", validarV4(correcaoColostroSchema), async (c) => {
+    try { const b = c.req.valid("json");
+      return c.json(await colostro.corrigirColostro(s.uuid.parse(c.req.param("id")), { ...b,
+        propriedadeId: await resolverEscopoEscrita(c, b.propriedadeId),
+      }, usuarioV4(c)));
+    } catch (e) { return falhaV4(c, e); }
+  })
+  .post("/lactacoes", validarV4(lactacaoHistoricaSchema), async (c) => {
+    try {
+      const b = c.req.valid("json");
+      return c.json(await registrarLactacaoHistorica({ ...b,
+        propriedadeId: await resolverEscopoEscrita(c, b.propriedadeId),
+      }, usuarioV4(c)), 201);
+    } catch (e) { return falhaV4(c, e); }
+  })
   .get("/", async (c) => {
     try {
       const animalId = c.req.query("animalId");
@@ -265,13 +304,13 @@ export const reproducaoRouter = new Hono()
     try {
       const b = c.req.valid("json");
       return c.json(
-        await registros.criarParto(
+        apresentarV4(c, await registros.criarParto(
           {
             ...b,
             propriedadeId: await resolverEscopoEscrita(c, b.propriedadeId),
           },
           usuarioV4(c),
-        ),
+        )),
         201,
       );
     } catch (e) {
@@ -709,29 +748,19 @@ reproducaoRouter.post(
 );
 reproducaoRouter.post(
   "/partos/:id/correcao",
-  validarV4(
-    z
-      .object({
-        propriedadeId: s.sitio,
-        gestacaoId: s.uuid.nullish(),
-        tipo: z.enum(["NORMAL", "DISTOCICO", "ABORTO", "NATIMORTO"]).optional(),
-        observacao: z.string().trim().max(1000).nullish(),
-        motivo: s.motivo,
-      })
-      .strict(),
-  ),
+  validarV4(correcaoPartoAmpliadaSchema),
   async (c) => {
     try {
       const b = c.req.valid("json");
       return c.json(
-        await registros.corrigirParto(
+        apresentarV4(c, await registros.corrigirParto(
           c.req.param("id"),
           {
             ...b,
             propriedadeId: await resolverEscopoEscrita(c, b.propriedadeId),
           },
           usuarioV4(c),
-        ),
+        )),
       );
     } catch (e) {
       return falhaV4(c, e);
@@ -744,6 +773,8 @@ reproducaoRouter.post(
     z
       .object({
         propriedadeId: s.sitio,
+        chave: s.uuid.optional(),
+        versaoEsperada: z.number().int().positive().optional(),
         partoId: s.uuid.nullish(),
         inicio: s.data.optional(),
         encerradaEm: s.data.nullish(),
@@ -808,4 +839,58 @@ reproducaoRouter.post("/tarefas-iatf/:id/regularizacao",validarV4(s.regularizaca
 reproducaoRouter.get("/tarefas-iatf/:id/substitutos", async c => {
   try { return c.json(await iatf.substitutosTarefa(s.uuid.parse(c.req.param("id")), await resolverEscopoEscrita(c, Number(c.req.query("propriedadeId")) || undefined))); }
   catch (e) { return falhaV4(c, e); }
+});
+
+reproducaoRouter.get("/politicas-elegibilidade", async c => {
+  try { return c.json(await elegibilidade.listarPoliticasElegibilidade(s.sitio.parse(await resolverEscopoLeitura(c)))); }
+  catch(e) { return falhaV4(c,e); }
+});
+reproducaoRouter.post("/politicas-elegibilidade", validarV4(elegibilidadeSchemas.criarPoliticaElegibilidadeSchema), async c => {
+  try { const b=c.req.valid("json"); return c.json(await elegibilidade.criarPoliticaElegibilidade({ ...b,
+    propriedadeId:await resolverEscopoEscrita(c,b.propriedadeId) },usuarioV4(c)),201); }
+  catch(e) { return falhaV4(c,e); }
+});
+reproducaoRouter.post("/vinculos-politica-ciclo", validarV4(elegibilidadeSchemas.vincularPoliticaCicloSchema), async c => {
+  try { const b=c.req.valid("json"); return c.json(await elegibilidade.vincularPoliticaCiclo({ ...b,
+    propriedadeId:await resolverEscopoEscrita(c,b.propriedadeId) },usuarioV4(c)),201); }
+  catch(e) { return falhaV4(c,e); }
+});
+reproducaoRouter.post("/decisoes-elegibilidade", validarV4(elegibilidadeSchemas.decidirElegibilidadeCicloSchema), async c => {
+  try { const b=c.req.valid("json"); return c.json(await elegibilidade.decidirElegibilidadeCiclo({ ...b,
+    propriedadeId:await resolverEscopoEscrita(c,b.propriedadeId) },usuarioV4(c)),201); }
+  catch(e) { return falhaV4(c,e); }
+});
+reproducaoRouter.post("/decisoes-elegibilidade/:id/anular", validarV4(elegibilidadeSchemas.anularDecisaoElegibilidadeSchema), async c => {
+  try { const b=c.req.valid("json"); return c.json(await elegibilidade.anularDecisaoElegibilidade(s.uuid.parse(c.req.param("id")),{ ...b,
+    propriedadeId:await resolverEscopoEscrita(c,b.propriedadeId) },usuarioV4(c))); }
+  catch(e) { return falhaV4(c,e); }
+});
+reproducaoRouter.get("/animais/:id/elegibilidade", async c => {
+  try { return c.json(await elegibilidade.consultarElegibilidadeNaData(s.uuid.parse(c.req.param("id")),
+    s.sitio.parse(await resolverEscopoLeitura(c)),s.data.parse(c.req.query("data")))); }
+  catch(e) { return falhaV4(c,e); }
+});
+reproducaoRouter.get("/indicadores", async c => {
+  try { const b=consultaIndicadoresSchema.parse({ ...c.req.query(), propriedadeId: await resolverEscopoLeitura(c) });
+    return c.json(await consultarIndicadoresReprodutivos(b)); }
+  catch(e) { return falhaV4(c,e); }
+});
+reproducaoRouter.get("/relatorios/partos", async c => {
+  try { const b=periodoRelatorioPartosSchema.parse({inicio:c.req.query("inicio"),fim:c.req.query("fim")});
+    return c.json(await emitirRelatorioPartos({ ...b, propriedadeId:s.sitio.parse(await resolverEscopoLeitura(c)) })); }
+  catch(e) { return falhaV4(c,e); }
+});
+reproducaoRouter.get("/relatorios/emissoes", async c => {
+  try { const b=emissoes.listarEmissoesReprodutivasSchema.parse({ ...c.req.query(),propriedadeId:await resolverEscopoLeitura(c) });
+    return c.json(await emissoes.listarEmissoesReprodutivas(b.tipo,b.propriedadeId)); }
+  catch(e) { return falhaV4(c,e); }
+});
+reproducaoRouter.get("/relatorios/emissoes/:id", async c => {
+  try { return c.json(await emissoes.obterEmissaoReprodutiva(s.uuid.parse(c.req.param("id")),s.sitio.parse(await resolverEscopoLeitura(c)))); }
+  catch(e) { return falhaV4(c,e); }
+});
+reproducaoRouter.post("/relatorios/emissoes", validarV4(emissoes.criarEmissaoReprodutivaSchema), async c => {
+  try { const b=c.req.valid("json"); return c.json(await emissoes.criarEmissaoReprodutiva({ ...b,
+    propriedadeId:await resolverEscopoEscrita(c,b.propriedadeId) },usuarioV4(c)),201); }
+  catch(e) { return falhaV4(c,e); }
 });

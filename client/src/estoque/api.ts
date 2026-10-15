@@ -103,7 +103,7 @@ export interface ProdutoInput {
   perfilSanitario?: { carenciaLeiteHoras: number | null; carenciaCarneHoras: number | null; viaPadrao?: string | null; referenciaTecnica?: string | null };
   perfilNutricional?: { materiaSecaPercentual: number | null };
 }
-export const listarProdutos = (f?: { uso?: UsoProduto; q?: string; ativo?: boolean }) => req<ProdutoDTO[]>(`/estoque/produtos${qs(f)}`);
+export const listarProdutos = (f?: { uso?: UsoProduto; q?: string; ativo?: boolean }, propriedadeId?: number) => req<ProdutoDTO[]>(`/estoque/produtos${qs(f)}`, undefined, propriedadeId);
 export const criarProduto = (p: ProdutoInput) => req<ProdutoDTO>(`/estoque/produtos`, { method: "POST", body: JSON.stringify(p) });
 export const editarProduto = (id: string, p: Partial<ProdutoInput>) => req<ProdutoDTO>(`/estoque/produtos/${id}`, { method: "PATCH", body: JSON.stringify(p) });
 

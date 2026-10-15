@@ -178,6 +178,7 @@ export async function corrigirExame(id: string, propriedadeId: number, input: { 
     await travarAnimais(tx, [referencia.animalId]);
     const original = await tx.exameAnimal.findFirst({ where: { id, propriedadeId, status: "VALIDO" }, include: { interpretacao: { select: { id: true } }, resultados: { where: { vigente: true } } } });
     if (!original) throw new RebanhoError("NAO_ENCONTRADO", "Exame não encontrado ou anulado");
+    if (original.partoPosPartoId) throw new RebanhoError("CONFLITO", "Revise este escore pela correção do parto", "exameId");
     if (original.interpretacao) throw new RebanhoError("CONFLITO", "Este exame tem efeitos reprodutivos. Revise a avaliação e seus vínculos de gestação antes de corrigir ou anular", "exameId");
     const formato = original.formatoSnapshot as { tipoResultado: string; opcoes?: string[]; campos?: unknown };
     const multiplos = !input.anular && formato.tipoResultado === "MULTIPLO" ? validarObservacoesExame(formato.campos, input.resultados ?? []) : null;
