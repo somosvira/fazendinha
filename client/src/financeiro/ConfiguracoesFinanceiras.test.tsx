@@ -387,6 +387,8 @@ describe("ConfiguracoesFinanceiras — parceiros", () => {
     await montar("parceiros");
     fireEvent.click(screen.getByRole("button", { name: /Novo parceiro/ }));
     const painel = await screen.findByRole("dialog");
+    expect(within(painel).getByRole("checkbox", { name: "Fornecedor" }).getAttribute("aria-checked")).toBe("false");
+    fireEvent.click(within(painel).getByRole("checkbox", { name: "Fornecedor" }));
     await alterarControle(within(painel).getByLabelText("Nome / razão social"), { target: { value: "Cooperativa 2" } });
     await alterarControle(within(painel).getByLabelText("CPF/CNPJ"), { target: { value: "11.222.333/0001-81" } });
     fireEvent.click(within(painel).getByRole("button", { name: "Criar parceiro" }));

@@ -5,7 +5,7 @@ import { SubTabs } from "../../../components/SubTabs";
 import { navegarPara } from "../../../router";
 import { useEffect, useRef, useState } from "react";
 import {
-  Eye, Check, Ban, MoreHorizontal, SlidersHorizontal,
+  Eye, Check, Ban, MoreHorizontal, Search, SlidersHorizontal,
 } from "lucide-react";
 import {
   Button, CabecalhoTabela,
@@ -111,7 +111,7 @@ type Painel =
       id: string;
     };
 
-const classeAcao = "inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg border border-border text-ink hover:bg-surface-2";
+const classeAcao = "inline-flex min-h-10 min-w-10 items-center justify-center gap-1.5 rounded-lg border border-border px-2 text-sm text-ink hover:bg-surface-2";
 const ABAS: Aba[] = [
   "agenda",
   "ocorrencias",
@@ -146,7 +146,7 @@ import { DetalheSanitario } from "./DetalheSanitario";
 import { PainelDetalheSanitario } from "./PainelDetalheSanitario";
 import { dataAplicacaoSanitaria, dataSanitaria, nomeAnimalSanitario, resultadoExameSanitario } from "./rotulos";
 import { resumoCarencia } from "./CarenciasSanitarias";
-import { CarenciaIndicador, EstadoSanitario, ResumoPaginaSanitaria, rotuloTarefaSanitaria } from "./IndicadoresSanitarios";
+import { PrazoCarencia, EstadoSanitario, ResumoPaginaSanitaria, rotuloTarefaSanitaria } from "./IndicadoresSanitarios";
 import { AgendaRodadas } from "./AgendaRodadas";
 import { FormRodada } from "./FormRodada";
 import { ExecutarEtapa } from "./ExecutarEtapa";
@@ -634,9 +634,11 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
   const filtrosTabela = (
     <div className="sanidade-filtros">
       <div className="sanidade-filtros-busca">
-        <label className="text-sm">
-          Buscar animal
+        <label className="sr-only" htmlFor="sanidade-buscar-animal">Buscar animal</label>
+        <div className="sanidade-campo-busca">
+          <Search aria-hidden />
           <input
+            id="sanidade-buscar-animal"
             className={classeInput}
             value={buscaAnimal}
             onChange={(e) => {
@@ -645,7 +647,7 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
             }}
             placeholder="Brinco ou nome"
           />
-        </label>
+        </div>
         <UiButton variant="outline" type="button" aria-expanded={filtrosAbertos} aria-controls="sanidade-filtros-adicionais" onClick={() => setFiltrosAbertos(v => !v)}><SlidersHorizontal size={16} aria-hidden />Filtros{[animalId, loteId, de, ate, situacao].filter(Boolean).length > 0 && <span>({[animalId, loteId, de, ate, situacao].filter(Boolean).length})</span>}</UiButton>
       </div>
       <div id="sanidade-filtros-adicionais" hidden={!filtrosAbertos} className="pec-filtros-sanidade fin-tabela-filtros grid gap-3">
@@ -772,6 +774,9 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
     { nome: "atrasadas", qtd: tarefasVisiveis.filter(t => rotuloTarefaSanitaria(t.situacao, t.previstaPara, hojeSanitario) === "Atrasada").length },
   ] : [];
   const resumoUI = !carregandoAba && !erroAba && resumoPagina.length > 0 && !(aba === "agenda" && visaoAgenda === "rodadas") ? <ResumoPaginaSanitaria itens={resumoPagina} /> : null;
+  const atalhosSituacao = aba === "ocorrencias" ? [["", "Todas"], ["ABERTA", "Abertas"], ["ENCERRADA", "Encerradas"]]
+    : aba === "exames" ? [["", "Todos"], ["AGUARDANDO_RESULTADO", "Aguardando resultado"], ["RESULTADO_INFORMADO", "Com resultado"]]
+    : aba === "agenda" && visaoAgenda === "tarefas" ? [["", "Todas"], ["ATRASADA", "Atrasadas"], ["PENDENTE", "Pendentes"]] : [];
   return (
     <PaginaFinanceira><div className="sanidade-pagina">
       {executandoEtapa && <ExecutarEtapa tarefas={executandoEtapa} onFechar={() => setExecutandoEtapa(null)} onSalvo={() => { setExecutandoEtapa(null); setRevisao((v) => v + 1); }} />}
@@ -797,11 +802,11 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
         />
       )}
       <PageHeader eyebrow=""
-        titulo="Sanidade"
+        titulo={aba === "agenda" && visaoAgenda === "rodadas" && rodadaId ? "Ciclo sanitário" : "Sanidade"}
         descricao="Agenda e acompanhamento sanitário do rebanho."
         acao={<div className="flex flex-wrap gap-2"><Button secondary onClick={() => navegarPara("/configuracoes/pecuaria/sanidade/protocolos")}>Gerenciar protocolos</Button>{podeGerenciarServicos && <Button secondary onClick={() => setRateando(true)}>Gerenciar procedimentos</Button>}</div>}
       />
-      <div className="sanidade-navegacao" ref={abasSanidade}>
+      {!(aba === "agenda" && visaoAgenda === "rodadas" && rodadaId) && <div className="sanidade-navegacao" ref={abasSanidade}>
       <SubTabs variant="financeiro" ariaLabel="Sanidade"
         className="sanidade-abas-principais"
         active={aba}
@@ -819,7 +824,7 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
           { id: "carencias", label: "Carências" },
         ]}
       />
-      </div>
+      </div>}
       <ErrorBox erro={erro} />
       {aplicacaoSalvaId && <p role="status" className="mt-3">Aplicação salva. A lista segue os filtros atuais. <button type="button" className="underline" onClick={() => abrirDetalhe("aplicacao", aplicacaoSalvaId, aplicacaoSalvaPropriedadeId)}>Ver aplicação salva</button></p>}
       {erro && (
@@ -828,11 +833,12 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
         </Button>
       )}
       <Panel className="overflow-hidden sanidade-lista">
-        {aba === "agenda" && <div className="sanidade-agenda-visoes"><SubTabs variant="financeiro" ariaLabel="Visão da agenda" active={visaoAgenda} onSelect={v => { setVisaoAgenda(v); setPagina(1); }} tabs={[{ id: "rodadas", label: "Ciclos" }, { id: "tarefas", label: "Tarefas" }]} /></div>}
+        {aba === "agenda" && !rodadaId && <div className="sanidade-agenda-visoes"><SubTabs variant="financeiro" ariaLabel="Visão da agenda" active={visaoAgenda} onSelect={v => { setVisaoAgenda(v); setPagina(1); }} tabs={[{ id: "rodadas", label: "Ciclos" }, { id: "tarefas", label: "Tarefas" }]} /></div>}
         {!(aba === "agenda" && visaoAgenda === "rodadas") && aba !== "aplicacoes" && <>
-          <CabecalhoTabela titulo={aba === "agenda" ? "Tarefas de protocolos" : aba === "ocorrencias" ? "Ocorrências sanitárias" : aba === "exames" ? "Exames sanitários" : "Carências sanitárias"} acao={podeLancar && aba !== "carencias" ? <Button onClick={() => abrir({ tipo: aba === "agenda" ? "protocolo" : aba === "ocorrencias" ? "ocorrencia" : "exame" })}>{aba === "agenda" ? "Iniciar protocolo" : aba === "ocorrencias" ? "Nova ocorrência" : "Registrar coleta / exame"}</Button> : undefined} />
-          {resumoUI}
+          <CabecalhoTabela titulo={aba === "agenda" ? "Tarefas de protocolos" : aba === "ocorrencias" ? "Ocorrências sanitárias" : aba === "exames" ? "Exames sanitários" : "Carências sanitárias"} acao={resumoUI || (podeLancar && aba !== "carencias") ? <div className="flex flex-wrap items-center justify-end gap-3">{resumoUI}{podeLancar && aba !== "carencias" && <Button onClick={() => abrir({ tipo: aba === "agenda" ? "protocolo" : aba === "ocorrencias" ? "ocorrencia" : "exame" })}>{aba === "agenda" ? "Iniciar protocolo" : aba === "ocorrencias" ? "Nova ocorrência" : "Registrar coleta / exame"}</Button>}</div> : undefined} />
           {filtrosTabela}
+          {atalhosSituacao.length > 0 && <div className="sanidade-carencias-atalhos" aria-label="Atalhos de situação">{atalhosSituacao.map(([valor, rotulo]) => <button type="button" key={valor} aria-pressed={situacao === valor} onClick={() => { setSituacao(valor); setPagina(1); }}>{rotulo}</button>)}</div>}
+          {aba === "carencias" && !animal && <div className="sanidade-carencias-atalhos" aria-label="Filtrar carências por situação">{[["", "Todas"], ["CARÊNCIA_VIGENTE", "Carências vigentes"], ["CARÊNCIA_DESCONHECIDA", "Prazos desconhecidos"]].map(([valor, rotulo]) => <button type="button" key={valor} aria-pressed={situacao === valor} onClick={() => { setSituacao(valor); setPagina(1); }}>{rotulo}</button>)}</div>}
         </>}
       {erroAba && (
         <div className="mt-4">
@@ -846,8 +852,9 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
         <>
           {aba === "agenda" && (
             <>
-              {visaoAgenda === "rodadas" ? <AgendaRodadas filtrosUI={filtrosTabela} filtros={{ animalId, buscaAnimal, loteId, de, ate, situacao, pagina, porPagina: 20 }} podeLancar={podeLancar} recarregarToken={revisao} onAcao={(acao, t) => { if (acao === "consultar") { abrirDetalhe("execucao", t.execucaoId, t.execucao.propriedadeId); return; } setAnimalDaAcao({ animalId: t.execucao.animalId, propriedadeId: t.propriedadeAtualId ?? t.execucao.propriedadeId }); abrir({ tipo: acao, id: acao === "cancelar" ? t.execucaoId : t.id }); }} rodadaId={rodadaId} onAbrir={setRodadaId} onExecutar={setExecutandoEtapa} /> : <>
-              <TabelaFinanceira rotulo="Tarefas de protocolos" itens={tarefas.filter(t => noPeriodo(t.previstaPara, t.situacao))} chaveDe={t => t.id} barraRolagemSuperior colunas={[
+              {visaoAgenda === "tarefas" && <p className="px-4 py-2 text-sm text-ink-3">Prioridade nesta página: tarefas atrasadas primeiro, depois por data prevista. Use o filtro Atrasadas para consultar o conjunto completo.</p>}
+              {visaoAgenda === "rodadas" ? <AgendaRodadas filtrosUI={filtrosTabela} filtros={{ animalId, buscaAnimal, loteId, de, ate, situacao, pagina, porPagina: 20 }} podeLancar={podeLancar} recarregarToken={revisao} onAcao={(acao, t) => { if (acao === "consultar") { abrirDetalhe("execucao", t.execucaoId, t.execucao.propriedadeId); return; } setAnimalDaAcao({ animalId: t.execucao.animalId, propriedadeId: t.propriedadeAtualId ?? t.execucao.propriedadeId }); abrir({ tipo: acao, id: acao === "cancelar" ? t.execucaoId : t.id }); }} rodadaId={rodadaId} onAbrir={(id) => { const url = new URL(window.location.href); if (id) url.searchParams.set("rodadaId", id); else url.searchParams.delete("rodadaId"); for (const chave of ["etapaId", "paginaEtapas", "paginaParticipantes", "paginaTarefas"]) url.searchParams.delete(chave); navegarPara(url.pathname + url.search); setRodadaId(id); }} onExecutar={setExecutandoEtapa} /> : <>
+              <TabelaFinanceira rotulo="Tarefas de protocolos" itens={tarefas.filter(t => noPeriodo(t.previstaPara, t.situacao)).sort((a, b) => Number(rotuloTarefaSanitaria(b.situacao, b.previstaPara, hojeSanitario) === "Atrasada") - Number(rotuloTarefaSanitaria(a.situacao, a.previstaPara, hojeSanitario) === "Atrasada") || a.previstaPara.localeCompare(b.previstaPara))} chaveDe={t => t.id} barraRolagemSuperior colunas={[
                 { chave: "animal", titulo: "Animal", principal: true, larguraMinima: 160, celula: t => t.execucao.animal ? nomeAnimalSanitario(t.execucao.animal) : nomeAnimal(t.execucao.animalId) },
                 { chave: "protocolo", titulo: "Protocolo / ciclo", larguraMinima: 260, celula: t => <>{t.execucao.protocolo.nome} · v{t.execucao.protocolo.versao}<div className="mt-1 text-xs text-muted-foreground">{t.execucao.rodada?.nome ?? t.rodada?.nome ?? "Sem ciclo"} · {t.parametros.tipoAplicacaoNomeSnapshot ?? (t.parametros.tipo === "APLICACAO" ? "Aplicação" : "Exame")}</div></> },
                 { chave: "prevista", titulo: "Previsão / situação", larguraMinima: 150, celula: t => <div className="sanidade-previsao"><span>{dataSanitaria(t.previstaPara)}</span><EstadoSanitario tom={t.situacao === "PENDENTE" ? (rotuloTarefaSanitaria(t.situacao, t.previstaPara, hojeSanitario) === "Atrasada" ? "alerta" : "atencao") : t.situacao === "REALIZADA" ? "verde" : "neutro"}>{rotuloTarefaSanitaria(t.situacao, t.previstaPara, hojeSanitario)}</EstadoSanitario></div> },
@@ -872,10 +879,9 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
               <TabelaFinanceira rotulo="Ocorrências sanitárias" itens={ocorrencias.filter((o) => noPeriodo(o.inicio, o.status, o.fim))} chaveDe={(o) => o.id} barraRolagemSuperior onAbrir={(o) => abrirDetalhe("ocorrencia", o.id, o.propriedadeId)} colunas={[
                 { chave: "animal", titulo: "Animal", principal: true, celula: (o) => <a className="underline" href={`/pecuaria/rebanho/animais/${encodeURIComponent(o.animalId)}`} onClick={(e) => e.stopPropagation()}>{nomeAnimal(o.animalId)}</a> },
                 { chave: "doenca", titulo: "Doença", celula: (o) => o.doenca.nome },
-                { chave: "inicio", titulo: "Início", celula: (o) => dataSanitaria(o.inicio) },
-                { chave: "fim", titulo: "Fim", celula: (o) => o.fim ? dataSanitaria(o.fim) : "—" },
+                { chave: "periodo", titulo: "Período", larguraMinima: 180, celula: (o) => <><div>Início {dataSanitaria(o.inicio)}</div><div className="text-xs text-ink-3">{o.fim ? `Fim ${dataSanitaria(o.fim)}` : "Sem encerramento"}</div></> },
                 { chave: "situacao", titulo: "Situação", celula: (o) => <EstadoSanitario tom={o.status === "ANULADO" ? "neutro" : o.fim ? "verde" : "atencao"}>{o.status === "ANULADO" ? "Anulada" : o.fim ? "Encerrada" : "Aberta"}</EstadoSanitario> },
-                { chave: "acoes", titulo: "Ações", acoes: true, celula: (o) => <div className="flex gap-2" onClick={(e) => e.stopPropagation()}><button type="button" className={classeAcao} aria-label="Ver detalhes da ocorrência" title="Ver detalhes" onClick={() => abrirDetalhe("ocorrencia", o.id, o.propriedadeId)}><Eye size={16} /></button>{podeLancar && o.status === "VALIDO" && <>{!o.fim && <button type="button" className={classeAcao} aria-label="Encerrar ocorrência" title="Encerrar" onClick={() => { setAnimalDaAcao({ animalId: o.animalId, propriedadeId: o.propriedadeId }); abrir({ tipo: "encerrar", id: o.id }); }}><Check size={16} /></button>}<button type="button" className={classeAcao} aria-label="Anular ocorrência" title="Anular" onClick={() => { setAnimalDaAcao({ animalId: o.animalId, propriedadeId: o.propriedadeId }); abrir({ tipo: "anular-ocorrencia", id: o.id }); }}><Ban size={16} /></button></>}</div> },
+                { chave: "acoes", titulo: "Ações", acoes: true, celula: (o) => <div className="flex gap-2" onClick={(e) => e.stopPropagation()}><button type="button" className={classeAcao} aria-label="Ver detalhes da ocorrência" title="Ver detalhes" onClick={() => abrirDetalhe("ocorrencia", o.id, o.propriedadeId)}><Eye size={16} aria-hidden /><span>Abrir</span></button>{podeLancar && o.status === "VALIDO" && <>{!o.fim && <button type="button" className={classeAcao} aria-label="Encerrar ocorrência" title="Encerrar" onClick={() => { setAnimalDaAcao({ animalId: o.animalId, propriedadeId: o.propriedadeId }); abrir({ tipo: "encerrar", id: o.id }); }}><Check size={16} aria-hidden /><span>Encerrar</span></button>}<button type="button" className={classeAcao} aria-label="Anular ocorrência" title="Anular" onClick={() => { setAnimalDaAcao({ animalId: o.animalId, propriedadeId: o.propriedadeId }); abrir({ tipo: "anular-ocorrencia", id: o.id }); }}><Ban size={16} aria-hidden /><span>Anular</span></button></>}</div> },
               ]} />
               {!carregandoAba && !erroAba && !ocorrencias.length && (
                 <p className="p-4">Nenhuma ocorrência encontrada para os filtros atuais.</p>
@@ -910,28 +916,26 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
           )}
           {aba === "carencias" && animal && <SanidadeAnimal animalId={animalId} propriedadeId={animal.propriedade?.id ?? null} podeLancar={podeLancar} recarregarToken={revisao} onMudou={atualizarAplicacao} />}
           {aba === "carencias" && !animal && (
-            <>
-              <TabelaFinanceira rotulo="Carências sanitárias" itens={carencias.filter(c => !situacao || (situacao === "CARÊNCIA_VIGENTE" ? [c.leite, c.carne].some(p => p.estado === "CONHECIDO" && new Date(p.ate).getTime() > agoraCarencias) : [c.leite, c.carne].some(p => p.estado === "NAO_INFORMADO")))} chaveDe={c => c.animal.id} barraRolagemSuperior colunas={[
-                { chave: "animal", titulo: "Animal", principal: true, larguraMinima: 240, celula: c => <a className="font-medium text-primary hover:underline" href={`/pecuaria/sanidade?aba=carencias&animalId=${c.animal.id}`}>{nomeAnimalSanitario(c.animal)}</a> },
-                { chave: "leite", titulo: "Leite", larguraMinima: 240, celula: c => <><CarenciaIndicador estado={c.leite} agora={agoraCarencias} revisao={c.revisaoLeitePendente} />{c.revisaoLeitePendente && <p className="sanidade-orientacao-especifica">Finalidade alterada: revise a aplicabilidade da carência de leite.</p>}</> },
-                { chave: "carne", titulo: "Abate / carne", larguraMinima: 240, celula: c => <CarenciaIndicador estado={c.carne} agora={agoraCarencias} /> },
+            <div className="sanidade-carencias-tabela">
+              <TabelaFinanceira cartaoComLinks rotulo="Carências sanitárias" itens={carencias.filter(c => !situacao || (situacao === "CARÊNCIA_VIGENTE" ? [c.leite, c.carne].some(p => p.estado === "CONHECIDO" && !p.prazoZero && new Date(p.ate).getTime() > agoraCarencias) : [c.leite, c.carne].some(p => p.estado === "NAO_INFORMADO")))} chaveDe={c => c.animal.id} onAbrir={c => navegarPara(`/pecuaria/sanidade?aba=carencias&animalId=${c.animal.id}`)} colunas={[
+                { chave: "animal", titulo: "Animal", principal: true, larguraMinima: 180, celula: c => <a className="font-medium text-primary hover:underline" href={`/pecuaria/sanidade?aba=carencias&animalId=${c.animal.id}`} onClick={e => e.stopPropagation()}>{nomeAnimalSanitario(c.animal)}</a> },
+                { chave: "leite", titulo: "Leite", larguraMinima: 240, larguraFlexivel: true, celula: c => <PrazoCarencia estado={c.leite} agora={agoraCarencias} revisao={c.revisaoLeitePendente} /> },
+                { chave: "carne", titulo: "Abate / carne", larguraMinima: 240, larguraFlexivel: true, celula: c => <PrazoCarencia estado={c.carne} agora={agoraCarencias} /> },
               ]} />
               {!carregandoAba && !erroAba && <p className="sanidade-nota-historico">O tratamento e seus lançamentos permanecem no histórico.</p>}
               {!carregandoAba && !erroAba && !carencias.length && (
                 <p className="p-4">Nenhuma carência encontrada para os filtros atuais.</p>
               )}
-            </>
+            </div>
           )}
-          {aba === "aplicacoes" && <SanidadeAnimal filtrosUI={<>{resumoUI}{filtrosTabela}</>} geral animalId={animalId} propriedadeId={animal?.propriedade?.id ?? null} podeLancar={podeLancar} recarregarToken={revisao} lista={aplicacoes.map((a) => ({ ...a, animal: a.animal ?? animais.find((v) => v.id === a.animalId) }))} abrirDetalhe={abrirDetalhe} onMudou={atualizarAplicacao} />}
+          {aba === "aplicacoes" && <SanidadeAnimal resumoUI={resumoUI} filtrosUI={filtrosTabela} geral animalId={animalId} propriedadeId={animal?.propriedade?.id ?? null} podeLancar={podeLancar} recarregarToken={revisao} lista={aplicacoes.map((a) => ({ ...a, animal: a.animal ?? animais.find((v) => v.id === a.animalId) }))} abrirDetalhe={abrirDetalhe} onMudou={atualizarAplicacao} />}
           {aba === "exames" && (
             <>
               <TabelaFinanceira rotulo="Exames sanitários" itens={exames.filter((e) => noPeriodo(e.data, e.status, null, e.resultadoTexto ?? e.resultadoNumero ?? e.resultadoOpcao))} chaveDe={(e) => e.id} barraRolagemSuperior onAbrir={(e) => abrirDetalhe("exame", e.id, e.propriedadeId)} colunas={[
-                { chave: "animal", titulo: "Animal", principal: true, celula: (e) => <a className="underline" href={`/pecuaria/rebanho/animais/${encodeURIComponent(e.animalId)}`} onClick={(v) => v.stopPropagation()}>{nomeAnimal(e.animalId)}</a> },
-                { chave: "tipo", titulo: "Tipo de exame", celula: (e) => e.tipoExame.nome },
-                { chave: "data", titulo: "Data", celula: (e) => dataSanitaria(e.data) },
-                { chave: "resultado", titulo: "Resultado", celula: resultadoExameSanitario },
-                { chave: "situacao", titulo: "Situação", celula: (e) => <EstadoSanitario tom={e.status === "ANULADO" ? "neutro" : resultadoExameSanitario(e) === "Aguardando resultado" ? "atencao" : "verde"}>{e.status === "ANULADO" ? "Anulado" : resultadoExameSanitario(e) === "Aguardando resultado" ? "Aguardando resultado" : "Resultado informado"}</EstadoSanitario> },
-                { chave: "acoes", titulo: "Ações", acoes: true, celula: (e) => <div className="flex gap-2" onClick={(v) => v.stopPropagation()}><button type="button" className={classeAcao} aria-label="Ver detalhes do exame" title="Ver detalhes" onClick={() => abrirDetalhe("exame", e.id, e.propriedadeId)}><Eye size={16} /></button>{podeLancar && e.status === "VALIDO" && <ResultadoExame exame={e} propriedadeId={e.propriedadeId} onSalvo={() => { setRevisao((v) => v + 1); setRecarregarDetalhe((v) => v + 1); }} />}</div> },
+                { chave: "animal", titulo: "Animal", principal: true, larguraMinima: 180, celula: (e) => <a className="underline" href={`/pecuaria/rebanho/animais/${encodeURIComponent(e.animalId)}`} onClick={(v) => v.stopPropagation()}>{nomeAnimal(e.animalId)}</a> },
+                { chave: "tipo", titulo: "Exame / coleta", larguraMinima: 200, celula: (e) => <><div>{e.tipoExame.nome}</div><div className="text-xs text-ink-3">{dataSanitaria(e.data)}</div></> },
+                { chave: "resultado", titulo: "Resultado / situação", larguraMinima: 240, larguraFlexivel: true, celula: (e) => <>{resultadoExameSanitario(e) !== "Aguardando resultado" && <div className="mb-1">{resultadoExameSanitario(e)}</div>}<EstadoSanitario tom={e.status === "ANULADO" ? "neutro" : resultadoExameSanitario(e) === "Aguardando resultado" ? "atencao" : "verde"}>{e.status === "ANULADO" ? "Anulado" : resultadoExameSanitario(e) === "Aguardando resultado" ? "Aguardando resultado" : "Resultado informado"}</EstadoSanitario></> },
+                { chave: "acoes", titulo: "Ações", acoes: true, celula: (e) => <div className="flex gap-2" onClick={(v) => v.stopPropagation()}><button type="button" className={classeAcao} aria-label="Ver detalhes do exame" title="Ver detalhes" onClick={() => abrirDetalhe("exame", e.id, e.propriedadeId)}><Eye size={16} aria-hidden /><span>Abrir</span></button>{podeLancar && e.status === "VALIDO" && <ResultadoExame exame={e} propriedadeId={e.propriedadeId} onSalvo={() => { setRevisao((v) => v + 1); setRecarregarDetalhe((v) => v + 1); }} />}</div> },
               ]} />
               {!carregandoAba && !erroAba && !exames.length && (
                 <p className="p-4">Nenhum exame encontrado para os filtros atuais.</p>
@@ -970,7 +974,7 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
         </>
       </Panel>
       {detalhe && (
-        <PainelDetalheSanitario onFechar={fecharDetalhe}>
+        <PainelDetalheSanitario tipo={detalhe.tipo} onFechar={fecharDetalhe}>
           {erroDetalhe ? (
             <><ErrorBox erro={erroDetalhe} /><Button secondary onClick={() => setRecarregarDetalhe((v) => v + 1)}>Tentar novamente</Button></>
           ) : detalheConteudo == null ? (

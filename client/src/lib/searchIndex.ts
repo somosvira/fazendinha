@@ -42,10 +42,10 @@ export interface ResultadoBusca {
 // replicamos aqui para o usuário achar pelos dois nomes.
 export const COMANDOS: Comando[] = [
   // — Financeiro (grupo "Visão & gestão" / abas do ABAS) —
-  { id: "fin-dashboard", tab: "dashboard", label: "Dashboard", grupo: "Financeiro", sinonimos: ["painel", "visão geral", "início", "home", "executivo"], descricao: "Visão executiva, gráficos e números" },
-  { id: "fin-gastos", tab: "gastos", label: "Gastos", grupo: "Financeiro", sinonimos: ["despesa", "despesas", "custo", "custos", "saída", "saídas", "lançamentos", "notas"], descricao: "Tabela de lançamentos e notas fiscais" },
-  { id: "fin-lancar", tab: "lancar", label: "Lançar", grupo: "Financeiro", sinonimos: ["lançamento", "registrar", "entrada", "receita", "saída", "nova nota"], descricao: "Registrar entrada (receita) ou saída (gasto)" },
-  { id: "fin-caixinha", tab: "caixinha", label: "Caixinha", grupo: "Financeiro", sinonimos: ["fundo fixo", "dinheiro", "troco", "caixa pequeno", "vale"], descricao: "Fundo fixo em dinheiro — entradas, saídas e saldo" },
+  { id: "fin-dashboard", tab: "dashboard", label: "Visão geral", grupo: "Financeiro", sinonimos: ["dashboard", "painel", "início", "home", "executivo"], descricao: "Resultados, saldos e compromissos do período" },
+  { id: "fin-gastos", tab: "gastos", label: "Compromissos", grupo: "Financeiro", sinonimos: ["gastos", "despesa", "despesas", "custo", "custos", "saída", "saídas", "lançamentos", "notas"], descricao: "Valores a pagar e a receber" },
+  { id: "fin-lancar", tab: "lancar", label: "Operações", grupo: "Financeiro", sinonimos: ["lançar", "lançamento", "registrar", "entrada", "receita", "saída", "nova nota", "nova operação"], descricao: "Fatos de negócio e seus efeitos financeiros e físicos" },
+  { id: "fin-caixinha", tab: "caixinha", label: "Contas e extratos", grupo: "Financeiro", sinonimos: ["caixinha", "fundo fixo", "dinheiro", "troco", "caixa pequeno", "vale"], descricao: "Saldos e movimentos das contas" },
   // "fin-plano"/"fin-ia" removidos: abas Categorias e IA financeira ocultas até
   // terem backend real (ver data/acessos.ts).
   { id: "fin-relatorio", tab: "relatorio", label: "Relatórios", grupo: "Financeiro", sinonimos: ["central de relatórios", "relatório gerencial", "dre", "fluxo de caixa"], descricao: "Central de relatórios de toda a fazenda" },
@@ -62,13 +62,13 @@ export const COMANDOS: Comando[] = [
 
 
   // — Administração (rodapé da sidebar) —
-  { id: "adm-cadastros", tab: "cadastros", label: "Cadastros", grupo: "Administração", sinonimos: ["produtos", "fornecedores", "clientes", "registro"] },
+  { id: "adm-cadastros", tab: "cadastros", label: "Configurações financeiras", grupo: "Administração", sinonimos: ["cadastros", "produtos", "fornecedores", "clientes", "registro"] },
   { id: "adm-config", tab: "config", label: "Configurações", grupo: "Administração", sinonimos: ["config", "ajustes", "preferências", "setup"] },
   { id: "adm-sitios", tab: "sitios", label: "Sítios", grupo: "Administração", sinonimos: ["sítio", "propriedades", "propriedade", "fazendas", "unidades", "cadastrar sítio"] },
   { id: "adm-acessos", tab: "acessos", label: "Acessos", grupo: "Administração", sinonimos: ["permissões", "usuários", "perfis", "convidar", "permissão", "papéis"] },
 
   // — Ações (atalhos para a aba certa) —
-  { id: "acao-lancar-gasto", tab: "lancar", label: "Lançar gasto", grupo: "Ações", acao: true, sinonimos: ["nova despesa", "registrar saída", "novo lançamento", "lançar despesa", "registrar gasto"], descricao: "Registrar uma nova saída" },
+  { id: "acao-lancar-gasto", tab: "lancar", label: "Abrir operações", grupo: "Ações", acao: true, sinonimos: ["nova despesa", "registrar saída", "novo lançamento", "lançar despesa", "registrar gasto"], descricao: "Consultar operações e iniciar um novo registro" },
   { id: "acao-relatorio-gerencial", tab: "relatorio", label: "Relatório financeiro gerencial", grupo: "Ações", acao: true, sinonimos: ["relatório gerencial", "saldo por conta", "compromissos", "exportar pdf", "exportar csv", "relatório financeiro"], descricao: "Montar e exportar o relatório financeiro do período" },
   { id: "acao-relatorio", tab: "relatorio", label: "Abrir relatórios", grupo: "Ações", acao: true, sinonimos: ["criar relatório", "exportar", "pdf", "csv", "fechamento"], descricao: "Abrir a central de relatórios" },
   { id: "acao-cadastros", tab: "cadastros", label: "Cadastros", grupo: "Ações", acao: true, sinonimos: ["produtos", "fornecedores", "registrar cadastro"], descricao: "Abrir os cadastros" },

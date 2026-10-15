@@ -12,7 +12,7 @@ import { conferirReenvioOperacaoTx, hashConfirmacao } from "./idempotencia.js";
 import { procedimentosOperacaoServico } from "../pecuaria/sanidade/servicos.js";
 
 type OperacaoInput = z.infer<typeof operacaoSchema> & { propriedadeId: number; usuarioId?: number | null };
-type LiquidacaoInput = z.infer<typeof liquidacaoSchema> & { usuarioId?: number | null };
+type LiquidacaoInput = z.infer<typeof liquidacaoSchema> & { usuarioId?: number | null; propriedadeId?: number };
 type TransferenciaInput = z.infer<typeof transferenciaSchema> & { propriedadeId: number; usuarioId?: number | null };
 type TransacaoAvulsaInput = z.infer<typeof transacaoAvulsaSchema> & { propriedadeId: number; usuarioId?: number | null };
 type ContextoEstorno = { propriedadeId: number; usuarioId?: number | null };
@@ -307,11 +307,11 @@ async function bloquearOperacao(tx: Prisma.TransactionClient, id: string, propri
   return linhas.length > 0;
 }
 
-async function compromissoParaLiquidar(tx: Prisma.TransactionClient, id: string, valor: Prisma.Decimal) {
+async function compromissoParaLiquidar(tx: Prisma.TransactionClient, id: string, valor: Prisma.Decimal, propriedadeId?: number) {
   const compromisso = await tx.compromissoFinanceiro.findUnique({
     where: { id }, include: { operacao: true, liquidacoes: { include: { transacao: true } } },
   });
-  if (!compromisso) throw new FinanceiroError("NAO_ENCONTRADO", "Compromisso não encontrado");
+  if (!compromisso || (propriedadeId != null && compromisso.operacao.propriedadeId !== propriedadeId)) throw new FinanceiroError("NAO_ENCONTRADO", "Compromisso não encontrado neste sítio");
   if (compromisso.operacao.status === "CANCELADA" || compromisso.status === "CANCELADO" || compromisso.status === "LIQUIDADO") {
     throw new FinanceiroError("CONFLITO", "Este compromisso não aceita nova liquidação");
   }
@@ -325,7 +325,7 @@ async function compromissoParaLiquidar(tx: Prisma.TransactionClient, id: string,
 export async function liquidarCompromisso(compromissoId: string, input: LiquidacaoInput) {
   return prisma.$transaction(async (tx) => {
     const valor = exigirPositivo(input.valor);
-    const { compromisso } = await compromissoParaLiquidar(tx, compromissoId, valor);
+    const { compromisso } = await compromissoParaLiquidar(tx, compromissoId, valor, input.propriedadeId);
     const tipo = compromisso.tipo === "PAGAR" ? "PAGAMENTO" : "RECEBIMENTO";
     const transacao = await criarTransacaoComMovimento(tx, {
       tipo, data: input.data, valor, descricao: input.descricao ?? `Liquidação do compromisso #${compromisso.seq}`,
@@ -336,7 +336,7 @@ export async function liquidarCompromisso(compromissoId: string, input: Liquidac
     await bloquearOperacao(tx, compromisso.operacaoId);
     // Releitura após o bloqueio: uma liquidação concorrente pode ter consumido o saldo.
     // A transação e seus movimentos ainda não estão confirmados; uma falha reverte tudo.
-    const { restante } = await compromissoParaLiquidar(tx, compromissoId, valor);
+    const { restante } = await compromissoParaLiquidar(tx, compromissoId, valor, input.propriedadeId);
     await tx.liquidacao.create({ data: { compromissoId, transacaoId: transacao.id, valor } });
     const novoRestante = restante.minus(valor);
     await tx.compromissoFinanceiro.update({ where: { id: compromissoId }, data: { status: novoRestante.isZero() ? "LIQUIDADO" : "PARCIAL" } });

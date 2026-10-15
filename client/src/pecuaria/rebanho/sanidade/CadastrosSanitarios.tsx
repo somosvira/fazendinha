@@ -2,9 +2,12 @@ import { SelectCampo } from "@/financeiro/SelectCampo";
 import { useEffect, useRef, useState } from "react";
 import { Pencil, Power, PowerOff } from "lucide-react";
 import { Button, ErrorBox, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
-import { CampoFormulario, classeInput, PainelCadastro } from "../../../financeiro/PainelCadastro";
+import { CampoFormulario, classeInput, PainelCadastro as PainelBase } from "../../../financeiro/PainelCadastro";
+import { BuscaLista } from "@/components/BuscaLista";
 import { listarTiposAplicacao, reqSanidade, salvarTipoAplicacao, type TipoAplicacao } from "./api";
 import { ProtocolosCadastro } from "./ProtocolosCadastro";
+
+const PainelCadastro = (props: Parameters<typeof PainelBase>[0]) => <PainelBase {...props} compacto />;
 
 export type Doenca = { id: string; nome: string; ativo: boolean };
 export type TipoExame = Doenca & { tipoResultado: "TEXTO" | "NUMERO" | "OPCAO"; unidade: string | null; opcoes: string[] | null; formatoBloqueado: boolean };
@@ -25,6 +28,7 @@ const lerAba = (): AbaCadastroSanitario => {
 export function CadastrosSanitarios({ podeLancar, cadastro, embutido = false }: { podeLancar: boolean; cadastro?: AbaCadastroSanitario; embutido?: boolean }) {
   const [aba, setAba] = useState<AbaCadastroSanitario>(() => cadastro ?? lerAba());
   const [itens, setItens] = useState<Item[]>([]);
+  const [busca, setBusca] = useState("");
   const [versao, setVersao] = useState(0);
   const [painel, setPainel] = useState<{ tipo: Tipo; id?: string } | null>(null);
   const [nome, setNome] = useState("");
@@ -54,6 +58,7 @@ export function CadastrosSanitarios({ podeLancar, cadastro, embutido = false }: 
       .finally(() => { if (geracao.current === atual) setCarregando(false); });
     return () => { geracao.current++; };
   }, [aba, versao]);
+  useEffect(() => { setBusca(""); }, [aba]);
   function selecionar(proxima: AbaCadastroSanitario) {
     if (trava.current) return;
     const url = new URL(window.location.href);
@@ -85,6 +90,8 @@ export function CadastrosSanitarios({ podeLancar, cadastro, embutido = false }: 
     } finally { trava.current = false; setOcupado(false); }
   }
   const titulo = abas.find((a) => a.id === aba)!.nome;
+  const normalizar = (texto: string) => texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
+  const itensExibidos = itens.filter(item => normalizar(item.nome).includes(normalizar(busca.trim())));
   const novo = aba === "aplicacao" ? "Novo tipo de aplicação" : aba === "doenca" ? "Nova doença" : "Novo tipo de exame";
   function salvar() {
     if (!painel) return;
@@ -103,12 +110,15 @@ export function CadastrosSanitarios({ podeLancar, cadastro, embutido = false }: 
           {podeLancar && <Button disabled={ocupado || carregando} onClick={() => abrir(aba)}>{novo}</Button>}
         </div>
         {aba === "aplicacao" && <p className="px-4 pb-4 text-sm text-ink-3">Descrevem a finalidade, sem determinar estoque, Serviço ou carência. Renomear preserva o histórico.</p>}
+        {aba === "exame" && <p className="px-4 pb-4 text-sm text-ink-3">Após a primeira coleta, o formato do resultado fica bloqueado, mesmo se a coleta estiver pendente ou anulada. Isso preserva a interpretação do histórico.</p>}
+        <div className="px-4 pb-4"><BuscaLista rotulo={`Buscar ${titulo.toLocaleLowerCase("pt-BR")}`} placeholder="Buscar pelo nome" valor={busca} onChange={setBusca} /></div>
+        {!carregando && !erro && itens.length > 0 && !itensExibidos.length && <p role="status" className="px-4 pb-4 text-sm text-ink-3">Nenhum cadastro corresponde à busca. Altere ou limpe o nome pesquisado.</p>}
         <div className="px-4"><ErrorBox erro={erro} />{aviso && <p role="status" className="py-3 text-sm">{aviso}</p>}
           {ocupado && <p role="status" className="py-3 text-sm">Atualizando cadastro…</p>}
           {erro && !painel && <Button secondary disabled={ocupado} onClick={() => setVersao((v) => v + 1)}>Tentar novamente</Button>}
         </div>
         {carregando ? <p role="status" className="p-4">Carregando {titulo.toLowerCase()}…</p> : !erro && !itens.length ? <p className="p-4 text-sm text-ink-3">Nenhum cadastro. {podeLancar ? "Use o botão acima para cadastrar." : ""}</p> : <TabelaFinanceira
-          rotulo={titulo} itens={itens} chaveDe={(item) => item.id}
+          rotulo={titulo} itens={itensExibidos} chaveDe={(item) => item.id}
           colunas={[
             { chave: "nome", titulo: "Nome", principal: true, celula: (item) => item.nome },
             ...(aba === "exame" ? [{ chave: "formato", titulo: "Resultado", celula: (item: Item) => "tipoResultado" in item ? `${formatos[item.tipoResultado]}${item.unidade ? ` · ${item.unidade}` : ""}` : "—" }] : []),

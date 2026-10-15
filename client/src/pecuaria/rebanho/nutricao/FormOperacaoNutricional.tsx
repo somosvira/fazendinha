@@ -1,5 +1,5 @@
 import { SelectCampo } from "@/financeiro/SelectCampo";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button, ErrorBox, hoje, Panel } from "../../../financeiro/financeiro-ui";
 import { classeInput } from "../../../financeiro/PainelCadastro";
 import { DatePicker } from "../../../components/DatePicker";
@@ -40,22 +40,24 @@ function FormVigencia({ acao, lote, vigenciaId, onSalvo, onOcupado }: { acao: "a
   const [motivo, setMotivo] = useState("");
   const [ocupado, setOcupado] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const enviando = useRef(false);
   useEffect(() => { onOcupado(ocupado); }, [ocupado, onOcupado]);
   useEffect(() => { if (consulta.dados?.vigencia) setDesde(consulta.dados.vigencia.desde.slice(0, 10)); }, [consulta.dados?.vigencia]);
   const publicadas = consulta.dados?.dietas.filter((d) => d.publicadaEm) ?? [];
   async function salvar() {
-    if (ocupado || !consulta.dados) return;
+    if (enviando.current || !consulta.dados || !desde || (acao === "corrigir" && motivo.trim().length < 5)) return;
     if (acao === "atribuir" && !dietaId) { setErro("Selecione uma receita publicada."); return; }
-    setOcupado(true); setErro(null);
+    enviando.current = true; setOcupado(true); setErro(null);
     try {
       if (acao === "corrigir" && consulta.dados.vigencia) await corrigirVigencia(consulta.dados.vigencia.id, { propriedadeId: lote.propriedadeId, desde, motivo: motivo.trim() });
       else await atribuirDieta({ loteId: lote.id, propriedadeId: lote.propriedadeId, dietaId, desde });
       onSalvo();
-    } catch (e) { setErro(e instanceof Error ? e.message : String(e)); } finally { setOcupado(false); }
+    } catch (e) { setErro(e instanceof Error ? e.message : String(e)); } finally { enviando.current = false; setOcupado(false); }
   }
   return <><EstadoConsulta erro={consulta.erro} carregando={consulta.carregando} recarregar={consulta.carregar} />{consulta.dados && <form onSubmit={(e) => { e.preventDefault(); void salvar(); }}><fieldset disabled={ocupado} className="grid gap-4 mt-5"><ErrorBox erro={erro} />
     {acao === "atribuir" ? <label>Versão publicada<SelectCampo className={classeInput} required value={dietaId} onValueChange={(valorSelecionado) => setDieta(valorSelecionado)}><option value="">Selecione uma receita</option>{publicadas.map((d) => <option key={d.id} value={d.id}>{d.nome} · v{d.versao}</option>)}</SelectCampo>{!publicadas.length && <span className="nutricao-nota">Publique uma receita antes de atribuí-la.</span>}</label> : <p className="nutricao-aviso">{consulta.dados.vigencia?.dieta.nome} · v{consulta.dados.vigencia?.dieta.versao}<br />Início atual: {consulta.dados.vigencia && formatarDataBR(consulta.dados.vigencia.desde)}. Fechamentos afetados devem ser estornados antes.</p>}
     <label>Início da vigência<DatePicker value={desde} onChange={setDesde} /></label>
+    <p className="text-sm text-ink-3">Prévia: {acao === "atribuir" ? publicadas.find(d => d.id === dietaId)?.nome ?? "selecione a receita" : consulta.dados.vigencia?.dieta.nome} · {desde ? formatarDataBR(desde) : "informe a data"} · {lote.nome}.</p>
     {acao === "corrigir" && <label>Motivo da correção<textarea className={classeInput} required minLength={5} maxLength={500} value={motivo} onChange={(e) => setMotivo(e.target.value)} /></label>}
     <div><Button type="submit" disabled={ocupado || !desde || (acao === "atribuir" ? !dietaId : motivo.trim().length < 5)}>{ocupado ? "Salvando…" : acao === "corrigir" ? "Confirmar correção" : "Aplicar ao lote"}</Button></div>
   </fieldset></form>}</>;

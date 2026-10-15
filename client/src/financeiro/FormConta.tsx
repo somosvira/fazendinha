@@ -22,7 +22,7 @@ export function FormConta({ conta, aberto, ordemInicial = 0, onSalvo, onFechar }
   const [tipo, setTipo] = useState<TipoConta>(conta?.tipo ?? "BANCO");
   const [instituicao, setInstituicao] = useState(conta?.instituicao ?? "");
   const [identificacao, setIdentificacao] = useState(conta?.identificacao ?? "");
-  const [saldoAbertura, setSaldoAbertura] = useState(conta ? formatarValorMonetario(conta.saldoAbertura) : "");
+  const [saldoAbertura, setSaldoAbertura] = useState(conta?.saldoAbertura != null ? formatarValorMonetario(conta.saldoAbertura) : "");
   const [dataSaldoAbertura, setDataSaldoAbertura] = useState(conta?.dataSaldoAbertura.slice(0, 10) ?? hoje());
   const [incluirNoSaldoGeral, setIncluirNoSaldoGeral] = useState(conta?.incluirNoSaldoGeral ?? true);
   const [erros, setErros] = useState<ErrosCampo>({});
@@ -88,7 +88,7 @@ export function FormConta({ conta, aberto, ordemInicial = 0, onSalvo, onFechar }
         </div>
       </>}
       {tipo === "CAIXA" && <CamposCadastro prefixo="conta" campos={CAMPOS_CAIXA} valores={extras} onChange={(k, v) => setExtras((s) => ({ ...s, [k]: v }))} erros={erros} />}
-      <CampoFormulario id="conta-identificacao" rotulo="Identificação da conta" erro={erros.identificacao} ajuda="Agência, número da conta ou qualquer referência que ajude a reconhecer a conta.">{(p) => <Input {...p} value={identificacao} onChange={(e) => setIdentificacao(e.target.value)} placeholder="Ex.: Ag. 1234 · C/C 56789-0" className={classeInput} />}</CampoFormulario>
+      <CampoFormulario id="conta-identificacao" rotulo="Identificação da conta" erro={erros.identificacao} ajuda="Referência opcional para reconhecer a conta; não precisa repetir os dados bancários acima.">{(p) => <Input {...p} value={identificacao} onChange={(e) => setIdentificacao(e.target.value)} placeholder="Ex.: Conta de custeio" className={classeInput} />}</CampoFormulario>
       </section>
       <section className="grid gap-4 border-t border-border pt-4">
         <h3 className="text-sm font-semibold text-ink">Saldo e disponibilidade</h3>

@@ -12,7 +12,7 @@ export function rotaNutricao(params: Record<string, string | undefined> = {}) {
   return `/pecuaria/nutricao${query.size ? `?${query}` : ""}`;
 }
 export function LinkNutricional({ href, children, className = "nutricao-link" }: { href: string; children: ReactNode; className?: string }) {
-  return <a href={href} className={className} onClick={(e) => { if (!e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey && e.button === 0) { e.preventDefault(); navegarPara(href); } }}>{children}</a>;
+  return <a href={href} className={className} onClick={(e) => { e.stopPropagation(); if (!e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey && e.button === 0) { e.preventDefault(); navegarPara(href); } }}>{children}</a>;
 }
 type EstruturaCarregamentoNutricional = "lista" | "panorama" | "cartoes" | "detalhe";
 

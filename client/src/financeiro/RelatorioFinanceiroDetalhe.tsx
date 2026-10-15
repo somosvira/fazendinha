@@ -95,11 +95,11 @@ export function RelatorioFinanceiroDetalhe({ id, podeExportar, onVoltar }: { id:
           : <Metric compacto tom="pendente" label="A pagar" valor={brl(snapshot.gerencial.resumo.aPagar)} detalhe="Compromissos em aberto no recorte" icon={WalletCards} />}
       </div>
 
-      <div className="mt-3 grid gap-6 xl:grid-cols-[1.4fr_1fr]">
-        <Panel><Cabecalho titulo="Compras e serviços por categoria" descricao="Cada item conta na própria categoria" />
+      <div className="mt-3 grid min-w-0 gap-6 2xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+        <Panel className="min-w-0"><Cabecalho titulo="Compras e serviços por categoria" descricao="Cada item conta na própria categoria" />
           {snapshot.composicao.despesas.porCategoria.length ? <TabelaFinanceira compacta rotulo="Compras e serviços por categoria" colunas={colunasCategoria} itens={snapshot.composicao.despesas.porCategoria} chaveDe={(c) => c.nome} /> : <p className="p-3 text-sm text-ink-3">Nenhuma compra ou serviço no recorte.</p>}
         </Panel>
-        <Panel><Cabecalho titulo="Por centro de custo" descricao="Compras e serviços confirmados" />
+        <Panel className="min-w-0"><Cabecalho titulo="Por centro de custo" descricao="Compras e serviços confirmados" />
           {snapshot.composicao.despesas.porCentro.length ? <TabelaFinanceira compacta rotulo="Compras e serviços por centro de custo" colunas={colunasCentro} itens={snapshot.composicao.despesas.porCentro} chaveDe={(c) => c.nome} /> : <p className="p-3 text-sm text-ink-3">Nenhuma compra ou serviço no recorte.</p>}
           {snapshot.composicao.porTipo.length > 0 && <div className="border-t border-border p-5"><h3 className="text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Operações por tipo</h3><div className="mt-3 space-y-2 text-sm">{snapshot.composicao.porTipo.map((t) => <div key={t.tipo} className="flex justify-between gap-4"><span className="min-w-0 break-words">{t.rotulo} <span className="text-ink-3">({t.operacoes})</span></span><strong className="shrink-0 whitespace-nowrap">{brl(t.total)}</strong></div>)}</div></div>}
         </Panel>

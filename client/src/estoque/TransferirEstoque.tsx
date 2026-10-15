@@ -50,11 +50,11 @@ export function TransferirEstoque({ onFechar, onSalvo, perda = false }: { perda?
       onSalvo();
     } catch (e) { setErro(e instanceof Error ? e.message : String(e)); } finally { enviando.current = false; setOcupado(false); }
   }
-  return <PainelCadastro icon={perda ? TriangleAlert : ArrowRightLeft} aberto titulo={perda ? "Registrar perda de estoque" : "Transferir estoque entre sítios"} onFechar={() => { if (!ocupado) onFechar(); }} bloqueado={ocupado} rodape={<Button type="submit" form="transferir-estoque" carregando={ocupado}>{perda ? "Confirmar perda" : "Confirmar transferência"}</Button>}>
+  return <PainelCadastro largura="sm:max-w-xl" icon={perda ? TriangleAlert : ArrowRightLeft} aberto titulo={perda ? "Registrar perda de estoque" : "Transferir estoque entre sítios"} onFechar={() => { if (!ocupado) onFechar(); }} bloqueado={ocupado} rodape={<Button type="submit" form="transferir-estoque" carregando={ocupado}>{perda ? "Confirmar perda" : "Confirmar transferência"}</Button>}>
     <form ref={formularioRef} id="transferir-estoque" className="grid gap-4" noValidate onChange={() => setChave(crypto.randomUUID())} onSubmit={(e) => { e.preventDefault(); void confirmar(); }}>
       <fieldset disabled={ocupado} className="contents">
       <ErrorBox erro={erro} />
-      <p className="text-sm">{perda ? "Baixa somente a quantidade perdida, com justificativa e lotes selecionados. Não cria nova despesa." : "Movimenta a mesma quantidade/unidade e conserva os lotes originais e seu valor. Não cria despesa financeira."} Para estornar, abra a operação pelo Histórico do estoque no sítio de origem.</p>
+      <p className="text-sm">{perda ? "Baixa somente a quantidade perdida, com justificativa e lotes selecionados. Não cria nova despesa." : "Conserva a quantidade, unidade, lotes e valor; não cria despesa financeira."} Para estornar, abra a operação pelo Histórico do estoque no sítio de origem.</p>
       <label>Data<DatePicker required value={data} onChange={(v) => { setData(v); setChave(crypto.randomUUID()); }} /></label>
       <label>Sítio de origem<SelectCampo required className={classeInput} value={origemId} onValueChange={(valorSelecionado) => { setOrigemId(valorSelecionado); if (destinoId === valorSelecionado) setDestinoId(""); setPartidas([]); }}><option value="">Selecione</option>{sitios.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}</SelectCampo></label>
       {!perda && <label>Sítio de destino<SelectCampo required className={classeInput} value={destinoId} onValueChange={(valorSelecionado) => setDestinoId(valorSelecionado)}><option value="">Selecione</option>{sitios.filter((s) => s.id !== Number(origemId)).map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}</SelectCampo></label>}

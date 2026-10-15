@@ -1,5 +1,5 @@
 import { SelectCampo } from "@/financeiro/SelectCampo";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button, ErrorBox, hoje } from "../../../financeiro/financeiro-ui";
 import { DatePicker } from "../../../components/DatePicker";
 import { classeInput } from "../../../financeiro/PainelCadastro";
@@ -18,18 +18,19 @@ export function ConferenciaPeriodos({ loteId, propriedadeId, centros, onSalvo, o
   const [escolhas, setEscolhas] = useState<Record<string, Escolha>>({});
   const [chave, setChave] = useState(() => crypto.randomUUID());
   const [ocupado, setOcupado] = useState(false);
+  const enviando = useRef(false);
   useEffect(() => { onOcupado?.(ocupado); }, [ocupado, onOcupado]);
   const [erro, setErro] = useState<string | null>(null);
   const [salvo, setSalvo] = useState(false);
   const chaveItem = (p: Previa, produtoId: string) => p.inicio.slice(0, 10) + ":" + produtoId;
   function mudar(k: string, patch: Partial<Escolha>) { setEscolhas((e) => ({ ...e, [k]: { ...e[k], ...patch } })); setChave(crypto.randomUUID()); }
   async function conferir() {
-    if (ocupado) return; setOcupado(true); setErro(null); setPrevia(null); setSalvo(false);
-    try { const p = await previaPeriodos({ loteId, propriedadeId, inicio, fim, centroCustoId: centroCustoId || null }); setPrevia(p); setChave(crypto.randomUUID()); setEscolhas(Object.fromEntries(p.periodos.flatMap((p) => p.itens.map((i) => [chaveItem(p, i.produtoId), { quantidade: i.quantidadePrevista, motivo: "", modo: "BAIXA_ESTOQUE", justificativa: "", partidas: [] }])))); } catch (e) { setErro(e instanceof Error ? e.message : String(e)); } finally { setOcupado(false); }
+    if (enviando.current) return; enviando.current = true; setOcupado(true); setErro(null); setPrevia(null); setSalvo(false);
+    try { const p = await previaPeriodos({ loteId, propriedadeId, inicio, fim, centroCustoId: centroCustoId || null }); setPrevia(p); setChave(crypto.randomUUID()); setEscolhas(Object.fromEntries(p.periodos.flatMap((p) => p.itens.map((i) => [chaveItem(p, i.produtoId), { quantidade: i.quantidadePrevista, motivo: "", modo: "BAIXA_ESTOQUE", justificativa: "", partidas: [] }])))); } catch (e) { setErro(e instanceof Error ? e.message : String(e)); } finally { enviando.current = false; setOcupado(false); }
   }
   async function confirmar() {
-    if (!previa || ocupado || previa.lacunas.length) return;
-    setOcupado(true); setErro(null);
+    if (!previa || enviando.current || previa.lacunas.length || !previa.periodos.length) return;
+    enviando.current = true; setOcupado(true); setErro(null);
     try {
       const periodos = previa.periodos.map((p) => ({ inicio: p.inicio.slice(0, 10), fim: p.fim.slice(0, 10), itens: p.itens.map((i) => {
         const e = escolhas[chaveItem(p, i.produtoId)];
@@ -40,7 +41,7 @@ export function ConferenciaPeriodos({ loteId, propriedadeId, centros, onSalvo, o
         return { produtoId: i.produtoId, quantidadeConfirmada: Number(e.quantidade), motivoAjuste: e.motivo || undefined, modoEstoque: e.modo, justificativaSemBaixa: e.justificativa || undefined, ...(i.rastrearPartidas && e.modo === "BAIXA_ESTOQUE" && Number(e.quantidade) > 0 ? { partidas: e.partidas.map((s) => ({ partidaId: s.partidaId!, quantidade: Number(s.quantidade), cienciaValidadeDesconhecida: s.cienciaValidadeDesconhecida })) } : {}) };
       }) }));
       await confirmarPeriodos({ chave, revisao: previa.revisao, loteId, propriedadeId, inicio, fim, centroCustoId: centroCustoId || null, periodos }); setPrevia(null); setSalvo(true); await onSalvo();
-    } catch (e) { setErro(e instanceof Error ? e.message : String(e)); } finally { setOcupado(false); }
+    } catch (e) { setErro(e instanceof Error ? e.message : String(e)); } finally { enviando.current = false; setOcupado(false); }
   }
   return <section className="mt-4 grid gap-4">
     <ErrorBox erro={erro} />

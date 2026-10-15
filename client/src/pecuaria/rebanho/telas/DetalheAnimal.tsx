@@ -200,7 +200,7 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
     <div className="ficha-animal-cabecalho">
       <PageHeader integrado
         titulo={<>{animal.brinco}{animal.nome && <> · <span>{animal.nome}</span></>}</>}
-        descricao={`${animal.categoria?.nome ?? "Sem categoria"} · ${animal.propriedade?.nome ?? "Sem sítio"} · ${animal.lote?.nome ?? "Sem lote"}`}
+        descricao={`${animal.propriedade?.nome ?? "Sem sítio"} · ${animal.lote?.nome ?? "Sem lote"}`}
         contexto={<div className="flex flex-wrap items-center gap-2">
             <Pill tone={ativo ? "green" : "neutral"}>{rotuloSituacao(animal.situacao)}</Pill>
             <CategoriaPill categoria={animal.categoria} categoriaOrigem={animal.categoriaOrigem} categoriaCalculada={animal.categoriaCalculada} />
@@ -248,11 +248,10 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
       {[["resumo", "Resumo"], ["identificacao-genetica", "Identificação e genética"], ["sanidade", "Sanidade"], ["peso-manejo", "Peso e manejo"], ["nutricao", "Nutrição"], ["historico", "Histórico"]].map(([ancora, rotulo]) => <a key={ancora} href={`#${ancora}`} aria-current={secaoAtiva === ancora ? "location" : undefined} onClick={() => setSecaoAtiva(ancora)} className={`shrink-0 border-b-2 px-3 py-3 text-sm ${secaoAtiva === ancora ? "border-mast font-semibold text-ink" : "border-transparent text-ink-3"}`}>{rotulo}</a>)}
     </nav>
       {/* resumo de leitura rápida: o que se procura primeiro ao abrir a ficha */}
-      <dl id="resumo" className="pec-resumo-grade scroll-mt-6 grid grid-cols-2 lg:grid-cols-4">
+      <dl id="resumo" className={`pec-resumo-grade pec-resumo-compacto scroll-mt-6 grid grid-cols-2 ${!ativo ? "lg:grid-cols-3" : ""}`}>
         <ResumoFicha icon={CalendarDays} rotulo={animal.idadeNaBaixa ? "Idade na baixa" : "Idade"} valor={formatarIdade(animal.idadeMeses)} detalhe={`Nascimento ${formatarDataBR(animal.dataNascimento)}${animal.nascimentoEstimado ? " (estimado)" : ""}`} />
         <ResumoFicha icon={Scale} rotulo={ativo ? "Peso atual" : "Último peso"} valor={animal.peso.ultimo ? formatarKg(animal.peso.ultimo.kg) : "—"} detalhe={animal.peso.ultimo ? `${formatarDataBR(animal.peso.ultimo.data)}${animal.peso.gmdRecente != null ? ` · ${formatarGmd(animal.peso.gmdRecente)}` : ""}` : "Sem pesagem"} />
-        <ResumoFicha icon={Tags} rotulo="Categoria" valor={animal.categoria?.nome ?? "Sem categoria"} detalhe={animal.categoriaOrigem === "MANUAL" ? "Definida manualmente" : animal.categoriaOrigem === "SEM_CATEGORIA" ? "Nenhuma regra se aplica" : "Calculada pelas regras"} />
-        <ResumoFicha icon={MapPin} rotulo={ativo ? "Local" : "Último local"} valor={animal.lote?.nome ?? "Sem lote"} detalhe={animal.propriedade?.nome ?? "Sem sítio"} />
+        {!ativo && <ResumoFicha icon={MapPin} rotulo="Último local" valor={animal.lote?.nome ?? "Sem lote"} detalhe={animal.propriedade?.nome ?? "Sem sítio"} />}
       </dl>
 
       <section id="identificacao-genetica" className="scroll-mt-6">

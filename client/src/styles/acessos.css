@@ -78,7 +78,7 @@
 .mask-notice {
   display: flex; align-items: center; gap: 14px;
   background: var(--bg-card);
-  border-left: 3px solid var(--warn);
+  border-left: 1px solid var(--warn);
   padding: 14px 18px;
   margin: 18px 0 4px;
   font-size: 14px; color: var(--ink-2); line-height: 1.5;

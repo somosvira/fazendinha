@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { alterarControle } from "../../../lib/controles.fixture";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { ConferenciaPeriodos } from "./ConferenciaPeriodos";
 import { previaPeriodos, confirmarPeriodos, type Previa } from "./api";
 vi.mock("./api", () => ({ previaPeriodos: vi.fn(), confirmarPeriodos: vi.fn() }));
@@ -11,6 +11,29 @@ const previa: Previa = { loteId: "lote", vigenciaId: "vigencia", inicio: "2026-0
 beforeEach(() => { vi.clearAllMocks(); vi.mocked(previaPeriodos).mockResolvedValue({ revisao: "r".repeat(64), periodos: [previa], lacunas: [] }); vi.mocked(confirmarPeriodos).mockResolvedValue({}); });
 afterEach(cleanup);
 describe("conferência nutricional dividida", () => {
+  it("evita confirmação duplicada e reutiliza a chave após falha sem perder quantidades", async () => {
+    let recusar!: (erro: Error) => void;
+    vi.mocked(confirmarPeriodos).mockImplementationOnce(() => new Promise((_, reject) => { recusar = reject; }));
+    render(<ConferenciaPeriodos loteId="lote" propriedadeId={1} centros={[]} onSalvo={vi.fn()} />);
+    fireEvent.click(screen.getByText("Conferir período"));
+    const confirmar = await screen.findByText("Confirmar conjunto conferido");
+    act(() => { fireEvent.click(confirmar); fireEvent.click(confirmar); });
+    expect(confirmarPeriodos).toHaveBeenCalledTimes(1);
+    const chave = vi.mocked(confirmarPeriodos).mock.calls[0][0].chave;
+    await act(async () => { recusar(new Error("Falha de rede")); });
+    expect(screen.getByLabelText("Quantidade conferida (KG)")).toHaveProperty("value", "330");
+    fireEvent.click(confirmar);
+    await waitFor(() => expect(confirmarPeriodos).toHaveBeenCalledTimes(2));
+    expect(vi.mocked(confirmarPeriodos).mock.calls[1][0].chave).toBe(chave);
+  });
+  it("verValores false não exibe custos mesmo com valores recebidos", async () => {
+    vi.mocked(previaPeriodos).mockResolvedValue({ revisao: "r".repeat(64), periodos: [{ ...previa, verValores: false, itens: [{ ...previa.itens[0], custoPrevisto: "660" }] }], lacunas: [] });
+    render(<ConferenciaPeriodos loteId="lote" propriedadeId={1} centros={[]} onSalvo={vi.fn()} />);
+    fireEvent.click(screen.getByText("Conferir período"));
+    await screen.findByText("Ração V3: previsto 330 KG");
+    expect(screen.queryByText(/Custo conferido|custo previsto/)).toBeNull();
+    expect(screen.queryByText(/R\$/)).toBeNull();
+  });
   it("atualiza MS e custo conferidos quando a quantidade e a origem mudam", async () => {
     vi.mocked(previaPeriodos).mockResolvedValue({ revisao: "r".repeat(64), periodos: [{ ...previa, itens: [{ ...previa.itens[0], custoPrevisto: "660" }] }], lacunas: [] });
     render(<ConferenciaPeriodos loteId="lote" propriedadeId={1} centros={[]} onSalvo={vi.fn()} />);

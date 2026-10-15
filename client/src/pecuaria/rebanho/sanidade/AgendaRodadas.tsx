@@ -1,4 +1,4 @@
-import { Fragment, type ReactNode, useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { Button, CabecalhoTabela, ErrorBox, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
 import { classeInput } from "../../../financeiro/PainelCadastro";
 import { Paginacao } from "../ui";
@@ -20,7 +20,8 @@ export function AgendaRodadas({ filtrosUI, filtros, podeLancar, rodadaId, onAbri
   const [revisao, setRevisao] = useState(0);
   const [salvo, setSalvo] = useState(false);
   const consulta = consultaRodadas(filtros);
-  useEffect(() => { let vivo = true; setCarregando(true); setErro(null); listarRodadas(Object.fromEntries(new URLSearchParams(consulta))).then((v) => { if (vivo) setPagina(v); }).catch((e: unknown) => { if (vivo) setErro(`${salvo ? "Ciclo salvo. A consulta não atualizou. " : ""}${e instanceof Error ? e.message : String(e)}`); }).finally(() => { if (vivo) setCarregando(false); }); return () => { vivo = false; }; }, [consulta, revisao, recarregarToken]);
+  useEffect(() => { if (rodadaId) return; let vivo = true; setCarregando(true); setErro(null); listarRodadas(Object.fromEntries(new URLSearchParams(consulta))).then((v) => { if (vivo) setPagina(v); }).catch((e: unknown) => { if (vivo) setErro(`${salvo ? "Ciclo salvo. A consulta não atualizou. " : ""}${e instanceof Error ? e.message : String(e)}`); }).finally(() => { if (vivo) setCarregando(false); }); return () => { vivo = false; }; }, [consulta, revisao, recarregarToken, rodadaId]);
+  if (rodadaId) return <DetalheRodada key={rodadaId} id={rodadaId} filtros={filtros} podeLancar={podeLancar} onFechar={() => onAbrir("")} onExecutar={onExecutar} onAcao={onAcao} recarregarToken={recarregarToken} onMudou={() => setRevisao((v) => v + 1)} />;
   return <section className="min-w-0">
     <CabecalhoTabela titulo="Ciclos de protocolos" acao={podeLancar ? <Button onClick={() => setCriando(true)}>Novo ciclo</Button> : undefined} />
     {filtrosUI}
@@ -28,17 +29,15 @@ export function AgendaRodadas({ filtrosUI, filtros, podeLancar, rodadaId, onAbri
     {erro && <><ErrorBox erro={erro} /><Button secondary onClick={() => setRevisao((v) => v + 1)}>Tentar novamente</Button></>}
     {carregando ? <SkeletonSanitario estrutura="ciclos" label="Carregando ciclos de protocolos…" /> : <><div className="sanidade-ciclos">
       <div className="sanidade-ciclo-linha sanidade-ciclo-cabecalho text-sm text-ink-3" aria-hidden="true"><span>Ciclo</span><span>Protocolo</span><span>Início</span><span>Participantes</span><span>Ação</span></div>
-      {(pagina?.itens ?? []).map((r) => <Fragment key={r.id}>
+      {(pagina?.itens ?? []).map((r) => <div key={r.id}>
         <div className={`sanidade-ciclo-linha ${rodadaId === r.id ? "sanidade-ciclo-ativo" : ""}`}>
-          <button type="button" className="text-left" aria-expanded={rodadaId === r.id} aria-controls={`ciclo-${r.id}`} onClick={() => onAbrir(rodadaId === r.id ? "" : r.id)}>{rodadaId === r.id ? "⌄" : "›"} {r.nome}</button>
+          <button type="button" className="text-left" onClick={() => onAbrir(r.id)}>{r.nome}</button>
           <span>{r.protocolo.nome} · v{r.protocolo.versao}</span><span>{dataSanitaria(r.inicioReferencia)}</span><span>{r.participantes ?? "—"} animais</span>
-          <button type="button" className="sanidade-link underline text-left" onClick={() => onAbrir(rodadaId === r.id ? "" : r.id)}>{rodadaId === r.id ? "Fechar ciclo" : "Abrir ciclo"}</button>
+          <button type="button" className="sanidade-link underline text-left" onClick={() => onAbrir(r.id)}>Abrir ciclo</button>
         </div>
-        {rodadaId === r.id && <div id={`ciclo-${r.id}`} className="sanidade-ciclo-ativo"><DetalheRodada id={rodadaId} filtros={filtros} podeLancar={podeLancar} onFechar={() => onAbrir("")} onExecutar={onExecutar} onAcao={onAcao} recarregarToken={recarregarToken} onMudou={() => setRevisao((v) => v + 1)} /></div>}
-      </Fragment>)}
+      </div>)}
     </div>{pagina && pagina.total > 0 && <Paginacao paginaAtual={pagina.pagina} totalPaginas={Math.max(1, Math.ceil(pagina.total / pagina.porPagina))} totalItens={pagina.total} itensPorPagina={pagina.porPagina} onPaginaChange={(p) => { const url = new URL(window.location.href); url.searchParams.set("pagina", String(p)); window.history.pushState(null, "", url); window.dispatchEvent(new PopStateEvent("popstate")); }} rotulo="ciclos" idSelect="pagina-rodadas" />}{!pagina?.itens?.length && <p>Nenhum ciclo encontrado. Inicie um ciclo para planejar o cuidado dos animais.</p>}</>}
     {criando && <FormRodada onFechar={() => setCriando(false)} onSalvo={(id) => { setCriando(false); setSalvo(true); setRevisao((v) => v + 1); onAbrir(id); }} />}
-    {rodadaId && !pagina?.itens.some((r) => r.id === rodadaId) && <DetalheRodada id={rodadaId} filtros={filtros} podeLancar={podeLancar} onFechar={() => onAbrir("")} onExecutar={onExecutar} onAcao={onAcao} recarregarToken={recarregarToken} onMudou={() => setRevisao((v) => v + 1)} />}
   </section>;
 }
 
@@ -83,16 +82,17 @@ function DetalheRodada({ id, filtros, podeLancar, onFechar, onExecutar, onMudou,
     const c = e.contagensFiltradas ?? e.contagens;
     return { pendentes: soma.pendentes + c.pendentes, realizadas: soma.realizadas + c.realizadas, dispensadas: soma.dispensadas + c.dispensadas, canceladas: soma.canceladas + (c.canceladas ?? 0) };
   }, { pendentes: 0, realizadas: 0, dispensadas: 0, canceladas: 0 });
-  return <section className="sanidade-ciclo-detalhe" aria-label={rodada?.nome ?? "Ciclo de protocolo"}>
-    <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><h3 className="h3">Etapas e tarefas do ciclo</h3><Button secondary onClick={onFechar} disabled={ocupado}>Fechar</Button></div>
+  const contagensDiferentes = (etapas?.itens ?? []).some(e => e.contagensFiltradas && (["total", "pendentes", "realizadas", "dispensadas", "atrasadas", "canceladas"] as const).some(chave => (e.contagens[chave] ?? 0) !== (e.contagensFiltradas![chave] ?? 0)));
+  return <section className="sanidade-ciclo-detalhe sanidade-ciclo-compacto" style={{ border: 0, background: "transparent", margin: 0, padding: "1rem 0" }} aria-label={rodada?.nome ?? "Ciclo de protocolo"}>
+    <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><h2 className="h3">{rodada?.nome ?? "Ciclo de protocolo"}</h2><Button secondary onClick={onFechar} disabled={ocupado}>Voltar para ciclos</Button></div>
     <ErrorBox erro={erro} />{alteracaoSalva && <p role="status">Alteração salva.</p>}{erro && <Button secondary onClick={() => atualizar()}>Atualizar consulta</Button>}
     {carregando ? <SkeletonSanitario estrutura="detalhe" label="Carregando ciclo de protocolo…" /> : rodada && <div className="grid gap-5"><p>{rodada.protocolo.nome} · v{rodada.protocolo.versao} · início de referência {dataSanitaria(rodada.inicioReferencia)}</p>{podeLancar && <div className="flex flex-wrap gap-2"><Button secondary onClick={() => setAdicionando(true)}>Adicionar participantes</Button><Button secondary onClick={() => { chave.current = crypto.randomUUID(); setNovoNome(rodada.nome); setRenomeando(true); }}>Renomear ciclo</Button><Button secondary onClick={() => { chave.current = crypto.randomUUID(); void abrirAssociacao(); }}>Associar execuções existentes</Button></div>}
-      <section><h3 className="font-semibold">Etapas do ciclo</h3><p className="text-sm text-ink-3">Contagens do ciclo inteiro e do filtro atual são apresentadas separadamente.</p>
-      {!!etapas?.itens.length && <DistribuicaoPecuaria embutido titulo="Andamento das tarefas" descricao="Etapas nesta página, no filtro atual. Atrasadas estão incluídas nas pendentes." total={contagens.pendentes + contagens.realizadas + contagens.dispensadas + contagens.canceladas} rotuloCentro="tarefas" unidade="tarefas" itens={[{ id: "pendentes", nome: "Pendentes", qtd: contagens.pendentes }, { id: "realizadas", nome: "Realizadas", qtd: contagens.realizadas }, { id: "dispensadas", nome: "Dispensadas", qtd: contagens.dispensadas }, { id: "canceladas", nome: "Canceladas", qtd: contagens.canceladas }]} />}
+      <section><h3 className="font-semibold">Etapas do ciclo</h3>{contagensDiferentes && <p className="text-xs text-ink-3">O filtro seleciona parte das tarefas; os totais do ciclo são mantidos para comparação.</p>}
+      {!!etapas?.itens.length && <details><summary className="cursor-pointer py-2 text-sm font-semibold">Comparar andamento das tarefas</summary><DistribuicaoPecuaria embutido titulo="Andamento das tarefas" descricao="Etapas nesta página · filtro atual" total={contagens.pendentes + contagens.realizadas + contagens.dispensadas + contagens.canceladas} rotuloCentro="tarefas" unidade="tarefas" itens={[{ id: "pendentes", nome: "Pendentes", qtd: contagens.pendentes }, { id: "realizadas", nome: "Realizadas", qtd: contagens.realizadas }, { id: "dispensadas", nome: "Dispensadas", qtd: contagens.dispensadas }, { id: "canceladas", nome: "Canceladas", qtd: contagens.canceladas }]} /></details>}
       <TabelaFinanceira rotulo="Etapas do ciclo" itens={etapas?.itens ?? []} chaveDe={(e) => e.id} onAbrir={(e) => { setEtapaId(e.id); setPaginaTarefas(1); }} colunas={[
         { chave: "etapa", titulo: "Etapa", principal: true, celula: (e) => `${e.ordem} · dia ${e.diaRelativo} · ${e.tipo === "APLICACAO" ? "Aplicação" : "Exame"}` },
-        { chave: "todas", titulo: getPropriedadeAtiva() == null ? "Ciclo inteiro" : "No sítio consultado", larguraMinima: 230, celula: (e) => <ContagensEtapa contagens={e.contagens} /> },
-        { chave: "filtradas", titulo: "Filtro atual", larguraMinima: 230, celula: (e) => e.contagensFiltradas ? <ContagensEtapa contagens={e.contagensFiltradas} /> : "—" },
+        { chave: "todas", titulo: contagensDiferentes ? (getPropriedadeAtiva() == null ? "Ciclo inteiro" : "No sítio consultado") : "Tarefas", larguraMinima: 220, celula: (e) => <ContagensEtapa compacto contagens={e.contagens} /> },
+        ...(contagensDiferentes ? [{ chave: "filtradas", titulo: "Filtro atual", larguraMinima: 230, celula: (e: EtapaRodada) => e.contagensFiltradas ? <ContagensEtapa compacto contagens={e.contagensFiltradas} /> : "—" }] : []),
         { chave: "acao", titulo: "Ações", acoes: true, celula: (e) => <Button secondary onClick={() => { setEtapaId(e.id); setPaginaTarefas(1); }}>Abrir tarefas da etapa</Button> },
       ]} />{etapas && etapas.total > etapas.porPagina && <Paginacao paginaAtual={etapas.pagina} totalPaginas={Math.max(1, Math.ceil(etapas.total / etapas.porPagina))} totalItens={etapas.total} itensPorPagina={etapas.porPagina} onPaginaChange={setPaginaEtapas} rotulo="etapas" idSelect="pagina-etapas" />}</section>
       {etapaId && <section className="grid gap-3"><h3 className="font-semibold">Tarefas da etapa</h3>{!tarefas ? <SkeletonSanitario label="Carregando tarefas da etapa…" /> : <><TabelaFinanceira rotulo="Tarefas da etapa" itens={tarefas.itens} chaveDe={(t) => t.id} colunas={[

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { CarenciaIndicador, ContagensEtapa, ResumoPaginaSanitaria, rotuloTarefaSanitaria } from "./IndicadoresSanitarios";
+import { CarenciaIndicador, PrazoCarencia, ContagensEtapa, ResumoPaginaSanitaria, rotuloTarefaSanitaria } from "./IndicadoresSanitarios";
 
 describe("indicadores sanitários de apresentação", () => {
   it("atraso é um recorte de tarefas pendentes, nunca de realizadas ou canceladas", () => {
@@ -20,11 +20,23 @@ describe("indicadores sanitários de apresentação", () => {
     const html = renderToStaticMarkup(<ContagensEtapa contagens={{ total: 8, pendentes: 4, realizadas: 2, dispensadas: 1, atrasadas: 3, canceladas: 1 }} />);
     expect(html).toContain("8 previstas · 4 pendentes · 2 realizadas · 1 dispensadas · 3 atrasadas · 1 canceladas");
   });
-  it("apresenta pendências sem outro card e explicita que atraso é um subconjunto", () => {
+  it("a apresentação compacta encerra no instante do prazo e não trata prazo zero como vigente", () => {
+    const prazo = { estado: "CONHECIDO" as const, ate: "2026-10-17T13:00:00Z", precisaoAproximada: true };
+    const fim = Date.parse(prazo.ate);
+    expect(renderToStaticMarkup(<PrazoCarencia estado={prazo} agora={fim - 1} />)).toContain("Carência vigente");
+    const encerrada = renderToStaticMarkup(<PrazoCarencia estado={prazo} agora={fim} />);
+    expect(encerrada).toContain("Carência encerrada");
+    expect(encerrada).toContain("≈");
+    expect(renderToStaticMarkup(<PrazoCarencia estado={{ ...prazo, prazoZero: true }} agora={0} />)).not.toContain("Carência vigente");
+    const revisao = renderToStaticMarkup(<PrazoCarencia estado={{ ...prazo, prazoZero: true }} agora={0} revisao />);
+    expect(revisao).toContain("Revisar aplicabilidade");
+    expect(revisao).not.toContain("Prazo zero confirmado");
+  });
+  it("apresenta pendências sem outro card ou contexto repetido", () => {
     const html = renderToStaticMarkup(<ResumoPaginaSanitaria itens={[{ nome: "pendentes", qtd: 4 }, { nome: "atrasadas", qtd: 3 }]} />);
     expect(html).toContain("pec-resumo-sanitario-inline");
     expect(html).not.toContain("pec-resumo-consulta");
-    expect(html).toContain("Nesta página, nos filtros atuais");
-    expect(html).toContain("Atrasadas estão incluídas nas pendentes");
+    expect(html).not.toContain("Nesta página");
+    expect(html).not.toContain("Atrasadas estão incluídas nas pendentes");
   });
 });

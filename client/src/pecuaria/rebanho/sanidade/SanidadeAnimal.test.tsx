@@ -10,10 +10,12 @@ vi.mock("./ReconciliarOrigem", () => ({ ReconciliarOrigem: () => null }));
 const aplicacao = { id: "a1", animalId: "animal1", animal: { id: "animal1", brinco: "GV3-1", nome: null }, propriedadeId: 1, data: "2026-10-05", aplicadaEm: "2026-10-05T13:04:00Z", tipoAplicacaoNomeSnapshot: "Tipo preservado", nomeProdutoAplicado: "Medicamento", dose: "2", unidadeDose: "mL", status: "VALIDO", origemInsumo: "SEM_ORIGEM_JUSTIFICADA", estadoCarenciaLeite: "INFORMADO", estadoCarenciaCarne: "INFORMADO", carenciaLeiteHoras: 0, carenciaCarneHoras: 48 } as AplicacaoSanitaria;
 beforeEach(() => vi.clearAllMocks());
 afterEach(cleanup);
-it("mostra tabela geral com colunas completas mesmo com filtro individual", async () => {
+it("mostra tabela geral compacta mesmo com filtro individual", async () => {
   render(<SanidadeAnimal geral animalId="animal1" propriedadeId={2} podeLancar recarregarToken={0} lista={[aplicacao]} />);
   await screen.findByRole("table");
-  for (const nome of ["Animal", "Data e hora", "Tipo", "Produto vinculado / nome histórico", "Quantidade", "Origem", "Situação", "Ações"]) expect(screen.getByRole("columnheader", { name: nome })).toBeTruthy();
+  for (const nome of ["Animal", "Registro", "Aplicação", "Situação", "Ações"]) expect(screen.getByRole("columnheader", { name: nome })).toBeTruthy();
+  expect(screen.getAllByText(/Medicamento · 2 mL/).length).toBeGreaterThan(0);
+  expect(screen.getAllByText(/Origem não localizada · Sem produto vinculado/).length).toBeGreaterThan(0);
   expect(screen.getAllByText("05/10/2026 às 10:04").length).toBeGreaterThan(0);
   expect(screen.getAllByRole("button", { name: /Reconciliar origem de/ }).length).toBeGreaterThan(0);
   expect(screen.queryByText(/null/)).toBeNull();

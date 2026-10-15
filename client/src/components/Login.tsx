@@ -5,7 +5,7 @@
  * e o formulário permanecem em uma única superfície, sem informação perdida.
  */
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { login } from "../api/auth";
@@ -44,11 +44,15 @@ export function Login({ onEntrar }: { onEntrar?: (token: string, usuario: Usuari
   const [senha, setSenha] = useState("");
   const [validando, setValidando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const emCurso = useRef(false);
+  const erroRef = useRef<HTMLParagraphElement>(null);
+  useEffect(() => { if (erro) erroRef.current?.focus(); }, [erro]);
 
   const submeter = async (event: FormEvent) => {
     event.preventDefault();
-    if (!email || !senha || validando) return;
+    if (!email.trim() || !senha || emCurso.current) return;
 
+    emCurso.current = true;
     setValidando(true);
     setErro(null);
     try {
@@ -56,6 +60,7 @@ export function Login({ onEntrar }: { onEntrar?: (token: string, usuario: Usuari
       onEntrar?.(token, usuario);
     } catch (error) {
       setErro(error instanceof Error ? error.message : "Falha de rede.");
+      emCurso.current = false;
       setValidando(false);
     }
   };
@@ -125,6 +130,8 @@ export function Login({ onEntrar }: { onEntrar?: (token: string, usuario: Usuari
                 <Input
                   id="login-email"
                   type="email"
+                  required
+                  maxLength={254}
                   autoFocus
                   autoComplete="username"
                   placeholder="voce@fazenda.com.br"
@@ -148,6 +155,7 @@ export function Login({ onEntrar }: { onEntrar?: (token: string, usuario: Usuari
                 <CampoSenha
                   id="login-senha"
                   autoComplete="current-password"
+                  required
                   placeholder="Sua senha"
                   value={senha}
                   disabled={validando}
@@ -158,7 +166,7 @@ export function Login({ onEntrar }: { onEntrar?: (token: string, usuario: Usuari
             </div>
 
             {erro && (
-              <p role="alert" className="mt-5 rounded-lg border border-[#e7c4bf] bg-[#fbefec] px-3 py-2.5 text-[13px] leading-5 text-[#8d3931]">
+              <p ref={erroRef} tabIndex={-1} role="alert" className="mt-5 rounded-lg border border-[#e7c4bf] bg-[#fbefec] px-3 py-2.5 text-[13px] leading-5 text-[#8d3931]">
                 {erro}
               </p>
             )}

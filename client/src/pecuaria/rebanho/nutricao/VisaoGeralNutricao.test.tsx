@@ -22,6 +22,11 @@ describe("panorama nutricional sem indicadores repetidos", () => {
     render(<VisaoGeralNutricao />);
     const titulo = await screen.findByRole("heading", { name: "Panorama nutricional" });
     const painel = titulo.closest('[data-slot="financeiro-panel"]');
+    const comparativos = titulo.closest("details")!;
+    expect(comparativos.open).toBe(false);
+    fireEvent.click(comparativos.querySelector("summary")!);
+    expect(comparativos.open).toBe(true);
+    expect(screen.getByRole("table", { name: "Nutrição por lote" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Cobertura das dietas", level: 3 }).closest('[data-slot="financeiro-panel"]')).toBe(painel);
     expect(screen.getByRole("heading", { name: "Efetivo por lote", level: 3 }).closest('[data-slot="financeiro-panel"]')).toBe(painel);
     expect(document.querySelector(".nutricao-metricas")).toBeNull();

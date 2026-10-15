@@ -13,6 +13,18 @@ const resposta: RespostaAssistente = { modo: "dados", resposta: "Entradas: R$ 10
 beforeEach(() => { vi.clearAllMocks(); vi.mocked(obterConfiguracaoAssistente).mockResolvedValue({ ...config, consultas: [...config.consultas] }); vi.mocked(consultarAssistente).mockResolvedValue(resposta); });
 afterEach(cleanup);
 async function abrir() { fireEvent.click(screen.getByRole("button", { name: "Abrir assistente do Terrano" })); await screen.findByRole("button", { name: "Resumo do mês" }); }
+it("começa com duas consultas, permite expandir demais e mantém ajuda disponível", async () => {
+  vi.mocked(obterConfiguracaoAssistente).mockResolvedValue({ ...config, consultas: ["resumo", "saldo", "pagar", "receber", "despesas_categoria"] });
+  render(<AssistenteConsulta />); await abrir();
+  const mais = screen.getByText("Mais consultas financeiras").closest("details")!;
+  expect(mais.open).toBe(false);
+  expect(screen.getByText("Guias de uso").closest("details")!.open).toBe(true);
+  expect(screen.getByText(/somente dados permitidos ao seu perfil/)).toBeTruthy();
+  fireEvent.click(mais.querySelector("summary")!);
+  expect(mais.open).toBe(true);
+  expect(screen.getByRole("button", { name: "A pagar no mês" })).toBeTruthy();
+  expect(consultarAssistente).not.toHaveBeenCalled();
+});
 it("consulta rápida usa os dados reais e a fonte conserva período", async () => {
   render(<AssistenteConsulta />); await abrir();
   fireEvent.click(screen.getByRole("button", { name: "Resumo do mês" }));

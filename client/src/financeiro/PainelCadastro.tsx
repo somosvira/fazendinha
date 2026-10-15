@@ -24,7 +24,7 @@ export function PainelCadastro({ aberto, titulo, onFechar, children, rodape, lar
   const corpo = <div className="min-h-0 flex-1 overflow-y-auto p-4" onChangeCapture={() => { alterado.current = true; }}>{children}</div>;
   const confirmar = <ConfirmDialog open={confirmarSaida} title="Descartar alterações?" message="Os dados preenchidos não serão salvos." confirmLabel="Descartar alterações" cancelLabel="Continuar editando" tone="danger" onConfirm={onFechar} onCancel={() => setConfirmarSaida(false)} />;
   return <>{compacto ? <Dialog open={aberto} onOpenChange={v => { if (!v) fechar(); }}>
-    <DialogContent className="financeiro-colorido z-[1100] max-h-[90dvh] max-w-lg overflow-hidden p-0" overlayClassName="z-[1090]" onEscapeKeyDown={e => { if (bloqueado) e.preventDefault(); }}>
+    <DialogContent className="financeiro-colorido z-[1100] flex max-h-[90dvh] max-w-lg flex-col gap-0 overflow-hidden p-0" overlayClassName="z-[1090]" onEscapeKeyDown={e => { if (bloqueado) e.preventDefault(); }}>
       <DialogHeader className="fin-cabecalho border-b border-border p-4 pr-12"><div className="flex items-center gap-3">{Icon && <span className="fin-section-icon"><Icon aria-hidden="true" /></span>}<DialogTitle>{titulo}</DialogTitle></div><DialogDescription className="sr-only">{titulo}</DialogDescription></DialogHeader>
       {corpo}<DialogFooter className="border-t border-border bg-card p-4">{rodape}</DialogFooter>
     </DialogContent>
@@ -52,7 +52,7 @@ export function CampoFormulario({ id, rotulo, erro, ajuda, children, obrigatorio
 }) {
   const descricao = [erro && `${id}-erro`, ajuda && `${id}-ajuda`].filter(Boolean).join(" ") || undefined;
   return <div className="text-sm font-medium">
-    <label htmlFor={id}>{rotulo}{obrigatorio && <span aria-hidden="true"> *</span>}</label>{ajuda && <AjudaCampo texto={ajuda} rotulo={`Ajuda: ${rotulo}`} />}
+    <span className="inline-flex min-h-6 items-center gap-1"><label htmlFor={id}>{rotulo}{obrigatorio && <span aria-hidden="true"> *</span>}</label>{ajuda && <AjudaCampo texto={ajuda} rotulo={`Ajuda: ${rotulo}`} />}</span>
     {children({ id, "aria-label": rotulo, "aria-invalid": Boolean(erro), "aria-describedby": descricao })}
     {erro && <p id={`${id}-erro`} role="alert" className="mt-1 flex items-start gap-1.5 text-xs font-normal text-destructive"><CircleAlert size={14} className="mt-px shrink-0" aria-hidden />{erro}</p>}
     {ajuda && <p id={`${id}-ajuda`} className="sr-only">{ajuda}</p>}

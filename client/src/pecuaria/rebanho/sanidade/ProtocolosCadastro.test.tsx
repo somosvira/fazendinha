@@ -24,6 +24,8 @@ describe("Protocolos sanitários", () => {
   it("publica localmente preservando etapas quando a resposta é parcial", async () => {
     render(<ProtocolosCadastro podeLancar />);
     await screen.findAllByText("Controle CCS");
+    expect(screen.getByText("Publicar")).toBeTruthy();
+    expect(screen.getByText(/Versões publicadas não são editadas/)).toBeTruthy();
     fireEvent.click(screen.getAllByRole("button", { name: "Publicar Controle CCS v1" })[0]);
     await screen.findByText("Versão publicada.");
     expect(screen.getAllByText("Publicado")).toHaveLength(1);

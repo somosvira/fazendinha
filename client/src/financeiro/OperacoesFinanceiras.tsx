@@ -2,6 +2,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Button as UiButton } from "@/components/ui/button";
 import { SelectCampo } from "./SelectCampo";
 import { Input } from "@/components/ui/input";
+import { podeVerValoresFinanceiros } from "./permissoes";
 import { normalizarBuscaFinanceira } from "./ListaCadastroFinanceiro";
 import { AtualizandoFinanceiro } from "./CarregamentoFinanceiro";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -61,6 +62,7 @@ const COLUNAS: ColunaTabela<Operacao>[] = [
 ];
 
 export function OperacoesFinanceiras({ podeLancar = true }: { podeLancar?: boolean }) {
+  const podeRascunho = podeVerValoresFinanceiros();
   const [carregou, setCarregou] = useState(false);
   const [itens, setItens] = useState<Operacao[]>([]); const [config, setConfig] = useState<ConfiguracoesFinanceiras | null>(null); const { rascunho, recuperacao } = useRascunhoAtivo(); const [form, setForm] = useState(() => typeof window !== "undefined" && isNovaOperacaoFinanceira(window.location.pathname)); const [operacaoBase, setOperacaoBase] = useState<Operacao | null>(null); const [loading, setLoading] = useState(true); const [erro, setErro] = useState<string | null>(null);
   const [iniciandoNova, setIniciandoNova] = useState(false);
@@ -71,7 +73,7 @@ export function OperacoesFinanceiras({ podeLancar = true }: { podeLancar?: boole
   const [retorno, setRetorno] = useState(() => validarRetornoInterno(new URLSearchParams(window.location.search).get("returnTo")));
   // O rascunho vem da store compartilhada (a mesma do atalho da sidebar):
   // obterRascunhoOperacao a atualiza, e cada autosave também.
-  const carregar = useCallback(async (vigente: () => boolean = () => true) => { setLoading(true); setErro(null); try { const [ops, cfg] = await Promise.all([listarOperacoes({ inicio, fim }), podeLancar ? obterConfiguracoesFinanceiras() : Promise.resolve(null), podeLancar ? obterRascunhoOperacao() : Promise.resolve(null)]); if (vigente()) { setItens(ops); setConfig(cfg); } } catch (e) { if (vigente()) setErro(e instanceof Error ? e.message : String(e)); } finally { if (vigente()) { setLoading(false); setCarregou(true); } } }, [inicio, fim, podeLancar]);
+  const carregar = useCallback(async (vigente: () => boolean = () => true) => { setLoading(true); setErro(null); try { const [ops, cfg] = await Promise.all([listarOperacoes({ inicio, fim }), podeLancar ? obterConfiguracoesFinanceiras() : Promise.resolve(null), podeLancar && podeRascunho ? obterRascunhoOperacao() : Promise.resolve(null)]); if (vigente()) { setItens(ops); setConfig(cfg); } } catch (e) { if (vigente()) setErro(e instanceof Error ? e.message : String(e)); } finally { if (vigente()) { setLoading(false); setCarregou(true); } } }, [inicio, fim, podeLancar, podeRascunho]);
   useEffect(() => { let ativo = true; void carregar(() => ativo); return () => { ativo = false; }; }, [carregar]);
   useEffect(() => {
     const onPop = (evento: PopStateEvent) => {
@@ -94,7 +96,7 @@ export function OperacoesFinanceiras({ podeLancar = true }: { podeLancar?: boole
   const abrirNovaOperacao = async () => {
     setIniciandoNova(true); setErro(null);
     try {
-      if (rascunho || recuperacao) await enfileirarSalvamentoRascunho(() => descartarRascunhoOperacao());
+      if (podeRascunho && (rascunho || recuperacao)) await enfileirarSalvamentoRascunho(() => descartarRascunhoOperacao());
       abrirFormulario();
     } catch (e) { setErro(e instanceof Error ? e.message : String(e)); }
     finally { setIniciandoNova(false); }
@@ -111,12 +113,13 @@ export function OperacoesFinanceiras({ podeLancar = true }: { podeLancar?: boole
   const produtoAjusteInicial = ajusteInicial && parametrosUrl.get("produto") ? parametrosUrl.get("produto")! : undefined;
   // A chave separa correção de rascunho: trocar de um para o outro remonta o
   // formulário, senão o autosave gravaria os dados da correção no rascunho.
-  if (form && config && !podeLancar) return <PaginaFinanceira colorida><PageHeader eyebrow="" titulo="Nova operação" descricao="O seu perfil pode consultar operações, mas não pode criar ou corrigir lançamentos." /><ErrorBox erro="Você não tem permissão para lançar operações financeiras." /></PaginaFinanceira>;
+  if (form && !podeLancar) return <PaginaFinanceira colorida><PageHeader eyebrow="" titulo="Nova operação" descricao="O seu perfil pode consultar operações, mas não pode criar ou corrigir lançamentos." /><ErrorBox erro="Você não tem permissão para lançar operações financeiras." /></PaginaFinanceira>;
   if (form && config) return <FormOperacao key={operacaoBase ? `correcao-${operacaoBase.id}` : ajusteInicial ? `ajuste-${produtoAjusteInicial ?? ""}` : "rascunho"} config={config} rascunho={operacaoBase ? null : rascunho} operacaoBase={operacaoBase} condicaoInicial={compromissoInicial ? "A_PRAZO" : undefined} tipoInicial={ajusteInicial ? "AJUSTE_ESTOQUE" : compromissoInicial === "RECEBER" ? "VENDA" : compromissoInicial === "PAGAR" ? "COMPRA_CONSUMO_DIRETO" : undefined} produtoInicial={produtoAjusteInicial} onSalvo={async (operacao, aviso) => { setForm(false); setOperacaoBase(null); await carregar(); if (aviso) setErro(aviso); abrirDetalhe(operacao.id); }} />;
 
   return <PaginaFinanceira colorida>
     <PageHeader eyebrow="" titulo="Operações" descricao="Fatos de negócio e seus efeitos financeiros e físicos, preservados em um histórico auditável." acao={podeLancar ? <div className="flex flex-wrap gap-2">{(rascunho || recuperacao) && <Button secondary onClick={continuarRascunho}><FilePenLine size={16} /> Continuar operação</Button>}<Button disabled={iniciandoNova} onClick={() => { void abrirNovaOperacao(); }}><Plus size={16} /> {iniciandoNova ? "Iniciando…" : "Nova operação"}</Button></div> : undefined} />
     <ErrorBox erro={erro} />
+    {erro && <Button secondary disabled={loading} className="mb-4" onClick={() => { void carregar(); }}>Tentar novamente</Button>}
     {recuperacao && <p role="status" className="mb-4 rounded-lg bg-muted p-3 text-sm">{recuperacao.erro ? `Não foi possível salvar: ${recuperacao.erro} As alterações estão preservadas. Continue a operação para tentar novamente.` : "As últimas alterações estão sendo salvas. Você pode continuar a operação."}</p>}
     {/* overflow-clip (não overflow-hidden): overflow-hidden faria deste Panel o
      * contêiner de rolagem do `position: sticky` da barra de TabelaFinanceira,

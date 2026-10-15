@@ -6,6 +6,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { atualizarCategoria, atualizarCentroCusto, atualizarConta, atualizarParceiro, atualizarProduto, obterConfiguracoesFinanceiras, type Categoria, type CentroCusto, type Conta, type ConfiguracoesFinanceiras as Config, type Parceiro, type Produto } from "./novo-api";
 import { AcoesLinha, brl, Button, type ColunaTabela, dataBR, ErrorBox, PageHeader, PaginaFinanceira, PaginaSemDados, Panel, Pill, SelectFiltro, TabelaFinanceira } from "./financeiro-ui";
 import { FormConta, TIPO_CONTA } from "./FormConta";
+import { podeVerValoresFinanceiros } from "./permissoes";
 import { FormParceiro } from "./FormParceiro";
 import { PAPEIS_PARCEIRO, papeisDoParceiro } from "./lib/parceiros";
 import { formatarDocumento } from "./lib/validacao";
@@ -78,10 +79,11 @@ function mensagemDesativar(confirmacao: NonNullable<Confirmacao>) {
     : `${nome} deixa de aparecer em novas operações. Nenhum registro está ligado a este cadastro.`;
 }
 
-export function ConfiguracoesFinanceiras({ abaInicial = "contas", podeEditar = true }: { abaInicial?: Aba; podeEditar?: boolean }) {
+export function ConfiguracoesFinanceiras({ abaInicial = "contas", podeEditar: permiteEditar = true }: { abaInicial?: Aba; podeEditar?: boolean }) {
   const [config, setConfig] = useState<Config | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [aba, setAba] = useState<Aba>(() => { const alvo = new URLSearchParams(window.location.search).get("aba"); return alvo === "parceiros" || alvo === "produtos" ? alvo : abaInicial; });
+  const podeEditar = permiteEditar && (aba !== "contas" || podeVerValoresFinanceiros());
   const [painel, setPainel] = useState<Painel>(null);
   const [confirmando, setConfirmando] = useState<Confirmacao>(null);
   const [processando, setProcessando] = useState(false);
@@ -98,10 +100,10 @@ export function ConfiguracoesFinanceiras({ abaInicial = "contas", podeEditar = t
     catch (e) { setConfirmando(null); setErro(e instanceof Error ? e.message : String(e)); }
     finally { emCurso.current = false; setProcessando(false); }
   };
-  const carregar = useCallback(() => obterConfiguracoesFinanceiras().then(setConfig).catch((e) => setErro(e.message)), []);
+  const carregar = useCallback(() => { setErro(null); return obterConfiguracoesFinanceiras().then(setConfig).catch((e) => setErro(e.message)); }, []);
   useEffect(() => { carregar(); }, [carregar]);
 
-  if (!config) return <PaginaSemDados titulo="Configurações financeiras" descricao="Cadastros que sustentam as operações. Desativar preserva todo o histórico e permite reativação." label="Carregando configurações financeiras" erro={erro} />;
+  if (!config) return <PaginaSemDados titulo="Configurações financeiras" descricao="Cadastros que sustentam as operações. Desativar preserva todo o histórico e permite reativação." label="Carregando configurações financeiras" erro={erro} onTentarNovamente={() => { void carregar(); }} />;
 
   const trocarAba = (nova: Aba) => { setAba(nova); setPainel(null); setConfirmando(null); };
   const abrirNovo = (entidade: EntidadePainel) => { if (podeEditar && !emCurso.current) setPainel({ entidade, modo: "novo" }); };

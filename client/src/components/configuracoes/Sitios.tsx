@@ -12,12 +12,13 @@ import { Loader } from "@/components/Loading";
 import { editarPropriedade, usePropriedades, type PropriedadeDTO } from "../../api/propriedades";
 import { AcoesLinha, Button, type ColunaTabela, ErrorBox, PageHeader, PaginaFinanceira, Panel, Pill, TabelaFinanceira } from "../../financeiro/financeiro-ui";
 import { FormSitio } from "./FormSitio";
+import { BuscaLista } from "../BuscaLista";
 
 type Painel = { modo: "novo" } | { modo: "editar"; id: number } | null;
 
 const colunas = (editar: (s: PropriedadeDTO) => void, alternar: (s: PropriedadeDTO) => void): ColunaTabela<PropriedadeDTO>[] => [
   { chave: "sitio", titulo: "Sítio", larguraMinima: 200, principal: true, celula: (s) => <strong className="break-words">{s.nome}</strong> },
-  { chave: "local", titulo: "Cidade", larguraMinima: 160, celula: (s) => <span className="break-words">{[s.cidade, s.uf].filter(Boolean).join(" — ") || "—"}</span> },
+  { chave: "local", titulo: "Cidade", larguraMinima: 220, larguraFlexivel: true, celula: (s) => <span className="break-words">{[s.cidade, s.uf].filter(Boolean).join(" — ") || "—"}</span> },
   { chave: "principal", titulo: "Principal", alinhamento: "centro", larguraMinima: 100, celula: (s) => s.principal ? <Pill tone="blue">Principal</Pill> : "—" },
   { chave: "situacao", titulo: "Situação", alinhamento: "direita", larguraMinima: 100, celula: (s) => <Pill tone={s.ativo ? "green" : "neutral"}>{s.ativo ? "Ativo" : "Inativo"}</Pill> },
   { chave: "acoes", titulo: "Ações", alinhamento: "direita", larguraMinima: 110, acoes: true, celula: (s) => <AcoesLinha nome={s.nome} ativo={s.ativo} onEditar={() => editar(s)} onAlternar={() => alternar(s)} /> },
@@ -25,6 +26,7 @@ const colunas = (editar: (s: PropriedadeDTO) => void, alternar: (s: PropriedadeD
 
 export function Sitios() {
   const [mostrarInativos, setMostrarInativos] = useState(false);
+  const [busca, setBusca] = useState("");
   const sitios = usePropriedades({ incluirInativos: mostrarInativos });
   const [painel, setPainel] = useState<Painel>(null);
   const [confirmando, setConfirmando] = useState<PropriedadeDTO | null>(null);
@@ -58,6 +60,8 @@ export function Sitios() {
   /* key força remount do formulário a cada abertura, zerando o estado local */
   const chavePainel = painel ? (painel.modo === "editar" ? `editar-${painel.id}` : "novo") : "fechado";
   const carregando = sitios.loading && sitios.data.length === 0;
+  const termo = busca.trim().toLocaleLowerCase("pt-BR");
+  const visiveis = sitios.data.filter(s => `${s.nome} ${s.cidade ?? ""} ${s.uf ?? ""}`.toLocaleLowerCase("pt-BR").includes(termo));
 
   return <PaginaFinanceira>
     <PageHeader eyebrow="" titulo="Sítios" descricao="As propriedades da fazenda. Cada animal, lote e lançamento pertence a um sítio."
@@ -69,9 +73,11 @@ export function Sitios() {
         ? <div className="mt-5"><Loader label="Carregando sítios" /></div>
         : <Panel className="mt-5 overflow-hidden">
           <div className="flex flex-wrap items-center gap-3 border-b border-border p-4">
+            <BuscaLista rotulo="Buscar sítio" placeholder="Buscar sítio ou cidade" valor={busca} onChange={setBusca} />
             <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={mostrarInativos} onChange={(e) => setMostrarInativos(e.target.checked)} />Mostrar inativos</label>
           </div>
-          <TabelaFinanceira rotulo="Sítios" itens={sitios.data} colunas={colunas(editar, alternar)} chaveDe={(s) => s.id} onAbrir={editar} classeLinha={(s) => !s.ativo ? "opacity-55" : ""} />
+          <TabelaFinanceira rotulo="Sítios" itens={visiveis} colunas={colunas(editar, alternar)} chaveDe={(s) => s.id} onAbrir={editar} classeLinha={(s) => !s.ativo ? "opacity-55" : ""} />
+          {!visiveis.length && <p className="p-5 text-sm text-ink-3">{busca ? "Nenhum sítio corresponde à busca." : "Nenhum sítio cadastrado."}</p>}
         </Panel>}
     </fieldset>
 

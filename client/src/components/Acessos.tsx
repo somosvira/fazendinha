@@ -6,7 +6,8 @@
  * As CONSTANTES de UI (ABAS/FLAGS/PAPEIS) continuam vindo de data/acessos. */
 
 import { useEffect, useState } from "react";
-import { Clock3, ShieldCheck, UserCheck, UserPlus } from "lucide-react";
+import { Check, Circle, CircleCheck, Search, ShieldCheck, UserPlus, Users, TriangleAlert } from "lucide-react";
+import "./acessos.css";
 import { ABAS, AREAS, FLAGS, PAPEIS } from "../data/acessos";
 import {
   listarUsuarios,
@@ -18,7 +19,7 @@ import {
 import type { UsuarioSessao } from "../lib/auth";
 import { useToast } from "./Toast";
 import { ConfirmDialog } from "./ConfirmDialog";
-import { Button, Metric, PageHeader, PaginaFinanceira } from "../financeiro/financeiro-ui";
+import { Button, Modal, PageHeader, PaginaFinanceira } from "../financeiro/financeiro-ui";
 
 /* validação simples de email (suficiente p/ feedback antes do envio real) */
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -36,7 +37,7 @@ function fmtUltimoAcesso(iso?: string | null): string {
 
 /* status-badge base + tom por status (o DTO usa MAIÚSCULAS) */
 const STATUS_BADGE_BASE =
-  "whitespace-nowrap border border-current px-[9px] py-[3px] text-[11px] tracking-[0.06em]";
+  "inline-block whitespace-nowrap rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium";
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; cls: string }> = {
     ATIVO: { label: "Ativo", cls: "text-[color:var(--pos)]" },
@@ -56,16 +57,25 @@ const ADMIN_TAG =
 /* Campo somente-leitura com o link de acesso e botão de copiar. O token cru só
  * existe em memória: o backend guarda apenas o hash, então o mesmo link não
  * pode ser recuperado depois. */
-function LinkAcesso({ link }: { link: string }) {
+export function LinkAcesso({ link }: { link: string }) {
   const [copiado, setCopiado] = useState(false);
+  const [erro, setErro] = useState("");
+  const [copiando, setCopiando] = useState(false);
 
-  const copiar = () => {
-    void navigator.clipboard?.writeText(link);
-    setCopiado(true);
-    setTimeout(() => setCopiado(false), 1800);
+  const copiar = async () => {
+    setErro(""); setCopiado(false); setCopiando(true);
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error("Indisponível");
+      await navigator.clipboard.writeText(link);
+      setCopiado(true);
+    } catch {
+      setErro("Não foi possível copiar. Selecione o link e copie manualmente.");
+    } finally { setCopiando(false); }
   };
+  useEffect(() => { if (!copiado) return; const id = setTimeout(() => setCopiado(false), 1800); return () => clearTimeout(id); }, [copiado]);
 
   return (
+    <div>
     <div className="flex gap-2 max-[560px]:flex-col">
       <input
         readOnly
@@ -74,9 +84,12 @@ function LinkAcesso({ link }: { link: string }) {
         className="field-input min-w-0 flex-1 text-[13px]"
         onFocus={(e) => e.currentTarget.select()}
       />
-      <button className="btn-secondary whitespace-nowrap" onClick={copiar}>
-        {copiado ? "Copiado" : "Copiar"}
+      <button className="btn-secondary whitespace-nowrap" disabled={copiando} onClick={copiar}>
+        {copiando ? "Copiando…" : copiado ? "Copiado" : "Copiar"}
       </button>
+    </div>
+    <span className="sr-only" role="status">{copiado ? "Link copiado" : ""}</span>
+    {erro && <p role="alert" className="mt-2 text-sm text-destructive">{erro}</p>}
     </div>
   );
 }
@@ -128,14 +141,7 @@ function InviteModal({
   // única vez e some ao fechar, então nada de formulário competindo por atenção.
   if (criado) {
     return (
-      <div className="modal-overlay" onClick={onClose}>
-        <div className="modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="invite-ttl">
-          <div className="modal-head">
-            <span className="ttl" id="invite-ttl">Convite criado</span>
-            <button className="close" onClick={onClose} aria-label="Fechar">
-              ×
-            </button>
-          </div>
+      <Modal titulo="Convite criado" eyebrow="Acessos" onClose={onClose}>
           <div className="modal-body">
             <p className="m-0 mb-5 text-[15px] leading-[1.6] text-ink-3">
               Envie este link para <strong className="text-[color:var(--ink)]">{criado.nome}</strong>. Ele vale por 7 dias,
@@ -149,30 +155,22 @@ function InviteModal({
               Guarde agora: por segurança o link não pode ser consultado depois. Se perder, gere um novo pela ficha da pessoa.
             </div>
           </div>
-          <div className="modal-foot">
+          <div className="modal-foot sticky bottom-0 bg-card">
             <button className="btn-primary" onClick={onClose}>
               Concluir
             </button>
           </div>
-        </div>
-      </div>
+      </Modal>
     );
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="invite-ttl">
-        <div className="modal-head">
-          <span className="ttl" id="invite-ttl">Convidar pessoa</span>
-          <button className="close" onClick={onClose} aria-label="Fechar">
-            ×
-          </button>
-        </div>
+    <Modal titulo="Convidar pessoa" eyebrow="Acessos" onClose={onClose}>
         <div className="modal-body">
           <div className="field">
             <label className="field-label" htmlFor="inv-nome">Nome</label>
             <input
-              id="inv-nome" className="field-input" value={nome}
+              id="inv-nome" className="field-input rounded-lg" value={nome}
               onChange={(e) => setNome(e.target.value)}
               placeholder="Ex.: Sandra Oliveira"
             />
@@ -181,7 +179,7 @@ function InviteModal({
             <label className="field-label" htmlFor="inv-email">E-mail</label>
             <input
               id="inv-email"
-              className={"field-input" + (emailErr ? " is-error" : "")}
+              className={"field-input rounded-lg" + (emailErr ? " is-error" : "")}
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -201,15 +199,16 @@ function InviteModal({
                   <button
                     key={k}
                     type="button"
+                    aria-pressed={papel === k}
                     className={
-                      "flex w-full cursor-pointer items-start gap-3 border bg-transparent px-4 py-[13px] text-left hover:border-[color:var(--ink-3)] " +
+                      "flex w-full cursor-pointer items-start gap-3 rounded-lg border bg-transparent px-4 py-[13px] text-left hover:border-[color:var(--ink-3)] " +
                       (papel === k
                         ? "border-[color:var(--ink)] bg-[color:var(--bg-card-2)]"
                         : "border-[color:var(--rule)]")
                     }
                     onClick={() => setPapel(k)}
                   >
-                    <span className="mt-px text-[14px] text-[color:var(--ink)]">{papel === k ? "●" : "○"}</span>
+                    <span className="mt-px text-[color:var(--ink)]">{papel === k ? <CircleCheck size={18} aria-hidden /> : <Circle size={18} aria-hidden />}</span>
                     <span className="flex flex-col gap-0.5">
                       <strong className="text-[15px] font-bold text-[color:var(--ink)]">{p.nome}</strong>
                       <small className="text-[12px] leading-[1.4] text-ink-3">{p.desc}</small>
@@ -223,7 +222,7 @@ function InviteModal({
           </div>
           {erro && <span className="field-error">{erro}</span>}
         </div>
-        <div className="modal-foot">
+        <div className="modal-foot sticky bottom-0 bg-card">
           <button className="btn-ghost" onClick={onClose}>
             Cancelar
           </button>
@@ -231,8 +230,7 @@ function InviteModal({
             {enviando ? "Criando…" : "Criar convite →"}
           </button>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -282,20 +280,21 @@ function PermissionEditor({
     permCheck + " data-[on=true]:border-[color:var(--neg)] data-[on=true]:bg-[color:var(--neg)]";
 
   return (
-    <div className="border border-[color:var(--rule)] bg-[color:var(--bg-card)]">
-      <div className="flex items-center justify-between border-b border-[color:var(--rule)] bg-[color:var(--bg-card-2)] px-[26px] py-[22px]">
+    <div className="acessos-editor overflow-hidden rounded-xl border border-border bg-card">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-5">
         <div className="flex items-center gap-[14px]">
           <div className="grid h-[52px] w-[52px] place-items-center rounded-full bg-mast font-serif text-[22px] text-mast-ink">{inicialDe(user.nome)}</div>
-          <div>
-            <div className="flex items-center gap-2.5 font-serif text-[22px] tracking-[-0.01em]">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2.5 text-lg font-semibold">
               {user.nome}
               {user.dono && <span className={DONO_TAG}>dono</span>}
             </div>
-            <div className="mt-0.5 text-[13px] text-ink-3">{user.email}</div>
+            <div className="mt-0.5 break-all text-[13px] text-ink-3">{user.email}</div>
           </div>
         </div>
         <StatusBadge status={user.status} />
       </div>
+      {!user.dono && <div className="acessos-perfil-resumo"><ShieldCheck size={18} aria-hidden="true" /><div><strong>{papelNome}</strong><p>{user.areas.map(id => AREAS.find(area => area.id === id)?.label ?? id).join(" · ") || "Nenhuma área habilitada"} · {user.flags.includes("lancar") ? "Pode registrar operações" : "Sem registro de operações"} · {user.flags.includes("verValores") ? "Valores visíveis" : "Valores ocultos"}</p></div><small>Permissões salvas automaticamente</small></div>}
 
       {user.status === "PENDENTE" && (
         <div className="border-b border-[color:var(--rule-soft)] bg-[color:var(--bg-card-2)] px-[26px] py-[22px]">
@@ -352,8 +351,8 @@ function PermissionEditor({
               {AREAS.map((area) => {
                 const on = user.areas.includes(area.id);
                 return (
-                  <button key={area.id} className={permRowClass(on)} onClick={() => toggleArea(area.id)}>
-                    <span className={permCheck} data-on={on}>{on && <span className="text-[11px] leading-none text-[color:var(--bg-card)]">✓</span>}</span>
+                  <button key={area.id} aria-pressed={on} className={permRowClass(on)} onClick={() => toggleArea(area.id)}>
+                    <span className={permCheck} data-on={on}>{on && <Check size={12} aria-hidden className="text-[color:var(--bg-card)]" />}</span>
                     <span className="flex min-w-0 flex-col gap-0.5">
                       <strong className="font-sans text-[14px] font-medium text-[color:var(--ink)]">{area.label}</strong>
                       <small className="text-[12px] leading-[1.4] text-ink-3">{area.desc}</small>
@@ -375,6 +374,7 @@ function PermissionEditor({
                 .map(([k, p]) => (
                   <button
                     key={k}
+                    aria-pressed={user.papel === k}
                     className={
                       "cursor-pointer border px-[14px] py-2 font-sans text-[13px] tracking-[0.01em] " +
                       (user.papel === k
@@ -401,9 +401,9 @@ function PermissionEditor({
               {ABAS.map((aba) => {
                 const on = user.abas.includes(aba.id);
                 return (
-                  <button key={aba.id} className={permRowClass(on)} onClick={() => toggleAba(aba.id)}>
+                  <button key={aba.id} aria-pressed={on} className={permRowClass(on)} onClick={() => toggleAba(aba.id)}>
                     <span className={permCheck} data-on={on}>
-                      {on && <span className="text-[11px] leading-none text-[color:var(--bg-card)]">✓</span>}
+                      {on && <Check size={12} aria-hidden className="text-[color:var(--bg-card)]" />}
                     </span>
                     <span className="flex min-w-0 flex-col gap-0.5">
                       <strong className="font-sans text-[14px] font-medium text-[color:var(--ink)]">{aba.label}</strong>
@@ -424,9 +424,9 @@ function PermissionEditor({
                 const on = user.flags.includes(flag.id);
                 const isAdmin = flag.id === "gerenciarAcessos";
                 return (
-                  <button key={flag.id} className={permRowClass(on)} onClick={() => toggleFlag(flag.id)}>
+                  <button key={flag.id} aria-pressed={on} className={permRowClass(on)} onClick={() => toggleFlag(flag.id)}>
                     <span className={isAdmin ? permCheckAdmin : permCheck} data-on={on}>
-                      {on && <span className="text-[11px] leading-none text-[color:var(--bg-card)]">✓</span>}
+                      {on && <Check size={12} aria-hidden className="text-[color:var(--bg-card)]" />}
                     </span>
                     <span className="flex min-w-0 flex-col gap-0.5">
                       <strong className="font-sans text-[14px] font-medium text-[color:var(--ink)]">
@@ -441,8 +441,9 @@ function PermissionEditor({
             </div>
           </div>
 
-          <div className="flex items-center justify-end gap-2.5 px-[26px] py-5">
-            <button className="btn-ghost danger" onClick={() => onRevoke(user)}>
+          <div className="acessos-revogacao">
+            <TriangleAlert size={18} aria-hidden="true" /><p><strong>Revogar acesso</strong><small>A pessoa perderá o acesso à fazenda imediatamente.</small></p>
+            <button className="btn-secondary text-destructive" onClick={() => onRevoke(user)}>
               Revogar acesso
             </button>
           </div>
@@ -457,34 +458,45 @@ export function Acessos() {
   const [users, setUsers] = useState<UsuarioSessao[]>([]);
   const [selId, setSelId] = useState<number | null>(null);
   const [showInvite, setShowInvite] = useState(false);
+  const [busca, setBusca] = useState("");
+  const [statusFiltro, setStatusFiltro] = useState("");
+  const [carregando, setCarregando] = useState(true);
+  const [erroCarga, setErroCarga] = useState<string | null>(null);
+  const [revisao, setRevisao] = useState(0);
   const [revoking, setRevoking] = useState<UsuarioSessao | null>(null);
+  const [salvando, setSalvando] = useState(false);
   // Links emitidos nesta sessão, por usuário. O backend guarda só o hash do
   // token, então nada aqui pode ser reconstruído depois de recarregar a página.
   const [linksConvite, setLinksConvite] = useState<Record<number, string>>({});
 
   useEffect(() => {
+    let atual = true;
+    setCarregando(true);
+    setErroCarga(null);
     listarUsuarios()
       .then((us) => {
+        if (!atual) return;
         setUsers(us);
         setSelId((cur) => cur ?? us[0]?.id ?? null);
       })
-      .catch((e) => toast.error("Não foi possível carregar os acessos", e instanceof Error ? e.message : ""));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+      .catch((e) => { if (atual) setErroCarga(e instanceof Error ? e.message : "Não foi possível carregar os acessos."); })
+      .finally(() => { if (atual) setCarregando(false); });
+    return () => { atual = false; };
+  }, [revisao]);
 
   const sel = users.find((u) => u.id === selId) ?? users[0] ?? null;
   const ativos = users.filter((u) => u.status === "ATIVO").length;
   const pendentes = users.filter((u) => u.status === "PENDENTE").length;
 
   const updateUser = async (next: UsuarioSessao) => {
-    // otimista: reflete na UI e persiste; em erro, avisa (a próxima carga corrige).
-    setUsers((us) => us.map((u) => (u.id === next.id ? next : u)));
+    if (salvando) return;
+    setSalvando(true);
     try {
       const salvo = await atualizarUsuario(next.id, { papel: next.papel, abas: next.abas, areas: next.areas, flags: next.flags });
       setUsers((us) => us.map((u) => (u.id === salvo.id ? salvo : u)));
     } catch (e) {
       toast.error("Não foi possível salvar", e instanceof Error ? e.message : "");
-    }
+    } finally { setSalvando(false); }
   };
 
   // O modal fica aberto e assume a exibição do link; por isso devolvemos, em vez
@@ -530,54 +542,45 @@ export function Acessos() {
   };
 
   const existingEmails = users.map((u) => u.email.trim().toLowerCase()).filter(Boolean);
+  const termo = busca.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
+  const usersVisiveis = users.filter(u => (!statusFiltro || u.status === statusFiltro) && `${u.nome} ${u.email}`.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR").includes(termo));
 
   return (
     <PaginaFinanceira>
       <PageHeader
-        eyebrow="Administração"
         titulo="Acessos"
         descricao="Convide pessoas e defina quais áreas e informações cada perfil pode consultar ou operar."
         acao={<Button onClick={() => setShowInvite(true)}><UserPlus size={16} /> Convidar pessoa</Button>}
       />
-      <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        <Metric compacto label="Pessoas com acesso" valor={String(ativos)} detalhe="Perfis ativos" icon={UserCheck} tone="green" />
-        <Metric compacto label="Convites pendentes" valor={String(pendentes)} detalhe="Aguardando criação de senha" icon={Clock3} />
-        <Metric compacto label="Papéis disponíveis" valor={String(Object.keys(PAPEIS).length)} detalhe="Perfis-base para permissões" icon={ShieldCheck} />
-      </div>
-
-      <div className="mt-6 flex flex-col gap-8 pb-[60px]">
-        {/* Faixa horizontal: a equipe inteira numa linha só, com rolagem
-            lateral quando não couber. A ficha de quem está selecionado ocupa
-            a largura toda logo abaixo. */}
-        <div className="border border-[color:var(--rule)] bg-[color:var(--bg-card)]">
-          <div className="flex items-baseline justify-between border-b border-[color:var(--rule)] bg-[color:var(--bg-card-2)] px-[18px] py-[14px]">
-            <span className="text-[11px] uppercase tracking-[0.16em] text-ink-3">Equipe &amp; convidados</span>
-            <span className="text-[11px] text-ink-3 tabular-nums">{users.length}</span>
+      <div className="acessos-layout mt-5">
+        <section className="acessos-equipe" aria-label="Equipe e convidados">
+          <div className="acessos-equipe-cabecalho">
+            <h2><Users size={18} aria-hidden="true" />Equipe e convidados</h2>
+            <p>{carregando ? "Consultando acessos…" : `${ativos} ativos · ${pendentes} convites pendentes`}</p>
+            <label className="acessos-busca"><Search size={16} aria-hidden="true" /><input type="search" aria-label="Buscar pessoa" placeholder="Buscar nome ou e-mail" value={busca} onChange={e => setBusca(e.target.value)} /></label>
+            <div className="acessos-status-filtros" aria-label="Filtrar pessoas por situação">{[["", "Todos"], ["ATIVO", "Ativos"], ["PENDENTE", "Pendentes"], ["INATIVO", "Inativos"]].map(([valor, texto]) => <button type="button" key={valor} aria-pressed={statusFiltro === valor} onClick={() => setStatusFiltro(valor)}>{texto}</button>)}</div>
           </div>
-          {users.length === 0 ? (
-            <div className="px-[18px] py-[22px] text-[13px] text-ink-3">Ninguém por aqui ainda. Convide a primeira pessoa.</div>
+          {carregando ? <div className="p-5 text-sm text-ink-3" role="status">Carregando pessoas…</div> : erroCarga ? <div className="p-5 text-sm" role="alert"><p>{erroCarga}</p><Button secondary className="mt-3" onClick={() => setRevisao(v => v + 1)}>Tentar novamente</Button></div> : usersVisiveis.length === 0 ? (
+            <div className="px-[18px] py-[22px] text-[13px] text-ink-3">{users.length ? "Nenhuma pessoa encontrada. Ajuste a busca ou a situação." : "Ninguém por aqui ainda. Convide a primeira pessoa."}</div>
           ) : (
-            <div className="flex overflow-x-auto" role="tablist" aria-label="Equipe e convidados">
-              {users.map((u) => (
+            <div className="acessos-pessoas" aria-label="Selecionar pessoa">
+              {usersVisiveis.map((u) => (
                 <button
                   key={u.id}
-                  role="tab"
-                  aria-selected={selId === u.id}
-                  className={
-                    "flex w-[252px] flex-none cursor-pointer flex-col gap-2.5 border-0 border-r border-b-[3px] border-r-[color:var(--rule-soft)] bg-transparent px-[18px] py-4 text-left transition-[background] duration-[80ms] last:border-r-0 hover:bg-[color:var(--bg-card-2)] " +
-                    (selId === u.id ? "border-b-[color:var(--ink)] bg-[color:var(--bg-card-2)]" : "border-b-transparent")
-                  }
+                  type="button"
+                  aria-pressed={sel?.id === u.id}
+                  className="acessos-pessoa"
                   onClick={() => setSelId(u.id)}
                 >
                   <div className="flex items-center gap-2.5">
                     <div className="grid h-[38px] w-[38px] flex-none place-items-center rounded-full bg-mast font-serif text-[17px] text-mast-ink">{inicialDe(u.nome)}</div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="truncate font-sans text-[14px] font-medium text-[color:var(--ink)]">{u.nome}</span>
+                        <span className="break-words font-sans text-[14px] font-medium text-[color:var(--ink)]">{u.nome}</span>
                         {u.dono && <span className={DONO_TAG}>dono</span>}
                       </div>
-                      <div className="mt-0.5 truncate text-[12px] text-ink-3">
-                        {u.papel === "personalizado" ? "Personalizado" : PAPEIS[u.papel]?.nome} · {u.abas.length} abas
+                      <div className="mt-0.5 text-[12px] text-ink-3">
+                        {u.papel === "personalizado" ? "Personalizado" : PAPEIS[u.papel]?.nome ?? "Personalizado"}
                       </div>
                     </div>
                   </div>
@@ -589,9 +592,12 @@ export function Acessos() {
               ))}
             </div>
           )}
-        </div>
+        </section>
 
         {sel ? (
+          <fieldset disabled={salvando} aria-busy={salvando} className="min-w-0 border-0 p-0 m-0">
+          <legend className="sr-only">Permissões de {sel.nome}</legend>
+          <span role="status" className={salvando ? "block mb-2 text-sm text-muted-foreground" : "sr-only"}>{salvando ? "Salvando permissões…" : ""}</span>
           <PermissionEditor
             user={sel}
             linkConvite={linksConvite[sel.id] ?? null}
@@ -599,9 +605,10 @@ export function Acessos() {
             onResendInvite={resendInvite}
             onRevoke={confirmRevoke}
           />
+          </fieldset>
         ) : (
           <div className="border border-[color:var(--rule)] bg-[color:var(--bg-card)] px-[26px] py-[30px] text-[15px] text-ink-3">
-            Selecione uma pessoa para editar as permissões.
+            {carregando ? "Carregando acessos…" : "Selecione uma pessoa para editar as permissões."}
           </div>
         )}
       </div>

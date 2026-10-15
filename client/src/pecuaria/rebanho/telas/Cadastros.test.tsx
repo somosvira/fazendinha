@@ -89,6 +89,19 @@ async function montarMotivos() {
 }
 
 describe("Cadastros do rebanho — permissão de leitura (K7)", () => {
+  it("busca motivos por nome ou classe sem acentos e sem nova consulta", async () => {
+    vi.mocked(listarMotivosBaixa).mockResolvedValue(motivosMock);
+    render(<Cadastros podeLancar={false} cadastro="motivos" embutido />);
+    await screen.findAllByText("Baixa produção");
+    const busca = screen.getByRole("searchbox", { name: "Buscar motivos de baixa" });
+    fireEvent.change(busca, { target: { value: "PRODUCAO" } });
+    expect(screen.getAllByText("Baixa produção").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Morte por doença")).toBeNull();
+    fireEvent.change(busca, { target: { value: "morte" } });
+    expect(screen.getAllByText("Morte por doença").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Baixa produção")).toBeNull();
+    expect(listarMotivosBaixa).toHaveBeenCalledTimes(1);
+  });
   it("usuário só de leitura mantém os filtros de cada aba utilizáveis, com a tabela desabilitada", async () => {
     const { container } = render(<Cadastros podeLancar={false} />);
     await screen.findAllByText("Vaca");
@@ -128,7 +141,7 @@ describe("Cadastros do rebanho — categorias", () => {
     });
     await montarCategorias();
     const linhaVaca = within(screen.getByRole("table", { name: "Categorias" })).getByText("Vaca").closest("tr")!;
-    expect(within(linhaVaca).getByText("4")).toBeTruthy();
+    expect(within(linhaVaca).getByText("4 manuais")).toBeTruthy();
   });
 
   it("avisa quando há animais ativos sem categoria", async () => {
@@ -224,6 +237,19 @@ describe("Cadastros do rebanho — categorias", () => {
 });
 
 describe("Cadastros do rebanho — raças", () => {
+  it("filtra raças por nome e sigla localmente sem alterar catálogo", async () => {
+    await montarRacas();
+    const chamadas = vi.mocked(listarRacas).mock.calls.length;
+    const busca = screen.getByRole("searchbox", { name: "Buscar raças" });
+    fireEvent.change(busca, { target: { value: "hol" } });
+    expect(within(screen.getByRole("table", { name: "Raças" })).queryByText("Gir")).toBeNull();
+    fireEvent.change(busca, { target: { value: "inexistente" } });
+    expect(screen.getByRole("status").textContent).toContain("Nenhuma raça");
+    fireEvent.change(busca, { target: { value: "" } });
+    expect(within(screen.getByRole("table", { name: "Raças" })).getByText("Gir")).toBeTruthy();
+    expect(listarRacas).toHaveBeenCalledTimes(chamadas);
+    expect(editarRaca).not.toHaveBeenCalled();
+  });
   it("lista raças com sigla, tipo e situação", async () => {
     await montarRacas();
     const tabela = screen.getByRole("table", { name: "Raças" });

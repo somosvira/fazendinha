@@ -24,7 +24,7 @@ export function Nutricao({ podeLancar }: { podeLancar: boolean }) {
     const restaurar = () => setUrl(estadoUrl());
     window.addEventListener("popstate", restaurar); return () => window.removeEventListener("popstate", restaurar);
   }, []);
-  useEffect(() => { titulo.current?.focus(); }, [url.aba, url.loteId, url.fechamentoId, url.acao, url.formReceita]);
+  useEffect(() => { titulo.current?.focus({ preventScroll: true }); }, [url.aba, url.loteId, url.fechamentoId, url.acao, url.formReceita]);
   const operacao = url.acao === "atribuir" || url.acao === "corrigir" || url.acao === "consumo" ? url.acao : null;
   const voltar = () => navegarPara(rotaRetornoNutricional());
   const subpagina = !!operacao || !!url.fechamentoId || (url.aba === "lotes" && !!url.loteId);

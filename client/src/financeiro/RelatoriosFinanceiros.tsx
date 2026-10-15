@@ -158,6 +158,7 @@ export function RelatoriosFinanceiros({ podeExportar = true }: { podeExportar?: 
       message="Você já tem um rascunho de relatório em andamento. Para começar outro, o rascunho atual será apagado."
       confirmLabel="Descartar e criar"
       cancelLabel="Continuar rascunho"
+      dismissLabel="Voltar à lista"
       cancelTone="safe"
       tone="danger"
       processando={iniciando}

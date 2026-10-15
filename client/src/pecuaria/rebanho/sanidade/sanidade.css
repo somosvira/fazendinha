@@ -5,6 +5,30 @@
 .sanidade-abas button.border-mast { color: var(--pos); border-color: var(--pos); font-weight: 600; }
 .sanidade-ciclos { border: 1px solid var(--border); border-radius: .25rem; overflow: hidden; }
 .sanidade-ciclo-linha { display: grid; grid-template-columns: minmax(0,1.4fr) minmax(0,1.4fr) minmax(0,1fr) minmax(0,.8fr) auto; align-items: center; gap: 1rem; padding: 1rem; border-top: 1px solid var(--border); }
-.sanidade-ciclo-ativo { background: color-mix(in srgb, var(--pos) 6%, var(--surface)); border-left: 2px solid var(--pos); }
+.sanidade-ciclo-ativo { background: color-mix(in srgb, var(--pos) 6%, var(--surface)); border-left: 1px solid var(--pos); }
 .sanidade-ciclo-detalhe { margin: 0 1rem 1rem; padding: 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: .25rem; }
 @media (max-width: 720px) { .sanidade-ciclo-linha { grid-template-columns: 1fr 1fr; } .sanidade-ciclo-cabecalho { display: none; } .sanidade-ciclo-detalhe { margin: 0 .5rem .5rem; padding: .75rem; } }
+.sanidade-prazo { display: grid; gap: 5px; font-size: 13px; line-height: 1.4; }
+.sanidade-carencias-tabela col { width: 35% !important; }
+.sanidade-carencias-tabela col:first-child { width: 30% !important; }
+.sanidade-prazo-titulo { display: flex; align-items: center; gap: 7px; font-weight: 600; }
+.sanidade-prazo-titulo svg { flex-shrink: 0; }
+.sanidade-prazo small { font-size: 12px; color: var(--muted-foreground); padding-left: 22px; }
+.sanidade-prazo-atencao .sanidade-prazo-titulo { color: var(--fin-pendente); }
+.sanidade-prazo-alerta .sanidade-prazo-titulo { color: var(--destructive); }
+.sanidade-prazo-verde .sanidade-prazo-titulo { color: var(--primary); }
+.sanidade-prazo-neutro .sanidade-prazo-titulo { color: var(--muted-foreground); }
+.sanidade-carencias-atalhos { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 16px 14px; }
+.sanidade-carencias-atalhos button { border: 1px solid var(--border); border-radius: 999px; padding: 6px 12px; background: var(--card); font-size: 12px; cursor: pointer; }
+.sanidade-carencias-atalhos button[aria-pressed=true] { background: var(--primary); color: var(--primary-foreground); border-color: var(--primary); }
+.sanidade-carencias-atalhos button:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
+.pecuaria-content .sanidade-ciclo-compacto .pec-distribuicao-corpo { grid-template-columns: 92px minmax(0, 1fr); gap: 16px; align-items: center; padding: 8px 0; min-height: 0; }
+.pecuaria-content .sanidade-ciclo-compacto .pec-distribuicao-rosca { width: 92px; height: 92px; min-height: 0; justify-self: start; }
+.pecuaria-content .sanidade-ciclo-compacto .pec-distribuicao-chart { width: 92px; height: 92px; }
+.pecuaria-content .sanidade-ciclo-compacto .pec-rosca-centro strong { font-size: 22px; }
+.pecuaria-content .sanidade-ciclo-compacto .pec-distribuicao-legenda { display: flex; flex-wrap: wrap; gap: 8px 20px; }
+.pecuaria-content .sanidade-ciclo-compacto .pec-distribuicao-legenda > li { min-width: 150px; }
+.pecuaria-content .sanidade-ciclo-compacto .pec-distribuicao-item { padding: 4px 0; gap: 8px; }
+.pecuaria-content .sanidade-ciclo-compacto .pec-distribuicao-embutida { padding: 0; }
+.pecuaria-content .sanidade-ciclo-compacto .pec-contagens-etapa-compactas { display: flex; flex-wrap: wrap; gap: 4px 8px; }
+.pecuaria-content .sanidade-ciclo-compacto .pec-contagens-etapa-compactas > span { padding: 3px 6px; font-size: 11px; }

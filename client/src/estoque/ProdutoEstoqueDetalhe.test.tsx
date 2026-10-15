@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { alterarControle } from "../lib/controles.fixture";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { ProdutoEstoqueDetalhe } from "./ProdutoEstoqueDetalhe";
 import { obterProdutoEstoque, listarLotesProduto, listarMovimentosProduto, listarOrigensProduto, renomearLoteProduto } from "./api";
 import { getUsuario } from "../lib/auth";
@@ -22,6 +22,26 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 describe("ficha do produto", () => {
+  it("preserva nome após 403 e bloqueia renomeações concorrentes", async () => {
+    let recusar!: (erro: Error) => void;
+    vi.mocked(renomearLoteProduto).mockImplementationOnce(() => new Promise((_, reject) => { recusar = reject; }));
+    render(<ProdutoEstoqueDetalhe produtoId="p" />);
+    await screen.findByText("Saldo consolidado");
+    fireEvent.click(screen.getByRole("tab", { name: "Lotes" }));
+    await screen.findByRole("table", { name: "Lotes do produto" });
+    fireEvent.pointerDown(screen.getAllByRole("button", { name: "Ações do lote Vence dezembro" })[0], { button: 0, ctrlKey: false });
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Renomear lote" }));
+    const nome = screen.getByLabelText("Novo nome");
+    fireEvent.change(nome, { target: { value: "Lote revisado" } });
+    const form = nome.closest("form")!;
+    act(() => { fireEvent.submit(form); fireEvent.submit(form); });
+    expect(renomearLoteProduto).toHaveBeenCalledTimes(1);
+    await act(async () => { recusar(new Error("Acesso negado (403)")); });
+    expect(nome).toHaveProperty("value", "Lote revisado");
+    expect(within(screen.getByRole("dialog")).getByRole("alert").textContent).toContain("403");
+    fireEvent.submit(form);
+    await waitFor(() => expect(renomearLoteProduto).toHaveBeenCalledTimes(2));
+  });
   it("monta o resumo consolidado e troca o sítio sem criar estoque", async () => {
     render(<ProdutoEstoqueDetalhe produtoId="p" />);
     await screen.findByText("Saldo consolidado");

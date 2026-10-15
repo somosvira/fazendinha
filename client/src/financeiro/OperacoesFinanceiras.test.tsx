@@ -7,6 +7,8 @@ import { descartarRascunhoOperacao, listarOperacoes, obterRascunhoOperacao } fro
 import { limparRascunhoAtivo, prepararPublicacaoRascunho } from "./rascunhoAtivo";
 import { abrirRotaNovaOperacao } from "../router";
 import { uid } from "../lib/uid.fixture";
+import * as permissoes from "./permissoes";
+vi.mock("./permissoes", () => ({ podeVerValoresFinanceiros: vi.fn().mockReturnValue(true) }));
 
 vi.mock("./novo-api", () => ({
   listarOperacoes: vi.fn().mockResolvedValue([]),
@@ -30,6 +32,7 @@ vi.mock("./OperacaoFinanceiraDetalhe", () => ({
 const rascunho = { id: uid(8), versao: 2, updatedAt: "2026-09-07T12:00:00Z", documentos: [], dados: { formulario: { descricao: "Compra mensal" } } };
 
 beforeEach(() => {
+  vi.mocked(permissoes.podeVerValoresFinanceiros).mockReturnValue(true);
   cleanup(); vi.clearAllMocks(); limparRascunhoAtivo();
   window.history.replaceState(null, "", "/financeiro/operacoes");
   // A API real publica o rascunho na store compartilhada; os dublês fazem o mesmo.
@@ -38,6 +41,21 @@ beforeEach(() => {
 });
 
 describe("OperacoesFinanceiras — rascunho", () => {
+  it("nega URL de criação para consulta sem depender de configurações de escrita", async () => {
+    window.history.replaceState(null, "", "/financeiro/operacoes/nova");
+    render(<OperacoesFinanceiras podeLancar={false} />);
+    await screen.findByText("Você não tem permissão para lançar operações financeiras.");
+    expect(obterRascunhoOperacao).not.toHaveBeenCalled();
+    expect(screen.queryByText("Formulário novo")).toBeNull();
+  });
+  it("operador sem valores abre formulário novo sem buscar ou sobrescrever rascunho", async () => {
+    vi.mocked(permissoes.podeVerValoresFinanceiros).mockReturnValue(false);
+    render(<OperacoesFinanceiras podeLancar />);
+    fireEvent.click(await screen.findByRole("button", { name: "Nova operação" }));
+    await screen.findByText("Formulário novo");
+    expect(obterRascunhoOperacao).not.toHaveBeenCalled();
+    expect(descartarRascunhoOperacao).not.toHaveBeenCalled();
+  });
   it("oferece continuar quando existe um rascunho", async () => {
     render(<OperacoesFinanceiras />);
     fireEvent.click(await screen.findByRole("button", { name: "Continuar operação" }));

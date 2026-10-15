@@ -29,6 +29,7 @@ describe("visibilidade do valor da transferência", () => {
   it.each([false, true])("cancelamento conserva IDs físicos e aplica visibilidade também às reversões (verValores=%s)", async (verValores) => {
     mocks.obter.mockResolvedValue({ ...dados, status: "CANCELADA", movimentosEstoque: [...dados.movimentosEstoque, ...dados.movimentosEstoque.map((m, i) => ({ ...m, id: uid(i + 10), origem: "AJUSTE_INVENTARIO", reversaoDeId: m.id }))] });
     const resposta = await app(["financeiro"], ["lancar", ...(verValores ? ["verValores"] : [])]).request(`/financeiro/operacoes/${uid(4)}/estorno`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ motivo: "Sítio de destino incorreto" }) });
+    if (!verValores) { expect(resposta.status).toBe(403); expect(mocks.estornar).not.toHaveBeenCalled(); return; }
     expect(resposta.status).toBe(201);
     const resultado = await resposta.json();
     expect(resultado.valorTotal).toBe(verValores ? "8" : null);

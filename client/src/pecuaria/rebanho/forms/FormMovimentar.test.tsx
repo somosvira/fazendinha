@@ -35,6 +35,11 @@ const animal2 = criarAnimal({ id: "a2", brinco: "0002", nome: "Mimosa", lote: nu
 const animal3 = criarAnimal({ id: "a3", brinco: "0003" });
 
 describe("FormMovimentar", () => {
+  it("explica destino ainda igual ao atual sem registrar movimento", () => {
+    render(<FormMovimentar animais={[animal1]} propriedades={propriedades} lotes={lotes} propriedadeInicial={1} loteInicial="lote-1" onSalvo={vi.fn()} onFechar={vi.fn()} />);
+    expect(screen.getByRole("status").textContent).toContain("coincide com a localização atual");
+    expect(movimentarAnimais).not.toHaveBeenCalled();
+  });
   it("ajusta o título ao número de animais selecionados", () => {
     render(<FormMovimentar animais={[animal1]} propriedades={propriedades} lotes={lotes} onSalvo={vi.fn()} onFechar={vi.fn()} />);
     expect(screen.getByRole("heading", { name: "Movimentar animal" })).toBeTruthy();

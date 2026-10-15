@@ -15,6 +15,19 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 describe("Cadastros sanitários", () => {
+  it("filtra nomes sem distinguir acentos, preserva o catálogo e não grava", async () => {
+    render(<CadastrosSanitarios podeLancar={false} cadastro="aplicacao" embutido />);
+    await screen.findAllByText("Vacinação");
+    const busca = screen.getByRole("searchbox", { name: "Buscar tipos de aplicação" });
+    fireEvent.change(busca, { target: { value: "VACINACAO" } });
+    expect(screen.getAllByText("Vacinação").length).toBeGreaterThan(0);
+    fireEvent.change(busca, { target: { value: "inexistente" } });
+    expect(screen.queryByText("Vacinação")).toBeNull();
+    fireEvent.change(busca, { target: { value: "" } });
+    expect(screen.getAllByText("Vacinação").length).toBeGreaterThan(0);
+    expect(listarTiposAplicacao).toHaveBeenCalledTimes(1);
+    expect(salvarTipoAplicacao).not.toHaveBeenCalled();
+  });
   it("abre protocolos e carrega somente o catálogo selecionado preservando a navegação externa", async () => {
     render(<CadastrosSanitarios podeLancar />);
     expect(screen.getByText("Lista de protocolos")).toBeTruthy();

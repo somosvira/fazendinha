@@ -2,6 +2,15 @@
 .estoque-content .estoque-filtros { padding: 16px; border-bottom: 1px solid var(--border); }
 .estoque-content .estoque-filtros > :is(input,select,button) { min-width: 0; }
 .estoque-content .estoque-escopo { margin-bottom: 0; }
+.estoque-content .estoque-panorama { display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 20px; padding: 20px; }
+.estoque-content .estoque-panorama-resumo { display: flex; align-items: center; gap: 14px; }
+.estoque-content .estoque-panorama-alertas { display: flex; flex-wrap: wrap; gap: 12px; }
+.estoque-content .estoque-alerta { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border: 1px solid var(--border); border-radius: 10px; text-align: left; background: var(--muted); font-size: 13px; cursor: pointer; }
+.estoque-content .estoque-alerta small { display: block; margin-top: 3px; color: var(--muted-foreground); }
+.estoque-content .estoque-alerta-atencao { background: var(--fin-warning-bg); color: var(--fin-pendente); }
+.estoque-content .estoque-alerta-negativo { color: var(--destructive); }
+.estoque-content .estoque-alerta[aria-pressed=true] { outline: 2px solid currentColor; outline-offset: 2px; }
+.estoque-content .estoque-alerta:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
 .estoque-content .estoque-ficha-resumo { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.5fr); gap: 24px; padding: 24px; }
 .estoque-content .estoque-ficha-dados { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); align-items: start; gap: 16px; margin: 0; }
 .estoque-content .estoque-ficha-dados dt { color: var(--muted-foreground); font-size: 12px; }

@@ -12,7 +12,8 @@ import { CampoComposicao, rolarParaCampo } from "../ui";
 import { CampoGenitor, genitorIncompleto, mensagemGenitorIncompleto, valorGenitorParaCampos, type ValorGenitor } from "../components/CampoGenitor";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import { navegarPara } from "../../../router";
-import { Button, ErrorBox, hoje, PageHeader, PaginaCarregando, PaginaFinanceira, ReviewLine } from "../../../financeiro/financeiro-ui";
+import { Button, ErrorBox, hoje, PageHeader, PaginaCarregando, PaginaFinanceira } from "../../../financeiro/financeiro-ui";
+import { LinhaPrevia as ReviewLine } from "../../../financeiro/LinhaPrevia";
 import { CampoFormulario, classeInput } from "../../../financeiro/PainelCadastro";
 import { DatePicker } from "../../../components/DatePicker";
 import { useToast } from "../../../components/Toast";
@@ -236,8 +237,9 @@ function FormNovoAnimal({ onVoltar }: { onVoltar: () => void }) {
           <div className="pec-revisao-titulo text-[11px] font-semibold uppercase tracking-[.14em]">Revisão do cadastro</div>
           <div className="mt-3 font-serif text-3xl">{brinco.trim() || "Sem brinco"}</div>
           <div className="mt-5 space-y-3 text-sm leading-5">
-            {categoriaPrevista && <ReviewLine>Categoria calculada: {categoriaPrevista.nome}.</ReviewLine>}
-            <ReviewLine tone={propriedadeNome ? "green" : "neutral"}>{propriedadeNome ? <>Entra no sítio {propriedadeNome}{loteNome ? `, lote ${loteNome}` : ""}.</> : "Selecione o sítio de destino."}</ReviewLine>
+            {!brinco.trim() && <ReviewLine pendente>Informe o brinco para identificar o animal.</ReviewLine>}
+            {categoriaPrevista && <ReviewLine>Categoria prevista pelos dados preenchidos: {categoriaPrevista.nome}.</ReviewLine>}
+            <ReviewLine pendente={!propriedadeNome}>{propriedadeNome ? <>Entra no sítio {propriedadeNome}{loteNome ? `, lote ${loteNome}` : ""}.</> : "Falta selecionar o sítio de destino."}</ReviewLine>
             <ReviewLine>Finalidade: {rotuloAptidao(aptidao)}{papelReprodutivo !== "NENHUM" ? ` · ${rotuloPapelReprodutivo(papelReprodutivo)}` : ""}.</ReviewLine>
             <ReviewLine tone={composicaoRotulo ? "brown" : "neutral"}>{composicaoRotulo ? <>Composição: {composicaoRotulo}.</> : (mae.tipo !== "NENHUM" || pai.tipo !== "NENHUM") ? "Composição será calculada pelos genitores." : "Sem composição racial informada."}</ReviewLine>
             {(mae.tipo !== "NENHUM" || pai.tipo !== "NENHUM") && <ReviewLine>Filiação: {mae.tipo === "ANIMAL" ? mae.brinco || "mãe selecionada" : mae.tipo === "EXTERNO" ? "mãe externa selecionada" : "mãe não informada"} · {pai.tipo === "ANIMAL" ? pai.brinco || "pai selecionado" : pai.tipo === "EXTERNO" ? "pai externo selecionado" : "pai não informado"}.</ReviewLine>}

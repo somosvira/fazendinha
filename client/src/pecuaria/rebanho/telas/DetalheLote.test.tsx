@@ -119,6 +119,15 @@ beforeEach(() => {
 });
 
 describe("DetalheLote — animais do lote", () => {
+  it("mantém navegação para todas as seções sem ocultar o conteúdo", async () => {
+    await montar();
+    const nav = screen.getByRole("navigation", { name: "Seções da ficha do lote" });
+    for (const link of within(nav).getAllByRole("link")) {
+      const destino = link.getAttribute("href")!.slice(1);
+      expect(document.getElementById(destino)).not.toBeNull();
+    }
+    expect(nav.style.position).toBe("sticky");
+  });
   it("lista os animais ativos do lote", async () => {
     await montar();
     await screen.findAllByText("0001");

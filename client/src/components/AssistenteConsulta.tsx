@@ -97,11 +97,11 @@ export function AssistenteConsulta() {
   }
 
   return <Sheet open={aberto} onOpenChange={setAberto}>
-    <SheetTrigger asChild><Button className="fixed bottom-5 right-5 z-40 gap-2 rounded-full px-4 py-3 shadow-lg" aria-label="Abrir assistente do Terrano"><MessageCircle size={18} aria-hidden />Assistente</Button></SheetTrigger>
-    <SheetContent className="h-[100dvh] w-full gap-0 p-0 sm:max-w-[480px]">
+    <SheetTrigger asChild><Button className="fixed bottom-5 right-3 z-40 size-11 rounded-lg p-0 shadow-lg max-[900px]:bottom-auto max-[900px]:top-3" aria-label="Abrir assistente do Terrano" title="Assistente do Terrano"><MessageCircle size={18} aria-hidden /><span className="sr-only">Assistente</span></Button></SheetTrigger>
+    <SheetContent className="financeiro-colorido h-[100dvh] w-full gap-0 p-0 sm:max-w-[480px]">
       <SheetHeader className="border-b border-border px-5 pb-4 pt-6 pr-12">
         <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground"><MessageCircle size={15} aria-hidden />Terrano</div>
-        <SheetTitle className="text-2xl">Assistente de consulta</SheetTitle>
+        <SheetTitle className="font-sans text-2xl font-semibold">Assistente de consulta</SheetTitle>
         <SheetDescription className="text-sm">Seu financeiro e ajuda para usar o sistema.</SheetDescription>
         {config && <p className="mt-1 text-xs text-muted-foreground">Sítio: <span className="font-medium text-foreground">{config.escopo.nome}</span></p>}
       </SheetHeader>
@@ -109,8 +109,8 @@ export function AssistenteConsulta() {
         {carregandoConfig && <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="animate-spin" size={16} />Abrindo assistente…</p>}
         {erroConfig && <div role="alert" className="rounded-xl border border-destructive/30 bg-muted p-4 text-sm"><p>{erroConfig}</p><Button variant="outline" className="mt-3" onClick={() => setRevisaoConfig(v => v + 1)}>Tentar novamente</Button></div>}
         {config && !carregandoConfig && <>
-          {mensagens.length === 0 && <div className="mb-5"><h3 className="font-serif text-xl">Como posso ajudar?</h3><p className="mt-2 text-sm leading-relaxed text-muted-foreground">Consulte os valores cadastrados ou entenda uma funcionalidade. Cada resposta mostra a fonte para você conferir.</p></div>}
-          {config.consultas.length > 0 && <div className="mb-5"><h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Consultas rápidas</h3><div className="flex flex-wrap gap-2">{CONSULTAS.filter(c => config.consultas.includes(c.visao)).map(c => <Button key={c.visao} variant="outline" className="h-auto px-3 py-2 text-xs" disabled={bloqueado} onClick={() => { void enviar({ consulta: { visao: c.visao, inicio: null, fim: null } }, c.pergunta); }}>{c.titulo}</Button>)}</div></div>}
+          {mensagens.length === 0 && <div className="mb-5"><h3 className="text-xl font-semibold">Como posso ajudar?</h3><p className="mt-2 text-sm leading-relaxed text-muted-foreground">Consulte os valores cadastrados ou entenda uma funcionalidade. Cada resposta mostra a fonte para você conferir.</p></div>}
+          {config.consultas.length > 0 && <div className="mb-5"><h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Consultas rápidas</h3><p className="mb-2 text-xs text-muted-foreground">No sítio {config.escopo.nome}, somente dados permitidos ao seu perfil.</p><div className="flex flex-wrap gap-2">{CONSULTAS.filter(c => config.consultas.includes(c.visao)).slice(0, 2).map(c => <Button key={c.visao} variant="outline" className="h-auto px-3 py-2 text-xs" disabled={bloqueado} onClick={() => { void enviar({ consulta: { visao: c.visao, inicio: null, fim: null } }, c.pergunta); }}>{c.titulo}</Button>)}</div>{config.consultas.length > 2 && <details className="mt-3"><summary className="cursor-pointer text-sm font-medium">Mais consultas financeiras</summary><div className="mt-2 flex flex-wrap gap-2">{CONSULTAS.filter(c => config.consultas.includes(c.visao)).slice(2).map(c => <Button key={c.visao} variant="outline" className="h-auto px-3 py-2 text-xs" disabled={bloqueado} onClick={() => { void enviar({ consulta: { visao: c.visao, inicio: null, fim: null } }, c.pergunta); }}>{c.titulo}</Button>)}</div></details>}</div>}
           <details className="mb-5 rounded-xl border border-border p-3" open={mensagens.length === 0}><summary className="flex cursor-pointer items-center gap-2 text-sm font-medium"><BookOpen size={16} aria-hidden />Guias de uso</summary><div className="mt-3 grid gap-1">{config.artigos.map(a => <button key={a.id} type="button" disabled={bloqueado} className="rounded-lg px-2 py-2 text-left text-sm transition hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-50" onClick={() => { void enviar({ artigoId: a.id }, a.titulo); }}>{a.titulo}</button>)}</div></details>
         </>}
         <div role="log" aria-label="Conversa com o assistente" aria-live="polite" aria-relevant="additions text" className="space-y-5">

@@ -21,6 +21,7 @@ import { SeletorAnimais } from "../components/SeletorAnimais";
 import { HistoricoMovimentacoes } from "../components/HistoricoMovimentacoes";
 import { DetalheMovimentacao } from "../components/DetalheMovimentacao";
 import { ComparacaoPecuaria } from "../components/DistribuicaoPecuaria";
+import { BuscaLista } from "../../../components/BuscaLista";
 
 type Painel = { modo: "novo" } | { modo: "editar"; id: string } | null;
 
@@ -42,6 +43,7 @@ export function mensagemDesativar(lote: Lote): string {
 export function ListaLotes({ podeLancar = true, onAbrirLote }: { podeLancar?: boolean; onAbrirLote: (id: string) => void }) {
   const [mostrarInativos, setMostrarInativos] = useState(false);
   const [filtroSitio, setFiltroSitio] = useState("");
+  const [busca, setBusca] = useState("");
   const [lotes, setLotes] = useState<Lote[] | null>(null);
   const sitios = usePropriedades();
   const [painel, setPainel] = useState<Painel>(null);
@@ -120,7 +122,7 @@ export function ListaLotes({ podeLancar = true, onAbrirLote }: { podeLancar?: bo
   const chavePainel = painel ? (painel.modo === "editar" ? `editar-${painel.id}` : "novo") : "fechado";
 
   const sitiosAtivos = sitios.data.filter((s) => s.ativo);
-  const lotesFiltrados = filtroSitio ? (lotes ?? []).filter((l) => String(l.propriedadeId) === filtroSitio) : lotes ?? [];
+  const lotesFiltrados = (lotes ?? []).filter(l => (!filtroSitio || String(l.propriedadeId) === filtroSitio) && `${l.nome} ${l.propriedade.nome}`.toLocaleLowerCase("pt-BR").includes(busca.toLocaleLowerCase("pt-BR")));
   /* pré-seleciona o sítio ativo no seletor global (comPropriedade), quando houver, na criação de lote */
   const propriedadeInicial = getPropriedadeAtiva() ?? sitiosAtivos[0]?.id ?? null;
 
@@ -132,12 +134,11 @@ export function ListaLotes({ podeLancar = true, onAbrirLote }: { podeLancar?: bo
     <NavRebanho ativa="lotes" />
     <ErrorBox erro={erro} />
 
-    {lotes && <div className="mt-5"><ComparacaoPecuaria titulo="Distribuição dos animais nos lotes" descricao={`${lotesFiltrados.filter(l => l.ativo).length} lotes ativos no filtro · até 6 lotes com maior efetivo`} itens={[...lotesFiltrados].filter(l => l.ativo).sort((a, b) => b.animaisAtivos - a.animaisAtivos).slice(0, 6).map(l => ({ id: l.id, nome: l.nome, qtd: l.animaisAtivos, href: `/pecuaria/rebanho/lotes/${l.id}` }))} /></div>}
-
     <Panel className="mt-5 overflow-hidden">
       <div className="border-b border-border p-5"><h2 className="font-serif text-xl">Lotes</h2></div>
       {/* filtros ficam fora do fieldset de escrita — quem só pode ver continua podendo filtrar (K7) */}
       <BarraFiltros>
+        <BuscaLista rotulo="Buscar lote" placeholder="Buscar lote ou sítio" valor={busca} onChange={setBusca} />
         <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" disabled={processando} checked={mostrarInativos} onChange={(e) => setMostrarInativos(e.target.checked)} />Mostrar inativos</label>
         <label className="flex items-center gap-2 text-sm font-medium">Sítio
           <SelectCampo aria-label="Filtrar por sítio" disabled={processando} value={filtroSitio} onValueChange={(valorSelecionado) => setFiltroSitio(valorSelecionado)} className="rounded-lg border border-border bg-white p-2 text-sm font-normal">
@@ -152,6 +153,8 @@ export function ListaLotes({ podeLancar = true, onAbrirLote }: { podeLancar?: bo
           : <TabelaFinanceira rotulo="Lotes" itens={lotesFiltrados} colunas={colunasLotes(editar, alternar)} chaveDe={(l) => l.id} onAbrir={(l) => onAbrirLote(l.id)} classeLinha={(l) => !l.ativo ? "opacity-55" : ""} />}
       </fieldset>
     </Panel>
+
+    {lotes && <div className="mt-5"><ComparacaoPecuaria titulo="Distribuição dos animais nos lotes" descricao={`${lotesFiltrados.filter(l => l.ativo).length} lotes ativos no filtro · até 6 lotes com maior efetivo`} itens={[...lotesFiltrados].filter(l => l.ativo).sort((a, b) => b.animaisAtivos - a.animaisAtivos).slice(0, 6).map(l => ({ id: l.id, nome: l.nome, qtd: l.animaisAtivos, href: `/pecuaria/rebanho/lotes/${l.id}` }))} /></div>}
 
     <Panel className="mt-5 overflow-hidden">
       <div className="border-b border-border p-5"><h2 className="font-serif text-xl">Histórico de movimentações</h2></div>

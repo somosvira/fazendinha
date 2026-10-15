@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { ReceitasDieta } from "./ReceitasDieta";
 import * as api from "./api";
 vi.mock("./api", () => ({ listarDietas: vi.fn(), listarProdutosNutricionais: vi.fn(), listarCentrosNutricionais: vi.fn(), criarDieta: vi.fn(), editarDieta: vi.fn(), publicarDieta: vi.fn() }));
@@ -15,6 +15,36 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 describe("gestão compartilhada de receitas", () => {
+  it("não duplica submissão no mesmo batch e conserva o rascunho após recusa 403", async () => {
+    let recusar!: (erro: Error) => void;
+    vi.mocked(api.editarDieta).mockImplementationOnce(() => new Promise((_, reject) => { recusar = reject; }));
+    render(<ReceitasDieta podeLancar />);
+    fireEvent.click(await screen.findByRole("button", { name: "Editar rascunho" }));
+    const salvar = screen.getByRole("button", { name: "Salvar rascunho" });
+    await waitFor(() => expect(salvar.hasAttribute("disabled")).toBe(false));
+    fireEvent.change(screen.getByLabelText("Nome da dieta"), { target: { value: "Receita revisada" } });
+    const form = salvar.closest("form")!;
+    act(() => { fireEvent.submit(form); fireEvent.submit(form); });
+    expect(api.editarDieta).toHaveBeenCalledTimes(1);
+    await act(async () => { recusar(new Error("Sem permissão para alterar (403)")); });
+    expect(await screen.findByText("Sem permissão para alterar (403)")).toBeTruthy();
+    expect(screen.getByLabelText("Nome da dieta")).toHaveProperty("value", "Receita revisada");
+    expect(screen.getByRole("spinbutton", { name: /Quantidade por cabeça\/dia · Milho/ })).toHaveProperty("value", "3.5");
+    vi.mocked(api.editarDieta).mockResolvedValueOnce(dieta("rascunho", null));
+    fireEvent.submit(form);
+    await waitFor(() => expect(api.editarDieta).toHaveBeenCalledTimes(2));
+  });
+  it("bloqueia publicação via URL para consulta e recupera leitura após 404", async () => {
+    window.history.replaceState(null, "", "/pecuaria/nutricao?aba=receitas&formReceita=publicar&receitaId=rascunho");
+    vi.mocked(api.listarDietas).mockRejectedValueOnce(new Error("Receitas não encontradas (404)"));
+    render(<ReceitasDieta podeLancar={false} />);
+    await screen.findByText("Receitas não encontradas (404)");
+    fireEvent.click(screen.getByRole("button", { name: /Tentar novamente/ }));
+    await screen.findByText("Publicada");
+    expect(screen.queryByRole("button", { name: "Confirmar publicação" })).toBeNull();
+    expect(api.publicarDieta).not.toHaveBeenCalled();
+    expect(api.listarDietas).toHaveBeenCalledTimes(2);
+  });
   it("editar rascunho salva a mesma versão; nova versão não altera a publicada", async () => {
     render(<ReceitasDieta podeLancar />);
     fireEvent.click(await screen.findByRole("button", { name: "Editar rascunho" }));

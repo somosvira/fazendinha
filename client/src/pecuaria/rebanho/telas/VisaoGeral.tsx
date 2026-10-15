@@ -91,6 +91,7 @@ export function VisaoGeral({ podeLancar = true }: { podeLancar?: boolean }) {
   return <PaginaFinanceira><div className="pec-painel-rebanho">
     <PageHeader eyebrow="" titulo="Rebanho" descricao="Composição do efetivo, distribuição nos sítios e movimentações recentes." acao={podeLancar ? <Button onClick={() => navegarPara(URL_NOVO_ANIMAL)}><Plus size={16} /> Novo animal</Button> : undefined} />
     <NavRebanho ativa="visao-geral" />
+    <div className="mt-4 flex flex-wrap gap-2" aria-label="Consultas do rebanho"><Button secondary onClick={() => navegarPara(URL_ANIMAIS)}>Consultar animais</Button><Button secondary onClick={() => navegarPara("/pecuaria/rebanho/lotes")}>Consultar lotes</Button></div>
     <ErrorBox erro={erro} />
     {painel && <>
       <div className={`pec-composicao-grid mt-6${consolidado ? "" : " pec-composicao-grid--sitio"}`}>

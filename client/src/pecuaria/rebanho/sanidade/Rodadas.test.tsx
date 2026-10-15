@@ -19,6 +19,30 @@ beforeEach(() => { vi.clearAllMocks(); mocks.prever.mockResolvedValue(previa); m
 afterEach(cleanup);
 async function preparar() { await screen.findByRole("option", { hidden: true,  name: "Protocolo publicado · v2" }); await alterarControle(screen.getByLabelText("Sítio na data de início"), { target: { value: "1" } }); await alterarControle(screen.getByLabelText("Nome do ciclo"), { target: { value: "Campanha de outubro" } }); await alterarControle(screen.getByLabelText("Protocolo publicado"), { target: { value: "p" } }); await alterarControle(screen.getByLabelText("Início de referência"), { target: { value: "2026-10-06" } }); fireEvent.click(screen.getByRole("button", { name: /Selecionar animais/ })); fireEvent.click(screen.getByRole("button", { name: "Usar animais" })); }
 describe("ciclos de protocolos", () => {
+  it("agrupa contagens iguais e não renderiza indicadores zerados", async () => {
+    const contagens = { total: 2, pendentes: 2, realizadas: 0, dispensadas: 0, atrasadas: 0, canceladas: 0 };
+    mocks.etapas.mockResolvedValue(pagina([{ id: "e", ordem: 1, diaRelativo: 0, tipo: "EXAME", contagens, contagensFiltradas: { ...contagens } }]));
+    render(<AgendaRodadas filtros={{}} podeLancar={false} rodadaId="r" recarregarToken={0} onAbrir={vi.fn()} onExecutar={vi.fn()} onAcao={vi.fn()} />);
+    await screen.findByRole("table", { name: "Etapas do ciclo" });
+    expect(screen.queryByRole("columnheader", { name: "Filtro atual" })).toBeNull();
+    expect(screen.getByRole("columnheader", { name: "Tarefas" })).toBeTruthy();
+    expect(screen.queryByText("realizadas", { exact: true })).toBeNull();
+    expect(screen.queryByText("canceladas", { exact: true })).toBeNull();
+  });
+  it("abre o ciclo como página sem a lista ou controles de expansão", async () => {
+    const abrir = vi.fn();
+    const props = { filtros: { pagina: 1 }, podeLancar: false, recarregarToken: 0, onAbrir: abrir, onExecutar: vi.fn(), onAcao: vi.fn() };
+    const tela = render(<AgendaRodadas {...props} rodadaId="" />);
+    fireEvent.click(await screen.findByRole("button", { name: "Abrir ciclo" }));
+    expect(abrir).toHaveBeenCalledWith("r");
+    expect(screen.getByRole("button", { name: "Campanha de outubro" }).hasAttribute("aria-expanded")).toBe(false);
+    tela.rerender(<AgendaRodadas {...props} rodadaId="r" />);
+    await screen.findByRole("heading", { name: "Campanha de outubro" });
+    expect(screen.queryByRole("heading", { name: "Ciclos de protocolos" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Abrir ciclo" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Voltar para ciclos" }));
+    expect(abrir).toHaveBeenLastCalledWith("");
+  });
   it("conferência mostra calendário e edição exige nova prévia; retry mantém chave", async () => {
     mocks.criar.mockRejectedValue(new Error("Tempo de resposta excedido"));
     render(<FormRodada onFechar={vi.fn()} onSalvo={vi.fn()} />); await preparar();

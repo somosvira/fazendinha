@@ -91,6 +91,18 @@ describe("links administrativos", () => {
 });
 
 describe("consumo de tokens", () => {
+  it.each(["expirado", "usado", "tipo errado", "usuário ativo"])("não aceita convite %s nem altera acessos", async (caso) => {
+    mocks.tx.tokenAcesso.findUnique.mockResolvedValue({ id: "convite-invalido", usuarioId: usuarioAtivo.id, tipo: caso === "tipo errado" ? "RESET" : "CONVITE", usadoEm: caso === "usado" ? new Date() : null, expiraEm: new Date(Date.now() + (caso === "expirado" ? -1000 : 60000)), usuario: { ...usuarioAtivo, status: caso === "usuário ativo" ? "ATIVO" : "PENDENTE" } });
+    await expect(aceitarConvite("fixture", "senha-fixture")).resolves.toBeNull();
+    expect(mocks.tx.tokenAcesso.updateMany).not.toHaveBeenCalled();
+    expect(mocks.tx.usuario.update).not.toHaveBeenCalled();
+  });
+  it("convite que perde corrida atômica não cria senha", async () => {
+    mocks.tx.tokenAcesso.findUnique.mockResolvedValue({ id: "convite", usuarioId: usuarioAtivo.id, tipo: "CONVITE", usadoEm: null, expiraEm: new Date(Date.now() + 60000), usuario: { ...usuarioAtivo, status: "PENDENTE" } });
+    mocks.tx.tokenAcesso.updateMany.mockResolvedValue({ count: 0 });
+    await expect(aceitarConvite("fixture", "senha-fixture")).resolves.toBeNull();
+    expect(mocks.tx.usuario.update).not.toHaveBeenCalled();
+  });
   it("redefine somente o hash, consome o token e revoga as sessões anteriores", async () => {
     mocks.tx.tokenAcesso.findUnique.mockResolvedValue({
       id: "reset-1",

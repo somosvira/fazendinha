@@ -67,11 +67,12 @@ describe("busca e atualização da Sanidade", () => {
     window.history.replaceState(null, "", "/pecuaria/sanidade?aba=carencias");
     render(<Sanidade podeLancar={false} />);
     const tabela = within(await screen.findByRole("table", { name: "Carências sanitárias" }));
-    await waitFor(() => expect(tabela.getByText("Carência desconhecida — revisar")).toBeTruthy());
-    expect(tabela.getByText("Não se aplica — confirmado")).toBeTruthy();
-    expect(tabela.getByText("Aplicabilidade pendente — revisar")).toBeTruthy();
-    expect(tabela.queryByText("Sem carência · prazo zero confirmado")).toBeNull();
-    expect(tabela.getByText("Finalidade alterada: revise a aplicabilidade da carência de leite.")).toBeTruthy();
+    await waitFor(() => expect(tabela.getByText("Prazo desconhecido")).toBeTruthy());
+    expect(tabela.getByText("Não se aplica")).toBeTruthy();
+    expect(tabela.getByText("Aplicabilidade confirmada")).toBeTruthy();
+    expect(tabela.getByText("Revisar aplicabilidade")).toBeTruthy();
+    expect(tabela.queryByText("Prazo zero confirmado")).toBeNull();
+    expect(tabela.getByText("Finalidade alterada · conferir no histórico")).toBeTruthy();
     expect(tabela.queryByRole("columnheader", { name: "Orientação" })).toBeNull();
     expect(tabela.queryByText("O tratamento e seus lançamentos permanecem no histórico.")).toBeNull();
     expect(screen.getAllByText("O tratamento e seus lançamentos permanecem no histórico.")).toHaveLength(1);

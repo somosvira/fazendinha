@@ -57,13 +57,13 @@ Essa organização centraliza as cores para uma futura feature de temas; a sele�
 
 Foram aproveitadas a separação operacional, a ficha por âncoras, as configurações da Pecuária e as consultas/formulários da Nutrição por lote. O Financeiro conserva suas rotas e seu redesign atual; não foi portado o deslocamento global das configurações financeiras proposto no PR.
 
-A API desta branch não oferece `/nutricao/visao-geral`, `/nutricao/lotes/:id/resumo`, `GET /nutricao/vigencias/:id` nem filtro de situação dos fechamentos. O adaptador de leitura do cliente usa lotes, vigências e fechamentos já existentes; percorre as páginas antes de resumir custos ou filtrar/paginar a situação. Resolve também os sítios dos fechamentos e os lotes em uso de cada receita.
+A leitura de nutrição usa `GET /api/pecuaria/rebanho/nutricao/resumo`, opcionalmente com `loteId`, para o panorama e o resumo de um lote. O servidor consulta vigências atuais/programadas em conjunto e agrega todos os fechamentos confirmados no PostgreSQL, devolvendo uma linha por lote. O filtro `status=CONFIRMADO|ESTORNADO` de `/consumo/fechamentos` é aplicado antes de contar e paginar. O cliente conserva os endpoints detalhados/paginados para histórico, participantes e rastreabilidade; não baixa esse histórico para montar o panorama. Resolve também os sítios dos fechamentos e os lotes em uso de cada receita.
 
-Os valores continuam entregues e mascarados pela API. Resumos incluem apenas fechamentos confirmados, excluem estornos e distinguem custo desconhecido de zero. A soma e a média de apresentação usam centavos inteiros (`bigint`), sem cálculo monetário em ponto flutuante. Isso não gera fatos, baixa de estoque, movimentos financeiros ou regras contábeis.
+Os valores continuam entregues e mascarados pela API. Resumos incluem apenas fechamentos confirmados, excluem estornos e distinguem custo desconhecido de zero. SQL soma os custos conhecidos com arredondamento por fechamento em duas casas, como o detalhe; a média usa `Prisma.Decimal`. Quantidade confirmada zero tem custo conhecido zero; itens sem base de custo conservam cobertura parcial/desconhecida. Sem fechamentos, o custo é zero; com fechamentos inteiramente desconhecidos, é `null`. `verValores` e a área financeira controlam o DTO no servidor, inclusive para o resumo vazio. Isso não gera fatos, baixa de estoque, movimentos financeiros ou regras contábeis.
 
-As consultas de vigência trabalham com até quatro lotes simultâneos. A obtenção do histórico completo tem custo proporcional ao número de páginas; para históricos grandes, a evolução adequada é um agregado paginado no servidor, respeitando o mesmo contrato e permissões. Não foi introduzido cache compartilhado entre sítios.
+O panorama faz duas consultas HTTP, catálogo de lotes e resumo. O número de requests e o volume transferido não crescem com as páginas do histórico; a consulta agregada ao banco ainda depende dos registros existentes. O resumo mantém snapshot de leitura RepeatableRead e aplica o sítio também ao local dos fechamentos. A lista de receitas faz um único GET `/dietas`: o servidor agrega seus lotes em uso em duas consultas no mesmo snapshot, sem chamadas por lote nem leitura de custos/histórico. O payload cresce apenas com receitas/ingredientes e usos atuais, não com vigências encerradas. Não há cache compartilhado entre sítios.
 
-Nenhum endpoint, schema, migration ou serviço de gravação foi alterado. Reprodução e leite de versões futuras não foram reintroduzidos. A base IDEAGRI continua sendo fonte de carga inicial, não uma restrição de interface ou cadastro.
+O resumo e o filtro de situação são extensões de leitura; schema, migrations e serviços de gravação permanecem com seus contratos. Reprodução e leite de versões futuras não foram reintroduzidos. A base IDEAGRI continua sendo fonte de carga inicial, não uma restrição de interface ou cadastro.
 
 ## Verificação
 
@@ -84,6 +84,10 @@ Os testes cobrem rotas/aliases, gates de área, paginação do adaptador, custos
 
 Capturas desta rodada: [galeria dos refinamentos](../../../output/qa/pecuaria-refinamentos-2026-10-11/index.html).
 
+
+### Clareza dos cadastros
+
+O hub identifica a área Configurações antes da navegação. Categorias explicam que a primeira regra compatível prevalece e que a reordenação passa pela simulação de impacto. Genitores exibem também os nomes das raças, sem exigir interpretação de siglas. Protocolos têm ações textuais, orientação sobre versões publicadas e revisão conjunta das etapas no rascunho; salvar não publica nem executa o planejamento. Tipos de exame explicam o bloqueio de formato na lista e no formulário. Sítios usam diálogo compacto e conservam a validação local de UF com duas letras, normalizadas em maiúsculas, sem ampliar o contrato de gravação.
 
 ### Tabelas sanitárias e navegação — segunda rodada de 11/10/2026
 

@@ -73,6 +73,7 @@ export function FormMovimentar({ animais, propriedades, lotes, propriedadeInicia
     rodape={<><Button secondary onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form={formId} disabled={salvando || !lista.length}>{salvando ? "Salvando…" : "Movimentar"}</Button></>}>
     <form data-pec-formulario  id={formId} onSubmit={submeter} noValidate className="grid gap-4">
       <ErrorBox erro={erroGeral ?? erro} />
+      {!destinoFixo && propriedadeId && lista.some(a => String(a.propriedade?.id) === propriedadeId && (a.lote?.id ?? "") === loteId) && <p role="status" className="text-sm text-ink-3">O destino coincide com a localização atual de parte da seleção. Confira o sítio, o lote e a data antes de movimentar.</p>}
 
       <div>
         <div className="text-sm font-medium">Animais que serão movidos ({lista.length})</div>

@@ -15,6 +15,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Dna, FlaskConical, LogOut, Pencil, Plus, Tags, Users } from "lucide-react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Loader } from "@/components/Loading";
+import { BuscaLista } from "@/components/BuscaLista";
 import { AcoesLinha, Button, type ColunaTabela, Empty, ErrorBox, PageHeader, PaginaFinanceira, Panel, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
 import { BarraFiltros, SubAbas } from "../ui";
 import { NavRebanho } from "./NavRebanho";
@@ -58,12 +59,9 @@ const colunasCategorias = (
   alternar: (c: CategoriaDTO) => void,
   mover: (c: CategoriaDTO, direcao: -1 | 1) => void,
 ): ColunaTabela<CategoriaDTO>[] => [
-  { chave: "nome", titulo: "Nome", larguraMinima: 170, principal: true, celula: (c) => <strong className="break-words">{c.nome}</strong> },
-  { chave: "sexo", titulo: "Sexo", larguraMinima: 90, celula: (c) => rotuloSexo(c.sexo) },
-  { chave: "regra", titulo: "Regra", larguraMinima: 220, celula: (c) => <span className="break-words text-ink-3">{c.regra}</span> },
-  { chave: "animais", titulo: "Animais ativos", alinhamento: "centro", larguraMinima: 120, celula: (c) => c.animaisAtivos },
-  { chave: "forcadas", titulo: "Forçadas", alinhamento: "centro", larguraMinima: 100, celula: (c) => c.manuaisAbertas },
-  { chave: "padrao", titulo: "Padrão", alinhamento: "centro", larguraMinima: 90, celula: (c) => c.padrao ? <Pill tone="blue">Padrão</Pill> : "—" },
+  { chave: "nome", titulo: "Nome", larguraMinima: 180, principal: true, celula: (c) => <><strong className="break-words">{c.nome}</strong>{c.padrao && <div className="mt-1"><Pill tone="blue">Padrão</Pill></div>}</> },
+  { chave: "regra", titulo: "Regra / sexo", larguraMinima: 220, larguraFlexivel: true, celula: (c) => <><span className="break-words">{c.regra}</span><div className="text-xs text-ink-3">{rotuloSexo(c.sexo)}</div></> },
+  { chave: "animais", titulo: "Animais ativos", alinhamento: "centro", larguraMinima: 140, celula: (c) => <><strong>{c.animaisAtivos}</strong><div className="text-xs text-ink-3">{c.manuaisAbertas} manuais</div></> },
   { chave: "situacao", titulo: "Situação", alinhamento: "direita", larguraMinima: 100, celula: (c) => <Pill tone={c.ativo ? "green" : "neutral"}>{c.ativo ? "Ativa" : "Inativa"}</Pill> },
   { chave: "acoes", titulo: "Ações", alinhamento: "direita", larguraMinima: 150, acoes: true, celula: (c) => {
     const indice = exibidas.findIndex((x) => x.id === c.id);
@@ -96,11 +94,9 @@ function compararMotivos(a: MotivoBaixa, b: MotivoBaixa): number {
 }
 
 const colunasGenitores = (editar: (g: GenitorDTO) => void, alternar: (g: GenitorDTO) => void): ColunaTabela<GenitorDTO>[] => [
-  { chave: "nome", titulo: "Nome", larguraMinima: 170, principal: true, celula: (g) => <strong className="break-words">{g.nome}</strong> },
-  { chave: "sexo", titulo: "Sexo", larguraMinima: 90, celula: (g) => rotuloSexo(g.sexo) },
-  { chave: "codigo", titulo: "Código", larguraMinima: 100, celula: (g) => g.codigo ?? "—" },
+  { chave: "nome", titulo: "Nome / identificação", larguraMinima: 200, principal: true, celula: (g) => <><strong className="break-words">{g.nome}</strong><div className="text-xs text-ink-3">{rotuloSexo(g.sexo)} · Código: {g.codigo ?? "—"}</div></> },
   { chave: "fornecedor", titulo: "Fornecedor", larguraMinima: 140, celula: (g) => g.fornecedor ?? "—" },
-  { chave: "composicao", titulo: "Composição", larguraMinima: 150, celula: (g) => <span className="break-words text-ink-3">{g.composicaoRotulo || "—"}</span> },
+  { chave: "composicao", titulo: "Composição", larguraMinima: 150, celula: (g) => <span className="break-words text-ink-3">{g.composicaoRotulo || "—"}{g.composicao.length > 0 && <span className="block text-xs">Raças: {g.composicao.map(r => r.nome).join(", ")}</span>}</span> },
   { chave: "filhos", titulo: "Filhos", alinhamento: "centro", larguraMinima: 90, celula: (g) => g.filhos },
   { chave: "situacao", titulo: "Situação", alinhamento: "direita", larguraMinima: 100, celula: (g) => <Pill tone={g.ativo ? "green" : "neutral"}>{g.ativo ? "Ativo" : "Inativo"}</Pill> },
   { chave: "acoes", titulo: "Ações", alinhamento: "direita", larguraMinima: 110, acoes: true, celula: (g) => <AcoesLinha nome={g.nome} ativo={g.ativo} onEditar={() => editar(g)} onAlternar={() => alternar(g)} /> },
@@ -122,10 +118,9 @@ function rotuloSaldoMaterial(m: MaterialGeneticoDTO): string {
 
 const colunasMaterial = (editar: (m: MaterialGeneticoDTO) => void): ColunaTabela<MaterialGeneticoDTO>[] => [
   { chave: "produto", titulo: "Produto", larguraMinima: 200, principal: true, celula: (m) => <strong className="break-words">{m.produto.nome}</strong> },
-  { chave: "tipo", titulo: "Tipo", larguraMinima: 100, celula: (m) => ROTULO_TIPO_MATERIAL[m.tipo] },
+  { chave: "tipo", titulo: "Tipo", larguraMinima: 140, celula: (m) => <>{ROTULO_TIPO_MATERIAL[m.tipo]}{m.tipoSemen && <div className="text-xs text-ink-3">{ROTULO_TIPO_SEMEN[m.tipoSemen] ?? m.tipoSemen}</div>}</> },
   { chave: "touro", titulo: "Touro", larguraMinima: 150, celula: (m) => nomeGenitorMaterial(m.touro) },
   { chave: "doadora", titulo: "Doadora", larguraMinima: 150, celula: (m) => m.tipo === "EMBRIAO" && !m.doadora ? "Não informada" : nomeGenitorMaterial(m.doadora) },
-  { chave: "tipoSemen", titulo: "Tipo de sêmen", larguraMinima: 130, celula: (m) => m.tipoSemen ? ROTULO_TIPO_SEMEN[m.tipoSemen] ?? m.tipoSemen : "—" },
   { chave: "saldo", titulo: "Saldo", alinhamento: "direita", larguraMinima: 110, celula: (m) => rotuloSaldoMaterial(m) },
   { chave: "situacao", titulo: "Situação", alinhamento: "direita", larguraMinima: 100, celula: (m) => <Pill tone={m.produto.ativo ? "green" : "neutral"}>{m.produto.ativo ? "Ativo" : "Inativo"}</Pill> },
   { chave: "acoes", titulo: "Ações", alinhamento: "direita", larguraMinima: 90, acoes: true, celula: (m) => <div className="flex justify-end"><button type="button" onClick={(e) => { e.stopPropagation(); editar(m); }} title="Editar" aria-label={`Editar ${m.produto.nome}`} className="rounded-lg p-2 text-ink-2 hover:bg-surface-2 hover:text-ink"><Pencil size={16} /></button></div> },
@@ -145,6 +140,8 @@ export function Cadastros({ podeLancar = true, cadastro, embutido = false }: { p
   const [mostrarInativos, setMostrarInativos] = useState(false);
   const [racas, setRacas] = useState<Raca[] | null>(null);
   const [motivos, setMotivos] = useState<MotivoBaixa[] | null>(null);
+  const [buscaMotivo, setBuscaMotivo] = useState("");
+  const [buscaRaca, setBuscaRaca] = useState("");
   const [genitores, setGenitores] = useState<GenitorDTO[] | null>(null);
   const [materiais, setMateriais] = useState<MaterialGeneticoDTO[] | null>(null);
   const [racasCatalogo, setRacasCatalogo] = useState<CatalogoRaca[]>([]);
@@ -319,7 +316,9 @@ export function Cadastros({ podeLancar = true, cadastro, embutido = false }: { p
 
   const carregando = (aba === "racas" && racas === null) || (aba === "motivos" && motivos === null) || (aba === "categorias" && categorias === null) || (aba === "genitores" && genitores === null) || (aba === "material-genetico" && materiais === null);
   const bloqueado = processando || simulando || aplicando;
-  const motivosExibidos = [...(motivos ?? [])].sort(compararMotivos);
+  const normalizarBusca = (texto: string) => texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
+  const motivosExibidos = [...(motivos ?? [])].filter(motivo => normalizarBusca(`${motivo.nome} ${rotuloClasseMotivo(motivo.classe)}`).includes(normalizarBusca(buscaMotivo.trim()))).sort(compararMotivos);
+  const racasExibidas = (racas ?? []).filter(raca => normalizarBusca(`${raca.nome} ${raca.sigla}`).includes(normalizarBusca(buscaRaca.trim())));
 
   const Moldura = embutido ? "section" : PaginaFinanceira;
   const titulo = { categorias: "Categorias de animais", racas: "Raças", motivos: "Motivos de baixa", genitores: "Genitores externos", "material-genetico": "Materiais genéticos", sanidade: "Sanidade" }[aba];
@@ -327,6 +326,7 @@ export function Cadastros({ podeLancar = true, cadastro, embutido = false }: { p
     <PageHeader eyebrow={embutido ? "" : "Pecuária"} titulo={embutido ? titulo : "Cadastros"} descricao={embutido ? "" : "Categorias, raças, motivos de baixa, genitores externos e material genético usados pelo rebanho."} acao={acao} />
     {!embutido && <NavRebanho ativa="cadastros" />}
     <ErrorBox erro={painelCategoria ? null : erro} />
+    {aba === "categorias" && <p className="mb-4 text-sm text-ink-3">As regras são avaliadas de cima para baixo: a primeira compatível define a categoria do animal. Mover uma regra pode reclassificar animais; confira a simulação antes de confirmar a mudança.</p>}
     {!embutido && <SubAbas abas={[
       { valor: "categorias", rotulo: "Categorias", icon: Tags },
       { valor: "racas", rotulo: "Raças", icon: Dna },
@@ -343,7 +343,7 @@ export function Cadastros({ podeLancar = true, cadastro, embutido = false }: { p
       // continua podendo filtrar (K7); só a tabela (edição/ativação) é desabilitada sem podeLancar.
       : <>
         {aba === "categorias" && <>
-          <p className="mt-5 max-w-3xl text-sm text-ink-3">As categorias são calculadas por estas regras. Cada animal cai em uma só categoria: regras ativas do mesmo sexo não podem ter faixas (idade e parto) que se cruzem. Itens marcados "Padrão" vêm do IDEAGRI. Uma troca manual feita na ficha do animal tem prioridade sobre o cálculo até ser desfeita.</p>
+          <details className="pec-ajuda-recolhida"><summary>Como funcionam as regras de categoria</summary><p className="mt-3 max-w-3xl text-sm text-ink-3">As categorias são calculadas por estas regras. Cada animal cai em uma só categoria: regras ativas do mesmo sexo não podem ter faixas (idade e parto) que se cruzem. Itens marcados "Padrão" vêm do IDEAGRI. Uma troca manual feita na ficha do animal tem prioridade sobre o cálculo até ser desfeita.</p></details>
           {sobrepostas.length > 0 && <div role="alert" className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
             <strong>Regras sobrepostas:</strong> nesses casos só a primeira da ordem vale e a outra nunca é aplicada. Corrija a faixa de uma delas.
             <ul className="mt-1.5 list-disc pl-5">{sobrepostas.map((par) => <li key={`${par.a.id}-${par.b.id}`}>{par.mensagem}</li>)}</ul>
@@ -363,9 +363,10 @@ export function Cadastros({ podeLancar = true, cadastro, embutido = false }: { p
 
         {aba === "racas" && <>
           <Panel className="mt-5 overflow-hidden">
-            <BarraFiltros><label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" disabled={bloqueado} checked={mostrarInativos} onChange={(e) => setMostrarInativos(e.target.checked)} />Mostrar inativos</label></BarraFiltros>
+            <BarraFiltros><BuscaLista rotulo="Buscar raças" placeholder="Buscar nome ou sigla" valor={buscaRaca} onChange={setBuscaRaca} /><label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" disabled={bloqueado} checked={mostrarInativos} onChange={(e) => setMostrarInativos(e.target.checked)} />Mostrar inativos</label></BarraFiltros>
+            {buscaRaca.trim() && !racasExibidas.length && <p role="status" className="p-4 text-sm text-ink-3">Nenhuma raça corresponde à busca. Altere ou limpe o termo pesquisado.</p>}
             <fieldset disabled={bloqueado || !podeLancar} aria-busy={bloqueado} className="min-w-0">
-              <TabelaFinanceira rotulo="Raças" itens={racas ?? []} colunas={colunasRacas((r) => editar("raca", r), alternarRaca)} chaveDe={(r) => r.id} onAbrir={podeLancar ? (r) => editar("raca", r) : undefined} classeLinha={(r) => !r.ativo ? "opacity-55" : ""} />
+              <TabelaFinanceira rotulo="Raças" itens={racasExibidas} colunas={colunasRacas((r) => editar("raca", r), alternarRaca)} chaveDe={(r) => r.id} onAbrir={podeLancar ? (r) => editar("raca", r) : undefined} classeLinha={(r) => !r.ativo ? "opacity-55" : ""} />
             </fieldset>
           </Panel>
           <Panel className="mt-6 overflow-hidden">
@@ -376,7 +377,8 @@ export function Cadastros({ podeLancar = true, cadastro, embutido = false }: { p
 
         {aba === "motivos" && <>
           <Panel className="mt-5 overflow-hidden">
-            <BarraFiltros><label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" disabled={bloqueado} checked={mostrarInativos} onChange={(e) => setMostrarInativos(e.target.checked)} />Mostrar inativos</label></BarraFiltros>
+            <BarraFiltros><BuscaLista rotulo="Buscar motivos de baixa" placeholder="Buscar motivo ou classe" valor={buscaMotivo} onChange={setBuscaMotivo} /><label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" disabled={bloqueado} checked={mostrarInativos} onChange={(e) => setMostrarInativos(e.target.checked)} />Mostrar inativos</label></BarraFiltros>
+            {buscaMotivo.trim() && !motivosExibidos.length && <p role="status" className="p-4 text-sm text-ink-3">Nenhum motivo corresponde à busca. Altere ou limpe o termo pesquisado.</p>}
             <fieldset disabled={bloqueado || !podeLancar} aria-busy={bloqueado} className="min-w-0">
               <TabelaFinanceira rotulo="Motivos de baixa" itens={motivosExibidos} colunas={colunasMotivos((m) => editar("motivo", m), alternarMotivo)} chaveDe={(m) => m.id} onAbrir={podeLancar ? (m) => editar("motivo", m) : undefined} classeLinha={(m) => !m.ativo ? "opacity-55" : ""} />
             </fieldset>

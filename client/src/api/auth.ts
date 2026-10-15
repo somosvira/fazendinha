@@ -6,7 +6,7 @@ const JSON_H = { "content-type": "application/json" };
 async function ler<T>(res: Response): Promise<T> {
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error((body as { error?: string }).error ?? `erro ${res.status}`);
+    throw Object.assign(new Error((body as { error?: string }).error ?? `erro ${res.status}`), { status: res.status });
   }
   return res.json() as Promise<T>;
 }

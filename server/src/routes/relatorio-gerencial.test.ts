@@ -3,12 +3,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   gerar: vi.fn(),
   escopo: vi.fn(),
-  usuario: { id: 1, abas: ["relatorio"] } as { id: number; abas: string[] } | null,
+  usuario: { id: 1, abas: ["relatorio"], flags: ["verValores"] } as { id: number; abas: string[]; flags: string[] } | null,
 }));
 
 vi.mock("../services/relatorio-gerencial.js", () => ({ gerarRelatorioGerencial: mocks.gerar }));
 vi.mock("../services/propriedade.js", () => ({ resolverEscopoLeitura: mocks.escopo }));
 vi.mock("../middleware/permissao.js", () => ({
+  exigePermissao: (flag: string) => async (c: { json: (b: unknown, s: number) => Response }, next: () => Promise<void>) => {
+    if (!mocks.usuario) return c.json({ error: "não autenticado" }, 401);
+    if (!mocks.usuario.flags.includes(flag)) return c.json({ error: "sem permissão" }, 403);
+    return next();
+  },
   exigeAba: (flag: string) => async (c: { json: (b: unknown, s: number) => Response }, next: () => Promise<void>) => {
     if (!mocks.usuario) return c.json({ error: "não autenticado" }, 401);
     if (!mocks.usuario.abas.includes(flag)) return c.json({ error: "sem permissão" }, 403);
@@ -20,7 +25,7 @@ import { relatorioGerencialRouter } from "./relatorio-gerencial.js";
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mocks.usuario = { id: 1, abas: ["relatorio"] };
+  mocks.usuario = { id: 1, abas: ["relatorio"], flags: ["verValores"] };
   mocks.escopo.mockResolvedValue(3);
   mocks.gerar.mockResolvedValue({ meta: { regime: "ambos" } });
 });
@@ -39,7 +44,7 @@ describe("GET /financeiro/relatorio-gerencial", () => {
   });
 
   it("exige a permissão de relatórios", async () => {
-    mocks.usuario = { id: 1, abas: ["dashboard"] };
+    mocks.usuario = { id: 1, abas: ["dashboard"], flags: ["verValores"] };
     const res = await relatorioGerencialRouter.request("/financeiro/relatorio-gerencial?inicio=2026-03-01&fim=2026-03-31");
     expect(res.status).toBe(403);
     expect(mocks.gerar).not.toHaveBeenCalled();
@@ -50,5 +55,10 @@ describe("GET /financeiro/relatorio-gerencial", () => {
     const res = await relatorioGerencialRouter.request("/financeiro/relatorio-gerencial?inicio=2026-03-01&fim=2026-03-31");
     expect(res.status).toBe(500);
     expect(await res.json()).toEqual({ error: "Erro inesperado ao gerar relatório. Tente novamente." });
+  });
+  it("não gera agregado sem permissão de valores", async () => {
+    mocks.usuario = { id: 1, abas: ["relatorio"], flags: [] };
+    expect((await relatorioGerencialRouter.request("/financeiro/relatorio-gerencial?inicio=2026-03-01&fim=2026-03-31")).status).toBe(403);
+    expect(mocks.gerar).not.toHaveBeenCalled();
   });
 });

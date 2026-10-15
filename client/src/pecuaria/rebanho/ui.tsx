@@ -157,6 +157,7 @@ export function CampoComposicao({ racas, itens, onChange, erro, limite64 = 64 }:
   const adicionar = () => onChange([...itens, { racaId: "", fracao64: 0 }]);
 
   return <div className="space-y-3">
+    <p className="text-xs text-ink-3">A composição usa 64 partes: 32/64 equivale à metade (1/2) e 64/64 ao total. A parcela não preenchida permanece não informada.</p>
     {itens.map((item, indice) => <div key={indice} className="flex flex-wrap items-end gap-3 rounded-lg border border-border p-3">
       <div className="min-w-[180px] flex-1 text-sm font-medium">
         <label htmlFor={`composicao-raca-${indice}`}>Raça</label>

@@ -3,6 +3,7 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { useRetornoFocoDialogo } from "@/lib/useRetornoFocoDialogo";
 
 const Dialog = DialogPrimitive.Root;
 const DialogTrigger = DialogPrimitive.Trigger;
@@ -31,7 +32,9 @@ const DialogContent = React.forwardRef<
     showCloseButton?: boolean;
     overlayClassName?: string;
   }
->(({ className, children, showCloseButton = true, overlayClassName, ...props }, ref) => (
+>(({ className, children, showCloseButton = true, overlayClassName, onOpenAutoFocus, onCloseAutoFocus, ...props }, ref) => {
+  const retornoFoco = useRetornoFocoDialogo(onOpenAutoFocus, onCloseAutoFocus);
+  return (
   <DialogPortal>
     <DialogOverlay className={overlayClassName} />
     <DialogPrimitive.Content
@@ -42,6 +45,7 @@ const DialogContent = React.forwardRef<
         className,
       )}
       {...props}
+      {...retornoFoco}
     >
       {children}
       {showCloseButton && (
@@ -55,7 +59,8 @@ const DialogContent = React.forwardRef<
       )}
     </DialogPrimitive.Content>
   </DialogPortal>
-));
+  );
+});
 DialogContent.displayName = "DialogContent";
 
 function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {

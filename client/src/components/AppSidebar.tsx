@@ -151,7 +151,8 @@ function SearchControl({ onClick }: { onClick: () => void }) {
     <Button variant="ghost"
       type="button"
       onClick={onClick}
-      title="Buscar"
+      title="Buscar (Ctrl/⌘ K)"
+      aria-keyshortcuts="Control+k Meta+k"
       aria-label="Buscar páginas, animais e ações"
       className="order-1 grid h-8 w-8 flex-none place-items-center rounded-lg text-[var(--side-mute)] hover:bg-white/5 hover:text-mast-ink min-[901px]:max-[1100px]:order-2 [.side-collapsed_&]:order-2"
     >
@@ -176,7 +177,7 @@ function UserMenu({ user, onAcessos, onSair }: { user: User; onAcessos: () => vo
       </DropdownMenuTrigger>
       <DropdownMenuContent side="right" align="end" sideOffset={8} className="w-[240px] rounded-[11px] p-1.5">
         <div className="mb-1 border-b border-rule-soft px-2.5 pb-2.5 pt-2"><div className="text-sm font-semibold text-ink">{user.nome}</div>{user.email && <div className="mt-0.5 text-xs text-ink-mute">{user.email}</div>}</div>
-        <DropdownMenuItem onSelect={onAcessos} className="rounded-[7px] px-2.5 py-2 text-[13.5px]">Acessos</DropdownMenuItem>
+        {(user.dono || user.flags.includes("gerenciarAcessos")) && <DropdownMenuItem onSelect={onAcessos} className="rounded-[7px] px-2.5 py-2 text-[13.5px]">Acessos</DropdownMenuItem>}
         {onSair && <><DropdownMenuSeparator /><DropdownMenuItem onSelect={onSair} className="rounded-[7px] px-2.5 py-2 text-[13.5px] text-[color:var(--prejuizo)] focus:text-[color:var(--prejuizo)]">Sair</DropdownMenuItem></>}
       </DropdownMenuContent>
     </DropdownMenu>

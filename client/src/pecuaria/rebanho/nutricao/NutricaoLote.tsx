@@ -31,7 +31,7 @@ export function NutricaoLote({ loteId, podeLancar, vista }: { loteId: string; pr
           { chave: "inicio", titulo: "Início", celula: (v) => formatarDataBR(v.desde) },
           { chave: "fim", titulo: "Fim (troca)", celula: (v) => v.ate ? formatarDataBR(v.ate) : "Sem fim programado" },
           { chave: "situacao", titulo: "Situação", celula: (v) => <Pill tone={r.vigente?.id === v.id ? "green" : r.programada?.id === v.id ? "blue" : "neutral"}>{r.vigente?.id === v.id ? "Vigente" : r.programada != null && v.desde >= r.programada.desde ? "Programada" : "Histórica"}</Pill> },
-          ...(escrever ? [{ chave: "acao", titulo: "", acoes: true, celula: (v: typeof historico.dados.itens[number]) => <LinkNutricional href={rotaOperacaoNutricional("corrigir", loteId, v.id)}>Corrigir vigência</LinkNutricional> }] : []),
+          ...(escrever ? [{ chave: "acao", titulo: "", acoes: true, celula: (v: typeof historico.dados.itens[number]) => <LinkNutricional className="nutricao-botao-secundario" href={rotaOperacaoNutricional("corrigir", loteId, v.id)}>Corrigir vigência</LinkNutricional> }] : []),
         ]} />}<PaginacaoNutricao pagina={pagina} total={historico.dados.total} limite={historico.dados.limite} onPagina={setPagina} nome="dietas" /></>}
       </Panel>}
       {completa && <FechamentosNutricao loteId={loteId} />}
