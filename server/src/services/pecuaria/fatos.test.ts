@@ -25,6 +25,8 @@ const db = {
   exameAnimal: { count: vi.fn(), findMany: vi.fn() },
   manejoAnimal: { count: vi.fn(), findMany: vi.fn() },
   ocorrenciaSanitaria: { count: vi.fn(), findMany: vi.fn() },
+  fornecimentoColostro: { count: vi.fn(), findMany: vi.fn() },
+  vinculoPesagemParto: { findMany: vi.fn() },
 };
 // Fronteira de mock: somente os métodos usados pelas guardas são necessários.
 const tx = db as unknown as Prisma.TransactionClient;
@@ -36,7 +38,8 @@ beforeEach(() => {
   db.localizacaoAnimal.findMany.mockResolvedValue([local]);
   db.baixaAnimal.findFirst.mockResolvedValue(null);
   db.baixaAnimal.findMany.mockResolvedValue([]);
-  for (const modelo of [db.aplicacaoProduto, db.exameAnimal, db.manejoAnimal, db.ocorrenciaSanitaria, db.tentativaReprodutiva, db.avaliacaoReprodutiva, db.partoAnimal, db.situacaoInicialReprodutiva, db.restricaoReprodutiva, db.gestacaoAnimal, db.lactacaoAnimal, db.criaParto, db.participanteIatf, db.participanteVisita, db.participacaoExposicao, db.periodoReprodutivoAnimal]) {
+  db.vinculoPesagemParto.findMany.mockResolvedValue([]);
+  for (const modelo of [db.fornecimentoColostro, db.aplicacaoProduto, db.exameAnimal, db.manejoAnimal, db.ocorrenciaSanitaria, db.tentativaReprodutiva, db.avaliacaoReprodutiva, db.partoAnimal, db.situacaoInicialReprodutiva, db.restricaoReprodutiva, db.gestacaoAnimal, db.lactacaoAnimal, db.criaParto, db.participanteIatf, db.participanteVisita, db.participacaoExposicao, db.periodoReprodutivoAnimal]) {
     modelo.count.mockResolvedValue(0);
     modelo.findMany.mockResolvedValue([]);
   }
@@ -61,6 +64,27 @@ describe("datas e sítio dos fatos pecuários", () => {
     db.exameAnimal.count.mockResolvedValue(1);
     await expect(conferirFatosNaBaixa(tx, animal.id, dia("2026-09-10"))).rejects.toThrow(/antecede fatos/);
     expect(db.exameAnimal.count).toHaveBeenCalledWith({ where: { animalId: animal.id, status: "VALIDO", data: { gt: dia("2026-09-10") } } });
+  });
+  it("baixa considera colostro válido da cria e não o atribui à matriz", async () => {
+    db.fornecimentoColostro.count.mockResolvedValue(1);
+    await expect(conferirFatosNaBaixa(tx, animal.id, dia("2026-09-10"))).rejects.toMatchObject({ code: "CONFLITO", campo: "data" });
+    expect(db.fornecimentoColostro.count).toHaveBeenCalledWith({ where: {
+      cria: { animalId: animal.id }, status: "VALIDO", data: { gt: dia("2026-09-10") },
+    } });
+  });
+  it.each(["colostro", "peso"])("confere sítio e entrada do %s sem exigir que a cria seja fêmea", async origem => {
+    const configurar = (propriedadeId: number, data: Date) => {
+      if (origem === "colostro") db.fornecimentoColostro.findMany.mockResolvedValue([{ cria: { animalId: animal.id }, propriedadeId, data }]);
+      else db.vinculoPesagemParto.findMany.mockResolvedValue([{ pesagem: { animalId: animal.id, data }, parto: { propriedadeId } }]);
+    };
+    configurar(1, dia("2026-09-10"));
+    await expect(conferirHistoricoDosFatos(tx, [animal.id])).resolves.toBeUndefined();
+    configurar(2, dia("2026-09-10"));
+    await expect(conferirHistoricoDosFatos(tx, [animal.id])).rejects.toThrow(/sítio de fatos/);
+    configurar(1, dia("2026-07-31"));
+    await expect(conferirHistoricoDosFatos(tx, [animal.id])).rejects.toThrow(/anteriores ao nascimento\/entrada/);
+    expect(db.fornecimentoColostro.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { cria: { animalId: { in: [animal.id] } }, status: "VALIDO" } }));
+    expect(db.vinculoPesagemParto.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { revogadoEm: null, pesagem: { animalId: { in: [animal.id] } } } }));
   });
   it("protege sítio e entrada contra correções que alterariam fatos já realizados", async () => {
     db.exameAnimal.findMany.mockResolvedValue([{ animalId: animal.id, propriedadeId: 2, data: dia("2026-09-10"), origem: "MANUAL" }]);

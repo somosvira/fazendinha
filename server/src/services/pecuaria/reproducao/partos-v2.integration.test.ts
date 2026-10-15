@@ -7,6 +7,7 @@ import { criarPartoTx, corrigirPartoTx } from "./registros.js";
 import { editarPesagemTx } from "../rebanho/animais.js";
 import { lerPartoTx } from "./partos.js";
 import { registrarColostroTx, corrigirColostroTx } from "./colostro.js";
+import { conferirFatosNaBaixa, conferirHistoricoDosFatos } from "../fatos.js";
 const suite = process.env.PECUARIA_DB_INTEGRATION === "1" ? describe : describe.skip;
 const rollback = new Error("ROLLBACK_FIXTURES_PARTO");
 async function emRollback(executar: (tx: Prisma.TransactionClient) => Promise<void>) {
@@ -126,6 +127,61 @@ suite("parto/pós-parto com fixtures inteiramente revertidas", () => {
       await tx.localizacaoAnimal.create({ data: { animalId: matriz.id, propriedadeId: outro.id, desde: new Date("2026-01-05") } });
       await expect(editarPesagemTx(tx, p.vinculosPesagem[0].pesagemId, { data: "2026-01-06" }, null)).rejects.toThrow(/não estava neste sítio/);
       expect((await lerPartoTx(tx, p.id)).vinculosPesagem[0].pesagem.data.toISOString().slice(0, 10)).toBe("2026-01-03");
+    });
+  });
+
+  it("colostro de cria macho impede baixa anterior e desfazer o sítio do fornecimento", async () => {
+    await emRollback(async tx => {
+      const { sitio, matriz } = await fixtures(tx);
+      const destino = await tx.propriedade.create({ data: { nome: `Destino colostro ${randomUUID()}` } });
+      const p = await criarPartoTx(tx, { chave: randomUUID(), animalId: matriz.id, propriedadeId: sitio.id,
+        data: "2026-01-01", desfecho: "NASCIMENTO", iniciarLactacao: false,
+        crias: [{ viva: true, sexo: "M", aptidao: "CORTE" }] }, null);
+      const cria = p.crias[0], animalId = cria.animalId!;
+      const origem = await tx.localizacaoAnimal.findFirstOrThrow({ where: { animalId, ate: null } });
+      await tx.localizacaoAnimal.update({ where: { id: origem.id }, data: { ate: new Date("2026-01-02") } });
+      const nova = await tx.localizacaoAnimal.create({ data: { animalId, propriedadeId: destino.id, desde: new Date("2026-01-02") } });
+      const fornecimento = await registrarColostroTx(tx, { chave: randomUUID(), propriedadeId: destino.id, criaId: cria.id,
+        data: "2026-01-03", quantidade: 2, unidade: "L" }, null);
+      await expect(conferirHistoricoDosFatos(tx, [animalId])).resolves.toBeUndefined();
+      await expect(conferirFatosNaBaixa(tx, animalId, new Date("2026-01-02"))).rejects.toMatchObject({ code: "CONFLITO" });
+      await expect(conferirFatosNaBaixa(tx, animalId, new Date("2026-01-03"))).resolves.toBeUndefined();
+      // Mesma proposta de histórico do desfazer: remove o destino e reabre a origem.
+      await tx.$executeRawUnsafe("SAVEPOINT desfazer_colostro");
+      await tx.localizacaoAnimal.delete({ where: { id: nova.id } });
+      await tx.localizacaoAnimal.update({ where: { id: origem.id }, data: { ate: null } });
+      await expect(conferirHistoricoDosFatos(tx, [animalId])).rejects.toThrow(/sítio de fatos/);
+      await tx.$executeRawUnsafe("ROLLBACK TO SAVEPOINT desfazer_colostro");
+      expect(await tx.localizacaoAnimal.count({ where: { id: nova.id } })).toBe(1);
+      await corrigirColostroTx(tx, fornecimento.id, { chave: randomUUID(), propriedadeId: destino.id,
+        versaoEsperada: 1, motivo: "Fornecimento lançado por engano", anular: true }, null);
+      await expect(conferirFatosNaBaixa(tx, animalId, new Date("2026-01-02"))).resolves.toBeUndefined();
+    });
+  });
+
+  it("desfazer retorno ao sítio não desloca o peso pós-parto; desvínculo explícito libera a alteração", async () => {
+    await emRollback(async tx => {
+      const { sitio, matriz } = await fixtures(tx);
+      const destino = await tx.propriedade.create({ data: { nome: `Destino peso histórico ${randomUUID()}` } });
+      const origem = await tx.localizacaoAnimal.findFirstOrThrow({ where: { animalId: matriz.id, ate: null } });
+      await tx.localizacaoAnimal.update({ where: { id: origem.id }, data: { ate: new Date("2026-01-02") } });
+      const intermediaria = await tx.localizacaoAnimal.create({ data: { animalId: matriz.id, propriedadeId: destino.id,
+        desde: new Date("2026-01-02"), ate: new Date("2026-01-04") } });
+      const retorno = await tx.localizacaoAnimal.create({ data: { animalId: matriz.id, propriedadeId: sitio.id, desde: new Date("2026-01-04") } });
+      const p = await criarPartoTx(tx, { chave: randomUUID(), animalId: matriz.id, propriedadeId: sitio.id,
+        data: "2026-01-01", tipo: "ABORTO", iniciarLactacao: false, crias: [],
+        pesoMatriz: { acao: "REGISTRAR", data: "2026-01-05", pesoKg: 520 } }, null);
+      await expect(conferirHistoricoDosFatos(tx, [matriz.id])).resolves.toBeUndefined();
+      await tx.$executeRawUnsafe("SAVEPOINT desfazer_peso");
+      await tx.localizacaoAnimal.delete({ where: { id: retorno.id } });
+      await tx.localizacaoAnimal.update({ where: { id: intermediaria.id }, data: { ate: null } });
+      await expect(conferirHistoricoDosFatos(tx, [matriz.id])).rejects.toThrow(/sítio de fatos/);
+      await tx.$executeRawUnsafe("ROLLBACK TO SAVEPOINT desfazer_peso");
+      await corrigirPartoTx(tx, p.id, { propriedadeId: sitio.id, motivo: "Revisar contexto da pesagem", versaoEsperada: p.versao,
+        pesoMatriz: { acao: "DESVINCULAR", vinculoId: p.vinculosPesagem[0].id, motivo: "Revisar contexto da pesagem" } }, null);
+      await tx.localizacaoAnimal.delete({ where: { id: retorno.id } });
+      await tx.localizacaoAnimal.update({ where: { id: intermediaria.id }, data: { ate: null } });
+      await expect(conferirHistoricoDosFatos(tx, [matriz.id])).resolves.toBeUndefined();
     });
   });
 

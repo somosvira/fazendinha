@@ -107,6 +107,9 @@ export async function conferirFatosNaBaixa(
         OR: [{ inicio: { gt: data } }, { fim: { gt: data } }],
       },
     }),
+    tx.fornecimentoColostro.count({
+      where: { cria: { animalId }, status: "VALIDO", data: { gt: data } },
+    }),
   ]);
   if (fatos.some(Boolean))
     throw new RebanhoError(
@@ -122,7 +125,7 @@ export async function conferirHistoricoDosFatos(
   animalIds: string[],
 ) {
   const where = { animalId: { in: animalIds }, status: "VALIDO" as const };
-  const [animais, locais, baixas, aplicacoes, exames, manejos, ocorrencias] =
+  const [animais, locais, baixas, aplicacoes, exames, manejos, ocorrencias, colostros, pesosParto] =
     await Promise.all([
       tx.animal.findMany({
         where: { id: { in: animalIds } },
@@ -175,6 +178,14 @@ export async function conferirHistoricoDosFatos(
           inicio: true,
           origem: true,
         },
+      }),
+      tx.fornecimentoColostro.findMany({
+        where: { cria: { animalId: { in: animalIds } }, status: "VALIDO" },
+        select: { data: true, propriedadeId: true, cria: { select: { animalId: true } } },
+      }),
+      tx.vinculoPesagemParto.findMany({
+        where: { revogadoEm: null, pesagem: { animalId: { in: animalIds } } },
+        select: { pesagem: { select: { animalId: true, data: true } }, parto: { select: { propriedadeId: true } } },
       }),
     ]);
   const [
@@ -246,6 +257,9 @@ export async function conferirHistoricoDosFatos(
     ...exames,
     ...manejos,
     ...ocorrencias.map((o) => ({ ...o, data: o.inicio })),
+    // São fatos de manejo também para crias machos; não integram a guarda de sexo reprodutivo.
+    ...colostros.map(c => ({ animalId: c.cria.animalId!, data: c.data, propriedadeId: c.propriedadeId, origem: "MANUAL" })),
+    ...pesosParto.map(v => ({ ...v.pesagem, propriedadeId: v.parto.propriedadeId, origem: "MANUAL" })),
   ];
   for (const fato of fatos) {
     const animal = porId.get(fato.animalId)!;
