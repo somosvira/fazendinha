@@ -85,6 +85,37 @@ export function isSubrotaPecuaria(tab: Tab, pathname: string): boolean {
     || tab === "config" && pathname.startsWith("/configuracoes/pecuaria");
 }
 
+export type ModoVisita = "agenda" | "livre";
+export type EtapaVisita = "entrada" | "planejamento" | "selecao" | "revisao" | "atividade" | "atendimento";
+export type RotaVisita =
+  | { tipo: "nova" }
+  | { tipo: "lista" }
+  | { tipo: "visita"; id: string; modo?: ModoVisita; etapa: EtapaVisita | null; grupo: string | null; atividade: string | null };
+
+/** Interpreta as rotas atuais e antigas do fluxo de visitas veterinárias. */
+export function parseRotaVisita(pathname: string, search = ""): RotaVisita | null {
+  const path = pathname.replace(/\/$/, "");
+  if (path === "/pecuaria/visitas/nova") return { tipo: "nova" };
+  if (path === "/pecuaria/visitas") return { tipo: "lista" };
+  const match = /^\/pecuaria\/visitas\/([^/]+)$/.exec(path);
+  if (!match || match[1] === "nova") return null;
+  const params = new URLSearchParams(search);
+  const etapaParam = params.get("etapa");
+  const etapa = ["entrada", "planejamento", "selecao", "revisao", "atividade", "atendimento"].includes(etapaParam ?? "") ? etapaParam as EtapaVisita : null;
+  const modo = params.get("modo");
+  return { tipo: "visita", id: match[1], ...(modo === "agenda" || modo === "livre" ? { modo } : {}), etapa, grupo: params.get("grupo"), atividade: params.get("atividade") };
+}
+
+export function urlEtapaVisita(id: string, etapa: EtapaVisita, opcoes: { grupo?: string; atividade?: string; modo?: ModoVisita } = {}, buscaAtual = ""): string {
+  const params = new URLSearchParams(buscaAtual);
+  params.delete("etapa"); params.delete("grupo"); params.delete("atividade"); params.delete("modo");
+  params.set("etapa", etapa);
+  if (opcoes.modo && etapa !== "entrada" && etapa !== "atendimento") params.set("modo", opcoes.modo);
+  if (opcoes.grupo) params.set("grupo", opcoes.grupo);
+  if (opcoes.atividade) params.set("atividade", opcoes.atividade);
+  return `/pecuaria/visitas/${encodeURIComponent(id)}?${params}`;
+}
+
 
 /** Atualiza a URL e notifica o roteador leve da aplicação. */
 export function navegarPara(pathname: string): void {

@@ -9,7 +9,7 @@ export const VERSAO = 1;
 export const BANCO = 'fazendinha_seedatev3';
 export const diretorio = fileURLToPath(new URL('../../.seedatev3/', import.meta.url));
 const arquivo = `${diretorio}/manifesto.json`;
-const schemaManifesto = z.object({
+export const schemaManifesto = z.object({
   versao: z.literal(VERSAO), banco: z.literal(BANCO), identidade: z.string(),
   dataBase: z.string().date(), ids: z.record(z.string()), etapas: z.array(z.string()),
   acoes: z.array(z.string()), criadoEm: z.string().datetime(),

@@ -67,12 +67,14 @@ export function FormReproducao({
   finalidadeInicial,
   propriedadeId: propriedadeIdInformada,
   tentativaInicial,
+  inline = false,
 }: {
   acao: AcaoReprodutiva;
   painel: PainelReprodutivo;
   animalInicial?: string;
   propriedadeId?: number;
   tentativaInicial?: { tipo: "IA" | "TE"; materialId: string; quantidade: number };
+  inline?: boolean;
   onFechar: () => void;
   onSalvo: () => void;
   dataInicial?: string;
@@ -345,8 +347,8 @@ export function FormReproducao({
     }
   }
   return (
-    <PainelCadastro
-      aberto
+    <FormShellReproducao
+      inline={inline}
       titulo={TITULOS[acao]}
       onFechar={onFechar}
       bloqueado={ocupado}
@@ -661,6 +663,10 @@ export function FormReproducao({
           ])}
         {acao !== "parto" && campo("motivo", "Motivo / observação", motivo, setMotivo, exigeMotivo)}
       </form>
-    </PainelCadastro>
+    </FormShellReproducao>
   );
+}
+
+function FormShellReproducao({ inline, titulo, onFechar, bloqueado, rodape, children }: { inline: boolean; titulo: string; onFechar: () => void; bloqueado: boolean; rodape: ReactNode; children: ReactNode }) {
+  return inline ? <section className="grid gap-4 rounded-lg border border-border p-4"><div className="flex flex-wrap items-center justify-between gap-3"><h3 className="font-semibold">{titulo}</h3><div className="flex flex-wrap gap-2">{rodape}</div></div>{children}</section> : <PainelCadastro aberto titulo={titulo} onFechar={onFechar} bloqueado={bloqueado} rodape={rodape}>{children}</PainelCadastro>;
 }

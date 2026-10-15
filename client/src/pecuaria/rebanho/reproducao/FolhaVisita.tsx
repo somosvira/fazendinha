@@ -1,6 +1,8 @@
 import type { AtividadeVisita } from "./visitas-api";
+import { origemAtividadeVisita } from "./apresentacao-visita";
 import { ordenarParticipantes } from "./visitas-regras";
-import { criteriosFolha, LEGENDA_FOLHA, registro, rpFolha, textoPreservado } from "./folha-regras";
+import { CabecalhoContextoVisita, CelulasContextoVisita } from "./ContextoTabelaVisita";
+import { criteriosFolha, detalhesTarefaFolha, LEGENDA_FOLHA, motivosComunsFolha, motivosIndividuaisFolha } from "./folha-regras";
 
 export type SnapshotFolhaVisita = {
   atividades: AtividadeVisita[];
@@ -13,56 +15,51 @@ export type SnapshotFolhaVisita = {
 export function FolhaVisita({ snapshot }: { snapshot: SnapshotFolhaVisita }) {
   const referencia = snapshot.dataReferencia ?? snapshot.data;
   return (
-    <div className="hidden print:block">
+    <div className="hidden print:block folha-visita-print">
+      <style>{`@page { size: A4 landscape; margin: 10mm; } .folha-visita-print table { width:100%; border-collapse:collapse; table-layout:fixed; font-size:8pt } .folha-visita-print th,.folha-visita-print td { border:1px solid #777; padding:3px 4px; vertical-align:top; overflow-wrap:anywhere } .folha-visita-print th { background:#eee; text-align:left } .folha-visita-print .text-right { text-align:right } .folha-visita-print .tabular-nums { font-variant-numeric:tabular-nums } .folha-visita-print section { break-inside:auto } .folha-visita-print tr { break-inside:avoid; page-break-inside:avoid } .folha-visita-print thead { display:table-header-group }`}</style>
       <h1>{snapshot.nome ?? "Visita veterinária — cabeçalho não preservado"}</h1>
       <p>Data de referência: {referencia?.slice(0, 10) ?? "não preservada"} · Versão da emissão: {snapshot.versao ?? "não preservada"}</p>
       <p className="my-3 text-xs">{LEGENDA_FOLHA}</p>
       {snapshot.atividades.map((atividade) => (
         <section key={atividade.id}>
-          <h2 className="mt-6 mb-2">{atividade.nome}{atividade.extra ? " · Atividade extra" : ""}</h2>
+          <h2 className="mt-6 mb-2">{atividade.nome || "Grupo sem nome preservado"}{atividade.extra && !origemAtividadeVisita(atividade) ? " · Atividade extra" : ""}</h2>
+          <p className="text-xs">Origem do grupo: {origemAtividadeVisita(atividade) === "agenda" ? "Agenda do dia" : origemAtividadeVisita(atividade) === "livre" ? "Seleção livre" : "Não informada"}</p>
+          {detalhesTarefaFolha(atividade.nome, atividade.contexto, atividade.participantes).map((linha, i) => <p key={`grupo-${i}`} className="text-xs">{linha}</p>)}
+          {(() => {
+            const comuns = motivosComunsFolha(atividade.participantes);
+            const individuais = atividade.participantes.map(p => motivosIndividuaisFolha(p.snapshot, comuns));
+            const incluirColuna = individuais.some(m => m.length > 0);
+            return <>
           <div className="mb-3 text-xs">
             {criteriosFolha(atividade.contexto).map((linha, i) => <p key={i}>{linha}</p>)}
+            {comuns.length > 0 && <p><strong>Motivos comuns:</strong> {comuns.join("; ")}</p>}
           </div>
           <table className="w-full border-collapse text-xs">
             <thead className="table-header-group">
               <tr>
-                <th>Ordem / animal</th>
-                <th>Lote / categoria / motivo</th>
-                <th>Produção / DEL / partos / RP</th>
-                <th>Tentativa / situação reprodutiva</th>
-                <th>Resultado / conduta / anotações</th>
+                <th>Ordem</th>
+                <CabecalhoContextoVisita />
+                {incluirColuna && <th>Observação individual</th>}
+                <th>Resultado / anotações</th>
               </tr>
             </thead>
             <tbody>
               {ordenarParticipantes(atividade.participantes).map((p) => {
-                const s = p.snapshot, dados = registro(s), categoria = registro(dados.categoria);
+                const s = p.snapshot;
+                const individuais = motivosIndividuaisFolha(s, comuns);
                 return (
                   <tr key={p.id} className="break-inside-avoid">
-                    <td className="border p-2">{p.ordem} · {s.brinco ?? p.animalId}<p>{s.nome}</p></td>
-                    <td className="border p-2">
-                      <p>Lote: {s.lote?.nome ?? "—"}</p>
-                      <p>Categoria: {textoPreservado(categoria.nome)}</p>
-                      <p><strong>Inclusão:</strong> {s.motivos?.join("; ") || "Motivo não preservado"}</p>
-                    </td>
-                    <td className="border p-2">
-                      <p>{s.situacaoProdutiva ?? "—"} · DEL (D0): {textoPreservado(s.del)}</p>
-                      <p>Partos realizados: {textoPreservado(s.partos)}</p>
-                      <p>Último parto: {s.ultimoParto?.data.slice(0, 10) ?? (s.ultimoParto === null ? "Sem parto registrado" : "—")}</p>
-                      <p>RP: {rpFolha(s)}</p>
-                    </td>
-                    <td className="border p-2">
-                      <p>{s.tentativa ? `${s.tentativa.tipo} · ${s.tentativa.data.slice(0, 10)}` : "Tentativa não comprovada"}</p>
-                      <p>Dias desde tentativa: {textoPreservado(dados.diasTentativa)}</p>
-                      <p>Tentativas no ciclo: {textoPreservado(s.tentativasCiclo)} · Ordem: {textoPreservado(registro(s.tentativa).ordem)}</p>
-                      <p>Touro: {s.tentativa?.geneticaSnapshot?.pai?.nome ?? "—"}</p>
-                      <p>Situação: {textoPreservado(dados.situacao)}</p>
-                    </td>
-                    <td className="h-24 min-w-32 border p-2" />
+                    <td>{p.ordem}</td>
+                    <CelulasContextoVisita contexto={s} dataReferencia={referencia} />
+                    {incluirColuna && <td>{individuais.join("; ") || "—"}</td>}
+                    <td className="h-16" />
                   </tr>
                 );
               })}
             </tbody>
           </table>
+            </>;
+          })()}
         </section>
       ))}
     </div>

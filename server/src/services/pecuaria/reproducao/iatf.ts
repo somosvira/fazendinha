@@ -315,6 +315,27 @@ export const criarProgramacao = (
     );
   });
 export const dataNoBrasil = diaIatf;
+/** Planeja tarefas pelo núcleo comum; o início e seus bloqueios são confirmados separadamente. */
+export async function criarParticipacaoPlanejadaTx(
+  tx: Prisma.TransactionClient,
+  programacaoId: string,
+  animalId: string,
+  inicioPrevisto: string,
+  usuarioId: number | null,
+) {
+  const programacao = await tx.programacaoIatf.findUniqueOrThrow({ where: { id: programacaoId } });
+  const protocolo = await tx.protocoloIatf.findUniqueOrThrow({ where: { id: programacao.protocoloId } });
+  const temporal = lerDataIatf(inicioPrevisto);
+  const participante = await criarParticipacaoReprodutivaTx(tx, { data: {
+    programacaoId, animalId, inicioPrevisto: temporal.instante,
+    precisaoTemporal: temporal.precisao, criadoPorId: usuarioId,
+  } });
+  await criarTarefasReprodutivasTx(tx, { data: calendarioIatf(temporal.instante, protocolo.etapas as EtapaFonte[], temporal.precisao)
+    .map(e => dadosTarefa(participante.id, e, temporal.instante)) });
+  await auditar(tx, { entidade: "ParticipanteIatf", entidadeId: participante.id, animalId,
+    propriedadeId: programacao.propriedadeId, acao: "PARTICIPACAO_ADICIONADA", usuarioId, depois: participante });
+  return participante;
+}
 export async function iniciarParticipanteTx(
   tx: Prisma.TransactionClient,
   id: string,

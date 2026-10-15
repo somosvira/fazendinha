@@ -77,6 +77,8 @@ A migration complementar `20261014180000` preenche metadados de realização e r
 
 As visitas usam tarefas comuns em `ParticipanteVisita`, seleções dinâmicas versionadas e snapshots de impressão. A transcrição individual pode usar o tipo de exame da tarefa; a coletiva preserva campos personalizados por animal. A confirmação é por subconjuntos de até 100 participantes. A indicação de IATF abre a programação, sem iniciar o protocolo.
 
+A atividade de início reprodutivo conserva a versão publicada na preparação e resolve a participação somente ao confirmar. Sem pendência compatível, cria `ProgramacaoProtocolo`, `ParticipacaoProtocolo` e tarefas pelo núcleo comum, na mesma transação do início. O vínculo da programação criada em `AtividadeVisita.contexto.inicioIatf` é controlado e validado pelo servidor e reutilizado entre blocos. Não há escrita nas views IATF nem efeito em estoque ou tentativas pelo simples início. Reutilização, ambiguidade, dados antigos e precisão temporal seguem o [contrato de IATF](reproducao.md#iatf).
+
 Elegibilidade reprodutiva não tem padrão clínico presumido. `PoliticaElegibilidadeReprodutiva` guarda versões por sítio/vigência; `VinculoPoliticaCiclo` congela a versão no ciclo; `DecisaoElegibilidadeCiclo` registra liberação ou exceção com evidência. Ciclos em sítios nunca configurados exigem setup e vínculo explícitos, sem aplicação retroativa silenciosa. Relatórios PARTOS e INDICADORES persistem emissões em `SnapshotRelatorioReprodutivo` para reimpressão auditável. O contrato de [Reprodução V4](reproducao.md) descreve metodologia e limites.
 
 ## Validação

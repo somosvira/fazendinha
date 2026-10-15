@@ -1,5 +1,6 @@
 import { expect, it } from "vitest";
-import { contextoTranscricao, dadosConfirmacaoVisita } from "./visitas-transcricao";
+import { contextoTranscricao, dadosConfirmacaoVisita, ehAvaliacaoTarefa, pendenciaAvaliacaoTarefa, resultadoPrincipalVisita } from "./visitas-transcricao";
+import type { ParticipanteVisita } from "./visitas-api";
 it("preserva dados do procedimento IATF e converte horário no fuso da fazenda", () => {
   expect(
     dadosConfirmacaoVisita("TAREFA_IATF", {
@@ -29,6 +30,16 @@ it.each(["TAREFA_IATF", "INICIAR_IATF"] as const)("%s não executa procedimento 
 });
 it("preserva ciência explícita da indicação", () => {
   expect(dadosConfirmacaoVisita("AVALIACAO_REPRODUTIVA", {conduta: "IATF", cienciaSanitaria: false})).toEqual({conduta: "IATF", cienciaSanitaria: false});
+});
+
+it("adapta avaliação IATF ao resultado principal e mantém vínculos obrigatórios", () => {
+  const participante: ParticipanteVisita = { id: "p", animalId: "a", ordem: 1, status: "PENDENTE", rascunho: null,
+    snapshot: { tarefaPlanejada: { origem: "REPRODUTIVA", tarefa: { id: "t", animalId: "a", tipo: "AVALIACAO" } } } };
+  expect(ehAvaliacaoTarefa(participante)).toBe(true);
+  expect(resultadoPrincipalVisita("TAREFA_IATF", participante, { dados: { resultado: "POSITIVO" } })).toBe("Prenhez confirmada");
+  expect(pendenciaAvaliacaoTarefa({ resultado: "POSITIVO" })).toMatch(/vincule a tentativa/i);
+  expect(pendenciaAvaliacaoTarefa({ resultado: "POSITIVO", tentativaId: "tentativa" })).toBeNull();
+  expect(pendenciaAvaliacaoTarefa({ resultado: "SEXAGEM" })).toMatch(/sexo fetal/i);
 });
 
 it("contexto mantém DEL zero, RP não e dados históricos desconhecidos", async () => {

@@ -1,5 +1,6 @@
 import { horarioIatf } from "./CampoDataIatf";
 import { useEffect, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import { Button, ErrorBox } from "../../../financeiro/financeiro-ui";
 import {
   classeInput,
@@ -21,14 +22,20 @@ const TIPOS: [TipoAtividade, string][] = [
   ["EXAME_SANITARIO", "Exame sanitário"],
   ["INICIAR_SANITARIO", "Iniciar protocolo sanitário"],
 ];
+function ContenedorAtividade({inline,titulo,onFechar,bloqueado,rodape,children}:{inline:boolean;titulo:string;onFechar:()=>void;bloqueado:boolean;rodape:ReactNode;children:ReactNode}) {
+  if (inline) return <section className="space-y-4 p-4"><div className="flex items-center justify-between gap-3"><h3 className="font-semibold">{titulo}</h3><Button secondary onClick={onFechar} disabled={bloqueado}>Fechar</Button></div>{children}<div className="flex justify-end gap-2">{rodape}</div></section>;
+  return <PainelCadastro aberto titulo={titulo} onFechar={onFechar} bloqueado={bloqueado} rodape={rodape}>{children}</PainelCadastro>;
+}
 export function FormAtividade({
   visita,
   onFechar,
   onSalvo,
+  inline = false,
 }: {
   visita: Visita;
   onFechar: () => void;
   onSalvo: () => void;
+  inline?: boolean;
 }) {
   const [sugestoes, setSugestoes] = useState<SugestoesVisita | null>(null);
   const [origem, setOrigem] = useState("animais");
@@ -90,9 +97,9 @@ export function FormAtividade({
         motivosFiltro.some((m) => motivosDoAnimal(a).includes(m))),
   );
   return (
-    <PainelCadastro
-      aberto
-      titulo="Adicionar outro atendimento"
+    <ContenedorAtividade
+      inline={inline}
+      titulo="Adicionar outra atividade à visita"
       onFechar={onFechar}
       bloqueado={ocupado}
       rodape={
@@ -345,6 +352,6 @@ export function FormAtividade({
               ))}
         </div>
       </form>
-    </PainelCadastro>
+    </ContenedorAtividade>
   );
 }

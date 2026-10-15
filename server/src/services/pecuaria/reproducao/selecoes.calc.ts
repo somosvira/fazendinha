@@ -2,6 +2,7 @@ import type { CondicaoSelecao, CriteriosSelecao } from "./selecoes.schemas.js";
 
 export type AnimalSelecao = { animalId: string; [campo: string]: unknown };
 const rotulos: Record<CondicaoSelecao["campo"], string> = {
+  APTIDAO: "Aptidão leite/corte", DIAS_APTIDAO: "Dias desde aptidão", IDADE_DIAS: "Idade em dias", PESO_KG: "Último peso (kg)", SEXO: "Sexo", ORIGEM: "Origem", BUSCA: "Brinco ou nome contém", RACA: "Composição racial contém", PROTOCOLO: "Protocolo ativo", PROTOCOLO_ATIVO: "Participação ativa", NASCIMENTO_ESTIMADO: "Nascimento estimado", HISTORICO_PARTO: "Histórico de parto",
   DEL: "DEL", DIAS_POS_PARTO: "Dias após parto", DIAS_TENTATIVA: "Dias desde tentativa",
   DIAS_CONFIRMACAO: "Dias desde confirmação", IDADE_GESTACIONAL: "Idade gestacional",
   DIAS_ATE_RETORNO: "Dias até retorno agendado", RETORNO_INFORMADO: "Retorno informado", PARTOS: "Partos realizados", TENTATIVAS_CICLO: "Tentativas no ciclo", CATEGORIA: "Categoria",
@@ -9,7 +10,7 @@ const rotulos: Record<CondicaoSelecao["campo"], string> = {
   SITUACAO_PRODUTIVA: "Situação produtiva", RP: "Retenção de placenta", DESCARTE: "Descarte reprodutivo",
 };
 function valorCampo(a: AnimalSelecao, campo: CondicaoSelecao["campo"]): unknown {
-  const campos = { DEL: "del", DIAS_POS_PARTO: "diasPosParto", DIAS_TENTATIVA: "diasTentativa",
+  const campos = { APTIDAO: "aptidao", DIAS_APTIDAO: "diasAptidao", IDADE_DIAS: "idadeDias", PESO_KG: "pesoKg", SEXO: "sexo", ORIGEM: "origem", RACA: "racas", PROTOCOLO: "protocolosAtivos", PROTOCOLO_ATIVO: "dominiosAtivos", NASCIMENTO_ESTIMADO: "nascimentoEstimado", HISTORICO_PARTO: "historicoParto", BUSCA: "identificacao", DEL: "del", DIAS_POS_PARTO: "diasPosParto", DIAS_TENTATIVA: "diasTentativa",
     DIAS_CONFIRMACAO: "diasDesdeConfirmacao", IDADE_GESTACIONAL: "idadeGestacionalDias",
     DIAS_ATE_RETORNO: "diasAteRetorno", PARTOS: "partos", TENTATIVAS_CICLO: "tentativasCiclo", SITUACAO: "situacao",
     PAPEL_REPRODUTIVO: "papelReprodutivo", SITUACAO_PRODUTIVA: "situacaoProdutiva" };
@@ -29,6 +30,8 @@ const desconhecido = (v: unknown) => v == null || v === "NAO_INFORMADA" || v ===
 function testar(a: AnimalSelecao, c: CondicaoSelecao, incluirDesconhecidos: boolean) {
   const v = valorCampo(a, c.campo);
   if (c.tipo === "DESCONHECIDO") return desconhecido(v);
+  if (c.tipo === "VALORES" && Array.isArray(v)) return c.valores.some(valor => v.includes(valor));
+  if (c.tipo === "VALORES" && c.campo === "BUSCA" && typeof v === "string") return c.valores.some(valor => v.toLocaleLowerCase("pt-BR").includes(valor.toLocaleLowerCase("pt-BR")));
   if (c.tipo === "VALORES" && c.valores.includes(String(v))) return true;
   if (desconhecido(v)) return incluirDesconhecidos;
   if (c.tipo === "VALORES") return c.valores.includes(String(v));

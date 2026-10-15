@@ -3,12 +3,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { exigeArea } from "../../middleware/permissao.js";
 import { uid } from "../../lib/uid.fixture.js";
 
-const mocks = vi.hoisted(() => ({ leitura: vi.fn(), escrita: vi.fn(), painel: vi.fn(), tentativa: vi.fn(), avaliacao: vi.fn(), detalheVisita: vi.fn(), confirmar: vi.fn(), programacoes: vi.fn(), programar: vi.fn(), iniciar: vi.fn(), reprogramar: vi.fn(), executar: vi.fn(), previaPlanner: vi.fn(), tarefaVisita: vi.fn(), emitir: vi.fn(), obterEmissao: vi.fn(), indicadores: vi.fn(), partos: vi.fn() }));
+const mocks = vi.hoisted(() => ({ leitura: vi.fn(), escrita: vi.fn(), painel: vi.fn(), tentativa: vi.fn(), avaliacao: vi.fn(), detalheVisita: vi.fn(), confirmar: vi.fn(), programacoes: vi.fn(), programar: vi.fn(), iniciar: vi.fn(), reprogramar: vi.fn(), executar: vi.fn(), agenda: vi.fn(), previaPlanner: vi.fn(), tarefaVisita: vi.fn(), emitir: vi.fn(), obterEmissao: vi.fn(), indicadores: vi.fn(), partos: vi.fn() }));
 vi.mock("../../services/propriedade.js", async original => ({ ...await original<typeof import("../../services/propriedade.js")>(), resolverEscopoLeitura: mocks.leitura, resolverEscopoEscrita: mocks.escrita }));
 vi.mock("../../services/pecuaria/reproducao/registros.js", async original => ({ ...await original<typeof import("../../services/pecuaria/reproducao/registros.js")>(), painelReproducao: mocks.painel, criarTentativa: mocks.tentativa, criarAvaliacao: mocks.avaliacao }));
 vi.mock("../../services/pecuaria/reproducao/visitas.js", async original => ({ ...await original<typeof import("../../services/pecuaria/reproducao/visitas.js")>(), detalheVisita: mocks.detalheVisita, confirmarAtividade: mocks.confirmar, tarefaParticipanteVisita: mocks.tarefaVisita }));
 vi.mock("../../services/pecuaria/reproducao/iatf.js", async original => ({ ...await original<typeof import("../../services/pecuaria/reproducao/iatf.js")>(), listarProgramacoes: mocks.programacoes, criarProgramacao: mocks.programar, iniciarParticipante: mocks.iniciar, reprogramarTarefa: mocks.reprogramar, executarTarefa: mocks.executar }));
-vi.mock("../../services/pecuaria/reproducao/planner.js", async original => ({ ...await original<typeof import("../../services/pecuaria/reproducao/planner.js")>(), previaGrupoPlanner: mocks.previaPlanner }));
+vi.mock("../../services/pecuaria/reproducao/planner.js", async original => ({ ...await original<typeof import("../../services/pecuaria/reproducao/planner.js")>(), consultarAgenda: mocks.agenda, previaGrupoPlanner: mocks.previaPlanner }));
 vi.mock("../../services/pecuaria/reproducao/emissoes-relatorios.js", async original => ({ ...await original<typeof import("../../services/pecuaria/reproducao/emissoes-relatorios.js")>(), criarEmissaoReprodutiva: mocks.emitir, obterEmissaoReprodutiva: mocks.obterEmissao }));
 vi.mock("../../services/pecuaria/reproducao/indicadores.js", async original => ({ ...await original<typeof import("../../services/pecuaria/reproducao/indicadores.js")>(), consultarIndicadoresReprodutivos: mocks.indicadores }));
 vi.mock("../../services/pecuaria/reproducao/relatorio-partos.js", async original => ({ ...await original<typeof import("../../services/pecuaria/reproducao/relatorio-partos.js")>(), emitirRelatorioPartos: mocks.partos }));
@@ -149,4 +149,19 @@ describe("manejo: consultas disponíveis ao leitor e emissão autorizada", () =>
     expect((await app().request("/reproducao/relatorios/emissoes", request)).status).toBe(201);
     expect(mocks.emitir).toHaveBeenCalledWith(body, 7);
   });
+});
+
+describe("agenda e seleção livre autorizadas",()=>{
+ it("mantém agenda exclusiva em consulta de leitura",async()=>{
+  mocks.agenda.mockResolvedValue({grupos:[],totalGrupos:0,totais:{animaisUnicos:0,procedimentos:0}});
+  const r=await app({...usuario,flags:[]}).request("/visitas/agenda?data=2026-10-14");expect(r.status).toBe(200);expect(mocks.agenda).toHaveBeenCalledWith(expect.objectContaining({propriedadeId:2,data:"2026-10-14"}));
+ });
+ it("prévia livre é leitura mesmo com POST e nunca aceita outro sítio",async()=>{
+  const grupo={origem:"LIVRE",nome:"Grupo teste",tipo:"AVALIACAO_REPRODUTIVA",criterios:{versao:2,todas:[],qualquer:[],ordenacao:[{campo:"BRINCO",direcao:"ASC"}],politicaDesconhecidos:"EXCLUIR"}};
+  mocks.previaPlanner.mockResolvedValue({total:0,animais:[]});const leitor=app({...usuario,flags:[]});
+  expect((await leitor.request("/visitas/selecoes/previa",{method:"POST",headers:json,body:JSON.stringify({propriedadeId:2,data:"2026-10-14",grupo})})).status).toBe(200);
+  expect(mocks.escrita).not.toHaveBeenCalled();mocks.previaPlanner.mockClear();
+  expect((await leitor.request("/visitas/selecoes/previa",{method:"POST",headers:json,body:JSON.stringify({propriedadeId:3,data:"2026-10-14",grupo})})).status).toBe(422);expect(mocks.previaPlanner).not.toHaveBeenCalled();
+  expect((await app(null).request("/visitas/selecoes/previa",{method:"POST",headers:json,body:"{}"})).status).toBe(401);
+ });
 });

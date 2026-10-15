@@ -1,3 +1,4 @@
+import { prepararContextoInicioIatfTx, confirmarInicioIatfVisitaTx } from "./inicio-iatf-visita.js";
 import { carregarRetornosNaDataTx, contextoRetornoNaData } from "./contexto-retorno.js";
 import { parametrosSanitariosVisita } from "./parametros-sanitarios-visita.calc.js";
 import { obterContextosAnimaisNaDataTx } from "./contexto-animal.js";
@@ -36,7 +37,6 @@ import { criarAvaliacaoTx, dia, erro, obterEstadosReprodutivosTx } from "./regis
 import {
   contextoTarefaTx,
   executarTarefaTx,
-  iniciarParticipanteTx,
 } from "./iatf.js";
 import { avaliarCategoria } from "../rebanho/categoria.calc.js";
 import { hashDados, operacaoIdempotenteTx } from "./operacoes.js";
@@ -61,20 +61,26 @@ export async function criarVisita(
   input: z.infer<typeof visitaSchema>,
   usuarioId: number | null,
 ) {
-  return transacaoPecuaria(async (tx) => {
-    const v = await tx.visitaVeterinaria.create({
-      data: { ...input, data: dia(input.data), criadoPorId: usuarioId },
+  // A espera pela chave idempotente precisa reler o resultado já confirmado.
+  return prisma.$transaction(tx => criarVisitaTx(tx, input, usuarioId), {
+    isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted, timeout: 30_000,
+  });
+}
+export async function criarVisitaTx(tx: Prisma.TransactionClient, input: z.infer<typeof visitaSchema>, usuarioId: number | null) {
+  const { chave: _chave, ...dados } = input;
+  const executar = async () => {
+    const visita = await tx.visitaVeterinaria.create({
+      data: { ...dados, data: dia(input.data), criadoPorId: usuarioId },
     });
     await auditar(tx, {
-      entidade: "VisitaVeterinaria",
-      entidadeId: v.id,
-      propriedadeId: input.propriedadeId,
-      acao: "CRIACAO",
-      usuarioId,
-      depois: v,
+      entidade: "VisitaVeterinaria", entidadeId: visita.id,
+      propriedadeId: input.propriedadeId, acao: "CRIACAO", usuarioId, depois: visita,
     });
-    return v;
-  });
+    return visita;
+  };
+  return input.chave
+    ? operacaoIdempotenteTx(tx, { ...input, chave: input.chave }, usuarioId, "CRIAR_VISITA", executar)
+    : executar();
 }
 export async function adicionarAtividade(
   id: string,
@@ -85,7 +91,7 @@ export async function adicionarAtividade(
 }
 export async function adicionarAtividadeTx(
   tx: Prisma.TransactionClient, id: string,
-  input: z.infer<typeof atividadeSchema>, usuarioId: number | null,
+  input: z.infer<typeof atividadeSchema>, usuarioId: number | null, contextosSelecao?: Map<string, Record<string, unknown>>,
 ) {
     await travarAnimais(
       tx,
@@ -103,13 +109,15 @@ export async function adicionarAtividadeTx(
       where: { visitaId: id },
       _max: { ordem: true },
     });
+    const contextoAtividade = input.tipo === "INICIAR_IATF"
+      ? await prepararContextoInicioIatfTx(tx, input.contexto) : input.contexto;
     const atividade = await tx.atividadeVisita.create({
       data: {
         visitaId: id,
         tipo: input.tipo,
         nome: input.nome,
         extra: input.extra,
-        contexto: json(input.contexto),
+        contexto: json(contextoAtividade),
         ordem: (ultima._max.ordem ?? 0) + 1,
       },
     });
@@ -154,6 +162,7 @@ export async function adicionarAtividadeTx(
       if (tarefaComumId && tarefasJaIncluidas.has(tarefaComumId)) erro("Esta tarefa já está incluída na visita", "participantes");
       if (tarefaComumId) tarefasJaIncluidas.add(tarefaComumId);
       const snapshot = await contextoAnimalVisitaTx(tx, animal.id, input.propriedadeId, v.data, cache);
+      if (contextosSelecao?.has(animal.id)) Object.assign(snapshot, { selecaoNaData: contextosSelecao.get(animal.id) });
       const criterios = criteriosVisitaSchema.parse(Object.fromEntries(Object.entries((input.contexto.criterios ?? {}) as Record<string, unknown>).filter(([k,v]) => ["categoriaId","loteId","situacao","diasTentativaMin","diasTentativaMax","diasPartoMin","diasPartoMax","diasGestacaoMin","diasGestacaoMax"].includes(k) && v !== "" && v != null)));
       if (tarefa) {
         const tarefaReprodutiva = tarefasReprodutivas.find(t => t.id === tarefa.id);
@@ -323,7 +332,12 @@ export async function confirmarAtividade(
   input: z.infer<typeof confirmacaoVisitaSchema>,
   usuarioId: number | null,
 ) {
-  return transacaoPecuaria(async (tx) => {
+  return transacaoPecuaria(tx => confirmarAtividadeTx(tx, id, atividadeId, input, usuarioId));
+}
+export async function confirmarAtividadeTx(
+  tx: Prisma.TransactionClient, id: string, atividadeId: string,
+  input: z.infer<typeof confirmacaoVisitaSchema>, usuarioId: number | null,
+) {
     const v = await visitaTx(tx, id, input.propriedadeId),
       atividade = await tx.atividadeVisita.findFirst({
         where: { id: atividadeId, visitaId: id },
@@ -345,6 +359,7 @@ export async function confirmarAtividade(
       tx,
       participantes.map((p) => p.animalId),
     );
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`pec-visita:${id}`}))`;
     return operacaoIdempotenteTx(
       tx,
       { ...input, visitaId: id, atividadeId },
@@ -403,6 +418,8 @@ export async function confirmarAtividade(
             const p = await tx.participanteVisita.findUniqueOrThrow({
               where: { id: item.participanteId },
             });
+            if (item.versaoRascunho != null && item.versaoRascunho !== p.versaoRascunho)
+              throw new RebanhoError("CONFLITO", "O rascunho mudou; recarregue antes de confirmar", "versaoRascunho");
             if (p.status === "CONFIRMADO")
               erro("Participante já confirmado; use a confirmação original");
             if (item.status !== "CONFIRMADO") {
@@ -411,7 +428,7 @@ export async function confirmarAtividade(
               resultados.push(
                 await tx.participanteVisita.update({
                   where: { id: p.id },
-                  data: { status: item.status, motivo: item.motivo },
+                  data: { status: item.status, motivo: item.motivo, versaoRascunho: { increment: 1 } },
                 }),
               );
               continue;
@@ -532,26 +549,8 @@ export async function confirmarAtividade(
               );
               fatoTipo = "TarefaIatf";
             } else {
-              if (
-                typeof bruto.participanteIatfId !== "string" ||
-                typeof bruto.inicioEfetivo !== "string"
-              )
-                erro(
-                  "Selecione participação e início efetivo",
-                  "participanteIatfId",
-                );
-              const iatf = await tx.participanteIatf.findFirst({
-                where: { id: bruto.participanteIatfId, animalId: p.animalId },
-              });
-              if (!iatf) erro("Participação IATF pertence a outro animal");
-              fato = await iniciarParticipanteTx(
-                tx,
-                iatf.id,
-                input.propriedadeId,
-                bruto.inicioEfetivo,
-                usuarioId,
-                bruto.cienciaSanitaria === true,
-              );
+              fato = await confirmarInicioIatfVisitaTx(tx, atividade, p.animalId,
+                input.propriedadeId, bruto, usuarioId);
               fatoTipo = "ParticipanteIatf";
             }
             const salva = await tx.participanteVisita.update({
@@ -604,7 +603,7 @@ export async function confirmarAtividade(
         };
       },
     );
-  });
+
 }
 export async function encerrarVisita(
   id: string,
@@ -772,7 +771,12 @@ export async function sugestoesVisita(
     })),
     protocolosSanitarios,
     protocolosIatf,
-    participantesIatf: participantes,
+    participantesIatf: participantes.map(p => {
+      const programa = programacoes.find(g => g.id === p.programacaoId)!;
+      const protocolo = protocolosIatf.find(v => v.id === programa.protocoloId);
+      return { ...p, propriedadeId: programa.propriedadeId, protocoloId: programa.protocoloId,
+        protocoloNome: protocolo?.nome, protocoloVersao: protocolo?.versao, programacaoNome: programa.nome };
+    }),
     animais: candidatos.filter(a => correspondeCriterios(a, criterios)),
     categorias: categorias.map(c => ({ id: c.id, nome: c.nome })),
     lotes: [...new Map(locais.flatMap(l => l.lote ? [[l.lote.id, { id: l.lote.id, nome: l.lote.nome }] as const] : [])).values()],

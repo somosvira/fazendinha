@@ -1,6 +1,6 @@
 import * as planner from "../../services/pecuaria/reproducao/planner.js";
 import * as selecoes from "../../services/pecuaria/reproducao/selecoes.js";
-import { consultaPlannerSchema, previaGrupoPlannerSchema, incluirGrupoPlannerSchema } from "../../services/pecuaria/reproducao/planner.schemas.js";
+import { consultaPlannerSchema, previaSelecaoLivreSchema, previaGrupoPlannerSchema, incluirGrupoPlannerSchema } from "../../services/pecuaria/reproducao/planner.schemas.js";
 import { Hono } from "hono";
 import { z } from "zod";
 import {
@@ -48,6 +48,10 @@ export const visitasRouter = new Hono()
       return c.json(await selecoes.listarSelecoes(propriedadeId, ["1", "true"].includes(c.req.query("incluirInativas") ?? "")));
     } catch (e) { return falhaV4(c,e); }
   })
+  .get("/selecoes/opcoes", async c => {
+    try { return c.json(await selecoes.opcoesSelecao(s.sitio.parse(await resolverEscopoLeitura(c)), s.data.parse(c.req.query("data")))); }
+    catch (e) { return falhaV4(c, e); }
+  })
   .post("/selecoes", validarV4(selecoes.criarSelecaoSchema), async c => {
     try { const b=c.req.valid("json"); return c.json(await selecoes.criarSelecao({ ...b,
       propriedadeId: await resolverEscopoEscrita(c,b.propriedadeId) },usuarioV4(c)),201);
@@ -57,6 +61,17 @@ export const visitasRouter = new Hono()
     try { const b=c.req.valid("json"); return c.json(await selecoes.atualizarSelecao(s.uuid.parse(c.req.param("id")),{ ...b,
       propriedadeId: await resolverEscopoEscrita(c,b.propriedadeId) },usuarioV4(c)));
     } catch(e) { return falhaV4(c,e); }
+  })
+  .get("/agenda", async c => {
+    try { const b = consultaPlannerSchema.parse({ ...c.req.query(), propriedadeId: await resolverEscopoLeitura(c) });
+      return c.json(apresentarV4(c, await planner.consultarAgenda(b)));
+    } catch (e) { return falhaV4(c, e); }
+  })
+  .post("/selecoes/previa", validarV4(previaSelecaoLivreSchema), async c => {
+    try { const b = c.req.valid("json"); const propriedadeId = s.sitio.parse(await resolverEscopoLeitura(c));
+      if (propriedadeId !== b.propriedadeId) throw new z.ZodError([{ code: "custom", path: ["propriedadeId"], message: "Sítio da prévia difere do escopo ativo" }]);
+      return c.json(apresentarV4(c, await planner.previaGrupoPlanner(b)));
+    } catch (e) { return falhaV4(c, e); }
   })
   .get("/planner", async c => {
     try { const b=consultaPlannerSchema.parse({ ...c.req.query(), propriedadeId: await resolverEscopoLeitura(c) });

@@ -1,5 +1,6 @@
 import { dataHoraISO } from "./CampoDataIatf";
 import type { RascunhoVisita, TipoAtividade } from "./visitas-api";
+import type { ParticipanteVisita } from "./visitas-api";
 function momentoBR(valor: string | undefined): string {
   if (!valor) throw new Error("Informe a data realizada.");
   if (/^\d{4}-\d{2}-\d{2}$/.test(valor)) return dataHoraISO(valor);
@@ -49,6 +50,29 @@ export const rotulosCondutaAvaliacao: Record<string, string> = {
   IATF: "Indicar IATF",
   DESCARTE: "Restringir reprodução / descarte",
 };
+
+export function ehAvaliacaoTarefa(p: ParticipanteVisita): boolean {
+  return p.snapshot.tarefaPlanejada?.tarefa.tipo === "AVALIACAO";
+}
+
+export function resultadoPrincipalVisita(tipo: TipoAtividade, p: ParticipanteVisita, r: RascunhoVisita): string | null {
+  const resultado = tipo === "AVALIACAO_REPRODUTIVA" ? r.resultado
+    : tipo === "TAREFA_IATF" && ehAvaliacaoTarefa(p) ? String(r.dados?.resultado ?? "") : "";
+  return resultado ? rotulosResultadoAvaliacao[resultado] ?? resultado : null;
+}
+
+export function pendenciaAvaliacaoTarefa(dados: Record<string, unknown> | undefined, gestacaoConhecida = false): string | null {
+  if (!dados?.resultado) return "Informe o resultado da avaliação.";
+  if (dados.resultado === "SEXAGEM" && !dados.sexoFetal) return "Informe o sexo fetal.";
+  if (["SEXAGEM", "RECONFIRMACAO"].includes(String(dados.resultado)) && !dados.gestacaoId)
+    return "Vincule a gestação conhecida para esta avaliação.";
+  if (dados.resultado === "NEGATIVO" && gestacaoConhecida)
+    return "Há gestação conhecida: registre a perda ou corrija o diagnóstico antes de confirmar.";
+  if (dados.resultado === "POSITIVO" && !dados.tentativaId && !dados.gestacaoId &&
+    (typeof dados.motivoVinculoDesconhecido !== "string" || dados.motivoVinculoDesconhecido.trim().length < 5))
+    return "Vincule a tentativa ou explique o vínculo desconhecido.";
+  return null;
+}
 
 /** Contexto congelado da lista: ausência de dado nunca é convertida em zero ou “não”. */
 export function contextoTranscricao(

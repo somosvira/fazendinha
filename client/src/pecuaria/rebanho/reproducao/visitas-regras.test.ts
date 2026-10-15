@@ -3,6 +3,7 @@ import {
   filtrarParticipantes,
   ordenarParticipantes,
   pendenciaRascunho,
+  blocosConfirmacao,
 } from "./visitas-regras";
 import type { ParticipanteVisita } from "./visitas-api";
 const p = (
@@ -48,5 +49,12 @@ describe("transcrição da visita", () => {
     expect(
       pendenciaRascunho({ status: "ADIADO", motivo: "Animal indisponível" }),
     ).toBeNull();
+  });
+  it("divide 120 participantes em blocos atômicos de 100 e 20 sem perder ordem", () => {
+    const ids = Array.from({ length: 120 }, (_, i) => `p${i + 1}`);
+    const blocos = blocosConfirmacao(ids);
+    expect(blocos.map(b => b.length)).toEqual([100, 20]);
+    expect(blocos.flat()).toEqual(ids);
+    expect(blocos.every(b => b.length <= 100)).toBe(true);
   });
 });

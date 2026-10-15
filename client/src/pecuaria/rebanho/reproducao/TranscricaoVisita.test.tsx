@@ -110,17 +110,17 @@ describe("confirmação da transcrição", () => {
         onMudou={mudou}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: "Revisar animal" }));
+    fireEvent.click(screen.getByRole("button", { name: "Conferir resultados (1)" }));
     fireEvent.click(screen.getByRole("button", { name: "Confirmar 1 atendimento(s)" }));
     await screen.findByText("Resposta perdida");
-    fireEvent.click(screen.getByRole("button", { name: "Revisar animal" }));
+    fireEvent.click(screen.getByRole("button", { name: "Conferir resultados (1)" }));
     fireEvent.click(screen.getByRole("button", { name: "Confirmar 1 atendimento(s)" }));
     await waitFor(() => expect(mudou).toHaveBeenCalled());
     expect(confirmarVisita).toHaveBeenCalledTimes(2);
     expect(vi.mocked(confirmarVisita).mock.calls[1][2]).toEqual(
       vi.mocked(confirmarVisita).mock.calls[0][2],
     );
-    expect(salvarRascunhoVisita).toHaveBeenCalledTimes(1);
+    expect(salvarRascunhoVisita).toHaveBeenCalledTimes(0);
     expect(vi.mocked(confirmarVisita).mock.calls[0][2].itens).toEqual([
       {
         participanteId: "p",
@@ -149,14 +149,14 @@ describe("confirmação da transcrição", () => {
         onMudou={vi.fn().mockResolvedValue(undefined)}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: "Revisar animal" }));
+    fireEvent.click(screen.getByRole("button", { name: "Conferir resultados (1)" }));
     fireEvent.click(screen.getByRole("button", { name: "Confirmar 1 atendimento(s)" }));
     await screen.findByText(/100: Gestação mudou/);
     expect(confirmarVisita).not.toHaveBeenCalled();
     fireEvent.click(
       screen.getByRole("switch", { name: /Revisei as mudanças/ }),
     );
-    fireEvent.click(screen.getByRole("button", { name: "Revisar animal" }));
+    fireEvent.click(screen.getByRole("button", { name: "Conferir resultados (1)" }));
     fireEvent.click(screen.getByRole("button", { name: "Confirmar 1 atendimento(s)" }));
     await waitFor(() => expect(confirmarVisita).toHaveBeenCalled());
     expect(vi.mocked(confirmarVisita).mock.calls[0][2]).toMatchObject({
@@ -171,6 +171,7 @@ it("serializa formulário e autosave com versão e conserva edições enquanto a
   vi.mocked(salvarRascunhoVisita).mockImplementationOnce(() => new Promise(resolve => { liberar = resolve; })).mockResolvedValue({...atividade.participantes[0], versaoRascunho: 2});
   const a = {...atividade, tipo: "APLICACAO_SANITARIA" as const};
   render(<Transcricao visita={visita} atividade={a} podeLancar onMudou={vi.fn()} />);
+  fireEvent.click(screen.getByRole("button", {name: "Detalhes · 100"}));
   const anotacao = screen.getByRole("textbox", {name: "Anotação original · 100"});
   fireEvent.change(anotacao, {target: {value: "Primeira edição"}});
   fireEvent.blur(anotacao);
@@ -181,9 +182,87 @@ it("serializa formulário e autosave com versão e conserva edições enquanto a
   fireEvent.blur(anotacao);
   expect(salvarRascunhoVisita).toHaveBeenCalledTimes(1);
   liberar({...atividade.participantes[0], versaoRascunho: 1});
-  await waitFor(() => expect(salvarRascunhoVisita).toHaveBeenCalledTimes(3));
+  await waitFor(() => expect(salvarRascunhoVisita).toHaveBeenCalledTimes(2));
   expect(vi.mocked(salvarRascunhoVisita).mock.calls[1].slice(3)).toEqual([{...atividade.participantes[0].rascunho, anotacaoOriginal: "Edição durante salvamento", dados: {produtoId: "novo"}, status: "CONFIRMADO"}, 1]);
   expect(anotacao).toHaveProperty("value", "Edição durante salvamento");
+});
+it("a guarda de saída salva alterações ainda focadas e recusa conflito CAS", async () => {
+  const registrar = vi.fn();
+  const a = { ...atividade, tipo: "APLICACAO_SANITARIA" as const };
+  render(<Transcricao visita={visita} atividade={a} podeLancar registrarGuardaSaida={registrar} onMudou={vi.fn()} />);
+  fireEvent.click(screen.getByRole("button", { name: "Detalhes · 100" }));
+  fireEvent.change(screen.getByRole("textbox", { name: "Anotação original · 100" }), { target: { value: "Rascunho ainda focado" } });
+  await waitFor(() => expect(registrar).toHaveBeenCalledWith(expect.any(Function)));
+  const guarda = registrar.mock.calls.at(-1)![0] as () => Promise<boolean>;
+  await expect(guarda()).resolves.toBe(true);
+  expect(salvarRascunhoVisita).toHaveBeenCalledWith("v", "p", 1, expect.objectContaining({ anotacaoOriginal: "Rascunho ainda focado" }), 0);
+
+  vi.mocked(salvarRascunhoVisita).mockRejectedValueOnce(new RebanhoApiError("Outra sessão alterou o rascunho", 409, "CONFLITO"));
+  fireEvent.change(screen.getByRole("textbox", { name: "Anotação original · 100" }), { target: { value: "Nova edição concorrente" } });
+  await expect(guarda()).resolves.toBe(false);
+});
+it("preserva rascunho em conflito quando confirmação de outro participante atualiza a visita", async () => {
+  const registrar = vi.fn();
+  let rerender!: ReturnType<typeof render>["rerender"];
+  const a = { ...atividade, tipo: "APLICACAO_SANITARIA" as const, participantes: [
+    atividade.participantes[0],
+    { ...atividade.participantes[0], id: "p2", animalId: "a2", ordem: 2, snapshot: { brinco: "101" } },
+  ] };
+  const onMudou = vi.fn(async () => rerender(<Transcricao visita={visita} atividade={a} podeLancar registrarGuardaSaida={registrar} onMudou={onMudou} />));
+  vi.mocked(salvarRascunhoVisita).mockRejectedValueOnce(new RebanhoApiError("Outra sessão alterou o rascunho", 409, "CONFLITO"));
+  vi.mocked(confirmarVisita).mockResolvedValue({});
+  const tela = render(<Transcricao visita={visita} atividade={a} podeLancar registrarGuardaSaida={registrar} onMudou={onMudou} />);
+  rerender = tela.rerender;
+  fireEvent.click(screen.getByRole("button", { name: "Detalhes · 100" }));
+  const anotacao = screen.getByRole("textbox", { name: "Anotação original · 100" });
+  fireEvent.change(anotacao, { target: { value: "Rascunho local em conflito" } });
+  fireEvent.blur(anotacao);
+  await screen.findByText("Outra sessão alterou o rascunho");
+
+  fireEvent.click(screen.getByRole("checkbox", { name: "Selecionar 101" }));
+  fireEvent.click(screen.getByRole("button", { name: "Revisar selecionados (1)" }));
+  fireEvent.click(screen.getByRole("button", { name: "Confirmar 1 atendimento(s)" }));
+  await waitFor(() => expect(onMudou).toHaveBeenCalled());
+  expect(screen.getByRole("textbox", { name: "Anotação original · 100" })).toHaveProperty("value", "Rascunho local em conflito");
+  const guarda = registrar.mock.calls.at(-1)![0] as () => Promise<boolean>;
+  await expect(guarda()).resolves.toBe(false);
+  expect(salvarRascunhoVisita).toHaveBeenCalledTimes(1);
+});
+it("salva o procedimento inline de um participante limpo antes de permitir a navegação", async () => {
+  const registrar = vi.fn();
+  const a = { ...atividade, tipo: "APLICACAO_SANITARIA" as const };
+  render(<Transcricao visita={visita} atividade={a} podeLancar registrarGuardaSaida={registrar} onMudou={vi.fn()} />);
+  fireEvent.click(screen.getByRole("button", { name: "Detalhes · 100" }));
+  fireEvent.click(screen.getByRole("button", { name: "Preencher procedimento" }));
+  fireEvent.click(screen.getByRole("button", { name: "Preparar aplicação teste" }));
+  await waitFor(() => expect(salvarRascunhoVisita).toHaveBeenCalledTimes(1));
+  expect(vi.mocked(salvarRascunhoVisita).mock.calls[0][3]).toMatchObject({ status: "CONFIRMADO", dados: { produtoId: "novo" } });
+  const guarda = registrar.mock.calls.at(-1)![0] as () => Promise<boolean>;
+  await expect(guarda()).resolves.toBe(true);
+  expect(salvarRascunhoVisita).toHaveBeenCalledTimes(1);
+});
+it("a guarda concilia resposta perdida de ausência sem exigir fato clínico", async () => {
+  let remoteStatus = "PENDENTE";
+  const registrar = vi.fn();
+  const a = { ...atividade, tipo: "APLICACAO_SANITARIA" as const };
+  vi.mocked(reqV4).mockImplementation(async url => url === "/visitas/v"
+    ? { ...visita, atividades: [{ ...a, participantes: [{ ...a.participantes[0], status: remoteStatus, motivo: remoteStatus === "NAO_ATENDIDO" ? "Animal não estava no curral" : null, rascunho: { ...a.participantes[0].rascunho, status: "NAO_ATENDIDO" } }] }] }
+    : url.includes("tipos-exame") || url.includes("alertas-sanitarios") ? [] : url.startsWith("/reproducao?") ? painelVazio : { fingerprint: "a".repeat(64), participantes: [] });
+  vi.mocked(confirmarVisita).mockRejectedValueOnce(new Error("Resposta perdida"));
+  render(<Transcricao visita={visita} atividade={a} podeLancar registrarGuardaSaida={registrar} onMudou={vi.fn().mockResolvedValue(undefined)} />);
+  fireEvent.click(screen.getByRole("button", { name: "Detalhes · 100" }));
+  fireEvent.change(screen.getByRole("combobox", { name: "Atendimento · 100" }), { target: { value: "NAO_ATENDIDO" } });
+  fireEvent.change(screen.getByRole("textbox", { name: "Motivo de perda, correção, descarte ou pendência · 100" }), { target: { value: "Animal não estava no curral" } });
+  fireEvent.click(screen.getByRole("button", { name: "Conferir animal" }));
+  expect(confirmarVisita).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "Confirmar 1 atendimento(s)" }));
+  await screen.findByText("Resposta perdida");
+  const guarda = registrar.mock.calls.at(-1)![0] as () => Promise<boolean>;
+  await expect(guarda()).resolves.toBe(false);
+  expect(screen.getByText(/confirmação sem resposta/)).toBeTruthy();
+  remoteStatus = "NAO_ATENDIDO";
+  await expect(guarda()).resolves.toBe(true);
+  expect(confirmarVisita).toHaveBeenCalledTimes(1);
 });
 it("visita encerrada permite regularizar vínculo sem permitir reabrir atendimento", async () => {
   const a = {...atividade, participantes: atividade.participantes.map(p => ({...p,status:"CONFIRMADO",fatoId:"av",regularizacaoPendente:true}))};
@@ -205,7 +284,7 @@ it("seleciona exame personalizado por animal e preserva zero e falso no rascunho
   fireEvent.change(screen.getByLabelText("Tipo de exame · 100"), { target: { value: "tipo-custom" } });
   fireEvent.change(screen.getByLabelText(/Medida · mm/), { target: { value: "0" } });
   fireEvent.change(screen.getByLabelText(/Achado/), { target: { value: "false" } });
-  fireEvent.click(screen.getByRole("button", { name: "Revisar animal" }));
+  fireEvent.click(screen.getByRole("button", { name: "Conferir resultados (1)" }));
     fireEvent.click(screen.getByRole("button", { name: "Confirmar 1 atendimento(s)" }));
   await waitFor(() => expect(confirmarVisita).toHaveBeenCalledTimes(1));
   const dados = { tipoExameId: "tipo-custom", formatoExameHash: "c".repeat(64), resultados: [{ campo: "MEDIDA", valor: "0" }, { campo: "ACHADO", valor: false }] };
@@ -221,7 +300,9 @@ it("linha intocada permanece pendente e resultado não assume atendimento ou ví
   expect(screen.getByRole("combobox", { name: "Resultado · 100" })).toHaveProperty("value", "");
   expect(screen.queryByRole("combobox", { name: "Atendimento · 100" })).toBeNull();
   expect(salvarRascunhoVisita).not.toHaveBeenCalled();
-  fireEvent.click(screen.getByRole("button", { name: "Revisar animal" }));
+  expect(screen.getByRole("button", { name: "Conferir resultados (0)" })).toHaveProperty("disabled", true);
+  fireEvent.click(screen.getByRole("checkbox", { name: "Selecionar 100" }));
+  fireEvent.click(screen.getByRole("button", { name: "Revisar selecionados (1)" }));
   fireEvent.click(screen.getByRole("button", { name: "Confirmar 1 atendimento(s)" }));
   await screen.findByText("Revise as pendências individuais antes de confirmar.");
   expect(confirmarVisita).not.toHaveBeenCalled();
@@ -239,7 +320,7 @@ it("ausência é uma ação explícita, exige motivo e não executa resultado cl
   fireEvent.click(screen.getByRole("button", { name: "Detalhes · 100" }));
   fireEvent.click(screen.getByRole("button", { name: "Marcar ausente" }));
   fireEvent.change(screen.getByRole("textbox", { name: "Motivo do atendimento pendente · 100" }), { target: { value: "Animal não estava no curral" } });
-  fireEvent.click(screen.getByRole("button", { name: "Revisar animal" }));
+  fireEvent.click(screen.getByRole("button", { name: "Conferir resultados (1)" }));
   fireEvent.click(screen.getByRole("button", { name: "Confirmar 1 atendimento(s)" }));
   await waitFor(() => expect(confirmarVisita).toHaveBeenCalled());
   expect(vi.mocked(confirmarVisita).mock.calls[0][2].itens).toEqual([
@@ -247,36 +328,84 @@ it("ausência é uma ação explícita, exige motivo e não executa resultado cl
   ]);
 });
 
-it("confirma 100 de 101 e mantém o último selecionado com seu rascunho", async () => {
+it("não oferece conferência de uma tarefa com envelope vazio e sem resultado", () => {
+  const a: AtividadeVisita = { ...atividade, tipo: "TAREFA_IATF", participantes: [{
+    ...atividade.participantes[0], rascunho: { status: "PENDENTE", dados: {} },
+    snapshot: { brinco: "100", tarefaPlanejada: { origem: "REPRODUTIVA", tarefa: { id: "t", animalId: "a", tipo: "AVALIACAO" } } },
+  }] };
+  render(<Transcricao visita={visita} atividade={a} podeLancar onMudou={vi.fn()} />);
+  expect(within(screen.getAllByRole("row")[1]).getAllByRole("combobox")).toHaveLength(1);
+  expect(screen.getByRole("button", { name: "Conferir resultados (0)" })).toHaveProperty("disabled", true);
+  expect(salvarRascunhoVisita).not.toHaveBeenCalled();
+  expect(confirmarVisita).not.toHaveBeenCalled();
+});
+
+it.each(["ADIADO", "NAO_ATENDIDO"] as const)("avaliação de tarefa aceita %s sem resultado ou exame", async status => {
   vi.mocked(confirmarVisita).mockResolvedValue({});
-  const a: AtividadeVisita = { ...atividade, participantes: Array.from({ length: 101 }, (_, i) => ({
-    ...atividade.participantes[0], id: `p${i}`, animalId: `a${i}`, ordem: i + 1,
-    snapshot: { brinco: String(100 + i) },
-  })) };
-  render(<Transcricao visita={visita} atividade={a} podeLancar onMudou={vi.fn().mockResolvedValue(undefined)} />);
-  fireEvent.click(screen.getByRole("checkbox", { name: "Selecionar animais visíveis" }));
-  fireEvent.click(screen.getByRole("button", { name: "Revisar selecionados (101)" }));
-  const revisao = screen.getByRole("region", { name: "Revisão do subconjunto" });
-  expect(within(revisao).getAllByRole("listitem")).toHaveLength(100);
-  expect(within(revisao).getByText(/1 selecionado.*próximo subconjunto/)).toBeTruthy();
-  fireEvent.click(screen.getByRole("button", { name: "Confirmar 100 atendimento(s)" }));
-  await waitFor(() => expect(confirmarVisita).toHaveBeenCalledTimes(1));
-  await screen.findByRole("button", { name: "Revisar selecionados (1)" });
-  expect(vi.mocked(confirmarVisita).mock.calls[0][2].itens).toHaveLength(100);
-  expect(screen.getByRole("checkbox", { name: "Selecionar 200" })).toHaveProperty("checked", true);
-  expect(screen.getByRole("combobox", { name: "Resultado · 200" })).toHaveProperty("value", "NAO_AVALIADO");
+  const a: AtividadeVisita = { ...atividade, tipo: "TAREFA_IATF", participantes: [{
+    ...atividade.participantes[0], rascunho: { status: "PENDENTE" },
+    snapshot: { brinco: "100", tarefaPlanejada: { origem: "REPRODUTIVA", tarefa: { id: "t", animalId: "a", tipo: "AVALIACAO" } } },
+  }] };
+  render(<Transcricao visita={visita} atividade={a} podeLancar onMudou={vi.fn()} />);
+  expect(within(screen.getAllByRole("row")[1]).getAllByRole("combobox")).toHaveLength(1);
+  fireEvent.change(screen.getByRole("combobox", { name: "Resultado · 100" }), { target: { value: status } });
+  expect(confirmarVisita).not.toHaveBeenCalled();
+  const detalhes = screen.getByRole("button", { name: "Detalhes · 100" });
+  expect(detalhes.getAttribute("aria-expanded")).toBe("true");
+  fireEvent.click(detalhes);
+  expect(screen.queryByRole("textbox", { name: "Motivo do atendimento pendente · 100" })).toBeNull();
+  fireEvent.click(detalhes);
+  fireEvent.change(screen.getByRole("textbox", { name: "Motivo do atendimento pendente · 100" }), { target: { value: "Animal indisponível" } });
+  fireEvent.click(screen.getByRole("checkbox", { name: "Selecionar 100" }));
   fireEvent.click(screen.getByRole("button", { name: "Revisar selecionados (1)" }));
   fireEvent.click(screen.getByRole("button", { name: "Confirmar 1 atendimento(s)" }));
+  await waitFor(() => expect(confirmarVisita).toHaveBeenCalled());
+  expect(vi.mocked(confirmarVisita).mock.calls[0][2].itens).toEqual([{ participanteId: "p", status, motivo: "Animal indisponível", dados: {} }]);
+});
+
+it("confirma avaliação de tarefa em 120 como blocos 100 + 20 e mostra resultado por linha", async () => {
+  vi.mocked(confirmarVisita).mockResolvedValue({});
+  const a: AtividadeVisita = { ...atividade, tipo: "TAREFA_IATF", participantes: Array.from({ length: 120 }, (_, i) => ({
+    ...atividade.participantes[0], id: `p${i}`, animalId: `a${i}`, ordem: i + 1, rascunho: { status: "CONFIRMADO", realizadaEm: "2026-10-13", dados: { resultado: "NEGATIVO" } },
+    snapshot: { brinco: String(100 + i), tarefaPlanejada: { origem: "REPRODUTIVA" as const, tarefa: { id: `t${i}`, animalId: `a${i}`, tipo: "AVALIACAO" } } },
+  })) };
+  render(<Transcricao visita={visita} atividade={a} podeLancar onMudou={vi.fn().mockResolvedValue(undefined)} />);
+  expect(screen.getAllByText("Vazia").length).toBeGreaterThan(0);
+  fireEvent.click(screen.getByRole("checkbox", { name: "Selecionar todos os participantes filtrados" }));
+  fireEvent.click(screen.getByRole("button", { name: "Revisar selecionados (120)" }));
+  const revisao = screen.getByRole("region", { name: "Revisão do subconjunto" });
+  expect(within(revisao).getAllByRole("listitem")).toHaveLength(100);
+  fireEvent.click(screen.getByRole("button", { name: "Confirmar 120 atendimento(s)" }));
   await waitFor(() => expect(confirmarVisita).toHaveBeenCalledTimes(2));
-  expect(vi.mocked(confirmarVisita).mock.calls[1][2].itens.map(i => i.participanteId)).toEqual(["p100"]);
-}, 15_000);
+  expect(vi.mocked(confirmarVisita).mock.calls.map(call => call[2].itens.length)).toEqual([100, 20]);
+  expect(vi.mocked(confirmarVisita).mock.calls[0][2].itens[0].dados).toMatchObject({ realizadaEm: "2026-10-13", dados: { resultado: "NEGATIVO" } });
+  expect(screen.getByRole("checkbox", { name: "Selecionar todos os participantes filtrados" })).toHaveProperty("checked", false);
+}, 20_000);
+
+it("para no bloco 2 e retoma apenas os 20 restantes com o mesmo envelope", async () => {
+  vi.mocked(confirmarVisita).mockResolvedValueOnce({}).mockRejectedValueOnce(new Error("Resposta perdida no segundo bloco")).mockResolvedValueOnce({});
+  vi.mocked(reqV4).mockImplementation(async url => url.includes("tipos-exame") || url.includes("alertas-sanitarios") ? [] : url.startsWith("/reproducao?") ? painelVazio : url === "/visitas/v" ? {...visita, atividades: [atividade]} : ({ fingerprint: "a".repeat(64), participantes: [] }));
+  const a: AtividadeVisita = { ...atividade, participantes: Array.from({ length: 120 }, (_, i) => ({ ...atividade.participantes[0], id: `p${i}`, animalId: `a${i}`, ordem: i + 1, rascunho: { resultado: "NAO_AVALIADO" }, snapshot: { brinco: String(i + 1) } })) };
+  render(<Transcricao visita={visita} atividade={a} podeLancar onMudou={vi.fn().mockResolvedValue(undefined)} />);
+  fireEvent.click(screen.getByRole("checkbox", { name: "Selecionar todos os participantes filtrados" }));
+  fireEvent.click(screen.getByRole("button", { name: "Revisar selecionados (120)" }));
+  fireEvent.click(screen.getByRole("button", { name: "Confirmar 120 atendimento(s)" }));
+  await screen.findByText(/Parado no bloco 2 de 2/);
+  expect(vi.mocked(confirmarVisita)).toHaveBeenCalledTimes(2);
+  expect(vi.mocked(confirmarVisita).mock.calls[1][2].itens).toHaveLength(20);
+  await screen.findByRole("button", { name: "Revisar selecionados (20)" });
+  fireEvent.click(screen.getByRole("button", { name: "Revisar selecionados (20)" }));
+  fireEvent.click(screen.getByRole("button", { name: "Confirmar 20 atendimento(s)" }));
+  await waitFor(() => expect(confirmarVisita).toHaveBeenCalledTimes(3));
+  expect(vi.mocked(confirmarVisita).mock.calls[2][2]).toEqual(vi.mocked(confirmarVisita).mock.calls[1][2]);
+}, 20_000);
 
 it("conflito do autosave impede sobrescrita e confirmação", async () => {
   vi.mocked(salvarRascunhoVisita).mockRejectedValueOnce(new RebanhoApiError("Outra sessão alterou o rascunho", 409, "CONFLITO"));
   render(<Transcricao visita={visita} atividade={atividade} podeLancar onMudou={vi.fn()} />);
   fireEvent.change(screen.getByRole("combobox", { name: "Resultado · 100" }), { target: { value: "NEGATIVO" } });
   await screen.findByText("Outra sessão alterou o rascunho");
-  fireEvent.click(screen.getByRole("button", { name: "Revisar animal" }));
+  fireEvent.click(screen.getByRole("button", { name: "Conferir resultados (1)" }));
   fireEvent.click(screen.getByRole("button", { name: "Confirmar 1 atendimento(s)" }));
   await screen.findByText("Não foi possível salvar todos os rascunhos. Tente novamente.");
   expect(salvarRascunhoVisita).toHaveBeenCalledTimes(1);
@@ -312,24 +441,79 @@ it.each(["AVALIACAO", "TENTATIVA", "EXAME", "APLICACAO"] as const)(
       : url.startsWith("/reproducao?") ? painelVazio : []);
     const a: AtividadeVisita = { ...atividade, tipo: "TAREFA_IATF", participantes: [{ ...atividade.participantes[0], tarefaIatfId: "futura", rascunho: null }] };
     render(<Transcricao visita={{ ...visita, propriedadeId: 7 }} atividade={a} podeLancar onMudou={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Detalhes · 100" }));
     fireEvent.click(screen.getByRole("button", { name: "Preencher procedimento" }));
     await waitFor(() => expect(reqV4).toHaveBeenCalledWith("/visitas/v/participantes/p/tarefa", undefined, "GET", 7));
     await waitFor(() => expect(obterSugestoesVisita).toHaveBeenCalledWith("2026-10-13", {}, 7));
     if (tipo === "AVALIACAO" || tipo === "TENTATIVA") {
       await screen.findByText("Procedimento reprodutivo pronto");
       expect(vi.mocked(FormReproducao).mock.calls.at(-1)?.[0]).toMatchObject({
-        propriedadeId: 7, animalInicial: "a", tipoExameInicial: "exame-avaliacao", finalidadeInicial: "SEXAGEM",
+        propriedadeId: 7, animalInicial: "a", tipoExameInicial: "exame-avaliacao", finalidadeInicial: "SEXAGEM", inline: true,
         tentativaInicial: planejado.etapa.planoTentativa,
       });
     } else if (tipo === "EXAME") {
       await screen.findByText("Procedimento sanitário pronto");
-      expect(vi.mocked(FormFatoSanitario).mock.calls.at(-1)?.[0]).toMatchObject({ propriedadeId: 7, cadastroInicial: "exame-sanitario" });
+      expect(vi.mocked(FormFatoSanitario).mock.calls.at(-1)?.[0]).toMatchObject({ propriedadeId: 7, cadastroInicial: "exame-sanitario", inline: true });
     } else {
       await screen.findByRole("button", { name: "Preparar aplicação teste" });
       expect(vi.mocked(FormAplicacaoServico).mock.calls.at(-1)?.[0]).toMatchObject({ propriedadeId: 7,
-        parametrosIniciais: { produtoId: "produto", dose: "2.5", unidade: "ML", via: "IM" },
+        parametrosIniciais: { produtoId: "produto", dose: "2.5", unidade: "ML", via: "IM" }, inline: true,
       });
       expect(vi.mocked(FormAplicacaoServico).mock.calls.at(-1)?.[0].tarefa).toBeUndefined();
     }
   },
 );
+
+it("início IATF mostra versão escolhida e confirma animal novo sem cadastro prévio", async () => {
+  const inicio: AtividadeVisita = { ...atividade, tipo: "INICIAR_IATF", nome: "Início da turma",
+    contexto: { protocoloId: "protocolo-x", inicioIatf: { versao: 1, protocoloId: "protocolo-x", nomeProtocolo: "Protocolo X", versaoProtocolo: 3 } },
+    participantes: [{ ...atividade.participantes[0], versaoRascunho: 4, rascunho: { status: "CONFIRMADO", inicioEfetivo: "2026-10-13" } }] };
+  vi.mocked(obterSugestoesVisita).mockResolvedValueOnce({ animais: [], tarefasIatf: [], tarefasSanitarias: [], protocolosSanitarios: [], protocolosIatf: [], participantesIatf: [] });
+  vi.mocked(confirmarVisita).mockResolvedValue({});
+  render(<Transcricao visita={visita} atividade={inicio} podeLancar onMudou={vi.fn().mockResolvedValue(undefined)} />);
+  fireEvent.click(screen.getByRole("button", { name: "Detalhes · 100" }));
+  expect(await screen.findByText("Protocolo X · versão 3")).toBeTruthy();
+  expect(screen.getByText("A participação e as tarefas serão criadas ao confirmar este início.")).toBeTruthy();
+  expect(screen.queryByRole("combobox", { name: "Participação IATF · 100" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Conferir resultados (1)" }));
+  fireEvent.click(screen.getByRole("button", { name: "Confirmar 1 atendimento(s)" }));
+  await waitFor(() => expect(confirmarVisita).toHaveBeenCalledTimes(1));
+  expect(vi.mocked(confirmarVisita).mock.calls[0][2].itens[0]).toMatchObject({ participanteId: "p", versaoRascunho: 4, dados: { inicioEfetivo: "2026-10-13" } });
+});
+
+it("início IATF filtra protocolo e identifica pendência única; ambiguidade permite escolha", async () => {
+  const inicio: AtividadeVisita = { ...atividade, tipo: "INICIAR_IATF", contexto: { protocoloId: "x" } };
+  vi.mocked(obterSugestoesVisita).mockResolvedValueOnce({ animais: [], tarefasIatf: [], tarefasSanitarias: [], protocolosSanitarios: [], protocolosIatf: [], participantesIatf: [
+    { id: "p-x1", animalId: "a", programacaoId: "g-x1", inicioPrevisto: "2026-10-13", inicioEfetivo: null, protocoloId: "x", protocoloNome: "Protocolo X", protocoloVersao: 1, programacaoNome: "Turma manhã" },
+    { id: "p-x2", animalId: "a", programacaoId: "g-x2", inicioPrevisto: "2026-10-13", inicioEfetivo: null, protocoloId: "x", protocoloNome: "Protocolo X", protocoloVersao: 1, programacaoNome: "Turma tarde" },
+    { id: "p-y", animalId: "a", programacaoId: "g-y", inicioPrevisto: "2026-10-13", inicioEfetivo: null, protocoloId: "y", protocoloNome: "Protocolo Y" },
+  ] });
+  render(<Transcricao visita={visita} atividade={inicio} podeLancar onMudou={vi.fn().mockResolvedValue(undefined)} />);
+  fireEvent.click(screen.getByRole("button", { name: "Detalhes · 100" }));
+  const escolha = await screen.findByRole("combobox", { name: "Participação IATF · 100" });
+  await waitFor(() => expect(within(escolha).getAllByRole("option")).toHaveLength(3));
+  expect(within(escolha).queryByText(/Protocolo Y/)).toBeNull();
+  expect(within(escolha).getByText(/Turma manhã/)).toBeTruthy();
+  expect(within(escolha).getByText(/Turma tarde/)).toBeTruthy();
+});
+
+it.each([
+  { descricao: "criar nova participação quando não há opção atual", protocoloId: "x", participantes: [], destino: "" },
+  { descricao: "trocar pela única participação atual compatível", protocoloId: "x", participantes: [{ id: "nova", animalId: "a", programacaoId: "g-nova", inicioPrevisto: "2026-10-13", inicioEfetivo: null, protocoloId: "x", protocoloNome: "Protocolo X", protocoloVersao: 1, programacaoNome: "Turma atual" }], destino: "nova" },
+  { descricao: "selecionar participação em atividade antiga sem protocolo", protocoloId: undefined, participantes: [{ id: "nova", animalId: "a", programacaoId: "g-nova", inicioPrevisto: "2026-10-13", inicioEfetivo: null, protocoloId: "x", protocoloNome: "Protocolo X", protocoloVersao: 1, programacaoNome: "Turma atual" }], destino: "nova" },
+])("início IATF torna explícito o vínculo salvo indisponível: $descricao", async ({ protocoloId, participantes, destino }) => {
+  const inicio: AtividadeVisita = { ...atividade, tipo: "INICIAR_IATF", contexto: protocoloId ? { protocoloId } : {}, participantes: [
+    { ...atividade.participantes[0], status: "PENDENTE", rascunho: { participanteIatfId: "cancelada" } },
+  ] };
+  vi.mocked(obterSugestoesVisita).mockResolvedValueOnce({ animais: [], tarefasIatf: [], tarefasSanitarias: [], protocolosSanitarios: [], protocolosIatf: [], participantesIatf: participantes });
+  render(<Transcricao visita={visita} atividade={inicio} podeLancar onMudou={vi.fn().mockResolvedValue(undefined)} />);
+  fireEvent.click(screen.getByRole("button", { name: "Detalhes · 100" }));
+  expect((await screen.findByRole("alert")).textContent).toContain("deixou de estar disponível");
+  const escolha = await screen.findByRole("combobox", { name: "Participação IATF · 100" });
+  expect((escolha as HTMLSelectElement).value).toBe("cancelada");
+  expect((within(escolha).getByRole("option", { name: /Participação anterior indisponível/ }) as HTMLOptionElement).disabled).toBe(true);
+  fireEvent.change(escolha, { target: { value: destino } });
+  fireEvent.blur(escolha);
+  await waitFor(() => expect(salvarRascunhoVisita).toHaveBeenCalled());
+  expect(vi.mocked(salvarRascunhoVisita).mock.calls.at(-1)?.[3]).toMatchObject({ participanteIatfId: destino });
+});

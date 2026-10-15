@@ -33,12 +33,36 @@ export type ParticipanteVisita = {
   animalId: string;
   ordem: number;
   status: string;
+  motivo?: string | null;
   rascunho: RascunhoVisita | null;
   versaoRascunho?: number;
   regularizacaoPendente?: boolean;
   historicoRegularizacao?: Array<{acao?: string; destinoConsumo?: string | null}>;
   snapshot: ContextoTemporalAnimal & {
+    animalId?: string;
+    sexo?: string;
+    propriedadeId?: number;
     situacao?: string;
+    categoria?: {id: string; nome: string} | null;
+    aptidao?: string | null;
+    papelReprodutivo?: string | null;
+    papelReprodutivoEstado?: string;
+    localizacaoId?: string | null;
+    atualizadoEm?: string;
+    del?: number | null;
+    situacaoProdutiva?: "LACTANTE" | "SECA" | "SEM_LACTACAO" | "NAO_INFORMADA";
+    lactacaoVigente?: Record<string, unknown> | null;
+    ultimaLactacaoEncerrada?: Record<string, unknown> | null;
+    diasPosParto?: number | null;
+    diasDesdeConfirmacao?: number | null;
+    idadeGestacionalDias?: number | null;
+    baseIdadeGestacional?: string | null;
+    diasTentativa?: number | null;
+    diasParto?: number | null;
+    diasGestacao?: number | null;
+    diasAteRetorno?: number | null;
+    retornoEm?: string | null;
+    retornoInformado?: boolean;
     tarefaPlanejada?: { origem: "REPRODUTIVA" | "SANITARIA"; tarefa: SugestaoTarefa };
     partos?: number;
     tentativasCiclo?: number;
@@ -51,8 +75,10 @@ export type ParticipanteVisita = {
       encerradaEm?: string | null;
     } | null;
     tentativa?: { id: string; data: string; tipo: string; geneticaSnapshot?: {pai?: {nome?: string | null}} } | null;
+    ultimaTentativa?: { id: string; data: string; tipo: string; geneticaSnapshot?: {pai?: {nome?: string | null}} } | null;
     ultimoParto?: { id: string; data: string; tipo: string } | null;
     restricoes?: Array<{ id: string; tipo: string; motivo: string }>;
+    restricoesSanitarias?: Array<Record<string, unknown>>;
     lote?: { id: string; nome: string } | null;
   };
   fatoTipo?: string | null;
@@ -66,7 +92,7 @@ export type AtividadeVisita = {
   tipo: TipoAtividade;
   extra: boolean;
   participantes: ParticipanteVisita[];
-  contexto?: Record<string, unknown> | null;
+  contexto?: (Record<string, unknown> & { inicioIatf?: { versao: 1; protocoloId: string; nomeProtocolo: string; versaoProtocolo: number; programacaoId?: string } }) | null;
 };
 export type Visita = {
   id: string;
@@ -82,9 +108,11 @@ export type Visita = {
     snapshot: { atividades?: AtividadeVisita[]; nome?: string; data?: string };
   }>;
 };
-export const listarVisitas = () => reqV4<Visita[]>("/visitas");
+export type VisitaResumo = Pick<Visita, "id" | "propriedadeId" | "nome" | "data" | "status" | "responsavel">;
+export const listarVisitas = () => reqV4<VisitaResumo[]>("/visitas");
 export const obterVisita = (id: string) => reqV4<Visita>(`/visitas/${id}`);
 export const criarVisita = (input: {
+  chave?: string;
   propriedadeId: number;
   data: string;
   nome: string;
@@ -128,6 +156,7 @@ export const confirmarVisita = (
     fingerprintPrevia?: string;
     itens: Array<{
       participanteId: string;
+      versaoRascunho?: number;
       dados?: Record<string, unknown>;
       status?: string;
       motivo?: string;
@@ -171,6 +200,11 @@ export type SugestoesVisita = {
     id: string;
     animalId: string;
     programacaoId: string;
+    propriedadeId?: number;
+    protocoloId?: string;
+    protocoloNome?: string;
+    protocoloVersao?: number;
+    programacaoNome?: string;
     inicioPrevisto: string;
     inicioEfetivo: string | null;
   }>;

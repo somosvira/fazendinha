@@ -6,6 +6,7 @@ import { prisma } from "../../../db.js";
 import { criarSelecaoTx, atualizarSelecaoTx, listarSelecoes } from "./selecoes.js";
 import { consultarPlannerTx, incluirGrupoPlannerTx, previaGrupoPlannerTx } from "./planner.js";
 import { consultaPlannerSchema, incluirGrupoPlannerSchema, previaGrupoPlannerSchema } from "./planner.schemas.js";
+import { criarVisitaTx } from "./visitas.js";
 import { criteriosSelecaoSchema } from "./selecoes.schemas.js";
 
 const suite = process.env.PECUARIA_DB_INTEGRATION === "1" ? describe : describe.skip;
@@ -142,5 +143,41 @@ suite("seleções e planner — fixtures próprias em rollback", () => {
     expect(await tx.tarefaProtocolo.count({ where: { execucaoId: { in: participacoes.map(p => p.id) }, realizadaEm: { not: null } } })).toBe(0);
     expect((await incluirGrupoPlannerTx(tx, visita.id, input, null)).totalProcedimentos).toBe(1001);
   }), 60000);
+
+  it("seleção livre usa peso até a data, preserva exceção/snapshot e rejeita prévia desatualizada", async()=>comRollback(async tx=>{
+    const {sitio,animais,visita}=await fixture(tx);
+    const peso=await tx.pesagem.create({data:{animalId:animais[0].id,data:new Date("2026-10-01"),pesoKg:"440.25",tipo:"ROTINA"}});
+    await tx.pesagem.create({data:{animalId:animais[0].id,data:new Date("2026-11-01"),pesoKg:"999.99",tipo:"ROTINA"}});
+    const criterios=criteriosSelecaoSchema.parse({versao:2,todas:[{tipo:"FAIXA",campo:"PESO_KG",min:400,max:450.5}],qualquer:[],ordenacao:[{campo:"BRINCO",direcao:"ASC"}],politicaDesconhecidos:"EXCLUIR"});
+    const grupo={origem:"LIVRE",nome:"Peso para manejo",tipo:"APLICACAO_SANITARIA",criterios,incluidosManualmente:[animais[1].id]};
+    const p=await previaGrupoPlannerTx(tx,previaGrupoPlannerSchema.parse({propriedadeId:sitio.id,data,grupo}));
+    expect(p.total).toBe(2);expect(p.animais.find(a=>a.animalId===animais[0].id)).toMatchObject({pesoKg:440.25,pesagemData:"2026-10-01",diasPesagem:13});
+    expect(p.animais.find(a=>a.animalId===animais[1].id)?.motivos).toContain("Inclusão manual fora dos filtros");
+    const input=incluirGrupoPlannerSchema.parse({chave:randomUUID(),propriedadeId:sitio.id,grupo,fingerprint:p.fingerprint,excluidos:[animais[1].id]});
+    const r=await incluirGrupoPlannerTx(tx,visita.id,input,null);
+    expect(r.totalAnimais).toBe(1);expect(r.atividades[0].contexto).toMatchObject({percursoVisita:{origem:"LIVRE"},excluidos:[animais[1].id],grupoPlanner:{incluidosManualmente:[animais[1].id]}});
+    expect(r.atividades[0].participantes[0].snapshot).toMatchObject({selecaoNaData:{pesoKg:440.25}});
+    expect((await incluirGrupoPlannerTx(tx,visita.id,input,null)).atividades[0].id).toBe(r.atividades[0].id);
+    expect(await tx.aplicacaoProduto.count({where:{animalId:{in:animais.map(a=>a.id)}}})).toBe(0);
+    const outroGrupo={...grupo,nome:"Outro manejo"};
+    const antes=await previaGrupoPlannerTx(tx,previaGrupoPlannerSchema.parse({propriedadeId:sitio.id,data,grupo:outroGrupo}));
+    await tx.pesagem.update({where:{id:peso.id},data:{pesoKg:"441.25"}});
+    await expect(incluirGrupoPlannerTx(tx,visita.id,incluirGrupoPlannerSchema.parse({...input,chave:randomUUID(),grupo:outroGrupo,fingerprint:antes.fingerprint}),null)).rejects.toMatchObject({code:"CONFLITO"});
+  }));
+  it("diferencia participação futura, ativa e concluída na data",async()=>comRollback(async tx=>{
+    const {sitio,animais}=await fixture(tx,3);
+    const protocolo=await tx.protocolo.create({data:{nome:`Ativos seleção ${randomUUID()}`,tipo:"SANITARIO",versao:1,etapas:{create:{nome:"Manejo",tipo:"MANEJO",ordem:1,diaRelativo:0}}},include:{etapas:true}});
+    for(const [i,a] of animais.entries()) await tx.participacaoProtocolo.create({data:{propriedadeId:sitio.id,animalId:a.id,protocoloId:protocolo.id,inicio:new Date(i===0?"2026-10-20":"2026-10-01"),tarefas:{create:{etapaId:protocolo.etapas[0].id,previstaPara:new Date(data),...(i===2?{realizadaEm:new Date("2026-10-13"),precisaoRealizacao:"DIA"}:{})}}}});
+    const criterios=criteriosSelecaoSchema.parse({versao:2,todas:[{tipo:"VALORES",campo:"PROTOCOLO_ATIVO",valores:["SANITARIO"]}],qualquer:[],ordenacao:[{campo:"BRINCO",direcao:"ASC"}],politicaDesconhecidos:"EXCLUIR"});
+    const p=await previaGrupoPlannerTx(tx,previaGrupoPlannerSchema.parse({propriedadeId:sitio.id,data,grupo:{origem:"LIVRE",nome:"Ativos",tipo:"APLICACAO_SANITARIA",criterios}}));
+    expect(p.animais.map(a=>a.animalId)).toEqual([animais[1].id]);
+  }));
+
+ it("criação de visita com chave é idempotente e conflita com payload diferente",async()=>comRollback(async tx=>{
+   const {sitio}=await fixture(tx);const input={chave:randomUUID(),propriedadeId:sitio.id,data,nome:"Criação com reenvio"};
+   const a=await criarVisitaTx(tx,input,null),b=await criarVisitaTx(tx,input,null);expect(a.id).toBe(b.id);
+   expect(await tx.visitaVeterinaria.count({where:{propriedadeId:sitio.id,nome:input.nome}})).toBe(1);
+   await expect(criarVisitaTx(tx,{...input,nome:"Outro conteúdo"},null)).rejects.toMatchObject({code:"CONFLITO"});
+ }));
 
 });

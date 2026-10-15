@@ -19,3 +19,19 @@ export function fingerprintGrupoPlanner(grupo: unknown, propriedadeId: number, d
 export function paginarPlanner<T>(itens: T[], pagina: number, tamanhoPagina: number) {
   return itens.slice((pagina - 1) * tamanhoPagina, pagina * tamanhoPagina);
 }
+/** Ordena novas folhas por brinco, mantendo a ordem original quando a identificação empata. */
+export function ordenarMembrosPorBrinco<T extends { contexto: Record<string, unknown> }>(membros: T[]): T[] {
+  const comparador = new Intl.Collator("pt-BR", { numeric: true, sensitivity: "base" });
+  return membros.map((membro, indice) => ({ membro, indice })).sort((a, b) => {
+    const brincoA = a.membro.contexto.brinco;
+    const brincoB = b.membro.contexto.brinco;
+    if (brincoA == null || brincoB == null) {
+      if (brincoA == null && brincoB != null) return 1;
+      if (brincoA != null && brincoB == null) return -1;
+    } else {
+      const ordem = comparador.compare(String(brincoA), String(brincoB));
+      if (ordem) return ordem;
+    }
+    return a.indice - b.indice;
+  }).map(({ membro }) => membro);
+}

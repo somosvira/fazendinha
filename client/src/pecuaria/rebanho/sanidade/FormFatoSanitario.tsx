@@ -11,11 +11,11 @@ import type { Doenca, TipoExame } from "./CadastrosSanitarios";
 import { dataSanitaria, nomeAnimalSanitario } from "./rotulos";
 
 export type TipoFatoSanitario = "ocorrencia" | "exame" | "protocolo";
-export function FormFatoSanitario({ tipo, animalInicial = "", fixo = false, cadastroInicial = "", tarefaId, onFechar, onSalvo, onRegistrar, dataInicial, conteudoExtra, propriedadeId }: {
+export function FormFatoSanitario({ tipo, animalInicial = "", fixo = false, cadastroInicial = "", tarefaId, onFechar, onSalvo, onRegistrar, dataInicial, conteudoExtra, propriedadeId, inline = false }: {
   tipo: TipoFatoSanitario; animalInicial?: string; fixo?: boolean; cadastroInicial?: string; tarefaId?: string | null;
   onFechar: () => void; onSalvo: () => void;
   dataInicial?: string; conteudoExtra?: ReactNode; propriedadeId?: number;
-  onRegistrar?: (input: Record<string, unknown>) => Promise<void>;
+  onRegistrar?: (input: Record<string, unknown>) => Promise<void>; inline?: boolean;
 }) {
   const [animalId, setAnimalId] = useState(animalInicial);
   const [busca, setBusca] = useState("");
@@ -69,8 +69,7 @@ export function FormFatoSanitario({ tipo, animalInicial = "", fixo = false, cada
     finally { trava.current = false; setOcupado(false); }
   }
   const titulo = tipo === "ocorrencia" ? "Nova ocorrência" : tipo === "exame" ? "Registrar exame" : "Iniciar protocolo";
-  return <PainelCadastro aberto titulo={titulo} onFechar={() => { if (!ocupado) onFechar(); }} rodape={<><ErrorBox erro={erro} /><Button secondary disabled={ocupado} onClick={onFechar}>Cancelar</Button><Button type="submit" form="novo-fato-sanitario" disabled={ocupado || !ficha}>Confirmar</Button></>}>
-    <form ref={formulario} id="novo-fato-sanitario" className="grid gap-4" onSubmit={(e) => { e.preventDefault(); void salvar(); }}>
+  const formularioConteudo = <form ref={formulario} id="novo-fato-sanitario" className="grid gap-4" onSubmit={(e) => { e.preventDefault(); void salvar(); }}>
       {conteudoExtra}
       <CampoFormulario id="fato-data" rotulo="Data" obrigatorio erro={campoErro === "data" ? erro ?? undefined : undefined}>{(p) => <DatePicker {...p} required value={data} onChange={setData} />}</CampoFormulario>
       {fixo ? <p>Animal: {ficha ? nomeAnimalSanitario(ficha) : "Carregando animal…"}</p> : <><label>Buscar animal<input className={classeInput} value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Brinco ou nome" /></label><label>Animal<select required className={classeInput} aria-label="Animal" aria-invalid={invalido("animalId")} value={animalId} onChange={(e) => setAnimalId(e.target.value)}><option value="">Selecione</option>{ficha && !animais.some((a) => a.id === ficha.id) && <option value={ficha.id}>{nomeAnimalSanitario(ficha)}</option>}{animais.map((a) => <option key={a.id} value={a.id}>{nomeAnimalSanitario(a)}</option>)}</select>{erroCampo("animalId")}</label></>}
@@ -81,6 +80,6 @@ export function FormFatoSanitario({ tipo, animalInicial = "", fixo = false, cada
       {(tipo === "ocorrencia" || sobreposicao) && <label>{sobreposicao ? "Motivo da sobreposição" : "Observação"}<textarea required={sobreposicao} minLength={sobreposicao ? 5 : undefined} maxLength={500} className={classeInput} aria-invalid={invalido("texto")} value={texto} onChange={(e) => setTexto(e.target.value)} />{erroCampo("texto")}</label>}
       {sobreposicao && <ConfirmacaoCiencia id="nova-sobreposicao" checked={ciencia} onChange={setCiencia} obrigatorio>Confirmo iniciar outro protocolo com tarefas pendentes.</ConfirmacaoCiencia>}
       {erroCampo("ciencia")}
-    </form>
-  </PainelCadastro>;
+    </form>;
+  return inline ? <section className="grid gap-4 rounded-lg border border-border p-4"><div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-semibold">{titulo}</h3><div className="flex gap-2"><Button secondary disabled={ocupado} onClick={onFechar}>Fechar</Button><Button type="submit" form="novo-fato-sanitario" disabled={ocupado || !ficha}>Confirmar</Button></div></div><ErrorBox erro={erro} />{formularioConteudo}</section> : <PainelCadastro aberto titulo={titulo} onFechar={() => { if (!ocupado) onFechar(); }} rodape={<><ErrorBox erro={erro} /><Button secondary disabled={ocupado} onClick={onFechar}>Cancelar</Button><Button type="submit" form="novo-fato-sanitario" disabled={ocupado || !ficha}>Confirmar</Button></>}>{formularioConteudo}</PainelCadastro>;
 }

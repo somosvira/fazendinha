@@ -4,11 +4,12 @@ import { classeInput } from "../../../financeiro/PainelCadastro";
 type Dados = { resultado?: unknown; finalidade?: unknown; sexoFetal?: unknown; conduta?: unknown };
 export type AlteracaoAvaliacao = { resultado?: string; finalidade?: string; sexoFetal?: string | null; conduta?: string | null };
 /** Finalidade, observações e conduta são independentes; as siglas da fazenda não são resultados obrigatórios. */
-export function CamposAvaliacao({ dados, onChange, secao, identificacao }: {
+export function CamposAvaliacao({ dados, onChange, secao, identificacao, administrativo }: {
   dados: Dados;
   onChange: (dados: AlteracaoAvaliacao) => void;
   secao?: "resultado" | "conduta" | "detalhes";
   identificacao?: string;
+  administrativo?: { status?: string; onChange: (status: "ADIADO" | "NAO_ATENDIDO") => void };
 }) {
   const resultado = typeof dados.resultado === "string" ? dados.resultado : "";
   const [realizacao, setRealizacao] = useState(resultado === "NAO_AVALIADO" ? "NAO_REALIZADO" : resultado ? "REALIZADO" : "");
@@ -21,9 +22,10 @@ export function CamposAvaliacao({ dados, onChange, secao, identificacao }: {
     <select
       aria-label={rotulo("Resultado")}
       className={classeInput}
-      value={resultado}
+      value={administrativo && ["ADIADO", "NAO_ATENDIDO"].includes(administrativo.status ?? "") ? administrativo.status : resultado}
       onChange={e => {
         const valor = e.target.value;
+        if (administrativo && (valor === "ADIADO" || valor === "NAO_ATENDIDO")) { administrativo.onChange(valor); return; }
         onChange({
           resultado: valor,
           finalidade: valor === "RECONFIRMACAO" ? "RECONFIRMACAO" : valor === "SEXAGEM" ? "SEXAGEM" : "DIAGNOSTICO",
@@ -32,8 +34,9 @@ export function CamposAvaliacao({ dados, onChange, secao, identificacao }: {
         });
       }}
     >
-      <option value="">Registrar resultado</option>
+      <option value="">Selecionar resultado</option>
       {Object.entries(rotulosResultadoAvaliacao).map(([valor, nome]) => <option key={valor} value={valor}>{nome}</option>)}
+      {administrativo && <><option value="ADIADO">Adiado</option><option value="NAO_ATENDIDO">Não atendido</option></>}
     </select>
   );
   if (secao === "conduta") return (

@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { consultarPlannerTx, incluirGrupoPlannerTx, previaGrupoPlannerTx } from "./planner.js";
 import { consultaPlannerSchema, incluirGrupoPlannerSchema, previaGrupoPlannerSchema } from "./planner.schemas.js";
 
+vi.mock("./selecao-contexto.js", () => ({ ampliarContextosSelecaoTx: vi.fn(), referenciasFiltrosSelecaoTx: vi.fn(async () => []) }));
 const mocks = vi.hoisted(() => ({ contextos: new Map<string, Record<string, unknown>>(), adicionar: vi.fn() }));
 vi.mock("./visitas.js", () => ({
   carregarContextosVisitaTx: vi.fn(async () => ({})),
@@ -49,6 +50,22 @@ describe("planner completo, prévia e inclusão", () => {
     expect(pagina7.fingerprint).toBe(pagina1.fingerprint);
     expect(leitor.tarefaProtocolo.findMany).toHaveBeenCalledWith(expect.not.objectContaining({ take: expect.anything() }));
     expect(leitor.localizacaoAnimal.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ propriedadeId: 1, desde: { lte: new Date("2026-10-14") } }) }));
+  });
+  it("ordena protocolo por brinco natural antes de paginar e preparar, mantendo empates estáveis", async () => {
+    const { tx, animais, visita } = fonte(4);
+    ["10", "2", "2", "1"].forEach((brinco, indice) => {
+      const id = animais[indice].id;
+      mocks.contextos.set(id, { ...mocks.contextos.get(id), brinco });
+    });
+    const planner = await consultarPlannerTx(tx, consulta), grupo = planner.grupos[0].grupo;
+    const pagina1 = await previaGrupoPlannerTx(tx, previaGrupoPlannerSchema.parse({ ...consulta, grupo, tamanhoPagina: 2 }));
+    const pagina2 = await previaGrupoPlannerTx(tx, previaGrupoPlannerSchema.parse({ ...consulta, grupo, pagina: 2, tamanhoPagina: 2 }));
+    const idsEsperados = [animais[3].id, animais[1].id, animais[2].id, animais[0].id];
+    expect([...pagina1.animais, ...pagina2.animais].map(a => a.animalId)).toEqual(idsEsperados);
+    const resultado = await incluirGrupoPlannerTx(tx, visita.id, incluirGrupoPlannerSchema.parse({
+      propriedadeId: 1, chave: randomUUID(), grupo, fingerprint: pagina1.fingerprint,
+    }), null);
+    expect(resultado.atividades.flatMap(a => a.participantes.map(p => p.animalId))).toEqual(idsEsperados);
   });
   it("inclui o conjunto completo em atividades até 1000; reenvio recupera resultado sem adicionar novamente", async () => {
     const { tx, visita } = fonte(1001);
@@ -96,5 +113,50 @@ describe("planner completo, prévia e inclusão", () => {
     const previa = await previaGrupoPlannerTx(tx, previaGrupoPlannerSchema.parse({ ...consulta, grupo }));
     expect(previa.animais[0]).not.toHaveProperty("ultimaTentativa");
     expect(previa.animais[0]).not.toHaveProperty("custoTotal");
+  });
+});
+
+describe("agenda independente e preparação livre", () => {
+  const criterios = {versao:2,todas:[],qualquer:[],ordenacao:[{campo:"BRINCO",direcao:"ASC"}],politicaDesconhecidos:"EXCLUIR"};
+  it("retira salvas antes de totais/paginação sem consultar o cadastro", async()=>{
+    const {tx,leitor}=fonte();
+    leitor.selecaoVisita.findMany.mockRejectedValue(new Error("Agenda não deve consultar salvas"));
+    const r=await consultarPlannerTx(tx,{...consulta,tamanhoPagina:1},true);
+    expect(r.totalGrupos).toBe(1);expect(r.totais.animaisUnicos).toBe(2);expect(leitor.selecaoVisita.findMany).not.toHaveBeenCalled();
+  });
+  it("resume toda a seleção livre antes de paginar",async()=>{
+    const {tx}=fonte(201);const grupo={origem:"LIVRE",nome:"Grupo completo",tipo:"APLICACAO_SANITARIA",criterios};
+    const r=await previaGrupoPlannerTx(tx,previaGrupoPlannerSchema.parse({...consulta,grupo,tamanhoPagina:200}));
+    expect(r.animais).toHaveLength(200);expect(r.total).toBe(201);expect(r.resumoSelecao?.porSituacao).toEqual([{situacao:"VAZIA",animais:201}]);
+  });
+  it("assina contexto independentemente da atividade para detectar mudança entre duas prévias",async()=>{
+    const {tx,animais}=fonte();const grupo={origem:"LIVRE",nome:"Grupo livre",tipo:"AVALIACAO_REPRODUTIVA",criterios};
+    const a=await previaGrupoPlannerTx(tx,previaGrupoPlannerSchema.parse({...consulta,grupo}));
+    const b=await previaGrupoPlannerTx(tx,previaGrupoPlannerSchema.parse({...consulta,grupo:{...grupo,tipo:"APLICACAO_SANITARIA",nome:"Outro nome"}}));
+    expect(a.assinaturaContexto).toBe(b.assinaturaContexto);expect(a.fingerprint).not.toBe(b.fingerprint);
+    mocks.contextos.get(animais[0].id)!.del=51;
+    const c=await previaGrupoPlannerTx(tx,previaGrupoPlannerSchema.parse({...consulta,grupo}));expect(c.assinaturaContexto).not.toBe(a.assinaturaContexto);
+  });
+  it("não elimina machos silenciosamente e bloqueia preparação reprodutiva identificando o animal", async()=>{
+    const {tx,visita,animais}=fonte();mocks.contextos.get(animais[1].id)!.sexo="M";
+    const grupo={origem:"LIVRE",nome:"Grupo livre",tipo:"AVALIACAO_REPRODUTIVA",criterios,incluidosManualmente:[]};
+    const p=await previaGrupoPlannerTx(tx,previaGrupoPlannerSchema.parse({...consulta,grupo}));
+    expect(p.total).toBe(2);
+    await expect(incluirGrupoPlannerTx(tx,visita.id,incluirGrupoPlannerSchema.parse({chave:randomUUID(),propriedadeId:1,grupo,fingerprint:p.fingerprint}),null)).rejects.toThrow(/Ajuste os animais: 2/);
+    expect(mocks.adicionar).not.toHaveBeenCalled();
+  });
+  it("permite inclusão fora do filtro, recusa fora do sítio e assina a exceção",async()=>{
+    const {tx,animais}=fonte();
+    const grupo={origem:"LIVRE",nome:"Grupo livre",tipo:"APLICACAO_SANITARIA",criterios:{...criterios,todas:[{tipo:"FAIXA",campo:"DEL",min:100}]},incluidosManualmente:[animais[0].id]};
+    const p=await previaGrupoPlannerTx(tx,previaGrupoPlannerSchema.parse({...consulta,grupo}));
+    expect(p.total).toBe(1);expect(p.animais[0].motivos).toContain("Inclusão manual fora dos filtros");
+    const sem=await previaGrupoPlannerTx(tx,previaGrupoPlannerSchema.parse({...consulta,grupo:{...grupo,incluidosManualmente:[]}}));expect(p.fingerprint).not.toBe(sem.fingerprint);
+    await expect(previaGrupoPlannerTx(tx,previaGrupoPlannerSchema.parse({...consulta,grupo:{...grupo,incluidosManualmente:[randomUUID()]}}))).rejects.toThrow(/fora do sítio/);
+  });
+  it("prepara origem/snapshot comum e repete o envio sem adicionar a atividade novamente",async()=>{
+    const {tx,visita}=fonte();const grupo={origem:"LIVRE",nome:"Grupo livre",tipo:"APLICACAO_SANITARIA",criterios,incluidosManualmente:[]};
+    const p=await previaGrupoPlannerTx(tx,previaGrupoPlannerSchema.parse({...consulta,grupo}));const input=incluirGrupoPlannerSchema.parse({chave:randomUUID(),propriedadeId:1,grupo,fingerprint:p.fingerprint});
+    await incluirGrupoPlannerTx(tx,visita.id,input,null);await incluirGrupoPlannerTx(tx,visita.id,input,null);
+    expect(mocks.adicionar).toHaveBeenCalledOnce();expect(mocks.adicionar.mock.calls[0][2].contexto).toMatchObject({percursoVisita:{versao:1,origem:"LIVRE"},selecaoCriterios:{versao:2}});
   });
 });

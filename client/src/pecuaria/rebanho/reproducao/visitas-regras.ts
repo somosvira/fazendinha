@@ -19,6 +19,16 @@ export function motivosParticipante(p: ParticipanteVisita): string[] {
 export function ordenarParticipantes(itens: ParticipanteVisita[]) {
   return [...itens].sort((a, b) => a.ordem - b.ordem);
 }
+
+/** Cada bloco tem sua própria transação/idempotência no servidor. */
+export function blocosConfirmacao(ids: string[], limite = 100): string[][] {
+  if (!Number.isInteger(limite) || limite < 1 || limite > 100)
+    throw new Error("O limite de confirmação deve ficar entre 1 e 100.");
+  const blocos: string[][] = [];
+  for (let inicio = 0; inicio < ids.length; inicio += limite)
+    blocos.push(ids.slice(inicio, inicio + limite));
+  return blocos;
+}
 export function filtrarParticipantes(
   itens: ParticipanteVisita[],
   filtros: { q: string; status: string; motivos: string[]; loteId?: string },

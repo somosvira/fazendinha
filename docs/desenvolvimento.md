@@ -12,7 +12,7 @@ pnpm --filter rionovo-server run seedatev3
 pnpm --filter rionovo-server run seedatev3 --verificar
 ```
 
-O cenário reúne Principal/Destino, 18 animais, seis lotes, genética, pesagens/manejos, transferências/baixas, contas, operações/compromissos/liquidações/estornos, protocolos/ciclos/aplicações/exames e receitas/vigências/fechamentos. Documentos e relatórios demonstrativos usam R2; não são documentos fiscais reais. O seed permanece limitado à V3: não cria cenários de reprodução V4 nem produção de leite.
+O cenário reúne Principal/Destino, 18 animais, seis lotes, genética, pesagens/manejos, transferências/baixas, contas, operações/compromissos/liquidações/estornos, protocolos/ciclos/aplicações/exames e receitas/vigências/fechamentos. Documentos e relatórios demonstrativos usam R2; não são documentos fiscais reais. O seed principal permanece limitado à V3. O complemento opcional abaixo acrescenta manejo V4, sem produção de leite.
 
 Catálogos demonstrativos ficam em `server/prisma/seedatev3/catalogos.ts`. Padrões são carga inicial editável, não regra clínica fixa. IDs existentes das migrations são reaproveitados, sem sobrescrever configurações do usuário. Centros financeiros chamados Agronomia/Equipe não reintroduzem os módulos retirados.
 
@@ -37,6 +37,38 @@ Reexecuções mantêm a data e não repetem etapas concluídas. Registro removid
 A verificação do seed pode ler arquivos reais do R2. Não rode o seed nem sua preparação para validar apenas documentação/código sem alteração de dados. As configurações inertes dos testes unitários não servem para executar o cenário.
 
 Backups e evidências locais ficam em `.backups/` e `server/.seedatev3/`, fora do Git. A manutenção do repositório não autoriza removê-los. Recuperação de bancos e volumes depende de seus backups, não de planos antigos ou de um novo seed.
+
+## Complemento do planner e manejo V4
+
+`server/prisma/seedatev3-planner.ts` acrescenta dados ao **mesmo `fazendinha_seedatev3` já preparado**. Não execute novamente o seed principal para preparar este complemento. Todas as migrations devem estar aplicadas. A carga usa serviços de domínio e a mesma trava do seed principal; preserva o manifesto base, os animais existentes, as configurações da fazenda e os saldos dos produtos anteriores. Não necessita publicar arquivos no R2.
+
+```bash
+pnpm --filter rionovo-server run seedatev3:planner
+pnpm --filter rionovo-server run seedatev3:planner --verificar
+pnpm --filter rionovo-server run seedatev3:typecheck
+```
+
+O complemento mantém sua própria data-base e progresso em `server/.seedatev3/planner/manifesto.json`, também fora do Git. A data é o dia da primeira execução no Brasil e fica fixa nas retomadas. Consulte essa data no planner; pendências naturalmente ficam atrasadas com o passar dos dias. Não descarte nenhum dos dois manifestos. Registros `PLANNER` sem manifesto impedem uma nova carga; manifesto corrompido ou de outra instância também é recusado.
+
+| Cenário preparado | Onde experimentar |
+|---|---|
+| 200 animais `PLN-001` a `PLN-200`, em lotes `PLANNER` | Principal concentra reprodução, maternidade e novilhas; Destino possui oito machos em protocolo sanitário |
+| 120 matrizes com IA histórica e diagnóstico previsto para a data-base | Grupo grande para paginação, seleção parcial e confirmação em blocos; dez animais também constam na ficha preparada |
+| IATF coletiva com aplicação no dia, retirada e IA futuras | Turma de 20 animais; etapas planejadas com produtos próprios do cenário |
+| Cinco animais com início conhecido apenas pelo dia e etapas em horas | Pendência explícita de previsão; nenhum horário é inventado |
+| Cinco turmas reprodutivas com um animal e cinco participações sanitárias sem rodada | Comparação de manejo individual com grupos coletivos |
+| Novilhas com inseminação no dia, retirada no dia e início futuro ainda não realizado | Aplicações e retiradas anteriores efetivamente registradas; nenhuma execução futura |
+| Histórico reprodutivo de dez animais e sanitário de seis | Todas as etapas realizadas deixam de ser pendências do planner; não se falsifica encerramento administrativo da programação |
+| Protocolos sanitários com aplicação no dia, exame no dia, atrasados, futuros e outro sítio | Animais também presentes em reprodução permitem distinguir animais únicos de procedimentos |
+| Dez partos, nove crias vivas e respectivos fornecimentos de colostro | Inclui gemelar, natimorto, aborto, dificuldade, peso/escore da matriz e duas ocorrências de retenção de placenta |
+| IA, TE, gestação, reconfirmação e sexagem | Vínculos históricos e filiação, inclusive doadora externa distinta da receptora no nascimento por TE |
+| Lactações históricas, secagem, DEL e ausência de histórico | Seleções habituais por DEL, pós-parto, secas, RP e descarte; ausência de DEL também pode decorrer de secagem |
+
+Há duas visitas novas no Principal: **`PLANNER · Planejar atendimento`**, vazia para testar a montagem, e **`PLANNER · Ficha de campo preparada`**, do dia anterior, com dez animais selecionados e uma impressão persistida. A saída do comando informa o endereço da primeira visita. A inclusão no planejamento e a impressão não realizam os diagnósticos. Visitas anteriores do usuário não são alteradas.
+
+Os três produtos novos têm estoque demonstrativo próprio nos dois sítios, via ajustes de inventário auditados; aplicações realizadas e uma IA com estoque produzem baixas reais desses insumos. IA/TE históricas documentadas conservam justificativa e não fabricam consumo retroativo. Nenhum período fechado é contornado. Produtos, doses, intervalos, carências, volumes de colostro e valores são **fictícios para teste de software**, não protocolos clínicos recomendados nem padrões globais do app.
+
+Reexecutar conclui somente etapas ainda não preparadas, sem restaurar resultados que alguém tenha alterado na interface. `--verificar` usa conexões somente leitura, confere referências e filiação e informa totais do complemento e grupos atuais. Essa conferência não substitui a homologação manual do planner, da impressão ou do atendimento; não altera marcações de roteiros.
 
 ## Guia manual V3
 

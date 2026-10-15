@@ -18,7 +18,7 @@ export async function criarSelecao(input: z.infer<typeof criarSelecaoSchema>, us
 }
 export async function criarSelecaoTx(tx: Prisma.TransactionClient, input: z.infer<typeof criarSelecaoSchema>, usuarioId: number | null) {
     const selecao = await tx.selecaoVisita.create({ data: { propriedadeId: input.propriedadeId, nome: input.nome, criadoPorId: usuarioId,
-      versoes: { create: { numero: 1, criterios: json(input.criterios), criadoPorId: usuarioId } } }, include: incluirVersao });
+      versoes: { create: { numero: 1, versaoContrato: input.criterios.versao, criterios: json(input.criterios), criadoPorId: usuarioId } } }, include: incluirVersao });
     await auditar(tx, { entidade: "SelecaoVisita", entidadeId: selecao.id, propriedadeId: input.propriedadeId, acao: "CRIACAO", usuarioId, depois: selecao });
     const { versoes, ...dados } = selecao;
     return { ...dados, versaoAtual: versoes[0] };
@@ -32,7 +32,7 @@ export async function atualizarSelecaoTx(tx: Prisma.TransactionClient, id: strin
     if (!antes) throw new RebanhoError("NAO_ENCONTRADO", "Seleção não encontrada neste sítio");
     const atual = antes.versoes[0];
     if (!atual || atual.id !== input.versaoAtualId) throw new RebanhoError("CONFLITO", "A seleção mudou. Atualize os critérios antes de salvar", "versaoAtualId");
-    const versaoAtual = await tx.versaoSelecaoVisita.create({ data: { selecaoId: id, numero: atual.numero + 1, criterios: json(input.criterios), criadoPorId: usuarioId } });
+    const versaoAtual = await tx.versaoSelecaoVisita.create({ data: { selecaoId: id, numero: atual.numero + 1, versaoContrato: input.criterios.versao, criterios: json(input.criterios), criadoPorId: usuarioId } });
     const selecao = await tx.selecaoVisita.update({ where: { id }, data: { nome: input.nome, ...(input.ativo == null ? {} : { ativo: input.ativo }) } });
     const depois = { ...selecao, versaoAtual };
     await auditar(tx, { entidade: "SelecaoVisita", entidadeId: id, propriedadeId: input.propriedadeId, acao: input.ativo === false ? "INATIVACAO" : "NOVA_VERSAO", usuarioId, antes, depois });
@@ -44,4 +44,16 @@ export async function obterVersaoSelecaoTx(tx: Prisma.TransactionClient, id: str
   const ultima = await tx.versaoSelecaoVisita.findFirst({ where: { selecaoId: versao.selecaoId }, orderBy: { numero: "desc" }, select: { id: true } });
   if (ultima?.id !== id) throw new RebanhoError("CONFLITO", "A seleção tem uma nova versão. Atualize a prévia", "selecaoVersaoId");
   return { ...versao, criterios: criteriosSelecaoSchema.parse(versao.criterios) };
+}
+
+export async function opcoesSelecao(propriedadeId: number, data: string) {
+  const referencia = new Date(`${data}T00:00:00.000Z`);
+  const [lotes, categorias, racas, protocolos, tiposExame] = await Promise.all([
+    prisma.lote.findMany({ where: { propriedadeId, OR: [{ ativo: true }, { localizacoes: { some: { desde: { lte: referencia }, OR: [{ ate: null }, { ate: { gt: referencia } }] } } }] }, select: { id: true, nome: true }, orderBy: { nome: "asc" } }),
+    prisma.categoriaAnimal.findMany({ select: { id: true, nome: true }, orderBy: [{ ordem: "asc" }, { nome: "asc" }] }),
+    prisma.raca.findMany({ select: { id: true, nome: true }, orderBy: { nome: "asc" } }),
+    prisma.protocolo.findMany({ select: { id: true, nome: true, tipo: true, publicadoEm: true, ativo: true }, orderBy: { nome: "asc" } }),
+    prisma.tipoExame.findMany({ where: { ativo: true }, select: { id: true, nome: true, contexto: true }, orderBy: { nome: "asc" } }),
+  ]);
+  return { lotes, categorias, racas, protocolos, tiposExame };
 }

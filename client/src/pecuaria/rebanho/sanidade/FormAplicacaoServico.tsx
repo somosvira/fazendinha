@@ -16,7 +16,7 @@ import { dataHoraISO, inputHorarioIatf } from "../reproducao/CampoDataIatf";
 import { dataSanitaria, unidadeSanitaria } from "./rotulos";
 
 export type TarefaAplicacao = { id: string; produtoId: string; tipoAplicacaoId: string; dose: string; unidade: string; previstaPara?: string; via?: string; protocoloNome?: string; protocoloVersao?: number; animalId?: string };
-export function FormAplicacaoServico({ animalId, propriedadeId, onSalvo, onFechar, tarefa, tarefas, animais, onRegistrar, dataInicial, momentoIatf, conteudoExtra, parametrosIniciais }: {
+export function FormAplicacaoServico({ animalId, propriedadeId, onSalvo, onFechar, tarefa, tarefas, animais, onRegistrar, dataInicial, momentoIatf, conteudoExtra, parametrosIniciais, inline = false }: {
   animalId: string; propriedadeId: number; onSalvo: (id?: string, propriedadeIdFato?: number) => void; onFechar: () => void;
   /** Coordena registro atômico a partir de uma visita ou tarefa reprodutiva. */
   dataInicial?: string;
@@ -25,6 +25,7 @@ export function FormAplicacaoServico({ animalId, propriedadeId, onSalvo, onFecha
   conteudoExtra?: ReactNode;
   onRegistrar?: (input: AplicacaoInput) => Promise<void>;
   parametrosIniciais?: { produtoId: string; dose: string; unidade: string; via?: string; tipoAplicacaoId?: string };
+  inline?: boolean;
   tarefa?: TarefaAplicacao;
   tarefas?: TarefaAplicacao[];
   animais?: Array<{ id: string; brinco: string; propriedadeId: number | null }>;
@@ -202,7 +203,7 @@ export function FormAplicacaoServico({ animalId, propriedadeId, onSalvo, onFecha
     } catch (falha) { erroDaApi(falha); }
     finally { emCurso.current = false; setSalvando(false); }
   }
-  return <PainelCadastro aberto titulo={animais?.length ? "Aplicação sanitária coletiva" : "Registrar aplicação sanitária"} onFechar={() => { if (!salvando) onFechar(); }} rodape={<div className="grid w-full gap-2">{erro && <p role="alert" className="flex items-start gap-2 text-sm text-red-700"><CircleAlert size={16} className="shrink-0" aria-hidden />{erro}</p>}<div className="flex justify-end gap-2"><Button secondary onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form="form-aplicacao-sanitaria" disabled={salvando || carregando}>{salvando ? "Salvando…" : tarefa ? previaExecucao ? "Confirmar execução" : "Conferir execução" : animais?.length ? conferindo ? "Confirmar todas as aplicações" : "Conferir por animal" : "Registrar aplicação"}</Button></div></div>}>
+  return <FormShellAplicacao inline={inline} titulo={animais?.length ? "Aplicação sanitária coletiva" : "Registrar aplicação sanitária"} onFechar={onFechar} rodape={<div className="grid w-full gap-2">{erro && <p role="alert" className="flex items-start gap-2 text-sm text-red-700"><CircleAlert size={16} className="shrink-0" aria-hidden />{erro}</p>}<div className="flex justify-end gap-2"><Button secondary onClick={onFechar} disabled={salvando}>Fechar</Button><Button type="submit" form="form-aplicacao-sanitaria" disabled={salvando || carregando}>{salvando ? "Salvando…" : tarefa ? previaExecucao ? "Confirmar execução" : "Conferir execução" : animais?.length ? conferindo ? "Confirmar todas as aplicações" : "Conferir por animal" : "Registrar aplicação"}</Button></div></div>}>
     <form ref={formulario} noValidate id="form-aplicacao-sanitaria" onSubmit={submeter} onChange={() => { setChave(crypto.randomUUID()); setPreviaExecucao(null); }} className="grid gap-4">
       {conteudoExtra}
       {carregando && <p>Carregando cadastros…</p>}
@@ -231,5 +232,9 @@ export function FormAplicacaoServico({ animalId, propriedadeId, onSalvo, onFecha
       {tarefa && desvio && conferindo && animais && animais.map((a) => <AjusteIndividualAplicacao key={a.id} brinco={a.brinco} ajuste={ajustesEtapa[a.id] ?? {}} comum={{ propriedadeId, data, hora, produtoId, tipoAplicacaoId: tipoId, unidadeDose: unidade, via, responsavel, partidaId, origemInsumo: origem, estadoCarenciaLeite: estadoLeite, estadoCarenciaCarne: estadoCarne, carenciaLeiteHoras: leite === "" ? null : Number(leite), carenciaCarneHoras: carne === "" ? null : Number(carne) }} produtos={produtos} tipos={tipos} onChange={(patch: AjusteEtapaAplicacao) => { setPreviaExecucao(null); setChave(crypto.randomUUID()); setAjustesEtapa((v) => ({ ...v, [a.id]: { ...v[a.id], ...patch } })); }} />)}
       {conferindo && animais && <section className="grid gap-3"><h3 className="font-semibold">Revisão por animal</h3><p className="text-sm">Os dados acima serão usados para todos e continuam disponíveis para correção. Cada linha permite ajustar a quantidade. A confirmação é atômica; erro em uma linha impede o conjunto.</p>{animais.map((a) => <CampoFormulario key={a.id} id={`san-dose-${a.id}`} erro={errosCampos[`san-dose-${a.id}`]} rotulo={`Quantidade aplicada em ${a.brinco}`} obrigatorio>{(p) => <input {...p} disabled={salvando || !!tarefa && !desvio} type="number" min="0.001" step="0.001" className={classeInput} value={quantidades[a.id] ?? ""} onChange={(e) => { setQuantidades((q) => ({ ...q, [a.id]: e.target.value })); }} />}</CampoFormulario>)}<Button secondary disabled={salvando} onClick={() => setConferindo(false)}>Voltar aos dados comuns</Button></section>}
     </form>
-  </PainelCadastro>;
+  </FormShellAplicacao>;
+}
+
+function FormShellAplicacao({ inline, titulo, onFechar, rodape, children }: { inline: boolean; titulo: string; onFechar: () => void; rodape: ReactNode; children: ReactNode }) {
+  return inline ? <section className="grid gap-4 rounded-lg border border-border p-4"><div className="flex flex-wrap items-center justify-between gap-3"><h3 className="font-semibold">{titulo}</h3><div className="flex flex-wrap gap-2">{rodape}</div></div>{children}</section> : <PainelCadastro aberto titulo={titulo} onFechar={onFechar} rodape={rodape}>{children}</PainelCadastro>;
 }
