@@ -1,4 +1,6 @@
 import { SelectCampo } from "./SelectCampo";
+import { getHoje, getHojeISO } from "../lib/hoje";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button as ShadcnButton } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -7,14 +9,14 @@ import { SkeletonListaFinanceira } from "./CarregamentoFinanceiro";
 import "./cores-financeiro.css";
 import { forwardRef, useEffect, useId, useRef, useState, type CSSProperties } from "react";
 import type { LucideIcon } from "lucide-react";
-import { ArrowDown, ArrowUp, Check, LoaderCircle, Pencil, Power, PowerOff, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, ChevronRight, LoaderCircle, Pencil, Power, PowerOff, X } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-export const brl = (valor: string | number | null | undefined) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(valor ?? 0));
+export const brl = (valor: string | number | null | undefined) => valor == null ? "—" : new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(valor));
 export const dataBR = (valor: string) => new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" }).format(new Date(valor));
-export const hoje = () => new Date().toISOString().slice(0, 10);
-export const emDias = (dias: number) => { const d = new Date(); d.setDate(d.getDate() + dias); return d.toISOString().slice(0, 10); };
-export const mesAtual = () => new Date().toISOString().slice(0, 7);
+export const hoje = getHojeISO;
+export const emDias = (dias: number) => { const d = getHoje(); d.setDate(d.getDate() + dias); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+export const mesAtual = () => getHojeISO().slice(0, 7);
 export const limitesMes = (mes: string) => { const [ano, numero] = mes.split("-").map(Number); return { inicio: `${mes}-01`, fim: new Date(Date.UTC(ano, numero, 0, 23, 59, 59)).toISOString() }; };
 
 export const TIPO_OPERACAO: Record<string, string> = {
@@ -50,9 +52,9 @@ export function PaginaCarregando({ label, estrutura = "lista" }: { label: string
  * que uma falha no fetch nunca deixe a tela girando para sempre — o guard
  * `if (!dados) return <PaginaCarregando/>` sozinho engole o erro, porque os
  * dados continuam nulos e o ErrorBox lá embaixo nunca é alcançado. */
-export function PaginaSemDados({ titulo, descricao, label, erro }: { titulo: string; descricao: string; label: string; erro: string | null }) {
+export function PaginaSemDados({ titulo, descricao, label, erro, onTentarNovamente }: { titulo: string; descricao: string; label: string; erro: string | null; onTentarNovamente?: () => void }) {
   if (!erro) return <PaginaCarregando label={label} />;
-  return <PaginaFinanceira><PageHeader eyebrow="" titulo={titulo} descricao={descricao} /><ErrorBox erro={erro} /></PaginaFinanceira>;
+  return <PaginaFinanceira><PageHeader eyebrow="" titulo={titulo} descricao={descricao} /><ErrorBox erro={erro} />{onTentarNovamente && <Button secondary className="mt-4" onClick={onTentarNovamente}>Tentar novamente</Button>}</PaginaFinanceira>;
 }
 
 export function PageHeader({ titulo, descricao, acao, extra, contexto, children, eyebrow = "", integrado = false }: { titulo: React.ReactNode; descricao?: React.ReactNode; acao?: React.ReactNode; extra?: React.ReactNode; contexto?: React.ReactNode; children?: React.ReactNode; eyebrow?: string; integrado?: boolean }) {
@@ -162,7 +164,10 @@ export function Empty({ children }: { children: React.ReactNode }) {
 }
 
 export function Modal({ titulo, eyebrow, onClose, children, width = "max-w-xl", semCabecalho = false, colorida = false, tom = "info" }: { titulo: string; eyebrow: string; onClose: () => void; children: React.ReactNode; width?: string; semCabecalho?: boolean; colorida?: boolean; tom?: TomFinanceiro }) {
-  return <div data-fin-tom={tom} className={`fixed inset-0 z-[1100] grid place-items-center bg-black/45 p-4 ${colorida ? "financeiro-colorido" : ""}`} role="dialog" aria-modal="true" aria-label={titulo}><Panel className={`${semCabecalho ? "h-[92vh] overflow-hidden" : "max-h-[92vh] overflow-auto"} w-full ${width}`}>{!semCabecalho && <div className="fin-modal-cabecalho sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-border bg-muted p-5"><div className="min-w-0"><div className="eyebrow">{eyebrow}</div><h2 className="mt-1 break-words font-serif text-2xl">{titulo}</h2></div><ShadcnButton variant="ghost" size="icon" onClick={onClose} aria-label="Fechar" className="shrink-0 rounded-lg p-2 hover:bg-white"><X size={18} /></ShadcnButton></div>}{children}</Panel></div>;
+  const [origem] = useState(() => document.activeElement instanceof HTMLElement ? document.activeElement : null);
+  return <Dialog open onOpenChange={open => { if (!open) onClose(); }}><DialogContent aria-describedby={undefined} onCloseAutoFocus={event => { event.preventDefault(); if (origem?.isConnected) origem.focus({ preventScroll: true }); }} showCloseButton={false} overlayClassName="z-[1190]" data-fin-tom={tom} className={`z-[1200] w-[calc(100%-2rem)] rounded-xl ${semCabecalho ? "h-[92dvh] overflow-hidden" : "max-h-[92dvh] overflow-auto"} ${width} ${colorida ? "financeiro-colorido" : ""}`}>
+    {semCabecalho ? <DialogTitle className="sr-only">{titulo}</DialogTitle> : <div className="fin-modal-cabecalho sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-border bg-muted p-5"><div className="min-w-0"><DialogTitle className="break-words font-sans text-xl font-semibold">{titulo}</DialogTitle><p className="mt-1 text-sm text-muted-foreground">{eyebrow}</p></div><ShadcnButton variant="ghost" size="icon" onClick={onClose} aria-label="Fechar" className="shrink-0 rounded-lg p-2 hover:bg-white"><X size={18} /></ShadcnButton></div>}
+    {children}</DialogContent></Dialog>;
 }
 
 export function ReviewLine({ children, tone = "green" }: { children: React.ReactNode; tone?: "green" | "amber" | "brown" | "neutral" }) {
@@ -283,7 +288,7 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
                por role="button" quebraria a semântica de tabela para leitores de tela */
             {...(onAbrir ? { onClick: () => onAbrir(item), tabIndex: 0, onKeyDown: (e: React.KeyboardEvent) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onAbrir(item); } } } : {})}
             className={`${onAbrir ? "cursor-pointer hover:bg-muted" : ""} ${classeLinha?.(item) ?? ""}`}
-          >{colunas.map((coluna) => <TableCell key={coluna.chave} data-fin-coluna={coluna.chave} className={`whitespace-normal ${compacta ? "px-3 py-2" : "p-4"} align-middle ${alinhaCelula(coluna.alinhamento)}`}>{coluna.celula(item)}</TableCell>)}</TableRow>)}
+          >{colunas.map((coluna) => <TableCell key={coluna.chave} data-fin-coluna={coluna.chave} className={`whitespace-normal ${compacta ? "px-3 py-2" : "p-4"} align-middle ${alinhaCelula(coluna.alinhamento)}`}>{onAbrir && coluna === principal ? <div className="flex items-center gap-3"><div className="min-w-0 flex-1">{coluna.celula(item)}</div><ChevronRight size={16} aria-hidden className="shrink-0 text-muted-foreground" /></div> : coluna.celula(item)}</TableCell>)}</TableRow>)}
         </TableBody>
       </Table>
     </div>

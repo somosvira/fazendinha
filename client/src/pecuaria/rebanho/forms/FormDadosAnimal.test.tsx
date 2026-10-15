@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { alterarControle } from "../../../lib/controles.fixture";
 import { afterEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { FormDadosAnimal } from "./FormDadosAnimal";
@@ -16,7 +17,7 @@ it("mostra no campo Sexo a recusa de trocar o sexo de uma mãe", async () => {
     sexo: "F", dataNascimento: "2025-05-01", nascimentoEstimado: false,
     origem: "NASCIDO", dataEntrada: "2025-05-01", partosAntesDaEntrada: 0, observacao: null,
   } as never} onSalvo={vi.fn()} onFechar={vi.fn()} />);
-  fireEvent.change(screen.getByLabelText("Sexo"), { target: { value: "M" } });
+  await alterarControle(screen.getByLabelText("Sexo"), { target: { value: "M" } });
   fireEvent.click(screen.getByRole("button", { name: "Salvar dados" }));
   expect(await screen.findByRole("alert")).toHaveProperty("textContent", "Este animal já é mãe de outros animais");
   expect(screen.getByLabelText("Sexo").getAttribute("aria-invalid")).toBe("true");

@@ -5,6 +5,8 @@ import { VisaoGeral } from "./VisaoGeral";
 import { obterPainelRebanho } from "../api";
 import type { PainelGeral } from "../types";
 import { navegarPara } from "../../../router";
+import { setPropriedadeAtiva } from "../../../propriedadeScope";
+import { emDias } from "../../../financeiro/financeiro-ui";
 
 vi.mock("../api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../api")>()),
@@ -18,14 +20,16 @@ vi.mock("../../../router", async (importOriginal) => ({
 const painelMock: PainelGeral = {
   ativos: 120,
   porCategoria: [
-    { categoriaId: "cat-vaca", categoria: "Vaca", qtd: 80 },
-    { categoriaId: null, categoria: "Sem categoria", qtd: 5 },
+    { categoriaId: "cat-vaca", categoria: "Vaca", sexo: "F", qtd: 80 },
+    { categoriaId: null, categoria: "Sem categoria", sexo: null, qtd: 5 },
   ],
   porSitio: [
     { propriedadeId: 1, nome: "Sede", qtd: 100 },
     { propriedadeId: null, nome: "Sem sítio", qtd: 2 },
   ],
   receptorasPct: 40,
+  femeasAtivas: 100,
+  receptorasAtivas: 40,
   baixas30d: 6,
   ultimosEventos: [{ tipo: "CADASTRO", animalId: "a1", brinco: "0001", data: "2026-03-01" }],
   baixasPorTipo: [{ tipo: "VENDA", qtd: 4 }, { tipo: "MORTE", qtd: 2 }],
@@ -45,9 +49,11 @@ function paramsDe(href: string) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  setPropriedadeAtiva(null);
+  vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
   vi.mocked(obterPainelRebanho).mockResolvedValue(painelMock);
 });
-afterEach(cleanup);
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); setPropriedadeAtiva(null); });
 
 async function montar() {
   render(<VisaoGeral />);
@@ -55,27 +61,61 @@ async function montar() {
 }
 
 describe("VisaoGeral do rebanho", () => {
+  it("mostra gráficos e participação no total, com quantidade real de receptoras", async () => {
+    await montar();
+    expect(screen.getByRole("img", { name: /Composição por categoria de 120/ })).toBeTruthy();
+    expect(screen.getByRole("img", { name: /Quantidade de baixas por tipo/ })).toBeTruthy();
+    expect(screen.getByText("66,7% do rebanho")).toBeTruthy();
+    expect(screen.getByText("40 de 100 fêmeas ativas")).toBeTruthy();
+    expect(screen.getByText("83,3% do efetivo")).toBeTruthy();
+  });
+
+  it("distingue categorias homônimas pelo sexo e conserva seu filtro individual", async () => {
+    vi.mocked(obterPainelRebanho).mockResolvedValue({ ...painelMock, porCategoria: [
+      { categoriaId: "f", categoria: "Em crescimento", sexo: "F", qtd: 4 },
+      { categoriaId: "m", categoria: "Em crescimento", sexo: "M", qtd: 2 },
+    ] });
+    render(<VisaoGeral podeLancar={false} />);
+    const femeas = await screen.findByRole("button", { name: /Em crescimento · fêmeas/ });
+    expect(screen.getByRole("button", { name: /Em crescimento · machos/ })).toBeTruthy();
+    fireEvent.click(femeas);
+    expect(paramsDe(vi.mocked(navegarPara).mock.calls[0][0]).params.get("categoriaId")).toBe("f");
+    expect(screen.queryByRole("button", { name: "Novo animal" })).toBeNull();
+  });
+
+  it("sem animais mostra estados vazios, sem uma rosca artificial", async () => {
+    vi.mocked(obterPainelRebanho).mockResolvedValue({ ...painelMock, ativos: 0, porCategoria: [], porSitio: [], receptorasAtivas: 0, femeasAtivas: 0, receptorasPct: 0 });
+    render(<VisaoGeral />);
+    await screen.findAllByText("Nenhum animal ativo.");
+    expect(screen.queryByRole("img", { name: /Composição por categoria/ })).toBeNull();
+    expect(screen.getByText("Sem fêmeas ativas para calcular a proporção de receptoras.")).toBeTruthy();
+    expect(screen.queryByText("0%")).toBeNull();
+  });
   it("busca o painel com o período padrão de 30 dias", async () => {
     await montar();
     expect(obterPainelRebanho).toHaveBeenCalledWith({ periodoDias: 30 });
   });
 
-  it("mostra as métricas principais", async () => {
+  it("remove os quatro cards e apresenta o total apenas na composição", async () => {
     await montar();
-    expect(screen.getByText("120")).toBeTruthy();
+    expect(screen.getAllByText("120")).toHaveLength(1);
     expect(screen.getByText("40%")).toBeTruthy();
-    expect(screen.getByText("6")).toBeTruthy();
+    expect(screen.queryByText("Sítios com animais")).toBeNull();
+    expect(screen.queryByText("Baixas em 30 dias")).toBeNull();
+    expect(document.querySelector(".pec-indicadores")).toBeNull();
+    expect(screen.getByText("6 baixas · últimos 30 dias")).toBeTruthy();
   });
 
-  it("painel \"Baixas no período\" mostra por tipo, por classe e a proporção de descarte voluntário", async () => {
+  it("reúne baixas por tipo e motivos em detalhes, sem duplicar mortes", async () => {
     await montar();
-    const porTipo = screen.getByText("Por tipo").closest("div")!;
-    const porClasse = screen.getByText("Por classe").closest("div")!;
-    expect(within(porTipo).getByText("Venda")).toBeTruthy();
-    expect(within(porTipo).getByText("Morte")).toBeTruthy();
+    const porTipo = screen.getByRole("list", { name: "Baixas por tipo" });
+    const porClasse = screen.getByText("Detalhes dos motivos").closest("details")!;
+    expect(porClasse.open).toBe(false);
+    expect(within(porTipo).getByRole("button", { name: /Venda/ })).toBeTruthy();
+    expect(within(porTipo).getByRole("button", { name: /Morte/ })).toBeTruthy();
     expect(within(porClasse).getByText("Descarte voluntário")).toBeTruthy();
     expect(within(porClasse).getByText("Descarte involuntário")).toBeTruthy();
-    expect(within(porClasse).getByText("Morte")).toBeTruthy();
+    expect(within(porClasse).queryByText("Morte")).toBeNull();
     // 3 voluntárias de 4 baixas de descarte classificadas (3 + 1) = 75%
     expect(within(porClasse).getByText(/75% de descarte voluntário/)).toBeTruthy();
   });
@@ -96,7 +136,7 @@ describe("VisaoGeral do rebanho", () => {
 
   it("clicar num tipo de baixa abre Animais já filtrado por tipo e período", async () => {
     await montar();
-    const porTipo = screen.getByText("Por tipo").closest("div")!;
+    const porTipo = screen.getByRole("list", { name: "Baixas por tipo" });
     fireEvent.click(within(porTipo).getByRole("button", { name: /Venda/ }));
     expect(navegarPara).toHaveBeenCalledTimes(1);
     const { pathname, params } = paramsDe(vi.mocked(navegarPara).mock.calls[0][0]);
@@ -106,13 +146,16 @@ describe("VisaoGeral do rebanho", () => {
     expect(params.get("baixaDe")).toBeTruthy();
   });
 
-  it("clicar no cartão \"Baixas em 30 dias\" abre Animais filtrado por baixados nos últimos 30 dias", async () => {
+  it("a consulta de todas as baixas acompanha o período escolhido, não o indicador fixo de 30 dias", async () => {
+    vi.mocked(obterPainelRebanho).mockResolvedValueOnce(painelMock).mockResolvedValueOnce({ ...painelMock, periodoDias: 365, baixasPorTipo: [{ tipo: "VENDA", qtd: 20 }] });
     await montar();
-    fireEvent.click(screen.getByRole("button", { name: /Baixas em 30 dias/ }));
+    fireEvent.click(screen.getByRole("button", { name: "12 meses" }));
+    await screen.findByText("20 baixas · últimos 365 dias");
+    fireEvent.click(screen.getByRole("button", { name: "Ver animais baixados" }));
     const { pathname, params } = paramsDe(vi.mocked(navegarPara).mock.calls[0][0]);
     expect(pathname).toBe("/pecuaria/rebanho/animais");
     expect(params.get("situacao")).toBe("BAIXADO");
-    expect(params.get("baixaDe")).toBeTruthy();
+    expect(params.get("baixaDe")).toBe(emDias(-365));
     expect(params.get("tipoBaixa")).toBeNull();
   });
 
@@ -138,6 +181,55 @@ describe("VisaoGeral do rebanho", () => {
     await montar();
     const painel = screen.getByRole("heading", { name: "Baixas no período" }).closest("section")!;
     expect(within(painel).getByText("Nenhuma baixa no período.")).toBeTruthy();
-    expect(within(painel).getByText("Nenhuma baixa classificada no período.")).toBeTruthy();
+    expect(within(painel).queryByText("Detalhes dos motivos")).toBeNull();
+    expect(within(painel).queryByRole("img")).toBeNull();
+    expect(within(painel).queryByRole("button", { name: "Ver animais baixados" })).toBeNull();
+  });
+  it("sítio selecionado não mostra distribuição por sítio e ocupa toda a composição", async () => {
+    setPropriedadeAtiva(1);
+    await montar();
+    expect(screen.queryByRole("heading", { name: "Por sítio" })).toBeNull();
+    expect(document.querySelector(".pec-composicao-grid--sitio")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Composição do rebanho" })).toBeTruthy();
+  });
+  it("Consolidado continua mostrando sítios mesmo quando o agregado só tem um sítio", async () => {
+    vi.mocked(obterPainelRebanho).mockResolvedValue({ ...painelMock, porSitio: [{ propriedadeId: 1, nome: "Sede", qtd: 120 }] });
+    await montar();
+    expect(screen.getByRole("heading", { name: "Por sítio" })).toBeTruthy();
+    expect(document.querySelector(".pec-composicao-grid--sitio")).toBeNull();
+  });
+  it("receptoras e consulta do efetivo mantêm os filtros reais da lista", async () => {
+    await montar();
+    fireEvent.click(screen.getByRole("button", { name: "Consultar 40 receptoras de 100 fêmeas ativas" }));
+    const params = paramsDe(vi.mocked(navegarPara).mock.calls.at(-1)![0]).params;
+    expect(params.get("situacao")).toBe("ATIVO");
+    expect(params.get("sexo")).toBe("F");
+    expect(params.get("papelReprodutivo")).toBe("RECEPTORA");
+    fireEvent.click(screen.getByRole("button", { name: "Ver animais" }));
+    expect(paramsDe(vi.mocked(navegarPara).mock.calls.at(-1)![0]).params.get("situacao")).toBe("ATIVO");
+  });
+  it("quando só há mortes não cria detalhes de motivos repetindo a contagem", async () => {
+    vi.mocked(obterPainelRebanho).mockResolvedValue({ ...painelMock, baixasPorTipo: [{ tipo: "MORTE", qtd: 2 }], baixasPorClasse: [{ classe: "MORTE", qtd: 2 }] });
+    await montar();
+    expect(screen.getByRole("button", { name: "Morte: 2 baixas" })).toBeTruthy();
+    expect(screen.queryByText("Detalhes dos motivos")).toBeNull();
+    expect(screen.queryByText(/mortalidade/i)).toBeNull();
+  });
+  it("mantém baixas sem motivo explícitas sem incluí-las no percentual de descarte", async () => {
+    vi.mocked(obterPainelRebanho).mockResolvedValue({ ...painelMock, baixasPorClasse: [{ classe: "SEM_MOTIVO", qtd: 6 }] });
+    await montar();
+    expect(screen.getByText("Sem motivo informado")).toBeTruthy();
+    expect(screen.queryByText(/% de descarte voluntário/)).toBeNull();
+  });
+  it("bloqueia consultas das baixas antigas enquanto o período está atualizando", async () => {
+    await montar();
+    let liberar!: (dados: PainelGeral) => void;
+    vi.mocked(obterPainelRebanho).mockImplementationOnce(() => new Promise(resolve => { liberar = resolve; }));
+    fireEvent.click(screen.getByRole("button", { name: "12 meses" }));
+    expect(screen.getByRole("button", { name: "Venda: 4 baixas" })).toHaveProperty("disabled", true);
+    expect(screen.getByRole("button", { name: "Ver animais baixados" })).toHaveProperty("disabled", true);
+    liberar({ ...painelMock, periodoDias: 365 });
+    await screen.findByText("6 baixas · últimos 365 dias");
+    expect(screen.getByRole("button", { name: "Ver animais baixados" })).toHaveProperty("disabled", false);
   });
 });

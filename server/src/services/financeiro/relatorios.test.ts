@@ -78,6 +78,13 @@ describe("geração de relatório financeiro", () => {
     expect(mocks.operacao.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ propriedadeId: 7, status: { in: ["CONFIRMADA"] } }) }));
     expect(mocks.putObject).toHaveBeenCalledWith(expect.objectContaining({ key: `test/relatorios-financeiros/7/${uid(5)}.pdf`, contentType: "application/pdf" }));
     expect(mocks.putObject.mock.calls[0][0].body.subarray(0, 8).toString()).toBe("%PDF-1.4");
+    const arquivoLocal = mocks.putObject.mock.calls[0][0];
+    mocks.relatorio.findFirst.mockResolvedValueOnce({ nome: config.nome, storageKey: arquivoLocal.key });
+    mocks.getObjectBuffer.mockResolvedValueOnce(arquivoLocal.body);
+    const download = await baixarRelatorio(r.id, 7);
+    expect(download.buffer).toEqual(arquivoLocal.body);
+    expect(download.buffer.toString("latin1").trimEnd().endsWith("%%EOF")).toBe(true);
+    expect(mocks.getObjectBuffer).toHaveBeenCalledWith({ key: arquivoLocal.key });
 
     const { data } = mocks.relatorio.update.mock.calls[0][0];
     expect(data.status).toBe("CONCLUIDO");

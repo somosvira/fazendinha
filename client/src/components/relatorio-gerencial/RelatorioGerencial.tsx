@@ -1,3 +1,4 @@
+import { SelectCampo } from "@/financeiro/SelectCampo";
 /* Tela do relatório financeiro gerencial: filtros (propriedade, período,
  * regime) → backend agrega → template (textos, ordem, visibilidade) só muda a
  * apresentação → pré-visualização = PDF. */
@@ -88,10 +89,10 @@ export function RelatorioGerencial({ onVoltar }: { onVoltar?: () => void }) {
         {ativas.length >= 2 && (
           <label className="flex flex-col gap-1 text-xs text-ink-3">
             Propriedade
-            <select className="rounded-md border border-border bg-[color:var(--bg)] px-3 py-2 text-sm text-foreground" value={propriedadeId ?? ""} onChange={(e) => setPropriedadeId(e.target.value ? Number(e.target.value) : null)}>
+            <SelectCampo className="rounded-md border border-border bg-[color:var(--bg)] px-3 py-2 text-sm text-foreground" value={propriedadeId ?? ""} onValueChange={(valorSelecionado) => setPropriedadeId(valorSelecionado ? Number(valorSelecionado) : null)}>
               <option value="">Consolidado</option>
               {ativas.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
-            </select>
+            </SelectCampo>
           </label>
         )}
         <div className="flex flex-col gap-1 text-xs text-ink-3">Período<DateRangePicker value={range} onChange={setRange} /></div>

@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { alterarControle } from "../../../lib/controles.fixture";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { ToastProvider } from "@/components/Toast";
@@ -98,7 +99,7 @@ describe("Lotes do rebanho", () => {
     fireEvent.click(screen.getByRole("button", { name: /Novo lote/ }));
     const painel = await screen.findByRole("dialog");
     expect((within(painel).getByLabelText("Sítio") as HTMLSelectElement).value).toBe("1");
-    fireEvent.change(within(painel).getByLabelText("Nome do lote"), { target: { value: "Lote novo" } });
+    await alterarControle(within(painel).getByLabelText("Nome do lote"), { target: { value: "Lote novo" } });
     fireEvent.click(within(painel).getByRole("button", { name: "Criar lote" }));
     await waitFor(() => expect(criarLote).toHaveBeenCalledWith({ nome: "Lote novo", propriedadeId: 1, observacao: null, centroCustoId: null }));
     await waitFor(() => expect(listarLotes).toHaveBeenCalledTimes(2));
@@ -110,7 +111,7 @@ describe("Lotes do rebanho", () => {
     const painel = await screen.findByRole("dialog");
     expect((within(painel).getByLabelText("Nome do lote") as HTMLInputElement).value).toBe("Lote 1");
     expect((within(painel).getByLabelText("Sítio") as HTMLInputElement).disabled).toBe(true);
-    fireEvent.change(within(painel).getByLabelText("Nome do lote"), { target: { value: "Lote 1 — renomeado" } });
+    await alterarControle(within(painel).getByLabelText("Nome do lote"), { target: { value: "Lote 1 — renomeado" } });
     fireEvent.click(within(painel).getByRole("button", { name: "Salvar lote" }));
     await waitFor(() => expect(editarLote).toHaveBeenCalledWith("l1", { nome: "Lote 1 — renomeado", observacao: null, centroCustoId: null }));
   });
@@ -161,7 +162,7 @@ describe("Lotes do rebanho", () => {
 
     const painel = await screen.findByRole("heading", { name: "Movimentar animal" });
     expect(painel).toBeTruthy();
-    fireEvent.change(screen.getByLabelText("Sítio de destino"), { target: { value: "1" } });
+    await alterarControle(screen.getByLabelText("Sítio de destino"), { target: { value: "1" } });
     fireEvent.click(screen.getByRole("button", { name: "Movimentar" }));
     await waitFor(() => expect(movimentarAnimais).toHaveBeenCalledWith({ animalIds: ["a1"], propriedadeId: 1, loteId: null, data: expect.any(String), motivo: null }));
     // move e desfazer recarregam as duas seções (lotes + histórico)
@@ -189,7 +190,7 @@ describe("Lotes do rebanho", () => {
     await screen.findAllByText("0001");
     fireEvent.click(primeiro("checkbox", "Selecionar 0001"));
     fireEvent.click(screen.getByRole("button", { name: "Continuar (1)" }));
-    fireEvent.change(screen.getByLabelText("Sítio de destino"), { target: { value: "1" } });
+    await alterarControle(screen.getByLabelText("Sítio de destino"), { target: { value: "1" } });
     fireEvent.click(screen.getByRole("button", { name: "Movimentar" }));
 
     await screen.findByText("1 animal movimentado");
@@ -227,10 +228,10 @@ describe("Lotes — histórico de movimentações (sempre visível)", () => {
       loteId: undefined, propriedadeId: undefined, dataDe: undefined, dataAte: undefined, incluirDesfeitas: true, page: 1, pageSize: 20,
     }));
 
-    fireEvent.change(screen.getByLabelText("Filtrar histórico por sítio"), { target: { value: "1" } });
-    fireEvent.change(screen.getByLabelText("Filtrar histórico por lote"), { target: { value: "l1" } });
-    fireEvent.change(screen.getByLabelText("Data inicial do histórico"), { target: { value: "2026-01-01" } });
-    fireEvent.change(screen.getByLabelText("Data final do histórico"), { target: { value: "2026-01-31" } });
+    await alterarControle(screen.getByLabelText("Filtrar histórico por sítio"), { target: { value: "1" } });
+    await alterarControle(screen.getByLabelText("Filtrar histórico por lote"), { target: { value: "l1" } });
+    await alterarControle(screen.getByLabelText("Data inicial do histórico"), { target: { value: "2026-01-01" } });
+    await alterarControle(screen.getByLabelText("Data final do histórico"), { target: { value: "2026-01-31" } });
     fireEvent.click(screen.getByRole("checkbox", { name: "Mostrar desfeitas" }));
 
     await waitFor(() => expect(listarMovimentacoes).toHaveBeenLastCalledWith({
@@ -242,11 +243,11 @@ describe("Lotes — histórico de movimentações (sempre visível)", () => {
     await montar();
     await screen.findByLabelText("Filtrar histórico por lote");
 
-    fireEvent.change(screen.getByLabelText("Filtrar histórico por sítio"), { target: { value: "1" } });
-    fireEvent.change(screen.getByLabelText("Filtrar histórico por lote"), { target: { value: "l1" } });
+    await alterarControle(screen.getByLabelText("Filtrar histórico por sítio"), { target: { value: "1" } });
+    await alterarControle(screen.getByLabelText("Filtrar histórico por lote"), { target: { value: "l1" } });
     await waitFor(() => expect(listarMovimentacoes).toHaveBeenLastCalledWith(expect.objectContaining({ loteId: "l1" })));
 
-    fireEvent.change(screen.getByLabelText("Filtrar histórico por sítio"), { target: { value: "" } });
+    await alterarControle(screen.getByLabelText("Filtrar histórico por sítio"), { target: { value: "" } });
     await waitFor(() => expect(listarMovimentacoes).toHaveBeenLastCalledWith(expect.objectContaining({ loteId: undefined, propriedadeId: undefined })));
   });
 

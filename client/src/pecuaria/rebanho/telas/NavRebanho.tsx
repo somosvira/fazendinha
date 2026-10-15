@@ -3,6 +3,7 @@
 
 import { SubTabs } from "../../../components/SubTabs";
 import { navegarPara } from "../../../router";
+import { LayoutDashboard, Users, Layers } from "lucide-react";
 
 export type SecaoRebanho = "visao-geral" | "animais" | "lotes" | "cadastros" | "sanidade" | "nutricao";
 
@@ -12,6 +13,7 @@ const SECOES: { valor: SecaoRebanho; rotulo: string; href: string }[] = [
   { valor: "lotes", rotulo: "Lotes", href: "/pecuaria/rebanho/lotes" },
 ];
 
-export function NavRebanho({ ativa }: { ativa: SecaoRebanho }) {
-  return <SubTabs variant="financeiro" ariaLabel="Rebanho" tabs={SECOES.map(s => ({ id: s.valor, label: s.rotulo }))} active={ativa} onSelect={id => { const secao = SECOES.find(s => s.valor === id); if (secao) navegarPara(secao.href); }} className="mt-5" />;
+export function NavRebanho({ ativa, comIcones = true }: { ativa: SecaoRebanho; comIcones?: boolean }) {
+  const icones = [LayoutDashboard, Users, Layers];
+  return <SubTabs variant="financeiro" ariaLabel="Rebanho" tabs={SECOES.map((s, i) => ({ id: s.valor, label: s.rotulo, icon: comIcones ? icones[i] : undefined }))} active={ativa} onSelect={id => { const secao = SECOES.find(s => s.valor === id); if (secao) navegarPara(secao.href); }} className="mt-5" />;
 }

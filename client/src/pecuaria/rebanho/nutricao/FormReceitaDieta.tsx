@@ -1,4 +1,5 @@
-import { useCallback, useState } from "react";
+import { SelectCampo } from "@/financeiro/SelectCampo";
+import { useCallback, useRef, useState } from "react";
 import { Button, ErrorBox, Panel } from "../../../financeiro/financeiro-ui";
 import { classeInput } from "../../../financeiro/PainelCadastro";
 import { criarDieta, editarDieta, listarProdutosNutricionais, type Dieta } from "./api";
@@ -11,15 +12,16 @@ export function FormReceitaDieta({ dieta, editar, onVoltar, onSalvo }: { dieta?:
   const [itens, setItens] = useState(dieta?.itens.map((i) => ({ produtoId: i.produtoId, quantidadeCabecaDia: i.quantidadeCabecaDia })) ?? [{ produtoId: "", quantidadeCabecaDia: "" }]);
   const [erro, setErro] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState(false);
+  const enviando = useRef(false);
   async function salvar() {
-    if (ocupado) return;
+    if (enviando.current || produtos.carregando || produtos.erro) return;
     if (nome.trim().length < 2 || itens.some((i) => !i.produtoId || !i.quantidadeCabecaDia.trim() || !Number.isFinite(Number(i.quantidadeCabecaDia)) || Number(i.quantidadeCabecaDia) <= 0)) { setErro("Informe o nome, os ingredientes e a quantidade por cabeça/dia."); return; }
     if (new Set(itens.map((i) => i.produtoId)).size !== itens.length) { setErro("Informe cada ingrediente uma única vez."); return; }
-    setOcupado(true); setErro(null);
+    enviando.current = true; setOcupado(true); setErro(null);
     try { const body = { nome: nome.trim(), itens: itens.map((i) => ({ produtoId: i.produtoId, quantidadeCabecaDia: Number(i.quantidadeCabecaDia) })) };
       if (editar && dieta) await editarDieta(dieta.id, body); else await criarDieta(body);
       onSalvo();
-    } catch (e) { setErro(e instanceof Error ? e.message : String(e)); } finally { setOcupado(false); }
+    } catch (e) { setErro(e instanceof Error ? e.message : String(e)); } finally { enviando.current = false; setOcupado(false); }
   }
   return <div className="nutricao-formulario"><Panel><div className="nutricao-card-cabecalho"><div><h1 className="h1">{editar ? "Editar rascunho de dieta" : dieta ? "Nova versão de dieta" : "Nova receita"}</h1><p>Defina a composição por cabeça e por dia.</p></div></div>
     <form onSubmit={(e) => { e.preventDefault(); void salvar(); }}><fieldset disabled={ocupado} className="nutricao-card-corpo grid gap-5">
@@ -29,8 +31,8 @@ export function FormReceitaDieta({ dieta, editar, onVoltar, onSalvo }: { dieta?:
       {itens.map((i, indice) => {
         const produto = produtos.dados?.find((p) => p.id === i.produtoId);
         return <div key={indice} className="nutricao-ingrediente-form">
-          <label>Ingrediente {indice + 1}<select className={classeInput} value={i.produtoId} required onChange={(e) => setItens((xs) => xs.map((x, j) => j === indice ? { ...x, produtoId: e.target.value } : x))}><option value="">Selecione o produto</option>{i.produtoId && !produto && <option value={i.produtoId}>{dieta?.itens.find((x) => x.produtoId === i.produtoId)?.produto?.nome ?? "Produto indisponível"} · indisponível</option>}{produtos.dados?.map((p) => <option value={p.id} key={p.id}>{p.nome} ({p.unidade})</option>)}</select></label>
-          <label>Quantidade por cabeça/dia {indice + 1}<div className="flex items-center gap-2"><input className={classeInput} required type="number" min="0.001" max="999999999.999" step="0.001" value={i.quantidadeCabecaDia} onChange={(e) => setItens((xs) => xs.map((x, j) => j === indice ? { ...x, quantidadeCabecaDia: e.target.value } : x))} /><span>{produto?.unidade ?? dieta?.itens.find((x) => x.produtoId === i.produtoId)?.unidade ?? "—"}</span></div></label>
+          <label>Ingrediente {indice + 1}<SelectCampo className={classeInput} value={i.produtoId} required onValueChange={(valorSelecionado) => setItens((xs) => xs.map((x, j) => j === indice ? { ...x, produtoId: valorSelecionado } : x))}><option value="">Selecione o produto</option>{i.produtoId && !produto && <option value={i.produtoId}>{dieta?.itens.find((x) => x.produtoId === i.produtoId)?.produto?.nome ?? "Produto indisponível"} · indisponível</option>}{produtos.dados?.map((p) => <option value={p.id} key={p.id}>{p.nome} ({p.unidade})</option>)}</SelectCampo></label>
+          <label>Quantidade por cabeça/dia · {produto?.nome ?? dieta?.itens.find((x) => x.produtoId === i.produtoId)?.produto?.nome ?? `ingrediente ${indice + 1}`}<div className="flex items-center gap-2"><input className={classeInput} required type="number" min="0.001" max="999999999.999" step="0.001" value={i.quantidadeCabecaDia} onChange={(e) => setItens((xs) => xs.map((x, j) => j === indice ? { ...x, quantidadeCabecaDia: e.target.value } : x))} /><span>{produto?.unidade ?? dieta?.itens.find((x) => x.produtoId === i.produtoId)?.unidade ?? "—"}</span></div></label>
           <Button secondary disabled={itens.length === 1} onClick={() => setItens((xs) => xs.filter((_, j) => indice !== j))}>Remover</Button>
         </div>;
       })}

@@ -7,6 +7,7 @@ import { setPropriedadeAtiva } from "../propriedadeScope";
 import type { ConfiguracoesFinanceiras } from "./novo-api";
 import { enfileirarSalvamentoRascunho, estadoRascunhoAtivo, limparRascunhoAtivo } from "./rascunhoAtivo";
 import { uid } from "../lib/uid.fixture";
+import * as permissoes from "./permissoes";
 
 beforeEach(() => limparRascunhoAtivo());
 afterEach(() => { limparRascunhoAtivo(); cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers(); });
@@ -29,6 +30,35 @@ const config: ConfiguracoesFinanceiras = {
 function montar() {
   render(<FormOperacao config={config} onSalvo={vi.fn()} />);
 }
+
+it("operador sem valores confirma manualmente, mantém dados no403 e não usa rascunho nem envio duplicado", async () => {
+  vi.spyOn(permissoes, "podeVerValoresFinanceiros").mockReturnValue(false);
+  let responder!: (r: unknown) => void;
+  const fetchMock = vi.fn((_url: string | URL | Request, _init?: RequestInit) => new Promise(resolve => { responder = resolve; }));
+  vi.stubGlobal("fetch", fetchMock);
+  const onSalvo = vi.fn();
+  const { container } = render(<FormOperacao config={config} tipoInicial="SERVICO" onSalvo={onSalvo} />);
+  await alterarControle(screen.getByLabelText("Descrição"), { target: { value: "Serviço manual QA" } });
+  await alterarControle(screen.getByLabelText("Valor total da operação"), { target: { value: "100" } });
+  await alterarControle(screen.getByLabelText("Prestador de serviço"), { target: { value: uid(1) } });
+  await alterarControle(screen.getByLabelText("Conta financeira"), { target: { value: uid(1) } });
+  expect(screen.queryByLabelText("Anexar documentos")).toBeNull();
+  act(() => { fireEvent.submit(container.querySelector("form")!); fireEvent.submit(container.querySelector("form")!); });
+  expect(fetchMock).toHaveBeenCalledOnce();
+  expect(String(fetchMock.mock.calls[0][0])).toBe("/api/financeiro/operacoes");
+  responder({ ok: false, status: 403, json: async () => ({ error: "Acesso recusado para teste" }) });
+  await screen.findAllByText("Acesso recusado para teste");
+  expect((screen.getByLabelText("Descrição") as HTMLTextAreaElement).value).toBe("Serviço manual QA");
+  expect((screen.getByLabelText("Valor total da operação") as HTMLInputElement).value).toBe("100");
+  const inputAnterior = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
+  fireEvent.submit(container.querySelector("form")!);
+  expect(fetchMock).toHaveBeenCalledTimes(2);
+  const inputNovo = JSON.parse(String(fetchMock.mock.calls[1][1]?.body));
+  expect(inputNovo.chave).toBe(inputAnterior.chave);
+  responder({ ok: true, json: async () => ({ id: uid(88), numero: 88, documentos: [] }) });
+  await waitFor(() => expect(onSalvo).toHaveBeenCalledOnce());
+  expect(fetchMock.mock.calls.every(([url]) => !String(url).includes("rascunho"))).toBe(true);
+});
 
 describe("altura disponível e foco nos painéis da operação", () => {
   it("contém a rolagem da página só enquanto a operação está aberta e restaura os estilos anteriores", () => {
@@ -214,7 +244,7 @@ it("retry após resposta perdida repete chave e versão sem recriar o rascunho",
   await alterarControle(screen.getByLabelText("Prestador de serviço"), { target: { value: uid(1) } });
   await alterarControle(screen.getByLabelText("Conta financeira"), { target: { value: uid(1) } });
   fireEvent.click(screen.getByRole("button", { name: "Confirmar operação" }));
-  await screen.findAllByText("Resposta da confirmação não chegou. Tente novamente.");
+  await screen.findAllByText("Falha de conexão. Confira sua internet e tente novamente.");
   const antesDoRetry = salvamentos;
   fireEvent.click(screen.getByRole("button", { name: "Confirmar operação" }));
   await waitFor(() => expect(onSalvo).toHaveBeenCalled());
@@ -1222,7 +1252,9 @@ describe("painel de revisão — movimentos de estoque", () => {
     unmount();
     render(<FormOperacao config={config} tipoInicial="COMPRA_ESTOQUE" onSalvo={vi.fn()} />);
     expect(screen.queryByText(/Movimenta o estoque dos produtos/)).toBeNull();
-    expect(screen.getByText("Nenhum movimento físico de estoque será gerado.")).toBeTruthy();
+    expect(screen.getByText("Preencha os dados da operação para conferir o efeito no estoque.")).toBeTruthy();
+    expect(screen.getByText(/Prévia incompleta/)).toBeTruthy();
+    expect(screen.getByTestId("conteudo-resumo-operacao").querySelector(".lucide-check")).toBeNull();
   });
 });
 

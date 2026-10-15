@@ -71,11 +71,11 @@ describe("CommandPalette", () => {
     // label exata "Dashboard" — os outros módulos usam o label "Painel").
     const { rerender } = render(h(CommandPalette, baseProps()));
     fireEvent.change(screen.getByPlaceholderText(PLACEHOLDER), { target: { value: "dashboard" } });
-    expect(screen.getByText("Dashboard")).toBeTruthy();
+    expect(screen.getByText("Visão geral")).toBeTruthy();
 
     // Bloqueando a aba "dashboard" via podeVer, o comando some da lista.
     rerender(h(CommandPalette, baseProps({ podeVer: (t) => t !== "dashboard" })));
-    expect(screen.queryByText("Dashboard")).toBeNull();
+    expect(screen.queryByText("Visão geral")).toBeNull();
   });
 
   it("dispara /api/busca com ≥2 chars, ~200ms de debounce, com os headers de comPropriedade(), e renderiza as entidades", async () => {

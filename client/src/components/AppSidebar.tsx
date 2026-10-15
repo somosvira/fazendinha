@@ -12,13 +12,14 @@
 
 import "./sidebar-clara.css";
 import { Button } from "@/components/ui/button";
-import { useEffect, useState } from "react";
-import { Beef, HeartPulse,  Leaf, CircleDollarSign, FileText, FilePenLine, Plus, Settings, Wallet, type LucideIcon } from "lucide-react";
+import { useEffect, useState, type ComponentType, type SVGProps } from "react";
+import { HeartPulse, Leaf, CircleDollarSign, FileText, FilePenLine, Plus, Settings, Wallet } from "lucide-react";
 import type { Tab } from "./Shell";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { TerranoSymbol } from "./TerranoLogo";
+import { VacaIcon } from "./icons/VacaIcon";
 import { SidebarFarmPicker } from "./FarmPicker";
 import { temAcessoArea, temAcessoEstoque } from "@/lib/areas";
 import { PAPEIS, type User } from "@/data/acessos";
@@ -42,9 +43,11 @@ const ICON: Partial<Record<Tab, JSX.Element>> = {
   config: <><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></>,
 };
 
-const ICON_FINANCEIRO: Partial<Record<Tab, LucideIcon>> = { gastos: CircleDollarSign, caixinha: Wallet, cadastros: Settings, plano: Settings, relatorio: FileText };
+type IconeNavegacao = ComponentType<SVGProps<SVGSVGElement>>;
 
-const ICON_PECUARIA: Partial<Record<Tab, LucideIcon>> = { "pec-rebanho": Beef, "pec-sanidade": HeartPulse, "pec-nutricao": Leaf };
+const ICON_FINANCEIRO: Partial<Record<Tab, IconeNavegacao>> = { gastos: CircleDollarSign, caixinha: Wallet, cadastros: Settings, plano: Settings, relatorio: FileText };
+
+const ICON_PECUARIA: Partial<Record<Tab, IconeNavegacao>> = { "pec-rebanho": VacaIcon, "pec-sanidade": HeartPulse, "pec-nutricao": Leaf };
 
 type AreaTrabalhoId = "pecuaria";
 type NavItem = { id: Tab; label: string };
@@ -148,7 +151,8 @@ function SearchControl({ onClick }: { onClick: () => void }) {
     <Button variant="ghost"
       type="button"
       onClick={onClick}
-      title="Buscar"
+      title="Buscar (Ctrl/⌘ K)"
+      aria-keyshortcuts="Control+k Meta+k"
       aria-label="Buscar páginas, animais e ações"
       className="order-1 grid h-8 w-8 flex-none place-items-center rounded-lg text-[var(--side-mute)] hover:bg-white/5 hover:text-mast-ink min-[901px]:max-[1100px]:order-2 [.side-collapsed_&]:order-2"
     >
@@ -173,7 +177,7 @@ function UserMenu({ user, onAcessos, onSair }: { user: User; onAcessos: () => vo
       </DropdownMenuTrigger>
       <DropdownMenuContent side="right" align="end" sideOffset={8} className="w-[240px] rounded-[11px] p-1.5">
         <div className="mb-1 border-b border-rule-soft px-2.5 pb-2.5 pt-2"><div className="text-sm font-semibold text-ink">{user.nome}</div>{user.email && <div className="mt-0.5 text-xs text-ink-mute">{user.email}</div>}</div>
-        <DropdownMenuItem onSelect={onAcessos} className="rounded-[7px] px-2.5 py-2 text-[13.5px]">Acessos</DropdownMenuItem>
+        {(user.dono || user.flags.includes("gerenciarAcessos")) && <DropdownMenuItem onSelect={onAcessos} className="rounded-[7px] px-2.5 py-2 text-[13.5px]">Acessos</DropdownMenuItem>}
         {onSair && <><DropdownMenuSeparator /><DropdownMenuItem onSelect={onSair} className="rounded-[7px] px-2.5 py-2 text-[13.5px] text-[color:var(--prejuizo)] focus:text-[color:var(--prejuizo)]">Sair</DropdownMenuItem></>}
       </DropdownMenuContent>
     </DropdownMenu>

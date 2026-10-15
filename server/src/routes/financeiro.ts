@@ -20,6 +20,7 @@ import { exigePermissao, getUsuario } from "../middleware/permissao.js";
 import { prisma } from "../db.js";
 import { listarOrigemFinanceira } from "../services/pecuaria/sanidade/origem-financeira.js";
 import { temArea, temPermissao } from "../services/auth/papeis.js";
+import { apresentarValores, podeVerValores, valoresConta, valoresOperacao, valoresTransacao } from "../services/financeiro/visibilidade.js";
 
 export const filtroPeriodoSchema = z.object({ inicio: z.string().date().optional(), fim: z.string().date().optional() }).refine(p => (!p.inicio && !p.fim) || (!!p.inicio && !!p.fim && p.inicio <= p.fim), { message: "Informe um intervalo válido, com início igual ou anterior ao fim." });
 const validarPeriodo = zValidator("query", filtroPeriodoSchema, (resultado, c) => { if (!resultado.success) return c.json({ error: resultado.error.issues[0].message }, 422); });
@@ -32,26 +33,7 @@ function apresentarOperacao<T extends {
   transferencias?: { custoUnitario: unknown; valorTotal: unknown }[];
   procedimentosServico?: { valor: unknown }[];
 }>(c: Context, dados: T) {
-  const usuario = getUsuario(c);
-  const custosVisiveis = !!usuario && temArea(usuario, "financeiro") && temPermissao(usuario, "verValores");
-  // O detalhe do atendimento inclui parcelas, itens e atribuições analíticas.
-  // Ocultar só a coluna na interface deixaria esses valores na resposta da API.
-  if (dados.tipo === "SERVICO" && !custosVisiveis) return ocultarValoresServico(dados);
-  const estoqueFisico = dados.tipo === "TRANSFERENCIA_ESTOQUE" || dados.movimentosEstoque.some((m) => m.origem === "PERDA" || m.origem === "TRANSFERENCIA");
-  if (!estoqueFisico || custosVisiveis) return dados;
-  return {
-    ...dados, valorTotal: null,
-    ...(dados.perdas ? { perdas: dados.perdas.map((perda) => ({ ...perda, custoUnitario: null, valorTotal: null })) } : {}),
-    ...(dados.transferencias ? { transferencias: dados.transferencias.map((transferencia) => ({ ...transferencia, custoUnitario: null, valorTotal: null })) } : {}),
-    movimentosEstoque: dados.movimentosEstoque.map((movimento) => ({ ...movimento, custoUnitario: null, valorTotal: null })),
-  };
-}
-
-function ocultarValoresServico<T>(dados: T): T {
-  if (Array.isArray(dados)) return dados.map(ocultarValoresServico) as T;
-  if (!dados || typeof dados !== "object" || dados instanceof Date || "toJSON" in dados) return dados;
-  const campos = new Set(["valor", "valorTotal", "valorUnitario", "valorProdutoAtribuido", "valorServicoAtribuido", "custoUnitario", "valorPago", "valorLiquidado", "valorRestante", "valorOriginal", "saldoPendente", "saldoExigivel", "entrada", "saida"]);
-  return Object.fromEntries(Object.entries(dados).map(([campo, valor]) => [campo, campos.has(campo) ? null : ocultarValoresServico(valor)])) as T;
+  return apresentarValores(c, dados, valoresOperacao);
 }
 
 const uploadIntentSchema = z.object({
@@ -98,6 +80,10 @@ function validarCadastro<T extends z.ZodTypeAny>(schema: T) {
 }
 
 export const financeiroRouter = new Hono()
+  // Rascunhos são JSON de edição, não DTO de leitura: não devolver valores
+  // ocultos como null para um autosave sobrescrever o original silenciosamente.
+  .use("/financeiro/operacoes/rascunho", exigePermissao("verValores"))
+  .use("/financeiro/operacoes/rascunho/*", exigePermissao("verValores"))
   .get("/financeiro/configuracoes", async (c) => {
     const propriedadeId = await resolverEscopoLeitura(c);
     const [contasFinanceiras, parceirosLista, gerenciais, produtosCadastro] = await Promise.all([
@@ -107,7 +93,7 @@ export const financeiroRouter = new Hono()
     ]);
     const produtosAtivos = produtosCadastro.filter((p) => p.ativo);
     return c.json({
-      contas: contasFinanceiras, parceiros: parceirosLista, ...gerenciais,
+      contas: apresentarValores(c, contasFinanceiras, valoresConta), parceiros: parceirosLista, ...gerenciais,
       produtos: produtosAtivos, produtosCadastro,
     });
   })
@@ -135,13 +121,13 @@ export const financeiroRouter = new Hono()
     try { return c.json(await cadastros.atualizarCentroCusto(c.req.param("id"), c.req.valid("json"), usuarioId(c))); }
     catch (e) { return falha(c, e); }
   })
-  .get("/financeiro/analise-categorias", zValidator("query", analiseCategoriasSchema, (resultado, c) => {
+  .get("/financeiro/analise-categorias", exigePermissao("verValores"), zValidator("query", analiseCategoriasSchema, (resultado, c) => {
     if (!resultado.success) return c.json({ error: resultado.error.issues[0].message }, 422);
   }), async (c) => {
     try { return c.json(await analisarCategorias(c.req.valid("query"), await resolverEscopoLeitura(c))); }
     catch (e) { return falha(c, e); }
   })
-  .get("/financeiro/dashboard", validarPeriodo, async (c) => {
+  .get("/financeiro/dashboard", exigePermissao("verValores"), validarPeriodo, async (c) => {
     const agora = new Date();
     const periodo = c.req.valid("query");
     const inicio = periodo.inicio ? new Date(`${periodo.inicio}T00:00:00Z`) : new Date(Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth(), 1));
@@ -149,23 +135,23 @@ export const financeiroRouter = new Hono()
     try { return c.json(await obterDashboard(await resolverEscopoLeitura(c), inicio, fim)); }
     catch (e) { return falha(c, e); }
   })
-  .get("/financeiro/contas", async (c) => c.json(await contas.listarContas(await resolverEscopoLeitura(c), c.req.query("inativas") === "true")))
-  .post("/financeiro/contas", exigePermissao("lancar"), validarCadastro(contaSchema), async (c) => {
+  .get("/financeiro/contas", exigePermissao("verValores"), async (c) => c.json(await contas.listarContas(await resolverEscopoLeitura(c), c.req.query("inativas") === "true")))
+  .post("/financeiro/contas", exigePermissao("lancar"), exigePermissao("verValores"), validarCadastro(contaSchema), async (c) => {
     try {
       const input = c.req.valid("json");
       const propriedadeId = await resolverEscopoEscrita(c, input.propriedadeId ?? null);
-      return c.json(await contas.criarConta({ ...input, propriedadeId, usuarioId: usuarioId(c) }), 201);
+      return c.json(apresentarValores(c, await contas.criarConta({ ...input, propriedadeId, usuarioId: usuarioId(c) }), valoresConta), 201);
     } catch (e) { return falha(c, e); }
   })
-  .patch("/financeiro/contas/:id", exigePermissao("lancar"), validarCadastro(patchContaSchema), async (c) => {
-    try { return c.json(await contas.atualizarConta(c.req.param("id"), await resolverEscopoEscrita(c), c.req.valid("json"), usuarioId(c))); }
+  .patch("/financeiro/contas/:id", exigePermissao("lancar"), exigePermissao("verValores"), validarCadastro(patchContaSchema), async (c) => {
+    try { return c.json(apresentarValores(c, await contas.atualizarConta(c.req.param("id"), await resolverEscopoEscrita(c), c.req.valid("json"), usuarioId(c)), valoresConta)); }
     catch (e) { return falha(c, e); }
   })
-  .get("/financeiro/extrato-geral", async (c) => {
+  .get("/financeiro/extrato-geral", exigePermissao("verValores"), async (c) => {
     try { return c.json(await contas.listarExtratoGeral(await resolverEscopoLeitura(c))); }
     catch (e) { return falha(c, e); }
   })
-  .get("/financeiro/contas/:id/extrato", async (c) => {
+  .get("/financeiro/contas/:id/extrato", exigePermissao("verValores"), async (c) => {
     try {
       const inicio = c.req.query("inicio") ? new Date(c.req.query("inicio")!) : undefined;
       const fim = c.req.query("fim") ? new Date(c.req.query("fim")!) : undefined;
@@ -258,11 +244,12 @@ export const financeiroRouter = new Hono()
   .post("/financeiro/operacoes", exigePermissao("lancar"), zValidator("json", operacaoSchema), async (c) => {
     try {
       const input = c.req.valid("json");
+      if (input.corrigeOperacaoId && !podeVerValores(c)) return c.json({ error: "É necessário poder ver valores para corrigir uma operação." }, 403);
       const propriedadeId = await resolverEscopoEscrita(c, input.propriedadeId ?? null);
-      return c.json(await operacoes.criarOperacao({ ...input, propriedadeId, usuarioId: usuarioId(c) }), 201);
+      return c.json(apresentarValores(c, await operacoes.criarOperacao({ ...input, propriedadeId, usuarioId: usuarioId(c) }), valoresOperacao), 201);
     } catch (e) { return falha(c, e); }
   })
-  .post("/financeiro/operacoes/:id/estorno", exigePermissao("lancar"), zValidator("json", estornoSchema), async (c) => {
+  .post("/financeiro/operacoes/:id/estorno", exigePermissao("lancar"), exigePermissao("verValores"), zValidator("json", estornoSchema), async (c) => {
     try {
       const propriedadeId = await resolverEscopoEscrita(c);
       const cancelada = await operacoes.estornarOperacao(c.req.param("id"), c.req.valid("json").motivo, { propriedadeId, usuarioId: usuarioId(c) });
@@ -279,39 +266,39 @@ export const financeiroRouter = new Hono()
     try { return c.json(await documentos.confirmarUpload(c.req.valid("json").uploadToken, await resolverEscopoEscrita(c), usuarioId(c)), 201); }
     catch (e) { return falha(c, e); }
   })
-  .get("/financeiro/documentos/:id/download", async (c) => {
+  .get("/financeiro/documentos/:id/download", exigePermissao("verValores"), async (c) => {
     try {
       const documento = await documentos.obterDocumento(c.req.param("id"), await resolverEscopoEscrita(c));
       const storage = await getStorage();
       return c.redirect(await storage.getSignedDownloadUrl({ key: documento.storageKey!, filename: documento.nome }));
     } catch (e) { return falha(c, e); }
   })
-  .get("/financeiro/compromissos", validarPeriodo, async (c) => {
+  .get("/financeiro/compromissos", exigePermissao("verValores"), validarPeriodo, async (c) => {
     const periodo = c.req.valid("query");
     return c.json(await operacoes.listarCompromissos(await resolverEscopoLeitura(c), periodo.inicio && periodo.fim ? { inicio: new Date(`${periodo.inicio}T00:00:00Z`), fim: new Date(`${periodo.fim}T23:59:59.999Z`) } : undefined));
   })
-  .post("/financeiro/compromissos/:id/liquidacoes", exigePermissao("lancar"), zValidator("json", liquidacaoSchema), async (c) => {
-    try { return c.json(await operacoes.liquidarCompromisso(c.req.param("id"), { ...c.req.valid("json"), usuarioId: usuarioId(c) }), 201); }
+  .post("/financeiro/compromissos/:id/liquidacoes", exigePermissao("lancar"), exigePermissao("verValores"), zValidator("json", liquidacaoSchema), async (c) => {
+    try { return c.json(await operacoes.liquidarCompromisso(c.req.param("id"), { ...c.req.valid("json"), propriedadeId: await resolverEscopoEscrita(c), usuarioId: usuarioId(c) }), 201); }
     catch (e) { return falha(c, e); }
   })
   .post("/financeiro/transferencias", exigePermissao("lancar"), zValidator("json", transferenciaSchema), async (c) => {
     try {
       const input = c.req.valid("json");
       const propriedadeId = await resolverEscopoEscrita(c, input.propriedadeId ?? null);
-      return c.json(await operacoes.transferir({ ...input, propriedadeId, usuarioId: usuarioId(c) }), 201);
+      return c.json(apresentarValores(c, await operacoes.transferir({ ...input, propriedadeId, usuarioId: usuarioId(c) }), valoresTransacao), 201);
     } catch (e) { return falha(c, e); }
   })
   .post("/financeiro/transacoes", exigePermissao("lancar"), zValidator("json", transacaoAvulsaSchema), async (c) => {
     try {
       const input = c.req.valid("json");
       const propriedadeId = await resolverEscopoEscrita(c, input.propriedadeId ?? null);
-      return c.json(await operacoes.criarTransacaoAvulsa({ ...input, propriedadeId, usuarioId: usuarioId(c) }), 201);
+      return c.json(apresentarValores(c, await operacoes.criarTransacaoAvulsa({ ...input, propriedadeId, usuarioId: usuarioId(c) }), valoresTransacao), 201);
     } catch (e) { return falha(c, e); }
   })
-  .post("/financeiro/transacoes/:id/estorno", exigePermissao("lancar"), zValidator("json", estornoSchema), async (c) => {
+  .post("/financeiro/transacoes/:id/estorno", exigePermissao("lancar"), exigePermissao("verValores"), zValidator("json", estornoSchema), async (c) => {
     try {
       const propriedadeId = await resolverEscopoEscrita(c);
-      return c.json(await operacoes.estornarTransacao(c.req.param("id"), c.req.valid("json").motivo, { propriedadeId, usuarioId: usuarioId(c) }), 201);
+      return c.json(apresentarValores(c, await operacoes.estornarTransacao(c.req.param("id"), c.req.valid("json").motivo, { propriedadeId, usuarioId: usuarioId(c) }), valoresTransacao), 201);
     }
     catch (e) { return falha(c, e); }
   });

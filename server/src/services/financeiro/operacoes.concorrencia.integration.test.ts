@@ -67,6 +67,18 @@ afterAll(async () => {
 });
 
 describeComBanco("operações financeiras concorrentes com PostgreSQL", () => {
+  it("rejeita liquidação fora do sítio sem gravar e aceita no sítio do fato", async () => {
+    const f = await fixture();
+    const operacao = await criarOperacao(entrada(f, "A_PRAZO"));
+    const compromissoId = operacao.compromissos[0].id;
+    const antes = await prisma.transacaoFinanceira.count({ where: { operacaoId: operacao.id } });
+    await expect(liquidarCompromisso(compromissoId, { data: new Date(), valor: 1, contaId: f.contaId, propriedadeId: f.outraPropriedadeId })).rejects.toMatchObject({ code: "NAO_ENCONTRADO" });
+    expect(await prisma.transacaoFinanceira.count({ where: { operacaoId: operacao.id } })).toBe(antes);
+    expect(await prisma.liquidacao.count({ where: { compromissoId } })).toBe(0);
+    const salva = await liquidarCompromisso(compromissoId, { data: new Date(), valor: 1, contaId: f.contaId, propriedadeId: f.propriedadeId });
+    expect(salva.propriedadeId).toBe(f.propriedadeId);
+    expect(await prisma.liquidacao.count({ where: { compromissoId } })).toBe(1);
+  });
   it("serializa liquidação concorrente com cancelamento", async () => {
     const f = await fixture();
     const operacao = await criarOperacao(entrada(f, "A_PRAZO"));

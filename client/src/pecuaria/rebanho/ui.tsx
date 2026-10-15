@@ -1,3 +1,4 @@
+import { SelectCampo } from "@/financeiro/SelectCampo";
 // Peças compartilhadas pelas telas do Rebanho que NÃO existem no financeiro
 // (as que existem — PaginaFinanceira, PageHeader, Panel, Modal, TabelaFinanceira,
 // etc. — vêm de client/src/financeiro/financeiro-ui.tsx e devem ser importadas
@@ -7,7 +8,7 @@ import { useCallback, useState, type ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { X } from "lucide-react";
 import { useToast } from "../../components/Toast";
-import { Button, CabecalhoTabela, ErrorBox, Modal, Panel, Pill } from "../../financeiro/financeiro-ui";
+import { Button, CabecalhoTabela, ErrorBox, Modal, Paginacao as PaginacaoFinanceira, Panel, Pill } from "../../financeiro/financeiro-ui";
 import { classeInput } from "../../financeiro/PainelCadastro";
 import { desfazerMovimentacao, RebanhoApiError } from "./api";
 import { fracaoReduzida, PRESETS_FRACAO, somaFracoes } from "./lib/composicao";
@@ -109,9 +110,9 @@ export function BarraFiltros({ children }: { children: ReactNode }) {
   return <div className="flex flex-wrap items-center gap-3 border-b border-border p-4">{children}</div>;
 }
 
-/** Paginação no rodapé de um Panel — mesmo texto "a–b de N" e os mesmos
- *  controles (Anterior/select de página/Próxima) da lista de Operações
- *  financeiras. */
+/** Adaptador de compatibilidade para as telas pecuárias. A implementação, os
+ * controles e o comportamento responsivo são únicos e ficam no componente
+ * compartilhado do Financeiro. */
 export function Paginacao({ paginaAtual, totalPaginas, totalItens, itensPorPagina, onPaginaChange, rotulo, idSelect }: {
   paginaAtual: number;
   totalPaginas: number;
@@ -122,19 +123,7 @@ export function Paginacao({ paginaAtual, totalPaginas, totalItens, itensPorPagin
   rotulo: string;
   idSelect: string;
 }) {
-  const inicio = totalItens === 0 ? 0 : (paginaAtual - 1) * itensPorPagina + 1;
-  const fim = Math.min(paginaAtual * itensPorPagina, totalItens);
-  return <nav aria-label={`Paginação de ${rotulo}`} className="pec-paginacao flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3 text-sm">
-    <span className="text-ink-3">{totalItens === 0 ? `0 ${rotulo}` : `${inicio}–${fim} de ${totalItens} ${rotulo}`}</span>
-    <div className="flex items-center gap-2">
-      <Button secondary disabled={paginaAtual <= 1} onClick={() => onPaginaChange(paginaAtual - 1)}>Anterior</Button>
-      <label className="sr-only" htmlFor={idSelect}>Ir para a página</label>
-      <select id={idSelect} aria-label="Ir para a página" value={paginaAtual} onChange={(e) => onPaginaChange(Number(e.target.value))} className="h-10 rounded-lg border border-border bg-white px-2 text-sm">
-        {Array.from({ length: Math.max(1, totalPaginas) }, (_, indice) => <option key={indice + 1} value={indice + 1}>Página {indice + 1} de {Math.max(1, totalPaginas)}</option>)}
-      </select>
-      <Button secondary disabled={paginaAtual >= totalPaginas} onClick={() => onPaginaChange(paginaAtual + 1)}>Próxima</Button>
-    </div>
-  </nav>;
+  return <PaginacaoFinanceira pagina={paginaAtual} totalPaginas={Math.max(1, totalPaginas)} total={totalItens} porPagina={itensPorPagina} rotulo={`Paginação de ${rotulo}`} substantivo={rotulo} idSelect={idSelect} onPagina={onPaginaChange} ocultarControlesPaginaUnica={false} />;
 }
 
 /** Sub-abas sublinhadas genéricas — mesmo visual das abas de Configurações
@@ -168,13 +157,14 @@ export function CampoComposicao({ racas, itens, onChange, erro, limite64 = 64 }:
   const adicionar = () => onChange([...itens, { racaId: "", fracao64: 0 }]);
 
   return <div className="space-y-3">
+    <p className="text-xs text-ink-3">A composição usa 64 partes: 32/64 equivale à metade (1/2) e 64/64 ao total. A parcela não preenchida permanece não informada.</p>
     {itens.map((item, indice) => <div key={indice} className="flex flex-wrap items-end gap-3 rounded-lg border border-border p-3">
       <div className="min-w-[180px] flex-1 text-sm font-medium">
         <label htmlFor={`composicao-raca-${indice}`}>Raça</label>
-        <select id={`composicao-raca-${indice}`} className={classeInput} value={item.racaId} onChange={(e) => atualizar(indice, { racaId: e.target.value })}>
+        <SelectCampo id={`composicao-raca-${indice}`} className={classeInput} value={item.racaId} onValueChange={(valorSelecionado) => atualizar(indice, { racaId: valorSelecionado })}>
           <option value="">Selecione</option>
           {racas.map((raca) => <option key={raca.id} value={raca.id}>{raca.nome} ({raca.sigla})</option>)}
-        </select>
+        </SelectCampo>
       </div>
       <div className="w-28 text-sm font-medium">
         <label htmlFor={`composicao-fracao-${indice}`}>Fração (/64)</label>

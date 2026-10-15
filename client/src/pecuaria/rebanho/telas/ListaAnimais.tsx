@@ -26,6 +26,9 @@ import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import { navegarPara } from "../../../router";
 import { Button, type ColunaTabela, Empty, ErrorBox, PageHeader, PaginaCarregando, PaginaFinanceira, Panel, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
 import { NavRebanho } from "./NavRebanho";
+import { ResumoListaAnimais } from "../components/ResumoListaAnimais";
+import { SelectCampo } from "../../../financeiro/SelectCampo";
+import "./lista-animais.css";
 
 const ITENS_POR_PAGINA = 20;
 
@@ -260,7 +263,7 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
     { chave: "aptidao", titulo: "Aptidão", larguraMinima: 100, celula: (item) => item.aptidao ? <Pill tone="brown">{rotuloAptidao(item.aptidao)}</Pill> : "—" },
     { chave: "papel", titulo: "Papel", larguraMinima: 110, celula: (item) => item.papelReprodutivo && item.papelReprodutivo !== "NENHUM" ? <Pill tone="amber">{rotuloPapelReprodutivo(item.papelReprodutivo)}</Pill> : "—" },
     { chave: "peso", titulo: "Último peso", larguraMinima: 130, celula: (item) => item.ultimoPeso ? <>{item.ultimoPeso.kg.toLocaleString("pt-BR")} kg<div className="text-xs text-ink-3">{formatarDataBR(item.ultimoPeso.data)}</div></> : "—" },
-    { chave: "gmd", titulo: "GMD", larguraMinima: 110, celula: (item) => formatarGmd(item.gmdRecente) },
+    { chave: "gmd", titulo: "GMD", larguraMinima: 140, celula: (item) => formatarGmd(item.gmdRecente) },
     ...(mostrarBaixa ? [{ chave: "baixa", titulo: "Baixa", larguraMinima: 150, celula: (item: AnimalResumo) => item.baixa ? <>{rotuloTipoBaixa(item.baixa.tipo)}<div className="text-xs text-ink-3">{formatarDataBR(item.baixa.data)}</div></> : "—" } as ColunaTabela<AnimalResumo>] : []),
     { chave: "situacao", titulo: "Situação", larguraMinima: 110, celula: (item) => pillSituacao(item.situacao) },
     { chave: "acoes", titulo: "Ações", alinhamento: "direita", larguraMinima: 96, acoes: true, celula: (item) => item.situacao !== "ATIVO" ? null : <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
@@ -276,22 +279,32 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
   if (!carregando) jaCarregou.current = true;
   if (carregando && !jaCarregou.current && !itens.length && !erro && !filtrosAbertos) return <PaginaCarregando label="Carregando animais" />;
 
-  return <PaginaFinanceira>
+  return <PaginaFinanceira><div className={pesagem ? undefined : "animais-pagina-refinada"}>
     <PageHeader eyebrow="" titulo={pesagem ? "Pesagem e manejo" : "Rebanho"} descricao={pesagem ? "Selecione os animais para pesar. Manejos individuais continuam na ficha." : "Consulte os animais, seus lotes e o histórico do rebanho."} acao={!pesagem ? <div className="flex flex-wrap gap-2"><Button secondary onClick={() => navegarPara("/configuracoes/pecuaria/rebanho/categorias")}>Gerenciar categorias <ExternalLink size={14} /></Button>{podeLancar && <Button onClick={onNovoAnimal}><Plus size={16} /> Novo animal</Button>}</div> : undefined} />
-    {!pesagem && <NavRebanho ativa="animais" />}
+    {!pesagem && <NavRebanho ativa="animais" comIcones />}
     <ErrorBox erro={erro} />
 
-    {!pesagem && painel && <p className="mt-5 text-sm text-ink-2"><span>{painel.totalAtivos.toLocaleString("pt-BR")} {painel.totalAtivos === 1 ? "animal ativo" : "animais ativos"}</span> · {lotesDoSitio.length} {lotesDoSitio.length === 1 ? "lote" : "lotes"}</p>}
+    {!pesagem && painel && !erro && <ResumoListaAnimais painel={painel} categorias={categorias} lotesDisponiveis={lotesDoSitio.length} atualizando={carregando}
+      onCategoria={id => filtrar(setCategoriaId)(id ?? CATEGORIA_SEM)} onOutras={() => setFiltrosAbertos(true)}
+      onIndicador={indicador => {
+        if (indicador === "lotes") { setFiltrosAbertos(true); return; }
+        setSituacao("ATIVO"); setPagina(1);
+        if (indicador === "femeas") setSexo("F");
+        if (indicador === "receptoras") { setSexo("F"); setPapelReprodutivo("RECEPTORA"); }
+      }} />}
 
     <Panel className="rebanho-lista mt-4 overflow-clip">
       <div className="rebanho-filtros-principais"><BarraFiltros>
         <label className="relative w-full min-w-0 flex-[1_1_240px] sm:w-auto"><Search size={16} className="absolute left-3 top-3 text-ink-3" /><input aria-label="Buscar por brinco ou nome" value={textoBusca} onChange={(e) => setTextoBusca(e.target.value)} placeholder="Buscar por brinco ou nome" className="h-[42px] w-full rounded-lg border border-border bg-white py-2.5 pl-9 pr-3 text-sm" /></label>
         <Button secondary onClick={() => setFiltrosAbertos(true)}><SlidersHorizontal size={16} /> Filtros</Button>
       </BarraFiltros>
-      <div className="flex flex-wrap gap-2 px-4 pb-3" aria-label="Filtros selecionados">{filtrosAtivos.map(f => <button key={f.rotulo} type="button" onClick={f.limpar} aria-label={`Remover filtro: ${f.rotulo}`} className="rounded-lg border border-border bg-surface-2 px-3 py-2 text-xs text-ink-2">{f.rotulo} <span aria-hidden="true">×</span></button>)}</div></div>
-      {podeLancar && itensSelecionaveis.length > 0 && <div className="flex flex-wrap items-center gap-3 border-b border-border bg-surface-2 px-4 py-2.5 text-sm">
+      <div className="animais-filtros-e-selecao">
+        <div className="flex flex-wrap gap-2 px-4 pb-3" aria-label="Filtros selecionados">{filtrosAtivos.map(f => <button key={f.rotulo} type="button" onClick={f.limpar} aria-label={`Remover filtro: ${f.rotulo}`} className="rounded-lg border border-border bg-surface-2 px-3 py-2 text-xs text-ink-2">{f.rotulo} <span aria-hidden="true">×</span></button>)}</div>
+        {!pesagem && podeLancar && itensSelecionaveis.length > 0 && <label className="animais-selecionar-todos"><input className="h-4 w-4 cursor-pointer accent-[var(--mast)]" type="checkbox" aria-label="Selecionar todos os animais desta página" checked={todosDaPaginaSelecionados} onChange={alternarSelecaoTodos} /> Selecionar todos</label>}
+      </div></div>
+      {podeLancar && itensSelecionaveis.length > 0 && (pesagem || selecionados.size > 0) && <div className="animais-acoes-coletivas flex flex-wrap items-center gap-3 border-b border-border bg-surface-2 px-4 py-2.5 text-sm">
         {selecionados.size > 0 && <><Button secondary={!pesagem} onClick={() => setPesando(true)}>Pesagem coletiva</Button>{!pesagem && <><Button secondary onClick={() => setAplicando(true)}>Aplicação sanitária coletiva</Button><Button secondary onClick={() => setColetivoSanitario("exame")}>Coleta coletiva</Button><Button secondary onClick={() => setColetivoSanitario("protocolo")}>Protocolos coletivos</Button></>}</>}
-        <label className="flex items-center gap-2 font-medium"><input className="h-5 w-5 cursor-pointer accent-[var(--mast)]" type="checkbox" aria-label="Selecionar todos os animais desta página" checked={todosDaPaginaSelecionados} onChange={alternarSelecaoTodos} /> Selecionar todos</label>
+        {pesagem && <label className="flex items-center gap-2 font-medium"><input className="h-5 w-5 cursor-pointer accent-[var(--mast)]" type="checkbox" aria-label="Selecionar todos os animais desta página" checked={todosDaPaginaSelecionados} onChange={alternarSelecaoTodos} /> Selecionar todos</label>}
         {selecionados.size > 0 && <><span className="text-ink-3">{selecionados.size} selecionado{selecionados.size === 1 ? "" : "s"}</span><Button secondary onClick={() => setSelecionados(new Map())}>Limpar seleção</Button>{!pesagem && <Button onClick={() => setMovimentando({ animais: [...selecionados.values()] })}>Movimentar {selecionados.size} {selecionados.size === 1 ? "animal" : "animais"}</Button>}</>}
       </div>}
       {erro && !itens.length ? <Empty>Não foi possível carregar os animais.</Empty> : itens.length ? <>
@@ -302,35 +315,35 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
 
     {filtrosAbertos && <DialogFinanceiro titulo="Filtrar animais" eyebrow="Rebanho" icon={SlidersHorizontal} onClose={() => setFiltrosAbertos(false)} rodape={<Button onClick={() => setFiltrosAbertos(false)}>Concluir</Button>}>
       <div className="pec-filtros-animais grid gap-3 p-5 sm:grid-cols-2">
-        {sitioGlobal == null && <label className="flex min-w-0 flex-col gap-1.5 text-sm">Sítio<select aria-label="Filtrar por sítio" value={propriedadeId} onChange={(e) => { filtrar(setPropriedadeId)(e.target.value); setLoteId(""); }} className="h-[42px] w-full min-w-0 rounded-lg border border-border bg-white px-3 text-sm"><option value="">Todos os sítios</option>{catalogos?.propriedades.map((prop) => <option key={prop.id} value={prop.id}>{prop.nome}</option>)}</select></label>}
-        <label className="flex min-w-0 flex-col gap-1.5 text-sm">Lote<select aria-label="Filtrar por lote" value={loteId} onChange={(e) => filtrar(setLoteId)(e.target.value)} className="h-[42px] w-full min-w-0 rounded-lg border border-border bg-white px-3 text-sm"><option value="">Todos os lotes</option>{lotesDoSitio.map((lote) => <option key={lote.id} value={lote.id}>{lote.nome}</option>)}</select></label>
-        <label className="flex min-w-0 flex-col gap-1.5 text-sm">Categoria<select aria-label="Filtrar por categoria" value={categoriaId} onChange={(e) => filtrar(setCategoriaId)(e.target.value)} className="h-[42px] w-full min-w-0 rounded-lg border border-border bg-white px-3 text-sm">
+        {sitioGlobal == null && <label className="flex min-w-0 flex-col gap-1.5 text-sm">Sítio<SelectCampo aria-label="Filtrar por sítio" value={propriedadeId} onValueChange={(valor) => { filtrar(setPropriedadeId)(valor); setLoteId(""); }} className="h-[42px] w-full min-w-0 rounded-lg border border-border bg-white px-3 text-sm"><option value="">Todos os sítios</option>{catalogos?.propriedades.map((prop) => <option key={prop.id} value={prop.id}>{prop.nome}</option>)}</SelectCampo></label>}
+        <label className="flex min-w-0 flex-col gap-1.5 text-sm">Lote<SelectCampo aria-label="Filtrar por lote" value={loteId} onValueChange={(valor) => filtrar(setLoteId)(valor)} className="h-[42px] w-full min-w-0 rounded-lg border border-border bg-white px-3 text-sm"><option value="">Todos os lotes</option>{lotesDoSitio.map((lote) => <option key={lote.id} value={lote.id}>{lote.nome}</option>)}</SelectCampo></label>
+        <label className="flex min-w-0 flex-col gap-1.5 text-sm">Categoria<SelectCampo aria-label="Filtrar por categoria" value={categoriaId} onValueChange={(valor) => filtrar(setCategoriaId)(valor)} className="h-[42px] w-full min-w-0 rounded-lg border border-border bg-white px-3 text-sm">
           <option value="">Todas as categorias</option>
           <option value={CATEGORIA_SEM}>Sem categoria</option>
           <option value={CATEGORIA_FORCADA}>Só forçadas</option>
           {categorias.map((c) => <option key={c.id} value={c.id}>{rotuloOpcaoCategoria(categorias, c)}</option>)}
-        </select></label>
-        <label className="flex min-w-0 flex-col gap-1.5 text-sm">Situação<select aria-label="Filtrar por situação" value={situacao} onChange={(e) => filtrar(setSituacao)(e.target.value as Situacao | "TODOS")} className="h-[42px] w-full min-w-0 rounded-lg border border-border bg-white px-3 text-sm"><option value="ATIVO">Ativos</option><option value="BAIXADO">Baixados</option><option value="TODOS">Todas as situações</option></select></label>
-        <label className="flex min-w-0 flex-col gap-1.5 text-sm">Sexo<select aria-label="Filtrar por sexo" value={sexo} onChange={(e) => filtrar(setSexo)(e.target.value as Sexo | "")} className="h-[42px] w-full min-w-0 rounded-lg border border-border bg-white px-3 text-sm"><option value="">Todos os sexos</option><option value="F">Fêmeas</option><option value="M">Machos</option></select></label>
-        <label className="flex min-w-0 flex-col gap-1.5 text-sm">Origem<select aria-label="Filtrar por origem" value={origem} onChange={(e) => filtrar(setOrigem)(e.target.value as Origem | "")} className="h-[42px] w-full min-w-0 rounded-lg border border-border bg-white px-3 text-sm"><option value="">Todas as origens</option><option value="NASCIDO">Nascido</option><option value="COMPRADO">Comprado</option></select></label>
-        <label className="flex min-w-0 flex-col gap-1.5 text-sm">Raça<select aria-label="Filtrar por raça" value={racaId} onChange={(e) => filtrar(setRacaId)(e.target.value)} className="h-[42px] w-full min-w-0 rounded-lg border border-border bg-white px-3 text-sm"><option value="">Todas as raças</option>{catalogos?.racas.map((r) => <option key={r.id} value={r.id}>{r.nome} ({r.sigla})</option>)}</select></label>
+        </SelectCampo></label>
+        <label className="flex min-w-0 flex-col gap-1.5 text-sm">Situação<SelectCampo aria-label="Filtrar por situação" value={situacao} onValueChange={(valor) => filtrar(setSituacao)(valor as Situacao | "TODOS")} className="h-[42px] w-full min-w-0 rounded-lg border border-border bg-white px-3 text-sm"><option value="ATIVO">Ativos</option><option value="BAIXADO">Baixados</option><option value="TODOS">Todas as situações</option></SelectCampo></label>
+        <label className="flex min-w-0 flex-col gap-1.5 text-sm">Sexo<SelectCampo aria-label="Filtrar por sexo" value={sexo} onValueChange={(valor) => filtrar(setSexo)(valor as Sexo | "")} className="h-[42px] w-full min-w-0 rounded-lg border border-border bg-white px-3 text-sm"><option value="">Todos os sexos</option><option value="F">Fêmeas</option><option value="M">Machos</option></SelectCampo></label>
+        <label className="flex min-w-0 flex-col gap-1.5 text-sm">Origem<SelectCampo aria-label="Filtrar por origem" value={origem} onValueChange={(valor) => filtrar(setOrigem)(valor as Origem | "")} className="h-[42px] w-full min-w-0 rounded-lg border border-border bg-white px-3 text-sm"><option value="">Todas as origens</option><option value="NASCIDO">Nascido</option><option value="COMPRADO">Comprado</option></SelectCampo></label>
+        <label className="flex min-w-0 flex-col gap-1.5 text-sm">Raça<SelectCampo aria-label="Filtrar por raça" value={racaId} onValueChange={(valor) => filtrar(setRacaId)(valor)} className="h-[42px] w-full min-w-0 rounded-lg border border-border bg-white px-3 text-sm"><option value="">Todas as raças</option>{catalogos?.racas.map((r) => <option key={r.id} value={r.id}>{r.nome} ({r.sigla})</option>)}</SelectCampo></label>
         <div className="flex min-w-0 flex-col gap-1.5 text-sm"><span>Idade em meses</span><div className="flex items-center gap-1.5">
           <input aria-label="Idade mínima (meses)" type="number" min={0} inputMode="numeric" placeholder="Mín. (meses)" value={idadeMinMeses} onChange={(e) => filtrar(setIdadeMinMeses)(e.target.value)} className="h-[42px] w-full min-w-0 rounded-lg border border-border bg-white px-3 text-sm" />
           <span className="shrink-0 text-ink-3">–</span>
           <input aria-label="Idade máxima (meses)" type="number" min={0} inputMode="numeric" placeholder="Máx. (meses)" value={idadeMaxMeses} onChange={(e) => filtrar(setIdadeMaxMeses)(e.target.value)} className="h-[42px] w-full min-w-0 rounded-lg border border-border bg-white px-3 text-sm" />
         </div></div>
-        <label className="flex min-w-0 flex-col gap-1.5 text-sm">Aptidão<select aria-label="Filtrar por aptidão" value={aptidao} onChange={(e) => filtrar(setAptidao)(e.target.value as Aptidao | "")} className="h-[42px] w-full min-w-0 rounded-lg border border-border bg-white px-3 text-sm"><option value="">Todas as aptidões</option><option value="LEITE">Leite</option><option value="CORTE">Corte</option></select></label>
-        <label className="flex min-w-0 flex-col gap-1.5 text-sm">Papel reprodutivo<select aria-label="Filtrar por papel reprodutivo" value={papelReprodutivo} onChange={(e) => filtrar(setPapelReprodutivo)(e.target.value as PapelReprodutivo | "")} className="h-[42px] w-full min-w-0 rounded-lg border border-border bg-white px-3 text-sm"><option value="">Todos os papéis</option><option value="NENHUM">Nenhum</option><option value="RECEPTORA">Receptora</option><option value="DOADORA">Doadora</option></select></label>
+        <label className="flex min-w-0 flex-col gap-1.5 text-sm">Aptidão<SelectCampo aria-label="Filtrar por aptidão" value={aptidao} onValueChange={(valor) => filtrar(setAptidao)(valor as Aptidao | "")} className="h-[42px] w-full min-w-0 rounded-lg border border-border bg-white px-3 text-sm"><option value="">Todas as aptidões</option><option value="LEITE">Leite</option><option value="CORTE">Corte</option></SelectCampo></label>
+        <label className="flex min-w-0 flex-col gap-1.5 text-sm">Papel reprodutivo<SelectCampo aria-label="Filtrar por papel reprodutivo" value={papelReprodutivo} onValueChange={(valor) => filtrar(setPapelReprodutivo)(valor as PapelReprodutivo | "")} className="h-[42px] w-full min-w-0 rounded-lg border border-border bg-white px-3 text-sm"><option value="">Todos os papéis</option><option value="NENHUM">Nenhum</option><option value="RECEPTORA">Receptora</option><option value="DOADORA">Doadora</option></SelectCampo></label>
 
         {mostrarBaixa && <>
-          <label className="flex min-w-0 flex-col gap-1.5 text-sm">Tipo de baixa<select aria-label="Filtrar por tipo de baixa" value={tipoBaixa} onChange={(e) => filtrar(setTipoBaixa)(e.target.value as TipoBaixa | "")} className="h-[42px] w-full min-w-0 rounded-lg border border-border bg-white px-3 text-sm"><option value="">Todos os tipos de baixa</option>{TIPOS_BAIXA_FILTRO.map((t) => <option key={t} value={t}>{rotuloTipoBaixa(t)}</option>)}</select></label>
+          <label className="flex min-w-0 flex-col gap-1.5 text-sm">Tipo de baixa<SelectCampo aria-label="Filtrar por tipo de baixa" value={tipoBaixa} onValueChange={(valor) => filtrar(setTipoBaixa)(valor as TipoBaixa | "")} className="h-[42px] w-full min-w-0 rounded-lg border border-border bg-white px-3 text-sm"><option value="">Todos os tipos de baixa</option>{TIPOS_BAIXA_FILTRO.map((t) => <option key={t} value={t}>{rotuloTipoBaixa(t)}</option>)}</SelectCampo></label>
           <label className="flex min-w-0 flex-col gap-1.5 text-sm text-ink-2">Baixa de<input aria-label="Baixa de" type="date" value={baixaDe} onChange={(e) => filtrar(setBaixaDe)(e.target.value)} className="h-[42px] w-full min-w-0 rounded-lg border border-border bg-white px-2 text-sm" /></label>
           <label className="flex min-w-0 flex-col gap-1.5 text-sm text-ink-2">até<input aria-label="Baixa até" type="date" value={baixaAte} onChange={(e) => filtrar(setBaixaAte)(e.target.value)} className="h-[42px] w-full min-w-0 rounded-lg border border-border bg-white px-2 text-sm" /></label>
         </>}
         <label className="flex min-w-0 flex-col gap-1.5 text-sm text-ink-2">Ordenar por
-          <select aria-label="Ordenar por" value={ordenacao} onChange={(e) => filtrar(setOrdenacao)(e.target.value)} className="h-[42px] w-full min-w-0 rounded-lg border border-border bg-white px-3 text-sm">
+          <SelectCampo aria-label="Ordenar por" value={ordenacao} onValueChange={(valor) => filtrar(setOrdenacao)(valor)} className="h-[42px] w-full min-w-0 rounded-lg border border-border bg-white px-3 text-sm">
             {OPCOES_ORDENACAO.map((o) => <option key={o.valor} value={o.valor}>{o.rotulo}</option>)}
-          </select>
+          </SelectCampo>
         </label>
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={mostrarColunasAdicionais} onChange={(e) => setMostrarColunasAdicionais(e.target.checked)} /> Mostrar todas as colunas</label>
       </div>
@@ -340,5 +353,5 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
     {aplicando && [...selecionados.values()][0]?.propriedade?.id != null && <FormAplicacaoServico animalId={[...selecionados.values()][0].id} propriedadeId={[...selecionados.values()][0].propriedade!.id} animais={[...selecionados.values()].map((a) => ({ id: a.id, brinco: a.brinco, propriedadeId: a.propriedade?.id ?? null }))} onFechar={() => setAplicando(false)} onSalvo={() => { setAplicando(false); setSelecionados(new Map()); void recarregar(); }} />}
     {pesando && <PesagemColetiva animais={[...selecionados.values()]} onFechar={() => setPesando(false)} onSalvo={() => { setPesando(false); setSelecionados(new Map()); void recarregar(); }} />}
     {movimentando && catalogos && <FormMovimentar animais={movimentando.animais} propriedades={catalogos.propriedades} lotes={catalogos.lotes} propriedadeInicial={movimentando.propriedadeId} loteInicial={movimentando.loteId} onFechar={() => setMovimentando(null)} onSalvo={async (resultado) => { setMovimentando(null); setSelecionados(new Map()); await aoMovimentar(resultado); }} />}
-  </PaginaFinanceira>;
+  </div></PaginaFinanceira>;
 }

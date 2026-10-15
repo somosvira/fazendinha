@@ -1,3 +1,4 @@
+import { alterarControle } from "../../../lib/controles.fixture";
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
@@ -68,6 +69,45 @@ beforeEach(() => {
 });
 
 describe("ListaAnimais", () => {
+  it("indicadores filtram fêmeas e receptoras e abrem a escolha de lotes", async () => {
+    vi.mocked(listarAnimais).mockResolvedValue({ itens: [criarAnimal({})], total: 1, painel: { ...painelVazio, totalAtivos: 1, femeasAtivas: 1, receptorasAtivas: 1 } });
+    montar();
+    fireEvent.click(await screen.findByRole("button", { name: "Filtrar fêmeas ativas" }));
+    await waitFor(() => expect(vi.mocked(listarAnimais).mock.calls.at(-1)![0]).toMatchObject({ sexo: "F", situacao: "ATIVO", page: 1 }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Filtrar receptoras" }).hasAttribute("disabled")).toBe(false));
+    fireEvent.click(screen.getByRole("button", { name: "Filtrar receptoras" }));
+    await waitFor(() => expect(vi.mocked(listarAnimais).mock.calls.at(-1)![0]).toMatchObject({ sexo: "F", papelReprodutivo: "RECEPTORA", situacao: "ATIVO" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Filtrar por lote" }).hasAttribute("disabled")).toBe(false));
+    fireEvent.click(screen.getByRole("button", { name: "Filtrar por lote" }));
+    expect(await screen.findByRole("dialog", { name: "Filtrar animais" })).toBeTruthy();
+  });
+  it("selecionar todos fica na barra de filtros e só mostra ações coletivas após seleção", async () => {
+    vi.mocked(listarAnimais).mockResolvedValue({ itens: [criarAnimal({})], total: 1, painel: painelVazio });
+    const { container } = montar();
+    const checkbox = await screen.findByRole("checkbox", { name: "Selecionar todos os animais desta página" });
+    expect(checkbox.closest(".rebanho-filtros-principais")).toBeTruthy();
+    expect(container.querySelector(".animais-acoes-coletivas")).toBeNull();
+    fireEvent.click(checkbox);
+    expect(screen.getByRole("button", { name: "Pesagem coletiva" })).toBeTruthy();
+    expect(container.querySelector(".animais-acoes-coletivas")).toBeTruthy();
+  });
+  it("filtra pelo gráfico sem calcular o efetivo a partir da página nem perder a seleção", async () => {
+    vi.mocked(listarAnimais).mockResolvedValue({
+      itens: [criarAnimal({})], total: 42,
+      painel: { ...painelVazio, totalAtivos: 42, porCategoria: [{ categoria: catVaca, total: 30 }, { categoria: null, total: 12 }] },
+    });
+    montar();
+    await screen.findByRole("button", { name: "Filtrar categoria: Vaca — 30 animais ativos" });
+    fireEvent.click(primeiro("checkbox", "Selecionar 0001"));
+    fireEvent.click(screen.getByRole("button", { name: "Filtrar categoria: Vaca — 30 animais ativos" }));
+    await waitFor(() => expect(vi.mocked(listarAnimais).mock.calls.at(-1)![0]).toMatchObject({ categoriaId: "cat-vaca", page: 1 }));
+    expect(screen.getByText("1 selecionado")).toBeTruthy();
+    expect(window.location.search).toContain("categoriaId=cat-vaca");
+    await waitFor(() => expect(screen.getByRole("button", { name: "Filtrar categoria: Sem categoria — 12 animais ativos" }).hasAttribute("disabled")).toBe(false));
+    fireEvent.click(screen.getByRole("button", { name: "Filtrar categoria: Sem categoria — 12 animais ativos" }));
+    await waitFor(() => expect(vi.mocked(listarAnimais).mock.calls.at(-1)![0]).toMatchObject({ semCategoria: true, page: 1 }));
+    expect(screen.getByText("1 selecionado")).toBeTruthy();
+  });
   it("seleciona pelo espaço ao redor do checkbox sem abrir a ficha", async () => {
     vi.mocked(listarAnimais).mockResolvedValue({ itens: [criarAnimal({})], total: 1, painel: painelVazio });
     const onAbrirAnimal = vi.fn();
@@ -81,7 +121,7 @@ describe("ListaAnimais", () => {
   it("mostra e remove o filtro escolhido no modal", async () => {
     montar();
     fireEvent.click(await screen.findByRole("button", { name: "Filtros" }));
-    fireEvent.change(screen.getByLabelText("Filtrar por sexo"), { target: { value: "F" } });
+    await alterarControle(screen.getByLabelText("Filtrar por sexo"), { target: { value: "F" } });
     fireEvent.click(screen.getByRole("button", { name: "Concluir" }));
     fireEvent.click(screen.getByRole("button", { name: "Remover filtro: Sexo: Fêmeas" }));
     await waitFor(() => expect(vi.mocked(listarAnimais).mock.calls.at(-1)![0]?.sexo).toBeUndefined());
@@ -95,7 +135,7 @@ describe("ListaAnimais", () => {
     const inicial = vi.mocked(listarAnimais).mock.calls.length;
     const campo = screen.getByLabelText("Buscar por brinco ou nome");
     for (const texto of ["1", "10", "100", "1001"]) {
-      fireEvent.change(campo, { target: { value: texto } });
+      await alterarControle(campo, { target: { value: texto } });
       await act(async () => { await vi.advanceTimersByTimeAsync(100); });
     }
     expect(vi.mocked(listarAnimais).mock.calls.length).toBe(inicial);
@@ -106,13 +146,12 @@ describe("ListaAnimais", () => {
   });
 
   it("trocar um filtro dispara uma única busca, já na página 1", async () => {
-    vi.useFakeTimers();
     montar();
-    await act(async () => { await vi.runOnlyPendingTimersAsync(); });
+    await screen.findByRole("button", { name: "Filtros" });
     const inicial = vi.mocked(listarAnimais).mock.calls.length;
     if (!screen.queryByRole("dialog")) fireEvent.click(screen.getByRole("button", { name: "Filtros" }));
-    fireEvent.change(screen.getByLabelText("Filtrar por categoria"), { target: { value: "cat-vaca" } });
-    await act(async () => { await vi.runOnlyPendingTimersAsync(); });
+    await alterarControle(screen.getByLabelText("Filtrar por categoria"), { target: { value: "cat-vaca" } });
+    await waitFor(() => expect(vi.mocked(listarAnimais).mock.calls.length).toBe(inicial + 1));
     const novas = vi.mocked(listarAnimais).mock.calls.slice(inicial);
     expect(novas).toHaveLength(1);
     expect(novas[0][0]).toMatchObject({ categoriaId: "cat-vaca", page: 1 });
@@ -177,7 +216,7 @@ describe("ListaAnimais", () => {
 
     fireEvent.click(primeiro("checkbox", "Selecionar GV3-S1"));
     expect(screen.getByText("1 selecionado")).toBeTruthy();
-    fireEvent.change(screen.getByLabelText("Buscar por brinco ou nome"), { target: { value: "GV3-S2" } });
+    await alterarControle(screen.getByLabelText("Buscar por brinco ou nome"), { target: { value: "GV3-S2" } });
     await new Promise((resolve) => setTimeout(resolve, 350));
     await screen.findAllByText("GV3-S2");
 
@@ -195,7 +234,7 @@ describe("ListaAnimais", () => {
 
     fireEvent.click(primeiro("button", "Movimentar 0001"));
     const painel = await screen.findByRole("dialog");
-    fireEvent.change(within(painel).getByLabelText("Sítio de destino"), { target: { value: "1" } });
+    await alterarControle(within(painel).getByLabelText("Sítio de destino"), { target: { value: "1" } });
     fireEvent.click(within(painel).getByRole("button", { name: "Movimentar" }));
 
     const toast = await screen.findByText("1 animal movimentado");
@@ -211,9 +250,9 @@ describe("ListaAnimais", () => {
     montar();
     fireEvent.click(await screen.findByRole("button", { name: "Filtros" }));
     await screen.findByLabelText("Filtrar por raça");
-    fireEvent.change(screen.getByLabelText("Filtrar por sexo"), { target: { value: "F" } });
-    fireEvent.change(screen.getByLabelText("Filtrar por origem"), { target: { value: "COMPRADO" } });
-    fireEvent.change(screen.getByLabelText("Filtrar por raça"), { target: { value: "raca-1" } });
+    await alterarControle(screen.getByLabelText("Filtrar por sexo"), { target: { value: "F" } });
+    await alterarControle(screen.getByLabelText("Filtrar por origem"), { target: { value: "COMPRADO" } });
+    await alterarControle(screen.getByLabelText("Filtrar por raça"), { target: { value: "raca-1" } });
     await waitFor(() => expect(vi.mocked(listarAnimais).mock.calls.at(-1)![0]).toMatchObject({ sexo: "F", origem: "COMPRADO", racaId: "raca-1", page: 1 }));
   });
 
@@ -222,8 +261,8 @@ describe("ListaAnimais", () => {
     montar();
     fireEvent.click(await screen.findByRole("button", { name: "Filtros" }));
     await screen.findByLabelText("Idade mínima (meses)");
-    fireEvent.change(screen.getByLabelText("Idade mínima (meses)"), { target: { value: "12" } });
-    fireEvent.change(screen.getByLabelText("Idade máxima (meses)"), { target: { value: "24" } });
+    await alterarControle(screen.getByLabelText("Idade mínima (meses)"), { target: { value: "12" } });
+    await alterarControle(screen.getByLabelText("Idade máxima (meses)"), { target: { value: "24" } });
     await waitFor(() => expect(vi.mocked(listarAnimais).mock.calls.at(-1)![0]).toMatchObject({ idadeMinMeses: 12, idadeMaxMeses: 24 }));
   });
 
@@ -232,13 +271,11 @@ describe("ListaAnimais", () => {
     montar();
     fireEvent.click(await screen.findByRole("button", { name: "Filtros" }));
     const select = await screen.findByLabelText("Filtrar por categoria") as HTMLSelectElement;
-    const opcaoSemCategoria = within(select).getByText("Sem categoria") as HTMLOptionElement;
-    fireEvent.change(select, { target: { value: opcaoSemCategoria.value } });
+    await alterarControle(select, { target: { value: "__sem_categoria__" } });
     await waitFor(() => expect(vi.mocked(listarAnimais).mock.calls.at(-1)![0]).toMatchObject({ semCategoria: true }));
     expect(vi.mocked(listarAnimais).mock.calls.at(-1)![0].categoriaId).toBeUndefined();
 
-    const opcaoForcadas = within(select).getByText("Só forçadas") as HTMLOptionElement;
-    fireEvent.change(select, { target: { value: opcaoForcadas.value } });
+    await alterarControle(select, { target: { value: "__so_forcadas__" } });
     await waitFor(() => expect(vi.mocked(listarAnimais).mock.calls.at(-1)![0]).toMatchObject({ categoriaOrigem: "MANUAL" }));
   });
 
@@ -246,8 +283,7 @@ describe("ListaAnimais", () => {
     montar();
     fireEvent.click(await screen.findByRole("button", { name: "Filtros" }));
     const select = await screen.findByLabelText("Ordenar por") as HTMLSelectElement;
-    const opcao = within(select).getByText("Nascimento — mais novos") as HTMLOptionElement;
-    fireEvent.change(select, { target: { value: opcao.value } });
+    await alterarControle(select, { target: { value: "nascimento-desc" } });
     await waitFor(() => expect(vi.mocked(listarAnimais).mock.calls.at(-1)![0]).toMatchObject({ ordenar: "nascimento", direcao: "desc" }));
   });
 
@@ -257,11 +293,11 @@ describe("ListaAnimais", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Filtros" }));
     await screen.findByLabelText("Filtrar por situação");
     expect(screen.queryByLabelText("Filtrar por tipo de baixa")).toBeNull();
-    fireEvent.change(screen.getByLabelText("Filtrar por situação"), { target: { value: "BAIXADO" } });
+    await alterarControle(screen.getByLabelText("Filtrar por situação"), { target: { value: "BAIXADO" } });
     await screen.findByLabelText("Filtrar por tipo de baixa");
-    fireEvent.change(screen.getByLabelText("Filtrar por tipo de baixa"), { target: { value: "VENDA" } });
-    fireEvent.change(screen.getByLabelText("Baixa de"), { target: { value: "2026-01-01" } });
-    fireEvent.change(screen.getByLabelText("Baixa até"), { target: { value: "2026-03-01" } });
+    await alterarControle(screen.getByLabelText("Filtrar por tipo de baixa"), { target: { value: "VENDA" } });
+    await alterarControle(screen.getByLabelText("Baixa de"), { target: { value: "2026-01-01" } });
+    await alterarControle(screen.getByLabelText("Baixa até"), { target: { value: "2026-03-01" } });
     await waitFor(() => expect(vi.mocked(listarAnimais).mock.calls.at(-1)![0]).toMatchObject({ situacao: "BAIXADO", tipoBaixa: "VENDA", baixaDe: "2026-01-01", baixaAte: "2026-03-01" }));
   });
 
@@ -290,7 +326,7 @@ describe("ListaAnimais", () => {
     expect(screen.queryByText("Venda")).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "Filtros" }));
-    fireEvent.change(screen.getByLabelText("Filtrar por situação"), { target: { value: "BAIXADO" } });
+    await alterarControle(screen.getByLabelText("Filtrar por situação"), { target: { value: "BAIXADO" } });
     fireEvent.click(screen.getByRole("button", { name: "Concluir" }));
     await waitFor(() => expect(screen.getAllByText("Venda").length).toBeGreaterThan(0));
     expect(screen.getAllByText("10/01/2026").length).toBeGreaterThan(0);
@@ -300,7 +336,7 @@ describe("ListaAnimais", () => {
     const painelComDados = { totalAtivos: 42, porCategoria: [{ categoria: catVaca, total: 30 }, { categoria: null, total: 12 }], porSitio: [], femeasAtivas: 0, receptorasAtivas: 0 };
     vi.mocked(listarAnimais).mockResolvedValue({ itens: [], total: 0, painel: painelComDados });
     montar();
-    await waitFor(() => expect(screen.getByText("42 animais ativos")).toBeTruthy());
+    await waitFor(() => expect(screen.getByLabelText("Resumo da consulta de animais").textContent).toContain("42 animais ativos"));
     expect(screen.getByRole("button", { name: "Remover filtro: Situação: Ativos" })).toBeTruthy();
     expect(screen.queryByRole("combobox", { name: "Filtrar por categoria" })).toBeNull();
   });

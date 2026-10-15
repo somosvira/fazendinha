@@ -95,6 +95,7 @@
 :is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content) .fin-filtro-periodo { flex: 0 1 280px; min-width: 0; }
 :is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content) :is(.fin-filtro-campo, .fin-filtro-controle) { flex: 1 1 150px; min-width: 0; max-width: 220px; }
 :is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content) :is(.fin-filtro-campo, .fin-filtro-controle) [data-slot="select-trigger"] { width: 100%; }
+.financeiro-content .fin-filtros-barra label:has([aria-label="Filtrar por fornecedor"]) { flex-basis: 240px; max-width: 320px; }
 :is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content) .fin-tabela { table-layout: auto; }
 :is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content) .fin-tabela col { width: var(--fin-coluna-largura, auto); }
 :is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content) .fin-tabela :is(th, td) { padding: 10px 16px; }
@@ -169,3 +170,39 @@
 .fin-filtros-barra [data-slot="multi-select-control"] { background: var(--card); min-height: 40px; }
 .fin-filtros-barra [data-slot="multi-select-control"] > span { background: var(--muted); border-color: var(--border); }
 .fin-tabela-filtros { padding: 16px; }
+/* Detalhe da operação: dados principais em linhas, sem cartões vazios altos. */
+.financeiro-content .fin-operacao-compacta .fin-cabecalho-contexto { display: block; }
+.financeiro-content .fin-operacao-metadados { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 0; }
+.financeiro-content .fin-operacao-metadados > div { padding: 5px 9px; background: var(--muted); border-radius: 6px; }
+.financeiro-content .fin-operacao-metadados dt { font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: .06em; color: var(--muted-foreground); }
+.financeiro-content .fin-operacao-metadados dd { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 12px; font-weight: 500; color: var(--foreground); overflow-wrap: anywhere; }
+.financeiro-content .fin-operacao-data { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted-foreground); margin-left: 6px; }
+.financeiro-content .fin-operacao-movimento { display: inline-flex; align-items: center; gap: 8px; padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--muted); font-size: 12px; text-decoration: none; }
+.financeiro-content .fin-operacao-movimento:hover { background: var(--accent); border-color: var(--primary); }
+.financeiro-content .fin-operacao-movimento:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.financeiro-content .fin-operacao-conteudo [id] { scroll-margin-top: 20px; }
+@media (min-width: 1100px) {
+  .financeiro-content .fin-operacao-conteudo:has(> [data-fin-tom="pendente"]) { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .financeiro-content .fin-operacao-conteudo > * { grid-column: 1 / -1; }
+  .financeiro-content .fin-operacao-conteudo > section:has(.fin-operacao-itens),
+  .financeiro-content .fin-operacao-conteudo > section[data-fin-tom="pendente"] { grid-column: auto; }
+  .financeiro-content .fin-operacao-conteudo > section[data-fin-tom="pendente"] { border-left: 1px solid var(--border); }
+}
+.financeiro-content .fin-operacao-compacta .fin-cabecalho-integrado { padding: 18px 22px; gap: 16px; }
+.financeiro-content .fin-operacao-compacta .fin-cabecalho-identidade .h1 { font-size: 24px; line-height: 1.25; }
+.financeiro-content .fin-operacao-compacta .fin-cabecalho-descricao { margin-top: 6px; font-size: 13px; }
+.financeiro-content .fin-operacao-compacta .fin-cabecalho-contexto { margin-top: 8px; }
+.financeiro-content .fin-operacao-compacta .fin-operacao-secao { padding: 14px 22px; }
+.financeiro-content .fin-operacao-compacta .fin-section-icon { width: 28px; height: 28px; }
+.financeiro-content .fin-operacao-compacta .fin-section-icon svg { width: 17px; height: 17px; }
+.financeiro-content .fin-operacao-compacta .fin-operacao-itens > div { padding: 8px 0; border-top: 1px solid var(--border); }
+.financeiro-content .fin-operacao-compacta .fin-operacao-documentos-vazios { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.financeiro-content .fin-operacao-compacta .fin-operacao-documentos-vazios > div { gap: 12px; }
+.financeiro-content .fin-operacao-compacta .fin-operacao-documentos-vazios > p { margin: 0; font-size: 12px; }
+.financeiro-content .fin-operacao-compacta .fin-operacao-documentos-vazios strong { display: none; }
+.financeiro-content .fin-operacao-compacta [aria-label="Vínculos com a Pecuária"] { padding: 14px 22px; }
+.financeiro-content .fin-operacao-compacta [aria-label="Vínculos com a Pecuária"] > p:not([role="alert"]) { font-size: 12px; margin-top: 8px; padding: 0; border: 0; background: transparent; }
+@media (max-width: 640px) {
+  .financeiro-content .fin-operacao-compacta .fin-cabecalho-integrado,
+  .financeiro-content .fin-operacao-compacta .fin-operacao-secao { padding: 14px; }
+}

@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { alterarControle } from "../../../lib/controles.fixture";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { FormMaterialGenetico } from "./FormMaterialGenetico";
@@ -41,8 +42,8 @@ describe("FormMaterialGenetico — criação", () => {
     await screen.findByText("Genética");
     fireEvent.click(screen.getByRole("button", { name: "Genitor externo" }));
     await screen.findByText("Touro X");
-    fireEvent.change(screen.getByLabelText(/Selecionar touro entre os genitores externos/), { target: { value: "touro-ext" } });
-    fireEvent.change(screen.getByLabelText("Categoria"), { target: { value: "cat-1" } });
+    await alterarControle(screen.getByLabelText(/Selecionar touro entre os genitores externos/), { target: { value: "touro-ext" } });
+    await alterarControle(screen.getByLabelText("Categoria"), { target: { value: "cat-1" } });
     fireEvent.click(screen.getByRole("button", { name: /Criar material/ }));
 
     await waitFor(() => expect(criarMaterialGenetico).toHaveBeenCalledWith({
@@ -64,8 +65,8 @@ describe("FormMaterialGenetico — criação", () => {
     fireEvent.click(screen.getByRole("button", { name: "Embrião" }));
     fireEvent.click(screen.getAllByRole("button", { name: "Genitor externo" })[0]);
     await screen.findByText("Touro X");
-    fireEvent.change(screen.getByLabelText(/Selecionar touro entre os genitores externos/), { target: { value: "touro-ext" } });
-    fireEvent.change(screen.getByLabelText("Categoria"), { target: { value: "cat-1" } });
+    await alterarControle(screen.getByLabelText(/Selecionar touro entre os genitores externos/), { target: { value: "touro-ext" } });
+    await alterarControle(screen.getByLabelText("Categoria"), { target: { value: "cat-1" } });
 
     vi.mocked(criarMaterialGenetico).mockResolvedValue({} as never);
     fireEvent.click(screen.getByRole("button", { name: /Criar material/ }));
@@ -74,7 +75,7 @@ describe("FormMaterialGenetico — criação", () => {
 
     fireEvent.click(screen.getAllByRole("button", { name: "Genitor externo" })[1]);
     await screen.findByText("Estrela");
-    fireEvent.change(screen.getByLabelText(/Selecionar doadora entre os genitores externos/), { target: { value: "doadora-ext" } });
+    await alterarControle(screen.getByLabelText(/Selecionar doadora entre os genitores externos/), { target: { value: "doadora-ext" } });
     fireEvent.click(screen.getByRole("button", { name: /Criar material/ }));
 
     await waitFor(() => expect(criarMaterialGenetico).toHaveBeenCalledWith({
@@ -102,7 +103,7 @@ describe("FormMaterialGenetico — edição", () => {
     const onSalvo = vi.fn();
     render(<FormMaterialGenetico material={material} onSalvo={onSalvo} onFechar={vi.fn()} />);
 
-    fireEvent.change(screen.getByLabelText("Tipo de sêmen"), { target: { value: "SEXADO_FEMEA" } });
+    await alterarControle(screen.getByLabelText("Tipo de sêmen"), { target: { value: "SEXADO_FEMEA" } });
     fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
 
     await waitFor(() => expect(editarMaterialGenetico).toHaveBeenCalledWith("mg1", { tipoSemen: "SEXADO_FEMEA", observacao: null }));
@@ -114,7 +115,7 @@ describe("FormMaterialGenetico — edição", () => {
     render(<FormMaterialGenetico material={{ ...material, tipo: "EMBRIAO", tipoSemen: null, doadora: null }} onSalvo={vi.fn()} onFechar={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: "Genitor externo" }));
     await screen.findByText("Estrela");
-    fireEvent.change(screen.getByLabelText(/Selecionar doadora entre os genitores externos/), { target: { value: "doadora-ext" } });
+    await alterarControle(screen.getByLabelText(/Selecionar doadora entre os genitores externos/), { target: { value: "doadora-ext" } });
     fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
     await waitFor(() => expect(editarMaterialGenetico).toHaveBeenCalledWith("mg1", {
       tipoSemen: undefined, doadora: { tipo: "EXTERNO", id: "doadora-ext" }, observacao: null,

@@ -17,8 +17,8 @@ import { FinanceiroError } from "../services/financeiro/regras.js";
 import { uid } from "../lib/uid.fixture.js";
 
 type Usuario = { id: number; nome: string; dono: boolean; abas: string[]; flags: string[] };
-const contador: Usuario = { id: 4, nome: "Contadora", dono: false, abas: ["relatorio"], flags: ["exportar"] };
-const consulta: Usuario = { id: 5, nome: "Consulta", dono: false, abas: ["relatorio"], flags: [] };
+const contador: Usuario = { id: 4, nome: "Contadora", dono: false, abas: ["relatorio"], flags: ["exportar", "verValores"] };
+const consulta: Usuario = { id: 5, nome: "Consulta", dono: false, abas: ["relatorio"], flags: ["verValores"] };
 
 function app(usuario: Usuario | null) {
   return new Hono()
@@ -37,6 +37,11 @@ beforeEach(() => {
 });
 
 describe("rotas de relatórios financeiros", () => {
+  it.each(["", "/rascunho", `/${uid(9)}`, `/${uid(9)}/download`])("recusa relatório sem verValores, inclusive exportar isolado: %s", async sufixo => {
+    const resposta = await app({ ...contador, flags: ["exportar"] }).request(`/financeiro/relatorios${sufixo}`);
+    expect(resposta.status).toBe(403);
+    expect(mocks.listar).not.toHaveBeenCalled(); expect(mocks.obter).not.toHaveBeenCalled(); expect(mocks.baixar).not.toHaveBeenCalled();
+  });
   it("lista o histórico no escopo de leitura para quem tem a aba de relatórios", async () => {
     const res = await app(consulta).request("/financeiro/relatorios");
     expect(res.status).toBe(200);

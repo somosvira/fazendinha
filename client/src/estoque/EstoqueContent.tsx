@@ -6,7 +6,7 @@ import { Loader } from "../components/Loading";
 import { navegarPara } from "../router";
 import { rotuloUnidade, type UnidadeMedida } from "../lib/unidades";
 import { fmtMoneyExact } from "@/components/charts";
-import { brl, Button, type ColunaTabela, dataBR, Empty, ErrorBox, Metric, PageHeader, PaginaFinanceira, Paginacao, Panel, Pill, TabelaFinanceira } from "../financeiro/financeiro-ui";
+import { brl, Button, type ColunaTabela, dataBR, Empty, ErrorBox, PageHeader, PaginaFinanceira, Paginacao, Panel, Pill, SelectFiltro, TabelaFinanceira } from "../financeiro/financeiro-ui";
 import { TransferirEstoque } from "./TransferirEstoque";
 import { FormProduto } from "../financeiro/FormProduto";
 import { PeriodoFinanceiroControl } from "../financeiro/PeriodoFinanceiroControl";
@@ -171,12 +171,9 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
 
   const colunasSaldos: ColunaTabela<SaldoDTO>[] = [
     { chave: "produto", titulo: "Produto", larguraMinima: 220, principal: true, celula: (s) => <span className="flex flex-wrap items-center gap-2"><strong className="break-words font-semibold"><a href={`/estoque/produtos/${s.produtoId}`} className="text-primary hover:underline">{s.nome}</a></strong>{s.materialGeneticoId && <LinkInterno href={hrefMaterialGenetico(s.materialGeneticoId)} area="pecuaria">Identidade genética</LinkInterno>}{s.abaixoMinimo && <Dica rotulo="Abaixo do mínimo" conteudo={`Abaixo do mínimo${s.minimoEstoque != null ? ` (${qtd(s.minimoEstoque)} ${rotuloUnidade(s.unidade)})` : ""}`} className="hover:opacity-80"><IconeAbaixoMinimo /></Dica>}</span> },
-    { chave: "categoria", titulo: "Categoria", alinhamento: "esquerda", larguraMinima: 140, celula: (s) => s.categoria?.nome ?? "Sem categoria" },
-    { chave: "centros", titulo: "Centros de custo", alinhamento: "esquerda", larguraMinima: 180, celula: (s) => <span className="break-words text-ink-3">{s.centrosCusto.map((c) => c.nome).join(" · ") || "Sem centro"}</span> },
-    { chave: "saldo", titulo: "Saldo", alinhamento: "direita", larguraMinima: 110, celula: (s) => <span className="whitespace-nowrap">{qtd(s.saldo)} {rotuloUnidade(s.unidade)}</span> },
-    { chave: "custo", titulo: "Custo médio", alinhamento: "direita", larguraMinima: 120, celula: (s) => <span className="whitespace-nowrap">{s.custoMedio != null ? fmtMoneyExact(s.custoMedio) : "—"}</span> },
-    { chave: "valor", titulo: "Valor", alinhamento: "direita", larguraMinima: 120, celula: (s) => <strong className="whitespace-nowrap font-semibold">{s.custoMedio != null ? brl(s.valor ?? 0) : "—"}</strong> },
-    { chave: "minimo", titulo: "Mínimo", alinhamento: "direita", larguraMinima: 110, celula: (s) => <span className="whitespace-nowrap">{s.minimoEstoque != null ? `${qtd(s.minimoEstoque)} ${rotuloUnidade(s.unidade)}` : "—"}</span> },
+    { chave: "categoria", titulo: "Classificação", larguraMinima: 180, larguraFlexivel: true, celula: (s) => <><div>{s.categoria?.nome ?? "Sem categoria"}</div><div className="text-xs text-ink-3">{s.centrosCusto.map((c) => c.nome).join(" · ") || "Sem centro"}</div></> },
+    { chave: "saldo", titulo: "Saldo / mínimo", alinhamento: "direita", larguraMinima: 140, celula: (s) => <><strong className={s.saldo < 0 ? "text-destructive" : s.abaixoMinimo ? "text-[var(--fin-pendente)]" : ""}>{qtd(s.saldo)} {rotuloUnidade(s.unidade)}</strong><div className="text-xs text-ink-3">Mínimo: {s.minimoEstoque != null ? `${qtd(s.minimoEstoque)} ${rotuloUnidade(s.unidade)}` : "não definido"}</div></> },
+    { chave: "valor", titulo: "Valor / custo médio", alinhamento: "direita", larguraMinima: 160, celula: (s) => <><strong className="whitespace-nowrap font-semibold">{s.custoMedio != null ? brl(s.valor ?? 0) : "—"}</strong><div className="text-xs text-ink-3">Médio: {s.custoMedio != null ? fmtMoneyExact(s.custoMedio) : "—"}</div></> },
     ...(podeAjustar ? [{ chave: "acoes", titulo: "Ações", alinhamento: "esquerda" as const, larguraMinima: 90, acoes: true, celula: (s: SaldoDTO) => (
       <div className="flex items-center justify-end gap-1">
         {podeAjustar && <button type="button" onClick={() => abrirAjusteEstoque(s.produtoId)} aria-label={`Ajustar quantidade de ${s.nome}`} title="Ajustar quantidade" className="rounded-lg p-2 text-ink-2 hover:bg-surface-2 hover:text-ink"><SlidersHorizontal size={16} /></button>}
@@ -185,9 +182,8 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
   ];
 
   const colunasMovimentos: ColunaTabela<MovimentoDTO>[] = [
-    { chave: "data", titulo: "Data", alinhamento: "esquerda", larguraMinima: 100, celula: (m) => <span className="whitespace-nowrap">{dataBR(m.data)}</span> },
-    { chave: "produto", titulo: "Produto", larguraMinima: 200, principal: true, celula: (m) => <strong className="break-words font-semibold"><a href={`/estoque/produtos/${m.produtoId}`} className="text-primary hover:underline">{m.produto}</a></strong> },
-    { chave: "tipo", titulo: "Tipo", alinhamento: "esquerda", larguraMinima: 190, celula: (m) => (
+    { chave: "produto", titulo: "Produto / data", larguraMinima: 220, principal: true, celula: (m) => <><strong className="break-words font-semibold"><a href={`/estoque/produtos/${m.produtoId}`} className="text-primary hover:underline">{m.produto}</a></strong><div className="mt-1 text-xs text-ink-3">{dataBR(m.data)}</div></> },
+    { chave: "tipo", titulo: "Tipo", alinhamento: "esquerda", larguraMinima: 160, celula: (m) => (
       <span className="flex flex-wrap items-center justify-start gap-1.5">
         <span title={TIPO_MOV[m.tipo].rotulo}><Pill tone={TIPO_MOV[m.tipo].tom}>{ROTULO_ORIGEM[m.origem] ?? m.origem}</Pill></span>
         {m.reversaoDeId != null && <Pill tone="red">Estorno</Pill>}
@@ -196,15 +192,13 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
     ) },
     { chave: "qtd", titulo: "Qtde", alinhamento: "direita", larguraMinima: 110, celula: (m) => { const un = unidadePorProduto.get(m.produtoId); return <span className="whitespace-nowrap">{qtd(m.quantidade)}{un ? ` ${rotuloUnidade(un)}` : ""}</span>; } },
     { chave: "valor", titulo: "Valor", alinhamento: "direita", larguraMinima: 120, celula: (m) => <span className="whitespace-nowrap">{m.valorTotal == null ? "—" : brl(m.valorTotal)}</span> },
-    { chave: "origem", titulo: "Origem / destino", alinhamento: "esquerda", larguraMinima: 220, celula: (m) => {
+    { chave: "origem", titulo: "Origem / destino", alinhamento: "esquerda", larguraMinima: 220, larguraFlexivel: true, celula: (m) => {
       const destino = destinoDoMovimento(m);
-      if (!destino) return <span className="break-words text-ink-3">{m.fornecedor ?? "—"}</span>;
-      return <span className="break-words"><LinkInterno href={destino.href} area={destino.area}>{destino.rotulo}</LinkInterno>{m.fornecedor && <span className="text-ink-3"> · {m.fornecedor}</span>}</span>;
-    } },
-    { chave: "acoes", titulo: "Ações", acoes: true, larguraMinima: 170, celula: m => <div className="flex flex-wrap gap-2">
+      return <><div className="break-words">{destino ? <><LinkInterno href={destino.href} area={destino.area}>{destino.rotulo}</LinkInterno>{m.fornecedor && <span className="text-ink-3"> · {m.fornecedor}</span>}</> : <span className="text-ink-3">{m.fornecedor ?? "—"}</span>}</div><div className="mt-1 flex flex-wrap gap-2 text-xs">
         {m.estorno && <LinkInterno href={`/estoque?movimentoId=${encodeURIComponent(m.estorno.id)}${m.propriedadeId != null ? `&propriedadeId=${m.propriedadeId}` : ""}`} area="estoque">Ver estorno</LinkInterno>}
         {m.reversaoDeId && <LinkInterno href={`/estoque?movimentoId=${encodeURIComponent(m.reversaoDeId)}${m.propriedadeId != null ? `&propriedadeId=${m.propriedadeId}` : ""}`} area="estoque">Ver movimento original</LinkInterno>}
-      </div> },
+      </div></>;
+    } },
   ];
 
   const filtrosAtivos = busca.trim() !== "" || soAbaixoMin || soNegativos;
@@ -221,19 +215,19 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
     <ErrorBox erro={erroCentros ? `Erro ao carregar centros de custo: ${erroCentros}` : null} />
 
     {/* Só dados de estoque: valor, alertas e as últimas entradas. */}
-    <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-col gap-1.5">
-          <Metric label="Valor em estoque" valor={saldos.data.length > 0 && saldos.data.every((s) => s.valor == null) ? "—" : brl(valorTotal)} icon={Boxes} />
-          {nNegativos > 0 && <button type="button" aria-pressed={soNegativos} onClick={() => setSoNegativos((v) => !v)} className="self-start text-left text-xs text-destructive underline underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">{nNegativos} {nNegativos === 1 ? "produto com saldo negativo" : "produtos com saldo negativo"}{soNegativos ? " — filtro ativo, clique para ver todos" : ""}</button>}
-        </div>
-        <Metric label="Produtos em estoque" valor={String(nEmEstoque)} icon={Package} />
+    <Panel className="estoque-panorama mt-5">
+      <div className="estoque-panorama-resumo">
+        <span className="fin-section-icon"><Package aria-hidden="true" /></span>
+        <div><span className="text-xs text-ink-3">Valor em estoque</span><div className="text-2xl font-semibold">{saldos.loading ? "—" : saldos.data.length > 0 && saldos.data.every((s) => s.valor == null) ? "—" : brl(valorTotal)}</div><p className="mt-1 text-xs text-ink-3">{saldos.loading ? "Consultando saldos…" : `${nEmEstoque} ${nEmEstoque === 1 ? "produto" : "produtos"} em estoque`}</p></div>
       </div>
-      <Panel className="p-5 lg:col-span-2">
-        <div className="flex items-start justify-between gap-4">
-          <div className="text-[11px] font-semibold uppercase tracking-[.12em] text-ink-3">Últimas entradas</div>
-          <div className="shrink-0 rounded-lg bg-[var(--fin-sidebar)] p-2.5 text-mast"><PackagePlus size={18} /></div>
-        </div>
+      <div className="estoque-panorama-alertas" aria-label="Atenção ao estoque">
+        <button type="button" aria-pressed={soAbaixoMin} onClick={() => { setSoAbaixoMin(v => !v); setSoNegativos(false); }} className={`estoque-alerta ${nAbaixoMin ? "estoque-alerta-atencao" : ""}`}><TriangleAlert size={18} aria-hidden="true" /><span><strong>{saldos.loading ? "—" : nAbaixoMin} abaixo do mínimo</strong><small>{soAbaixoMin ? "Filtro ativo · ver todos" : "Conferir reposição"}</small></span></button>
+        {nNegativos > 0 && <button type="button" aria-pressed={soNegativos} onClick={() => { setSoNegativos(v => !v); setSoAbaixoMin(false); }} className="estoque-alerta estoque-alerta-negativo"><TriangleAlert size={18} aria-hidden="true" /><span><strong>{nNegativos} {nNegativos === 1 ? "produto com saldo negativo" : "produtos com saldo negativo"}</strong><small>{soNegativos ? "Filtro ativo · ver todos" : "Conferir movimentos"}</small></span></button>}
+      </div>
+    </Panel>
+    <details className="estoque-entradas mt-3 rounded-xl border border-border bg-card">
+      <summary className="flex cursor-pointer items-center gap-2 p-4 text-sm font-medium"><PackagePlus size={17} aria-hidden="true" />Últimas entradas<span className="ml-auto text-xs font-normal text-ink-3">Ver recebimentos recentes</span></summary>
+      <div className="border-t border-border p-4">
         {entradas.loading && ultimasEntradas.length === 0 ? <p className="mt-3 text-xs text-ink-3">Carregando…</p>
           : ultimasEntradas.length === 0 ? <p className="mt-3 text-xs text-ink-3">Nenhuma entrada registrada ainda.</p>
           : <ul className="mt-3 grid gap-x-8 gap-y-3 sm:grid-cols-2">{ultimasEntradas.map((m) => {
@@ -244,24 +238,16 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
                 <div className="text-xs text-ink-3">{dataBR(m.data)} · {qtd(m.quantidade)}{un ? ` ${rotuloUnidade(un)}` : ""}</div>
               </li>;
             })}</ul>}
-      </Panel>
-    </div>
+      </div>
+    </details>
 
     <section className="mt-6" aria-label="Saldos de estoque">
       <Panel className="overflow-hidden">
       <div className="estoque-secao-cabecalho"><span className="fin-section-icon"><Boxes aria-hidden="true" /></span><h2 className="font-serif text-2xl">Saldos de estoque<AjudaCampo rotulo="Como o valor é calculado" texto="O custo médio é a média ponderada das entradas neste sítio; valor = saldo × custo médio." /></h2></div>
       <div className="estoque-filtros grid gap-3 md:grid-cols-[minmax(0,2fr)_repeat(2,minmax(0,1fr))_auto]">
-        <input type="search" aria-label="Buscar produto" value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar por nome ou categoria…" className={CAMPO} />
-        <select aria-label="Filtrar por centro de custo" value={centroFiltro} onChange={(e) => setCentroFiltro(e.target.value)} className={CAMPO}>
-          <option value="">Todos os centros</option>
-          <option value={SEM_VINCULO}>Sem centro</option>
-          {centros.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
-        </select>
-        <select aria-label="Ordenar por" value={ordem} onChange={(e) => setOrdem(e.target.value as Ordem)} className={CAMPO}>
-          <option value="nome">Ordenar por nome</option>
-          <option value="categoria">Ordenar por categoria</option>
-          <option value="valor">Ordenar por maior valor</option>
-        </select>
+        <label className="relative min-w-0"><Search size={16} className="absolute left-3 top-3 text-ink-3" aria-hidden="true" /><input type="search" aria-label="Buscar produto" value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar por nome ou categoria…" className={`${CAMPO} pl-9`} /></label>
+        <SelectFiltro rotulo="Filtrar por centro de custo" valor={centroFiltro} onChange={setCentroFiltro} opcoes={[{ valor: "", texto: "Todos os centros" }, { valor: SEM_VINCULO, texto: "Sem centro" }, ...centros.map((c) => ({ valor: c.id, texto: c.nome }))]} className="w-full sm:!w-full" />
+        <SelectFiltro rotulo="Ordenar por" valor={ordem} onChange={(valor) => setOrdem(valor as Ordem)} opcoes={[{ valor: "nome", texto: "Ordenar por nome" }, { valor: "categoria", texto: "Ordenar por categoria" }, { valor: "valor", texto: "Ordenar por maior valor" }]} className="w-full sm:!w-full" />
         <button type="button" aria-pressed={soAbaixoMin} onClick={() => setSoAbaixoMin((v) => !v)} className={`${CAMPO} inline-flex items-center gap-2 whitespace-nowrap font-medium ${soAbaixoMin ? "border-[var(--fin-pendente)] bg-[var(--fin-warning-bg)] text-[var(--fin-pendente)]" : "text-ink-2"}`}><IconeAbaixoMinimo />Só abaixo do mínimo{nAbaixoMin > 0 ? ` (${nAbaixoMin})` : ""}</button>
       </div>
       <div className="min-w-0">
@@ -270,7 +256,7 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
           : saldos.data.length === 0 ? <Empty>Nenhum produto com movimento de estoque. Registre uma compra para estoque ou um inventário inicial.</Empty>
           : saldosVisiveis.length === 0 ? <Empty>{filtrosAtivos ? "Nenhum produto bate com a busca." : "Nenhum produto para exibir."}</Empty>
           : <>
-              <TabelaFinanceira rotulo="Saldos de estoque" itens={saldosDaPagina} colunas={colunasSaldos} chaveDe={(s) => s.produtoId} barraRolagemSuperior />
+              <TabelaFinanceira rotulo="Saldos de estoque" itens={saldosDaPagina} colunas={colunasSaldos} chaveDe={(s) => s.produtoId} classeLinha={s => s.saldo < 0 ? "bg-red-50/40" : s.abaixoMinimo ? "bg-amber-50/40" : ""} />
               <Paginacao pagina={paginaSaldosAtual} totalPaginas={totalPaginasSaldos} total={saldosVisiveis.length} porPagina={ITENS_POR_PAGINA} rotulo="Paginação de saldos" substantivo={saldosVisiveis.length === 1 ? "produto" : "produtos"} idSelect="pagina-saldos" onPagina={setPaginaSaldos} />
             </>}
       </div>
@@ -283,15 +269,8 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
       {movimentoId && <p className="mt-2 rounded-lg border border-border bg-surface p-3 text-sm">Movimento selecionado · <a href="/estoque" className="underline">Voltar ao histórico completo</a></p>}
       <div className="estoque-filtros flex flex-wrap items-center gap-3">
         <label className="relative w-full min-w-0 flex-[2_1_260px] sm:w-auto"><Search size={16} className="absolute left-3 top-3 text-ink-3" aria-hidden="true" /><input type="search" aria-label="Buscar movimento" value={buscaMov} onChange={(e) => setBuscaMov(e.target.value)} placeholder="Buscar por produto, operação ou fornecedor…" className={`${CAMPO} w-full pl-9`} /></label>
-        <select aria-label="Filtrar por origem" value={origemMov} onChange={(e) => { setOrigemMov(e.target.value); setPaginaMov(1); }} className={`${CAMPO} min-w-0 flex-[1_1_160px]`}>
-          <option value="">Todas as origens</option>
-          {Object.entries(ROTULO_ORIGEM).map(([chave, nome]) => <option key={chave} value={chave}>{nome}</option>)}
-        </select>
-        <select aria-label="Filtrar histórico por centro de custo" value={centroMov} onChange={(e) => { setCentroMov(e.target.value); setPaginaMov(1); }} className={`${CAMPO} min-w-0 flex-[1_1_160px]`}>
-          <option value="">Todos os centros</option>
-          <option value={SEM_VINCULO}>Sem centro</option>
-          {centros.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
-        </select>
+        <SelectFiltro rotulo="Filtrar por origem" valor={origemMov} onChange={(valor) => { setOrigemMov(valor); setPaginaMov(1); }} opcoes={[{ valor: "", texto: "Todas as origens" }, ...Object.entries(ROTULO_ORIGEM).map(([valor, texto]) => ({ valor, texto }))]} className="min-w-0 flex-[1_1_160px]" />
+        <SelectFiltro rotulo="Filtrar histórico por centro de custo" valor={centroMov} onChange={(valor) => { setCentroMov(valor); setPaginaMov(1); }} opcoes={[{ valor: "", texto: "Todos os centros" }, { valor: SEM_VINCULO, texto: "Sem centro" }, ...centros.map((c) => ({ valor: c.id, texto: c.nome }))]} className="min-w-0 flex-[1_1_160px]" />
         <PeriodoFinanceiroControl inicio={periodoMov.inicio} fim={periodoMov.fim} allowAll label="Período do histórico" onChange={(periodo) => { setPeriodoMov(periodo); setPaginaMov(1); }} />
       </div>
       <div className="min-w-0">
@@ -299,7 +278,7 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
           : movimentos.erro ? <Empty>Não foi possível consultar os movimentos: {movimentos.erro} <button type="button" className="underline" onClick={movimentos.recarregar}>Tentar novamente</button></Empty>
           : movimentos.data.length === 0 ? <Empty>{movimentoId ? "Movimento não encontrado neste sítio ou indisponível para seu acesso." : filtrosMovAtivos ? "Nenhum movimento bate com os filtros." : "Nenhum movimento registrado ainda."}</Empty>
           : <>
-              <TabelaFinanceira rotulo="Histórico de movimentos" itens={movimentos.data} colunas={colunasMovimentos} chaveDe={(m) => m.id} classeLinha={(m) => m.id === movimentoId ? "bg-surface-2 outline outline-2 outline-mast -outline-offset-2" : m.status === "REVERTIDO" || m.reversaoDeId != null ? "opacity-60" : ""} barraRolagemSuperior />
+              <TabelaFinanceira rotulo="Histórico de movimentos" itens={movimentos.data} colunas={colunasMovimentos} chaveDe={(m) => m.id} classeLinha={(m) => m.id === movimentoId ? "bg-surface-2 outline outline-2 outline-mast -outline-offset-2" : m.status === "REVERTIDO" || m.reversaoDeId != null ? "opacity-60" : ""} />
               <Paginacao pagina={paginaMovAtual} totalPaginas={totalPaginasMov} total={movimentos.total} porPagina={ITENS_POR_PAGINA} rotulo="Paginação do histórico" substantivo={movimentos.total === 1 ? "movimento" : "movimentos"} idSelect="pagina-movimentos" onPagina={setPaginaMov} />
             </>}
       </div>

@@ -67,7 +67,7 @@ export function LiquidarCompromissoModal({ compromisso, contas, onClose, onLiqui
     }
   };
 
-  return <Modal icon={compromisso.tipo === "PAGAR" ? ArrowUpRight : ArrowDownLeft} tom={compromisso.tipo === "PAGAR" ? "saida" : "entrada"} titulo={`Registrar ${compromisso.tipo === "PAGAR" ? "pagamento" : "recebimento"}`} eyebrow="Confirmação financeira" onClose={fechar} rodape={<div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+  return <Modal icon={compromisso.tipo === "PAGAR" ? ArrowUpRight : ArrowDownLeft} tom={compromisso.tipo === "PAGAR" ? "saida" : "entrada"} titulo={`Registrar ${compromisso.tipo === "PAGAR" ? "pagamento" : "recebimento"}`} eyebrow="Confirmação financeira" onClose={fechar} rodape={<div className="flex flex-wrap items-center justify-end gap-2"><p className="mr-auto w-full text-xs text-ink-3">Ao confirmar: {compromisso.tipo === "PAGAR" ? "saída" : "entrada"} de {brl(valor)} na conta {contas.find(c => c.id === contaId)?.nome ?? "a selecionar"}.</p>
         <Button variant="outline" disabled={processando} onClick={fechar}>Cancelar</Button>
         <Button disabled={!contaId || !valorValido || !data || data > hoje() || processando} aria-busy={processando || undefined} onClick={() => { void confirmar(); }}>{processando && <LoaderCircle aria-hidden="true" className="size-4 animate-spin motion-reduce:animate-none" />}{processando ? (enviandoNota ? "Enviando nota…" : "Registrando…") : "Confirmar liquidação"}</Button>
       </div>}>

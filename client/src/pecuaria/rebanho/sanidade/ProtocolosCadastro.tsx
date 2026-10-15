@@ -1,5 +1,6 @@
+import { SelectCampo } from "@/financeiro/SelectCampo";
 import { Fragment, useEffect, useRef, useState } from "react";
-import { ChevronDown, ChevronRight, Pencil, Copy, Send, PowerOff } from "lucide-react";
+import { ChevronDown, ChevronRight, Pencil, Copy, Send, PowerOff, ClipboardList } from "lucide-react";
 import { Button, ErrorBox, Pill } from "../../../financeiro/financeiro-ui";
 import {
   classeInput,
@@ -9,6 +10,7 @@ import { listarProdutos, type ProdutoDTO } from "../../../estoque/api";
 import { listarTiposAplicacao, reqSanidade, type TipoAplicacao } from "./api";
 import { navegarPara } from "../../../router";
 import type { TipoExame } from "./CadastrosSanitarios";
+import { BuscaLista } from "../../../components/BuscaLista";
 type Etapa = {
   diaRelativo: number;
   tipo: "APLICACAO" | "EXAME";
@@ -62,6 +64,7 @@ export function ProtocolosCadastro({ podeLancar }: { podeLancar: boolean }) {
   const [ocupado, setOcupado] = useState(false);
   const [revisao, setRevisao] = useState(0);
   const [carregando, setCarregando] = useState(true);
+  const [busca, setBusca] = useState("");
   const [erroLista, setErroLista] = useState<string | null>(null);
   const [erroCatalogos, setErroCatalogos] = useState<string | null>(null);
   const [catalogosProntos, setCatalogosProntos] = useState(false);
@@ -151,36 +154,49 @@ export function ProtocolosCadastro({ podeLancar }: { podeLancar: boolean }) {
   }
   const mudar = (i: number, patch: Partial<Etapa>) =>
     setEtapas((es) => es.map((e, j) => (i === j ? { ...e, ...patch } : e)));
+  const visiveis = protocolos.filter(p => p.nome.toLocaleLowerCase("pt-BR").includes(busca.toLocaleLowerCase("pt-BR")));
   return (
-    <section>
+    <section className="pec-protocolos-cadastro">
       <ErrorBox erro={erro} />
       <ErrorBox erro={erroLista} />
       <ErrorBox erro={erroCatalogos} />
       {aviso && <p role="status" className="py-3 text-sm">{aviso}</p>}
       {ocupado && <p role="status" className="py-3 text-sm">Atualizando protocolo…</p>}
       {(erroLista || erroCatalogos) && <Button secondary disabled={ocupado} onClick={() => setRevisao((v) => v + 1)}>Tentar novamente</Button>}
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3"><h2 className="h2">Protocolos sanitários</h2>
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3"><div><h2 className="h2">Protocolos sanitários</h2>
+      {!carregando && !erroLista && <p className="mt-2 text-xs text-ink-3" aria-label="Resumo dos protocolos">{protocolos.length} versões cadastradas · {protocolos.filter(p => p.ativo && p.publicadoEm).length} publicadas e ativas · {protocolos.filter(p => !p.publicadoEm).length} rascunhos</p>}
+      </div>
         {podeLancar && <Button disabled={ocupado || !catalogosProntos || carregando} onClick={() => editar()}>Novo protocolo</Button>}
       </div>
+      <div className="pec-protocolos-busca"><BuscaLista rotulo="Buscar protocolo" placeholder="Buscar protocolo pelo nome" valor={busca} onChange={setBusca} /></div>
+      <p className="mb-4 text-sm text-ink-3">Abra o nome para revisar as etapas. Versões publicadas não são editadas: crie uma nova versão para alterar o planejamento. Planejar etapas não movimenta o estoque.</p>
       {carregando ? <p role="status" className="py-4">Carregando protocolos…</p> : <div className="overflow-x-auto rounded border border-border"><table aria-label="Protocolos sanitários" className="w-full text-left text-sm">
         <thead className="bg-surface-2"><tr><th className="p-4">Nome</th><th className="p-4">Tipo</th><th className="p-4">Versão</th><th className="p-4">Situação</th><th className="p-4">Etapas</th><th className="p-4">Ações</th></tr></thead>
-        <tbody className="divide-y divide-border">{protocolos.map((p) => <Fragment key={p.id}>
+        <tbody className="divide-y divide-border">{visiveis.map((p) => <Fragment key={p.id}>
           <tr><td className="p-4"><button type="button" aria-expanded={detalhe?.id === p.id} aria-controls={`protocolo-${p.id}`} aria-label={`Ver etapas de ${p.nome} v${p.versao}`} onClick={() => setDetalhe(detalhe?.id === p.id ? null : p)} className="flex items-center gap-3 text-left">{detalhe?.id === p.id ? <ChevronDown size={16} /> : <ChevronRight size={16} />}<span>{p.nome}</span></button></td>
             <td className="p-4">{p.etapas.every((e) => e.tipo === "EXAME") ? "Protocolo de exames" : "Protocolo sanitário"}</td>
             <td className="whitespace-nowrap p-4">v{p.versao} · <Pill tone={p.publicadoEm ? "blue" : "amber"}>{p.publicadoEm ? "Publicado" : "Rascunho"}</Pill></td>
             <td className="p-4"><Pill tone={p.ativo ? "green" : "neutral"}>{p.ativo ? "Ativo" : "Inativo"}</Pill></td><td className="p-4">{p.etapas.length}</td><td className="p-4"><div className="flex justify-end gap-1">            {podeLancar && <>
-              <button type="button" disabled={ocupado || !catalogosProntos} aria-label={`${p.publicadoEm ? "Nova versão de" : "Editar rascunho de"} ${p.nome} v${p.versao}`} onClick={() => editar(p)} className="rounded-lg p-2 text-ink-2 hover:bg-surface-2 disabled:opacity-45">{p.publicadoEm ? <Copy size={16} /> : <Pencil size={16} />}</button>
-              {!p.publicadoEm && <button type="button" disabled={ocupado} aria-label={`Publicar ${p.nome} v${p.versao}`} onClick={() => void enviar(`/protocolos/${p.id}/publicacao`, {})} className="rounded-lg p-2 text-ink-2 hover:bg-surface-2 disabled:opacity-45"><Send size={16} /></button>}
-              {p.ativo && <button type="button" disabled={ocupado} aria-label={`Inativar ${p.nome} v${p.versao}`} onClick={() => void enviar(`/protocolos/${p.id}/inativacao`, {})} className="rounded-lg p-2 text-ink-2 hover:bg-surface-2 disabled:opacity-45"><PowerOff size={16} /></button>}
+              <button type="button" disabled={ocupado || !catalogosProntos} aria-label={`${p.publicadoEm ? "Nova versão de" : "Editar rascunho de"} ${p.nome} v${p.versao}`} onClick={() => editar(p)} className="inline-flex items-center gap-2 rounded-lg p-2 text-ink-2 hover:bg-surface-2 disabled:opacity-45">{p.publicadoEm ? <Copy size={16} /> : <Pencil size={16} />}{p.publicadoEm ? "Nova versão" : "Editar"}</button>
+              {!p.publicadoEm && <button type="button" disabled={ocupado} aria-label={`Publicar ${p.nome} v${p.versao}`} onClick={() => void enviar(`/protocolos/${p.id}/publicacao`, {})} className="inline-flex items-center gap-2 rounded-lg p-2 text-ink-2 hover:bg-surface-2 disabled:opacity-45"><Send size={16} />Publicar</button>}
+              {p.ativo && <button type="button" disabled={ocupado} aria-label={`Inativar ${p.nome} v${p.versao}`} onClick={() => void enviar(`/protocolos/${p.id}/inativacao`, {})} className="inline-flex items-center gap-2 rounded-lg p-2 text-ink-2 hover:bg-surface-2 disabled:opacity-45"><PowerOff size={16} />Inativar</button>}
             </>}</div></td>
           </tr>
           {detalhe?.id === p.id && <tr><td colSpan={6} id={`protocolo-${p.id}`} className="bg-surface p-5">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-4"><div><h3 className="h2">{p.nome} · v{p.versao}</h3><Pill tone={p.publicadoEm ? "green" : "amber"}>{p.publicadoEm ? "Versão publicada" : "Rascunho"}</Pill></div><div className="flex flex-wrap items-center gap-4">{podeLancar && <Button secondary disabled={ocupado || !catalogosProntos} onClick={() => editar(p)}>{p.publicadoEm ? "Criar nova versão" : "Editar rascunho"}</Button>}<a href="/pecuaria/sanidade" className="text-mast underline" onClick={(e) => { if (e.button === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) { e.preventDefault(); navegarPara("/pecuaria/sanidade"); } }}>Abrir agenda sanitária</a></div></div>
             {p.descricao && <p className="mb-4 text-sm">{p.descricao}</p>}
+            <ol className="pec-protocolo-linha-tempo" aria-label="Sequência planejada">
+              {p.etapas.map((e, i) => <li key={i}>
+                <span>D{e.diaRelativo}</span>
+                <strong>Etapa {i + 1}</strong>
+                <small>{e.tipoAplicacaoNomeSnapshot ?? (e.tipo === "EXAME" ? "Exame" : "Aplicação")}</small>
+              </li>)}
+            </ol>
             <table aria-label={`Etapas de ${p.nome}`} className="w-full border border-border text-sm"><thead><tr><th className="p-3">Etapa</th><th className="p-3">Tipo e produto ou exame</th><th className="p-3">Dia relativo</th></tr></thead><tbody className="divide-y divide-border">{p.etapas.map((e, i) => <tr key={i}><td className="p-3"><span className="sr-only">Etapa {i + 1} · Dia {e.diaRelativo}</span>{i + 1}</td><td className="p-3">{e.tipoAplicacaoNomeSnapshot ?? (e.tipo === "EXAME" ? "Exame" : "Aplicação")} · {produtos.find((pr) => pr.id === e.produtoId)?.nome ?? exames.find((t) => t.id === e.tipoExameId)?.nome ?? (e.produtoId ? "Produto do histórico" : "Exame do histórico")} {e.dose} {e.unidade}</td><td className="p-3">D{e.diaRelativo}</td></tr>)}</tbody></table>
           </td></tr>}
         </Fragment>)}</tbody>
       </table></div>}
+      {!carregando && !erroLista && protocolos.length > 0 && !visiveis.length && <p className="p-4 text-sm text-ink-3">Nenhum protocolo corresponde à busca.</p>}
       {!carregando && !erroLista && !protocolos.length && (
         <p className="mt-3 text-sm">
           Nenhum protocolo. Planejar etapas não baixa medicamentos do estoque.
@@ -189,6 +205,7 @@ export function ProtocolosCadastro({ podeLancar }: { podeLancar: boolean }) {
       {aberto && podeLancar && (
         <PainelCadastro
           aberto
+          icon={ClipboardList}
           titulo={
             id ? "Editar protocolo em rascunho" : "Nova versão de protocolo"
           }
@@ -202,6 +219,7 @@ export function ProtocolosCadastro({ podeLancar }: { podeLancar: boolean }) {
           }
         >
           <form
+            data-pec-formulario
             id="form-protocolo"
             className="grid gap-4"
             onSubmit={(e) => {
@@ -229,6 +247,7 @@ export function ProtocolosCadastro({ podeLancar }: { podeLancar: boolean }) {
             }}
           >
             <ErrorBox erro={erro} />
+            <p className="text-sm text-ink-3">Revise a sequência antes de salvar. O dia 0 é o início do protocolo; as etapas seguintes usam dias relativos a esse início. Salvar cria apenas um rascunho, sem publicar ou executar etapas.</p>
             <label>
               Nome
               <input
@@ -266,27 +285,25 @@ export function ProtocolosCadastro({ podeLancar }: { podeLancar: boolean }) {
                 </label>
                 <label>
                   Ação
-                  <select
+                  <SelectCampo
                     value={et.tipo}
-                    onChange={(e) =>
-                      mudar(i, { tipo: e.target.value as Etapa["tipo"] })
-                    }
+                    onValueChange={(valorSelecionado) =>
+                      mudar(i, { tipo: valorSelecionado as Etapa["tipo"] })}
                     className={classeInput}
                   >
                     <option value="APLICACAO">Aplicação</option>
                     <option value="EXAME">Exame</option>
-                  </select>
+                  </SelectCampo>
                 </label>
                 {et.tipo === "APLICACAO" ? (
                   <>
                     <label>
                       Tipo de aplicação
-                      <select
+                      <SelectCampo
                         required
                         value={et.tipoAplicacaoId}
-                        onChange={(e) =>
-                          mudar(i, { tipoAplicacaoId: e.target.value })
-                        }
+                        onValueChange={(valorSelecionado) =>
+                          mudar(i, { tipoAplicacaoId: valorSelecionado })}
                         className={classeInput}
                       >
                         <option value="">Selecione</option>
@@ -295,21 +312,20 @@ export function ProtocolosCadastro({ podeLancar }: { podeLancar: boolean }) {
                             {t.nome}
                           </option>
                         ))}
-                      </select>
+                      </SelectCampo>
                     </label>
                     <label>
                       Produto
-                      <select
+                      <SelectCampo
                         required
                         value={et.produtoId}
-                        onChange={(e) =>
+                        onValueChange={(valorSelecionado) =>
                           mudar(i, {
-                            produtoId: e.target.value,
+                            produtoId: valorSelecionado,
                             unidade:
-                              produtos.find((p) => p.id === e.target.value)
+                              produtos.find((p) => p.id === valorSelecionado)
                                 ?.unidade ?? "ML",
-                          })
-                        }
+                          })}
                         className={classeInput}
                       >
                         <option value="">Selecione</option>
@@ -318,7 +334,7 @@ export function ProtocolosCadastro({ podeLancar }: { podeLancar: boolean }) {
                             {p.nome}
                           </option>
                         ))}
-                      </select>
+                      </SelectCampo>
                     </label>
                     <label>
                       Quantidade prevista ({et.unidade})
@@ -336,12 +352,11 @@ export function ProtocolosCadastro({ podeLancar }: { podeLancar: boolean }) {
                 ) : (
                   <label>
                     Tipo de exame
-                    <select
+                    <SelectCampo
                       required
                       value={et.tipoExameId}
-                      onChange={(e) =>
-                        mudar(i, { tipoExameId: e.target.value })
-                      }
+                      onValueChange={(valorSelecionado) =>
+                        mudar(i, { tipoExameId: valorSelecionado })}
                       className={classeInput}
                     >
                       <option value="">Selecione</option>
@@ -350,7 +365,7 @@ export function ProtocolosCadastro({ podeLancar }: { podeLancar: boolean }) {
                           {t.nome}
                         </option>
                       ))}
-                    </select>
+                    </SelectCampo>
                   </label>
                 )}
                 <Button
@@ -364,6 +379,14 @@ export function ProtocolosCadastro({ podeLancar }: { podeLancar: boolean }) {
                 </Button>
               </fieldset>
             ))}
+            <section aria-label="Revisão das etapas" className="border-t border-border pt-4">
+              <h3 className="font-semibold">Revisão das etapas</h3>
+              <ol className="mt-2 space-y-2 text-sm">
+                {etapas.map((et, i) => <li key={i}>Etapa {i + 1} · Dia {et.diaRelativo} · {et.tipo === "EXAME"
+                  ? `Exame: ${exames.find(e => e.id === et.tipoExameId)?.nome ?? "selecione o tipo"}`
+                  : `Aplicação: ${produtos.find(p => p.id === et.produtoId)?.nome ?? "selecione o produto"} · ${et.dose || "quantidade pendente"} ${et.unidade}`}</li>)}
+              </ol>
+            </section>
             <Button
               secondary
               onClick={() => setEtapas((es) => [...es, nova()])}

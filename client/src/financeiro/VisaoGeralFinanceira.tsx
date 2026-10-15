@@ -19,11 +19,11 @@ import { Card } from "@/components/ui/card";
 import { LiquidarCompromissoModal } from "./LiquidarCompromissoModal";
 import { ChartTypeControl, EntradaSaidaChart, type ChartType } from "../components/charts";
 import { PeriodoFinanceiroControl } from "./PeriodoFinanceiroControl";
-import { periodoDoAnoAtual } from "./lib/periodo";
+import { periodoDoAnoAtual, periodoInicial } from "./lib/periodo";
 
 export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab: Tab) => void; podeLancar?: boolean }) {
-  const [inicioPeriodo, setInicioPeriodo] = useState(() => periodoDoAnoAtual().inicio);
-  const [fimPeriodo, setFimPeriodo] = useState(() => periodoDoAnoAtual().fim);
+  const [inicioPeriodo, setInicioPeriodo] = useState(() => periodoInicial(periodoDoAnoAtual()).inicio);
+  const [fimPeriodo, setFimPeriodo] = useState(() => periodoInicial(periodoDoAnoAtual()).fim);
   const [dados, setDados] = useState<DashboardFinanceiro | null>(null);
   const [config, setConfig] = useState<ConfiguracoesFinanceiras | null>(null);
   const [listaAberta, setListaAberta] = useState<TipoListaDashboard | null>(null);
@@ -37,6 +37,16 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
   const [tipoGraficoFluxo, setTipoGraficoFluxo] = useState<ChartType>("line");
   const [substituirRascunho, setSubstituirRascunho] = useState(false);
   const [preparando, setPreparando] = useState(false);
+
+  useEffect(() => {
+    const sincronizar = () => {
+      if (window.location.pathname !== "/financeiro") return;
+      const periodo = periodoInicial(periodoDoAnoAtual());
+      setInicioPeriodo(periodo.inicio); setFimPeriodo(periodo.fim); setMesCalendario(periodo.inicio.slice(0, 7));
+    };
+    window.addEventListener("popstate", sincronizar);
+    return () => window.removeEventListener("popstate", sincronizar);
+  }, []);
 
   // Mesmo cuidado de Compromissos: um rascunho em andamento só é descartado
   // depois de confirmação, e "Ver rascunho atual" é a saída segura.
@@ -86,7 +96,7 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
 
   const painelAgenda = dadosAtuais && (<DashboardCompromissos integrado resumo={<div className="grid grid-cols-2 gap-2"><IndicadorFinanceiro label="A pagar" valor={dadosAtuais.compromissos.aPagar} detalhe={resumoVencidos(pendentes, "PAGAR")} alerta={pendentes.some(item => item.vencido && item.tipo === "PAGAR")} icon={ArrowUpRight} onClick={() => setListaAberta("pagar")} /><IndicadorFinanceiro label="A receber" valor={dadosAtuais.compromissos.aReceber} detalhe={resumoVencidos(pendentes, "RECEBER")} alerta={pendentes.some(item => item.vencido && item.tipo === "RECEBER")} icon={ArrowDownLeft} onClick={() => setListaAberta("receber")} /></div>} itens={pendentes} href={hrefCompromissos} onLiquidar={podeLancar ? setLiquidando : undefined} />);
   const painelCalendario = dadosAtuais && <DashboardCalendario integrado itens={pendentes} href={hrefCompromissos} mes={mesCalendario} onChangeMes={setMesCalendario} onLiquidar={podeLancar ? setLiquidando : undefined} />;
-  const painelCompromissos = dadosAtuais && <Card className="fin-painel dashboard-compromissos min-w-0 gap-0 overflow-hidden rounded-lg py-0 shadow-none"><h2 className="flex items-center gap-2 px-4 pt-4"><span className="fin-section-icon"><CalendarDays aria-hidden="true" /></span>Compromissos</h2><div className="grid min-w-0 items-start lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">{painelCalendario}{painelAgenda}</div></Card>;
+  const painelCompromissos = dadosAtuais && <Card className="fin-painel dashboard-compromissos min-w-0 gap-0 overflow-hidden rounded-lg py-0 shadow-none"><h2 className="flex items-center gap-2 px-4 pt-4"><span className="fin-section-icon"><CalendarDays aria-hidden="true" /></span>Compromissos</h2><div className="grid min-w-0 items-start lg:grid-cols-[minmax(0,1fr)_minmax(0,1.45fr)]">{painelAgenda}{painelCalendario}</div></Card>;
   const painelContas = dadosAtuais && (<ContasDisponibilidade contas={dadosAtuais.contas} onAbrirConta={conta => navegarPara(`/financeiro/contas/${conta.id}?${new URLSearchParams({ inicio: inicioPeriodo, fim: fimPeriodo })}`)} onAbrir={() => onNav("caixinha")} />);
   const painelFluxo = dadosAtuais && (<Card data-fin-tom="info" className="fin-painel min-w-0 gap-0 overflow-hidden rounded-lg border-border py-0 shadow-none">
           <div className="fin-cabecalho flex flex-wrap items-center justify-between gap-2 p-4 pb-2"><div className="flex items-center gap-3"><span className="fin-section-icon"><ArrowUpDown aria-hidden="true" /></span><div><h2 className="font-serif text-xl">Recebimentos e pagamentos</h2><p className="mt-1 text-sm text-muted-foreground">{tipoGraficoFluxo === "line" ? "Acumulado no período" : "Realizado por dia ou mês"}</p></div></div><div className="flex flex-wrap items-center gap-3"><ChartTypeControl value={tipoGraficoFluxo} onChange={setTipoGraficoFluxo} label="Tipo do gráfico de receitas e despesas" />          <div className="dashboard-resultado flex flex-col items-end gap-0 border-l border-border pl-3"><span className="text-xs text-muted-foreground">Resultado de caixa</span><strong className={`font-serif text-2xl tabular-nums ${Number(dadosAtuais.realizado.resultado) < 0 ? "text-destructive" : "text-[var(--pos)]"}`}>{Number(dadosAtuais.realizado.resultado) > 0 ? "+" : ""}{brl(dadosAtuais.realizado.resultado)}</strong><p className="sr-only">Recebimentos − pagamentos · inclui aportes e retiradas</p></div></div></div>

@@ -49,7 +49,9 @@ describe("App — gate de autenticação", () => {
     history.replaceState(null, "", "/senha/token-fixture");
     render(<App />);
 
-    expect(screen.getByText("Redefinir senha")).not.toBeNull();
+    expect(screen.getByRole("status").textContent).toContain("Verificando seu link");
+    expect(screen.queryByLabelText("Nova senha")).toBeNull();
+    expect(await screen.findByText("Redefinir senha")).not.toBeNull();
     await waitFor(() => expect(location.pathname).toBe("/reset-password/token-fixture"));
     expect(fetchMock).toHaveBeenCalledWith("/api/auth/reset-password/token-fixture");
   });

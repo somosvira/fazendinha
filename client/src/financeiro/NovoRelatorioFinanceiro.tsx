@@ -206,9 +206,9 @@ export function NovoRelatorioFinanceiro({ cadastros, rascunho, onVoltar, onGerad
       <aside aria-label="Resumo do relatório" className="fin-criacao-resumo overflow-hidden rounded-[var(--fin-radius-panel)] border border-border bg-card text-ink">
         <div className="flex flex-col">
           <div className="min-h-0 p-4">
-          <div className="flex items-center gap-3"><span className="fin-section-icon" aria-hidden="true"><FileText /></span><span className="text-[11px] font-semibold uppercase tracking-[.14em] text-ink-3">Resumo do relatório</span></div>
+          <div className="flex items-center gap-3"><span className="fin-section-icon" aria-hidden="true"><FileText /></span><h2 className="text-sm font-semibold text-ink">Resumo do relatório</h2></div>
           <div className="mt-2 break-words font-serif text-xl">{config.nome.trim() || "Sem nome"}</div>
-          <dl className="mt-3 grid grid-cols-2 gap-2 border-y border-border py-3 text-sm">{(destino ? [["Propriedade", destino] as [string, string], ...resumo] : resumo).map(([rotulo, valor]) => <div key={rotulo}><dt className="text-[10px] font-semibold uppercase tracking-[.14em] text-ink-3">{rotulo}</dt><dd className="mt-0.5 break-words leading-5 text-ink">{valor}</dd></div>)}</dl>
+          <dl className="mt-3 grid grid-cols-1 gap-3 border-y border-border py-3 text-sm sm:grid-cols-2 lg:grid-cols-1 2xl:grid-cols-2">{(destino ? [["Propriedade", destino] as [string, string], ...resumo] : resumo).map(([rotulo, valor]) => <div key={rotulo}><dt className="text-xs font-medium text-ink-3">{rotulo}</dt><dd className="mt-0.5 break-words leading-5 text-ink">{valor}</dd></div>)}</dl>
           <div className="mt-3"><SecaoFinanceira titulo="Conteúdo do PDF"><div className="space-y-2 text-sm">{secoesDoRelatorio(config).map(secao => <p key={secao}>{secao}</p>)}</div></SecaoFinanceira></div>
           </div>
           <div className="mt-auto shrink-0 border-t border-border bg-card p-3">

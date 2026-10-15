@@ -1,3 +1,5 @@
+import { SelectCampo } from "@/financeiro/SelectCampo";
+import { IdCard } from "lucide-react";
 // Sheet "Editar dados" do animal — PATCH /pecuaria/rebanho/animais/:id.
 // Mesmo padrão de client/src/financeiro/FormConta.tsx: PainelCadastro + campos
 // controlados + patch só com os campos alterados + erro por campo via
@@ -100,9 +102,9 @@ export function FormDadosAnimal({ animal, onSalvo, onFechar }: {
   };
 
   const formId = "form-dados-animal";
-  return <PainelCadastro aberto titulo={`Editar ${animal.brinco}`} onFechar={() => { if (!salvando) onFechar(); }}
+  return <PainelCadastro icon={IdCard} aberto titulo={`Editar ${animal.brinco}`} onFechar={() => { if (!salvando) onFechar(); }}
     rodape={<><Button secondary onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form={formId} disabled={salvando}>{salvando ? "Salvando…" : "Salvar dados"}</Button></>}>
-    <form id={formId} onSubmit={submeter} noValidate className="grid gap-4">
+    <form data-pec-formulario  id={formId} onSubmit={submeter} noValidate className="grid gap-4">
       <ErrorBox erro={erroGeral} />
       <div className="grid gap-4 sm:grid-cols-2">
         <CampoFormulario id="animal-brinco" rotulo="Brinco" obrigatorio erro={erros.brinco}>{(p) => <input {...p} required maxLength={40} value={brinco} onChange={(e) => setBrinco(e.target.value)} className={classeInput} />}</CampoFormulario>
@@ -112,12 +114,12 @@ export function FormDadosAnimal({ animal, onSalvo, onFechar }: {
         <CampoFormulario id="animal-brinco-eletronico" rotulo="Brinco eletrônico" erro={erros.brincoEletronico}>{(p) => <input {...p} maxLength={40} value={brincoEletronico} onChange={(e) => setBrincoEletronico(e.target.value)} className={classeInput} />}</CampoFormulario>
         <CampoFormulario id="animal-sisbov" rotulo="SISBOV" erro={erros.sisbov}>{(p) => <input {...p} maxLength={40} value={sisbov} onChange={(e) => setSisbov(e.target.value)} className={classeInput} />}</CampoFormulario>
       </div>
-      <CampoFormulario id="animal-sexo" rotulo="Sexo" obrigatorio erro={erros.sexo}>{(p) => <select {...p} value={sexo} onChange={(e) => alterarSexo(e.target.value as Sexo)} className={classeInput}><option value="F">Fêmea</option><option value="M">Macho</option></select>}</CampoFormulario>
+      <CampoFormulario id="animal-sexo" rotulo="Sexo" obrigatorio erro={erros.sexo}>{(p) => <SelectCampo {...p} value={sexo} onValueChange={(valorSelecionado) => alterarSexo(valorSelecionado as Sexo)} className={classeInput}><option value="F">Fêmea</option><option value="M">Macho</option></SelectCampo>}</CampoFormulario>
       <div className="grid gap-4 sm:grid-cols-2">
         <CampoFormulario id="animal-data-nascimento" rotulo="Data de nascimento" obrigatorio erro={erros.dataNascimento}>{(p) => <DatePicker {...p} required max={hoje()} value={dataNascimento} onChange={alterarDataNascimento} className="mt-1.5" />}</CampoFormulario>
         <CampoFormulario id="animal-nascimento-estimado" rotulo="Nascimento estimado">{(p) => <label className="mt-1.5 flex h-[42px] items-center gap-2"><input id={p.id} type="checkbox" aria-label={p["aria-label"]} checked={nascimentoEstimado} onChange={(e) => setNascimentoEstimado(e.target.checked)} /><span className="text-sm font-normal text-ink-3">A data é uma estimativa</span></label>}</CampoFormulario>
       </div>
-      <CampoFormulario id="animal-origem" rotulo="Origem" obrigatorio>{(p) => <select {...p} value={origem} onChange={(e) => alterarOrigem(e.target.value as Origem)} className={classeInput}><option value="NASCIDO">Nascido na propriedade</option><option value="COMPRADO">Comprado</option></select>}</CampoFormulario>
+      <CampoFormulario id="animal-origem" rotulo="Origem" obrigatorio>{(p) => <SelectCampo {...p} value={origem} onValueChange={(valorSelecionado) => alterarOrigem(valorSelecionado as Origem)} className={classeInput}><option value="NASCIDO">Nascido na propriedade</option><option value="COMPRADO">Comprado</option></SelectCampo>}</CampoFormulario>
       <div className="grid gap-4 sm:grid-cols-2">
         <CampoFormulario id="animal-data-entrada" rotulo="Data de entrada" obrigatorio erro={erros.dataEntrada} ajuda={origem === "NASCIDO" ? "Igual ao nascimento para animais nascidos na propriedade." : undefined}>{(p) => <DatePicker {...p} required max={hoje()} disabled={origem === "NASCIDO"} value={dataEntrada} onChange={setDataEntrada} className="mt-1.5" />}</CampoFormulario>
         {sexo === "F" && <CampoFormulario id="animal-partos" rotulo="Partos antes da entrada" ajuda="Usado para calcular a categoria (novilha vira vaca a partir de 1 parto).">{(p) => <input {...p} type="number" min={0} step={1} value={partosAntesDaEntrada} onChange={(e) => setPartosAntesDaEntrada(e.target.value)} className={classeInput} />}</CampoFormulario>}

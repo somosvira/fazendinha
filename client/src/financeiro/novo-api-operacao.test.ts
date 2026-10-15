@@ -11,3 +11,7 @@ it("mantém as relações completas retornadas pela API", async () => {
   vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify(operacao), { status: 200 })));
   await expect(obterOperacao("op")).resolves.toEqual(operacao);
 });
+it.each([[401, "sessão expirou"], [403, "permissão"], [404, "não foi encontrado"], [409, "dados mudaram"], [429, "Muitas tentativas"], [500, "Tente novamente"]])("orienta recuperação para HTTP %s sem mensagem de domínio", async (status, texto) => {
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("{}", { status: Number(status) })));
+  await expect(obterOperacao("op")).rejects.toThrow(String(texto));
+});

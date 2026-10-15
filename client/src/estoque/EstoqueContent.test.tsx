@@ -35,9 +35,15 @@ function sessao(areas: string[], flags: string[] = [], dono = false) {
   localStorage.setItem("rionovo:usuario", JSON.stringify({ id: 1, nome: "T", email: "t@x", papel: "x", abas: [], areas, flags, status: "ATIVO", dono }));
 }
 
+async function selecionarFiltro(rotulo: string, opcao: string) {
+  fireEvent.click(screen.getByLabelText(rotulo));
+  fireEvent.click(await screen.findByRole("option", { name: opcao }));
+}
+
 afterEach(() => { cleanup(); localStorage.clear(); vi.unstubAllGlobals(); setPropriedadeAtiva(null); window.history.replaceState({}, "", "/"); });
 beforeEach(() => {
   vi.stubGlobal("fetch", mockFetch());
+  if (!HTMLElement.prototype.scrollIntoView) HTMLElement.prototype.scrollIntoView = vi.fn();
 });
 
 function chamouSaldos(fetchMock: ReturnType<typeof mockFetch>) {
@@ -147,11 +153,11 @@ describe("EstoqueContent — saldos e custo médio", () => {
     const tabela = await screen.findByRole("table", { name: "Saldos de estoque" });
     const racao = within(tabela).getByText("Ração").closest("tr")!;
     const celulas = [...racao.querySelectorAll("td")].map((td) => td.textContent?.replace(/\u00a0/g, " "));
-    expect(celulas).toContain("R$ 6,00");
-    expect(celulas).toContain("R$ 90,00");
+    expect(celulas.join(" ")).toContain("R$ 6,00");
+    expect(celulas.join(" ")).toContain("R$ 90,00");
     const sal = within(tabela).getByText("Sal").closest("tr")!;
-    expect([...sal.querySelectorAll("td")].filter((td) => td.textContent === "—").length).toBeGreaterThanOrEqual(2);
-    expect(screen.getByRole("columnheader", { name: "Custo médio" })).toBeTruthy();
+    expect(sal.querySelector('[data-fin-coluna="valor"]')?.textContent).toBe("—Médio: —");
+    expect(screen.getByRole("columnheader", { name: "Valor / custo médio" })).toBeTruthy();
   });
 
   it("card Valor em estoque soma o valor dos saldos listados", async () => {
@@ -190,14 +196,14 @@ describe("EstoqueContent — saldos e custo médio", () => {
     expect(screen.queryByText(/saldo negativo/)).toBeNull();
   });
 
-  it("mostra só 3 cards: Valor em estoque, Produtos em estoque e Últimas entradas", async () => {
+  it("reúne valor e produtos com saldo positivo e recolhe entradas recentes", async () => {
     vi.stubGlobal("fetch", mockFetch({ saldos: [saldo({}), saldo({ produtoId: 2, nome: "Sal", saldo: 0, valor: 0 })] }));
     render(<EstoqueContent />);
-    const card = (await screen.findByText("Produtos em estoque")).closest("section")!;
-    expect(within(card).getByText("1")).toBeTruthy();
+    const card = (await screen.findByText("1 produto em estoque")).closest("section")!;
+    expect(within(card).getByText("1 produto em estoque")).toBeTruthy();
     expect(within(card).queryByText(/^de \d+ produtos? com movimento/)).toBeNull();
     expect(screen.getByText("Valor em estoque")).toBeTruthy();
-    expect(screen.getByText("Últimas entradas")).toBeTruthy();
+    expect(screen.getByText("Últimas entradas").closest("details")?.open).toBe(false);
     expect(screen.queryByText("Itens abaixo do mínimo")).toBeNull();
     expect(screen.queryByText("Produtos sem custo apurado")).toBeNull();
   });
@@ -253,7 +259,8 @@ describe("EstoqueContent — saldos e custo médio", () => {
     ];
     vi.stubGlobal("fetch", mockFetch({ saldos, entradas }));
     render(<EstoqueContent />);
-    const card = (await screen.findByText("Últimas entradas")).closest("section")!;
+    const card = (await screen.findByText("Últimas entradas")).closest("details")!;
+    fireEvent.click(within(card).getByText("Últimas entradas"));
     await waitFor(() => expect(within(card).getAllByRole("link")).toHaveLength(6));
     const links = within(card).getAllByRole("link") as HTMLAnchorElement[];
     expect(links.map((a) => a.textContent)).toEqual(["Produto 2", "Produto 3", "Produto 1", "Produto 4", "Produto 5", "Produto 6"]);
@@ -316,9 +323,9 @@ describe("EstoqueContent — histórico de movimentos", () => {
 
     fireEvent.change(screen.getByLabelText("Buscar movimento"), { target: { value: "OP-0011" } });
     await waitFor(() => expect(urlsMovimentos(f).at(-1)).toContain("q=OP-0011"));
-    fireEvent.change(screen.getByLabelText("Filtrar por origem"), { target: { value: "COMPRA" } });
+    await selecionarFiltro("Filtrar por origem", "Compra");
     await waitFor(() => expect(urlsMovimentos(f).at(-1)).toContain("origem=COMPRA"));
-    fireEvent.change(screen.getByLabelText("Filtrar histórico por centro de custo"), { target: { value: SEM_VINCULO } });
+    await selecionarFiltro("Filtrar histórico por centro de custo", "Sem centro");
     await waitFor(() => expect(urlsMovimentos(f).at(-1)).toContain(`centroCustoId=${SEM_VINCULO}`));
   });
 
@@ -326,7 +333,7 @@ describe("EstoqueContent — histórico de movimentos", () => {
     vi.stubGlobal("fetch", mockFetch({ saldos: [saldo({})], movimentos: [] }));
     render(<EstoqueContent />);
     await screen.findByText("Nenhum movimento registrado ainda.");
-    fireEvent.change(screen.getByLabelText("Filtrar por origem"), { target: { value: "COMPRA" } });
+    await selecionarFiltro("Filtrar por origem", "Compra");
     expect(await screen.findByText("Nenhum movimento bate com os filtros.")).toBeTruthy();
   });
 });

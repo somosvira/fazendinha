@@ -17,6 +17,7 @@ import { formatarDataBR, formatarIdade, rotuloAptidao, rotuloPapelReprodutivo, r
 import { formatarGmd, formatarKg, PERIODO_GMD_PADRAO } from "../lib/peso";
 import { navegarPara } from "../../../router";
 import { Button, type ColunaTabela, Empty, ErrorBox, Metric, PageHeader, PaginaFinanceira, Panel, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
+import { DistribuicaoPecuaria } from "../components/DistribuicaoPecuaria";
 import { CategoriaPill, Paginacao, useAoMovimentarComToast } from "../ui";
 import { NavRebanho } from "./NavRebanho";
 import { mensagemDesativar } from "./ListaLotes";
@@ -136,7 +137,7 @@ export function DetalheLote({ id, podeLancar = true, onVoltar }: { id: string; p
     finally { setProcessandoLote(false); }
   };
 
-  if (!lote) return <div className="shell-wide pagina-carregando"><button onClick={onVoltar} className="mt-6 mb-5 inline-flex shrink-0 items-center gap-2 self-start text-sm font-semibold text-ink-2"><ArrowLeft size={17} /> Voltar para lotes</button><ErrorBox erro={erro} />{!erro && <Loader label="Carregando lote" full />}</div>;
+  if (!lote) return <PaginaFinanceira><div className="pagina-carregando"><button onClick={onVoltar} className="mt-6 mb-5 inline-flex shrink-0 items-center gap-2 self-start text-sm font-semibold text-ink-2"><ArrowLeft size={17} /> Voltar para lotes</button><ErrorBox erro={erro} />{!erro && <Loader label="Carregando lote" full />}</div></PaginaFinanceira>;
 
   const totalPaginasAnimais = Math.max(1, Math.ceil(totalAnimais / ITENS_POR_PAGINA));
   const totalPaginasBaixados = Math.max(1, Math.ceil(totalBaixados / ITENS_POR_PAGINA));
@@ -144,12 +145,9 @@ export function DetalheLote({ id, podeLancar = true, onVoltar }: { id: string; p
   const COLUNAS_ANIMAIS: ColunaTabela<AnimalResumo>[] = [
     ...(podeLancar ? [{ chave: "selecionar", titulo: "", larguraMinima: 44, acoes: true, celula: (item: AnimalResumo) => <label className="flex items-center" onClick={(e: React.MouseEvent) => e.stopPropagation()}><input type="checkbox" aria-label={`Selecionar ${item.brinco}`} checked={selecionados.has(item.id)} onChange={() => alternarSelecao(item)} /></label> }] as ColunaTabela<AnimalResumo>[] : []),
     { chave: "brinco", titulo: "Brinco", larguraMinima: 140, principal: true, celula: (item) => <><strong className="break-words">{item.brinco}</strong>{item.nome && <div className="mt-1 text-xs text-ink-3">{item.nome}</div>}</> },
-    { chave: "sexo", titulo: "Sexo", larguraMinima: 70, celula: (item) => rotuloSexo(item.sexo) },
-    { chave: "categoria", titulo: "Categoria", larguraMinima: 110, celula: (item) => <CategoriaPill categoria={item.categoria} categoriaOrigem={item.categoriaOrigem} categoriaCalculada={item.categoriaCalculada} /> },
-    { chave: "idade", titulo: "Idade", larguraMinima: 80, celula: (item) => formatarIdade(item.idadeMeses) },
+    { chave: "categoria", titulo: "Categoria / perfil", larguraMinima: 150, celula: (item) => <><CategoriaPill categoria={item.categoria} categoriaOrigem={item.categoriaOrigem} categoriaCalculada={item.categoriaCalculada} /><div className="mt-1 text-xs text-ink-3">{rotuloSexo(item.sexo)} · {formatarIdade(item.idadeMeses)}</div></> },
     { chave: "papel", titulo: "Aptidão/Papel", larguraMinima: 140, celula: (item) => <>{rotuloAptidao(item.aptidao)}{item.papelReprodutivo && item.papelReprodutivo !== "NENHUM" ? ` · ${rotuloPapelReprodutivo(item.papelReprodutivo)}` : ""}</> },
-    { chave: "peso", titulo: "Último peso", larguraMinima: 130, celula: (item) => item.ultimoPeso ? <>{item.ultimoPeso.kg.toLocaleString("pt-BR")} kg<div className="text-xs text-ink-3">{formatarDataBR(item.ultimoPeso.data)}</div></> : "—" },
-    { chave: "gmd", titulo: "GMD", larguraMinima: 110, celula: (item) => formatarGmd(item.gmdRecente) },
+    { chave: "peso", titulo: "Peso / GMD", larguraMinima: 160, celula: (item) => <>{item.ultimoPeso ? <>{item.ultimoPeso.kg.toLocaleString("pt-BR")} kg<div className="text-xs text-ink-3">{formatarDataBR(item.ultimoPeso.data)}</div></> : "Sem pesagem"}<div className="mt-1 text-xs text-ink-3">GMD {formatarGmd(item.gmdRecente)}</div></> },
     { chave: "noLote", titulo: "No lote desde", larguraMinima: 130, celula: (item) => formatarDataBR(item.noLocalDesde) },
     ...(podeLancar ? [{ chave: "acoes", titulo: "Ações", alinhamento: "direita" as const, larguraMinima: 96, acoes: true, celula: (item: AnimalResumo) => <div className="flex justify-end" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
       <button type="button" className="rounded-lg p-2 text-ink-2 hover:bg-surface-2 hover:text-ink" aria-label={`Movimentar ${item.brinco}`} title="Movimentar" onClick={() => setMovimentando({ animais: [item], usarLoteAtual: true })}><ArrowRightLeft size={16} /></button>
@@ -177,41 +175,45 @@ export function DetalheLote({ id, podeLancar = true, onVoltar }: { id: string; p
       </div> : undefined}
     />
     <NavRebanho ativa="lotes" />
+    <nav aria-label="Seções da ficha do lote" className="pec-ancoras my-4 flex flex-wrap gap-2 rounded-lg border border-border bg-card p-2" style={{ position: "sticky", top: 8, zIndex: 10 }}>
+      {[["resumo", "Resumo"], ["animais", "Animais"], ["baixas", "Baixas"], ["historico", "Histórico"], ["alteracoes", "Alterações"], ["sanidade", "Sanidade"], ["nutricao", "Nutrição"]].map(([secao, rotulo]) => <a key={secao} href={`#lote-${secao}`} className="rounded-md px-3 py-2 text-sm font-semibold underline-offset-4 hover:bg-surface-2 hover:underline">{rotulo}</a>)}
+    </nav>
     <ErrorBox erro={erro ?? erroLote} />
 
     {resumo && <>
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="font-serif text-xl">Resumo do lote</h2>
+        <h2 id="lote-resumo" style={{ scrollMarginTop: 120 }} className="font-serif text-xl">Resumo do lote</h2>
         <SeletorPeriodoGmd id="periodo-gmd-lote" valor={periodoGmd} onChange={setPeriodoGmd} />
       </div>
-      <div className="mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="pec-metricas pec-lote-metricas mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Metric label="Animais ativos" valor={resumo.ativos.toLocaleString("pt-BR")} detalhe={`${resumo.porSexo.F} fêmeas · ${resumo.porSexo.M} machos`} icon={Users} />
         <Metric label="Peso médio" valor={formatarKg(resumo.peso.medioKg)} detalhe={`${formatarKg(resumo.peso.minKg)} – ${formatarKg(resumo.peso.maxKg)} · ${resumo.peso.semPeso} sem peso`} icon={Weight} />
         <Metric label="GMD do período" valor={formatarGmd(resumo.gmd.medio)} detalhe={`${resumo.gmd.comGmd} de ${resumo.ativos} animais com pesagem suficiente`} icon={TrendingUp} />
         <Metric label="Idade média" valor={resumo.idadeMediaMeses != null ? formatarIdade(resumo.idadeMediaMeses) : "—"} detalhe="Média dos animais ativos no lote" icon={Calendar} />
       </div>
-      {resumo.porCategoria.length > 0 && <div className="mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-border bg-white p-4 text-sm">
-        {resumo.porCategoria.map((c) => <Pill key={c.categoriaId ?? "sem-categoria"}>{c.categoria}: {c.qtd}</Pill>)}
+      {resumo.porCategoria.length > 0 && <div className="pec-lote-composicao">
+        <DistribuicaoPecuaria titulo="Composição do lote" descricao={`Categorias do efetivo completo · ${resumo.porSexo.F} fêmeas · ${resumo.porSexo.M} machos`} total={resumo.ativos} rotuloCentro="animais no lote" itens={resumo.porCategoria.map(c => ({ id: c.categoriaId ?? "sem", nome: c.categoria, qtd: c.qtd }))} />
       </div>}
     </>}
 
     <Panel className="mt-6 overflow-hidden">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-5"><h2 className="font-serif text-xl">Animais no lote</h2></div>
-      {podeLancar && animais.length > 0 && <div className="flex flex-wrap items-center gap-3 border-b border-border bg-surface-2 px-4 py-2.5 text-sm">
+      <div id="lote-animais" style={{ scrollMarginTop: 120 }} className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-4"><h2 className="font-serif text-xl">Animais no lote</h2>
+      {podeLancar && animais.length > 0 && <div className="flex flex-wrap items-center gap-3 text-xs">
         <label className="flex items-center gap-2 font-medium"><input type="checkbox" aria-label="Selecionar todos os animais desta página" checked={todosDaPaginaSelecionados} onChange={alternarSelecaoTodos} /> Selecionar todos</label>
         {selecionados.size > 0 && <><span className="text-ink-3">{selecionados.size} selecionado{selecionados.size === 1 ? "" : "s"}</span>
           <Button secondary onClick={() => setSelecionados(new Map())}>Limpar seleção</Button>
           <Button onClick={() => setMovimentando({ animais: [...selecionados.values()] })}>Movimentar selecionados ({selecionados.size})</Button>
         </>}
       </div>}
+      </div>
       {animais.length ? <>
-        <TabelaFinanceira rotulo="Animais do lote" itens={animais} colunas={COLUNAS_ANIMAIS} chaveDe={(item) => item.id} onAbrir={(item) => navegarPara(`/pecuaria/rebanho/animais/${item.id}`)} barraRolagemSuperior />
+        <TabelaFinanceira rotulo="Animais do lote" itens={animais} colunas={COLUNAS_ANIMAIS} chaveDe={(item) => item.id} onAbrir={(item) => navegarPara(`/pecuaria/rebanho/animais/${item.id}`)} />
         <Paginacao paginaAtual={paginaAnimais} totalPaginas={totalPaginasAnimais} totalItens={totalAnimais} itensPorPagina={ITENS_POR_PAGINA} onPaginaChange={setPaginaAnimais} rotulo="animais" idSelect="pagina-animais-lote" />
       </> : <Empty>Nenhum animal ativo neste lote.</Empty>}
     </Panel>
 
     <Panel className="mt-6 overflow-hidden">
-      <div className="border-b border-border p-5"><h2 className="font-serif text-xl">Saíram por baixa</h2></div>
+      <div id="lote-baixas" style={{ scrollMarginTop: 120 }} className="border-b border-border p-5"><h2 className="font-serif text-xl">Saíram por baixa</h2></div>
       {baixados.length ? <>
         <TabelaFinanceira rotulo="Animais que saíram por baixa" itens={baixados} colunas={COLUNAS_BAIXADOS} chaveDe={(item) => item.id} onAbrir={(item) => navegarPara(`/pecuaria/rebanho/animais/${item.id}`)} />
         <Paginacao paginaAtual={paginaBaixados} totalPaginas={totalPaginasBaixados} totalItens={totalBaixados} itensPorPagina={ITENS_POR_PAGINA} onPaginaChange={setPaginaBaixados} rotulo="animais baixados" idSelect="pagina-baixados-lote" />
@@ -219,7 +221,7 @@ export function DetalheLote({ id, podeLancar = true, onVoltar }: { id: string; p
     </Panel>
 
     <Panel className="mt-6 overflow-hidden">
-      <div className="border-b border-border p-5"><h2 className="font-serif text-xl">Histórico</h2></div>
+      <div id="lote-historico" style={{ scrollMarginTop: 120 }} className="border-b border-border p-5"><h2 className="font-serif text-xl">Histórico</h2></div>
       <HistoricoMovimentacoes
         carregar={carregarHistorico}
         mostrarDirecao
@@ -231,12 +233,12 @@ export function DetalheLote({ id, podeLancar = true, onVoltar }: { id: string; p
     </Panel>
 
     <Panel className="mt-6 overflow-hidden">
-      <div className="border-b border-border p-5"><h2 className="font-serif text-xl">Alterações do lote</h2></div>
+      <div id="lote-alteracoes" style={{ scrollMarginTop: 120 }} className="border-b border-border p-5"><h2 className="font-serif text-xl">Alterações do lote</h2></div>
       <AlteracoesCadastro entidade="Lote" entidadeId={lote.id} recarregarToken={alteracoesToken} />
     </Panel>
 
-    <HistoricoSanitario loteId={lote.id} />
-    <NutricaoLote loteId={lote.id} propriedadeId={lote.propriedadeId} podeLancar={podeLancar && lote.ativo} />
+    <div id="lote-sanidade" style={{ scrollMarginTop: 120 }}><HistoricoSanitario loteId={lote.id} /></div>
+    <div id="lote-nutricao" style={{ scrollMarginTop: 120 }}><NutricaoLote loteId={lote.id} propriedadeId={lote.propriedadeId} podeLancar={podeLancar && lote.ativo} /></div>
 
     {editando && <FormLote lote={lote} propriedades={[]} onSalvo={async () => { setEditando(false); await Promise.all([carregarLote(), recarregarResumoEBaixados()]); }} onFechar={() => setEditando(false)} />}
 

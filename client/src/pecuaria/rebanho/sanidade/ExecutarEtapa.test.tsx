@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { alterarControle } from "../../../lib/controles.fixture";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 const mocks = vi.hoisted(() => ({ req: vi.fn(), ficha: vi.fn(), servicos: vi.fn() }));
@@ -14,12 +15,12 @@ afterEach(cleanup);
 describe("execução de etapas", () => {
   it("exame fixa planejamento e desvio usa sítio histórico do fato e prévia antes de confirmar", async () => {
     const salvo = vi.fn(); render(<ExecutarEtapa tarefas={[tarefa]} onFechar={vi.fn()} onSalvo={salvo} />);
-    await screen.findByRole("option", { name: "Coleta" });
+    await screen.findByRole("option", { hidden: true,  name: "Coleta" });
     expect(screen.getByLabelText("Data realizada")).toHaveProperty("disabled", true);
     expect(screen.getByLabelText("Tipo de exame")).toHaveProperty("disabled", true);
     fireEvent.click(screen.getByRole("button", { name: "Registrar desvio" }));
-    fireEvent.change(screen.getByLabelText("Data realizada"), { target: { value: "2026-10-01" } });
-    fireEvent.change(screen.getByLabelText("Motivo comum do desvio"), { target: { value: "Aplicação após transferência" } });
+    await alterarControle(screen.getByLabelText("Data realizada"), { target: { value: "2026-10-01" } });
+    await alterarControle(screen.getByLabelText("Motivo comum do desvio"), { target: { value: "Aplicação após transferência" } });
     await waitFor(() => expect(mocks.servicos).toHaveBeenLastCalledWith(2));
     fireEvent.submit(document.getElementById("execucao-exame")!);
     await screen.findByText("Planejado e realizado");

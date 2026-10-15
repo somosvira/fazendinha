@@ -11,8 +11,10 @@ afterEach(cleanup);
 describe("nutrição individual", () => {
   it("mostra parcela, custo incompleto, dias e origem; permite paginar o histórico", async () => {
     render(<NutricaoAnimal animalId="animal" />);
-    await screen.findByText(/Silagem: 10.000 KG/);
-    expect(screen.getByText(/cobertura incompleta/)).toBeTruthy();
+    await screen.findByText("Silagem");
+    expect(screen.getByText("10 KG")).toBeTruthy();
+    expect(screen.getByText("≈ 1 KG/dia")).toBeTruthy();
+    expect(screen.getByText(/Cobertura incompleta/)).toBeTruthy();
     expect(screen.getByText("Abrir fechamento do lote").getAttribute("href")).toContain("fechamentoId=fechamento");
     fireEvent.click(screen.getByText("Próxima"));
     await waitFor(() => expect(consultarConsumoAnimal).toHaveBeenLastCalledWith("animal", 2));

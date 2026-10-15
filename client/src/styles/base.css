@@ -79,6 +79,15 @@
    na PÁGINA inteira em telas estreitas. Cada área rolável interna
    (overflow-x-auto) continua funcionando; clip não cria contexto de scroll. */
 .app-main { margin-left: var(--side-w); overflow-x: clip; }
+/* Campos legíveis sem provocar zoom de foco no Safari móvel. */
+@media (max-width: 900px) {
+  :root :is(.app-main, [role="dialog"]) :is(input:not([type="checkbox"], [type="radio"], [type="hidden"]), textarea) {
+    font-size: 16px;
+  }
+}
+@media (min-width: 901px) {
+  .app-main:has(~ button[aria-label="Abrir assistente do Terrano"]) { padding-right: 64px; }
+}
 /* Colapso MANUAL da sidebar (toggle no header): estreita o trilho p/ ícone-only
    em qualquer largura ≥901px. O header e o main acompanham via --side-w. As
    labels/chevrons somem pelas variantes [.side-collapsed_&]:hidden no AppSidebar. */
@@ -179,10 +188,23 @@ a { color: inherit; }
    de qualquer `pt-*`/`pb-*` (camada utilities perde no cascade). O seletor composto
    também vence as redefinições de `.shell-wide` nos media queries abaixo. */
 .shell-wide.pagina-financeira { padding-bottom: 40px; }
+.fin-tabela tr[tabindex="0"]:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; background: var(--muted); }
 @media (max-width: 900px) {
   /* folga para o botão flutuante "Abrir menu" (fixed left-3 top-3, 40px) não
      cobrir o cabeçalho da página quando a sidebar vira drawer. */
-  .shell-wide.pagina-financeira { padding-top: 56px; }
+  .shell-wide.pagina-financeira { padding-top: 68px; }
+  .configuracoes-navegacao { padding-top: 68px; }
+  .configuracoes-navegacao + .shell-wide.pagina-financeira { padding-top: 20px; }
+}
+
+/* Toque sem reduzir a densidade das tabelas em computadores. */
+@media (pointer: coarse), (max-width: 600px) {
+  button[data-slot="button"], button[data-slot="dialog-close"],
+  .btn-primary, .btn-secondary, .btn-ghost,
+  .acessos-status-filtros button {
+    min-height: 44px;
+    min-width: 44px;
+  }
 }
 
 
@@ -751,7 +773,7 @@ body.no-scroll { overflow: hidden; }
   align-items: start;
   background: var(--bg-card);
   border: 1px solid var(--rule);
-  border-left-width: 4px;
+  border-left-width: 1px;
   box-shadow: 0 12px 32px rgba(20, 25, 26, 0.16);
   padding: 12px 14px 14px;
   font-family: var(--sans);

@@ -2,7 +2,7 @@
 // período), o gráfico de evolução do peso e a tabela de pesagens já existente
 // (GMD desde a anterior, observação, editar/excluir).
 
-import { Pencil, Scale, Trash2, TrendingUp, Weight } from "lucide-react";
+import { Pencil, Scale, Trash2, Weight } from "lucide-react";
 import { SeletorPeriodoGmd } from "./SeletorPeriodoGmd";
 import { CardFicha } from "../ui";
 import { GraficoPeso, ROTULO_TIPO_PESAGEM } from "./GraficoPeso";
@@ -39,12 +39,11 @@ export function PesoEGanho({ animal, periodo, onPeriodoChange, podeLancar, onEdi
     : `${peso.gmdPeriodo.pesagens} pesagens em ${peso.gmdPeriodo.dias ?? 0} dias · ${rotuloPeriodoGmd(periodo)}`;
 
   return <CardFicha icon={Scale} titulo="Peso e ganho" className="lg:col-span-2" acao={<SeletorPeriodoGmd id="periodo-gmd-animal" valor={periodo} onChange={onPeriodoChange} />}>
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="pec-metricas pec-metricas-peso grid gap-4 sm:grid-cols-2">
       <Metric label="Último peso" icon={Scale} valor={formatarKg(peso.ultimo?.kg)} detalhe={peso.ultimo ? formatarDataBR(peso.ultimo.data) : "Sem pesagem registrada"} />
-      <Metric label="GMD recente" icon={TrendingUp} valor={formatarGmd(peso.gmdRecente)} detalhe="Entre as duas últimas pesagens" />
       <Metric label="GMD do período" icon={Weight} valor={formatarGmd(peso.gmdPeriodo.valor)} detalhe={detalhePeriodo} />
-      <Metric label="GMD desde a entrada" icon={TrendingUp} valor={formatarGmd(peso.gmdDesdeEntrada)} detalhe="Primeira × última pesagem do animal" />
     </div>
+    <dl className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-sm"><div><dt className="text-ink-3">GMD recente · duas últimas pesagens</dt><dd className="font-semibold">{formatarGmd(peso.gmdRecente)}</dd></div><div><dt className="text-ink-3">GMD desde a entrada · primeira × última pesagem</dt><dd className="font-semibold">{formatarGmd(peso.gmdDesdeEntrada)}</dd></div></dl>
 
     <div className="mt-6">
       <GraficoPeso historicoPesagens={historicoPesagens} desde={desde} ate={limite} />

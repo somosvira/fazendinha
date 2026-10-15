@@ -1,4 +1,4 @@
-import { Fragment, type ReactNode, useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { Button, CabecalhoTabela, ErrorBox, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
 import { classeInput } from "../../../financeiro/PainelCadastro";
 import { Paginacao } from "../ui";
@@ -7,6 +7,9 @@ import { reqSanidade } from "./api";
 import { FormRodada } from "./FormRodada";
 import { consultaRodadas, consultarRodada, listarEtapasRodada, listarParticipantesRodada, listarRodadas, listarTarefasEtapa, removerParticipante, type EtapaRodada, type PaginaSanitaria, type ParticipanteRodada, type RodadaSanitaria, type TarefaRodada } from "./rodadas-api";
 import { dataSanitaria, nomeAnimalSanitario, unidadeSanitaria } from "./rotulos";
+import { ContagensEtapa, EstadoSanitario, rotuloTarefaSanitaria } from "./IndicadoresSanitarios";
+import { DistribuicaoPecuaria } from "../components/DistribuicaoPecuaria";
+import { SkeletonSanitario } from "./SkeletonSanitario";
 const paginaUrl = (chave: string) => Math.max(1, Number(new URLSearchParams(window.location.search).get(chave)) || 1);
 
 export function AgendaRodadas({ filtrosUI, filtros, podeLancar, rodadaId, onAbrir, onExecutar, onAcao, recarregarToken }: { filtrosUI?: ReactNode; filtros: Record<string, string | number | undefined>; podeLancar: boolean; rodadaId: string; onAbrir: (id: string) => void; onExecutar: (tarefas: TarefaRodada[]) => void; onAcao: (acao: "adiar" | "dispensar" | "cancelar" | "consultar", tarefa: TarefaRodada) => void; recarregarToken: number }) {
@@ -17,25 +20,24 @@ export function AgendaRodadas({ filtrosUI, filtros, podeLancar, rodadaId, onAbri
   const [revisao, setRevisao] = useState(0);
   const [salvo, setSalvo] = useState(false);
   const consulta = consultaRodadas(filtros);
-  useEffect(() => { let vivo = true; setCarregando(true); setErro(null); listarRodadas(Object.fromEntries(new URLSearchParams(consulta))).then((v) => { if (vivo) setPagina(v); }).catch((e: unknown) => { if (vivo) setErro(`${salvo ? "Ciclo salvo. A consulta não atualizou. " : ""}${e instanceof Error ? e.message : String(e)}`); }).finally(() => { if (vivo) setCarregando(false); }); return () => { vivo = false; }; }, [consulta, revisao, recarregarToken]);
+  useEffect(() => { if (rodadaId) return; let vivo = true; setCarregando(true); setErro(null); listarRodadas(Object.fromEntries(new URLSearchParams(consulta))).then((v) => { if (vivo) setPagina(v); }).catch((e: unknown) => { if (vivo) setErro(`${salvo ? "Ciclo salvo. A consulta não atualizou. " : ""}${e instanceof Error ? e.message : String(e)}`); }).finally(() => { if (vivo) setCarregando(false); }); return () => { vivo = false; }; }, [consulta, revisao, recarregarToken, rodadaId]);
+  if (rodadaId) return <DetalheRodada key={rodadaId} id={rodadaId} filtros={filtros} podeLancar={podeLancar} onFechar={() => onAbrir("")} onExecutar={onExecutar} onAcao={onAcao} recarregarToken={recarregarToken} onMudou={() => setRevisao((v) => v + 1)} />;
   return <section className="min-w-0">
     <CabecalhoTabela titulo="Ciclos de protocolos" acao={podeLancar ? <Button onClick={() => setCriando(true)}>Novo ciclo</Button> : undefined} />
     {filtrosUI}
     {salvo && <p role="status">Ciclo salvo.</p>}
     {erro && <><ErrorBox erro={erro} /><Button secondary onClick={() => setRevisao((v) => v + 1)}>Tentar novamente</Button></>}
-    {carregando ? <p>Carregando ciclos…</p> : <><div className="sanidade-ciclos">
+    {carregando ? <SkeletonSanitario estrutura="ciclos" label="Carregando ciclos de protocolos…" /> : <><div className="sanidade-ciclos">
       <div className="sanidade-ciclo-linha sanidade-ciclo-cabecalho text-sm text-ink-3" aria-hidden="true"><span>Ciclo</span><span>Protocolo</span><span>Início</span><span>Participantes</span><span>Ação</span></div>
-      {(pagina?.itens ?? []).map((r) => <Fragment key={r.id}>
+      {(pagina?.itens ?? []).map((r) => <div key={r.id}>
         <div className={`sanidade-ciclo-linha ${rodadaId === r.id ? "sanidade-ciclo-ativo" : ""}`}>
-          <button type="button" className="text-left" aria-expanded={rodadaId === r.id} aria-controls={`ciclo-${r.id}`} onClick={() => onAbrir(rodadaId === r.id ? "" : r.id)}>{rodadaId === r.id ? "⌄" : "›"} {r.nome}</button>
+          <button type="button" className="text-left" onClick={() => onAbrir(r.id)}>{r.nome}</button>
           <span>{r.protocolo.nome} · v{r.protocolo.versao}</span><span>{dataSanitaria(r.inicioReferencia)}</span><span>{r.participantes ?? "—"} animais</span>
-          <button type="button" className="sanidade-link underline text-left" onClick={() => onAbrir(rodadaId === r.id ? "" : r.id)}>{rodadaId === r.id ? "Fechar ciclo" : "Abrir ciclo"}</button>
+          <button type="button" className="sanidade-link underline text-left" onClick={() => onAbrir(r.id)}>Abrir ciclo</button>
         </div>
-        {rodadaId === r.id && <div id={`ciclo-${r.id}`} className="sanidade-ciclo-ativo"><DetalheRodada id={rodadaId} filtros={filtros} podeLancar={podeLancar} onFechar={() => onAbrir("")} onExecutar={onExecutar} onAcao={onAcao} recarregarToken={recarregarToken} onMudou={() => setRevisao((v) => v + 1)} /></div>}
-      </Fragment>)}
+      </div>)}
     </div>{pagina && pagina.total > 0 && <Paginacao paginaAtual={pagina.pagina} totalPaginas={Math.max(1, Math.ceil(pagina.total / pagina.porPagina))} totalItens={pagina.total} itensPorPagina={pagina.porPagina} onPaginaChange={(p) => { const url = new URL(window.location.href); url.searchParams.set("pagina", String(p)); window.history.pushState(null, "", url); window.dispatchEvent(new PopStateEvent("popstate")); }} rotulo="ciclos" idSelect="pagina-rodadas" />}{!pagina?.itens?.length && <p>Nenhum ciclo encontrado. Inicie um ciclo para planejar o cuidado dos animais.</p>}</>}
     {criando && <FormRodada onFechar={() => setCriando(false)} onSalvo={(id) => { setCriando(false); setSalvo(true); setRevisao((v) => v + 1); onAbrir(id); }} />}
-    {rodadaId && !pagina?.itens.some((r) => r.id === rodadaId) && <DetalheRodada id={rodadaId} filtros={filtros} podeLancar={podeLancar} onFechar={() => onAbrir("")} onExecutar={onExecutar} onAcao={onAcao} recarregarToken={recarregarToken} onMudou={() => setRevisao((v) => v + 1)} />}
   </section>;
 }
 
@@ -76,17 +78,24 @@ function DetalheRodada({ id, filtros, podeLancar, onFechar, onExecutar, onMudou,
   async function abrirAssociacao(pagina = 1) { if (!rodada) return; setAssociando(true); setPaginaLegadas(pagina); setLegadas(null); setErro(null); try { setLegadas(await reqSanidade<PaginaSanitaria<ParticipanteRodada>>(`/execucoes-sem-rodada${consultaRodadas({ propriedadeId: rodada.propriedadeId, protocoloId: rodada.protocoloId, pagina, porPagina: 20 })}`)); } catch (e: unknown) { setErro(e instanceof Error ? e.message : String(e)); } }
   async function associar() { if (!rodada || ocupado) return; setOcupado(true); setErro(null); try { await reqSanidade(`/rodadas/${encodeURIComponent(id)}/associacao`, { method: "POST", body: JSON.stringify({ propriedadeId: rodada.propriedadeId, chave: chave.current, execucaoIds: associadas }) }); setAssociando(false); setAssociadas([]); atualizar(true); } catch (e: unknown) { setErro(e instanceof Error ? e.message : String(e)); } finally { setOcupado(false); } }
   if (adicionando && rodada) return <FormRodada rodada={rodada} onFechar={() => setAdicionando(false)} onSalvo={() => { setAdicionando(false); atualizar(true); }} />;
-  return <section className="sanidade-ciclo-detalhe" aria-label={rodada?.nome ?? "Ciclo de protocolo"}>
-    <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><h3 className="h3">Etapas e tarefas do ciclo</h3><Button secondary onClick={onFechar} disabled={ocupado}>Fechar</Button></div>
+  const contagens = (etapas?.itens ?? []).reduce((soma, e) => {
+    const c = e.contagensFiltradas ?? e.contagens;
+    return { pendentes: soma.pendentes + c.pendentes, realizadas: soma.realizadas + c.realizadas, dispensadas: soma.dispensadas + c.dispensadas, canceladas: soma.canceladas + (c.canceladas ?? 0) };
+  }, { pendentes: 0, realizadas: 0, dispensadas: 0, canceladas: 0 });
+  const contagensDiferentes = (etapas?.itens ?? []).some(e => e.contagensFiltradas && (["total", "pendentes", "realizadas", "dispensadas", "atrasadas", "canceladas"] as const).some(chave => (e.contagens[chave] ?? 0) !== (e.contagensFiltradas![chave] ?? 0)));
+  return <section className="sanidade-ciclo-detalhe sanidade-ciclo-compacto" style={{ border: 0, background: "transparent", margin: 0, padding: "1rem 0" }} aria-label={rodada?.nome ?? "Ciclo de protocolo"}>
+    <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><h2 className="h3">{rodada?.nome ?? "Ciclo de protocolo"}</h2><Button secondary onClick={onFechar} disabled={ocupado}>Voltar para ciclos</Button></div>
     <ErrorBox erro={erro} />{alteracaoSalva && <p role="status">Alteração salva.</p>}{erro && <Button secondary onClick={() => atualizar()}>Atualizar consulta</Button>}
-    {carregando ? <p>Carregando ciclo…</p> : rodada && <div className="grid gap-5"><p>{rodada.protocolo.nome} · v{rodada.protocolo.versao} · início de referência {dataSanitaria(rodada.inicioReferencia)}</p>{podeLancar && <div className="flex flex-wrap gap-2"><Button secondary onClick={() => setAdicionando(true)}>Adicionar participantes</Button><Button secondary onClick={() => { chave.current = crypto.randomUUID(); setNovoNome(rodada.nome); setRenomeando(true); }}>Renomear ciclo</Button><Button secondary onClick={() => { chave.current = crypto.randomUUID(); void abrirAssociacao(); }}>Associar execuções existentes</Button></div>}
-      <section><h3 className="font-semibold">Etapas do ciclo</h3><p className="text-sm text-ink-3">Contagens do ciclo inteiro e do filtro atual são apresentadas separadamente.</p><TabelaFinanceira rotulo="Etapas do ciclo" itens={etapas?.itens ?? []} chaveDe={(e) => e.id} onAbrir={(e) => { setEtapaId(e.id); setPaginaTarefas(1); }} colunas={[
+    {carregando ? <SkeletonSanitario estrutura="detalhe" label="Carregando ciclo de protocolo…" /> : rodada && <div className="grid gap-5"><p>{rodada.protocolo.nome} · v{rodada.protocolo.versao} · início de referência {dataSanitaria(rodada.inicioReferencia)}</p>{podeLancar && <div className="flex flex-wrap gap-2"><Button secondary onClick={() => setAdicionando(true)}>Adicionar participantes</Button><Button secondary onClick={() => { chave.current = crypto.randomUUID(); setNovoNome(rodada.nome); setRenomeando(true); }}>Renomear ciclo</Button><Button secondary onClick={() => { chave.current = crypto.randomUUID(); void abrirAssociacao(); }}>Associar execuções existentes</Button></div>}
+      <section><h3 className="font-semibold">Etapas do ciclo</h3>{contagensDiferentes && <p className="text-xs text-ink-3">O filtro seleciona parte das tarefas; os totais do ciclo são mantidos para comparação.</p>}
+      {!!etapas?.itens.length && <details><summary className="cursor-pointer py-2 text-sm font-semibold">Comparar andamento das tarefas</summary><DistribuicaoPecuaria embutido titulo="Andamento das tarefas" descricao="Etapas nesta página · filtro atual" total={contagens.pendentes + contagens.realizadas + contagens.dispensadas + contagens.canceladas} rotuloCentro="tarefas" unidade="tarefas" itens={[{ id: "pendentes", nome: "Pendentes", qtd: contagens.pendentes }, { id: "realizadas", nome: "Realizadas", qtd: contagens.realizadas }, { id: "dispensadas", nome: "Dispensadas", qtd: contagens.dispensadas }, { id: "canceladas", nome: "Canceladas", qtd: contagens.canceladas }]} /></details>}
+      <TabelaFinanceira rotulo="Etapas do ciclo" itens={etapas?.itens ?? []} chaveDe={(e) => e.id} onAbrir={(e) => { setEtapaId(e.id); setPaginaTarefas(1); }} colunas={[
         { chave: "etapa", titulo: "Etapa", principal: true, celula: (e) => `${e.ordem} · dia ${e.diaRelativo} · ${e.tipo === "APLICACAO" ? "Aplicação" : "Exame"}` },
-        { chave: "todas", titulo: getPropriedadeAtiva() == null ? "Ciclo inteiro" : "No sítio consultado", celula: (e) => `${e.contagens.total} previstas · ${e.contagens.pendentes} pendentes · ${e.contagens.realizadas} realizadas · ${e.contagens.dispensadas} dispensadas · ${e.contagens.atrasadas} atrasadas · ${e.contagens.canceladas ?? 0} canceladas` },
-        { chave: "filtradas", titulo: "Filtro atual", celula: (e) => e.contagensFiltradas ? `${e.contagensFiltradas.total} previstas · ${e.contagensFiltradas.pendentes} pendentes · ${e.contagensFiltradas.realizadas} realizadas · ${e.contagensFiltradas.dispensadas} dispensadas · ${e.contagensFiltradas.atrasadas} atrasadas · ${e.contagensFiltradas.canceladas ?? 0} canceladas` : "—" },
+        { chave: "todas", titulo: contagensDiferentes ? (getPropriedadeAtiva() == null ? "Ciclo inteiro" : "No sítio consultado") : "Tarefas", larguraMinima: 220, celula: (e) => <ContagensEtapa compacto contagens={e.contagens} /> },
+        ...(contagensDiferentes ? [{ chave: "filtradas", titulo: "Filtro atual", larguraMinima: 230, celula: (e: EtapaRodada) => e.contagensFiltradas ? <ContagensEtapa compacto contagens={e.contagensFiltradas} /> : "—" }] : []),
         { chave: "acao", titulo: "Ações", acoes: true, celula: (e) => <Button secondary onClick={() => { setEtapaId(e.id); setPaginaTarefas(1); }}>Abrir tarefas da etapa</Button> },
       ]} />{etapas && etapas.total > etapas.porPagina && <Paginacao paginaAtual={etapas.pagina} totalPaginas={Math.max(1, Math.ceil(etapas.total / etapas.porPagina))} totalItens={etapas.total} itensPorPagina={etapas.porPagina} onPaginaChange={setPaginaEtapas} rotulo="etapas" idSelect="pagina-etapas" />}</section>
-      {etapaId && <section className="grid gap-3"><h3 className="font-semibold">Tarefas da etapa</h3>{!tarefas ? <p>Carregando tarefas…</p> : <><TabelaFinanceira rotulo="Tarefas da etapa" itens={tarefas.itens} chaveDe={(t) => t.id} colunas={[
+      {etapaId && <section className="grid gap-3"><h3 className="font-semibold">Tarefas da etapa</h3>{!tarefas ? <SkeletonSanitario label="Carregando tarefas da etapa…" /> : <><TabelaFinanceira rotulo="Tarefas da etapa" itens={tarefas.itens} chaveDe={(t) => t.id} colunas={[
         { chave: "selecionar", titulo: "Selecionar", acoes: true, celula: (t) => podeLancar && t.situacao === "PENDENTE" ? <input type="checkbox" aria-label={`Selecionar tarefa de ${t.execucao.animal?.brinco ?? t.execucao.animalId}`} checked={!!selecionadas[t.id]} onChange={(e) => { setSelecionadas((v) => { const novo = { ...v }; if (e.target.checked) novo[t.id] = t; else delete novo[t.id]; return novo; }); }} /> : null },
         { chave: "animal", titulo: "Animal", principal: true, celula: (t) => t.execucao.animal ? nomeAnimalSanitario(t.execucao.animal) : t.execucao.animalId },
         { chave: "data", titulo: "Prevista", celula: (t) => dataSanitaria(t.previstaPara) },
@@ -97,7 +106,7 @@ function DetalheRodada({ id, filtros, podeLancar, onFechar, onExecutar, onMudou,
         { chave: "sitioAtual", titulo: "Sítio atual", celula: (t) => t.propriedadeAtual?.nome ?? "Não localizado" },
         { chave: "parametros", titulo: "Produto / exame", celula: (t) => t.parametros.tipo === "APLICACAO" ? t.parametros.produtoNomeSnapshot ?? "Produto planejado" : t.parametros.tipoExameNomeSnapshot ?? "Exame planejado" },
         { chave: "quantidade", titulo: "Quantidade planejada", celula: (t) => t.parametros.tipo === "APLICACAO" ? `${t.parametros.dose ?? "—"} ${unidadeSanitaria(t.parametros.unidade ?? "")}` : "—" },
-        { chave: "situacao", titulo: "Situação", celula: (t) => t.situacao === "REALIZADA" ? "Realizada" : t.situacao === "DISPENSADA" ? "Dispensada" : t.situacao === "EXECUCAO_CANCELADA" ? "Execução cancelada" : t.previstaPara.slice(0, 10) < new Date().toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" }) ? "Atrasada" : "Pendente" },
+        { chave: "situacao", titulo: "Situação", celula: (t) => <EstadoSanitario tom={t.situacao === "REALIZADA" ? "verde" : t.situacao === "PENDENTE" ? "atencao" : "neutro"}>{rotuloTarefaSanitaria(t.situacao, t.previstaPara, new Date().toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" }))}</EstadoSanitario> },
         { chave: "acao", titulo: "Ações", acoes: true, celula: (t) => <div className="flex flex-wrap gap-2"><Button secondary onClick={() => onAcao("consultar", t)}>Consultar participação</Button>{podeLancar && t.situacao === "PENDENTE" && <><Button secondary onClick={() => onExecutar([t])}>Executar tarefa</Button><Button secondary onClick={() => onAcao("adiar", t)}>Adiar</Button><Button secondary onClick={() => onAcao("dispensar", t)}>Dispensar</Button><Button secondary onClick={() => onAcao("cancelar", t)}>Cancelar execução</Button></>}</div> },
       ]} />{tarefas.total > 0 && <Paginacao paginaAtual={tarefas.pagina} totalPaginas={Math.max(1, Math.ceil(tarefas.total / tarefas.porPagina))} totalItens={tarefas.total} itensPorPagina={tarefas.porPagina} onPaginaChange={setPaginaTarefas} rotulo="tarefas" idSelect="pagina-tarefas" />}</>}{podeLancar && Object.keys(selecionadas).length > 0 && <Button disabled={Object.keys(selecionadas).length > 100} onClick={() => onExecutar(Object.values(selecionadas))}>Executar selecionadas ({Object.keys(selecionadas).length})</Button>}</section>}
       <section><h3 className="font-semibold">Participações e histórico</h3><TabelaFinanceira rotulo="Participantes do ciclo" itens={participantes?.itens ?? []} chaveDe={(p) => p.id} colunas={[

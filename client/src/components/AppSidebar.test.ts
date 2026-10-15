@@ -6,7 +6,7 @@ import { AppSidebar } from "./AppSidebar";
 import type { Tab } from "./Shell";
 import type { User } from "../data/acessos";
 
-const proprietario: User = { id: "u1", nome: "Marco Antônio", email: "marco@riovono.com", inicial: "M", papel: "proprietario", status: "ativo", ultimoAcesso: "hoje", abas: [], flags: [] };
+const proprietario: User = { id: "u1", nome: "Marco Antônio", email: "marco@riovono.com", inicial: "M", papel: "proprietario", status: "ativo", ultimoAcesso: "hoje", abas: [], flags: [], dono: true };
 
 // Node 22+ define um `localStorage` global "experimental" (atrás de
 // --localstorage-file) que sombreia o do jsdom e quebra com "Cannot read
@@ -99,6 +99,15 @@ function baseProps(overrides: Partial<{
 }
 
 describe("AppSidebar", () => {
+  it("não oferece Acessos ao perfil sem dono nem gerenciarAcessos", async () => {
+    const props = baseProps({ user: { ...proprietario, dono: false, flags: [] } });
+    render(h(AppSidebar, props));
+    fireEvent.pointerDown(screen.getByLabelText("Menu da conta"), { button: 0 });
+    await screen.findByRole("menu");
+    expect(screen.queryByText("Acessos")).toBeNull();
+    expect(props.onAcessos).not.toHaveBeenCalled();
+  });
+
   it("inicia os demais domínios recolhidos e reúne todas as páginas financeiras", () => {
     render(h(AppSidebar, baseProps()));
     const pecuaria = screen.getByRole("button", { name: "Expandir Pecuária" });

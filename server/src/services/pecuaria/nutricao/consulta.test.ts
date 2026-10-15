@@ -23,6 +23,11 @@ beforeEach(() => {
 });
 
 describe("consultas nutricionais", () => {
+  it("filtra situação no banco antes de paginar e contar", async () => {
+    await listarFechamentos("lote", 1, { pagina: 2, limite: 25 }, true, undefined, "ESTORNADO");
+    expect(prisma.fechamentoConsumo.findMany).toHaveBeenCalledWith(expect.objectContaining({ skip: 25, take: 25, where: { loteId: "lote", propriedadeId: 1, status: "ESTORNADO" } }));
+    expect(prisma.fechamentoConsumo.count).toHaveBeenCalledWith({ where: { loteId: "lote", propriedadeId: 1, status: "ESTORNADO" } });
+  });
   it("oculta valores em todos os níveis sem permissão financeira, preservando quantidade", () => {
     const resposta = apresentarFechamento(detalhe, false);
     expect(resposta.custoConhecido).toBeNull();

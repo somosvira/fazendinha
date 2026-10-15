@@ -1,0 +1,83 @@
+/* Autenticação — superfície independente do tema legado para acompanhar a
+ * identidade Cooperativa também antes de existir uma sessão autenticada. */
+.login-cooperativa {
+  min-height: 100dvh;
+  padding: 32px;
+  background: #edf2ed;
+}
+
+.login-cooperativa__frame {
+  display: grid;
+  grid-template-columns: minmax(380px, .9fr) minmax(480px, 1.1fr);
+  min-height: calc(100dvh - 64px);
+  max-width: 1240px;
+  margin: 0 auto;
+  overflow: hidden;
+  border: 1px solid #d8e2da;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 18px 48px rgba(34, 53, 44, .1);
+}
+
+.login-cooperativa__context {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 56px;
+  overflow: hidden;
+  background: #24493b;
+  color: #fff;
+}
+
+.login-cooperativa__context :is(h1, p) { margin: 0; }
+.login-cooperativa__context h1 { color: #fff; }
+.login-cooperativa__form-panel {
+  display: flex;
+  min-height: 100%;
+  align-items: center;
+  justify-content: center;
+  padding: 56px 64px;
+  background: #fff;
+}
+
+.login-cooperativa__form { width: 100%; max-width: 408px; }
+.login-cooperativa__eyebrow { color: #55715e !important; }
+.login-cooperativa__title { color: #283c31 !important; }
+.login-cooperativa__subtitle { color: #56665f !important; }
+.login-cooperativa label { color: #384b40; }
+.login-cooperativa input {
+  height: 44px;
+  border-color: #c7d4ca;
+  border-radius: 8px;
+  background: #fff;
+  color: #283c31;
+}
+.login-cooperativa input:focus {
+  border-color: #24493b;
+  box-shadow: 0 0 0 3px rgba(36, 73, 59, .15);
+}
+.login-cooperativa input::placeholder { color: #718178; }
+.login-cooperativa a { color: #315b49; }
+.login-cooperativa a:hover { color: #173a2c; }
+.login-cooperativa__submit {
+  height: 44px;
+  border-radius: 8px;
+  background: #24493b !important;
+  color: #fff !important;
+}
+.login-cooperativa__submit:hover { background: #1b3a2e !important; }
+.login-cooperativa__footer { border-top-color: #e3ebe4 !important; color: #64746b !important; }
+.login-cooperativa__footer span { color: #384b40 !important; }
+
+@media (max-width: 1023px) {
+  .login-cooperativa { padding: 24px; }
+  .login-cooperativa__frame { display: block; min-height: calc(100dvh - 48px); }
+  .login-cooperativa__context { display: none; }
+  .login-cooperativa__form-panel { min-height: calc(100dvh - 48px); padding: 48px; }
+}
+
+@media (max-width: 639px) {
+  .login-cooperativa { padding: 16px; }
+  .login-cooperativa__frame { min-height: calc(100dvh - 32px); border-radius: 16px; }
+  .login-cooperativa__form-panel { min-height: calc(100dvh - 32px); padding: 32px 24px; }
+}

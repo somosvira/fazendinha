@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { Button } from "../../../financeiro/financeiro-ui";
 import { buscarAuditoriaAnimal, RebanhoApiError } from "../api";
 import type { EntradaAuditoria } from "../types";
+import { resumoAuditoriaLegivel } from "../lib/auditoriaRotulos";
 
 const TAMANHO_PAGINA = 20;
 
@@ -77,7 +78,7 @@ export function AuditoriaAnimal({ id, recarregarToken }: {
         const temAlteracoes = entrada.alteracoes.length > 0;
         return <div key={`${entrada.entidadeId}-${entrada.em}-${indice}`} className="p-3 text-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="min-w-0"><strong className="break-words">{entrada.resumo}</strong><div className="mt-0.5 text-xs text-ink-3">{entrada.usuarioNome ?? "Sistema"}</div></div>
+            <div className="min-w-0"><strong className="break-words">{resumoAuditoriaLegivel(entrada)}</strong><div className="mt-0.5 text-xs text-ink-3">{entrada.usuarioNome ?? "Sistema"}</div></div>
             <div className="flex shrink-0 items-center gap-3">
               <span className="text-xs text-ink-3">{formatarDataHoraBR(entrada.em)}</span>
               {temAlteracoes && <button type="button" aria-expanded={aberto} onClick={() => alternarExpandido(indice)} className="text-xs font-semibold text-green-800 hover:underline">{aberto ? "Ocultar alterações" : "Ver alterações"}</button>}

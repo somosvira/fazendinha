@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { App } from "./App";
 import { setSessao, type UsuarioSessao } from "./lib/auth";
 import { setPropriedadeAtiva } from "./propriedadeScope";
@@ -8,7 +8,7 @@ import { limparRascunhoAtivo } from "./financeiro/rascunhoAtivo";
 
 const usuarioBase: UsuarioSessao = {
   id: 7, nome: "Ana", email: "ana@exemplo.com", papel: "personalizado", status: "ATIVO", dono: false,
-  abas: ["dashboard", "lancar", "gastos"], areas: ["financeiro"], flags: ["lancar"],
+  abas: ["dashboard", "lancar", "gastos"], areas: ["financeiro"], flags: ["lancar", "verValores"],
 };
 
 let chamadasRascunho: { propriedade: string | null }[] = [];
@@ -86,6 +86,10 @@ describe("App — trabalho ativo", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Continuar rascunho: Compra de ração" }));
 
     await waitFor(() => expect(location.pathname).toBe("/financeiro/operacoes/nova"));
+    // Mantém o clique durante a importação fria para cobrir a corrida da URL.
+    // Aguarda a transformação real do módulo, sem confundir seu tempo com o
+    // prazo de atualização do formulário e sem ampliar o timeout do findBy.
+    await act(async () => { await import("./financeiro/FinanceiroContent"); });
     expect(await screen.findByRole("heading", { name: "Nova operação" })).toBeTruthy();
     expect(await screen.findByRole("button", { name: "Rascunho em edição: Compra de ração" })).toBeTruthy();
   });
@@ -121,6 +125,15 @@ describe("App — trabalho ativo", () => {
     expect(await screen.findByRole("heading", { name: "Compromissos" })).toBeTruthy();
     expect(chamadasRascunho).toHaveLength(0);
     expect(screen.queryByRole("group", { name: "Trabalhos ativos" })).toBeNull();
+  });
+
+  it.each([["lancar"], ["verValores"]])("sem a combinação lancar/verValores não consulta nem oferece rascunho (%j)", async (...flags) => {
+    history.replaceState(null, "", "/financeiro/operacoes");
+    entrarComo({ ...usuarioBase, flags });
+    expect(await screen.findByRole("heading", { name: "Operações" })).toBeTruthy();
+    expect(chamadasRascunho).toHaveLength(0);
+    expect(screen.queryByRole("group", { name: "Trabalhos ativos" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Continuar rascunho|Rascunho em edição/ })).toBeNull();
   });
 
   it("busca o rascunho do novo sítio ao trocar de sítio", async () => {

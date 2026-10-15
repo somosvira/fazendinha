@@ -58,7 +58,7 @@ export function DetalheSanitario({ tipo, valor, abrir }: { tipo: string; valor: 
       if (vinculo.id) links.push([`${nome} · ${vinculo.aplicadaEm ? dataHoraSanitaria(String(vinculo.aplicadaEm)) : dataSanitaria(String(vinculo.data ?? vinculo.inicio ?? ""))}`, destino, String(vinculo.id)]);
     }
   }
-  return <div className="space-y-4 text-sm">
+  return <div className="pec-detalhe-sanitario space-y-4 text-sm">
     {!!propriedade.nome && <p><strong>Sítio do fato:</strong> {String(propriedade.nome)}</p>}
     <p><strong>Animal:</strong> {animal.id ? <a className="underline" href={`/pecuaria/rebanho/animais/${encodeURIComponent(String(animal.id))}`}>{textoDetalhe(animal.brinco)}{animal.nome ? ` · ${String(animal.nome)}` : ""}</a> : "Não informado"}</p>
     {!!doenca.nome && <p><strong>Doença:</strong> {String(doenca.nome)}</p>}

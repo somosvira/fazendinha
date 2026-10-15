@@ -1,3 +1,4 @@
+import { SelectCampo } from "@/financeiro/SelectCampo";
 // Cadastro de animal — página cheia no layout de FormOperacao.tsx: form em
 // card + resumo de revisão à direita. POST /pecuaria/rebanho/animais.
 
@@ -11,7 +12,8 @@ import { CampoComposicao, rolarParaCampo } from "../ui";
 import { CampoGenitor, genitorIncompleto, mensagemGenitorIncompleto, valorGenitorParaCampos, type ValorGenitor } from "../components/CampoGenitor";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import { navegarPara } from "../../../router";
-import { Button, ErrorBox, hoje, PageHeader, PaginaCarregando, PaginaFinanceira, ReviewLine } from "../../../financeiro/financeiro-ui";
+import { Button, ErrorBox, hoje, PageHeader, PaginaCarregando, PaginaFinanceira } from "../../../financeiro/financeiro-ui";
+import { LinhaPrevia as ReviewLine } from "../../../financeiro/LinhaPrevia";
 import { CampoFormulario, classeInput } from "../../../financeiro/PainelCadastro";
 import { DatePicker } from "../../../components/DatePicker";
 import { useToast } from "../../../components/Toast";
@@ -178,7 +180,7 @@ function FormNovoAnimal({ onVoltar }: { onVoltar: () => void }) {
 
   if (!catalogos && !erroCatalogos) return <PaginaCarregando label="Carregando cadastro" />;
 
-  return <div className="shell-wide pagina-financeira pb-10">
+  return <PaginaFinanceira><div className="pb-10">
     <ErrorBox erro={erroCatalogos} />
     {catalogos && <form onSubmit={submeter} noValidate className="pec-novo-animal">
       <div className="pec-form-corpo space-y-7 p-5 md:p-7">
@@ -189,7 +191,7 @@ function FormNovoAnimal({ onVoltar }: { onVoltar: () => void }) {
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             <CampoFormulario id="novo-animal-brinco" rotulo="Brinco" obrigatorio erro={erros.brinco}>{(p) => <input {...p} required maxLength={40} value={brinco} onChange={(e) => setBrinco(e.target.value)} className={classeInput} />}</CampoFormulario>
             <CampoFormulario id="novo-animal-nome" rotulo="Nome">{(p) => <input {...p} maxLength={120} value={nome} onChange={(e) => setNome(e.target.value)} className={classeInput} />}</CampoFormulario>
-            <CampoFormulario id="novo-animal-sexo" rotulo="Sexo" obrigatorio>{(p) => <select {...p} value={sexo} onChange={(e) => alterarSexo(e.target.value as Sexo)} className={classeInput}><option value="F">Fêmea</option><option value="M">Macho</option></select>}</CampoFormulario>
+            <CampoFormulario id="novo-animal-sexo" rotulo="Sexo" obrigatorio>{(p) => <SelectCampo {...p} value={sexo} onValueChange={(valorSelecionado) => alterarSexo(valorSelecionado as Sexo)} className={classeInput}><option value="F">Fêmea</option><option value="M">Macho</option></SelectCampo>}</CampoFormulario>
             <CampoFormulario id="novo-animal-brinco-eletronico" rotulo="Brinco eletrônico">{(p) => <input {...p} maxLength={40} value={brincoEletronico} onChange={(e) => setBrincoEletronico(e.target.value)} className={classeInput} />}</CampoFormulario>
             <CampoFormulario id="novo-animal-sisbov" rotulo="SISBOV">{(p) => <input {...p} maxLength={40} value={sisbov} onChange={(e) => setSisbov(e.target.value)} className={classeInput} />}</CampoFormulario>
           </div>
@@ -197,7 +199,7 @@ function FormNovoAnimal({ onVoltar }: { onVoltar: () => void }) {
         <section>
           <h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Origem e datas</h3>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            <CampoFormulario id="novo-animal-origem" rotulo="Origem" obrigatorio>{(p) => <select {...p} value={origem} onChange={(e) => alterarOrigem(e.target.value as Origem)} className={classeInput}><option value="NASCIDO">Nascido na propriedade</option><option value="COMPRADO">Comprado</option></select>}</CampoFormulario>
+            <CampoFormulario id="novo-animal-origem" rotulo="Origem" obrigatorio>{(p) => <SelectCampo {...p} value={origem} onValueChange={(valorSelecionado) => alterarOrigem(valorSelecionado as Origem)} className={classeInput}><option value="NASCIDO">Nascido na propriedade</option><option value="COMPRADO">Comprado</option></SelectCampo>}</CampoFormulario>
             <CampoFormulario id="novo-animal-data-nascimento" rotulo="Data de nascimento" obrigatorio erro={erros.dataNascimento}>{(p) => <DatePicker {...p} required max={hoje()} value={dataNascimento} onChange={alterarDataNascimento} className="mt-1.5" />}</CampoFormulario>
             <CampoFormulario id="novo-animal-data-entrada" rotulo="Data de entrada" obrigatorio erro={erros.dataEntrada}>{(p) => <DatePicker {...p} required max={hoje()} disabled={origem === "NASCIDO"} value={dataEntrada} onChange={setDataEntrada} className="mt-1.5" />}</CampoFormulario>
             <CampoFormulario id="novo-animal-nascimento-estimado" rotulo="Nascimento estimado">{(p) => <label className="mt-1.5 flex h-[42px] items-center gap-2"><input id={p.id} type="checkbox" aria-label={p["aria-label"]} checked={nascimentoEstimado} onChange={(e) => setNascimentoEstimado(e.target.checked)} /><span className="text-sm font-normal text-ink-3">A data é uma estimativa</span></label>}</CampoFormulario>
@@ -211,10 +213,10 @@ function FormNovoAnimal({ onVoltar }: { onVoltar: () => void }) {
         <section>
           <h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Localização e finalidade</h3>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            <CampoFormulario id="novo-animal-propriedade" rotulo="Sítio" obrigatorio erro={erros.propriedadeId}>{(p) => <select {...p} required value={propriedadeId} onChange={(e) => alterarPropriedade(e.target.value)} className={classeInput}><option value="">Selecione</option>{catalogos.propriedades.map((prop) => <option key={prop.id} value={prop.id}>{prop.nome}</option>)}</select>}</CampoFormulario>
-            <CampoFormulario id="novo-animal-lote" rotulo="Lote" ajuda={!propriedadeId ? "Selecione o sítio para escolher o lote." : undefined}>{(p) => <select {...p} disabled={!propriedadeId} value={loteId} onChange={(e) => setLoteId(e.target.value)} className={classeInput}><option value="">Sem lote</option>{lotesDoSitio.map((lote) => <option key={lote.id} value={lote.id}>{lote.nome}</option>)}</select>}</CampoFormulario>
-            <CampoFormulario id="novo-animal-aptidao" rotulo="Aptidão" obrigatorio>{(p) => <select {...p} required value={aptidao} onChange={(e) => setAptidao(e.target.value as Aptidao)} className={classeInput}><option value="LEITE">Leite</option><option value="CORTE">Corte</option></select>}</CampoFormulario>
-            {sexo === "F" && <CampoFormulario id="novo-animal-papel" rotulo="Papel reprodutivo">{(p) => <select {...p} value={papelReprodutivo} onChange={(e) => setPapelReprodutivo(e.target.value as PapelReprodutivo)} className={classeInput}><option value="NENHUM">Nenhum</option><option value="RECEPTORA">Receptora</option><option value="DOADORA">Doadora</option></select>}</CampoFormulario>}
+            <CampoFormulario id="novo-animal-propriedade" rotulo="Sítio" obrigatorio erro={erros.propriedadeId}>{(p) => <SelectCampo {...p} required value={propriedadeId} onValueChange={(valorSelecionado) => alterarPropriedade(valorSelecionado)} className={classeInput}><option value="">Selecione</option>{catalogos.propriedades.map((prop) => <option key={prop.id} value={prop.id}>{prop.nome}</option>)}</SelectCampo>}</CampoFormulario>
+            <CampoFormulario id="novo-animal-lote" rotulo="Lote" ajuda={!propriedadeId ? "Selecione o sítio para escolher o lote." : undefined}>{(p) => <SelectCampo {...p} disabled={!propriedadeId} value={loteId} onValueChange={(valorSelecionado) => setLoteId(valorSelecionado)} className={classeInput}><option value="">Sem lote</option>{lotesDoSitio.map((lote) => <option key={lote.id} value={lote.id}>{lote.nome}</option>)}</SelectCampo>}</CampoFormulario>
+            <CampoFormulario id="novo-animal-aptidao" rotulo="Aptidão" obrigatorio>{(p) => <SelectCampo {...p} required value={aptidao} onValueChange={(valorSelecionado) => setAptidao(valorSelecionado as Aptidao)} className={classeInput}><option value="LEITE">Leite</option><option value="CORTE">Corte</option></SelectCampo>}</CampoFormulario>
+            {sexo === "F" && <CampoFormulario id="novo-animal-papel" rotulo="Papel reprodutivo">{(p) => <SelectCampo {...p} value={papelReprodutivo} onValueChange={(valorSelecionado) => setPapelReprodutivo(valorSelecionado as PapelReprodutivo)} className={classeInput}><option value="NENHUM">Nenhum</option><option value="RECEPTORA">Receptora</option><option value="DOADORA">Doadora</option></SelectCampo>}</CampoFormulario>}
           </div>
         </section>
         <section>
@@ -235,8 +237,9 @@ function FormNovoAnimal({ onVoltar }: { onVoltar: () => void }) {
           <div className="pec-revisao-titulo text-[11px] font-semibold uppercase tracking-[.14em]">Revisão do cadastro</div>
           <div className="mt-3 font-serif text-3xl">{brinco.trim() || "Sem brinco"}</div>
           <div className="mt-5 space-y-3 text-sm leading-5">
-            {categoriaPrevista && <ReviewLine>Categoria calculada: {categoriaPrevista.nome}.</ReviewLine>}
-            <ReviewLine tone={propriedadeNome ? "green" : "neutral"}>{propriedadeNome ? <>Entra no sítio {propriedadeNome}{loteNome ? `, lote ${loteNome}` : ""}.</> : "Selecione o sítio de destino."}</ReviewLine>
+            {!brinco.trim() && <ReviewLine pendente>Informe o brinco para identificar o animal.</ReviewLine>}
+            {categoriaPrevista && <ReviewLine>Categoria prevista pelos dados preenchidos: {categoriaPrevista.nome}.</ReviewLine>}
+            <ReviewLine pendente={!propriedadeNome}>{propriedadeNome ? <>Entra no sítio {propriedadeNome}{loteNome ? `, lote ${loteNome}` : ""}.</> : "Falta selecionar o sítio de destino."}</ReviewLine>
             <ReviewLine>Finalidade: {rotuloAptidao(aptidao)}{papelReprodutivo !== "NENHUM" ? ` · ${rotuloPapelReprodutivo(papelReprodutivo)}` : ""}.</ReviewLine>
             <ReviewLine tone={composicaoRotulo ? "brown" : "neutral"}>{composicaoRotulo ? <>Composição: {composicaoRotulo}.</> : (mae.tipo !== "NENHUM" || pai.tipo !== "NENHUM") ? "Composição será calculada pelos genitores." : "Sem composição racial informada."}</ReviewLine>
             {(mae.tipo !== "NENHUM" || pai.tipo !== "NENHUM") && <ReviewLine>Filiação: {mae.tipo === "ANIMAL" ? mae.brinco || "mãe selecionada" : mae.tipo === "EXTERNO" ? "mãe externa selecionada" : "mãe não informada"} · {pai.tipo === "ANIMAL" ? pai.brinco || "pai selecionado" : pai.tipo === "EXTERNO" ? "pai externo selecionado" : "pai não informado"}.</ReviewLine>}
@@ -249,5 +252,5 @@ function FormNovoAnimal({ onVoltar }: { onVoltar: () => void }) {
         </div>
       </aside>
     </form>}
-  </div>;
+  </div></PaginaFinanceira>;
 }

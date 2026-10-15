@@ -1,10 +1,11 @@
+import { SelectCampo } from "@/financeiro/SelectCampo";
 // Sheet "Movimentar" — POST /pecuaria/rebanho/animais/movimentar. Serve tanto
 // um animal (linha da lista, detalhe) quanto uma seleção em massa (lista).
 // Mostra a lista dos animais que serão movidos, com a localização atual de
 // cada um, e permite tirar algum antes de confirmar.
 
 import { type FormEvent, useRef, useState } from "react";
-import { X } from "lucide-react";
+import { X , ArrowLeftRight } from "lucide-react";
 import { movimentarAnimais, RebanhoApiError } from "../api";
 import type { AnimalResumo, CatalogoLote, Propriedade } from "../types";
 import { Button, ErrorBox, hoje } from "../../../financeiro/financeiro-ui";
@@ -68,10 +69,11 @@ export function FormMovimentar({ animais, propriedades, lotes, propriedadeInicia
 
   const titulo = lista.length === 1 ? "Movimentar animal" : `Movimentar ${lista.length} animais`;
   const formId = "form-movimentar-animais";
-  return <PainelCadastro aberto titulo={titulo} onFechar={() => { if (!salvando) onFechar(); }}
+  return <PainelCadastro icon={ArrowLeftRight} aberto titulo={titulo} onFechar={() => { if (!salvando) onFechar(); }}
     rodape={<><Button secondary onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form={formId} disabled={salvando || !lista.length}>{salvando ? "Salvando…" : "Movimentar"}</Button></>}>
-    <form id={formId} onSubmit={submeter} noValidate className="grid gap-4">
+    <form data-pec-formulario  id={formId} onSubmit={submeter} noValidate className="grid gap-4">
       <ErrorBox erro={erroGeral ?? erro} />
+      {!destinoFixo && propriedadeId && lista.some(a => String(a.propriedade?.id) === propriedadeId && (a.lote?.id ?? "") === loteId) && <p role="status" className="text-sm text-ink-3">O destino coincide com a localização atual de parte da seleção. Confira o sítio, o lote e a data antes de movimentar.</p>}
 
       <div>
         <div className="text-sm font-medium">Animais que serão movidos ({lista.length})</div>
@@ -93,8 +95,8 @@ export function FormMovimentar({ animais, propriedades, lotes, propriedadeInicia
             <div className="mt-1 font-medium">{destinoFixo.rotulo}</div>
           </div>
         : <>
-          <CampoFormulario id="movimentar-propriedade" rotulo="Sítio de destino" obrigatorio>{(p) => <select {...p} required value={propriedadeId} onChange={(e) => { setPropriedadeId(e.target.value); setLoteId(""); }} className={classeInput}><option value="">Selecione</option>{propriedades.map((prop) => <option key={prop.id} value={prop.id}>{prop.nome}</option>)}</select>}</CampoFormulario>
-          <CampoFormulario id="movimentar-lote" rotulo="Lote" ajuda={!propriedadeId ? "Selecione o sítio para escolher o lote." : undefined}>{(p) => <select {...p} disabled={!propriedadeId} value={loteId} onChange={(e) => setLoteId(e.target.value)} className={classeInput}><option value="">Sem lote</option>{lotesDoSitio.map((lote) => <option key={lote.id} value={lote.id}>{lote.nome}</option>)}</select>}</CampoFormulario>
+          <CampoFormulario id="movimentar-propriedade" rotulo="Sítio de destino" obrigatorio>{(p) => <SelectCampo {...p} required value={propriedadeId} onValueChange={(valorSelecionado) => { setPropriedadeId(valorSelecionado); setLoteId(""); }} className={classeInput}><option value="">Selecione</option>{propriedades.map((prop) => <option key={prop.id} value={prop.id}>{prop.nome}</option>)}</SelectCampo>}</CampoFormulario>
+          <CampoFormulario id="movimentar-lote" rotulo="Lote" ajuda={!propriedadeId ? "Selecione o sítio para escolher o lote." : undefined}>{(p) => <SelectCampo {...p} disabled={!propriedadeId} value={loteId} onValueChange={(valorSelecionado) => setLoteId(valorSelecionado)} className={classeInput}><option value="">Sem lote</option>{lotesDoSitio.map((lote) => <option key={lote.id} value={lote.id}>{lote.nome}</option>)}</SelectCampo>}</CampoFormulario>
         </>}
       <CampoFormulario id="movimentar-data" rotulo="Data" obrigatorio erro={erroData}>{(p) => <DatePicker {...p} required max={hoje()} value={data} onChange={setData} className="mt-1.5" />}</CampoFormulario>
       <CampoFormulario id="movimentar-motivo" rotulo="Motivo">{(p) => <input {...p} maxLength={300} value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Ex.: reagrupamento de lote" className={classeInput} />}</CampoFormulario>

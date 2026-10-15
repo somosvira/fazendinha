@@ -28,6 +28,16 @@ export function CompromissosFinanceiros({ onNav, podeLancar = true }: { onNav: (
   const [carregando, setCarregando] = useState(true);
   const [visao, setVisao] = useState<VisaoCompromissos>("lista");
   const [busca, setBusca] = useState("");
+  useEffect(() => {
+    const sincronizar = () => {
+      if (window.location.pathname !== "/financeiro/compromissos") return;
+      const proximo = periodoInicial({ inicio: "", fim: "" }, { permitirVazio: true });
+      const situacao = new URLSearchParams(window.location.search).get("situacao");
+      setPeriodo(proximo); setSituacoes(situacao === "todos" ? [] : [situacao === "receber" ? "RECEBER" : "PAGAR"]);
+    };
+    window.addEventListener("popstate", sincronizar);
+    return () => window.removeEventListener("popstate", sincronizar);
+  }, []);
   const [pagina, setPagina] = useState(1);
   const [selecionado, setSelecionado] = useState<Compromisso | null>(null);
   useEffect(() => setPagina(1), [situacoes, soVencidos, busca, periodo.inicio, periodo.fim]);
@@ -81,7 +91,7 @@ export function CompromissosFinanceiros({ onNav, podeLancar = true }: { onNav: (
     {erro && <Button secondary onClick={() => { void carregar(); }}>Tentar novamente</Button>}
     {carregando && <AtualizandoFinanceiro />}
     {!erro && <div aria-busy={carregando} {...(carregando ? { inert: "" } : {})}>
-    <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-3 [&>section:last-child]:col-span-2 md:[&>section:last-child]:col-span-1"><Metric compacto tom="pendente" label="A pagar" valor={brl(itens.filter((c) => c.tipo === "PAGAR" && !["LIQUIDADO", "CANCELADO"].includes(c.status)).reduce((s, c) => s + Number(c.saldoPendente), 0))} detalhe="Saldo pendente" icon={ArrowUpRight} /><Metric compacto tom="entrada" label="A receber" valor={brl(itens.filter((c) => c.tipo === "RECEBER" && !["LIQUIDADO", "CANCELADO"].includes(c.status)).reduce((s, c) => s + Number(c.saldoPendente), 0))} detalhe="Saldo pendente" icon={ArrowDownLeft} /><Metric compacto tom="alerta" label="Vencidos" valor={String(itens.filter((c) => c.vencido).length)} detalhe="Condição de prazo, não status" icon={CalendarDays} tone="red" /></div>
+    <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-3 [&>section:last-child]:col-span-2 md:[&>section:last-child]:col-span-1"><Metric compacto tom="pendente" label="A pagar" valor={brl(itens.filter((c) => c.tipo === "PAGAR" && !["LIQUIDADO", "CANCELADO"].includes(c.status)).reduce((s, c) => s + Number(c.saldoPendente), 0))} detalhe="Saldo pendente" icon={ArrowUpRight} /><Metric compacto tom="entrada" label="A receber" valor={brl(itens.filter((c) => c.tipo === "RECEBER" && !["LIQUIDADO", "CANCELADO"].includes(c.status)).reduce((s, c) => s + Number(c.saldoPendente), 0))} detalhe="Saldo pendente" icon={ArrowDownLeft} /><Metric compacto tom="alerta" label="Vencidos" valor={String(itens.filter((c) => c.vencido).length)} detalhe="Vencimento passado e saldo ainda pendente" icon={CalendarDays} tone="red" /></div>
     <Panel tom="pendente" className="fin-painel mt-4 overflow-hidden">
       <CabecalhoTabela titulo="Compromissos financeiros" />
       <div className="fin-cabecalho fin-filtros-barra flex flex-wrap items-center gap-3 border-b border-border p-4">

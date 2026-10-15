@@ -193,9 +193,9 @@ export function CommandPalette({ aberto, onFechar, onNav, podeVer }: Props) {
           <CommandList className="max-h-none flex-1 overflow-y-auto overflow-x-hidden px-2 pb-2">
             {vazio && (
               <div className="px-3 pb-2.5 pt-2.5 text-[13px] text-ink-3">
-                Digite uma página, ação ou recurso — ex.: <em className="not-italic font-semibold text-ink-2">talhão</em>,{" "}
-                <em className="not-italic font-semibold text-ink-2">ferrugem</em>,{" "}
-                <em className="not-italic font-semibold text-ink-2">lançar gasto</em>.
+                Digite uma página, ação ou recurso — ex.: <em className="not-italic font-semibold text-ink-2">rebanho</em>,{" "}
+                <em className="not-italic font-semibold text-ink-2">estoque</em>,{" "}
+                <em className="not-italic font-semibold text-ink-2">nova operação</em>.
               </div>
             )}
 
@@ -266,7 +266,8 @@ export function CommandPalette({ aberto, onFechar, onNav, podeVer }: Props) {
             )}
           </CommandList>
 
-          <div className="flex items-center gap-4 border-t border-[color:var(--rule-soft)] bg-muted px-3.5 py-2.5">
+          <div className="flex flex-wrap items-center gap-4 border-t border-[color:var(--rule-soft)] bg-muted px-3.5 py-2.5">
+            <span className="text-[11px] text-muted-foreground"><kbd>Ctrl/⌘ K</kbd> abrir busca</span>
             <span className="inline-flex items-center gap-1.5 text-[11px] text-[color:var(--ink-mute)]">
               <kbd className="grid h-[17px] min-w-[17px] place-items-center rounded-[5px] border border-border bg-card px-1 text-[11px] text-ink-3">↑</kbd>
               <kbd className="grid h-[17px] min-w-[17px] place-items-center rounded-[5px] border border-border bg-card px-1 text-[11px] text-ink-3">↓</kbd>

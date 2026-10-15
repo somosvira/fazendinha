@@ -11,7 +11,7 @@ O deploy usa exclusivamente **Cloudflare Workers**, servindo interface e API no 
 - **Pecuária V1–V3:** animais e lotes, movimentações, categorias, baixas, genética, pesagens/manejos, sanidade e nutrição.
 - **Administração:** sítios, usuários, sessões e permissões por área/ação.
 
-Agricultura, Cultivo e Equipe/Ponto foram retirados. Reprodução operacional e produção de leite não fazem parte da implementação atual. O assistente/WhatsApp conserva infraestrutura, mas está suspenso pelas flags do cliente e servidor.
+Agricultura, Cultivo e Equipe/Ponto foram retirados. Reprodução operacional e produção de leite não fazem parte da implementação atual. O [assistente de consulta](docs/assistente-consulta.md) oferece leitura financeira e ajuda de uso; perguntas livres exigem configuração OpenAI. O bot antigo, `/ia` e WhatsApp continuam suspensos pelas flags do cliente e servidor.
 
 ## Desenvolvimento local
 

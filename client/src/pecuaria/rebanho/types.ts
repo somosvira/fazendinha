@@ -397,9 +397,11 @@ export type EventoPainel = { tipo: "CADASTRO" | "BAIXA" | "ESTORNO"; animalId: s
 export type PainelGeral = {
   ativos: number;
   /** `categoriaId` nulo = "Sem categoria" */
-  porCategoria: Array<{ categoriaId: string | null; categoria: string; qtd: number }>;
+  porCategoria: Array<{ categoriaId: string | null; categoria: string; sexo: Sexo | null; qtd: number }>;
   porSitio: Array<{ propriedadeId: number | null; nome: string; qtd: number }>;
   receptorasPct: number;
+  femeasAtivas: number;
+  receptorasAtivas: number;
   baixas30d: number;
   ultimosEventos: EventoPainel[];
   baixasPorTipo: Array<{ tipo: TipoBaixa; qtd: number }>;

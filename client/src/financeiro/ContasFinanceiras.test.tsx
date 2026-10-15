@@ -156,7 +156,7 @@ it("mantém fluxo consolidado independente dos filtros dentro do extrato", async
   render(<ContasFinanceiras onNav={vi.fn()} />);
   const grafico = await screen.findByRole("region", { name: "Gráfico de receitas e despesas" });
   const contas = screen.getByRole("region", { name: "Contas" });
-  expect(grafico.compareDocumentPosition(contas) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(contas.compareDocumentPosition(grafico) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   expect(screen.queryByRole("button", { name: "Mostrar receitas e despesas" })).toBeNull();
   expect(screen.getByText(/Todas as contas da fazenda; inclui contas/)).toBeTruthy();
   await alterarControle(screen.getByLabelText("Conta"), { target: { value: uid(1) } });

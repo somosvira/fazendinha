@@ -8,6 +8,7 @@ export const consultaSanitariaSchema = z.object({
   situacao: z.enum(["VALIDO", "ANULADO", "PENDENTE", "ATRASADA", "REALIZADA", "DISPENSADA", "EXECUCAO_CANCELADA", "ABERTA", "ENCERRADA", "AGUARDANDO_RESULTADO", "RESULTADO_INFORMADO", "ORIGEM_PENDENTE", "CARÊNCIA_VIGENTE", "CARÊNCIA_DESCONHECIDA"]).optional(),
   pagina: z.coerce.number().int().min(1).default(1), porPagina: z.coerce.number().int().min(1).max(100).default(50),
   paginado: z.enum(["true", "false"], { errorMap: () => ({ message: "Informe se a consulta deve ser paginada" }) }).optional(),
+  ordenacaoTarefas: z.enum(["data", "prioridade"]).optional(),
 });
 export type ConsultaSanitaria = z.infer<typeof consultaSanitariaSchema>;
 export function limites(f?: ConsultaSanitaria) { return { skip: ((f?.pagina ?? 1) - 1) * (f?.porPagina ?? 100), take: f?.porPagina ?? 100 }; }

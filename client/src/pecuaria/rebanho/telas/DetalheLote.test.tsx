@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { alterarControle } from "../../../lib/controles.fixture";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { ToastProvider } from "@/components/Toast";
@@ -118,6 +119,15 @@ beforeEach(() => {
 });
 
 describe("DetalheLote — animais do lote", () => {
+  it("mantém navegação para todas as seções sem ocultar o conteúdo", async () => {
+    await montar();
+    const nav = screen.getByRole("navigation", { name: "Seções da ficha do lote" });
+    for (const link of within(nav).getAllByRole("link")) {
+      const destino = link.getAttribute("href")!.slice(1);
+      expect(document.getElementById(destino)).not.toBeNull();
+    }
+    expect(nav.style.position).toBe("sticky");
+  });
   it("lista os animais ativos do lote", async () => {
     await montar();
     await screen.findAllByText("0001");
@@ -178,7 +188,7 @@ describe("DetalheLote — resumo do lote", () => {
     await montar();
     await screen.findByText("Resumo do lote");
     expect(buscarResumoLote).toHaveBeenCalledWith("lote-1", { periodoDias: "entrada" });
-    fireEvent.change(screen.getByLabelText("Período do GMD"), { target: { value: "180" } });
+    await alterarControle(screen.getByLabelText("Período do GMD"), { target: { value: "180" } });
     await waitFor(() => expect(buscarResumoLote).toHaveBeenCalledWith("lote-1", { periodoDias: 180 }));
   });
 });
@@ -230,7 +240,7 @@ describe("DetalheLote — histórico e desfazer", () => {
     await montar();
     fireEvent.click(await screen.findByRole("button", { name: "Desfazer" }));
     const modal = await screen.findByRole("dialog");
-    fireEvent.change(within(modal).getByLabelText("Motivo"), { target: { value: "Motivo do estorno" } });
+    await alterarControle(within(modal).getByLabelText("Motivo"), { target: { value: "Motivo do estorno" } });
     fireEvent.click(within(modal).getByRole("button", { name: "Desfazer movimentação" }));
     expect(await screen.findByText("Nada foi desfeito. B401: o animal já foi movimentado de novo")).toBeTruthy();
     expect(screen.getByRole("dialog")).toBeTruthy();
@@ -243,7 +253,7 @@ describe("DetalheLote — histórico e desfazer", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Desfazer" }));
     const modal = await screen.findByRole("dialog");
     vi.mocked(listarMovimentacoesDoLote).mockResolvedValueOnce({ itens: [{ ...movimentacaoBase, desfeitaEm: "2026-01-11", desfeitaMotivo: "Motivo do estorno" }], total: 1 });
-    fireEvent.change(within(modal).getByLabelText("Motivo"), { target: { value: "Motivo do estorno" } });
+    await alterarControle(within(modal).getByLabelText("Motivo"), { target: { value: "Motivo do estorno" } });
     fireEvent.click(within(modal).getByRole("button", { name: "Desfazer movimentação" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     await waitFor(() => expect(listarMovimentacoesDoLote).toHaveBeenCalledTimes(2));

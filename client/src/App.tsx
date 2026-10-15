@@ -4,28 +4,22 @@
  * são mascarados quando o perfil não tem a flag verValores.
  */
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { type Tab, type NavTab } from "./components/Shell";
 import { abrirRotaNovaOperacao, isNovaOperacaoFinanceira, isSubrotaFinanceira, isSubrotaRebanho, tabToPath, pathToTab, DEFAULT_TAB, navegarPara, normalizarLocalizacaoPecuaria, normalizarRotaPecuaria, isSubrotaPecuaria } from "./router";
 import { AppSidebar } from "./components/AppSidebar";
-import { ConfiguracoesHub } from "./components/ConfiguracoesHub";
-import { IA } from "./components/IA";
-import { FinanceiroContent } from "./financeiro/FinanceiroContent";
+import "./financeiro/financeiro-theme.css";
 import { obterRascunhoOperacao, obterRascunhoRelatorioFinanceiro } from "./financeiro/novo-api";
 import { limparRascunhoAtivo, useRascunhoAtivo } from "./financeiro/rascunhoAtivo";
 import { resumoRascunho } from "./financeiro/lib/rascunho";
 import { limparRascunhoRelatorioAtivo, useRascunhoRelatorioAtivo } from "./financeiro/rascunhoRelatorioAtivo";
 import { resumoRascunhoRelatorio } from "./financeiro/lib/rascunho-relatorio";
-import { RebanhoContent } from "./pecuaria/rebanho/RebanhoContent";
-import { Sanidade } from "./pecuaria/rebanho/sanidade/Sanidade";
-import { Nutricao } from "./pecuaria/rebanho/nutricao/Nutricao";
 import "./pecuaria/pecuaria-theme.css";
+import "./pecuaria/pecuaria-refino.css";
 import { setPropriedadeAtiva, getPropriedadeAtiva } from "./propriedadeScope";
-import { EstoqueContent } from "./estoque/EstoqueContent";
-import { ProdutoEstoqueDetalhe } from "./estoque/ProdutoEstoqueDetalhe";
 import { parseProdutoEstoqueId } from "./router";
 import { CommandPalette } from "./components/CommandPalette";
-import { ChatWidget } from "./components/ChatWidget";
+import { AssistenteConsulta } from "./components/AssistenteConsulta";
 import { ASSISTENTE_ATIVO } from "./featureFlags";
 import { Login } from "./components/Login";
 import { DefinirSenha } from "./components/DefinirSenha";
@@ -35,8 +29,20 @@ import { fetchMe, logout } from "./api/auth";
 import { destinoDepoisDoLogin, interpretarRotaAuth, paginaInicialAutorizada, podeAcessarCaminho, podeAcessarTab, urlSigninPara } from "./navegacaoAuth";
 import { ABAS, type User } from "./data/acessos";
 import { temAcessoArea, TODAS_AREAS } from "./lib/areas";
-import { BootSplash } from "./components/Loading";
+import { BootSplash, Loader } from "./components/Loading";
 import { TerranoIntro } from "./components/TerranoIntro";
+import { LimiteCarregamentoArea } from "./components/LimiteCarregamentoArea";
+
+// Declarações estáveis: mudar sítio/rota conserva os mesmos contratos de montagem.
+// O shell e os tokens ficam disponíveis enquanto o domínio é baixado.
+const ConfiguracoesHub = lazy(() => import("./components/ConfiguracoesHub").then(m => ({ default: m.ConfiguracoesHub })));
+const IA = lazy(() => import("./components/IA").then(m => ({ default: m.IA })));
+const FinanceiroContent = lazy(() => import("./financeiro/FinanceiroContent").then(m => ({ default: m.FinanceiroContent })));
+const RebanhoContent = lazy(() => import("./pecuaria/rebanho/RebanhoContent").then(m => ({ default: m.RebanhoContent })));
+const Sanidade = lazy(() => import("./pecuaria/rebanho/sanidade/Sanidade").then(m => ({ default: m.Sanidade })));
+const Nutricao = lazy(() => import("./pecuaria/rebanho/nutricao/Nutricao").then(m => ({ default: m.Nutricao })));
+const EstoqueContent = lazy(() => import("./estoque/EstoqueContent").then(m => ({ default: m.EstoqueContent })));
+const ProdutoEstoqueDetalhe = lazy(() => import("./estoque/ProdutoEstoqueDetalhe").then(m => ({ default: m.ProdutoEstoqueDetalhe })));
 
 // Abertura Terrano (marca grande + música no centro, some pro canto).
 //   "always"  → toca em todo load do dashboard (bom pra testar)
@@ -49,9 +55,7 @@ const INTRO_SEEN_KEY = "terrano:intro:seen";
 // Intervalo mínimo entre recargas do rascunho ao voltar para a aba do navegador.
 const INTERVALO_MIN_RECARGA_RASCUNHO = 30_000;
 
-// Abas que já SÃO uma tela de chat com a IA. Nelas escondemos o botão flutuante
-// do Assistente (ChatWidget) — teria um botão de chat sobre o composer de chat,
-// além de colidir com o "Enviar/Perguntar" no canto inferior direito.
+// Se a IA legada voltar explicitamente, não sobrepor o novo chat ao composer.
 const ABAS_CHAT = new Set<Tab>(["ia"]);
 
 function deveTocarIntro(tabInicial: Tab): boolean {
@@ -299,11 +303,16 @@ export function App() {
   // histórico ao normalizar "/" → "/dashboard); trocas seguintes usam pushState
   // para o botão "voltar" do navegador funcionar.
   const firstSync = useRef(true);
+  const localizacaoRenderizada = typeof window === "undefined" ? "" : window.location.pathname + window.location.search + window.location.hash;
   useEffect(() => {
     // Convite e redefinição de senha são rotas públicas independentes das
     // abas do aplicativo. Não as normalize para a aba padrão enquanto o
     // usuário estiver criando a senha.
     if (authRoute || !token || !usuario) return;
+    // Uma navegação pode publicar a URL antes de efeitos passivos pendentes
+    // (ex.: clique no rascunho enquanto o primeiro domínio lazy ainda carrega).
+    // O efeito do render anterior não pode sobrescrever a rota recém-publicada.
+    if (window.location.pathname + window.location.search + window.location.hash !== localizacaoRenderizada) return;
     const filtrosUrl = deepLinkFiltros?.tab === tab
       ? `${tabToPath(tab)}?${new URLSearchParams(deepLinkFiltros.filtros).toString()}`
       : null;
@@ -316,7 +325,7 @@ export function App() {
       else window.history.pushState(null, "", alvo);
     }
     firstSync.current = false;
-  }, [tab, deepLinkFiltros, authRoute, token, usuario]);
+  }, [tab, deepLinkFiltros, authRoute, token, usuario, localizacaoRenderizada]);
 
   // Botões voltar/avançar restauram pathname + filtros como uma única rota.
   useEffect(() => {
@@ -401,8 +410,9 @@ export function App() {
   // trocar de sítio esquece o anterior e busca o novo.
   const rascunhoAtivo = useRascunhoAtivo();
   const rascunhoRelatorioAtivo = useRascunhoRelatorioAtivo();
-  const podeVerRascunho = visibleTabs.some((t) => t.id === "lancar");
-  const podeVerRascunhoRelatorio = visibleTabs.some((t) => t.id === "relatorio") && (!!effectiveUser?.dono || !!effectiveUser?.flags.includes("exportar"));
+  const podeVerValores = !!effectiveUser?.dono || !!effectiveUser?.flags.includes("verValores");
+  const podeVerRascunho = podeVerValores && (!!effectiveUser?.dono || !!effectiveUser?.flags.includes("lancar")) && visibleTabs.some((t) => t.id === "lancar");
+  const podeVerRascunhoRelatorio = podeVerValores && visibleTabs.some((t) => t.id === "relatorio") && (!!effectiveUser?.dono || !!effectiveUser?.flags.includes("exportar"));
   const usuarioId = usuario?.id ?? null;
   useEffect(() => {
     limparRascunhoAtivo();
@@ -475,7 +485,7 @@ export function App() {
     : tab === "estoque"
     ? (parseProdutoEstoqueId(window.location.pathname) ? <ProdutoEstoqueDetalhe key={window.location.pathname} produtoId={parseProdutoEstoqueId(window.location.pathname)!} onSelecionarSitio={trocarPropriedade} /> : <EstoqueContent />)
     : (["dashboard", "gastos", "lancar", "caixinha", "cadastros", "plano", "relatorio"] as Tab[]).includes(tab)
-    ? <FinanceiroContent tab={tab} onNav={setTab} podeEditarCadastros={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} podeExportar={!!effectiveUser.dono || effectiveUser.flags.includes("exportar")} />
+    ? <FinanceiroContent tab={tab} onNav={setTab} podeVerValores={podeVerValores} podeEditarCadastros={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} podeExportar={!!effectiveUser.dono || effectiveUser.flags.includes("exportar")} />
     : (
       <>
         {ASSISTENTE_ATIVO && tab === "ia" && (canSee("ia") ? <IA /> : <GatedTab user={effectiveUser} abaLabel="IA" />)}
@@ -535,7 +545,7 @@ export function App() {
       />
       <main id="main-content" className="app-main" {...(mobileOpen ? { inert: "" } : {})}>
         <div key={propAtiva ?? "all"} className={tab.startsWith("pec-") || window.location.pathname.startsWith("/configuracoes/pecuaria") ? "pecuaria-content" : tab === "estoque" ? "estoque-content" : "cooperativa-content"} style={{ display: "contents" }}>
-          {conteudo}
+          <LimiteCarregamentoArea contexto={`${tab}:${propAtiva ?? "all"}`}><Suspense fallback={<div className="shell-wide pagina-financeira"><Loader label="Carregando área…" /></div>}>{conteudo}</Suspense></LimiteCarregamentoArea>
         </div>
       </main>
       <CommandPalette
@@ -549,7 +559,7 @@ export function App() {
           return canAccessTab(t);
         }}
       />
-      {ASSISTENTE_ATIVO && !ABAS_CHAT.has(tab) && <ChatWidget onNavegar={navegarDeepLink} />}
+      {!ABAS_CHAT.has(tab) && <AssistenteConsulta key={`${token}:${usuario.id}:${propAtiva ?? "all"}:${JSON.stringify([usuario.areas, usuario.abas, usuario.flags, usuario.dono])}`} />}
     </div>
     </>
   );

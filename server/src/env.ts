@@ -31,10 +31,13 @@ const envSchema = z
     SHARED_ACCESS_TOKEN: z.string().min(16).optional(),
 
     // --- OpenAI (provider único do app) ---
-    // Cérebro do bot E das IAs dos módulos. Sem a chave: bot desligado e IA dos módulos
-    // em "modo demonstração" (regras locais).
+    // Interpretação das perguntas do assistente de consulta. Sem a chave,
+    // consultas rápidas e guias seguem reais; pergunta livre fica indisponível.
     OPENAI_API_KEY: z.string().optional(),
-    OPENAI_MODEL: z.string().default("gpt-4o"),
+    OPENAI_MODEL: z.string().trim().min(1).default("gpt-5-nano"),
+    OPENAI_TRANSCRIBE_MODEL: z.string().trim().min(1).default("gpt-4o-mini-transcribe"),
+    // Novo chat de leitura. Não reativa o bot/WhatsApp suspensos.
+    ASSISTENTE_CONSULTA_ENABLED: z.enum(["true", "false"]).default("true").transform(v => v === "true"),
 
     // Canal WhatsApp via Meta Cloud API. Todos necessários para o webhook funcionar.
     WHATSAPP_VERIFY_TOKEN: z.string().optional(), // string arbitrária p/ GET de verificação

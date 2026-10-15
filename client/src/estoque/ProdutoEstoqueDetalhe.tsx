@@ -1,3 +1,4 @@
+import { SelectCampo } from "@/financeiro/SelectCampo";
 import { Button as BotaoMenu } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import "./estoque-theme.css";
@@ -6,7 +7,7 @@ import { SubTabs } from "../components/SubTabs";
 import { DialogFinanceiro } from "../financeiro/DialogFinanceiro";
 import { navegarPara } from "../router";
 import { rotuloUnidade } from "../lib/unidades";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { listarPropriedades, type PropriedadeDTO } from "../api/propriedades";
 import { getPropriedadeAtiva } from "../propriedadeScope";
 import { getUsuario } from "../lib/auth";
@@ -38,6 +39,7 @@ export function ProdutoEstoqueDetalhe({ produtoId, onSelecionarSitio }: { produt
   const [renomeando, setRenomeando] = useState<string | null>(null);
   const [nome, setNome] = useState("");
   const [salvando, setSalvando] = useState(false);
+  const enviandoNome = useRef(false);
   const usuario = getUsuario();
   const podeEditar = !usuario || !!usuario.dono || usuario.flags.includes("lancar");
   useEffect(() => { let vivo = true; listarPropriedades({ incluirInativos: true }).then((s) => { if (vivo) setSitios(s); }).catch((e: unknown) => { if (vivo) setErro(e instanceof Error ? e.message : String(e)); }); return () => { vivo = false; }; }, []);
@@ -60,8 +62,8 @@ export function ProdutoEstoqueDetalhe({ produtoId, onSelecionarSitio }: { produt
     } catch (e) { setErro(e instanceof Error ? e.message : String(e)); } finally { setSalvando(false); }
   }
   async function salvarNome() {
-    if (!renomeando || salvando) return; setSalvando(true); setErro(null);
-    try { await renomearLoteProduto(renomeando, nome.trim()); setRenomeando(null); setRevisao((r) => r + 1); } catch (e) { setErro(e instanceof Error ? e.message : String(e)); } finally { setSalvando(false); }
+    if (!podeEditar || !renomeando || enviandoNome.current || !nome.trim()) return; enviandoNome.current = true; setSalvando(true); setErro(null);
+    try { await renomearLoteProduto(renomeando, nome.trim()); setRenomeando(null); setRevisao((r) => r + 1); } catch (e) { setErro(e instanceof Error ? e.message : String(e)); } finally { enviandoNome.current = false; setSalvando(false); }
   }
   const produto = dados;
   const total = lotes?.total ?? movimentos?.total ?? origens?.total ?? 0;
@@ -80,19 +82,20 @@ export function ProdutoEstoqueDetalhe({ produtoId, onSelecionarSitio }: { produt
     { chave: "tipo", titulo: "Tipo", celula: m => <Pill tone={m.tipo === "ENTRADA" ? "green" : m.tipo === "SAIDA" ? "amber" : "neutral"}>{m.tipo === "ENTRADA" ? "Entrada" : m.tipo === "SAIDA" ? "Saída" : "Ajuste"}</Pill> },
     { chave: "quantidade", titulo: "Quantidade", alinhamento: "direita", celula: m => <span className="tabular-nums">{Number(m.quantidade).toLocaleString("pt-BR", { maximumFractionDigits: 3 })} {unidade}</span> },
     { chave: "situacao", titulo: "Situação", celula: m => <Pill tone={m.status === "REVERTIDO" || m.reversaoDeId ? "red" : "green"}>{m.status === "REVERTIDO" ? "Estornado" : m.reversaoDeId ? "Estorno" : "Confirmado"}</Pill> },
-    { chave: "vinculo", titulo: "Origem / destino", celula: m => { const destino = destinoDoMovimento(m); return destino && podeAcessarArea(destino.area) ? <a href={destino.href} className="text-primary hover:underline">{destino.rotulo}</a> : "—"; } },
+    { chave: "vinculo", titulo: "Origem / destino", celula: m => { const destino = destinoDoMovimento(m); return destino && podeAcessarArea(destino.area) ? <a href={destino.href} className="font-medium text-primary underline underline-offset-4 hover:decoration-2">{destino.rotulo}</a> : "—"; } },
   ];
   const colunasOrigens: ColunaTabela<OrigemProdutoDTO>[] = [
     { chave: "data", titulo: "Data", celula: o => dataBR(o.data) },
     { chave: "fornecedor", titulo: "Fornecedor", principal: true, celula: o => <strong>{o.fornecedor ?? "Sem fornecedor"}</strong> },
     { chave: "quantidade", titulo: "Quantidade", alinhamento: "direita", celula: o => <span className="tabular-nums">{Number(o.quantidade).toLocaleString("pt-BR", { maximumFractionDigits: 3 })} {unidade}</span> },
-    { chave: "vinculos", titulo: "Documentos de origem", celula: o => <div className="flex flex-wrap gap-x-4 gap-y-2">{o.operacaoId && podeAcessarArea("financeiro") && <a href={`/financeiro/operacoes/${o.operacaoId}`} className="text-primary hover:underline">Compra {o.operacaoNumero ? `OP-${String(o.operacaoNumero).padStart(4, "0")}` : "de origem"}</a>}{o.fornecedorId && podeAcessarArea("financeiro") && <a href={`/financeiro/configuracoes?aba=parceiros&parceiroId=${o.fornecedorId}`} className="text-primary hover:underline">Consultar fornecedor</a>}</div> },
+    { chave: "vinculos", titulo: "Documentos de origem", celula: o => <div className="flex flex-wrap gap-x-4 gap-y-2">{o.operacaoId && podeAcessarArea("financeiro") && <a href={`/financeiro/operacoes/${o.operacaoId}`} className="font-medium text-primary underline underline-offset-4 hover:decoration-2">Compra {o.operacaoNumero ? `OP-${String(o.operacaoNumero).padStart(4, "0")}` : "de origem"}</a>}{o.fornecedorId && podeAcessarArea("financeiro") && <a href={`/financeiro/configuracoes?aba=parceiros&parceiroId=${o.fornecedorId}`} className="font-medium text-primary underline underline-offset-4 hover:decoration-2">Consultar fornecedor</a>}</div> },
   ];
   return <PaginaFinanceira>
     <nav className="fin-breadcrumb" aria-label="Navegação estrutural"><a href="/estoque" onClick={e => { if (e.button === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) { e.preventDefault(); navegarPara("/estoque"); } }}>Estoque</a><span aria-hidden="true">/</span><span aria-current="page">{produto?.nome ?? "Ficha do produto"}</span></nav>
     <PageHeader eyebrow="" titulo={produto?.nome ?? "Ficha do produto"} descricao="Saldo, lotes por validade e origem das entradas do mesmo produto." acao={produto && podeEditar ? <Button secondary disabled={salvando} onClick={() => { void abrirEdicao(); }}><Pencil size={16} />Editar produto</Button> : undefined} />
-    <div className="estoque-filtro-ficha"><label className="grid gap-1 text-sm">Sítio<select aria-label="Sítio da ficha" className={classeInput} value={sitioId ?? ""} onChange={(e) => { setSitioId(Number(e.target.value) || undefined); setPagina(1); setPartidaId(""); }}><option value="">Consolidado</option>{sitios.map(s => <option key={s.id} value={s.id}>{s.nome}{s.ativo ? "" : " (inativo)"}</option>)}</select></label>{partidaId && <p className="text-sm text-ink-3">Consulta filtrada por lote. <Button secondary onClick={() => { setPartidaId(""); setPagina(1); }}>Ver todos</Button></p>}</div>
+    <div className="estoque-filtro-ficha"><label className="grid gap-1 text-sm">Sítio<SelectCampo aria-label="Sítio da ficha" className={classeInput} value={sitioId ?? ""} onValueChange={(valorSelecionado) => { setSitioId(Number(valorSelecionado) || undefined); setPagina(1); setPartidaId(""); }}><option value="">Consolidado</option>{sitios.map(s => <option key={s.id} value={s.id}>{s.nome}{s.ativo ? "" : " (inativo)"}</option>)}</SelectCampo></label>{partidaId && <p className="text-sm text-ink-3">Consulta filtrada por lote. <Button secondary onClick={() => { setPartidaId(""); setPagina(1); }}>Ver todos</Button></p>}</div>
     <SubTabs variant="financeiro" ariaLabel="Ficha do produto" tabs={[{ id: "resumo", label: "Resumo" }, { id: "lotes", label: "Lotes" }, { id: "movimentos", label: "Movimentos" }, { id: "origens", label: "Origens das entradas" }]} active={aba} onSelect={abrirAba} className="mt-5" />
+    <p className="mt-3 text-sm text-ink-3">O sítio selecionado nesta ficha filtra somente esta consulta. A seleção geral da fazenda não é alterada.</p>
     <ErrorBox erro={erro} />{erro && <Button secondary onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button>}
     {carregando ? <p role="status" className="mt-5">Carregando produto…</p> : produto && dados && <>
       {aba === "resumo" && <Panel className="mt-5 overflow-hidden">
@@ -106,7 +109,7 @@ export function ProdutoEstoqueDetalhe({ produtoId, onSelecionarSitio }: { produt
       </Panel>}
       {aba !== "resumo" && <Panel className="mt-5 overflow-hidden">
         <div className="estoque-secao-cabecalho"><span className="fin-section-icon"><Boxes aria-hidden="true" /></span><h2 className="h2">{aba === "lotes" ? "Lotes do produto" : aba === "movimentos" ? "Movimentos do produto" : "Origens das entradas"}</h2></div>
-        {vazio ? <Empty><p>Nenhum {aba === "lotes" ? "lote" : aba === "origens" ? "recebimento" : "movimento"} neste escopo.</p><div className="mt-3 flex flex-wrap justify-center gap-3">{podeAjustarEstoque() && <a href="/financeiro/operacoes/nova?tipo=COMPRA_ESTOQUE" className="text-primary hover:underline">Registrar primeira entrada</a>}<a href="/estoque" className="text-primary hover:underline">Consultar Estoque</a></div></Empty>
+        {vazio ? <Empty><p>Nenhum {aba === "lotes" ? "lote" : aba === "origens" ? "recebimento" : "movimento"} neste escopo.</p><div className="mt-3 flex flex-wrap justify-center gap-3">{podeAjustarEstoque() && <a href="/financeiro/operacoes/nova?tipo=COMPRA_ESTOQUE" className="font-medium text-primary underline underline-offset-4 hover:decoration-2">Registrar primeira entrada</a>}<a href="/estoque" className="font-medium text-primary underline underline-offset-4 hover:decoration-2">Consultar Estoque</a></div></Empty>
           : aba === "lotes" && lotes ? <TabelaFinanceira rotulo="Lotes do produto" itens={lotes.itens} colunas={colunasLotes} chaveDe={l => l.id} />
           : aba === "movimentos" && movimentos ? <TabelaFinanceira rotulo="Movimentos do produto" itens={movimentos.itens} colunas={colunasMovimentos} chaveDe={m => m.id} />
           : aba === "origens" && origens ? <TabelaFinanceira rotulo="Origens das entradas" itens={origens.itens} colunas={colunasOrigens} chaveDe={o => o.id} /> : null}
