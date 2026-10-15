@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { dadosConfirmacaoVisita } from "./visitas-transcricao";
+import { contextoTranscricao, dadosConfirmacaoVisita } from "./visitas-transcricao";
 it("preserva dados do procedimento IATF e converte horário no fuso da fazenda", () => {
   expect(
     dadosConfirmacaoVisita("TAREFA_IATF", {
@@ -40,4 +40,23 @@ it("contexto mantém DEL zero, RP não e dados históricos desconhecidos", async
   expect(contextoTranscricao({ ultimoParto: { id: "p", data: "2026-10-13", tipo: "NORMAL" } }, "2026-10-13"))
     .toMatchObject({ rp: "Não informado", lactacao: "Lactação não informada" });
   expect(contextoTranscricao({}, "2026-10-13").rp).toBe("Sem parto registrado");
+});
+
+
+it("preserva Vazia mesmo com tentativa anterior e restrição", () => {
+  expect(contextoTranscricao({ situacao: "VAZIA", tentativa: { id: "t", data: "2026-09-13", tipo: "IA" },
+    restricoes: [{ id: "r", tipo: "TEMPORARIA", motivo: "Acompanhamento sanitário" }],
+  }, "2026-10-13").situacao).toBe("Vazia · Restrição reprodutiva");
+});
+it("preserva Gestante comprovada por situação inicial sem objeto de gestação", () => {
+  expect(contextoTranscricao({ situacao: "GESTANTE", gestacao: null }, "2026-10-13").situacao).toBe("Gestante");
+});
+it("situação desconhecida não vira diagnóstico pendente pela tentativa nem é apagada pela restrição", () => {
+  expect(contextoTranscricao({ situacao: "DESCONHECIDA", tentativa: { id: "t", data: "2026-09-13", tipo: "IA" },
+    restricoes: [{ id: "r", tipo: "TEMPORARIA", motivo: "Acompanhamento sanitário" }],
+  }, "2026-10-13").situacao).toBe("Desconhecida · Restrição reprodutiva");
+});
+it("só apresenta diagnóstico pendente quando preservado no estado canônico", () => {
+  expect(contextoTranscricao({ situacao: "AGUARDANDO_DIAGNOSTICO" }, "2026-10-13").situacao).toBe("Aguardando diagnóstico");
+  expect(contextoTranscricao({ tentativa: { id: "t", data: "2026-09-13", tipo: "IA" } }, "2026-10-13").situacao).toBe("Situação não preservada");
 });

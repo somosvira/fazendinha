@@ -1,4 +1,5 @@
 import { carregarRetornosNaDataTx, contextoRetornoNaData } from "./contexto-retorno.js";
+import { parametrosSanitariosVisita } from "./parametros-sanitarios-visita.calc.js";
 import { obterContextosAnimaisNaDataTx } from "./contexto-animal.js";
 import { diaIatf } from "./horarios.calc.js";
 import { condicaoSituacaoTarefa } from "../protocolos/situacao.js";
@@ -158,7 +159,7 @@ export async function adicionarAtividadeTx(
         const tarefaReprodutiva = tarefasReprodutivas.find(t => t.id === tarefa.id);
         Object.assign(snapshot, { tarefaPlanejada: tarefaReprodutiva
           ? { origem: "REPRODUTIVA", tarefa: { ...tarefaReprodutiva, animalId: animal.id } }
-          : { origem: "SANITARIA", tarefa: { ...tarefa, animalId: animal.id, tipo: tarefa.etapa.tipo } } });
+          : { origem: "SANITARIA", tarefa: { ...tarefa, ...parametrosSanitariosVisita(tarefa.parametros), animalId: animal.id, tipo: tarefa.etapa.tipo } } });
       }
       Object.assign(snapshot, {
         motivos: [...(item.motivos ?? []), ...motivosCriterios(criterios)],
@@ -760,6 +761,7 @@ export async function sugestoesVisita(
   return {
     tarefasSanitarias: tarefasSanitarias.map((t) => ({
       ...t,
+      ...parametrosSanitariosVisita(t.parametros),
       animalId: t.execucao.animalId,
       nome: `${t.etapa.tipo} · etapa ${t.etapa.ordem}`,
       tipo: t.etapa.tipo,
@@ -901,6 +903,6 @@ export async function tarefaParticipanteVisita(id: string, participanteId: strin
     }
     const tarefa=await tx.tarefaProtocolo.findFirst({where:{id:participante.tarefaId,execucao:{animalId:participante.animalId,propriedadeId,protocolo:{tipo:"SANITARIO"}}},include:{etapa:true}});
     if(!tarefa)throw new RebanhoError("NAO_ENCONTRADO","Tarefa sanitária não encontrada neste sítio");
-    return {origem:"SANITARIA" as const,tarefa:{...tarefa,animalId:participante.animalId,tipo:tarefa.etapa.tipo}};
+    return {origem:"SANITARIA" as const,tarefa:{...tarefa,...parametrosSanitariosVisita(tarefa.parametros),animalId:participante.animalId,tipo:tarefa.etapa.tipo}};
   },{isolationLevel:Prisma.TransactionIsolationLevel.RepeatableRead});
 }

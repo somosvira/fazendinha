@@ -38,6 +38,7 @@ export type ParticipanteVisita = {
   regularizacaoPendente?: boolean;
   historicoRegularizacao?: Array<{acao?: string; destinoConsumo?: string | null}>;
   snapshot: ContextoTemporalAnimal & {
+    situacao?: string;
     tarefaPlanejada?: { origem: "REPRODUTIVA" | "SANITARIA"; tarefa: SugestaoTarefa };
     partos?: number;
     tentativasCiclo?: number;

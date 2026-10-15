@@ -66,15 +66,24 @@ export function contextoTranscricao(
   const dias = snapshot.tentativa
     ? Math.floor((Date.parse(dataVisita.slice(0, 10)) - Date.parse(snapshot.tentativa.data.slice(0, 10))) / 86_400_000)
     : null;
+  const rotulosSituacao: Record<string, string> = {
+    GESTANTE: "Gestante",
+    VAZIA: "Vazia",
+    DESCONHECIDA: "Desconhecida",
+    APTA: "Apta",
+    AGUARDANDO_DIAGNOSTICO: "Aguardando diagnóstico",
+  };
+  // O snapshot já considera avaliações e situação inicial. A tentativa isolada
+  // não comprova que o diagnóstico continua pendente em impressões antigas.
+  const situacao = snapshot.situacao
+    ? rotulosSituacao[snapshot.situacao] ?? "Situação não reconhecida"
+    : snapshot.gestacao ? "Gestação registrada no contexto" : "Situação não preservada";
   return {
     lactacao,
     rp,
     tentativa: snapshot.tentativa
       ? `${snapshot.tentativa.tipo} ${dias != null && dias >= 0 ? `há ${dias} dias` : snapshot.tentativa.data.slice(0, 10)}`
       : "Sem tentativa registrada",
-    situacao: snapshot.gestacao ? "Gestante"
-      : snapshot.restricoes?.length ? "Restrição reprodutiva"
-        : snapshot.tentativa && (!snapshot.ultimoParto || snapshot.tentativa.data > snapshot.ultimoParto.data)
-          ? "Aguardando diagnóstico" : "Sem gestação conhecida",
+    situacao: snapshot.restricoes?.length ? `${situacao} · Restrição reprodutiva` : situacao,
   };
 }
