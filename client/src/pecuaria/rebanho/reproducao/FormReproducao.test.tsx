@@ -192,7 +192,7 @@ it("preserva desconhecidos e envia complementos reais com chave estável no reen
   const primeiro=vi.mocked(registrarParto).mock.calls[0][0];
   expect(primeiro).toMatchObject({desfecho:"NASCIMENTO",induzido:null,dificuldade:null,horarioEstimado:true,responsavel:"Maria",retencaoPlacenta:false,pesoMatriz:{acao:"REGISTRAR",data:"2026-10-15",pesoKg:520},crias:[{pesoKg:39}]});
   expect(primeiro.tipo).toBeUndefined();
-  expect(primeiro.ocorridoEm).toBe(new Date("2026-10-13T05:40:00").toISOString());
+  expect(primeiro.ocorridoEm).toBe("2026-10-13T08:40:00.000Z");
   vi.mocked(registrarParto).mockResolvedValueOnce({id:"p",animalId:"a",data:"2026-10-13"});
   fireEvent.submit(document.getElementById("form-reproducao")!);
   await waitFor(()=>expect(registrarParto).toHaveBeenCalledTimes(2));
