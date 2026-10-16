@@ -19,11 +19,11 @@ import { Card } from "@/components/ui/card";
 import { LiquidarCompromissoModal } from "./LiquidarCompromissoModal";
 import { ChartTypeControl, EntradaSaidaChart, type ChartType } from "../components/charts";
 import { PeriodoFinanceiroControl } from "./PeriodoFinanceiroControl";
-import { periodoDoAnoAtual } from "./lib/periodo";
+import { periodoDoAnoAtual, periodoInicial } from "./lib/periodo";
 
 export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab: Tab) => void; podeLancar?: boolean }) {
-  const [inicioPeriodo, setInicioPeriodo] = useState(() => periodoDoAnoAtual().inicio);
-  const [fimPeriodo, setFimPeriodo] = useState(() => periodoDoAnoAtual().fim);
+  const [inicioPeriodo, setInicioPeriodo] = useState(() => periodoInicial(periodoDoAnoAtual()).inicio);
+  const [fimPeriodo, setFimPeriodo] = useState(() => periodoInicial(periodoDoAnoAtual()).fim);
   const [dados, setDados] = useState<DashboardFinanceiro | null>(null);
   const [config, setConfig] = useState<ConfiguracoesFinanceiras | null>(null);
   const [listaAberta, setListaAberta] = useState<TipoListaDashboard | null>(null);

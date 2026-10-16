@@ -185,8 +185,8 @@ describe("subrotas do Rebanho v1", () => {
   });
 });
 
-it("redireciona a rota do assistente enquanto a feature está inativa", () => {
-  expect(pathToTab("/ia")).toBe("dashboard");
+it("resolve a rota do assistente financeiro ativo", () => {
+  expect(pathToTab("/ia")).toBe("ia");
 });
 
 it.each(["/plantio", "/plantio/talhao", "/milho", "/milho/safras", "/equipe", "/equipe/ponto"])("módulo removido não resolve %s", (path) => {

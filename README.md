@@ -11,7 +11,7 @@ O deploy usa exclusivamente **Cloudflare Workers**, servindo interface e API no 
 - **Pecuária V1–V4:** animais e lotes, movimentações, categorias, baixas, genética, pesagens/manejos, sanidade, nutrição, reprodução, visitas veterinárias e IATF.
 - **Administração:** sítios, usuários, sessões e permissões por área/ação.
 
-Agricultura, Cultivo e Equipe/Ponto foram retirados. Produção/qualidade do leite e laboratório/FIV não fazem parte da implementação atual. A reprodução tem registro mínimo de lactação, sem controle leiteiro completo. O assistente/WhatsApp conserva infraestrutura, mas está suspenso pelas flags do cliente e servidor.
+Agricultura, Cultivo e Equipe/Ponto foram retirados. Produção/qualidade do leite e laboratório/FIV não fazem parte da implementação atual. A reprodução tem registro mínimo de lactação, sem controle leiteiro completo. O assistente financeiro web permite consultas por texto e áudio em `/ia`, com OpenAI configurada e conta pessoal autorizada. WhatsApp permanece suspenso. Veja [o contrato do assistente](docs/assistente-financeiro.md).
 
 ## Desenvolvimento local
 

@@ -12,7 +12,7 @@ A fonte é `server/src/env.ts`; exemplos em `server/.env.example`.
 - Sessões: `AUTH_SESSAO_DIAS`, `APP_BASE_URL`. `AUTH_BOOTSTRAP_EMAIL`/`AUTH_BOOTSTRAP_NOME` são consumidos pelo comando manual do dono. O e-mail opcional deve ficar ausente quando não usado, em vez de vazio. `SHARED_ACCESS_TOKEN` é uma ponte de dono sintético; não substitui contas reais. `JWT_SECRET` também assina intents de upload direto; configure um segredo próprio do ambiente.
 - Recuperação pública de senha: em produção, `AUTH_EMAIL_PROVIDER=resend` exige `AUTH_EMAIL_FROM`, `RESEND_API_KEY` e `APP_BASE_URL`. Provider `log` é rejeitado em produção.
 - `CORS_ORIGIN`: lista de origens separadas por vírgula; vazio permite qualquer origem. Configure no ambiente publicado.
-- OpenAI/WhatsApp: configuração permanece no schema de ambiente, porém os canais estão suspensos pelas flags da aplicação.
+- Assistente web: `OPENAI_API_KEY` habilita interpretação/transcrição; `OPENAI_MODEL` (padrão `gpt-4o`) e `OPENAI_TRANSCRIPTION_MODEL` (padrão `gpt-4o-mini-transcribe`) permitem configurar os modelos. A gravação requer HTTPS ou localhost. WhatsApp permanece suspenso, mesmo com credenciais configuradas.
 
 Use secrets para credenciais. Não copie `server/.env`, backups ou manifestos privados para o Git. Scripts Node/tsx que precisam de configuração usam `--env-file=.env`; arquivos de secrets do Worker são separados dos do Node.
 

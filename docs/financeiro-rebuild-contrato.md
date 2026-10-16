@@ -54,3 +54,9 @@ Tentativas de IA/TE/cobertura podem integrar os procedimentos de um Serviço con
 Um Serviço com tentativa válida vinculada não pode ser cancelado antes de revisar seus procedimentos. O consumo reprodutivo também não pode ser estornado isoladamente pelo Estoque: a correção parte da reprodução e distingue devolução por erro de lançamento de material efetivamente usado ou descartado. Períodos fechados e o histórico dos movimentos permanecem protegidos.
 
 Tentativas e aplicações anuladas com consumo mantido continuam ocupando o limite atribuído ao Serviço e impedem cancelamento sem revisão dos vínculos. Material incluído no Serviço pode manter seu consumo sem movimento fictício de estoque. Anular uma tentativa vinculada verifica tanto o período do fato quanto o do Serviço; nenhum retry pode retirar a atribuição de um período fechado. Aplicação de compra direta com consumo mantido conserva a quantidade destinada, impedindo sua reutilização por outra aplicação.
+
+## Assistente financeiro
+
+O piloto web em `/ia` consulta caixa, saldos, categorias e compromissos pelos serviços deste domínio. Resultados de caixa não equivalem a lucro; pendências usam saldo restante, e estornos seguem a data do evento. O acesso exige conta pessoal, área Financeiro e todas as permissões de valores, salários e investimentos, sem ampliar presets. Texto/áudio, limites e conferência estão no [contrato do assistente](assistente-financeiro.md).
+
+A visão geral aceita `inicio` e `fim` válidos na URL de entrada, inclusive nos links de conferência do assistente. Sem um intervalo válido, mantém o ano atual como padrão.

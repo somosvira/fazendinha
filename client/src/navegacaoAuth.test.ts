@@ -20,6 +20,13 @@ const usuarioFinanceiro: UsuarioSessao = {
   areas: ["financeiro"],
 };
 
+it("mostra o assistente para quem pode consultar valores financeiros, independentemente das abas antigas", () => {
+  expect(podeAcessarTab(usuarioFinanceiro, "ia")).toBe(false);
+  expect(podeAcessarTab({ ...usuarioFinanceiro, flags: ["verValores"] }, "ia")).toBe(true);
+  expect(podeAcessarTab({ ...usuarioPecuaria, flags: ["verValores"] }, "ia")).toBe(false);
+  expect(podeAcessarTab({ ...usuarioPecuaria, dono: true }, "ia")).toBe(true);
+});
+
 describe("rotas públicas de autenticação", () => {
   it("reconhece rotas canônicas e aliases temporários", () => {
     expect(interpretarRotaAuth("/signin", "?returnTo=%2Ffinanceiro%2Foperacoes")).toEqual({

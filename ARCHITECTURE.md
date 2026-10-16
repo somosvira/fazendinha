@@ -35,7 +35,7 @@ Financeiro separa operação, compromisso, transação, movimento de conta e efe
 
 Pecuária V1–V4 reúne rebanho, genética, sanidade, peso/manejo, nutrição e reprodução, com auditoria e localização histórica. Reprodução usa fatos individuais, gestação, parto/crias, visitas com atividades e programações IATF; consumo de material e nascimento de crias são transacionais. Consulte também o [contrato V4](docs/pecuaria/reproducao.md). Confira [seu contrato](docs/pecuaria/README.md). Agricultura/Cultivo/Equipe não têm módulos operacionais atuais. Centros/categorias e origens físicas de atividades retiradas podem existir no histórico financeiro.
 
-OpenAI, motor estruturado de consulta e WhatsApp conservam código. `ASSISTENTE_ATIVO=false` nos dois lados suspende os canais; o servidor devolve `FEATURE_DISABLED`/503. A configuração de credenciais não reativa a feature.
+O assistente financeiro web usa OpenAI para interpretar perguntas e transcrever áudio. Serviços financeiros existentes calculam e renderizam os resultados; nenhum número financeiro é gerado pelo modelo. A conversa é temporária no cliente, vinculada ao usuário e sítio pela montagem da tela; apenas o contexto de consulta validado é reenviado. `ASSISTENTE_ATIVO` controla o canal web; WhatsApp permanece bloqueado separadamente. O motor genérico de agregações é preservado, mas não integra a superfície do piloto. Veja [o contrato do assistente](docs/assistente-financeiro.md).
 
 ## Sessão, permissões e sítio
 
