@@ -21,6 +21,7 @@ import { relatorioGerencialRouter } from "./routes/relatorio-gerencial.js";
 import { relatoriosFinanceirosRouter } from "./routes/relatorios-financeiros.js";
 import { buscaRouter } from "./routes/busca.js";
 import { whatsappRouter } from "./routes/whatsapp.js";
+import { botRouter } from "./routes/bot.js";
 import { ASSISTENTE_ATIVO, rotaDoAssistente } from "./featureFlags.js";
 
 export const app = new Hono();
@@ -52,10 +53,11 @@ app.use(
     origin: corsOrigins && corsOrigins.length > 0 ? corsOrigins : "*",
   })
 );
-// Suspensão temporária e reversível do assistente. As rotas continuam montadas
-// abaixo, mas nenhum canal aceita chamadas enquanto a chave estiver desligada.
+// O assistente web tem flag própria. WhatsApp continua suspenso, mesmo quando
+// o piloto financeiro está ativo ou existem credenciais do canal.
 app.use("/api/*", async (c, next) => {
-  if (!ASSISTENTE_ATIVO && rotaDoAssistente(new URL(c.req.url).pathname)) {
+  const pathname = new URL(c.req.url).pathname;
+  if (/^\/api\/whatsapp(?:\/|$)/.test(pathname) || (!ASSISTENTE_ATIVO && rotaDoAssistente(pathname))) {
     return c.json({ error: "Assistente temporariamente indisponível", code: "FEATURE_DISABLED" }, 503);
   }
   await next();
@@ -86,3 +88,4 @@ app.route("/api", estoqueRouter);
 app.route("/api", relatorioGerencialRouter);
 app.route("/api", relatoriosFinanceirosRouter);
 app.route("/api", buscaRouter);
+app.route("/api", botRouter);

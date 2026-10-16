@@ -1,5 +1,5 @@
 /**
- * Chave temporária para manter o assistente inteiro fora da interface sem
- * remover sua implementação. Trocar para `true` religa a rota e o widget.
+ * Assistente financeiro web: texto e áudio, sem os mocks antigos.
+ * O botão flutuante abre a mesma tela /ia.
  */
-export const ASSISTENTE_ATIVO = false;
+export const ASSISTENTE_ATIVO = true;

@@ -1,34 +1,21 @@
-import { describe, expect, it, vi } from "vitest";
-import type { MiddlewareHandler } from "hono";
+import { expect, it, vi } from "vitest";
 import { rotaDoAssistente } from "./featureFlags.js";
-
-vi.mock("./middleware/auth.js", () => ({ authMiddleware: vi.fn<MiddlewareHandler>(async (_c, next) => next()) }));
-
-// O bloqueio acontece antes de qualquer acesso a dados; a URL apenas satisfaz
-// a validação de configuração durante o carregamento isolado do app.
-process.env.DATABASE_URL ??= "postgresql://test:test@localhost:5432/test";
-const { app } = await import("./app.js");
-
-describe("assistente temporariamente inativo", () => {
-  it.each([
-    ["POST", "/api/bot/ask"],
-    ["GET", "/api/whatsapp/webhook"],
-  ])("bloqueia %s %s antes de executar o canal", async (method, pathname) => {
-    const resposta = await app.request(`http://localhost${pathname}`, { method });
-    expect(resposta.status).toBe(503);
-    await expect(resposta.json()).resolves.toMatchObject({ code: "FEATURE_DISABLED" });
-  });
-
-  it("não confunde inseminação artificial com o assistente", () => {
-    expect(rotaDoAssistente("/api/pecuaria/rebanho/sanidade/protocolos")).toBe(false);
-  });
+vi.mock("./middleware/auth.js", () => ({ authMiddleware: async (c: import("hono").Context, next: () => Promise<void>) => {
+  c.set("usuario", { id: 9, dono: true, areas: ["financeiro"], flags: [] }); await next();
+} }));
+import { app } from "./app.js";
+it("registra o assistente web no app principal", async () => {
+  const r = await app.request("/api/bot/status"); expect(r.status).toBe(200);
+  expect(await r.json()).toHaveProperty("configurado");
 });
-
-// Os módulos retirados não devem voltar como canais bloqueados do assistente.
-describe("rotas operacionais retiradas", () => {
-  it.each(["/api/plantio/ia", "/api/plantio/talhoes", "/api/cultivo/safras", "/api/ponto/funcionarios"])("%s não existe", async (pathname) => {
-    expect(rotaDoAssistente(pathname)).toBe(false);
-    const resposta = await app.request(`http://localhost${pathname}`);
-    expect(resposta.status).toBe(404);
-  });
+it("mantém WhatsApp suspenso antes de autenticação e do webhook", async () => {
+  const r = await app.request("/api/whatsapp/webhook"); expect(r.status).toBe(503);
+  expect(await r.json()).toMatchObject({ code: "FEATURE_DISABLED" });
+});
+it("não confunde inseminação artificial com o assistente", () => {
+  expect(rotaDoAssistente("/api/pecuaria/rebanho/sanidade/protocolos")).toBe(false);
+});
+it.each(["/api/plantio/ia", "/api/plantio/talhoes", "/api/cultivo/safras", "/api/ponto/funcionarios"])("mantém a rota retirada %s inexistente", async pathname => {
+  expect(rotaDoAssistente(pathname)).toBe(false);
+  expect((await app.request(pathname)).status).toBe(404);
 });

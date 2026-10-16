@@ -402,10 +402,12 @@ export function App() {
   // mora no rodapé da sidebar, renderizado via isAdmin pelo AppSidebar).
   const visibleTabs = useMemo<NavTab[]>(() => {
     if (!effectiveUser || !hasArea("financeiro")) return [];
-    return ABAS.filter((a) => effectiveUser.abas.includes(a.id)).map((a) => ({
+    const abas = ABAS.filter((a) => effectiveUser.abas.includes(a.id)).map((a) => ({
       id: a.id as Tab,
       label: a.label,
     }));
+    if (ASSISTENTE_ATIVO && (effectiveUser.dono || effectiveUser.flags.includes("verValores"))) abas.push({ id: "ia", label: "Assistente financeiro" });
+    return abas;
   }, [effectiveUser]);
 
   const canAccessTab = (id: Tab): boolean => !!usuario && podeAcessarTab(usuario, id);
@@ -503,7 +505,7 @@ export function App() {
     ? <FinanceiroContent tab={tab} onNav={navegarTab} podeEditarCadastros={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} podeExportar={!!effectiveUser.dono || effectiveUser.flags.includes("exportar")} />
     : (
       <>
-        {ASSISTENTE_ATIVO && tab === "ia" && (canSee("ia") ? <IA /> : <GatedTab user={effectiveUser} abaLabel="IA" />)}
+        {ASSISTENTE_ATIVO && tab === "ia" && (canSee("ia") ? <IA key={`${usuario.id}:${propAtiva ?? "todos"}`} onNavegar={navegarDeepLink} /> : <GatedTab user={effectiveUser} abaLabel="IA" />)}
         {/* Configurações mantém somente setup global: categorias, sítios e acessos. */}
         {(tab === "config" || tab === "acessos" || tab === "sitios") && (
           <ConfiguracoesHub
@@ -573,7 +575,7 @@ export function App() {
           return canAccessTab(t);
         }}
       />
-      {ASSISTENTE_ATIVO && !ABAS_CHAT.has(tab) && <ChatWidget onNavegar={navegarDeepLink} />}
+      {ASSISTENTE_ATIVO && canSee("ia") && !ABAS_CHAT.has(tab) && <ChatWidget onNavegar={navegarDeepLink} />}
     </div>
     </>
   );

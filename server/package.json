@@ -26,14 +26,13 @@
     "seed:pecuaria": "tsx --env-file=.env prisma/seed-pecuaria.ts",
     "import:pecuaria": "tsx --env-file=.env prisma/import-pecuaria.ts",
     "validar:pecuaria": "tsx --env-file=.env src/scripts/validar-carga-pecuaria.ts",
-    "bateria:gabarito": "tsx --env-file=.env scripts/bateria-ia.gabarito.ts",
-    "bateria:run": "tsx scripts/bateria-ia.run.ts",
     "whatsapp:user": "tsx --env-file=.env src/scripts/allowlist.ts",
     "test:financeiro:integration": "node --env-file=.env scripts/qa-financeiro.mjs",
     "import:pecuaria:v4": "tsx --env-file=.env prisma/import-pecuaria-v4.ts",
     "import:pecuaria:v4:typecheck": "tsc -p tsconfig.import-v4.json",
     "test:import:pecuaria:v4": "vitest run --config vitest.import-v4.config.ts",
-    "previa:pecuaria:padronizacao": "tsx --env-file=.env scripts/previa-padronizacao.ts"
+    "previa:pecuaria:padronizacao": "tsx --env-file=.env scripts/previa-padronizacao.ts",
+    "assistente:conferir": "tsx --env-file=.env scripts/conferir-assistente.ts"
   },
   "prisma": {
     "seed": "tsx --env-file=.env prisma/seedatev3.ts"
