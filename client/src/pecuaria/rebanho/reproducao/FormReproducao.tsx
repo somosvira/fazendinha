@@ -1,3 +1,5 @@
+import { getUsuario } from "../../../lib/auth";
+import { podeAcessarArea } from "../../../estoque/navegacao";
 import { PartoCampos, camposPartoPayload, dadosPartoVazios, validarDadosParto } from "./PartoCampos";
 import { CamposAvaliacao } from "./CamposAvaliacao";
 import { CamposResultadoExame, type ObservacaoExame } from "../sanidade/CamposExame";
@@ -86,6 +88,8 @@ export function FormReproducao({
   ) => Promise<void>;
 }) {
   const propriedadeId = propriedadeIdInformada ?? getPropriedadeAtiva();
+  const usuario = getUsuario();
+  const podeValores = !!usuario && podeAcessarArea("financeiro") && (usuario.dono || usuario.flags.includes("verValores"));
   const envio = useRef<{ payload: string; chave: string } | null>(null);
   const [animalId, setAnimalId] = useState(animalInicial ?? "");
   const [data, setData] = useState(dataInicial ?? hoje());
@@ -108,6 +112,7 @@ export function FormReproducao({
   const [motivoVencida, setMotivoVencida] = useState("");
   const [motivoVinculo, setMotivoVinculo] = useState("");
   const [servicoId, setServicoId] = useState("");
+  const [valorServico, setValorServico] = useState("");
   const [quantidade, setQuantidade] = useState(String(tentativaInicial?.quantidade ?? 1));
   const [responsavel, setResponsavel] = useState("");
   const [resultado, setResultado] =
@@ -268,7 +273,7 @@ export function FormReproducao({
     if (ocupado) return;
     setOcupado(true);
     setErro(null);
-    const payload = JSON.stringify({acao, propriedadeId, animalId, data, tipo, origem, materialId, touro, partidaId, cienciaValidade, cienciaSanitaria, cienciaVencida, motivoVencida, servicoId, quantidade, responsavel, resultado, conduta, sexoFetal, finalidade, tipoExameId, resultados, tentativaId, motivo, anotacao, retorno, previsao, motivoVinculo, dadosParto, crias, lactacao, situacao, aptaDesde, restricaoAte, acoesRestritas, restricao});
+    const payload = JSON.stringify({acao, propriedadeId, animalId, data, tipo, origem, materialId, touro, partidaId, cienciaValidade, cienciaSanitaria, cienciaVencida, motivoVencida, servicoId, valorServico, quantidade, responsavel, resultado, conduta, sexoFetal, finalidade, tipoExameId, resultados, tentativaId, motivo, anotacao, retorno, previsao, motivoVinculo, dadosParto, crias, lactacao, situacao, aptaDesde, restricaoAte, acoesRestritas, restricao});
     if (envio.current?.payload !== payload) envio.current = { payload, chave: crypto.randomUUID() };
     const base = { chave: envio.current.chave, propriedadeId, animalId, data };
     try {
@@ -293,7 +298,7 @@ export function FormReproducao({
               }
             : {}),
           cienciaSanitaria,
-          ...(servicoId ? { operacaoServicoId: servicoId } : {}),
+          ...(origem === "SERVICO" && servicoId ? { operacaoServicoId: servicoId, ...(podeValores && valorServico !== "" ? { valorServicoAtribuido: valorServico } : {}) } : {}),
           ...(responsavel ? { responsavel } : {}),
           ...(motivo
             ? { justificativaSemOrigem: motivo, observacao: motivo }
@@ -404,7 +409,7 @@ export function FormReproducao({
                 ["COBERTURA", "Cobertura"],
               ],
             )}
-            {seletor("origem", "Origem", origem, setOrigem, [
+            {seletor("origem", "Origem", origem, v => { setOrigem(v); setServicoId(""); setValorServico(""); }, [
               ["DOCUMENTADA", "Origem documentada"],
               ["ESTOQUE", "Estoque do sítio"],
               ["SERVICO", "Serviço associado"],
@@ -518,12 +523,16 @@ export function FormReproducao({
                 "servico",
                 "Serviço financeiro",
                 servicoId,
-                setServicoId,
+                v => { setServicoId(v); setValorServico(""); },
                 servicos.map((s) => [
                   s.id,
                   `#${s.numero} ${s.descricao ?? "Serviço"}`,
                 ]),
               )}
+            {origem === "SERVICO" && podeValores && <CampoFormulario id="rep-valor-servico" rotulo="Valor atribuído ao Serviço (R$)">
+              {p => <><input {...p} className={classeInput} type="number" min="0" step="0.01" value={valorServico} onChange={e => setValorServico(e.target.value)} />
+                <small>Parcela do Serviço correspondente a esta tentativa. Não gera outra despesa. Deixe vazio se ainda não foi atribuída.</small></>}
+            </CampoFormulario>}
             {campo("responsavel", "Responsável", responsavel, setResponsavel)}
           </>
         )}

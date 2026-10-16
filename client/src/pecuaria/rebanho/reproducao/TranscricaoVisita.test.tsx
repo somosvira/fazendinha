@@ -517,3 +517,41 @@ it.each([
   await waitFor(() => expect(salvarRascunhoVisita).toHaveBeenCalled());
   expect(vi.mocked(salvarRascunhoVisita).mock.calls.at(-1)?.[3]).toMatchObject({ participanteIatfId: destino });
 });
+
+it("oferece conduta na avaliação coletiva, salva descarte e limpa IATF ao mudar conclusão", async () => {
+  render(<Transcricao visita={visita} atividade={atividade} podeLancar onMudou={vi.fn()} />);
+  fireEvent.change(screen.getByLabelText("Resultado · 100"), {target:{value:"NEGATIVO"}});
+  fireEvent.click(screen.getByRole("button", {name:"Detalhes · 100"}));
+  fireEvent.change(screen.getByLabelText("Conduta · 100"), {target:{value:"DESCARTE"}});
+  const motivo = screen.getByLabelText("Motivo do descarte · 100");
+  fireEvent.change(motivo, {target:{value:"Restrição reprodutiva documentada"}}); fireEvent.blur(motivo);
+  await waitFor(()=>expect(salvarRascunhoVisita).toHaveBeenLastCalledWith("v","p",1,expect.objectContaining({conduta:"DESCARTE",motivo:"Restrição reprodutiva documentada"}),expect.anything()));
+  fireEvent.change(screen.getByLabelText("Conduta · 100"), {target:{value:"IATF"}});
+  fireEvent.change(screen.getByLabelText("Resultado · 100"), {target:{value:"INCONCLUSIVO"}});
+  await waitFor(()=>expect(salvarRascunhoVisita).toHaveBeenLastCalledWith("v","p",1,expect.objectContaining({conduta:"",resultado:"INCONCLUSIVO"}),expect.anything()));
+  expect(confirmarVisita).not.toHaveBeenCalled();
+});
+
+it("conserva motivo do desvio sanitário ao preparar e salvar o procedimento da visita", async () => {
+  vi.mocked(reqV4).mockImplementation(async url => url.includes("/tarefa") ? {origem:"SANITARIA",tarefa:{id:"t",tipo:"APLICACAO",produtoId:"produto",dose:"1",unidade:"ML"}} : url.startsWith("/reproducao?") ? painelVazio : []);
+  const a:AtividadeVisita={...atividade,tipo:"APLICACAO_SANITARIA",participantes:[{...atividade.participantes[0],tarefaSanitariaId:"t",rascunho:null}]};
+  render(<Transcricao visita={visita} atividade={a} podeLancar onMudou={vi.fn()}/>);
+  fireEvent.click(screen.getByRole("button",{name:"Detalhes · 100"}));
+  const campo=screen.getByLabelText("Motivo do desvio · 100");
+  fireEvent.change(campo,{target:{value:"Visita realizada no dia seguinte"}});fireEvent.blur(campo);
+  fireEvent.click(screen.getByRole("button",{name:"Preencher procedimento"}));
+  fireEvent.click(await screen.findByRole("button",{name:"Preparar aplicação teste"}));
+  await waitFor(()=>expect(salvarRascunhoVisita).toHaveBeenLastCalledWith("v","p",1,expect.objectContaining({dados:{produtoId:"novo",desvio:{motivo:"Visita realizada no dia seguinte"}},status:"CONFIRMADO"}),expect.anything()));
+  expect(confirmarVisita).not.toHaveBeenCalled();
+});
+
+it("indicação aninhada na tarefa abre programação somente por ação explícita", async () => {
+  const a:AtividadeVisita={...atividade,tipo:"TAREFA_IATF",participantes:[{...atividade.participantes[0],status:"CONFIRMADO",snapshot:{brinco:"100",tarefaPlanejada:{tarefa:{tipo:"AVALIACAO"}} as never},rascunho:{dados:{resultado:"NEGATIVO",conduta:"IATF"}}}]};
+  render(<Transcricao visita={visita} atividade={a} podeLancar onMudou={vi.fn()}/>);
+  const programar=await screen.findByRole("button",{name:"Programar IATF para indicados (1)"});
+  await waitFor(()=>expect(programar).toHaveProperty("disabled",false));
+  expect(screen.queryByText(/Programação existente:/)).toBeNull();
+  fireEvent.click(programar);
+  expect(screen.getByText("Programação existente: a")).toBeTruthy();
+  expect(confirmarVisita).not.toHaveBeenCalled();
+});

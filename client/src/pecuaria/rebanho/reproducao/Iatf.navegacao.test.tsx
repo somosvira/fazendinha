@@ -16,3 +16,19 @@ it("abre programação de outro retorno por popstate sem remontar",async()=>{
   fireEvent(window,new PopStateEvent("popstate"));
   expect(await screen.findByText(/Segunda programação/)).toBeTruthy();
 });
+
+it.each(["Editar rascunho","Nova versão"])("%s envia apenas parâmetros editáveis e preserva exame planejado",async acao=>{
+  vi.clearAllMocks();
+  const etapas=[{nome:"Avaliação",tipo:"AVALIACAO",intervalo:30,unidade:"DIAS",planoAvaliacao:{tipo:"DIAGNOSTICO",tipoExameId:"exame"},referencias:{tipoExameNome:"Exame congelado"}}];
+  vi.mocked(reqV4).mockImplementation(async(_path,body)=>body?{}:[{id:"protocolo",nome:"Modelo",versao:1,publicado:false,ativo:true,etapas}]);
+  render(<Iatf modo="cadastros" podeLancar propriedadeId={7}/>);
+  fireEvent.click(await screen.findByRole("button",{name:acao}));
+  fireEvent.click(screen.getByRole("button",{name:"Salvar"}));
+  const {waitFor}=await import("@testing-library/react");
+  await waitFor(()=>expect(vi.mocked(reqV4).mock.calls.some(([,body])=>!!body)).toBe(true));
+  const [path,body,method]=vi.mocked(reqV4).mock.calls.find(([,body])=>!!body)!;
+  expect(path).toBe(acao==="Editar rascunho"?"/reproducao/protocolos/protocolo":"/reproducao/protocolos");
+  expect(method).toBe(acao==="Editar rascunho"?"PATCH":"POST");
+  expect(body).toMatchObject({versao:acao==="Editar rascunho"?1:2,etapas:[{nome:"Avaliação",tipo:"AVALIACAO",intervalo:30,unidade:"DIAS",planoAvaliacao:{tipo:"DIAGNOSTICO",tipoExameId:"exame"}}]});
+  expect(JSON.stringify(body)).not.toContain("referencias");
+});

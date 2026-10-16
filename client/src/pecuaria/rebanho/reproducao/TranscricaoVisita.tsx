@@ -236,7 +236,7 @@ export function Transcricao({
     if (!preparar) return;
     const p = preparar;
     rascunhosAtuais.current[p.id] = {
-      ...rascunhosAtuais.current[p.id], dados: { ...dados }, status: "CONFIRMADO",
+      ...rascunhosAtuais.current[p.id], dados: { ...(p.tarefaSanitariaId ? { desvio: rascunhosAtuais.current[p.id]?.dados?.desvio } : {}), ...dados }, status: "CONFIRMADO",
     };
     rascunhosSujos.current.add(p.id);
     setRascunhos({ ...rascunhosAtuais.current });
@@ -248,7 +248,7 @@ export function Transcricao({
     return p && !confirmado(p);
   });
   const indicadosIatf = atividade.participantes.filter(p => confirmado(p) && !p.regularizacaoPendente &&
-    (rascunhos[p.id]?.conduta ?? p.rascunho?.conduta) === "IATF");
+    (ehAvaliacaoTarefa(p) ? (rascunhos[p.id]?.dados?.conduta ?? p.rascunho?.dados?.conduta) : (rascunhos[p.id]?.conduta ?? p.rascunho?.conduta)) === "IATF");
   const itens = filtrarParticipantes(atividade.participantes, {
     q,
     status,
@@ -275,10 +275,10 @@ export function Transcricao({
   const motivosDisponiveis = Array.from(
     new Set(atividade.participantes.flatMap(motivosParticipante)),
   );
-  const atualizar = (
+  const atualizar = <K extends keyof RascunhoVisita,>(
     p: ParticipanteVisita,
-    campo: keyof RascunhoVisita,
-    valor: string | boolean,
+    campo: K,
+    valor: RascunhoVisita[K],
   ) => {
     rascunhosAtuais.current[p.id] = { ...rascunhosAtuais.current[p.id], ...(["conduta", "participanteIatfId", "inicioEfetivo"].includes(campo) ? { cienciaSanitaria: false } : {}), [campo]: valor };
     rascunhosSujos.current.add(p.id);
@@ -287,7 +287,7 @@ export function Transcricao({
   };
   function atualizarDados(p: ParticipanteVisita, mudanca: Record<string, unknown>) {
     if ("resultado" in mudanca) setDetalhesFechados(d=>d.filter(id=>id!==p.id));
-    rascunhosAtuais.current[p.id] = { ...rascunhosAtuais.current[p.id], dados: { ...(rascunhosAtuais.current[p.id]?.dados ?? {}), ...mudanca }, status: "CONFIRMADO" };
+    rascunhosAtuais.current[p.id] = { ...rascunhosAtuais.current[p.id], dados: { ...(rascunhosAtuais.current[p.id]?.dados ?? {}), ...("conduta" in mudanca ? { cienciaSanitaria: false } : {}), ...mudanca }, status: "CONFIRMADO" };
     rascunhosSujos.current.add(p.id);
     setRascunhos({ ...rascunhosAtuais.current });
     setAvisos(a => ({ ...a, [p.id]: "Alterações não salvas" }));
@@ -674,6 +674,7 @@ export function Transcricao({
       <fieldset disabled={bloqueado} onBlur={() => void persistir(p)} className="grid gap-4 lg:grid-cols-2">
         {ausente ? <label>Motivo do atendimento pendente{input(p, "motivo", "Motivo do atendimento pendente")}</label> : <>
           <CamposAvaliacao secao="detalhes" identificacao={p.snapshot.brinco ?? String(p.ordem)} dados={r} onChange={mudanca => mudarAvaliacao(p, mudanca)} />
+          <label>Conduta<CamposAvaliacao secao="conduta" identificacao={p.snapshot.brinco ?? String(p.ordem)} dados={r} onChange={mudanca => mudarAvaliacao(p, mudanca)} /></label>
           <label>Tipo de exame<select aria-label={`Tipo de exame · ${p.snapshot.brinco ?? p.ordem}`} className={classeInput}
             value={r.tipoExameId ?? ""} onChange={e => {
               const tipo = tiposExame.find(t => t.id === e.target.value);
@@ -712,6 +713,16 @@ export function Transcricao({
       {!confirmado(p) && podeLancar && <Button secondary disabled={ocupado} onClick={()=>setRevisao([p.id])}>Revisar animal</Button>}
       {p.snapshot.pendenciasContexto?.length ? <ul className="text-xs">{p.snapshot.pendenciasContexto.map(m => <li key={m}>{m}</li>)}</ul> : null}
     </div>;
+  }
+  function campoDesvioSanitario(p: ParticipanteVisita) {
+    const desvio = rascunhos[p.id]?.dados?.desvio as { motivo?: string } | undefined;
+    return <label>Motivo do desvio da tarefa (se houver)
+      <input aria-label={`Motivo do desvio · ${p.snapshot.brinco ?? p.ordem}`} className={classeInput} maxLength={500}
+        disabled={!podeLancar || ocupado || confirmado(p)} value={desvio?.motivo ?? ""}
+        onChange={e => atualizar(p, "dados", { ...rascunhosAtuais.current[p.id]?.dados, desvio: e.target.value ? { motivo: e.target.value } : undefined })}
+        onBlur={() => void persistir(p)} />
+      <small>Informe o motivo ao alterar a data, o produto, a dose ou o exame planejado.</small>
+    </label>;
   }
   const parametrosDaTarefaCarregados = (!preparar?.tarefaIatfId && !preparar?.tarefaSanitariaId) || !!tarefaPreparada;
   const planoAplicacao = tarefaPreparada?.planejadoSnapshot?.etapa.planoAplicacao;
@@ -796,7 +807,7 @@ export function Transcricao({
             <Button secondary disabled={ocupado} onClick={() => setRevisao([])}>Voltar ao preenchimento</Button>
           </div>
         </section>}
-        {atividade.tipo === "AVALIACAO_REPRODUTIVA" && indicadosIatf.length > 0 && podeLancar && <div className="mb-4 flex flex-wrap items-center gap-3 text-sm">
+        {indicadosIatf.length > 0 && podeLancar && <div className="mb-4 flex flex-wrap items-center gap-3 text-sm">
           <p>{indicadosIatf.length} animal(is) com indicação de IATF confirmada. A indicação não inicia protocolo nem consome materiais.</p>
           <Button secondary disabled={!painel || ocupado} onClick={() => setProgramarIatf(true)}>Programar IATF para indicados ({indicadosIatf.length})</Button>
         </div>}
@@ -833,7 +844,13 @@ export function Transcricao({
                     <fieldset disabled={bloqueado} className="grid gap-3 rounded-lg border border-border p-3"><legend className="px-1 font-semibold">Vínculos do resultado</legend>
                       {selectDados(p, "tentativaId", "Tentativa comprovada", ((painel?.tentativas ?? []).filter(t => t.animalId === p.animalId && t.status !== "ANULADO" && t.data.slice(0,10) <= visita.data.slice(0,10)).map(t => [t.id, `${t.data.slice(0,10)} · ${t.tipo}`]) as [string,string][]))}
                       {selectDados(p, "gestacaoId", "Gestação conhecida", ((painel?.gestacoes ?? []).filter(g => g.animalId === p.animalId && g.status === "VALIDO" && (!g.confirmadaEm || g.confirmadaEm.slice(0,10) <= visita.data.slice(0,10)) && (!g.encerradaEm || g.encerradaEm.slice(0,10) > visita.data.slice(0,10))).map(g => [g.id, `Confirmada ${g.confirmadaEm?.slice(0,10) ?? "sem data"}`]) as [string,string][]))}
-                      {(r.dados?.resultado === "SEXAGEM") && selectDados(p, "sexoFetal", "Sexo fetal", [["F", "Fêmea"], ["M", "Macho"]])}
+                      <fieldset disabled={bloqueado} onBlur={() => void persistir(p)} className="grid gap-3">
+                        <CamposAvaliacao secao="detalhes" identificacao={p.snapshot.brinco ?? String(p.ordem)} dados={r.dados ?? {}} onChange={mudanca => atualizarDados(p, mudanca)} />
+                        <label>Conduta<CamposAvaliacao secao="conduta" identificacao={p.snapshot.brinco ?? String(p.ordem)} dados={r.dados ?? {}} onChange={mudanca => atualizarDados(p, mudanca)} /></label>
+                        {r.dados?.conduta === "DESCARTE" && <label>Motivo do descarte<input aria-label={`Motivo do descarte · ${p.snapshot.brinco ?? p.ordem}`} className={classeInput} value={String(r.dados?.motivo ?? "")} onChange={e => atualizarDados(p, { motivo: e.target.value })} /></label>}
+                        {(r.dados?.conduta === "AGUARDAR" || !!r.dados?.retornoEm) && <label>Retorno<input aria-label={`Retorno · ${p.snapshot.brinco ?? p.ordem}`} className={classeInput} type="date" value={String(r.dados?.retornoEm ?? "")} onChange={e => atualizarDados(p, { retornoEm: e.target.value || undefined })} /></label>}
+                        {r.dados?.conduta === "IATF" && <div><p>A indicação não inicia o protocolo. A programação fica disponível após confirmar.</p><AlertasSanitarios animalId={p.animalId} data={(r.realizadaEm || visita.data).slice(0,10)} acao="IATF" propriedadeId={visita.propriedadeId} /><label><input type="checkbox" aria-label={`Ciência sanitária · ${p.snapshot.brinco ?? p.ordem}`} checked={r.dados?.cienciaSanitaria === true} onChange={e => atualizarDados(p, { cienciaSanitaria: e.target.checked })} />Revisei os alertas sanitários para esta indicação.</label></div>}
+                      </fieldset>
                       {r.dados?.resultado === "POSITIVO" && !r.dados?.tentativaId && !r.dados?.gestacaoId && <label>Justificativa do vínculo desconhecido<input className={classeInput} value={String(r.dados?.motivoVinculoDesconhecido ?? "")} onChange={e => atualizarDados(p, { motivoVinculoDesconhecido: e.target.value })} onBlur={() => void persistir(p)} /></label>}
                       {r.dados?.resultado === "NEGATIVO" && gestacoesDoAnimal(p).length > 0 && <div role="alert" className="rounded-lg border border-border p-3 space-y-3"><p>Há gestação conhecida na data. O resultado vazio não registra perda automaticamente; registre a perda ou corrija o diagnóstico antes de confirmar.</p>{painel && <AcoesReprodutivas painel={painel} animalId={p.animalId} propriedadeId={visita.propriedadeId} podeLancar={!bloqueado} onMudou={onMudou} />}</div>}
                       <label>Anotação original<input className={classeInput} value={String(r.dados?.anotacaoOriginal ?? "")} onChange={e => atualizarDados(p, { anotacaoOriginal: e.target.value })} onBlur={() => void persistir(p)} /></label>
@@ -875,6 +892,7 @@ export function Transcricao({
                     })()}
                     <div><AlertasSanitarios animalId={p.animalId} data={visita.data.slice(0,10)} acao="IATF" propriedadeId={visita.propriedadeId} /><label className="flex gap-2 text-sm my-2"><input type="checkbox" aria-label={`Ciência sanitária · ${p.snapshot.brinco ?? p.ordem}`} checked={r.cienciaSanitaria === true} disabled={bloqueado} onChange={e => atualizar(p, "cienciaSanitaria", e.target.checked)} onBlur={() => void persistir(p)} />Revisei os alertas sanitários informados para este procedimento.</label></div>
                   </>}
+                  {p.tarefaSanitariaId && preparar?.id !== p.id && campoDesvioSanitario(p)}
                   {atividade.tipo !== "INICIAR_IATF" && <div><Button secondary disabled={bloqueado} onClick={() => { setPreparar(p); setDetalhes(prev => [...new Set([...prev, p.id])]); }}>Preencher procedimento</Button>{r.dados && <p className="text-xs mt-2">Procedimento preparado no rascunho</p>}</div>}
                   <label>Anotação original{input(p, "anotacaoOriginal", "Anotação original")}</label>
                   <label>Motivo de perda, correção, descarte ou pendência{input(p, "motivo", "Motivo de perda, correção, descarte ou pendência")}</label>
@@ -906,6 +924,7 @@ export function Transcricao({
           <FormAplicacaoServico
             animalId={preparar.animalId}
             parametrosIniciais={parametrosAplicacao}
+            conteudoExtra={preparar.tarefaSanitariaId ? campoDesvioSanitario(preparar) : undefined}
             propriedadeId={visita.propriedadeId}
             momentoIatf={atividade.tipo === "TAREFA_IATF" ? rascunhos[preparar.id]?.realizadaEm || visita.data.slice(0,10) : undefined}
             dataInicial={atividade.tipo === "TAREFA_IATF" ? (rascunhos[preparar.id]?.realizadaEm || visita.data).slice(0,10) : visita.data.slice(0,10)}
@@ -950,6 +969,7 @@ export function Transcricao({
       {preparar && !carregandoTarefa && parametrosDaTarefaCarregados &&
         (["EXAME_SANITARIO", "INICIAR_SANITARIO"].includes(atividade.tipo) || (atividade.tipo === "TAREFA_IATF" && tarefaPreparada?.tipo === "EXAME")) && (
           <FormFatoSanitario
+            conteudoExtra={preparar.tarefaSanitariaId ? campoDesvioSanitario(preparar) : undefined}
             dataInicial={visita.data.slice(0, 10)}
             tipo={atividade.tipo === "EXAME_SANITARIO" || tarefaPreparada?.tipo === "EXAME" ? "exame" : "protocolo"}
             animalInicial={preparar.animalId}

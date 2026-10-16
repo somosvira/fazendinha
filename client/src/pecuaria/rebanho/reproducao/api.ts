@@ -189,6 +189,7 @@ export type TentativaInput = FatoBase & {
   quantidade?: number;
   partidaId?: string;
   operacaoServicoId?: string;
+  valorServicoAtribuido?: string;
   responsavel?: string;
   observacao?: string;
   justificativaSemOrigem?: string;

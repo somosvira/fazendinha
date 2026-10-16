@@ -44,6 +44,16 @@ export type EtapaIatf = {
   planoExame?: { tipoExameId: string };
   planoAvaliacao?: { tipoExameId?: string; tipo: "DIAGNOSTICO" | "RECONFIRMACAO" | "SEXAGEM" };
 };
+/** Projeções de leitura incluem referências congeladas, que não pertencem à entrada de cadastro. */
+export function etapaParaCadastro(e: EtapaIatf): EtapaIatf {
+  return {
+    nome: e.nome, tipo: e.tipo, intervalo: e.intervalo, unidade: e.unidade,
+    ...(e.planoAplicacao ? { planoAplicacao: { produtoId: e.planoAplicacao.produtoId, dose: e.planoAplicacao.dose, unidadeDose: e.planoAplicacao.unidadeDose, via: e.planoAplicacao.via } } : {}),
+    ...(e.planoTentativa ? { planoTentativa: { tipo: e.planoTentativa.tipo, materialId: e.planoTentativa.materialId, quantidade: e.planoTentativa.quantidade } } : {}),
+    ...(e.planoExame ? { planoExame: { tipoExameId: e.planoExame.tipoExameId } } : {}),
+    ...(e.planoAvaliacao ? { planoAvaliacao: { tipoExameId: e.planoAvaliacao.tipoExameId, tipo: e.planoAvaliacao.tipo } } : {}),
+  };
+}
 export type ProtocoloIatf = {
   id: string;
   nome: string;
@@ -445,8 +455,8 @@ export function Iatf({
                   .join(" · ")}
               </p>
               {podeLancar && <div className="mt-3 flex flex-wrap gap-2">
-                {!p.publicado && !p.utilizada && p.ativo !== false && <><Button secondary disabled={ocupado} onClick={() => { setEditando(p.id); setNome(p.nome); setVersao(p.versao); setEtapas(structuredClone(p.etapas)); setPublicado(false); setNovo("protocolo"); }}>Editar rascunho</Button><Button secondary disabled={ocupado} onClick={() => void executar(async () => { await reqIatf(`/reproducao/protocolos/${p.id}/publicar`, {}); await carregar(); })}>Publicar versão</Button></>}
-                <Button secondary disabled={ocupado} onClick={() => { setEditando(null); setNome(p.nome); setVersao(Math.max(...protocolos.filter(v => v.nome === p.nome).map(v => v.versao)) + 1); setEtapas(structuredClone(p.etapas)); setPublicado(false); setNovo("protocolo"); }}>Nova versão</Button>
+                {!p.publicado && !p.utilizada && p.ativo !== false && <><Button secondary disabled={ocupado} onClick={() => { setEditando(p.id); setNome(p.nome); setVersao(p.versao); setEtapas(p.etapas.map(etapaParaCadastro)); setPublicado(false); setNovo("protocolo"); }}>Editar rascunho</Button><Button secondary disabled={ocupado} onClick={() => void executar(async () => { await reqIatf(`/reproducao/protocolos/${p.id}/publicar`, {}); await carregar(); })}>Publicar versão</Button></>}
+                <Button secondary disabled={ocupado} onClick={() => { setEditando(null); setNome(p.nome); setVersao(Math.max(...protocolos.filter(v => v.nome === p.nome).map(v => v.versao)) + 1); setEtapas(p.etapas.map(etapaParaCadastro)); setPublicado(false); setNovo("protocolo"); }}>Nova versão</Button>
                 {p.ativo !== false && <Button secondary disabled={ocupado} onClick={() => void executar(async () => { await reqIatf(`/reproducao/protocolos/${p.id}/inativar`, {}); await carregar(); })}>Inativar versão</Button>}
               </div>}
             </section>
@@ -486,7 +496,7 @@ export function Iatf({
                     nome,
                     versao,
                     publicado,
-                    etapas,
+                    etapas: etapas.map(etapaParaCadastro),
                   }, editando ? "PATCH" : "POST");
                 else if (novo === "participantes" && detalhe)
                   await reqIatf(

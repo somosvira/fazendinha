@@ -32,7 +32,7 @@ A situação clínica acompanha o animal após a transferência entre sítios. G
 
 ## Material, estoque e genética
 
-IA e TE usam `MaterialGenetico`, ligado ao Produto do estoque único. Consumo de estoque valida produto, lote/validade, quantidade, saldo e período financeiro; fato e saída são gravados na mesma transação. Material incluído em Serviço confirmado não cria saldo fictício na fazenda. Origem documentada exige justificativa. Um vínculo ao Serviço não lança outra despesa.
+IA e TE usam `MaterialGenetico`, ligado ao Produto do estoque único. Consumo de estoque valida produto, lote/validade, quantidade, saldo e período financeiro; fato e saída são gravados na mesma transação. Material incluído em Serviço confirmado não cria saldo fictício na fazenda. Origem documentada exige justificativa. Um vínculo ao Serviço não lança outra despesa. No formulário de tentativa, a origem Serviço permite informar a parcela atribuída (incluindo centavos) a quem tem acesso ao Financeiro e permissão de ver valores. Vazio conserva a ausência de atribuição; zero é explícito. Trocar a origem ou o Serviço limpa a atribuição anterior. A soma e as permissões continuam validadas no servidor.
 
 A tentativa preserva um retrato da genética e da origem: alterações posteriores no cadastro do material não reescrevem a tentativa. Na TE, a mãe genética é a doadora e a mãe gestacional é a receptora. Genitor desconhecido permanece desconhecido; a receptora não substitui uma doadora ausente.
 
@@ -76,7 +76,7 @@ Uma confirmação pode abranger um animal ou um subconjunto de até 100 particip
 
 O acompanhamento apresenta retornos informados, diagnóstico pendente, tarefas IATF futuras/vencidas e previsões de parto. Uma avaliação válida posterior substitui o retorno anterior do mesmo animal. Parto/perda encerram a previsão ligada à gestação. Links abrem o animal, fato consultável, programação ou registro de parto; fatos de outro sítio não recebem acesso por esse caminho. Ausência de data de diagnóstico permanece explícita, sem gerar um prazo clínico presumido.
 
-Na avaliação coletiva, o tipo de exame pode ser escolhido por animal, com os campos adicionais de sua versão. O rascunho conserva essas informações; mudança de formato exige revisão antes da confirmação. Conclusão e sexo fetal usam os campos clínicos existentes, sem criar outra avaliação paralela. Consulte os detalhes de snapshots no [contrato comum](protocolos-exames.md).
+Na avaliação coletiva, o tipo de exame pode ser escolhido por animal, com os campos adicionais de sua versão. O rascunho conserva essas informações; mudança de formato exige revisão antes da confirmação. Conclusão, sexo fetal e conduta usam os campos clínicos existentes, sem criar outra avaliação paralela. Os detalhes da avaliação livre e da tarefa oferecem acompanhar/retorno, indicar IATF quando vazia e restringir reprodução com motivo. A indicação confirmada permite abrir a programação por ação explícita; preencher ou abrir o formulário não inicia protocolo nem consome material. Aplicações e exames sanitários vinculados a tarefas permitem informar o motivo do desvio na visita; o motivo acompanha o rascunho e a confirmação do mesmo fato. Consulte os detalhes de snapshots no [contrato comum](protocolos-exames.md).
 
 ## IATF
 

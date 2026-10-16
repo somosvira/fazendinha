@@ -232,3 +232,30 @@ it("consulta complementos pós-parto no sítio explícito com outro sítio ativo
   expect(reqV4).toHaveBeenCalledWith("/sanidade/doencas", undefined, "GET", 7);
   expect(reqV4).toHaveBeenCalledWith("/animais/a", undefined, "GET", 7);
 });
+
+it("atribui Serviço sem perder centavos, limpa vínculo ao trocar origem e respeita visibilidade", async () => {
+  localStorage.setItem("rionovo:usuario", JSON.stringify({ dono: true, areas: [], flags: [] }));
+  vi.mocked(listarServicos).mockResolvedValue([{ id: "s", numero: 10, descricao: "Veterinário" }] as never);
+  const registrar = vi.fn().mockResolvedValue(undefined);
+  const props = { acao: "tentativa" as const, painel, animalInicial: "a", onFechar: vi.fn(), onSalvo: vi.fn(), onRegistrar: registrar };
+  const {unmount} = render(<FormReproducao {...props} />);
+  fireEvent.change(screen.getByLabelText("Origem"), {target:{value:"SERVICO"}});
+  await screen.findByRole("option", {name:"#10 Veterinário"});
+  fireEvent.change(screen.getByLabelText("Serviço financeiro"), {target:{value:"s"}});
+  fireEvent.change(screen.getByLabelText("Valor atribuído ao Serviço (R$)"), {target:{value:"123.45"}});
+  fireEvent.submit(document.getElementById("form-reproducao")!);
+  await waitFor(()=>expect(registrar).toHaveBeenCalledTimes(1));
+  expect(registrar.mock.calls[0][0]).toMatchObject({operacaoServicoId:"s",valorServicoAtribuido:"123.45"});
+  fireEvent.change(screen.getByLabelText("Origem"), {target:{value:"DOCUMENTADA"}});
+  fireEvent.change(screen.getByLabelText("Motivo / observação"), {target:{value:"Origem documentada para teste"}});
+  fireEvent.submit(document.getElementById("form-reproducao")!);
+  await waitFor(()=>expect(registrar).toHaveBeenCalledTimes(2));
+  expect(registrar.mock.calls[1][0]).not.toHaveProperty("operacaoServicoId");
+  expect(registrar.mock.calls[1][0]).not.toHaveProperty("valorServicoAtribuido");
+  unmount();
+  localStorage.setItem("rionovo:usuario", JSON.stringify({dono:false,areas:["pecuaria"],flags:["lancar"]}));
+  render(<FormReproducao {...props}/>);
+  fireEvent.change(screen.getByLabelText("Origem"), {target:{value:"SERVICO"}});
+  expect(screen.queryByLabelText("Valor atribuído ao Serviço (R$)")).toBeNull();
+  localStorage.removeItem("rionovo:usuario");
+});
