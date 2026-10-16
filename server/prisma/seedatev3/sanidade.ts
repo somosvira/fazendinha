@@ -14,12 +14,12 @@ export async function sanidade(c: Contexto) {
     ['vacina', 'Vacinação demonstrativa', 'vacina', 'Vacina'], ['verminose', 'Controle de verminose demonstrativo', 'vermifugo', 'Vermífugo'],
     ['acompanhamento', 'Acompanhamento demonstrativo', 'medicamento', 'Tratamento'], ['rascunho', 'Protocolo em estudo — demonstração', 'vacina', 'Vacina'],
   ] as const) {
-    await c.registro(`protocolo:${ref}`, id => prisma.protocoloSanitario.findFirst({ where: id ? { id } : { nome } }), () => criarProtocolo({ nome, descricao: 'Produtos, doses, intervalos e parâmetros fictícios: não são recomendação veterinária.', etapas: [
+    await c.registro(`protocolo:${ref}`, id => prisma.protocolo.findFirst({ where: id ? { id } : { nome } }), () => criarProtocolo({ nome, descricao: 'Produtos, doses, intervalos e parâmetros fictícios: não são recomendação veterinária.', etapas: [
       { diaRelativo: 0, tipo: 'APLICACAO', produtoId: c.id(`produto:${produto}`), tipoAplicacaoId: c.id(`aplicacao:${tipo}`), dose: 2, unidade: 'ML', via: 'Intramuscular' },
       { diaRelativo: 7, tipo: 'EXAME', tipoExameId: c.id(`exame:${ref === 'acompanhamento' ? 'Cetose subclínica' : 'Triagem demonstrativa'}`) },
       { diaRelativo: 45, tipo: 'EXAME', tipoExameId: c.id('exame:Brucelose') },
     ] }, uid));
-    if (ref !== 'rascunho') await c.acao(`publicar:protocolo:${ref}`, async () => !!(await prisma.protocoloSanitario.findUniqueOrThrow({ where: { id: c.id(`protocolo:${ref}`) } })).publicadoEm, () => publicarProtocolo(c.id(`protocolo:${ref}`), uid));
+    if (ref !== 'rascunho') await c.acao(`publicar:protocolo:${ref}`, async () => !!(await prisma.protocolo.findUniqueOrThrow({ where: { id: c.id(`protocolo:${ref}`) } })).publicadoEm, () => publicarProtocolo(c.id(`protocolo:${ref}`), uid));
   }
   for (const [ref, n, sitio, doenca, inicio] of [
     ['encerrada', 3, 'Principal', 'Mastite', c.mes(-1, 4)], ['aberta', 4, 'Principal', 'Mastite', c.dias(-3)], ['destino', 16, 'Destino', 'Doenças parasitárias', c.mes(-1, 5)],
@@ -33,14 +33,14 @@ export async function sanidade(c: Contexto) {
     ['futura', 'vacina', 'Destino', c.dias(7), [7, 14]],
   ] as const) {
     const nome = `seedatev3 — ${ref}`;
-    await c.registro(`rodada:${ref}`, id => prisma.rodadaProtocoloSanitario.findFirst({ where: id ? { id } : { nome } }), async () => {
+    await c.registro(`rodada:${ref}`, id => prisma.programacaoProtocolo.findFirst({ where: id ? { id } : { nome } }), async () => {
       await criarRodada({ chave: chave(`rodada:${ref}`), nome, protocoloId: c.id(`protocolo:${protocolo}`), propriedadeId: c.numero(`sitio:${sitio}`), inicioReferencia: inicio,
         itens: participantes.map(n => ({ animalId: c.id(`animal:${n}`), ...(ref === 'acompanhamento' ? { ocorrenciaId: c.id('ocorrencia:encerrada'), operacaoServicoId: c.id('operacao:servico-veterinario') } : {}) })),
       }, uid);
-      return prisma.rodadaProtocoloSanitario.findFirstOrThrow({ where: { nome } });
+      return prisma.programacaoProtocolo.findFirstOrThrow({ where: { nome } });
     });
   }
-  const tarefa = async (rodada: string, n: number, ordem: number) => prisma.tarefaSanitaria.findFirstOrThrow({ where: { execucao: { rodadaId: c.id(`rodada:${rodada}`), animalId: c.id(`animal:${n}`) }, etapa: { ordem } } });
+  const tarefa = async (rodada: string, n: number, ordem: number) => prisma.tarefaProtocolo.findFirstOrThrow({ where: { execucao: { rodadaId: c.id(`rodada:${rodada}`), animalId: c.id(`animal:${n}`) }, etapa: { ordem } } });
   const aplicar = async (ref: string, n: number, sitio: string, data: string, produto: string | null, extra: Partial<AplicacaoInput> = {}) => {
     const p = produto ? await prisma.produto.findUniqueOrThrow({ where: { id: c.id(`produto:${produto}`) } }) : null;
     const partidaId = p?.rastrearPartidas && produto ? await obterPartida(c, produto) : null;
@@ -57,7 +57,7 @@ export async function sanidade(c: Contexto) {
   const desvio = await tarefa('vacinacao-principal', 2, 1);
   await aplicar('desvio', 2, 'Principal', c.mes(-1, 11), 'vacina', { tarefaId: desvio.id, dose: '3', desvio: { motivo: 'Dose e data revisadas no cenário fictício para demonstrar auditoria.' } });
   const dispensada = await tarefa('vacinacao-principal', 5, 1);
-  await c.acao('dispensar:tarefa', async () => !!(await prisma.tarefaSanitaria.findUniqueOrThrow({ where: { id: dispensada.id } })).dispensadaEm, () => dispensarTarefa(dispensada.id, 'Animal indisponível no manejo demonstrativo.', uid, c.numero('sitio:Principal')));
+  await c.acao('dispensar:tarefa', async () => !!(await prisma.tarefaProtocolo.findUniqueOrThrow({ where: { id: dispensada.id } })).dispensadaEm, () => dispensarTarefa(dispensada.id, 'Animal indisponível no manejo demonstrativo.', uid, c.numero('sitio:Principal')));
   const verminose = await tarefa('verminose-destino', 14, 1);
   await aplicar('vermifugo-destino', 14, 'Destino', c.mes(-1, 10), 'vermifugo', { tarefaId: verminose.id });
   const acompanhamento = await tarefa('acompanhamento', 3, 1);

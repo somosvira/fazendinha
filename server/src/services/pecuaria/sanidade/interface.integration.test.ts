@@ -18,7 +18,7 @@ afterAll(async () => {
   if (!ids.sitio) return;
   const movimentos = await prisma.movimentoEstoque.findMany({ where: { produtoId: ids.produto }, select: { id: true } });
   await prisma.auditoriaPecuaria.deleteMany({ where: { OR: [{ animalId: ids.animal }, { entidadeId: ids.tipo }] } });
-  await prisma.aplicacaoProduto.deleteMany({ where: { animalId: ids.animal } });
+  await prisma.vinculoTarefaProtocolo.deleteMany({ where: { aplicacao: { animalId: ids.animal } } }); await prisma.aplicacaoProduto.deleteMany({ where: { animalId: ids.animal } });
   await prisma.requisicaoPecuaria.deleteMany({ where: { propriedadeId: ids.sitio } });
   await prisma.auditoriaFinanceira.deleteMany({ where: { entidadeId: { in: movimentos.map((m) => m.id) } } });
   // Desmonta somente a fixture descartável; a UI não permite desligar rastreio.
@@ -28,7 +28,7 @@ afterAll(async () => {
   await prisma.partidaProduto.deleteMany({ where: { produtoId: ids.produto, lotePrincipalId: { not: null } } });
   await prisma.partidaProduto.deleteMany({ where: { produtoId: ids.produto } });
   await prisma.produto.deleteMany({ where: { id: ids.produto } });
-  await prisma.destinoAnimal.deleteMany({ where: { animalId: ids.animal } });
+  await prisma.periodoReprodutivoAnimal.deleteMany({ where: { animalId: ids.animal } }); await prisma.destinoAnimal.deleteMany({ where: { animalId: ids.animal } });
   await prisma.localizacaoAnimal.deleteMany({ where: { animalId: ids.animal } });
   await prisma.animal.deleteMany({ where: { id: ids.animal } });
   await prisma.tipoAplicacaoSanitaria.deleteMany({ where: { id: ids.tipo } });

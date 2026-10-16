@@ -1,3 +1,4 @@
+import { rotuloSituacaoTarefa } from "./RegularizacaoTarefa";
 import { linkOperacaoFinanceira } from "../../../financeiro/navegacao";
 import { podeAcessarArea } from "../../../estoque/navegacao";
 import { dataHoraSanitaria, dataSanitaria, origemSanitaria, estadoSanitario, unidadeSanitaria } from "./rotulos";
@@ -33,7 +34,8 @@ function DesvioProtocolo({ valor }: { valor: unknown }) {
   const exibicao = registro(snapshot.exibicao);
   const planejado = registro(exibicao.planejado);
   const realizado = registro(exibicao.realizado);
-  return <section className="grid gap-2 rounded-lg border border-border p-3"><h3 className="font-semibold">Planejado e realizado</h3>{snapshot.referencia === "LEGADO_SEM_SNAPSHOT" && <p>Planejamento antigo sem todos os parâmetros congelados.</p>}{diferencas.length ? <><ul className="list-inside list-disc">{diferencas.map((d, i) => <li key={i}>{rotulos[String(d.campo)] ?? String(d.campo)}: {valorComparacaoExecucao(String(d.campo), d.planejado, planejado[String(d.campo)])} → {valorComparacaoExecucao(String(d.campo), d.realizado, realizado[String(d.campo)])}</li>)}</ul><p><strong>Motivo do desvio:</strong> {textoDetalhe(snapshot.motivo)}</p></> : <p>Conforme o planejado.</p>}</section>;
+  const naoAferido = snapshot.aferido === false || snapshot.referencia === "LEGADO_SEM_SNAPSHOT";
+  return <section className="grid gap-2 rounded-lg border border-border p-3"><h3 className="font-semibold">Planejado e realizado</h3>{naoAferido && <p>Planejamento antigo sem todos os parâmetros congelados. Conformidade não aferida.</p>}{diferencas.length ? <ul className="list-inside list-disc">{diferencas.map((d, i) => <li key={i}>{rotulos[String(d.campo)] ?? String(d.campo)}: {valorComparacaoExecucao(String(d.campo), d.planejado, planejado[String(d.campo)])} → {valorComparacaoExecucao(String(d.campo), d.realizado, realizado[String(d.campo)])}</li>)}</ul> : !naoAferido && <p>Conforme o planejado.</p>}{(diferencas.length > 0 || naoAferido) && <p><strong>Motivo:</strong> {textoDetalhe(snapshot.motivo)}</p>}</section>;
 }
 export function DetalheSanitario({ tipo, valor, abrir }: { tipo: string; valor: unknown; abrir: (tipo: string, id: string) => void }) {
   const fato = registro(valor);
@@ -77,6 +79,6 @@ export function DetalheSanitario({ tipo, valor, abrir }: { tipo: string; valor: 
     {fato.valorProdutoAtribuido != null && <p><strong>Custo atribuído do medicamento:</strong> {fmtMoneyExact(Number(fato.valorProdutoAtribuido))}</p>}
     {fato.valorServicoAtribuido != null && <p><strong>Rateio atribuído do Serviço:</strong> {fmtMoneyExact(Number(fato.valorServicoAtribuido))}</p>}
     {links.length > 0 && <section><h3 className="font-semibold">Fatos relacionados</h3><div className="mt-2 flex flex-wrap gap-2">{links.map(([rotulo, destino, id]) => <button key={`${destino}-${id}`} type="button" className="rounded-lg border border-border px-3 py-2 underline" onClick={() => abrir(destino, id)}>{rotulo}</button>)}</div></section>}
-    {Array.isArray(fato.tarefas) && <section><h3 className="font-semibold">Tarefas</h3><div className="mt-2 space-y-2">{fato.tarefas.map((item) => { const t = registro(item); return <p key={String(t.id)} className="rounded-lg border border-border p-2">{dataSanitaria(String(t.previstaPara ?? ""))} · {t.dispensadaEm ? "Dispensada" : (Array.isArray(t.aplicacoes) && t.aplicacoes.length) || (Array.isArray(t.exames) && t.exames.length) ? "Realizada" : "Pendente"}</p>; })}</div></section>}
+    {Array.isArray(fato.tarefas) && <section><h3 className="font-semibold">Tarefas</h3><div className="mt-2 space-y-2">{fato.tarefas.map((item) => { const t = registro(item); return <p key={String(t.id)} className="rounded-lg border border-border p-2">{dataSanitaria(String(t.previstaPara ?? ""))} · {rotuloSituacaoTarefa(String(t.situacao ?? (t.regularizacaoPendente ? "REGULARIZACAO_PENDENTE" : t.dispensadaEm ? "DISPENSADA" : "PENDENTE")))}</p>; })}</div></section>}
   </div>;
 }

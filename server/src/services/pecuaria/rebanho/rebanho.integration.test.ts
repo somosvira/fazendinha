@@ -63,7 +63,8 @@ async function novoAnimal(propriedadeId: number, extra: Record<string, unknown> 
     aptidao: "LEITE",
     ...extra,
   });
-  const animal = await cadastrar(input, null);
+  // Fixtures históricas isolam os filtros; nascimentos operacionais usam o parto V4.
+  const animal = await cadastrar(input, null, { nascimentoHistorico: true });
   animaisCriados.push(animal.id);
   return animal;
 }
@@ -148,7 +149,7 @@ afterAll(async () => {
   await prisma.movimentacaoAnimal.deleteMany({ where: { OR: [{ animalId }, { movimentacaoId: { in: movs.map((m) => m.id) } }] } });
   await prisma.localizacaoAnimal.deleteMany({ where: { OR: [{ animalId }, { propriedadeId }] } });
   await prisma.movimentacao.deleteMany({ where: { id: { in: movs.map((m) => m.id) } } });
-  await prisma.destinoAnimal.deleteMany({ where: { animalId } });
+  await prisma.periodoReprodutivoAnimal.deleteMany({ where: { animalId } }); await prisma.destinoAnimal.deleteMany({ where: { animalId } });
   await prisma.pesagem.deleteMany({ where: { animalId } });
   await prisma.composicaoRacial.deleteMany({ where: { animalId } });
   await prisma.categoriaManualAnimal.deleteMany({ where: { OR: [{ animalId }, { categoriaId: { in: categoriasCriadas } }] } });
@@ -324,7 +325,7 @@ describeComBanco("pecuária v1 (rebanho) com PostgreSQL", () => {
     const ids: string[] = [];
     for (const c of casos) {
       const animal = await novoAnimal(p, {
-        sexo: c.sexo, origem: "NASCIDO", dataNascimento: c.nasc, dataEntrada: c.nasc, partosAntesDaEntrada: c.partos ?? 0,
+        sexo: c.sexo, origem: "COMPRADO", dataNascimento: c.nasc, dataEntrada: c.nasc, partosAntesDaEntrada: c.partos ?? 0,
       });
       if (c.manual) await definirCategoriaManual(animal.id, { categoriaId: c.manual, data: HOJE, motivo: "Teste de paridade" }, null, null);
       ids.push(animal.id);
@@ -540,7 +541,7 @@ describeComBanco("pecuária v1 (rebanho) com PostgreSQL", () => {
       const baixados: string[] = [];
       for (const b of baixas) {
         const nasc = borda(b.data, b.k, b.mais);
-        const animal = await novoAnimal(p, { brinco: brincoUnico("X"), sexo: "F", origem: "NASCIDO", dataNascimento: nasc, dataEntrada: nasc });
+        const animal = await novoAnimal(p, { brinco: brincoUnico("X"), sexo: "F", origem: "COMPRADO", dataNascimento: nasc, dataEntrada: nasc });
         await darBaixa({ animalId: animal.id, data: iso(b.data), tipo: b.tipo }, null, null);
         if (b.estornar) {
           await estornarBaixa(animal.id, { motivo: "Teste de filtro" }, null, null);

@@ -58,7 +58,7 @@ export async function rebanho(c: Contexto) {
       ...('pai' in a ? { paiId: c.id(`animal:${a.pai}`) } : {}),
       ...('maeExterna' in a ? { maeExternaId: c.id('genitor:matriz') } : {}),
       ...('paiExterno' in a ? { paiExternoId: c.id('genitor:touro') } : {}),
-    }), uid));
+    }), uid, { nascimentoHistorico: true }));
   }
   const categoria = await prisma.categoriaAnimal.findUniqueOrThrow({ where: { chavePadrao: 'M_REPRODUTOR' } });
   await c.acao('categoria:reprodutor', async () => !!await prisma.categoriaManualAnimal.findFirst({ where: { animalId: c.id('animal:13') } }), () => definirCategoriaManual(c.id('animal:13'), { categoriaId: categoria.id, data: c.mes(-2, 2), motivo: 'Reprodutor do cenário demonstrativo' }, uid));

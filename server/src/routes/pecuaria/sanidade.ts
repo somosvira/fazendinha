@@ -1,3 +1,6 @@
+import { regularizacaoSchema } from "../../services/pecuaria/reproducao/schemas.js";
+import { regularizarTarefaSanitaria, substitutosTarefaComum } from "../../services/pecuaria/protocolos/regularizacao.js";
+import { camposExameSchema, observacoesExameSchema } from "../../services/pecuaria/exames/formatos.js";
 import { Hono, type Context } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
@@ -26,34 +29,7 @@ import { execucaoEtapasRouter } from "./execucao-etapas.js";
 const uuid = z.string().uuid();
 const data = z.string().date();
 const desvio = z.object({ motivo: z.string().trim().min(5, "Explique o desvio com pelo menos 5 caracteres").max(500, "Use até 500 caracteres no motivo do desvio") }).strict().optional();
-const aplicacaoSchema = z.object({
-  desvio,
-  chave: uuid.optional(),
-  animalId: uuid, propriedadeId: z.number().int().positive(), data,
-  aplicadaEm: z.string().datetime({ offset: true }),
-  finalidade: z.enum(["TRATAMENTO", "VACINA", "VERMIFUGO"]).optional(),
-  tipoAplicacaoId: uuid.optional(), responsavel: z.string().trim().max(160).nullish(),
-  estadoCarenciaLeite: z.enum(["INFORMADO", "NAO_INFORMADO", "NAO_APLICAVEL"]).optional(),
-  estadoCarenciaCarne: z.enum(["INFORMADO", "NAO_INFORMADO", "NAO_APLICAVEL"]).optional(),
-  justificativaCarenciaLeite: z.string().trim().max(500).nullish(),
-  justificativaCarenciaCarne: z.string().trim().max(500).nullish(),
-  origemInsumo: z.enum(["BAIXA_ESTOQUE", "COMPRA_CONSUMO_DIRETO", "INCLUSO_SERVICO", "SEM_ORIGEM_JUSTIFICADA"], { errorMap: () => ({ message: "Selecione a origem da dose" }) }),
-  nomeProdutoAplicado: z.string().trim().min(1).max(180),
-  produtoId: uuid.nullish(), dose: z.string({ required_error: "Informe a dose aplicada", invalid_type_error: "Informe a dose aplicada como número decimal" }).regex(/^\d+(\.\d{1,3})?$/, "Informe a dose com até três casas decimais"),
-  unidadeDose: z.nativeEnum(UnidadeMedida, { errorMap: () => ({ message: "Selecione a unidade da dose" }) }),
-  carenciaLeiteHoras: z.number().int().min(0).nullish(),
-  carenciaCarneHoras: z.number().int().min(0).nullish(),
-  referenciaCarencia: z.string().trim().max(300).nullish(),
-  via: z.string().trim().max(80).nullish(),
-  ocorrenciaId: uuid.nullish(), tarefaId: uuid.nullish(),
-  operacaoServicoId: uuid.nullish(), itemCompraDiretaId: uuid.nullish(),
-  partidaId: uuid.nullish(), partidaCodigo: z.string().trim().max(100).nullish(),
-  cienciaValidadeDesconhecida: z.boolean().optional(),
-  partidaValidade: data.nullish(),
-  justificativaSemOrigem: z.string().trim().max(500).nullish(),
-  documentacaoExcepcional: z.boolean().optional(),
-  motivoDocumentacaoExcepcional: z.string().trim().min(5).max(500).nullish(),
-}).strict("Confira os campos informados para a aplicação");
+import { aplicacaoSchema } from "../../services/pecuaria/sanidade/aplicacoes.schemas.js";
 
 function falha(c: Context, e: unknown) {
   if (e instanceof EstoqueError) return c.json({ error: e.message, code: e.code, ...(e.campo ? { campo: e.campo } : {}) }, e.code === "NAO_ENCONTRADO" ? 404 : e.code === "VALIDACAO" ? 422 : 409);
@@ -134,11 +110,19 @@ export const sanidadeRouter = new Hono()
   .patch("/doencas/:id", validar(z.object({ nome: z.string().trim().min(2).max(120).optional(), ativo: z.boolean().optional(), motivoBaixaSugeridoId: uuid.nullish() }).strict().refine((v) => Object.keys(v).length > 0, "Informe a alteração")), async (c) => {
     try { return c.json(await ocorrencias.editarDoenca(uuid.parse(c.req.param("id")), c.req.valid("json"), getUsuario(c)?.id ?? null)); } catch (e) { return falha(c, e); }
   })
-  .patch("/tipos-exame/:id", validar(z.object({ nome: z.string().trim().min(2).max(120).optional(), ativo: z.boolean().optional(), tipoResultado: z.enum(["TEXTO", "NUMERO", "OPCAO"]).optional(), unidade: z.string().trim().max(30).nullish(), opcoes: z.array(z.string().trim().min(1).max(100)).max(30).nullish() }).strict().refine((v) => Object.keys(v).length > 0, "Informe a alteração")), async (c) => {
+  .patch("/tipos-exame/:id", validar(z.object({ nome: z.string().trim().min(2).max(120).optional(), ativo: z.boolean().optional(), campos: camposExameSchema.nullish(), tipoResultado: z.enum(["TEXTO", "NUMERO", "OPCAO", "MULTIPLO"]).optional(), unidade: z.string().trim().max(30).nullish(), opcoes: z.array(z.string().trim().min(1).max(100)).max(30).nullish() }).strict().refine((v) => Object.keys(v).length > 0, "Informe a alteração")), async (c) => {
     try { return c.json(await exames.editarTipoExame(uuid.parse(c.req.param("id")), c.req.valid("json"), getUsuario(c)?.id ?? null)); } catch (e) { return falha(c, e); }
   })
   .post("/protocolos/:id/inativacao", validar(z.object({}).strict()), async (c) => {
     try { return c.json(await protocolos.inativarProtocolo(uuid.parse(c.req.param("id")), getUsuario(c)?.id ?? null)); } catch (e) { return falha(c, e); }
+  })
+  .get("/tarefas/:id/substitutos", async c => {
+    try { const propriedadeId = await resolverEscopoEscrita(c, Number(c.req.query("propriedadeId")) || undefined); return c.json(await substitutosTarefaComum(uuid.parse(c.req.param("id")), propriedadeId, "SANITARIO")); }
+    catch (e) { return falha(c,e); }
+  })
+  .post("/tarefas/:id/regularizacao", validar(regularizacaoSchema), async c => {
+    try { const body=c.req.valid("json");const propriedadeId=await resolverEscopoEscrita(c,body.propriedadeId);const salvo=await regularizarTarefaSanitaria(uuid.parse(c.req.param("id")),{...body,propriedadeId},getUsuario(c)?.id??null);return c.json(podeVerCustos(c)?salvo:detalhes.ocultarCustosDetalhe(salvo)); }
+    catch(e){return falha(c,e);}
   })
   .post("/tarefas/:id/adiamento", validar(z.object({ previstaPara: data, motivo: z.string().trim().min(5).max(500) }).strict()), async (c) => {
     try { const propriedadeId = await resolverEscopoEscrita(c); return c.json(await protocolos.adiarTarefa(uuid.parse(c.req.param("id")), c.req.valid("json"), getUsuario(c)?.id ?? null, propriedadeId)); } catch (e) { return falha(c, e); }
@@ -147,7 +131,7 @@ export const sanidadeRouter = new Hono()
     try { const body = c.req.valid("json"); const propriedadeId = await resolverEscopoEscrita(c, body.propriedadeId);
       return c.json(await protocolos.iniciarExecucaoColetivo({ ...body, propriedadeId }, getUsuario(c)?.id ?? null), 201); } catch (e) { return falha(c, e); }
   })
-  .post("/exames/coletivos", validar(z.object({ chave: uuid, propriedadeId: z.number().int().positive(), itens: z.array(z.object({ animalId: uuid, propriedadeId: z.number().int().positive(), tipoExameId: uuid, data, resultadoTexto: z.string().trim().max(1000).nullish(), resultadoNumero: z.number().finite().nullish(), resultadoOpcao: z.string().trim().max(100).nullish(), ocorrenciaId: uuid.nullish(), tarefaId: uuid.nullish(), responsavel: z.string().trim().max(160).nullish(), operacaoServicoId: uuid.nullish(), desvio }).strict()).min(1).max(100) }).strict()), async (c) => {
+  .post("/exames/coletivos", validar(z.object({ chave: uuid, propriedadeId: z.number().int().positive(), itens: z.array(z.object({ animalId: uuid, propriedadeId: z.number().int().positive(), tipoExameId: uuid, data, resultados: observacoesExameSchema.optional(), resultadoTexto: z.string().trim().max(1000).nullish(), resultadoNumero: z.number().finite().nullish(), resultadoOpcao: z.string().trim().max(100).nullish(), ocorrenciaId: uuid.nullish(), tarefaId: uuid.nullish(), responsavel: z.string().trim().max(160).nullish(), operacaoServicoId: uuid.nullish(), desvio }).strict()).min(1).max(100) }).strict()), async (c) => {
     try { const body = c.req.valid("json"); const propriedadeId = await resolverEscopoEscrita(c, body.propriedadeId);
       return c.json(await exames.registrarExameColetivo({ ...body, propriedadeId }, getUsuario(c)?.id ?? null), 201); } catch (e) { return falha(c, e); }
   })
@@ -168,7 +152,7 @@ export const sanidadeRouter = new Hono()
     try { const { propriedadeId: solicitado, ...input } = c.req.valid("json"); const propriedadeId = await resolverEscopoEscrita(c, solicitado);
       return c.json(ocultarCustos(await aplicacoes.reconciliarOrigem(c.req.param("id"), propriedadeId, input, getUsuario(c)?.id ?? null), c)); } catch (e) { return falha(c, e); }
   })
-  .post("/exames/:id/correcao", validar(z.object({ propriedadeId: z.number().int().positive(), motivo: z.string().trim().min(5).max(500), anular: z.boolean().optional(), resultadoTexto: z.string().trim().max(1000).nullish(), resultadoNumero: z.number().finite().nullish(), resultadoOpcao: z.string().trim().max(100).nullish() }).strict()), async (c) => {
+  .post("/exames/:id/correcao", validar(z.object({ propriedadeId: z.number().int().positive(), motivo: z.string().trim().min(5).max(500), anular: z.boolean().optional(), resultados: observacoesExameSchema.optional(), resultadoTexto: z.string().trim().max(1000).nullish(), resultadoNumero: z.number().finite().nullish(), resultadoOpcao: z.string().trim().max(100).nullish() }).strict()), async (c) => {
     try { const { propriedadeId: solicitado, ...input } = c.req.valid("json"); const propriedadeId = await resolverEscopoEscrita(c, solicitado); const salvo = await exames.corrigirExame(c.req.param("id"), propriedadeId, input, getUsuario(c)?.id ?? null); return c.json({ ...salvo, valorServicoAtribuido: podeVerCustos(c) ? salvo.valorServicoAtribuido : null }); } catch (e) { return falha(c, e); }
   })
   .post("/aplicacoes/:id/carencia", validar(aplicacaoSchema.pick({ estadoCarenciaLeite: true, estadoCarenciaCarne: true, carenciaLeiteHoras: true, carenciaCarneHoras: true, justificativaCarenciaLeite: true, justificativaCarenciaCarne: true }).extend({ propriedadeId: z.number().int().positive(), motivo: z.string().trim().min(5).max(500) }).strict()), async (c) => {
@@ -252,7 +236,8 @@ export const sanidadeRouter = new Hono()
     try { const animalId = c.req.query("animalId"); if (animalId && !uuid.safeParse(animalId).success) return c.json({ error: "Animal inválido", code: "VALIDACAO" }, 422);
       const filtro = consultaSanitariaSchema.parse(c.req.query());
       const propriedadeId = await resolverEscopoLeitura(c);
-      return c.json(filtro.paginado === "true" ? await protocolos.listarTarefasPaginadas(propriedadeId, animalId, filtro) : await protocolos.listarTarefas(propriedadeId, animalId, filtro)); }
+      const tarefas = filtro.paginado === "true" ? await protocolos.listarTarefasPaginadas(propriedadeId, animalId, filtro) : await protocolos.listarTarefas(propriedadeId, animalId, filtro);
+      return c.json(podeVerCustos(c) ? tarefas : detalhes.ocultarCustosDetalhe(tarefas)); }
     catch (e) { return falha(c, e); }
   })
   .post("/tarefas/:id/dispensa", validar(z.object({ motivo: z.string().trim().min(5).max(500) })), async (c) => {
@@ -263,8 +248,8 @@ export const sanidadeRouter = new Hono()
     try { const body = c.req.valid("json"); const propriedadeId = await resolverEscopoEscrita(c, body.propriedadeId);
       const salvo = await protocolos.cancelarExecucao(c.req.param("id"), propriedadeId, body.motivo, getUsuario(c)?.id ?? null); return c.json({ ...salvo, valorServicoAtribuido: podeVerCustos(c) ? salvo.valorServicoAtribuido : null }); } catch (e) { return falha(c, e); }
   })
-  .get("/tipos-exame", async (c) => { try { return c.json(await exames.listarTiposExame(c.req.query("incluirInativos") === "true")); } catch (e) { return falha(c, e); } })
-  .post("/tipos-exame", validar(z.object({ nome: z.string().trim().min(2).max(120), tipoResultado: z.enum(["TEXTO", "NUMERO", "OPCAO"]),
+  .get("/tipos-exame", async (c) => { try { return c.json(await exames.listarTiposExame(c.req.query("incluirInativos") === "true", "SANITARIO")); } catch (e) { return falha(c, e); } })
+  .post("/tipos-exame", validar(z.object({ versaoAnteriorId: uuid.optional(), nome: z.string().trim().min(2).max(120), campos: camposExameSchema.nullish(), tipoResultado: z.enum(["TEXTO", "NUMERO", "OPCAO", "MULTIPLO"]),
     unidade: z.string().trim().max(30).nullish(), opcoes: z.array(z.string().trim().min(1).max(100)).max(30).nullish() })), async (c) => {
     try { return c.json(await exames.criarTipoExame(c.req.valid("json"), getUsuario(c)?.id ?? null), 201); }
     catch (e) { return falha(c, e); }
@@ -276,7 +261,7 @@ export const sanidadeRouter = new Hono()
     catch (e) { return falha(c, e); }
   })
   .post("/exames", validar(z.object({ chave: uuid.optional(), animalId: uuid, propriedadeId: z.number().int().positive(), tipoExameId: uuid, data,
-    resultadoTexto: z.string().trim().max(1000).nullish(), resultadoNumero: z.number().finite().nullish(), resultadoOpcao: z.string().trim().max(100).nullish(),
+    resultados: observacoesExameSchema.optional(), resultadoTexto: z.string().trim().max(1000).nullish(), resultadoNumero: z.number().finite().nullish(), resultadoOpcao: z.string().trim().max(100).nullish(),
     responsavel: z.string().trim().max(160).nullish(), ocorrenciaId: uuid.nullish(), tarefaId: uuid.nullish(), operacaoServicoId: uuid.nullish(), desvio })), async (c) => {
     try { const body = c.req.valid("json"); const propriedadeId = await resolverEscopoEscrita(c, body.propriedadeId);
       const salvo = await exames.registrarExame({ ...body, propriedadeId }, getUsuario(c)?.id ?? null);
@@ -313,12 +298,12 @@ export const sanidadeRouter = new Hono()
       return c.json(await aplicacoes.carenciaAnimal(c.req.param("id"), await resolverEscopoLeitura(c), c.req.valid("query").dataReferencia));
     } catch (e) { return falha(c, e); }
   })
-  .post("/aplicacoes/:id/anulacao", validar(z.object({ motivo: z.string().trim().min(5).max(500), propriedadeId: z.number().int().positive() })), async (c) => {
+  .post("/aplicacoes/:id/anulacao", validar(z.object({ motivo: z.string().trim().min(5).max(500), propriedadeId: z.number().int().positive(), destinoConsumo: z.enum(["DEVOLVER_ESTOQUE", "MANTER_CONSUMO"]), administracaoMantida: z.boolean().nullable().optional() })), async (c) => {
     try {
       if (!uuid.safeParse(c.req.param("id")).success) return c.json({ error: "Aplicação inválida", code: "VALIDACAO" }, 422);
       const body = c.req.valid("json");
       const propriedadeId = await resolverEscopoEscrita(c, body.propriedadeId);
-      return c.json(ocultarCustos(await aplicacoes.anularAplicacao(c.req.param("id"), propriedadeId, body.motivo, getUsuario(c)?.id ?? null), c));
+      return c.json(ocultarCustos(await aplicacoes.anularAplicacao(c.req.param("id"), propriedadeId, body.motivo, getUsuario(c)?.id ?? null, body.destinoConsumo, body.administracaoMantida), c));
     } catch (e) { return falha(c, e); }
   })
   .get("/servicos", async (c) => {

@@ -23,6 +23,7 @@ const mocks = vi.hoisted(() => ({
   aplicacaoFindFirst: vi.fn(),
   exameFindFirst: vi.fn(),
   execucaoFindFirst: vi.fn(),
+  tentativaFindFirst: vi.fn(),
   queryRaw: vi.fn(),
 }));
 
@@ -38,7 +39,8 @@ vi.mock("../../db.js", () => {
     contaFinanceira: { findFirst: mocks.contaFindFirst },
     aplicacaoProduto: { findFirst: mocks.aplicacaoFindFirst },
     exameAnimal: { findFirst: mocks.exameFindFirst },
-    execucaoProtocoloSanitario: { findFirst: mocks.execucaoFindFirst },
+    tentativaReprodutiva: { findFirst: mocks.tentativaFindFirst },
+    participacaoProtocolo: { findFirst: mocks.execucaoFindFirst },
     $queryRaw: mocks.queryRaw,
   };
   mocks.transaction.mockImplementation(async (fn: (t: unknown) => unknown) => fn(tx));
@@ -56,6 +58,7 @@ beforeEach(() => {
   mocks.aplicacaoFindFirst.mockResolvedValue(null);
   mocks.exameFindFirst.mockResolvedValue(null);
   mocks.execucaoFindFirst.mockResolvedValue(null);
+  mocks.tentativaFindFirst.mockResolvedValue(null);
   mocks.transacaoCreate.mockImplementation(async ({ data }: { data: Record<string, unknown> }) => ({ id: uid(900), ...data, movimentos: [] }));
   mocks.transacaoUpdate.mockResolvedValue({});
   mocks.compromissoUpdate.mockResolvedValue({});
@@ -134,6 +137,12 @@ describe("estornarOperacao", () => {
     movimentosEstoque: [{ id: uid(30), status: "CONFIRMADO", tipo: "ENTRADA", produtoId: uid(4), quantidade: decimal("10"), custoUnitario: decimal("5"), valorTotal: decimal("50"), propriedadeId: 1, reversaoDeId: null, revertidoPor: null, alocacaoPartidaEstoques: [] }],
   };
 
+  it("não cancela Serviço que financia tentativa reprodutiva válida", async () => {
+    mocks.operacaoFindFirst.mockResolvedValue({ ...operacaoBase, tipo: "SERVICO" });
+    mocks.tentativaFindFirst.mockResolvedValue({ id: uid(92) });
+    await expect(estornarOperacao(uid(5), "Cancelamento do serviço", { propriedadeId: 1, usuarioId: 1 })).rejects.toMatchObject({ code: "CONFLITO" });
+    expect(mocks.transacaoCreate).not.toHaveBeenCalled(); expect(mocks.movimentoEstoqueCreate).not.toHaveBeenCalled(); expect(mocks.operacaoUpdate).not.toHaveBeenCalled();
+  });
   it("com parcela paga: estorna a transação, reverte o estoque e cancela os compromissos pendentes numa única transação", async () => {
     mocks.operacaoFindFirst.mockResolvedValue(operacaoBase);
     mocks.transacaoFindFirst.mockResolvedValue({

@@ -16,8 +16,10 @@ import {
   parseContaFinanceiraId,
   parseProdutoEstoqueId,
   parseRelatorioFinanceiroId,
+  parseRotaVisita,
   pathToTab,
   tabToPath,
+  urlEtapaVisita,
 } from "./router";
 import { uid } from "./lib/uid.fixture";
 
@@ -31,6 +33,22 @@ describe("roteamento do estoque", () => {
   it("mapeia a aba estoque para /estoque e volta", () => {
     expect(tabToPath("estoque")).toBe("/estoque");
     expect(pathToTab("/estoque")).toBe("estoque");
+  });
+});
+
+describe("rotas do fluxo de visitas", () => {
+  it("distingue a criação de visita de um id e interpreta as etapas", () => {
+    expect(parseRotaVisita("/pecuaria/visitas/nova")).toEqual({ tipo: "nova" });
+    expect(parseRotaVisita("/pecuaria/visitas/v-1", "?etapa=revisao&grupo=abc")).toEqual({ tipo: "visita", id: "v-1", etapa: "revisao", grupo: "abc", atividade: null });
+    expect(parseRotaVisita("/pecuaria/visitas/v-1", "?etapa=atendimento&atividade=a-1")).toEqual({ tipo: "visita", id: "v-1", etapa: "atendimento", grupo: null, atividade: "a-1" });
+    expect(parseRotaVisita("/pecuaria/visitas")).toEqual({ tipo: "lista" });
+  });
+  it("gera URLs diretas de etapa com identidade codificada", () => {
+    expect(urlEtapaVisita("visita 1", "revisao", { grupo: "grupo/1" })).toBe("/pecuaria/visitas/visita%201?etapa=revisao&grupo=grupo%2F1");
+  });
+  it("preserva filtros auxiliares ao mudar etapa e substitui apenas os parâmetros do fluxo", () => {
+    expect(urlEtapaVisita("v-1", "atendimento", { atividade: "a-2" }, "?busca=prenhe&status=ABERTA&etapa=revisao&grupo=g-1&q=rp"))
+      .toBe("/pecuaria/visitas/v-1?busca=prenhe&status=ABERTA&q=rp&etapa=atendimento&atividade=a-2");
   });
 });
 
@@ -88,7 +106,7 @@ describe("roteamento da pecuária", () => {
     expect(pathToTab("/rebanho/reproducao")).toBe("pec-rebanho");
     expect(pathToTab("/corte/lote")).toBe("pec-rebanho");
     expect(pathToTab("/pecuaria/lotes/pesagens")).toBe("pec-rebanho");
-    expect(pathToTab("/pecuaria/reproducao")).toBe("pec-rebanho");
+    expect(pathToTab("/pecuaria/reproducao")).toBe("pec-reproducao");
   });
 
   it("leva o estoque antigo da pecuária para o Estoque único", () => {
@@ -173,4 +191,22 @@ it("redireciona a rota do assistente enquanto a feature está inativa", () => {
 
 it.each(["/plantio", "/plantio/talhao", "/milho", "/milho/safras", "/equipe", "/equipe/ponto"])("módulo removido não resolve %s", (path) => {
   expect(pathToTab(path)).toBeNull();
+});
+
+describe("navegação operacional V4", () => {
+  it("abre reprodução e visita em deep links sem cair no Rebanho", () => {
+    expect(tabToPath("pec-reproducao")).toBe("/pecuaria/reproducao");
+    expect(pathToTab("/pecuaria/reproducao/animais/abc")).toBe("pec-reproducao");
+    expect(tabToPath("pec-visitas")).toBe("/pecuaria/visitas");
+    expect(pathToTab("/pecuaria/visitas/abc")).toBe("pec-visitas");
+  });
+});
+
+describe("percursos da visita",()=>{
+ it("lê entrada, seleção e atividade, preservando modo e contexto",()=>{
+  expect(parseRotaVisita("/pecuaria/visitas/v","?etapa=selecao&modo=livre")).toMatchObject({etapa:"selecao",modo:"livre"});
+  expect(parseRotaVisita("/pecuaria/visitas/v","?etapa=atividade&modo=livre&grupo=g")).toMatchObject({etapa:"atividade",grupo:"g",modo:"livre"});
+  expect(urlEtapaVisita("v","entrada",{},"?modo=livre&grupo=g&filtro=x")).toBe("/pecuaria/visitas/v?filtro=x&etapa=entrada");
+  expect(urlEtapaVisita("v","planejamento",{modo:"agenda"})).toBe("/pecuaria/visitas/v?etapa=planejamento&modo=agenda");
+ });
 });

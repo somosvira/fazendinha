@@ -136,11 +136,11 @@ export async function atualizarProduto(id: string, input: ProdutoPatchInput, usu
       if ((perfilNutricional || anterior.perfilNutricionalProduto) && !(produto.usoNutricional ?? anterior.usoNutricional)) throw new FinanceiroError("CONFLITO", "O perfil nutricional exige uso nutricional", "usoNutricional");
       const vinculos = [
         ["usoGenetico", "material genético", () => tx.materialGenetico.count({ where: { produtoId: id } })],
-        ["usoSanitario", "aplicações ou protocolos sanitários", async () => (await tx.aplicacaoProduto.count({ where: { produtoId: id } })) + (await tx.etapaProtocoloSanitario.count({ where: { produtoId: id } }))],
+        ["usoSanitario", "aplicações ou protocolos sanitários", async () => (await tx.aplicacaoProduto.count({ where: { produtoId: id } })) + (await tx.etapaProtocolo.count({ where: { produtoId: id } })) + (await tx.protocoloIatf.count({where:{etapas:{array_contains:[{planoAplicacao:{produtoId:id}}]}}}))],
         ["usoNutricional", "receitas ou fechamentos nutricionais", async () => (await tx.itemDieta.count({ where: { produtoId: id } })) + (await tx.itemFechamentoConsumo.count({ where: { produtoId: id } }))],
       ] as const;
       for (const [campo, descricao, contar] of vinculos) {
-        if (produto[campo] === false && await contar() > 0) throw new FinanceiroError("CONFLITO", `Uso exigido por ${descricao}. Consulte os vínculos antes de alterar.`, campo);
+        if (produto[campo] === false && await contar() > 0) throw new FinanceiroError("CONFLITO", `Uso exigido por ${descricao}${campo==="usoSanitario"?" ou planos de IATF":""}. Consulte os vínculos antes de alterar.`, campo);
       }
 
       // Trocar a unidade muda a interpretação de tudo que já foi movimentado
@@ -151,7 +151,8 @@ export async function atualizarProduto(id: string, input: ProdutoPatchInput, usu
           tx.movimentoEstoque.count({ where: { produtoId: id } }),
           tx.itemOperacao.count({ where: { produtoId: id } }),
         ]);
-        if (movimentos > 0 || itensOperacao > 0) {
+        const planosIatf=await tx.protocoloIatf.count({where:{etapas:{array_contains:[{planoAplicacao:{produtoId:id}}]}}});
+        if (movimentos > 0 || itensOperacao > 0 || planosIatf>0) {
           throw new FinanceiroError("VALIDACAO", "Não é possível trocar a unidade de um produto com movimentos de estoque registrados", "unidade");
         }
       }

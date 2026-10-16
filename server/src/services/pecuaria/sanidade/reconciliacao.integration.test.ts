@@ -18,13 +18,13 @@ afterAll(async () => {
   if (!ids.sitio) return;
   const movimentos = await prisma.movimentoEstoque.findMany({ where: { produtoId: ids.produto }, select: { id: true } });
   await prisma.auditoriaPecuaria.deleteMany({ where: { animalId: ids.animal } });
-  await prisma.aplicacaoProduto.deleteMany({ where: { animalId: ids.animal } });
+  await prisma.vinculoTarefaProtocolo.deleteMany({ where: { aplicacao: { animalId: ids.animal } } }); await prisma.aplicacaoProduto.deleteMany({ where: { animalId: ids.animal } });
   await prisma.requisicaoPecuaria.deleteMany({ where: { propriedadeId: ids.sitio } });
   await prisma.auditoriaFinanceira.deleteMany({ where: { entidadeId: { in: [...movimentos.map((m) => m.id), ids.operacao] } } });
   await prisma.movimentoEstoque.deleteMany({ where: { produtoId: ids.produto } });
   await prisma.operacao.deleteMany({ where: { id: ids.operacao } });
   await prisma.produto.deleteMany({ where: { id: ids.produto } });
-  await prisma.destinoAnimal.deleteMany({ where: { animalId: ids.animal } });
+  await prisma.periodoReprodutivoAnimal.deleteMany({ where: { animalId: ids.animal } }); await prisma.destinoAnimal.deleteMany({ where: { animalId: ids.animal } });
   await prisma.localizacaoAnimal.deleteMany({ where: { animalId: ids.animal } });
   await prisma.animal.deleteMany({ where: { id: ids.animal } });
   await prisma.propriedade.deleteMany({ where: { id: ids.sitio } });

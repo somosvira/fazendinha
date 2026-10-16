@@ -1,3 +1,4 @@
+import { situacaoTarefaComum } from "../protocolos/situacao.js";
 import { prisma } from "../../../db.js";
 import { Prisma } from "@prisma/client";
 import { RebanhoError } from "../rebanho/regras.js";
@@ -43,13 +44,13 @@ export async function obterAplicacao(id: string, propriedadeId: number | null) {
 }
 
 export async function obterExame(id: string, propriedadeId: number | null) {
-  const fato = await prisma.exameAnimal.findFirst({ where: escopo(id, propriedadeId), include: { animal, propriedade, ocorrencia, tarefa, tipoExame: { select: { nome: true } } } });
+  const fato = await prisma.exameAnimal.findFirst({ where: escopo(id, propriedadeId), include: { animal, propriedade, ocorrencia, tarefa, resultados: { where: { vigente: true } }, interpretacao: { select: { id: true, gestacaoId: true } }, tipoExame: { select: { nome: true } } } });
   if (!fato) throw new RebanhoError("NAO_ENCONTRADO", "Exame não encontrado neste sítio");
   return { ...fato, tipoExame: { nome: nomeExameHistorico(fato.formatoSnapshot, fato.tipoExame.nome) } };
 }
 
 export async function obterExecucao(id: string, propriedadeId: number | null) {
-  const fato = await prisma.execucaoProtocoloSanitario.findFirst({ where: escopo(id, propriedadeId), include: {
+  const fato = await prisma.participacaoProtocolo.findFirst({ where: escopo(id, propriedadeId), include: {
     animal, propriedade, ocorrencia, protocolo: { include: { etapas: { orderBy: { ordem: "asc" } } } },
     tarefas: { orderBy: { previstaPara: "asc" }, include: {
       aplicacoes: { where: propriedadeId == null ? {} : { propriedadeId }, select: { id: true, data: true, status: true, nomeProdutoAplicado: true } },
@@ -57,7 +58,7 @@ export async function obterExecucao(id: string, propriedadeId: number | null) {
     } },
   } });
   if (!fato) throw new RebanhoError("NAO_ENCONTRADO", "Execução não encontrada neste sítio");
-  return fato;
+  return { ...fato, tarefas: fato.tarefas.map(t => ({ ...t, situacao: situacaoTarefaComum({ ...t, execucao: fato }) })) };
 }
 
 /** Valores podem aparecer também nos fatos vinculados de uma ocorrência. */

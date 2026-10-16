@@ -8,10 +8,10 @@ O deploy usa exclusivamente **Cloudflare Workers**, servindo interface e API no 
 
 - **Financeiro:** operações e rascunhos, compromissos, liquidações, contas/extratos, transferências, estornos, documentos, relatórios e cadastros gerenciais.
 - **Estoque:** produtos, usos genético/sanitário/nutricional, saldos por sítio, lotes do produto com validade, ajustes, transferências, perdas e rastreabilidade.
-- **Pecuária V1–V3:** animais e lotes, movimentações, categorias, baixas, genética, pesagens/manejos, sanidade e nutrição.
+- **Pecuária V1–V4:** animais e lotes, movimentações, categorias, baixas, genética, pesagens/manejos, sanidade, nutrição, reprodução, visitas veterinárias e IATF.
 - **Administração:** sítios, usuários, sessões e permissões por área/ação.
 
-Agricultura, Cultivo e Equipe/Ponto foram retirados. Reprodução operacional e produção de leite não fazem parte da implementação atual. O assistente/WhatsApp conserva infraestrutura, mas está suspenso pelas flags do cliente e servidor.
+Agricultura, Cultivo e Equipe/Ponto foram retirados. Produção/qualidade do leite e laboratório/FIV não fazem parte da implementação atual. A reprodução tem registro mínimo de lactação, sem controle leiteiro completo. O assistente/WhatsApp conserva infraestrutura, mas está suspenso pelas flags do cliente e servidor.
 
 ## Desenvolvimento local
 
@@ -58,7 +58,7 @@ NODE_ENV=test DATABASE_URL=postgresql://test:test@127.0.0.1:1/fazendinha_unit \
   pnpm --filter rionovo-server run test
 ```
 
-O setup de testes fornece configurações inertes de R2. As integrações exigem banco descartável com migrations; veja [arquitetura](ARCHITECTURE.md#testes).
+O setup de testes fornece configurações inertes de R2. O único banco local é `fazendinha_seedatev3`; não crie bancos temporários ou clones para validação. Integrações locais exigem revisão das fixtures e da limpeza para preservar os dados existentes; casos que recriam banco ficam no CI externo. Veja [arquitetura](ARCHITECTURE.md#testes).
 
 ## Contexto para contribuir
 

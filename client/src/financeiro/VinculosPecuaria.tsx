@@ -6,7 +6,7 @@ import { navegarPara } from "../router";
 import { podeAcessarArea } from "../estoque/navegacao";
 import { dataBR } from "./financeiro-ui";
 
-type Vinculo = { tipo: "APLICACAO" | "EXAME" | "PROTOCOLO"; id: string; propriedadeId: number; animalId: string; animalBrinco: string; data: string; nome: string; situacao: string; quantidadeDestinada: string | null; rateioServico: string | null };
+type Vinculo = { tipo: "APLICACAO" | "EXAME" | "PROTOCOLO" | "TENTATIVA"; id: string; propriedadeId: number; animalId: string; animalBrinco: string; data: string; nome: string; situacao: string; quantidadeDestinada: string | null; rateioServico: string | null };
 type Dados = { fatos: Vinculo[]; itensDiretos: Array<{ id: string; descricao: string; unidade: string; quantidadeComprada: string; quantidadeDestinada: string; quantidadeDisponivel: string }> };
 
 export function VinculosPecuaria({ operacaoId, compacto = false }: { operacaoId: string; compacto?: boolean }) {
@@ -32,8 +32,8 @@ export function VinculosPecuaria({ operacaoId, compacto = false }: { operacaoId:
       {dados.fatos.length === 0 ? <p className="mt-4 rounded-lg border border-border bg-muted p-4 text-sm text-ink-3">Nenhum procedimento vinculado.</p> : <div className="mt-3 grid gap-2">{dados.fatos.map((f) => {
         const tipo = f.tipo === "APLICACAO" ? "aplicacao" : f.tipo === "EXAME" ? "exame" : "execucao";
         const param = `aba=${f.tipo === "APLICACAO" ? "aplicacoes" : f.tipo === "EXAME" ? "exames" : "agenda"}&detalheTipo=${tipo}&detalheId=${encodeURIComponent(f.id)}`;
-        const href = `/pecuaria/rebanho/sanidade?${param}&animalId=${encodeURIComponent(f.animalId)}&propriedadeId=${f.propriedadeId}`;
-        return <a key={`${f.tipo}-${f.id}`} href={href} onClick={(e) => { if (e.button === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) { e.preventDefault(); navegarPara(href); } }} className="rounded-lg border border-border p-3 text-sm hover:bg-surface-2"><strong>{f.tipo === "APLICACAO" ? "Aplicação" : f.tipo === "EXAME" ? "Exame" : "Protocolo"}: {f.nome}</strong> · animal {f.animalBrinco} · {dataBR(f.data)} · {f.situacao}{f.quantidadeDestinada && ` · destinado ${f.quantidadeDestinada}`}{f.rateioServico && ` · rateio R$ ${f.rateioServico}`}</a>;
+        const href = f.tipo === "TENTATIVA" ? `/pecuaria/reproducao?tentativaId=${encodeURIComponent(f.id)}&animalId=${encodeURIComponent(f.animalId)}&propriedadeId=${f.propriedadeId}` : `/pecuaria/rebanho/sanidade?${param}&animalId=${encodeURIComponent(f.animalId)}&propriedadeId=${f.propriedadeId}`;
+        return <a key={`${f.tipo}-${f.id}`} href={href} onClick={(e) => { if (e.button === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) { e.preventDefault(); navegarPara(href); } }} className="rounded-lg border border-border p-3 text-sm hover:bg-surface-2"><strong>{f.tipo === "APLICACAO" ? "Aplicação" : f.tipo === "EXAME" ? "Exame" : f.tipo === "TENTATIVA" ? "Reprodução" : "Protocolo"}: {f.nome}</strong> · animal {f.animalBrinco} · {dataBR(f.data)} · {f.situacao}{f.quantidadeDestinada && ` · destinado ${f.quantidadeDestinada}`}{f.rateioServico && ` · rateio R$ ${f.rateioServico}`}</a>;
       })}</div>}
     </>}
   </section>;

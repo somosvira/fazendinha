@@ -1,3 +1,4 @@
+import { regularizarTarefaSanitaria } from "../protocolos/regularizacao.js";
 import crypto from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
 import { prisma } from "../../../db.js";
@@ -18,17 +19,17 @@ afterAll(async () => {
   if (!sitios.length) return;
   await prisma.requisicaoPecuaria.deleteMany({ where: { propriedadeId: { in: sitios } } });
   await prisma.auditoriaPecuaria.deleteMany({ where: { OR: [{ propriedadeId: { in: sitios } }, { animalId: { in: animais } }, { entidadeId: { in: [...protocolos, ...tiposExame] } }] } });
-  await prisma.aplicacaoProduto.deleteMany({ where: { animalId: { in: animais } } });
-  await prisma.exameAnimal.deleteMany({ where: { animalId: { in: animais } } });
+  await prisma.vinculoTarefaProtocolo.deleteMany({ where: { aplicacao: { animalId: { in: animais } } } }); await prisma.aplicacaoProduto.deleteMany({ where: { animalId: { in: animais } } });
+  await prisma.vinculoTarefaProtocolo.deleteMany({ where: { exame: { animalId: { in: animais } } } }); await prisma.exameAnimal.deleteMany({ where: { animalId: { in: animais } } });
   await prisma.movimentoEstoque.deleteMany({ where: { propriedadeId: { in: sitios } } });
-  await prisma.tarefaSanitaria.deleteMany({ where: { execucaoId: { in: execucoes } } });
-  await prisma.execucaoProtocoloSanitario.deleteMany({ where: { id: { in: execucoes } } });
-  await prisma.rodadaProtocoloSanitario.deleteMany({ where: { propriedadeId: { in: sitios } } });
-  await prisma.etapaProtocoloSanitario.deleteMany({ where: { protocoloId: { in: protocolos } } });
-  await prisma.protocoloSanitario.deleteMany({ where: { id: { in: protocolos } } });
+  await prisma.tarefaProtocolo.deleteMany({ where: { execucaoId: { in: execucoes } } });
+  await prisma.participacaoProtocolo.deleteMany({ where: { id: { in: execucoes } } });
+  await prisma.programacaoProtocolo.deleteMany({ where: { propriedadeId: { in: sitios } } });
+  await prisma.etapaProtocolo.deleteMany({ where: { protocoloId: { in: protocolos } } });
+  await prisma.protocolo.deleteMany({ where: { id: { in: protocolos } } });
   await prisma.tipoExame.deleteMany({ where: { id: { in: tiposExame } } });
   await prisma.produto.deleteMany({ where: { id: { in: produtos } } });
-  await prisma.destinoAnimal.deleteMany({ where: { animalId: { in: animais } } });
+  await prisma.periodoReprodutivoAnimal.deleteMany({ where: { animalId: { in: animais } } }); await prisma.destinoAnimal.deleteMany({ where: { animalId: { in: animais } } });
   await prisma.localizacaoAnimal.deleteMany({ where: { animalId: { in: animais } } });
   await prisma.animal.deleteMany({ where: { id: { in: animais } } });
   await prisma.propriedade.deleteMany({ where: { id: { in: sitios } } });
@@ -40,12 +41,12 @@ async function preparar(saldo = "10") {
   const produto = await prisma.produto.create({ data: { nome: `Vacina coletiva ${run}`, unidade: "ML", usoSanitario: true } }); produtos.push(produto.id);
   const protocolo = await criarProtocolo({ nome: `Etapas conjuntas ${run}`, etapas: [{ tipo: "APLICACAO", diaRelativo: 0, produtoId: produto.id, finalidade: "VACINA", dose: 2, unidade: "ML", via: "Subcutânea" }, { tipo: "APLICACAO", diaRelativo: 5, produtoId: produto.id, finalidade: "VACINA", dose: 2, unidade: "ML", via: "Subcutânea" }] }, null); protocolos.push(protocolo.id);
   await publicarProtocolo(protocolo.id, null);
-  const rodada = await prisma.rodadaProtocoloSanitario.create({ data: { nome: `Rodada ${run}`, protocoloId: protocolo.id, propriedadeId: sitio.id, inicioReferencia: new Date(diasAntes(2)) } });
+  const rodada = await prisma.programacaoProtocolo.create({ data: { nome: `Rodada ${run}`, protocoloId: protocolo.id, propriedadeId: sitio.id, inicioReferencia: new Date(diasAntes(2)) } });
   const itens: ExecucaoEtapasInput["itens"] = [];
   for (let n = 0; n < 2; n++) {
     const animal = await cadastrar(cadastrarAnimalSchema.parse({ brinco: `EC${run}${n}`, sexo: "F", origem: "COMPRADO", aptidao: "LEITE", dataNascimento: "2024-01-01", dataEntrada: "2026-08-01", propriedadeId: sitio.id }), null); animais.push(animal.id);
     const execucao = await iniciarExecucao({ protocoloId: protocolo.id, animalId: animal.id, propriedadeId: sitio.id, inicio: diasAntes(2) }, null); execucoes.push(execucao.id);
-    await prisma.execucaoProtocoloSanitario.update({ where: { id: execucao.id }, data: { rodadaId: rodada.id } });
+    await prisma.participacaoProtocolo.update({ where: { id: execucao.id }, data: { rodadaId: rodada.id } });
     itens.push({ tipo: "APLICACAO", animalId: animal.id, propriedadeId: sitio.id, tarefaId: execucao.tarefas[0].id, data: diasAntes(1), aplicadaEm: `${diasAntes(1)}T14:00:00-03:00`,
       produtoId: produto.id, nomeProdutoAplicado: produto.nome, finalidade: "VACINA", dose: "2", unidadeDose: "ML", via: "Subcutânea", origemInsumo: "BAIXA_ESTOQUE", carenciaLeiteHoras: 0, carenciaCarneHoras: 0, desvio: { motivo: "Execução realizada no dia seguinte" } });
   }
@@ -61,12 +62,12 @@ describeBanco("execução da etapa no PostgreSQL", () => {
     tiposExame.push(...tipos.map((t) => t.id));
     const protocolo = await criarProtocolo({ nome: `Exames concorrentes ${run}`, etapas: [{ tipo: "EXAME", diaRelativo: 0, tipoExameId: tipos[0].id }] }, null); protocolos.push(protocolo.id);
     await publicarProtocolo(protocolo.id, null);
-    const rodada = await prisma.rodadaProtocoloSanitario.create({ data: { nome: `Exames ${run}`, protocoloId: protocolo.id, propriedadeId: sitio.id, inicioReferencia: new Date(diasAntes(1)) } });
+    const rodada = await prisma.programacaoProtocolo.create({ data: { nome: `Exames ${run}`, protocoloId: protocolo.id, propriedadeId: sitio.id, inicioReferencia: new Date(diasAntes(1)) } });
     const itens: ExecucaoEtapasInput["itens"] = [];
     for (let n = 0; n < 4; n++) {
       const animal = await cadastrar(cadastrarAnimalSchema.parse({ brinco: `EX${run}${n}`, sexo: "F", origem: "COMPRADO", aptidao: "LEITE", dataNascimento: "2024-01-01", dataEntrada: "2026-08-01", propriedadeId: sitio.id }), null); animais.push(animal.id);
       const execucao = await iniciarExecucao({ protocoloId: protocolo.id, animalId: animal.id, propriedadeId: sitio.id, inicio: diasAntes(1) }, null); execucoes.push(execucao.id);
-      await prisma.execucaoProtocoloSanitario.update({ where: { id: execucao.id }, data: { rodadaId: rodada.id } });
+      await prisma.participacaoProtocolo.update({ where: { id: execucao.id }, data: { rodadaId: rodada.id } });
       itens.push({ tipo: "EXAME", animalId: animal.id, propriedadeId: sitio.id, tarefaId: execucao.tarefas[0].id, data: diasAntes(1), tipoExameId: tipos[[0, 1, 1, 0][n]].id, desvio: { motivo: "Tipo de coleta revisto pelo veterinário" } });
     }
     const grupos = [itens.slice(0, 2), itens.slice(2)].map((grupo) => ({ propriedadeId: sitio.id, itens: grupo }));
@@ -101,16 +102,18 @@ describeBanco("execução da etapa no PostgreSQL", () => {
     expect(await prisma.movimentoEstoque.count({ where: { produtoId, tipo: "SAIDA" } })).toBe(1);
     expect(await prisma.requisicaoPecuaria.count({ where: { propriedadeId: input.propriedadeId } })).toBe(0);
   });
-  it("anulação permite outra tentativa, conserva desvio e não altera etapas seguintes", async () => {
+  it("anulação exige reabertura explícita antes de nova execução e preserva próximas etapas", async () => {
     const { input } = await preparar(); const primeiroInput = input.itens[0]; if (primeiroInput.tipo !== "APLICACAO") throw new Error("fixture");
-    const seguinte = await prisma.tarefaSanitaria.findFirstOrThrow({ where: { execucao: { animalId: primeiroInput.animalId }, id: { not: primeiroInput.tarefaId } } });
+    const seguinte = await prisma.tarefaProtocolo.findFirstOrThrow({ where: { execucao: { animalId: primeiroInput.animalId }, id: { not: primeiroInput.tarefaId } } });
     await expect(criarAplicacao({ ...primeiroInput, desvio: undefined }, null)).rejects.toMatchObject({ campo: "desvio.motivo" });
     const primeiro = await criarAplicacao({ ...primeiroInput, dose: "3", via: "Intramuscular" }, null);
     expect(primeiro.desvioProtocoloSnapshot).toMatchObject({ diferencas: [{ campo: "data" }, { campo: "dose" }, { campo: "via" }], motivo: primeiroInput.desvio?.motivo });
-    await anularAplicacao(primeiro.id, input.propriedadeId, "Dose anotada para o animal errado", null);
+    await anularAplicacao(primeiro.id, input.propriedadeId, "Dose anotada para o animal errado", null, "DEVOLVER_ESTOQUE");
+    await expect(criarAplicacao(primeiroInput, null)).rejects.toMatchObject({ code: "CONFLITO", campo: "tarefaId" });
+    await regularizarTarefaSanitaria(primeiroInput.tarefaId, { propriedadeId: input.propriedadeId, chave: crypto.randomUUID(), acao: "REABRIR", motivo: "Procedimento não realizado; estoque devolvido", cienciaNaoExecutado: true }, null);
     const nova = await criarAplicacao(primeiroInput, null);
     expect(nova.id).not.toBe(primeiro.id);
-    expect((await prisma.tarefaSanitaria.findUniqueOrThrow({ where: { id: seguinte.id } })).previstaPara).toEqual(seguinte.previstaPara);
+    expect((await prisma.tarefaProtocolo.findUniqueOrThrow({ where: { id: seguinte.id } })).previstaPara).toEqual(seguinte.previstaPara);
     expect(await prisma.aplicacaoProduto.count({ where: { tarefaId: primeiroInput.tarefaId, status: "VALIDO" } })).toBe(1);
     expect(await prisma.aplicacaoProduto.count({ where: { tarefaId: primeiroInput.tarefaId, status: "ANULADO" } })).toBe(1);
   });

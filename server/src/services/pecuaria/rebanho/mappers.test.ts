@@ -97,7 +97,7 @@ describe("agregarPainel", () => {
   const EC_F = { id: "c-ecf", nome: "Em crescimento" };
   const REPRODUTOR = { id: "c-rep", nome: "Reprodutor" };
   const base = (over: Partial<AnimalResumo>): AnimalResumo => ({
-    id: "x", brinco: "1", nome: null, sexo: "F", categoria: VACA, categoriaOrigem: "AUTOMATICA", categoriaCalculada: VACA, idadeMeses: 40, idadeNaBaixa: false, dataNascimento: "2023-01-01",
+    id: "x", brinco: "1", identificacaoProvisoria: false, nome: null, sexo: "F", categoria: VACA, categoriaOrigem: "AUTOMATICA", categoriaCalculada: VACA, idadeMeses: 40, idadeNaBaixa: false, dataNascimento: "2023-01-01",
     dataEntrada: "2023-01-01", origem: "NASCIDO", propriedade: { id: 1, nome: "Principal" }, lote: null,
     aptidao: "LEITE", papelReprodutivo: "NENHUM", composicaoRotulo: "", ultimoPeso: null, gmdRecente: null, noLocalDesde: null, baixa: null, situacao: "ATIVO", ...over,
   });
@@ -131,5 +131,17 @@ describe("resumoAuditoria", () => {
   it("cai num rótulo genérico para combinações não mapeadas", () => {
     expect(resumoAuditoria("Raca", "CADASTRO")).toBe("Raça cadastrada");
     expect(resumoAuditoria("Raca", "XPTO")).toBe("Raca — XPTO");
+  });
+});
+
+it("ficha conserva resumo produtivo sem referências ou fatos internos de outro sítio", async () => {
+  const { mapearContextoProdutivoFicha } = await import("./mappers.js");
+  const contexto = { dataReferencia: "2026-10-14", situacaoProdutiva: "LACTANTE" as const, del: 0,
+    diasPosParto: 0, diasDesdeConfirmacao: null, idadeGestacionalDias: null, partosRealizados: 1, pendencias: [],
+    lactacaoVigente: { id: "lactacao-anterior", propriedadeId: 99 }, gestacaoVigente: { id: "gestacao-anterior" },
+    ultimaTentativa: { id: "tentativa-anterior" } };
+  expect(mapearContextoProdutivoFicha(contexto)).toEqual({
+    dataReferencia: "2026-10-14", situacaoProdutiva: "LACTANTE" as const, del: 0, diasPosParto: 0,
+    diasDesdeConfirmacao: null, idadeGestacionalDias: null, partosRealizados: 1, pendencias: [],
   });
 });

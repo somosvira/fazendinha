@@ -1,0 +1,195 @@
+# Reprodução e visitas — V4
+
+Este contrato descreve a implementação em `server/src/services/pecuaria/reproducao/`, no schema `pecuaria`, e a interface em `client/src/pecuaria/rebanho/reproducao/`. A publicação em produção e a homologação da rotina pela fazenda são etapas distintas da entrega de código.
+
+A padronização de protocolos, tarefas, exames e papéis está descrita no [contrato comum](protocolos-exames.md). Nomes IATF e avaliação permanecem em projeções de leitura/contratos HTTP; a escrita usa as entidades comuns.
+
+## Fatos individuais e acompanhamento
+
+Uma tentativa de reprodução tem identidade própria, animal, sítio na data do fato, tipo (IA, TE ou cobertura observada), data, responsável, origem do material e posição no ciclo. A confirmação da gestação é um fato diferente da tentativa. Várias avaliações podem acompanhar a mesma gestação.
+
+Categoria (vaca/novilha), aptidão (leite/corte), papel genético (doadora/receptora), situação reprodutiva e restrição são dimensões diferentes. Uma vaca marcada para descarte continua no rebanho e pode continuar no leite. A decisão impede novas intervenções reprodutivas, exige motivo e só termina com reversão explícita e auditada. Não gera baixa, secagem ou encerramento de lactação.
+
+Restrições sanitárias são configuradas por sítio, doença e ação, com efeito de alerta ou bloqueio. Não existem bloqueios clínicos presumidos. A vigência da ocorrência determina sua aplicação; encerrar uma ocorrência não elimina outra restrição. O sistema registra ciência dos alertas e mantém a auditoria de configurações.
+
+As anotações confirmadas pela fazenda servem de referência para os significados abaixo. A interface separa finalidade, conclusão, sexo fetal e conduta e permite múltiplas observações no mesmo exame; essas siglas não são um catálogo obrigatório:
+
+| Anotação | Efeito |
+|---|---|
+| P+ | Confirma gestação; vincula uma tentativa comprovada ou registra explicitamente a origem desconhecida |
+| OK | Reconfirma uma gestação conhecida; não cria outra gestação |
+| M/F | Registra sexo fetal na gestação acompanhada; não cria tentativa ou cria |
+| IATF | Indica protocolo para uma fêmea avaliada vazia; não inicia o protocolo nem consome insumo |
+| Descarte | Registra restrição reprodutiva com motivo, mantendo o animal no rebanho |
+| Aguardar | Organiza retorno; não equivale a resultado negativo |
+| IATFCL, traços e outras anotações | Preserva o texto; não deduz significado clínico não confirmado |
+
+Um negativo após uma gestação confirmada exige tratar a perda ou corrigir o diagnóstico, preservando o resultado anterior. Ausência de atendimento, resultado inconclusivo e falta de informação não tornam automaticamente uma vaca vazia. A situação apresentada deriva da cronologia: parto ou perda encerra a gestação; nova tentativa passa a aguardar diagnóstico.
+
+Lançamentos retroativos conferem também os ciclos encerrados: uma nova gestação ou lactação não pode se sobrepor a um período conhecido. Uma perda registrada permite o diagnóstico negativo no mesmo dia; isso não libera automaticamente outra intervenção reprodutiva nesse dia. Anular um parto antigo exige revisar os fatos posteriores antes de reabrir sua gestação.
+
+A situação clínica acompanha o animal após a transferência entre sítios. Gestação, restrições, paridade e tentativa relevante são consultadas para o animal autorizado na data de referência. Listas de fatos e custos conservam o sítio do evento; acompanhar a condição clínica não concede acesso a custos de outros sítios. Reconfirmação, sexagem e parto no destino podem se vincular à gestação anterior.
+
+## Material, estoque e genética
+
+IA e TE usam `MaterialGenetico`, ligado ao Produto do estoque único. Consumo de estoque valida produto, lote/validade, quantidade, saldo e período financeiro; fato e saída são gravados na mesma transação. Material incluído em Serviço confirmado não cria saldo fictício na fazenda. Origem documentada exige justificativa. Um vínculo ao Serviço não lança outra despesa. No formulário de tentativa, a origem Serviço permite informar a parcela atribuída (incluindo centavos) a quem tem acesso ao Financeiro e permissão de ver valores. Vazio conserva a ausência de atribuição; zero é explícito. Trocar a origem ou o Serviço limpa a atribuição anterior. A soma e as permissões continuam validadas no servidor.
+
+A tentativa preserva um retrato da genética e da origem: alterações posteriores no cadastro do material não reescrevem a tentativa. Na TE, a mãe genética é a doadora e a mãe gestacional é a receptora. Genitor desconhecido permanece desconhecido; a receptora não substitui uma doadora ausente.
+
+Cobertura observada é diferente de exposição de um touro a um lote. A exposição registra touro, lote e intervalo, respeitando a permanência histórica das fêmeas. Ela não comprova uma data exata de fecundação nem determina automaticamente a paternidade.
+
+Anulação de lançamento e perda física de material têm efeitos diferentes. Uma dose usada ou descartada não pode voltar ao estoque utilizável por simples cancelamento do procedimento. Correções exigem motivo e conferência dos fatos dependentes.
+
+Uma tentativa anulada com consumo mantido continua compondo o total atribuído ao Serviço. Criação de tentativas, consulta e edição dos procedimentos usam a mesma regra de soma; o valor confirmado continua sendo o limite para atribuições concorrentes.
+
+Aplicações sanitárias também distinguem devolução de material não utilizado e manutenção de material utilizado/descartado. Ao manter consumo, o usuário informa separadamente se a administração e os dados/carências registrados foram confirmados, se o material foi descartado sem administração ou se a informação não pôde ser confirmada. Administração confirmada conserva a carência registrada; informação não confirmada deixa leite e carne em revisão. Vincular uma aplicação substituta válida transfere a evidência clínica para ela, mantendo o consumo e a auditoria originais.
+
+## Parto, cria e lactação
+
+O parto é único para a matriz, mesmo com gêmeos, e contém o resultado de cada cria. Na regra aprovada para esta entrega, aborto e natimorto contam como parto, seguindo a contagem investigada no IDEAGRI. Outras perdas gestacionais não são automaticamente classificadas como aborto.
+
+O total de partos soma o saldo anterior à entrada e os eventos válidos que ainda não estejam incluídos nesse saldo. Eventos anulados não contam. Ficha, categorias, filtros, resumo de lote e painel usam essa mesma regra. O parto inicia um novo ciclo de tentativas, mantendo os ciclos anteriores consultáveis.
+
+Uma cria viva nasce no sistema junto com o parto, na mesma transação. Sexo, aptidão e sítio são conhecidos; brinco definitivo e peso podem ficar pendentes. Sem brinco, recebe identificação provisória explicitamente sinalizada. Completar a identificação preserva seu ID, filiação, histórico e vínculo com o parto. Natimorto não gera um animal ativo. Morte posterior ao nascimento usa o fluxo normal de baixa do animal.
+
+O parto pode iniciar a lactação mínima quando isso foi efetivamente informado. Aborto não abre uma lactação automaticamente. Há registro de início e encerramento; produção diária, qualidade do leite, laboratório/FIV e gestão avançada de coleta permanecem fora desta versão.
+
+## Visita veterinária
+
+A visita organiza atividades e participantes; cada procedimento continua sendo um fato individual único, consultável pela visita e pela ficha. O percurso é preparar, imprimir, atender no campo, retomar a mesma lista, transcrever e confirmar.
+
+A interface separa planejamento, revisão dos animais e atendimento em páginas inteiras. O cadastro começa em `/pecuaria/visitas/nova`; uma visita existente mantém `/pecuaria/visitas/:id`, com `etapa=planejamento|revisao|atendimento` e referências de grupo/atividade na query. Links antigos continuam abrindo a visita: lista vazia segue para planejamento, lista preparada para atendimento. Visita encerrada conserva consulta, reimpressão e as regularizações autorizadas, sem liberar nova execução por alteração da URL.
+
+O planner segue a composição do mockup aprovado: cabeçalho único, navegação numerada de três etapas, contexto compacto de data/sítio, painel de grupos com seções de reprodução/sanidade e barra fixa com animais únicos, procedimentos e a ação “Revisar seleção”. A atividade/etapa é o título da linha; protocolo, turma, data, versão e avisos ficam em posições próprias. Marcar um grupo carrega sua prévia completa e mantém a pessoa no planejamento; revisar é uma ação separada. A data da visita existente permanece a definida no cadastro. Preparar é oferecido na revisão, preservando revalidação no servidor e retomada após falha parcial. Impressão e encerramento continuam disponíveis em “Opções da visita”, além do atendimento.
+
+A revisão apresenta animal, lote, categoria, situação reprodutiva, DEL, tentativas no ciclo, dias desde a tentativa, partos e RP em colunas próprias. Protocolo, turma, etapa e critérios compartilhados ficam no cabeçalho. Avisos individuais relevantes permanecem acessíveis. Busca e paginação percorrem a prévia completa e não limitam a quantidade preparada. Novos grupos de protocolo/retorno usam ordenação natural por brinco; seleções salvas mantêm sua ordenação explícita. A lista preparada conserva sua ordem, que também orienta atendimento e impressão. Ordenar uma consulta não modifica participantes nem emissões anteriores.
+
+Antes da preparação, referências de grupos, assinaturas das prévias e exclusões podem ser retomadas na sessão do navegador, isoladas por usuário, sítio, visita e data. A retomada recarrega a prévia e exige revisão quando o contexto mudou. Esse armazenamento não é fonte clínica: participantes preparados, rascunhos de atendimento e impressões permanecem no servidor. Desmarcar uma seleção não apaga participantes ou fatos de uma lista já preparada. Falha ao incluir um grupo preserva os já incluídos e permite retomar os restantes.
+
+Cada atividade preserva participantes, ordem e contexto. Atividades extras não substituem a folha original. Rascunhos ficam no servidor. Atendimento confirmado, adiado e não atendido são diferentes; finalizar a visita não executa automaticamente as pendências.
+
+A seleção usa a localização, categoria e situação reprodutiva na data da visita. Filtros permitem lote, categoria e intervalos informados desde tentativa, parto ou confirmação de gestação. A preparação conserva os critérios e motivos de inclusão. A folha de campo apresenta o lote e o contexto reprodutivo conhecido, com informação ausente explicitamente indicada e espaço para o resultado.
+
+Rascunhos têm versão por participante. Um salvamento baseado em versão antiga é rejeitado como conflito, sem substituir os dados mais recentes. Confirmações clínicas, adiamentos e ausências também avançam essa versão; o reenvio idempotente conserva a resposta original sem sobrescrever edições posteriores. Adiado e não atendido exigem motivo, mas não data de execução. A prévia compara também restrições, paridade, parto e categoria; alterações posteriores à revisão exigem uma nova conferência.
+
+Uma confirmação pode abranger um animal ou um subconjunto de até 100 participantes da mesma atividade. A confirmação do subconjunto é atômica e idempotente. O restante da visita pode continuar pendente. Aplicações, exames e tarefas existentes são reutilizados, evitando duplicar consumo ou procedimentos entre os módulos.
+
+O acompanhamento apresenta retornos informados, diagnóstico pendente, tarefas IATF futuras/vencidas e previsões de parto. Uma avaliação válida posterior substitui o retorno anterior do mesmo animal. Parto/perda encerram a previsão ligada à gestação. Links abrem o animal, fato consultável, programação ou registro de parto; fatos de outro sítio não recebem acesso por esse caminho. Ausência de data de diagnóstico permanece explícita, sem gerar um prazo clínico presumido.
+
+Na avaliação coletiva, o tipo de exame pode ser escolhido por animal, com os campos adicionais de sua versão. O rascunho conserva essas informações; mudança de formato exige revisão antes da confirmação. Conclusão, sexo fetal e conduta usam os campos clínicos existentes, sem criar outra avaliação paralela. Os detalhes da avaliação livre e da tarefa oferecem acompanhar/retorno, indicar IATF quando vazia e restringir reprodução com motivo. A indicação confirmada permite abrir a programação por ação explícita; preencher ou abrir o formulário não inicia protocolo nem consome material. Aplicações e exames sanitários vinculados a tarefas permitem informar o motivo do desvio na visita; o motivo acompanha o rascunho e a confirmação do mesmo fato. Consulte os detalhes de snapshots no [contrato comum](protocolos-exames.md).
+
+## IATF
+
+Protocolos reprodutivos são mantidos em Configurações → Pecuária → Reprodução. Rascunho admite edição; publicação/utilização exige nova versão para alterar as etapas. Inativação impede novas programações sem apagar as existentes. O grupo usa `ProgramacaoProtocolo`, cada animal usa `ParticipacaoProtocolo` e suas ações usam `TarefaProtocolo`.
+
+Uma programação usa uma versão publicada do protocolo, com participações individuais. Os intervalos de 10/11 dias até a inseminação são contados a partir do início efetivo de cada participante, conforme confirmação da fazenda, e dependem da versão do protocolo. Indicação, início previsto, início efetivo e execução são informações distintas.
+
+Na visita, a atividade **Iniciar protocolo reprodutivo** conserva a versão publicada escolhida. Preparar e imprimir não criam programação, participação, tarefas ou início efetivo. Na confirmação, o servidor reutiliza uma participação pendente compatível única; se houver várias, exige escolha explícita. Sem pendência compatível, cria a programação comum e a participação, gera as tarefas e registra o início na mesma transação. A programação criada fica vinculada à atividade em `contexto.inicioIatf`, definido pelo servidor, para reutilização nos próximos blocos. O vínculo é conferido por sítio, protocolo, situação e autoria; uma participação explícita também deve pertencer ao animal. Atividade antiga sem protocolo exige uma participação explícita compatível.
+
+Somente os animais confirmados iniciam o protocolo. Ausentes, adiados e linhas intocadas não geram participação nesse fluxo; início não gera tentativa reprodutiva nem consumo de estoque. Data individual e precisão DIA/HORA são preservadas. Protocolo, localização e restrições são revalidados na confirmação. A interface envia a versão do rascunho por participante; versão superada é recusada antes de registrar o fato. O reenvio da mesma confirmação retorna a resposta original mesmo após o incremento dessa versão.
+
+Etapas admitem intervalos em dias ou horas. Atraso de uma execução não desloca silenciosamente as demais; reprogramar exige motivo. Retirada conserva o histórico e a reentrada constitui outra participação. A aplicação, avaliação ou tentativa executada permanece ligada à tarefa, com um único efeito operacional.
+
+As restrições aplicáveis são revalidadas na execução; preparar ou iniciar o protocolo não autoriza executar uma etapa posteriormente bloqueada. Alertas configurados exigem ciência explícita. O início informado de um protocolo sanitário pela visita é preservado, sem substituição silenciosa pela data da visita.
+
+O protocolo reprodutivo permite planejar o tipo e a finalidade do exame. A tarefa inicia o formulário com essa referência; mudança explícita do tipo exige justificativa de desvio. Versões anteriores sem seleção específica usam o exame padrão.
+
+Anular um fato vinculado deixa sua tarefa ou atendimento pendente de regularização, preservando a execução original e o histórico. A regularização exige motivo e pode vincular um substituto válido, encerrar sem substituição ou reabrir quando o procedimento não aconteceu e os efeitos físicos permitem isso. Não produz consumo automático nem apaga o lançamento original.
+
+Outra lista apenas preparada para a mesma tarefa não é uma execução confirmada: sua participação continua pendente, sem receber uma regularização de fato que ainda não registrou.
+
+A escolha do substituto apresenta fatos válidos do mesmo tipo, animal, sítio e data, sem exigir digitação de identificadores internos. Consumo mantido impede reabertura para nova execução. Visita encerrada permite vincular substituto ou encerrar a regularização, mas não reabrir atendimento. Anulação de tentativa vinculada a Serviço respeita os períodos da tentativa e do Serviço.
+
+## Horário opcional na IATF
+
+A data é obrigatória e o horário opcional no planejamento, início efetivo, reagendamento e execução dos protocolos reprodutivos. Uma fazenda que conhece apenas o dia consegue operar sem informar uma hora fictícia. A ausência de horário, isoladamente, não impede aproveitar um protocolo do IDEAGRI como modelo; dia da etapa e demais parâmetros necessários continuam sujeitos à conferência.
+
+Planejamento e realização conservam suas precisões independentemente: uma etapa planejada com hora pode ter sido realizada em um dia conhecido, sem hora conhecida. A interface e o histórico explicitam essa ausência; impressões conservam os dados e a precisão informados na transcrição. Meia-noite, horário do lançamento e horário previsto não substituem o horário real desconhecido.
+
+Sem referência horária conhecida, etapas em horas ou em dias fracionados ficam com previsão pendente; a data do início é conservada somente como referência interna, sem vencimento presumido. O operador pode definir a previsão por reagendamento explícito, com motivo, ou registrar a execução pela data conhecida. Etapas em dias inteiros continuam calculadas normalmente. Não se exige informar uma hora fictícia para registrar o fato ocorrido. Desvios e atrasos respeitam a precisão disponível, sem declarar conformidade horária ou atraso intradiário quando essa informação não existe. Uma aplicação sem hora conserva `aplicadaEm=null` e precisão DIA. Carências informadas usam a regra conservadora existente de fim do dia local, com prazo aproximado explícito; isso não preenche o horário real da aplicação.
+
+Os contratos HTTP aceitam `YYYY-MM-DD` ou instante ISO com fuso; payloads anteriores com hora continuam válidos. `precisaoTemporal` conserva a previsão; `precisaoInicioEfetivo` e `precisaoRealizacao` conservam os fatos independentemente, nas tabelas comuns e views IATF. A migration `20261014230000_iatf_horario_opcional` acrescenta esses metadados e `previsaoPendente`, sem alterar timestamps existentes. As verificações de cronologia usam apenas a data quando uma das horas é desconhecida. Comparações registram `horarioAferido=false` nesses casos, sem exigir motivo apenas pela ausência de horário. A confirmação coletiva usa os mesmos contratos; relatórios de visita já impressos permanecem intactos.
+
+## Carga técnica e reconciliação
+
+O IDEAGRI serve à carga inicial; não existe sincronização contínua ou tela de reconciliação para o usuário final. A extração parte de uma cópia explicitamente fornecida. Transformação e importação têm prévia, chaves de origem, identificação de conflitos e reexecução sem duplicação. O Fazendinha passa a ser a fonte operacional após a carga.
+
+Relações só são estabelecidas quando há referência comprovada. Coincidência de nascimento/filiação não autoriza vincular uma cria histórica ao parto; proximidade de datas não comprova tentativa, gestação ou paternidade. Fatos anteriores à entrada podem ser conservados como históricos, sem inventar localização no sítio atual ou consumo de estoque.
+
+A programação IATF histórica sem informações suficientes para reproduzir o protocolo fica arquivada com suas participações e pendências. Não é publicada como protocolo operacional nem gera tarefas presumidas. Da mesma forma, diagnósticos históricos não são convertidos em várias gestações abertas sem comprovação dos ciclos. O relatório técnico explicita lacunas e conflitos para revisão antes de aplicar a carga.
+
+Os comandos e as precauções de conexão ficam em [desenvolvimento](../desenvolvimento.md). Nenhuma carga em produção faz parte da validação local da implementação.
+
+## Autorização e validação
+
+Aplicam-se sessão, área Pecuária, ação de lançamento e escopo de sítio existentes. Consultar custos exige também acesso financeiro e permissão para ver valores, inclusive em snapshots e retornos de gravação. Não foram criados novos papéis de acesso.
+
+Datas usam a localização na data do fato e respeitam nascimento, entrada e baixa. Movimentação ou correção retroativa não pode tornar incoerentes fatos já registrados. Migrations e transações protegem integridade, concorrência, autoria e histórico.
+
+Validação automatizada concluída: testes e builds de servidor e cliente passaram, assim como os typechecks de seed e importação. Integrações locais foram executadas em `fazendinha_seedatev3` com fixtures próprias e rollback. A aplicação das migrations foi confirmada nesse banco. Foi realizada uma conferência pontual no navegador local das páginas de planejamento, revisão com 120 animais, atendimento preparado e reimpressão, incluindo largura de celular. Paginação e retomada de uma exclusão após recarga foram conferidas sem executar procedimentos clínicos. Essa verificação não substitui a homologação integral com a fazenda, que continua pendente. O roteiro manual não foi marcado como aprovado e não houve deploy.
+
+## Rotas operacionais
+
+As rotas V4 ficam sob `/api/pecuaria/rebanho/reproducao`: `POST /lactacoes` e `POST /partos`; `GET`/`POST /colostro`; configuração por `GET`/`POST /politicas-elegibilidade`, vínculo em `POST /vinculos-politica-ciclo` e decisão em `POST /decisoes-elegibilidade`; consultas por `GET /animais/:id/elegibilidade`, `GET /indicadores` e `GET /relatorios/partos`. Emissões são criadas por `POST /relatorios/emissoes`, listadas por `GET /relatorios/emissoes` e reimpressas por `GET /relatorios/emissoes/:id`. Visitas usam `/api/pecuaria/rebanho/visitas`, com `/selecoes`, `GET /selecoes/opcoes`, `GET /agenda`, `POST /selecoes/previa`, inclusão de grupos, impressões e transcrição. `/planner` e suas prévias continuam para compatibilidade. A prévia livre por POST é leitura autorizada, sem exigir lançamento; preparar, cadastrar/editar filtro ou criar visita continuam exigindo lançamento. Rotas validam entrada, autorização e escopo de sítio no servidor.
+
+## Contexto temporal, lactação e elegibilidade
+
+A ficha e os fluxos de reprodução consultam o contexto do animal na data de referência. O serviço compartilhado calcula lote/localização, categoria, situação produtiva, DEL, gestação, tentativa relevante e restrições, preservando o que é desconhecido. A secagem usa intervalo `[início, fim)`: no próprio dia de encerramento a lactação já não está ativa. Um estado desconhecido não é convertido em “seca”.
+
+A lactação mínima pode ser registrada como fato histórico sem parto conhecido. O endpoint não cria parto nem presume a origem; correções usam controle de versão e motivo. A lactação não representa produção ou qualidade do leite. Em TE, a idade/contexto da receptora não vira idade da doadora nem inventa uma data de nascimento ausente.
+
+## Parto e pós-parto
+
+`PartoAnimal` conserva desfecho, indução, dificuldade, assistência, responsável, observação, hora informada ou estimada, declaração trivalente de retenção de placenta (RP) e versão. Histórico sem dado de RP continua desconhecido. A ocorrência sanitária pode se ligar explicitamente ao parto; encerrar a ocorrência não apaga o registro histórico de RP.
+
+Cada cria é registrada em `CriaParto`; gêmeos permanecem linhas próprias sob um único parto da matriz. Pesagens usam `Pesagem` e vínculos auditáveis `VinculoPesagemParto`, que identificam matriz ou cria. Peso de nascimento da cria exige mesma data do parto e tipo NASCIMENTO; pesagem da matriz vinculada deve ocorrer no parto ou depois. Alterar data, peso, tipo, origem ou observação da pesagem vinculada incrementa a versão do parto e invalida uma correção concorrente baseada na versão anterior. Natimorto não recebe `Animal` ativo, mas conserva a pesagem possível como evidência do parto. O escore pós-parto usa `ExameAnimal` com vínculo ao parto e tipo de exame compartilhado; as observações precisam declarar “ESCORE”, escala mínima e máxima. Não há escala clínica universal inferida pelo sistema. A migration `20261015060000_integridade_pesagem_parto` confere os vínculos pendentes e protege a integridade no banco: peso de nascimento requer data do parto e tipo NASCIMENTO; edição da pesagem ativa avança a versão do parto para que correções concorrentes antigas sejam rejeitadas.
+
+A cria viva aceita vários fornecimentos de colostro. Quantidade é normalizada em litros, mantendo unidade informada; qualidade do alimento pode ser registrada por refratômetro Brix ou colostrômetro. Isso não representa proteína sérica, que exige outro exame. Correções conservam autoria e versões. Baixas retroativas não podem anteceder fornecimentos válidos de colostro. Correções de entrada ou localização e o desfazimento de transferências revalidam o sítio dos fornecimentos e das pesagens ativas vinculadas ao parto. Esses fatos não prescrevem conduta clínica. A referência operacional sobre colostragem está na [Central de Recursos IDEAGRI](https://centralderecursos.ideagri.com.br/posts/especifique-as-informacoes-de-colostragem-no-sistema-ideagri).
+
+## Visitas, agenda e seleção livre
+
+A entrada em `/pecuaria/visitas/nova` reúne nome, sítio, data e responsável opcional e exige escolher **Agenda do dia** ou **Seleção livre**, sem opção marcada. Só continuar cria a visita; o cliente conserva a chave idempotente após erro de resposta. Uma visita vazia sem etapa abre essa entrada. Cada novo grupo pode usar qualquer percurso; não há tipo exclusivo na visita nem carrinho misturando os dois caminhos.
+
+**Agenda do dia** consulta somente tarefas pendentes de protocolos comuns e retornos expressamente registrados, separados por Reprodução/Sanidade e janela do dia, anteriores, futuras ou sem previsão. Filtros salvos e inclusões extras não integram essa consulta, seus totais ou sua paginação. Marcar um grupo mantém a pessoa na agenda; revisar abre a tabela completa. Preparar preserva idempotência, revalidação sob travas, avisos e retomada de falhas parciais. Não executa tarefas nem cria fatos clínicos.
+
+**Seleção livre** tem página própria: filtros → revisão dos animais → definição da atividade → atendimento comum. Não depende de uma pendência na agenda. Os filtros gerais se combinam em E; opções de um atributo e blocos de manejo são alternativas em OU. Nenhuma condição de manejo vem marcada; sem blocos, valem apenas os filtros gerais. As condições avançadas preservam faixas inclusivas/exclusivas, valores, desconhecidos e ordenação. Um filtro salvo conserva nome, versão e critérios, nunca uma lista permanente de animais ou suas exceções. Usar recalcula na data da visita; editar cria versão nova; inativar preserva visitas e impressões anteriores.
+
+Critérios V1 continuam legíveis e aceitos. Novos filtros usam V2: sexo, origem, identificação por brinco/nome, aptidão leite/corte (separada do papel e da liberação reprodutiva), idade/precisão do nascimento, composição racial, peso, participação ativa e dias desde aptidão. Lotes/categorias múltiplos, situação reprodutiva/produtiva, papel, descarte, DEL, pós-parto, tentativa, confirmação, gestação, retorno, partos e RP permanecem disponíveis. Faixas desativadas não participam da validação. Contadores/intervalos exigem inteiros; peso admite decimal; retorno pode ter dias negativos. A política padrão exclui desconhecidos; incluir exige opção explícita e deixa motivo na prévia.
+
+O contexto adicional de V2 é resolvido em lote também para seleções salvas e extras nos endpoints legados. Para a mesma população autorizada e data, os critérios usam o mesmo avaliador; o escopo original de cada endpoint continua preservado. O atalho **Não gestantes após aptidão reprodutiva (aptas ou vazias)** combina APTA ou VAZIA com dias desde aptidão estritamente maiores que o limite informado. Isso é seleção, não liberação clínica. Versões já salvas mantêm seus critérios; adotar o atalho corrigido em um filtro existente exige salvar uma nova versão.
+
+O contexto usa os fatos válidos disponíveis com data até a visita, localização por vigência e os cálculos existentes. Dias desde aptidão usam `aptaDesde` da elegibilidade por data; ausência não vira zero. Última pesagem é a mais recente até a referência, com kg, data e idade da medição preservados; quando filtrada, esses dados aparecem na linha. Composição racial pode conter várias raças: como não há revisões históricas, composição criada/alterada depois da referência fica desconhecida nesse passado. Nascimento estimado é distinguível. Protocolo reprodutivo só é ativo após início efetivo; sanitário usa o início registrado da participação. Início futuro, cancelamento até a data e conclusão/dispensa de todas as etapas até a data não contam como ativos. Não há inclusão automática por estar numa programação futura. Sem histórico de parto não significa nunca pariu; saldo histórico positivo continua conhecido, mesmo sem último evento detalhado.
+
+Na revisão livre é possível buscar e incluir um animal fora do filtro, dentro do sítio e da data autorizados. O servidor valida essas exceções e as congela com nomes e critérios. Escolher uma atividade incompatível informa quais animais precisam ser ajustados: machos não desaparecem da prévia para permitir reprodução. Início de protocolo exige referência publicada do domínio correto; exame sanitário exige tipo ativo compatível. Produto, consumo, execução efetiva e ciências continuam no atendimento.
+
+Ambos os percursos escrevem `VisitaVeterinaria`, `AtividadeVisita` e `ParticipanteVisita`, reutilizando impressão e serviços clínicos. `contexto.percursoVisita` registra `{versao:1,origem:AGENDA|LIVRE}`, independente da origem clínica/estoque. São preservados grupo, critérios, referências legíveis, fingerprint e ajustes manuais; cada participante livre conserva `selecaoNaData`. O fingerprint cobre sítio/data, critérios, atividade, inclusões e contexto; a assinatura de preparação e o hash idempotente também cobrem as exclusões. Alteração de contexto exige nova revisão. A preparação integral pode dividir grupos grandes em atividades, sem truncar animais ou duplicar tarefas.
+
+A URL usa `etapa=entrada`, `etapa=planejamento&modo=agenda`, `etapa=selecao&modo=livre`, `etapa=revisao&modo=...`, `etapa=atividade&modo=livre` e o atendimento existente por atividade. Chaves curtas de navegação livre não substituem assinaturas do servidor. Referências e exclusões ficam separadas por usuário/sítio/visita/percurso na sessão e são revalidadas ao retomar. URLs antigas de planejamento abrem a agenda; referências comprovadas a seleção/extra abrem o percurso livre. “Adicionar grupo” volta à escolha; “Rever grupo” usa a origem preservada. Para um grupo livre já preparado, consulta participantes e exclusões gravados no servidor, reunindo os blocos da preparação e ignorando rascunhos locais. A consulta não recalcula os filtros: conserva contexto e ordem dos incluídos, mostra excluídos ao final com a identificação disponível e bloqueia alteração da composição. Dados clínicos dos excluídos não preservados continuam desconhecidos. Atividades antigas sem evidência mostram origem não informada. Visitas encerradas continuam em consulta.
+
+O percurso livre conserva critérios, ajustes e rascunho da atividade em estado versionado. Alterar filtros invalida imediatamente a revisão, inclusive na navegação superior e por URL; respostas atrasadas não restabelecem uma seleção antiga. Voltar ou recarregar conserva nome, tipo e referência, com revalidação antes de preparar. **Novo grupo** inicia outro rascunho, sem herdar a atividade anterior. Trocar o tipo limpa referências incompatíveis. Ajustes manuais são reconciliados com a nova prévia, informando os que deixaram de se aplicar.
+
+A revisão apresenta contexto e critérios compartilhados acima da tabela e colunas próprias para animal, lote, categoria, situação, DEL, tentativas, dias desde tentativa, partos e RP. Busca, ordenação, inclusão/exclusão dos filtrados e páginas de 15 mantêm a seleção integral. Avisos de outra visita aberta não confundem a visita atual. A impressão conserva ordem, contexto, filtros e exceções do snapshot, sem completar emissões antigas com cadastro atual. Nomes longos podem ser abreviados com conteúdo no título da célula; a tabela permite rolagem horizontal.
+
+Na seleção livre, a revisão começa na ordem dos critérios. Ordenar explicitamente a tabela atualiza `criterios.ordenacao` e revalida a prévia antes da preparação, conservando exclusões válidas. A nova lista preparada e a impressão seguem essa ordem. Busca e paginação não alteram o universo selecionado; consultar ou ordenar a tela não reescreve snapshots já emitidos.
+
+Na transcrição, resultado principal fica visível e detalhes são condicionais. Avaliações diretas e de tarefas IATF usam um único seletor principal para resultado clínico, adiamento ou ausência. Adiamento/ausência continuam sendo estados administrativos, com motivo obrigatório, e não viram conclusão de exame. Vínculos, sexo fetal, conduta, perda conhecida e data efetiva continuam nos detalhes e nas validações. Detalhes podem ser abertos e recolhidos sem apagar o rascunho. O rodapé oferece a conferência dos resultados preenchidos ou do subconjunto explicitamente selecionado; só a confirmação posterior executa os procedimentos. Linhas intocadas permanecem pendentes. Confirmações usam controle otimista de versão (CAS) para proteger rascunhos contra atualização concorrente; CAS é controle técnico de versão, não dado clínico. Confirmar até 100 animais por subconjunto mantém atomicidade e idempotência. O botão de indicação IATF abre o formulário de programação, mas não inicia protocolo, tentativa ou consumo.
+
+O atendimento apresenta uma atividade por vez e aguarda as gravações pendentes antes de trocar de atividade, etapa, área ou sítio. A guarda é compartilhada com a navegação do app; falha de salvamento ou conflito preserva os dados e bloqueia a saída. Uma atualização de outro participante não substitui rascunhos locais divergentes nem apaga conflitos. Quando há vários destinos durante a mesma gravação, somente a intenção de navegação mais recente se aplica. Avaliação ligada a uma tarefa IATF também oferece resultado na linha, conservando o envelope e os validadores específicos da tarefa. Formulários de aplicação, exame e reprodução são reutilizados em composição inline; produto, material, origem, vínculos, campos personalizados e ciências exigidas não desaparecem ao simplificar a tabela.
+
+No atendimento em telas estreitas, cada animal ocupa um bloco com resultado e acesso a detalhes. Lote, categoria, situação, DEL, tentativas, dias desde tentativa, partos e RP permanecem disponíveis na expansão inline, usando os mesmos dados preservados da tabela. A composição responsiva não cria outro formulário clínico nem altera a revisão dos animais. Em desktop, as colunas têm larguras próprias e nomes contidos para manter animal e resultado acessíveis juntos.
+
+Uma seleção de mais de 100 participantes é confirmada em blocos sequenciais de até 100 da mesma atividade. O progresso distingue blocos concluídos e restantes; uma falha interrompe a sequência e preserva o que já foi confirmado. Cada bloco tem atomicidade e reenvio idempotente próprios; não se promete uma transação única para todos os blocos. Reenviar não autoriza repetir fato clínico ou consumo.
+
+## Elegibilidade e indicadores
+
+A elegibilidade usa três registros: `PoliticaElegibilidadeReprodutiva` versionada por sítio e vigência, `VinculoPoliticaCiclo` que congela a política aplicável ao ciclo e `DecisaoElegibilidadeCiclo` com evidência individual e histórico. Não existe regra clínica padrão. A configuração da política e a liberação individual são ações explícitas.
+
+Quando um parto inicia um novo ciclo, o vínculo automático só ocorre em sítios que já tenham configuração de política: se não houver versão vigente, o ciclo congela política nula. O ciclo inicial, sem parto de origem, exige vínculo explícito. Sítio nunca configurado fica pendente de configuração e exige vínculo histórico explícito; uma política nova não é aplicada silenciosamente a ciclos antigos.
+
+Indicadores usam a Base IDEAGRI/IILB — metodologia Fazendinha v1 (`FAZENDINHA_IDEAGRI_IILB_V1`), com regras explicitadas na emissão e sem alegar equivalência integral. A metodologia executada fica em `services/pecuaria/reproducao/indicadores.calc.ts`; o método é explicado na própria emissão. Janelas de 21 dias são inclusivas e retrocedem a partir da data final; sobra menor que 21 dias é descartada. TS é 100 × matrizes únicas servidas / elegíveis; TC é 100 × tentativas positivas / (tentativas − abertas); TP é TS × TC / 100. A saída proporcional do PEV no dia `d` contribui `(22 − d) / 21`; a conta não arredonda etapas intermediárias. Gestação confirmada no início exclui a matriz mesmo quando falta política congelada, sem converter essa exclusão clínica em pendência de elegibilidade. Para tentativas anteriores sem diagnóstico, percentual explícito de 0 a 100 contribui com 1 − q/100; sem esse valor, a contribuição fica pendente. TE analítica usa data factual menos sete dias por padrão, configurável entre zero e trinta, sem alterar a data real. Uma baixa dentro do período exclui o intervalo inteiro. Liberação válida durante o período conta a fração de dias restantes, após revalidar ciclo, restrições, localização e situação reprodutiva. Totais são recalculados sobre seus numeradores e denominadores, não pela média das taxas. Desconhecido é `null`, nunca zero.
+
+## Relatórios reprodutivos
+
+O relatório de partos é próprio e descreve matriz, desfecho, crias, peso, escore, RP, colostro e dados de assistência; gêmeos não multiplicam a contagem do parto. Indicadores apresentam método e detalhamento analítico. Emissões de PARTOS e INDICADORES usam `SnapshotRelatorioReprodutivo`, persistindo filtros, corte, políticas consideradas, dados emitidos e auditoria para reimpressão fiel.
+
+O [HTML de conceitos](artefatos/conceitos-v4.html) mostra os relacionamentos e a correspondência entre telas e registros. O [guia manual](artefatos/testes-v4-guia.html) recebe os cenários novos como pendentes; homologação pela fazenda continua separada da validação automatizada.

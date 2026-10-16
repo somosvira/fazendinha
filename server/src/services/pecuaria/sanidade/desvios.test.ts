@@ -32,7 +32,9 @@ describe("desvios derivados do planejamento sanitário", () => {
   });
   it("preserva o aviso explícito no legado sem inventar parâmetros publicados", () => {
     const legado = { ...tarefa, parametros: null, etapa: { ...tarefa.etapa, tipoAplicacaoId: null, finalidade: "VACINA" as const, produtoId: "produto", dose: new Prisma.Decimal("0.1"), via: null } };
-    expect(compararExecucaoProtocolo(legado, { ...realizado, via: null, finalidade: "VACINA", tipoAplicacaoId: "a0300000-0000-4000-8000-000000000002" })).toMatchObject({ referencia: "LEGADO_SEM_SNAPSHOT", diferencas: [] });
+    const atual = { ...realizado, via: null, finalidade: "VACINA", tipoAplicacaoId: "a0300000-0000-4000-8000-000000000002" };
+    expect(() => compararExecucaoProtocolo(legado, atual)).toThrow("histórico não aferível");
+    expect(compararExecucaoProtocolo(legado, atual, { motivo: "Executado após revisão do planejamento histórico" })).toMatchObject({ referencia: "LEGADO_SEM_SNAPSHOT", aferido: false, motivoObrigatorio: true, diferencas: [] });
   });
   it("exige motivo para trocar o tipo efetivo mesmo repetindo a finalidade planejada legada", () => {
     const legado = { ...tarefa, parametros: { ...tarefa.parametros as Record<string, unknown>, tipoAplicacaoId: null, finalidade: "VACINA" } } as Tarefa;
@@ -48,7 +50,7 @@ describe("desvios derivados do planejamento sanitário", () => {
     { execucao: { ...tarefa.execucao, animalId: "outro" } }, { execucao: { ...tarefa.execucao, canceladaEm: new Date() } },
     { dispensadaEm: new Date() }, { aplicacoes: [{ id: "fato" }] }, { exames: [{ id: "coleta" }] }, { etapa: { ...tarefa.etapa, protocoloId: "outra-versao" } },
   ])("revalida animal, disponibilidade e versão ao reler tarefa: %j", async (mudanca) => {
-    const tx = { tarefaSanitaria: { findUnique: vi.fn().mockResolvedValue({ ...tarefa, ...mudanca }) } };
+    const tx = { tarefaProtocolo: { findUnique: vi.fn().mockResolvedValue({ ...tarefa, ...mudanca }) } };
     await expect(conferirTarefaProtocoloTx(tx as unknown as Prisma.TransactionClient, "tarefa", "animal", realizado)).rejects.toMatchObject({ code: "CONFLITO" });
   });
 });

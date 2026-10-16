@@ -19,6 +19,8 @@ export type PropriedadeRef = { id: number; nome: string };
 export type LoteRef = { id: string; nome: string };
 
 export type AnimalResumo = {
+  papelReprodutivoEstado?: "CONHECIDO" | "DESCONHECIDO" | "CONFLITO";
+  identificacaoProvisoria?: boolean;
   id: string;
   brinco: string;
   nome: string | null;
@@ -70,7 +72,7 @@ export type HistoricoLocalizacao = {
 export type HistoricoDestino = {
   id: string;
   aptidao: Aptidao;
-  papelReprodutivo: PapelReprodutivo;
+  papelReprodutivo: PapelReprodutivo | null;
   desde: string;
   ate: string | null;
 };
@@ -94,6 +96,13 @@ export type BaixaAnimalResumo = {
  *  animal (cadastrar, editar, movimentar, mudar destino, desfazer, baixa,
  *  estorno), não só em GET /animais/:id. */
 export type AnimalFicha = AnimalResumo & {
+  contextoProdutivo?: {
+    dataReferencia: string;
+    situacaoProdutiva: "LACTANTE" | "SECA" | "SEM_LACTACAO" | "NAO_INFORMADA";
+    del: number | null; diasPosParto: number | null; diasDesdeConfirmacao: number | null;
+    idadeGestacionalDias: number | null; partosRealizados: number | null;
+    pendencias: string[];
+  } | null;
   brincoEletronico: string | null;
   sisbov: string | null;
   nascimentoEstimado: boolean;
@@ -102,6 +111,7 @@ export type AnimalFicha = AnimalResumo & {
   composicao: ItemComposicaoFicha[];
   historicoLocalizacoes: HistoricoLocalizacao[];
   historicoDestinos: HistoricoDestino[];
+  historicoPapeisReprodutivos?: Array<{ id: string; tipo: string; inicio: string; fim: string | null; origem: string; revogado: boolean }>;
   historicoPesagens: HistoricoPesagem[];
   /** trocas manuais de categoria, mais recente primeiro */
   historicoCategoriasManuais: HistoricoCategoriaManual[];

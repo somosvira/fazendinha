@@ -10,6 +10,13 @@ import {
   type CategoriaRef, type CondicaoRegra, type CriterioPartos, type RegraCategoria, type Sexo,
 } from "./categoria.calc.js";
 import type { CriarCategoriaInput, EditarCategoriaInput, RegraPropostaInput } from "./schemas.js";
+import { totalPartosCategoria } from "./partos.calc.js";
+
+/** Partos já representados no saldo de entrada continuam no histórico, sem segunda soma. */
+export const SELECT_PARTOS_CATEGORIA = {
+  where: { status: "VALIDO", incluidoSaldoAnterior: false },
+  select: { data: true },
+} satisfies Prisma.Animal$partosArgs;
 
 /** Padrões de fábrica: as categorias do IDEAGRI (CATEGORIA 1–7). Mesmos valores do INSERT na migration da pecuária v1 (`20260925130000_pecuaria_v1_rebanho`). */
 export const CATEGORIAS_PADRAO: Array<{
@@ -47,10 +54,13 @@ export const SELECT_MANUAL_ABERTA = {
 
 export const manualDe = (linhas: Array<{ categoria: CategoriaRef }> | undefined): CategoriaRef | null => linhas?.[0]?.categoria ?? null;
 
-function whereCondicao(c: CondicaoRegra): Prisma.AnimalWhereInput {
+function whereCondicao(c: CondicaoRegra, hoje: Date): Prisma.AnimalWhereInput {
+  const partoValido = { ...SELECT_PARTOS_CATEGORIA.where, data: { lte: hoje } };
   return {
     sexo: c.sexo,
-    ...(c.semPartos === undefined ? {} : { partosAntesDaEntrada: c.semPartos ? 0 : { gt: 0 } }),
+    ...(c.semPartos === undefined ? {} : c.semPartos
+      ? { partosAntesDaEntrada: 0, partos: { none: partoValido } }
+      : { OR: [{ partosAntesDaEntrada: { gt: 0 } }, { partos: { some: partoValido } }] }),
     ...(c.nascidoAte || c.nascidoApos ? { dataNascimento: { ...(c.nascidoAte ? { lte: c.nascidoAte } : {}), ...(c.nascidoApos ? { gt: c.nascidoApos } : {}) } } : {}),
   };
 }
@@ -64,7 +74,7 @@ export function whereCategoria(categoriaId: string | undefined, regras: RegraCat
   return {
     OR: [
       manual,
-      { AND: [{ categoriasManuais: { none: { ate: null } } }, whereCondicao(f.automatica.incluir), ...f.automatica.excluir.map((e) => ({ NOT: whereCondicao(e) }))] },
+      { AND: [{ categoriasManuais: { none: { ate: null } } }, whereCondicao(f.automatica.incluir, hoje), ...f.automatica.excluir.map((e) => ({ NOT: whereCondicao(e, hoje) }))] },
     ],
   };
 }
@@ -77,7 +87,7 @@ export function whereSemCategoria(regras: RegraCategoria[], hoje: Date): Prisma.
   return {
     AND: [
       { categoriasManuais: { none: { ate: null } } },
-      ...condicoesSemCategoria(regras, hoje).map((c) => ({ NOT: whereCondicao(c) })),
+      ...condicoesSemCategoria(regras, hoje).map((c) => ({ NOT: whereCondicao(c, hoje) })),
     ],
   };
 }
@@ -95,9 +105,10 @@ interface AnimalAtivoCategoria {
 async function animaisAtivos(db: DbPecuaria = prisma): Promise<AnimalAtivoCategoria[]> {
   const animais = await db.animal.findMany({
     where: { baixas: { none: { estornadaEm: null } } },
-    select: { id: true, sexo: true, dataNascimento: true, partosAntesDaEntrada: true, categoriasManuais: SELECT_MANUAL_ABERTA },
+    select: { id: true, sexo: true, dataNascimento: true, partosAntesDaEntrada: true, partos: SELECT_PARTOS_CATEGORIA, categoriasManuais: SELECT_MANUAL_ABERTA },
   });
-  return animais.map((a) => ({ id: a.id, sexo: a.sexo, dataNascimento: a.dataNascimento, partos: a.partosAntesDaEntrada, manual: manualDe(a.categoriasManuais) }));
+  const hoje = hojeFazendaDate();
+  return animais.map((a) => ({ id: a.id, sexo: a.sexo, dataNascimento: a.dataNascimento, partos: totalPartosCategoria(a, hoje), manual: manualDe(a.categoriasManuais) }));
 }
 
 function contar(animais: AnimalAtivoCategoria[], regras: RegraCategoria[], hoje: Date) {

@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { RebanhoError, travarAnimais } from "./rebanho/regras.js";
 import { transacaoPecuaria } from "./transacao.js";
+import { recuperarRequisicaoTx, guardarRequisicaoTx } from "./requisicoes.js";
 
 function ordenarJson(valor: unknown): unknown {
   if (Array.isArray(valor)) return valor.map(ordenarJson);
@@ -19,16 +20,15 @@ export async function confirmarFato<T extends { animalId: string; propriedadeId:
   return transacaoPecuaria(async (tx) => {
     await travarAnimais(tx, [input.animalId]);
     if (!input.chave) return criar(tx, input, usuarioId);
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`pec-requisicao:${input.chave}`}))`;
-    const anterior = await tx.requisicaoPecuaria.findUnique({ where: { chave: input.chave } });
+    const identidade = { chave: input.chave, propriedadeId: input.propriedadeId, usuarioId, operacao, hashPayload };
+    const anterior = await recuperarRequisicaoTx(tx, identidade);
     if (anterior) {
-      if (anterior.hashPayload !== hashPayload || anterior.usuarioId !== usuarioId || anterior.propriedadeId !== input.propriedadeId || anterior.operacao !== operacao) throw new RebanhoError("CONFLITO", "Chave de reenvio usada com outros dados");
       const ids = anterior.resultadoIds;
       if (!ids || typeof ids !== "object" || Array.isArray(ids) || typeof ids.id !== "string") throw new RebanhoError("CONFLITO", "Não foi possível recuperar a confirmação; recarregue o histórico");
       return buscar(tx, ids.id);
     }
     const fato = await criar(tx, input, usuarioId);
-    await tx.requisicaoPecuaria.create({ data: { chave: input.chave, propriedadeId: input.propriedadeId, usuarioId, operacao, hashPayload, resultadoIds: { id: fato.id } } });
+    await guardarRequisicaoTx(tx, identidade, { id: fato.id });
     return fato;
   });
 }

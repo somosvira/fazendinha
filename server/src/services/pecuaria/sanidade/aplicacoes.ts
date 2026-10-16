@@ -1,18 +1,19 @@
+import { vincularFatoTarefaTx } from "../protocolos/vinculos.js";
 import { buscaAnimal, filtrosFatos, limites, type ConsultaSanitaria } from "./consulta.js";
+import { marcarRegularizacaoFatoTx } from "../reproducao/marcacao-regularizacao.js";
+import { aplicacaoComConsumoOuAtribuicao } from "../reproducao/atribuicoes-servico.js";
 import crypto from "node:crypto";
 import { Prisma, UnidadeMedida, type OrigemInsumoSanitario, type FinalidadeAplicacao } from "@prisma/client";
 import { prisma } from "../../../db.js";
 import { RebanhoError, auditar, travarAnimais } from "../rebanho/regras.js";
-import { propriedadePrincipalId } from "../../propriedade.js";
-import { obterBaseCusto, statusSaldoEstoque, estornarMovimentoTx } from "../../estoque/estoque.js";
-import { valorSaidaDaBase } from "../../estoque/estoque.calc.js";
+import { estornarMovimentoTx } from "../../estoque/estoque.js";
 import { converterQuantidade, UNIDADES } from "../../estoque/unidades.js";
 import { exigirPeriodoAberto } from "../../financeiro/regras.js";
 import { calcularPrazoCarencia } from "./carencia.calc.js";
 import { conferirAnimalNoFato } from "../fatos.js";
 import { transacaoPecuaria } from "../transacao.js";
 import { confirmarFato } from "../idempotencia.js";
-import { resolverLotePrincipalTx, saldoPartidaTx, validadeVencida } from "../../estoque/partidas.js";
+import { consumirEstoqueTx } from "../consumo.js";
 import { alocacaoLoteSanitario, loteAplicacaoDTO } from "./lotes.js";
 import { conferirTarefaProtocoloTx, tipoAplicacaoLegadaId, type DesvioInput } from "./desvios.js";
 import { travarUsosProduto } from "../../estoque/usos.js";
@@ -22,7 +23,7 @@ export type AplicacaoInput = {
   animalId: string;
   propriedadeId: number;
   data: string;
-  aplicadaEm: string;
+  aplicadaEm?: string;
   finalidade?: FinalidadeAplicacao;
   tipoAplicacaoId?: string;
   responsavel?: string | null;
@@ -71,17 +72,17 @@ export async function travarOrigensAplicacoesTx(tx: Prisma.TransactionClient, it
 async function conferirLocalizacao(tx: Prisma.TransactionClient, input: AplicacaoInput) {
   const data = dia(input.data);
   await conferirAnimalNoFato(tx, input.animalId, input.propriedadeId, data);
-  const momento = new Date(input.aplicadaEm);
-  if (!Number.isFinite(momento.getTime()) || new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).format(momento) !== input.data) {
+  const momento = input.aplicadaEm ? new Date(input.aplicadaEm) : null;
+  if (momento && (!Number.isFinite(momento.getTime()) || new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).format(momento) !== input.data)) {
     erro("A data e o horário da aplicação devem corresponder ao mesmo dia no Brasil", "aplicadaEm");
   }
-  if (momento > new Date()) erro("A aplicação não pode ocorrer no futuro", "aplicadaEm");
+  if (momento && momento > new Date() || !momento && input.data > new Intl.DateTimeFormat("en-CA", {timeZone:"America/Sao_Paulo",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date())) erro("A aplicação não pode ocorrer no futuro", "aplicadaEm");
   if (input.ocorrenciaId) {
     const ocorrencia = await tx.ocorrenciaSanitaria.findFirst({ where: { id: input.ocorrenciaId, animalId: input.animalId, status: "VALIDO" } });
     if (!ocorrencia) erro("Ocorrência não pertence a este animal", "ocorrenciaId");
   }
   if (input.tarefaId) {
-    const tarefa = await tx.tarefaSanitaria.findFirst({ where: { id: input.tarefaId, execucao: { animalId: input.animalId, canceladaEm: null }, dispensadaEm: null } });
+    const tarefa = await tx.tarefaProtocolo.findFirst({ where: { id: input.tarefaId, execucao: { animalId: input.animalId, canceladaEm: null }, dispensadaEm: null } });
     if (!tarefa) erro("Tarefa não pertence a este animal ou não está pendente", "tarefaId");
   }
   return data;
@@ -93,19 +94,7 @@ async function validarServico(tx: Prisma.TransactionClient, id: string, propried
   return servico;
 }
 
-export async function obterSaldo(tx: Prisma.TransactionClient, produtoId: string, propriedadeId: number, partidaId?: string | null) {
-  if (partidaId) return saldoPartidaTx(tx, partidaId, propriedadeId);
-  const principal = await propriedadePrincipalId();
-  const movimentos = await tx.movimentoEstoque.findMany({
-    where: { produtoId, status: statusSaldoEstoque, ...(propriedadeId === principal ? { OR: [{ propriedadeId }, { propriedadeId: null }] } : { propriedadeId }),
-      ...(partidaId ? { alocacaoPartidaEstoques: { some: { partidaId } } } : {}) },
-    include: { alocacaoPartidaEstoques: { where: { partidaId: partidaId ?? "" } } },
-  });
-  return movimentos.reduce((saldo, m) => {
-    const quantidade = partidaId ? m.alocacaoPartidaEstoques.reduce((s, a) => s.plus(a.quantidade), new Prisma.Decimal(0)) : m.quantidade;
-    return m.tipo === "SAIDA" ? saldo.minus(quantidade) : saldo.plus(quantidade);
-  }, new Prisma.Decimal(0));
-}
+export { obterSaldo } from "../consumo.js";
 
 async function prepararOrigem(tx: Prisma.TransactionClient, input: AplicacaoInput, data: Date, usuarioId: number | null, previa = false) {
   if (input.produtoId) await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`produto-usos:${input.produtoId}`}))`;
@@ -140,7 +129,7 @@ async function prepararOrigem(tx: Prisma.TransactionClient, input: AplicacaoInpu
     try { quantidade = converterQuantidade(dose, input.unidadeDose, unidadeCompra); }
     catch { erro("A dose e o item comprado têm unidades incompatíveis", "unidadeDose"); }
     if (quantidade!.decimalPlaces() > 3) erro("A unidade da compra não representa esta dose sem arredondamento", "unidadeDose");
-    const usadas = await tx.aplicacaoProduto.aggregate({ where: { itemCompraDiretaId: item.id, status: "VALIDO" }, _sum: { quantidadeCompraDireta: true, valorProdutoAtribuido: true } });
+    const usadas = await tx.aplicacaoProduto.aggregate({ where: { itemCompraDiretaId: item.id, ...aplicacaoComConsumoOuAtribuicao }, _sum: { quantidadeCompraDireta: true, valorProdutoAtribuido: true } });
     if (quantidade!.plus(usadas._sum.quantidadeCompraDireta ?? 0).gt(item.quantidade)) erro("A quantidade da compra já foi destinada a outras aplicações", "itemCompraDiretaId");
     itemCompraDiretaId = item.id;
     quantidadeCompraDireta = quantidade!;
@@ -156,32 +145,16 @@ async function prepararOrigem(tx: Prisma.TransactionClient, input: AplicacaoInpu
     try { quantidade = converterQuantidade(dose, input.unidadeDose, produto.unidade); }
     catch { erro("A dose não pode ser convertida para a unidade do Produto", "unidadeDose"); }
     if (quantidade!.decimalPlaces() > 3) erro("Cadastre o Produto em unidade menor: esta dose perderia precisão", "dose");
-    if (produto.rastrearPartidas && !input.partidaId) erro("Selecione o lote do produto", "partidaId");
-    if (!produto.rastrearPartidas && input.partidaId) erro("Este Produto não usa lotes", "partidaId");
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`pec-produto:${produto.id}`}))`;
-    const partida = input.partidaId ? await resolverLotePrincipalTx(tx, input.partidaId, produto.id) : null;
-    if (input.partidaId && !partida) erro("Lote não pertence a este Produto", "partidaId");
-    if (partida && !partida.validade && !input.cienciaValidadeDesconhecida) erro("Confirme a ciência de uso do lote com validade não informada", "cienciaValidadeDesconhecida");
-    if (partida?.validade && validadeVencida(partida.validade, data)) {
-      if (!input.documentacaoExcepcional || (input.motivoDocumentacaoExcepcional?.trim().length ?? 0) < 5 || new Date(input.aplicadaEm) > new Date()) erro("Lote vencido: uso operacional bloqueado; documentação de fato já ocorrido exige ciência e justificativa", "partidaId");
-    } else if (input.documentacaoExcepcional) erro("Documentação excepcional só cabe para fato já ocorrido com lote vencido", "documentacaoExcepcional");
-    if ((await obterSaldo(tx, produto.id, input.propriedadeId)).lt(quantidade!)) erro("Saldo de estoque insuficiente neste sítio", "dose");
-    if (partida && (await obterSaldo(tx, produto.id, input.propriedadeId, partida.id)).lt(quantidade!)) erro("Saldo do lote insuficiente neste sítio", "partidaId");
-    await exigirPeriodoAberto(tx, input.propriedadeId, data);
-    const base = await obterBaseCusto(tx, produto.id, input.propriedadeId);
-    const valores = valorSaidaDaBase(quantidade!, base);
-    const movimento = previa ? null : await tx.movimentoEstoque.create({ data: {
-      produtoId: produto.id, tipo: "SAIDA", origem: "SANIDADE", data, quantidade: quantidade!,
-      custoUnitario: valores.custoUnitario, valorTotal: valores.valorTotal,
-      propriedadeId: input.propriedadeId, criadoPorId: usuarioId,
-      observacao: `Aplicação sanitária em ${input.animalId}${input.documentacaoExcepcional ? ` · DOCUMENTAÇÃO EXCEPCIONAL: ${input.motivoDocumentacaoExcepcional}` : ""}`,
-      ...(partida ? { alocacaoPartidaEstoques: { create: { partidaId: partida.id, quantidade: quantidade! } } } : {}),
-    } });
-    movimentoEstoqueId = movimento?.id ?? null;
-    valorProdutoAtribuido = base ? valores.valorTotal : null;
-    situacaoCusto = base ? "CONHECIDO" : "SEM_BASE";
-    partidaCodigo = partida?.codigo ?? null;
-    partidaValidade = partida?.validade ?? null;
+    const consumo = await consumirEstoqueTx(tx, { produto, propriedadeId: input.propriedadeId, quantidade: quantidade!, campoQuantidade: "dose",
+      data, instante: input.aplicadaEm ? new Date(input.aplicadaEm) : undefined, partidaId: input.partidaId,
+      cienciaValidadeDesconhecida: input.cienciaValidadeDesconhecida, documentacaoExcepcional: input.documentacaoExcepcional,
+      motivoDocumentacaoExcepcional: input.motivoDocumentacaoExcepcional, origem: "SANIDADE", usuarioId, previa,
+      observacao: `Aplicação sanitária em ${input.animalId}${input.documentacaoExcepcional ? ` · DOCUMENTAÇÃO EXCEPCIONAL: ${input.motivoDocumentacaoExcepcional}` : ""}` });
+    movimentoEstoqueId = consumo.movimentoEstoqueId;
+    valorProdutoAtribuido = consumo.valorProdutoAtribuido;
+    situacaoCusto = consumo.situacaoCusto;
+    partidaCodigo = consumo.partida?.codigo ?? null;
+    partidaValidade = consumo.partida?.validade ?? null;
   } else {
     erro("Origem de insumo inválida para lançamento operacional", "origemInsumo");
   }
@@ -231,7 +204,7 @@ export async function prepararAplicacaoTx(tx: Prisma.TransactionClient, input: A
     const dadosCriacao: Prisma.AplicacaoProdutoUncheckedCreateInput = {
       animalId: dados.animalId, propriedadeId: dados.propriedadeId, produtoId: dados.produtoId ?? null,
       nomeProdutoAplicado: origem.nomeProdutoAplicado, ocorrenciaId: dados.ocorrenciaId ?? null, tarefaId: dados.tarefaId ?? null,
-      data, aplicadaEm: new Date(dados.aplicadaEm), precisaoTemporal: "HORA", finalidade: dados.finalidade,
+      data, aplicadaEm: dados.aplicadaEm ? new Date(dados.aplicadaEm) : null, precisaoTemporal: dados.aplicadaEm ? "HORA" : "DIA", finalidade: dados.finalidade,
       tipoAplicacaoId: tipoAplicacao!.id, tipoAplicacaoNomeSnapshot: tipoAplicacao!.nome, responsavel: input.responsavel?.trim() || null,
       estadoCarenciaLeite: estadoLeite, estadoCarenciaCarne: estadoCarne,
       justificativaCarenciaLeite: input.justificativaCarenciaLeite ?? null, justificativaCarenciaCarne: input.justificativaCarenciaCarne ?? null,
@@ -254,6 +227,7 @@ export async function prepararAplicacaoTx(tx: Prisma.TransactionClient, input: A
 export async function criarAplicacaoTx(tx: Prisma.TransactionClient, input: AplicacaoInput, usuarioId: number | null) {
     const { dadosCriacao } = await prepararAplicacaoTx(tx, input, usuarioId);
     const criada = await tx.aplicacaoProduto.create({ data: dadosCriacao });
+    if (input.tarefaId) await vincularFatoTarefaTx(tx, input.tarefaId, { aplicacaoId: criada.id }, usuarioId);
     await auditar(tx, { entidade: "AplicacaoProduto", entidadeId: criada.id, animalId: input.animalId, propriedadeId: input.propriedadeId, acao: "REGISTRO", usuarioId,
       depois: { origemInsumo: criada.origemInsumo, operacaoServicoId: criada.operacaoServicoId, itemCompraDiretaId: criada.itemCompraDiretaId, movimentoEstoqueId: criada.movimentoEstoqueId, via: criada.via, desvioProtocoloSnapshot: criada.desvioProtocoloSnapshot, cienciaValidadeDesconhecida: !!input.cienciaValidadeDesconhecida, cienciaPartidaVencida: !!input.documentacaoExcepcional, motivoDocumentacaoExcepcional: input.motivoDocumentacaoExcepcional ?? null } });
     return criada;
@@ -306,12 +280,12 @@ export async function reconciliarOrigem(id: string, propriedadeId: number, input
       erro("Confirme que o Produto corresponde ao medicamento aplicado", "confirmarEquivalencia");
     }
     const unidade = Object.values(UnidadeMedida).find((u) => u === antes.unidadeDose);
-    if (!unidade || !antes.aplicadaEm || !antes.dose) erro("Registro histórico sem quantidade/unidade/horário deve ser corrigido por anulação");
+    if (!unidade || !antes.dose || !antes.aplicadaEm && antes.precisaoTemporal !== "DIA") erro("Registro sem quantidade, unidade ou precisão temporal válida deve ser corrigido por anulação");
     if (produto) {
       try { converterQuantidade(antes.dose!, unidade!, produto.unidade); }
       catch { erro("A dose e o Produto têm unidades incompatíveis", "produtoId"); }
     }
-    const origem = await prepararOrigem(tx, { ...input, animalId: antes.animalId, propriedadeId, data: antes.data.toISOString().slice(0, 10), aplicadaEm: antes.aplicadaEm!.toISOString(), nomeProdutoAplicado: antes.nomeProdutoAplicado, dose: antes.dose!.toString(), unidadeDose: unidade! }, antes.data, usuarioId);
+    const origem = await prepararOrigem(tx, { ...input, animalId: antes.animalId, propriedadeId, data: antes.data.toISOString().slice(0, 10), aplicadaEm: antes.aplicadaEm?.toISOString(), nomeProdutoAplicado: antes.nomeProdutoAplicado, dose: antes.dose!.toString(), unidadeDose: unidade! }, antes.data, usuarioId);
     const { nomeProdutoAplicado: _nome, ...vinculos } = origem;
     const depois = await tx.aplicacaoProduto.update({ where: { id }, data: { ...vinculos, origemInsumo: input.origemInsumo, produtoId: input.produtoId ?? null, operacaoServicoId: input.operacaoServicoId ?? null } });
     // A justificativa original permanece no registro e na auditoria. Não há nova
@@ -365,25 +339,33 @@ export async function listarCarencias(propriedadeId: number | null, filtro: Cons
 export async function carenciaAnimalTx(tx: Prisma.TransactionClient, animalId: string, dataReferencia?: string) {
   // A carência acompanha o animal. Uma dose aplicada no sítio anterior ainda
   // importa para o leite/carne no sítio atual; o acesso, porém, é pelo local atual.
-  const aplicacoes = await tx.aplicacaoProduto.findMany({ where: { animalId, status: "VALIDO", ...(dataReferencia ? { data: { lte: new Date(dataReferencia + "T00:00:00Z") } } : {}) },
-    select: { data: true, aplicadaEm: true, precisaoTemporal: true, carenciaLeiteHoras: true, carenciaCarneHoras: true, estadoCarenciaLeite: true, estadoCarenciaCarne: true, aptidaoCarenciaSnapshot: true } });
+  const aplicacoes = await tx.aplicacaoProduto.findMany({ where: { animalId, OR: [{ status: "VALIDO" }, { consumoMantido: true, OR: [{ administracaoMantida: true }, { administracaoMantida: null }] }], ...(dataReferencia ? { data: { lte: new Date(dataReferencia + "T00:00:00Z") } } : {}) },
+    select: { data: true, aplicadaEm: true, precisaoTemporal: true, carenciaLeiteHoras: true, carenciaCarneHoras: true, estadoCarenciaLeite: true, estadoCarenciaCarne: true, aptidaoCarenciaSnapshot: true, consumoMantido: true, administracaoMantida: true } });
   const animal = await tx.animal.findUnique({ where: { id: animalId }, select: { sexo: true, destinos: { where: dataReferencia ? { desde: { lte: new Date(dataReferencia + "T00:00:00Z") }, OR: [{ ate: null }, { ate: { gt: new Date(dataReferencia + "T00:00:00Z") } }] } : { ate: null }, take: 1 } } });
   if (!animal) throw new RebanhoError("NAO_ENCONTRADO", "Animal não encontrado");
   const revisarLeite = animal?.sexo === "F" && animal.destinos[0]?.aptidao === "LEITE" && aplicacoes.some((a) => a.estadoCarenciaLeite === "NAO_APLICAVEL" && a.aptidaoCarenciaSnapshot !== "LEITE");
-  return { leite: revisarLeite ? { estado: "NAO_INFORMADO" as const } : calcularPrazoCarencia(aplicacoes, "LEITE"), carne: calcularPrazoCarencia(aplicacoes, "CARNE"), revisaoLeitePendente: revisarLeite };
+  const revisarAdministracao = aplicacoes.some(a => a.consumoMantido && a.administracaoMantida == null);
+  return { leite: revisarLeite || revisarAdministracao ? { estado: "NAO_INFORMADO" as const } : calcularPrazoCarencia(aplicacoes, "LEITE"), carne: revisarAdministracao ? { estado: "NAO_INFORMADO" as const } : calcularPrazoCarencia(aplicacoes, "CARNE"), revisaoLeitePendente: revisarLeite || revisarAdministracao, revisaoAdministracaoPendente: revisarAdministracao };
 }
 
-export async function anularAplicacao(id: string, propriedadeId: number, motivo: string, usuarioId: number | null) {
+export async function anularAplicacao(id: string, propriedadeId: number, motivo: string, usuarioId: number | null, destinoConsumo?: "DEVOLVER_ESTOQUE" | "MANTER_CONSUMO", administracaoMantida?: boolean | null) {
   return transacaoPecuaria(async (tx) => {
     const existente = await tx.aplicacaoProduto.findFirst({ where: { id, propriedadeId, status: "VALIDO" } });
     if (!existente) throw new RebanhoError("NAO_ENCONTRADO", "Aplicação não encontrada ou já anulada");
     await travarAnimais(tx, [existente.animalId]);
     const atual = await tx.aplicacaoProduto.findUnique({ where: { id } });
     if (atual?.status !== "VALIDO") throw new RebanhoError("CONFLITO", "A aplicação já foi anulada");
-    if (existente.movimentoEstoqueId) await estornarMovimentoTx(tx, existente.movimentoEstoqueId, { usuarioId, observacao: motivo, data: existente.data, propriedadeId });
-    const salva = await tx.aplicacaoProduto.update({ where: { id }, data: { status: "ANULADO", motivoAnulacao: motivo, anuladoEm: new Date() } });
+    const ligadaRotina = await tx.vinculoTarefaProtocolo.count({ where: { aplicacaoId: id, estado: "ATUAL" } }) || await tx.participanteVisita.count({ where: { fatoTipo: "AplicacaoProduto", fatoId: id } });
+    if (ligadaRotina && !destinoConsumo) throw new RebanhoError("VALIDACAO", "Informe se o material foi utilizado/descartado ou se pode ser devolvido", "destinoConsumo");
+    const destino = destinoConsumo ?? "DEVOLVER_ESTOQUE";
+    if (existente.operacaoServicoId) await tx.$queryRaw`SELECT id FROM "public"."Operacao" WHERE id = ${existente.operacaoServicoId} FOR UPDATE`;
+    if (existente.movimentoEstoqueId || existente.operacaoServicoId || existente.itemCompraDiretaId) await exigirPeriodoAberto(tx, propriedadeId, existente.data);
+    if (existente.movimentoEstoqueId && destino === "DEVOLVER_ESTOQUE") await estornarMovimentoTx(tx, existente.movimentoEstoqueId, { usuarioId, observacao: motivo, data: existente.data, propriedadeId });
+    if (destino === "DEVOLVER_ESTOQUE" && administracaoMantida != null) throw new RebanhoError("VALIDACAO", "Devolução exige material não utilizado; não mantenha administração", "administracaoMantida");
+    const salva = await tx.aplicacaoProduto.update({ where: { id }, data: { status: "ANULADO", motivoAnulacao: motivo, anuladoEm: new Date(), consumoMantido: destino === "MANTER_CONSUMO", administracaoMantida: destino === "MANTER_CONSUMO" ? administracaoMantida ?? null : null } });
+    await marcarRegularizacaoFatoTx(tx, { fatoTipo: "APLICACAO", fatoId: id, destinoConsumo: destino, motivo, usuarioId });
     await auditar(tx, { entidade: "AplicacaoProduto", entidadeId: id, animalId: existente.animalId, acao: "ANULACAO", usuarioId,
-      antes: existente, depois: { status: salva.status, motivo } });
+      antes: existente, depois: { status: salva.status, motivo, destinoConsumo: destino, consumoMantido: salva.consumoMantido, administracaoMantida: salva.administracaoMantida } });
     return salva;
   });
 }

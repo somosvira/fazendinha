@@ -12,3 +12,7 @@ describe("atalhos do estoque para fatos V3", () => {
       .toEqual({ href: "/pecuaria/rebanho/nutricao?aba=fechamentos&loteId=lote-1&fechamentoId=fe-1", rotulo: "Fechamento nutricional", area: "pecuaria" });
   });
 });
+
+it("abre tentativa no sítio histórico da saída", () => {
+  expect(destinoDoMovimento({ operacaoId: null, operacaoNumero: null, propriedadeId: 7, vinculo: { tipo: "TENTATIVA_REPRODUTIVA", id: "tentativa-1", animalId: "animal-1" } })).toEqual({ href: "/pecuaria/reproducao?animalId=animal-1&tentativaId=tentativa-1&propriedadeId=7", rotulo: "Procedimento reprodutivo", area: "pecuaria" });
+});

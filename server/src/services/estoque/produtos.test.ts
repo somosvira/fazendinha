@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+  protocoloIatfCount: vi.fn(),
   produtoCreate: vi.fn(), produtoFindUnique: vi.fn(), produtoUpdate: vi.fn(), produtoFindMany: vi.fn(),
   parceiroFindMany: vi.fn(), centroCustoFindMany: vi.fn(), auditoria: vi.fn(), transaction: vi.fn(), itemFindFirst: vi.fn(),
   movimentoCount: vi.fn(), itemOperacaoCount: vi.fn(), operacaoAgricolaCount: vi.fn(),
@@ -10,9 +11,10 @@ const mocks = vi.hoisted(() => ({
 vi.mock("../../db.js", () => {
   const tx = {
     $executeRaw: vi.fn().mockResolvedValue(0),
+    protocoloIatf: {count:mocks.protocoloIatfCount},
     materialGenetico: { count: vi.fn().mockResolvedValue(0) },
     aplicacaoProduto: { count: vi.fn().mockResolvedValue(0) },
-    etapaProtocoloSanitario: { count: vi.fn().mockResolvedValue(0) },
+    etapaProtocolo: { count: vi.fn().mockResolvedValue(0) },
     itemFechamentoConsumo: { count: vi.fn().mockResolvedValue(0) },
     produto: { create: mocks.produtoCreate, findUnique: mocks.produtoFindUnique, update: mocks.produtoUpdate },
     parceiro: { findMany: mocks.parceiroFindMany },
@@ -47,6 +49,7 @@ const input = (over: Partial<ProdutoInput> = {}): ProdutoInput => ({
 describe("cadastro de produtos (estoque)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.protocoloIatfCount.mockResolvedValue(0);
     mocks.produtoCreate.mockImplementation(async ({ data }) => ({ ...base, ...data, fornecedores: [], centrosCusto: [] }));
     mocks.produtoFindUnique.mockResolvedValue({ ...base, fornecedores: [], centrosCusto: [] });
     mocks.produtoUpdate.mockImplementation(async ({ data }) => ({
@@ -61,6 +64,11 @@ describe("cadastro de produtos (estoque)", () => {
     mocks.operacaoAgricolaCount.mockResolvedValue(0);
   });
 
+  it("preserva uso sanitário referenciado por plano IATF ainda sem aplicações", async () => {
+    mocks.protocoloIatfCount.mockResolvedValue(1);
+    await expect(atualizarProduto(uid(1),{usoSanitario:false})).rejects.toMatchObject({code:"CONFLITO",campo:"usoSanitario"});
+    expect(mocks.produtoUpdate).not.toHaveBeenCalled();
+  });
   it("cria produto sem exigir fornecedor nem centro de custo", async () => {
     await criarProduto(input(), 9);
     expect(mocks.produtoCreate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ nome: "Ração", fornecedores: { create: [] }, centrosCusto: { create: [] } }) }));

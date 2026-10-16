@@ -72,7 +72,7 @@ function FormNovoAnimal({ onVoltar }: { onVoltar: () => void }) {
   const [brincoEletronico, setBrincoEletronico] = useState("");
   const [sisbov, setSisbov] = useState("");
   const [sexo, setSexo] = useState<Sexo>("F");
-  const [origem, setOrigem] = useState<Origem>("NASCIDO");
+  const origem: Origem = "COMPRADO";
   const [dataNascimento, setDataNascimento] = useState(hoje());
   const [nascimentoEstimado, setNascimentoEstimado] = useState(false);
   const [dataEntrada, setDataEntrada] = useState(hoje());
@@ -114,8 +114,7 @@ function FormNovoAnimal({ onVoltar }: { onVoltar: () => void }) {
     return () => { ativo = false; };
   }, [mae.tipo, mae.tipo !== "NENHUM" ? mae.id : "", pai.tipo, pai.tipo !== "NENHUM" ? pai.id : "", dataNascimento]);
 
-  const alterarOrigem = (novaOrigem: Origem) => { setOrigem(novaOrigem); if (novaOrigem === "NASCIDO") setDataEntrada(dataNascimento); };
-  const alterarDataNascimento = (valor: string) => { setDataNascimento(valor); if (origem === "NASCIDO") setDataEntrada(valor); };
+  const alterarDataNascimento = (valor: string) => { setDataNascimento(valor); };
   const alterarPropriedade = (valor: string) => { setPropriedadeId(valor); setLoteId(""); };
   // papel reprodutivo e partos só fazem sentido para fêmea (R1) — trocar para macho zera os dois
   const alterarSexo = (novoSexo: Sexo) => { setSexo(novoSexo); if (novoSexo === "M") { setPapelReprodutivo("NENHUM"); setPartosAntesDaEntrada("0"); } };
@@ -139,7 +138,6 @@ function FormNovoAnimal({ onVoltar }: { onVoltar: () => void }) {
     if (!dataNascimento) novosErros.dataNascimento = "Informe a data de nascimento";
     if (!dataEntrada) novosErros.dataEntrada = "Informe a data de entrada";
     else if (dataNascimento && dataEntrada < dataNascimento) novosErros.dataEntrada = "Data de entrada não pode ser anterior ao nascimento";
-    else if (origem === "NASCIDO" && dataEntrada !== dataNascimento) novosErros.dataEntrada = "Animal nascido na propriedade deve ter entrada igual ao nascimento";
     if (!propriedadeId) novosErros.propriedadeId = "Selecione o sítio";
     if (composicao.some((item) => !item.racaId)) novosErros.composicao = "Selecione a raça em todas as linhas de composição";
     else if (!composicaoValida(composicao) || somaComposicao > limiteInformavel) novosErros.composicao = `A parcela informada não pode passar de ${limiteInformavel}/64 e cada raça só pode aparecer uma vez`;
@@ -182,7 +180,8 @@ function FormNovoAnimal({ onVoltar }: { onVoltar: () => void }) {
     <ErrorBox erro={erroCatalogos} />
     {catalogos && <form onSubmit={submeter} noValidate className="pec-novo-animal">
       <div className="pec-form-corpo space-y-7 p-5 md:p-7">
-        <PageHeader titulo="Novo animal" descricao="Identifique o animal e confira o cadastro antes de salvar." />
+        <PageHeader titulo="Novo animal" descricao="Cadastre um animal comprado e confira os dados antes de salvar." />
+        <div className="rounded-lg border border-border bg-surface-2 p-4 text-sm"><p>As crias nascidas na propriedade são cadastradas junto ao parto da mãe.</p><Button secondary type="button" onClick={() => navegarPara("/pecuaria/reproducao?acao=parto")}>Registrar parto e cadastrar cria</Button></div>
         <div id="novo-animal-erro" tabIndex={-1} className="outline-none"><ErrorBox erro={erroGeral} /></div>
         <section>
           <h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Identificação</h3>
@@ -197,9 +196,9 @@ function FormNovoAnimal({ onVoltar }: { onVoltar: () => void }) {
         <section>
           <h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Origem e datas</h3>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            <CampoFormulario id="novo-animal-origem" rotulo="Origem" obrigatorio>{(p) => <select {...p} value={origem} onChange={(e) => alterarOrigem(e.target.value as Origem)} className={classeInput}><option value="NASCIDO">Nascido na propriedade</option><option value="COMPRADO">Comprado</option></select>}</CampoFormulario>
+            <CampoFormulario id="novo-animal-origem" rotulo="Origem" obrigatorio>{(p) => <select {...p} value={origem} disabled className={classeInput}><option value="COMPRADO">Comprado</option></select>}</CampoFormulario>
             <CampoFormulario id="novo-animal-data-nascimento" rotulo="Data de nascimento" obrigatorio erro={erros.dataNascimento}>{(p) => <DatePicker {...p} required max={hoje()} value={dataNascimento} onChange={alterarDataNascimento} className="mt-1.5" />}</CampoFormulario>
-            <CampoFormulario id="novo-animal-data-entrada" rotulo="Data de entrada" obrigatorio erro={erros.dataEntrada}>{(p) => <DatePicker {...p} required max={hoje()} disabled={origem === "NASCIDO"} value={dataEntrada} onChange={setDataEntrada} className="mt-1.5" />}</CampoFormulario>
+            <CampoFormulario id="novo-animal-data-entrada" rotulo="Data de entrada" obrigatorio erro={erros.dataEntrada}>{(p) => <DatePicker {...p} required max={hoje()} value={dataEntrada} onChange={setDataEntrada} className="mt-1.5" />}</CampoFormulario>
             <CampoFormulario id="novo-animal-nascimento-estimado" rotulo="Nascimento estimado">{(p) => <label className="mt-1.5 flex h-[42px] items-center gap-2"><input id={p.id} type="checkbox" aria-label={p["aria-label"]} checked={nascimentoEstimado} onChange={(e) => setNascimentoEstimado(e.target.checked)} /><span className="text-sm font-normal text-ink-3">A data é uma estimativa</span></label>}</CampoFormulario>
             {sexo === "F" && <CampoFormulario id="novo-animal-partos" rotulo="Partos antes da entrada" ajuda="Define a categoria (novilha vira vaca a partir de 1 parto).">{(p) => <input {...p} type="number" min={0} step={1} value={partosAntesDaEntrada} onChange={(e) => setPartosAntesDaEntrada(e.target.value)} className={classeInput} />}</CampoFormulario>}
           </div>

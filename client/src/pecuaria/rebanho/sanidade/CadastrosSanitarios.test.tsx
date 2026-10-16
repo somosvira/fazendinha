@@ -79,7 +79,7 @@ describe("Cadastros sanitários", () => {
     expect((screen.getByLabelText("Formato do resultado") as HTMLSelectElement).value).toBe("NUMERO");
     expect((screen.getByLabelText("Formato do resultado") as HTMLSelectElement).disabled).toBe(true);
     expect((screen.getByLabelText("Unidade (opcional)") as HTMLInputElement).disabled).toBe(true);
-    expect(screen.getByText(/Para mudar esses campos, crie outro tipo de exame/)).toBeTruthy();
+    expect(screen.getByText(/Para mudar esses campos, crie uma nova versão do formato/)).toBeTruthy();
     vi.mocked(reqSanidade).mockRejectedValueOnce(new Error("Tipo de exame com histórico não permite mudar o formato"));
     fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
     await screen.findAllByText("Tipo de exame com histórico não permite mudar o formato");

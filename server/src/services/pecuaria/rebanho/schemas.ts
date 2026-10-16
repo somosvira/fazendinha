@@ -58,7 +58,7 @@ export const cadastrarAnimalSchema = z.object({
   propriedadeId: propriedadeIdObrigatorio,
   loteId: z.string().uuid().nullable().optional(),
   aptidao: z.enum(["LEITE", "CORTE"]),
-  papelReprodutivo: z.enum(["NENHUM", "RECEPTORA", "DOADORA"]).optional().default("NENHUM"),
+  papelReprodutivo: z.enum(["NENHUM", "RECEPTORA", "DOADORA"]).optional(),
   composicao: z.array(composicaoItemSchema).optional().default([]),
   pesoEntradaKg: pesoKgSchema.nullable().optional(),
 }).merge(filiacaoCamposSchema).superRefine(exigirLadoUnico);
@@ -100,7 +100,7 @@ export type MovimentarInput = z.infer<typeof movimentarSchema>;
 export const mudarDestinoSchema = z.object({
   animalId: z.string().uuid().optional(),
   aptidao: z.enum(["LEITE", "CORTE"]),
-  papelReprodutivo: z.enum(["NENHUM", "RECEPTORA", "DOADORA"]).optional().default("NENHUM"),
+  papelReprodutivo: z.enum(["NENHUM", "RECEPTORA", "DOADORA"]).optional(),
   data: dataNaoFutura,
 });
 export type MudarDestinoInput = z.infer<typeof mudarDestinoSchema>;

@@ -31,3 +31,9 @@ describe("contrato de procedimentos de Serviço", () => {
     expect(validarAtribuicoesServico([protocolo, fato({ id: "filho", execucaoId: id })], new Prisma.Decimal(100)).toString()).toBe("0");
   });
 });
+
+it("consumo físico mantido após anulação continua reservado no Serviço", () => {
+  const tentativa = fato({ tipo: "TENTATIVA", status: "ANULADO", consumoMantido: true, valor: "80.10" });
+  expect(validarAtribuicoesServico([tentativa, fato({ valor: "19.90" })], new Prisma.Decimal(100)).toString()).toBe("100");
+  expect(() => validarAtribuicoesServico([tentativa, fato({ valor: "20" })], new Prisma.Decimal(100))).toThrow(/ultrapassam/);
+});

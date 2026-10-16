@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { observacoesExameSchema } from "../exames/formatos.js";
 import { UnidadeMedida } from "@prisma/client";
 
 const uuid = z.string().uuid();
@@ -16,6 +17,7 @@ export const executarAplicacaoEtapaSchema = z.object({ ...base, tipo: z.literal(
   cienciaValidadeDesconhecida: z.boolean().optional(), justificativaSemOrigem: z.string().trim().max(500).nullish(), documentacaoExcepcional: z.boolean().optional(), motivoDocumentacaoExcepcional: z.string().trim().min(5).max(500).nullish(),
 }).strict();
 export const executarExameEtapaSchema = z.object({ ...base, tipo: z.literal("EXAME"), tipoExameId: uuid,
+  resultados: observacoesExameSchema.optional(),
   resultadoTexto: z.string().trim().max(1000).nullish(), resultadoNumero: z.number().finite().nullish(), resultadoOpcao: z.string().trim().max(100).nullish(),
 }).strict();
 export const previaExecucaoEtapasSchema = z.object({ propriedadeId: z.number().int().positive(), itens: z.array(z.discriminatedUnion("tipo", [executarAplicacaoEtapaSchema, executarExameEtapaSchema])).min(1).max(100) }).strict();

@@ -233,6 +233,7 @@ export async function listarSaldos(f?: { centroCustoId?: string; propriedadeId?:
 
 /** Para onde levar o usuário quando o movimento NÃO nasceu de uma operação financeira (saídas automáticas). */
 export type VinculoMovimento =
+  | { tipo: "TENTATIVA_REPRODUTIVA"; id: string; animalId: string }
   | { tipo: "APLICACAO_SANITARIA"; id: string; animalId: string }
   | { tipo: "FECHAMENTO_NUTRICIONAL"; id: string; loteId: string };
 
@@ -301,6 +302,9 @@ export async function listarMovimentos(f?: FiltroMovimentos) {
       },
     }),
   ]);
+  const idsReproducao = [...new Set(ms.filter((m) => m.origem === "REPRODUCAO" || m.reversaoDeId).map((m) => m.reversaoDeId ?? m.id))];
+  const tentativas = idsReproducao.length ? await prisma.tentativaReprodutiva.findMany({ where: { movimentoEstoqueId: { in: idsReproducao } }, select: { id: true, animalId: true, movimentoEstoqueId: true } }) : [];
+  const tentativaPorMovimento = new Map(tentativas.map((t) => [t.movimentoEstoqueId, t]));
   const itens = ms.map((m) => {
     const quantidadeConsulta = idsGrupo ? (m.alocacaoPartidaEstoques ?? []).filter((a) => idsGrupo.includes(a.partidaId)).reduce((s, a) => s.plus(a.quantidade), new Prisma.Decimal(0)) : m.quantidade;
     // Apenas recorte de exibição do valor já gravado, sem recalcular o custo médio
@@ -308,7 +312,13 @@ export async function listarMovimentos(f?: FiltroMovimentos) {
     const valorConsulta = idsGrupo && !m.quantidade.isZero() ? m.valorTotal.mul(quantidadeConsulta).div(m.quantidade).toDecimalPlaces(2) : m.valorTotal;
     let vinculo: VinculoMovimento | null = null;
     let oculto = false;
-    if (m.aplicacaoProduto) {
+    const tentativa = tentativaPorMovimento.get(m.reversaoDeId ?? m.id);
+    if (tentativa) {
+      if (visiveis.pecuaria !== false) vinculo = { tipo: "TENTATIVA_REPRODUTIVA", id: tentativa.id, animalId: tentativa.animalId };
+      else oculto = true;
+    } else if (m.origem === "REPRODUCAO" && visiveis.pecuaria === false) {
+      oculto = true;
+    } else if (m.aplicacaoProduto) {
       if (visiveis.pecuaria !== false) vinculo = { tipo: "APLICACAO_SANITARIA", id: m.aplicacaoProduto.id, animalId: m.aplicacaoProduto.animalId };
       else oculto = true;
     } else if (m.itemFechamentoConsumo) {
@@ -470,6 +480,10 @@ export async function estornarMovimentoTx(
   if (mov.revertidoPor || mov.status === "REVERTIDO") throw new EstoqueError("ORIGEM_AUTOMATICA", "movimento já estornado");
   if (mov.reversaoDeId != null) throw new EstoqueError("ORIGEM_AUTOMATICA", "um movimento de estorno não pode ser estornado novamente");
 
+  if (mov.origem === "REPRODUCAO") {
+    const tentativa = await tx.tentativaReprodutiva.findFirst({ where: { movimentoEstoqueId: mov.id, status: "VALIDO" }, select: { id: true } });
+    if (tentativa) throw new EstoqueError("CONFLITO", "Este consumo pertence a uma tentativa reprodutiva válida. Anule a tentativa no fluxo de reprodução antes de estornar o consumo.");
+  }
   const pid = mov.propriedadeId ?? await propriedadePrincipalId();
   if (mov.tipo === "ENTRADA" || (mov.tipo === "AJUSTE" && mov.quantidade.gt(0))) {
     await conferirSaldoEstornoPartidasTx(tx, alocacoes, pid);

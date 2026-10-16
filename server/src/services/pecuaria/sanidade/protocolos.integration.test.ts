@@ -1,3 +1,4 @@
+import { regularizarTarefaSanitaria } from "../protocolos/regularizacao.js";
 import crypto from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
 import { prisma } from "../../../db.js";
@@ -23,14 +24,14 @@ afterAll(async () => {
   await prisma.auditoriaPecuaria.deleteMany({ where: { OR: [
     { animalId: { in: animalIds } }, { entidadeId: { in: [...protocoloIds, ...tipoIds, ...execucaoIds] } },
   ] } });
-  await prisma.exameAnimal.deleteMany({ where: { animalId: { in: animalIds } } });
+  await prisma.vinculoTarefaProtocolo.deleteMany({ where: { exame: { animalId: { in: animalIds } } } }); await prisma.exameAnimal.deleteMany({ where: { animalId: { in: animalIds } } });
   await prisma.baixaAnimal.deleteMany({ where: { animalId: { in: animalIds } } });
-  await prisma.tarefaSanitaria.deleteMany({ where: { execucaoId: { in: execucaoIds } } });
-  await prisma.execucaoProtocoloSanitario.deleteMany({ where: { id: { in: execucaoIds } } });
-  await prisma.etapaProtocoloSanitario.deleteMany({ where: { protocoloId: { in: protocoloIds } } });
-  await prisma.protocoloSanitario.deleteMany({ where: { id: { in: protocoloIds } } });
+  await prisma.tarefaProtocolo.deleteMany({ where: { execucaoId: { in: execucaoIds } } });
+  await prisma.participacaoProtocolo.deleteMany({ where: { id: { in: execucaoIds } } });
+  await prisma.etapaProtocolo.deleteMany({ where: { protocoloId: { in: protocoloIds } } });
+  await prisma.protocolo.deleteMany({ where: { id: { in: protocoloIds } } });
   await prisma.tipoExame.deleteMany({ where: { id: { in: tipoIds } } });
-  await prisma.destinoAnimal.deleteMany({ where: { animalId: { in: animalIds } } });
+  await prisma.periodoReprodutivoAnimal.deleteMany({ where: { animalId: { in: animalIds } } }); await prisma.destinoAnimal.deleteMany({ where: { animalId: { in: animalIds } } });
   await prisma.localizacaoAnimal.deleteMany({ where: { animalId: { in: animalIds } } });
   await prisma.movimentacaoAnimal.deleteMany({ where: { animalId: { in: animalIds } } });
   await prisma.movimentacao.deleteMany({ where: { propriedadeDestinoId: { in: propriedadeIds } } });
@@ -79,21 +80,21 @@ describeComBanco("protocolo e exame com PostgreSQL", () => {
     const exame = { animalId, propriedadeId, tipoExameId: tipoIds[0], data };
     const chaveProtocolo = crypto.randomUUID();
     const chaveExame = crypto.randomUUID();
-    const antesP = await prisma.execucaoProtocoloSanitario.count({ where: { animalId } });
+    const antesP = await prisma.participacaoProtocolo.count({ where: { animalId } });
     const antesE = await prisma.exameAnimal.count({ where: { animalId } });
     const invalidosP = { chave: crypto.randomUUID(), propriedadeId, itens: [protocolo, { ...protocolo, animalId: segundo.id, protocoloId: crypto.randomUUID() }] };
     const invalidosE = { chave: crypto.randomUUID(), propriedadeId, itens: [exame, { ...exame, animalId: segundo.id, tipoExameId: crypto.randomUUID() }] };
     await expect(iniciarExecucaoColetivo(invalidosP, null)).rejects.toThrow();
     await expect(registrarExameColetivo(invalidosE, null)).rejects.toThrow();
-    expect(await prisma.execucaoProtocoloSanitario.count({ where: { animalId } })).toBe(antesP);
+    expect(await prisma.participacaoProtocolo.count({ where: { animalId } })).toBe(antesP);
     expect(await prisma.exameAnimal.count({ where: { animalId } })).toBe(antesE);
     const p = { chave: chaveProtocolo, propriedadeId, itens: [protocolo] };
     const e = { chave: chaveExame, propriedadeId, itens: [exame] };
     expect(await iniciarExecucaoColetivo(p, null)).toEqual(await iniciarExecucaoColetivo(p, null));
     expect(await registrarExameColetivo(e, null)).toEqual(await registrarExameColetivo(e, null));
-    expect(await prisma.execucaoProtocoloSanitario.count({ where: { animalId } })).toBe(antesP + 1);
+    expect(await prisma.participacaoProtocolo.count({ where: { animalId } })).toBe(antesP + 1);
     expect(await prisma.exameAnimal.count({ where: { animalId } })).toBe(antesE + 1);
-    const execucoes = await prisma.execucaoProtocoloSanitario.findMany({ where: { animalId }, select: { id: true } });
+    const execucoes = await prisma.participacaoProtocolo.findMany({ where: { animalId }, select: { id: true } });
     execucaoIds.push(...execucoes.map((v) => v.id).filter((id) => !execucaoIds.includes(id)));
   });
   it("anulação preserva tentativa; agenda acompanha transferência e fatos mantêm sítio original", async () => {
@@ -108,12 +109,15 @@ describeComBanco("protocolo e exame com PostgreSQL", () => {
     const primeiro = await registrarExame({ animalId: animal.id, propriedadeId: origem, data: "2026-09-01", tipoExameId: tipoIds[0], tarefaId }, null);
     await expect(registrarExame({ animalId: animal.id, propriedadeId: origem, data: "2026-09-02", tipoExameId: tipoIds[0], tarefaId }, null)).rejects.toThrow(/já realizada/);
     await corrigirExame(primeiro.id, origem, { motivo: "Coleta descartada antes da análise", anular: true }, null);
-    expect((await listarTarefas(origem, animal.id))[0].situacao).toBe("PENDENTE");
+    expect((await listarTarefas(origem, animal.id))[0].situacao).toBe("REGULARIZACAO_PENDENTE");
     await movimentar({ animalIds: [animal.id], propriedadeId: destino.id, data: "2026-09-10" }, null);
     expect(await listarTarefas(origem, animal.id)).toEqual([]);
     expect((await listarTarefas(destino.id, animal.id))[0]).toMatchObject({ propriedadeAtualId: destino.id, execucao: { propriedadeId: origem } });
     const entrada = { chave: crypto.randomUUID(), animalId: animal.id, propriedadeId: destino.id, data: "2026-09-10", tipoExameId: tipoIds[0], tarefaId,
       desvio: { motivo: "Coleta refeita após transferência do animal" } };
+    await expect(registrarExame(entrada, null)).rejects.toMatchObject({ code: "CONFLITO", campo: "tarefaId" });
+    await expect(regularizarTarefaSanitaria(tarefaId, { propriedadeId: destino.id, chave: crypto.randomUUID(), acao: "REABRIR", motivo: "Procedimento não realizado", cienciaNaoExecutado: true }, null)).rejects.toMatchObject({ code: "NAO_ENCONTRADO" });
+    await regularizarTarefaSanitaria(tarefaId, { propriedadeId: origem, chave: crypto.randomUUID(), acao: "REABRIR", motivo: "Coleta não realizada, reabrir após transferência", cienciaNaoExecutado: true }, null);
     const segundo = await registrarExame(entrada, null);
     expect((await registrarExame(entrada, null)).id).toBe(segundo.id);
     expect(segundo.id).not.toBe(primeiro.id);

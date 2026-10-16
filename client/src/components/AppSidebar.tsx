@@ -13,7 +13,7 @@
 import "./sidebar-clara.css";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
-import { Beef, HeartPulse,  Leaf, CircleDollarSign, FileText, FilePenLine, Plus, Settings, Wallet, type LucideIcon } from "lucide-react";
+import { Beef, HeartPulse, Baby, ClipboardList, Leaf, CircleDollarSign, FileText, FilePenLine, Plus, Settings, Wallet, type LucideIcon } from "lucide-react";
 import type { Tab } from "./Shell";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
@@ -44,7 +44,7 @@ const ICON: Partial<Record<Tab, JSX.Element>> = {
 
 const ICON_FINANCEIRO: Partial<Record<Tab, LucideIcon>> = { gastos: CircleDollarSign, caixinha: Wallet, cadastros: Settings, plano: Settings, relatorio: FileText };
 
-const ICON_PECUARIA: Partial<Record<Tab, LucideIcon>> = { "pec-rebanho": Beef, "pec-sanidade": HeartPulse, "pec-nutricao": Leaf };
+const ICON_PECUARIA: Partial<Record<Tab, LucideIcon>> = { "pec-rebanho": Beef, "pec-sanidade": HeartPulse, "pec-nutricao": Leaf, "pec-reproducao": Baby, "pec-visitas": ClipboardList };
 
 type AreaTrabalhoId = "pecuaria";
 type NavItem = { id: Tab; label: string };
@@ -69,6 +69,8 @@ const AREAS_TRABALHO: AreaTrabalho[] = [
       { id: "pec-rebanho", label: "Rebanho" },
       { id: "pec-sanidade", label: "Sanidade" },
       { id: "pec-nutricao", label: "Nutrição" },
+      { id: "pec-reproducao", label: "Reprodução" },
+      { id: "pec-visitas", label: "Visitas veterinárias" },
     ],
   },
 

@@ -58,8 +58,8 @@ describe("ciclos de protocolos", () => {
   it("etapas separam contagens e ações de cada tarefa independem do filtro de animal", async () => {
     const executar = vi.fn(), acao = vi.fn();
     render(<AgendaRodadas filtros={{ pagina: 1, animalId: "" }} podeLancar rodadaId="r" recarregarToken={0} onAbrir={vi.fn()} onExecutar={executar} onAcao={acao} />);
-    await screen.findAllByText("7 previstas · 5 pendentes · 2 realizadas · 0 dispensadas · 1 atrasadas · 0 canceladas");
-    expect(screen.getAllByText("1 previstas · 1 pendentes · 0 realizadas · 0 dispensadas · 0 atrasadas · 0 canceladas").length).toBeGreaterThan(0);
+    await screen.findAllByText("7 previstas · 5 pendentes · 2 realizadas · 0 dispensadas · 1 atrasadas · 0 canceladas · 0 a regularizar · 0 encerradas sem substituição");
+    expect(screen.getAllByText("1 previstas · 1 pendentes · 0 realizadas · 0 dispensadas · 0 atrasadas · 0 canceladas · 0 a regularizar · 0 encerradas sem substituição").length).toBeGreaterThan(0);
     fireEvent.click(screen.getAllByRole("button", { name: "Abrir tarefas da etapa" })[0]);
     fireEvent.click((await screen.findAllByRole("button", { name: "Executar tarefa" }))[0]);
     expect(executar.mock.calls[0][0][0].execucao.animalId).toBe("a");

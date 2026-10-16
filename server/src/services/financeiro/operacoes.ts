@@ -10,6 +10,7 @@ import type { z } from "zod";
 import type { liquidacaoSchema, operacaoSchema, simulacaoParcelasSchema, transacaoAvulsaSchema, transferenciaSchema } from "./schemas.js";
 import { conferirReenvioOperacaoTx, hashConfirmacao } from "./idempotencia.js";
 import { procedimentosOperacaoServico } from "../pecuaria/sanidade/servicos.js";
+import { tentativaComAtribuicaoServico, aplicacaoComConsumoOuAtribuicao } from "../pecuaria/reproducao/atribuicoes-servico.js";
 
 type OperacaoInput = z.infer<typeof operacaoSchema> & { propriedadeId: number; usuarioId?: number | null };
 type LiquidacaoInput = z.infer<typeof liquidacaoSchema> & { usuarioId?: number | null };
@@ -424,11 +425,14 @@ export async function estornarOperacao(id: string, motivo: string, contexto: Con
     if (!operacao) throw new FinanceiroError("NAO_ENCONTRADO", "Operação não encontrada");
     if (operacao.status === "CANCELADA") throw new FinanceiroError("JA_REVERTIDO", "A operação já foi cancelada");
     const [aplicacaoVinculada, exameVinculado, protocoloVinculado] = await Promise.all([
-      tx.aplicacaoProduto.findFirst({ where: { status: "VALIDO", OR: [{ operacaoServicoId: id }, { itemCompraDireta: { operacaoId: id } }] }, select: { id: true } }),
+      tx.aplicacaoProduto.findFirst({ where: { AND: [aplicacaoComConsumoOuAtribuicao, { OR: [{ operacaoServicoId: id }, { itemCompraDireta: { operacaoId: id } }] }] }, select: { id: true } }),
       tx.exameAnimal.findFirst({ where: { status: "VALIDO", operacaoServicoId: id }, select: { id: true } }),
-      tx.execucaoProtocoloSanitario.findFirst({ where: { canceladaEm: null, operacaoServicoId: id }, select: { id: true } }),
+      tx.participacaoProtocolo.findFirst({ where: { canceladaEm: null, operacaoServicoId: id }, select: { id: true } }),
     ]);
     if (aplicacaoVinculada || exameVinculado || protocoloVinculado) throw new FinanceiroError("CONFLITO", "Esta operação financia aplicações, exames ou protocolos ativos. Revise os vínculos antes de cancelá-la.");
+    if (operacao.tipo === "SERVICO" && await tx.tentativaReprodutiva.findFirst({ where: { ...tentativaComAtribuicaoServico, operacaoServicoId: id }, select: { id: true } })) {
+      throw new FinanceiroError("CONFLITO", "Esta operação financia uma tentativa reprodutiva válida ou com consumo mantido. Revise o vínculo na reprodução antes de cancelar o Serviço.");
+    }
     await exigirPeriodoAberto(tx, operacao.propriedadeId, new Date());
 
     for (const transacao of operacao.transacoes.filter((item) => item.status === "CONFIRMADA" && item.tipo !== "REVERSAO")) {

@@ -40,8 +40,9 @@ export interface SaldoDTO { usoGenetico?: boolean; usoSanitario?: boolean; usoNu
   custoMedio: number | null;
   /** saldo × custoMedio (0 quando custoMedio é null). */
   valor: number | null; minimoEstoque: number | null; abaixoMinimo: boolean; }
-export type OrigemMovimento = "COMPRA" | "CONSUMO_DIRETO" | "TRANSFERENCIA" | "PRODUCAO" | "DEVOLUCAO" | "BONIFICACAO" | "INVENTARIO_INICIAL" | "PERDA" | "AJUSTE_INVENTARIO" | "APLICACAO" | "SANIDADE" | "NUTRICAO" | "IDENTIFICACAO_PARTIDA";
+export type OrigemMovimento = "COMPRA" | "CONSUMO_DIRETO" | "TRANSFERENCIA" | "PRODUCAO" | "DEVOLUCAO" | "BONIFICACAO" | "INVENTARIO_INICIAL" | "PERDA" | "AJUSTE_INVENTARIO" | "APLICACAO" | "SANIDADE" | "NUTRICAO" | "IDENTIFICACAO_PARTIDA" | "REPRODUCAO";
 export type VinculoMovimento =
+  | { tipo: "TENTATIVA_REPRODUTIVA"; id: string; animalId: string }
   | { tipo: "APLICACAO_SANITARIA"; id: string; animalId: string }
   | { tipo: "FECHAMENTO_NUTRICIONAL"; id: string; loteId: string };
 export interface MovimentoDTO { id: string; propriedadeId?: number | null; seq: number; produtoId: string; produto: string; materialGeneticoId: string | null; centrosCusto: { id: string; nome: string }[]; tipo: "ENTRADA" | "SAIDA" | "AJUSTE"; origem: OrigemMovimento; status: "CONFIRMADO" | "REVERTIDO"; reversaoDeId: string | null; data: string; quantidade: number; custoUnitario: number | null; valorTotal: number | null; fornecedor: string | null; observacao: string | null;
@@ -102,7 +103,7 @@ export interface ProdutoInput {
   perfilSanitario?: { carenciaLeiteHoras: number | null; carenciaCarneHoras: number | null; viaPadrao?: string | null; referenciaTecnica?: string | null };
   perfilNutricional?: { materiaSecaPercentual: number | null };
 }
-export const listarProdutos = (f?: { uso?: UsoProduto; q?: string; ativo?: boolean }) => req<ProdutoDTO[]>(`/estoque/produtos${qs(f)}`);
+export const listarProdutos = (f?: { uso?: UsoProduto; q?: string; ativo?: boolean }, propriedadeId?: number) => req<ProdutoDTO[]>(`/estoque/produtos${qs(f)}`, undefined, propriedadeId);
 export const criarProduto = (p: ProdutoInput) => req<ProdutoDTO>(`/estoque/produtos`, { method: "POST", body: JSON.stringify(p) });
 export const editarProduto = (id: string, p: Partial<ProdutoInput>) => req<ProdutoDTO>(`/estoque/produtos/${id}`, { method: "PATCH", body: JSON.stringify(p) });
 

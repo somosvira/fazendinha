@@ -2,7 +2,7 @@ import { dataSanitaria, unidadeSanitaria } from "./rotulos";
 type ExibicaoExecucao = { planejado: Record<string, string | null>; realizado: Record<string, string | null> };
 export type PreviaExecucao = {
   fingerprint: string; temDesvios: boolean;
-  itens: Array<{ tarefaId: string; animalId: string; tipo: string; referencia: string; planejado: Record<string, unknown>; realizado: Record<string, unknown>; exibicao?: ExibicaoExecucao; diferencas: Array<{ campo: string; planejado: unknown; realizado: unknown }>; motivo: string | null; motivoObrigatorio: boolean; carencia: { estadoLeite: string; estadoCarne: string; leiteHoras: number | null; carneHoras: number | null } | null }>;
+  itens: Array<{ tarefaId: string; animalId: string; tipo: string; referencia: string; aferido?: boolean; planejado: Record<string, unknown>; realizado: Record<string, unknown>; exibicao?: ExibicaoExecucao; diferencas: Array<{ campo: string; planejado: unknown; realizado: unknown }>; motivo: string | null; motivoObrigatorio: boolean; carencia: { estadoLeite: string; estadoCarne: string; leiteHoras: number | null; carneHoras: number | null } | null }>;
   consumos: Array<{ produtoId: string; produtoNome?: string | null; partidaId: string | null; partidaNome?: string | null; partidaValidade?: string | null; itemCompraDiretaId: string | null; unidade: string; quantidade: string }>;
 };
 const rotulos: Record<string, string> = { data: "Data", produtoId: "Produto", dose: "Dose", unidadeDose: "Unidade", via: "Via", tipoAplicacaoId: "Tipo de aplicação", tipoExameId: "Tipo de exame" };
@@ -26,8 +26,8 @@ export function ConferenciaExecucao({ previa, animais }: { previa: PreviaExecuca
     <h3 className="font-semibold">Planejado e realizado</h3>
     {previa.itens.map((i) => <section key={i.tarefaId} className="rounded-lg border border-border p-3">
       <strong>{animais.find((a) => a.id === i.animalId)?.brinco ?? "Animal não identificado"}</strong>
-      {i.referencia === "LEGADO_SEM_SNAPSHOT" && <p>Planejamento antigo sem todos os parâmetros congelados.</p>}
-      {i.diferencas.length ? <ul className="list-inside list-disc">{i.diferencas.map((d) => <li key={d.campo}>{rotulos[d.campo] ?? d.campo}: {valorComparacaoExecucao(d.campo, d.planejado, i.exibicao?.planejado[d.campo])} → {valorComparacaoExecucao(d.campo, d.realizado, i.exibicao?.realizado[d.campo])}</li>)}</ul> : <p>Realização conforme o planejamento.</p>}
+      {(i.aferido === false || i.referencia === "LEGADO_SEM_SNAPSHOT") && <p>Planejamento antigo sem todos os parâmetros congelados. Conformidade não aferida.</p>}
+      {i.diferencas.length ? <ul className="list-inside list-disc">{i.diferencas.map((d) => <li key={d.campo}>{rotulos[d.campo] ?? d.campo}: {valorComparacaoExecucao(d.campo, d.planejado, i.exibicao?.planejado[d.campo])} → {valorComparacaoExecucao(d.campo, d.realizado, i.exibicao?.realizado[d.campo])}</li>)}</ul> : i.aferido !== false && i.referencia !== "LEGADO_SEM_SNAPSHOT" && <p>Realização conforme o planejamento.</p>}
       {i.motivoObrigatorio && <p>Motivo: {i.motivo ?? "Informe o motivo do desvio antes de confirmar."}</p>}
       {i.carencia && <p>Carência revisada: leite {carenciaRevisada(i.carencia.estadoLeite, i.carencia.leiteHoras)} · carne {carenciaRevisada(i.carencia.estadoCarne, i.carencia.carneHoras)}</p>}
     </section>)}

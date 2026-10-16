@@ -34,7 +34,7 @@ Itens, compromissos, transações, movimentos físicos e documentos só existem 
 - Ajuste e perda precisam de justificativa e trilha. Estorno conserva o original e seu inverso. O cálculo físico considera o par conforme `statusSaldoEstoque`/`estoque.calc.ts`; não filtre indiscriminadamente apenas confirmados.
 - `PartidaProduto` é o lote do produto, distinto do lote de animais. Saldo rastreado exige alocação por partida, compatibilidade de unidade e tratamento explícito de validade desconhecida/vencida na data do fato.
 - Ativar rastreio de estoque existente exige prévia; não altera saldo/valor nem cria lote vazio. A identificação de partidas redistribui o histórico sem efeito líquido. Não desative rastreio para contornar uma validação.
-- Aplicações sanitárias/fechamentos nutricionais usam o estoque único. Origens de compra direta, aplicação documentada e reconciliação têm efeitos próprios; não substitua uma pela outra para criar saldo fictício.
+- Aplicações sanitárias, tentativas reprodutivas V4 e fechamentos nutricionais usam o estoque único. Origens de compra direta, aplicação documentada e reconciliação têm efeitos próprios; não substitua uma pela outra para criar saldo fictício.
 - Centros, categorias e movimentos de atividades agrícolas anteriores podem permanecer. A remoção dos módulos não autoriza apagar a história financeira ou seus cadastros pelo nome.
 
 ## Permissões e documentos
@@ -46,3 +46,11 @@ Documentos e relatórios usam R2 e chaves persistidas. Rascunhos com anexo e ope
 ## Validação
 
 Invariantes, estornos e concorrência ficam nos testes ao lado dos serviços e em `server/tests/financeiro/invariantes.test.ts`. A bateria `test:financeiro:integration` prepara seu próprio banco temporário com migrations. Não depende de seeds antigos nem de checklist de PR. Consulte [desenvolvimento](desenvolvimento.md) para o cenário integrado atual.
+
+## Reprodução V4 e Serviços
+
+Tentativas de IA/TE/cobertura podem integrar os procedimentos de um Serviço confirmado, com valor individual opcional e vínculo navegável até o fato. A soma das atribuições inclui reprodução, aplicações, exames e protocolos sanitários, respeitando o valor total do Serviço e a permissão de ver valores. O vínculo não altera quantidade física nem cria nova despesa.
+
+Um Serviço com tentativa válida vinculada não pode ser cancelado antes de revisar seus procedimentos. O consumo reprodutivo também não pode ser estornado isoladamente pelo Estoque: a correção parte da reprodução e distingue devolução por erro de lançamento de material efetivamente usado ou descartado. Períodos fechados e o histórico dos movimentos permanecem protegidos.
+
+Tentativas e aplicações anuladas com consumo mantido continuam ocupando o limite atribuído ao Serviço e impedem cancelamento sem revisão dos vínculos. Material incluído no Serviço pode manter seu consumo sem movimento fictício de estoque. Anular uma tentativa vinculada verifica tanto o período do fato quanto o do Serviço; nenhum retry pode retirar a atribuição de um período fechado. Aplicação de compra direta com consumo mantido conserva a quantidade destinada, impedindo sua reutilização por outra aplicação.
