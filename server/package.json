@@ -20,6 +20,7 @@
     "test:watch": "vitest",
     "seed": "tsx --env-file=.env prisma/seedatev3.ts",
     "seedatev3": "tsx --env-file=.env prisma/seedatev3.ts",
+    "seedatev3:qa": "tsx --env-file=.env prisma/seedatev3-qa.ts",
     "seedatev3:planner": "tsx --env-file=.env prisma/seedatev3-planner.ts",
     "seedatev3:typecheck": "tsc -p tsconfig.seedatev3.json",
     "seed:pecuaria": "tsx --env-file=.env prisma/seed-pecuaria.ts",

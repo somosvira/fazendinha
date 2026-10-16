@@ -74,7 +74,7 @@ O único banco local é `fazendinha_seedatev3`, com sua data-base/manifesto pres
 
 Uma feature nova deve declarar fatos, histórico/snapshots, sítio na data, efeitos em estoque/financeiro, permissões e critérios de validação. Verifique schema, migrations e testes antes de afirmar disponibilidade. Atualize este contrato quando mudar o comportamento; planos antigos de versão não direcionam a implementação atual.
 
-O contrato vigente da V4 está em [Reprodução e visitas](reproducao.md). O caderno local de estudo não substitui o contrato nem comprova homologação.
+O contrato vigente da V4 está em [Reprodução e visitas](reproducao.md). O [caderno de estudo da V4](artefatos/caderno-estudo-v4.html) explica o escopo, as entidades, os fluxos de uso e os limites da revisão `c31caf83`, com perguntas e anotações para discussão. Inclui uma síntese técnica da reprodução leiteira com fontes, as respostas às anotações de 16/10/2026 e a [consolidação para a próxima implementação](artefatos/caderno-estudo-v4.html#consolidacao-implementacao), com custo por lote consumido, atribuição sem duplicação, protocolos e indicadores. A consolidação será tratada em follow-up ao PR #319; o [roteiro de testes](artefatos/testes-v4-guia.html#preparacao-qa) referencia o complemento QA no banco de desenvolvimento. Distingue decisões de escopo, propostas e implementação. É um retrato datado; não substitui o contrato nem comprova homologação.
 
 ## Navegação e apresentação
 

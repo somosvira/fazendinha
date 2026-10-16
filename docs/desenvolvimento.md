@@ -70,6 +70,46 @@ Os três produtos novos têm estoque demonstrativo próprio nos dois sítios, vi
 
 Reexecutar conclui somente etapas ainda não preparadas, sem restaurar resultados que alguém tenha alterado na interface. `--verificar` usa conexões somente leitura, confere referências e filiação e informa totais do complemento e grupos atuais. Essa conferência não substitui a homologação manual do planner, da impressão ou do atendimento; não altera marcações de roteiros.
 
+## Complemento de homologação V4 e Playwright
+
+O [roteiro V4](pecuaria/artefatos/testes-v4-guia.html#preparacao-qa) relaciona cada caso à preparação e separa automação, apoio técnico e aceite humano. O [caderno de estudo](pecuaria/artefatos/caderno-estudo-v4.html) explica a entrega; sua consolidação final contém propostas para PRs de follow-up, não critérios já implementados no PR #319.
+
+Depois do complemento do planner, preparar **uma única vez no mesmo banco**:
+
+```bash
+pnpm --filter rionovo-server run seedatev3:qa
+pnpm --filter rionovo-server run seedatev3:qa --verificar
+pnpm --filter rionovo-server run seedatev3:typecheck
+```
+
+`server/prisma/seedatev3-qa.ts` reutiliza a validação de destino local, migrations, identidade e trava do seed. Seu manifesto é `server/.seedatev3/qa-v4/manifesto.json`. Recusa registros QA sem manifesto; nunca reinicia a carga nem restaura fatos alterados na homologação. Não precisa de arquivos no R2. Os manifestos base/planner são lidos e conferidos, sem gravação. Saldos existentes não são usados na preparação: produtos QA têm saldo e custo explícitos próprios.
+
+São três sítios **QA V4 · Homologação A/B/C** e animais identificados por `QA4-`: 48 casos individuais; lote de 209 fêmeas e quatro machos (101–313); três animais para importação sintética (801–803); quatro crias vivas com identificação provisória. Há grupo de 120 diagnósticos pendentes, sanidade sobreposta, participações IATF ausentes/únicas/ambíguas/retiradas, dia sem horário, formato de exame publicado/mutável, três estados de política, parto e pós-parto, estoque válido/vencido/sem validade/sem saldo e Serviço para atribuição. O roteiro informa as pré-condições específicas e os ramos a construir pela interface.
+
+A referência **D** é a `dataBase` do manifesto QA, congelada na primeira execução. No sítio A há política desde D−600; B tem apenas uma vigência posterior a D; C não tem configuração. Não avançar datas da carga para esconder pendências. O período fechado é uma fixture auditada somente no sítio A, no mês anterior a D. Não fechar nem reabrir períodos de Principal/Destino para testar.
+
+| Perfil adicional | E-mail | Permissões |
+|---|---|---|
+| Consulta QA | `qa.v4.consulta@example.test` | Pecuária, leitura/exportação; sem área Financeiro |
+| Operador QA | `qa.v4.operador@example.test` | Pecuária, lançamento, sem valores |
+| Financeiro QA | `qa.v4.financeiro@example.test` | Financeiro, sem acesso à Pecuária |
+
+Senha inicial fictícia igual à base: `SeedateV3!Local2026`; dono continua sendo o acesso base. Não há lista de sítios permitidos no cadastro de usuário atual. Testar escopo do sítio nos fatos/requisições e proteção de valores não comprova ACL por usuário e sítio.
+
+As visitas QA incluem uma ficha preparada, uma encerrada e uma de **Compatibilidade anterior**. Esta última reproduz atividade anterior sem protocolo, rascunho com participação retirada e impressão com contexto incompleto. Apenas essas fixtures recebem preparação administrativa auditada; o seed não reescreve impressões reais. Os demais fatos são criados pelos serviços do domínio. Retirada, falha de rede, concorrência, correção e reenvio nos casos do roteiro devem ser exercitados no momento da execução, não aprovados pela existência da massa.
+
+Para V4-51, o complemento gera `carga-sintetica.json` e `mapa-sintetico.json` em sua pasta ignorada. São dados inventados, com identidade `QA_V4_SINTETICO`, sem consumo de estoque. O seed **não importa** esse arquivo. Primeiro executar a prévia, preservando os relatórios:
+
+```bash
+pnpm --filter rionovo-server run import:pecuaria:v4 --arquivo=.seedatev3/qa-v4/carga-sintetica.json --mapeamento=.seedatev3/qa-v4/mapa-sintetico.json --relatorio=.seedatev3/qa-v4/previa-sintetica.json
+```
+
+Aplicação/reenvio pertencem ao caso técnico, somente sobre essas fixtures e no banco autorizado. A importação real do IDEAGRI não faz parte da homologação.
+
+Use o MCP Playwright configurado no Codex, com o app iniciado em `http://localhost:41875`. Cada execução deve registrar commit, data-base, perfis, IDs e evidências por caso em `output/qa-v4/<execução>/`, fora do Git. Sessões independentes para concorrência/permissões; nunca publicar cookies ou tokens. Não trocar o roteiro por chamadas diretas à API sem declarar que se trata de apoio técnico. Preservar marcações/exportações anteriores e não aprovar o aceite humano V4-52 automaticamente.
+
+`--verificar` dos complementos confere seus registros, sem restaurar estado. O verificador principal V3 conserva contagens globais do cenário original e não é um oráculo para o banco ampliado; não remover dados para satisfazer essas contagens. A homologação é feita com os verificadores dos complementos e com os casos do roteiro.
+
 ## Guia manual V3
 
 O [guia](pecuaria/artefatos/testes-v3-guia.html) conserva os casos, marcações e notas anteriores. A preparação histórica dependia de outro banco e está desativada no desenvolvimento local: **o único banco permitido é `fazendinha_seedatev3`**. Não crie `fazendinha_v3_teste` nem use a preparação antiga para limpar ou substituir o cenário atual.
