@@ -49,3 +49,17 @@ it("libera permissão concedida depois de desmontar a tela", async () => {
   let gravar!: Promise<void>; act(() => { gravar = result.current.iniciar(); }); unmount();
   await act(async () => { resolver(stream); await gravar; }); expect(stopTrack).toHaveBeenCalled();
 });
+it("falha atrasada de uma solicitação cancelada não interrompe a nova gravação", async () => {
+  const { stopTrack, getUserMedia } = preparar(); const concluir = vi.fn(); const erro = vi.fn();
+  let rejeitar!: (e: Error) => void;
+  getUserMedia.mockReturnValueOnce(new Promise((_resolve, reject) => { rejeitar = reject; }));
+  const { result } = renderHook(() => useGravacao(concluir, erro));
+  let antiga!: Promise<void>;
+  act(() => { antiga = result.current.iniciar(); });
+  act(() => result.current.cancelar());
+  await act(async () => result.current.iniciar());
+  await act(async () => { rejeitar(new Error("Permissão negada")); await antiga; });
+  expect(stopTrack).not.toHaveBeenCalled(); expect(erro).not.toHaveBeenCalled();
+  expect(result.current.gravando).toBe(true);
+  act(() => result.current.parar()); expect(concluir).toHaveBeenCalledOnce();
+});

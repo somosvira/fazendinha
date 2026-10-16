@@ -52,8 +52,8 @@ export function useGravacao(aoConcluir: (arquivo: File) => void, aoErro: (mensag
       };
       rec.onerror = () => { if (atual !== geracao.current) return; cancelar(); callbacks.current.aoErro("Não foi possível gravar. Tente novamente ou digite a pergunta."); };
       rec.onstop = () => {
-        liberar(); gravador.current = null;
         if (atual !== geracao.current) return;
+        liberar(); gravador.current = null;
         setGravando(false);
         const mime = rec.mimeType || partes[0]?.type || "audio/webm";
         const arquivo = new File(partes, `pergunta.${mime.includes("mp4") ? "mp4" : mime.includes("ogg") ? "ogg" : "webm"}`, { type: mime });
@@ -63,8 +63,9 @@ export function useGravacao(aoConcluir: (arquivo: File) => void, aoErro: (mensag
       rec.start(1000); setGravando(true);
       tempo.current = setTimeout(() => { if (rec.state !== "inactive") rec.stop(); }, 60_000);
     } catch {
+      if (atual !== geracao.current) return;
       liberar(); gravador.current = null;
-      if (atual === geracao.current) callbacks.current.aoErro("Não consegui acessar o microfone. Permita o acesso no navegador ou envie um arquivo de áudio.");
+      callbacks.current.aoErro("Não consegui acessar o microfone. Permita o acesso no navegador ou envie um arquivo de áudio.");
     } finally { if (atual === geracao.current) setSolicitando(false); }
   }
   return { gravando, solicitando, suportado, iniciar, cancelar, parar: () => { if (gravador.current?.state === "recording") gravador.current.stop(); } };
