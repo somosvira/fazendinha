@@ -27,7 +27,15 @@ CREATE INDEX "ParcelaValorizacaoEstoque_baseId_idx" ON public."ParcelaValorizaca
 CREATE FUNCTION public.conferir_valorizacao_estoque() RETURNS trigger LANGUAGE plpgsql AS $$
 DECLARE mid TEXT; m RECORD; b RECORD; q NUMERIC; v NUMERIC; sinal INTEGER;
 BEGIN
-  mid := CASE WHEN TG_TABLE_NAME = 'MovimentoEstoque' THEN NEW."id" ELSE COALESCE(NEW."movimentoEstoqueId", OLD."movimentoEstoqueId") END;
+  -- Cada tabela tem um formato de registro próprio. Um CASE na mesma expressão
+  -- resolve também os campos do ramo não escolhido e falha para MovimentoEstoque.
+  IF TG_TABLE_NAME = 'MovimentoEstoque' THEN
+    mid := NEW."id";
+  ELSIF TG_OP = 'DELETE' THEN
+    mid := OLD."movimentoEstoqueId";
+  ELSE
+    mid := NEW."movimentoEstoqueId";
+  END IF;
   SELECT * INTO m FROM public."MovimentoEstoque" WHERE "id"=mid;
   IF NOT FOUND OR m."metodoValorizacao"='LEGADO' THEN RETURN NULL; END IF;
   IF m."propriedadeId" IS NULL THEN RAISE EXCEPTION 'movimento valorizado exige sítio' USING ERRCODE='23514'; END IF;
