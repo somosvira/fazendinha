@@ -15,6 +15,23 @@ function gestacao(d: DadosIndicadores, tipo: "PERDA" | "ABORTO" | "NATIMORTO" | 
   if (tipo !== "PERDA") d.elegibilidade.partos.push({ id: "parto", animalId: "a", propriedadeId: 7, data: dia(encerramento), tipo, desfecho: tipo === "ABORTO" ? "ABORTO" : "NASCIMENTO", status: "VALIDO", incluidoSaldoAnterior: false, gestacaoId: "g", observacao: null, crias: tipo === "NASCIMENTO" ? [{ viva: false }, { viva: true }] : tipo === "NATIMORTO" ? [{ viva: false }] : [] });
 }
 describe("adapter dos indicadores — contraprovas independentes com fatos reais", () => {
+  it("retorno ao sítio recompõe a fila atual, preservando a saída da coorte e a baixa posterior", () => {
+    const d = dados();
+    d.elegibilidade.iniciais.push({ id: "inicial", animalId: "a", data: dia("2026-01-01"), situacao: "APTA", status: "VALIDO", aptaDesde: dia("2026-01-10"), criadoEm: dia("2026-01-01") });
+    d.elegibilidade.vinculos.push({ id: "v", animalId: "a", chaveCiclo: "INICIAL", inicioCiclo: dia("2026-01-01"), politicaId: null });
+    d.elegibilidade.decisoes.push({ id: "liberar", vinculoCicloId: "v", data: dia("2026-01-10"), tipo: "LIBERAR", aptaDesde: dia("2026-01-10"), status: "VALIDO", criadoEm: dia("2026-01-10") });
+    d.elegibilidade.localizacoes[0].ate = dia("2026-01-20");
+    d.elegibilidade.localizacoes.push(
+      { id: "fora", animalId: "a", propriedadeId: 8, loteId: null, desde: dia("2026-01-20"), ate: dia("2026-01-25") },
+      { id: "retorno", animalId: "a", propriedadeId: 7, loteId: "lote-primeiro", desde: dia("2026-01-25"), ate: null },
+    );
+    const r = calcularAcompanhamentoDoConjunto(d, filtros());
+    expect(r.espera.coorte[0]).toMatchObject({ saidaEm: "2026-01-20", esperaObservadaAte: "2026-01-20" });
+    expect(r.espera.filaAtual.map(l => l.animalId)).toEqual(["a"]);
+    d.elegibilidade.baixas.push({ animalId: "a", data: dia("2026-01-26"), estornadaEm: null });
+    expect(calcularAcompanhamentoDoConjunto(d, filtros()).espera.filaAtual).toHaveLength(0);
+  });
+
   it("animal sem início comprovado permanece como pendência sem ciclo fictício", () => {
     const r = calcularAcompanhamentoDoConjunto(dados(), filtros());
     expect(r.espera.coorte).toEqual([]); expect(r.espera.filaAtual).toEqual([]);

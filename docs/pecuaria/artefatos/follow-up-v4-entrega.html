@@ -16,12 +16,12 @@
 </aside><main id="conteudo">
 <header><div class="eyebrow">Pecuária V4 · follow-up</div><h1>Do custo do insumo ao acompanhamento do animal.</h1>
 <p class="lead">Explicação de produto, conciliação de valores e estrutura da implementação.</p>
-<p class="state" id="estado-entrega">EM IMPLEMENTAÇÃO · Documento em construção. Não comprova funcionalidades entregues.</p>
+<p class="state" id="estado-entrega">CÓDIGO IMPLEMENTADO · Validação técnica e homologação de campo são etapas distintas.</p>
 <div class="toolbar"><button type="button" onclick="window.print()">Imprimir / salvar PDF</button><a href="caderno-estudo-v4.html#consolidacao-implementacao">Decisões e caderno de estudo</a></div></header>
 
 <section id="entrega"><div class="eyebrow">01 · Estado da entrega</div><h2>Um PR, quatro entregas relacionadas.</h2>
-<p>Branch <code>codex/pecuaria-v4-follow-up</code>, baseada na <code>main</code> após integração do <a href="https://github.com/somosvira/fazendinha/pull/319">PR #319</a>. Implementação reunida no <a href="https://github.com/somosvira/fazendinha/pull/322">PR #322</a>, ainda em elaboração. Trabalho em checkout separado, preservando o aplicativo e o banco compartilhados.</p>
-<div id="estado-pacotes" class="callout open"><p>As quatro frentes já têm código e interface em integração: valorização, composição de custos, operação reprodutiva e indicadores. A validação completa ainda está em andamento. A aprovação automatizada final e a homologação de campo continuam distintas.</p>
+<p>Branch <code>codex/pecuaria-v4-follow-up</code>, baseada na <code>main</code> após integração do <a href="https://github.com/somosvira/fazendinha/pull/319">PR #319</a>. Implementação reunida no <a href="https://github.com/somosvira/fazendinha/pull/322">PR #322</a>, com revisão técnica e homologação de campo tratadas separadamente. O desenvolvimento preserva o banco compartilhado.</p>
+<div id="estado-pacotes" class="callout open"><p>As quatro frentes têm código e interface: valorização, composição de custos, operação reprodutiva e indicadores. As correções de corte histórico, transferência/retorno nos indicadores e evidências de perdas integram esta conclusão técnica. O PR permanece separado da homologação de campo e da publicação.</p>
 </div></section>
 
 <section id="produto"><div class="eyebrow">02 · Direção de produto aprovada</div><h2>Registrar uma vez e consultar com contexto.</h2>
@@ -72,7 +72,7 @@
 </section>
 
 <section id="entidades"><div class="eyebrow">04 · Estrutura real</div><h2>Entidades criadas, alteradas e reutilizadas.</h2>
-<div id="diagrama-entidades"><p class="state">Estrutura presente no código em elaboração. Migrations em validação no CI externo; nenhuma aplicação no banco local ou em produção.</p>
+<div id="diagrama-entidades"><p class="state">Estrutura presente no código. As três migrations do follow-up estão aplicadas no banco local de desenvolvimento; isso não representa aplicação em produção.</p>
 
 <figure><div class="figure-wrap" tabindex="0" role="region" aria-label="Relações de valorização; deslize horizontalmente em telas estreitas"><svg class="architecture" viewBox="0 0 1100 650" role="img" aria-labelledby="er-titulo er-desc"><title id="er-titulo">Bases e parcelas de valorização do estoque</title><desc id="er-desc">Produto, sítio e grupo de validade identificam uma base. Movimento possui várias parcelas, cada parcela pertence a uma base. Base pode referenciar movimento de origem. A alocação física por partida continua existente.</desc><defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#56675e"/></marker></defs>
 <path class="edge" d="M330 90H430V240H470"/><path class="edge" d="M330 225H390V270H470"/><path class="edge" d="M330 360H420V305H470"/>
@@ -170,14 +170,14 @@
 <section id="reproducao"><div class="eyebrow">05 · Operação e ciclo</div><h2>Marcos reais, contexto preservado.</h2>
 <p>O círculo representa etapas conhecidas do acompanhamento; não é probabilidade de prenhez nem percentual biológico. A timeline distingue parto, fim do PEV, liberação efetiva, tentativas, avaliações, perdas e lacunas.</p>
 <p>Hora continua opcional na rotina. Orientação temporal é configurada por etapa; hora desconhecida não vira horário fictício nem comprovação de intervalo cumprido.</p>
-<div class="callout confirmed"><p><strong>Perda exige explicação.</strong> O registro precisa descrever a observação ou o contexto. A causa clínica pode permanecer desconhecida. Classificar o desfecho deve ser independente das palavras usadas na explicação.</p>
+<div class="callout confirmed"><p><strong>Perda exige explicação. O formulário permite acrescentar referências de exames, laudos ou observações, preservadas no histórico sem presumir anexos ou uma causa confirmada.</strong> O registro precisa descrever a observação ou o contexto. A causa clínica pode permanecer desconhecida. Classificar o desfecho deve ser independente das palavras usadas na explicação.</p>
 </div><p>DG negativo sem gestação conhecida não é automaticamente perda. Inconclusivo pode executar uma tarefa sem resolver a necessidade de diagnóstico; reconfirmação acompanha a mesma gestação.</p>
 <div id="fluxos-entregues"><h3>Como a rotina se organiza</h3>
 <div class="grid"><article class="panel"><h4>Configurar o acompanhamento</h4><p>Em Configurações → Pecuária → Reprodução, definir os prazos de DG e as ocorrências de reconfirmação. O tipo de exame pode ser escolhido. Cada versão conserva suas regras; fatos antigos precisam de adoção explícita, com prévia antes de confirmar.</p></article>
 <article class="panel"><h4>Atender sem duplicar pendências</h4><p>Uma tarefa compatível pode atender à mesma demanda. Exame inconclusivo mantém o diagnóstico pendente; reconfirmação acompanha a gestação já conhecida. Corrigir ou anular uma evidência reavalia a demanda sem apagar o histórico.</p></article>
 <article class="panel"><h4>Usar a Seleção livre</h4><p>Escolher o grupo por filtros, revisar e preparar a visita. No atendimento, abrir um animal da lista, preencher seus campos e confirmar explicitamente. Voltar conserva a busca; rascunho salvo e atendimento confirmado aparecem separados. A Agenda continua sendo o modo orientado pelas ações previstas.</p></article>
 <article class="panel"><h4>Adaptar uma referência</h4><p>A biblioteca inicial permite pesquisar e copiar a referência Ovsynch 56, com fonte Wisconsin de 2021, objetivo e população descritos. Escolher nome e versão cria um rascunho. Produtos, doses, indicação e publicação exigem configuração; copiar não agenda nem executa uma aplicação.</p></article></div>
-<p class="small muted">Fluxos integrados ao código; testes finais e conferência de campo ainda estão registrados separadamente na seção de validação.</p></div></section>
+<p class="small muted">Fluxos integrados ao código; validação técnica local e conferência de campo estão registradas separadamente na seção de validação.</p></div></section>
 
 <section id="indicadores"><div class="eyebrow">06 · Metodologia aprovada</div><h2>Mostrar espera, resultado e informação ausente.</h2>
 <div class="table-wrap"><table><thead><tr><th>Indicador</th><th>Leitura</th><th>Contexto obrigatório</th></tr>
@@ -193,9 +193,10 @@
 <div class="callout"><p><strong>Mesmos fatos, método identificado.</strong> As taxas TS/TC/TP existentes conservam suas regras. O acompanhamento entra na emissão V2 com população, corte e metodologia explícitos; relatórios V1 já emitidos continuam reimprimindo seu retrato original. Estes indicadores não alegam equivalência integral com relatórios externos.</p></div></div></section>
 
 <section id="evidencias"><div class="eyebrow">07 · Validação</div><h2>O que foi conferido e o que ainda falta.</h2>
-<div id="resultado-validacao"><p>Os testes usam o checkout separado. A geração do cliente de dados e a conferência de tipos não aplicam migrations. Componentes de círculo e lista individual têm testes locais; os cenários de banco real são executados no CI externo.</p>
-<p>O checkpoint de estoque e custos passou integralmente no CI: 42 invariantes financeiras, 1.241 testes de interface, 1.667 testes do servidor, 20 testes do transformador e três da carga técnica. Builds e conferência dos contratos de carga/seed também passaram. As alterações reprodutivas posteriores ainda aguardam sua rodada completa. As migrations deste follow-up não foram aplicadas no banco local; a homologação de campo permanece pendente.</p>
-</div><p>Somente <code>fazendinha_seedatev3</code> é permitido localmente; dados e manifestos são preservados. Não houve reset, recarga de seed, criação de banco auxiliar, merge ou deploy.</p>
+<div id="resultado-validacao"><p>Validação técnica local concluída: regressões de cálculo, testes de servidor e interface (com reexecução isolada de teste sensível a tempo), builds, typechecks de seed/importação e integrações de valorização e identidade histórica no PostgreSQL existente. Os cenários restritos ao CI externo e o resultado do CI do commit final são acompanhados no PR. A homologação pela fazenda permanece pendente.</p>
+<p>O mesmo <code>fazendinha_seedatev3</code> tem as 43 migrations, incluindo as três deste follow-up. Seus saldos legados receberam aberturas documentadas com lastro nos movimentos demonstrativos; compras e consumos anteriores, quantidades, saldos financeiros e manifesto são preservados. A base não foi recarregada para validar esta implementação.</p>
+<p>O diagnóstico histórico usa quantidade e valor no mesmo corte. A coorte de espera para na saída do sítio; a fila atual considera o retorno comprovado e continua excluindo baixas. O registro de perda aceita evidências textuais e conserva a explicação obrigatória; seu histórico pode ser consultado sem permissão de lançamento e identifica matrizes transferidas. A conferência no navegador local incluiu dono, consulta e operador sem valores, além dos indicadores em largura de celular; o histórico foi exercitado com uma fixture própria, removida ao terminar. Essa conferência é pontual e não aprova o roteiro de campo.</p>
+</div><p>Desenvolvimento e integrações locais usam exclusivamente <code>fazendinha_seedatev3</code>, com fixtures próprias. Não criar outro banco, clone ou backup. Arquivos/R2 permanecem pendentes no cenário local; nenhum merge ou deploy integra esta preparação.</p>
 </section>
 
 <section id="backlog"><div class="eyebrow">08 · Tracking preservado</div><h2>Três complementos continuam fora deste PR.</h2>
@@ -215,4 +216,4 @@
 <ul><li>A composição da tentativa explica os gastos de forma compreensível, inclusive preparatórios compartilhados?</li><li>A lista e o painel individual atendem ao modo de trabalho da Seleção livre?</li><li>Os marcos ajudam a distinguir espera, restrição e falta de informação?</li><li>Quais configurações de acompanhamento serão adotadas explicitamente pelo responsável?</li><li>Qual dos três complementos adiados deve receber prioridade?</li></ul><p>Esses pontos orientam homologação e evolução; não substituem os critérios de integridade financeira, permissões e histórico.</p>
 </section>
 
-<footer class="small muted">Documento da implementação em andamento. Atualizar com as entidades e evidências efetivas antes da entrega final.</footer></main></div></body></html>
+<footer class="small muted">Documento do código implementado e de seus contratos. Homologação pela fazenda e publicação permanecem etapas próprias.</footer></main></div></body></html>

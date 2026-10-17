@@ -1270,6 +1270,11 @@ export async function painelReproducao(
       orderBy: { inicio: "desc" },
     }),
   ]);
+  const identidadesGestacoes = await prisma.animal.findMany({
+    where: { id: { in: [...new Set(gestacoes.map((g) => g.animalId))] } },
+    select: { id: true, brinco: true, nome: true },
+  });
+  const identidadeGestacaoPorAnimal = new Map(identidadesGestacoes.map((a) => [a.id, a]));
   const estados = await obterEstadosReprodutivosTx(prisma, animais.map((a) => a.id), hoje);
   const temporais = await obterContextosAnimaisNaDataTx(prisma, animais.map((a) => a.id), hoje);
   if (
@@ -1277,7 +1282,8 @@ export async function painelReproducao(
     !animais.length &&
     !tentativas.length &&
     !partos.length &&
-    !avaliacoes.length
+    !avaliacoes.length &&
+    !gestacoes.length
   )
     throw new RebanhoError(
       "NAO_ENCONTRADO",
@@ -1371,6 +1377,7 @@ export async function painelReproducao(
     restricoes,
     gestacoes: gestacoes.map((g) => ({
       ...g,
+      animal: identidadeGestacaoPorAnimal.get(g.animalId),
       historicoPrevisao: historicosPrevisao.filter(
         (h) => h.gestacaoId === g.id,
       ),

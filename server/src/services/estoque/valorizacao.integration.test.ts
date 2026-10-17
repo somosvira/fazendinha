@@ -5,7 +5,7 @@ import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "../../db.js";
 import { exigirBancoIntegracaoPecuaria } from "../../lib/banco-pecuaria-integration.fixture.js";
 import { criarEntradaValorizadaFixture, limparMovimentosValorizadosFixture, limparMovimentosValorizadosFixtureTx } from "../../test/estoque-valorizado.fixture.js";
-import { planejarSaidaTx, registrarSaidaValorizadaTx, saldosBasesTx } from "./valorizacao.js";
+import { diagnosticarValorizacao, planejarSaidaTx, registrarSaidaValorizadaTx, saldosBasesTx } from "./valorizacao.js";
 import { transferirEstoque } from "./transferencias.js";
 import { ativarRastreio, previaAtivacaoRastreio } from "./partidas.js";
 import { listarMovimentos } from "./estoque.js";
@@ -49,6 +49,15 @@ comBanco("valorização — garantias SQL, transações e concorrência com fixt
     await prisma.produto.deleteMany({ where: { id: { in: produtos } } });
     await prisma.propriedade.deleteMany({ where: { id: { in: sitios } } });
     produtos.length = 0; sitios.length = 0;
+  });
+
+  it("diagnóstico histórico mantém quantidade e valor no mesmo corte, sem incluir saída posterior", async () => {
+    const f = await fixture();
+    await transacaoValidada(tx => saidaSQL(tx, f, "1", "10.00"));
+    const anterior = await diagnosticarValorizacao(f.produtoId, f.propriedadeId, new Date("2026-10-01"));
+    expect(anterior.grupos).toMatchObject([{ quantidade: "5", quantidadeValorizada: "5", valor: "50.00", estadoValor: "CONHECIDO" }]);
+    const atual = await diagnosticarValorizacao(f.produtoId, f.propriedadeId, new Date("2026-10-02"));
+    expect(atual.grupos).toMatchObject([{ quantidade: "4", quantidadeValorizada: "4", valor: "40.00", estadoValor: "CONHECIDO" }]);
   });
 
   it("recusa movimento valorizado sem parcelas ao confirmar a transação", async () => {

@@ -15,7 +15,7 @@ export type CandidatoLiberacaoIndicador = {
 export type CicloAcompanhamentoIndicador = {
   id: string; chaveCiclo: string; animalId: string; inicio: string; fim?: string | null;
   localInicio: LocalIndicadorAcompanhamento; localCorte: LocalIndicadorAcompanhamento | null;
-  partoId?: string | null; partoEm?: string | null; fimPev?: string | null; saidaEm?: string | null;
+  partoId?: string | null; partoEm?: string | null; fimPev?: string | null; saidaEm?: string | null; baixaEm?: string | null;
   servicos: Array<{ id: string; data: string; tipo: "IA" | "TE" | "COBERTURA"; valido: boolean; propriedadeId: number | null; ordem?: number; local?: LocalIndicadorAcompanhamento }>;
   candidatosLiberacao: CandidatoLiberacaoIndicador[];
   restricoes: Array<{ id: string; inicio: string; fim: string | null; efeito: "ALERTA" | "BLOQUEIO" }>;
@@ -91,11 +91,11 @@ export function primeiraLiberacaoValidaIndicador(ciclo: CicloAcompanhamentoIndic
 }
 
 function linhaEspera(c: CicloAcompanhamentoIndicador, f: FiltrosAcompanhamentoIndicadores) {
-  const servicos = fatosUnicos(c.servicos).filter(s => s.valido && s.data >= c.inicio && s.data <= f.corte && (!c.fim || s.data < c.fim)
+  const servicos = fatosUnicos(c.servicos).filter(s => s.valido && s.data >= c.inicio && s.data <= f.corte && (!c.fim || s.data < c.fim) && (!c.saidaEm || s.data < c.saidaEm)
     && (!f.tiposTentativa || f.tiposTentativa.includes(s.tipo))).sort((a, b) => a.data.localeCompare(b.data) || a.id.localeCompare(b.id));
   const primeiro = servicos[0] ?? null;
   const esperaObservadaAte = [f.corte, c.fim ?? f.corte, c.saidaEm ?? f.corte, primeiro?.data ?? f.corte].sort()[0];
-  const limite = primeiro?.data ?? esperaObservadaAte;
+  const limite = esperaObservadaAte;
   const liberacao = primeiraLiberacaoValidaIndicador(c, limite);
   const pendencias: string[] = [];
   if (!liberacao.primeira) pendencias.push("PRIMEIRA_LIBERACAO_NAO_COMPROVADA");
@@ -126,8 +126,9 @@ export function calcularEsperaAcompanhamento(ciclos: CicloAcompanhamentoIndicado
     return e === "INCLUIR";
   }).map(c => linhaEspera(c, f));
   const pendenciasFila: Array<{ motivo: string; linha: ReturnType<typeof linhaEspera> }> = [];
-  const fila = ciclos.filter(c => c.inicio <= f.corte && (!c.fim || c.fim > f.corte) && (!c.saidaEm || c.saidaEm > f.corte)).flatMap(c => {
-    const linha = linhaEspera(c, f); if (linha.primeiroServico) return [];
+  const fila = ciclos.filter(c => c.inicio <= f.corte && (!c.fim || c.fim > f.corte) && (!c.baixaEm || c.baixaEm > f.corte)).flatMap(c => {
+    // A coorte para na primeira saída; a fila usa a localização atual e todo o ciclo.
+    const linha = linhaEspera({ ...c, saidaEm: c.baixaEm }, f); if (linha.primeiroServico) return [];
     const e = escopo(c.localCorte, f); if (e === "PENDENTE") pendenciasEscopo.push({ cicloId: c.id, populacao: "FILA" });
     if (e !== "INCLUIR") return [];
     if (!linha.primeiraLiberacao) { pendenciasFila.push({ motivo: "LIBERACAO_NAO_COMPROVADA", linha }); return []; }

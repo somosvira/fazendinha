@@ -57,7 +57,7 @@ Compra, pagamento e consumo são perspectivas distintas. Recebimento a prazo aum
 
 Movimentos anteriores conservam valores e método `LEGADO`. Não há backfill de preços nem recálculo proporcional de consumos antigos. Quantidade sem valor comprovado permanece desconhecida e exige abertura antes de usar o novo método; zero comprovado é válido e não equivale a ausência de evidência.
 
-A prévia por produto/sítio mostra saldo físico, quantidade valorizada, estado do valor e impedimentos de retroatividade. A confirmação apresenta a revisão dessa prévia e a revalida sob trava; exige quantidade correspondente ao saldo, valor comprovado, referência, evidência, motivo e autoria. Reenvio da mesma chave/dados não repete a abertura. Uma abertura não altera quantidade física, compra, pagamento ou custo histórico.
+A prévia por produto/sítio mostra saldo físico, quantidade valorizada, estado do valor e impedimentos de retroatividade. Quantidade física, grupos existentes e valor são consultados no mesmo corte: um movimento posterior não torna desconhecido o lastro comprovado do passado. A confirmação apresenta a revisão dessa prévia e a revalida sob trava; exige quantidade correspondente ao saldo, valor comprovado, referência, evidência, motivo e autoria. Reenvio da mesma chave/dados não repete a abertura. Uma abertura não altera quantidade física, compra, pagamento ou custo histórico.
 
 Rotas acrescentadas em Estoque:
 

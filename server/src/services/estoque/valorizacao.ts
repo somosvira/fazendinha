@@ -42,8 +42,8 @@ export async function saldosBasesTx(tx: Db, produtoId: string, propriedadeId: nu
   return bases.map(b => ({ ...b, quantidade: b.parcelas.reduce((s, p) => s.plus(p.quantidade), b.quantidadeAbertura),
     valor: b.parcelas.reduce((s, p) => s.plus(p.valorTotal), b.valorAbertura) }));
 }
-async function saldoFisicoTx(tx: Db, produtoId: string, propriedadeId: number, partidaId?: string | null, excluirMovimentoId?: string) {
-  const movimentos = await tx.movimentoEstoque.findMany({ where: { produtoId, status: estadosSaldo, ...await escopo(propriedadeId), ...(excluirMovimentoId ? { id: { not: excluirMovimentoId } } : {}) },
+async function saldoFisicoTx(tx: Db, produtoId: string, propriedadeId: number, partidaId?: string | null, excluirMovimentoId?: string, data?: Date) {
+  const movimentos = await tx.movimentoEstoque.findMany({ where: { produtoId, status: estadosSaldo, ...await escopo(propriedadeId), ...(data ? { data: { lte: data } } : {}), ...(excluirMovimentoId ? { id: { not: excluirMovimentoId } } : {}) },
     include: { alocacaoPartidaEstoques: { orderBy: [{ partidaId: "asc" }, { id: "asc" }], include: { partida: { select: { lotePrincipalId: true } } } } } });
   return movimentos.reduce((s, m) => {
     const qtd = partidaId == null ? m.quantidade : m.alocacaoPartidaEstoques.filter(a => (a.partida.lotePrincipalId ?? a.partidaId) === partidaId).reduce((t, a) => t.plus(a.quantidade), D(0));
@@ -154,13 +154,13 @@ export async function registrarInversoValorizadoTx(tx: Db, originalId: string, i
 
 export async function diagnosticarValorizacaoTx(tx: Db, produtoId: string, propriedadeId: number, data: Date) {
   const produto = await tx.produto.findUniqueOrThrow({ where: { id: produtoId }, select: { id: true, rastrearPartidas: true } });
-  const movimentos = await tx.movimentoEstoque.findMany({ where: { produtoId, ...await escopo(propriedadeId), status: estadosSaldo }, orderBy: { seq: "asc" },
+  const movimentos = await tx.movimentoEstoque.findMany({ where: { produtoId, ...await escopo(propriedadeId), status: estadosSaldo, data: { lte: data } }, orderBy: { seq: "asc" },
     include: { alocacaoPartidaEstoques: { orderBy: [{ partidaId: "asc" }, { id: "asc" }], include: { partida: { select: { lotePrincipalId: true } } } } } });
   const bases = await saldosBasesTx(tx, produtoId, propriedadeId, data);
   const idsGrupo = produto.rastrearPartidas ? [...new Set(movimentos.flatMap(m => m.alocacaoPartidaEstoques.map(a => a.partida.lotePrincipalId ?? a.partidaId)))] : [null];
   const gruposSaldo = await Promise.all(idsGrupo.map(async partidaId => {
     const partida = partidaId ? await tx.partidaProduto.findUnique({ where: { id: partidaId }, select: { nome: true, codigo: true, validade: true } }) : null;
-    const quantidade = await saldoFisicoTx(tx, produtoId, propriedadeId, partidaId);
+    const quantidade = await saldoFisicoTx(tx, produtoId, propriedadeId, partidaId, undefined, data);
     const existentes = bases.filter(b => b.partidaId === partidaId);
     const quantidadeValorizada = existentes.reduce((s, b) => s.plus(b.quantidade), D(0));
     const conhecido = quantidade.eq(quantidadeValorizada);

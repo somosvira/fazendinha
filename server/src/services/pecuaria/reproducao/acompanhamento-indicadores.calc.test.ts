@@ -29,6 +29,25 @@ function parto(id: string, d: string, desfecho: PartoAcompanhamentoIndicador["de
 }
 
 describe("espera em dias corridos e população conferível", () => {
+  it("matriz que voltou ao sítio reaparece na fila atual sem reabrir a coorte encerrada pela saída", () => {
+    const c = ciclo({ saidaEm: "2026-01-20", servicos: [],
+      candidatosLiberacao: ["2026-01-10", "2026-02-10"].map(d => ({ data: d, contexto: contexto() })) });
+    const resultado = calcularEsperaAcompanhamento([c], filtros());
+    expect(resultado.coorte[0].esperaObservadaAte).toBe("2026-01-20");
+    expect(resultado.filaAtual).toHaveLength(1);
+    expect(resultado.filaAtual[0]).toMatchObject({ cicloId: "vinculo", diasAguardandoServico: 31, esperaObservadaAte: "2026-02-10" });
+    c.servicos.push({ id: "ia-destino", data: "2026-01-30", tipo: "IA", valido: true, propriedadeId: 2 });
+    expect(calcularEsperaAcompanhamento([c], filtros()).filaAtual).toHaveLength(0);
+  });
+
+  it("serviço após a saída não atende a coorte do sítio de origem", () => {
+    const c = ciclo({ saidaEm: "2026-01-20", localCorte: { propriedadeId: 2 },
+      servicos: [{ id: "ia-destino", data: "2026-01-30", tipo: "IA", valido: true, propriedadeId: 2 }] });
+    const resultado = calcularEsperaAcompanhamento([c], filtros());
+    expect(resultado.coorte[0]).toMatchObject({ primeiroServico: null, esperaObservadaAte: "2026-01-20", diasEsperaObservada: 10, diasLiberacaoServico: null, tentativas: 0 });
+    expect(resultado.resumoCoorte).toMatchObject({ comServico: 0, semServico: 1, mediaDiasLiberacaoServico: null });
+  });
+
   it("não usa min(aptaDesde): restrição torna válida somente a liberação de20, apesar do candidato10", () => {
     const c = ciclo();
     const restricao = { id: "r", data: data("2026-01-05"), ate: data("2026-01-20"), status: "VALIDO" };

@@ -2,6 +2,7 @@ import { comPropriedade } from "../../../propriedadeScope";
 import { RebanhoApiError } from "../api";
 
 export type Gestacao = {
+  animal?: { id: string; brinco: string | null; nome: string | null };
   animalId?: string;
   propriedadeId?: number | null;
   id: string;
@@ -12,6 +13,7 @@ export type Gestacao = {
   previsaoParto?: string | null;
   tentativaId?: string | null;
   tipoEncerramento?:string|null;motivoEncerramento?:string|null;
+  causaClinica?: { estado: "DESCONHECIDA" | "SUSPEITA" | "CONFIRMADA"; descricao?: string; evidencias?: string[] } | null;
 };
 export type Restricao = {
   id: string;
