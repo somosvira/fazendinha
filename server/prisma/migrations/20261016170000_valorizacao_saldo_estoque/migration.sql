@@ -25,7 +25,7 @@ CREATE UNIQUE INDEX "ParcelaValorizacaoEstoque_movimentoEstoqueId_ordem_key" ON 
 CREATE UNIQUE INDEX "ParcelaValorizacaoEstoque_movimentoEstoqueId_baseId_key" ON public."ParcelaValorizacaoEstoque"("movimentoEstoqueId", "baseId");
 CREATE INDEX "ParcelaValorizacaoEstoque_baseId_idx" ON public."ParcelaValorizacaoEstoque"("baseId");
 CREATE FUNCTION public.conferir_valorizacao_estoque() RETURNS trigger LANGUAGE plpgsql AS $$
-DECLARE mid TEXT; m RECORD; b RECORD; q NUMERIC; v NUMERIC; sinal INTEGER;
+DECLARE mid TEXT; m RECORD; base_registro RECORD; q NUMERIC; v NUMERIC; sinal INTEGER;
 BEGIN
   -- Cada tabela tem um formato de registro próprio. Um CASE na mesma expressão
   -- resolve também os campos do ramo não escolhido e falha para MovimentoEstoque.
@@ -43,11 +43,11 @@ BEGIN
   sinal := CASE WHEN m."tipo"='SAIDA' THEN -1 ELSE 1 END;
   SELECT COALESCE(sum("quantidade"),0),COALESCE(sum("valorTotal"),0) INTO q,v FROM public."ParcelaValorizacaoEstoque" WHERE "movimentoEstoqueId"=mid;
   IF q<>sinal*m."quantidade" OR v<>sinal*m."valorTotal" THEN RAISE EXCEPTION 'parcelas não conciliam quantidade/valor do movimento %', mid USING ERRCODE='23514'; END IF;
-  FOR b IN SELECT DISTINCT base.* FROM public."BaseValorizacaoEstoque" base JOIN public."ParcelaValorizacaoEstoque" p ON p."baseId"=base."id" WHERE p."movimentoEstoqueId"=mid LOOP
-    IF b."produtoId"<>m."produtoId" OR b."propriedadeId" IS DISTINCT FROM m."propriedadeId" OR b."metodo"<>m."metodoValorizacao" OR b."disponivelDesde">m."data" OR b."corteAbertura">m."data" THEN RAISE EXCEPTION 'base incompatível com movimento %',mid USING ERRCODE='23514'; END IF;
-    SELECT b."quantidadeAbertura"+COALESCE(sum("quantidade"),0),b."valorAbertura"+COALESCE(sum("valorTotal"),0) INTO q,v FROM public."ParcelaValorizacaoEstoque" WHERE "baseId"=b."id";
+  FOR base_registro IN SELECT DISTINCT base.* FROM public."BaseValorizacaoEstoque" base JOIN public."ParcelaValorizacaoEstoque" p ON p."baseId"=base."id" WHERE p."movimentoEstoqueId"=mid LOOP
+    IF base_registro."produtoId"<>m."produtoId" OR base_registro."propriedadeId" IS DISTINCT FROM m."propriedadeId" OR base_registro."metodo"<>m."metodoValorizacao" OR base_registro."disponivelDesde">m."data" OR base_registro."corteAbertura">m."data" THEN RAISE EXCEPTION 'base incompatível com movimento %',mid USING ERRCODE='23514'; END IF;
+    SELECT base_registro."quantidadeAbertura"+COALESCE(sum("quantidade"),0),base_registro."valorAbertura"+COALESCE(sum("valorTotal"),0) INTO q,v FROM public."ParcelaValorizacaoEstoque" WHERE "baseId"=base_registro."id";
     IF q<0 OR v<0 OR (q=0 AND v<>0) THEN RAISE EXCEPTION 'saldo residual de quantidade/valor inválido' USING ERRCODE='23514'; END IF;
-    IF b."partidaId" IS NOT NULL AND NOT EXISTS (SELECT 1 FROM public."PartidaProduto" pp WHERE pp."id"=b."partidaId" AND pp."produtoId"=b."produtoId" AND pp."lotePrincipalId" IS NULL) THEN RAISE EXCEPTION 'base exige grupo raiz do produto' USING ERRCODE='23514'; END IF;
+    IF base_registro."partidaId" IS NOT NULL AND NOT EXISTS (SELECT 1 FROM public."PartidaProduto" pp WHERE pp."id"=base_registro."partidaId" AND pp."produtoId"=base_registro."produtoId" AND pp."lotePrincipalId" IS NULL) THEN RAISE EXCEPTION 'base exige grupo raiz do produto' USING ERRCODE='23514'; END IF;
   END LOOP;
   IF m."metodoValorizacao"='MEDIA_SALDO_V1' AND EXISTS (
     SELECT 1 FROM public."ParcelaValorizacaoEstoque" p JOIN public."BaseValorizacaoEstoque" b ON b."id"=p."baseId"
