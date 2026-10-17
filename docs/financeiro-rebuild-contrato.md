@@ -37,9 +37,9 @@ Itens, compromissos, transações, movimentos físicos e documentos só existem 
 - Aplicações sanitárias, tentativas reprodutivas V4 e fechamentos nutricionais usam o estoque único. Origens de compra direta, aplicação documentada e reconciliação têm efeitos próprios; não substitua uma pela outra para criar saldo fictício.
 - Centros, categorias e movimentos de atividades agrícolas anteriores podem permanecer. A remoção dos módulos não autoriza apagar a história financeira ou seus cadastros pelo nome.
 
-## Valorização do saldo — follow-up em validação
+## Valorização do saldo
 
-A implementação do follow-up introduz `BaseValorizacaoEstoque`, `ParcelaValorizacaoEstoque` e o método de valorização no `MovimentoEstoque`. Esta seção acompanha o código em construção; a migration ainda não foi aplicada ao ambiente local e os fluxos completos aguardam validação. Não representa homologação nem disponibilidade em produção.
+`BaseValorizacaoEstoque`, `ParcelaValorizacaoEstoque` e o método de valorização no `MovimentoEstoque` conservam o lastro monetário de cada saída. O [HTML da entrega](pecuaria/artefatos/follow-up-v4-entrega.html) explica os fluxos, as entidades e a validação. Entrega de código não representa aplicação das migrations no ambiente da fazenda nem homologação de campo.
 
 ### Base, parcelas e conservação
 
@@ -80,7 +80,7 @@ A logística cobrada pelo mesmo fornecedor constitui item próprio, sem estoque,
 
 Os gravadores compartilham travas por produto em ordem estável, além das garantias existentes de cada domínio. Itens repetidos de uma operação consomem o saldo atualizado após o item anterior. Movimento, alocação física, parcela monetária e fato operacional são confirmados atomicamente.
 
-Estorno cria parcelas inversas dos valores originais. Entrada com consumidores dependentes não pode ser retirada como se ainda estivesse integralmente disponível. A correção retroativa apresenta os impedimentos e revalida na confirmação; este PR não inclui motor geral de recálculo histórico nem contorna período fechado.
+Estorno cria parcelas inversas dos valores originais. Entrada com consumidores dependentes não pode ser retirada como se ainda estivesse integralmente disponível. A correção retroativa apresenta os impedimentos e revalida na confirmação; não existe motor geral de recálculo histórico nem contorna período fechado.
 
 Leituras por grupo devem usar as parcelas preservadas. Uma repartição feita novamente na consulta não substitui o registro do valor utilizado. Custos antigos, snapshots e autoria permanecem consultáveis. Valores completo/parcial/desconhecido e oculto por permissão não são intercambiáveis.
 
@@ -88,7 +88,7 @@ As garantias SQL conferem somas, sinais e compatibilidade das referências. O do
 
 ## Permissões e documentos
 
-Rotas exigem sessão, área/ação e escopo; custos e exportações devem respeitar a visibilidade financeira. No follow-up, `apresentarOperacao()` passa a mascarar valores em todas as operações quando não há acesso financeiro com `verValores`, incluindo a composição comercial. Listagem, detalhe, criação, confirmação de rascunho e resposta de estorno utilizam esse apresentador. A abertura de valorização exige a mesma visibilidade no servidor. Esses ajustes não constituem homologação de todas as rotas financeiras; cada DTO e relatório continua responsável por conferir sua permissão.
+Rotas exigem sessão, área/ação e escopo; custos e exportações devem respeitar a visibilidade financeira. `apresentarOperacao()` mascara valores em todas as operações quando não há acesso financeiro com `verValores`, incluindo a composição comercial. Listagem, detalhe, criação, confirmação de rascunho e resposta de estorno utilizam esse apresentador. A abertura de valorização exige a mesma visibilidade no servidor. Esses ajustes não constituem homologação de todas as rotas financeiras; cada DTO e relatório continua responsável por conferir sua permissão.
 
 Documentos e relatórios usam R2 e chaves persistidas. Rascunhos com anexo e operações confirmadas têm fluxos distintos de acesso; não suponha rota de download onde ela não existe. Confira rotas e `services/financeiro/documentos.ts` antes de mudar esse contrato.
 

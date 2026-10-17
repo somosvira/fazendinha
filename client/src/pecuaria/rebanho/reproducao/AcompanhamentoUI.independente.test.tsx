@@ -38,13 +38,13 @@ describe("UI acompanhamento — contraprovas independentes", () => {
  it("consulta lenta do animalA não substitui demandas do animalB no outro sítio", async () => {
   const antiga = adiada<unknown>(); mocks.req.mockImplementation((url, body) => url.includes("animalId=a") ? antiga.promise : url.includes("animalId=b") ? Promise.resolve([demanda("2026-02-22")]) : padrao(url, body));
   const { rerender } = render(<DemandasAcompanhamento animalId="a" propriedadeId={1} painel={painel("a")} podeLancar onAvaliar={vi.fn()} atualizacao={0}/>);
-  rerender(<DemandasAcompanhamento animalId="b" propriedadeId={2} painel={painel("b")} podeLancar onAvaliar={vi.fn()} atualizacao={0}/>); await screen.findByText(/2026-02-22/);
-  await act(async () => antiga.resolve([demanda("2026-01-11")])); expect(screen.queryByText(/2026-01-11/)).toBeNull(); expect(screen.getByText(/2026-02-22/)).toBeTruthy();
+  rerender(<DemandasAcompanhamento animalId="b" propriedadeId={2} painel={painel("b")} podeLancar onAvaliar={vi.fn()} atualizacao={0}/>); await screen.findByText(/22\/02\/2026/);
+  await act(async () => antiga.resolve([demanda("2026-01-11")])); expect(screen.queryByText(/11\/01\/2026/)).toBeNull(); expect(screen.getByText(/22\/02\/2026/)).toBeTruthy();
  });
  it("erro no segundo animal não conserva dados do primeiro", async () => {
   mocks.req.mockImplementation((url, body) => url.includes("animalId=a") ? Promise.resolve([demanda("2026-01-11")]) : url.includes("animalId=b") ? Promise.reject(new Error("Consulta do animalB falhou")) : padrao(url, body));
-  const { rerender } = render(<DemandasAcompanhamento animalId="a" propriedadeId={1} painel={painel("a")} podeLancar onAvaliar={vi.fn()} atualizacao={0}/>); await screen.findByText(/2026-01-11/);
-  rerender(<DemandasAcompanhamento animalId="b" propriedadeId={2} painel={painel("b")} podeLancar onAvaliar={vi.fn()} atualizacao={0}/>); await screen.findByText("Consulta do animalB falhou"); expect(screen.queryByText(/2026-01-11/)).toBeNull();
+  const { rerender } = render(<DemandasAcompanhamento animalId="a" propriedadeId={1} painel={painel("a")} podeLancar onAvaliar={vi.fn()} atualizacao={0}/>); await screen.findByText(/11\/01\/2026/);
+  rerender(<DemandasAcompanhamento animalId="b" propriedadeId={2} painel={painel("b")} podeLancar onAvaliar={vi.fn()} atualizacao={0}/>); await screen.findByText("Consulta do animalB falhou"); expect(screen.queryByText(/11\/01\/2026/)).toBeNull();
  });
  it("adoção pendente deA não trava nem injeta resultado emB", async () => {
   const escrita = adiada<unknown>(); mocks.req.mockImplementation((url, body) => url.endsWith("/adocao") ? escrita.promise : padrao(url, body));

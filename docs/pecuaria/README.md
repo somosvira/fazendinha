@@ -48,9 +48,9 @@ Um Serviço financeiro pode associar múltiplos procedimentos realizados do mesm
 
 Serviços atuais: `services/pecuaria/sanidade/`; migrations de V3, catálogos/histórico, lotes por validade e `20261006180000_rodadas_protocolos_desvios`.
 
-## Custos diretos — follow-up em validação
+## Custos diretos
 
-O follow-up acrescenta classificação gerencial e composição de custos aos fatos existentes. O código ainda está em integração e não representa homologação da rotina. A valorização do estoque está detalhada no [contrato financeiro](../financeiro-rebuild-contrato.md#valorização-do-saldo--follow-up-em-validação).
+Classificação gerencial e composição de custos utilizam os fatos existentes. A [explicação de produto](artefatos/follow-up-v4-entrega.html) apresenta os fluxos e diagramas, separando validação automatizada de homologação da rotina. A valorização do estoque está detalhada no [contrato financeiro](../financeiro-rebuild-contrato.md#valorização-do-saldo).
 
 `ClassificacaoCustoPecuaria` pertence a exatamente um fato: tentativa, aplicação, exame, participação em protocolo ou participação no consumo nutricional. Finalidade (reprodução, sanidade ou rotina/manutenção) é diferente do vínculo operacional. Ausência de classificação permanece explícita. Na nutrição, a classificação altera apenas a finalidade; quantidade e custo vêm do fechamento existente, com seu período identificado.
 
