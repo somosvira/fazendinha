@@ -120,6 +120,7 @@ it("consulta sem inventar concepção estimada e mostra pendências em vez de ze
     fim: "2026-09-21",
     corte: "2026-09-22",
     deslocamentoTeDias: 7,
+    iepModo:"VIVOS_NATIMORTOS",
   });
   expect(screen.getAllByText("Não calculável").length).toBeGreaterThan(1);
   expect(screen.getByRole("status").textContent).toContain(

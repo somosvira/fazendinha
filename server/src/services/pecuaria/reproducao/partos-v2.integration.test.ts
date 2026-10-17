@@ -34,7 +34,7 @@ suite("parto/pós-parto com fixtures inteiramente revertidas", () => {
     await emRollback(async tx => {
       const { sitio, matriz } = await fixtures(tx);
       const doenca = await tx.doenca.create({ data: { nome: `RP ${randomUUID()}` } });
-      const p = await criarPartoTx(tx, { chave: randomUUID(), animalId: matriz.id, propriedadeId: sitio.id, data: "2026-01-01", tipo: "ABORTO", iniciarLactacao: false, crias: [], retencaoPlacenta: true,
+      const p = await criarPartoTx(tx, { chave: randomUUID(), animalId: matriz.id, propriedadeId: sitio.id, data: "2026-01-01", tipo: "ABORTO", observacao: "Aborto observado no cenário fictício desta validação", iniciarLactacao: false, crias: [], retencaoPlacenta: true,
         ocorrenciaRetencao: { acao: "CRIAR", doencaId: doenca.id, inicio: "2026-01-02" }, pesoMatriz: { acao: "REGISTRAR", data: "2026-01-03", pesoKg: 520 } }, null);
       expect(p.vinculosPesagem).toHaveLength(1);
       expect(p.vinculosPesagem[0].pesagem.data.toISOString().slice(0, 10)).toBe("2026-01-03");
@@ -76,7 +76,7 @@ suite("parto/pós-parto com fixtures inteiramente revertidas", () => {
   it("escore usa exame com escala explícita e substitui preservando o anterior", async () => {
     await emRollback(async tx => {
       const { sitio, matriz } = await fixtures(tx);
-      const p = await criarPartoTx(tx, { chave: randomUUID(), animalId: matriz.id, propriedadeId: sitio.id, data: "2026-01-01", tipo: "ABORTO", iniciarLactacao: false, crias: [],
+      const p = await criarPartoTx(tx, { chave: randomUUID(), animalId: matriz.id, propriedadeId: sitio.id, data: "2026-01-01", tipo: "ABORTO", observacao: "Aborto observado no cenário fictício desta validação", iniciarLactacao: false, crias: [],
         escoreMatriz: { acao: "REGISTRAR", data: "2026-01-02", valor: 3, escalaMin: 1, escalaMax: 5, escalaDescricao: "Escala declarada na coleta", responsavel: "Responsável pela avaliação" } }, null);
       expect(p.examesPosParto).toHaveLength(1);
       expect(p.examesPosParto[0].finalidadePrincipal).toBe("ESCORE_CORPORAL");
@@ -121,7 +121,7 @@ suite("parto/pós-parto com fixtures inteiramente revertidas", () => {
       const { sitio, matriz } = await fixtures(tx);
       const outro = await tx.propriedade.create({ data: { nome: `Destino peso ${randomUUID()}` } });
       const p = await criarPartoTx(tx, { chave: randomUUID(), animalId: matriz.id, propriedadeId: sitio.id,
-        data: "2026-01-01", tipo: "ABORTO", iniciarLactacao: false, crias: [],
+        data: "2026-01-01", tipo: "ABORTO", observacao: "Aborto observado no cenário fictício desta validação", iniciarLactacao: false, crias: [],
         pesoMatriz: { acao: "REGISTRAR", data: "2026-01-03", pesoKg: 520 } }, null);
       await tx.localizacaoAnimal.updateMany({ where: { animalId: matriz.id, ate: null }, data: { ate: new Date("2026-01-05") } });
       await tx.localizacaoAnimal.create({ data: { animalId: matriz.id, propriedadeId: outro.id, desde: new Date("2026-01-05") } });
@@ -169,7 +169,7 @@ suite("parto/pós-parto com fixtures inteiramente revertidas", () => {
         desde: new Date("2026-01-02"), ate: new Date("2026-01-04") } });
       const retorno = await tx.localizacaoAnimal.create({ data: { animalId: matriz.id, propriedadeId: sitio.id, desde: new Date("2026-01-04") } });
       const p = await criarPartoTx(tx, { chave: randomUUID(), animalId: matriz.id, propriedadeId: sitio.id,
-        data: "2026-01-01", tipo: "ABORTO", iniciarLactacao: false, crias: [],
+        data: "2026-01-01", tipo: "ABORTO", observacao: "Aborto observado no cenário fictício desta validação", iniciarLactacao: false, crias: [],
         pesoMatriz: { acao: "REGISTRAR", data: "2026-01-05", pesoKg: 520 } }, null);
       await expect(conferirHistoricoDosFatos(tx, [matriz.id])).resolves.toBeUndefined();
       await tx.$executeRawUnsafe("SAVEPOINT desfazer_peso");

@@ -1,3 +1,7 @@
+import {construirMarcosReprodutivos} from "./marcos.calc.js";
+import {construirDadosAcompanhamento} from "./acompanhamento-indicadores.js";
+import {carregarDadosElegibilidadeTx} from "./elegibilidade.js";
+import { criarDemandasDoFatoTx, reconciliarDemandasAnimalTx, vincularExameDemandaTx } from "./acompanhamento.js";
 import { vincularPoliticaCicloTx } from "./elegibilidade.js";
 import { aplicarEscorePartoTx } from "./escore-parto.js";
 import { obterContextosAnimaisNaDataTx } from "./contexto-animal.js";
@@ -157,7 +161,7 @@ export async function obterEstadosReprodutivosTx(tx: Prisma.TransactionClient, a
     tx.avaliacaoReprodutiva.findMany({ where: base, orderBy: [{ data: "desc" }, { criadoEm: "desc" }], select: { animalId: true, data: true, resultado: true, sexoFetal: true, gestacaoId: true } }),
     tx.partoAnimal.findMany({ where: base, orderBy: { data: "desc" }, select: { id: true, animalId: true, data: true, tipo: true, status: true, incluidoSaldoAnterior: true, retencaoPlacenta: true } }),
     tx.restricaoReprodutiva.findMany({ where: { ...base, OR: [{ ate: null }, { ate: { gt: data } }] }, select: { id: true, animalId: true, tipo: true, data: true, ate: true, motivo: true, acoes: true, status: true } }),
-    tx.gestacaoAnimal.findMany({ where: { animalId: { in: animalIds }, status: "VALIDO", confirmadaEm: { lte: data } }, orderBy: { confirmadaEm: "desc" }, select: { id: true, animalId: true, confirmadaEm: true, encerradaEm: true, previsaoParto: true, sexoFetal: true, status: true } }),
+    tx.gestacaoAnimal.findMany({ where: { animalId: { in: animalIds }, status: "VALIDO", confirmadaEm: { lte: data } }, orderBy: { confirmadaEm: "desc" }, select: { id: true, animalId: true, confirmadaEm: true, encerradaEm: true, tipoEncerramento:true, previsaoParto: true, sexoFetal: true, status: true } }),
     tx.situacaoInicialReprodutiva.findMany({ where: base, orderBy: { data: "desc" }, select: { animalId: true, data: true, situacao: true } }),
   ]);
   return new Map(animais.map((a) => {
@@ -415,6 +419,8 @@ export async function criarTentativaTx(
       justificativaSemOrigem: input.justificativaSemOrigem ?? null,
     },
   });
+  await criarDemandasDoFatoTx(tx, { tentativaId: criada.id, animalId: criada.animalId, propriedadeId: input.propriedadeId, data }, usuarioId);
+  await reconciliarDemandasAnimalTx(tx, criada.animalId, usuarioId);
   return criada;
 }
 export const criarTentativa = (
@@ -585,6 +591,9 @@ export async function criarAvaliacaoTx(
     usuarioId,
     depois: { ...criada, cienciaSanitaria: input.cienciaSanitaria === true },
   });
+  if (input.demandaAcompanhamentoId) await vincularExameDemandaTx(tx, input.demandaAcompanhamentoId, criada.id);
+  if (gestacaoCriada && gestacao) await criarDemandasDoFatoTx(tx, { gestacaoId: gestacao.id, animalId: input.animalId, propriedadeId: input.propriedadeId, data, exameOrigemId: criada.id }, usuarioId);
+  await reconciliarDemandasAnimalTx(tx, input.animalId, usuarioId);
   return criada;
 }
 export const criarAvaliacao = (
@@ -604,6 +613,7 @@ export async function criarPartoTx(
   usuarioId: number | null,
 ) {
   const detalhes = normalizarDetalhesParto(input, input.data);
+  if(detalhes.tipo==="ABORTO"&&(input.observacao?.trim().length??0)<5)erro("Explique a observação e o contexto do aborto", "observacao");
   const data = dia(input.data),
     idsCrias = input.crias.map(() => crypto.randomUUID());
   await travarAnimais(tx, [input.animalId, ...idsCrias]);
@@ -822,7 +832,7 @@ export async function criarPartoTx(
   if (gestacao)
     await tx.gestacaoAnimal.update({
       where: { id: gestacao.id },
-      data: { encerradaEm: data, motivoEncerramento: `PARTO_${detalhes.tipo}` },
+      data: { encerradaEm: data, tipoEncerramento: "PARTO", motivoEncerramento: `PARTO_${detalhes.tipo}` },
     });
   if (input.iniciarLactacao) {
     await conferirIntervaloLactacaoTx(tx, input.animalId, data, null);
@@ -851,6 +861,7 @@ export async function criarPartoTx(
   await aplicarRetencaoPartoTx(tx, parto, input, usuarioId);
   await aplicarPesoPartoTx(tx, parto, input.pesoMatriz, usuarioId);
   await aplicarEscorePartoTx(tx, parto, input.escoreMatriz, usuarioId);
+  await reconciliarDemandasAnimalTx(tx, input.animalId, usuarioId);
   await auditar(tx, {
     entidade: "PartoAnimal",
     entidadeId: parto.id,
@@ -979,8 +990,11 @@ export async function registrarPerda(
         data: {
           encerradaEm: dia(input.data),
           motivoEncerramento: input.motivo,
+          tipoEncerramento: "PERDA",
+          causaClinica: input.causaClinica ? json(input.causaClinica) : Prisma.DbNull,
         },
       });
+      await reconciliarDemandasAnimalTx(tx, input.animalId, usuarioId);
       await auditar(tx, {
         entidade: "GestacaoAnimal",
         entidadeId: g.id,
@@ -1314,7 +1328,17 @@ export async function painelReproducao(
     select: { id: true, exame: { select: { id:true, finalidades:true, finalidadePrincipal:true, realizacao:true, responsavel:true, formatoSnapshot:true, resultados:{ where:{vigente:true}, select:{campo:true,valor:true,unidade:true} } } } },
   });
   const examesPorAvaliacao = new Map(evidencias.map(e => [e.id, e.exame]));
+  let marcos:ReturnType<typeof construirMarcosReprodutivos>|null=null;
+  if(animalId&&propriedadeId!=null&&estados.has(animalId)){
+    const elegibilidade=await carregarDadosElegibilidadeTx(prisma,[animalId],hoje);
+    const provas=await prisma.exameAnimal.findMany({where:{animalId,status:"VALIDO",realizacao:"REALIZADO",data:{lte:hoje},interpretacao:{isNot:null}},include:{interpretacao:true,resultados:{where:{vigente:true,campo:"CONCLUSAO_GESTACIONAL"}}}});
+    const dados={elegibilidade,identificacoes:animais,evidencias:provas.flatMap(e=>e.interpretacao?[{id:e.id,animalId,data:e.data,status:e.status,tentativaId:e.interpretacao.tentativaId,gestacaoId:e.interpretacao.gestacaoId,resultado:typeof e.resultados[0]?.valor==="string"?e.resultados[0].valor:"INCONCLUSIVO",fonte:"EXAME_INTERPRETADO" as const}]:[])};
+    const filtros={propriedadeId,inicio:textoDataMaisAntiga(elegibilidade,hoje),fim:hoje.toISOString().slice(0,10),corte:hoje.toISOString().slice(0,10),deslocamentoTeDias:7};
+    marcos=construirMarcosReprodutivos(construirDadosAcompanhamento(dados,filtros),animalId,estados.get(animalId)!.situacao,filtros.corte);
+  }
+
   return {
+    marcos,
     animais: animais.map((a) => {
       const estado = estados.get(a.id)!;
       return {
@@ -1580,6 +1604,7 @@ export async function corrigirVinculoGestacao(
       antes,
       depois: { ...salva, motivo, filiacaoCriasPreservada: true },
     });
+    await reconciliarDemandasAnimalTx(tx, antes.animalId, usuarioId);
     return salva;
   });
 }
@@ -1607,6 +1632,7 @@ export async function corrigirPartoTx(
     if (antes.status !== "VALIDO") throw new RebanhoError("CONFLITO", "Parto foi anulado; atualize o histórico");
     if (input.versaoEsperada !== undefined && input.versaoEsperada !== antes.versao) throw new RebanhoError("CONFLITO", "Parto alterado por outra pessoa; atualize antes de corrigir");
     const detalhes = normalizarDetalhesParto(input, antes.data.toISOString().slice(0, 10), antes);
+    if(detalhes.tipo==="ABORTO"&&(input.observacao??antes.observacao??"").trim().length<5)erro("Explique a observação e o contexto do aborto", "observacao");
     await conferirMatrizTx(tx, antes.animalId, input.propriedadeId, antes.data);
     if (
       ["ABORTO", "NATIMORTO"].includes(detalhes.tipo) &&
@@ -1640,11 +1666,11 @@ export async function corrigirPartoTx(
         const antiga = await tx.gestacaoAnimal.findUniqueOrThrow({
           where: { id: antes.gestacaoId },
         });
-        if (antiga.motivoEncerramento?.startsWith("PARTO_")) {
+        if (antiga.tipoEncerramento === "PARTO" && antiga.encerradaEm?.getTime() === antes.data.getTime()) {
           // Desvincular não presume gestação novamente ativa; mantém encerramento físico conhecido para revisão explícita.
           await tx.gestacaoAnimal.update({
             where: { id: antiga.id },
-            data: { motivoEncerramento: `PARTO_DESVINCULADO: ${input.motivo}` },
+            data: { tipoEncerramento: "NAO_IDENTIFICADO", motivoEncerramento: `PARTO_DESVINCULADO: ${input.motivo}` },
           });
         }
       }
@@ -1653,6 +1679,7 @@ export async function corrigirPartoTx(
           where: { id: nova.id },
           data: {
             encerradaEm: antes.data,
+            tipoEncerramento: "PARTO",
             motivoEncerramento: `PARTO_${detalhes.tipo}`,
           },
         });
@@ -1675,8 +1702,9 @@ export async function corrigirPartoTx(
     await aplicarPesoPartoTx(tx, salva, input.pesoMatriz, usuarioId);
     await corrigirPesosCriasTx(tx, salva, input, usuarioId);
     await aplicarEscorePartoTx(tx, salva, input.escoreMatriz, usuarioId);
+    await reconciliarDemandasAnimalTx(tx, antes.animalId, usuarioId);
     if (salva.gestacaoId && salva.tipo !== antes.tipo) {
-      await tx.gestacaoAnimal.updateMany({ where: { id: salva.gestacaoId, motivoEncerramento: { startsWith: "PARTO_" } }, data: { motivoEncerramento: `PARTO_${salva.tipo}` } });
+      await tx.gestacaoAnimal.updateMany({ where: { id: salva.gestacaoId, tipoEncerramento: "PARTO" }, data: { motivoEncerramento: `PARTO_${salva.tipo}` } });
     }
     await auditar(tx, {
       entidade: "PartoAnimal",
@@ -1833,3 +1861,5 @@ export async function encerrarExposicao(
     return salva;
   });
 }
+
+function textoDataMaisAntiga(dados:import("./elegibilidade.calc.js").DadosElegibilidade,corte:Date){return [corte,...dados.iniciais.map(i=>i.data),...dados.partos.map(p=>p.data)].sort((a,b)=>a.getTime()-b.getTime())[0].toISOString().slice(0,10);}

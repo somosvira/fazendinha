@@ -1,3 +1,4 @@
+import { conflitoTransacaoValidada } from "../lib/transacao-validada.js";
 import { diagnosticarValorizacao, abrirValorizacao } from "../services/estoque/valorizacao.js";
 import { consultaValorizacaoSchema, aberturaValorizacaoSchema } from "../services/estoque/valorizacao.schemas.js";
 import { ValorizacaoError } from "../services/estoque/valorizacao.calc.js";
@@ -23,6 +24,7 @@ import { SEM_VINCULO } from "../lib/ids.js";
 
 type Status = 400 | 404 | 409 | 500;
 function fail(e: unknown): { status: Status; body: { error: string; code?: string; campo?: string } } {
+  if (conflitoTransacaoValidada(e)) return { status: 409, body: { error: "Os dados mudaram. Recarregue e confirme novamente.", code: "CONFLITO" } };
   if (e instanceof ValorizacaoError) return { status: e.code === "VALIDACAO" ? 400 : 409, body: { error: e.message, code: e.code } };
   if (e instanceof FinanceiroError) return { status: e.code === "VALIDACAO" ? 400 : 409, body: { error: e.message, code: e.code } };
   if (e instanceof svc.EstoqueError) {

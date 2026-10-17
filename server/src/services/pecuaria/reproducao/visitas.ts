@@ -162,6 +162,21 @@ export async function adicionarAtividadeTx(
       if (tarefaComumId && tarefasJaIncluidas.has(tarefaComumId)) erro("Esta tarefa já está incluída na visita", "participantes");
       if (tarefaComumId) tarefasJaIncluidas.add(tarefaComumId);
       const snapshot = await contextoAnimalVisitaTx(tx, animal.id, input.propriedadeId, v.data, cache);
+      const retornoOrigem=(input.contexto.retornosPorAnimal as Record<string,unknown>|undefined)?.[animal.id] as {avaliacaoId:string;tentativaId:string|null;gestacaoId:string|null;finalidade:string;tipoExameId:string|null}|undefined;
+      if(retornoOrigem){
+        const origem=await tx.avaliacaoReprodutiva.findFirst({where:{id:retornoOrigem.avaliacaoId,animalId:animal.id,status:"VALIDO",data:{lte:v.data}}});
+        if(!origem||origem.tentativaId!==retornoOrigem.tentativaId||origem.gestacaoId!==retornoOrigem.gestacaoId)erro("Retorno mudou; refaça a prévia");
+        Object.assign(snapshot,{retornoOrigem});
+      }
+      const demandaId=(input.contexto.demandasPorAnimal as Record<string,unknown>|undefined)?.[animal.id];
+      let demanda:Awaited<ReturnType<typeof tx.demandaAcompanhamentoReprodutivo.findUnique>>=null;
+      if(typeof demandaId==="string"){
+        demanda=await tx.demandaAcompanhamentoReprodutivo.findFirst({where:{id:demandaId,animalId:animal.id,estado:"PENDENTE",dataReferencia:{lte:v.data}}});
+        if(!demanda||input.tipo!=="AVALIACAO_REPRODUTIVA")erro("Demanda mudou ou é incompatível com a atividade; refaça a prévia", "contexto");
+        const regra=demanda.regraSnapshot as Record<string,unknown>;
+        Object.assign(snapshot,{acompanhamento:{id:demanda.id,finalidade:demanda.finalidade,ocorrencia:demanda.ocorrencia,tentativaId:demanda.tentativaId,gestacaoId:demanda.gestacaoId,regraSnapshot:regra,versao:demanda.versao}});
+      }
+
       if (contextosSelecao?.has(animal.id)) Object.assign(snapshot, { selecaoNaData: contextosSelecao.get(animal.id) });
       const criterios = criteriosVisitaSchema.parse(Object.fromEntries(Object.entries((input.contexto.criterios ?? {}) as Record<string, unknown>).filter(([k,v]) => ["categoriaId","loteId","situacao","diasTentativaMin","diasTentativaMax","diasPartoMin","diasPartoMax","diasGestacaoMin","diasGestacaoMax"].includes(k) && v !== "" && v != null)));
       if (tarefa) {
@@ -177,6 +192,8 @@ export async function adicionarAtividadeTx(
       dadosParticipantes.push({
         atividadeId: atividade.id, animalId: animal.id, ordem: i + 1,
         tarefaId: tarefaComumId, snapshot: json(snapshot),
+        ...(!demanda&&retornoOrigem?{rascunho:json({...(retornoOrigem.tentativaId?{tentativaId:retornoOrigem.tentativaId}:{}),...(retornoOrigem.gestacaoId?{gestacaoId:retornoOrigem.gestacaoId}:{}),...(["DIAGNOSTICO","RECONFIRMACAO","SEXAGEM"].includes(retornoOrigem.finalidade)?{finalidade:retornoOrigem.finalidade}:{}),...(retornoOrigem.tipoExameId?{tipoExameId:retornoOrigem.tipoExameId}:{})})}:{}),
+        ...(demanda?{rascunho:json({demandaAcompanhamentoId:demanda.id,finalidade:demanda.finalidade,...(demanda.tentativaId?{tentativaId:demanda.tentativaId}:{}),...(demanda.gestacaoId?{gestacaoId:demanda.gestacaoId}:{}),...((demanda.regraSnapshot as Record<string,unknown>).tipoExameId?{tipoExameId:(demanda.regraSnapshot as Record<string,unknown>).tipoExameId}:{})})}:{}),
       });
     }
     await tx.participanteVisita.createMany({ data: dadosParticipantes });
@@ -464,6 +481,12 @@ export async function confirmarAtividadeTx(
             let fato: { id: string }, fatoTipo: string;
             if (atividade.tipo === "AVALIACAO_REPRODUTIVA") {
               const salvo = p.rascunho as Record<string, unknown>;
+              const acompanhamento=(p.snapshot as Record<string,unknown>).acompanhamento as {id:string;finalidade:string;tentativaId:string|null;gestacaoId:string|null;regraSnapshot:Record<string,unknown>}|undefined;
+              if(acompanhamento){
+                if(dados.demandaAcompanhamentoId&&dados.demandaAcompanhamentoId!==acompanhamento.id)erro("A demanda do atendimento foi alterada; refaça a preparação");
+                Object.assign(dados,{demandaAcompanhamentoId:acompanhamento.id,finalidade:acompanhamento.finalidade,tentativaId:acompanhamento.tentativaId,gestacaoId:acompanhamento.gestacaoId});
+                if(acompanhamento.regraSnapshot.tipoExameId)dados.tipoExameId=acompanhamento.regraSnapshot.tipoExameId;
+              }
               const tipoExameId = typeof dados.tipoExameId === "string" ? dados.tipoExameId : TIPO_EXAME_REPRODUTIVO;
               if (tipoExameId !== TIPO_EXAME_REPRODUTIVO && (salvo.tipoExameId !== tipoExameId || typeof salvo.formatoExameHash !== "string"))
                 erro("Salve e revise o rascunho deste tipo de exame antes de confirmar", "tipoExameId");

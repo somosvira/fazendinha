@@ -5,7 +5,7 @@ vi.mock("../rebanho/animais.js", () => ({ registrarPesagemTx: vi.fn() }));
 vi.mock("../sanidade/ocorrencias.js", () => ({ criarOcorrenciaTx: vi.fn() }));
 import { normalizarDetalhesParto, aplicarRetencaoPartoTx, aplicarPesoPartoTx, corrigirPesosCriasTx } from "./partos.js";
 const id = "7e59821f-4c09-4e95-8d4e-699f32738c2b";
-const base = { chave: id, animalId: id, propriedadeId: 1, data: "2026-01-01", tipo: "ABORTO" };
+const base = { chave: id, animalId: id, propriedadeId: 1, data: "2026-01-01", tipo: "ABORTO",observacao:"Aborto observado; causa clínica desconhecida" };
 const parto = (extra = {}) => ({ id, animalId: id, propriedadeId: 1, data: new Date("2026-01-01"), tipo: "NORMAL", desfecho: "NASCIMENTO", dificuldade: false, retencaoPlacenta: null, ocorridoEm: null, horarioEstimado: false, ...extra } as Prisma.PartoAnimalGetPayload<Record<string, never>>);
 const tx = (extra = {}) => ({ ocorrenciaSanitaria: { count: vi.fn().mockResolvedValue(0) }, ...extra } as unknown as Prisma.TransactionClient);
 describe("contrato e precisão do parto", () => {

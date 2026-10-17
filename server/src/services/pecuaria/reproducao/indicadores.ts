@@ -1,7 +1,8 @@
+import {calcularAcompanhamentoDoConjunto} from "./acompanhamento-indicadores.js";
 import type { Prisma } from "@prisma/client";
 import { transacaoPecuaria } from "../transacao.js";
 import { carregarDadosElegibilidadeTx } from "./elegibilidade.js";
-import { calcularIndicadoresReprodutivos, type DadosIndicadores } from "./indicadores.calc.js";
+import { calcularIndicadoresReprodutivos, type DadosIndicadores,type SnapshotIndicadoresReprodutivos } from "./indicadores.calc.js";
 import { consultaIndicadoresSchema, type ConsultaIndicadoresInput } from "./indicadores.schemas.js";
 
 export { exportarIndicadoresCsv } from "./indicadores.calc.js";
@@ -37,10 +38,11 @@ export async function carregarDadosIndicadoresTx(tx: Prisma.TransactionClient, f
   };
 }
 
-export async function consultarIndicadoresReprodutivosTx(tx: Prisma.TransactionClient, input: ConsultaIndicadoresInput) {
+export async function consultarIndicadoresReprodutivosTx(tx: Prisma.TransactionClient, input: ConsultaIndicadoresInput):Promise<SnapshotIndicadoresReprodutivos> {
   const filtros = consultaIndicadoresSchema.parse(input);
-  return calcularIndicadoresReprodutivos(await carregarDadosIndicadoresTx(tx, filtros), filtros);
+  const dados=await carregarDadosIndicadoresTx(tx,filtros);
+  return {...calcularIndicadoresReprodutivos(dados,filtros),versao:2 as const,acompanhamento:calcularAcompanhamentoDoConjunto(dados,filtros)};
 }
-export async function consultarIndicadoresReprodutivos(input: ConsultaIndicadoresInput) {
+export async function consultarIndicadoresReprodutivos(input: ConsultaIndicadoresInput):Promise<SnapshotIndicadoresReprodutivos> {
   return transacaoPecuaria(tx => consultarIndicadoresReprodutivosTx(tx, input));
 }

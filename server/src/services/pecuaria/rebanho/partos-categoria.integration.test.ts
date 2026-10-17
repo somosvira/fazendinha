@@ -54,6 +54,7 @@ comBanco("V4: partos e categorias em todos os consumidores", () => {
       await prisma.partoAnimal.create({ data: {
         animalId: animal.id, propriedadeId: sitio.id, data: new Date(diasAntes(10)),
         tipo: caso.tipo, status: caso.status, incluidoSaldoAnterior: caso.coberto,
+        ...(caso.tipo === "ABORTO" ? { observacao: "Aborto documentado nesta fixture de paridade" } : {}),
         ...(caso.status === "ANULADO" ? { motivoAnulacao: "Correção documentada", anuladoEm: new Date() } : {}),
       } });
       const leitura = await prisma.animal.findUniqueOrThrow({ where: { id: animal.id }, include: { partos: SELECT_PARTOS_CATEGORIA } });

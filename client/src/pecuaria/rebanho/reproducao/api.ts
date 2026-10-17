@@ -11,6 +11,7 @@ export type Gestacao = {
   sexoFetal?: string | null;
   previsaoParto?: string | null;
   tentativaId?: string | null;
+  tipoEncerramento?:string|null;motivoEncerramento?:string|null;
 };
 export type Restricao = {
   id: string;
@@ -136,6 +137,7 @@ export type FatoReprodutivo = CamposParto & {
   }>;
 };
 export type PainelReprodutivo = {
+  marcos?:import("./CirculoMarcosReprodutivos").CirculoMarcosReprodutivosProps|null;
   animais: AnimalReprodutivo[];
   tentativas: FatoReprodutivo[];
   avaliacoes: FatoReprodutivo[];
@@ -199,6 +201,7 @@ export type TentativaInput = FatoBase & {
   motivoDocumentacaoExcepcional?: string;
 };
 export type AvaliacaoInput = FatoBase & {
+  demandaAcompanhamentoId?:string;
   formatoExameHash?: string;
   finalidade?: "DIAGNOSTICO" | "RECONFIRMACAO" | "SEXAGEM";
   tipoExameId?: string;

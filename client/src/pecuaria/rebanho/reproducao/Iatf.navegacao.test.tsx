@@ -20,7 +20,7 @@ it("abre programação de outro retorno por popstate sem remontar",async()=>{
 it.each(["Editar rascunho","Nova versão"])("%s envia apenas parâmetros editáveis e preserva exame planejado",async acao=>{
   vi.clearAllMocks();
   const etapas=[{nome:"Avaliação",tipo:"AVALIACAO",intervalo:30,unidade:"DIAS",planoAvaliacao:{tipo:"DIAGNOSTICO",tipoExameId:"exame"},referencias:{tipoExameNome:"Exame congelado"}}];
-  vi.mocked(reqV4).mockImplementation(async(_path,body)=>body?{}:[{id:"protocolo",nome:"Modelo",versao:1,publicado:false,ativo:true,etapas}]);
+  vi.mocked(reqV4).mockImplementation(async(_path,body)=>_path.startsWith("/reproducao/biblioteca")?[]:body?{}:[{id:"protocolo",nome:"Modelo",versao:1,publicado:false,ativo:true,etapas}]);
   render(<Iatf modo="cadastros" podeLancar propriedadeId={7}/>);
   fireEvent.click(await screen.findByRole("button",{name:acao}));
   fireEvent.click(screen.getByRole("button",{name:"Salvar"}));

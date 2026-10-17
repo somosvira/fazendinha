@@ -19,7 +19,7 @@ export function contadoresCiclo(partosAnteriores: number, partos: { data: Date; 
 }
 
 type Avaliacao = { data: Date; resultado: string };
-type Gestacao = { confirmadaEm: Date; encerradaEm: Date | null; status: string };
+type Gestacao = { confirmadaEm: Date; encerradaEm: Date | null; status: string;tipoEncerramento?:string|null };
 
 /** A última evidência conclusiva prevalece. Uma anotação de campo não apaga o diagnóstico anterior. */
 export function situacaoReprodutiva(input: {
@@ -58,7 +58,7 @@ export function situacaoReprodutiva(input: {
   }
   if (input.gestacao?.status === "VALIDO") {
     evidencias.push({ data: input.gestacao.confirmadaEm, situacao: "GESTANTE", prioridade: 2 });
-    if (input.gestacao.encerradaEm) evidencias.push({ data: input.gestacao.encerradaEm, situacao: "VAZIA", prioridade: 3 });
+    if (input.gestacao.encerradaEm) evidencias.push({ data: input.gestacao.encerradaEm, situacao: ["PERDA","PARTO"].includes(input.gestacao.tipoEncerramento??"")?"VAZIA":"DESCONHECIDA", prioridade: 3 });
   }
   if (input.ultimoParto) evidencias.push({ ...input.ultimoParto, situacao: "VAZIA", prioridade: 4 });
   return evidencias.sort((a, b) => b.data.getTime() - a.data.getTime() || b.prioridade - a.prioridade)[0]?.situacao ?? "DESCONHECIDA";

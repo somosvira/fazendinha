@@ -8,7 +8,7 @@ describe("retorno informado na data", () => {
     expect(contextoRetornoNaData(null, new Date("2026-10-14"))).toEqual({ retornoEm: null, diasAteRetorno: null, retornoInformado: false });
   });
   it("última avaliação sem retorno substitui retorno anterior e lê em lote na data", async () => {
-    const tx = { avaliacaoReprodutiva: { findMany: vi.fn().mockResolvedValue([
+    const tx = {demandaAcompanhamentoReprodutivo:{findMany:vi.fn().mockResolvedValue([])}, avaliacaoReprodutiva: { findMany: vi.fn().mockResolvedValue([
       { animalId: "a", retornoEm: null }, { animalId: "a", retornoEm: new Date("2026-10-15") }, { animalId: "b", retornoEm: new Date("2026-10-16") },
     ]) } };
     const retornos = await carregarRetornosNaDataTx(tx as unknown as Parameters<typeof carregarRetornosNaDataTx>[0], ["a", "b", "a"], new Date("2026-10-14"));

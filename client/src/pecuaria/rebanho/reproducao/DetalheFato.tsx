@@ -195,7 +195,7 @@ export function DetalheFato({
                 Corrigir / completar parto
               </Button>
             )}
-          {podeLancar && fato.status !== "ANULADO" && (
+          {podeLancar && fato.grupo!=="Gestação" && fato.status !== "ANULADO" && (
             <Button danger onClick={() => setAnulando(true)}>
               Conferir anulação
             </Button>

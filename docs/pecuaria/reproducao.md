@@ -30,9 +30,29 @@ Lançamentos retroativos conferem também os ciclos encerrados: uma nova gestaç
 
 A situação clínica acompanha o animal após a transferência entre sítios. Gestação, restrições, paridade e tentativa relevante são consultadas para o animal autorizado na data de referência. Listas de fatos e custos conservam o sítio do evento; acompanhar a condição clínica não concede acesso a custos de outros sítios. Reconfirmação, sexagem e parto no destino podem se vincular à gestação anterior.
 
+### Encerramento e explicação de perdas
+
+O follow-up acrescenta `Gestacao.tipoEncerramento`: PERDA, PARTO ou NAO_IDENTIFICADO quando encerrada; gestação aberta conserva valor nulo. Os leitores usam o tipo e os fatos vinculados, sem procurar palavras no motivo. A migração reconhece parto válido vinculado e auditoria estruturada de perda; texto livre isolado não comprova um desfecho. Encerramento histórico sem prova suficiente permanece a esclarecer.
+
+Registrar uma perda exige explicação. A explicação descreve o ocorrido e pode informar que a causa é desconhecida; não exige diagnóstico inventado. `causaClinica` distingue DESCONHECIDA, SUSPEITA e CONFIRMADA, com descrição e evidências quando informadas. Autoria do registro não significa responsabilidade pela perda. Novos abortos exigem explicação em sua observação; registros antigos sem texto conservam essa ausência.
+
+A garantia SQL de explicação de PERDA é criada com `NOT VALID`: não rejeita linhas históricas comprovadas já existentes, mas confere toda inserção/atualização posterior. Não validar a constraint globalmente antes de reconciliar os legados sem texto; completar a explicação exige conhecimento do fato, não preenchimento automático. Aborto usa trigger para exigir explicação na criação, conversão para aborto ou alteração da observação, preservando a leitura dos eventos antigos.
+
+Aborto válido vinculado à gestação participa da análise de perdas com subtipo ABORTO, usando o próprio parto como evidência. Não se cria uma segunda perda para esse evento. Natimorto continua identificado no conjunto de nascimentos. Uma perda posterior não apaga a concepção comprovada; somente os eventos de parto, inclusive aborto e natimorto, reiniciam o ciclo operacional.
+
+### Diagnóstico e reconfirmação configuráveis
+
+`PoliticaAcompanhamentoReprodutivo` guarda a versão por sítio e vigência. Define DG após a tentativa e ocorrências de reconfirmação após o primeiro DG positivo factual, com dias e tipo/versão de exame opcionais. Não há prazo clínico instalado por padrão. O efeito inicial é ALERTA; bloqueios existentes de saldo, período, autorização e cronologia continuam válidos.
+
+`DemandaAcompanhamentoReprodutivo` conserva animal, sítio de origem, uma única âncora (tentativa ou gestação), finalidade, ocorrência, política e regra congelada, referência e previsão. Uma mesma âncora/finalidade/ocorrência não recebe outra demanda por mudança de política. Nova tentativa ou confirmação válida usa a política aplicável; fatos anteriores exigem adoção explícita com prévia, motivo e revalidação. Abrir uma consulta não cria demandas nem aplica configurações retroativamente.
+
+O acompanhamento procura tarefa comum compatível antes de apresentar outra pendência. A ligação com `ExameAnimal` mantém o exame como fato único. Exame inconclusivo pode concluir a tarefa executada e ainda deixar a demanda clínica pendente. Uma evidência não resolve duas ocorrências, nem uma ocorrência diferente daquela escolhida explicitamente. Anulação ou correção reavalia os vínculos na mesma transação, preservando histórico; perder a validade da origem não é compensado por uma conclusão antiga. Vencimento indica pendência, sem presumir perda, vazio ou erro da equipe.
+
 ## Material, estoque e genética
 
 IA e TE usam `MaterialGenetico`, ligado ao Produto do estoque único. Consumo de estoque valida produto, lote/validade, quantidade, saldo e período financeiro; fato e saída são gravados na mesma transação. Material incluído em Serviço confirmado não cria saldo fictício na fazenda. Origem documentada exige justificativa. Um vínculo ao Serviço não lança outra despesa. No formulário de tentativa, a origem Serviço permite informar a parcela atribuída (incluindo centavos) a quem tem acesso ao Financeiro e permissão de ver valores. Vazio conserva a ausência de atribuição; zero é explícito. Trocar a origem ou o Serviço limpa a atribuição anterior. A soma e as permissões continuam validadas no servidor.
+
+A origem do material e o Serviço atribuído são independentes: material do estoque pode acompanhar um Serviço específico. O custo direto consultado por tentativa inclui preparo explicitamente vinculado, material e serviço, sem duplicar os fatos na participação ou no animal. Hormônios de uma participação não são distribuídos automaticamente entre suas tentativas. Consulte [custos diretos](README.md#custos-diretos--follow-up-em-validação) para composição, rateio, completude e autorização, e o [contrato financeiro](../financeiro-rebuild-contrato.md) para a base de valor do estoque.
 
 A tentativa preserva um retrato da genética e da origem: alterações posteriores no cadastro do material não reescrevem a tentativa. Na TE, a mãe genética é a doadora e a mãe gestacional é a receptora. Genitor desconhecido permanece desconhecido; a receptora não substitui uma doadora ausente.
 
@@ -187,6 +207,26 @@ A elegibilidade usa três registros: `PoliticaElegibilidadeReprodutiva` versiona
 Quando um parto inicia um novo ciclo, o vínculo automático só ocorre em sítios que já tenham configuração de política: se não houver versão vigente, o ciclo congela política nula. O ciclo inicial, sem parto de origem, exige vínculo explícito. Sítio nunca configurado fica pendente de configuração e exige vínculo histórico explícito; uma política nova não é aplicada silenciosamente a ciclos antigos.
 
 Indicadores usam a Base IDEAGRI/IILB — metodologia Fazendinha v1 (`FAZENDINHA_IDEAGRI_IILB_V1`), com regras explicitadas na emissão e sem alegar equivalência integral. A metodologia executada fica em `services/pecuaria/reproducao/indicadores.calc.ts`; o método é explicado na própria emissão. Janelas de 21 dias são inclusivas e retrocedem a partir da data final; sobra menor que 21 dias é descartada. TS é 100 × matrizes únicas servidas / elegíveis; TC é 100 × tentativas positivas / (tentativas − abertas); TP é TS × TC / 100. A saída proporcional do PEV no dia `d` contribui `(22 − d) / 21`; a conta não arredonda etapas intermediárias. Gestação confirmada no início exclui a matriz mesmo quando falta política congelada, sem converter essa exclusão clínica em pendência de elegibilidade. Para tentativas anteriores sem diagnóstico, percentual explícito de 0 a 100 contribui com 1 − q/100; sem esse valor, a contribuição fica pendente. TE analítica usa data factual menos sete dias por padrão, configurável entre zero e trinta, sem alterar a data real. Uma baixa dentro do período exclui o intervalo inteiro. Liberação válida durante o período conta a fração de dias restantes, após revalidar ciclo, restrições, localização e situação reprodutiva. Totais são recalculados sobre seus numeradores e denominadores, não pela média das taxas. Desconhecido é `null`, nunca zero.
+
+### Acompanhamento gerencial adicional
+
+O envelope de indicadores V2 acrescenta `ACOMPANHAMENTO_GERENCIAL_V1`. As taxas TS/TC/TP e a metodologia V1 continuam com suas regras; emissões antigas não são recalculadas. Os novos indicadores usam dias corridos, fatos válidos, localização na data da população e corte explícito. Custos não condicionam a disponibilidade da análise clínica.
+
+| Consulta | População e cálculo | Lacunas que permanecem visíveis |
+|---|---|---|
+| Parto, fim do PEV e liberação até primeiro serviço | Coorte de ciclos iniciados no período, acompanhados até serviço, saída, fim do ciclo ou corte. Primeira liberação válida é reconstruída pelas políticas, decisões e restrições na data; não se confunde com fim do PEV. | Sem serviço, sem política/marco comprovado, saídas, serviços antecipados e restrições intermediárias. |
+| Fila atual de liberadas sem serviço | Ciclos abertos no corte, inclusive anteriores ao período, com liberação comprovada e situação elegível no corte. | Liberação ou disponibilidade não comprovadas ficam em lista separada; animais sem origem de ciclo comprovada não desaparecem. |
+| Tentativas por concepção | Serviço que originou a concepção no período, com prova até o corte. Conta tentativas válidas dos tipos selecionados desde o início do mesmo ciclo, inclusive anteriores ao período. | Concepção sem tentativa comprovada, ciclo ausente, prova cronológica insuficiente e ordem intradiária desconhecida. Perda não reinicia essa contagem. |
+| Perdas gestacionais | Coorte pelo primeiro DG positivo factual no período. Janela de seguimento escolhida explicitamente. Numerador: perdas comprovadas na janela; denominador: perdas mais gestações sem perda com seguimento comprovado. | Janela incompleta, ausência de primeiro DG, desfecho desconhecido e seguimento insuficiente. Sem janela escolhida, mostrar contagens e deixar taxa indefinida. |
+| Intervalo entre partos | Visão principal entre nascimentos vivos/natimortos; o segundo evento qualificado está no período e o anterior pode estar fora dele. Visão alternativa inclui todos os partos operacionais. | Aborto intermediário destacado mesmo fora do período, falta de parto anterior, desfecho desconhecido e eventos ambíguos na mesma data. Gêmeos contam um parto. |
+
+A espera desde a liberação é um intervalo de calendário; restrições posteriores aparecem no contexto, sem subtração silenciosa de dias nem atribuição automática de culpa. Médias incluem somente intervalos comprovados e acompanham o número de observações e pendências.
+
+Na taxa de perdas, permanecer localizado na fazenda não comprova continuidade gestacional. O adaptador exige evidência positiva posterior ou parto qualificado da mesma gestação, além de continuidade operacional entre as evidências. Uma gestação não acompanhada não entra como sucesso presumido. Abortos são destacados na composição das perdas; explicação histórica ausente é lacuna documental, sem apagar um desfecho factual comprovado.
+
+### Círculo de marcos e linha do tempo
+
+O acompanhamento individual apresenta parto, fim do PEV, primeira liberação válida, primeiro serviço e primeiro DG positivo, mais a linha dos eventos do ciclo. O preenchimento do círculo representa marcos conhecidos, sem percentual de prenhez, previsão de sucesso ou criação de um ciclo paralelo. Previsão, pendência, realização e informação desconhecida são distintas. Uma perda mantém o diagnóstico positivo histórico e o estado atual é mostrado separadamente. Datas/intervalos vêm dos cálculos do servidor; a apresentação não decide elegibilidade.
 
 ## Relatórios reprodutivos
 

@@ -51,6 +51,8 @@ export function AcoesReprodutivas({
   const [nomeCria, setNomeCria] = useState("");
   const [data, setData] = useState(hoje());
   const [motivo, setMotivo] = useState("");
+  const [causaClinica,setCausaClinica]=useState("DESCONHECIDA");
+  const [descricaoCausa,setDescricaoCausa]=useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState(false);
   const [chave, setChave] = useState(() => crypto.randomUUID());
@@ -59,6 +61,7 @@ export function AcoesReprodutivas({
     setAcao(a);
     setData(hoje());
     setMotivo("");
+    setCausaClinica("DESCONHECIDA");setDescricaoCausa("");
     setPrevisao("");
     setTentativaId("");
     setBrinco("");
@@ -307,6 +310,7 @@ export function AcoesReprodutivas({
                             propriedadeId,
                             animalId: acao.animalId,
                             gestacaoId: acao.id,
+                            causaClinica: {estado:causaClinica,...(descricaoCausa.trim()?{descricao:descricaoCausa.trim()}: {})},
                             data,
                             motivo,
                           }
@@ -328,6 +332,7 @@ export function AcoesReprodutivas({
                 .finally(() => setOcupado(false));
             }}
           >
+            {acao.tipo==="perda"&&<><p className="text-sm">Descreva a observação e o contexto da perda no motivo obrigatório. A causa clínica pode permanecer desconhecida.</p><label>Causa clínica<select className={classeInput} value={causaClinica} onChange={e=>setCausaClinica(e.target.value)}><option value="DESCONHECIDA">Desconhecida</option><option value="SUSPEITA">Suspeita</option><option value="CONFIRMADA">Confirmada</option></select></label><label>Descrição da causa (quando conhecida)<textarea className={classeInput} value={descricaoCausa} required={causaClinica!=="DESCONHECIDA"} minLength={2} maxLength={1000} onChange={e=>setDescricaoCausa(e.target.value)}/></label></>}
             <ErrorBox erro={erro} />
             <p className="text-sm">
               Animal {nome(acao.animalId)}. O histórico e os fatos anteriores

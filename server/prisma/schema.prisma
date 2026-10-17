@@ -635,6 +635,8 @@ model AuditoriaFinanceira {
 // Sítio físico da fazenda-cliente (multi-propriedade). Default single-tenant: 1
 // linha (principal). O mesmo seam serve de base p/ multi-tenant (Organizacao) depois.
 model Propriedade {
+  politicasAcompanhamento PoliticaAcompanhamentoReprodutivo[]
+  demandasAcompanhamento DemandaAcompanhamentoReprodutivo[]
   relatoriosReprodutivos SnapshotRelatorioReprodutivo[]
   politicasElegibilidade PoliticaElegibilidadeReprodutiva[]
   ciclosElegibilidade VinculoPoliticaCiclo[]
@@ -1022,6 +1024,7 @@ enum OrigemComposicao {
 // Quem o animal é: identidade estável. Onde está, para que serve e se teve baixa
 // vivem em tabelas de histórico próprias (Localizacao/Destino/Baixa).
 model Animal {
+  demandasAcompanhamento DemandaAcompanhamentoReprodutivo[]
   ciclosElegibilidade VinculoPoliticaCiclo[]
   id                      String          @id @default(uuid())
   ideagriId               Int?            @unique
@@ -1723,6 +1726,7 @@ enum PrecisaoCalendarioProtocolo {
 }
 
 model Protocolo {
+  referenciaTecnica Json?
   tipo TipoProtocolo @default(SANITARIO)
   legadoIatfId String? @unique
   publicado Boolean @default(false)
@@ -1832,6 +1836,7 @@ model ParticipacaoProtocolo {
 }
 
 model TarefaProtocolo {
+  demandaAcompanhamento DemandaAcompanhamentoReprodutivo?
   precisaoRealizacao PrecisaoCalendarioProtocolo?
   previsaoPendente Boolean @default(false)
   nomeSnapshot String?
@@ -1908,6 +1913,10 @@ model TipoExame {
 }
 
 model ExameAnimal {
+  demandaAcompanhamentoId String?
+  demandaAcompanhamento DemandaAcompanhamentoReprodutivo? @relation("ExamesDaDemanda",fields:[demandaAcompanhamentoId],references:[id],onDelete:Restrict)
+  demandasOriginadas DemandaAcompanhamentoReprodutivo[] @relation("OrigemDemanda")
+  demandaResolvida DemandaAcompanhamentoReprodutivo? @relation("ResolucaoDemanda")
   destinosPreparoCusto VinculoPreparoTentativa[]
 
   classificacaoCusto ClassificacaoCustoPecuaria?
@@ -2214,6 +2223,7 @@ model RegraSanitariaReprodutiva {
 }
 
 model TentativaReprodutiva {
+  demandasAcompanhamento DemandaAcompanhamentoReprodutivo[]
   preparatoriosCusto VinculoPreparoTentativa[]
 
   classificacaoCusto ClassificacaoCustoPecuaria?
@@ -2255,6 +2265,9 @@ model TentativaReprodutiva {
 }
 
 model GestacaoAnimal {
+  tipoEncerramento String?
+  causaClinica Json?
+  demandasAcompanhamento DemandaAcompanhamentoReprodutivo[]
   id                 String               @id @default(uuid())
   referenciaExterna  String?              @unique
   animalId           String
@@ -2822,5 +2835,63 @@ model VinculoPreparoTentativa {
   @@index([aplicacaoId])
   @@index([exameId])
   @@index([participacaoId])
+  @@schema("pecuaria")
+}
+
+// Cada versão é imutável. A política atual nunca reescreve demandas já congeladas.
+model PoliticaAcompanhamentoReprodutivo {
+  id String @id @default(uuid())
+  propriedadeId Int
+  propriedade Propriedade @relation(fields:[propriedadeId],references:[id],onDelete:Restrict)
+  versao Int
+  vigenteDesde DateTime @db.Date
+  parametros Json
+  criadoEm DateTime @default(now())
+  criadoPorId Int?
+  demandas DemandaAcompanhamentoReprodutivo[]
+  @@unique([propriedadeId,versao])
+  @@unique([propriedadeId,vigenteDesde])
+  @@schema("pecuaria")
+}
+
+// Necessidade clínica separada da execução de uma tarefa e de suas respostas inconclusivas.
+model DemandaAcompanhamentoReprodutivo {
+  id String @id @default(uuid())
+  animalId String
+  animal Animal @relation(fields:[animalId],references:[id],onDelete:Restrict)
+  propriedadeOrigemId Int
+  propriedadeOrigem Propriedade @relation(fields:[propriedadeOrigemId],references:[id],onDelete:Restrict)
+  finalidade String
+  tentativaId String?
+  tentativa TentativaReprodutiva? @relation(fields:[tentativaId],references:[id],onDelete:Restrict)
+  gestacaoId String?
+  gestacao GestacaoAnimal? @relation(fields:[gestacaoId],references:[id],onDelete:Restrict)
+  ocorrencia Int @default(1)
+  politicaId String
+  politica PoliticaAcompanhamentoReprodutivo @relation(fields:[politicaId],references:[id],onDelete:Restrict)
+  dataReferencia DateTime @db.Date
+  previstaPara DateTime @db.Date
+  regraSnapshot Json
+  origemAdocao String @default("FATO_NOVO")
+  estado String @default("PENDENTE")
+  tarefaId String? @unique
+  tarefa TarefaProtocolo? @relation(fields:[tarefaId],references:[id],onDelete:Restrict)
+  exameOrigemId String?
+  exameOrigem ExameAnimal? @relation("OrigemDemanda",fields:[exameOrigemId],references:[id],onDelete:Restrict)
+  exames ExameAnimal[] @relation("ExamesDaDemanda")
+  exameResolucaoId String? @unique
+  exameResolucao ExameAnimal? @relation("ResolucaoDemanda",fields:[exameResolucaoId],references:[id],onDelete:Restrict)
+  resolucaoSnapshot Json?
+  resolvidaEm DateTime? @db.Date
+  encerradaEm DateTime?
+  motivoEncerramento String?
+  versao Int @default(1)
+  criadoEm DateTime @default(now())
+  criadoPorId Int?
+  atualizadoEm DateTime @updatedAt
+  @@index([animalId,estado,previstaPara])
+  @@index([propriedadeOrigemId,estado])
+  @@index([tentativaId])
+  @@index([gestacaoId])
   @@schema("pecuaria")
 }

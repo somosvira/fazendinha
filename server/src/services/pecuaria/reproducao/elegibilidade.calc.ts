@@ -1,3 +1,4 @@
+import { desfechoGestacao } from "./desfecho-gestacao.calc.js";
 import type { ParametrosElegibilidade } from "./elegibilidade.schemas.js";
 import { calcularContextoAnimalNaData, dataCalendarioContexto, type HistoricoContextoAnimal } from "./contexto-animal.calc.js";
 import { resolverPapelReprodutivo, type EvidenciaPapel } from "../rebanho/papel-reprodutivo.calc.js";
@@ -21,6 +22,7 @@ export type EntradaElegibilidade = {
   papel: string | null; papelConflitante: boolean; descarte: boolean | null;
   restricoes: readonly { id: string; data: Date; ate: Date | null; status: string }[];
   situacaoReprodutiva: string; perdaGestacionalEm: Date | null;
+  pendenciasContexto?: string[];
 };
 export type ElegibilidadeNaData = {
   animalId: string; propriedadeId: number; dataReferencia: string;
@@ -50,6 +52,7 @@ export function calcularElegibilidadeNaData(input: EntradaElegibilidade): Elegib
   const base: { valor: boolean | null } = { valor: true };
   const excluir = (motivo: string) => { motivos.push(motivo); base.valor = false; };
   const pendente = (motivo: string) => { motivos.push(motivo); if (base.valor !== false) base.valor = null; };
+  for(const motivo of input.pendenciasContexto??[])pendente(motivo);
   if (input.sexo !== "F") excluir("ANIMAL_NAO_FEMEA");
   if (input.baixaEm && !depois(input.baixaEm, ref)) excluir("ANIMAL_BAIXADO");
   else if (input.localizacaoConflitante) pendente("LOCALIZACOES_CONFLITANTES");
@@ -109,12 +112,12 @@ export function calcularElegibilidadeNaData(input: EntradaElegibilidade): Elegib
 /** Conjunto carregado uma vez para avaliar várias datas sem consultas por animal/dia. */
 export type DadosElegibilidade = {
   animais: Array<HistoricoContextoAnimal["animal"] & { sexo: string }>;
-  partos: Array<HistoricoContextoAnimal["partos"][number] & { desfecho: string | null; gestacaoId: string | null }>;
+  partos: Array<HistoricoContextoAnimal["partos"][number] & { desfecho: string | null; gestacaoId: string | null;observacao?:string|null;origem?:string;crias?:Array<{viva:boolean}> }>;
   tentativas: Array<HistoricoContextoAnimal["tentativas"][number]>;
   lactacoes: Array<HistoricoContextoAnimal["lactacoes"][number]>;
-  gestacoes: Array<HistoricoContextoAnimal["gestacoes"][number] & { motivoEncerramento: string | null }>;
+  gestacoes: Array<HistoricoContextoAnimal["gestacoes"][number] & { motivoEncerramento: string | null; tipoEncerramento?: string | null }>;
   localizacoes: Array<HistoricoContextoAnimal["localizacoes"][number]>;
-  avaliacoes: Array<HistoricoContextoAnimal["avaliacoes"][number]>;
+  avaliacoes: Array<HistoricoContextoAnimal["avaliacoes"][number] & {tentativaId?:string|null;gestacaoId?:string|null}>;
   iniciais: Array<HistoricoContextoAnimal["iniciais"][number] & { id: string; aptaDesde: Date | null; criadoEm: Date }>;
   vinculos: Array<{ id: string; animalId: string; chaveCiclo: string; inicioCiclo: Date; politicaId: string | null; situacaoInicialId?: string | null }>;
   politicas: Array<{ id: string; versao: number; parametros: unknown }>;
@@ -125,7 +128,7 @@ export type DadosElegibilidade = {
 };
 
 /** Não reconstitui o conhecimento passado; snapshots preservam a emissão original. */
-export function calcularElegibilidadesDoConjunto(dados: DadosElegibilidade, propriedadeId: number, referencia: Date): Map<string, ElegibilidadeNaData> {
+export function calcularElegibilidadesDoConjunto(dados: DadosElegibilidade, propriedadeId: number, referencia: Date, entradas?:Map<string,EntradaElegibilidade>): Map<string, ElegibilidadeNaData> {
   const ref = dataCalendarioContexto(referencia);
   const porAnimal = <T extends { animalId: string }>(lista: readonly T[], id: string) => lista.filter(f => f.animalId === id);
   const resultado = new Map<string, ElegibilidadeNaData>();
@@ -152,16 +155,17 @@ export function calcularElegibilidadesDoConjunto(dados: DadosElegibilidade, prop
     const descarte = restricoes.some(r => r.tipo === "DESCARTE" && (!r.ate || r.ate > ref));
     const encerradas = porAnimal(dados.gestacoes, animal.id).filter(g => g.status === "VALIDO" && g.encerradaEm && g.encerradaEm <= ref
       && (!ciclo || g.encerradaEm >= ciclo.inicioCiclo) && !partos.some(p => p.status === "VALIDO" && p.gestacaoId === g.id));
-    // Encerramento do parto não é perda: vínculo factual prevalece e prefixos legados são conservados.
-    const perda = encerradas.filter(g => g.motivoEncerramento && g.motivoEncerramento !== "PARTO" && !g.motivoEncerramento.startsWith("PARTO_"))
+    // Somente o tipo explícito e os vínculos factuais classificam o encerramento.
+    const perda = encerradas.filter(g => desfechoGestacao(g, partos) === "PERDA")
       .sort((a, b) => b.encerradaEm!.getTime() - a.encerradaEm!.getTime())[0];
-    const item = calcularElegibilidadeNaData({ animalId: animal.id, propriedadeId, referencia: ref, sexo: animal.sexo,
+    const entrada:EntradaElegibilidade={ animalId: animal.id, propriedadeId, referencia: ref, sexo: animal.sexo,
       propriedadeNaData: contexto.localizacaoNaData?.propriedadeId ?? null, localizacaoConflitante: contexto.pendencias.includes("LOCALIZACOES_SOBREPOSTAS"),
       baixaEm: porAnimal(dados.baixas, animal.id).find(b => !b.estornadaEm && b.data <= ref)?.data ?? null,
       ciclo, vinculo, politica: politica && parametros?.success ? { id: politica.id, versao: politica.versao, parametros: parametros.data } : null,
       politicaInvalida: politica && !parametros?.success ? { id: politica.id, versao: politica.versao } : undefined,
       decisoes: dados.decisoes.filter(d => d.vinculoCicloId === vinculo?.id), papel: papel.papel, papelConflitante: papel.estado === "CONFLITO", descarte,
-      restricoes: restricoes.filter(r => r.tipo !== "DESCARTE"), situacaoReprodutiva: contexto.situacaoReprodutiva, perdaGestacionalEm: perda?.encerradaEm ?? null });
+      restricoes: restricoes.filter(r => r.tipo !== "DESCARTE"), situacaoReprodutiva: contexto.situacaoReprodutiva, perdaGestacionalEm: perda?.encerradaEm ?? null };
+    const item=calcularElegibilidadeNaData(entrada);
     if (contexto.pendencias.includes("GESTACOES_SOBREPOSTAS")) {
       item.motivos.push("GESTACOES_CONFLITANTES");
       if (item.elegivel !== false) { item.elegivel = null; item.estado = "PENDENTE"; }
@@ -171,10 +175,12 @@ export function calcularElegibilidadesDoConjunto(dados: DadosElegibilidade, prop
       item.baseElegivel = null;
       if (item.elegivel !== false) { item.elegivel = null; item.estado = "PENDENTE"; }
     }
-    if (encerradas.some(g => !g.motivoEncerramento || g.motivoEncerramento.startsWith("PARTO_DESVINCULADO"))) {
+    if (encerradas.some(g => desfechoGestacao(g, partos) === "NAO_IDENTIFICADO")) {
       item.motivos.push("ENCERRAMENTO_GESTACAO_DESCONHECIDO");
       if (item.elegivel !== false) { item.elegivel = null; item.estado = "PENDENTE"; }
     }
+    entrada.pendenciasContexto=item.motivos.filter(m=>["GESTACOES_CONFLITANTES","ORIGEM_INICIAL_ANULADA","ENCERRAMENTO_GESTACAO_DESCONHECIDO"].includes(m));
+    entradas?.set(animal.id,entrada);
     resultado.set(animal.id, item);
   }
   return resultado;

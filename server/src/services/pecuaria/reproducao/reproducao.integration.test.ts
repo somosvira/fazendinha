@@ -352,9 +352,9 @@ suite("reprodução V4 integra fatos, estoque e visita sem duplicação", () => 
   it("anular parto antigo não reabre gestação sobre ciclo posterior documentado sem tentativas", async () => {
     const a = await animal();
     const p = await criarAvaliacao({ ...base(a, "2026-02-01"), resultado: "POSITIVO", motivoVinculoDesconhecido: "Sem vínculo de tentativa" }, null);
-    const parto = await criarParto({ ...base(a, "2026-04-01"), gestacaoId: p.gestacaoId!, tipo: "ABORTO", iniciarLactacao: false, crias: [] }, null);
+    const parto = await criarParto({ ...base(a, "2026-04-01"), gestacaoId: p.gestacaoId!, tipo: "ABORTO", observacao: "Aborto observado no cenário fictício desta validação", iniciarLactacao: false, crias: [] }, null);
     const posterior = await criarAvaliacao({ ...base(a, "2026-06-01"), resultado: "POSITIVO", motivoVinculoDesconhecido: "Novo ciclo sem vínculo de tentativa" }, null);
-    await criarParto({ ...base(a, "2026-09-01"), gestacaoId: posterior.gestacaoId!, tipo: "ABORTO", iniciarLactacao: false, crias: [] }, null);
+    await criarParto({ ...base(a, "2026-09-01"), gestacaoId: posterior.gestacaoId!, tipo: "ABORTO", observacao: "Aborto observado no cenário fictício desta validação", iniciarLactacao: false, crias: [] }, null);
     const previa = await previaAnulacao("partos", parto.id, propriedadeId);
     expect(previa.impedimentos.join(" ")).toMatch(/gestação ou parto/);
     await expect(anularFato("partos", parto.id, { propriedadeId, motivo: "Correção retroativa", chave: crypto.randomUUID(), fingerprint: previa.fingerprint }, null)).rejects.toThrow(/cronologia/);
@@ -373,7 +373,7 @@ suite("reprodução V4 integra fatos, estoque e visita sem duplicação", () => 
   it("projeção clínica e paridade acompanham transferência sem expor fatos ou custos do sítio anterior", async () => {
     const a = await animal();
     const p = await criarAvaliacao({ ...base(a, "2026-02-01"), resultado: "POSITIVO", motivoVinculoDesconhecido: "Histórico clínico" }, null);
-    await criarParto({ ...base(a, "2026-08-01"), gestacaoId: p.gestacaoId!, tipo: "ABORTO", iniciarLactacao: false, crias: [] }, null);
+    await criarParto({ ...base(a, "2026-08-01"), gestacaoId: p.gestacaoId!, tipo: "ABORTO", observacao: "Aborto observado no cenário fictício desta validação", iniciarLactacao: false, crias: [] }, null);
     await criarRestricao({ ...base(a, "2026-08-10"), tipo: "DESCARTE", motivo: "Restrição que acompanha matriz", acoes: ["IA", "IATF"] }, null);
     const atual = await criarAvaliacao({ ...base(a, "2026-08-20"), resultado: "POSITIVO", motivoVinculoDesconhecido: "Gestação constatada" }, null);
     await movimentar(movimentarSchema.parse({ animalIds: [a], propriedadeId: propriedade2, data: "2026-09-01", motivo: "Transferência autorizada" }), null);
@@ -391,7 +391,7 @@ suite("reprodução V4 integra fatos, estoque e visita sem duplicação", () => 
     await expect(criarAvaliacao({ ...base(a, "2026-09-15"), resultado: "RECONFIRMACAO", gestacaoId: atual.gestacaoId! }, null)).rejects.toThrow(/não estava neste sítio/);
     const ok = await criarAvaliacao({ ...base(a, "2026-09-15"), propriedadeId: propriedade2, resultado: "RECONFIRMACAO", gestacaoId: atual.gestacaoId! }, null);
     expect(ok.propriedadeId).toBe(propriedade2);
-    const partoDestino = await criarParto({ ...base(a, "2026-09-20"), propriedadeId: propriedade2, gestacaoId: atual.gestacaoId!, tipo: "ABORTO", iniciarLactacao: false, crias: [] }, null);
+    const partoDestino = await criarParto({ ...base(a, "2026-09-20"), propriedadeId: propriedade2, gestacaoId: atual.gestacaoId!, tipo: "ABORTO", observacao: "Aborto observado no cenário fictício desta validação", iniciarLactacao: false, crias: [] }, null);
     expect(partoDestino.propriedadeId).toBe(propriedade2);
     const aposParto = await painelReproducao(propriedade2, a);
     expect(aposParto.animais[0]).toMatchObject({ situacao: "VAZIA", partos: 2 });
@@ -535,7 +535,7 @@ suite("reprodução V4 integra fatos, estoque e visita sem duplicação", () => 
   it("aborto/natimorto contam parto sem criar lactação presumida nem animal ativo", async () => {
     const a = await animal();
     const p = await criarParto(
-      { ...base(a), tipo: "ABORTO", iniciarLactacao: false, crias: [] },
+      { ...base(a), tipo: "ABORTO", observacao: "Aborto observado no cenário fictício desta validação", iniciarLactacao: false, crias: [] },
       null,
     );
     expect(p.crias).toHaveLength(0);
@@ -559,7 +559,7 @@ suite("reprodução V4 integra fatos, estoque e visita sem duplicação", () => 
       criarParto(
         {
           ...base(a, "2026-09-15"),
-          tipo: "ABORTO",
+          tipo: "ABORTO", observacao: "Aborto observado no cenário fictício desta validação",
           iniciarLactacao: false,
           crias: [{ viva: true, sexo: "F", aptidao: "LEITE" }],
         },

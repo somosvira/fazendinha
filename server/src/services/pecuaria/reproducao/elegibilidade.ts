@@ -134,7 +134,8 @@ export async function carregarDadosElegibilidadeTx(tx: Prisma.TransactionClient,
     tx.politicaElegibilidadeReprodutiva.findMany({ where: { id: { in: vinculos.flatMap(v => v.politicaId ? [v.politicaId] : []) } } }),
     tx.decisaoElegibilidadeCiclo.findMany({ where: { vinculoCicloId: { in: vinculos.map(v => v.id) }, data: { lte: ate } } }),
   ]);
-  return { animais, partos, tentativas, lactacoes, gestacoes, localizacoes, avaliacoes, iniciais, vinculos, restricoes, papeis, baixas, politicas, decisoes };
+  const crias=partos.length?await tx.criaParto.findMany({where:{partoId:{in:partos.map(p=>p.id)}},select:{partoId:true,viva:true}}):[];
+  return { animais, partos:partos.map(p=>({...p,crias:crias.filter(c=>c.partoId===p.id)})), tentativas, lactacoes, gestacoes, localizacoes, avaliacoes, iniciais, vinculos, restricoes, papeis, baixas, politicas, decisoes };
 }
 /** O chamador autoriza os IDs pela localização na data. A consulta nunca congela vínculos. */
 export async function obterElegibilidadesNaDataTx(tx: Prisma.TransactionClient, ids: readonly string[], propriedadeId: number, referencia: Date): Promise<Map<string, ElegibilidadeNaData>> {

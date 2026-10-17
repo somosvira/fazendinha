@@ -13,7 +13,7 @@ describe("escore corporal com escala declarada", () => {
   });
   it("criação exige REGISTRAR e nunca aceita substituição sem parto existente", () => {
     const id = "7e59821f-4c09-4e95-8d4e-699f32738c2b";
-    const base = { chave: id, animalId: id, propriedadeId: 1, data: "2026-01-01", tipo: "ABORTO" };
+    const base = { chave: id, animalId: id, propriedadeId: 1, data: "2026-01-01", tipo: "ABORTO",observacao:"Aborto observado na fixture; causa desconhecida" };
     expect(partoAmpliadoSchema.safeParse({ ...base, escoreMatriz: { acao: "REGISTRAR", data: "2026-01-02", valor: 3, escalaMin: 1, escalaMax: 5 } }).success).toBe(true);
     expect(partoAmpliadoSchema.safeParse({ ...base, escoreMatriz: { acao: "ANULAR", exameId: id, motivo: "Corrigir exame" } }).success).toBe(false);
   });

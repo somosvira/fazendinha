@@ -39,6 +39,7 @@ export type ParticipanteVisita = {
   regularizacaoPendente?: boolean;
   historicoRegularizacao?: Array<{acao?: string; destinoConsumo?: string | null}>;
   snapshot: ContextoTemporalAnimal & {
+    acompanhamento?:{id:string;finalidade:string;ocorrencia:number;tentativaId:string|null;gestacaoId:string|null;regraSnapshot:Record<string,unknown>;versao:number};
     animalId?: string;
     sexo?: string;
     propriedadeId?: number;

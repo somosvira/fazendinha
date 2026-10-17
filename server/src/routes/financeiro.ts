@@ -1,3 +1,4 @@
+import { conflitoTransacaoValidada } from "../lib/transacao-validada.js";
 import { ValorizacaoError } from "../services/estoque/valorizacao.calc.js";
 import { Hono, type Context } from "hono";
 import { z } from "zod";
@@ -70,6 +71,7 @@ function exigirUsuarioId(c: Context): number {
 }
 
 function falha(c: Context, erro: unknown) {
+  if (conflitoTransacaoValidada(erro)) return c.json({ error: "Os dados mudaram. Recarregue e confirme novamente.", code: "CONFLITO" }, 409);
   if (erro instanceof ValorizacaoError) return c.json({ error: erro.message, code: erro.code }, erro.code === "VALIDACAO" ? 422 : 409);
   if (erro instanceof EstoqueError) {
     const status = erro.code === "NAO_ENCONTRADO" ? 404 : erro.code === "VALIDACAO" ? 422 : 409;

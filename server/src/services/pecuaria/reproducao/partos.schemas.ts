@@ -38,6 +38,7 @@ export const partoAmpliadoSchema = z.object({
   crias: z.array(z.object({ viva: z.boolean(), sexo: z.enum(["F", "M"]), aptidao: z.enum(["LEITE", "CORTE"]), brinco: z.string().trim().min(1).max(39).nullish(), nome: z.string().trim().max(120).nullish(), loteId: uuid.nullish(), pesoKg: peso.nullish() }).strict()).max(10).default([]),
 }).strict().superRefine((v, ctx) => {
   validarHorario(v, ctx);
+  if((v.desfecho==="ABORTO"||v.tipo==="ABORTO")&&(v.observacao?.trim().length??0)<5)ctx.addIssue({code:"custom",path:["observacao"],message:"Explique a observação e o contexto do aborto (ao menos 5 caracteres); a causa clínica pode ser desconhecida"});
   if (!v.tipo && !v.desfecho) ctx.addIssue({ code: "custom", path: ["desfecho"], message: "Informe o desfecho do parto" });
   if (v.escoreMatriz && v.escoreMatriz.acao !== "REGISTRAR") ctx.addIssue({ code: "custom", path: ["escoreMatriz"], message: "Criação do parto admite registro de escore; revisões exigem parto existente" });
   if (v.ocorrenciaRetencao?.acao === "DESVINCULAR" || v.pesoMatriz?.acao === "DESVINCULAR" || v.pesoMatriz?.acao === "CORRIGIR") ctx.addIssue({ code: "custom", message: "Correção ou desvínculo exige parto existente" });
@@ -45,6 +46,6 @@ export const partoAmpliadoSchema = z.object({
 export const correcaoPartoAmpliadaSchema = z.object({
   propriedadeId: z.number().int().positive(), chave: uuid.optional(), motivo, versaoEsperada: z.number().int().positive().optional(), ...campos,
   pesosCrias: z.array(z.object({ criaId: uuid, peso: pesoPartoSchema.optional(), pesoKg: peso.nullable().optional() }).strict()).max(10).optional(),
-}).strict();
+}).strict().superRefine((v,ctx)=>{if((v.desfecho==="ABORTO"||v.tipo==="ABORTO")&&(v.observacao?.trim().length??0)<5)ctx.addIssue({code:"custom",path:["observacao"],message:"Explique a observação e o contexto do aborto; a causa clínica pode ser desconhecida"});});
 export type PartoAmpliadoInput = z.infer<typeof partoAmpliadoSchema>;
 export type CorrecaoPartoAmpliadaInput = z.infer<typeof correcaoPartoAmpliadaSchema>;

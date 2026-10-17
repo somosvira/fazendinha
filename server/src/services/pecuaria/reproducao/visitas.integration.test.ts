@@ -43,7 +43,7 @@ suite("visitas V4 — correções e planejamento as-of",()=>{
     await expect(salvarRascunho(visita.id,p.id,sitio.id,{anotacaoOriginal:"Anotação antiga"},null,0)).rejects.toMatchObject({code:"CONFLITO",campo:"versaoRascunho"});
     expect((await prisma.participanteVisita.findUniqueOrThrow({where:{id:p.id}})).rascunho).toEqual({anotacaoOriginal:"Primeira anotação"});
     await prisma.restricaoReprodutiva.create({data:{animalId:animal.id,propriedadeId:sitio.id,data:new Date("2026-10-09"),tipo:"DESCARTE",motivo:"Decisão reprodutiva documentada",acoes:["IATF"]}});
-    await prisma.partoAnimal.create({data:{animalId:animal.id,propriedadeId:sitio.id,data:new Date("2026-10-08"),tipo:"ABORTO"}});
+    await prisma.partoAnimal.create({data:{animalId:animal.id,propriedadeId:sitio.id,data:new Date("2026-10-08"),tipo:"ABORTO",observacao:"Aborto observado nesta fixture de mudança de contexto"}});
     const previa=await previaAtividade(visita.id,atividade.id,sitio.id);
     expect(previa.participantes[0].alteracoes).toEqual(expect.arrayContaining(["restrições reprodutivas alteradas","último parto alterado","contagem de partos alterada"]));
     const confirmacao={propriedadeId:sitio.id,chave:randomUUID(),itens:[{participanteId:p.id,status:"CONFIRMADO" as const,dados:{resultado:"INCONCLUSIVO"}}]};
