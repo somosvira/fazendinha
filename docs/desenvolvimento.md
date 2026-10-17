@@ -128,6 +128,19 @@ Os utilitários mantidos formam a cadeia existente de Rebanho/Genética:
 
 A importação não sincroniza alterações do IDEAGRI: animal já importado é ignorado; a passada de genética preenche lados vazios sem sobrescrever filiação editada. O importador trata animais em transações individuais e relata falhas; execução parcial não significa carga integral concluída. A carga histórica de Sanidade/Nutrição V3 ainda não está entregue.
 
+## Carga financeira Rio Novo
+
+`server/prisma/seed-rio-novo.ts` importa os fatos liquidados da aba `RN_SICOOB PJ` do relatório Rio Novo. A carga lê somente a tabela detalhada: não interpreta abas de projeção ou consolidações como novos fatos. Ela cria o sítio `Rio Novo`, a conta `BB MAGC`, os centros, categorias e parceiros necessários, preservando data, sentido, valor, categoria, centro de custo, parceiro e referência documental disponível.
+
+Use primeiro a conferência sem escrita e depois a importação em um banco local de desenvolvimento com migrations aplicadas e um dono ativo:
+
+```bash
+pnpm --filter rionovo-server run seed:rio-novo -- "/mnt/c/caminho/Relatório Rio Novo 2026.05.04.xlsx" --verificar
+pnpm --filter rionovo-server run seed:rio-novo -- "/mnt/c/caminho/Relatório Rio Novo 2026.05.04.xlsx"
+```
+
+O seed só aceita PostgreSQL local, usa uma chave determinística por linha do relatório e pode ser reexecutado sem duplicar operações. Transferências, saldo inicial, ajustes, estornos, aplicações e valores ainda a identificar são importados como aporte/retirada, pois a planilha não informa uma contraparte interna suficiente para criar transferência entre contas. Os demais créditos viram vendas sem estoque e os débitos viram serviços sem estoque; não se inferem quantidades, produtos, lotes ou compromissos a partir do extrato.
+
 Seeds de demonstração por módulo/PR e a massa do Excel anterior foram retirados. Fixtures dos testes, catálogos das migrations e importador atual continuam disponíveis.
 
 ## Carga técnica V4 e testes de reprodução
