@@ -4,6 +4,7 @@ import { obterDashboard } from "../financeiro/dashboard.js";
 import { resumoSaldos } from "../financeiro/contas.js";
 import { listarCompromissos } from "../financeiro/operacoes.js";
 import { analisarCategorias } from "../financeiro/analise-categorias.js";
+import { SEM_VINCULO } from "../../lib/ids.js";
 import { ConsultaAssistenteError, hojeBrasil, type ConsultaFinanceira } from "./consulta.schema.js";
 
 type Valor = { rotulo: string; valor: string };
@@ -37,10 +38,21 @@ async function conferirVolume(c: ConsultaFinanceira, propriedadeId: number | nul
   const escopo = propriedadeId === null ? {} : { propriedadeId };
   const data = c.inicio && c.fim ? { gte: new Date(`${c.inicio}T00:00:00Z`), lte: new Date(`${c.fim}T23:59:59.999Z`) } : undefined;
   const pendentes = c.assunto === "pagar" || c.assunto === "receber";
-  const quantidade = pendentes
-    ? await prisma.compromissoFinanceiro.count({ where: { operacao: escopo, ...(data ? { dataVencimento: data } : {}) } })
-    : await prisma.movimentoConta.count({ where: { transacao: { ...escopo, ...(data ? { data } : {}) } } });
-  if (quantidade > 20_000) throw new ConsultaAssistenteError("Há muitos registros para esta demonstração. Consulte um período menor.");
+  const whereTransacao = { ...escopo, ...(data ? { data } : {}) };
+  const contarCompromissos = () => prisma.compromissoFinanceiro.count({ where: { operacao: escopo, ...(data ? { dataVencimento: data } : {}) } });
+  const contarHistoricoContas = () => prisma.movimentoConta.count({ where: { conta: { ...escopo, ativo: true } } });
+  let volumes: Promise<number>[];
+  if (pendentes) volumes = [contarCompromissos()];
+  else if (c.assunto === "saldos") volumes = [contarHistoricoContas()];
+  else {
+    volumes = [prisma.movimentoConta.count({ where: { transacao: whereTransacao } })];
+    // O dashboard também lê compromissos, transações sem movimento e todo o
+    // histórico das contas ativas, mesmo numa pergunta sobre um único mês.
+    if (!c.categoria) volumes.push(contarCompromissos(), contarHistoricoContas(), prisma.transacaoFinanceira.count({ where: whereTransacao }));
+  }
+  if ((await Promise.all(volumes)).some(quantidade => quantidade > 20_000)) {
+    throw new ConsultaAssistenteError("Há muitos registros para esta demonstração. Reduza o período ou selecione um sítio; para saldos, confira a tela de contas.");
+  }
 }
 
 export async function executarConsultaFinanceira(c: ConsultaFinanceira, propriedadeId: number | null): Promise<ResultadoFinanceiro> {
@@ -66,8 +78,10 @@ export async function executarConsultaFinanceira(c: ConsultaFinanceira, propried
   }
   if (!periodo) throw new ConsultaAssistenteError("Informe um período para consultar.");
   if (c.categoria) {
-    const categorias = await prisma.categoria.findMany({ select: { id: true, nome: true } });
     const termo = normalizar(c.categoria);
+    const categorias = termo === "sem categoria"
+      ? [{ id: SEM_VINCULO, nome: "Sem categoria" }]
+      : await prisma.categoria.findMany({ select: { id: true, nome: true } });
     const exatas = categorias.filter(i => normalizar(i.nome) === termo);
     const candidatas = exatas.length ? exatas : categorias.filter(i => normalizar(i.nome).includes(termo));
     if (candidatas.length !== 1) throw new ConsultaAssistenteError(candidatas.length
