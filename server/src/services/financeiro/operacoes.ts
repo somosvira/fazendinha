@@ -1,3 +1,4 @@
+import { transacaoValidada } from "../../lib/transacao-validada.js";
 import { Prisma, type DirecaoMovimentoConta, type TipoCompromisso, type TipoTransacaoFinanceira } from "@prisma/client";
 import { prisma } from "../../db.js";
 import { auditar, dinheiro, exigirContaAtiva, exigirParceiroAtivo, exigirPeriodoAberto, exigirPositivo, FinanceiroError } from "./regras.js";
@@ -327,7 +328,7 @@ export function confirmarRascunhoOperacao(tx: Prisma.TransactionClient, input: O
 }
 
 export async function criarOperacao(input: OperacaoInput) {
-  return prisma.$transaction((tx) => criarOperacaoTx(tx, input));
+  return transacaoValidada((tx) => criarOperacaoTx(tx, input));
 }
 
 async function bloquearOperacao(tx: Prisma.TransactionClient, id: string, propriedadeId?: number) {
@@ -354,7 +355,7 @@ async function compromissoParaLiquidar(tx: Prisma.TransactionClient, id: string,
 }
 
 export async function liquidarCompromisso(compromissoId: string, input: LiquidacaoInput) {
-  return prisma.$transaction(async (tx) => {
+  return transacaoValidada(async (tx) => {
     const valor = exigirPositivo(input.valor);
     const { compromisso } = await compromissoParaLiquidar(tx, compromissoId, valor);
     const tipo = compromisso.tipo === "PAGAR" ? "PAGAMENTO" : "RECEBIMENTO";
@@ -378,7 +379,7 @@ export async function liquidarCompromisso(compromissoId: string, input: Liquidac
 
 export async function transferir(input: TransferenciaInput) {
   if (input.contaOrigemId === input.contaDestinoId) throw new FinanceiroError("VALIDACAO", "As contas de origem e destino devem ser diferentes");
-  return prisma.$transaction(async (tx) => {
+  return transacaoValidada(async (tx) => {
     await exigirPeriodoAberto(tx, input.propriedadeId, input.data);
     await exigirContaAtiva(tx, input.contaOrigemId, input.propriedadeId);
     await exigirContaAtiva(tx, input.contaDestinoId, input.propriedadeId);
@@ -403,7 +404,7 @@ export async function transferir(input: TransferenciaInput) {
 }
 
 export async function criarTransacaoAvulsa(input: TransacaoAvulsaInput) {
-  return prisma.$transaction(async (tx) => {
+  return transacaoValidada(async (tx) => {
     if (input.parceiroId) await exigirParceiroAtivo(tx, input.parceiroId);
     const transacao = await criarTransacaoComMovimento(tx, input);
     await auditar(tx, { entidade: "TransacaoFinanceira", entidadeId: transacao.id, acao: "CONFIRMADA", usuarioId: input.usuarioId, depois: transacao });
@@ -442,11 +443,11 @@ async function estornarTransacaoTx(tx: Prisma.TransactionClient, id: string, mot
 }
 
 export async function estornarTransacao(id: string, motivo: string, contexto: ContextoEstorno) {
-  return prisma.$transaction((tx) => estornarTransacaoTx(tx, id, motivo, contexto));
+  return transacaoValidada((tx) => estornarTransacaoTx(tx, id, motivo, contexto));
 }
 
 export async function estornarOperacao(id: string, motivo: string, contexto: ContextoEstorno) {
-  return prisma.$transaction(async (tx) => {
+  return transacaoValidada(async (tx) => {
     const produtos = await tx.movimentoEstoque.findMany({ where: { operacaoId: id }, select: { produtoId: true } });
     await travarValorizacaoTx(tx, produtos.map(p => p.produtoId));
     if (!await bloquearOperacao(tx, id, contexto.propriedadeId)) throw new FinanceiroError("NAO_ENCONTRADO", "Operação não encontrada");
@@ -459,9 +460,9 @@ export async function estornarOperacao(id: string, motivo: string, contexto: Con
     const [aplicacaoVinculada, exameVinculado, protocoloVinculado] = await Promise.all([
       tx.aplicacaoProduto.findFirst({ where: { AND: [aplicacaoComConsumoOuAtribuicao, { OR: [{ operacaoServicoId: id }, { itemCompraDireta: { operacaoId: id } }] }] }, select: { id: true } }),
       tx.exameAnimal.findFirst({ where: { status: "VALIDO", operacaoServicoId: id }, select: { id: true } }),
-      tx.participacaoProtocolo.findFirst({ where: { canceladaEm: null, operacaoServicoId: id }, select: { id: true } }),
+      tx.participacaoProtocolo.findFirst({ where: { operacaoServicoId: id }, select: { id: true } }),
     ]);
-    if (aplicacaoVinculada || exameVinculado || protocoloVinculado) throw new FinanceiroError("CONFLITO", "Esta operação financia aplicações, exames ou protocolos ativos. Revise os vínculos antes de cancelá-la.");
+    if (aplicacaoVinculada || exameVinculado || protocoloVinculado) throw new FinanceiroError("CONFLITO", "Esta operação financia aplicações, exames ou protocolos com atribuições preservadas. Revise os vínculos antes de cancelá-la.");
     if (operacao.tipo === "SERVICO" && await tx.tentativaReprodutiva.findFirst({ where: { ...tentativaComAtribuicaoServico, operacaoServicoId: id }, select: { id: true } })) {
       throw new FinanceiroError("CONFLITO", "Esta operação financia uma tentativa reprodutiva válida ou com consumo mantido. Revise o vínculo na reprodução antes de cancelar o Serviço.");
     }

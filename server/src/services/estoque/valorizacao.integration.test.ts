@@ -1,3 +1,4 @@
+import { transacaoValidada } from "../../lib/transacao-validada.js";
 import { randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
@@ -52,15 +53,26 @@ comBanco("valorização — garantias SQL, transações e concorrência com fixt
 
   it("recusa movimento valorizado sem parcelas ao confirmar a transação", async () => {
     const f = await fixture();
-    await expect(prisma.$transaction(tx => tx.movimentoEstoque.create({ data: { produtoId: f.produtoId, propriedadeId: f.propriedadeId,
+    await expect(transacaoValidada(tx => tx.movimentoEstoque.create({ data: { produtoId: f.produtoId, propriedadeId: f.propriedadeId,
       tipo: "SAIDA", origem: "AJUSTE_INVENTARIO", data: new Date("2026-10-02"), quantidade: 1, custoUnitario: 10, valorTotal: 10, metodoValorizacao: "FIFO_AQUISICAO_V1" } })))
       .rejects.toThrow();
     expect(await prisma.movimentoEstoque.count({ where: { produtoId: f.produtoId } })).toBe(1);
   });
 
+  it("permite completar movimento e parcelas antes da conferência final diferida", async () => {
+    const f = await fixture();
+    const id = await transacaoValidada(async tx => {
+      const m = await tx.movimentoEstoque.create({ data: { produtoId:f.produtoId, propriedadeId:f.propriedadeId, tipo:"SAIDA", origem:"AJUSTE_INVENTARIO",data:new Date("2026-10-02"),quantidade:1,custoUnitario:10,valorTotal:10,metodoValorizacao:"FIFO_AQUISICAO_V1" } });
+      expect(await tx.parcelaValorizacaoEstoque.count({where:{movimentoEstoqueId:m.id}})).toBe(0);
+      await tx.parcelaValorizacaoEstoque.create({data:{movimentoEstoqueId:m.id,baseId:f.base.id,ordem:0,quantidade:-1,valorTotal:-10}});
+      return m.id;
+    });
+    expect(await prisma.parcelaValorizacaoEstoque.count({where:{movimentoEstoqueId:id}})).toBe(1);
+  });
+
   it("parcelas que não fecham o valor do movimento não deixam fato parcial", async () => {
     const f = await fixture();
-    await expect(prisma.$transaction(async tx => {
+    await expect(transacaoValidada(async tx => {
       const movimento = await saidaSQL(tx, f, "1", "10.00");
       // Inserção inconsistente na mesma transação testa a conciliação diferida.
       await tx.parcelaValorizacaoEstoque.deleteMany({ where: { movimentoEstoqueId: movimento.id } });
@@ -71,42 +83,42 @@ comBanco("valorização — garantias SQL, transações e concorrência com fixt
 
   it("não permite usar base de outro sítio", async () => {
     const f = await fixture(), outro = await novoSitio();
-    await expect(prisma.$transaction(tx => saidaSQL(tx, f, "1", "10.00", f.base.id, outro))).rejects.toThrow();
+    await expect(transacaoValidada(tx => saidaSQL(tx, f, "1", "10.00", f.base.id, outro))).rejects.toThrow();
   });
 
   it("não permite usar base de outro produto", async () => {
     const f = await fixture(), outro = await fixture();
-    await expect(prisma.$transaction(tx => saidaSQL(tx, f, "1", "10.00", outro.base.id))).rejects.toThrow();
+    await expect(transacaoValidada(tx => saidaSQL(tx, f, "1", "10.00", outro.base.id))).rejects.toThrow();
   });
 
   it("recusa método desconhecido no movimento", async () => {
     const f = await fixture();
-    await expect(prisma.$transaction(tx => saidaSQL(tx, f, "1", "10.00", f.base.id, f.propriedadeId, "INVENTADO"))).rejects.toThrow();
+    await expect(transacaoValidada(tx => saidaSQL(tx, f, "1", "10.00", f.base.id, f.propriedadeId, "INVENTADO"))).rejects.toThrow();
   });
 
   it("não permite editar base, parcela nem rebaixar movimento confirmado para LEGADO", async () => {
     const f = await fixture();
-    await expect(prisma.baseValorizacaoEstoque.update({ where: { id: f.base.id }, data: { valorAbertura: 1 } })).rejects.toThrow();
+    await expect(transacaoValidada(tx=>tx.baseValorizacaoEstoque.update({ where: { id: f.base.id }, data: { valorAbertura: 1 } }))).rejects.toThrow();
     const parcela = await prisma.parcelaValorizacaoEstoque.findFirstOrThrow({ where: { movimentoEstoqueId: f.entrada.id } });
-    await expect(prisma.parcelaValorizacaoEstoque.update({ where: { id: parcela.id }, data: { valorTotal: 49 } })).rejects.toThrow();
-    await expect(prisma.movimentoEstoque.update({ where: { id: f.entrada.id }, data: { metodoValorizacao: "LEGADO" } })).rejects.toThrow();
+    await expect(transacaoValidada(tx=>tx.parcelaValorizacaoEstoque.update({ where: { id: parcela.id }, data: { valorTotal: 49 } }))).rejects.toThrow();
+    await expect(transacaoValidada(tx=>tx.movimentoEstoque.update({ where: { id: f.entrada.id }, data: { metodoValorizacao: "LEGADO" } }))).rejects.toThrow();
     expect((await prisma.movimentoEstoque.findUniqueOrThrow({ where: { id: f.entrada.id } })).valorTotal.toString()).toBe("50");
   });
 
   it("base não pode ficar com quantidade ou valor residual negativos", async () => {
     const f = await fixture("1", "10.00");
-    await expect(prisma.$transaction(tx => saidaSQL(tx, f, "2", "20.00"))).rejects.toThrow();
+    await expect(transacaoValidada(tx => saidaSQL(tx, f, "2", "20.00"))).rejects.toThrow();
   });
 
   it("esgotar a quantidade exige esgotar exatamente o valor", async () => {
     const f = await fixture();
-    await expect(prisma.$transaction(tx => saidaSQL(tx, f, "5", "49.99"))).rejects.toThrow();
+    await expect(transacaoValidada(tx => saidaSQL(tx, f, "5", "49.99"))).rejects.toThrow();
   });
 
   it("apagar parcela isolada ou base usada não contorna a história", async () => {
     const f = await fixture();
-    await expect(prisma.parcelaValorizacaoEstoque.deleteMany({ where: { movimentoEstoqueId: f.entrada.id } })).rejects.toThrow();
-    await expect(prisma.baseValorizacaoEstoque.delete({ where: { id: f.base.id } })).rejects.toThrow();
+    await expect(transacaoValidada(tx=>tx.parcelaValorizacaoEstoque.deleteMany({ where: { movimentoEstoqueId: f.entrada.id } }))).rejects.toThrow();
+    await expect(transacaoValidada(tx=>tx.baseValorizacaoEstoque.delete({ where: { id: f.base.id } }))).rejects.toThrow();
     expect(await prisma.parcelaValorizacaoEstoque.count({ where: { movimentoEstoqueId: f.entrada.id } })).toBe(1);
   });
 
@@ -116,12 +128,12 @@ comBanco("valorização — garantias SQL, transações e concorrência com fixt
     const abertura = await prisma.baseValorizacaoEstoque.create({ data: { produtoId: f.produtoId, propriedadeId: f.propriedadeId,
       metodo: "FIFO_AQUISICAO_V1", disponivelDesde: new Date("2026-09-01"), corteAbertura: new Date("2026-10-01"), quantidadeAbertura: 5, valorAbertura: 50,
       aberturaDocumentada: { chave: randomUUID(), corte: "2026-10-01", referencia: "Compra conferida", motivo: "Saldo residual comprovado", evidencia: "Documento e contagem", usuarioId: null, revisao: "a".repeat(64) } } });
-    await expect(prisma.$transaction(tx => saidaSQL(tx, f, "1", "10.00", abertura.id, f.propriedadeId, "FIFO_AQUISICAO_V1", new Date("2026-09-30")))).rejects.toThrow();
+    await expect(transacaoValidada(tx => saidaSQL(tx, f, "1", "10.00", abertura.id, f.propriedadeId, "FIFO_AQUISICAO_V1", new Date("2026-09-30")))).rejects.toThrow();
   });
 
   it("limpeza administrativa completa remove somente as fixtures na mesma transação", async () => {
     const f = await fixture();
-    await prisma.$transaction(tx => limparMovimentosValorizadosFixtureTx(tx, [f.produtoId]));
+    await transacaoValidada(tx => limparMovimentosValorizadosFixtureTx(tx, [f.produtoId]));
     expect(await prisma.movimentoEstoque.count({ where: { produtoId: f.produtoId } })).toBe(0);
     expect(await prisma.baseValorizacaoEstoque.count({ where: { produtoId: f.produtoId } })).toBe(0);
     expect(await prisma.produto.count({ where: { id: f.produtoId } })).toBe(1);
@@ -129,7 +141,7 @@ comBanco("valorização — garantias SQL, transações e concorrência com fixt
 
   it("falha depois da gravação reverte movimento e parcelas atomicamente", async () => {
     const f = await fixture();
-    await expect(prisma.$transaction(async tx => {
+    await expect(transacaoValidada(async tx => {
       const plano = await planejarSaidaTx(tx, { produtoId: f.produtoId, propriedadeId: f.propriedadeId, data: new Date("2026-10-02"), quantidade: 1 });
       const movimento = await tx.movimentoEstoque.create({ data: { produtoId: f.produtoId, propriedadeId: f.propriedadeId,
         tipo: "SAIDA", origem: "AJUSTE_INVENTARIO", data: new Date("2026-10-02"), quantidade: 1, custoUnitario: plano.custoUnitario, valorTotal: plano.valorTotal } });
@@ -137,7 +149,7 @@ comBanco("valorização — garantias SQL, transações e concorrência com fixt
       throw new Error("Falha simulada após registrar o fato");
     })).rejects.toThrow("Falha simulada");
     expect(await prisma.movimentoEstoque.count({ where: { produtoId: f.produtoId, tipo: "SAIDA" } })).toBe(0);
-    const saldo = await prisma.$transaction(tx => saldosBasesTx(tx, f.produtoId, f.propriedadeId));
+    const saldo = await transacaoValidada(tx => saldosBasesTx(tx, f.produtoId, f.propriedadeId));
     expect(saldo[0].quantidade.toString()).toBe("5"); expect(saldo[0].valor.toString()).toBe("50");
   });
 
@@ -154,7 +166,7 @@ comBanco("valorização — garantias SQL, transações e concorrência com fixt
     const resultados = await Promise.allSettled([1, 2].map(() => transferirEstoque({ chave: randomUUID(), produtoId: f.produtoId,
       origemId: f.propriedadeId, destinoId, quantidade: "1", data: "2026-10-02", motivo: "Reposição documentada entre sítios" }, null)));
     expect(resultados.filter(r => r.status === "fulfilled")).toHaveLength(1);
-    const saldo = await prisma.$transaction(tx => saldosBasesTx(tx, f.produtoId, f.propriedadeId));
+    const saldo = await transacaoValidada(tx => saldosBasesTx(tx, f.produtoId, f.propriedadeId));
     expect(saldo[0].quantidade.isZero()).toBe(true); expect(saldo[0].valor.isZero()).toBe(true);
   });
 
@@ -181,7 +193,7 @@ comBanco("valorização — garantias SQL, transações e concorrência com fixt
     expect(movimentos.itens.map(m => m.valorTotal).sort((a,b) => a! - b!)).toEqual([40, 65]);
     const origens = await origensProduto(f.produtoId, f.propriedadeId, { partidaId, pagina: 1, porPagina: 20 }, true, true);
     expect(origens.itens.map(m => m.valorTotal).sort()).toEqual(["40", "65"]);
-    const bases = await prisma.$transaction(tx => saldosBasesTx(tx, f.produtoId, f.propriedadeId));
+    const bases = await transacaoValidada(tx => saldosBasesTx(tx, f.produtoId, f.propriedadeId));
     expect(bases).toHaveLength(1);
     expect([bases[0].quantidade.toString(), bases[0].valor.toString()]).toEqual(["2", "105"]);
   });

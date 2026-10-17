@@ -291,9 +291,15 @@ describe("#249 — regras reais Financeiro/Estoque", () => {
   it("contagem usa somente movimentos da propriedade escolhida", async () => {
     await ops.criarOperacao(input("SEM_EFEITO_FINANCEIRO", "INVENTARIO_INICIAL"));
     const outra = await db.propriedade.create({ data: { nome: `Contagem outra ${serial}` } });
-    await stock.ajustarContagem({ propriedadeId: outra.id, produtoId: productId, saldoEsperado: 0, quantidadeContada: 2, observacao: "Contagem outra propriedade", usuarioId: userId });
+    // O valor do sítio original não serve de abertura implícita para outro sítio.
+    await expect(stock.ajustarContagem({ propriedadeId: outra.id, produtoId: productId, saldoEsperado: 0, quantidadeContada: 2, observacao: "Contagem outra propriedade", usuarioId: userId }))
+      .rejects.toMatchObject({ code: "SEM_LASTRO" });
+    expect(await db.movimentoEstoque.count({ where: { produtoId: productId, propriedadeId: outra.id } })).toBe(0);
+    await ops.criarOperacao({ ...input("SEM_EFEITO_FINANCEIRO", "INVENTARIO_INICIAL"), propriedadeId: outra.id, valorTotal: 10,
+      itens: [{ produtoId: productId, descricao: "Abertura comprovada no outro sítio", quantidade: 1, unidade: "kg", valorUnitario: 10, estocavel: true }] });
+    await stock.ajustarContagem({ propriedadeId: outra.id, produtoId: productId, saldoEsperado: 1, quantidadeContada: 2, observacao: "Contagem outra propriedade", usuarioId: userId });
     expect((await snapshot("principal preservada")).saldoEstoque).toBe(10);
-    expect((await stock.listarSaldos({ propriedadeId: outra.id })).find(p => p.produtoId === productId)?.saldo).toBe(2);
+    expect((await stock.listarSaldos({ propriedadeId: outra.id })).find(p => p.produtoId === productId)).toMatchObject({ saldo: 2, valor: 20 });
   });
 
 });

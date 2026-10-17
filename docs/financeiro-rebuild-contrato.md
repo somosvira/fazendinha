@@ -68,6 +68,8 @@ Consulta e abertura de valores exigem a visibilidade financeira no servidor; abe
 
 Em produto sem rastreio, a abertura admite várias origens comprovadas, cada uma com quantidade, valor total, data e referência. A soma deve corresponder ao saldo físico. Quando a única evidência disponível for um inventário, sua referência deve identificar essa abertura; não se criam aquisições históricas presumidas. Grupo rastreado recebe uma abertura correspondente ao saldo do grupo.
 
+Inventário inicial e ajuste positivo que iniciam uma base exigem referência e evidência: `documentacaoValor` na operação financeira e `referenciaValor`/`evidenciaValor` no ajuste de estoque. O movimento conserva essa comprovação em `evidenciaValor`, com a autoria existente. Uma justificativa de diferença física não substitui a comprovação do preço. Ajuste em base já conhecida conserva seu valor de referência e rejeita preço divergente; a API financeira direciona ajustes para o fluxo de Estoque, que aplica essas regras. Contagem sem base de valor exige regularizar a abertura antes de confirmar o ajuste.
+
 ### Desconto comercial e logística
 
 Nas compras, o desconto comercial reduz o valor dos itens elegíveis antes da criação do estoque e da obrigação. A distribuição proporcional conserva os centavos do desconto; uma distribuição explícita deve fechar o total e respeitar elegibilidade e limite de cada item. Desconto de liquidação continua sendo outro fato e não reescreve o custo histórico do estoque.

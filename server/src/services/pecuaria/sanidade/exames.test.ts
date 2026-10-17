@@ -56,7 +56,9 @@ describe("integridade de exames", () => {
     expect(resultado).toMatchObject({ resultadoNumero: 0, formatoSnapshot: { nome: "Exame", tipoResultado: "NUMERO", unidade: "mg", opcoes: null } });
     expect(mocks.tx.$executeRaw.mock.invocationCallOrder[0]).toBeLessThan(mocks.tx.tipoExame.findFirst.mock.invocationCallOrder[0]);
     await editarTipoExame(tipo.id, { nome: "Atualizado" }, 7);
-    expect(mocks.tx.$executeRaw.mock.calls[0]).toEqual(mocks.tx.$executeRaw.mock.calls[1]);
+    const travas = mocks.tx.$executeRaw.mock.calls.filter(([sql]) => sql.join("").includes("pg_advisory_xact_lock"));
+    expect(travas).toHaveLength(2);
+    expect(travas[0]).toEqual(travas[1]);
   });
 
   it("relê o fato após trava e recusa corrigir exame anulado durante espera", async () => {

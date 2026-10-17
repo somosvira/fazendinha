@@ -48,6 +48,18 @@ Um Serviço financeiro pode associar múltiplos procedimentos realizados do mesm
 
 Serviços atuais: `services/pecuaria/sanidade/`; migrations de V3, catálogos/histórico, lotes por validade e `20261006180000_rodadas_protocolos_desvios`.
 
+## Custos diretos — follow-up em validação
+
+O follow-up acrescenta classificação gerencial e composição de custos aos fatos existentes. O código ainda está em integração e não representa homologação da rotina. A valorização do estoque está detalhada no [contrato financeiro](../financeiro-rebuild-contrato.md#valorização-do-saldo--follow-up-em-validação).
+
+`ClassificacaoCustoPecuaria` pertence a exatamente um fato: tentativa, aplicação, exame, participação em protocolo ou participação no consumo nutricional. Finalidade (reprodução, sanidade ou rotina/manutenção) é diferente do vínculo operacional. Ausência de classificação permanece explícita. Na nutrição, a classificação altera apenas a finalidade; quantidade e custo vêm do fechamento existente, com seu período identificado.
+
+`VinculoPreparoTentativa` atribui à tentativa uma aplicação, exame ou participação preparatória do mesmo animal, anterior ou na data da tentativa. Atribuição integral é exclusiva; compartilhamento exige parcelas explícitas por material e serviço, limitadas ao valor conhecido da origem. Encerrar um vínculo exige explicação e conserva o histórico. Reclassificação usa versão, autoria, auditoria e conferência dos vínculos já existentes.
+
+As consultas distinguem custo direto registrado completo, parcial, desconhecido e oculto por permissão. Zero comprovado não é desconhecido; não aplicável e incluído em pacote são estados próprios. Um pacote que cobre apenas material não comprova que o procedimento foi custeado. Material de estoque com Serviço no mesmo atendimento é permitido, mas material separado não pode ser somado novamente quando já incluído no pacote. Origem documentada pode receber valor com referência e evidência, sem movimento fictício de estoque.
+
+Valores da compra, do pagamento e do consumo não são somados como despesas diferentes. As consultas de tentativa, participação/programação e animal/período usam as identidades dos fatos; somar seus resumos produziria duplicação. Mão de obra própria, instalações, despesas gerais e logística não atribuída ficam fora do total denominado custo direto registrado. Consulte os serviços e cálculos em `services/pecuaria/custos/`.
+
 ## Peso, manejo e nutrição
 
 Pesagens/manejos conservam data, tipo, origem e auditoria. Coletivos não devem duplicar fatos em retry. O GMD usa os critérios e janelas de `peso.calc.ts`, não índices antigos de lactação.

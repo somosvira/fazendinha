@@ -1,3 +1,4 @@
+import { transacaoValidada } from "../../lib/transacao-validada.js";
 import { Prisma } from "@prisma/client";
 import type { z } from "zod";
 import { prisma } from "../../db.js";
@@ -62,7 +63,7 @@ export async function descartarRascunho(propriedadeId: number, usuarioId: number
 }
 
 export async function confirmarRascunho(propriedadeId: number, usuarioId: number, versao?: number, chaveReenvio?: string) {
-  return prisma.$transaction(async (tx) => {
+  return transacaoValidada(async (tx) => {
     if (chaveReenvio) {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`fin-rascunho-confirmacao:${chaveReenvio}`}))`;
       const anterior = await tx.auditoriaFinanceira.findFirst({ where: { acao: "CONFIRMACAO_RASCUNHO_IDEMPOTENTE", estadoPosterior: { path: ["chave"], equals: chaveReenvio } } });

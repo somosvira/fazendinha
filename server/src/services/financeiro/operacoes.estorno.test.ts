@@ -30,6 +30,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("../estoque/valorizacao.js", () => ({ travarValorizacaoTx: vi.fn(), registrarInversoValorizadoTx: vi.fn(), planejarSaidaTx: vi.fn(), registrarEntradaValorizadaTx: vi.fn(), registrarSaidaValorizadaTx: vi.fn() }));
 vi.mock("../../db.js", () => {
   const tx = {
+      $executeRaw: vi.fn().mockResolvedValue(0),
     periodoFinanceiro: { findUnique: mocks.periodo },
     transacaoFinanceira: { findFirst: mocks.transacaoFindFirst, create: mocks.transacaoCreate, update: mocks.transacaoUpdate },
     compromissoFinanceiro: { findUniqueOrThrow: mocks.compromissoFindUniqueOrThrow, findUnique: mocks.compromissoFindUnique, update: mocks.compromissoUpdate, updateMany: mocks.compromissoUpdateMany },

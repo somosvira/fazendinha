@@ -94,10 +94,14 @@ describeComBanco("fechamento nutricional com PostgreSQL", () => {
     expect(await confirmarPeriodos(input, null)).toEqual(resultado);
     expect(await prisma.fechamentoConsumo.count({ where: { loteId: ids.lote } })).toBe(antes + 2);
   });
-  it("estorna o fechamento preservando o custo depois de concluir os fatos cronológicos da fixture", async () => {
-    // O inverso usa a data atual. Não inserir outro consumo retroativo após ele.
-    await estornarFechamento(ids.fechamento, ids.propriedade, "Revisão do consumo registrado", null);
-    expect((await prisma.fechamentoConsumo.findUnique({ where: { id: ids.fechamento } }))?.status).toBe("ESTORNADO");
+  it("bloqueia estorno retroativo com dependentes e preserva o custo do último fechamento estornado", async () => {
+    await expect(estornarFechamento(ids.fechamento, ids.propriedade, "Revisão do consumo registrado", null)).rejects.toMatchObject({ code: "CONFLITO" });
+    expect((await prisma.fechamentoConsumo.findUnique({ where: { id: ids.fechamento } }))?.status).toBe("CONFIRMADO");
+    const ultimo = await prisma.fechamentoConsumo.findFirstOrThrow({ where: { loteId: ids.lote, status: "CONFIRMADO" }, orderBy: { fim: "desc" } });
+    const custoAntes = (await detalheFechamento(ultimo.id, ids.propriedade, true)).custoConhecido;
+    await estornarFechamento(ultimo.id, ids.propriedade, "Revisão do último consumo registrado", null);
+    expect((await prisma.fechamentoConsumo.findUnique({ where: { id: ultimo.id } }))?.status).toBe("ESTORNADO");
+    expect((await detalheFechamento(ultimo.id, ids.propriedade, true)).custoConhecido).toBe(custoAntes);
     expect((await detalheFechamento(ids.fechamento, ids.propriedade, true)).custoConhecido).toBe("56.00");
   });
 });

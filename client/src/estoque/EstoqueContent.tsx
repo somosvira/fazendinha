@@ -1,9 +1,9 @@
 import "./estoque-theme.css";
-import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Boxes, Package, PackagePlus, Plus, Search, SlidersHorizontal, TriangleAlert, History } from "lucide-react";
 import { AjudaCampo, Dica } from "@/components/Dica";
 import { Loader } from "../components/Loading";
-import { navegarPara } from "../router";
+import { LinkInterno } from "../components/LinkInterno";
 import { rotuloUnidade, type UnidadeMedida } from "../lib/unidades";
 import { fmtMoneyExact } from "@/components/charts";
 import { brl, Button, type ColunaTabela, dataBR, Empty, ErrorBox, Metric, PageHeader, PaginaFinanceira, Paginacao, Panel, Pill, TabelaFinanceira } from "../financeiro/financeiro-ui";
@@ -18,7 +18,6 @@ import { getPropriedadeAtiva } from "../propriedadeScope";
 
 const qtd = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 3 });
 const CAMPO = "h-10 w-full min-w-0 rounded-lg border border-border bg-card px-3 py-2 text-sm";
-const SEM_ACESSO = "Sem acesso a esta área";
 
 const TIPO_MOV: Record<MovimentoDTO["tipo"], { rotulo: string; tom: "green" | "amber" | "blue" }> = {
   ENTRADA: { rotulo: "Entrada", tom: "green" }, SAIDA: { rotulo: "Saída", tom: "amber" }, AJUSTE: { rotulo: "Ajuste", tom: "blue" },
@@ -35,20 +34,6 @@ type Ordem = "nome" | "categoria" | "valor";
 
 function IconeAbaixoMinimo({ size = 16 }: { size?: number }) {
   return <TriangleAlert data-testid="icone-abaixo-minimo" size={size} aria-hidden="true" className="shrink-0 text-[var(--fin-pendente)]" />;
-}
-
-/* Link interno sem recarregar a página (mesmo padrão de LinkOperacaoFinanceira);
- * sem acesso à área de destino vira texto puro com o motivo no `title`. */
-function LinkInterno({ href, area, children }: { href: string; area: Parameters<typeof podeAcessarArea>[0] | "estoque"; children: React.ReactNode }) {
-  const permitido = area === "estoque" ? podeAcessarArea("financeiro") || podeAcessarArea("pecuaria") : podeAcessarArea(area);
-  if (!permitido) return <span title={SEM_ACESSO} className="text-ink-2">{children}</span>;
-  const navegar = (evento: MouseEvent<HTMLAnchorElement>) => {
-    evento.stopPropagation();
-    if (evento.button !== 0 || evento.metaKey || evento.ctrlKey || evento.shiftKey || evento.altKey) return;
-    evento.preventDefault();
-    navegarPara(href);
-  };
-  return <a href={href} onClick={navegar} className="font-medium text-primary hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4">{children}</a>;
 }
 
 // Descarta a resposta de uma busca que já foi superada por outro filtro/página.

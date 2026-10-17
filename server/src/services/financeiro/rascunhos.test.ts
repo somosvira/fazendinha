@@ -36,6 +36,7 @@ describe("rascunho único de operação", () => {
 
   it("confirma efeitos, promove documentos e remove o rascunho na mesma transação", async () => {
     const tx = {
+      $executeRaw: vi.fn().mockResolvedValue(0),
       rascunhoOperacao: { findUnique: vi.fn().mockResolvedValue({ id: uid(9), versao: 2, dados: { operacao: {
         tipo: "SERVICO", data: "2026-09-07", descricao: "Manutenção do trator", valorTotal: 500,
         parceiroId: uid(1), itens: [], financeiro: { condicao: "A_PRAZO", parcelas: [{ valor: 500, dataVencimento: "2026-10-07" }] },

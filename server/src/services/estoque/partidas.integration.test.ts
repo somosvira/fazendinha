@@ -96,7 +96,7 @@ describeComBanco("rastreio de partidas no estoque único", () => {
     await estornarOperacao(transferida.operacaoId, "Estorno de teste de transferência", { propriedadeId: propriedade.id, usuarioId: null });
     expect((await listarPartidas(produto.id, destino.id)).find((p) => p.id === identificada.id)?.saldo).toBe("0");
     expect((await listarPartidas(produto.id, propriedade.id)).find((p) => p.id === identificada.id)?.saldo).toBe("4");
-    const perda = await transferirEstoque({ ...input, chave: crypto.randomUUID(), destinoId: propriedade.id, quantidade: "1", partidas: [{ partidaId: identificada.id, quantidade: 1 }], modo: "PERDA" }, null);
+    const perda = await transferirEstoque({ ...input, data: new Date().toISOString().slice(0,10), chave: crypto.randomUUID(), destinoId: propriedade.id, quantidade: "1", partidas: [{ partidaId: identificada.id, quantidade: 1 }], modo: "PERDA" }, null);
     expect((await listarPartidas(produto.id, propriedade.id)).find((p) => p.id === identificada.id)?.saldo).toBe("3");
     await estornarOperacao(perda.operacaoId, "Revisão documentada da perda", { propriedadeId: propriedade.id, usuarioId: null });
     expect((await listarPartidas(produto.id, propriedade.id)).find((p) => p.id === identificada.id)?.saldo).toBe("4");

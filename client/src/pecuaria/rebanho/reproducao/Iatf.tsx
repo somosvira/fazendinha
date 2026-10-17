@@ -1,3 +1,4 @@
+import { CustosDiretos } from "../custos/CustosDiretos";
 import { CampoDataIatf, dataHoraISO, horarioIatf, inputHorarioIatf } from "./CampoDataIatf";
 export { dataHoraISO, horarioIatf, inputHorarioIatf } from "./CampoDataIatf";
 import { FormFatoSanitario } from "../sanidade/FormFatoSanitario";
@@ -319,6 +320,7 @@ export function Iatf({
             }
           />
           <div className="p-4 space-y-4">
+            {getPropriedadeAtiva()!=null && <CustosDiretos key={detalhe.id} programacaoId={detalhe.id} propriedadeId={getPropriedadeAtiva()!} podeLancar={podeLancar} />}
             {podeLancar && detalhe.status === "ABERTA" && (
               <Button
                 secondary
@@ -338,6 +340,7 @@ export function Iatf({
                 key={p.id}
                 className="rounded-lg border border-border p-4"
               >
+                {getPropriedadeAtiva()!=null && <details><summary>Custos desta participação</summary><CustosDiretos key={p.id} participacaoId={p.id} propriedadeId={getPropriedadeAtiva()!} podeLancar={podeLancar} /></details>}
                 <div className="flex justify-between gap-3">
                   <h3>
                     {p.animal?.brinco ??

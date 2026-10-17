@@ -26,7 +26,8 @@ function app(perfil = usuario()) {
 const abertura = () => ({ chave: uid(1), propriedadeId: 3, data: "2026-10-01", revisao: "a".repeat(64), motivo: "Contagem e valor comprovados", evidencia: "Documento de aquisição conferido", bases: [{ quantidade: "10", valor: "100.00", referencia: "Aquisição documentada" }] });
 const requisicao = (corpo: unknown) => ({ method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(corpo) });
 const compra = () => ({
-  id: uid(9), tipo: "COMPRA_ESTOQUE", valorTotal: "320.00", movimentosEstoque: [{ origem: "COMPRA", custoUnitario: "1.9334", valorTotal: "290.00" }],
+  id: uid(9), tipo: "COMPRA_ESTOQUE", valorTotal: "320.00", movimentosEstoque: [{ origem: "COMPRA", custoUnitario: "1.9334", valorTotal: "290.00",
+    evidenciaValor: { referencia: "Preço comprovado R$ 290,00", evidencia: "Documento registra total de R$ 290,00", usuarioId: 7, valorTotal: "290.00" } }],
   itens: [{ quantidade: "150", valorUnitario: "1.9334", valorTotal: "290.00" }],
   composicaoComercial: {
     versao: 1, itens: [{ ordem: 1, bruto: "300.00", desconto: "10.00", liquido: "290.00", elegivel: true }],
@@ -36,7 +37,7 @@ const compra = () => ({
 function conferirComposicaoOculta(dados: ReturnType<typeof compra>) {
   expect(dados.valorTotal).toBeNull();
   expect(dados.itens[0]).toMatchObject({ quantidade: "150", valorUnitario: null, valorTotal: null });
-  expect(dados.movimentosEstoque[0]).toMatchObject({ custoUnitario: null, valorTotal: null });
+  expect(dados.movimentosEstoque[0]).toMatchObject({ custoUnitario: null, valorTotal: null, evidenciaValor: null });
   if (dados.composicaoComercial !== null) {
     expect(dados.composicaoComercial.itens[0]).toMatchObject({ bruto: null, desconto: null, liquido: null });
     expect(dados.composicaoComercial.logistica.valor).toBeNull();

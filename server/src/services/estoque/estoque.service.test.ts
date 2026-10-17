@@ -36,6 +36,7 @@ vi.mock("../propriedade.js", () => ({ propriedadePrincipalId: mocks.propriedadeP
 import { ajustarContagem, estornarMovimentoTx, listarMovimentos, listarSaldos, produtosComEstoque, produtoTemEstoque, registrarMovimento } from "./estoque.js";
 
 const tx = () => ({
+  $executeRaw: vi.fn().mockResolvedValue(0),
   tentativaReprodutiva: { findFirst: mocks.tentativaFindFirst },
   produto: { findUnique: mocks.produtoFindUnique, findFirst: mocks.produtoFindFirst },
   centroCusto: { findFirst: mocks.centroFindFirst },

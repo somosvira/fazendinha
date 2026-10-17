@@ -1,5 +1,5 @@
+import { transacaoValidada } from "../../lib/transacao-validada.js";
 import { Prisma } from "@prisma/client";
-import { prisma } from "../../db.js";
 
 export function conflitoTransacaoPecuaria(erro: unknown): boolean {
   if (erro instanceof Prisma.PrismaClientKnownRequestError && erro.code === "P2034") return true;
@@ -13,7 +13,7 @@ export function conflitoTransacaoPecuaria(erro: unknown): boolean {
 export async function transacaoPecuaria<T>(executar: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
   for (let tentativa = 1; ; tentativa++) {
     try {
-      return await prisma.$transaction(executar, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 30_000 });
+      return await transacaoValidada(executar, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 30_000 });
     } catch (erro) {
       if (!conflitoTransacaoPecuaria(erro) || tentativa >= 3) throw erro;
     }

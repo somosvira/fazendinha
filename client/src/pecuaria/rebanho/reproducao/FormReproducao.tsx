@@ -298,7 +298,7 @@ export function FormReproducao({
               }
             : {}),
           cienciaSanitaria,
-          ...(origem === "SERVICO" && servicoId ? { operacaoServicoId: servicoId, ...(podeValores && valorServico !== "" ? { valorServicoAtribuido: valorServico } : {}) } : {}),
+          ...(servicoId ? { operacaoServicoId: servicoId, ...(podeValores && valorServico !== "" ? { valorServicoAtribuido: valorServico } : {}) } : {}),
           ...(responsavel ? { responsavel } : {}),
           ...(motivo
             ? { justificativaSemOrigem: motivo, observacao: motivo }
@@ -409,10 +409,10 @@ export function FormReproducao({
                 ["COBERTURA", "Cobertura"],
               ],
             )}
-            {seletor("origem", "Origem", origem, v => { setOrigem(v); setServicoId(""); setValorServico(""); }, [
+            {seletor("origem", "Origem do material", origem, v => { setOrigem(v); }, [
               ["DOCUMENTADA", "Origem documentada"],
               ["ESTOQUE", "Estoque do sítio"],
-              ["SERVICO", "Serviço associado"],
+              ["SERVICO", "Material incluído no Serviço"],
             ])}
             {tipo !== "COBERTURA" &&
               seletor(
@@ -518,8 +518,7 @@ export function FormReproducao({
               Estou ciente dos alertas sanitários configurados para esta
               intervenção.
             </ConfirmacaoCiencia>
-            {origem === "SERVICO" &&
-              seletor(
+            {seletor(
                 "servico",
                 "Serviço financeiro",
                 servicoId,
@@ -529,7 +528,8 @@ export function FormReproducao({
                   `#${s.numero} ${s.descricao ?? "Serviço"}`,
                 ]),
               )}
-            {origem === "SERVICO" && podeValores && <CampoFormulario id="rep-valor-servico" rotulo="Valor atribuído ao Serviço (R$)">
+            <p className="text-xs text-ink-3">A contratação do procedimento independe da origem do material. Estoque e Serviço podem compor a mesma tentativa. Sem parcela atribuída, o custo do Serviço permanece pendente.</p>
+            {servicoId && podeValores && <CampoFormulario id="rep-valor-servico" rotulo="Valor atribuído ao Serviço (R$)">
               {p => <><input {...p} className={classeInput} type="number" min="0" step="0.01" value={valorServico} onChange={e => setValorServico(e.target.value)} />
                 <small>Parcela do Serviço correspondente a esta tentativa. Não gera outra despesa. Deixe vazio se ainda não foi atribuída.</small></>}
             </CampoFormulario>}

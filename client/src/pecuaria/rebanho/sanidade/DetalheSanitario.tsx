@@ -1,3 +1,5 @@
+import { CustosDiretos } from "../custos/CustosDiretos";
+import { getUsuario } from "../../../lib/auth";
 import { rotuloSituacaoTarefa } from "./RegularizacaoTarefa";
 import { linkOperacaoFinanceira } from "../../../financeiro/navegacao";
 import { podeAcessarArea } from "../../../estoque/navegacao";
@@ -78,6 +80,7 @@ export function DetalheSanitario({ tipo, valor, abrir }: { tipo: string; valor: 
     {!!fato.operacaoServicoId && podeAcessarArea("financeiro") && <p><strong>Serviço:</strong> <a className="underline" href={linkOperacaoFinanceira(String(fato.operacaoServicoId), window.location.pathname + window.location.search)}>Ver origem financeira</a></p>}
     {fato.valorProdutoAtribuido != null && <p><strong>Custo atribuído do medicamento:</strong> {fmtMoneyExact(Number(fato.valorProdutoAtribuido))}</p>}
     {fato.valorServicoAtribuido != null && <p><strong>Rateio atribuído do Serviço:</strong> {fmtMoneyExact(Number(fato.valorServicoAtribuido))}</p>}
+    {typeof fato.propriedadeId === "number" && typeof fato.id === "string" && ["aplicacao","exame","execucao"].includes(tipo) && <CustosDiretos {...(tipo === "aplicacao" ? {aplicacaoId:fato.id} : tipo === "exame" ? {exameId:fato.id} : {participacaoId:fato.id})} propriedadeId={fato.propriedadeId} podeLancar={!!getUsuario()?.dono || !!getUsuario()?.flags.includes("lancar")} />}
     {links.length > 0 && <section><h3 className="font-semibold">Fatos relacionados</h3><div className="mt-2 flex flex-wrap gap-2">{links.map(([rotulo, destino, id]) => <button key={`${destino}-${id}`} type="button" className="rounded-lg border border-border px-3 py-2 underline" onClick={() => abrir(destino, id)}>{rotulo}</button>)}</div></section>}
     {Array.isArray(fato.tarefas) && <section><h3 className="font-semibold">Tarefas</h3><div className="mt-2 space-y-2">{fato.tarefas.map((item) => { const t = registro(item); return <p key={String(t.id)} className="rounded-lg border border-border p-2">{dataSanitaria(String(t.previstaPara ?? ""))} · {rotuloSituacaoTarefa(String(t.situacao ?? (t.regularizacaoPendente ? "REGULARIZACAO_PENDENTE" : t.dispensadaEm ? "DISPENSADA" : "PENDENTE")))}</p>; })}</div></section>}
   </div>;

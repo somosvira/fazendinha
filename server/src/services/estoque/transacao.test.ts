@@ -11,7 +11,7 @@ describe("conferência serializável de lotes", () => {
     transacao.mockRejectedValueOnce(conflito()).mockRejectedValueOnce(conflito()).mockResolvedValueOnce({ saldo: "40" });
     await expect(transacaoEstoque(conferir)).resolves.toEqual({ saldo: "40" });
     expect(transacao).toHaveBeenCalledTimes(3);
-    expect(transacao).toHaveBeenLastCalledWith(conferir, { isolationLevel: "Serializable", timeout: 30000 });
+    expect(transacao).toHaveBeenLastCalledWith(expect.any(Function), { isolationLevel: "Serializable", timeout: 30000 });
   });
   it("não repete falha de negócio e encerra no terceiro conflito", async () => {
     transacao.mockRejectedValue(conflito());

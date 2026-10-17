@@ -81,11 +81,13 @@ comBanco("lotes por Produto e validade — serviços PostgreSQL", () => {
     expect((await listarPartidas(produto.id, sitio.id))[0].saldo).toBe("40");
     await transacaoEstoque((tx) => estornarMovimentoTx(tx, saida.id));
     expect((await listarPartidas(produto.id, sitio.id))[0].saldo).toBe("50");
-    await movimento(produto.id, sitio.id, "ENTRADA", 5, [{ validade: "2026-10-03", quantidade: 5 }]);
-    const venceHoje = (await listarPartidas(produto.id, sitio.id)).find((p) => !!p.validade)!;
-    await movimento(produto.id, sitio.id, "SAIDA", 5, [{ partidaId: venceHoje.id, quantidade: 5 }]);
-    expect((await listarPartidas(produto.id, sitio.id)).find((p) => p.id === venceHoje.id)?.saldo).toBe("0");
-    await expect(movimento(produto.id, sitio.id, "SAIDA", 1, [{ partidaId: venceHoje.id, quantidade: 1 }], "2026-10-04")).rejects.toThrow(/vencido/);
+    // O estorno anterior ocorre hoje; validade é conferida em outro produto, sem fato retroativo.
+    const vencimento = await fixture();
+    await movimento(vencimento.produto.id, vencimento.sitio.id, "ENTRADA", 5, [{ validade: "2026-10-03", quantidade: 5 }]);
+    const venceHoje = (await listarPartidas(vencimento.produto.id, vencimento.sitio.id)).find((p) => !!p.validade)!;
+    await movimento(vencimento.produto.id, vencimento.sitio.id, "SAIDA", 5, [{ partidaId: venceHoje.id, quantidade: 5 }]);
+    expect((await listarPartidas(vencimento.produto.id, vencimento.sitio.id)).find((p) => p.id === venceHoje.id)?.saldo).toBe("0");
+    await expect(movimento(vencimento.produto.id, vencimento.sitio.id, "SAIDA", 1, [{ partidaId: venceHoje.id, quantidade: 1 }], "2026-10-04")).rejects.toThrow(/vencido/);
   });
 
   it("dois consumos concorrentes não podem gastar o mesmo saldo", async () => {

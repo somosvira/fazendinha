@@ -1,4 +1,4 @@
-import { criarEntradaValorizadaFixture, limparMovimentosValorizadosFixture } from "../../../test/estoque-valorizado.fixture.js";
+import { criarEntradaValorizadaFixture, criarSaidaValorizadaFixtureTx, limparMovimentosValorizadosFixture } from "../../../test/estoque-valorizado.fixture.js";
 import { regularizarTarefaSanitaria } from "../protocolos/regularizacao.js";
 import crypto from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
@@ -97,7 +97,7 @@ describeBanco("execução da etapa no PostgreSQL", () => {
   });
   it("saldo alterado após prévia não deixa fato parcial nem consome mais estoque", async () => {
     const { input, produtoId } = await preparar("5"); const previa = await preverExecucaoEtapas(input);
-    await prisma.movimentoEstoque.create({ data: { produtoId, propriedadeId: input.propriedadeId, tipo: "SAIDA", origem: "AJUSTE_INVENTARIO", quantidade: 2, data: new Date(diasAntes(1)), custoUnitario: 1, valorTotal: 2 } });
+    await prisma.$transaction(tx => criarSaidaValorizadaFixtureTx(tx, { data: { produtoId, propriedadeId: input.propriedadeId, tipo: "SAIDA", origem: "AJUSTE_INVENTARIO", quantidade: 2, data: new Date(diasAntes(1)), custoUnitario: 1, valorTotal: 2 } }, []));
     await expect(confirmarExecucaoEtapas({ ...input, chave: crypto.randomUUID(), fingerprint: previa.fingerprint }, null)).rejects.toMatchObject({ code: "VALIDACAO" });
     expect(await prisma.aplicacaoProduto.count({ where: { propriedadeId: input.propriedadeId } })).toBe(0);
     expect(await prisma.movimentoEstoque.count({ where: { produtoId, tipo: "SAIDA" } })).toBe(1);

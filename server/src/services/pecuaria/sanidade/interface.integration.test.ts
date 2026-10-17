@@ -88,7 +88,7 @@ comBanco("contratos da interface sanitária V3", () => {
   it("aplicação em alias desconhecido exige ciência e consome saldo da raiz", async () => {
     const raiz = await prisma.partidaProduto.create({ data: { produtoId: ids.produto, codigo: `SEM-VALIDADE-${run}`, validade: null } });
     const alias = await prisma.partidaProduto.create({ data: { produtoId: ids.produto, codigo: `SEM-VALIDADE-ALIAS-${run}`, validade: null, lotePrincipalId: raiz.id } });
-    await criarEntradaValorizadaFixture({ data: { produtoId: ids.produto, propriedadeId: ids.sitio, tipo: "ENTRADA", origem: "INVENTARIO_INICIAL", data: new Date(antes(1)), quantidade: 50, custoUnitario: 2, valorTotal: 100, alocacaoPartidaEstoques: { create: { partidaId: alias.id, quantidade: 50 } } } });
+    await criarEntradaValorizadaFixture({ data: { produtoId: ids.produto, propriedadeId: ids.sitio, tipo: "ENTRADA", origem: "INVENTARIO_INICIAL", data: new Date(hoje), quantidade: 50, custoUnitario: 2, valorTotal: 100, alocacaoPartidaEstoques: { create: { partidaId: alias.id, quantidade: 50 } } } });
     const input = { animalId: ids.animal, propriedadeId: ids.sitio, data: hoje, aplicadaEm: `${hoje}T00:00:00-03:00`, tipoAplicacaoId: ids.tipo, origemInsumo: "BAIXA_ESTOQUE" as const, produtoId: ids.produto, partidaId: alias.id, nomeProdutoAplicado: "Medicamento", dose: "10", unidadeDose: "ML" as const, carenciaLeiteHoras: 0, carenciaCarneHoras: 0 };
     await expect(criarAplicacao(input, null)).rejects.toThrow(/ciência/);
     const aplicada = await criarAplicacao({ ...input, cienciaValidadeDesconhecida: true }, null);

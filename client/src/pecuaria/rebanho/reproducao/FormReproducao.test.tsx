@@ -23,6 +23,7 @@ vi.mock("../api", () => ({
   listarLotes: vi.fn().mockResolvedValue([]),
   listarMaterialGenetico: vi.fn().mockResolvedValue([]),
 }));
+vi.mock("../nutricao/api",()=>({listarPartidasNutricionais:vi.fn().mockResolvedValue([])}));
 vi.mock("../sanidade/api", () => ({
   listarServicos: vi.fn().mockResolvedValue([]),
 }));
@@ -233,29 +234,47 @@ it("consulta complementos pós-parto no sítio explícito com outro sítio ativo
   expect(reqV4).toHaveBeenCalledWith("/animais/a", undefined, "GET", 7);
 });
 
-it("atribui Serviço sem perder centavos, limpa vínculo ao trocar origem e respeita visibilidade", async () => {
+it("atribui Serviço sem perder centavos e mantém contratação independente da origem do material", async () => {
   localStorage.setItem("rionovo:usuario", JSON.stringify({ dono: true, areas: [], flags: [] }));
   vi.mocked(listarServicos).mockResolvedValue([{ id: "s", numero: 10, descricao: "Veterinário" }] as never);
   const registrar = vi.fn().mockResolvedValue(undefined);
   const props = { acao: "tentativa" as const, painel, animalInicial: "a", onFechar: vi.fn(), onSalvo: vi.fn(), onRegistrar: registrar };
   const {unmount} = render(<FormReproducao {...props} />);
-  fireEvent.change(screen.getByLabelText("Origem"), {target:{value:"SERVICO"}});
+  fireEvent.change(screen.getByLabelText("Origem do material"), {target:{value:"SERVICO"}});
   await screen.findByRole("option", {name:"#10 Veterinário"});
   fireEvent.change(screen.getByLabelText("Serviço financeiro"), {target:{value:"s"}});
   fireEvent.change(screen.getByLabelText("Valor atribuído ao Serviço (R$)"), {target:{value:"123.45"}});
   fireEvent.submit(document.getElementById("form-reproducao")!);
   await waitFor(()=>expect(registrar).toHaveBeenCalledTimes(1));
   expect(registrar.mock.calls[0][0]).toMatchObject({operacaoServicoId:"s",valorServicoAtribuido:"123.45"});
-  fireEvent.change(screen.getByLabelText("Origem"), {target:{value:"DOCUMENTADA"}});
+  fireEvent.change(screen.getByLabelText("Origem do material"), {target:{value:"DOCUMENTADA"}});
   fireEvent.change(screen.getByLabelText("Motivo / observação"), {target:{value:"Origem documentada para teste"}});
   fireEvent.submit(document.getElementById("form-reproducao")!);
   await waitFor(()=>expect(registrar).toHaveBeenCalledTimes(2));
-  expect(registrar.mock.calls[1][0]).not.toHaveProperty("operacaoServicoId");
-  expect(registrar.mock.calls[1][0]).not.toHaveProperty("valorServicoAtribuido");
+  expect(registrar.mock.calls[1][0]).toMatchObject({origem:"DOCUMENTADA",operacaoServicoId:"s",valorServicoAtribuido:"123.45"});
   unmount();
   localStorage.setItem("rionovo:usuario", JSON.stringify({dono:false,areas:["pecuaria"],flags:["lancar"]}));
   render(<FormReproducao {...props}/>);
-  fireEvent.change(screen.getByLabelText("Origem"), {target:{value:"SERVICO"}});
+  fireEvent.change(screen.getByLabelText("Origem do material"), {target:{value:"SERVICO"}});
   expect(screen.queryByLabelText("Valor atribuído ao Serviço (R$)")).toBeNull();
   localStorage.removeItem("rionovo:usuario");
+});
+
+
+it("registra material do estoque e Serviço no mesmo envio sem mudar a origem",async()=>{
+ localStorage.setItem("rionovo:usuario",JSON.stringify({dono:true,areas:[],flags:[]}));
+ vi.mocked(listarMaterialGenetico).mockResolvedValue([{id:"material-1",tipo:"SEMEN",produto:{id:"produto-1",nome:"Sêmen comprovado",unidade:"UN",rastrearPartidas:false},saldo:3}] as never);
+ vi.mocked(listarServicos).mockResolvedValue([{id:"servico-1",numero:20,descricao:"Inseminador"}] as never);
+ const registrar=vi.fn().mockResolvedValue(undefined);
+ render(<FormReproducao acao="tentativa" painel={painel} animalInicial="a" dataInicial="2026-10-13" onFechar={vi.fn()} onSalvo={vi.fn()} onRegistrar={registrar}/>);
+ fireEvent.change(screen.getByLabelText("Origem do material"),{target:{value:"ESTOQUE"}});
+ await screen.findByRole("option",{name:/Sêmen comprovado/});
+ fireEvent.change(screen.getByLabelText("Material genético"),{target:{value:"material-1"}});
+ await screen.findByRole("option",{name:"#20 Inseminador"});
+ fireEvent.change(screen.getByLabelText("Serviço financeiro"),{target:{value:"servico-1"}});
+ fireEvent.change(screen.getByLabelText("Valor atribuído ao Serviço (R$)"),{target:{value:"20.00"}});
+ fireEvent.submit(document.getElementById("form-reproducao")!);
+ await waitFor(()=>expect(registrar).toHaveBeenCalledTimes(1));
+ expect(registrar.mock.calls[0][0]).toMatchObject({origem:"ESTOQUE",materialId:"material-1",quantidade:1,operacaoServicoId:"servico-1",valorServicoAtribuido:"20.00"});
+ localStorage.removeItem("rionovo:usuario");
 });

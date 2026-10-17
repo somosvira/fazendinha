@@ -1,3 +1,4 @@
+import { CustosDiretos } from "../custos/CustosDiretos";
 import { SubTabs } from "../../../components/SubTabs";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import { IndicadoresReprodutivos } from "./IndicadoresReprodutivos";
@@ -407,6 +408,7 @@ function ConteudoReproducao({
           />
         </Panel>
       )}
+      {animalId && painel && propriedadeId != null && <CustosDiretos key={`${animalId}:${recarregarToken}`} animalId={animalId} propriedadeId={propriedadeId} podeLancar={podeLancar} />}
       {animalId && painel && (propriedadeId != null ? <ElegibilidadeAnimal
         animalId={animalId} propriedadeId={propriedadeId} painel={painel} podeLancar={podeLancar} onMudou={() => void carregar()} />
         : <p className="text-sm">A elegibilidade exige o sítio comprovado do animal. Confira seu histórico de localização.</p>)}

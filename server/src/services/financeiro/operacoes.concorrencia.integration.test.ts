@@ -1,3 +1,4 @@
+import { limparMovimentosValorizadosFixture } from "../../test/estoque-valorizado.fixture.js";
 import crypto from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
 import { prisma } from "../../db.js";
@@ -11,6 +12,7 @@ const describeComBanco = process.env.FINANCE_DB_INTEGRATION === "1" ? describe :
 const propriedadesCriadas: number[] = [];
 const parceirosCriados: string[] = [];
 const produtosCriados: string[] = [];
+const categoriasCriadas: string[] = [];
 
 async function fixture() {
   const sufixo = crypto.randomUUID();
@@ -24,7 +26,9 @@ async function fixture() {
     nome: `Fornecedor ${sufixo}`, tipo: "FORNECEDOR", papeis: { create: { papel: "FORNECEDOR" } },
   } })).id;
   parceirosCriados.push(parceiroId);
-  const produtoId = (await prisma.produto.create({ data: { nome: `Produto ${sufixo}`, unidade: "KG", categoria: { create: { nome: `Categoria concorrência ${sufixo}` } } } })).id;
+  const produto = await prisma.produto.create({ data: { nome: `Produto ${sufixo}`, unidade: "KG", categoria: { create: { nome: `Categoria concorrência ${sufixo}` } } } });
+  const produtoId = produto.id;
+  if (produto.categoriaId) categoriasCriadas.push(produto.categoriaId);
   produtosCriados.push(produtoId);
   return { propriedadeId, outraPropriedadeId, contaId, parceiroId, produtoId };
 }
@@ -56,7 +60,7 @@ afterAll(async () => {
   await prisma.movimentoConta.deleteMany({ where: { transacao: { propriedadeId } } });
   await prisma.transacaoFinanceira.deleteMany({ where: { propriedadeId } });
   await prisma.compromissoFinanceiro.deleteMany({ where: { operacao: { propriedadeId } } });
-  await prisma.movimentoEstoque.deleteMany({ where: { propriedadeId } });
+  await limparMovimentosValorizadosFixture(produtosCriados);
   await prisma.itemOperacao.deleteMany({ where: { operacao: { propriedadeId } } });
   await prisma.operacao.deleteMany({ where: { propriedadeId } });
   await prisma.contaFinanceira.deleteMany({ where: { propriedadeId } });
@@ -64,7 +68,7 @@ afterAll(async () => {
   await prisma.parceiroPapel.deleteMany({ where: { parceiroId: { in: parceirosCriados } } });
   await prisma.parceiro.deleteMany({ where: { id: { in: parceirosCriados } } });
   await prisma.produto.deleteMany({ where: { id: { in: produtosCriados } } });
-  await prisma.categoria.deleteMany({ where: { nome: { startsWith: "Categoria concorrência " }, produtos: { none: {} } } });
+  await prisma.categoria.deleteMany({ where: { id: { in: categoriasCriadas } } });
 });
 
 describeComBanco("operações financeiras concorrentes com PostgreSQL", () => {

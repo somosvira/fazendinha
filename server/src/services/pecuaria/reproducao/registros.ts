@@ -1397,7 +1397,7 @@ export function mascararCustos<T>(valor: T, verValores: boolean): T {
     "custoTotal",
     "valor",
     "custoProduto",
-    "rateioServico",
+    "rateioServico", "valorMaterialDocumentado", "documentoMaterial", "valorMaterial", "valorServico", "totalConhecido", "valorOrigem", "valorAtribuido", "restante",
   ]);
   // Somente relações e observações estruturadas dos DTOs conhecidos. Uma
   // estrutura de exame imitada em outro caminho JSON não recebe a exceção.

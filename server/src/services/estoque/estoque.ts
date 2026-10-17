@@ -1,3 +1,4 @@
+import { transacaoValidada } from "../../lib/transacao-validada.js";
 import { prisma } from "../../db.js";
 import { Prisma, type OrigemMovimentoEstoque, type TipoMovimento } from "@prisma/client";
 import { z } from "zod";
@@ -355,7 +356,7 @@ async function mesFechado(tx: Prisma.TransactionClient, propriedadeId: number, d
 export async function registrarMovimento(input: MovimentoInput & { usuarioId?: number | null }) {
   const propriedadeId = input.propriedadeId ?? (await propriedadePrincipalId()); // sítio ativo ou principal
 
-  return prisma.$transaction(async (tx) => {
+  return transacaoValidada(async (tx) => {
     const resultado = await registrarMovimentoTx(tx, input, propriedadeId, input.usuarioId);
     await auditar(tx, { entidade: "Operacao", entidadeId: resultado.operacaoId, acao: "AJUSTE_MANUAL", usuarioId: input.usuarioId, motivo: input.observacao,
       depois: { produtoId: input.produtoId, propriedadeId, quantidade: input.quantidade, data: input.data, centroCustoId: input.centroCustoId ?? null, movimentoId: resultado.id } });
@@ -443,7 +444,7 @@ export async function ajustarContagem(input: z.infer<typeof ajusteContagemSchema
   const propriedadeId = input.propriedadeId ?? await escopoPadraoLeitura();
   if (propriedadeId == null) throw new EstoqueError("VALIDACAO", "Selecione uma fazenda para ajustar o estoque.");
   try {
-    return await prisma.$transaction(async tx => {
+    return await transacaoValidada(async tx => {
       const produto = await tx.produto.findFirst({ where: { id: input.produtoId, ativo: true } });
       if (!produto) throw new EstoqueError("NAO_ENCONTRADO", "Produto ativo não encontrado");
       // Mesmo escopo de sítio de listarSaldos (sem propriedade = principal), senão o saldo esperado da tela nunca casaria.

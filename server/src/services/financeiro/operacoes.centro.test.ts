@@ -20,6 +20,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("../estoque/valorizacao.js", () => ({ travarValorizacaoTx: vi.fn(), planejarSaidaTx: mocks.plano, registrarEntradaValorizadaTx: mocks.entradaValor, registrarSaidaValorizadaTx: mocks.saidaValor, registrarInversoValorizadoTx: vi.fn() }));
 vi.mock("../../db.js", () => {
   const tx = {
+      $executeRaw: vi.fn().mockResolvedValue(0),
     periodoFinanceiro: { findUnique: mocks.periodo },
     parceiro: { findFirst: mocks.parceiro },
     categoria: { findFirst: mocks.categoria },
