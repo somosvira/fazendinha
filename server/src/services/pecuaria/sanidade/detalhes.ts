@@ -66,5 +66,5 @@ export function ocultarCustosDetalhe(valor: unknown): unknown {
   if (Array.isArray(valor)) return valor.map(ocultarCustosDetalhe);
   if (!valor || typeof valor !== "object" || valor instanceof Date || "toJSON" in valor) return valor;
   return Object.fromEntries(Object.entries(valor).map(([campo, v]) => [campo,
-    ["valor", "valorProdutoAtribuido", "valorServicoAtribuido", "valorTotal", "valorUnitario", "custoUnitario"].includes(campo) ? null : ocultarCustosDetalhe(v)]));
+    ["valor", "valorProdutoAtribuido", "valorServicoAtribuido", "valorTotal", "valorUnitario", "custoUnitario", "evidenciaValor"].includes(campo) ? null : ocultarCustosDetalhe(v)]));
 }

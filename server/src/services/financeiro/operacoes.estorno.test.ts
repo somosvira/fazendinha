@@ -27,6 +27,7 @@ const mocks = vi.hoisted(() => ({
   queryRaw: vi.fn(),
 }));
 
+vi.mock("../estoque/valorizacao.js", () => ({ travarValorizacaoTx: vi.fn(), registrarInversoValorizadoTx: vi.fn(), planejarSaidaTx: vi.fn(), registrarEntradaValorizadaTx: vi.fn(), registrarSaidaValorizadaTx: vi.fn() }));
 vi.mock("../../db.js", () => {
   const tx = {
     periodoFinanceiro: { findUnique: mocks.periodo },
@@ -34,7 +35,7 @@ vi.mock("../../db.js", () => {
     compromissoFinanceiro: { findUniqueOrThrow: mocks.compromissoFindUniqueOrThrow, findUnique: mocks.compromissoFindUnique, update: mocks.compromissoUpdate, updateMany: mocks.compromissoUpdateMany },
     liquidacao: { create: mocks.liquidacaoCreate },
     operacao: { findFirst: mocks.operacaoFindFirst, update: mocks.operacaoUpdate },
-    movimentoEstoque: { create: mocks.movimentoEstoqueCreate, update: mocks.movimentoEstoqueUpdate },
+    movimentoEstoque: { findMany: vi.fn().mockResolvedValue([]), create: mocks.movimentoEstoqueCreate, update: mocks.movimentoEstoqueUpdate },
     auditoriaFinanceira: { create: mocks.auditoriaCreate },
     contaFinanceira: { findFirst: mocks.contaFindFirst },
     aplicacaoProduto: { findFirst: mocks.aplicacaoFindFirst },

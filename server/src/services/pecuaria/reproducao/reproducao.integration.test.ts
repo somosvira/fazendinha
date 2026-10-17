@@ -1,3 +1,4 @@
+import { criarEntradaValorizadaFixture, limparMovimentosValorizadosFixture } from "../../../test/estoque-valorizado.fixture.js";
 import { corrigirExame } from "../sanidade/exames.js";
 import crypto from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -84,7 +85,7 @@ async function material(
       },
     });
   produtos.push(produto.id);
-  await prisma.movimentoEstoque.create({
+  await criarEntradaValorizadaFixture({
     data: {
       propriedadeId,
       produtoId: produto.id,
@@ -186,10 +187,7 @@ afterAll(async () => {
   await prisma.tipoExame.deleteMany({ where: { id: { in: tiposExame } } });
   await prisma.doenca.deleteMany({ where: { id: { in: doencas } } });
   await prisma.materialGenetico.deleteMany({ where: { produtoId: ps } });
-  await prisma.alocacaoPartidaEstoque.deleteMany({
-    where: { movimentoEstoque: { produtoId: ps } },
-  });
-  await prisma.movimentoEstoque.deleteMany({ where: { produtoId: ps } });
+  await limparMovimentosValorizadosFixture(produtos);
   await prisma.produto.deleteMany({ where: { id: ps } });
   await prisma.requisicaoPecuaria.deleteMany({
     where: { propriedadeId: props },
@@ -780,7 +778,7 @@ suite("reprodução V4 integra fatos, estoque e visita sem duplicação", () => 
       data: { nome: `San V4 ${run}`, usoSanitario: true, unidade: "ML" },
     });
     produtos.push(produto.id);
-    await prisma.movimentoEstoque.create({
+    await criarEntradaValorizadaFixture({
       data: {
         produtoId: produto.id,
         propriedadeId,

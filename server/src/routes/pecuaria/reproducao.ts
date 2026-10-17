@@ -1,3 +1,4 @@
+import { ValorizacaoError } from "../../services/estoque/valorizacao.calc.js";
 import * as elegibilidade from "../../services/pecuaria/reproducao/elegibilidade.js";
 import * as elegibilidadeSchemas from "../../services/pecuaria/reproducao/elegibilidade.schemas.js";
 import * as emissoes from "../../services/pecuaria/reproducao/emissoes-relatorios.js";
@@ -55,6 +56,7 @@ export function apresentarV4<T>(c: Context, resultado: T): T {
   );
 }
 export function falhaV4(c: Context, e: unknown) {
+  if (e instanceof ValorizacaoError) return c.json({ error: e.message, code: e.code }, e.code === "VALIDACAO" ? 422 : 409);
   if (e instanceof z.ZodError)
     return c.json(
       {

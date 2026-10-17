@@ -1393,7 +1393,7 @@ export function mascararCustos<T>(valor: T, verValores: boolean): T {
     "valorProdutoAtribuido",
     "valorServicoAtribuido",
     "valorTotal",
-    "custoUnitario",
+    "custoUnitario", "evidenciaValor",
     "custoTotal",
     "valor",
     "custoProduto",

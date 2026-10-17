@@ -1,3 +1,4 @@
+import { criarEntradaValorizadaFixture, limparMovimentosValorizadosFixture } from "../../../test/estoque-valorizado.fixture.js";
 import crypto from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
 import { prisma } from "../../../db.js";
@@ -22,9 +23,8 @@ afterAll(async () => {
   await prisma.requisicaoPecuaria.deleteMany({ where: { propriedadeId: ids.sitio } });
   await prisma.auditoriaFinanceira.deleteMany({ where: { entidadeId: { in: movimentos.map((m) => m.id) } } });
   // Desmonta somente a fixture descartável; a UI não permite desligar rastreio.
+  await limparMovimentosValorizadosFixture([ids.produto]);
   await prisma.produto.update({ where: { id: ids.produto }, data: { rastrearPartidas: false } });
-  await prisma.alocacaoPartidaEstoque.deleteMany({ where: { partida: { produtoId: ids.produto } } });
-  await prisma.movimentoEstoque.deleteMany({ where: { produtoId: ids.produto } });
   await prisma.partidaProduto.deleteMany({ where: { produtoId: ids.produto, lotePrincipalId: { not: null } } });
   await prisma.partidaProduto.deleteMany({ where: { produtoId: ids.produto } });
   await prisma.produto.deleteMany({ where: { id: ids.produto } });
@@ -41,7 +41,7 @@ comBanco("contratos da interface sanitária V3", () => {
     const tipo = await salvarTipoAplicacao({ nome: `Personalizado ${run}` }, null); ids.tipo = tipo.id;
     const produto = await prisma.produto.create({ data: { nome: `Medicamento ${run}`, unidade: "ML", usoSanitario: true, rastrearPartidas: true } }); ids.produto = produto.id;
     const partida = await prisma.partidaProduto.create({ data: { produtoId: produto.id, codigo: `FAB-${run}`, validade: new Date(Date.parse(hoje) + 365 * 86400000) } }); ids.partida = partida.id;
-    await prisma.movimentoEstoque.create({ data: { produtoId: produto.id, propriedadeId: sitio.id, tipo: "ENTRADA", origem: "INVENTARIO_INICIAL", data: new Date(antes(10)), quantidade: 50, custoUnitario: 2, valorTotal: 100, alocacaoPartidaEstoques: { create: { partidaId: partida.id, quantidade: 50 } } } });
+    await criarEntradaValorizadaFixture({ data: { produtoId: produto.id, propriedadeId: sitio.id, tipo: "ENTRADA", origem: "INVENTARIO_INICIAL", data: new Date(antes(10)), quantidade: 50, custoUnitario: 2, valorTotal: 100, alocacaoPartidaEstoques: { create: { partidaId: partida.id, quantidade: 50 } } } });
     const input = { animalId: animal.id, propriedadeId: sitio.id, data: antes(1), aplicadaEm: `${antes(1)}T10:00:00-03:00`, tipoAplicacaoId: tipo.id, origemInsumo: "BAIXA_ESTOQUE" as const, produtoId: produto.id, partidaId: partida.id, nomeProdutoAplicado: produto.nome, dose: "10", unidadeDose: "ML" as const, responsavel: "Funcionário da fazenda", estadoCarenciaLeite: "NAO_APLICAVEL" as const, estadoCarenciaCarne: "INFORMADO" as const, carenciaLeiteHoras: null, carenciaCarneHoras: 0 };
     const aplicacao = await criarAplicacao(input, null);
     expect(aplicacao.operacaoServicoId).toBeNull();
@@ -88,7 +88,7 @@ comBanco("contratos da interface sanitária V3", () => {
   it("aplicação em alias desconhecido exige ciência e consome saldo da raiz", async () => {
     const raiz = await prisma.partidaProduto.create({ data: { produtoId: ids.produto, codigo: `SEM-VALIDADE-${run}`, validade: null } });
     const alias = await prisma.partidaProduto.create({ data: { produtoId: ids.produto, codigo: `SEM-VALIDADE-ALIAS-${run}`, validade: null, lotePrincipalId: raiz.id } });
-    await prisma.movimentoEstoque.create({ data: { produtoId: ids.produto, propriedadeId: ids.sitio, tipo: "ENTRADA", origem: "INVENTARIO_INICIAL", data: new Date(antes(1)), quantidade: 50, custoUnitario: 2, valorTotal: 100, alocacaoPartidaEstoques: { create: { partidaId: alias.id, quantidade: 50 } } } });
+    await criarEntradaValorizadaFixture({ data: { produtoId: ids.produto, propriedadeId: ids.sitio, tipo: "ENTRADA", origem: "INVENTARIO_INICIAL", data: new Date(antes(1)), quantidade: 50, custoUnitario: 2, valorTotal: 100, alocacaoPartidaEstoques: { create: { partidaId: alias.id, quantidade: 50 } } } });
     const input = { animalId: ids.animal, propriedadeId: ids.sitio, data: hoje, aplicadaEm: `${hoje}T00:00:00-03:00`, tipoAplicacaoId: ids.tipo, origemInsumo: "BAIXA_ESTOQUE" as const, produtoId: ids.produto, partidaId: alias.id, nomeProdutoAplicado: "Medicamento", dose: "10", unidadeDose: "ML" as const, carenciaLeiteHoras: 0, carenciaCarneHoras: 0 };
     await expect(criarAplicacao(input, null)).rejects.toThrow(/ciência/);
     const aplicada = await criarAplicacao({ ...input, cienciaValidadeDesconhecida: true }, null);

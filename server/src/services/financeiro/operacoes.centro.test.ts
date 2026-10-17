@@ -1,8 +1,9 @@
+import { Prisma } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { uid } from "../../lib/uid.fixture.js";
 
 const mocks = vi.hoisted(() => ({
-  transaction: vi.fn(),
+  transaction: vi.fn(), plano: vi.fn(), entradaValor: vi.fn(), saidaValor: vi.fn(),
   periodo: vi.fn(),
   parceiro: vi.fn(),
   categoria: vi.fn(),
@@ -16,12 +17,13 @@ const mocks = vi.hoisted(() => ({
   auditoriaCreate: vi.fn(),
 }));
 
+vi.mock("../estoque/valorizacao.js", () => ({ travarValorizacaoTx: vi.fn(), planejarSaidaTx: mocks.plano, registrarEntradaValorizadaTx: mocks.entradaValor, registrarSaidaValorizadaTx: mocks.saidaValor, registrarInversoValorizadoTx: vi.fn() }));
 vi.mock("../../db.js", () => {
   const tx = {
     periodoFinanceiro: { findUnique: mocks.periodo },
     parceiro: { findFirst: mocks.parceiro },
     categoria: { findFirst: mocks.categoria },
-    centroCusto: { findMany: mocks.centro },
+    centroCusto: { findMany: mocks.centro, findFirst: async ({ where }: { where: { id: string } }) => ({ id: where.id, nome: "Logística", ativo: true }) },
     produto: { findMany: mocks.produto },
     operacao: { create: mocks.operacaoCreate, findUniqueOrThrow: mocks.operacaoFindUniqueOrThrow },
     movimentoEstoque: { create: mocks.movimentoEstoqueCreate, findMany: mocks.movimentoEstoqueFindMany, groupBy: mocks.movimentoEstoqueGroupBy },
@@ -52,6 +54,8 @@ function itemNaoEstocavel(parcial: Partial<Record<string, unknown>> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.plano.mockResolvedValue({ metodo: "FIFO_AQUISICAO_V1", parcelas: [], valorTotal: new Prisma.Decimal(30), custoUnitario: new Prisma.Decimal(6) });
+  mocks.movimentoEstoqueCreate.mockResolvedValue({ id: uid(900) });
   mocks.periodo.mockResolvedValue(null);
   mocks.parceiro.mockResolvedValue(null);
   mocks.categoria.mockResolvedValue(null);
@@ -276,5 +280,34 @@ describe("VENDA/DEVOLUCAO só retiram do estoque produto que teve entrada no sí
     } as never);
     expect(mocks.movimentoEstoqueGroupBy).not.toHaveBeenCalled();
     expect(mocks.movimentoEstoqueCreate.mock.calls[0][0].data).toMatchObject({ produtoId: uid(43), tipo: "ENTRADA" });
+  });
+});
+
+describe("composição comercial da compra", () => {
+  it("material 300 e logística 30 criam entrada física de 300 e obrigação de 330", async () => {
+    mocks.produto.mockResolvedValue([{ id: uid(42), unidade: "UN", ativo: true, categoriaId: null, centrosCusto: [] }]);
+    mocks.centro.mockResolvedValue([{ id: uid(3), nome: "Pecuária" }]);
+    mocks.categoria.mockResolvedValue({ id: uid(8), nome: "Frete", classificacao: "CUSTEIO" });
+    await criarOperacao({ tipo: "COMPRA_ESTOQUE", data: new Date("2026-10-01"), propriedadeId: 1, descricao: "Material e logística", centroCustoId: uid(3),
+      financeiro: { condicao: "SEM_EFEITO_FINANCEIRO" }, itens: [{ produtoId: uid(42), descricao: "Material", quantidade: 10, unidade: "un", valorTotal: 300, estocavel: true }],
+      logistica: { valor: 30, descricao: "Entrega do fornecedor", categoriaId: uid(8) } });
+    const operacao = mocks.operacaoCreate.mock.calls[0][0].data;
+    expect(operacao.valorTotal.toString()).toBe("330");
+    expect(operacao.itens.create.map((i: {valorTotal: Prisma.Decimal}) => i.valorTotal.toString())).toEqual(["300","30"]);
+    expect(mocks.movimentoEstoqueCreate).toHaveBeenCalledTimes(1);
+    expect(mocks.movimentoEstoqueCreate.mock.calls[0][0].data.valorTotal.toString()).toBe("300");
+  });
+  it("desconto comercial proporcional reduz itens antes de valorar, sem preço negativo", async () => {
+    mocks.produto.mockResolvedValue([{ id: uid(42), unidade: "UN", ativo: true, categoriaId: null, centrosCusto: [] }]);
+    const input = { tipo: "COMPRA_ESTOQUE" as const, data: new Date("2026-10-01"), propriedadeId: 1, descricao: "Material com desconto", descontoComercial: 30,
+      financeiro: { condicao: "SEM_EFEITO_FINANCEIRO" as const }, itens: [100,200].map(valorTotal => ({ produtoId: uid(42), descricao: "Material", quantidade: 1, unidade: "un", valorTotal, estocavel: true })) };
+    await criarOperacao(input);
+    expect(mocks.operacaoCreate.mock.calls[0][0].data.valorTotal.toString()).toBe("270");
+    expect(mocks.movimentoEstoqueCreate.mock.calls.map(([a]) => a.data.valorTotal.toString())).toEqual(["90","180"]);
+    await expect(criarOperacao({...input,descontoComercial:301})).rejects.toMatchObject({code:"VALIDACAO"});
+  });
+  it("a rota alternativa financeira não pode reprecificar ajustes", async () => {
+    await expect(criarOperacao({ ...baseServico, tipo: "AJUSTE_ESTOQUE", itens: [] })).rejects.toMatchObject({code:"VALIDACAO",campo:"tipo"});
+    expect(mocks.operacaoCreate).not.toHaveBeenCalled();
   });
 });

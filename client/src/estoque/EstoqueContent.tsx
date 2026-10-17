@@ -146,6 +146,8 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
   useEffect(() => { if (!movimentos.loading && paginaMov > totalPaginasMov) setPaginaMov(totalPaginasMov); }, [movimentos.loading, paginaMov, totalPaginasMov]);
   const filtrosMovAtivos = buscaMovAplicada !== "" || origemMov !== "" || centroMov !== "" || periodoMov.inicio !== "" || periodoMov.fim !== "";
   const valorTotal = useMemo(() => saldos.data.reduce((soma, s) => soma + Math.max(0, s.valor ?? 0), 0), [saldos.data]);
+  const valoresPendentes = saldos.data.filter(s => s.valor == null).length;
+  const valoresConhecidos = saldos.data.length - valoresPendentes;
   const nNegativos = useMemo(() => saldos.data.filter((s) => s.saldo < 0).length, [saldos.data]);
   const nAbaixoMin = useMemo(() => saldos.data.filter((s) => s.abaixoMinimo).length, [saldos.data]);
   const nEmEstoque = useMemo(() => saldos.data.filter((s) => s.saldo > 0).length, [saldos.data]);
@@ -224,7 +226,8 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
     <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
-          <Metric label="Valor em estoque" valor={saldos.data.length > 0 && saldos.data.every((s) => s.valor == null) ? "—" : brl(valorTotal)} icon={Boxes} />
+          <Metric label={valoresPendentes > 0 && valoresConhecidos > 0 ? "Valor conhecido em estoque (parcial)" : "Valor em estoque"} valor={valoresPendentes > 0 && valoresConhecidos === 0 ? "—" : brl(valorTotal)} icon={Boxes} />
+          {valoresPendentes > 0 && valoresConhecidos > 0 && <p className="text-xs text-ink-3" role="status">{valoresPendentes} produto(s) sem valor disponível. O total conhecido é parcial.</p>}
           {nNegativos > 0 && <button type="button" aria-pressed={soNegativos} onClick={() => setSoNegativos((v) => !v)} className="self-start text-left text-xs text-destructive underline underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">{nNegativos} {nNegativos === 1 ? "produto com saldo negativo" : "produtos com saldo negativo"}{soNegativos ? " — filtro ativo, clique para ver todos" : ""}</button>}
         </div>
         <Metric label="Produtos em estoque" valor={String(nEmEstoque)} icon={Package} />
@@ -249,7 +252,7 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
 
     <section className="mt-6" aria-label="Saldos de estoque">
       <Panel className="overflow-hidden">
-      <div className="estoque-secao-cabecalho"><span className="fin-section-icon"><Boxes aria-hidden="true" /></span><h2 className="font-serif text-2xl">Saldos de estoque<AjudaCampo rotulo="Como o valor é calculado" texto="O custo médio é a média ponderada das entradas neste sítio; valor = saldo × custo médio." /></h2></div>
+      <div className="estoque-secao-cabecalho"><span className="fin-section-icon"><Boxes aria-hidden="true" /></span><h2 className="font-serif text-2xl">Saldos de estoque<AjudaCampo rotulo="Como o valor é calculado" texto="O valor corresponde ao saldo monetário remanescente. Grupos rastreados usam média do saldo; produtos sem rastreio usam aquisições mais antigas. Valores desconhecidos ficam separados." /></h2></div>
       <div className="estoque-filtros grid gap-3 md:grid-cols-[minmax(0,2fr)_repeat(2,minmax(0,1fr))_auto]">
         <input type="search" aria-label="Buscar produto" value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar por nome ou categoria…" className={CAMPO} />
         <select aria-label="Filtrar por centro de custo" value={centroFiltro} onChange={(e) => setCentroFiltro(e.target.value)} className={CAMPO}>

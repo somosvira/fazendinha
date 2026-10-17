@@ -3,7 +3,8 @@ import { prisma } from "../../db.js";
 import { auditar, dinheiro, exigirContaAtiva, exigirParceiroAtivo, exigirPeriodoAberto, exigirPositivo, FinanceiroError } from "./regras.js";
 import { gerarParcelasFinanceiras, totalItensFinanceiros } from "./parcelas.calc.js";
 import { EstoqueError, obterBasesCusto, produtosComEstoque, statusSaldoEstoque } from "../estoque/estoque.js";
-import { valorSaidaDaBase } from "../estoque/estoque.calc.js";
+import { descontarItens } from "../estoque/valorizacao.calc.js";
+import { planejarSaidaTx, registrarSaidaValorizadaTx, registrarEntradaValorizadaTx, registrarInversoValorizadoTx, travarValorizacaoTx } from "../estoque/valorizacao.js";
 import { rotuloUnidade } from "../estoque/unidades.js";
 import { conferirSaldoEstornoPartidasTx, prepararPartidasTx } from "../estoque/partidas.js";
 import type { z } from "zod";
@@ -23,6 +24,11 @@ type SimulacaoParcelasInput = z.infer<typeof simulacaoParcelasSchema>;
 // operação — usado tanto para criar a descrição quanto (no client) para
 // detectar que uma reversão no extrato veio de um cancelamento e linkar de volta.
 export const PREFIXO_CANCELAMENTO_OPERACAO = "Cancelamento da operação #";
+
+function conferirFaixaComercial(valor: Prisma.Decimal): void {
+  if (!valor.isFinite() || valor.isNegative() || valor.gt("999999999999.99"))
+    throw new FinanceiroError("VALIDACAO", "O valor líquido somado à logística excede a faixa monetária permitida", "valorTotal");
+}
 
 const incluiEstoque = new Set(["COMPRA_ESTOQUE", "INVENTARIO_INICIAL", "BONIFICACAO", "PRODUCAO"]);
 const retiraEstoque = new Set(["VENDA", "DEVOLUCAO"]);
@@ -81,6 +87,8 @@ async function resolverCentros(tx: Prisma.TransactionClient, ids: string[]) {
 }
 
 async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInput) {
+    if (input.tipo === "AJUSTE_ESTOQUE") throw new FinanceiroError("VALIDACAO", "Use a conferência de ajuste do Estoque para preservar a base de valor", "tipo");
+    if (["INVENTARIO_INICIAL", "BONIFICACAO", "PRODUCAO"].includes(input.tipo) && !input.documentacaoValor) throw new FinanceiroError("VALIDACAO", "Informe referência e evidência do valor disponibilizado, inclusive quando for zero", "documentacaoValor");
     const reenvio = await conferirReenvioOperacaoTx(tx, input);
     if (reenvio) return reenvio;
     await exigirPeriodoAberto(tx, input.propriedadeId, input.data);
@@ -91,6 +99,7 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
       if (original.status !== "CANCELADA") throw new FinanceiroError("CONFLITO", "Somente uma operação cancelada pode receber uma correção");
     }
     const produtosIds = input.itens.flatMap((item) => item.produtoId ? [item.produtoId] : []);
+    await travarValorizacaoTx(tx, produtosIds);
     const produtos = produtosIds.length
       ? await tx.produto.findMany({ where: { id: { in: produtosIds }, ativo: true }, include: { centrosCusto: { select: { centroCustoId: true } } } })
       : [];
@@ -109,7 +118,7 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
     // (mesma regra das baixas automáticas): vender leite, bezerro ou café que
     // nunca foi estocado não gera SAIDA a custo 0 nem saldo negativo — o item
     // vira não estocável e segue a regra de centro de custo efetivo.
-    const temEfeitoEstoque = incluiEstoque.has(input.tipo) || retiraEstoque.has(input.tipo) || input.tipo === "AJUSTE_ESTOQUE";
+    const temEfeitoEstoque = incluiEstoque.has(input.tipo) || retiraEstoque.has(input.tipo);
     const retira = retiraEstoque.has(input.tipo);
     const comEstoqueNoSitio = retira ? await produtosComEstoque(tx, produtosIds, input.propriedadeId) : null;
     const estocavelItens = input.itens.map((item) => {
@@ -168,12 +177,30 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
       ...(item.partidas?.length ? { partidasSnapshot: item.partidas as Prisma.InputJsonValue } : {}),
       ...await classificar(item.categoriaId === undefined ? produtosPorId.get(item.produtoId ?? "")?.categoriaId : item.categoriaId, item.classificacao),
     })));
+    if ((input.descontoComercial || input.logistica) && !["COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO"].includes(input.tipo))
+      throw new FinanceiroError("VALIDACAO", "Desconto comercial e logística próprios deste fluxo são informados nas compras");
+    const composicao = descontarItens(itens.map((item,i) => ({ valor: item.valorTotal, elegivel: input.itens[i].elegivelDesconto !== false })), input.descontoComercial ?? 0, input.distribuicaoDesconto);
+    for (const [i, parte] of composicao.entries()) if (!parte.desconto.isZero()) {
+      itens[i].valorTotal = parte.valorLiquido;
+      itens[i].valorUnitario = parte.valorLiquido.div(itens[i].quantidade).toDecimalPlaces(4);
+    }
+    if (input.logistica) {
+      const centroLogistica = input.logistica.centroCustoId ?? input.centroCustoId;
+      if (!centroLogistica) throw new FinanceiroError("VALIDACAO", "Informe centro de custo para a logística", "logistica.centroCustoId");
+      const centro = await tx.centroCusto.findFirst({ where: { id: centroLogistica, ativo: true } });
+      if (!centro) throw new FinanceiroError("VALIDACAO", "Centro de custo da logística inválido", "logistica.centroCustoId");
+      const valor = dinheiro(input.logistica.valor);
+      itens.push({ ordem: itens.length+1, produtoId: undefined, centroCustoId: centro.id, centroCustoNome: centro.nome, descricao: input.logistica.descricao,
+        quantidade: new Prisma.Decimal(1), unidade: "un", valorUnitario: valor, valorTotal: valor, estocavel: false,
+        ...await classificar(input.logistica.categoriaId) });
+    }
     const classificacaoOperacao = await classificar(itens.length ? null : input.categoriaId, input.classificacao);
     const totalItens = totalItensFinanceiros(itens);
     const valorTotal = input.valorTotal === undefined ? totalItens : dinheiro(input.valorTotal);
     if (itens.length > 0 && input.valorTotal !== undefined && !totalItens.equals(valorTotal)) {
       throw new FinanceiroError("VALIDACAO", "O valor total informado deve corresponder à soma dos itens");
     }
+    conferirFaixaComercial(valorTotal);
     if (valorTotal.isNegative()) throw new FinanceiroError("VALIDACAO", "O valor total da operação não pode ser negativo");
 
     if (input.financeiro.condicao === "PARCIAL") {
@@ -194,6 +221,10 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
         data: input.data,
         descricao: input.descricao,
         valorTotal,
+        ...(input.descontoComercial != null || input.logistica ? { composicaoComercial: { versao: 1,
+          itens: composicao.map((p,i) => ({ ordem: i+1, bruto: p.valorBruto.toFixed(2), desconto: p.desconto.toFixed(2), liquido: p.valorLiquido.toFixed(2), elegivel: input.itens[i].elegivelDesconto !== false })),
+          logistica: input.logistica ? { valor: dinheiro(input.logistica.valor).toFixed(2), descricao: input.logistica.descricao, categoriaId: input.logistica.categoriaId, centroCustoId: input.logistica.centroCustoId ?? input.centroCustoId ?? null, obrigacao: "MESMO_FORNECEDOR" } : null,
+          descontoComercial: dinheiro(input.descontoComercial ?? 0).toFixed(2) } } : {}),
         propriedadeId: input.propriedadeId,
         parceiroId: input.parceiroId,
         ...classificacaoOperacao,
@@ -206,16 +237,13 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
     });
 
     if (temEfeitoEstoque) {
-      const tipoMovimento = retiraEstoque.has(input.tipo) ? "SAIDA" : input.tipo === "AJUSTE_ESTOQUE" ? "AJUSTE" : "ENTRADA";
+      const tipoMovimento = retiraEstoque.has(input.tipo) ? "SAIDA" : "ENTRADA";
       const origem = input.tipo === "COMPRA_ESTOQUE" ? "COMPRA" : input.tipo === "INVENTARIO_INICIAL" ? "INVENTARIO_INICIAL"
         : input.tipo === "BONIFICACAO" ? "BONIFICACAO" : input.tipo === "PRODUCAO" ? "PRODUCAO"
           : input.tipo === "DEVOLUCAO" ? "DEVOLUCAO" : "AJUSTE_INVENTARIO";
       const itensEstoque = operacao.itens.filter((item) => item.estocavel && item.produtoId);
       // SAIDA (venda/devolução) baixa pelo custo médio do sítio, nunca pelo
       // preço de venda; ENTRADA/AJUSTE valorizam pelo próprio item.
-      const custosSaida = tipoMovimento === "SAIDA"
-        ? await obterBasesCusto(tx, itensEstoque.map((item) => item.produtoId!), input.propriedadeId)
-        : null;
       for (const item of itensEstoque) {
         const entrada = input.itens[item.ordem - 1];
         const produto = produtosPorId.get(item.produtoId!)!;
@@ -230,17 +258,18 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
           }
           throw erro;
         });
-        const valores = custosSaida
-          ? valorSaidaDaBase(item.quantidade, custosSaida.get(item.produtoId!))
-          : { custoUnitario: item.valorUnitario, valorTotal: item.valorTotal };
-        await tx.movimentoEstoque.create({ data: {
+        const plano = tipoMovimento === "SAIDA" ? await planejarSaidaTx(tx, { produtoId: produto.id, propriedadeId: input.propriedadeId, data: input.data, quantidade: item.quantidade, partidas: distribuicao }) : null;
+        const valores = plano ? { custoUnitario: plano.custoUnitario, valorTotal: plano.valorTotal } : { custoUnitario: item.valorUnitario, valorTotal: item.valorTotal };
+        const movimento = await tx.movimentoEstoque.create({ data: {
           produtoId: item.produtoId!, tipo: tipoMovimento, origem, data: input.data, quantidade: item.quantidade,
-          ...valores, operacaoId: operacao.id, itemOperacaoId: item.id,
+          ...valores, ...(input.documentacaoValor ? { evidenciaValor: { ...input.documentacaoValor, usuarioId: input.usuarioId ?? null, valorTotal: valores.valorTotal.toFixed(2) } } : {}), operacaoId: operacao.id, itemOperacaoId: item.id,
           centroCustoId: item.centroCustoId ?? input.centroCustoId ?? null,
           propriedadeId: input.propriedadeId, criadoPorId: input.usuarioId && input.usuarioId > 0 ? input.usuarioId : null,
           observacao: input.descricao,
           ...(distribuicao.length ? { alocacaoPartidaEstoques: { create: distribuicao.map((p) => ({ partidaId: p.partidaId, quantidade: p.quantidade })) } } : {}),
         } });
+        if (plano) await registrarSaidaValorizadaTx(tx, movimento.id, plano);
+        else await registrarEntradaValorizadaTx(tx, movimento, distribuicao);
         if (distribuicao.length) await tx.itemOperacao.update({ where: { id: item.id }, data: {
           partidasSnapshot: distribuicao.map((p) => ({ partidaId: p.partidaId, codigo: p.codigo, nome: p.nome, validade: p.validade?.toISOString().slice(0, 10) ?? null, quantidade: p.quantidade.toString(), cienciaValidadeDesconhecida: p.cienciaValidadeDesconhecida })),
         } });
@@ -276,9 +305,9 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
 }
 
 export function simularParcelas(input: SimulacaoParcelasInput) {
-  const totalOperacao = input.itens.length
-    ? totalItensFinanceiros(input.itens)
-    : dinheiro(input.valorTotal ?? 0);
+  const composicao = descontarItens(input.itens.map(item => ({ valor: totalItensFinanceiros([item]), elegivel: item.elegivelDesconto !== false })), input.descontoComercial ?? 0, input.distribuicaoDesconto);
+  const totalOperacao = (input.itens.length ? composicao.reduce((v,p) => v.plus(p.valorLiquido), new Prisma.Decimal(0)) : dinheiro(input.valorTotal ?? 0)).plus(input.logistica?.valor ?? 0);
+  conferirFaixaComercial(totalOperacao);
   const valorPagoAgora = dinheiro(input.valorPagoAgora ?? 0);
   const saldoAPrazo = dinheiro(totalOperacao.minus(valorPagoAgora));
   // `isPositive()` do decimal.js considera zero positivo (sinal +1) — usar
@@ -286,6 +315,7 @@ export function simularParcelas(input: SimulacaoParcelasInput) {
   if (saldoAPrazo.lessThanOrEqualTo(0)) throw new FinanceiroError("VALIDACAO", "O saldo a prazo deve ser maior que zero", "valorPagoAgora");
   return {
     totalOperacao,
+    composicaoComercial: composicao,
     valorPagoAgora,
     saldoAPrazo,
     parcelas: gerarParcelasFinanceiras(saldoAPrazo, input.quantidadeParcelas, input.frequencia, input.primeiroVencimento),
@@ -417,6 +447,8 @@ export async function estornarTransacao(id: string, motivo: string, contexto: Co
 
 export async function estornarOperacao(id: string, motivo: string, contexto: ContextoEstorno) {
   return prisma.$transaction(async (tx) => {
+    const produtos = await tx.movimentoEstoque.findMany({ where: { operacaoId: id }, select: { produtoId: true } });
+    await travarValorizacaoTx(tx, produtos.map(p => p.produtoId));
     if (!await bloquearOperacao(tx, id, contexto.propriedadeId)) throw new FinanceiroError("NAO_ENCONTRADO", "Operação não encontrada");
     const operacao = await tx.operacao.findFirst({
       where: { id, propriedadeId: contexto.propriedadeId },
@@ -448,7 +480,7 @@ export async function estornarOperacao(id: string, motivo: string, contexto: Con
       if (movimento.tipo === "ENTRADA" || (movimento.tipo === "AJUSTE" && movimento.quantidade.gt(0))) {
         await conferirSaldoEstornoPartidasTx(tx, movimento.alocacaoPartidaEstoques, movimento.propriedadeId ?? operacao.propriedadeId);
       }
-      await tx.movimentoEstoque.create({ data: {
+      const inversoEstoque = await tx.movimentoEstoque.create({ data: {
         produtoId: movimento.produtoId,
         tipo: movimento.tipo === "ENTRADA" ? "SAIDA" : movimento.tipo === "SAIDA" ? "ENTRADA" : "AJUSTE",
         origem: "AJUSTE_INVENTARIO", data: new Date(),
@@ -458,6 +490,7 @@ export async function estornarOperacao(id: string, motivo: string, contexto: Con
         reversaoDeId: movimento.id, observacao: `${PREFIXO_CANCELAMENTO_OPERACAO}${operacao.numero}: ${motivo}`,
         ...(movimento.alocacaoPartidaEstoques.length ? { alocacaoPartidaEstoques: { create: movimento.alocacaoPartidaEstoques.map((a) => ({ partidaId: a.partidaId, quantidade: movimento.tipo === "AJUSTE" ? a.quantidade.negated() : a.quantidade })) } } : {}),
       } });
+      await registrarInversoValorizadoTx(tx, movimento.id, inversoEstoque.id);
       await tx.movimentoEstoque.update({ where: { id: movimento.id }, data: { status: "REVERTIDO" } });
     }
     await tx.compromissoFinanceiro.updateMany({ where: { operacaoId: id, status: { not: "CANCELADO" } }, data: { status: "CANCELADO" } });

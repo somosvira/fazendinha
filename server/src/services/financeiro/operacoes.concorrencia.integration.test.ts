@@ -36,6 +36,7 @@ function entrada(f: Awaited<ReturnType<typeof fixture>>, condicao: "A_VISTA" | "
       tipo: somenteFisica ? "INVENTARIO_INICIAL" : "COMPRA_ESTOQUE",
       data: new Date(),
       descricao: "Operação para teste concorrente",
+      ...(somenteFisica ? { documentacaoValor: { referencia: "FIXTURE_CONCORRENCIA", evidencia: "Inventário fictício documentado para esta fixture" } } : {}),
       parceiroId: somenteFisica ? undefined : f.parceiroId,
       itens: [{ produtoId: f.produtoId, descricao: "Produto concorrente", quantidade: 10, unidade: "kg", valorUnitario: 10, estocavel: true }],
       financeiro: condicao === "A_VISTA"

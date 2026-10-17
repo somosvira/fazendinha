@@ -6,10 +6,10 @@ import type { PrismaClient } from "@prisma/client";
 import { SEM_VINCULO } from "../../src/lib/ids.js";
 import { uid } from "../../src/lib/uid.fixture.js";
 
-// O runner usa um banco temporário criado por execução no Postgres local.
+// O runner é exclusivo do CI externo e usa um banco efêmero por execução.
 const qaDatabase = process.env.FINANCE_QA_DATABASE;
 const url = new URL(process.env.DATABASE_URL ?? "postgresql://invalid/invalid");
-if (!qaDatabase || !/^qa249_test_[a-f0-9]{16}$/.test(qaDatabase) || url.pathname !== `/${qaDatabase}` || !["127.0.0.1", "localhost", "[::1]"].includes(url.hostname)) {
+if (process.env.CI !== "true" || !qaDatabase || !/^qa249_test_[a-f0-9]{16}$/.test(qaDatabase) || url.pathname !== `/${qaDatabase}` || !["127.0.0.1", "localhost", "[::1]"].includes(url.hostname)) {
   throw new Error("Use pnpm --filter rionovo-server test:financeiro:integration");
 }
 // Injeção de um Prisma REAL apontado para o banco temporário; não simula métodos/queries.
@@ -57,6 +57,7 @@ afterAll(async () => {
 function input(condicao = "A_PRAZO", tipo = "COMPRA_ESTOQUE") {
   return { ...schema.operacaoSchema.parse({
     tipo, data, descricao: "Compra QA 10 kg", parceiroId: partnerId,
+    ...(["INVENTARIO_INICIAL", "BONIFICACAO", "PRODUCAO"].includes(tipo) ? { documentacaoValor: { referencia: "FIXTURE_QA_VALOR", evidencia: "Valor fictício declarado e comprovado pelo caso de teste" } } : {}),
     ...(tipo === "COMPRA_CONSUMO_DIRETO" ? { centroCustoId: centroConsumoId } : {}),
     itens: tipo === "SERVICO" ? [] : [{ produtoId: productId, descricao: "Produto QA", quantidade: 10, unidade: "kg", valorUnitario: 10, estocavel: true }],
     valorTotal: 100,
@@ -126,11 +127,18 @@ describe("#249 — regras reais Financeiro/Estoque", () => {
     expect(state.saldoConta).toBe(900); expect(state.saldoEstoque).toBe(0);
     expect(state.operacoes[0].movimentosEstoque).toHaveLength(0);
   });
-  it.each(["INVENTARIO_INICIAL", "BONIFICACAO", "PRODUCAO", "AJUSTE_ESTOQUE"])("%s não cria efeito financeiro", async tipo => {
+  it.each(["INVENTARIO_INICIAL", "BONIFICACAO", "PRODUCAO"])("%s documentado não cria efeito financeiro", async tipo => {
     await snapshot("antes"); await ops.criarOperacao(input("SEM_EFEITO_FINANCEIRO", tipo));
     const state = await snapshot("confirmada");
     expect(state.saldoConta).toBe(1000); expect(state.saldoEstoque).toBe(10);
     expect(state.operacoes[0].transacoes).toHaveLength(0); expect(state.operacoes[0].compromissos).toHaveLength(0);
+  });
+  it("AJUSTE_ESTOQUE pelo Financeiro não pode substituir a conferência e reprecificar o saldo", async () => {
+    await ops.criarOperacao(input("SEM_EFEITO_FINANCEIRO", "INVENTARIO_INICIAL"));
+    const antes = await snapshot("saldo documentado antes do ajuste alternativo");
+    await expect(ops.criarOperacao(input("SEM_EFEITO_FINANCEIRO", "AJUSTE_ESTOQUE")))
+      .rejects.toMatchObject({ code: "VALIDACAO", campo: "tipo" });
+    expect(await snapshot("ajuste alternativo recusado")).toEqual(antes);
   });
   it("rascunho não produz efeitos e confirmação promove documentos", async () => {
     const before = await snapshot("antes");
@@ -275,8 +283,9 @@ describe("#249 — regras reais Financeiro/Estoque", () => {
     expect(await snapshot("recusadas")).toEqual(before);
   });
   it("falha de auditoria reverte ajuste de contagem inteiro", async () => {
+    await ops.criarOperacao(input("SEM_EFEITO_FINANCEIRO", "INVENTARIO_INICIAL"));
     const before = await snapshot("antes");
-    await failAudit(() => stock.ajustarContagem({ propriedadeId: pid, produtoId: productId, saldoEsperado: 0, quantidadeContada: 8, observacao: "Contagem conferida", usuarioId: userId }));
+    await failAudit(() => stock.ajustarContagem({ propriedadeId: pid, produtoId: productId, saldoEsperado: 10, quantidadeContada: 8, observacao: "Contagem conferida", usuarioId: userId }));
     expect(await snapshot("rollback contagem")).toEqual(before);
   });
   it("contagem usa somente movimentos da propriedade escolhida", async () => {
@@ -517,15 +526,19 @@ describe("correções da revisão", () => {
     expect((await snapshot("venda com estoque")).saldoEstoque).toBe(7);
   });
   it("AJUSTE negativo não põe produto no estoque; baixa manual sem estoque é recusada", async () => {
-    await db.movimentoEstoque.create({ data: { produtoId: productId, tipo: "AJUSTE", origem: "AJUSTE_INVENTARIO", data, quantidade: -2, custoUnitario: 0, valorTotal: 0, propriedadeId: pid } });
-    expect(await stock.produtoTemEstoque(db, productId, pid)).toBe(false);
-    expect(await stock.produtosComEstoque(db, [productId], pid)).toEqual(new Set());
+    const negativoLegado = await db.produto.create({ data: { nome: `Legado negativo QA ${serial}`, unidade: "KG" } });
+    // Fato legado deliberadamente inconsistente: não habilita consumo nem autoriza ocultar o déficit com uma entrada nova.
+    await db.movimentoEstoque.create({ data: { produtoId: negativoLegado.id, tipo: "AJUSTE", origem: "AJUSTE_INVENTARIO", data, quantidade: -2, custoUnitario: 0, valorTotal: 0, propriedadeId: pid } });
+    expect(await stock.produtoTemEstoque(db, negativoLegado.id, pid)).toBe(false);
+    expect(await stock.produtosComEstoque(db, [negativoLegado.id], pid)).toEqual(new Set());
     await expect(stock.registrarMovimento({ produtoId: productId, tipo: "AJUSTE", data: "2026-09-01", quantidade: -1, observacao: "Perda no galpão", propriedadeId: pid, usuarioId: userId }))
       .rejects.toMatchObject({ code: "VALIDACAO", message: expect.stringContaining("não tem estoque neste sítio") });
-    await stock.registrarMovimento({ produtoId: productId, tipo: "AJUSTE", data: "2026-09-01", quantidade: 5, observacao: "Sobra encontrada", propriedadeId: pid, usuarioId: userId });
+    await expect(stock.registrarMovimento({ produtoId: productId, tipo: "AJUSTE", data: "2026-09-01", quantidade: 5, observacao: "Sobra sem preço comprovado", propriedadeId: pid, usuarioId: userId })).rejects.toMatchObject({ code: "SEM_LASTRO" });
+    await stock.registrarMovimento({ produtoId: productId, tipo: "AJUSTE", data: "2026-09-01", quantidade: 5, custoUnitario: 2,
+      referenciaValor: "INVENTARIO_QA", evidenciaValor: "Valor fictício explicitamente comprovado pela fixture", observacao: "Sobra encontrada e documentada", propriedadeId: pid, usuarioId: userId });
     expect(await stock.produtoTemEstoque(db, productId, pid)).toBe(true);
     await stock.registrarMovimento({ produtoId: productId, tipo: "AJUSTE", data: "2026-09-01", quantidade: -1, observacao: "Perda no galpão", propriedadeId: pid, usuarioId: userId });
-    expect((await stock.listarSaldos({ propriedadeId: pid })).find((l) => l.produtoId === productId)?.saldo).toBe(2);
+    expect((await stock.listarSaldos({ propriedadeId: pid })).find((l) => l.produtoId === productId)).toMatchObject({ saldo: 4, valor: 8 });
   });
   it("movimentos recentes usam o escopo de sítio dos saldos (principal inclui movimento sem propriedade)", async () => {
     const { propriedadePrincipalId } = await import("../../src/services/propriedade.js");
@@ -535,7 +548,7 @@ describe("correções da revisão", () => {
     const outra = await db.propriedade.create({ data: { nome: `Sítio sem legado ${serial}` } });
     expect((await stock.listarMovimentos({ propriedadeId: outra.id })).itens.map((m) => m.id)).not.toContain(legado.id);
   });
-  it("custo médio ponderado: compras formam o médio, venda baixa pelo médio e estorno recalcula", async () => {
+  it("sem rastreio, venda consome FIFO e estorno preserva o custo histórico e o saldo residual", async () => {
     const compra = (valorUnitario: number) => ({ ...schema.operacaoSchema.parse({
       tipo: "COMPRA_ESTOQUE", data, descricao: `Compra QA a ${valorUnitario}`, parceiroId: partnerId,
       itens: [{ produtoId: productId, descricao: "Produto QA", quantidade: 10, unidade: "kg", valorUnitario, estocavel: true }],
@@ -553,12 +566,13 @@ describe("correções da revisão", () => {
     }), propriedadeId: pid, usuarioId: userId });
     expect(venda.movimentosEstoque).toHaveLength(1);
     expect(venda.movimentosEstoque[0].tipo).toBe("SAIDA");
-    expect(Number(venda.movimentosEstoque[0].custoUnitario)).toBe(6); // custo, não o preço de venda (20)
-    expect(Number(venda.movimentosEstoque[0].valorTotal)).toBe(30);
-    expect(await linha()).toMatchObject({ saldo: 15, custoMedio: 6, valor: 90 });
+    expect(Number(venda.movimentosEstoque[0].custoUnitario)).toBe(5); // primeira aquisição; preço comercial de venda continua 20
+    expect(Number(venda.movimentosEstoque[0].valorTotal)).toBe(25);
+    expect(await linha()).toMatchObject({ saldo: 15, custoMedio: 6.3333, valor: 95 });
 
     await ops.estornarOperacao(segunda.id, "Compra lançada em duplicidade", { propriedadeId: pid, usuarioId: userId });
     expect(await linha()).toMatchObject({ saldo: 5, custoMedio: 5, valor: 25 });
-    await snapshot("custo médio após estorno");
+    expect((await db.movimentoEstoque.findUniqueOrThrow({ where: { id: venda.movimentosEstoque[0].id } })).valorTotal.toString()).toBe("25");
+    await snapshot("FIFO histórico e saldo após estorno");
   });
 });

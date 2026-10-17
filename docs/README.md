@@ -9,6 +9,7 @@ A base documenta o código atual. Setup e comandos ficam no [README](../README.m
 | [Financeiro e estoque](financeiro-rebuild-contrato.md) | Dinheiro, efeitos físicos, estornos, períodos e rastreabilidade |
 | [Pecuária](pecuaria/README.md) | Rebanho, genética, sanidade, peso, nutrição e limites atuais |
 | [Reprodução V4](pecuaria/reproducao.md) | Tentativas, gestação, parto/crias, visitas, IATF e reconciliação técnica |
+| [Follow-up V4 — plano e diagramas](pecuaria/artefatos/follow-up-v4-plano.html) | Proposta de lastro/custo por lote, consolidação, acompanhamento e indicadores; entregas, aceites e decisões ainda abertas, sem implementação implícita |
 | [Evolução do manejo reprodutivo](pecuaria/artefatos/plano-evolucao-manejo-reprodutivo.html) | Resumo da entrega por pacote, situação da validação e links para os contratos vigentes |
 | [Mockups do manejo reprodutivo](pecuaria/artefatos/mockups-manejo-reprodutivo.html) | Quatro referências visuais aprovadas com dados ilustrativos: planner, avaliação coletiva, parto e indicadores; controles desenhados, sem operação real |
 | [Separação entre agenda e seleção livre — plano](pecuaria/artefatos/plano-separacao-fluxos-visitas.html) | Plano incorporado ao contrato de reprodução: duas entradas independentes, critérios V2 e preparação comum |

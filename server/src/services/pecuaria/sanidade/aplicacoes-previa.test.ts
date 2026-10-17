@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
     movimentoEstoque: { findMany: vi.fn(), create: vi.fn() }, aplicacaoProduto: { create: vi.fn() }, $executeRaw: vi.fn() },
   conferir: vi.fn(), travar: vi.fn(), auditar: vi.fn(), periodo: vi.fn(), base: vi.fn(), partida: vi.fn(), saldoPartida: vi.fn(),
 }));
+vi.mock("../../estoque/valorizacao.js", () => ({ travarValorizacaoTx: vi.fn(), registrarSaidaValorizadaTx: vi.fn(), planejarSaidaTx: async () => ({ metodo: "MEDIA_SALDO_V1", parcelas: [], valorTotal: new Prisma.Decimal("1"), custoUnitario: new Prisma.Decimal("10") }) }));
 vi.mock("../protocolos/vinculos.js", () => ({ vincularFatoTarefaTx: vi.fn() }));
 vi.mock("../../../db.js", () => ({ prisma: {} }));
 vi.mock("../rebanho/regras.js", async (original) => ({ ...await original<typeof import("../rebanho/regras.js")>(), auditar: mocks.auditar, travarAnimais: mocks.travar }));

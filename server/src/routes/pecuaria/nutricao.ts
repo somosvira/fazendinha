@@ -1,3 +1,4 @@
+import { ValorizacaoError } from "../../services/estoque/valorizacao.calc.js";
 import { Hono, type Context } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
@@ -17,6 +18,7 @@ const validar = <T extends z.ZodTypeAny>(s: T) => zValidator("json", s, (r, c) =
 const validarQuery = <T extends z.ZodTypeAny>(s: T) => zValidator("query", s, (r, c) => !r.success ? c.json({ error: r.error.issues[0].message, code: "VALIDACAO" }, 422) : undefined);
 const verValores = (c: Context) => { const u = getUsuario(c); return !!u && temArea(u, "financeiro") && temPermissao(u, "verValores"); };
 function falha(c: Context, e: unknown) {
+  if (e instanceof ValorizacaoError) return c.json({ error: e.message, code: e.code }, e.code === "VALIDACAO" ? 422 : 409);
   if (e instanceof RebanhoError || e instanceof EstoqueError) return c.json({ error: e.message, code: e.code }, e.code === "NAO_ENCONTRADO" ? 404 : e.code === "VALIDACAO" ? 422 : 409);
   if (e instanceof Prisma.PrismaClientKnownRequestError && ["P2002", "P2034"].includes(e.code)) return c.json({ error: "Conflito de atualização; recarregue e tente novamente", code: "CONFLITO" }, 409);
   console.error("[pecuaria/nutricao]", e);

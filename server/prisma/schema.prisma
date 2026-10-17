@@ -247,6 +247,7 @@ model Produto {
   // Centros de custo onde este produto pode ser usado (N:N). Um só → o item da
   // operação e a saída de estoque herdam automaticamente; vários → escolha na hora.
   centrosCusto             ProdutoCentroCusto[]
+  basesValorizacao          BaseValorizacaoEstoque[]
   movimentos               MovimentoEstoque[]
   itensOperacao            ItemOperacao[]
   fornecedores             ProdutoFornecedor[]
@@ -358,6 +359,7 @@ model PeriodoFinanceiro {
 }
 
 model Operacao {
+  composicaoComercial Json?
   categoriaNome               String?
   classificacao               ClassificacaoCategoria?
   id                          String                       @id @default(uuid())
@@ -647,6 +649,7 @@ model Propriedade {
   principal             Boolean                       @default(false) // a default quando não há filtro
   ativo                 Boolean                       @default(true)
   ordem                 Int                           @default(0)
+  basesValorizacao      BaseValorizacaoEstoque[]
   movimentosEstoque     MovimentoEstoque[]
   contasFinanceiras     ContaFinanceira[]
   operacoesFinanceiras  Operacao[]
@@ -746,6 +749,10 @@ model MovimentoEstoque {
   observacao              String?
   createdAt               DateTime                 @default(now())
   updatedAt               DateTime                 @updatedAt
+  evidenciaValor          Json?
+  metodoValorizacao       String @default("LEGADO")
+  parcelasValorizacao      ParcelaValorizacaoEstoque[]
+  basesOriginadas          BaseValorizacaoEstoque[] @relation("OrigemBaseValorizacao")
   alocacaoPartidaEstoques AlocacaoPartidaEstoque[]
   aplicacaoProduto        AplicacaoProduto?
   itemFechamentoConsumo   ItemFechamentoConsumo?
@@ -1504,6 +1511,7 @@ model PartidaProduto {
   aliases         PartidaProduto[]         @relation("AgrupamentoValidade")
   fabricante      String?
   origemRastreio  String                   @default("INFORMADA")
+  basesValorizacao BaseValorizacaoEstoque[]
   alocacoes       AlocacaoPartidaEstoque[]
   criadoEm        DateTime                 @default(now())
 
@@ -2701,4 +2709,49 @@ model SnapshotRelatorioReprodutivo {
  criadoPorId Int?
  @@index([propriedadeId,tipo,criadoEm])
  @@schema("pecuaria")
+}
+
+// Base gerencial de valor, sem criar quantidade física ou obrigação financeira.
+model BaseValorizacaoEstoque {
+  id String @id @default(uuid())
+  produtoId String
+  produto Produto @relation(fields: [produtoId], references: [id], onDelete: Restrict)
+  propriedadeId Int
+  propriedade Propriedade @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
+  partidaId String?
+  partida PartidaProduto? @relation(fields: [partidaId], references: [id], onDelete: Restrict)
+  baseOrigemId String?
+  baseOrigem BaseValorizacaoEstoque? @relation("DerivacaoBaseValor", fields: [baseOrigemId], references: [id], onDelete: Restrict)
+  derivadas BaseValorizacaoEstoque[] @relation("DerivacaoBaseValor")
+  origemMovimentoId String?
+  origemMovimento MovimentoEstoque? @relation("OrigemBaseValorizacao", fields: [origemMovimentoId], references: [id], onDelete: Restrict)
+  metodo String
+  disponivelDesde DateTime @db.Date
+  corteAbertura DateTime? @db.Date
+  ordem Int @default(autoincrement())
+  quantidadeAbertura Decimal @default(0) @db.Decimal(12, 3)
+  valorAbertura Decimal @default(0) @db.Decimal(14, 2)
+  aberturaDocumentada Json?
+  criadoEm DateTime @default(now())
+  parcelas ParcelaValorizacaoEstoque[]
+
+  @@index([produtoId, propriedadeId])
+  @@index([origemMovimentoId])
+  @@schema("public")
+}
+
+model ParcelaValorizacaoEstoque {
+  id String @id @default(uuid())
+  movimentoEstoqueId String
+  movimentoEstoque MovimentoEstoque @relation(fields: [movimentoEstoqueId], references: [id], onDelete: Restrict)
+  baseId String
+  base BaseValorizacaoEstoque @relation(fields: [baseId], references: [id], onDelete: Restrict)
+  ordem Int
+  quantidade Decimal @db.Decimal(12, 3)
+  valorTotal Decimal @db.Decimal(14, 2)
+
+  @@unique([movimentoEstoqueId, ordem])
+  @@unique([movimentoEstoqueId, baseId])
+  @@index([baseId])
+  @@schema("public")
 }

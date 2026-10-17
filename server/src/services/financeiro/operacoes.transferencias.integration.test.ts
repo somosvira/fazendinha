@@ -1,3 +1,4 @@
+import { criarEntradaValorizadaFixtureTx, limparMovimentosValorizadosFixtureTx } from "../../test/estoque-valorizado.fixture.js";
 import crypto from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -21,7 +22,7 @@ comBanco("detalhe de transferências — PostgreSQL isolado", () => {
     const produto = await prisma.produto.create({ data: { nome: `Transferência ${execucao}`, unidade: "ML", rastrearPartidas: true } }); produtoId = produto.id; produtos.push(produtoId);
     await prisma.$transaction(async (tx) => {
       const lotes = await prepararPartidasTx(tx, { produtoId, propriedadeId: origemId, rastrearPartidas: true, tipo: "ENTRADA", quantidade: new Prisma.Decimal(10), data: new Date("2026-10-01"), partidas: [{ quantidade: 5, nome: "Conhecido", validade: "2026-12-31" }, { quantidade: 5, nome: "Desconhecido", validade: null }] });
-      await tx.movimentoEstoque.create({ data: { produtoId, propriedadeId: origemId, tipo: "ENTRADA", origem: "COMPRA", quantidade: 10, custoUnitario: 2, valorTotal: 20, data: new Date("2026-10-01"), alocacaoPartidaEstoques: { create: lotes.map((p) => ({ partidaId: p.partidaId, quantidade: p.quantidade })) } } });
+      await criarEntradaValorizadaFixtureTx(tx, { data: { produtoId, propriedadeId: origemId, tipo: "ENTRADA", origem: "COMPRA", quantidade: 10, custoUnitario: 2, valorTotal: 20, data: new Date("2026-10-01"), alocacaoPartidaEstoques: { create: lotes.map((p) => ({ partidaId: p.partidaId, quantidade: p.quantidade })) } } });
     });
     const lotes = await listarPartidas(produtoId, origemId);
     const { operacaoId } = await transferirEstoque({ chave: crypto.randomUUID(), produtoId, origemId, destinoId, quantidade: "3", data: "2026-10-04", motivo: "Reposição entre sítios", partidas: lotes.map((l) => ({ partidaId: l.id, quantidade: l.validade ? 1 : 2, cienciaValidadeDesconhecida: !l.validade })) }, null);
@@ -32,8 +33,7 @@ comBanco("detalhe de transferências — PostgreSQL isolado", () => {
     const operacoes = await prisma.operacao.findMany({ where: { propriedadeId: { in: sitios } }, select: { id: true } });
     await prisma.$transaction(async (tx) => {
       await tx.auditoriaFinanceira.deleteMany({ where: { entidadeId: { in: operacoes.map((o) => o.id) } } });
-      await tx.alocacaoPartidaEstoque.deleteMany({ where: { partida: { produtoId: { in: produtos } } } });
-      await tx.movimentoEstoque.deleteMany({ where: { produtoId: { in: produtos } } });
+      await limparMovimentosValorizadosFixtureTx(tx, produtos);
       await tx.operacao.deleteMany({ where: { id: { in: operacoes.map((o) => o.id) } } });
       await tx.partidaProduto.deleteMany({ where: { produtoId: { in: produtos }, lotePrincipalId: { not: null } } });
       await tx.partidaProduto.deleteMany({ where: { produtoId: { in: produtos } } });
@@ -95,6 +95,7 @@ comBanco("detalhe de transferências — PostgreSQL isolado", () => {
     const operacao = await prisma.operacao.create({ data: { tipo: "TRANSFERENCIA_ESTOQUE", propriedadeId: origemId, data: new Date("2026-10-01"), valorTotal: 4 } });
     const base = { produtoId: produto.id, operacaoId: operacao.id, origem: "TRANSFERENCIA" as const, quantidade: 1, custoUnitario: 2, valorTotal: 2, data: operacao.data };
     await prisma.movimentoEstoque.create({ data: { ...base, tipo: "SAIDA", propriedadeId: origemId } });
+    // Histórico legado deliberadamente ambíguo: não representa entrada operacional nova.
     await prisma.movimentoEstoque.create({ data: { ...base, tipo: "ENTRADA", propriedadeId: destinoId, produtoId: produtos[1] } });
     expect((await obterOperacao(operacao.id, origemId)).transferencias[0].destino).toBeNull();
     await prisma.movimentoEstoque.create({ data: { ...base, tipo: "ENTRADA", propriedadeId: destinoId } });

@@ -5,6 +5,7 @@ import { RebanhoError, auditar, travarAnimais } from "../rebanho/regras.js";
 import { calcularAnimalDias } from "./animalDias.calc.js";
 import { obterBaseCusto, statusSaldoEstoque, estornarMovimentoTx } from "../../estoque/estoque.js";
 import { valorSaidaDaBase } from "../../estoque/estoque.calc.js";
+import { planejarSaidaTx, registrarSaidaValorizadaTx, travarValorizacaoTx } from "../../estoque/valorizacao.js";
 import { prepararPartidasTx, type SelecaoPartida } from "../../estoque/partidas.js";
 import { exigirPeriodoAberto } from "../../financeiro/regras.js";
 import { propriedadePrincipalId } from "../../propriedade.js";
@@ -52,8 +53,12 @@ async function previaConsumoTx(tx: Prisma.TransactionClient, input: Omit<Fechame
       let materiaSecaKg: string | null = null;
       const unidade = Object.values(UnidadeMedida).find((u) => u === i.unidade);
       if (unidade && i.materiaSecaPercentual != null) try { materiaSecaKg = converterQuantidade(i.quantidadePrevista, unidade, "KG").mul(i.materiaSecaPercentual).div(100).toString(); } catch { /* Volume sem densidade não é convertido em massa. */ }
-      const base = await obterBaseCusto(tx, i.produtoId, input.propriedadeId);
-      return { ...i, quantidadeCabecaDia: i.quantidadeCabecaDia.toString(), quantidadePrevista: i.quantidadePrevista.toString(), materiaSecaPercentual: i.materiaSecaPercentual?.toString() ?? null, materiaSecaKg, saldo: (await saldoProduto(tx, i.produtoId, input.propriedadeId)).toString(), custoPrevisto: base ? valorSaidaDaBase(i.quantidadePrevista, base).valorTotal.toString() : null };
+      let custoPrevisto: string | null = null;
+      if (!i.rastrearPartidas && i.quantidadePrevista.gt(0)) {
+        try { custoPrevisto = (await planejarSaidaTx(tx, { produtoId: i.produtoId, propriedadeId: input.propriedadeId, data: c.fim, quantidade: i.quantidadePrevista })).valorTotal.toString(); }
+        catch (e) { if (!(e instanceof Error) || !["ValorizacaoError","FinanceiroError"].includes(e.constructor.name)) throw e; }
+      }
+      return { ...i, quantidadeCabecaDia: i.quantidadeCabecaDia.toString(), quantidadePrevista: i.quantidadePrevista.toString(), materiaSecaPercentual: i.materiaSecaPercentual?.toString() ?? null, materiaSecaKg, saldo: (await saldoProduto(tx, i.produtoId, input.propriedadeId)).toString(), custoPrevisto };
     }));
     return { loteId: c.lote.id, vigenciaId: c.vigencia.id, dieta: { nome: c.vigencia.dieta.nome, versao: c.vigencia.dieta.versao },
       inicio: c.inicio, fim: c.fim, centroCustoId: c.centroCustoId, animalDias: c.participacao.animalDias,
@@ -76,6 +81,7 @@ async function confirmarConsumoTx(tx: Prisma.TransactionClient, input: Fechament
     // Leitura serializável do histórico, dentro da mesma transação da baixa.
     const c = await contexto(tx, input);
     await travarAnimais(tx, c.participacao.participacoes.map((p) => p.animalId));
+    await travarValorizacaoTx(tx, input.itens.map(i => i.produtoId));
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`pec-lote-consumo:${c.lote.id}`}))`;
     await exigirPeriodoAberto(tx, input.propriedadeId, c.inicio);
     if (input.itens.length !== c.itens.length || new Set(input.itens.map((i) => i.produtoId)).size !== input.itens.length) {
@@ -107,16 +113,17 @@ async function confirmarConsumoTx(tx: Prisma.TransactionClient, input: Fechament
         }
         const distribuicao = await prepararPartidasTx(tx, { produtoId: previsto.produtoId, rastrearPartidas: previsto.rastrearPartidas,
           propriedadeId: input.propriedadeId, tipo: "SAIDA", data: c.fim, quantidade, partidas: informado.partidas, usuarioId });
-        const base = await obterBaseCusto(tx, previsto.produtoId, input.propriedadeId);
-        const valores = valorSaidaDaBase(quantidade, base);
+        const plano = await planejarSaidaTx(tx, { produtoId: previsto.produtoId, propriedadeId: input.propriedadeId, quantidade, data: c.fim, partidas: distribuicao });
+        const valores = { custoUnitario: plano.custoUnitario, valorTotal: plano.valorTotal };
         const mov = await tx.movimentoEstoque.create({ data: { produtoId: previsto.produtoId, propriedadeId: input.propriedadeId,
           tipo: "SAIDA", origem: "NUTRICAO", data: c.fim, quantidade,
           custoUnitario: valores.custoUnitario, valorTotal: valores.valorTotal, centroCustoId: c.centroCustoId,
           criadoPorId: usuarioId, observacao: `Consumo do lote ${c.lote.nome}: ${input.inicio} a ${input.fim}`,
           ...(distribuicao.length ? { alocacaoPartidaEstoques: { create: distribuicao.map((p) => ({ partidaId: p.partidaId, quantidade: p.quantidade })) } } : {}),
         } });
+        await registrarSaidaValorizadaTx(tx, mov.id, plano);
         movimentoEstoqueId = mov.id;
-        situacaoCusto = base ? "CONHECIDO" : "SEM_BASE";
+        situacaoCusto = "CONHECIDO";
       } else if (informado.modoEstoque === "SEM_BAIXA_JUSTIFICADA") situacaoCusto = "INCOMPLETO";
       const item = await tx.itemFechamentoConsumo.create({ data: { fechamentoId: fechamento.id, produtoId: previsto.produtoId,
         quantidadePrevista: previsto.quantidadePrevista, quantidadeConfirmada: quantidade,

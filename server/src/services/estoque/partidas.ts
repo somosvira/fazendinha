@@ -6,7 +6,7 @@ import { propriedadePrincipalId } from "../propriedade.js";
 import { EstoqueError, statusSaldoEstoque } from "./estoque.js";
 import { obterBaseCusto } from "./estoque.js";
 import { exigirPeriodoAberto } from "../financeiro/regras.js";
-import { valorSaidaDaBase } from "./estoque.calc.js";
+import { planejarSaidaTx, registrarEntradaValorizadaTx, registrarSaidaValorizadaTx, saldosBasesTx, travarValorizacaoTx } from "./valorizacao.js";
 import { nomeLotePadrao, validadeVencida } from "./partidas.calc.js";
 export { nomeLotePadrao, validadeVencida } from "./partidas.calc.js";
 
@@ -128,6 +128,7 @@ export async function prepararPartidasTx(tx: Prisma.TransactionClient, args: {
 /** Ativação auditável: o razão antigo permanece intacto e passa a apontar à partida técnica. */
 export async function ativarRastreio(produtoId: string, usuarioId: number | null, revisaoConferida?: string) {
   return transacaoEstoque(async (tx) => {
+    await travarValorizacaoTx(tx, [produtoId]);
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`pec-produto:${produtoId}`}))`;
     const produto = await tx.produto.findUnique({ where: { id: produtoId } });
     if (!produto) throw new EstoqueError("NAO_ENCONTRADO", "Produto não encontrado");
@@ -139,7 +140,18 @@ export async function ativarRastreio(produtoId: string, usuarioId: number | null
     const legado = movimentos.length ? await obterOuCriarGrupoTx(tx, produtoId, { validade: null, quantidade: 1 }) : null;
     if (legado) await tx.partidaProduto.update({ where: { id: legado.id }, data: { origemRastreio: "LEGADO_NAO_IDENTIFICADO" } });
     if (legado) for (const m of movimentos) await tx.alocacaoPartidaEstoque.create({ data: { movimentoEstoqueId: m.id, partidaId: legado.id, quantidade: m.quantidade } });
+    const basesAnteriores = await Promise.all(resumo.saldos.map(async sitio => ({ ...sitio, bases: await saldosBasesTx(tx, produtoId, sitio.propriedadeId) })));
     await tx.produto.update({ where: { id: produtoId }, data: { rastrearPartidas: true } });
+    if (legado) for (const sitio of basesAnteriores) {
+      const quantidade = sitio.bases.reduce((q,b) => q.plus(b.quantidade), decimal(0));
+      if (quantidade.isZero()) continue;
+      if (!quantidade.eq(sitio.quantidade)) throw new EstoqueError("CONFLITO", "A base de valor diverge do saldo físico antes de ativar lotes");
+      const dataCorte = new Date(new Date().toISOString().slice(0,10));
+      await exigirPeriodoAberto(tx, sitio.propriedadeId, dataCorte);
+      await tx.baseValorizacaoEstoque.create({ data: { produtoId, propriedadeId: sitio.propriedadeId, partidaId: legado.id, metodo: "MEDIA_SALDO_V1", disponivelDesde: dataCorte, corteAbertura: dataCorte,
+        quantidadeAbertura: quantidade, valorAbertura: sitio.bases.reduce((v,b) => v.plus(b.valor), decimal(0)),
+        aberturaDocumentada: { chave: crypto.randomUUID(), corte: dataCorte.toISOString().slice(0,10), referencia: "TRANSICAO_RASTREIO", motivo: "Ativação do rastreio com valor residual preservado", evidencia: sitio.bases.map(b => b.id), usuarioId, revisao: resumo.revisao } } });
+    }
     await tx.auditoriaFinanceira.create({ data: { entidade: "Produto", entidadeId: produtoId, acao: "ATIVAR_RASTREIO_PARTIDAS",
       usuarioId: usuarioId && usuarioId > 0 ? usuarioId : null, estadoAnterior: { rastrearPartidas: false }, estadoPosterior: { rastrearPartidas: true, movimentosLegados: movimentos.length, partidaId: legado?.id ?? null } } });
     return { produtoId, partidaLegadaId: legado?.id ?? null, movimentosLegados: movimentos.length, saldos: resumo.saldos };
@@ -168,6 +180,7 @@ export async function identificarLegado(input: { chave: string; produtoId: strin
   usuarioId = usuarioId && usuarioId > 0 ? usuarioId : null;
   const hash = crypto.createHash("sha256").update(JSON.stringify(input)).digest("hex");
   return transacaoEstoque(async (tx) => {
+    await travarValorizacaoTx(tx, [input.produtoId]);
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`pec-produto:${input.produtoId}`}))`;
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`estoque-identificacao:${input.chave}`}))`;
     const anterior = await tx.auditoriaFinanceira.findFirst({ where: { acao: "IDENTIFICAR_ESTOQUE_LEGADO", estadoPosterior: { path: ["chave"], equals: input.chave } } });
@@ -186,11 +199,14 @@ export async function identificarLegado(input: { chave: string; produtoId: strin
     const data = new Date(`${input.data}T00:00:00Z`);
     await exigirPeriodoAberto(tx, input.propriedadeId, data);
     const identificada = await obterOuCriarGrupoTx(tx, produto.id, input);
-    const base = await obterBaseCusto(tx, produto.id, input.propriedadeId);
-    const { custoUnitario, valorTotal: valor } = valorSaidaDaBase(quantidade, base);
+    const plano = await planejarSaidaTx(tx, { produtoId: produto.id, propriedadeId: input.propriedadeId, data, quantidade, partidas: [{ partidaId: legado.id, quantidade }] });
+    const custoUnitario = plano.custoUnitario, valor = plano.valorTotal;
     const movimentos = [];
     for (const [partidaId, sinal] of [[legado.id, -1], [identificada.id, 1]] as const) {
-      movimentos.push(await tx.movimentoEstoque.create({ data: { produtoId: produto.id, propriedadeId: input.propriedadeId, data, tipo: "AJUSTE", origem: "IDENTIFICACAO_PARTIDA", quantidade: quantidade.mul(sinal), custoUnitario, valorTotal: valor.mul(sinal), criadoPorId: usuarioId, observacao: `Identificação de legado: ${input.motivo}`, alocacaoPartidaEstoques: { create: { partidaId, quantidade: quantidade.mul(sinal) } } } }));
+      const movimento = await tx.movimentoEstoque.create({ data: { produtoId: produto.id, propriedadeId: input.propriedadeId, data, tipo: "AJUSTE", origem: "IDENTIFICACAO_PARTIDA", quantidade: quantidade.mul(sinal), custoUnitario, valorTotal: valor.mul(sinal), criadoPorId: usuarioId, observacao: `Identificação de legado: ${input.motivo}`, alocacaoPartidaEstoques: { create: { partidaId, quantidade: quantidade.mul(sinal) } } } });
+      movimentos.push(movimento);
+      if (sinal < 0) await registrarSaidaValorizadaTx(tx, movimento.id, plano);
+      else await registrarEntradaValorizadaTx(tx, movimento, [{ partidaId, quantidade }]);
     }
     await tx.auditoriaFinanceira.create({ data: { entidade: "Produto", entidadeId: produto.id, acao: "IDENTIFICAR_ESTOQUE_LEGADO", usuarioId, estadoAnterior: { partidaId: legado.id }, estadoPosterior: { chave: input.chave, hash, propriedadeId: input.propriedadeId, partidaId: identificada.id, quantidade: quantidade.toString(), motivo: input.motivo, movimentos: movimentos.map((m) => m.id), quantidadeLiquida: "0", valorLiquido: "0" } } });
     return { partidaId: identificada.id, movimentos: movimentos.map((m) => m.id) };

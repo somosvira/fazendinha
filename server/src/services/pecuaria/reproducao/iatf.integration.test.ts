@@ -1,3 +1,4 @@
+import { criarEntradaValorizadaFixture } from "../../../test/estoque-valorizado.fixture.js";
 import { criarTipoExame, editarTipoExame, corrigirExame } from "../sanidade/exames.js";
 import { randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
@@ -72,7 +73,7 @@ comBanco("IATF planejada, executada e reentrada — banco descartável", () => {
         },
       },
     });
-    await prisma.movimentoEstoque.create({
+    await criarEntradaValorizadaFixture({
       data: {
         produtoId: produto.id,
         propriedadeId: sitio.id,
@@ -84,7 +85,7 @@ comBanco("IATF planejada, executada e reentrada — banco descartável", () => {
         valorTotal: 200,
       },
     });
-    await prisma.movimentoEstoque.create({
+    await criarEntradaValorizadaFixture({
       data: {
         produtoId: semen.id,
         propriedadeId: sitio.id,

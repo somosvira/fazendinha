@@ -1,3 +1,4 @@
+import { criarEntradaValorizadaFixture, criarEntradaValorizadaFixtureTx, criarSaidaValorizadaFixtureTx, limparMovimentosValorizadosFixture } from "../../test/estoque-valorizado.fixture.js";
 import crypto from "node:crypto";
 import { Prisma, type TipoMovimento } from "@prisma/client";
 import { afterAll, describe, expect, it } from "vitest";
@@ -27,8 +28,9 @@ async function fixture(rastrearPartidas = true) {
 async function movimento(produtoId: string, propriedadeId: number, tipo: TipoMovimento, quantidade: number, partidas: SelecaoPartida[], data = "2026-10-03", operacaoId?: string) {
   return transacaoEstoque(async (tx) => {
     const distribuicao = await prepararPartidasTx(tx, { produtoId, propriedadeId, rastrearPartidas: true, tipo, quantidade: new Prisma.Decimal(quantidade), partidas, data: new Date(`${data}T23:59:59Z`) });
-    return tx.movimentoEstoque.create({ data: { produtoId, propriedadeId, operacaoId, tipo, origem: tipo === "ENTRADA" ? "COMPRA" : "SANIDADE", data: new Date(data), quantidade, custoUnitario: 2, valorTotal: quantidade * 2,
-      alocacaoPartidaEstoques: { create: distribuicao.map((p) => ({ partidaId: p.partidaId, quantidade: p.quantidade })) } } });
+    const input = { data: { produtoId, propriedadeId, operacaoId, tipo, origem: tipo === "ENTRADA" ? "COMPRA" as const : "SANIDADE" as const, data: new Date(data), quantidade, custoUnitario: 2, valorTotal: quantidade * 2,
+      alocacaoPartidaEstoques: { create: distribuicao.map((p) => ({ partidaId: p.partidaId, quantidade: p.quantidade })) } } };
+    return tipo === "ENTRADA" ? criarEntradaValorizadaFixtureTx(tx, input) : criarSaidaValorizadaFixtureTx(tx, input, distribuicao);
   });
 }
 
@@ -38,9 +40,8 @@ afterAll(async () => {
   const movimentos = await prisma.movimentoEstoque.findMany({ where: { produtoId: { in: produtos } }, select: { id: true } });
   const operacoes = await prisma.operacao.findMany({ where: { propriedadeId: { in: sitios } }, select: { id: true } });
   await prisma.auditoriaFinanceira.deleteMany({ where: { entidadeId: { in: [...produtos, ...partidas.map((p) => p.id), ...movimentos.map((m) => m.id), ...operacoes.map((o) => o.id)] } } });
+  await limparMovimentosValorizadosFixture(produtos);
   await prisma.produto.updateMany({ where: { id: { in: produtos } }, data: { rastrearPartidas: false } });
-  await prisma.alocacaoPartidaEstoque.deleteMany({ where: { partida: { produtoId: { in: produtos } } } });
-  await prisma.movimentoEstoque.deleteMany({ where: { produtoId: { in: produtos } } });
   await prisma.itemOperacao.deleteMany({ where: { operacao: { propriedadeId: { in: sitios } } } });
   await prisma.operacao.deleteMany({ where: { propriedadeId: { in: sitios } } });
   await prisma.partidaProduto.deleteMany({ where: { produtoId: { in: produtos }, lotePrincipalId: { not: null } } });
@@ -134,7 +135,7 @@ comBanco("lotes por Produto e validade — serviços PostgreSQL", () => {
     const { sitio, produto } = await fixture();
     const raiz = await prisma.partidaProduto.create({ data: { produtoId: produto.id, codigo: "ANTIGO-A", validade: new Date("2026-12-31"), nome: "Grupo preservado" } });
     const alias = await prisma.partidaProduto.create({ data: { produtoId: produto.id, codigo: "ANTIGO-B", validade: raiz.validade, lotePrincipalId: raiz.id } });
-    const entrada = await prisma.movimentoEstoque.create({ data: { produtoId: produto.id, propriedadeId: sitio.id, tipo: "ENTRADA", origem: "INVENTARIO_INICIAL", data: new Date("2026-10-03"), quantidade: 50, custoUnitario: 2, valorTotal: 100, alocacaoPartidaEstoques: { create: { partidaId: alias.id, quantidade: 50 } } } });
+    const entrada = await criarEntradaValorizadaFixture({ data: { produtoId: produto.id, propriedadeId: sitio.id, tipo: "ENTRADA", origem: "INVENTARIO_INICIAL", data: new Date("2026-10-03"), quantidade: 50, custoUnitario: 2, valorTotal: 100, alocacaoPartidaEstoques: { create: { partidaId: alias.id, quantidade: 50 } } } });
     const saida = await movimento(produto.id, sitio.id, "SAIDA", 10, [{ partidaId: alias.id, quantidade: 10 }]);
     expect((await prisma.alocacaoPartidaEstoque.findFirstOrThrow({ where: { movimentoEstoqueId: saida.id } })).partidaId).toBe(raiz.id);
     expect(await prisma.$transaction((tx) => saldoPartidaTx(tx, alias.id, sitio.id))).toEqual(new Prisma.Decimal(40));
@@ -150,7 +151,7 @@ comBanco("lotes por Produto e validade — serviços PostgreSQL", () => {
     const { sitio, produto } = await fixture();
     const raiz = await prisma.partidaProduto.create({ data: { produtoId: produto.id, codigo: "A", validade: new Date("2026-12-31") } });
     const alias = await prisma.partidaProduto.create({ data: { produtoId: produto.id, codigo: "B", validade: raiz.validade, lotePrincipalId: raiz.id } });
-    await prisma.movimentoEstoque.create({ data: { produtoId: produto.id, propriedadeId: sitio.id, tipo: "ENTRADA", origem: "INVENTARIO_INICIAL", data: new Date("2026-10-03"), quantidade: 50, custoUnitario: 2, valorTotal: 100, alocacaoPartidaEstoques: { create: [{ partidaId: raiz.id, quantidade: 25 }, { partidaId: alias.id, quantidade: 25 }] } } });
+    await criarEntradaValorizadaFixture({ data: { produtoId: produto.id, propriedadeId: sitio.id, tipo: "ENTRADA", origem: "INVENTARIO_INICIAL", data: new Date("2026-10-03"), quantidade: 50, custoUnitario: 2, valorTotal: 100, alocacaoPartidaEstoques: { create: [{ partidaId: raiz.id, quantidade: 25 }, { partidaId: alias.id, quantidade: 25 }] } } });
     await movimento(produto.id, sitio.id, "SAIDA", 20, [{ partidaId: raiz.id, quantidade: 20 }]);
     await expect(prisma.$transaction((tx) => conferirSaldoEstornoPartidasTx(tx, [{ partidaId: raiz.id, quantidade: new Prisma.Decimal(25) }, { partidaId: alias.id, quantidade: new Prisma.Decimal(25) }], sitio.id))).rejects.toThrow(/consumido/);
   });
@@ -205,7 +206,7 @@ comBanco("lotes por Produto e validade — serviços PostgreSQL", () => {
     const { sitio, produto } = await fixture();
     const usuario = await prisma.usuario.create({ data: { email: `lotes-${crypto.randomUUID()}@teste.local`, nome: "Teste de rascunho", papel: "proprietario" } }); usuarios.push(usuario.id);
     const chave = crypto.randomUUID();
-    const operacao = { chave, tipo: "INVENTARIO_INICIAL", data: "2026-10-03", descricao: "Inventário confirmado do rascunho", itens: [{ produtoId: produto.id, descricao: produto.nome, quantidade: 50, unidade: "mL", valorUnitario: 2, partidas: [{ validade: null, quantidade: 50 }] }], financeiro: { condicao: "SEM_EFEITO_FINANCEIRO" } };
+    const operacao = { chave, tipo: "INVENTARIO_INICIAL", data: "2026-10-03", descricao: "Inventário confirmado do rascunho", documentacaoValor: { referencia: "FIXTURE_RASCUNHO", evidencia: "Valor fictício declarado pelo inventário deste teste" }, itens: [{ produtoId: produto.id, descricao: produto.nome, quantidade: 50, unidade: "mL", valorUnitario: 2, partidas: [{ validade: null, quantidade: 50 }] }], financeiro: { condicao: "SEM_EFEITO_FINANCEIRO" } };
     const rascunho = await salvarRascunho({ propriedadeId: sitio.id, usuarioId: usuario.id, dados: { operacao } });
     expect(await prisma.partidaProduto.count({ where: { produtoId: produto.id } })).toBe(0);
     const confirmada = await confirmarRascunho(sitio.id, usuario.id, rascunho.versao, chave);

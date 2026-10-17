@@ -1,3 +1,4 @@
+import { ValorizacaoError } from "../../services/estoque/valorizacao.calc.js";
 import { regularizacaoSchema } from "../../services/pecuaria/reproducao/schemas.js";
 import { regularizarTarefaSanitaria, substitutosTarefaComum } from "../../services/pecuaria/protocolos/regularizacao.js";
 import { camposExameSchema, observacoesExameSchema } from "../../services/pecuaria/exames/formatos.js";
@@ -32,6 +33,7 @@ const desvio = z.object({ motivo: z.string().trim().min(5, "Explique o desvio co
 import { aplicacaoSchema } from "../../services/pecuaria/sanidade/aplicacoes.schemas.js";
 
 function falha(c: Context, e: unknown) {
+  if (e instanceof ValorizacaoError) return c.json({ error: e.message, code: e.code }, e.code === "VALIDACAO" ? 422 : 409);
   if (e instanceof EstoqueError) return c.json({ error: e.message, code: e.code, ...(e.campo ? { campo: e.campo } : {}) }, e.code === "NAO_ENCONTRADO" ? 404 : e.code === "VALIDACAO" ? 422 : 409);
   if (e instanceof z.ZodError) return c.json({ error: e.issues[0].message, code: "VALIDACAO", campo: e.issues[0].path.join(".") }, 422);
   if (e instanceof RebanhoError || e instanceof FinanceiroError) {

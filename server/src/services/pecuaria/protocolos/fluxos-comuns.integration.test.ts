@@ -1,3 +1,4 @@
+import { criarEntradaValorizadaFixture, limparMovimentosValorizadosFixture } from "../../../test/estoque-valorizado.fixture.js";
 import crypto from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "../../../db.js";
@@ -48,8 +49,7 @@ afterAll(async () => {
   await prisma.tipoExame.deleteMany({ where: { id: { in: tipos } } });
   await prisma.materialGenetico.deleteMany({ where: { produtoId: { in: produtos } } });
   await prisma.genitorExterno.deleteMany({ where: { id: { in: genitores } } });
-  await prisma.alocacaoPartidaEstoque.deleteMany({ where: { movimentoEstoque: { propriedadeId: sitio } } });
-  await prisma.movimentoEstoque.deleteMany({ where: { propriedadeId: sitio } });
+  await limparMovimentosValorizadosFixture(produtos);
   await prisma.produto.deleteMany({ where: { id: { in: produtos } } });
   await prisma.periodoReprodutivoAnimal.deleteMany({ where: { animalId: { in: animais } } });
   await prisma.destinoAnimal.deleteMany({ where: { animalId: { in: animais } } });
@@ -131,7 +131,7 @@ comBanco("tarefas, regularização e exames personalizados na base comum", () =>
     const produto = await prisma.produto.create({ data: { nome: `Produto fluxo ${run}`, unidade: "ML", usoSanitario: true } }); produtos.push(produto.id);
     const p = await criarProtocolo({ nome: `Aplicação ${run}`, etapas: [{ tipo: "APLICACAO", diaRelativo: 0, produtoId: produto.id, finalidade: "TRATAMENTO", dose: 1, unidade: "ML" }] }, null); protocolos.push(p.id); await publicarProtocolo(p.id, null);
     const ex = await iniciarExecucao({ protocoloId: p.id, animalId, propriedadeId: sitio, inicio: data }, null);
-    const m = await prisma.movimentoEstoque.create({ data: { produtoId: produto.id, propriedadeId: sitio, tipo: "ENTRADA", origem: "INVENTARIO_INICIAL", data: new Date(data), quantidade: 10, custoUnitario: 1, valorTotal: 10 } });
+    const m = await criarEntradaValorizadaFixture({ data: { produtoId: produto.id, propriedadeId: sitio, tipo: "ENTRADA", origem: "INVENTARIO_INICIAL", data: new Date(data), quantidade: 10, custoUnitario: 1, valorTotal: 10 } });
     const ap = await criarAplicacao({ animalId, propriedadeId: sitio, data, aplicadaEm: instante, produtoId: produto.id, nomeProdutoAplicado: produto.nome, origemInsumo: "BAIXA_ESTOQUE", dose: "1", unidadeDose: "ML", finalidade: "TRATAMENTO", tarefaId: ex.tarefas[0].id, cienciaValidadeDesconhecida: true, estadoCarenciaLeite: "NAO_INFORMADO", estadoCarenciaCarne: "NAO_INFORMADO" }, null);
     await expect(anularAplicacao(ap.id, sitio, "Material utilizado no campo", null)).rejects.toMatchObject({ code: "VALIDACAO" });
     await anularAplicacao(ap.id, sitio, "Material utilizado no campo", null, "MANTER_CONSUMO", true);
