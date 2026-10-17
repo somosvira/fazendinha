@@ -79,8 +79,15 @@ describe("acompanhamento — autorização e contratos HTTP independentes", () =
   });
   it("correção que muda desfecho para aborto exige explicação e UUID de fato é conservado", async () => {
     const input = { propriedadeId: 1, motivo: "Correção factual conferida", desfecho: "ABORTO" };
-    expect((await app().request(`/reproducao/partos/${uid(7)}/correcao`, body(input))).status).toBe(422); expect(mocks.corrigirParto).not.toHaveBeenCalled();
+    mocks.corrigirParto.mockRejectedValueOnce(new RebanhoError("VALIDACAO", "Explique a observação e o contexto do aborto", "observacao"));
+    expect((await app().request(`/reproducao/partos/${uid(7)}/correcao`, body(input))).status).toBe(422);
+    expect(mocks.corrigirParto).toHaveBeenCalledWith(uid(7), input, 17);
     expect((await app().request(`/reproducao/partos/${uid(7)}/correcao`, body({ ...input, observacao: "Observação original do contexto fetal" }))).status).toBe(200);
     expect(mocks.corrigirParto).toHaveBeenCalledWith(uid(7), expect.objectContaining({ desfecho: "ABORTO", observacao: "Observação original do contexto fetal" }), 17);
+  });
+  it("correção independente com tipo histórico é delegada ao serviço sem exigir nova observação", async () => {
+    const input = { propriedadeId: 1, motivo: "Responsável conferido na folha original", tipo: "ABORTO", responsavel: "José" };
+    expect((await app().request(`/reproducao/partos/${uid(7)}/correcao`, body(input))).status).toBe(200);
+    expect(mocks.corrigirParto).toHaveBeenCalledWith(uid(7), input, 17);
   });
 });

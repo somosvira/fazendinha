@@ -138,6 +138,9 @@ describe("registros reprodutivos", () => {
     fireEvent.change(screen.getByLabelText("Desfecho"), {
       target: { value: "ABORTO" },
     });
+    fireEvent.change(screen.getByLabelText(/^Explicação do aborto/), {
+      target: { value: "Aborto observado no manejo" },
+    });
     fireEvent.submit(document.getElementById("form-reproducao")!);
     await waitFor(() => expect(registrarParto).toHaveBeenCalledTimes(2));
     expect(vi.mocked(registrarParto).mock.calls[1][0]).toMatchObject({
@@ -145,6 +148,18 @@ describe("registros reprodutivos", () => {
       crias: [],
     });
   });
+});
+
+it.each(["", "abc", "     "])("novo aborto exige explicação mesmo no submit programático: '%s'", async observacao => {
+  render(<FormReproducao acao="parto" painel={painel} animalInicial="a" onFechar={vi.fn()} onSalvo={vi.fn()} />);
+  fireEvent.change(screen.getByLabelText("Desfecho"), { target: { value: "ABORTO" } });
+  const explicacao = screen.getByLabelText(/^Explicação do aborto/);
+  expect(explicacao).toHaveProperty("required", true);
+  expect(explicacao).toHaveProperty("minLength", 5);
+  fireEvent.change(explicacao, { target: { value: observacao } });
+  fireEvent.submit(document.getElementById("form-reproducao")!);
+  await screen.findByText("Informe a explicação do aborto com pelo menos 5 caracteres.");
+  expect(registrarParto).not.toHaveBeenCalled();
 });
 
 it("perda no mesmo dia permite negativo, preservando fronteira inclusiva para reconfirmação histórica", async () => {

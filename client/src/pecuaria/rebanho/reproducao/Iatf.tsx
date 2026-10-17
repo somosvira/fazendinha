@@ -271,7 +271,7 @@ export function Iatf({
   return (
     <div className="space-y-5">
       <ErrorBox erro={erro} />
-      {modo !== "operacao" && <BibliotecaReprodutiva propriedadeId={propriedadeId} podeLancar={podeLancar} onCopiou={()=>void carregar()}/>}
+      {modo !== "operacao" && <BibliotecaReprodutiva propriedadeId={propriedadeId ?? getPropriedadeAtiva()} podeLancar={podeLancar} onCopiou={()=>void carregar()}/>}
       {modo === "operacao" && <Panel>
         <CabecalhoTabela
           titulo="Programações de IATF"

@@ -44,4 +44,40 @@ describe("seleção livre individual — contraprovas independentes", () => {
   fireEvent.click(screen.getByRole("button", { name: "Abrir atendimento de 100 · Aurora" })); expect(screen.getByLabelText("Anotação original · 100")).toHaveProperty("value", "Contexto do atendimento de Aurora preservado");
   expect(screen.getAllByText(/Lote preservado/).length).toBeGreaterThan(0); expect(mocks.confirmar).not.toHaveBeenCalled();
  });
+ it("mantém o filtro de atendimento acessível ao voltar à lista livre vazia", async () => {
+  render(<Transcricao visita={visita} atividade={atividade} podeLancar onMudou={vi.fn().mockResolvedValue(undefined)}/>);
+  fireEvent.click(screen.getByRole("button", { name: "Abrir atendimento de 100 · Aurora" }));
+  fireEvent.click(screen.getByText("Filtrar atendimentos"));
+  fireEvent.change(screen.getByRole("combobox", { name: "Atendimento" }), { target: { value: "CONFIRMADO" } });
+  fireEvent.click(screen.getByRole("button", { name: "Voltar à lista de animais" }));
+  await screen.findByText("Nenhum animal nesta seleção.");
+  const filtro = screen.getByRole("combobox", { name: "Atendimento" });
+  expect(filtro).toHaveProperty("value", "CONFIRMADO");
+  expect(new URLSearchParams(window.location.search).get("atividade-at-status")).toBe("CONFIRMADO");
+  fireEvent.change(filtro, { target: { value: "" } });
+  await screen.findByRole("button", { name: "Abrir atendimento de 100 · Aurora" });
+  expect(screen.getByRole("button", { name: "Abrir atendimento de 200 · Brisa" })).toBeTruthy();
+  expect(new URLSearchParams(window.location.search).has("atividade-at-status")).toBe(false);
+  expect(mocks.confirmar).not.toHaveBeenCalled();
+  expect(mocks.salvar).not.toHaveBeenCalled();
+ });
+ it("permite remover na lista o motivo retomado pela URL sem apagar rascunhos", async () => {
+  window.history.replaceState(null, "", "/pecuaria/visitas/v?atividade-at-motivo=Retorno+previsto");
+  const atividadeComMotivo: AtividadeVisita = { ...atividade, participantes: atividade.participantes.map((p, i) => ({
+   ...p, snapshot: { ...p.snapshot, motivos: i === 0 ? ["Retorno previsto"] : [] },
+  })) };
+  render(<Transcricao visita={visita} atividade={atividadeComMotivo} podeLancar onMudou={vi.fn().mockResolvedValue(undefined)}/>);
+  expect(screen.getByRole("button", { name: "Abrir atendimento de 100 · Aurora" })).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Abrir atendimento de 200 · Brisa" })).toBeNull();
+  fireEvent.click(screen.getByText("Filtrar atendimentos"));
+  const motivo = screen.getByRole("checkbox", { name: "Retorno previsto" });
+  expect(motivo).toHaveProperty("checked", true);
+  fireEvent.click(motivo);
+  expect(screen.getByRole("button", { name: "Abrir atendimento de 200 · Brisa" })).toBeTruthy();
+  expect(new URLSearchParams(window.location.search).getAll("atividade-at-motivo")).toEqual([]);
+  fireEvent.click(screen.getByRole("button", { name: "Abrir atendimento de 100 · Aurora" }));
+  expect(screen.getByLabelText("Anotação original · 100")).toHaveProperty("value", "Rascunho exclusivo Aurora");
+  expect(mocks.confirmar).not.toHaveBeenCalled();
+  expect(mocks.salvar).not.toHaveBeenCalled();
+ });
 });

@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { Prisma, type DemandaAcompanhamentoReprodutivo } from "@prisma/client";
 import { prisma } from "../../../db.js";
 import { auditar, RebanhoError, travarAnimais } from "../rebanho/regras.js";
 import { conferirAnimalNoFato } from "../fatos.js";
@@ -12,9 +12,27 @@ const texto=(d:Date)=>d.toISOString().slice(0,10);
 const json=(v:unknown):Prisma.InputJsonValue=>JSON.parse(JSON.stringify(v));
 function erro(message:string,campo?:string):never{throw new RebanhoError("VALIDACAO",message,campo);}
 
+type OrigemDemanda = Pick<DemandaAcompanhamentoReprodutivo, "animalId" | "gestacaoId" | "finalidade" | "exameOrigemId" | "dataReferencia">;
+type ExameOrigem = {
+ id: string; animalId: string; data: Date; status: string; realizacao: string;
+ interpretacao: { gestacaoId: string | null } | null;
+ resultados: ReadonlyArray<{ valor: Prisma.JsonValue }>;
+};
+const incluirExameOrigem = { interpretacao: { select: { gestacaoId: true } }, resultados: { where: { vigente: true, campo: "CONCLUSAO_GESTACIONAL" }, select: { valor: true } } } satisfies Prisma.ExameAnimalInclude;
+function pendenciasOrigemDemanda(demanda: OrigemDemanda, exame: ExameOrigem | null | undefined): Array<"EXAME_ORIGEM_INVALIDO"> {
+ if (demanda.finalidade !== "RECONFIRMACAO" || !demanda.exameOrigemId) return [];
+ const valida = exame?.id === demanda.exameOrigemId && exame.animalId === demanda.animalId
+  && exame.status === "VALIDO" && exame.realizacao === "REALIZADO"
+  && exame.interpretacao?.gestacaoId === demanda.gestacaoId
+  && exame.data.getTime() === demanda.dataReferencia.getTime()
+  && exame.resultados.some(r => r.valor === "POSITIVO");
+ return valida ? [] : ["EXAME_ORIGEM_INVALIDO"];
+}
+
 export async function vincularExameDemandaTx(tx:Prisma.TransactionClient,demandaId:string,exameId:string){
- const [demanda,exame]=await Promise.all([tx.demandaAcompanhamentoReprodutivo.findUnique({where:{id:demandaId}}),tx.exameAnimal.findUnique({where:{id:exameId},include:{interpretacao:true}})]);
+ const [demanda,exame]=await Promise.all([tx.demandaAcompanhamentoReprodutivo.findUnique({where:{id:demandaId},include:{exameOrigem:{include:incluirExameOrigem}}}),tx.exameAnimal.findUnique({where:{id:exameId},include:{interpretacao:true}})]);
  if(!demanda||!exame||demanda.estado!=="PENDENTE"||demanda.animalId!==exame.animalId)erro("Demanda não está pendente para este animal", "demandaAcompanhamentoId");
+ if(pendenciasOrigemDemanda(demanda,demanda.exameOrigem).length)erro("O primeiro DG que fundamentou esta demanda está inválido; regularize a evidência de origem antes de registrar sua resolução", "demandaAcompanhamentoId");
  const regra=demanda.regraSnapshot as Record<string,unknown>;
  const formato=exame.formatoSnapshot as Record<string,unknown>;
  if(!exame.finalidades.includes(demanda.finalidade)||(demanda.tentativaId?exame.interpretacao?.tentativaId!==demanda.tentativaId:exame.interpretacao?.gestacaoId!==demanda.gestacaoId)||exame.data<demanda.dataReferencia)erro("Exame não corresponde à origem e finalidade da demanda", "demandaAcompanhamentoId");
@@ -69,6 +87,7 @@ export async function reconciliarDemandasAnimalTx(tx:Prisma.TransactionClient,an
  const tentativas=await tx.tentativaReprodutiva.findMany({where:{animalId,status:"VALIDO"},include:{tarefa:true},orderBy:[{data:"asc"},{ordem:"asc"}]});
  const utilizados=new Set<string>();
  const tarefasReservadas=new Set(demandas.flatMap(d=>d.tarefaId?[d.tarefaId]:[]));
+ const demandaPorTarefa=new Map(demandas.flatMap(d=>d.tarefaId?[[d.tarefaId,d.id] as const]:[]));
  const alteracoes:Array<{antes:(typeof demandas)[number];dados:Prisma.DemandaAcompanhamentoReprodutivoUncheckedUpdateInput}>=[];
  for(const d of demandas){
   const regra=d.regraSnapshot as Record<string,unknown>;
@@ -82,14 +101,16 @@ export async function reconciliarDemandasAnimalTx(tx:Prisma.TransactionClient,an
     const refs=config.referencias as {exame?:{versao?:number}}|undefined;
     return !tarefasReservadas.has(t.id)&&(!regra.tipoExameVersao||refs?.exame?.versao===regra.tipoExameVersao)&&config.tipo==="AVALIACAO"&&plano?.tipo===d.finalidade&&(!regra.tipoExameId||plano.tipoExameId===regra.tipoExameId)&&t.previstaPara>=d.dataReferencia;
    });
-   if(compativel){tarefaId=compativel.id;tarefasReservadas.add(compativel.id);}
+   if(compativel){tarefaId=compativel.id;tarefasReservadas.add(compativel.id);demandaPorTarefa.set(compativel.id,d.id);}
   }
   const fonte=d.tentativa??d.gestacao;
+  const origemValida=pendenciasOrigemDemanda(d,exames.find(e=>e.id===d.exameOrigemId)).length===0;
   const parto=partos.find(p=>p.data>=d.dataReferencia&&(!d.gestacaoId||p.gestacaoId===d.gestacaoId));
   const substituta=d.tentativa?tentativas.find(t=>t.data>d.tentativa!.data||(t.data.getTime()===d.tentativa!.data.getTime()&&t.ordem>d.tentativa!.ordem)):null;
   const fim=[d.gestacao?.encerradaEm,parto?.data,substituta?.data].filter((data):data is Date=>!!data).sort((a,b)=>a.getTime()-b.getTime())[0]??null;
   const evidencia=exames.find(e=>{
    const i=e.interpretacao;
+   if(e.tarefaId&&demandaPorTarefa.has(e.tarefaId)&&demandaPorTarefa.get(e.tarefaId)!==d.id)return false;
    if(!i||(e.demandaAcompanhamentoId&&e.demandaAcompanhamentoId!==d.id)||utilizados.has(e.id)||e.data<d.dataReferencia||(fim&&e.data>fim)||!e.finalidades.includes(d.finalidade))return false;
    if(d.tentativaId?i.tentativaId!==d.tentativaId:i.gestacaoId!==d.gestacaoId)return false;
    if(d.finalidade==="RECONFIRMACAO"&&e.data<d.previstaPara)return false;
@@ -99,7 +120,7 @@ export async function reconciliarDemandasAnimalTx(tx:Prisma.TransactionClient,an
   });
   const conclusivo=evidencia;
   let dados:Prisma.DemandaAcompanhamentoReprodutivoUncheckedUpdateInput;
-  if(conclusivo&&fonte?.status==="VALIDO"){
+  if(conclusivo&&fonte?.status==="VALIDO"&&origemValida){
    utilizados.add(conclusivo.id);
    dados={estado:"RESOLVIDA",exameResolucaoId:conclusivo.id,resolvidaEm:conclusivo.data,resolucaoSnapshot:json({exameId:conclusivo.id,data:texto(conclusivo.data),formato:conclusivo.formatoSnapshot}),encerradaEm:null,motivoEncerramento:null};
   }else if(fonte?.status!=="VALIDO"||fim){
@@ -149,6 +170,11 @@ export async function listarAcompanhamentos(propriedadeId:number,animalId:string
  return prisma.$transaction(async tx=>{
   if(animalId)await conferirAnimalNoFato(tx,animalId,propriedadeId,dia(data));
   const locais=animalId?[{animalId}]:await tx.localizacaoAnimal.findMany({where:{propriedadeId,desde:{lte:dia(data)},OR:[{ate:null},{ate:{gt:dia(data)}}]},select:{animalId:true}});
-  return tx.demandaAcompanhamentoReprodutivo.findMany({where:{animalId:{in:locais.map(l=>l.animalId)},dataReferencia:{lte:dia(data)}},orderBy:[{previstaPara:"asc"},{id:"asc"}]});
+  const demandas=await tx.demandaAcompanhamentoReprodutivo.findMany({where:{animalId:{in:locais.map(l=>l.animalId)},dataReferencia:{lte:dia(data)}},include:{exameOrigem:{include:incluirExameOrigem}},orderBy:[{previstaPara:"asc"},{id:"asc"}]});
+  return demandas.map(({exameOrigem,...demanda})=>{
+   const pendencias=pendenciasOrigemDemanda(demanda,exameOrigem);
+   // A leitura revela resolução obsoleta sem reescrever o histórico ou adotar outra âncora.
+   return {...demanda,...(pendencias.length&&demanda.estado!=="ENCERRADA"?{estado:"PENDENTE",exameResolucaoId:null,resolvidaEm:null,resolucaoSnapshot:null}:{}),pendencias};
+  });
  });
 }

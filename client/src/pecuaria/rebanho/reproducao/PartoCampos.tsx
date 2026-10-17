@@ -84,7 +84,9 @@ export function PartoCampos({ valor, onChange, crias, setCrias, lotes, lactacao,
   </>;
 }
 
-export function validarDadosParto(v: DadosParto): string | null {
+export function validarDadosParto(v: DadosParto, anterior?: Pick<DadosParto, "desfecho" | "observacao">): string | null {
+  const exigeExplicacao = !anterior || anterior.desfecho !== "ABORTO" || v.observacao !== anterior.observacao;
+  if (v.desfecho === "ABORTO" && exigeExplicacao && v.observacao.trim().length < 5) return "Informe a explicação do aborto com pelo menos 5 caracteres.";
   if (v.escoreAtivo && (!v.escoreData || v.escoreValor === "" || v.escalaMin === "" || v.escalaMax === "" || !(Number(v.escalaMin) < Number(v.escalaMax)) || Number(v.escoreValor) < Number(v.escalaMin) || Number(v.escoreValor) > Number(v.escalaMax))) return "Informe a data, o escore e os limites válidos da escala na aba Pós-parto.";
   if (v.retencaoPlacenta === "SIM" && v.retencaoAcao === "CRIAR" && (!v.doencaId || !v.retencaoData)) return "Informe a doença e a data real da ocorrência na aba Pós-parto.";
   if (v.retencaoPlacenta === "SIM" && v.retencaoAcao === "VINCULAR" && !v.ocorrenciaId) return "Selecione a ocorrência de retenção na aba Pós-parto.";

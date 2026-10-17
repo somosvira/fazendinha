@@ -106,9 +106,16 @@ export function descontarItens(itens: { valor: Prisma.Decimal.Value; elegivel: b
   const valores = itens.map(i => decimal(i.valor, 2, "Valor do item"));
   const total = decimal(desconto, 2, "Desconto");
   const indices = itens.flatMap((i, n) => i.elegivel ? [n] : []);
-  const distribuicao = repartirValor(total, indices.map(i => valores[i]), explicita);
-  const descontos = valores.map(() => new Prisma.Decimal(0));
-  indices.forEach((i, n) => { descontos[i] = distribuicao[n]; });
+  const descontos = explicita
+    ? repartirValor(total, valores, explicita)
+    : valores.map(() => new Prisma.Decimal(0));
+  if (explicita) {
+    if (itens.some((item, i) => !item.elegivel && !descontos[i].isZero()))
+      throw new ValorizacaoError("VALIDACAO", "Item não elegível não pode receber desconto");
+  } else {
+    const distribuicao = repartirValor(total, indices.map(i => valores[i]));
+    indices.forEach((i, n) => { descontos[i] = distribuicao[n]; });
+  }
   if (valores.some((valor, i) => descontos[i].gt(valor))) throw new ValorizacaoError("VALIDACAO", "Desconto não pode deixar item negativo");
   return valores.map((valor, i) => ({ valorBruto: valor, desconto: descontos[i], valorLiquido: valor.minus(descontos[i]) }));
 }

@@ -47,6 +47,17 @@ describe("contraprovas de serviço: identidade, continuidade e leitura sem escri
     expect(mocks.tx.demandaAcompanhamentoReprodutivo.update).toHaveBeenCalledTimes(1);
     expect(mocks.tx.demandaAcompanhamentoReprodutivo.update).toHaveBeenCalledWith({ where: { id: "d2" }, data: expect.objectContaining({ estado: "RESOLVIDA", exameResolucaoId: "exame" }) });
   });
+  it("exame da tarefa da segunda ocorrência não resolve a primeira pendência", async () => {
+    mocks.tx.demandaAcompanhamentoReprodutivo.findMany.mockResolvedValue([
+      { ...demanda("d1", 1, true), tarefaId: "tarefa-1" },
+      { ...demanda("d2", 2, true), tarefaId: "tarefa-2" },
+    ]);
+    mocks.tx.exameAnimal.findMany.mockResolvedValue([{ ...exame("POSITIVO", true), tarefaId: "tarefa-2" }]);
+    await reconciliarDemandasAnimalTx(tx, "animal", 7);
+    expect(mocks.tx.demandaAcompanhamentoReprodutivo.update).toHaveBeenCalledTimes(1);
+    expect(mocks.tx.demandaAcompanhamentoReprodutivo.update).toHaveBeenCalledWith({ where: { id: "d2" }, data: expect.objectContaining({ estado: "RESOLVIDA", exameResolucaoId: "exame" }) });
+    expect(mocks.auditar).toHaveBeenCalledWith(tx, expect.objectContaining({ entidadeId: "d2", usuarioId: 7 }));
+  });
   it("sem vínculo explícito uma prova conclusiva é usada por uma única ocorrência compatível", async () => {
     mocks.tx.demandaAcompanhamentoReprodutivo.findMany.mockResolvedValue([demanda("d1", 1, true), demanda("d2", 2, true)]);
     mocks.tx.exameAnimal.findMany.mockResolvedValue([exame("POSITIVO", true)]);
@@ -66,6 +77,53 @@ describe("contraprovas de serviço: identidade, continuidade e leitura sem escri
     await reconciliarDemandasAnimalTx(tx, "animal", null);
     expect(mocks.tx.demandaAcompanhamentoReprodutivo.update.mock.calls[0][0]).toEqual({ where: { id: "d" }, data: expect.objectContaining({ exameResolucaoId: null }) });
     expect(mocks.tx.demandaAcompanhamentoReprodutivo.update).toHaveBeenLastCalledWith({ where: { id: "d" }, data: expect.objectContaining({ estado: "PENDENTE", exameResolucaoId: null }) });
+  });
+  it("DG de origem da adoção anulado reabre a demanda sem usar uma reconfirmação posterior como nova origem", async () => {
+    const d = { ...demanda("d", 1, true), exameOrigemId: "primeiro-dg", origemAdocao: "ADOCAO_EXPLICITA", estado: "RESOLVIDA", exameResolucaoId: "exame" };
+    mocks.tx.demandaAcompanhamentoReprodutivo.findMany.mockResolvedValue([d]);
+    mocks.tx.exameAnimal.findMany.mockResolvedValue([exame("POSITIVO", true)]);
+    await reconciliarDemandasAnimalTx(tx, "animal", 7);
+    expect(mocks.tx.demandaAcompanhamentoReprodutivo.update).toHaveBeenLastCalledWith({ where: { id: "d" }, data: expect.objectContaining({
+      estado: "PENDENTE", exameResolucaoId: null, resolvidaEm: null, motivoEncerramento: null,
+    }) });
+    for (const [atualizacao] of mocks.tx.demandaAcompanhamentoReprodutivo.update.mock.calls)
+      for (const campo of ["exameOrigemId", "dataReferencia", "previstaPara", "regraSnapshot"])
+        expect(atualizacao.data).not.toHaveProperty(campo);
+    expect(mocks.auditar).toHaveBeenCalledWith(tx, expect.objectContaining({ usuarioId: 7, antes: d, depois: expect.objectContaining({ estado: "PENDENTE" }) }));
+  });
+  it("consulta apresenta DG inválido como pendência sem gravar nem reancorar uma demanda antiga", async () => {
+    const d = { ...demanda("d", 1, true), exameOrigemId: "primeiro-dg", exameOrigem: null, estado: "RESOLVIDA", exameResolucaoId: "exame" };
+    mocks.tx.demandaAcompanhamentoReprodutivo.findMany.mockResolvedValue([d]);
+    const [consulta] = await listarAcompanhamentos(7, "animal", "2026-01-25");
+    expect(consulta).toMatchObject({ estado: "PENDENTE", pendencias: ["EXAME_ORIGEM_INVALIDO"], exameResolucaoId: null,
+      exameOrigemId: "primeiro-dg", dataReferencia: dia("2026-01-01"), previstaPara: dia("2026-01-10") });
+    expect(consulta).not.toHaveProperty("exameOrigem");
+    expect(d.estado).toBe("RESOLVIDA");
+    expect(mocks.tx.demandaAcompanhamentoReprodutivo.update).not.toHaveBeenCalled();
+    expect(mocks.tx.demandaAcompanhamentoReprodutivo.create).not.toHaveBeenCalled();
+    expect(mocks.auditar).not.toHaveBeenCalled();
+  });
+  it.each([
+    { status: "ANULADO" }, { realizacao: "NAO_REALIZADO" }, { animalId: "outro" },
+    { interpretacao: { gestacaoId: "outra" } }, { data: dia("2026-01-02") }, { resultados: [{ valor: "NEGATIVO" }] },
+  ])("origem explícita deve continuar válida, positiva e coerente com a âncora %#", async alteracao => {
+    const origem = { ...exame("POSITIVO", true), id: "primeiro-dg", data: dia("2026-01-01"), ...alteracao };
+    mocks.tx.demandaAcompanhamentoReprodutivo.findMany.mockResolvedValue([{ ...demanda("d", 1, true), exameOrigemId: "primeiro-dg", exameOrigem: origem }]);
+    expect((await listarAcompanhamentos(7, "animal", "2026-01-25"))[0].pendencias).toEqual(["EXAME_ORIGEM_INVALIDO"]);
+    expect(mocks.tx.demandaAcompanhamentoReprodutivo.update).not.toHaveBeenCalled();
+  });
+  it("origem explícita válida e demanda legada sem essa referência continuam legíveis", async () => {
+    const origem = { ...exame("POSITIVO", true), id: "primeiro-dg", data: dia("2026-01-01") };
+    mocks.tx.demandaAcompanhamentoReprodutivo.findMany.mockResolvedValue([
+      { ...demanda("d", 1, true), exameOrigemId: "primeiro-dg", exameOrigem: origem }, demanda("legada", 2, true),
+    ]);
+    expect((await listarAcompanhamentos(7, "animal", "2026-01-25")).map(d => d.pendencias)).toEqual([[], []]);
+  });
+  it("não vincula outra conclusão enquanto o DG explícito de origem estiver inválido", async () => {
+    mocks.tx.demandaAcompanhamentoReprodutivo.findUnique.mockResolvedValue({ ...demanda("d", 1, true), exameOrigemId: "primeiro-dg", exameOrigem: null });
+    mocks.tx.exameAnimal.findUnique.mockResolvedValue(exame("POSITIVO", true));
+    await expect(vincularExameDemandaTx(tx, "d", "exame")).rejects.toMatchObject({ code: "VALIDACAO", campo: "demandaAcompanhamentoId" });
+    expect(mocks.tx.exameAnimal.update).not.toHaveBeenCalled();
   });
   it("formato de exame de outra versão e finalidade distinta não resolvem a necessidade", async () => {
     const d = { ...demanda("d"), regraSnapshot: { politicaId: "p1", politicaVersao: 1, tipoExameId: "tipo", tipoExameVersao: 2 } };

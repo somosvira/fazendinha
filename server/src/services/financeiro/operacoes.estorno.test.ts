@@ -186,6 +186,18 @@ describe("estornarOperacao", () => {
 });
 
 describe("simularParcelas", () => {
+  it("aceita o contrato HTTP com desconto explícito e itens não elegíveis", async () => {
+    const { simulacaoParcelasSchema } = await import("./schemas.js");
+    const input = simulacaoParcelasSchema.parse({
+      itens: [{ quantidade: 1, valorTotal: 100, elegivelDesconto: false }, { quantidade: 1, valorTotal: 100, elegivelDesconto: true }],
+      descontoComercial: 10, distribuicaoDesconto: [0, 10],
+      quantidadeParcelas: 2, frequencia: "MENSAL", primeiroVencimento: "2026-10-01",
+    });
+    const resultado = simularParcelas(input);
+    expect(resultado.totalOperacao.toFixed(2)).toBe("190.00");
+    expect(resultado.composicaoComercial.map(item => item.valorLiquido.toFixed(2))).toEqual(["100.00", "90.00"]);
+    expect(resultado.parcelas.map(parcela => parcela.valor.toFixed(2))).toEqual(["95.00", "95.00"]);
+  });
   it("em liquidação parcial, divide só o saldo restante depois do valor pago agora", () => {
     const resultado = simularParcelas({ itens: [], valorTotal: 300, valorPagoAgora: 100, quantidadeParcelas: 2, frequencia: "MENSAL", primeiroVencimento: "2026-10-01" });
     expect(resultado.saldoAPrazo.toString()).toBe("200");

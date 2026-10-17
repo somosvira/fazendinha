@@ -72,7 +72,7 @@ Inventário inicial e ajuste positivo que iniciam uma base exigem referência e 
 
 ### Desconto comercial e logística
 
-Nas compras, o desconto comercial reduz o valor dos itens elegíveis antes da criação do estoque e da obrigação. A distribuição proporcional conserva os centavos do desconto; uma distribuição explícita deve fechar o total e respeitar elegibilidade e limite de cada item. Desconto de liquidação continua sendo outro fato e não reescreve o custo histórico do estoque.
+Nas compras, o desconto comercial reduz o valor dos itens elegíveis antes da criação do estoque e da obrigação. A distribuição proporcional conserva os centavos do desconto; uma distribuição explícita deve fechar o total e respeitar elegibilidade e limite de cada item. `distribuicaoDesconto` conserva a ordem de todos os itens, com uma parcela zero para cada item não elegível, tanto na simulação quanto na confirmação. Desconto de liquidação continua sendo outro fato e não reescreve o custo histórico do estoque.
 
 A logística cobrada pelo mesmo fornecedor constitui item próprio, sem estoque, com categoria e centro de custo. Não entra no custo da dose. Cobrança de terceiro deve ter sua própria operação e obrigação. `Operacao.composicaoComercial` conserva a explicação do bruto, desconto e líquido por item e da logística; `ItemOperacao` conserva os valores líquidos utilizados no cálculo. Esse JSON não cria outro lançamento nem outro valor a somar.
 

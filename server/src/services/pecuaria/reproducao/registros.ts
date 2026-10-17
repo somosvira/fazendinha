@@ -1639,7 +1639,10 @@ export async function corrigirPartoTx(
     if (antes.status !== "VALIDO") throw new RebanhoError("CONFLITO", "Parto foi anulado; atualize o histórico");
     if (input.versaoEsperada !== undefined && input.versaoEsperada !== antes.versao) throw new RebanhoError("CONFLITO", "Parto alterado por outra pessoa; atualize antes de corrigir");
     const detalhes = normalizarDetalhesParto(input, antes.data.toISOString().slice(0, 10), antes);
-    if(detalhes.tipo==="ABORTO"&&(input.observacao??antes.observacao??"").trim().length<5)erro("Explique a observação e o contexto do aborto", "observacao");
+    const abortoAnterior = antes.tipo === "ABORTO" || antes.desfecho === "ABORTO";
+    const mudouObservacao = input.observacao !== undefined && input.observacao !== antes.observacao;
+    const observacaoFinal = input.observacao === undefined ? antes.observacao : input.observacao;
+    if(detalhes.tipo==="ABORTO"&&(!abortoAnterior||mudouObservacao)&&(observacaoFinal?.trim().length??0)<5)erro("Explique a observação e o contexto do aborto", "observacao");
     await conferirMatrizTx(tx, antes.animalId, input.propriedadeId, antes.data);
     if (
       ["ABORTO", "NATIMORTO"].includes(detalhes.tipo) &&

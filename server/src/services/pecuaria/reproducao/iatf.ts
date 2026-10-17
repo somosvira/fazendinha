@@ -584,9 +584,23 @@ export async function executarTarefaTx(
   else
     await conferirMatrizTx(tx, participante.animalId, input.propriedadeId, dia(data));
   const plano = tarefa.planejadoSnapshot as SnapshotIatf | null;
+  const demanda = tarefa.tipo === "AVALIACAO"
+    ? await tx.demandaAcompanhamentoReprodutivo.findUnique({ where: { tarefaId: tarefa.id } })
+    : null;
+  const dadosAcompanhamento: Record<string, unknown> = {};
+  if (demanda) {
+    if (demanda.estado !== "PENDENTE") erro("A demanda desta tarefa não está pendente; revise o acompanhamento", "demandaAcompanhamentoId");
+    Object.assign(dadosAcompanhamento, { demandaAcompanhamentoId: demanda.id, finalidade: demanda.finalidade, tentativaId: demanda.tentativaId, gestacaoId: demanda.gestacaoId });
+    const regra = demanda.regraSnapshot as Record<string, unknown>;
+    if (regra.tipoExameId) dadosAcompanhamento.tipoExameId = regra.tipoExameId;
+    for (const [campo, esperado] of Object.entries(dadosAcompanhamento))
+      if (input.dados[campo] != null && input.dados[campo] !== esperado)
+        erro("Os dados informados divergem da demanda vinculada à tarefa", campo);
+  }
   const dados = {
     ...(tarefa.tipo === "AVALIACAO" ? { tipoExameId: plano?.etapa.planoAvaliacao?.tipoExameId ?? TIPO_EXAME_REPRODUTIVO } : {}),
     ...input.dados,
+    ...dadosAcompanhamento,
     chave: input.chave,
     animalId: participante.animalId,
     propriedadeId: input.propriedadeId,

@@ -60,4 +60,19 @@ describe("composição comercial exata", () => {
     expect(descontarItens(itens, "30").map(i => i.valorLiquido.toFixed(2))).toEqual(["90.00", "180.00", "30.00"]);
     expect(() => descontarItens(itens, "301")).toThrow(/negativo/);
   });
+  it("distribuição explícita conserva a posição dos itens não elegíveis", () => {
+    const itens = [{ valor: "100", elegivel: false }, { valor: "100", elegivel: true }, { valor: "50", elegivel: true }];
+    const resultado = descontarItens(itens, "10", ["0", "7.50", "2.50"]);
+    expect(resultado.map(i => i.desconto.toFixed(2))).toEqual(["0.00", "7.50", "2.50"]);
+    expect(resultado.map(i => i.valorLiquido.toFixed(2))).toEqual(["100.00", "92.50", "47.50"]);
+  });
+  it("distribuição explícita mantém elegibilidade, limites e fechamento em centavos", () => {
+    const itens = [{ valor: "10", elegivel: true }, { valor: "20", elegivel: false }, { valor: "30", elegivel: true }];
+    expect(descontarItens(itens, "0.03", ["0.01", "0", "0.02"]).map(i => i.valorLiquido.toFixed(2))).toEqual(["9.99", "20.00", "29.98"]);
+    expect(() => descontarItens(itens, "1", ["0", "1", "0"])).toThrow(/não elegível/);
+    expect(() => descontarItens(itens, "11", ["11", "0", "0"])).toThrow(/negativo/);
+    expect(() => descontarItens(itens, "1", ["0", "0", "0"])).toThrow(/fechar exatamente/);
+    expect(() => descontarItens(itens, "1", ["1", "0"])).toThrow(/fechar exatamente/);
+    expect(descontarItens([{ valor: "10", elegivel: false }], "0", ["0"])[0].valorLiquido.toFixed(2)).toBe("10.00");
+  });
 });
