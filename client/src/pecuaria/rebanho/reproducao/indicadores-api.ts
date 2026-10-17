@@ -8,6 +8,7 @@ export type FiltrosIndicadores = {
   inicio: string;
   fim: string;
   corte: string;
+  janelaPerdaDias?:number;iepModo?:"VIVOS_NATIMORTOS"|"TODOS_PARTOS";
   concepcaoEstimada?: number;
   deslocamentoTeDias: number;
   loteId?: string;
@@ -87,7 +88,8 @@ export type PeriodoIndicadores = {
   detalhamento: DetalheAnimalIndicador[];
 };
 export type SnapshotIndicadoresReprodutivos = {
-  versao: 1;
+  versao: 1 | 2;
+  acompanhamento?:import("./IndicadoresAcompanhamento").AcompanhamentoIndicadores;
   versaoMetodologia: string;
   metodologia: {
     rotulo: string;
@@ -154,8 +156,10 @@ export const abrirEmissaoIndicadores = (id: string, p: number) =>
 export function exportarIndicadoresCsv(
   snapshot: SnapshotIndicadoresReprodutivos,
 ): string {
-  const celula = (valor: string | number | null) =>
-    `"${String(valor ?? "").replaceAll('"', '""')}"`;
+  const celula = (valor: string | number | null) => {
+    const conteudo=typeof valor==="string"&&/^[=+\-@\t\r]/.test(valor)?`'${valor}`:String(valor??"");
+    return `"${conteudo.replaceAll('"','""')}"`;
+  };
   const linhas: Array<Array<string | number | null>> = [
     ["Metodologia", snapshot.metodologia.rotulo],
     ["Versão", snapshot.versaoMetodologia],
@@ -276,5 +280,19 @@ export function exportarIndicadoresCsv(
         JSON.stringify(a.tentativaAnterior),
         JSON.stringify(a.tentativas),
       ]);
+  const a=snapshot.acompanhamento;
+  if(a){
+    linhas.push([], ["Acompanhamento gerencial",a.versaoMetodologia],["Unidade","Dias corridos"],["Referência coorte de espera","Início do ciclo"],["Referência perdas","Primeiro DG positivo"],["Referência IEP","Segundo parto qualificante"],["Referência tentativas por concepção","Serviço conceptivo; acumulada no ciclo"],["Janela de perdas (dias)",a.perdas.janelaDias],["Perdas numerador",a.perdas.numerador],["Perdas denominador demonstrável",a.perdas.denominador],["Perdas (%)",a.perdas.percentual]);
+    linhas.push(["Exclusões por escopo histórico não comprovado",(a.exclusoesEscopo??[]).length]);
+    for(const e of a.exclusoesEscopo??[])linhas.push([e.populacao,e.animalId,e.referenciaId,e.motivos.join(" | ")]);
+    linhas.push(["Espera: população","Animal","Ciclo","Início","Liberação válida","Primeiro serviço","Dias liberação-serviço","Dias parto-serviço","Dias fimPEV-serviço","Repetições","Saída","Pendências"]);
+    for(const [populacao,lista] of [["COORTE",a.espera.coorte],["FILA_ATUAL",a.espera.filaAtual]] as const)for(const c of lista)linhas.push([populacao,c.animalId,c.cicloId,c.inicio,c.primeiraLiberacao?.data??null,c.primeiroServico?.data??null,c.diasLiberacaoServico,c.diasPartoServico,c.diasFimPevServico,c.repeticoes,c.saidaEm,c.pendencias.join(" | ")]);
+    linhas.push(["Perdas: gestação","Animal","Primeiro DG","Fim janela","Estado","Subtipo","Fato desfecho","Data desfecho","Explicação","Lacunas","Pendências","Provas"]);
+    for(const g of a.perdas.coorte)linhas.push([g.gestacaoId,g.animalId,g.primeiroDgPositivo?.data??null,g.fimJanela,g.estado,g.encerramento?.subtipo??g.encerramento?.tipo??null,g.encerramento?.fatoId??null,g.encerramento?.data??null,g.encerramento?.explicacao??null,g.lacunas.join(" | "),g.motivos.join(" | "),g.evidenciaIds.join(" | ")]);
+    linhas.push(["IEP: animal","Parto anterior","Parto atual","Data anterior","Data atual","Dias","Abortos intermediários"]);
+    for(const p of a.iep.pares)linhas.push([p.animalId,p.anteriorId,p.atualId,p.anteriorEm,p.atualEm,p.dias,p.abortosIntermediarios.map(b=>`${b.id}:${b.data}`).join(" | ")]);
+    linhas.push(["Concepção","Animal","Serviço factual","Tentativa conceptiva","N tentativas acumuladas","IDs das tentativas","Tipos","Provas","Pendências"]);
+    if(a.tentativasPorConcepcao.estado==="CALCULADO")for(const c of a.tentativasPorConcepcao.linhas??[])linhas.push([c.concepcaoId,c.animalId,c.servicoEm,c.tentativaId,c.numeroTentativas,c.tentativaIds.join(" | "),c.tipos.join(" | "),c.evidenciaIds.join(" | "),c.pendencias.join(" | ")]);
+  }
   return "\uFEFF" + linhas.map((l) => l.map(celula).join(";")).join("\r\n");
 }

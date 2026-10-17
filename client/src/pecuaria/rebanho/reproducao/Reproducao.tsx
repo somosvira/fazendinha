@@ -1,3 +1,6 @@
+import {CirculoMarcosReprodutivos} from "./CirculoMarcosReprodutivos";
+import {DemandasAcompanhamento,type DemandaAcompanhamento} from "./DemandasAcompanhamento";
+import { CustosDiretos } from "../custos/CustosDiretos";
 import { SubTabs } from "../../../components/SubTabs";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import { IndicadoresReprodutivos } from "./IndicadoresReprodutivos";
@@ -123,6 +126,7 @@ function ConteudoReproducao({
   podeLancar: boolean;
   recarregarToken?: number;
 }) {
+  const [demandaAvaliada,setDemandaAvaliada]=useState<DemandaAcompanhamento|null>(null);
   const [fatoAberto, setFatoAberto] = useState<
     (FatoReprodutivo & { grupo: string }) | null
   >(null);
@@ -188,7 +192,7 @@ function ConteudoReproducao({
     if (chave === "q") setQ(valor);
     else setSituacao(valor);
   };
-  const fecharFormulario=()=>{setAcao(null);const url=new URL(window.location.href);url.searchParams.delete("acao");window.history.replaceState(window.history.state,"",url.pathname+url.search+url.hash);};
+  const fecharFormulario=()=>{setAcao(null);setDemandaAvaliada(null);const url=new URL(window.location.href);url.searchParams.delete("acao");window.history.replaceState(window.history.state,"",url.pathname+url.search+url.hash);};
   const abrir = (tipo: AcaoReprodutiva, id = animalId) => {
     setAnimalAcao(id);
     setAcao(tipo);
@@ -201,6 +205,7 @@ function ConteudoReproducao({
   );
   const fatos: Array<FatoReprodutivo & { grupo: string }> = painel
     ? [
+        ...(painel.gestacoes??[]).filter(g=>g.animalId&&g.encerradaEm).map(g=>({...g,animalId:g.animalId!,data:g.encerradaEm!,tipo:g.tipoEncerramento??"NAO_IDENTIFICADO",motivo:g.motivoEncerramento,grupo:"Gestação"})),
         ...painel.tentativas.map((t) => ({ ...t, grupo: "Tentativa" })),
         ...painel.avaliacoes.map((a) => ({ ...a, grupo: "Avaliação" })),
         ...painel.partos.map((p) => ({ ...p, grupo: "Parto" })),
@@ -218,7 +223,7 @@ function ConteudoReproducao({
     : [];
   useEffect(() => {
     const id = new URLSearchParams(consultaUrl).get("fatoId");
-    if (id && painel) setFatoAberto(fatos.find(f => f.id === id) ?? null);
+    if (id && painel) setFatoAberto(fatos.find(f => f.id === id||f.exame?.id===id) ?? null);
   }, [painel, consultaUrl]);
   return (
     <div className="space-y-5">
@@ -407,6 +412,9 @@ function ConteudoReproducao({
           />
         </Panel>
       )}
+      {animalId && painel && propriedadeId != null && <CustosDiretos key={`${animalId}:${recarregarToken}`} animalId={animalId} propriedadeId={propriedadeId} podeLancar={podeLancar} />}
+      {animalId&&painel?.marcos&&<CirculoMarcosReprodutivos {...painel.marcos} estado={ROTULOS[painel.marcos.estado]??painel.marcos.estado}/>}
+      {animalId&&painel&&propriedadeId!=null&&<DemandasAcompanhamento animalId={animalId} propriedadeId={propriedadeId} painel={painel} podeLancar={podeLancar} onAvaliar={d=>{setDemandaAvaliada(d);abrir("avaliacao",animalId);}} atualizacao={recarregarToken}/>}
       {animalId && painel && (propriedadeId != null ? <ElegibilidadeAnimal
         animalId={animalId} propriedadeId={propriedadeId} painel={painel} podeLancar={podeLancar} onMudou={() => void carregar()} />
         : <p className="text-sm">A elegibilidade exige o sítio comprovado do animal. Confira seu histórico de localização.</p>)}
@@ -451,6 +459,9 @@ function ConteudoReproducao({
           acao={acao}
           painel={painel}
           animalInicial={animalAcao}
+          demandaInicial={demandaAvaliada??undefined}
+          finalidadeInicial={demandaAvaliada?.finalidade}
+          tipoExameInicial={demandaAvaliada?.regraSnapshot.tipoExameId??undefined}
           propriedadeId={propriedadeId ?? undefined}
           onFechar={fecharFormulario}
           onSalvo={() => {

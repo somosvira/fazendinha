@@ -1,3 +1,4 @@
+import {IndicadoresAcompanhamento} from "./IndicadoresAcompanhamento";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
@@ -33,6 +34,8 @@ export function IndicadoresReprodutivos({
   const [corte, setCorte] = useState("");
   const [q, setQ] = useState("");
   const [te, setTe] = useState("7");
+  const [janelaPerda,setJanelaPerda]=useState("");
+  const [iepModo,setIepModo]=useState<"VIVOS_NATIMORTOS"|"TODOS_PARTOS">("VIVOS_NATIMORTOS");
   const [lote, setLote] = useState("");
   const [lotes, setLotes] = useState<Array<{ id: string; nome: string }>>([]);
   const [tipos, setTipos] = useState<string[]>([]);
@@ -96,6 +99,8 @@ export function IndicadoresReprodutivos({
       fim,
       corte,
       deslocamentoTeDias: Number(te),
+      ...(janelaPerda!==""?{janelaPerdaDias:Number(janelaPerda)}:{}),
+      iepModo,
       ...(q !== "" ? { concepcaoEstimada: Number(q) } : {}),
       ...(lote ? { loteId: lote } : {}),
       ...(tipos.length
@@ -197,6 +202,7 @@ export function IndicadoresReprodutivos({
               onChange={(e) => setFim(e.target.value)}
             />
           </label>
+          <label>Janela de perdas desde o primeiro DG positivo (dias, opcional)<Input type="number" min="1" max="1000" value={janelaPerda} onChange={e=>setJanelaPerda(e.target.value)} placeholder="Sem janela: contagens"/></label><label>Intervalo entre partos<select className="h-10 rounded-md border bg-background px-3" value={iepModo} onChange={e=>setIepModo(e.target.value as typeof iepModo)}><option value="VIVOS_NATIMORTOS">Vivos e natimortos comprovados</option><option value="TODOS_PARTOS">Todos os partos (alternativa)</option></select></label>
           <label>
             Corte dos resultados
             <Input
@@ -343,6 +349,7 @@ export function IndicadoresReprodutivos({
             </>
           )}
         </div>
+        {visivel?.acompanhamento&&<IndicadoresAcompanhamento dados={visivel.acompanhamento}/>}
         {visivel && (
           <>
             <p className="text-sm">
@@ -675,6 +682,7 @@ function ImpressaoIndicadores({
         {s.filtros.tiposTentativa?.join(", ") ?? "Todas"} · Papéis:{" "}
         {s.filtros.papeis?.join(", ") ?? "Todos"}
       </p>
+      {s.acompanhamento&&<IndicadoresAcompanhamento dados={s.acompanhamento}/>}
       {s.sobraInicial && (
         <p>
           Sobra inicial excluída: {data(s.sobraInicial.inicio)} a{" "}

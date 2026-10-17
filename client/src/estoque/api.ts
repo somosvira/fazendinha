@@ -162,3 +162,10 @@ export function useCentrosCustoEstoque() {
   useEffect(() => { recarregar(); }, [recarregar]);
   return { data, erro, recarregar };
 }
+
+export type DiagnosticoValorizacao = { produtoId: string; propriedadeId: number; data: string; revisao: string;
+  grupos: { partidaId: string | null; grupoNome: string; codigo: string | null; validade: string | null; quantidade: string; quantidadeValorizada: string; estadoValor: "CONHECIDO" | "DESCONHECIDO"; valor: string | null; metodo: string }[];
+  retroatividade: { permitido: boolean; motivo: string | null }; legado: string };
+export const consultarValorizacao = (produtoId: string, propriedadeId: number, data: string) => req<DiagnosticoValorizacao>(`/estoque/produtos/${produtoId}/valorizacao${qs({ data })}`, undefined, propriedadeId);
+export const abrirValorEstoque = (produtoId: string, input: { chave: string; propriedadeId: number; data: string; revisao: string; motivo: string; evidencia: string;
+  bases: { partidaId: string | null; quantidade: string; valor: string; disponivelDesde: string; referencia: string }[] }) => req<{ salvo: boolean; reenvio: boolean }>(`/estoque/produtos/${produtoId}/valorizacao/abertura`, { method: "POST", body: JSON.stringify(input) }, input.propriedadeId);

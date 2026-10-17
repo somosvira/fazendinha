@@ -20,7 +20,7 @@ export type LactacaoContexto = {
 };
 export type GestacaoContexto = {
   id: string; animalId: string; propriedadeId: number | null; tentativaId: string | null;
-  confirmadaEm: Date; encerradaEm: Date | null; status: string;
+  confirmadaEm: Date; encerradaEm: Date | null; status: string;tipoEncerramento?:string|null;
 };
 export type LocalizacaoContexto = {
   id: string; animalId: string; propriedadeId: number; loteId: string | null; desde: Date; ate: Date | null;
@@ -50,7 +50,7 @@ export type PendenciaContextoAnimal =
   | "LOCALIZACOES_SOBREPOSTAS" | "LACTACOES_SOBREPOSTAS" | "GESTACOES_SOBREPOSTAS"
   | "VINCULO_GESTACAO_SEM_TENTATIVA_VALIDA" | "VINCULO_GESTACAO_FORA_DO_CICLO"
   | "SALDO_PARTOS_SEM_DISTRIBUICAO_TEMPORAL" | "LACTACAO_COM_PARTO_INVALIDO"
-  | "IDADE_EMBRIONARIA_TE_NAO_INFORMADA";
+  | "IDADE_EMBRIONARIA_TE_NAO_INFORMADA" | "ENCERRAMENTO_GESTACAO_DESCONHECIDO";
 
 export type ContextoAnimalNaData = {
   animalId: string;
@@ -133,6 +133,7 @@ export function calcularContextoAnimalNaData(historico: HistoricoContextoAnimal,
 
   const gestacoes = historico.gestacoes.filter(g => pertence(g) && g.status === "VALIDO" && ateReferencia(g.confirmadaEm))
     .sort((a, b) => compararDatas(b.confirmadaEm, a.confirmadaEm) || a.id.localeCompare(b.id));
+  if(gestacoes.some(g=>g.encerradaEm&&ateReferencia(g.encerradaEm)&&!["PERDA","PARTO"].includes(g.tipoEncerramento??"")))pendencias.push("ENCERRAMENTO_GESTACAO_DESCONHECIDO");
   const gestacoesVigentes = gestacoes.filter(g => vigora(g.confirmadaEm, g.encerradaEm));
   if (gestacoesVigentes.length > 1) pendencias.push("GESTACOES_SOBREPOSTAS");
   const gestacaoVigente = gestacoesVigentes.length === 1 ? gestacoesVigentes[0] : null;

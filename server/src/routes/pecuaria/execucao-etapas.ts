@@ -1,3 +1,4 @@
+import { ValorizacaoError } from "../../services/estoque/valorizacao.calc.js";
 import { Hono, type Context } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { Prisma } from "@prisma/client";
@@ -11,6 +12,7 @@ import { previaExecucaoEtapasSchema, confirmarExecucaoEtapasSchema } from "../..
 import { preverExecucaoEtapas, confirmarExecucaoEtapas } from "../../services/pecuaria/sanidade/execucao-etapas.js";
 
 function falha(c: Context, e: unknown) {
+  if (e instanceof ValorizacaoError) return c.json({ error: e.message, code: e.code }, e.code === "VALIDACAO" ? 422 : 409);
   if (e instanceof RebanhoError || e instanceof FinanceiroError || e instanceof EstoqueError) return c.json({ error: e.message, code: e.code, campo: e.campo }, e.code === "NAO_ENCONTRADO" ? 404 : e.code === "VALIDACAO" ? 422 : 409);
   if (conflitoTransacaoPecuaria(e) || (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002")) return c.json({ error: "Os dados mudaram. Confira uma nova prévia e tente novamente", code: "CONFLITO" }, 409);
   return c.json({ error: "Não conseguimos conferir a execução. Tente novamente" }, 500);

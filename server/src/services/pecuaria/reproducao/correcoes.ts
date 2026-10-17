@@ -1,5 +1,6 @@
+import { reconciliarDemandasAnimalTx } from "./acompanhamento.js";
 import { anularEvidenciaAvaliacaoTx } from "../exames/evidencia-reprodutiva.js";
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { prisma } from "../../../db.js";
 import { auditar, RebanhoError, travarAnimais } from "../rebanho/regras.js";
 import { transacaoPecuaria } from "../transacao.js";
@@ -135,7 +136,7 @@ async function previaTx(
         tx.gestacaoAnimal.findMany({ where: { animalId: fato.animalId, status: "VALIDO", id: { not: gestacao.id } } }),
         tx.partoAnimal.count({ where: { animalId: fato.animalId, status: "VALIDO", id: { not: id }, data: { gte: gestacao.inicio ?? gestacao.confirmadaEm } } }),
       ]);
-      if (gestacao.status !== "VALIDO" || !gestacao.motivoEncerramento?.startsWith("PARTO_") || gestacao.encerradaEm?.getTime() !== parto.data.getTime())
+      if (gestacao.status !== "VALIDO" || gestacao.tipoEncerramento !== "PARTO" || gestacao.encerradaEm?.getTime() !== parto.data.getTime())
         impedimentos.push("O encerramento da gestação vinculada já foi revisto; regularize antes de anular o parto");
       if (outrasGestacoes.some((g) => intervalosSobrepostos({ inicio: gestacao.inicio ?? gestacao.confirmadaEm, fim: null }, { inicio: g.inicio ?? g.confirmadaEm, fim: g.encerradaEm })) || outrosPartos)
         impedimentos.push("Reabrir a gestação conflita com outra gestação ou parto; revise a cronologia antes");
@@ -300,7 +301,7 @@ export async function anularFato(
           if (p.gestacaoId)
             await tx.gestacaoAnimal.update({
               where: { id: p.gestacaoId },
-              data: { encerradaEm: null, motivoEncerramento: null },
+              data: { encerradaEm: null, tipoEncerramento: null, causaClinica: Prisma.DbNull, motivoEncerramento: null },
             });
         } else if (tipo === "situacoes-iniciais")
           await tx.situacaoInicialReprodutiva.update({ where: { id }, data });
@@ -321,6 +322,7 @@ export async function anularFato(
             destinoConsumo: input.destinoConsumo ?? null,
           },
         });
+        await reconciliarDemandasAnimalTx(tx, referencia.animalId, usuarioId);
         return { id, status: "ANULADO", efeitos: previa.efeitos };
       },
     );

@@ -6,6 +6,7 @@ export type SnapshotIatf = {
   versao: 1;
   precisaoTemporal?: PrecisaoIatf;
   previsaoPendente?: boolean;
+  referenciaTemporalEfetiva?: {data:string;precisao:"DIA"|"HORA";fatoId:string}|null;
   etapa: EtapaIatf;
   referencias: Record<string, unknown>;
   previstaEm: string;
@@ -29,7 +30,7 @@ export function compararExecucaoIatf(
   plano: SnapshotIatf | null,
   realizadaEm: string,
   dados: Record<string, unknown>,
-): { aferido: boolean; diferencas: DiferencaIatf[]; horarioAferido?: boolean } {
+): { aferido: boolean; diferencas: DiferencaIatf[]; horarioAferido?: boolean;orientacaoTemporal?:ReturnType<typeof avaliarOrientacaoTemporal> } {
   if (!plano) return { aferido: false, diferencas: [] };
   const planejado: Record<string, unknown> = {};
   const realizado: Record<string, unknown> = {};
@@ -39,10 +40,9 @@ export function compararExecucaoIatf(
   };
   const execucao = lerDataIatf(realizadaEm);
   const precisaoPlano = plano.precisaoTemporal ?? "HORA";
-  const horarioAferido = !plano.previsaoPendente && precisaoPlano === "HORA" && execucao.precisao === "HORA";
-  if (!plano.previsaoPendente) comparar(horarioAferido ? "dataHora" : "data",
-    horarioAferido ? new Date(plano.previstaEm).toISOString() : diaIatf(new Date(plano.previstaEm), precisaoPlano),
-    horarioAferido ? execucao.instante.toISOString() : execucao.data);
+  const orientacao=avaliarOrientacaoTemporal(plano,realizadaEm);
+  const horarioAferido=orientacao.estado==="DENTRO"||orientacao.estado==="FORA";
+  if (!plano.previsaoPendente) comparar("data",diaIatf(new Date(plano.previstaEm),precisaoPlano),execucao.data);
   const e = plano.etapa;
   if (e.tipo === "APLICACAO" && e.planoAplicacao) {
     comparar("produtoId", e.planoAplicacao.produtoId, dados.produtoId ?? null);
@@ -80,7 +80,7 @@ export function compararExecucaoIatf(
     (e.tipo !== "APLICACAO" || !!e.planoAplicacao) &&
     (e.tipo !== "TENTATIVA" || !!e.planoTentativa) &&
     (e.tipo !== "AVALIACAO" || !!e.planoAvaliacao);
-  return { ...compararParametros(planejado, realizado, aferido), horarioAferido };
+  return { ...compararParametros(planejado, realizado, aferido), horarioAferido, orientacaoTemporal:orientacao };
 }
 export function snapshotIatf(
   etapa: EtapaIatf,
@@ -99,4 +99,16 @@ export function snapshotIatf(
     previsaoOriginal: serializarDataIatf(previsaoOriginal, precisaoTemporal),
     inicioReferencia: serializarDataIatf(inicioReferencia, precisaoTemporal),
   };
+}
+
+/** Alerta isolado: ausência de hora não exige justificativa e não muda o calendário. */
+export function avaliarOrientacaoTemporal(plano:SnapshotIatf,realizadaEm:string){
+ const regra=plano.etapa.orientacaoTemporal;
+ if(!regra)return {estado:"NAO_CONFIGURADA" as const,efeito:"ALERTA" as const};
+ const ref=plano.referenciaTemporalEfetiva;
+ const atual=lerDataIatf(realizadaEm);
+ if(!ref||ref.precisao!=="HORA"||atual.precisao!=="HORA")return {estado:"NAO_AFERIVEL" as const,efeito:"ALERTA" as const,regra,motivo:"Hora da referência ou da realização não informada"};
+ const alvo=new Date(new Date(ref.data).getTime()+regra.intervaloHoras*3600000);
+ const diferencaMinutos=(atual.instante.getTime()-alvo.getTime())/60000;
+ return {estado:diferencaMinutos < -regra.toleranciaAntesMinutos||diferencaMinutos>regra.toleranciaDepoisMinutos?"FORA" as const:"DENTRO" as const,efeito:"ALERTA" as const,regra,referencia:ref,previstaPara:alvo.toISOString(),diferencaMinutos};
 }

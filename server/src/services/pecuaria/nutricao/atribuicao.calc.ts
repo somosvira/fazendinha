@@ -9,7 +9,7 @@ function distribuir(total: Prisma.Decimal, participacoes: Participacao[], animal
   const fator = new Prisma.Decimal(10).pow(casas);
   const unidades = total.mul(fator).toDecimalPlaces(0, Prisma.Decimal.ROUND_HALF_UP);
   const quotas = participacoes.map((p) => unidades.mul(p.dias).div(animalDias));
-  const parcelas = quotas.map((q) => q.floor());
+  const parcelas = quotas.map((q) => q.toDecimalPlaces(0, Prisma.Decimal.ROUND_FLOOR));
   const restantes = unidades.minus(parcelas.reduce((s, p) => s.plus(p), new Prisma.Decimal(0))).toNumber();
   const ordem = participacoes.map((p, i) => ({ i, animalId: p.animalId, resto: quotas[i].minus(parcelas[i]) }))
     .sort((a, b) => b.resto.comparedTo(a.resto) || a.animalId.localeCompare(b.animalId));

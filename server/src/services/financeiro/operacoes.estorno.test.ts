@@ -27,14 +27,16 @@ const mocks = vi.hoisted(() => ({
   queryRaw: vi.fn(),
 }));
 
+vi.mock("../estoque/valorizacao.js", () => ({ travarValorizacaoTx: vi.fn(), registrarInversoValorizadoTx: vi.fn(), planejarSaidaTx: vi.fn(), registrarEntradaValorizadaTx: vi.fn(), registrarSaidaValorizadaTx: vi.fn() }));
 vi.mock("../../db.js", () => {
   const tx = {
+      $executeRaw: vi.fn().mockResolvedValue(0),
     periodoFinanceiro: { findUnique: mocks.periodo },
     transacaoFinanceira: { findFirst: mocks.transacaoFindFirst, create: mocks.transacaoCreate, update: mocks.transacaoUpdate },
     compromissoFinanceiro: { findUniqueOrThrow: mocks.compromissoFindUniqueOrThrow, findUnique: mocks.compromissoFindUnique, update: mocks.compromissoUpdate, updateMany: mocks.compromissoUpdateMany },
     liquidacao: { create: mocks.liquidacaoCreate },
     operacao: { findFirst: mocks.operacaoFindFirst, update: mocks.operacaoUpdate },
-    movimentoEstoque: { create: mocks.movimentoEstoqueCreate, update: mocks.movimentoEstoqueUpdate },
+    movimentoEstoque: { findMany: vi.fn().mockResolvedValue([]), create: mocks.movimentoEstoqueCreate, update: mocks.movimentoEstoqueUpdate },
     auditoriaFinanceira: { create: mocks.auditoriaCreate },
     contaFinanceira: { findFirst: mocks.contaFindFirst },
     aplicacaoProduto: { findFirst: mocks.aplicacaoFindFirst },
@@ -184,6 +186,18 @@ describe("estornarOperacao", () => {
 });
 
 describe("simularParcelas", () => {
+  it("aceita o contrato HTTP com desconto explícito e itens não elegíveis", async () => {
+    const { simulacaoParcelasSchema } = await import("./schemas.js");
+    const input = simulacaoParcelasSchema.parse({
+      itens: [{ quantidade: 1, valorTotal: 100, elegivelDesconto: false }, { quantidade: 1, valorTotal: 100, elegivelDesconto: true }],
+      descontoComercial: 10, distribuicaoDesconto: [0, 10],
+      quantidadeParcelas: 2, frequencia: "MENSAL", primeiroVencimento: "2026-10-01",
+    });
+    const resultado = simularParcelas(input);
+    expect(resultado.totalOperacao.toFixed(2)).toBe("190.00");
+    expect(resultado.composicaoComercial.map(item => item.valorLiquido.toFixed(2))).toEqual(["100.00", "90.00"]);
+    expect(resultado.parcelas.map(parcela => parcela.valor.toFixed(2))).toEqual(["95.00", "95.00"]);
+  });
   it("em liquidação parcial, divide só o saldo restante depois do valor pago agora", () => {
     const resultado = simularParcelas({ itens: [], valorTotal: 300, valorPagoAgora: 100, quantidadeParcelas: 2, frequencia: "MENSAL", primeiroVencimento: "2026-10-01" });
     expect(resultado.saldoAPrazo.toString()).toBe("200");

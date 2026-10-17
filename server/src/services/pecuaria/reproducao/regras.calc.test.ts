@@ -22,7 +22,7 @@ describe("evidências reprodutivas e calendário", () => {
     expect(contadoresCiclo(2, partos, tentativas, dia(7))).toEqual({ partos: 2, tentativasCiclo: 1 });
   });
   it("parto ou perda encerra o estado gestante; nova tentativa aguarda diagnóstico", () => {
-    const gestacao = { confirmadaEm: dia(1), encerradaEm: dia(8), status: "VALIDO" };
+    const gestacao = { confirmadaEm: dia(1), encerradaEm: dia(8), tipoEncerramento:"PERDA",status: "VALIDO" };
     const ultimaAvaliacao = { data: dia(5), resultado: "RECONFIRMACAO" };
     expect(situacaoReprodutiva({ gestacao, ultimaAvaliacao })).toBe("VAZIA");
     expect(situacaoReprodutiva({ ultimaAvaliacao, ultimoParto: { data: dia(8) } })).toBe("VAZIA");
@@ -40,7 +40,7 @@ describe("evidências reprodutivas e calendário", () => {
 
 describe("cronologia clínica na data consultada", () => {
   it("gestação encerrada depois da referência ainda está ativa naquela data", () => {
-    const gestacao = { confirmadaEm: dia(1), encerradaEm: dia(8), status: "VALIDO" };
+    const gestacao = { confirmadaEm: dia(1), encerradaEm: dia(8), tipoEncerramento:"PERDA",status: "VALIDO" };
     expect(situacaoReprodutiva({ gestacao, referencia: dia(5) })).toBe("GESTANTE");
     expect(situacaoReprodutiva({ gestacao, referencia: dia(8) })).toBe("VAZIA");
     expect(situacaoReprodutiva({ gestacao, referencia: dia(1), ultimaTentativa: { data: dia(9) }, ultimoParto: { data: dia(10) } })).toBe("GESTANTE");
@@ -52,3 +52,5 @@ describe("cronologia clínica na data consultada", () => {
     expect(intervalosSobrepostos({ inicio: dia(8), fim: null }, { inicio: dia(8), fim: dia(8) })).toBe(true);
   });
 });
+
+it("encerramento sem tipo comprovado permanece desconhecido sem inferir texto",()=>{expect(situacaoReprodutiva({gestacao:{confirmadaEm:dia(1),encerradaEm:dia(8),status:"VALIDO",tipoEncerramento:"NAO_IDENTIFICADO"}})).toBe("DESCONHECIDA");});

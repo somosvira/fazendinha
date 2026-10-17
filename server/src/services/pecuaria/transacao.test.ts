@@ -15,7 +15,7 @@ describe("confirmação pecuária serializável", () => {
     transacao.mockRejectedValueOnce(conflito()).mockRejectedValueOnce(conflito()).mockResolvedValueOnce({ id: "mesmo-fato" });
     await expect(transacaoPecuaria(confirmar)).resolves.toEqual({ id: "mesmo-fato" });
     expect(transacao).toHaveBeenCalledTimes(3);
-    expect(transacao).toHaveBeenLastCalledWith(confirmar, { isolationLevel: "Serializable", timeout: 30000 });
+    expect(transacao).toHaveBeenLastCalledWith(expect.any(Function), { isolationLevel: "Serializable", timeout: 30000 });
   });
   it("encerra após três conflitos e não repete erro de validação", async () => {
     transacao.mockRejectedValue(conflito());

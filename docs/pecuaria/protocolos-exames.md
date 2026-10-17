@@ -63,6 +63,22 @@ Paridade usa `rebanho/partos.calc.ts`. Consumo comum usa `consumo.ts` para saldo
 
 Configurações → Pecuária → Reprodução reúne protocolos reprodutivos, tipos de exame reprodutivo e regras sanitárias por doença, além de atalhos aos cadastros existentes de materiais genéticos, genitores externos e Produtos. Sanidade usa a mesma base pelos seus cadastros. As rotinas de Reprodução/IATF mantêm programação, início, execução e acompanhamento, com atalhos para manutenção. URLs e filtros anteriores são conservados.
 
+### Orientação temporal opcional por etapa
+
+Informar a hora de uma realização não transforma a etapa em uma exigência de precisão horária. O follow-up admite `orientacaoTemporal` explícita na configuração da etapa e no snapshot publicado: referência ao início efetivo ou à etapa anterior, intervalo em horas, tolerância anterior/posterior e efeito ALERTA. O planejamento por dias continua disponível sem essa orientação.
+
+Quando configurada, a orientação é avaliada separadamente da precisão registrada: dentro da janela, fora da janela ou não aferível. Referência ou realização sem hora conhecida não recebe horário fictício nem conformidade presumida. Uma etapa anterior anulada ou aguardando regularização não fornece uma realização válida apenas porque conserva sua data histórica. Atraso não desloca outras etapas automaticamente. Registrar o fato conserva os desvios e justificativas aplicáveis, respeitando bloqueios já existentes.
+
+### Biblioteca de referências
+
+A biblioteca pesquisável apresenta referências técnicas com fonte, data/versão, objetivo, população indicada e campos que precisam ser completados. O catálogo inicial contém a referência Ovsynch 56, ficha Wisconsin de 15/04/2021, página 24. É um ponto de partida documental, sem indicação automática para um animal, produto ou dose.
+
+Copiar exige nome e versão e cria um `Protocolo` em rascunho, com `referenciaTecnica` preservada. Configurar, publicar e adotar são ações distintas. A derivação de nova versão conserva a referência por vínculo explícito à versão de origem; semelhança de nome não prova proveniência. A publicação continua exigindo os parâmetros operacionais do núcleo comum. Nenhum modelo é apresentado como importado do IDEAGRI sem evidência de sua origem; IDEAGRI permanece transferência inicial de dados.
+
+### Demandas e tarefas existentes
+
+As políticas e demandas de DG/reconfirmação estão descritas no [contrato reprodutivo](reproducao.md#diagnóstico-e-reconfirmação-configuráveis). Elas se vinculam às tarefas e exames comuns; não criam um segundo executor de protocolo. Realização da tarefa e resolução clínica da demanda são estados diferentes. Um exame inconclusivo não satisfaz a demanda apenas por ter concluído a tarefa.
+
 ## Migração e retorno
 
 As migrations `20261014140000` a `20261014180000` convertem a estrutura em transações, preservam IDs quando possíveis e registram `legadoIatfId` quando há colisão. Aplicações, exames, tentativas, visitas e vínculos técnicos passam a referenciar a identidade comum. Impressões, auditorias, payloads e respostas de reenvio antigos permanecem intactos. Resolutores aceitam os IDs reprodutivos anteriores nos fluxos operacionais; a conversão não executa fatos, estoque, financeiro ou diagnósticos novamente.
@@ -85,6 +101,6 @@ Elegibilidade reprodutiva não tem padrão clínico presumido. `PoliticaElegibil
 
 ## Validação
 
-Validação automatizada concluída para esta entrega: testes e builds de servidor e cliente passaram; também passaram os typechecks de seed e importação. Integrações locais foram executadas somente em `fazendinha_seedatev3`, com fixtures próprias e rollback, e as migrations foram aplicadas sem recriar o banco. A revisão visual automatizada não foi concluída por indisponibilidade da ferramenta. Isso não certifica produção nem substitui a homologação da rotina pela fazenda, que permanece pendente.
+A validação da padronização anterior incluiu testes/builds, typechecks de seed/importação e integrações locais com fixtures próprias em `fazendinha_seedatev3`. As migrations do follow-up estão aplicadas no mesmo `fazendinha_seedatev3`, com abertura documentada dos saldos demonstrativos legados e preservação de movimentos/manifesto. A validação usa testes unitários e integrações locais selecionadas com fixtures próprias; a bateria restrita ao CI externo permanece separada; seu estado consta no [HTML da entrega](artefatos/follow-up-v4-entrega.html). O alinhamento não exige reset, recarga de seed, banco auxiliar ou backup. Homologação da rotina pela fazenda permanece separada e pendente.
 
 O [HTML de conceitos](artefatos/conceitos-v4.html) apresenta o modelo implementado e sua relação com as telas, inclusive os fluxos novos de visita, parto, elegibilidade e relatórios. O [roteiro manual](artefatos/testes-v4-guia.html) mantém as marcações anteriores e acrescenta casos de padronização pendentes. Homologação pela fazenda permanece pendente.

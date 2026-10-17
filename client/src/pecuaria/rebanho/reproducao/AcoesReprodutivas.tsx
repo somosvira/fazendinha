@@ -51,6 +51,9 @@ export function AcoesReprodutivas({
   const [nomeCria, setNomeCria] = useState("");
   const [data, setData] = useState(hoje());
   const [motivo, setMotivo] = useState("");
+  const [causaClinica,setCausaClinica]=useState("DESCONHECIDA");
+  const [descricaoCausa,setDescricaoCausa]=useState("");
+  const [evidenciasPerda, setEvidenciasPerda] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState(false);
   const [chave, setChave] = useState(() => crypto.randomUUID());
@@ -59,6 +62,8 @@ export function AcoesReprodutivas({
     setAcao(a);
     setData(hoje());
     setMotivo("");
+    setCausaClinica("DESCONHECIDA");setDescricaoCausa("");
+    setEvidenciasPerda("");
     setPrevisao("");
     setTentativaId("");
     setBrinco("");
@@ -162,6 +167,20 @@ export function AcoesReprodutivas({
               ))}
             </section>
           ))}
+        {painel.gestacoes?.some(g => g.tipoEncerramento === "PERDA" && (!animalId || g.animalId === animalId)) && (
+          <details className="rounded-lg border border-border p-4">
+            <summary className="cursor-pointer font-semibold">Perdas gestacionais registradas</summary>
+            {painel.gestacoes.filter(g => g.tipoEncerramento === "PERDA" && (!animalId || g.animalId === animalId)).map(g => (
+              <article key={g.id} className="mt-3 space-y-2 border-t border-border pt-3 text-sm">
+                <p>{g.animal?.brinco ?? g.animal?.nome ?? nome(g.animalId ?? "")} · {g.encerradaEm?.slice(0, 10).split("-").reverse().join("/")} · {g.status}</p>
+                <p>{g.motivoEncerramento ?? "Explicação histórica não informada"}</p>
+                <p>Causa clínica: {g.causaClinica ? { DESCONHECIDA: "Desconhecida", SUSPEITA: "Suspeita", CONFIRMADA: "Confirmada" }[g.causaClinica.estado] : "Não informada"}</p>
+                {g.causaClinica?.descricao && <p>{g.causaClinica.descricao}</p>}
+                {g.causaClinica?.evidencias?.length ? <ul className="list-disc pl-5">{g.causaClinica.evidencias.map((e, i) => <li key={i}>{e}</li>)}</ul> : <p>Evidências não informadas.</p>}
+              </article>
+            ))}
+          </details>
+        )}
         {painel.lactacoes
           ?.filter((l) => !animalId || l.animalId === animalId)
           .map((l) => (
@@ -307,6 +326,8 @@ export function AcoesReprodutivas({
                             propriedadeId,
                             animalId: acao.animalId,
                             gestacaoId: acao.id,
+                            causaClinica: {estado:causaClinica,...(descricaoCausa.trim()?{descricao:descricaoCausa.trim()}: {}),
+                              evidencias: evidenciasPerda.split("\n").map(e => e.trim()).filter(Boolean)},
                             data,
                             motivo,
                           }
@@ -328,6 +349,7 @@ export function AcoesReprodutivas({
                 .finally(() => setOcupado(false));
             }}
           >
+            {acao.tipo==="perda"&&<><p className="text-sm">Descreva a observação e o contexto da perda no motivo obrigatório. A causa clínica pode permanecer desconhecida.</p><label>Causa clínica<select className={classeInput} value={causaClinica} onChange={e=>setCausaClinica(e.target.value)}><option value="DESCONHECIDA">Desconhecida</option><option value="SUSPEITA">Suspeita</option><option value="CONFIRMADA">Confirmada</option></select></label><label>Descrição da causa (quando conhecida)<textarea className={classeInput} value={descricaoCausa} required={causaClinica!=="DESCONHECIDA"} minLength={2} maxLength={1000} onChange={e=>setDescricaoCausa(e.target.value)}/></label><label>Evidências e referências (opcional, uma por linha)<textarea className={classeInput} rows={3} value={evidenciasPerda} onChange={e=>setEvidenciasPerda(e.target.value)} aria-describedby="evidencias-perda-ajuda"/></label><p id="evidencias-perda-ajuda" className="text-sm text-ink-3">Informe referências de exames, laudos ou observações de campo. Até 20 referências, com 2 a 1.000 caracteres cada.</p></>}
             <ErrorBox erro={erro} />
             <p className="text-sm">
               Animal {nome(acao.animalId)}. O histórico e os fatos anteriores

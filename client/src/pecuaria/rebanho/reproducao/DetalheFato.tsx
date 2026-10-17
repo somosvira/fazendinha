@@ -1,3 +1,4 @@
+import { CustosDiretos } from "../custos/CustosDiretos";
 import { ColostroCria } from "./ColostroCria";
 import { nomeCampoExame } from "../sanidade/CamposExame";
 import { CorrigirFato } from "./CorrigirFato";
@@ -113,6 +114,7 @@ export function DetalheFato({
             </div>
           )}
         </dl>
+        {fato.grupo === "Tentativa" && fato.propriedadeId != null && <CustosDiretos key={fato.id} tentativaId={fato.id} propriedadeId={fato.propriedadeId} podeLancar={podeLancar} />}
         {fato.grupo === "Parto" && <section className="grid gap-3 rounded-lg border border-border p-4"><h3 className="font-semibold">Parto e pós-parto</h3><dl className="grid grid-cols-2 gap-3 text-sm">{[
           ["Desfecho", fato.desfecho ?? (fato.tipo === "ABORTO" ? "Aborto" : fato.tipo === "NORMAL" || fato.tipo === "DISTOCICO" || fato.tipo === "NATIMORTO" ? "Nascimento" : "Não informado")],
           ["Horário", fato.ocorridoEm ? `${new Date(fato.ocorridoEm).toLocaleTimeString("pt-BR", {hour:"2-digit",minute:"2-digit"})}${fato.horarioEstimado ? " · estimado" : ""}` : "Não informado"],
@@ -193,7 +195,7 @@ export function DetalheFato({
                 Corrigir / completar parto
               </Button>
             )}
-          {podeLancar && fato.status !== "ANULADO" && (
+          {podeLancar && fato.grupo!=="Gestação" && fato.status !== "ANULADO" && (
             <Button danger onClick={() => setAnulando(true)}>
               Conferir anulação
             </Button>

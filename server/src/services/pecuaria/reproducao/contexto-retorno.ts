@@ -6,6 +6,8 @@ export async function carregarRetornosNaDataTx(tx: Prisma.TransactionClient, ani
     orderBy: [{ data: "desc" }, { criadoEm: "desc" }, { id: "desc" }], select: { animalId: true, retornoEm: true } });
   const retornos = new Map<string, Date | null>();
   for (const avaliacao of avaliacoes) if (!retornos.has(avaliacao.animalId)) retornos.set(avaliacao.animalId, avaliacao.retornoEm);
+  const demandas=await tx.demandaAcompanhamentoReprodutivo.findMany({where:{animalId:{in:[...new Set(animalIds)]},estado:"PENDENTE",dataReferencia:{lte:data}},orderBy:[{previstaPara:"asc"},{id:"asc"}],select:{animalId:true,previstaPara:true}});
+  for(const d of demandas)if(!retornos.get(d.animalId)||d.previstaPara<retornos.get(d.animalId)!)retornos.set(d.animalId,d.previstaPara);
   return retornos;
 }
 export function contextoRetornoNaData(retornoEm: Date | null | undefined, data: Date) {

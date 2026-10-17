@@ -19,6 +19,7 @@ import { sanidadeRouter } from "./sanidade.js";
 import { manejoRouter } from "./manejo.js";
 import { reproducaoRouter } from "./reproducao.js";
 import { visitasRouter } from "./visitas.js";
+import { custosRouter } from "./custos.js";
 import { nutricaoRouter } from "./nutricao.js";
 import {
   cadastrarAnimalSchema, editarAnimalSchema, movimentarSchema, mudarDestinoSchema,
@@ -414,3 +415,5 @@ rebanhoRouter.route("/nutricao", nutricaoRouter);
 
 rebanhoRouter.route("/reproducao", reproducaoRouter);
 rebanhoRouter.route("/visitas", visitasRouter);
+
+rebanhoRouter.route("/custos", custosRouter);

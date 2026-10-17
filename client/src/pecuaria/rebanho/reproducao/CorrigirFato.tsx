@@ -43,7 +43,7 @@ export function CorrigirFato({ tipo, id, animalId, propriedadeId, gestacaoInicia
     const prop = sitioDoFato; if (!prop) { setErro("Selecione o sítio do fato."); return; }
     if (motivo.trim().length < 5) { setErro("Informe um motivo com pelo menos 5 caracteres."); return; }
     if (escoreRevisao.startsWith("SUBSTITUIR:") && !dados.escoreAtivo) { setErro("Preencha o escore substituto ou conserve o exame existente."); return; }
-    const erroParto = tipo === "parto" ? validarDadosParto(dados) : null; if (erroParto) { setErro(erroParto); return; }
+    const erroParto = tipo === "parto" ? validarDadosParto(dados, inicial.current) : null; if (erroParto) { setErro(erroParto); return; }
     if (tipo === "parto" && !fato?.versao) { setErro("Reabra o parto para carregar sua versão antes de corrigir."); return; }
     const atual = camposPartoPayload(dados, fato?.data.slice(0, 10) ?? "");
     const anterior = camposPartoPayload(inicial.current, fato?.data.slice(0, 10) ?? "");

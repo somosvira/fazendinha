@@ -3,6 +3,7 @@ import { buscaAnimal, filtrosFatos, limites, type ConsultaSanitaria } from "./co
 import { marcarRegularizacaoFatoTx } from "../reproducao/marcacao-regularizacao.js";
 import { aplicacaoComConsumoOuAtribuicao } from "../reproducao/atribuicoes-servico.js";
 import crypto from "node:crypto";
+import { travarValorizacaoTx } from "../../estoque/valorizacao.js";
 import { Prisma, UnidadeMedida, type OrigemInsumoSanitario, type FinalidadeAplicacao } from "@prisma/client";
 import { prisma } from "../../../db.js";
 import { RebanhoError, auditar, travarAnimais } from "../rebanho/regras.js";
@@ -62,6 +63,7 @@ function erro(mensagem: string, campo?: string): never {
 
 export async function travarOrigensAplicacoesTx(tx: Prisma.TransactionClient, itens: AplicacaoInput[]) {
   if (!itens.length) return;
+  await travarValorizacaoTx(tx, itens.flatMap(i => i.produtoId ? [i.produtoId] : []));
   const origens = [...new Set(itens.map((i) => i.itemCompraDiretaId ? `pec-compra-direta:${i.itemCompraDiretaId}` : `pec-produto:${i.propriedadeId}:${i.produtoId ?? "sem-produto"}`))].sort();
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(h) FROM (SELECT DISTINCT hashtext(k) AS h FROM unnest(${origens}::text[]) AS k) AS chaves ORDER BY h`;
   await travarUsosProduto(tx, itens.flatMap((i) => i.produtoId ? [i.produtoId] : []));
@@ -266,6 +268,7 @@ export async function reconciliarOrigem(id: string, propriedadeId: number, input
     const referencia = await tx.aplicacaoProduto.findFirst({ where: { id, propriedadeId } });
     if (!referencia) throw new RebanhoError("NAO_ENCONTRADO", "Aplicação não encontrada neste sítio");
     await travarAnimais(tx, [referencia.animalId]);
+    await travarValorizacaoTx(tx, input.produtoId ? [input.produtoId] : []);
     const antes = await tx.aplicacaoProduto.findFirst({ where: { id, propriedadeId, status: "VALIDO", origemInsumo: "SEM_ORIGEM_JUSTIFICADA" } });
     if (!antes) throw new RebanhoError("CONFLITO", "Somente aplicação válida com origem pendente pode ser reconciliada");
     await conferirAnimalNoFato(tx, antes.animalId, propriedadeId, antes.data);

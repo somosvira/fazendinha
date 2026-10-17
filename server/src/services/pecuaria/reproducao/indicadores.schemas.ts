@@ -10,6 +10,8 @@ const camposConsultaIndicadores = z.object({
   corte: z.string().date(),
   concepcaoEstimada: z.preprocess(numeroOpcional, z.number().min(0).max(100).optional()),
   deslocamentoTeDias: z.preprocess(numeroOpcional, z.number().int().min(0).max(30).default(7)),
+  janelaPerdaDias:z.preprocess(numeroOpcional,z.number().int().min(1).max(1000).optional()),
+  iepModo:z.enum(["VIVOS_NATIMORTOS","TODOS_PARTOS"]).optional(),
   loteId: z.string().uuid().optional(),
   tiposTentativa: z.preprocess(lista, z.array(z.enum(["IA", "TE", "COBERTURA"])).min(1).max(3)).optional(),
   papeis: z.preprocess(lista, z.array(z.enum(["NENHUM", "DOADORA", "RECEPTORA"])).min(1).max(3)).optional(),

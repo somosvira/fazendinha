@@ -1,3 +1,7 @@
+import {listarBibliotecaReprodutiva,copiarReferenciaSchema,copiarReferenciaReprodutiva} from "../../services/pecuaria/reproducao/biblioteca.js";
+import * as acompanhamento from "../../services/pecuaria/reproducao/acompanhamento.js";
+import * as acompanhamentoSchemas from "../../services/pecuaria/reproducao/acompanhamento.schemas.js";
+import { ValorizacaoError } from "../../services/estoque/valorizacao.calc.js";
 import * as elegibilidade from "../../services/pecuaria/reproducao/elegibilidade.js";
 import * as elegibilidadeSchemas from "../../services/pecuaria/reproducao/elegibilidade.schemas.js";
 import * as emissoes from "../../services/pecuaria/reproducao/emissoes-relatorios.js";
@@ -55,6 +59,7 @@ export function apresentarV4<T>(c: Context, resultado: T): T {
   );
 }
 export function falhaV4(c: Context, e: unknown) {
+  if (e instanceof ValorizacaoError) return c.json({ error: e.message, code: e.code }, e.code === "VALIDACAO" ? 422 : 409);
   if (e instanceof z.ZodError)
     return c.json(
       {
@@ -137,6 +142,13 @@ export const protegerCustosV4: MiddlewareHandler = async (c, next) => {
 };
 export const reproducaoRouter = new Hono()
   .use("*", protegerCustosV4)
+  .get("/biblioteca",c=>{try{return c.json(listarBibliotecaReprodutiva(z.string().max(200).parse(c.req.query("busca")??"")));}catch(e){return falhaV4(c,e);}})
+  .post("/biblioteca/:id/copiar",validarV4(copiarReferenciaSchema),async c=>{try{const b=c.req.valid("json");return c.json(await copiarReferenciaReprodutiva(c.req.param("id"),{...b,propriedadeId:await resolverEscopoEscrita(c,b.propriedadeId)},usuarioV4(c)),201);}catch(e){return falhaV4(c,e);}})
+  .get("/acompanhamento/politicas", async c=>{try{return c.json(await acompanhamento.listarPoliticasAcompanhamento(s.sitio.parse(await resolverEscopoLeitura(c))));}catch(e){return falhaV4(c,e);}})
+  .post("/acompanhamento/politicas",validarV4(acompanhamentoSchemas.criarPoliticaAcompanhamentoSchema),async c=>{try{const b=c.req.valid("json");return c.json(await acompanhamento.criarPoliticaAcompanhamento({...b,propriedadeId:await resolverEscopoEscrita(c,b.propriedadeId)},usuarioV4(c)),201);}catch(e){return falhaV4(c,e);}})
+  .get("/acompanhamento",async c=>{try{const q=acompanhamentoSchemas.consultaAcompanhamentoSchema.parse({animalId:c.req.query("animalId"),data:c.req.query("data")});return c.json(await acompanhamento.listarAcompanhamentos(s.sitio.parse(await resolverEscopoLeitura(c)),q.animalId,q.data??new Date().toLocaleDateString("en-CA",{timeZone:"America/Sao_Paulo"})));}catch(e){return falhaV4(c,e);}})
+  .post("/acompanhamento/adocao/previa",validarV4(acompanhamentoSchemas.previaAdocaoAcompanhamentoSchema),async c=>{try{const b=c.req.valid("json");return c.json(await acompanhamento.previaAdocaoAcompanhamento({...b,propriedadeId:await resolverEscopoEscrita(c,b.propriedadeId)}));}catch(e){return falhaV4(c,e);}})
+  .post("/acompanhamento/adocao",validarV4(acompanhamentoSchemas.adotarAcompanhamentoSchema),async c=>{try{const b=c.req.valid("json");return c.json(await acompanhamento.adotarAcompanhamento({...b,propriedadeId:await resolverEscopoEscrita(c,b.propriedadeId)},usuarioV4(c)));}catch(e){return falhaV4(c,e);}})
   .get("/colostro", async (c) => {
     try {
       const criaId = s.uuid.parse(c.req.query("criaId"));

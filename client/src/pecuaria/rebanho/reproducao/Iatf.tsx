@@ -1,3 +1,5 @@
+import {BibliotecaReprodutiva} from "./BibliotecaReprodutiva";
+import { CustosDiretos } from "../custos/CustosDiretos";
 import { CampoDataIatf, dataHoraISO, horarioIatf, inputHorarioIatf } from "./CampoDataIatf";
 export { dataHoraISO, horarioIatf, inputHorarioIatf } from "./CampoDataIatf";
 import { FormFatoSanitario } from "../sanidade/FormFatoSanitario";
@@ -30,6 +32,7 @@ export type EtapaIatf = {
   tipo: "APLICACAO" | "MANEJO" | "RETIRADA" | "TENTATIVA" | "AVALIACAO" | "EXAME";
   intervalo: number;
   unidade: "DIAS" | "HORAS";
+  orientacaoTemporal?: {versao:1;referencia:"INICIO_EFETIVO"|"ETAPA_ANTERIOR";intervaloHoras:number;toleranciaAntesMinutos:number;toleranciaDepoisMinutos:number;efeito:"ALERTA"};
   planoAplicacao?: {
     produtoId: string;
     dose: string;
@@ -48,6 +51,7 @@ export type EtapaIatf = {
 export function etapaParaCadastro(e: EtapaIatf): EtapaIatf {
   return {
     nome: e.nome, tipo: e.tipo, intervalo: e.intervalo, unidade: e.unidade,
+    ...(e.orientacaoTemporal ? {orientacaoTemporal:e.orientacaoTemporal} : {}),
     ...(e.planoAplicacao ? { planoAplicacao: { produtoId: e.planoAplicacao.produtoId, dose: e.planoAplicacao.dose, unidadeDose: e.planoAplicacao.unidadeDose, via: e.planoAplicacao.via } } : {}),
     ...(e.planoTentativa ? { planoTentativa: { tipo: e.planoTentativa.tipo, materialId: e.planoTentativa.materialId, quantidade: e.planoTentativa.quantidade } } : {}),
     ...(e.planoExame ? { planoExame: { tipoExameId: e.planoExame.tipoExameId } } : {}),
@@ -59,6 +63,7 @@ export type ProtocoloIatf = {
   nome: string;
   versao: number;
   publicado: boolean;
+  referenciaTecnica?: {fonte?:{titulo:string;url:string};versaoReferencia?:string;protocoloOrigemId?:string}|null;
   ativo?: boolean;
   utilizada?: boolean;
   descricao?: string | null;
@@ -92,6 +97,7 @@ export type TarefaIatf = {
   desviosSnapshot?: {
     aferido: boolean;
     horarioAferido?: boolean;
+    orientacaoTemporal?:{estado:"NAO_CONFIGURADA"|"NAO_AFERIVEL"|"DENTRO"|"FORA";previstaPara?:string;diferencaMinutos?:number;motivo?:string;regra?:{referencia:string}};
     diferencas: { campo: string; planejado: unknown; realizado: unknown }[];
     motivo?: string | null;
   } | null;
@@ -169,6 +175,7 @@ export function Iatf({
   );
   const [editando, setEditando] = useState<string | null>(null);
   const [versao, setVersao] = useState(1);
+  const [origemVersaoId,setOrigemVersaoId]=useState<string|null>(null);
   const [publicado, setPublicado] = useState(false);
   const [protocoloId, setProtocoloId] = useState("");
   const [inicio, setInicio] = useState("");
@@ -264,6 +271,7 @@ export function Iatf({
   return (
     <div className="space-y-5">
       <ErrorBox erro={erro} />
+      {modo !== "operacao" && <BibliotecaReprodutiva propriedadeId={propriedadeId ?? getPropriedadeAtiva()} podeLancar={podeLancar} onCopiou={()=>void carregar()}/>}
       {modo === "operacao" && <Panel>
         <CabecalhoTabela
           titulo="Programações de IATF"
@@ -319,6 +327,7 @@ export function Iatf({
             }
           />
           <div className="p-4 space-y-4">
+            {getPropriedadeAtiva()!=null && <CustosDiretos key={detalhe.id} programacaoId={detalhe.id} propriedadeId={getPropriedadeAtiva()!} podeLancar={podeLancar} />}
             {podeLancar && detalhe.status === "ABERTA" && (
               <Button
                 secondary
@@ -338,6 +347,7 @@ export function Iatf({
                 key={p.id}
                 className="rounded-lg border border-border p-4"
               >
+                {getPropriedadeAtiva()!=null && <details><summary>Custos desta participação</summary><CustosDiretos key={p.id} participacaoId={p.id} propriedadeId={getPropriedadeAtiva()!} podeLancar={podeLancar} /></details>}
                 <div className="flex justify-between gap-3">
                   <h3>
                     {p.animal?.brinco ??
@@ -435,7 +445,7 @@ export function Iatf({
         </Panel>
       )}
       {modo === "cadastros" && <Panel>
-        <CabecalhoTabela titulo="Protocolos reprodutivos" acao={podeLancar && <Button onClick={() => { setEditando(null); setNome(""); setVersao(1); setPublicado(false); setEtapas([{ nome: "", tipo: "MANEJO", intervalo: 0, unidade: "DIAS" }]); setNovo("protocolo"); }}>Novo protocolo reprodutivo</Button>} />
+        <CabecalhoTabela titulo="Protocolos reprodutivos" acao={podeLancar && <Button onClick={() => { setEditando(null); setOrigemVersaoId(null); setNome(""); setVersao(1); setPublicado(false); setEtapas([{ nome: "", tipo: "MANEJO", intervalo: 0, unidade: "DIAS" }]); setNovo("protocolo"); }}>Novo protocolo reprodutivo</Button>} />
         <div className="p-4 grid gap-3">
           {protocolos.map((p) => (
             <section
@@ -455,8 +465,9 @@ export function Iatf({
                   .join(" · ")}
               </p>
               {podeLancar && <div className="mt-3 flex flex-wrap gap-2">
+                {p.referenciaTecnica?.fonte&&<p className="text-sm"><a className="underline" href={p.referenciaTecnica.fonte.url} target="_blank" rel="noreferrer">{p.referenciaTecnica.fonte.titulo}</a> · referência {p.referenciaTecnica.versaoReferencia}</p>}
                 {!p.publicado && !p.utilizada && p.ativo !== false && <><Button secondary disabled={ocupado} onClick={() => { setEditando(p.id); setNome(p.nome); setVersao(p.versao); setEtapas(p.etapas.map(etapaParaCadastro)); setPublicado(false); setNovo("protocolo"); }}>Editar rascunho</Button><Button secondary disabled={ocupado} onClick={() => void executar(async () => { await reqIatf(`/reproducao/protocolos/${p.id}/publicar`, {}); await carregar(); })}>Publicar versão</Button></>}
-                <Button secondary disabled={ocupado} onClick={() => { setEditando(null); setNome(p.nome); setVersao(Math.max(...protocolos.filter(v => v.nome === p.nome).map(v => v.versao)) + 1); setEtapas(p.etapas.map(etapaParaCadastro)); setPublicado(false); setNovo("protocolo"); }}>Nova versão</Button>
+                <Button secondary disabled={ocupado} onClick={() => { setEditando(null); setOrigemVersaoId(p.id); setNome(p.nome); setVersao(Math.max(...protocolos.filter(v => v.nome === p.nome).map(v => v.versao)) + 1); setEtapas(p.etapas.map(etapaParaCadastro)); setPublicado(false); setNovo("protocolo"); }}>Nova versão</Button>
                 {p.ativo !== false && <Button secondary disabled={ocupado} onClick={() => void executar(async () => { await reqIatf(`/reproducao/protocolos/${p.id}/inativar`, {}); await carregar(); })}>Inativar versão</Button>}
               </div>}
             </section>
@@ -494,6 +505,7 @@ export function Iatf({
                 if (novo === "protocolo")
                   await reqIatf(`/reproducao/protocolos${editando ? `/${editando}` : ""}`, {
                     nome,
+                    ...(!editando&&origemVersaoId?{origemVersaoId}:{}),
                     versao,
                     publicado,
                     etapas: etapas.map(etapaParaCadastro),
@@ -662,6 +674,7 @@ export function Iatf({
                         <option value="HORAS">Horas</option>
                       </select>
                     </label>
+                    <OrientacaoTemporalEtapa etapa={t} onChange={novo=>setEtapas(etapas.map((x,j)=>j===i?novo:x))}/>
                     <PlanoEtapa
                       etapa={t}
                       produtos={produtos}
@@ -1291,7 +1304,9 @@ function DetalheEtapa({ tarefa }: { tarefa: TarefaIatf }) {
         {tarefa.realizadaEm && (
           <p>Realizada: {horarioIatf(tarefa.realizadaEm, tarefa.precisaoRealizacao ?? tarefa.realizadoSnapshot?.precisaoRealizacao ?? "HORA")}</p>
         )}
-        {tarefa.desviosSnapshot?.horarioAferido === false && <p>{tarefa.planejadoSnapshot?.previsaoPendente ? "Data prevista e horário não aferidos: início sem horário conhecido." : "Horário não aferido: planejamento ou realização sem horário conhecido."}</p>}
+        {tarefa.desviosSnapshot?.orientacaoTemporal?.estado==="FORA"&&<p role="status" className="rounded border border-amber-500 p-3">Alerta de intervalo: execução fora da tolerância configurada nesta etapa. Alvo: {tarefa.desviosSnapshot.orientacaoTemporal.previstaPara?horarioIatf(tarefa.desviosSnapshot.orientacaoTemporal.previstaPara,"HORA"):"não informado"}. Esse alerta não altera o calendário.</p>}
+        {tarefa.desviosSnapshot?.orientacaoTemporal?.estado==="NAO_AFERIVEL"&&<p>Intervalo não aferível: a hora da referência válida ou da execução não foi informada.</p>}
+        {tarefa.desviosSnapshot?.horarioAferido === false && !tarefa.desviosSnapshot.orientacaoTemporal && <p>{tarefa.planejadoSnapshot?.previsaoPendente ? "Data prevista e horário não aferidos: início sem horário conhecido." : "Horário não aferido: planejamento ou realização sem horário conhecido."}</p>}
         {tarefa.desviosSnapshot && (
           <p>
             {!tarefa.desviosSnapshot.aferido
@@ -1333,4 +1348,9 @@ function DetalheEtapa({ tarefa }: { tarefa: TarefaIatf }) {
       </div>
     </details>
   );
+}
+
+function OrientacaoTemporalEtapa({etapa,onChange}:{etapa:EtapaIatf;onChange:(e:EtapaIatf)=>void}){
+ const r=etapa.orientacaoTemporal;const mudar=(v:Partial<NonNullable<EtapaIatf["orientacaoTemporal"]>>)=>r&&onChange({...etapa,orientacaoTemporal:{...r,...v}});
+ return <fieldset className="space-y-2 rounded border p-3"><legend>Orientação temporal desta etapa</legend><label className="flex gap-2"><input type="checkbox" checked={!!r} onChange={e=>onChange({...etapa,orientacaoTemporal:e.target.checked?{versao:1,efeito:"ALERTA",referencia:"INICIO_EFETIVO",intervaloHoras:etapa.unidade==="HORAS"?etapa.intervalo:etapa.intervalo*24,toleranciaAntesMinutos:0,toleranciaDepoisMinutos:0}:undefined})}/>Configurar alerta de intervalo</label>{r&&<><label>Referência<select className={classeInput} value={r.referencia} onChange={e=>mudar({referencia:e.target.value as typeof r.referencia})}><option value="INICIO_EFETIVO">Início efetivo</option><option value="ETAPA_ANTERIOR">Execução válida da etapa anterior</option></select></label>{([["intervaloHoras","Intervalo (horas)"],["toleranciaAntesMinutos","Tolerância antes (minutos)"],["toleranciaDepoisMinutos","Tolerância depois (minutos)"]] as const).map(([campo,label])=><label key={campo}>{label}<input className={classeInput} type="number" required min={0} step={campo==="intervaloHoras"?"any":1} value={r[campo]} onChange={e=>mudar({[campo]:Number(e.target.value)})}/></label>)}<p className="text-sm">Alerta apenas. Sem a hora da referência ou da execução, o intervalo fica não aferível. A orientação não altera as próximas etapas.</p></>}</fieldset>;
 }
