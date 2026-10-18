@@ -1,0 +1,153 @@
+/* Direção do mockup aprovado; todas as regras ficam dentro desta página. */
+.painel-gerencial {
+  --ger-borda: #dcd3c5;
+  --ger-papel: #fcfaf6;
+  --ger-texto: #18221e;
+  --ger-suave: #696c68;
+  --ger-verde: #476343;
+  color: var(--ger-texto);
+  background: #f2eee6;
+  border-radius: 8px;
+  padding: 26px;
+  margin: -8px -12px 24px;
+  font-size: 14px;
+  line-height: 1.55;
+}
+.painel-gerencial :is(h1,h2,p,dl,dd) { margin: 0; }
+.painel-gerencial :is(h1,h2) { font-family: Georgia, 'Times New Roman', serif; color: var(--ger-texto); letter-spacing: -.035em; }
+.painel-gerencial h1 { font-size: clamp(30px,3.2vw,46px); line-height: 1.12; font-weight: 600; }
+.painel-gerencial h2 { font-size: 26px; line-height: 1.2; font-weight: 600; margin-bottom: 10px; }
+.painel-gerencial a { overflow-wrap: anywhere; }
+.painel-gerencial :is(a,button,summary,input):focus-visible { outline: 3px solid #6b815d; outline-offset: 4px; }
+.painel-gerencial :is(section,details)[id] { scroll-margin-top: 24px; }
+.painel-gerencial .ger-cabecalho { display: flex; gap: 22px; justify-content: space-between; align-items: flex-end; }
+.painel-gerencial .ger-cabecalho > div > p { font-size: 17px; margin-top: 5px; }
+.painel-gerencial .ger-filtros { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 10px; }
+.painel-gerencial .ger-filtros label { font-size: 11px; color: var(--ger-suave); font-weight: 600; }
+.painel-gerencial .ger-filtros input { display: block; margin-top: 4px; min-height: 40px; max-width: 155px; background: var(--ger-papel); border: 1px solid #c8bdac; border-radius: 4px; color: var(--ger-texto); font-size: 13px; padding: 8px; }
+.painel-gerencial .ger-filtros button { border-radius: 4px; min-height: 40px; font-size: 12px; }
+.painel-gerencial .ger-filtros button[type=submit] { background: #1b241e; color: #fffdf6; }
+.painel-gerencial .ger-contexto { color: var(--ger-verde); margin-top: 16px; font-weight: 600; }
+.painel-gerencial .ger-contexto span { font-weight: 400; color: var(--ger-suave); }
+.painel-gerencial .ger-atalhos { display: flex; gap: 36px; margin: 21px 0 19px; overflow-x: auto; }
+.painel-gerencial .ger-atalhos button { border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--ger-suave); padding: 8px 0; white-space: nowrap; cursor: pointer; font-size: 14px; }
+.painel-gerencial .ger-atalhos button[aria-current] { color: var(--ger-verde); border-bottom-color: var(--ger-verde); font-weight: 600; }
+.painel-gerencial .ger-grade { display: grid; grid-template-columns: minmax(0,1.4fr) minmax(0,1fr); gap: 16px; grid-template-areas: 'caixa caixa' 'centros nutricao' 'custos nutricao' 'estoque estoque'; align-items: start; }
+.painel-gerencial .ger-card { min-width: 0; background: var(--ger-papel); border: 1px solid var(--ger-borda); border-radius: 4px; padding: 20px 24px; }
+.painel-gerencial .ger-caixa { grid-area: caixa; display: grid; grid-template-columns: minmax(200px,1.1fr) minmax(0,2fr); column-gap: 28px; align-items: center; }
+.painel-gerencial .ger-caixa > h2 { margin-bottom: 0; align-self: start; }
+.painel-gerencial .ger-caixa-resumo { display: contents; }
+.painel-gerencial .ger-caixa-resumo > p { grid-column: 1; margin-top: 10px; }
+.painel-gerencial .ger-caixa-valores { grid-column: 2; grid-row: 1 / span 2; display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); }
+.painel-gerencial .ger-indicador { min-width: 0; }
+.painel-gerencial .ger-indicador dt { color: #444a44; font-size: 13px; }
+.painel-gerencial .ger-indicador dd, .painel-gerencial .ger-valor { font-family: Georgia, 'Times New Roman', serif; font-size: clamp(26px,2.7vw,38px); letter-spacing: -.04em; line-height: 1.25; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.painel-gerencial .ger-caixa-valores .ger-indicador { padding-left: 25px; border-left: 1px solid var(--ger-borda); }
+.painel-gerencial .ger-centros { grid-area: centros; }
+.painel-gerencial .ger-nutricao { grid-area: nutricao; align-self: stretch; }
+.painel-gerencial .ger-custos { grid-area: custos; }
+.painel-gerencial .ger-estoque { grid-area: estoque; }
+.painel-gerencial .ger-muted { color: var(--ger-suave); font-size: 13px; }
+.painel-gerencial .ger-tabela { overflow-x: auto; max-width: 100%; margin: 10px 0; }
+.painel-gerencial table { border-collapse: collapse; width: 100%; min-width: 430px; font-variant-numeric: tabular-nums; }
+.painel-gerencial th, .painel-gerencial td { padding: 9px 12px; border-bottom: 1px solid #e4ddd1; text-align: right; white-space: nowrap; }
+.painel-gerencial thead { background: #f4f0e8; color: var(--ger-suave); font-size: 11px; letter-spacing: .04em; }
+.painel-gerencial tbody th { font-weight: 400; }
+.painel-gerencial tr > :first-child { text-align: left; white-space: normal; }
+.painel-gerencial .ger-valor-linha { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 22px; margin: 15px 0; }
+.painel-gerencial .ger-valor-destaque { font-size: clamp(36px,3.6vw,49px); }
+.painel-gerencial .ger-selo { border-radius: 12px; background: #f9e4b6; color: #895709; font-size: 12px; font-weight: 600; padding: 5px 12px; }
+.painel-gerencial .ger-pendente { display: flex; align-items: center; gap: 7px; color: #935d08; font-size: 13px; }
+.painel-gerencial .ger-pendente svg { flex-shrink: 0; }
+.painel-gerencial .ger-aviso { border-left: 3px solid #bd8d34; padding: 8px 11px; background: #faf2df; color: #76541b; font-size: 12px; margin: 12px 0; }
+.painel-gerencial .ger-cobertura { margin: 18px 0; }
+.painel-gerencial .ger-cobertura > p + p { margin-top: 4px; }
+.painel-gerencial .ger-progresso-linha { display: flex; gap: 10px; align-items: center; margin: 12px 0 8px; }
+.painel-gerencial progress { appearance: none; height: 15px; border: 0; border-radius: 30px; overflow: hidden; background: #e8e5de; flex: 1; min-width: 0; }
+.painel-gerencial progress::-webkit-progress-bar { background: #e8e5de; border-radius: 30px; }
+.painel-gerencial progress::-webkit-progress-value { background: #7d8c72; }
+.painel-gerencial progress::-moz-progress-bar { background: #7d8c72; }
+.painel-gerencial .ger-indices { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); margin: 28px 0 12px; gap: 16px; }
+.painel-gerencial .ger-indices .ger-indicador + .ger-indicador { border-left: 1px solid var(--ger-borda); padding-left: 20px; }
+.painel-gerencial .ger-indices dt { font-size: 10px; text-transform: uppercase; letter-spacing: .07em; font-weight: 600; margin-bottom: 7px; }
+.painel-gerencial .ger-indices dd { font-size: clamp(24px,2.5vw,36px); }
+.painel-gerencial .ger-rodape-link { border-top: 1px solid var(--ger-borda); margin-top: 24px; padding-top: 17px; }
+.painel-gerencial .ger-link { color: var(--ger-verde); text-decoration: underline; text-underline-offset: 3px; display: inline-flex; align-items: center; gap: 10px; font-weight: 600; font-size: 13px; }
+.painel-gerencial .ger-link:hover { color: #1d3d25; }
+.painel-gerencial .ger-link svg { flex-shrink: 0; }
+.painel-gerencial .ger-finalidades { margin: 12px 0 8px; }
+.painel-gerencial .ger-finalidades > div { border-top: 1px solid #e4ddd1; display: flex; gap: 20px; justify-content: space-between; padding: 7px 10px; }
+.painel-gerencial .ger-finalidades > div:last-child { border-bottom: 1px solid #e4ddd1; }
+.painel-gerencial .ger-finalidades dd { flex-shrink: 0; text-align: right; font-variant-numeric: tabular-nums; }
+.painel-gerencial .ger-finalidades small { display: block; color: #895709; font-size: 11px; }
+.painel-gerencial .ger-estoque-resumo { display: flex; gap: 30px; align-items: center; margin: 8px 0 12px; }
+.painel-gerencial .ger-estoque-resumo > div { border-left: 1px solid var(--ger-borda); padding-left: 30px; }
+.painel-gerencial .ger-detalhes { border-top: 1px solid var(--ger-borda); margin-top: 16px; padding-top: 12px; font-size: 13px; }
+.painel-gerencial .ger-detalhes summary { cursor: pointer; font-weight: 500; color: var(--ger-verde); }
+.painel-gerencial .ger-detalhes summary:hover { text-decoration: underline; text-underline-offset: 3px; }
+.painel-gerencial .ger-detalhes-conteudo { display: grid; gap: 12px; padding: 16px 0 4px; }
+.painel-gerencial .ger-origem { text-decoration: underline; text-underline-offset: 3px; color: var(--ger-verde); }
+.painel-gerencial .ger-fato { border-bottom: 1px solid #e4ddd1; padding-bottom: 10px; overflow-wrap: anywhere; }
+.painel-gerencial .ger-referencia { color: var(--ger-suave); font-size: 11px; overflow-wrap: anywhere; margin-top: 5px; }
+.painel-gerencial .ger-vacas { display: grid; gap: 12px; }
+.painel-gerencial .ger-vacas dd { font-size: 27px; }
+.painel-gerencial .ger-restrito { color: var(--ger-suave); padding-top: 5px; }
+.painel-gerencial .ger-restrito > p { display: flex; gap: 8px; align-items: center; font-weight: 600; }
+.painel-gerencial .ger-restrito details { margin-top: 12px; font-size: 13px; }
+.painel-gerencial .ger-restrito summary { cursor: pointer; }
+.painel-gerencial .ger-restrito details p { margin-top: 8px; }
+.painel-gerencial .ger-caixa > .ger-restrito { grid-column: 1 / -1; }
+.painel-gerencial .ger-detalhe-externo { border: 1px solid var(--ger-borda); border-radius: 4px; padding: 13px 22px; margin-top: 14px; }
+.painel-gerencial .ger-detalhe-externo summary > span { color: var(--ger-suave); font-size: 12px; font-weight: 400; margin-left: 22px; }
+.painel-gerencial .ger-grafico { height: 260px; min-width: 0; }
+.painel-gerencial .ger-clinico { margin-top: 14px; }
+.painel-gerencial .ger-clinico h2 { font-size: 22px; }
+.painel-gerencial .ger-clinico .ger-link { margin-top: 8px; }
+.painel-gerencial .ger-carregando { padding: 35px 0; }
+.painel-gerencial .ger-metodologia { margin-top: 12px; }
+@media (max-width: 1250px) {
+  .painel-gerencial .ger-cabecalho { align-items: flex-start; flex-direction: column; gap: 16px; }
+  .painel-gerencial .ger-caixa { grid-template-columns: minmax(180px,.8fr) minmax(0,2fr); gap: 16px; }
+  .painel-gerencial .ger-caixa-valores .ger-indicador { padding-left: 14px; }
+  .painel-gerencial .ger-indicador dd { font-size: 29px; }
+}
+@media (max-width: 900px) {
+  .painel-gerencial { padding: 20px; margin-left: 0; margin-right: 0; }
+  .painel-gerencial .ger-grade { grid-template-columns: minmax(0,1fr); grid-template-areas: 'caixa' 'centros' 'nutricao' 'custos' 'estoque'; }
+  .painel-gerencial .ger-caixa { display: block; }
+  .painel-gerencial .ger-caixa-resumo { display: block; }
+  .painel-gerencial .ger-caixa-valores { margin-top: 18px; }
+  .painel-gerencial .ger-caixa-valores .ger-indicador:first-child { padding-left: 0; border-left: 0; }
+  .painel-gerencial .ger-indices dd { font-size: 34px; }
+}
+@media (max-width: 540px) {
+  .painel-gerencial { padding: 16px 12px; margin: 0 -4px 20px; }
+  .painel-gerencial h1 { font-size: 32px; }
+  .painel-gerencial h2 { font-size: 24px; }
+  .painel-gerencial .ger-cabecalho > div > p { font-size: 15px; }
+  .painel-gerencial .ger-contexto { font-size: 12px; }
+  .painel-gerencial .ger-contexto span { display: block; margin-top: 4px; }
+  .painel-gerencial .ger-filtros { width: 100%; display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); }
+  .painel-gerencial .ger-filtros input { width: 100%; max-width: none; min-width: 0; }
+  .painel-gerencial .ger-atalhos { gap: 24px; }
+  .painel-gerencial .ger-atalhos button { font-size: 12px; }
+  .painel-gerencial .ger-card { padding: 18px 16px; }
+  .painel-gerencial .ger-caixa-valores { grid-template-columns: minmax(0,1fr); gap: 12px; }
+  .painel-gerencial .ger-caixa-valores .ger-indicador { border: 0; padding: 10px 0 0; border-top: 1px solid var(--ger-borda); }
+  .painel-gerencial .ger-caixa-valores .ger-indicador:first-child { border-top: 0; padding-top: 0; }
+  .painel-gerencial .ger-indicador dd { font-size: 34px; }
+  .painel-gerencial .ger-indices dd { font-size: 27px; }
+  .painel-gerencial .ger-indices .ger-indicador + .ger-indicador { padding-left: 12px; }
+  .painel-gerencial .ger-indices { gap: 12px; }
+  .painel-gerencial .ger-estoque-resumo { align-items: flex-start; flex-direction: column; gap: 12px; }
+  .painel-gerencial .ger-estoque-resumo > div { padding-left: 0; border-left: 0; }
+  .painel-gerencial .ger-detalhe-externo { padding: 13px 16px; }
+  .painel-gerencial .ger-detalhe-externo summary > span { display: block; margin: 6px 0 0; }
+}
+@media (prefers-reduced-motion: reduce) { .painel-gerencial * { scroll-behavior: auto; } }
+/* Expansões secundárias compartilham uma entrada para manter a leitura inicial compacta. */
+.painel-gerencial .ger-nutricao .ger-cobertura { margin: 14px 0; }
+.painel-gerencial .ger-nutricao .ger-indices { margin-top: 20px; }
+.painel-gerencial .ger-nutricao .ger-rodape-link { margin-top: 18px; padding-top: 14px; }
+.painel-gerencial .ger-nutricao .ger-aviso { margin: 10px 0; }
+.painel-gerencial .ger-detalhes-conteudo > .ger-detalhes:first-child { border-top: 0; margin-top: 0; padding-top: 0; }

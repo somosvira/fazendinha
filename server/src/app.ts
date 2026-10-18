@@ -1,3 +1,4 @@
+import { gerencialRouter } from "./routes/gerencial.js";
 // Construção do app Hono — roteamento, CORS e os gates de auth/área. Runtime-
 // agnóstico de propósito: tanto index.ts (entrypoint Node, `@hono/node-server`)
 // quanto worker.ts (entrypoint Cloudflare Worker) importam o mesmo `app` daqui.
@@ -81,6 +82,7 @@ app.route("/api", usuariosRouter);
 app.route("/api", propriedadeRouter);
 app.route("/api", categoriasRouter);
 app.route("/api", financeiroRouter);
+app.route("/api", gerencialRouter);
 app.route("/api/pecuaria/rebanho", pecuariaRebanhoRouter);
 app.route("/api", estoqueRouter);
 app.route("/api", relatorioGerencialRouter);
