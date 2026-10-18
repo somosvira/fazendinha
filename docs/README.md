@@ -7,6 +7,7 @@ A base documenta o código atual. Setup e comandos ficam no [README](../README.m
 | [Design unificado](design/cooperativa-unificada.md) | Direção Cooperativa contemporânea desta entrega, padrões compartilhados e guias por módulo |
 | [Arquitetura](../ARCHITECTURE.md) | Organização, runtimes, autenticação, escopo e testes |
 | [Financeiro e estoque](financeiro-rebuild-contrato.md) | Dinheiro, efeitos físicos, estornos, períodos e rastreabilidade |
+| [Assistente financeiro](assistente-financeiro.md) | Consultas por texto/áudio, acesso, configuração, limites e validação |
 | [Pecuária](pecuaria/README.md) | Rebanho, genética, sanidade, peso, nutrição e limites atuais |
 | [Reprodução V4](pecuaria/reproducao.md) | Tentativas, gestação, parto/crias, visitas, IATF e reconciliação técnica |
 | [Follow-up V4 — produto e entidades](pecuaria/artefatos/follow-up-v4-entrega.html) | Valorização do saldo, custos diretos, acompanhamento e indicadores; diagramas das entidades, estado de validação e complementos adiados |

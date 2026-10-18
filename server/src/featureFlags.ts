@@ -1,9 +1,9 @@
 /**
- * Chave temporária para suspender todos os canais do assistente sem apagar
- * rotas ou serviços. Mantida no servidor para impedir chamadas diretas à API.
+ * Assistente financeiro web. WhatsApp continua bloqueado separadamente no app.
+ * Esta chave também impede chamadas diretas à API quando desligada.
  */
-export const ASSISTENTE_ATIVO = false;
+export const ASSISTENTE_ATIVO = true;
 
 export function rotaDoAssistente(pathname: string) {
-  return /^\/api\/(?:bot(?:\/|$)|whatsapp(?:\/|$))/.test(pathname);
+  return /^\/api\/bot(?:\/|$)/.test(pathname);
 }

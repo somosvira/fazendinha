@@ -72,6 +72,12 @@ import { obterDashboardFinanceiro, listarOperacoes, type DashboardFinanceiro } f
 import { act } from "@testing-library/react";
 
 describe("Visão geral — período global", () => {
+  it("consulta o mesmo período do link enviado pelo assistente", async () => {
+    window.history.replaceState(null, "", "/financeiro?inicio=2026-08-03&fim=2026-08-21");
+    render(<VisaoGeralFinanceira onNav={vi.fn()} />);
+    await waitFor(() => expect(obterDashboardFinanceiro).toHaveBeenCalledWith("2026-08-03", "2026-08-21"));
+    expect(obterDashboardFinanceiro).toHaveBeenCalledTimes(1);
+  });
   it("recarrega toda a visão em uma consulta, preserva os dados anteriores durante a atualização e ignora respostas atrasadas", async () => {
     const snapshot = (total: string): DashboardFinanceiro => ({ periodo: { inicio: "2026-01-01", fim: "2026-12-31" }, saldoGeral: "0", contas: [], realizado: { entradas: total, saidas: "0", resultado: total }, fluxo: [], compromissos: { aPagar: "0", aReceber: "0" }, despesasPorCategoria: [], proximosCompromissos: [], base: { ...baseFinanceiraVazia(), volumeEconomico: total, porTipo: [{ tipo: "VENDA", valor: total }] } });
     vi.mocked(obterDashboardFinanceiro).mockResolvedValueOnce(snapshot("321"));

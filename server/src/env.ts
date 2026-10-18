@@ -31,10 +31,10 @@ const envSchema = z
     SHARED_ACCESS_TOKEN: z.string().min(16).optional(),
 
     // --- OpenAI (provider único do app) ---
-    // Cérebro do bot E das IAs dos módulos. Sem a chave: bot desligado e IA dos módulos
-    // em "modo demonstração" (regras locais).
+    // Assistente financeiro web. Sem chave, informa indisponibilidade; sem mocks.
     OPENAI_API_KEY: z.string().optional(),
     OPENAI_MODEL: z.string().default("gpt-4o"),
+    OPENAI_TRANSCRIPTION_MODEL: z.string().min(1).default("gpt-4o-mini-transcribe"),
 
     // Canal WhatsApp via Meta Cloud API. Todos necessários para o webhook funcionar.
     WHATSAPP_VERIFY_TOKEN: z.string().optional(), // string arbitrária p/ GET de verificação

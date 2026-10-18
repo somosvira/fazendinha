@@ -115,28 +115,6 @@ export async function fetchLancamentos(categoriaId: number, fornecedor?: string,
   return (d.lancamentos ?? []) as LancamentoDrill[];
 }
 
-export interface BotReply {
-  resposta: string;
-  toolsUsadas?: string[];
-  sessao?: string | null;
-}
-
-/** POST /api/bot/ask — pergunta ao assistente. `sessao` mantém o contexto entre chamadas. */
-export async function askBot(pergunta: string, sessao: string): Promise<BotReply> {
-  const res = await fetch("/api/bot/ask", {
-    method: "POST",
-    headers: comPropriedade({ "content-type": "application/json" }),
-    body: JSON.stringify({ pergunta, sessao }),
-  });
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const data: any = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    if (res.status === 503) throw new Error(data?.erro || "Bot desligado (configure OPENAI_API_KEY no servidor).");
-    throw new Error(data?.erro || `Erro ${res.status}`);
-  }
-  return data as BotReply;
-}
-
 export async function reclassificarCategoria(id: number, classificacao: "INVESTIMENTO" | "CUSTEIO"): Promise<void> {
   const res = await fetch(`/api/categorias/${id}/classificacao`, {
     method: "PATCH",

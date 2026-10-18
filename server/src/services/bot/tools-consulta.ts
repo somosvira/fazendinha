@@ -2,7 +2,12 @@
 // a partir do registro declarativo — spec OpenAI com enums explícitos + handler
 // que delega ao motor. Domínio novo no registro ⇒ tool nova de graça.
 
-import type { Tool } from "./tools.js";
+import type { ContextoConsulta } from "../consulta/tipos.js";
+// Infraestrutura genérica preservada para evolução; não exposta pelo piloto web.
+type Tool = {
+  spec: { type: "function"; function: { name: string; description: string; parameters: Record<string, unknown> } };
+  handler: (args: Record<string, unknown>, ctx: ContextoConsulta) => Promise<unknown>;
+};
 import { DOMINIOS } from "../consulta/registro/index.js";
 import { gerarParametrosTool, descreverDominio } from "../consulta/validacao.js";
 import { executarConsulta } from "../consulta/motor.js";

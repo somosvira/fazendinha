@@ -15,7 +15,7 @@ Confira comportamento em rotas/serviços/interface, estrutura no schema e garant
 - Reprodução V4 inclui tentativas, avaliações, gestação, partos/crias, visitas e IATF. Confira `docs/pecuaria/reproducao.md`; produção/qualidade do leite e laboratório/FIV permanecem fora do escopo. Partos, incluindo aborto e natimorto, reiniciam o ciclo de tentativas; genética da doadora não se confunde com a receptora.
 - Protocolos/tarefas e exames usam a base comum descrita em `docs/pecuaria/protocolos-exames.md`. As entidades IATF anteriores são views de leitura; escreva pelo núcleo comum. Papel por data vem de `PeriodoReprodutivoAnimal`, separado da aptidão.
 - O IDEAGRI serve à carga inicial e reconciliação. O Fazendinha é a fonte operacional após importar; não crie sincronização contínua por pressuposto.
-- O assistente está suspenso em `client/src/featureFlags.ts` e `server/src/featureFlags.ts`. Não o reative incidentalmente.
+- O assistente financeiro web está ativo em `client/src/featureFlags.ts` e `server/src/featureFlags.ts`, restrito a consultas com conta pessoal e permissões financeiras completas. Confira `docs/assistente-financeiro.md`. WhatsApp permanece suspenso; não o reative incidentalmente.
 
 ## Implementação
 
