@@ -9,7 +9,7 @@ import {
 import { afterEach, expect, it, vi } from "vitest";
 import { setPropriedadeAtiva } from "../../../propriedadeScope";
 import { CorrigirFato } from "./CorrigirFato";
-import { obterReproducao, reqV4 } from "./api";
+import { obterReproducao, reqV4, type FatoReprodutivo } from "./api";
 vi.mock("./api", () => ({ obterReproducao: vi.fn(), reqV4: vi.fn() }));
 afterEach(() => { cleanup(); vi.clearAllMocks(); setPropriedadeAtiva(null); });
 it("desvincula parto somente por escolha explícita e conserva período físico da lactação", async () => {
@@ -119,4 +119,39 @@ it("carrega correção e complementos pelo sítio do fato com outro sítio ativo
     propriedadeId: 7, pesoMatriz: { acao: "VINCULAR", pesagemId: "peso7" },
     ocorrenciaRetencao: { acao: "VINCULAR", ocorrenciaId: "rp7" },
   }), "POST", 7));
+});
+
+async function abrirCorrecaoAborto(alteracoes: Partial<FatoReprodutivo> = {}) {
+  vi.mocked(obterReproducao).mockResolvedValue({ animais: [], tentativas: [], avaliacoes: [], restricoes: [],
+    partos: [{ id: "p", animalId: "a", data: "2026-10-13", tipo: "ABORTO", status: "VALIDO", versao: 4, observacao: null, ...alteracoes }] });
+  vi.mocked(reqV4).mockReset().mockResolvedValue({});
+  render(<CorrigirFato tipo="parto" id="p" animalId="a" propriedadeId={1} onFechar={vi.fn()} onSalvo={vi.fn()} />);
+  await waitFor(() => expect(screen.getByRole("button", { name: "Salvar correção" })).toHaveProperty("disabled", false));
+  fireEvent.change(screen.getByLabelText("Motivo da correção"), { target: { value: "Conferência do registro histórico" } });
+}
+
+it("corrige outro campo do aborto legado sem inventar observação nem reenviar campos intactos", async () => {
+  await abrirCorrecaoAborto();
+  fireEvent.change(screen.getByLabelText("Desfecho"), { target: { value: "ABORTO" } });
+  fireEvent.change(screen.getByLabelText("Responsável pelo parto (opcional)"), { target: { value: "Maria" } });
+  expect(screen.getByLabelText("Observação")).toHaveProperty("required", false);
+  fireEvent.click(screen.getByRole("button", { name: "Salvar correção" }));
+  await waitFor(() => expect(reqV4).toHaveBeenCalled());
+  expect(vi.mocked(reqV4).mock.calls[0][1]).toMatchObject({ responsavel: "Maria", versaoEsperada: 4 });
+  expect(vi.mocked(reqV4).mock.calls[0][1]).not.toHaveProperty("observacao");
+  expect(vi.mocked(reqV4).mock.calls[0][1]).not.toHaveProperty("desfecho");
+});
+
+it.each([
+  { tipo: "NORMAL", anterior: null, observacao: "" },
+  { tipo: "NORMAL", anterior: null, observacao: "abc" },
+  { tipo: "ABORTO", anterior: null, observacao: "abc" },
+  { tipo: "ABORTO", anterior: "Explicação comprovada", observacao: "" },
+])("exige explicação ao converter $tipo ou alterar a observação para '$observacao'", async ({ tipo, anterior, observacao }) => {
+  await abrirCorrecaoAborto({ tipo, observacao: anterior });
+  fireEvent.change(screen.getByLabelText("Desfecho"), { target: { value: "ABORTO" } });
+  fireEvent.change(screen.getByLabelText("Observação"), { target: { value: observacao } });
+  fireEvent.submit(document.getElementById("corrigir-fato-v4")!);
+  await screen.findByText("Informe a explicação do aborto com pelo menos 5 caracteres.");
+  expect(reqV4).not.toHaveBeenCalled();
 });

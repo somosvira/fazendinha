@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
+import { Panel } from "../../../financeiro/financeiro-ui";
 import { reqV4 } from "./api";
+import { periodoPadrao } from "./periodo-consulta";
 import { registro, textoPreservado } from "./folha-regras";
 
 export type CriaRelatorio = {
@@ -64,8 +66,8 @@ function exportar(snapshot: SnapshotRelatorioPartos) {
   URL.revokeObjectURL(url);
 }
 export function RelatorioPartos({ propriedadeId, podeLancar }: { propriedadeId: number; podeLancar: boolean }) {
-  const [inicio, setInicio] = useState("");
-  const [fim, setFim] = useState("");
+  const [inicio, setInicio] = useState(() => periodoPadrao("partos").inicio);
+  const [fim, setFim] = useState(() => periodoPadrao("partos").fim);
   const [snapshot, setSnapshot] = useState<SnapshotRelatorioPartos | null>(null);
   const [ocupado, setOcupado] = useState(false);
   const [erro, setErro] = useState("");
@@ -91,6 +93,7 @@ export function RelatorioPartos({ propriedadeId, podeLancar }: { propriedadeId: 
     return () => { ativo = false; };
   }, [propriedadeId]);
   const visivel = snapshot?.propriedadeId === propriedadeId ? snapshot : null;
+  const periodoAlterado = !!visivel && (inicio !== visivel.periodo.inicio || fim !== visivel.periodo.fim);
   async function consultar() {
     const sequencia = ++consultaAtual.current;
     setOcupado(true);
@@ -136,6 +139,8 @@ export function RelatorioPartos({ propriedadeId, podeLancar }: { propriedadeId: 
       );
       if (consultaAtual.current !== sequencia || propriedadeAtual.current !== propriedadeId) return;
       setSnapshot(emissao.snapshot);
+      setInicio(emissao.snapshot.periodo.inicio);
+      setFim(emissao.snapshot.periodo.fim);
       setEmissaoId(emissao.id);
     } catch (e) {
       if (consultaAtual.current === sequencia) setErro(e instanceof Error ? e.message : "Não foi possível abrir a emissão");
@@ -143,24 +148,31 @@ export function RelatorioPartos({ propriedadeId, podeLancar }: { propriedadeId: 
   }
   return (
     <div className="space-y-5">
-      <form className="flex flex-wrap items-end gap-3 print:hidden" onSubmit={e => { e.preventDefault(); void consultar(); }}>
+      <Panel className="space-y-4 p-5 print:hidden">
+        <div><h2 className="font-semibold">Período da consulta</h2><p className="text-sm text-muted-foreground">Consulte os partos e os acompanhamentos registrados no intervalo escolhido.</p></div>
+      <form className="flex flex-wrap items-end gap-3" onSubmit={e => { e.preventDefault(); void consultar(); }}>
         <label className="space-y-1 text-sm">Início (inclusive)<Input type="date" required value={inicio} onChange={e => setInicio(e.target.value)} /></label>
         <label className="space-y-1 text-sm">Fim (inclusive)<Input type="date" required min={inicio} value={fim} onChange={e => setFim(e.target.value)} /></label>
         <Button disabled={ocupado} type="submit">{ocupado ? "Consultando…" : "Consultar ficha de partos"}</Button>
       </form>
-      <div className="space-y-2 print:hidden">
+      </Panel>
+      <Panel className="space-y-3 p-5 print:hidden">
+        <div><h2 className="font-semibold">Histórico de emissões</h2><p className="text-sm text-muted-foreground">Reabra uma emissão para consultar e exportar os dados preservados, sem recalcular os fatos atuais.</p></div>
         <label className="block text-sm">Emissões anteriores
-          <select className="mt-1 block w-full rounded-md border bg-background px-3 py-2" value={emissaoId ?? ""} disabled={ocupado}
+          <select className="mt-1 block w-full rounded-md border bg-card px-3 py-2" value={emissaoId ?? ""} disabled={ocupado}
             onChange={e => { if (e.target.value) void abrir(e.target.value); }}>
             <option value="">Selecione uma emissão preservada</option>
-            {emissoes.map(e => <option key={e.id} value={e.id}>{e.criadoEm} · {e.id}</option>)}
+            {emissoes.map(e => <option key={e.id} value={e.id}>{new Date(e.criadoEm).toLocaleString("pt-BR")}</option>)}
           </select>
         </label>
-      </div>
+      </Panel>
       {erro && <p role="alert" className="text-destructive print:hidden">{erro}</p>}
-      {!visivel && <p className="text-muted-foreground print:hidden">Selecione o período e consulte a ficha de partos e pós-parto.</p>}
+      {!visivel && <Panel className="p-5 print:hidden"><p role={ocupado ? "status" : undefined} className="text-muted-foreground">{ocupado ? "Carregando a ficha de partos e pós-parto…" : inicio && fim ? "O período inicial já está preenchido. Consulte a ficha de partos e pós-parto ou ajuste as datas acima." : "Defina o período acima para consultar a ficha de partos e pós-parto."}</p></Panel>}
       {visivel && <>
-        <div className="flex flex-wrap items-center gap-2 print:hidden">
+        <Panel className="space-y-3 p-5 print:hidden">
+          <div><h2 className="font-semibold">Resultado exibido</h2><p className="text-sm text-muted-foreground">Sítio {visivel.propriedadeId} · {visivel.periodo.inicio} a {visivel.periodo.fim}. Impressão e CSV usam estes dados.</p></div>
+          {periodoAlterado && <p className="rounded-lg border bg-muted p-3 text-sm">As datas editadas ainda não foram consultadas. O resultado abaixo mantém o período exibido; use Consultar ficha de partos para atualizá-lo.</p>}
+        <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" onClick={() => window.print()}>Imprimir ficha</Button>
           <Button variant="outline" onClick={() => exportar(visivel)}>Exportar CSV</Button>
           {podeLancar && !emissaoId && <Button disabled={ocupado} onClick={() => void salvarEmissao()}>Salvar emissão deste período</Button>}
@@ -168,18 +180,19 @@ export function RelatorioPartos({ propriedadeId, podeLancar }: { propriedadeId: 
             ? `Emissão preservada: ${emissaoId}. Reabrir conserva os mesmos dados.`
             : "Consulta atual. Salvar uma emissão preserva um novo corte dos dados deste período."}</span>
         </div>
-        <FolhaRelatorioPartos snapshot={visivel} />
+        </Panel>
+        <Panel className="min-w-0 overflow-x-auto p-5 print:overflow-visible print:border-0 print:p-0 print:shadow-none"><FolhaRelatorioPartos snapshot={visivel} /></Panel>
       </>}
     </div>
   );
 }
-export function FolhaRelatorioPartos({ snapshot }: { snapshot: SnapshotRelatorioPartos }) {
+export function FolhaRelatorioPartos({ snapshot, operacional = false }: { snapshot: SnapshotRelatorioPartos; operacional?: boolean }) {
   return <article className="space-y-5 text-sm print:text-xs">
     <header>
       <h2 className="text-lg font-semibold">Ficha de partos e pós-parto</h2>
       <p>Sítio {snapshot.propriedadeId} · {snapshot.periodo.inicio} a {snapshot.periodo.fim} (ambas inclusive) · {snapshot.totalPartos} partos</p>
-      <p>Emissão: {snapshot.emitidoEm} · Versão do relatório: {snapshot.versao} · Ordem: data e ID do parto crescentes.</p>
-      <p className="mt-2 text-xs">RP: retenção de placenta; Não informado é diferente de Não. Partos válidos do sítio na data do fato; um parto pode ter várias crias. Pesos e escores têm vínculo explícito com o parto. Quantidade desconhecida de colostro não significa zero. Complementos representam o corte da emissão, inclusive quando registrados após o período.</p>
+      {!operacional && <p>Emissão: {snapshot.emitidoEm} · Versão do relatório: {snapshot.versao} · Ordem: data e ID do parto crescentes.</p>}
+      <p className="mt-2 text-xs">RP: retenção de placenta; Não informado é diferente de Não. Partos válidos do sítio na data do fato; um parto pode ter várias crias. Pesos e escores têm vínculo explícito com o parto. Quantidade desconhecida de colostro não significa zero. Complementos representam os dados consultados, inclusive quando registrados após o período.</p>
     </header>
     {snapshot.partos.length === 0 && <p>Nenhum parto válido neste período.</p>}
     {snapshot.partos.map(p => <section key={p.id} className="rounded-md border p-3 print:rounded-none">
@@ -194,7 +207,7 @@ export function FolhaRelatorioPartos({ snapshot }: { snapshot: SnapshotRelatorio
       <table className="mt-3 w-full border-collapse">
         <thead className="table-header-group"><tr><th className="border p-2">Cria</th><th className="border p-2">Pesos da cria</th><th className="border p-2">Fornecimentos de colostro</th></tr></thead>
         <tbody>{p.crias.length ? p.crias.map(c => <tr key={c.id} className="break-inside-avoid">
-          <td className="border p-2">{c.ordem} · {textoPreservado(registro(c.filiacaoSnapshot).brincoInformado ?? c.animalId)}<p>Sexo: {c.sexo} · {c.viva ? "Viva" : "Sem vida"}</p></td>
+          <td className="border p-2">{c.ordem} · {textoPreservado(registro(c.filiacaoSnapshot).brincoInformado ?? c.animalId)}<p>Sexo: {c.sexo} · {c.viva ? "Viva" : "Sem vida"}</p>{operacional && c.animalId && <a className="font-semibold underline" href={`/pecuaria/rebanho/animais/${c.animalId}#reproducao`}>Abrir ficha da cria {c.ordem}</a>}</td>
           <td className="border p-2"><p>Peso informado no nascimento: {registro(c.filiacaoSnapshot).pesoKg == null ? "Não informado" : `${textoPreservado(registro(c.filiacaoSnapshot).pesoKg)} kg`}</p><p>Pesagens vinculadas: {pesos(c.pesos)}</p></td>
           <td className="border p-2">{c.colostro.length ? c.colostro.map(f => <p key={f.id}>{horarioRelatorio(f.data, f.ocorridoEm, f.horarioEstimado)} · Quantidade: {f.quantidadeLitros == null ? "Não informada" : `${f.quantidadeLitros} L`} · Unidade informada: {f.unidadeInformada ?? "—"} · Método: {f.metodoQualidade ?? "—"} · Brix: {f.qualidadeBrix ?? "—"} · Qualidade: {f.qualidadeClassificacao ?? "—"} · Tipo: {f.tipo ?? "—"} · Forma: {f.forma ?? "—"} · Responsável: {f.responsavel ?? "—"} · Obs.: {f.observacao ?? "—"}</p>) : "Sem fornecimento registrado"}</td>
         </tr>) : <tr><td colSpan={3} className="border p-2">Sem cria registrada; o parto permanece contado.</td></tr>}</tbody>

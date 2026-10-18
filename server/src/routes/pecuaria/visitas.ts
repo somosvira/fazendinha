@@ -6,7 +6,7 @@ import { z } from "zod";
 import {
   resolverEscopoEscrita,
   resolverEscopoLeitura,
-} from "../../services/propriedade.js";
+} from "./escopo-custos.js";
 import * as s from "../../services/pecuaria/reproducao/schemas.js";
 import * as visitas from "../../services/pecuaria/reproducao/visitas.js";
 import {

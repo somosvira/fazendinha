@@ -1,8 +1,15 @@
+import "./reproducao-v4.css";
+import { ReproducaoIndividual } from "./ReproducaoIndividual";
+import { ManejoReprodutivo } from "./ManejoReprodutivo";
+import { navegarConsultaComSitio, urlConsultaComSitio } from "./contexto-consulta";
+import {CirculoMarcosReprodutivos} from "./CirculoMarcosReprodutivos";
+import {DemandasAcompanhamento,type DemandaAcompanhamento} from "./DemandasAcompanhamento";
+import { CustosDiretos } from "../custos/CustosDiretos";
 import { SubTabs } from "../../../components/SubTabs";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import { IndicadoresReprodutivos } from "./IndicadoresReprodutivos";
-import { ConfiguracaoReprodutiva } from "./ConfiguracaoReprodutiva";
-import { RelatorioPartos } from "./RelatorioPartos";
+import { ConsultaPorSitio } from "./ConsultaPorSitio";
+import { PartosPosParto } from "./PartosPosParto";
 import { ElegibilidadeAnimal } from "./ElegibilidadeAnimal";
 import { AcompanhamentoReprodutivo } from "./AcompanhamentoReprodutivo";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -29,10 +36,15 @@ import { Exposicoes } from "./Exposicoes";
 import { Iatf } from "./Iatf";
 import { DetalheFato } from "./DetalheFato";
 import { AcoesReprodutivas } from "./AcoesReprodutivas";
+function acaoDaUrl(): AcaoReprodutiva | null {
+  const acao = new URLSearchParams(window.location.search).get("acao");
+  return ["avaliacao", "tentativa", "parto", "situacao", "restricao"].includes(acao ?? "") ? acao as AcaoReprodutiva : null;
+}
 const ROTULOS: Record<string, string> = {
   VAZIA: "Vazia",
   GESTANTE: "Gestante",
   DESCONHECIDA: "Desconhecida",
+  AGUARDANDO_DIAGNOSTICO: "Aguardando diagnóstico",
   POSITIVO: "Positivo",
   RECONFIRMACAO: "Reconfirmada",
   SEXAGEM: "Sexagem",
@@ -44,15 +56,18 @@ export function ReproducaoAnimal({
   animalId,
   podeLancar,
   recarregarToken = 0,
+  onSituacao,
   propriedadeId,
 }: {
   animalId: string;
   propriedadeId?: number | null;
   podeLancar: boolean;
   recarregarToken?: number;
+  onSituacao?: (situacao: string | null) => void;
 }) {
   return (
-    <ConteudoReproducao
+    <ReproducaoIndividual
+      onSituacao={onSituacao}
       animalId={animalId}
       podeLancar={podeLancar}
       recarregarToken={recarregarToken}
@@ -61,21 +76,23 @@ export function ReproducaoAnimal({
   );
 }
 const ROTINAS = [
-  { id: "ciclos", label: "Ciclos e manejo" },
+  { id: "ciclos", label: "Animais e ciclos" },
+  { id: "agenda", label: "Agenda" },
+  { id: "programacoes", label: "Programações" },
   { id: "partos", label: "Partos e pós-parto" },
   { id: "indicadores", label: "Indicadores" },
-  { id: "configuracao", label: "Política reprodutiva" },
 ] as const;
 type Rotina = typeof ROTINAS[number]["id"];
 function rotinaDaUrl(): Rotina {
   const valor = new URLSearchParams(window.location.search).get("rotina");
-  return ROTINAS.find(r => r.id === valor)?.id ?? "ciclos";
+  return ROTINAS.find(r => r.id === valor)?.id ?? (new URLSearchParams(window.location.search).has("programacaoId") ? "programacoes" : "ciclos");
 }
 export function Reproducao({ podeLancar }: { podeLancar: boolean }) {
   const [rotina, setRotina] = useState<Rotina>(rotinaDaUrl);
   const propriedadeId = getPropriedadeAtiva();
+  const [consultaUrl, setConsultaUrl] = useState(window.location.search);
   useEffect(() => {
-    const atualizar = () => setRotina(rotinaDaUrl());
+    const atualizar = () => { setRotina(rotinaDaUrl()); setConsultaUrl(window.location.search); };
     window.addEventListener("popstate", atualizar);
     return () => window.removeEventListener("popstate", atualizar);
   }, []);
@@ -85,55 +102,68 @@ export function Reproducao({ podeLancar }: { podeLancar: boolean }) {
     navegarPara(url.pathname + url.search + url.hash);
   }
   function conteudoDaRotina() {
-    if (rotina === "ciclos") return <ConteudoReproducao podeLancar={podeLancar} propriedadeId={propriedadeId} />;
-    if (propriedadeId == null) {
-      const consulta = rotina === "partos" ? "a ficha de partos e pós-parto"
-        : rotina === "indicadores" ? "os indicadores reprodutivos" : "a política reprodutiva";
-      return <Panel>
-        <p className="p-5 text-sm" role="status">
-          Selecione um sítio para consultar {consulta}. A visão consolidada permanece disponível em Ciclos e manejo.
-        </p>
-      </Panel>;
-    }
-    if (rotina === "partos") return <RelatorioPartos key={propriedadeId} propriedadeId={propriedadeId} podeLancar={podeLancar} />;
-    if (rotina === "indicadores") return <IndicadoresReprodutivos key={propriedadeId} propriedadeId={propriedadeId} podeLancar={podeLancar} />;
-    return <ConfiguracaoReprodutiva key={propriedadeId} propriedadeId={propriedadeId} podeLancar={podeLancar} />;
+    const parametros = new URLSearchParams(consultaUrl);
+    const historico = parametros.get("visao") === "historico" || ["animalId", "fatoId", "tentativaId", "acao"].some(chave => parametros.has(chave));
+    // Deep links históricos continuam acessíveis inclusive no consolidado.
+    if (rotina === "ciclos" && historico) return <>
+      <Button secondary onClick={() => {
+        const url = new URL(window.location.href);
+        ["visao", "animalId", "fatoId", "tentativaId", "acao"].forEach(chave => url.searchParams.delete(chave));
+        navegarPara(url.pathname + url.search);
+      }}>Voltar às filas de manejo</Button>
+      <ConteudoReproducao podeLancar={podeLancar} propriedadeId={propriedadeId ?? (Number(parametros.get("sitio")) || null)}/>
+    </>;
+    return <ConsultaPorSitio>{sitioId => <div key={`${sitioId}:${rotina}`} className="space-y-5">
+      {rotina === "partos" ? <PartosPosParto propriedadeId={sitioId}/>
+        : rotina === "indicadores" ? <IndicadoresReprodutivos propriedadeId={sitioId} podeLancar={podeLancar} modo="painel"/>
+        : rotina === "agenda" ? <AcompanhamentoReprodutivo atualizacao={sitioId} propriedadeId={sitioId}/>
+        : rotina === "programacoes" ? <ConteudoReproducao propriedadeId={sitioId} podeLancar={podeLancar} secao="programacoes"/>
+        : <ManejoReprodutivo propriedadeId={sitioId} podeLancar={podeLancar}
+            onConsultarHistorico={() => navegarConsultaComSitio("/pecuaria/reproducao?rotina=ciclos&visao=historico", sitioId)}
+            onRegistrarEvento={() => navegarConsultaComSitio("/pecuaria/reproducao?rotina=ciclos&visao=historico&acao=avaliacao", sitioId)}/>
+      }
+    </div>}</ConsultaPorSitio>;
   }
   return (
     <PaginaFinanceira>
-      <PageHeader
+    <div className={`reproducao-v4 ${rotina === "indicadores" ? "reproducao-v4-indicadores" : ""}`}>
+      {rotina !== "indicadores" && <PageHeader
         eyebrow="Pecuária"
         titulo="Reprodução"
-        descricao="Ciclos, partos e pós-parto, indicadores e regras de elegibilidade."
-      />
-      <SubTabs variant="financeiro" ariaLabel="Rotinas da reprodução" tabs={[...ROTINAS]}
-        active={rotina} onSelect={selecionarRotina} />
+        descricao="Organize o manejo e acompanhe cada ciclo."
+      />}
+      {rotina !== "indicadores" && <SubTabs variant="financeiro" ariaLabel="Rotinas da reprodução" tabs={[...ROTINAS]}
+        active={rotina} onSelect={selecionarRotina} />}
+
       {conteudoDaRotina()}
+      {rotina === "indicadores" && <div className="mt-6"><SubTabs variant="financeiro" ariaLabel="Rotinas da reprodução" tabs={[...ROTINAS]}
+        active={rotina} onSelect={selecionarRotina} /></div>}
+      <div className="mt-5 border-t border-border pt-4 flex flex-wrap gap-4 text-sm"><a className="font-semibold underline" href={urlConsultaComSitio("/pecuaria/relatorios")} onClick={e => { if (!e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey) { e.preventDefault(); navegarConsultaComSitio("/pecuaria/relatorios"); } }}>Relatórios da Pecuária</a><a className="underline" href={urlConsultaComSitio("/configuracoes/pecuaria/reproducao/politica")} onClick={e => { if (!e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey) { e.preventDefault(); navegarConsultaComSitio("/configuracoes/pecuaria/reproducao/politica"); } }}>Política reprodutiva</a></div>
+    </div>
     </PaginaFinanceira>
   );
 }
 function ConteudoReproducao({
+  secao = "historico",
   animalId,
   propriedadeId,
   podeLancar,
   recarregarToken = 0,
 }: {
+  secao?: "historico" | "programacoes";
   animalId?: string;
   propriedadeId?: number | null;
   podeLancar: boolean;
   recarregarToken?: number;
 }) {
+  const [demandaAvaliada,setDemandaAvaliada]=useState<DemandaAcompanhamento|null>(null);
   const [fatoAberto, setFatoAberto] = useState<
     (FatoReprodutivo & { grupo: string }) | null
   >(null);
   const [painel, setPainel] = useState<PainelReprodutivo | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(true);
-  const [acao, setAcao] = useState<AcaoReprodutiva | null>(() =>
-    new URLSearchParams(window.location.search).get("acao") === "parto"
-      ? "parto"
-      : null,
-  );
+  const [acao, setAcao] = useState<AcaoReprodutiva | null>(acaoDaUrl);
   const [animalAcao, setAnimalAcao] = useState<string | undefined>(animalId);
   const [q, setQ] = useState(() =>
     animalId
@@ -170,7 +200,7 @@ function ConteudoReproducao({
       const p = new URLSearchParams(window.location.search);
       setConsultaUrl(window.location.search);
       setAnimalAcao(p.get("animalId") ?? undefined);
-      setAcao(p.get("acao") === "parto" ? "parto" : null);
+      setAcao(acaoDaUrl());
       setQ(p.get("q") ?? "");
       setSituacao(p.get("situacao") ?? "");
     };
@@ -188,7 +218,7 @@ function ConteudoReproducao({
     if (chave === "q") setQ(valor);
     else setSituacao(valor);
   };
-  const fecharFormulario=()=>{setAcao(null);const url=new URL(window.location.href);url.searchParams.delete("acao");window.history.replaceState(window.history.state,"",url.pathname+url.search+url.hash);};
+  const fecharFormulario=()=>{setAcao(null);setDemandaAvaliada(null);const url=new URL(window.location.href);url.searchParams.delete("acao");window.history.replaceState(window.history.state,"",url.pathname+url.search+url.hash);};
   const abrir = (tipo: AcaoReprodutiva, id = animalId) => {
     setAnimalAcao(id);
     setAcao(tipo);
@@ -201,6 +231,7 @@ function ConteudoReproducao({
   );
   const fatos: Array<FatoReprodutivo & { grupo: string }> = painel
     ? [
+        ...(painel.gestacoes??[]).filter(g=>g.animalId&&g.encerradaEm).map(g=>({...g,animalId:g.animalId!,data:g.encerradaEm!,tipo:g.tipoEncerramento??"NAO_IDENTIFICADO",motivo:g.motivoEncerramento,grupo:"Gestação"})),
         ...painel.tentativas.map((t) => ({ ...t, grupo: "Tentativa" })),
         ...painel.avaliacoes.map((a) => ({ ...a, grupo: "Avaliação" })),
         ...painel.partos.map((p) => ({ ...p, grupo: "Parto" })),
@@ -218,8 +249,14 @@ function ConteudoReproducao({
     : [];
   useEffect(() => {
     const id = new URLSearchParams(consultaUrl).get("fatoId");
-    if (id && painel) setFatoAberto(fatos.find(f => f.id === id) ?? null);
+    if (id && painel) setFatoAberto(fatos.find(f => f.id === id||f.exame?.id===id) ?? null);
   }, [painel, consultaUrl]);
+  if (secao === "programacoes") return <div className="space-y-5">
+    <ErrorBox erro={erro}/>
+    {erro && <Button secondary onClick={() => void carregar()}>Tentar novamente</Button>}
+    {carregando && <p role="status">Carregando programações…</p>}
+    {!carregando && painel && <Iatf onMudou={carregar} animais={painel.animais} propriedadeId={propriedadeId ?? undefined} painel={painel} podeLancar={podeLancar}/>}
+  </div>;
   return (
     <div className="space-y-5">
       <ErrorBox erro={erro} />
@@ -407,6 +444,9 @@ function ConteudoReproducao({
           />
         </Panel>
       )}
+      {animalId && painel && propriedadeId != null && <CustosDiretos key={`${animalId}:${recarregarToken}`} animalId={animalId} propriedadeId={propriedadeId} podeLancar={podeLancar} />}
+      {animalId&&painel?.marcos&&<CirculoMarcosReprodutivos {...painel.marcos} estado={ROTULOS[painel.marcos.estado]??painel.marcos.estado}/>}
+      {animalId&&painel&&propriedadeId!=null&&<DemandasAcompanhamento animalId={animalId} propriedadeId={propriedadeId} painel={painel} podeLancar={podeLancar} onAvaliar={d=>{setDemandaAvaliada(d);abrir("avaliacao",animalId);}} atualizacao={recarregarToken}/>}
       {animalId && painel && (propriedadeId != null ? <ElegibilidadeAnimal
         animalId={animalId} propriedadeId={propriedadeId} painel={painel} podeLancar={podeLancar} onMudou={() => void carregar()} />
         : <p className="text-sm">A elegibilidade exige o sítio comprovado do animal. Confira seu histórico de localização.</p>)}
@@ -430,19 +470,10 @@ function ConteudoReproducao({
           onFechar={() => setFatoAberto(null)}
         />
       )}
-      {!animalId && painel && <AcompanhamentoReprodutivo atualizacao={painel} />}
-      {!animalId && painel && (
-        <Iatf
-          onMudou={carregar}
-          animais={painel.animais}
-          propriedadeId={propriedadeId ?? undefined}
-          painel={painel}
-          podeLancar={podeLancar}
-        />
-      )}
+
       {!animalId && (
         <>
-          <Exposicoes podeLancar={podeLancar} />
+          <Exposicoes podeLancar={podeLancar} propriedadeId={propriedadeId ?? undefined} />
           <a className="text-sm underline" href="/configuracoes/pecuaria/reproducao/regras-sanitarias">Gerenciar regras sanitárias da reprodução</a>
         </>
       )}
@@ -451,6 +482,9 @@ function ConteudoReproducao({
           acao={acao}
           painel={painel}
           animalInicial={animalAcao}
+          demandaInicial={demandaAvaliada??undefined}
+          finalidadeInicial={demandaAvaliada?.finalidade}
+          tipoExameInicial={demandaAvaliada?.regraSnapshot.tipoExameId??undefined}
           propriedadeId={propriedadeId ?? undefined}
           onFechar={fecharFormulario}
           onSalvo={() => {

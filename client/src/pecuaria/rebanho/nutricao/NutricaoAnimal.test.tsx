@@ -11,9 +11,19 @@ afterEach(cleanup);
 describe("nutrição individual", () => {
   it("mostra parcela, custo incompleto, dias e origem; permite paginar o histórico", async () => {
     render(<NutricaoAnimal animalId="animal" />);
-    await screen.findByText(/Silagem: 10.000 KG/);
+    await screen.findByRole("rowheader", { name: "Silagem" });
+    expect(screen.getByRole("cell", { name: "10 KG" })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "Média por dia" })).toBeTruthy();
     expect(screen.getByText(/cobertura incompleta/)).toBeTruthy();
-    expect(screen.getByText("Abrir fechamento do lote").getAttribute("href")).toContain("fechamentoId=fechamento");
+    const link = screen.getByRole("link", { name: /Abrir fechamento do lote/ });
+    expect(link.getAttribute("href")).toContain("fechamentoId=fechamento");
+    expect(link.closest("header")).toBeTruthy();
+    const recolher = screen.getByRole("button", { name: "Ração · versão 1" });
+    fireEvent.click(recolher);
+    expect(recolher.getAttribute("aria-expanded")).toBe("false");
+    expect(screen.queryByRole("rowheader", { name: "Silagem" })).toBeNull();
+    expect(screen.getByRole("link", { name: /Abrir fechamento do lote/ })).toBeTruthy();
+    fireEvent.click(recolher);
     fireEvent.click(screen.getByText("Próxima"));
     await waitFor(() => expect(consultarConsumoAnimal).toHaveBeenLastCalledWith("animal", 2));
   });

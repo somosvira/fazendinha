@@ -53,7 +53,7 @@ export async function obterContextosAnimaisNaDataTx(
     }),
     tx.gestacaoAnimal.findMany({
       where: { animalId, status: "VALIDO", confirmadaEm: { lte: referencia } },
-      select: { id: true, animalId: true, propriedadeId: true, tentativaId: true, confirmadaEm: true, encerradaEm: true, status: true },
+      select: { id: true, animalId: true, propriedadeId: true, tentativaId: true, confirmadaEm: true, encerradaEm: true, tipoEncerramento:true, status: true },
     }),
     tx.localizacaoAnimal.findMany({
       where: { animalId, desde: { lte: referencia }, OR: [{ ate: null }, { ate: { gt: referencia } }] },

@@ -42,38 +42,68 @@ async function carregarBaseTx(tx: Prisma.TransactionClient, propriedadeId: numbe
   const atividades = participantesVisita.length ? await tx.atividadeVisita.findMany({ where: { id: { in: participantesVisita.map(p => p.atividadeId) } }, select: { id: true, visitaId: true } }) : [];
   const visitas = atividades.length ? await tx.visitaVeterinaria.findMany({ where: { id: { in: atividades.map(a => a.visitaId) }, encerradaEm: null, propriedadeId }, select: { id: true, nome: true } }) : [];
   const grupos = new Map<string, Grupo>();
+  const avaliacoes = await tx.avaliacaoReprodutiva.findMany({ where: { animalId: { in: ids }, status: "VALIDO", data: { lte: referencia } }, orderBy: [{ data: "desc" }, { criadoEm: "desc" }, { id: "desc" }] });
+  const demandas=await tx.demandaAcompanhamentoReprodutivo.findMany({where:{animalId:{in:ids},estado:"PENDENTE",dataReferencia:{lte:referencia}},orderBy:[{previstaPara:"asc"},{ocorrencia:"asc"},{id:"asc"}]});
+  const examesRetorno=avaliacoes.length?await tx.interpretacaoReprodutiva.findMany({where:{id:{in:avaliacoes.map(a=>a.id)}},select:{id:true,exame:{select:{tipoExameId:true,finalidadePrincipal:true,formatoSnapshot:true,demandaAcompanhamentoId:true}}}}):[];
+  const origemCompativel=(d:(typeof demandas)[number],a:(typeof avaliacoes)[number])=>{
+    const exame=examesRetorno.find(e=>e.id===a.id)?.exame;
+    const regra=d.regraSnapshot as Record<string,unknown>;
+    return (d.tentativaId?d.tentativaId===a.tentativaId:d.gestacaoId===a.gestacaoId)&&exame?.finalidadePrincipal===d.finalidade&&(!regra.tipoExameId||(exame.tipoExameId===regra.tipoExameId&&(exame.formatoSnapshot as Record<string,unknown>).versao===regra.tipoExameVersao));
+  };
+  const compativel=(d:(typeof demandas)[number],a:(typeof avaliacoes)[number])=>{
+    if(!origemCompativel(d,a))return false;
+    const explicita=examesRetorno.find(e=>e.id===a.id)?.exame.demandaAcompanhamentoId;
+    return explicita?explicita===d.id:demandas.find(c=>origemCompativel(c,a))?.id===d.id;
+  };
   for (const tarefa of tarefas) {
     const execucao = tarefa.execucao, protocolo = execucao.protocolo;
+    const demanda=demandas.find(d=>d.tarefaId===tarefa.id);
+    const retornoInformado=demanda?avaliacoes.find(a=>a.retornoEm&&compativel(demanda,a))?.retornoEm:null;
+    const previstaAgenda=retornoInformado??tarefa.previstaPara;
     const identidade = identidadeGrupoProtocolo({ protocoloId: protocolo.id, versao: protocolo.versao, tipo: protocolo.tipo,
-      programacaoId: execucao.rodadaId, participacaoId: execucao.id, etapaId: tarefa.etapaId, previstaPara: tarefa.previstaPara,
+      programacaoId: execucao.rodadaId, participacaoId: execucao.id, etapaId: tarefa.etapaId, previstaPara: previstaAgenda,
       precisaoTemporal: tarefa.precisaoTemporal, previsaoPendente: tarefa.previsaoPendente });
     let grupo = grupos.get(identidade);
     if (!grupo) {
       const tipo: TipoAtividade = protocolo.tipo === "REPRODUTIVO" ? "TAREFA_IATF" : tarefa.etapa.tipo === "EXAME" ? "EXAME_SANITARIO" : "APLICACAO_SANITARIA";
       grupo = { grupo: { origem: "PROTOCOLO", identidade }, nome: `${protocolo.nome} · ${tarefa.etapa.nome}`,
-        secao: protocolo.tipo === "REPRODUTIVO" ? "REPRODUCAO" : "SANIDADE", janela: janelaPlanner(tarefa.previstaPara, tarefa.precisaoTemporal, tarefa.previsaoPendente, data), tipo,
+        secao: protocolo.tipo === "REPRODUTIVO" ? "REPRODUCAO" : "SANIDADE", janela: janelaPlanner(previstaAgenda, retornoInformado?"DIA":tarefa.precisaoTemporal,retornoInformado?false:tarefa.previsaoPendente,data), tipo,
         protocolo: { id: protocolo.id, nome: protocolo.nome, versao: protocolo.versao },
         turma: { id: execucao.rodadaId ?? execucao.id, nome: execucao.rodada?.nome ?? "Participação individual" },
         etapa: { id: tarefa.etapaId, nome: tarefa.etapa.nome, ordem: tarefa.etapa.ordem },
-        previstaPara: tarefa.previsaoPendente ? null : serializarDataIatf(tarefa.previstaPara, tarefa.precisaoTemporal), precisaoTemporal: tarefa.precisaoTemporal,
+        previstaPara: retornoInformado?retornoInformado.toISOString().slice(0,10):tarefa.previsaoPendente ? null : serializarDataIatf(tarefa.previstaPara, tarefa.precisaoTemporal), precisaoTemporal: retornoInformado?"DIA":tarefa.precisaoTemporal,
         criterios: null, contexto: { protocoloId: protocolo.id, programacaoId: execucao.rodadaId, etapaId: tarefa.etapaId }, membros: [] };
       grupos.set(identidade, grupo);
     }
-    const contexto = contextos.get(execucao.animalId)!;
+    const contexto = {...contextos.get(execucao.animalId)!,...(demanda?{acompanhamento:demanda}:{})};
     const visitasAbertas = [...new Map(participantesVisita.filter(p => p.tarefaId === tarefa.id).flatMap(p => {
       const atividade = atividades.find(a => a.id === p.atividadeId), visita = visitas.find(v => v.id === atividade?.visitaId);
       return visita ? [[visita.id, visita] as const] : [];
     })).values()];
-    grupo.membros.push({ animalId: execucao.animalId, tarefaId: tarefa.id, contexto, motivos: [`${protocolo.nome}, ${tarefa.etapa.nome}`, `Previsão: ${grupo.previstaPara ?? "não definida"}`], visitasAbertas,
-      estadoTarefa: { previstaPara: tarefa.previstaPara, previsaoPendente: tarefa.previsaoPendente, precisaoTemporal: tarefa.precisaoTemporal,
+    grupo.membros.push({ animalId: execucao.animalId, tarefaId: tarefa.id, contexto, motivos: [`${protocolo.nome}, ${tarefa.etapa.nome}`, `Previsão: ${grupo.previstaPara ?? "não definida"}`,...(retornoInformado?[`Retorno informado prevalece na agenda; tarefa planejada para ${tarefa.previstaPara.toISOString().slice(0,10)}`]:[])], visitasAbertas,
+      estadoTarefa: { acompanhamento:demanda??null,retornoInformadoEm:retornoInformado??null,previstaParaAgenda:previstaAgenda,previstaPara: tarefa.previstaPara, previsaoPendente: tarefa.previsaoPendente, precisaoTemporal: tarefa.precisaoTemporal,
         parametros: tarefa.parametros, execucaoId: execucao.id, inicio: execucao.inicio, inicioEfetivo: execucao.inicioEfetivo, precisaoInicioEfetivo: execucao.precisaoInicioEfetivo } });
   }
-  const avaliacoes = await tx.avaliacaoReprodutiva.findMany({ where: { animalId: { in: ids }, status: "VALIDO", data: { lte: referencia } }, orderBy: [{ data: "desc" }, { criadoEm: "desc" }, { id: "desc" }] });
+  for(const demanda of demandas){
+    if(demanda.tarefaId&&tarefas.some(t=>t.id===demanda.tarefaId))continue;
+    const manual=avaliacoes.find(a=>a.retornoEm&&compativel(demanda,a));
+    const prevista=manual?.retornoEm??demanda.previstaPara;
+    const regra=demanda.regraSnapshot as Record<string,unknown>;
+    const identidade=hashDados({origem:"RETORNO",finalidade:demanda.finalidade,ocorrencia:demanda.ocorrencia,politicaId:demanda.politicaId,tipoExameId:regra.tipoExameId,previstaPara:prevista});
+    let grupo=grupos.get(identidade);
+    if(!grupo){grupo={grupo:{origem:"RETORNO",identidade},nome:demanda.finalidade==="DIAGNOSTICO"?"Diagnóstico pendente":`Reconfirmação ${demanda.ocorrencia}`,secao:"REPRODUCAO",janela:janelaPlanner(prevista,"DIA",false,data),tipo:"AVALIACAO_REPRODUTIVA",protocolo:null,turma:null,etapa:null,previstaPara:prevista.toISOString().slice(0,10),precisaoTemporal:"DIA",criterios:null,contexto:{demandasPorAnimal:{}},membros:[]};grupos.set(identidade,grupo);}
+    (grupo.contexto.demandasPorAnimal as Record<string,string>)[demanda.animalId]=demanda.id;
+    grupo.membros.push({animalId:demanda.animalId,tarefaId:null,contexto:{...contextos.get(demanda.animalId)!,acompanhamento:demanda},motivos:[`${grupo.nome}; regra versão ${regra.politicaVersao}`,`Previsão da regra: ${demanda.previstaPara.toISOString().slice(0,10)}`,...(manual?.retornoEm?[`Retorno informado: ${manual.retornoEm.toISOString().slice(0,10)}`]:[])],estadoTarefa:{demandaId:demanda.id,versao:demanda.versao,regraSnapshot:demanda.regraSnapshot,retornoInformadoEm:manual?.retornoEm??null},visitasAbertas:[]});
+  }
   const vistos = new Set<string>();
   for (const avaliacao of avaliacoes) {
-    if (vistos.has(avaliacao.animalId)) continue;
-    vistos.add(avaliacao.animalId);
-    if (!avaliacao.retornoEm) continue;
+    const exameRetorno=examesRetorno.find(e=>e.id===avaliacao.id)?.exame;
+    const finalidade=exameRetorno?.finalidadePrincipal??"NAO_IDENTIFICADA";
+    const ancora=finalidade==="DIAGNOSTICO"?avaliacao.tentativaId:avaliacao.gestacaoId;
+    const necessidade=hashDados({animalId:avaliacao.animalId,ancora:ancora??`SEM_VINCULO:${avaliacao.id}`,finalidade,tipoExameId:exameRetorno?.tipoExameId??null,demandaId:exameRetorno?.demandaAcompanhamentoId??null});
+    if (vistos.has(necessidade)) continue;
+    vistos.add(necessidade);
+    if (!avaliacao.retornoEm||demandas.some(d=>compativel(d,avaliacao))) continue;
     const retorno = avaliacao.retornoEm.toISOString().slice(0, 10), identidade = hashDados({ origem: "RETORNO", data: retorno });
     let grupo = grupos.get(identidade);
     if (!grupo) {
@@ -81,7 +111,7 @@ async function carregarBaseTx(tx: Prisma.TransactionClient, propriedadeId: numbe
         tipo: "AVALIACAO_REPRODUTIVA", protocolo: null, turma: null, etapa: null, previstaPara: retorno, precisaoTemporal: "DIA", criterios: null, contexto: {}, membros: [] };
       grupos.set(identidade, grupo);
     }
-    grupo.membros.push({ animalId: avaliacao.animalId, tarefaId: null, contexto: contextos.get(avaliacao.animalId)!, motivos: [`Retorno agendado para ${retorno}`],
+    grupo.membros.push({ animalId: avaliacao.animalId, tarefaId: null, contexto: {...contextos.get(avaliacao.animalId)!,retornoOrigem:{avaliacaoId:avaliacao.id,tentativaId:avaliacao.tentativaId,gestacaoId:avaliacao.gestacaoId,finalidade,tipoExameId:exameRetorno?.tipoExameId??null}}, motivos: [`Retorno agendado para ${retorno}`],
       estadoTarefa: { avaliacaoId: avaliacao.id, retornoEm: avaliacao.retornoEm }, visitasAbertas: [] });
   }
   return { contextos, grupos };
@@ -245,7 +275,7 @@ export async function incluirGrupoPlannerTx(tx: Prisma.TransactionClient, visita
     for (const [indice, lote] of lotes.entries()) {
       const nome = grupo.nome.slice(0, lotes.length > 1 ? 95 : 120) + (lotes.length > 1 ? ` (${indice + 1}/${lotes.length})` : "");
       const atividade = atividadeSchema.parse({ propriedadeId: input.propriedadeId, tipo: grupo.tipo, nome, extra: input.grupo.origem === "EXTRA" || input.grupo.origem === "LIVRE",
-        contexto: { ...grupo.contexto, percursoVisita: { versao: 1, origem: input.grupo.origem === "PROTOCOLO" || input.grupo.origem === "RETORNO" ? "AGENDA" : "LIVRE" }, assinaturaPreparacao: hashDados({ fingerprint: input.fingerprint, excluidos: [...excluidos].sort() }), grupoPlanner: input.grupo, fingerprint: input.fingerprint, selecaoCriterios: grupo.criterios, excluidos: input.excluidos,
+        contexto: { ...grupo.contexto, retornosPorAnimal:Object.fromEntries(lote.filter(m=>m.contexto.retornoOrigem).map(m=>[m.animalId,m.contexto.retornoOrigem])), percursoVisita: { versao: 1, origem: input.grupo.origem === "PROTOCOLO" || input.grupo.origem === "RETORNO" ? "AGENDA" : "LIVRE" }, assinaturaPreparacao: hashDados({ fingerprint: input.fingerprint, excluidos: [...excluidos].sort() }), grupoPlanner: input.grupo, fingerprint: input.fingerprint, selecaoCriterios: grupo.criterios, excluidos: input.excluidos,
           ajustesManuais: { incluidos: input.grupo.origem === "LIVRE" ? grupo.membros.filter(m=>input.grupo.origem === "LIVRE" && input.grupo.incluidosManualmente.includes(m.animalId)).map(m=>({animalId:m.animalId,brinco:m.contexto.brinco,nome:m.contexto.nome})) : [],
             excluidos: grupo.membros.filter(m=>excluidos.has(m.animalId)).map(m=>({animalId:m.animalId,brinco:m.contexto.brinco,nome:m.contexto.nome})) } },
         participantes: lote.map(m => ({ animalId: m.animalId, ...(m.tarefaId ? grupo.tipo === "TAREFA_IATF" ? { tarefaIatfId: m.tarefaId } : { tarefaSanitariaId: m.tarefaId } : {}), motivos: m.motivos.slice(0, 20).map(motivo => motivo.slice(0, 300)) })) });

@@ -1,3 +1,4 @@
+import { abrirValorLegadoFixture, limparMovimentosValorizadosFixture } from "../../test/estoque-valorizado.fixture.js";
 import crypto from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { afterAll, describe, expect, it } from "vitest";
@@ -17,10 +18,9 @@ afterAll(async () => {
   const operacoes = await prisma.operacao.findMany({ where: { propriedadeId: { in: propriedades } }, select: { id: true } });
   await prisma.auditoriaFinanceira.deleteMany({ where: { entidadeId: { in: operacoes.map((o) => o.id) } } });
   await prisma.auditoriaFinanceira.deleteMany({ where: { entidade: "Produto", entidadeId: { in: produtos } } });
-  // Somente o banco descartável do teste desliga o rastreio para desmontar a fixture.
+  // Remove somente os fatos dos produtos desta suíte antes de desmontar o cadastro.
+  await limparMovimentosValorizadosFixture(produtos);
   await prisma.produto.updateMany({ where: { id: { in: produtos } }, data: { rastrearPartidas: false } });
-  await prisma.alocacaoPartidaEstoque.deleteMany({ where: { partida: { produtoId: { in: produtos } } } });
-  await prisma.movimentoEstoque.deleteMany({ where: { produtoId: { in: produtos } } });
   await prisma.operacao.deleteMany({ where: { id: { in: operacoes.map((o) => o.id) } } });
   await prisma.partidaProduto.deleteMany({ where: { produtoId: { in: produtos } } });
   await prisma.produto.deleteMany({ where: { id: { in: produtos } } });
@@ -75,6 +75,8 @@ describeComBanco("rastreio de partidas no estoque único", () => {
     });
     expect((await listarPartidas(produto.id, propriedade.id))[0].saldo).toBe("9");
     expect(saida.produtoId).toBe(produto.id);
+    await abrirValorLegadoFixture({ produtoId: produto.id, propriedadeId: propriedade.id, data: "2026-09-02",
+      bases: [{ partidaId: legado.id, quantidade: "9", valor: "108.00", disponivelDesde: "2026-09-01", referencia: "Dez unidades por R$ 120 menos saída histórica de R$ 12" }] });
     const custoAntes = await obterBaseCusto(prisma, produto.id, propriedade.id);
     await identificarLegado({ chave: crypto.randomUUID(), produtoId: produto.id, propriedadeId: propriedade.id, codigo: "FABRICANTE-TESTE", validade: "2026-12-31", quantidade: "4", motivo: "Conferência física do legado", data: "2026-09-03" }, null);
     const partidas = await listarPartidas(produto.id, propriedade.id);
@@ -94,7 +96,7 @@ describeComBanco("rastreio de partidas no estoque único", () => {
     await estornarOperacao(transferida.operacaoId, "Estorno de teste de transferência", { propriedadeId: propriedade.id, usuarioId: null });
     expect((await listarPartidas(produto.id, destino.id)).find((p) => p.id === identificada.id)?.saldo).toBe("0");
     expect((await listarPartidas(produto.id, propriedade.id)).find((p) => p.id === identificada.id)?.saldo).toBe("4");
-    const perda = await transferirEstoque({ ...input, chave: crypto.randomUUID(), destinoId: propriedade.id, quantidade: "1", partidas: [{ partidaId: identificada.id, quantidade: 1 }], modo: "PERDA" }, null);
+    const perda = await transferirEstoque({ ...input, data: new Date().toISOString().slice(0,10), chave: crypto.randomUUID(), destinoId: propriedade.id, quantidade: "1", partidas: [{ partidaId: identificada.id, quantidade: 1 }], modo: "PERDA" }, null);
     expect((await listarPartidas(produto.id, propriedade.id)).find((p) => p.id === identificada.id)?.saldo).toBe("3");
     await estornarOperacao(perda.operacaoId, "Revisão documentada da perda", { propriedadeId: propriedade.id, usuarioId: null });
     expect((await listarPartidas(produto.id, propriedade.id)).find((p) => p.id === identificada.id)?.saldo).toBe("4");

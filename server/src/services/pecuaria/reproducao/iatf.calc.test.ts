@@ -31,7 +31,7 @@ describe("planejado e realizado IATF", () => {
         unidadeDose: "ML",
         via: "IM",
       }),
-    ).toEqual({ aferido: true, diferencas: [], horarioAferido: true });
+    ).toMatchObject({ aferido: true, diferencas: [], horarioAferido: false,orientacaoTemporal:{estado:"NAO_CONFIGURADA"} });
     expect(
       compararExecucaoIatf(p, "2026-10-01T13:00:00Z", {
         produtoId: null,
@@ -39,7 +39,7 @@ describe("planejado e realizado IATF", () => {
         unidadeDose: "L",
         via: null,
       }).diferencas.map((d) => d.campo),
-    ).toEqual(["dataHora", "produtoId", "dose", "unidadeDose", "via"]);
+    ).toEqual(["produtoId", "dose", "unidadeDose", "via"]);
   });
   it("mudança material, tipo ou quantidade é desvio explícito", () => {
     const p = snapshotIatf(

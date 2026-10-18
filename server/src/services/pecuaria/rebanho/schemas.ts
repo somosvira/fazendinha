@@ -165,6 +165,14 @@ export type PainelQuery = z.infer<typeof painelQuerySchema>;
 export const auditoriaAnimalQuerySchema = z.object({
   page: z.coerce.number().int().min(1).optional().default(1),
   pageSize: z.coerce.number().int().min(1).max(100).optional().default(20),
+  inicio: z.string().datetime({ offset: true }).optional(),
+  fim: z.string().datetime({ offset: true }).optional(),
+  eixo: z.enum(["REBANHO", "REPRODUCAO", "SANIDADE", "NUTRICAO", "NAO_CLASSIFICADO"]).optional(),
+  acao: z.string().trim().min(1).max(100).optional(),
+  responsavel: z.union([z.literal("sem"), z.coerce.number().int().positive()]).optional(),
+  busca: z.string().trim().max(200).optional(),
+}).refine((q) => !q.inicio || !q.fim || new Date(q.inicio) <= new Date(q.fim), {
+  message: "O início deve ser anterior ao fim", path: ["fim"],
 });
 export type AuditoriaAnimalQuery = z.infer<typeof auditoriaAnimalQuerySchema>;
 

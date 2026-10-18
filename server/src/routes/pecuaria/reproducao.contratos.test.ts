@@ -42,13 +42,13 @@ describe("V4: autorização e exposição de custos", () => {
     }
     expect(mocks.tentativa).not.toHaveBeenCalled(); expect(mocks.confirmar).not.toHaveBeenCalled();
   });
-  it("mascara consulta e resposta de gravação; exige área Financeiro e verValores juntas", async () => {
+  it("expõe custos atribuídos na leitura e resposta de gravação para usuários de Pecuária", async () => {
     for (const u of [usuario, { ...usuario, flags: ["lancar", "verValores"] }, { ...usuario, areas: ["pecuaria", "financeiro"] }]) {
       const leitura = await app(u).request("/reproducao");
-      expect(await leitura.json()).toMatchObject({ tentativas: [{ quantidade: "1", valorProdutoAtribuido: null, valorServicoAtribuido: null }] });
+      expect(await leitura.json()).toMatchObject({ tentativas: [{ quantidade: "1", valorProdutoAtribuido: "42.50", valorServicoAtribuido: "20" }] });
       const escrita = await app(u).request("/reproducao/tentativas", { method: "POST", headers: json, body: JSON.stringify(payloadTentativa) });
       expect(escrita.status).toBe(201);
-      expect(await escrita.json()).toMatchObject({ quantidade: "1", valorProdutoAtribuido: null, valorServicoAtribuido: null });
+      expect(await escrita.json()).toMatchObject({ quantidade: "1", valorProdutoAtribuido: "42.50", valorServicoAtribuido: "20" });
     }
     expect(await (await app(usuarioFinanceiro).request("/reproducao")).json()).toMatchObject({ tentativas: [{ valorProdutoAtribuido: "42.50" }] });
   });
@@ -67,6 +67,20 @@ describe("V4: autorização e exposição de custos", () => {
     await app().request(`/reproducao/animais/${uid(2)}`);
     expect(mocks.painel).toHaveBeenCalledWith(2, uid(2));
   });
+  it("mantém estado clínico transversal sem expor custo do sítio anterior", async () => {
+    mocks.painel.mockResolvedValue({
+      animais: [{ ultimaTentativa: { propriedadeId: 3, valorProdutoAtribuido: "999.00", valorServicoAtribuido: "20.00", data: "2026-01-01" } }],
+      tentativas: [{ propriedadeId: 2, valorProdutoAtribuido: "0.00", valorServicoAtribuido: null }],
+    });
+    for (const u of [{ ...usuario, flags: [] }, usuarioFinanceiro]) {
+      const resposta = await app(u).request(`/reproducao/animais/${uid(2)}`);
+      expect(resposta.status).toBe(200);
+      expect(await resposta.json()).toEqual({
+        animais: [{ ultimaTentativa: { propriedadeId: 3, valorProdutoAtribuido: null, valorServicoAtribuido: null, data: "2026-01-01" } }],
+        tentativas: [{ propriedadeId: 2, valorProdutoAtribuido: "0.00", valorServicoAtribuido: null }],
+      });
+    }
+  });
   it("recusa escopo inválido antes da escrita e não expõe fato de outro sítio", async () => {
     mocks.escrita.mockRejectedValue(new PropriedadeError("ESCOPO_INVALIDO", "Sítio inválido"));
     expect((await app().request("/reproducao/tentativas", { method: "POST", headers: json, body: JSON.stringify(payloadTentativa) })).status).toBe(400);
@@ -77,13 +91,13 @@ describe("V4: autorização e exposição de custos", () => {
   });
   it("mascara snapshots aninhados de visitas e conserva anotações e quantidades", async () => {
     mocks.detalheVisita.mockResolvedValue({ atividades: [{ contexto: { valorTotal: "500" }, participantes: [{ rascunho: { quantidade: 1, valorServicoAtribuido: "30", anotacaoOriginal: "P+" } }] }] });
-    expect(await (await app().request(`/visitas/${uid(5)}`)).json()).toEqual({ atividades: [{ contexto: { valorTotal: null }, participantes: [{ rascunho: { quantidade: 1, valorServicoAtribuido: null, anotacaoOriginal: "P+" } }] }] });
+    expect(await (await app().request(`/visitas/${uid(5)}`)).json()).toEqual({ atividades: [{ contexto: { valorTotal: null }, participantes: [{ rascunho: { quantidade: 1, valorServicoAtribuido: "30", anotacaoOriginal: "P+" } }] }] });
   });
   it("protege custos nas programações e responde 404 para uma programação ausente no escopo", async () => {
     mocks.programacoes.mockResolvedValue([{ id: uid(4), participantes: [{ tarefas: [{ realizado: { quantidade: 1, valorServicoAtribuido: "30" } }] }] }]);
     const resposta = await app().request(`/reproducao/programacoes/${uid(4)}`);
     expect(resposta.status).toBe(200);
-    expect(await resposta.json()).toMatchObject({ participantes: [{ tarefas: [{ realizado: { quantidade: 1, valorServicoAtribuido: null } }] }] });
+    expect(await resposta.json()).toMatchObject({ participantes: [{ tarefas: [{ realizado: { quantidade: 1, valorServicoAtribuido: "30" } }] }] });
     expect(mocks.programacoes).toHaveBeenCalledWith(2, uid(4));
     mocks.programacoes.mockResolvedValue([]);
     expect((await app().request(`/reproducao/programacoes/${uid(4)}`)).status).toBe(404);
@@ -127,7 +141,7 @@ describe("manejo: consultas disponíveis ao leitor e emissão autorizada", () =>
     expect(mocks.previaPlanner).toHaveBeenCalledWith(expect.objectContaining({ propriedadeId: 2, grupo }));
     const tarefa = await leitor.request(`/visitas/${uid(1)}/participantes/${uid(2)}/tarefa?propriedadeId=999`);
     expect(tarefa.status).toBe(200);
-    expect(await tarefa.json()).toMatchObject({ tarefa: { valorServicoAtribuido: null, quantidade: 1 } });
+    expect(await tarefa.json()).toMatchObject({ tarefa: { valorServicoAtribuido: 42, quantidade: 1 } });
     expect(mocks.tarefaVisita).toHaveBeenCalledWith(uid(1), uid(2), 2);
     expect((await leitor.request("/reproducao/indicadores?inicio=2026-01-01&fim=2026-01-21&corte=2026-03-01")).status).toBe(200);
     expect((await leitor.request("/reproducao/relatorios/partos?inicio=2026-01-01&fim=2026-01-21")).status).toBe(200);
@@ -164,4 +178,17 @@ describe("agenda e seleção livre autorizadas",()=>{
   expect((await leitor.request("/visitas/selecoes/previa",{method:"POST",headers:json,body:JSON.stringify({propriedadeId:3,data:"2026-10-14",grupo})})).status).toBe(422);expect(mocks.previaPlanner).not.toHaveBeenCalled();
   expect((await app(null).request("/visitas/selecoes/previa",{method:"POST",headers:json,body:"{}"})).status).toBe(401);
  });
+});
+
+it("participações da ficha exigem animal válido e sessão, aplicam escopo e apresentam custos atribuídos", async () => {
+  const caminho = `/reproducao/participacoes?animalId=${uid(2)}`;
+  expect((await app(null).request(caminho)).status).toBe(401);
+  expect((await app({ ...usuario, areas: ["estoque"] }).request(caminho)).status).toBe(403);
+  expect((await app().request("/reproducao/participacoes?animalId=invalido")).status).toBe(422);
+  expect(mocks.programacoes).not.toHaveBeenCalled();
+  mocks.programacoes.mockResolvedValue([{ id:uid(4),participantes:[{animalId:uid(2),tarefas:[{realizadoSnapshot:{valorServicoAtribuido:"30"}}]}] }]);
+  const resposta = await app().request(caminho);
+  expect(resposta.status).toBe(200);
+  expect(mocks.programacoes).toHaveBeenCalledWith(2,undefined,uid(2));
+  expect(await resposta.json()).toMatchObject([{participantes:[{tarefas:[{realizadoSnapshot:{valorServicoAtribuido:"30"}}]}]}]);
 });

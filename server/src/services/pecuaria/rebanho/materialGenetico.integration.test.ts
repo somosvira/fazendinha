@@ -1,3 +1,4 @@
+import { limparMovimentosValorizadosFixture } from "../../../test/estoque-valorizado.fixture.js";
 // Testes de banco do material genético (v2): sêmen e embrião como produto do estoque.
 // Só rodam com PECUARIA_DB_INTEGRATION=1, como os demais testes de banco da pecuária.
 
@@ -28,11 +29,12 @@ async function genitor(sexo: "F" | "M", nome: string) {
 }
 
 afterAll(async () => {
+  if (!materiais.length && !categorias.length && !genitores.length) return;
   const produtos = await prisma.materialGenetico.findMany({ where: { id: { in: materiais } }, select: { produtoId: true } });
   const produtoIds = produtos.map((p) => p.produtoId);
   await prisma.auditoriaPecuaria.deleteMany({ where: { entidadeId: { in: [...materiais, ...genitores] } } });
   await prisma.materialGenetico.deleteMany({ where: { id: { in: materiais } } });
-  await prisma.movimentoEstoque.deleteMany({ where: { produtoId: { in: produtoIds } } });
+  await limparMovimentosValorizadosFixture(produtoIds);
   await prisma.auditoriaFinanceira.deleteMany({ where: { entidadeId: { in: produtoIds } } });
   await prisma.produto.deleteMany({ where: { id: { in: produtoIds } } });
   await prisma.categoria.deleteMany({ where: { id: { in: categorias } } });

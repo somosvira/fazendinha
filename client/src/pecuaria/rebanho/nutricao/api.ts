@@ -109,7 +109,7 @@ async function todosFechamentos(loteId?: string) {
 function podeVerCustos(fechamentos: Fechamento[]) {
   if (fechamentos.length) return fechamentos.every((f) => f.verValores);
   const u = getUsuario();
-  return !!u && temAcessoArea(u.areas, "financeiro", u.dono) && (u.dono || u.flags.includes("verValores"));
+  return !!u && temAcessoArea(u.areas, "pecuaria", u.dono);
 }
 function centavosDe(valor: string): bigint {
   const match = /^(-?)(\d+)(?:\.(\d+))?$/.exec(valor);

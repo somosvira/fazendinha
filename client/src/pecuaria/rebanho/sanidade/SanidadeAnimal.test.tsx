@@ -47,3 +47,14 @@ it("abre detalhe compartilhado na ficha e fecha por Escape restaurando foco", as
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   await waitFor(() => expect(document.activeElement).toBe(botao));
 });
+it("agrupa ações sanitárias na ficha e mantém permissões no menu", async () => {
+  const { rerender } = render(<SanidadeAnimal animalId="animal1" propriedadeId={2} podeLancar recarregarToken={0} lista={[]} />);
+  const menu = screen.getByRole("button", { name: "Ações sanitárias" });
+  expect(menu.getAttribute("aria-haspopup")).toBe("menu");
+  expect(screen.queryByRole("button", { name: "Nova ocorrência" })).toBeNull();
+  fireEvent.keyDown(menu, { key: "ArrowDown" });
+  for (const nome of ["Registrar aplicação sanitária", "Nova ocorrência", "Registrar exame", "Iniciar protocolo"]) expect(await screen.findByRole("menuitem", { name: nome })).toBeTruthy();
+  fireEvent.keyDown(screen.getByRole("menu"), { key: "Escape" });
+  rerender(<SanidadeAnimal animalId="animal1" propriedadeId={2} podeLancar={false} recarregarToken={0} lista={[]} />);
+  expect(screen.queryByRole("button", { name: "Ações sanitárias" })).toBeNull();
+});

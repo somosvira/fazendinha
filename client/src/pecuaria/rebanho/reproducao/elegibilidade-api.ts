@@ -110,11 +110,11 @@ export const anularDecisao = (
   );
 const motivos: Record<string, string> = {
   POLITICA_CICLO_NAO_CONGELADA:
-    "O ciclo precisa de vínculo explícito com a política.",
+    "O acompanhamento precisa de vínculo explícito com a política.",
   POLITICA_AUSENTE_NO_INICIO_CICLO:
-    "Não havia política vigente no início deste ciclo.",
+    "Não havia política vigente no início deste acompanhamento.",
   CICLO_DESCONHECIDO:
-    "Não há parto ou situação inicial que comprove este ciclo.",
+    "Não há parto ou situação inicial que comprove o início do acompanhamento.",
   LIBERACAO_EXPLICITA_NECESSARIA:
     "É necessária uma liberação individual com data.",
   EM_ESPERA_PARA_LIBERACAO: "Ainda está no período de espera.",

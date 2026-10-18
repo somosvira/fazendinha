@@ -19,7 +19,7 @@ export function RegularizarOrigem({path, propriedadeId, consumoMantido, reabrirP
     if (!aberto || acao !== "VINCULAR_SUBSTITUTO") return;
     let vigente = true;
     setCarregando(true); setErroConsulta(null); setSubstitutos([]);
-    reqV4<Array<{id:string;descricao:string}>>(path.replace(/\/regularizacao$/, "/substitutos") + `?propriedadeId=${propriedadeId}`)
+    reqV4<Array<{id:string;descricao:string}>>(path.replace(/\/regularizacao$/, "/substitutos") + `?propriedadeId=${propriedadeId}`, undefined, "GET", propriedadeId)
       .then(r => { if (vigente) setSubstitutos(r); })
       .catch(e => { if (vigente) setErroConsulta(e.message); })
       .finally(() => { if (vigente) setCarregando(false); });
@@ -33,7 +33,7 @@ export function RegularizarOrigem({path, propriedadeId, consumoMantido, reabrirP
         e.preventDefault();
         if (semSubstituto || ocupado) return;
         setOcupado(true);setErro(null);
-        reqV4(path,{propriedadeId,chave,motivo,acao,...(acao === "REABRIR" ? {cienciaNaoExecutado:ciencia}:{}),...(acao === "VINCULAR_SUBSTITUTO"?{fatoId}:{})})
+        reqV4(path,{propriedadeId,chave,motivo,acao,...(acao === "REABRIR" ? {cienciaNaoExecutado:ciencia}:{}),...(acao === "VINCULAR_SUBSTITUTO"?{fatoId}:{})}, "POST", propriedadeId)
           .then(async()=>{setAberto(false);await onMudou();}).catch(e=>setErro(e.message)).finally(()=>setOcupado(false));
       }}>
         <ErrorBox erro={erro}/><p className="text-sm">O vínculo e a execução anteriores permanecem no histórico. {consumoMantido && "O consumo foi mantido; a origem não pode ser reaberta para executar novamente."}</p>

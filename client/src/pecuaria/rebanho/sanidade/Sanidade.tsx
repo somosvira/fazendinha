@@ -864,7 +864,7 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
                 { chave: "doenca", titulo: "Doença", celula: (o) => o.doenca.nome },
                 { chave: "inicio", titulo: "Início", celula: (o) => dataSanitaria(o.inicio) },
                 { chave: "fim", titulo: "Fim", celula: (o) => o.fim ? dataSanitaria(o.fim) : "—" },
-                { chave: "situacao", titulo: "Situação", celula: (o) => <>{o.fim ? "Encerrada" : "Aberta"}{o.status === "ANULADO" && <span className="ml-2 rounded bg-surface px-2 py-1">Anulada</span>}</> },
+                { chave: "situacao", titulo: "Situação", celula: (o) => <>{o.fim ? "Encerrada" : "Aberta"}{o.status === "ANULADO" && <span className="ml-2 rounded bg-card px-2 py-1">Anulada</span>}</> },
                 { chave: "acoes", titulo: "Ações", acoes: true, celula: (o) => <div className="flex gap-2" onClick={(e) => e.stopPropagation()}><button type="button" className={classeAcao} aria-label="Ver detalhes da ocorrência" title="Ver detalhes" onClick={() => abrirDetalhe("ocorrencia", o.id, o.propriedadeId)}><Eye size={16} /></button>{podeLancar && o.status === "VALIDO" && <>{!o.fim && <button type="button" className={classeAcao} aria-label="Encerrar ocorrência" title="Encerrar" onClick={() => { setAnimalDaAcao({ animalId: o.animalId, propriedadeId: o.propriedadeId }); abrir({ tipo: "encerrar", id: o.id }); }}><Check size={16} /></button>}<button type="button" className={classeAcao} aria-label="Anular ocorrência" title="Anular" onClick={() => { setAnimalDaAcao({ animalId: o.animalId, propriedadeId: o.propriedadeId }); abrir({ tipo: "anular-ocorrencia", id: o.id }); }}><Ban size={16} /></button></>}</div> },
               ]} />
               {!carregandoAba && !erroAba && !ocorrencias.length && (
@@ -920,7 +920,7 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
                 { chave: "tipo", titulo: "Tipo de exame", celula: (e) => e.tipoExame.nome },
                 { chave: "data", titulo: "Data", celula: (e) => dataSanitaria(e.data) },
                 { chave: "resultado", titulo: "Resultado", celula: resultadoExameSanitario },
-                { chave: "situacao", titulo: "Situação", celula: (e) => <>{resultadoExameSanitario(e) === "Aguardando resultado" ? "Aguardando resultado" : "Resultado informado"}{e.status === "ANULADO" && <span className="ml-2 rounded bg-surface px-2 py-1">Anulado</span>}</> },
+                { chave: "situacao", titulo: "Situação", celula: (e) => <>{resultadoExameSanitario(e) === "Aguardando resultado" ? "Aguardando resultado" : "Resultado informado"}{e.status === "ANULADO" && <span className="ml-2 rounded bg-card px-2 py-1">Anulado</span>}</> },
                 { chave: "acoes", titulo: "Ações", acoes: true, celula: (e) => <div className="flex gap-2" onClick={(v) => v.stopPropagation()}><button type="button" className={classeAcao} aria-label="Ver detalhes do exame" title="Ver detalhes" onClick={() => abrirDetalhe("exame", e.id, e.propriedadeId)}><Eye size={16} /></button>{podeLancar && e.status === "VALIDO" && <ResultadoExame exame={e} propriedadeId={e.propriedadeId} onSalvo={() => { setRevisao((v) => v + 1); setRecarregarDetalhe((v) => v + 1); }} />}</div> },
               ]} />
               {!carregandoAba && !erroAba && !exames.length && (

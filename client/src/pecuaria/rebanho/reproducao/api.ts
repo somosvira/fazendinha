@@ -2,6 +2,7 @@ import { comPropriedade } from "../../../propriedadeScope";
 import { RebanhoApiError } from "../api";
 
 export type Gestacao = {
+  animal?: { id: string; brinco: string | null; nome: string | null };
   animalId?: string;
   propriedadeId?: number | null;
   id: string;
@@ -11,6 +12,8 @@ export type Gestacao = {
   sexoFetal?: string | null;
   previsaoParto?: string | null;
   tentativaId?: string | null;
+  tipoEncerramento?:string|null;motivoEncerramento?:string|null;
+  causaClinica?: { estado: "DESCONHECIDA" | "SUSPEITA" | "CONFIRMADA"; descricao?: string; evidencias?: string[] } | null;
 };
 export type Restricao = {
   id: string;
@@ -75,6 +78,11 @@ export type AnimalReprodutivo = ContextoTemporalAnimal & {
   motivosInclusao?: string[];
   partos: number;
   tentativasCiclo: number;
+  resumoAcompanhamento?: {
+    dataReferencia: string;
+    tentativas: number;
+    referencia: { tipo: "PARTO" | "ABORTO" | "SITUACAO_INICIAL"; data: string } | null;
+  };
   ultimaTentativa?: FatoReprodutivo | null;
   gestacao: Gestacao | null;
   restricoes: Restricao[];
@@ -136,6 +144,7 @@ export type FatoReprodutivo = CamposParto & {
   }>;
 };
 export type PainelReprodutivo = {
+  marcos?:import("./CirculoMarcosReprodutivos").CirculoMarcosReprodutivosProps|null;
   animais: AnimalReprodutivo[];
   tentativas: FatoReprodutivo[];
   avaliacoes: FatoReprodutivo[];
@@ -199,6 +208,7 @@ export type TentativaInput = FatoBase & {
   motivoDocumentacaoExcepcional?: string;
 };
 export type AvaliacaoInput = FatoBase & {
+  demandaAcompanhamentoId?:string;
   formatoExameHash?: string;
   finalidade?: "DIAGNOSTICO" | "RECONFIRMACAO" | "SEXAGEM";
   tipoExameId?: string;

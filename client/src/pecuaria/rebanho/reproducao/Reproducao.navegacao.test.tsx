@@ -7,7 +7,9 @@ import { setPropriedadeAtiva } from "../../../propriedadeScope";
 import { ElegibilidadeAnimal } from "./ElegibilidadeAnimal";
 vi.mock("./IndicadoresReprodutivos", () => ({ IndicadoresReprodutivos: ({ propriedadeId }: { propriedadeId: number }) => <p>Indicadores do sítio {propriedadeId}</p> }));
 vi.mock("./ConfiguracaoReprodutiva", () => ({ ConfiguracaoReprodutiva: ({ propriedadeId }: { propriedadeId: number }) => <p>Política do sítio {propriedadeId}</p> }));
-vi.mock("./RelatorioPartos", () => ({ RelatorioPartos: ({ propriedadeId, podeLancar }: { propriedadeId: number; podeLancar: boolean }) => <p>Partos do sítio {propriedadeId} · {podeLancar ? "Escrita" : "Leitura"}</p> }));
+vi.mock("./PartosPosParto", () => ({ PartosPosParto: ({ propriedadeId, podeLancar }: { propriedadeId: number; podeLancar: boolean }) => <p>Partos do sítio {propriedadeId}</p> }));
+vi.mock("./ResumoPoliticaReprodutiva", () => ({ ResumoPoliticaReprodutiva: () => null }));
+vi.mock("../../../api/propriedades", () => ({ listarPropriedades: vi.fn().mockResolvedValue([{ id: 7, nome: "Escola" }, { id: 8, nome: "Destino" }]) }));
 vi.mock("./ElegibilidadeAnimal", () => ({ ElegibilidadeAnimal: vi.fn(({ propriedadeId }: { propriedadeId: number }) => <p>Elegibilidade no sítio {propriedadeId}</p>) }));
 vi.mock("./api", () => ({obterReproducao:vi.fn(),reqV4:vi.fn().mockResolvedValue([])}));
 vi.mock("./Iatf", () => ({Iatf:()=>null}));
@@ -40,7 +42,7 @@ it("troca rotina pela URL preservando filtros e deep links e responde ao histór
   vi.mocked(obterReproducao).mockResolvedValue({ animais: [], tentativas: [], avaliacoes: [], partos: [], restricoes: [] });
   render(<Reproducao podeLancar={false} />);
   fireEvent.click(screen.getByRole("tab", { name: "Partos e pós-parto" }));
-  await screen.findByText("Partos do sítio 7 · Leitura");
+  await screen.findByText("Partos do sítio 7");
   const url = new URL(window.location.href);
   expect(url.searchParams.get("rotina")).toBe("partos");
   expect(url.searchParams.get("q")).toBe("Matriz");
@@ -49,15 +51,17 @@ it("troca rotina pela URL preservando filtros e deep links e responde ao histór
   expect(url.hash).toBe("#origem");
   fireEvent.click(screen.getByRole("tab", { name: "Indicadores" }));
   await screen.findByText("Indicadores do sítio 7");
-  window.history.pushState(null, "", "/pecuaria/reproducao?rotina=configuracao");
-  fireEvent(window, new PopStateEvent("popstate"));
-  await screen.findByText("Política do sítio 7");
+  expect(screen.queryByRole("tab", { name: "Política reprodutiva" })).toBeNull();
+  expect(screen.getByRole("link", { name: "Política reprodutiva" }).getAttribute("href")).toBe("/configuracoes/pecuaria/reproducao/politica?sitio=7");
 });
-it.each(["partos", "indicadores", "configuracao"])("consolidado orienta selecionar sítio para %s", async rotina => {
+it.each(["partos", "indicadores"])("consolidado oferece seletor dentro da página para %s", async rotina => {
   setPropriedadeAtiva(null);
   window.history.replaceState(null, "", `/pecuaria/reproducao?rotina=${rotina}`);
   render(<Reproducao podeLancar />);
-  expect(await screen.findByText(/Selecione um sítio para consultar/)).toBeTruthy();
+  const seletor = await screen.findByLabelText("Sítio da consulta");
+  await screen.findByRole("option", { name: "Escola" });
+  fireEvent.change(seletor, { target: { value: "7" } });
+  await screen.findByText(rotina === "partos" ? "Partos do sítio 7" : "Indicadores do sítio 7");
   expect(obterReproducao).not.toHaveBeenCalled();
 });
 it("elegibilidade individual recebe localização comprovada mesmo com outro sítio ativo", async () => {

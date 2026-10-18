@@ -1,3 +1,4 @@
+import { Scale } from "lucide-react";
 // Gráfico de linha da evolução do peso do animal — só a curva de peso (decisão #3 do
 // plano "telas finais da v1"); gráficos agregados do lote ficam para depois. Usa o
 // wrapper compartilhado client/src/components/ui/chart.tsx (Recharts), como o financeiro.
@@ -28,7 +29,11 @@ export function GraficoPeso({ historicoPesagens, desde = null, ate = null }: { h
 
   if (pontos.length < 2) {
     const recortado = noPeriodo.length < historicoPesagens.length && historicoPesagens.length >= 2;
-    return <p className="text-sm text-ink-3">{recortado ? "Menos de duas pesagens neste período — escolha um período maior para ver a curva." : "É preciso pelo menos duas pesagens para o gráfico."}</p>;
+    return <div className="peso-sem-dados" role="status"><Scale size={28} aria-hidden="true" className="shrink-0 text-mast"/><div>
+      <h3>{historicoPesagens.length === 0 ? "Ainda não há pesagens deste animal" : recortado ? "Poucas pesagens no período selecionado" : "Uma pesagem ainda não forma uma curva"}</h3>
+      <p>{recortado ? "Menos de duas pesagens neste período — escolha um período maior para ver a curva." : "É preciso pelo menos duas pesagens para o gráfico."}</p>
+      {historicoPesagens.length === 0 && <p>Use Mais ações → Registrar pesagem para começar o acompanhamento, se tiver permissão de lançamento.</p>}
+    </div></div>;
   }
 
   return <ChartContainer config={config} className="h-[220px] w-full aspect-auto overflow-hidden" role="img" aria-label="Evolução do peso do animal ao longo do tempo">

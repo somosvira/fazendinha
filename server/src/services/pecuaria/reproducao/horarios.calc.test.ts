@@ -29,7 +29,7 @@ describe("IATF com data conhecida e horário opcional", () => {
   it("compara a data disponível e mantém o horário como não aferido", () => {
     const d = new Date("2026-10-02T02:30:00Z");
     const p = snapshotIatf(etapa,{},d,d,d);
-    expect(compararExecucaoIatf(p,"2026-10-01",{})).toEqual({aferido:true,diferencas:[],horarioAferido:false});
+    expect(compararExecucaoIatf(p,"2026-10-01",{})).toMatchObject({aferido:true,diferencas:[],horarioAferido:false,orientacaoTemporal:{estado:"NAO_CONFIGURADA"}});
     expect(compararExecucaoIatf(p,"2026-10-02",{}).diferencas).toMatchObject([{campo:"data",planejado:"2026-10-01",realizado:"2026-10-02"}]);
     const semHora = snapshotIatf(etapa,{},new Date("2026-10-01"),new Date("2026-10-01"),new Date("2026-10-01"),"DIA");
     expect(semHora.previstaEm).toBe("2026-10-01");

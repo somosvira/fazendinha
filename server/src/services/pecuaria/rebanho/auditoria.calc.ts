@@ -64,6 +64,22 @@ const ROTULO_CLASSE_MOTIVO: Record<string, string> = {
   DESCARTE_VOLUNTARIO: "Descarte voluntário", DESCARTE_INVOLUNTARIO: "Descarte involuntário", MORTE: "Morte",
 };
 const ROTULO_CRITERIO_PARTOS: Record<string, string> = { QUALQUER: "Qualquer", SEM: "Sem parto", COM: "Com parto" };
+const CAMPOS_FINANCEIROS = new Set(["valorProdutoAtribuido", "valorServicoAtribuido", "valorMaterialDocumentado"]);
+
+// Apenas fatos e campos escalares conhecidos. Relações, anexos e snapshots
+// estruturados permanecem privados; ausência de diff não prova ausência de edição.
+const CAMPOS_FATO: Record<string, CampoConfig> = {
+  data: { rotulo: "Data", formatar: data },
+  status: { rotulo: "Situação" },
+  observacao: { rotulo: "Observação" },
+  motivo: { rotulo: "Motivo" },
+  motivoAnulacao: { rotulo: "Motivo da anulação" },
+};
+const CAMPOS_CUSTO: Record<string, CampoConfig> = {
+  valorProdutoAtribuido: { rotulo: "Valor do produto", formatar: numero },
+  valorServicoAtribuido: { rotulo: "Valor do serviço", formatar: numero },
+  valorMaterialDocumentado: { rotulo: "Valor documentado do material", formatar: numero },
+};
 
 /** Campos considerados por entidade — o resto (técnicos, relações aninhadas) fica de fora. */
 const CAMPOS_POR_ENTIDADE: Record<string, Record<string, CampoConfig>> = {
@@ -149,10 +165,52 @@ const CAMPOS_POR_ENTIDADE: Record<string, Record<string, CampoConfig>> = {
     motivo: { rotulo: "Motivo" },
     motivoEncerramento: { rotulo: "Motivo do encerramento" },
   },
+  ManejoAnimal: { ...CAMPOS_FATO, tipo: { rotulo: "Tipo de manejo" }, responsavel: { rotulo: "Responsável pelo manejo" } },
+  OcorrenciaSanitaria: {
+    ...CAMPOS_FATO, gravidade: { rotulo: "Gravidade" },
+    encerradaEm: { rotulo: "Encerrada em", formatar: data },
+    desfecho: { rotulo: "Desfecho" },
+  },
+  AplicacaoProduto: {
+    ...CAMPOS_FATO, ...CAMPOS_CUSTO, quantidade: { rotulo: "Quantidade", formatar: numero },
+    unidade: { rotulo: "Unidade" }, via: { rotulo: "Via" },
+    responsavel: { rotulo: "Responsável pela aplicação" },
+    origem: { rotulo: "Origem" },
+  },
+  ExameAnimal: {
+    ...CAMPOS_FATO, ...CAMPOS_CUSTO, resultadoNumero: { rotulo: "Resultado numérico", formatar: numero },
+    resultadoTexto: { rotulo: "Resultado em texto" }, resultadoOpcao: { rotulo: "Resultado selecionado" },
+  },
+  TentativaReprodutiva: {
+    ...CAMPOS_FATO, ...CAMPOS_CUSTO, tipo: { rotulo: "Tipo de tentativa" },
+    metodo: { rotulo: "Método" }, resultado: { rotulo: "Resultado" },
+  },
+  AvaliacaoReprodutiva: { ...CAMPOS_FATO, resultado: { rotulo: "Resultado" }, conduta: { rotulo: "Conduta" } },
+  GestacaoAnimal: {
+    ...CAMPOS_FATO, confirmadaEm: { rotulo: "Confirmada em", formatar: data },
+    previsaoParto: { rotulo: "Previsão do parto", formatar: data },
+    encerradaEm: { rotulo: "Encerrada em", formatar: data }, desfecho: { rotulo: "Desfecho" },
+  },
+  PartoAnimal: { ...CAMPOS_FATO, desfecho: { rotulo: "Desfecho" }, assistencia: { rotulo: "Assistência" }, quantidadeCrias: { rotulo: "Crias", formatar: numero } },
+  CriaParto: { ...CAMPOS_FATO, sexo: { rotulo: "Sexo", formatar: enumRotulo(ROTULO_SEXO) }, estado: { rotulo: "Estado" } },
+  LactacaoAnimal: { ...CAMPOS_FATO, inicio: { rotulo: "Início", formatar: data }, fim: { rotulo: "Fim", formatar: data } },
+  FornecimentoColostro: { ...CAMPOS_FATO, quantidadeLitros: { rotulo: "Quantidade (L)", formatar: numero }, metodo: { rotulo: "Método" } },
+  RestricaoReprodutiva: { ...CAMPOS_FATO, inicio: { rotulo: "Início", formatar: data }, fim: { rotulo: "Fim", formatar: data } },
+  PeriodoReprodutivoAnimal: {
+    papel: { rotulo: "Papel reprodutivo", formatar: enumRotulo(ROTULO_PAPEL_REPRODUTIVO) },
+    desde: { rotulo: "Desde", formatar: data }, ate: { rotulo: "Até", formatar: data }, motivo: { rotulo: "Motivo" },
+  },
+  FechamentoConsumo: {
+    inicio: { rotulo: "Início do consumo", formatar: data }, fim: { rotulo: "Fim do consumo", formatar: data },
+    status: { rotulo: "Situação" }, motivo: { rotulo: "Motivo" }, motivoEstorno: { rotulo: "Motivo do estorno" },
+  },
 };
 
 function valorFormatado(config: CampoConfig, v: unknown): string | null {
   if (v === undefined || v === null) return null;
+  // Snapshots são JSON de origem variável. Um campo escalar conhecido nunca
+  // autoriza expor um objeto ou uma lista arbitrária sob a mesma chave.
+  if (typeof v === "object" && !(v instanceof Date)) return null;
   if (config.formatar) return config.formatar(v);
   // sem formatador (ids, texto livre): sempre string — inclui números crus como `propriedadeId`
   return String(v);
@@ -169,7 +227,7 @@ function comoRegistro(v: unknown): Record<string, unknown> | null {
  * Entidade sem mapa configurado (ex.: `Movimentacao`, `ComposicaoRacial`) devolve `[]` — o
  * resumo textual (`resumoAuditoria`) já cobre esses casos.
  */
-export function diferencas(entidade: string, antes: unknown, depois: unknown, nomesRacas: Record<string, string> = {}): CampoAlteracao[] {
+export function diferencas(entidade: string, antes: unknown, depois: unknown, nomesRacas: Record<string, string> = {}, verValores = false): CampoAlteracao[] {
   const campos = CAMPOS_POR_ENTIDADE[entidade];
   if (!campos) return [];
   const registroAntes = comoRegistro(antes);
@@ -178,6 +236,7 @@ export function diferencas(entidade: string, antes: unknown, depois: unknown, no
 
   const alteracoes: CampoAlteracao[] = [];
   for (const [campo, config] of Object.entries(campos)) {
+    if (!verValores && CAMPOS_FINANCEIROS.has(campo)) continue;
     if (!registroAntes && !registroDepois) break;
     if (!registroAntes) {
       // cadastro: só os campos preenchidos em `depois` entram, com antes = null
@@ -193,6 +252,8 @@ export function diferencas(entidade: string, antes: unknown, depois: unknown, no
       alteracoes.push({ campo, rotulo: config.rotulo, antes: valorAntes, depois: null });
       continue;
     }
+    // Um snapshot parcial não demonstra que um campo ausente foi apagado.
+    if (!Object.hasOwn(registroAntes, campo) || !Object.hasOwn(registroDepois, campo)) continue;
     const valorAntes = valorFormatado(config, registroAntes[campo]);
     const valorDepois = valorFormatado(config, registroDepois[campo]);
     if (valorAntes !== valorDepois) {

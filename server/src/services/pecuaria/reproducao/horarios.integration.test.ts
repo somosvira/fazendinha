@@ -1,3 +1,4 @@
+import { criarEntradaValorizadaFixture, limparMovimentosValorizadosFixture } from "../../../test/estoque-valorizado.fixture.js";
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "../../../db.js";
@@ -17,7 +18,7 @@ comBanco("IATF data/hora independentes no banco de desenvolvimento", () => {
     genitorId=(await prisma.genitorExterno.create({data:{nome:`Genitor ${token}`,sexo:"M"}})).id;
     for(const uso of ["sanitario","genetico"]) {
       const p=await prisma.produto.create({data:{nome:`Hora ${uso} ${token}`,unidade:uso==="sanitario"?"ML":"DOSE",usoSanitario:uso==="sanitario",usoGenetico:uso==="genetico"}});produtos.push(p.id);
-      await prisma.movimentoEstoque.create({data:{produtoId:p.id,propriedadeId:sitio,data:new Date("2026-09-01"),tipo:"ENTRADA",origem:"INVENTARIO_INICIAL",quantidade:100,custoUnitario:1,valorTotal:100}});
+      await criarEntradaValorizadaFixture({data:{produtoId:p.id,propriedadeId:sitio,data:new Date("2026-09-01"),tipo:"ENTRADA",origem:"INVENTARIO_INICIAL",quantidade:100,custoUnitario:1,valorTotal:100}});
     }
     materialId=(await prisma.materialGenetico.create({data:{tipo:"SEMEN",produtoId:produtos[1],touroExternoId:genitorId}})).id;
   });
@@ -106,8 +107,7 @@ comBanco("IATF data/hora independentes no banco de desenvolvimento", () => {
     await prisma.protocolo.deleteMany({where:{id:{in:protocolos}}});
     await prisma.materialGenetico.deleteMany({where:{produtoId:{in:produtos}}});
     if(genitorId)await prisma.genitorExterno.delete({where:{id:genitorId}});
-    await prisma.alocacaoPartidaEstoque.deleteMany({where:{movimentoEstoque:{propriedadeId:sitio}}});
-    await prisma.movimentoEstoque.deleteMany({where:{propriedadeId:sitio}});
+    await limparMovimentosValorizadosFixture(produtos);
     await prisma.produto.deleteMany({where:{id:{in:produtos}}});
     if(tipoId)await prisma.tipoAplicacaoSanitaria.delete({where:{id:tipoId}});
     await prisma.destinoAnimal.deleteMany({where:{animalId:{in:animais}}});

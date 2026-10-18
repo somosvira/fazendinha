@@ -127,7 +127,7 @@ describe("fatos reprodutivos, paridade e evidência", () => {
   });
 
   it("não consulta o futuro e encerra a gestação na data factual sem antecipar o encerramento", () => {
-    const dados = historico({ tentativas: [tentativa()], gestacoes: [gestacao({ encerradaEm: dia("2026-03-15") })] });
+    const dados = historico({ tentativas: [tentativa()], gestacoes: [gestacao({ encerradaEm: dia("2026-03-15"),tipoEncerramento:"PERDA" })] });
     expect(calcularContextoAnimalNaData(dados, dia("2026-02-28"))).toMatchObject({ gestacaoVigente: null, diasDesdeConfirmacao: null, idadeGestacionalDias: null });
     expect(calcularContextoAnimalNaData(dados, dia("2026-03-14"))).toMatchObject({ gestacaoVigente: { id: "gestacao" }, diasDesdeConfirmacao: 13 });
     expect(calcularContextoAnimalNaData(dados, dia("2026-03-15"))).toMatchObject({ gestacaoVigente: null, idadeGestacionalDias: null, situacaoReprodutiva: "VAZIA" });

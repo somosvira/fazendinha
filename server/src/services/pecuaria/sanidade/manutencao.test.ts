@@ -38,7 +38,9 @@ describe("manutenção sanitária preserva fatos e decisões", () => {
     mocks.tx.tipoExame.findUnique.mockResolvedValue({ id: "tipo", nome: "Teste rápido", tipoResultado: "OPCAO", opcoes: ["Positivo", "Negativo"] });
     mocks.tx.tipoExame.update.mockResolvedValue({ id: "tipo", nome: "Teste quantitativo", tipoResultado: "NUMERO" });
     await editarTipoExame("tipo", { nome: "Teste quantitativo", tipoResultado: "NUMERO", unidade: "mg" }, 7);
-    expect(mocks.tx.$executeRaw).toHaveBeenCalledTimes(2);
+    const consultasDoFormato = mocks.tx.$executeRaw.mock.calls.filter(([sql]) => sql.join("") !== "SET CONSTRAINTS ALL IMMEDIATE");
+    expect(consultasDoFormato).toHaveLength(2);
+    expect(mocks.tx.$executeRaw.mock.lastCall?.[0].join("")).toBe("SET CONSTRAINTS ALL IMMEDIATE");
     expect(mocks.tx.tipoExame.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ tipoResultado: "NUMERO", opcoes: Prisma.JsonNull }) }));
     expect(nomeExameHistorico({ nome: "Teste rápido", tipoResultado: "OPCAO", opcoes: ["Positivo", "Negativo"] }, "Teste quantitativo")).toBe("Teste rápido");
   });

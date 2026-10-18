@@ -1,3 +1,4 @@
+import { criarEntradaValorizadaFixture, limparMovimentosValorizadosFixture } from "../../../test/estoque-valorizado.fixture.js";
 import crypto from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { Prisma } from "@prisma/client";
@@ -21,7 +22,7 @@ afterAll(async () => {
   await prisma.vinculoTarefaProtocolo.deleteMany({ where: { aplicacao: { animalId: ids.animal } } }); await prisma.aplicacaoProduto.deleteMany({ where: { animalId: ids.animal } });
   await prisma.requisicaoPecuaria.deleteMany({ where: { propriedadeId: ids.sitio } });
   await prisma.auditoriaFinanceira.deleteMany({ where: { entidadeId: { in: [...movimentos.map((m) => m.id), ids.operacao] } } });
-  await prisma.movimentoEstoque.deleteMany({ where: { produtoId: ids.produto } });
+  await limparMovimentosValorizadosFixture([ids.produto]);
   await prisma.operacao.deleteMany({ where: { id: ids.operacao } });
   await prisma.produto.deleteMany({ where: { id: ids.produto } });
   await prisma.periodoReprodutivoAnimal.deleteMany({ where: { animalId: ids.animal } }); await prisma.destinoAnimal.deleteMany({ where: { animalId: ids.animal } });
@@ -93,7 +94,7 @@ comBanco("reconciliação e rastreabilidade sanitária", () => {
   });
 
   it("consulta explícita acha a saída revertida e seu inverso mantendo saldo e lista padrão", async () => {
-    await prisma.movimentoEstoque.create({ data: { produtoId: ids.produto, propriedadeId: ids.sitio, tipo: "ENTRADA", origem: "INVENTARIO_INICIAL", data: new Date(ontem), quantidade: 10, custoUnitario: 2, valorTotal: 20 } });
+    await criarEntradaValorizadaFixture({ data: { produtoId: ids.produto, propriedadeId: ids.sitio, tipo: "ENTRADA", origem: "INVENTARIO_INICIAL", data: new Date(ontem), quantidade: 10, custoUnitario: 2, valorTotal: 20 } });
     const a = await criarAplicacao({ ...aplicacao("2"), origemInsumo: "BAIXA_ESTOQUE", produtoId: ids.produto }, null);
     await anularAplicacao(a.id, ids.sitio, "Anular baixa lançada incorretamente", null);
     const movimento = (await listarMovimentos({ movimentoId: a.movimentoEstoqueId!, propriedadeId: ids.sitio })).itens[0];

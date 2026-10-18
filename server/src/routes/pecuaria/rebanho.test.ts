@@ -333,18 +333,48 @@ describe("rebanhoRouter — auditoria do animal: paginação", () => {
   it("sem query: usa os defaults (page 1, pageSize 20)", async () => {
     const res = await app(usuario({ flags: [] })).request(`/animais/${ID}/auditoria`);
     expect(res.status).toBe(200);
-    expect(mocks.buscarAuditoriaAnimal).toHaveBeenCalledWith(ID, 1, 1, 20);
+    expect(mocks.buscarAuditoriaAnimal).toHaveBeenCalledWith(ID, 1, 1, 20, {}, false);
   });
 
   it("repassa page/pageSize da query", async () => {
     const res = await app(usuario({ flags: [] })).request(`/animais/${ID}/auditoria?page=3&pageSize=5`);
     expect(res.status).toBe(200);
-    expect(mocks.buscarAuditoriaAnimal).toHaveBeenCalledWith(ID, 1, 3, 5);
+    expect(mocks.buscarAuditoriaAnimal).toHaveBeenCalledWith(ID, 1, 3, 5, {}, false);
   });
 
   it("pageSize acima do limite é 422", async () => {
     const res = await app(usuario({ flags: [] })).request(`/animais/${ID}/auditoria?pageSize=999`);
     expect(res.status).toBe(422);
+  });
+
+  it("valida e repassa filtros completos e escopo ao serviço", async () => {
+    const params = new URLSearchParams({ inicio: "2026-09-19T03:00:00Z", fim: "2026-10-19T02:59:59Z", eixo: "NUTRICAO", acao: "CONFIRMACAO", responsavel: "7", busca: "Consumo", page: "2" });
+    const res = await app(usuario({ areas: ["pecuaria"], flags: [] })).request(`/animais/${ID}/auditoria?${params}`);
+    expect(res.status).toBe(200);
+    expect(mocks.buscarAuditoriaAnimal).toHaveBeenCalledWith(ID, 1, 2, 20, {
+      inicio: "2026-09-19T03:00:00Z", fim: "2026-10-19T02:59:59Z", eixo: "NUTRICAO", acao: "CONFIRMACAO", responsavel: 7, busca: "Consumo",
+    }, true);
+  });
+
+  it("aceita filtro explícito dos registros sem eixo classificado", async () => {
+    const res = await app(usuario({})).request(`/animais/${ID}/auditoria?eixo=NAO_CLASSIFICADO`);
+    expect(res.status).toBe(200);
+    expect(mocks.buscarAuditoriaAnimal).toHaveBeenCalledWith(ID, 1, 1, 20, { eixo: "NAO_CLASSIFICADO" }, false);
+  });
+
+  it.each([
+    "eixo=INEXISTENTE", "responsavel=-1", "responsavel=Ana", "inicio=2026-10-18",
+    "inicio=2026-10-20T00:00:00Z&fim=2026-10-19T00:00:00Z", "page=0",
+  ])("recusa filtro inválido sem consultar: %s", async (query) => {
+    const res = await app(usuario({})).request(`/animais/${ID}/auditoria?${query}`);
+    expect(res.status).toBe(422);
+    expect(mocks.buscarAuditoriaAnimal).not.toHaveBeenCalled();
+  });
+
+  it.each([{ areas: [], flags: ["verValores"] }, { areas: ["financeiro"], flags: [] }])("não expõe custos a perfis sem Pecuária: %j", async (permissoes) => {
+    const res = await app(usuario(permissoes)).request(`/animais/${ID}/auditoria?responsavel=sem`);
+    expect(res.status).toBe(200);
+    expect(mocks.buscarAuditoriaAnimal).toHaveBeenCalledWith(ID, 1, 1, 20, { responsavel: "sem" }, false);
   });
 });
 

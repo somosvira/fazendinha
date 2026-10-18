@@ -11,6 +11,15 @@ const exame = () => ({
 });
 
 describe("máscara financeira com resultados clínicos estruturados", () => {
+  it("leitura operacional libera apenas parcelas escalares dos fatos e mantém documentos e totais protegidos", () => {
+    const r = mascararCustos({ propriedadeId: 2, valorProdutoAtribuido: "0.00", valorServicoAtribuido: null,
+      valorTotal: "500.00", documentoMaterial: { referencia: "Documento financeiro" },
+      exame: { valorServicoAtribuido: { segredo: "SEGREDO" }, resultados: exame().resultados },
+    }, false, true, 2);
+    expect(r).toEqual({ propriedadeId: 2, valorProdutoAtribuido: "0.00", valorServicoAtribuido: null,
+      valorTotal: null, documentoMaterial: null, exame: { valorServicoAtribuido: null, resultados: exame().resultados },
+    });
+  });
   it("preserva resultados na ficha e nas respostas de parto e avaliação, mas mascara custos", () => {
     const original = { valor: "500", partos: [{ examesPosParto: [exame()] }], avaliacoes: [{ exame: exame() }],
       examesPosParto: [exame()], exame: exame() };

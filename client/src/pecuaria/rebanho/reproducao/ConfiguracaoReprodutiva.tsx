@@ -1,3 +1,4 @@
+import { ConfiguracaoAcompanhamento } from "./ConfiguracaoAcompanhamento";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
@@ -313,6 +314,7 @@ export function ConfiguracaoReprodutiva({
           </details>
         ))}
       </div>
+      <ConfiguracaoAcompanhamento propriedadeId={propriedadeId} podeLancar={podeLancar}/>
     </section>
   );
 }

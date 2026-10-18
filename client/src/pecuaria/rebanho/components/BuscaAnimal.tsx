@@ -55,7 +55,7 @@ export function BuscaAnimal({ sexo, excluirId, valor, onSelecionar, ariaLabel }:
   if (valor) {
     return <div className="flex items-center justify-between gap-2 rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm">
       <span className="break-words"><strong>{valor.brinco}</strong>{valor.nome ? ` — ${valor.nome}` : ""}</span>
-      <button type="button" aria-label="Trocar animal selecionado" onClick={() => onSelecionar(null)} className="shrink-0 rounded p-1 text-ink-2 hover:bg-surface hover:text-red-700"><X size={15} /></button>
+      <button type="button" aria-label="Trocar animal selecionado" onClick={() => onSelecionar(null)} className="shrink-0 rounded p-1 text-ink-2 hover:bg-card hover:text-red-700"><X size={15} /></button>
     </div>;
   }
 

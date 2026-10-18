@@ -1,3 +1,4 @@
+import { criarEntradaValorizadaFixtureTx, limparMovimentosValorizadosFixtureTx } from "../../test/estoque-valorizado.fixture.js";
 import crypto from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -23,7 +24,7 @@ comBanco("perdas físicas — PostgreSQL com fixtures próprias", () => {
       const alocacoes = await prepararPartidasTx(tx, { produtoId, propriedadeId: sitioId, rastrearPartidas: true, tipo: "ENTRADA", quantidade: new Prisma.Decimal(10), data: new Date("2026-10-01"), partidas: [
         { validade: "2026-10-02", nome: "Lote vencido", quantidade: 5 }, { validade: null, nome: "Lote sem validade", quantidade: 5 },
       ] });
-      await tx.movimentoEstoque.create({ data: { produtoId, propriedadeId: sitioId, origem: "COMPRA", tipo: "ENTRADA", data: new Date("2026-10-01"), quantidade: 10, custoUnitario: 2, valorTotal: 20,
+      await criarEntradaValorizadaFixtureTx(tx, { data: { produtoId, propriedadeId: sitioId, origem: "COMPRA", tipo: "ENTRADA", data: new Date("2026-10-01"), quantidade: 10, custoUnitario: 2, valorTotal: 20,
         alocacaoPartidaEstoques: { create: alocacoes.map((p) => ({ partidaId: p.partidaId, quantidade: p.quantidade })) },
       } });
     });
@@ -35,8 +36,7 @@ comBanco("perdas físicas — PostgreSQL com fixtures próprias", () => {
     const operacoes = await prisma.operacao.findMany({ where: { propriedadeId: { in: sitios } }, select: { id: true } });
     await prisma.$transaction(async (tx) => {
       await tx.auditoriaFinanceira.deleteMany({ where: { entidadeId: { in: operacoes.map((o) => o.id) } } });
-      await tx.alocacaoPartidaEstoque.deleteMany({ where: { partida: { produtoId: { in: produtos } } } });
-      await tx.movimentoEstoque.deleteMany({ where: { produtoId: { in: produtos } } });
+      await limparMovimentosValorizadosFixtureTx(tx, produtos);
       await tx.operacao.deleteMany({ where: { id: { in: operacoes.map((o) => o.id) } } });
       await tx.partidaProduto.deleteMany({ where: { produtoId: { in: produtos }, lotePrincipalId: { not: null } } });
       await tx.partidaProduto.deleteMany({ where: { produtoId: { in: produtos } } });

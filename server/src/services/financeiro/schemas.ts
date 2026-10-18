@@ -83,6 +83,7 @@ export const patchContaSchema = z.object({
 
 export const categoriaCadastroSchema = z.object({
   nome: z.string().trim().min(2).max(80),
+  grupoId: z.string().uuid().nullable().optional(),
   classificacao: z.enum(["CUSTEIO", "INVESTIMENTO"]).nullable().default(null),
   ordem: z.number().int().min(0).max(9999).default(0),
   usoGenetico: z.boolean().optional(),
@@ -91,6 +92,12 @@ export const categoriaCadastroSchema = z.object({
 });
 
 export const patchCategoriaCadastroSchema = categoriaCadastroSchema.partial().extend({ ativo: z.boolean().optional() });
+
+export const grupoCategoriaSchema = z.object({
+  nome: z.string().trim().min(2).max(80),
+  ordem: z.number().int().min(0).max(9999).default(0),
+});
+export const patchGrupoCategoriaSchema = grupoCategoriaSchema.partial().extend({ ativo: z.boolean().optional() });
 
 export const centroCustoSchema = z.object({
   nome: z.string().trim().min(2).max(80),
@@ -132,6 +139,7 @@ export const itemOperacaoSchema = z.object({
   descricao: z.string().trim().min(1).max(160),
   quantidade: valorPositivo,
   unidade: z.string().trim().min(1).max(20),
+  elegivelDesconto: z.boolean().optional(),
   valorUnitario: z.coerce.number().nonnegative().optional(),
   valorTotal: z.coerce.number().positive().optional(),
   estocavel: z.boolean().default(false),
@@ -150,18 +158,29 @@ const parcelaSchema = z.object({
   dataVencimento: z.coerce.date({ errorMap: () => ({ message: "Informe a data de vencimento de todas as parcelas" }) }),
 });
 
+const MAX_VALOR_COMERCIAL = 999_999_999_999.99; // Decimal(14,2)
+const valorComercial = z.coerce.number().finite("Informe um valor finito").nonnegative().max(MAX_VALOR_COMERCIAL, "Valor comercial muito alto");
+const composicaoCompra = {
+  descontoComercial: valorComercial.optional(),
+  distribuicaoDesconto: z.array(valorComercial).max(1000).optional(),
+  logistica: z.object({ valor: valorComercial.refine(v => v > 0, "Informe um valor positivo"), descricao: z.string().trim().min(2).max(160).default("Logística da aquisição"), categoriaId: z.string().uuid(), centroCustoId: z.string().uuid().optional() }).strict().optional(),
+};
 export const simulacaoParcelasSchema = z.object({
-  itens: z.array(z.object({ quantidade: valorPositivo, valorUnitario: z.coerce.number().nonnegative().optional(), valorTotal: z.coerce.number().positive().optional() }).refine((item) => item.valorUnitario !== undefined || item.valorTotal !== undefined, { message: "Informe o valor unitário ou total do item" })).default([]),
+  ...composicaoCompra,
+  itens: z.array(z.object({ quantidade: valorPositivo, elegivelDesconto: z.boolean().optional(), valorUnitario: z.coerce.number().nonnegative().optional(), valorTotal: z.coerce.number().positive().optional() }).refine((item) => item.valorUnitario !== undefined || item.valorTotal !== undefined, { message: "Informe o valor unitário ou total do item" })).default([]),
   valorTotal: z.coerce.number().positive().optional(),
   valorPagoAgora: z.coerce.number().nonnegative().optional(),
   quantidadeParcelas: z.number().int().min(1).max(360),
   frequencia: z.enum(["SEMANAL", "MENSAL"]),
   primeiroVencimento: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
 }).superRefine((input, ctx) => {
+  if (input.distribuicaoDesconto && input.distribuicaoDesconto.length !== input.itens.length) ctx.addIssue({ code: "custom", path: ["distribuicaoDesconto"], message: "Informe uma parcela de desconto por item" });
   if (!input.itens.length && input.valorTotal === undefined) ctx.addIssue({ code: "custom", path: ["valorTotal"], message: "Informe itens ou o valor total" });
 });
 
 export const operacaoSchema = z.object({
+  ...composicaoCompra,
+  documentacaoValor: z.object({ referencia: z.string().trim().min(2).max(200), evidencia: z.string().trim().min(5).max(2000) }).strict().optional(),
   chave: z.string().uuid("Atualize a confirmação e tente novamente").optional(),
   classificacao: z.enum(["CUSTEIO", "INVESTIMENTO"]).nullable().optional(),
   tipo: z.enum([
@@ -187,6 +206,7 @@ export const operacaoSchema = z.object({
     }),
   ]),
 }).superRefine((input, ctx) => {
+  if (input.distribuicaoDesconto && input.distribuicaoDesconto.length !== input.itens.length) ctx.addIssue({ code: "custom", path: ["distribuicaoDesconto"], message: "Informe uma parcela de desconto por item" });
   const tiposComItens = new Set([
     "COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO", "VENDA", "AJUSTE_ESTOQUE",
     "INVENTARIO_INICIAL", "BONIFICACAO", "DEVOLUCAO", "PRODUCAO",

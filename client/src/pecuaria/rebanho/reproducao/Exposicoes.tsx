@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { getHojeISO as hoje } from "../../../lib/hoje";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Button,
   CabecalhoTabela,
   ErrorBox,
-  hoje,
   Panel,
 } from "../../../financeiro/financeiro-ui";
 import {
@@ -24,7 +24,11 @@ type Exposicao = {
   touroExterno?: { nome: string };
   lote?: { nome: string };
 };
-export function Exposicoes({ podeLancar }: { podeLancar: boolean }) {
+export function Exposicoes({ podeLancar, propriedadeId }: { podeLancar: boolean; propriedadeId?: number }) {
+  const sitioEfetivo = propriedadeId ?? getPropriedadeAtiva() ?? undefined;
+  const consultaAtual = useRef(0);
+  const sitioAtual = useRef(sitioEfetivo);
+  sitioAtual.current = sitioEfetivo;
   const [encerrando, setEncerrando] = useState<Exposicao | null>(null);
   const [dataFim, setDataFim] = useState(hoje());
   const [motivoFim, setMotivoFim] = useState("");
@@ -41,25 +45,31 @@ export function Exposicoes({ podeLancar }: { podeLancar: boolean }) {
   const [erro, setErro] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState(false);
   const [chave] = useState(() => crypto.randomUUID());
-  const carregar = async () => {
+  const carregar = useCallback(async () => {
+    const pedido = ++consultaAtual.current;
+    setErro(null);
     try {
       const [e, l, t, x] = await Promise.all([
-        obterReproducao().then((p) => p.exposicoes ?? []),
-        listarLotes(),
-        listarAnimais({ sexo: "M", pageSize: 200 }),
-        listarGenitores({ sexo: "M" }),
+        obterReproducao(undefined, sitioEfetivo).then((p) => p.exposicoes ?? []),
+        listarLotes(undefined, sitioEfetivo),
+        listarAnimais({ sexo: "M", pageSize: 200, ...(sitioEfetivo ? { propriedadeId: sitioEfetivo } : {}) }, sitioEfetivo),
+        listarGenitores({ sexo: "M" }, sitioEfetivo),
       ]);
+      if (pedido !== consultaAtual.current) return;
       setLista(e);
       setLotes(l);
       setTouros(t.itens);
       setExternos(x);
     } catch (e) {
-      setErro(e instanceof Error ? e.message : String(e));
+      if (pedido === consultaAtual.current) setErro(e instanceof Error ? e.message : String(e));
     }
-  };
+  }, [sitioEfetivo]);
   useEffect(() => {
+    setLista([]); setLotes([]); setTouros([]); setExternos([]);
+    setAberto(false); setEncerrando(null); setLoteId(""); setTouro(""); setOcupado(false);
     void carregar();
-  }, []);
+    return () => { consultaAtual.current++; };
+  }, [carregar]);
   return (
     <Panel>
       <CabecalhoTabela
@@ -132,7 +142,7 @@ export function Exposicoes({ podeLancar }: { podeLancar: boolean }) {
             className="grid gap-4"
             onSubmit={(e) => {
               e.preventDefault();
-              const propriedadeId = getPropriedadeAtiva();
+              const propriedadeId = sitioEfetivo;
               if (!propriedadeId) {
                 setErro("Selecione o sítio.");
                 return;
@@ -143,13 +153,14 @@ export function Exposicoes({ podeLancar }: { podeLancar: boolean }) {
                 propriedadeId,
                 data: dataFim,
                 motivo: motivoFim,
-              })
+              }, "POST", propriedadeId)
                 .then(async () => {
+                  if (sitioAtual.current !== propriedadeId) return;
                   setEncerrando(null);
                   await carregar();
                 })
-                .catch((e) => setErro(e.message))
-                .finally(() => setOcupado(false));
+                .catch((e) => { if (sitioAtual.current === propriedadeId) setErro(e.message); })
+                .finally(() => { if (sitioAtual.current === propriedadeId) setOcupado(false); });
             }}
           >
             <ErrorBox erro={erro} />
@@ -199,7 +210,7 @@ export function Exposicoes({ podeLancar }: { podeLancar: boolean }) {
             className="grid gap-4"
             onSubmit={(e) => {
               e.preventDefault();
-              const propriedadeId = getPropriedadeAtiva();
+              const propriedadeId = sitioEfetivo;
               if (!propriedadeId) {
                 setErro("Selecione um sítio.");
                 return;
@@ -216,13 +227,14 @@ export function Exposicoes({ podeLancar }: { podeLancar: boolean }) {
                 ...(touro.startsWith("externo:")
                   ? { touroExternoId: touro.slice(8) }
                   : { touroId: touro }),
-              })
+              }, "POST", propriedadeId)
                 .then(async () => {
+                  if (sitioAtual.current !== propriedadeId) return;
                   setAberto(false);
                   await carregar();
                 })
-                .catch((e) => setErro(e.message))
-                .finally(() => setOcupado(false));
+                .catch((e) => { if (sitioAtual.current === propriedadeId) setErro(e.message); })
+                .finally(() => { if (sitioAtual.current === propriedadeId) setOcupado(false); });
             }}
           >
             <ErrorBox erro={erro} />

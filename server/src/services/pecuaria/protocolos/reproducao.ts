@@ -19,12 +19,12 @@ export async function resolverIdReprodutivoTx(tx: Tx, entidade: Entidade, id: st
   return registro.id;
 }
 
-type DadosProtocolo = Pick<ProtocoloIatf, "nome" | "versao"> & { id?: string; etapas: Prisma.InputJsonValue; publicado?: boolean; criadoEm?: Date; criadoPorId?: number | null; descricao?: string | null };
+type DadosProtocolo = Pick<ProtocoloIatf, "nome" | "versao"> & { id?: string; etapas: Prisma.InputJsonValue; publicado?: boolean; criadoEm?: Date; criadoPorId?: number | null; descricao?: string | null;referenciaTecnica?:Prisma.InputJsonValue };
 export async function criarProtocoloReprodutivoTx(tx: Tx, { data }: { data: DadosProtocolo }): Promise<ProtocoloIatf> {
   const etapas = etapasReprodutivasDoContrato(data.etapas);
   const versao = await reservarVersaoTx(tx, "REPRODUTIVO", data.nome.trim(), data.versao);
   const p = await tx.protocolo.create({ data: { id: data.id, tipo: "REPRODUTIVO", nome: data.nome.trim(), descricao: data.descricao, versao,
-    publicado: false, criadoEm: data.criadoEm, criadoPorId: data.criadoPorId, etapas: { create: etapas } } });
+    publicado: false, referenciaTecnica:data.referenciaTecnica, criadoEm: data.criadoEm, criadoPorId: data.criadoPorId, etapas: { create: etapas } } });
   if (data.publicado) await tx.protocolo.update({ where: { id: p.id }, data: { publicado: true, publicadoEm: new Date() } });
   return tx.protocoloIatf.findUniqueOrThrow({ where: { id: p.id } });
 }

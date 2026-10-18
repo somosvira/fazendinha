@@ -3,23 +3,24 @@ import { ListaCadastroFinanceiro } from "./ListaCadastroFinanceiro";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Building2, Package, Plus, Tags, Target, Users } from "lucide-react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { atualizarCategoria, atualizarCentroCusto, atualizarConta, atualizarParceiro, atualizarProduto, obterConfiguracoesFinanceiras, type Categoria, type CentroCusto, type Conta, type ConfiguracoesFinanceiras as Config, type Parceiro, type Produto } from "./novo-api";
+import { atualizarGrupoCategoria, type GrupoCategoria, atualizarCategoria, atualizarCentroCusto, atualizarConta, atualizarParceiro, atualizarProduto, obterConfiguracoesFinanceiras, type Categoria, type CentroCusto, type Conta, type ConfiguracoesFinanceiras as Config, type Parceiro, type Produto } from "./novo-api";
 import { AcoesLinha, brl, Button, type ColunaTabela, dataBR, ErrorBox, PageHeader, PaginaFinanceira, PaginaSemDados, Panel, Pill, SelectFiltro, TabelaFinanceira } from "./financeiro-ui";
 import { FormConta, TIPO_CONTA } from "./FormConta";
 import { FormParceiro } from "./FormParceiro";
 import { PAPEIS_PARCEIRO, papeisDoParceiro } from "./lib/parceiros";
 import { formatarDocumento } from "./lib/validacao";
-import { FormCategoria, FormCentroCusto } from "./FormCadastrosGerenciais";
+import { FormGrupoCategoria, FormCategoria, FormCentroCusto } from "./FormCadastrosGerenciais";
 import { rotuloUnidade } from "../lib/unidades";
 import { FormProduto } from "./FormProduto";
 
-type Aba = "contas" | "parceiros" | "produtos" | "categorias" | "centros";
-type EntidadePainel = "conta" | "parceiro" | "produto" | "categoria" | "centro";
+type Aba = "contas" | "parceiros" | "produtos" | "categorias" | "grupos" | "centros";
+type EntidadePainel = "conta" | "parceiro" | "produto" | "categoria" | "grupo" | "centro";
 type Painel = { entidade: EntidadePainel; modo: "novo" } | { entidade: EntidadePainel; modo: "editar"; id: string } | null;
 type Confirmacao =
   | { tipo: "conta"; item: Conta }
   | { tipo: "parceiro"; item: Parceiro }
   | { tipo: "produto"; item: Produto }
+  | { tipo: "grupo"; item: GrupoCategoria }
   | { tipo: "categoria"; item: Categoria }
   | { tipo: "centro"; item: CentroCusto }
   | null;
@@ -54,6 +55,7 @@ const colunasProdutos = (editar: (p: Produto) => void, alternar: (p: Produto) =>
 
 const colunasCategorias = (editar: (c: Categoria) => void, alternar: (c: Categoria) => void): ColunaTabela<Categoria>[] => [
   { chave: "categoria", titulo: "Categoria", principal: true, larguraMinima: 210, celula: (c) => <strong>{c.nome}</strong> },
+  { chave: "grupo", titulo: "Grupo", larguraMinima: 160, celula: (c) => c.grupo?.nome ?? "Sem grupo" },
   { chave: "classificacao", titulo: "Classificação", alinhamento: "centro", larguraMinima: 130, celula: (c) => <Pill>{c.classificacao === "INVESTIMENTO" ? "Investimento" : c.classificacao === "CUSTEIO" ? "Custeio" : "Não classificada"}</Pill> },
   { chave: "referencias", titulo: "Vínculos", alinhamento: "centro", larguraMinima: 100, celula: (c) => (c._count?.operacoes ?? 0) + (c._count?.produtos ?? 0) + (c._count?.itens ?? 0) },
   { chave: "situacao", titulo: "Situação", alinhamento: "centro", larguraMinima: 100, celula: (c) => <Pill tone={c.ativo ? "green" : "neutral"}>{c.ativo ? "Ativa" : "Inativa"}</Pill> },
@@ -67,7 +69,15 @@ const colunasCentros = (editar: (c: CentroCusto) => void, alternar: (c: CentroCu
   { chave: "acoes", titulo: "Ações", alinhamento: "direita", larguraMinima: 110, acoes: true, celula: (c) => <AcoesLinha nome={c.nome} ativo={c.ativo} onEditar={() => editar(c)} onAlternar={() => alternar(c)} /> },
 ];
 
+const colunasGrupos = (editar: (g: GrupoCategoria) => void, alternar: (g: GrupoCategoria) => void): ColunaTabela<GrupoCategoria>[] => [
+  { chave: "nome", titulo: "Grupo", principal: true, celula: g => <strong>{g.nome}</strong> },
+  { chave: "categorias", titulo: "Categorias", celula: g => g._count?.categorias ?? 0 },
+  { chave: "situacao", titulo: "Situação", celula: g => <Pill tone={g.ativo ? "green" : "neutral"}>{g.ativo ? "Ativo" : "Inativo"}</Pill> },
+  { chave: "acoes", titulo: "Ações", acoes: true, celula: g => <AcoesLinha nome={g.nome} ativo={g.ativo} onEditar={() => editar(g)} onAlternar={() => alternar(g)} /> },
+];
+
 function mensagemDesativar(confirmacao: NonNullable<Confirmacao>) {
+  if (confirmacao.tipo === "grupo") return "O grupo deixa de aceitar novas associações. As categorias já vinculadas e suas operações permanecem disponíveis.";
   if (confirmacao.tipo === "conta") return "A conta deixa de aparecer em novas operações e transferências. O extrato e todos os movimentos continuam disponíveis. Você pode reativar quando quiser.";
   if (confirmacao.tipo === "categoria") return "A categoria deixa de aparecer em novas operações e produtos. Os registros históricos continuam vinculados.";
   if (confirmacao.tipo === "centro") return "O centro de custo deixa de aparecer em novas operações e produtos. Os registros históricos continuam vinculados.";
@@ -81,7 +91,7 @@ function mensagemDesativar(confirmacao: NonNullable<Confirmacao>) {
 export function ConfiguracoesFinanceiras({ abaInicial = "contas", podeEditar = true }: { abaInicial?: Aba; podeEditar?: boolean }) {
   const [config, setConfig] = useState<Config | null>(null);
   const [erro, setErro] = useState<string | null>(null);
-  const [aba, setAba] = useState<Aba>(() => { const alvo = new URLSearchParams(window.location.search).get("aba"); return alvo === "parceiros" || alvo === "produtos" ? alvo : abaInicial; });
+  const [aba, setAba] = useState<Aba>(() => { const alvo = new URLSearchParams(window.location.search).get("aba"); return alvo === "parceiros" || alvo === "produtos" || alvo === "categorias" || alvo === "grupos" || alvo === "centros" ? alvo : abaInicial; });
   const [painel, setPainel] = useState<Painel>(null);
   const [confirmando, setConfirmando] = useState<Confirmacao>(null);
   const [processando, setProcessando] = useState(false);
@@ -121,6 +131,11 @@ export function ConfiguracoesFinanceiras({ abaInicial = "contas", podeEditar = t
     if (c.ativo) { setConfirmando({ tipo: "categoria", item: c }); return; }
     await executar(() => atualizarCategoria(c.id, { ativo: true }));
   };
+  const alternarGrupo = async (g: GrupoCategoria) => {
+    if (!podeEditar || emCurso.current) return;
+    if (g.ativo) { setConfirmando({ tipo: "grupo", item: g }); return; }
+    await executar(() => atualizarGrupoCategoria(g.id, { ativo: true }));
+  };
   const alternarCentro = async (c: CentroCusto) => {
     if (!podeEditar || emCurso.current) return;
     if (c.ativo) { setConfirmando({ tipo: "centro", item: c }); return; }
@@ -137,6 +152,7 @@ export function ConfiguracoesFinanceiras({ abaInicial = "contas", podeEditar = t
       if (confirmando.tipo === "conta") await atualizarConta(confirmando.item.id, { ativo: false });
       else if (confirmando.tipo === "parceiro") await atualizarParceiro(confirmando.item.id, { ativo: false });
       else if (confirmando.tipo === "categoria") await atualizarCategoria(confirmando.item.id, { ativo: false });
+      else if (confirmando.tipo === "grupo") await atualizarGrupoCategoria(confirmando.item.id, { ativo: false });
       else if (confirmando.tipo === "centro") await atualizarCentroCusto(confirmando.item.id, { ativo: false });
       else await atualizarProduto(confirmando.item.id, { ativo: false });
       setConfirmando(null);
@@ -149,6 +165,8 @@ export function ConfiguracoesFinanceiras({ abaInicial = "contas", podeEditar = t
   const produtosCadastro = config.produtosCadastro ?? config.produtos;
   const produtoSelecionado = painel?.entidade === "produto" && painel.modo === "editar" ? produtosCadastro.find((p) => p.id === painel.id) ?? null : null;
   const categoriaSelecionada = painel?.entidade === "categoria" && painel.modo === "editar" ? config.categorias.find((c) => c.id === painel.id) ?? null : null;
+  const grupos = config.gruposCategorias ?? [];
+  const grupoSelecionado = painel?.entidade === "grupo" && painel.modo === "editar" ? grupos.find(g => g.id === painel.id) ?? null : null;
   const centroSelecionado = painel?.entidade === "centro" && painel.modo === "editar" ? config.centrosCusto.find((c) => c.id === painel.id) ?? null : null;
   /* key força remount do formulário a cada abertura, zerando o estado local */
   const chavePainel = painel ? `${painel.entidade}-${painel.modo === "editar" ? painel.id : "novo"}` : "fechado";
@@ -164,6 +182,7 @@ export function ConfiguracoesFinanceiras({ abaInicial = "contas", podeEditar = t
   });
   const acao = aba === "categorias"
     ? <Button onClick={() => abrirNovo("categoria")}><Plus size={16} /> Nova categoria</Button>
+    : aba === "grupos" ? <Button onClick={() => abrirNovo("grupo")}><Plus size={16} /> Novo grupo</Button>
     : <Button onClick={() => abrirNovo(aba === "contas" ? "conta" : aba === "parceiros" ? "parceiro" : aba === "produtos" ? "produto" : "centro")}><Plus size={16} /> {aba === "contas" ? "Nova conta" : aba === "parceiros" ? "Novo parceiro" : aba === "produtos" ? "Novo produto" : "Novo centro de custo"}</Button>;
 
   return <PaginaFinanceira colorida>
@@ -171,7 +190,7 @@ export function ConfiguracoesFinanceiras({ abaInicial = "contas", podeEditar = t
     <ErrorBox erro={erro} />
     {!podeEditar && <p className="mt-4 rounded-lg border border-border bg-muted px-4 py-3 text-sm text-ink-3">Você tem acesso de consulta a estes cadastros.</p>}
     <Tabs value={aba} onValueChange={v => trocarAba(v as Aba)} className="mt-4 min-w-0">
-      <TabsList aria-label="Cadastros financeiros" className="fin-abas grid h-auto group-data-[orientation=horizontal]/tabs:h-auto w-full grid-cols-2 gap-1 p-1 sm:grid-cols-3 xl:grid-cols-5">{([["contas", "Contas financeiras", Building2], ["parceiros", "Clientes e fornecedores", Users], ["produtos", "Produtos", Package], ["categorias", "Categorias", Tags], ["centros", "Centros de custo", Target]] as const).map(([k, label, Icon]) => <TabsTrigger key={k} value={k} onClick={() => trocarAba(k)} className="min-h-11 whitespace-normal px-3 text-left"><Icon size={16} strokeWidth={1.8} aria-hidden="true" />{label}</TabsTrigger>)}</TabsList>
+      <TabsList aria-label="Cadastros financeiros" className="fin-abas grid h-auto group-data-[orientation=horizontal]/tabs:h-auto w-full grid-cols-2 gap-1 p-1 sm:grid-cols-3 xl:grid-cols-6">{([["contas", "Contas financeiras", Building2], ["parceiros", "Clientes e fornecedores", Users], ["produtos", "Produtos", Package], ["categorias", "Categorias", Tags], ["grupos", "Grupos de categorias", Tags], ["centros", "Centros de custo", Target]] as const).map(([k, label, Icon]) => <TabsTrigger key={k} value={k} onClick={() => trocarAba(k)} className="min-h-11 whitespace-normal px-3 text-left"><Icon size={16} strokeWidth={1.8} aria-hidden="true" />{label}</TabsTrigger>)}</TabsList>
       <TabsContent value={aba}>
     <fieldset disabled={processando} aria-busy={processando} className="min-w-0">
       {aba === "contas" && <ListaCadastroFinanceiro key="contas" rotulo="Contas financeiras" itens={config.contas} colunas={colunasContas((c) => editar("conta", c), alternarConta).filter(coluna => podeEditar || !coluna.acoes)} onAbrir={podeEditar ? item => editar("conta", item) : undefined} />}
@@ -183,7 +202,8 @@ export function ConfiguracoesFinanceiras({ abaInicial = "contas", podeEditar = t
         <label className="fin-filtro-campo text-sm font-medium">Situação<SelectFiltro rotulo="Filtrar por situação" valor={filtroSituacao} onChange={setFiltroSituacao} opcoes={[{ valor: "TODOS", texto: "Ativos e inativos" }, { valor: "ATIVOS", texto: "Ativos" }, { valor: "INATIVOS", texto: "Inativos" }]} className="fin-filtro-campo mt-1" /></label>
         {(filtroFornecedor || filtroCentro || filtroUso || filtroSituacao !== "TODOS") && <Button secondary className="shrink-0" onClick={() => { setFiltroFornecedor(""); setFiltroCentro(""); setFiltroUso(""); setFiltroSituacao("TODOS"); }}>Limpar filtros</Button>}
       </>} />}
-      {aba === "categorias" && <ListaCadastroFinanceiro key="categorias" rotulo="Categorias financeiras" itens={categorias} colunas={colunasCategorias((c) => editar("categoria", c), alternarCategoria).filter(coluna => podeEditar || !coluna.acoes)} onAbrir={podeEditar ? item => editar("categoria", item) : undefined} />}
+      {aba === "categorias" && <ListaCadastroFinanceiro key="categorias" rotulo="Categorias financeiras" itens={categorias} termosDe={c => `${c.nome} ${c.grupo?.nome ?? "Sem grupo"}`} colunas={colunasCategorias((c) => editar("categoria", c), alternarCategoria).filter(coluna => podeEditar || !coluna.acoes)} onAbrir={podeEditar ? item => editar("categoria", item) : undefined} />}
+      {aba === "grupos" && <ListaCadastroFinanceiro key="grupos" rotulo="Grupos de categorias" itens={grupos} colunas={colunasGrupos(g => editar("grupo", g), alternarGrupo).filter(coluna => podeEditar || !coluna.acoes)} onAbrir={podeEditar ? item => editar("grupo", item) : undefined} />}
       {aba === "centros" && <ListaCadastroFinanceiro key="centros" rotulo="Centros de custo" itens={config.centrosCusto} colunas={colunasCentros((c) => editar("centro", c), alternarCentro).filter(coluna => podeEditar || !coluna.acoes)} onAbrir={podeEditar ? item => editar("centro", item) : undefined} />}
     </fieldset>
       </TabsContent>
@@ -192,7 +212,8 @@ export function ConfiguracoesFinanceiras({ abaInicial = "contas", podeEditar = t
     {painel?.entidade === "conta" && <FormConta key={chavePainel} aberto conta={contaSelecionada} ordemInicial={config.contas.reduce((maior, conta) => Math.max(maior, conta.ordem ?? 0), -1) + 1} onSalvo={aoSalvar} onFechar={() => setPainel(null)} />}
     {painel?.entidade === "parceiro" && <FormParceiro key={chavePainel} aberto parceiro={parceiroSelecionado} onSalvo={aoSalvar} onFechar={() => setPainel(null)} />}
     {painel?.entidade === "produto" && <FormProduto key={chavePainel} somenteLeitura={!podeEditar} produto={produtoSelecionado} parceiros={config.parceiros} categorias={categorias} centros={config.centrosCusto} onSalvo={aoSalvar} onFechar={() => setPainel(null)} />}
-    {painel?.entidade === "categoria" && <FormCategoria key={chavePainel} categoria={categoriaSelecionada} ordemInicial={categorias.reduce((maior, categoria) => Math.max(maior, categoria.ordem), -1) + 1} onSalvo={aoSalvar} onFechar={() => setPainel(null)} />}
+    {painel?.entidade === "categoria" && <FormCategoria key={chavePainel} categoria={categoriaSelecionada} grupos={grupos} ordemInicial={categorias.reduce((maior, categoria) => Math.max(maior, categoria.ordem), -1) + 1} onSalvo={aoSalvar} onFechar={() => setPainel(null)} />}
+    {painel?.entidade === "grupo" && <FormGrupoCategoria key={chavePainel} grupo={grupoSelecionado} ordemInicial={grupos.reduce((maior, g) => Math.max(maior, g.ordem), -1) + 1} onSalvo={aoSalvar} onFechar={() => setPainel(null)} />}
     {painel?.entidade === "centro" && <FormCentroCusto key={chavePainel} centro={centroSelecionado} ordemInicial={config.centrosCusto.reduce((maior, centro) => Math.max(maior, centro.ordem), -1) + 1} onSalvo={aoSalvar} onFechar={() => setPainel(null)} />}
 
     <ConfirmDialog

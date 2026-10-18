@@ -32,6 +32,7 @@ const PATH_BY_TAB: Record<Tab, string> = {
   "pec-nutricao": "/pecuaria/nutricao",
   "pec-reproducao": "/pecuaria/reproducao",
   "pec-visitas": "/pecuaria/visitas",
+  "pec-relatorios": "/pecuaria/relatorios",
   estoque: "/estoque",
 };
 
@@ -62,6 +63,10 @@ export const DEFAULT_TAB: Tab = "dashboard";
 export function normalizarRotaPecuaria(caminho: string): string {
   const url = new URL(caminho, "https://terrano.internal");
   const path = url.pathname.replace(/\/$/, "").toLowerCase();
+  if (path === "/pecuaria/reproducao" && url.searchParams.get("rotina") === "configuracao") {
+    url.pathname = "/configuracoes/pecuaria/reproducao/politica";
+    url.searchParams.delete("rotina");
+  }
   if (path === "/pecuaria/pesagem-manejo") url.pathname = "/pecuaria/rebanho/animais";
   if (path === "/pecuaria/rebanho/sanidade") url.pathname = "/pecuaria/sanidade";
   if (path === "/pecuaria/rebanho/nutricao") url.pathname = "/pecuaria/nutricao";
@@ -81,7 +86,7 @@ export function normalizarLocalizacaoPecuaria(): void {
   if (destino !== atual) window.history.replaceState(window.history.state, "", destino);
 }
 export function isSubrotaPecuaria(tab: Tab, pathname: string): boolean {
-  return ["pec-sanidade", "pec-nutricao", "pec-reproducao", "pec-visitas"].includes(tab) && pathToTab(pathname) === tab
+  return ["pec-sanidade", "pec-nutricao", "pec-reproducao", "pec-visitas", "pec-relatorios"].includes(tab) && pathToTab(pathname) === tab
     || tab === "config" && pathname.startsWith("/configuracoes/pecuaria");
 }
 

@@ -1,3 +1,4 @@
+import { criarEntradaValorizadaFixture, limparMovimentosValorizadosFixture } from "../../../test/estoque-valorizado.fixture.js";
 import crypto from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
 import { prisma } from "../../../db.js";
@@ -24,7 +25,7 @@ afterAll(async () => {
   await prisma.vigenciaDietaLote.deleteMany({ where: { id: ids.vigencia } });
   await prisma.itemDieta.deleteMany({ where: { dietaId: ids.dieta } });
   await prisma.dieta.deleteMany({ where: { id: ids.dieta } });
-  await prisma.movimentoEstoque.deleteMany({ where: { produtoId: ids.produto } });
+  await limparMovimentosValorizadosFixture([ids.produto]);
   await prisma.periodoReprodutivoAnimal.deleteMany({ where: { animalId: ids.animal } }); await prisma.destinoAnimal.deleteMany({ where: { animalId: ids.animal } });
   await prisma.localizacaoAnimal.deleteMany({ where: { animalId: ids.animal } });
   await prisma.animal.deleteMany({ where: { id: ids.animal } });
@@ -36,7 +37,7 @@ afterAll(async () => {
 });
 
 describeComBanco("fechamento nutricional com PostgreSQL", () => {
-  it("calcula animal-dias, baixa consumo conferido e estorna sem duplicar custo financeiro", async () => {
+  it("calcula animal-dias e baixa consumo conferido sem duplicar custo financeiro", async () => {
     const propriedade = await prisma.propriedade.create({ data: { nome: `Pec V3 nutrição ${run}` } }); ids.propriedade = propriedade.id;
     const centro = await prisma.centroCusto.create({ data: { nome: `Pec V3 CC ${run}` } }); ids.centro = centro.id;
     const lote = await prisma.lote.create({ data: { nome: `Lote V3 ${run}`, propriedadeId: propriedade.id, centroCustoId: centro.id } }); ids.lote = lote.id;
@@ -44,7 +45,7 @@ describeComBanco("fechamento nutricional com PostgreSQL", () => {
       dataNascimento: "2024-01-01", dataEntrada: "2026-08-01", propriedadeId: propriedade.id, loteId: lote.id }), null); ids.animal = animal.id;
     const categoria = await prisma.categoria.create({ data: { nome: `Nutrição V3 ${run}`, usoNutricional: true } }); ids.categoria = categoria.id;
     const produto = await prisma.produto.create({ data: { nome: `Ração V3 ${run}`, unidade: "KG", categoriaId: categoria.id, usoNutricional: true } }); ids.produto = produto.id;
-    await prisma.movimentoEstoque.create({ data: { produtoId: produto.id, propriedadeId: propriedade.id,
+    await criarEntradaValorizadaFixture({ data: { produtoId: produto.id, propriedadeId: propriedade.id,
       tipo: "ENTRADA", origem: "INVENTARIO_INICIAL", data: new Date("2026-08-30"), quantidade: 50, custoUnitario: 2, valorTotal: 100 } });
     const dieta = await criarDieta({ nome: `Dieta V3 ${run}`, itens: [{ produtoId: produto.id, quantidadeCabecaDia: 3 }] }, null); ids.dieta = dieta.id;
     await publicarDieta(dieta.id, null);
@@ -72,9 +73,6 @@ describeComBanco("fechamento nutricional com PostgreSQL", () => {
     await prisma.localizacaoAnimal.update({ where: { id: local.id }, data: { ate: new Date("2026-09-15") } });
     await prisma.localizacaoAnimal.update({ where: { id: local.id }, data: { ate: null } });
     await expect(confirmarConsumo({ ...contexto, itens: [{ produtoId: produto.id, modoEstoque: "BAIXA_ESTOQUE" }] }, null)).rejects.toThrow();
-    await estornarFechamento(fechamento.id, propriedade.id, "Revisão do consumo registrado", null);
-    expect((await prisma.fechamentoConsumo.findUnique({ where: { id: fechamento.id } }))?.status).toBe("ESTORNADO");
-    expect((await detalheFechamento(fechamento.id, propriedade.id, true)).custoConhecido).toBe("56.00");
   });
   it("divide mês, aponta lacunas e confirma atomicamente sem duplicar no reenvio", async () => {
     const contexto = { loteId: ids.lote, propriedadeId: ids.propriedade, inicio: "2026-09-29", fim: "2026-10-02" };
@@ -95,5 +93,15 @@ describeComBanco("fechamento nutricional com PostgreSQL", () => {
     expect(resultado.fechamentos).toHaveLength(2);
     expect(await confirmarPeriodos(input, null)).toEqual(resultado);
     expect(await prisma.fechamentoConsumo.count({ where: { loteId: ids.lote } })).toBe(antes + 2);
+  });
+  it("bloqueia estorno retroativo com dependentes e preserva o custo do último fechamento estornado", async () => {
+    await expect(estornarFechamento(ids.fechamento, ids.propriedade, "Revisão do consumo registrado", null)).rejects.toMatchObject({ code: "CONFLITO" });
+    expect((await prisma.fechamentoConsumo.findUnique({ where: { id: ids.fechamento } }))?.status).toBe("CONFIRMADO");
+    const ultimo = await prisma.fechamentoConsumo.findFirstOrThrow({ where: { loteId: ids.lote, status: "CONFIRMADO" }, orderBy: { fim: "desc" } });
+    const custoAntes = (await detalheFechamento(ultimo.id, ids.propriedade, true)).custoConhecido;
+    await estornarFechamento(ultimo.id, ids.propriedade, "Revisão do último consumo registrado", null);
+    expect((await prisma.fechamentoConsumo.findUnique({ where: { id: ultimo.id } }))?.status).toBe("ESTORNADO");
+    expect((await detalheFechamento(ultimo.id, ids.propriedade, true)).custoConhecido).toBe(custoAntes);
+    expect((await detalheFechamento(ids.fechamento, ids.propriedade, true)).custoConhecido).toBe("56.00");
   });
 });

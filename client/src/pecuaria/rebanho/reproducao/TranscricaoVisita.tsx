@@ -1,5 +1,7 @@
+import {ListaAnimaisVisita} from "./ListaAnimaisVisita";
+import { FiltrosAtendimentoVisita } from "./FiltrosAtendimentoVisita";
 import "./visitas-fluxo.css";
-import { nomeAtividadeVisita, lotesAtividadeVisita } from "./apresentacao-visita";
+import { nomeAtividadeVisita, lotesAtividadeVisita,origemAtividadeVisita } from "./apresentacao-visita";
 import { motivosComunsFolha } from "./folha-regras";
 import { CampoDataIatf } from "./CampoDataIatf";
 import { CamposResultadoExame } from "../sanidade/CamposExame";
@@ -132,6 +134,23 @@ export function Transcricao({
     new URLSearchParams(window.location.search).getAll(prefixo + "motivo"),
   );
   const [pagina, setPagina] = useState(1);
+  const livre=origemAtividadeVisita(atividade)==="livre";
+  const [individual,setIndividual]=useState<string|null>(()=>new URLSearchParams(window.location.search).get(prefixo+"animal"));
+  const retornoIndividual=useRef<{scroll:number;rotulo:string}|null>(null);
+  const abrirIndividual=(id:string)=>{
+    const p=atividade.participantes.find(p=>p.id===id);if(!p)return;
+    retornoIndividual.current={scroll:window.scrollY,rotulo:`Abrir atendimento de ${p.snapshot.brinco??p.ordem}${p.snapshot.nome?` · ${p.snapshot.nome}`:""}`};
+    setIndividual(id);setRevisao([]);setDetalhes(v=>[...new Set([...v,id])]);
+    const url=new URL(window.location.href);url.searchParams.set(prefixo+"animal",id);window.history.replaceState(window.history.state,"",url.pathname+url.search+url.hash);
+    requestAnimationFrame(()=>document.getElementById(`linha-${id}`)?.querySelector<HTMLElement>("input,select,button")?.focus());
+  };
+  async function voltarListaIndividual(){
+    if(guardaAtual.current&&!(await guardaAtual.current()))return;
+    setIndividual(null);setPreparar(null);setRevisao([]);
+    const url=new URL(window.location.href);url.searchParams.delete(prefixo+"animal");window.history.replaceState(window.history.state,"",url.pathname+url.search+url.hash);
+    requestAnimationFrame(()=>{const retorno=retornoIndividual.current;if(!retorno)return;const botao=Array.from(document.getElementById(`lista-livre-${atividade.id}`)?.querySelectorAll<HTMLButtonElement>("button")??[]).find(b=>b.getAttribute("aria-label")===retorno.rotulo);botao?.focus({preventScroll:true});window.scrollTo({top:retorno.scroll});});
+  }
+
   useEffect(() => {
     const url = new URL(window.location.href);
     for (const [k, v] of [
@@ -249,12 +268,10 @@ export function Transcricao({
   });
   const indicadosIatf = atividade.participantes.filter(p => confirmado(p) && !p.regularizacaoPendente &&
     (ehAvaliacaoTarefa(p) ? (rascunhos[p.id]?.dados?.conduta ?? p.rascunho?.dados?.conduta) : (rascunhos[p.id]?.conduta ?? p.rascunho?.conduta)) === "IATF");
-  const itens = filtrarParticipantes(atividade.participantes, {
-    q,
-    status,
-    motivos,
-  });
-  const itensPagina = itens.slice((pagina - 1) * 15, pagina * 15);
+  const selecionado=atividade.participantes.find(p=>p.id===individual);
+  const itensListaLivre=filtrarParticipantes(atividade.participantes,{q:"",status,motivos});
+  const itens = livre&&selecionado?atividade.participantes.filter(p=>p.animalId===selecionado.animalId):filtrarParticipantes(atividade.participantes,{q,status,motivos});
+  const itensPagina = livre?selecionado?itens:[]:itens.slice((pagina - 1) * 15, pagina * 15);
   useEffect(() => { setPagina(1); }, [q, status, motivos]);
   useEffect(() => {
     if (!focoPendencia) return;
@@ -266,6 +283,7 @@ export function Transcricao({
     setFocoPendencia(null);
   }, [focoPendencia, pagina, itens]);
   function paginacaoAtendimento() {
+    if(livre)return null;
     const paginas = Math.max(1, Math.ceil(itens.length / 15));
     return <nav aria-label="Paginação dos participantes" className="visita-paginacao">
       <span>{itens.length ? (pagina - 1) * 15 + 1 : 0}–{Math.min(pagina * 15, itens.length)} de {itens.length} participantes filtrados · 15 por página</span>
@@ -371,6 +389,7 @@ export function Transcricao({
     return resultados.every(Boolean) && participantes.every(p => !conflitos.current.has(p.id) && !rascunhosSujos.current.has(p.id));
   };
   async function confirmar(ids: string[]) {
+    if(livre)ids=ids.filter(id=>!!selecionado&&atividade.participantes.some(p=>p.id===id&&p.animalId===selecionado.animalId));
     if (!ids.length) return;
     const blocos = blocosConfirmacao(ids);
     setOcupado(true);
@@ -611,7 +630,7 @@ export function Transcricao({
     return <div className="visita-tabela visita-tabela-atendimento" role="region" aria-label="Resultados dos animais" tabIndex={0}>
       <table className="w-full text-sm">
         <caption className="sr-only">Avaliação coletiva na ordem da folha de campo</caption>
-        <thead className="sticky top-0 z-10 bg-surface"><tr className="text-left border-y border-border">
+        <thead className="sticky top-0 z-10 bg-card"><tr className="text-left border-y border-border">
           <th className="p-3"><input type="checkbox" aria-label="Selecionar todos os participantes filtrados"
             disabled={!podeLancar || ocupado || !editaveis.length}
             checked={editaveis.length > 0 && editaveis.every(p => selecionados.includes(p.id))}
@@ -744,7 +763,7 @@ export function Transcricao({
     return !!r.resultado || Object.keys(r.dados ?? {}).length > 0
       || r.status === "CONFIRMADO";
   }).map(p => p.id);
-  const idsConferencia = selecionadosPendentes.length ? selecionadosPendentes : idsComResultado;
+  const idsConferencia = (selecionadosPendentes.length ? selecionadosPendentes : idsComResultado).filter(id=>!livre||!!selecionado&&atividade.participantes.some(p=>p.id===id&&p.animalId===selecionado.animalId));
   const comuns = motivosComunsFolha(atividade.participantes);
   const primeiraTarefa = atividade.participantes[0]?.snapshot.tarefaPlanejada?.tarefa;
   const tituloAtividade = nomeAtividadeVisita(atividade);
@@ -812,10 +831,15 @@ export function Transcricao({
           <Button secondary disabled={!painel || ocupado} onClick={() => setProgramarIatf(true)}>Programar IATF para indicados ({indicadosIatf.length})</Button>
         </div>}
       </div>
-      <div className="visita-toolbar"><label className="visita-campo">Buscar<input className="visita-busca h-auto" type="search" aria-label="Buscar participantes" value={q} onChange={e=>setQ(e.target.value)} placeholder="Brinco, nome ou lote"/></label><div className="visita-toolbar-direita"><span>Rascunhos salvos ao sair do campo</span><details className="visita-filtros-extras"><summary>Filtrar atendimentos</summary><div><label>Atendimento<select className="h-auto" value={status} onChange={e=>setStatus(e.target.value)}><option value="">Todos</option><option value="PENDENTE">Pendentes</option><option value="CONFIRMADO">Confirmados</option><option value="ADIADO">Adiados</option><option value="NAO_ATENDIDO">Não atendidos</option></select></label>{motivosDisponiveis.map(m=><label key={m}><input type="checkbox" checked={motivos.includes(m)} onChange={e=>setMotivos(e.target.checked?[...motivos,m]:motivos.filter(v=>v!==m))}/>{m}</label>)}</div></details>{!!selecionadosPendentes.length && <span>{selecionadosPendentes.length} selecionados</span>}</div></div>
+      <FiltrosAtendimentoVisita busca={q} onBusca={setQ} mostrarBusca={!livre || !!individual}
+        status={status} onStatus={setStatus} motivos={motivos} motivosDisponiveis={motivosDisponiveis}
+        onMotivos={setMotivos} selecionados={selecionadosPendentes.length} />
+      {livre&&!individual&&<div id={`lista-livre-${atividade.id}`}><ListaAnimaisVisita animais={itensListaLivre.map(p=>({id:p.id,animalId:p.animalId,brinco:String(p.snapshot.brinco??p.ordem),nome:p.snapshot.nome,status:confirmado(p)?"CONFIRMADO":p.status,temRascunho:Object.keys(rascunhos[p.id]??{}).length>0}))} busca={q} onBusca={setQ} onAbrir={abrirIndividual} selecionadoId={individual}/></div>}
+      {livre&&individual&&<div className="p-4 flex flex-wrap justify-between gap-3"><h3 className="font-semibold">Atendimento individual · {selecionado?.snapshot.brinco??"Animal"}</h3><Button secondary disabled={ocupado} onClick={()=>void voltarListaIndividual()}>Voltar à lista de animais</Button></div>}
+      <div hidden={livre&&!individual}>
       {atividade.tipo === "AVALIACAO_REPRODUTIVA" ? tabelaAvaliacao() : <div className="visita-tabela visita-tabela-atendimento" role="region" aria-label="Procedimentos dos animais" tabIndex={0}>
         <table className="w-full text-sm">
-          <thead className="sticky top-0 z-10 bg-surface"><tr className="text-left border-y border-border">
+          <thead className="sticky top-0 z-10 bg-card"><tr className="text-left border-y border-border">
             <th className="p-3"><input type="checkbox" aria-label="Selecionar todos os participantes filtrados" disabled={!podeLancar || ocupado || !itens.some(p => !confirmado(p))} checked={itens.filter(p => !confirmado(p)).length > 0 && itens.filter(p => !confirmado(p)).every(p => selecionados.includes(p.id))} onChange={e => setSelecionados(prev => e.target.checked ? [...new Set([...prev, ...itens.filter(p => !confirmado(p)).map(p => p.id)])] : prev.filter(id => !itens.some(p => p.id === id)))} /></th><CabecalhoContextoVisita />
             <th className="p-3">Resultado do atendimento</th><th className="p-3">Detalhes</th>
           </tr></thead>
@@ -905,6 +929,7 @@ export function Transcricao({
         {!itens.length && <p className="p-5 text-sm">Nenhum participante com estes filtros.</p>}
       </div>}
       {paginacaoAtendimento()}
+      </div>
       {programarIatf && painel && <section aria-label="Programar animais indicados para IATF" className="p-4 space-y-3">
         <Button secondary onClick={() => setProgramarIatf(false)}>Fechar programação dos indicados</Button>
         <p className="text-sm mb-4">A indicação já foi registrada. Escolha o protocolo e o início previsto para programar o grupo.</p>

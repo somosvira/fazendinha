@@ -1,3 +1,5 @@
+import { conflitoTransacaoValidada } from "../lib/transacao-validada.js";
+import { ValorizacaoError } from "../services/estoque/valorizacao.calc.js";
 import { Hono, type Context } from "hono";
 import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
@@ -9,7 +11,7 @@ import * as documentos from "../services/financeiro/documentos.js";
 import * as rascunhos from "../services/financeiro/rascunhos.js";
 import { analisarCategorias, analiseCategoriasSchema } from "../services/financeiro/analise-categorias.js";
 import { obterDashboard } from "../services/financeiro/dashboard.js";
-import { categoriaCadastroSchema, centroCustoSchema, contaSchema, estornoSchema, liquidacaoSchema, operacaoSchema, parceiroSchema, patchCategoriaCadastroSchema, patchCentroCustoSchema, patchContaSchema, patchParceiroSchema, rascunhoOperacaoSchema, simulacaoParcelasSchema, tipoDocumentoFinanceiroSchema, transacaoAvulsaSchema, transferenciaSchema } from "../services/financeiro/schemas.js";
+import { grupoCategoriaSchema, patchGrupoCategoriaSchema, categoriaCadastroSchema, centroCustoSchema, contaSchema, estornoSchema, liquidacaoSchema, operacaoSchema, parceiroSchema, patchCategoriaCadastroSchema, patchCentroCustoSchema, patchContaSchema, patchParceiroSchema, rascunhoOperacaoSchema, simulacaoParcelasSchema, tipoDocumentoFinanceiroSchema, transacaoAvulsaSchema, transferenciaSchema } from "../services/financeiro/schemas.js";
 import { patchProdutoSchema, produtoSchema } from "../services/estoque/produtos.schemas.js";
 import { FinanceiroError } from "../services/financeiro/regras.js";
 import { EstoqueError } from "../services/estoque/estoque.js";
@@ -36,21 +38,14 @@ function apresentarOperacao<T extends {
   const custosVisiveis = !!usuario && temArea(usuario, "financeiro") && temPermissao(usuario, "verValores");
   // O detalhe do atendimento inclui parcelas, itens e atribuições analíticas.
   // Ocultar só a coluna na interface deixaria esses valores na resposta da API.
-  if (dados.tipo === "SERVICO" && !custosVisiveis) return ocultarValoresServico(dados);
-  const estoqueFisico = dados.tipo === "TRANSFERENCIA_ESTOQUE" || dados.movimentosEstoque.some((m) => m.origem === "PERDA" || m.origem === "TRANSFERENCIA");
-  if (!estoqueFisico || custosVisiveis) return dados;
-  return {
-    ...dados, valorTotal: null,
-    ...(dados.perdas ? { perdas: dados.perdas.map((perda) => ({ ...perda, custoUnitario: null, valorTotal: null })) } : {}),
-    ...(dados.transferencias ? { transferencias: dados.transferencias.map((transferencia) => ({ ...transferencia, custoUnitario: null, valorTotal: null })) } : {}),
-    movimentosEstoque: dados.movimentosEstoque.map((movimento) => ({ ...movimento, custoUnitario: null, valorTotal: null })),
-  };
+  if (!custosVisiveis) return ocultarValoresServico(dados);
+  return dados;
 }
 
 function ocultarValoresServico<T>(dados: T): T {
   if (Array.isArray(dados)) return dados.map(ocultarValoresServico) as T;
   if (!dados || typeof dados !== "object" || dados instanceof Date || "toJSON" in dados) return dados;
-  const campos = new Set(["valor", "valorTotal", "valorUnitario", "valorProdutoAtribuido", "valorServicoAtribuido", "custoUnitario", "valorPago", "valorLiquidado", "valorRestante", "valorOriginal", "saldoPendente", "saldoExigivel", "entrada", "saida"]);
+  const campos = new Set(["valor", "valorTotal", "valorUnitario", "valorProdutoAtribuido", "valorServicoAtribuido", "custoUnitario", "evidenciaValor", "valorPago", "valorLiquidado", "valorRestante", "valorOriginal", "saldoPendente", "saldoExigivel", "entrada", "saida", "composicaoComercial", "valorBruto", "valorLiquido", "desconto", "descontoComercial"]);
   return Object.fromEntries(Object.entries(dados).map(([campo, valor]) => [campo, campos.has(campo) ? null : ocultarValoresServico(valor)])) as T;
 }
 
@@ -76,6 +71,8 @@ function exigirUsuarioId(c: Context): number {
 }
 
 function falha(c: Context, erro: unknown) {
+  if (conflitoTransacaoValidada(erro)) return c.json({ error: "Os dados mudaram. Recarregue e confirme novamente.", code: "CONFLITO" }, 409);
+  if (erro instanceof ValorizacaoError) return c.json({ error: erro.message, code: erro.code }, erro.code === "VALIDACAO" ? 422 : 409);
   if (erro instanceof EstoqueError) {
     const status = erro.code === "NAO_ENCONTRADO" ? 404 : erro.code === "VALIDACAO" ? 422 : 409;
     return c.json({ error: erro.message, code: erro.code }, status);
@@ -117,6 +114,14 @@ export const financeiroRouter = new Hono()
   })
   .patch("/financeiro/produtos/:id", exigePermissao("lancar"), validarCadastro(patchProdutoSchema), async (c) => {
     try { return c.json(await produtos.atualizarProduto(c.req.param("id"), c.req.valid("json"), usuarioId(c))); }
+    catch (e) { return falha(c, e); }
+  })
+  .post("/financeiro/grupos-categorias", exigePermissao("lancar"), validarCadastro(grupoCategoriaSchema), async (c) => {
+    try { return c.json(await cadastros.criarGrupoCategoria(c.req.valid("json"), usuarioId(c)), 201); }
+    catch (e) { return falha(c, e); }
+  })
+  .patch("/financeiro/grupos-categorias/:id", exigePermissao("lancar"), validarCadastro(patchGrupoCategoriaSchema), async (c) => {
+    try { return c.json(await cadastros.atualizarGrupoCategoria(c.req.param("id"), c.req.valid("json"), usuarioId(c))); }
     catch (e) { return falha(c, e); }
   })
   .post("/financeiro/categorias", exigePermissao("lancar"), validarCadastro(categoriaCadastroSchema), async (c) => {
@@ -203,7 +208,7 @@ export const financeiroRouter = new Hono()
     catch (e) { return falha(c, e); }
   })
   .post("/financeiro/operacoes/rascunho/confirmacao", exigePermissao("lancar"), zValidator("json", z.object({ versao: z.number().int().positive().optional(), chave: z.string().uuid().optional() })), async (c) => {
-    try { const body = c.req.valid("json"); return c.json(await rascunhos.confirmarRascunho(await resolverEscopoEscrita(c), exigirUsuarioId(c), body.versao, body.chave), 201); }
+    try { const body = c.req.valid("json"); return c.json(apresentarOperacao(c, await rascunhos.confirmarRascunho(await resolverEscopoEscrita(c), exigirUsuarioId(c), body.versao, body.chave)), 201); }
     catch (e) { return falha(c, e); }
   })
   .post("/financeiro/operacoes/simulacao-parcelas", exigePermissao("lancar"), validarCadastro(simulacaoParcelasSchema), async (c) => {
@@ -259,7 +264,7 @@ export const financeiroRouter = new Hono()
     try {
       const input = c.req.valid("json");
       const propriedadeId = await resolverEscopoEscrita(c, input.propriedadeId ?? null);
-      return c.json(await operacoes.criarOperacao({ ...input, propriedadeId, usuarioId: usuarioId(c) }), 201);
+      return c.json(apresentarOperacao(c, await operacoes.criarOperacao({ ...input, propriedadeId, usuarioId: usuarioId(c) })), 201);
     } catch (e) { return falha(c, e); }
   })
   .post("/financeiro/operacoes/:id/estorno", exigePermissao("lancar"), zValidator("json", estornoSchema), async (c) => {

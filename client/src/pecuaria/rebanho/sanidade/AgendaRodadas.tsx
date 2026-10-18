@@ -1,6 +1,6 @@
 import { RegularizacaoTarefa, rotuloSituacaoTarefa } from "./RegularizacaoTarefa";
 import { Fragment, type ReactNode, useEffect, useRef, useState } from "react";
-import { Button, CabecalhoTabela, ErrorBox, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
+import { Button, CabecalhoTabela, Empty, ErrorBox, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
 import { classeInput } from "../../../financeiro/PainelCadastro";
 import { Paginacao } from "../ui";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
@@ -18,13 +18,14 @@ export function AgendaRodadas({ filtrosUI, filtros, podeLancar, rodadaId, onAbri
   const [revisao, setRevisao] = useState(0);
   const [salvo, setSalvo] = useState(false);
   const consulta = consultaRodadas(filtros);
+  const temFiltros = ["animalId", "buscaAnimal", "loteId", "de", "ate", "situacao"].some(chave => filtros[chave] !== undefined && filtros[chave] !== "");
   useEffect(() => { let vivo = true; setCarregando(true); setErro(null); listarRodadas(Object.fromEntries(new URLSearchParams(consulta))).then((v) => { if (vivo) setPagina(v); }).catch((e: unknown) => { if (vivo) setErro(`${salvo ? "Ciclo salvo. A consulta não atualizou. " : ""}${e instanceof Error ? e.message : String(e)}`); }).finally(() => { if (vivo) setCarregando(false); }); return () => { vivo = false; }; }, [consulta, revisao, recarregarToken]);
   return <section className="min-w-0">
     <CabecalhoTabela titulo="Ciclos de protocolos" acao={podeLancar ? <Button onClick={() => setCriando(true)}>Novo ciclo</Button> : undefined} />
     {filtrosUI}
     {salvo && <p role="status">Ciclo salvo.</p>}
     {erro && <><ErrorBox erro={erro} /><Button secondary onClick={() => setRevisao((v) => v + 1)}>Tentar novamente</Button></>}
-    {carregando ? <p>Carregando ciclos…</p> : <><div className="sanidade-ciclos">
+    {carregando ? <p role="status" className="p-4">Carregando ciclos…</p> : !erro && <><div className="sanidade-ciclos">
       <div className="sanidade-ciclo-linha sanidade-ciclo-cabecalho text-sm text-ink-3" aria-hidden="true"><span>Ciclo</span><span>Protocolo</span><span>Início</span><span>Participantes</span><span>Ação</span></div>
       {(pagina?.itens ?? []).map((r) => <Fragment key={r.id}>
         <div className={`sanidade-ciclo-linha ${rodadaId === r.id ? "sanidade-ciclo-ativo" : ""}`}>
@@ -34,7 +35,7 @@ export function AgendaRodadas({ filtrosUI, filtros, podeLancar, rodadaId, onAbri
         </div>
         {rodadaId === r.id && <div id={`ciclo-${r.id}`} className="sanidade-ciclo-ativo"><DetalheRodada id={rodadaId} filtros={filtros} podeLancar={podeLancar} onFechar={() => onAbrir("")} onExecutar={onExecutar} onAcao={onAcao} recarregarToken={recarregarToken} onMudou={() => setRevisao((v) => v + 1)} /></div>}
       </Fragment>)}
-    </div>{pagina && pagina.total > 0 && <Paginacao paginaAtual={pagina.pagina} totalPaginas={Math.max(1, Math.ceil(pagina.total / pagina.porPagina))} totalItens={pagina.total} itensPorPagina={pagina.porPagina} onPaginaChange={(p) => { const url = new URL(window.location.href); url.searchParams.set("pagina", String(p)); window.history.pushState(null, "", url); window.dispatchEvent(new PopStateEvent("popstate")); }} rotulo="ciclos" idSelect="pagina-rodadas" />}{!pagina?.itens?.length && <p>Nenhum ciclo encontrado. Inicie um ciclo para planejar o cuidado dos animais.</p>}</>}
+    </div>{pagina && pagina.total > 0 && <Paginacao paginaAtual={pagina.pagina} totalPaginas={Math.max(1, Math.ceil(pagina.total / pagina.porPagina))} totalItens={pagina.total} itensPorPagina={pagina.porPagina} onPaginaChange={(p) => { const url = new URL(window.location.href); url.searchParams.set("pagina", String(p)); window.history.pushState(null, "", url); window.dispatchEvent(new PopStateEvent("popstate")); }} rotulo="ciclos" idSelect="pagina-rodadas" />}{!pagina?.itens?.length && <Empty>{temFiltros ? "Nenhum ciclo corresponde aos filtros. Ajuste os critérios acima para consultar outros ciclos." : <>Nenhum ciclo encontrado.{podeLancar && " Use Novo ciclo para planejar o cuidado dos animais."}</>}</Empty>}</>}
     {criando && <FormRodada onFechar={() => setCriando(false)} onSalvo={(id) => { setCriando(false); setSalvo(true); setRevisao((v) => v + 1); onAbrir(id); }} />}
     {rodadaId && !pagina?.itens.some((r) => r.id === rodadaId) && <DetalheRodada id={rodadaId} filtros={filtros} podeLancar={podeLancar} onFechar={() => onAbrir("")} onExecutar={onExecutar} onAcao={onAcao} recarregarToken={recarregarToken} onMudou={() => setRevisao((v) => v + 1)} />}
   </section>;
@@ -66,6 +67,7 @@ function DetalheRodada({ id, filtros, podeLancar, onFechar, onExecutar, onMudou,
   const [carregando, setCarregando] = useState(true);
   const chave = useRef(crypto.randomUUID());
   const consulta = consultaRodadas(filtros);
+  const temFiltros = ["animalId", "buscaAnimal", "loteId", "de", "ate", "situacao"].some(chave => filtros[chave] !== undefined && filtros[chave] !== "");
   useEffect(() => { const p = new URLSearchParams(window.location.search); for (const [k, v] of Object.entries({ etapaId, paginaEtapas: String(paginaEtapas), paginaParticipantes: String(paginaParticipantes), paginaTarefas: String(paginaTarefas) })) { if (v && v !== "1") p.set(k, v); else p.delete(k); } window.history.replaceState(null, "", `${window.location.pathname}?${p}`); }, [etapaId, paginaEtapas, paginaParticipantes, paginaTarefas]);
   useEffect(() => { const restaurar = () => { const p = new URLSearchParams(window.location.search); setEtapaId(p.get("etapaId") ?? ""); setPaginaEtapas(paginaUrl("paginaEtapas")); setPaginaParticipantes(paginaUrl("paginaParticipantes")); setPaginaTarefas(paginaUrl("paginaTarefas")); }; window.addEventListener("popstate", restaurar); return () => window.removeEventListener("popstate", restaurar); }, []);
   useEffect(() => { let vivo = true; setRodada(null); setSelecionadas({}); setCarregando(true); setErro(null); const f = Object.fromEntries(new URLSearchParams(consulta)); Promise.all([consultarRodada(id), listarEtapasRodada(id, { ...f, pagina: paginaEtapas, porPagina: 20 }), listarParticipantesRodada(id, { ...f, pagina: paginaParticipantes, porPagina: 20 })]).then(([r, e, p]) => { if (vivo) { setRodada(r); setEtapas(e); setParticipantes(p); } }).catch((e: unknown) => { if (vivo) setErro(`${alteracaoSalva ? "Alteração salva. Não conseguimos atualizar a consulta. " : ""}${e instanceof Error ? e.message : String(e)}`); }).finally(() => { if (vivo) setCarregando(false); }); return () => { vivo = false; }; }, [id, consulta, revisao, paginaParticipantes, paginaEtapas, recarregarToken]);

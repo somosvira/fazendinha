@@ -23,6 +23,7 @@ function fonte(quantidade = 2) {
   const visita = { id: randomUUID(), propriedadeId: 1, data: new Date("2026-10-14"), encerradaEm: null, nome: "Visita" };
   const tx = {
     localizacaoAnimal: { findMany: vi.fn(async () => animais.map(a => ({ animalId: a.id }))) },
+    demandaAcompanhamentoReprodutivo:{findMany:vi.fn(async()=>[])},
     tarefaProtocolo: { findMany: vi.fn(async () => tarefas) },
     participanteVisita: { findMany: vi.fn(async () => []) }, atividadeVisita: { findMany: vi.fn(async () => []) },
     avaliacaoReprodutiva: { findMany: vi.fn(async () => []) }, selecaoVisita: { findMany: vi.fn(async () => []) },

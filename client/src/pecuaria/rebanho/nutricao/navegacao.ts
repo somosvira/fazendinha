@@ -11,7 +11,7 @@ export function useFiltrosNutricionais() {
   function atualizar(valores: Record<string, string>) {
     const alvo = new URL(window.location.href);
     Object.entries(valores).forEach(([k, v]) => { if (v) alvo.searchParams.set(k, v); else alvo.searchParams.delete(k); });
-    window.history.replaceState(null, "", alvo.pathname + alvo.search);
+    window.history.replaceState(window.history.state, "", alvo.pathname + alvo.search + alvo.hash);
     window.dispatchEvent(new PopStateEvent("popstate"));
   }
   return { params, atualizar };

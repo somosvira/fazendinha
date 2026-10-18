@@ -7,11 +7,11 @@ import { criarVisita, obterVisita, type AtividadeVisita, type Visita } from "./v
 import { chaveGrupo } from "./planner-api";
 import { criteriosVazios } from "./EditorSelecaoVisita";
 import { grupoLivre } from "./SelecaoLivreVisita";
-const mocks = vi.hoisted(() => ({ guarda: vi.fn<() => Promise<boolean>>(), desmontou: vi.fn() }));
+const mocks = vi.hoisted(() => ({ guarda: vi.fn<() => Promise<boolean>>(), desmontou: vi.fn(), registrou: vi.fn() }));
 vi.mock("../../../api/propriedades", () => ({ usePropriedades: () => ({ data: [{ id: 1, nome: "Principal", ativo: true }] }) }));
 vi.mock("./visitas-api", async original => ({ ...await original<typeof import("./visitas-api")>(), criarVisita: vi.fn(), obterVisita: vi.fn(), listarVisitas: vi.fn().mockResolvedValue([]) }));
 vi.mock("./TranscricaoVisita", () => ({ Transcricao: ({ atividade, registrarGuardaSaida }: { atividade: AtividadeVisita; registrarGuardaSaida?: (fn: (() => Promise<boolean>) | null) => void }) => {
-  useEffect(() => { registrarGuardaSaida?.(mocks.guarda); return () => { registrarGuardaSaida?.(null); mocks.desmontou(atividade.id); }; }, [atividade.id, registrarGuardaSaida]);
+  useEffect(() => { registrarGuardaSaida?.(mocks.guarda); mocks.registrou(atividade.id); return () => { registrarGuardaSaida?.(null); mocks.desmontou(atividade.id); }; }, [atividade.id, registrarGuardaSaida]);
   return <p>Atendimento ativo {atividade.id}</p>;
 } }));
 vi.mock("./PlannerVisita", () => ({ PlannerVisita: () => <p>Planner ativo</p> }));
@@ -26,6 +26,8 @@ describe("páginas de visita e guarda de rascunho", () => {
   it("aguarda o salvamento antes de desmontar a atividade na troca por botão", async () => {
     const p = pendente(); mocks.guarda.mockReturnValue(p.promessa);
     render(<Visitas podeLancar/>); await screen.findByText("Atendimento ativo a1");
+    // O texto pode aparecer antes do efeito que instala a guarda no componente simulado.
+    await waitFor(() => expect(mocks.registrou).toHaveBeenCalledWith("a1"));
     fireEvent.click(screen.getByRole("button", { name: /Grupo a2/ }));
     await waitFor(()=>expect(mocks.guarda).toHaveBeenCalledTimes(1)); expect(mocks.desmontou).not.toHaveBeenCalled();
     expect(screen.getByText("Atendimento ativo a1")).toBeTruthy();
@@ -34,6 +36,8 @@ describe("páginas de visita e guarda de rascunho", () => {
   });
   it("mantém atividade e endereço quando a gravação recusa a navegação", async () => {
     mocks.guarda.mockResolvedValue(false); render(<Visitas podeLancar/>); await screen.findByText("Atendimento ativo a1");
+    // O texto pode aparecer antes do efeito que instala a guarda no componente simulado.
+    await waitFor(() => expect(mocks.registrou).toHaveBeenCalledWith("a1"));
     fireEvent.click(screen.getByRole("button", { name: /Grupo a2/ }));
     await waitFor(() => expect(mocks.guarda).toHaveBeenCalledTimes(1));
     expect(screen.getByText("Atendimento ativo a1")).toBeTruthy(); expect(mocks.desmontou).not.toHaveBeenCalled();
@@ -42,6 +46,7 @@ describe("páginas de visita e guarda de rascunho", () => {
   it("popstate não desmonta antecipadamente e restaura endereço quando o salvamento falha", async () => {
     const p = pendente(); mocks.guarda.mockReturnValue(p.promessa);
     render(<Visitas podeLancar/>); await screen.findByText("Atendimento ativo a1");
+    await waitFor(() => expect(mocks.registrou).toHaveBeenCalledWith("a1"));
     window.history.pushState({}, "", "/pecuaria/visitas/visita?etapa=atendimento&atividade=a2");
     fireEvent(window, new PopStateEvent("popstate"));
     await waitFor(() => expect(mocks.guarda).toHaveBeenCalledTimes(1)); expect(mocks.desmontou).not.toHaveBeenCalled();

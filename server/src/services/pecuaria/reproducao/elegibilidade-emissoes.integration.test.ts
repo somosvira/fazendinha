@@ -75,7 +75,7 @@ suite("integração local — elegibilidade e emissões com rollback", () => {
 
       await tx.gestacaoAnimal.create({ data: {
         animalId: animal.id, propriedadeId: propriedade.id, confirmadaEm: dia("2025-01-15"),
-        encerradaEm: dia("2025-02-10"), motivoEncerramento: "PERDA_GESTACIONAL",
+        encerradaEm: dia("2025-02-10"),tipoEncerramento:"PERDA", motivoEncerramento: "PERDA_GESTACIONAL",
       } });
       const duranteGestacao = await obterElegibilidadesNaDataTx(tx, [animal.id], propriedade.id, dia("2025-02-01"));
       expect(duranteGestacao.get(animal.id)).toMatchObject({ estado: "NAO_ELEGIVEL", politicaId: politicaInicial.id });

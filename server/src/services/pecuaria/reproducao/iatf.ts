@@ -1,3 +1,4 @@
+import { reconciliarDemandasAnimalTx } from "./acompanhamento.js";
 import { lerDataIatf, diaIatf, anteriorIatf, serializarDataIatf, type PrecisaoIatf } from "./horarios.calc.js";
 import { conferirFormatoReprodutivo } from "../exames/formatos.js";
 import { TIPO_EXAME_REPRODUTIVO } from "../exames/evidencia-reprodutiva.js";
@@ -168,9 +169,11 @@ export async function criarProtocolo(
       "etapas",
     );
   return transacaoPecuaria(async (tx) => {
+    const origem=input.origemVersaoId?await tx.protocolo.findFirst({where:{id:input.origemVersaoId,tipo:"REPRODUTIVO"}}):null;
+    if(input.origemVersaoId&&!origem)erro("Versão de origem reprodutiva não encontrada", "origemVersaoId");
     const etapas = await congelarEtapasTx(tx, input.etapas);
     const p = await criarProtocoloReprodutivoTx(tx, {
-      data: { ...input, etapas: json(etapas), criadoPorId: usuarioId },
+      data: { ...input, etapas: json(etapas), criadoPorId: usuarioId,...(origem?.referenciaTecnica?{referenciaTecnica:json({...origem.referenciaTecnica as Record<string,unknown>,protocoloOrigemId:origem.id})}:{}) },
     });
     await auditar(tx, {
       entidade: "ProtocoloIatf",
@@ -184,11 +187,11 @@ export async function criarProtocolo(
 }
 export async function listarProtocolos() {
   const [versoes, contratos] = await Promise.all([
-    prisma.protocolo.findMany({ where: { tipo: "REPRODUTIVO" }, select: { id: true, ativo: true, descricao: true, publicadoEm: true, atualizadoEm: true, _count: { select: { execucoes: true, rodadas: true } } } }),
+    prisma.protocolo.findMany({ where: { tipo: "REPRODUTIVO" }, select: { id: true, ativo: true, referenciaTecnica:true, descricao: true, publicadoEm: true, atualizadoEm: true, _count: { select: { execucoes: true, rodadas: true } } } }),
     prisma.protocoloIatf.findMany({ orderBy: [{ nome: "asc" }, { versao: "desc" }] }),
   ]);
   const metas = new Map(versoes.map(v => [v.id, v]));
-  return contratos.map(p => { const v = metas.get(p.id)!; return { ...p, ativo: v.ativo, descricao: v.descricao, publicadoEm: v.publicadoEm, atualizadoEm: v.atualizadoEm, utilizada: v._count.execucoes > 0 || v._count.rodadas > 0 }; });
+  return contratos.map(p => { const v = metas.get(p.id)!; return { ...p, ativo: v.ativo, referenciaTecnica:v.referenciaTecnica, descricao: v.descricao, publicadoEm: v.publicadoEm, atualizadoEm: v.atualizadoEm, utilizada: v._count.execucoes > 0 || v._count.rodadas > 0 }; });
 }
 function etapaSemReferencias(e: Prisma.JsonValue) {
   if (!e || typeof e !== "object" || Array.isArray(e)) erro("Etapa de protocolo inválida", "etapas");
@@ -581,9 +584,23 @@ export async function executarTarefaTx(
   else
     await conferirMatrizTx(tx, participante.animalId, input.propriedadeId, dia(data));
   const plano = tarefa.planejadoSnapshot as SnapshotIatf | null;
+  const demanda = tarefa.tipo === "AVALIACAO"
+    ? await tx.demandaAcompanhamentoReprodutivo.findUnique({ where: { tarefaId: tarefa.id } })
+    : null;
+  const dadosAcompanhamento: Record<string, unknown> = {};
+  if (demanda) {
+    if (demanda.estado !== "PENDENTE") erro("A demanda desta tarefa não está pendente; revise o acompanhamento", "demandaAcompanhamentoId");
+    Object.assign(dadosAcompanhamento, { demandaAcompanhamentoId: demanda.id, finalidade: demanda.finalidade, tentativaId: demanda.tentativaId, gestacaoId: demanda.gestacaoId });
+    const regra = demanda.regraSnapshot as Record<string, unknown>;
+    if (regra.tipoExameId) dadosAcompanhamento.tipoExameId = regra.tipoExameId;
+    for (const [campo, esperado] of Object.entries(dadosAcompanhamento))
+      if (input.dados[campo] != null && input.dados[campo] !== esperado)
+        erro("Os dados informados divergem da demanda vinculada à tarefa", campo);
+  }
   const dados = {
     ...(tarefa.tipo === "AVALIACAO" ? { tipoExameId: plano?.etapa.planoAvaliacao?.tipoExameId ?? TIPO_EXAME_REPRODUTIVO } : {}),
     ...input.dados,
+    ...dadosAcompanhamento,
     chave: input.chave,
     animalId: participante.animalId,
     propriedadeId: input.propriedadeId,
@@ -610,6 +627,19 @@ export async function executarTarefaTx(
       .strict()
       .parse(Object.fromEntries(Object.entries(input.dados).filter(([k]) => k !== "cienciaSanitaria")));
   else erro("Tipo de tarefa desconhecido; revise a versão do protocolo");
+  if(plano?.etapa.orientacaoTemporal){
+    const regra=plano.etapa.orientacaoTemporal;
+    if(regra.referencia==="INICIO_EFETIVO")plano.referenciaTemporalEfetiva={data:participante.inicioEfetivo.toISOString(),precisao:participante.precisaoInicioEfetivo??"DIA",fatoId:participante.id};
+    else {
+      const anteriores=await tx.tarefaIatf.findMany({where:{participanteId:participante.id,etapa:{lt:tarefa.etapa}},orderBy:{etapa:"desc"}});
+      const anterior=anteriores[0];
+      const atual=anterior?await tx.tarefaProtocolo.findUnique({where:{id:anterior.id},include:{vinculos:{where:{estado:"ATUAL"},include:{aplicacao:true,exame:true,tentativa:true}}}}):null;
+      const historico=Array.isArray(atual?.historicoRegularizacao)?atual.historicoRegularizacao:[];
+      const ultima=historico.at(-1) as {acao?:string}|undefined;
+      const lastro=!!atual&&!atual.regularizacaoPendente&&ultima?.acao!=="ENCERRAR_SEM_SUBSTITUICAO"&&(["MANEJO","RETIRADA"].includes(anterior!.tipo)||atual.vinculos.some(v=>v.aplicacao?.status==="VALIDO"||v.exame?.status==="VALIDO"||v.tentativa?.status==="VALIDO"));
+      plano.referenciaTemporalEfetiva=anterior?.realizadaEm&&lastro?{data:anterior.realizadaEm.toISOString(),precisao:anterior.precisaoRealizacao??"DIA",fatoId:anterior.id}:null;
+    }
+  }
   const desvio = compararExecucaoIatf(
     plano,
     input.realizadaEm,
@@ -754,6 +784,7 @@ export async function executarTarefaTx(
     antes: tarefa,
     depois: { ...salva, fato },
   });
+  await reconciliarDemandasAnimalTx(tx, participante.animalId, usuarioId);
   return salva;
 }
 export const executarTarefa = (
@@ -828,15 +859,20 @@ export async function retirarParticipante(
 export async function listarProgramacoes(
   propriedadeId: number | null,
   id?: string,
+  animalId?: string,
 ) {
   if (id) id = await resolverIdReprodutivoTx(prisma, "programacao", id);
+  const participacoes = animalId ? await prisma.participacaoProtocolo.findMany({
+    where: { animalId, protocolo: { tipo: "REPRODUTIVO" }, ...(propriedadeId == null ? {} : { propriedadeId }) },
+    select: { rodadaId: true },
+  }) : null;
   const programacoes = await prisma.programacaoIatf.findMany({
     where: {
       ...(propriedadeId == null ? {} : { propriedadeId }),
-      ...(id ? { id } : {}),
+      ...(id ? { id } : participacoes ? { id: { in: participacoes.flatMap(p => p.rodadaId ? [p.rodadaId] : []) } } : {}),
     },
     orderBy: { inicioPrevisto: "desc" },
-    take: 200,
+    ...(animalId ? {} : { take: 200 }),
   });
   if (id && !programacoes.length)
     throw new RebanhoError(
@@ -844,7 +880,7 @@ export async function listarProgramacoes(
       "Programação não encontrada neste sítio",
     );
   const participantes = await prisma.participanteIatf.findMany({
-    where: { programacaoId: { in: programacoes.map((p) => p.id) } },
+    where: { programacaoId: { in: programacoes.map((p) => p.id) }, ...(animalId ? { animalId } : {}) },
   });
   const tarefas = await prisma.tarefaIatf.findMany({
     where: { participanteId: { in: participantes.map((p) => p.id) } },

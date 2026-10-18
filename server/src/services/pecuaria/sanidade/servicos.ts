@@ -1,3 +1,4 @@
+import { conferirAtribuicaoServicoCustoTx } from "../custos/custos.js";
 import { totalAtribuidoServicoTx } from "../reproducao/atribuicoes-servico.js";
 import { exigirPeriodoAberto } from "../../financeiro/regras.js";
 import crypto from "node:crypto";
@@ -61,7 +62,7 @@ async function fatos(tx: Db, id: string, propriedadeId: number, filtro?: Consult
     })),
     ...aplicacoes.map((a) => ({ ...comum(a), consumoMantido: a.consumoMantido, tipo: "APLICACAO" as const, nome: a.nomeProdutoAplicado, dataHora: (a.aplicadaEm ?? a.data).toISOString(), status: a.status, origem: a.origemInsumo, podeEditar: a.status === "VALIDO", execucaoId: a.tarefa?.execucaoId ?? null })),
     ...exames.map((e) => ({ ...comum(e), tipo: "EXAME" as const, nome: nomeExameHistorico(e.formatoSnapshot, e.tipoExame.nome), dataHora: e.data.toISOString(), status: e.status, origem: e.origem, podeEditar: e.status === "VALIDO", execucaoId: e.tarefa?.execucaoId ?? null })),
-    ...protocolos.map((p) => ({ ...comum(p), tipo: "PROTOCOLO" as const, nome: p.protocolo.nome, dataHora: p.inicio.toISOString(), status: p.canceladaEm ? "CANCELADO" : p.tarefas.length ? "REALIZADO" : "PENDENTE", origem: "PROTOCOLO", podeEditar: !p.canceladaEm && p.tarefas.length > 0, execucaoId: p.id })),
+    ...protocolos.map((p) => ({ ...comum(p), tipo: "PROTOCOLO" as const, nome: p.protocolo.nome, dataHora: p.inicio.toISOString(), status: p.canceladaEm ? "CANCELADO" : p.tarefas.length ? "REALIZADO" : "PENDENTE", origem: "PROTOCOLO", consumoMantido: p.valorServicoAtribuido != null, podeEditar: !p.canceladaEm && p.tarefas.length > 0, execucaoId: p.id })),
   ];
   itens.sort((a, b) => b.dataHora.slice(0, 10).localeCompare(a.dataHora.slice(0, 10)) || a.id.localeCompare(b.id));
   return { itens, total: filtro ? na + ne + np + nt : itens.length };
@@ -122,6 +123,7 @@ export async function confirmarProcedimentosServico(input: ConfirmarProcedimento
       if (a || e) throw new RebanhoError("CONFLITO", "Há procedimentos desta execução vinculados a outro Serviço");
     }
     validarAtribuicoesServico([...vinculados.itens.filter((i) => !alterados.some((a) => a.id === i.id && a.tipo === i.tipo)), ...alterados], op.valorTotal);
+    await conferirAtribuicaoServicoCustoTx(tx,alterados);
     for (const item of alterados) {
       const data = { operacaoServicoId: op.id, valorServicoAtribuido: item.valor == null ? null : new Prisma.Decimal(item.valor) };
       if (item.tipo === "APLICACAO") await tx.aplicacaoProduto.update({ where: { id: item.id }, data });

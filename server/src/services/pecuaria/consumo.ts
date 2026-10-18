@@ -1,8 +1,8 @@
 import { Prisma, type Produto } from "@prisma/client";
 import { RebanhoError } from "./rebanho/regras.js";
 import { propriedadePrincipalId } from "../propriedade.js";
-import { obterBaseCusto, statusSaldoEstoque } from "../estoque/estoque.js";
-import { valorSaidaDaBase } from "../estoque/estoque.calc.js";
+import { statusSaldoEstoque } from "../estoque/estoque.js";
+import { planejarSaidaTx, registrarSaidaValorizadaTx, travarValorizacaoTx } from "../estoque/valorizacao.js";
 import { resolverLotePrincipalTx, saldoPartidaTx, validadeVencida } from "../estoque/partidas.js";
 import { exigirPeriodoAberto } from "../financeiro/regras.js";
 import { travarUsosProduto } from "../estoque/usos.js";
@@ -36,6 +36,7 @@ type ConsumoEstoque = {
 /** Exige animal travado pelo executor. Prévia valida o mesmo consumo, sem reservá-lo. */
 export async function consumirEstoqueTx(tx: Prisma.TransactionClient, input: ConsumoEstoque) {
   const { produto, propriedadeId, quantidade, data } = input;
+  await travarValorizacaoTx(tx, [produto.id]);
   const erro = (mensagem: string, campo?: string): never => { throw new RebanhoError("VALIDACAO", mensagem, campo); };
   if (!quantidade.isFinite() || quantidade.lte(0) || quantidade.decimalPlaces() > 3)
     erro("Informe quantidade positiva com até três casas decimais", input.campoQuantidade);
@@ -56,13 +57,14 @@ export async function consumirEstoqueTx(tx: Prisma.TransactionClient, input: Con
   if ((await obterSaldo(tx, produto.id, propriedadeId)).lt(quantidade)) erro("Saldo de estoque insuficiente neste sítio", input.campoQuantidade);
   if (partida && (await obterSaldo(tx, produto.id, propriedadeId, partida.id)).lt(quantidade)) erro("Saldo do lote insuficiente neste sítio", "partidaId");
   await exigirPeriodoAberto(tx, propriedadeId, data);
-  const base = await obterBaseCusto(tx, produto.id, propriedadeId);
-  const valores = valorSaidaDaBase(quantidade, base);
+  const plano = await planejarSaidaTx(tx, { produtoId: produto.id, propriedadeId, quantidade, data, partidas: partida ? [{ partidaId: partida.id, quantidade }] : [] });
+  const valores = { custoUnitario: plano.custoUnitario, valorTotal: plano.valorTotal };
   const movimento = input.previa ? null : await tx.movimentoEstoque.create({ data: {
     produtoId: produto.id, propriedadeId, tipo: "SAIDA", origem: input.origem, data, quantidade,
     ...valores, criadoPorId: input.usuarioId, observacao: input.observacao,
     ...(partida ? { alocacaoPartidaEstoques: { create: { partidaId: partida.id, quantidade } } } : {}),
   } });
-  return { movimentoEstoqueId: movimento?.id ?? null, valorProdutoAtribuido: base ? valores.valorTotal : null,
-    situacaoCusto: base ? "CONHECIDO" : "SEM_BASE", partida };
+  if (movimento) await registrarSaidaValorizadaTx(tx, movimento.id, plano);
+  return { movimentoEstoqueId: movimento?.id ?? null, valorProdutoAtribuido: valores.valorTotal,
+    situacaoCusto: "CONHECIDO", partida };
 }

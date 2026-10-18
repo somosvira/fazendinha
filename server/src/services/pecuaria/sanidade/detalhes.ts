@@ -1,4 +1,5 @@
 import { situacaoTarefaComum } from "../protocolos/situacao.js";
+import { CAMPOS_CUSTO_OPERACIONAL } from "../custos/permissoes.js";
 import { prisma } from "../../../db.js";
 import { Prisma } from "@prisma/client";
 import { RebanhoError } from "../rebanho/regras.js";
@@ -62,9 +63,18 @@ export async function obterExecucao(id: string, propriedadeId: number | null) {
 }
 
 /** Valores podem aparecer também nos fatos vinculados de uma ocorrência. */
-export function ocultarCustosDetalhe(valor: unknown): unknown {
-  if (Array.isArray(valor)) return valor.map(ocultarCustosDetalhe);
-  if (!valor || typeof valor !== "object" || valor instanceof Date || "toJSON" in valor) return valor;
-  return Object.fromEntries(Object.entries(valor).map(([campo, v]) => [campo,
-    ["valor", "valorProdutoAtribuido", "valorServicoAtribuido", "valorTotal", "valorUnitario", "custoUnitario"].includes(campo) ? null : ocultarCustosDetalhe(v)]));
+export function ocultarCustosDetalhe(valor: unknown, verCustosOperacionais = false): unknown {
+  function ocultar(item: unknown, caminho: string[] = []): unknown {
+    if (Array.isArray(item)) return item.map(v => ocultar(v, [...caminho, "[]"]));
+    if (!item || typeof item !== "object" || item instanceof Date || "toJSON" in item) return item;
+    return Object.fromEntries(Object.entries(item).map(([campo, v]) => {
+      // ResultadoExame.valor é dado clínico, inclusive nos snapshots antes/depois.
+      // Preserve o JSON inteiro; a exceção não se aplica a outros campos "valor".
+      if (campo === "valor" && caminho.at(-2) === "resultados" && caminho.at(-1) === "[]") return [campo, v];
+      const financeiro = ["valor", "valorProdutoAtribuido", "valorServicoAtribuido", "valorTotal", "valorUnitario", "custoUnitario", "evidenciaValor"].includes(campo);
+      const operacional = verCustosOperacionais && CAMPOS_CUSTO_OPERACIONAL.has(campo) && (v == null || ["string", "number"].includes(typeof v) || v instanceof Prisma.Decimal);
+      return [campo, financeiro && !operacional ? null : ocultar(v, [...caminho, campo])];
+    }));
+  }
+  return ocultar(valor);
 }

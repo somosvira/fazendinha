@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { env } from '../src/env.js';
 import { abrirContexto, diretorio } from './seedatev3/contexto.js';
 import { abrirComplementoPlanner } from './seedatev3/planner/contexto.js';
+import { exigirPreparacaoAntigaDisponivel } from './seedatev3/retomada-local.js';
 
 const argumentos = process.argv.slice(2).filter(a => a !== '--');
 if (argumentos.some(a => a !== '--verificar')) throw new Error('Use somente --verificar ou nenhum argumento.');
@@ -9,6 +10,7 @@ const verificar = argumentos.includes('--verificar');
 let fechar: (() => Promise<void>) | undefined;
 let desconectar: (() => Promise<void>) | undefined;
 try {
+  exigirPreparacaoAntigaDisponivel();
   // Reutiliza as proteções e a trava do seed principal SEM escrever seu manifesto.
   const base = await abrirContexto(true); fechar = base.fechar;
   const original = await readFile(`${diretorio}/manifesto.json`, 'utf8');
