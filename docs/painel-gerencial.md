@@ -13,12 +13,13 @@ A resposta `GERENCIAL_V1` informa período, escopo, instante da consulta, corte 
 | Bloco | Fonte e interpretação |
 |---|---|
 | Caixa | Transações, movimentos realizados e rateios existentes. Confirmadas/revertidas entram na data realizada, com inversos abatendo a natureza original. Transferências próprias e compromissos não liquidados ficam fora. Resultado = recebido menos pago; não representa lucro. Série mensal e centros de custo são recortes desse caixa. |
+| Compromissos | Saldo atual de compromissos ativos ainda a pagar, agrupado em vencido e faixas de vencimento até a data de consulta. Não movimenta caixa e não segue o período histórico selecionado. O atalho abre a lista filtrada para `situacao=pagar`, preservando o sítio selecionado. |
 | Estoque | Movimentos físicos, alocações, bases e parcelas de valorização existentes no corte atual. Preserva o método operacional existente: `MEDIA_SALDO_V1` em produto rastreado e `FIFO_AQUISICAO_V1` sem rastreio. Não modifica entradas, saídas, transferências ou custos históricos. Divergência entre quantidade física e valorizada torna o valor pendente. Não soma quantidades de unidades diferentes. |
 | Nutrição | Fechamentos confirmados, participações, itens e valores de movimentos existentes. Localizações, entrada, partos e exceções manuais permitem derivar presença e população por data em memória. Não grava essa reconstrução. |
 | Custos diretos | Serviços de leitura e cálculo existentes de tentativa, aplicação, exame e participação. Vínculos preparatórios não duplicam gastos; serviços usam o valor atribuído ao fato. Nutrição entra pelos componentes recortados. Identidade original deduplica os componentes. Finalidade, origem operacional e centro de custo são dimensões diferentes. |
 | Acompanhamentos | Contagem das demandas reprodutivas pendentes até o corte atual. A consulta não cria tarefas ou adota políticas clínicas. |
 
-Caixa, estoque e consumo têm significados e datas próprios: seus totais não devem ser somados. Nutrição e finalidade são recortes dos mesmos custos diretos. Custos sem atribuição operacional não são distribuídos automaticamente entre animais.
+Caixa, compromissos, estoque e consumo têm significados e datas próprios: seus totais não devem ser somados. Compromissos não liquidados não são movimentos de caixa. Nutrição e finalidade são recortes dos mesmos custos diretos. Custos sem atribuição operacional não são distribuídos automaticamente entre animais.
 
 ## Nutrição e limites do histórico
 
@@ -40,13 +41,15 @@ Cobertura distingue alimentação registrada, classificação e componentes/quan
 
 ## Apresentação do painel administrativo
 
-A interface usa o título “Painel administrativo”, mantendo a rota `/gerencial`. O seletor global de sítio continua sendo a fonte de contexto; o cabeçalho informa o sítio/consolidado, o período efetivamente consultado e o instante da resposta. Aplicar período, atualizar e os atalhos internos preservam os contratos de URL e navegação existentes.
+A interface usa o título “Painel administrativo”, mantendo a rota `/gerencial`. O seletor global de sítio continua sendo a fonte de contexto; o cabeçalho informa o sítio/consolidado, o período consultado e o instante da resposta. Aplicar período e atualizar preservam os contratos de URL e navegação existentes.
 
-O resumo de caixa antecede a tabela aberta de centros de custo. Custos diretos por finalidade e nutrição ficam em blocos distintos; nutrição já integra o total de custos diretos. A contagem de transações usa `transacaoId` distinto, e a de produtos usa `produtoId` distinto: movimentos, lotes e sítios podem repetir a mesma identidade. Resultado líquido zero não implica ausência de transações.
+O resumo apresenta caixa realizado, saldo atual a pagar, nutrição, custos diretos por finalidade, valor atual de estoque e acompanhamentos pendentes. Três gráficos mostram recebimentos e pagamentos por mês, pagamentos por centro de custo e compromissos por faixa de vencimento. Os valores mensais também ficam disponíveis em tabela acessível; listas de centro e vencimento mostram rótulos e valores junto às barras. Estados vazios são textuais. Não há expansão de origens, composição ou outras linhas de detalhe no painel.
 
-A cobertura de alimentação acompanha os indicadores nutricionais: `diasAlimentados / animalDias`, apresentada como percentual com uma casa decimal e contagem absoluta. Denominador zero torna a cobertura não apurada. Esse percentual não mede custo monetário conhecido nem comprova classificação ou custo completos. Os estados parciais e as lacunas do contrato continuam sendo exibidos. População média tem uma casa decimal na tela, sem alterar cálculos; valores diários mantêm quatro casas.
+Nutrição já integra o total de custos diretos. A contagem de transações usa `transacaoId` distinto, e a de produtos usa `produtoId` distinto. Resultado líquido zero não implica ausência de transações. O indicador de população média do rebanho permanece no resumo nutricional, sem linhas de origem ou indicador separado para vacas.
 
-O estoque mostra sua própria data de referência. Vacas, evolução mensal com tabela, composição do estoque, origens, divergências, limites e acompanhamentos permanecem acessíveis nos detalhes. Blocos restritos exibem uma mensagem curta com o motivo consultável, sem valores ou origens. A interface se reorganiza em uma coluna no celular, com a rolagem de tabelas contida em seu próprio bloco.
+O estoque mostra sua data própria de referência. `situacao` distingue valor completo, parcial e desconhecido; `valorConhecido: null` aparece como “Não apurado”, enquanto zero comprovado permanece zero. Um valor parcial soma somente parcelas conhecidas e informa que existem grupos pendentes. A página não transforma ausência de valor em zero.
+
+Os atalhos levam às contas, aos compromissos a pagar, à nutrição, ao estoque atual e à reprodução, mantendo o sítio selecionado. Contas, nutrição e reprodução preservam o período quando aplicável; compromissos não recebem filtro histórico e estoque não recebe datas, pois são visões atuais. Blocos restritos mostram o motivo sem valores monetários. A interface se reorganiza em uma coluna no celular.
 
 ## Autorização
 
@@ -54,6 +57,7 @@ O estoque mostra sua própria data de referência. Vacas, evolução mensal com 
 |---|---|
 | Página/API | Pecuária, ou Financeiro com aba Visão geral (`dashboard`); dono mantém acesso existente |
 | Caixa | Financeiro + Visão geral + `verValores` + `verSalarios` + `verInvestimento` |
+| Compromissos | As mesmas permissões financeiras da visão de caixa; compromissos compartilham categorias que podem conter valores salariais/investimentos |
 | Estoque em valores | Financeiro + `verValores` |
 | Nutrição e custos diretos | Pecuária + Financeiro + `verValores` |
 | Acompanhamento clínico | Pecuária |
@@ -62,8 +66,6 @@ Bloco restrito devolve somente estado/motivo, sem consultar ou enviar valores, f
 
 ## Implementação e validação
 
-O servidor concentra as consultas em `services/gerencial/`, com cálculos puros de presença/nutrição separados do acesso ao banco, e rota Hono/Zod em `routes/gerencial.ts`. A interface em `client/src/gerencial/` usa os componentes e contratos existentes de navegação e detalhes operacionais. O [HTML explicativo](gerencial/artefatos/painel-administrativo.html) descreve a entrega e as evidências de validação.
-
-Testes do painel cobrem permissões, validação de período/sítio, transação de leitura, centavos, populações, lacunas, erro e resposta fora de ordem. Validação com dados reais deve usar somente `fazendinha_seedatev3`, sem reset ou recarga. Testes automatizados, inspeção visual e homologação pela fazenda são evidências diferentes.
+O servidor concentra as consultas em `services/gerencial/`, com cálculos puros separados do acesso ao banco, e rota Hono/Zod em `routes/gerencial.ts`. A interface em `client/src/gerencial/` reaproveita a navegação existente. Testes cobrem contratos de permissões, período e sítio, erro, resposta fora de ordem, acessibilidade dos valores nos gráficos, estados vazios, mascaramento e URLs dos atalhos. Validação com dados reais deve usar somente `fazendinha_seedatev3`, sem reset ou recarga. Testes automatizados, inspeção visual e homologação pela fazenda são evidências diferentes. O [HTML explicativo](gerencial/artefatos/painel-administrativo.html) registra implementação e validação da entrega.
 
 Ficam fora do escopo alterações de banco ou motores financeiros, correções de operações de estoque, novas regras de fechamento, custo econômico completo/lucro, produção e qualidade do leite, FIV/laboratório, assistência automática, sincronização IDEAGRI, novas permissões e reativação da IA. Qualquer evolução operacional exige uma tarefa própria.

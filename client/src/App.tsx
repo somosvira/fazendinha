@@ -149,7 +149,7 @@ export function App() {
   // consolidado; com 1 sítio o seletor fica quase invisível (só o + discreto).
   const [propAtiva, setPropAtiva] = useState<number | null>(() => {
     const destino = pathToTab(window.location.pathname);
-    const recebeOrigemGerencial = destino != null && ["estoque", "pec-nutricao", "pec-reproducao", "pec-sanidade", "caixinha"].includes(destino);
+    const recebeOrigemGerencial = destino != null && ["estoque", "pec-nutricao", "pec-reproducao", "pec-sanidade", "caixinha", "gastos"].includes(destino);
     if (destino !== "gerencial" && !recebeOrigemGerencial) return getPropriedadeAtiva();
     const raw=new URLSearchParams(window.location.search).get("propriedadeId");
     if(raw && /^\d+$/.test(raw) && Number(raw)>0 && Number(raw)<=2147483647) { setPropriedadeAtiva(Number(raw)); return Number(raw); }

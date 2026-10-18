@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+import { consolidarValorEstoque } from "./estoque.calc.js";
 const D=(v:Prisma.Decimal.Value)=>new Prisma.Decimal(v);
 /** Lê o razão agregado em lote, no corte atual, incluindo grupos sem lastro. */
 export async function consultarEstoqueTx(tx:Prisma.TransactionClient,propriedadeId:number|null,principalId:number,data:Date){
@@ -32,7 +33,7 @@ export async function consultarEstoqueTx(tx:Prisma.TransactionClient,propriedade
       valor:conhecido?basesGrupo.reduce((s,b)=>s.plus(b.valor),D(0)).toFixed(2):null,
       bases:basesGrupo.map(b=>({id:b.id,baseOrigemId:b.baseOrigemId,metodo:b.metodo,quantidade:D(b.quantidade).toFixed(3),valor:D(b.valor).toFixed(2)}))};
   }).filter(i=>!D(i.quantidade).isZero()||i.valor==null||D(i.valor).gt(0));
-  return {data:texto(data),valorConhecido:itens.reduce((s,i)=>s.plus(i.valor??0),D(0)).toFixed(2),gruposPendentes:itens.filter(i=>i.valor==null).length,itens,
+  return {data:texto(data),...consolidarValorEstoque(itens),gruposPendentes:itens.filter(i=>i.valor==null).length,itens,
     metodologia:"Estoque atual no corte indicado, independente do período de caixa/nutrição. Valores conforme o método já registrado no estoque: média do grupo rastreado ou FIFO sem rastreio."};
 }
 const texto=(d:Date)=>d.toISOString().slice(0,10);

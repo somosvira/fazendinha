@@ -22,8 +22,17 @@ export function resumoGerencial(): ResumoGerencial {
         { contaId: "conta-1", movimentoId: "mov-3", propriedadeId: 1, transacaoId: "trans-2", operacaoId: null, data: "2026-10-04", campo: "saidas", valor: "10.00" },
       ],
     } },
+    compromissos: { estado: "DISPONIVEL", dados: {
+      data: "2026-10-17", totalPendente: "45.00", vencido: "10.00", aVencer: "35.00",
+      faixas: [
+        { chave: "VENCIDO", rotulo: "Vencido", valor: "10.00" },
+        { chave: "ATE_7_DIAS", rotulo: "Até 7 dias", valor: "15.00" },
+        { chave: "DE_8_A_30_DIAS", rotulo: "De 8 a 30 dias", valor: "20.00" },
+        { chave: "APOS_30_DIAS", rotulo: "Após 30 dias", valor: "0.00" },
+      ],
+    } },
     estoque: { estado: "DISPONIVEL", dados: {
-      data: "2026-10-16", valorConhecido: "30.00", gruposPendentes: 0, metodologia: "Saldos conhecidos.",
+      data: "2026-10-16", valorConhecido: "30.00", situacao: "COMPLETO", gruposPendentes: 0, metodologia: "Saldos conhecidos.",
       itens: [
         { produtoId: "produto-1", produto: "Sal mineral", unidade: "KG", propriedadeId: 1, partidaId: "lote-1", quantidade: "1.000", quantidadeValorizada: "1.000", valor: "10.00", bases: [] },
         { produtoId: "produto-1", produto: "Sal mineral", unidade: "KG", propriedadeId: 2, partidaId: "lote-2", quantidade: "1.000", quantidadeValorizada: "1.000", valor: "10.00", bases: [] },
@@ -57,6 +66,7 @@ export function resumoRestrito(): ResumoGerencial {
   return {
     ...resumo,
     caixa: blocoRestrito,
+    compromissos: blocoRestrito,
     estoque: blocoRestrito,
     nutricao: blocoRestrito,
     custos: blocoRestrito,

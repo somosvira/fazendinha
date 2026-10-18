@@ -29,15 +29,10 @@
 .painel-gerencial .ger-filtros button[type=submit] { background: #1b241e; color: #fffdf6; }
 .painel-gerencial .ger-contexto { color: var(--ger-verde); margin-top: 16px; font-weight: 600; }
 .painel-gerencial .ger-contexto span { font-weight: 400; color: var(--ger-suave); }
-.painel-gerencial .ger-atalhos { display: flex; gap: 36px; margin: 21px 0 19px; overflow-x: auto; }
-.painel-gerencial .ger-atalhos button { border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--ger-suave); padding: 8px 0; white-space: nowrap; cursor: pointer; font-size: 14px; }
-.painel-gerencial .ger-atalhos button[aria-current] { color: var(--ger-verde); border-bottom-color: var(--ger-verde); font-weight: 600; }
 .painel-gerencial .ger-grade { display: grid; grid-template-columns: minmax(0,1.4fr) minmax(0,1fr); gap: 16px; grid-template-areas: 'caixa caixa' 'centros nutricao' 'custos nutricao' 'estoque estoque'; align-items: start; }
 .painel-gerencial .ger-card { min-width: 0; background: var(--ger-papel); border: 1px solid var(--ger-borda); border-radius: 4px; padding: 20px 24px; }
 .painel-gerencial .ger-caixa { grid-area: caixa; display: grid; grid-template-columns: minmax(200px,1.1fr) minmax(0,2fr); column-gap: 28px; align-items: center; }
 .painel-gerencial .ger-caixa > h2 { margin-bottom: 0; align-self: start; }
-.painel-gerencial .ger-caixa-resumo { display: contents; }
-.painel-gerencial .ger-caixa-resumo > p { grid-column: 1; margin-top: 10px; }
 .painel-gerencial .ger-caixa-valores { grid-column: 2; grid-row: 1 / span 2; display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); }
 .painel-gerencial .ger-indicador { min-width: 0; }
 .painel-gerencial .ger-indicador dt { color: #444a44; font-size: 13px; }
@@ -80,45 +75,22 @@
 .painel-gerencial .ger-finalidades > div:last-child { border-bottom: 1px solid #e4ddd1; }
 .painel-gerencial .ger-finalidades dd { flex-shrink: 0; text-align: right; font-variant-numeric: tabular-nums; }
 .painel-gerencial .ger-finalidades small { display: block; color: #895709; font-size: 11px; }
-.painel-gerencial .ger-estoque-resumo { display: flex; gap: 30px; align-items: center; margin: 8px 0 12px; }
-.painel-gerencial .ger-estoque-resumo > div { border-left: 1px solid var(--ger-borda); padding-left: 30px; }
-.painel-gerencial .ger-detalhes { border-top: 1px solid var(--ger-borda); margin-top: 16px; padding-top: 12px; font-size: 13px; }
-.painel-gerencial .ger-detalhes summary { cursor: pointer; font-weight: 500; color: var(--ger-verde); }
-.painel-gerencial .ger-detalhes summary:hover { text-decoration: underline; text-underline-offset: 3px; }
-.painel-gerencial .ger-detalhes-conteudo { display: grid; gap: 12px; padding: 16px 0 4px; }
-.painel-gerencial .ger-origem { text-decoration: underline; text-underline-offset: 3px; color: var(--ger-verde); }
-.painel-gerencial .ger-fato { border-bottom: 1px solid #e4ddd1; padding-bottom: 10px; overflow-wrap: anywhere; }
-.painel-gerencial .ger-referencia { color: var(--ger-suave); font-size: 11px; overflow-wrap: anywhere; margin-top: 5px; }
-.painel-gerencial .ger-vacas { display: grid; gap: 12px; }
-.painel-gerencial .ger-vacas dd { font-size: 27px; }
 .painel-gerencial .ger-restrito { color: var(--ger-suave); padding-top: 5px; }
 .painel-gerencial .ger-restrito > p { display: flex; gap: 8px; align-items: center; font-weight: 600; }
 .painel-gerencial .ger-restrito details { margin-top: 12px; font-size: 13px; }
 .painel-gerencial .ger-restrito summary { cursor: pointer; }
 .painel-gerencial .ger-restrito details p { margin-top: 8px; }
-.painel-gerencial .ger-caixa > .ger-restrito { grid-column: 1 / -1; }
-.painel-gerencial .ger-detalhe-externo { border: 1px solid var(--ger-borda); border-radius: 4px; padding: 13px 22px; margin-top: 14px; }
-.painel-gerencial .ger-detalhe-externo summary > span { color: var(--ger-suave); font-size: 12px; font-weight: 400; margin-left: 22px; }
 .painel-gerencial .ger-grafico { height: 260px; min-width: 0; }
 .painel-gerencial .ger-clinico { margin-top: 14px; }
 .painel-gerencial .ger-clinico h2 { font-size: 22px; }
 .painel-gerencial .ger-clinico .ger-link { margin-top: 8px; }
 .painel-gerencial .ger-carregando { padding: 35px 0; }
-.painel-gerencial .ger-metodologia { margin-top: 12px; }
+
 @media (max-width: 1250px) {
   .painel-gerencial .ger-cabecalho { align-items: flex-start; flex-direction: column; gap: 16px; }
-  .painel-gerencial .ger-caixa { grid-template-columns: minmax(180px,.8fr) minmax(0,2fr); gap: 16px; }
-  .painel-gerencial .ger-caixa-valores .ger-indicador { padding-left: 14px; }
-  .painel-gerencial .ger-indicador dd { font-size: 29px; }
 }
 @media (max-width: 900px) {
   .painel-gerencial { padding: 20px; margin-left: 0; margin-right: 0; }
-  .painel-gerencial .ger-grade { grid-template-columns: minmax(0,1fr); grid-template-areas: 'caixa' 'centros' 'nutricao' 'custos' 'estoque'; }
-  .painel-gerencial .ger-caixa { display: block; }
-  .painel-gerencial .ger-caixa-resumo { display: block; }
-  .painel-gerencial .ger-caixa-valores { margin-top: 18px; }
-  .painel-gerencial .ger-caixa-valores .ger-indicador:first-child { padding-left: 0; border-left: 0; }
-  .painel-gerencial .ger-indices dd { font-size: 34px; }
 }
 @media (max-width: 540px) {
   .painel-gerencial { padding: 16px 12px; margin: 0 -4px 20px; }
@@ -129,25 +101,66 @@
   .painel-gerencial .ger-contexto span { display: block; margin-top: 4px; }
   .painel-gerencial .ger-filtros { width: 100%; display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); }
   .painel-gerencial .ger-filtros input { width: 100%; max-width: none; min-width: 0; }
-  .painel-gerencial .ger-atalhos { gap: 24px; }
-  .painel-gerencial .ger-atalhos button { font-size: 12px; }
   .painel-gerencial .ger-card { padding: 18px 16px; }
-  .painel-gerencial .ger-caixa-valores { grid-template-columns: minmax(0,1fr); gap: 12px; }
-  .painel-gerencial .ger-caixa-valores .ger-indicador { border: 0; padding: 10px 0 0; border-top: 1px solid var(--ger-borda); }
-  .painel-gerencial .ger-caixa-valores .ger-indicador:first-child { border-top: 0; padding-top: 0; }
   .painel-gerencial .ger-indicador dd { font-size: 34px; }
   .painel-gerencial .ger-indices dd { font-size: 27px; }
   .painel-gerencial .ger-indices .ger-indicador + .ger-indicador { padding-left: 12px; }
   .painel-gerencial .ger-indices { gap: 12px; }
-  .painel-gerencial .ger-estoque-resumo { align-items: flex-start; flex-direction: column; gap: 12px; }
-  .painel-gerencial .ger-estoque-resumo > div { padding-left: 0; border-left: 0; }
-  .painel-gerencial .ger-detalhe-externo { padding: 13px 16px; }
-  .painel-gerencial .ger-detalhe-externo summary > span { display: block; margin: 6px 0 0; }
 }
 @media (prefers-reduced-motion: reduce) { .painel-gerencial * { scroll-behavior: auto; } }
-/* Expansões secundárias compartilham uma entrada para manter a leitura inicial compacta. */
-.painel-gerencial .ger-nutricao .ger-cobertura { margin: 14px 0; }
-.painel-gerencial .ger-nutricao .ger-indices { margin-top: 20px; }
-.painel-gerencial .ger-nutricao .ger-rodape-link { margin-top: 18px; padding-top: 14px; }
-.painel-gerencial .ger-nutricao .ger-aviso { margin: 10px 0; }
-.painel-gerencial .ger-detalhes-conteudo > .ger-detalhes:first-child { border-top: 0; margin-top: 0; padding-top: 0; }
+/* Resumo e gráficos da revisão aprovada. Valores textuais ficam sempre disponíveis. */
+.painel-gerencial { --ger-saida: #bc6c58; }
+.painel-gerencial .ger-contexto { margin-bottom: 22px; }
+.painel-gerencial .ger-grade { grid-template-columns: repeat(2,minmax(0,1fr)); grid-template-areas: 'caixa compromissos' 'mensal mensal' 'centros vencimentos' 'nutricao custos' 'estoque clinico'; align-items: stretch; }
+.painel-gerencial .ger-caixa { display: block; }
+.painel-gerencial .ger-caixa > h2 { margin-bottom: 10px; }
+.painel-gerencial .ger-compromissos { grid-area: compromissos; background: #f0f3e9; }
+.painel-gerencial .ger-mensal { grid-area: mensal; }
+.painel-gerencial .ger-vencimentos { grid-area: vencimentos; }
+.painel-gerencial .ger-clinico { grid-area: clinico; margin-top: 0; }
+.painel-gerencial .ger-caixa-valores { margin: 26px 0 20px; gap: 12px; }
+.painel-gerencial .ger-caixa-valores .ger-indicador { padding-left: 12px; }
+.painel-gerencial .ger-caixa-valores .ger-indicador:first-child { padding-left: 0; border-left: 0; }
+.painel-gerencial .ger-caixa-valores dd { font-size: clamp(23px,2.1vw,32px); }
+.painel-gerencial .ger-compromissos .ger-valor-destaque { margin-top: 14px; }
+.painel-gerencial .ger-compromissos .ger-indices { margin-top: 20px; }
+.painel-gerencial .ger-compromissos .ger-indices .ger-indicador:first-child dd { color: #a0392e; }
+.painel-gerencial .ger-grafico { height: 280px; margin: 18px 0 6px; }
+.painel-gerencial .ger-tabela { margin-top: 0; }
+.painel-gerencial .ger-tabela table { min-width: 380px; font-size: 12px; }
+.painel-gerencial .ger-tabela caption { text-align: left; color: var(--ger-suave); font-size: 11px; padding: 5px 12px; }
+.painel-gerencial .ger-tabela th, .painel-gerencial .ger-tabela td { padding: 5px 12px; }
+.painel-gerencial .ger-vazio { padding: 26px 0; color: var(--ger-suave); }
+.painel-gerencial .ger-custos .ger-pendente { margin-top: 9px; }
+.painel-gerencial .ger-estoque .ger-valor { margin: 12px 0; }
+.painel-gerencial .ger-nota { color: var(--ger-suave); font-size: 12px; margin-top: 18px; }
+@media (max-width: 1050px) {
+  .painel-gerencial .ger-caixa-valores { grid-template-columns: 1fr; gap: 10px; }
+  .painel-gerencial .ger-caixa-valores .ger-indicador { padding: 0; border: 0; }
+  .painel-gerencial .ger-caixa-valores dd { font-size: 30px; }
+}
+@media (max-width: 900px) {
+  .painel-gerencial .ger-grade { grid-template-columns: minmax(0,1fr); grid-template-areas: 'caixa' 'compromissos' 'mensal' 'centros' 'vencimentos' 'nutricao' 'custos' 'estoque' 'clinico'; }
+  .painel-gerencial .ger-caixa-valores { grid-template-columns: repeat(3,minmax(0,1fr)); }
+  .painel-gerencial .ger-caixa-valores dd { font-size: 27px; }
+}
+@media (max-width: 540px) {
+  .painel-gerencial .ger-caixa-valores { grid-template-columns: minmax(0,1fr); }
+  .painel-gerencial .ger-caixa-valores dd { font-size: 32px; }
+  .painel-gerencial .ger-grafico { height: 230px; }
+}
+.painel-gerencial .ger-grafico-horizontal { margin-top: 18px; min-width: 0; }
+.painel-gerencial .ger-valores-grafico { margin: 8px 0 16px; font-size: 12px; font-variant-numeric: tabular-nums; }
+.painel-gerencial .ger-valores-grafico > div { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--ger-borda); padding: 5px 0; }
+.painel-gerencial .ger-valores-grafico dt { min-width: 0; overflow-wrap: anywhere; }
+.painel-gerencial .ger-valores-grafico dd { flex-shrink: 0; }
+/* Cada montante permanece inteiro; as colunas se adaptam à largura real do card. */
+.painel-gerencial .ger-caixa-valores { grid-template-columns: repeat(auto-fit,minmax(min(100%,160px),1fr)); }
+.painel-gerencial .ger-caixa-valores .ger-indicador { border-left: 0; padding-left: 0; }
+.painel-gerencial .ger-caixa-valores dd { font-size: 28px; white-space: nowrap; overflow-wrap: normal; }
+@media (max-width: 540px) {
+  .painel-gerencial .ger-caixa-valores { grid-template-columns: minmax(0,1fr); }
+}
+.painel-gerencial .ger-compromissos .ger-indices { grid-template-columns: repeat(auto-fit,minmax(min(100%,155px),1fr)); }
+.painel-gerencial .ger-compromissos .ger-indices .ger-indicador { border-left: 0; padding-left: 0; }
+.painel-gerencial .ger-compromissos .ger-indicador dd { white-space: nowrap; overflow-wrap: normal; }

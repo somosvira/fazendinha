@@ -6,6 +6,7 @@ import { propriedadePrincipalId } from "../propriedade.js";
 import { carregarFontesCustoTx } from "../pecuaria/custos/custos.js";
 import { componentesDaFonte, consolidarCustos, type FonteCusto } from "../pecuaria/custos/custos.calc.js";
 import { consultarCaixaTx } from "./caixa.js";
+import { consultarCompromissosTx } from "./compromissos.js";
 import { consultarEstoqueTx } from "./estoque.js";
 import { consultarNutricaoTx } from "./nutricao.js";
 import { textoDia } from "./presenca.calc.js";
@@ -38,6 +39,7 @@ export async function obterResumoGerencial(u:UsuarioContexto,propriedadeId:numbe
     // Uma transação usa uma conexão. Leitura sequencial evita sobrepor comandos
     // no adapter PostgreSQL local e conserva o mesmo snapshot no Neon.
     const caixa=p.caixa?await consultarCaixaTx(tx,propriedadeId,inicio,fim):null;
+    const compromissos=p.caixa?await consultarCompromissosTx(tx,propriedadeId,hoje):null;
     const estoque=p.estoque?await consultarEstoqueTx(tx,propriedadeId,principalId,hoje):null;
     const nutricao=p.nutricao?await consultarNutricaoTx(tx,propriedadeId,inicio,fim):null;
     const demandas=p.clinico?await tx.demandaAcompanhamentoReprodutivo.count({where:{...(propriedadeId==null?{}:{propriedadeOrigemId:propriedadeId}),estado:"PENDENTE",previstaPara:{lte:hoje}}}):null;
@@ -53,6 +55,7 @@ export async function obterResumoGerencial(u:UsuarioContexto,propriedadeId:numbe
     const finalidades=["REPRODUCAO","SANIDADE","ROTINA",null].map(finalidade=>({finalidade:finalidade??"SEM_CLASSIFICACAO",...sinalizarLacunasNutricao(consolidarCustos(componentes.filter(c=>c.finalidade===finalidade)),nutricao?.lacunas.length??0)}));
     return {versao:"GERENCIAL_V1",corte:agora.toISOString(),periodo:{inicio:textoDia(inicio),fim:textoDia(fim)},escopo:{propriedadeId,sitios},
       caixa:caixa?disponivel(caixa):bloqueado("Caixa exige Financeiro, aba Visão geral, valores, salários e investimentos. As categorias atuais não permitem separar sigilo salarial com segurança."),
+      compromissos:compromissos?disponivel(compromissos):bloqueado("Compromissos exigem Financeiro, aba Visão geral, valores, salários e investimentos. As categorias atuais não permitem separar sigilo salarial com segurança."),
       estoque:estoque?disponivel(estoque):bloqueado("Estoque em valores exige Financeiro e ver valores."),
       nutricao:nutricao?disponivel(nutricao):bloqueado("Custos nutricionais exigem Pecuária, Financeiro e ver valores."),
       custos:custos?disponivel({...custos,finalidades}):bloqueado("Custos diretos exigem Pecuária, Financeiro e ver valores."),

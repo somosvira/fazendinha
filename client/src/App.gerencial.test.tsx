@@ -16,6 +16,7 @@ vi.mock("./gerencial/PainelGerencial", () => ({
   PainelGerencial: ({ propriedadeId }: { propriedadeId: number | null }) => <p>Painel sítio: {propriedadeId ?? "consolidado"}</p>,
 }));
 vi.mock("./components/ConfiguracoesHub", () => ({ ConfiguracoesHub: () => <p>Configurações abertas</p> }));
+vi.mock("./financeiro/FinanceiroContent", () => ({ FinanceiroContent: ({ tab }: { tab: string }) => <p>Financeiro aberto: {tab}</p> }));
 vi.mock("./estoque/ProdutoEstoqueDetalhe", () => ({ ProdutoEstoqueDetalhe: () => <p>Origem de estoque</p> }));
 vi.mock("./api/auth", () => ({ fetchMe: vi.fn(() => new Promise(() => {})), logout: vi.fn() }));
 vi.mock("./financeiro/rascunhoAtivo", async original => ({
@@ -87,5 +88,17 @@ describe("App — contexto do painel administrativo", () => {
     await screen.findByText("Origem de estoque");
     expect(getPropriedadeAtiva()).toBe(1);
     expect(screen.getByText("Sítio ativo: 1")).toBeTruthy();
+  });
+
+  it("abre compromissos no sítio do link do painel em uma carga completa", async () => {
+    setPropriedadeAtiva(null);
+    setSessao("token-teste", { ...usuario, abas: ["dashboard", "gastos"] });
+    window.history.replaceState(null, "", "/financeiro/compromissos?situacao=pagar&propriedadeId=1");
+    render(<App />);
+    await screen.findByText("Financeiro aberto: gastos");
+    expect(getPropriedadeAtiva()).toBe(1);
+    expect(screen.getByText("Sítio ativo: 1")).toBeTruthy();
+    expect(new URLSearchParams(location.search).get("situacao")).toBe("pagar");
+    expect(new URLSearchParams(location.search).get("propriedadeId")).toBe("1");
   });
 });

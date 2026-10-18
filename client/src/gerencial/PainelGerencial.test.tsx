@@ -10,18 +10,17 @@ import { resumoGerencial, resumoRestrito } from "./PainelGerencial.fixtures";
 afterEach(cleanup);
 beforeEach(() => {
   vi.clearAllMocks();
-  window.history.replaceState(null, "", "/gerencial?inicio=2026-10-01&fim=2026-10-17");
+  window.history.replaceState(null, "", "/gerencial?inicio=2026-10-01&fim=2026-10-17&propriedadeId=1");
 });
 
 describe("painel gerencial", () => {
-  it("explica blocos restritos e preserva informações clínicas autorizadas", async () => {
+  it("preserva o mascaramento monetário dos blocos e mantém acompanhamentos autorizados", async () => {
     mocks.consulta.mockResolvedValue(resumoRestrito());
     render(<PainelGerencial propriedadeId={1} onPeriodo={() => {}} />);
     await screen.findByText(/2 acompanhamentos/);
-    expect(screen.getAllByText("Sem permissão monetária").length).toBeGreaterThanOrEqual(4);
-    expect(screen.queryByText("R$ 0,00")).toBeNull();
-    expect(screen.queryByText(/trans-1/)).toBeNull();
-    expect(screen.queryByText(/Sal mineral/)).toBeNull();
+    expect(screen.getAllByText("Sem permissão monetária").length).toBeGreaterThanOrEqual(5);
+    expect(screen.queryByText(/R\$/)).toBeNull();
+    expect(screen.queryByText(/10,00|45,00|Sal mineral|Centro aberto/)).toBeNull();
   });
 
   it("falha de rede não aparece como total zero e permite tentar novamente", async () => {
@@ -55,91 +54,90 @@ describe("painel gerencial", () => {
     expect(onPeriodo).toHaveBeenCalledWith({ inicio: "2026-10-05", fim: "2026-10-17" });
   });
 
-  it("mostra centros em tabela aberta e apresenta cobertura de alimentação calculada sobre animal-dias", async () => {
+  it("mostra os três gráficos com valores acessíveis e preserva os resumos", async () => {
     mocks.consulta.mockResolvedValue(resumoGerencial());
     render(<PainelGerencial propriedadeId={1} onPeriodo={() => {}} />);
-    const tabela = await screen.findByRole("table", { name: "Caixa por centro de custo" });
-    expect(within(tabela).getByText("Centro aberto A")).toBeTruthy();
-    expect(within(tabela).getByText("Centro aberto B")).toBeTruthy();
-    expect(tabela.closest("details")).toBeNull();
-    expect(screen.getByText(/166\s*\/\s*3[.]?489 animal-dias com alimentação registrada/)).toBeTruthy();
-    expect(screen.getAllByText(/4,8%/).length).toBeGreaterThanOrEqual(1);
+    await screen.findByRole("heading", { name: "Quando vence o saldo a pagar" });
+    expect(screen.getByRole("heading", { name: "Caixa no período" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Ainda a pagar" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Recebido e pago por mês" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Pagamentos por centro de custo" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Nutrição registrada" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Custos diretos registrados" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: /Estoque atual em/ })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Pontos de atenção" })).toBeTruthy();
+    const compromissos = screen.getByRole("region", { name: "Ainda a pagar" });
+    expect(within(compromissos).getByText("R$ 45,00")).toBeTruthy();
+    expect(within(compromissos).getByText("R$ 10,00")).toBeTruthy();
+    expect(within(compromissos).getByText("R$ 35,00")).toBeTruthy();
+    const caixa = screen.getByRole("table", { name: "Caixa por mês · * mês parcial" });
+    expect(within(caixa).getByRole("row", { name: /2026/ })).toBeTruthy();
+    expect(within(caixa).getAllByText("R$ 10,00")).toHaveLength(2);
+    const centros = within(screen.getByRole("region", { name: "Pagamentos por centro de custo" })).getByLabelText("Pagamentos por centro de custo");
+    expect(within(centros).getByText("Centro aberto A")).toBeTruthy();
+    expect(within(centros).getByText("R$ 4,00")).toBeTruthy();
+    const vencimentos = within(screen.getByRole("region", { name: "Quando vence o saldo a pagar" })).getByLabelText("Saldo a pagar por vencimento");
+    expect(within(vencimentos).getByText("Vencido")).toBeTruthy();
+    expect(within(vencimentos).getByText("Até 7 dias")).toBeTruthy();
+    expect(within(vencimentos).getByText("De 8 a 30 dias")).toBeTruthy();
+    expect(within(vencimentos).getAllByText("R$ 10,00").length).toBeGreaterThanOrEqual(1);
+    expect(within(vencimentos).getByText("R$ 15,00")).toBeTruthy();
+    expect(within(vencimentos).getByText("R$ 20,00")).toBeTruthy();
+    expect(document.querySelector("details")).toBeNull();
+    expect(screen.queryByRole("navigation", { name: "Seções do painel" })).toBeNull();
   });
 
-  it("distingue null de zero, evita percentual inválido e mantém parcial quando há lacunas com cobertura de 100%", async () => {
-    const dados = resumoGerencial();
-    if (dados.nutricao.estado !== "DISPONIVEL" || dados.custos.estado !== "DISPONIVEL") throw new Error("Fixture inválida");
-    dados.nutricao.dados.rebanho = { animalDias: 0, populacaoMedia: "0", custoConhecido: null, porDia: null, porPeriodo: null, parcial: true };
-    dados.nutricao.dados.cobertura = { ...dados.nutricao.dados.cobertura, animalDias: 0, diasAlimentados: 0 };
-    dados.nutricao.dados.lacunas = [{ fechamentoId: "fech-2", motivo: "Intervalos não conciliam" }];
-    dados.custos.dados.finalidades = [
-      { finalidade: "SANIDADE", totalConhecido: null, componentesPendentes: 1 },
-      { finalidade: "ROTINA", totalConhecido: "0.00", componentesPendentes: 0 },
-    ];
-    mocks.consulta.mockResolvedValue(dados);
+  it("não converte estoque desconhecido em zero e mantém textos de estado parcial", async () => {
+    const resumo = resumoGerencial();
+    if (resumo.estoque.estado !== "DISPONIVEL") throw new Error("Fixture inválida");
+    resumo.estoque.dados.valorConhecido = null;
+    resumo.estoque.dados.situacao = "DESCONHECIDO";
+    resumo.estoque.dados.gruposPendentes = 2;
+    mocks.consulta.mockResolvedValue(resumo);
     render(<PainelGerencial propriedadeId={1} onPeriodo={() => {}} />);
-    await screen.findByRole("heading", { name: "Nutrição registrada" });
-    const detalhesNutricao = screen.getByText(/Detalhes da nutrição/);
-    fireEvent.click(detalhesNutricao);
-    expect(detalhesNutricao.closest("details")?.open).toBe(true);
-    const divergencias = screen.getByText(/Divergências históricas/);
-    fireEvent.click(divergencias);
-    expect(divergencias.closest("details")?.open).toBe(true);
-    await screen.findByText(/Intervalos não conciliam/);
-    expect(screen.getAllByText("Não apurado").length).toBeGreaterThan(0);
-    const custos = screen.getByRole("region", { name: "Custos diretos registrados" });
-    expect(within(custos).getByText("Sanidade", { selector: "dt" }).parentElement?.textContent).toContain("Não apurado");
-    expect(within(custos).getByText("Rotina", { selector: "dt" }).parentElement?.textContent).toMatch(/R\$\s?0,00/);
-    expect(screen.getByText("Cobertura de alimentação não apurada.")).toBeTruthy();
-    expect(screen.queryByRole("progressbar", { name: "Cobertura de alimentação registrada" })).toBeNull();
-    expect(document.body.textContent).not.toMatch(/\b\d+[,.]\d+%/);
+    const estoque = await screen.findByRole("region", { name: /Estoque atual em/ });
+    expect(within(estoque).getByText("Não apurado")).toBeTruthy();
+    expect(within(estoque).queryByText("R$ 0,00")).toBeNull();
+    expect(within(estoque).getByText(/parcial|pendente/i)).toBeTruthy();
+  });
+
+  it("mostra estados vazios dos três gráficos sem fabricar valores", async () => {
+    const resumo = resumoGerencial();
+    if (resumo.caixa.estado !== "DISPONIVEL" || resumo.compromissos.estado !== "DISPONIVEL") throw new Error("Fixture inválida");
+    resumo.caixa.dados.mensal = [];
+    resumo.caixa.dados.centros = [];
+    resumo.compromissos.dados.faixas = [];
+    mocks.consulta.mockResolvedValue(resumo);
+    render(<PainelGerencial propriedadeId={1} onPeriodo={() => {}} />);
+    await screen.findByRole("heading", { name: "Quando vence o saldo a pagar" });
+    expect(screen.getAllByText(/Sem (recebimentos|movimentos|saldo)/i).length).toBeGreaterThanOrEqual(3);
+    expect(screen.queryByText("R$ NaN")).toBeNull();
     expect(document.body.textContent).not.toMatch(/NaN|Infinity/);
-
-    const coberturaCompleta = resumoGerencial();
-    if (coberturaCompleta.nutricao.estado !== "DISPONIVEL" || coberturaCompleta.custos.estado !== "DISPONIVEL") throw new Error("Fixture inválida");
-    coberturaCompleta.nutricao.dados.cobertura = { ...coberturaCompleta.nutricao.dados.cobertura, diasAlimentados: 3489 };
-    coberturaCompleta.nutricao.dados.rebanho.parcial = true;
-    coberturaCompleta.nutricao.dados.lacunas = [{ fechamentoId: "fech-3", motivo: "Lacuna apesar da cobertura integral" }];
-    mocks.consulta.mockResolvedValueOnce(coberturaCompleta);
-    fireEvent.click(screen.getByText("Atualizar"));
-    await screen.findByText(/Lacuna apesar da cobertura integral/);
-    expect(screen.getAllByText(/100(?:,0)?%/)).toHaveLength(2);
-    expect(screen.getByText(/total é parcial/i)).toBeTruthy();
   });
 
-  it("conta transações e produtos distintos apesar de fontes e grupos repetidos, e preserva todas as finalidades", async () => {
+  it("mantém os destinos e o escopo dos links operacionais, sem filtro histórico em compromissos", async () => {
     mocks.consulta.mockResolvedValue(resumoGerencial());
     render(<PainelGerencial propriedadeId={1} onPeriodo={() => {}} />);
-    await screen.findByRole("table", { name: "Caixa por centro de custo" });
-    expect(screen.getByText(/2 transações/)).toBeTruthy();
-    expect(screen.getByText(/2 produtos/)).toBeTruthy();
-    expect(screen.getByText("Reprodução")).toBeTruthy();
-    expect(screen.getByText("Sanidade")).toBeTruthy();
-    expect(screen.getByText("Rotina")).toBeTruthy();
-    expect(screen.getByText("Sem classificação")).toBeTruthy();
-  });
-
-  it("mantém detalhes de vacas, caixa mensal, lacunas e links de origem", async () => {
-    mocks.consulta.mockResolvedValue(resumoGerencial());
-    render(<PainelGerencial propriedadeId={1} onPeriodo={() => {}} />);
-    await screen.findByRole("heading", { name: "Caixa no período" });
-    fireEvent.click(screen.getByText("Evolução mensal do caixa"));
-    fireEvent.click(screen.getByText(/Transações de origem/));
-    fireEvent.click(screen.getByText(/Detalhes da nutrição/));
-    fireEvent.click(screen.getByText("Vacas · secas e lactantes"));
-    fireEvent.click(screen.getByText(/Divergências históricas/));
-    fireEvent.click(screen.getByText(/Origens e atribuições da nutrição/));
-    fireEvent.click(screen.getByText(/Detalhes dos custos diretos/));
-    fireEvent.click(screen.getByText(/Componentes únicos dos custos/));
-    fireEvent.click(screen.getByText(/Produtos e composição do valor/));
-    expect(screen.getByRole("row", { name: /2026-10/ })).toBeTruthy();
-    expect(screen.getByText(/vaca-dias/)).toBeTruthy();
-    expect(screen.getByText(/Lacuna histórica de classificação/)).toBeTruthy();
-    const recebimentos = screen.getAllByRole("link", { name: /trans-1/ });
-    expect(recebimentos).toHaveLength(2);
-    expect(recebimentos.map(link => link.getAttribute("href")).sort()).toEqual(expect.arrayContaining([expect.stringContaining("#movimento-mov-1"), expect.stringContaining("#movimento-mov-2")]));
-    expect(screen.getByRole("link", { name: /Fechamento de consumo/ }).getAttribute("href")).toContain("fechamentoId=fech-1");
-    expect(screen.getByRole("link", { name: "Exame reprodutivo" }).getAttribute("href")).toContain("detalheId=exame-1");
-    expect(screen.getAllByRole("link", { name: "Sal mineral" })[0].getAttribute("href")).toBe("/estoque/produtos/produto-1?inicio=2026-10-01&fim=2026-10-17&propriedadeId=1");
+    await screen.findByRole("heading", { name: "Quando vence o saldo a pagar" });
+    const link = (name: string, scope?: HTMLElement) => within(scope ?? document.body).getByRole("link", { name }).getAttribute("href")!;
+    const caixa = screen.getByRole("region", { name: "Caixa no período" });
+    const contas = new URL(link("Ver contas", caixa), location.origin);
+    expect(contas.pathname).toBe("/financeiro/contas");
+    expect(contas.searchParams.get("inicio")).toBe("2026-10-01");
+    expect(contas.searchParams.get("fim")).toBe("2026-10-17");
+    expect(contas.searchParams.get("propriedadeId")).toBe("1");
+    const compromissos = new URL(link("Ver compromissos"), location.origin);
+    expect(compromissos.pathname).toBe("/financeiro/compromissos");
+    expect(compromissos.searchParams.get("situacao")).toBe("pagar");
+    expect(compromissos.searchParams.get("propriedadeId")).toBe("1");
+    expect(compromissos.searchParams.has("inicio")).toBe(false);
+    expect(compromissos.searchParams.has("fim")).toBe(false);
+    expect(new URL(link("Ver nutrição"), location.origin).searchParams.get("propriedadeId")).toBe("1");
+    const estoque = new URL(link("Ver estoque"), location.origin);
+    expect(estoque.pathname).toBe("/estoque");
+    expect(estoque.searchParams.get("propriedadeId")).toBe("1");
+    expect(estoque.searchParams.has("inicio")).toBe(false);
+    expect(estoque.searchParams.has("fim")).toBe(false);
+    expect(new URL(link("Ver reprodução"), location.origin).searchParams.get("propriedadeId")).toBe("1");
   });
 });
