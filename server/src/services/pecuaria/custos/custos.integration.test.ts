@@ -14,7 +14,8 @@ const sitios:number[]=[], animais:string[]=[], aplicacoes:string[]=[], tentativa
 async function fixture(valor:string|null="30.00"){
  exigirBancoIntegracaoPecuaria();
  const sitio=await prisma.propriedade.create({data:{nome:`Custos independentes ${randomUUID()}`}});sitios.push(sitio.id);
- const animal=await prisma.animal.create({data:{brinco:`C${randomUUID()}`,sexo:"F",origem:"COMPRADO",dataNascimento:new Date("2024-01-01"),dataEntrada:new Date("2025-01-01")}});animais.push(animal.id);
+ const animal=await prisma.animal.create({data:{brinco:`C${randomUUID()}`,sexo:"F",origem:"COMPRADO",dataNascimento:new Date("2024-01-01"),dataEntrada:new Date("2025-01-01"),
+  localizacoes:{create:{propriedadeId:sitio.id,desde:new Date("2025-01-01")}}}});animais.push(animal.id);
  const aplicacao=await prisma.aplicacaoProduto.create({data:{animalId:animal.id,propriedadeId:sitio.id,data:new Date("2026-01-05"),precisaoTemporal:"DIA",
   nomeProdutoAplicado:"Preparatório com valor documental",origemInsumo:"SEM_ORIGEM_JUSTIFICADA",justificativaSemOrigem:"Material externo desta fixture, sem consumo de estoque"}});aplicacoes.push(aplicacao.id);
  const alvos=[];
@@ -45,6 +46,7 @@ comBanco("custos — garantias SQL, casos felizes e concorrência no CI externo"
    await tx.auditoriaPecuaria.deleteMany({where:{OR:[{animalId:{in:animais}},{propriedadeId:{in:sitios}}]}});
    await tx.requisicaoPecuaria.deleteMany({where:{propriedadeId:{in:sitios}}});
    await tx.operacao.deleteMany({where:{id:{in:operacoes}}});
+   await tx.localizacaoAnimal.deleteMany({where:{animalId:{in:animais}}});
    await tx.animal.deleteMany({where:{id:{in:animais}}});
    await tx.propriedade.deleteMany({where:{id:{in:sitios}}});
   });
