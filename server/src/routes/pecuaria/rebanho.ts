@@ -5,6 +5,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../../db.js";
 import { resolverEscopoLeitura, resolverEscopoEscrita, PropriedadeError } from "../../services/propriedade.js";
 import { getUsuario, exigePermissao } from "../../middleware/permissao.js";
+import { podeConsultarCustosPecuaria } from "../../services/pecuaria/custos/permissoes.js";
 import { RebanhoError } from "../../services/pecuaria/rebanho/regras.js";
 import * as animais from "../../services/pecuaria/rebanho/animais.js";
 import * as lotes from "../../services/pecuaria/rebanho/lotes.js";
@@ -166,8 +167,10 @@ export const rebanhoRouter = new Hono()
   .get("/animais/:id/auditoria", idParam, validarQuery(auditoriaAnimalQuerySchema), async (c) => {
     try {
       const escopo = await resolverEscopoLeitura(c);
-      const { page, pageSize } = c.req.valid("query");
-      return c.json(await animais.buscarAuditoriaAnimal(c.req.valid("param").id, escopo, page, pageSize));
+      const { page, pageSize, ...filtros } = c.req.valid("query");
+      const u = getUsuario(c);
+      const verValores = podeConsultarCustosPecuaria(u);
+      return c.json(await animais.buscarAuditoriaAnimal(c.req.valid("param").id, escopo, page, pageSize, filtros, verValores));
     } catch (e) { return falha(c, e); }
   })
   .post("/animais/movimentar", validar(movimentarSchema), async (c) => {

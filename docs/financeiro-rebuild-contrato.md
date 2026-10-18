@@ -17,6 +17,20 @@ Este contrato descreve a implementação atual, independente do financeiro anter
 
 Itens, compromissos, transações, movimentos físicos e documentos só existem quando exigidos pelo fato. Rascunho não deve produzir efeitos de uma operação confirmada.
 
+## Grupos de categorias
+
+`GrupoCategoria` organiza o cadastro financeiro em dois níveis: grupo → categoria. Os grupos e as categorias são compartilhados entre sítios; cada categoria pode pertencer a um único grupo ou permanecer sem grupo. A migration preserva os cadastros existentes sem atribuir grupos automaticamente nem inserir os nomes da planilha.
+
+O vínculo é definido exclusivamente em Configurações financeiras, no cadastro da categoria. Operações e itens continuam recebendo somente a categoria; não aceitam uma escolha independente de grupo. O grupo é uma dimensão gerencial derivada da categoria, distinta de centro de custo e de custeio/investimento. Consultas futuras podem usar essa relação; os templates e a importação histórica ainda não fazem parte desta entrega. Relatórios já emitidos conservam seus snapshots.
+
+A API de configurações retorna `gruposCategorias` e o grupo relacionado em cada categoria. `POST /api/financeiro/grupos-categorias` e `PATCH /api/financeiro/grupos-categorias/:id` exigem a permissão de lançamento, sob os gates de sessão/área do Financeiro. Criação, edição e desativação são auditadas. Desativar um grupo impede novas associações, mas preserva categorias vinculadas, sua disponibilidade operacional e a possibilidade de editar ou remover o vínculo existente. Não há exclusão de grupos pela API; a FK restringe a exclusão de grupos referenciados. Novas associações usam trava compartilhada para coordenar a validação de grupo ativo com sua desativação.
+
+Renomear ou reagrupar uma categoria altera sua organização gerencial atual, inclusive para futuras consultas ao histórico, sem reescrever operações ou valores. Essa relação não representa um snapshot do grupo na data do lançamento.
+
+A validação automatizada cobre associação e remoção de grupo, bloqueio de novas associações a grupos inativos/inexistentes, preservação de vínculos, auditoria, gates de escrita e os fluxos de cadastro na interface. Aplicação da migration e homologação em cada ambiente são etapas separadas.
+
+Para cadastrar localmente o catálogo gerencial da planilha de maio/2026, execute em `server/` a prévia `node --env-file=.env scripts/cadastrar-categorias-planilha-local.mjs`; acrescente `--aplicar` para gravar. O script aceita somente `fazendinha_seedatev3` em loopback, confere a identidade do servidor e usa uma transação com auditoria. Reaproveita equivalências explícitas sem renomear categorias nem modificar classificações/usos existentes; as categorias novas começam sem classificação de custeio/investimento. Recusa ambiguidades, cadastros inativos e vínculos conflitantes. Confere a preservação das demais tabelas e dos manifestos V3/V4; não executa seed nem importa lançamentos, produtos ou estoque. Uma nova prévia após a carga deve indicar zero criações e zero vínculos a atualizar. Esse script não é um importador de produção.
+
 ## Dinheiro e histórico
 
 1. Saldo da conta resulta da abertura e do razão de movimentos; `MovimentoConta` é a fonte dos efeitos de dinheiro. Saldo geral respeita contas ativas incluídas na disponibilidade e o escopo consultado.
@@ -72,7 +86,7 @@ Inventário inicial e ajuste positivo que iniciam uma base exigem referência e 
 
 ### Desconto comercial e logística
 
-Nas compras, o desconto comercial reduz o valor dos itens elegíveis antes da criação do estoque e da obrigação. A distribuição proporcional conserva os centavos do desconto; uma distribuição explícita deve fechar o total e respeitar elegibilidade e limite de cada item. `distribuicaoDesconto` conserva a ordem de todos os itens, com uma parcela zero para cada item não elegível, tanto na simulação quanto na confirmação. Desconto de liquidação continua sendo outro fato e não reescreve o custo histórico do estoque.
+Nas compras, o desconto comercial reduz o valor dos itens elegíveis antes da criação do estoque e da obrigação. A distribuição proporcional conserva os centavos do desconto; uma distribuição explícita deve fechar o total e respeitar elegibilidade e limite de cada item. `distribuicaoDesconto` conserva a ordem de todos os itens, com uma parcela zero para cada item não elegível, tanto na simulação quanto na confirmação. A liquidação atual registra o valor pago e admite pagamento parcial; não possui campo de abatimento ou desconto de liquidação. Pagar menos conserva o saldo restante da obrigação e não reescreve o custo histórico do estoque. Um eventual abatimento futuro precisará de fato próprio, distinto do desconto comercial da compra.
 
 A logística cobrada pelo mesmo fornecedor constitui item próprio, sem estoque, com categoria e centro de custo. Não entra no custo da dose. Cobrança de terceiro deve ter sua própria operação e obrigação. `Operacao.composicaoComercial` conserva a explicação do bruto, desconto e líquido por item e da logística; `ItemOperacao` conserva os valores líquidos utilizados no cálculo. Esse JSON não cria outro lançamento nem outro valor a somar.
 
@@ -88,7 +102,7 @@ As garantias SQL conferem somas, sinais e compatibilidade das referências. O do
 
 ## Permissões e documentos
 
-Rotas exigem sessão, área/ação e escopo; custos e exportações devem respeitar a visibilidade financeira. `apresentarOperacao()` mascara valores em todas as operações quando não há acesso financeiro com `verValores`, incluindo a composição comercial. Listagem, detalhe, criação, confirmação de rascunho e resposta de estorno utilizam esse apresentador. A abertura de valorização exige a mesma visibilidade no servidor. Esses ajustes não constituem homologação de todas as rotas financeiras; cada DTO e relatório continua responsável por conferir sua permissão.
+Rotas exigem sessão, área/ação e escopo; custos e exportações do módulo financeiro respeitam a visibilidade financeira. A Pecuária permite consultar seus custos operacionais atribuídos com sessão, área Pecuária e sítio/animal autorizado, sem conceder edição financeira ou acesso a documentos e totais completos de compras/Serviços. `apresentarOperacao()` mascara valores em todas as operações quando não há acesso financeiro com `verValores`, incluindo a composição comercial. Listagem, detalhe, criação, confirmação de rascunho e resposta de estorno utilizam esse apresentador. A abertura de valorização exige a mesma visibilidade no servidor. Esses ajustes não constituem homologação de todas as rotas financeiras; cada DTO e relatório continua responsável por conferir sua permissão.
 
 Documentos e relatórios usam R2 e chaves persistidas. Rascunhos com anexo e operações confirmadas têm fluxos distintos de acesso; não suponha rota de download onde ela não existe. Confira rotas e `services/financeiro/documentos.ts` antes de mudar esse contrato.
 

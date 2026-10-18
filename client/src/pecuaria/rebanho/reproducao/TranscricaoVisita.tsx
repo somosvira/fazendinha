@@ -630,7 +630,7 @@ export function Transcricao({
     return <div className="visita-tabela visita-tabela-atendimento" role="region" aria-label="Resultados dos animais" tabIndex={0}>
       <table className="w-full text-sm">
         <caption className="sr-only">Avaliação coletiva na ordem da folha de campo</caption>
-        <thead className="sticky top-0 z-10 bg-surface"><tr className="text-left border-y border-border">
+        <thead className="sticky top-0 z-10 bg-card"><tr className="text-left border-y border-border">
           <th className="p-3"><input type="checkbox" aria-label="Selecionar todos os participantes filtrados"
             disabled={!podeLancar || ocupado || !editaveis.length}
             checked={editaveis.length > 0 && editaveis.every(p => selecionados.includes(p.id))}
@@ -839,7 +839,7 @@ export function Transcricao({
       <div hidden={livre&&!individual}>
       {atividade.tipo === "AVALIACAO_REPRODUTIVA" ? tabelaAvaliacao() : <div className="visita-tabela visita-tabela-atendimento" role="region" aria-label="Procedimentos dos animais" tabIndex={0}>
         <table className="w-full text-sm">
-          <thead className="sticky top-0 z-10 bg-surface"><tr className="text-left border-y border-border">
+          <thead className="sticky top-0 z-10 bg-card"><tr className="text-left border-y border-border">
             <th className="p-3"><input type="checkbox" aria-label="Selecionar todos os participantes filtrados" disabled={!podeLancar || ocupado || !itens.some(p => !confirmado(p))} checked={itens.filter(p => !confirmado(p)).length > 0 && itens.filter(p => !confirmado(p)).every(p => selecionados.includes(p.id))} onChange={e => setSelecionados(prev => e.target.checked ? [...new Set([...prev, ...itens.filter(p => !confirmado(p)).map(p => p.id)])] : prev.filter(id => !itens.some(p => p.id === id)))} /></th><CabecalhoContextoVisita />
             <th className="p-3">Resultado do atendimento</th><th className="p-3">Detalhes</th>
           </tr></thead>

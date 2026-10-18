@@ -57,8 +57,8 @@ async function fonteTx(tx: Db, tipo: TipoFonteCusto, id: string, propriedadeId: 
 }
 async function verificarAlvoTx(tx: Db, propriedadeId: number, filtro: ConsultaCustos) {
   if (filtro.animalId) {
-    // Leitura financeira é do sítio do fato. A existência do animal autoriza apenas o alvo, não outros sítios.
-    if (!await tx.animal.findUnique({where:{id:filtro.animalId},select:{id:true}})) throw new RebanhoError("NAO_ENCONTRADO","Animal não encontrado");
+    // Custos históricos continuam no sítio do fato após a transferência.
+    if (!await tx.animal.findFirst({where:{id:filtro.animalId,localizacoes:{some:{propriedadeId}}},select:{id:true}})) throw new RebanhoError("NAO_ENCONTRADO","Animal não encontrado neste sítio");
   } else if (filtro.tentativaId) {
     if (!await tx.tentativaReprodutiva.findFirst({where:{id:filtro.tentativaId,propriedadeId},select:{id:true}})) throw new RebanhoError("NAO_ENCONTRADO","Tentativa não encontrada neste sítio");
   } else if (filtro.aplicacaoId || filtro.exameId) {
@@ -67,7 +67,7 @@ async function verificarAlvoTx(tx: Db, propriedadeId: number, filtro: ConsultaCu
     if (!await tx.participacaoProtocolo.findFirst({where:{id:filtro.participacaoId,propriedadeId},select:{id:true}})) throw new RebanhoError("NAO_ENCONTRADO","Participação não encontrada neste sítio");
   } else if (!await tx.programacaoProtocolo.findFirst({where:{id:filtro.programacaoId,propriedadeId},select:{id:true}})) throw new RebanhoError("NAO_ENCONTRADO","Programação não encontrada neste sítio");
 }
-export async function consultarCustosTx(tx: Db, propriedadeId: number, filtro: ConsultaCustos, verValores: boolean) {
+export async function consultarCustosTx(tx: Db, propriedadeId: number, filtro: ConsultaCustos, verValores: boolean, verDocumentos = verValores) {
   await verificarAlvoTx(tx,propriedadeId,filtro);
   let fontes: FonteCusto[], componentes;
   let vinculos = await tx.vinculoPreparoTentativa.findMany({where:{encerradoEm:null,tentativa:{propriedadeId},...(filtro.tentativaId ? {tentativaId:filtro.tentativaId} : {})},orderBy:[{criadoEm:"asc"},{id:"asc"}]});
@@ -102,7 +102,10 @@ export async function consultarCustosTx(tx: Db, propriedadeId: number, filtro: C
   const consolidado=consolidarCustos(recorte,verValores);
   const fontesConsultadas=new Set(fontes.map(chaveFonte));
   vinculos=vinculos.filter(v=>fontesConsultadas.has(`APLICACAO:${v.aplicacaoId}`)||fontesConsultadas.has(`EXAME:${v.exameId}`)||fontesConsultadas.has(`PARTICIPACAO:${v.participacaoId}`));
-  const atribuicoes=fontes.filter(f=>["APLICACAO","EXAME","PARTICIPACAO"].includes(f.tipo)).map(f=>{
+  // As pendências acompanham o recorte completo, antes da paginação. Na tentativa,
+  // a lista também permite desfazer vínculos existentes: conserve o escopo integral.
+  const fontesNoRecorte = new Set(recorte.map(c => `${c.tipoFonte}:${c.fonteId}`));
+  const atribuicoes=fontes.filter(f=>["APLICACAO","EXAME","PARTICIPACAO"].includes(f.tipo) && (filtro.tentativaId || fontesNoRecorte.has(chaveFonte(f)))).map(f=>{
     const vs=vinculos.filter(v=>f.id===(v.aplicacaoId??v.exameId??v.participacaoId)&&campoFonte(f.tipo)===(v.aplicacaoId?"aplicacaoId":v.exameId?"exameId":"participacaoId"));
     const originais=componentesDaFonte(f);const integral=vs.some(v=>v.modo==="INTEGRAL");
     const parcelas=["MATERIAL","SERVICO"].map(natureza=>{const original=originais.find(c=>c.natureza===natureza&&c.valor!=null)?.valor??null;const atribuido=integral?original:vs.reduce((s,v)=>s.plus(natureza==="MATERIAL"?v.valorMaterial??0:v.valorServico??0),new Prisma.Decimal(0));return{natureza,valorOrigem:verValores?original?.toFixed(2)??null:null,valorAtribuido:verValores?atribuido?.toFixed(2)??null:null,restante:verValores&&original!=null?original.minus(atribuido??0).toFixed(2):null};});
@@ -113,9 +116,9 @@ export async function consultarCustosTx(tx: Db, propriedadeId: number, filtro: C
   return {...consolidado,escopo:filtro.tentativaId?"TENTATIVA":filtro.participacaoId?"PARTICIPACAO":filtro.programacaoId?"PROGRAMACAO":filtro.aplicacaoId?"APLICACAO":filtro.exameId?"EXAME":"ANIMAL_PERIODO",propriedadeId,
     periodo:{inicio:filtro.inicio??null,fim:filtro.fim??null,referencia:"DATA_DO_FATO"},totalIntegral:filtro.animalId?null:{rotulo:"Protocolo ou tentativa inteira, sem recorte",cobertura:totalIntegral.cobertura,situacao:totalIntegral.situacao,totalConhecido:totalIntegral.totalConhecido,componentesPendentes:totalIntegral.componentesPendentes},
     componentes:consolidado.componentes.slice((filtro.pagina-1)*filtro.limite,filtro.pagina*filtro.limite),totalComponentes:consolidado.componentes.length,pagina:filtro.pagina,limite:filtro.limite,
-    fontes:[...new Map(fontes.map(f=>[chaveFonte(f),f])).values()].map(f=>({id:f.id,tipo:f.tipo,descricao:f.descricao,data:f.data,periodoConsumo:f.periodoConsumo,origemMaterial:f.origemMaterial,documentoMaterial:verValores?f.documentoMaterial??null:null,versaoClassificacao:f.versaoClassificacao??0,classificacao:f.classificacao?{...f.classificacao,valorMaterialDocumentado:verValores?f.classificacao.valorMaterialDocumentado?.toString()??null:null}:null})),atribuicoesPreparos:atribuicoes};
+    fontes:[...new Map(fontes.map(f=>[chaveFonte(f),f])).values()].map(f=>({id:f.id,tipo:f.tipo,descricao:f.descricao,data:f.data,periodoConsumo:f.periodoConsumo,origemMaterial:f.origemMaterial,documentoMaterial:verDocumentos?f.documentoMaterial??null:null,versaoClassificacao:f.versaoClassificacao??0,classificacao:f.classificacao?{...f.classificacao,valorMaterialDocumentado:verValores?f.classificacao.valorMaterialDocumentado?.toString()??null:null}:null})),atribuicoesPreparos:atribuicoes};
 }
-export async function consultarCustos(propriedadeId:number,filtro:ConsultaCustos,verValores:boolean){return prisma.$transaction(tx=>consultarCustosTx(tx,propriedadeId,consultaCustosSchema.parse(filtro),verValores),{isolationLevel:Prisma.TransactionIsolationLevel.RepeatableRead});}
+export async function consultarCustos(propriedadeId:number,filtro:ConsultaCustos,verValores:boolean,verDocumentos=verValores){return prisma.$transaction(tx=>consultarCustosTx(tx,propriedadeId,consultaCustosSchema.parse(filtro),verValores,verDocumentos),{isolationLevel:Prisma.TransactionIsolationLevel.RepeatableRead});}
 async function travarFonteTx(tx:Db,f:FonteCusto){await travarAnimais(tx,[f.animalId]);await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`pec-custo:${chaveFonte(f)}`}))`;}
 async function vinculosFonteTx(tx:Db,f:FonteCusto){return tx.vinculoPreparoTentativa.findMany({where:{[campoFonte(f.tipo)]:f.id,encerradoEm:null}});}
 function conferirClassificacao(f:FonteCusto,c:ClassificacaoCusto){

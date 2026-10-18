@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  normalizarRotaPecuaria,
   entradaDeNovaOperacao,
   isCadastrosRebanho,
   isListaAnimaisRebanho,
@@ -209,4 +210,11 @@ describe("percursos da visita",()=>{
   expect(urlEtapaVisita("v","entrada",{},"?modo=livre&grupo=g&filtro=x")).toBe("/pecuaria/visitas/v?filtro=x&etapa=entrada");
   expect(urlEtapaVisita("v","planejamento",{modo:"agenda"})).toBe("/pecuaria/visitas/v?etapa=planejamento&modo=agenda");
  });
+});
+
+
+it("relatórios pecuários têm área própria e política antiga mantém filtros no destino de configurações", () => {
+  expect(pathToTab("/pecuaria/relatorios")).toBe("pec-relatorios");
+  expect(tabToPath("pec-relatorios")).toBe("/pecuaria/relatorios");
+  expect(normalizarRotaPecuaria("/pecuaria/reproducao?rotina=configuracao&sitio=7#historico")).toBe("/configuracoes/pecuaria/reproducao/politica?sitio=7#historico");
 });

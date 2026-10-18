@@ -291,6 +291,10 @@ export type ListarResultado = { itens: AnimalResumo[]; total: number; painel: Pa
 
 /** Entrada de GET /animais/:id/auditoria. */
 export type EntradaAuditoria = {
+  id?: string;
+  eixo?: "REBANHO" | "REPRODUCAO" | "SANIDADE" | "NUTRICAO" | null;
+  acaoRotulo?: string;
+  registro?: string;
   em: string;
   acao: string;
   entidade: string;
@@ -298,6 +302,26 @@ export type EntradaAuditoria = {
   resumo: string;
   entidadeId: string;
   alteracoes: Array<{ campo: string; rotulo: string; antes: string | null; depois: string | null }>;
+};
+
+export type FiltrosAuditoriaAnimal = {
+  page?: number;
+  pageSize?: number;
+  inicio?: string;
+  fim?: string;
+  eixo?: NonNullable<EntradaAuditoria["eixo"]> | "NAO_CLASSIFICADO";
+  acao?: string;
+  responsavel?: number | "sem";
+  busca?: string;
+};
+export type ResultadoAuditoriaAnimal = {
+  itens: EntradaAuditoria[];
+  total: number;
+  filtros?: {
+    acoes: Array<{ valor: string; rotulo: string }>;
+    responsaveis: Array<{ id: number; nome: string }>;
+    semResponsavel: boolean;
+  };
 };
 
 export type EntidadeCadastro = "Lote" | "Raca" | "MotivoBaixa" | "CategoriaAnimal" | "GenitorExterno" | "MaterialGenetico";

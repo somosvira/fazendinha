@@ -1,7 +1,12 @@
-import {IndicadoresAcompanhamento} from "./IndicadoresAcompanhamento";
+import { DateRangePicker } from "../../../components/DateRangePicker";
+import { getHojeISO } from "../../../lib/hoje";
+import { periodoPadrao, usePeriodoConsulta } from "./periodo-consulta";
+import { PainelIndicadores } from "./PainelIndicadores";
+import { IndicadoresAcompanhamento } from "./IndicadoresAcompanhamento";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
+import { Panel } from "../../../financeiro/financeiro-ui";
 import { reqV4 } from "./api";
 import { descreverMotivo } from "./elegibilidade-api";
 import {
@@ -22,20 +27,32 @@ export const numeroIndicador = (v: number | null) =>
 export const taxaIndicador = (v: number | null) =>
   v === null ? "Não calculável" : `${numeroIndicador(v)}%`;
 const data = (v: string) => v.slice(0, 10).split("-").reverse().join("/");
+function assinaturaFiltros(f: FiltrosIndicadores) {
+  return JSON.stringify([f.propriedadeId, f.inicio, f.fim, f.corte, f.deslocamentoTeDias,
+    f.janelaPerdaDias ?? null, f.iepModo ?? "VIVOS_NATIMORTOS", f.concepcaoEstimada ?? null,
+    f.loteId ?? "", [...(f.tiposTentativa ?? [])].sort(), [...(f.papeis ?? [])].sort()]);
+}
 export function IndicadoresReprodutivos({
   propriedadeId,
   podeLancar,
+  modo = "relatorio",
 }: {
   propriedadeId: number;
   podeLancar: boolean;
+  modo?: "painel" | "relatorio";
 }) {
-  const [inicio, setInicio] = useState("");
-  const [fim, setFim] = useState("");
-  const [corte, setCorte] = useState("");
+  const periodoConsulta = usePeriodoConsulta("indicadores");
+  const [inicio, setInicio] = useState(
+    () => periodoPadrao("indicadores").inicio,
+  );
+  const [fim, setFim] = useState(() => periodoPadrao("indicadores").fim);
+  const [corte, setCorte] = useState(getHojeISO);
   const [q, setQ] = useState("");
   const [te, setTe] = useState("7");
-  const [janelaPerda,setJanelaPerda]=useState("");
-  const [iepModo,setIepModo]=useState<"VIVOS_NATIMORTOS"|"TODOS_PARTOS">("VIVOS_NATIMORTOS");
+  const [janelaPerda, setJanelaPerda] = useState("");
+  const [iepModo, setIepModo] = useState<"VIVOS_NATIMORTOS" | "TODOS_PARTOS">(
+    "VIVOS_NATIMORTOS",
+  );
   const [lote, setLote] = useState("");
   const [lotes, setLotes] = useState<Array<{ id: string; nome: string }>>([]);
   const [tipos, setTipos] = useState<string[]>([]);
@@ -47,10 +64,16 @@ export function IndicadoresReprodutivos({
   const [emissoes, setEmissoes] = useState<EmissaoIndicadores[]>([]);
   const [emissao, setEmissao] = useState<EmissaoIndicadores | null>(null);
   const [erro, setErro] = useState("");
+  const [erroEmissoes, setErroEmissoes] = useState("");
+  const [carregandoEmissoes, setCarregandoEmissoes] = useState(false);
   const [avisoLotes, setAvisoLotes] = useState("");
   const [ocupado, setOcupado] = useState(false);
   const ref = useRef(propriedadeId);
   ref.current = propriedadeId;
+  const sequencia = useRef(0);
+  const sequenciaEmissoes = useRef(0);
+  const criteriosAplicados = useRef<FiltrosIndicadores | null>(null);
+  const ultimaOperacao = useRef<(() => void) | null>(null);
   const chave = useRef<{ assinatura: string; chave: string } | null>(null);
   useEffect(() => {
     let ativo = true;
@@ -61,13 +84,15 @@ export function IndicadoresReprodutivos({
     setAvisoLotes("");
     setLote("");
     setErro("");
-    void listarEmissoesIndicadores(propriedadeId)
-      .then((v) => {
-        if (ativo) setEmissoes(v);
-      })
-      .catch((e) => {
-        if (ativo) setErro(String(e.message));
-      });
+    setErroEmissoes("");
+    setCarregandoEmissoes(false);
+    sequencia.current++;
+    sequenciaEmissoes.current++;
+    setOcupado(false);
+    chave.current = null;
+    criteriosAplicados.current = null;
+    ultimaOperacao.current = null;
+    if (modo === "relatorio") void carregarEmissoes();
     // O catálogo de lotes segue o mesmo escopo da emissão.
     void reqV4<Array<{ id: string; nome: string }>>(
       `/lotes?propriedadeId=${propriedadeId}`,
@@ -86,8 +111,10 @@ export function IndicadoresReprodutivos({
       });
     return () => {
       ativo = false;
+      sequencia.current++;
+      sequenciaEmissoes.current++;
     };
-  }, [propriedadeId]);
+  }, [propriedadeId, modo]);
   const visivel =
     snapshot?.filtros.propriedadeId === propriedadeId ? snapshot : null;
   const periodo =
@@ -95,11 +122,11 @@ export function IndicadoresReprodutivos({
   function filtros(): FiltrosIndicadores {
     return {
       propriedadeId,
-      inicio,
-      fim,
-      corte,
+      inicio: modo === "painel" ? periodoConsulta.inicio : inicio,
+      fim: modo === "painel" ? periodoConsulta.fim : fim,
+      corte: modo === "painel" ? getHojeISO() : corte,
       deslocamentoTeDias: Number(te),
-      ...(janelaPerda!==""?{janelaPerdaDias:Number(janelaPerda)}:{}),
+      ...(janelaPerda !== "" ? { janelaPerdaDias: Number(janelaPerda) } : {}),
       iepModo,
       ...(q !== "" ? { concepcaoEstimada: Number(q) } : {}),
       ...(lote ? { loteId: lote } : {}),
@@ -111,47 +138,119 @@ export function IndicadoresReprodutivos({
         : {}),
     };
   }
-  async function executar(acao: () => Promise<void>) {
-    setOcupado(true);
+  async function executar(
+    acao: (atual: () => boolean) => Promise<void>,
+    bloquear = true,
+  ) {
+    const pedido = ++sequencia.current;
+    const atual = () =>
+      sequencia.current === pedido && ref.current === propriedadeId;
+    if (bloquear) setOcupado(true);
     setErro("");
     try {
-      await acao();
+      await acao(atual);
     } catch (e) {
-      if (ref.current === propriedadeId)
+      if (atual())
         setErro(
           e instanceof Error
             ? e.message
-            : "Não foi possível consultar o relatório.",
+            : "Não foi possível consultar os indicadores.",
         );
     } finally {
-      setOcupado(false);
+      if (bloquear && atual()) setOcupado(false);
     }
   }
-  function aplicar(e: FormEvent) {
-    e.preventDefault();
-    void executar(async () => {
-      const s = await consultarIndicadores(filtros());
-      if (ref.current === propriedadeId) {
+  async function carregarEmissoes() {
+    const pedido = ++sequenciaEmissoes.current;
+    const atual = () => sequenciaEmissoes.current === pedido && ref.current === propriedadeId;
+    setCarregandoEmissoes(true);
+    setErroEmissoes("");
+    try {
+      const lista = await listarEmissoesIndicadores(propriedadeId);
+      if (atual()) setEmissoes(lista);
+    } catch (e) {
+      if (atual()) setErroEmissoes(e instanceof Error ? e.message : "Não foi possível carregar as emissões.");
+    } finally {
+      if (atual()) setCarregandoEmissoes(false);
+    }
+  }
+  function carregar(consulta = filtros()) {
+    ultimaOperacao.current = () => carregar(consulta);
+    setSnapshot(null);
+    void executar(async (atual) => {
+      const s = await consultarIndicadores(consulta);
+      if (atual()) {
         setSnapshot(s);
         setEmissao(null);
-        setPeriodoId(s.periodos[0]?.id ?? "");
+        setPeriodoId(
+          (modo === "painel" ? s.periodos.at(-1) : s.periodos[0])?.id ?? "",
+        );
+      }
+    });
+  }
+  useEffect(() => {
+    if (modo === "painel") {
+      const consulta = {
+        ...(criteriosAplicados.current ?? {
+          deslocamentoTeDias: 7,
+          iepModo: "VIVOS_NATIMORTOS" as const,
+          corte: getHojeISO(),
+        }),
+        propriedadeId,
+        inicio: periodoConsulta.inicio,
+        fim: periodoConsulta.fim,
+      };
+      consulta.corte = getHojeISO();
+      carregar(consulta);
+    }
+    // Filtros avançados só são aplicados por confirmação; o período recarrega automaticamente.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [propriedadeId, modo, periodoConsulta.inicio, periodoConsulta.fim]);
+  function aplicar(e: FormEvent) {
+    e.preventDefault();
+    const consulta = filtros();
+    criteriosAplicados.current = consulta;
+    carregar(consulta);
+  }
+  function abrirEmissao(id: string) {
+    ultimaOperacao.current = () => abrirEmissao(id);
+    setSnapshot(null);
+    void executar(async (atual) => {
+      const v = await abrirEmissaoIndicadores(id, propriedadeId);
+      if (atual()) {
+        setSnapshot(v.snapshot);
+        const f = v.snapshot.filtros;
+        setInicio(f.inicio);
+        setFim(f.fim);
+        setCorte(f.corte);
+        setQ(f.concepcaoEstimada == null ? "" : String(f.concepcaoEstimada));
+        setTe(String(f.deslocamentoTeDias));
+        setJanelaPerda(
+          f.janelaPerdaDias == null ? "" : String(f.janelaPerdaDias),
+        );
+        setIepModo(f.iepModo ?? "VIVOS_NATIMORTOS");
+        setLote(f.loteId ?? "");
+        setTipos(f.tiposTentativa ?? []);
+        setPapeis(f.papeis ?? []);
+        setEmissao(v);
+        setPeriodoId(v.snapshot.periodos[0]?.id ?? "");
       }
     });
   }
   function emitir() {
     if (!visivel) return;
+    ultimaOperacao.current = emitir;
     const f = visivel.filtros;
     const assinatura = JSON.stringify(f);
     if (chave.current?.assinatura !== assinatura)
       chave.current = { assinatura, chave: crypto.randomUUID() };
     const id = chave.current.chave;
-    void executar(async () => {
+    void executar(async (atual) => {
       const e = await emitirIndicadores(f, id);
-      if (ref.current === propriedadeId) {
+      if (atual()) {
         setEmissao(e);
         setSnapshot(e.snapshot);
-        const lista = await listarEmissoesIndicadores(propriedadeId);
-        if (ref.current === propriedadeId) setEmissoes(lista);
+        void carregarEmissoes();
       }
     });
   }
@@ -170,126 +269,202 @@ export function IndicadoresReprodutivos({
   }
   const alternar = (valores: string[], v: string) =>
     valores.includes(v) ? valores.filter((x) => x !== v) : [...valores, v];
+  const filtrosAlterados = modo === "relatorio" && !!visivel && assinaturaFiltros(filtros()) !== assinaturaFiltros(visivel.filtros);
   return (
     <section className="space-y-5">
       <div className="space-y-5 print:hidden">
-        <div>
-          <h2 className="text-2xl font-semibold">Desempenho reprodutivo</h2>
-          <p className="text-muted-foreground">
-            Entenda os resultados e os animais considerados em cada período.
-          </p>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            {modo === "painel" ? <h1 className="text-3xl font-semibold tracking-tight">Indicadores reprodutivos</h1> : <h2 className="text-2xl font-semibold">Desempenho reprodutivo</h2>}
+            <p className="text-muted-foreground">
+              {modo === "painel"
+                ? "Resultados do rebanho e qualidade dos registros"
+                : "Entenda os resultados e os animais considerados em cada período."}
+            </p>
+          </div>
+          {modo === "painel" && (
+            <DateRangePicker
+              value={periodoConsulta.range}
+              onChange={periodoConsulta.alterar}
+            />
+          )}
         </div>
+        {modo === "painel" && periodoConsulta.aviso && (
+          <p
+            role="status"
+            className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950"
+          >
+            {periodoConsulta.aviso}
+          </p>
+        )}
         <form
           onSubmit={aplicar}
-          className="grid gap-3 rounded-xl border bg-card p-4 sm:grid-cols-3 print:hidden"
+          className={
+            modo === "painel"
+              ? "space-y-3 print:hidden"
+              : "space-y-4 rounded-xl border bg-card p-5 print:hidden"
+          }
         >
-          <label>
-            Início
-            <Input
-              type="date"
-              required
-              value={inicio}
-              onChange={(e) => setInicio(e.target.value)}
-            />
-          </label>
-          <label>
-            Fim
-            <Input
-              type="date"
-              required
-              min={inicio}
-              value={fim}
-              onChange={(e) => setFim(e.target.value)}
-            />
-          </label>
-          <label>Janela de perdas desde o primeiro DG positivo (dias, opcional)<Input type="number" min="1" max="1000" value={janelaPerda} onChange={e=>setJanelaPerda(e.target.value)} placeholder="Sem janela: contagens"/></label><label>Intervalo entre partos<select className="h-10 rounded-md border bg-background px-3" value={iepModo} onChange={e=>setIepModo(e.target.value as typeof iepModo)}><option value="VIVOS_NATIMORTOS">Vivos e natimortos comprovados</option><option value="TODOS_PARTOS">Todos os partos (alternativa)</option></select></label>
-          <label>
-            Corte dos resultados
-            <Input
-              type="date"
-              required
-              min={fim}
-              value={corte}
-              onChange={(e) => setCorte(e.target.value)}
-            />
-          </label>
-          <label>
-            Concepção estimada (%) — opcional
-            <Input
-              type="number"
-              min="0"
-              max="100"
-              step="any"
-              placeholder="Sem estimativa"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-            />
-          </label>
-          <label>
-            Deslocamento analítico da TE (dias)
-            <Input
-              type="number"
-              required
-              min="0"
-              max="30"
-              value={te}
-              onChange={(e) => setTe(e.target.value)}
-            />
-          </label>
-          <label>
-            Lote
-            <select
-              className="h-10 w-full rounded-md border bg-background px-3"
-              value={lote}
-              onChange={(e) => setLote(e.target.value)}
+          {modo === "relatorio" && (
+            <>
+            <div><h3 className="font-semibold">Filtros da consulta</h3><p className="text-sm text-muted-foreground">Defina o período e o corte dos resultados. Os critérios são aplicados ao confirmar a consulta.</p></div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label>
+                Início
+                <Input
+                  type="date"
+                  required
+                  value={inicio}
+                  onChange={(e) => setInicio(e.target.value)}
+                />
+              </label>
+              <label>
+                Fim
+                <Input
+                  type="date"
+                  required
+                  min={inicio}
+                  value={fim}
+                  onChange={(e) => setFim(e.target.value)}
+                />
+              </label>
+            </div>
+            </>
+          )}
+          <details open={modo === "relatorio" ? true : undefined}>
+            <summary
+              className={
+                modo === "painel"
+                  ? "w-fit cursor-pointer rounded-lg border bg-card px-4 py-2 text-sm font-semibold"
+                  : "cursor-pointer font-semibold"
+              }
             >
-              <option value="">Todos os lotes</option>
-              {lotes.map((l) => (
-                <option key={l.id} value={l.id}>
-                  {l.nome}
-                </option>
-              ))}
-            </select>
-          </label>
-          <fieldset>
-            <legend>Tentativas (sem seleção: todas)</legend>
-            {["IA", "TE", "COBERTURA"].map((t) => (
-              <label className="mr-3 inline-flex gap-1" key={t}>
-                <input
-                  type="checkbox"
-                  checked={tipos.includes(t)}
-                  onChange={() => setTipos(alternar(tipos, t))}
+              Filtros avançados
+            </summary>
+            <div className="mt-3 grid gap-3 sm:grid-cols-3">
+              <label>
+                Janela de perdas desde o primeiro DG positivo (dias, opcional)
+                <Input
+                  type="number"
+                  min="1"
+                  max="1000"
+                  value={janelaPerda}
+                  onChange={(e) => setJanelaPerda(e.target.value)}
+                  placeholder="Sem janela: contagens"
                 />
-                {t === "COBERTURA" ? "Cobertura" : t}
               </label>
-            ))}
-          </fieldset>
-          <fieldset>
-            <legend>Papel (sem seleção: todos)</legend>
-            {["NENHUM", "DOADORA", "RECEPTORA"].map((t) => (
-              <label className="mr-3 inline-flex gap-1" key={t}>
-                <input
-                  type="checkbox"
-                  checked={papeis.includes(t)}
-                  onChange={() => setPapeis(alternar(papeis, t))}
+              <label>
+                Intervalo entre partos
+                <select
+                  className="h-10 w-full min-w-0 rounded-md border bg-card px-3"
+                  value={iepModo}
+                  onChange={(e) => setIepModo(e.target.value as typeof iepModo)}
+                >
+                  <option value="VIVOS_NATIMORTOS">
+                    Vivos e natimortos comprovados
+                  </option>
+                  <option value="TODOS_PARTOS">
+                    Todos os partos (alternativa)
+                  </option>
+                </select>
+              </label>
+              {modo === "relatorio" && (
+                <label>
+                  Corte dos resultados
+                  <Input
+                    type="date"
+                    required
+                    min={fim}
+                    value={corte}
+                    onChange={(e) => setCorte(e.target.value)}
+                  />
+                </label>
+              )}
+              <label>
+                Concepção estimada (%) — opcional
+                <Input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="any"
+                  placeholder="Sem estimativa"
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
                 />
-                {t === "NENHUM"
-                  ? "Nenhum"
-                  : t === "DOADORA"
-                    ? "Doadora"
-                    : "Receptora"}
               </label>
-            ))}
-          </fieldset>
-          <Button disabled={ocupado} type="submit">
-            {ocupado ? "Consultando…" : "Aplicar"}
-          </Button>
-          <p className="text-sm text-muted-foreground sm:col-span-3">
-            A estimativa é uma escolha explícita para ponderar tentativas
-            anteriores sem diagnóstico. Deixá-la em branco conserva essa
-            pendência.
-          </p>
+              <label>
+                Deslocamento analítico da TE (dias)
+                <Input
+                  type="number"
+                  required
+                  min="0"
+                  max="30"
+                  value={te}
+                  onChange={(e) => setTe(e.target.value)}
+                />
+              </label>
+              <label>
+                Lote
+                <select
+                  className="h-10 w-full rounded-md border bg-background px-3"
+                  value={lote}
+                  onChange={(e) => setLote(e.target.value)}
+                >
+                  <option value="">Todos os lotes</option>
+                  {lotes.map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.nome}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <fieldset>
+                <legend>Tentativas (sem seleção: todas)</legend>
+                {["IA", "TE", "COBERTURA"].map((t) => (
+                  <label className="mr-3 inline-flex gap-1" key={t}>
+                    <input
+                      type="checkbox"
+                      checked={tipos.includes(t)}
+                      onChange={() => setTipos(alternar(tipos, t))}
+                    />
+                    {t === "COBERTURA" ? "Cobertura" : t}
+                  </label>
+                ))}
+              </fieldset>
+              <fieldset>
+                <legend>Papel (sem seleção: todos)</legend>
+                {["NENHUM", "DOADORA", "RECEPTORA"].map((t) => (
+                  <label className="mr-3 inline-flex gap-1" key={t}>
+                    <input
+                      type="checkbox"
+                      checked={papeis.includes(t)}
+                      onChange={() => setPapeis(alternar(papeis, t))}
+                    />
+                    {t === "NENHUM"
+                      ? "Nenhum"
+                      : t === "DOADORA"
+                        ? "Doadora"
+                        : "Receptora"}
+                  </label>
+                ))}
+              </fieldset>
+              <Button disabled={ocupado} type="submit">
+                {ocupado ? "Consultando…" : "Aplicar"}
+              </Button>
+              <p className="text-sm text-muted-foreground sm:col-span-3">
+                A estimativa é uma escolha explícita para ponderar tentativas
+                anteriores sem diagnóstico. Deixá-la em branco conserva essa
+                pendência.
+              </p>
+            </div>
+          </details>
         </form>
+        {ocupado && <p role="status">Carregando indicadores…</p>}
+        {erro && (
+          <Button variant="outline" onClick={() => ultimaOperacao.current?.()}>
+            Tentar novamente
+          </Button>
+        )}
         {avisoLotes && (
           <p role="status" className="text-sm text-muted-foreground">
             {avisoLotes}
@@ -300,58 +475,65 @@ export function IndicadoresReprodutivos({
             {erro}
           </p>
         )}
-        <div className="flex flex-wrap items-center gap-2 print:hidden">
-          <label>
-            Emissões preservadas{" "}
-            <select
-              aria-label="Emissões preservadas"
-              className="rounded border bg-background p-2"
-              value={emissao?.id ?? ""}
-              disabled={ocupado}
-              onChange={(e) => {
-                const id = e.target.value;
-                if (id)
-                  void executar(async () => {
-                    const v = await abrirEmissaoIndicadores(id, propriedadeId);
-                    if (ref.current === propriedadeId) {
-                      setSnapshot(v.snapshot);
-                      setEmissao(v);
-                      setPeriodoId(v.snapshot.periodos[0]?.id ?? "");
-                    }
-                  });
-              }}
-            >
-              <option value="">Selecione uma emissão</option>
-              {emissoes.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {new Date(e.criadoEm).toLocaleString("pt-BR")}
-                </option>
-              ))}
-            </select>
-          </label>
-          {visivel && (
-            <>
-              <Button variant="outline" onClick={exportar}>
-                Exportar CSV
-              </Button>
-              {podeLancar && (
-                <Button disabled={ocupado || !!emissao} onClick={emitir}>
-                  Preservar emissão
-                </Button>
-              )}
-              <Button
-                variant="outline"
-                disabled={!emissao}
-                onClick={() => window.print()}
+        {modo === "relatorio" && (
+          <Panel className="space-y-3 p-5 print:hidden">
+            <div><h3 className="font-semibold">Histórico de emissões e exportação</h3><p className="text-sm text-muted-foreground">Emissões preservadas mantêm os dados e critérios originais, sem recalcular os fatos atuais.</p></div>
+            {carregandoEmissoes && <p role="status" className="text-sm text-muted-foreground">Carregando emissões…</p>}
+            {erroEmissoes && <div className="space-y-2"><p role="alert" className="text-sm text-destructive">{erroEmissoes}</p><Button variant="outline" onClick={() => void carregarEmissoes()}>Tentar carregar emissões</Button></div>}
+          <div className="flex flex-wrap items-end gap-3">
+            <label>
+              Emissões preservadas{" "}
+              <select
+                aria-label="Emissões preservadas"
+                className="mt-1 block w-full rounded border bg-card p-2"
+                value={emissao?.id ?? ""}
+                disabled={ocupado}
+                onChange={(e) => {
+                  const id = e.target.value;
+                  if (id) abrirEmissao(id);
+                }}
               >
-                Imprimir emissão
-              </Button>
-            </>
-          )}
-        </div>
-        {visivel?.acompanhamento&&<IndicadoresAcompanhamento dados={visivel.acompanhamento}/>}
-        {visivel && (
+                <option value="">Selecione uma emissão</option>
+                {emissoes.map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {new Date(e.criadoEm).toLocaleString("pt-BR")}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {modo === "relatorio" && visivel && (
+              <>
+                <Button variant="outline" onClick={exportar}>
+                  Exportar CSV
+                </Button>
+                {podeLancar && (
+                  <Button disabled={ocupado || !!emissao} onClick={emitir}>
+                    Preservar emissão
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  disabled={!emissao}
+                  onClick={() => window.print()}
+                >
+                  Imprimir emissão
+                </Button>
+              </>
+            )}
+          </div>
+          </Panel>
+        )}
+        {modo === "relatorio" && !visivel && !ocupado && <Panel className="p-5"><p className="text-sm text-muted-foreground">{inicio && fim ? "O período inicial já está preenchido. Use Aplicar para consultar os indicadores ou ajuste os critérios acima." : "Defina o período acima e use Aplicar para consultar os indicadores."}</p></Panel>}
+        {modo === "painel" && visivel && (
+          <PainelIndicadores
+            key={JSON.stringify(visivel.filtros)}
+            snapshot={visivel}
+          />
+        )}
+        {modo === "relatorio" && visivel && (
           <>
+            <Panel className="space-y-3 p-5">
+            <h3 className="font-semibold">Resultado exibido</h3>
             <p className="text-sm">
               {emissao
                 ? `Emissão preservada em ${new Date(emissao.criadoEm).toLocaleString("pt-BR")}`
@@ -366,10 +548,13 @@ export function IndicadoresReprodutivos({
                 : `${visivel.metodologia.concepcaoEstimada}%`}{" "}
               · Deslocamento TE: {visivel.metodologia.deslocamentoTeDias} dias.
             </p>
+            {filtrosAlterados && <p className="rounded-lg border bg-muted p-3 text-sm">Os filtros editados ainda não foram aplicados. O resultado e as exportações mantêm os critérios exibidos; use Aplicar para atualizar a consulta.</p>}
+            </Panel>
+            {visivel.acompanhamento && <Panel className="min-w-0 p-5"><IndicadoresAcompanhamento dados={visivel.acompanhamento} propriedadeId={propriedadeId}/></Panel>}
             <div
               role="tablist"
               aria-label="Conteúdo do relatório"
-              className="flex gap-2 print:hidden"
+              className="flex flex-wrap gap-2 print:hidden"
             >
               {[
                 ["resumo", "Resumo por período"],
@@ -611,7 +796,7 @@ export function IndicadoresReprodutivos({
           </>
         )}
       </div>
-      {emissao && visivel && (
+      {modo === "relatorio" && emissao && visivel && (
         <ImpressaoIndicadores emissao={emissao} snapshot={visivel} />
       )}
     </section>
@@ -682,7 +867,9 @@ function ImpressaoIndicadores({
         {s.filtros.tiposTentativa?.join(", ") ?? "Todas"} · Papéis:{" "}
         {s.filtros.papeis?.join(", ") ?? "Todos"}
       </p>
-      {s.acompanhamento&&<IndicadoresAcompanhamento dados={s.acompanhamento}/>}
+      {s.acompanhamento && (
+        <IndicadoresAcompanhamento dados={s.acompanhamento} />
+      )}
       {s.sobraInicial && (
         <p>
           Sobra inicial excluída: {data(s.sobraInicial.inicio)} a{" "}

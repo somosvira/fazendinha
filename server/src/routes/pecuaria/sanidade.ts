@@ -11,6 +11,7 @@ import { prisma } from "../../db.js";
 import { resolverEscopoEscrita, resolverEscopoLeitura } from "../../services/propriedade.js";
 import { getUsuario } from "../../middleware/permissao.js";
 import { temArea, temPermissao } from "../../services/auth/papeis.js";
+import { podeConsultarCustosPecuaria, podeVerValoresFinanceiros } from "../../services/pecuaria/custos/permissoes.js";
 import { RebanhoError } from "../../services/pecuaria/rebanho/regras.js";
 import { FinanceiroError } from "../../services/financeiro/regras.js";
 import * as aplicacoes from "../../services/pecuaria/sanidade/aplicacoes.js";
@@ -50,7 +51,8 @@ function falha(c: Context, e: unknown) {
 const validar = <T extends z.ZodTypeAny>(schema: T) => zValidator("json", schema, (r, c) => {
   if (!r.success) return c.json({ error: r.error.issues[0].message, code: "VALIDACAO", campo: r.error.issues[0].path.join(".") }, 422);
 });
-const podeVerCustos = (c: Context) => { const u = getUsuario(c); return !!u && temArea(u, "financeiro") && temPermissao(u, "verValores"); };
+const podeVerCustos = (c: Context) => podeVerValoresFinanceiros(getUsuario(c));
+const podeConsultarCustos = (c: Context) => podeConsultarCustosPecuaria(getUsuario(c));
 const escopoDetalhe = async (c: Context) => {
   const solicitado = c.req.query("propriedadeId");
   if (!solicitado) return resolverEscopoLeitura(c);
@@ -59,7 +61,7 @@ const escopoDetalhe = async (c: Context) => {
   return resolverEscopoEscrita(c, id);
 };
 const ocultarCustos = <T extends { valorProdutoAtribuido: unknown; valorServicoAtribuido: unknown }>(item: T, c: Context): T =>
-  podeVerCustos(c) ? item : { ...item, valorProdutoAtribuido: null, valorServicoAtribuido: null };
+  podeConsultarCustos(c) ? item : { ...item, valorProdutoAtribuido: null, valorServicoAtribuido: null };
 
 export const sanidadeRouter = new Hono()
   .route("/", rodadasRouter)
@@ -94,20 +96,20 @@ export const sanidadeRouter = new Hono()
       const { pagina, tamanho } = c.req.valid("query");
       const sitio = await escopoDetalhe(c);
       const historico = await exames.obterHistoricoExame(id, sitio == null ? undefined : [sitio], pagina, tamanho);
-      return c.json(podeVerCustos(c) ? historico : detalhes.ocultarCustosDetalhe(historico));
+      return c.json(podeVerCustos(c) ? historico : detalhes.ocultarCustosDetalhe(historico, podeConsultarCustos(c)));
     } catch (e) { return falha(c, e); }
   })
   .get("/ocorrencias/:id", async (c) => {
-    try { const id = uuid.parse(c.req.param("id")); const fato = await detalhes.obterOcorrencia(id, await escopoDetalhe(c)); return c.json(podeVerCustos(c) ? fato : detalhes.ocultarCustosDetalhe(fato)); } catch (e) { return falha(c, e); }
+    try { const id = uuid.parse(c.req.param("id")); const fato = await detalhes.obterOcorrencia(id, await escopoDetalhe(c)); return c.json(podeVerCustos(c) ? fato : detalhes.ocultarCustosDetalhe(fato, podeConsultarCustos(c))); } catch (e) { return falha(c, e); }
   })
   .get("/aplicacoes/:id", async (c) => {
-    try { const id = uuid.parse(c.req.param("id")); const fato = await detalhes.obterAplicacao(id, await escopoDetalhe(c)); return c.json(podeVerCustos(c) ? fato : detalhes.ocultarCustosDetalhe(fato)); } catch (e) { return falha(c, e); }
+    try { const id = uuid.parse(c.req.param("id")); const fato = await detalhes.obterAplicacao(id, await escopoDetalhe(c)); return c.json(podeVerCustos(c) ? fato : detalhes.ocultarCustosDetalhe(fato, podeConsultarCustos(c))); } catch (e) { return falha(c, e); }
   })
   .get("/exames/:id", async (c) => {
-    try { const id = uuid.parse(c.req.param("id")); const fato = await detalhes.obterExame(id, await escopoDetalhe(c)); return c.json(podeVerCustos(c) ? fato : detalhes.ocultarCustosDetalhe(fato)); } catch (e) { return falha(c, e); }
+    try { const id = uuid.parse(c.req.param("id")); const fato = await detalhes.obterExame(id, await escopoDetalhe(c)); return c.json(podeVerCustos(c) ? fato : detalhes.ocultarCustosDetalhe(fato, podeConsultarCustos(c))); } catch (e) { return falha(c, e); }
   })
   .get("/execucoes/:id", async (c) => {
-    try { const id = uuid.parse(c.req.param("id")); const fato = await detalhes.obterExecucao(id, await escopoDetalhe(c)); return c.json(podeVerCustos(c) ? fato : detalhes.ocultarCustosDetalhe(fato)); } catch (e) { return falha(c, e); }
+    try { const id = uuid.parse(c.req.param("id")); const fato = await detalhes.obterExecucao(id, await escopoDetalhe(c)); return c.json(podeVerCustos(c) ? fato : detalhes.ocultarCustosDetalhe(fato, podeConsultarCustos(c))); } catch (e) { return falha(c, e); }
   })
   .patch("/doencas/:id", validar(z.object({ nome: z.string().trim().min(2).max(120).optional(), ativo: z.boolean().optional(), motivoBaixaSugeridoId: uuid.nullish() }).strict().refine((v) => Object.keys(v).length > 0, "Informe a alteração")), async (c) => {
     try { return c.json(await ocorrencias.editarDoenca(uuid.parse(c.req.param("id")), c.req.valid("json"), getUsuario(c)?.id ?? null)); } catch (e) { return falha(c, e); }
@@ -123,7 +125,7 @@ export const sanidadeRouter = new Hono()
     catch (e) { return falha(c,e); }
   })
   .post("/tarefas/:id/regularizacao", validar(regularizacaoSchema), async c => {
-    try { const body=c.req.valid("json");const propriedadeId=await resolverEscopoEscrita(c,body.propriedadeId);const salvo=await regularizarTarefaSanitaria(uuid.parse(c.req.param("id")),{...body,propriedadeId},getUsuario(c)?.id??null);return c.json(podeVerCustos(c)?salvo:detalhes.ocultarCustosDetalhe(salvo)); }
+    try { const body=c.req.valid("json");const propriedadeId=await resolverEscopoEscrita(c,body.propriedadeId);const salvo=await regularizarTarefaSanitaria(uuid.parse(c.req.param("id")),{...body,propriedadeId},getUsuario(c)?.id??null);return c.json(podeVerCustos(c)?salvo:detalhes.ocultarCustosDetalhe(salvo, podeConsultarCustos(c))); }
     catch(e){return falha(c,e);}
   })
   .post("/tarefas/:id/adiamento", validar(z.object({ previstaPara: data, motivo: z.string().trim().min(5).max(500) }).strict()), async (c) => {
@@ -155,7 +157,7 @@ export const sanidadeRouter = new Hono()
       return c.json(ocultarCustos(await aplicacoes.reconciliarOrigem(c.req.param("id"), propriedadeId, input, getUsuario(c)?.id ?? null), c)); } catch (e) { return falha(c, e); }
   })
   .post("/exames/:id/correcao", validar(z.object({ propriedadeId: z.number().int().positive(), motivo: z.string().trim().min(5).max(500), anular: z.boolean().optional(), resultados: observacoesExameSchema.optional(), resultadoTexto: z.string().trim().max(1000).nullish(), resultadoNumero: z.number().finite().nullish(), resultadoOpcao: z.string().trim().max(100).nullish() }).strict()), async (c) => {
-    try { const { propriedadeId: solicitado, ...input } = c.req.valid("json"); const propriedadeId = await resolverEscopoEscrita(c, solicitado); const salvo = await exames.corrigirExame(c.req.param("id"), propriedadeId, input, getUsuario(c)?.id ?? null); return c.json({ ...salvo, valorServicoAtribuido: podeVerCustos(c) ? salvo.valorServicoAtribuido : null }); } catch (e) { return falha(c, e); }
+    try { const { propriedadeId: solicitado, ...input } = c.req.valid("json"); const propriedadeId = await resolverEscopoEscrita(c, solicitado); const salvo = await exames.corrigirExame(c.req.param("id"), propriedadeId, input, getUsuario(c)?.id ?? null); return c.json({ ...salvo, valorServicoAtribuido: podeConsultarCustos(c) ? salvo.valorServicoAtribuido : null }); } catch (e) { return falha(c, e); }
   })
   .post("/aplicacoes/:id/carencia", validar(aplicacaoSchema.pick({ estadoCarenciaLeite: true, estadoCarenciaCarne: true, carenciaLeiteHoras: true, carenciaCarneHoras: true, justificativaCarenciaLeite: true, justificativaCarenciaCarne: true }).extend({ propriedadeId: z.number().int().positive(), motivo: z.string().trim().min(5).max(500) }).strict()), async (c) => {
     try { const { propriedadeId: solicitado, ...input } = c.req.valid("json"); const propriedadeId = await resolverEscopoEscrita(c, solicitado); return c.json(ocultarCustos(await aplicacoes.corrigirCarencia(c.req.param("id"), propriedadeId, input, getUsuario(c)?.id ?? null), c)); } catch (e) { return falha(c, e); }
@@ -231,7 +233,7 @@ export const sanidadeRouter = new Hono()
     inicio: data, ocorrenciaId: uuid.nullish(), operacaoServicoId: uuid.nullish(), confirmarSobreposicao: z.boolean().optional(), justificativaSobreposicao: z.string().trim().min(5).max(500).nullish() })), async (c) => {
     try { const body = c.req.valid("json"); const propriedadeId = await resolverEscopoEscrita(c, body.propriedadeId);
       const salva = await protocolos.iniciarExecucao({ ...body, propriedadeId }, getUsuario(c)?.id ?? null);
-      return c.json({ ...salva, valorServicoAtribuido: podeVerCustos(c) ? salva.valorServicoAtribuido : null }, 201); }
+      return c.json({ ...salva, valorServicoAtribuido: podeConsultarCustos(c) ? salva.valorServicoAtribuido : null }, 201); }
     catch (e) { return falha(c, e); }
   })
   .get("/tarefas", async (c) => {
@@ -239,7 +241,7 @@ export const sanidadeRouter = new Hono()
       const filtro = consultaSanitariaSchema.parse(c.req.query());
       const propriedadeId = await resolverEscopoLeitura(c);
       const tarefas = filtro.paginado === "true" ? await protocolos.listarTarefasPaginadas(propriedadeId, animalId, filtro) : await protocolos.listarTarefas(propriedadeId, animalId, filtro);
-      return c.json(podeVerCustos(c) ? tarefas : detalhes.ocultarCustosDetalhe(tarefas)); }
+      return c.json(podeVerCustos(c) ? tarefas : detalhes.ocultarCustosDetalhe(tarefas, podeConsultarCustos(c))); }
     catch (e) { return falha(c, e); }
   })
   .post("/tarefas/:id/dispensa", validar(z.object({ motivo: z.string().trim().min(5).max(500) })), async (c) => {
@@ -248,7 +250,7 @@ export const sanidadeRouter = new Hono()
   })
   .post("/execucoes/:id/cancelamento", validar(z.object({ propriedadeId: z.number().int().positive(), motivo: z.string().trim().min(5).max(500) })), async (c) => {
     try { const body = c.req.valid("json"); const propriedadeId = await resolverEscopoEscrita(c, body.propriedadeId);
-      const salvo = await protocolos.cancelarExecucao(c.req.param("id"), propriedadeId, body.motivo, getUsuario(c)?.id ?? null); return c.json({ ...salvo, valorServicoAtribuido: podeVerCustos(c) ? salvo.valorServicoAtribuido : null }); } catch (e) { return falha(c, e); }
+      const salvo = await protocolos.cancelarExecucao(c.req.param("id"), propriedadeId, body.motivo, getUsuario(c)?.id ?? null); return c.json({ ...salvo, valorServicoAtribuido: podeConsultarCustos(c) ? salvo.valorServicoAtribuido : null }); } catch (e) { return falha(c, e); }
   })
   .get("/tipos-exame", async (c) => { try { return c.json(await exames.listarTiposExame(c.req.query("incluirInativos") === "true", "SANITARIO")); } catch (e) { return falha(c, e); } })
   .post("/tipos-exame", validar(z.object({ versaoAnteriorId: uuid.optional(), nome: z.string().trim().min(2).max(120), campos: camposExameSchema.nullish(), tipoResultado: z.enum(["TEXTO", "NUMERO", "OPCAO", "MULTIPLO"]),
@@ -259,7 +261,7 @@ export const sanidadeRouter = new Hono()
   .get("/exames", async (c) => {
     try { const animalId = c.req.query("animalId"); if (animalId && !uuid.safeParse(animalId).success) return c.json({ error: "Animal inválido", code: "VALIDACAO" }, 422);
       const lista = await exames.listarExames(animalId, await escopoDetalhe(c), consultaSanitariaSchema.parse(c.req.query()));
-      return c.json(lista.map((e) => ({ ...e, valorServicoAtribuido: podeVerCustos(c) ? e.valorServicoAtribuido : null }))); }
+      return c.json(lista.map((e) => ({ ...e, valorServicoAtribuido: podeConsultarCustos(c) ? e.valorServicoAtribuido : null }))); }
     catch (e) { return falha(c, e); }
   })
   .post("/exames", validar(z.object({ chave: uuid.optional(), animalId: uuid, propriedadeId: z.number().int().positive(), tipoExameId: uuid, data,
@@ -267,7 +269,7 @@ export const sanidadeRouter = new Hono()
     responsavel: z.string().trim().max(160).nullish(), ocorrenciaId: uuid.nullish(), tarefaId: uuid.nullish(), operacaoServicoId: uuid.nullish(), desvio })), async (c) => {
     try { const body = c.req.valid("json"); const propriedadeId = await resolverEscopoEscrita(c, body.propriedadeId);
       const salvo = await exames.registrarExame({ ...body, propriedadeId }, getUsuario(c)?.id ?? null);
-      return c.json({ ...salvo, valorServicoAtribuido: podeVerCustos(c) ? salvo.valorServicoAtribuido : null }, 201); }
+      return c.json({ ...salvo, valorServicoAtribuido: podeConsultarCustos(c) ? salvo.valorServicoAtribuido : null }, 201); }
     catch (e) { return falha(c, e); }
   })
   .get("/aplicacoes", async (c) => {

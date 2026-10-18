@@ -28,6 +28,7 @@ function ConteudoConfiguracaoAcompanhamento({ propriedadeId, podeLancar }: Props
   const [erro, setErro] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState(false);
   const [mensagem, setMensagem] = useState("");
+  const [carregando, setCarregando] = useState(true);
   const geracao = useRef(0);
 
   useEffect(() => {
@@ -40,7 +41,7 @@ function ConteudoConfiguracaoAcompanhamento({ propriedadeId, podeLancar }: Props
         setPoliticas(p);
         setTipos(t.filter(x => x.ativo && x.contexto !== "SANITARIO"));
       }
-    }).catch(e => { if (g === geracao.current) setErro(e instanceof Error ? e.message : String(e)); });
+    }).catch(e => { if (g === geracao.current) setErro(e instanceof Error ? e.message : String(e)); }).finally(() => { if (g === geracao.current) setCarregando(false); });
     return () => { geracao.current++; };
   }, [propriedadeId]);
 
@@ -67,9 +68,11 @@ function ConteudoConfiguracaoAcompanhamento({ propriedadeId, podeLancar }: Props
     <h2 className="text-xl font-semibold">Diagnóstico e reconfirmações</h2>
     <p className="text-sm">Escolha os prazos com o responsável pelo manejo. As regras geram alertas e conservam sua versão em cada demanda. Não há prazo clínico padrão.</p>
     <ErrorBox erro={erro} />
+    {carregando && <p role="status">Carregando políticas…</p>}
+    {!carregando && !erro && !politicas.length && <p>Nenhuma política registrada neste sítio.</p>}
     {mensagem && <p role="status">{mensagem}</p>}
     <FormularioAcompanhamento visivel={podeLancar} propriedadeId={propriedadeId} tipos={tipos} ocupado={ocupado} aoSalvar={salvar} aoErro={mensagemErro => { setErro(mensagemErro); setMensagem(""); }} />
-    {politicas.map(p => <details key={p.id} className="rounded border p-3">
+    {politicas.map(p => <details key={p.id} className="rounded border border-border bg-card p-3">
       <summary>Versão {p.versao} · vigente desde {formatBRDateISO(p.vigenteDesde)}</summary>
       <p>Diagnóstico: {p.parametros.diagnostico ? `${p.parametros.diagnostico.diasAposTentativa} dias após a tentativa` : "não configurado"}</p>
       {p.parametros.reconfirmacoes.map(r => <p key={r.ocorrencia}>Reconfirmação {r.ocorrencia}: {r.diasAposPrimeiroPositivo} dias desde o primeiro DG positivo{r.tipoExameId ? ` · exame configurado, versão ${r.tipoExameVersao}` : ""}</p>)}

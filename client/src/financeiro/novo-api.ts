@@ -62,7 +62,8 @@ export type ContaInput = { nome: string; tipo: TipoConta; instituicao?: string |
 export type ContaPatch = Partial<ContaInput> & DadosConta & { ativo?: boolean };
 export type ParceiroInput = DadosParceiro & { nome: string; documento?: string | null; tipo?: TipoParceiro; telefone?: string | null; email?: string | null };
 export type ParceiroPatch = Partial<ParceiroInput> & { ativo?: boolean };
-export type Categoria = { id: string; nome: string; classificacao: "CUSTEIO" | "INVESTIMENTO" | null; ativo: boolean; ordem: number; usoGenetico: boolean; usoSanitario?: boolean; usoNutricional?: boolean; _count?: { operacoes: number; produtos: number; itens?: number } };
+export type GrupoCategoria = { id: string; nome: string; ativo: boolean; ordem: number; _count?: { categorias: number } };
+export type Categoria = { grupoId?: string | null; grupo?: GrupoCategoria | null; id: string; nome: string; classificacao: "CUSTEIO" | "INVESTIMENTO" | null; ativo: boolean; ordem: number; usoGenetico: boolean; usoSanitario?: boolean; usoNutricional?: boolean; _count?: { operacoes: number; produtos: number; itens?: number } };
 export type CentroCusto = { id: string; nome: string; ativo: boolean; ordem: number; _count?: { operacoes: number; produtos: number } };
 // Categoria organiza o financeiro; os tipos de uso pertencem ao Produto.
 export type ProdutoCategoria = { id: string; nome: string; usoGenetico: boolean; usoSanitario?: boolean; usoNutricional?: boolean };
@@ -86,7 +87,7 @@ export type ProdutoInput = {
   // Categoria obrigatória para classificação financeira. Se o produto entra no estoque quem decide é a operação.
   minimoEstoque: number | null; categoriaId: string; centroCustoIds: string[]; fornecedorIds: string[];
 };
-export type ConfiguracoesFinanceiras = { contas: Conta[]; parceiros: Parceiro[]; categorias: Categoria[]; centrosCusto: CentroCusto[]; produtos: Produto[]; produtosCadastro?: Produto[] };
+export type ConfiguracoesFinanceiras = { gruposCategorias?: GrupoCategoria[]; contas: Conta[]; parceiros: Parceiro[]; categorias: Categoria[]; centrosCusto: CentroCusto[]; produtos: Produto[]; produtosCadastro?: Produto[] };
 export type ContaHistorico = { id: string; nome: string };
 export type ReferenciaReversao = { id: string; tipo: string; status: string; data: string; descricao: string | null };
 export type MovimentoOperacao = { id: string; seq: number; contaId: string; direcao: "ENTRADA" | "SAIDA"; valor: string; conta: ContaHistorico };
@@ -258,7 +259,7 @@ export const criarConta = (input: ContaInput & DadosConta) => req<Conta>("/finan
 export const atualizarConta = (id: string, input: ContaPatch) => req<Conta>(`/financeiro/contas/${id}`, { method: "PATCH", body: JSON.stringify(input) });
 export const criarParceiro = (input: ParceiroInput) => req<Parceiro>("/financeiro/parceiros", { method: "POST", body: JSON.stringify(input) });
 export const atualizarParceiro = (id: string, input: ParceiroPatch) => req<Parceiro>(`/financeiro/parceiros/${id}`, { method: "PATCH", body: JSON.stringify(input) });
-export type CategoriaInput = { nome: string; classificacao?: "CUSTEIO" | "INVESTIMENTO" | null; ordem?: number; usoGenetico?: boolean; usoSanitario?: boolean; usoNutricional?: boolean };
+export type CategoriaInput = { grupoId?: string | null; nome: string; classificacao?: "CUSTEIO" | "INVESTIMENTO" | null; ordem?: number; usoGenetico?: boolean; usoSanitario?: boolean; usoNutricional?: boolean };
 export type CentroCustoInput = { nome: string; ordem?: number };
 export const criarCategoria = (input: CategoriaInput) => req<Categoria>("/financeiro/categorias", { method: "POST", body: JSON.stringify(input) });
 export const atualizarCategoria = (id: string, input: Partial<CategoriaInput> & { ativo?: boolean }) => req<Categoria>(`/financeiro/categorias/${id}`, { method: "PATCH", body: JSON.stringify(input) });
@@ -277,3 +278,7 @@ export type AnaliseCategorias = {
   linhas: { categoriaId?: string | null; operacaoId: string | null; contaId?: string; movimentoId?: string; descricao: string | null; data: string; categoria: string; centroCusto: string; classificacao: string | null; valor: string }[];
 };
 export const obterAnaliseCategorias = (filtros: Record<string, string>) => req<AnaliseCategorias>(`/financeiro/analise-categorias?${new URLSearchParams(Object.entries(filtros).filter(([, v]) => v !== ""))}`);
+
+export type GrupoCategoriaInput = { nome: string; ordem?: number };
+export const criarGrupoCategoria = (input: GrupoCategoriaInput) => req<GrupoCategoria>("/financeiro/grupos-categorias", { method: "POST", body: JSON.stringify(input) });
+export const atualizarGrupoCategoria = (id: string, input: Partial<GrupoCategoriaInput> & { ativo?: boolean }) => req<GrupoCategoria>(`/financeiro/grupos-categorias/${id}`, { method: "PATCH", body: JSON.stringify(input) });

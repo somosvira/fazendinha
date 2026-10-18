@@ -1,3 +1,4 @@
+import { getHojeISO as hoje } from "../../../lib/hoje";
 import { getUsuario } from "../../../lib/auth";
 import { podeAcessarArea } from "../../../estoque/navegacao";
 import { PartoCampos, camposPartoPayload, dadosPartoVazios, validarDadosParto } from "./PartoCampos";
@@ -6,7 +7,7 @@ import { CamposResultadoExame, type ObservacaoExame } from "../sanidade/CamposEx
 import type { TipoExame } from "../sanidade/CadastrosSanitarios";
 import { AlertasSanitarios } from "./AlertasSanitarios";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Button, ErrorBox, hoje } from "../../../financeiro/financeiro-ui";
+import { Button, ErrorBox } from "../../../financeiro/financeiro-ui";
 import {
   CampoFormulario,
   classeInput,

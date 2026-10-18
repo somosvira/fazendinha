@@ -33,7 +33,7 @@ function criarTx() {
   };
   const tx = {
     $executeRaw: vi.fn().mockResolvedValue(0),
-    animal: { findUnique: vi.fn().mockResolvedValue({ id: ids.animal }) },
+    animal: { findFirst: vi.fn().mockResolvedValue({ id: ids.animal }) },
     tentativaReprodutiva: { findFirst: vi.fn().mockResolvedValue({ id: ids.tentativa }), findMany: vi.fn().mockImplementation(async q => selecionar(tentativas,q)) },
     aplicacaoProduto: { findMany: vi.fn().mockImplementation(async q => selecionar(aplicacoes,q)) },
     exameAnimal: { findMany: vi.fn().mockResolvedValue([]) },
@@ -103,6 +103,21 @@ describe("contraprovas do serviço de custos sem banco", () => {
     expect(resultado.atribuicoesPreparos.flatMap(p => p.parcelas).every(p => p.valorOrigem === null && p.valorAtribuido === null && p.restante === null)).toBe(true);
     expect(JSON.stringify(resultado)).not.toContain("30,00");
   });
+  it("leitura operacional revela o custo conhecido sem liberar a evidência documental", async () => {
+    const {tx, aplicacoes} = criarTx();
+    aplicacoes[0].classificacaoCusto.documentoMaterial = { referencia: "Nota privada", evidencia: "Documento financeiro privado" };
+    const resultado = await consultarCustosTx(banco(tx),1,consulta({tentativaId:ids.tentativa}),true,false);
+    expect(resultado).toMatchObject({ situacao: "COMPLETO", totalConhecido: "100.00" });
+    expect(resultado.fontes.every(f => f.documentoMaterial === null)).toBe(true);
+    expect(JSON.stringify(resultado)).not.toContain("Documento financeiro privado");
+  });
+  it("consulta de animal exige passagem pelo sítio, preservando o vínculo histórico", async () => {
+    const {tx} = criarTx();
+    await consultarCustosTx(banco(tx),1,consulta({animalId:ids.animal}),true,false);
+    expect(tx.animal.findFirst).toHaveBeenCalledWith({where:{id:ids.animal,localizacoes:{some:{propriedadeId:1}}},select:{id:true}});
+    tx.animal.findFirst.mockResolvedValue(null);
+    await expect(consultarCustosTx(banco(tx),2,consulta({animalId:ids.animal}),true,false)).rejects.toMatchObject({code:"NAO_ENCONTRADO"});
+  });
 
   it("classificação simples sem documento produz SQL NULL, sem fabricar JSON null incompatível", async () => {
     const {tx} = criarTx();
@@ -133,4 +148,21 @@ describe("contraprovas do serviço de custos sem banco", () => {
     expect(leiturasAlvo).toBeGreaterThanOrEqual(2);
     expect(tx.vinculoPreparoTentativa.create).not.toHaveBeenCalled();
   });
+});
+
+it("filtra preparatórios por data inclusiva e finalidade antes de paginar, conservando fontes de edição", async () => {
+  const { tx, vinculos } = criarTx();
+  vinculos.length = 0;
+  for (const filtro of [{ inicio: "2026-01-06" }, { fim: "2026-01-04" }, { finalidade: "SANIDADE" }, { finalidade: "SEM_CLASSIFICACAO" }]) {
+    const r = await consultarCustosTx(banco(tx), 1, consulta({ animalId: ids.animal, ...filtro }), true);
+    expect(r.atribuicoesPreparos).toEqual([]);
+    expect(r.fontes.some(f => f.id === ids.preparo)).toBe(true);
+  }
+  const r = await consultarCustosTx(banco(tx), 1, consulta({ animalId: ids.animal, inicio: "2026-01-05", fim: "2026-01-05", finalidade: "REPRODUCAO", limite: 1, pagina: 2 }), true);
+  expect(r.atribuicoesPreparos).toEqual([expect.objectContaining({ fonteId: ids.preparo, aAtribuir: true })]);
+});
+it("o editor da tentativa conserva vínculos fora do recorte para permitir sua correção", async () => {
+  const { tx } = criarTx();
+  const r = await consultarCustosTx(banco(tx), 1, consulta({ tentativaId: ids.tentativa, inicio: "2026-01-10" }), true);
+  expect(r.atribuicoesPreparos[0].vinculos[0].id).toBe(ids.vinculo);
 });

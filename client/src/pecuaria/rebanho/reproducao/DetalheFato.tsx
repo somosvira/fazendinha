@@ -75,9 +75,9 @@ export function DetalheFato({
             <dd>{fato.tipo ?? fato.resultado ?? "—"}</dd>
           </div>
           <div>
-            <dt className="text-ink-3">Ciclo e tentativa</dt>
+            <dt className="text-ink-3">Ordem registrada da tentativa</dt>
             <dd>
-              {fato.ciclo ?? "—"} · {fato.ordem ?? "—"}
+              {fato.ordem == null ? "Não informada" : `${fato.ordem}ª`}
             </dd>
           </div>
           <div>

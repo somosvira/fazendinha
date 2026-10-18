@@ -2,7 +2,9 @@
 // período), o gráfico de evolução do peso e a tabela de pesagens já existente
 // (GMD desde a anterior, observação, editar/excluir).
 
+import type { ReactNode } from "react";
 import { Pencil, Scale, Trash2, TrendingUp, Weight } from "lucide-react";
+import { SecaoRecolhivel } from "./SecaoRecolhivel";
 import { SeletorPeriodoGmd } from "./SeletorPeriodoGmd";
 import { CardFicha } from "../ui";
 import { GraficoPeso, ROTULO_TIPO_PESAGEM } from "./GraficoPeso";
@@ -21,7 +23,8 @@ function gmdEntre(atual: { pesoKg: number; data: string }, anterior: { pesoKg: n
   return formatarGmd((atual.pesoKg - anterior.pesoKg) / dias);
 }
 
-export function PesoEGanho({ animal, periodo, onPeriodoChange, podeLancar, onEditarPesagem, onExcluirPesagem }: {
+export function PesoEGanho({ animal, periodo, onPeriodoChange, podeLancar, onEditarPesagem, onExcluirPesagem, manejo }: {
+  manejo?: ReactNode;
   animal: AnimalFicha;
   periodo: PeriodoGmd;
   onPeriodoChange: (periodo: PeriodoGmd) => void;
@@ -38,7 +41,17 @@ export function PesoEGanho({ animal, periodo, onPeriodoChange, podeLancar, onEdi
     // `gmdPeriodo.dias` é o intervalo entre a 1ª e a última pesagem usadas, não a janela escolhida
     : `${peso.gmdPeriodo.pesagens} pesagens em ${peso.gmdPeriodo.dias ?? 0} dias · ${rotuloPeriodoGmd(periodo)}`;
 
-  return <CardFicha icon={Scale} titulo="Peso e ganho" className="lg:col-span-2" acao={<SeletorPeriodoGmd id="periodo-gmd-animal" valor={periodo} onChange={onPeriodoChange} />}>
+  return <div className="ficha-peso-conjunto"><div className="ficha-peso-manejo"><CardFicha icon={Scale} titulo="Evolução do peso" className="ficha-peso-card" acao={<SeletorPeriodoGmd id="periodo-gmd-animal" valor={periodo} onChange={onPeriodoChange} />}>
+    <div className="ficha-curva-peso">
+      <GraficoPeso historicoPesagens={historicoPesagens} desde={desde} ate={limite} />
+      <dl className="ficha-peso-faixa">
+        <div><dt>Último peso</dt><dd>{formatarKg(peso.ultimo?.kg)}</dd></div>
+        <div><dt>GMD do período</dt><dd>{formatarGmd(peso.gmdPeriodo.valor)}</dd><small>{detalhePeriodo}</small></div>
+        <div><dt>Pesagens</dt><dd>{historicoPesagens.length} {historicoPesagens.length === 1 ? "registro" : "registros"}</dd></div>
+      </dl>
+    </div>
+    </CardFicha>{manejo}</div>
+    <SecaoRecolhivel titulo="Indicadores de ganho" resumo="Ganho recente, no período e desde a entrada" abertaInicial={false} className="ficha-peso-detalhes">
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <Metric label="Último peso" icon={Scale} valor={formatarKg(peso.ultimo?.kg)} detalhe={peso.ultimo ? formatarDataBR(peso.ultimo.data) : "Sem pesagem registrada"} />
       <Metric label="GMD recente" icon={TrendingUp} valor={formatarGmd(peso.gmdRecente)} detalhe="Entre as duas últimas pesagens" />
@@ -46,11 +59,9 @@ export function PesoEGanho({ animal, periodo, onPeriodoChange, podeLancar, onEdi
       <Metric label="GMD desde a entrada" icon={TrendingUp} valor={formatarGmd(peso.gmdDesdeEntrada)} detalhe="Primeira × última pesagem do animal" />
     </div>
 
-    <div className="mt-6">
-      <GraficoPeso historicoPesagens={historicoPesagens} desde={desde} ate={limite} />
-    </div>
+    </SecaoRecolhivel>
 
-    <div className="mt-6">
+    <SecaoRecolhivel titulo={`Pesagens · ${historicoPesagens.length} ${historicoPesagens.length === 1 ? "registro" : "registros"}`} resumo="Lista completa de pesagens do animal" abertaInicial={false} className="ficha-peso-detalhes">
       {historicoPesagens.length ? <div className="overflow-x-auto"><table className="w-full text-left text-sm">
         <thead className="text-xs text-ink-3"><tr>
           <th className="py-1.5 pr-3 font-semibold">Data</th>
@@ -74,6 +85,6 @@ export function PesoEGanho({ animal, periodo, onPeriodoChange, podeLancar, onEdi
           </tr>)}
         </tbody>
       </table></div> : <p className="text-sm text-ink-3">Nenhuma pesagem registrada.</p>}
-    </div>
-  </CardFicha>;
+    </SecaoRecolhivel>
+  </div>;
 }

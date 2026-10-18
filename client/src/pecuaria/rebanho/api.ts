@@ -28,6 +28,8 @@ import type {
   EditarRacaInput,
   EntidadeCadastro,
   EntradaAuditoria,
+  FiltrosAuditoriaAnimal,
+  ResultadoAuditoriaAnimal,
   EstornoBaixaInput,
   FiliacaoInput,
   FilhoResumo,
@@ -161,12 +163,11 @@ export const criarMaterialGenetico = (input: CriarMaterialGeneticoInput) =>
 export const editarMaterialGenetico = (id: string, input: EditarMaterialGeneticoInput) =>
   req<MaterialGeneticoDTO>(`/material-genetico/${id}`, { method: "PATCH", body: JSON.stringify(input) });
 
-export const buscarAuditoriaAnimal = (id: string, opts?: { page?: number; pageSize?: number }) => {
+export const buscarAuditoriaAnimal = (id: string, opts?: FiltrosAuditoriaAnimal) => {
   const params = new URLSearchParams();
-  if (opts?.page !== undefined) params.set("page", String(opts.page));
-  if (opts?.pageSize !== undefined) params.set("pageSize", String(opts.pageSize));
+  for (const [chave, valor] of Object.entries(opts ?? {})) if (valor !== undefined && valor !== "") params.set(chave, String(valor));
   const query = params.toString();
-  return req<{ itens: EntradaAuditoria[]; total: number }>(`/animais/${id}/auditoria${query ? `?${query}` : ""}`);
+  return req<ResultadoAuditoriaAnimal>(`/animais/${id}/auditoria${query ? `?${query}` : ""}`);
 };
 
 export const movimentarAnimais = (input: MovimentarInput) =>

@@ -22,11 +22,12 @@ import { planejarBaixa, planejarEstornoBaixa, motivoAceito, mensagemMotivoRecusa
 import { agregarPainel, mapearAnimalResumo, mapearContextoProdutivoFicha, resumoAuditoria, type AnimalResumo, type AnimalFicha, type ItemComposicaoFicha, type PainelRebanho, type FiliacaoLadoDTO } from "./mappers.js";
 import { resumoPeso } from "./peso.calc.js";
 import { diferencas, type CampoAlteracao } from "./auditoria.calc.js";
+import { consultarAuditoriaAnimal } from "./auditoria-animal.js";
 import type {
   CadastrarAnimalInput, EditarAnimalInput, MovimentarInput, MudarDestinoInput,
   BaixaInput, EstornoBaixaInput, PesagemInput, EditarPesagemInput, ListarFiltrosInput,
   SubstituirComposicaoInput, CategoriaManualInput, RemoverCategoriaManualInput,
-  DefinirFiliacaoInput,
+  DefinirFiliacaoInput, AuditoriaAnimalQuery,
 } from "./schemas.js";
 
 /** Entidades de cadastro que `/auditoria` (fora do animal) pode consultar. */
@@ -1740,23 +1741,10 @@ function mapearEntradaAuditoria(e: {
 
 export async function buscarAuditoriaAnimal(
   animalId: string, escopo: number | null = null, page = 1, pageSize = 20,
-): Promise<{ itens: EntradaAuditoriaDTO[]; total: number }> {
+  filtros: Omit<AuditoriaAnimalQuery, "page" | "pageSize"> = {}, verValores = false,
+) {
   await exigirNoEscopo(prisma, animalId, escopo);
-
-  // por animalId: inclui o que já foi apagado (pesagem excluída, movimentação/destino desfeitos)
-  const where = { animalId };
-  const [total, entradas] = await Promise.all([
-    prisma.auditoriaPecuaria.count({ where }),
-    prisma.auditoriaPecuaria.findMany({
-      where,
-      include: { usuario: { select: { nome: true } } },
-      orderBy: { em: "desc" },
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-    }),
-  ]);
-
-  return { itens: entradas.map((e) => mapearEntradaAuditoria(e)), total };
+  return consultarAuditoriaAnimal(animalId, { ...filtros, page, pageSize }, verValores, escopo);
 }
 
 /**

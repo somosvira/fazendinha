@@ -28,12 +28,26 @@ async function conferirAdocao() { await screen.findByRole("option", { name: /Ver
 function preencherPolitica() { fireEvent.change(screen.getByLabelText("Vigente desde"), { target: { value: "2026-02-01" } }); fireEvent.click(screen.getByLabelText("Configurar diagnóstico após tentativa")); fireEvent.change(screen.getByLabelText("Dias após a tentativa"), { target: { value: "0" } }); }
 function preencherCopia(nome = "Rascunho da fazenda", versao = "1") { fireEvent.change(screen.getByLabelText("Nome do novo rascunho"), { target: { value: nome } }); fireEvent.change(screen.getByLabelText("Versão do novo rascunho"), { target: { value: versao } }); }
 describe("UI acompanhamento — contraprovas independentes", () => {
+ it("leitura das demandas independe da demora ou falha das regras administrativas", async () => {
+  let rejeitar!: (motivo: Error) => void;
+  const lenta = new Promise<never>((_resolve, reject) => { rejeitar = reject; });
+  mocks.req.mockImplementation((url, body) => url.endsWith("/politicas") ? lenta : url.includes("animalId=a") ? Promise.resolve([demanda("2026-01-11")]) : padrao(url, body));
+  render(<DemandasAcompanhamento animalId="a" propriedadeId={1} painel={painel("a")} podeLancar onAvaliar={vi.fn()} atualizacao={0}/>);
+  await screen.findByText("11/01/2026");
+  expect(screen.queryByRole("status")).toBeNull();
+  await act(async () => rejeitar(new Error("Regras indisponíveis")));
+  expect(await screen.findByText(/Não foi possível consultar as regras para adoção/)).toBeTruthy();
+  expect(screen.getByText("11/01/2026")).toBeTruthy();
+  expect(screen.getByRole("button", {name:"Registrar avaliação"})).toBeTruthy();
+ });
+
  it.each([true, false])("DG de origem inválido fica explícito para podeLancar=%s e impede avaliação vinculada", async (podeLancar) => {
   mocks.req.mockImplementation((url, body) => url.includes("animalId=a") ? Promise.resolve([{ ...demanda("2026-01-11"), finalidade: "RECONFIRMACAO", pendencias: ["EXAME_ORIGEM_INVALIDO"] }]) : padrao(url, body));
   const avaliar = vi.fn();
   render(<DemandasAcompanhamento animalId="a" propriedadeId={1} painel={painel("a")} podeLancar={podeLancar} onAvaliar={avaliar} atualizacao={0}/>);
   await screen.findByText(/O DG de origem foi alterado ou anulado/);
-  expect(screen.getByText(/11\/01\/2026.*Pendente/)).toBeTruthy();
+  expect(screen.getByText("11/01/2026")).toBeTruthy();
+  expect(screen.getByText("Pendente")).toBeTruthy();
   if (podeLancar) {
    const registrar = screen.getByRole("button", { name: "Registrar avaliação" });
    expect(registrar).toHaveProperty("disabled", true); fireEvent.click(registrar);

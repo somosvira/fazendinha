@@ -28,6 +28,8 @@ describe("GraficoPeso", () => {
 
   it("sem nenhuma pesagem, mostra o aviso", () => {
     const html = renderToStaticMarkup(<GraficoPeso historicoPesagens={[]} />);
+    expect(html).toContain("Ainda não há pesagens deste animal");
+    expect(html).toContain('role="status"');
     expect(html).toContain("pelo menos duas pesagens");
   });
 

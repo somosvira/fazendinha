@@ -69,7 +69,7 @@ export function ConfiguracoesHub({ tab, onNav, isAdmin, podeCategorias = true, p
   // As views trazem a própria casca (shell-wide). Alinhamos a barra de sub-abas a ela.
   return (
     <>
-      <div className={cn("pt-7", "px-[var(--gutter)]")}>
+      <div className={cn("pt-7", "px-[var(--gutter)]", atual === "pecuaria" && "max-[900px]:pt-14")}>
         <SubTabs tabs={tabs} active={atual} onSelect={(id) => id === "pecuaria" ? navegarPara("/configuracoes/pecuaria") : onNav(TAB_BY_SUB[id])} />
       </div>
       {atual === "pecuaria" && <div className="shell-wide pagina-financeira financeiro-colorido">{path.split("/").filter(Boolean).length < 4 && <PageHeader titulo="Configurações da Pecuária" descricao="Cadastros de rebanho, genética, sanidade e reprodução." />}<ConfiguracoesPecuaria podeLancar={podeLancarPecuaria} /></div>}

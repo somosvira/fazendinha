@@ -16,6 +16,7 @@ A base documenta o código atual. Setup e comandos ficam no [README](../README.m
 | [Correções do fluxo de visitas](pecuaria/artefatos/plano-correcao-visitas.html) | Encaminhamento do plano concluído para o contrato, a explicação das sete correções e o roteiro de homologação |
 | [Entrada de visitas — mockup](pecuaria/artefatos/mockup-selecao-livre.html#entrada) | Referência visual aprovada: entrada sem caminho pré-selecionado, agenda e seleção livre em percursos separados; dados fictícios, sem conexão com o app |
 | [Conceitos e interface V4](pecuaria/artefatos/conceitos-v4.html) | Explicação dos relacionamentos e dos fluxos de contexto, parto, colostro, visita, elegibilidade, indicadores e relatórios em relação às telas |
+| [Testes manuais da branch V4](pecuaria/artefatos/testes-manuais-branch-v4.html) | Execução humana do follow-up e alterações locais: consultas, ações de gravação, bordas e evidências; marcações próprias inicialmente pendentes |
 | [Guia manual V4](pecuaria/artefatos/testes-v4-guia.html) | Roteiro específico com pré-condições, resultados esperados e registro/exportação da execução; inicia pendente |
 | [Protocolos, exames e papéis](pecuaria/protocolos-exames.md) | Modelo comum implementado, versões, migração, compatibilidade e limites |
 | [Desenvolvimento](desenvolvimento.md) | Seed unificado, carga IDEAGRI e preparação do guia manual |

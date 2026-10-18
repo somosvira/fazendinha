@@ -18,6 +18,33 @@ export function contadoresCiclo(partosAnteriores: number, partos: { data: Date; 
   return { partos: contarPartos(partosAnteriores, partos, referencia), tentativasCiclo: tentativas.filter((t) => t.status === "VALIDO" && t.data <= referencia && (!ultimo || t.data > ultimo.data)).length };
 }
 
+export type ResumoAcompanhamentoReprodutivo = {
+  dataReferencia: string;
+  tentativas: number;
+  referencia: { tipo: "PARTO" | "ABORTO" | "SITUACAO_INICIAL"; data: string } | null;
+};
+
+/** Resumo clínico transversal: não transporta fatos, identidades nem custos de outros sítios. */
+export function resumirAcompanhamentoReprodutivo(
+  partos: readonly { data: Date; status: string; tipo: string }[],
+  iniciais: readonly { data: Date; status: string }[],
+  tentativas: readonly { data: Date; status: string }[],
+  corte: Date,
+): ResumoAcompanhamentoReprodutivo {
+  const valido = (fato: { data: Date; status: string }) => fato.status === "VALIDO" && fato.data <= corte;
+  const ultimoParto = partos.filter(valido).sort((a, b) => b.data.getTime() - a.data.getTime())[0];
+  const inicial = iniciais.filter(valido).sort((a, b) => a.data.getTime() - b.data.getTime())[0];
+  const origem = ultimoParto ?? inicial;
+  return {
+    dataReferencia: corte.toISOString().slice(0, 10),
+    tentativas: tentativas.filter(t => valido(t) && (!origem || (ultimoParto ? t.data > origem.data : t.data >= origem.data))).length,
+    referencia: origem ? {
+      tipo: ultimoParto ? ultimoParto.tipo === "ABORTO" ? "ABORTO" : "PARTO" : "SITUACAO_INICIAL",
+      data: origem.data.toISOString().slice(0, 10),
+    } : null,
+  };
+}
+
 type Avaliacao = { data: Date; resultado: string };
 type Gestacao = { confirmadaEm: Date; encerradaEm: Date | null; status: string;tipoEncerramento?:string|null };
 

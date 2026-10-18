@@ -11,7 +11,7 @@ import * as documentos from "../services/financeiro/documentos.js";
 import * as rascunhos from "../services/financeiro/rascunhos.js";
 import { analisarCategorias, analiseCategoriasSchema } from "../services/financeiro/analise-categorias.js";
 import { obterDashboard } from "../services/financeiro/dashboard.js";
-import { categoriaCadastroSchema, centroCustoSchema, contaSchema, estornoSchema, liquidacaoSchema, operacaoSchema, parceiroSchema, patchCategoriaCadastroSchema, patchCentroCustoSchema, patchContaSchema, patchParceiroSchema, rascunhoOperacaoSchema, simulacaoParcelasSchema, tipoDocumentoFinanceiroSchema, transacaoAvulsaSchema, transferenciaSchema } from "../services/financeiro/schemas.js";
+import { grupoCategoriaSchema, patchGrupoCategoriaSchema, categoriaCadastroSchema, centroCustoSchema, contaSchema, estornoSchema, liquidacaoSchema, operacaoSchema, parceiroSchema, patchCategoriaCadastroSchema, patchCentroCustoSchema, patchContaSchema, patchParceiroSchema, rascunhoOperacaoSchema, simulacaoParcelasSchema, tipoDocumentoFinanceiroSchema, transacaoAvulsaSchema, transferenciaSchema } from "../services/financeiro/schemas.js";
 import { patchProdutoSchema, produtoSchema } from "../services/estoque/produtos.schemas.js";
 import { FinanceiroError } from "../services/financeiro/regras.js";
 import { EstoqueError } from "../services/estoque/estoque.js";
@@ -114,6 +114,14 @@ export const financeiroRouter = new Hono()
   })
   .patch("/financeiro/produtos/:id", exigePermissao("lancar"), validarCadastro(patchProdutoSchema), async (c) => {
     try { return c.json(await produtos.atualizarProduto(c.req.param("id"), c.req.valid("json"), usuarioId(c))); }
+    catch (e) { return falha(c, e); }
+  })
+  .post("/financeiro/grupos-categorias", exigePermissao("lancar"), validarCadastro(grupoCategoriaSchema), async (c) => {
+    try { return c.json(await cadastros.criarGrupoCategoria(c.req.valid("json"), usuarioId(c)), 201); }
+    catch (e) { return falha(c, e); }
+  })
+  .patch("/financeiro/grupos-categorias/:id", exigePermissao("lancar"), validarCadastro(patchGrupoCategoriaSchema), async (c) => {
+    try { return c.json(await cadastros.atualizarGrupoCategoria(c.req.param("id"), c.req.valid("json"), usuarioId(c))); }
     catch (e) { return falha(c, e); }
   })
   .post("/financeiro/categorias", exigePermissao("lancar"), validarCadastro(categoriaCadastroSchema), async (c) => {

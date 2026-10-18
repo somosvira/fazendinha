@@ -7,6 +7,9 @@ import {
   atualizarCentroCusto,
   criarCategoria,
   criarCentroCusto,
+  atualizarGrupoCategoria,
+  criarGrupoCategoria,
+  type GrupoCategoria,
   type Categoria,
   type CentroCusto,
 } from "./novo-api";
@@ -21,8 +24,9 @@ function erroDaApi(erro: unknown, setErros: (erros: Erros) => void, setErroGeral
   else setErroGeral(erro instanceof Error ? erro.message : String(erro));
 }
 
-export function FormCategoria({ categoria, ordemInicial, onSalvo, onFechar }: { categoria: Categoria | null; ordemInicial: number; onSalvo: () => Promise<void> | void; onFechar: () => void }) {
+export function FormCategoria({ categoria, grupos = [], ordemInicial, onSalvo, onFechar }: { categoria: Categoria | null; grupos?: GrupoCategoria[]; ordemInicial: number; onSalvo: () => Promise<void> | void; onFechar: () => void }) {
   const [nome, setNome] = useState(categoria?.nome ?? "");
+  const [grupoId, setGrupoId] = useState(categoria?.grupoId ?? "");
   const [classificacao, setClassificacao] = useState<"" | "CUSTEIO" | "INVESTIMENTO">(categoria?.classificacao ?? "");
   const [erros, setErros] = useState<Erros>({});
   const [erroGeral, setErroGeral] = useState("");
@@ -34,7 +38,7 @@ export function FormCategoria({ categoria, ordemInicial, onSalvo, onFechar }: { 
     if (nome.trim().length < 2) novosErros.nome = "Informe um nome com pelo menos 2 caracteres";
     setErros(novosErros); if (Object.keys(novosErros).length || emCurso.current) return;
     emCurso.current = true; setSalvando(true); setErroGeral("");
-    const dados = { nome: nome.trim(), classificacao: classificacao || null, ordem: categoria?.ordem ?? ordemInicial };
+    const dados = { nome: nome.trim(), grupoId: grupoId || null, classificacao: classificacao || null, ordem: categoria?.ordem ?? ordemInicial };
     try {
       if (!categoria) await criarCategoria(dados);
       else await atualizarCategoria(categoria.id, dados);
@@ -48,6 +52,7 @@ export function FormCategoria({ categoria, ordemInicial, onSalvo, onFechar }: { 
     <form id={formId} onSubmit={submeter} className="grid gap-4" noValidate>
       <ErrorBox erro={erroGeral || null} />
       <CampoFormulario id="categoria-nome" rotulo="Nome da categoria" obrigatorio erro={erros.nome}>{(p) => <Input {...p} required maxLength={80} value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Insumos" className={classeInput} />}</CampoFormulario>
+      <CampoFormulario id="categoria-grupo" rotulo="Grupo de categorias" erro={erros.grupoId} ajuda="O grupo é definido neste cadastro e acompanha a categoria nos relatórios.">{(p) => <SelectCampo {...p} value={grupoId} onValueChange={setGrupoId} className={classeInput}><option value="">Sem grupo</option>{grupos.filter(g => g.ativo || g.id === categoria?.grupoId).map(g => <option key={g.id} value={g.id} disabled={!g.ativo && g.id !== grupoId}>{g.nome}{!g.ativo ? " (inativo)" : ""}</option>)}</SelectCampo>}</CampoFormulario>
       <CampoFormulario id="categoria-classificacao" rotulo="Classificação" ajuda="A direção financeira continua sendo definida pelo tipo da operação.">{(p) => <SelectCampo {...p} value={classificacao} onValueChange={(valor) => setClassificacao(valor as typeof classificacao)} className={classeInput}><option value="">Não classificada</option><option value="CUSTEIO">Custeio</option><option value="INVESTIMENTO">Investimento</option></SelectCampo>}</CampoFormulario>
       <p className="text-sm text-ink-3">A categoria organiza relatórios e classificação financeira. Os tipos de uso são escolhidos em cada produto.</p>
     </form>
@@ -79,6 +84,35 @@ export function FormCentroCusto({ centro, ordemInicial, onSalvo, onFechar }: { c
     <form id={formId} onSubmit={submeter} className="grid gap-4" noValidate>
       <ErrorBox erro={erroGeral || null} />
       <CampoFormulario id="centro-nome" rotulo="Nome do centro de custo" obrigatorio erro={erros.nome}>{(p) => <Input {...p} required maxLength={80} value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Atividade leiteira" className={classeInput} />}</CampoFormulario>
+    </form>
+  </PainelCadastro>;
+}
+
+export function FormGrupoCategoria({ grupo, ordemInicial, onSalvo, onFechar }: { grupo: GrupoCategoria | null; ordemInicial: number; onSalvo: () => Promise<void> | void; onFechar: () => void }) {
+  const [nome, setNome] = useState(grupo?.nome ?? "");
+  const [erros, setErros] = useState<Erros>({});
+  const [erroGeral, setErroGeral] = useState("");
+  const [salvando, setSalvando] = useState(false);
+  const emCurso = useRef(false);
+  const submeter = async (e: FormEvent) => {
+    e.preventDefault();
+    if (nome.trim().length < 2) { setErros({ nome: "Informe um nome com pelo menos 2 caracteres" }); return; }
+    if (emCurso.current) return;
+    emCurso.current = true; setSalvando(true); setErros({}); setErroGeral("");
+    const dados = { nome: nome.trim(), ordem: grupo?.ordem ?? ordemInicial };
+    try {
+      if (!grupo) await criarGrupoCategoria(dados);
+      else await atualizarGrupoCategoria(grupo.id, dados);
+      await onSalvo();
+    } catch (erro) { erroDaApi(erro, setErros, setErroGeral); }
+    finally { emCurso.current = false; setSalvando(false); }
+  };
+  const formId = "form-grupo-categoria";
+  return <PainelCadastro icon={Target} compacto bloqueado={salvando} aberto titulo={grupo ? `Editar ${grupo.nome}` : "Novo grupo de categorias"} onFechar={onFechar}
+    rodape={<><Button secondary onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form={formId} disabled={salvando} carregando={salvando}>{salvando ? "Salvando…" : grupo ? "Salvar grupo" : "Criar grupo"}</Button></>}>
+    <form id={formId} onSubmit={submeter} className="grid gap-4" noValidate>
+      <ErrorBox erro={erroGeral || null} />
+      <CampoFormulario id="grupo-nome" rotulo="Nome do grupo de categorias" obrigatorio erro={erros.nome}>{(p) => <Input {...p} required maxLength={80} value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Despesas administrativas" className={classeInput} />}</CampoFormulario>
     </form>
   </PainelCadastro>;
 }

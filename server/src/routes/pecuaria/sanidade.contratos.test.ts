@@ -34,12 +34,12 @@ describe("contratos sanitários de rastreabilidade", () => {
     }
     expect(mocks.leitura).not.toHaveBeenCalled();
   });
-  it("consulta histórico paginado no sítio do exame e mascara valores dos snapshots", async () => {
+  it("consulta histórico paginado e libera atribuição operacional conservando valor genérico protegido", async () => {
     mocks.historico.mockResolvedValue({ exameId: uid(1), itens: [{ id: uid(2), antes: { valorServicoAtribuido: "120", valor: "120" }, depois: { valorServicoAtribuido: "200", valor: "200", resultadoNumero: "0" } }], total: 3, pagina: 2, tamanho: 1 });
     const resposta = await app().request(`/exames/${uid(1)}/historico?propriedadeId=2&pagina=2&tamanho=1`);
     expect(resposta.status).toBe(200);
     expect(mocks.historico).toHaveBeenCalledWith(uid(1), [2], 2, 1);
-    expect(await resposta.json()).toMatchObject({ total: 3, itens: [{ antes: { valorServicoAtribuido: null, valor: null }, depois: { valorServicoAtribuido: null, valor: null, resultadoNumero: "0" } }] });
+    expect(await resposta.json()).toMatchObject({ total: 3, itens: [{ antes: { valorServicoAtribuido: "120", valor: null }, depois: { valorServicoAtribuido: "200", valor: null, resultadoNumero: "0" } }] });
     const visivel = await app(true).request(`/exames/${uid(1)}/historico`);
     expect(await visivel.json()).toMatchObject({ itens: [{ depois: { valorServicoAtribuido: "200" } }] });
   });
@@ -50,7 +50,7 @@ describe("contratos sanitários de rastreabilidade", () => {
   });
   it("mantém array padrão e fornece envelope paginado somente quando solicitado", async () => {
     const padrao = await app().request("/aplicacoes");
-    expect(await padrao.json()).toEqual([{ ...fato, valorProdutoAtribuido: null }]);
+    expect(await padrao.json()).toEqual([fato]);
     expect(mocks.paginar).not.toHaveBeenCalled();
     const pagina = await app(true).request("/aplicacoes?paginado=true&pagina=2&porPagina=1");
     expect(await pagina.json()).toEqual({ itens: [fato], pagina: 2, porPagina: 1, total: 3 });
@@ -60,7 +60,7 @@ describe("contratos sanitários de rastreabilidade", () => {
   it("oculta também valores da compra vinculada sem perder origem nem quantidades", async () => {
     mocks.detalhe.mockResolvedValue({ ...fato, produto: { id: uid(3), nome: "Vacina", unidade: "ML" }, compraDireta: { id: uid(4), quantidade: "10", unidade: "ML", quantidadeDestinada: "2", quantidadeDisponivel: "8", valorTotal: "30", operacao: { id: uid(5), numero: 11, descricao: "Vacina comprada", data: "2026-09-01" } } });
     const oculto = await app().request(`/aplicacoes/${uid(1)}`);
-    expect(await oculto.json()).toMatchObject({ dose: "2", valorProdutoAtribuido: null, compraDireta: { quantidadeDisponivel: "8", valorTotal: null, operacao: { id: uid(5), numero: 11 } } });
+    expect(await oculto.json()).toMatchObject({ dose: "2", valorProdutoAtribuido: "6", compraDireta: { quantidadeDisponivel: "8", valorTotal: null, operacao: { id: uid(5), numero: 11 } } });
     const visivel = await app(true).request(`/aplicacoes/${uid(1)}`);
     expect(await visivel.json()).toMatchObject({ valorProdutoAtribuido: "6", compraDireta: { valorTotal: "30" } });
   });

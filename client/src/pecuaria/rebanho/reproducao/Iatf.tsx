@@ -1,3 +1,4 @@
+import { ProtocoloTimeline } from "./ProtocoloTimeline";
 import {BibliotecaReprodutiva} from "./BibliotecaReprodutiva";
 import { CustosDiretos } from "../custos/CustosDiretos";
 import { CampoDataIatf, dataHoraISO, horarioIatf, inputHorarioIatf } from "./CampoDataIatf";
@@ -12,6 +13,7 @@ import {
   Button,
   CabecalhoTabela,
   ErrorBox,
+  Empty,
   Panel,
   Pill,
 } from "../../../financeiro/financeiro-ui";
@@ -153,14 +155,52 @@ export function Iatf({
   podeLancar: boolean;
   onMudou?: () => Promise<void>;
 }) {
-  const reqIatf = useCallback(<T,>(path: string, body?: object, method = "POST") => {
-    const consulta = propriedadeId && !body
-      ? `${path}${path.includes("?") ? "&" : "?"}propriedadeId=${propriedadeId}` : path;
-    return reqV4<T>(consulta, body, method, propriedadeId);
-  }, [propriedadeId]);
-  const [protocolos, setProtocolos] = useState<ProtocoloIatf[]>([]);
-  const [programacoes, setProgramacoes] = useState<ProgramacaoIatf[]>([]);
-  const [detalhe, setDetalhe] = useState<ProgramacaoIatf | null>(null);
+  const sitioEfetivo = propriedadeId ?? getPropriedadeAtiva();
+  const contexto = `${sitioEfetivo ?? "consolidado"}:${modo}`;
+  const contextoAtual = useRef(contexto);
+  contextoAtual.current = contexto;
+  const reqIatf = useCallback(
+    <T,>(path: string, body?: object, method = "POST") => {
+      const consulta =
+        sitioEfetivo && !body
+          ? `${path}${path.includes("?") ? "&" : "?"}propriedadeId=${sitioEfetivo}`
+          : path;
+      return reqV4<T>(consulta, body, method, sitioEfetivo ?? undefined);
+    },
+    [sitioEfetivo],
+  );
+  const [consulta, setConsulta] = useState<{
+    contexto: string;
+    protocolos: ProtocoloIatf[];
+    programacoes: ProgramacaoIatf[];
+  } | null>(null);
+  const [leitura, setLeitura] = useState<{
+    contexto: string;
+    carregando: boolean;
+    erro: string | null;
+  }>({ contexto, carregando: true, erro: null });
+  const consultaVisivel = consulta?.contexto === contexto ? consulta : null;
+  const protocolos = consultaVisivel?.protocolos ?? [];
+  const programacoes = consultaVisivel?.programacoes ?? [];
+  const carregando = leitura.contexto !== contexto || leitura.carregando;
+  const erroConsulta = leitura.contexto === contexto ? leitura.erro : null;
+  const sequenciaConsulta = useRef(0);
+  const [detalheCarregado, setDetalheCarregado] = useState<{
+    contexto: string;
+    valor: ProgramacaoIatf;
+  } | null>(null);
+  const detalhe =
+    detalheCarregado?.contexto === contexto ? detalheCarregado.valor : null;
+  const setDetalhe = (valor: ProgramacaoIatf | null) =>
+    setDetalheCarregado(valor ? { contexto, valor } : null);
+  const [leituraDetalhe, setLeituraDetalhe] = useState<{
+    contexto: string;
+    id: string;
+    carregando: boolean;
+    erro: string | null;
+  } | null>(null);
+  const detalheAtual =
+    leituraDetalhe?.contexto === contexto ? leituraDetalhe : null;
   const [erro, setErro] = useState<string | null>(null);
   const [novo, setNovo] = useState<
     "protocolo" | "programacao" | "participantes" | null
@@ -193,52 +233,129 @@ export function Iatf({
   } | null>(null);
   const [dataHora, setDataHora] = useState("");
   const [motivo, setMotivo] = useState("");
+  const aberturaAtual = useRef(0);
   const carregar = useCallback(async () => {
+    if (contextoAtual.current !== contexto) return;
+    const pedido = ++sequenciaConsulta.current;
+    const atual = () =>
+      sequenciaConsulta.current === pedido && contextoAtual.current === contexto;
+    setLeitura({ contexto, carregando: true, erro: null });
     try {
-      const [p, g] = await Promise.all([
+      const [protocolos, programacoes] = await Promise.all([
         reqIatf<ProtocoloIatf[]>("/reproducao/protocolos"),
-        modo === "cadastros" ? Promise.resolve([] as ProgramacaoIatf[]) : reqIatf<ProgramacaoIatf[]>("/reproducao/programacoes"),
+        modo === "cadastros"
+          ? Promise.resolve([] as ProgramacaoIatf[])
+          : reqIatf<ProgramacaoIatf[]>("/reproducao/programacoes"),
       ]);
-      setProtocolos(p);
-      setProgramacoes(g);
+      if (atual()) {
+        setConsulta({ contexto, protocolos, programacoes });
+        setLeitura({ contexto, carregando: false, erro: null });
+      }
     } catch (e) {
-      setErro(e instanceof Error ? e.message : String(e));
+      if (atual())
+        setLeitura({
+          contexto,
+          carregando: false,
+          erro: e instanceof Error ? e.message : String(e),
+        });
     }
-  }, [modo, reqIatf]);
+  }, [contexto, modo, reqIatf]);
   useEffect(() => {
+    setDetalheCarregado(null);
+    setLeituraDetalhe(null);
+    setNovo(null);
+    setExecucao(null);
+    setAcao(null);
+    setErro(null);
+    setOcupado(false);
+    setProtocoloId("");
+    setSelecionados([]);
+    setInicio("");
+    setNome("");
+    setCienciaSanitaria(false);
+    setEditando(null);
+    setOrigemVersaoId(null);
+    setDataHora("");
+    setMotivo("");
     void carregar();
+    return () => {
+      sequenciaConsulta.current++;
+      aberturaAtual.current++;
+    };
   }, [carregar]);
   useEffect(() => {
+    let ativo = true;
+    setProdutos([]);
+    setMateriais([]);
     void Promise.all([
-      listarProdutos({ uso: "sanitario", ativo: true }, propriedadeId),
-      listarMaterialGenetico({}, propriedadeId),
+      listarProdutos(
+        { uso: "sanitario", ativo: true },
+        sitioEfetivo ?? undefined,
+      ),
+      listarMaterialGenetico({}, sitioEfetivo ?? undefined),
     ])
       .then(([p, m]) => {
-        setProdutos(p);
-        setMateriais(m);
+        if (ativo) {
+          setProdutos(p);
+          setMateriais(m);
+        }
       })
-      .catch((e) => setErro(e instanceof Error ? e.message : String(e)));
-  }, [propriedadeId]);
-  const aberturaAtual = useRef(0);
-  const abrir = async (id: string) => {
-    const sequencia = ++aberturaAtual.current;
-    try {
-      const resultado = await reqIatf<ProgramacaoIatf>(`/reproducao/programacoes/${id}`);
-      if (sequencia === aberturaAtual.current) setDetalhe(resultado);
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : String(e));
-    }
-  };
+      .catch((e) => {
+        if (ativo) setErro(e instanceof Error ? e.message : String(e));
+      });
+    return () => {
+      ativo = false;
+    };
+  }, [sitioEfetivo]);
+  const abrir = useCallback(
+    async (id: string) => {
+      if (contextoAtual.current !== contexto) return;
+      const pedido = ++aberturaAtual.current;
+      const atual = () =>
+        pedido === aberturaAtual.current && contextoAtual.current === contexto;
+      setDetalheCarregado((anterior) =>
+        anterior?.contexto === contexto && anterior.valor.id === id
+          ? anterior
+          : null,
+      );
+      setLeituraDetalhe({ contexto, id, carregando: true, erro: null });
+      try {
+        const resultado = await reqIatf<ProgramacaoIatf>(
+          `/reproducao/programacoes/${id}`,
+        );
+        if (atual()) {
+          setDetalheCarregado({ contexto, valor: resultado });
+          setLeituraDetalhe({ contexto, id, carregando: false, erro: null });
+        }
+      } catch (e) {
+        if (atual())
+          setLeituraDetalhe({
+            contexto,
+            id,
+            carregando: false,
+            erro: e instanceof Error ? e.message : String(e),
+          });
+      }
+    },
+    [contexto, reqIatf],
+  );
   useEffect(() => {
     const atualizar = () => {
       const id = new URLSearchParams(window.location.search).get("programacaoId");
       if (id) void abrir(id);
-      else { aberturaAtual.current++; setDetalhe(null); }
+      else {
+        aberturaAtual.current++;
+        setDetalheCarregado(null);
+        setLeituraDetalhe(null);
+      }
     };
     atualizar();
     window.addEventListener("popstate", atualizar);
-    return () => window.removeEventListener("popstate", atualizar);
-  }, []);
+    return () => {
+      aberturaAtual.current++;
+      window.removeEventListener("popstate", atualizar);
+    };
+  }, [abrir]);
   const indicacaoAberta = useRef(false);
   useEffect(() => {
     if (!animaisIndicadosInicialmente?.length || indicacaoAberta.current || !podeLancar) return;
@@ -257,29 +374,32 @@ export function Iatf({
     return p;
   };
   const executar = async (fn: () => Promise<void>) => {
+    if (contextoAtual.current !== contexto) return;
     setOcupado(true);
     setErro(null);
     try {
       await fn();
-      await onMudou?.();
+      if (contextoAtual.current === contexto) await onMudou?.();
     } catch (e) {
-      setErro(e instanceof Error ? e.message : String(e));
+      if (contextoAtual.current === contexto) setErro(e instanceof Error ? e.message : String(e));
     } finally {
-      setOcupado(false);
+      if (contextoAtual.current === contexto) setOcupado(false);
     }
   };
   return (
     <div className="space-y-5">
       <ErrorBox erro={erro} />
-      {modo !== "operacao" && <BibliotecaReprodutiva propriedadeId={propriedadeId ?? getPropriedadeAtiva()} podeLancar={podeLancar} onCopiou={()=>void carregar()}/>}
+      {modo !== "operacao" && <BibliotecaReprodutiva propriedadeId={sitioEfetivo} podeLancar={podeLancar} onCopiou={()=>void carregar()}/>}
       {modo === "operacao" && <Panel>
         <CabecalhoTabela
           titulo="Programações de IATF"
           acao={
-            podeLancar && (
               <div className="flex flex-wrap gap-2">
+                <Button secondary disabled={carregando} onClick={() => void carregar()}>Atualizar programações</Button>
+                {podeLancar && <>
                 <a className="inline-flex items-center rounded-lg border border-border px-3 py-2 text-sm" href="/configuracoes/pecuaria/reproducao/protocolos" onClick={e => { if (!e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) { e.preventDefault(); navegarPara("/configuracoes/pecuaria/reproducao/protocolos"); } }}>Gerenciar protocolos reprodutivos</a>
                 <Button
+                  disabled={!sitioEfetivo || carregando || !!erroConsulta}
                   onClick={() => {
                     setNome("");
                     setNovo("programacao");
@@ -289,8 +409,8 @@ export function Iatf({
                 >
                   Nova programação
                 </Button>
+                </>}
               </div>
-            )
           }
         />
         <div className="p-4 space-y-3">
@@ -299,6 +419,15 @@ export function Iatf({
             separados. O calendário começa no início efetivo individual,
             conforme a versão escolhida.
           </p>
+          {carregando && (
+            <p role="status" className="rounded-lg bg-muted p-3 text-sm">
+              {consultaVisivel
+                ? "Atualizando programações… Os dados confirmados continuam visíveis."
+                : "Carregando programações…"}
+            </p>
+          )}
+          <ErrorBox erro={erroConsulta} />
+          {erroConsulta && <Button secondary onClick={() => void carregar()}>Tentar novamente</Button>}
           {programacoes.map((p) => (
             <button
               className="flex w-full items-center justify-between text-left border border-border rounded-lg p-3"
@@ -311,23 +440,65 @@ export function Iatf({
               <Pill>{p.status}</Pill>
             </button>
           ))}
-          {!programacoes.length && (
-            <p className="text-sm">Nenhuma programação.</p>
-          )}
+          {!carregando &&
+            !erroConsulta &&
+            consultaVisivel &&
+            !programacoes.length && (
+              <Empty>
+                <div className="space-y-3">
+                  <p className="font-semibold text-ink">
+                    {sitioEfetivo
+                      ? "Nenhuma programação neste sítio."
+                      : "Nenhuma programação no contexto consultado."}
+                  </p>
+                  <p>
+                    As programações reúnem uma versão publicada do protocolo e os
+                    animais participantes; o início efetivo é registrado depois.
+                  </p>
+                  {!sitioEfetivo ? (
+                    <p>Selecione um sítio para criar uma programação.</p>
+                  ) : podeLancar ? (
+                    <p>
+                      Use Nova programação para organizar os participantes. Se
+                      necessário, cadastre e publique o protocolo em Gerenciar
+                      protocolos reprodutivos.
+                    </p>
+                  ) : (
+                    <p>
+                      Quando houver programações, elas aparecerão aqui para consulta.
+                      A criação exige uma pessoa com permissão de lançamento.
+                    </p>
+                  )}
+                </div>
+              </Empty>
+            )}
         </div>
       </Panel>}
+      {modo === "operacao" && detalheAtual?.carregando && (
+        <p role="status" className="rounded-lg border bg-card p-4 text-sm">
+          {detalhe ? "Atualizando programação…" : "Carregando programação…"}
+        </p>
+      )}
+      {modo === "operacao" && detalheAtual?.erro && (
+        <div className="rounded-lg border bg-card p-4">
+          <ErrorBox erro={detalheAtual.erro} />
+          <Button secondary onClick={() => void abrir(detalheAtual.id)}>
+            Tentar abrir novamente
+          </Button>
+        </div>
+      )}
       {modo === "operacao" && detalhe && (
         <Panel>
           <CabecalhoTabela
             titulo={`${detalhe.nome} · ${detalhe.protocolo?.nome ?? "Protocolo"} v${detalhe.protocolo?.versao ?? ""}`}
             acao={
-              <Button secondary onClick={() => setDetalhe(null)}>
+              <Button secondary onClick={() => { aberturaAtual.current++; setLeituraDetalhe(null); setDetalhe(null); }}>
                 Fechar detalhes
               </Button>
             }
           />
           <div className="p-4 space-y-4">
-            {getPropriedadeAtiva()!=null && <CustosDiretos key={detalhe.id} programacaoId={detalhe.id} propriedadeId={getPropriedadeAtiva()!} podeLancar={podeLancar} />}
+            {sitioEfetivo!=null && <CustosDiretos key={detalhe.id} programacaoId={detalhe.id} propriedadeId={sitioEfetivo} podeLancar={podeLancar} />}
             {podeLancar && detalhe.status === "ABERTA" && (
               <Button
                 secondary
@@ -347,7 +518,7 @@ export function Iatf({
                 key={p.id}
                 className="rounded-lg border border-border p-4"
               >
-                {getPropriedadeAtiva()!=null && <details><summary>Custos desta participação</summary><CustosDiretos key={p.id} participacaoId={p.id} propriedadeId={getPropriedadeAtiva()!} podeLancar={podeLancar} /></details>}
+                {sitioEfetivo!=null && <details><summary>Custos desta participação</summary><CustosDiretos key={p.id} participacaoId={p.id} propriedadeId={sitioEfetivo} podeLancar={podeLancar} /></details>}
                 <div className="flex justify-between gap-3">
                   <h3>
                     {p.animal?.brinco ??
@@ -387,6 +558,7 @@ export function Iatf({
                 {p.motivoEncerramento && (
                   <p className="text-sm">{p.motivoEncerramento}</p>
                 )}
+                <ProtocoloTimeline participante={p}/>
                 <div className="mt-3 space-y-2">
                   {p.tarefas?.map((t) => (
                     <div
@@ -426,7 +598,7 @@ export function Iatf({
                             Registrar execução
                           </Button>
                         )}
-                      {podeLancar && t.regularizacaoPendente && getPropriedadeAtiva() && <RegularizarOrigem path={`/reproducao/tarefas-iatf/${t.id}/regularizacao`} propriedadeId={getPropriedadeAtiva()!} consumoMantido={consumoMantidoUltimaAnulacao(t.historicoRegularizacao)} onMudou={async()=>{if(detalhe) await abrir(detalhe.id); await onMudou?.();}} />}
+                      {podeLancar && t.regularizacaoPendente && sitioEfetivo && <RegularizarOrigem path={`/reproducao/tarefas-iatf/${t.id}/regularizacao`} propriedadeId={sitioEfetivo} consumoMantido={consumoMantidoUltimaAnulacao(t.historicoRegularizacao)} onMudou={async()=>{if(detalhe) await abrir(detalhe.id); await onMudou?.();}} />}
                       {(t.planejadoSnapshot || t.realizadoSnapshot) && (
                         <DetalheEtapa tarefa={t} />
                       )}
@@ -445,8 +617,47 @@ export function Iatf({
         </Panel>
       )}
       {modo === "cadastros" && <Panel>
-        <CabecalhoTabela titulo="Protocolos reprodutivos" acao={podeLancar && <Button onClick={() => { setEditando(null); setOrigemVersaoId(null); setNome(""); setVersao(1); setPublicado(false); setEtapas([{ nome: "", tipo: "MANEJO", intervalo: 0, unidade: "DIAS" }]); setNovo("protocolo"); }}>Novo protocolo reprodutivo</Button>} />
+        <CabecalhoTabela
+          titulo="Protocolos reprodutivos"
+          acao={
+            <div className="flex flex-wrap gap-2">
+              <Button
+                secondary
+                disabled={carregando}
+                onClick={() => void carregar()}
+              >
+                Atualizar protocolos
+              </Button>
+              {podeLancar && (
+                <Button
+                  onClick={() => {
+                    setEditando(null);
+                    setOrigemVersaoId(null);
+                    setNome("");
+                    setVersao(1);
+                    setPublicado(false);
+                    setEtapas([
+                      { nome: "", tipo: "MANEJO", intervalo: 0, unidade: "DIAS" },
+                    ]);
+                    setNovo("protocolo");
+                  }}
+                >
+                  Novo protocolo reprodutivo
+                </Button>
+              )}
+            </div>
+          }
+        />
         <div className="p-4 grid gap-3">
+          {carregando && (
+            <p role="status" className="rounded-lg bg-muted p-3 text-sm">
+              {consultaVisivel
+                ? "Atualizando protocolos… Os dados confirmados continuam visíveis."
+                : "Carregando protocolos…"}
+            </p>
+          )}
+          <ErrorBox erro={erroConsulta} />
+          {erroConsulta && <Button secondary onClick={() => void carregar()}>Tentar novamente</Button>}
           {protocolos.map((p) => (
             <section
               key={p.id}
@@ -472,7 +683,20 @@ export function Iatf({
               </div>}
             </section>
           ))}
-          {!protocolos.length && <p>Nenhum protocolo reprodutivo cadastrado.</p>}
+          {!carregando && !erroConsulta && consultaVisivel && !protocolos.length && (
+            <Empty>
+              <div className="space-y-3">
+                <p className="font-semibold text-ink">
+                  Nenhum protocolo reprodutivo cadastrado.
+                </p>
+                <p>
+                  {podeLancar
+                    ? "Crie um protocolo ou copie uma referência da biblioteca como rascunho. Configure as etapas e publique uma versão antes de usá-la nas programações."
+                    : "As versões cadastradas aparecerão aqui para consulta. O cadastro e a publicação exigem permissão de lançamento."}
+                </p>
+              </div>
+            </Empty>
+          )}
         </div>
       </Panel>}
       {novo && (
@@ -533,6 +757,7 @@ export function Iatf({
                     inicioPrevisto: dataHoraISO(inicio),
                     animais: selecionados.map((animalId) => ({ animalId })),
                   });
+                if (contextoAtual.current !== contexto) return;
                 setNovo(null);
                 await carregar();
                 if (detalhe) await abrir(detalhe.id);
@@ -872,6 +1097,7 @@ export function Iatf({
       )}
       {execucao && painel && (
         <ExecucaoIatf
+          propriedadeId={sitioEfetivo}
           tarefa={execucao.tarefa}
           animalId={execucao.animalId}
           painel={painel}
@@ -887,12 +1113,14 @@ export function Iatf({
 }
 
 function ExecucaoIatf({
+  propriedadeId,
   tarefa,
   animalId,
   painel,
   onFechar,
   onSalvo,
 }: {
+  propriedadeId: number | null;
   tarefa: TarefaIatf;
   animalId: string;
   painel: PainelReprodutivo;
@@ -905,7 +1133,6 @@ function ExecucaoIatf({
   const [erro, setErro] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState(false);
   const [chave] = useState(() => crypto.randomUUID());
-  const propriedadeId = getPropriedadeAtiva();
   const registrar = async (dados: object) => {
     if (!propriedadeId) throw new Error("Selecione um sítio.");
     await reqV4(`/reproducao/tarefas-iatf/${tarefa.id}/execucao`, {
@@ -914,7 +1141,7 @@ function ExecucaoIatf({
       realizadaEm: dataHoraISO(realizada),
       dados,
       motivo: motivo || undefined,
-    });
+    }, "POST", propriedadeId);
   };
   if (preparado && tarefa.tipo === "APLICACAO" && propriedadeId)
     return (

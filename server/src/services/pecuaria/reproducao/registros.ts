@@ -1,3 +1,4 @@
+import { CAMPOS_CUSTO_OPERACIONAL } from "../custos/permissoes.js";
 import {construirMarcosReprodutivos} from "./marcos.calc.js";
 import {construirDadosAcompanhamento} from "./acompanhamento-indicadores.js";
 import {carregarDadosElegibilidadeTx} from "./elegibilidade.js";
@@ -29,7 +30,7 @@ import { estornarMovimentoTx } from "../../estoque/estoque.js";
 import { calcularComposicaoFilho } from "../rebanho/composicao.calc.js";
 import { operacaoIdempotenteTx } from "./operacoes.js";
 import { totalAtribuidoServicoTx } from "./atribuicoes-servico.js";
-import { contadoresCiclo, situacaoReprodutiva, intervalosSobrepostos } from "./regras.calc.js";
+import { contadoresCiclo, situacaoReprodutiva, intervalosSobrepostos, resumirAcompanhamentoReprodutivo } from "./regras.calc.js";
 import type { AvaliacaoInput, PartoInput, TentativaInput } from "./schemas.js";
 import type { z } from "zod";
 import {
@@ -162,7 +163,7 @@ export async function obterEstadosReprodutivosTx(tx: Prisma.TransactionClient, a
     tx.partoAnimal.findMany({ where: base, orderBy: { data: "desc" }, select: { id: true, animalId: true, data: true, tipo: true, status: true, incluidoSaldoAnterior: true, retencaoPlacenta: true } }),
     tx.restricaoReprodutiva.findMany({ where: { ...base, OR: [{ ate: null }, { ate: { gt: data } }] }, select: { id: true, animalId: true, tipo: true, data: true, ate: true, motivo: true, acoes: true, status: true } }),
     tx.gestacaoAnimal.findMany({ where: { animalId: { in: animalIds }, status: "VALIDO", confirmadaEm: { lte: data } }, orderBy: { confirmadaEm: "desc" }, select: { id: true, animalId: true, confirmadaEm: true, encerradaEm: true, tipoEncerramento:true, previsaoParto: true, sexoFetal: true, status: true } }),
-    tx.situacaoInicialReprodutiva.findMany({ where: base, orderBy: { data: "desc" }, select: { animalId: true, data: true, situacao: true } }),
+    tx.situacaoInicialReprodutiva.findMany({ where: base, orderBy: { data: "desc" }, select: { animalId: true, data: true, situacao: true, status: true } }),
   ]);
   return new Map(animais.map((a) => {
     const gestacaoConhecida = gestacoes.find((g) => g.animalId === a.id) ?? null;
@@ -177,6 +178,7 @@ export async function obterEstadosReprodutivosTx(tx: Prisma.TransactionClient, a
     return [a.id, {
       situacao: situacaoReprodutiva({ referencia: data, gestacao: gestacaoConhecida, avaliacoes: avaliacoesAnimal, ultimaTentativa, ultimoParto, inicial: iniciais.find((i) => i.animalId === a.id) }),
       ...contadoresCiclo(a.partosAntesDaEntrada, partosAnimal, tentativasAnimal, data),
+      resumoAcompanhamento: resumirAcompanhamentoReprodutivo(partosAnimal, iniciais.filter(i => i.animalId === a.id), tentativasAnimal, data),
       gestacao, ultimaTentativa, ultimoParto, avaliacoes: avaliacoesAnimal,
       restricoes: restricoes.filter((r) => r.animalId === a.id),
     }] as const;
@@ -1358,6 +1360,7 @@ export async function painelReproducao(
         retencaoPlacenta: estado.ultimoParto?.retencaoPlacenta ?? null,
         pendenciasContexto: temporais.get(a.id)?.pendencias ?? [],
         situacao: estado.situacao, partos: estado.partos, tentativasCiclo: estado.tentativasCiclo,
+        resumoAcompanhamento: estado.resumoAcompanhamento,
         gestacao: estado.gestacao,
         ultimaTentativa: estado.ultimaTentativa,
         restricoes: estado.restricoes,
@@ -1418,8 +1421,8 @@ export async function painelReproducao(
     })),
   };
 }
-export function mascararCustos<T>(valor: T, verValores: boolean): T {
-  if (verValores) return valor;
+export function mascararCustos<T>(valor: T, verValores: boolean, verCustosOperacionais = false, propriedadeId?: number | null): T {
+  if (verValores && propriedadeId == null) return valor;
   const campos = new Set([
     "valorProdutoAtribuido",
     "valorServicoAtribuido",
@@ -1444,7 +1447,7 @@ export function mascararCustos<T>(valor: T, verValores: boolean): T {
     caminhosResultadosClinicos.add(`${participante}rascunho.resultados.*`);
     caminhosResultadosClinicos.add(`${participante}rascunho.dados.resultados.*`);
   }
-  const limpar = (v: unknown, caminho: string[] = []): unknown => {
+  const limpar = (v: unknown, caminho: string[] = [], noEscopo = true): unknown => {
     if (
       v instanceof Date ||
       v instanceof Prisma.Decimal ||
@@ -1452,14 +1455,17 @@ export function mascararCustos<T>(valor: T, verValores: boolean): T {
       typeof v !== "object"
     )
       return v;
-    if (Array.isArray(v)) return v.map(item => limpar(item, [...caminho, "*"]));
+    if (Array.isArray(v)) return v.map(item => limpar(item, [...caminho, "*"], noEscopo));
+    const custoNoEscopo = noEscopo && (propriedadeId == null || !("propriedadeId" in v) || v.propriedadeId === propriedadeId);
     const resultadoClinico = caminhosResultadosClinicos.has(caminho.join("."))
       && "campo" in v && typeof v.campo === "string" && v.campo.length > 0;
     return Object.fromEntries(
       Object.entries(v).map(([k, x]) => {
         const valorClinico = k === "valor" && resultadoClinico
           && (x === null || ["string", "number", "boolean"].includes(typeof x));
-        return [k, campos.has(k) && !valorClinico ? null : limpar(x, [...caminho, k])];
+        const valorEscalar = x == null || ["string", "number"].includes(typeof x) || x instanceof Prisma.Decimal;
+        const custoOperacional = custoNoEscopo && verCustosOperacionais && CAMPOS_CUSTO_OPERACIONAL.has(k) && valorEscalar;
+        return [k, campos.has(k) && !valorClinico && !custoOperacional && !(verValores && custoNoEscopo) ? null : limpar(x, [...caminho, k], custoNoEscopo)];
       }),
     );
   };

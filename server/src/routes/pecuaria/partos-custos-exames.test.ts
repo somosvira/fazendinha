@@ -27,14 +27,14 @@ beforeEach(() => {
 });
 
 describe("rascunhos clínicos de visitas", () => {
-  it.each(["AVALIACAO_REPRODUTIVA", "EXAME_SANITARIO"])("salva, relê e confirma %s sem apagar respostas nem expor custos", async tipo => {
+  it.each(["AVALIACAO_REPRODUTIVA", "EXAME_SANITARIO"])("salva, relê e confirma %s sem apagar respostas e com custo operacional visível", async tipo => {
     const resultados = [{ campo: "MEDIDA", valor: "0" }, { campo: "ACHADO", valor: false }, { campo: "NOTA", valor: 3.25 }];
     const rascunho = tipo === "AVALIACAO_REPRODUTIVA" ? { tipoExameId: uid(8), resultados } : { dados: { tipoExameId: uid(8), resultados } };
     const salvo = { id: uid(3), versaoRascunho: 1, rascunho: { ...rascunho, valorServicoAtribuido: 80, valor: 90 } };
     mocks.salvarRascunho.mockResolvedValue(salvo);
     mocks.detalheVisita.mockResolvedValue({ id: uid(1), atividades: [{ id: uid(2), tipo, participantes: [salvo] }] });
     mocks.confirmarAtividade.mockResolvedValue({ status: "CONCLUIDA", participantes: [salvo] });
-    const esperado = { ...rascunho, valorServicoAtribuido: null, valor: null };
+    const esperado = { ...rascunho, valorServicoAtribuido: 80, valor: null };
     const resposta = await app().request(`/visitas/${uid(1)}/participantes/${uid(3)}/rascunho`, {
       method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ propriedadeId: 2, versaoRascunho: 0, rascunho }),
     });
@@ -53,21 +53,21 @@ describe("rascunhos clínicos de visitas", () => {
 });
 
 describe("respostas de parto protegem custos e conservam escore", () => {
-  it("mascara criação, reenvio e correção quando falta Financeiro ou verValores", async () => {
+  it("apresenta custo atribuído na criação, reenvio e correção sem exigir Financeiro", async () => {
     for (const u of [usuario, { ...usuario, flags: ["lancar", "verValores"] }, { ...usuario, areas: ["pecuaria", "financeiro"] }]) {
       for (const r of rotas) for (let envio = 0; envio < 2; envio++) {
         const resposta = await app(u).request(r.rota, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(r.corpo) });
         expect(resposta.status).toBe(r.status);
-        expect(await resposta.json()).toMatchObject({ examesPosParto: [{ valorServicoAtribuido: null, resultados: parto().examesPosParto[0].resultados }] });
+        expect(await resposta.json()).toMatchObject({ examesPosParto: [{ valorServicoAtribuido: "125.50", resultados: parto().examesPosParto[0].resultados }] });
       }
     }
   });
   it("mantém a leitura clínica da ficha sem acesso financeiro", async () => {
     const resposta = await app({ ...usuario, flags: [] }).request(`/reproducao/animais/${uid(2)}`);
     expect(resposta.status).toBe(200);
-    expect(await resposta.json()).toMatchObject({ partos: [{ examesPosParto: [{ valorServicoAtribuido: null, resultados: parto().examesPosParto[0].resultados }] }] });
+    expect(await resposta.json()).toMatchObject({ partos: [{ examesPosParto: [{ valorServicoAtribuido: "125.50", resultados: parto().examesPosParto[0].resultados }] }] });
   });
-  it("permite custos apenas com área e permissão financeiras juntas", async () => {
+  it("conserva custos para perfis com acesso financeiro", async () => {
     for (const r of rotas) {
       const resposta = await app({ ...usuario, areas: ["pecuaria", "financeiro"], flags: ["lancar", "verValores"] }).request(r.rota,
         { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(r.corpo) });

@@ -65,3 +65,30 @@ it("resposta atrasada de outro sítio não aparece após trocar escopo", async (
   await waitFor(() => expect(reqV4).toHaveBeenCalledWith(expect.stringContaining("propriedadeId=8"), undefined, "GET", 8));
   expect(screen.queryByText("Nenhum parto válido neste período.")).toBeNull();
 });
+it("reabrir emissão reflete o período salvo nos filtros sem gravar ou recalcular", async () => {
+  const salvo = { ...snapshot, periodo: { inicio: "2025-01-01", fim: "2025-12-31" } };
+  vi.mocked(reqV4).mockImplementation(async path => path.includes("/emissoes/antiga") ? { id: "antiga", snapshot: salvo }
+    : [{ id: "antiga", criadoEm: "2026-01-02T12:00:00Z" }]);
+  render(<RelatorioPartos propriedadeId={7} podeLancar={false}/>);
+  await screen.findByRole("option", { name: /02\/01\/2026/ });
+  fireEvent.change(screen.getByLabelText("Emissões anteriores"), { target: { value: "antiga" } });
+  await screen.findByText(/Emissão preservada: antiga/);
+  expect(screen.getByLabelText("Início (inclusive)")).toHaveProperty("value", "2025-01-01");
+  expect(screen.getByLabelText("Fim (inclusive)")).toHaveProperty("value", "2025-12-31");
+  expect(vi.mocked(reqV4).mock.calls.some(([path, body]) => path.includes("/partos?") || body !== undefined)).toBe(false);
+});
+it("diferencia datas em edição do período preservado sem recalcular a emissão", async () => {
+  vi.mocked(reqV4).mockImplementation(async path => path.includes("/emissoes/antiga") ? { id: "antiga", snapshot }
+    : [{ id: "antiga", criadoEm: "2026-10-14T12:00:00Z" }]);
+  render(<RelatorioPartos propriedadeId={7} podeLancar={false}/>);
+  expect(screen.getByText(/O período inicial já está preenchido/)).toBeTruthy();
+  await screen.findByRole("option", { name: /14\/10\/2026/ });
+  fireEvent.change(screen.getByLabelText("Emissões anteriores"), { target: { value: "antiga" } });
+  await screen.findByText(/Emissão preservada: antiga/);
+  expect(screen.queryByText(/As datas editadas ainda/)).toBeNull();
+  fireEvent.change(screen.getByLabelText("Início (inclusive)"), { target: { value: "2026-08-01" } });
+  expect(screen.getByText(/As datas editadas ainda não foram consultadas/)).toBeTruthy();
+  expect(screen.getByText(/Sítio 7 · 2026-09-01 a 2026-09-30. Impressão e CSV/)).toBeTruthy();
+  expect(screen.getByText(/Emissão preservada: antiga/)).toBeTruthy();
+  expect(vi.mocked(reqV4).mock.calls.some(([path, body]) => path.includes("/partos?") || body !== undefined)).toBe(false);
+});

@@ -38,6 +38,59 @@ A verificação do seed pode ler arquivos reais do R2. Não rode o seed nem sua 
 
 Backups e evidências locais ficam em `.backups/` e `server/.seedatev3/`, fora do Git. A manutenção do repositório não autoriza removê-los. Recuperação de bancos e volumes depende de seus backups, não de planos antigos ou de um novo seed.
 
+## Seed V4 completa para simular a rotina
+
+`seedatev3` continua sendo a base V3. **`seedatev4`** acrescenta a V4 e seu follow-up ao mesmo `fazendinha_seedatev3`, pelos serviços operacionais, com sítios e produtos próprios. Não reexecuta a V3, limpa dados, cria outro banco/clone/backup ou depende de R2. Os complementos anteriores não são pré-requisitos.
+
+| Seed | Finalidade |
+|---|---|
+| `seed` / `seedatev3` | Cenário principal até V3; preservar dados e manifesto |
+| `seedatev4` | Demonstração operacional completa da V4, complementar à V3 |
+| `seedatev3:planner` | Preparação histórica; bloqueada no ambiente consolidado |
+| `seedatev3:qa` | Preparação histórica de QA; bloqueada no ambiente consolidado |
+| `seed:pecuaria` | Somente catálogos de raças/motivos |
+
+```bash
+pnpm --filter rionovo-server run seedatev4
+pnpm --filter rionovo-server run seedatev4 --verificar
+pnpm --filter rionovo-server run seedatev4:typecheck
+```
+
+Escolher **V4 · Fazenda Escola** na interface; **V4 · Fazenda Destino** demonstra transferência e continuidade clínica. Acessos da V3 permanecem, sem alteração de senhas/permissões. Produtos, doses e intervalos são fictícios para testar software, sem recomendação clínica.
+
+O ambiente local consolidado tem somente **dois registros de sítio**, com a **Fazenda Escola** como principal. Os dados da V3 foram incorporados aos mesmos sítios da V4: o alias `sitio:Principal` aponta para Escola e `sitio:Destino` para Destino nos dois manifestos. Os cadastros antigos e as fixtures `QA322`/`QA322R` foram removidos. Animais, fatos, valores, datas, autoria e vínculos da V3/V4 permanecem; a consolidação muda somente as identidades de escopo. Reexecutar a seed preserva a configuração e não repõe os sítios antigos.
+
+| Animais / área | Cenários preparados |
+|---|---|
+| `V4-001` a `V4-003` | Ciclos ativos com uma, duas e três tentativas; negativos anteriores e DG final pendente |
+| `V4-004` a `V4-006` | Gestações após uma, duas e três tentativas, reconfirmação/sexo fetal e pacote de Serviço |
+| `V4-007` / `V4-008` | Aborto explicado e novo ciclo ativo; perda gestacional distinta de aborto, com causa desconhecida e evidência textual |
+| `V4-009` a `V4-012` | Natimorto, parto vivo, gêmeos/RP e TE/cria provisória; pesos, escore, lactação e colostro |
+| `V4-013` a `V4-030` | Origem desconhecida, retorno, inconclusivo, seca, lactação histórica, descarte, alerta/bloqueio, doadora/receptora, cobertura/exposição, novilha liberada, material de estoque e transferência/retorno |
+| `V4-031` a `V4-060` | IATF em evolução, IA/TE previstas no dia-base, hora desconhecida e programações sem início |
+| `V4-061` a `V4-064` | Touro, execução anulada com consumo mantido/regularização pendente e protocolos sanitários em estados diferentes |
+| `V4-065` | Dois partos factuais com intervalo de 410 dias; o saldo de partos anterior à entrada não fabrica datas |
+| `V4-101` a `V4-220` | 120 matrizes com tentativa e DG de protocolo pendente, para paginação/confirmação em blocos |
+| Visitas | Agenda de 120 animais; Seleção livre com dois rascunhos não confirmados; início IATF; visita encerrada com adiamento/ausência; visita vazia |
+| Custos / nutrição | Saldos conhecidos próprios; material documentado, Serviço/pacote, zero comprovado, valor pendente e preparo dividido sem duplicação; dieta, vigência e fechamento classificados |
+| Configuração / relatórios | Protocolos publicados/rascunhos, referência copiada, exame personalizado, elegibilidade, DG/reconfirmação, filtros V2, impressões e emissões PARTOS/INDICADORES |
+
+São 185 animais-base e cinco crias vivas, criados aditivamente. O guia **`server/.seedatev3/v4/guia.html`** contém o mapa dos brincos e links reais das fichas/visitas. Os cenários descrevem a preparação inicial; o usuário pode evoluí-los normalmente. Consultar a data-base do guia ao filtrar relatórios.
+
+O manifesto próprio `server/.seedatev3/v4/manifesto.json` congela a primeira data-base no Brasil e conserva IDs/ações/etapas. Reexecutar retoma sem restaurar resultados modificados pela interface. Manifesto ausente/corrompido, identidade incompatível, registro removido ou registros V4 sem manifesto impedem recriação silenciosa. `--verificar` usa conexões somente leitura; não escreve manifesto/guia nem aprova roteiros. `--interromper-apos=<etapa>` permite conferir a retomada sem desfazer dados.
+
+Históricos de material usam origem documentada, sem fabricar baixas retroativas; atendimentos atuais têm estoque próprio disponível. R2/anexos permanecem pendentes. Snapshots/impressões locais não comprovam arquivos R2; a massa não substitui homologação pela fazenda.
+
+### Manutenção local dos dois sítios
+
+`server/scripts/consolidar-sitios-local.mjs` aceita somente o PostgreSQL de loopback `fazendinha_seedatev3` e os manifestos da mesma instância. Sem argumentos calcula a prévia; `--ensaiar` executa a transação e faz rollback conferido no próprio banco; `--aplicar` consolida; `--verificar` consulta o estado consolidado. Execute a partir de `server/`, com `node --env-file=.env scripts/consolidar-sitios-local.mjs --verificar`.
+
+A manutenção identifica QA por sítio/marcador, descendentes de FK e referências de UUID. Recusa cruzar dados protegidos, remove o fechamento QA antes da localização e trata exclusivamente o vínculo circular exame/demanda QA. Mantém todas as FKs e validações de consistência; somente guardas de imutabilidade necessárias à manutenção administrativa são suspensas dentro da transação e restauradas antes do commit. Uma comparação de hashes de todos os registros sobreviventes exige igualdade integral, descontando apenas os IDs de sítio remapeados, inclusive em JSON/snapshots. Não cria banco, clone, cópia de ensaio ou backup, nem reexecuta cargas.
+
+O evento `ConsolidacaoSitiosLocal` registra mapa, contagens e prova de preservação, sem cópia dos dados. A trava compartilhada com os seeds cobre a atualização atômica de cada manifesto após o commit; se houver interrupção nessa janela, repetir `--aplicar` reconhece o evento e conclui somente os arquivos. O marcador `server/.seedatev3/consolidacao-sitios.json` bloqueia preparações antigas de QA/planner. Os registros locais de execução QA são marcados como retirados; resultados e aceites manuais históricos continuam preservados.
+
+As chaves e os hashes das requisições V3 já concluídas permanecem reservados e imutáveis. Como o escopo administrativo mudou, reenviar um pedido antigo ou reaproveitar sua chave no novo sítio resulta em conflito, impedindo duplicação; não há replay transparente dos sítios removidos. Recarregue a aplicação e use uma nova chave para uma nova operação. O manifesto mantém as ações concluídas, portanto retomar o seed não repete esses fatos. Arquivos/R2 continuam pendentes.
+
 ## Complemento do planner e manejo V4
 
 `server/prisma/seedatev3-planner.ts` acrescenta dados ao **mesmo `fazendinha_seedatev3` já preparado**. Não execute novamente o seed principal para preparar este complemento. Todas as migrations devem estar aplicadas. A carga usa serviços de domínio e a mesma trava do seed principal; preserva o manifesto base, os animais existentes, as configurações da fazenda e os saldos dos produtos anteriores. Não necessita publicar arquivos no R2.

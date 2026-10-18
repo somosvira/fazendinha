@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calendarioIatf, contadoresCiclo, situacaoReprodutiva, intervalosSobrepostos } from "./regras.calc.js";
+import { calendarioIatf, contadoresCiclo, situacaoReprodutiva, intervalosSobrepostos, resumirAcompanhamentoReprodutivo } from "./regras.calc.js";
 const dia = (n: number) => new Date(`2026-10-${String(n).padStart(2, "0")}T00:00:00Z`);
 
 describe("evidências reprodutivas e calendário", () => {
@@ -54,3 +54,20 @@ describe("cronologia clínica na data consultada", () => {
 });
 
 it("encerramento sem tipo comprovado permanece desconhecido sem inferir texto",()=>{expect(situacaoReprodutiva({gestacao:{confirmadaEm:dia(1),encerradaEm:dia(8),status:"VALIDO",tipoEncerramento:"NAO_IDENTIFICADO"}})).toBe("DESCONHECIDA");});
+
+describe("resumo clínico do acompanhamento", () => {
+  it.each(["ABORTO", "NATIMORTO", "NORMAL"])("reinicia após o último parto válido %s e ignora anulados, futuros e tentativas no dia do parto", tipo => {
+    const partos = [{ data: dia(2), tipo: "NORMAL", status: "VALIDO" }, { data: dia(8), tipo, status: "VALIDO" }, { data: dia(9), tipo: "NORMAL", status: "ANULADO" }, { data: dia(15), tipo: "NORMAL", status: "VALIDO" }];
+    const tentativas = [1, 5, 8, 9, 10, 11].map(n => ({ data: dia(n), status: "VALIDO" }));
+    tentativas.push({ data: dia(10), status: "ANULADO" });
+    expect(resumirAcompanhamentoReprodutivo(partos, [{ data: dia(1), status: "VALIDO" }], tentativas, dia(10))).toEqual({
+      dataReferencia: "2026-10-10", tentativas: 2, referencia: { tipo: tipo === "ABORTO" ? "ABORTO" : "PARTO", data: "2026-10-08" },
+    });
+  });
+  it("situação inicial válida inclui tentativas no próprio dia sem completar origem ou ordem técnica", () => {
+    const iniciais = [{ data: dia(1), status: "ANULADO" }, { data: dia(5), status: "VALIDO" }, { data: dia(8), status: "VALIDO" }];
+    const tentativas = [2, 5, 6, 12].map(n => ({ data: dia(n), status: "VALIDO" }));
+    expect(resumirAcompanhamentoReprodutivo([], iniciais, tentativas, dia(10))).toEqual({ dataReferencia: "2026-10-10", tentativas: 2, referencia: { tipo: "SITUACAO_INICIAL", data: "2026-10-05" } });
+    expect(resumirAcompanhamentoReprodutivo([], [], tentativas, dia(10))).toEqual({ dataReferencia: "2026-10-10", tentativas: 3, referencia: null });
+  });
+});

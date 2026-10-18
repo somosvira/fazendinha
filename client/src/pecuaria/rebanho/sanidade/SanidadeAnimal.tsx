@@ -1,7 +1,11 @@
 import { DestinoConsumo, administracaoMantida, type SituacaoAdministracao, type DestinoConsumoSanitario } from "./DestinoConsumo";
 import { type ReactNode, useEffect, useState } from "react";
-import { Syringe, Eye, Link2, Pencil, Ban } from "lucide-react";
+import { Syringe, Eye, Link2, Pencil, Ban, FileText, FlaskConical } from "lucide-react";
 import { CardFicha } from "../ui";
+import { SecaoRecolhivel } from "../components/SecaoRecolhivel";
+import { MenuAcoesFicha } from "../components/MenuAcoesFicha";
+import "./sanidade-animal.css";
+
 import { consultarCarencia, listarAplicacoes, type AplicacaoSanitaria, type CarenciaAnimal } from "./api";
 import { ReconciliarOrigem } from "./ReconciliarOrigem";
 import { HistoricoSanitario } from "./HistoricoSanitario";
@@ -21,7 +25,14 @@ import { PainelDetalheSanitario } from "./PainelDetalheSanitario";
 import { dataAplicacaoSanitaria, unidadeSanitaria, tipoSanitario, origemSanitaria, nomeAnimalSanitario } from "./rotulos";
 import { TabelaFinanceira } from "../../../financeiro/financeiro-ui";
 
-export function SanidadeAnimal({ filtrosUI, animalId, propriedadeId, podeLancar, recarregarToken, lista, onMudou, geral = false, abrirDetalhe }: {
+function ConteinerSanidade({ geral, children, acao }: { geral: boolean; children: ReactNode; acao?: ReactNode }) {
+  return geral ? <CardFicha icon={Syringe} titulo="Aplicações" tabela className="sanidade-aplicacoes-geral" acao={acao}>{children}</CardFicha> : <div className="sanidade-animal lg:col-span-2"><header className="sanidade-animal-acoes"><h2 className="h2">Sanidade</h2>{acao}</header>{children}</div>;
+}
+function SecaoAplicacoes({ geral, children }: { geral: boolean; children: ReactNode }) {
+  return geral ? <>{children}</> : <SecaoRecolhivel titulo={<span className="ficha-titulo-com-icone"><Syringe size={20} aria-hidden />Aplicações sanitárias</span>}>{children}</SecaoRecolhivel>;
+}
+export function SanidadeAnimal({ filtrosUI, animalId, propriedadeId, podeLancar, recarregarToken, lista, onMudou, geral = false, abrirDetalhe, onCarencia }: {
+  onCarencia?: (carencia: CarenciaAnimal | null) => void;
   animalId: string; propriedadeId: number | null; podeLancar: boolean; recarregarToken: number;
   filtrosUI?: ReactNode; lista?: AplicacaoSanitaria[]; onMudou?: (id?: string, propriedadeIdFato?: number) => void; geral?: boolean; abrirDetalhe?: (tipo: string, id: string, propriedadeId?: number | null) => void;
 }) {
@@ -76,25 +87,32 @@ export function SanidadeAnimal({ filtrosUI, animalId, propriedadeId, podeLancar,
     return () => { vivo = false; };
   }, [animalId, recarregarToken, versao, lista]);
 
-  return <CardFicha icon={Syringe} titulo={geral ? "Aplicações" : "Sanidade"} tabela={geral} className={geral ? "sanidade-aplicacoes-geral" : "lg:col-span-2"}
-    acao={podeLancar && (geral || propriedadeId != null) ? <div className="flex flex-wrap gap-2"><Button onClick={() => setAberto(true)}>Registrar aplicação sanitária</Button>{!geral && <><Button secondary onClick={() => setNovoFato("ocorrencia")}>Nova ocorrência</Button><Button secondary onClick={() => setNovoFato("exame")}>Registrar exame</Button><Button secondary onClick={() => setNovoFato("protocolo")}>Iniciar protocolo</Button></>}</div> : undefined}>
+  useEffect(() => { onCarencia?.(carregando || erroConsulta ? null : carencia); }, [onCarencia, carencia, carregando, erroConsulta]);
+
+  return <ConteinerSanidade geral={geral}
+    acao={podeLancar && (geral || propriedadeId != null) ? geral ? <Button onClick={() => setAberto(true)}>Registrar aplicação sanitária</Button> : <MenuAcoesFicha rotulo="Ações sanitárias" itens={[
+      { id: "aplicacao", rotulo: "Registrar aplicação sanitária", icon: Syringe, onSelect: () => setAberto(true) },
+      { id: "ocorrencia", rotulo: "Nova ocorrência", icon: FileText, onSelect: () => setNovoFato("ocorrencia") },
+      { id: "exame", rotulo: "Registrar exame", icon: FlaskConical, onSelect: () => setNovoFato("exame") },
+      { id: "protocolo", rotulo: "Iniciar protocolo", icon: FileText, onSelect: () => setNovoFato("protocolo") },
+    ]} /> : undefined}>
     {erro && <p className="text-sm text-red-700">{erro}</p>}
     {erroConsulta && <><ErrorBox erro={erroConsulta} /><Button secondary onClick={() => atualizar()}>Tentar novamente</Button></>}
     {carregando && <p>Carregando aplicações…</p>}
     {animalId && <CarenciasSanitarias carencia={carencia} />}
     {filtrosUI}
     {!geral && animalId && <RodadasAnimal animalId={animalId} revisao={versao + recarregarToken} />}
-    {<TabelaFinanceira rotulo="Aplicações sanitárias" itens={geral && lista ? lista : aplicacoes} chaveDe={(a) => a.id} onAbrir={verDetalhe} barraRolagemSuperior colunas={[
+    {<SecaoAplicacoes geral={geral}><TabelaFinanceira rotulo="Aplicações sanitárias" itens={geral && lista ? lista : aplicacoes} chaveDe={(a) => a.id} onAbrir={verDetalhe} barraRolagemSuperior colunas={[
       { chave: "animal", titulo: "Animal", principal: true, celula: (a) => a.animal ? nomeAnimalSanitario(a.animal) : "Animal não identificado" },
       { chave: "data", titulo: "Data e hora", larguraMinima: 170, celula: (a) => dataAplicacaoSanitaria(a) },
       { chave: "tipo", titulo: "Tipo", celula: tipoSanitario },
       { chave: "medicamento", titulo: "Produto vinculado / nome histórico", larguraMinima: 180, celula: (a) => <><div>{a.produto?.nome ?? "Não vinculado"}</div><div className="text-xs text-ink-3">Nome histórico: {a.nomeProdutoAplicado}</div></> },
       { chave: "quantidade", titulo: "Quantidade", celula: (a) => `${a.dose} ${unidadeSanitaria(a.unidadeDose)}` },
       { chave: "origem", titulo: "Origem", celula: (a) => origemSanitaria(a.origemInsumo) },
-      { chave: "situacao", titulo: "Situação", celula: (a) => a.status === "ANULADO" ? "Anulada" : "" },
+      { chave: "situacao", titulo: "Situação", celula: (a) => a.status === "ANULADO" ? "Anulada" : "Registrada" },
       { chave: "acoes", titulo: "Ações", acoes: true, larguraMinima: 180, celula: (a) => <div className="flex flex-wrap items-center gap-2" onClick={(evento) => evento.stopPropagation()}><button type="button" className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg border border-border text-ink hover:bg-surface-2" aria-label={`Ver detalhes de ${a.nomeProdutoAplicado}`} title="Ver detalhes" onClick={() => verDetalhe(a)}><Eye size={16} aria-hidden /></button>{podeLancar && (a.propriedadeId ?? propriedadeId) != null && a.status === "VALIDO" && <div className="flex flex-wrap gap-2">{a.origemInsumo === "SEM_ORIGEM_JUSTIFICADA" && <button type="button" className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg border border-border text-ink hover:bg-surface-2" aria-label={`Reconciliar origem de ${a.nomeProdutoAplicado}`} title="Reconciliar origem" onClick={() => setReconciliando(a)}><Link2 size={16} aria-hidden /></button>}<button type="button" className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg border border-border text-ink hover:bg-surface-2" aria-label={`Corrigir carência de ${a.nomeProdutoAplicado}`} title="Corrigir carência" onClick={() => { setErro(null); setCorrecao({ id: a.id, anular: false }); setMotivo(""); setPrazos({ leite: { estado: a.estadoCarenciaLeite, horas: a.carenciaLeiteHoras?.toString() ?? "" }, carne: { estado: a.estadoCarenciaCarne, horas: a.carenciaCarneHoras?.toString() ?? "" } }); setJustificativaCarne(a.justificativaCarenciaCarne ?? ""); }}><Pencil size={16} aria-hidden /></button><button type="button" className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg border border-border text-ink hover:bg-surface-2" aria-label={`Anular aplicação de ${a.nomeProdutoAplicado}`} title="Anular com motivo" onClick={() => { setErro(null); setDestinoConsumo(""); setAdministracao(""); setCorrecao({ id: a.id, anular: true }); setMotivo(""); }}><Ban size={16} aria-hidden /></button></div>}
 </div> },
-    ]} />}
+    ]} /></SecaoAplicacoes>}
     {!geral && <HistoricoSanitario key={versao + recarregarToken} animalId={animalId} abrir={(tipo, id) => setDetalhe({ tipo, id })} />}
     {novoFato === "protocolo" ? <FormRodada animalInicial={animalId} onFechar={() => setNovoFato(null)} onSalvo={() => { setNovoFato(null); atualizar(); }} /> : novoFato && <FormFatoSanitario tipo={novoFato} animalInicial={animalId} fixo onFechar={() => setNovoFato(null)} onSalvo={() => { setNovoFato(null); atualizar(); }} />}
     {detalhe && <PainelDetalheSanitario onFechar={() => setDetalhe(null)}>
@@ -103,5 +121,5 @@ export function SanidadeAnimal({ filtrosUI, animalId, propriedadeId, podeLancar,
     {aberto && (geral ? <FormAplicacaoAnimal animalInicial={animalId} onFechar={() => setAberto(false)} onSalvo={(id, sitio) => { setAberto(false); atualizar(id, sitio); }} /> : propriedadeId != null && <FormAplicacaoServico animalId={animalId} propriedadeId={propriedadeId} onFechar={() => setAberto(false)} onSalvo={(id, sitio) => { setAberto(false); atualizar(id, sitio); }} />)}
     {reconciliando && (reconciliando.propriedadeId ?? propriedadeId) != null && <ReconciliarOrigem aplicacao={reconciliando} propriedadeId={(reconciliando.propriedadeId ?? propriedadeId)!} onFechar={() => setReconciliando(null)} onSalvo={() => { setReconciliando(null); atualizar(); }} />}
     {correcao && <PainelCadastro aberto titulo={correcao.anular ? "Anular aplicação sanitária" : "Corrigir carência"} onFechar={() => { if (!ocupado) setCorrecao(null); }} rodape={<Button type="submit" form="correcao-sanitaria" disabled={ocupado}>Confirmar com motivo</Button>}><form id="correcao-sanitaria" className="grid gap-4" onSubmit={(e) => { e.preventDefault(); void corrigir(); }}><ErrorBox erro={erro} /><p className="text-sm">{correcao.anular ? "A aplicação permanece no histórico. Informe se o material foi usado ou descartado antes de anular." : "A correção preserva os prazos anteriores na auditoria e revisa a aplicabilidade na finalidade atual."}</p>{correcao.anular && <DestinoConsumo valor={destinoConsumo} onChange={v => {setDestinoConsumo(v); setAdministracao("");}} administracao={administracao} onAdministracao={setAdministracao} />}{!correcao.anular && (["leite", "carne"] as const).map((d) => <fieldset key={d} className="grid gap-2"><legend>{d === "leite" ? "Leite" : "Abate/carne"}</legend><select aria-label={`Estado da carência ${d}`} className={classeInput} value={prazos[d].estado} onChange={(e) => setPrazos((p) => ({ ...p, [d]: { ...p[d], estado: e.target.value as EstadoPrazo } }))}><option value="NAO_INFORMADO">Não informado</option><option value="INFORMADO">Prazo informado</option><option value="NAO_APLICAVEL">Não se aplica — confirmado</option></select>{prazos[d].estado === "INFORMADO" && <input aria-label={`Carência ${d} em horas`} required type="number" min="0" step="1" className={classeInput} value={prazos[d].horas} onChange={(e) => setPrazos((p) => ({ ...p, [d]: { ...p[d], horas: e.target.value } }))} />}</fieldset>)}{!correcao.anular && prazos.carne.estado === "NAO_APLICAVEL" && <label>Justificativa da não aplicabilidade para carne<textarea required maxLength={500} className={classeInput} value={justificativaCarne} onChange={(e) => setJustificativaCarne(e.target.value)} /></label>}<label>Motivo da correção / anulação<textarea required minLength={5} maxLength={500} className={classeInput} value={motivo} onChange={(e) => setMotivo(e.target.value)} /></label></form></PainelCadastro>}
-  </CardFicha>;
+  </ConteinerSanidade>;
 }

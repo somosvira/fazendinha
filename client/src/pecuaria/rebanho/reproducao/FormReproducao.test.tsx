@@ -293,3 +293,15 @@ it("registra material do estoque e Serviço no mesmo envio sem mudar a origem",a
  expect(registrar.mock.calls[0][0]).toMatchObject({origem:"ESTOQUE",materialId:"material-1",quantidade:1,operacaoServicoId:"servico-1",valorServicoAtribuido:"20.00"});
  localStorage.removeItem("rionovo:usuario");
 });
+
+it("inicia o fato no dia local mesmo depois da virada UTC", () => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  // 22h de 17/out no fuso do usuário, já 18/out em UTC.
+  vi.setSystemTime(new Date("2026-10-18T01:00:00Z"));
+  const local = new Date();
+  const esperado = `${local.getFullYear()}-${String(local.getMonth() + 1).padStart(2, "0")}-${String(local.getDate()).padStart(2, "0")}`;
+  try {
+    render(<FormReproducao acao="tentativa" painel={painel} animalInicial="a" onFechar={() => {}} onSalvo={() => {}} />);
+    expect((screen.getByLabelText("Data do fato") as HTMLInputElement).value).toBe(esperado);
+  } finally { cleanup(); vi.useRealTimers(); }
+});

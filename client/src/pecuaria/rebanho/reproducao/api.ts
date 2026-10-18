@@ -78,6 +78,11 @@ export type AnimalReprodutivo = ContextoTemporalAnimal & {
   motivosInclusao?: string[];
   partos: number;
   tentativasCiclo: number;
+  resumoAcompanhamento?: {
+    dataReferencia: string;
+    tentativas: number;
+    referencia: { tipo: "PARTO" | "ABORTO" | "SITUACAO_INICIAL"; data: string } | null;
+  };
   ultimaTentativa?: FatoReprodutivo | null;
   gestacao: Gestacao | null;
   restricoes: Restricao[];

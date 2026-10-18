@@ -28,6 +28,8 @@ it("seleciona procedimento legível e envia só vínculo, preservando motivo/cha
   const chamadas=vi.mocked(reqV4).mock.calls;
   expect(chamadas[0][0]).toBe("/reproducao/tarefas-iatf/t/substitutos?propriedadeId=1");
   expect(chamadas).toHaveLength(3);
+  expect(chamadas[0].slice(1)).toEqual([undefined, "GET", 1]);
+  expect(chamadas[1].slice(2)).toEqual(["POST", 1]);
   expect(chamadas[1][0]).toBe(path);
   expect(chamadas[1][1]).toEqual(chamadas[2][1]);
   expect(chamadas[1][1]).toMatchObject({propriedadeId:1,acao:"VINCULAR_SUBSTITUTO",fatoId:"f",motivo:"Correção comprovada"});

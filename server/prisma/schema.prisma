@@ -179,9 +179,21 @@ enum ClassificacaoCategoria {
   @@schema("public")
 }
 
+model GrupoCategoria {
+  id         String      @id @default(uuid())
+  nome       String      @unique
+  ativo      Boolean     @default(true)
+  ordem      Int         @default(0)
+  categorias Categoria[]
+
+  @@schema("public")
+}
+
 model Categoria {
   id             String                  @id @default(uuid())
   nome           String
+  grupoId        String?
+  grupo          GrupoCategoria?         @relation(fields: [grupoId], references: [id], onDelete: Restrict)
   classificacao  ClassificacaoCategoria?
   ativo          Boolean                 @default(true)
   ordem          Int                     @default(0)
@@ -194,6 +206,7 @@ model Categoria {
   itens          ItemOperacao[]
 
   @@unique([nome])
+  @@index([grupoId])
   @@schema("public")
 }
 

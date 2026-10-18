@@ -126,3 +126,15 @@ describe("abertura documentada do estoque — contraprovas da interface", () => 
     expect(abrirValorEstoque).not.toHaveBeenCalled();
   });
 });
+
+it("troca de produto e sítio ignora diagnóstico lento anterior", async () => {
+  let resolver!: (d: DiagnosticoValorizacao) => void;
+  vi.mocked(consultarValorizacao).mockImplementationOnce(() => new Promise(resolve => { resolver = resolve; })).mockResolvedValueOnce(diagnostico({ produtoId: "B", propriedadeId: 3, grupos: [{ ...diagnostico().grupos[0], grupoNome: "Grupo exclusivo B" }] }));
+  const { rerender } = render(<ValorizacaoProduto produtoId="A" propriedadeId={2} podeEditar onSalvo={vi.fn()} />);
+  rerender(<ValorizacaoProduto produtoId="B" propriedadeId={3} podeEditar onSalvo={vi.fn()} />);
+  await screen.findByText(/Grupo exclusivo B/, { selector: "li" });
+  await act(async () => resolver(diagnostico({ grupos: [{ ...diagnostico().grupos[0], grupoNome: "Grupo antigo A" }] })));
+  expect(screen.queryByText(/Grupo antigo A/)).toBeNull();
+  expect(screen.getByText(/Grupo exclusivo B/, { selector: "li" })).toBeTruthy();
+  expect(abrirValorEstoque).not.toHaveBeenCalled();
+});

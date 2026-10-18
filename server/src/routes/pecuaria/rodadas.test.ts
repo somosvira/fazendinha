@@ -18,10 +18,10 @@ describe("rodadas respeitam permissões e fronteiras de consulta", () => {
     expect((await app(true, false, false).request("/rodadas")).status).toBe(403);
     expect(mocks.criar).not.toHaveBeenCalled();
   });
-  it("encaminha busca, datas e paginação ao servidor e oculta valores", async () => {
+  it("encaminha busca, datas e paginação ao servidor com custos atribuídos visíveis", async () => {
     const r = await app().request("/rodadas?buscaAnimal=S6&de=2026-10-01&pagina=2");
     expect(mocks.listar).toHaveBeenCalledWith(2, expect.objectContaining({ buscaAnimal: "S6", de: "2026-10-01", pagina: 2 }));
-    expect(JSON.stringify(await r.json())).not.toContain("10.00");
+    expect(JSON.stringify(await r.json())).toContain("10.00");
     expect(JSON.stringify(await (await app(false, true).request("/rodadas")).json())).toContain("10.00");
   });
   it("valida sítio fora da faixa e mantém confirmação autorizada", async () => {

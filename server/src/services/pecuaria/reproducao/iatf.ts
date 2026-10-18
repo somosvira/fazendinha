@@ -859,15 +859,20 @@ export async function retirarParticipante(
 export async function listarProgramacoes(
   propriedadeId: number | null,
   id?: string,
+  animalId?: string,
 ) {
   if (id) id = await resolverIdReprodutivoTx(prisma, "programacao", id);
+  const participacoes = animalId ? await prisma.participacaoProtocolo.findMany({
+    where: { animalId, protocolo: { tipo: "REPRODUTIVO" }, ...(propriedadeId == null ? {} : { propriedadeId }) },
+    select: { rodadaId: true },
+  }) : null;
   const programacoes = await prisma.programacaoIatf.findMany({
     where: {
       ...(propriedadeId == null ? {} : { propriedadeId }),
-      ...(id ? { id } : {}),
+      ...(id ? { id } : participacoes ? { id: { in: participacoes.flatMap(p => p.rodadaId ? [p.rodadaId] : []) } } : {}),
     },
     orderBy: { inicioPrevisto: "desc" },
-    take: 200,
+    ...(animalId ? {} : { take: 200 }),
   });
   if (id && !programacoes.length)
     throw new RebanhoError(
@@ -875,7 +880,7 @@ export async function listarProgramacoes(
       "Programação não encontrada neste sítio",
     );
   const participantes = await prisma.participanteIatf.findMany({
-    where: { programacaoId: { in: programacoes.map((p) => p.id) } },
+    where: { programacaoId: { in: programacoes.map((p) => p.id) }, ...(animalId ? { animalId } : {}) },
   });
   const tarefas = await prisma.tarefaIatf.findMany({
     where: { participanteId: { in: participantes.map((p) => p.id) } },

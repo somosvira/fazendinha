@@ -51,11 +51,12 @@ jobs:
       - name: Build (server + client)
         run: pnpm -r run build
       - name: Testes do transformador da carga da pecuária (scripts/*.test.mjs)
-        run: node --test scripts/*.test.mjs
+        run: node --test scripts/*.test.mjs server/scripts/consolidacao-sitios-local/modelo.test.mjs
       - name: Verificar contratos da carga V4 e seed existente
         run: |
           pnpm --filter rionovo-server run import:pecuaria:v4:typecheck
           pnpm --filter rionovo-server run seedatev3:typecheck
+          pnpm --filter rionovo-server run seedatev4:typecheck
       - name: Testes da interface
         run: pnpm --filter rionovo-client exec vitest run --fileParallelism=false
       # migrate deploy (e não db push): os índices únicos parciais da pecuária ("uma linha

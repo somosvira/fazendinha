@@ -19,20 +19,31 @@ const classificacao=()=>({chave:uid(1),propriedadeId:1,tipo:"APLICACAO",fonteId:
 const preparo=()=>({chave:uid(3),propriedadeId:1,tentativaId:uid(4),tipo:"APLICACAO",fonteId:uid(2),modo:"INTEGRAL",motivo:"Preparatório conferido para esta tentativa"});
 beforeEach(()=>{
  vi.clearAllMocks();mocks.leitura.mockResolvedValue(1);mocks.escrita.mockResolvedValue(1);
- mocks.consultar.mockResolvedValue({situacao:"OCULTO",cobertura:"COMPLETO",totalConhecido:null,fontes:[{documentoMaterial:null,classificacao:{valorMaterialDocumentado:null}}]});
+ mocks.consultar.mockResolvedValue({situacao:"COMPLETO",cobertura:"COMPLETO",totalConhecido:"100.00",fontes:[{documentoMaterial:null,classificacao:{valorMaterialDocumentado:null}}]});
  mocks.candidatos.mockResolvedValue({itens:[]});mocks.classificar.mockResolvedValue({id:uid(5),versao:1});mocks.vincular.mockResolvedValue({id:uid(6)});mocks.encerrar.mockResolvedValue({id:uid(6)});
 });
 
 describe("custos de Pecuária — autorização e contratos HTTP independentes",()=>{
- it("leitura clínica sem valores pede DTO OCULTO e GET não executa gravação",async()=>{
+ it("leitor de Pecuária consulta custo registrado sem Financeiro e GET não executa gravação",async()=>{
   const resposta=await app(perfil(["pecuaria"],[])).request(`/custos?animalId=${uid(7)}&verValores=true`);
-  expect(resposta.status).toBe(200);expect(await resposta.json()).toMatchObject({situacao:"OCULTO",totalConhecido:null,fontes:[{documentoMaterial:null}]});
-  expect(mocks.consultar).toHaveBeenCalledWith(1,expect.objectContaining({animalId:uid(7)}),false);
+  expect(resposta.status).toBe(200);expect(await resposta.json()).toMatchObject({situacao:"COMPLETO",totalConhecido:"100.00",fontes:[{documentoMaterial:null}]});
+  expect(mocks.consultar).toHaveBeenCalledWith(1,expect.objectContaining({animalId:uid(7)}),true,false);
   for(const gravar of [mocks.classificar,mocks.vincular,mocks.encerrar])expect(gravar).not.toHaveBeenCalled();
  });
- it("leitura monetária depende da área financeira e verValores juntos",async()=>{
+ it("leitura de custo direto conserva acesso do perfil financeiro",async()=>{
   const resposta=await app().request(`/custos?animalId=${uid(7)}`);
-  expect(resposta.status).toBe(200);expect(mocks.consultar).toHaveBeenCalledWith(1,expect.anything(),true);
+  expect(resposta.status).toBe(200);expect(mocks.consultar).toHaveBeenCalledWith(1,expect.anything(),true,true);
+ });
+ it("leitor consulta preparatórios sem abrir edição ou conceder acesso financeiro",async()=>{
+  const resposta=await app(perfil(["pecuaria"],[])).request(`/custos/tentativas/${uid(4)}/preparatorios`);
+  expect(resposta.status).toBe(200);
+  expect(mocks.candidatos).toHaveBeenCalledWith(uid(4),1,true);
+ });
+ it("fato de outro sítio segue indisponível ao leitor sem permissão financeira",async()=>{
+  mocks.consultar.mockRejectedValue(new RebanhoError("NAO_ENCONTRADO","Tentativa não encontrada neste sítio"));
+  const resposta=await app(perfil(["pecuaria"],[])).request(`/custos?tentativaId=${uid(4)}`);
+  expect(resposta.status).toBe(404);
+  expect(mocks.consultar).toHaveBeenCalledWith(1,expect.objectContaining({tentativaId:uid(4)}),true,false);
  });
  it.each([{nome:"não autenticado",usuario:null,status:401},{nome:"sem Pecuária",usuario:perfil(["financeiro"]),status:403}])("$nome não consulta o domínio",async({usuario,status})=>{
   expect((await app(usuario).request(`/custos?animalId=${uid(7)}`)).status).toBe(status);expect(mocks.consultar).not.toHaveBeenCalled();

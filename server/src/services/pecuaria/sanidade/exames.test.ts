@@ -103,3 +103,13 @@ describe("histórico de exame", () => {
     expect(mocks.tx.exameAnimal.findFirst).not.toHaveBeenCalled();
   });
 });
+
+it("mascara finanças preservando resultados clínicos estruturados no detalhe e no histórico", () => {
+  const resultados = [0, false, "negativo", ["a", "b"], { valor: 2, unidade: "mg" }].map((valor, i) => ({ campo: String(i), valor }));
+  const exame = { resultados, valorServicoAtribuido: "12.00", compraDireta: { valor: "300.00", valorTotal: "300.00" } };
+  for (const leituraOperacional of [false, true]) {
+    const esperado = { ...exame, valorServicoAtribuido: leituraOperacional ? "12.00" : null, compraDireta: { valor: null, valorTotal: null } };
+    expect(ocultarCustosDetalhe(exame, leituraOperacional)).toEqual(esperado);
+    expect(ocultarCustosDetalhe({ itens: [{ antes: exame, depois: exame }] }, leituraOperacional)).toEqual({ itens: [{ antes: esperado, depois: esperado }] });
+  }
+});

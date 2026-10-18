@@ -83,6 +83,7 @@ export const patchContaSchema = z.object({
 
 export const categoriaCadastroSchema = z.object({
   nome: z.string().trim().min(2).max(80),
+  grupoId: z.string().uuid().nullable().optional(),
   classificacao: z.enum(["CUSTEIO", "INVESTIMENTO"]).nullable().default(null),
   ordem: z.number().int().min(0).max(9999).default(0),
   usoGenetico: z.boolean().optional(),
@@ -91,6 +92,12 @@ export const categoriaCadastroSchema = z.object({
 });
 
 export const patchCategoriaCadastroSchema = categoriaCadastroSchema.partial().extend({ ativo: z.boolean().optional() });
+
+export const grupoCategoriaSchema = z.object({
+  nome: z.string().trim().min(2).max(80),
+  ordem: z.number().int().min(0).max(9999).default(0),
+});
+export const patchGrupoCategoriaSchema = grupoCategoriaSchema.partial().extend({ ativo: z.boolean().optional() });
 
 export const centroCustoSchema = z.object({
   nome: z.string().trim().min(2).max(80),

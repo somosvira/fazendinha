@@ -48,14 +48,14 @@ export function FormularioAcompanhamento({ visivel, propriedadeId, tipos, ocupad
   </select>;
 
   if (!visivel) return null;
-  return <form onSubmit={salvar} className="space-y-3 rounded-xl border p-4">
+  return <form onSubmit={salvar} className="space-y-3 rounded-xl border border-border bg-card p-4">
     <label>Vigente desde<input className={classeInput} required type="date" value={vigencia} onChange={e => setVigencia(e.target.value)} /></label>
     <label className="flex gap-2"><input type="checkbox" checked={dg} onChange={e => setDg(e.target.checked)} />Configurar diagnóstico após tentativa</label>
     {dg && <div className="grid gap-3 sm:grid-cols-2">
       <label>Dias após a tentativa<input className={classeInput} type="number" required min={0} max={1000} value={dias} onChange={e => setDias(e.target.value)} /></label>
       <label>Exame do diagnóstico{exame(tipo, setTipo)}</label>
     </div>}
-    {reconfirmacoes.map((r, i) => <fieldset key={i} className="grid gap-3 rounded border p-3 sm:grid-cols-2">
+    {reconfirmacoes.map((r, i) => <fieldset key={i} className="grid gap-3 rounded border border-border bg-muted p-3 sm:grid-cols-2">
       <legend>Reconfirmação {i + 1}</legend>
       <label>Dias desde o primeiro DG positivo<input className={classeInput} required type="number" min={1} max={1000} value={r.dias} onChange={e => setReconfirmacoes(v => v.map((x, n) => n === i ? { ...x, dias: e.target.value } : x))} /></label>
       <label>Exame{exame(r.tipo, t => setReconfirmacoes(v => v.map((x, n) => n === i ? { ...x, tipo: t } : x)))}</label>
