@@ -355,3 +355,18 @@ it("não apresenta vazio confirmado enquanto o próximo filtro está carregando"
  await act(async()=>resolver(vazio));
  expect(screen.getByText("Nenhum animal encontrado com os filtros selecionados.")).toBeTruthy();
 });
+
+it("recupera uma página que deixou de existir sem afirmar ausência de animais",async()=>{
+ window.history.replaceState({},"","/pecuaria/rebanho/animais?page=3");
+ let concluir!: (resultado: Awaited<ReturnType<typeof listarAnimais>>) => void;
+ const proximaPagina = new Promise<Awaited<ReturnType<typeof listarAnimais>>>(resolve => { concluir = resolve; });
+ vi.mocked(listarAnimais).mockImplementation(filtros => filtros?.page === 1 ? proximaPagina : Promise.resolve({itens:[],total:5,painel:painelVazio}));
+ montar();
+ await waitFor(()=>expect(vi.mocked(listarAnimais).mock.calls.at(-1)?.[0]?.page).toBe(1));
+ expect(screen.queryByText("Nenhum animal encontrado com os filtros selecionados.")).toBeNull();
+ await act(async()=>concluir({itens:[criarAnimal({})],total:5,painel:painelVazio}));
+ await screen.findAllByText("0001");
+ expect(vi.mocked(listarAnimais).mock.calls.at(-1)?.[0]?.page).toBe(1);
+ expect(screen.queryByText("Nenhum animal encontrado com os filtros selecionados.")).toBeNull();
+ expect(new URLSearchParams(window.location.search).get("page")).toBeNull();
+});

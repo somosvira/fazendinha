@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
+import { Button as BotaoAcao } from "../../../components/ui/button";
 import { CalendarDays, HeartPulse, Users, Weight } from "lucide-react";
 import {
   Button,
   ErrorBox,
   Metric,
+  Modal,
   Pill,
   TabelaFinanceira,
   type ColunaTabela,
@@ -19,6 +21,9 @@ import {
   type CriaRelatorio,
 } from "./RelatorioPartos";
 import { registro } from "./folha-regras";
+import { CorrigirFato } from "./CorrigirFato";
+import { AnularFato } from "./AnularFato";
+import { ColostroCria } from "./ColostroCria";
 export type PartoOperacional = Omit<PartoRelatorio, "crias"> & {
   propriedadeId: number;
   status: string;
@@ -121,13 +126,17 @@ function Lista<T extends { id: string }>({
 export function DetalheParto({
   id,
   propriedadeId,
+  podeLancar = false,
 }: {
   id: string;
   propriedadeId: number;
+  podeLancar?: boolean;
 }) {
   const [parto, setParto] = useState<PartoOperacional | null>(null),
     [erro, setErro] = useState<string | null>(null),
     [revisao, setRevisao] = useState(0);
+  const [acao, setAcao] = useState<"corrigir" | "anular" | null>(null);
+  const [criaColostro, setCriaColostro] = useState<string | null>(null);
   useEffect(() => {
     let ativo = true;
     setParto(null);
@@ -164,6 +173,13 @@ export function DetalheParto({
     );
   if (!parto) return <p role="status">Carregando parto…</p>;
   const p = parto;
+  const podeEditar = podeLancar && p.status === "VALIDO";
+  const criaSelecionada = p.crias.find(c => c.id === criaColostro && c.viva);
+  const atualizar = () => {
+    setAcao(null);
+    setCriaColostro(null);
+    setRevisao(v => v + 1);
+  };
   const escores = p.escoresMatriz.flatMap((e) =>
     e.resultados.map((r) => ({
       id: e.id + ":" + r.campo,
@@ -204,6 +220,10 @@ export function DetalheParto({
           Ver ficha da matriz
         </Button>
       </div>
+      {podeEditar && <div className="flex flex-wrap gap-3">
+        <Button secondary onClick={() => setAcao("corrigir")}>Corrigir / completar parto</Button>
+        <Button danger onClick={() => setAcao("anular")}>Conferir anulação</Button>
+      </div>}
       {p.status !== "VALIDO" && (
         <Pill tone="amber">Registro anulado · preservado no histórico</Pill>
       )}
@@ -287,19 +307,10 @@ export function DetalheParto({
               chave: "acao",
               titulo: "Ação",
               acoes: true,
-              celula: (c) =>
-                c.animalId ? (
-                  <Button
-                    secondary
-                    onClick={() =>
-                      navegarPara(`/pecuaria/rebanho/animais/${c.animalId}`)
-                    }
-                  >
-                    Ver ficha
-                  </Button>
-                ) : (
-                  "Sem cadastro de animal"
-                ),
+              celula: (c) => <div className="flex flex-wrap gap-3">
+                {c.animalId ? <Button secondary onClick={() => navegarPara(`/pecuaria/rebanho/animais/${c.animalId}`)}>Ver ficha</Button> : <span>Sem cadastro de animal</span>}
+                {podeEditar && c.viva && <BotaoAcao variant="outline" aria-label={`Gerenciar colostro da cria ${c.ordem}`} onClick={() => setCriaColostro(c.id)}>Colostro</BotaoAcao>}
+              </div>,
             },
           ]}
         />
@@ -479,6 +490,11 @@ export function DetalheParto({
           ]}
         />
       </SecaoRecolhivel>
+      {podeEditar && acao === "corrigir" && <CorrigirFato tipo="parto" id={p.id} animalId={p.matriz.id} propriedadeId={propriedadeId} tipoPartoInicial={p.tipo ?? undefined} onFechar={() => setAcao(null)} onSalvo={atualizar}/>}
+      {podeEditar && acao === "anular" && <AnularFato tipo="partos" id={p.id} propriedadeId={propriedadeId} onFechar={() => setAcao(null)} onSalvo={atualizar}/>}
+      {podeEditar && criaSelecionada && <Modal titulo={`Colostro · cria ${criaSelecionada.ordem}`} eyebrow="Parto e pós-parto" onClose={() => setCriaColostro(null)}>
+        <div className="p-5"><ColostroCria key={criaSelecionada.id} criaId={criaSelecionada.id} propriedadeId={propriedadeId} dataParto={p.data} podeLancar={podeLancar} onMudou={atualizar}/></div>
+      </Modal>}
       <SecaoRecolhivel titulo="Autoria e observações" abertaInicial={false}>
         <dl className="grid gap-3 sm:grid-cols-2">
           <div>

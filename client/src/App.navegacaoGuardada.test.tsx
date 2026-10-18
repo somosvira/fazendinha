@@ -16,6 +16,7 @@ vi.mock("./pecuaria/rebanho/reproducao/Visitas", async () => {
   const { registrarGuardaNavegacao } = await import("./navegacaoGuardada");
   return { Visitas: () => { React.useEffect(() => registrarGuardaNavegacao(mocks.guarda), []); return <p>Tela da visita aberta</p>; } };
 });
+vi.mock("./pecuaria/rebanho/telas/ListaAnimais", () => ({ ListaAnimais: () => <p>Lista de animais · página {new URLSearchParams(window.location.search).get("page") ?? "1"}</p> }));
 vi.mock("./api/auth", () => ({ fetchMe: vi.fn(() => new Promise(() => {})), logout: vi.fn() }));
 vi.mock("./financeiro/rascunhoAtivo", async original => ({ ...await original<typeof import("./financeiro/rascunhoAtivo")>(), limparRascunhoAtivo: vi.fn(), useRascunhoAtivo: () => ({ rascunho: null, conhecido: true, editando: false, recuperacao: null }) }));
 vi.mock("./financeiro/rascunhoRelatorioAtivo", async original => ({ ...await original<typeof import("./financeiro/rascunhoRelatorioAtivo")>(), limparRascunhoRelatorioAtivo: vi.fn(), useRascunhoRelatorioAtivo: () => ({ rascunho: null, conhecido: true, editando: false, recuperacao: null }) }));
@@ -60,4 +61,15 @@ describe("guarda de navegação ligada ao App", () => {
     await screen.findByText("Sítio ativo: 2");
     await waitFor(() => expect(screen.getByText("Tela da visita aberta")).toBeTruthy());
   });
+});
+
+it("reinicia a página dos animais ao trocar o sítio global sem perder outros filtros", async () => {
+  window.history.replaceState({}, "", "/pecuaria/rebanho/animais?page=2&sexos=F#lista");
+  render(<App/>);
+  await screen.findByText("Lista de animais · página 2");
+  fireEvent.click(screen.getByRole("button", {name:"Trocar para sítio 2"}));
+  await screen.findByText("Sítio ativo: 2");
+  expect(new URLSearchParams(window.location.search).get("page")).toBeNull();
+  expect(new URLSearchParams(window.location.search).getAll("sexos")).toEqual(["F"]);
+  expect(window.location.hash).toBe("#lista");
 });

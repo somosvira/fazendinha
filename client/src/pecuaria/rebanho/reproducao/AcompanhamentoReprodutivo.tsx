@@ -1,5 +1,5 @@
 import { getHojeISO as hoje } from "../../../lib/hoje";
-import { horarioIatf } from "./CampoDataIatf";
+import { horarioIatf, inputHorarioIatf } from "./CampoDataIatf";
 import { useEffect, useState } from "react";
 import {
   Button,
@@ -123,18 +123,20 @@ export function AcompanhamentoReprodutivo({
     (!!inicio && !dataValida(inicio)) ||
     (!!fim && !dataValida(fim)) ||
     (!!inicio && !!fim && inicio > fim);
+  const referenciaRetorno = (r: NonNullable<SugestoesVisita["retornos"]>[number]) =>
+    r.status === "PREVISAO_PENDENTE" || !r.data ? null
+      : r.origem === "TAREFA_IATF" ? inputHorarioIatf(r.data, r.precisaoTemporal) : r.data.slice(0, 10);
   const retornos = (dados?.retornos ?? [])
     .filter(
       (r) =>
         !invalido &&
         (r.status === "PREVISAO_PENDENTE" ||
           !r.data ||
-          ((!inicio || r.data.slice(0, 10) >= inicio) &&
-            (!fim || r.data.slice(0, 10) <= fim))),
+          ((!inicio || referenciaRetorno(r)!.slice(0, 10) >= inicio) &&
+            (!fim || referenciaRetorno(r)!.slice(0, 10) <= fim))),
     )
     .sort((a, b) => {
-      const da = a.status === "PREVISAO_PENDENTE" ? null : a.data,
-        db = b.status === "PREVISAO_PENDENTE" ? null : b.data;
+      const da = referenciaRetorno(a), db = referenciaRetorno(b);
       if (!da && db) return 1;
       if (da && !db) return -1;
       return (

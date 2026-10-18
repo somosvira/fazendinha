@@ -161,6 +161,11 @@ export function App() {
   });
   const trocarPropriedade = (id: number | null) => {
     void executarComGuardaNavegacao(() => {
+      if (id !== getPropriedadeAtiva() && /^\/pecuaria\/rebanho\/animais\/?$/.test(window.location.pathname)) {
+        const url = new URL(window.location.href);
+        url.searchParams.delete("page");
+        window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
+      }
       setPropriedadeAtiva(id);
       setPropAtiva(id);
       if(tabAtual.current==="gerencial") setDeepLinkFiltros(atual=>{

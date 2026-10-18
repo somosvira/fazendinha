@@ -27,3 +27,27 @@ it("ignora ocorrências e protocolos do contexto anterior e distingue erro de au
   await act(async () => resolver([{ id: "o", status: "VALIDO", inicio: "2020-01-01", fim: null, doenca: { nome: "Doença antiga" } }]));
   expect(screen.queryByText("Doença antiga")).toBeNull();
 });
+
+it("omite protocolos concluídos ou dispensados e mantém regularização pendente",async()=>{
+ vi.mocked(reqSanidade).mockResolvedValue([]);
+ const tarefa={id:"t",nome:"Etapa",tipo:"MANEJO",status:"REALIZADA",previstaEm:"2020-01-02",realizadaEm:"2020-01-02",dispensadaEm:null,regularizacaoPendente:false};
+ const participante={id:"p",animalId:"a",inicioPrevisto:"2020-01-01",inicioEfetivo:"2020-01-01",encerradoEm:null,tarefas:[tarefa]};
+ vi.mocked(reqV4).mockResolvedValue([{participantes:[participante]}]);
+ const tela=render(<StatusOperacionaisAnimal animalId="a" propriedadeId={7} revisao={0}/>);
+ await act(async()=>{});
+ expect(screen.queryByText("Em protocolo reprodutivo")).toBeNull();
+ expect(screen.queryByText("Protocolo reprodutivo programado")).toBeNull();
+ vi.mocked(reqV4).mockResolvedValue([{participantes:[{...participante,tarefas:[{...tarefa,realizadaEm:null,dispensadaEm:"2020-01-02"}]}]}]);
+ tela.rerender(<StatusOperacionaisAnimal animalId="a" propriedadeId={7} revisao={1}/>);
+ await act(async()=>{});expect(screen.queryByText("Em protocolo reprodutivo")).toBeNull();
+ vi.mocked(reqV4).mockResolvedValue([{participantes:[{...participante,tarefas:[{...tarefa,regularizacaoPendente:true}]}]}]);
+ tela.rerender(<StatusOperacionaisAnimal animalId="a" propriedadeId={7} revisao={2}/>);
+ await screen.findByText("Em protocolo reprodutivo");
+});
+it("início efetivo futuro ainda é programação e não protocolo ativo",async()=>{
+ vi.mocked(reqSanidade).mockResolvedValue([]);
+ vi.mocked(reqV4).mockResolvedValue([{participantes:[{animalId:"a",inicioEfetivo:"2999-01-01",encerradoEm:null,tarefas:[]}]}]);
+ render(<StatusOperacionaisAnimal animalId="a" propriedadeId={7} revisao={0}/>);
+ await screen.findByText("Protocolo reprodutivo programado");
+ expect(screen.queryByText("Em protocolo reprodutivo")).toBeNull();
+});

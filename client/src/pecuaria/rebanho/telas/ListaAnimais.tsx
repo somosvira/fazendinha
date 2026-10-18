@@ -149,6 +149,7 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
     let vigente = true;
     setCarregando(true); setErro(null);
     setItens([]); setPainel(null);
+    let recuperandoPagina = false;
     const listas: Pick<ListarFiltros, Familia> = {
       propriedadeIds: sitioGlobal == null && multiplos.propriedadeIds.length ? multiplos.propriedadeIds.map(Number) : undefined,
       loteIds: multiplos.loteIds.length ? multiplos.loteIds : undefined,
@@ -184,9 +185,18 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
       page: pagina,
       pageSize: ITENS_POR_PAGINA,
     })
-      .then((resultado) => { if (vigente) { setItens(resultado.itens); setTotal(resultado.total); setPainel(resultado.painel); } })
+      .then((resultado) => {
+        if (!vigente) return;
+        const ultimaPagina = Math.max(1, Math.ceil(resultado.total / ITENS_POR_PAGINA));
+        if (pagina > ultimaPagina) {
+          recuperandoPagina = true;
+          setPagina(ultimaPagina);
+          return;
+        }
+        setItens(resultado.itens); setTotal(resultado.total); setPainel(resultado.painel);
+      })
       .catch((e) => { if (vigente) setErro(e instanceof Error ? e.message : String(e)); })
-      .finally(() => { if (vigente) setCarregando(false); });
+      .finally(() => { if (vigente && !recuperandoPagina) setCarregando(false); });
     return () => { vigente = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [busca, propriedadeId, loteId, categoriaId, aptidao, papelReprodutivo, situacao, sexo, origem, racaId, idadeMinMeses, idadeMaxMeses, mostrarBaixa, tipoBaixa, baixaDe, baixaAte, opcaoOrdenacao, pagina, revisao, multiplos, sitioGlobal]);

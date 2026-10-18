@@ -4,7 +4,7 @@ import { Pill } from "../../../financeiro/financeiro-ui";
 import { getHojeISO } from "../../../lib/hoje";
 import { reqSanidade } from "../sanidade/api";
 import { reqV4 } from "../reproducao/api";
-import type { ProgramacaoIatf } from "../reproducao/Iatf";
+import type { ParticipanteIatf, ProgramacaoIatf } from "../reproducao/Iatf";
 type Ocorrencia = {
   id: string;
   status: string;
@@ -12,6 +12,17 @@ type Ocorrencia = {
   fim: string | null;
   doenca?: { nome: string };
 };
+/** Precisão DIA conserva o dia civil; HORA considera o instante efetivo. */
+function ocorreu(valor: string | null | undefined, precisao?: "DIA" | "HORA" | null): boolean {
+  if (!valor) return false;
+  return precisao === "DIA" || valor.length === 10
+    ? valor.slice(0, 10) <= getHojeISO()
+    : new Date(valor).getTime() <= Date.now();
+}
+function temEtapaPendente(p: ParticipanteIatf): boolean {
+  return !p.tarefas?.length || p.tarefas.some(t => t.regularizacaoPendente ||
+    !(ocorreu(t.realizadaEm, t.precisaoRealizacao ?? t.realizadoSnapshot?.precisaoRealizacao) || ocorreu(t.dispensadaEm)));
+}
 /** Apenas sinais positivos comprovados; ausência de dado nunca vira "saudável". */
 export function StatusOperacionaisAnimal({
   animalId,
@@ -67,13 +78,13 @@ export function StatusOperacionaisAnimal({
             lista.some((g) =>
               g.participantes?.some(
                 (p) =>
-                  p.animalId === animalId && !p.encerradoEm && p.inicioEfetivo,
+                  p.animalId === animalId && !ocorreu(p.encerradoEm) && ocorreu(p.inicioEfetivo, p.precisaoInicioEfetivo) && temEtapaPendente(p),
               ),
             )
               ? "iniciado"
               : lista.some((g) =>
                     g.participantes?.some(
-                      (p) => p.animalId === animalId && !p.encerradoEm,
+                      (p) => p.animalId === animalId && !ocorreu(p.encerradoEm) && !ocorreu(p.inicioEfetivo, p.precisaoInicioEfetivo) && temEtapaPendente(p),
                     ),
                   )
                 ? "previsto"
