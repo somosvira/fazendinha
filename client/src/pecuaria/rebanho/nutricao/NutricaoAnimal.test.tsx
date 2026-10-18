@@ -40,7 +40,7 @@ describe("nutrição individual", () => {
     await screen.findByText("Não foi possível consultar o consumo");
     vi.mocked(consultarConsumoAnimal).mockResolvedValue({ itens: [], total: 0, pagina: 1, limite: 25, verValores: false });
     fireEvent.click(screen.getByText("Tentar novamente"));
-    await screen.findByText(/Ainda sem consumo conferido/);
-    expect(screen.getByText("Conferir consumo do lote")).toBeTruthy();
+    await screen.findByText(/Nenhum consumo atribuído/);
+    expect(screen.getByText("Conferir nutrição do lote")).toBeTruthy();
   });
 });

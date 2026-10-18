@@ -43,3 +43,10 @@
 .menu-acoes-ficha-gatilho{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);font-size:13px;font-weight:600;min-height:36px;padding:8px 12px;cursor:pointer}
 .menu-acoes-ficha-gatilho:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
 .menu-acoes-ficha-lista{min-width:220px;border-radius:8px}
+
+.ficha-peso-indicadores{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;align-items:stretch}
+.ficha-peso-indicadores>*{min-width:0;height:100%}
+.ficha-peso-distribuicao{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(310px,1fr);gap:16px;align-items:stretch}
+.ficha-peso-distribuicao>.pec-card-ficha{min-width:0;width:100%;height:100%}
+@container ficha-peso (max-width:1000px){.ficha-peso-indicadores{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@container ficha-peso (max-width:760px){.ficha-peso-distribuicao{grid-template-columns:minmax(0,1fr)}}

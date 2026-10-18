@@ -924,13 +924,14 @@ export function whereSituacao(input: {
   propriedadeId?: number | null;
   loteId?: string | null;
   aptidao?: "LEITE" | "CORTE" | null;
+  propriedadeIds?: number[]; loteIds?: string[]; aptidoes?: ("LEITE" | "CORTE")[];
 }): Prisma.AnimalWhereInput {
   const lugar = {
-    ...(input.propriedadeId != null ? { propriedadeId: input.propriedadeId } : {}),
-    ...(input.loteId ? { loteId: input.loteId } : {}),
+    ...(input.propriedadeId != null ? { propriedadeId: input.propriedadeId } : input.propriedadeIds?.length ? { propriedadeId: { in: input.propriedadeIds } } : {}),
+    ...(input.loteId ? { loteId: input.loteId } : input.loteIds?.length ? { loteId: { in: input.loteIds } } : {}),
   };
   const destino = {
-    ...(input.aptidao ? { aptidao: input.aptidao } : {}),
+    ...(input.aptidao ? { aptidao: input.aptidao } : input.aptidoes?.length ? { aptidao: { in: input.aptidoes } } : {}),
   };
   const temDestino = Object.keys(destino).length > 0;
 
@@ -957,7 +958,7 @@ export function whereSituacao(input: {
 // ---------- filtros da lista (tudo no banco: a paginação e o painel usam o mesmo `where`) ----------
 
 type FiltrosAnimal = Pick<ListarFiltrosInput,
-  "sexo" | "origem" | "racaId" | "categoriaOrigem" | "tipoBaixa" | "baixaDe" | "baixaAte" | "situacao">;
+  "sexo" | "origem" | "racaId" | "sexos" | "origens" | "racaIds" | "categoriaOrigem" | "tipoBaixa" | "baixaDe" | "baixaAte" | "situacao">;
 
 /**
  * Filtros de atributo do animal (não dependem de "hoje"). Os da baixa valem para a baixa em
@@ -967,8 +968,11 @@ type FiltrosAnimal = Pick<ListarFiltrosInput,
 export function whereAtributos(f: FiltrosAnimal): Prisma.AnimalWhereInput[] {
   const partes: Prisma.AnimalWhereInput[] = [];
   if (f.sexo) partes.push({ sexo: f.sexo });
+  else if (f.sexos?.length) partes.push({ sexo: { in: f.sexos } });
   if (f.origem) partes.push({ origem: f.origem });
+  else if (f.origens?.length) partes.push({ origem: { in: f.origens } });
   if (f.racaId) partes.push({ composicao: { some: { racaId: f.racaId } } });
+  else if (f.racaIds?.length) partes.push({ composicao: { some: { racaId: { in: f.racaIds } } } });
   if (f.categoriaOrigem === "MANUAL") partes.push({ categoriasManuais: { some: { ate: null } } });
   if (f.situacao !== "ATIVO" && (f.tipoBaixa || f.baixaDe || f.baixaAte)) {
     partes.push({
@@ -1086,7 +1090,7 @@ type ListarEntrada = Omit<ListarFiltrosInput, "semCategoria" | "ordenar" | "dire
 
 export async function listar(filtros: ListarEntrada, propriedadeEscopo: number | null): Promise<{ itens: AnimalResumo[]; total: number; painel: PainelRebanho }> {
   // o escopo do request (seletor global de sítio) prevalece; o filtro só refina dentro dele
-  if (propriedadeEscopo != null && filtros.propriedadeId != null && filtros.propriedadeId !== propriedadeEscopo) {
+  if (propriedadeEscopo != null && ((filtros.propriedadeId != null && filtros.propriedadeId !== propriedadeEscopo) || (filtros.propriedadeIds && !filtros.propriedadeIds.includes(propriedadeEscopo)))) {
     return { itens: [], total: 0, painel: agregarPainel([]) };
   }
   const hoje = hojeFazendaDate();
@@ -1099,13 +1103,14 @@ export async function listar(filtros: ListarEntrada, propriedadeEscopo: number |
         propriedadeId: propriedadeEscopo ?? filtros.propriedadeId ?? null,
         loteId: filtros.loteId ?? null,
         aptidao: filtros.aptidao ?? null,
+        propriedadeIds: filtros.propriedadeIds, loteIds: filtros.loteIds, aptidoes: filtros.aptidoes,
       }),
       // categoria/sem categoria contam em "hoje" para todos (inclusive baixados), como sempre fez o filtro de categoria
-      whereCategoria(filtros.categoriaId, regras, hoje),
+      filtros.categoriaIds?.length ? { OR: filtros.categoriaIds.map(id => whereCategoria(id, regras, hoje)) } : whereCategoria(filtros.categoriaId, regras, hoje),
       filtros.semCategoria ? whereSemCategoria(regras, hoje) : {},
       ...whereAtributos(filtros),
       await whereIdade(filtros.situacao, hoje, filtros.idadeMinMeses, filtros.idadeMaxMeses),
-      filtros.papelReprodutivo ? { id: { in: await idsComPapelReprodutivo(prisma, filtros.papelReprodutivo, hoje) } } : {},
+      filtros.papelReprodutivo || filtros.papeisReprodutivos?.length ? { id: { in: [...new Set((await Promise.all((filtros.papeisReprodutivos ?? [filtros.papelReprodutivo!]).map(papel => idsComPapelReprodutivo(prisma, papel, hoje)))).flat())] } } : {},
       filtros.busca ? { OR: [
         { brinco: { contains: filtros.busca, mode: "insensitive" } },
         { nome: { contains: filtros.busca, mode: "insensitive" } },

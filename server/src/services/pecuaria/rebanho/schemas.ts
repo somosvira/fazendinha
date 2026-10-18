@@ -129,7 +129,11 @@ export const desfazerMovimentacaoSchema = z.object({
 });
 export type DesfazerMovimentacaoInput = z.infer<typeof desfazerMovimentacaoSchema>;
 
+const listaQuery = <T extends z.ZodTypeAny>(item: T) => z.preprocess(v => typeof v === "string" ? [v] : v, z.array(item).min(1).max(100).transform(v => [...new Set(v)])).optional();
+
 export const listarMovimentacoesSchema = z.object({
+  propriedadeIds: listaQuery(z.coerce.number().int().positive()),
+  loteIds: listaQuery(z.string().uuid()),
   loteId: z.string().uuid().optional(),
   propriedadeId: propriedadeIdOpcional,
   /** filtra as movimentações que têm esse animal nos itens (inclusive as desfeitas, se `incluirDesfeitas`) */
@@ -139,6 +143,9 @@ export const listarMovimentacoesSchema = z.object({
   incluirDesfeitas: z.enum(["true", "false"]).optional().default("true").transform((v) => v === "true"),
   page: z.coerce.number().int().min(1).optional().default(1),
   pageSize: z.coerce.number().int().min(1).max(100).optional().default(20),
+}).superRefine((f, ctx) => {
+  if (f.dataDe && f.dataAte && f.dataDe > f.dataAte) ctx.addIssue({ code: "custom", path: ["dataAte"], message: "A data final não pode anteceder a inicial" });
+  for (const [unico, varios] of [["propriedadeId", "propriedadeIds"], ["loteId", "loteIds"]] as const) if (f[unico] != null && f[varios]) ctx.addIssue({ code: "custom", path: [varios], message: "Informe apenas um formato para este filtro" });
 });
 export type ListarMovimentacoesInput = z.infer<typeof listarMovimentacoesSchema>;
 
@@ -209,6 +216,15 @@ const booleanoQuery = z.enum(["true", "false"]).optional().transform((v) => v ==
 const mesesQuery = z.coerce.number().int().min(0).max(600);
 
 export const listarFiltrosSchema = z.object({
+  propriedadeIds: listaQuery(z.coerce.number().int().positive().max(2147483647)),
+  loteIds: listaQuery(z.string().uuid()),
+  categoriaIds: listaQuery(z.string().uuid()),
+  sexos: listaQuery(z.enum(["F", "M"])),
+  origens: listaQuery(z.enum(["NASCIDO", "COMPRADO"])),
+  racaIds: listaQuery(z.string().uuid()),
+  aptidoes: listaQuery(z.enum(["LEITE", "CORTE"])),
+  papeisReprodutivos: listaQuery(z.enum(["NENHUM", "RECEPTORA", "DOADORA"])),
+  situacoes: listaQuery(z.enum(["ATIVO", "BAIXADO"])),
   propriedadeId: propriedadeIdOpcional,
   loteId: z.string().uuid().optional(),
   /** exclui da lista os animais cuja localização aberta está neste lote (ex.: "Trazer animais") */
@@ -216,7 +232,7 @@ export const listarFiltrosSchema = z.object({
   categoriaId: z.string().uuid().optional(),
   aptidao: z.enum(["LEITE", "CORTE"]).optional(),
   papelReprodutivo: z.enum(["NENHUM", "RECEPTORA", "DOADORA"]).optional(),
-  situacao: z.enum(["ATIVO", "BAIXADO", "TODOS"]).optional().default("ATIVO"),
+  situacao: z.enum(["ATIVO", "BAIXADO", "TODOS"]).optional(),
   busca: z.string().trim().max(120).optional(),
   sexo: z.enum(["F", "M"]).optional(),
   origem: z.enum(["NASCIDO", "COMPRADO"]).optional(),
@@ -238,7 +254,10 @@ export const listarFiltrosSchema = z.object({
   page: z.coerce.number().int().min(1).optional().default(1),
   pageSize: z.coerce.number().int().min(1).max(200).optional().default(20),
 }).superRefine((f, ctx) => {
-  if (f.semCategoria && f.categoriaId) {
+  for (const [unico, varios] of [["propriedadeId", "propriedadeIds"], ["loteId", "loteIds"], ["categoriaId", "categoriaIds"], ["sexo", "sexos"], ["origem", "origens"], ["racaId", "racaIds"], ["aptidao", "aptidoes"], ["papelReprodutivo", "papeisReprodutivos"], ["situacao", "situacoes"]] as const) {
+    if (f[unico] != null && f[varios]) ctx.addIssue({ code: "custom", path: [varios], message: "Informe apenas um formato para este filtro" });
+  }
+  if (f.semCategoria && (f.categoriaId || f.categoriaIds?.length)) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["semCategoria"], message: "“Sem categoria” não combina com uma categoria escolhida" });
   }
   if (f.semCategoria && f.categoriaOrigem) {
@@ -250,7 +269,7 @@ export const listarFiltrosSchema = z.object({
   if (f.baixaDe && f.baixaAte && f.baixaDe > f.baixaAte) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["baixaAte"], message: "A data final da baixa não pode ser anterior à inicial" });
   }
-});
+}).transform(f => ({ ...f, situacao: f.situacoes ? f.situacoes.length === 1 ? f.situacoes[0] : "TODOS" as const : f.situacao ?? "ATIVO" as const }));
 export type ListarFiltrosInput = z.infer<typeof listarFiltrosSchema>;
 
 export const criarLoteSchema = z.object({

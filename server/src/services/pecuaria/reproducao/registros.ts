@@ -1439,6 +1439,7 @@ export function mascararCustos<T>(valor: T, verValores: boolean, verCustosOperac
     "exame.resultados.*",
     "avaliacoes.*.exame.resultados.*",
     "examesPosParto.*.resultados.*",
+    "escoresMatriz.*.resultados.*",
     "partos.*.examesPosParto.*.resultados.*",
   ]);
   // Retorno de salvar/regularizar participante, confirmação, detalhe e impressão.

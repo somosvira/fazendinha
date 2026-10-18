@@ -168,7 +168,7 @@ it.each(["resolver", "rejeitar"] as const)(
     const { rerender } = render(<Iatf propriedadeId={1} podeLancar={false} />);
     expect(screen.queryByText(/Nenhuma programação/)).toBeNull();
     rerender(<Iatf propriedadeId={2} podeLancar={false} />);
-    await screen.findByRole("button", { name: /Programação do sítio atual/ });
+    (await screen.findAllByRole("button", { name: /Programação do sítio atual/ }))[0];
     await act(async () =>
       desfecho === "resolver"
         ? antiga.resolver([{ ...programacao, nome: "Resposta antiga" }])
@@ -176,7 +176,7 @@ it.each(["resolver", "rejeitar"] as const)(
     );
     expect(screen.queryByText(/Resposta antiga|Erro antigo/)).toBeNull();
     expect(
-      screen.getByRole("button", { name: /Programação do sítio atual/ }),
+      screen.getAllByRole("button", { name: /Programação do sítio atual/ })[0],
     ).toBeTruthy();
   },
 );
@@ -204,7 +204,7 @@ it("abertura que falha repete o mesmo detalhe e ignora erro de outro sítio", as
   );
   const { rerender } = render(<Iatf propriedadeId={1} podeLancar={false} />);
   fireEvent.click(
-    await screen.findByRole("button", { name: /Programação confirmada/ }),
+    (await screen.findAllByRole("button", { name: /Programação confirmada/ }))[0],
   );
   expect(screen.getByRole("status").textContent).toBe(
     "Carregando programação…",
@@ -216,7 +216,7 @@ it("abertura que falha repete o mesmo detalhe e ignora erro de outro sítio", as
     .mockRejectedValueOnce(new Error("Falha no detalhe"))
     .mockResolvedValueOnce(programacao);
   fireEvent.click(
-    await screen.findByRole("button", { name: /Programação confirmada/ }),
+    (await screen.findAllByRole("button", { name: /Programação confirmada/ }))[0],
   );
   await screen.findByRole("alert");
   fireEvent.click(

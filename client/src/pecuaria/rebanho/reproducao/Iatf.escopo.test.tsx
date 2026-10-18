@@ -41,14 +41,14 @@ it('cópia na montagem Iatf usa o sítio explícito mesmo com outro ativo', asyn
 it.each([99, null])('custos de programação e participação conservam sítio explícito com ativo %s', async ativo => {
   setPropriedadeAtiva(ativo);
   render(<Iatf propriedadeId={7} podeLancar />);
-  fireEvent.click(await screen.findByRole('button', { name: /Turma QA/ }));
+  fireEvent.click((await screen.findAllByRole('button', { name: /Turma QA/ }))[0]);
   expect(await screen.findByTestId('custos-programacao')).toHaveProperty('textContent', '7 · programa');
   expect(screen.getByTestId('custos-participacao')).toHaveProperty('textContent', '7 · participacao');
 });
 
 it('regularização usa o mesmo sítio explícito dos custos e do programa', async () => {
   render(<Iatf propriedadeId={7} podeLancar />);
-  fireEvent.click(await screen.findByRole('button', { name: /Turma QA/ }));
+  fireEvent.click((await screen.findAllByRole('button', { name: /Turma QA/ }))[0]);
   expect(await screen.findByTestId('regularizacao-sitio')).toHaveProperty('textContent', '7');
 });
 
@@ -56,7 +56,7 @@ it('execução transmite sítio explícito também no header da API', async () =
   const iniciado = { ...programa, participantes: programa.participantes.map(p => ({ ...p, inicioEfetivo: '2026-10-01T00:00:00Z' })) };
   vi.mocked(reqV4).mockImplementation(async path => path.includes('/programacoes/programa') ? iniciado : path.includes('/programacoes') ? [iniciado] : []);
   render(<Iatf propriedadeId={7} podeLancar painel={{ animais: [], tentativas: [], avaliacoes: [], partos: [], restricoes: [] }} />);
-  fireEvent.click(await screen.findByRole('button', { name: /Turma QA/ }));
+  fireEvent.click((await screen.findAllByRole('button', { name: /Turma QA/ }))[0]);
   fireEvent.click(await screen.findByRole('button', { name: 'Registrar execução' }));
   fireEvent.change(screen.getByLabelText('Data realizada'), { target: { value: '2026-10-02' } });
   fireEvent.click(screen.getByRole('button', { name: 'Continuar' }));

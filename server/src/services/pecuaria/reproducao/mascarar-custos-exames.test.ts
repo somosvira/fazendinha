@@ -73,3 +73,11 @@ describe("máscara financeira com resultados clínicos estruturados", () => {
       dados: { resultados: [{ campo: "MEDIDA", valor: null }, { campo: "MEDIDA", valor: 0, custoTotal: null }] } } });
   });
 });
+
+it("detalhe operacional do parto preserva escore e escala sem abrir valores financeiros", () => {
+ const resultado = mascararCustos({ escoresMatriz: [exame()], valorTotal: "100", snapshot: { escoresMatriz: [exame()] } }, false, true, 2);
+ expect(resultado.escoresMatriz[0].resultados).toEqual(exame().resultados);
+ expect(resultado.escoresMatriz[0].valor).toBeNull();
+ expect(resultado.valorTotal).toBeNull();
+ expect(resultado.snapshot.escoresMatriz[0].resultados.every(r=>r.valor===null)).toBe(true);
+});

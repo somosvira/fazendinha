@@ -9,6 +9,7 @@ import { SubTabs } from "../../../components/SubTabs";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import { IndicadoresReprodutivos } from "./IndicadoresReprodutivos";
 import { ConsultaPorSitio } from "./ConsultaPorSitio";
+import { DetalheParto } from "./DetalheParto";
 import { PartosPosParto } from "./PartosPosParto";
 import { ElegibilidadeAnimal } from "./ElegibilidadeAnimal";
 import { AcompanhamentoReprodutivo } from "./AcompanhamentoReprodutivo";
@@ -76,7 +77,7 @@ export function ReproducaoAnimal({
   );
 }
 const ROTINAS = [
-  { id: "ciclos", label: "Animais e ciclos" },
+  { id: "ciclos", label: "Animais e acompanhamentos" },
   { id: "agenda", label: "Agenda" },
   { id: "programacoes", label: "Programações" },
   { id: "partos", label: "Partos e pós-parto" },
@@ -88,14 +89,16 @@ function rotinaDaUrl(): Rotina {
   return ROTINAS.find(r => r.id === valor)?.id ?? (new URLSearchParams(window.location.search).has("programacaoId") ? "programacoes" : "ciclos");
 }
 export function Reproducao({ podeLancar }: { podeLancar: boolean }) {
+  const [caminho,setCaminho]=useState(window.location.pathname);
   const [rotina, setRotina] = useState<Rotina>(rotinaDaUrl);
   const propriedadeId = getPropriedadeAtiva();
   const [consultaUrl, setConsultaUrl] = useState(window.location.search);
   useEffect(() => {
-    const atualizar = () => { setRotina(rotinaDaUrl()); setConsultaUrl(window.location.search); };
+    const atualizar = () => { setCaminho(window.location.pathname); setRotina(rotinaDaUrl()); setConsultaUrl(window.location.search); };
     window.addEventListener("popstate", atualizar);
     return () => window.removeEventListener("popstate", atualizar);
   }, []);
+  useEffect(()=>{const p=new URLSearchParams(window.location.search),id=p.get("programacaoId");if(caminho==="/pecuaria/reproducao"&&id&&(!p.get("rotina")||p.get("rotina")==="programacoes")){p.delete("programacaoId");if(!p.has("retorno"))p.set("retorno",`/pecuaria/reproducao?${p}${window.location.hash}`);navegarPara(`/pecuaria/reproducao/programacoes/${encodeURIComponent(id)}?${p}${window.location.hash}`);}},[caminho,consultaUrl]);
   function selecionarRotina(valor: Rotina) {
     const url = new URL(window.location.href);
     url.searchParams.set("rotina", valor);
@@ -116,7 +119,7 @@ export function Reproducao({ podeLancar }: { podeLancar: boolean }) {
     return <ConsultaPorSitio>{sitioId => <div key={`${sitioId}:${rotina}`} className="space-y-5">
       {rotina === "partos" ? <PartosPosParto propriedadeId={sitioId}/>
         : rotina === "indicadores" ? <IndicadoresReprodutivos propriedadeId={sitioId} podeLancar={podeLancar} modo="painel"/>
-        : rotina === "agenda" ? <AcompanhamentoReprodutivo atualizacao={sitioId} propriedadeId={sitioId}/>
+        : rotina === "agenda" ? <AcompanhamentoReprodutivo atualizacao={sitioId} propriedadeId={sitioId} podeLancar={podeLancar}/>
         : rotina === "programacoes" ? <ConteudoReproducao propriedadeId={sitioId} podeLancar={podeLancar} secao="programacoes"/>
         : <ManejoReprodutivo propriedadeId={sitioId} podeLancar={podeLancar}
             onConsultarHistorico={() => navegarConsultaComSitio("/pecuaria/reproducao?rotina=ciclos&visao=historico", sitioId)}
@@ -124,13 +127,19 @@ export function Reproducao({ podeLancar }: { podeLancar: boolean }) {
       }
     </div>}</ConsultaPorSitio>;
   }
+  const detalheRota = caminho.match(/^\/pecuaria\/reproducao\/(programacoes|partos)\/([^/]+)\/?$/);
+  if(detalheRota) {
+    const [,tipo,id]=detalheRota;
+    const voltar=()=>{const retorno=new URLSearchParams(window.location.search).get("retorno");navegarPara(retorno?.startsWith("/pecuaria/")?retorno:urlConsultaComSitio(`/pecuaria/reproducao?rotina=${tipo==="partos"?"partos":"programacoes"}`));};
+    return <PaginaFinanceira><PageHeader eyebrow="Pecuária" titulo={tipo==="partos"?"Parto e pós-parto":"Programação IATF"} acao={<Button secondary onClick={voltar}>Voltar à lista</Button>}/><ConsultaPorSitio>{sitioId=><div key={`${tipo}:${id}:${sitioId}`} className="mt-5">{tipo==="partos"?<DetalheParto id={id} propriedadeId={sitioId}/>:<ConteudoReproducao secao="programacoes" programacaoId={id} propriedadeId={sitioId} podeLancar={podeLancar} onFecharDetalhe={voltar}/>}</div>}</ConsultaPorSitio></PaginaFinanceira>;
+  }
   return (
     <PaginaFinanceira>
     <div className={`reproducao-v4 ${rotina === "indicadores" ? "reproducao-v4-indicadores" : ""}`}>
       {rotina !== "indicadores" && <PageHeader
         eyebrow="Pecuária"
         titulo="Reprodução"
-        descricao="Organize o manejo e acompanhe cada ciclo."
+        descricao="Organize o manejo e acompanhe a reprodução do rebanho."
       />}
       {rotina !== "indicadores" && <SubTabs variant="financeiro" ariaLabel="Rotinas da reprodução" tabs={[...ROTINAS]}
         active={rotina} onSelect={selecionarRotina} />}
@@ -149,8 +158,12 @@ function ConteudoReproducao({
   propriedadeId,
   podeLancar,
   recarregarToken = 0,
+  programacaoId,
+  onFecharDetalhe,
 }: {
   secao?: "historico" | "programacoes";
+  programacaoId?: string;
+  onFecharDetalhe?: () => void;
   animalId?: string;
   propriedadeId?: number | null;
   podeLancar: boolean;
@@ -255,7 +268,7 @@ function ConteudoReproducao({
     <ErrorBox erro={erro}/>
     {erro && <Button secondary onClick={() => void carregar()}>Tentar novamente</Button>}
     {carregando && <p role="status">Carregando programações…</p>}
-    {!carregando && painel && <Iatf onMudou={carregar} animais={painel.animais} propriedadeId={propriedadeId ?? undefined} painel={painel} podeLancar={podeLancar}/>}
+    {!carregando && painel && <Iatf programacaoId={programacaoId} onFecharDetalhe={onFecharDetalhe} onMudou={carregar} animais={painel.animais} propriedadeId={propriedadeId ?? undefined} painel={painel} podeLancar={podeLancar} onAbrirProgramacao={id=>navegarPara(urlConsultaComSitio(`/pecuaria/reproducao/programacoes/${id}?retorno=${encodeURIComponent(window.location.pathname+window.location.search)}`,propriedadeId??undefined))}/>}
   </div>;
   return (
     <div className="space-y-5">

@@ -93,7 +93,8 @@ function comIncluirInativos(path: string, incluirInativos?: boolean): string {
 export const listarAnimais = (filtros: ListarFiltros, propriedadeId?: number) => {
   const params = new URLSearchParams();
   for (const [chave, valor] of Object.entries(filtros)) {
-    if (valor !== undefined && valor !== null && valor !== "") params.set(chave, String(valor));
+    if (Array.isArray(valor)) valor.forEach(v => params.append(chave, String(v)));
+    else if (valor !== undefined && valor !== null && valor !== "") params.set(chave, String(valor));
   }
   const query = params.toString();
   return req<ListarResultado>(`/animais${query ? `?${query}` : ""}`, undefined, propriedadeId);
@@ -132,7 +133,8 @@ export const preverComposicaoAnimal = (input: FiliacaoInput & { dataNascimento: 
 export const listarGenitores = (filtros: ListarGenitoresQuery = {}, propriedadeId?: number) => {
   const params = new URLSearchParams();
   for (const [chave, valor] of Object.entries(filtros)) {
-    if (valor !== undefined && valor !== null && valor !== "") params.set(chave, String(valor));
+    if (Array.isArray(valor)) valor.forEach(v => params.append(chave, String(v)));
+    else if (valor !== undefined && valor !== null && valor !== "") params.set(chave, String(valor));
   }
   const query = params.toString();
   return req<GenitorDTO[]>(`/genitores${query ? `?${query}` : ""}`, undefined, propriedadeId);
@@ -238,7 +240,8 @@ export const desfazerMovimentacao = (id: string, motivo: string) =>
 export const listarMovimentacoes = (filtros: FiltrosMovimentacoes = {}) => {
   const params = new URLSearchParams();
   for (const [chave, valor] of Object.entries(filtros)) {
-    if (valor !== undefined && valor !== null && valor !== "") params.set(chave, String(valor));
+    if (Array.isArray(valor)) valor.forEach(v => params.append(chave, String(v)));
+    else if (valor !== undefined && valor !== null && valor !== "") params.set(chave, String(valor));
   }
   const query = params.toString();
   return req<ListarMovimentacoesResultado>(`/movimentacoes${query ? `?${query}` : ""}`);

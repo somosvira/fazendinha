@@ -106,3 +106,7 @@ A validação da padronização anterior incluiu testes/builds, typechecks de se
 O [HTML de conceitos](artefatos/conceitos-v4.html) apresenta o modelo implementado e sua relação com as telas, inclusive os fluxos novos de visita, parto, elegibilidade e relatórios. O [roteiro manual](artefatos/testes-v4-guia.html) mantém as marcações anteriores e acrescenta casos de padronização pendentes. Homologação pela fazenda permanece pendente.
 
 Resultados estruturados de exames (`resultados[].valor`) são dados clínicos e permanecem legíveis no detalhe e no histórico, inclusive zero, falso e JSON composto. A máscara financeira não altera esses resultados; valores financeiros irmãos e documentos continuam sujeitos às permissões correspondentes.
+
+### Apresentação operacional
+
+A timeline da participação é compartilhada pela ficha e pela página de programação IATF. Os marcos usam toda a largura útil entre o primeiro e o último; contêiner estreito muda para apresentação vertical. A aparência não altera o estado da tarefa: previsão pendente, início desconhecido, dispensa, execução, encerramento e regularização continuam baseados nos registros comuns. A página própria mantém os mesmos executores e o painel autorizado do sítio; abrir o detalhe não cria participação ou tarefa.

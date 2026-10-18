@@ -52,6 +52,8 @@ it("abre detalhes do pós-parto com acesso à ficha da cria sem salvar relatóri
   render(<PartosPosParto propriedadeId={7}/>);
   const botoes = await screen.findAllByRole("button", { name: "Ver pós-parto de Recente" });
   fireEvent.click(botoes[0]);
-  expect(screen.getByRole("link", { name: "Abrir ficha da cria 1" }).getAttribute("href")).toBe("/pecuaria/rebanho/animais/animal-cria#reproducao");
+  expect(window.location.pathname).toBe("/pecuaria/reproducao/partos/Recente");
+  expect(new URLSearchParams(window.location.search).get("sitio")).toBe("7");
+  expect(new URLSearchParams(window.location.search).get("retorno")).toContain("rotina=partos");
   expect(vi.mocked(reqV4).mock.calls.every(([,body]) => body === undefined)).toBe(true);
 });

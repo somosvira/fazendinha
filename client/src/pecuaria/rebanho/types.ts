@@ -252,6 +252,9 @@ export type Pesagem = {
 };
 
 export type ListarFiltros = {
+  propriedadeIds?: number[]; loteIds?: string[]; categoriaIds?: string[];
+  sexos?: Sexo[]; origens?: Origem[]; racaIds?: string[]; aptidoes?: Aptidao[];
+  papeisReprodutivos?: PapelReprodutivo[]; situacoes?: Situacao[];
   propriedadeId?: number;
   loteId?: string;
   /** exclui da lista os animais cuja localização aberta está neste lote (ex.: "Trazer animais") */
@@ -376,6 +379,7 @@ export type MovimentacaoDoLote = MovimentacaoResumo;
 export type ListarMovimentacoesResultado = { itens: MovimentacaoResumo[]; total: number };
 
 export type FiltrosMovimentacoes = {
+  propriedadeIds?: number[]; loteIds?: string[];
   loteId?: string;
   propriedadeId?: number;
   dataDe?: string;

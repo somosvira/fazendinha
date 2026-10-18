@@ -169,3 +169,6 @@
 .fin-filtros-barra [data-slot="multi-select-control"] { background: var(--card); min-height: 40px; }
 .fin-filtros-barra [data-slot="multi-select-control"] > span { background: var(--muted); border-color: var(--border); }
 .fin-tabela-filtros { padding: 16px; }
+
+/* Pecuária ocupa a área útil; outros módulos conservam seu limite. */
+.pecuaria-content .pagina-financeira{max-width:none;width:100%;min-width:0}

@@ -31,24 +31,22 @@ describe("PesoEGanho", () => {
   it("mostra ausência de dados e faixa integrada sem inventar GMD", () => {
     montar();
     expect(screen.getByRole("status").textContent).toContain("Ainda não há pesagens");
-    expect(screen.getByText("Pesagens insuficientes", { selector: "small" })).toBeTruthy();
-    expect(screen.getByText("0 registros").closest("dl")?.className).toBe("ficha-peso-faixa");
-    expect(screen.getByText("Manejo disponível").parentElement?.className).toBe("ficha-peso-manejo");
-    expect(screen.getByRole("button", { name: "Pesagens · 0 registros" }).getAttribute("aria-expanded")).toBe("false");
+    expect(screen.getByText("Pesagens insuficientes")).toBeTruthy();
+    expect(screen.getByText("Últimas pesagens")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Manejos registrados/ }).getAttribute("aria-expanded")).toBe("false");
+    expect(screen.getByText("Último peso")).toBeTruthy();
   });
   it("preserva ações e seletor com uma pesagem e controles de expansão completos", () => {
     const { editar, periodo } = montar({ ...base, historicoPesagens: [pesagem] });
     expect(screen.getByRole("status").textContent).toContain("Uma pesagem ainda não forma uma curva");
     fireEvent.change(screen.getByLabelText("Período do GMD"), { target: { value: "90" } });
     expect(periodo).toHaveBeenCalledWith(90);
-    fireEvent.click(screen.getByRole("button", { name: "Pesagens · 1 registro" }));
     fireEvent.click(screen.getByRole("button", { name: "Editar pesagem de 01/10/2026" }));
     expect(editar).toHaveBeenCalledWith(expect.objectContaining({ id: "p1", animalId: base.id }));
-    expect(screen.getByRole("button", { name: "Pesagens · 1 registro" }).getAttribute("aria-expanded")).toBe("true");
+    expect(screen.getByText("Últimas pesagens")).toBeTruthy();
   });
   it("oculta ações sem permissão e mantém histórico de várias pesagens", () => {
     montar({ ...base, historicoPesagens: [pesagem, { ...pesagem, id: "p0", data: "2026-09-01", pesoKg: 470 }] }, false);
-    fireEvent.click(screen.getByRole("button", { name: "Pesagens · 2 registros" }));
     expect(screen.getByRole("table").textContent).toContain("470 kg");
     expect(screen.queryByRole("button", { name: /Editar pesagem/ })).toBeNull();
   });
