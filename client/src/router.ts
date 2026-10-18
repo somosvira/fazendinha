@@ -16,6 +16,7 @@ import { ASSISTENTE_ATIVO } from "./featureFlags";
 // Fonte única dos caminhos canônicos; Record<Tab, string> obriga toda aba nova
 // a declarar sua URL e permite validar subrotas sem listas paralelas.
 const PATH_BY_TAB: Record<Tab, string> = {
+  gerencial: "/gerencial",
   dashboard: "/financeiro",
   gastos: "/financeiro/compromissos",
   lancar: "/financeiro/operacoes",

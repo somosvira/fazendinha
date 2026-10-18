@@ -1,3 +1,4 @@
+import { PainelGerencial } from "./gerencial/PainelGerencial";
 /* Rio Novo — raiz.
  * Permissionamento: Marco (dono) é o usuário logado. Ele gerencia acessos e pode
  * "ver como" outra pessoa — a navegação reduz às abas do perfil e os valores em R$
@@ -146,11 +147,27 @@ export function App() {
   // dashboard). Trocar grava no escopo compartilhado (header X-Propriedade-Id) e
   // remonta o conteúdo via `key` abaixo, forçando refetch no escopo novo. null =
   // consolidado; com 1 sítio o seletor fica quase invisível (só o + discreto).
-  const [propAtiva, setPropAtiva] = useState<number | null>(getPropriedadeAtiva());
+  const [propAtiva, setPropAtiva] = useState<number | null>(() => {
+    const destino = pathToTab(window.location.pathname);
+    const recebeOrigemGerencial = destino != null && ["estoque", "pec-nutricao", "pec-reproducao", "pec-sanidade", "caixinha", "gastos"].includes(destino);
+    if (destino !== "gerencial" && !recebeOrigemGerencial) return getPropriedadeAtiva();
+    const raw=new URLSearchParams(window.location.search).get("propriedadeId");
+    if(raw && /^\d+$/.test(raw) && Number(raw)>0 && Number(raw)<=2147483647) { setPropriedadeAtiva(Number(raw)); return Number(raw); }
+    if (destino === "gerencial") {
+      setPropriedadeAtiva(null);
+      return null;
+    }
+    return getPropriedadeAtiva();
+  });
   const trocarPropriedade = (id: number | null) => {
     void executarComGuardaNavegacao(() => {
       setPropriedadeAtiva(id);
       setPropAtiva(id);
+      if(tabAtual.current==="gerencial") setDeepLinkFiltros(atual=>{
+        const filtros={...(atual?.tab==="gerencial"?atual.filtros:{})};
+        if(id==null)delete filtros.propriedadeId;else filtros.propriedadeId=String(id);
+        return {tab:"gerencial",filtros};
+      });
     });
   };
 
@@ -220,7 +237,10 @@ export function App() {
     void executarComGuardaNavegacao(() => {
       setDeepLinkFiltros(null);
       setTab(t);
-      const alvo = tabToPath(t);
+      const contextoGerencial = t === "gerencial" && propAtiva != null
+        ? `?${new URLSearchParams({ propriedadeId: String(propAtiva) })}`
+        : "";
+      const alvo = tabToPath(t) + contextoGerencial;
       if (window.location.pathname + window.location.search !== alvo) navegarPara(alvo);
     });
   };
@@ -343,6 +363,10 @@ export function App() {
       const sp = new URLSearchParams(window.location.search);
       const t = pathToTab(window.location.pathname);
       const atualizar = () => {
+        if(t==="gerencial") {
+          const raw=sp.get("propriedadeId");const id=raw&&/^\d+$/.test(raw)&&Number(raw)>0&&Number(raw)<=2147483647?Number(raw):null;
+          setPropriedadeAtiva(id);setPropAtiva(id);
+        }
         setTab(t ?? DEFAULT_TAB);
         setLocationRevision((valor) => valor + 1);
         setDeepLinkFiltros(t && [...sp.keys()].length && !isNovaOperacaoFinanceira(window.location.pathname) ? { tab: t, filtros: Object.fromEntries(sp.entries()) } : null);
@@ -500,6 +524,8 @@ export function App() {
     ? <Visitas podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} />
     : tab === "pec-nutricao"
     ? <Nutricao podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} />
+    : tab === "gerencial"
+    ? <PainelGerencial locationRevision={locationRevision} propriedadeId={propAtiva} onPeriodo={periodo=>setDeepLinkFiltros({tab:"gerencial",filtros:{...periodo,...(propAtiva==null?{}:{propriedadeId:String(propAtiva)})}})}/>
     : tab === "estoque"
     ? (parseProdutoEstoqueId(window.location.pathname) ? <ProdutoEstoqueDetalhe key={window.location.pathname} produtoId={parseProdutoEstoqueId(window.location.pathname)!} onSelecionarSitio={trocarPropriedade} /> : <EstoqueContent />)
     : (["dashboard", "gastos", "lancar", "caixinha", "cadastros", "plano", "relatorio"] as Tab[]).includes(tab)
