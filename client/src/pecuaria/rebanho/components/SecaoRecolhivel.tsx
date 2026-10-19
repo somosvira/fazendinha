@@ -7,6 +7,7 @@ export interface SecaoRecolhivelProps {
   resumo?: ReactNode;
   children: ReactNode;
   acoes?: ReactNode;
+  recolherAposAcoes?: boolean;
   abertaInicial?: boolean;
   id?: string;
   className?: string;
@@ -18,7 +19,7 @@ export function revelarSecao(id: string) {
 }
 
 /** Recolhe apenas a apresentação: os formulários e seus rascunhos seguem montados. */
-export function SecaoRecolhivel({ titulo, resumo, children, acoes, abertaInicial = true, id, className = "" }: SecaoRecolhivelProps) {
+export function SecaoRecolhivel({ titulo, resumo, children, acoes, recolherAposAcoes = false, abertaInicial = true, id, className = "" }: SecaoRecolhivelProps) {
   const gerado = useId();
   const conteudoId = `${id ?? gerado}-conteudo`;
   const tituloId = `${id ?? gerado}-titulo`;
@@ -47,11 +48,11 @@ export function SecaoRecolhivel({ titulo, resumo, children, acoes, abertaInicial
   }, [id]);
   return <section ref={secao} id={id} className={`secao-recolhivel ${className}`} aria-labelledby={tituloId}>
     <header className="secao-recolhivel-cabecalho">
-      <h2 id={tituloId}><button type="button" aria-labelledby={`${tituloId}-rotulo`} aria-describedby={resumo ? `${tituloId}-resumo` : undefined} aria-expanded={aberta} aria-controls={conteudoId} onClick={() => setAberta(valor => !valor)}>
+      {recolherAposAcoes ? <><h2 id={tituloId}><span className="secao-recolhivel-texto"><span id={`${tituloId}-rotulo`} className="secao-recolhivel-titulo">{titulo}</span>{resumo && <span id={`${tituloId}-resumo`} className="secao-recolhivel-resumo">{resumo}</span>}</span></h2>{acoes && <div className="secao-recolhivel-acoes">{acoes}</div>}<button className="secao-recolhivel-recolher" type="button" aria-labelledby={`${tituloId}-rotulo`} aria-describedby={resumo ? `${tituloId}-resumo` : undefined} aria-expanded={aberta} aria-controls={conteudoId} onClick={() => setAberta(v => !v)}><ChevronDown aria-hidden="true" size={20} className={aberta ? "secao-recolhivel-chevron aberta" : "secao-recolhivel-chevron"} /></button></> : <><h2 id={tituloId}><button type="button" aria-labelledby={`${tituloId}-rotulo`} aria-describedby={resumo ? `${tituloId}-resumo` : undefined} aria-expanded={aberta} aria-controls={conteudoId} onClick={() => setAberta(valor => !valor)}>
         <span className="secao-recolhivel-texto"><span id={`${tituloId}-rotulo`} className="secao-recolhivel-titulo">{titulo}</span>{resumo && <span id={`${tituloId}-resumo`} className="secao-recolhivel-resumo">{resumo}</span>}</span>
         <ChevronDown aria-hidden="true" size={20} className={aberta ? "secao-recolhivel-chevron aberta" : "secao-recolhivel-chevron"} />
       </button></h2>
-      {acoes && <div className="secao-recolhivel-acoes">{acoes}</div>}
+      {acoes && <div className="secao-recolhivel-acoes">{acoes}</div>}</>}
     </header>
     <div id={conteudoId} hidden={!aberta} className="secao-recolhivel-conteudo">{children}</div>
   </section>;

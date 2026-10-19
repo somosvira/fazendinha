@@ -1,3 +1,4 @@
+import { ParticipacoesIndividuais } from "../protocolos/ParticipacoesIndividuais";
 import { useEffect, useState } from "react";
 import { CalendarDays, CheckCircle2, Clock3, FileText, MinusCircle } from "lucide-react";
 import { Button, ErrorBox } from "../../../financeiro/financeiro-ui";
@@ -9,8 +10,9 @@ export function RodadasAnimal({ animalId, revisao }: { animalId: string; revisao
   const [rodadas, setRodadas] = useState<PaginaSanitaria<RodadaSanitaria> | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [tentativa, setTentativa] = useState(0);
-  useEffect(() => { let vivo = true; setRodadas(null); setErro(null); listarRodadas({ animalId, pagina, porPagina: 20 }).then((v) => { if (vivo) setRodadas(v); }).catch((e: unknown) => { if (vivo) setErro(e instanceof Error ? e.message : String(e)); }); return () => { vivo = false; }; }, [animalId, pagina, revisao, tentativa]);
+  useEffect(() => { let vivo = true; setRodadas(null); setErro(null); listarRodadas({ animalId, pagina, porPagina: 10 }).then((v) => { if (vivo) setRodadas(v); }).catch((e: unknown) => { if (vivo) setErro(e instanceof Error ? e.message : String(e)); }); return () => { vivo = false; }; }, [animalId, pagina, revisao, tentativa]);
   return <SecaoRecolhivel titulo={<span className="ficha-titulo-com-icone"><FileText size={20} aria-hidden />Protocolos sanitários do animal</span>}>
+    <ParticipacoesIndividuais animalId={animalId} tipo="SANITARIO" revisao={revisao} />
     {erro ? <><ErrorBox erro={erro} /><Button secondary onClick={() => setTentativa((v) => v + 1)}>Tentar novamente</Button></> : !rodadas ? <p>Carregando protocolos…</p> : <div className="grid gap-3">{rodadas.itens?.map((r) => <article key={r.id} className="protocolo-sanitario-animal">
       <header><h3>{r.nome} · {r.protocolo.nome} · v{r.protocolo.versao}</h3><a className="ficha-link-contorno" href={`/pecuaria/rebanho/sanidade?aba=agenda&visaoAgenda=rodadas&rodadaId=${encodeURIComponent(r.id)}&animalId=${encodeURIComponent(animalId)}`}>Ver protocolo</a></header>
       <div className="protocolo-sanitario-dados"><p><CalendarDays size={20} aria-hidden /><span>Início de referência<br /><strong>{dataSanitaria(r.inicioReferencia)}</strong></span></p>{r.contagens && <><p><CheckCircle2 size={20} aria-hidden />{r.contagens.realizadas} realizadas</p><p><Clock3 size={20} aria-hidden />{r.contagens.pendentes} pendentes</p><p><MinusCircle size={20} aria-hidden />{r.contagens.dispensadas} dispensadas</p></>}</div>

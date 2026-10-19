@@ -5,6 +5,8 @@ import { Iatf } from "./Iatf";
 import { reqV4 } from "./api";
 import { setPropriedadeAtiva } from "../../../propriedadeScope";
 vi.mock("./api",()=>({reqV4:vi.fn()}));
+vi.mock("../protocolos/api", async original => ({ ...await original<typeof import("../protocolos/api")>(), obterCabecalhoProtocolo: vi.fn().mockImplementation(async (contexto: { programacaoId: string }) => ({ id: contexto.programacaoId, nome: contexto.programacaoId === "um" ? "Primeira programação" : "Segunda programação", modo: "COLETIVO", tipo: "REPRODUTIVO", protocolo: { id: "p", nome: "Protocolo", versao: 1 }, contagens: {}, inicioReferencia: "2026-10-19", precisaoTemporal: "DIA" })), reqProtocolo: vi.fn().mockResolvedValue({ itens: [], total: 0, pagina: 1, porPagina: 10 }), obterEtapasProtocolo: vi.fn().mockResolvedValue({ itens: [], total: 0, pagina: 1, porPagina: 10 }) }));
+vi.mock("../protocolos/ProcedimentosProtocolo", () => ({ ProcedimentosProtocolo: () => null }));
 vi.mock("../../../estoque/api",()=>({listarProdutos:vi.fn().mockResolvedValue([])}));
 vi.mock("../api",()=>({listarMaterialGenetico:vi.fn().mockResolvedValue([])}));
 afterEach(() => { cleanup(); setPropriedadeAtiva(null); });

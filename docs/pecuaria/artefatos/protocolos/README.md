@@ -1,15 +1,15 @@
 # Base documental de protocolos
 
-[Entrada navegável](index.html) · [Plano de implementação](../../plano-protocolos-unificados.md) · [Contrato vigente](../../protocolos-exames.md)
+[Entrada navegável](index.html) · [Registro da entrega](../../plano-protocolos-unificados.md) · [Contrato vigente](../../protocolos-exames.md)
 
-Materiais de apoio incorporados ao repositório em 19/10/2026, a partir da explicação de domínio, da inspeção SQL local em somente leitura e do mockup revisado com o usuário. O plano consolidado é a fonte da proposta; os contratos operacionais continuam sendo a fonte do comportamento entregue.
+Materiais de apoio do núcleo comum de protocolos. A implementação local está em validação; o contrato operacional registra o comportamento implementado e seus limites. O registro da entrega local aponta este contrato e mantém separadas as evidências e validações pendentes.
 
 | Material | Fonte e alcance |
 |---|---|
 | [Relações e diagramas interativos](relacoes.html) | Explicação de modelo, versões, participação, tarefas e fatos; exemplos fictícios, sem acesso à aplicação. |
-| [Diagrama físico](db/index.html) | Seis tabelas centrais com todas as colunas e catálogo de 12 tabelas; fotografia do PostgreSQL local em 19/10/2026. |
+| [Diagrama físico](db/index.html) | Sete tabelas centrais com todas as colunas e catálogo de 13 tabelas; fotografia de metadados do PostgreSQL local em 19/10/2026. |
 | [Catálogo SQL](db/schema.json) | Apenas metadados: colunas, constraints, índices, triggers e suas funções. Nenhum registro de animal, usuário ou atendimento. |
-| [Mockup aprovado](mockup/index.html#turma) | Referência visual do coletivo reprodutivo, com interações simuladas e paginação máxima de dez; variações individuais/sanitárias especificadas no plano. |
+| [Mockup aprovado](mockup/index.html#turma) | Referência conceitual simulada do coletivo reprodutivo. Não comprova a aparência das telas implementadas; inspeção visual das quatro combinações segue pendente. |
 | [Gerador do diagrama](gerar-diagrama.py) | Constrói `db/index.html` a partir do catálogo versionado; não conecta ao banco. |
 
 ## Uso local
@@ -25,13 +25,13 @@ Abrir `/docs/pecuaria/artefatos/protocolos/index.html` no servidor local. Links 
 ## Manutenção e proveniência
 
 - O diagrama físico usa nomes reais das colunas SQL. `@map` e listas de relações do Prisma não representam colunas adicionais.
-- O snapshot veio de `pg_catalog` de `fazendinha_seedatev3`, com `default_transaction_read_only=on`. Ele não atesta migrations de outro ambiente nem substitui inspeção atual na implementação.
-- O plano propõe eventos de pendência e origem do calendário. Essas extensões **não estão** no snapshot atual; não apresentá-las como tabelas/colunas já existentes.
+- O snapshot de 19/10/2026 veio somente de `pg_catalog` de `fazendinha_seedatev3`, com `default_transaction_read_only=on`; nenhum registro operacional foi consultado. Ele não atesta migrations de outro ambiente nem substitui inspeção atual na implementação.
+- O catálogo contém `EventoTarefaProtocolo` e `ParticipacaoProtocolo.origemCalendario`, incluídos pela migration `20261019190000_eventos_tarefas_protocolos`. Eventos registram não atendimento, adiamento e retificação; a origem classifica a regra de calendário sem recalcular previsões históricas.
 - Ao mudar a estrutura, aplicar/revisar migrations pelo processo normal e obter um novo catálogo autorizado em somente leitura, com o mesmo formato de `schema.json`. Revisar metadados antes de versionar; não exportar dados operacionais ou segredos.
 - Regenerar com `python3 docs/pecuaria/artefatos/protocolos/gerar-diagrama.py`. Atualizar posicionamento, setas, explicações e data da inspeção se o número de colunas, relações ou regras mudar. O gerador reproduz o documento, não verifica automaticamente a semântica do desenho.
 - `db/index.html` incorpora o catálogo para funcionar offline; manter o JSON e o HTML sincronizados pelo gerador. Nomes antigos de índices podem permanecer após renomear tabelas e não provam duplicação de entidades.
-- Na entrega da feature, atualizar `protocolos-exames.md`, os contratos afetados e estes materiais. Incorporar decisões vigentes e retirar o plano temporário concluído. Não derivar novos requisitos de exemplos ilustrativos.
+- Na entrega de mudanças, atualizar `protocolos-exames.md`, os contratos afetados e estes materiais. Incorporar decisões vigentes ao contrato; manter o registro local de entrega factual, sem reintroduzir o plano temporário ou derivar requisitos de exemplos ilustrativos.
 
 ## Validação desta publicação
 
-HTML/JavaScript estático, links e reprodução do gerador são verificáveis sem escrever no banco. Interações dos diagramas, catálogo paginado e mockup foram inspecionadas no navegador. Isso não implementa a feature, não aprova roteiros manuais e não equivale a homologação de campo ou deploy.
+A reprodução do gerador, `node --check` nos scripts inline e os links locais foram verificados sem escrever no banco. A implementação local permanece em validação; a inspeção visual final das telas e a homologação manual/de campo não estão concluídas. O mockup é demonstrativo e não equivale à interface final, ao deploy ou à homologação.

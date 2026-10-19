@@ -1,7 +1,13 @@
+import { GestaoParticipantes } from "../protocolos/GestaoParticipantes";
+import { obterCabecalhoProtocolo, reqProtocolo, consultaProtocolo, type CabecalhoProtocolo } from "../protocolos/api";
+import { SeletorVersaoProtocolo } from "../protocolos/SeletorVersaoProtocolo";
+import { usePreviaInicioExecucao } from "../protocolos/PreviaInicioExecucao";
+import { ListaRascunho } from "../protocolos/ListaRascunho";
+import { SecaoRecolhivel } from "../components/SecaoRecolhivel";
+import type { TarefaOperacional } from "../protocolos/api";
+import { OperacaoProtocolo } from "../protocolos/OperacaoProtocolo";
 import { Button as BotaoUI } from "../../../components/ui/button";
-import { ProtocoloTimeline } from "./ProtocoloTimeline";
 import {BibliotecaReprodutiva} from "./BibliotecaReprodutiva";
-import { CustosDiretos } from "../custos/CustosDiretos";
 import { CampoDataIatf, dataHoraISO, horarioIatf, inputHorarioIatf } from "./CampoDataIatf";
 export { dataHoraISO, horarioIatf, inputHorarioIatf } from "./CampoDataIatf";
 import { FormFatoSanitario } from "../sanidade/FormFatoSanitario";
@@ -179,7 +185,8 @@ export function Iatf({
   const [consulta, setConsulta] = useState<{
     contexto: string;
     protocolos: ProtocoloIatf[];
-    programacoes: ProgramacaoIatf[];
+    programacoes: CabecalhoProtocolo[];
+    total: number; pagina: number;
   } | null>(null);
   const [leitura, setLeitura] = useState<{
     contexto: string;
@@ -193,19 +200,19 @@ export function Iatf({
   const [paginaProgramacoes,setPaginaProgramacoes]=useState(()=>Math.max(1,Math.floor(Number(new URLSearchParams(window.location.search).get("iatfPagina"))||1)));
   useEffect(()=>{if(programacaoId||modo!=="operacao")return;const u=new URL(window.location.href);buscaProgramacao?u.searchParams.set("iatfBusca",buscaProgramacao):u.searchParams.delete("iatfBusca");paginaProgramacoes>1?u.searchParams.set("iatfPagina",String(paginaProgramacoes)):u.searchParams.delete("iatfPagina");window.history.replaceState(window.history.state,"",u.pathname+u.search+u.hash);},[buscaProgramacao,paginaProgramacoes,programacaoId,modo]);
   useEffect(()=>{const restaurar=()=>{const p=new URLSearchParams(window.location.search);setBuscaProgramacao(p.get("iatfBusca")??"");setPaginaProgramacoes(Math.max(1,Math.floor(Number(p.get("iatfPagina"))||1)));};window.addEventListener("popstate",restaurar);return()=>window.removeEventListener("popstate",restaurar);},[]);
-  const filtradas=programacoes.filter(p=>p.nome.toLocaleLowerCase("pt-BR").includes(buscaProgramacao.toLocaleLowerCase("pt-BR")));
-  const paginasProgramacoes=Math.max(1,Math.ceil(filtradas.length/20));
-  const paginaLista=Math.min(paginaProgramacoes,paginasProgramacoes);
+  const filtradas = programacoes;
+  const paginasProgramacoes=Math.max(1,Math.ceil((consultaVisivel?.total ?? 0)/10));
+  const paginaLista = consultaVisivel?.pagina ?? paginaProgramacoes;
   const carregando = leitura.contexto !== contexto || leitura.carregando;
   const erroConsulta = leitura.contexto === contexto ? leitura.erro : null;
   const sequenciaConsulta = useRef(0);
   const [detalheCarregado, setDetalheCarregado] = useState<{
     contexto: string;
-    valor: ProgramacaoIatf;
+    valor: CabecalhoProtocolo;
   } | null>(null);
   const detalhe =
     detalheCarregado?.contexto === contexto ? detalheCarregado.valor : null;
-  const setDetalhe = (valor: ProgramacaoIatf | null) =>
+  const setDetalhe = (valor: CabecalhoProtocolo | null) =>
     setDetalheCarregado(valor ? { contexto, valor } : null);
   const [leituraDetalhe, setLeituraDetalhe] = useState<{
     contexto: string;
@@ -237,6 +244,8 @@ export function Iatf({
   const [etapas, setEtapas] = useState<EtapaIatf[]>([
     { nome: "", tipo: "MANEJO", intervalo: 0, unidade: "DIAS" },
   ]);
+  const filaOperacao = useRef<TarefaOperacional[]>([]);
+  const [operacaoRevisao, setOperacaoRevisao] = useState(0);
   const [execucao, setExecucao] = useState<{
     tarefa: TarefaIatf;
     animalId: string;
@@ -256,13 +265,12 @@ export function Iatf({
     setLeitura({ contexto, carregando: true, erro: null });
     try {
       const [protocolos, programacoes] = await Promise.all([
-        reqIatf<ProtocoloIatf[]>("/reproducao/protocolos"),
-        modo === "cadastros"
-          ? Promise.resolve([] as ProgramacaoIatf[])
-          : reqIatf<ProgramacaoIatf[]>("/reproducao/programacoes"),
+        modo === "cadastros" ? reqIatf<ProtocoloIatf[]>("/reproducao/protocolos") : Promise.resolve([] as ProtocoloIatf[]),
+        modo === "cadastros" || programacaoId ? Promise.resolve({ itens: [] as CabecalhoProtocolo[], total: 0, pagina: 1, porPagina: 10 }) : reqProtocolo<{ itens: CabecalhoProtocolo[]; total: number; pagina: number; porPagina: number }>(`/programacoes${consultaProtocolo({ tipo: "REPRODUTIVO", busca: buscaProgramacao, pagina: paginaProgramacoes })}`, sitioEfetivo ?? undefined),
       ]);
       if (atual()) {
-        setConsulta({ contexto, protocolos, programacoes });
+        setConsulta({ contexto, protocolos, programacoes: programacoes.itens, total: programacoes.total, pagina: programacoes.pagina });
+        if (modo === "operacao" && !programacaoId && programacoes.pagina !== paginaProgramacoes) setPaginaProgramacoes(programacoes.pagina);
         setLeitura({ contexto, carregando: false, erro: null });
       }
     } catch (e) {
@@ -273,7 +281,7 @@ export function Iatf({
           erro: e instanceof Error ? e.message : String(e),
         });
     }
-  }, [contexto, modo, reqIatf]);
+  }, [contexto, modo, reqIatf, programacaoId, buscaProgramacao, paginaProgramacoes, sitioEfetivo]);
   useEffect(() => {
     setDetalheCarregado(null);
     setLeituraDetalhe(null);
@@ -334,9 +342,7 @@ export function Iatf({
       );
       setLeituraDetalhe({ contexto, id, carregando: true, erro: null });
       try {
-        const resultado = await reqIatf<ProgramacaoIatf>(
-          `/reproducao/programacoes/${id}`,
-        );
+        const resultado = await obterCabecalhoProtocolo({ programacaoId: id }, sitioEfetivo ?? undefined);
         if (atual()) {
           setDetalheCarregado({ contexto, valor: resultado });
           setLeituraDetalhe({ contexto, id, carregando: false, erro: null });
@@ -351,7 +357,7 @@ export function Iatf({
           });
       }
     },
-    [contexto, reqIatf],
+    [contexto, sitioEfetivo],
   );
   useEffect(() => {
     const atualizar = () => {
@@ -393,7 +399,7 @@ export function Iatf({
     setErro(null);
     try {
       await fn();
-      if (contextoAtual.current === contexto) await onMudou?.();
+      if (contextoAtual.current === contexto) { setOperacaoRevisao(v => v + 1); await onMudou?.(); }
     } catch (e) {
       if (contextoAtual.current === contexto) setErro(e instanceof Error ? e.message : String(e));
     } finally {
@@ -430,8 +436,8 @@ export function Iatf({
         <div className="p-4 space-y-3">
           <p className="text-sm text-ink-3">
             Indicação, programação, início efetivo e execução são fatos
-            separados. O calendário começa no início efetivo individual,
-            conforme a versão escolhida.
+            separados. A referência planeja as datas; a primeira execução confirma
+            o início real, respeitando a origem do calendário de cada participação.
           </p>
           {carregando && (
             <p role="status" className="rounded-lg bg-muted p-3 text-sm">
@@ -443,19 +449,19 @@ export function Iatf({
           <ErrorBox erro={erroConsulta} />
           {erroConsulta && <Button secondary onClick={() => void carregar()}>Tentar novamente</Button>}
           <label className="block text-sm">Buscar programação<input className={classeInput} aria-label="Buscar programação" value={buscaProgramacao} onChange={e=>{setBuscaProgramacao(e.target.value);setPaginaProgramacoes(1);}}/></label>
-          <TabelaFinanceira rotulo="Programações IATF" itens={filtradas.slice((paginaLista-1)*20,paginaLista*20)} chaveDe={p=>p.id} colunas={[
-            {chave:"nome",titulo:"Programação",principal:true,larguraMinima:200,larguraFlexivel:true,celula:p=>p.nome},
-            {chave:"inicio",titulo:"Início programado",larguraMinima:180,celula:p=>horarioIatf(p.inicioPrevisto,p.precisaoTemporal)},
-            {chave:"participantes",titulo:"Participantes",larguraMinima:110,celula:p=>p.participantes.length},
+          <TabelaFinanceira rotulo="Programações IATF" itens={filtradas} chaveDe={p=>p.id} onAbrir={p => onAbrirProgramacao ? onAbrirProgramacao(p.id) : void abrir(p.id)} colunas={[
+            {chave:"nome",titulo:"Programação",principal:true,larguraMinima:200,larguraFlexivel:true,celula:p=><a href={`/pecuaria/reproducao/programacoes/${encodeURIComponent(p.id)}?retorno=${encodeURIComponent(window.location.pathname + window.location.search)}${sitioEfetivo ? `&sitio=${sitioEfetivo}` : ""}`} onClick={e => { if (e.button === 0 && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) { e.preventDefault(); e.stopPropagation(); onAbrirProgramacao ? onAbrirProgramacao(p.id) : void abrir(p.id); } }}>{p.nome}</a>},
+            {chave:"inicio",titulo:"Início programado",larguraMinima:180,celula:p=>horarioIatf(p.inicioReferencia,p.precisaoTemporal)},
+            {chave:"participantes",titulo:"Participantes",larguraMinima:110,celula:p=>p.participantesTotal ?? "—"},
             {chave:"situacao",titulo:"Situação",larguraMinima:120,celula:p=><Pill>{p.status==="ABERTA"?"Aberta":p.status==="ENCERRADA"?"Encerrada":"A conferir"}</Pill>},
-            {chave:"acao",titulo:"Ação",acoes:true,larguraMinima:140,celula:p=><BotaoUI variant="outline" aria-label={`Ver IATF ${p.nome}`} onClick={()=>onAbrirProgramacao?onAbrirProgramacao(p.id):void abrir(p.id)}>Ver IATF</BotaoUI>},
+            {chave:"acao",titulo:"Ação",acoes:true,larguraMinima:140,celula:p=><BotaoUI variant="outline" aria-label={`Ver IATF ${p.nome}`} onClick={e => { e.stopPropagation(); onAbrirProgramacao ? onAbrirProgramacao(p.id) : void abrir(p.id); }}>Ver IATF</BotaoUI>},
           ]}/>
-          {filtradas.length>20&&<Paginacao paginaAtual={paginaLista} totalPaginas={paginasProgramacoes} totalItens={filtradas.length} itensPorPagina={20} onPaginaChange={setPaginaProgramacoes} rotulo="programações" idSelect="pagina-programacoes-iatf"/>}
-          {!!programacoes.length&&!filtradas.length&&<Empty>Nenhuma programação encontrada com esta busca.</Empty>}
+          {(consultaVisivel?.total ?? 0)>10&&<Paginacao paginaAtual={paginaLista} totalPaginas={paginasProgramacoes} totalItens={consultaVisivel?.total ?? 0} itensPorPagina={10} onPaginaChange={setPaginaProgramacoes} rotulo="programações" idSelect="pagina-programacoes-iatf"/>}
+          {!carregando && !erroConsulta && consultaVisivel && !!buscaProgramacao.trim() && !programacoes.length && <Empty>Nenhuma programação encontrada com esta busca. Ajuste os critérios para consultar outras programações.</Empty>}
           {!carregando &&
             !erroConsulta &&
             consultaVisivel &&
-            !programacoes.length && (
+            !programacoes.length && !buscaProgramacao.trim() && (
               <Empty>
                 <div className="space-y-3">
                   <p className="font-semibold text-ink">
@@ -500,133 +506,15 @@ export function Iatf({
         </div>
       )}
       {modo === "operacao" && detalhe && (
-        <Panel>
-          <CabecalhoTabela
-            titulo={`${detalhe.nome} · ${detalhe.protocolo?.nome ?? "Protocolo"} v${detalhe.protocolo?.versao ?? ""}`}
-            acao={
-              <Button secondary onClick={() => { if(onFecharDetalhe){onFecharDetalhe();return;} aberturaAtual.current++; setLeituraDetalhe(null); setDetalhe(null); }}>
-                {onFecharDetalhe ? "Voltar às programações" : "Fechar detalhes"}
-              </Button>
-            }
+        <div>
+          {!onFecharDetalhe && <div className="mb-3 flex justify-end"><Button secondary onClick={() => { aberturaAtual.current++; setLeituraDetalhe(null); setDetalhe(null); }}>Fechar detalhes</Button></div>}
+          <OperacaoProtocolo programacaoId={detalhe.id} propriedadeId={sitioEfetivo ?? undefined} podeLancar={podeLancar} revisao={operacaoRevisao}
+            acoes={podeLancar && sitioEfetivo != null && detalhe.propriedadeId === sitioEfetivo && detalhe.status === "ABERTA" ? <Button secondary onClick={() => { setNovo("participantes"); setChaveProgramacao(crypto.randomUUID()); setInicio(""); setSelecionados([]); setCienciaSanitaria(false); }}>Adicionar ou reintegrar participantes</Button> : undefined}
+            gestao={<GestaoParticipantes key={`${detalhe.id}:${sitioEfetivo}`} id={detalhe.id} propriedadeId={sitioEfetivo ?? undefined} podeLancar={podeLancar && sitioEfetivo != null && detalhe.propriedadeId === sitioEfetivo} revisao={operacaoRevisao} aoRetirar={id => { setAcao({ tipo: "retirada", id }); setMotivo(""); }} />}
+            aoExecutar={(tarefas) => { filaOperacao.current = tarefas.slice(1); const t = tarefas[0]; if (t) setExecucao({ tarefa: t.tarefaOrigem, animalId: t.animal.id }); }}
+            regularizacao={(t, aoSalvar) => t.propriedadeId ? <RegularizarOrigem path={`/reproducao/tarefas-iatf/${t.id}/regularizacao`} propriedadeId={t.tarefaOrigem.propriedadeRegularizacaoId ?? t.propriedadeId} consumoMantido={consumoMantidoUltimaAnulacao(t.tarefaOrigem.historicoRegularizacao)} onMudou={async () => { aoSalvar(); await onMudou?.(); }} /> : null}
           />
-          <div className="p-4 space-y-4">
-            {sitioEfetivo!=null && <CustosDiretos key={detalhe.id} programacaoId={detalhe.id} propriedadeId={sitioEfetivo} podeLancar={podeLancar} />}
-            {podeLancar && detalhe.status === "ABERTA" && (
-              <Button
-                secondary
-                onClick={() => {
-                  setNovo("participantes");
-                  setChaveProgramacao(crypto.randomUUID());
-                  setInicio("");
-                  setSelecionados([]);
-                  setCienciaSanitaria(false);
-                }}
-              >
-                Adicionar ou reintegrar participantes
-              </Button>
-            )}
-            {detalhe.participantes.map((p) => (
-              <section
-                key={p.id}
-                className="rounded-lg border border-border p-4"
-              >
-                {sitioEfetivo!=null && <details><summary>Custos desta participação</summary><CustosDiretos key={p.id} participacaoId={p.id} propriedadeId={sitioEfetivo} podeLancar={podeLancar} /></details>}
-                <div className="flex justify-between gap-3">
-                  <h3>
-                    {p.animal?.brinco ??
-                      animais.find((a) => a.animalId === p.animalId)?.brinco ??
-                      p.animalId}
-                  </h3>
-                  <Pill>{statusParticipanteIatf(p)}</Pill>
-                </div>
-                <p className="text-sm mt-2">
-                  Previsto: {horarioIatf(p.inicioPrevisto, p.precisaoTemporal)} · Início efetivo:{" "}
-                  {p.inicioEfetivo
-                    ? horarioIatf(p.inicioEfetivo, p.precisaoInicioEfetivo ?? "HORA")
-                    : "não confirmado"}
-                </p>
-                {podeLancar && !p.inicioEfetivo && !p.encerradoEm && (
-                  <Button
-                    secondary
-                    onClick={() => {
-                      setAcao({ tipo: "inicio", id: p.id });
-                      setDataHora("");
-                    }}
-                  >
-                    Confirmar início efetivo
-                  </Button>
-                )}
-                {podeLancar && !p.encerradoEm && (
-                  <Button
-                    secondary
-                    onClick={() => {
-                      setAcao({ tipo: "retirada", id: p.id });
-                      setMotivo("");
-                    }}
-                  >
-                    Retirar participação
-                  </Button>
-                )}
-                {p.motivoEncerramento && (
-                  <p className="text-sm">{p.motivoEncerramento}</p>
-                )}
-                <ProtocoloTimeline participante={p}/>
-                <div className="mt-3 space-y-2">
-                  {p.tarefas?.map((t) => (
-                    <div
-                      key={t.id}
-                      className="flex flex-wrap justify-between items-center gap-2 border-t border-border pt-2 text-sm"
-                    >
-                      <span>
-                        {t.nome ?? t.planejadoSnapshot?.etapa.nome ?? t.tipo} ·{" "}
-                        {t.previsaoPendente ? "Previsão a definir: início sem horário" : horarioIatf(t.previstaEm, t.precisaoTemporal)} · {statusTarefaIatf(t)}
-                      </span>
-                      {podeLancar &&
-                        !t.realizadaEm &&
-                        !t.dispensadaEm &&
-                        !p.encerradoEm && (
-                          <Button
-                            secondary
-                            onClick={() => {
-                              setAcao({ tipo: "revisao", id: t.id });
-                              setDataHora(t.previsaoPendente ? "" : inputHorarioIatf(t.previstaEm, t.precisaoTemporal));
-                              setMotivo("");
-                            }}
-                          >
-                            Revisar data explicitamente
-                          </Button>
-                        )}
-                      {podeLancar &&
-                        p.inicioEfetivo &&
-                        !p.encerradoEm &&
-                        !t.realizadaEm &&
-                        !t.dispensadaEm && (
-                          <Button
-                            secondary
-                            onClick={() =>
-                              setExecucao({ tarefa: t, animalId: p.animalId })
-                            }
-                          >
-                            Registrar execução
-                          </Button>
-                        )}
-                      {podeLancar && t.regularizacaoPendente && sitioEfetivo && <RegularizarOrigem path={`/reproducao/tarefas-iatf/${t.id}/regularizacao`} propriedadeId={sitioEfetivo} consumoMantido={consumoMantidoUltimaAnulacao(t.historicoRegularizacao)} onMudou={async()=>{if(detalhe) await abrir(detalhe.id); await onMudou?.();}} />}
-                      {(t.planejadoSnapshot || t.realizadoSnapshot) && (
-                        <DetalheEtapa tarefa={t} />
-                      )}
-                      {(t.fatoId ||
-                        t.aplicacaoId ||
-                        t.tentativaId ||
-                        t.avaliacaoId) && (
-                        <span className="text-ink-3">Fato vinculado</span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </section>
-            ))}
-          </div>
-        </Panel>
+        </div>
       )}
       {modo === "cadastros" && <Panel>
         <CabecalhoTabela
@@ -670,7 +558,7 @@ export function Iatf({
           )}
           <ErrorBox erro={erroConsulta} />
           {erroConsulta && <Button secondary onClick={() => void carregar()}>Tentar novamente</Button>}
-          {protocolos.map((p) => (
+          {protocolos.length > 0 && <ListaRascunho itens={protocolos} rotulo="versões de protocolo" texto={p => `${p.nome} ${p.versao}`} renderizar={p => (
             <section
               key={p.id}
               className="text-sm border border-border rounded-lg p-3"
@@ -694,7 +582,7 @@ export function Iatf({
                 {p.ativo !== false && <Button secondary disabled={ocupado} onClick={() => void executar(async () => { await reqIatf(`/reproducao/protocolos/${p.id}/inativar`, {}); await carregar(); })}>Inativar versão</Button>}
               </div>}
             </section>
-          ))}
+          )} />}
           {!carregando && !erroConsulta && consultaVisivel && !protocolos.length && (
             <Empty>
               <div className="space-y-3">
@@ -954,24 +842,7 @@ export function Iatf({
             ) : (
               <>
                 {novo !== "participantes" && (
-                  <label className="text-sm">
-                    Versão publicada
-                    <select
-                      className={classeInput}
-                      required
-                      value={protocoloId}
-                      onChange={(e) => setProtocoloId(e.target.value)}
-                    >
-                      <option value="">Selecione</option>
-                      {protocolos
-                        .filter((p) => p.publicado && p.ativo !== false)
-                        .map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.nome} · v{p.versao}
-                          </option>
-                        ))}
-                    </select>
-                  </label>
+                  <SeletorVersaoProtocolo tipo="REPRODUTIVO" rotulo="Versão publicada" valor={protocoloId} propriedadeId={sitioEfetivo ?? undefined} onChange={setProtocoloId} />
                 )}
                 <CampoDataIatf rotulo="Início previsto" valor={inicio} onChange={setInicio} />
                 <label className="text-sm">
@@ -989,15 +860,7 @@ export function Iatf({
                 <p className="text-sm">
                   Participantes: {selecionados.length}/100
                 </p>
-                {animais
-                  .filter(
-                    (a) =>
-                      novo !== "participantes" ||
-                      !detalhe?.participantes.some(
-                        (p) => p.animalId === a.animalId && !p.encerradoEm,
-                      ),
-                  )
-                  .map((a) => (
+                <ListaRascunho itens={animais} rotulo="animais disponíveis" texto={a => `${a.brinco} ${a.nome ?? ""}`} renderizar={a => (
                     <label key={a.animalId} className="text-sm">
                       <input
                         type="checkbox"
@@ -1016,7 +879,7 @@ export function Iatf({
                       />{" "}
                       {a.brinco} {a.nome}
                     </label>
-                  ))}
+                  )} />
               </>
             )}
           </form>
@@ -1109,13 +972,16 @@ export function Iatf({
       )}
       {execucao && painel && (
         <ExecucaoIatf
+          key={`${sitioEfetivo}:${execucao.tarefa.id}`}
           propriedadeId={sitioEfetivo}
           tarefa={execucao.tarefa}
           animalId={execucao.animalId}
           painel={painel}
-          onFechar={() => setExecucao(null)}
+          onFechar={() => { filaOperacao.current = []; setExecucao(null); }}
           onSalvo={() => {
-            setExecucao(null);
+            const proxima = filaOperacao.current.shift();
+            setExecucao(proxima ? { tarefa: proxima.tarefaOrigem, animalId: proxima.animal.id } : null);
+            setOperacaoRevisao(v => v + 1);
             void Promise.all([detalhe ? abrir(detalhe.id) : Promise.resolve(), onMudou?.()]);
           }}
         />
@@ -1124,7 +990,7 @@ export function Iatf({
   );
 }
 
-function ExecucaoIatf({
+export function ExecucaoIatf({
   propriedadeId,
   tarefa,
   animalId,
@@ -1145,12 +1011,14 @@ function ExecucaoIatf({
   const [erro, setErro] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState(false);
   const [chave] = useState(() => crypto.randomUUID());
+  const previaInicio = usePreviaInicioExecucao(tarefa.id, propriedadeId, realizada ? dataHoraISO(realizada) : "");
   const registrar = async (dados: object) => {
     if (!propriedadeId) throw new Error("Selecione um sítio.");
     await reqV4(`/reproducao/tarefas-iatf/${tarefa.id}/execucao`, {
       propriedadeId,
       chave,
       realizadaEm: dataHoraISO(realizada),
+      ...(previaInicio.ciencia ? { cienciaRecalendarioLegado: true } : {}),
       dados,
       motivo: motivo || undefined,
     }, "POST", propriedadeId);
@@ -1221,7 +1089,7 @@ function ExecucaoIatf({
           <Button secondary onClick={onFechar}>
             Cancelar
           </Button>
-          <Button type="submit" form="execucao-iatf" disabled={ocupado}>
+          <Button type="submit" form="execucao-iatf" disabled={ocupado || !previaInicio.podeConfirmar}>
             Continuar
           </Button>
         </>
@@ -1232,6 +1100,7 @@ function ExecucaoIatf({
         className="grid gap-4"
         onSubmit={(e) => {
           e.preventDefault();
+          if (!previaInicio.podeConfirmar) return;
           if (["APLICACAO", "TENTATIVA", "AVALIACAO", "EXAME"].includes(tarefa.tipo)) {
             setPreparado(true);
             return;
@@ -1245,11 +1114,11 @@ function ExecucaoIatf({
       >
         <ErrorBox erro={erro} />
         <p className="text-sm">
-          Planejado: {tarefa.previsaoPendente ? "Previsão a definir: início sem horário" : horarioIatf(tarefa.previstaEm, tarefa.precisaoTemporal)}. A execução não desloca as
-          próximas etapas.
+          Planejado: {tarefa.previsaoPendente ? "Previsão a definir: início sem horário" : horarioIatf(tarefa.previstaEm, tarefa.precisaoTemporal)}.
         </p>
         <DetalheEtapa tarefa={tarefa} />
         <CampoDataIatf rotulo="Data realizada" valor={realizada} onChange={setRealizada} />
+        {previaInicio.conteudo}
         <label className="text-sm">
           Motivo do desvio, se houver
           <input

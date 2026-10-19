@@ -79,6 +79,8 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
     const hash = window.location.hash.slice(1);
     return ["reproducao", "sanidade", "nutricao"].includes(hash) ? hash : "resumo";
   };
+  const sitioDaUrl = () => { const valor = Number(new URLSearchParams(window.location.search).get("sitio")); return Number.isSafeInteger(valor) && valor > 0 ? valor : undefined; };
+  const [sitioConsulta, setSitioConsulta] = useState(sitioDaUrl);
   const [secaoAtiva, setSecaoAtiva] = useState(secaoDaUrl);
   const selecionarSecao = (secao: string) => {
     setSecaoAtiva(secao);
@@ -86,7 +88,7 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
     window.history.pushState(window.history.state, "", url.pathname + url.search + url.hash);
   };
   useEffect(() => {
-    const atualizar = () => setSecaoAtiva(secaoDaUrl());
+    const atualizar = () => { setSecaoAtiva(secaoDaUrl()); setSitioConsulta(sitioDaUrl()); };
     window.addEventListener("hashchange", atualizar); window.addEventListener("popstate", atualizar);
     return () => { window.removeEventListener("hashchange", atualizar); window.removeEventListener("popstate", atualizar); };
   }, []);
@@ -144,14 +146,14 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
   const carregar = useCallback(async () => {
     try {
       setErro(null); setIndisponivel(false);
-      const ficha = await buscarFichaAnimal(id, { periodoDias: periodoGmd });
+      const ficha = sitioConsulta != null ? await buscarFichaAnimal(id, { periodoDias: periodoGmd }, sitioConsulta) : await buscarFichaAnimal(id, { periodoDias: periodoGmd });
       setAnimal(ficha);
       tocar();
     } catch (e) {
       setIndisponivel(e instanceof RebanhoApiError && e.status === 404);
       setErro(e instanceof Error ? e.message : String(e));
     }
-  }, [id, periodoGmd, tocar]);
+  }, [id, periodoGmd, tocar, sitioConsulta]);
   useEffect(() => { void carregar(); }, [carregar]);
   useEffect(() => { if (animal?.sexo === "M" && secaoAtiva === "reproducao") setSecaoAtiva("resumo"); }, [animal?.sexo, secaoAtiva]);
   useEffect(() => { obterCatalogos().then(setCatalogos).catch(() => undefined); }, []);
@@ -221,7 +223,7 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
   const somaComposicao = animal.composicao.reduce((total, item) => total + item.fracao64, 0);
 
   return <div className="shell-wide pagina-financeira">
-    <nav aria-label="Navegação" className="pec-breadcrumb"><button type="button" onClick={() => navegarPara("/pecuaria/rebanho")}>Rebanho</button><span aria-hidden="true">/</span><button type="button" onClick={onVoltar}>Animais</button><span aria-hidden="true">/</span><span aria-current="page">{animal.brinco}</span></nav>
+    <nav aria-label="Navegação" className="pec-breadcrumb"><button type="button" onClick={() => navegarPara("/pecuaria/rebanho")}>Rebanho</button><span aria-hidden="true">/</span><button type="button" onClick={onVoltar}>Animais</button><span aria-hidden="true">/</span><span aria-current="page">{animal.brinco}</span>{new URLSearchParams(window.location.search).has("participacaoId") && new URLSearchParams(window.location.search).get("retorno")?.startsWith("/pecuaria/") && <a className="underline" href={new URLSearchParams(window.location.search).get("retorno")!} onClick={e => { if (e.button === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) { e.preventDefault(); navegarPara(new URLSearchParams(window.location.search).get("retorno")!); } }}>Voltar ao protocolo</a>}</nav>
     {erro && <div className="mt-3"><ErrorBox erro={erro} /></div>}
     <article className="pec-ficha ficha-v4">
     <div className="ficha-animal-cabecalho">
@@ -414,9 +416,9 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
         <AuditoriaAnimal id={animal.id} recarregarToken={refreshToken} />
       </SecaoRecolhivel>
       </div>
-      {animal.sexo==="F"&&<section id="reproducao" role="tabpanel" aria-labelledby="aba-reproducao" hidden={secaoAtiva !== "reproducao"} className="scroll-mt-6"><ReproducaoAnimal animalId={animal.id} propriedadeId={localizacaoAtual?.propriedade?.id ?? null} podeLancar={podeLancar} recarregarToken={refreshToken} onSituacao={setSituacaoReprodutiva} /></section>}
+      {animal.sexo==="F"&&<section id="reproducao" role="tabpanel" aria-labelledby="aba-reproducao" hidden={secaoAtiva !== "reproducao"} className="scroll-mt-6"><ReproducaoAnimal animalId={animal.id} propriedadeId={sitioConsulta ?? localizacaoAtual?.propriedade?.id ?? null} podeLancar={podeLancar} recarregarToken={refreshToken} onSituacao={setSituacaoReprodutiva} /></section>}
       <section id="sanidade" role="tabpanel" aria-labelledby="aba-sanidade" hidden={secaoAtiva !== "sanidade"} className="scroll-mt-6">
-      <SanidadeAnimal onCarencia={setCarenciaResumo} animalId={animal.id} propriedadeId={localizacaoAtual?.propriedade?.id ?? null} podeLancar={podeLancar} recarregarToken={refreshToken} onMudou={() => { void carregar(); }} />
+      <SanidadeAnimal onCarencia={setCarenciaResumo} animalId={animal.id} propriedadeId={sitioConsulta ?? localizacaoAtual?.propriedade?.id ?? null} podeLancar={podeLancar} recarregarToken={refreshToken} onMudou={() => { void carregar(); }} />
       </section>
       <section id="nutricao" role="tabpanel" aria-labelledby="aba-nutricao" hidden={secaoAtiva !== "nutricao"} className="scroll-mt-6"><h2 className="h2 mb-4">Nutrição</h2>
       <NutricaoAnimal animalId={animal.id} recarregarToken={refreshToken} />

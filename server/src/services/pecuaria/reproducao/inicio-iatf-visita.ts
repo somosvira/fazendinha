@@ -44,12 +44,12 @@ export async function confirmarInicioIatfVisitaTx(tx: Prisma.TransactionClient,
   if (!protocoloId && !explicita) erro("Atividade antiga sem protocolo: selecione uma participação explicitamente", "participanteIatfId");
   const pendencias = await tx.participacaoProtocolo.findMany({ where: {
     ...(explicita ? { id: explicita } : { animalId, propriedadeId, protocoloId: protocoloId!, inicioEfetivo: null, canceladaEm: null,
-      rodada: { status: "ABERTA", propriedadeId } }),
+      OR: [{ rodadaId: null }, { rodada: { status: "ABERTA", propriedadeId } }] }),
   }, include: { rodada: true } });
   const participante = pendencias[0];
   if (explicita && (!participante || participante.animalId !== animalId || participante.propriedadeId !== propriedadeId
     || (protocoloId && participante.protocoloId !== protocoloId) || participante.canceladaEm || participante.inicioEfetivo
-    || participante.rodada?.status !== "ABERTA" || participante.rodada.propriedadeId !== propriedadeId))
+    || participante.rodada && (participante.rodada.status !== "ABERTA" || participante.rodada.propriedadeId !== propriedadeId)))
     erro("Participação incompatível com animal, sítio, protocolo ou início pendente", "participanteIatfId");
   if (!explicita && pendencias.length > 1) erro("Há várias participações compatíveis; escolha qual iniciar", "participanteIatfId");
   const protocolo = await carregarVersaoTx(tx, protocoloId ?? participante!.protocoloId, "REPRODUTIVO");

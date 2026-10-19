@@ -252,6 +252,7 @@ export function pathToTab(pathname: string): Tab | null {
   if (path === "/pecuaria/rebanho/sanidade") return "pec-sanidade";
   if (path === "/pecuaria/rebanho/nutricao") return "pec-nutricao";
   if (path === "/pecuaria/rebanho/cadastros" || path.startsWith("/configuracoes/pecuaria")) return "config";
+  if (path.startsWith("/pecuaria/sanidade/")) return "pec-sanidade";
   if (path.startsWith("/pecuaria/reproducao/")) return "pec-reproducao";
   if (path.startsWith("/pecuaria/visitas/")) return "pec-visitas";
   if (parseProdutoEstoqueId(path) != null) return "estoque";

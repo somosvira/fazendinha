@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { HistoricoReprodutivo } from "./HistoricoReprodutivo";
 afterEach(()=>{cleanup();window.history.replaceState({},"","/");});
@@ -7,7 +7,7 @@ it("retorna do parto com tipos, período, tamanho e página da consulta",()=>{
  const retorno="/pecuaria/rebanho/animais/a?historicoTipos=Parto&historicoInicio=2020-01-01&historicoFim=2020-12-31&historicoTamanho=5&historicoPagina=2#reproducao";
  window.history.replaceState({},"",retorno);
  const fatos=Array.from({length:12},(_,i)=>({id:`p${i}`,animalId:"a",propriedadeId:7,data:`2020-01-${String(i+1).padStart(2,"0")}`,grupo:"Parto",tipo:"DISTOCICO"}));
- const montar=()=>render(<HistoricoReprodutivo fatos={fatos} programacoes={[]} onAbrir={vi.fn()}/>);
+ const montar=()=>render(<HistoricoReprodutivo fatos={fatos} animalId="a" onAbrir={vi.fn()}/>);
  const tela=montar();
  expect(screen.getByText("6–10 de 12 registros")).toBeTruthy();
  fireEvent.click(screen.getAllByRole("button",{name:"Ver detalhes"})[0]);
@@ -21,7 +21,17 @@ it("retorna do parto com tipos, período, tamanho e página da consulta",()=>{
 });
 it("data inválida na URL bloqueia os resultados sem quebrar o seletor",()=>{
  window.history.replaceState({},"","/pecuaria/rebanho/animais/a?historicoInicio=2026-02-30#reproducao");
- render(<HistoricoReprodutivo fatos={[]} programacoes={[]} onAbrir={vi.fn()}/>);
+ render(<HistoricoReprodutivo fatos={[]} animalId="a" onAbrir={vi.fn()}/>);
  expect(screen.getByRole("alert")).toBeTruthy();
  expect(screen.getByText("Nenhum evento registrado neste período e tipo.")).toBeTruthy();
+});
+
+it("limita a dez mesmo ao restaurar URL antiga com cinquenta registros por página", () => {
+ window.history.replaceState({},"","/pecuaria/rebanho/animais/a?historicoTamanho=50#reproducao");
+ const fatos=Array.from({length:21},(_,i)=>({id:`p${i}`,animalId:"a",propriedadeId:7,data:"2020-01-01",grupo:"Parto",tipo:"DISTOCICO"}));
+ render(<HistoricoReprodutivo fatos={fatos} onAbrir={()=>{}} />);
+ expect((screen.getByLabelText("Registros por página") as HTMLSelectElement).value).toBe("10");
+ expect(within(screen.getByRole("table",{name:"Histórico reprodutivo"})).getAllByRole("button",{name:"Ver detalhes"})).toHaveLength(10);
+ expect(within(screen.getByRole("list",{name:"Histórico reprodutivo"})).getAllByRole("listitem")).toHaveLength(10);
+ expect(screen.queryByRole("option",{name:"50",exact:true})).toBeNull();
 });

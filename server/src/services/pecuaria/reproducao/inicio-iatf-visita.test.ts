@@ -46,6 +46,13 @@ describe("contrato de início IATF na visita", () => {
     const varias = transacao([participante, { ...participante, id: randomUUID() }]);
     await expect(confirmarInicioIatfVisitaTx(varias.tx, atividade, animalId, 1, dados, null)).rejects.toThrow("várias participações");
   });
+  it("reutiliza a adesão individual sem criar programação ou participação duplicada", async () => {
+    const { tx } = transacao([{ ...participante, rodada: null }]);
+    await confirmarInicioIatfVisitaTx(tx, atividade, animalId, 1, { ...dados, participanteIatfId: participanteId }, null);
+    expect(iniciarParticipanteTx).toHaveBeenCalledWith(tx, participanteId, 1, dados.inicioEfetivo, null, true);
+    expect(criarProgramacaoReprodutivaTx).not.toHaveBeenCalled();
+    expect(criarParticipacaoPlanejadaTx).not.toHaveBeenCalled();
+  });
   it.each([
     { animalId: randomUUID() }, { propriedadeId: 2 }, { protocoloId: randomUUID() },
     { inicioEfetivo: new Date() }, { canceladaEm: new Date() }, { rodada: { status: "ENCERRADA", propriedadeId: 1 } },

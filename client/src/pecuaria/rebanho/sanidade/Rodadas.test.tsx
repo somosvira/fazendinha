@@ -3,8 +3,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { AnimalResumo } from "../types";
 vi.mock("../api", () => ({ obterCatalogos: vi.fn().mockResolvedValue({ propriedades: [{ id: 1, nome: "Sítio A" }] }), buscarFichaAnimal: vi.fn() }));
-const mocks = vi.hoisted(() => ({ prever: vi.fn(), criar: vi.fn(), adicionar: vi.fn(), preverAdicao: vi.fn(), rodadas: vi.fn(), rodada: vi.fn(), etapas: vi.fn(), participantes: vi.fn(), tarefas: vi.fn() }));
+const mocks = vi.hoisted(() => ({ prever: vi.fn(), criar: vi.fn(), adicionar: vi.fn(), preverAdicao: vi.fn(), rodadas: vi.fn(), rodada: vi.fn(), etapas: vi.fn(), participantes: vi.fn(), tarefas: vi.fn(), cabecalhoComum: vi.fn(), etapasComuns: vi.fn(), tarefasComuns: vi.fn(), eventoComum: vi.fn() }));
 vi.mock("./rodadas-api", async (original) => ({ ...await original<typeof import("./rodadas-api")>(), preverRodada: mocks.prever, criarRodada: mocks.criar, adicionarParticipantes: mocks.adicionar, preverParticipantes: mocks.preverAdicao, listarRodadas: mocks.rodadas, consultarRodada: mocks.rodada, listarEtapasRodada: mocks.etapas, listarParticipantesRodada: mocks.participantes, listarTarefasEtapa: mocks.tarefas }));
+vi.mock("../protocolos/api", async original => ({ ...await original<typeof import("../protocolos/api")>(), obterCabecalhoProtocolo: mocks.cabecalhoComum, obterEtapasProtocolo: mocks.etapasComuns, obterTarefasProtocolo: mocks.tarefasComuns, registrarEventoProtocolo: mocks.eventoComum, reqProtocolo: vi.fn().mockImplementation(async (path: string) => path.startsWith("/versoes") ? { itens: [{ id: "p", nome: "Protocolo publicado", versao: 2 }], total: 1, pagina: 1, porPagina: 10 } : { itens: [], total: 0, pagina: 1, porPagina: 10 }) }));
+vi.mock("../protocolos/ProcedimentosProtocolo", () => ({ ProcedimentosProtocolo: () => null }));
+vi.mock("../reproducao/RegularizarOrigem", () => ({ RegularizarOrigem: ({ propriedadeId }: { propriedadeId: number }) => <p data-testid="regularizacao-sitio">{propriedadeId}</p>, consumoMantidoUltimaAnulacao: () => false }));
 vi.mock("./api", async (original) => ({ ...await original<typeof import("./api")>(), reqSanidade: vi.fn().mockResolvedValue([{ id: "p", nome: "Protocolo publicado", versao: 2, ativo: true, publicadoEm: "2026-10-01" }]) }));
 vi.mock("../components/SeletorAnimais", () => ({ SeletorAnimais: ({ onConfirmar }: { onConfirmar: (v: AnimalResumo[]) => void }) => <button onClick={() => onConfirmar([{ id: "a", brinco: "A01", propriedade: { id: 1, nome: "Sítio A" } }, { id: "b", brinco: "A02", propriedade: { id: 1, nome: "Sítio A" } }] as AnimalResumo[])}>Usar animais</button> }));
 vi.mock("../../../components/DatePicker", () => ({ DatePicker: ({ value, onChange, ...props }: { value: string; onChange: (v: string) => void }) => <input {...props} type="date" value={value} onChange={(e) => onChange(e.target.value)} /> }));
@@ -68,15 +71,34 @@ describe("ciclos de protocolos", () => {
     fireEvent.click(screen.getByRole("button", { name: "Tentar novamente" }));
     await screen.findByText(/Nenhum ciclo corresponde/);
   });
-  it("etapas separam contagens e ações de cada tarefa independem do filtro de animal", async () => {
+  it("etapa comum mostra contagens e reutiliza executor com tarefa e sítio da origem", async () => {
+    const contagens = { total: 7, atendidos: 2, pendentes: 5 };
+    mocks.cabecalhoComum.mockResolvedValue({ ...rodada, modo: "COLETIVO", tipo: "SANITARIO", contagens, precisaoTemporal: "DIA" });
+    mocks.etapasComuns.mockResolvedValue({ ...pagina([{ id: "e", nome: "Coleta", ordem: 1, diaRelativo: 0, unidadeIntervalo: "DIAS", previstaPara: "2026-10-06", precisaoTemporal: "DIA", contagens }]), porPagina: 10 });
+    const origem = { id: "t", etapaId: "e", execucaoId: "x", previstaPara: "2026-10-06", situacao: "PENDENTE", parametros: { tipo: "EXAME" }, execucao: { animalId: "a", propriedadeId: 1, animal: { id: "a", brinco: "A01", nome: null }, protocolo: rodada.protocolo } };
+    mocks.tarefasComuns.mockResolvedValue({ ...pagina([{ id: "t", participacaoId: "x", animal: origem.execucao.animal, propriedadeId: 1, situacao: "SEM_REGISTRO", previstaPara: origem.previstaPara, precisaoTemporal: "DIA", realizadaEm: null, acoes: { atender: true, justificar: true, adiar: true }, tarefaOrigem: origem }]), porPagina: 10 });
+    mocks.eventoComum.mockResolvedValue({ id: "evento" });
     const executar = vi.fn(), acao = vi.fn();
     render(<AgendaRodadas filtros={{ pagina: 1, animalId: "" }} podeLancar rodadaId="r" recarregarToken={0} onAbrir={vi.fn()} onExecutar={executar} onAcao={acao} />);
-    await screen.findAllByText("7 previstas · 5 pendentes · 2 realizadas · 0 dispensadas · 1 atrasadas · 0 canceladas · 0 a regularizar · 0 encerradas sem substituição");
-    expect(screen.getAllByText("1 previstas · 1 pendentes · 0 realizadas · 0 dispensadas · 0 atrasadas · 0 canceladas · 0 a regularizar · 0 encerradas sem substituição").length).toBeGreaterThan(0);
-    fireEvent.click(screen.getAllByRole("button", { name: "Abrir tarefas da etapa" })[0]);
-    fireEvent.click((await screen.findAllByRole("button", { name: "Executar tarefa" }))[0]);
+    await screen.findByText("2 atendidos · 5 pendentes");
+    fireEvent.click((await screen.findAllByRole("button", { name: "Atender" }))[0]);
     expect(executar.mock.calls[0][0][0].execucao.animalId).toBe("a");
-    fireEvent.click(screen.getAllByRole("button", { name: "Adiar" })[0]);
-    expect(acao).toHaveBeenCalledWith("adiar", expect.objectContaining({ id: "t", execucao: expect.objectContaining({ propriedadeId: 1 }) }));
+    fireEvent.click(screen.getByRole("button", { name: "Adiar" }));
+    fireEvent.change(screen.getByLabelText("Nova previsão"), { target: { value: "2026-10-08" } });
+    fireEvent.change(screen.getByLabelText("Justificativa"), { target: { value: "Animal indisponível na data prevista" } });
+    fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
+    await waitFor(() => expect(mocks.eventoComum).toHaveBeenCalledWith("t", expect.objectContaining({ tipo: "ADIAMENTO", propriedadeId: 1, previstaPara: "2026-10-08" })));
+
   });
+  it("consulta ciclo de origem A no sítio efetivo B e conserva B na regularização", async () => {
+    const contagens = { total: 1, atendidos: 0, pendentes: 1 };
+    mocks.cabecalhoComum.mockResolvedValue({ ...rodada, modo: "COLETIVO", tipo: "SANITARIO", propriedadeId: 1, propriedadeContextoId: 2, contagens, precisaoTemporal: "DIA" });
+    mocks.etapasComuns.mockResolvedValue({ itens: [{ id: "e", nome: "Coleta", diaRelativo: 0, previstaPara: "2026-10-06", precisaoTemporal: "DIA", contagens }], total: 1, pagina: 1, porPagina: 10 });
+    mocks.tarefasComuns.mockResolvedValue({ itens: [{ id: "t", participacaoId: "x", animal: { id: "a", brinco: "A01", nome: null }, propriedadeId: 1, situacao: "REGULARIZACAO_PENDENTE", previstaPara: "2026-10-06", precisaoTemporal: "DIA", realizadaEm: null, acoes: { regularizar: true }, tarefaOrigem: { id: "t", regularizacaoPendente: true, propriedadeRegularizacaoId: 2, execucao: { propriedadeId: 1 } } }], total: 1, pagina: 1, porPagina: 10 });
+    render(<AgendaRodadas filtros={{ propriedadeId: 2 }} podeLancar rodadaId="r" recarregarToken={0} onAbrir={vi.fn()} onExecutar={vi.fn()} onAcao={vi.fn()} />);
+    expect(await screen.findByTestId("regularizacao-sitio")).toHaveProperty("textContent", "2");
+    expect(mocks.cabecalhoComum).toHaveBeenCalledWith({ programacaoId: "r" }, 2);
+    expect(mocks.tarefasComuns).toHaveBeenCalledWith({ programacaoId: "r" }, expect.objectContaining({ etapaId: "e" }), 2);
+  });
+
 });

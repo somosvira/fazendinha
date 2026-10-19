@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 const mocks = vi.hoisted(() => ({ req: vi.fn() }));
 vi.mock("./api", async (original) => ({ ...await original<typeof import("./api")>(), reqSanidade: mocks.req, listarServicos: vi.fn().mockResolvedValue([]) }));
+vi.mock("../protocolos/api", async original => ({ ...await original<typeof import("../protocolos/api")>(), reqProtocolo: vi.fn().mockResolvedValue({ itens: ["A", "B"].map(id => ({ id, nome: `Protocolo ${id}`, versao: 1 })), total: 2, pagina: 1, porPagina: 10 }) }));
 vi.mock("../api", () => ({ listarAnimais: vi.fn().mockResolvedValue({ itens: [] }), listarLotes: vi.fn().mockResolvedValue([]), buscarFichaAnimal: vi.fn() }));
 vi.mock("./SanidadeAnimal", () => ({ SanidadeAnimal: ({ onMudou, filtrosUI }: { onMudou?: (id?: string) => void; filtrosUI?: import("react").ReactNode }) => <>{filtrosUI}<button onClick={() => onMudou?.("salva")}>Salvar aplicação de teste</button></> }));
 vi.mock("./RateioServico", () => ({ RateioServico: () => <p>Gerenciador aberto</p> }));
@@ -48,6 +49,7 @@ describe("busca e atualização da Sanidade", () => {
     window.history.replaceState(null, "", "/pecuaria/rebanho/sanidade?aba=agenda");
     render(<FormFatoSanitario tipo="protocolo" animalInicial="animal" fixo onFechar={vi.fn()} onSalvo={vi.fn()} />);
     await screen.findByText(/Sítio na data: Sítio B/);
+    await screen.findByRole("option", { name: "Protocolo A · v1" });
     fireEvent.change(screen.getByLabelText(/Protocolo publicado/), { target: { value: "A" } });
     fireEvent.submit(document.getElementById("novo-fato-sanitario")!);
     const ciencia = await screen.findByRole("switch", { name: /Confirmo iniciar outro protocolo/ });

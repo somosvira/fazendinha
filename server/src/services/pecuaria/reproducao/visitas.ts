@@ -563,6 +563,7 @@ export async function confirmarAtividadeTx(
                 {
                   propriedadeId: input.propriedadeId,
                   realizadaEm: bruto.realizadaEm,
+                  cienciaRecalendarioLegado: bruto.cienciaRecalendarioLegado === true,
                   chave: input.chave,
                   dados: (bruto.dados as Record<string, unknown>) ?? {},
                   motivo:

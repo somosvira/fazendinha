@@ -52,12 +52,12 @@ export async function criarProgramacaoReprodutivaTx(tx: Tx, { data }: { data: Da
   return tx.programacaoIatf.findUniqueOrThrow({ where: { id: p.id } });
 }
 
-type DadosParticipacao = Pick<ParticipanteIatf, "programacaoId" | "animalId" | "inicioPrevisto"> & Partial<Pick<ParticipanteIatf, "id" | "referenciaExterna" | "inicioEfetivo" | "encerradoEm" | "motivoEncerramento" | "criadoEm" | "criadoPorId" | "precisaoTemporal" | "precisaoInicioEfetivo">>;
+type DadosParticipacao = Pick<ParticipanteIatf, "animalId" | "inicioPrevisto"> & { programacaoId: string } & Partial<Pick<ParticipanteIatf, "id" | "referenciaExterna" | "inicioEfetivo" | "encerradoEm" | "motivoEncerramento" | "criadoEm" | "criadoPorId" | "precisaoTemporal" | "precisaoInicioEfetivo">>;
 export async function criarParticipacaoReprodutivaTx(tx: Tx, { data }: { data: DadosParticipacao }): Promise<ParticipanteIatf> {
   const rodadaId = await resolverIdReprodutivoTx(tx, "programacao", data.programacaoId);
   const programa = await tx.programacaoProtocolo.findUniqueOrThrow({ where: { id: rodadaId } });
   const p = await tx.participacaoProtocolo.create({ data: { id: data.id, referenciaExterna: data.referenciaExterna,
-    rodadaId, protocoloId: programa.protocoloId, propriedadeId: programa.propriedadeId, animalId: data.animalId,
+    rodadaId, origemCalendario: "REFERENCIA_PROGRAMADA", protocoloId: programa.protocoloId, propriedadeId: programa.propriedadeId, animalId: data.animalId,
     inicio: data.inicioPrevisto, inicioEfetivo: data.inicioEfetivo, precisaoTemporal: data.precisaoTemporal ?? "HORA", precisaoInicioEfetivo: data.precisaoInicioEfetivo ?? (data.inicioEfetivo ? "HORA" : null),
     canceladaEm: data.encerradoEm, motivoCancelamento: data.motivoEncerramento, criadoEm: data.criadoEm, criadoPorId: data.criadoPorId } });
   return tx.participanteIatf.findUniqueOrThrow({ where: { id: p.id } });

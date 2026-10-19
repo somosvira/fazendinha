@@ -1,5 +1,140 @@
 [
   {
+    "table": "EventoTarefaProtocolo",
+    "schema": "pecuaria",
+    "columns": [
+      {
+        "name": "id",
+        "type": "text",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "tarefaId",
+        "type": "text",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "tipo",
+        "type": "pecuaria.\"TipoEventoTarefaProtocolo\"",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "ocorridaEm",
+        "type": "timestamp(3) without time zone",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "motivo",
+        "type": "text",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "previsaoAnterior",
+        "type": "timestamp(3) without time zone",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "previsaoNova",
+        "type": "timestamp(3) without time zone",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "precisaoAnterior",
+        "type": "pecuaria.\"PrecisaoCalendarioProtocolo\"",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "precisaoNova",
+        "type": "pecuaria.\"PrecisaoCalendarioProtocolo\"",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "eventoCorrigidoId",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "registradoEm",
+        "type": "timestamp(3) without time zone",
+        "default": "CURRENT_TIMESTAMP",
+        "nullable": false
+      },
+      {
+        "name": "registradoPorId",
+        "type": "integer",
+        "default": null,
+        "nullable": true
+      }
+    ],
+    "indexes": [
+      {
+        "name": "EventoTarefaProtocolo_pkey",
+        "definition": "CREATE UNIQUE INDEX \"EventoTarefaProtocolo_pkey\" ON pecuaria.\"EventoTarefaProtocolo\" USING btree (id)"
+      },
+      {
+        "name": "EventoTarefaProtocolo_tarefaId_registradoEm_id_idx",
+        "definition": "CREATE INDEX \"EventoTarefaProtocolo_tarefaId_registradoEm_id_idx\" ON pecuaria.\"EventoTarefaProtocolo\" USING btree (\"tarefaId\", \"registradoEm\", id)"
+      },
+      {
+        "name": "EventoTarefaProtocolo_eventoCorrigidoId_idx",
+        "definition": "CREATE INDEX \"EventoTarefaProtocolo_eventoCorrigidoId_idx\" ON pecuaria.\"EventoTarefaProtocolo\" USING btree (\"eventoCorrigidoId\")"
+      },
+      {
+        "name": "EventoTarefaProtocolo_registradoPorId_idx",
+        "definition": "CREATE INDEX \"EventoTarefaProtocolo_registradoPorId_idx\" ON pecuaria.\"EventoTarefaProtocolo\" USING btree (\"registradoPorId\")"
+      }
+    ],
+    "triggers": [
+      {
+        "name": "EventoTarefaProtocolo_validar",
+        "function": "CREATE OR REPLACE FUNCTION pecuaria.validar_evento_tarefa_protocolo()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n  IF TG_OP = 'UPDATE' THEN RAISE EXCEPTION 'Evento operacional imutável; registre uma retificação' USING ERRCODE = '23514'; END IF;\n  IF NEW.\"eventoCorrigidoId\" IS NOT NULL AND NOT EXISTS (\n    SELECT 1 FROM pecuaria.\"EventoTarefaProtocolo\" e WHERE e.id = NEW.\"eventoCorrigidoId\" AND e.\"tarefaId\" = NEW.\"tarefaId\" AND e.tipo <> 'RETIFICACAO_JUSTIFICATIVA'\n  ) THEN RAISE EXCEPTION 'Retificação exige evento operacional da mesma tarefa' USING ERRCODE = '23514'; END IF;\n  RETURN NEW;\nEND $function$\n",
+        "definition": "CREATE TRIGGER \"EventoTarefaProtocolo_validar\" BEFORE INSERT OR UPDATE ON pecuaria.\"EventoTarefaProtocolo\" FOR EACH ROW EXECUTE FUNCTION pecuaria.validar_evento_tarefa_protocolo()"
+      }
+    ],
+    "constraints": [
+      {
+        "kind": "f",
+        "name": "EventoTarefaProtocolo_eventoCorrigidoId_fkey",
+        "definition": "FOREIGN KEY (\"eventoCorrigidoId\") REFERENCES pecuaria.\"EventoTarefaProtocolo\"(id) ON DELETE RESTRICT"
+      },
+      {
+        "kind": "c",
+        "name": "EventoTarefaProtocolo_formato_check",
+        "definition": "CHECK ((((tipo = 'ADIAMENTO'::pecuaria.\"TipoEventoTarefaProtocolo\") AND (\"previsaoAnterior\" IS NOT NULL) AND (\"previsaoNova\" IS NOT NULL) AND (\"precisaoAnterior\" IS NOT NULL) AND (\"precisaoNova\" IS NOT NULL) AND (\"eventoCorrigidoId\" IS NULL)) OR ((tipo = 'NAO_ATENDIDO'::pecuaria.\"TipoEventoTarefaProtocolo\") AND (\"previsaoAnterior\" IS NULL) AND (\"previsaoNova\" IS NULL) AND (\"precisaoAnterior\" IS NULL) AND (\"precisaoNova\" IS NULL) AND (\"eventoCorrigidoId\" IS NULL)) OR ((tipo = 'RETIFICACAO_JUSTIFICATIVA'::pecuaria.\"TipoEventoTarefaProtocolo\") AND (\"previsaoAnterior\" IS NULL) AND (\"previsaoNova\" IS NULL) AND (\"precisaoAnterior\" IS NULL) AND (\"precisaoNova\" IS NULL) AND (\"eventoCorrigidoId\" IS NOT NULL))))"
+      },
+      {
+        "kind": "c",
+        "name": "EventoTarefaProtocolo_motivo_check",
+        "definition": "CHECK (((length(btrim(motivo)) >= 5) AND (length(btrim(motivo)) <= 1000)))"
+      },
+      {
+        "kind": "p",
+        "name": "EventoTarefaProtocolo_pkey",
+        "definition": "PRIMARY KEY (id)"
+      },
+      {
+        "kind": "f",
+        "name": "EventoTarefaProtocolo_registradoPorId_fkey",
+        "definition": "FOREIGN KEY (\"registradoPorId\") REFERENCES \"Usuario\"(id) ON DELETE RESTRICT"
+      },
+      {
+        "kind": "f",
+        "name": "EventoTarefaProtocolo_tarefaId_fkey",
+        "definition": "FOREIGN KEY (\"tarefaId\") REFERENCES pecuaria.\"TarefaProtocolo\"(id) ON DELETE RESTRICT"
+      }
+    ]
+  },
+  {
     "table": "Animal",
     "schema": "pecuaria",
     "columns": [
@@ -2229,6 +2364,12 @@
         "type": "pecuaria.\"PrecisaoCalendarioProtocolo\"",
         "default": null,
         "nullable": true
+      },
+      {
+        "name": "origemCalendario",
+        "type": "pecuaria.\"OrigemCalendarioProtocolo\"",
+        "default": "'REFERENCIA_PROGRAMADA'::pecuaria.\"OrigemCalendarioProtocolo\"",
+        "nullable": false
       }
     ],
     "indexes": [

@@ -99,6 +99,7 @@ const execucao = z
     propriedadeId: s.sitio,
     chave: s.uuid,
     realizadaEm: s.dataOuHorario,
+    cienciaRecalendarioLegado: z.boolean().optional(),
     dados: z.record(z.unknown()),
     motivo: s.motivo.optional(),
   })

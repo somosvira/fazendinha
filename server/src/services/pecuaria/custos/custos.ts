@@ -1,3 +1,4 @@
+import { participacaoNoEscopoOperacao, programacaoNoEscopoOperacao } from "../protocolos/operacao.escopo.js";
 import { Prisma, type ClassificacaoCustoPecuaria } from "@prisma/client";
 import { prisma } from "../../../db.js";
 import { exigirPeriodoAberto } from "../../financeiro/regras.js";
@@ -19,7 +20,7 @@ function traduzirCalculo<T>(executar: () => T): T { try { return executar(); } c
 
 /** Só fatos do sítio consultado; localização atual nunca concede leitura de custo de outro sítio. */
 export async function carregarFontesCustoTx(tx: Db, propriedadeId: number, filtro: { animalId?: string; participacaoId?: string; programacaoId?: string; ids?: Partial<Record<TipoFonteCusto,string[]>> } = {}): Promise<FonteCusto[]> {
-  const participacoes = filtro.participacaoId ? [filtro.participacaoId] : filtro.programacaoId ? (await tx.participacaoProtocolo.findMany({ where: { propriedadeId, rodadaId: filtro.programacaoId }, select: { id: true } })).map(p=>p.id) : null;
+  const participacoes = filtro.participacaoId ? [filtro.participacaoId] : filtro.programacaoId ? (await tx.participacaoProtocolo.findMany({ where: { rodadaId: filtro.programacaoId, AND:[participacaoNoEscopoOperacao(propriedadeId)] }, select: { id: true } })).map(p=>p.id) : null;
   const base = { propriedadeId, ...(filtro.animalId ? { animalId: filtro.animalId } : {}) };
   const vinculo = participacoes ? { OR: [{ tarefa: { execucaoId: { in: participacoes } } }, { vinculosProtocolo: { some: { estado: "ATUAL", tarefa: { execucaoId: { in: participacoes } } } } }] } : {};
   const porId = (tipo: TipoFonteCusto) => filtro.ids ? { id: { in: filtro.ids[tipo] ?? [] } } : {};
@@ -64,8 +65,8 @@ async function verificarAlvoTx(tx: Db, propriedadeId: number, filtro: ConsultaCu
   } else if (filtro.aplicacaoId || filtro.exameId) {
     await fonteTx(tx,filtro.aplicacaoId?"APLICACAO":"EXAME",(filtro.aplicacaoId??filtro.exameId)!,propriedadeId);
   } else if (filtro.participacaoId) {
-    if (!await tx.participacaoProtocolo.findFirst({where:{id:filtro.participacaoId,propriedadeId},select:{id:true}})) throw new RebanhoError("NAO_ENCONTRADO","Participação não encontrada neste sítio");
-  } else if (!await tx.programacaoProtocolo.findFirst({where:{id:filtro.programacaoId,propriedadeId},select:{id:true}})) throw new RebanhoError("NAO_ENCONTRADO","Programação não encontrada neste sítio");
+    if (!await tx.participacaoProtocolo.findFirst({where:{id:filtro.participacaoId,AND:[participacaoNoEscopoOperacao(propriedadeId)]},select:{id:true}})) throw new RebanhoError("NAO_ENCONTRADO","Participação não encontrada neste sítio");
+  } else if (!await tx.programacaoProtocolo.findFirst({where:{id:filtro.programacaoId,AND:[programacaoNoEscopoOperacao(propriedadeId)]},select:{id:true}})) throw new RebanhoError("NAO_ENCONTRADO","Programação não encontrada neste sítio");
 }
 export async function consultarCustosTx(tx: Db, propriedadeId: number, filtro: ConsultaCustos, verValores: boolean, verDocumentos = verValores) {
   await verificarAlvoTx(tx,propriedadeId,filtro);
@@ -81,7 +82,7 @@ export async function consultarCustosTx(tx: Db, propriedadeId: number, filtro: C
     fontes=await carregarFontesCustoTx(tx,propriedadeId,{...filtro,...filtro.aplicacaoId?{ids:{APLICACAO:[filtro.aplicacaoId]}}:filtro.exameId?{ids:{EXAME:[filtro.exameId]}}:{}});
     componentes=fontes.flatMap(componentesDaFonte);
     if(filtro.participacaoId||filtro.programacaoId){
-      const participacoes=filtro.participacaoId?[filtro.participacaoId]:(await tx.participacaoProtocolo.findMany({where:{propriedadeId,rodadaId:filtro.programacaoId},select:{id:true}})).map(p=>p.id);
+      const participacoes=filtro.participacaoId?[filtro.participacaoId]:(await tx.participacaoProtocolo.findMany({where:{rodadaId:filtro.programacaoId,AND:[participacaoNoEscopoOperacao(propriedadeId)]},select:{id:true}})).map(p=>p.id);
       // A associação de um preparatório realizado sobrevive à anulação da tentativa.
       const alvos=await tx.tentativaReprodutiva.findMany({where:{propriedadeId,OR:[{tarefa:{execucaoId:{in:participacoes}}},{vinculosProtocolo:{some:{estado:"ATUAL",tarefa:{execucaoId:{in:participacoes}}}}}]},select:{id:true}});
       const idsAlvo=new Set(alvos.map(t=>t.id));const relevantes=vinculos.filter(v=>idsAlvo.has(v.tentativaId));

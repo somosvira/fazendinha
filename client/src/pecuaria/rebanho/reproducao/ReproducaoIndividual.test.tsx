@@ -5,12 +5,14 @@ import { getHojeISO } from "../../../lib/hoje";
 import { ReproducaoIndividual } from "./ReproducaoIndividual";
 import { obterReproducao, reqV4, type PainelReprodutivo } from "./api";
 vi.mock("./api", () => ({ obterReproducao: vi.fn(), reqV4: vi.fn() }));
+const reqProtocolo = vi.hoisted(() => vi.fn());
+vi.mock("../protocolos/api", async importOriginal => ({ ...await importOriginal<object>(), reqProtocolo }));
 vi.mock("./AcoesReprodutivas", () => ({ AcoesReprodutivas: () => null }));
 vi.mock("./ElegibilidadeAnimal", () => ({ ElegibilidadeAnimal: () => <input aria-label="Critérios completos" defaultValue="rascunho"/> }));
 vi.mock("../custos/CustosDiretos", () => ({ CustosDiretos: ({ finalidadeInicial }: { finalidadeInicial: string }) => <p>Custos {finalidadeInicial}</p> }));
 vi.mock("./DetalheFato", () => ({ DetalheFato: ({ fato, onFechar }: { fato: { id: string }; onFechar: () => void }) => <div><p>Fato {fato.id}</p><button onClick={onFechar}>Fechar fato</button></div> }));
 vi.mock("./FormReproducao", () => ({ FormReproducao: ({ onSalvo }: { onSalvo: () => void }) => <div><p>Formulário preservado</p><button onClick={onSalvo}>Salvar formulário</button></div> }));
-beforeEach(() => { window.history.replaceState(null,"","/"); vi.stubGlobal("ResizeObserver",class {observe(){} unobserve(){} disconnect(){}}); Element.prototype.scrollIntoView=vi.fn(); vi.mocked(reqV4).mockResolvedValue([]); });
+beforeEach(() => { reqProtocolo.mockResolvedValue({ itens: [], total: 0, pagina: 1, porPagina: 10 }); window.history.replaceState(null,"","/"); vi.stubGlobal("ResizeObserver",class {observe(){} unobserve(){} disconnect(){}}); Element.prototype.scrollIntoView=vi.fn(); vi.mocked(reqV4).mockResolvedValue([]); });
 afterEach(() => { cleanup(); vi.clearAllMocks(); window.history.replaceState(null, "", "/"); });
 function painel(animalId = "a"): PainelReprodutivo {
  const tentativas = Array.from({ length: 12 }, (_, i) => ({ id: `t${i}`, animalId, data: `2020-09-${String(i + 1).padStart(2, "0")}`, tipo: i === 0 ? "TE" : "IA", ordem: i + 1, status: "VALIDO" }));
@@ -65,8 +67,9 @@ it("não deduz início ou IATF de tentativa avulsa e não usa contagem técnica 
  render(<ReproducaoIndividual animalId="a" podeLancar={false}/>);
  expect(await screen.findByText("Início não comprovado")).toBeTruthy();
  expect(screen.getByText("12 no histórico disponível")).toBeTruthy();
- expect(await screen.findByText(/Nenhuma participação em protocolo/)).toBeTruthy();
+ expect(await screen.findByText(/Nenhuma participação coletiva/)).toBeTruthy();
  expect(screen.queryByText("999")).toBeNull();
+ expect(vi.mocked(reqV4).mock.calls.some(([url]) => url.includes("/reproducao/participacoes"))).toBe(false);
 });
 it("usa último desfecho factual válido incluindo aborto como referência", async () => {
  const dados = painel(); dados.partos = [{ id:"antigo", animalId:"a", data:"2020-09-01", desfecho:"NASCIMENTO", status:"VALIDO" },{ id:"aborto", animalId:"a", data:"2020-09-10", desfecho:"ABORTO", status:"VALIDO" },{ id:"anulado", animalId:"a", data:"2020-09-12", status:"ANULADO" }];
@@ -78,28 +81,25 @@ it("usa último desfecho factual válido incluindo aborto como referência", asy
 });
 it("ignora painel e protocolos obsoletos ao trocar animal e sítio", async () => {
  let resolverPainel!: (p: PainelReprodutivo) => void;
- let resolverProtocolos!: (p: unknown) => void;
  vi.mocked(obterReproducao).mockImplementationOnce(() => new Promise(r => { resolverPainel = r; })).mockResolvedValue(painel("b"));
- vi.mocked(reqV4).mockImplementation(url => url.includes("participacoes") && url.includes("animalId=a") ? new Promise(r => { resolverProtocolos = r; }) : Promise.resolve([]));
  const { rerender } = render(<ReproducaoIndividual animalId="a" propriedadeId={1} podeLancar={false}/>);
  rerender(<ReproducaoIndividual animalId="b" propriedadeId={2} podeLancar={false}/>);
  await screen.findByRole("heading", { name:"Histórico reprodutivo" });
  resolverPainel({ ...painel(), situacoesIniciais: [{ id:"antiga",animalId:"a",data:"1990-01-01",situacao:"GESTANTE" }] });
- resolverProtocolos([{ id:"velha",nome:"Programação obsoleta",participantes:[] }]);
  await waitFor(() => expect(screen.queryByText(/1990/)).toBeNull());
  expect(screen.queryByText("Programação obsoleta")).toBeNull();
  expect(obterReproducao).toHaveBeenLastCalledWith("b",2);
 });
 it("distingue falha de protocolos e vazio, permitindo nova tentativa sem perder histórico", async () => {
  vi.mocked(obterReproducao).mockResolvedValue(painel());
- vi.mocked(reqV4).mockImplementation(url => url.includes("participacoes") ? Promise.reject(new Error("Falha de protocolos")) : Promise.resolve([]));
+ reqProtocolo.mockImplementation((url: string) => url.includes("vinculos-coletivos") ? Promise.reject(new Error("Falha de protocolos")) : Promise.resolve({ itens: [], total: 0, pagina: 1, porPagina: 10 }));
  render(<ReproducaoIndividual animalId="a" propriedadeId={1} podeLancar={false}/>);
  expect(await screen.findByText("Falha de protocolos")).toBeTruthy();
- expect(screen.queryByText(/Nenhuma participação em protocolo/)).toBeNull();
+ expect(screen.queryByText(/Nenhuma participação coletiva/)).toBeNull();
  expect(screen.getByRole("heading", { name:"Histórico reprodutivo" })).toBeTruthy();
- vi.mocked(reqV4).mockResolvedValue([]);
- fireEvent.click(screen.getByRole("button", { name:"Tentar carregar protocolos novamente" }));
- expect(await screen.findByText(/Nenhuma participação em protocolo/)).toBeTruthy();
+ reqProtocolo.mockResolvedValue({ itens: [], total: 0, pagina: 1, porPagina: 10 });
+ fireEvent.click(screen.getByRole("button", { name:"Atualizar protocolos coletivos" }));
+ expect(await screen.findByText(/Nenhuma participação coletiva/)).toBeTruthy();
 });
 
 it.each([0,1,2,3])("conserva %s tentativas factuais sem completar lacunas", async quantidade => {
@@ -133,7 +133,7 @@ it("reconsulta demandas e protocolos depois de salvar e exibe demanda resolvida"
  await screen.findByText("Resolvida");
  expect(screen.queryByRole("button",{name:"Registrar avaliação"})).toBeNull();
  expect(obterReproducao).toHaveBeenCalledTimes(2);
- expect(vi.mocked(reqV4).mock.calls.filter(([url])=>url.includes("/participacoes?"))).toHaveLength(2);
+ expect(reqProtocolo.mock.calls.filter(([url])=>url.includes("/vinculos-coletivos?"))).toHaveLength(2);
 });
 it("inclui tentativa no dia da situação inicial válida e ignora referências não válidas", async () => {
  const dados = painel();dados.situacoesIniciais![0].data="2020-09-10";
@@ -189,6 +189,7 @@ it("transferência conserva resumo clínico transversal sem acrescentar fatos ao
  expect(screen.getByText("Nenhum evento registrado neste período e tipo.")).toBeTruthy();
  expect(screen.queryByRole("button", {name:"Ver detalhes"})).toBeNull();
  expect(screen.queryByText("999")).toBeNull();
+ expect(vi.mocked(reqV4).mock.calls.some(([url]) => url.includes("/reproducao/participacoes"))).toBe(false);
 });
 it("resumo clínico ausente permanece desconhecido, sem inferir zero pelas listas filtradas", async () => {
  const dados=painel();delete dados.animais[0].resumoAcompanhamento;

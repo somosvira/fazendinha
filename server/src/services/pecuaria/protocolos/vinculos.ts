@@ -1,3 +1,4 @@
+import { registrarInicioNaExecucaoTx } from "./calendario.js";
 import { Prisma } from "@prisma/client";
 import { RebanhoError } from "../rebanho/regras.js";
 export type VinculoFato = { aplicacaoId?: string | null; exameId?: string | null; tentativaId?: string | null };
@@ -27,5 +28,8 @@ export async function vincularFatoTarefaTx(tx: Prisma.TransactionClient, tarefaI
   if (dados.exameId) await tx.exameAnimal.update({ where: { id: dados.exameId }, data: { tarefaId } });
   if (dados.tentativaId) await tx.tentativaReprodutiva.update({ where: { id: dados.tentativaId }, data: { tarefaId } });
   if (modo === "EXECUCAO" && !tarefa.realizadaEm) await tx.tarefaProtocolo.update({ where: { id: tarefaId }, data: { realizadaEm: "aplicadaEm" in fato && fato.aplicadaEm ? fato.aplicadaEm : fato.data, precisaoRealizacao: "aplicadaEm" in fato && fato.aplicadaEm ? "HORA" : "DIA" } });
+  if (modo === "EXECUCAO") await registrarInicioNaExecucaoTx(tx, tarefa.execucaoId,
+    "aplicadaEm" in fato && fato.aplicadaEm ? fato.aplicadaEm : fato.data,
+    "aplicadaEm" in fato && fato.aplicadaEm ? "HORA" : "DIA", usuarioId);
   return tx.vinculoTarefaProtocolo.create({ data: { tarefaId, ordem: Math.max(0, ...tarefa.vinculos.map(v => v.ordem)) + 1, ...dados, origem: modo, registradoPorId: usuarioId, motivo } });
 }

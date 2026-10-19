@@ -1,3 +1,5 @@
+import crypto from "node:crypto";
+import { registrarEventoTarefaTx } from "../protocolos/eventos.js";
 import { condicaoSituacaoTarefa, situacaoTarefaComum, propriedadeRegularizacao, vinculoRegularizacaoSelect } from "../protocolos/situacao.js";
 import { deslocarCalendario } from "../protocolos/calendario.calc.js";
 import { carregarVersaoTx, reservarVersaoTx, publicarVersaoTx, inativarVersaoTx } from "../protocolos/versoes.js";
@@ -100,7 +102,7 @@ export async function iniciarExecucaoTx(tx: Prisma.TransactionClient, input: { c
       throw new RebanhoError("VALIDACAO", "Serviço inválido para este sítio", "operacaoServicoId");
     }
     const execucao = await tx.participacaoProtocolo.create({ data: { protocoloId: protocolo.id,
-      animalId: input.animalId, propriedadeId: input.propriedadeId, inicio: data,
+      animalId: input.animalId, propriedadeId: input.propriedadeId, inicio: data, origemCalendario: "REFERENCIA_PROGRAMADA", criadoPorId: usuarioId,
       ocorrenciaId: input.ocorrenciaId ?? null, operacaoServicoId: input.operacaoServicoId ?? null,
       tarefas: { create: protocolo.etapas.map((e) => ({ etapaId: e.id, previstaPara: somarDias(data, e.diaRelativo),
         parametros: { tipo: e.tipo, produtoId: e.produtoId, tipoExameId: e.tipoExameId, finalidade: e.finalidade,
@@ -185,19 +187,15 @@ export async function inativarProtocolo(id: string, usuarioId: number | null) {
   return transacaoPecuaria(tx => inativarVersaoTx(tx, id, "SANITARIO", usuarioId));
 }
 
-export async function adiarTarefa(id: string, input: { previstaPara: string; motivo: string }, usuarioId: number | null, propriedadeId: number) {
-  return transacaoPecuaria(async (tx) => {
-    const previa = await tx.tarefaProtocolo.findUnique({ where: { id, execucao: { protocolo: { tipo: "SANITARIO" } } }, select: { execucao: { select: { animalId: true } } } });
-    if (!previa) throw new RebanhoError("NAO_ENCONTRADO", "Tarefa não encontrada");
-    await travarAnimais(tx, [previa.execucao.animalId]);
-    const antes = await tx.tarefaProtocolo.findUnique({ where: { id }, include: { execucao: true, aplicacoes: { where: { status: "VALIDO" } }, exames: { where: { status: "VALIDO" } } } });
-    if (!antes || !(await tx.localizacaoAnimal.findFirst({ where: { animalId: previa.execucao.animalId, propriedadeId, ate: null } }))) throw new RebanhoError("NAO_ENCONTRADO", "Tarefa não encontrada neste sítio");
-    if (antes.regularizacaoPendente || antes.realizadaEm || antes.dispensadaEm || antes.execucao.canceladaEm || antes.aplicacoes.length || antes.exames.length) throw new RebanhoError("CONFLITO", "Só uma tarefa pendente pode ser adiada");
-    const previstaPara = dia(input.previstaPara);
-    if (!Number.isFinite(previstaPara.getTime()) || previstaPara.toISOString().slice(0, 10) !== input.previstaPara || previstaPara <= antes.previstaPara) throw new RebanhoError("VALIDACAO", "Escolha uma data posterior à previsão atual", "previstaPara");
-    if (input.motivo.trim().length < 5) throw new RebanhoError("VALIDACAO", "Informe o motivo do adiamento", "motivo");
-    const depois = await tx.tarefaProtocolo.update({ where: { id }, data: { previstaPara } });
-    await auditar(tx, { entidade: "TarefaSanitaria", entidadeId: id, animalId: antes.execucao.animalId, propriedadeId, acao: "ADIAMENTO", usuarioId, antes, depois: { ...depois, motivo: input.motivo.trim() } });
-    return depois;
+export async function adiarTarefa(id: string, input: { previstaPara: string; motivo: string; chave?: string }, usuarioId: number | null, propriedadeId: number) {
+  const data = dia(input.previstaPara);
+  if (!Number.isFinite(data.getTime()) || data.toISOString().slice(0, 10) !== input.previstaPara)
+    throw new RebanhoError("VALIDACAO", "Informe uma data válida para a nova previsão", "previstaPara");
+  if (input.motivo.trim().length < 5 || input.motivo.trim().length > 1000)
+    throw new RebanhoError("VALIDACAO", "Informe o motivo do adiamento com 5 a 1000 caracteres", "motivo");
+  return transacaoPecuaria(async tx => {
+    await registrarEventoTarefaTx(tx, id, { chave: input.chave ?? crypto.randomUUID(), propriedadeId, tipo: "ADIAMENTO",
+      ocorridaEm: new Date().toISOString(), motivo: input.motivo, previstaPara: input.previstaPara }, usuarioId, "SANITARIO");
+    return tx.tarefaProtocolo.findUniqueOrThrow({ where: { id } });
   });
 }

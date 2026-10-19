@@ -1,3 +1,4 @@
+import { ParticipacaoProtocolo } from "../protocolos/ParticipacaoProtocolo";
 import { RegularizacaoTarefa, rotuloSituacaoTarefa } from "./RegularizacaoTarefa";
 import type { EventoRegularizacao } from "../reproducao/RegularizarOrigem";
 import { DestinoConsumo, administracaoMantida, type SituacaoAdministracao, type DestinoConsumoSanitario } from "./DestinoConsumo";
@@ -156,6 +157,11 @@ import type { PaginaSanitaria } from "./rodadas-api";
 import { FormFatoSanitario, type TipoFatoSanitario } from "./FormFatoSanitario";
 
 export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
+  const participacaoRota = window.location.pathname.match(/^\/pecuaria\/sanidade\/participacoes\/([^/]+)\/?$/);
+  if (participacaoRota) return <ParticipacaoProtocolo key={participacaoRota[1]} id={decodeURIComponent(participacaoRota[1])} tipo="SANITARIO" propriedadeId={Number(new URLSearchParams(window.location.search).get("sitio")) || getPropriedadeAtiva() || undefined} podeLancar={podeLancar} />;
+  return <ConteudoSanidade podeLancar={podeLancar}/>;
+}
+function ConteudoSanidade({ podeLancar }: { podeLancar: boolean }) {
   const [rateando, setRateando] = useState(false);
   const [servicosGerenciamento, setServicosGerenciamento] = useState<ServicoSanitario[]>([]);
   const [erroServicos, setErroServicos] = useState<string | null>(null);
@@ -261,7 +267,7 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
   }, []);
   useEffect(() => {
     const params = new URLSearchParams();
-    if (aba === "agenda" && rodadaId) { const atual = new URLSearchParams(window.location.search); for (const chave of ["etapaId", "paginaEtapas", "paginaParticipantes", "paginaTarefas"]) { const v = atual.get(chave); if (v) params.set(chave, v); } }
+    if (aba === "agenda" && rodadaId) { const atual = new URLSearchParams(window.location.search); for (const chave of ["etapaId", "paginaEtapas", "paginaParticipantes", "paginaTarefas", "protocoloContexto", "protocoloBusca", "protocoloSituacao"]) { const v = atual.get(chave); if (v) params.set(chave, v); } }
     params.set("aba", aba);
     if (aba === "agenda") { params.set("visaoAgenda", visaoAgenda); if (rodadaId) params.set("rodadaId", rodadaId); }
     for (const [k, v] of Object.entries({
@@ -749,7 +755,7 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
   );
   return (
     <PaginaFinanceira><div className="sanidade-pagina">
-      {executandoEtapa && <ExecutarEtapa tarefas={executandoEtapa} onFechar={() => setExecutandoEtapa(null)} onSalvo={() => { setExecutandoEtapa(null); setRevisao((v) => v + 1); }} />}
+      {executandoEtapa && <ExecutarEtapa key={executandoEtapa.map(t => t.id).join(":")} tarefas={executandoEtapa} onFechar={() => setExecutandoEtapa(null)} onSalvo={() => { setExecutandoEtapa(null); setRevisao((v) => v + 1); }} />}
       {rateando && !carregandoServicos && !erroServicos && (
         <RateioServico
           propriedadeId={getPropriedadeAtiva()}
@@ -833,7 +839,7 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
         <>
           {aba === "agenda" && (
             <>
-              {visaoAgenda === "rodadas" ? <AgendaRodadas filtrosUI={filtrosTabela} filtros={{ animalId, buscaAnimal, loteId, de, ate, situacao, pagina, porPagina: 20 }} podeLancar={podeLancar} recarregarToken={revisao} onAcao={(acao, t) => { if (acao === "consultar") { abrirDetalhe("execucao", t.execucaoId, t.execucao.propriedadeId); return; } setAnimalDaAcao({ animalId: t.execucao.animalId, propriedadeId: t.propriedadeAtualId ?? t.execucao.propriedadeId }); abrir({ tipo: acao, id: acao === "cancelar" ? t.execucaoId : t.id }); }} rodadaId={rodadaId} onAbrir={setRodadaId} onExecutar={setExecutandoEtapa} /> : <>
+              {visaoAgenda === "rodadas" ? <AgendaRodadas filtrosUI={filtrosTabela} filtros={{ animalId, buscaAnimal, loteId, de, ate, situacao, pagina, porPagina: 10 }} podeLancar={podeLancar} recarregarToken={revisao} onAcao={(acao, t) => { if (acao === "consultar") { abrirDetalhe("execucao", t.execucaoId, t.execucao.propriedadeId); return; } setAnimalDaAcao({ animalId: t.execucao.animalId, propriedadeId: t.propriedadeAtualId ?? t.execucao.propriedadeId }); abrir({ tipo: acao, id: acao === "cancelar" ? t.execucaoId : t.id }); }} rodadaId={rodadaId} onAbrir={setRodadaId} onExecutar={setExecutandoEtapa} /> : <>
               <TabelaFinanceira rotulo="Tarefas de protocolos" itens={tarefas.filter(t => noPeriodo(t.previstaPara, t.situacao))} chaveDe={t => t.id} barraRolagemSuperior colunas={[
                 { chave: "animal", titulo: "Animal", principal: true, larguraMinima: 210, celula: t => t.execucao.animal ? nomeAnimalSanitario(t.execucao.animal) : nomeAnimal(t.execucao.animalId) },
                 { chave: "protocolo", titulo: "Protocolo / ciclo", larguraMinima: 260, celula: t => <>{t.execucao.protocolo.nome} · v{t.execucao.protocolo.versao}<div className="mt-1 text-xs text-muted-foreground">{t.rodada?.nome ?? "Sem ciclo"}</div></> },
@@ -1207,7 +1213,7 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
           </form>
         </PainelCadastro>
       )}
-      {novoFato === "protocolo" ? <FormRodada animalInicial={animalId || undefined} onFechar={() => setNovoFato(null)} onSalvo={(id) => { setNovoFato(null); setVisaoAgenda("rodadas"); setRodadaId(id); setRevisao((v) => v + 1); }} /> : novoFato && <FormFatoSanitario tipo={novoFato} animalInicial={animalDaAcao?.animalId ?? animalId} fixo={!!tarefaExameId} cadastroInicial={cadastroId} tarefaId={tarefaExameId} onFechar={() => setNovoFato(null)} onSalvo={() => { setNovoFato(null); setRevisao((v) => v + 1); }} />}
+      {novoFato === "protocolo" && !animalId ? <FormRodada animalInicial={animalId || undefined} onFechar={() => setNovoFato(null)} onSalvo={(id) => { setNovoFato(null); setVisaoAgenda("rodadas"); setRodadaId(id); setRevisao((v) => v + 1); }} /> : novoFato && <FormFatoSanitario tipo={novoFato} animalInicial={animalDaAcao?.animalId ?? animalId} fixo={!!tarefaExameId} cadastroInicial={cadastroId} tarefaId={tarefaExameId} onFechar={() => setNovoFato(null)} onSalvo={() => { setNovoFato(null); setRevisao((v) => v + 1); }} />}
     </div></PaginaFinanceira>
   );
 }

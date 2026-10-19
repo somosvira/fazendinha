@@ -13,7 +13,6 @@ import { FormAplicacaoServico } from "./FormAplicacaoServico";
 import { FormFatoSanitario, type TipoFatoSanitario } from "./FormFatoSanitario";
 import { FormAplicacaoAnimal } from "./FormAplicacaoAnimal";
 import { RodadasAnimal } from "./RodadasAnimal";
-import { FormRodada } from "./FormRodada";
 import { Button, ErrorBox } from "../../../financeiro/financeiro-ui";
 import { classeInput, PainelCadastro } from "../../../financeiro/PainelCadastro";
 import { reqSanidade, type EstadoPrazo } from "./api";
@@ -50,19 +49,20 @@ export function SanidadeAnimal({ filtrosUI, animalId, propriedadeId, podeLancar,
   const [prazos, setPrazos] = useState<Record<"leite" | "carne", { estado: EstadoPrazo; horas: string }>>({ leite: { estado: "NAO_INFORMADO", horas: "" }, carne: { estado: "NAO_INFORMADO", horas: "" } });
   const [justificativaCarne, setJustificativaCarne] = useState("");
   const [ocupado, setOcupado] = useState(false);
-  const [detalhe, setDetalhe] = useState<{ tipo: string; id: string } | null>(null);
+  const [detalhe, setDetalhe] = useState<{ tipo: string; id: string } | null>(() => { const id = new URLSearchParams(window.location.search).get("participacaoId"); return window.location.hash === "#sanidade" && id ? { tipo: "execucao", id } : null; });
   const [conteudo, setConteudo] = useState<unknown>(null);
   const [erroDetalhe, setErroDetalhe] = useState<string | null>(null);
   const [retryDetalhe, setRetryDetalhe] = useState(0);
   const [carregando, setCarregando] = useState(true);
   const [erroConsulta, setErroConsulta] = useState<string | null>(null);
+  useEffect(() => { const selecionar = () => { const id = new URLSearchParams(window.location.search).get("participacaoId"); if (window.location.hash === "#sanidade" && id) setDetalhe({ tipo: "execucao", id }); }; window.addEventListener("popstate", selecionar); return () => window.removeEventListener("popstate", selecionar); }, [animalId]);
   useEffect(() => {
     if (!detalhe) return;
     let vivo = true;
     setConteudo(null); setErroDetalhe(null);
     const recurso = { aplicacao: "aplicacoes", ocorrencia: "ocorrencias", exame: "exames", execucao: "execucoes" }[detalhe.tipo];
-    const sitio = aplicacoes.find((a) => a.id === detalhe.id)?.propriedadeId ?? propriedadeId;
-    reqSanidade<unknown>(`/${recurso}/${encodeURIComponent(detalhe.id)}${sitio != null ? `?propriedadeId=${sitio}` : ""}`).then((v) => { if (vivo) setConteudo(v); }).catch((e: unknown) => { if (vivo) setErroDetalhe(e instanceof Error ? e.message : String(e)); });
+    const sitio = aplicacoes.find((a) => a.id === detalhe.id)?.propriedadeId ?? (Number(new URLSearchParams(window.location.search).get("sitio")) || propriedadeId);
+    reqSanidade<unknown>(`/${recurso}/${encodeURIComponent(detalhe.id)}${sitio != null ? `?propriedadeId=${sitio}` : ""}`, undefined, sitio ?? undefined).then((v) => { if (!vivo) return; const dado = v && typeof v === "object" ? v as Record<string, unknown> : null; if (detalhe.tipo === "execucao" && dado?.animalId && dado.animalId !== animalId) { setErroDetalhe("A participação selecionada não pertence a este animal."); return; } setConteudo(v); }).catch((e: unknown) => { if (vivo) setErroDetalhe(e instanceof Error ? e.message : String(e)); });
     return () => { vivo = false; };
   }, [detalhe, retryDetalhe, propriedadeId, aplicacoes]);
   function verDetalhe(a: AplicacaoSanitaria) {
@@ -114,7 +114,7 @@ export function SanidadeAnimal({ filtrosUI, animalId, propriedadeId, podeLancar,
 </div> },
     ]} /></SecaoAplicacoes>}
     {!geral && <HistoricoSanitario key={versao + recarregarToken} animalId={animalId} abrir={(tipo, id) => setDetalhe({ tipo, id })} />}
-    {novoFato === "protocolo" ? <FormRodada animalInicial={animalId} onFechar={() => setNovoFato(null)} onSalvo={() => { setNovoFato(null); atualizar(); }} /> : novoFato && <FormFatoSanitario tipo={novoFato} animalInicial={animalId} fixo onFechar={() => setNovoFato(null)} onSalvo={() => { setNovoFato(null); atualizar(); }} />}
+    {novoFato && <FormFatoSanitario tipo={novoFato} animalInicial={animalId} fixo onFechar={() => setNovoFato(null)} onSalvo={() => { setNovoFato(null); atualizar(); }} />}
     {detalhe && <PainelDetalheSanitario onFechar={() => setDetalhe(null)}>
       {erroDetalhe ? <><ErrorBox erro={erroDetalhe} /><Button secondary onClick={() => setRetryDetalhe((v) => v + 1)}>Tentar novamente</Button></> : conteudo == null ? <p>Carregando detalhe…</p> : <DetalheSanitario tipo={detalhe.tipo} valor={conteudo} abrir={(tipo, id) => setDetalhe({ tipo, id })} />}
     </PainelDetalheSanitario>}

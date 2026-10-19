@@ -21,6 +21,7 @@ import { manejoRouter } from "./manejo.js";
 import { reproducaoRouter } from "./reproducao.js";
 import { visitasRouter } from "./visitas.js";
 import { custosRouter } from "./custos.js";
+import { protocolosOperacaoRouter } from "./protocolos-operacao.js";
 import { nutricaoRouter } from "./nutricao.js";
 import {
   cadastrarAnimalSchema, editarAnimalSchema, movimentarSchema, mudarDestinoSchema,
@@ -98,7 +99,7 @@ function validarQuery<T extends z.ZodTypeAny>(schema: T) {
  * depende do gate de área (`exigeArea("pecuaria")` em app.ts).
  */
 const exigirLancarParaEscrita: MiddlewareHandler = async (c, next) => {
-  if (c.req.method === "GET" || (c.req.method === "POST" && /\/visitas\/selecoes\/previa\/?$/.test(c.req.path))) return next();
+  if (c.req.method === "GET" || (c.req.method === "POST" && /\/(?:visitas\/selecoes|protocolos\/operacao\/participacoes)\/previa\/?$/.test(c.req.path))) return next();
   return exigePermissao("lancar")(c, next);
 };
 
@@ -420,3 +421,4 @@ rebanhoRouter.route("/reproducao", reproducaoRouter);
 rebanhoRouter.route("/visitas", visitasRouter);
 
 rebanhoRouter.route("/custos", custosRouter);
+rebanhoRouter.route("/protocolos/operacao", protocolosOperacaoRouter);

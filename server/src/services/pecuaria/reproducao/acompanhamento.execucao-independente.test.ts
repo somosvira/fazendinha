@@ -36,6 +36,8 @@ function fixture() {
       etapa: { nome: "Segunda reconfirmação", tipo: "AVALIACAO", planoAvaliacao: { tipo: "RECONFIRMACAO", tipoExameId: TIPO_EXAME_REPRODUTIVO } } } };
   const participacao = { id: uid(7), animalId, programacaoId: uid(8), inicioEfetivo: dia("2026-01-01"), precisaoInicioEfetivo: "DIA", encerradoEm: null };
   const programa = { id: uid(8), propriedadeId: 7, status: "ABERTA" };
+  const participacaoComum = { ...participacao, propriedadeId: 7, protocoloId: uid(13), rodadaId: programa.id,
+    origemCalendario: "REFERENCIA_PROGRAMADA", rodada: programa };
   const visita = { id: uid(9), propriedadeId: 7, data: dia(data), encerradaEm: null };
   const atividade = { id: uid(10), visitaId: visita.id, tipo: "TAREFA_IATF", contexto: {} };
   const participante = { id: uid(11), animalId, atividadeId: atividade.id, tarefaId: tarefa2, snapshot: {} as unknown, rascunho: {}, versaoRascunho: 0, status: "PENDENTE" };
@@ -84,9 +86,11 @@ function fixture() {
     },
     interpretacaoReprodutiva: { findUniqueOrThrow: vi.fn(async ({ where }) => exames.find(e => e.interpretacao.id === where.id)!.interpretacao) },
     tarefaIatf: { findUnique: vi.fn(async () => tarefa), findUniqueOrThrow: vi.fn(async () => tarefa), findMany: vi.fn().mockResolvedValue([]) },
+    participacaoProtocolo: { findFirst: vi.fn().mockResolvedValue(participacaoComum), findUniqueOrThrow: vi.fn().mockResolvedValue(participacaoComum) },
     participanteIatf: { findUniqueOrThrow: vi.fn().mockResolvedValue(participacao) }, programacaoIatf: { findFirst: vi.fn().mockResolvedValue(programa) },
     tarefaProtocolo: { findFirst: vi.fn(async ({ where }) => ({ id: where.OR[0].id })),
-      findUniqueOrThrow: vi.fn(async () => ({ ...tarefa, etapa: { tipo: "EXAME" }, execucao: { animalId }, vinculos: [] })),
+      findUniqueOrThrow: vi.fn(async () => ({ ...tarefa, execucaoId: participacao.id, etapa: { tipo: "EXAME" }, execucao: participacaoComum,
+        vinculos: [], aplicacoes: [], exames: [], tentativas: [] })),
       update: vi.fn(async ({ data: atualizacao }) => { Object.assign(tarefa, atualizacao); return tarefa; }) },
     vinculoTarefaProtocolo: { findMany: vi.fn().mockResolvedValue([]), updateMany: vi.fn(), create: vi.fn(async ({ data: entrada }) => entrada) },
     auditoriaPecuaria: { create: vi.fn(async ({ data: entrada }) => entrada) },
