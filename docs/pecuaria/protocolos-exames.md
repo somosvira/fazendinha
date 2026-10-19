@@ -6,6 +6,12 @@ Contrato da base comum de Sanidade e Reprodução. Complementa [Reprodução V4]
 
 A regularização sanitária e a seleção de exames personalizados foram concluídas na base comum, incluindo agenda, planejamento, snapshots, execução individual e transcrição coletiva. Homologação de campo e aplicação em produção permanecem etapas distintas e não foram realizadas por esta alteração.
 
+## Referências explicativas e evolução proposta
+
+A [base documental dos protocolos](artefatos/protocolos/index.html) preserva a explicação de domínio, os diagramas interativos, o diagrama físico e o mockup. O catálogo SQL é uma fotografia datada, com nomes físicos e garantias inspecionadas; não substitui a conferência do ambiente atual.
+
+O [plano de protocolos individuais e coletivos](plano-protocolos-unificados.md) propõe o mesmo padrão operacional para Sanidade e Reprodução, pendências individuais e paginação de até dez itens. Eventos de não atendimento e a mudança de origem do calendário são extensões planejadas; não estão implementadas nem alteram o contrato temporal vigente abaixo.
+
 ## Estrutura e identidade
 
 - `Protocolo`: versão do modelo, com `tipo` SANITARIO/REPRODUTIVO, publicação, atividade e autoria. O contexto da tela determina o tipo; não há seletor de tipo para o usuário.

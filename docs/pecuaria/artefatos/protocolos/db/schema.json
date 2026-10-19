@@ -1,0 +1,2531 @@
+[
+  {
+    "table": "Animal",
+    "schema": "pecuaria",
+    "columns": [
+      {
+        "name": "id",
+        "type": "text",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "ideagriId",
+        "type": "integer",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "brinco",
+        "type": "text",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "nome",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "brincoEletronico",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "sisbov",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "sexo",
+        "type": "pecuaria.\"SexoBovino\"",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "dataNascimento",
+        "type": "date",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "nascimentoEstimado",
+        "type": "boolean",
+        "default": "false",
+        "nullable": false
+      },
+      {
+        "name": "origem",
+        "type": "pecuaria.\"OrigemAnimal\"",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "dataEntrada",
+        "type": "date",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "partosAntesDaEntrada",
+        "type": "integer",
+        "default": "0",
+        "nullable": false
+      },
+      {
+        "name": "observacao",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "criadoEm",
+        "type": "timestamp(3) without time zone",
+        "default": "CURRENT_TIMESTAMP",
+        "nullable": false
+      },
+      {
+        "name": "criadoPorId",
+        "type": "integer",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "atualizadoEm",
+        "type": "timestamp(3) without time zone",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "maeExternaId",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "maeId",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "paiExternoId",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "paiId",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "codigoProvisorio",
+        "type": "character varying(39)",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "identificacaoProvisoria",
+        "type": "boolean",
+        "default": "false",
+        "nullable": false
+      }
+    ],
+    "indexes": [
+      {
+        "name": "Animal_pkey",
+        "definition": "CREATE UNIQUE INDEX \"Animal_pkey\" ON pecuaria.\"Animal\" USING btree (id)"
+      },
+      {
+        "name": "Animal_ideagriId_key",
+        "definition": "CREATE UNIQUE INDEX \"Animal_ideagriId_key\" ON pecuaria.\"Animal\" USING btree (\"ideagriId\")"
+      },
+      {
+        "name": "Animal_brincoEletronico_key",
+        "definition": "CREATE UNIQUE INDEX \"Animal_brincoEletronico_key\" ON pecuaria.\"Animal\" USING btree (\"brincoEletronico\")"
+      },
+      {
+        "name": "Animal_sisbov_key",
+        "definition": "CREATE UNIQUE INDEX \"Animal_sisbov_key\" ON pecuaria.\"Animal\" USING btree (sisbov)"
+      },
+      {
+        "name": "Animal_brinco_idx",
+        "definition": "CREATE INDEX \"Animal_brinco_idx\" ON pecuaria.\"Animal\" USING btree (brinco)"
+      },
+      {
+        "name": "Animal_maeId_idx",
+        "definition": "CREATE INDEX \"Animal_maeId_idx\" ON pecuaria.\"Animal\" USING btree (\"maeId\")"
+      },
+      {
+        "name": "Animal_paiId_idx",
+        "definition": "CREATE INDEX \"Animal_paiId_idx\" ON pecuaria.\"Animal\" USING btree (\"paiId\")"
+      },
+      {
+        "name": "Animal_maeExternaId_idx",
+        "definition": "CREATE INDEX \"Animal_maeExternaId_idx\" ON pecuaria.\"Animal\" USING btree (\"maeExternaId\")"
+      },
+      {
+        "name": "Animal_paiExternoId_idx",
+        "definition": "CREATE INDEX \"Animal_paiExternoId_idx\" ON pecuaria.\"Animal\" USING btree (\"paiExternoId\")"
+      },
+      {
+        "name": "Animal_codigoProvisorio_key",
+        "definition": "CREATE UNIQUE INDEX \"Animal_codigoProvisorio_key\" ON pecuaria.\"Animal\" USING btree (\"codigoProvisorio\")"
+      }
+    ],
+    "triggers": [],
+    "constraints": [
+      {
+        "kind": "f",
+        "name": "Animal_criadoPorId_fkey",
+        "definition": "FOREIGN KEY (\"criadoPorId\") REFERENCES \"Usuario\"(id) ON UPDATE CASCADE ON DELETE SET NULL"
+      },
+      {
+        "kind": "f",
+        "name": "Animal_maeExternaId_fkey",
+        "definition": "FOREIGN KEY (\"maeExternaId\") REFERENCES pecuaria.\"GenitorExterno\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      },
+      {
+        "kind": "f",
+        "name": "Animal_maeId_fkey",
+        "definition": "FOREIGN KEY (\"maeId\") REFERENCES pecuaria.\"Animal\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      },
+      {
+        "kind": "c",
+        "name": "Animal_mae_nao_si_chk",
+        "definition": "CHECK (((\"maeId\" IS NULL) OR (\"maeId\" <> id)))"
+      },
+      {
+        "kind": "c",
+        "name": "Animal_mae_unica_chk",
+        "definition": "CHECK (((\"maeId\" IS NULL) OR (\"maeExternaId\" IS NULL)))"
+      },
+      {
+        "kind": "f",
+        "name": "Animal_paiExternoId_fkey",
+        "definition": "FOREIGN KEY (\"paiExternoId\") REFERENCES pecuaria.\"GenitorExterno\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      },
+      {
+        "kind": "f",
+        "name": "Animal_paiId_fkey",
+        "definition": "FOREIGN KEY (\"paiId\") REFERENCES pecuaria.\"Animal\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      },
+      {
+        "kind": "c",
+        "name": "Animal_pai_nao_si_chk",
+        "definition": "CHECK (((\"paiId\" IS NULL) OR (\"paiId\" <> id)))"
+      },
+      {
+        "kind": "c",
+        "name": "Animal_pai_unico_chk",
+        "definition": "CHECK (((\"paiId\" IS NULL) OR (\"paiExternoId\" IS NULL)))"
+      },
+      {
+        "kind": "p",
+        "name": "Animal_pkey",
+        "definition": "PRIMARY KEY (id)"
+      },
+      {
+        "kind": "c",
+        "name": "Animal_provisorio",
+        "definition": "CHECK (((NOT \"identificacaoProvisoria\") OR (\"codigoProvisorio\" IS NOT NULL)))"
+      }
+    ]
+  },
+  {
+    "table": "Protocolo",
+    "schema": "pecuaria",
+    "columns": [
+      {
+        "name": "id",
+        "type": "text",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "nome",
+        "type": "text",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "versao",
+        "type": "integer",
+        "default": "1",
+        "nullable": false
+      },
+      {
+        "name": "descricao",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "publicadoEm",
+        "type": "timestamp(3) without time zone",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "ativo",
+        "type": "boolean",
+        "default": "true",
+        "nullable": false
+      },
+      {
+        "name": "criadoEm",
+        "type": "timestamp(3) without time zone",
+        "default": "CURRENT_TIMESTAMP",
+        "nullable": false
+      },
+      {
+        "name": "atualizadoEm",
+        "type": "timestamp(3) without time zone",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "tipo",
+        "type": "pecuaria.\"TipoProtocolo\"",
+        "default": "'SANITARIO'::pecuaria.\"TipoProtocolo\"",
+        "nullable": false
+      },
+      {
+        "name": "publicado",
+        "type": "boolean",
+        "default": "false",
+        "nullable": false
+      },
+      {
+        "name": "legadoIatfId",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "criadoPorId",
+        "type": "integer",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "referenciaTecnica",
+        "type": "jsonb",
+        "default": null,
+        "nullable": true
+      }
+    ],
+    "indexes": [
+      {
+        "name": "ProtocoloSanitario_pkey",
+        "definition": "CREATE UNIQUE INDEX \"ProtocoloSanitario_pkey\" ON pecuaria.\"Protocolo\" USING btree (id)"
+      },
+      {
+        "name": "Protocolo_legadoIatfId_key",
+        "definition": "CREATE UNIQUE INDEX \"Protocolo_legadoIatfId_key\" ON pecuaria.\"Protocolo\" USING btree (\"legadoIatfId\")"
+      },
+      {
+        "name": "Protocolo_tipo_nome_versao_key",
+        "definition": "CREATE UNIQUE INDEX \"Protocolo_tipo_nome_versao_key\" ON pecuaria.\"Protocolo\" USING btree (tipo, nome, versao)"
+      }
+    ],
+    "triggers": [
+      {
+        "name": "Protocolo_referencia_publicada",
+        "function": "CREATE OR REPLACE FUNCTION pecuaria.preservar_referencia_protocolo_publicado()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n IF (OLD.publicado OR OLD.\"publicadoEm\" IS NOT NULL) AND NEW.\"referenciaTecnica\" IS DISTINCT FROM OLD.\"referenciaTecnica\" THEN\n  RAISE EXCEPTION 'a referência técnica da versão publicada é imutável; crie uma versão derivada' USING ERRCODE='23514';\n END IF;\n RETURN NEW;\nEND $function$\n",
+        "definition": "CREATE TRIGGER \"Protocolo_referencia_publicada\" BEFORE UPDATE ON pecuaria.\"Protocolo\" FOR EACH ROW EXECUTE FUNCTION pecuaria.preservar_referencia_protocolo_publicado()"
+      },
+      {
+        "name": "Protocolo_versao",
+        "function": "CREATE OR REPLACE FUNCTION pecuaria.proteger_versao_protocolo()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$ BEGIN\n IF TG_OP='UPDATE' AND (OLD.publicado OR OLD.\"publicadoEm\" IS NOT NULL OR EXISTS(SELECT 1 FROM pecuaria.\"ParticipacaoProtocolo\" p WHERE p.\"protocoloId\"=OLD.id)) AND\n   (NEW.nome,NEW.versao,NEW.tipo,NEW.descricao,NEW.\"criadoEm\",NEW.\"criadoPorId\",NEW.\"publicadoEm\",NEW.publicado) IS DISTINCT FROM\n   (OLD.nome,OLD.versao,OLD.tipo,OLD.descricao,OLD.\"criadoEm\",OLD.\"criadoPorId\",OLD.\"publicadoEm\",OLD.publicado)\n THEN RAISE EXCEPTION 'Versão publicada é imutável; crie outra versão'; END IF;\n IF NEW.\"publicadoEm\" IS NOT NULL THEN NEW.publicado:=TRUE; END IF;\n IF TG_OP='UPDATE' AND NEW.tipo<>OLD.tipo AND EXISTS(SELECT 1 FROM pecuaria.\"ParticipacaoProtocolo\" p WHERE p.\"protocoloId\"=OLD.id)\n THEN RAISE EXCEPTION 'Tipo não pode mudar depois de associar participações'; END IF;\n RETURN NEW;\nEND $function$\n",
+        "definition": "CREATE TRIGGER \"Protocolo_versao\" BEFORE INSERT OR UPDATE ON pecuaria.\"Protocolo\" FOR EACH ROW EXECUTE FUNCTION pecuaria.proteger_versao_protocolo()"
+      }
+    ],
+    "constraints": [
+      {
+        "kind": "p",
+        "name": "ProtocoloSanitario_pkey",
+        "definition": "PRIMARY KEY (id)"
+      },
+      {
+        "kind": "f",
+        "name": "Protocolo_criadoPorId_fkey",
+        "definition": "FOREIGN KEY (\"criadoPorId\") REFERENCES \"Usuario\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      },
+      {
+        "kind": "u",
+        "name": "Protocolo_legadoIatfId_key",
+        "definition": "UNIQUE (\"legadoIatfId\")"
+      }
+    ]
+  },
+  {
+    "table": "AplicacaoProduto",
+    "schema": "pecuaria",
+    "columns": [
+      {
+        "name": "id",
+        "type": "text",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "animalId",
+        "type": "text",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "propriedadeId",
+        "type": "integer",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "produtoId",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "nomeProdutoAplicado",
+        "type": "text",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "ocorrenciaId",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "tarefaId",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "data",
+        "type": "date",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "aplicadaEm",
+        "type": "timestamp(3) without time zone",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "precisaoTemporal",
+        "type": "text",
+        "default": "'HORA'::text",
+        "nullable": false
+      },
+      {
+        "name": "finalidade",
+        "type": "pecuaria.\"FinalidadeAplicacao\"",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "dose",
+        "type": "numeric(12,3)",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "unidadeDose",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "via",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "carenciaLeiteHoras",
+        "type": "integer",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "carenciaCarneHoras",
+        "type": "integer",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "referenciaCarencia",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "origemInsumo",
+        "type": "pecuaria.\"OrigemInsumoSanitario\"",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "quantidadeUtilizada",
+        "type": "numeric(12,3)",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "movimentoEstoqueId",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "itemCompraDiretaId",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "quantidadeCompraDireta",
+        "type": "numeric(12,3)",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "operacaoServicoId",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "valorProdutoAtribuido",
+        "type": "numeric(14,2)",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "valorServicoAtribuido",
+        "type": "numeric(14,2)",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "situacaoCusto",
+        "type": "text",
+        "default": "'NAO_APURADO'::text",
+        "nullable": false
+      },
+      {
+        "name": "partidaCodigoSnapshot",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "partidaValidadeSnapshot",
+        "type": "date",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "justificativaSemOrigem",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "status",
+        "type": "pecuaria.\"StatusFatoPecuariaV3\"",
+        "default": "'VALIDO'::pecuaria.\"StatusFatoPecuariaV3\"",
+        "nullable": false
+      },
+      {
+        "name": "motivoAnulacao",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "anuladoEm",
+        "type": "timestamp(3) without time zone",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "origem",
+        "type": "text",
+        "default": "'MANUAL'::text",
+        "nullable": false
+      },
+      {
+        "name": "criadoEm",
+        "type": "timestamp(3) without time zone",
+        "default": "CURRENT_TIMESTAMP",
+        "nullable": false
+      },
+      {
+        "name": "atualizadoEm",
+        "type": "timestamp(3) without time zone",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "tipoAplicacaoId",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "tipoAplicacaoNomeSnapshot",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "responsavel",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "estadoCarenciaLeite",
+        "type": "text",
+        "default": "'NAO_INFORMADO'::text",
+        "nullable": false
+      },
+      {
+        "name": "estadoCarenciaCarne",
+        "type": "text",
+        "default": "'NAO_INFORMADO'::text",
+        "nullable": false
+      },
+      {
+        "name": "justificativaCarenciaLeite",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "aptidaoCarenciaSnapshot",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "justificativaCarenciaCarne",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "desvioProtocoloSnapshot",
+        "type": "jsonb",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "consumoMantido",
+        "type": "boolean",
+        "default": "false",
+        "nullable": false
+      },
+      {
+        "name": "administracaoMantida",
+        "type": "boolean",
+        "default": null,
+        "nullable": true
+      }
+    ],
+    "indexes": [
+      {
+        "name": "AplicacaoProduto_pkey",
+        "definition": "CREATE UNIQUE INDEX \"AplicacaoProduto_pkey\" ON pecuaria.\"AplicacaoProduto\" USING btree (id)"
+      },
+      {
+        "name": "AplicacaoProduto_movimentoEstoqueId_key",
+        "definition": "CREATE UNIQUE INDEX \"AplicacaoProduto_movimentoEstoqueId_key\" ON pecuaria.\"AplicacaoProduto\" USING btree (\"movimentoEstoqueId\")"
+      },
+      {
+        "name": "AplicacaoProduto_animalId_data_idx",
+        "definition": "CREATE INDEX \"AplicacaoProduto_animalId_data_idx\" ON pecuaria.\"AplicacaoProduto\" USING btree (\"animalId\", data)"
+      },
+      {
+        "name": "AplicacaoProduto_propriedadeId_data_idx",
+        "definition": "CREATE INDEX \"AplicacaoProduto_propriedadeId_data_idx\" ON pecuaria.\"AplicacaoProduto\" USING btree (\"propriedadeId\", data)"
+      },
+      {
+        "name": "AplicacaoProduto_itemCompraDiretaId_idx",
+        "definition": "CREATE INDEX \"AplicacaoProduto_itemCompraDiretaId_idx\" ON pecuaria.\"AplicacaoProduto\" USING btree (\"itemCompraDiretaId\")"
+      },
+      {
+        "name": "AplicacaoProduto_operacaoServicoId_idx",
+        "definition": "CREATE INDEX \"AplicacaoProduto_operacaoServicoId_idx\" ON pecuaria.\"AplicacaoProduto\" USING btree (\"operacaoServicoId\")"
+      },
+      {
+        "name": "AplicacaoProduto_tarefaId_valida_key",
+        "definition": "CREATE UNIQUE INDEX \"AplicacaoProduto_tarefaId_valida_key\" ON pecuaria.\"AplicacaoProduto\" USING btree (\"tarefaId\") WHERE ((status = 'VALIDO'::pecuaria.\"StatusFatoPecuariaV3\") AND (\"tarefaId\" IS NOT NULL))"
+      },
+      {
+        "name": "AplicacaoProduto_tarefaId_idx",
+        "definition": "CREATE INDEX \"AplicacaoProduto_tarefaId_idx\" ON pecuaria.\"AplicacaoProduto\" USING btree (\"tarefaId\")"
+      }
+    ],
+    "triggers": [
+      {
+        "name": "Preparo_limite_aplicacao",
+        "function": "CREATE OR REPLACE FUNCTION pecuaria.conferir_alteracao_fonte_custo()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$ BEGIN\n IF TG_TABLE_NAME='AplicacaoProduto' THEN\n  IF EXISTS (SELECT 1 FROM pecuaria.\"ClassificacaoCustoPecuaria\" c WHERE c.\"aplicacaoId\"=NEW.id AND ((c.\"coberturaServico\"<>'PROCEDIMENTO' AND (NEW.\"operacaoServicoId\" IS NULL OR NEW.\"valorProdutoAtribuido\" IS NOT NULL OR NEW.\"movimentoEstoqueId\" IS NOT NULL)) OR (c.\"materialNaoAplicavel\" AND NEW.\"valorProdutoAtribuido\" IS NOT NULL) OR (c.\"servicoNaoAplicavel\" AND NEW.\"operacaoServicoId\" IS NOT NULL) OR (c.\"valorMaterialDocumentado\" IS NOT NULL AND (NEW.\"valorProdutoAtribuido\" IS NOT NULL OR NEW.\"movimentoEstoqueId\" IS NOT NULL OR NEW.\"origemInsumo\"<>'SEM_ORIGEM_JUSTIFICADA')))) THEN RAISE EXCEPTION 'correção incompatível com classificação de custo' USING ERRCODE='23514'; END IF;\n  PERFORM pecuaria.conferir_capacidade_preparo('APLICACAO',NEW.id);\n ELSIF TG_TABLE_NAME='TentativaReprodutiva' THEN\n  IF EXISTS (SELECT 1 FROM pecuaria.\"ClassificacaoCustoPecuaria\" c WHERE c.\"tentativaId\"=NEW.id AND ((c.\"coberturaServico\"<>'PROCEDIMENTO' AND (NEW.\"operacaoServicoId\" IS NULL OR NEW.\"valorProdutoAtribuido\" IS NOT NULL OR NEW.\"movimentoEstoqueId\" IS NOT NULL)) OR (c.\"materialNaoAplicavel\" AND (NEW.\"valorProdutoAtribuido\" IS NOT NULL OR NEW.\"movimentoEstoqueId\" IS NOT NULL)) OR (c.\"servicoNaoAplicavel\" AND NEW.\"operacaoServicoId\" IS NOT NULL) OR (c.\"valorMaterialDocumentado\" IS NOT NULL AND (NEW.\"valorProdutoAtribuido\" IS NOT NULL OR NEW.\"movimentoEstoqueId\" IS NOT NULL OR NEW.\"origemMaterial\"<>'DOCUMENTADA')))) THEN RAISE EXCEPTION 'correção incompatível com classificação de custo da tentativa' USING ERRCODE='23514'; END IF;\n ELSIF TG_TABLE_NAME='ExameAnimal' THEN\n  IF EXISTS (SELECT 1 FROM pecuaria.\"ClassificacaoCustoPecuaria\" c WHERE c.\"exameId\"=NEW.id AND ((c.\"servicoNaoAplicavel\" AND NEW.\"operacaoServicoId\" IS NOT NULL) OR (c.\"coberturaServico\"<>'PROCEDIMENTO' AND NEW.\"operacaoServicoId\" IS NULL))) THEN RAISE EXCEPTION 'correção incompatível com classificação de custo' USING ERRCODE='23514'; END IF;\n  PERFORM pecuaria.conferir_capacidade_preparo('EXAME',NEW.id);\n ELSE\n  IF EXISTS (SELECT 1 FROM pecuaria.\"ClassificacaoCustoPecuaria\" c WHERE c.\"participacaoId\"=NEW.id AND ((c.\"servicoNaoAplicavel\" AND NEW.\"operacaoServicoId\" IS NOT NULL) OR (c.\"coberturaServico\"<>'PROCEDIMENTO' AND NEW.\"operacaoServicoId\" IS NULL))) THEN RAISE EXCEPTION 'correção incompatível com classificação de custo' USING ERRCODE='23514'; END IF;\n  PERFORM pecuaria.conferir_capacidade_preparo('PARTICIPACAO',NEW.id);\n END IF;\n RETURN NULL;\nEND $function$\n",
+        "definition": "CREATE CONSTRAINT TRIGGER \"Preparo_limite_aplicacao\" AFTER UPDATE ON pecuaria.\"AplicacaoProduto\" DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION pecuaria.conferir_alteracao_fonte_custo()"
+      }
+    ],
+    "constraints": [
+      {
+        "kind": "f",
+        "name": "AplicacaoProduto_animalId_fkey",
+        "definition": "FOREIGN KEY (\"animalId\") REFERENCES pecuaria.\"Animal\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      },
+      {
+        "kind": "f",
+        "name": "AplicacaoProduto_itemCompraDiretaId_fkey",
+        "definition": "FOREIGN KEY (\"itemCompraDiretaId\") REFERENCES \"ItemOperacao\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      },
+      {
+        "kind": "f",
+        "name": "AplicacaoProduto_movimentoEstoqueId_fkey",
+        "definition": "FOREIGN KEY (\"movimentoEstoqueId\") REFERENCES \"MovimentoEstoque\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      },
+      {
+        "kind": "f",
+        "name": "AplicacaoProduto_ocorrenciaId_fkey",
+        "definition": "FOREIGN KEY (\"ocorrenciaId\") REFERENCES pecuaria.\"OcorrenciaSanitaria\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      },
+      {
+        "kind": "f",
+        "name": "AplicacaoProduto_operacaoServicoId_fkey",
+        "definition": "FOREIGN KEY (\"operacaoServicoId\") REFERENCES \"Operacao\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      },
+      {
+        "kind": "c",
+        "name": "AplicacaoProduto_origem_check",
+        "definition": "CHECK ((((\"origemInsumo\" = 'BAIXA_ESTOQUE'::pecuaria.\"OrigemInsumoSanitario\") AND (\"produtoId\" IS NOT NULL) AND (\"movimentoEstoqueId\" IS NOT NULL) AND (\"itemCompraDiretaId\" IS NULL)) OR ((\"origemInsumo\" = 'COMPRA_CONSUMO_DIRETO'::pecuaria.\"OrigemInsumoSanitario\") AND (\"produtoId\" IS NOT NULL) AND (\"itemCompraDiretaId\" IS NOT NULL) AND (\"movimentoEstoqueId\" IS NULL)) OR ((\"origemInsumo\" = 'INCLUSO_SERVICO'::pecuaria.\"OrigemInsumoSanitario\") AND (\"operacaoServicoId\" IS NOT NULL) AND (\"itemCompraDiretaId\" IS NULL) AND (\"movimentoEstoqueId\" IS NULL)) OR ((\"origemInsumo\" = 'SEM_ORIGEM_JUSTIFICADA'::pecuaria.\"OrigemInsumoSanitario\") AND (length(TRIM(BOTH FROM COALESCE(\"justificativaSemOrigem\", ''::text))) > 0) AND (\"itemCompraDiretaId\" IS NULL) AND (\"movimentoEstoqueId\" IS NULL)) OR ((\"origemInsumo\" = 'HISTORICO_IMPORTADO'::pecuaria.\"OrigemInsumoSanitario\") AND (\"itemCompraDiretaId\" IS NULL) AND (\"movimentoEstoqueId\" IS NULL))))"
+      },
+      {
+        "kind": "p",
+        "name": "AplicacaoProduto_pkey",
+        "definition": "PRIMARY KEY (id)"
+      },
+      {
+        "kind": "f",
+        "name": "AplicacaoProduto_produtoId_fkey",
+        "definition": "FOREIGN KEY (\"produtoId\") REFERENCES \"Produto\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      },
+      {
+        "kind": "f",
+        "name": "AplicacaoProduto_propriedadeId_fkey",
+        "definition": "FOREIGN KEY (\"propriedadeId\") REFERENCES \"Propriedade\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      },
+      {
+        "kind": "f",
+        "name": "AplicacaoProduto_tarefaId_fkey",
+        "definition": "FOREIGN KEY (\"tarefaId\") REFERENCES pecuaria.\"TarefaProtocolo\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      },
+      {
+        "kind": "f",
+        "name": "AplicacaoProduto_tipoAplicacaoId_fkey",
+        "definition": "FOREIGN KEY (\"tipoAplicacaoId\") REFERENCES pecuaria.\"TipoAplicacaoSanitaria\"(id) ON DELETE RESTRICT"
+      },
+      {
+        "kind": "c",
+        "name": "Aplicacao_consumo_mantido_anulado",
+        "definition": "CHECK ((((NOT \"consumoMantido\") OR (status = 'ANULADO'::pecuaria.\"StatusFatoPecuariaV3\")) AND ((\"administracaoMantida\" IS NULL) OR (\"consumoMantido\" AND (status = 'ANULADO'::pecuaria.\"StatusFatoPecuariaV3\")))))"
+      },
+      {
+        "kind": "t",
+        "name": "Preparo_limite_aplicacao",
+        "definition": "TRIGGER DEFERRABLE INITIALLY DEFERRED"
+      },
+      {
+        "kind": "c",
+        "name": "carencia_estados_v3",
+        "definition": "CHECK (((\"estadoCarenciaLeite\" = ANY (ARRAY['INFORMADO'::text, 'NAO_INFORMADO'::text, 'NAO_APLICAVEL'::text])) AND (\"estadoCarenciaCarne\" = ANY (ARRAY['INFORMADO'::text, 'NAO_INFORMADO'::text, 'NAO_APLICAVEL'::text])) AND (((\"estadoCarenciaLeite\" = 'INFORMADO'::text) AND (\"carenciaLeiteHoras\" IS NOT NULL) AND (\"carenciaLeiteHoras\" >= 0)) OR ((\"estadoCarenciaLeite\" <> 'INFORMADO'::text) AND (\"carenciaLeiteHoras\" IS NULL))) AND (((\"estadoCarenciaCarne\" = 'INFORMADO'::text) AND (\"carenciaCarneHoras\" IS NOT NULL) AND (\"carenciaCarneHoras\" >= 0)) OR ((\"estadoCarenciaCarne\" <> 'INFORMADO'::text) AND (\"carenciaCarneHoras\" IS NULL)))))"
+      }
+    ]
+  },
+  {
+    "table": "TentativaReprodutiva",
+    "schema": "pecuaria",
+    "columns": [
+      {
+        "name": "id",
+        "type": "text",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "referenciaExterna",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "animalId",
+        "type": "text",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "propriedadeId",
+        "type": "integer",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "data",
+        "type": "date",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "origem",
+        "type": "text",
+        "default": "'MANUAL'::text",
+        "nullable": false
+      },
+      {
+        "name": "status",
+        "type": "pecuaria.\"StatusFatoPecuariaV3\"",
+        "default": "'VALIDO'::pecuaria.\"StatusFatoPecuariaV3\"",
+        "nullable": false
+      },
+      {
+        "name": "motivoAnulacao",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "anuladoEm",
+        "type": "timestamp(3) without time zone",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "criadoEm",
+        "type": "timestamp(3) without time zone",
+        "default": "CURRENT_TIMESTAMP",
+        "nullable": false
+      },
+      {
+        "name": "criadoPorId",
+        "type": "integer",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "tipo",
+        "type": "text",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "ciclo",
+        "type": "integer",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "ordem",
+        "type": "integer",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "materialId",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "touroId",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "touroExternoId",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "origemMaterial",
+        "type": "text",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "quantidade",
+        "type": "numeric(14,3)",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "partidaId",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "operacaoServicoId",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "movimentoEstoqueId",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "valorProdutoAtribuido",
+        "type": "numeric(14,2)",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "valorServicoAtribuido",
+        "type": "numeric(14,2)",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "geneticaSnapshot",
+        "type": "jsonb",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "responsavel",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "observacao",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "consumoMantido",
+        "type": "boolean",
+        "default": "false",
+        "nullable": false
+      },
+      {
+        "name": "tarefaId",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      }
+    ],
+    "indexes": [
+      {
+        "name": "TentativaReprodutiva_pkey",
+        "definition": "CREATE UNIQUE INDEX \"TentativaReprodutiva_pkey\" ON pecuaria.\"TentativaReprodutiva\" USING btree (id)"
+      },
+      {
+        "name": "TentativaReprodutiva_referenciaExterna_key",
+        "definition": "CREATE UNIQUE INDEX \"TentativaReprodutiva_referenciaExterna_key\" ON pecuaria.\"TentativaReprodutiva\" USING btree (\"referenciaExterna\")"
+      },
+      {
+        "name": "TentativaReprodutiva_movimentoEstoqueId_key",
+        "definition": "CREATE UNIQUE INDEX \"TentativaReprodutiva_movimentoEstoqueId_key\" ON pecuaria.\"TentativaReprodutiva\" USING btree (\"movimentoEstoqueId\")"
+      },
+      {
+        "name": "TentativaReprodutiva_animalId_idx",
+        "definition": "CREATE INDEX \"TentativaReprodutiva_animalId_idx\" ON pecuaria.\"TentativaReprodutiva\" USING btree (\"animalId\")"
+      },
+      {
+        "name": "TentativaReprodutiva_ordem_ciclo",
+        "definition": "CREATE UNIQUE INDEX \"TentativaReprodutiva_ordem_ciclo\" ON pecuaria.\"TentativaReprodutiva\" USING btree (\"animalId\", ciclo, ordem)"
+      },
+      {
+        "name": "TentativaReprodutiva_tarefa_valida",
+        "definition": "CREATE UNIQUE INDEX \"TentativaReprodutiva_tarefa_valida\" ON pecuaria.\"TentativaReprodutiva\" USING btree (\"tarefaId\") WHERE ((status = 'VALIDO'::pecuaria.\"StatusFatoPecuariaV3\") AND (\"tarefaId\" IS NOT NULL))"
+      }
+    ],
+    "triggers": [
+      {
+        "name": "Custo_limite_tentativa",
+        "function": "CREATE OR REPLACE FUNCTION pecuaria.conferir_alteracao_fonte_custo()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$ BEGIN\n IF TG_TABLE_NAME='AplicacaoProduto' THEN\n  IF EXISTS (SELECT 1 FROM pecuaria.\"ClassificacaoCustoPecuaria\" c WHERE c.\"aplicacaoId\"=NEW.id AND ((c.\"coberturaServico\"<>'PROCEDIMENTO' AND (NEW.\"operacaoServicoId\" IS NULL OR NEW.\"valorProdutoAtribuido\" IS NOT NULL OR NEW.\"movimentoEstoqueId\" IS NOT NULL)) OR (c.\"materialNaoAplicavel\" AND NEW.\"valorProdutoAtribuido\" IS NOT NULL) OR (c.\"servicoNaoAplicavel\" AND NEW.\"operacaoServicoId\" IS NOT NULL) OR (c.\"valorMaterialDocumentado\" IS NOT NULL AND (NEW.\"valorProdutoAtribuido\" IS NOT NULL OR NEW.\"movimentoEstoqueId\" IS NOT NULL OR NEW.\"origemInsumo\"<>'SEM_ORIGEM_JUSTIFICADA')))) THEN RAISE EXCEPTION 'correção incompatível com classificação de custo' USING ERRCODE='23514'; END IF;\n  PERFORM pecuaria.conferir_capacidade_preparo('APLICACAO',NEW.id);\n ELSIF TG_TABLE_NAME='TentativaReprodutiva' THEN\n  IF EXISTS (SELECT 1 FROM pecuaria.\"ClassificacaoCustoPecuaria\" c WHERE c.\"tentativaId\"=NEW.id AND ((c.\"coberturaServico\"<>'PROCEDIMENTO' AND (NEW.\"operacaoServicoId\" IS NULL OR NEW.\"valorProdutoAtribuido\" IS NOT NULL OR NEW.\"movimentoEstoqueId\" IS NOT NULL)) OR (c.\"materialNaoAplicavel\" AND (NEW.\"valorProdutoAtribuido\" IS NOT NULL OR NEW.\"movimentoEstoqueId\" IS NOT NULL)) OR (c.\"servicoNaoAplicavel\" AND NEW.\"operacaoServicoId\" IS NOT NULL) OR (c.\"valorMaterialDocumentado\" IS NOT NULL AND (NEW.\"valorProdutoAtribuido\" IS NOT NULL OR NEW.\"movimentoEstoqueId\" IS NOT NULL OR NEW.\"origemMaterial\"<>'DOCUMENTADA')))) THEN RAISE EXCEPTION 'correção incompatível com classificação de custo da tentativa' USING ERRCODE='23514'; END IF;\n ELSIF TG_TABLE_NAME='ExameAnimal' THEN\n  IF EXISTS (SELECT 1 FROM pecuaria.\"ClassificacaoCustoPecuaria\" c WHERE c.\"exameId\"=NEW.id AND ((c.\"servicoNaoAplicavel\" AND NEW.\"operacaoServicoId\" IS NOT NULL) OR (c.\"coberturaServico\"<>'PROCEDIMENTO' AND NEW.\"operacaoServicoId\" IS NULL))) THEN RAISE EXCEPTION 'correção incompatível com classificação de custo' USING ERRCODE='23514'; END IF;\n  PERFORM pecuaria.conferir_capacidade_preparo('EXAME',NEW.id);\n ELSE\n  IF EXISTS (SELECT 1 FROM pecuaria.\"ClassificacaoCustoPecuaria\" c WHERE c.\"participacaoId\"=NEW.id AND ((c.\"servicoNaoAplicavel\" AND NEW.\"operacaoServicoId\" IS NOT NULL) OR (c.\"coberturaServico\"<>'PROCEDIMENTO' AND NEW.\"operacaoServicoId\" IS NULL))) THEN RAISE EXCEPTION 'correção incompatível com classificação de custo' USING ERRCODE='23514'; END IF;\n  PERFORM pecuaria.conferir_capacidade_preparo('PARTICIPACAO',NEW.id);\n END IF;\n RETURN NULL;\nEND $function$\n",
+        "definition": "CREATE CONSTRAINT TRIGGER \"Custo_limite_tentativa\" AFTER UPDATE ON pecuaria.\"TentativaReprodutiva\" DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION pecuaria.conferir_alteracao_fonte_custo()"
+      }
+    ],
+    "constraints": [
+      {
+        "kind": "t",
+        "name": "Custo_limite_tentativa",
+        "definition": "TRIGGER DEFERRABLE INITIALLY DEFERRED"
+      },
+      {
+        "kind": "f",
+        "name": "TentativaReprodutiva_animalId_fkey",
+        "definition": "FOREIGN KEY (\"animalId\") REFERENCES pecuaria.\"Animal\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      },
+      {
+        "kind": "f",
+        "name": "TentativaReprodutiva_criadoPorId_fkey",
+        "definition": "FOREIGN KEY (\"criadoPorId\") REFERENCES \"Usuario\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      },
+      {
+        "kind": "f",
+        "name": "TentativaReprodutiva_materialId_fkey",
+        "definition": "FOREIGN KEY (\"materialId\") REFERENCES pecuaria.\"MaterialGenetico\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      },
+      {
+        "kind": "f",
+        "name": "TentativaReprodutiva_movimentoEstoqueId_fkey",
+        "definition": "FOREIGN KEY (\"movimentoEstoqueId\") REFERENCES \"MovimentoEstoque\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      },
+      {
+        "kind": "f",
+        "name": "TentativaReprodutiva_operacaoServicoId_fkey",
+        "definition": "FOREIGN KEY (\"operacaoServicoId\") REFERENCES \"Operacao\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      },
+      {
+        "kind": "f",
+        "name": "TentativaReprodutiva_partidaId_fkey",
+        "definition": "FOREIGN KEY (\"partidaId\") REFERENCES \"PartidaProduto\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      },
+      {
+        "kind": "p",
+        "name": "TentativaReprodutiva_pkey",
+        "definition": "PRIMARY KEY (id)"
+      },
+      {
+        "kind": "f",
+        "name": "TentativaReprodutiva_propriedadeId_fkey",
+        "definition": "FOREIGN KEY (\"propriedadeId\") REFERENCES \"Propriedade\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      },
+      {
+        "kind": "f",
+        "name": "TentativaReprodutiva_tarefaId_fkey",
+        "definition": "FOREIGN KEY (\"tarefaId\") REFERENCES pecuaria.\"TarefaProtocolo\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      },
+      {
+        "kind": "f",
+        "name": "TentativaReprodutiva_touroExternoId_fkey",
+        "definition": "FOREIGN KEY (\"touroExternoId\") REFERENCES pecuaria.\"GenitorExterno\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      },
+      {
+        "kind": "f",
+        "name": "TentativaReprodutiva_touroId_fkey",
+        "definition": "FOREIGN KEY (\"touroId\") REFERENCES pecuaria.\"Animal\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      },
+      {
+        "kind": "c",
+        "name": "Tentativa_consumo_mantido",
+        "definition": "CHECK (((NOT \"consumoMantido\") OR (((\"movimentoEstoqueId\" IS NOT NULL) OR (\"operacaoServicoId\" IS NOT NULL)) AND (status = 'ANULADO'::pecuaria.\"StatusFatoPecuariaV3\"))))"
+      },
+      {
+        "kind": "c",
+        "name": "Tentativa_tipo_origem",
+        "definition": "CHECK (((tipo = ANY (ARRAY['IA'::text, 'TE'::text, 'COBERTURA'::text])) AND (\"origemMaterial\" = ANY (ARRAY['ESTOQUE'::text, 'SERVICO'::text, 'DOCUMENTADA'::text, 'HISTORICO'::text])) AND (ciclo >= 0) AND (ordem > 0) AND ((quantidade IS NULL) OR (quantidade > (0)::numeric)) AND ((\"origemMaterial\" <> 'HISTORICO'::text) OR (\"movimentoEstoqueId\" IS NULL))))"
+      }
+    ]
+  },
+  {
+    "table": "InterpretacaoReprodutiva",
+    "schema": "pecuaria",
+    "columns": [
+      {
+        "name": "id",
+        "type": "text",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "referenciaExterna",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "tentativaId",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "gestacaoId",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "conduta",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "motivo",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "retornoEm",
+        "type": "date",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "gestacaoCriada",
+        "type": "boolean",
+        "default": "false",
+        "nullable": false
+      },
+      {
+        "name": "restricaoId",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "exameId",
+        "type": "text",
+        "default": null,
+        "nullable": false
+      }
+    ],
+    "indexes": [
+      {
+        "name": "AvaliacaoReprodutiva_pkey",
+        "definition": "CREATE UNIQUE INDEX \"AvaliacaoReprodutiva_pkey\" ON pecuaria.\"InterpretacaoReprodutiva\" USING btree (id)"
+      },
+      {
+        "name": "AvaliacaoReprodutiva_referenciaExterna_key",
+        "definition": "CREATE UNIQUE INDEX \"AvaliacaoReprodutiva_referenciaExterna_key\" ON pecuaria.\"InterpretacaoReprodutiva\" USING btree (\"referenciaExterna\")"
+      },
+      {
+        "name": "AvaliacaoReprodutiva_restricaoId_key",
+        "definition": "CREATE UNIQUE INDEX \"AvaliacaoReprodutiva_restricaoId_key\" ON pecuaria.\"InterpretacaoReprodutiva\" USING btree (\"restricaoId\")"
+      },
+      {
+        "name": "InterpretacaoReprodutiva_exameId_key",
+        "definition": "CREATE UNIQUE INDEX \"InterpretacaoReprodutiva_exameId_key\" ON pecuaria.\"InterpretacaoReprodutiva\" USING btree (\"exameId\")"
+      }
+    ],
+    "triggers": [
+      {
+        "name": "Interpretacao_resolucao_demanda_final",
+        "function": "CREATE OR REPLACE FUNCTION pecuaria.validar_resolucao_demanda_final()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nDECLARE identificador_exame TEXT;\nBEGIN\n IF TG_TABLE_NAME='ExameAnimal' THEN\n  IF TG_OP='DELETE' THEN identificador_exame:=OLD.id; ELSE identificador_exame:=NEW.id; END IF;\n ELSIF TG_TABLE_NAME='ResultadoExame' OR TG_TABLE_NAME='InterpretacaoReprodutiva' THEN\n  IF TG_OP='DELETE' THEN identificador_exame:=OLD.\"exameId\"; ELSE identificador_exame:=NEW.\"exameId\"; END IF;\n END IF;\n IF EXISTS(SELECT 1 FROM pecuaria.\"DemandaAcompanhamentoReprodutivo\" d JOIN pecuaria.\"ExameAnimal\" e ON e.id=d.\"exameResolucaoId\" LEFT JOIN pecuaria.\"InterpretacaoReprodutiva\" i ON i.\"exameId\"=e.id\n  WHERE d.estado='RESOLVIDA' AND d.\"exameResolucaoId\"=identificador_exame AND\n   (e.status<>'VALIDO' OR e.realizacao<>'REALIZADO' OR e.\"animalId\"<>d.\"animalId\"\n    OR NOT (d.finalidade=ANY(e.finalidades)) OR e.data<d.\"dataReferencia\" OR (d.finalidade='RECONFIRMACAO' AND e.data<d.\"previstaPara\")\n    OR (d.\"tentativaId\" IS NOT NULL AND i.\"tentativaId\" IS DISTINCT FROM d.\"tentativaId\") OR (d.\"gestacaoId\" IS NOT NULL AND i.\"gestacaoId\" IS DISTINCT FROM d.\"gestacaoId\")\n    OR (e.\"demandaAcompanhamentoId\" IS NOT NULL AND e.\"demandaAcompanhamentoId\"<>d.id)\n    OR (d.\"regraSnapshot\"->>'tipoExameId' IS NOT NULL AND (e.\"tipoExameId\" IS DISTINCT FROM d.\"regraSnapshot\"->>'tipoExameId' OR e.\"formatoSnapshot\"->>'versao' IS DISTINCT FROM d.\"regraSnapshot\"->>'tipoExameVersao'))\n    OR NOT EXISTS(\n    SELECT 1 FROM pecuaria.\"ResultadoExame\" r WHERE r.\"exameId\"=e.id AND r.vigente AND r.campo='CONCLUSAO_GESTACIONAL' AND r.valor IN ('\"POSITIVO\"'::jsonb,'\"NEGATIVO\"'::jsonb)))) THEN\n  RAISE EXCEPTION 'demanda resolvida exige evidência conclusiva válida no estado final' USING ERRCODE='23514';\n END IF;\n RETURN NULL;\nEND $function$\n",
+        "definition": "CREATE CONSTRAINT TRIGGER \"Interpretacao_resolucao_demanda_final\" AFTER INSERT OR DELETE OR UPDATE ON pecuaria.\"InterpretacaoReprodutiva\" DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION pecuaria.validar_resolucao_demanda_final()"
+      }
+    ],
+    "constraints": [
+      {
+        "kind": "f",
+        "name": "AvaliacaoReprodutiva_gestacaoId_fkey",
+        "definition": "FOREIGN KEY (\"gestacaoId\") REFERENCES pecuaria.\"GestacaoAnimal\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      },
+      {
+        "kind": "p",
+        "name": "AvaliacaoReprodutiva_pkey",
+        "definition": "PRIMARY KEY (id)"
+      },
+      {
+        "kind": "f",
+        "name": "AvaliacaoReprodutiva_restricaoId_fkey",
+        "definition": "FOREIGN KEY (\"restricaoId\") REFERENCES pecuaria.\"RestricaoReprodutiva\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      },
+      {
+        "kind": "f",
+        "name": "AvaliacaoReprodutiva_tentativaId_fkey",
+        "definition": "FOREIGN KEY (\"tentativaId\") REFERENCES pecuaria.\"TentativaReprodutiva\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      },
+      {
+        "kind": "f",
+        "name": "InterpretacaoReprodutiva_exameId_fkey",
+        "definition": "FOREIGN KEY (\"exameId\") REFERENCES pecuaria.\"ExameAnimal\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      },
+      {
+        "kind": "t",
+        "name": "Interpretacao_resolucao_demanda_final",
+        "definition": "TRIGGER DEFERRABLE INITIALLY DEFERRED"
+      }
+    ]
+  },
+  {
+    "table": "GestacaoAnimal",
+    "schema": "pecuaria",
+    "columns": [
+      {
+        "name": "id",
+        "type": "text",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "referenciaExterna",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "animalId",
+        "type": "text",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "propriedadeId",
+        "type": "integer",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "tentativaId",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "inicio",
+        "type": "date",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "confirmadaEm",
+        "type": "date",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "previsaoParto",
+        "type": "date",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "sexoFetal",
+        "type": "pecuaria.\"SexoBovino\"",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "encerradaEm",
+        "type": "date",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "motivoEncerramento",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "origem",
+        "type": "text",
+        "default": "'MANUAL'::text",
+        "nullable": false
+      },
+      {
+        "name": "status",
+        "type": "pecuaria.\"StatusFatoPecuariaV3\"",
+        "default": "'VALIDO'::pecuaria.\"StatusFatoPecuariaV3\"",
+        "nullable": false
+      },
+      {
+        "name": "criadoEm",
+        "type": "timestamp(3) without time zone",
+        "default": "CURRENT_TIMESTAMP",
+        "nullable": false
+      },
+      {
+        "name": "criadoPorId",
+        "type": "integer",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "tipoEncerramento",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "causaClinica",
+        "type": "jsonb",
+        "default": null,
+        "nullable": true
+      }
+    ],
+    "indexes": [
+      {
+        "name": "GestacaoAnimal_pkey",
+        "definition": "CREATE UNIQUE INDEX \"GestacaoAnimal_pkey\" ON pecuaria.\"GestacaoAnimal\" USING btree (id)"
+      },
+      {
+        "name": "GestacaoAnimal_referenciaExterna_key",
+        "definition": "CREATE UNIQUE INDEX \"GestacaoAnimal_referenciaExterna_key\" ON pecuaria.\"GestacaoAnimal\" USING btree (\"referenciaExterna\")"
+      },
+      {
+        "name": "GestacaoAnimal_tentativaId_key",
+        "definition": "CREATE UNIQUE INDEX \"GestacaoAnimal_tentativaId_key\" ON pecuaria.\"GestacaoAnimal\" USING btree (\"tentativaId\")"
+      },
+      {
+        "name": "GestacaoAnimal_animalId_idx",
+        "definition": "CREATE INDEX \"GestacaoAnimal_animalId_idx\" ON pecuaria.\"GestacaoAnimal\" USING btree (\"animalId\")"
+      },
+      {
+        "name": "GestacaoAnimal_uma_aberta",
+        "definition": "CREATE UNIQUE INDEX \"GestacaoAnimal_uma_aberta\" ON pecuaria.\"GestacaoAnimal\" USING btree (\"animalId\") WHERE ((\"encerradaEm\" IS NULL) AND (status = 'VALIDO'::pecuaria.\"StatusFatoPecuariaV3\"))"
+      }
+    ],
+    "triggers": [],
+    "constraints": [
+      {
+        "kind": "f",
+        "name": "GestacaoAnimal_animalId_fkey",
+        "definition": "FOREIGN KEY (\"animalId\") REFERENCES pecuaria.\"Animal\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      },
+      {
+        "kind": "f",
+        "name": "GestacaoAnimal_criadoPorId_fkey",
+        "definition": "FOREIGN KEY (\"criadoPorId\") REFERENCES \"Usuario\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      },
+      {
+        "kind": "c",
+        "name": "GestacaoAnimal_intervalo",
+        "definition": "CHECK (((\"encerradaEm\" IS NULL) OR (\"encerradaEm\" >= \"confirmadaEm\")))"
+      },
+      {
+        "kind": "p",
+        "name": "GestacaoAnimal_pkey",
+        "definition": "PRIMARY KEY (id)"
+      },
+      {
+        "kind": "f",
+        "name": "GestacaoAnimal_propriedadeId_fkey",
+        "definition": "FOREIGN KEY (\"propriedadeId\") REFERENCES \"Propriedade\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      },
+      {
+        "kind": "f",
+        "name": "GestacaoAnimal_tentativaId_fkey",
+        "definition": "FOREIGN KEY (\"tentativaId\") REFERENCES pecuaria.\"TentativaReprodutiva\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      },
+      {
+        "kind": "c",
+        "name": "Gestacao_desfecho_tipado",
+        "definition": "CHECK ((((\"encerradaEm\" IS NULL) AND (\"tipoEncerramento\" IS NULL)) OR ((\"encerradaEm\" IS NOT NULL) AND (\"tipoEncerramento\" IS NOT NULL) AND (\"tipoEncerramento\" = ANY (ARRAY['PERDA'::text, 'PARTO'::text, 'NAO_IDENTIFICADO'::text])))))"
+      },
+      {
+        "kind": "c",
+        "name": "Gestacao_perda_explicada",
+        "definition": "CHECK (((\"tipoEncerramento\" IS DISTINCT FROM 'PERDA'::text) OR ((\"motivoEncerramento\" IS NOT NULL) AND (length(TRIM(BOTH FROM \"motivoEncerramento\")) >= 5)))) NOT VALID"
+      }
+    ]
+  },
+  {
+    "table": "ExameAnimal",
+    "schema": "pecuaria",
+    "columns": [
+      {
+        "name": "id",
+        "type": "text",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "animalId",
+        "type": "text",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "propriedadeId",
+        "type": "integer",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "tipoExameId",
+        "type": "text",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "ocorrenciaId",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "tarefaId",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "operacaoServicoId",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "data",
+        "type": "date",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "resultadoTexto",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "resultadoNumero",
+        "type": "numeric(14,4)",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "resultadoOpcao",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "formatoSnapshot",
+        "type": "jsonb",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "responsavel",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "status",
+        "type": "pecuaria.\"StatusFatoPecuariaV3\"",
+        "default": "'VALIDO'::pecuaria.\"StatusFatoPecuariaV3\"",
+        "nullable": false
+      },
+      {
+        "name": "origem",
+        "type": "text",
+        "default": "'MANUAL'::text",
+        "nullable": false
+      },
+      {
+        "name": "motivoAnulacao",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "anuladoEm",
+        "type": "timestamp(3) without time zone",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "criadoEm",
+        "type": "timestamp(3) without time zone",
+        "default": "CURRENT_TIMESTAMP",
+        "nullable": false
+      },
+      {
+        "name": "atualizadoEm",
+        "type": "timestamp(3) without time zone",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "valorServicoAtribuido",
+        "type": "numeric(14,2)",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "desvioProtocoloSnapshot",
+        "type": "jsonb",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "finalidades",
+        "type": "text[]",
+        "default": "ARRAY[]::text[]",
+        "nullable": false
+      },
+      {
+        "name": "finalidadePrincipal",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "realizacao",
+        "type": "text",
+        "default": "'REALIZADO'::text",
+        "nullable": false
+      },
+      {
+        "name": "anotacaoOriginal",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "observacao",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "criadoPorId",
+        "type": "integer",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "partoPosPartoId",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "demandaAcompanhamentoId",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      }
+    ],
+    "indexes": [
+      {
+        "name": "ExameAnimal_pkey",
+        "definition": "CREATE UNIQUE INDEX \"ExameAnimal_pkey\" ON pecuaria.\"ExameAnimal\" USING btree (id)"
+      },
+      {
+        "name": "ExameAnimal_animalId_data_idx",
+        "definition": "CREATE INDEX \"ExameAnimal_animalId_data_idx\" ON pecuaria.\"ExameAnimal\" USING btree (\"animalId\", data)"
+      },
+      {
+        "name": "ExameAnimal_operacaoServicoId_idx",
+        "definition": "CREATE INDEX \"ExameAnimal_operacaoServicoId_idx\" ON pecuaria.\"ExameAnimal\" USING btree (\"operacaoServicoId\")"
+      },
+      {
+        "name": "ExameAnimal_tarefaId_valido_key",
+        "definition": "CREATE UNIQUE INDEX \"ExameAnimal_tarefaId_valido_key\" ON pecuaria.\"ExameAnimal\" USING btree (\"tarefaId\") WHERE ((status = 'VALIDO'::pecuaria.\"StatusFatoPecuariaV3\") AND (\"tarefaId\" IS NOT NULL))"
+      },
+      {
+        "name": "ExameAnimal_tarefaId_idx",
+        "definition": "CREATE INDEX \"ExameAnimal_tarefaId_idx\" ON pecuaria.\"ExameAnimal\" USING btree (\"tarefaId\")"
+      },
+      {
+        "name": "ExameAnimal_partoPosPartoId_idx",
+        "definition": "CREATE INDEX \"ExameAnimal_partoPosPartoId_idx\" ON pecuaria.\"ExameAnimal\" USING btree (\"partoPosPartoId\")"
+      }
+    ],
+    "triggers": [
+      {
+        "name": "Preparo_limite_exame",
+        "function": "CREATE OR REPLACE FUNCTION pecuaria.conferir_alteracao_fonte_custo()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$ BEGIN\n IF TG_TABLE_NAME='AplicacaoProduto' THEN\n  IF EXISTS (SELECT 1 FROM pecuaria.\"ClassificacaoCustoPecuaria\" c WHERE c.\"aplicacaoId\"=NEW.id AND ((c.\"coberturaServico\"<>'PROCEDIMENTO' AND (NEW.\"operacaoServicoId\" IS NULL OR NEW.\"valorProdutoAtribuido\" IS NOT NULL OR NEW.\"movimentoEstoqueId\" IS NOT NULL)) OR (c.\"materialNaoAplicavel\" AND NEW.\"valorProdutoAtribuido\" IS NOT NULL) OR (c.\"servicoNaoAplicavel\" AND NEW.\"operacaoServicoId\" IS NOT NULL) OR (c.\"valorMaterialDocumentado\" IS NOT NULL AND (NEW.\"valorProdutoAtribuido\" IS NOT NULL OR NEW.\"movimentoEstoqueId\" IS NOT NULL OR NEW.\"origemInsumo\"<>'SEM_ORIGEM_JUSTIFICADA')))) THEN RAISE EXCEPTION 'correção incompatível com classificação de custo' USING ERRCODE='23514'; END IF;\n  PERFORM pecuaria.conferir_capacidade_preparo('APLICACAO',NEW.id);\n ELSIF TG_TABLE_NAME='TentativaReprodutiva' THEN\n  IF EXISTS (SELECT 1 FROM pecuaria.\"ClassificacaoCustoPecuaria\" c WHERE c.\"tentativaId\"=NEW.id AND ((c.\"coberturaServico\"<>'PROCEDIMENTO' AND (NEW.\"operacaoServicoId\" IS NULL OR NEW.\"valorProdutoAtribuido\" IS NOT NULL OR NEW.\"movimentoEstoqueId\" IS NOT NULL)) OR (c.\"materialNaoAplicavel\" AND (NEW.\"valorProdutoAtribuido\" IS NOT NULL OR NEW.\"movimentoEstoqueId\" IS NOT NULL)) OR (c.\"servicoNaoAplicavel\" AND NEW.\"operacaoServicoId\" IS NOT NULL) OR (c.\"valorMaterialDocumentado\" IS NOT NULL AND (NEW.\"valorProdutoAtribuido\" IS NOT NULL OR NEW.\"movimentoEstoqueId\" IS NOT NULL OR NEW.\"origemMaterial\"<>'DOCUMENTADA')))) THEN RAISE EXCEPTION 'correção incompatível com classificação de custo da tentativa' USING ERRCODE='23514'; END IF;\n ELSIF TG_TABLE_NAME='ExameAnimal' THEN\n  IF EXISTS (SELECT 1 FROM pecuaria.\"ClassificacaoCustoPecuaria\" c WHERE c.\"exameId\"=NEW.id AND ((c.\"servicoNaoAplicavel\" AND NEW.\"operacaoServicoId\" IS NOT NULL) OR (c.\"coberturaServico\"<>'PROCEDIMENTO' AND NEW.\"operacaoServicoId\" IS NULL))) THEN RAISE EXCEPTION 'correção incompatível com classificação de custo' USING ERRCODE='23514'; END IF;\n  PERFORM pecuaria.conferir_capacidade_preparo('EXAME',NEW.id);\n ELSE\n  IF EXISTS (SELECT 1 FROM pecuaria.\"ClassificacaoCustoPecuaria\" c WHERE c.\"participacaoId\"=NEW.id AND ((c.\"servicoNaoAplicavel\" AND NEW.\"operacaoServicoId\" IS NOT NULL) OR (c.\"coberturaServico\"<>'PROCEDIMENTO' AND NEW.\"operacaoServicoId\" IS NULL))) THEN RAISE EXCEPTION 'correção incompatível com classificação de custo' USING ERRCODE='23514'; END IF;\n  PERFORM pecuaria.conferir_capacidade_preparo('PARTICIPACAO',NEW.id);\n END IF;\n RETURN NULL;\nEND $function$\n",
+        "definition": "CREATE CONSTRAINT TRIGGER \"Preparo_limite_exame\" AFTER UPDATE ON pecuaria.\"ExameAnimal\" DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION pecuaria.conferir_alteracao_fonte_custo()"
+      },
+      {
+        "name": "Exame_demanda_compativel",
+        "function": "CREATE OR REPLACE FUNCTION pecuaria.validar_exame_demanda_acompanhamento()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nDECLARE registro_demanda RECORD; registro_interpretacao RECORD;\nBEGIN\n IF NEW.\"demandaAcompanhamentoId\" IS NULL THEN RETURN NEW; END IF;\n SELECT * INTO registro_demanda FROM pecuaria.\"DemandaAcompanhamentoReprodutivo\" d WHERE d.id=NEW.\"demandaAcompanhamentoId\";\n SELECT * INTO registro_interpretacao FROM pecuaria.\"InterpretacaoReprodutiva\" i WHERE i.\"exameId\"=NEW.id;\n IF registro_demanda.\"animalId\" IS DISTINCT FROM NEW.\"animalId\" OR NOT (registro_demanda.finalidade=ANY(NEW.finalidades))\n  OR NEW.data<registro_demanda.\"dataReferencia\" THEN RAISE EXCEPTION 'exame incompatível com demanda' USING ERRCODE='23514'; END IF;\n IF registro_demanda.\"tentativaId\" IS NOT NULL THEN\n  IF registro_interpretacao.\"tentativaId\" IS DISTINCT FROM registro_demanda.\"tentativaId\" THEN RAISE EXCEPTION 'tentativa da demanda diverge do exame' USING ERRCODE='23514'; END IF;\n ELSE\n  IF registro_interpretacao.\"gestacaoId\" IS DISTINCT FROM registro_demanda.\"gestacaoId\" THEN RAISE EXCEPTION 'gestação da demanda diverge do exame' USING ERRCODE='23514'; END IF;\n END IF;\n IF registro_demanda.\"regraSnapshot\"->>'tipoExameId' IS NOT NULL AND\n  (NEW.\"tipoExameId\" IS DISTINCT FROM registro_demanda.\"regraSnapshot\"->>'tipoExameId' OR NEW.\"formatoSnapshot\"->>'versao' IS DISTINCT FROM registro_demanda.\"regraSnapshot\"->>'tipoExameVersao') THEN RAISE EXCEPTION 'formato difere da regra congelada' USING ERRCODE='23514'; END IF;\n RETURN NEW;\nEND $function$\n",
+        "definition": "CREATE CONSTRAINT TRIGGER \"Exame_demanda_compativel\" AFTER INSERT OR UPDATE ON pecuaria.\"ExameAnimal\" DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION pecuaria.validar_exame_demanda_acompanhamento()"
+      },
+      {
+        "name": "Exame_resolucao_demanda_final",
+        "function": "CREATE OR REPLACE FUNCTION pecuaria.validar_resolucao_demanda_final()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nDECLARE identificador_exame TEXT;\nBEGIN\n IF TG_TABLE_NAME='ExameAnimal' THEN\n  IF TG_OP='DELETE' THEN identificador_exame:=OLD.id; ELSE identificador_exame:=NEW.id; END IF;\n ELSIF TG_TABLE_NAME='ResultadoExame' OR TG_TABLE_NAME='InterpretacaoReprodutiva' THEN\n  IF TG_OP='DELETE' THEN identificador_exame:=OLD.\"exameId\"; ELSE identificador_exame:=NEW.\"exameId\"; END IF;\n END IF;\n IF EXISTS(SELECT 1 FROM pecuaria.\"DemandaAcompanhamentoReprodutivo\" d JOIN pecuaria.\"ExameAnimal\" e ON e.id=d.\"exameResolucaoId\" LEFT JOIN pecuaria.\"InterpretacaoReprodutiva\" i ON i.\"exameId\"=e.id\n  WHERE d.estado='RESOLVIDA' AND d.\"exameResolucaoId\"=identificador_exame AND\n   (e.status<>'VALIDO' OR e.realizacao<>'REALIZADO' OR e.\"animalId\"<>d.\"animalId\"\n    OR NOT (d.finalidade=ANY(e.finalidades)) OR e.data<d.\"dataReferencia\" OR (d.finalidade='RECONFIRMACAO' AND e.data<d.\"previstaPara\")\n    OR (d.\"tentativaId\" IS NOT NULL AND i.\"tentativaId\" IS DISTINCT FROM d.\"tentativaId\") OR (d.\"gestacaoId\" IS NOT NULL AND i.\"gestacaoId\" IS DISTINCT FROM d.\"gestacaoId\")\n    OR (e.\"demandaAcompanhamentoId\" IS NOT NULL AND e.\"demandaAcompanhamentoId\"<>d.id)\n    OR (d.\"regraSnapshot\"->>'tipoExameId' IS NOT NULL AND (e.\"tipoExameId\" IS DISTINCT FROM d.\"regraSnapshot\"->>'tipoExameId' OR e.\"formatoSnapshot\"->>'versao' IS DISTINCT FROM d.\"regraSnapshot\"->>'tipoExameVersao'))\n    OR NOT EXISTS(\n    SELECT 1 FROM pecuaria.\"ResultadoExame\" r WHERE r.\"exameId\"=e.id AND r.vigente AND r.campo='CONCLUSAO_GESTACIONAL' AND r.valor IN ('\"POSITIVO\"'::jsonb,'\"NEGATIVO\"'::jsonb)))) THEN\n  RAISE EXCEPTION 'demanda resolvida exige evidência conclusiva válida no estado final' USING ERRCODE='23514';\n END IF;\n RETURN NULL;\nEND $function$\n",
+        "definition": "CREATE CONSTRAINT TRIGGER \"Exame_resolucao_demanda_final\" AFTER DELETE OR UPDATE ON pecuaria.\"ExameAnimal\" DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION pecuaria.validar_resolucao_demanda_final()"
+      },
+      {
+        "name": "ExameAnimal_pos_parto",
+        "function": "CREATE OR REPLACE FUNCTION pecuaria.conferir_exame_pos_parto_trigger()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nDECLARE id_exame text;\nBEGIN\n IF TG_TABLE_NAME='ExameAnimal' THEN\n  PERFORM pecuaria.conferir_exame_pos_parto(NEW.id);\n ELSE\n  FOR id_exame IN SELECT id FROM pecuaria.\"ExameAnimal\" WHERE \"partoPosPartoId\"=NEW.id AND status='VALIDO' ORDER BY id\n  LOOP PERFORM pecuaria.conferir_exame_pos_parto(id_exame); END LOOP;\n END IF;\n RETURN NULL;\nEND $function$\n",
+        "definition": "CREATE CONSTRAINT TRIGGER \"ExameAnimal_pos_parto\" AFTER INSERT OR UPDATE ON pecuaria.\"ExameAnimal\" DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION pecuaria.conferir_exame_pos_parto_trigger()"
+      }
+    ],
+    "constraints": [
+      {
+        "kind": "f",
+        "name": "ExameAnimal_animalId_fkey",
+        "definition": "FOREIGN KEY (\"animalId\") REFERENCES pecuaria.\"Animal\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      },
+      {
+        "kind": "f",
+        "name": "ExameAnimal_criadoPorId_fkey",
+        "definition": "FOREIGN KEY (\"criadoPorId\") REFERENCES \"Usuario\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      },
+      {
+        "kind": "f",
+        "name": "ExameAnimal_demandaAcompanhamentoId_fkey",
+        "definition": "FOREIGN KEY (\"demandaAcompanhamentoId\") REFERENCES pecuaria.\"DemandaAcompanhamentoReprodutivo\"(id) ON DELETE RESTRICT"
+      },
+      {
+        "kind": "c",
+        "name": "ExameAnimal_finalidade_check",
+        "definition": "CHECK (((\"finalidadePrincipal\" IS NULL) OR (\"finalidadePrincipal\" = ANY (finalidades))))"
+      },
+      {
+        "kind": "c",
+        "name": "ExameAnimal_formato_multiplo_check",
+        "definition": "CHECK ((((\"formatoSnapshot\" ->> 'tipoResultado'::text) <> 'MULTIPLO'::text) OR ((\"resultadoTexto\" IS NULL) AND (\"resultadoNumero\" IS NULL) AND (\"resultadoOpcao\" IS NULL))))"
+      },
+      {
+        "kind": "f",
+        "name": "ExameAnimal_ocorrenciaId_fkey",
+        "definition": "FOREIGN KEY (\"ocorrenciaId\") REFERENCES pecuaria.\"OcorrenciaSanitaria\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      },
+      {
+        "kind": "f",
+        "name": "ExameAnimal_operacaoServicoId_fkey",
+        "definition": "FOREIGN KEY (\"operacaoServicoId\") REFERENCES \"Operacao\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      },
+      {
+        "kind": "f",
+        "name": "ExameAnimal_partoPosPartoId_fkey",
+        "definition": "FOREIGN KEY (\"partoPosPartoId\") REFERENCES pecuaria.\"PartoAnimal\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      },
+      {
+        "kind": "p",
+        "name": "ExameAnimal_pkey",
+        "definition": "PRIMARY KEY (id)"
+      },
+      {
+        "kind": "t",
+        "name": "ExameAnimal_pos_parto",
+        "definition": "TRIGGER DEFERRABLE INITIALLY DEFERRED"
+      },
+      {
+        "kind": "f",
+        "name": "ExameAnimal_propriedadeId_fkey",
+        "definition": "FOREIGN KEY (\"propriedadeId\") REFERENCES \"Propriedade\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      },
+      {
+        "kind": "c",
+        "name": "ExameAnimal_realizacao_check",
+        "definition": "CHECK ((realizacao = ANY (ARRAY['REALIZADO'::text, 'COLETA_REGISTRADA'::text, 'NAO_REALIZADO'::text])))"
+      },
+      {
+        "kind": "f",
+        "name": "ExameAnimal_tarefaId_fkey",
+        "definition": "FOREIGN KEY (\"tarefaId\") REFERENCES pecuaria.\"TarefaProtocolo\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      },
+      {
+        "kind": "f",
+        "name": "ExameAnimal_tipoExameId_fkey",
+        "definition": "FOREIGN KEY (\"tipoExameId\") REFERENCES pecuaria.\"TipoExame\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      },
+      {
+        "kind": "t",
+        "name": "Exame_demanda_compativel",
+        "definition": "TRIGGER DEFERRABLE INITIALLY DEFERRED"
+      },
+      {
+        "kind": "t",
+        "name": "Exame_resolucao_demanda_final",
+        "definition": "TRIGGER DEFERRABLE INITIALLY DEFERRED"
+      },
+      {
+        "kind": "t",
+        "name": "Preparo_limite_exame",
+        "definition": "TRIGGER DEFERRABLE INITIALLY DEFERRED"
+      },
+      {
+        "kind": "c",
+        "name": "exame_rateio_nao_negativo",
+        "definition": "CHECK (((\"valorServicoAtribuido\" IS NULL) OR ((\"valorServicoAtribuido\" >= (0)::numeric) AND (\"operacaoServicoId\" IS NOT NULL))))"
+      }
+    ]
+  },
+  {
+    "table": "VinculoTarefaProtocolo",
+    "schema": "pecuaria",
+    "columns": [
+      {
+        "name": "id",
+        "type": "text",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "tarefaId",
+        "type": "text",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "ordem",
+        "type": "integer",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "aplicacaoId",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "exameId",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "tentativaId",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "estado",
+        "type": "text",
+        "default": "'ATUAL'::text",
+        "nullable": false
+      },
+      {
+        "name": "origem",
+        "type": "text",
+        "default": "'EXECUCAO'::text",
+        "nullable": false
+      },
+      {
+        "name": "registradoEm",
+        "type": "timestamp(3) without time zone",
+        "default": "CURRENT_TIMESTAMP",
+        "nullable": false
+      },
+      {
+        "name": "registradoPorId",
+        "type": "integer",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "encerradoEm",
+        "type": "timestamp(3) without time zone",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "motivo",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      }
+    ],
+    "indexes": [
+      {
+        "name": "VinculoTarefaProtocolo_pkey",
+        "definition": "CREATE UNIQUE INDEX \"VinculoTarefaProtocolo_pkey\" ON pecuaria.\"VinculoTarefaProtocolo\" USING btree (id)"
+      },
+      {
+        "name": "VinculoTarefaProtocolo_tarefaId_ordem_key",
+        "definition": "CREATE UNIQUE INDEX \"VinculoTarefaProtocolo_tarefaId_ordem_key\" ON pecuaria.\"VinculoTarefaProtocolo\" USING btree (\"tarefaId\", ordem)"
+      },
+      {
+        "name": "VinculoTarefaProtocolo_um_atual",
+        "definition": "CREATE UNIQUE INDEX \"VinculoTarefaProtocolo_um_atual\" ON pecuaria.\"VinculoTarefaProtocolo\" USING btree (\"tarefaId\") WHERE (estado = 'ATUAL'::text)"
+      },
+      {
+        "name": "VinculoTarefaProtocolo_aplicacaoId_idx",
+        "definition": "CREATE INDEX \"VinculoTarefaProtocolo_aplicacaoId_idx\" ON pecuaria.\"VinculoTarefaProtocolo\" USING btree (\"aplicacaoId\")"
+      },
+      {
+        "name": "VinculoTarefaProtocolo_exameId_idx",
+        "definition": "CREATE INDEX \"VinculoTarefaProtocolo_exameId_idx\" ON pecuaria.\"VinculoTarefaProtocolo\" USING btree (\"exameId\")"
+      },
+      {
+        "name": "VinculoTarefaProtocolo_tentativaId_idx",
+        "definition": "CREATE INDEX \"VinculoTarefaProtocolo_tentativaId_idx\" ON pecuaria.\"VinculoTarefaProtocolo\" USING btree (\"tentativaId\")"
+      }
+    ],
+    "triggers": [
+      {
+        "name": "VinculoTarefaProtocolo_fato",
+        "function": "CREATE OR REPLACE FUNCTION pecuaria.conferir_vinculo_tarefa()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nDECLARE dono TEXT; tarefa_fato TEXT; tipo_fato TEXT; situacao TEXT;\nBEGIN\n IF TG_OP='UPDATE' AND (NEW.\"tarefaId\",NEW.ordem,NEW.\"aplicacaoId\",NEW.\"exameId\",NEW.\"tentativaId\") IS DISTINCT FROM (OLD.\"tarefaId\",OLD.ordem,OLD.\"aplicacaoId\",OLD.\"exameId\",OLD.\"tentativaId\")\n THEN RAISE EXCEPTION 'Vínculo conserva a execução original; registre outro vínculo'; END IF;\n IF NEW.estado<>'ATUAL' THEN RETURN NEW; END IF;\n IF NEW.\"aplicacaoId\" IS NOT NULL THEN SELECT \"animalId\",\"tarefaId\",status::text INTO dono,tarefa_fato,situacao FROM pecuaria.\"AplicacaoProduto\" WHERE id=NEW.\"aplicacaoId\"; tipo_fato:='APLICACAO';\n ELSIF NEW.\"exameId\" IS NOT NULL THEN SELECT \"animalId\",\"tarefaId\",status::text INTO dono,tarefa_fato,situacao FROM pecuaria.\"ExameAnimal\" WHERE id=NEW.\"exameId\"; tipo_fato:='EXAME';\n ELSE SELECT \"animalId\",\"tarefaId\",status::text INTO dono,tarefa_fato,situacao FROM pecuaria.\"TentativaReprodutiva\" WHERE id=NEW.\"tentativaId\"; tipo_fato:='TENTATIVA'; END IF;\n IF tarefa_fato IS DISTINCT FROM NEW.\"tarefaId\" OR situacao<>'VALIDO' OR NOT EXISTS(SELECT 1 FROM pecuaria.\"TarefaProtocolo\" t JOIN pecuaria.\"ParticipacaoProtocolo\" p ON p.id=t.\"participacaoId\" JOIN pecuaria.\"EtapaProtocolo\" e ON e.id=t.\"etapaId\" WHERE t.id=NEW.\"tarefaId\" AND p.\"animalId\"=dono AND e.tipo=tipo_fato)\n THEN RAISE EXCEPTION 'Fato, animal e ação incompatíveis com a tarefa'; END IF;\n RETURN NEW;\nEND $function$\n",
+        "definition": "CREATE TRIGGER \"VinculoTarefaProtocolo_fato\" BEFORE INSERT OR UPDATE ON pecuaria.\"VinculoTarefaProtocolo\" FOR EACH ROW EXECUTE FUNCTION pecuaria.conferir_vinculo_tarefa()"
+      }
+    ],
+    "constraints": [
+      {
+        "kind": "f",
+        "name": "VinculoTarefaProtocolo_aplicacaoId_fkey",
+        "definition": "FOREIGN KEY (\"aplicacaoId\") REFERENCES pecuaria.\"AplicacaoProduto\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      },
+      {
+        "kind": "c",
+        "name": "VinculoTarefaProtocolo_check",
+        "definition": "CHECK ((num_nonnulls(\"aplicacaoId\", \"exameId\", \"tentativaId\") = 1))"
+      },
+      {
+        "kind": "c",
+        "name": "VinculoTarefaProtocolo_estado_check",
+        "definition": "CHECK ((estado = ANY (ARRAY['ATUAL'::text, 'HISTORICO'::text, 'SUBSTITUIDO'::text, 'ENCERRADO'::text, 'REABERTO'::text])))"
+      },
+      {
+        "kind": "f",
+        "name": "VinculoTarefaProtocolo_exameId_fkey",
+        "definition": "FOREIGN KEY (\"exameId\") REFERENCES pecuaria.\"ExameAnimal\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      },
+      {
+        "kind": "p",
+        "name": "VinculoTarefaProtocolo_pkey",
+        "definition": "PRIMARY KEY (id)"
+      },
+      {
+        "kind": "f",
+        "name": "VinculoTarefaProtocolo_registradoPorId_fkey",
+        "definition": "FOREIGN KEY (\"registradoPorId\") REFERENCES \"Usuario\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      },
+      {
+        "kind": "f",
+        "name": "VinculoTarefaProtocolo_tarefaId_fkey",
+        "definition": "FOREIGN KEY (\"tarefaId\") REFERENCES pecuaria.\"TarefaProtocolo\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      },
+      {
+        "kind": "f",
+        "name": "VinculoTarefaProtocolo_tentativaId_fkey",
+        "definition": "FOREIGN KEY (\"tentativaId\") REFERENCES pecuaria.\"TentativaReprodutiva\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      }
+    ]
+  },
+  {
+    "table": "EtapaProtocolo",
+    "schema": "pecuaria",
+    "columns": [
+      {
+        "name": "id",
+        "type": "text",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "protocoloId",
+        "type": "text",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "ordem",
+        "type": "integer",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "intervalo",
+        "type": "double precision",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "tipo",
+        "type": "text",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "produtoId",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "tipoExameId",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "finalidade",
+        "type": "pecuaria.\"FinalidadeAplicacao\"",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "dose",
+        "type": "numeric(12,3)",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "unidade",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "via",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "tipoAplicacaoId",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "tipoAplicacaoNomeSnapshot",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "nome",
+        "type": "text",
+        "default": "'Etapa'::text",
+        "nullable": false
+      },
+      {
+        "name": "unidadeIntervalo",
+        "type": "text",
+        "default": "'DIAS'::text",
+        "nullable": false
+      },
+      {
+        "name": "configuracao",
+        "type": "jsonb",
+        "default": "'{}'::jsonb",
+        "nullable": false
+      },
+      {
+        "name": "materialId",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      }
+    ],
+    "indexes": [
+      {
+        "name": "EtapaProtocoloSanitario_pkey",
+        "definition": "CREATE UNIQUE INDEX \"EtapaProtocoloSanitario_pkey\" ON pecuaria.\"EtapaProtocolo\" USING btree (id)"
+      },
+      {
+        "name": "EtapaProtocoloSanitario_protocoloId_ordem_key",
+        "definition": "CREATE UNIQUE INDEX \"EtapaProtocoloSanitario_protocoloId_ordem_key\" ON pecuaria.\"EtapaProtocolo\" USING btree (\"protocoloId\", ordem)"
+      }
+    ],
+    "triggers": [
+      {
+        "name": "EtapaProtocolo_imutavel",
+        "function": "CREATE OR REPLACE FUNCTION pecuaria.proteger_etapa_protocolo()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$ BEGIN\n IF (SELECT publicado OR \"publicadoEm\" IS NOT NULL FROM pecuaria.\"Protocolo\" WHERE id=OLD.\"protocoloId\") OR EXISTS(SELECT 1 FROM pecuaria.\"TarefaProtocolo\" WHERE \"etapaId\"=OLD.id)\n THEN RAISE EXCEPTION 'Etapa publicada ou usada é imutável'; END IF;\n RETURN NEW;\nEND $function$\n",
+        "definition": "CREATE TRIGGER \"EtapaProtocolo_imutavel\" BEFORE UPDATE ON pecuaria.\"EtapaProtocolo\" FOR EACH ROW EXECUTE FUNCTION pecuaria.proteger_etapa_protocolo()"
+      }
+    ],
+    "constraints": [
+      {
+        "kind": "p",
+        "name": "EtapaProtocoloSanitario_pkey",
+        "definition": "PRIMARY KEY (id)"
+      },
+      {
+        "kind": "f",
+        "name": "EtapaProtocoloSanitario_produtoId_fkey",
+        "definition": "FOREIGN KEY (\"produtoId\") REFERENCES \"Produto\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      },
+      {
+        "kind": "f",
+        "name": "EtapaProtocoloSanitario_protocoloId_fkey",
+        "definition": "FOREIGN KEY (\"protocoloId\") REFERENCES pecuaria.\"Protocolo\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      },
+      {
+        "kind": "f",
+        "name": "EtapaProtocoloSanitario_tipoAplicacaoId_fkey",
+        "definition": "FOREIGN KEY (\"tipoAplicacaoId\") REFERENCES pecuaria.\"TipoAplicacaoSanitaria\"(id) ON DELETE RESTRICT"
+      },
+      {
+        "kind": "f",
+        "name": "EtapaProtocoloSanitario_tipoExameId_fkey",
+        "definition": "FOREIGN KEY (\"tipoExameId\") REFERENCES pecuaria.\"TipoExame\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      },
+      {
+        "kind": "c",
+        "name": "EtapaProtocolo_intervalo_check",
+        "definition": "CHECK (((intervalo >= (0)::double precision) AND (\"unidadeIntervalo\" = ANY (ARRAY['DIAS'::text, 'HORAS'::text]))))"
+      },
+      {
+        "kind": "f",
+        "name": "EtapaProtocolo_materialId_fkey",
+        "definition": "FOREIGN KEY (\"materialId\") REFERENCES pecuaria.\"MaterialGenetico\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      },
+      {
+        "kind": "c",
+        "name": "EtapaProtocolo_tipo_check",
+        "definition": "CHECK ((tipo = ANY (ARRAY['APLICACAO'::text, 'EXAME'::text, 'TENTATIVA'::text, 'MANEJO'::text, 'RETIRADA'::text])))"
+      }
+    ]
+  },
+  {
+    "table": "ProgramacaoProtocolo",
+    "schema": "pecuaria",
+    "columns": [
+      {
+        "name": "id",
+        "type": "text",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "nome",
+        "type": "text",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "protocoloId",
+        "type": "text",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "propriedadeId",
+        "type": "integer",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "inicioReferencia",
+        "type": "timestamp(3) without time zone",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "criadoEm",
+        "type": "timestamp(3) without time zone",
+        "default": "CURRENT_TIMESTAMP",
+        "nullable": false
+      },
+      {
+        "name": "atualizadoEm",
+        "type": "timestamp(3) without time zone",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "legadoIatfId",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "referenciaExterna",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "precisaoTemporal",
+        "type": "pecuaria.\"PrecisaoCalendarioProtocolo\"",
+        "default": "'DIA'::pecuaria.\"PrecisaoCalendarioProtocolo\"",
+        "nullable": false
+      },
+      {
+        "name": "status",
+        "type": "text",
+        "default": "'ABERTA'::text",
+        "nullable": false
+      },
+      {
+        "name": "criadoPorId",
+        "type": "integer",
+        "default": null,
+        "nullable": true
+      }
+    ],
+    "indexes": [
+      {
+        "name": "RodadaProtocoloSanitario_pkey",
+        "definition": "CREATE UNIQUE INDEX \"RodadaProtocoloSanitario_pkey\" ON pecuaria.\"ProgramacaoProtocolo\" USING btree (id)"
+      },
+      {
+        "name": "RodadaProtocoloSanitario_protocoloId_idx",
+        "definition": "CREATE INDEX \"RodadaProtocoloSanitario_protocoloId_idx\" ON pecuaria.\"ProgramacaoProtocolo\" USING btree (\"protocoloId\")"
+      },
+      {
+        "name": "RodadaProtocoloSanitario_propriedadeId_inicioReferencia_idx",
+        "definition": "CREATE INDEX \"RodadaProtocoloSanitario_propriedadeId_inicioReferencia_idx\" ON pecuaria.\"ProgramacaoProtocolo\" USING btree (\"propriedadeId\", \"inicioReferencia\")"
+      },
+      {
+        "name": "ProgramacaoProtocolo_legadoIatfId_key",
+        "definition": "CREATE UNIQUE INDEX \"ProgramacaoProtocolo_legadoIatfId_key\" ON pecuaria.\"ProgramacaoProtocolo\" USING btree (\"legadoIatfId\")"
+      },
+      {
+        "name": "ProgramacaoProtocolo_referenciaExterna_key",
+        "definition": "CREATE UNIQUE INDEX \"ProgramacaoProtocolo_referenciaExterna_key\" ON pecuaria.\"ProgramacaoProtocolo\" USING btree (\"referenciaExterna\")"
+      }
+    ],
+    "triggers": [],
+    "constraints": [
+      {
+        "kind": "f",
+        "name": "ProgramacaoProtocolo_criadoPorId_fkey",
+        "definition": "FOREIGN KEY (\"criadoPorId\") REFERENCES \"Usuario\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      },
+      {
+        "kind": "u",
+        "name": "ProgramacaoProtocolo_legadoIatfId_key",
+        "definition": "UNIQUE (\"legadoIatfId\")"
+      },
+      {
+        "kind": "c",
+        "name": "ProgramacaoProtocolo_precisao_check",
+        "definition": "CHECK (((\"precisaoTemporal\" = 'HORA'::pecuaria.\"PrecisaoCalendarioProtocolo\") OR (\"inicioReferencia\" = date_trunc('day'::text, \"inicioReferencia\"))))"
+      },
+      {
+        "kind": "u",
+        "name": "ProgramacaoProtocolo_referenciaExterna_key",
+        "definition": "UNIQUE (\"referenciaExterna\")"
+      },
+      {
+        "kind": "p",
+        "name": "RodadaProtocoloSanitario_pkey",
+        "definition": "PRIMARY KEY (id)"
+      },
+      {
+        "kind": "f",
+        "name": "RodadaProtocoloSanitario_propriedadeId_fkey",
+        "definition": "FOREIGN KEY (\"propriedadeId\") REFERENCES \"Propriedade\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      },
+      {
+        "kind": "f",
+        "name": "RodadaProtocoloSanitario_protocoloId_fkey",
+        "definition": "FOREIGN KEY (\"protocoloId\") REFERENCES pecuaria.\"Protocolo\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      }
+    ]
+  },
+  {
+    "table": "ParticipacaoProtocolo",
+    "schema": "pecuaria",
+    "columns": [
+      {
+        "name": "id",
+        "type": "text",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "protocoloId",
+        "type": "text",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "animalId",
+        "type": "text",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "propriedadeId",
+        "type": "integer",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "inicioReferencia",
+        "type": "timestamp(3) without time zone",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "ocorrenciaId",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "operacaoServicoId",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "canceladaEm",
+        "type": "timestamp(3) without time zone",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "motivoCancelamento",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "criadoEm",
+        "type": "timestamp(3) without time zone",
+        "default": "CURRENT_TIMESTAMP",
+        "nullable": false
+      },
+      {
+        "name": "valorServicoAtribuido",
+        "type": "numeric(14,2)",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "programacaoId",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "legadoIatfId",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "referenciaExterna",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "precisaoTemporal",
+        "type": "pecuaria.\"PrecisaoCalendarioProtocolo\"",
+        "default": "'DIA'::pecuaria.\"PrecisaoCalendarioProtocolo\"",
+        "nullable": false
+      },
+      {
+        "name": "inicioEfetivo",
+        "type": "timestamp(3) without time zone",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "criadoPorId",
+        "type": "integer",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "precisaoInicioEfetivo",
+        "type": "pecuaria.\"PrecisaoCalendarioProtocolo\"",
+        "default": null,
+        "nullable": true
+      }
+    ],
+    "indexes": [
+      {
+        "name": "ExecucaoProtocoloSanitario_pkey",
+        "definition": "CREATE UNIQUE INDEX \"ExecucaoProtocoloSanitario_pkey\" ON pecuaria.\"ParticipacaoProtocolo\" USING btree (id)"
+      },
+      {
+        "name": "ExecucaoProtocoloSanitario_operacaoServicoId_idx",
+        "definition": "CREATE INDEX \"ExecucaoProtocoloSanitario_operacaoServicoId_idx\" ON pecuaria.\"ParticipacaoProtocolo\" USING btree (\"operacaoServicoId\")"
+      },
+      {
+        "name": "ExecucaoProtocoloSanitario_rodadaId_idx",
+        "definition": "CREATE INDEX \"ExecucaoProtocoloSanitario_rodadaId_idx\" ON pecuaria.\"ParticipacaoProtocolo\" USING btree (\"programacaoId\")"
+      },
+      {
+        "name": "ExecucaoProtocoloSanitario_rodada_animal_ativa",
+        "definition": "CREATE UNIQUE INDEX \"ExecucaoProtocoloSanitario_rodada_animal_ativa\" ON pecuaria.\"ParticipacaoProtocolo\" USING btree (\"programacaoId\", \"animalId\") WHERE ((\"programacaoId\" IS NOT NULL) AND (\"canceladaEm\" IS NULL))"
+      },
+      {
+        "name": "ExecucaoProtocoloSanitario_animalId_inicio_idx",
+        "definition": "CREATE INDEX \"ExecucaoProtocoloSanitario_animalId_inicio_idx\" ON pecuaria.\"ParticipacaoProtocolo\" USING btree (\"animalId\", \"inicioReferencia\")"
+      },
+      {
+        "name": "ParticipacaoProtocolo_legadoIatfId_key",
+        "definition": "CREATE UNIQUE INDEX \"ParticipacaoProtocolo_legadoIatfId_key\" ON pecuaria.\"ParticipacaoProtocolo\" USING btree (\"legadoIatfId\")"
+      },
+      {
+        "name": "ParticipacaoProtocolo_referenciaExterna_key",
+        "definition": "CREATE UNIQUE INDEX \"ParticipacaoProtocolo_referenciaExterna_key\" ON pecuaria.\"ParticipacaoProtocolo\" USING btree (\"referenciaExterna\")"
+      }
+    ],
+    "triggers": [
+      {
+        "name": "Preparo_limite_participacao",
+        "function": "CREATE OR REPLACE FUNCTION pecuaria.conferir_alteracao_fonte_custo()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$ BEGIN\n IF TG_TABLE_NAME='AplicacaoProduto' THEN\n  IF EXISTS (SELECT 1 FROM pecuaria.\"ClassificacaoCustoPecuaria\" c WHERE c.\"aplicacaoId\"=NEW.id AND ((c.\"coberturaServico\"<>'PROCEDIMENTO' AND (NEW.\"operacaoServicoId\" IS NULL OR NEW.\"valorProdutoAtribuido\" IS NOT NULL OR NEW.\"movimentoEstoqueId\" IS NOT NULL)) OR (c.\"materialNaoAplicavel\" AND NEW.\"valorProdutoAtribuido\" IS NOT NULL) OR (c.\"servicoNaoAplicavel\" AND NEW.\"operacaoServicoId\" IS NOT NULL) OR (c.\"valorMaterialDocumentado\" IS NOT NULL AND (NEW.\"valorProdutoAtribuido\" IS NOT NULL OR NEW.\"movimentoEstoqueId\" IS NOT NULL OR NEW.\"origemInsumo\"<>'SEM_ORIGEM_JUSTIFICADA')))) THEN RAISE EXCEPTION 'correção incompatível com classificação de custo' USING ERRCODE='23514'; END IF;\n  PERFORM pecuaria.conferir_capacidade_preparo('APLICACAO',NEW.id);\n ELSIF TG_TABLE_NAME='TentativaReprodutiva' THEN\n  IF EXISTS (SELECT 1 FROM pecuaria.\"ClassificacaoCustoPecuaria\" c WHERE c.\"tentativaId\"=NEW.id AND ((c.\"coberturaServico\"<>'PROCEDIMENTO' AND (NEW.\"operacaoServicoId\" IS NULL OR NEW.\"valorProdutoAtribuido\" IS NOT NULL OR NEW.\"movimentoEstoqueId\" IS NOT NULL)) OR (c.\"materialNaoAplicavel\" AND (NEW.\"valorProdutoAtribuido\" IS NOT NULL OR NEW.\"movimentoEstoqueId\" IS NOT NULL)) OR (c.\"servicoNaoAplicavel\" AND NEW.\"operacaoServicoId\" IS NOT NULL) OR (c.\"valorMaterialDocumentado\" IS NOT NULL AND (NEW.\"valorProdutoAtribuido\" IS NOT NULL OR NEW.\"movimentoEstoqueId\" IS NOT NULL OR NEW.\"origemMaterial\"<>'DOCUMENTADA')))) THEN RAISE EXCEPTION 'correção incompatível com classificação de custo da tentativa' USING ERRCODE='23514'; END IF;\n ELSIF TG_TABLE_NAME='ExameAnimal' THEN\n  IF EXISTS (SELECT 1 FROM pecuaria.\"ClassificacaoCustoPecuaria\" c WHERE c.\"exameId\"=NEW.id AND ((c.\"servicoNaoAplicavel\" AND NEW.\"operacaoServicoId\" IS NOT NULL) OR (c.\"coberturaServico\"<>'PROCEDIMENTO' AND NEW.\"operacaoServicoId\" IS NULL))) THEN RAISE EXCEPTION 'correção incompatível com classificação de custo' USING ERRCODE='23514'; END IF;\n  PERFORM pecuaria.conferir_capacidade_preparo('EXAME',NEW.id);\n ELSE\n  IF EXISTS (SELECT 1 FROM pecuaria.\"ClassificacaoCustoPecuaria\" c WHERE c.\"participacaoId\"=NEW.id AND ((c.\"servicoNaoAplicavel\" AND NEW.\"operacaoServicoId\" IS NOT NULL) OR (c.\"coberturaServico\"<>'PROCEDIMENTO' AND NEW.\"operacaoServicoId\" IS NULL))) THEN RAISE EXCEPTION 'correção incompatível com classificação de custo' USING ERRCODE='23514'; END IF;\n  PERFORM pecuaria.conferir_capacidade_preparo('PARTICIPACAO',NEW.id);\n END IF;\n RETURN NULL;\nEND $function$\n",
+        "definition": "CREATE CONSTRAINT TRIGGER \"Preparo_limite_participacao\" AFTER UPDATE ON pecuaria.\"ParticipacaoProtocolo\" DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION pecuaria.conferir_alteracao_fonte_custo()"
+      },
+      {
+        "name": "ParticipacaoProtocolo_contexto",
+        "function": "CREATE OR REPLACE FUNCTION pecuaria.conferir_participacao_protocolo()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$ BEGIN\n IF NEW.\"programacaoId\" IS NOT NULL AND NOT EXISTS(SELECT 1 FROM pecuaria.\"ProgramacaoProtocolo\" g WHERE g.id=NEW.\"programacaoId\" AND g.\"protocoloId\"=NEW.\"protocoloId\" AND (NEW.\"propriedadeId\" IS NULL OR g.\"propriedadeId\"=NEW.\"propriedadeId\"))\n THEN RAISE EXCEPTION 'Programação incompatível com versão ou sítio da participação'; END IF;\n IF TG_OP='UPDATE' AND NEW.\"protocoloId\"<>OLD.\"protocoloId\" AND EXISTS(SELECT 1 FROM pecuaria.\"TarefaProtocolo\" WHERE \"participacaoId\"=OLD.id)\n THEN RAISE EXCEPTION 'Participação com tarefas não pode mudar de versão'; END IF;\n RETURN NEW;\nEND $function$\n",
+        "definition": "CREATE TRIGGER \"ParticipacaoProtocolo_contexto\" BEFORE INSERT OR UPDATE OF \"programacaoId\", \"protocoloId\", \"propriedadeId\" ON pecuaria.\"ParticipacaoProtocolo\" FOR EACH ROW EXECUTE FUNCTION pecuaria.conferir_participacao_protocolo()"
+      }
+    ],
+    "constraints": [
+      {
+        "kind": "f",
+        "name": "ExecucaoProtocoloSanitario_animalId_fkey",
+        "definition": "FOREIGN KEY (\"animalId\") REFERENCES pecuaria.\"Animal\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      },
+      {
+        "kind": "f",
+        "name": "ExecucaoProtocoloSanitario_ocorrenciaId_fkey",
+        "definition": "FOREIGN KEY (\"ocorrenciaId\") REFERENCES pecuaria.\"OcorrenciaSanitaria\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      },
+      {
+        "kind": "f",
+        "name": "ExecucaoProtocoloSanitario_operacaoServicoId_fkey",
+        "definition": "FOREIGN KEY (\"operacaoServicoId\") REFERENCES \"Operacao\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      },
+      {
+        "kind": "p",
+        "name": "ExecucaoProtocoloSanitario_pkey",
+        "definition": "PRIMARY KEY (id)"
+      },
+      {
+        "kind": "f",
+        "name": "ExecucaoProtocoloSanitario_propriedadeId_fkey",
+        "definition": "FOREIGN KEY (\"propriedadeId\") REFERENCES \"Propriedade\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      },
+      {
+        "kind": "f",
+        "name": "ExecucaoProtocoloSanitario_protocoloId_fkey",
+        "definition": "FOREIGN KEY (\"protocoloId\") REFERENCES pecuaria.\"Protocolo\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      },
+      {
+        "kind": "f",
+        "name": "ExecucaoProtocoloSanitario_rodadaId_fkey",
+        "definition": "FOREIGN KEY (\"programacaoId\") REFERENCES pecuaria.\"ProgramacaoProtocolo\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      },
+      {
+        "kind": "f",
+        "name": "ParticipacaoProtocolo_criadoPorId_fkey",
+        "definition": "FOREIGN KEY (\"criadoPorId\") REFERENCES \"Usuario\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      },
+      {
+        "kind": "c",
+        "name": "ParticipacaoProtocolo_inicio_efetivo_precisao_check",
+        "definition": "CHECK (((\"precisaoInicioEfetivo\" IS DISTINCT FROM 'DIA'::pecuaria.\"PrecisaoCalendarioProtocolo\") OR (\"inicioEfetivo\" = date_trunc('day'::text, \"inicioEfetivo\"))))"
+      },
+      {
+        "kind": "u",
+        "name": "ParticipacaoProtocolo_legadoIatfId_key",
+        "definition": "UNIQUE (\"legadoIatfId\")"
+      },
+      {
+        "kind": "c",
+        "name": "ParticipacaoProtocolo_precisao_check",
+        "definition": "CHECK (((\"precisaoTemporal\" = 'HORA'::pecuaria.\"PrecisaoCalendarioProtocolo\") OR (\"inicioReferencia\" = date_trunc('day'::text, \"inicioReferencia\"))))"
+      },
+      {
+        "kind": "u",
+        "name": "ParticipacaoProtocolo_referenciaExterna_key",
+        "definition": "UNIQUE (\"referenciaExterna\")"
+      },
+      {
+        "kind": "t",
+        "name": "Preparo_limite_participacao",
+        "definition": "TRIGGER DEFERRABLE INITIALLY DEFERRED"
+      },
+      {
+        "kind": "c",
+        "name": "execucao_rateio_nao_negativo",
+        "definition": "CHECK (((\"valorServicoAtribuido\" IS NULL) OR ((\"valorServicoAtribuido\" >= (0)::numeric) AND (\"operacaoServicoId\" IS NOT NULL))))"
+      }
+    ]
+  },
+  {
+    "table": "TarefaProtocolo",
+    "schema": "pecuaria",
+    "columns": [
+      {
+        "name": "id",
+        "type": "text",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "participacaoId",
+        "type": "text",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "etapaId",
+        "type": "text",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "previstaEm",
+        "type": "timestamp(3) without time zone",
+        "default": null,
+        "nullable": false
+      },
+      {
+        "name": "planejadoSnapshot",
+        "type": "jsonb",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "dispensadaEm",
+        "type": "timestamp(3) without time zone",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "motivo",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "nomeSnapshot",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "legadoIatfId",
+        "type": "text",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "precisaoTemporal",
+        "type": "pecuaria.\"PrecisaoCalendarioProtocolo\"",
+        "default": "'DIA'::pecuaria.\"PrecisaoCalendarioProtocolo\"",
+        "nullable": false
+      },
+      {
+        "name": "previsaoOriginal",
+        "type": "timestamp(3) without time zone",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "realizadaEm",
+        "type": "timestamp(3) without time zone",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "historicoReprogramacao",
+        "type": "jsonb",
+        "default": "'[]'::jsonb",
+        "nullable": false
+      },
+      {
+        "name": "realizadoSnapshot",
+        "type": "jsonb",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "desviosSnapshot",
+        "type": "jsonb",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "regularizacaoPendente",
+        "type": "boolean",
+        "default": "false",
+        "nullable": false
+      },
+      {
+        "name": "historicoRegularizacao",
+        "type": "jsonb",
+        "default": "'[]'::jsonb",
+        "nullable": false
+      },
+      {
+        "name": "precisaoRealizacao",
+        "type": "pecuaria.\"PrecisaoCalendarioProtocolo\"",
+        "default": null,
+        "nullable": true
+      },
+      {
+        "name": "previsaoPendente",
+        "type": "boolean",
+        "default": "false",
+        "nullable": false
+      }
+    ],
+    "indexes": [
+      {
+        "name": "TarefaSanitaria_pkey",
+        "definition": "CREATE UNIQUE INDEX \"TarefaSanitaria_pkey\" ON pecuaria.\"TarefaProtocolo\" USING btree (id)"
+      },
+      {
+        "name": "TarefaSanitaria_execucaoId_etapaId_key",
+        "definition": "CREATE UNIQUE INDEX \"TarefaSanitaria_execucaoId_etapaId_key\" ON pecuaria.\"TarefaProtocolo\" USING btree (\"participacaoId\", \"etapaId\")"
+      },
+      {
+        "name": "TarefaSanitaria_previstaPara_idx",
+        "definition": "CREATE INDEX \"TarefaSanitaria_previstaPara_idx\" ON pecuaria.\"TarefaProtocolo\" USING btree (\"previstaEm\")"
+      },
+      {
+        "name": "TarefaProtocolo_legadoIatfId_key",
+        "definition": "CREATE UNIQUE INDEX \"TarefaProtocolo_legadoIatfId_key\" ON pecuaria.\"TarefaProtocolo\" USING btree (\"legadoIatfId\")"
+      }
+    ],
+    "triggers": [
+      {
+        "name": "TarefaProtocolo_versao",
+        "function": "CREATE OR REPLACE FUNCTION pecuaria.conferir_tarefa_protocolo()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$ BEGIN\n IF (SELECT \"protocoloId\" FROM pecuaria.\"EtapaProtocolo\" WHERE id=NEW.\"etapaId\") IS DISTINCT FROM (SELECT \"protocoloId\" FROM pecuaria.\"ParticipacaoProtocolo\" WHERE id=NEW.\"participacaoId\") THEN RAISE EXCEPTION 'Etapa e participação precisam usar a mesma versão do protocolo'; END IF;\n RETURN NEW;\nEND $function$\n",
+        "definition": "CREATE TRIGGER \"TarefaProtocolo_versao\" BEFORE INSERT OR UPDATE OF \"etapaId\", \"participacaoId\" ON pecuaria.\"TarefaProtocolo\" FOR EACH ROW EXECUTE FUNCTION pecuaria.conferir_tarefa_protocolo()"
+      }
+    ],
+    "constraints": [
+      {
+        "kind": "u",
+        "name": "TarefaProtocolo_legadoIatfId_key",
+        "definition": "UNIQUE (\"legadoIatfId\")"
+      },
+      {
+        "kind": "c",
+        "name": "TarefaProtocolo_precisao_check",
+        "definition": "CHECK (((\"precisaoTemporal\" = 'HORA'::pecuaria.\"PrecisaoCalendarioProtocolo\") OR (\"previstaEm\" = date_trunc('day'::text, \"previstaEm\"))))"
+      },
+      {
+        "kind": "c",
+        "name": "TarefaProtocolo_previsao_pendente_check",
+        "definition": "CHECK (((NOT \"previsaoPendente\") OR (\"precisaoTemporal\" = 'DIA'::pecuaria.\"PrecisaoCalendarioProtocolo\")))"
+      },
+      {
+        "kind": "c",
+        "name": "TarefaProtocolo_realizacao_precisao_check",
+        "definition": "CHECK (((\"precisaoRealizacao\" IS DISTINCT FROM 'DIA'::pecuaria.\"PrecisaoCalendarioProtocolo\") OR (\"realizadaEm\" = date_trunc('day'::text, \"realizadaEm\"))))"
+      },
+      {
+        "kind": "f",
+        "name": "TarefaSanitaria_etapaId_fkey",
+        "definition": "FOREIGN KEY (\"etapaId\") REFERENCES pecuaria.\"EtapaProtocolo\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      },
+      {
+        "kind": "f",
+        "name": "TarefaSanitaria_execucaoId_fkey",
+        "definition": "FOREIGN KEY (\"participacaoId\") REFERENCES pecuaria.\"ParticipacaoProtocolo\"(id) ON UPDATE CASCADE ON DELETE RESTRICT"
+      },
+      {
+        "kind": "p",
+        "name": "TarefaSanitaria_pkey",
+        "definition": "PRIMARY KEY (id)"
+      }
+    ]
+  }
+]

@@ -1,5 +1,7 @@
 # Pecuária — contrato atual
 
+A [base documental de protocolos](artefatos/protocolos/index.html) reúne explicação de relações, diagramas interativos, catálogo físico SQL e mockup. O [plano de protocolos individuais e coletivos](plano-protocolos-unificados.md) consolida a evolução proposta para Sanidade e Reprodução, com pendências por animal e listas de até dez itens; ainda não altera o comportamento descrito neste contrato.
+
 O domínio atual usa o schema PostgreSQL `pecuaria` e as rotas `/api/pecuaria/rebanho/*`. A interface está em `client/src/pecuaria/rebanho/`; serviços em `server/src/services/pecuaria/`. A cadeia de migrations entrega Rebanho V1, Genética V2 e Sanidade/Peso/Nutrição V3, incluindo ciclos e desvios sanitários, e Reprodução V4. O [contrato de reprodução e visitas](reproducao.md) detalha as novas regras.
 
 ## Disponibilidade e limites
