@@ -65,8 +65,17 @@ async function montar(aba: "contas" | "parceiros" | "produtos" | "categorias" | 
 }
 
 async function escolherSelect(painel: HTMLElement, rotulo: string, opcao: string) {
-  fireEvent.click(within(painel).getByRole("combobox", { name: rotulo }));
+  const grupo = within(painel).queryByRole("group", { name: rotulo });
+  if (grupo) { fireEvent.click(within(grupo).getByRole("button", { name: opcao })); return; }
+  let consulta = painel;
+  let lateral = false;
+  if (!within(painel).queryByRole("combobox", { name: rotulo })) {
+    fireEvent.click(screen.getByRole("button", { name: /Mais filtros/ }));
+    consulta = await screen.findByRole("dialog", { name: "Filtros" }); lateral = true;
+  }
+  fireEvent.click(within(consulta).getByRole("combobox", { name: rotulo }));
   fireEvent.click(await screen.findByRole("option", { name: opcao }));
+  if (lateral) { fireEvent.click(within(consulta).getByRole("button", { name: "Aplicar filtros" })); await waitFor(()=>expect(screen.queryByRole("dialog",{name:"Filtros"})).toBeNull()); }
 }
 
 describe("ConfiguracoesFinanceiras — contas", () => {
@@ -308,10 +317,9 @@ describe("ConfiguracoesFinanceiras — produtos", () => {
   it("mantém busca e filtros na mesma barra e limpa os filtros sem perder a lista", async () => {
     await montar("produtos");
     const busca = screen.getByRole("textbox", { name: "Buscar produto" });
-    const barra = busca.closest<HTMLElement>("div.border-b")!;
-    for (const nome of ["Filtrar por fornecedor", "Filtrar por centro de custo", "Filtrar por uso", "Filtrar por situação"]) {
-      expect(within(barra).getByRole("combobox", { name: nome })).toBeTruthy();
-    }
+    const barra = busca.closest<HTMLElement>(".consulta-barra")!;
+    expect(within(barra).getByRole("group", {name:"Filtrar por situação"})).toBeTruthy();
+    expect(within(barra).getByRole("button", {name:/Mais filtros/})).toBeTruthy();
     await escolherSelect(barra, "Filtrar por centro de custo", "Sem centro");
     expect(screen.queryByText("Ração 22%")).toBeNull();
     fireEvent.click(within(barra).getByRole("button", { name: "Limpar filtros" }));
@@ -323,7 +331,7 @@ describe("ConfiguracoesFinanceiras — parceiros", () => {
   it("mantém o filtro de papel junto à busca", async () => {
     await montar("parceiros");
     const busca = screen.getByRole("textbox", { name: /Buscar clientes e fornecedores/i });
-    const barra = busca.closest<HTMLElement>("div.border-b")!;
+    const barra = busca.closest<HTMLElement>(".consulta-barra")!;
     expect(within(barra).getByRole("combobox", { name: "Papel do parceiro" })).toBeTruthy();
   });
 

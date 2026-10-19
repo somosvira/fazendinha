@@ -94,17 +94,18 @@ describe("App — trabalho ativo", () => {
     expect(await screen.findByRole("button", { name: "Rascunho em edição: Compra de ração" })).toBeTruthy();
   });
 
-  it("sem rascunho, o atalho vira + Nova operação e abre um formulário novo", async () => {
+  it("sem rascunho, não cria trabalho fictício e inicia operação pela lista", async () => {
     descricaoRascunho = null;
     entrarComo(usuarioBase);
 
-    const atalho = await screen.findByRole("button", { name: "Nova operação" });
-    expect(atalho.querySelector(".lucide-plus")).toBeTruthy();
-    fireEvent.click(atalho);
+    fireEvent.click(await screen.findByRole("button", { name: "Operações" }));
+    await screen.findByRole("heading", { name: "Operações" });
+    expect(screen.queryByRole("group", { name: "Trabalhos ativos" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Nova operação" }));
 
     await waitFor(() => expect(location.pathname).toBe("/financeiro/operacoes/nova"));
     expect(await screen.findByRole("heading", { name: "Nova operação" })).toBeTruthy();
-    expect(await screen.findByRole("button", { name: /em edição/ })).toBeTruthy();
+    expect(screen.queryByRole("group", { name: "Trabalhos ativos" })).toBeNull();
   });
 
   it("não mostra o + enquanto ainda não sabe se há rascunho", async () => {

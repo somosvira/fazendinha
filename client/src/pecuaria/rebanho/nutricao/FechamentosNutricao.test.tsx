@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { FechamentosNutricao } from "./FechamentosNutricao";
 import * as api from "./api";
-vi.mock("../api", () => ({ listarLotes: vi.fn().mockResolvedValue([]) }));
+vi.mock("../api", () => ({ listarLotes: vi.fn().mockResolvedValue([]), buscarLote: vi.fn().mockResolvedValue({ id: "lote", nome: "Matrizes" }) }));
 vi.mock("./api", () => ({ listarFechamentos: vi.fn() }));
 beforeEach(() => { window.history.replaceState(null, "", "/pecuaria/nutricao?aba=fechamentos"); vi.clearAllMocks(); vi.mocked(api.listarFechamentos).mockResolvedValue({ itens: [], total: 51, pagina: 1, limite: 25 }); });
 afterEach(cleanup);
@@ -40,6 +40,8 @@ describe("fechamentos gerais", () => {
     render(<FechamentosNutricao loteId="lote" />);
     await screen.findByText("Falha de rede");
     expect(screen.queryByLabelText("Lote")).toBeNull();
+    expect(screen.getByRole("link", { name: "Matrizes" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Todos os lotes" }).getAttribute("href")).toBe("/pecuaria/nutricao?aba=fechamentos");
     fireEvent.click(screen.getByRole("button", { name: "Tentar novamente" }));
     await screen.findByText(/Página 1 · 51 fechamentos/);
     expect(api.listarFechamentos).toHaveBeenLastCalledWith("lote", 1, undefined);

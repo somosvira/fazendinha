@@ -33,13 +33,13 @@ describe("ciclos de protocolos", () => {
     const abrir = vi.fn();
     const props = { filtros: { pagina: 1 }, podeLancar: false, recarregarToken: 0, onAbrir: abrir, onExecutar: vi.fn(), onAcao: vi.fn() };
     const tela = render(<AgendaRodadas {...props} rodadaId="" />);
-    fireEvent.click(await screen.findByRole("button", { name: "Abrir ciclo" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Abrir ciclo Campanha de outubro" }));
     expect(abrir).toHaveBeenCalledWith("r");
-    expect(screen.getByRole("button", { name: "Campanha de outubro" }).hasAttribute("aria-expanded")).toBe(false);
+    expect(screen.getByRole("button", { name: "Abrir ciclo Campanha de outubro" }).hasAttribute("aria-expanded")).toBe(false);
     tela.rerender(<AgendaRodadas {...props} rodadaId="r" />);
     await screen.findByRole("heading", { name: "Campanha de outubro" });
     expect(screen.queryByRole("heading", { name: "Ciclos de protocolos" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Abrir ciclo" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Abrir ciclo Campanha de outubro" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Voltar para ciclos" }));
     expect(abrir).toHaveBeenLastCalledWith("");
   });

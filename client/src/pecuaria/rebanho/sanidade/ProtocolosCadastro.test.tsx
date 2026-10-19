@@ -25,7 +25,9 @@ describe("Protocolos sanitários", () => {
     render(<ProtocolosCadastro podeLancar />);
     await screen.findAllByText("Controle CCS");
     expect(screen.getByText("Publicar")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Sobre versões e etapas dos protocolos" }));
     expect(screen.getByText(/Versões publicadas não são editadas/)).toBeTruthy();
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
     fireEvent.click(screen.getAllByRole("button", { name: "Publicar Controle CCS v1" })[0]);
     await screen.findByText("Versão publicada.");
     expect(screen.getAllByText("Publicado")).toHaveLength(1);

@@ -54,7 +54,7 @@
 .painel-gerencial .ger-selo { border-radius: 12px; background: #f9e4b6; color: #895709; font-size: 12px; font-weight: 600; padding: 5px 12px; }
 .painel-gerencial .ger-pendente { display: flex; align-items: center; gap: 7px; color: #935d08; font-size: 13px; }
 .painel-gerencial .ger-pendente svg { flex-shrink: 0; }
-.painel-gerencial .ger-aviso { border-left: 3px solid #bd8d34; padding: 8px 11px; background: #faf2df; color: #76541b; font-size: 12px; margin: 12px 0; }
+.painel-gerencial .ger-aviso { border: 1px solid #d8c18f; padding: 8px 11px; background: #faf2df; color: #76541b; font-size: 12px; margin: 12px 0; }
 .painel-gerencial .ger-cobertura { margin: 18px 0; }
 .painel-gerencial .ger-cobertura > p + p { margin-top: 4px; }
 .painel-gerencial .ger-progresso-linha { display: flex; gap: 10px; align-items: center; margin: 12px 0 8px; }

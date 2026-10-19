@@ -1,4 +1,4 @@
-import { alterarControle } from "../lib/controles.fixture";
+import { alterarControle, alterarFiltroAdicional } from "../lib/controles.fixture";
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, within, waitFor } from "@testing-library/react";
@@ -64,7 +64,7 @@ describe("ContasFinanceiras — cadastros ativos", () => {
     await alterarControle(within(secao).getByLabelText("Tipo"), { target: { value: "CAIXA" } });
     expect(within(tabela()!).getByText("Caixa auxiliar")).toBeTruthy();
     await alterarControle(within(secao).getByLabelText("Tipo"), { target: { value: "" } });
-    await alterarControle(within(secao).getByLabelText("Instituição"), { target: { value: "Banco A" } });
+    await alterarFiltroAdicional("Instituição", "Banco A", secao);
     expect(within(tabela()!).getByText("Banco principal")).toBeTruthy();
     await alterarControle(within(secao).getByLabelText("Situação"), { target: { value: "INATIVA" } });
     expect(within(secao).getByText("Nenhuma conta encontrada para os filtros selecionados.")).toBeTruthy();

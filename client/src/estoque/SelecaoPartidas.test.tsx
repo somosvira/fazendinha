@@ -11,11 +11,22 @@ vi.mock("./api", () => ({ previaLoteProduto: vi.fn() }));
 beforeEach(() => { vi.mocked(previaLoteProduto).mockImplementation(async (_, validade) => ({ existente: validade === "2026-12-31" ? { id: "abc", codigo: "ABC", validade, saldo: "0", origemRastreio: "INFORMADA" } : null })); });
 beforeEach(() => { vi.clearAllMocks(); vi.mocked(listarPartidasNutricionais).mockResolvedValue([{ id: "abc", codigo: "ABC", validade: "2026-12-31", saldo: "50", origemRastreio: "INFORMADA" }, { id: "sem", codigo: "SEM", validade: null, saldo: "5", origemRastreio: "INFORMADA" }]); });
 afterEach(cleanup);
-function Cenário({ saida = false, quantidade = "10", dataFato = "2026-10-02" }: { saida?: boolean; quantidade?: string; dataFato?: string }) {
+function Cenário({ saida = false, quantidade = "10", dataFato = "2026-10-02", compacto = false }: { saida?: boolean; quantidade?: string; dataFato?: string; compacto?: boolean }) {
   const [valor, setValor] = useState<DistribuicaoPartida[]>([]);
-  return <><SelecaoPartidas produtoId="p" propriedadeId={1} dataFato={dataFato} quantidade={quantidade} unidade="ML" saida={saida} valor={valor} onChange={setValor} /><output data-testid="escolhas">{JSON.stringify(valor)}</output></>;
+  return <><SelecaoPartidas compacto={compacto} produtoId="p" propriedadeId={1} dataFato={dataFato} quantidade={quantidade} unidade="ML" saida={saida} valor={valor} onChange={setValor} /><output data-testid="escolhas">{JSON.stringify(valor)}</output></>;
 }
 describe("lotes do produto", () => {
+  it("modo compacto conserva escolha e ciência e só pede quantidades ao dividir", async () => {
+    render(<Cenário saida compacto />);
+    await screen.findByText(/Vencimento conhecido mais próximo/);
+    expect(screen.queryByLabelText("Quantidade do lote 1")).toBeNull();
+    expect(screen.getByTestId("escolhas").textContent).toContain('"quantidade":"10"');
+    await alterarControle(screen.getByLabelText("Lote 1"), { target: { value: "sem" } });
+    expect(screen.getByRole("switch")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Dividir entre lotes" }));
+    expect(screen.getByLabelText("Quantidade do lote 1")).toHaveProperty("readOnly", false);
+    expect(screen.getByLabelText("Quantidade do lote 2")).toBeTruthy();
+  });
   it("exige nova ciência ao mudar a data sem apagar a escolha do lote", async () => {
     const tela = render(<Cenário saida />);
     await screen.findByText(/Vencimento conhecido mais próximo/);

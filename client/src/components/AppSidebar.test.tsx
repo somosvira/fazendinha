@@ -26,8 +26,8 @@ function renderSidebar(props: Partial<ComponentProps<typeof AppSidebar>> = {}) {
     propAtiva: null, onTrocarProp: vi.fn(), user: usuario, colapsada: false, onToggleColapsar: vi.fn(), onAcessos: vi.fn(),
   };
   const final = { ...base, ...props };
-  render(<AppSidebar {...final} />);
-  return final;
+  const view = render(<AppSidebar {...final} />);
+  return { ...final, rerender: view.rerender };
 }
 
 describe("AppSidebar — trabalho ativo", () => {
@@ -139,5 +139,24 @@ describe("TrabalhoAtivo", () => {
     vi.setSystemTime(new Date(2026, 8, 14, 15, 0, 50));
     rerender(<TrabalhoAtivo resumo={{ ...antigo, atualizadoEm: new Date(2026, 8, 14, 14, 53, 30).toISOString() }} ativo={false} onAbrir={vi.fn()} />);
     expect(screen.getByRole("button", { name: /Continuar rascunho/ }).getAttribute("title")).toContain("Rascunho salvo há 7 min");
+  });
+});
+
+
+describe("AppSidebar — orientação por área", () => {
+  it("ao trocar de área abre o grupo atual e recolhe o anterior", () => {
+    const { rerender, ...props } = renderSidebar({ areas: ["financeiro", "pecuaria"] });
+    expect(screen.getByRole("button", { name: "Recolher Financeiro" }).getAttribute("aria-expanded")).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: "Expandir Pecuária" }));
+    expect(screen.getByRole("button", { name: "Recolher Pecuária" })).toBeTruthy();
+    rerender(<AppSidebar {...props} current="pec-rebanho" />);
+    expect(screen.getByRole("button", { name: "Expandir Financeiro" }).getAttribute("aria-expanded")).toBe("false");
+    expect(screen.getByRole("button", { name: "Rebanho" }).getAttribute("aria-current")).toBe("page");
+    fireEvent.click(screen.getByRole("button", { name: "Expandir Financeiro" }));
+    expect(screen.getByRole("button", { name: "Recolher Financeiro" })).toBeTruthy();
+  });
+  it("atalho de nova operação sem rascunho não é trabalho ativo", () => {
+    renderSidebar({ trabalhoAtivo: { resumo: null, ativo: false, onAbrir: vi.fn() } });
+    expect(screen.queryByRole("group", { name: "Trabalhos ativos" })).toBeNull();
   });
 });

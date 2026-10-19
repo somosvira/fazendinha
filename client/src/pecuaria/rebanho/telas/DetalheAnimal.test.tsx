@@ -72,9 +72,6 @@ async function montar(animal: AnimalFicha) {
   vi.mocked(buscarFichaAnimal).mockResolvedValue(animal);
   render(<DetalheAnimal id={animal.id} onVoltar={vi.fn()} />, { wrapper: Wrapper });
   await screen.findByText(animal.nome ?? animal.brinco);
-  fireEvent.click(screen.getByRole("button", { name: /Identificação e genética/ }));
-  fireEvent.click(screen.getByRole("button", { name: /Histórico de manejo e movimentações/ }));
-  fireEvent.click(screen.getByRole("button", { name: /^Manejo/ }));
   const menu = screen.queryByText("Mais ações");
   if (menu) fireEvent.click(menu);
 }
@@ -123,6 +120,7 @@ describe("DetalheAnimal — ações conforme situação", () => {
       historicoDestinos: [...base.historicoDestinos, { id: "dest-0", aptidao: "CORTE", papelReprodutivo: "NENHUM", desde: "2021-01-01", ate: "2022-01-01" }],
     };
     await montar(comHistorico);
+    fireEvent.click(screen.getByRole("tab", { name: "Histórico" }));
 
     expect(screen.getByRole("button", { name: "Desfazer última movimentação" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Desfazer última mudança" })).toBeTruthy();
@@ -152,7 +150,8 @@ describe("DetalheAnimal — permissão, linha atual e composição", () => {
         { id: "loc-1", propriedade: { id: 1, nome: "Principal" }, lote: null, desde: "2022-01-01", ate: null, motivo: null, movimentacaoId: null },
       ],
     });
-    expect(screen.getByText((_, el) => el?.tagName === "STRONG" && /^Principal/.test(el.textContent ?? ""))).toBeTruthy();
+    fireEvent.click(screen.getByRole("tab", { name: "Histórico" }));
+    expect(screen.getByRole("cell", { name: /^Principal$/ })).toBeTruthy();
   });
 
   it("mostra o nome da raça e marca a inativa", async () => {
@@ -277,23 +276,24 @@ describe("DetalheAnimal — ficha de baixado (K4/K5)", () => {
     await montar(baixado);
     // faixa de resumo: idade congelada na baixa e o último local
     expect(screen.getByText("Idade na baixa")).toBeTruthy();
-    const local = screen.getByText("Último local").parentElement!;
-    expect(local.textContent).toContain("Lote 1");
-    expect(local.textContent).toContain("Sede");
+    expect(screen.getByText("Sede · Lote 1")).toBeTruthy();
+    expect(screen.queryByText("Último local")).toBeNull();
   });
 
-  it("destaca a baixa em vigor no topo da ficha: tipo, data, motivo, observação e quem registrou", async () => {
+  it("resume a baixa no topo e mantém motivo, observação e autoria no histórico", async () => {
     const baixado: AnimalFicha = {
       ...base, situacao: "BAIXADO",
       baixa: { id: "baixa-1", data: "2026-09-24", tipo: "MORTE", motivo: { nome: "Raio", classe: "MORTE" }, observacao: "Tempestade no pasto", estornadaEm: null, estornoMotivo: null },
       historicoBaixas: [{ id: "baixa-1", data: "2026-09-24", tipo: "MORTE", motivo: { nome: "Raio", classe: "MORTE" }, observacao: "Tempestade no pasto", estornadaEm: null, estornoMotivo: null, criadoPor: "Ana" }],
     };
     await montar(baixado);
-    const faixa = screen.getByText("Animal baixado").closest("[role=status]")!;
+    const faixa = screen.getByText(/Animal baixado · Morte/).closest<HTMLElement>("[role=status]")!;
     expect(faixa.textContent).toContain("Morte em 24/09/2026");
-    expect(faixa.textContent).toContain("Motivo: Raio");
-    expect(faixa.textContent).toContain("Tempestade no pasto");
-    expect(faixa.textContent).toContain("registrada por Ana");
+    expect(faixa.textContent).not.toContain("Tempestade no pasto");
+    fireEvent.click(within(faixa).getByRole("button", { name: "Histórico" }));
+    expect(screen.getByRole("cell", { name: "Raio (morte)" })).toBeTruthy();
+    expect(screen.getByRole("cell", { name: "Tempestade no pasto" })).toBeTruthy();
+    expect(screen.getByRole("cell", { name: "Ana" })).toBeTruthy();
     // animal baixado não tem ações de manejo, nem nas pesagens
     expect(screen.queryByRole("button", { name: /Editar pesagem|Excluir pesagem/ })).toBeNull();
   });
@@ -328,7 +328,8 @@ describe("DetalheAnimal — peso e GMD no cabeçalho", () => {
     await montar({ ...base, peso: { ultimo: { kg: 262, data: "2026-09-01" }, gmdRecente: 0.51, gmdDesdeEntrada: null, gmdPeriodo: { dias: null, valor: null, pesagens: 0 } } });
     const tile = screen.getByText("Peso atual").parentElement!;
     expect(tile.textContent).toContain("262 kg");
-    expect(tile.textContent).toContain("+0,510 kg/dia");
+    expect(tile.textContent).not.toContain("+0,510 kg/dia");
+    expect(screen.getByText("+0,510 kg/dia")).toBeTruthy();
   });
 
   it("sem pesagem, mostra 'Sem pesagem' no lugar do peso", async () => {
@@ -392,6 +393,7 @@ describe("DetalheAnimal — filiação", () => {
         pai: { tipo: "EXTERNO", id: "ext-1", nome: "Touro Reprodutor X", codigo: "TX1", fornecedor: "Central" },
       },
     });
+    fireEvent.click(screen.getByRole("tab", { name: "Cadastro" }));
     expect(screen.getByRole("button", { name: "999 — Estrela" })).toBeTruthy();
     expect(screen.getByText("Touro Reprodutor X")).toBeTruthy();
     expect(screen.getByText("Externo")).toBeTruthy();
@@ -403,6 +405,7 @@ describe("DetalheAnimal — filiação", () => {
     ]);
     await montar({ ...base, filhosCount: 1 });
     await waitFor(() => expect(listarFilhosAnimal).toHaveBeenCalledWith("animal-1"));
+    fireEvent.click(screen.getByRole("tab", { name: "Cadastro" }));
     expect(await screen.findByRole("button", { name: "500" })).toBeTruthy();
   });
 });
@@ -414,20 +417,21 @@ describe("Ficha por domínio", () => {
     render(<DetalheAnimal id={base.id} onVoltar={vi.fn()} />, { wrapper: Wrapper });
     await screen.findByRole("heading", { name: "1234 · Mimosa" });
     const nav = screen.getByRole("tablist", { name: "Seções da ficha" });
-    expect(within(nav).getAllByRole("tab").map(aba => aba.textContent)).toEqual(["Visão geral", "Reprodução", "Sanidade", "Nutrição"]);
-    for (const id of ["resumo", "identificacao-genetica", "sanidade", "peso-manejo", "nutricao", "historico", "auditoria"]) expect(document.getElementById(id)).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Identificação e genética/ }).getAttribute("aria-expanded")).toBe("false");
-    expect(screen.getByRole("button", { name: /Peso e manejo/ }).getAttribute("aria-expanded")).toBe("true");
-    expect(screen.getByRole("button", { name: /Auditoria/ }).getAttribute("aria-expanded")).toBe("true");
+    expect(within(nav).getAllByRole("tab").map(aba => aba.textContent)).toEqual(["Resumo", "Cadastro", "Histórico", "Reprodução", "Sanidade", "Nutrição"]);
+    for (const id of ["resumo", "identificacao-genetica", "ficha-painel-sanidade", "peso-manejo", "ficha-painel-nutricao", "historico", "auditoria"]) expect(document.getElementById(id)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Identificação e genética/ })).toBeNull();
+    expect(document.getElementById("identificacao-genetica-conteudo")?.hidden).toBe(false);
+    expect(document.getElementById("peso-manejo-conteudo")?.hidden).toBe(false);
+    expect(document.getElementById("auditoria-conteudo")?.hidden).toBe(false);
     expect(screen.queryByRole("button", { name: "Editar dados" })).toBeNull();
     fireEvent.click(screen.getByText("Mais ações"));
     expect(screen.getByRole("button", { name: "Editar dados" })).toBeTruthy();
     const peso = document.getElementById("peso-manejo");
     fireEvent.click(within(nav).getByRole("tab", { name: "Sanidade" }));
-    expect(document.getElementById("visao-geral")?.hidden).toBe(true);
-    fireEvent.click(within(nav).getByRole("tab", { name: "Visão geral" }));
+    expect(document.getElementById("ficha-painel-resumo")?.hidden).toBe(true);
+    fireEvent.click(within(nav).getByRole("tab", { name: "Resumo" }));
     expect(document.getElementById("peso-manejo")).toBe(peso);
-    expect(document.getElementById("visao-geral")?.hidden).toBe(false);
+    expect(document.getElementById("ficha-painel-resumo")?.hidden).toBe(false);
     expect(window.location.hash).toBe("#resumo");
   });
   it("restaura a seção de um link direto e da navegação pelo histórico", async () => {
@@ -435,11 +439,11 @@ describe("Ficha por domínio", () => {
     vi.mocked(buscarFichaAnimal).mockResolvedValue(base);
     render(<DetalheAnimal id={base.id} onVoltar={vi.fn()} />, { wrapper: Wrapper });
     await screen.findByRole("heading", { name: "1234 · Mimosa" });
-    expect(document.getElementById("sanidade")?.hidden).toBe(false);
+    expect(document.getElementById("ficha-painel-sanidade")?.hidden).toBe(false);
     window.history.replaceState(null, "", "#historico");
     fireEvent(window, new HashChangeEvent("hashchange"));
-    expect(document.getElementById("historico")?.hidden).toBe(false);
-    expect(document.getElementById("sanidade")?.hidden).toBe(true);
+    expect(document.getElementById("ficha-painel-historico")?.hidden).toBe(false);
+    expect(document.getElementById("ficha-painel-sanidade")?.hidden).toBe(true);
   });
 });
 
@@ -457,14 +461,15 @@ it.each(["peso-manejo", "historico", "identificacao-genetica"])("revela link ant
   vi.mocked(buscarFichaAnimal).mockResolvedValue(base);
   render(<DetalheAnimal id={base.id} onVoltar={vi.fn()} />, { wrapper: Wrapper });
   await screen.findByRole("heading", { name: "1234 · Mimosa" });
-  expect(screen.getByRole("tab", { name: "Visão geral" }).getAttribute("aria-selected")).toBe("true");
+  const nomeAba = ancora === "historico" ? "Histórico" : ancora === "identificacao-genetica" ? "Cadastro" : "Resumo";
+  expect(screen.getByRole("tab", { name: nomeAba }).getAttribute("aria-selected")).toBe("true");
   const secao = document.getElementById(ancora)!;
-  expect(secao.querySelector("button[aria-expanded]")?.getAttribute("aria-expanded")).toBe("true");
+  expect(document.getElementById(`${ancora}-conteudo`)?.hidden).toBe(false);
   fireEvent.click(screen.getByRole("tab", { name: "Sanidade" }));
   window.history.replaceState(null, "", `#${ancora}`);
   fireEvent.popState(window);
-  await waitFor(() => expect(document.getElementById("visao-geral")?.hidden).toBe(false));
-  expect(secao.querySelector("button[aria-expanded]")?.getAttribute("aria-expanded")).toBe("true");
+  await waitFor(() => expect(screen.getByRole("tab", { name: nomeAba }).getAttribute("aria-selected")).toBe("true"));
+  expect(document.getElementById(`${ancora}-conteudo`)?.hidden).toBe(false);
 });
 
 it("não apresenta a aba reprodução para machos", async () => {
@@ -473,30 +478,29 @@ it("não apresenta a aba reprodução para machos", async () => {
 });
 
 
-it("oferece pesagem na visão geral e reprodução na aba correspondente", async () => {
+it("oferece pesagem no resumo e ações reprodutivas no próprio domínio", async () => {
   vi.mocked(buscarFichaAnimal).mockResolvedValue(base);
   render(<DetalheAnimal id={base.id} onVoltar={vi.fn()} />, { wrapper: Wrapper });
   await screen.findByRole("heading", { name: "1234 · Mimosa" });
   expect(screen.getByRole("button", { name: "Registrar pesagem" })).toBeTruthy();
   expect(screen.queryByRole("button", { name: "Registrar reprodução" })).toBeNull();
   fireEvent.click(screen.getByRole("tab", { name: "Reprodução" }));
-  expect(screen.getByRole("button", { name: "Registrar reprodução" })).toBeTruthy();
-  fireEvent.click(screen.getByRole("tab", { name: "Visão geral" }));
+  expect(screen.queryByRole("button", { name: "Registrar reprodução" })).toBeNull();
+  expect(vi.mocked(ReproducaoAnimal).mock.calls.at(-1)?.[0].podeLancar).toBe(true);
+  fireEvent.click(screen.getByRole("tab", { name: "Resumo" }));
   fireEvent.click(screen.getByRole("button", { name: "Registrar pesagem" }));
   expect(await screen.findByRole("dialog")).toBeTruthy();
 });
 
 
-it("abre indicadores e últimas pesagens junto com peso e mantém manejo compacto", async () => {
+it("abre indicadores, últimas pesagens e manejo sem acordeão", async () => {
   vi.mocked(buscarFichaAnimal).mockResolvedValue(base);
   render(<DetalheAnimal id={base.id} onVoltar={vi.fn()} />, { wrapper: Wrapper });
   await screen.findByRole("heading", { name: "1234 · Mimosa" });
   expect(screen.getByText("GMD recente")).toBeTruthy();
   expect(screen.getByText("Nenhuma pesagem registrada.")).toBeTruthy();
-  const manejo=screen.getByRole("button",{name:/^Manejo/});
-  expect(manejo.getAttribute("aria-expanded")).toBe("false");
-  fireEvent.click(manejo);
-  expect(manejo.getAttribute("aria-expanded")).toBe("true");
+  expect(screen.queryByRole("button", { name: /^Manejo/ })).toBeNull();
+  expect(screen.getByRole("heading", { name: "Manejo" })).toBeTruthy();
 });
 
 it("explica indisponibilidade no sítio e permite voltar à lista sem expor outro sítio", async () => {

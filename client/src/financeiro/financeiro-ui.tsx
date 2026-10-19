@@ -1,3 +1,4 @@
+import "./barra-consulta.css";
 import { SelectCampo } from "./SelectCampo";
 import { getHoje, getHojeISO } from "../lib/hoje";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -114,6 +115,7 @@ export function Paginacao({ pagina, totalPaginas, total, porPagina, rotulo, subs
   /** aria-label da <nav> */ rotulo: string; substantivo: string; idSelect: string;
   onPagina: (pagina: number) => void;
 }) {
+  if (total === 0 && totalPaginas <= 1) return null;
   return <nav aria-label={rotulo} className="fin-paginacao flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3 text-sm">
     <span className="text-ink-3">{total ? (pagina - 1) * porPagina + 1 : 0}–{Math.min(pagina * porPagina, total)} de {total} {substantivo}</span>
     {(!ocultarControlesPaginaUnica || totalPaginas > 1) && <div className="flex items-center gap-2">
@@ -134,7 +136,7 @@ const FILTRO_TODOS = "__todos__";
 export function SelectFiltro({ rotulo, valor, onChange, opcoes, className = "" }: { rotulo: string; valor: string; onChange: (valor: string) => void; opcoes: { valor: string; texto: string }[]; className?: string }) {
   return <Select value={valor === "" ? FILTRO_TODOS : valor} onValueChange={(v) => onChange(v === FILTRO_TODOS ? "" : v)}>
     <SelectTrigger aria-label={rotulo} title={opcoes.find((o) => o.valor === valor)?.texto} className={`h-10 w-full justify-between rounded-lg bg-white px-3 text-left text-sm font-normal sm:w-auto sm:w-44 [&>span]:whitespace-nowrap ${className}`}><SelectValue /></SelectTrigger>
-    <SelectContent>{opcoes.map((o) => <SelectItem key={o.valor || FILTRO_TODOS} value={o.valor === "" ? FILTRO_TODOS : o.valor}>{o.texto}</SelectItem>)}</SelectContent>
+    <SelectContent className="z-[1300]">{opcoes.map((o) => <SelectItem key={o.valor || FILTRO_TODOS} value={o.valor === "" ? FILTRO_TODOS : o.valor}>{o.texto}</SelectItem>)}</SelectContent>
   </Select>;
 }
 
@@ -165,7 +167,7 @@ export function Empty({ children }: { children: React.ReactNode }) {
 
 export function Modal({ titulo, eyebrow, onClose, children, width = "max-w-xl", semCabecalho = false, colorida = false, tom = "info" }: { titulo: string; eyebrow: string; onClose: () => void; children: React.ReactNode; width?: string; semCabecalho?: boolean; colorida?: boolean; tom?: TomFinanceiro }) {
   const [origem] = useState(() => document.activeElement instanceof HTMLElement ? document.activeElement : null);
-  return <Dialog open onOpenChange={open => { if (!open) onClose(); }}><DialogContent aria-describedby={undefined} onCloseAutoFocus={event => { event.preventDefault(); if (origem?.isConnected) origem.focus({ preventScroll: true }); }} showCloseButton={false} overlayClassName="z-[1190]" data-fin-tom={tom} className={`z-[1200] w-[calc(100%-2rem)] rounded-xl ${semCabecalho ? "h-[92dvh] overflow-hidden" : "max-h-[92dvh] overflow-auto"} ${width} ${colorida ? "financeiro-colorido" : ""}`}>
+  return <Dialog open onOpenChange={open => { if (!open) onClose(); }}><DialogContent aria-describedby={undefined} onCloseAutoFocus={event => { event.preventDefault(); if (origem?.isConnected) origem.focus({ preventScroll: true }); }} showCloseButton={false} overlayClassName="z-[1190]" data-fin-scroll={semCabecalho ? undefined : "conteudo"} data-fin-tom={tom} className={`z-[1200] w-[calc(100%-2rem)] rounded-xl ${semCabecalho ? "h-[92dvh] overflow-hidden" : "max-h-[92dvh] overflow-auto"} ${width} ${colorida ? "financeiro-colorido" : ""}`}>
     {semCabecalho ? <DialogTitle className="sr-only">{titulo}</DialogTitle> : <div className="fin-modal-cabecalho sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-border bg-muted p-5"><div className="min-w-0"><DialogTitle className="break-words font-sans text-xl font-semibold">{titulo}</DialogTitle><p className="mt-1 text-sm text-muted-foreground">{eyebrow}</p></div><ShadcnButton variant="ghost" size="icon" onClick={onClose} aria-label="Fechar" className="shrink-0 rounded-lg p-2 hover:bg-white"><X size={18} /></ShadcnButton></div>}
     {children}</DialogContent></Dialog>;
 }

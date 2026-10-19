@@ -76,10 +76,11 @@ describe("NovoAnimal", () => {
 
   it("cadastra somente compra e encaminha nascimento para o parto da mãe", async () => {
     await montar();
-    expect((screen.getByLabelText("Origem") as HTMLSelectElement).value).toBe("COMPRADO");
+    expect(screen.getByText("Animal comprado")).toBeTruthy();
+    expect(screen.queryByLabelText("Origem")).toBeNull();
     expect((screen.getByLabelText("Data de entrada") as HTMLInputElement).disabled).toBe(false);
     expect(screen.queryByRole("option", { name: "Nascido na propriedade" })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Registrar parto e cadastrar cria" }));
+    fireEvent.click(screen.getByRole("button", { name: "Registrar nascimento pelo parto" }));
     expect(navegarPara).toHaveBeenCalledWith("/pecuaria/reproducao?acao=parto");
     expect(cadastrarAnimal).not.toHaveBeenCalled();
   });
@@ -144,7 +145,7 @@ describe("NovoAnimal", () => {
     await waitFor(() => expect(cadastrarAnimal).toHaveBeenCalledWith(expect.objectContaining({
       brinco: "1234", dataNascimento: "2026-01-01", dataEntrada: "2026-02-01", origem: "COMPRADO", propriedadeId: 1, loteId: "lote-1", aptidao: "LEITE",
     })));
-    expect(navegarPara).toHaveBeenCalledWith("/pecuaria/rebanho/animais/animal-1");
+    expect(navegarPara).toHaveBeenCalledWith("/pecuaria/rebanho/animais/animal-1?retorno=%2Fpecuaria%2Frebanho%2Fanimais");
   });
 
   it("mostra o aviso de filiação devolvido ao salvar sem bloquear o cadastro", async () => {
@@ -154,6 +155,6 @@ describe("NovoAnimal", () => {
     await alterarControle(screen.getByLabelText("Sítio"), { target: { value: "1" } });
     fireEvent.click(screen.getByRole("button", { name: "Salvar animal" }));
     await waitFor(() => expect(toastMocks.warn).toHaveBeenCalledWith("Animal salvo com aviso", "A mãe teria menos de 15 meses de idade no parto"));
-    expect(navegarPara).toHaveBeenCalledWith("/pecuaria/rebanho/animais/animal-aviso");
+    expect(navegarPara).toHaveBeenCalledWith("/pecuaria/rebanho/animais/animal-aviso?retorno=%2Fpecuaria%2Frebanho%2Fanimais");
   });
 });

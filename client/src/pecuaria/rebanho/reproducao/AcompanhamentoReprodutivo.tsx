@@ -1,16 +1,8 @@
+import { BarraConsulta } from "@/financeiro/BarraConsulta";
 import { getHojeISO as hoje } from "../../../lib/hoje";
 import { horarioIatf, inputHorarioIatf } from "./CampoDataIatf";
 import { useEffect, useState } from "react";
-import {
-  Button,
-  CabecalhoTabela,
-  dataBR,
-  Empty,
-  ErrorBox,
-  Panel,
-  Pill,
-  TabelaFinanceira,
-} from "../../../financeiro/financeiro-ui";
+import { Button, dataBR, Empty, ErrorBox, Panel, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
 import {
   DateRangePicker,
   dateFromIso,
@@ -160,13 +152,13 @@ export function AcompanhamentoReprodutivo({
   }
   return (
     <Panel>
-      <CabecalhoTabela titulo="Retornos e previsões" />
+
       <div className="p-4 space-y-4">
         <p className="text-sm text-ink-3">
           Datas registradas e ações pendentes. Registros sem previsão ficam ao
           final; ausência de diagnóstico não significa resultado negativo.
         </p>
-        <div className="flex flex-wrap items-center gap-3">
+        <BarraConsulta >
           <DateRangePicker
             value={{
               start: dataValida(inicio) ? dateFromIso(inicio) : null,
@@ -201,7 +193,7 @@ export function AcompanhamentoReprodutivo({
               Limpar período
             </Button>
           )}
-        </div>
+        </BarraConsulta>
         <ErrorBox
           erro={
             erro ??

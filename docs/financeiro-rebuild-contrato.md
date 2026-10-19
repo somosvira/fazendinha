@@ -67,7 +67,7 @@ Na interface, o trabalho de rascunho exige `lancar` e `verValores`; acesso de co
 
 Cadastros de clientes e fornecedores usam o termo guarda-chuva “parceiro”. Na criação genérica nenhum papel é pré-selecionado: o usuário escolhe ao menos um. A lista de contas precede o gráfico consolidado, sem alterar o período ou o escopo de cada consulta. O aviso de relatório em andamento permite voltar à lista sem continuar nem descartar o rascunho.
 
-As listagens financeiras conservam paginação de quinze registros, sem limitar a altura por uma segunda rolagem vertical interna. Linhas acionáveis não acrescentam seta decorativa: clique e teclado continuam abrindo o registro. Em Compromissos, o saldo pendente aparece junto ao título e a alternância Lista/Calendário fica junto dos filtros, sem faixa repetindo a contagem. A busca dos cadastros aproveita a largura disponível. Campos longos podem aumentar a altura da linha; não se corta conteúdo para impor uma altura física fixa.
+As listagens financeiras conservam paginação de quinze registros, sem limitar a altura por uma segunda rolagem vertical interna. Busca, situações frequentes e ações compartilham a barra da consulta, sem outro título repetindo a página ou aba. Critérios adicionais, como efeito/tipo em Operações, instituição em Contas/Extrato e fornecedor/centro/uso em Produtos, ficam em painel lateral com identificação removível na lista. Limpar o efeito de um link de rastreabilidade também remove `efeito` da URL, preservando período e demais parâmetros. Filtros das duas tabelas de Contas permanecem independentes do fluxo consolidado. Linhas acionáveis não acrescentam seta decorativa: clique e teclado continuam abrindo o registro. Em Compromissos, o saldo pendente aparece junto ao título e a alternância Lista/Calendário fica junto dos filtros, sem faixa repetindo a contagem. A busca dos cadastros aproveita a largura disponível. Campos longos podem aumentar a altura da linha; não se corta conteúdo para impor uma altura física fixa.
 
 ## Valorização do saldo
 
@@ -137,6 +137,8 @@ Os resumos dos formulários são prévias, sem ícones de aprovação antes da g
 Documentos sem anexos e vínculos com Pecuária sem fatos nem itens de consumo direto são ocultados. A consulta de vínculos mantém carregamento e erro com opção de tentar novamente; itens diretos ainda disponíveis para destinação permanecem visíveis mesmo sem procedimentos vinculados.
 
 O detalhe usa linhas compactas para itens e parcelas. A data aparece com ícone junto ao código e status; tipo, parceiro, centro, categoria e classificação usam etiquetas com rótulos acessíveis. Compromissos e estoque aparecem apenas nas respectivas seções, sem faixa duplicada de contagens, com links para cada movimento de estoque. Em telas largas, itens e compromissos dividem a mesma faixa. As orientações de correções e cancelamentos ficam nas respectivas confirmações, sem faixa explicativa no detalhe; efeitos e permissões das ações permanecem inalterados.
+
+Os filtros adicionais de Operações, Contas, Extrato e Produtos são editados em rascunho no painel lateral. Aplicar filtros confirma o conjunto; limpar no painel não altera os resultados antes da confirmação. Fechar ou cancelar descarta o rascunho. Busca, período e situações visíveis na barra continuam diretos. Em Estoque, o mesmo comportamento vale para centro de custo e ordenação; reposição e saldos negativos têm um único controle cada, junto à consulta. Últimas entradas permanece visível, sem colapso.
 
 ## Reprodução V4 e Serviços
 

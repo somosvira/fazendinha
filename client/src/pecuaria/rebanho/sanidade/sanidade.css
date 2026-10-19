@@ -3,14 +3,17 @@
 .sanidade-abas { margin-bottom: 1.5rem; }
 .sanidade-abas button { font-weight: 500; }
 .sanidade-abas button.border-mast { color: var(--pos); border-color: var(--pos); font-weight: 600; }
-.sanidade-ciclos { border: 1px solid var(--border); border-radius: .25rem; overflow: hidden; }
-.sanidade-ciclo-linha { display: grid; grid-template-columns: minmax(0,1.4fr) minmax(0,1.4fr) minmax(0,1fr) minmax(0,.8fr) auto; align-items: center; gap: 1rem; padding: 1rem; border-top: 1px solid var(--border); }
+.sanidade-ciclos { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.sanidade-ciclo-linha { display: grid; grid-template-columns: minmax(0,1.4fr) minmax(0,1.4fr) minmax(0,1fr) minmax(0,.8fr); align-items: center; gap: 1rem; padding: 1rem; border-top: 1px solid var(--border); }
+.sanidade-ciclo-clicavel { cursor: pointer; }
+.sanidade-ciclo-clicavel:hover { background: var(--muted); }
+.sanidade-ciclo-clicavel:focus-visible { position: relative; z-index: 1; outline: 2px solid var(--ring); outline-offset: -2px; }
 .sanidade-ciclo-ativo { background: color-mix(in srgb, var(--pos) 6%, var(--surface)); border-left: 1px solid var(--pos); }
-.sanidade-ciclo-detalhe { margin: 0 1rem 1rem; padding: 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: .25rem; }
-.sanidade-ciclo-ativo { background: color-mix(in srgb, var(--pos) 6%, var(--card)); border-left: 2px solid var(--pos); }
-.sanidade-ciclo-detalhe { margin: 0 1rem 1rem; padding: 1rem; background: var(--card); border: 1px solid var(--border); border-radius: .25rem; }
+.sanidade-ciclo-detalhe { margin: 0 1rem 1rem; padding: 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
+.sanidade-ciclo-ativo { background: color-mix(in srgb, var(--pos) 6%, var(--card)); border-left: 1px solid var(--pos); }
+.sanidade-ciclo-detalhe { margin: 0 1rem 1rem; padding: 1rem; background: var(--card); border: 1px solid var(--border); border-radius: 8px; }
 @media (max-width: 720px) { .sanidade-ciclo-linha { grid-template-columns: 1fr 1fr; } .sanidade-ciclo-cabecalho { display: none; } .sanidade-ciclo-detalhe { margin: 0 .5rem .5rem; padding: .75rem; } }
-.sanidade-prazo { display: grid; gap: 5px; font-size: 13px; line-height: 1.4; }
+.sanidade-prazo { display: grid; gap: 5px; font-size: 14px; line-height: 1.4; }
 .sanidade-carencias-tabela col { width: 35% !important; }
 .sanidade-carencias-tabela col:first-child { width: 30% !important; }
 .sanidade-prazo-titulo { display: flex; align-items: center; gap: 7px; font-weight: 600; }
@@ -34,3 +37,44 @@
 .pecuaria-content .sanidade-ciclo-compacto .pec-distribuicao-embutida { padding: 0; }
 .pecuaria-content .sanidade-ciclo-compacto .pec-contagens-etapa-compactas { display: flex; flex-wrap: wrap; gap: 4px 8px; }
 .pecuaria-content .sanidade-ciclo-compacto .pec-contagens-etapa-compactas > span { padding: 3px 6px; font-size: 11px; }
+
+.pecuaria-content .sanidade-toolbar { align-items: center; flex-wrap: nowrap; gap: 24px; padding: 16px; }
+.sanidade-toolbar-consulta { display: flex; flex: 1; min-width: 0; flex-wrap: wrap; align-items: center; gap: 8px; }
+.pecuaria-content .sanidade-toolbar .sanidade-campo-busca { flex: 1 1 220px; min-width: 200px; max-width: 360px; }
+.pecuaria-content .sanidade-toolbar .sanidade-campo-busca input { margin: 0; height: 40px; }
+.sanidade-situacao-direta { display: flex; min-width: 0; max-width: 100%; flex-wrap: wrap; gap: 4px; }
+.sanidade-situacao-direta button { min-height: 40px; border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; background: var(--card); font-size: 14px; cursor: pointer; }
+.sanidade-situacao-direta button[aria-pressed=true], .sanidade-situacao-direta .sanidade-situacao-outra-ativa { background: var(--primary); color: var(--primary-foreground); border-color: var(--primary); }
+.sanidade-toolbar-consulta > button { flex: 0 0 auto; min-height: 40px; }
+.sanidade-toolbar-acoes { display: flex; flex: 0 0 auto; align-items: center; justify-content: flex-end; gap: 12px; }
+.sanidade-toolbar-acoes > button { min-height: 40px; white-space: nowrap; }
+.sanidade-filtros-ativos { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 0 16px 16px; }
+.sanidade-filtros-ativos > button:not([data-slot]) { display: inline-flex; align-items: center; gap: 8px; padding: 7px 10px; background: var(--muted); border: 1px solid var(--border); border-radius: 8px; font-size: 14px; cursor: pointer; }
+@media (max-width: 1100px) {
+  .pecuaria-content .sanidade-toolbar { flex-direction: column; align-items: stretch; gap: 12px; }
+  .sanidade-toolbar-acoes { order: -1; justify-content: space-between; }
+  .sanidade-toolbar-acoes > button { margin-left: auto; }
+  .pecuaria-content .sanidade-toolbar .sanidade-campo-busca { max-width: none; }
+}
+@media (max-width: 600px) {
+  .sanidade-toolbar-consulta { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+  .pecuaria-content .sanidade-toolbar .sanidade-campo-busca { grid-column: 1 / -1; min-width: 0; }
+  .sanidade-situacao-direta { grid-column: 1 / -1; }
+  .sanidade-toolbar-consulta:has(.sanidade-situacao-direta) > button { justify-self: start; }
+  .sanidade-toolbar-acoes { flex-wrap: nowrap; gap: 8px; }
+  .sanidade-toolbar-acoes .pec-resumo-sanitario-inline { flex: 1; min-width: 0; }
+  .sanidade-toolbar-acoes > button { flex-shrink: 0; }
+}
+@media (max-width: 900px) {
+  .pecuaria-content .sanidade-toolbar .sanidade-campo-busca input,
+  .sanidade-situacao-direta button,
+  .sanidade-toolbar-consulta > button, .sanidade-toolbar-acoes > button,
+  .sanidade-filtros-ativos > button { min-height: 44px; }
+}
+
+/* A linha é o acesso ao detalhe; a coluna fixa acompanha o mesmo estado visual. */
+.sanidade-acoes-linha { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
+.pecuaria-content .sanidade-lista .fin-tabela tbody tr:hover :is(td[data-fin-coluna="acoes"], td[data-fin-coluna="acao"]),
+.pecuaria-content .sanidade-lista .fin-tabela tbody tr:focus-within :is(td[data-fin-coluna="acoes"], td[data-fin-coluna="acao"]) { background: var(--muted); }
+.sanidade-acao-encerrar:hover { border-color: var(--border); background: var(--muted); color: var(--foreground); }
+.sanidade-acao-anular:hover { border-color: var(--destructive); background: var(--fin-danger-bg); color: var(--destructive); }

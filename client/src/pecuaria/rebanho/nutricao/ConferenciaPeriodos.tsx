@@ -43,7 +43,7 @@ export function ConferenciaPeriodos({ loteId, propriedadeId, centros, onSalvo, o
       await confirmarPeriodos({ chave, revisao: previa.revisao, loteId, propriedadeId, inicio, fim, centroCustoId: centroCustoId || null, periodos }); setPrevia(null); setSalvo(true); await onSalvo();
     } catch (e) { setErro(e instanceof Error ? e.message : String(e)); } finally { enviando.current = false; setOcupado(false); }
   }
-  return <section className="mt-4 grid gap-4">
+  return <section className="nutricao-conferencia mt-4 grid gap-4">
     <ErrorBox erro={erro} />
     {salvo && <p role="status" className="text-sm font-medium">Fechamento salvo. Consulte os fechamentos para ver os detalhes e participantes.</p>}
     <fieldset disabled={ocupado} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -69,7 +69,7 @@ export function ConferenciaPeriodos({ loteId, propriedadeId, centros, onSalvo, o
           <p>{p.animalDias} animal-dias · {p.participantes.length} animais · MS prevista conhecida {p.materiaSecaConhecidaKg} kg ({p.coberturaMateriaSecaCompleta ? "completa" : "cobertura incompleta"})</p>
           <p>MS conferida conhecida ≈ {somarEstimativas(valores.map((v) => v.ms), 3)} kg ({valores.every((v) => v.ms != null) ? "completa" : "cobertura incompleta"})</p>
           {mostrarValores && <p>Custo conferido estimado conhecido: {valores.some((v) => v.custo != null) ? `≈ ${fmtMoneyExact(Number(somarEstimativas(valores.map((v) => v.custo), 2)))}` : "não apurado"} ({valores.every((v) => v.custo != null) ? "completo" : "incompleto"}). Apurado na confirmação com a base de estoque.</p>}
-          <details><summary>Conferir participantes</summary>{p.participantes.map((a) => <p key={a.animalId}>{a.brinco}: {a.dias} dias</p>)}</details>
+          <div className="nutricao-participantes"><h3 className="text-sm font-semibold">Participantes</h3><ul>{p.participantes.map((a) => <li key={a.animalId}>{a.brinco}: {a.dias} dias</li>)}</ul></div>
           {p.itens.map((i, indice) => {
             const k = chaveItem(p, i.produtoId); const e = escolhas[k]; const v = valores[indice];
             return <div key={k} className="grid gap-2 border-t border-border pt-3">
@@ -83,7 +83,7 @@ export function ConferenciaPeriodos({ loteId, propriedadeId, centros, onSalvo, o
               </div>
               {Number(e.quantidade) !== Number(i.quantidadePrevista) && <label>Motivo da diferença<input className={classeInput} value={e.motivo} onChange={(ev) => mudar(k, { motivo: ev.target.value })} /></label>}
               {e.modo === "SEM_BAIXA_JUSTIFICADA" && <label>Justificativa sem baixa<textarea className={classeInput} value={e.justificativa} onChange={(ev) => mudar(k, { justificativa: ev.target.value })} /></label>}
-              {i.rastrearPartidas && e.modo === "BAIXA_ESTOQUE" && Number(e.quantidade) > 0 && <SelecaoPartidas produtoId={i.produtoId} propriedadeId={propriedadeId} dataFato={p.fim.slice(0, 10)} quantidade={e.quantidade} unidade={i.unidade} saida valor={e.partidas} onChange={(s) => mudar(k, { partidas: s })} />}
+              {i.rastrearPartidas && e.modo === "BAIXA_ESTOQUE" && Number(e.quantidade) > 0 && <SelecaoPartidas compacto produtoId={i.produtoId} propriedadeId={propriedadeId} dataFato={p.fim.slice(0, 10)} quantidade={e.quantidade} unidade={i.unidade} saida valor={e.partidas} onChange={(s) => mudar(k, { partidas: s })} />}
             </div>;
           })}
         </fieldset>;

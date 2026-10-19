@@ -1,38 +1,35 @@
 .pecuaria-content .animais-pagina-refinada .fin-cabecalho-pagina { margin-bottom: 14px; }
 .pecuaria-content .animais-pagina-refinada .fin-cabecalho-pagina .h1 { font-size: 28px; }
-.pecuaria-content .animais-pagina-refinada .fin-cabecalho-descricao { margin-top: 5px; font-size: 13px; }
-.pecuaria-content .animais-pagina-refinada .fin-abas { margin: 0; padding: 4px; }
-.pecuaria-content .animais-pagina-refinada .fin-abas [role="tab"] { min-height: 38px; font-size: 13px; gap: 8px; }
+.pecuaria-content .animais-pagina-refinada .fin-cabecalho-descricao { margin-top: 5px; font-size: 14px; }
 .pecuaria-content .animais-pagina-refinada > .mt-5 { margin-top: 12px; }
-.pecuaria-content .animais-resumo-visual { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); gap: 24px; padding: 16px 18px; margin-block: 14px; border: 1px solid var(--border); border-radius: 16px; background: var(--card); }
-.pecuaria-content .animais-indicadores { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }
-.pecuaria-content .animais-indicador { display: flex; align-items: center; gap: 12px; min-width: 0; padding: 10px 12px; background: var(--muted); border-radius: 10px; }
-.pecuaria-content .animais-indicador-principal { background: var(--primary); color: var(--primary-foreground); }
-.pecuaria-content .animais-indicador-icone { display: grid; place-items: center; flex: 0 0 30px; height: 30px; border-radius: 9px; background: #fff9; color: var(--primary); }
-.pecuaria-content .animais-indicador-principal .animais-indicador-icone { background: #ffffff1c; color: inherit; }
-.pecuaria-content .animais-indicador strong { display: inline-block; font-size: 22px; line-height: 1.1; font-weight: 650; font-variant-numeric: tabular-nums; }
-.pecuaria-content .animais-indicador span:not(.animais-indicador-icone) { display: inline; font-size: 11px; margin-left: 5px; }
-.pecuaria-content .animais-composicao { min-width: 0; border-left: 1px solid var(--border); padding-left: 24px; }
+.pecuaria-content .animais-resumo-visual { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 12px 0; margin-block: 8px; border: 0; border-radius: 0; background: transparent; }
+.pecuaria-content .animais-indicadores { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 8px; }
+.pecuaria-content .animais-indicador { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 8px; background: transparent; border-radius: 8px; }
+.pecuaria-content .animais-indicador-principal { background: transparent; color: var(--foreground); }
+.pecuaria-content .animais-indicador-icone { display: none; }
+.pecuaria-content .animais-indicador strong { display: inline-block; font-size: 20px; line-height: 1.1; font-weight: 650; font-variant-numeric: tabular-nums; }
+.pecuaria-content .animais-indicador span:not(.animais-indicador-icone) { display: inline; font-size: 12px; margin-left: 5px; }
+.pecuaria-content .animais-composicao { min-width: 0; border: 0; padding: 0; }
 .pecuaria-content .animais-composicao header { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; justify-content: space-between; }
-.pecuaria-content .animais-composicao h2 { display: flex; gap: 8px; align-items: center; font-size: 13px; font-weight: 600; }
-.pecuaria-content .animais-composicao header small { font-size: 10px; color: var(--muted-foreground); }
+.pecuaria-content .animais-composicao h2 { display: flex; gap: 8px; align-items: center; font-size: 14px; font-weight: 600; }
+.pecuaria-content .animais-composicao header small { font-size: 12px; color: var(--muted-foreground); }
 .pecuaria-content .animais-composicao-chart { width: 100%; height: 26px; aspect-ratio: auto; margin-block: 7px; }
-.pecuaria-content .animais-composicao-legenda { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 3px 12px; }
-.pecuaria-content .animais-composicao-legenda :is(button,li>div) { display: flex; align-items: center; gap: 6px; width: 100%; padding: 4px 3px; text-align: left; border-radius: 5px; font-size: 11px; }
+.pecuaria-content .animais-composicao-legenda { display: grid; grid-template-columns: repeat(auto-fit,minmax(220px,1fr)); gap: 4px 16px; }
+.pecuaria-content .animais-composicao-legenda :is(button,li>div) { display: flex; align-items: center; gap: 6px; width: 100%; padding: 4px 3px; text-align: left; border-radius: 8px; font-size: 14px; }
 .pecuaria-content .animais-composicao-legenda button:hover { background: var(--muted); }
 .pecuaria-content .animais-pagina-refinada .animais-composicao-legenda button[aria-label] { min-height: 28px; }
 .pecuaria-content .animais-composicao-legenda button:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 .pecuaria-content .animais-composicao-legenda i { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
-.pecuaria-content .animais-composicao-legenda span { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pecuaria-content .animais-composicao-legenda span { min-width: 0; flex: 1; white-space: normal; }
 .pecuaria-content .animais-composicao-legenda strong { font-variant-numeric: tabular-nums; }
-.pecuaria-content .animais-composicao-legenda small { color: var(--muted-foreground); font-size: 10px; min-width: 35px; text-align: right; }
+.pecuaria-content .animais-composicao-legenda small { color: var(--muted-foreground); font-size: 12px; min-width: 35px; text-align: right; }
 .pecuaria-content .animais-composicao-vazia { padding-block: 22px; font-size: 12px; color: var(--muted-foreground); }
 .pecuaria-content .animais-pagina-refinada .rebanho-filtros-principais { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 12px 14px; border-bottom: 1px solid var(--border); }
 .pecuaria-content .animais-pagina-refinada .rebanho-filtros-principais > :first-child { flex: 1 1 420px; padding: 0; border: 0; margin: 0; }
 .pecuaria-content .animais-pagina-refinada [aria-label="Filtros selecionados"] { padding: 0; }
 .pecuaria-content .animais-pagina-refinada [aria-label="Filtros selecionados"] button { padding: 6px 9px; white-space: nowrap; }
 .pecuaria-content .animais-pagina-refinada .fin-tabela :is(th,td) { padding: 8px 14px; line-height: 18px; }
-.pecuaria-content .animais-pagina-refinada .fin-tabela th { padding-block: 9px; font-size: 10px; }
+.pecuaria-content .animais-pagina-refinada .fin-tabela th { padding-block: 9px; font-size: 12px; }
 .pecuaria-content .animais-pagina-refinada .fin-tabela td :is(.mt-1,.text-xs) { margin-top: 2px; font-size: 11px; line-height: 14px; }
 .pecuaria-content .animais-pagina-refinada .fin-tabela [data-fin-coluna="acoes"] button[aria-label] { min-height: 34px; min-width: 34px; }
 .pecuaria-content .animais-pagina-refinada .fin-tabela [data-fin-coluna="selecionar"] { padding-inline: 8px; }
@@ -42,14 +39,14 @@ body:has(.animais-pagina-refinada) [aria-label="Abrir assistente do Terrano"] { 
 body:has(.animais-pagina-refinada) [aria-label="Abrir assistente do Terrano"] svg { flex-shrink: 0; }
 @media(min-width:1280px) { .pecuaria-content .animais-pagina-refinada { padding-right: 36px; } }
 @media(max-width:1100px) {
-  .pecuaria-content .animais-resumo-visual { grid-template-columns: 1fr; gap: 16px; }
+  .pecuaria-content .animais-resumo-visual { grid-template-columns: 1fr; gap: 4px; }
   .pecuaria-content .animais-indicadores { grid-template-columns: repeat(4,minmax(0,1fr)); }
-  .pecuaria-content .animais-indicador { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .pecuaria-content .animais-indicador { flex-direction: row; align-items: baseline; gap: 8px; }
   .pecuaria-content .animais-indicador span:not(.animais-indicador-icone) { display: block; margin: 3px 0 0; }
-  .pecuaria-content .animais-composicao { border-left: 0; border-top: 1px solid var(--border); padding: 14px 0 0; }
+  .pecuaria-content .animais-composicao { border: 0; padding: 0; }
 }
 @media(max-width:640px) {
-  .pecuaria-content .animais-resumo-visual { padding: 14px; }
+  .pecuaria-content .animais-resumo-visual { padding: 8px 0; }
   .pecuaria-content .animais-indicadores { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .pecuaria-content .animais-indicador { flex-direction: row; align-items: center; padding: 10px; }
   .pecuaria-content .animais-composicao-legenda { grid-template-columns: 1fr; }
@@ -58,8 +55,8 @@ body:has(.animais-pagina-refinada) [aria-label="Abrir assistente do Terrano"] sv
   .pecuaria-content .animais-pagina-refinada .rebanho-filtros-principais > :first-child { flex-basis: 100%; }
   .pecuaria-content .animais-pagina-refinada .fin-cabecalho-pagina .h1 { font-size: 25px; }
 }
-.pecuaria-content .animais-indicador { text-align: left; cursor: pointer; transition: box-shadow .15s, background .15s; }
-.pecuaria-content .animais-indicador:hover { box-shadow: inset 0 0 0 1px var(--primary); }
+.pecuaria-content .animais-indicador { text-align: left; cursor: pointer; transition: background-color .15s; }
+.pecuaria-content .animais-indicador:hover { background: var(--muted); }
 .pecuaria-content .animais-indicador:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
 .pecuaria-content .animais-indicador:disabled { cursor: wait; }
 .pecuaria-content .animais-tooltip-composicao { min-width: 190px; max-width: 280px; padding: 12px 14px; background: var(--card); color: var(--foreground); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 8px 28px #20382f24; font-size: 12px; }

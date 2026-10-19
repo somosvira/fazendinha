@@ -16,7 +16,7 @@ import { SEM_VINCULO } from "../lib/ids";
 import { CLASSIFICACOES_RELATORIO, REGIMES_RELATORIO, SEM_CATEGORIA, SEM_CENTRO, STATUS_RELATORIO, TIPOS_RELATORIO, configuracaoPadrao, erroPeriodo, isoLocal, mesclarRascunho, podeGerar, resumoConfiguracao, secoesDoRelatorio } from "./lib/relatorios";
 
 const CAMPO = "mt-1.5 w-full rounded-lg border border-border bg-white px-3 py-2.5 text-sm font-normal";
-const TITULO_SECAO = "mb-3 text-xs font-semibold uppercase tracking-[.12em] text-ink-3";
+const TITULO_SECAO = "mb-3 text-sm font-semibold text-ink";
 const mensagem = (falha: unknown) => falha instanceof Error ? falha.message : String(falha);
 const dateFromIso = (iso: string): Date | null => {
   const [ano, mes, dia] = iso.split("-").map(Number);
@@ -160,7 +160,7 @@ export function NovoRelatorioFinanceiro({ cadastros, rascunho, onVoltar, onGerad
   return <PaginaFinanceira colorida>
     <div className="fin-criacao-layout">
       <div className="fin-criacao-form space-y-5 rounded-[var(--fin-radius-panel)] border border-border bg-card p-4">
-        <PageHeader titulo="Novo relatório" descricao="Escolha o período e o recorte para emitir o documento.">
+        <PageHeader titulo="Novo relatório">
           {temRascunho && <p aria-live="polite" className={`mt-2 text-xs font-medium ${estado === "ERRO" ? "text-red-700" : "text-ink-3"}`}>{estado === "SALVANDO" ? "Salvando…" : estado === "SALVO" ? "Rascunho salvo" : estado === "ERRO" ? "Falha ao salvar" : "Alterações não salvas"}</p>}
         </PageHeader>
         <ErrorBox erro={erro} />

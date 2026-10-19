@@ -5,13 +5,13 @@ import { descricaoCusto, ultimosDozeMeses } from "./apresentacao";
 import { classeInput } from "../../../financeiro/PainelCadastro";
 import { getUsuario } from "../../../lib/auth";
 import { temAcessoArea } from "../../../lib/areas";
-import { obterCustos, type CustosDTO, type EscopoCustos } from "./api";
+import { obterCustos, type CustosDTO, type EscopoCustos, type Componente } from "./api";
 import { ResumoCustosDiretos } from "./ResumoCustosDiretos";
 import { EditorClassificacaoCusto } from "./EditorClassificacaoCusto";
 import { VinculosPreparatorios } from "./VinculosPreparatorios";
 import { Button } from "../../../financeiro/financeiro-ui";
 
-type Props = { mostrarTitulo?: boolean; propriedadeId: number; podeLancar: boolean; finalidadeInicial?: "REPRODUCAO" | "SANIDADE" | "ROTINA" } & EscopoCustos;
+type Props = { fatoEmConsulta?: Pick<Componente, "tipoFonte" | "fonteId">; linksJaExibidos?: readonly string[]; mostrarTitulo?: boolean; propriedadeId: number; podeLancar: boolean; finalidadeInicial?: "REPRODUCAO" | "SANIDADE" | "ROTINA" } & EscopoCustos;
 
 export function CustosDiretos(props: Props) {
   // Uma nova identidade inicia filtros e rascunhos próprios, sem herdar o sítio anterior.
@@ -19,7 +19,7 @@ export function CustosDiretos(props: Props) {
   return <ComposicaoCustos key={chave} {...props} />;
 }
 
-function ComposicaoCustos({ propriedadeId, podeLancar, finalidadeInicial, mostrarTitulo = true, ...escopo }: Props) {
+function ComposicaoCustos({ propriedadeId, podeLancar, finalidadeInicial, mostrarTitulo = true, fatoEmConsulta, linksJaExibidos, ...escopo }: Props) {
   const [resposta, setResposta] = useState<CustosDTO | null>(null);
   const [respostaIdentidade, setRespostaIdentidade] = useState("");
   const [erro, setErro] = useState("");
@@ -99,7 +99,7 @@ function ComposicaoCustos({ propriedadeId, podeLancar, finalidadeInicial, mostra
     setErroPeriodo(""); setPeriodo(range); setAtalho("personalizado"); setPagina(1);
   }
   const visivel = !!dados && !carregando;
-  return <section className="space-y-4 rounded-xl border border-border bg-card p-4 sm:p-5" aria-label="Composição dos custos diretos">
+  return <section className={mostrarTitulo ? "space-y-4 rounded-xl border border-border bg-card p-4 sm:p-5" : "space-y-4"} aria-label="Composição dos custos diretos">
     {mostrarTitulo && <h3 className="text-lg font-semibold">Custos diretos</h3>}
     <div className="flex flex-wrap items-end gap-3">
       <label className="min-w-56 text-sm">Período<select className={classeInput} value={atalho} onChange={e => {
@@ -117,7 +117,7 @@ function ComposicaoCustos({ propriedadeId, podeLancar, finalidadeInicial, mostra
     {erroPeriodo && <p role="alert" className="text-destructive">{erroPeriodo}</p>}
     {carregando && <p role="status">Consultando custos…</p>}
     {erro && <div role="alert" className="flex flex-wrap items-center gap-3 text-destructive"><p>{erro}</p><Button secondary disabled={carregando} onClick={() => void carregar()}>Tentar novamente</Button></div>}
-    {dados && visivel && <ResumoCustosDiretos dados={dados} propriedadeId={propriedadeId} porAnimal={!!animalId} tentativaId={tentativaId} comRecorte={!!(inicio || fim || finalidade)} pagina={pagina} aoMudarPagina={setPagina} />}
+    {dados && visivel && <ResumoCustosDiretos fatoEmConsulta={fatoEmConsulta} linksJaExibidos={linksJaExibidos} dados={dados} propriedadeId={propriedadeId} porAnimal={!!animalId} tentativaId={tentativaId} comRecorte={!!(inicio || fim || finalidade)} pagina={pagina} aoMudarPagina={setPagina} />}
     {/* Os editores conservam rascunhos durante a recarga e reiniciam ao trocar o alvo/sítio. */}
     <EditorClassificacaoCusto key={`classificacao:${identidade}`} dados={dados} visivel={visivel && podeEditar} propriedadeId={propriedadeId} chave={chave} ocupado={ocupado} motivo={motivo} aoMudarMotivo={setMotivo} aoAlterar={alterar} gravar={gravar} />
     {tentativaId && <VinculosPreparatorios key={`preparatorios:${identidade}`} dados={dados} visivel={visivel && podeEditar} propriedadeId={propriedadeId} tentativaId={tentativaId} chave={chave} ocupado={ocupado} motivo={motivo} aoMudarMotivo={setMotivo} aoAlterar={alterar} aoErro={setErro} gravar={gravar} />}

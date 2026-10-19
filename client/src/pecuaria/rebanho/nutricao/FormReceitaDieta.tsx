@@ -23,7 +23,7 @@ export function FormReceitaDieta({ dieta, editar, onVoltar, onSalvo }: { dieta?:
       onSalvo();
     } catch (e) { setErro(e instanceof Error ? e.message : String(e)); } finally { enviando.current = false; setOcupado(false); }
   }
-  return <div className="nutricao-formulario"><Panel><div className="nutricao-card-cabecalho"><div><h1 className="h1">{editar ? "Editar rascunho de dieta" : dieta ? "Nova versão de dieta" : "Nova receita"}</h1><p>Defina a composição por cabeça e por dia.</p></div></div>
+  return <div className="nutricao-formulario"><Panel><div className="nutricao-card-cabecalho"><div><h1 className="h1">{editar ? "Editar rascunho de dieta" : dieta ? "Nova versão de dieta" : "Nova receita"}</h1></div></div>
     <form onSubmit={(e) => { e.preventDefault(); void salvar(); }}><fieldset disabled={ocupado} className="nutricao-card-corpo grid gap-5">
       <ErrorBox erro={erro} /><EstadoConsulta erro={produtos.erro} carregando={produtos.carregando} recarregar={produtos.carregar} />
       <label>Nome da dieta<input className={classeInput} required minLength={2} maxLength={160} value={nome} onChange={(e) => setNome(e.target.value)} /></label>
@@ -38,5 +38,5 @@ export function FormReceitaDieta({ dieta, editar, onVoltar, onSalvo }: { dieta?:
       })}
       <div><Button secondary onClick={() => setItens((xs) => [...xs, { produtoId: "", quantidadeCabecaDia: "" }])}>Adicionar ingrediente</Button></div>
     </fieldset><div className="nutricao-form-rodape"><Button secondary onClick={onVoltar} disabled={ocupado}>Cancelar</Button><Button type="submit" disabled={ocupado || produtos.carregando || !!produtos.erro}>{ocupado ? "Salvando…" : editar ? "Salvar rascunho" : "Criar rascunho"}</Button></div></form>
-  </Panel><Panel className="nutricao-ajuda"><h2 className="h3">Resumo da receita</h2><dl className="mt-5 space-y-4 text-sm"><div><dt className="text-muted-foreground">Nome</dt><dd className="mt-1 font-semibold break-words">{nome.trim() || "Informe o nome"}</dd></div><div><dt className="text-muted-foreground">Ingredientes preenchidos</dt><dd className="mt-1 font-semibold">{itens.filter((i) => i.produtoId && Number(i.quantidadeCabecaDia) > 0).length} de {itens.length}</dd></div></dl><h3 className="h3 mt-6">Rascunho → Publicação → Uso</h3><p>Salve a composição como rascunho. Depois de revisar, publique a versão para atribuí-la a um lote.</p><p>Versões publicadas são preservadas. Alterações geram uma nova versão.</p></Panel></div>;
+  </Panel><p className="nutricao-nota">Salve como rascunho e publique a versão para usá-la nos lotes. Versões publicadas são preservadas; alterações geram uma nova versão.</p></div>;
 }

@@ -29,17 +29,18 @@ const tabsListVariants = cva(
       variant: {
         default: "bg-muted",
         line: "gap-1 bg-transparent",
+        pasta: "abas-pasta",
       },
     },
     defaultVariants: {
-      variant: "default",
+      variant: "pasta",
     },
   }
 )
 
 function TabsList({
   className,
-  variant = "default",
+  variant = "pasta",
   ...props
 }: React.ComponentProps<typeof TabsPrimitive.List> &
   VariantProps<typeof tabsListVariants>) {

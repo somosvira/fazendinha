@@ -89,7 +89,7 @@ export function AlteracoesCadastro({ entidade, entidadeId, recarregarToken }: { 
             <span className="shrink-0 text-xs text-ink-3">{formatarDataHoraBR(entrada.em)}</span>
           </button>
           {aberto && temAlteracoes && <div className="overflow-x-auto px-4 pb-4">
-            <table className="w-full text-left text-xs">
+            <table className="w-full text-left text-xs consulta-tabela">
               <thead className="text-ink-3"><tr><th className="py-1 pr-3 font-semibold">Campo</th><th className="py-1 pr-3 font-semibold">Antes</th><th className="py-1 pr-3 font-semibold">Depois</th></tr></thead>
               <tbody className="divide-y divide-border">
                 {entrada.alteracoes.map((alt) => <tr key={alt.campo}><td className="py-1.5 pr-3">{alt.rotulo}</td><td className="py-1.5 pr-3 break-words">{alt.antes ?? "—"}</td><td className="py-1.5 pr-3 break-words">{alt.depois ?? "—"}</td></tr>)}

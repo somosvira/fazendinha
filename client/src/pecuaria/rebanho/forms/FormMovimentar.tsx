@@ -69,16 +69,16 @@ export function FormMovimentar({ animais, propriedades, lotes, propriedadeInicia
 
   const titulo = lista.length === 1 ? "Movimentar animal" : `Movimentar ${lista.length} animais`;
   const formId = "form-movimentar-animais";
-  return <PainelCadastro icon={ArrowLeftRight} aberto titulo={titulo} onFechar={() => { if (!salvando) onFechar(); }}
+  return <PainelCadastro compacto icon={ArrowLeftRight} aberto titulo={titulo} onFechar={() => { if (!salvando) onFechar(); }}
     rodape={<><Button secondary onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form={formId} disabled={salvando || !lista.length}>{salvando ? "Salvando…" : "Movimentar"}</Button></>}>
     <form data-pec-formulario  id={formId} onSubmit={submeter} noValidate className="grid gap-4">
       <ErrorBox erro={erroGeral ?? erro} />
       {!destinoFixo && propriedadeId && lista.some(a => String(a.propriedade?.id) === propriedadeId && (a.lote?.id ?? "") === loteId) && <p role="status" className="text-sm text-ink-3">O destino coincide com a localização atual de parte da seleção. Confira o sítio, o lote e a data antes de movimentar.</p>}
 
       <div>
-        <div className="text-sm font-medium">Animais que serão movidos ({lista.length})</div>
-        <ul className="mt-1.5 max-h-56 space-y-2 overflow-y-auto rounded-lg border border-border p-2">
-          {lista.map((a) => <li key={a.id} className="flex items-center justify-between gap-3 rounded-lg bg-surface-2 px-3 py-2 text-sm">
+        <div className="text-sm font-medium">Animais selecionados</div>
+        <ul className="mt-1.5 space-y-2">
+          {lista.map((a) => <li key={a.id} className="flex items-center justify-between gap-3 border-b border-border py-2 text-sm">
             <div className="min-w-0">
               <div className="break-words"><strong>{a.brinco}</strong>{a.nome ? ` · ${a.nome}` : ""}</div>
               <div className="mt-0.5 break-words text-xs text-ink-3">{localizacaoAtual(a)}</div>

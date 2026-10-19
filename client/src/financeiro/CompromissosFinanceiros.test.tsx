@@ -107,10 +107,10 @@ it("pagina compromissos após busca e filtros sem recortar os totais", async () 
   render(<CompromissosFinanceiros onNav={vi.fn()} />);
   const tabela = within(await screen.findByRole("table", { name: "Compromissos financeiros" }));
   expect(tabela.getAllByRole("row")).toHaveLength(16);
-  expect(screen.getByText(/Total pendente:/).textContent).toContain("3.100,00");
+  expect(screen.getByText("Total pendente").parentElement?.textContent).toContain("3.100,00");
   fireEvent.click(within(screen.getByRole("navigation", { name: "Paginação dos compromissos" })).getByRole("button", { name: "Próxima" }));
   expect(tabela.getByText("Compromisso 16")).toBeTruthy();
-  expect(screen.getByText(/Total pendente:/).textContent).toContain("3.100,00");
+  expect(screen.getByText("Total pendente").parentElement?.textContent).toContain("3.100,00");
   fireEvent.change(screen.getByRole("searchbox", { name: "Buscar compromisso" }), { target: { value: "OP-0230" } });
   expect(tabela.getAllByRole("row")).toHaveLength(2);
   expect(tabela.getByText("Compromisso 31")).toBeTruthy();

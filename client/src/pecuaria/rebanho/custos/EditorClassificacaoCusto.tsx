@@ -34,7 +34,7 @@ export function EditorClassificacaoCusto({ dados, visivel, propriedadeId, chave,
     setEvidencia(f?.documentoMaterial?.evidencia ?? "");
   }
 
-  if (!visivel || !dados) return null;
+  if (!visivel || !dados || !dados.fontes.length) return null;
   return <details>
     <summary className="cursor-pointer font-semibold">Classificar finalidade e composição</summary>
     <form className="mt-3 grid gap-3" onChange={aoAlterar} onSubmit={e => {

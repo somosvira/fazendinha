@@ -39,12 +39,18 @@
 /* Sanidade: topo compacto e comandos sempre alcançáveis na tabela rolável. */
 .pecuaria-content .sanidade-pagina > .fin-cabecalho-pagina { margin-bottom: 12px; }
 .pecuaria-content .sanidade-pagina .fin-cabecalho-descricao { margin-top: 4px; }
-.pecuaria-content .sanidade-navegacao { margin-block: 12px; }
-.pecuaria-content .sanidade-abas-principais { overflow-x: auto; }
-.pecuaria-content .sanidade-abas-principais [role="tablist"] { grid-template-columns: repeat(5,minmax(0,1fr)); min-width: 510px; }
-.pecuaria-content .sanidade-pagina .fin-abas [role="tab"] { min-height: 36px; padding: 6px 10px; white-space: nowrap; }
-.pecuaria-content .sanidade-agenda-visoes { padding: 6px 12px; border-bottom: 1px solid var(--border); }
-.pecuaria-content .sanidade-agenda-visoes > div { max-width: 280px; }
+.pecuaria-content .sanidade-navegacao { margin-top: 0; margin-bottom: 16px; }
+.pecuaria-content .sanidade-abas-principais { min-width: 0; }
+.pecuaria-content .sanidade-abas-principais [role="tablist"] { min-width: 0; max-width: 100%; }
+.pecuaria-content .sanidade-pagina .sanidade-abas-principais .fin-abas [role="tab"] { min-height: 48px; padding: 12px 6px; font-size: 16px; white-space: nowrap; }
+.pecuaria-content .sanidade-agenda-visoes { padding: 12px 16px; border-bottom: 1px solid var(--border); }
+.pecuaria-content .sanidade-agenda-visoes .fin-abas { width: fit-content; gap: 8px; padding: 0; border: 0; }
+.pecuaria-content .sanidade-agenda-visoes .fin-abas [role="tab"] { min-width: 104px; min-height: 40px; padding: 8px 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); color: var(--foreground); }
+.pecuaria-content .sanidade-agenda-visoes .fin-abas [role="tab"]:hover { background: var(--muted); }
+.pecuaria-content .sanidade-agenda-visoes .fin-abas [role="tab"][data-state="active"] { border-color: var(--primary); background: var(--primary); color: var(--primary-foreground); }
+@media (max-width: 900px) {
+  .pecuaria-content .sanidade-agenda-visoes .fin-abas [role="tab"] { min-height: 44px; }
+}
 .pecuaria-content .sanidade-lista .fin-tabela-cabecalho { padding: 12px 16px; }
 .pecuaria-content .sanidade-lista .pec-filtros-sanidade { padding: 12px 16px; gap: 10px; }
 .pecuaria-content .sanidade-lista .pec-filtros-sanidade[hidden] { display: none; }
@@ -139,7 +145,7 @@
 .pecuaria-content .nutricao-receita-card { border-top: 1px solid var(--border); }
 .pecuaria-content .nutricao-receita-card .nutricao-ingredientes li { padding: 10px 0; }
 .pecuaria-content .nutricao-receita-card .nutricao-ingredientes small { font-size: 11px; }
-.pecuaria-content .nutricao-receita-card .nutricao-receita-rodape { background: var(--muted); justify-content: flex-start; font-size: 12px; }
+.pecuaria-content .nutricao-receita-card .nutricao-receita-rodape { background: var(--card); justify-content: flex-start; font-size: 12px; }
 .pecuaria-content .nutricao-ajuda { border-top: 1px solid var(--border); }
 .pecuaria-content .nutricao-ajuda dl { background: var(--muted); border-radius: 10px; padding: 16px; }
 .pecuaria-content .nutricao-ingrediente-form { padding: 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--muted); }
@@ -198,7 +204,7 @@
 
 /* Leitura operacional: resumos integrados e mais espaço para listas e ações. */
 .pecuaria-content .fin-cabecalho-pagina { margin-bottom: 12px; }
-.pecuaria-content .fin-abas [role=tab] { min-height: 36px; padding-block: 7px; }
+.pecuaria-content .fin-abas [role=tab] { min-height: 48px; padding-block: 12px; }
 .pecuaria-content .pec-grafico-cabecalho { padding: 14px 18px; }
 .pecuaria-content .pec-distribuicao-corpo { padding: 14px 18px; }
 .pecuaria-content .pec-distribuicao-rosca { max-width: 170px; }
@@ -242,4 +248,19 @@
   .pecuaria-content .pec-resumo-compacto > div + div { border-left: 0; border-top: 1px solid var(--border); }
   .pecuaria-content .pec-lote-composicao .pec-distribuicao-corpo { grid-template-columns: minmax(0,1fr); }
   .pecuaria-content .pec-lote-composicao .pec-distribuicao-legenda { grid-template-columns: minmax(0,1fr); }
+}
+
+/* Consulta: placeholders precisam conservar contraste sobre campos brancos. */
+.pecuaria-content .pagina-financeira :is(input, textarea)::placeholder,
+[data-pec-formulario] :is(input, textarea)::placeholder,
+:root:has(.pecuaria-content) :is([data-slot="dialog-content"], [data-slot="sheet-content"]) :is(input, textarea)::placeholder {
+  color: var(--muted-foreground);
+  opacity: 1;
+}
+@media (max-width: 900px) {
+  .pecuaria-content .rebanho-content button { min-height: 44px !important; }
+}
+
+@media (max-width: 900px) {
+  .pecuaria-content .sanidade-pagina .fin-abas [role="tab"] { min-height: 44px; }
 }

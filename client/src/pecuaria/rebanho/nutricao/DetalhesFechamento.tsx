@@ -2,7 +2,7 @@ import { Panel, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui
 import { formatarDataBR } from "../lib/rotulos";
 import type { Fechamento } from "./api";
 import { custoTexto, LinkNutricional, rotaNutricao, SituacaoFechamento } from "./componentes";
-import { GraficosIngredientes } from "./GraficosIngredientes";
+
 import { quantidadeNutricional } from "./quantidades";
 
 export function DetalhesFechamento({ fechamento: f }: { fechamento: Fechamento }) {
@@ -15,7 +15,6 @@ export function DetalhesFechamento({ fechamento: f }: { fechamento: Fechamento }
     </dl>}
     {f.status === "ESTORNADO" && <p className="nutricao-aviso mx-5 mb-5">Estornado · excluído dos custos atuais do lote. O consumo original permanece no histórico.{f.motivoEstorno && <> Motivo: {f.motivoEstorno}</>}</p>}</Panel>
     <Panel><div className="nutricao-card-cabecalho"><div><h2 className="h3">Consumo e estoque</h2><p>Quantidade prevista, conferida e origem dos ingredientes.</p></div></div>
-      <GraficosIngredientes embutido titulo={f.status === "ESTORNADO" ? "Consumo histórico estornado" : "Consumo confirmado"} itens={f.itens.map(i => ({ id: i.produtoId, nome: i.produto.nome, quantidade: i.quantidadeConfirmada, unidade: i.unidade }))} />
       <TabelaFinanceira rotulo="Ingredientes do fechamento" itens={f.itens} chaveDe={(i) => i.produtoId} colunas={[
         { chave: "ingrediente", titulo: "Ingrediente", principal: true, celula: (i) => <strong>{i.produto.nome}</strong> },
         { chave: "previsto", titulo: "Previsto", celula: (i) => `${quantidadeNutricional(i.quantidadePrevista)} ${i.unidade}` },
@@ -32,7 +31,7 @@ export function DetalhesFechamento({ fechamento: f }: { fechamento: Fechamento }
           { chave: "custo", titulo: "Custo conhecido", celula: (p: Fechamento["participacoes"][number]) => <>{custoTexto(p.custoConhecido)}{p.custoConhecido != null && !p.coberturaCustoCompleta && <p className="nutricao-secundario">Parcial</p>}</> },
           { chave: "medio", titulo: "Por animal-dia", celula: (p: Fechamento["participacoes"][number]) => custoTexto(p.custoConhecidoPorDia) },
         ] : []),
-        { chave: "consumo", titulo: "Consumo atribuído", larguraMinima: 240, celula: (p) => <details><summary className="nutricao-link cursor-pointer">Ver ingredientes</summary>{p.itens.map((i) => <p key={i.produtoId} className="nutricao-secundario mt-2">{f.itens.find((item) => item.produtoId === i.produtoId)?.produto.nome}: {quantidadeNutricional(i.quantidadeAtribuida)} {i.unidade} (≈ {quantidadeNutricional(i.quantidadePorDia)} {i.unidade}/dia){f.verValores && <> · {custoTexto(i.custoConhecido)}</>}</p>)}</details> },
+        { chave: "consumo", titulo: "Consumo atribuído", larguraMinima: 240, celula: (p) => <div>{p.itens.map((i) => <p key={i.produtoId} className="nutricao-secundario mt-2">{f.itens.find((item) => item.produtoId === i.produtoId)?.produto.nome}: {quantidadeNutricional(i.quantidadeAtribuida)} {i.unidade} (≈ {quantidadeNutricional(i.quantidadePorDia)} {i.unidade}/dia){f.verValores && <> · {custoTexto(i.custoConhecido)}</>}</p>)}</div> },
       ]} />
     </Panel>
   </div>;

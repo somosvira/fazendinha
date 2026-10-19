@@ -20,5 +20,5 @@ export function PaginacaoLocal({ controles, substantivo, id }: {
   substantivo: string;
   id: string;
 }) {
-  return <PaginacaoFinanceira {...controles} rotulo={`Paginação de ${substantivo}`} substantivo={substantivo} idSelect={id} ocultarControlesPaginaUnica={false} />;
+  return <PaginacaoFinanceira {...controles} rotulo={`Paginação de ${substantivo}`} substantivo={substantivo} idSelect={id} />;
 }

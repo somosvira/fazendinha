@@ -44,7 +44,7 @@
 :root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) .sidebar-clara {
   --mast-bg: var(--fin-sidebar);
   /* Hover indica o item sem disputar com o verde reservado à página atual. */
-  --side-hover: #d9e3da;
+  --side-hover: var(--fin-nav-hover);
   --side-active: var(--fin-nav-selected);
   --side-active-ink: var(--fin-heading);
   --mast-ink: var(--fin-heading);
@@ -62,7 +62,7 @@
 :root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) .sidebar-clara button[aria-label="Propriedade / sítio ativo"] > span:first-child { color: var(--primary); }
 :root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) .sidebar-clara nav svg { stroke-linecap: round; stroke-linejoin: round; }
 :root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) .sidebar-clara {
-  background-image: url('../assets/financeiro/paisagem-cooperativa.png');
+  background-image: none;
   background-repeat: no-repeat;
   background-position: left bottom 64px;
   background-size: 100% auto;

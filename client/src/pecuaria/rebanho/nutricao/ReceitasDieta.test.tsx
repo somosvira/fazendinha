@@ -87,8 +87,9 @@ describe("gestão compartilhada de receitas", () => {
   it("leitura mantém versões e ingredientes sem ações de escrita", async () => {
     const { container } = render(<ReceitasDieta podeLancar={false} />);
     await screen.findByText("Publicada");
-    expect(within(container).getAllByText("Milho")).toHaveLength(2);
-    expect(screen.getAllByText("MS 85%")).toHaveLength(2);
+    fireEvent.click(screen.getAllByRole("button", { name: "Ver composição" })[0]);
+    expect(within(container).getByText("Milho")).toBeTruthy();
+    expect(screen.getByText("85%")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Nova receita" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Publicar" })).toBeNull();
     expect(screen.queryByLabelText("Nome da dieta")).toBeNull();

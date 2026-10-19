@@ -50,7 +50,7 @@ describe("FormMovimentar", () => {
 
   it("lista os animais com a localização atual de cada um", () => {
     render(<FormMovimentar animais={[animal1, animal2]} propriedades={propriedades} lotes={lotes} onSalvo={vi.fn()} onFechar={vi.fn()} />);
-    expect(screen.getByText("Animais que serão movidos (2)")).toBeTruthy();
+    expect(screen.getByText("Animais selecionados")).toBeTruthy();
     expect(screen.getByText("0001")).toBeTruthy();
     expect(screen.getByText(/está em: Lote A \(Sede\)/)).toBeTruthy();
     expect(screen.getByText(/Mimosa/)).toBeTruthy();

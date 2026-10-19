@@ -1,3 +1,5 @@
+import { useRascunhoConsulta } from "./useRascunhoConsulta";
+import { BarraConsulta } from "@/financeiro/BarraConsulta";
 import { useEffect, useState, type ReactNode } from "react";
 import { SkeletonListaFinanceira } from "./CarregamentoFinanceiro";
 import { SelectCampo } from "./SelectCampo";
@@ -44,13 +46,15 @@ export function FiltrosExtratoGeralControl({ contas, filtros, onChangeFiltros, c
   children?: ReactNode;
 }) {
   const { conta, instituicao } = filtros;
+  const edicao = useRascunhoConsulta({ instituicao: instituicao ?? "" }, { instituicao: "" }, v => onChangeFiltros({ ...filtros, instituicao: v.instituicao }));
   return <>
-      <div className="fin-filtros-barra flex flex-wrap items-end gap-3 p-4">
+      <BarraConsulta edicaoFiltros={edicao} adicionais={<><label className="fin-filtro-controle text-sm font-medium">Instituição<SelectCampo value={edicao.rascunho.instituicao} onValueChange={valor => edicao.editar("instituicao", valor)} className={CAMPO}><option value="">Todas as instituições</option>{Array.from(new Set(contas.map(c => c.instituicao).filter((i): i is string => !!i))).sort().map(i => <option key={i} value={i}>{i}</option>)}<option value="__sem__">Sem instituição</option></SelectCampo></label>
+</>} criterios={instituicao ? [{id:"instituicao",rotulo:`Instituição: ${instituicao === "__sem__" ? "Sem instituição" : instituicao}`,limpar:()=>onChangeFiltros({...filtros,instituicao:""})}] : []} onLimpar={()=>onChangeFiltros({...filtros,instituicao:"",conta:"",busca:""})}>
         <label className="fin-filtro-busca text-sm font-medium">Buscar movimento<Input type="search" placeholder="Descrição, conta ou parceiro" value={filtros.busca ?? ""} onChange={e => onChangeFiltros({ ...filtros, busca: e.target.value })} className={CAMPO} /></label>
         {children}
         <label className="fin-filtro-controle text-sm font-medium">Conta<SelectCampo value={conta} onValueChange={valor => onChangeFiltros({ ...filtros, conta: valor })} className={CAMPO}><option value="">Todas as contas</option>{contas.map(c => <option key={c.id} value={c.id}>{c.nome}{!c.ativo ? " (inativa)" : ""}</option>)}</SelectCampo></label>
-        <label className="fin-filtro-controle text-sm font-medium">Instituição<SelectCampo value={instituicao} onValueChange={valor => onChangeFiltros({ ...filtros, instituicao: valor })} className={CAMPO}><option value="">Todas as instituições</option>{Array.from(new Set(contas.map(c => c.instituicao).filter((i): i is string => !!i))).sort().map(i => <option key={i} value={i}>{i}</option>)}<option value="__sem__">Sem instituição</option></SelectCampo></label>
-      </div>
+
+      </BarraConsulta>
       {filtros.natureza && <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border p-4 text-sm"><span>{filtros.natureza === "recebimentos" ? "Recebimentos" : "Pagamentos"} realizados, líquidos de estornos · transferências excluídas</span><Button variant="link" onClick={() => onChangeFiltros({ ...filtros, natureza: undefined })}>Mostrar todas as movimentações</Button></div>}
   </>;
 }

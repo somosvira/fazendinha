@@ -79,7 +79,7 @@ export function ConfirmarDesfazerMovimentacao({ movimentacaoId, detalhe, onConfi
         : mov && <div className="space-y-3">
           <p>{fraseResumo(mov, voltam.length)}</p>
           {voltam.length > 0 && <div className="overflow-x-auto rounded-lg border border-red-200">
-            <table className="w-full text-left text-xs">
+            <table className="w-full text-left text-xs consulta-tabela">
               <thead className="text-red-900"><tr><th className="p-2 font-semibold">Brinco</th><th className="p-2 font-semibold">Nome</th><th className="p-2 font-semibold">Volta para</th><th className="p-2 font-semibold">Categoria</th></tr></thead>
               <tbody className="divide-y divide-red-200">
                 {voltam.map((a) => <tr key={a.animalId}>

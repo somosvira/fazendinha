@@ -1,3 +1,5 @@
+import { useRascunhoConsulta } from "@/financeiro/useRascunhoConsulta";
+import { BarraConsulta } from "@/financeiro/BarraConsulta";
 import "./estoque-theme.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Boxes, Package, PackagePlus, Plus, Search, SlidersHorizontal, TriangleAlert, History } from "lucide-react";
@@ -196,8 +198,10 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
     <Button onClick={() => setCadastrandoProduto(true)}><Plus size={16} /> Cadastrar produto</Button>
   </div>;
 
+  const edicaoSaldos = useRascunhoConsulta({ centro: centroFiltro, ordem }, { centro: "", ordem: "nome" as Ordem }, v => { setCentroFiltro(v.centro); setOrdem(v.ordem); });
+  const edicaoHistorico = useRascunhoConsulta({ centro: centroMov }, { centro: "" }, v => { setCentroMov(v.centro); setPaginaMov(1); });
   return <PaginaFinanceira>
-    <PageHeader eyebrow="" titulo={titulo ?? "Estoque"} descricao="Saldos, reposição e movimentações dos produtos da fazenda." acao={acao} />
+    <PageHeader eyebrow="" titulo={titulo ?? "Estoque"} descricao="Confira saldos, entradas e movimentações dos produtos em cada sítio." acao={acao} />
     {avisoFiltro && <p className="mt-4 text-sm text-amber-800">{avisoFiltro}</p>}
     <ErrorBox erro={erroCentros ? `Erro ao carregar centros de custo: ${erroCentros}` : null} />
 
@@ -208,13 +212,9 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
         <div><span className="text-xs text-ink-3">{valoresPendentes > 0 && valoresConhecidos > 0 ? "Valor conhecido em estoque (parcial)" : "Valor em estoque"}</span><div className="text-2xl font-semibold">{saldos.loading ? "—" : valoresPendentes > 0 && valoresConhecidos === 0 ? "—" : brl(valorTotal)}</div><p className="mt-1 text-xs text-ink-3">{saldos.loading ? "Consultando saldos…" : `${nEmEstoque} ${nEmEstoque === 1 ? "produto" : "produtos"} em estoque`}</p></div>
         {valoresPendentes > 0 && valoresConhecidos > 0 && <p className="text-xs text-ink-3" role="status">{valoresPendentes} produto(s) sem valor disponível. O total conhecido é parcial.</p>}
       </div>
-      <div className="estoque-panorama-alertas" aria-label="Atenção ao estoque">
-        <button type="button" aria-pressed={soAbaixoMin} onClick={() => { setSoAbaixoMin(v => !v); setSoNegativos(false); }} className={`estoque-alerta ${nAbaixoMin ? "estoque-alerta-atencao" : ""}`}><TriangleAlert size={18} aria-hidden="true" /><span><strong>{saldos.loading ? "—" : nAbaixoMin} abaixo do mínimo</strong><small>{soAbaixoMin ? "Filtro ativo · ver todos" : "Conferir reposição"}</small></span></button>
-        {nNegativos > 0 && <button type="button" aria-pressed={soNegativos} onClick={() => { setSoNegativos(v => !v); setSoAbaixoMin(false); }} className="estoque-alerta estoque-alerta-negativo"><TriangleAlert size={18} aria-hidden="true" /><span><strong>{nNegativos} {nNegativos === 1 ? "produto com saldo negativo" : "produtos com saldo negativo"}</strong><small>{soNegativos ? "Filtro ativo · ver todos" : "Conferir movimentos"}</small></span></button>}
-      </div>
     </Panel>
-    <details className="estoque-entradas mt-3 rounded-xl border border-border bg-card">
-      <summary className="flex cursor-pointer items-center gap-2 p-4 text-sm font-medium"><PackagePlus size={17} aria-hidden="true" />Últimas entradas<span className="ml-auto text-xs font-normal text-ink-3">Ver recebimentos recentes</span></summary>
+    <section className="estoque-entradas mt-3 rounded-xl border border-border bg-card" aria-label="Últimas entradas">
+      <h2 className="flex items-center gap-2 px-4 pt-4 text-base font-semibold"><PackagePlus size={17} aria-hidden="true" />Últimas entradas</h2>
       <div className="border-t border-border p-4">
         {entradas.loading && ultimasEntradas.length === 0 ? <p className="mt-3 text-xs text-ink-3">Carregando…</p>
           : ultimasEntradas.length === 0 ? <p className="mt-3 text-xs text-ink-3">Nenhuma entrada registrada ainda.</p>
@@ -227,17 +227,20 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
               </li>;
             })}</ul>}
       </div>
-    </details>
+    </section>
 
     <section className="mt-6" aria-label="Saldos de estoque">
       <Panel className="overflow-hidden">
       <div className="estoque-secao-cabecalho"><span className="fin-section-icon"><Boxes aria-hidden="true" /></span><h2 className="font-serif text-2xl">Saldos de estoque<AjudaCampo rotulo="Como o valor é calculado" texto="O valor corresponde ao saldo monetário remanescente. Grupos rastreados usam média do saldo; produtos sem rastreio usam aquisições mais antigas. Valores desconhecidos ficam separados." /></h2></div>
-      <div className="estoque-filtros grid gap-3 md:grid-cols-[minmax(0,2fr)_repeat(2,minmax(0,1fr))_auto]">
+      <BarraConsulta edicaoFiltros={edicaoSaldos} adicionais={<><SelectFiltro rotulo="Filtrar por centro de custo" valor={edicaoSaldos.rascunho.centro} onChange={v => edicaoSaldos.editar("centro", v)} opcoes={[{ valor: "", texto: "Todos os centros" }, { valor: SEM_VINCULO, texto: "Sem centro" }, ...centros.map((c) => ({ valor: c.id, texto: c.nome }))]} className="w-full sm:!w-full" />
+<SelectFiltro rotulo="Ordenar por" valor={edicaoSaldos.rascunho.ordem} onChange={v => edicaoSaldos.editar("ordem", v as Ordem)} opcoes={[{ valor: "nome", texto: "Ordenar por nome" }, { valor: "categoria", texto: "Ordenar por categoria" }, { valor: "valor", texto: "Ordenar por maior valor" }]} className="w-full sm:!w-full" />
+</>} criterios={[...(centroFiltro ? [{id:"centro",rotulo:`Centro: ${centros.find(c=>c.id===centroFiltro)?.nome ?? "Sem centro"}`,limpar:()=>setCentroFiltro("")}] : []), ...(ordem !== "nome" ? [{id:"ordem",rotulo:`Ordenação: ${ordem === "valor" ? "Maior valor" : "Categoria"}`,limpar:()=>setOrdem("nome")}] : [])]} onLimpar={()=>{setBusca("");setCentroFiltro("");setOrdem("nome");setSoAbaixoMin(false);setSoNegativos(false);}}>
         <label className="relative min-w-0"><Search size={16} className="absolute left-3 top-3 text-ink-3" aria-hidden="true" /><input type="search" aria-label="Buscar produto" value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar por nome ou categoria…" className={`${CAMPO} pl-9`} /></label>
-        <SelectFiltro rotulo="Filtrar por centro de custo" valor={centroFiltro} onChange={setCentroFiltro} opcoes={[{ valor: "", texto: "Todos os centros" }, { valor: SEM_VINCULO, texto: "Sem centro" }, ...centros.map((c) => ({ valor: c.id, texto: c.nome }))]} className="w-full sm:!w-full" />
-        <SelectFiltro rotulo="Ordenar por" valor={ordem} onChange={(valor) => setOrdem(valor as Ordem)} opcoes={[{ valor: "nome", texto: "Ordenar por nome" }, { valor: "categoria", texto: "Ordenar por categoria" }, { valor: "valor", texto: "Ordenar por maior valor" }]} className="w-full sm:!w-full" />
-        <button type="button" aria-pressed={soAbaixoMin} onClick={() => setSoAbaixoMin((v) => !v)} className={`${CAMPO} inline-flex items-center gap-2 whitespace-nowrap font-medium ${soAbaixoMin ? "border-[var(--fin-pendente)] bg-[var(--fin-warning-bg)] text-[var(--fin-pendente)]" : "text-ink-2"}`}><IconeAbaixoMinimo />Só abaixo do mínimo{nAbaixoMin > 0 ? ` (${nAbaixoMin})` : ""}</button>
-      </div>
+
+
+        <button type="button" aria-pressed={soAbaixoMin} onClick={() => { setSoAbaixoMin(v => !v); setSoNegativos(false); }} className={`${CAMPO} inline-flex items-center gap-2 whitespace-nowrap font-medium ${soAbaixoMin ? "border-[var(--fin-pendente)] bg-[var(--fin-warning-bg)] text-[var(--fin-pendente)]" : "text-ink-2"}`}><IconeAbaixoMinimo />Só abaixo do mínimo{nAbaixoMin > 0 ? ` (${nAbaixoMin})` : ""}</button>
+        {nNegativos > 0 && <Button secondary aria-pressed={soNegativos} onClick={() => { setSoNegativos(v => !v); setSoAbaixoMin(false); }}><TriangleAlert size={16} aria-hidden />{nNegativos} {nNegativos === 1 ? "produto com saldo negativo" : "produtos com saldo negativo"}</Button>}
+      </BarraConsulta>
       <div className="min-w-0">
         {saldos.loading ? <div className="p-6"><Loader /></div>
           : saldos.erro ? <Empty>Não foi possível consultar os saldos: {saldos.erro} <Button secondary onClick={saldos.recarregar}>Tentar novamente</Button></Empty>
@@ -255,12 +258,13 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
       <Panel className="overflow-hidden">
       <div className="estoque-secao-cabecalho"><span className="fin-section-icon"><History aria-hidden="true" /></span><h2 className="font-serif text-2xl">Histórico de movimentos<AjudaCampo rotulo="Origem dos movimentos" texto="Cada movimento leva à operação ou ao fato sanitário/nutricional que o gerou." /></h2></div>
       {movimentoId && <p className="mt-2 rounded-lg border border-border bg-surface p-3 text-sm">Movimento selecionado · <a href="/estoque" className="underline">Voltar ao histórico completo</a></p>}
-      <div className="estoque-filtros flex flex-wrap items-center gap-3">
+      <BarraConsulta edicaoFiltros={edicaoHistorico} adicionais={<><SelectFiltro rotulo="Filtrar histórico por centro de custo" valor={edicaoHistorico.rascunho.centro} onChange={v => edicaoHistorico.editar("centro", v)} opcoes={[{ valor: "", texto: "Todos os centros" }, { valor: SEM_VINCULO, texto: "Sem centro" }, ...centros.map((c) => ({ valor: c.id, texto: c.nome }))]} className="min-w-0 flex-[1_1_160px]" />
+</>} criterios={centroMov ? [{id:"centro",rotulo:`Centro: ${centros.find(c=>c.id===centroMov)?.nome ?? "Sem centro"}`,limpar:()=>{setCentroMov("");setPaginaMov(1);}}] : []} onLimpar={()=>{setCentroMov("");setOrigemMov("");setBuscaMov("");setPaginaMov(1);}}>
         <label className="relative w-full min-w-0 flex-[2_1_260px] sm:w-auto"><Search size={16} className="absolute left-3 top-3 text-ink-3" aria-hidden="true" /><input type="search" aria-label="Buscar movimento" value={buscaMov} onChange={(e) => setBuscaMov(e.target.value)} placeholder="Buscar por produto, operação ou fornecedor…" className={`${CAMPO} w-full pl-9`} /></label>
         <SelectFiltro rotulo="Filtrar por origem" valor={origemMov} onChange={(valor) => { setOrigemMov(valor); setPaginaMov(1); }} opcoes={[{ valor: "", texto: "Todas as origens" }, ...Object.entries(ROTULO_ORIGEM).map(([valor, texto]) => ({ valor, texto }))]} className="min-w-0 flex-[1_1_160px]" />
-        <SelectFiltro rotulo="Filtrar histórico por centro de custo" valor={centroMov} onChange={(valor) => { setCentroMov(valor); setPaginaMov(1); }} opcoes={[{ valor: "", texto: "Todos os centros" }, { valor: SEM_VINCULO, texto: "Sem centro" }, ...centros.map((c) => ({ valor: c.id, texto: c.nome }))]} className="min-w-0 flex-[1_1_160px]" />
+
         <PeriodoFinanceiroControl inicio={periodoMov.inicio} fim={periodoMov.fim} allowAll label="Período do histórico" onChange={(periodo) => { setPeriodoMov(periodo); setPaginaMov(1); }} />
-      </div>
+      </BarraConsulta>
       <div className="min-w-0">
         {movimentos.loading && movimentos.data.length === 0 ? <div className="p-6"><Loader /></div>
           : movimentos.erro ? <Empty>Não foi possível consultar os movimentos: {movimentos.erro} <button type="button" className="underline" onClick={movimentos.recarregar}>Tentar novamente</button></Empty>

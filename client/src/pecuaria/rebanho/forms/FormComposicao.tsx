@@ -68,7 +68,7 @@ export function FormComposicao({ animal, racas, onSalvo, onFechar }: {
   };
 
   const formId = "form-composicao-animal";
-  return <PainelCadastro icon={Dna} aberto titulo={`Composição de ${animal.brinco}`} onFechar={() => { if (!salvando) onFechar(); }}
+  return <PainelCadastro compacto icon={Dna} aberto titulo={`Composição de ${animal.brinco}`} onFechar={() => { if (!salvando) onFechar(); }}
     rodape={<><Button secondary onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form={formId} disabled={salvando}>{salvando ? "Salvando…" : "Salvar composição"}</Button></>}>
     <form data-pec-formulario  id={formId} onSubmit={submeter} noValidate className="grid gap-4">
       <ErrorBox erro={erroGeral} />

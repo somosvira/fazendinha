@@ -1,5 +1,14 @@
 @import "../styles/cooperativa-theme.css";
-.app-main:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) { background: var(--background); min-height: 100dvh; }
+.app-main:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) {
+  background-color: var(--background);
+  background-image: radial-gradient(ellipse at 100% 0%, var(--fin-canvas-sage), transparent 65%), linear-gradient(155deg, var(--fin-canvas-light), var(--fin-canvas-end));
+  background-size: 100% 720px, 100% 100%;
+  background-repeat: no-repeat;
+  min-height: 100dvh;
+}
+@media print {
+  .app-main:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) { background: white; }
+}
 :is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content),
 :root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) .financeiro-colorido { color: var(--foreground); font-family: var(--sans); }
 :is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content) .font-serif,
@@ -9,7 +18,7 @@
 :is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content) .h1 { font-family: var(--sans); color: var(--fin-heading); font-size: 28px; font-weight: 650; line-height: 1.2; }
 :is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content) :is(h2.font-serif, h3.font-serif) { color: var(--fin-heading); font-size: 18px; font-weight: 600; line-height: 1.4; }
 :is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content) :is([data-slot="card"], [data-slot="financeiro-panel"]) {
-  background: var(--card); border: 1px solid var(--border); border-radius: var(--fin-radius-panel); box-shadow: var(--fin-shadow);
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--fin-radius-panel); box-shadow: none;
 }
 :root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) .financeiro-colorido:is([data-slot="dialog-content"], [data-slot="sheet-content"]) {
   background: var(--card); border: 1px solid var(--border); box-shadow: var(--fin-dialog-shadow);
@@ -37,9 +46,11 @@
 :is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content) .fin-section-icon svg,
 :root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) .financeiro-colorido .fin-section-icon svg { width: 20px; height: 20px; stroke-width: 1.8; }
 :is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content) .fin-indicador svg { color: var(--primary); }
-:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content) .fin-abas { background: var(--card); border-radius: var(--radius); }
-:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content) .fin-abas [role="tab"]:hover { background: var(--muted); color: var(--foreground); }
-:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content) .fin-abas [role="tab"][data-state="active"] { background: var(--primary); color: var(--primary-foreground); box-shadow: none; }
+:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content) .fin-abas { display: flex; justify-content: flex-start; gap: 8px 24px; flex-wrap: wrap; overflow: visible; height: auto; padding: 0; background: transparent; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; box-shadow: none; }
+:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content) .fin-abas [role="tab"] { flex: 0 0 auto; height: auto; min-height: 48px; padding: 12px 6px; gap: 8px; font-size: 16px; border: 0; border-bottom: 2px solid transparent; border-radius: 0; color: var(--muted-foreground); box-shadow: none; white-space: nowrap; }
+:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content) .fin-abas [role="tab"] svg { width: 20px; height: 20px; }
+:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content) .fin-abas [role="tab"]:hover { background: transparent; color: var(--foreground); }
+:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content) .fin-abas [role="tab"][data-state="active"] { background: transparent; color: var(--primary); border-bottom-color: var(--primary); font-weight: 650; box-shadow: none; }
 :is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content) :is(input:not([type="checkbox"]):not([type="radio"]):not([role="radio"]):not([role="checkbox"]), textarea, [data-slot="select-trigger"]),
 :root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) .financeiro-colorido :is(input:not([type="checkbox"]):not([type="radio"]):not([role="radio"]):not([role="checkbox"]), textarea, [data-slot="select-trigger"]) { border-color: var(--input); border-radius: var(--radius); background: var(--card); }
 :is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content) :is(input, textarea, [data-slot="select-trigger"])[aria-invalid="true"],
@@ -122,10 +133,11 @@
 
 /* Cabeçalho e rodapé distintos, também nos portais de cadastro. */
 :root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) [data-slot="dialog-content"]:not(.financeiro-colorido) { color: var(--foreground); font-family: var(--sans); border-radius: var(--fin-radius-panel); overflow: hidden; box-shadow: var(--fin-dialog-shadow); }
+:root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) [data-slot="dialog-content"][data-fin-scroll="conteudo"] { overflow-y: auto; overflow-x: hidden; }
 :root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) [data-slot="dialog-content"] [data-slot="dialog-title"] { font-family: var(--sans); color: var(--fin-heading); font-weight: 600; }
-:root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) .financeiro-colorido :is(.fin-dialogo-cabecalho, .fin-modal-cabecalho, [data-slot="sheet-header"], [data-slot="dialog-header"].fin-cabecalho) { background: var(--fin-sidebar); border-bottom-color: #bdcec0; }
+:root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) .financeiro-colorido :is(.fin-dialogo-cabecalho, .fin-modal-cabecalho, [data-slot="sheet-header"], [data-slot="dialog-header"].fin-cabecalho) { background: var(--card); border-bottom-color: var(--border); }
 :root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) .financeiro-colorido :is(.fin-dialogo-rodape, [data-slot="sheet-footer"], [data-slot="dialog-footer"]) { background: var(--fin-surface-subtle); }
-:root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) [data-slot="dialog-content"] > [data-slot="dialog-header"] { background: var(--fin-sidebar); border-bottom-color: #bdcec0; }
+:root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) [data-slot="dialog-content"] > [data-slot="dialog-header"] { background: var(--card); border-bottom-color: var(--border); }
 :root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) [data-slot="dialog-content"] > [data-slot="dialog-footer"] { background: var(--fin-surface-subtle); }
 :root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) .financeiro-colorido .fin-dialogo-cabecalho .fin-section-icon,
 :root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) .financeiro-colorido :is([data-slot="sheet-header"], [data-slot="dialog-header"]) .fin-section-icon { background: var(--primary); color: var(--primary-foreground); }

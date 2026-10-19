@@ -1,3 +1,4 @@
+import { LinkInterno } from "../../../components/LinkInterno";
 import { CustosDiretos } from "../custos/CustosDiretos";
 import { getUsuario } from "../../../lib/auth";
 import { rotuloSituacaoTarefa } from "./RegularizacaoTarefa";
@@ -53,6 +54,10 @@ export function DetalheSanitario({ tipo, valor, abrir }: { tipo: string; valor: 
   const compra = registro(fato.compraDireta);
   const operacaoCompra = registro(compra.operacao);
   const estorno = registro(fato.estorno);
+  const linksJaExibidos = [
+    ...[movimento.id, estorno.id].filter(Boolean).map(id => `/estoque?movimentoId=${encodeURIComponent(String(id))}&propriedadeId=${encodeURIComponent(String(fato.propriedadeId ?? ""))}`),
+    ...(podeAcessarArea("financeiro") ? [fato.operacaoServicoId, operacaoCompra.id].filter(Boolean).map(id => linkOperacaoFinanceira(String(id))) : []),
+  ];
   const links: Array<[string, string, string]> = [];
   if (ocorrencia.id) links.push(["Ocorrência relacionada", "ocorrencia", String(ocorrencia.id)]);
   if (tarefa.execucaoId) links.push(["Execução do protocolo", "execucao", String(tarefa.execucaoId)]);
@@ -64,23 +69,23 @@ export function DetalheSanitario({ tipo, valor, abrir }: { tipo: string; valor: 
   }
   return <div className="pec-detalhe-sanitario space-y-4 text-sm">
     {!!propriedade.nome && <p><strong>Sítio do fato:</strong> {String(propriedade.nome)}</p>}
-    <p><strong>Animal:</strong> {animal.id ? <a className="underline" href={`/pecuaria/rebanho/animais/${encodeURIComponent(String(animal.id))}`}>{textoDetalhe(animal.brinco)}{animal.nome ? ` · ${String(animal.nome)}` : ""}</a> : "Não informado"}</p>
+    <p><strong>Animal:</strong> {animal.id ? <LinkInterno area="pecuaria" href={`/pecuaria/rebanho/animais/${encodeURIComponent(String(animal.id))}`}>{textoDetalhe(animal.brinco)}{animal.nome ? ` · ${String(animal.nome)}` : ""}</LinkInterno> : "Não informado"}</p>
     {!!doenca.nome && <p><strong>Doença:</strong> {String(doenca.nome)}</p>}
     {!!tipoExame.nome && <p><strong>Tipo de exame:</strong> {String(tipoExame.nome)}</p>}
     {!!protocolo.nome && <p><strong>Protocolo:</strong> {String(protocolo.nome)} · versão {textoDetalhe(protocolo.versao)}</p>}
     {!!fato.justificativaSemOrigem && <p><strong>Justificativa original da origem:</strong> {String(fato.justificativaSemOrigem)}</p>}
     {(tipo === "aplicacao" || tipo === "exame") && (!!fato.tarefaId || !!tarefa.id || fato.desvioProtocoloSnapshot != null) && <DesvioProtocolo valor={fato.desvioProtocoloSnapshot} />}
-    {tipo === "aplicacao" && <><p><strong>Produto vinculado:</strong> {produto.id ? <a className="underline" href={`/estoque/produtos/${encodeURIComponent(String(produto.id))}`}>{textoDetalhe(produto.nome)}</a> : "Não vinculado"}</p><p><strong>Nome histórico do medicamento:</strong> {textoDetalhe(fato.nomeProdutoAplicado)}</p></>}
+    {tipo === "aplicacao" && <><p><strong>Produto vinculado:</strong> {produto.id ? <LinkInterno area="estoque" href={`/estoque/produtos/${encodeURIComponent(String(produto.id))}`}>{textoDetalhe(produto.nome)}</LinkInterno> : "Não vinculado"}</p><p><strong>Nome histórico do medicamento:</strong> {textoDetalhe(fato.nomeProdutoAplicado)}</p></>}
     <dl className="grid gap-2 sm:grid-cols-2">{(dadosDetalhe[tipo] ?? []).map(([rotulo, chave]) => <div key={chave} className="rounded-lg bg-card p-2"><dt className="text-ink-3">{rotulo}</dt><dd>{formatarCampo(chave, fato)}</dd></div>)}</dl>
     {tipo === "exame" && !!fato.formatoSnapshot && <><p><strong>Resultado:</strong> {resultadoExameSanitario(fato as unknown as ExameResultado)}</p>{fato.status === "ANULADO" && <span className="rounded bg-card px-2 py-1">Anulado</span>}<HistoricoExame key={String(fato.id)} exameId={String(fato.id)} propriedadeId={typeof fato.propriedadeId === "number" ? fato.propriedadeId : undefined} formato={(fato as unknown as ExameResultado).formatoSnapshot} /></>}
     {!!fato.loteNome && typeof fato.partidaCodigoSnapshot === "string" && fato.partidaCodigoSnapshot !== fato.loteNome && !/^LOTE-[0-9a-f-]{36}$/i.test(fato.partidaCodigoSnapshot) && <p className="text-ink-3">Referência histórica do lote: {fato.partidaCodigoSnapshot}</p>}
-    {!!movimento.id && <p><strong>Saída do estoque:</strong> <a className="underline" href={`/estoque?movimentoId=${encodeURIComponent(String(movimento.id))}${fato.propriedadeId ? `&propriedadeId=${encodeURIComponent(String(fato.propriedadeId))}` : ""}`}>Ver movimento</a></p>}
-    {!!estorno.id && <p><strong>Estorno do estoque:</strong> <a className="underline" href={`/estoque?movimentoId=${encodeURIComponent(String(estorno.id))}&propriedadeId=${encodeURIComponent(String(fato.propriedadeId ?? ""))}`}>Ver movimento de estorno</a></p>}
-    {!!operacaoCompra.id && podeAcessarArea("financeiro") && <p><strong>Compra direta:</strong> <a className="underline" href={linkOperacaoFinanceira(String(operacaoCompra.id), window.location.pathname + window.location.search)}>Operação #{String(operacaoCompra.numero)}</a> · {textoDetalhe(compra.quantidade)} {unidadeSanitaria(String(compra.unidade ?? ""))} comprados · {textoDetalhe(compra.quantidadeDestinada)} {unidadeSanitaria(String(compra.unidade ?? ""))} destinados · {textoDetalhe(compra.quantidadeDisponivel)} {unidadeSanitaria(String(compra.unidade ?? ""))} disponíveis</p>}
-    {!!fato.operacaoServicoId && podeAcessarArea("financeiro") && <p><strong>Serviço:</strong> <a className="underline" href={linkOperacaoFinanceira(String(fato.operacaoServicoId), window.location.pathname + window.location.search)}>Ver origem financeira</a></p>}
+    {!!movimento.id && <p><strong>Saída do estoque:</strong> <LinkInterno area="estoque" href={`/estoque?movimentoId=${encodeURIComponent(String(movimento.id))}${fato.propriedadeId ? `&propriedadeId=${encodeURIComponent(String(fato.propriedadeId))}` : ""}`}>Ver movimento</LinkInterno></p>}
+    {!!estorno.id && <p><strong>Estorno do estoque:</strong> <LinkInterno area="estoque" href={`/estoque?movimentoId=${encodeURIComponent(String(estorno.id))}&propriedadeId=${encodeURIComponent(String(fato.propriedadeId ?? ""))}`}>Ver movimento de estorno</LinkInterno></p>}
+    {!!operacaoCompra.id && podeAcessarArea("financeiro") && <p><strong>Compra direta:</strong> <LinkInterno area="financeiro" href={linkOperacaoFinanceira(String(operacaoCompra.id), window.location.pathname + window.location.search)}>Operação #{String(operacaoCompra.numero)}</LinkInterno> · {textoDetalhe(compra.quantidade)} {unidadeSanitaria(String(compra.unidade ?? ""))} comprados · {textoDetalhe(compra.quantidadeDestinada)} {unidadeSanitaria(String(compra.unidade ?? ""))} destinados · {textoDetalhe(compra.quantidadeDisponivel)} {unidadeSanitaria(String(compra.unidade ?? ""))} disponíveis</p>}
+    {!!fato.operacaoServicoId && podeAcessarArea("financeiro") && <p><strong>Serviço:</strong> <LinkInterno area="financeiro" href={linkOperacaoFinanceira(String(fato.operacaoServicoId), window.location.pathname + window.location.search)}>Ver origem financeira</LinkInterno></p>}
     {fato.valorProdutoAtribuido != null && <p><strong>Custo atribuído do medicamento:</strong> {fmtMoneyExact(Number(fato.valorProdutoAtribuido))}</p>}
     {fato.valorServicoAtribuido != null && <p><strong>Rateio atribuído do Serviço:</strong> {fmtMoneyExact(Number(fato.valorServicoAtribuido))}</p>}
-    {typeof fato.propriedadeId === "number" && typeof fato.id === "string" && ["aplicacao","exame","execucao"].includes(tipo) && <CustosDiretos {...(tipo === "aplicacao" ? {aplicacaoId:fato.id} : tipo === "exame" ? {exameId:fato.id} : {participacaoId:fato.id})} propriedadeId={fato.propriedadeId} podeLancar={!!getUsuario()?.dono || !!getUsuario()?.flags.includes("lancar")} />}
+    {typeof fato.propriedadeId === "number" && typeof fato.id === "string" && ["aplicacao","exame","execucao"].includes(tipo) && <CustosDiretos fatoEmConsulta={{ tipoFonte: tipo === "aplicacao" ? "APLICACAO" : tipo === "exame" ? "EXAME" : "PARTICIPACAO", fonteId: fato.id }} linksJaExibidos={linksJaExibidos} {...(tipo === "aplicacao" ? {aplicacaoId:fato.id} : tipo === "exame" ? {exameId:fato.id} : {participacaoId:fato.id})} propriedadeId={fato.propriedadeId} podeLancar={!!getUsuario()?.dono || !!getUsuario()?.flags.includes("lancar")} />}
     {links.length > 0 && <section><h3 className="font-semibold">Fatos relacionados</h3><div className="mt-2 flex flex-wrap gap-2">{links.map(([rotulo, destino, id]) => <button key={`${destino}-${id}`} type="button" className="rounded-lg border border-border px-3 py-2 underline" onClick={() => abrir(destino, id)}>{rotulo}</button>)}</div></section>}
     {Array.isArray(fato.tarefas) && <section><h3 className="font-semibold">Tarefas</h3><div className="mt-2 space-y-2">{fato.tarefas.map((item) => { const t = registro(item); return <p key={String(t.id)} className="rounded-lg border border-border p-2">{dataSanitaria(String(t.previstaPara ?? ""))} · {rotuloSituacaoTarefa(String(t.situacao ?? (t.regularizacaoPendente ? "REGULARIZACAO_PENDENTE" : t.dispensadaEm ? "DISPENSADA" : "PENDENTE")))}</p>; })}</div></section>}
   </div>;

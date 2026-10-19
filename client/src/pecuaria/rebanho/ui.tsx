@@ -1,3 +1,4 @@
+import { BarraConsulta } from "@/financeiro/BarraConsulta";
 import { SelectCampo } from "@/financeiro/SelectCampo";
 // Peças compartilhadas pelas telas do Rebanho que NÃO existem no financeiro
 // (as que existem — PaginaFinanceira, PageHeader, Panel, Modal, TabelaFinanceira,
@@ -107,7 +108,7 @@ export function rolarParaCampo(elementId: string) {
  *  lista de Operações financeiras (borda inferior + padding). Os filtros em si
  *  (input de busca, selects) ficam com quem chama. */
 export function BarraFiltros({ children }: { children: ReactNode }) {
-  return <div className="flex flex-wrap items-center gap-3 border-b border-border p-4">{children}</div>;
+  return <BarraConsulta>{children}</BarraConsulta>;
 }
 
 /** Adaptador de compatibilidade para as telas pecuárias. A implementação, os
@@ -123,7 +124,7 @@ export function Paginacao({ paginaAtual, totalPaginas, totalItens, itensPorPagin
   rotulo: string;
   idSelect: string;
 }) {
-  return <PaginacaoFinanceira pagina={paginaAtual} totalPaginas={Math.max(1, totalPaginas)} total={totalItens} porPagina={itensPorPagina} rotulo={`Paginação de ${rotulo}`} substantivo={rotulo} idSelect={idSelect} onPagina={onPaginaChange} ocultarControlesPaginaUnica={false} />;
+  return <PaginacaoFinanceira pagina={paginaAtual} totalPaginas={Math.max(1, totalPaginas)} total={totalItens} porPagina={itensPorPagina} rotulo={`Paginação de ${rotulo}`} substantivo={rotulo} idSelect={idSelect} onPagina={onPaginaChange} />;
 }
 
 /** Sub-abas sublinhadas genéricas — mesmo visual das abas de Configurações

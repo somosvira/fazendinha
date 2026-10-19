@@ -28,8 +28,9 @@ const usuario: UsuarioSessao = { id: 5, nome: "Pessoa", email: "pessoa@example.t
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.guarda.mockResolvedValue(false);
-  setPropriedadeAtiva(1);
+  sessionStorage.clear();
   setSessao("token-teste", usuario);
+  setPropriedadeAtiva(1);
   window.history.replaceState({}, "", "/pecuaria/visitas/v1?etapa=atendimento&atividade=a1");
 });
 afterEach(() => { cleanup(); localStorage.clear(); setPropriedadeAtiva(null); });
@@ -72,4 +73,18 @@ it("reinicia a página dos animais ao trocar o sítio global sem perder outros f
   expect(new URLSearchParams(window.location.search).get("page")).toBeNull();
   expect(new URLSearchParams(window.location.search).getAll("sexos")).toEqual(["F"]);
   expect(window.location.hash).toBe("#lista");
+});
+
+it("não duplica o histórico ao restaurar fragmentos dentro do Rebanho", async () => {
+  window.history.replaceState({}, "", "/pecuaria/rebanho/animais#resumo");
+  const publicar = vi.spyOn(window.history, "pushState");
+  try {
+    render(<App />);
+    await screen.findByText("Lista de animais · página 1");
+    window.history.pushState({}, "", "/pecuaria/rebanho/animais#historico");
+    publicar.mockClear();
+    fireEvent.popState(window);
+    await waitFor(() => expect(window.location.hash).toBe("#historico"));
+    expect(publicar).not.toHaveBeenCalled();
+  } finally { publicar.mockRestore(); }
 });

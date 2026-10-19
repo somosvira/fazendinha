@@ -48,6 +48,7 @@ function paramsDe(href: string) {
 }
 
 beforeEach(() => {
+  window.history.replaceState({}, "", "/pecuaria/rebanho");
   vi.clearAllMocks();
   setPropriedadeAtiva(null);
   vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
@@ -61,11 +62,18 @@ async function montar() {
 }
 
 describe("VisaoGeral do rebanho", () => {
+  it("conserva navegação enquanto busca os dados", () => {
+    vi.mocked(obterPainelRebanho).mockImplementationOnce(() => new Promise(() => {}));
+    render(<VisaoGeral />);
+    expect(screen.getByRole("tablist", { name: "Rebanho" })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "Animais" })).toBeTruthy();
+    expect(screen.getByRole("status").textContent).toContain("Carregando rebanho");
+  });
   it("mostra gráficos e participação no total, com quantidade real de receptoras", async () => {
     await montar();
     expect(screen.getByRole("img", { name: /Composição por categoria de 120/ })).toBeTruthy();
-    expect(screen.getByRole("img", { name: /Quantidade de baixas por tipo/ })).toBeTruthy();
-    expect(screen.getByText("66,7% do rebanho")).toBeTruthy();
+    expect(screen.queryByRole("img", { name: /Quantidade de baixas por tipo/ })).toBeNull();
+    expect(screen.getByText("66,7%")).toBeTruthy();
     expect(screen.getByText("40 de 100 fêmeas ativas")).toBeTruthy();
     expect(screen.getByText("83,3% do efetivo")).toBeTruthy();
   });
@@ -80,6 +88,7 @@ describe("VisaoGeral do rebanho", () => {
     expect(screen.getByRole("button", { name: /Em crescimento · machos/ })).toBeTruthy();
     fireEvent.click(femeas);
     expect(paramsDe(vi.mocked(navegarPara).mock.calls[0][0]).params.get("categoriaId")).toBe("f");
+    expect(paramsDe(vi.mocked(navegarPara).mock.calls[0][0]).params.get("sexo")).toBe("F");
     expect(screen.queryByRole("button", { name: "Novo animal" })).toBeNull();
   });
 
@@ -96,21 +105,23 @@ describe("VisaoGeral do rebanho", () => {
     expect(obterPainelRebanho).toHaveBeenCalledWith({ periodoDias: 30 });
   });
 
-  it("remove os quatro cards e apresenta o total apenas na composição", async () => {
+  it("apresenta o total na composição e usa as abas para consultas", async () => {
     await montar();
     expect(screen.getAllByText("120")).toHaveLength(1);
     expect(screen.getByText("40%")).toBeTruthy();
     expect(screen.queryByText("Sítios com animais")).toBeNull();
     expect(screen.queryByText("Baixas em 30 dias")).toBeNull();
     expect(document.querySelector(".pec-indicadores")).toBeNull();
+    expect(screen.getByRole("tab", { name: "Lotes" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Consultar lotes" })).toBeNull();
     expect(screen.getByText("6 baixas · últimos 30 dias")).toBeTruthy();
   });
 
   it("reúne baixas por tipo e motivos em detalhes, sem duplicar mortes", async () => {
     await montar();
     const porTipo = screen.getByRole("list", { name: "Baixas por tipo" });
-    const porClasse = screen.getByText("Detalhes dos motivos").closest("details")!;
-    expect(porClasse.open).toBe(false);
+    const porClasse = screen.getByRole("region", { name: "Motivos dos descartes" });
+    expect(screen.queryByText("Detalhes dos motivos")).toBeNull();
     expect(within(porTipo).getByRole("button", { name: /Venda/ })).toBeTruthy();
     expect(within(porTipo).getByRole("button", { name: /Morte/ })).toBeTruthy();
     expect(within(porClasse).getByText("Descarte voluntário")).toBeTruthy();
@@ -189,7 +200,7 @@ describe("VisaoGeral do rebanho", () => {
     setPropriedadeAtiva(1);
     await montar();
     expect(screen.queryByRole("heading", { name: "Por sítio" })).toBeNull();
-    expect(document.querySelector(".pec-composicao-grid--sitio")).toBeTruthy();
+    expect(document.querySelector(".pec-panorama-principal")).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Composição do rebanho" })).toBeTruthy();
   });
   it("Consolidado continua mostrando sítios mesmo quando o agregado só tem um sítio", async () => {
@@ -212,6 +223,7 @@ describe("VisaoGeral do rebanho", () => {
     vi.mocked(obterPainelRebanho).mockResolvedValue({ ...painelMock, baixasPorTipo: [{ tipo: "MORTE", qtd: 2 }], baixasPorClasse: [{ classe: "MORTE", qtd: 2 }] });
     await montar();
     expect(screen.getByRole("button", { name: "Morte: 2 baixas" })).toBeTruthy();
+    expect(screen.queryByRole("img", { name: /Quantidade de baixas por tipo/ })).toBeNull();
     expect(screen.queryByText("Detalhes dos motivos")).toBeNull();
     expect(screen.queryByText(/mortalidade/i)).toBeNull();
   });
@@ -232,4 +244,17 @@ describe("VisaoGeral do rebanho", () => {
     await screen.findByText("6 baixas · últimos 365 dias");
     expect(screen.getByRole("button", { name: "Ver animais baixados" })).toHaveProperty("disabled", false);
   });
+});
+
+
+it("restaura o período anual pelo deep-link e conserva no retorno à consulta", async () => {
+  window.history.replaceState({}, "", "/pecuaria/rebanho?periodoBaixas=365");
+  render(<VisaoGeral />);
+  await waitFor(() => expect(obterPainelRebanho).toHaveBeenCalledWith({ periodoDias: 365 }));
+  expect(screen.getByRole("button", { name: "12 meses" }).getAttribute("aria-pressed")).toBe("true");
+  fireEvent.click(screen.getByRole("button", { name: "30 dias" }));
+  expect(new URLSearchParams(window.location.search).has("periodoBaixas")).toBe(false);
+  window.history.replaceState({}, "", "/pecuaria/rebanho?periodoBaixas=365");
+  window.dispatchEvent(new PopStateEvent("popstate"));
+  await waitFor(() => expect(screen.getByRole("button", { name: "12 meses" }).getAttribute("aria-pressed")).toBe("true"));
 });

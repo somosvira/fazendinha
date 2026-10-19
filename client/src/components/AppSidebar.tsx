@@ -387,8 +387,8 @@ export function AppSidebar({
     const grupoAtivo: SidebarGroupId | null = itensFinanceiros.some((item) => item.id === current) || current === "plano"
       ? "financeiro"
       : areasVisiveis.find((area) => area.principais.some((item) => item.id === current) || area.extras?.some((item) => item.id === current))?.id ?? null;
-    if (grupoAtivo && collapsedGroups.has(grupoAtivo)) {
-      setCollapsedGroups((atuais) => { const proximos = new Set(atuais); proximos.delete(grupoAtivo); return proximos; });
+    if (grupoAtivo) {
+      setCollapsedGroups(new Set<SidebarGroupId>(["financeiro", ...AREAS_TRABALHO.map(area => area.id)].filter(id => id !== grupoAtivo) as SidebarGroupId[]));
     }
     // O conjunto só deve reagir a mudanças de rota; clicar no título pode recolher o grupo ativo.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -419,11 +419,11 @@ export function AppSidebar({
   const navBody = (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-3.5 pb-2 pt-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden min-[901px]:max-[1100px]:px-2 min-[901px]:max-[1100px]:pt-2.5 [.side-collapsed_&]:px-2 [.side-collapsed_&]:pt-2.5">
       {(temAcessoArea(areasEfetivas,"pecuaria") || (temAcessoArea(areasEfetivas,"financeiro") && financeiro.some(t=>t.id==="dashboard"))) && <div className="mb-3"><Item id="gerencial" label="Painel administrativo" current={current} onNav={nav}/></div>}
-      {(trabalhoAtivo || trabalhoAtivoRelatorio) && (
+      {(trabalhoAtivo?.resumo || trabalhoAtivoRelatorio) && (
         <section role="group" aria-label="Trabalhos ativos" className="mb-3 border-b border-dashed border-[rgba(232,220,196,0.16)] pb-3">
           <h2 className={cn("mb-2 px-2.5 text-[10px] font-semibold uppercase tracking-[0.13em] text-[rgba(232,220,196,0.62)]", RAIL_LABEL)}>Trabalhos ativos</h2>
           <div className="flex flex-col gap-2">
-            {trabalhoAtivo && <TrabalhoAtivo resumo={trabalhoAtivo.resumo} ativo={trabalhoAtivo.ativo} onAbrir={() => { trabalhoAtivo.onAbrir(); onMobileToggle(false); }} />}
+            {trabalhoAtivo?.resumo && <TrabalhoAtivo resumo={trabalhoAtivo.resumo} ativo={trabalhoAtivo.ativo} onAbrir={() => { trabalhoAtivo.onAbrir(); onMobileToggle(false); }} />}
             {trabalhoAtivoRelatorio && <TrabalhoAtivo resumo={trabalhoAtivoRelatorio.resumo} ativo={trabalhoAtivoRelatorio.ativo} onAbrir={() => { trabalhoAtivoRelatorio.onAbrir(); onMobileToggle(false); }} />}
           </div>
         </section>

@@ -1,3 +1,4 @@
+import { BarraConsulta } from "@/financeiro/BarraConsulta";
 // Configurações > Sítios — cadastro das propriedades (sítios) da fazenda.
 // Mora nas configurações gerais porque é estrutura da fazenda, compartilhada por
 // todos os módulos, e raramente muda. Mesmo padrão visual dos cadastros do
@@ -66,18 +67,17 @@ export function Sitios() {
   const paginacao = usePaginacaoLocal(visiveis, `${busca}|${mostrarInativos}`);
 
   return <PaginaFinanceira>
-    <PageHeader eyebrow="" titulo="Sítios" descricao="As propriedades da fazenda. Cada animal, lote e lançamento pertence a um sítio."
-      acao={<Button onClick={abrirNovo}><Plus size={16} /> Novo sítio</Button>} />
+    <PageHeader eyebrow="" titulo="Sítios" descricao="Cadastre os sítios usados para organizar animais, estoque e lançamentos financeiros." acao={<Button onClick={abrirNovo}><Plus size={16} /> Novo sítio</Button>} />
     <ErrorBox erro={erro} />
 
     <fieldset disabled={processando} aria-busy={processando} className="min-w-0">
       {carregando
         ? <div className="mt-5"><Loader label="Carregando sítios" /></div>
         : <Panel className="mt-5 overflow-hidden">
-          <div className="flex flex-wrap items-center gap-3 border-b border-border p-4">
+          <BarraConsulta>
             <BuscaLista rotulo="Buscar sítio" placeholder="Buscar sítio ou cidade" valor={busca} onChange={setBusca} />
             <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={mostrarInativos} onChange={(e) => setMostrarInativos(e.target.checked)} />Mostrar inativos</label>
-          </div>
+          </BarraConsulta>
           <TabelaFinanceira rotulo="Sítios" itens={paginacao.itens} colunas={colunas(editar, alternar)} chaveDe={(s) => s.id} onAbrir={editar} classeLinha={(s) => !s.ativo ? "opacity-55" : ""} />
           <PaginacaoLocal controles={paginacao.controles} substantivo="sítios" id="pagina-sitios" />
           {!visiveis.length && <p className="p-5 text-sm text-ink-3">{busca ? "Nenhum sítio corresponde à busca." : "Nenhum sítio cadastrado."}</p>}

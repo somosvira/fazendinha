@@ -1,4 +1,3 @@
-import { PainelGerencial } from "./gerencial/PainelGerencial";
 /* Rio Novo — raiz.
  * Permissionamento: Marco (dono) é o usuário logado. Ele gerencia acessos e pode
  * "ver como" outra pessoa — a navegação reduz às abas do perfil e os valores em R$
@@ -15,11 +14,9 @@ import { limparRascunhoAtivo, useRascunhoAtivo } from "./financeiro/rascunhoAtiv
 import { resumoRascunho } from "./financeiro/lib/rascunho";
 import { limparRascunhoRelatorioAtivo, useRascunhoRelatorioAtivo } from "./financeiro/rascunhoRelatorioAtivo";
 import { resumoRascunhoRelatorio } from "./financeiro/lib/rascunho-relatorio";
-import { RelatoriosPecuaria } from "./pecuaria/rebanho/reproducao/RelatoriosPecuaria";
-import { Reproducao } from "./pecuaria/rebanho/reproducao/Reproducao";
-import { Visitas } from "./pecuaria/rebanho/reproducao/Visitas";
 import "./pecuaria/pecuaria-theme.css";
 import "./pecuaria/pecuaria-refino.css";
+import "./styles/abas.css";
 import { setPropriedadeAtiva, getPropriedadeAtiva } from "./propriedadeScope";
 import { executarComGuardaNavegacao } from "./navegacaoGuardada";
 import { parseProdutoEstoqueId } from "./router";
@@ -48,6 +45,10 @@ const Sanidade = lazy(() => import("./pecuaria/rebanho/sanidade/Sanidade").then(
 const Nutricao = lazy(() => import("./pecuaria/rebanho/nutricao/Nutricao").then(m => ({ default: m.Nutricao })));
 const EstoqueContent = lazy(() => import("./estoque/EstoqueContent").then(m => ({ default: m.EstoqueContent })));
 const ProdutoEstoqueDetalhe = lazy(() => import("./estoque/ProdutoEstoqueDetalhe").then(m => ({ default: m.ProdutoEstoqueDetalhe })));
+const Reproducao = lazy(() => import("./pecuaria/rebanho/reproducao/Reproducao").then(m => ({ default: m.Reproducao })));
+const RelatoriosPecuaria = lazy(() => import("./pecuaria/rebanho/reproducao/RelatoriosPecuaria").then(m => ({ default: m.RelatoriosPecuaria })));
+const Visitas = lazy(() => import("./pecuaria/rebanho/reproducao/Visitas").then(m => ({ default: m.Visitas })));
+const PainelGerencial = lazy(() => import("./gerencial/PainelGerencial").then(m => ({ default: m.PainelGerencial })));
 
 // Abertura Terrano (marca grande + música no centro, some pro canto).
 //   "always"  → toca em todo load do dashboard (bom pra testar)
@@ -363,7 +364,7 @@ export function App() {
     // sub-rota (ex.: /pecuaria/rebanho/animais?situacao=…) já traz a própria query:
     // tem prioridade, senão os filtros do deep-link reescreveriam o caminho para a raiz da aba
     const alvo = subrotaUrl ?? filtrosUrl ?? tabToPath(tab);
-    if (window.location.pathname + window.location.search !== alvo) {
+    if (window.location.pathname + window.location.search + window.location.hash !== alvo) {
       if (firstSync.current) window.history.replaceState(null, "", alvo);
       else window.history.pushState(null, "", alvo);
     }

@@ -1004,6 +1004,11 @@ body.no-scroll { overflow: hidden; }
   .dash-sec-head, .section-head { break-after: avoid; }
 }
 
+/* Ação precisa ser reconhecível antes do clique, inclusive em controles nativos
+ * ou sem uma variante visual compartilhada. Estados indisponíveis preservam o
+ * cursor padrão para não sugerir uma ação possível. */
+:is(button:not(:disabled), a[href], summary, [role="button"]:not([aria-disabled="true"]), [role="tab"], [role="menuitem"], [data-slot="select-trigger"]:not([data-disabled])) { cursor: pointer; }
+
 /* ============================================================
    LOADING — dialeto único (Loader, BootSplash, Skeleton)
    Componentes em components/Loading.tsx. Cores só via tokens.

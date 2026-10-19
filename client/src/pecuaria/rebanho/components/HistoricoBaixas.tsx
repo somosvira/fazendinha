@@ -13,7 +13,7 @@ export function HistoricoBaixas({ historicoBaixas }: { historicoBaixas: AnimalFi
 
   return <CardFicha icon={ArchiveX} titulo="Baixas" className="lg:col-span-2">
     <div className="overflow-x-auto">
-      <table className="w-full text-left text-sm">
+      <table className="w-full text-left text-sm consulta-tabela">
         <thead className="text-xs text-ink-3"><tr>
           <th className="py-1.5 pr-3 font-semibold">Data</th>
           <th className="py-1.5 pr-3 font-semibold">Tipo</th>

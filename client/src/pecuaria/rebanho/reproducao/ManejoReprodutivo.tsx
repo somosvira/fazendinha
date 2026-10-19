@@ -1,3 +1,4 @@
+import { BarraConsulta } from "@/financeiro/BarraConsulta";
 import { useEffect, useState } from "react";
 import { ArrowRight, ClipboardList, FileClock, Search, Stethoscope, TriangleAlert, Venus } from "lucide-react";
 import { Button, ErrorBox, Panel, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
@@ -72,15 +73,15 @@ export function ManejoReprodutivo({ propriedadeId, podeLancar, onRegistrarEvento
     {onRegistrarEvento && podeLancar && <div className="manejo-v4-acao flex justify-end"><Button onClick={onRegistrarEvento}>Registrar evento</Button></div>}
     <ErrorBox erro={erro}/>
     {erro && <Button secondary onClick={() => setTentativa(v => v + 1)}>Tentar novamente</Button>}
-    <div className="grid gap-3 md:grid-cols-3" aria-label="Filas de manejo">
+    <BarraConsulta criterios={consulta.ordem !== "maior-espera" ? [{id:"ordem",rotulo:`Ordenação: ${consulta.ordem === "animal" ? "Identificação" : "Menor espera"}`,limpar:()=>mudar({ordem:"maior-espera"})}] : []} onLimpar={()=>mudar({busca:"",lote:"",ordem:"maior-espera"})}>
       {FILAS.map(({ id, titulo, Icone }) => <button type="button" key={id} aria-label={`${titulo} ${visivel ? filtradas[id].length : "carregando"}`} aria-pressed={consulta.fila === id} onClick={() => mudar({ fila: id })}
         className={`flex min-h-20 items-center gap-4 rounded-xl border px-5 py-4 text-left font-semibold shadow-sm transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${consulta.fila === id ? "border-primary bg-primary text-primary-foreground ring-4 ring-white" : "border-border bg-white text-foreground hover:bg-muted"}`}>
         <Icone aria-hidden size={23}/><span className="flex-1">{titulo}</span><span className={`rounded-full px-3 py-1 text-sm ${consulta.fila === id ? "bg-white text-primary" : "bg-muted"}`}>{visivel ? filtradas[id].length : "—"}</span>
       </button>)}
-    </div>
+    </BarraConsulta>
     <Panel className="overflow-hidden">
       <header className="space-y-4 p-5">
-        <div><h2 className="text-2xl font-semibold">{atual.titulo}</h2><p className="mt-1 text-muted-foreground">{atual.descricao}</p></div>
+        <div><p className="mt-1 text-muted-foreground">{atual.descricao}</p></div>
         <div className="grid gap-3 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]">
           <label className="relative"><Search aria-hidden size={18} className="pointer-events-none absolute left-3 top-3.5 text-muted-foreground"/><input aria-label="Buscar animal" placeholder="Buscar animal" className={`${classeInput} pl-10`} value={consulta.busca} onChange={e => mudar({ busca: e.target.value })}/></label>
           <select aria-label="Filtrar lote" className={classeInput} value={consulta.lote} onChange={e => mudar({ lote: e.target.value })}><option value="">Todos os lotes</option><option value="sem-lote">Sem lote informado</option>{consulta.lote && consulta.lote !== "sem-lote" && !lotes.some(l => l.id === consulta.lote) && <option value={consulta.lote}>Lote selecionado sem animais nesta consulta</option>}{lotes.map(l => <option key={l.id} value={l.id}>{l.nome}</option>)}</select>

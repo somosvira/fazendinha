@@ -35,7 +35,7 @@ export function SituacaoFechamento({ status }: { status: "CONFIRMADO" | "ESTORNA
   return <Pill tone={status === "CONFIRMADO" ? "green" : "neutral"}>{status === "CONFIRMADO" ? "Confirmado" : "Estornado"}</Pill>;
 }
 export function CustosLote({ resumo: r }: { resumo: ResumoNutricional }) {
-  return <Panel className="nutricao-consumo-resumo"><div className="nutricao-card-cabecalho"><div><h2 className="h3">Consumo confirmado</h2><p>{r.custos.animalDias} animal-dias · {r.custos.fechamentos} fechamento(s) · todo o histórico, estornos excluídos</p></div></div>
+  return <Panel className={`nutricao-consumo-resumo${r.custos.fechamentos === 0 ? " nutricao-consumo-vazio" : ""}`}><div className="nutricao-card-cabecalho"><div><h2 className="h3">Consumo confirmado</h2><p>{r.custos.animalDias} animal-dias · {r.custos.fechamentos} fechamento(s) · todo o histórico, estornos excluídos</p></div></div>
     {r.verValores && <><dl className="nutricao-fatos">
       <div><dt>Custo total da nutrição</dt><dd>{custoTexto(r.custos.custoConhecido)}</dd><p>{r.custos.custoConhecido == null ? "Sem custo conhecido nos fechamentos confirmados" : r.custos.coberturaCustoCompleta ? "Cobertura completa" : "Valor parcial · há consumo sem custo apurado"}</p></div>
       <div><dt>Custo médio por animal-dia</dt><dd>{custoTexto(r.custos.custoPorAnimalDia)}</dd><p>{r.custos.custoPorAnimalDia == null ? "Sem base para a média" : `Média ponderada${r.custos.coberturaCustoCompleta ? "" : " · parcial"}`}</p></div>

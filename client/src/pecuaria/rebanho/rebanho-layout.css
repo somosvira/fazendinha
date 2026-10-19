@@ -1,0 +1,126 @@
+/* Dimensões comuns ao fluxo Rebanho: consulta, ficha e cadastro. */
+.rebanho-content {
+  --rebanho-controle: 40px;
+  --rebanho-espaco: 16px;
+}
+.rebanho-content .pagina-financeira { padding: 24px; }
+.rebanho-content .fin-cabecalho-pagina { margin-bottom: 16px; }
+.rebanho-content .fin-cabecalho-integrado { padding: 16px 20px; }
+.rebanho-content .fin-abas { margin: 0 0 16px; padding: 0; height: auto; overflow: visible; flex-wrap: wrap; }
+.rebanho-content .fin-abas [role="tab"] { height: auto; min-height: var(--rebanho-controle); padding: 8px 4px; }
+.pecuaria-content .rebanho-nav { margin-top: 0; }
+.pecuaria-content .rebanho-nav .fin-abas { margin-bottom: 0; }
+.pecuaria-content .rebanho-nav .fin-abas [role="tab"] { min-height: 48px; padding: 12px 6px; gap: 8px; font-size: 16px; }
+.pecuaria-content .rebanho-nav .fin-abas [role="tab"] svg { width: 20px; height: 20px; }
+.rebanho-content :is(.fin-cabecalho-acoes button,.rebanho-filtros-principais button,[data-slot="select-trigger"]) { min-height: var(--rebanho-controle); }
+.rebanho-content :is(.rebanho-filtros-principais input,.pec-novo-animal input:not([type="checkbox"]),.pec-novo-animal [data-slot="select-trigger"]) { height: var(--rebanho-controle); }
+:is(.rebanho-content, .pecuaria-content) .historico-movimentacoes-acoes { display: flex; flex-wrap: nowrap; align-items: center; justify-content: flex-end; gap: 6px; white-space: nowrap; }
+:is(.rebanho-content, .pecuaria-content) .historico-movimentacoes-acoes .historico-movimentacoes-acao { min-height: 32px !important; height: 32px; padding: 4px 10px; border-radius: 8px; font-size: 12px; }
+@media (max-width: 900px) {
+  :is(.rebanho-content, .pecuaria-content) .historico-movimentacoes-acoes .historico-movimentacoes-acao { min-height: 36px !important; height: 36px; }
+}
+.rebanho-content [data-slot="financeiro-panel"] { border-radius: 12px; }
+.rebanho-carregamento { min-height: 240px; padding: 24px 0; color: var(--muted-foreground); font-size: 14px; }
+.rebanho-voltar { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; margin-bottom: 8px; font-size: 14px; color: var(--primary); }
+.rebanho-content .pec-breadcrumb { margin: 0 0 12px; }
+.rebanho-content .pec-ficha { margin-top: 0; }
+.rebanho-content .ficha-animal-cabecalho { display: block; min-height: 0; }
+.rebanho-content .ficha-animal-cabecalho .fin-cabecalho-pagina { margin-bottom: 0; }
+.rebanho-content .ficha-status { padding: 8px 20px 16px; gap: 8px; }
+.rebanho-content .pec-ficha > .pec-ancoras { padding: 0 20px; gap: 0 16px; background: var(--card); overflow: visible; flex-wrap: wrap; }
+.rebanho-content .pec-ficha .ficha-resumo { grid-template-columns: repeat(auto-fit,minmax(180px,1fr)); padding: 0; }
+.rebanho-content .pec-resumo-ficha { padding: 16px; }
+.rebanho-content .pec-resumo-ficha > svg { display: none; }
+.rebanho-content .pec-ficha [role="tabpanel"] { padding: 16px 20px; }
+.rebanho-content .pec-card-ficha > header { padding: 12px 0; }
+.rebanho-content .pec-card-ficha > header + div { padding: 16px 0; }
+.rebanho-content .pec-card-ficha .pec-icone { display: none; }
+.rebanho-content .pec-lote-metricas { grid-template-columns: repeat(4,minmax(0,1fr)); gap: 0; padding: 16px 0; border-block: 1px solid var(--border); }
+.rebanho-content .pec-lote-metricas [data-slot="financeiro-panel"] { border: 0; border-radius: 0; background: transparent; padding: 8px 16px; }
+.rebanho-content .pec-lote-metricas .fin-metric-icone { display: none; }
+.rebanho-content .pec-novo-animal { display: block; max-width: 1080px; border-radius: 12px; overflow: visible; }
+.rebanho-content .pec-novo-animal .pec-form-corpo { padding: 20px; }
+.rebanho-content .pec-novo-animal section + section { border-top: 1px solid var(--border); padding-top: 20px; }
+.rebanho-content .pec-novo-animal section > h3 { font-size: 16px; font-weight: 600; text-transform: none; letter-spacing: 0; margin-bottom: 12px; color: var(--foreground); }
+.rebanho-origem-cadastro { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; font-size: 14px; }
+.rebanho-form-acoes { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 12px; padding: 16px 20px; border-top: 1px solid var(--border); }
+.rebanho-form-acoes > span { margin-right: auto; font-size: 14px; }
+@media (max-width: 900px) {
+  .rebanho-content { --rebanho-controle: 44px; }
+  .rebanho-content .pagina-financeira { padding: 56px 16px 24px; }
+  .rebanho-content .fin-abas { gap: 0 20px; }
+  .rebanho-content .pec-lote-metricas { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .rebanho-content .fin-cabecalho-integrado { padding: 16px; }
+  .rebanho-content .pec-ficha [role="tabpanel"] { padding: 16px; }
+  .rebanho-content .pec-ficha > .pec-ancoras { padding-inline: 16px; gap: 0 12px; }
+}
+.pecuaria-content .rebanho-content .pec-ficha.ficha-v4 > .ficha-animal-cabecalho { padding: 0; }
+.pecuaria-content .rebanho-content .pec-ficha.ficha-v4 > .pec-ancoras { flex-wrap: wrap; overflow: visible; justify-content: flex-start; gap: 0 16px; }
+.rebanho-content .pec-painel-rebanho .pec-categoria-linha { display: grid; grid-template-columns: 9px minmax(0,1fr) 28px 48px 14px; align-items: center; min-height: 44px; padding: 6px 8px; }
+.rebanho-content .pec-categoria-linha .pec-legenda-ponto, .rebanho-content .pec-categoria-linha > svg { margin-top: 0; }
+.rebanho-content .pec-categoria-linha strong, .rebanho-content .pec-categoria-linha > .pec-participacao { text-align: right; }
+.rebanho-content .pec-categoria-linha strong { font-size: 18px; }
+.rebanho-content .pec-composicao-corpo { gap: 16px; padding: 16px; }
+.rebanho-content .pec-composicao-barra { height: 12px; }
+.rebanho-content .pec-grafico-cabecalho { padding: 16px; }
+.rebanho-content .pec-composicao-grid, .rebanho-content .pec-atividade-grid { gap: 16px; margin-top: 16px; }
+.rebanho-content .pec-composicao-grid--sitio .pec-legenda-categorias { grid-template-columns: repeat(auto-fit,minmax(240px,1fr)); }
+@media (max-width: 639px) {
+  .rebanho-content .pec-legenda-categorias, .rebanho-content .pec-composicao-grid--sitio .pec-legenda-categorias { grid-template-columns: minmax(0,1fr); }
+}
+.rebanho-abas-ficha { display: flex; flex-wrap: wrap; gap: 0 24px; margin-top: 16px; border-bottom: 1px solid var(--border); }
+.rebanho-abas-ficha [role="tab"] { display: inline-flex; align-items: center; min-height: 48px; padding: 12px 0; border-bottom: 2px solid transparent; color: var(--muted-foreground); font-size: 16px; }
+.rebanho-abas-ficha [role="tab"][aria-selected="true"] { color: var(--primary); border-bottom-color: var(--primary); font-weight: 600; }
+.rebanho-abas-ficha [role="tab"]:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.rebanho-content [role="tabpanel"][hidden] { display: none; }
+.rebanho-content [id^="lote-painel-"] > [data-slot="financeiro-panel"] { margin-top: 16px; }
+
+.rebanho-content .ficha-peso-indicadores { grid-template-columns: repeat(3,minmax(0,1fr)); }
+@media (max-width: 639px) { .rebanho-content .ficha-peso-indicadores { grid-template-columns: repeat(2,minmax(0,1fr)); } .rebanho-content .ficha-peso-indicadores > :last-child { grid-column: 1 / -1; } }
+
+/* Ficha animal: contexto estável e um assunto por aba. */
+.pecuaria-content .rebanho-content .ficha-v4 > .ficha-animal-abas { gap: 4px; margin: 0; }
+.pecuaria-content .rebanho-content .ficha-v4 .ficha-animal-abas [role="tab"] { flex: 0 0 auto; min-height: 48px; border-radius: 0; padding: 12px 0; background: transparent; color: var(--muted-foreground); border-bottom: 2px solid transparent; }
+.pecuaria-content .rebanho-content .ficha-v4 .ficha-animal-abas [aria-selected="true"] { border-bottom-color: var(--primary); color: var(--primary); font-weight: 600; }
+.pecuaria-content .rebanho-content .ficha-v4 .ficha-status { margin: 0 0 16px; padding: 0; }
+.pecuaria-content .rebanho-content .ficha-v4 .fin-cabecalho-integrado { min-height: 0; }
+.pecuaria-content .rebanho-content .ficha-v4 [role="tabpanel"] { padding: 0; margin-top: 0; }
+.pecuaria-content .rebanho-content .ficha-v4 .ficha-resumo { display: flex; flex-wrap: wrap; gap: 16px 40px; margin: 0 0 16px; padding: 0; }
+.pecuaria-content .rebanho-content .ficha-v4 .ficha-resumo > div { display: block; min-height: 0; border: 0; border-radius: 0; background: transparent; padding: 0; }
+.pecuaria-content .rebanho-content .ficha-v4 .ficha-resumo > div > span { display: none; }
+.ficha-resumo dd:empty { display: none; }
+.ficha-baixa-resumo { display: flex; align-items: flex-start; gap: 10px; margin: 0 0 12px; padding: 12px 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--muted); font-size: 14px; }
+.ficha-baixa-resumo > svg { margin-top: 2px; flex-shrink: 0; }
+.ficha-baixa-resumo p { margin-top: 4px; color: var(--muted-foreground); font-size: 12px; }
+.ficha-baixa-resumo button { color: var(--primary); text-decoration: underline; text-underline-offset: 3px; }
+.ficha-gmd-cabecalho { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
+.ficha-gmd-leitura { display: flex; flex-wrap: wrap; gap: 12px 32px; }
+.ficha-gmd-leitura dt { color: var(--muted-foreground); font-size: 12px; }
+.ficha-gmd-leitura dd { margin-top: 4px; font-size: 16px; font-variant-numeric: tabular-nums; }
+.ficha-gmd-leitura dd strong { font-size: 20px; font-weight: 600; }
+.ficha-gmd-leitura small { display: block; margin-top: 4px; color: var(--muted-foreground); font-size: 12px; }
+.pecuaria-content .rebanho-content .ficha-v4 .pec-card-ficha > header { padding: 12px 16px; }
+.pecuaria-content .rebanho-content .ficha-v4 .pec-card-ficha > header + div { padding: 16px; }
+@media (max-width: 900px) {
+  .pecuaria-content .rebanho-content .ficha-v4 .ficha-animal-abas [role="tab"] { min-height: 44px; }
+  .ficha-gmd-leitura { gap: 12px 24px; }
+  .ficha-gmd-leitura > div:first-child { flex-basis: 100%; }
+}
+.ficha-gmd-cabecalho { border: 1px solid var(--border); border-radius: 12px; padding: 16px; background: var(--card); }
+.repro-acoes-diretas { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.pecuaria-content .rebanho-content .repro-individual > .secao-ficha-direta,
+.pecuaria-content .rebanho-content .ficha-v4 #auditoria { border: 1px solid var(--border); border-radius: 12px; background: var(--card); overflow: hidden; }
+.pecuaria-content .rebanho-content .repro-individual > .secao-ficha-direta > .secao-recolhivel-cabecalho,
+.pecuaria-content .rebanho-content .ficha-v4 #auditoria > .secao-recolhivel-cabecalho { padding: 12px 16px; }
+.pecuaria-content .rebanho-content .repro-individual > .secao-ficha-direta > .secao-recolhivel-conteudo,
+.pecuaria-content .rebanho-content .ficha-v4 #auditoria > .secao-recolhivel-conteudo { padding: 16px; }
+.pecuaria-content .rebanho-content .repro-individual .secao-recolhivel-conteudo > [data-slot="financeiro-panel"] { border: 0; background: transparent; border-radius: 0; }
+.pecuaria-content .rebanho-content .repro-individual .secao-recolhivel-conteudo > [data-slot="financeiro-panel"] > [data-slot="cabecalho-tabela"] { display: none; }
+.repro-pendencias { margin-top: 16px; }
+.pecuaria-content .repro-individual .repro-pendencias h3 { font-size: 14px; }
+.rebanho-content .ficha-peso-distribuicao { grid-template-columns: minmax(0,1fr) minmax(0,1.15fr); }
+@container ficha-peso (max-width: 900px) { .rebanho-content .ficha-peso-distribuicao { grid-template-columns: minmax(0,1fr); } }
+
+/* A aba Histórico já identifica o conjunto; o título continua acessível. */
+.ficha-historico-sem-titulo > .secao-recolhivel-cabecalho { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+.ficha-historico-sem-titulo > .secao-recolhivel-conteudo { padding-top: 0; }

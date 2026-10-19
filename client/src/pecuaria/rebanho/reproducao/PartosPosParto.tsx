@@ -1,7 +1,8 @@
+import { BarraConsulta } from "@/financeiro/BarraConsulta";
 import { useEffect, useState } from "react";
 import { Button as BotaoDetalhe } from "../../../components/ui/button";
 import { DateRangePicker } from "../../../components/DateRangePicker";
-import { Button, CabecalhoTabela, ErrorBox, Panel, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
+import { Button, ErrorBox, Panel, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
 import { formatBRDateISO } from "../../../lib/hoje";
 import { navegarPara } from "../../../router";
 import { reqV4 } from "./api";
@@ -34,16 +35,16 @@ export function PartosPosParto({ propriedadeId }: { propriedadeId: number }) {
   const partos = [...(visivel?.partos ?? [])].sort((a, b) => b.data.localeCompare(a.data) || b.id.localeCompare(a.id));
   const paginas=Math.max(1,Math.ceil(partos.length/20)),atual=Math.min(pagina,paginas);
   return <div className="space-y-5">
-    <div className="flex flex-wrap items-center justify-between gap-3">
-      <h2 className="text-xl font-semibold">Partos e pós-parto</h2>
+    <BarraConsulta resumo={visivel ? <span>{visivel.totalPartos} partos no período</span> : undefined}>
+
       <DateRangePicker value={periodo.range} onChange={r=>{setPagina(1);periodo.alterar(r);}}/>
-    </div>
+    </BarraConsulta>
     {periodo.aviso && <p role="status" className="text-sm text-muted-foreground">{periodo.aviso}</p>}
     <ErrorBox erro={erro}/>
     {erro && <Button secondary onClick={() => setRevisao(v => v + 1)}>Tentar novamente</Button>}
     {carregando && <p role="status">Carregando partos…</p>}
     {!carregando && !erro && visivel && <Panel>
-      <CabecalhoTabela titulo={`${visivel.totalPartos} partos no período`} descricao="Mais recentes primeiro. O sítio considerado é o local do parto."/>
+
       {!partos.length ? <div className="space-y-3 p-5"><p>Nenhum parto neste período.</p><p className="text-sm text-muted-foreground">Use o filtro de período para consultar outras datas.</p></div> : <TabelaFinanceira
         rotulo="Partos recentes" itens={partos.slice((atual-1)*20,atual*20)} chaveDe={p => p.id} colunas={[
           { chave: "data", titulo: "Data", larguraMinima: 110, celula: p => formatBRDateISO(p.data) },

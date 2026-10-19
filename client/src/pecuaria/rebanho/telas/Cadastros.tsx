@@ -1,3 +1,4 @@
+import { BarraConsulta } from "@/financeiro/BarraConsulta";
 // Cadastros do Rebanho — sub-abas locais Categorias · Raças · Motivos de baixa, no padrão
 // visual de ConfiguracoesFinanceiras.tsx (tabela + AcoesLinha + ConfirmDialog + PainelCadastro
 // para o form). Cada aba carrega sua própria lista (services/pecuaria/rebanho/*). Lotes têm tela
@@ -135,10 +136,10 @@ function mensagemDesativar(confirmacao: NonNullable<Confirmacao>): string {
 
 export function Cadastros({ podeLancar = true, cadastro, embutido = false }: { podeLancar?: boolean; cadastro?: AbaCadastroRebanho; embutido?: boolean }) {
   const parametrosIniciais = typeof window === "undefined" ? new URLSearchParams() : new URLSearchParams(window.location.search);
-  const materialInicial = parametrosIniciais.get("material");
+  const [materialInicial, setMaterialInicial] = useState(() => parametrosIniciais.get("material"));
   const abaInicial = parametrosIniciais.get("aba");
   const [aba, setAba] = useState<AbaCadastroRebanho>(cadastro ?? (abaInicial === "material-genetico" || materialInicial ? "material-genetico" : abaInicial === "genitores" ? "genitores" : "categorias"));
-  const [mostrarInativos, setMostrarInativos] = useState(false);
+  const [mostrarInativos, setMostrarInativos] = useState(() => Boolean(materialInicial));
   const [racas, setRacas] = useState<Raca[] | null>(null);
   const [motivos, setMotivos] = useState<MotivoBaixa[] | null>(null);
   const [buscaMotivo, setBuscaMotivo] = useState("");
@@ -152,6 +153,20 @@ export function Cadastros({ podeLancar = true, cadastro, embutido = false }: { p
   const [processando, setProcessando] = useState(false);
   const emCurso = useRef(false);
   const deepLinkConsumido = useRef(false);
+
+  useEffect(() => {
+    const restaurar = () => { deepLinkConsumido.current = false; setPainel(null); setMaterialInicial(new URLSearchParams(window.location.search).get("material")); };
+    window.addEventListener("popstate", restaurar);
+    return () => window.removeEventListener("popstate", restaurar);
+  }, []);
+
+  const fecharMaterial = () => {
+    setPainel(null);
+    setMaterialInicial(null);
+    const url = new URL(window.location.href);
+    url.searchParams.delete("material");
+    window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
+  };
 
   // ---------- categorias ----------
   const [categorias, setCategorias] = useState<CategoriaDTO[] | null>(null);
@@ -179,11 +194,11 @@ export function Cadastros({ podeLancar = true, cadastro, embutido = false }: { p
   }, [aba, carregarRacas, carregarMotivos, carregarGenitores, carregarMateriais, carregarCategorias]);
 
   useEffect(() => {
-    if (deepLinkConsumido.current || !materialInicial || materiais === null) return;
+    if (deepLinkConsumido.current || !materialInicial || materiais === null || !podeLancar) return;
     deepLinkConsumido.current = true;
     if (materiais.some((material) => material.id === materialInicial)) setPainel({ entidade: "material", modo: "editar", id: materialInicial });
     else setErro("Material genético não encontrado.");
-  }, [materialInicial, materiais]);
+  }, [materialInicial, materiais, podeLancar]);
 
   /* sobe a cada escrita — o "Histórico de alterações" da sub-aba recarrega junto com a tabela */
   const [alteracoesToken, setAlteracoesToken] = useState(0);
@@ -329,10 +344,9 @@ export function Cadastros({ podeLancar = true, cadastro, embutido = false }: { p
   const Moldura = embutido ? "section" : PaginaFinanceira;
   const titulo = { categorias: "Categorias de animais", racas: "Raças", motivos: "Motivos de baixa", genitores: "Genitores externos", "material-genetico": "Materiais genéticos", sanidade: "Sanidade" }[aba];
   return <Moldura>
-    <PageHeader eyebrow={embutido ? "" : "Pecuária"} titulo={embutido ? titulo : "Cadastros"} descricao={embutido ? "" : "Categorias, raças, motivos de baixa, genitores externos e material genético usados pelo rebanho."} acao={acao} />
+    <PageHeader eyebrow="" titulo={embutido ? titulo : "Cadastros"}  />
     {!embutido && <NavRebanho ativa="cadastros" />}
     <ErrorBox erro={painelCategoria ? null : erro} />
-    {aba === "categorias" && <p className="mb-4 text-sm text-ink-3">As regras são avaliadas de cima para baixo: a primeira compatível define a categoria do animal. Mover uma regra pode reclassificar animais; confira a simulação antes de confirmar a mudança.</p>}
     {!embutido && <SubAbas abas={[
       { valor: "categorias", rotulo: "Categorias", icon: Tags },
       { valor: "racas", rotulo: "Raças", icon: Dna },
@@ -349,14 +363,14 @@ export function Cadastros({ podeLancar = true, cadastro, embutido = false }: { p
       // continua podendo filtrar (K7); só a tabela (edição/ativação) é desabilitada sem podeLancar.
       : <>
         {aba === "categorias" && <>
-          <details className="pec-ajuda-recolhida"><summary>Como funcionam as regras de categoria</summary><p className="mt-3 max-w-3xl text-sm text-ink-3">As categorias são calculadas por estas regras. Cada animal cai em uma só categoria: regras ativas do mesmo sexo não podem ter faixas (idade e parto) que se cruzem. Itens marcados "Padrão" vêm do IDEAGRI. Uma troca manual feita na ficha do animal tem prioridade sobre o cálculo até ser desfeita.</p></details>
+          <p className="mb-4 max-w-3xl text-sm text-ink-3">A primeira regra compatível define a categoria; a escolha manual na ficha tem prioridade até ser desfeita. Evite sobrepor faixas de idade e parto do mesmo sexo. Reordenar pode reclassificar animais: confira a simulação antes de confirmar. “Padrão” identifica regras do IDEAGRI.</p>
           {sobrepostas.length > 0 && <div role="alert" className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
             <strong>Regras sobrepostas:</strong> nesses casos só a primeira da ordem vale e a outra nunca é aplicada. Corrija a faixa de uma delas.
             <ul className="mt-1.5 list-disc pl-5">{sobrepostas.map((par) => <li key={`${par.a.id}-${par.b.id}`}>{par.mensagem}</li>)}</ul>
           </div>}
           {semCategoriaAtual > 0 && <div role="status" className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">{semCategoriaAtual} {semCategoriaAtual === 1 ? "animal ativo" : "animais ativos"} sem categoria — nenhuma regra casou.</div>}
           <Panel className="mt-4 overflow-hidden">
-            <BarraFiltros><label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" disabled={bloqueado} checked={mostrarInativos} onChange={(e) => setMostrarInativos(e.target.checked)} />Mostrar inativas</label></BarraFiltros>
+            <BarraConsulta acao={acao}><label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" disabled={bloqueado} checked={mostrarInativos} onChange={(e) => setMostrarInativos(e.target.checked)} />Mostrar inativas</label></BarraConsulta>
             <fieldset disabled={bloqueado || !podeLancar} aria-busy={bloqueado} className="min-w-0">
               <TabelaFinanceira rotulo="Categorias" itens={paginaCategorias.itens} colunas={colunasCategorias(categoriasExibidas, (c) => setPainelCategoria({ modo: "editar", categoria: c }), alternarCategoria, moverCategoria)} chaveDe={(c) => c.id} onAbrir={podeLancar ? (c) => setPainelCategoria({ modo: "editar", categoria: c }) : undefined} classeLinha={(c) => !c.ativo ? "opacity-55" : ""} />
             </fieldset>
@@ -370,7 +384,7 @@ export function Cadastros({ podeLancar = true, cadastro, embutido = false }: { p
 
         {aba === "racas" && <>
           <Panel className="mt-5 overflow-hidden">
-            <BarraFiltros><BuscaLista rotulo="Buscar raças" placeholder="Buscar nome ou sigla" valor={buscaRaca} onChange={setBuscaRaca} /><label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" disabled={bloqueado} checked={mostrarInativos} onChange={(e) => setMostrarInativos(e.target.checked)} />Mostrar inativos</label></BarraFiltros>
+            <BarraConsulta acao={acao}><BuscaLista rotulo="Buscar raças" placeholder="Buscar nome ou sigla" valor={buscaRaca} onChange={setBuscaRaca} /><label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" disabled={bloqueado} checked={mostrarInativos} onChange={(e) => setMostrarInativos(e.target.checked)} />Mostrar inativos</label></BarraConsulta>
             {buscaRaca.trim() && !racasExibidas.length && <p role="status" className="p-4 text-sm text-ink-3">Nenhuma raça corresponde à busca. Altere ou limpe o termo pesquisado.</p>}
             <fieldset disabled={bloqueado || !podeLancar} aria-busy={bloqueado} className="min-w-0">
               <TabelaFinanceira rotulo="Raças" itens={paginaRacas.itens} colunas={colunasRacas((r) => editar("raca", r), alternarRaca)} chaveDe={(r) => r.id} onAbrir={podeLancar ? (r) => editar("raca", r) : undefined} classeLinha={(r) => !r.ativo ? "opacity-55" : ""} />
@@ -385,7 +399,7 @@ export function Cadastros({ podeLancar = true, cadastro, embutido = false }: { p
 
         {aba === "motivos" && <>
           <Panel className="mt-5 overflow-hidden">
-            <BarraFiltros><BuscaLista rotulo="Buscar motivos de baixa" placeholder="Buscar motivo ou classe" valor={buscaMotivo} onChange={setBuscaMotivo} /><label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" disabled={bloqueado} checked={mostrarInativos} onChange={(e) => setMostrarInativos(e.target.checked)} />Mostrar inativos</label></BarraFiltros>
+            <BarraConsulta acao={acao}><BuscaLista rotulo="Buscar motivos de baixa" placeholder="Buscar motivo ou classe" valor={buscaMotivo} onChange={setBuscaMotivo} /><label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" disabled={bloqueado} checked={mostrarInativos} onChange={(e) => setMostrarInativos(e.target.checked)} />Mostrar inativos</label></BarraConsulta>
             {buscaMotivo.trim() && !motivosExibidos.length && <p role="status" className="p-4 text-sm text-ink-3">Nenhum motivo corresponde à busca. Altere ou limpe o termo pesquisado.</p>}
             <fieldset disabled={bloqueado || !podeLancar} aria-busy={bloqueado} className="min-w-0">
               <TabelaFinanceira rotulo="Motivos de baixa" itens={paginaMotivos.itens} colunas={colunasMotivos((m) => editar("motivo", m), alternarMotivo)} chaveDe={(m) => m.id} onAbrir={podeLancar ? (m) => editar("motivo", m) : undefined} classeLinha={(m) => !m.ativo ? "opacity-55" : ""} />
@@ -400,7 +414,7 @@ export function Cadastros({ podeLancar = true, cadastro, embutido = false }: { p
 
         {aba === "genitores" && <>
           <Panel className="mt-5 overflow-hidden">
-            <BarraFiltros><label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" disabled={bloqueado} checked={mostrarInativos} onChange={(e) => setMostrarInativos(e.target.checked)} />Mostrar inativos</label></BarraFiltros>
+            <BarraConsulta acao={acao}><label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" disabled={bloqueado} checked={mostrarInativos} onChange={(e) => setMostrarInativos(e.target.checked)} />Mostrar inativos</label></BarraConsulta>
             <fieldset disabled={bloqueado || !podeLancar} aria-busy={bloqueado} className="min-w-0">
               <TabelaFinanceira rotulo="Genitores externos" itens={paginaGenitores.itens} colunas={colunasGenitores((g) => editar("genitor", g), alternarGenitor)} chaveDe={(g) => g.id} onAbrir={podeLancar ? (g) => editar("genitor", g) : undefined} classeLinha={(g) => !g.ativo ? "opacity-55" : ""} />
             </fieldset>
@@ -414,7 +428,7 @@ export function Cadastros({ podeLancar = true, cadastro, embutido = false }: { p
 
         {aba === "material-genetico" && <>
           <Panel className="mt-5 overflow-hidden">
-            <BarraFiltros><label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" disabled={bloqueado} checked={mostrarInativos} onChange={(e) => setMostrarInativos(e.target.checked)} />Mostrar inativos</label></BarraFiltros>
+            <BarraConsulta acao={acao}><label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" disabled={bloqueado} checked={mostrarInativos} onChange={(e) => setMostrarInativos(e.target.checked)} />Mostrar inativos</label></BarraConsulta>
             <fieldset disabled={bloqueado || !podeLancar} aria-busy={bloqueado} className="min-w-0">
               {(materiais ?? []).length === 0
                 ? <Empty>Sêmen e embrião entram no estoque pela compra (Financeiro › Nova operação). Cadastre aqui de quem é o material.</Empty>
@@ -432,7 +446,7 @@ export function Cadastros({ podeLancar = true, cadastro, embutido = false }: { p
     {painel?.entidade === "raca" && <FormRaca key={chavePainel} raca={racaSelecionada} onSalvo={aoSalvar} onFechar={() => setPainel(null)} />}
     {painel?.entidade === "motivo" && <FormMotivoBaixa key={chavePainel} motivo={motivoSelecionado} onSalvo={aoSalvar} onFechar={() => setPainel(null)} />}
     {painel?.entidade === "genitor" && <FormGenitor key={chavePainel} genitor={genitorSelecionado} racas={racasCatalogo} onSalvo={aoSalvar} onFechar={() => setPainel(null)} />}
-    {painel?.entidade === "material" && <FormMaterialGenetico key={chavePainel} material={materialSelecionado} onSalvo={aoSalvar} onFechar={() => setPainel(null)} />}
+    {painel?.entidade === "material" && <FormMaterialGenetico key={chavePainel} material={materialSelecionado} onSalvo={async () => { fecharMaterial(); await recarregarAtual(); }} onFechar={fecharMaterial} />}
     {painelCategoria && <FormCategoria key={chavePainelCategoria} categoria={categoriaSelecionada} salvando={simulando || aplicando} erro={erro} onSalvar={salvarCategoria} onFechar={() => { if (!simulando && !aplicando) setPainelCategoria(null); }} />}
 
     <ConfirmDialog

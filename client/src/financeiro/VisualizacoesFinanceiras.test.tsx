@@ -1,4 +1,4 @@
-import { alterarControle } from "../lib/controles.fixture";
+import { alterarControle, alterarFiltroAdicional } from "../lib/controles.fixture";
 // @vitest-environment jsdom
 import { baseFinanceiraVazia } from "./dashboard.fixture";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -74,7 +74,7 @@ describe("visualizações financeiras integradas", () => {
     expect(total("Receitas no período")).toContain("R$ 160,00");
     expect(total("Despesas no período")).toContain("R$ 65,00");
     const secaoExtrato = screen.getByRole("heading", { name: "Extrato geral" }).closest("section")!;
-    await alterarControle(within(screen.getByRole("region", { name: "Extrato geral" })).getByLabelText("Instituição"), { target: { value: "__sem__" } });
+    await alterarFiltroAdicional("Instituição", "__sem__", screen.getByRole("region", { name: "Extrato geral" }));
     expect(total("Receitas no período")).toContain("R$ 160,00");
     expect(total("Despesas no período")).toContain("R$ 65,00");
     expect(within(screen.getByRole("table", { name: "Extrato geral" })).queryByText("Movimento 1")).toBeNull();
@@ -255,7 +255,7 @@ it("o acesso pela rastreabilidade preserva o período e mostra também compromis
   expect(within(screen.getByRole("table", { name: "Compromissos financeiros" })).queryByText("Compromisso 3")).toBeNull();
   expect(screen.getAllByText("Valor original (cancelado)").length).toBeGreaterThan(0);
   expect(within(screen.getByRole("table", { name: "Compromissos financeiros" })).getAllByRole("button", { name: "Registrar pagamento" })).toHaveLength(1);
-  expect(screen.getByText(/Total pendente:/).textContent).toContain("100,00");
+  expect(screen.getByText("Total pendente").parentElement?.textContent).toContain("100,00");
 });
 
 

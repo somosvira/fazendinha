@@ -1,3 +1,4 @@
+import { BarraConsulta } from "@/financeiro/BarraConsulta";
 import { enfileirarSalvamentoRascunhoRelatorio, estadoRascunhoRelatorioAtivo, limparRascunhoRelatorioAtivo, useRascunhoRelatorioAtivo } from "./rascunhoRelatorioAtivo";
 import { Input } from "@/components/ui/input";
 import { normalizarBuscaFinanceira } from "./ListaCadastroFinanceiro";
@@ -138,15 +139,15 @@ export function RelatoriosFinanceiros({ podeExportar = true }: { podeExportar?: 
   </div> : undefined;
 
   return <PaginaFinanceira colorida>
-    <PageHeader eyebrow="" titulo="Relatórios financeiros" descricao={DESCRICAO} acao={acoes} />
+    <PageHeader eyebrow="" titulo="Relatórios financeiros" descricao="Consulte relatórios gerados ou prepare uma análise por período e sítio." acao={acoes} />
     <ErrorBox erro={erro} />
     {erro && <Button secondary disabled={atualizando} onClick={() => void carregar()}>Tentar novamente</Button>}
     {aviso && <div role="status" className="mt-4 rounded-lg border border-[color-mix(in_srgb,var(--pos)_30%,var(--card))] bg-[var(--fin-positive-bg)] p-4 text-sm text-[var(--pos)]">{aviso}</div>}
     <Panel className="mt-4 overflow-hidden">
-      <div className="fin-filtros-barra border-b border-border p-4">
+      <BarraConsulta>
         <label className="fin-filtro-busca text-sm font-medium">Buscar relatório<span className="relative mt-1 block"><Search size={18} strokeWidth={1.8} aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-3" /><Input aria-label="Buscar relatório" placeholder="Nome ou autor…" value={busca} onChange={e => { setBusca(e.target.value); setPagina(1); }} className="pl-10" /></span></label>
         <div className="fin-filtro-controle"><PeriodoFinanceiroControl inicio={periodoEmissao.inicio} fim={periodoEmissao.fim} allowAll label="Período de emissão" onChange={periodo => { setPeriodoEmissao(periodo); setPagina(1); }} /></div>
-      </div>
+      </BarraConsulta>
       {relatoriosFiltrados.length === 0
         ? <Empty>{relatorios.length ? "Nenhum relatório emitido no período selecionado." : "Nenhum relatório foi gerado ainda."}</Empty>
         : <TabelaFinanceira rotulo="Relatórios gerados" colunas={colunas} compacta itens={relatoriosFiltrados.slice((paginaAtual - 1) * 15, paginaAtual * 15)} chaveDe={(r) => r.id} onAbrir={abrir} classeLinha={(r) => r.id === recente ? "bg-muted" : ""} />}

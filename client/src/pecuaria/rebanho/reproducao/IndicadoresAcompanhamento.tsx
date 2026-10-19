@@ -205,7 +205,7 @@ export function IndicadoresAcompanhamento({
     );
   const linhas = (lista: LinhaEspera[]) => (
     <div className="overflow-x-auto">
-      <table className="w-full text-sm">
+      <table className="w-full text-sm consulta-tabela">
         <thead>
           <tr>
             <th>Animal / início do ciclo</th>
@@ -358,7 +358,7 @@ export function IndicadoresAcompanhamento({
             {d.espera.pendenciasFila.length + d.pendenciasOrigemCiclo.length})
           </h3>
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
+            <table className="w-full text-left text-sm consulta-tabela">
               <thead>
                 <tr>
                   <th className="p-3">Animal</th>
@@ -394,7 +394,7 @@ export function IndicadoresAcompanhamento({
         <section className="space-y-3">
           <h3 className="font-semibold">Lacunas nas análises de desempenho</h3>
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
+            <table className="w-full text-left text-sm consulta-tabela">
               <thead>
                 <tr>
                   <th className="p-3">Animal / referência</th>

@@ -81,7 +81,8 @@ it("diferencia datas em edição do período preservado sem recalcular a emissã
   vi.mocked(reqV4).mockImplementation(async path => path.includes("/emissoes/antiga") ? { id: "antiga", snapshot }
     : [{ id: "antiga", criadoEm: "2026-10-14T12:00:00Z" }]);
   render(<RelatorioPartos propriedadeId={7} podeLancar={false}/>);
-  expect(screen.getByText(/O período inicial já está preenchido/)).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Consultar ficha de partos" })).toBeTruthy();
+  expect(screen.queryByText(/O período inicial já está preenchido/)).toBeNull();
   await screen.findByRole("option", { name: /14\/10\/2026/ });
   fireEvent.change(screen.getByLabelText("Emissões anteriores"), { target: { value: "antiga" } });
   await screen.findByText(/Emissão preservada: antiga/);

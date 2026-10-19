@@ -53,7 +53,7 @@ export function FormCategoria({ categoria, salvando, erro, onSalvar, onFechar }:
   };
 
   const formId = "form-categoria";
-  return <PainelCadastro aberto icon={Tags} titulo={categoria ? `Editar ${categoria.nome}` : "Nova categoria"} onFechar={() => { if (!salvando) onFechar(); }}
+  return <PainelCadastro compacto aberto icon={Tags} titulo={categoria ? `Editar ${categoria.nome}` : "Nova categoria"} onFechar={() => { if (!salvando) onFechar(); }}
     rodape={<><Button secondary onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form={formId} disabled={salvando}>{salvando ? "Salvando…" : categoria ? "Salvar categoria" : "Criar categoria"}</Button></>}>
     <form data-pec-formulario id={formId} onSubmit={submeter} className="grid gap-4" noValidate>
       <ErrorBox erro={erro} />
@@ -64,8 +64,8 @@ export function FormCategoria({ categoria, salvando, erro, onSalvar, onFechar }:
         <span>Calculada por regra<span className="block text-xs font-normal text-ink-3">Desmarque para uma categoria só manual (ex.: Reprodutor, Boi carreiro) — sem regra automática, atribuída só pela ficha do animal.</span></span>
       </label>
       {automatica && <div className="grid gap-4 sm:grid-cols-2">
-        <CampoFormulario id="categoria-idade-min" rotulo="Idade mínima (meses)" erro={erros.idadeMinMeses} ajuda="Em branco = sem mínimo.">{(p) => <input {...p} type="number" min={0} step={1} placeholder="Sem mínimo" value={idadeMinMeses} onChange={(e) => setIdadeMinMeses(e.target.value)} className={classeInput} />}</CampoFormulario>
-        <CampoFormulario id="categoria-idade-max" rotulo="Idade máxima (meses)" erro={erros.idadeMaxMeses} ajuda="Até antes de — em branco = sem máximo.">{(p) => <input {...p} type="number" min={1} step={1} placeholder="Sem máximo" value={idadeMaxMeses} onChange={(e) => setIdadeMaxMeses(e.target.value)} className={classeInput} />}</CampoFormulario>
+        <CampoFormulario id="categoria-idade-min" rotulo="Idade mínima (meses)" erro={erros.idadeMinMeses}>{(p) => <input {...p} type="number" min={0} step={1} placeholder="Sem mínimo" value={idadeMinMeses} onChange={(e) => setIdadeMinMeses(e.target.value)} className={classeInput} />}</CampoFormulario>
+        <CampoFormulario id="categoria-idade-max" rotulo="Idade máxima exclusiva (meses)" erro={erros.idadeMaxMeses}>{(p) => <input {...p} type="number" min={1} step={1} placeholder="Sem máximo" value={idadeMaxMeses} onChange={(e) => setIdadeMaxMeses(e.target.value)} className={classeInput} />}</CampoFormulario>
       </div>}
       {automatica && sexo === "F" && <CampoFormulario id="categoria-partos" rotulo="Partos" obrigatorio>{(p) => <SelectCampo {...p} value={partos} onValueChange={(valorSelecionado) => setPartos(valorSelecionado as CriterioPartos)} className={classeInput}>
         <option value="QUALQUER">Qualquer</option>

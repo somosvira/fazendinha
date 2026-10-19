@@ -30,6 +30,7 @@ describe("consultas nutricionais", () => {
   });
   it("oculta valores em todos os níveis sem permissão financeira, preservando quantidade", () => {
     const resposta = apresentarFechamento(detalhe, false);
+    expect(resposta.participacoes[0].id).toBe("a");
     expect(resposta.custoConhecido).toBeNull();
     expect(resposta.itens[0].movimentoEstoque?.valorTotal).toBeNull();
     expect(resposta.itens[0].movimentoEstoque?.custoUnitario).toBeNull();
@@ -51,6 +52,8 @@ describe("consultas nutricionais", () => {
     // A autorização usa o histórico no sítio; o fechamento segue filtrado pelo local do fato.
     vi.mocked(prisma.animal.findFirst).mockResolvedValue({ id: "a" } as Awaited<ReturnType<typeof prisma.animal.findFirst>>);
     const animal = await consumoAnimal("a", 1, { pagina: 1, limite: 25 }, true);
+    expect(animal.itens[0].id).toBe("fechamento");
+    expect(animal.itens[0].participacaoId).toBe("a");
     expect(animal.itens[0].custoConhecido).toBe("0.02");
     expect(animal.itens[0].itens[0].nome).toBe("Ração");
     expect(prisma.fechamentoConsumo.findMany).toHaveBeenLastCalledWith(expect.objectContaining({ where: { propriedadeId: 1, participacoes: { some: { animalId: "a" } } } }));

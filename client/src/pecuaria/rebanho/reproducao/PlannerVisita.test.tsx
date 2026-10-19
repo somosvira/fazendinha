@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import "../../../lib/controles.fixture";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useState } from "react";
@@ -391,9 +392,10 @@ describe("percurso livre independente",()=>{
     vi.mocked(carregarPreviaCompleta).mockImplementation((...args)=>args[2].origem==="LIVRE"&&args[2].criterios.todas[0]?.tipo==="VALORES"&&args[2].criterios.todas[0].valores[0]==="F"?new Promise(resolve=>{concluir=resolve;}):original(...args));
     render(<Livre/>);
     await waitFor(()=>expect(concluir).toBeTypeOf("function"));
-    const sexo=[...document.querySelectorAll("fieldset")].find(f=>f.querySelector("legend")?.textContent==="Sexo")!;
-    fireEvent.click(sexo.querySelectorAll("input")[0]);
-    fireEvent.click(sexo.querySelectorAll("input")[1]);
+    fireEvent.click(screen.getByRole("button", { name: "Sexo" }));
+    fireEvent.click(screen.getByRole("option", { name: "Fêmea" }));
+    fireEvent.click(screen.getByRole("option", { name: "Macho" }));
+    fireEvent.keyDown(screen.getByPlaceholderText("Buscar opção…"), { key: "Escape" });
     await act(async()=>{concluir(await original(1,"2026-10-14",grupoAntigo));});
     await waitFor(()=>expect(JSON.parse(sessionStorage.getItem(chave)!).criterios.todas[0].valores).toEqual(["M"]));
     expect(JSON.parse(sessionStorage.getItem(chave)!).grupos).toEqual([]);

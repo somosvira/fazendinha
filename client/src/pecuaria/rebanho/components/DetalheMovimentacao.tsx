@@ -72,7 +72,7 @@ export function DetalheMovimentacao({ id, podeLancar = true, onFechar, onMudou }
         </div>
 
         <div className="overflow-x-auto rounded-xl border border-border">
-          <table className="w-full text-left text-sm">
+          <table className="w-full text-left text-sm consulta-tabela">
             <thead className="bg-[#f4f2e9] text-[11px] uppercase tracking-[.08em] text-ink-3">
               <tr><th className="p-3 font-semibold">Animal</th><th className="p-3 font-semibold">Categoria</th><th className="p-3 font-semibold">Veio de</th><th className="p-3 font-semibold">Situação</th></tr>
             </thead>

@@ -1,3 +1,5 @@
+import { useRascunhoConsulta } from "./useRascunhoConsulta";
+import { BarraConsulta, SituacoesConsulta } from "@/financeiro/BarraConsulta";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button as UiButton } from "@/components/ui/button";
 import { SelectCampo } from "./SelectCampo";
@@ -6,7 +8,7 @@ import { podeVerValoresFinanceiros } from "./permissoes";
 import { normalizarBuscaFinanceira } from "./ListaCadastroFinanceiro";
 import { AtualizandoFinanceiro } from "./CarregamentoFinanceiro";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { MoreHorizontal, FilePenLine, Layers, Plus, Search } from "lucide-react";
+import { MoreHorizontal, FilePenLine, Plus, Search } from "lucide-react";
 import { PeriodoFinanceiroControl } from "./PeriodoFinanceiroControl";
 import { periodoInicial } from "./lib/periodo";
 import { entradaDeNovaOperacao, isNovaOperacaoFinanceira, parseOperacaoFinanceiraId, URL_NOVA_OPERACAO } from "../router";
@@ -18,7 +20,7 @@ import { GerenciarProcedimentosServico, podeGerenciarProcedimentosServico } from
 import { codigoOperacao } from "../estoque/navegacao";
 import { navegarPara } from "../router";
 import { linkOperacaoFinanceira, validarRetornoInterno } from "./navegacao";
-import { brl, Button, CabecalhoTabela, type ColunaTabela, dataBR, Empty, ErrorBox, PageHeader, PaginaCarregando, PaginaFinanceira, Paginacao, Panel, Pill, StatusPill, TabelaFinanceira, TIPO_OPERACAO } from "./financeiro-ui";
+import { brl, Button, type ColunaTabela, dataBR, Empty, ErrorBox, PageHeader, PaginaCarregando, PaginaFinanceira, Paginacao, Panel, Pill, StatusPill, TabelaFinanceira, TIPO_OPERACAO } from "./financeiro-ui";
 
 type EfeitoFiltro = "TODOS" | "ESTOQUE" | "PAGAMENTO" | "RECEBIMENTO" | "A_PAGAR" | "A_RECEBER" | "TRANSFERENCIA" | "SEM_EFEITOS";
 function Efeitos({ operacao }: { operacao: Operacao }) {
@@ -40,6 +42,7 @@ function possuiEfeito(operacao: Operacao, filtro: EfeitoFiltro) {
 
 const inicioMes = () => { const data = new Date(); return `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, "0")}-01`; };
 const hojeLocal = () => { const data = new Date(); return `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, "0")}-${String(data.getDate()).padStart(2, "0")}`; };
+const ROTULO_EFEITO: Record<EfeitoFiltro,string> = {TODOS:"Todos os efeitos",ESTOQUE:"Estoque",PAGAMENTO:"Pagamento",RECEBIMENTO:"Recebimento",A_PAGAR:"A pagar",A_RECEBER:"A receber",TRANSFERENCIA:"Transferência",SEM_EFEITOS:"Sem efeitos"};
 const EFEITOS_FILTRO: EfeitoFiltro[] = ["TODOS", "ESTOQUE", "PAGAMENTO", "RECEBIMENTO", "A_PAGAR", "A_RECEBER", "TRANSFERENCIA", "SEM_EFEITOS"];
 /** Acesso pela rastreabilidade da Base financeira (?efeito=SEM_EFEITOS). */
 const efeitoInicial = (): EfeitoFiltro => {
@@ -68,10 +71,18 @@ export function OperacoesFinanceiras({ podeLancar = true }: { podeLancar?: boole
   const [servicoGerenciado, setServicoGerenciado] = useState<Operacao | null>(null);
   const [busca, setBusca] = useState(""); const [status, setStatus] = useState("TODOS"); const [tipo, setTipo] = useState("TODOS"); const [efeito, setEfeito] = useState<EfeitoFiltro>(efeitoInicial); const [inicio, setInicio] = useState(() => periodoInicial({ inicio: inicioMes(), fim: hojeLocal() }).inicio); const [fim, setFim] = useState(() => periodoInicial({ inicio: inicioMes(), fim: hojeLocal() }).fim);
   const [pagina, setPagina] = useState(1);
+  useEffect(() => {
+    if (window.location.pathname !== "/financeiro/operacoes") return;
+    const url = new URL(window.location.href);
+    efeito === "TODOS" ? url.searchParams.delete("efeito") : url.searchParams.set("efeito", efeito);
+    const alvo = url.pathname + url.search + url.hash;
+    if (alvo !== window.location.pathname + window.location.search + window.location.hash) window.history.replaceState(window.history.state, "", alvo);
+  }, [efeito]);
   const [detalheId, setDetalheId] = useState<string | null>(() => typeof window === "undefined" ? null : parseOperacaoFinanceiraId(window.location.pathname));
   const [retorno, setRetorno] = useState(() => validarRetornoInterno(new URLSearchParams(window.location.search).get("returnTo")));
   // O rascunho vem da store compartilhada (a mesma do atalho da sidebar):
   // obterRascunhoOperacao a atualiza, e cada autosave também.
+  const filtrosAvancados = useRascunhoConsulta({ tipo, efeito }, { tipo: "TODOS", efeito: "TODOS" as EfeitoFiltro }, valores => { setTipo(valores.tipo); setEfeito(valores.efeito); setPagina(1); });
   const carregar = useCallback(async (vigente: () => boolean = () => true) => { setLoading(true); setErro(null); try { const [ops, cfg] = await Promise.all([listarOperacoes({ inicio, fim }), podeLancar ? obterConfiguracoesFinanceiras() : Promise.resolve(null), podeLancar && podeRascunho ? obterRascunhoOperacao() : Promise.resolve(null)]); if (vigente()) { setItens(ops); setConfig(cfg); } } catch (e) { if (vigente()) setErro(e instanceof Error ? e.message : String(e)); } finally { if (vigente()) { setLoading(false); setCarregou(true); } } }, [inicio, fim, podeLancar, podeRascunho]);
   useEffect(() => { let ativo = true; void carregar(() => ativo); return () => { ativo = false; }; }, [carregar]);
   useEffect(() => {
@@ -115,8 +126,10 @@ export function OperacoesFinanceiras({ podeLancar = true }: { podeLancar?: boole
   if (form && !podeLancar) return <PaginaFinanceira colorida><PageHeader eyebrow="" titulo="Nova operação" descricao="O seu perfil pode consultar operações, mas não pode criar ou corrigir lançamentos." /><ErrorBox erro="Você não tem permissão para lançar operações financeiras." /></PaginaFinanceira>;
   if (form && config) return <FormOperacao key={operacaoBase ? `correcao-${operacaoBase.id}` : ajusteInicial ? `ajuste-${produtoAjusteInicial ?? ""}` : "rascunho"} config={config} rascunho={operacaoBase ? null : rascunho} operacaoBase={operacaoBase} condicaoInicial={compromissoInicial ? "A_PRAZO" : undefined} tipoInicial={ajusteInicial ? "AJUSTE_ESTOQUE" : compromissoInicial === "RECEBER" ? "VENDA" : compromissoInicial === "PAGAR" ? "COMPRA_CONSUMO_DIRETO" : undefined} produtoInicial={produtoAjusteInicial} onSalvo={async (operacao, aviso) => { setForm(false); setOperacaoBase(null); await carregar(); if (aviso) setErro(aviso); abrirDetalhe(operacao.id); }} />;
 
+  const acoesCabecalho = podeLancar ? <div className="flex flex-wrap gap-2">{(rascunho || recuperacao) && <Button secondary onClick={continuarRascunho}><FilePenLine size={16} /> Continuar operação</Button>}<Button disabled={iniciandoNova} onClick={() => { void abrirNovaOperacao(); }}><Plus size={16} /> {iniciandoNova ? "Iniciando…" : "Nova operação"}</Button></div> : undefined;
+
   return <PaginaFinanceira colorida>
-    <PageHeader eyebrow="" titulo="Operações" descricao="Fatos de negócio e seus efeitos financeiros e físicos, preservados em um histórico auditável." acao={podeLancar ? <div className="flex flex-wrap gap-2">{(rascunho || recuperacao) && <Button secondary onClick={continuarRascunho}><FilePenLine size={16} /> Continuar operação</Button>}<Button disabled={iniciandoNova} onClick={() => { void abrirNovaOperacao(); }}><Plus size={16} /> {iniciandoNova ? "Iniciando…" : "Nova operação"}</Button></div> : undefined} />
+    <PageHeader eyebrow="" titulo="Operações" descricao="Consulte compras, vendas e serviços e acompanhe seus efeitos financeiros e no estoque." acao={acoesCabecalho} />
     <ErrorBox erro={erro} />
     {erro && <Button secondary disabled={loading} className="mb-4" onClick={() => { void carregar(); }}>Tentar novamente</Button>}
     {recuperacao && <p role="status" className="mb-4 rounded-lg bg-muted p-3 text-sm">{recuperacao.erro ? `Não foi possível salvar: ${recuperacao.erro} As alterações estão preservadas. Continue a operação para tentar novamente.` : "As últimas alterações estão sendo salvas. Você pode continuar a operação."}</p>}
@@ -124,15 +137,17 @@ export function OperacoesFinanceiras({ podeLancar = true }: { podeLancar?: boole
      * contêiner de rolagem do `position: sticky` da barra de TabelaFinanceira,
      * o que a prenderia ao topo do Panel em vez de à viewport. */}
     <Panel className="overflow-clip">
-      <CabecalhoTabela titulo="Operações do período" icon={Layers} />
+
       {loading && carregou && <div className="px-4 pt-3"><AtualizandoFinanceiro /></div>}
-      <div className="fin-filtros-barra border-b border-border p-4">
+      <BarraConsulta edicaoFiltros={filtrosAvancados} adicionais={<><label>Tipo<SelectCampo aria-label="Filtrar por tipo" value={filtrosAvancados.rascunho.tipo} onValueChange={(valor) => { filtrosAvancados.editar("tipo", valor); }} className="fin-filtro-controle h-[42px] w-full rounded-lg border border-border bg-white px-3 text-sm sm:w-auto"><option value="TODOS">Todos os tipos</option>{Object.entries(TIPO_OPERACAO).map(([chave, nome]) => <option key={chave} value={chave}>{nome}</option>)}</SelectCampo></label>
+<label>Efeito<SelectCampo aria-label="Filtrar por efeito" value={filtrosAvancados.rascunho.efeito} onValueChange={(valor) => { filtrosAvancados.editar("efeito", valor as EfeitoFiltro); }} className="fin-filtro-controle h-[42px] w-full rounded-lg border border-border bg-white px-3 text-sm sm:w-auto"><option value="TODOS">Todos os efeitos</option><option value="ESTOQUE">Estoque</option><option value="PAGAMENTO">Pagamento</option><option value="RECEBIMENTO">Recebimento</option><option value="A_PAGAR">A pagar</option><option value="A_RECEBER">A receber</option><option value="TRANSFERENCIA">Transferência</option><option value="SEM_EFEITOS">Sem efeitos</option></SelectCampo></label>
+</>} criterios={[...(tipo !== "TODOS" ? [{ id: "tipo", rotulo: `Tipo: ${TIPO_OPERACAO[tipo as keyof typeof TIPO_OPERACAO] ?? tipo}`, limpar: () => { setTipo("TODOS"); setPagina(1); } }] : []), ...(efeito !== "TODOS" ? [{ id: "efeito", rotulo: `Efeito: ${ROTULO_EFEITO[efeito]}`, limpar: () => { setEfeito("TODOS"); setPagina(1); } }] : [])]} onLimpar={() => { setTipo("TODOS"); setEfeito("TODOS"); setStatus("TODOS"); setBusca(""); setPagina(1); }}>
         <label className="fin-filtro-busca relative w-full sm:w-auto"><Search aria-hidden size={16} className="absolute left-3 top-3 text-ink-3" /><Input aria-label="Buscar operações" value={busca} onChange={(e) => { setBusca(e.target.value); setPagina(1); }} placeholder="Buscar por operação, parceiro ou número" className="h-[42px] w-full rounded-lg border border-border bg-white py-2.5 pl-9 pr-3 text-sm" /></label>
-        <PeriodoFinanceiroControl inicio={inicio} fim={fim} allowAll onChange={(periodo) => { setInicio(periodo.inicio); setFim(periodo.fim); setPagina(1); }} />
-        <SelectCampo aria-label="Filtrar por tipo" value={tipo} onValueChange={(valor) => { setTipo(valor); setPagina(1); }} className="fin-filtro-controle h-[42px] w-full rounded-lg border border-border bg-white px-3 text-sm sm:w-auto"><option value="TODOS">Todos os tipos</option>{Object.entries(TIPO_OPERACAO).map(([chave, nome]) => <option key={chave} value={chave}>{nome}</option>)}</SelectCampo>
-        <SelectCampo aria-label="Filtrar por efeito" value={efeito} onValueChange={(valor) => { setEfeito(valor as EfeitoFiltro); setPagina(1); }} className="fin-filtro-controle h-[42px] w-full rounded-lg border border-border bg-white px-3 text-sm sm:w-auto"><option value="TODOS">Todos os efeitos</option><option value="ESTOQUE">Estoque</option><option value="PAGAMENTO">Pagamento</option><option value="RECEBIMENTO">Recebimento</option><option value="A_PAGAR">A pagar</option><option value="A_RECEBER">A receber</option><option value="TRANSFERENCIA">Transferência</option><option value="SEM_EFEITOS">Sem efeitos</option></SelectCampo>
-        <SelectCampo aria-label="Filtrar por status" value={status} onValueChange={(valor) => { setStatus(valor); setPagina(1); }} className="fin-filtro-controle h-[42px] w-full rounded-lg border border-border bg-white px-3 text-sm sm:w-auto"><option value="TODOS">Todos os status</option><option value="CONFIRMADA">Confirmadas</option><option value="CANCELADA">Canceladas</option></SelectCampo>
-      </div>
+        <PeriodoFinanceiroControl inicio={inicio} fim={fim} allowAll iconOnly onChange={(periodo) => { setInicio(periodo.inicio); setFim(periodo.fim); setPagina(1); }} />
+
+
+        <SituacoesConsulta rotulo="Filtrar por status" valor={status} onChange={valor => { setStatus(valor); setPagina(1); }} opcoes={[{valor:"TODOS",texto:"Todas"},{valor:"CONFIRMADA",texto:"Confirmadas"},{valor:"CANCELADA",texto:"Canceladas"}]} />
+      </BarraConsulta>
       <div aria-busy={loading} {...(loading ? { inert: "" } : {})}>{erro ? <Empty>Não foi possível carregar as operações.</Empty> : filtradas.length ? <><TabelaFinanceira rotulo="Operações do período" itens={operacoesDaPagina} colunas={colunas} chaveDe={(operacao) => operacao.id} onAbrir={(operacao) => abrirDetalhe(operacao.id)} compacta barraRolagemSuperior />
         <Paginacao pagina={paginaAtual} totalPaginas={totalPaginas} total={filtradas.length} porPagina={ITENS_POR_PAGINA} rotulo="Paginação de operações" substantivo="operações" idSelect="pagina-operacoes" onPagina={setPagina} /></> : <Empty>Nenhuma operação encontrada no período e filtros selecionados.</Empty>}
     </div></Panel>

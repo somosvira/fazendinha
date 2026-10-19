@@ -1,4 +1,4 @@
-import { alterarControle } from "../lib/controles.fixture";
+import { alterarControle, alterarFiltroAdicional } from "../lib/controles.fixture";
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
@@ -30,10 +30,10 @@ it("combina filtros inclusivos de data, conta e instituição e abre o movimento
   await alterarControle(screen.getByLabelText("Início do teste"), { target: { value: "2026-09-13" } });
   await alterarControle(screen.getByLabelText("Fim do teste"), { target: { value: "2026-09-13" } });
   await alterarControle(screen.getByLabelText("Conta"), { target: { value: uid(1) } });
-  await alterarControle(screen.getByLabelText("Instituição"), { target: { value: "Instituição A" } });
+  await alterarFiltroAdicional("Instituição", "Instituição A", document.body);
   expect(tabela.queryByText("Compra B")).toBeNull();
   fireEvent.click(tabela.getByText("Venda A")); expect(abrir).toHaveBeenCalledWith(movimentos[0]);
-  await alterarControle(screen.getByLabelText("Instituição"), { target: { value: "__sem__" } });
+  await alterarFiltroAdicional("Instituição", "__sem__", document.body);
   expect(screen.getByText(/Nenhuma movimentação encontrada/)).toBeTruthy();
   await alterarControle(screen.getByLabelText("Fim do teste"), { target: { value: "2026-09-11" } });
   expect(screen.getByRole("alert").textContent).toContain("data final");

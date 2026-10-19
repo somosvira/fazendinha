@@ -1,3 +1,4 @@
+import { BarraConsulta } from "@/financeiro/BarraConsulta";
 import { SelectCampo } from "@/financeiro/SelectCampo";
 import { reqV4 } from "../reproducao/api";
 import { CamposFormatoExame, type CampoExame } from "./CamposExame";
@@ -109,19 +110,17 @@ export function CadastrosSanitarios({ podeLancar, cadastro, embutido = false, co
       ? formatoBloqueado ? { nome } : { nome, versaoAnteriorId: painel.versaoAnteriorId, tipoResultado: formato, ...(formato === "MULTIPLO" ? { campos } : {}), unidade: unidade || null, opcoes: formato === "OPCAO" ? opcoes.split("\n").map((s) => s.trim()).filter(Boolean) : null }
       : { nome });
   }
-  return <section className="mt-5 grid gap-5">
-    {!embutido && <div role="tablist" aria-label="Cadastros sanitários" className="flex flex-wrap gap-2">
+  return <section className="mt-5 grid min-w-0 gap-5">
+    {embutido && <h1 className="text-2xl font-semibold">{titulo}</h1>}
+    {!embutido && <div role="tablist" aria-label="Cadastros sanitários" className="abas-pasta">
       {abas.map((a) => <button key={a.id} type="button" role="tab" aria-selected={aba === a.id} aria-controls={`cadastro-${a.id}`} disabled={ocupado} onClick={() => selecionar(a.id)} className={`rounded-lg px-4 py-2 text-sm font-semibold ${aba === a.id ? "bg-mast text-white" : "border border-border text-ink-2"}`}>{a.nome}</button>)}
     </div>}
-    <div role="tabpanel" id={`cadastro-${aba}`} aria-label={titulo}>
-      {aba === "protocolos" ? <ProtocolosCadastro podeLancar={podeLancar} /> : <section className="pec-catalogo-sanitario rounded-xl border border-border">
-        <div className="flex flex-wrap items-center justify-between gap-3 p-4">
-          <h2 className="h2">{titulo}</h2>
-          {podeLancar && <Button disabled={ocupado || carregando} onClick={() => abrir(aba)}>{novo}</Button>}
-        </div>
+    <div role="tabpanel" className="min-w-0" id={`cadastro-${aba}`} aria-label={titulo}>
+      {aba === "protocolos" ? <ProtocolosCadastro podeLancar={podeLancar} /> : <section className="pec-catalogo-sanitario rounded-xl border border-border bg-card">
+
         {aba === "aplicacao" && <p className="px-4 pb-4 text-sm text-ink-3">Descrevem a finalidade, sem determinar estoque, Serviço ou carência. Renomear preserva o histórico.</p>}
         {aba === "exame" && <p className="px-4 pb-4 text-sm text-ink-3">Após a primeira coleta, o formato do resultado fica bloqueado, mesmo se a coleta estiver pendente ou anulada. Isso preserva a interpretação do histórico.</p>}
-        <div className="px-4 pb-4"><BuscaLista rotulo={`Buscar ${titulo.toLocaleLowerCase("pt-BR")}`} placeholder="Buscar pelo nome" valor={busca} onChange={setBusca} /></div>
+        <BarraConsulta acao={podeLancar && <Button disabled={ocupado || carregando} onClick={() => abrir(aba)}>{novo}</Button>}><BuscaLista rotulo={`Buscar ${titulo.toLocaleLowerCase("pt-BR")}`} placeholder="Buscar pelo nome" valor={busca} onChange={setBusca} /></BarraConsulta>
         {!carregando && !erro && itens.length > 0 && !itensExibidos.length && <p role="status" className="px-4 pb-4 text-sm text-ink-3">Nenhum cadastro corresponde à busca. Altere ou limpe o nome pesquisado.</p>}
         <div className="px-4"><ErrorBox erro={erro} />{aviso && <p role="status" className="py-3 text-sm">{aviso}</p>}
           {ocupado && <p role="status" className="py-3 text-sm">Atualizando cadastro…</p>}

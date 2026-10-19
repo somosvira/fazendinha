@@ -20,15 +20,13 @@ afterEach(() => { cleanup(); window.history.replaceState(null, "", "/"); });
 describe("panorama nutricional sem indicadores repetidos", () => {
   it("reúne cobertura e efetivo no mesmo painel sem quatro cards de métricas", async () => {
     render(<VisaoGeralNutricao />);
-    const titulo = await screen.findByRole("heading", { name: "Panorama nutricional" });
-    const painel = titulo.closest('[data-slot="financeiro-panel"]');
-    const comparativos = titulo.closest("details")!;
-    expect(comparativos.open).toBe(false);
-    fireEvent.click(comparativos.querySelector("summary")!);
-    expect(comparativos.open).toBe(true);
+    await screen.findByLabelText("Efetivo nos lotes");
+    expect(document.querySelector("details")).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Nutrição por lote" })).toBeNull();
+    expect(screen.getAllByText(/8 animais ativos nos lotes/)).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Com dieta (1)" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Anterior" })).toBeNull();
     expect(screen.getByRole("table", { name: "Nutrição por lote" })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "Cobertura das dietas", level: 3 }).closest('[data-slot="financeiro-panel"]')).toBe(painel);
-    expect(screen.getByRole("heading", { name: "Efetivo por lote", level: 3 }).closest('[data-slot="financeiro-panel"]')).toBe(painel);
     expect(document.querySelector(".nutricao-metricas")).toBeNull();
     expect(screen.queryByText("Animais nos lotes")).toBeNull();
     expect(screen.getByText(/8 animais ativos nos lotes/)).toBeTruthy();
@@ -36,13 +34,17 @@ describe("panorama nutricional sem indicadores repetidos", () => {
   it("mantém o contexto inteiro no panorama e preserva a busca ao refinar a dieta", async () => {
     window.history.replaceState(null, "", "/pecuaria/nutricao?buscaLote=Matrizes");
     render(<VisaoGeralNutricao />);
-    await screen.findByRole("heading", { name: "Panorama nutricional" });
-    expect(screen.getByText(/Mostrando 1 de 2 lotes/)).toBeTruthy();
+    await screen.findByLabelText("Efetivo nos lotes");
+    expect(screen.getByRole("button", { name: "Todos (2)", pressed: true })).toBeTruthy();
+    expect(screen.getAllByRole("link", { name: "Matrizes" }).length).toBeGreaterThan(0);
+    expect(screen.queryByRole("link", { name: "Recria" })).toBeNull();
     expect(screen.getByText(/8 animais ativos nos lotes/)).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: /Sem dieta vigente/ }));
-    const params = new URL(vi.mocked(navegarPara).mock.calls[0][0], "http://localhost").searchParams;
+    fireEvent.click(screen.getByRole("button", { name: "Sem dieta (1)" }));
+    const params = new URLSearchParams(window.location.search);
     expect(params.get("situacaoDieta")).toBe("sem");
     expect(params.get("buscaLote")).toBe("Matrizes");
+    expect(screen.getByRole("button", { name: "Todos (2)" })).toBeTruthy();
+    expect(screen.getByText("Nenhum lote corresponde aos filtros.")).toBeTruthy();
   });
   it("abre o lote pelo nome sem ação duplicada e alinha quantidades e custos", async () => {
     const { container } = render(<VisaoGeralNutricao />);
@@ -58,15 +60,16 @@ describe("panorama nutricional sem indicadores repetidos", () => {
   it("não apresenta custo mesmo quando há valores no payload sem permissão", async () => {
     vi.mocked(consultarVisaoNutricional).mockResolvedValue({ lotes: [lote("mat", "Matrizes", 5, true)], verValores: false });
     render(<VisaoGeralNutricao />);
-    await screen.findByRole("heading", { name: "Panorama nutricional" });
-    expect(screen.queryByRole("columnheader", { name: "Custo total" })).toBeNull();
+    await screen.findByLabelText("Efetivo nos lotes");
+    expect(screen.queryByRole("columnheader", { name: "Custo histórico" })).toBeNull();
     expect(screen.queryByText(/379,50/)).toBeNull();
+    expect(screen.queryByRole("button", { name: "Sobre o custo histórico" })).toBeNull();
   });
   it("sem lotes mantém o estado vazio sem fabricar cobertura", async () => {
     vi.mocked(consultarVisaoNutricional).mockResolvedValue({ lotes: [], verValores: false });
     render(<VisaoGeralNutricao />);
     await screen.findByText(/Nenhum lote ativo neste contexto/);
-    expect(screen.queryByRole("button", { name: /Com dieta vigente/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Com dieta/ })).toBeNull();
     expect(screen.queryByText("0%")).toBeNull();
   });
 });

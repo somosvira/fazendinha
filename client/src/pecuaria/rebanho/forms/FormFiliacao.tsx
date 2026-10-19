@@ -52,7 +52,7 @@ export function FormFiliacao({ animal, onSalvo, onFechar }: {
 
   const formId = "form-filiacao-animal";
   return (
-    <PainelCadastro icon={Baby} aberto titulo={`Filiação de ${animal.brinco}`} onFechar={() => { if (!salvando) onFechar(); }}
+    <PainelCadastro compacto icon={Baby} aberto titulo={`Filiação de ${animal.brinco}`} onFechar={() => { if (!salvando) onFechar(); }}
       rodape={<><Button secondary onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form={formId} disabled={salvando}>{salvando ? "Salvando…" : "Salvar filiação"}</Button></>}>
       <form data-pec-formulario  id={formId} onSubmit={submeter} noValidate className="grid gap-5">
         <ErrorBox erro={erroGeral} />

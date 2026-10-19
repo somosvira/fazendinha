@@ -36,8 +36,15 @@ function sessao(areas: string[], flags: string[] = [], dono = false) {
 }
 
 async function selecionarFiltro(rotulo: string, opcao: string) {
+  let lateral: HTMLElement | null = null;
+  if (!screen.queryByLabelText(rotulo)) {
+    const botoes = screen.getAllByRole("button", { name: /Mais filtros/ });
+    fireEvent.click(botoes[botoes.length - 1]);
+    lateral = await screen.findByRole("dialog", {name:"Filtros"});
+  }
   fireEvent.click(screen.getByLabelText(rotulo));
   fireEvent.click(await screen.findByRole("option", { name: opcao }));
+  if(lateral){fireEvent.click(within(lateral).getByRole("button",{name:"Aplicar filtros"})); await waitFor(()=>expect(screen.queryByRole("dialog",{name:"Filtros"})).toBeNull());}
 }
 
 afterEach(() => { cleanup(); localStorage.clear(); vi.unstubAllGlobals(); setPropriedadeAtiva(null); window.history.replaceState({}, "", "/"); });
@@ -196,14 +203,14 @@ describe("EstoqueContent — saldos e custo médio", () => {
     expect(screen.queryByText(/saldo negativo/)).toBeNull();
   });
 
-  it("reúne valor e produtos com saldo positivo e recolhe entradas recentes", async () => {
+  it("reúne valor e produtos com saldo positivo e mostra entradas sem colapso", async () => {
     vi.stubGlobal("fetch", mockFetch({ saldos: [saldo({}), saldo({ produtoId: 2, nome: "Sal", saldo: 0, valor: 0 })] }));
     render(<EstoqueContent />);
     const card = (await screen.findByText("1 produto em estoque")).closest("section")!;
     expect(within(card).getByText("1 produto em estoque")).toBeTruthy();
     expect(within(card).queryByText(/^de \d+ produtos? com movimento/)).toBeNull();
     expect(screen.getByText("Valor em estoque")).toBeTruthy();
-    expect(screen.getByText("Últimas entradas").closest("details")?.open).toBe(false);
+    expect(screen.getByText("Últimas entradas").closest("details")).toBeNull();
     expect(screen.queryByText("Itens abaixo do mínimo")).toBeNull();
     expect(screen.queryByText("Produtos sem custo apurado")).toBeNull();
   });
@@ -259,8 +266,8 @@ describe("EstoqueContent — saldos e custo médio", () => {
     ];
     vi.stubGlobal("fetch", mockFetch({ saldos, entradas }));
     render(<EstoqueContent />);
-    const card = (await screen.findByText("Últimas entradas")).closest("details")!;
-    fireEvent.click(within(card).getByText("Últimas entradas"));
+    const card = (await screen.findByText("Últimas entradas")).closest("section")!;
+    expect(within(card).getByRole("heading", { name: "Últimas entradas" })).toBeTruthy();
     await waitFor(() => expect(within(card).getAllByRole("link")).toHaveLength(6));
     const links = within(card).getAllByRole("link") as HTMLAnchorElement[];
     expect(links.map((a) => a.textContent)).toEqual(["Produto 2", "Produto 3", "Produto 1", "Produto 4", "Produto 5", "Produto 6"]);

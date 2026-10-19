@@ -122,10 +122,35 @@ it("distingue recorte vazio de custo desconhecido e dispensa título repetido", 
   expect(screen.queryByText(/Valor ainda não comprovado/)).toBeNull();
   expect(screen.queryByRole("heading", { name: "Custos diretos" })).toBeNull();
   expect(screen.queryByRole("navigation", { name: "Páginas dos componentes" })).toBeNull();
+  expect(screen.queryByText("Nenhum componente registrado neste recorte.")).toBeNull();
 });
 it("mantém custo não comprovado quando há componentes com valor desconhecido", async () => {
   vi.mocked(obterCustos).mockResolvedValue({ ...dados(), situacao: "DESCONHECIDO", totalConhecido: null });
   render(<CustosDiretos animalId="a" propriedadeId={1} podeLancar={false}/>);
   await screen.findByText(/Valor ainda não comprovado/);
   expect(screen.queryByText("Nenhum custo neste recorte")).toBeNull();
+});
+
+it("no detalhe omite só o fato consultado e o movimento já exibido, preservando outras origens", async () => {
+ const d=dados();
+ const base={...d.componentes[0],tipoFonte:"APLICACAO" as const,fonteId:"aplicacao",origemId:"m"};
+ d.componentes=[base,{...base,chave:"outro",fonteId:"outra-aplicacao",origemId:"outro-movimento"},{...base,chave:"exame",tipoFonte:"EXAME",origemId:null}];
+ d.totalComponentes=3;
+ vi.mocked(obterCustos).mockResolvedValue(d);
+ render(<CustosDiretos aplicacaoId="aplicacao" propriedadeId={1} podeLancar={false} fatoEmConsulta={{tipoFonte:"APLICACAO",fonteId:"aplicacao"}} linksJaExibidos={["/estoque?movimentoId=m&propriedadeId=1"]}/>);
+ await screen.findByRole("table");
+ expect(screen.getAllByRole("link",{name:"Ver fato de origem"}).map(a=>new URL(a.getAttribute("href")!,"http://localhost").searchParams.get("detalheTipo"))).toEqual(["aplicacao","exame"]);
+ expect(screen.getAllByRole("link",{name:"Ver movimento"}).map(a=>a.getAttribute("href"))).toEqual(["/estoque?movimentoId=outro-movimento&propriedadeId=1"]);
+ expect(obterCustos).toHaveBeenCalledWith({aplicacaoId:"aplicacao"},1,"","",1,"");
+});
+it("remove a coluna sem ações somente no detalhe que já apresenta ambos os destinos", async () => {
+ const d=dados();d.componentes=[{...d.componentes[0],tipoFonte:"APLICACAO",fonteId:"aplicacao"}];
+ vi.mocked(obterCustos).mockResolvedValue(d);
+ const {rerender}=render(<CustosDiretos aplicacaoId="aplicacao" propriedadeId={1} podeLancar={false} fatoEmConsulta={{tipoFonte:"APLICACAO",fonteId:"aplicacao"}} linksJaExibidos={["/estoque?movimentoId=m&propriedadeId=1"]}/>);
+ await screen.findByRole("table");
+ expect(screen.queryByRole("columnheader",{name:"Ações"})).toBeNull();
+ expect(screen.getByRole("columnheader",{name:"Valor"})).toBeTruthy();
+ rerender(<CustosDiretos aplicacaoId="aplicacao" propriedadeId={1} podeLancar={false}/>);
+ expect(await screen.findByRole("link",{name:"Ver fato de origem"})).toBeTruthy();
+ expect(screen.getByRole("link",{name:"Ver movimento"})).toBeTruthy();
 });

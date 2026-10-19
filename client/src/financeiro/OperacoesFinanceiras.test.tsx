@@ -132,11 +132,21 @@ describe("OperacoesFinanceiras — filtro de efeito vindo da rastreabilidade", (
   it("abre já filtrado por SEM_EFEITOS quando a URL pede", async () => {
     window.history.replaceState(null, "", "/financeiro/operacoes?inicio=2026-01-01&fim=2026-12-31&efeito=SEM_EFEITOS");
     render(<OperacoesFinanceiras />);
+    fireEvent.click(await screen.findByRole("button", {name:/Mais filtros/}));
     expect((await screen.findByLabelText("Filtrar por efeito") as HTMLSelectElement).value).toBe("SEM_EFEITOS");
+  });
+  it("remover o critério elimina o efeito da URL sem apagar o período", async () => {
+    window.history.replaceState(null, "", "/financeiro/operacoes?inicio=2026-01-01&fim=2026-12-31&efeito=SEM_EFEITOS");
+    render(<OperacoesFinanceiras />);
+    fireEvent.click(await screen.findByRole("button", {name:"Remover filtro: Efeito: Sem efeitos"}));
+    await waitFor(()=>expect(new URLSearchParams(window.location.search).has("efeito")).toBe(false));
+    expect(new URLSearchParams(window.location.search).get("inicio")).toBe("2026-01-01");
+    expect(new URLSearchParams(window.location.search).get("fim")).toBe("2026-12-31");
   });
   it("ignora um valor de efeito desconhecido e mantém 'Todos os efeitos'", async () => {
     window.history.replaceState(null, "", "/financeiro/operacoes?efeito=NAO_EXISTE");
     render(<OperacoesFinanceiras />);
+    fireEvent.click(await screen.findByRole("button", {name:/Mais filtros/}));
     expect((await screen.findByLabelText("Filtrar por efeito") as HTMLSelectElement).value).toBe("TODOS");
   });
 });

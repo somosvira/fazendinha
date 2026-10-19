@@ -1,3 +1,5 @@
+import { AjudaCampo } from "@/components/Dica";
+import { BarraConsulta } from "@/financeiro/BarraConsulta";
 import { SelectCampo } from "@/financeiro/SelectCampo";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { ChevronDown, ChevronRight, Pencil, Copy, Send, PowerOff, ClipboardList } from "lucide-react";
@@ -58,6 +60,7 @@ export function ProtocolosCadastro({ podeLancar }: { podeLancar: boolean }) {
   const [exames, setExames] = useState<TipoExame[]>([]);
   const [id, setId] = useState<string | null>(null);
   const [aberto, setAberto] = useState(false);
+  const [criandoVersao, setCriandoVersao] = useState(false);
   const [nome, setNome] = useState("");
   const [descricao, setDescricao] = useState("");
   const [etapas, setEtapas] = useState<Etapa[]>([nova()]);
@@ -137,6 +140,7 @@ export function ProtocolosCadastro({ podeLancar }: { podeLancar: boolean }) {
     if (!podeLancar || trava.current || !catalogosProntos) return;
     setErro(null);
     setId(p?.publicadoEm ? null : (p?.id ?? null));
+    setCriandoVersao(!!p?.publicadoEm);
     setNome(p?.nome ?? "");
     setDescricao(p?.descricao ?? "");
     setEtapas(
@@ -158,21 +162,16 @@ export function ProtocolosCadastro({ podeLancar }: { podeLancar: boolean }) {
   const visiveis = protocolos.filter(p => p.nome.toLocaleLowerCase("pt-BR").includes(busca.toLocaleLowerCase("pt-BR")));
   const paginacao = usePaginacaoLocal(visiveis, busca);
   return (
-    <section className="pec-protocolos-cadastro">
+    <section className="pec-protocolos-cadastro min-w-0 w-full overflow-hidden rounded-xl border border-border bg-card">
       <ErrorBox erro={erro} />
       <ErrorBox erro={erroLista} />
       <ErrorBox erro={erroCatalogos} />
       {aviso && <p role="status" className="py-3 text-sm">{aviso}</p>}
       {ocupado && <p role="status" className="py-3 text-sm">Atualizando protocolo…</p>}
       {(erroLista || erroCatalogos) && <Button secondary disabled={ocupado} onClick={() => setRevisao((v) => v + 1)}>Tentar novamente</Button>}
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3"><div><h2 className="h2">Protocolos sanitários</h2>
-      {!carregando && !erroLista && <p className="mt-2 text-xs text-ink-3" aria-label="Resumo dos protocolos">{protocolos.length} versões cadastradas · {protocolos.filter(p => p.ativo && p.publicadoEm).length} publicadas e ativas · {protocolos.filter(p => !p.publicadoEm).length} rascunhos</p>}
-      </div>
-        {podeLancar && <Button disabled={ocupado || !catalogosProntos || carregando} onClick={() => editar()}>Novo protocolo</Button>}
-      </div>
-      <div className="pec-protocolos-busca"><BuscaLista rotulo="Buscar protocolo" placeholder="Buscar protocolo pelo nome" valor={busca} onChange={setBusca} /></div>
-      <p className="mb-4 text-sm text-ink-3">Abra o nome para revisar as etapas. Versões publicadas não são editadas: crie uma nova versão para alterar o planejamento. Planejar etapas não movimenta o estoque.</p>
-      {carregando ? <p role="status" className="py-4">Carregando protocolos…</p> : <div className="overflow-x-auto rounded border border-border"><table aria-label="Protocolos sanitários" className="w-full text-left text-sm">
+
+      <BarraConsulta acao={podeLancar && <Button disabled={ocupado || !catalogosProntos || carregando} onClick={() => editar()}>Novo protocolo</Button>} resumo={<div className="consulta-ajuda flex items-center gap-2">{!carregando && !erroLista && <p className="mt-2 text-xs text-ink-3" aria-label="Resumo dos protocolos">{protocolos.filter(p => p.ativo && p.publicadoEm).length} publicadas e ativas · {protocolos.filter(p => !p.publicadoEm).length} rascunhos</p>}<AjudaCampo rotulo="Sobre versões e etapas dos protocolos" texto="Abra o nome para revisar as etapas. Versões publicadas não são editadas: crie uma nova versão para alterar o planejamento. Planejar etapas não movimenta o estoque." /></div>}><BuscaLista rotulo="Buscar protocolo" placeholder="Buscar protocolo pelo nome" valor={busca} onChange={setBusca} /></BarraConsulta>
+      {carregando ? <p role="status" className="py-4">Carregando protocolos…</p> : <div className="min-w-0 overflow-x-auto"><table aria-label="Protocolos sanitários" className="w-full text-left text-sm consulta-tabela">
         <thead className="bg-surface-2"><tr><th className="p-4">Nome</th><th className="p-4">Tipo</th><th className="p-4">Versão</th><th className="p-4">Situação</th><th className="p-4">Etapas</th><th className="p-4">Ações</th></tr></thead>
         <tbody className="divide-y divide-border">{paginacao.itens.map((p) => <Fragment key={p.id}>
           <tr><td className="p-4"><button type="button" aria-expanded={detalhe?.id === p.id} aria-controls={`protocolo-${p.id}`} aria-label={`Ver etapas de ${p.nome} v${p.versao}`} onClick={() => setDetalhe(detalhe?.id === p.id ? null : p)} className="flex items-center gap-3 text-left">{detalhe?.id === p.id ? <ChevronDown size={16} /> : <ChevronRight size={16} />}<span>{p.nome}</span></button></td>
@@ -187,14 +186,7 @@ export function ProtocolosCadastro({ podeLancar }: { podeLancar: boolean }) {
           {detalhe?.id === p.id && <tr><td colSpan={6} id={`protocolo-${p.id}`} className="bg-card p-5">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-4"><div><h3 className="h2">{p.nome} · v{p.versao}</h3><Pill tone={p.publicadoEm ? "green" : "amber"}>{p.publicadoEm ? "Versão publicada" : "Rascunho"}</Pill></div><div className="flex flex-wrap items-center gap-4">{podeLancar && <Button secondary disabled={ocupado || !catalogosProntos} onClick={() => editar(p)}>{p.publicadoEm ? "Criar nova versão" : "Editar rascunho"}</Button>}<a href="/pecuaria/sanidade" className="text-mast underline" onClick={(e) => { if (e.button === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) { e.preventDefault(); navegarPara("/pecuaria/sanidade"); } }}>Abrir agenda sanitária</a></div></div>
             {p.descricao && <p className="mb-4 text-sm">{p.descricao}</p>}
-            <ol className="pec-protocolo-linha-tempo" aria-label="Sequência planejada">
-              {p.etapas.map((e, i) => <li key={i}>
-                <span>D{e.diaRelativo}</span>
-                <strong>Etapa {i + 1}</strong>
-                <small>{e.tipoAplicacaoNomeSnapshot ?? (e.tipo === "EXAME" ? "Exame" : "Aplicação")}</small>
-              </li>)}
-            </ol>
-            <table aria-label={`Etapas de ${p.nome}`} className="w-full border border-border text-sm"><thead><tr><th className="p-3">Etapa</th><th className="p-3">Tipo e produto ou exame</th><th className="p-3">Dia relativo</th></tr></thead><tbody className="divide-y divide-border">{p.etapas.map((e, i) => <tr key={i}><td className="p-3"><span className="sr-only">Etapa {i + 1} · Dia {e.diaRelativo}</span>{i + 1}</td><td className="p-3">{e.tipoAplicacaoNomeSnapshot ?? (e.tipo === "EXAME" ? "Exame" : "Aplicação")} · {produtos.find((pr) => pr.id === e.produtoId)?.nome ?? exames.find((t) => t.id === e.tipoExameId)?.nome ?? (e.produtoId ? "Produto do histórico" : "Exame do histórico")} {e.dose} {e.unidade}</td><td className="p-3">D{e.diaRelativo}</td></tr>)}</tbody></table>
+            <table aria-label={`Etapas de ${p.nome}`} className="w-full border border-border text-sm consulta-tabela"><thead><tr><th className="p-3">Etapa</th><th className="p-3">Tipo e produto ou exame</th><th className="p-3">Dia relativo</th></tr></thead><tbody className="divide-y divide-border">{p.etapas.map((e, i) => <tr key={i}><td className="p-3"><span className="sr-only">Etapa {i + 1} · Dia {e.diaRelativo}</span>{i + 1}</td><td className="p-3">{e.tipoAplicacaoNomeSnapshot ?? (e.tipo === "EXAME" ? "Exame" : "Aplicação")} · {produtos.find((pr) => pr.id === e.produtoId)?.nome ?? exames.find((t) => t.id === e.tipoExameId)?.nome ?? (e.produtoId ? "Produto do histórico" : "Exame do histórico")} {e.dose} {e.unidade}</td><td className="p-3">D{e.diaRelativo}</td></tr>)}</tbody></table>
           </td></tr>}
         </Fragment>)}</tbody>
       </table></div>}
@@ -210,7 +202,7 @@ export function ProtocolosCadastro({ podeLancar }: { podeLancar: boolean }) {
           aberto
           icon={ClipboardList}
           titulo={
-            id ? "Editar protocolo em rascunho" : "Nova versão de protocolo"
+            id ? "Editar protocolo em rascunho" : criandoVersao ? "Nova versão de protocolo" : "Novo protocolo"
           }
           onFechar={() => {
             if (!ocupado) setAberto(false);

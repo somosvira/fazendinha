@@ -45,7 +45,7 @@ export function HistoricoReprodutivo({ fatos, programacoes, origemDisponivel = t
       { chave: "acao", titulo: "Ação", acoes: true, celula: f => <Button variant="outline" size="sm" onClick={() => f.grupo === "Parto" ? navegarPara(`/pecuaria/reproducao/partos/${f.id}?retorno=${encodeURIComponent(window.location.pathname+window.location.search+window.location.hash)}${f.propriedadeId != null ? `&sitio=${f.propriedadeId}` : ""}`) : onAbrir(f)}>Ver detalhes</Button> },
     ]}/>
     {!selecionados.length && <p className="p-4 text-ink-3">Nenhum evento registrado neste período e tipo.</p>}
-    <div className="repro-historico-tamanho"><label>Por página <select aria-label="Registros por página" value={tamanho} onChange={e => { setTamanho(Number(e.target.value)); setPagina(1); }}>{[5,10,20,50].map(n => <option key={n}>{n}</option>)}</select></label></div>
-    <Paginacao paginaAtual={paginaAtual} totalPaginas={totalPaginas} totalItens={selecionados.length} itensPorPagina={tamanho} onPaginaChange={setPagina} rotulo="registros" idSelect="pagina-historico-animal"/>
+    {selecionados.length > 0 && <><div className="repro-historico-tamanho"><label>Por página <select aria-label="Registros por página" value={tamanho} onChange={e => { setTamanho(Number(e.target.value)); setPagina(1); }}>{[5,10,20,50].map(n => <option key={n}>{n}</option>)}</select></label></div>
+    <Paginacao paginaAtual={paginaAtual} totalPaginas={totalPaginas} totalItens={selecionados.length} itensPorPagina={tamanho} onPaginaChange={setPagina} rotulo="registros" idSelect="pagina-historico-animal"/></>}
   </div>;
 }

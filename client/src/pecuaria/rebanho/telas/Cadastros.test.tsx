@@ -172,7 +172,7 @@ describe("Cadastros do rebanho — categorias", () => {
     fireEvent.click(primeiro("button", "Editar Em crescimento"));
     const painel = await screen.findByRole("dialog");
     expect((within(painel).getByLabelText("Idade mínima (meses)") as HTMLInputElement).value).toBe("");
-    expect((within(painel).getByLabelText("Idade máxima (meses)") as HTMLInputElement).value).toBe("12");
+    expect((within(painel).getByLabelText("Idade máxima exclusiva (meses)") as HTMLInputElement).value).toBe("12");
     expect((within(painel).getByLabelText("Partos") as HTMLSelectElement).value).toBe("SEM");
   });
 
@@ -510,5 +510,28 @@ describe("Cadastros do rebanho — material genético", () => {
     window.history.replaceState(null, "", "/pecuaria/rebanho/cadastros?aba=material-genetico&material=mg1");
     render(<Cadastros />);
     expect((await screen.findAllByText("Editar Sêmen Zeus (sexado fêmea)")).length).toBeGreaterThan(0);
+  });
+
+  it("o link direto encontra material inativo e fechar remove o editor da URL", async () => {
+    const inativo = { ...materiaisMock[0], produto: { ...materiaisMock[0].produto, ativo: false } };
+    vi.mocked(listarMaterialGenetico).mockImplementation(filtro => Promise.resolve(filtro?.incluirInativos ? [inativo] : []));
+    window.history.replaceState({}, "", "/configuracoes/pecuaria/genetica/material-genetico?material=mg1");
+    const tela = render(<Cadastros cadastro="material-genetico" embutido />);
+    await screen.findByRole("heading", { name: "Editar Sêmen Zeus (sexado fêmea)" });
+    expect(listarMaterialGenetico).toHaveBeenCalledWith({ incluirInativos: true });
+    fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+    expect(new URLSearchParams(window.location.search).has("material")).toBe(false);
+    tela.unmount();
+    render(<Cadastros cadastro="material-genetico" embutido />);
+    await screen.findByRole("heading", { name: "Materiais genéticos" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("o link de material não abre formulário de escrita para quem só consulta", async () => {
+    vi.mocked(listarMaterialGenetico).mockResolvedValue(materiaisMock);
+    window.history.replaceState({}, "", "/configuracoes/pecuaria/genetica/material-genetico?material=mg1");
+    render(<Cadastros cadastro="material-genetico" embutido podeLancar={false} />);
+    await screen.findAllByText("Sêmen Zeus (sexado fêmea)");
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 });

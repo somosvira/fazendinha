@@ -149,7 +149,7 @@ export function RelatorioPartos({ propriedadeId, podeLancar }: { propriedadeId: 
   return (
     <div className="space-y-5">
       <Panel className="space-y-4 p-5 print:hidden">
-        <div><h2 className="font-semibold">Período da consulta</h2><p className="text-sm text-muted-foreground">Consulte os partos e os acompanhamentos registrados no intervalo escolhido.</p></div>
+
       <form className="flex flex-wrap items-end gap-3" onSubmit={e => { e.preventDefault(); void consultar(); }}>
         <label className="space-y-1 text-sm">Início (inclusive)<Input type="date" required value={inicio} onChange={e => setInicio(e.target.value)} /></label>
         <label className="space-y-1 text-sm">Fim (inclusive)<Input type="date" required min={inicio} value={fim} onChange={e => setFim(e.target.value)} /></label>
@@ -167,7 +167,7 @@ export function RelatorioPartos({ propriedadeId, podeLancar }: { propriedadeId: 
         </label>
       </Panel>
       {erro && <p role="alert" className="text-destructive print:hidden">{erro}</p>}
-      {!visivel && <Panel className="p-5 print:hidden"><p role={ocupado ? "status" : undefined} className="text-muted-foreground">{ocupado ? "Carregando a ficha de partos e pós-parto…" : inicio && fim ? "O período inicial já está preenchido. Consulte a ficha de partos e pós-parto ou ajuste as datas acima." : "Defina o período acima para consultar a ficha de partos e pós-parto."}</p></Panel>}
+      {!visivel && ocupado && <p role="status" className="text-sm text-muted-foreground print:hidden">Carregando a ficha de partos e pós-parto…</p>}
       {visivel && <>
         <Panel className="space-y-3 p-5 print:hidden">
           <div><h2 className="font-semibold">Resultado exibido</h2><p className="text-sm text-muted-foreground">Sítio {visivel.propriedadeId} · {visivel.periodo.inicio} a {visivel.periodo.fim}. Impressão e CSV usam estes dados.</p></div>

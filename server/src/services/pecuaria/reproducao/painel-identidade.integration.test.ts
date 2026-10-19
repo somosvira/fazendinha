@@ -46,4 +46,22 @@ suite("painel reprodutivo — identidade histórica com fixtures próprias", () 
     expect(destino.animais.map(a => a.animalId)).toEqual([animal.id]);
     expect(destino.gestacoes).toEqual([]);
   });
+  it("consulta ficha histórica sem fatos sem incluir matriz na população atual e sem ampliar sítio", async () => {
+    exigirBancoIntegracaoPecuaria();
+    for (const nome of ["Histórico", "Sem vínculo"]) {
+      const sitio = await prisma.propriedade.create({ data: { nome: `QA painel ${nome} ${randomUUID()}` } });
+      sitios.push(sitio.id);
+    }
+    const animal = await prisma.animal.create({ data: { brinco: `QA-${randomUUID()}`, sexo: "F", origem: "COMPRADO", dataNascimento: dia("2020-01-01"), dataEntrada: dia("2025-01-01") } });
+    animais.push(animal.id);
+    await prisma.localizacaoAnimal.create({ data: { animalId: animal.id, propriedadeId: sitios[0], desde: dia("2025-01-01"), ate: dia("2025-02-01") } });
+    const painel = await painelReproducao(sitios[0], animal.id);
+    expect(painel.animais).toEqual([]);
+    expect(painel.tentativas).toEqual([]);
+    expect(painel.avaliacoes).toEqual([]);
+    expect(painel.partos).toEqual([]);
+    await expect(painelReproducao(sitios[1], animal.id)).rejects.toThrow("Animal não encontrado neste sítio");
+    expect((await painelReproducao(sitios[0])).animais).toEqual([]);
+  });
+
 });

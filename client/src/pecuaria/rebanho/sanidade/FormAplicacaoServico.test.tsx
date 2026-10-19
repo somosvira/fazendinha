@@ -201,15 +201,15 @@ describe("aplicação sanitária V3", () => {
     expect(screen.getByLabelText(/^Quantidade aplicada$/)).toHaveProperty("value", "10");
     expect(screen.getByLabelText(/Medicamento do estoque/)).toHaveProperty("value", "produto");
   });
-  it("erro coletivo abre carência e mantém quantidades revisadas enquanto dados comuns são corrigidos", async () => {
+  it("erro coletivo foca carência sempre visível e mantém quantidades revisadas enquanto dados comuns são corrigidos", async () => {
     vi.mocked(reqSanidade).mockImplementation(async (path) => { if (path === "/aplicacoes/coletivas") throw Object.assign(new Error("Informe o prazo em horas inteiras"), { campo: "itens.1.carenciaLeiteHoras" }); return []; });
     render(<FormAplicacaoServico animalId="animal" propriedadeId={1} animais={[{ id: "a", brinco: "RN01", propriedadeId: 1 }, { id: "b", brinco: "RN02", propriedadeId: 1 }]} onFechar={vi.fn()} onSalvo={vi.fn()} />);
     await screen.findByRole("option", { hidden: true, name: "Tratamento personalizado" }); await preencher(); submeter();
     await alterarControle(screen.getByLabelText(/Quantidade aplicada em RN02/), { target: { value: "7" } });
     const prazo = document.getElementById("san-prazo-0")!;
-    prazo.closest("details")!.open = false; submeter();
+    expect(prazo.closest("details")).toBeNull(); submeter();
     await waitFor(() => expect(document.activeElement).toBe(prazo));
-    expect(prazo.closest("details")).toHaveProperty("open", true);
+    expect(prazo.closest("section")).toBeTruthy();
     expect(document.getElementById("san-prazo-0-erro")?.textContent).toContain("RN02");
     expect(prazo).not.toHaveProperty("disabled", true);
     fireEvent.click(screen.getByText("Voltar aos dados comuns")); submeter();
