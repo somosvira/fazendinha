@@ -51,7 +51,14 @@ jobs:
       - name: Build (server + client)
         run: pnpm -r run build
       - name: Testes do transformador da carga da pecuária (scripts/*.test.mjs)
-        run: node --test scripts/*.test.mjs
+        run: node --test scripts/*.test.mjs server/scripts/consolidacao-sitios-local/modelo.test.mjs
+      - name: Verificar contratos da carga V4 e seed existente
+        run: |
+          pnpm --filter rionovo-server run import:pecuaria:v4:typecheck
+          pnpm --filter rionovo-server run seedatev3:typecheck
+          pnpm --filter rionovo-server run seedatev4:typecheck
+      - name: Testes da interface
+        run: pnpm --filter rionovo-client exec vitest run --fileParallelism=false
       # migrate deploy (e não db push): os índices únicos parciais da pecuária ("uma linha
       # aberta por animal") e as categorias padrão só existem no SQL da migration da
       # pecuária v1 — db push os apagaria e o banco de teste divergiria do de produção.
@@ -59,6 +66,8 @@ jobs:
         run: pnpm --filter rionovo-server exec prisma migrate deploy
       - name: Testes (server)
         run: pnpm --filter rionovo-server test
+      - name: Testes da carga técnica V4
+        run: pnpm --filter rionovo-server run test:import:pecuaria:v4
 
   financeiro-integration:
     name: financeiro (bateria de invariantes, banco real)

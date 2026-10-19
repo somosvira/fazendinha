@@ -1,3 +1,7 @@
+import { conflitoTransacaoValidada } from "../lib/transacao-validada.js";
+import { diagnosticarValorizacao, abrirValorizacao } from "../services/estoque/valorizacao.js";
+import { consultaValorizacaoSchema, aberturaValorizacaoSchema } from "../services/estoque/valorizacao.schemas.js";
+import { ValorizacaoError } from "../services/estoque/valorizacao.calc.js";
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
@@ -21,6 +25,9 @@ import { SEM_VINCULO } from "../lib/ids.js";
 
 type Status = 400 | 404 | 409 | 500;
 function fail(e: unknown): { status: Status; body: { error: string; code?: string; campo?: string } } {
+  if (conflitoTransacaoValidada(e)) return { status: 409, body: { error: "Os dados mudaram. Recarregue e confirme novamente.", code: "CONFLITO" } };
+  if (e instanceof ValorizacaoError) return { status: e.code === "VALIDACAO" ? 400 : 409, body: { error: e.message, code: e.code } };
+  if (e instanceof FinanceiroError) return { status: e.code === "VALIDACAO" ? 400 : 409, body: { error: e.message, code: e.code } };
   if (e instanceof svc.EstoqueError) {
     const map = { NAO_ENCONTRADO: 404, MES_FECHADO: 409, ORIGEM_AUTOMATICA: 409, CONFLITO: 409, VALIDACAO: 400 } as const;
     // `code` deixa o cliente distinguir CONFLITO (saldo mudou) de MES_FECHADO, ambos 409.
@@ -70,7 +77,7 @@ function apresentarMovimentos(c: Parameters<typeof getUsuario>[0], resultado: Aw
   const custos = podeVerCustos(c);
   return { ...resultado, itens: resultado.itens.map((m) => ({ ...m,
     ...(financeiro ? {} : { operacaoId: null, operacaoNumero: null }),
-    ...(custos ? {} : { custoUnitario: null, valorTotal: null, ...(m.valorTotalMovimento === undefined ? {} : { valorTotalMovimento: null }) }),
+    ...(custos ? {} : { evidenciaValor: null, custoUnitario: null, valorTotal: null, ...(m.valorTotalMovimento === undefined ? {} : { valorTotalMovimento: null }) }),
   })) };
 }
 const parseAtivo = (v?: string) => (v === "true" ? true : v === "false" ? false : undefined);
@@ -127,6 +134,25 @@ export const estoqueRouter = new Hono()
       const propriedadeId = c.req.valid("query").propriedadeId ?? await resolverEscopoLeitura(c);
       return c.json(await partidasSvc.listarPartidas(c.req.valid("query").produtoId, propriedadeId));
     } catch (e) { const { status, body } = fail(e); return c.json(body, status); }
+  })
+  .get("/estoque/produtos/:id/valorizacao", zValidator("query", consultaValorizacaoSchema), async c => {
+    if (!podeVerCustos(c)) return c.json({ error: "Sem permissão para consultar valores", code: "SEM_PERMISSAO" }, 403);
+    try {
+      if (!z.string().uuid().safeParse(c.req.param("id")).success) throw new svc.EstoqueError("VALIDACAO", "Produto inválido");
+      const input = c.req.valid("query");
+      const propriedadeId = await resolverEscopoLeitura(c);
+      if (propriedadeId == null) throw new svc.EstoqueError("VALIDACAO", "Selecione um sítio para conferir a valorização");
+      return c.json(await diagnosticarValorizacao(c.req.param("id"), propriedadeId, new Date(`${input.data ?? new Date().toISOString().slice(0,10)}T00:00:00Z`)));
+    } catch (e) { const f = fail(e); return c.json(f.body, f.status); }
+  })
+  .post("/estoque/produtos/:id/valorizacao/abertura", exigePermissao("lancar"), zValidator("json", aberturaValorizacaoSchema), async c => {
+    if (!podeVerCustos(c)) return c.json({ error: "Sem permissão para registrar valores", code: "SEM_PERMISSAO" }, 403);
+    try {
+      if (!z.string().uuid().safeParse(c.req.param("id")).success) throw new svc.EstoqueError("VALIDACAO", "Produto inválido");
+      const input = c.req.valid("json");
+      const propriedadeId = await resolverEscopoEscrita(c, input.propriedadeId ?? null);
+      return c.json(await abrirValorizacao({ ...input, produtoId: c.req.param("id"), propriedadeId }, usuarioId(c)), 201);
+    } catch (e) { const f = fail(e); return c.json(f.body, f.status); }
   })
   .get("/estoque/produtos/:id/rastreio/previa", async (c) => {
     try {

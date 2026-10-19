@@ -5,14 +5,17 @@ import { HistoricoSanitario } from "./HistoricoSanitario";
 import { reqSanidade } from "./api";
 vi.mock("./api", () => ({ reqSanidade: vi.fn() }));
 afterEach(() => { cleanup(); vi.resetAllMocks(); });
-it("mostra três áreas abertas e links canônicos preservando animal e lote", async () => {
+it("mostra áreas recolhíveis e links canônicos preservando animal e lote", async () => {
   vi.mocked(reqSanidade).mockResolvedValue([]);
   const { container } = render(<HistoricoSanitario animalId="animal-1" loteId="lote-1" />);
-  await screen.findByRole("heading", { name: "Ocorrências" });
+  await screen.findByRole("heading", { name: /^Ocorrências/ });
   expect(container.querySelector("details")).toBeNull();
   expect(screen.getAllByText("Até 10 registros")).toHaveLength(3);
-  expect(screen.getAllByText("Nenhum registro.")).toHaveLength(3);
-  for (const [nome, aba] of [["Ver ocorrências", "ocorrencias"], ["Ver exames", "exames"], ["Ver agenda", "agenda"], ["Abrir sanidade", "agenda"]]) {
+  expect(screen.getByText("Nenhuma ocorrência registrada para este animal.")).toBeTruthy();
+  expect(screen.getByRole("button", { name: /^Exames/ }).getAttribute("aria-expanded")).toBe("false");
+  fireEvent.click(screen.getByRole("button", { name: /^Exames/ }));
+  fireEvent.click(screen.getByRole("button", { name: /^Agenda/ }));
+  for (const [nome, aba] of [["Ver ocorrências", "ocorrencias"], ["Ver exames", "exames"], ["Ver agenda", "agenda"], ["Abrir sanidade completa", "agenda"]]) {
     const endereco = new URL(screen.getByRole("link", { name: nome }).getAttribute("href")!, "http://localhost");
     expect(endereco.pathname).toBe("/pecuaria/sanidade");
     expect(endereco.searchParams.get("animalId")).toBe("animal-1");
@@ -35,6 +38,6 @@ it("permite tentar novamente e anuncia carregamento", async () => {
   await screen.findByText("Falha na consulta");
   vi.mocked(reqSanidade).mockResolvedValue([]);
   fireEvent.click(screen.getByRole("button", { name: "Tentar novamente" }));
-  await waitFor(() => expect(screen.getAllByText("Nenhum registro.")).toHaveLength(3));
+  await screen.findByText("Nenhuma ocorrência registrada para este animal.");
   expect(screen.queryByText("Falha na consulta")).toBeNull();
 });

@@ -23,9 +23,10 @@ export type Fechamento = { id: string; inicio: string; fim: string; animalDias: 
   motivoEstorno?: string | null; estornadoEm?: string | null;
   itens: Array<{ produtoId: string; quantidadePrevista: string; quantidadeConfirmada: string; unidade: string; situacaoCusto: string; produto: { nome: string }; movimentoEstoque: { quantidade: string; valorTotal: string | null; custoUnitario: string | null; alocacaoPartidaEstoques: Array<{ quantidade: string; partida: { codigo: string; nome?: string | null; validade: string | null } }> } | null }> };
 
-async function req<T>(path: string, init?: RequestInit, consolidado = false): Promise<T> {
+async function req<T>(path: string, init?: RequestInit, consolidado = false, propriedadeId?: number): Promise<T> {
   const headers = comPropriedade({ ...(init?.body ? { "content-type": "application/json" } : {}), ...((init?.headers as Record<string, string>) ?? {}) });
   if (consolidado) delete headers["X-Propriedade-Id"];
+  else if (propriedadeId) headers["X-Propriedade-Id"] = String(propriedadeId);
   const r = await fetch(`/api${path}`, { ...init, headers });
   const data = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(data.error ?? `Erro HTTP ${r.status}`);
@@ -35,7 +36,7 @@ const post = <T>(path: string, body: unknown) => req<T>(path, { method: "POST", 
 
 export const listarProdutosNutricionais = () => req<ProdutoNutricional[]>("/estoque/produtos?uso=nutricional&ativo=true");
 export const listarCentrosNutricionais = () => req<CentroNutricional[]>("/estoque/centros-custo");
-export const listarPartidasNutricionais = (produtoId: string, propriedadeId?: number | null) => req<PartidaNutricional[]>(`/estoque/partidas?produtoId=${encodeURIComponent(produtoId)}${propriedadeId == null ? "" : `&propriedadeId=${propriedadeId}`}`, undefined, propriedadeId === null);
+export const listarPartidasNutricionais = (produtoId: string, propriedadeId?: number | null) => req<PartidaNutricional[]>(`/estoque/partidas?produtoId=${encodeURIComponent(produtoId)}${propriedadeId == null ? "" : `&propriedadeId=${propriedadeId}`}`, undefined, propriedadeId === null, propriedadeId ?? undefined);
 export const listarDietas = (): Promise<Dieta[]> => req<Dieta[]>("/pecuaria/rebanho/nutricao/dietas");
 export const criarDieta = (body: { nome: string; itens: Array<{ produtoId: string; quantidadeCabecaDia: number }> }) =>
   post<Dieta>("/pecuaria/rebanho/nutricao/dietas", body);

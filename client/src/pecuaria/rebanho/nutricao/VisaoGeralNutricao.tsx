@@ -12,11 +12,22 @@ import { BuscaLista } from "../../../components/BuscaLista";
 import { PaginacaoLocal, usePaginacaoLocal } from "@/components/PaginacaoLocal";
 
 export function VisaoGeralNutricao() {
-  const { dados, erro, carregando, carregar } = useConsulta(useCallback(consultarVisaoNutricional, []));
+  const { dados, erro, carregando, carregar } = useConsulta(
+    useCallback(consultarVisaoNutricional, []),
+  );
   const { params, atualizar } = useFiltrosNutricionais();
   const busca = params.get("buscaLote") ?? "";
   const situacao = params.get("situacaoDieta") ?? "";
-  const itens = dados?.lotes.filter((r) => `${r.lote.nome} ${r.lote.propriedade.nome}`.toLocaleLowerCase("pt-BR").includes(busca.toLocaleLowerCase("pt-BR")) && (!situacao || (situacao === "com") === !!r.vigente)) ?? [];
+  const itens =
+    dados?.lotes.filter(
+      (r) =>
+        `${r.lote.nome} ${r.lote.propriedade.nome}`
+          .toLocaleLowerCase("pt-BR")
+          .includes(busca.toLocaleLowerCase("pt-BR")) &&
+        (!situacao || (situacao === "com") === !!r.vigente),
+    ) ?? [];
+  const filtrosAtivos = !!busca || !!situacao;
+  const limparFiltros = () => atualizar({ buscaLote: "", situacaoDieta: "" });
   const comDieta = dados?.lotes.filter((r) => r.vigente).length ?? 0;
   const paginacao = usePaginacaoLocal(itens, `${busca}|${situacao}`);
   const animaisAtivos = dados?.lotes.reduce((soma, r) => soma + r.lote.animaisAtivos, 0) ?? 0;

@@ -1,0 +1,2559 @@
+{
+  "guia": "terrano-pr322-followup-v4",
+  "versao": 1,
+  "pr": "https://github.com/somosvira/fazendinha/pull/322",
+  "base": "2d3ebae5275441326d8cc4c9165c5f2aad8ea075",
+  "commit": "18fa8349ea057a0c512b0b963916e49a8c5ab773",
+  "grupos": [
+    {
+      "code": "ENV",
+      "nome": "Ambiente e preservação",
+      "rota": "/financeiro",
+      "fixture": "Mesmo fazendinha_seedatev3; dono, consulta e operador do seed. Nenhum reset ou backup.",
+      "casos": [
+        {
+          "id": "FU-ENV-01",
+          "titulo": "Confirmar ambiente e revisão",
+          "dados": "Commit 18fa8349; localhost:41875/41873; PostgreSQL nativo.",
+          "passos": [
+            "Conferir branch, commit e URL",
+            "Abrir o app e autenticar o dono",
+            "Registrar data-base e SHA do manifesto"
+          ],
+          "esperado": [
+            "Branch codex/pecuaria-v4-follow-up",
+            "Seed/manifesto preservados e nenhum banco adicional"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-ENV-02",
+          "titulo": "Navegação das áreas",
+          "dados": "Financeiro, Estoque, Reprodução, Visitas e Configurações.",
+          "passos": [
+            "Abrir cada área pelo menu",
+            "Voltar e avançar no navegador"
+          ],
+          "esperado": [
+            "Rotas abrem sem erro 5xx",
+            "Não reaparecem módulos legados removidos"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-ENV-03",
+          "titulo": "Consulta não cria fatos",
+          "dados": "Registrar quantidades de fatos QA antes de abrir a ficha.",
+          "passos": [
+            "Abrir e recarregar custos, demandas e indicadores",
+            "Comparar contagens QA"
+          ],
+          "esperado": [
+            "GET não cria demandas, exames, custos ou consumos"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-ENV-04",
+          "titulo": "Indisponibilidade e retomada",
+          "dados": "Simular falha apenas na requisição QA pelo Playwright.",
+          "passos": [
+            "Falhar uma leitura",
+            "Restaurar a rede e tentar novamente"
+          ],
+          "esperado": [
+            "Erro compreensível",
+            "Sem aprovação, gravação ou preenchimento clínico automático"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-ENV-05",
+          "titulo": "Verificação final",
+          "dados": "Comparar somente dados originais e IDs das fixtures criadas.",
+          "passos": [
+            "Conferir manifesto e saldos dos sítios originais",
+            "Registrar fixtures QA322 deixadas para repetição"
+          ],
+          "esperado": [
+            "Dados originais preservados",
+            "Evidências e IDs das fixtures disponíveis sem cópia do banco"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "UI ou apoio técnico"
+        }
+      ]
+    },
+    {
+      "code": "VAL",
+      "nome": "Valorização e estoque",
+      "rota": "/estoque",
+      "fixture": "Produtos QA322 próprios: rastreado e FIFO; operações sem pagamento no sítio QA; não consumir estoque do seed.",
+      "casos": [
+        {
+          "id": "FU-VAL-01",
+          "titulo": "Diagnóstico conhecido",
+          "dados": "Produto com saldo 3 e valor R$10.",
+          "passos": [
+            "Abrir a ficha e a valorização",
+            "Conferir grupo, método, quantidade e total"
+          ],
+          "esperado": [
+            "Saldo 3",
+            "R$10,00 conhecidos",
+            "Método identificado sem nova compra"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-VAL-02",
+          "titulo": "Média do saldo remanescente",
+          "dados": "Entrada 3/R$10; saída 1; nova compra 1/R$10.",
+          "passos": [
+            "Consumir uma unidade",
+            "Registrar nova entrada",
+            "Consultar saldo e consumir outra unidade"
+          ],
+          "esperado": [
+            "Primeira saída R$3,33",
+            "Saldo 3/R$16,67 após a compra",
+            "Próxima saída R$5,56"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-VAL-03",
+          "titulo": "Última saída absorve centavos",
+          "dados": "Base 3 unidades/R$10.",
+          "passos": [
+            "Efetuar três saídas de uma unidade",
+            "Conferir parcelas e saldo"
+          ],
+          "esperado": [
+            "Saídas R$3,33, R$3,34 e R$3,33 conforme saldo remanescente",
+            "Soma R$10,00 e saldo zero"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-VAL-04",
+          "titulo": "FIFO por aquisição",
+          "dados": "Aquisição A: 2/R$10; B: 3/R$21.",
+          "passos": [
+            "Consumir 3 unidades",
+            "Conferir origens da saída"
+          ],
+          "esperado": [
+            "Usa A integral R$10 + 1 de B/R$7",
+            "Saída R$17 e saldo 2/R$14"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-VAL-05",
+          "titulo": "Aquisição futura indisponível",
+          "dados": "Base futura e saída retroativa anterior a ela.",
+          "passos": [
+            "Consultar corte anterior",
+            "Tentar consumo maior que o disponível naquele dia"
+          ],
+          "esperado": [
+            "Compra futura não compõe saldo do corte",
+            "Gravação recusada sem consumo parcial"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-VAL-06",
+          "titulo": "Produto/validade/sítio separados",
+          "dados": "Mesmo produto em dois grupos e dois sítios.",
+          "passos": [
+            "Consultar os grupos",
+            "Consumir um grupo",
+            "Abrir o outro sítio"
+          ],
+          "esperado": [
+            "Não mistura bases entre validade ou sítio",
+            "Outros grupos conservados"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-VAL-07",
+          "titulo": "Zero comprovado e desconhecido",
+          "dados": "Uma base com valor zero e outra sem evidência.",
+          "passos": [
+            "Consultar ambas",
+            "Tentar consumo da base desconhecida"
+          ],
+          "esperado": [
+            "Zero aparece como conhecido",
+            "Desconhecido exige abertura, sem usar preço zero"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-VAL-08",
+          "titulo": "Abertura sem alterar quantidade",
+          "dados": "Saldo legado sem base comprovada; referência e evidência QA.",
+          "passos": [
+            "Anotar quantidade",
+            "Abrir valor com documentação",
+            "Reconsultar quantidade e financeiro"
+          ],
+          "esperado": [
+            "Somente lastro monetário criado",
+            "Sem nova quantidade, compra, obrigação ou pagamento"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-VAL-09",
+          "titulo": "Origens FIFO explícitas",
+          "dados": "Saldo 5; origens 2/R$10 e 3/R$21 com datas distintas.",
+          "passos": [
+            "Acrescentar duas origens",
+            "Confirmar abertura",
+            "Consumir três unidades"
+          ],
+          "esperado": [
+            "Quantidade das origens fecha 5",
+            "FIFO conserva R$10 e R$21 separados"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-VAL-10",
+          "titulo": "Origem não fecha saldo",
+          "dados": "Saldo 5; soma das origens 4 ou 6.",
+          "passos": [
+            "Preencher origens insuficientes e excedentes",
+            "Confirmar"
+          ],
+          "esperado": [
+            "Recusa ambas",
+            "Nenhuma abertura parcial"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-VAL-11",
+          "titulo": "Abertura inválida",
+          "dados": "Valor negativo/3 decimais, quantidade zero/4 decimais, data futura, referência curta.",
+          "passos": [
+            "Executar cada variante isoladamente",
+            "Corrigir os dados"
+          ],
+          "esperado": [
+            "Validação identifica o campo ou regra",
+            "Nenhum registro inválido persiste"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-VAL-12",
+          "titulo": "Revisão obsoleta da abertura",
+          "dados": "Abrir prévia em duas sessões; alterar saldo na segunda.",
+          "passos": [
+            "Confirmar prévia antiga",
+            "Recarregar e conferir novamente"
+          ],
+          "esperado": [
+            "Conflito exige nova revisão",
+            "Sem usar quantidade obsoleta"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-VAL-13",
+          "titulo": "Retry de abertura",
+          "dados": "Mesmo UUID e mesmo conteúdo.",
+          "passos": [
+            "Confirmar duas vezes a mesma requisição",
+            "Alterar conteúdo conservando UUID"
+          ],
+          "esperado": [
+            "Mesmo conteúdo não duplica base",
+            "Conteúdo diferente é conflito"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-VAL-14",
+          "titulo": "Corte histórico físico e monetário",
+          "dados": "Entrada anterior, consumo e transferência posterior ao corte.",
+          "passos": [
+            "Consultar antes e depois",
+            "Comparar quantidade e valor no mesmo corte"
+          ],
+          "esperado": [
+            "Nenhum movimento posterior contamina um dos lados do diagnóstico"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-VAL-15",
+          "titulo": "Transferência conserva valor FIFO",
+          "dados": "Saída que abrange duas aquisições.",
+          "passos": [
+            "Transferir entre sítios QA",
+            "Conferir bases no destino e consolidado"
+          ],
+          "esperado": [
+            "Uma origem de destino por parcela",
+            "Quantidade/valor conservados sem nova despesa"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-VAL-16",
+          "titulo": "Estorno e dependência",
+          "dados": "Entrada consumida parcialmente; saída que admite inverso.",
+          "passos": [
+            "Tentar desfazer origem já consumida",
+            "Estornar uma saída permitida"
+          ],
+          "esperado": [
+            "Dependência bloqueia inverso incoerente",
+            "Original e inverso mantêm lastro e histórico"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-VAL-17",
+          "titulo": "Perda, sanidade, IA e nutrição",
+          "dados": "Usar cada domínio com produto próprio e valor conhecido.",
+          "passos": [
+            "Registrar uma saída por domínio",
+            "Conferir parcelas e o custo do fato"
+          ],
+          "esperado": [
+            "Todos usam estoque único",
+            "Sem despesa adicional ou dupla saída"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-VAL-18",
+          "titulo": "Período e saldo insuficiente",
+          "dados": "Período QA fechado; duas saídas concorrentes que excedem o saldo.",
+          "passos": [
+            "Tentar lançamento no período fechado",
+            "Disputar o saldo em duas sessões"
+          ],
+          "esperado": [
+            "Sem contornar fechamento",
+            "No máximo consumo disponível, com atomicidade"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-VAL-19",
+          "titulo": "Troca de produto durante leitura lenta",
+          "dados": "A resposta do produto A chega depois de B.",
+          "passos": [
+            "Atrasar consulta A",
+            "Abrir B",
+            "Liberar resposta A"
+          ],
+          "esperado": [
+            "B mantém seus grupos/valores",
+            "A não injeta dados na ficha B"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        }
+      ]
+    },
+    {
+      "code": "COM",
+      "nome": "Desconto comercial e logística",
+      "rota": "/financeiro/operacoes/nova",
+      "fixture": "Compras e produtos próprios; sem liquidação de contas do cenário original.",
+      "casos": [
+        {
+          "id": "FU-COM-01",
+          "titulo": "Desconto proporcional",
+          "dados": "Itens R$100 e R$200; desconto R$30.",
+          "passos": [
+            "Preencher a compra",
+            "Simular parcelas e revisar itens"
+          ],
+          "esperado": [
+            "Líquidos R$90 e R$180",
+            "Total R$270 antes de logística"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-COM-02",
+          "titulo": "Centavos determinísticos",
+          "dados": "Três itens R$1; desconto R$0,05.",
+          "passos": [
+            "Simular e confirmar",
+            "Conferir distribuição"
+          ],
+          "esperado": [
+            "Descontos R$0,02, R$0,02 e R$0,01",
+            "Soma exata e ordem estável"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-COM-03",
+          "titulo": "Explícito com item não elegível no início",
+          "dados": "Itens 100 não elegível,100 elegível,50 elegível; [0,7.50,2.50].",
+          "passos": [
+            "Enviar simulação com desconto 10",
+            "Conferir confirmação da compra"
+          ],
+          "esperado": [
+            "Líquidos 100,92.50,47.50",
+            "Mesmo cálculo em simulação e gravação"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-COM-04",
+          "titulo": "Explícito com excluído no meio/fim",
+          "dados": "Repetir permutações conservando parcelas dos mesmos itens.",
+          "passos": [
+            "Trocar a posição do item excluído",
+            "Simular cada composição"
+          ],
+          "esperado": [
+            "Índices de todos os itens preservados",
+            "Excluído recebe zero"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-COM-05",
+          "titulo": "Elegibilidade e fechamento inválidos",
+          "dados": "Desconto em item excluído; soma diferente; comprimento incorreto.",
+          "passos": [
+            "Enviar cada composição inválida",
+            "Consultar fatos QA"
+          ],
+          "esperado": [
+            "Validação 4xx",
+            "Sem persistência ou parcela deslocada"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-COM-06",
+          "titulo": "Limite e precisão do desconto",
+          "dados": "Desconto maior que valor do item; negativo; 3 casas.",
+          "passos": [
+            "Simular as três variantes",
+            "Repetir com limite exato"
+          ],
+          "esperado": [
+            "Nenhum item fica negativo",
+            "Valor exato permitido e total em centavos"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-COM-07",
+          "titulo": "Todos excluídos",
+          "dados": "Todos itens não elegíveis; desconto 0 e depois >0.",
+          "passos": [
+            "Simular zero explícito",
+            "Tentar desconto positivo"
+          ],
+          "esperado": [
+            "Zero mantém brutos",
+            "Positivo recusado sem inventar pesos"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-COM-08",
+          "titulo": "Logística separada",
+          "dados": "Material R$300 e logística R$30.",
+          "passos": [
+            "Informar categoria/centro da logística",
+            "Confirmar a compra"
+          ],
+          "esperado": [
+            "Obrigação R$330",
+            "Estoque R$300",
+            "Logística identificável e sem entrada física"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-COM-09",
+          "titulo": "Logística por terceiro",
+          "dados": "Material e transporte com fornecedores diferentes.",
+          "passos": [
+            "Registrar operações próprias",
+            "Conferir custo do material"
+          ],
+          "esperado": [
+            "Não embute pagamento de terceiro no preço da dose"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-COM-10",
+          "titulo": "Liquidação parcial não reescreve material",
+          "dados": "Compra confirmada com obrigação de R$300; pagamento parcial de R$90. A API vigente não tem campo de abatimento/desconto de liquidação.",
+          "passos": [
+            "Conferir custo e saída histórica",
+            "Liquidar R$90 em conta QA",
+            "Reconsultar histórico e saldo da obrigação"
+          ],
+          "esperado": [
+            "Custo histórico conservado",
+            "Pagamento parcial deixa saldo R$210; não quita a diferença como desconto",
+            "Desconto comercial pertence à compra, não ao valor menor pago"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-COM-11",
+          "titulo": "Revisão, rascunho e recarga",
+          "dados": "Compra com desconto/logística em rascunho.",
+          "passos": [
+            "Salvar e reabrir",
+            "Alterar quantidade",
+            "Recalcular revisão"
+          ],
+          "esperado": [
+            "Bruto, desconto, líquido e logística coerentes",
+            "Nenhuma confirmação implícita"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-COM-12",
+          "titulo": "Tipos não admitidos",
+          "dados": "Desconto/logística em operação fora das compras previstas.",
+          "passos": [
+            "Enviar tipo incompatível",
+            "Conferir estado do estoque"
+          ],
+          "esperado": [
+            "Recusa sem criar efeito físico ou financeiro"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        }
+      ]
+    },
+    {
+      "code": "CUS",
+      "nome": "Composição dos custos diretos",
+      "rota": "/pecuaria/rebanho/animais/{id}#reproducao",
+      "fixture": "Tentativa e exame QA322; fatos próprios com material/Serviço conhecido, desconhecido e não aplicável.",
+      "casos": [
+        {
+          "id": "FU-CUS-01",
+          "titulo": "Consultar resumo sem criar despesa",
+          "dados": "Mesmo animal consultado duas vezes.",
+          "passos": [
+            "Abrir custos e recarregar",
+            "Comparar IDs e quantidades dos fatos"
+          ],
+          "esperado": [
+            "Consulta estável e sem nova despesa/consumo"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-CUS-02",
+          "titulo": "Classificar finalidade",
+          "dados": "Exame ou tentativa sem classificação; motivo válido.",
+          "passos": [
+            "Escolher fato",
+            "Marcar Reprodução, Sanidade ou Rotina",
+            "Salvar"
+          ],
+          "esperado": [
+            "Finalidade independente do vínculo operacional",
+            "Autoria, motivo e versão preservados"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-CUS-03",
+          "titulo": "Material documentado zero",
+          "dados": "Valor 0.00, referência QA e evidência de gratuidade.",
+          "passos": [
+            "Classificar e informar comprovação",
+            "Reabrir"
+          ],
+          "esperado": [
+            "Zero conhecido preservado",
+            "Não aparece como desconhecido"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-CUS-04",
+          "titulo": "Material documentado ausente",
+          "dados": "Deixar valor em branco.",
+          "passos": [
+            "Salvar classificação sem materialDocumentado",
+            "Reabrir"
+          ],
+          "esperado": [
+            "Ausência permanece desconhecida",
+            "Sem inventar zero"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-CUS-05",
+          "titulo": "Prova obrigatória",
+          "dados": "Valor informado sem referência/evidência; referência 1 caractere.",
+          "passos": [
+            "Tentar cada variante",
+            "Corrigir a comprovação"
+          ],
+          "esperado": [
+            "Validação impede confirmação sem prova"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-CUS-06",
+          "titulo": "Não aplicável",
+          "dados": "Material/serviço marcados não aplicáveis quando compatíveis.",
+          "passos": [
+            "Classificar o fato",
+            "Conferir componentes e completude"
+          ],
+          "esperado": [
+            "Não aplicável distinto de zero e de desconhecido"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-CUS-07",
+          "titulo": "Pacote e material separado",
+          "dados": "Serviço cobre procedimento, material ou ambos.",
+          "passos": [
+            "Alternar coberturas em fatos QA",
+            "Conferir resumo"
+          ],
+          "esperado": [
+            "Material incluído não é somado novamente",
+            "Pacote parcial não comprova total completo"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-CUS-08",
+          "titulo": "Completude do custo",
+          "dados": "Um componente conhecido e outro desconhecido.",
+          "passos": [
+            "Consultar completo, parcial e desconhecido",
+            "Conferir limitações"
+          ],
+          "esperado": [
+            "Rótulo e total conhecido explicam parcelas pendentes",
+            "Não apresentam custo econômico total"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-CUS-09",
+          "titulo": "Integral exclusivo",
+          "dados": "Preparatório conhecido associado integralmente a uma tentativa.",
+          "passos": [
+            "Vincular com motivo",
+            "Tentar segunda atribuição integral"
+          ],
+          "esperado": [
+            "Primeiro vínculo exclusivo",
+            "Segundo rejeitado sem duplicação"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-CUS-10",
+          "titulo": "Compartilhar parcelas",
+          "dados": "Preparatório R$30; parcelas R$10.25 e R$19.75.",
+          "passos": [
+            "Vincular duas tentativas",
+            "Conferir restante e total por origem"
+          ],
+          "esperado": [
+            "Soma R$30",
+            "Nenhum fato/consumo novo",
+            "Saldo a atribuir zero"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-CUS-11",
+          "titulo": "Excesso e parcela vazia",
+          "dados": "Preparatório R$30; parcelas somam 30.01; ambas ausentes.",
+          "passos": [
+            "Enviar as duas variantes",
+            "Conferir vínculos"
+          ],
+          "esperado": [
+            "Ambas recusadas sem gravação parcial"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-CUS-12",
+          "titulo": "Cronologia/animal do preparatório",
+          "dados": "Preparatório posterior ou de outro animal.",
+          "passos": [
+            "Tentar associar à tentativa QA"
+          ],
+          "esperado": [
+            "Recusa vínculo inválido",
+            "Origem histórica preservada"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-CUS-13",
+          "titulo": "Encerrar vínculo",
+          "dados": "Vínculo próprio ativo e motivo >=5.",
+          "passos": [
+            "Encerrar",
+            "Reconsultar histórico e saldo a atribuir"
+          ],
+          "esperado": [
+            "Histórico conservado",
+            "Encerramento não apaga preparatório nem cria inverso de estoque"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-CUS-14",
+          "titulo": "Versão obsoleta da classificação",
+          "dados": "Duas sessões com mesma versão.",
+          "passos": [
+            "Salvar na primeira",
+            "Salvar alteração diferente na segunda"
+          ],
+          "esperado": [
+            "Conflito na segunda",
+            "Não sobrescreve a classificação recente"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-CUS-15",
+          "titulo": "Retry após erro",
+          "dados": "Falhar resposta de classificação/vínculo; payload intacto.",
+          "passos": [
+            "Reenviar sem editar",
+            "Repetir após alterar payload"
+          ],
+          "esperado": [
+            "Retry mantém chave/payload",
+            "Edição ganha chave própria",
+            "Sem duplicação"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-CUS-16",
+          "titulo": "Recarga preserva editor",
+          "dados": "Editar classificação e parcelas e provocar recarga do resumo.",
+          "passos": [
+            "Esperar leitura",
+            "Reabrir editor",
+            "Conferir campos"
+          ],
+          "esperado": [
+            "Rascunhos do mesmo alvo preservados",
+            "Permissão não revela valores indevidos"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-CUS-17",
+          "titulo": "Mudança de alvo e sítio",
+          "dados": "Resposta antiga e escrita pendente no animal A.",
+          "passos": [
+            "Trocar para B/outro sítio",
+            "Liberar resposta antiga"
+          ],
+          "esperado": [
+            "B não herda erro, bloqueio, campos ou resultado de A"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-CUS-18",
+          "titulo": "Período e filtro de finalidade",
+          "dados": "Datas da realização diferentes do pagamento; finalidade ausente.",
+          "passos": [
+            "Filtrar início/fim e Sem classificação",
+            "Comparar total integral"
+          ],
+          "esperado": [
+            "Recorte pela data do fato",
+            "Total integral explicitamente separado"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-CUS-19",
+          "titulo": "Mesmos fatos em três visões",
+          "dados": "Tentativa com preparo, material e Serviço.",
+          "passos": [
+            "Abrir tentativa, participação/programação e animal",
+            "Comparar componentes por identidade"
+          ],
+          "esperado": [
+            "As visões consultam mesmos fatos",
+            "Não somar novamente seus resumos"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-CUS-20",
+          "titulo": "Nutrição por período",
+          "dados": "Fechamento existente com participação animal.",
+          "passos": [
+            "Classificar finalidade",
+            "Conferir período, quantidade e custo"
+          ],
+          "esperado": [
+            "Não altera fechamento ou animal-dias",
+            "Só finalidade gerencial"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        }
+      ]
+    },
+    {
+      "code": "ACO",
+      "nome": "Diagnóstico e reconfirmação",
+      "rota": "/pecuaria/reproducao?rotina=configuracao",
+      "fixture": "Sítio QA322 A sem políticas; animal próprio vazio e gestação própria.",
+      "casos": [
+        {
+          "id": "FU-ACO-01",
+          "titulo": "Sem prazo presumido",
+          "dados": "Nenhuma política no sítio.",
+          "passos": [
+            "Abrir política e ficha",
+            "Recarregar"
+          ],
+          "esperado": [
+            "Sem configuração ou demanda clínica automática",
+            "Campos de prazo vazios"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-ACO-02",
+          "titulo": "Política vazia inválida",
+          "dados": "Sem DG e sem reconfirmações.",
+          "passos": [
+            "Tentar registrar versão"
+          ],
+          "esperado": [
+            "Bloqueia e explica que exige ao menos um acompanhamento"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-ACO-03",
+          "titulo": "DG zero dias",
+          "dados": "Versão 1; DG após 0 dias, tipo opcional.",
+          "passos": [
+            "Configurar DG 0",
+            "Salvar",
+            "Reabrir histórico"
+          ],
+          "esperado": [
+            "Versão persistida com zero explícito",
+            "Nenhum prazo padrão substitui 0"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-ACO-04",
+          "titulo": "Limites dos prazos",
+          "dados": "DG -1,1001,1.5; reconfirmação 0,1001,1.5; ocorrências repetidas.",
+          "passos": [
+            "Enviar cada variante",
+            "Repetir limites válidos 0/1000 e 1/1000"
+          ],
+          "esperado": [
+            "Inválidos recusados",
+            "Limites inclusivos preservados"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-ACO-05",
+          "titulo": "Vigência e nova versão",
+          "dados": "V1 desde D-60; V2 desde D-30.",
+          "passos": [
+            "Criar V1 e V2",
+            "Tentar mesma vigência/anterior"
+          ],
+          "esperado": [
+            "Somente vigência posterior aceita",
+            "Histórico V1 preservado"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-ACO-06",
+          "titulo": "Tipo/versão de exame",
+          "dados": "Exame ativo reprodutivo e outro sanitário/inativo.",
+          "passos": [
+            "Escolher tipo válido",
+            "Tentar tipo incompatível e versão sem tipo"
+          ],
+          "esperado": [
+            "Versão do formato congelada",
+            "Incompatíveis recusados"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-ACO-07",
+          "titulo": "Fato novo gera demanda",
+          "dados": "Tentativa factual posterior à vigência.",
+          "passos": [
+            "Registrar tentativa",
+            "Consultar demanda"
+          ],
+          "esperado": [
+            "Uma demanda DG na data configurada, âncora e versão corretas"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-ACO-08",
+          "titulo": "Fato antigo não recebe regra por leitura",
+          "dados": "Tentativa anterior à política.",
+          "passos": [
+            "Abrir e recarregar",
+            "Conferir lista de demandas"
+          ],
+          "esperado": [
+            "Sem adoção automática ou reescrita retroativa"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-ACO-09",
+          "titulo": "Adoção com prévia e motivo",
+          "dados": "Fato anterior próprio; política selecionada.",
+          "passos": [
+            "Conferir propostas",
+            "Confirmar com motivo"
+          ],
+          "esperado": [
+            "Somente demandas propostas criadas",
+            "Snapshot e referência factual conservados"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-ACO-10",
+          "titulo": "Adoção idempotente e revisão",
+          "dados": "Mesma chave/conteúdo; prévia alterada em outra sessão.",
+          "passos": [
+            "Reenviar adoção",
+            "Tentar prévia obsoleta"
+          ],
+          "esperado": [
+            "Reenvio não duplica",
+            "Prévia obsoleta dá conflito"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-ACO-11",
+          "titulo": "Primeiro DG factual",
+          "dados": "Gestação importada com confirmação antiga e DG positivo posterior.",
+          "passos": [
+            "Adotar reconfirmação",
+            "Conferir data de referência"
+          ],
+          "esperado": [
+            "Usa primeiro DG positivo realizado comprovado",
+            "Não usa data presumida de concepção"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-ACO-12",
+          "titulo": "Resolver DG conclusivo",
+          "dados": "Exame negativo ou positivo compatível com a tentativa.",
+          "passos": [
+            "Registrar avaliação",
+            "Conferir demanda, exame e histórico"
+          ],
+          "esperado": [
+            "Fato único resolve demanda correspondente",
+            "Não cria segundo exame"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-ACO-13",
+          "titulo": "Inconclusivo mantém demanda",
+          "dados": "Exame inconclusivo por tarefa vinculada.",
+          "passos": [
+            "Executar avaliação",
+            "Conferir tarefa e demanda"
+          ],
+          "esperado": [
+            "Tarefa pode estar executada",
+            "Necessidade clínica continua pendente"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-ACO-14",
+          "titulo": "Resolver segunda ocorrência primeiro",
+          "dados": "D1/T1 e D2/T2 vencidas da mesma gestação.",
+          "passos": [
+            "Executar T2 antes de T1",
+            "Consultar demandas"
+          ],
+          "esperado": [
+            "Somente D2 resolvida",
+            "D1 continua pendente"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-ACO-15",
+          "titulo": "Segunda ocorrência pela visita",
+          "dados": "Atividade TAREFA_IATF referindo T2.",
+          "passos": [
+            "Confirmar participante",
+            "Reenviar mesma confirmação"
+          ],
+          "esperado": [
+            "Exame único ligado a D2/T2",
+            "Não resolve D1 nem duplica exame"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-ACO-16",
+          "titulo": "Ocorrência explícita incompatível",
+          "dados": "T2 enviada com demandaD1 ou gestação/animal trocado.",
+          "passos": [
+            "Tentar executar payload incompatível"
+          ],
+          "esperado": [
+            "Recusa antes de gravar exame/tarefa"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-ACO-17",
+          "titulo": "Anular DG de origem",
+          "dados": "Gestação permanece válida e aberta; D2 já resolvida.",
+          "passos": [
+            "Anular DG factual permitido",
+            "Reabrir acompanhamento"
+          ],
+          "esperado": [
+            "D2 fica pendente sem resolução",
+            "Prazos/snapshot/âncora conservados",
+            "Origem inválida visível"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-ACO-18",
+          "titulo": "Corrigir DG de origem",
+          "dados": "Origem negativa/inconclusiva, não realizada, outra gestação ou data divergente.",
+          "passos": [
+            "Executar cada correção autorizada em fixture",
+            "Consultar demanda"
+          ],
+          "esperado": [
+            "Origem inválida não é compensada por reconfirmação antiga",
+            "Avaliação vinculada bloqueada"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-ACO-19",
+          "titulo": "Origem sem ponte antiga",
+          "dados": "Demanda legada sem exameOrigemId.",
+          "passos": [
+            "Consultar e reconciliar por correção de fato próprio"
+          ],
+          "esperado": [
+            "Compatibilidade anterior mantida",
+            "Ausência não vira ponte inventada"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-ACO-20",
+          "titulo": "Encerramento factual",
+          "dados": "Gestação com parto/perda ou tentativa substituída.",
+          "passos": [
+            "Registrar fim comprovado",
+            "Conferir demandas e histórico"
+          ],
+          "esperado": [
+            "Encerramento correto com motivo estruturado",
+            "Não transforma em perda por texto livre"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-ACO-21",
+          "titulo": "Consulta sem mutação e permissões",
+          "dados": "Dono, consulta e operador; origem inválida.",
+          "passos": [
+            "Abrir a mesma demanda em cada perfil",
+            "Recarregar"
+          ],
+          "esperado": [
+            "Motivo visível a consulta",
+            "Sem UPDATE no GET",
+            "Lançamento condicionado à permissão"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-ACO-22",
+          "titulo": "Resposta lenta e retry da política",
+          "dados": "Troca de sítio durante consulta/escrita; mesma política após erro.",
+          "passos": [
+            "Atrasar resposta",
+            "Trocar sítio",
+            "Reenviar payload intacto"
+          ],
+          "esperado": [
+            "Resposta velha não injeta erro/sucesso",
+            "Chave de retry por payload preservada"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        }
+      ]
+    },
+    {
+      "code": "BIB",
+      "nome": "Biblioteca de referência",
+      "rota": "/configuracoes/pecuaria/reproducao/protocolos",
+      "fixture": "Referência Ovsynch; destino QA322 A; não publicar recomendações sem revisão técnica.",
+      "casos": [
+        {
+          "id": "FU-BIB-01",
+          "titulo": "Abrir é leitura",
+          "dados": "Sem protocolo QA322 copiado.",
+          "passos": [
+            "Abrir biblioteca",
+            "Pesquisar nome e fonte"
+          ],
+          "esperado": [
+            "Referência rastreável",
+            "Nenhum rascunho criado ao consultar"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-BIB-02",
+          "titulo": "Copiar pelo sítio ativo",
+          "dados": "Configurações monta Iatf sem propriedadeId explícito.",
+          "passos": [
+            "Selecionar QA322 A no shell",
+            "Informar nome/versão",
+            "Copiar como rascunho"
+          ],
+          "esperado": [
+            "Cópia criada em A",
+            "Não pede sítio quando ele está selecionado"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-BIB-03",
+          "titulo": "Escopo explícito prevalece",
+          "dados": "Harness monta Iatf com sítio B e ativo A.",
+          "passos": [
+            "Copiar na montagem com propriedadeId explícito"
+          ],
+          "esperado": [
+            "Destino B prevalece",
+            "Contraprova técnica/componentes, sem presumir rota UI desse estado"
+          ],
+          "prioridade": "Alta",
+          "automacao": "Técnico"
+        },
+        {
+          "id": "FU-BIB-04",
+          "titulo": "Consolidado sem sítio",
+          "dados": "Dois ou mais sítios e escopo consolidado.",
+          "passos": [
+            "Informar cópia",
+            "Acionar copiar"
+          ],
+          "esperado": [
+            "Exige escolha do sítio",
+            "Não escolhe destino silenciosamente"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-BIB-05",
+          "titulo": "Nome/versão obrigatórios",
+          "dados": "Nome vazio; versão 0/fracionada.",
+          "passos": [
+            "Tentar copiar cada variante"
+          ],
+          "esperado": [
+            "Nada criado",
+            "Validação compreensível"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-BIB-06",
+          "titulo": "Duas cópias independentes",
+          "dados": "Nomes QA322 Copia A/B e versões 1/2.",
+          "passos": [
+            "Copiar duas vezes com nomes distintos",
+            "Conferir cadastros"
+          ],
+          "esperado": [
+            "IDs/chaves próprios",
+            "Não é publicação nem execução"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-BIB-07",
+          "titulo": "Rascunho sem produto/dose presumidos",
+          "dados": "Cópia recém-criada.",
+          "passos": [
+            "Abrir etapas",
+            "Tentar publicar sem completar planejamento"
+          ],
+          "esperado": [
+            "Campos técnicos a completar explícitos",
+            "Publicação incompleta impedida"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-BIB-08",
+          "titulo": "Leitura e resposta tardia",
+          "dados": "Consulta/operador; troca de sítio durante cópia.",
+          "passos": [
+            "Consultar sem lançar",
+            "Atrasar cópia e trocar sítio"
+          ],
+          "esperado": [
+            "Consulta não oferece gravação",
+            "Resultado antigo não contamina o novo sítio"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        }
+      ]
+    },
+    {
+      "code": "TEM",
+      "nome": "Orientação temporal e marcos",
+      "rota": "/pecuaria/reproducao",
+      "fixture": "Protocolo QA com etapas em dias/horas e alerta opcional; criação exige plano publicável.",
+      "casos": [
+        {
+          "id": "FU-TEM-01",
+          "titulo": "Ausência de orientação",
+          "dados": "Protocolo sem orientacaoTemporal.",
+          "passos": [
+            "Abrir e executar etapa válida"
+          ],
+          "esperado": [
+            "Compatibilidade preservada",
+            "Nenhuma tolerância clínica global instalada"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-TEM-02",
+          "titulo": "Configurar alerta versionado",
+          "dados": "Referência início efetivo ou etapa anterior; intervalo e tolerâncias.",
+          "passos": [
+            "Salvar rascunho",
+            "Publicar nova versão",
+            "Reabrir"
+          ],
+          "esperado": [
+            "Snapshot da versão conserva orientação",
+            "Efeito ALERTA, sem mudar calendário"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-TEM-03",
+          "titulo": "Dentro e fora da tolerância",
+          "dados": "Intervalo 24h; tolerância 30min antes/60min depois.",
+          "passos": [
+            "Executar no início/fim e um minuto fora de cada limite"
+          ],
+          "esperado": [
+            "Limites avaliados de forma explícita",
+            "Fora mostra alerta sem consumo automático"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-TEM-04",
+          "titulo": "Hora desconhecida",
+          "dados": "Início/realização conhecidos apenas pelo dia.",
+          "passos": [
+            "Executar sem informar horário",
+            "Abrir histórico"
+          ],
+          "esperado": [
+            "Sem inventar meia-noite",
+            "Horário não aferido e previsão pendente explícitos"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-TEM-05",
+          "titulo": "Etapa anterior ausente",
+          "dados": "Orientação relativa à etapa anterior sem realização factual.",
+          "passos": [
+            "Abrir próxima etapa",
+            "Conferir alerta"
+          ],
+          "esperado": [
+            "Referência ausente explícita",
+            "Não presume horário planejado como realizado"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-TEM-06",
+          "titulo": "Não deslocar etapas silenciosamente",
+          "dados": "Execução atrasada; tarefas seguintes existentes.",
+          "passos": [
+            "Registrar atraso",
+            "Conferir demais previsões"
+          ],
+          "esperado": [
+            "Calendário só muda por reprogramação explícita com motivo"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-TEM-07",
+          "titulo": "Validação de parâmetros",
+          "dados": "Intervalo negativo, tolerância fracionada, efeito BLOQUEIO.",
+          "passos": [
+            "Tentar salvar cada variante"
+          ],
+          "esperado": [
+            "Parâmetros inválidos recusados",
+            "Sem recomendação clínica presumida"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-TEM-08",
+          "titulo": "Marcos e próximo passo",
+          "dados": "Tentativa, DG, reconfirmação, parto e retorno conhecidos.",
+          "passos": [
+            "Abrir círculo/timeline",
+            "Acionar marcos e próximo passo"
+          ],
+          "esperado": [
+            "Links levam ao fato/ação corretos",
+            "Data ausente não é marco concluído"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-TEM-09",
+          "titulo": "Transferência e anulação",
+          "dados": "Fatos históricos no sítio origem; matriz no destino.",
+          "passos": [
+            "Consultar marcos no destino",
+            "Anular um fato próprio permitido"
+          ],
+          "esperado": [
+            "Condição clínica acompanha animal",
+            "Custos continuam no sítio do evento"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-TEM-10",
+          "titulo": "Regressão do protocolo publicado",
+          "dados": "Alterar catálogo após uso.",
+          "passos": [
+            "Conferir tentativa e tarefa antigas",
+            "Criar nova versão"
+          ],
+          "esperado": [
+            "Snapshots antigos intactos",
+            "Sem reescrever execução ou genética"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        }
+      ]
+    },
+    {
+      "code": "VIS",
+      "nome": "Seleção livre e atendimento",
+      "rota": "/pecuaria/visitas",
+      "fixture": "Visita QA322 com dois animais próprios, motivos distintos e rascunhos diferentes.",
+      "casos": [
+        {
+          "id": "FU-VIS-01",
+          "titulo": "Entrada sem modo marcado",
+          "dados": "Nova visita.",
+          "passos": [
+            "Abrir cadastro",
+            "Conferir Agenda/Seleção livre",
+            "Continuar sem selecionar"
+          ],
+          "esperado": [
+            "Escolha explícita exigida",
+            "Abrir não cria visita"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-VIS-02",
+          "titulo": "Seleção livre independente",
+          "dados": "Animais sem pendência na agenda.",
+          "passos": [
+            "Escolher Seleção livre",
+            "Filtrar e revisar",
+            "Definir atividade"
+          ],
+          "esperado": [
+            "Não depende de tarefa prevista",
+            "Revisão mostra animais/contexto corretos"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-VIS-03",
+          "titulo": "Preparar sem executar",
+          "dados": "Visita com atividade de avaliação.",
+          "passos": [
+            "Preparar lista",
+            "Conferir painel e estoque"
+          ],
+          "esperado": [
+            "Sem novo exame, IA ou consumo até confirmação"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-VIS-04",
+          "titulo": "Lista e busca preservadas",
+          "dados": "Dois participantes; busca por brinco/nome/lote.",
+          "passos": [
+            "Buscar",
+            "Abrir animal",
+            "Voltar à lista"
+          ],
+          "esperado": [
+            "Busca, posição/contexto e participantes preservados"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-VIS-05",
+          "titulo": "Confirmar somente aberto",
+          "dados": "Rascunhos A negativo e B inconclusivo.",
+          "passos": [
+            "Abrir A",
+            "Confirmar A",
+            "Conferir B"
+          ],
+          "esperado": [
+            "Só A confirmado",
+            "B continua com rascunho sem fato clínico"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-VIS-06",
+          "titulo": "Filtro vazio recuperável",
+          "dados": "Dentro do animal escolher Confirmados sem haver confirmação.",
+          "passos": [
+            "Voltar à lista",
+            "Remover filtro Atendimento"
+          ],
+          "esperado": [
+            "Filtro continua acessível",
+            "Lista volta a mostrar animais"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-VIS-07",
+          "titulo": "Motivo persistido na URL",
+          "dados": "URL com atividade-ID-motivo e somente um participante compatível.",
+          "passos": [
+            "Abrir URL",
+            "Remover motivo no filtro"
+          ],
+          "esperado": [
+            "Checkbox acessível",
+            "URL limpa e outro animal reaparece"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-VIS-08",
+          "titulo": "Rascunho ao trocar animal",
+          "dados": "Editar A e mudar para B antes do debounce.",
+          "passos": [
+            "Trocar rapidamente",
+            "Voltar e recarregar"
+          ],
+          "esperado": [
+            "Última edição recuperável e salva",
+            "Sem contaminação entre animais"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-VIS-09",
+          "titulo": "Falha de gravação do rascunho",
+          "dados": "Interromper request QA de rascunho.",
+          "passos": [
+            "Editar e navegar",
+            "Restaurar rede"
+          ],
+          "esperado": [
+            "Erro não apaga campos",
+            "Retentativa respeita versão e chave"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-VIS-10",
+          "titulo": "Conflito entre editores",
+          "dados": "Mesmo participante em duas sessões.",
+          "passos": [
+            "Salvar rascunho na primeira",
+            "Salvar versão antiga na segunda"
+          ],
+          "esperado": [
+            "Conflito sem sobrescrever a versão recente"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-VIS-11",
+          "titulo": "Ausência e adiamento",
+          "dados": "Participante próprio sem execução.",
+          "passos": [
+            "Marcar Adiado/Não atendido",
+            "Informar motivo",
+            "Conferir histórico"
+          ],
+          "esperado": [
+            "Não exige data de execução",
+            "Não gera avaliação nem consome estoque"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-VIS-12",
+          "titulo": "Retry de confirmação",
+          "dados": "Mesmo UUID e conteúdo; resposta original perdida.",
+          "passos": [
+            "Reenviar confirmação",
+            "Conferir IDs e versão"
+          ],
+          "esperado": [
+            "Mesmo exame/resposta",
+            "Sem duplicação ou sobrescrita posterior"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-VIS-13",
+          "titulo": "Atomicidade do subconjunto",
+          "dados": "Duas linhas, uma inválida.",
+          "passos": [
+            "Confirmar ambas",
+            "Corrigir inválida e tentar novamente"
+          ],
+          "esperado": [
+            "Primeira tentativa não confirma parcialmente",
+            "Segunda produz fatos únicos"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-VIS-14",
+          "titulo": "Limite e paginação",
+          "dados": "101+ participantes QA; seleção atravessa páginas.",
+          "passos": [
+            "Preparar grupo",
+            "Confirmar blocos até 100",
+            "Retomar restante"
+          ],
+          "esperado": [
+            "Sem corte silencioso",
+            "Limite do servidor preservado"
+          ],
+          "prioridade": "Alta",
+          "automacao": "Técnico ou massa adicional"
+        },
+        {
+          "id": "FU-VIS-15",
+          "titulo": "Encerrar e reabrir rota",
+          "dados": "Visita encerrada com pendências.",
+          "passos": [
+            "Alterar query etapa=atendimento",
+            "Tentar nova confirmação"
+          ],
+          "esperado": [
+            "Consulta e reimpressão disponíveis",
+            "Sem nova execução por manipular URL"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-VIS-16",
+          "titulo": "Agenda preservada",
+          "dados": "Uma visita criada pela Agenda e outra livre.",
+          "passos": [
+            "Alternar percursos",
+            "Conferir filtros e confirmação coletiva"
+          ],
+          "esperado": [
+            "Sem misturar seleções",
+            "Fluxo coletivo mantém regras e guardas"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        }
+      ]
+    },
+    {
+      "code": "PER",
+      "nome": "Perdas e aborto",
+      "rota": "/pecuaria/reproducao",
+      "fixture": "Gestações QA322 próprias com origem explícita/desconhecida; não alterar gestações originais.",
+      "casos": [
+        {
+          "id": "FU-PER-01",
+          "titulo": "Explicação obrigatória",
+          "dados": "Gestação aberta; motivo vazio, espaços ou 4 caracteres.",
+          "passos": [
+            "Tentar registrar perda",
+            "Conferir gestação"
+          ],
+          "esperado": [
+            "Recusa e mantém gestação aberta",
+            "Não inventa causa"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-PER-02",
+          "titulo": "Causa desconhecida válida",
+          "dados": "Motivo factual >=5; causa DESCONHECIDA.",
+          "passos": [
+            "Registrar perda",
+            "Reabrir histórico"
+          ],
+          "esperado": [
+            "Encerra com PERDA",
+            "Causa desconhecida e autoria preservadas"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-PER-03",
+          "titulo": "Suspeita/confirmada com descrição",
+          "dados": "Causa SUSPEITA ou CONFIRMADA sem descrição e depois com descrição.",
+          "passos": [
+            "Tentar sem descrição",
+            "Completar e confirmar"
+          ],
+          "esperado": [
+            "Sem descrição bloqueia",
+            "Grau de certeza não é diagnóstico automático"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-PER-04",
+          "titulo": "Referências textuais",
+          "dados": "Duas linhas de evidência; 20 e 21 referências; linhas 1 e 1001 caracteres.",
+          "passos": [
+            "Preencher variantes",
+            "Salvar somente válida",
+            "Consultar histórico"
+          ],
+          "esperado": [
+            "Até 20 referências de 2..1000 caracteres",
+            "Não transforma texto em anexo R2"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-PER-05",
+          "titulo": "Histórico em consulta",
+          "dados": "Perda própria confirmada; perfil somente consulta.",
+          "passos": [
+            "Abrir histórico",
+            "Conferir motivo, data, causa e evidências"
+          ],
+          "esperado": [
+            "Dados visíveis sem botão de lançamento",
+            "Autor não é responsável presumido"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-PER-06",
+          "titulo": "Identidade após transferência",
+          "dados": "Matriz transferida depois da perda.",
+          "passos": [
+            "Abrir histórico no sítio do fato e ficha do animal"
+          ],
+          "esperado": [
+            "Identificação preservada",
+            "Custos não vazam entre sítios"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-PER-07",
+          "titulo": "Novo aborto exige explicação",
+          "dados": "Parto com desfecho ABORTO.",
+          "passos": [
+            "Tentar vazio/4 caracteres/espaços",
+            "Registrar com explicação válida"
+          ],
+          "esperado": [
+            "Inválidos recusados inclusive serviço",
+            "Aborto factual com texto preservado"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-PER-08",
+          "titulo": "Aborto legado sem observação",
+          "dados": "Registro anterior comprovado com observacao null ou vazia.",
+          "passos": [
+            "Corrigir somente responsável/peso/escore",
+            "Repetir tipo histórico"
+          ],
+          "esperado": [
+            "Correção aceita sem inventar observação",
+            "Ausência histórica preservada"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "Técnico: exige legado existente"
+        },
+        {
+          "id": "FU-PER-09",
+          "titulo": "Conversão e alteração da observação",
+          "dados": "Nascimento->ABORTO; aborto com observação válida->null/curta.",
+          "passos": [
+            "Tentar variantes sem texto suficiente",
+            "Completar explicação"
+          ],
+          "esperado": [
+            "Ambas exigem >=5 caracteres",
+            "Distinção undefined/null preservada"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-PER-10",
+          "titulo": "Aborto não duplica perda",
+          "dados": "Aborto vinculado à gestação.",
+          "passos": [
+            "Consultar perdas, partos e indicadores"
+          ],
+          "esperado": [
+            "Um fato de parto com subtipo ABORTO",
+            "Sem segunda perda",
+            "Natimorto distinto"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-PER-11",
+          "titulo": "Texto não define desfecho",
+          "dados": "Gestação histórica encerrada com motivo contendo palavra perda, sem evidência.",
+          "passos": [
+            "Consultar indicadores e histórico"
+          ],
+          "esperado": [
+            "NAO_IDENTIFICADO permanece a esclarecer",
+            "Não classifica por substring"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-PER-12",
+          "titulo": "Cronologia e repetição",
+          "dados": "Perda anterior ao DG, segunda perda, retry da mesma chave.",
+          "passos": [
+            "Tentar cada variante",
+            "Conferir fatos e estoque"
+          ],
+          "esperado": [
+            "Cronologia/dobro de encerramento recusados",
+            "Retry não duplica"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        }
+      ]
+    },
+    {
+      "code": "IND",
+      "nome": "Indicadores e relatórios",
+      "rota": "/pecuaria/reproducao?rotina=indicadores",
+      "fixture": "Período e corte explícitos; dados reais do cenário e fixtures próprias com datas verificáveis.",
+      "casos": [
+        {
+          "id": "FU-IND-01",
+          "titulo": "Filtros e metodologia explícitos",
+          "dados": "Início, fim e corte; versão metodológica.",
+          "passos": [
+            "Consultar indicadores",
+            "Conferir população e filtros"
+          ],
+          "esperado": [
+            "Método, corte, lacunas e origem dos fatos apresentados"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-IND-02",
+          "titulo": "Datas inválidas",
+          "dados": "Fim anterior ao início; corte anterior ao fim; data inexistente.",
+          "passos": [
+            "Enviar cada combinação",
+            "Corrigir datas"
+          ],
+          "esperado": [
+            "4xx sem relatório ou números enganadores"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-IND-03",
+          "titulo": "Coorte e fila distintas",
+          "dados": "Um ciclo iniciado no período e outro anterior ainda liberado.",
+          "passos": [
+            "Consultar período",
+            "Comparar coorte e fila atual"
+          ],
+          "esperado": [
+            "Coorte usa início do ciclo",
+            "Fila inclui ciclo anterior ainda disponível"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-IND-04",
+          "titulo": "Ainda sem serviço",
+          "dados": "Ciclos liberados sem IA/TE/cobertura.",
+          "passos": [
+            "Consultar espera"
+          ],
+          "esperado": [
+            "Exibe quantidade e tempo observado",
+            "Não calcula média só das atendidas como se fosse toda população"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-IND-05",
+          "titulo": "Saída limita espera",
+          "dados": "Animal sai do sítio antes do corte.",
+          "passos": [
+            "Consultar coorte origem",
+            "Conferir espera e data de saída"
+          ],
+          "esperado": [
+            "Espera termina na saída",
+            "Não cresce até o corte"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-IND-06",
+          "titulo": "Retorno comprovado à fila",
+          "dados": "Animal saiu e retornou ao sítio antes do corte.",
+          "passos": [
+            "Consultar fila após retorno e antes dele"
+          ],
+          "esperado": [
+            "Retorno permite presença atual",
+            "Histórico/coorte conserva saída anterior",
+            "Baixado continua fora"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-IND-07",
+          "titulo": "Restrição e antecipação",
+          "dados": "Restrição intermediária e serviço antes do PEV/liberação.",
+          "passos": [
+            "Consultar intervalos",
+            "Abrir detalhes"
+          ],
+          "esperado": [
+            "Dias corridos sem subtrair silenciosamente restrição",
+            "Antecipação destacada"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-IND-08",
+          "titulo": "Liberação ausente",
+          "dados": "Sem PEV/política/liberação comprovada.",
+          "passos": [
+            "Consultar fila e pendências"
+          ],
+          "esperado": [
+            "Não inventa liberação nem zero dias",
+            "Animal aparece na pendência correta"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-IND-09",
+          "titulo": "Tentativas anteriores ao período",
+          "dados": "Concepção no período com 2 tentativas válidas anteriores no mesmo ciclo.",
+          "passos": [
+            "Consultar tentativas por concepção",
+            "Conferir IDs"
+          ],
+          "esperado": [
+            "Conta acumulada do mesmo ciclo inclusive fora do período",
+            "Sem vínculo comprovado não presume concepção"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-IND-10",
+          "titulo": "Perda não reinicia contagem",
+          "dados": "Perda sem parto e tentativa posterior; aborto factual em outro caso.",
+          "passos": [
+            "Comparar ciclos e tentativas"
+          ],
+          "esperado": [
+            "Perda não zera ciclo",
+            "Parto/aborto reiniciam o ciclo operacional"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-IND-11",
+          "titulo": "Perdas sem janela",
+          "dados": "janelaPerdaDias ausente.",
+          "passos": [
+            "Consultar perdas"
+          ],
+          "esperado": [
+            "Somente contagens",
+            "Nenhum percentual presumido"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-IND-12",
+          "titulo": "Perdas com janela e seguimento",
+          "dados": "Janela 40 dias; 1 perda,1 sem perda com seguimento,1 incompleta. Na fixture: DG em D-40, reconfirmação no corte D; coorte em setembro.",
+          "passos": [
+            "Consultar coorte e evidências"
+          ],
+          "esperado": [
+            "Numerador1/denominador2=50%",
+            "Incompleta separada do denominador"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-IND-13",
+          "titulo": "Bordas da janela",
+          "dados": "Perda/DG no início/fim; desfecho exatamente no fim da janela e dia seguinte.",
+          "passos": [
+            "Consultar cada corte",
+            "Conferir evidências"
+          ],
+          "esperado": [
+            "Limites temporais seguem metodologia",
+            "Fato posterior ao corte não entra"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-IND-14",
+          "titulo": "Gestação sem primeiro DG",
+          "dados": "Confirmação histórica sem exame factual comprovado.",
+          "passos": [
+            "Consultar perdas e pendências"
+          ],
+          "esperado": [
+            "Ausência explícita",
+            "Não usa data presumida como primeiro DG"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-IND-15",
+          "titulo": "IEP principal e alternativa",
+          "dados": "Nascimento/natimorto com aborto intermediário.",
+          "passos": [
+            "Consultar modo principal",
+            "Alterar para todos os partos"
+          ],
+          "esperado": [
+            "Principal exclui aborto como par e o destaca",
+            "Alternativa inclui todos os partos"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-IND-16",
+          "titulo": "Par anterior fora do período",
+          "dados": "Segundo parto no período; anterior fora; gêmeos no segundo.",
+          "passos": [
+            "Consultar IEP e evidências"
+          ],
+          "esperado": [
+            "Anterior pode estar fora",
+            "Gêmeos contam um parto",
+            "Sem anterior não inventa intervalo"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-IND-17",
+          "titulo": "Transferência e filtros históricos",
+          "dados": "Animal no sítio/lote/papel diferentes no início e no corte.",
+          "passos": [
+            "Filtrar coorte/fila/perdas",
+            "Conferir exclusões"
+          ],
+          "esperado": [
+            "Usa contexto da população/data correspondente",
+            "Escopo desconhecido fica explícito"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-IND-18",
+          "titulo": "Identificações e links",
+          "dados": "Matriz transferida e fatos de origem/destino.",
+          "passos": [
+            "Abrir evidência e animal pelos indicadores"
+          ],
+          "esperado": [
+            "Nome/brinco preservados",
+            "Links respeitam escopo do fato",
+            "Sem vazamento de valores"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-IND-19",
+          "titulo": "TS/TC/TP preservadas",
+          "dados": "Mesmo recorte anterior aprovado na V4.",
+          "passos": [
+            "Consultar indicadores existentes e adicionais"
+          ],
+          "esperado": [
+            "Novos indicadores não reescrevem regras TS/TC/TP"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-IND-20",
+          "titulo": "Emissão V2 e reimpressão V1",
+          "dados": "Emissão V1 existente; nova V2 autorizada com R2.",
+          "passos": [
+            "Emitir nova V2",
+            "Alterar dados QA",
+            "Reimprimir V1 e V2"
+          ],
+          "esperado": [
+            "Cada emissão conserva snapshot/metodologia",
+            "Arquivos/R2 pendentes bloqueiam somente execução dependente"
+          ],
+          "prioridade": "Alta",
+          "automacao": "R2 / aceite manual"
+        }
+      ]
+    },
+    {
+      "code": "SEG",
+      "nome": "Permissões e invariantes técnicas",
+      "rota": "/pecuaria/reproducao",
+      "fixture": "Sessões independentes de dono, consulta e operador; não alterar papéis existentes.",
+      "casos": [
+        {
+          "id": "FU-SEG-01",
+          "titulo": "Consulta sem editor",
+          "dados": "Perfil consulta.",
+          "passos": [
+            "Abrir biblioteca, política, visita e custos",
+            "Tentar escrita direta autorizada de teste com payload QA"
+          ],
+          "esperado": [
+            "Leitura permitida",
+            "POST/PUT sem lançar responde403",
+            "Não basta esconder botão"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-SEG-02",
+          "titulo": "Operador sem valores",
+          "dados": "Perfil operador sem verValores.",
+          "passos": [
+            "Abrir custos e estoque",
+            "Inspecionar DTO de custos e diagnóstico monetário"
+          ],
+          "esperado": [
+            "DTO OCULTO, valores/referências monetárias ausentes",
+            "Valorização retorna403"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-SEG-03",
+          "titulo": "Dono com valores",
+          "dados": "Mesmo fato QA com dono.",
+          "passos": [
+            "Consultar custo e diagnóstico"
+          ],
+          "esperado": [
+            "Valores e editores permitidos aparecem",
+            "Sem contaminar sessão do operador"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-SEG-04",
+          "titulo": "Pecuária sem Financeiro",
+          "dados": "Perfil restrito Pecuária se já existir ou fixture de acesso própria.",
+          "passos": [
+            "Consultar custos, snapshots e links",
+            "Tentar Financeiro direto"
+          ],
+          "esperado": [
+            "Valores financeiros mascarados também no servidor",
+            "Sem acl de sítio por usuário presumida"
+          ],
+          "prioridade": "Alta",
+          "automacao": "Perfil adicional"
+        },
+        {
+          "id": "FU-SEG-05",
+          "titulo": "Escopo incompatível",
+          "dados": "Cabeçalho de sítio A com corpo B; IDs de fato de outro sítio.",
+          "passos": [
+            "Enviar leitura/escrita incompatíveis",
+            "Conferir resposta"
+          ],
+          "esperado": [
+            "4xx adequado e nenhuma gravação cruzada"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-SEG-06",
+          "titulo": "Autenticação inválida",
+          "dados": "Sessão ausente/expirada.",
+          "passos": [
+            "Abrir rota protegida",
+            "Enviar GET/POST sem sessão"
+          ],
+          "esperado": [
+            "401/retorno ao login",
+            "Nenhum dado sensível no corpo"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-SEG-07",
+          "titulo": "Idempotência sob concorrência",
+          "dados": "Mesma chave em duas confirmações simultâneas; depois chave igual e conteúdo diferente.",
+          "passos": [
+            "Disparar requisições simultâneas de fato QA",
+            "Repetir payload divergente"
+          ],
+          "esperado": [
+            "Um efeito",
+            "Resposta estável ou conflito seguro",
+            "Conteúdo divergente recusado"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "Técnico"
+        },
+        {
+          "id": "FU-SEG-08",
+          "titulo": "Disputa de saldo/vínculo",
+          "dados": "Duas sessões disputam último saldo/valor da origem.",
+          "passos": [
+            "Confirmar ambas simultaneamente",
+            "Consultar parcelas e auditoria"
+          ],
+          "esperado": [
+            "Conservação e unicidade",
+            "Nenhum saldo negativo ou atribuição acima do limite"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "Técnico"
+        },
+        {
+          "id": "FU-SEG-09",
+          "titulo": "Período fechado",
+          "dados": "Período próprio fechado explicitamente por ferramenta administrativa existente.",
+          "passos": [
+            "Tentar consumo, compra ou correção retroativa"
+          ],
+          "esperado": [
+            "Bloqueio do domínio conservado",
+            "Não contornar via outra rota"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "Fixture administrativa"
+        },
+        {
+          "id": "FU-SEG-10",
+          "titulo": "Validação de IDs e payload",
+          "dados": "UUID inválido, zero, Int4 excedido, campos extras, strings muito longas.",
+          "passos": [
+            "Enviar variantes às rotas alteradas"
+          ],
+          "esperado": [
+            "4xx e erro claro",
+            "Sem erro bruto de banco ou stack/segredos"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-SEG-11",
+          "titulo": "Paginação sem vazamento",
+          "dados": "100+ componentes/fatos; outro sítio.",
+          "passos": [
+            "Paginar todos os resultados",
+            "Comparar totais e ids"
+          ],
+          "esperado": [
+            "Sem truncar, duplicar ou expor fatos/valores do outro escopo"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-SEG-12",
+          "titulo": "Auditoria e ausência de efeitos extras",
+          "dados": "Fatos QA de cada novo fluxo.",
+          "passos": [
+            "Consultar histórico antes/depois e reenvio"
+          ],
+          "esperado": [
+            "Autoria/motivo/versão e original preservados",
+            "Sem estoque ou despesa paralelos"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "Técnico"
+        }
+      ]
+    },
+    {
+      "code": "UX",
+      "nome": "Interface e aceite humano",
+      "rota": "/pecuaria/reproducao",
+      "fixture": "Desktop1440x1000, tablet768x1024 e celular390x844; zoom e teclado.",
+      "casos": [
+        {
+          "id": "FU-UX-01",
+          "titulo": "Responsividade dos fluxos novos",
+          "dados": "Custos, biblioteca, política, indicadores e lista individual.",
+          "passos": [
+            "Abrir em 390,768,1440px",
+            "Conferir controles e rodapés"
+          ],
+          "esperado": [
+            "Sem corte de ações",
+            "Tabelas rolam dentro da região",
+            "Contexto e campos legíveis"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-UX-02",
+          "titulo": "Teclado e foco",
+          "dados": "Tab, ShiftTab, Enter e Escape.",
+          "passos": [
+            "Percorrer filtros/editor e retornar à lista",
+            "Abrir/fechar painéis"
+          ],
+          "esperado": [
+            "Foco visível e ordem compreensível",
+            "Sem prender foco ou confirmar sem intenção"
+          ],
+          "prioridade": "Alta",
+          "automacao": "Manual + apoio UI"
+        },
+        {
+          "id": "FU-UX-03",
+          "titulo": "Estados vazio/erro/carregando",
+          "dados": "Sítio sem dados e leitura com falha.",
+          "passos": [
+            "Abrir todas as novas consultas",
+            "Restaurar rede"
+          ],
+          "esperado": [
+            "Vazio distinto de erro",
+            "Carregamento não exibe dados do alvo anterior"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-UX-04",
+          "titulo": "Texto longo, XSS e acentuação",
+          "dados": "Nome comprido, aspas, acentos e texto <img onerror>.",
+          "passos": [
+            "Salvar somente em fixture de texto",
+            "Consultar histórico/relatório"
+          ],
+          "esperado": [
+            "Texto escapado",
+            "Sem executar HTML",
+            "Conteúdo legível e autoria preservada"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-UX-05",
+          "titulo": "Rascunhos e mudança de permissão",
+          "dados": "Editor aberto e refresh do resumo.",
+          "passos": [
+            "Editar sem confirmar",
+            "Recarregar trecho e mudar alvo"
+          ],
+          "esperado": [
+            "Mesmo alvo conserva campos recuperáveis",
+            "Outro alvo reinicia sem injetar dados antigos"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-UX-06",
+          "titulo": "Documento manual funciona offline",
+          "dados": "Este HTML local, sem CDN/servidor.",
+          "passos": [
+            "Filtrar por área, prioridade e status",
+            "Registrar resultado",
+            "Recarregar",
+            "Exportar/importar JSON",
+            "Imprimir"
+          ],
+          "esperado": [
+            "Marcação manual persiste",
+            "Resultado automático não aprova aceite humano",
+            "V3/V4 preservados"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-UX-07",
+          "titulo": "Roteiro e resultados rastreáveis",
+          "dados": "Commit, data, perfil, caso e tipo da evidência.",
+          "passos": [
+            "Abrir resultado automatizado",
+            "Conferir evidência e bloqueio"
+          ],
+          "esperado": [
+            "UI real, API de apoio e teste de código identificados separadamente",
+            "Não executado nunca aparece aprovado"
+          ],
+          "prioridade": "Alta",
+          "automacao": "UI ou apoio técnico"
+        },
+        {
+          "id": "FU-UX-08",
+          "titulo": "Aceite da fazenda",
+          "dados": "Revisão dos números, vocabulário e conduta com responsável.",
+          "passos": [
+            "Executar casos essenciais com operador real",
+            "Registrar divergências e aceite"
+          ],
+          "esperado": [
+            "Aceite humano explícito",
+            "Sem aprovação clínica derivada da automação"
+          ],
+          "prioridade": "Crítica",
+          "automacao": "Manual"
+        }
+      ]
+    }
+  ]
+}

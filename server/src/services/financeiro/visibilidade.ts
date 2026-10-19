@@ -24,7 +24,7 @@ export function mascararDto<T, C extends Contrato>(dados: T, contrato: C): Masca
 }
 
 export const valoresConta = { saldoAbertura: true, saldoAtual: true } as const;
-export const valoresMovimentoEstoque = { custoUnitario: true, valorTotal: true, valorTotalMovimento: true } as const;
+export const valoresMovimentoEstoque = { custoUnitario: true, valorTotal: true, valorTotalMovimento: true, evidenciaValor: true } as const;
 export const valoresTransacao = { valorTotal: true, movimentos: { valor: true }, liquidacoes: { valor: true }, operacao: { valorTotal: true } } as const;
 export const valoresCompromisso = {
   valorOriginal: true, valorLiquidado: true, saldoPendente: true, saldoExigivel: true,
@@ -32,10 +32,10 @@ export const valoresCompromisso = {
 } as const;
 const valoresProcedimento = { valorProdutoAtribuido: true, valorServicoAtribuido: true } as const;
 export const valoresOperacao = {
-  valorTotal: true, itens: { valorUnitario: true, valorTotal: true, valorProdutoAtribuido: true, valorServicoAtribuido: true },
+  valorTotal: true, composicaoComercial: true, itens: { valorUnitario: true, valorTotal: true, valorProdutoAtribuido: true, valorServicoAtribuido: true },
   compromissos: valoresCompromisso, transacoes: valoresTransacao, movimentosEstoque: valoresMovimentoEstoque,
-  perdas: valoresMovimentoEstoque, transferencias: valoresMovimentoEstoque, procedimentosServico: { valor: true },
-  procedimentosSanitarios: { aplicacoes: valoresProcedimento, exames: valoresProcedimento, execucoes: valoresProcedimento, protocolos: valoresProcedimento },
+  perdas: valoresMovimentoEstoque, transferencias: valoresMovimentoEstoque, procedimentosServico: { valor: true }, referenciaValor: true, evidenciaValor: true,
+  procedimentosSanitarios: { aplicacoes: valoresProcedimento, exames: valoresProcedimento, execucoes: valoresProcedimento, protocolos: valoresProcedimento, tentativas: valoresProcedimento },
   resumoCancelamento: { compromissos: valoresCompromisso, transacoes: valoresTransacao, impactosPorConta: { entrada: true, saida: true } },
 } as const;
 

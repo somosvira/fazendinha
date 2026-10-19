@@ -15,9 +15,9 @@ afterAll(async () => {
   if (!propriedadeId) return;
   await prisma.requisicaoPecuaria.deleteMany({ where: { propriedadeId } });
   await prisma.auditoriaPecuaria.deleteMany({ where: { OR: [{ animalId: { in: animalIds } }, { entidadeId: { in: tipoIds } }] } });
-  await prisma.exameAnimal.deleteMany({ where: { animalId: { in: animalIds } } });
+  await prisma.vinculoTarefaProtocolo.deleteMany({ where: { exame: { animalId: { in: animalIds } } } }); await prisma.exameAnimal.deleteMany({ where: { animalId: { in: animalIds } } });
   await prisma.tipoExame.deleteMany({ where: { id: { in: tipoIds } } });
-  await prisma.destinoAnimal.deleteMany({ where: { animalId: { in: animalIds } } });
+  await prisma.periodoReprodutivoAnimal.deleteMany({ where: { animalId: { in: animalIds } } }); await prisma.destinoAnimal.deleteMany({ where: { animalId: { in: animalIds } } });
   await prisma.localizacaoAnimal.deleteMany({ where: { animalId: { in: animalIds } } });
   await prisma.animal.deleteMany({ where: { id: { in: animalIds } } });
   await prisma.propriedade.delete({ where: { id: propriedadeId } });
@@ -52,6 +52,17 @@ describeComBanco("integridade dos exames com PostgreSQL", () => {
     await corrigirExame(exame.id, propriedadeId, { anular: true, motivo: "Amostra descartada antes da análise" }, null);
     await expect(editarTipoExame(tipo.id, { unidade: "mg" }, null)).rejects.toMatchObject({ code: "CONFLITO" });
     expect((await listarTiposExame(true)).find((v) => v.id === tipo.id)).toMatchObject({ formatoBloqueado: true, ativo: false });
+  });
+
+  it("versiona formatos sem alterar a coleta e serializa novas versões concorrentes", async () => {
+    const anterior = await novoTipo("versão original");
+    const coleta = await registrarExame({ ...input(anterior.id), resultadoNumero: 0 }, null);
+    const versoes = await Promise.all([1,2].map(n => criarTipoExame({ versaoAnteriorId: anterior.id, nome: `Versão ${n} ${run}`, tipoResultado: "NUMERO", unidade: "kg" }, null)));
+    tipoIds.push(...versoes.map(v => v.id));
+    expect(versoes.map(v => v.versaoFormato).sort()).toEqual([2,3]);
+    expect(versoes.every(v => v.versaoAnteriorId === anterior.id)).toBe(true);
+    expect((await prisma.exameAnimal.findUniqueOrThrow({ where: { id: coleta.id } })).formatoSnapshot).toMatchObject({ unidade:"mg" });
+    expect((await prisma.tipoExame.findUniqueOrThrow({ where: { id: anterior.id } })).versaoFormato).toBe(1);
   });
 
   it("opções ficam bloqueadas após uso e correção mantém formato original", async () => {
@@ -117,4 +128,22 @@ describeComBanco("integridade dos exames com PostgreSQL", () => {
     const historico = await obterHistoricoExame(exame.id, [propriedadeId]);
     expect(historico.itens[0].acao).toBe("ANULACAO");
   });
+  it("um exame tem várias observações e a correção conserva as anteriores", async () => {
+    const tipo = await criarTipoExame({ nome: `Composto ${run}`, tipoResultado: "MULTIPLO", campos: [
+      { codigo: "MEDIDA", rotulo: "Medida", tipo: "NUMERO", unidade: "mm", obrigatorio: true },
+      { codigo: "OBSERVADO", rotulo: "Achado observado", tipo: "BOOLEANO", obrigatorio: false },
+    ] }, null);
+    tipoIds.push(tipo.id);
+    const exame = await registrarExame({ ...input(tipo.id), resultados: [{ campo: "MEDIDA", valor: "0" }, { campo: "OBSERVADO", valor: false }] }, null);
+    expect(exame.resultadoNumero).toBeNull();
+    expect(await prisma.resultadoExame.count({ where: { exameId: exame.id, vigente: true } })).toBe(2);
+    await corrigirExame(exame.id, propriedadeId, { motivo: "Medida revisada com o responsável", resultados: [{ campo: "MEDIDA", valor: "1.250" }] }, null);
+    const historico = await prisma.resultadoExame.findMany({ where: { exameId: exame.id } });
+    expect(historico).toHaveLength(3);
+    expect(historico.filter(r => r.vigente)).toMatchObject([{ campo: "MEDIDA", valor: "1.25" }]);
+    expect(historico.filter(r => !r.vigente)).toHaveLength(2);
+    await expect(editarTipoExame(tipo.id, { campos: [{ codigo: "OUTRO", tipo: "TEXTO", obrigatorio: false }] }, null)).rejects.toMatchObject({ code: "CONFLITO" });
+    expect((await listarExames(animalIds[0], propriedadeId)).find(e => e.id === exame.id)?.resultados).toHaveLength(1);
+  });
+
 });

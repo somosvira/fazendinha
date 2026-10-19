@@ -15,7 +15,7 @@ export function FormDestino({ animal, onSalvo, onFechar }: {
   onFechar: () => void;
 }) {
   const [aptidao, setAptidao] = useState<Aptidao>(animal.aptidao ?? "LEITE");
-  const [papelReprodutivo, setPapelReprodutivo] = useState<PapelReprodutivo>(animal.papelReprodutivo ?? "NENHUM");
+  const [papelReprodutivo, setPapelReprodutivo] = useState<PapelReprodutivo | "">(animal.papelReprodutivo ?? "");
   const [data, setData] = useState(hoje());
   const [erroGeral, setErroGeral] = useState<string | null>(null);
   const [erroData, setErroData] = useState<string | undefined>();
@@ -27,7 +27,7 @@ export function FormDestino({ animal, onSalvo, onFechar }: {
     if (emCurso.current) return;
     emCurso.current = true; setSalvando(true); setErroGeral(null); setErroData(undefined);
     try {
-      const atualizado = await mudarDestinoAnimal(animal.id, { aptidao, papelReprodutivo, data });
+      const atualizado = await mudarDestinoAnimal(animal.id, { aptidao, ...(papelReprodutivo ? { papelReprodutivo } : {}), data });
       await onSalvo(atualizado);
     } catch (falha) {
       if (falha instanceof RebanhoApiError && falha.campo === "data") setErroData(falha.message);
@@ -41,7 +41,7 @@ export function FormDestino({ animal, onSalvo, onFechar }: {
     <form data-pec-formulario  id={formId} onSubmit={submeter} noValidate className="grid gap-4">
       <ErrorBox erro={erroGeral} />
       <CampoFormulario id="destino-aptidao" rotulo="Aptidão" obrigatorio>{(p) => <SelectCampo {...p} required value={aptidao} onValueChange={(valorSelecionado) => setAptidao(valorSelecionado as Aptidao)} className={classeInput}><option value="LEITE">Leite</option><option value="CORTE">Corte</option></SelectCampo>}</CampoFormulario>
-      {animal.sexo === "F" && <CampoFormulario id="destino-papel" rotulo="Papel reprodutivo">{(p) => <SelectCampo {...p} value={papelReprodutivo} onValueChange={(valorSelecionado) => setPapelReprodutivo(valorSelecionado as PapelReprodutivo)} className={classeInput}><option value="NENHUM">Nenhum</option><option value="RECEPTORA">Receptora</option><option value="DOADORA">Doadora</option></SelectCampo>}</CampoFormulario>}
+      {animal.sexo === "F" && <CampoFormulario id="destino-papel" rotulo="Papel reprodutivo">{(p) => <SelectCampo {...p} value={papelReprodutivo} onValueChange={(valorSelecionado) => setPapelReprodutivo(valorSelecionado as PapelReprodutivo)} className={classeInput}><option value="">Manter papel atual / não informado</option><option value="NENHUM">Nenhum</option><option value="RECEPTORA">Receptora</option><option value="DOADORA">Doadora</option></SelectCampo>}</CampoFormulario>}
       <CampoFormulario id="destino-data" rotulo="Data da mudança" obrigatorio erro={erroData}>{(p) => <DatePicker {...p} required max={hoje()} value={data} onChange={setData} className="mt-1.5" />}</CampoFormulario>
     </form>
   </PainelCadastro>;

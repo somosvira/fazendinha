@@ -6,7 +6,7 @@
 
 import { useEffect, useState } from "react";
 import { Loader } from "../../../components/Loading";
-import { Button, Empty, Pill } from "../../../financeiro/financeiro-ui";
+import { Button, Empty, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
 import { RebanhoApiError } from "../api";
 import type { MovimentacaoResumo } from "../types";
 import { formatarDataBR } from "../lib/rotulos";
@@ -24,7 +24,7 @@ function mensagemErro(e: unknown): string {
 }
 
 export function HistoricoMovimentacoes({
-  carregar, mostrarDirecao = false, podeLancar = true, recarregarToken, onAbrir, onMudou,
+  carregar, mostrarDirecao = false, podeLancar = true, recarregarToken, onAbrir, onMudou, paginaControlada, onPaginaChange,
 }: {
   /** busca a página informada (1-based) — os filtros já vêm fechados na função de quem chama */
   carregar: (pagina: number) => Promise<{ itens: MovimentacaoResumo[]; total: number }>;
@@ -38,8 +38,12 @@ export function HistoricoMovimentacoes({
   /** chamado depois de um desfazer bem-sucedido feito por aqui — quem chama deve mudar
    *  `recarregarToken` (e recarregar dados relacionados, como o lote) para a lista atualizar */
   onMudou?: () => void;
+  paginaControlada?: number;
+  onPaginaChange?: (pagina: number) => void;
 }) {
-  const [pagina, setPagina] = useState(1);
+  const [paginaLocal, setPaginaLocal] = useState(1);
+  const pagina = paginaControlada ?? paginaLocal;
+  const setPagina = onPaginaChange ?? setPaginaLocal;
   const [itens, setItens] = useState<MovimentacaoResumo[]>([]);
   const [total, setTotal] = useState(0);
   const [carregando, setCarregando] = useState(true);
@@ -48,13 +52,13 @@ export function HistoricoMovimentacoes({
   const [desfazendoId, setDesfazendoId] = useState<string | null>(null);
 
   // filtros mudaram (recarregarToken) — volta para a primeira página
-  useEffect(() => { setPagina(1); }, [recarregarToken]);
+  useEffect(() => { if (paginaControlada == null) setPaginaLocal(1); }, [recarregarToken, paginaControlada]);
 
   // descarta a resposta se a página/token mudaram enquanto a busca estava em voo (mesmo padrão
   // de ListaAnimais.tsx) — sem isso, trocar de filtro rápido pode mostrar o resultado anterior
   useEffect(() => {
     let vigente = true;
-    setCarregando(true); setErro(null);
+    setCarregando(true); setErro(null); setItens([]);
     carregar(pagina)
       .then((resultado) => { if (vigente) { setItens(resultado.itens); setTotal(resultado.total); } })
       .catch((e) => { if (vigente) setErro(mensagemErro(e)); })
@@ -68,16 +72,15 @@ export function HistoricoMovimentacoes({
 
   return <>
     {erro && <div role="alert" className="p-5 text-sm text-red-700">{erro}</div>}
-    {itens.length ? <div className="divide-y divide-border">
-      {itens.map((mov) => <div key={mov.id} className="flex flex-wrap items-start justify-between gap-3 p-5 text-sm">
-        {onAbrir
-          ? <button type="button" onClick={() => onAbrir(mov)} className="min-w-0 flex-1 rounded-lg text-left hover:opacity-80">
-            <ConteudoMovimentacao mov={mov} mostrarDirecao={mostrarDirecao} />
-          </button>
-          : <div className="min-w-0 flex-1"><ConteudoMovimentacao mov={mov} mostrarDirecao={mostrarDirecao} /></div>}
-        {podeLancar && mov.podeDesfazer && <Button secondary onClick={() => setDesfazendoId(mov.id)}>Desfazer</Button>}
-      </div>)}
-    </div> : !erro && <Empty>Nenhuma movimentação registrada.</Empty>}
+    {itens.length ? <TabelaFinanceira rotulo="Histórico de movimentações" itens={itens} chaveDe={m=>m.id} onAbrir={onAbrir} colunas={[
+      {chave:"data",titulo:"Data",larguraMinima:110,principal:true,celula:m=>formatarDataBR(m.data)},
+      {chave:"animais",titulo:"Animais",larguraMinima:100,celula:m=>m.quantidade},
+      {chave:"origem",titulo:"Origem",larguraMinima:180,larguraFlexivel:true,celula:m=>m.origens.length?m.origens.join("; "):"Não identificada"},
+      {chave:"destino",titulo:"Destino",larguraMinima:180,celula:rotuloDestino},
+      {chave:"motivo",titulo:"Motivo",larguraMinima:160,celula:m=>m.motivo??"Não informado"},
+      {chave:"situacao",titulo:"Situação",larguraMinima:130,celula:m=><><Pill tone={m.desfeitaEm?"neutral":"green"}>{m.desfeitaEm?"Desfeita":"Confirmada"}</Pill>{mostrarDirecao&&m.direcao&&<span className="block mt-1 text-xs">{m.direcao==="ENTRADA"?"Entrada":"Saída"}</span>}</>},
+      {chave:"acoes",titulo:"Ações",acoes:true,larguraMinima:200,celula:m=><div className="flex flex-wrap gap-2" onClick={e=>e.stopPropagation()}>{onAbrir&&<Button secondary onClick={()=>onAbrir(m)}>Ver detalhes</Button>}{podeLancar&&m.podeDesfazer&&<Button secondary onClick={()=>setDesfazendoId(m.id)}>Desfazer</Button>}</div>},
+    ]}/> : !erro && <Empty>Nenhuma movimentação encontrada com os filtros selecionados.</Empty>}
     {itens.length > 0 && <Paginacao paginaAtual={pagina} totalPaginas={totalPaginas} totalItens={total} itensPorPagina={ITENS_POR_PAGINA} onPaginaChange={setPagina} rotulo="movimentações" idSelect="pagina-historico-movimentacoes" />}
 
     {desfazendoId && <ConfirmarDesfazerMovimentacao
@@ -85,19 +88,5 @@ export function HistoricoMovimentacoes({
       onFechar={() => setDesfazendoId(null)}
       onConfirmado={() => { setDesfazendoId(null); onMudou?.(); }}
     />}
-  </>;
-}
-
-function ConteudoMovimentacao({ mov, mostrarDirecao }: { mov: MovimentacaoResumo; mostrarDirecao: boolean }) {
-  return <>
-    <div className="flex flex-wrap items-center gap-2">
-      {mostrarDirecao && mov.direcao && <Pill tone={mov.direcao === "ENTRADA" ? "green" : "amber"}>{mov.direcao === "ENTRADA" ? "Entrada" : "Saída"}</Pill>}
-      <span className="text-ink-3">{formatarDataBR(mov.data)}</span>
-      <strong>{mov.quantidade} {mov.quantidade === 1 ? "animal" : "animais"}</strong>
-    </div>
-    <p className="mt-2 break-words text-ink-3">{mov.origens.length ? mov.origens.join(", ") : "Origem não identificada"} → {rotuloDestino(mov)}</p>
-    {mov.motivo && <p className="mt-1 break-words text-ink-3">Motivo: {mov.motivo}</p>}
-    <p className="mt-1 text-xs text-ink-3">{mov.criadoPor ?? "Sistema"} · {formatarDataBR(mov.criadoEm)}</p>
-    {mov.desfeitaEm && <p className="mt-1 text-xs font-medium text-red-700">Desfeita em {formatarDataBR(mov.desfeitaEm)}{mov.desfeitaMotivo ? ` · ${mov.desfeitaMotivo}` : ""}</p>}
   </>;
 }

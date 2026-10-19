@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   tx: {
+    etapaProtocolo: { findFirst: vi.fn() },
     tipoExame: { findUnique: vi.fn(), findFirst: vi.fn(), findMany: vi.fn(), update: vi.fn() },
     exameAnimal: { findFirst: vi.fn(), create: vi.fn(), update: vi.fn() },
     auditoriaPecuaria: { findMany: vi.fn(), count: vi.fn() },
@@ -45,8 +46,8 @@ describe("integridade de exames", () => {
   });
 
   it("lista bloqueio sem filtrar resultados ou status e sem devolver contagem interna", async () => {
-    mocks.tx.tipoExame.findMany.mockResolvedValue([{ ...tipo, _count: { exames: 1 } }, { ...tipo, id: "novo", _count: { exames: 0 } }]);
-    expect(await listarTiposExame()).toEqual([{ ...tipo, formatoBloqueado: true }, { ...tipo, id: "novo", formatoBloqueado: false }]);
+    mocks.tx.tipoExame.findMany.mockResolvedValue([{ ...tipo, _count: { exames: 1, etapas: 0 } }, { ...tipo, id: "novo", _count: { exames: 0, etapas: 0 } }]);
+    expect(await listarTiposExame()).toEqual([{ ...tipo, formatoExameHash: expect.stringMatching(/^[a-f0-9]{64}$/), padraoReprodutivo: false, formatoBloqueado: true }, { ...tipo, id: "novo", formatoExameHash: expect.stringMatching(/^[a-f0-9]{64}$/), padraoReprodutivo: false, formatoBloqueado: false }]);
   });
 
   it("aceita zero na coleta e preserva snapshot após adquirir a trava do tipo", async () => {
@@ -55,7 +56,9 @@ describe("integridade de exames", () => {
     expect(resultado).toMatchObject({ resultadoNumero: 0, formatoSnapshot: { nome: "Exame", tipoResultado: "NUMERO", unidade: "mg", opcoes: null } });
     expect(mocks.tx.$executeRaw.mock.invocationCallOrder[0]).toBeLessThan(mocks.tx.tipoExame.findFirst.mock.invocationCallOrder[0]);
     await editarTipoExame(tipo.id, { nome: "Atualizado" }, 7);
-    expect(mocks.tx.$executeRaw.mock.calls[0]).toEqual(mocks.tx.$executeRaw.mock.calls[1]);
+    const travas = mocks.tx.$executeRaw.mock.calls.filter(([sql]) => sql.join("").includes("pg_advisory_xact_lock"));
+    expect(travas).toHaveLength(2);
+    expect(travas[0]).toEqual(travas[1]);
   });
 
   it("relê o fato após trava e recusa corrigir exame anulado durante espera", async () => {
@@ -99,4 +102,14 @@ describe("histórico de exame", () => {
     await expect(obterHistoricoExame("e", undefined, pagina, tamanho)).rejects.toMatchObject({ code: "VALIDACAO" });
     expect(mocks.tx.exameAnimal.findFirst).not.toHaveBeenCalled();
   });
+});
+
+it("mascara finanças preservando resultados clínicos estruturados no detalhe e no histórico", () => {
+  const resultados = [0, false, "negativo", ["a", "b"], { valor: 2, unidade: "mg" }].map((valor, i) => ({ campo: String(i), valor }));
+  const exame = { resultados, valorServicoAtribuido: "12.00", compraDireta: { valor: "300.00", valorTotal: "300.00" } };
+  for (const leituraOperacional of [false, true]) {
+    const esperado = { ...exame, valorServicoAtribuido: leituraOperacional ? "12.00" : null, compraDireta: { valor: null, valorTotal: null } };
+    expect(ocultarCustosDetalhe(exame, leituraOperacional)).toEqual(esperado);
+    expect(ocultarCustosDetalhe({ itens: [{ antes: exame, depois: exame }] }, leituraOperacional)).toEqual({ itens: [{ antes: esperado, depois: esperado }] });
+  }
 });

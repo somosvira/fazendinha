@@ -1,3 +1,4 @@
+import { tentativaComAtribuicaoServico, aplicacaoComConsumoOuAtribuicao } from "../reproducao/atribuicoes-servico.js";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../../db.js";
 import { auditar, RebanhoError, travarAnimais } from "../rebanho/regras.js";
@@ -7,12 +8,14 @@ type TipoRateio = "APLICACAO" | "EXAME" | "PROTOCOLO";
 async function contexto(tx: Prisma.TransactionClient, servicoId: string, propriedadeId: number) {
   const servico = await tx.operacao.findFirst({ where: { id: servicoId, propriedadeId, tipo: "SERVICO", status: "CONFIRMADA" } });
   if (!servico) throw new RebanhoError("VALIDACAO", "Serviço confirmado não encontrado neste sítio");
-  const [aplicacoes, exames, protocolos] = await Promise.all([
-    tx.aplicacaoProduto.findMany({ where: { operacaoServicoId: servicoId, propriedadeId, status: "VALIDO" }, include: { tarefa: { select: { execucaoId: true } } } }),
+  const [aplicacoes, exames, protocolos, tentativas] = await Promise.all([
+    tx.aplicacaoProduto.findMany({ where: { operacaoServicoId: servicoId, propriedadeId, ...aplicacaoComConsumoOuAtribuicao }, include: { tarefa: { select: { execucaoId: true } } } }),
     tx.exameAnimal.findMany({ where: { operacaoServicoId: servicoId, propriedadeId, status: "VALIDO" }, include: { tarefa: { select: { execucaoId: true } }, tipoExame: { select: { nome: true } } } }),
-    tx.execucaoProtocoloSanitario.findMany({ where: { operacaoServicoId: servicoId, propriedadeId, canceladaEm: null }, include: { protocolo: { select: { nome: true } } } }),
+    tx.participacaoProtocolo.findMany({ where: { operacaoServicoId: servicoId, propriedadeId, canceladaEm: null }, include: { protocolo: { select: { nome: true } } } }),
+    tx.tentativaReprodutiva.findMany({ where: { operacaoServicoId: servicoId, propriedadeId, ...tentativaComAtribuicaoServico } }),
   ]);
   const itens = [
+    ...tentativas.map((t) => ({ id: t.id, tipo: "TENTATIVA" as const, animalId: t.animalId, nome: `${t.tipo} · tentativa ${t.ordem}`, valor: t.valorServicoAtribuido, execucaoId: undefined })),
     ...aplicacoes.map((a) => ({ id: a.id, tipo: "APLICACAO" as const, animalId: a.animalId, nome: a.nomeProdutoAplicado, valor: a.valorServicoAtribuido, execucaoId: a.tarefa?.execucaoId })),
     ...exames.map((e) => ({ id: e.id, tipo: "EXAME" as const, animalId: e.animalId, nome: e.tipoExame.nome, valor: e.valorServicoAtribuido, execucaoId: e.tarefa?.execucaoId })),
     ...protocolos.map((p) => ({ id: p.id, tipo: "PROTOCOLO" as const, animalId: p.animalId, nome: p.protocolo.nome, valor: p.valorServicoAtribuido, execucaoId: p.id })),

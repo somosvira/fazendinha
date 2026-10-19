@@ -1,0 +1,1880 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Caderno de estudo da V4 do Fazendinha: escopo, entidades, rotinas, limites e decisões para discussão.">
+<title>V4 · Caderno de estudo — Fazendinha</title>
+<style>
+:root{--ink:#1d332f;--muted:#566761;--line:#cbd8d1;--paper:#fffefb;--bg:#f1f3ed;--accent:#176a55;--soft:#e6f2eb;--warn:#fff0cd;--gold:#8b5714}*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:24px}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.65 system-ui,-apple-system,Segoe UI,sans-serif}a{color:#11634e;text-underline-offset:3px}button,input,textarea,select{font:inherit}button{cursor:pointer;background:var(--paper);color:var(--ink);border:1px solid var(--line);padding:9px 14px;border-radius:8px}button:hover{background:var(--soft)}:focus-visible{outline:3px solid #bb6a1c;outline-offset:3px}.skip{position:absolute;left:10px;top:-100px;background:white;padding:12px;z-index:9}.skip:focus{top:10px}.layout{max-width:1530px;margin:auto;display:grid;grid-template-columns:255px minmax(0,1fr)}nav{height:100vh;overflow:auto;position:sticky;top:0;padding:32px 22px;border-right:1px solid var(--line)}nav .brand{font-size:13px;font-weight:800;letter-spacing:.11em}nav a{display:block;text-decoration:none;padding:8px 10px;border-radius:7px;color:var(--muted);font-size:14px}nav a:hover{background:var(--soft);color:var(--ink)}nav p{font-size:12px;color:var(--muted)}main{min-width:0;padding:48px 5vw 80px}header{padding-bottom:28px;border-bottom:1px solid var(--line)}.eyebrow{text-transform:uppercase;letter-spacing:.12em;font-size:12px;font-weight:800;color:var(--accent)}h1{font-size:clamp(34px,4vw,54px);line-height:1.1;letter-spacing:-.035em;max-width:830px;margin:18px 0}h2{font-size:29px;line-height:1.25;letter-spacing:-.02em;margin:12px 0 20px}h3{font-size:21px;line-height:1.35;margin:20px 0 12px}h4{font-size:17px;margin:16px 0 8px}p{margin:10px 0 16px}.lead{font-size:20px;max-width:850px}.meta,.small{font-size:13px;color:var(--muted)}.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-top:22px}.chapter{padding:42px 0;border-bottom:1px solid var(--line)}.box,.card,.entity,.question{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:22px;margin:18px 0}.box.green{background:var(--soft);border-left:4px solid var(--accent)}.box.amber{background:var(--warn);border-left:4px solid #ba7b22}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}.grid .card{margin:0}.pill{display:inline-block;border-radius:5px;background:var(--soft);padding:3px 8px;font-size:12px;font-weight:700;margin:0 5px 4px 0}.pill.warn{background:var(--warn);color:#744d19}.table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;margin:18px 0;background:var(--paper)}table{width:100%;border-collapse:collapse;text-align:left;font-size:14px;min-width:620px}th{background:#e8ede7}th,td{padding:13px 16px;vertical-align:top;border-bottom:1px solid var(--line)}tr:last-child td{border-bottom:0}td:first-child{font-weight:650}code{font-size:.88em;overflow-wrap:anywhere;background:#edf0e9;border-radius:4px;padding:2px 5px}ul,ol{padding-left:24px}li{margin:8px 0}.journey{counter-reset:step}.step{position:relative;padding:0 0 22px 48px;border-left:2px solid var(--line);margin-left:15px}.step:before{counter-increment:step;content:counter(step);position:absolute;left:-17px;top:0;width:31px;height:31px;border-radius:50%;background:var(--accent);color:white;text-align:center;line-height:31px;font-weight:700}.step h3{margin:0 0 9px}.step:last-child{border-color:transparent}.flow{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:20px 0}.node{border:1px solid var(--line);border-radius:8px;background:var(--paper);padding:12px 14px;font-size:14px;flex:1;min-width:140px}.node b{display:block}.arrow{font-weight:800;color:var(--accent)}.diagram{padding:22px;background:#eaf0e9;border-radius:12px;margin:20px 0}.diagram .flow{margin:12px 0}.diagram .caption{font-size:13px;color:var(--muted)}.entity header{padding:0;border:0}.entity h3{font-size:22px;overflow-wrap:anywhere;margin:8px 0}.entity h3 code{background:none;padding:0}.entity dl{margin:12px 0 0}.entity dt{font-weight:750;font-size:13px;color:var(--accent);margin-top:14px}.entity dd{margin:3px 0}.entity .limit{background:#f6f2e8;border-radius:7px;padding:11px 14px;font-size:14px}.entity[hidden]{display:none}.catalog-tools{background:var(--soft);border-radius:10px;padding:18px;display:flex;gap:14px;align-items:end;flex-wrap:wrap}.catalog-tools label{flex:1;min-width:190px;font-weight:650;font-size:14px}input,select,textarea{display:block;width:100%;border:1px solid #9caf9f;border-radius:7px;padding:10px;background:white;color:var(--ink)}textarea{min-height:100px;resize:vertical}.question label{display:block;margin-top:10px}.question .q-title{font-weight:750}.sources li{font-size:14px}.refs{font-size:13px;color:var(--muted);margin-top:16px}.refs a{margin-right:10px}details{background:#f4f5ef;border:1px solid var(--line);border-radius:8px;padding:12px 16px;margin:14px 0}summary{cursor:pointer;font-weight:650}footer{padding-top:30px;font-size:13px;color:var(--muted)}.nojs{background:var(--warn);padding:12px}#note-status,#catalog-status{font-size:13px;color:var(--muted)}@media(max-width:1000px){.layout{grid-template-columns:205px minmax(0,1fr)}nav{padding:24px 12px}main{padding:32px 25px}.grid{grid-template-columns:1fr}}@media(max-width:720px){.layout{display:block}nav{position:static;height:auto;border:0;padding:18px}nav .navlinks{display:flex;gap:5px;flex-wrap:wrap}nav a{border:1px solid var(--line);padding:6px 9px;font-size:12px}nav p{display:none}main{padding:24px 18px}.chapter{padding:32px 0}h2{font-size:25px}.box,.entity,.card,.question{padding:18px}.flow{display:block}.node{margin:6px 0}.arrow{display:block;text-align:center;transform:rotate(90deg)}}@media print{body{background:white;font-size:10pt;color:#111}.layout{display:block}nav,.toolbar,.catalog-tools,.skip,#catalog-status,.no-print{display:none!important}main{padding:0}.chapter{padding:20px 0;break-before:auto}h1{font-size:32pt}h2{font-size:23pt}h3{break-after:avoid}.entity,.card,.question,.step{break-inside:avoid}.entity[hidden]{display:block!important}.table-wrap{overflow:visible}table{min-width:0;font-size:9pt}.grid{display:block}.card{margin:10px 0!important}a{color:inherit}.box,.diagram,.entity{background:white}.flow{display:flex}.node{min-width:110px}textarea{min-height:75px}.chapter>p,.step p{orphans:3;widows:3}details>*{display:block}summary{display:none}.table-wrap tr{break-inside:avoid}header{break-after:avoid}}
+</style>
+</head>
+<body>
+<a class="skip" href="#conteudo">Pular para o conteúdo</a>
+<div class="layout">
+<nav aria-label="Capítulos do caderno">
+<div class="brand">FAZENDINHA / V4</div>
+<p>Estado implementado<br>16 de outubro de 2026</p>
+<div class="navlinks"><a href="#consolidacao-implementacao">Consolidação · follow-up V4</a><a href="#base-tecnica">Base técnica · reprodução leiteira</a><a href="#anotacoes-outubro">Respostas às 9 anotações</a>
+<a href="#visao">01 · O que estamos construindo</a>
+<a href="#escopo">02 · Cobertura e limites</a>
+<a href="#conceitos">03 · Conceitos que se confundem</a>
+<a href="#fluxo">04 · Um ciclo na prática</a>
+<a href="#visitas">05 · Agenda, filtros e atendimento</a>
+<a href="#partos">06 · Parto e pós-parto</a>
+<a href="#indicadores">07 · Elegibilidade e indicadores</a>
+<a href="#mapa">08 · Mapa de relações</a>
+<a href="#entidades">09 · Catálogo das entidades</a>
+<a href="#reuso">10 · Reuso e views IATF</a>
+<a href="#telas">11 · Onde usar na interface</a>
+<a href="#discussao">12 · Nosso roteiro de discussão</a>
+<a href="#evidencias">13 · Evidências e limites da revisão</a>
+</div>
+<p>Leia a consolidação para retomar as decisões; consulte a base técnica e o catálogo para aprofundar.</p>
+</nav>
+<main id="conteudo">
+<aside class="callout"><p><strong>Pacote de revisão do PR #319.</strong> Este caderno explica a V4 entregue e mantém as propostas posteriores identificadas como follow-up. O custo pelo lote efetivamente consumido ainda pertence à evolução seguinte. <a href="testes-v4-guia.html#preparacao-qa">Abrir o roteiro de testes e a preparação do seed QA</a>. A presença da implementação ou da massa de testes não representa homologação da fazenda.</p></aside>
+
+<header>
+<div class="eyebrow">Fazendinha · Caderno de estudo de produto</div>
+<h1>V4: do manejo reprodutivo ao registro de cada animal</h1>
+<p class="lead">O que estamos construindo, por que cada parte existe e o que já pode ser encontrado no código — para retomarmos as decisões com uma visão comum.</p>
+<p class="meta">Código-base conferido em 16/10/2026; pesquisa técnica e anotações acrescentadas na mesma data. Leitura do estado de 16/10/2026 · branch <code>codex/pecuaria-v4</code> · <a href="https://github.com/somosvira/fazendinha/pull/319">PR #319</a> · revisão <code>c31caf83</code>
+</p>
+<div class="toolbar">
+<button id="print" type="button">Imprimir / salvar PDF</button>
+<a href="#consolidacao-implementacao">Ver a consolidação do follow-up</a>
+<a href="#base-tecnica">Entender a rotina leiteira</a><a href="#anotacoes-outubro">Ver respostas às anotações</a><a href="#discussao">Ir às perguntas de revisão</a>
+<a href="#entidades">Consultar uma entidade</a>
+</div>
+</header>
+<noscript>
+<p class="nojs">O conteúdo completo pode ser lido sem JavaScript. Busca, anotações e exportação dependem de JavaScript.</p>
+</noscript>
+<section class="chapter" id="consolidacao-implementacao">
+<div class="eyebrow">Consolidação vigente · follow-up V4</div>
+<h2>Estoque, custos e acompanhamento no mesmo PR</h2>
+<p class="lead">O follow-up reúne a base de valor do estoque, a composição dos custos diretos e o acompanhamento reprodutivo. A explicação de produto e os diagramas das entidades estão no <a href="follow-up-v4-entrega.html"><strong>HTML da entrega</strong></a>; seu quadro de validação distingue código, testes e homologação de campo.</p>
+<div class="box amber"><strong>Implementação em validação no PR #322.</strong> O PR #319 foi integrado; a branch <code>codex/pecuaria-v4-follow-up</code> parte da main posterior a essa integração. O trabalho usa checkout separado e preserva o aplicativo, o banco <code>fazendinha_seedatev3</code>, seus dados e manifestos. Não houve merge ou deploy deste follow-up. Os capítulos de estudo abaixo continuam sendo um retrato datado; propostas históricas não comprovam funcionalidades.</div>
+<h3>1. Estoque com fechamento exato</h3>
+<p>A decisão final mantém o agrupamento operacional de produto e validade. Usa média do saldo disponível nesse grupo e sítio; produtos sem rastreamento consomem aquisições na ordem de entrada. Essa decisão substitui a exigência inicial de manter o preço de cada lote físico quando eles estiverem misturados no mesmo grupo.</p>
+<div class="box green"><strong>Valor de abertura + entradas + ajustes líquidos = saídas líquidas + saldo final.</strong> O total monetário é a referência; a média exibida não reconstitui valores históricos. Na última saída, o resíduo dos centavos sai junto, deixando quantidade e valor zerados. Compras novas não recalculam consumos anteriores.</div>
+<p>Exemplo: 10 doses a R$ 40 e 10 a R$ 65 no mesmo grupo representam R$ 1.050. Consumir duas doses retira R$ 105; o saldo fica R$ 945. Grupos diferentes mantêm suas bases separadas. A origem e o método ficam registrados. Valor desconhecido não vira zero; saldo sem base comprovada exige abertura documentada.</p>
+<p>Frete permanece como logística em item próprio, sem entrada fictícia de produto. Desconto comercial é distribuído entre itens elegíveis com fechamento dos centavos; desconto de pagamento permanece financeiro. Compra, consumo e pagamento são fatos diferentes. Enquanto houver material disponível, o valor comprado se reparte entre consumo e saldo. Transferências, ajustes e inversos conservam a base; correções retroativas incompatíveis com movimentos posteriores ou período fechado exigem regularização explícita.</p>
+<h3>2. Um custo, várias consultas</h3>
+<p>A tentativa reúne preparo explicitamente vinculado, material e serviço. Hormônio R$ 30 + sêmen R$ 50 + serviço R$ 20 resulta em R$ 100 na tentativa, R$ 100 na participação/protocolo e R$ 100 no conjunto do animal. São visões dos mesmos fatos; não somar seus totais como despesas distintas. Uma aplicação avulsa de R$ 15 aumenta somente o conjunto pertinente para R$ 115.</p>
+<p>Quando o preparo atende mais de uma tentativa, o vínculo exige atribuição explícita, respeitando o valor disponível. Custos ainda não atribuídos permanecem na origem. Reprodução, sanidade e rotina/manutenção classificam a finalidade; tentativa, participação e animal identificam o vínculo operacional. Origem Serviço ou documentada não movimenta estoque fictício. Material de estoque pode acompanhar serviço especificamente atribuído.</p>
+<p>Completo, parcial e desconhecido descrevem os componentes diretos registrados. Não significam custo econômico integral da fazenda. As consultas respeitam sítio e permissão financeira, incluindo parcelas, evidências, relatórios e exportação. A descrição técnica está no <a href="../README.md">contrato de Pecuária</a> e no <a href="../../financeiro-rebuild-contrato.md">contrato financeiro</a>.</p>
+<h3>3. Acompanhamento e atendimento</h3>
+<ul>
+<li><strong>Perdas:</strong> novos registros exigem explicação, com causa clínica desconhecida, suspeita ou confirmada. O desfecho é tipado e não depende de palavras no motivo. Evidência factual histórica não desaparece por falta de texto. Aborto vinculado conta como perda analítica com subtipo próprio, sem duplicar o evento; natimorto permanece destacado entre nascimentos.</li>
+<li><strong>DG/reconfirmação:</strong> configuração versionada por sítio e vigência, prazos e ocorrências explícitos, vínculo ao tipo/versão de exame quando escolhido. Fatos existentes exigem adoção com prévia. Reutilizar tarefas e retornos compatíveis; exame inconclusivo não resolve a demanda apenas por concluir a tarefa.</li>
+<li><strong>Horário:</strong> continua opcional. Orientação temporal por etapa é optativa e começa como alerta; precisão registrada e exigência operacional são independentes. Não inventar hora ou conformidade.</li>
+<li><strong>Biblioteca:</strong> referência pesquisada e versionada, com fonte, objetivo, população e campos a completar. Copiar gera rascunho; configuração, publicação e adoção são explícitas. Não há prescrição automática nem protocolo IDEAGRI presumido.</li>
+<li><strong>Visita:</strong> Agenda e Seleção livre continuam modos distintos. A Seleção livre oferece lista por animal e atendimento individual usando os formulários e rascunhos existentes, preservando a busca ao voltar. Abrir um animal não confirma atendimento.</li>
+<li><strong>Ciclo:</strong> círculo de marcos e linha do tempo apresentam parto, PEV, liberação, serviços, diagnóstico, restrições e perdas. O preenchimento representa fatos conhecidos, sem chance de prenhez nem ciclo paralelo.</li>
+</ul>
+<h3>4. Indicadores com população explícita</h3>
+<p>Parto, fim do PEV e primeira liberação válida até serviço são intervalos distintos em dias corridos. A coorte considera ciclos iniciados no período; a fila atual inclui liberadas ainda sem serviço de ciclos anteriores. Restrições intermediárias, saídas e dados ausentes ficam visíveis. Animais sem início de ciclo comprovado aparecem como pendência.</p>
+<p>Tentativas por concepção usam o serviço conceptivo no período e contam os serviços anteriores válidos do mesmo ciclo, conforme os tipos selecionados. Perda não reinicia a contagem operacional. A taxa de perdas exige primeiro DG factual, janela escolhida e seguimento comprovado; falta de acompanhamento não vira gestação bem-sucedida.</p>
+<p>O intervalo entre partos principal considera nascimentos vivos/natimortos e destaca abortos intermediários, inclusive fora do período. A alternativa inclui todos os partos que reiniciam o ciclo. Gêmeos não duplicam o parto. As taxas TS/TC/TP existentes e emissões anteriores são preservadas; o acompanhamento adicional tem metodologia e emissão versionadas. Detalhes no <a href="../reproducao.md">contrato reprodutivo</a>.</p>
+<h3>5. Tracking dos três complementos adiados</h3>
+<div class="table-wrap"><table><thead><tr><th>Feature</th><th>Recorte a manter</th><th>Base e decisões necessárias</th></tr></thead><tbody>
+<tr><td>ECC longitudinal</td><td>Medições datadas, escala, autoria e comparação ao longo do ciclo.</td><td>Reutilizar exames, definir população/escala e validade temporal, sem inferir diagnóstico de uma medição isolada.</td></tr>
+<tr><td>Elegibilidade ampliada de novilhas</td><td>Maturidade/desenvolvimento, idade, peso e demais critérios aprovados.</td><td>Versionar regras, definir atualização das medições e tratamento de dados ausentes. Não aplicar PEV de vacas a novilhas.</td></tr>
+<tr><td>Imunidade passiva da cria</td><td>Exame da cria, amostra, método, unidade, idade/data, interpretação e ligação com colostragem.</td><td>Reutilizar ExameAnimal e definir classificação versionada. Qualidade do colostro não comprova absorção pela cria.</td></tr>
+</tbody></table></div>
+<p>Esses três complementos não estão implementados neste PR. Custo por concepção e análises adicionais exigem definição própria de população e janela; não são consequência automática da consulta de custo por tentativa. Produção e qualidade do leite ficam para V5. Produção de embriões/FIV permanece fora do escopo; TE de embrião adquirido continua disponível. IDEAGRI é transferência inicial e reconciliação, sem sincronização contínua.</p>
+<h3>6. Evidências e debate</h3>
+<p>O <a href="follow-up-v4-entrega.html#evidencias">quadro de validação</a> registra o resultado efetivo dos testes e suas limitações. A homologação de campo continua separada. Não foram aprovadas ou apagadas marcações anteriores do roteiro manual por atualização documental.</p>
+<p>Após a implementação, discutir a compreensão da composição de custo, a retomada do atendimento individual, a utilidade dos marcos e as configurações que a fazenda adotará. A conciliação monetária, a obrigatoriedade de explicação das novas perdas e a preservação do histórico são critérios de integridade, não preferências visuais.</p>
+</section>
+<section class="chapter" id="base-tecnica"><div class="eyebrow">Base técnica · pesquisa de 16/10/2026</div><h2>Como a reprodução funciona dentro de uma fazenda leiteira</h2><p class="lead">A meta é conseguir gestações no momento adequado, levar essas gestações a bons desfechos e manter vacas saudáveis e produtivas ao longo de vários ciclos.</p><div class="box green"><strong>Reprodução e lactação se sobrepõem.</strong> Depois de parir, a vaca começa a lactação, recupera-se e pode emprenhar novamente enquanto ainda produz leite. Mais adiante, entra no período seco antes do próximo parto. “Gestante”, “lactante” e “seca” não são três opções de um mesmo status.</div><p>Esta síntese olha o manejo além do software. As referências numéricas são referências de contexto, sobretudo de rebanhos leiteiros especializados, e não parâmetros universais para instalar. Raça, cruzamento, paridade, nutrição, produção, clima e objetivo da fazenda mudam as decisões.</p><h3>1. O percurso biológico e de manejo</h3>
+<div class="table-wrap"><table><thead><tr><th scope="col">Fase</th><th scope="col">O que está acontecendo</th><th scope="col">O que a equipe precisa acompanhar</th></tr></thead><tbody><tr><td>Novilha antes do primeiro serviço</td><td>Precisa alcançar desenvolvimento corporal e maturidade reprodutiva; idade sozinha é insuficiente.</td><td>Idade, peso, crescimento, tamanho adulto esperado, condição corporal, ciclicidade e sanidade. Como referência de manejo especializado, cerca de 55% do peso adulto na primeira concepção; não usar um peso absoluto único para todas as raças.</td></tr><tr><td>Pré-parto / transição</td><td>A matriz passa do fim da gestação para o início da lactação. Há grande mudança na demanda de nutrientes e na capacidade de ingestão.</td><td>Dieta, consumo, conforto, lotação, calor, condição corporal e risco de parto. A janela clássica de transição cobre três semanas antes e três depois do parto; programas de acompanhamento podem usar janela maior.</td></tr><tr><td>Parto e puerpério</td><td>Nasce a cria; o útero precisa recuperar-se e a atividade ovariana precisa se restabelecer. A produção começa enquanto o consumo ainda se ajusta.</td><td>Assistência/dificuldade, vitalidade da cria, placenta, febre e sinais uterinos, apetite, cetose/hipocalcemia, peso e condição corporal. O puerpério é recuperação fisiológica; o PEV é uma decisão de manejo.</td></tr><tr><td>Espera e liberação para reprodução</td><td>A fazenda define um período mínimo antes de voltar a servir; superar esse prazo não garante recuperação nem ovulação.</td><td>PEV por categoria, condição clínica, útero/ovários e decisão individual. Cerca de 60 dias é uma referência frequente em literatura de leite, mas não uma liberação automática.</td></tr><tr><td>Cio, sincronização e serviço</td><td>Pode haver IA por cio observado, IATF, cobertura natural ou TE. A IATF organiza a ovulação; a tentativa é o serviço efetivamente realizado.</td><td>Detecção de cio, sinais, adesão às etapas, intervalos críticos, inseminador, material/touro, partida, tipo de sêmen e motivo de não realização.</td></tr><tr><td>Diagnóstico e retorno</td><td>Verifica se a tentativa resultou em gestação; vazias precisam retornar ao manejo sem atraso desnecessário.</td><td>Data, método, resultado, vínculo à tentativa, idade gestacional estimada, condição uterina/ovariana e retorno. Ultrassom pode identificar gestação em torno de 28–32 dias após o serviço; a janela depende do método e do contexto.</td></tr><tr><td>Gestação e reconfirmação</td><td>Uma gestação positiva pode se perder posteriormente. Continuar gestante é uma informação nova sobre a mesma gestação.</td><td>Viabilidade, perda, gemelaridade quando identificada, sexo fetal opcional, previsão de parto e reconfirmação conforme a rotina. Ausência de retorno ao cio não prova gestação.</td></tr><tr><td>Secagem e próximo parto</td><td>Encerra-se a ordenha por um período antes do parto seguinte. Gestação pode seguir durante esse período.</td><td>Previsão/ocorrência de secagem, duração do período seco, saúde do úbere, dieta e pré-parto. Cerca de 45–60 dias é uma referência frequente, não regra fixa; depende da estratégia do rebanho.</td></tr></tbody></table></div>
+<p class="refs">Referências: <a href="https://extension.psu.edu/monitoring-dairy-heifer-growth" target="_blank" rel="noopener">Penn State · crescimento de novilhas</a> · <a href="https://extension.psu.edu/body-condition-in-transition-cows" target="_blank" rel="noopener">Penn State · condição corporal na transição</a> · <a href="https://extension.psu.edu/why-cows-dont-get-pregnant" target="_blank" rel="noopener">Penn State · fatores de falha reprodutiva</a> · <a href="https://www.merckvetmanual.com/management-and-nutrition/management-of-reproduction-cattle/pregnancy-determination-in-cattle" target="_blank" rel="noopener">Merck · diagnóstico de gestação</a> · <a href="https://extension.psu.edu/how-long-should-the-dry-period-be" target="_blank" rel="noopener">Penn State · duração do período seco</a>.</p>
+<p>O ciclo estral bovino tem duração típica próxima de 21 dias, com variação individual. O <strong>folículo</strong> contém o ovócito e produz estradiol; após a ovulação, forma-se o <strong>corpo lúteo (CL)</strong>, associado à produção de progesterona. Sem manutenção da gestação, o ciclo pode reiniciar. Por isso, “vazia” não significa necessariamente “em cio”, e ausência de cio observado não comprova ausência de atividade ovariana.</p><p class="refs">Referências: <a href="https://old.cnpgc.embrapa.br/publicacoes/doc/doc48/03cicloestral.html" target="_blank" rel="noopener">Embrapa · ciclo estral</a>.</p>
+<p>A gestação dura aproximadamente nove meses; a referência exata depende da população e da datação. Um cadastro que erra a tentativa de origem também erra os dias de gestação e pode errar a previsão de secagem e parto.</p><p class="refs">Referências: <a href="https://www.merckvetmanual.com/reproductive-system/prolonged-gestation-in-cattle-and-sheep/overview-of-prolonged-gestation-in-cattle-and-sheep" target="_blank" rel="noopener">Merck · duração e datação da gestação</a>.</p>
+<div class="box green"><strong>Exemplo de calendário, apenas ilustrativo:</strong> parto no dia 0; inseminação no dia 70; exame positivo no dia 100; secagem no dia 290; novo parto no dia 350. No dia 100, a vaca pode estar com DEL 100 e gestação de cerca de 30 dias. A concepção ocorreu no serviço, não no dia do exame. Após a secagem, deixa de estar em lactação, mas continua gestante. Os prazos reais vêm do manejo e dos fatos de cada animal.</div><h3>2. Os parâmetros que realmente ajudam a decidir</h3><p>Há três níveis: informações de cada animal, indicadores do processo e resultados do rebanho. Uma média boa pode esconder um grupo com problema.</p>
+<div class="table-wrap"><table><thead><tr><th scope="col">Parâmetro</th><th scope="col">O que mede / como interpretar</th><th scope="col">Por que importa</th></tr></thead><tbody><tr><td>DEL e dias pós-parto</td><td>DEL conta desde o início da lactação; dias pós-parto contam desde o evento de parto. Coincidem em muitos casos, mas não são sinônimos universais.</td><td>Localizam o momento fisiológico. Para uma vaca seca, o histórico de dias pós-parto continua existindo.</td></tr><tr><td>Paridade / ordem de parto</td><td>Número de partos ou lactações segundo definição explícita. Primípara e multípara devem ser analisadas separadamente.</td><td>Risco, recuperação, consumo e resposta reprodutiva podem diferir. Não transportar a contagem interna de aborto da V4 para um indicador externo sem conferir a definição.</td></tr><tr><td>PEV e data de liberação</td><td>Quando a matriz pode entrar no programa de novas tentativas, considerando política e avaliação.</td><td>Define quem participa da oportunidade reprodutiva; não deve ser confundido com aptidão leite/corte.</td></tr><tr><td>ECC e sua variação</td><td>Escore de condição corporal em uma escala informada, mais sua evolução no tempo. Em escala 1–5, referências comuns ao parto ficam por volta de 3,0–3,5.</td><td>Uma perda acentuada no início da lactação é relevante mesmo que o valor isolado pareça aceitável; peso e ECC não são equivalentes.</td></tr><tr><td>Retorno à ciclicidade e detecção de cio</td><td>Evidência de atividade ovariana e capacidade da fazenda de identificar animais em cio.</td><td>Poucas inseminações podem decorrer de falha de observação ou anovulação; são problemas diferentes.</td></tr><tr><td>Parto até primeiro serviço</td><td>Dias do parto à primeira IA/cobertura/TE do ciclo, conforme o indicador escolhido.</td><td>Detecta atraso após a liberação; comparar com o PEV adotado, não só com outra fazenda.</td></tr><tr><td>Intervalo entre serviços</td><td>Tempo entre tentativas e entre diagnóstico de vazia e novo atendimento.</td><td>Uma falha de concepção pesa mais quando a vaca demora a voltar ao programa.</td></tr><tr><td>Taxa de serviço em 21 dias</td><td>Proporção de matrizes elegíveis que foram servidas no período, segundo uma definição explícita de elegibilidade.</td><td>Mede se estamos atendendo as oportunidades. Não é simplesmente contagem de doses.</td></tr><tr><td>Taxa de concepção / prenhez por serviço</td><td>Gestações atribuídas aos serviços avaliáveis. Fixar corte do diagnóstico e tratamento de resultados pendentes.</td><td>Mede sucesso por tentativa. Comparar 1º serviço, repetições, IA/TE, sêmen convencional/sexado, touro, operador, protocolo e estação.</td></tr><tr><td>Taxa de prenhez em 21 dias</td><td>Velocidade com que as elegíveis emprenham. Muitos relatórios a apresentam como TS × TC, com regras próprias para a população e o tempo.</td><td>Combina atendimento e resultado. Não é o percentual de todas as vacas que estão gestantes hoje.</td></tr><tr><td>Dias em aberto / período de serviço</td><td>Do parto à concepção que originou a gestação, não até a data em que o exame foi lançado.</td><td>Ajuda a localizar atraso. Média só das que emprenharam deixa de fora justamente as que continuam vazias.</td></tr><tr><td>Serviços por concepção e repetidoras</td><td>Quantidade de tentativas até uma concepção e proporção de animais que repetem sem sucesso.</td><td>Exige mostrar também as ainda não gestantes; uma média de casos concluídos pode parecer melhor do que a situação real.</td></tr><tr><td>Perdas gestacionais</td><td>Perdas entre avaliações positivas e um corte posterior; indicar janela, população acompanhada e idade gestacional.</td><td>Conceber e manter a gestação são resultados diferentes. Diagnóstico mais precoce pode revelar perdas que antes não eram vistas.</td></tr><tr><td>Intervalo entre partos / idade ao primeiro parto</td><td>Tempo entre partos sucessivos e idade da novilha no primeiro.</td><td>São resultados importantes, porém tardios. Acompanhar só esses números demora a revelar problemas atuais.</td></tr><tr><td>Período seco e duração da lactação</td><td>Dias entre secagem e parto seguinte, e tempo em lactação.</td><td>Conectam reprodução, saúde do úbere e produção; na V5 podem ganhar análise produtiva mais completa.</td></tr><tr><td>Desfechos e permanência</td><td>Distocia, natimortos, mortalidade de crias, doenças pós-parto, descarte por reprodução e longevidade.</td><td>O objetivo não termina em um teste positivo: interessa manter matriz e cria saudáveis.</td></tr><tr><td>Execução e qualidade do dado</td><td>Etapas concluídas, atrasos, perda de dispositivo, diagnósticos atrasados, origem genética, correções e dados ausentes.</td><td>Uma queda de resultado pode ser de processo ou de informação; não necessariamente do produto hormonal.</td></tr></tbody></table></div>
+<p class="refs">Referências: <a href="https://www.infoteca.cnptia.embrapa.br/bitstream/doc/880245/1/Circular642.pdf" target="_blank" rel="noopener">Embrapa · eficiência reprodutiva</a> · <a href="https://www.merckvetmanual.com/management-and-nutrition/preventive-health-care-and-husbandry-of-dairy-cattle/health-and-production-management-programs-for-dairy-cattle" target="_blank" rel="noopener">Merck · monitoramento do rebanho leiteiro</a> · <a href="https://extension.psu.edu/minimizing-interservice-intervals" target="_blank" rel="noopener">Penn State · intervalo entre serviços</a> · <a href="https://extension.psu.edu/body-condition-in-transition-cows" target="_blank" rel="noopener">Penn State · condição corporal na transição</a>.</p>
+<div class="box green"><strong>Exemplo didático, sem pendências ou ponderações:</strong> 100 vacas elegíveis, 60 servidas e 24 prenhes → serviço 60%, concepção 40%, prenhez 24%. Se a concepção for boa e poucas forem servidas, o gargalo é oportunidade/execução. Se muitas forem servidas e poucas conceberem, investigar fertilidade, técnica, momento, ambiente e sanidade. Na análise real, períodos, repetições e censura precisam ser definidos.</div><p>Também vale acompanhar a porcentagem ainda vazia em marcos de dias pós-parto definidos pela fazenda e a distribuição do tempo até prenhez. Segmentar por primíparas/multíparas, raça, lote, estação, tipo de sêmen e número de serviço evita comparações injustas. Mais gestantes ao final pode coexistir com muitas doses, perdas ou descarte: não aprovar o programa por um indicador isolado.</p><h3>3. Pontos críticos: onde o ciclo costuma falhar</h3>
+<div class="table-wrap"><table><thead><tr><th scope="col">Ponto</th><th scope="col">O que observar</th><th scope="col">Consequência de produto sugerida</th></tr></thead><tbody><tr><td>Transição, nutrição e calor</td><td>Perda de condição, baixa ingestão, cetose, hipocalcemia, conforto e estresse térmico.</td><td>Conservar medições datadas e contexto sanitário; permitir análise conjunta sem atribuir toda falha ao protocolo.</td></tr><tr><td>Recuperação uterina</td><td>Metrite, endometrite, secreção anormal, RP e histórico de parto difícil.</td><td>Exame, doença diagnosticada, conduta e liberação são registros relacionados, mas distintos.</td></tr><tr><td>Ciclicidade</td><td>Vazia com ovulação normal versus anovulação ou outra alteração ovariana.</td><td>Não reduzir toda avaliação a prenha/vazia; detalhes clínicos devem caber no exame, quando utilizados.</td></tr><tr><td>Execução de IA/IATF</td><td>Momento do serviço, armazenamento/manuseio do sêmen, técnica, etapa omitida, perda de dispositivo e intervalo crítico.</td><td>Vincular execução à versão do protocolo; distinguir hora desconhecida de atraso comprovado.</td></tr><tr><td>Diagnóstico e resserviço</td><td>Matriz sem exame no momento planejado; diagnóstico negativo sem retorno organizado.</td><td>Lista de pendências e retorno explícito; ausência de exame não deve virar vazia automaticamente.</td></tr><tr><td>Gestação perdida</td><td>Positivo anterior seguido de perda ou parto sem cria viva; causas infecciosas e não infecciosas.</td><td>Preservar evidências e datas; não substituir simplesmente o resultado positivo antigo.</td></tr><tr><td>Nascimento e cria</td><td>Dificuldade de parto, vitalidade, colostro, umbigo, doença e morte precoce.</td><td>Acompanhar matriz e cria com identificações próprias; indicadores de parto contam eventos e de crias contam indivíduos.</td></tr></tbody></table></div>
+<p class="refs">Referências: <a href="https://www.merckvetmanual.com/reproductive-system/uterine-diseases-in-production-animals/metritis-in-production-animals" target="_blank" rel="noopener">Merck · metrite</a> · <a href="https://www.merckvetmanual.com/reproductive-system/uterine-diseases-in-production-animals/endometritis-in-production-animals" target="_blank" rel="noopener">Merck · endometrite</a> · <a href="https://extension.umd.edu/resource/short-and-long-term-effects-heat-stress-dairy-cattle" target="_blank" rel="noopener">Maryland · calor e reprodução</a> · <a href="https://www.atermaisdigital.cnptia.embrapa.br/web/bovino-de-leite/colostragem-primeiros-cuidados" target="_blank" rel="noopener">Embrapa · colostragem e primeiros cuidados</a>.</p>
+<p>Retenção de placenta costuma ser definida como não expulsão das membranas fetais até 24 horas após o parto. O fato aumenta a atenção para complicações e fertilidade posterior. Registrá-la no parto não implica, por si só, um bloqueio reprodutivo permanente: a avaliação clínica e o acompanhamento determinam a conduta.</p><p class="refs">Referências: <a href="https://www.merckvetmanual.com/reproductive-system/retained-fetal-membranes-in-large-animals-retained-placenta/retained-fetal-membranes-in-cows" target="_blank" rel="noopener">Merck · retenção de placenta</a>.</p>
+<h3>4. O que significa “elegível para reprodução”</h3><p><strong>Elegível para ser considerada no programa de novas tentativas</strong> naquela data e para compor a população pertinente dos indicadores. Para a vaca: considerar pós-parto/PEV, situação gestacional, restrições e recuperação. Para novilha: desenvolvimento, peso e maturidade; não há PEV pós-parto de uma vaca.</p><p>Convém separar três perguntas: <strong>pode iniciar o manejo?</strong> <strong>pode receber esta ação específica hoje?</strong> <strong>entra no denominador deste indicador?</strong> As respostas se relacionam, mas não devem virar uma autorização genérica única. Sair do PEV não comprova ciclicidade; estar vazia não obriga a inseminar; bloquear uma tentativa não impede examinar o animal.</p><p class="small">Esta distinção é uma recomendação de modelagem decorrente da pesquisa. O comportamento atual das políticas e restrições permanece descrito nos capítulos 7 e 9.</p><h3>5. Modelos de protocolo: a direção para uma biblioteca inicial</h3><p>Há famílias reconhecidas, mas os materiais consultados não permitem afirmar um ranking atual de uso para esta fazenda. A referência pública do DCRC ainda identifica suas fichas como atualizadas em 2018; deve ser tratada como material técnico versionado, não como uma lista automaticamente atualizada.</p>
+<div class="table-wrap"><table><thead><tr><th scope="col">Família / modelo candidato</th><th scope="col">Papel</th><th scope="col">Cuidado ao transformar em padrão</th></tr></thead><tbody><tr><td>IA por cio observado</td><td>Organizar detecção e serviço sem obrigar toda matriz a entrar em IATF.</td><td>Oportunidade de cio e execução precisam ficar registradas; não inventar protocolo hormonal onde não houve.</td></tr><tr><td>Ovsynch e pré-sincronização, incluindo Presynch-Ovsynch</td><td>Famílias de sincronização para vacas leiteiras, com encadeamento de intervenções.</td><td>Nome não basta: versão, categoria e intervalos precisam ser explícitos.</td></tr><tr><td>Double-Ovsynch / G6G</td><td>Programas de fertilidade estudados para o primeiro serviço em vacas.</td><td>Mais etapas exigem capacidade de execução; não são um padrão único de qualquer rebanho.</td></tr><tr><td>Progesterona + estradiol, conforme protocolo local</td><td>Família descrita na literatura brasileira de leite, com dispositivos e etapas de sincronização.</td><td>Conferir formulação, indicação e protocolo vigente com o veterinário; não copiar um estudo de gado de corte para vacas leiteiras.</td></tr><tr><td>Ressincronização</td><td>Reorganizar novas tentativas após falha/diagnóstico e conforme programa definido.</td><td>Etapas que dependem do estado gestacional precisam preservar essa condição; não aplicar indistintamente a gestantes.</td></tr><tr><td>Modelos sanitários de trabalho</td><td>Pós-parto, acompanhamento neonatal, vacinações e retornos definidos para a fazenda.</td><td>Podem começar com checklists e avaliações. Tratamento, produto e calendário precisam do diagnóstico, contexto local e definição técnica; não instalar antibiótico automático para toda ocorrência.</td></tr></tbody></table></div>
+<p class="refs">Referências: <a href="https://www.dcrcouncil.org/protocols/" target="_blank" rel="noopener">DCRC · referências de protocolos</a> · <a href="https://dairy.extension.wisc.edu/articles/the-high-fertility-cycle/" target="_blank" rel="noopener">Wisconsin · ciclo de alta fertilidade</a> · <a href="https://ainfo.cnptia.embrapa.br/digital/bitstream/item/164236/1/Pecuaria-de-leite-no-Brasil.pdf" target="_blank" rel="noopener">Embrapa · Pecuária de leite no Brasil</a>.</p>
+<p><strong>Proposta de produto:</strong> modelo inicial com nome, categoria-alvo, objetivo, etapas, relações temporais, fonte/data, condições de uso e campos a completar. A fazenda copia, adapta e publica sua versão. Distinguir padrão de referência, versão adotada pela fazenda e protocolo efetivamente executado.</p><p>O mapa local do IDEAGRI confirma estruturas de protocolos reprodutivos, princípios ativos/dias e protocolos sanitários/produtos. Ele não contém, por si só, uma lista clínica completa para validar. Nesta pesquisa não foi feita nova extração do banco de origem; não atribuí nomes, doses ou cronogramas a registros que não foram lidos.</p><h3>6. Nascimento e neonatologia: o que falta conferir</h3><p>“Módulo neonatal completo” era uma expressão vaga. Para este projeto, o útil é listar capacidades concretas e distinguir dado armazenável de rotina pronta.</p>
+<div class="table-wrap"><table><thead><tr><th scope="col">Capacidade</th><th scope="col">Comparação com a entrega atual</th><th scope="col">Direção para discussão</th></tr></thead><tbody><tr><td>Parto, identificação, filiação, sexo e peso</td><td>Já há registros próprios, incluindo gêmeos e cria sem vida.</td><td>Conferir o vocabulário e reduzir o mínimo obrigatório ao que a equipe sabe no momento.</td></tr><tr><td>Fornecimento e qualidade do colostro</td><td>Já existem eventos por cria, quantidade, forma, tipo, horário opcional e qualidade Brix/colostrômetro.</td><td>Medir tempo até primeiro fornecimento só quando nascimento e fornecimento têm precisão suficiente.</td></tr><tr><td>Transferência de imunidade passiva</td><td>O IDEAGRI possui análise sérica da cria. Nosso fornecimento não tem esse campo; um exame comum pode armazenar a medição, mas não foi encontrada rotina específica integrada de classificação/relatório.</td><td>Prioridade de complemento: exame da cria, idade/data de coleta, amostra, método, unidade, resultado e classificação versionada. Reusar ExameAnimal.</td></tr><tr><td>Vitalidade e primeiros cuidados</td><td>Sanidade, exames e aplicações comuns podem registrar eventos, mas isso não prova uma ficha neonatal pronta.</td><td>Avaliar necessidade de checklist de vitalidade, assistência, umbigo e retorno. Não obrigar um novo módulo se a rotina comum resolver.</td></tr><tr><td>Doenças, crescimento, desmama e mortalidade</td><td>Há ocorrências, peso/manejo e baixa na base.</td><td>Conferir o percurso integrado e indicadores por coorte: casos de diarreia/doença respiratória, mortalidade por idade e crescimento.</td></tr><tr><td>Banco de colostro</td><td>Não identificado como necessidade desta fazenda.</td><td>Só acrescentar se houver coleta, armazenamento, lotes e uso que precisem de rastreabilidade. Não é requisito automático para parto/colostragem completos.</td></tr></tbody></table></div>
+<p>O IDEAGRI separa informações do colostro fornecido e avaliação sérica de eficiência da colostragem. Isso confirma uma diferença funcional relevante a revisar. Não demonstra, isoladamente, que todo o restante da neonatologia do produto externo precisa ser reproduzido.</p><p class="refs">Referências: <a href="https://centralderecursos.ideagri.com.br/posts/especifique-as-informacoes-de-colostragem-no-sistema-ideagri" target="_blank" rel="noopener">IDEAGRI · campos de colostragem e análise sérica</a>.</p>
+<p><strong>Qualidade do alimento e absorção pela cria são medidas diferentes.</strong> Brix em torno de 22% é uma referência para qualidade do colostro; esse limite não deve ser aplicado ao soro do bezerro. Para verificar transferência de imunidade, pode-se avaliar sangue da cria com método e idade de coleta apropriados; uma referência prática é amostragem em 24–48 horas. Registrar amostra, unidade e momento evita misturar testes com significados diferentes.</p><p class="refs">Referências: <a href="https://extension.psu.edu/colostrum-management-tools-hydrometers-and-refractometers" target="_blank" rel="noopener">Penn State · avaliação do colostro</a> · <a href="https://extension.psu.edu/feeding-the-newborn-dairy-calf" target="_blank" rel="noopener">Penn State · alimentação e imunidade da cria</a>.</p>
+<h3>7. Que informação deve estar à mão no manejo</h3><p>Um resumo útil do animal reúne identidade, lote/categoria, idade/paridade, DEL/dias pós-parto, situação de lactação, último serviço e tentativas no ciclo, último diagnóstico e método, gestação/previsão, restrições e doenças ativas, ECC/peso datados e próxima ação. Informações de leite podem se juntar a esse contexto na V5. Os detalhes ficam acessíveis sem transformar cada atendimento numa ficha obrigatória enorme.</p><div class="box amber"><strong>Limite desta síntese:</strong> organiza os principais pontos de manejo e as lacunas de produto encontradas. Não é um levantamento exaustivo de todas as funções do IDEAGRI, um protocolo terapêutico ou uma validação dos dados da fazenda. As comparações se apoiam no código consultado, no schema fornecido e nas fontes indicadas.</div></section>
+<section class="chapter" id="anotacoes-outubro"><div class="eyebrow">Discussão de produto · 16/10/2026</div><h2>Respostas às suas nove anotações</h2><p>As decisões abaixo orientam nossa revisão. Os itens descritos como proposta ou complemento ainda não foram implementados. A seção de entidades continua retratando a revisão de código c31caf83.</p>
+<article class="card" id="anotacao-1"><span class="pill">Direção desejada</span><h3>1. Protocolos padrão</h3><p>Sim: oferecer uma biblioteca inicial pesquisada, incluindo referências brasileiras e os protocolos efetivamente usados pela fazenda. O catálogo deve permitir copiar/adaptar e deixar claro categoria, versão, fonte e quais dados faltam para uso. A pesquisa acima identifica famílias candidatas; não instalei doses ou protocolos operacionais. O que estiver no banco IDEAGRI será aproveitado como dado de origem, com conferência.</p></article>
+<article class="card" id="anotacao-2"><span class="pill">Mudança de contrato a planejar</span><h3>2. Horário opcional e horário necessário</h3><p>Separar: (a) horário previsto opcional; (b) exigência da etapa de seguir hora/intervalo, com tolerância quando definida; (c) hora real conhecida ou desconhecida. O código atual preserva DIA/HORA, mas não possui esse controle explícito de obrigatoriedade clínica por etapa. Se a etapa exige precisão e a hora real é desconhecida, registrar o fato com cumprimento não aferível; não inventar hora nem afirmar que foi cumprido. Um intervalo crítico de IATF não perde importância biológica porque a interface permite omitir a hora.</p></article>
+<article class="card" id="anotacao-3"><span class="pill">Complemento identificado</span><h3>3. “Neonatal completo”: falta o quê?</h3><p>A lacuna mais clara frente ao recurso documentado do IDEAGRI é a avaliação sérica de transferência de imunidade, integrada à cria e ao acompanhamento da colostragem. Exames comuns dão base, mas não equivalem a uma rotina pronta. Vitalidade, primeiros cuidados, doenças e indicadores por idade precisam de conferência de fluxo; banco de colostro só entra se fizer sentido para a fazenda.</p></article>
+<article class="card" id="anotacao-4"><span class="pill">Escopo definido pelo usuário</span><h3>4. Produção e qualidade do leite</h3><p>Destinados à V5. Na V4 ficam lactação mínima, DEL, secagem e o contexto necessário à reprodução. Isso é divisão de versões, não uma lacuna acidental a corrigir dentro desta tarefa.</p></article>
+<article class="card" id="anotacao-5"><span class="pill">Esclarecimento de conceito</span><h3>5. Elegibilidade para quê?</h3><p>Para entrar no manejo de novas tentativas reprodutivas e, segundo o método, compor a população analisada nos indicadores. Deve considerar categoria, desenvolvimento/PEV, estado gestacional e condições clínicas. Para linguagem de tela, “Liberação para reprodução” pode ser mais claro; dentro de relatórios, especificar “Matrizes elegíveis para este cálculo”.</p></article>
+<article class="card" id="anotacao-6"><span class="pill">Plano de validação proposto</span><h3>6. Como comprovar equivalência IDEAGRI/IILB?</h3><p>Escolher primeiro o modelo e a versão do relatório. Reproduzir a mesma população, períodos, PEV, regras de inclusão, tipo de serviço, tratamento de pendências, perdas, saídas e arredondamento. Comparar componentes por animal e por intervalo antes de comparar a taxa final. O roteiro detalhado abaixo define o que usar como evidência.</p></article>
+<article class="card" id="anotacao-7"><span class="pill">Escopo confirmado</span><h3>7. IDEAGRI como transferência de dados</h3><p>Será migração do banco já disponível para o Fazendinha. Não haverá integração operacional nem sincronização contínua. Prévia, mapa de origem, conferência e reexecução segura são ferramentas dessa transferência; após a migração, o Fazendinha é a fonte operacional.</p></article>
+<article class="card" id="anotacao-8"><span class="pill">Parte existente + extensão proposta</span><h3>8. Restrições por doença e resultado de exame</h3><p>Hoje há regra por sítio/doença/ação com alerta ou bloqueio, aplicada a ocorrência sanitária válida na data. RestricaoReprodutiva individual é outro registro, sem vínculo direto obrigatório à doença. Não foi encontrado motor geral de regras por resultado de exame. A extensão deve usar exame/campo, amostra, unidade, limiar ou categoria, validade, contexto, efeito e critério de liberação, com vínculo à evidência.</p></article>
+<article class="card" id="anotacao-9"><span class="pill">Direção de linguagem confirmada</span><h3>9. Prenha, reconfirmação e sexo fetal por extenso</h3><p>Concordo em usar linguagem clara. A situação pode ser “Prenha” tanto no primeiro positivo quanto na reconfirmação. O sistema conserva qual evento aconteceu, para não abrir outra gestação. “Sexo fetal” fica como campo complementar: macho, fêmea ou não identificado. P+, OK e M/F podem permanecer no texto original importado; não precisam ser opções principais da UI.</p></article>
+<h3>Restrições: base técnica sem transformar todo risco em bloqueio</h3><p>Uma doença uterina ativa, um problema metabólico, um resultado de rastreio e uma infecção confirmada não têm necessariamente a mesma consequência. A regra precisa dizer <strong>qual ação</strong> está em avaliação: iniciar protocolo, administrar determinado produto, inseminar, transferir embrião ou apenas realizar exame.</p><p>Como proposta, separar “sem impacto configurado”, “alertar”, “exige avaliação/liberação” e “bloquear ação específica”. Um exame alterado precisa conservar método, unidade, data, significado e validade; um resultado de triagem não deve receber automaticamente a mesma interpretação de um diagnóstico confirmado. A justificativa e o encerramento da restrição precisam ser rastreáveis.</p><p>Metrite/endometrite e alterações de ciclicidade justificam atenção reprodutiva; condição corporal, doença metabólica, mastite, claudicação e calor podem afetar o resultado sem justificar a mesma proibição para todos os animais. A lista de referências deve apoiar regras configuráveis, não substituir o exame clínico.</p><p class="refs">Referências: <a href="https://www.merckvetmanual.com/reproductive-system/uterine-diseases-in-production-animals/endometritis-in-production-animals" target="_blank" rel="noopener">Merck · endometrite</a> · <a href="https://www.merckvetmanual.com/reproductive-system/uterine-diseases-in-production-animals/metritis-in-production-animals" target="_blank" rel="noopener">Merck · metrite</a> · <a href="https://extension.psu.edu/why-cows-dont-get-pregnant" target="_blank" rel="noopener">Penn State · fatores de falha reprodutiva</a> · <a href="https://extension.umd.edu/resource/short-and-long-term-effects-heat-stress-dairy-cattle" target="_blank" rel="noopener">Maryland · calor e reprodução</a>.</p>
+<h3>Roteiro concreto para conferir os indicadores</h3><ol><li><strong>Fixar a referência:</strong> versão do IDEAGRI e nome exato do modelo de cálculo. A Rúmina divulga opções IDEAGRI e Overton &amp; Cabrera (2017); o banco antigo da fazenda pode não corresponder à versão atual.</li><li><strong>Fixar a população e os cortes:</strong> mesmos animais, sítios/setores, datas, categoria/paridade, regras de entrada/saída, PEV e exclusões.</li><li><strong>Conferir fatos migrados:</strong> parto, tentativa, data de concepção, diagnóstico, perda, baixa, transferência e suas relações. Não preencher fatos ausentes por aproximação só para fazer os números coincidirem.</li><li><strong>Conferir componentes:</strong> para cada matriz e janela, comparar elegível ou excluída e motivo, contribuição proporcional, serviços, positivas, negativas e pendentes.</li><li><strong>Ensaiar bordas:</strong> saída do PEV em cada dia, diagnóstico tardio, várias tentativas, TE, perda posterior, descarte, transferências e baixa no período.</li><li><strong>Conferir arredondamento:</strong> a documentação pública do IDEAGRI apresenta fatores percentuais arredondados; nosso cálculo mantém frações sem arredondar intermediários. É um ponto a testar no programa de referência, não prova isolada de erro.</li><li><strong>Documentar resultado:</strong> guardar exportações, parâmetros, diferenças e aceites. Contagens e vínculos devem coincidir; tolerância numérica só para apresentação/arredondamento acordado.</li></ol><p>Essa evidência pode demonstrar compatibilidade com um relatório/modelo/versão e conjunto de cenários definidos. Não autoriza a afirmação ampla de que qualquer indicador do Fazendinha é idêntico a qualquer edição do IDEAGRI ou ao índice completo IILB.</p><p class="refs">Referências: <a href="https://pt.linkedin.com/posts/ruminabr_sua-fazenda-pela-r%C3%A9gua-dos-eua-activity-7508544824644591617-nys0" target="_blank" rel="noopener">Rúmina · modelos IDEAGRI e Overton & Cabrera</a> · <a href="https://centralderecursos.ideagri.com.br/posts/taxa-de-prenhez-emita-o-relatorio-considerando-saidas-proporcionais-do-pev-em-cada-intervalo" target="_blank" rel="noopener">IDEAGRI · aptidão proporcional no período</a> · <a href="https://centralderecursos.ideagri.com.br/posts/conheca-a-listagem-para-conferencia-e-ajuste-de-dados-da-taxa-de-prenhez" target="_blank" rel="noopener">IDEAGRI · conferência dos dados da taxa</a>.</p>
+<div class="box green"><strong>Escopo que fica registrado:</strong> laboratório e produção de embriões fora desta fazenda/V4; leite e qualidade na V5; IDEAGRI como migração única; protocolos iniciais adaptáveis como direção de produto; linguagem clara no atendimento. Horário necessário por etapa, regras por exame e integração da avaliação de imunidade são pontos para planejar, não funcionalidades já entregues por esta atualização.</div></section>
+<section class="chapter" id="visao">
+<div class="eyebrow">Capítulo 01</div>
+<h2>A finalidade da V4</h2>
+<p>A V4 pretende permitir que a fazenda <strong>organize o manejo, registre o que aconteceu com cada animal e acompanhe suas consequências</strong>: tentativa de reprodução, diagnóstico, gestação, parto e novo ciclo. O trabalho pode ser coletivo; o histórico continua individual.</p>
+<p>Ela se apoia no rebanho e na genética das versões anteriores e se conecta à sanidade, ao estoque e aos serviços financeiros. O PR acumulou também mudanças estruturais para que reprodução e sanidade compartilhem protocolos, tarefas e exames.</p>
+<div class="grid">
+<article class="card">
+<span class="pill">Produto</span>
+<h3>Acompanhar a reprodução</h3>
+<p>Saber o que foi feito, se houve prenhez, como ela foi acompanhada e qual foi o desfecho, mantendo origem genética e tentativas por ciclo.</p>
+</article>
+<article class="card">
+<span class="pill">Rotina</span>
+<h3>Preparar e realizar visitas</h3>
+<p>Escolher demandas da agenda ou montar um grupo por filtros, revisar a lista, imprimir e registrar os resultados individuais com menos repetição.</p>
+</article>
+<article class="card">
+<span class="pill">Base comum</span>
+<h3>Reutilizar estruturas</h3>
+<p>Um núcleo de protocolos e exames atende os dois domínios. As diferenças de reprodução ficam nos dados e efeitos específicos.</p>
+</article>
+<article class="card">
+<span class="pill">Continuidade</span>
+<h3>Preservar contexto e decisões</h3>
+<p>Datas, versões, histórico, filiação, consumo, filtros e impressões explicam o que aconteceu sem depender do cadastro atual.</p>
+</article>
+</div>
+<div class="box green">
+<strong>O percurso principal:</strong> preparar o manejo → realizar os procedimentos → registrar os resultados → acompanhar gestação → registrar parto/crias → iniciar o próximo ciclo. Existem entradas diretas: uma vaca comprada já prenha, um parto histórico ou um exame avulso não precisam passar artificialmente por todas as etapas.</div>
+<p>Este caderno descreve a implementação atual e deixa perguntas para discussão. As perguntas não são um novo plano aprovado. Os contratos do projeto continuam sendo <a href="../reproducao.md">Reprodução e visitas</a> e <a href="../protocolos-exames.md">Protocolos e exames</a>.</p>
+</section>
+<section class="chapter" id="escopo">
+<div class="eyebrow">Capítulo 02</div>
+<h2>O que está coberto — e até onde</h2>
+<p>
+<strong>“Implementado” significa que há estrutura, serviços e caminho de uso no código conferido.</strong> Não significa que toda a rotina já foi homologada pela fazenda, que os dados reais foram carregados ou que houve publicação em produção.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th scope="col">Capacidade</th>
+<th scope="col">Cobertura atual</th>
+<th scope="col">Limite relevante</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Tentativas e genética</td>
+<td>IA, TE, cobertura observada, contagem por ciclo, vínculo ao material e à origem.</td>
+<td>Tentativa não confirma prenhez; laboratório/FIV não está coberto.</td>
+</tr>
+<tr>
+<td>Diagnóstico e gestação</td>
+<td>Exame comum, conclusão, sexo fetal, reconfirmação, condutas, retorno, perdas e previsão de parto.</td>
+<td>Não há interpretação automática de qualquer sigla ou decisão clínica autônoma.</td>
+</tr>
+<tr>
+<td>Protocolos sanitários e reprodutivos</td>
+<td>Modelos versionados, etapas, grupos, participação individual, agenda, execução e regularização.</td>
+<td>A base permite cadastrar protocolos. Direção desejada: oferecer modelos iniciais pesquisados e adaptáveis à fazenda; esse catálogo ainda precisa ser selecionado e validado.</td>
+</tr>
+<tr>
+<td>Horário da IATF</td>
+<td>Data obrigatória; horário opcional e precisão explícita.</td>
+<td>Hoje a hora pode ficar desconhecida. Direção desejada: a etapa também deve indicar se seguir horário/intervalo é necessário, separando exigência do manejo da precisão do registro.</td>
+</tr>
+<tr>
+<td>Visitas</td>
+<td>Agenda do dia e seleção livre separadas; revisão, impressão, rascunho e confirmação coletiva.</td>
+<td>A seleção livre oferece cinco tipos de atividade hoje; não é um construtor de qualquer procedimento.</td>
+</tr>
+<tr>
+<td>Parto e pós-parto</td>
+<td>Desfecho, assistência, RP, crias, identificação provisória, filiação, pesos, escore e colostro.</td>
+<td>Há parto e colostragem. A comparação identificou a avaliação de transferência de imunidade como complemento importante; veja a análise neonatal e as propostas, sem pressupor banco de colostro.</td>
+</tr>
+<tr>
+<td>Lactação / DEL</td>
+<td>Início, encerramento, DEL na data consultada e indicação de seca quando comprovada.</td>
+<td>Produção diária, qualidade do leite e controle leiteiro foram destinados à V5 pelo usuário. A V4 conserva lactação mínima, DEL e secagem.</td>
+</tr>
+<tr>
+<td>Elegibilidade para entrar no manejo reprodutivo</td>
+<td>Políticas por sítio, vínculo por ciclo e decisões individuais.</td>
+<td>Configuração e vínculos históricos podem estar pendentes; não existe liberação universal automática.</td>
+</tr>
+<tr>
+<td>Indicadores</td>
+<td>Taxas de serviço, concepção e prenhez com metodologia declarada, parâmetros, detalhes e emissões.</td>
+<td>A comprovação exige mesmo modelo, versão, população, parâmetros e comparação por animal/período. Veja o roteiro de equivalência nas respostas às anotações.</td>
+</tr>
+<tr>
+<td>IDEAGRI</td>
+<td>Ferramentas técnicas de prévia/importação/reconciliação e conservação de origem.</td>
+<td>Migração dos dados do banco IDEAGRI já disponível para o Fazendinha. Não haverá integração operacional entre os sistemas; a conferência faz parte da transferência.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="box amber">
+<strong>O que ainda depende de uma decisão ou validação nossa:</strong> homologar os percursos com a fazenda; escolher os protocolos e filtros reais que serão usados; conferir as políticas reprodutivas; reconciliar o histórico importado; validar os números dos indicadores com dados conhecidos. Essas tarefas são diferentes de “falta criar uma tabela”.</div>
+<p>Também não está estabelecido aqui um aplicativo de atendimento offline com sincronização. O percurso previsto contempla a ficha impressa levada ao campo e a transcrição posterior. O autosalvamento no servidor não deve ser entendido como garantia de operação sem conexão.</p>
+</section>
+<section class="chapter" id="conceitos">
+<div class="eyebrow">Capítulo 03</div>
+<h2>As distinções que sustentam o modelo</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th scope="col">Conceito</th>
+<th scope="col">Pergunta que responde</th>
+<th scope="col">Exemplo prático</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Categoria</td>
+<td>Que categoria o animal ocupa?</td>
+<td>Vaca ou novilha, conforme regras e histórico.</td>
+</tr>
+<tr>
+<td>Aptidão</td>
+<td>Qual a finalidade produtiva?</td>
+<td>Leite ou corte. Não é “apta para inseminar”.</td>
+</tr>
+<tr>
+<td>Papel reprodutivo</td>
+<td>Que papel genético/gestacional exerce nesse período?</td>
+<td>Doadora, receptora ou nenhum papel especial registrado.</td>
+</tr>
+<tr>
+<td>Situação reprodutiva</td>
+<td>O que sabemos da reprodução naquela data?</td>
+<td>Gestação confirmada, vazia, aguardando diagnóstico ou informação insuficiente.</td>
+</tr>
+<tr>
+<td>Lactação / DEL</td>
+<td>Está em lactação? Há quantos dias na data consultada?</td>
+<td>Pode estar gestante e ainda em lactação.</td>
+</tr>
+<tr>
+<td>Restrição</td>
+<td>Há decisão que impede ou limita alguma ação?</td>
+<td>Descarte reprodutivo por motivo informado; continua no leite até outra decisão.</td>
+</tr>
+<tr>
+<td>Elegibilidade para entrar no manejo reprodutivo</td>
+<td>Está liberada segundo a política e as evidências do ciclo?</td>
+<td>Uma vaca vazia ainda pode estar no período de espera.</td>
+</tr>
+<tr>
+<td>Protocolo</td>
+<td>Qual sequência de manejo foi definida?</td>
+<td>Modelo de etapas; não é uma gestação.</td>
+</tr>
+<tr>
+<td>Visita</td>
+<td>Em qual trabalho coletivo organizamos o atendimento?</td>
+<td>A mesma visita pode conter sanidade e reprodução.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Essas informações coexistem. Uma mesma vaca pode ser leiteira, receptora, gestante, lactante e ter uma restrição sanitária. Reduzir tudo a um único campo de “status” apagaria diferenças necessárias à rotina.</p>
+<h3>O exame é comum; os efeitos dependem do que foi observado</h3>
+<div class="flow">
+<div class="node">
+<b>TipoExame</b>Define formato e contexto</div>
+<span class="arrow" aria-hidden="true">→</span>
+<div class="node">
+<b>ExameAnimal</b>Registra a realização</div>
+<span class="arrow" aria-hidden="true">→</span>
+<div class="node">
+<b>ResultadoExame</b>Guarda observações</div>
+<span class="arrow" aria-hidden="true">→</span>
+<div class="node">
+<b>Interpretação</b>Conduz os efeitos reprodutivos</div>
+</div>
+<p>O toque ou outro método de avaliação produz informações sobre um animal. O sistema registra essas informações em um exame e, quando aplicável, vincula a interpretação à gestação, tentativa, restrição ou retorno. <strong>O formato pode ter campos específicos; os efeitos sobre o domínio seguem regras implementadas.</strong> Não criamos um motor em que qualquer campo novo possa executar qualquer ação no banco.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th scope="col">Conceito em linguagem clara</th>
+<th scope="col">Significado no produto</th>
+<th scope="col">Efeito que não deve ser presumido</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Prenha — primeira confirmação</td>
+<td>Confirmação de gestação; vincula tentativa comprovada ou origem desconhecida explícita.</td>
+<td>Não é outra inseminação.</td>
+</tr>
+<tr>
+<td>Prenha — gestação reconfirmada</td>
+<td>Reconfirmação da gestação que já existe.</td>
+<td>Não abre nova gestação.</td>
+</tr>
+<tr>
+<td>Sexo fetal: macho / fêmea / não identificado</td>
+<td>Observação do sexo fetal no acompanhamento.</td>
+<td>Não cria bezerro nem comprova paternidade.</td>
+</tr>
+<tr>
+<td>IATF</td>
+<td>Indicação de protocolo para fêmea avaliada vazia.</td>
+<td>Não inicia protocolo nem baixa estoque.</td>
+</tr>
+<tr>
+<td>Descarte</td>
+<td>Restrição reprodutiva com motivo.</td>
+<td>Não vende, seca ou dá baixa no animal.</td>
+</tr>
+<tr>
+<td>Aguardar</td>
+<td>Conduta e eventual retorno informado.</td>
+<td>Não significa automaticamente vazia.</td>
+</tr>
+<tr>
+<td>Anotação externa sem significado confirmado</td>
+<td>Significados não confirmados nesta discussão.</td>
+<td>Não devem receber semântica inventada.</td>
+</tr>
+<tr>
+<td>Seca</td>
+<td>No produto, “Seca” depende de encerramento de lactação conhecido.</td>
+<td>A interpretação exata da letra do relatório externo ainda precisa ser confirmada.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p class="small">Direção de linguagem confirmada em 16/10: usar palavras completas. As siglas do papel servem à leitura e à migração do histórico, não ao desenho obrigatório da interface. Primeira confirmação e reconfirmação mantêm efeitos distintos, mesmo mostrando “Prenha” como situação. A interface do app ainda deve ser revisada separadamente.</p>
+</section>
+<section class="chapter" id="fluxo">
+<div class="eyebrow">Capítulo 04</div>
+<h2>Da preparação à próxima lactação: um exemplo completo</h2>
+<p>Exemplo ilustrativo, sem prescrever doses ou calendário: a fazenda decide iniciar um protocolo reprodutivo em 20 fêmeas. Cada fase abaixo mostra o que o operador faz e o que realmente passa a existir.</p>
+<div class="journey">
+<article class="step">
+<h3>Configurar o modelo</h3>
+<p>Em Configurações, a fazenda cadastra e publica a versão do protocolo com suas etapas. O tipo é reprodutivo porque foi criado nesse contexto.</p>
+<p>
+<strong>No sistema:</strong> Protocolo + EtapaProtocolo. Ainda não há execução, animal participante, tentativa ou consumo.</p>
+</article>
+<article class="step">
+<h3>Escolher o grupo</h3>
+<p>Para iniciar animais sem tarefa prévia, usa a seleção livre, revisa a tabela e escolhe “Iniciar protocolo reprodutivo”. Para tarefas já previstas, usa a agenda.</p>
+<p>
+<strong>No sistema:</strong> Visita + atividade + participantes preparados, com critérios e contexto. Preparar a atividade de início pela visita ainda não cria programação nem início efetivo.</p>
+</article>
+<article class="step">
+<h3>Confirmar quem efetivamente começou</h3>
+<p>No atendimento, informa o início dos animais presentes. Se 18 começaram e 2 faltaram, apenas os 18 confirmados iniciam nesse fluxo.</p>
+<p>
+<strong>No sistema:</strong> Programação comum e participações são criadas ou reutilizadas quando compatíveis; tarefas são geradas e o início individual é registrado. Não há tentativa ou consumo por esse comando sozinho.</p>
+</article>
+<article class="step">
+<h3>Executar as etapas</h3>
+<p>Nos dias previstos, a agenda apresenta as tarefas. O operador confirma a aplicação, retirada, exame ou procedimento correspondente.</p>
+<p>
+<strong>No sistema:</strong> O fato realizado fica ligado à TarefaProtocolo. A aplicação de um produto utiliza o fluxo de aplicação e sua origem; informar início não substitui registrar uma aplicação que ocorreu no mesmo dia.</p>
+</article>
+<article class="step">
+<h3>Registrar a inseminação</h3>
+<p>Na etapa de tentativa, informa animal, data, material e origem. Se saiu do estoque da fazenda, escolhe o lote e a quantidade.</p>
+<p>
+<strong>No sistema:</strong> TentativaReprodutiva + saída de estoque, quando essa é a origem, na mesma transação. A tentativa recebe a posição no ciclo. Não transforma a vaca em gestante.</p>
+</article>
+<article class="step">
+<h3>Examinar e confirmar a prenhez</h3>
+<p>Em uma avaliação posterior, registra o exame e a conclusão. Vincula a tentativa comprovada. Se não há origem comprovada, registra essa limitação.</p>
+<p>
+<strong>No sistema:</strong> ExameAnimal + observações + interpretação; uma conclusão positiva pode criar GestacaoAnimal. A contagem de tentativas do ciclo não aumenta por fazer o exame.</p>
+</article>
+<article class="step">
+<h3>Reconfirmar, observar sexo e acompanhar</h3>
+<p>Outros exames podem reconfirmar a gestação, registrar sexo fetal ou motivar alteração da previsão.</p>
+<p>
+<strong>No sistema:</strong> Novos exames se ligam à mesma gestação. A previsão tem histórico. Um resultado negativo após gestação conhecida exige tratar perda ou correção diagnóstica.</p>
+</article>
+<article class="step">
+<h3>Registrar parto e crias</h3>
+<p>Informa o evento da matriz, os desfechos das crias e os dados disponíveis. Complementa peso, RP, assistência ou colostro onde couber.</p>
+<p>
+<strong>No sistema:</strong> PartoAnimal + CriaParto; cria viva gera Animal com origem de nascimento, identificação provisória se necessário e filiação comprovada. A gestação vinculada se encerra; começa novo ciclo de tentativas.</p>
+</article>
+<article class="step">
+<h3>Acompanhar o pós-parto e o próximo ciclo</h3>
+<p>Registra lactação quando ela começou, secagem quando ocorrer e decisões de elegibilidade. Na próxima visita, volta à agenda ou aos filtros.</p>
+<p>
+<strong>No sistema:</strong> DEL, situação produtiva e elegibilidade usam datas e fatos registrados. A nova tentativa pertence ao novo ciclo; as anteriores continuam no histórico.</p>
+</article>
+</div>
+<div class="box amber">
+<strong>Uma diferença em relação à sequência que discutimos inicialmente:</strong> confirmar prenhez não mantém, por si só, um protocolo “vigente até o parto”. O protocolo acompanha suas tarefas e participações; a gestação acompanha a prenhez. Pode haver gestação em andamento com todas as tarefas daquele protocolo concluídas.</div>
+<h3>IA, TE e cobertura têm efeitos diferentes</h3>
+<p>Na IA, o sêmen fornece a origem paterna. Na TE, o embrião traz a origem genética: a doadora é a mãe genética e a receptora é a mãe gestacional. O cadastro do produto/material preservado na tentativa é a referência para o nascimento. Informações ausentes permanecem desconhecidas.</p>
+<p>Cobertura observada é uma tentativa registrada. Já a exposição de um touro ao lote registra uma janela de convivência por animal. Ela não fornece sozinha a data exata da fecundação ou certeza de paternidade.</p>
+<p class="refs">Conferir no código: <a href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/server/src/services/pecuaria/reproducao/registros.ts" target="_blank" rel="noopener">Tentativas, gestação e nascimento</a> · <a href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/server/src/services/pecuaria/reproducao/inicio-iatf-visita.integration.test.ts" target="_blank" rel="noopener">Início efetivo pela visita</a>
+</p>
+</section>
+<section class="chapter" id="visitas">
+<div class="eyebrow">Capítulo 05</div>
+<h2>Duas entradas independentes, um atendimento comum</h2>
+<div class="grid">
+<article class="card">
+<span class="pill">Agenda do dia</span>
+<h3>“O que já está previsto?”</h3>
+<p>O sistema consulta tarefas pendentes de protocolos sanitários/reprodutivos e retornos expressamente registrados. Organiza os grupos por domínio, etapa e janela de data.</p>
+<p>O usuário escolhe grupos → revisa os animais → prepara a lista → atende. Filtros salvos não entram como sugestões dessa agenda.</p>
+</article>
+<article class="card">
+<span class="pill">Seleção livre</span>
+<h3>“Quem quero avaliar ou manejar?”</h3>
+<p>O usuário define critérios sem depender de tarefa pendente. Pode usar filtros salvos, revisar animais, excluir e incluir exceções autorizadas.</p>
+<p>Define filtros → revisa a lista → escolhe a atividade → prepara → atende. Salvar o filtro conserva os critérios para a próxima visita.</p>
+</article>
+</div>
+<p>Uma visita pode receber um grupo de cada percurso, em inclusões separadas. A origem fica registrada por grupo. Não existe obrigação de transformar a seleção livre em item do planner.</p>
+<h3>Como a seleção rotativa funciona</h3>
+<p>Imagine um filtro “vacas vazias com mais de X dias após o parto OU inseminadas há mais de Y dias”, usando limites definidos pelo veterinário. Na visita seguinte, os mesmos critérios são calculados na nova data; alguns animais saem e outros entram. O filtro salvo permanece, mas a população muda.</p>
+<p>Os filtros gerais combinam-se em <strong>E</strong>; opções dentro do mesmo atributo e blocos de manejo podem combinar-se em <strong>OU</strong>. Informações desconhecidas são excluídas por padrão quando necessárias ao critério, com opção explícita de inclusão. Os limites não recebem valores clínicos presumidos.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th scope="col">Família</th>
+<th scope="col">Dados disponíveis para selecionar</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Identidade e grupo</td>
+<td>Brinco/nome, sexo, origem, lotes e categorias.</td>
+</tr>
+<tr>
+<td>Perfil e composição</td>
+<td>Aptidão leite/corte, papel reprodutivo, raça/composição, idade e precisão do nascimento.</td>
+</tr>
+<tr>
+<td>Contexto produtivo</td>
+<td>Lactação/situação produtiva, DEL, pós-parto e última pesagem conhecida até a referência.</td>
+</tr>
+<tr>
+<td>Contexto reprodutivo</td>
+<td>Situação, tentativa, confirmação/gestação, retorno, dias desde aptidão, partos, RP e descarte.</td>
+</tr>
+<tr>
+<td>Protocolos</td>
+<td>Participação ativa, domínio ou protocolo específico, respeitando a data.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>
+<strong>Isso não significa filtrar por qualquer coluna do banco.</strong> Há um conjunto implementado de critérios. Se uma nova característica for necessária, será preciso confirmar sua fonte, histórico e regra antes de adicioná-la.</p>
+<h3>O que a seleção livre permite preparar hoje</h3>
+<ol>
+<li>Avaliação reprodutiva.</li>
+<li>Exame sanitário, com tipo compatível.</li>
+<li>Aplicação sanitária.</li>
+<li>Início de protocolo reprodutivo, com versão publicada.</li>
+<li>Início de protocolo sanitário, com versão publicada.</li>
+</ol>
+<div class="box amber">
+<strong>Limite concreto da UI:</strong> não há opção direta de “inseminação avulsa coletiva” ou “parto coletivo” nesse seletor. A tentativa individual existe em Reprodução; a tentativa prevista em protocolo é atendida pela tarefa. Devemos discutir se esses percursos cobrem a rotina real, antes de ampliar a lista.</div>
+<h3>A data da visita faz diferença</h3>
+<p>Na preparação, lote, localização, categoria, situação e DEL usam a data de referência. Se a lactação começou em 01/10, o DEL em 14/10 é 13. Se a secagem foi registrada em 10/10, nessa visita aparece “Seca”; uma consulta a 09/10 ainda encontra a lactação ativa. Sem dados suficientes, aparece ausência de informação, não zero ou seca.</p>
+<h3>Revisar, imprimir e atender</h3>
+<p>A revisão separa animal, lote, categoria, situação, DEL, tentativas, dias desde tentativa, partos e RP em colunas. Critérios e protocolo ficam no contexto compartilhado. Buscar ou paginar a tabela não reduz o total selecionado.</p>
+<p>Depois de preparada, a composição é preservada. “Rever grupo” consulta a lista e exclusões gravadas; não refaz os filtros com os dados de hoje. É consulta: não é um editor de composição de um grupo já preparado. A impressão conserva os filtros, exceções e ordem da emissão.</p>
+<p>No atendimento, o resultado principal fica acessível na linha, e os detalhes aparecem conforme a ação exige. O operador pode salvar rascunhos e confirmar só os preenchidos ou um subconjunto escolhido. Ausentes, adiados e intocados continuam distintos de exames realizados.</p>
+<div class="box green">
+<strong>O ponto em que o sistema muda os fatos é a confirmação.</strong> Selecionar, preparar, imprimir e salvar rascunho não devem criar diagnóstico ou consumo. A confirmação revalida dados e protege contra reenvio duplicado.</div>
+<p>Até 100 participantes são confirmados atomicamente por bloco. Acima disso, a interface divide a confirmação; se um bloco posterior falhar, os anteriores já confirmados permanecem. Uma atualização concorrente do rascunho exige resolução, em vez de sobrescrever silenciosamente o trabalho de outra pessoa.</p>
+<p class="refs">Conferir no código: <a href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/client/src/pecuaria/rebanho/reproducao/SelecaoLivreVisita.tsx" target="_blank" rel="noopener">Seleção e cinco atividades</a> · <a href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/client/src/pecuaria/rebanho/reproducao/Visitas.tsx" target="_blank" rel="noopener">Percursos e atendimento</a> · <a href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/server/src/services/pecuaria/reproducao/selecoes.livre.test.ts" target="_blank" rel="noopener">Semântica dos filtros</a>
+</p>
+</section>
+<section class="chapter" id="partos">
+<div class="eyebrow">Capítulo 06</div>
+<h2>O parto tem sua própria ficha e seus complementos</h2>
+<p>Os dados dos relatórios de parto não foram tratados como mais colunas obrigatórias do atendimento reprodutivo. A V4 tem uma rotina própria de <strong>Partos e pós-parto</strong>, conectada à ficha da matriz e das crias.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th scope="col">Informação</th>
+<th scope="col">Como foi representada</th>
+<th scope="col">Uso prático</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Desfecho e tipo</td>
+<td>PartoAnimal guarda desfecho, indução e dificuldade, com assistência e observação.</td>
+<td>Distinguir o que ocorreu sem colocar todos os significados em “parto complicado”. O vocabulário final ainda merece conferência com o relatório real.</td>
+</tr>
+<tr>
+<td>Responsável e horário</td>
+<td>Responsável, data e hora informada/estimada quando disponível.</td>
+<td>Identificar quem acompanhou sem inventar hora conhecida.</td>
+</tr>
+<tr>
+<td>Retenção de placenta (RP)</td>
+<td>Declaração sim/não/desconhecido no parto; ocorrência sanitária pode ser vinculada explicitamente.</td>
+<td>Registrar o histórico e acompanhar sanidade. Encerrar a ocorrência não apaga a RP do parto.</td>
+</tr>
+<tr>
+<td>Crias</td>
+<td>Uma CriaParto por resultado; Animal para cria viva, inclusive com identificação provisória.</td>
+<td>Gêmeos têm registros separados; natimorto não se torna animal ativo. Morte posterior utiliza baixa.</td>
+</tr>
+<tr>
+<td>Peso da matriz</td>
+<td>Pesagem comum ligada ao parto.</td>
+<td>Informar peso no parto ou posteriormente, sem duplicar a fonte de pesos.</td>
+</tr>
+<tr>
+<td>Peso da cria</td>
+<td>Pesagem de nascimento para cria viva; evidência no parto para desfecho sem animal ativo.</td>
+<td>Peso pode ficar pendente; o nascimento não depende de um peso inventado.</td>
+</tr>
+<tr>
+<td>Escore</td>
+<td>ExameAnimal vinculado ao parto, com escala explícita.</td>
+<td>Registrar avaliação corporal usando o núcleo de exames, sem presumir escala universal.</td>
+</tr>
+<tr>
+<td>Colostro</td>
+<td>Vários FornecimentoColostro por cria viva.</td>
+<td>Registrar o que foi fornecido, quantidade e qualidade conhecida. Complementar depois sem bloquear o parto.</td>
+</tr>
+<tr>
+<td>Lactação</td>
+<td>LactacaoAnimal quando o início foi informado.</td>
+<td>Sustentar DEL e secagem; o parto não abre lactação indiscriminadamente.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h3>Por que manter CriaParto além de Animal?</h3>
+<p>Porque “resultado do nascimento” e “animal acompanhado na fazenda” são objetos diferentes. Um parto gemelar pode ter uma cria viva e outra natimorta. Precisamos conservar ambos os resultados, mas somente a cria viva entra como animal ativo. A filiação registrada no nascimento permanece rastreável mesmo depois de completar brinco e outros dados.</p>
+<h3>O que precisa ser revisto com a fazenda</h3>
+<p>Os termos “tipo de parto”, “desfecho”, “induzido”, “dificuldade” e “assistência” precisam corresponder ao que a equipe realmente registra. O modelo permite separá-los; isso não comprova que a combinação de campos da interface já seja a mais simples para a rotina.</p>
+<p class="refs">Conferir no código: <a href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/server/src/services/pecuaria/reproducao/partos.ts" target="_blank" rel="noopener">Complementos e correções</a> · <a href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/server/src/services/pecuaria/reproducao/partos-v2.integration.test.ts" target="_blank" rel="noopener">Casos de RP, gêmeos e pesagens</a> · <a href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/server/src/services/pecuaria/reproducao/colostro.ts" target="_blank" rel="noopener">Fornecimentos</a>
+</p>
+</section>
+<section class="chapter" id="indicadores">
+<div class="eyebrow">Capítulo 07</div>
+<h2>Elegibilidade e indicadores: configuração não é diagnóstico</h2>
+<p>
+<strong>PEV</strong> é o período de espera voluntário usado na política reprodutiva. A implementação permite configurar prazos para primíparas e multíparas e regras para aborto, perda gestacional, descarte, restrições e papéis incluídos. Aqui estamos descrevendo as opções do software, não recomendando um prazo clínico.</p>
+<p>A política é versionada por sítio; o ciclo guarda a versão aplicável. Uma decisão individual pode liberar, bloquear ou retomar a política, com data e motivo. Isso evita que uma alteração de configuração hoje reinterprete silenciosamente todos os ciclos antigos.</p>
+<div class="box amber">
+<strong>Um detalhe importante:</strong> a existência dessas entidades não significa que os parâmetros da fazenda estejam configurados. Também não significa que o planner vá sugerir automaticamente todas as vacas “prontas para começar”. A agenda mostra demandas existentes; a seleção livre permite buscar animais com os critérios disponíveis.</div>
+<h3>O que os indicadores calculam</h3>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th scope="col">Indicador</th>
+<th scope="col">Cálculo implementado</th>
+<th scope="col">Leitura</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Taxa de serviço (TS)</td>
+<td>100 × matrizes únicas servidas ÷ elegíveis.</td>
+<td>Quantas matrizes elegíveis foram servidas no intervalo.</td>
+</tr>
+<tr>
+<td>Taxa de concepção (TC)</td>
+<td>100 × tentativas positivas ÷ (tentativas − abertas), conforme a classificação e os filtros do método.</td>
+<td>Resultado das tentativas classificadas, com diagnósticos pendentes explicitados.</td>
+</tr>
+<tr>
+<td>Taxa de prenhez (TP)</td>
+<td>TS × TC ÷ 100.</td>
+<td>Combina oportunidade de serviço e resultado de concepção; não é a proporção atual de vacas gestantes no rebanho.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Os períodos têm 21 dias, ancorados na data final. Uma sobra inicial menor que 21 dias fica fora e deve ser explicitada. A saída proporcional do PEV contribui com a fração dos dias restantes. Os totais são recalculados pelos componentes, não por média simples de percentuais.</p>
+<p>O método permite deslocar a data analítica da TE (padrão de sete dias, configurável de zero a trinta) sem mudar a data real do fato. Tentativas anteriores sem diagnóstico dependem de percentual explicitamente informado para estimar sua contribuição; sem isso, há pendência. Dados desconhecidos não viram taxa zero.</p>
+<div class="box green">
+<strong>Nome correto da entrega:</strong> “Base IDEAGRI/IILB — metodologia Fazendinha v1”. Há cálculos e testes contra exemplos, mas não uma certificação de equivalência integral ao sistema externo. A flexibilidade atual vem dos parâmetros implementados; não permite inventar qualquer fórmula na interface.</div>
+<p>Relatórios de partos e indicadores podem gerar emissões preservadas. Conferir um relatório agora e reimprimir uma emissão antiga são operações distintas. A segunda deve mostrar o que foi emitido, mesmo que novos fatos tenham sido registrados depois.</p>
+<p class="refs">Conferir no código: <a href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/server/src/services/pecuaria/reproducao/indicadores.calc.ts" target="_blank" rel="noopener">Fórmulas e parâmetros</a> · <a href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/server/src/services/pecuaria/reproducao/elegibilidade.schemas.ts" target="_blank" rel="noopener">Opções da política</a> · <a href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/server/src/services/pecuaria/reproducao/indicadores.calc.test.ts" target="_blank" rel="noopener">Exemplos e limites testados</a>
+</p>
+</section>
+<section class="chapter" id="mapa">
+<div class="eyebrow">Capítulo 08</div>
+<h2>Mapa das relações, em quatro partes</h2>
+<p>Os desenhos abaixo são mapas conceituais simplificados. “Vários” expressa a relação de produto; nem todas as setas representam uma chave estrangeira física direta. Por exemplo, o participante da visita referencia fatos de tipos diferentes. Para colunas e restrições, consulte o schema e as migrations.</p>
+<div class="diagram">
+<h3>A · Do modelo à execução</h3>
+<div class="flow">
+<div class="node">
+<b>Protocolo</b>1 modelo / versão</div>
+<span class="arrow" aria-hidden="true">→</span>
+<div class="node">
+<b>EtapaProtocolo</b>várias etapas</div>
+<span class="arrow" aria-hidden="true">→</span>
+<div class="node">
+<b>TarefaProtocolo</b>uma por etapa / participação</div>
+<span class="arrow" aria-hidden="true">→</span>
+<div class="node">
+<b>VinculoTarefaProtocolo</b>evidência atual + histórico</div>
+</div>
+<p class="caption">Protocolo → várias ProgramacaoProtocolo → várias ParticipacaoProtocolo. Cada participação pertence a um Animal e possui tarefas. O vínculo aponta para AplicacaoProduto, ExameAnimal ou TentativaReprodutiva, quando pertinente.</p>
+</div>
+<div class="diagram">
+<h3>B · Do serviço reprodutivo ao nascimento</h3>
+<div class="flow">
+<div class="node">
+<b>TentativaReprodutiva</b>IA / TE / cobertura</div>
+<span class="arrow" aria-hidden="true">→</span>
+<div class="node">
+<b>GestacaoAnimal</b>origem comprovada ou desconhecida</div>
+<span class="arrow" aria-hidden="true">→</span>
+<div class="node">
+<b>PartoAnimal</b>um evento da matriz</div>
+<span class="arrow" aria-hidden="true">→</span>
+<div class="node">
+<b>CriaParto</b>vários resultados de cria</div>
+</div>
+<p class="caption">Uma gestação pode não ter tentativa conhecida. Uma cria viva aponta para Animal; uma cria sem vida não cria animal ativo. MaterialGenetico → Produto → origem de estoque apoia a tentativa. FornecimentoColostro pertence à cria. Parto pode originar LactacaoAnimal informada.</p>
+</div>
+<div class="diagram">
+<h3>C · Da seleção ao fato clínico</h3>
+<div class="flow">
+<div class="node">
+<b>VisitaVeterinaria</b>um trabalho no sítio/data</div>
+<span class="arrow" aria-hidden="true">→</span>
+<div class="node">
+<b>AtividadeVisita</b>vários grupos / ações</div>
+<span class="arrow" aria-hidden="true">→</span>
+<div class="node">
+<b>ParticipanteVisita</b>linhas individuais</div>
+<span class="arrow" aria-hidden="true">→</span>
+<div class="node">
+<b>Fato confirmado</b>exame / aplicação / tentativa / início</div>
+</div>
+<p class="caption">Agenda e seleção livre preparam as mesmas entidades de visita. SelecaoVisita → várias VersaoSelecaoVisita guarda filtros; ImpressaoVisita guarda a folha emitida. Um animal pode ter várias participações em atividades diferentes.</p>
+</div>
+<div class="diagram">
+<h3>D · Do exame ao acompanhamento</h3>
+<div class="flow">
+<div class="node">
+<b>TipoExame</b>formato e contexto</div>
+<span class="arrow" aria-hidden="true">→</span>
+<div class="node">
+<b>ExameAnimal</b>realização individual</div>
+<span class="arrow" aria-hidden="true">→</span>
+<div class="node">
+<b>ResultadoExame</b>várias observações</div>
+<span class="arrow" aria-hidden="true">→</span>
+<div class="node">
+<b>InterpretacaoReprodutiva</b>opcional, específica da reprodução</div>
+</div>
+<p class="caption">A interpretação se vincula a tentativa, gestação, restrição ou retorno conforme o resultado. Uma gestação pode ser acompanhada por vários exames. AvaliacaoReprodutiva é uma view de leitura dessa base, não outro exame independente.</p>
+</div>
+<p>A elegibilidade forma outro encadeamento: <code>PoliticaElegibilidadeReprodutiva</code> → <code>VinculoPoliticaCiclo</code> → <code>DecisaoElegibilidadeCiclo</code>. Ele contextualiza o ciclo e os indicadores; não cria tentativa ou gestação.</p>
+<p>Quase todos os fatos precisam situar <strong>animal, data, sítio e autoria</strong>. <code>propriedadeId</code> identifica o sítio da operação e seu escopo de acesso. A localização na data do fato importa: transferir uma vaca hoje não transfere retroativamente o estoque consumido ou os custos de um atendimento antigo.</p>
+</section>
+<section class="chapter" id="entidades">
+<div class="eyebrow">Capítulo 09</div>
+<h2>Cada entidade: o que é, por que existe e como usar</h2>
+<p>Comparando os nomes do schema da branch com <code>origin/main</code> consultada nesta revisão, há <strong>32 modelos com nomes novos</strong> relacionados ao núcleo apresentado abaixo, além de cinco views de compatibilidade. Essa não é uma contagem líquida de tabelas adicionadas: parte da mudança renomeou e unificou estruturas sanitárias que já existiam.</p>
+<p>O catálogo cobre esses 32 modelos. Os cadastros reaproveitados e as views aparecem no próximo capítulo. “Rastreabilidade” e “documento preservado” são suportes internos; o usuário não precisa preencher cada tabela em uma tela diferente.</p>
+<div class="catalog-tools">
+<label for="entity-search">Buscar entidade ou conceito<input id="entity-search" type="search" placeholder="Ex.: gestação, estoque, filtro, cria…">
+</label>
+<label for="entity-group">Área<select id="entity-group">
+<option value="">Todas as áreas</option>
+<option value="protocolos">Protocolos e tarefas</option>
+<option value="exames">Exames</option>
+<option value="reproducao">Reprodução e contexto</option>
+<option value="parto">Parto e pós-parto</option>
+<option value="visitas">Visitas e filtros</option>
+<option value="indicadores">Elegibilidade e relatórios</option>
+</select>
+</label>
+<button id="clear-search" type="button">Limpar busca</button>
+</div>
+<p id="catalog-status" role="status" aria-live="polite">32 entidades neste catálogo.</p>
+<article class="entity" id="ent-Protocolo" data-group="protocolos">
+<header>
+<span class="pill">01 / 32</span>
+<span class="pill">Base unificada</span>
+<h3>
+<code>Protocolo</code>
+</h3>
+</header>
+<dl>
+<dt>O que representa</dt>
+<dd>Modelo versionado de uma sequência de ações. Tem nome, tipo sanitário ou reprodutivo, versão, etapas e publicação.</dd>
+<dt>Por que criamos ou unificamos</dt>
+<dd>Permite repetir um processo sem redigitar as etapas em cada animal. Substitui a separação estrutural entre protocolo sanitário e IATF.</dd>
+<dt>Como funciona na prática e com quem se relaciona</dt>
+<dd>Cadastre e publique o modelo; depois use a versão em uma programação. Um protocolo possui várias EtapaProtocolo e pode originar várias programações.</dd>
+</dl>
+<p class="limit">
+<strong>Limite importante:</strong> O modelo não contém animais nem comprova execução. Alterar uma versão usada exige nova versão; inativar conserva o histórico.</p>
+<a class="small" href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/server/prisma/schema.prisma#L1713" target="_blank" rel="noopener">Ver definição no schema desta revisão</a>
+</article>
+<article class="entity" id="ent-EtapaProtocolo" data-group="protocolos">
+<header>
+<span class="pill">02 / 32</span>
+<span class="pill">Base unificada</span>
+<h3>
+<code>EtapaProtocolo</code>
+</h3>
+</header>
+<dl>
+<dt>O que representa</dt>
+<dd>Uma ação do modelo, com ordem, intervalo, unidade de tempo e parâmetros: produto, dose, exame, material ou configuração pertinente.</dd>
+<dt>Por que criamos ou unificamos</dt>
+<dd>Uma sequência reprodutiva pode conter aplicação, retirada, exame e tentativa. Tipo do protocolo e tipo da ação respondem a perguntas diferentes.</dd>
+<dt>Como funciona na prática e com quem se relaciona</dt>
+<dd>Uma etapa do modelo origina tarefas individuais nas participações. Exemplo ilustrativo: uma etapa de inseminação após um intervalo definido pela fazenda.</dd>
+</dl>
+<p class="limit">
+<strong>Limite importante:</strong> Não é prescrição automática. O intervalo não é universal; produtos, doses e dias precisam ser cadastrados e conferidos.</p>
+<a class="small" href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/server/prisma/schema.prisma#L1734" target="_blank" rel="noopener">Ver definição no schema desta revisão</a>
+</article>
+<article class="entity" id="ent-ProgramacaoProtocolo" data-group="protocolos">
+<header>
+<span class="pill">03 / 32</span>
+<span class="pill">Base unificada</span>
+<h3>
+<code>ProgramacaoProtocolo</code>
+</h3>
+</header>
+<dl>
+<dt>O que representa</dt>
+<dd>Cabeçalho de uma execução coletiva: nome da turma, sítio, versão do protocolo e início de referência.</dd>
+<dt>Por que criamos ou unificamos</dt>
+<dd>Agrupa animais que seguirão o mesmo modelo, sem perder o histórico individual. É o conceito comum por trás de programação IATF e ciclo sanitário.</dd>
+<dt>Como funciona na prática e com quem se relaciona</dt>
+<dd>Uma programação tem várias ParticipacaoProtocolo. A tela pode chamar de turma, programação ou ciclo conforme o contexto.</dd>
+</dl>
+<p class="limit">
+<strong>Limite importante:</strong> Não equivale ao lote permanente do rebanho. Os animais podem ter inícios efetivos e resultados diferentes.</p>
+<a class="small" href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/server/prisma/schema.prisma#L1763" target="_blank" rel="noopener">Ver definição no schema desta revisão</a>
+</article>
+<article class="entity" id="ent-ParticipacaoProtocolo" data-group="protocolos">
+<header>
+<span class="pill">04 / 32</span>
+<span class="pill">Base unificada</span>
+<h3>
+<code>ParticipacaoProtocolo</code>
+</h3>
+</header>
+<dl>
+<dt>O que representa</dt>
+<dd>A adesão de um animal a uma versão do protocolo, geralmente dentro de uma programação, com início, precisão e eventual cancelamento.</dd>
+<dt>Por que criamos ou unificamos</dt>
+<dd>O grupo organiza o trabalho, mas atraso, retirada e execução pertencem a cada animal.</dd>
+<dt>Como funciona na prática e com quem se relaciona</dt>
+<dd>Uma participação gera várias TarefaProtocolo. Na reprodução, início previsto e início efetivo são separados. Reentrada constitui outra participação.</dd>
+</dl>
+<p class="limit">
+<strong>Limite importante:</strong> Há execuções sanitárias antigas sem programação coletiva. Não se deve criar um grupo histórico por mera coincidência de datas.</p>
+<a class="small" href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/server/prisma/schema.prisma#L1785" target="_blank" rel="noopener">Ver definição no schema desta revisão</a>
+</article>
+<article class="entity" id="ent-TarefaProtocolo" data-group="protocolos">
+<header>
+<span class="pill">05 / 32</span>
+<span class="pill">Base unificada</span>
+<h3>
+<code>TarefaProtocolo</code>
+</h3>
+</header>
+<dl>
+<dt>O que representa</dt>
+<dd>Uma etapa prevista para um animal: data, precisão, parâmetros preservados, execução, dispensa, desvios e reprogramações.</dd>
+<dt>Por que criamos ou unificamos</dt>
+<dd>Liga o modelo à agenda e permite comparar o previsto com o realizado.</dd>
+<dt>Como funciona na prática e com quem se relaciona</dt>
+<dd>A agenda consulta as tarefas pendentes. Confirmar a ação pode criar uma aplicação, exame ou tentativa ligada à tarefa.</dd>
+</dl>
+<p class="limit">
+<strong>Limite importante:</strong> Tarefa prevista não é procedimento realizado. Atrasar uma etapa não desloca silenciosamente as próximas.</p>
+<a class="small" href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/server/prisma/schema.prisma#L1818" target="_blank" rel="noopener">Ver definição no schema desta revisão</a>
+</article>
+<article class="entity" id="ent-VinculoTarefaProtocolo" data-group="protocolos">
+<header>
+<span class="pill">06 / 32</span>
+<span class="pill">Rastreabilidade</span>
+<h3>
+<code>VinculoTarefaProtocolo</code>
+</h3>
+</header>
+<dl>
+<dt>O que representa</dt>
+<dd>Relação entre a tarefa e o fato que comprova sua execução, com histórico do vínculo atual e dos substituídos.</dd>
+<dt>Por que criamos ou unificamos</dt>
+<dd>Uma aplicação ou exame pode ser anulado e corrigido. A tarefa precisa manter a evidência original e saber qual fato passou a valer.</dd>
+<dt>Como funciona na prática e com quem se relaciona</dt>
+<dd>Liga a tarefa a AplicacaoProduto, ExameAnimal ou TentativaReprodutiva. A regularização escolhe um substituto válido ou outra resolução permitida.</dd>
+</dl>
+<p class="limit">
+<strong>Limite importante:</strong> É suporte interno, não mais uma tarefa para o operador preencher. Corrigir o vínculo não autoriza repetir consumo.</p>
+<a class="small" href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/server/prisma/schema.prisma#L1850" target="_blank" rel="noopener">Ver definição no schema desta revisão</a>
+</article>
+<article class="entity" id="ent-ResultadoExame" data-group="exames">
+<header>
+<span class="pill">07 / 32</span>
+<span class="pill">Registro de observação</span>
+<h3>
+<code>ResultadoExame</code>
+</h3>
+</header>
+<dl>
+<dt>O que representa</dt>
+<dd>Uma observação estruturada de ExameAnimal: campo, valor, unidade, vigência e autoria. Um exame pode ter várias.</dd>
+<dt>Por que criamos ou unificamos</dt>
+<dd>Um exame não cabe sempre em um único valor. Pode reunir conclusão, observações e campos específicos do tipo.</dd>
+<dt>Como funciona na prática e com quem se relaciona</dt>
+<dd>Os campos seguem o formato preservado do exame. Uma correção substitui a observação vigente sem apagar sua existência anterior.</dd>
+</dl>
+<p class="limit">
+<strong>Limite importante:</strong> Há suporte a formatos anteriores de resultado simples. Não se deve exigir o preenchimento simultâneo do formato antigo e do estruturado.</p>
+<a class="small" href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/server/prisma/schema.prisma#L1942" target="_blank" rel="noopener">Ver definição no schema desta revisão</a>
+</article>
+<article class="entity" id="ent-InterpretacaoReprodutiva" data-group="exames">
+<header>
+<span class="pill">08 / 32</span>
+<span class="pill">Efeito de domínio</span>
+<h3>
+<code>InterpretacaoReprodutiva</code>
+</h3>
+</header>
+<dl>
+<dt>O que representa</dt>
+<dd>A interpretação reprodutiva ligada a um ExameAnimal: tentativa, gestação, conduta, restrição, motivo e retorno.</dd>
+<dt>Por que criamos ou unificamos</dt>
+<dd>Separa o que foi observado no exame das consequências para o acompanhamento reprodutivo.</dd>
+<dt>Como funciona na prática e com quem se relaciona</dt>
+<dd>Uma avaliação positiva pode abrir uma gestação; uma reconfirmação acompanha a existente; uma conduta pode indicar retorno ou restrição. O serviço grava os efeitos coerentemente.</dd>
+</dl>
+<p class="limit">
+<strong>Limite importante:</strong> Não é uma segunda tabela de exame com outra data e outro animal. Os fatos comuns ficam no ExameAnimal.</p>
+<a class="small" href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/server/prisma/schema.prisma#L1959" target="_blank" rel="noopener">Ver definição no schema desta revisão</a>
+</article>
+<article class="entity" id="ent-SituacaoInicialReprodutiva" data-group="reproducao">
+<header>
+<span class="pill">09 / 32</span>
+<span class="pill">Ponto de partida</span>
+<h3>
+<code>SituacaoInicialReprodutiva</code>
+</h3>
+</header>
+<dl>
+<dt>O que representa</dt>
+<dd>Registro do estado reprodutivo conhecido ao iniciar o acompanhamento, com data, origem e informações disponíveis.</dd>
+<dt>Por que criamos ou unificamos</dt>
+<dd>Permite receber uma vaca já em reprodução sem inventar toda sua história anterior.</dd>
+<dt>Como funciona na prática e com quem se relaciona</dt>
+<dd>Compõe a situação do animal e pode servir de referência ao ciclo inicial e à política de elegibilidade.</dd>
+</dl>
+<p class="limit">
+<strong>Limite importante:</strong> Informar um estado inicial não comprova uma inseminação, material utilizado ou consumo antigo.</p>
+<a class="small" href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/server/prisma/schema.prisma#L2136" target="_blank" rel="noopener">Ver definição no schema desta revisão</a>
+</article>
+<article class="entity" id="ent-RestricaoReprodutiva" data-group="reproducao">
+<header>
+<span class="pill">10 / 32</span>
+<span class="pill">Decisão individual</span>
+<h3>
+<code>RestricaoReprodutiva</code>
+</h3>
+</header>
+<dl>
+<dt>O que representa</dt>
+<dd>Uma restrição datada, com motivo, ações afetadas e histórico de encerramento ou reversão.</dd>
+<dt>Por que criamos ou unificamos</dt>
+<dd>Representa decisões como descarte reprodutivo mantendo a vaca no rebanho.</dd>
+<dt>Como funciona na prática e com quem se relaciona</dt>
+<dd>É consultada ao planejar e novamente ao executar intervenções. Pode ser criada como consequência de uma avaliação.</dd>
+</dl>
+<p class="limit">
+<strong>Limite importante:</strong> Descarte reprodutivo não é baixa, venda ou secagem. A vaca pode continuar em lactação.</p>
+<a class="small" href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/server/prisma/schema.prisma#L2157" target="_blank" rel="noopener">Ver definição no schema desta revisão</a>
+</article>
+<article class="entity" id="ent-RegraSanitariaReprodutiva" data-group="reproducao">
+<header>
+<span class="pill">11 / 32</span>
+<span class="pill">Configuração</span>
+<h3>
+<code>RegraSanitariaReprodutiva</code>
+</h3>
+</header>
+<dl>
+<dt>O que representa</dt>
+<dd>Regra por sítio, doença e ação reprodutiva, com efeito de alerta ou bloqueio.</dd>
+<dt>Por que criamos ou unificamos</dt>
+<dd>Permite que uma ocorrência sanitária influencie a reprodução conforme a configuração adotada pela fazenda.</dd>
+<dt>Como funciona na prática e com quem se relaciona</dt>
+<dd>OcorrenciaSanitaria fornece a evidência; a regra define a consequência para a ação. Alertas exigem ciência quando aplicável.</dd>
+</dl>
+<p class="limit">
+<strong>Limite importante:</strong> O sistema não presume que toda doença impede toda reprodução. A regra precisa existir e respeita a vigência da ocorrência.</p>
+<a class="small" href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/server/prisma/schema.prisma#L2179" target="_blank" rel="noopener">Ver definição no schema desta revisão</a>
+</article>
+<article class="entity" id="ent-TentativaReprodutiva" data-group="reproducao">
+<header>
+<span class="pill">12 / 32</span>
+<span class="pill">Fato operacional</span>
+<h3>
+<code>TentativaReprodutiva</code>
+</h3>
+</header>
+<dl>
+<dt>O que representa</dt>
+<dd>Uma IA, transferência de embrião ou cobertura observada, com animal, data, ciclo, ordem, responsável e origem genética.</dd>
+<dt>Por que criamos ou unificamos</dt>
+<dd>Registra o serviço reprodutivo realizado, que pode ou não resultar em prenhez.</dd>
+<dt>Como funciona na prática e com quem se relaciona</dt>
+<dd>Pode vir de tarefa ou lançamento individual. Liga MaterialGenetico e o consumo de estoque quando essa é a origem; uma gestação pode apontar para a tentativa comprovada.</dd>
+</dl>
+<p class="limit">
+<strong>Limite importante:</strong> Iniciar IATF não cria tentativa. A IA é um fato reprodutivo próprio; não exige duplicar a mesma utilização como aplicação sanitária.</p>
+<a class="small" href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/server/prisma/schema.prisma#L2195" target="_blank" rel="noopener">Ver definição no schema desta revisão</a>
+</article>
+<article class="entity" id="ent-GestacaoAnimal" data-group="reproducao">
+<header>
+<span class="pill">13 / 32</span>
+<span class="pill">Acompanhamento</span>
+<h3>
+<code>GestacaoAnimal</code>
+</h3>
+</header>
+<dl>
+<dt>O que representa</dt>
+<dd>Uma gestação confirmada de um animal, com confirmação, início conhecido ou estimado quando informado, previsão, sexo fetal e encerramento.</dd>
+<dt>Por que criamos ou unificamos</dt>
+<dd>Vários exames acompanham a mesma gestação. Não faria sentido criar outra gestação a cada OK ou sexagem.</dd>
+<dt>Como funciona na prática e com quem se relaciona</dt>
+<dd>Pode se ligar a uma tentativa comprovada. É acompanhada por exames, histórico de previsão e, quando ocorre, parto ou encerramento por perda.</dd>
+</dl>
+<p class="limit">
+<strong>Limite importante:</strong> Origem desconhecida é admitida explicitamente. Não se atribui paternidade apenas à tentativa mais próxima no calendário.</p>
+<a class="small" href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/server/prisma/schema.prisma#L2232" target="_blank" rel="noopener">Ver definição no schema desta revisão</a>
+</article>
+<article class="entity" id="ent-PartoAnimal" data-group="parto">
+<header>
+<span class="pill">14 / 32</span>
+<span class="pill">Fato operacional</span>
+<h3>
+<code>PartoAnimal</code>
+</h3>
+</header>
+<dl>
+<dt>O que representa</dt>
+<dd>Um evento da matriz, com data, desfecho, indução, dificuldade, assistência, responsável e retenção de placenta.</dd>
+<dt>Por que criamos ou unificamos</dt>
+<dd>Agrupa o nascimento/desfecho e seus efeitos sobre ciclo, gestação e acompanhamento pós-parto.</dd>
+<dt>Como funciona na prática e com quem se relaciona</dt>
+<dd>Um parto tem várias CriaParto; pode encerrar uma gestação, originar lactação informada, vincular pesagens e exames e iniciar novo ciclo de tentativas.</dd>
+</dl>
+<p class="limit">
+<strong>Limite importante:</strong> Gêmeos são um parto da matriz. Na regra atual aprovada, aborto e natimorto contam como parto e reiniciam o ciclo; outras perdas não viram aborto automaticamente.</p>
+<a class="small" href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/server/prisma/schema.prisma#L2281" target="_blank" rel="noopener">Ver definição no schema desta revisão</a>
+</article>
+<article class="entity" id="ent-CriaParto" data-group="parto">
+<header>
+<span class="pill">15 / 32</span>
+<span class="pill">Resultado por cria</span>
+<h3>
+<code>CriaParto</code>
+</h3>
+</header>
+<dl>
+<dt>O que representa</dt>
+<dd>Uma linha de resultado de cada cria do parto: viva ou não, sexo, ordem e filiação preservada.</dd>
+<dt>Por que criamos ou unificamos</dt>
+<dd>Permite representar gêmeos e natimortos sem duplicar o parto nem criar animais ativos para todos os desfechos.</dd>
+<dt>Como funciona na prática e com quem se relaciona</dt>
+<dd>Cria viva se liga a Animal criado na confirmação. FornecimentoColostro pertence à cria; pesos e filiação conservam o vínculo com o nascimento.</dd>
+</dl>
+<p class="limit">
+<strong>Limite importante:</strong> CriaParto não é um segundo cadastro permanente do animal. É o resultado daquele nascimento, inclusive quando não há animal ativo.</p>
+<a class="small" href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/server/prisma/schema.prisma#L2316" target="_blank" rel="noopener">Ver definição no schema desta revisão</a>
+</article>
+<article class="entity" id="ent-FornecimentoColostro" data-group="parto">
+<header>
+<span class="pill">16 / 32</span>
+<span class="pill">Fato operacional</span>
+<h3>
+<code>FornecimentoColostro</code>
+</h3>
+</header>
+<dl>
+<dt>O que representa</dt>
+<dd>Um fornecimento de colostro a uma cria viva, com data, quantidade, qualidade informada e detalhes disponíveis.</dd>
+<dt>Por que criamos ou unificamos</dt>
+<dd>Uma cria pode receber várias ofertas. O evento precisa existir por cria, não apenas como um total no parto da mãe.</dd>
+<dt>Como funciona na prática e com quem se relaciona</dt>
+<dd>Liga-se à CriaParto; normaliza quantidade em litros mantendo a unidade informada. Admite dados de qualidade por Brix ou colostrômetro conforme o registro.</dd>
+</dl>
+<p class="limit">
+<strong>Limite importante:</strong> É colostro fornecido à cria. Não é volume ordenhado da vaca, banco de colostro, estoque de recipientes ou exame de proteína sérica.</p>
+<a class="small" href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/server/prisma/schema.prisma#L2333" target="_blank" rel="noopener">Ver definição no schema desta revisão</a>
+</article>
+<article class="entity" id="ent-LactacaoAnimal" data-group="parto">
+<header>
+<span class="pill">17 / 32</span>
+<span class="pill">Intervalo de acompanhamento</span>
+<h3>
+<code>LactacaoAnimal</code>
+</h3>
+</header>
+<dl>
+<dt>O que representa</dt>
+<dd>Período mínimo de lactação, com início e encerramento; o parto de origem pode ser desconhecido em registros históricos.</dd>
+<dt>Por que criamos ou unificamos</dt>
+<dd>Sustenta o DEL e a distinção entre lactante, seca e situação desconhecida.</dd>
+<dt>Como funciona na prática e com quem se relaciona</dt>
+<dd>DEL é calculado na data consultada, com início como dia zero. No dia da secagem registrada, a lactação já está encerrada.</dd>
+</dl>
+<p class="limit">
+<strong>Limite importante:</strong> Não registra litros produzidos ou qualidade do leite. Sem histórico suficiente, não se presume que a vaca está seca.</p>
+<a class="small" href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/server/prisma/schema.prisma#L2364" target="_blank" rel="noopener">Ver definição no schema desta revisão</a>
+</article>
+<article class="entity" id="ent-VinculoPesagemParto" data-group="parto">
+<header>
+<span class="pill">18 / 32</span>
+<span class="pill">Rastreabilidade</span>
+<h3>
+<code>VinculoPesagemParto</code>
+</h3>
+</header>
+<dl>
+<dt>O que representa</dt>
+<dd>Vínculo auditável que identifica uma Pesagem como peso da matriz no pós-parto ou peso de uma cria.</dd>
+<dt>Por que criamos ou unificamos</dt>
+<dd>Reutiliza a fonte única de pesos, em vez de manter um valor divergente dentro de cada tela.</dd>
+<dt>Como funciona na prática e com quem se relaciona</dt>
+<dd>Une PartoAnimal, Pesagem e, quando pertinente, CriaParto. Alterar uma pesagem vinculada também invalida uma edição desatualizada do parto.</dd>
+</dl>
+<p class="limit">
+<strong>Limite importante:</strong> Peso de nascimento exige a data do parto; peso da matriz pode ser do parto ou posterior. Vínculos desfeitos conservam motivo e autoria.</p>
+<a class="small" href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/server/prisma/schema.prisma#L2384" target="_blank" rel="noopener">Ver definição no schema desta revisão</a>
+</article>
+<article class="entity" id="ent-SelecaoVisita" data-group="visitas">
+<header>
+<span class="pill">19 / 32</span>
+<span class="pill">Configuração reutilizável</span>
+<h3>
+<code>SelecaoVisita</code>
+</h3>
+</header>
+<dl>
+<dt>O que representa</dt>
+<dd>Nome e identidade de um conjunto de filtros salvos por sítio, com situação ativa/inativa.</dd>
+<dt>Por que criamos ou unificamos</dt>
+<dd>Permite que o veterinário repita a mesma lógica de seleção em visitas diferentes.</dd>
+<dt>Como funciona na prática e com quem se relaciona</dt>
+<dd>A interface oferece Usar filtros salvos e Editar / inativar dentro da seleção livre. Cada alteração de critérios gera VersaoSelecaoVisita.</dd>
+</dl>
+<p class="limit">
+<strong>Limite importante:</strong> Salva uma regra de busca. Não congela os mesmos animais para sempre e não cria uma tarefa na agenda.</p>
+<a class="small" href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/server/prisma/schema.prisma#L2407" target="_blank" rel="noopener">Ver definição no schema desta revisão</a>
+</article>
+<article class="entity" id="ent-VersaoSelecaoVisita" data-group="visitas">
+<header>
+<span class="pill">20 / 32</span>
+<span class="pill">Versão de configuração</span>
+<h3>
+<code>VersaoSelecaoVisita</code>
+</h3>
+</header>
+<dl>
+<dt>O que representa</dt>
+<dd>Os critérios e a ordenação de uma versão do filtro salvo.</dd>
+<dt>Por que criamos ou unificamos</dt>
+<dd>Preserva o significado de uma seleção mesmo que o veterinário mude seus critérios posteriormente.</dd>
+<dt>Como funciona na prática e com quem se relaciona</dt>
+<dd>Uma nova visita recalcula os critérios na data escolhida. A preparação guarda os critérios e o contexto efetivamente utilizados.</dd>
+</dl>
+<p class="limit">
+<strong>Limite importante:</strong> Exceções manuais daquela visita não passam a integrar automaticamente o filtro salvo.</p>
+<a class="small" href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/server/prisma/schema.prisma#L2423" target="_blank" rel="noopener">Ver definição no schema desta revisão</a>
+</article>
+<article class="entity" id="ent-ExposicaoTouro" data-group="reproducao">
+<header>
+<span class="pill">21 / 32</span>
+<span class="pill">Contexto de monta</span>
+<h3>
+<code>ExposicaoTouro</code>
+</h3>
+</header>
+<dl>
+<dt>O que representa</dt>
+<dd>Cabeçalho de exposição de um touro a um lote e sítio, dentro de um intervalo.</dd>
+<dt>Por que criamos ou unificamos</dt>
+<dd>Registra a oportunidade de cobertura quando a fazenda não observou cada monta.</dd>
+<dt>Como funciona na prática e com quem se relaciona</dt>
+<dd>Tem ParticipacaoExposicao individuais que respeitam a permanência das fêmeas no período.</dd>
+</dl>
+<p class="limit">
+<strong>Limite importante:</strong> Exposição não comprova data exata de cobertura ou fecundação, nem define automaticamente a paternidade.</p>
+<a class="small" href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/server/prisma/schema.prisma#L2438" target="_blank" rel="noopener">Ver definição no schema desta revisão</a>
+</article>
+<article class="entity" id="ent-ParticipacaoExposicao" data-group="reproducao">
+<header>
+<span class="pill">22 / 32</span>
+<span class="pill">Contexto individual</span>
+<h3>
+<code>ParticipacaoExposicao</code>
+</h3>
+</header>
+<dl>
+<dt>O que representa</dt>
+<dd>Presença de uma fêmea em determinada exposição, com seu próprio intervalo.</dd>
+<dt>Por que criamos ou unificamos</dt>
+<dd>Animais entram e saem do lote em dias diferentes. O cabeçalho sozinho perderia essa informação.</dd>
+<dt>Como funciona na prática e com quem se relaciona</dt>
+<dd>Relaciona Animal a ExposicaoTouro e conserva a janela individual de convivência.</dd>
+</dl>
+<p class="limit">
+<strong>Limite importante:</strong> Não deve incrementar tentativas como se cada dia de convivência fosse uma inseminação.</p>
+<a class="small" href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/server/prisma/schema.prisma#L2454" target="_blank" rel="noopener">Ver definição no schema desta revisão</a>
+</article>
+<article class="entity" id="ent-VisitaVeterinaria" data-group="visitas">
+<header>
+<span class="pill">23 / 32</span>
+<span class="pill">Organização do trabalho</span>
+<h3>
+<code>VisitaVeterinaria</code>
+</h3>
+</header>
+<dl>
+<dt>O que representa</dt>
+<dd>Cabeçalho do trabalho veterinário: sítio, data, nome, responsável e situação da visita.</dd>
+<dt>Por que criamos ou unificamos</dt>
+<dd>Reúne grupos e procedimentos de um dia para preparar, imprimir e registrar o atendimento.</dd>
+<dt>Como funciona na prática e com quem se relaciona</dt>
+<dd>Uma visita contém várias AtividadeVisita. Cada grupo pode entrar pela agenda ou pela seleção livre; o atendimento é comum.</dd>
+</dl>
+<p class="limit">
+<strong>Limite importante:</strong> Encerrar a visita não executa pendências. A visita organiza fatos; não substitui seus registros clínicos.</p>
+<a class="small" href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/server/prisma/schema.prisma#L2540" target="_blank" rel="noopener">Ver definição no schema desta revisão</a>
+</article>
+<article class="entity" id="ent-AtividadeVisita" data-group="visitas">
+<header>
+<span class="pill">24 / 32</span>
+<span class="pill">Organização do trabalho</span>
+<h3>
+<code>AtividadeVisita</code>
+</h3>
+</header>
+<dl>
+<dt>O que representa</dt>
+<dd>Um grupo de trabalho dentro da visita, com tipo, nome, ordem e contexto preservado.</dd>
+<dt>Por que criamos ou unificamos</dt>
+<dd>Permite atender separadamente avaliação reprodutiva, etapa prevista ou aplicação sanitária, mantendo os dados compartilhados fora de cada linha.</dd>
+<dt>Como funciona na prática e com quem se relaciona</dt>
+<dd>Contém ParticipanteVisita. O contexto conserva origem agenda/livre, critérios, protocolo e referências quando aplicável.</dd>
+</dl>
+<p class="limit">
+<strong>Limite importante:</strong> Não é um lote permanente. Um mesmo animal pode participar de duas atividades na mesma visita.</p>
+<a class="small" href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/server/prisma/schema.prisma#L2554" target="_blank" rel="noopener">Ver definição no schema desta revisão</a>
+</article>
+<article class="entity" id="ent-ParticipanteVisita" data-group="visitas">
+<header>
+<span class="pill">25 / 32</span>
+<span class="pill">Linha de atendimento</span>
+<h3>
+<code>ParticipanteVisita</code>
+</h3>
+</header>
+<dl>
+<dt>O que representa</dt>
+<dd>O animal naquela atividade: ordem, contexto na preparação, rascunho, versão, estado e referência ao fato confirmado.</dd>
+<dt>Por que criamos ou unificamos</dt>
+<dd>Cada animal pode ter resultado diferente, ficar ausente ou precisar de correção sem perder o grupo.</dd>
+<dt>Como funciona na prática e com quem se relaciona</dt>
+<dd>A transcrição salva rascunhos no servidor. A confirmação usa os serviços de exame, aplicação, tentativa ou início de protocolo.</dd>
+</dl>
+<p class="limit">
+<strong>Limite importante:</strong> Salvar rascunho não é confirmar. Resultado administrativo como ausente não cria diagnóstico negativo.</p>
+<a class="small" href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/server/prisma/schema.prisma#L2568" target="_blank" rel="noopener">Ver definição no schema desta revisão</a>
+</article>
+<article class="entity" id="ent-ImpressaoVisita" data-group="visitas">
+<header>
+<span class="pill">26 / 32</span>
+<span class="pill">Documento preservado</span>
+<h3>
+<code>ImpressaoVisita</code>
+</h3>
+</header>
+<dl>
+<dt>O que representa</dt>
+<dd>Versão da ficha de campo emitida, contendo uma cópia dos dados e filtros daquele momento.</dd>
+<dt>Por que criamos ou unificamos</dt>
+<dd>Permite reimprimir o que foi levado a campo, mesmo que os cadastros mudem depois.</dd>
+<dt>Como funciona na prática e com quem se relaciona</dt>
+<dd>Pertence à visita; conserva ordem, referências e contexto disponível.</dd>
+</dl>
+<p class="limit">
+<strong>Limite importante:</strong> Não é um novo exame nem uma lista recalculada ao reimprimir. Campo ausente em emissão antiga permanece ausente.</p>
+<a class="small" href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/server/prisma/schema.prisma#L2591" target="_blank" rel="noopener">Ver definição no schema desta revisão</a>
+</article>
+<article class="entity" id="ent-PeriodoReprodutivoAnimal" data-group="reproducao">
+<header>
+<span class="pill">27 / 32</span>
+<span class="pill">Histórico de papel</span>
+<h3>
+<code>PeriodoReprodutivoAnimal</code>
+</h3>
+</header>
+<dl>
+<dt>O que representa</dt>
+<dd>Período em que o animal exerce um papel reprodutivo, como doadora, receptora ou nenhum desses papéis especiais.</dd>
+<dt>Por que criamos ou unificamos</dt>
+<dd>O papel pode mudar no tempo e não se confunde com aptidão leite/corte, categoria ou prenhez.</dd>
+<dt>Como funciona na prática e com quem se relaciona</dt>
+<dd>É consultado na data da visita, do fato e da definição de filiação. Origem e mudanças preservam histórico.</dd>
+</dl>
+<p class="limit">
+<strong>Limite importante:</strong> Receptora é mãe gestacional; não se torna mãe genética do embrião por esse cadastro. Papel desconhecido ou conflitante fica explícito.</p>
+<a class="small" href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/server/prisma/schema.prisma#L2603" target="_blank" rel="noopener">Ver definição no schema desta revisão</a>
+</article>
+<article class="entity" id="ent-HistoricoPrevisaoParto" data-group="reproducao">
+<header>
+<span class="pill">28 / 32</span>
+<span class="pill">Rastreabilidade</span>
+<h3>
+<code>HistoricoPrevisaoParto</code>
+</h3>
+</header>
+<dl>
+<dt>O que representa</dt>
+<dd>Registro de mudança na previsão do parto, com valor anterior, novo valor, motivo, origem e autoria.</dd>
+<dt>Por que criamos ou unificamos</dt>
+<dd>Permite revisar uma previsão sem apagar o que era esperado anteriormente.</dd>
+<dt>Como funciona na prática e com quem se relaciona</dt>
+<dd>Está ligado à GestacaoAnimal. O acompanhamento usa a previsão vigente e mantém as revisões consultáveis.</dd>
+</dl>
+<p class="limit">
+<strong>Limite importante:</strong> Previsão não é parto ocorrido e não cria cria ou lactação.</p>
+<a class="small" href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/server/prisma/schema.prisma#L2626" target="_blank" rel="noopener">Ver definição no schema desta revisão</a>
+</article>
+<article class="entity" id="ent-PoliticaElegibilidadeReprodutiva" data-group="indicadores">
+<header>
+<span class="pill">29 / 32</span>
+<span class="pill">Configuração versionada</span>
+<h3>
+<code>PoliticaElegibilidadeReprodutiva</code>
+</h3>
+</header>
+<dl>
+<dt>O que representa</dt>
+<dd>Conjunto de regras por sítio e vigência para decidir quando uma matriz entra na elegibilidade reprodutiva.</dd>
+<dt>Por que criamos ou unificamos</dt>
+<dd>A fazenda define PEV e tratamento de aborto, perdas, restrições, descarte e papéis. Isso não pode ser uma regra oculta fixa.</dd>
+<dt>Como funciona na prática e com quem se relaciona</dt>
+<dd>Uma versão é associada ao ciclo por VinculoPoliticaCiclo. A interface fica em Reprodução → Política reprodutiva.</dd>
+</dl>
+<p class="limit">
+<strong>Limite importante:</strong> Não há uma política clínica universal instalada silenciosamente. Sem configuração suficiente, a elegibilidade pode ficar pendente.</p>
+<a class="small" href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/server/prisma/schema.prisma#L2640" target="_blank" rel="noopener">Ver definição no schema desta revisão</a>
+</article>
+<article class="entity" id="ent-VinculoPoliticaCiclo" data-group="indicadores">
+<header>
+<span class="pill">30 / 32</span>
+<span class="pill">Histórico de decisão</span>
+<h3>
+<code>VinculoPoliticaCiclo</code>
+</h3>
+</header>
+<dl>
+<dt>O que representa</dt>
+<dd>Associação do ciclo de um animal à versão da política que se aplicou a ele.</dd>
+<dt>Por que criamos ou unificamos</dt>
+<dd>Evita que editar o PEV hoje mude retroativamente a interpretação de ciclos antigos.</dd>
+<dt>Como funciona na prática e com quem se relaciona</dt>
+<dd>O ciclo pode partir de um parto ou situação inicial. Um parto vincula a política quando o sítio já tem configuração; ciclos iniciais exigem associação explícita.</dd>
+</dl>
+<p class="limit">
+<strong>Limite importante:</strong> Pode conservar política nula quando não havia versão vigente. Criar uma política nova não corrige o passado automaticamente.</p>
+<a class="small" href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/server/prisma/schema.prisma#L2654" target="_blank" rel="noopener">Ver definição no schema desta revisão</a>
+</article>
+<article class="entity" id="ent-DecisaoElegibilidadeCiclo" data-group="indicadores">
+<header>
+<span class="pill">31 / 32</span>
+<span class="pill">Decisão individual</span>
+<h3>
+<code>DecisaoElegibilidadeCiclo</code>
+</h3>
+</header>
+<dl>
+<dt>O que representa</dt>
+<dd>Liberação, bloqueio ou retorno à política para um ciclo, com data, motivo e eventual apta desde.</dd>
+<dt>Por que criamos ou unificamos</dt>
+<dd>Permite registrar uma decisão individual sem reescrever a política de toda a fazenda.</dd>
+<dt>Como funciona na prática e com quem se relaciona</dt>
+<dd>Pertence ao VinculoPoliticaCiclo; o cálculo confronta a decisão com ciclo, datas e evidências pertinentes.</dd>
+</dl>
+<p class="limit">
+<strong>Limite importante:</strong> Uma decisão não transforma situação reprodutiva desconhecida em vazia nem elimina a revalidação das ações.</p>
+<a class="small" href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/server/prisma/schema.prisma#L2675" target="_blank" rel="noopener">Ver definição no schema desta revisão</a>
+</article>
+<article class="entity" id="ent-SnapshotRelatorioReprodutivo" data-group="indicadores">
+<header>
+<span class="pill">32 / 32</span>
+<span class="pill">Documento preservado</span>
+<h3>
+<code>SnapshotRelatorioReprodutivo</code>
+</h3>
+</header>
+<dl>
+<dt>O que representa</dt>
+<dd>Emissão de relatório de partos ou indicadores, com filtros, dados, corte e metodologia/políticas quando pertinentes.</dd>
+<dt>Por que criamos ou unificamos</dt>
+<dd>Um relatório de gestão precisa poder ser reimpresso com os números e critérios que foram vistos na emissão.</dd>
+<dt>Como funciona na prática e com quem se relaciona</dt>
+<dd>A consulta calcula uma prévia; gravar a emissão cria esse registro auditável.</dd>
+</dl>
+<p class="limit">
+<strong>Limite importante:</strong> Não é outra fonte dos fatos clínicos. Uma nova consulta pode refletir correções posteriores; a emissão anterior permanece preservada.</p>
+<a class="small" href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/server/prisma/schema.prisma#L2692" target="_blank" rel="noopener">Ver definição no schema desta revisão</a>
+</article>
+</section>
+<section class="chapter" id="reuso">
+<div class="eyebrow">Capítulo 10</div>
+<h2>O que reaproveitamos e por que ainda aparecem nomes antigos</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th scope="col">Estrutura existente</th>
+<th scope="col">Papel na V4</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Animal / Lote / LocalizacaoAnimal</td>
+<td>Identidade do rebanho, organização e permanência histórica. O grupo de uma visita não é outro Lote.</td>
+</tr>
+<tr>
+<td>CategoriaAnimal / CategoriaManualAnimal / DestinoAnimal</td>
+<td>Categoria calculada ou exceção; aptidão por período. Não absorvem o papel genético nem a situação gestacional.</td>
+</tr>
+<tr>
+<td>Produto / MaterialGenetico / GenitorExterno / ComposicaoRacial</td>
+<td>Produto dá identidade ao item comercial; material fornece especialização genética. Genitores e composição apoiam filiação comprovada.</td>
+</tr>
+<tr>
+<td>MovimentoEstoque / Operacao</td>
+<td>Saída física e vínculo a serviço financeiro, quando aplicáveis. Associar um procedimento a serviço não gera outra despesa.</td>
+</tr>
+<tr>
+<td>TipoExame / ExameAnimal</td>
+<td>Cadastro de formato e realização, ampliados para observações múltiplas e interpretação reprodutiva.</td>
+</tr>
+<tr>
+<td>Doenca / OcorrenciaSanitaria / AplicacaoProduto</td>
+<td>Condições sanitárias, acompanhamento de RP e aplicações realizadas em etapas ou atendimento avulso.</td>
+</tr>
+<tr>
+<td>Pesagem / ManejoAnimal</td>
+<td>Peso e manejo já existentes. O pós-parto reutiliza Pesagem; vínculo identifica o contexto do parto.</td>
+</tr>
+<tr>
+<td>AuditoriaPecuaria / RequisicaoPecuaria</td>
+<td>Autoria, mudanças e suporte à idempotência das confirmações.</td>
+</tr>
+<tr>
+<td>Propriedade / Usuario</td>
+<td>Sítio, escopo e autoria do registro. Custos têm regras adicionais de acesso financeiro.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h3>A analogia com Produto foi aplicada com limites</h3>
+<p>Assim como Produto recebe especializações, Protocolo tem uma base comum tipada e ExameAnimal tem realização comum, observações e interpretação específica. Isso evita duas infraestruturas completas de agenda e de exames.</p>
+<p>Entretanto, uma tentativa, uma gestação e um parto continuam separados: não são variantes intercambiáveis de uma aplicação. Cada um tem duração, efeitos e vínculos próprios. A unificação foi feita onde o conceito é compartilhado, preservando os fatos diferentes.</p>
+<h3>As cinco views de compatibilidade</h3>
+<p>Uma view é uma consulta apresentada como uma estrutura consultável. Estes nomes conservam leituras e contratos antigos; as gravações operacionais usam a base comum.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th scope="col">Nome que pode aparecer no banco</th>
+<th scope="col">O que lê hoje</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ProtocoloIatf</td>
+<td>Protocolo reprodutivo + suas etapas.</td>
+</tr>
+<tr>
+<td>ProgramacaoIatf</td>
+<td>ProgramacaoProtocolo de domínio reprodutivo.</td>
+</tr>
+<tr>
+<td>ParticipanteIatf</td>
+<td>ParticipacaoProtocolo reprodutiva.</td>
+</tr>
+<tr>
+<td>TarefaIatf</td>
+<td>TarefaProtocolo com a apresentação compatível de etapas e vínculos.</td>
+</tr>
+<tr>
+<td>AvaliacaoReprodutiva</td>
+<td>Projeção do exame comum e sua interpretação reprodutiva.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>As cinco tabelas sanitárias de protocolo, etapa, rodada, execução e tarefa foram renomeadas para a base comum. Portanto, encontrar “IATF” e “Protocolo” no explorador do banco não prova que existem duas cópias independentes do mesmo fato.</p>
+<details>
+<summary>Por que alguns nomes de coluna do código diferem do banco?</summary>
+<p>Há aliases no schema Prisma para preservar compatibilidade com código existente. Por exemplo: <code>rodadaId</code> corresponde a <code>programacaoId</code>; <code>execucaoId</code> a <code>participacaoId</code>; <code>previstaPara</code> a <code>previstaEm</code>; <code>parametros</code> a <code>planejadoSnapshot</code>; <code>diaRelativo</code> a <code>intervalo</code>.</p>
+<p>Não são atributos distintos. Essa tradução também explica parte da estranheza ao alternar entre código e Beekeeper.</p>
+</details>
+<p>A remoção de <code>RegistroChuva</code> também está no PR, mas não é uma capacidade reprodutiva. Foi uma retirada de escopo, não uma dependência nova da V4.</p>
+<p class="refs">Conferir no código: <a href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/server/prisma/migrations/20261014160000_protocolos_comuns/migration.sql" target="_blank" rel="noopener">Unificação e views IATF</a> · <a href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/server/prisma/migrations/20261014150000_exame_comum/migration.sql" target="_blank" rel="noopener">Exame comum e view de avaliação</a>
+</p>
+</section>
+<section class="chapter" id="telas">
+<div class="eyebrow">Capítulo 11</div>
+<h2>Como a pessoa usa as funcionalidades</h2>
+<p>Este mapa descreve os caminhos encontrados na interface. É um guia de uso, não uma captura de tela nem uma confirmação de homologação visual.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th scope="col">Necessidade da fazenda</th>
+<th scope="col">Onde usar</th>
+<th scope="col">Registros envolvidos</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Cadastrar a sequência de manejo</td>
+<td>Configurações → Pecuária → Reprodução → Protocolos; protocolos sanitários em seu contexto de sanidade.</td>
+<td>Protocolo e EtapaProtocolo.</td>
+</tr>
+<tr>
+<td>Cadastrar o formato de exame / regras</td>
+<td>Configurações de Pecuária: tipos de exame e regras sanitárias da reprodução.</td>
+<td>TipoExame e RegraSanitariaReprodutiva.</td>
+</tr>
+<tr>
+<td>Ver situação e lançar fato individual</td>
+<td>Reprodução → Ciclos e manejo; também na ficha do animal, em Reprodução.</td>
+<td>Situação inicial, tentativa, avaliação, gestação, restrição e histórico.</td>
+</tr>
+<tr>
+<td>Organizar IATF / acompanhar etapas</td>
+<td>Reprodução → Ciclos e manejo, área de IATF/programações; tarefas também chegam à agenda de visitas.</td>
+<td>ProgramacaoProtocolo, ParticipacaoProtocolo e TarefaProtocolo.</td>
+</tr>
+<tr>
+<td>Registrar exposição a touro</td>
+<td>Reprodução → Ciclos e manejo, área de exposições.</td>
+<td>ExposicaoTouro e participações.</td>
+</tr>
+<tr>
+<td>Atender o que já está previsto</td>
+<td>Visitas → Nova visita → Agenda do dia → revisão → atendimento.</td>
+<td>Tarefas/retornos como origem; visita, atividade e participantes como organização.</td>
+</tr>
+<tr>
+<td>Escolher animais por decisão do veterinário</td>
+<td>Visitas → Nova visita → Seleção livre → filtros → revisão → atividade → atendimento.</td>
+<td>SelecaoVisita opcional; lista preparada e fatos individuais na confirmação.</td>
+</tr>
+<tr>
+<td>Retomar e imprimir trabalho</td>
+<td>Visita existente → atendimento / opções de impressão; Rever grupo para consultar a composição preparada.</td>
+<td>Rascunhos de ParticipanteVisita e ImpressaoVisita.</td>
+</tr>
+<tr>
+<td>Registrar nascimento e complementar pós-parto</td>
+<td>Ação Parto em Reprodução; rotina Partos e pós-parto para consulta e complementos.</td>
+<td>PartoAnimal, CriaParto, Animal, pesagens, RP, exames e colostro.</td>
+</tr>
+<tr>
+<td>Acompanhar lactação / contexto individual</td>
+<td>Ficha do animal e ações de acompanhamento reprodutivo.</td>
+<td>LactacaoAnimal, secagem e cálculo de DEL.</td>
+</tr>
+<tr>
+<td>Definir regras de aptidão ao manejo</td>
+<td>Reprodução → Política reprodutiva; elegibilidade individual na ficha do animal com sítio conhecido.</td>
+<td>Política, vínculo do ciclo e decisões.</td>
+</tr>
+<tr>
+<td>Consultar gestão</td>
+<td>Reprodução → Indicadores ou Partos e pós-parto; emitir relatório quando necessário.</td>
+<td>Consulta calculada e SnapshotRelatorioReprodutivo.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h3>Quais ações criam efeito de verdade?</h3>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th scope="col">Ação</th>
+<th scope="col">Efeito atual</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Publicar um protocolo</td>
+<td>Disponibiliza uma versão; não executa procedimentos.</td>
+</tr>
+<tr>
+<td>Salvar filtros</td>
+<td>Guarda critérios; não separa animais fisicamente nem cria protocolo.</td>
+</tr>
+<tr>
+<td>Preparar grupo / imprimir</td>
+<td>Preserva lista e contexto; não inicia IATF ou consome produto.</td>
+</tr>
+<tr>
+<td>Salvar rascunho de atendimento</td>
+<td>Guarda o preenchimento; não confirma o fato clínico.</td>
+</tr>
+<tr>
+<td>Confirmar início de IATF</td>
+<td>Inicia os participantes confirmados e suas tarefas; não registra inseminação ou dose automaticamente.</td>
+</tr>
+<tr>
+<td>Confirmar aplicação / tentativa</td>
+<td>Registra o fato e os efeitos de origem/estoque pertinentes.</td>
+</tr>
+<tr>
+<td>Confirmar diagnóstico</td>
+<td>Registra exame e interpretação; aplica o efeito compatível sobre o acompanhamento.</td>
+</tr>
+<tr>
+<td>Confirmar parto</td>
+<td>Registra matriz/crias e os efeitos informados, com novo ciclo de tentativas.</td>
+</tr>
+<tr>
+<td>Encerrar visita</td>
+<td>Fecha a organização administrativa; pendências não viram realizadas.</td>
+</tr>
+<tr>
+<td>Anular ou corrigir</td>
+<td>Preserva motivo e histórico; efeitos dependentes exigem conferência e eventual regularização.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="box amber">
+<strong>Integração com estoque e financeiro:</strong> o produto utilizado precisa ter origem coerente. Estoque próprio pode produzir uma saída física; material incluído em serviço não cria saldo fictício. Corrigir um lançamento de uma dose já utilizada não devolve automaticamente essa dose ao estoque disponível. Essa diferença é parte do produto, não apenas uma preocupação técnica.</div>
+<p class="refs">Conferir no código: <a href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/client/src/pecuaria/rebanho/reproducao/Reproducao.tsx" target="_blank" rel="noopener">Rotinas de reprodução</a> · <a href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/client/src/pecuaria/rebanho/reproducao/Iatf.tsx" target="_blank" rel="noopener">Programações e protocolos</a> · <a href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/client/src/router.ts" target="_blank" rel="noopener">Rotas e navegação</a>
+</p>
+</section>
+<section class="chapter" id="discussao">
+<div class="eyebrow">Capítulo 12</div>
+<h2>Roteiro para discutirmos novamente, sem perder o que existe</h2>
+<p>Minha proposta é revisar as decisões abaixo na ordem. Cada uma parte de algo concreto que já existe. Podemos confirmar, simplificar a experiência ou mudar a regra; criar mais tabelas não é o ponto de partida.</p>
+<p class="small">Anotações deste caderno ficam somente neste navegador/origem, se o armazenamento estiver disponível. Não alteram o app, o banco, o PR ou as marcações dos roteiros de teste. Exporte o JSON para compartilhar e guardar uma cópia.</p>
+<div class="toolbar">
+<button id="export-notes" type="button">Exportar minhas decisões e notas</button>
+</div>
+<p id="note-status" role="status" aria-live="polite">
+</p>
+<article class="question">
+<p class="eyebrow">Discussão 01</p>
+<h3>Qual é o centro da V4 para a fazenda?</h3>
+<p>Hoje convivem ciclo reprodutivo, visita coletiva, pós-parto e indicadores. Devemos decidir qual percurso precisa ser simples primeiro e quais complementos podem ficar recolhidos ou para outra etapa.</p>
+<label for="decision-prioridade">Minha posição<select id="decision-prioridade" data-note="prioridade:decisao">
+<option value="pendente">Ainda vou estudar</option>
+<option value="manter">Manter como está descrito</option>
+<option value="simplificar">Simplificar a experiência</option>
+<option value="rever">Rever regra ou escopo</option>
+<option value="validar">Validar com a fazenda antes</option>
+</select>
+</label>
+<label for="notes-prioridade">Observações<textarea id="notes-prioridade" data-note="prioridade:nota" placeholder="Anote exemplos, dúvidas e decisões para discutirmos.">
+</textarea>
+</label>
+</article>
+<article class="question">
+<p class="eyebrow">Discussão 02</p>
+<h3>As cinco atividades da seleção livre cobrem o trabalho real?</h3>
+<p>Avaliação, exame sanitário, aplicação e início de protocolos estão disponíveis. Há necessidade de inseminação avulsa coletiva, parto coletivo ou outro manejo que hoje exige outro percurso?</p>
+<label for="decision-coletivo">Minha posição<select id="decision-coletivo" data-note="coletivo:decisao">
+<option value="pendente">Ainda vou estudar</option>
+<option value="manter">Manter como está descrito</option>
+<option value="simplificar">Simplificar a experiência</option>
+<option value="rever">Rever regra ou escopo</option>
+<option value="validar">Validar com a fazenda antes</option>
+</select>
+</label>
+<label for="notes-coletivo">Observações<textarea id="notes-coletivo" data-note="coletivo:nota" placeholder="Anote exemplos, dúvidas e decisões para discutirmos.">
+</textarea>
+</label>
+</article>
+<article class="question">
+<p class="eyebrow">Discussão 03</p>
+<h3>Como registrar o início e a primeira ação do protocolo?</h3>
+<p>Hoje confirmar o início não lança aplicação. Se o primeiro procedimento acontece no mesmo momento, precisamos decidir como tornar isso claro e evitar a sensação de preencher o mesmo trabalho duas vezes, preservando os fatos.</p>
+<label for="decision-inicio">Minha posição<select id="decision-inicio" data-note="inicio:decisao">
+<option value="pendente">Ainda vou estudar</option>
+<option value="manter">Manter como está descrito</option>
+<option value="simplificar">Simplificar a experiência</option>
+<option value="rever">Rever regra ou escopo</option>
+<option value="validar">Validar com a fazenda antes</option>
+</select>
+</label>
+<label for="notes-inicio">Observações<textarea id="notes-inicio" data-note="inicio:nota" placeholder="Anote exemplos, dúvidas e decisões para discutirmos.">
+</textarea>
+</label>
+</article>
+<article class="question">
+<p class="eyebrow">Discussão 04</p>
+<h3>Qual deve ser o preenchimento mínimo de cada resultado?</h3>
+<p>A estrutura já separa conclusão, sexo fetal e conduta. Devemos definir o que aparece na linha, o que fica nos detalhes e o que é obrigatório só em certos casos. A direção definida é usar Prenha e sexo fetal por extenso; as siglas antigas ficam como referência documental/importada. A distinção entre primeira confirmação e reconfirmação continua no histórico.</p>
+<label for="decision-exames">Minha posição<select id="decision-exames" data-note="exames:decisao">
+<option value="pendente">Ainda vou estudar</option>
+<option value="manter">Manter como está descrito</option>
+<option value="simplificar">Simplificar a experiência</option>
+<option value="rever">Rever regra ou escopo</option>
+<option value="validar">Validar com a fazenda antes</option>
+</select>
+</label>
+<label for="notes-exames">Observações<textarea id="notes-exames" data-note="exames:nota" placeholder="Anote exemplos, dúvidas e decisões para discutirmos.">
+</textarea>
+</label>
+</article>
+<article class="question">
+<p class="eyebrow">Discussão 05</p>
+<h3>Quais filtros salvos representam a rotina do veterinário?</h3>
+<p>Os intervalos precisam vir da fazenda, com nomes legíveis e regra conhecida para valores ausentes. O filtro recalcula os animais por visita; a lista preparada é preservada. OP e outras siglas não confirmadas seguem pendentes.</p>
+<label for="decision-filtros">Minha posição<select id="decision-filtros" data-note="filtros:decisao">
+<option value="pendente">Ainda vou estudar</option>
+<option value="manter">Manter como está descrito</option>
+<option value="simplificar">Simplificar a experiência</option>
+<option value="rever">Rever regra ou escopo</option>
+<option value="validar">Validar com a fazenda antes</option>
+</select>
+</label>
+<label for="notes-filtros">Observações<textarea id="notes-filtros" data-note="filtros:nota" placeholder="Anote exemplos, dúvidas e decisões para discutirmos.">
+</textarea>
+</label>
+</article>
+<article class="question">
+<p class="eyebrow">Discussão 06</p>
+<h3>Quais dados de parto são essenciais na hora e quais podem vir depois?</h3>
+<p>Conferir desfecho, dificuldade, indução, assistência, RP, responsável e campos por cria. Peso, escore e colostro não precisam transformar o registro inicial em uma ficha extensa obrigatória.</p>
+<label for="decision-parto">Minha posição<select id="decision-parto" data-note="parto:decisao">
+<option value="pendente">Ainda vou estudar</option>
+<option value="manter">Manter como está descrito</option>
+<option value="simplificar">Simplificar a experiência</option>
+<option value="rever">Rever regra ou escopo</option>
+<option value="validar">Validar com a fazenda antes</option>
+</select>
+</label>
+<label for="notes-parto">Observações<textarea id="notes-parto" data-note="parto:nota" placeholder="Anote exemplos, dúvidas e decisões para discutirmos.">
+</textarea>
+</label>
+</article>
+<article class="question">
+<p class="eyebrow">Discussão 07</p>
+<h3>Qual política a fazenda quer configurar e desde quando?</h3>
+<p>Precisamos dos parâmetros reais de PEV e das regras para perdas, aborto, descarte e liberação. Os ciclos antigos precisam de tratamento explícito; configurar hoje não preenche esse histórico.</p>
+<label for="decision-elegibilidade">Minha posição<select id="decision-elegibilidade" data-note="elegibilidade:decisao">
+<option value="pendente">Ainda vou estudar</option>
+<option value="manter">Manter como está descrito</option>
+<option value="simplificar">Simplificar a experiência</option>
+<option value="rever">Rever regra ou escopo</option>
+<option value="validar">Validar com a fazenda antes</option>
+</select>
+</label>
+<label for="notes-elegibilidade">Observações<textarea id="notes-elegibilidade" data-note="elegibilidade:nota" placeholder="Anote exemplos, dúvidas e decisões para discutirmos.">
+</textarea>
+</label>
+</article>
+<article class="question">
+<p class="eyebrow">Discussão 08</p>
+<h3>Que resultados conhecidos usaremos para validar os indicadores?</h3>
+<p>Escolher períodos e animais com números conferidos. Comparar componentes, pendências e parâmetros com a referência da fazenda; não aprovar apenas porque o percentual final parece plausível.</p>
+<label for="decision-indicadores">Minha posição<select id="decision-indicadores" data-note="indicadores:decisao">
+<option value="pendente">Ainda vou estudar</option>
+<option value="manter">Manter como está descrito</option>
+<option value="simplificar">Simplificar a experiência</option>
+<option value="rever">Rever regra ou escopo</option>
+<option value="validar">Validar com a fazenda antes</option>
+</select>
+</label>
+<label for="notes-indicadores">Observações<textarea id="notes-indicadores" data-note="indicadores:nota" placeholder="Anote exemplos, dúvidas e decisões para discutirmos.">
+</textarea>
+</label>
+</article>
+<article class="question">
+<p class="eyebrow">Discussão 09</p>
+<h3>Onde a linguagem ainda revela demais o banco?</h3>
+<p>O núcleo já é comum, mas alguns caminhos mantêm IATF, ciclo, programação e participação como vocabulário. Podemos simplificar os rótulos e reunir ações sem necessariamente unificar todos os fatos em uma tabela.</p>
+<label for="decision-linguagem">Minha posição<select id="decision-linguagem" data-note="linguagem:decisao">
+<option value="pendente">Ainda vou estudar</option>
+<option value="manter">Manter como está descrito</option>
+<option value="simplificar">Simplificar a experiência</option>
+<option value="rever">Rever regra ou escopo</option>
+<option value="validar">Validar com a fazenda antes</option>
+</select>
+</label>
+<label for="notes-linguagem">Observações<textarea id="notes-linguagem" data-note="linguagem:nota" placeholder="Anote exemplos, dúvidas e decisões para discutirmos.">
+</textarea>
+</label>
+</article>
+<article class="question">
+<p class="eyebrow">Discussão 10</p>
+<h3>O que precisa estar provado antes de atualizar o escopo final?</h3>
+<p>Percorrer uma visita real, confirmar poucos animais, revisar impressão e correções, conferir consumo, nascimento e indicador. Separar problemas de interface, lacunas de dados e falhas de regra.</p>
+<label for="decision-homologacao">Minha posição<select id="decision-homologacao" data-note="homologacao:decisao">
+<option value="pendente">Ainda vou estudar</option>
+<option value="manter">Manter como está descrito</option>
+<option value="simplificar">Simplificar a experiência</option>
+<option value="rever">Rever regra ou escopo</option>
+<option value="validar">Validar com a fazenda antes</option>
+</select>
+</label>
+<label for="notes-homologacao">Observações<textarea id="notes-homologacao" data-note="homologacao:nota" placeholder="Anote exemplos, dúvidas e decisões para discutirmos.">
+</textarea>
+</label>
+</article>
+</section>
+<section class="chapter" id="evidencias">
+<div class="eyebrow">Capítulo 13</div>
+<h2>Como este caderno foi conferido</h2>
+<p>Referência fixa: <a href="https://github.com/somosvira/fazendinha/commit/c31caf831eccd2e581ecf857562a6bec44b7c1f6">commit c31caf83</a> do <a href="https://github.com/somosvira/fazendinha/pull/319">PR #319</a>, aberto na consulta de 16/10/2026. Os links de código deste documento apontam para essa revisão, para não mudarem silenciosamente com a branch.</p>
+<p>Foram confrontados os contratos, o schema, as migrations de unificação, os serviços de reprodução, os percursos da interface e testes representativos. Nesta consulta, os checks <strong>build + test</strong> e <strong>financeiro (bateria de invariantes, banco real)</strong> estavam concluídos com sucesso para essa revisão: <a href="https://github.com/somosvira/fazendinha/actions/runs/38812599374">execução de CI</a>.</p>
+<div class="box amber">
+<strong>O que essa evidência não demonstra:</strong> homologação integral com a fazenda, presença de todos os cadastros necessários no banco atual, correspondência exata com todos os relatórios do IDEAGRI ou publicação em produção. Este trabalho de documentação não executou procedimentos clínicos, migrations ou cargas de dados e não marca roteiros como aprovados.</div>
+<h3>Fontes para aprofundar</h3>
+<ul class="sources">
+<li>
+<a href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/docs/pecuaria/reproducao.md" target="_blank" rel="noopener">Contrato: reprodução, visitas, pós-parto e indicadores</a>
+</li>
+<li>
+<a href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/docs/pecuaria/protocolos-exames.md" target="_blank" rel="noopener">Contrato: núcleo comum de protocolos, exames e papéis</a>
+</li>
+<li>
+<a href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/server/prisma/schema.prisma" target="_blank" rel="noopener">Schema completo: modelos, campos e relações</a>
+</li>
+<li>
+<a href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/server/prisma/migrations/20261014160000_protocolos_comuns/migration.sql" target="_blank" rel="noopener">Migration: renomes, vínculos e views de protocolos</a>
+</li>
+<li>
+<a href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/server/prisma/migrations/20261014150000_exame_comum/migration.sql" target="_blank" rel="noopener">Migration: resultados e interpretação de exame</a>
+</li>
+<li>
+<a href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/server/prisma/migrations/20261015060000_integridade_pesagem_parto/migration.sql" target="_blank" rel="noopener">Migration: integridade de pesos e parto</a>
+</li>
+<li>
+<a href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/server/src/services/pecuaria/reproducao/registros.ts" target="_blank" rel="noopener">Serviços: tentativa, genética, gestação e nascimento</a>
+</li>
+<li>
+<a href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/server/src/services/pecuaria/reproducao/indicadores.calc.ts" target="_blank" rel="noopener">Cálculo de indicadores e fontes metodológicas</a>
+</li>
+<li>
+<a href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/server/src/services/pecuaria/reproducao/visitas.integration.test.ts" target="_blank" rel="noopener">Testes: versões, cronologia e regularização de visitas</a>
+</li>
+<li>
+<a href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/server/src/services/pecuaria/reproducao/inicio-iatf-visita.concorrencia.integration.test.ts" target="_blank" rel="noopener">Testes: confirmação de início, concorrência e reversão de bloco</a>
+</li>
+<li>
+<a href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/server/src/services/pecuaria/reproducao/partos-v2.integration.test.ts" target="_blank" rel="noopener">Testes: RP, gêmeos, escore, colostro e pesos</a>
+</li>
+<li>
+<a href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/client/src/pecuaria/rebanho/reproducao/SelecaoLivreVisita.tsx" target="_blank" rel="noopener">Interface: seleção livre e atividades disponíveis</a>
+</li>
+<li>
+<a href="https://github.com/somosvira/fazendinha/blob/c31caf831eccd2e581ecf857562a6bec44b7c1f6/client/src/pecuaria/rebanho/reproducao/Reproducao.tsx" target="_blank" rel="noopener">Interface: organização das rotinas reprodutivas</a>
+</li>
+</ul>
+<p>Materiais complementares locais: <a href="conceitos-v4.html">explicação técnica e visual existente</a> · <a href="testes-v4-guia.html">roteiro manual de testes V4</a>. Mockups permanecem referências de discussão; a disponibilidade descrita aqui foi confrontada com a implementação.</p>
+<h3>Glossário rápido</h3>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th scope="col">Termo</th>
+<th scope="col">Uso neste caderno</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DEL</td>
+<td>Dias em lactação na data de referência; início = dia zero.</td>
+</tr>
+<tr>
+<td>PEV</td>
+<td>Período de espera voluntário configurado na política.</td>
+</tr>
+<tr>
+<td>RP</td>
+<td>Retenção de placenta informada no parto.</td>
+</tr>
+<tr>
+<td>IA / IATF / TE</td>
+<td>Inseminação artificial / inseminação artificial em tempo fixo / transferência de embrião. No software, IATF organiza a sequência; a inseminação executada é uma tentativa.</td>
+</tr>
+<tr>
+<td>Snapshot</td>
+<td>Cópia preservada de dados em um momento, para que mudanças futuras não reescrevam o passado.</td>
+</tr>
+<tr>
+<td>Versão</td>
+<td>Identidade de uma configuração ou revisão; permite detectar e impedir sobrescrita por dados antigos.</td>
+</tr>
+<tr>
+<td>Idempotência</td>
+<td>Reenviar a mesma confirmação não deve duplicar fato ou consumo.</td>
+</tr>
+<tr>
+<td>View</td>
+<td>Consulta do banco apresentada como estrutura de leitura; não implica uma tabela independente.</td>
+</tr>
+<tr>
+<td>Ciclo de tentativas</td>
+<td>Agrupamento cronológico das tentativas; parto válido reinicia a contagem na regra atual. Diferente do ciclo/programação de um protocolo sanitário.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<footer>Caderno do estado implementado, ampliado com pesquisa técnica, respostas às anotações e consolidação para a próxima implementação em 16/10/2026. Propostas estão identificadas e não alteram o app; notas pessoais e marcações anteriores permanecem no mesmo armazenamento.</footer>
+</main>
+</div><script>
+const fields=[...document.querySelectorAll('[data-note]')];
+const storageKey='fazendinha:caderno-estudo-v4:c31caf83:v1';
+const noteStatus=document.getElementById('note-status');
+let storageAvailable=true;
+try{const saved=JSON.parse(localStorage.getItem(storageKey)||'{}');if(saved&&typeof saved==='object')for(const f of fields){const value=saved[f.dataset.note];if(typeof value==='string'&&(f.tagName!=='SELECT'||[...f.options].some(o=>o.value===value)))f.value=value;}}catch{storageAvailable=false;}
+function status(){noteStatus.textContent=storageAvailable?'Notas salvas somente neste navegador. Exporte para compartilhar ou guardar uma cópia.':'Armazenamento local indisponível ou inválido. Use Exportar antes de fechar esta página.';}
+function notes(){return Object.fromEntries(fields.map(f=>[f.dataset.note,f.value]));}
+for(const f of fields)f.addEventListener('input',()=>{try{localStorage.setItem(storageKey,JSON.stringify(notes()));storageAvailable=true;}catch{storageAvailable=false;}status();});
+status();
+document.getElementById('export-notes').addEventListener('click',()=>{const data={documento:'caderno-estudo-v4',revisao:'c31caf831eccd2e581ecf857562a6bec44b7c1f6',exportadoEm:new Date().toISOString(),anotacoes:notes()};const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json;charset=utf-8'});const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download='v4-estudo-minhas-decisoes-'+new Date().toISOString().slice(0,10)+'.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);});
+const search=document.getElementById('entity-search'),group=document.getElementById('entity-group');
+const cards=[...document.querySelectorAll('.entity')];
+const normalize=s=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+function filter(){const terms=normalize(search.value).trim().split(/\s+/).filter(Boolean);let count=0;for(const card of cards){const text=normalize(card.textContent);card.hidden=!!((group.value&&card.dataset.group!==group.value)||!terms.every(t=>text.includes(t)));if(!card.hidden)count++;}document.getElementById('catalog-status').textContent=count+' de 32 entidades exibidas. A busca afeta somente este catálogo.';}
+search.addEventListener('input',filter);group.addEventListener('change',filter);
+document.getElementById('clear-search').addEventListener('click',()=>{search.value='';group.value='';filter();search.focus();});
+document.getElementById('print').addEventListener('click',()=>window.print());
+</script></body></html>

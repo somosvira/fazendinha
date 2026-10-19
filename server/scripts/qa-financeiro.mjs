@@ -5,7 +5,11 @@ import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import pg from 'pg';
 
-// Cria um banco temporário no Postgres local (a partir do fazendinha_local, que
+if (process.env.CI !== 'true') {
+  throw new Error('Esta bateria recria bancos e só pode rodar no CI externo. No desenvolvimento local use somente fazendinha_seedatev3 com validações que preservem os dados existentes.');
+}
+
+// No CI externo, cria um banco temporário no Postgres local (a partir do fazendinha_local, que
 // só serve de porta de entrada) e o remove ao final — os dados locais não são
 // tocados. Banco inteiro, e não um schema: o Prisma usa os schemas fixos
 // "public" e "pecuaria", que não se isolam por `?schema=`.

@@ -1,0 +1,10 @@
+import { readFile, writeFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
+import { resolve, dirname } from 'node:path';
+const raiz=resolve(dirname(fileURLToPath(import.meta.url)),'../..');
+const fixtures=JSON.parse(await readFile(resolve(raiz,'output/qa-pr322/fixtures.json'),'utf8'));
+const relatorio=JSON.parse(await readFile(resolve(raiz,'output/qa-pr322/resultados.json'),'utf8'));
+if(fixtures.retoma?.execucao!=='QA322R-20261017')throw Error('Registro de retomada local não encontrado');
+const dados=JSON.stringify({fixtures,resultados:relatorio.resultados}).replaceAll('<','\\u003c');
+const script=`async(page)=>{if(new URL(page.url()).origin!=='http://localhost:41875')throw Error('Abra a aplicação local primeiro');return page.evaluate(({fixtures,resultados})=>{sessionStorage.setItem('qa322:fixtures:v1',JSON.stringify(fixtures));sessionStorage.setItem('qa322:resultados:retomada:v1',JSON.stringify(resultados));return {fixtures:fixtures.retoma.execucao,resultados:resultados.length};},${dados});}\n`;
+const destino=resolve(raiz,'output/qa-pr322/sincronizar-retomada.mcp.js');await writeFile(destino,script);console.log(destino);

@@ -1,3 +1,4 @@
+import { PainelGerencial } from "./gerencial/PainelGerencial";
 /* Rio Novo — raiz.
  * Permissionamento: Marco (dono) é o usuário logado. Ele gerencia acessos e pode
  * "ver como" outra pessoa — a navegação reduz às abas do perfil e os valores em R$
@@ -14,9 +15,13 @@ import { limparRascunhoAtivo, useRascunhoAtivo } from "./financeiro/rascunhoAtiv
 import { resumoRascunho } from "./financeiro/lib/rascunho";
 import { limparRascunhoRelatorioAtivo, useRascunhoRelatorioAtivo } from "./financeiro/rascunhoRelatorioAtivo";
 import { resumoRascunhoRelatorio } from "./financeiro/lib/rascunho-relatorio";
+import { RelatoriosPecuaria } from "./pecuaria/rebanho/reproducao/RelatoriosPecuaria";
+import { Reproducao } from "./pecuaria/rebanho/reproducao/Reproducao";
+import { Visitas } from "./pecuaria/rebanho/reproducao/Visitas";
 import "./pecuaria/pecuaria-theme.css";
 import "./pecuaria/pecuaria-refino.css";
 import { setPropriedadeAtiva, getPropriedadeAtiva } from "./propriedadeScope";
+import { executarComGuardaNavegacao } from "./navegacaoGuardada";
 import { parseProdutoEstoqueId } from "./router";
 import { CommandPalette } from "./components/CommandPalette";
 import { AssistenteConsulta } from "./components/AssistenteConsulta";
@@ -120,6 +125,8 @@ export function App() {
   const [tab, setTab] = useState<Tab>(() =>
     (typeof window === "undefined" ? null : (normalizarLocalizacaoPecuaria(), pathToTab(window.location.pathname))) ?? DEFAULT_TAB,
   );
+  const tabAtual = useRef(tab);
+  tabAtual.current = tab;
   // Abertura Terrano: no boot quando abre já no dashboard (ver INTRO_MODE). No
   // clique de "Entrar" ela também é (re)disparada — aí a música toca junto com a
   // logo, porque o clique libera o áudio.
@@ -144,10 +151,33 @@ export function App() {
   // dashboard). Trocar grava no escopo compartilhado (header X-Propriedade-Id) e
   // remonta o conteúdo via `key` abaixo, forçando refetch no escopo novo. null =
   // consolidado; com 1 sítio o seletor fica quase invisível (só o + discreto).
-  const [propAtiva, setPropAtiva] = useState<number | null>(getPropriedadeAtiva());
+  const [propAtiva, setPropAtiva] = useState<number | null>(() => {
+    const destino = pathToTab(window.location.pathname);
+    const recebeOrigemGerencial = destino != null && ["estoque", "pec-nutricao", "pec-reproducao", "pec-sanidade", "caixinha", "gastos"].includes(destino);
+    if (destino !== "gerencial" && !recebeOrigemGerencial) return getPropriedadeAtiva();
+    const raw=new URLSearchParams(window.location.search).get("propriedadeId");
+    if(raw && /^\d+$/.test(raw) && Number(raw)>0 && Number(raw)<=2147483647) { setPropriedadeAtiva(Number(raw)); return Number(raw); }
+    if (destino === "gerencial") {
+      setPropriedadeAtiva(null);
+      return null;
+    }
+    return getPropriedadeAtiva();
+  });
   const trocarPropriedade = (id: number | null) => {
-    setPropriedadeAtiva(id);
-    setPropAtiva(id);
+    void executarComGuardaNavegacao(() => {
+      if (id !== getPropriedadeAtiva() && /^\/pecuaria\/rebanho\/animais\/?$/.test(window.location.pathname)) {
+        const url = new URL(window.location.href);
+        url.searchParams.delete("page");
+        window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
+      }
+      setPropriedadeAtiva(id);
+      setPropAtiva(id);
+      if(tabAtual.current==="gerencial") setDeepLinkFiltros(atual=>{
+        const filtros={...(atual?.tab==="gerencial"?atual.filtros:{})};
+        if(id==null)delete filtros.propriedadeId;else filtros.propriedadeId=String(id);
+        return {tab:"gerencial",filtros};
+      });
+    });
   };
 
   // Deep-link da IA (chat): filtros aplicados numa tela via query string
@@ -181,13 +211,15 @@ export function App() {
 
   const onSair = token
     ? () => {
-        void logout();
-        clearSessao();
-        setTokenState(null);
-        setUsuario(null);
-        setShowIntro(false);
-        window.history.replaceState(null, "", "/signin");
-        setLocationRevision((valor) => valor + 1);
+        void executarComGuardaNavegacao(() => {
+          void logout();
+          clearSessao();
+          setTokenState(null);
+          setUsuario(null);
+          setShowIntro(false);
+          window.history.replaceState(null, "", "/signin");
+          setLocationRevision((valor) => valor + 1);
+        });
       }
     : undefined;
 
@@ -201,34 +233,45 @@ export function App() {
     const t = pathToTab(path);
     if (!t) return;
     const filtros = Object.fromEntries(new URLSearchParams(query).entries());
-    setDeepLinkFiltros(Object.keys(filtros).length ? { tab: t, filtros } : null);
-    setTab(t);
-    const alvo = normalizarRotaPecuaria(url);
-    if (window.location.pathname + window.location.search !== alvo) window.history.pushState(null, "", alvo);
+    void executarComGuardaNavegacao(() => {
+      setDeepLinkFiltros(Object.keys(filtros).length ? { tab: t, filtros } : null);
+      setTab(t);
+      const alvo = normalizarRotaPecuaria(url);
+      if (window.location.pathname + window.location.search !== alvo) window.history.pushState(null, "", alvo);
+    });
   };
 
   // Navegação MANUAL (sidebar/conteúdo) — limpa filtros de deep-link p/ não reaplicar stale.
   const navegarTab = (t: Tab) => {
-    setDeepLinkFiltros(null);
-    setTab(t);
-    const alvo = tabToPath(t);
-    if (window.location.pathname + window.location.search !== alvo) navegarPara(alvo);
+    void executarComGuardaNavegacao(() => {
+      setDeepLinkFiltros(null);
+      setTab(t);
+      const contextoGerencial = t === "gerencial" && propAtiva != null
+        ? `?${new URLSearchParams({ propriedadeId: String(propAtiva) })}`
+        : "";
+      const alvo = tabToPath(t) + contextoGerencial;
+      if (window.location.pathname + window.location.search !== alvo) navegarPara(alvo);
+    });
   };
 
   // Atalho "Trabalho ativo" da sidebar: abre o formulário de operação, que
   // continua o rascunho se houver ou começa um novo. A sub-rota é publicada
   // antes da troca de aba (ver router.ts).
   const abrirRascunhoAtivo = () => {
-    setDeepLinkFiltros(null);
-    abrirRotaNovaOperacao();
-    setTab("lancar");
+    void executarComGuardaNavegacao(() => {
+      setDeepLinkFiltros(null);
+      abrirRotaNovaOperacao();
+      setTab("lancar");
+    });
   };
   const abrirRascunhoRelatorioAtivo = () => {
-    setDeepLinkFiltros(null);
-    const alvo = "/financeiro/relatorios/novo";
-    if (window.location.pathname + window.location.search !== alvo) window.history.pushState(null, "", alvo);
-    window.dispatchEvent(new PopStateEvent("popstate"));
-    setTab("relatorio");
+    void executarComGuardaNavegacao(() => {
+      setDeepLinkFiltros(null);
+      const alvo = "/financeiro/relatorios/novo";
+      if (window.location.pathname + window.location.search !== alvo) window.history.pushState(null, "", alvo);
+      window.dispatchEvent(new PopStateEvent("popstate"));
+      setTab("relatorio");
+    });
   };
 
   // Splash de abertura — cobre o primeiro paint até as fontes (Newsreader/DM Sans)
@@ -331,11 +374,19 @@ export function App() {
   useEffect(() => {
     const onPop = () => {
       normalizarLocalizacaoPecuaria();
-      setTab(pathToTab(window.location.pathname) ?? DEFAULT_TAB);
-      setLocationRevision((valor) => valor + 1);
       const sp = new URLSearchParams(window.location.search);
       const t = pathToTab(window.location.pathname);
-      setDeepLinkFiltros(t && [...sp.keys()].length && !isNovaOperacaoFinanceira(window.location.pathname) ? { tab: t, filtros: Object.fromEntries(sp.entries()) } : null);
+      const atualizar = () => {
+        if(t==="gerencial") {
+          const raw=sp.get("propriedadeId");const id=raw&&/^\d+$/.test(raw)&&Number(raw)>0&&Number(raw)<=2147483647?Number(raw):null;
+          setPropriedadeAtiva(id);setPropAtiva(id);
+        }
+        setTab(t ?? DEFAULT_TAB);
+        setLocationRevision((valor) => valor + 1);
+        setDeepLinkFiltros(t && [...sp.keys()].length && !isNovaOperacaoFinanceira(window.location.pathname) ? { tab: t, filtros: Object.fromEntries(sp.entries()) } : null);
+      };
+      if (t && t !== tabAtual.current) void executarComGuardaNavegacao(atualizar);
+      else atualizar();
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
@@ -480,12 +531,20 @@ export function App() {
     ? <RebanhoContent podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} />
     : tab === "pec-sanidade"
     ? <Sanidade podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} />
+    : tab === "pec-reproducao"
+    ? <Reproducao podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} />
+    : tab === "pec-relatorios"
+    ? <RelatoriosPecuaria podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} />
+    : tab === "pec-visitas"
+    ? <Visitas podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} />
     : tab === "pec-nutricao"
     ? <Nutricao podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} />
+    : tab === "gerencial"
+    ? <PainelGerencial locationRevision={locationRevision} propriedadeId={propAtiva} onPeriodo={periodo=>setDeepLinkFiltros({tab:"gerencial",filtros:{...periodo,...(propAtiva==null?{}:{propriedadeId:String(propAtiva)})}})}/>
     : tab === "estoque"
     ? (parseProdutoEstoqueId(window.location.pathname) ? <ProdutoEstoqueDetalhe key={window.location.pathname} produtoId={parseProdutoEstoqueId(window.location.pathname)!} onSelecionarSitio={trocarPropriedade} /> : <EstoqueContent />)
     : (["dashboard", "gastos", "lancar", "caixinha", "cadastros", "plano", "relatorio"] as Tab[]).includes(tab)
-    ? <FinanceiroContent tab={tab} onNav={setTab} podeVerValores={podeVerValores} podeEditarCadastros={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} podeExportar={!!effectiveUser.dono || effectiveUser.flags.includes("exportar")} />
+    ? <FinanceiroContent tab={tab} onNav={navegarTab} podeVerValores={podeVerValores} podeEditarCadastros={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} podeExportar={!!effectiveUser.dono || effectiveUser.flags.includes("exportar")} />
     : (
       <>
         {ASSISTENTE_ATIVO && tab === "ia" && (canSee("ia") ? <IA /> : <GatedTab user={effectiveUser} abaLabel="IA" />)}
@@ -493,7 +552,7 @@ export function App() {
         {(tab === "config" || tab === "acessos" || tab === "sitios") && (
           <ConfiguracoesHub
             tab={tab}
-            onNav={setTab}
+            onNav={navegarTab}
             isAdmin={isAdmin}
             podeCategorias={canSee("plano")}
             podePecuaria={canAccessTab("pec-rebanho")}
@@ -532,7 +591,7 @@ export function App() {
         user={effectiveUser}
         colapsada={sideColapsada}
         onToggleColapsar={toggleSidebar}
-        onAcessos={() => setTab("acessos")}
+        onAcessos={() => navegarTab("acessos")}
         onSair={onSair}
         // O atalho só aparece depois de se saber se há rascunho, para o "+" não
         // piscar antes de o rascunho existente carregar.
@@ -552,8 +611,7 @@ export function App() {
         aberto={buscaAberta}
         onFechar={() => setBuscaAberta(false)}
         onNav={(t) => {
-          setDeepLinkFiltros(null);
-          setTab(t);
+          navegarTab(t);
         }}
         podeVer={(t) => {
           return canAccessTab(t);

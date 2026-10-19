@@ -140,9 +140,9 @@ describe("GET /estoque/saldos", () => {
 describe("GET /estoque/movimentos", () => {
   it("mantém partidas e quantidades, mas não expõe custos sem permissão financeira", async () => {
     const partidas = [{ partidaId: uid(2), quantidade: "10" }];
-    mocks.listarMovimentos.mockResolvedValue({ itens: [{ quantidade: 10, custoUnitario: 2, valorTotal: 20, partidas }], total: 1 });
+    mocks.listarMovimentos.mockResolvedValue({ itens: [{ quantidade: 10, custoUnitario: 2, valorTotal: 20, evidenciaValor: { referencia: "Documento com valor", valor: "20" }, partidas }], total: 1 });
     const res = await appCom({ ...base, flags: [] }).request("/estoque/movimentos");
-    expect(await res.json()).toEqual({ itens: [{ quantidade: 10, custoUnitario: null, valorTotal: null, partidas, operacaoId: null, operacaoNumero: null }], total: 1 });
+    expect(await res.json()).toEqual({ itens: [{ quantidade: 10, custoUnitario: null, valorTotal: null, evidenciaValor: null, partidas, operacaoId: null, operacaoNumero: null }], total: 1 });
   });
   it.each(["abc", "-1", "1.5"])("produtoId=%s → 400", async (v) => {
     const res = await appCom(semLancar).request(`/estoque/movimentos?produtoId=${v}`);

@@ -11,11 +11,19 @@ afterEach(cleanup);
 describe("nutrição individual", () => {
   it("mostra parcela, custo incompleto, dias e origem; permite paginar o histórico", async () => {
     render(<NutricaoAnimal animalId="animal" />);
-    await screen.findByText("Silagem");
-    expect(screen.getByText("10 KG")).toBeTruthy();
-    expect(screen.getByText("≈ 1 KG/dia")).toBeTruthy();
-    expect(screen.getByText(/Cobertura incompleta/)).toBeTruthy();
-    expect(screen.getByText("Abrir fechamento do lote").getAttribute("href")).toContain("fechamentoId=fechamento");
+    await screen.findByRole("rowheader", { name: "Silagem" });
+    expect(screen.getByRole("cell", { name: "10 KG" })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "Média por dia" })).toBeTruthy();
+    expect(screen.getByText(/cobertura incompleta/)).toBeTruthy();
+    const link = screen.getByRole("link", { name: /Abrir fechamento do lote/ });
+    expect(link.getAttribute("href")).toContain("fechamentoId=fechamento");
+    expect(link.closest("header")).toBeTruthy();
+    const recolher = screen.getByRole("button", { name: "Ração · versão 1" });
+    fireEvent.click(recolher);
+    expect(recolher.getAttribute("aria-expanded")).toBe("false");
+    expect(screen.queryByRole("rowheader", { name: "Silagem" })).toBeNull();
+    expect(screen.getByRole("link", { name: /Abrir fechamento do lote/ })).toBeTruthy();
+    fireEvent.click(recolher);
     fireEvent.click(screen.getByText("Próxima"));
     await waitFor(() => expect(consultarConsumoAnimal).toHaveBeenLastCalledWith("animal", 2));
   });
@@ -32,7 +40,7 @@ describe("nutrição individual", () => {
     await screen.findByText("Não foi possível consultar o consumo");
     vi.mocked(consultarConsumoAnimal).mockResolvedValue({ itens: [], total: 0, pagina: 1, limite: 25, verValores: false });
     fireEvent.click(screen.getByText("Tentar novamente"));
-    await screen.findByText(/Ainda sem consumo conferido/);
-    expect(screen.getByText("Conferir consumo do lote")).toBeTruthy();
+    await screen.findByText(/Nenhum consumo atribuído/);
+    expect(screen.getByText("Conferir nutrição do lote")).toBeTruthy();
   });
 });

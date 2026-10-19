@@ -49,6 +49,8 @@ const catalogosMock: Catalogos = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.stubGlobal("ResizeObserver",class {observe(){} unobserve(){} disconnect(){}});
+  window.history.replaceState(null,"","/pecuaria/rebanho/lotes");
   Element.prototype.scrollIntoView = vi.fn();
   vi.mocked(listarLotes).mockResolvedValue(lotesMock);
   vi.mocked(editarLote).mockImplementation((id, patch) => Promise.resolve({ ...lotesMock.find((l) => l.id === id)!, ...patch }));
@@ -254,34 +256,28 @@ describe("Lotes do rebanho", () => {
 });
 
 describe("Lotes — histórico de movimentações (sempre visível)", () => {
-  it("busca o histórico geral ao montar e refaz a chamada com os filtros escolhidos", async () => {
+  it("consulta o histórico usando sítios e lotes múltiplos", async () => {
     await montar();
-
-    await waitFor(() => expect(listarMovimentacoes).toHaveBeenCalledWith({
-      loteId: undefined, propriedadeId: undefined, dataDe: undefined, dataAte: undefined, incluirDesfeitas: true, page: 1, pageSize: 20,
-    }));
-
-    await alterarControle(screen.getByLabelText("Filtrar histórico por sítio"), { target: { value: "1" } });
-    await alterarControle(screen.getByLabelText("Filtrar histórico por lote"), { target: { value: "l1" } });
-    await alterarControle(screen.getByLabelText("Data inicial do histórico"), { target: { value: "2026-01-01" } });
-    await alterarControle(screen.getByLabelText("Data final do histórico"), { target: { value: "2026-01-31" } });
-    fireEvent.click(screen.getByRole("checkbox", { name: "Mostrar desfeitas" }));
-
-    await waitFor(() => expect(listarMovimentacoes).toHaveBeenLastCalledWith({
-      loteId: "l1", propriedadeId: 1, dataDe: "2026-01-01", dataAte: "2026-01-31", incluirDesfeitas: false, page: 1, pageSize: 20,
-    }));
+    await waitFor(()=>expect(listarMovimentacoes).toHaveBeenCalledWith(expect.objectContaining({page:1,pageSize:20})));
+    fireEvent.click(screen.getByRole("button",{name:"Filtros"}));
+    fireEvent.click(screen.getByRole("button",{name:"Sítios da movimentação"}));
+    fireEvent.click(screen.getByRole("option",{name:"Sede"}));
+    fireEvent.keyDown(screen.getByPlaceholderText("Buscar opção…"),{key:"Escape"});
+    await waitFor(()=>expect(listarMovimentacoes).toHaveBeenLastCalledWith(expect.objectContaining({propriedadeIds:[1],page:1})));
+    fireEvent.click(screen.getByRole("button",{name:"Lotes da movimentação"}));
+    fireEvent.click(screen.getByRole("option",{name:"Lote 1"}));
+    fireEvent.keyDown(screen.getByPlaceholderText("Buscar opção…"),{key:"Escape"});
+    await waitFor(()=>expect(listarMovimentacoes).toHaveBeenLastCalledWith(expect.objectContaining({propriedadeIds:[1],loteIds:["l1"]})));
   });
-
-  it("trocar o sítio do filtro limpa o lote selecionado", async () => {
+  it("trocar sítios invalida os lotes anteriores",async()=>{
+    window.history.replaceState(null,"","/pecuaria/rebanho/lotes?movSitioIds=1&movLoteIds=l1");
     await montar();
-    await screen.findByLabelText("Filtrar histórico por lote");
-
-    await alterarControle(screen.getByLabelText("Filtrar histórico por sítio"), { target: { value: "1" } });
-    await alterarControle(screen.getByLabelText("Filtrar histórico por lote"), { target: { value: "l1" } });
-    await waitFor(() => expect(listarMovimentacoes).toHaveBeenLastCalledWith(expect.objectContaining({ loteId: "l1" })));
-
-    await alterarControle(screen.getByLabelText("Filtrar histórico por sítio"), { target: { value: "" } });
-    await waitFor(() => expect(listarMovimentacoes).toHaveBeenLastCalledWith(expect.objectContaining({ loteId: undefined, propriedadeId: undefined })));
+    await waitFor(()=>expect(listarMovimentacoes).toHaveBeenLastCalledWith(expect.objectContaining({loteIds:["l1"]})));
+    fireEvent.click(screen.getByRole("button",{name:"Filtros"}));
+    fireEvent.click(screen.getByRole("button",{name:"Sítios da movimentação"}));
+    fireEvent.click(screen.getByRole("option",{name:"Sede"}));
+    fireEvent.keyDown(screen.getByPlaceholderText("Buscar opção…"),{key:"Escape"});
+    await waitFor(()=>expect(listarMovimentacoes).toHaveBeenLastCalledWith(expect.objectContaining({loteIds:undefined})));
   });
 
   it("lotes e histórico ficam visíveis ao mesmo tempo, sem sub-abas", async () => {
@@ -290,4 +286,12 @@ describe("Lotes — histórico de movimentações (sempre visível)", () => {
     expect(screen.getByRole("heading", { name: "Histórico de movimentações" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Histórico" })).toBeNull();
   });
+});
+
+it("data inválida na URL de movimentações mostra erro sem consultar nem quebrar o filtro",async()=>{
+ window.history.replaceState({},"","/pecuaria/rebanho/lotes?movDe=2026-02-30&movAte=2026-03-01");
+ await montar();
+ expect(await screen.findByText("Informe datas válidas para o histórico de movimentações.")).toBeTruthy();
+ expect(listarMovimentacoes).not.toHaveBeenCalled();
+ expect(screen.getByRole("button",{name:/^Período das movimentações/})).toBeTruthy();
 });

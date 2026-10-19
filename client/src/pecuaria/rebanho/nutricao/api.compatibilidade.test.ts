@@ -54,6 +54,12 @@ describe("consultas da Nutrição na API V3 existente", () => {
     expect(r.verValores).toBe(false);
     expect(r.lotes[0].custos.custoConhecido).toBeNull();
   });
+  it("leitor da Pecuária mantém a política de leitura também quando não há fechamentos", async () => {
+    fechamentos = [];
+    localStorage.setItem("rionovo:usuario", JSON.stringify({ dono: false, areas: ["pecuaria"], flags: [] }));
+    expect((await consultarVisaoNutricional()).verValores).toBe(true);
+    expect((await consultarResumoNutricional("l1")).verValores).toBe(true);
+  });
   it("filtra a situação antes de contar e paginar, incluindo páginas posteriores", async () => {
     const pagina = await listarFechamentos(undefined, 1, "ESTORNADO");
     expect(pagina.total).toBe(1);

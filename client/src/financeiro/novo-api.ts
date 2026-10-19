@@ -8,9 +8,10 @@ import { SEM_VINCULO } from "../lib/ids";
 import { reqSanidade } from "../pecuaria/rebanho/sanidade/api";
 
 export type ProcedimentoServico = {
-  id: string; tipo: "APLICACAO" | "EXAME" | "PROTOCOLO"; animalId: string;
+  id: string; tipo: "APLICACAO" | "EXAME" | "PROTOCOLO" | "TENTATIVA"; animalId: string;
   animal: { id: string; brinco: string; nome: string | null }; propriedade: { id: number; nome: string } | null;
   nome: string; dataHora: string; status: string; origem: string; valor: string | null;
+  consumoMantido?: boolean;
   vinculado: boolean; podeEditar: boolean; execucaoId: string | null; operacaoServicoId: string | null;
 };
 export type ConsultaProcedimentosServico = {
@@ -27,6 +28,12 @@ export function confirmarProcedimentosServico(servicoId: string, input: { propri
   return reqSanidade<{ servicoId: string; quantidade: number; salvo: boolean; reenvio: boolean; itens?: Array<{ id: string; tipo: ProcedimentoServico["tipo"]; valor: string | null }> }>(`/servicos/${encodeURIComponent(servicoId)}/procedimentos`, { method: "POST", body: JSON.stringify(input) });
 }
 export function linkProcedimentoServico(item: ProcedimentoServico, retorno?: string) {
+  if (item.tipo === "TENTATIVA") {
+    const params = new URLSearchParams({ animalId: item.animalId, tentativaId: item.id });
+    if (item.propriedade) params.set("propriedadeId", String(item.propriedade.id));
+    if (retorno) params.set("returnTo", retorno);
+    return `/pecuaria/reproducao?${params}`;
+  }
   const tipo = item.tipo === "APLICACAO" ? "aplicacao" : item.tipo === "EXAME" ? "exame" : "execucao";
   const params = new URLSearchParams({ aba: item.tipo === "APLICACAO" ? "aplicacoes" : item.tipo === "EXAME" ? "exames" : "agenda", animalId: item.animalId, detalheTipo: tipo, detalheId: item.id });
   if (item.propriedade) params.set("propriedadeId", String(item.propriedade.id));
@@ -56,7 +63,8 @@ export type ContaInput = { nome: string; tipo: TipoConta; instituicao?: string |
 export type ContaPatch = Partial<ContaInput> & DadosConta & { ativo?: boolean };
 export type ParceiroInput = DadosParceiro & { nome: string; documento?: string | null; tipo?: TipoParceiro; telefone?: string | null; email?: string | null };
 export type ParceiroPatch = Partial<ParceiroInput> & { ativo?: boolean };
-export type Categoria = { id: string; nome: string; classificacao: "CUSTEIO" | "INVESTIMENTO" | null; ativo: boolean; ordem: number; usoGenetico: boolean; usoSanitario?: boolean; usoNutricional?: boolean; _count?: { operacoes: number; produtos: number; itens?: number } };
+export type GrupoCategoria = { id: string; nome: string; ativo: boolean; ordem: number; _count?: { categorias: number } };
+export type Categoria = { grupoId?: string | null; grupo?: GrupoCategoria | null; id: string; nome: string; classificacao: "CUSTEIO" | "INVESTIMENTO" | null; ativo: boolean; ordem: number; usoGenetico: boolean; usoSanitario?: boolean; usoNutricional?: boolean; _count?: { operacoes: number; produtos: number; itens?: number } };
 export type CentroCusto = { id: string; nome: string; ativo: boolean; ordem: number; _count?: { operacoes: number; produtos: number } };
 // Categoria organiza o financeiro; os tipos de uso pertencem ao Produto.
 export type ProdutoCategoria = { id: string; nome: string; usoGenetico: boolean; usoSanitario?: boolean; usoNutricional?: boolean };
@@ -80,7 +88,7 @@ export type ProdutoInput = {
   // Categoria obrigatória para classificação financeira. Se o produto entra no estoque quem decide é a operação.
   minimoEstoque: number | null; categoriaId: string; centroCustoIds: string[]; fornecedorIds: string[];
 };
-export type ConfiguracoesFinanceiras = { contas: Conta[]; parceiros: Parceiro[]; categorias: Categoria[]; centrosCusto: CentroCusto[]; produtos: Produto[]; produtosCadastro?: Produto[] };
+export type ConfiguracoesFinanceiras = { gruposCategorias?: GrupoCategoria[]; contas: Conta[]; parceiros: Parceiro[]; categorias: Categoria[]; centrosCusto: CentroCusto[]; produtos: Produto[]; produtosCadastro?: Produto[] };
 export type ContaHistorico = { id: string; nome: string };
 export type ReferenciaReversao = { id: string; tipo: string; status: string; data: string; descricao: string | null };
 export type MovimentoOperacao = { id: string; seq: number; contaId: string; direcao: "ENTRADA" | "SAIDA"; valor: string | null; conta: ContaHistorico };
@@ -97,7 +105,8 @@ export type DocumentoFinanceiro = { id: string; tipo: string; nome: string; nume
 export type RascunhoOperacao = { id: string; dados: { formulario?: Record<string, unknown>; operacao?: Record<string, unknown> }; versao: number; updatedAt: string; documentos: DocumentoFinanceiro[] };
 export type SimulacaoParcelas = { totalOperacao: string; valorPagoAgora: string; saldoAPrazo: string; parcelas: { valor: string; dataVencimento: string }[] };
 export type ResumoCancelamento = { compromissos: { id: string; numeroParcela: number | null; status: string; valorOriginal: string | null; valorLiquidado: string | null; saldoExigivel: string | null }[]; transacoes: { id: string; seq: number; tipo: string; data: string; valorTotal: string | null; movimentos: (MovimentoOperacao & { direcaoInversa: "ENTRADA" | "SAIDA" })[] }[]; estoque: { id: string; produtoId: string; produtoNome: string; quantidade: string; unidade: string; tipo: string }[]; impactosPorConta: { conta: ContaHistorico; entrada: string | null; saida: string | null }[]; documentosPreservados: number };
-export type Operacao = { propriedadeId?: number; procedimentosServico?: ProcedimentoServico[]; categoriaNome?: string | null; classificacao?: "CUSTEIO" | "INVESTIMENTO" | null; id: string; numero: number; tipo: string; status: string; data: string; descricao: string | null; valorTotal: string | null; parceiro: ParceiroBase | null; parceiroId?: string | null; categoriaId?: string | null; centroCustoId?: string | null; centroCusto?: { id: string; nome: string } | null; corrigeOperacaoId?: string | null; corrigeOperacao?: { id: string; numero: number; descricao: string | null } | null; correcoes?: { id: string; numero: number; descricao: string | null; status: string }[]; itens: ItemOperacao[]; compromissos: Compromisso[]; transacoes: TransacaoOperacao[]; movimentosEstoque: MovimentoEstoqueOperacao[]; perdas?: PerdaOperacao[]; transferencias?: TransferenciaOperacao[]; documentos: DocumentoFinanceiro[]; resumoCancelamento?: ResumoCancelamento };
+export type ComposicaoComercial = { versao: number; descontoComercial: string; itens: { ordem: number; bruto: string; desconto: string; liquido: string; elegivel: boolean }[]; logistica: { valor: string; descricao: string; categoriaId?: string; centroCustoId?: string } | null };
+export type Operacao = { composicaoComercial?: ComposicaoComercial | null; propriedadeId?: number; procedimentosServico?: ProcedimentoServico[]; categoriaNome?: string | null; classificacao?: "CUSTEIO" | "INVESTIMENTO" | null; id: string; numero: number; tipo: string; status: string; data: string; descricao: string | null; valorTotal: string | null; parceiro: ParceiroBase | null; parceiroId?: string | null; categoriaId?: string | null; centroCustoId?: string | null; centroCusto?: { id: string; nome: string } | null; corrigeOperacaoId?: string | null; corrigeOperacao?: { id: string; numero: number; descricao: string | null } | null; correcoes?: { id: string; numero: number; descricao: string | null; status: string }[]; itens: ItemOperacao[]; compromissos: Compromisso[]; transacoes: TransacaoOperacao[]; movimentosEstoque: MovimentoEstoqueOperacao[]; perdas?: PerdaOperacao[]; transferencias?: TransferenciaOperacao[]; documentos: DocumentoFinanceiro[]; resumoCancelamento?: ResumoCancelamento };
 export type MovimentoConta = { id: string; seq: number; contaId?: string; direcao: "ENTRADA" | "SAIDA"; valor: string; transacao: { id: string; seq: number; tipo: string; status: string; data: string; descricao: string | null; formaPagamento: string | null; parceiro: ParceiroBase | null; operacao: { id: string; numero: number; descricao: string | null; tipo: string } | null; reversaoDe?: { id?: string; tipo: string; descricao?: string | null; operacaoId?: string | null } | null } };
 export type BaseFinanceira = {
   operacoes: { total: number; estados: Record<string, number>; comEstoque: number; semParceiro: number; semEfeitos: number };
@@ -254,7 +263,7 @@ export const criarConta = (input: ContaInput & DadosConta) => req<Conta>("/finan
 export const atualizarConta = (id: string, input: ContaPatch) => req<Conta>(`/financeiro/contas/${id}`, { method: "PATCH", body: JSON.stringify(input) });
 export const criarParceiro = (input: ParceiroInput) => req<Parceiro>("/financeiro/parceiros", { method: "POST", body: JSON.stringify(input) });
 export const atualizarParceiro = (id: string, input: ParceiroPatch) => req<Parceiro>(`/financeiro/parceiros/${id}`, { method: "PATCH", body: JSON.stringify(input) });
-export type CategoriaInput = { nome: string; classificacao?: "CUSTEIO" | "INVESTIMENTO" | null; ordem?: number; usoGenetico?: boolean; usoSanitario?: boolean; usoNutricional?: boolean };
+export type CategoriaInput = { grupoId?: string | null; nome: string; classificacao?: "CUSTEIO" | "INVESTIMENTO" | null; ordem?: number; usoGenetico?: boolean; usoSanitario?: boolean; usoNutricional?: boolean };
 export type CentroCustoInput = { nome: string; ordem?: number };
 export const criarCategoria = (input: CategoriaInput) => req<Categoria>("/financeiro/categorias", { method: "POST", body: JSON.stringify(input) });
 export const atualizarCategoria = (id: string, input: Partial<CategoriaInput> & { ativo?: boolean }) => req<Categoria>(`/financeiro/categorias/${id}`, { method: "PATCH", body: JSON.stringify(input) });
@@ -273,3 +282,7 @@ export type AnaliseCategorias = {
   linhas: { categoriaId?: string | null; operacaoId: string | null; contaId?: string; movimentoId?: string; descricao: string | null; data: string; categoria: string; centroCusto: string; classificacao: string | null; valor: string }[];
 };
 export const obterAnaliseCategorias = (filtros: Record<string, string>) => req<AnaliseCategorias>(`/financeiro/analise-categorias?${new URLSearchParams(Object.entries(filtros).filter(([, v]) => v !== ""))}`);
+
+export type GrupoCategoriaInput = { nome: string; ordem?: number };
+export const criarGrupoCategoria = (input: GrupoCategoriaInput) => req<GrupoCategoria>("/financeiro/grupos-categorias", { method: "POST", body: JSON.stringify(input) });
+export const atualizarGrupoCategoria = (id: string, input: Partial<GrupoCategoriaInput> & { ativo?: boolean }) => req<GrupoCategoria>(`/financeiro/grupos-categorias/${id}`, { method: "PATCH", body: JSON.stringify(input) });

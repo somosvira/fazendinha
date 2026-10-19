@@ -1,4 +1,6 @@
 import { SelectCampo } from "@/financeiro/SelectCampo";
+import { reqV4 } from "../reproducao/api";
+import { CamposFormatoExame, type CampoExame } from "./CamposExame";
 import { useEffect, useRef, useState } from "react";
 import { Pencil, Power, PowerOff } from "lucide-react";
 import { Button, ErrorBox, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
@@ -11,7 +13,7 @@ import { ProtocolosCadastro } from "./ProtocolosCadastro";
 const PainelCadastro = (props: Parameters<typeof PainelBase>[0]) => <PainelBase {...props} compacto />;
 
 export type Doenca = { id: string; nome: string; ativo: boolean };
-export type TipoExame = Doenca & { tipoResultado: "TEXTO" | "NUMERO" | "OPCAO"; unidade: string | null; opcoes: string[] | null; formatoBloqueado: boolean };
+export type TipoExame = Doenca & { formatoExameHash?: string; padraoReprodutivo?: boolean; versaoFormato?: number; versaoAnteriorId?: string | null; tipoResultado: "TEXTO" | "NUMERO" | "OPCAO" | "MULTIPLO"; campos?: CampoExame[] | null; contexto?: string; unidade: string | null; opcoes: string[] | null; formatoBloqueado: boolean };
 const abas = [
   { id: "protocolos", nome: "Protocolos sanitários" },
   { id: "aplicacao", nome: "Tipos de aplicação" },
@@ -21,18 +23,19 @@ const abas = [
 export type AbaCadastroSanitario = typeof abas[number]["id"];
 type Tipo = Exclude<AbaCadastroSanitario, "protocolos">;
 type Item = TipoAplicacao | Doenca | TipoExame;
-const formatos = { TEXTO: "Texto", NUMERO: "Número", OPCAO: "Opção" };
+const formatos = { TEXTO: "Texto", NUMERO: "Número", OPCAO: "Opção", MULTIPLO: "Vários resultados" };
 const lerAba = (): AbaCadastroSanitario => {
   const valor = new URLSearchParams(window.location.search).get("cadastroSanitario");
   return abas.find((aba) => aba.id === valor)?.id ?? "protocolos";
 };
-export function CadastrosSanitarios({ podeLancar, cadastro, embutido = false }: { podeLancar: boolean; cadastro?: AbaCadastroSanitario; embutido?: boolean }) {
+export function CadastrosSanitarios({ podeLancar, cadastro, embutido = false, contextoExames = "SANITARIO" }: { podeLancar: boolean; cadastro?: AbaCadastroSanitario; embutido?: boolean; contextoExames?: "SANITARIO" | "REPRODUTIVO" }) {
   const [aba, setAba] = useState<AbaCadastroSanitario>(() => cadastro ?? lerAba());
   const [itens, setItens] = useState<Item[]>([]);
   const [busca, setBusca] = useState("");
   const [versao, setVersao] = useState(0);
-  const [painel, setPainel] = useState<{ tipo: Tipo; id?: string } | null>(null);
+  const [painel, setPainel] = useState<{ tipo: Tipo; id?: string; versaoAnteriorId?: string } | null>(null);
   const [nome, setNome] = useState("");
+  const [campos, setCampos] = useState<CampoExame[]>([]);
   const [formato, setFormato] = useState<TipoExame["tipoResultado"]>("TEXTO");
   const [unidade, setUnidade] = useState("");
   const [opcoes, setOpcoes] = useState("");
@@ -53,13 +56,12 @@ export function CadastrosSanitarios({ podeLancar, cadastro, embutido = false }: 
     setItens([]); setErro(null); setAviso(null); setPainel(null);
     if (aba === "protocolos") { setCarregando(false); return; }
     setCarregando(true);
-    const pedido = aba === "aplicacao" ? listarTiposAplicacao() : reqSanidade<Item[]>(`/${aba === "doenca" ? "doencas" : "tipos-exame"}?incluirInativos=true`);
+    const pedido = aba === "aplicacao" ? listarTiposAplicacao() : aba === "exame" && contextoExames === "REPRODUTIVO" ? reqV4<Item[]>("/reproducao/tipos-exame?incluirInativos=true") : reqSanidade<Item[]>(`/${aba === "doenca" ? "doencas" : "tipos-exame"}?incluirInativos=true`);
     pedido.then((dados) => { if (geracao.current === atual) setItens(dados); })
       .catch((e: unknown) => { if (geracao.current === atual) setErro(e instanceof Error ? e.message : "Não conseguimos carregar. Tente novamente."); })
       .finally(() => { if (geracao.current === atual) setCarregando(false); });
     return () => { geracao.current++; };
-  }, [aba, versao]);
-  useEffect(() => { setBusca(""); }, [aba]);
+  }, [aba, versao, contextoExames]);
   function selecionar(proxima: AbaCadastroSanitario) {
     if (trava.current) return;
     const url = new URL(window.location.href);
@@ -72,8 +74,14 @@ export function CadastrosSanitarios({ podeLancar, cadastro, embutido = false }: 
     setErro(null); setPainel({ tipo, id: item?.id }); setNome(item?.nome ?? "");
     const exame = item && "tipoResultado" in item ? item : undefined;
     setFormatoBloqueado(exame?.formatoBloqueado ?? false);
-    setFormato(exame?.tipoResultado ?? "TEXTO"); setUnidade(exame?.unidade ?? "");
+    setCampos(exame?.campos ?? (contextoExames === "REPRODUTIVO" ? [{ codigo: "CONCLUSAO_GESTACIONAL", rotulo: "Conclusão sobre a gestação", tipo: "OPCAO", obrigatorio: false, opcoes: ["POSITIVO", "NEGATIVO", "INCONCLUSIVO"] }, { codigo: "SEXO_FETAL", rotulo: "Sexo fetal", tipo: "OPCAO", obrigatorio: false, opcoes: ["M", "F"] }] : []));
+    setFormato(exame?.tipoResultado ?? (contextoExames === "REPRODUTIVO" ? "MULTIPLO" : "TEXTO")); setUnidade(exame?.unidade ?? "");
     setOpcoes(exame?.opcoes?.join("\n") ?? "");
+  }
+  function novaVersao(item: Item) {
+    abrir("exame", item);
+    setPainel({ tipo: "exame", versaoAnteriorId: item.id }); setFormatoBloqueado(false);
+    setNome(`${item.nome.replace(/ · versão \d+$/, "")} · versão ${"versaoFormato" in item ? (item.versaoFormato ?? 1) + 1 : 2}`);
   }
   async function executar(tipo: Tipo, id: string | undefined, body: object) {
     if (!podeLancar || trava.current) return;
@@ -82,7 +90,7 @@ export function CadastrosSanitarios({ podeLancar, cadastro, embutido = false }: 
     try {
       const dado = tipo === "aplicacao"
         ? await salvarTipoAplicacao(body, id)
-        : await reqSanidade<Item>(`/${tipo === "doenca" ? "doencas" : "tipos-exame"}${id ? `/${id}` : ""}`, { method: id ? "PATCH" : "POST", body: JSON.stringify(body) });
+        : tipo === "exame" && contextoExames === "REPRODUTIVO" ? await reqV4<Item>(`/reproducao/tipos-exame${id ? `/${id}` : ""}`, body, id ? "PATCH" : "POST") : await reqSanidade<Item>(`/${tipo === "doenca" ? "doencas" : "tipos-exame"}${id ? `/${id}` : ""}`, { method: id ? "PATCH" : "POST", body: JSON.stringify(body) });
       if (geracao.current !== atual) return;
       setItens((lista) => id ? lista.map((item) => item.id === id ? dado : item) : [...lista, dado]);
       setAviso("Cadastro atualizado."); setPainel(null);
@@ -98,7 +106,7 @@ export function CadastrosSanitarios({ podeLancar, cadastro, embutido = false }: 
   function salvar() {
     if (!painel) return;
     void executar(painel.tipo, painel.id, painel.tipo === "exame"
-      ? formatoBloqueado ? { nome } : { nome, tipoResultado: formato, unidade: unidade || null, opcoes: formato === "OPCAO" ? opcoes.split("\n").map((s) => s.trim()).filter(Boolean) : null }
+      ? formatoBloqueado ? { nome } : { nome, versaoAnteriorId: painel.versaoAnteriorId, tipoResultado: formato, ...(formato === "MULTIPLO" ? { campos } : {}), unidade: unidade || null, opcoes: formato === "OPCAO" ? opcoes.split("\n").map((s) => s.trim()).filter(Boolean) : null }
       : { nome });
   }
   return <section className="mt-5 grid gap-5">
@@ -126,6 +134,7 @@ export function CadastrosSanitarios({ podeLancar, cadastro, embutido = false }: 
             ...(aba === "exame" ? [{ chave: "formato", titulo: "Resultado", celula: (item: Item) => "tipoResultado" in item ? `${formatos[item.tipoResultado]}${item.unidade ? ` · ${item.unidade}` : ""}` : "—" }] : []),
             { chave: "situacao", titulo: "Situação", celula: (item) => <Pill tone={item.ativo ? "green" : "neutral"}>{item.ativo ? "Ativo" : "Inativo"}</Pill> },
             ...(podeLancar ? [{ chave: "acoes", titulo: "Ações", acoes: true, celula: (item: Item) => <div className="flex justify-end gap-1">
+              {aba === "exame" && <Button secondary disabled={ocupado} onClick={() => novaVersao(item)}>Nova versão</Button>}
               <button type="button" aria-label={`Editar ${item.nome}`} disabled={ocupado} onClick={() => abrir(aba, item)} className="rounded-lg p-2 text-ink-2 hover:bg-surface-2 disabled:opacity-45"><Pencil size={16} /></button>
               <button type="button" aria-label={`${item.ativo ? "Inativar" : "Ativar"} ${item.nome}`} disabled={ocupado} onClick={() => void executar(aba, item.id, { ativo: !item.ativo })} className="rounded-lg p-2 text-ink-2 hover:bg-surface-2 disabled:opacity-45">{item.ativo ? <PowerOff size={16} /> : <Power size={16} />}</button>
             </div> }] : []),
@@ -138,8 +147,9 @@ export function CadastrosSanitarios({ podeLancar, cadastro, embutido = false }: 
         <ErrorBox erro={erro} />
         <CampoFormulario id="cad-san-nome" rotulo="Nome" obrigatorio>{(p) => <input {...p} required minLength={2} maxLength={120} className={classeInput} value={nome} onChange={(e) => setNome(e.target.value)} />}</CampoFormulario>
         {painel.tipo === "exame" && <>
-          <p className="text-sm text-ink-3">{formatoBloqueado ? "Já houve coleta deste exame. Formato, unidade e opções estão bloqueados. Para mudar esses campos, crie outro tipo de exame." : "Após a primeira coleta, formato, unidade e opções ficam bloqueados."}</p>
-          <CampoFormulario id="cad-san-formato" rotulo="Formato do resultado">{(p) => <SelectCampo {...p} disabled={formatoBloqueado || ocupado} className={classeInput} value={formato} onValueChange={(valorSelecionado) => setFormato(valorSelecionado as typeof formato)}>{Object.entries(formatos).map(([valor, label]) => <option key={valor} value={valor}>{label}</option>)}</SelectCampo>}</CampoFormulario>
+          <p className="text-sm text-ink-3">{formatoBloqueado ? "Já houve coleta deste exame. Formato, unidade e opções estão bloqueados. Para mudar esses campos, crie uma nova versão do formato." : "Após usar o exame em coleta ou protocolo publicado, o formato fica bloqueado. Uma nova versão preserva as coletas e os planos anteriores."}</p>
+          <CampoFormulario id="cad-san-formato" rotulo="Formato do resultado">{(p) => <SelectCampo {...p} disabled={formatoBloqueado || ocupado || contextoExames === "REPRODUTIVO"} className={classeInput} value={formato} onValueChange={(valorSelecionado) => setFormato(valorSelecionado as typeof formato)}>{Object.entries(formatos).map(([valor, label]) => <option key={valor} value={valor}>{label}</option>)}</SelectCampo>}</CampoFormulario>
+          {formato === "MULTIPLO" && <CamposFormatoExame campos={campos} onChange={setCampos} disabled={formatoBloqueado || ocupado} protegerClinicos={contextoExames === "REPRODUTIVO"} />}
           <CampoFormulario id="cad-san-unidade" rotulo="Unidade (opcional)">{(p) => <input {...p} disabled={formatoBloqueado || ocupado} className={classeInput} value={unidade} onChange={(e) => setUnidade(e.target.value)} />}</CampoFormulario>
           {formato === "OPCAO" && <CampoFormulario id="cad-san-opcoes" rotulo="Uma opção por linha" obrigatorio>{(p) => <textarea {...p} disabled={formatoBloqueado || ocupado} required className={classeInput} value={opcoes} onChange={(e) => setOpcoes(e.target.value)} />}</CampoFormulario>}
         </>}

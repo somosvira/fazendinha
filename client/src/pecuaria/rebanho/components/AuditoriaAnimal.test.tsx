@@ -1,98 +1,182 @@
 // @vitest-environment jsdom
+import { alterarControle } from "../../../lib/controles.fixture";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { AuditoriaAnimal } from "./AuditoriaAnimal";
 import { buscarAuditoriaAnimal } from "../api";
-import type { EntradaAuditoria } from "../types";
+import { setPropriedadeAtiva } from "../../../propriedadeScope";
+import type { EntradaAuditoria, ResultadoAuditoriaAnimal } from "../types";
 
-vi.mock("../api", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("../api")>()),
-  buscarAuditoriaAnimal: vi.fn(),
-}));
-
+vi.mock("../api", async (original) => ({ ...await original<typeof import("../api")>(), buscarAuditoriaAnimal: vi.fn() }));
 afterEach(cleanup);
-beforeEach(() => vi.clearAllMocks());
-
-const entrada = (indice: number): EntradaAuditoria => ({
-  em: `2026-09-2${indice}T14:32:00.000Z`,
-  acao: "EDITAR",
-  entidade: "Animal",
-  usuarioNome: "Ana",
-  resumo: `Alteração ${indice}`,
-  entidadeId: "animal-1",
+beforeEach(() => { vi.clearAllMocks(); setPropriedadeAtiva(null); });
+const entrada = (indice = 1): EntradaAuditoria => ({
+  id: `auditoria-${indice}`, em: "2026-10-18T14:32:00.000Z", acao: "EDICAO", acaoRotulo: "Alteração", eixo: "REBANHO",
+  entidade: "Animal", entidadeId: `animal-${indice}`, registro: `Identificação ${indice}`, usuarioNome: "Ana", resumo: `Alteração ${indice}`,
   alteracoes: [{ campo: "pesoKg", rotulo: "Peso", antes: "300", depois: "310" }],
 });
+const resposta = (itens = [entrada()], total = itens.length): ResultadoAuditoriaAnimal => ({
+  itens, total, filtros: { acoes: [{ valor: "EDICAO", rotulo: "Alteração" }, { valor: "ESTORNO", rotulo: "Estorno" }], responsaveis: [{ id: 7, nome: "Ana" }, { id: 8, nome: "Joana" }], semResponsavel: true },
+});
+function pendente<T>() {
+  let resolver!: (valor: T) => void;
+  const promessa = new Promise<T>((resolve) => { resolver = resolve; });
+  return { promessa, resolver };
+}
 
 describe("AuditoriaAnimal", () => {
-  it("mostra data e hora de cada entrada", async () => {
-    vi.mocked(buscarAuditoriaAnimal).mockResolvedValue({ itens: [entrada(1)], total: 1 });
+  it("mostra tabela com data/hora, eixo com nome, ação, registro e autoria real", async () => {
+    vi.mocked(buscarAuditoriaAnimal).mockResolvedValue(resposta());
     render(<AuditoriaAnimal id="animal-1" />);
-    await screen.findByText("Alteração 1");
-    // não fixa o fuso horário do ambiente de teste: só confere que data e hora aparecem juntas
-    expect(screen.getByText(/\d{2}\/\d{2}\/2026 \d{2}:\d{2}/)).toBeTruthy();
+    await screen.findByText("Identificação 1");
+    const tabela = screen.getByRole("table", { name: "Auditoria dos registros do animal" });
+    for (const coluna of ["Data e hora", "Eixo", "Ação", "Registro afetado", "Responsável", "Detalhes"]) expect(within(tabela).getByRole("columnheader", { name: coluna })).toBeTruthy();
+    expect(within(tabela).getByText("Rebanho")).toBeTruthy();
+    expect(within(tabela).getByText("Ana")).toBeTruthy();
+    expect(within(tabela).getByText(/\d{2}\/\d{2}\/2026 \d{2}:\d{2}/)).toBeTruthy();
   });
 
-  it("expande e mostra as alterações (campo: antes → depois) ao clicar em 'Ver alterações'", async () => {
-    vi.mocked(buscarAuditoriaAnimal).mockResolvedValue({ itens: [entrada(1)], total: 1 });
+  it("inicia com os últimos30dias completos, incluindo o fim do dia", async () => {
+    vi.mocked(buscarAuditoriaAnimal).mockResolvedValue(resposta());
     render(<AuditoriaAnimal id="animal-1" />);
-    await screen.findByText("Alteração 1");
-    const botao = screen.getByRole("button", { name: "Ver alterações" });
-    expect(botao.getAttribute("aria-expanded")).toBe("false");
-    fireEvent.click(botao);
-    expect(screen.getByRole("button", { name: "Ocultar alterações" }).getAttribute("aria-expanded")).toBe("true");
-    expect(screen.getByText("Peso:")).toBeTruthy();
-    expect(screen.getByText(/300 → 310/)).toBeTruthy();
+    await screen.findByText("Identificação 1");
+    const parametros = vi.mocked(buscarAuditoriaAnimal).mock.calls[0][1]!;
+    const fim = new Date(parametros.fim!); const inicio = new Date(parametros.inicio!);
+    const esperado = new Date(); esperado.setHours(0, 0, 0, 0); esperado.setDate(esperado.getDate() - 29);
+    expect(parametros).toMatchObject({ page: 1, pageSize: 20 });
+    expect(inicio.toISOString()).toBe(esperado.toISOString());
+    expect(fim.getHours()).toBe(23); expect(fim.getMilliseconds()).toBe(999);
+    expect((screen.getByLabelText("Período") as HTMLSelectElement).value).toBe("30");
   });
 
-  it("null nas alterações vira travessão", async () => {
-    const entradaSemAntes: EntradaAuditoria = { ...entrada(1), alteracoes: [{ campo: "observacao", rotulo: "Observação", antes: null, depois: "Nova nota" }] };
-    vi.mocked(buscarAuditoriaAnimal).mockResolvedValue({ itens: [entradaSemAntes], total: 1 });
+  it("expande somente a linha selecionada em Campo/Antes/Depois e preserva null", async () => {
+    vi.mocked(buscarAuditoriaAnimal).mockResolvedValue(resposta([{ ...entrada(), alteracoes: [{ campo: "observacao", rotulo: "Observação", antes: null, depois: "Nova nota" }] }, entrada(2)]));
     render(<AuditoriaAnimal id="animal-1" />);
-    await screen.findByText("Alteração 1");
-    fireEvent.click(screen.getByRole("button", { name: "Ver alterações" }));
-    expect(screen.getByText(/— → Nova nota/)).toBeTruthy();
+    await screen.findByText("Identificação 1");
+    const botoes = screen.getAllByRole("button", { name: "Ver detalhes" });
+    fireEvent.click(botoes[0]);
+    expect(screen.getByRole("button", { name: "Ocultar detalhes" }).getAttribute("aria-expanded")).toBe("true");
+    expect(botoes[1].getAttribute("aria-expanded")).toBe("false");
+    expect(screen.getByRole("columnheader", { name: "Antes" })).toBeTruthy();
+    expect(screen.getByText("—")).toBeTruthy(); expect(screen.getByText("Nova nota")).toBeTruthy();
   });
 
-  it("sem alterações, não mostra o botão 'Ver alterações'", async () => {
-    vi.mocked(buscarAuditoriaAnimal).mockResolvedValue({ itens: [{ ...entrada(1), alteracoes: [] }], total: 1 });
+  it("autoria ausente não inventa Sistema e registro sem diff explica a limitação", async () => {
+    vi.mocked(buscarAuditoriaAnimal).mockResolvedValue(resposta([{ ...entrada(), usuarioNome: null, alteracoes: [] }]));
     render(<AuditoriaAnimal id="animal-1" />);
-    await screen.findByText("Alteração 1");
-    expect(screen.queryByRole("button", { name: "Ver alterações" })).toBeNull();
+    await screen.findByText("Identificação 1");
+    expect(screen.queryByText("Sistema")).toBeNull();
+    expect(within(screen.getByRole("table")).getByText("Não informado")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Ver detalhes" }));
+    expect(screen.getByText("Sem detalhes de campos disponíveis nesta consulta.")).toBeTruthy();
+    expect(screen.getByText(/Registro: animal-1/)).toBeTruthy();
   });
 
-  it("'Carregar mais' busca a próxima página e acumula os itens", async () => {
-    vi.mocked(buscarAuditoriaAnimal).mockResolvedValueOnce({ itens: [entrada(1)], total: 25 });
+  it("usa opções completas do servidor e envia filtros ao conjunto completo", async () => {
+    vi.mocked(buscarAuditoriaAnimal).mockResolvedValue(resposta());
     render(<AuditoriaAnimal id="animal-1" />);
-    await screen.findByText("Alteração 1");
-    expect(screen.queryByText("Alteração 2")).toBeNull();
-
-    vi.mocked(buscarAuditoriaAnimal).mockResolvedValueOnce({ itens: [entrada(2)], total: 25 });
-    fireEvent.click(screen.getByRole("button", { name: "Carregar mais" }));
-    await screen.findByText("Alteração 2");
-    expect(buscarAuditoriaAnimal).toHaveBeenLastCalledWith("animal-1", { page: 2, pageSize: 20 });
-    // itens 1 e 2 continuam ambos na tela
-    expect(screen.getByText("Alteração 1")).toBeTruthy();
+    await screen.findByText("Identificação 1");
+    await alterarControle(screen.getByLabelText("Período"), { target: { value: "todos" } });
+    await alterarControle(screen.getByLabelText("Eixo"), { target: { value: "NUTRICAO" } });
+    await alterarControle(screen.getByLabelText("Ação"), { target: { value: "ESTORNO" } });
+    await alterarControle(screen.getByLabelText("Responsável"), { target: { value: "8" } });
+    await alterarControle(screen.getByLabelText("Buscar registro"), { target: { value: "Consumo" } });
+    fireEvent.click(screen.getByRole("button", { name: "Buscar registros" }));
+    await waitFor(() => expect(buscarAuditoriaAnimal).toHaveBeenLastCalledWith("animal-1", { page: 1, pageSize: 20, eixo: "NUTRICAO", acao: "ESTORNO", responsavel: 8, busca: "Consumo" }));
   });
 
-  it("sem mais páginas, não mostra 'Carregar mais'", async () => {
-    vi.mocked(buscarAuditoriaAnimal).mockResolvedValue({ itens: [entrada(1)], total: 1 });
+  it("troca de página sem acumular registros e mantém filtros", async () => {
+    vi.mocked(buscarAuditoriaAnimal).mockResolvedValueOnce(resposta([entrada()], 25)).mockResolvedValueOnce(resposta([entrada(2)], 25));
     render(<AuditoriaAnimal id="animal-1" />);
-    await screen.findByText("Alteração 1");
-    expect(screen.queryByRole("button", { name: "Carregar mais" })).toBeNull();
+    await screen.findByText("Identificação 1");
+    fireEvent.click(screen.getByRole("button", { name: "Próxima" }));
+    await screen.findByText("Identificação 2");
+    expect(screen.queryByText("Identificação 1")).toBeNull();
+    expect(buscarAuditoriaAnimal).toHaveBeenLastCalledWith("animal-1", expect.objectContaining({ page: 2, pageSize: 20, inicio: expect.any(String), fim: expect.any(String) }));
+    expect(screen.getByText("21–25 de 25 registros")).toBeTruthy();
   });
 
-  it("sem nenhum registro, mostra o estado vazio", async () => {
-    vi.mocked(buscarAuditoriaAnimal).mockResolvedValue({ itens: [], total: 0 });
+  it("permite consultar registros sem eixo classificado usando filtro do servidor", async () => {
+    vi.mocked(buscarAuditoriaAnimal).mockResolvedValue(resposta([{ ...entrada(), eixo: null, registro: "Classificação de custo" }]));
     render(<AuditoriaAnimal id="animal-1" />);
-    await waitFor(() => expect(screen.getByText("Nenhum registro de auditoria.")).toBeTruthy());
+    await screen.findByText("Classificação de custo");
+    await alterarControle(screen.getByLabelText("Eixo"), { target: { value: "NAO_CLASSIFICADO" } });
+    await waitFor(() => expect(buscarAuditoriaAnimal).toHaveBeenLastCalledWith("animal-1", expect.objectContaining({ page: 1, eixo: "NAO_CLASSIFICADO" })));
   });
 
-  it("mudar recarregarToken busca de novo a partir da página 1", async () => {
-    vi.mocked(buscarAuditoriaAnimal).mockResolvedValue({ itens: [entrada(1)], total: 1 });
+  it("ignora página antiga que resolve após filtro e recomeça da página1", async () => {
+    const antiga = pendente<ResultadoAuditoriaAnimal>();
+    vi.mocked(buscarAuditoriaAnimal).mockResolvedValueOnce(resposta([entrada()], 25)).mockReturnValueOnce(antiga.promessa).mockResolvedValue(resposta([entrada(3)], 1));
+    render(<AuditoriaAnimal id="animal-1" />);
+    await screen.findByText("Identificação 1");
+    fireEvent.click(screen.getByRole("button", { name: "Próxima" }));
+    await alterarControle(screen.getByLabelText("Eixo"), { target: { value: "SANIDADE" } });
+    await screen.findByText("Identificação 3");
+    await act(async () => antiga.resolver(resposta([entrada(2)], 25)));
+    expect(screen.queryByText("Identificação 2")).toBeNull();
+    expect(buscarAuditoriaAnimal).toHaveBeenLastCalledWith("animal-1", expect.objectContaining({ page: 1, eixo: "SANIDADE" }));
+    expect(screen.getByText("1–1 de 1 registros")).toBeTruthy();
+  });
+
+  it("reconsulta a última página existente quando o total diminui entre páginas", async () => {
+    vi.mocked(buscarAuditoriaAnimal).mockResolvedValueOnce(resposta([entrada()], 25))
+      .mockResolvedValueOnce(resposta([], 15)).mockResolvedValueOnce(resposta([entrada(3)], 15));
+    render(<AuditoriaAnimal id="animal-1" />);
+    await screen.findByText("Identificação 1");
+    fireEvent.click(screen.getByRole("button", { name: "Próxima" }));
+    await screen.findByText("Identificação 3");
+    expect(buscarAuditoriaAnimal).toHaveBeenLastCalledWith("animal-1", expect.objectContaining({ page: 1 }));
+    expect(screen.getByText("1–15 de 15 registros")).toBeTruthy();
+  });
+
+  it("ignora consulta de outro animal e sítio após a troca de ficha", async () => {
+    const antiga = pendente<ResultadoAuditoriaAnimal>();
+    vi.mocked(buscarAuditoriaAnimal).mockReturnValueOnce(antiga.promessa).mockResolvedValue(resposta([entrada(2)]));
+    const { rerender } = render(<AuditoriaAnimal id="animal-1" />);
+    setPropriedadeAtiva(2); rerender(<AuditoriaAnimal id="animal-2" />);
+    await screen.findByText("Identificação 2");
+    await act(async () => antiga.resolver(resposta()));
+    expect(screen.queryByText("Identificação 1")).toBeNull();
+  });
+
+  it("erro permite tentar novamente, sem afirmar ausência de registros", async () => {
+    vi.mocked(buscarAuditoriaAnimal).mockRejectedValueOnce(new Error("Consulta indisponível")).mockResolvedValue(resposta());
+    render(<AuditoriaAnimal id="animal-1" />);
+    await screen.findByRole("alert");
+    expect(screen.queryByText(/Nenhum registro de auditoria/)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Tentar novamente" }));
+    await screen.findByText("Identificação 1");
+  });
+
+  it("estado vazio conserva filtros para ampliar período e consultar novamente", async () => {
+    vi.mocked(buscarAuditoriaAnimal).mockResolvedValue(resposta([]));
+    render(<AuditoriaAnimal id="animal-1" />);
+    await screen.findByText(/Nenhum registro de auditoria neste período/);
+    expect(screen.getByLabelText("Período")).toBeTruthy();
+    expect((screen.getByRole("button", { name: "Próxima" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("mudança no token após escrita volta à página1", async () => {
+    vi.mocked(buscarAuditoriaAnimal).mockResolvedValue(resposta([entrada()], 25));
     const { rerender } = render(<AuditoriaAnimal id="animal-1" recarregarToken={0} />);
-    await screen.findByText("Alteração 1");
-    vi.mocked(buscarAuditoriaAnimal).mockClear();
+    await screen.findByText("Identificação 1");
+    fireEvent.click(screen.getByRole("button", { name: "Próxima" }));
+    await waitFor(() => expect(buscarAuditoriaAnimal).toHaveBeenLastCalledWith("animal-1", expect.objectContaining({ page: 2 })));
     rerender(<AuditoriaAnimal id="animal-1" recarregarToken={1} />);
-    await waitFor(() => expect(buscarAuditoriaAnimal).toHaveBeenCalledWith("animal-1", { page: 1, pageSize: 20 }));
+    await waitFor(() => expect(buscarAuditoriaAnimal).toHaveBeenLastCalledWith("animal-1", expect.objectContaining({ page: 1 })));
+  });
+
+  it("período personalizado impede intervalo invertido sem enviar ao servidor", async () => {
+    vi.mocked(buscarAuditoriaAnimal).mockResolvedValue(resposta());
+    render(<AuditoriaAnimal id="animal-1" />);
+    await screen.findByText("Identificação 1");
+    await alterarControle(screen.getByLabelText("Período"), { target: { value: "personalizado" } });
+    await alterarControle(screen.getByLabelText("De"), { target: { value: "2026-01-01" } });
+    await alterarControle(screen.getByLabelText("Até"), { target: { value: "2026-01-02" } });
+    await waitFor(() => expect(buscarAuditoriaAnimal).toHaveBeenLastCalledWith("animal-1", expect.objectContaining({ inicio: new Date("2026-01-01T00:00:00").toISOString(), fim: new Date("2026-01-02T23:59:59.999").toISOString() })));
+    const chamadas = vi.mocked(buscarAuditoriaAnimal).mock.calls.length;
+    await alterarControle(screen.getByLabelText("De"), { target: { value: "2026-02-01" } });
+    await screen.findByRole("alert");
+    expect(buscarAuditoriaAnimal).toHaveBeenCalledTimes(chamadas);
   });
 });

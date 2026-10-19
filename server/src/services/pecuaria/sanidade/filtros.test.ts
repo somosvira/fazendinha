@@ -7,7 +7,7 @@ vi.mock("../../../db.js", () => ({ prisma: {
   ocorrenciaSanitaria: { findMany: mocks.ocorrencias },
   exameAnimal: { findMany: mocks.exames },
   aplicacaoProduto: { findMany: mocks.aplicacoes, count: mocks.contarAplicacoes },
-  tarefaSanitaria: { findMany: mocks.tarefas },
+  tarefaProtocolo: { findMany: mocks.tarefas },
   animal: { findMany: mocks.animais, findUnique: mocks.animal },
   localizacaoAnimal: { findFirst: mocks.localizacao },
 } }));
@@ -38,7 +38,11 @@ describe("filtros operacionais antes da paginação", () => {
   });
   it("consulta a carência e aptidão histórica na data da baixa", async () => {
     await carenciaAnimal("animal", 2, "2026-10-06");
-    expect(mocks.aplicacoes).toHaveBeenCalledWith(expect.objectContaining({ where: { animalId: "animal", status: "VALIDO", data: { lte: new Date("2026-10-06T00:00:00Z") } } }));
+    expect(mocks.aplicacoes).toHaveBeenCalledWith(expect.objectContaining({ where: {
+      animalId: "animal", data: { lte: new Date("2026-10-06T00:00:00Z") },
+      // A baixa conserva administração confirmada e incerteza; descarte sem administração não gera carência.
+      OR: [{ status: "VALIDO" }, { consumoMantido: true, OR: [{ administracaoMantida: true }, { administracaoMantida: null }] }],
+    } }));
     expect(mocks.animal).toHaveBeenCalledWith(expect.objectContaining({ select: expect.objectContaining({ destinos: expect.objectContaining({ where: expect.objectContaining({ desde: { lte: new Date("2026-10-06T00:00:00Z") } }) }) }) }));
   });
   it("combina busca insensível, lote e sítio antes da paginação em fatos e agenda", async () => {

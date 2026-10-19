@@ -1,3 +1,5 @@
+import { situacaoTarefaComum } from "../protocolos/situacao.js";
+import { CAMPOS_CUSTO_OPERACIONAL } from "../custos/permissoes.js";
 import { prisma } from "../../../db.js";
 import { Prisma } from "@prisma/client";
 import { RebanhoError } from "../rebanho/regras.js";
@@ -43,13 +45,13 @@ export async function obterAplicacao(id: string, propriedadeId: number | null) {
 }
 
 export async function obterExame(id: string, propriedadeId: number | null) {
-  const fato = await prisma.exameAnimal.findFirst({ where: escopo(id, propriedadeId), include: { animal, propriedade, ocorrencia, tarefa, tipoExame: { select: { nome: true } } } });
+  const fato = await prisma.exameAnimal.findFirst({ where: escopo(id, propriedadeId), include: { animal, propriedade, ocorrencia, tarefa, resultados: { where: { vigente: true } }, interpretacao: { select: { id: true, gestacaoId: true } }, tipoExame: { select: { nome: true } } } });
   if (!fato) throw new RebanhoError("NAO_ENCONTRADO", "Exame não encontrado neste sítio");
   return { ...fato, tipoExame: { nome: nomeExameHistorico(fato.formatoSnapshot, fato.tipoExame.nome) } };
 }
 
 export async function obterExecucao(id: string, propriedadeId: number | null) {
-  const fato = await prisma.execucaoProtocoloSanitario.findFirst({ where: escopo(id, propriedadeId), include: {
+  const fato = await prisma.participacaoProtocolo.findFirst({ where: escopo(id, propriedadeId), include: {
     animal, propriedade, ocorrencia, protocolo: { include: { etapas: { orderBy: { ordem: "asc" } } } },
     tarefas: { orderBy: { previstaPara: "asc" }, include: {
       aplicacoes: { where: propriedadeId == null ? {} : { propriedadeId }, select: { id: true, data: true, status: true, nomeProdutoAplicado: true } },
@@ -57,13 +59,22 @@ export async function obterExecucao(id: string, propriedadeId: number | null) {
     } },
   } });
   if (!fato) throw new RebanhoError("NAO_ENCONTRADO", "Execução não encontrada neste sítio");
-  return fato;
+  return { ...fato, tarefas: fato.tarefas.map(t => ({ ...t, situacao: situacaoTarefaComum({ ...t, execucao: fato }) })) };
 }
 
 /** Valores podem aparecer também nos fatos vinculados de uma ocorrência. */
-export function ocultarCustosDetalhe(valor: unknown): unknown {
-  if (Array.isArray(valor)) return valor.map(ocultarCustosDetalhe);
-  if (!valor || typeof valor !== "object" || valor instanceof Date || "toJSON" in valor) return valor;
-  return Object.fromEntries(Object.entries(valor).map(([campo, v]) => [campo,
-    ["valor", "valorProdutoAtribuido", "valorServicoAtribuido", "valorTotal", "valorUnitario", "custoUnitario"].includes(campo) ? null : ocultarCustosDetalhe(v)]));
+export function ocultarCustosDetalhe(valor: unknown, verCustosOperacionais = false): unknown {
+  function ocultar(item: unknown, caminho: string[] = []): unknown {
+    if (Array.isArray(item)) return item.map(v => ocultar(v, [...caminho, "[]"]));
+    if (!item || typeof item !== "object" || item instanceof Date || "toJSON" in item) return item;
+    return Object.fromEntries(Object.entries(item).map(([campo, v]) => {
+      // ResultadoExame.valor é dado clínico, inclusive nos snapshots antes/depois.
+      // Preserve o JSON inteiro; a exceção não se aplica a outros campos "valor".
+      if (campo === "valor" && caminho.at(-2) === "resultados" && caminho.at(-1) === "[]") return [campo, v];
+      const financeiro = ["valor", "valorProdutoAtribuido", "valorServicoAtribuido", "valorTotal", "valorUnitario", "custoUnitario", "evidenciaValor"].includes(campo);
+      const operacional = verCustosOperacionais && CAMPOS_CUSTO_OPERACIONAL.has(campo) && (v == null || ["string", "number"].includes(typeof v) || v instanceof Prisma.Decimal);
+      return [campo, financeiro && !operacional ? null : ocultar(v, [...caminho, campo])];
+    }));
+  }
+  return ocultar(valor);
 }

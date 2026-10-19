@@ -20,7 +20,7 @@ it("mostra tabela geral compacta mesmo com filtro individual", async () => {
   expect(screen.getAllByRole("button", { name: /Reconciliar origem de/ }).length).toBeGreaterThan(0);
   expect(screen.queryByText(/null/)).toBeNull();
 });
-it("anula pelo sítio histórico da aplicação e mantém leitura sem ações", async () => {
+it.each([["CONFIRMADA", true], ["DESCARTADA", false], ["DESCONHECIDA", null]] as const)("anula pelo sítio histórico com administração %s explícita", async (situacao, administracaoMantida) => {
   const abrirDetalhe = vi.fn();
   const { rerender } = render(<SanidadeAnimal geral animalId="" propriedadeId={null} podeLancar recarregarToken={0} lista={[aplicacao]} abrirDetalhe={abrirDetalhe} />);
   await screen.findByRole("table");
@@ -28,7 +28,14 @@ it("anula pelo sítio histórico da aplicação e mantém leitura sem ações", 
   expect(abrirDetalhe).not.toHaveBeenCalled();
   fireEvent.change(screen.getByLabelText("Motivo da correção / anulação"), { target: { value: "Lançamento incorreto" } });
   fireEvent.submit(document.getElementById("correcao-sanitaria")!);
-  await waitFor(() => expect(reqSanidade).toHaveBeenCalledWith("/aplicacoes/a1/anulacao", expect.objectContaining({ body: JSON.stringify({ propriedadeId: 1, motivo: "Lançamento incorreto" }) })));
+  expect(reqSanidade).not.toHaveBeenCalled();
+  fireEvent.change(screen.getByLabelText("Destino do material"), {target: {value: "MANTER_CONSUMO"}});
+  expect(screen.getByLabelText("Situação da administração")).toHaveProperty("value", "");
+  fireEvent.submit(document.getElementById("correcao-sanitaria")!);
+  expect(reqSanidade).not.toHaveBeenCalled();
+  fireEvent.change(screen.getByLabelText("Situação da administração"), {target: {value: situacao}});
+  fireEvent.submit(document.getElementById("correcao-sanitaria")!);
+  await waitFor(() => expect(reqSanidade).toHaveBeenCalledWith("/aplicacoes/a1/anulacao", expect.objectContaining({ body: JSON.stringify({ propriedadeId: 1, motivo: "Lançamento incorreto", destinoConsumo: "MANTER_CONSUMO", administracaoMantida }) })));
   rerender(<SanidadeAnimal geral animalId="" propriedadeId={null} podeLancar={false} recarregarToken={0} lista={[aplicacao]} />);
   expect(screen.queryByRole("button", { name: /Anular aplicação de/ })).toBeNull();
 });
@@ -41,4 +48,15 @@ it("abre detalhe compartilhado na ficha e fecha por Escape restaurando foco", as
   fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   await waitFor(() => expect(document.activeElement).toBe(botao));
+});
+it("agrupa ações sanitárias na ficha e mantém permissões no menu", async () => {
+  const { rerender } = render(<SanidadeAnimal animalId="animal1" propriedadeId={2} podeLancar recarregarToken={0} lista={[]} />);
+  const menu = screen.getByRole("button", { name: "Ações sanitárias" });
+  expect(menu.getAttribute("aria-haspopup")).toBe("menu");
+  expect(screen.queryByRole("button", { name: "Nova ocorrência" })).toBeNull();
+  fireEvent.keyDown(menu, { key: "ArrowDown" });
+  for (const nome of ["Registrar aplicação sanitária", "Nova ocorrência", "Registrar exame", "Iniciar protocolo"]) expect(await screen.findByRole("menuitem", { name: nome })).toBeTruthy();
+  fireEvent.keyDown(screen.getByRole("menu"), { key: "Escape" });
+  rerender(<SanidadeAnimal animalId="animal1" propriedadeId={2} podeLancar={false} recarregarToken={0} lista={[]} />);
+  expect(screen.queryByRole("button", { name: "Ações sanitárias" })).toBeNull();
 });

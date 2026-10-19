@@ -74,15 +74,14 @@ describe("NovoAnimal", () => {
     expect(cadastrarAnimal).not.toHaveBeenCalled();
   });
 
-  it("trava a data de entrada igual ao nascimento quando a origem é nascido na propriedade", async () => {
+  it("cadastra somente compra e encaminha nascimento para o parto da mãe", async () => {
     await montar();
-    const nascimento = screen.getByLabelText("Data de nascimento") as HTMLInputElement;
-    const entrada = screen.getByLabelText("Data de entrada") as HTMLInputElement;
-    expect(entrada.disabled).toBe(true);
-    await alterarControle(nascimento, { target: { value: "2024-01-10" } });
-    expect(entrada.value).toBe("10/01/2024");
-    await alterarControle(screen.getByLabelText("Origem"), { target: { value: "COMPRADO" } });
-    expect(entrada.disabled).toBe(false);
+    expect((screen.getByLabelText("Origem") as HTMLSelectElement).value).toBe("COMPRADO");
+    expect((screen.getByLabelText("Data de entrada") as HTMLInputElement).disabled).toBe(false);
+    expect(screen.queryByRole("option", { name: "Nascido na propriedade" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Registrar parto e cadastrar cria" }));
+    expect(navegarPara).toHaveBeenCalledWith("/pecuaria/reproducao?acao=parto");
+    expect(cadastrarAnimal).not.toHaveBeenCalled();
   });
 
   it("trocar o sexo para macho esconde e zera papel reprodutivo e partos (R1)", async () => {
@@ -137,12 +136,13 @@ describe("NovoAnimal", () => {
     await montar();
     await alterarControle(screen.getByLabelText("Brinco"), { target: { value: "1234" } });
     await alterarControle(screen.getByLabelText("Data de nascimento"), { target: { value: "2026-01-01" } });
+    await alterarControle(screen.getByLabelText("Data de entrada"), { target: { value: "2026-02-01" } });
     await alterarControle(screen.getByLabelText("Sítio"), { target: { value: "1" } });
-    expect(screen.getByRole("option", { hidden: true,  name: "Lote A" })).toBeTruthy();
+    expect(screen.getByRole("option", { hidden: true, name: "Lote A" })).toBeTruthy();
     await alterarControle(screen.getByLabelText("Lote"), { target: { value: "lote-1" } });
     fireEvent.click(screen.getByRole("button", { name: "Salvar animal" }));
     await waitFor(() => expect(cadastrarAnimal).toHaveBeenCalledWith(expect.objectContaining({
-      brinco: "1234", dataNascimento: "2026-01-01", dataEntrada: "2026-01-01", propriedadeId: 1, loteId: "lote-1", aptidao: "LEITE",
+      brinco: "1234", dataNascimento: "2026-01-01", dataEntrada: "2026-02-01", origem: "COMPRADO", propriedadeId: 1, loteId: "lote-1", aptidao: "LEITE",
     })));
     expect(navegarPara).toHaveBeenCalledWith("/pecuaria/rebanho/animais/animal-1");
   });

@@ -4,8 +4,8 @@ import { ReactNode } from "react";
 import { DateRangePicker, DateRange } from "./DateRangePicker";
 
 export type Tab =
-  | "dashboard" | "gastos" | "lancar" | "caixinha" | "plano" | "ia" | "relatorio" | "acessos" | "config" | "sitios" | "cadastros" | "estoque"
-  | "pec-rebanho" | "pec-sanidade" | "pec-nutricao";
+  | "gerencial" | "dashboard" | "gastos" | "lancar" | "caixinha" | "plano" | "ia" | "relatorio" | "acessos" | "config" | "sitios" | "cadastros" | "estoque"
+  | "pec-rebanho" | "pec-sanidade" | "pec-nutricao" | "pec-reproducao" | "pec-visitas" | "pec-relatorios";
 
 export type NavTab = { id: Tab; label: string };
 

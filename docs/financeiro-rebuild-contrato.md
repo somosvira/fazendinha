@@ -17,6 +17,20 @@ Este contrato descreve a implementação atual, independente do financeiro anter
 
 Itens, compromissos, transações, movimentos físicos e documentos só existem quando exigidos pelo fato. Rascunho não deve produzir efeitos de uma operação confirmada.
 
+## Grupos de categorias
+
+`GrupoCategoria` organiza o cadastro financeiro em dois níveis: grupo → categoria. Os grupos e as categorias são compartilhados entre sítios; cada categoria pode pertencer a um único grupo ou permanecer sem grupo. A migration preserva os cadastros existentes sem atribuir grupos automaticamente nem inserir os nomes da planilha.
+
+O vínculo é definido exclusivamente em Configurações financeiras, no cadastro da categoria. Operações e itens continuam recebendo somente a categoria; não aceitam uma escolha independente de grupo. O grupo é uma dimensão gerencial derivada da categoria, distinta de centro de custo e de custeio/investimento. Consultas futuras podem usar essa relação; os templates e a importação histórica ainda não fazem parte desta entrega. Relatórios já emitidos conservam seus snapshots.
+
+A API de configurações retorna `gruposCategorias` e o grupo relacionado em cada categoria. `POST /api/financeiro/grupos-categorias` e `PATCH /api/financeiro/grupos-categorias/:id` exigem a permissão de lançamento, sob os gates de sessão/área do Financeiro. Criação, edição e desativação são auditadas. Desativar um grupo impede novas associações, mas preserva categorias vinculadas, sua disponibilidade operacional e a possibilidade de editar ou remover o vínculo existente. Não há exclusão de grupos pela API; a FK restringe a exclusão de grupos referenciados. Novas associações usam trava compartilhada para coordenar a validação de grupo ativo com sua desativação.
+
+Renomear ou reagrupar uma categoria altera sua organização gerencial atual, inclusive para futuras consultas ao histórico, sem reescrever operações ou valores. Essa relação não representa um snapshot do grupo na data do lançamento.
+
+A validação automatizada cobre associação e remoção de grupo, bloqueio de novas associações a grupos inativos/inexistentes, preservação de vínculos, auditoria, gates de escrita e os fluxos de cadastro na interface. Aplicação da migration e homologação em cada ambiente são etapas separadas.
+
+Para cadastrar localmente o catálogo gerencial da planilha de maio/2026, execute em `server/` a prévia `node --env-file=.env scripts/cadastrar-categorias-planilha-local.mjs`; acrescente `--aplicar` para gravar. O script aceita somente `fazendinha_seedatev3` em loopback, confere a identidade do servidor e usa uma transação com auditoria. Reaproveita equivalências explícitas sem renomear categorias nem modificar classificações/usos existentes; as categorias novas começam sem classificação de custeio/investimento. Recusa ambiguidades, cadastros inativos e vínculos conflitantes. Confere a preservação das demais tabelas e dos manifestos V3/V4; não executa seed nem importa lançamentos, produtos ou estoque. Uma nova prévia após a carga deve indicar zero criações e zero vínculos a atualizar. Esse script não é um importador de produção.
+
 ## Dinheiro e histórico
 
 1. Saldo da conta resulta da abertura e do razão de movimentos; `MovimentoConta` é a fonte dos efeitos de dinheiro. Saldo geral respeita contas ativas incluídas na disponibilidade e o escopo consultado.
@@ -34,7 +48,7 @@ Itens, compromissos, transações, movimentos físicos e documentos só existem 
 - Ajuste e perda precisam de justificativa e trilha. Estorno conserva o original e seu inverso. O cálculo físico considera o par conforme `statusSaldoEstoque`/`estoque.calc.ts`; não filtre indiscriminadamente apenas confirmados.
 - `PartidaProduto` é o lote do produto, distinto do lote de animais. Saldo rastreado exige alocação por partida, compatibilidade de unidade e tratamento explícito de validade desconhecida/vencida na data do fato.
 - Ativar rastreio de estoque existente exige prévia; não altera saldo/valor nem cria lote vazio. A identificação de partidas redistribui o histórico sem efeito líquido. Não desative rastreio para contornar uma validação.
-- Aplicações sanitárias/fechamentos nutricionais usam o estoque único. Origens de compra direta, aplicação documentada e reconciliação têm efeitos próprios; não substitua uma pela outra para criar saldo fictício.
+- Aplicações sanitárias, tentativas reprodutivas V4 e fechamentos nutricionais usam o estoque único. Origens de compra direta, aplicação documentada e reconciliação têm efeitos próprios; não substitua uma pela outra para criar saldo fictício.
 - Centros, categorias e movimentos de atividades agrícolas anteriores podem permanecer. A remoção dos módulos não autoriza apagar a história financeira ou seus cadastros pelo nome.
 
 A consulta de Estoque reúne valor e produtos com saldo positivo em uma faixa compacta, com atalhos para os filtros de saldo negativo e abaixo do mínimo. Essas contagens usam os saldos do escopo/centro consultado, antes da busca e da paginação locais; não somam unidades diferentes. Últimas entradas ficam em uma seção expansível. As tabelas agrupam classificação/centros, saldo/mínimo e valor/custo médio; o histórico reúne produto/data e os links de estorno junto da origem. Datas, valores desconhecidos, vínculos, permissões e paginação permanecem preservados.
@@ -55,6 +69,59 @@ Cadastros de clientes e fornecedores usam o termo guarda-chuva “parceiro”. N
 
 As listagens financeiras conservam paginação de quinze registros, sem limitar a altura por uma segunda rolagem vertical interna. Linhas acionáveis não acrescentam seta decorativa: clique e teclado continuam abrindo o registro. Em Compromissos, o saldo pendente aparece junto ao título e a alternância Lista/Calendário fica junto dos filtros, sem faixa repetindo a contagem. A busca dos cadastros aproveita a largura disponível. Campos longos podem aumentar a altura da linha; não se corta conteúdo para impor uma altura física fixa.
 
+## Valorização do saldo
+
+`BaseValorizacaoEstoque`, `ParcelaValorizacaoEstoque` e o método de valorização no `MovimentoEstoque` conservam o lastro monetário de cada saída. O [HTML da entrega](pecuaria/artefatos/follow-up-v4-entrega.html) explica os fluxos, as entidades e a validação. Entrega de código não representa aplicação das migrations no ambiente da fazenda nem homologação de campo.
+
+### Base, parcelas e conservação
+
+- Produto rastreado usa média do **saldo remanescente** por grupo atual de produto/validade e sítio. Não há nova identidade de lote físico nem registro por dose. Aliases continuam resolvidos para a partida raiz.
+- Produto sem rastreio usa aquisições disponíveis em ordem FIFO. Bases econômicas não criam partidas físicas fictícias. Transferência que usa várias origens conserva uma base no destino por parcela de origem, com vínculo `baseOrigemId`, valores próprios e disponibilidade desde a transferência; não reúne preços diferentes em uma base média no destino.
+- A base conserva produto, sítio, grupo quando aplicável, origem, método, disponibilidade, ordem e eventual abertura documentada. O corte da abertura é distinto da data da origem usada na ordenação FIFO.
+- A parcela vincula um movimento à base utilizada e preserva quantidade/valor com sinal. O saldo é derivado da abertura e das parcelas; não existe outra compra, obrigação ou movimento de conta pelo consumo.
+- O total monetário é autoritativo. Unitário arredondado serve à apresentação; a saída que esgota a base absorve seu resíduo. Dinheiro e quantidades usam Decimal, com precisão do contrato físico/financeiro.
+- A identidade obrigatória é **abertura + entradas + ajustes líquidos = saídas líquidas + estoque final**, com diferença exatamente zero em quantidade e centavos por grupo/sítio e no consolidado. Transferências internas se anulam no consolidado.
+- Exemplo: 10 unidades por R$ 40 e 10 por R$ 65 no mesmo grupo formam 20/R$ 1.050. Consumir duas atribui R$ 105 e conserva 18/R$ 945. O consumo integral fecha R$ 1.050. A compra posterior não muda os R$ 105 já registrados.
+
+Compra, pagamento e consumo são perspectivas distintas. Recebimento a prazo aumenta estoque sem pagamento; estoque remanescente continua sendo valor disponível. Não afirmar que todo desembolso já foi consumido enquanto houver saldo ou gastos de logística separados.
+
+### Transição e abertura documentada
+
+Movimentos anteriores conservam valores e método `LEGADO`. Não há backfill de preços nem recálculo proporcional de consumos antigos. Quantidade sem valor comprovado permanece desconhecida e exige abertura antes de usar o novo método; zero comprovado é válido e não equivale a ausência de evidência.
+
+A prévia por produto/sítio mostra saldo físico, quantidade valorizada, estado do valor e impedimentos de retroatividade. Quantidade física, grupos existentes e valor são consultados no mesmo corte: um movimento posterior não torna desconhecido o lastro comprovado do passado. A confirmação apresenta a revisão dessa prévia e a revalida sob trava; exige quantidade correspondente ao saldo, valor comprovado, referência, evidência, motivo e autoria. Reenvio da mesma chave/dados não repete a abertura. Uma abertura não altera quantidade física, compra, pagamento ou custo histórico.
+
+Rotas acrescentadas em Estoque:
+
+- `GET /api/estoque/produtos/:id/valorizacao`: diagnóstico com data e sítio.
+- `POST /api/estoque/produtos/:id/valorizacao/abertura`: abertura documentada com revisão e chave de reenvio.
+
+Consulta e abertura de valores exigem a visibilidade financeira no servidor; abertura também exige lançamento e período aberto. O detalhe do produto oferece o fluxo operacional. Dados anteriores sem lastro não recebem valor inventado para permitir uma saída.
+
+Em produto sem rastreio, a abertura admite várias origens comprovadas, cada uma com quantidade, valor total, data e referência. A soma deve corresponder ao saldo físico. Quando a única evidência disponível for um inventário, sua referência deve identificar essa abertura; não se criam aquisições históricas presumidas. Grupo rastreado recebe uma abertura correspondente ao saldo do grupo.
+
+Inventário inicial e ajuste positivo que iniciam uma base exigem referência e evidência: `documentacaoValor` na operação financeira e `referenciaValor`/`evidenciaValor` no ajuste de estoque. O movimento conserva essa comprovação em `evidenciaValor`, com a autoria existente. Uma justificativa de diferença física não substitui a comprovação do preço. Ajuste em base já conhecida conserva seu valor de referência e rejeita preço divergente; a API financeira direciona ajustes para o fluxo de Estoque, que aplica essas regras. Contagem sem base de valor exige regularizar a abertura antes de confirmar o ajuste.
+
+### Desconto comercial e logística
+
+Nas compras, o desconto comercial reduz o valor dos itens elegíveis antes da criação do estoque e da obrigação. A distribuição proporcional conserva os centavos do desconto; uma distribuição explícita deve fechar o total e respeitar elegibilidade e limite de cada item. `distribuicaoDesconto` conserva a ordem de todos os itens, com uma parcela zero para cada item não elegível, tanto na simulação quanto na confirmação. A liquidação atual registra o valor pago e admite pagamento parcial; não possui campo de abatimento ou desconto de liquidação. Pagar menos conserva o saldo restante da obrigação e não reescreve o custo histórico do estoque. Um eventual abatimento futuro precisará de fato próprio, distinto do desconto comercial da compra.
+
+A logística cobrada pelo mesmo fornecedor constitui item próprio, sem estoque, com categoria e centro de custo. Não entra no custo da dose. Cobrança de terceiro deve ter sua própria operação e obrigação. `Operacao.composicaoComercial` conserva a explicação do bruto, desconto e líquido por item e da logística; `ItemOperacao` conserva os valores líquidos utilizados no cálculo. Esse JSON não cria outro lançamento nem outro valor a somar.
+
+### Correções, concorrência e leitura
+
+Os gravadores compartilham travas por produto em ordem estável, além das garantias existentes de cada domínio. Itens repetidos de uma operação consomem o saldo atualizado após o item anterior. Movimento, alocação física, parcela monetária e fato operacional são confirmados atomicamente.
+
+Estorno cria parcelas inversas dos valores originais. Entrada com consumidores dependentes não pode ser retirada como se ainda estivesse integralmente disponível. A correção retroativa apresenta os impedimentos e revalida na confirmação; não existe motor geral de recálculo histórico nem contorna período fechado.
+
+Leituras por grupo devem usar as parcelas preservadas. Uma repartição feita novamente na consulta não substitui o registro do valor utilizado. Custos antigos, snapshots e autoria permanecem consultáveis. Valores completo/parcial/desconhecido e oculto por permissão não são intercambiáveis.
+
+As garantias SQL conferem somas, sinais e compatibilidade das referências. O domínio não oferece edição/exclusão das parcelas ou bases confirmadas. A limpeza administrativa de fixtures inteiras em uma transação não é fluxo de negócio e deve permanecer restrita aos produtos criados pelo próprio teste, sem desabilitar triggers.
+
+## Permissões e documentos
+
+Rotas exigem sessão, área/ação e escopo; custos e exportações do módulo financeiro respeitam a visibilidade financeira. A Pecuária permite consultar seus custos operacionais atribuídos com sessão, área Pecuária e sítio/animal autorizado, sem conceder edição financeira ou acesso a documentos e totais completos de compras/Serviços. `apresentarOperacao()` mascara valores em todas as operações quando não há acesso financeiro com `verValores`, incluindo a composição comercial. Listagem, detalhe, criação, confirmação de rascunho e resposta de estorno utilizam esse apresentador. A abertura de valorização exige a mesma visibilidade no servidor. Esses ajustes não constituem homologação de todas as rotas financeiras; cada DTO e relatório continua responsável por conferir sua permissão.
+
 Documentos e relatórios usam R2 e chaves persistidas. Rascunhos com anexo e operações confirmadas têm fluxos distintos de acesso; não suponha rota de download onde ela não existe. Confira rotas e `services/financeiro/documentos.ts` antes de mudar esse contrato.
 
 O [assistente de consulta](assistente-consulta.md) reutiliza dashboard, saldos e compromissos por período. Suas ferramentas agregadas exigem `verValores`, `verInvestimento` e `verSalarios`, além da área/aba correspondente, pois não há mascaramento granular confiável desses agregados. A ajuda de uso segue disponível por área/aba. O assistente não grava fatos; as respostas identificam sítio, regime/período e fontes para conferência. A Visão geral aceita `inicio`/`fim` inclusivos pela URL, inclusive navegação no mesmo componente, para manter o recorte do link de conferência.
@@ -70,3 +137,11 @@ Os resumos dos formulários são prévias, sem ícones de aprovação antes da g
 Documentos sem anexos e vínculos com Pecuária sem fatos nem itens de consumo direto são ocultados. A consulta de vínculos mantém carregamento e erro com opção de tentar novamente; itens diretos ainda disponíveis para destinação permanecem visíveis mesmo sem procedimentos vinculados.
 
 O detalhe usa linhas compactas para itens e parcelas. A data aparece com ícone junto ao código e status; tipo, parceiro, centro, categoria e classificação usam etiquetas com rótulos acessíveis. Compromissos e estoque aparecem apenas nas respectivas seções, sem faixa duplicada de contagens, com links para cada movimento de estoque. Em telas largas, itens e compromissos dividem a mesma faixa. As orientações de correções e cancelamentos ficam nas respectivas confirmações, sem faixa explicativa no detalhe; efeitos e permissões das ações permanecem inalterados.
+
+## Reprodução V4 e Serviços
+
+Tentativas de IA/TE/cobertura podem integrar os procedimentos de um Serviço confirmado, com valor individual opcional e vínculo navegável até o fato. A soma das atribuições inclui reprodução, aplicações, exames e protocolos sanitários, respeitando o valor total do Serviço e a permissão de ver valores. O vínculo não altera quantidade física nem cria nova despesa.
+
+Um Serviço com tentativa válida vinculada não pode ser cancelado antes de revisar seus procedimentos. O consumo reprodutivo também não pode ser estornado isoladamente pelo Estoque: a correção parte da reprodução e distingue devolução por erro de lançamento de material efetivamente usado ou descartado. Períodos fechados e o histórico dos movimentos permanecem protegidos.
+
+Tentativas e aplicações anuladas com consumo mantido continuam ocupando o limite atribuído ao Serviço e impedem cancelamento sem revisão dos vínculos. Material incluído no Serviço pode manter seu consumo sem movimento fictício de estoque. Anular uma tentativa vinculada verifica tanto o período do fato quanto o do Serviço; nenhum retry pode retirar a atribuição de um período fechado. Aplicação de compra direta com consumo mantido conserva a quantidade destinada, impedindo sua reutilização por outra aplicação.

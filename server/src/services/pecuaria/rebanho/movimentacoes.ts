@@ -121,8 +121,8 @@ export async function listarMovimentacoes(filtros: ListarMovimentacoesInput, esc
   const where: Prisma.MovimentacaoWhereInput = {
     AND: [
       escopo != null ? noSitio(escopo) : {},
-      filtros.propriedadeId != null ? noSitio(filtros.propriedadeId) : {},
-      filtros.loteId ? { OR: [{ loteDestinoId: filtros.loteId }, { animais: { some: { origemLoteId: filtros.loteId } } }] } : {},
+      filtros.propriedadeId != null ? noSitio(filtros.propriedadeId) : filtros.propriedadeIds?.length ? { OR: filtros.propriedadeIds.map(noSitio) } : {},
+      filtros.loteId ? { OR: [{ loteDestinoId: filtros.loteId }, { animais: { some: { origemLoteId: filtros.loteId } } }] } : filtros.loteIds?.length ? { OR: [{ loteDestinoId: { in: filtros.loteIds } }, { animais: { some: { origemLoteId: { in: filtros.loteIds } } } }] } : {},
       // itens (MovimentacaoAnimal) nunca são apagados — inclui a movimentação mesmo desfeita
       // quando `incluirDesfeitas` (a flag abaixo cuida de excluir as desfeitas se for o caso)
       filtros.animalId ? { animais: { some: { animalId: filtros.animalId } } } : {},

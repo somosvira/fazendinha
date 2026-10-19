@@ -1,9 +1,10 @@
+import { ValorizacaoError } from "../../services/estoque/valorizacao.calc.js";
 import { Hono, type Context } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { getUsuario } from "../../middleware/permissao.js";
-import { temArea, temPermissao } from "../../services/auth/papeis.js";
+import { podeConsultarCustosPecuaria } from "../../services/pecuaria/custos/permissoes.js";
 import { resolverEscopoEscrita, resolverEscopoLeitura } from "../../services/propriedade.js";
 import { RebanhoError } from "../../services/pecuaria/rebanho/regras.js";
 import { EstoqueError } from "../../services/estoque/estoque.js";
@@ -16,8 +17,9 @@ const uuid = z.string().uuid();
 const data = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const validar = <T extends z.ZodTypeAny>(s: T) => zValidator("json", s, (r, c) => !r.success ? c.json({ error: r.error.issues[0].message, code: "VALIDACAO" }, 422) : undefined);
 const validarQuery = <T extends z.ZodTypeAny>(s: T) => zValidator("query", s, (r, c) => !r.success ? c.json({ error: r.error.issues[0].message, code: "VALIDACAO" }, 422) : undefined);
-const verValores = (c: Context) => { const u = getUsuario(c); return !!u && temArea(u, "financeiro") && temPermissao(u, "verValores"); };
+const verValores = (c: Context) => podeConsultarCustosPecuaria(getUsuario(c));
 function falha(c: Context, e: unknown) {
+  if (e instanceof ValorizacaoError) return c.json({ error: e.message, code: e.code }, e.code === "VALIDACAO" ? 422 : 409);
   if (e instanceof RebanhoError || e instanceof EstoqueError) return c.json({ error: e.message, code: e.code }, e.code === "NAO_ENCONTRADO" ? 404 : e.code === "VALIDACAO" ? 422 : 409);
   if (e instanceof Prisma.PrismaClientKnownRequestError && ["P2002", "P2034"].includes(e.code)) return c.json({ error: "Conflito de atualização; recarregue e tente novamente", code: "CONFLITO" }, 409);
   console.error("[pecuaria/nutricao]", e);
@@ -37,7 +39,7 @@ export const nutricaoRouter = new Hono()
   })
   .post("/consumo/periodos/previa", validar(contexto), async (c) => {
     try { const body = c.req.valid("json"); const propriedadeId = await resolverEscopoEscrita(c, body.propriedadeId); const previa = await consumo.previaPeriodos({ ...body, propriedadeId });
-      const u = getUsuario(c); const valores = !!u && temArea(u, "financeiro") && temPermissao(u, "verValores");
+      const valores = verValores(c);
       return c.json({ ...previa, periodos: previa.periodos.map((p) => ({ ...p, verValores: valores, itens: p.itens.map((i) => ({ ...i, custoPrevisto: valores ? i.custoPrevisto : null })) })) }); } catch (e) { return falha(c, e); }
   })
   .post("/consumo/periodos/confirmacao", validar(contexto.extend({ chave: uuid, revisao: z.string().regex(/^[a-f0-9]{64}$/), periodos: z.array(z.object({ inicio: data, fim: data, itens: z.array(itemConsumo).min(1) }).strict()).min(1).max(100) }).strict()), async (c) => {
@@ -68,7 +70,7 @@ export const nutricaoRouter = new Hono()
   })
   .post("/consumo/previa", validar(contexto), async (c) => {
     try { const body = c.req.valid("json"); const propriedadeId = await resolverEscopoEscrita(c, body.propriedadeId);
-      const previa = await consumo.previaConsumo({ ...body, propriedadeId }); const u = getUsuario(c); const valores = !!u && temArea(u, "financeiro") && temPermissao(u, "verValores");
+      const previa = await consumo.previaConsumo({ ...body, propriedadeId }); const valores = verValores(c);
       return c.json({ ...previa, verValores: valores, itens: previa.itens.map((i) => ({ ...i, custoPrevisto: valores ? i.custoPrevisto : null })) }); }
     catch (e) { return falha(c, e); }
   })

@@ -5,10 +5,11 @@ const mocks = vi.hoisted(() => ({
   tx: {
     doenca: { findUnique: vi.fn(), update: vi.fn() }, motivoBaixa: { findUnique: vi.fn() },
     ocorrenciaSanitaria: { updateMany: vi.fn(), findFirst: vi.fn() },
+    etapaProtocolo: { findFirst: vi.fn() },
     tipoExame: { findUnique: vi.fn(), update: vi.fn() },
-    tarefaSanitaria: { findUnique: vi.fn(), update: vi.fn() }, localizacaoAnimal: { findFirst: vi.fn() },
-    protocoloSanitario: { findFirst: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
-    execucaoProtocoloSanitario: { findMany: vi.fn(), create: vi.fn() },
+    tarefaProtocolo: { findUnique: vi.fn(), update: vi.fn() }, localizacaoAnimal: { findFirst: vi.fn() },
+    protocolo: { findFirst: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
+    participacaoProtocolo: { findMany: vi.fn(), create: vi.fn() },
     aplicacaoProduto: { findFirst: vi.fn() }, exameAnimal: { findFirst: vi.fn() },
     $executeRaw: vi.fn(),
   }, auditar: vi.fn(), travar: vi.fn(),
@@ -37,7 +38,9 @@ describe("manutenção sanitária preserva fatos e decisões", () => {
     mocks.tx.tipoExame.findUnique.mockResolvedValue({ id: "tipo", nome: "Teste rápido", tipoResultado: "OPCAO", opcoes: ["Positivo", "Negativo"] });
     mocks.tx.tipoExame.update.mockResolvedValue({ id: "tipo", nome: "Teste quantitativo", tipoResultado: "NUMERO" });
     await editarTipoExame("tipo", { nome: "Teste quantitativo", tipoResultado: "NUMERO", unidade: "mg" }, 7);
-    expect(mocks.tx.$executeRaw).toHaveBeenCalledTimes(2);
+    const consultasDoFormato = mocks.tx.$executeRaw.mock.calls.filter(([sql]) => sql.join("") !== "SET CONSTRAINTS ALL IMMEDIATE");
+    expect(consultasDoFormato).toHaveLength(2);
+    expect(mocks.tx.$executeRaw.mock.lastCall?.[0].join("")).toBe("SET CONSTRAINTS ALL IMMEDIATE");
     expect(mocks.tx.tipoExame.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ tipoResultado: "NUMERO", opcoes: Prisma.JsonNull }) }));
     expect(nomeExameHistorico({ nome: "Teste rápido", tipoResultado: "OPCAO", opcoes: ["Positivo", "Negativo"] }, "Teste quantitativo")).toBe("Teste rápido");
   });
@@ -50,53 +53,53 @@ describe("manutenção sanitária preserva fatos e decisões", () => {
 
   it("adia tarefa pendente no sítio atual sem alterar parâmetros clínicos", async () => {
     const tarefa = { id: "tarefa", previstaPara: new Date("2026-09-01"), dispensadaEm: null, execucao: { animalId: "animal", canceladaEm: null }, aplicacoes: [], exames: [], parametros: { dose: "5" } };
-    mocks.tx.tarefaSanitaria.findUnique.mockResolvedValue(tarefa);
+    mocks.tx.tarefaProtocolo.findUnique.mockResolvedValue(tarefa);
     mocks.tx.localizacaoAnimal.findFirst.mockResolvedValue({ propriedadeId: 2 });
-    mocks.tx.tarefaSanitaria.update.mockResolvedValue({ ...tarefa, previstaPara: new Date("2026-09-03") });
+    mocks.tx.tarefaProtocolo.update.mockResolvedValue({ ...tarefa, previstaPara: new Date("2026-09-03") });
     await adiarTarefa("tarefa", { previstaPara: "2026-09-03", motivo: "Veterinário remarcou a visita" }, 7, 2);
-    expect(mocks.tx.tarefaSanitaria.update).toHaveBeenCalledWith({ where: { id: "tarefa" }, data: { previstaPara: new Date("2026-09-03") } });
+    expect(mocks.tx.tarefaProtocolo.update).toHaveBeenCalledWith({ where: { id: "tarefa" }, data: { previstaPara: new Date("2026-09-03") } });
     expect(mocks.auditar).toHaveBeenCalledWith(mocks.tx, expect.objectContaining({ acao: "ADIAMENTO", propriedadeId: 2, antes: tarefa, depois: expect.objectContaining({ motivo: "Veterinário remarcou a visita" }) }));
   });
 
   it.each(["realizada", "dispensada", "cancelada"])("recusa adiar tarefa %s", async (situacao) => {
-    mocks.tx.tarefaSanitaria.findUnique.mockResolvedValue({ previstaPara: new Date("2026-09-01"), dispensadaEm: situacao === "dispensada" ? new Date() : null, execucao: { animalId: "animal", canceladaEm: situacao === "cancelada" ? new Date() : null }, aplicacoes: situacao === "realizada" ? [{ id: "feito" }] : [], exames: [] });
+    mocks.tx.tarefaProtocolo.findUnique.mockResolvedValue({ previstaPara: new Date("2026-09-01"), dispensadaEm: situacao === "dispensada" ? new Date() : null, execucao: { animalId: "animal", canceladaEm: situacao === "cancelada" ? new Date() : null }, aplicacoes: situacao === "realizada" ? [{ id: "feito" }] : [], exames: [] });
     mocks.tx.localizacaoAnimal.findFirst.mockResolvedValue({ propriedadeId: 2 });
     await expect(adiarTarefa("tarefa", { previstaPara: "2026-09-03", motivo: "Mudança de agenda" }, 7, 2)).rejects.toThrow("pendente");
-    expect(mocks.tx.tarefaSanitaria.update).not.toHaveBeenCalled();
+    expect(mocks.tx.tarefaProtocolo.update).not.toHaveBeenCalled();
   });
 
   it.each(["2026-09-01", "2026-08-31", "2027-02-31"])("recusa adiamento para a data inválida ou não posterior %s", async (previstaPara) => {
-    mocks.tx.tarefaSanitaria.findUnique.mockResolvedValue({ previstaPara: new Date("2026-09-01"), dispensadaEm: null, execucao: { animalId: "animal", canceladaEm: null }, aplicacoes: [], exames: [] });
+    mocks.tx.tarefaProtocolo.findUnique.mockResolvedValue({ previstaPara: new Date("2026-09-01"), dispensadaEm: null, execucao: { animalId: "animal", canceladaEm: null }, aplicacoes: [], exames: [] });
     mocks.tx.localizacaoAnimal.findFirst.mockResolvedValue({ propriedadeId: 2 });
     await expect(adiarTarefa("tarefa", { previstaPara, motivo: "Mudança de agenda" }, 7, 2)).rejects.toMatchObject({ code: "VALIDACAO", campo: "previstaPara" });
-    expect(mocks.tx.tarefaSanitaria.update).not.toHaveBeenCalled();
+    expect(mocks.tx.tarefaProtocolo.update).not.toHaveBeenCalled();
   });
 
   it("outro sítio não pode adiar a tarefa", async () => {
-    mocks.tx.tarefaSanitaria.findUnique.mockResolvedValue({ execucao: { animalId: "animal" } });
+    mocks.tx.tarefaProtocolo.findUnique.mockResolvedValue({ execucao: { animalId: "animal" } });
     mocks.tx.localizacaoAnimal.findFirst.mockResolvedValue(null);
     await expect(adiarTarefa("tarefa", { previstaPara: "2026-09-03", motivo: "Mudança de agenda" }, 7, 9)).rejects.toMatchObject({ code: "NAO_ENCONTRADO" });
-    expect(mocks.tx.tarefaSanitaria.update).not.toHaveBeenCalled();
+    expect(mocks.tx.tarefaProtocolo.update).not.toHaveBeenCalled();
   });
 
   it("exige confirmação e justificativa de execução equivalente antes de criar tarefas", async () => {
-    mocks.tx.protocoloSanitario.findFirst.mockResolvedValue({ id: "p", nome: "Protocolo mastite", etapas: [] });
-    mocks.tx.execucaoProtocoloSanitario.findMany.mockResolvedValue([{ id: "anterior" }]);
+    mocks.tx.protocolo.findFirst.mockResolvedValue({ id: "p", nome: "Protocolo mastite", etapas: [] });
+    mocks.tx.participacaoProtocolo.findMany.mockResolvedValue([{ id: "anterior" }]);
     const input = { protocoloId: "p", animalId: "animal", propriedadeId: 2, inicio: "2026-09-01" };
     await expect(iniciarExecucao(input, 7)).rejects.toMatchObject({ code: "CONFLITO", campo: "confirmarSobreposicao" });
     await expect(iniciarExecucao({ ...input, confirmarSobreposicao: true, justificativaSobreposicao: "sim" }, 7)).rejects.toThrow("justificativa");
-    expect(mocks.tx.execucaoProtocoloSanitario.create).not.toHaveBeenCalled();
-    mocks.tx.execucaoProtocoloSanitario.create.mockResolvedValue({ id: "nova", tarefas: [] });
+    expect(mocks.tx.participacaoProtocolo.create).not.toHaveBeenCalled();
+    mocks.tx.participacaoProtocolo.create.mockResolvedValue({ id: "nova", tarefas: [] });
     await iniciarExecucao({ ...input, confirmarSobreposicao: true, justificativaSobreposicao: "Nova avaliação do veterinário" }, 7);
     expect(mocks.auditar).toHaveBeenCalledWith(mocks.tx, expect.objectContaining({ depois: expect.objectContaining({ sobreposicao: { execucaoIds: ["anterior"], justificativa: "Nova avaliação do veterinário", confirmada: true } }) }));
   });
 
   it("inativa protocolo sem apagar execuções ou editar versão publicada", async () => {
-    mocks.tx.protocoloSanitario.findUnique.mockResolvedValue({ id: "p", publicadoEm: new Date(), ativo: true });
-    mocks.tx.protocoloSanitario.update.mockResolvedValue({ id: "p", ativo: false });
+    mocks.tx.protocolo.findFirst.mockResolvedValue({ id: "p", publicadoEm: new Date(), ativo: true });
+    mocks.tx.protocolo.update.mockResolvedValue({ id: "p", ativo: false });
     await inativarProtocolo("p", 7);
-    expect(mocks.tx.protocoloSanitario.update).toHaveBeenCalledWith({ where: { id: "p" }, data: { ativo: false } });
-    expect(mocks.tx.execucaoProtocoloSanitario.create).not.toHaveBeenCalled();
+    expect(mocks.tx.protocolo.update).toHaveBeenCalledWith({ where: { id: "p", tipo: "SANITARIO" }, data: { ativo: false } });
+    expect(mocks.tx.participacaoProtocolo.create).not.toHaveBeenCalled();
   });
 
   it("detalhe nega outro sítio e mantém nome histórico no exame", async () => {

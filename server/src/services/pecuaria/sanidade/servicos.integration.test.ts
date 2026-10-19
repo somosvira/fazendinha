@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "../../../db.js";
 import { cadastrar } from "../rebanho/animais.js";
 import { cadastrarAnimalSchema } from "../rebanho/schemas.js";
+import { listarOrigemFinanceira } from "./origem-financeira.js";
 import { criarAplicacao } from "./aplicacoes.js";
 import { registrarExame, corrigirExame } from "./exames.js";
 import { confirmarProcedimentosServico, listarProcedimentosServico, procedimentosOperacaoServico } from "./servicos.js";
@@ -11,25 +12,48 @@ const run = crypto.randomUUID().slice(0, 8);
 const ctx = { sitio: 0, outroSitio: 0, animal: "", tipo: "", protocolo: "", etapa: "" };
 async function servico(valor = "100") { return prisma.operacao.create({ data: { propriedadeId: ctx.sitio, tipo: "SERVICO", status: "CONFIRMADA", data: new Date("2026-10-01"), valorTotal: valor, descricao: `Serviço ${run}` } }); }
 async function exame(patch: { tarefaId?: string; operacaoServicoId?: string } = {}) { return registrarExame({ animalId: ctx.animal, propriedadeId: ctx.sitio, tipoExameId: ctx.tipo, data: "2026-10-01", ...patch }, null); }
-const envio = (op: string, itens: Array<{ id: string; tipo: "APLICACAO" | "EXAME" | "PROTOCOLO"; valor?: string | null }>) => ({ servicoId: op, propriedadeId: ctx.sitio, chaveIdempotencia: crypto.randomUUID(), motivo: "Conferido atendimento realizado", itens });
+const envio = (op: string, itens: Array<{ id: string; tipo: "APLICACAO" | "EXAME" | "PROTOCOLO" | "TENTATIVA"; valor?: string | null }>) => ({ servicoId: op, propriedadeId: ctx.sitio, chaveIdempotencia: crypto.randomUUID(), motivo: "Conferido atendimento realizado", itens });
 comBanco("procedimentos de Serviço — integridade PostgreSQL", () => {
   beforeAll(async () => {
     const sitio = await prisma.propriedade.create({ data: { nome: `Serviços ${run}` } }); ctx.sitio = sitio.id;
     ctx.outroSitio = (await prisma.propriedade.create({ data: { nome: `Outro Serviço ${run}` } })).id;
     ctx.animal = (await cadastrar(cadastrarAnimalSchema.parse({ brinco: `SV${run}`, nome: "Bela", sexo: "F", origem: "COMPRADO", aptidao: "LEITE", propriedadeId: ctx.sitio, dataNascimento: "2020-01-01", dataEntrada: "2026-01-01" }), null)).id;
     ctx.tipo = (await prisma.tipoExame.create({ data: { nome: `Exame histórico ${run}`, tipoResultado: "TEXTO" } })).id;
-    const protocolo = await prisma.protocoloSanitario.create({ data: { nome: `Protocolo ${run}`, publicadoEm: new Date(), etapas: { create: { ordem: 1, diaRelativo: 0, tipo: "EXAME", tipoExameId: ctx.tipo } } }, include: { etapas: true } }); ctx.protocolo = protocolo.id; ctx.etapa = protocolo.etapas[0].id;
+    const protocolo = await prisma.protocolo.create({ data: { nome: `Protocolo ${run}`, publicadoEm: new Date(), etapas: { create: { ordem: 1, diaRelativo: 0, tipo: "EXAME", tipoExameId: ctx.tipo } } }, include: { etapas: true } }); ctx.protocolo = protocolo.id; ctx.etapa = protocolo.etapas[0].id;
   });
   afterAll(async () => {
     if (!ctx.sitio) return;
     await prisma.auditoriaPecuaria.deleteMany({ where: { OR: [{ animalId: ctx.animal }, { propriedadeId: { in: [ctx.sitio, ctx.outroSitio] } }] } });
     await prisma.requisicaoPecuaria.deleteMany({ where: { propriedadeId: { in: [ctx.sitio, ctx.outroSitio] } } });
-    await prisma.aplicacaoProduto.deleteMany({ where: { animalId: ctx.animal } }); await prisma.exameAnimal.deleteMany({ where: { animalId: ctx.animal } });
-    await prisma.tarefaSanitaria.deleteMany({ where: { execucao: { animalId: ctx.animal } } }); await prisma.execucaoProtocoloSanitario.deleteMany({ where: { animalId: ctx.animal } });
-    await prisma.etapaProtocoloSanitario.deleteMany({ where: { protocoloId: ctx.protocolo } }); await prisma.protocoloSanitario.delete({ where: { id: ctx.protocolo } });
+    await prisma.vinculoTarefaProtocolo.deleteMany({ where: { tentativa: { animalId: ctx.animal } } }); await prisma.tentativaReprodutiva.deleteMany({ where: { animalId: ctx.animal } });
+    await prisma.vinculoTarefaProtocolo.deleteMany({ where: { aplicacao: { animalId: ctx.animal } } }); await prisma.aplicacaoProduto.deleteMany({ where: { animalId: ctx.animal } }); await prisma.vinculoTarefaProtocolo.deleteMany({ where: { exame: { animalId: ctx.animal } } }); await prisma.exameAnimal.deleteMany({ where: { animalId: ctx.animal } });
+    await prisma.tarefaProtocolo.deleteMany({ where: { execucao: { animalId: ctx.animal } } }); await prisma.participacaoProtocolo.deleteMany({ where: { animalId: ctx.animal } });
+    await prisma.etapaProtocolo.deleteMany({ where: { protocoloId: ctx.protocolo } }); await prisma.protocolo.delete({ where: { id: ctx.protocolo } });
     await prisma.tipoExame.delete({ where: { id: ctx.tipo } }); await prisma.operacao.deleteMany({ where: { propriedadeId: { in: [ctx.sitio, ctx.outroSitio] } } });
-    await prisma.destinoAnimal.deleteMany({ where: { animalId: ctx.animal } }); await prisma.localizacaoAnimal.deleteMany({ where: { animalId: ctx.animal } }); await prisma.animal.delete({ where: { id: ctx.animal } });
+    await prisma.periodoReprodutivoAnimal.deleteMany({ where: { animalId: ctx.animal } }); await prisma.destinoAnimal.deleteMany({ where: { animalId: ctx.animal } }); await prisma.localizacaoAnimal.deleteMany({ where: { animalId: ctx.animal } }); await prisma.animal.delete({ where: { id: ctx.animal } });
     await prisma.propriedade.deleteMany({ where: { id: { in: [ctx.sitio, ctx.outroSitio] } } });
+  });
+  it("inclui tentativas V4 no atendimento e impede atribuição V3 que ultrapasse o valor conjunto", async () => {
+    const op = await servico("100");
+    const t = await prisma.tentativaReprodutiva.create({ data: {
+      animalId: ctx.animal, propriedadeId: ctx.sitio, data: new Date("2026-10-01"),
+      tipo: "IA", origemMaterial: "SERVICO", ciclo: 0, ordem: 1, geneticaSnapshot: {},
+      operacaoServicoId: op.id, valorServicoAtribuido: "80.10",
+    } });
+    const e = await exame();
+    await expect(confirmarProcedimentosServico(envio(op.id, [{ id: e.id, tipo: "EXAME", valor: "20" }]), null)).rejects.toThrow(/ultrapassam/);
+    expect((await prisma.exameAnimal.findUniqueOrThrow({ where: { id: e.id } })).operacaoServicoId).toBeNull();
+    await confirmarProcedimentosServico(envio(op.id, [{ id: e.id, tipo: "EXAME", valor: "19.90" }]), null);
+    const consulta = await listarProcedimentosServico(op.id, ctx.sitio, { tipo: "TENTATIVA", animalBusca: "Bela" });
+    expect(consulta.total).toBe(1);
+    expect((await listarOrigemFinanceira(op.id, ctx.sitio)).fatos).toContainEqual(expect.objectContaining({ id: t.id, tipo: "TENTATIVA", animalBrinco: `SV${run}` }));
+    expect(consulta.servico).toMatchObject({ totalAtribuido: "100", disponivel: "0" });
+    expect(consulta.itens[0]).toMatchObject({ id: t.id, tipo: "TENTATIVA", valor: "80.1", animal: { brinco: `SV${run}` } });
+    await confirmarProcedimentosServico(envio(op.id, [{ id: t.id, tipo: "TENTATIVA", valor: "75" }]), null);
+    expect((await listarProcedimentosServico(op.id, ctx.sitio)).servico.disponivel).toBe("5.1");
+    const oculto = await listarProcedimentosServico(op.id, ctx.sitio, {}, false);
+    expect(oculto.servico.totalAtribuido).toBeNull();
+    expect(oculto.itens.every((i) => i.valor === null)).toBe(true);
   });
   it("vincula aplicação/exame sem reconciliar origem, dose, medicamento ou estoque", async () => {
     const op = await servico(); const e = await exame();
@@ -76,7 +100,7 @@ comBanco("procedimentos de Serviço — integridade PostgreSQL", () => {
   });
   it("protocolo exige fato realizado e não combina valores em pai/filho nem outros Serviços", async () => {
     const [op, outro] = await Promise.all([servico(), servico()]);
-    const p = await prisma.execucaoProtocoloSanitario.create({ data: { animalId: ctx.animal, propriedadeId: ctx.sitio, protocoloId: ctx.protocolo, inicio: new Date("2026-10-01"), tarefas: { create: { etapaId: ctx.etapa, previstaPara: new Date("2026-10-01"), parametros: {} } } }, include: { tarefas: true } });
+    const p = await prisma.participacaoProtocolo.create({ data: { animalId: ctx.animal, propriedadeId: ctx.sitio, protocoloId: ctx.protocolo, inicio: new Date("2026-10-01"), tarefas: { create: { etapaId: ctx.etapa, previstaPara: new Date("2026-10-01"), parametros: { tipo: "EXAME", tipoExameId: ctx.tipo } } } }, include: { tarefas: true } });
     await expect(confirmarProcedimentosServico(envio(op.id, [{ id: p.id, tipo: "PROTOCOLO" }]), null)).rejects.toMatchObject({ code: "CONFLITO" });
     const e = await exame({ tarefaId: p.tarefas[0].id });
     await expect(confirmarProcedimentosServico(envio(op.id, [{ id: p.id, tipo: "PROTOCOLO", valor: "0" }, { id: e.id, tipo: "EXAME", valor: "0" }]), null)).rejects.toMatchObject({ code: "CONFLITO" });

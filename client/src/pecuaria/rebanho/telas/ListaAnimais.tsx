@@ -1,3 +1,4 @@
+import { MultiSelect } from "../../../components/MultiSelect";
 import { DialogFinanceiro } from "../../../financeiro/DialogFinanceiro";
 // Lista de animais — BarraFiltros + TabelaFinanceira + Paginacao (servidor),
 // no padrão de OperacoesFinanceiras.tsx. Seleção múltipla habilita
@@ -16,7 +17,7 @@ import { FormAplicacaoServico } from "../sanidade/FormAplicacaoServico";
 import { PesagemColetiva } from "../manejo/ManejoAnimal";
 import { ArrowRightLeft, ExternalLink, Pencil, Plus, Search, SlidersHorizontal } from "lucide-react";
 import { listarAnimais, buscarFichaAnimal, listarCategorias, obterCatalogos, RebanhoApiError } from "../api";
-import type { AnimalFicha, AnimalResumo, Aptidao, CategoriaDTO, Catalogos, Origem, PainelServidor, PapelReprodutivo, Sexo, Situacao, TipoBaixa } from "../types";
+import type { AnimalFicha, AnimalResumo, Aptidao, CategoriaDTO, Catalogos, ListarFiltros, Origem, PainelServidor, PapelReprodutivo, Sexo, Situacao, TipoBaixa } from "../types";
 import { formatarDataBR, formatarIdade, rotuloAptidao, rotuloOpcaoCategoria, rotuloPapelReprodutivo, rotuloSituacao, rotuloTipoBaixa } from "../lib/rotulos";
 import { formatarGmd } from "../lib/peso";
 import { BarraFiltros, CategoriaPill, Paginacao, useAoMovimentarComToast } from "../ui";
@@ -66,7 +67,7 @@ function lerFiltrosDaUrl() {
     categoriaId: semCategoria ? CATEGORIA_SEM : categoriaOrigemManual ? CATEGORIA_FORCADA : (params.get("categoriaId") ?? ""),
     aptidao: (params.get("aptidao") ?? "") as Aptidao | "",
     papelReprodutivo: (params.get("papelReprodutivo") ?? "") as PapelReprodutivo | "",
-    situacao: (params.get("situacao") ?? "ATIVO") as Situacao | "TODOS",
+    situacao: (params.has("situacoes") ? "TODOS" : params.get("situacao") ?? "ATIVO") as Situacao | "TODOS",
     sexo: (params.get("sexo") ?? "") as Sexo | "",
     origem: (params.get("origem") ?? "") as Origem | "",
     racaId: params.get("racaId") ?? "",
@@ -79,6 +80,12 @@ function lerFiltrosDaUrl() {
   };
 }
 
+const FAMILIAS = { propriedadeIds: "propriedadeId", loteIds: "loteId", categoriaIds: "categoriaId", aptidoes: "aptidao", papeisReprodutivos: "papelReprodutivo", situacoes: "situacao", sexos: "sexo", origens: "origem", racaIds: "racaId" } as const;
+type Familia = keyof typeof FAMILIAS;
+function lerMultiplos() {
+  const p = new URLSearchParams(window.location.search);
+  return Object.fromEntries(Object.keys(FAMILIAS).map(k => [k, k === "propriedadeIds" && getPropriedadeAtiva() != null ? [] : p.getAll(k)])) as Record<Familia, string[]>;
+}
 function pillSituacao(situacao: Situacao) {
   return <Pill tone={situacao === "ATIVO" ? "green" : "neutral"}>{rotuloSituacao(situacao)}</Pill>;
 }
@@ -116,7 +123,8 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
   const [baixaDe, setBaixaDe] = useState(filtrosUrl.baixaDe);
   const [baixaAte, setBaixaAte] = useState(filtrosUrl.baixaAte);
   const [ordenacao, setOrdenacao] = useState(filtrosUrl.ordenacao);
-  const [pagina, setPagina] = useState(1);
+  const [pagina, setPagina] = useState(() => Math.max(1, Number(new URLSearchParams(window.location.search).get("page")) || 1));
+  const [multiplos, setMultiplos] = useState(lerMultiplos);
 
   const [selecionados, setSelecionados] = useState<Map<string, AnimalResumo>>(new Map());
   const [pesando, setPesando] = useState(false);
@@ -126,29 +134,50 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
   const [carregandoEdicaoId, setCarregandoEdicaoId] = useState<string | null>(null);
   const [movimentando, setMovimentando] = useState<{ animais: AnimalResumo[]; propriedadeId?: number | null; loteId?: string | null } | null>(null);
 
-  // situação inclui baixados: os filtros de baixa (tipo/período) e a coluna "Baixa" só fazem sentido aqui
-  const mostrarBaixa = situacao === "BAIXADO" || situacao === "TODOS";
+  // Situação inclui baixados: libera os filtros de tipo e período da baixa.
+  const mostrarBaixa = multiplos.situacoes.length ? multiplos.situacoes.includes("BAIXADO") : situacao === "BAIXADO" || situacao === "TODOS";
   const opcaoOrdenacao = OPCOES_ORDENACAO.find((o) => o.valor === ordenacao) ?? OPCOES_ORDENACAO[0];
 
   useEffect(() => { obterCatalogos().then(setCatalogos).catch((e) => setErro(e instanceof Error ? e.message : String(e))); }, []);
   useEffect(() => { listarCategorias().then((r) => setCategorias(r.itens)).catch(() => undefined); }, []);
+  useEffect(() => {
+    if (!catalogos || sitioGlobal == null) return;
+    const validos = new Set(catalogos.lotes.filter(l => l.propriedadeId === sitioGlobal).map(l => l.id));
+    if (loteId && !validos.has(loteId)) setLoteId("");
+    setMultiplos(m => m.loteIds.some(id => !validos.has(id)) ? { ...m, loteIds: m.loteIds.filter(id => validos.has(id)) } : m);
+  }, [catalogos, sitioGlobal, loteId]);
+
 
   useEffect(() => {
     let vigente = true;
     setCarregando(true); setErro(null);
+    setItens([]); setPainel(null);
+    let recuperandoPagina = false;
+    const listas: Pick<ListarFiltros, Familia> = {
+      propriedadeIds: sitioGlobal == null && multiplos.propriedadeIds.length ? multiplos.propriedadeIds.map(Number) : undefined,
+      loteIds: multiplos.loteIds.length ? multiplos.loteIds : undefined,
+      categoriaIds: multiplos.categoriaIds.length ? multiplos.categoriaIds : undefined,
+      aptidoes: multiplos.aptidoes.length ? multiplos.aptidoes as Aptidao[] : undefined,
+      papeisReprodutivos: multiplos.papeisReprodutivos.length ? multiplos.papeisReprodutivos as PapelReprodutivo[] : undefined,
+      situacoes: multiplos.situacoes.length ? multiplos.situacoes as Situacao[] : undefined,
+      sexos: multiplos.sexos.length ? multiplos.sexos as Sexo[] : undefined,
+      origens: multiplos.origens.length ? multiplos.origens as Origem[] : undefined,
+      racaIds: multiplos.racaIds.length ? multiplos.racaIds : undefined,
+    };
     listarAnimais({
+      ...listas,
       busca: busca.trim() || undefined,
-      propriedadeId: propriedadeId ? Number(propriedadeId) : undefined,
-      loteId: loteId || undefined,
-      categoriaId: categoriaId && categoriaId !== CATEGORIA_SEM && categoriaId !== CATEGORIA_FORCADA ? categoriaId : undefined,
+      propriedadeId: listas.propriedadeIds ? undefined : propriedadeId ? Number(propriedadeId) : undefined,
+      loteId: listas.loteIds ? undefined : loteId || undefined,
+      categoriaId: !listas.categoriaIds && categoriaId && categoriaId !== CATEGORIA_SEM && categoriaId !== CATEGORIA_FORCADA ? categoriaId : undefined,
       semCategoria: categoriaId === CATEGORIA_SEM ? true : undefined,
       categoriaOrigem: categoriaId === CATEGORIA_FORCADA ? "MANUAL" : undefined,
-      aptidao: aptidao || undefined,
-      papelReprodutivo: papelReprodutivo || undefined,
-      situacao,
-      sexo: sexo || undefined,
-      origem: origem || undefined,
-      racaId: racaId || undefined,
+      aptidao: listas.aptidoes ? undefined : aptidao || undefined,
+      papelReprodutivo: listas.papeisReprodutivos ? undefined : papelReprodutivo || undefined,
+      situacao: listas.situacoes ? undefined : situacao,
+      sexo: listas.sexos ? undefined : sexo || undefined,
+      origem: listas.origens ? undefined : origem || undefined,
+      racaId: listas.racaIds ? undefined : racaId || undefined,
       idadeMinMeses: idadeMinMeses !== "" && !Number.isNaN(Number(idadeMinMeses)) ? Number(idadeMinMeses) : undefined,
       idadeMaxMeses: idadeMaxMeses !== "" && !Number.isNaN(Number(idadeMaxMeses)) ? Number(idadeMaxMeses) : undefined,
       tipoBaixa: mostrarBaixa && tipoBaixa ? tipoBaixa : undefined,
@@ -159,13 +188,26 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
       page: pagina,
       pageSize: ITENS_POR_PAGINA,
     })
-      .then((resultado) => { if (vigente) { setItens(resultado.itens); setTotal(resultado.total); setPainel(resultado.painel); } })
+      .then((resultado) => {
+        if (!vigente) return;
+        const ultimaPagina = Math.max(1, Math.ceil(resultado.total / ITENS_POR_PAGINA));
+        if (pagina > ultimaPagina) {
+          recuperandoPagina = true;
+          setPagina(ultimaPagina);
+          return;
+        }
+        setItens(resultado.itens); setTotal(resultado.total); setPainel(resultado.painel);
+      })
       .catch((e) => { if (vigente) setErro(e instanceof Error ? e.message : String(e)); })
-      .finally(() => { if (vigente) setCarregando(false); });
+      .finally(() => { if (vigente && !recuperandoPagina) setCarregando(false); });
     return () => { vigente = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [busca, propriedadeId, loteId, categoriaId, aptidao, papelReprodutivo, situacao, sexo, origem, racaId, idadeMinMeses, idadeMaxMeses, mostrarBaixa, tipoBaixa, baixaDe, baixaAte, opcaoOrdenacao, pagina, revisao]);
+  }, [busca, propriedadeId, loteId, categoriaId, aptidao, papelReprodutivo, situacao, sexo, origem, racaId, idadeMinMeses, idadeMaxMeses, mostrarBaixa, tipoBaixa, baixaDe, baixaAte, opcaoOrdenacao, pagina, revisao, multiplos, sitioGlobal]);
 
+  useEffect(() => {
+    const restaurar = () => { const f = lerFiltrosDaUrl(); setMultiplos(lerMultiplos()); setTextoBusca(f.busca); setBusca(f.busca); setPropriedadeId(sitioGlobal != null ? String(sitioGlobal) : f.propriedadeId); setLoteId(f.loteId); setCategoriaId(f.categoriaId); setAptidao(f.aptidao); setPapelReprodutivo(f.papelReprodutivo); setSituacao(f.situacao); setSexo(f.sexo); setOrigem(f.origem); setRacaId(f.racaId); setIdadeMinMeses(f.idadeMinMeses); setIdadeMaxMeses(f.idadeMaxMeses); setTipoBaixa(f.tipoBaixa); setBaixaDe(f.baixaDe); setBaixaAte(f.baixaAte); setOrdenacao(f.ordenacao); setPagina(Math.max(1, Number(new URLSearchParams(window.location.search).get("page")) || 1)); setSelecionados(new Map()); };
+    window.addEventListener("popstate", restaurar); return () => window.removeEventListener("popstate", restaurar);
+  }, [sitioGlobal]);
   // busca só dispara depois de 300 ms sem digitar
   useEffect(() => {
     const t = setTimeout(() => { if (textoBusca !== busca) { setBusca(textoBusca); setPagina(1); } }, 300);
@@ -194,10 +236,15 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
     if (mostrarBaixa && baixaDe) params.set("baixaDe", baixaDe);
     if (mostrarBaixa && baixaAte) params.set("baixaAte", baixaAte);
     if (ordenacao !== ORDENACAO_PADRAO) { params.set("ordenar", opcaoOrdenacao.ordenar); params.set("direcao", opcaoOrdenacao.direcao); }
+    for (const plural of Object.keys(FAMILIAS) as Familia[]) {
+      if (plural === "propriedadeIds" && sitioGlobal != null) continue;
+      if (multiplos[plural].length) { params.delete(FAMILIAS[plural]); multiplos[plural].forEach(v => params.append(plural, v)); }
+    }
+    if (pagina > 1) params.set("page", String(pagina));
     const query = params.toString();
-    const novaUrl = `${window.location.pathname}${query ? `?${query}` : ""}`;
-    if (novaUrl !== `${window.location.pathname}${window.location.search}`) window.history.replaceState(null, "", novaUrl);
-  }, [busca, propriedadeId, loteId, categoriaId, aptidao, papelReprodutivo, situacao, sexo, origem, racaId, idadeMinMeses, idadeMaxMeses, mostrarBaixa, tipoBaixa, baixaDe, baixaAte, ordenacao, opcaoOrdenacao, sitioGlobal]);
+    const novaUrl = `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`;
+    if (novaUrl !== `${window.location.pathname}${window.location.search}${window.location.hash}`) window.history.replaceState(window.history.state, "", novaUrl);
+  }, [busca, propriedadeId, loteId, categoriaId, aptidao, papelReprodutivo, situacao, sexo, origem, racaId, idadeMinMeses, idadeMaxMeses, mostrarBaixa, tipoBaixa, baixaDe, baixaAte, ordenacao, opcaoOrdenacao, sitioGlobal, multiplos, pagina]);
 
   /** Troca um filtro e volta para a página 1 no mesmo render — uma única busca.
    * A seleção coletiva é independente da busca: o produtor pode refinar a lista sem
@@ -205,7 +252,7 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
   const filtrar = <T,>(set: (v: T) => void) => (v: T) => { set(v); setPagina(1); };
 
   const totalPaginas = Math.max(1, Math.ceil(total / ITENS_POR_PAGINA));
-  const lotesDoSitio = useMemo(() => catalogos?.lotes.filter((lote) => !propriedadeId || String(lote.propriedadeId) === propriedadeId) ?? [], [catalogos, propriedadeId]);
+  const lotesDoSitio = useMemo(() => catalogos?.lotes.filter((lote) => multiplos.propriedadeIds.length && sitioGlobal == null ? multiplos.propriedadeIds.includes(String(lote.propriedadeId)) : !propriedadeId || String(lote.propriedadeId) === propriedadeId) ?? [], [catalogos, propriedadeId, multiplos.propriedadeIds, sitioGlobal]);
 
   // baixados não entram na seleção em massa (K3) — ela é sempre uma movimentação, e baixado não se movimenta
   const itensSelecionaveis = useMemo(() => itens.filter((item) => item.situacao === "ATIVO"), [itens]);
@@ -236,35 +283,41 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
   const aoMovimentar = useAoMovimentarComToast(recarregar);
 
   const filtrosAtivos = [
-    ...(propriedadeId && sitioGlobal == null ? [{ rotulo: `Sítio: ${catalogos?.propriedades.find(p => String(p.id) === propriedadeId)?.nome ?? "Selecionado"}`, limpar: () => { filtrar(setPropriedadeId)(""); setLoteId(""); } }] : []),
-    ...(loteId ? [{ rotulo: `Lote: ${catalogos?.lotes.find(l => l.id === loteId)?.nome ?? "Selecionado"}`, limpar: () => filtrar(setLoteId)("") }] : []),
-    ...(categoriaId ? [{ rotulo: `Categoria: ${categoriaId === CATEGORIA_SEM ? "Sem categoria" : categoriaId === CATEGORIA_FORCADA ? "Só forçadas" : categorias.find(c => c.id === categoriaId)?.nome ?? "Selecionada"}`, limpar: () => filtrar(setCategoriaId)("") }] : []),
-    ...(situacao !== "TODOS" ? [{ rotulo: `Situação: ${situacao === "ATIVO" ? "Ativos" : "Baixados"}`, limpar: () => filtrar(setSituacao)("TODOS") }] : []),
-    ...(sexo ? [{ rotulo: `Sexo: ${sexo === "F" ? "Fêmeas" : "Machos"}`, limpar: () => filtrar(setSexo)("") }] : []),
-    ...(origem ? [{ rotulo: `Origem: ${origem === "NASCIDO" ? "Nascido" : "Comprado"}`, limpar: () => filtrar(setOrigem)("") }] : []),
-    ...(racaId ? [{ rotulo: `Raça: ${catalogos?.racas.find(r => r.id === racaId)?.nome ?? "Selecionada"}`, limpar: () => filtrar(setRacaId)("") }] : []),
+    ...(!multiplos.propriedadeIds.length && propriedadeId && sitioGlobal == null ? [{ rotulo: `Sítio: ${catalogos?.propriedades.find(p => String(p.id) === propriedadeId)?.nome ?? "Selecionado"}`, limpar: () => { filtrar(setPropriedadeId)(""); setLoteId(""); } }] : []),
+    ...(!multiplos.loteIds.length && loteId ? [{ rotulo: `Lote: ${catalogos?.lotes.find(l => l.id === loteId)?.nome ?? "Selecionado"}`, limpar: () => filtrar(setLoteId)("") }] : []),
+    ...(!multiplos.categoriaIds.length && categoriaId ? [{ rotulo: `Categoria: ${categoriaId === CATEGORIA_SEM ? "Sem categoria" : categoriaId === CATEGORIA_FORCADA ? "Só forçadas" : categorias.find(c => c.id === categoriaId)?.nome ?? "Selecionada"}`, limpar: () => filtrar(setCategoriaId)("") }] : []),
+    ...(!multiplos.situacoes.length && situacao !== "TODOS" ? [{ rotulo: `Situação: ${situacao === "ATIVO" ? "Ativos" : "Baixados"}`, limpar: () => filtrar(setSituacao)("TODOS") }] : []),
+    ...(!multiplos.sexos.length && sexo ? [{ rotulo: `Sexo: ${sexo === "F" ? "Fêmeas" : "Machos"}`, limpar: () => filtrar(setSexo)("") }] : []),
+    ...(!multiplos.origens.length && origem ? [{ rotulo: `Origem: ${origem === "NASCIDO" ? "Nascido" : "Comprado"}`, limpar: () => filtrar(setOrigem)("") }] : []),
+    ...(!multiplos.racaIds.length && racaId ? [{ rotulo: `Raça: ${catalogos?.racas.find(r => r.id === racaId)?.nome ?? "Selecionada"}`, limpar: () => filtrar(setRacaId)("") }] : []),
     ...(idadeMinMeses ? [{ rotulo: `Idade mínima: ${idadeMinMeses} meses`, limpar: () => filtrar(setIdadeMinMeses)("") }] : []),
     ...(idadeMaxMeses ? [{ rotulo: `Idade máxima: ${idadeMaxMeses} meses`, limpar: () => filtrar(setIdadeMaxMeses)("") }] : []),
-    ...(aptidao ? [{ rotulo: `Aptidão: ${rotuloAptidao(aptidao)}`, limpar: () => filtrar(setAptidao)("") }] : []),
-    ...(papelReprodutivo ? [{ rotulo: `Papel: ${rotuloPapelReprodutivo(papelReprodutivo)}`, limpar: () => filtrar(setPapelReprodutivo)("") }] : []),
+    ...(!multiplos.aptidoes.length && aptidao ? [{ rotulo: `Aptidão: ${rotuloAptidao(aptidao)}`, limpar: () => filtrar(setAptidao)("") }] : []),
+    ...(!multiplos.papeisReprodutivos.length && papelReprodutivo ? [{ rotulo: `Papel: ${rotuloPapelReprodutivo(papelReprodutivo)}`, limpar: () => filtrar(setPapelReprodutivo)("") }] : []),
     ...(mostrarBaixa && tipoBaixa ? [{ rotulo: `Baixa: ${rotuloTipoBaixa(tipoBaixa)}`, limpar: () => filtrar(setTipoBaixa)("") }] : []),
     ...(mostrarBaixa && baixaDe ? [{ rotulo: `Baixa de: ${formatarDataBR(baixaDe)}`, limpar: () => filtrar(setBaixaDe)("") }] : []),
     ...(mostrarBaixa && baixaAte ? [{ rotulo: `Baixa até: ${formatarDataBR(baixaAte)}`, limpar: () => filtrar(setBaixaAte)("") }] : []),
   ];
+  const campoMultiplo = (familia: Familia, label: string, options: { value: string; label: string }[], legado: string, limparLegado: () => void) => {
+    const valor = multiplos[familia].length ? multiplos[familia] : legado && options.some(o => o.value === legado) ? [legado] : [];
+    return <MultiSelect compacto label={label} placeholder={familia === "situacoes" ? "Ativos e baixados" : "Todas as opções"} contentClassName="z-[1300]" options={options} value={valor} onValueChange={valores => {
+      limparLegado(); setMultiplos(m => ({ ...m, [familia]: valores })); setPagina(1);
+      if (familia === "propriedadeIds") { setLoteId(""); setMultiplos(m => ({ ...m, propriedadeIds: valores, loteIds: [] })); setSelecionados(new Map()); }
+    }}/>;
+  };
   const COLUNAS_TODAS: ColunaTabela<AnimalResumo>[] = [
     { chave: "selecionar", titulo: "", larguraMinima: 44, acoes: true, celula: (item) => item.situacao === "ATIVO" ? <label className="flex min-h-11 min-w-11 cursor-pointer items-center justify-center" onClick={(e) => e.stopPropagation()}><input className="h-5 w-5 cursor-pointer accent-[var(--mast)]" type="checkbox" aria-label={`Selecionar ${item.brinco}`} checked={selecionados.has(item.id)} onChange={() => alternarSelecao(item)} /></label> : null },
-    { chave: "brinco", titulo: "Brinco / nome", larguraMinima: 140, principal: true, celula: (item) => <><strong className="break-words">{item.brinco}</strong>{item.nome && <div className="mt-1 text-xs text-ink-3">{item.nome}</div>}</> },
+    { chave: "brinco", titulo: "Brinco / nome", larguraMinima: 180, principal: true, celula: (item) => <><strong className="break-words">{item.brinco}</strong>{item.nome && <div className="mt-1 text-xs text-ink-3">{item.nome}</div>}</> },
     { chave: "categoria", titulo: "Categoria", larguraMinima: 110, celula: (item) => <CategoriaPill categoria={item.categoria} categoriaOrigem={item.categoriaOrigem} categoriaCalculada={item.categoriaCalculada} /> },
     { chave: "idade", titulo: "Idade", larguraMinima: 90, celula: (item) => formatarIdade(item.idadeMeses) },
     { chave: "sitio", titulo: "Sítio", larguraMinima: 140, celula: (item) => item.propriedade?.nome ?? "—" },
-    { chave: "lote", titulo: "Lote", larguraMinima: 120, celula: (item) => item.lote
-      ? <button type="button" onClick={(e) => { e.stopPropagation(); navegarPara(`/pecuaria/rebanho/lotes/${item.lote!.id}`); }} className="break-words font-semibold text-mast hover:underline">{item.lote.nome}</button>
+    { chave: "lote", titulo: "Lote", larguraMinima: 120, larguraFlexivel: true, celula: (item) => item.lote
+      ? <a href={`/pecuaria/rebanho/lotes/${item.lote.id}`} onClick={(e) => { e.stopPropagation(); if(!e.metaKey&&!e.ctrlKey&&!e.shiftKey&&!e.altKey){e.preventDefault();navegarPara(`/pecuaria/rebanho/lotes/${item.lote!.id}`);} }} className="break-words font-semibold text-mast hover:underline">{item.lote.nome}</a>
       : "—" },
     { chave: "aptidao", titulo: "Aptidão", larguraMinima: 100, celula: (item) => item.aptidao ? <Pill tone="brown">{rotuloAptidao(item.aptidao)}</Pill> : "—" },
-    { chave: "papel", titulo: "Papel", larguraMinima: 110, celula: (item) => item.papelReprodutivo && item.papelReprodutivo !== "NENHUM" ? <Pill tone="amber">{rotuloPapelReprodutivo(item.papelReprodutivo)}</Pill> : "—" },
+    { chave: "papel", titulo: "Papel", larguraMinima: 110, celula: (item) => item.papelReprodutivoEstado === "CONFLITO" ? <Pill tone="amber">Papel em revisão</Pill> : item.papelReprodutivo && item.papelReprodutivo !== "NENHUM" ? <Pill tone="amber">{rotuloPapelReprodutivo(item.papelReprodutivo)}</Pill> : "—" },
     { chave: "peso", titulo: "Último peso", larguraMinima: 130, celula: (item) => item.ultimoPeso ? <>{item.ultimoPeso.kg.toLocaleString("pt-BR")} kg<div className="text-xs text-ink-3">{formatarDataBR(item.ultimoPeso.data)}</div></> : "—" },
-    { chave: "gmd", titulo: "GMD", larguraMinima: 140, celula: (item) => formatarGmd(item.gmdRecente) },
-    ...(mostrarBaixa ? [{ chave: "baixa", titulo: "Baixa", larguraMinima: 150, celula: (item: AnimalResumo) => item.baixa ? <>{rotuloTipoBaixa(item.baixa.tipo)}<div className="text-xs text-ink-3">{formatarDataBR(item.baixa.data)}</div></> : "—" } as ColunaTabela<AnimalResumo>] : []),
+    { chave: "gmd", titulo: "GMD", larguraMinima: 110, celula: (item) => formatarGmd(item.gmdRecente) },
     { chave: "situacao", titulo: "Situação", larguraMinima: 110, celula: (item) => pillSituacao(item.situacao) },
     { chave: "acoes", titulo: "Ações", alinhamento: "direita", larguraMinima: 96, acoes: true, celula: (item) => item.situacao !== "ATIVO" ? null : <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
       <button type="button" className="rounded-lg p-2 text-ink-2 hover:bg-surface-2 hover:text-ink disabled:opacity-50" aria-label={`Editar ${item.brinco}`} title="Editar dados" disabled={carregandoEdicaoId === item.id} onClick={() => { void editar(item.id); }}><Pencil size={16} /></button>
@@ -272,7 +325,7 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
     </div> },
   ];
   // sem permissão de lançar: sem seleção em massa e sem ações de linha
-  const principais = pesagem ? ["selecionar", "brinco", "lote", "categoria", "situacao"] : ["selecionar", "brinco", "categoria", "lote", "peso", "gmd", "baixa", "situacao", "acoes"];
+  const principais = pesagem ? ["selecionar", "brinco", "lote", "categoria", "situacao"] : ["selecionar", "brinco", "categoria", "lote", "peso", "gmd", "situacao", "acoes"];
   const colunasVisiveis = mostrarColunasAdicionais ? COLUNAS_TODAS : principais.flatMap((chave) => COLUNAS_TODAS.filter((c) => c.chave === chave));
   const COLUNAS = podeLancar ? colunasVisiveis : colunasVisiveis.filter((c) => c.chave !== "selecionar" && c.chave !== "acoes");
 
@@ -298,42 +351,40 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
         <label className="relative w-full min-w-0 flex-[1_1_240px] sm:w-auto"><Search size={16} className="absolute left-3 top-3 text-ink-3" /><input aria-label="Buscar por brinco ou nome" value={textoBusca} onChange={(e) => setTextoBusca(e.target.value)} placeholder="Buscar por brinco ou nome" className="h-[42px] w-full rounded-lg border border-border bg-white py-2.5 pl-9 pr-3 text-sm" /></label>
         <Button secondary onClick={() => setFiltrosAbertos(true)}><SlidersHorizontal size={16} /> Filtros</Button>
       </BarraFiltros>
-      <div className="animais-filtros-e-selecao">
-        <div className="flex flex-wrap gap-2 px-4 pb-3" aria-label="Filtros selecionados">{filtrosAtivos.map(f => <button key={f.rotulo} type="button" onClick={f.limpar} aria-label={`Remover filtro: ${f.rotulo}`} className="rounded-lg border border-border bg-surface-2 px-3 py-2 text-xs text-ink-2">{f.rotulo} <span aria-hidden="true">×</span></button>)}</div>
-        {!pesagem && podeLancar && itensSelecionaveis.length > 0 && <label className="animais-selecionar-todos"><input className="h-4 w-4 cursor-pointer accent-[var(--mast)]" type="checkbox" aria-label="Selecionar todos os animais desta página" checked={todosDaPaginaSelecionados} onChange={alternarSelecaoTodos} /> Selecionar todos</label>}
-      </div></div>
+      <div className="flex flex-wrap gap-2 px-4 py-4" aria-label="Filtros selecionados">{(Object.keys(FAMILIAS) as Familia[]).flatMap(f => multiplos[f].map(v => {
+        const nomes: Record<Familia,string> = { propriedadeIds:"Sítio",loteIds:"Lote",categoriaIds:"Categoria",aptidoes:"Aptidão",papeisReprodutivos:"Papel",situacoes:"Situação",sexos:"Sexo",origens:"Origem",racaIds:"Raça" };
+        const nome = catalogos?.propriedades.find(p => String(p.id)===v)?.nome ?? catalogos?.lotes.find(l=>l.id===v)?.nome ?? categorias.find(c=>c.id===v)?.nome ?? catalogos?.racas.find(r=>r.id===v)?.nome ?? ({ATIVO:"Ativos",BAIXADO:"Baixados",F:"Fêmeas",M:"Machos",NASCIDO:"Nascido",COMPRADO:"Comprado",LEITE:"Leite",CORTE:"Corte",NENHUM:"Nenhum",DOADORA:"Doadora",RECEPTORA:"Receptora"} as Record<string,string>)[v] ?? "Selecionado";
+        return <button key={f+v} type="button" className="rounded-lg border border-border bg-surface-2 px-3 py-2 text-xs" aria-label={`Remover filtro: ${nomes[f]}: ${nome}`} onClick={()=>{if(f==="propriedadeIds"){setLoteId("");setSelecionados(new Map());}setMultiplos(m=>({...m,[f]:m[f].filter(x=>x!==v),...(f==="propriedadeIds"?{loteIds:[]}: {})}));setPagina(1);}}>{nomes[f]}: {nome} ×</button>;
+      }))}{filtrosAtivos.map(f => <button key={f.rotulo} type="button" onClick={f.limpar} aria-label={`Remover filtro: ${f.rotulo}`} className="rounded-lg border border-border bg-surface-2 px-3 py-2 text-xs text-ink-2">{f.rotulo} <span aria-hidden="true">×</span></button>)}</div>
+      {!pesagem && podeLancar && itensSelecionaveis.length > 0 && <label className="animais-selecionar-todos"><input className="h-4 w-4 cursor-pointer accent-[var(--mast)]" type="checkbox" aria-label="Selecionar todos os animais desta página" checked={todosDaPaginaSelecionados} onChange={alternarSelecaoTodos} /> Selecionar todos</label>}</div>
       {podeLancar && itensSelecionaveis.length > 0 && (pesagem || selecionados.size > 0) && <div className="animais-acoes-coletivas flex flex-wrap items-center gap-3 border-b border-border bg-surface-2 px-4 py-2.5 text-sm">
         {selecionados.size > 0 && <><Button secondary={!pesagem} onClick={() => setPesando(true)}>Pesagem coletiva</Button>{!pesagem && <><Button secondary onClick={() => setAplicando(true)}>Aplicação sanitária coletiva</Button><Button secondary onClick={() => setColetivoSanitario("exame")}>Coleta coletiva</Button><Button secondary onClick={() => setColetivoSanitario("protocolo")}>Protocolos coletivos</Button></>}</>}
         {pesagem && <label className="flex items-center gap-2 font-medium"><input className="h-5 w-5 cursor-pointer accent-[var(--mast)]" type="checkbox" aria-label="Selecionar todos os animais desta página" checked={todosDaPaginaSelecionados} onChange={alternarSelecaoTodos} /> Selecionar todos</label>}
         {selecionados.size > 0 && <><span className="text-ink-3">{selecionados.size} selecionado{selecionados.size === 1 ? "" : "s"}</span><Button secondary onClick={() => setSelecionados(new Map())}>Limpar seleção</Button>{!pesagem && <Button onClick={() => setMovimentando({ animais: [...selecionados.values()] })}>Movimentar {selecionados.size} {selecionados.size === 1 ? "animal" : "animais"}</Button>}</>}
       </div>}
-      {erro && !itens.length ? <Empty>Não foi possível carregar os animais.</Empty> : itens.length ? <>
-        <TabelaFinanceira rotulo="Animais" itens={itens} colunas={COLUNAS} chaveDe={(item) => item.id} onAbrir={(item) => onAbrirAnimal(item.id)} barraRolagemSuperior />
+      {carregando ? <p role="status" className="p-5 text-sm text-ink-3">Atualizando animais…</p> : erro && !itens.length ? <Empty>Não foi possível carregar os animais.</Empty> : itens.length ? <>
+        <TabelaFinanceira rotulo="Animais" itens={itens} colunas={COLUNAS} chaveDe={(item) => item.id} onAbrir={(item) => onAbrirAnimal(item.id)} cartaoComLinks barraRolagemSuperior />
         <Paginacao paginaAtual={pagina} totalPaginas={totalPaginas} totalItens={total} itensPorPagina={ITENS_POR_PAGINA} onPaginaChange={setPagina} rotulo="animais" idSelect="pagina-animais" />
       </> : <Empty>Nenhum animal encontrado com os filtros selecionados.</Empty>}
     </Panel>
 
-    {filtrosAbertos && <DialogFinanceiro titulo="Filtrar animais" eyebrow="Rebanho" icon={SlidersHorizontal} onClose={() => setFiltrosAbertos(false)} rodape={<Button onClick={() => setFiltrosAbertos(false)}>Concluir</Button>}>
+    {filtrosAbertos && <DialogFinanceiro titulo="Filtrar animais" eyebrow="Rebanho" icon={SlidersHorizontal} onClose={() => setFiltrosAbertos(false)} rodape={<div className="flex justify-between gap-3"><Button secondary onClick={() => { setMultiplos({propriedadeIds:[],loteIds:[],categoriaIds:[],sexos:[],origens:[],racaIds:[],aptidoes:[],papeisReprodutivos:[],situacoes:[]}); setPropriedadeId(sitioGlobal != null ? String(sitioGlobal) : ""); setLoteId(""); setCategoriaId(""); setAptidao(""); setPapelReprodutivo(""); setSituacao("ATIVO"); setSexo(""); setOrigem(""); setRacaId(""); setIdadeMinMeses(""); setIdadeMaxMeses(""); setTipoBaixa(""); setBaixaDe(""); setBaixaAte(""); setPagina(1); }}>Limpar filtros</Button><Button onClick={() => setFiltrosAbertos(false)}>Concluir</Button></div>}>
       <div className="pec-filtros-animais grid gap-3 p-5 sm:grid-cols-2">
-        {sitioGlobal == null && <label className="flex min-w-0 flex-col gap-1.5 text-sm">Sítio<SelectCampo aria-label="Filtrar por sítio" value={propriedadeId} onValueChange={(valor) => { filtrar(setPropriedadeId)(valor); setLoteId(""); }} className="h-[42px] w-full min-w-0 rounded-lg border border-border bg-white px-3 text-sm"><option value="">Todos os sítios</option>{catalogos?.propriedades.map((prop) => <option key={prop.id} value={prop.id}>{prop.nome}</option>)}</SelectCampo></label>}
-        <label className="flex min-w-0 flex-col gap-1.5 text-sm">Lote<SelectCampo aria-label="Filtrar por lote" value={loteId} onValueChange={(valor) => filtrar(setLoteId)(valor)} className="h-[42px] w-full min-w-0 rounded-lg border border-border bg-white px-3 text-sm"><option value="">Todos os lotes</option>{lotesDoSitio.map((lote) => <option key={lote.id} value={lote.id}>{lote.nome}</option>)}</SelectCampo></label>
-        <label className="flex min-w-0 flex-col gap-1.5 text-sm">Categoria<SelectCampo aria-label="Filtrar por categoria" value={categoriaId} onValueChange={(valor) => filtrar(setCategoriaId)(valor)} className="h-[42px] w-full min-w-0 rounded-lg border border-border bg-white px-3 text-sm">
-          <option value="">Todas as categorias</option>
-          <option value={CATEGORIA_SEM}>Sem categoria</option>
-          <option value={CATEGORIA_FORCADA}>Só forçadas</option>
-          {categorias.map((c) => <option key={c.id} value={c.id}>{rotuloOpcaoCategoria(categorias, c)}</option>)}
-        </SelectCampo></label>
-        <label className="flex min-w-0 flex-col gap-1.5 text-sm">Situação<SelectCampo aria-label="Filtrar por situação" value={situacao} onValueChange={(valor) => filtrar(setSituacao)(valor as Situacao | "TODOS")} className="h-[42px] w-full min-w-0 rounded-lg border border-border bg-white px-3 text-sm"><option value="ATIVO">Ativos</option><option value="BAIXADO">Baixados</option><option value="TODOS">Todas as situações</option></SelectCampo></label>
-        <label className="flex min-w-0 flex-col gap-1.5 text-sm">Sexo<SelectCampo aria-label="Filtrar por sexo" value={sexo} onValueChange={(valor) => filtrar(setSexo)(valor as Sexo | "")} className="h-[42px] w-full min-w-0 rounded-lg border border-border bg-white px-3 text-sm"><option value="">Todos os sexos</option><option value="F">Fêmeas</option><option value="M">Machos</option></SelectCampo></label>
-        <label className="flex min-w-0 flex-col gap-1.5 text-sm">Origem<SelectCampo aria-label="Filtrar por origem" value={origem} onValueChange={(valor) => filtrar(setOrigem)(valor as Origem | "")} className="h-[42px] w-full min-w-0 rounded-lg border border-border bg-white px-3 text-sm"><option value="">Todas as origens</option><option value="NASCIDO">Nascido</option><option value="COMPRADO">Comprado</option></SelectCampo></label>
-        <label className="flex min-w-0 flex-col gap-1.5 text-sm">Raça<SelectCampo aria-label="Filtrar por raça" value={racaId} onValueChange={(valor) => filtrar(setRacaId)(valor)} className="h-[42px] w-full min-w-0 rounded-lg border border-border bg-white px-3 text-sm"><option value="">Todas as raças</option>{catalogos?.racas.map((r) => <option key={r.id} value={r.id}>{r.nome} ({r.sigla})</option>)}</SelectCampo></label>
+        {sitioGlobal == null && campoMultiplo("propriedadeIds", "Sítio", catalogos?.propriedades.map(p => ({ value: String(p.id), label: p.nome })) ?? [], propriedadeId, () => setPropriedadeId(""))}
+        {campoMultiplo("loteIds", "Lote", lotesDoSitio.map(l => ({ value: l.id, label: l.nome })), loteId, () => setLoteId(""))}
+        {campoMultiplo("categoriaIds", "Categoria", categorias.map(c => ({ value: c.id, label: rotuloOpcaoCategoria(categorias, c) })), categoriaId === CATEGORIA_SEM || categoriaId === CATEGORIA_FORCADA ? "" : categoriaId, () => setCategoriaId(""))}
+        {campoMultiplo("situacoes", "Situação", [{value:"ATIVO",label:"Ativos"},{value:"BAIXADO",label:"Baixados"}], situacao === "TODOS" ? "" : situacao, () => setSituacao("TODOS"))}
+        {campoMultiplo("sexos", "Sexo", [{value:"F",label:"Fêmeas"},{value:"M",label:"Machos"}], sexo, () => setSexo(""))}
+        {campoMultiplo("origens", "Origem", [{value:"NASCIDO",label:"Nascido"},{value:"COMPRADO",label:"Comprado"}], origem, () => setOrigem(""))}
+        {campoMultiplo("racaIds", "Raça", catalogos?.racas.map(r => ({value:r.id,label:r.nome})) ?? [], racaId, () => setRacaId(""))}
+        <label className="flex min-w-0 flex-col gap-1.5 text-sm">Critério especial de categoria<SelectCampo aria-label="Critério especial de categoria" value={[CATEGORIA_SEM,CATEGORIA_FORCADA].includes(categoriaId) ? categoriaId : ""} onValueChange={valorSelecionado => { setCategoriaId(valorSelecionado); setMultiplos(m => ({...m,categoriaIds:[]})); setPagina(1); }}><option value="">Sem critério especial</option><option value={CATEGORIA_SEM}>Sem categoria</option><option value={CATEGORIA_FORCADA}>Só forçadas</option></SelectCampo></label>
         <div className="flex min-w-0 flex-col gap-1.5 text-sm"><span>Idade em meses</span><div className="flex items-center gap-1.5">
           <input aria-label="Idade mínima (meses)" type="number" min={0} inputMode="numeric" placeholder="Mín. (meses)" value={idadeMinMeses} onChange={(e) => filtrar(setIdadeMinMeses)(e.target.value)} className="h-[42px] w-full min-w-0 rounded-lg border border-border bg-white px-3 text-sm" />
           <span className="shrink-0 text-ink-3">–</span>
           <input aria-label="Idade máxima (meses)" type="number" min={0} inputMode="numeric" placeholder="Máx. (meses)" value={idadeMaxMeses} onChange={(e) => filtrar(setIdadeMaxMeses)(e.target.value)} className="h-[42px] w-full min-w-0 rounded-lg border border-border bg-white px-3 text-sm" />
         </div></div>
-        <label className="flex min-w-0 flex-col gap-1.5 text-sm">Aptidão<SelectCampo aria-label="Filtrar por aptidão" value={aptidao} onValueChange={(valor) => filtrar(setAptidao)(valor as Aptidao | "")} className="h-[42px] w-full min-w-0 rounded-lg border border-border bg-white px-3 text-sm"><option value="">Todas as aptidões</option><option value="LEITE">Leite</option><option value="CORTE">Corte</option></SelectCampo></label>
-        <label className="flex min-w-0 flex-col gap-1.5 text-sm">Papel reprodutivo<SelectCampo aria-label="Filtrar por papel reprodutivo" value={papelReprodutivo} onValueChange={(valor) => filtrar(setPapelReprodutivo)(valor as PapelReprodutivo | "")} className="h-[42px] w-full min-w-0 rounded-lg border border-border bg-white px-3 text-sm"><option value="">Todos os papéis</option><option value="NENHUM">Nenhum</option><option value="RECEPTORA">Receptora</option><option value="DOADORA">Doadora</option></SelectCampo></label>
+        {campoMultiplo("aptidoes", "Aptidão", [{value:"LEITE",label:"Leite"},{value:"CORTE",label:"Corte"}], aptidao, () => setAptidao(""))}
+        {campoMultiplo("papeisReprodutivos", "Papel reprodutivo", [{value:"NENHUM",label:"Nenhum"},{value:"RECEPTORA",label:"Receptora"},{value:"DOADORA",label:"Doadora"}], papelReprodutivo, () => setPapelReprodutivo(""))}
 
         {mostrarBaixa && <>
           <label className="flex min-w-0 flex-col gap-1.5 text-sm">Tipo de baixa<SelectCampo aria-label="Filtrar por tipo de baixa" value={tipoBaixa} onValueChange={(valor) => filtrar(setTipoBaixa)(valor as TipoBaixa | "")} className="h-[42px] w-full min-w-0 rounded-lg border border-border bg-white px-3 text-sm"><option value="">Todos os tipos de baixa</option>{TIPOS_BAIXA_FILTRO.map((t) => <option key={t} value={t}>{rotuloTipoBaixa(t)}</option>)}</SelectCampo></label>

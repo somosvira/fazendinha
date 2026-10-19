@@ -1,3 +1,5 @@
+import { conflitoTransacaoValidada } from "../lib/transacao-validada.js";
+import { ValorizacaoError } from "../services/estoque/valorizacao.calc.js";
 import { Hono, type Context } from "hono";
 import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
@@ -9,7 +11,7 @@ import * as documentos from "../services/financeiro/documentos.js";
 import * as rascunhos from "../services/financeiro/rascunhos.js";
 import { analisarCategorias, analiseCategoriasSchema } from "../services/financeiro/analise-categorias.js";
 import { obterDashboard } from "../services/financeiro/dashboard.js";
-import { categoriaCadastroSchema, centroCustoSchema, contaSchema, estornoSchema, liquidacaoSchema, operacaoSchema, parceiroSchema, patchCategoriaCadastroSchema, patchCentroCustoSchema, patchContaSchema, patchParceiroSchema, rascunhoOperacaoSchema, simulacaoParcelasSchema, tipoDocumentoFinanceiroSchema, transacaoAvulsaSchema, transferenciaSchema } from "../services/financeiro/schemas.js";
+import { grupoCategoriaSchema, patchGrupoCategoriaSchema, categoriaCadastroSchema, centroCustoSchema, contaSchema, estornoSchema, liquidacaoSchema, operacaoSchema, parceiroSchema, patchCategoriaCadastroSchema, patchCentroCustoSchema, patchContaSchema, patchParceiroSchema, rascunhoOperacaoSchema, simulacaoParcelasSchema, tipoDocumentoFinanceiroSchema, transacaoAvulsaSchema, transferenciaSchema } from "../services/financeiro/schemas.js";
 import { patchProdutoSchema, produtoSchema } from "../services/estoque/produtos.schemas.js";
 import { FinanceiroError } from "../services/financeiro/regras.js";
 import { EstoqueError } from "../services/estoque/estoque.js";
@@ -58,6 +60,8 @@ function exigirUsuarioId(c: Context): number {
 }
 
 function falha(c: Context, erro: unknown) {
+  if (conflitoTransacaoValidada(erro)) return c.json({ error: "Os dados mudaram. Recarregue e confirme novamente.", code: "CONFLITO" }, 409);
+  if (erro instanceof ValorizacaoError) return c.json({ error: erro.message, code: erro.code }, erro.code === "VALIDACAO" ? 422 : 409);
   if (erro instanceof EstoqueError) {
     const status = erro.code === "NAO_ENCONTRADO" ? 404 : erro.code === "VALIDACAO" ? 422 : 409;
     return c.json({ error: erro.message, code: erro.code }, status);
@@ -103,6 +107,14 @@ export const financeiroRouter = new Hono()
   })
   .patch("/financeiro/produtos/:id", exigePermissao("lancar"), validarCadastro(patchProdutoSchema), async (c) => {
     try { return c.json(await produtos.atualizarProduto(c.req.param("id"), c.req.valid("json"), usuarioId(c))); }
+    catch (e) { return falha(c, e); }
+  })
+  .post("/financeiro/grupos-categorias", exigePermissao("lancar"), validarCadastro(grupoCategoriaSchema), async (c) => {
+    try { return c.json(await cadastros.criarGrupoCategoria(c.req.valid("json"), usuarioId(c)), 201); }
+    catch (e) { return falha(c, e); }
+  })
+  .patch("/financeiro/grupos-categorias/:id", exigePermissao("lancar"), validarCadastro(patchGrupoCategoriaSchema), async (c) => {
+    try { return c.json(await cadastros.atualizarGrupoCategoria(c.req.param("id"), c.req.valid("json"), usuarioId(c))); }
     catch (e) { return falha(c, e); }
   })
   .post("/financeiro/categorias", exigePermissao("lancar"), validarCadastro(categoriaCadastroSchema), async (c) => {
@@ -189,7 +201,7 @@ export const financeiroRouter = new Hono()
     catch (e) { return falha(c, e); }
   })
   .post("/financeiro/operacoes/rascunho/confirmacao", exigePermissao("lancar"), zValidator("json", z.object({ versao: z.number().int().positive().optional(), chave: z.string().uuid().optional() })), async (c) => {
-    try { const body = c.req.valid("json"); return c.json(await rascunhos.confirmarRascunho(await resolverEscopoEscrita(c), exigirUsuarioId(c), body.versao, body.chave), 201); }
+    try { const body = c.req.valid("json"); return c.json(apresentarOperacao(c, await rascunhos.confirmarRascunho(await resolverEscopoEscrita(c), exigirUsuarioId(c), body.versao, body.chave)), 201); }
     catch (e) { return falha(c, e); }
   })
   .post("/financeiro/operacoes/simulacao-parcelas", exigePermissao("lancar"), validarCadastro(simulacaoParcelasSchema), async (c) => {

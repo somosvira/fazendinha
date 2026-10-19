@@ -1,223 +1,131 @@
-# Conferência visual — Financeiro Cooperativa contemporânea
+# Fidelidade: entrada, agenda e seleção livre de visitas
 
-Data: 11/10/2026. Branch: `codex/financeiro-cooperativa-contemporanea`, criada a partir de `codex/financeiro-dashboard-grid`. Implementação local em http://localhost:41875/financeiro.
+final result: passed
 
-## Fonte e estado observado
+## Escopo e referência
 
-Fonte visual: `output/design/financeiro-cooperativa-2026-10-10/01-visao-geral.png` e os outros 28 PNGs da mesma pasta. O 01 corresponde ao modelo 03 selecionado. Contratos de aplicação: [design.md](docs/design/financeiro-cooperativa/design.md), [iconografia.md](docs/design/financeiro-cooperativa/iconografia.md) e regras financeiras existentes.
+A referência aprovada é `docs/pecuaria/artefatos/mockup-selecao-livre.html#entrada`, com o percurso de agenda em `mockup-agenda-visitas.html`. O resultado usa a aplicação existente na branch `codex/pecuaria-v4`; não é um novo protótipo isolado. Navegação global, permissões e atendimento comum são preservados.
 
-Captura principal da implementação: [01-visao-geral-1440.png](output/qa/financeiro-cooperativa/01-visao-geral-1440.png). As demais capturas são nomeadas com o mesmo identificador da fonte e sufixo `-1440.png`. O [manifesto de dimensões](output/qa/financeiro-cooperativa/comparacoes-manifesto.json) registra tamanho e modalidade da captura. O detalhe 27 usa o viewport, após estabilização e retorno da página ao topo, para não distorcer elementos fixos numa captura de página inteira.
+## Comparação visual
 
-Navegador Chromium com viewport CSS 1440 × 1180, `deviceScaleFactor: 1`; capturas de página inteira têm altura variável. O 01 de referência possui 1322 × 1190 pixels; o 01 implementado possui 1440 × 1610 pixels. Os PNGs gerados não informam uma viewport CSS original nem densidade de dispositivo. A comparação de composição normaliza ambos à mesma largura, preservando proporção, sem interpretar a rasterização gerada como uma medida exata de CSS. Recortes ampliados permitem conferir desenho, orientação e tratamento dos ícones.
+Evidências em `output/visitas-separacao/`, abertas em pares referência/implementação na mesma entrada de comparação:
 
-Estado: usuário proprietário do cenário demonstrativo existente, sítio consolidado, datas e registros vindos da API. Nenhuma confirmação financeira foi feita. As chamadas de escrita foram bloqueadas; apenas o salvamento automático dos dois rascunhos recebeu uma resposta simulada no navegador, usando leitura do rascunho existente, sem persistir alterações no banco.
-
-## Evidências e cobertura
-
-- [Comparação da visão geral](output/qa/financeiro-cooperativa/comparacao-01.png), [comparação de formulários](output/qa/financeiro-cooperativa/comparacao-formularios.png) e [recortes de iconografia](output/qa/financeiro-cooperativa/comparacao-iconografia.png).
-- Seis pranchas `comparacao-lote-1.jpg` a `comparacao-lote-6.jpg`: fonte e implementação para os 29 estados, incluindo abertura efetiva de diálogos/folhas, calendário, liquidados, cinco cadastros, cinco formulários, relatório expandido, detalhe de categoria, cancelamento e procedimentos.
-- [estados-final.json](output/qa/financeiro-cooperativa/estados-final.json): rodada consolidada dos 29 estados, com recapturas identificadas; sem falhas de captura, exceções de página ou erros de console. O detalhe 27 foi confirmado aberto na recaptura; o arquivo da primeira rodada permanece como histórico.
-- [responsivo.json](output/qa/financeiro-cooperativa/responsivo.json): 24 combinações de seis páginas com larguras 375/768/1024/1440 px; abertura e Escape do menu móvel; foco, contenção de Tab e retorno de foco da transferência; saída do tema em Estoque/Pecuária e retorno ao Financeiro; viewport equivalente a zoom de 200%.
-- [dialogos-mobile.json](output/qa/financeiro-cooperativa/dialogos-mobile.json): 14 combinações de sete diálogos/folhas com 375/768 px; limites da tela, foco inicial, rodapés disponíveis, fechamento com alvos de 44/40 px e movimento reduzido. Nenhum caso com rodapé ou diálogo fora da tela; nenhuma exceção de página.
-
-Os 29 estados representam os exemplos da galeria, não 29 rotas independentes. Estados adicionais e contratos condicionais são cobertos pelos testes existentes; não foram todos repetidos manualmente no navegador.
-
-## Resultado por superfície
-
-| Superfície | Conferência e decisão |
-| --- | --- |
-| Tipografia | DM Sans em títulos e conteúdo, inclusive nos portais. Hierarquia por peso e tamanho, dinheiro tabular. Corrigida a herança da fonte antiga no título de páginas. Textos ilustrativos dos PNGs não substituem dados reais. |
-| Espaçamento e composição | Contas à esquerda do fluxo; calendário à esquerda da agenda; categorias abaixo. Formulário e revisão separados, agrupamentos, tabelas e rodapés preservados. Calendário integrado cabe na coluna. A altura acompanha os títulos e valores reais; listas e formulários extensos mantêm rolagem e paginação. |
-| Cores e controles | Tokens sálvia/branco/floresta, estados positivos/pendentes/destrutivos legíveis. Campos usam contorno essencial mais escuro que divisórias decorativas. Saldo de abertura corrigido para usar o mesmo contorno, com estados inválido, foco e desabilitado. Radios e checkboxes mantêm geometria de 16 × 16 px. |
-| Imagens e ícones | Marca Terrano original preservada. Paisagem decorativa extraída do próprio PNG aprovado. Inventário canônico aplicado; setas do fluxo corrigidas para cima à esquerda/baixo à direita, engrenagem financeira, documento em Documentos, elo em vínculos e estetoscópio no contexto financeiro de procedimentos. PNG gerado não fornece SVG original: a aprovação cobre correspondência visual e reutilização consistente, sem alegar igualdade pixel a pixel. |
-| Conteúdo e comportamento | Nenhum campo ou ação financeira removido para imitar o PNG. Status, valores, anexos, vínculos, cálculos, permissões e navegação preservados. Transferência mantém a submissão do formulário a partir do rodapé. Histórico e relatórios conservam seus dados; PDF não recebeu redesign. |
-
-Diferenças esperadas: marca original frente à marca reinterpretada na imagem gerada; nomes e datas demonstrativos reais; campos condicionais; maior altura com conteúdo longo; contorno de controles reforçado para legibilidade; fundos e ícones normalizados pelo guia. O mockup 27 contém a composição anterior do dashboard ao fundo; prevalece a composição aprovada do 01.
-
-## Histórico das correções
-
-| Rodada | Achado | Correção e evidência posterior |
+| Estado | Referência | Aplicação |
 | --- | --- | --- |
-| Integração | Estilos compartilhados poderiam alterar Pills, avisos, revisão e título de folha na Pecuária. | Restauradas classes externas; ajustes aplicados somente no Financeiro. Navegação para Estoque/Pecuária registra tema ausente e fundo original em `responsivo.json`. |
-| Visual 1 | Título ainda herdava fonte antiga; radios Radix recebiam altura de campo. | Família definida na `.h1`; excluídos controles de seleção do mínimo de altura. Capturas responsivas e medidas de 16 × 16 px. |
-| Visual 1 | Campo do parceiro criava coluna implícita; calendário integrado mantinha largura mínima de 700 px. | Grade de uma coluna no parceiro; removida largura mínima no modo compacto e ajustada densidade do calendário. Capturas 01/20 e ausência de overflow na amostragem. |
-| Visual 2 | Configurações financeiras usava cubo; cabeçalho financeiro de procedimentos sem o desenho canônico; campo monetário com borda clara. | `Settings` no contexto financeiro, `Stethoscope` condicional, contorno `--input` no wrapper monetário. Recapturas 01/19/29 e revisão independente encerrada sem P1/P2 nesses ajustes. |
-| Visual 3 | Orientação do par de setas invertida; ícone de anexo usado para Documentos preservados; estetoscópio usado nos vínculos. | `ArrowUpDown`, `FileText` e elo diagonal `Link`, respectivamente. Inventário atualizado; recortes finais confirmam as orientações. Conferência independente dirigida concluída sem P1/P2. |
-| Evidências | Capturas durante animação cortavam lateral da folha; bloqueio de autosave mostrava erro de rede; detalhe 27 capturado antes da abertura efetiva. | Movimento reduzido e screenshot com animações finalizadas; fixture somente no navegador para autosave; espera pelo diálogo e pelos dados no 27. Capturas consolidadas substituem as preliminares. |
+| Entrada sem escolha | `referencia-entrada-desktop.png` | `app-entrada-desktop.png` |
+| Agenda do dia | `referencia-agenda-desktop.png` | `app-agenda-desktop.png` |
+| Filtros sem manejo ativo | `referencia-filtros-desktop.png` | `app-filtros-desktop.png` |
+| Revisão integral paginada | `referencia-revisao-desktop.png` | `app-revisao-desktop.png` |
+| Definição de aplicação sanitária | `referencia-atividade-desktop.png` | `app-atividade-desktop.png` |
+| Definição em celular | `referencia-atividade-mobile.png` | `app-atividade-mobile.png` |
 
-## Validação funcional
+Desktop: densidade 1, altura 1050 px, área comparável de 1216 px. Fonte em viewport 1216 × 1050, sem barras demonstrativas; aplicação em 1440 × 1050, com recorte de sua área de conteúdo após a navegação lateral de 224 px. Celular: viewport 390 × 844, densidade 1; a fonte reserva o espaço superior correspondente ao menu móvel. O documento real tem largura 390 px, sem transbordamento horizontal da página. Tabela e navegação de etapas podem rolar em sua própria região.
 
-Suíte completa do frontend: **127 arquivos e 978 testes passaram**. Após os ajustes finais de ícones e contorno, **115 testes focados passaram** nos quatro arquivos existentes de visão geral, formulário de operação, detalhe e procedimentos de serviço. Esses focos não são somados à suíte completa. TypeScript e build de produção passaram. `git diff --check` sem erros.
+Datas, identificadores, contagens e nomes reais diferem dos dados fictícios. Na atividade, o mesmo estado selecionado (aplicação sanitária) foi comparado; a regra real também bloqueia reprodução com machos, identificando-os. A aplicação mantém a quarta etapa de atendimento comum e separa as opções reais de início sanitário/reprodutivo. Essas diferenças de contrato não foram ocultadas para a captura.
 
-A suite inclui contratos de formulário, submissão de transferência, ações, anexos, permissões e estados financeiros. Nenhuma API, migration, regra monetária, schema ou cálculo de saldo foi alterado. O build mantém o aviso existente sobre o tamanho do bundle; o aviso não impediu a geração.
+## Conferências funcionais
 
-## Limites da conferência
+- Entrada: nenhum caminho marcado, contexto oficial, continuidade específica, sem criar visita ao apenas escolher cartão.
+- Agenda: eixos Reprodução/Sanidade, janelas e grupos previstos. Ausência de filtros habituais e formulário extra conferida no navegador e na consulta dedicada do servidor.
+- Livre: página própria, critérios, filtros salvos, prévia com totais completos por situação, revisão de 15 linhas por página, atividade definida depois.
+- Revisão: cabeçalho de filtros próprios, sem campos de planejamento de protocolo; tabela em colunas, retirada e inclusão manual, retorno e retomada após recarga.
+- Atendimento: escrita continua nos serviços existentes, com rascunhos/CAS, autorização e guarda de navegação; preparar não executa fatos clínicos.
+- Contexto: assinatura independente da atividade impede aceitar mudança de contexto entre as duas prévias da definição. Prévia/inclusão do servidor também revalida sob travas.
+- Correções verificadas: aviso transitório de grupo indisponível numa revisão válida; recuperação da etapa de atividade após recarga; resumo anterior limitado à primeira página; cabeçalho de agenda aparecendo na revisão livre; atenção repetida causando linhas excessivamente altas.
+- Nenhuma exceção JavaScript não tratada registrada nas capturas finais. IDs e scripts dos HTMLs documentais conferidos; os novos casos V4-84 a V4-89 permaneceram pendentes.
 
-Sem homologação manual de leitor de tela, todos os perfis em navegador ou confirmações financeiras no banco. O teste de zoom usa viewport equivalente; não comprova o comando de zoom do navegador nativo. A revisão de contraste verifica tokens e controles encontrados, não certifica conformidade integral de acessibilidade. Formulários longos continuam com rolagem; screenshots individuais não exibem simultaneamente todos os campos de uma folha.
+## Validação e limites
 
-Achados P0/P1/P2 pendentes: nenhum nos casos conferidos. Refinamentos P3: ajustes futuros de rasterização e densidade com dados maiores, mantendo valores e ações íntegros.
+As suítes completas de cliente/servidor passaram no ponto de integração. Após os ajustes, testes direcionados do fluxo, critérios, permissões, assinatura, compatibilidade e reenvio foram repetidos e passaram; builds de cliente e servidor passaram. A integração local validou peso histórico/exceção/snapshot, participação por data e criação idempotente, somente em `fazendinha_seedatev3`, com fixtures próprias revertidas por rollback. Não houve reset, clone, migration ou nova carga.
+
+No navegador, as listas reais foram consultadas e revisadas; nenhum procedimento clínico ou consumo do seed foi confirmado. A preparação real foi validada nas fixtures em rollback. Não foram homologadas manualmente todas as combinações de filtros, execução clínica, impressão e perfis. O roteiro continua sendo a referência para homologação com a fazenda; suas marcações anteriores não foram alteradas.
+
+P0/P1/P2 abertos neste escopo: nenhum. P3: pequenas diferenças de espaçamento e textos de etapas entre o mockup e o shell real; em celular, o indicador completo das quatro etapas requer rolagem horizontal na própria navegação. Não impedem a tarefa nem escondem a etapa atual.
+
+
+---
+
+# Reprodução V4: ficha, indicadores e manejo — 17/10/2026
 
 final result: passed
 
-## Refinamentos dos 13 feedbacks — 11/10/2026
+## Referência e evidência
 
-Implementação autorizada pelo usuário nesta mesma branch. O [plano de refinamentos](docs/design/financeiro-cooperativa/plano-refinamentos.md) está concluído, e as decisões foram incorporadas ao [guia vigente](docs/design/financeiro-cooperativa/design.md). Esta seção registra a rodada posterior; as evidências acima permanecem como histórico da entrega inicial.
+Referências aprovadas em `/Users/montes/.codex/visualizations/2026/10/17/01a149de-c564-7e93-b69e-f88cf6475d0b/plano-v4-mockups/`: `ficha-animal.png`, `indicadores.png` e `manejo.png`. Evidências em `/Users/montes/.codex/visualizations/2026/10/17/01a149de-c564-7e93-b69e-f88cf6475d0b/implementacao-v4/`: pares `ficha-comparacao-final.png`, `indicadores-comparacao-final.png`, `manejo-comparacao-final.png`; capturas individuais `*-final.png`; recortes `*-detalhe.png`.
 
-| Feedback | Resultado e evidência |
+Desktop solicitado: 1487 × 1058, densidade 1. Capturas da área do navegador: 1472 × 1047; referências 1486/1487 × 1058/1059. As comparações preservam as imagens e seus tamanhos, sem distorcer proporções. Ficha: animal V4-007, ciclo após aborto, sítio Escola. Indicadores: sítio Escola, ano até a data atual. Manejo: fila de liberadas do mesmo sítio. Dados reais diferem dos exemplos do mockup; nenhuma fixture foi escrita para produzir uma aparência artificial.
+
+## Cinco superfícies de fidelidade
+
+| Superfície | Resultado |
 | --- | --- |
-| 1 — Resumo da operação | Superfície contínua com divisórias internas, contadores em linha e vínculos preservados. [Detalhe](output/qa/financeiro-refinamentos-2026-10-11/04-detalhe-operacao-1876.png). |
-| 2 — Hierarquia do gráfico | Entradas em verde discreto, saídas em ocre, linha contínua/tracejada, legenda coerente. [Visão geral](output/qa/financeiro-refinamentos-2026-10-11/01-visao-geral-1876.png). |
-| 3 — Navegação com trabalho ativo | Rota e tela sincronizadas pela navegação existente; última edição enviada ao sair, com fila/versionamento e recuperação por sessão/sítio. Testes de sidebar, voltar/avançar, gravação lenta e falha; [checagens no navegador](output/qa/financeiro-refinamentos-2026-10-11/checks.json). |
-| 4 — Tabelas | Células com 10×16 px, colunas conforme conteúdo, datas sem quebra, dinheiro à direita e paginação inferior. Em Contas, a movimentação recebe largura flexível e o nome mantém largura controlada/título móvel. Conferidas operações, contas, compromissos, cadastros, relatórios e extratos. |
-| 5–6 — Filtros e busca | Uma barra no desktop, limites de largura e quebra responsiva. Ações de produto têm espaço próprio. [Produtos](output/qa/financeiro-refinamentos-2026-10-11/07-config-produtos-1876.png) e [parceiros](output/qa/financeiro-refinamentos-2026-10-11/08-config-parceiros-1876.png). |
-| 7 — Modais | Cabeçalhos sálvia, ícones canônicos com contraste, rodapé separado e overlay reforçado, incluindo confirmações. [Cadastro](output/qa/financeiro-refinamentos-2026-10-11/09-modal-conta-1876.png) e [confirmação](output/qa/financeiro-refinamentos-2026-10-11/16-confirmacao-1876.png). |
-| 8 — Histórico de relatórios | Botão habitual removido; atualização na entrada/retorno, recuperação de erro e atualização a cada 4 s somente enquanto houver PROCESSANDO na lista visível. [Histórico](output/qa/financeiro-refinamentos-2026-10-11/13-relatorios-1876.png). |
-| 9 — Nova operação/relatório | Título dentro do formulário à esquerda; resumo e confirmação à direita; ações secundárias no rodapé. [Operação](output/qa/financeiro-refinamentos-2026-10-11/03-nova-operacao-1876.png) e [relatório](output/qa/financeiro-refinamentos-2026-10-11/14-novo-relatorio-1876.png). No celular, composição empilhada e ação disponível. |
-| 10 — Compromisso/pagamento | Descrição, saldo pendente, vencimento e ação com hierarquia comum. [Detalhe](output/qa/financeiro-refinamentos-2026-10-11/11-compromisso-modal-1876.png) e [pagamento](output/qa/financeiro-refinamentos-2026-10-11/12-pagamento-modal-1876.png). |
-| 11 — Retorno contextual | Breadcrumbs nos detalhes de operação, conta e relatório; período/parâmetros e origem válidos preservados. [Conta](output/qa/financeiro-refinamentos-2026-10-11/06-conta-detalhe-1876.png). |
-| 12 — Gráfico em Contas | Fluxo consolidado existente visível antes da lista; período, conta e instituição compartilhados com extrato. Saldo atual e fluxo têm escopo explícito; transferências e estornos mantêm os cálculos anteriores. [Contas](output/qa/financeiro-refinamentos-2026-10-11/05-contas-1876.png). |
-| 13 — Documento monocromático | Papel branco, texto e marca em preto/cinza, rótulos e sinais preservados. [Prévia](output/qa/financeiro-refinamentos-2026-10-11/documento-monocromatico.png) e [PDF efetivamente baixado](output/qa/financeiro-refinamentos-2026-10-11/relatorio-baixado.pdf). |
+| Composição e hierarquia | Ficha com abas por domínio, resumo, timeline, painel lateral e tentativas; indicadores com cartões, períodos e detalhe; manejo com filas, filtros e tabela. |
+| Tipografia | Hierarquia de títulos, cabeçalhos e valores preservada; textos de tabela legíveis, datas curtas com contexto de ano e informação completa acessível. |
+| Espaçamento e densidade | Removidos cabeçalhos duplicados, timeline excessivamente alta e cartões densos. Detalhes secundários em disclosures e tabelas paginadas. |
+| Cor e superfícies | Paleta verde e superfícies claras integradas aos tokens existentes; estados conhecidos e pendências distinguíveis sem depender apenas de cor. |
+| Imagens e ícones | Ilustração de uma única vaca, sem fotografia de rebanho. Ícones e ações coerentes com componentes existentes. |
 
-### Validação desta rodada
+Revisão visual independente dos três pares finais: nenhum P0/P1/P2 pendente. P3: pequenas diferenças de tipografia, tonalidade e espaçamento frente às imagens. O shell compartilhado permanece existente. O seletor local aparece quando o contexto global é Consolidado. Não foi reproduzida uma barra ilustrativa cuja população não corresponde aos denominadores clínicos reais.
 
-Suíte completa do frontend: **128 arquivos e 1.007 testes passaram**. Após as últimas integrações, passaram também 46 testes de configurações/novo relatório, 12 de navegação/autenticação e 38 de contas/extrato/componentes responsivos. Os conjuntos se sobrepõem e não são somados ao total. TypeScript e build final passaram; `git diff --check` sem erros.
+## Regressões e correções
 
-O [manifesto consolidado](output/qa/financeiro-refinamentos-2026-10-11/verificacao.json) reúne 36 capturas de página/diálogo: 16 em 1876×877 e 20 combinações de operação nova/detalhe, contas, produtos e relatório novo nas larguras 375/768/1024/1440 px. As capturas responsivas usam altura de viewport de 950 px. Não foram encontrados transbordamento horizontal da página, exceções de execução ou falhas de captura nas rodadas finais. Tabelas extensas mantêm rolagem localizada. As recapturas finais substituem os estados preliminares do mesmo identificador.
+Corrigidos escopo de sítio nas exposições, preservação de correções históricas em animais baixados, avaliação de demanda com origem inválida, vínculo exato do aborto na timeline e datas padrão que avançavam após 21h por conversão UTC. Retentativas de relatórios repetem a operação original e preservam a chave de idempotência. Emissões históricas continuam na tela de relatórios.
 
-O navegador confirmou retorno às listas e recuperação do texto recém-editado nos dois rascunhos. Todas as chamadas de escrita financeira foram bloqueadas; PUT dos rascunhos recebeu resposta simulada no navegador. Os testes isolados cobrem falha, fila, versão, resposta tardia e edição imediatamente anterior à navegação.
+Testes: suíte de reprodução com 51 arquivos e 276 testes aprovados; após correções adicionais, 35 testes focados em formulário, ficha, navegação e exposições aprovados. As contagens se sobrepõem e não devem ser somadas. Build de cliente (TypeScript e Vite) aprovado. Não executada integração com escrita no banco.
 
-A conferência do documento encontrou **zero cores fora de escala de cinza** nos estilos de texto, fundos, bordas e marca SVG da prévia. Na mídia de impressão, papel branco e sombra ausente. O PDF baixado tem duas páginas, não contém comandos RGB nem imagens, e os quatro valores monetários distintos da prévia foram encontrados no conteúdo do arquivo. O gerador do servidor já era monocromático e não foi alterado; documentos históricos permanecem intactos.
+Navegador: troca entre sítios 114/115, consulta no Consolidado, normalização do fim futuro, paginação, busca nas filas, navegação entre domínios, formulário existente sem envio e reabertura de emissão preservada. Celular 390 × 844: ficha e indicadores sem transbordamento horizontal da página; tablet 1024 × 768: indicadores com painel adaptado. Teclado: abas da ficha respondem a setas e atualizam hash. Capturas mobile/tablet estão no diretório de evidências.
 
-### Limites e continuidade
+## Limites e preservação
 
-Esta rodada não inclui impressão física, rasterização do PDF, homologação com leitor de tela ou medição completa de acessibilidade. A configuração de mídia print e a inspeção do conteúdo do PDF não equivalem a testar todas as impressoras. A revisão manual usou telas representativas; as demais capturas receberam conferência automática de carregamento e limites.
+Zoom não foi conferido especificamente. Não houve homologação clínica por escrita, execução completa de todos os perfis nem validação R2. Há um aviso React preexistente de botão aninhado na lista geral de animais (`ListaAnimais.tsx`/`TabelaFinanceira`), fora das três telas redesenhadas. Roteiros manuais não foram aprovados nem reiniciados automaticamente.
 
-Se a gravação do rascunho falhar, a última edição pode ser retomada em memória na mesma sessão/sítio enquanto a aplicação permanecer aberta. Recarregar ou fechar o navegador perde essa recuperação temporária; apenas a versão confirmada pelo servidor é persistente. O estado de falha permanece visível. Não há novo contrato de persistência offline.
+Usado somente o banco existente `fazendinha_seedatev3`, por consultas; nenhum backup, banco adicional, limpeza, migration ou recarga. Chrome nativo não foi utilizado. Sem commit, push ou deploy nesta entrega. Contrato vigente: `docs/pecuaria/reproducao.md`; explicação atualizada em `docs/pecuaria/artefatos/follow-up-v4-entrega.html`.
 
-Nenhum schema, migration, cálculo contábil ou gerador do servidor foi alterado. A direção visual e a geometria canônica dos ícones foram preservadas; esta rodada ajusta seu contraste em cabeçalhos e torna a marca monocromática somente no documento. Sem pendências nos 13 comentários dentro dos casos conferidos.
+## Correção após feedback da ficha — 17/10/2026
 
-final result: passed
+A revisão anterior não identificou o efeito das regras legadas sobre os cartões das demais abas. O feedback do usuário revelou padding lateral nulo e fundo transparente em Mais ações. Reproduzido no navegador: corpo do CardFicha com `16px 0px 0px` e menu `rgba(0, 0, 0, 0)`. Após correção restrita a `.ficha-v4`: corpo com `20px` e menu `rgb(255, 255, 255)`.
 
+Resumo e ciclo usam superfície branca; tags contrastantes sem brinco repetido, situação reprodutiva e carências vêm das consultas existentes. Filiação e composição compartilham cartão; nutrição tem tabela de produtos e estado de estorno; ausência de pesagens tem bloco explicativo; ação principal explicita reprodução/pesagem. Evidências em `/Users/montes/.codex/visualizations/2026/10/17/01a149de-c564-7e93-b69e-f88cf6475d0b/feedback-ficha/` (resumo, nutrição, reprodução e peso mobile).
 
-## Pecuária V3 — Cooperativa contemporânea · 11/10/2026
+Conferidos no browser os dois animais do feedback, gráfico com dados, ausência de pesagens, abertura das ações reprodutivas e celular sem transbordamento na ficha de peso (390 px; documento 375 px). Testes focados de ficha, reprodução, gráfico, nutrição, sinais clínicos e sanidade; build de cliente aprovado. Nenhuma escrita no banco. Não são diagnósticos de doenças: carência vigente/desconhecida não comprova doença e ausência de registros não comprova saúde.
 
-**Escopo:** aplicação da referência financeira selecionada à Pecuária V1–V3 na branch `codex/pecuaria-cooperativa-contemporanea`, criada da branch financeira atual com seu trabalho local preservado. PR #313 usado como referência de organização, com adaptação à API desta branch. [Guia de design](docs/design/pecuaria-cooperativa/design.md).
+## Ficha em quatro eixos — implementação de 18/10/2026
 
-### Evidências e comparação
+Fontes visuais: `/Users/montes/.codex/generated_images/01a149de-c564-7e93-b69e-f88cf6475d0b/exec-3d4f0855-d429-4a21-a6ae-e8c64a9ad97b.png` (visão geral, 1320×1192) e `exec-1feff781-a869-480c-a536-4dadef43a329.png` no mesmo diretório (reprodução, 1374×1145). Capturas reais em `/Users/montes/.codex/visualizations/ficha-v2-implementacao/`: `03-visao-geral-final.png`, `04-reproducao-final.png`, `06-auditoria-filtrada.png`, viewport CSS 1440×1200; captura mobile `05-mobile.png`, viewport 390×844. Comparação conjunta das quatro imagens em uma entrada visual, considerando proporções relativas, não igualdade pixel a pixel: o mock usa registros ilustrativos e a implementação usa DEV-001/V4-043 existentes. As capturas do IAB têm aproximadamente 1425×1188 pixels úteis, sem chrome; não se inferiu diferença de fonte por escala de captura.
 
-- [Referência aprovada](output/design/financeiro-cooperativa-2026-10-10/01-visao-geral.png).
-- [Comparação da referência com a Nutrição implementada](output/qa/pecuaria-cooperativa-2026-10-11/comparacao.png); paleta, tipografia, superfícies, sidebar e controles. Como a referência é do Financeiro, não se trata de correspondência pixel a pixel de conteúdo pecuário.
-- [Galeria](output/qa/pecuaria-cooperativa-2026-10-11/index.html) e [PNGs em pacote](output/qa/pecuaria-cooperativa-2026-10-11/pecuaria-cooperativa-evidencias.zip).
-- Capturas anteriores à alteração em `output/qa/pecuaria-cooperativa-2026-10-11/antes/`.
-- Capturas finais: 12 páginas/detalhes em `depois/`; 27 estados desktop, 27 estados responsivos e cinco capturas de perfis/erro em `estados/`. Total: 71 capturas finais, além da comparação.
+### Comparação e correções
 
-As páginas finais abrangem Rebanho, Animais, Novo animal, Lotes, ficha de animal, detalhe de lote, Sanidade, Nutrição, receitas, fechamentos, Pesagem e manejo e Configurações. Os estados desktop incluem as abas sanitárias, os nove cadastros, Nutrição por lote, atribuição, consumo, nova receita, fechamento/estorno, busca vazia, três painéis laterais do animal e regressão visual de Financeiro/Contas/Estoque.
+- P2 inicial: peso ocupava toda a largura, duplicando quatro métricas e tabela aberta; manejo ficava abaixo. Corrigido para proporção 65/35 em desktop, gráfico e GMD visíveis, indicadores e pesagens recolhíveis. Evidência inicial `02-visao-geral.png`, posterior `03-visao-geral-final.png`.
+- P2 funcional: ação principal não abria seção React recolhida. Corrigido com evento de revelação e estado; conferido no browser abrindo “Registros, acompanhamentos e ações”.
+- P2 textual: auditoria exibia entidades técnicas conhecidas sem tradução/eixo. Mapeadas explicitamente, preservando desconhecidos como “Não classificado” e sem reescrever texto livre.
+- Tipografia: hierarquia título/subtítulo/tabela legível, com fonte vigente da aplicação; mock raster não estabelece família exata. Textos reais mais longos aumentam altura em protocolo/identidade; não foram truncados para imitar dados fictícios.
+- Espaçamento: superfícies brancas com padding, divisão clara e chevrons; quatro eixos, peso/manejo em duas colunas; sidebar termina no viewport com conta acessível. Altura variável de dados, área de indicadores adicionais e filtros existentes explicam diferença de densidade da visão geral.
+- Cores: verde e neutros mantidos, estados distinguíveis por texto e cor; fundo opaco e separadores visíveis.
+- Imagens: reutilizada imagem de uma vaca já existente; não criada aproximação em CSS/SVG. Ícones usam biblioteca vigente. O mock usa alguns ícones maiores e títulos com ícone; diferença de acabamento P3, sem perda de identificação funcional.
+- Conteúdo: protocolo real, versão/programação e horário desconhecido explícitos; nenhum IATF inferido de IA avulsa. Histórico em tabela separada. “Ciclo” removido dos rótulos conhecidos desta ficha; nomes livres de lotes/dados preservados.
 
-Os 27 estados responsivos repetem nove páginas em 375, 768 e 1024 px; desktop em 1440 px. Os manifestos registram URL, títulos, carregamento, limites de largura, erros JS e respostas HTTP de falha. Capturas finais sem falha de carregamento, erro JS ou erro real de API nos percursos testados.
+### Interações e limites
 
-### Inspeção manual e correções
+Navegador: quatro abas, recolher/abrir, CTA revela seção, protocolo com horário pendente, pesos com dados e vazio, auditoria filtrada por Rebanho com antes/depois expandido. Console consultado: sem erros capturados. Desktop e mobile inspecionados; viewport restaurado. O mobile conserva rolagem interna para timeline/tabelas. Não foi homologado zoom/leitor de tela nem executada escrita clínica em navegador.
 
-Foram abertos e comparados os PNGs da referência, do estado anterior e de telas representativas da implementação: Rebanho, Nutrição, ficha contínua do animal, novo animal, Sanidade, detalhe de lote, protocolos, receitas e modal de pesagem, incluindo móvel e 1024 px.
+Testes: execução ampla cliente registrou 197 arquivos aprovados e três falhas; as três foram resolvidas/reexecutadas em 17 testes focados aprovados (mensagem renomeada, fixture aguardando instalação da guarda de navegação e teste de seção durante edição concorrente). Demais testes focais dos agentes, typechecks e builds cliente/servidor aprovados. A suíte ampla não foi repetida integralmente após essas correções. Guia HTML validado offline com 172 casos, persistência/importação/exportação e impressão; marcações do usuário preservadas, sem aprovação automática.
 
-Correções encerradas nesta rodada:
-
-1. Consulta nutricional do PR dependia de endpoints ausentes. Adaptada às consultas V3 existentes; resumos completos por paginação, uso vigente de receitas e sítio dos fechamentos.
-2. A API de fechamentos desta branch não retorna a relação `propriedade`; a apresentação a resolve pelos lotes consultados, evitando falha ao renderizar.
-3. Ficha visualmente fragmentada: uma superfície contínua com separadores, âncoras e histórias preservadas.
-4. Formulário de novo animal com painel escuro e cabeçalho externo: título dentro do formulário, revisão clara lateral e ações no resumo.
-5. Abas sanitárias, células e protocolos sem a composição comum: controles ativos floresta, cabeçalhos sálvia e corpo branco, densidade compartilhada.
-6. Agenda móvel e paginação cortavam controles apesar de não provocar largura excedente no documento. Grade com largura mínima zerada, quebra de conteúdo e paginação em mais de uma linha. PNG de 375 px reinspecionado após corrigir.
-7. Excesso de espaço entre filtros e tabela de fechamentos: removido o gap de grade aplicado indevidamente ao painel.
-8. Formulários nutricionais com dois títulos e ajuda genérica: título dentro do formulário e resumo lateral do lote/receita.
-9. Navegação de retorno de animal/lote: breadcrumbs mantendo os callbacks de retorno à consulta.
-
-Nenhuma pendência P0/P1/P2 identificada nos casos inspecionados desta rodada. Não representa auditoria exaustiva de todas as combinações de dados.
-
-### Comportamento e permissões
-
-Conferências automáticas de navegador:
-
-- Link antigo sanitário normaliza sem perder filtros.
-- Back de Fechamentos restaura Receitas.
-- Escape fecha “Mais ações” e devolve foco ao acionador.
-- Perfil real Consulta não recebe ações de cadastrar animal, conferir consumo ou criar categoria.
-- Perfil real Operador mantém lançamento e omite custos nutricionais quando `verValores` está desabilitado.
-- Falha 503 simulada somente na leitura nutricional mostra mensagem e ação “Tentar novamente”, sem fabricar indicadores.
-
-As sessões usam as fixtures públicas documentadas no README. Escritas de negócio são bloqueadas durante as capturas; apenas o login cria a sessão local. Nenhum seed, migration, alteração de cenário ou envio de formulário de negócio foi executado. Tokens e estado autenticado ficam somente em arquivo privado temporário fora dos artefatos.
-
-### Validação técnica e limites
-
-- Suíte completa final do cliente: **135 arquivos / 1.045 testes aprovados**, inclusive Financeiro e Estoque.
-- Novos testes: sete de rotas/aliases/gates; seis do adaptador nutricional (histórico paginado, moeda em centavos inteiros, estornos, custo parcial/mascarado, uso de receitas e vigência de página posterior).
-- TypeScript e build de produção aprovados. Aviso de bundle principal grande emitido pelo Vite; otimização de chunks fora do escopo desta rodada.
-- `git diff --check` aprovado.
-
-O navegador validou leitura, navegação, filtros, apresentação e acesso a formulários. As gravações e regras V3 estão cobertas pelos testes existentes do cliente; não foi feita nova homologação operacional de ponta a ponta nem suíte de integração do servidor, que não foi alterado. Não houve homologação com leitor de tela ou auditoria completa de WCAG.
-
-Os novos agregados de leitura percorrem o histórico completo da API atual; o trabalho cresce com suas páginas, e consultas por lote são limitadas a quatro simultâneas. A evolução para históricos grandes deve oferecer agregação própria no servidor. Não há novo cálculo contábil, baixa de estoque, serviço de gravação, schema ou persistência de tema nesta entrega.
+Mesmo banco `fazendinha_seedatev3`, sem escrita de dados nesta entrega, sem banco extra, backup, seed ou migration. R2 pendente. Nenhum publish/deploy.
 
 final result: passed
 
-## Pecuária — refinamentos dos 15 comentários — 11/10/2026
+## Ajustes da ficha após mockups revisados — 18/10/2026
 
-**Resultado: passou nos cenários conferidos.** Mantida a direção Cooperativa contemporânea. Não foram alteradas regras, endpoints ou dados de negócio.
+Referência: `/Users/montes/.codex/visualizations/review-feedbacks-ficha/mockups-revisados/mockups.html`. Capturas da implementação em `/Users/montes/.codex/visualizations/ficha-v3-implementacao/`: `01-visao-geral.png`, `02-sanidade.png`, `03-nutricao.png`, `04-reproducao.png`, `05-mobile.png` e `06-peso-sem-dados.png`.
 
-- Comentários 1, 5, 15: abas com a variante financeira compartilhada de SubTabs, reutilizando Tabs/TabsList/TabsTrigger e fin-abas de Configurações financeiras.
-- Comentários 2–4: painéis categoria/sítio com alturas iguais; baixas e quatro últimos eventos lado a lado; percentual ligado ao descarte voluntário e denominador explícito.
-- Comentários 6–11: botões de gestão reunidos no cabeçalho, sem eyebrow redundante; filtros alinhados com controles de 42 px; Novo ciclo no cabeçalho da tabela; espaço interno reduzido.
-- Comentários 12–14: diálogo de filtros com critérios completos; chips ativos removíveis; checkbox de 20 px e alvo de 44 px; pesagem coletiva em Animais e endereço antigo como alias.
+A comparação da reprodução colocou referência e captura real lado a lado na inspeção. Foram preservados timeline do protocolo, histórico em tabela, cabeçalhos de cartão recolhíveis, botões secundários, quatro eixos e sidebar ocupando a altura. Os dados são os existentes, não os exemplos do mockup. Aptidão inclui filtro de data e intervalos existentes, e por isso ocupa mais altura que a proposta ilustrativa. Ações sanitárias ficam junto do título da aba; ações de reprodução ficam no cabeçalho de Registros e ações, acessível também pelo botão superior.
 
-Verificação real em 1538 × 877, 768 × 877 e 375 × 877: 18 capturas de Rebanho, Sanidade, Nutrição, Animais, filtro aberto e seleção. Sem erros JavaScript ou transbordamento horizontal da página nos cenários. Conferidos manualmente alinhamento sanitário, painéis do dashboard, Nutrição no tablet e diálogo de filtros no celular. Conteúdo do modal rola com rodapé disponível.
+Peso e manejo compartilham a largura disponível, com alturas iguais em duas colunas e empilhamento em celular. Medição em viewport de 950 px: cartões com 338,89 px de altura; em 1107 px, ambos com 429,78 px. A faixa de GMD integra o gráfico. Casos com duas pesagens e sem pesagens foram conferidos. Nutrição mostra período do fechamento (não permanência individual), produtos em tabela e fechamento acessível por botão no título.
 
-Interações verificadas: abrir filtros, escolher sexo, concluir e remover chip; clicar na borda do alvo de seleção sem abrir a ficha; disponibilizar Pesagem coletiva; redirecionar /pecuaria/pesagem-manejo preservando consulta. O carregamento de filtros em consulta vazia conserva o modal. Testes de regressão cobrem seleção sem navegação, chips, requisições de filtros e alias de pesagem.
+Conferência no navegador integrado em 390, 950, 1107 e 1440 px, sem overflow global nas medições de 390/950. Expansão por Enter, menu sanitário e fechamento por Escape, navegação das quatro abas e consulta de aptidão foram exercitados. Alterar consulta para 01/10 manteve Data da decisão em 18/10; nenhuma decisão foi gravada. Houve uma resposta 500 durante recargas do servidor em desenvolvimento; após estabilização e recarga a ficha voltou normalmente. Não foi tratado como evidência de sucesso antes da recarga.
 
-Galeria: [18 capturas dos refinamentos](output/qa/pecuaria-refinamentos-2026-10-11/index.html). Manifesto de execução ao lado. Escritas de negócio bloqueadas durante a conferência no navegador; esta rodada não homologa todos os formulários ou combinações de dados.
+Revisão independente corrigiu rótulo do período nutricional, referência/contagem clínica após transferência de sítio e separação entre leitura de custos operacionais e evidências documentais financeiras. Listas de fatos e custos continuam limitadas pelo escopo autorizado. Edição financeira permanece protegida.
 
-Validação automatizada desta rodada: build de produção aprovado; 50 testes direcionados passaram antes da última proteção de ativação das abas e 39 testes das quatro telas passaram depois dela. A primeira suíte completa passou com 135 arquivos / 1.047 testes. Na repetição concorrente com o build, uma consulta assíncrona em VisualizacoesFinanceiras falhou; o arquivo inteiro passou isoladamente (14 testes), sem alteração daquele código. Aviso já existente de tamanho do bundle mantido.
+Validação: suíte completa do cliente com 1.444 testes; reexecuções focadas após integração com 32 e 47 testes; agente de custos executou 182 testes backend e 26 client; cálculo do resumo clínico com 12 testes. Builds de cliente e servidor passaram. Build frontend conserva aviso de bundle acima de 500 kB. `git diff --check` passou. Roteiro manual atualizado para 176 casos, com validação offline de persistência/importação/exportação e sem alterar marcações existentes.
 
-
-## Unificação de Financeiro, Pecuária e Estoque — 11/10/2026
-
-Branch: `codex/redesign-unificado-cooperativa`. Os dois trabalhos locais foram preservados e consolidados; suas referências de branch partiam do mesmo commit.
-
-Validado:
-- Estoque e ficha de produto nas larguras 1538, 1180, 720 e 375 px: sem transbordamento horizontal nas oito telas principais.
-- Resumo, lotes, movimentos, origens e modais de cadastro, transferência, perda e renomeação; revisão visual representativa de desktop e celular.
-- Paleta compartilhada em Financeiro, Rebanho e Configurações. Corrigido o escopo dos cartões de configurações ao acessar diretamente a página.
-- 39 capturas finais e duas capturas anteriores na galeria `output/qa/redesign-unificado-2026-10-11/index.html`.
-- Suíte completa do cliente: 135 arquivos, 1.048 testes aprovados. Após os ajustes funcionais finais: nove arquivos, 96 testes aprovados.
-- Build de produção aprovado; diferenças sem erros de whitespace.
-
-As capturas bloquearam requisições de escrita dos fluxos de negócio. Não houve alterações de contratos de API, permissões ou cálculos financeiros. A revisão visual cobre os estados descritos; não equivale a uma auditoria completa de acessibilidade ou de todas as combinações de dados.
-
-
-## Cabeçalhos padronizados — 11/10/2026
-
-- Componente PageHeader compartilhado com slots de identidade, descrição, contexto, extras e ações. Dashboard, fichas de operação/animal e formulários reutilizam a mesma base, além das listagens já existentes.
-- 262 testes aprovados em 13 arquivos dos fluxos afetados; build de produção aprovado.
-- Capturas de nove rotas em 1538, 1180, 720 e 375 px: 36 estados sem transbordamento horizontal e sem erros JavaScript. Capturas sem escrita de negócio.
-- Inspeção visual representativa: Contas em desktop, Rebanho a 720 px e visão geral financeira a 375 px. Galeria em `output/qa/cabecalhos-unificados/index.html`.
-- A revisão cobre os cabeçalhos e os estados mencionados; não é uma auditoria completa de todos os componentes e estados das páginas.
-
-## Tabelas, filtros e ações — 18 comentários de 11/10/2026
-
-Branch: `codex/redesign-unificado-cooperativa`. Os 18 comentários foram tratados mantendo a direção Cooperativa contemporânea.
-
-- Títulos acima dos filtros; título e ação à direita no cabeçalho compartilhado. Tabela junto às bordas do painel e borda superior separando as colunas dos controles. Extrato geral e listas sanitárias sem segundo preenchimento externo.
-- Compromissos: busca primeiro, seleção múltipla das situações e período de vencimento dentro da listagem. Os três cards conservam o conjunto completo do sítio. Teste novo cobre combinação de situações, recorte de período e invariância dos cards; calendário, liquidação e links com cancelados continuam cobertos.
-- Contas: filtros dentro de Extrato geral, sem alterar a lista de contas ou o fluxo consolidado anual. Busca opera antes da paginação. O detalhe individual conserva o período compartilhado entre seu gráfico e extrato.
-- Sanidade: filtros dentro de cada lista; Tarefas e Carências em tabela. Ações principais à direita; ações secundárias da tarefa em menu. Colunas de tarefas/carências dimensionadas para evitar identificação excessiva e textos comprimidos. Desconhecido, não aplicabilidade e revisão de finalidade preservados e cobertos por regressão.
-- Estoque: sítio controlado pela sidebar, com exceção contextual para localizar movimento histórico específico no consolidado. Botões alinhados no desktop; estorno/original em coluna de ações. Retirados link superior de retorno da Nutrição e caminho redundante nos cadastros específicos da Pecuária.
-
-Validação: suíte completa com 135 arquivos e **1.050 testes aprovados**, executada com até dois trabalhadores. A execução anterior com concorrência padrão aprovou 1.049 e teve um timeout de consulta assíncrona em VisualizacoesFinanceiras; o mesmo arquivo passou isoladamente e na suíte com concorrência limitada. Após os últimos ajustes, oito testes de ExtratoGeral/SanidadeAnimal também passaram. Build final de produção e `git diff --check` aprovados; permanece o aviso existente de tamanho do bundle.
-
-Navegador: 12 rotas em 1538, 1180, 720 e 375 px, total de 48 capturas, mais menu da tarefa e formulário de adiamento no desktop. Sem overflow horizontal da página ou erros JavaScript nas verificações. Revisão visual representativa de Compromissos, Estoque, Ciclos/Tarefas, Aplicações, Carências, Contas no tablet e Ocorrências no celular. Conferidos período sem alterar cards, seleção múltipla, foco de busca sanitária preservado durante consulta, cores primária/secundária, alinhamento das quatro ações de Estoque e abertura de adiamento pelo menu da tarefa.
-
-[Galeria local e arquivos para baixar](output/qa/feedbacks-tabelas-2026-10-11/index.html); manifesto de execução no mesmo diretório. Requisições de escrita de negócio foram bloqueadas no navegador. Não houve alteração de API, schema, migrations ou regras de cálculo. Esta rodada não homologa novas gravações operacionais nem constitui auditoria completa de acessibilidade.
-
-## Conciliação com a main para publicação — 12/10/2026
-
-Incorporada a limpeza de documentação do PR #316. Os contratos atuais de arquitetura e Pecuária foram preservados com notas de navegação/design vigentes; o índice aponta para os guias específicos da direção Cooperativa. DESIGN.md e COMPONENTS.md antigos continuam retirados, sem reintroduzir regras estéticas superadas. Nenhuma resolução alterou o comportamento do redesign; em CardFicha foi conciliada somente a referência comentada a um plano antigo.
-
-Após a conciliação: builds do cliente e servidor aprovados; 48 testes de CommandPalette, navegação de Pecuária, DetalheAnimal e Sanidade passaram; `git diff --check` aprovado. Permanece o aviso existente de bundle. Não foram repetidas a suíte completa nem as capturas de navegador nesta conciliação; a evidência anterior de 1.050 testes e 50 capturas refere-se ao commit 9332a08. O projeto local permanece parado.
+Sem escrita no banco, migrations, recarga de seed, cópia ou backup. Apenas consultas no ambiente local existente; R2 continua pendente. Validação visual pontual não substitui homologação manual completa, nem comprova execução de ações clínicas ou financeiras.

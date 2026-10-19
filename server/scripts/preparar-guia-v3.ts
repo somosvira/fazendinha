@@ -15,16 +15,13 @@ import { listarSaldos } from '../src/services/estoque/estoque.js';
 import { autenticar } from '../src/services/auth/contas.js';
 
 const url = new URL(env.DATABASE_URL);
-if (!['localhost', '127.0.0.1'].includes(url.hostname) || url.pathname !== '/fazendinha_v3_teste') {
-  throw new Error('Preparação permitida somente no banco local fazendinha_v3_teste.');
+if (!['localhost', '127.0.0.1'].includes(url.hostname) || url.pathname !== '/fazendinha_seedatev3') {
+  throw new Error('Consulta permitida somente no banco local fazendinha_seedatev3.');
 }
 try {
-  if (process.argv.includes('--limpar') && !process.argv.includes('--preparar')) {
-    throw new Error('Use --limpar junto com --preparar para não deixar o banco sem o cenário de testes.');
+  if (['--limpar', '--preparar', '--verificar'].some(opcao => process.argv.includes(opcao))) {
+    throw new Error('A preparação histórica do guia V3 foi desativada. Use somente fazendinha_seedatev3, preserve seus dados e use seedatev3 --verificar para conferir o cenário atual.');
   }
-  if (process.argv.includes('--limpar')) await limparCenario();
-  if (process.argv.includes('--preparar')) await preparar();
-  if (process.argv.includes('--verificar')) await verificar();
   console.log(JSON.stringify({
     banco: url.pathname.slice(1),
     sitios: await prisma.propriedade.findMany({ select: { id: true, nome: true, ativo: true } }),
@@ -59,8 +56,8 @@ async function limparCenario() {
   // Apenas dados operacionais, cadastros e históricos locais. As migrations,
   // a conta acima, os dois sítios e os usuários do guia não participam do TRUNCATE.
   await prisma.$executeRawUnsafe(`TRUNCATE TABLE
-    "pecuaria"."Animal", "pecuaria"."AplicacaoProduto", "pecuaria"."AuditoriaPecuaria", "pecuaria"."BaixaAnimal", "pecuaria"."CategoriaAnimal", "pecuaria"."CategoriaManualAnimal", "pecuaria"."ComposicaoGenitorExterno", "pecuaria"."ComposicaoRacial", "pecuaria"."DestinoAnimal", "pecuaria"."Dieta", "pecuaria"."Doenca", "pecuaria"."EtapaProtocoloSanitario", "pecuaria"."ExameAnimal", "pecuaria"."ExecucaoProtocoloSanitario", "pecuaria"."FechamentoConsumo", "pecuaria"."GenitorExterno", "pecuaria"."ItemDieta", "pecuaria"."ItemFechamentoConsumo", "pecuaria"."LocalizacaoAnimal", "pecuaria"."Lote", "pecuaria"."ManejoAnimal", "pecuaria"."MaterialGenetico", "pecuaria"."MotivoBaixa", "pecuaria"."Movimentacao", "pecuaria"."MovimentacaoAnimal", "pecuaria"."OcorrenciaSanitaria", "pecuaria"."ParticipacaoConsumoAnimal", "pecuaria"."PerfilNutricionalProduto", "pecuaria"."PerfilSanitarioProduto", "pecuaria"."Pesagem", "pecuaria"."ProtocoloSanitario", "pecuaria"."Raca", "pecuaria"."RequisicaoPecuaria", "pecuaria"."TarefaSanitaria", "pecuaria"."TipoAplicacaoSanitaria", "pecuaria"."TipoExame", "pecuaria"."VigenciaDietaLote", "pecuaria"."VinculoImportacaoPecuaria",
-    "public"."AlocacaoPartidaEstoque", "public"."AuditoriaFinanceira", "public"."Categoria", "public"."CentroCusto", "public"."CompromissoFinanceiro", "public"."ConversaWhatsapp", "public"."DocumentoFinanceiro", "public"."ItemOperacao", "public"."Liquidacao", "public"."MensagemWhatsapp", "public"."MovimentoConta", "public"."MovimentoEstoque", "public"."Operacao", "public"."Parceiro", "public"."ParceiroPapel", "public"."PartidaProduto", "public"."PeriodoFinanceiro", "public"."Produto", "public"."ProdutoCentroCusto", "public"."ProdutoFornecedor", "public"."RascunhoOperacao", "public"."RascunhoRelatorioFinanceiro", "public"."RegistroChuva", "public"."RelatorioFinanceiro", "public"."Sessao", "public"."TokenAcesso", "public"."TransacaoFinanceira", "public"."UsuarioWhatsapp"
+    "pecuaria"."Animal", "pecuaria"."AplicacaoProduto", "pecuaria"."AuditoriaPecuaria", "pecuaria"."BaixaAnimal", "pecuaria"."CategoriaAnimal", "pecuaria"."CategoriaManualAnimal", "pecuaria"."ComposicaoGenitorExterno", "pecuaria"."ComposicaoRacial", "pecuaria"."DestinoAnimal", "pecuaria"."Dieta", "pecuaria"."Doenca", "pecuaria"."EtapaProtocolo", "pecuaria"."ExameAnimal", "pecuaria"."ParticipacaoProtocolo", "pecuaria"."FechamentoConsumo", "pecuaria"."GenitorExterno", "pecuaria"."ItemDieta", "pecuaria"."ItemFechamentoConsumo", "pecuaria"."LocalizacaoAnimal", "pecuaria"."Lote", "pecuaria"."ManejoAnimal", "pecuaria"."MaterialGenetico", "pecuaria"."MotivoBaixa", "pecuaria"."Movimentacao", "pecuaria"."MovimentacaoAnimal", "pecuaria"."OcorrenciaSanitaria", "pecuaria"."ParticipacaoConsumoAnimal", "pecuaria"."PerfilNutricionalProduto", "pecuaria"."PerfilSanitarioProduto", "pecuaria"."Pesagem", "pecuaria"."Protocolo", "pecuaria"."Raca", "pecuaria"."RequisicaoPecuaria", "pecuaria"."TarefaProtocolo", "pecuaria"."TipoAplicacaoSanitaria", "pecuaria"."TipoExame", "pecuaria"."VigenciaDietaLote", "pecuaria"."VinculoImportacaoPecuaria",
+    "public"."AlocacaoPartidaEstoque", "public"."AuditoriaFinanceira", "public"."Categoria", "public"."CentroCusto", "public"."CompromissoFinanceiro", "public"."ConversaWhatsapp", "public"."DocumentoFinanceiro", "public"."ItemOperacao", "public"."Liquidacao", "public"."MensagemWhatsapp", "public"."MovimentoConta", "public"."MovimentoEstoque", "public"."Operacao", "public"."Parceiro", "public"."ParceiroPapel", "public"."PartidaProduto", "public"."PeriodoFinanceiro", "public"."Produto", "public"."ProdutoCentroCusto", "public"."ProdutoFornecedor", "public"."RascunhoOperacao", "public"."RascunhoRelatorioFinanceiro", "public"."RelatorioFinanceiro", "public"."Sessao", "public"."TokenAcesso", "public"."TransacaoFinanceira", "public"."UsuarioWhatsapp"
     RESTART IDENTITY CASCADE`);
 
   if (conta) {

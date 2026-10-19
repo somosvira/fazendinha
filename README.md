@@ -8,10 +8,10 @@ O deploy usa exclusivamente **Cloudflare Workers**, servindo interface e API no 
 
 - **Financeiro:** operações e rascunhos, compromissos, liquidações, contas/extratos, transferências, estornos, documentos, relatórios e cadastros gerenciais.
 - **Estoque:** produtos, usos genético/sanitário/nutricional, saldos por sítio, lotes do produto com validade, ajustes, transferências, perdas e rastreabilidade.
-- **Pecuária V1–V3:** animais e lotes, movimentações, categorias, baixas, genética, pesagens/manejos, sanidade e nutrição.
+- **Pecuária V1–V4:** animais e lotes, movimentações, categorias, baixas, genética, pesagens/manejos, sanidade, nutrição, reprodução, visitas veterinárias e IATF.
 - **Administração:** sítios, usuários, sessões e permissões por área/ação.
 
-Agricultura, Cultivo e Equipe/Ponto foram retirados. Reprodução operacional e produção de leite não fazem parte da implementação atual. O [assistente de consulta](docs/assistente-consulta.md) oferece leitura financeira e ajuda de uso; perguntas livres exigem configuração OpenAI. O bot antigo, `/ia` e WhatsApp continuam suspensos pelas flags do cliente e servidor.
+Agricultura, Cultivo e Equipe/Ponto foram retirados. Produção/qualidade do leite e laboratório/FIV não fazem parte da implementação atual. A reprodução tem registro mínimo de lactação, sem controle leiteiro completo. O [assistente de consulta](docs/assistente-consulta.md) oferece leitura financeira e ajuda de uso; perguntas livres exigem configuração OpenAI. O bot antigo, `/ia` e WhatsApp continuam suspensos pelas flags do cliente e servidor.
 
 ## Desenvolvimento local
 
@@ -45,6 +45,8 @@ A interface abre em `http://localhost:41875`; a API usa `http://localhost:41873`
 | `pnpm --filter rionovo-server exec prisma migrate deploy` | Aplicar migrations existentes |
 | `pnpm --filter rionovo-server run seed` | Cenário unificado local até V3 |
 | `pnpm --filter rionovo-server run seedatev3 --verificar` | Conferir o cenário sem escrever |
+| `pnpm --filter rionovo-server run seedatev4` | Acrescentar demonstração V4 completa ao mesmo banco, preservando a V3 |
+| `pnpm --filter rionovo-server run seedatev4 --verificar` | Conferir a V4 sem gravar ou desfazer simulações |
 | `pnpm --filter rionovo-server run seedatev3:typecheck` | Conferir tipos do seed |
 | `pnpm --filter rionovo-server run test` | Testes do servidor |
 | `pnpm --filter rionovo-client run test` | Testes da interface |
@@ -58,7 +60,7 @@ NODE_ENV=test DATABASE_URL=postgresql://test:test@127.0.0.1:1/fazendinha_unit \
   pnpm --filter rionovo-server run test
 ```
 
-O setup de testes fornece configurações inertes de R2. As integrações exigem banco descartável com migrations; veja [arquitetura](ARCHITECTURE.md#testes).
+O setup de testes fornece configurações inertes de R2. O único banco local é `fazendinha_seedatev3`; não crie bancos temporários ou clones para validação. Integrações locais exigem revisão das fixtures e da limpeza para preservar os dados existentes; casos que recriam banco ficam no CI externo. Veja [arquitetura](ARCHITECTURE.md#testes).
 
 ## Contexto para contribuir
 

@@ -209,3 +209,6 @@
   .financeiro-content .fin-operacao-compacta .fin-cabecalho-integrado,
   .financeiro-content .fin-operacao-compacta .fin-operacao-secao { padding: 14px; }
 }
+
+/* Pecuária ocupa a área útil; outros módulos conservam seu limite. */
+.pecuaria-content .pagina-financeira{max-width:none;width:100%;min-width:0}

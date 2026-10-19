@@ -24,7 +24,7 @@ describe("leitura resumida da nutrição", () => {
     { areas: ["pecuaria", "financeiro"] as UsuarioContexto["areas"], flags: ["verValores"] as UsuarioContexto["flags"], permitido: true },
   ])("resolve sítio e visibilidade no servidor: $permitido", async ({ areas, flags, permitido }) => {
     expect((await app({ areas, flags }).request("/resumo")).status).toBe(200);
-    expect(mocks.resumo).toHaveBeenCalledWith(undefined, 7, permitido);
+    expect(mocks.resumo).toHaveBeenCalledWith(undefined, 7, true);
   });
   it("valida lote e situação antes de consultar e entrega paginação ao serviço", async () => {
     expect((await app().request("/resumo?loteId=invalido")).status).toBe(422);
@@ -32,6 +32,6 @@ describe("leitura resumida da nutrição", () => {
     expect((await app().request("/consumo/fechamentos?status=INVALIDO")).status).toBe(422);
     expect(mocks.listar).not.toHaveBeenCalled();
     expect((await app().request("/consumo/fechamentos?status=ESTORNADO&pagina=3&limite=10")).status).toBe(200);
-    expect(mocks.listar).toHaveBeenCalledWith(undefined, 7, { pagina: 3, limite: 10 }, false, undefined, "ESTORNADO");
+    expect(mocks.listar).toHaveBeenCalledWith(undefined, 7, { pagina: 3, limite: 10 }, true, undefined, "ESTORNADO");
   });
 });

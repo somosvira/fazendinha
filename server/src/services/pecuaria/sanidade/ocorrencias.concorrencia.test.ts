@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ tx: {
   ocorrenciaSanitaria: { findFirst: vi.fn(), findUniqueOrThrow: vi.fn(), update: vi.fn() },
-  aplicacaoProduto: { count: vi.fn() }, exameAnimal: { count: vi.fn() }, execucaoProtocoloSanitario: { count: vi.fn() }, baixaAnimal: { findFirst: vi.fn() },
+  aplicacaoProduto: { count: vi.fn() }, exameAnimal: { count: vi.fn() }, participacaoProtocolo: { count: vi.fn() }, baixaAnimal: { findFirst: vi.fn() },
 }, auditar: vi.fn(), travar: vi.fn() }));
 vi.mock("../../../db.js", () => ({ prisma: {} }));
 vi.mock("../transacao.js", () => ({ transacaoPecuaria: async (fn: (tx: typeof mocks.tx) => unknown) => fn(mocks.tx) }));

@@ -1,9 +1,9 @@
 import "./estoque-theme.css";
-import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Boxes, Package, PackagePlus, Plus, Search, SlidersHorizontal, TriangleAlert, History } from "lucide-react";
 import { AjudaCampo, Dica } from "@/components/Dica";
 import { Loader } from "../components/Loading";
-import { navegarPara } from "../router";
+import { LinkInterno } from "../components/LinkInterno";
 import { rotuloUnidade, type UnidadeMedida } from "../lib/unidades";
 import { fmtMoneyExact } from "@/components/charts";
 import { brl, Button, type ColunaTabela, dataBR, Empty, ErrorBox, PageHeader, PaginaFinanceira, Paginacao, Panel, Pill, SelectFiltro, TabelaFinanceira } from "../financeiro/financeiro-ui";
@@ -18,7 +18,6 @@ import { getPropriedadeAtiva } from "../propriedadeScope";
 
 const qtd = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 3 });
 const CAMPO = "h-10 w-full min-w-0 rounded-lg border border-border bg-card px-3 py-2 text-sm";
-const SEM_ACESSO = "Sem acesso a esta área";
 
 const TIPO_MOV: Record<MovimentoDTO["tipo"], { rotulo: string; tom: "green" | "amber" | "blue" }> = {
   ENTRADA: { rotulo: "Entrada", tom: "green" }, SAIDA: { rotulo: "Saída", tom: "amber" }, AJUSTE: { rotulo: "Ajuste", tom: "blue" },
@@ -35,20 +34,6 @@ type Ordem = "nome" | "categoria" | "valor";
 
 function IconeAbaixoMinimo({ size = 16 }: { size?: number }) {
   return <TriangleAlert data-testid="icone-abaixo-minimo" size={size} aria-hidden="true" className="shrink-0 text-[var(--fin-pendente)]" />;
-}
-
-/* Link interno sem recarregar a página (mesmo padrão de LinkOperacaoFinanceira);
- * sem acesso à área de destino vira texto puro com o motivo no `title`. */
-function LinkInterno({ href, area, children }: { href: string; area: Parameters<typeof podeAcessarArea>[0] | "estoque"; children: React.ReactNode }) {
-  const permitido = area === "estoque" ? podeAcessarArea("financeiro") || podeAcessarArea("pecuaria") : podeAcessarArea(area);
-  if (!permitido) return <span title={SEM_ACESSO} className="text-ink-2">{children}</span>;
-  const navegar = (evento: MouseEvent<HTMLAnchorElement>) => {
-    evento.stopPropagation();
-    if (evento.button !== 0 || evento.metaKey || evento.ctrlKey || evento.shiftKey || evento.altKey) return;
-    evento.preventDefault();
-    navegarPara(href);
-  };
-  return <a href={href} onClick={navegar} className="font-medium text-primary hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4">{children}</a>;
 }
 
 // Descarta a resposta de uma busca que já foi superada por outro filtro/página.
@@ -146,6 +131,8 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
   useEffect(() => { if (!movimentos.loading && paginaMov > totalPaginasMov) setPaginaMov(totalPaginasMov); }, [movimentos.loading, paginaMov, totalPaginasMov]);
   const filtrosMovAtivos = buscaMovAplicada !== "" || origemMov !== "" || centroMov !== "" || periodoMov.inicio !== "" || periodoMov.fim !== "";
   const valorTotal = useMemo(() => saldos.data.reduce((soma, s) => soma + Math.max(0, s.valor ?? 0), 0), [saldos.data]);
+  const valoresPendentes = saldos.data.filter(s => s.valor == null).length;
+  const valoresConhecidos = saldos.data.length - valoresPendentes;
   const nNegativos = useMemo(() => saldos.data.filter((s) => s.saldo < 0).length, [saldos.data]);
   const nAbaixoMin = useMemo(() => saldos.data.filter((s) => s.abaixoMinimo).length, [saldos.data]);
   const nEmEstoque = useMemo(() => saldos.data.filter((s) => s.saldo > 0).length, [saldos.data]);
@@ -218,7 +205,8 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
     <Panel className="estoque-panorama mt-5">
       <div className="estoque-panorama-resumo">
         <span className="fin-section-icon"><Package aria-hidden="true" /></span>
-        <div><span className="text-xs text-ink-3">Valor em estoque</span><div className="text-2xl font-semibold">{saldos.loading ? "—" : saldos.data.length > 0 && saldos.data.every((s) => s.valor == null) ? "—" : brl(valorTotal)}</div><p className="mt-1 text-xs text-ink-3">{saldos.loading ? "Consultando saldos…" : `${nEmEstoque} ${nEmEstoque === 1 ? "produto" : "produtos"} em estoque`}</p></div>
+        <div><span className="text-xs text-ink-3">{valoresPendentes > 0 && valoresConhecidos > 0 ? "Valor conhecido em estoque (parcial)" : "Valor em estoque"}</span><div className="text-2xl font-semibold">{saldos.loading ? "—" : valoresPendentes > 0 && valoresConhecidos === 0 ? "—" : brl(valorTotal)}</div><p className="mt-1 text-xs text-ink-3">{saldos.loading ? "Consultando saldos…" : `${nEmEstoque} ${nEmEstoque === 1 ? "produto" : "produtos"} em estoque`}</p></div>
+        {valoresPendentes > 0 && valoresConhecidos > 0 && <p className="text-xs text-ink-3" role="status">{valoresPendentes} produto(s) sem valor disponível. O total conhecido é parcial.</p>}
       </div>
       <div className="estoque-panorama-alertas" aria-label="Atenção ao estoque">
         <button type="button" aria-pressed={soAbaixoMin} onClick={() => { setSoAbaixoMin(v => !v); setSoNegativos(false); }} className={`estoque-alerta ${nAbaixoMin ? "estoque-alerta-atencao" : ""}`}><TriangleAlert size={18} aria-hidden="true" /><span><strong>{saldos.loading ? "—" : nAbaixoMin} abaixo do mínimo</strong><small>{soAbaixoMin ? "Filtro ativo · ver todos" : "Conferir reposição"}</small></span></button>
@@ -243,7 +231,7 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
 
     <section className="mt-6" aria-label="Saldos de estoque">
       <Panel className="overflow-hidden">
-      <div className="estoque-secao-cabecalho"><span className="fin-section-icon"><Boxes aria-hidden="true" /></span><h2 className="font-serif text-2xl">Saldos de estoque<AjudaCampo rotulo="Como o valor é calculado" texto="O custo médio é a média ponderada das entradas neste sítio; valor = saldo × custo médio." /></h2></div>
+      <div className="estoque-secao-cabecalho"><span className="fin-section-icon"><Boxes aria-hidden="true" /></span><h2 className="font-serif text-2xl">Saldos de estoque<AjudaCampo rotulo="Como o valor é calculado" texto="O valor corresponde ao saldo monetário remanescente. Grupos rastreados usam média do saldo; produtos sem rastreio usam aquisições mais antigas. Valores desconhecidos ficam separados." /></h2></div>
       <div className="estoque-filtros grid gap-3 md:grid-cols-[minmax(0,2fr)_repeat(2,minmax(0,1fr))_auto]">
         <label className="relative min-w-0"><Search size={16} className="absolute left-3 top-3 text-ink-3" aria-hidden="true" /><input type="search" aria-label="Buscar produto" value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar por nome ou categoria…" className={`${CAMPO} pl-9`} /></label>
         <SelectFiltro rotulo="Filtrar por centro de custo" valor={centroFiltro} onChange={setCentroFiltro} opcoes={[{ valor: "", texto: "Todos os centros" }, { valor: SEM_VINCULO, texto: "Sem centro" }, ...centros.map((c) => ({ valor: c.id, texto: c.nome }))]} className="w-full sm:!w-full" />

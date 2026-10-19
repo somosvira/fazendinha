@@ -5,6 +5,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../../db.js";
 import { resolverEscopoLeitura, resolverEscopoEscrita, PropriedadeError } from "../../services/propriedade.js";
 import { getUsuario, exigePermissao } from "../../middleware/permissao.js";
+import { podeConsultarCustosPecuaria } from "../../services/pecuaria/custos/permissoes.js";
 import { RebanhoError } from "../../services/pecuaria/rebanho/regras.js";
 import * as animais from "../../services/pecuaria/rebanho/animais.js";
 import * as lotes from "../../services/pecuaria/rebanho/lotes.js";
@@ -17,6 +18,9 @@ import * as genitores from "../../services/pecuaria/rebanho/genitores.js";
 import * as materialGenetico from "../../services/pecuaria/rebanho/materialGenetico.js";
 import { sanidadeRouter } from "./sanidade.js";
 import { manejoRouter } from "./manejo.js";
+import { reproducaoRouter } from "./reproducao.js";
+import { visitasRouter } from "./visitas.js";
+import { custosRouter } from "./custos.js";
 import { nutricaoRouter } from "./nutricao.js";
 import {
   cadastrarAnimalSchema, editarAnimalSchema, movimentarSchema, mudarDestinoSchema,
@@ -94,7 +98,7 @@ function validarQuery<T extends z.ZodTypeAny>(schema: T) {
  * depende do gate de área (`exigeArea("pecuaria")` em app.ts).
  */
 const exigirLancarParaEscrita: MiddlewareHandler = async (c, next) => {
-  if (c.req.method === "GET") return next();
+  if (c.req.method === "GET" || (c.req.method === "POST" && /\/visitas\/selecoes\/previa\/?$/.test(c.req.path))) return next();
   return exigePermissao("lancar")(c, next);
 };
 
@@ -163,8 +167,10 @@ export const rebanhoRouter = new Hono()
   .get("/animais/:id/auditoria", idParam, validarQuery(auditoriaAnimalQuerySchema), async (c) => {
     try {
       const escopo = await resolverEscopoLeitura(c);
-      const { page, pageSize } = c.req.valid("query");
-      return c.json(await animais.buscarAuditoriaAnimal(c.req.valid("param").id, escopo, page, pageSize));
+      const { page, pageSize, ...filtros } = c.req.valid("query");
+      const u = getUsuario(c);
+      const verValores = podeConsultarCustosPecuaria(u);
+      return c.json(await animais.buscarAuditoriaAnimal(c.req.valid("param").id, escopo, page, pageSize, filtros, verValores));
     } catch (e) { return falha(c, e); }
   })
   .post("/animais/movimentar", validar(movimentarSchema), async (c) => {
@@ -409,3 +415,8 @@ export const rebanhoRouter = new Hono()
 rebanhoRouter.route("/sanidade", sanidadeRouter);
 rebanhoRouter.route("/manejo", manejoRouter);
 rebanhoRouter.route("/nutricao", nutricaoRouter);
+
+rebanhoRouter.route("/reproducao", reproducaoRouter);
+rebanhoRouter.route("/visitas", visitasRouter);
+
+rebanhoRouter.route("/custos", custosRouter);

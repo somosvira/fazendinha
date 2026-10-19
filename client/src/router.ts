@@ -16,6 +16,7 @@ import { ASSISTENTE_ATIVO } from "./featureFlags";
 // Fonte única dos caminhos canônicos; Record<Tab, string> obriga toda aba nova
 // a declarar sua URL e permite validar subrotas sem listas paralelas.
 const PATH_BY_TAB: Record<Tab, string> = {
+  gerencial: "/gerencial",
   dashboard: "/financeiro",
   gastos: "/financeiro/compromissos",
   lancar: "/financeiro/operacoes",
@@ -30,6 +31,9 @@ const PATH_BY_TAB: Record<Tab, string> = {
   "pec-rebanho": "/pecuaria/rebanho",
   "pec-sanidade": "/pecuaria/sanidade",
   "pec-nutricao": "/pecuaria/nutricao",
+  "pec-reproducao": "/pecuaria/reproducao",
+  "pec-visitas": "/pecuaria/visitas",
+  "pec-relatorios": "/pecuaria/relatorios",
   estoque: "/estoque",
 };
 
@@ -60,6 +64,10 @@ export const DEFAULT_TAB: Tab = "dashboard";
 export function normalizarRotaPecuaria(caminho: string): string {
   const url = new URL(caminho, "https://terrano.internal");
   const path = url.pathname.replace(/\/$/, "").toLowerCase();
+  if (path === "/pecuaria/reproducao" && url.searchParams.get("rotina") === "configuracao") {
+    url.pathname = "/configuracoes/pecuaria/reproducao/politica";
+    url.searchParams.delete("rotina");
+  }
   if (path === "/pecuaria/pesagem-manejo") url.pathname = "/pecuaria/rebanho/animais";
   if (path === "/pecuaria/rebanho/sanidade") url.pathname = "/pecuaria/sanidade";
   if (path === "/pecuaria/rebanho/nutricao") url.pathname = "/pecuaria/nutricao";
@@ -79,8 +87,39 @@ export function normalizarLocalizacaoPecuaria(): void {
   if (destino !== atual) window.history.replaceState(window.history.state, "", destino);
 }
 export function isSubrotaPecuaria(tab: Tab, pathname: string): boolean {
-  return ["pec-sanidade", "pec-nutricao"].includes(tab) && pathToTab(pathname) === tab
+  return ["pec-sanidade", "pec-nutricao", "pec-reproducao", "pec-visitas", "pec-relatorios"].includes(tab) && pathToTab(pathname) === tab
     || tab === "config" && pathname.startsWith("/configuracoes/pecuaria");
+}
+
+export type ModoVisita = "agenda" | "livre";
+export type EtapaVisita = "entrada" | "planejamento" | "selecao" | "revisao" | "atividade" | "atendimento";
+export type RotaVisita =
+  | { tipo: "nova" }
+  | { tipo: "lista" }
+  | { tipo: "visita"; id: string; modo?: ModoVisita; etapa: EtapaVisita | null; grupo: string | null; atividade: string | null };
+
+/** Interpreta as rotas atuais e antigas do fluxo de visitas veterinárias. */
+export function parseRotaVisita(pathname: string, search = ""): RotaVisita | null {
+  const path = pathname.replace(/\/$/, "");
+  if (path === "/pecuaria/visitas/nova") return { tipo: "nova" };
+  if (path === "/pecuaria/visitas") return { tipo: "lista" };
+  const match = /^\/pecuaria\/visitas\/([^/]+)$/.exec(path);
+  if (!match || match[1] === "nova") return null;
+  const params = new URLSearchParams(search);
+  const etapaParam = params.get("etapa");
+  const etapa = ["entrada", "planejamento", "selecao", "revisao", "atividade", "atendimento"].includes(etapaParam ?? "") ? etapaParam as EtapaVisita : null;
+  const modo = params.get("modo");
+  return { tipo: "visita", id: match[1], ...(modo === "agenda" || modo === "livre" ? { modo } : {}), etapa, grupo: params.get("grupo"), atividade: params.get("atividade") };
+}
+
+export function urlEtapaVisita(id: string, etapa: EtapaVisita, opcoes: { grupo?: string; atividade?: string; modo?: ModoVisita } = {}, buscaAtual = ""): string {
+  const params = new URLSearchParams(buscaAtual);
+  params.delete("etapa"); params.delete("grupo"); params.delete("atividade"); params.delete("modo");
+  params.set("etapa", etapa);
+  if (opcoes.modo && etapa !== "entrada" && etapa !== "atendimento") params.set("modo", opcoes.modo);
+  if (opcoes.grupo) params.set("grupo", opcoes.grupo);
+  if (opcoes.atividade) params.set("atividade", opcoes.atividade);
+  return `/pecuaria/visitas/${encodeURIComponent(id)}?${params}`;
 }
 
 
@@ -213,6 +252,8 @@ export function pathToTab(pathname: string): Tab | null {
   if (path === "/pecuaria/rebanho/sanidade") return "pec-sanidade";
   if (path === "/pecuaria/rebanho/nutricao") return "pec-nutricao";
   if (path === "/pecuaria/rebanho/cadastros" || path.startsWith("/configuracoes/pecuaria")) return "config";
+  if (path.startsWith("/pecuaria/reproducao/")) return "pec-reproducao";
+  if (path.startsWith("/pecuaria/visitas/")) return "pec-visitas";
   if (parseProdutoEstoqueId(path) != null) return "estoque";
   if (parseContaFinanceiraId(path) != null) return "caixinha";
   if (parseOperacaoFinanceiraId(path) != null) return "lancar";

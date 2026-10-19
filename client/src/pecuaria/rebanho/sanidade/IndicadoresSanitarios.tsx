@@ -9,6 +9,8 @@ export function EstadoSanitario({ children, tom = "neutro" }: { children: React.
 }
 
 export function rotuloTarefaSanitaria(situacao: string, previstaPara: string, hoje: string): string {
+  if (situacao === "REGULARIZACAO_PENDENTE") return "A regularizar";
+  if (situacao === "ENCERRADA_SEM_SUBSTITUICAO") return "Encerrada sem substituição";
   if (situacao === "REALIZADA") return "Realizada";
   if (situacao === "DISPENSADA") return "Dispensada";
   if (situacao === "EXECUCAO_CANCELADA") return "Execução cancelada";
@@ -38,7 +40,7 @@ export function PrazoCarencia({ estado, agora, revisao = false }: { estado: Care
 }
 
 export function ContagensEtapa({ contagens: c, compacto = false }: { contagens: ContagensRodada; compacto?: boolean }) {
-  const visiveis = ([["previstas", "prevista", c.total], ["pendentes", "pendente", c.pendentes], ["realizadas", "realizada", c.realizadas], ["dispensadas", "dispensada", c.dispensadas], ["atrasadas", "atrasada", c.atrasadas], ["canceladas", "cancelada", c.canceladas ?? 0]] as const).filter(([, , qtd]) => qtd > 0);
+  const visiveis = ([["previstas", "prevista", c.total], ["pendentes", "pendente", c.pendentes], ["realizadas", "realizada", c.realizadas], ["dispensadas", "dispensada", c.dispensadas], ["atrasadas", "atrasada", c.atrasadas], ["canceladas", "cancelada", c.canceladas ?? 0], ["a regularizar", "a regularizar", c.regularizacoes ?? 0], ["encerradas sem substituição", "encerrada sem substituição", c.encerradasSemSubstituicao ?? 0]] as const).filter(([, , qtd]) => qtd > 0);
   if (compacto) return <div className="pec-contagens-etapa pec-contagens-etapa-compactas" aria-label={visiveis.map(([plural, singular, qtd]) => `${qtd} ${qtd === 1 ? singular : plural}`).join(" · ") || "Sem tarefas"}>{visiveis.map(([plural, singular, qtd]) => <span key={plural}><strong>{qtd}</strong> {qtd === 1 ? singular : plural}</span>)}{c.total === 0 && <small>Sem tarefas</small>}</div>;
   return <div className="pec-contagens-etapa" aria-label={`${c.total} previstas · ${c.pendentes} pendentes · ${c.realizadas} realizadas · ${c.dispensadas} dispensadas · ${c.atrasadas} atrasadas · ${c.canceladas ?? 0} canceladas`}><span><strong>{c.total}</strong> previstas</span><span><strong>{c.pendentes}</strong> pendentes</span><span><strong>{c.realizadas}</strong> realizadas</span><span><strong>{c.dispensadas}</strong> dispensadas</span><span><strong>{c.atrasadas}</strong> atrasadas</span><span><strong>{c.canceladas ?? 0}</strong> canceladas</span></div>;
 }

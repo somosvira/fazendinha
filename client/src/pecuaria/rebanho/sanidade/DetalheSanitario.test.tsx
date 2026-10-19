@@ -18,6 +18,9 @@ it("distingue snapshot antigo não aferido de execução conforme o planejado", 
   rerender(<DetalheSanitario tipo="aplicacao" abrir={vi.fn()} valor={{ tarefaId: "t", desvioProtocoloSnapshot: { referencia: "SNAPSHOT_PLANEJADO", diferencas: [], motivo: null } }} />);
   expect(screen.getByText("Conforme o planejado.")).toBeTruthy();
   expect(screen.queryByText("Desvio não aferido no registro original.")).toBeNull();
+  rerender(<DetalheSanitario tipo="aplicacao" abrir={vi.fn()} valor={{ tarefaId: "t", desvioProtocoloSnapshot: { referencia: "LEGADO_SEM_SNAPSHOT", diferencas: [], motivo: "Histórico revisado" } }} />);
+  expect(screen.getByText(/Conformidade não aferida/)).toBeTruthy();
+  expect(screen.queryByText("Conforme o planejado.")).toBeNull();
 });
 it("mostra snapshots, horário, vínculos e compra sem expor referência técnica", () => {
   render(<DetalheSanitario tipo="aplicacao" abrir={vi.fn()} valor={{ animal: { id: "a1", brinco: "GV3-1", nome: null }, propriedadeId: 1, aplicadaEm: "2026-10-05T13:04:00Z", tipoAplicacaoNomeSnapshot: "Tratamento antigo", nomeProdutoAplicado: "Medicamento histórico", origemInsumo: "COMPRA_CONSUMO_DIRETO", status: "VALIDO", referenciaCarencia: "Não mostrar", compraDireta: { quantidadeDestinada: "2", unidade: "mL", operacao: { id: "op1", numero: 12 } }, estorno: { id: "m1" } }} />);

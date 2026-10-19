@@ -19,6 +19,8 @@ export type PropriedadeRef = { id: number; nome: string };
 export type LoteRef = { id: string; nome: string };
 
 export type AnimalResumo = {
+  papelReprodutivoEstado?: "CONHECIDO" | "DESCONHECIDO" | "CONFLITO";
+  identificacaoProvisoria?: boolean;
   id: string;
   brinco: string;
   nome: string | null;
@@ -70,7 +72,7 @@ export type HistoricoLocalizacao = {
 export type HistoricoDestino = {
   id: string;
   aptidao: Aptidao;
-  papelReprodutivo: PapelReprodutivo;
+  papelReprodutivo: PapelReprodutivo | null;
   desde: string;
   ate: string | null;
 };
@@ -94,6 +96,13 @@ export type BaixaAnimalResumo = {
  *  animal (cadastrar, editar, movimentar, mudar destino, desfazer, baixa,
  *  estorno), não só em GET /animais/:id. */
 export type AnimalFicha = AnimalResumo & {
+  contextoProdutivo?: {
+    dataReferencia: string;
+    situacaoProdutiva: "LACTANTE" | "SECA" | "SEM_LACTACAO" | "NAO_INFORMADA";
+    del: number | null; diasPosParto: number | null; diasDesdeConfirmacao: number | null;
+    idadeGestacionalDias: number | null; partosRealizados: number | null;
+    pendencias: string[];
+  } | null;
   brincoEletronico: string | null;
   sisbov: string | null;
   nascimentoEstimado: boolean;
@@ -102,6 +111,7 @@ export type AnimalFicha = AnimalResumo & {
   composicao: ItemComposicaoFicha[];
   historicoLocalizacoes: HistoricoLocalizacao[];
   historicoDestinos: HistoricoDestino[];
+  historicoPapeisReprodutivos?: Array<{ id: string; tipo: string; inicio: string; fim: string | null; origem: string; revogado: boolean }>;
   historicoPesagens: HistoricoPesagem[];
   /** trocas manuais de categoria, mais recente primeiro */
   historicoCategoriasManuais: HistoricoCategoriaManual[];
@@ -242,6 +252,9 @@ export type Pesagem = {
 };
 
 export type ListarFiltros = {
+  propriedadeIds?: number[]; loteIds?: string[]; categoriaIds?: string[];
+  sexos?: Sexo[]; origens?: Origem[]; racaIds?: string[]; aptidoes?: Aptidao[];
+  papeisReprodutivos?: PapelReprodutivo[]; situacoes?: Situacao[];
   propriedadeId?: number;
   loteId?: string;
   /** exclui da lista os animais cuja localização aberta está neste lote (ex.: "Trazer animais") */
@@ -281,6 +294,10 @@ export type ListarResultado = { itens: AnimalResumo[]; total: number; painel: Pa
 
 /** Entrada de GET /animais/:id/auditoria. */
 export type EntradaAuditoria = {
+  id?: string;
+  eixo?: "REBANHO" | "REPRODUCAO" | "SANIDADE" | "NUTRICAO" | null;
+  acaoRotulo?: string;
+  registro?: string;
   em: string;
   acao: string;
   entidade: string;
@@ -288,6 +305,26 @@ export type EntradaAuditoria = {
   resumo: string;
   entidadeId: string;
   alteracoes: Array<{ campo: string; rotulo: string; antes: string | null; depois: string | null }>;
+};
+
+export type FiltrosAuditoriaAnimal = {
+  page?: number;
+  pageSize?: number;
+  inicio?: string;
+  fim?: string;
+  eixo?: NonNullable<EntradaAuditoria["eixo"]> | "NAO_CLASSIFICADO";
+  acao?: string;
+  responsavel?: number | "sem";
+  busca?: string;
+};
+export type ResultadoAuditoriaAnimal = {
+  itens: EntradaAuditoria[];
+  total: number;
+  filtros?: {
+    acoes: Array<{ valor: string; rotulo: string }>;
+    responsaveis: Array<{ id: number; nome: string }>;
+    semResponsavel: boolean;
+  };
 };
 
 export type EntidadeCadastro = "Lote" | "Raca" | "MotivoBaixa" | "CategoriaAnimal" | "GenitorExterno" | "MaterialGenetico";
@@ -342,6 +379,7 @@ export type MovimentacaoDoLote = MovimentacaoResumo;
 export type ListarMovimentacoesResultado = { itens: MovimentacaoResumo[]; total: number };
 
 export type FiltrosMovimentacoes = {
+  propriedadeIds?: number[]; loteIds?: string[];
   loteId?: string;
   propriedadeId?: number;
   dataDe?: string;

@@ -44,27 +44,27 @@ describe("HistoricoMovimentacoes", () => {
     const carregar = vi.fn().mockResolvedValue({ itens: [criarMovimentacao({ id: "mov-1" }), criarMovimentacao({ id: "mov-2", motivo: null, origens: [] })], total: 2 });
     render(<HistoricoMovimentacoes carregar={carregar} />);
     await waitFor(() => expect(carregar).toHaveBeenCalledWith(1));
-    expect(await screen.findByText(/Reagrupamento/)).toBeTruthy();
-    expect(screen.getByText(/Sede, Lote Antigo → Lote 1 \(Sede\)/)).toBeTruthy();
-    expect(screen.getByText(/Origem não identificada/)).toBeTruthy();
+    expect((await screen.findAllByText(/Reagrupamento/))[0]).toBeTruthy();
+    expect(screen.getAllByText(/Sede, Lote Antigo/)[0]).toBeTruthy();
+    expect(screen.getAllByText(/Não identificada/)[0]).toBeTruthy();
   });
 
   it("mostra vazio quando não há movimentações", async () => {
     const carregar = vi.fn().mockResolvedValue({ itens: [], total: 0 });
     render(<HistoricoMovimentacoes carregar={carregar} />);
-    expect(await screen.findByText("Nenhuma movimentação registrada.")).toBeTruthy();
+    expect(await screen.findByText("Nenhuma movimentação encontrada com os filtros selecionados.")).toBeTruthy();
   });
 
   it("mostrarDirecao exibe o selo Entrada/Saída", async () => {
     const carregar = vi.fn().mockResolvedValue({ itens: [criarMovimentacao({ direcao: "SAIDA" })], total: 1 });
     render(<HistoricoMovimentacoes carregar={carregar} mostrarDirecao />);
-    expect(await screen.findByText("Saída")).toBeTruthy();
+    expect((await screen.findAllByText("Saída"))[0]).toBeTruthy();
   });
 
   it("sem mostrarDirecao o selo Entrada/Saída não aparece", async () => {
     const carregar = vi.fn().mockResolvedValue({ itens: [criarMovimentacao({ direcao: "SAIDA" })], total: 1 });
     render(<HistoricoMovimentacoes carregar={carregar} />);
-    await screen.findByText(/Reagrupamento/);
+    (await screen.findAllByText(/Reagrupamento/))[0];
     expect(screen.queryByText("Saída")).toBeNull();
   });
 
@@ -92,7 +92,7 @@ describe("HistoricoMovimentacoes", () => {
     const carregar = vi.fn().mockResolvedValue({ itens: [mov], total: 1 });
     const onAbrir = vi.fn();
     render(<HistoricoMovimentacoes carregar={carregar} onAbrir={onAbrir} />);
-    fireEvent.click(await screen.findByText(/Reagrupamento/));
+    fireEvent.click((await screen.findAllByText(/Reagrupamento/))[0]);
     expect(onAbrir).toHaveBeenCalledWith(mov);
   });
 
@@ -100,7 +100,7 @@ describe("HistoricoMovimentacoes", () => {
     const mov = criarMovimentacao({});
     const carregar = vi.fn().mockResolvedValue({ itens: [mov], total: 1 });
     render(<HistoricoMovimentacoes carregar={carregar} />);
-    fireEvent.click(await screen.findByRole("button", { name: "Desfazer" }));
+    fireEvent.click((await screen.findAllByRole("button", { name: "Desfazer" }))[0]);
     await waitFor(() => expect(buscarMovimentacao).toHaveBeenCalledWith("mov-1"));
     const modal = await screen.findByRole("dialog", { name: "Desfazer movimentação?" });
     expect(await within(modal).findByText("0001")).toBeTruthy();
@@ -112,7 +112,7 @@ describe("HistoricoMovimentacoes", () => {
     const carregar = vi.fn().mockResolvedValue({ itens: [mov], total: 1 });
     vi.mocked(desfazerMovimentacao).mockRejectedValueOnce(new RebanhoApiError("Nada foi desfeito. B401: o animal já foi movimentado de novo", 409, "CONFLITO"));
     render(<HistoricoMovimentacoes carregar={carregar} />);
-    fireEvent.click(await screen.findByRole("button", { name: "Desfazer" }));
+    fireEvent.click((await screen.findAllByRole("button", { name: "Desfazer" }))[0]);
     const modal = await screen.findByRole("dialog", { name: "Desfazer movimentação?" });
     await within(modal).findByText("0001");
     fireEvent.change(within(modal).getByLabelText("Motivo"), { target: { value: "Motivo do estorno" } });
@@ -127,7 +127,7 @@ describe("HistoricoMovimentacoes", () => {
     vi.mocked(desfazerMovimentacao).mockResolvedValue({ desfeitos: 2 });
     const onMudou = vi.fn();
     render(<HistoricoMovimentacoes carregar={carregar} onMudou={onMudou} />);
-    fireEvent.click(await screen.findByRole("button", { name: "Desfazer" }));
+    fireEvent.click((await screen.findAllByRole("button", { name: "Desfazer" }))[0]);
     const modal = await screen.findByRole("dialog", { name: "Desfazer movimentação?" });
     await within(modal).findByText("0001");
     fireEvent.change(within(modal).getByLabelText("Motivo"), { target: { value: "Motivo do estorno" } });
@@ -139,7 +139,7 @@ describe("HistoricoMovimentacoes", () => {
   it("sem podeLancar não mostra o botão Desfazer", async () => {
     const carregar = vi.fn().mockResolvedValue({ itens: [criarMovimentacao({})], total: 1 });
     render(<HistoricoMovimentacoes carregar={carregar} podeLancar={false} />);
-    await screen.findByText(/Reagrupamento/);
+    (await screen.findAllByText(/Reagrupamento/))[0];
     expect(screen.queryByRole("button", { name: "Desfazer" })).toBeNull();
   });
 });

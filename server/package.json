@@ -20,16 +20,24 @@
     "test:watch": "vitest",
     "seed": "tsx --env-file=.env prisma/seedatev3.ts",
     "seedatev3": "tsx --env-file=.env prisma/seedatev3.ts",
+    "seedatev3:qa": "tsx --env-file=.env prisma/seedatev3-qa.ts",
+    "seedatev3:planner": "tsx --env-file=.env prisma/seedatev3-planner.ts",
     "seedatev3:typecheck": "tsc -p tsconfig.seedatev3.json",
     "seed:rio-novo": "tsx --env-file=.env prisma/seed-rio-novo.ts",
     "seed:rio-novo:typecheck": "tsc -p tsconfig.seed-rio-novo.json",
+    "seedatev4": "tsx --env-file=.env prisma/seedatev4.ts",
+    "seedatev4:typecheck": "tsc -p tsconfig.seedatev4.json",
     "seed:pecuaria": "tsx --env-file=.env prisma/seed-pecuaria.ts",
     "import:pecuaria": "tsx --env-file=.env prisma/import-pecuaria.ts",
     "validar:pecuaria": "tsx --env-file=.env src/scripts/validar-carga-pecuaria.ts",
     "bateria:gabarito": "tsx --env-file=.env scripts/bateria-ia.gabarito.ts",
     "bateria:run": "tsx scripts/bateria-ia.run.ts",
     "whatsapp:user": "tsx --env-file=.env src/scripts/allowlist.ts",
-    "test:financeiro:integration": "node --env-file=.env scripts/qa-financeiro.mjs"
+    "test:financeiro:integration": "node --env-file=.env scripts/qa-financeiro.mjs",
+    "import:pecuaria:v4": "tsx --env-file=.env prisma/import-pecuaria-v4.ts",
+    "import:pecuaria:v4:typecheck": "tsc -p tsconfig.import-v4.json",
+    "test:import:pecuaria:v4": "vitest run --config vitest.import-v4.config.ts",
+    "previa:pecuaria:padronizacao": "tsx --env-file=.env scripts/previa-padronizacao.ts"
   },
   "prisma": {
     "seed": "tsx --env-file=.env prisma/seedatev3.ts"

@@ -489,8 +489,10 @@ async function main() {
           data: { animalId: animal.id, propriedadeId, loteId, desde: d(a.dataEntrada) },
         });
         const destinoInicial = await tx.destinoAnimal.create({
-          data: { animalId: animal.id, aptidao: a.aptidao, papelReprodutivo, desde: d(a.dataEntrada) },
+          data: { animalId: animal.id, aptidao: a.aptidao, desde: d(a.dataEntrada) },
         });
+
+        await tx.periodoReprodutivoAnimal.create({ data: { animalId: animal.id, tipo: papelReprodutivo, inicio: d(a.dataEntrada), origem: "IDEAGRI", destinoOrigemId: destinoInicial.id } });
 
         // ---- Baixa (fecha a localização/destino recém-criados) ---------------
         let baixaCriada = false;

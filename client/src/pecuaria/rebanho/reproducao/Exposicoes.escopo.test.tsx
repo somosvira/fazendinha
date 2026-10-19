@@ -1,0 +1,72 @@
+// @vitest-environment jsdom
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { Exposicoes } from "./Exposicoes";
+import { obterReproducao, reqV4, type PainelReprodutivo } from "./api";
+import { listarAnimais, listarGenitores, listarLotes } from "../api";
+import { setPropriedadeAtiva } from "../../../propriedadeScope";
+vi.mock("./api", () => ({ obterReproducao: vi.fn(), reqV4: vi.fn() }));
+vi.mock("../api", () => ({ listarAnimais: vi.fn(), listarGenitores: vi.fn(), listarLotes: vi.fn() }));
+const painel: PainelReprodutivo = { animais: [], tentativas: [], avaliacoes: [], partos: [], restricoes: [], exposicoes: [{ id: "exposicao-7", loteId: "lote-7", inicio: "2026-10-01", fim: null, observacao: null }] };
+beforeEach(() => {
+  vi.clearAllMocks(); setPropriedadeAtiva(99);
+  vi.mocked(obterReproducao).mockResolvedValue(painel);
+  vi.mocked(listarLotes).mockResolvedValue([]);
+  vi.mocked(listarGenitores).mockResolvedValue([]);
+  vi.mocked(listarAnimais).mockResolvedValue({ itens: [], total: 0, painel: { totalAtivos: 0, porCategoria: [], porSitio: [], femeasAtivas: 0, receptorasAtivas: 0 } });
+  vi.mocked(reqV4).mockResolvedValue({});
+});
+afterEach(() => { cleanup(); setPropriedadeAtiva(null); });
+it.each([99, null])("leituras e encerramento usam sítio explícito com global %s", async global => {
+  setPropriedadeAtiva(global);
+  render(<Exposicoes podeLancar propriedadeId={7}/>);
+  fireEvent.click(await screen.findByRole("button", { name: "Encerrar exposição" }));
+  expect(obterReproducao).toHaveBeenCalledWith(undefined, 7);
+  expect(listarLotes).toHaveBeenCalledWith(undefined, 7);
+  expect(listarAnimais).toHaveBeenCalledWith(expect.objectContaining({ propriedadeId: 7, sexo: "M" }), 7);
+  expect(listarGenitores).toHaveBeenCalledWith({ sexo: "M" }, 7);
+  fireEvent.change(screen.getByLabelText("Fim da exposição"), { target: { value: "2026-10-17" } });
+  fireEvent.change(screen.getByLabelText("Motivo"), { target: { value: "Encerramento confirmado" } });
+  fireEvent.submit(screen.getByLabelText("Motivo").closest("form")!);
+  await waitFor(() => expect(reqV4).toHaveBeenCalledWith("/reproducao/exposicoes/exposicao-7/encerramento", expect.objectContaining({ propriedadeId: 7, data: "2026-10-17" }), "POST", 7));
+});
+it("registro usa sítio explícito no corpo e header e mantém fallback global", async () => {
+  const { rerender } = render(<Exposicoes podeLancar propriedadeId={7}/>);
+  await screen.findByRole("button", { name: "Encerrar exposição" });
+  fireEvent.click(screen.getByRole("button", { name: "Registrar exposição" }));
+  fireEvent.submit(screen.getByLabelText("Início").closest("form")!);
+  await waitFor(() => expect(reqV4).toHaveBeenCalledWith("/reproducao/exposicoes", expect.objectContaining({ propriedadeId: 7 }), "POST", 7));
+  rerender(<Exposicoes podeLancar/>);
+  await waitFor(() => expect(obterReproducao).toHaveBeenLastCalledWith(undefined, 99));
+  expect(listarLotes).toHaveBeenLastCalledWith(undefined, 99);
+  expect(listarGenitores).toHaveBeenLastCalledWith({ sexo: "M" }, 99);
+  fireEvent.click(screen.getByRole("button", { name: "Registrar exposição" }));
+  fireEvent.submit(screen.getByLabelText("Início").closest("form")!);
+  await waitFor(() => expect(reqV4).toHaveBeenLastCalledWith("/reproducao/exposicoes", expect.objectContaining({ propriedadeId: 99 }), "POST", 99));
+});
+it("troca de sítio limpa formulário e ignora resposta antiga", async () => {
+  let resolver!: (p: PainelReprodutivo) => void;
+  vi.mocked(obterReproducao).mockImplementationOnce(() => new Promise(resolve => { resolver = resolve; }));
+  const { rerender } = render(<Exposicoes podeLancar propriedadeId={7}/>);
+  fireEvent.click(screen.getByRole("button", { name: "Registrar exposição" }));
+  expect(screen.getByLabelText("Início")).toBeTruthy();
+  rerender(<Exposicoes podeLancar propriedadeId={8}/>);
+  await waitFor(() => expect(obterReproducao).toHaveBeenLastCalledWith(undefined, 8));
+  expect(screen.queryByLabelText("Início")).toBeNull();
+  resolver({ ...painel, exposicoes: [{ id: "antiga", loteId: "antigo", inicio: "1900-01-01", fim: null, observacao: null }] });
+  await waitFor(() => expect(screen.queryByText(/1900-01-01/)).toBeNull());
+});
+it("conclusão de escrita antiga não recarrega o sítio anterior", async () => {
+  let concluir!: () => void;
+  vi.mocked(reqV4).mockImplementationOnce(() => new Promise(resolve => { concluir = () => resolve({}); }));
+  const { rerender } = render(<Exposicoes podeLancar propriedadeId={7}/>);
+  fireEvent.click(await screen.findByRole("button", { name: "Encerrar exposição" }));
+  fireEvent.change(screen.getByLabelText("Motivo"), { target: { value: "Fim do período no sítio sete" } });
+  fireEvent.submit(screen.getByLabelText("Motivo").closest("form")!);
+  await waitFor(() => expect(concluir).toBeTypeOf("function"));
+  rerender(<Exposicoes podeLancar propriedadeId={8}/>);
+  await waitFor(() => expect(obterReproducao).toHaveBeenLastCalledWith(undefined, 8));
+  concluir();
+  await waitFor(() => expect(screen.queryByText("Encerrar período de exposição")).toBeNull());
+  expect(obterReproducao).toHaveBeenCalledTimes(2);
+});

@@ -80,6 +80,19 @@ describe("ciclos de protocolos", () => {
     expect(itens[0]).not.toHaveProperty("justificativaSobreposicao");
     expect(itens[0]).not.toHaveProperty("confirmarSobreposicao");
   });
+  it("distingue filtro sem resultados e falha de consulta, sem sugerir cadastro ao leitor", async () => {
+    mocks.rodadas.mockResolvedValue(pagina([]));
+    const props = { podeLancar: false, rodadaId: "", recarregarToken: 0, onAbrir: vi.fn(), onExecutar: vi.fn(), onAcao: vi.fn() };
+    const tela = render(<AgendaRodadas {...props} filtros={{ animalId: "ausente" }} />);
+    await screen.findByText("Nenhum ciclo corresponde aos filtros. Ajuste os critérios acima para consultar outros ciclos.");
+    expect(screen.queryByText(/Use Novo ciclo/)).toBeNull();
+    mocks.rodadas.mockRejectedValueOnce(new Error("Falha ao consultar ciclos"));
+    tela.rerender(<AgendaRodadas {...props} filtros={{ animalId: "outro" }} />);
+    await screen.findByRole("alert");
+    expect(screen.queryByText(/Nenhum ciclo/)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Tentar novamente" }));
+    await screen.findByText(/Nenhum ciclo corresponde/);
+  });
   it("etapas separam contagens e ações de cada tarefa independem do filtro de animal", async () => {
     const executar = vi.fn(), acao = vi.fn();
     render(<AgendaRodadas filtros={{ pagina: 1, animalId: "" }} podeLancar rodadaId="r" recarregarToken={0} onAbrir={vi.fn()} onExecutar={executar} onAcao={acao} />);

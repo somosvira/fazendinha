@@ -1,3 +1,4 @@
+import { transacaoValidada } from "../../lib/transacao-validada.js";
 import { prisma } from "../../db.js";
 import { Prisma, type OrigemMovimentoEstoque, type TipoMovimento } from "@prisma/client";
 import { z } from "zod";
@@ -7,6 +8,7 @@ import { propriedadePrincipalId, escopoPadraoLeitura } from "../propriedade.js";
 import { resolverCentroSaida } from "./centro.calc.js";
 import { rotuloUnidade } from "./unidades.js";
 import { SEM_VINCULO } from "../../lib/ids.js";
+import { planejarSaidaTx, registrarEntradaValorizadaTx, registrarSaidaValorizadaTx, registrarInversoValorizadoTx, saldosBasesTx, travarValorizacaoTx, ValorizacaoError } from "./valorizacao.js";
 import { conferirSaldoEstornoPartidasTx, idsGrupoPartidaTx, prepararPartidasTx } from "./partidas.js";
 
 export class EstoqueError extends Error {
@@ -40,6 +42,8 @@ export const movimentoSchema = z
     // 3 casas = MovimentoEstoque.quantidade Decimal(12,3); 0,0004 seria gravado como 0,000.
     quantidade: z.number().finite().min(-MAX_QTD, "quantidade muito alta").max(MAX_QTD, "quantidade muito alta").multipleOf(0.001, "quantidade aceita no máximo 3 casas decimais"),
     custoUnitario: z.number().nonnegative().max(MAX_CUSTO, "custo unitário muito alto").optional(),
+    referenciaValor: z.string().trim().min(2).max(200).optional(),
+    evidenciaValor: z.string().trim().min(5).max(2000).optional(),
     observacao: z.string().min(5, "justificativa é obrigatória").max(200),
     propriedadeId: z.number().int().optional(), // sítio (multi-propriedade)
     centroCustoId: z.string().uuid().nullable().optional(),
@@ -61,7 +65,7 @@ export const ajusteContagemSchema = z.object({
   centroCustoId: z.string().uuid().nullable().optional(),
 });
 
-type DbCusto = Pick<Prisma.TransactionClient, "movimentoEstoque">;
+type DbCusto = Pick<Prisma.TransactionClient, "$queryRaw">;
 
 // Escopo de sítio do custo médio: movimento sem propriedade pertence à principal
 // (mesma convenção do resto do estoque). null = consolidado (todas as propriedades).
@@ -109,45 +113,24 @@ export async function produtosComEstoque(db: DbTemEstoque, produtoIds: string[],
   return new Set(grupos.map((g) => g.produtoId));
 }
 
-/**
- * Base do custo médio (Σ quantidade, Σ valor das entradas valorizadas) por
- * produto num sítio, agregada no banco em um único groupBy. Produtos sem base
- * valorizada ficam fora do mapa (o chamador trata como sem custo).
- *
- * O `where` espelha `entraNoCustoMedio` (estoque.calc.ts): CONFIRMADO, sem
- * reversaoDeId, quantidade > 0 e valorTotal > 0, e tipo ENTRADA de uma origem
- * de ORIGENS_CUSTO_MEDIO ou tipo AJUSTE. Como ENTRADA e AJUSTE hoje exigem as
- * mesmas condições de quantidade/valor, a diferença por tipo cabe num único OR
- * e um groupBy basta (sem somar dois resultados em memória). Nenhuma SAIDA nem
- * linha individual de movimento sai do banco.
- */
+/** Valor residual das bases atuais, sem recalcular consumidores históricos. */
 export async function obterBasesCusto(db: DbCusto, produtoIds: string[], propriedadeId: number | null): Promise<Map<string, BaseCusto>> {
-  const ids = [...new Set(produtoIds)];
   const resultado = new Map<string, BaseCusto>();
-  if (ids.length === 0) return resultado;
-  const grupos = await db.movimentoEstoque.groupBy({
-    by: ["produtoId"],
-    where: {
-      produtoId: { in: ids },
-      status: "CONFIRMADO",
-      reversaoDeId: null,
-      quantidade: { gt: 0 },
-      valorTotal: { gt: 0 },
-      AND: [
-        await filtroSitioCusto(propriedadeId),
-        { OR: [
-          { tipo: "ENTRADA", origem: { in: [...ORIGENS_CUSTO_MEDIO, ...(propriedadeId != null ? ["TRANSFERENCIA" as const] : [])] } },
-          { tipo: "AJUSTE", origem: { not: "IDENTIFICACAO_PARTIDA" } },
-        ] },
-      ],
-    },
-    _sum: { quantidade: true, valorTotal: true },
-  });
-  for (const g of grupos) {
-    const quantidade = g._sum.quantidade ?? new Prisma.Decimal(0);
-    const valor = g._sum.valorTotal ?? new Prisma.Decimal(0);
-    if (quantidade.greaterThan(0)) resultado.set(g.produtoId, { quantidade, valor });
-  }
+  if (!produtoIds.length) return resultado;
+  // Aberturas entram uma vez por base; parcelas são agregadas no banco, sem
+  // transportar o histórico inteiro em cada atualização da lista de estoque.
+  const bases = await db.$queryRaw<{ produtoId: string; quantidade: Prisma.Decimal; valor: Prisma.Decimal }[]>(Prisma.sql`
+    SELECT b."produtoId", SUM(b."quantidadeAbertura" + COALESCE(p.quantidade, 0)) AS quantidade,
+      SUM(b."valorAbertura" + COALESCE(p.valor, 0)) AS valor
+    FROM "public"."BaseValorizacaoEstoque" b
+    JOIN "public"."Produto" produto ON produto.id = b."produtoId"
+    LEFT JOIN LATERAL (SELECT SUM(parcela.quantidade) AS quantidade, SUM(parcela."valorTotal") AS valor
+      FROM "public"."ParcelaValorizacaoEstoque" parcela WHERE parcela."baseId" = b.id) p ON true
+    WHERE b."produtoId" IN (${Prisma.join([...new Set(produtoIds)])})
+      AND b.metodo = CASE WHEN produto."rastrearPartidas" THEN 'MEDIA_SALDO_V1' ELSE 'FIFO_AQUISICAO_V1' END
+      ${propriedadeId == null ? Prisma.empty : Prisma.sql`AND b."propriedadeId" = ${propriedadeId}`}
+    GROUP BY b."produtoId"`);
+  for (const base of bases) resultado.set(base.produtoId, { quantidade: new Prisma.Decimal(base.quantidade), valor: new Prisma.Decimal(base.valor) });
   return resultado;
 }
 
@@ -157,7 +140,7 @@ export async function obterBaseCusto(db: DbCusto, produtoId: string, propriedade
 
 /**
  * Custo médio ponderado (4 casas) por produto num sítio — só para EXIBIÇÃO.
- * Para valorizar uma saída use obterBasesCusto + valorSaidaPreciso.
+ * Saídas são valorizadas por planejarSaidaTx, com parcelas autoritativas.
  */
 export async function obterCustosMedios(db: DbCusto, produtoIds: string[], propriedadeId: number | null): Promise<Map<string, Prisma.Decimal>> {
   const resultado = new Map<string, Prisma.Decimal>();
@@ -203,11 +186,12 @@ export async function listarSaldos(f?: { centroCustoId?: string; propriedadeId?:
     }));
     const { saldo } = saldoProduto(movs);
     const base = bases.get(p.id) ?? null;
-    const custo = base ? custoMedioDaBase(base) : null; // só exibição (4 casas)
+    const conhecido = base != null && base.quantidade.eq(saldo);
+    const custo = conhecido ? custoMedioDaBase(base) : null; // só exibição (4 casas)
     // Valor do estoque = saldo × Σvalor ÷ Σquantidade da base do sítio, com um
     // único arredondamento no fim — mesma matemática das saídas. Multiplicar o
     // saldo pelo custoMedio arredondado erraria até ~11% em produtos por g/mL.
-    const valor = base == null ? 0 : valorSaidaDaBase(saldo, base).valorTotal.toNumber();
+    const valor = conhecido ? base.valor.toNumber() : saldo === 0 ? 0 : null;
     const minimo = p.minimoEstoque != null ? Number(p.minimoEstoque) : null;
     return {
       produtoId: p.id,
@@ -233,6 +217,7 @@ export async function listarSaldos(f?: { centroCustoId?: string; propriedadeId?:
 
 /** Para onde levar o usuário quando o movimento NÃO nasceu de uma operação financeira (saídas automáticas). */
 export type VinculoMovimento =
+  | { tipo: "TENTATIVA_REPRODUTIVA"; id: string; animalId: string }
   | { tipo: "APLICACAO_SANITARIA"; id: string; animalId: string }
   | { tipo: "FECHAMENTO_NUTRICIONAL"; id: string; loteId: string };
 
@@ -297,18 +282,30 @@ export async function listarMovimentos(f?: FiltroMovimentos) {
         // Origem das saídas automáticas (sem operação financeira): um único join por relação, sem N+1.
         aplicacaoProduto: { select: { id: true, animalId: true } },
         itemFechamentoConsumo: { select: { fechamento: { select: { id: true, loteId: true } } } },
+        parcelasValorizacao: { include: { base: { select: { partidaId: true } } } },
         alocacaoPartidaEstoques: { include: { partida: { select: { codigo: true, nome: true, validade: true, lotePrincipalId: true, lotePrincipal: { select: { nome: true } } } } } },
       },
     }),
   ]);
+  const idsReproducao = [...new Set(ms.filter((m) => m.origem === "REPRODUCAO" || m.reversaoDeId).map((m) => m.reversaoDeId ?? m.id))];
+  const tentativas = idsReproducao.length ? await prisma.tentativaReprodutiva.findMany({ where: { movimentoEstoqueId: { in: idsReproducao } }, select: { id: true, animalId: true, movimentoEstoqueId: true } }) : [];
+  const tentativaPorMovimento = new Map(tentativas.map((t) => [t.movimentoEstoqueId, t]));
   const itens = ms.map((m) => {
     const quantidadeConsulta = idsGrupo ? (m.alocacaoPartidaEstoques ?? []).filter((a) => idsGrupo.includes(a.partidaId)).reduce((s, a) => s.plus(a.quantidade), new Prisma.Decimal(0)) : m.quantidade;
     // Apenas recorte de exibição do valor já gravado, sem recalcular o custo médio
     // nem atribuir um método de custeio independente ao lote.
-    const valorConsulta = idsGrupo && !m.quantidade.isZero() ? m.valorTotal.mul(quantidadeConsulta).div(m.quantidade).toDecimalPlaces(2) : m.valorTotal;
+    const parcelasDoGrupo = idsGrupo ? (m.parcelasValorizacao ?? []).filter(p => p.base.partidaId != null && idsGrupo.includes(p.base.partidaId)) : [];
+    const valorConsulta = !idsGrupo || quantidadeConsulta.eq(m.quantidade) ? m.valorTotal
+      : parcelasDoGrupo.length > 0 ? parcelasDoGrupo.reduce((v,p) => v.plus(p.valorTotal), new Prisma.Decimal(0)).mul(m.tipo === "SAIDA" ? -1 : 1) : null;
     let vinculo: VinculoMovimento | null = null;
     let oculto = false;
-    if (m.aplicacaoProduto) {
+    const tentativa = tentativaPorMovimento.get(m.reversaoDeId ?? m.id);
+    if (tentativa) {
+      if (visiveis.pecuaria !== false) vinculo = { tipo: "TENTATIVA_REPRODUTIVA", id: tentativa.id, animalId: tentativa.animalId };
+      else oculto = true;
+    } else if (m.origem === "REPRODUCAO" && visiveis.pecuaria === false) {
+      oculto = true;
+    } else if (m.aplicacaoProduto) {
       if (visiveis.pecuaria !== false) vinculo = { tipo: "APLICACAO_SANITARIA", id: m.aplicacaoProduto.id, animalId: m.aplicacaoProduto.animalId };
       else oculto = true;
     } else if (m.itemFechamentoConsumo) {
@@ -333,7 +330,8 @@ export async function listarMovimentos(f?: FiltroMovimentos) {
       quantidade: Number(quantidadeConsulta),
       quantidadeMovimento: Number(m.quantidade),
       custoUnitario: Number(m.custoUnitario),
-      valorTotal: Number(valorConsulta),
+      metodoValorizacao: m.metodoValorizacao ?? "LEGADO",
+      valorTotal: valorConsulta == null ? null : Number(valorConsulta),
       valorTotalMovimento: Number(m.valorTotal),
       fornecedor: m.tipo === "ENTRADA" && !m.reversaoDeId ? m.operacao?.parceiro?.nome ?? null : null,
       observacao: oculto ? null : m.observacao ?? null,
@@ -358,7 +356,7 @@ async function mesFechado(tx: Prisma.TransactionClient, propriedadeId: number, d
 export async function registrarMovimento(input: MovimentoInput & { usuarioId?: number | null }) {
   const propriedadeId = input.propriedadeId ?? (await propriedadePrincipalId()); // sítio ativo ou principal
 
-  return prisma.$transaction(async (tx) => {
+  return transacaoValidada(async (tx) => {
     const resultado = await registrarMovimentoTx(tx, input, propriedadeId, input.usuarioId);
     await auditar(tx, { entidade: "Operacao", entidadeId: resultado.operacaoId, acao: "AJUSTE_MANUAL", usuarioId: input.usuarioId, motivo: input.observacao,
       depois: { produtoId: input.produtoId, propriedadeId, quantidade: input.quantidade, data: input.data, centroCustoId: input.centroCustoId ?? null, movimentoId: resultado.id } });
@@ -367,16 +365,42 @@ export async function registrarMovimento(input: MovimentoInput & { usuarioId?: n
 }
 
 async function registrarMovimentoTx(tx: Prisma.TransactionClient, input: MovimentoInput, propriedadeId: number, usuarioId?: number | null) {
+    await travarValorizacaoTx(tx, [input.produtoId]);
     const produto = await tx.produto.findUnique({ where: { id: input.produtoId }, include: { centrosCusto: { select: { centroCustoId: true } } } });
     if (!produto) throw new EstoqueError("NAO_ENCONTRADO", "produto não encontrado");
     if (input.centroCustoId != null && !(await tx.centroCusto.findFirst({ where: { id: input.centroCustoId, ativo: true } }))) throw new EstoqueError("NAO_ENCONTRADO", "centro de custo não encontrado");
     const centroCustoId = resolverCentroSaida({ produtoCentroIds: produto.centrosCusto.map((cc) => cc.centroCustoId), contextoCentroId: input.centroCustoId });
-    // Sem custo informado, o ajuste é valorizado pela base do custo médio do sítio
-    // (quantidade × Σvalor ÷ Σquantidade, arredondado só no fim). Com custo
-    // informado, valor = quantidade × custo, sem arredondamento intermediário.
-    const { custoUnitario: custo, valorTotal } = input.custoUnitario != null
-      ? { custoUnitario: new Prisma.Decimal(input.custoUnitario), valorTotal: new Prisma.Decimal(input.quantidade).mul(input.custoUnitario).toDecimalPlaces(2) }
-      : valorSaidaDaBase(input.quantidade, await obterBaseCusto(tx, produto.id, propriedadeId));
+    const distribuicao = await prepararPartidasTx(tx, { produtoId: produto.id, rastrearPartidas: produto.rastrearPartidas,
+      propriedadeId, tipo: "AJUSTE", quantidade: new Prisma.Decimal(input.quantidade), partidas: input.partidas });
+    const negativo = input.quantidade < 0;
+    if (negativo && !(await produtoTemEstoque(tx, produto.id, propriedadeId))) throw new EstoqueError("VALIDACAO", "Este produto não tem estoque neste sítio — registre uma compra ou um inventário antes de dar baixa");
+    const plano = negativo ? await planejarSaidaTx(tx, { produtoId: produto.id, propriedadeId, quantidade: new Prisma.Decimal(input.quantidade).abs(), data: new Date(input.data), partidas: distribuicao.map(p => ({ ...p, quantidade: p.quantidade.abs() })) }) : null;
+    let planoEntrada: import("./valorizacao.js").PlanoSaida | undefined;
+    let valorTotal: Prisma.Decimal;
+    if (plano) valorTotal = plano.valorTotal.negated();
+    else {
+      const bases = await saldosBasesTx(tx, produto.id, propriedadeId);
+      const basesAplicaveis = produto.rastrearPartidas ? bases.filter(b => distribuicao.some(p => p.partidaId === b.partidaId)) : bases;
+      const quantidadeBase = basesAplicaveis.reduce((q,b) => q.plus(b.quantidade), new Prisma.Decimal(0));
+      if (!quantidadeBase.gt(0)) {
+        if (input.custoUnitario == null) throw new ValorizacaoError("SEM_LASTRO", "Ajuste positivo sem base exige valor documentado ou abertura na ficha do produto");
+        if (!input.referenciaValor || !input.evidenciaValor) throw new ValorizacaoError("VALIDACAO", "Inventário inicial exige referência e evidência explícitas do valor");
+        valorTotal = new Prisma.Decimal(input.quantidade).mul(input.custoUnitario).toDecimalPlaces(2);
+      } else if (produto.rastrearPartidas) {
+        valorTotal = new Prisma.Decimal(0);
+        const parcelasEntrada: import("./valorizacao.calc.js").ParcelaSaida[] = [];
+        for (const p of distribuicao) {
+          const b = bases.find(b => b.partidaId === p.partidaId);
+          if (!b?.quantidade.gt(0)) throw new ValorizacaoError("SEM_LASTRO", "Separe o ajuste dos grupos novos dos grupos já valorizados e informe valor documentado para os novos");
+          const valorGrupo = b.valor.mul(p.quantidade).div(b.quantidade).toDecimalPlaces(2);
+          valorTotal = valorTotal.plus(valorGrupo);
+          parcelasEntrada.push({ baseId: b.id, quantidade: p.quantidade, valorTotal: valorGrupo });
+        }
+        planoEntrada = { metodo: "MEDIA_SALDO_V1", parcelas: parcelasEntrada, valorTotal, custoUnitario: valorTotal.div(input.quantidade).toDecimalPlaces(4) };
+      } else valorTotal = bases.reduce((v,b) => v.plus(b.valor), new Prisma.Decimal(0)).mul(input.quantidade).div(quantidadeBase).toDecimalPlaces(2);
+      if (quantidadeBase.gt(0) && input.custoUnitario != null && !valorTotal.eq(new Prisma.Decimal(input.quantidade).mul(input.custoUnitario).toDecimalPlaces(2))) throw new ValorizacaoError("VALIDACAO", "O ajuste conserva o valor da base existente; o custo informado é diferente");
+    }
+    const custo = valorTotal.div(input.quantidade).toDecimalPlaces(4);
     const data = new Date(input.data);
     if (input.tipo !== "AJUSTE") {
       throw new EstoqueError("ORIGEM_AUTOMATICA", "Entradas e saídas devem nascer de uma operação financeira ou de um evento operacional; aqui só é permitido ajuste justificado de inventário");
@@ -384,11 +408,7 @@ async function registrarMovimentoTx(tx: Prisma.TransactionClient, input: Movimen
     if (await mesFechado(tx, propriedadeId, data)) throw new EstoqueError("MES_FECHADO", "período financeiro fechado");
     // Baixa manual só de produto que já entrou no estoque do sítio — senão o
     // saldo nasceria negativo de um produto que a fazenda nunca estocou.
-    if (new Prisma.Decimal(input.quantidade).isNegative() && !(await produtoTemEstoque(tx, produto.id, propriedadeId))) {
-      throw new EstoqueError("VALIDACAO", "Este produto não tem estoque neste sítio — registre uma compra ou um inventário antes de dar baixa");
-    }
-    const distribuicao = await prepararPartidasTx(tx, { produtoId: produto.id, rastrearPartidas: produto.rastrearPartidas,
-      propriedadeId, tipo: "AJUSTE", quantidade: new Prisma.Decimal(input.quantidade), partidas: input.partidas });
+
     const operacao = await tx.operacao.create({ data: {
       tipo: "AJUSTE_ESTOQUE", status: "CONFIRMADA", data, descricao: input.observacao,
       valorTotal: valorTotal.abs(), propriedadeId, criadoPorId: usuarioId ?? null,
@@ -404,6 +424,7 @@ async function registrarMovimentoTx(tx: Prisma.TransactionClient, input: Movimen
         quantidade: input.quantidade,
         custoUnitario: custo,
         valorTotal,
+        ...(input.referenciaValor && input.evidenciaValor ? { evidenciaValor: { referencia: input.referenciaValor, evidencia: input.evidenciaValor, usuarioId: usuarioId ?? null, valorTotal: valorTotal.toFixed(2) } } : {}),
         operacaoId: operacao.id,
         itemOperacaoId: operacao.itens[0]?.id,
         propriedadeId,
@@ -414,6 +435,8 @@ async function registrarMovimentoTx(tx: Prisma.TransactionClient, input: Movimen
       },
     });
 
+    if (plano) await registrarSaidaValorizadaTx(tx, m.id, plano);
+    else await registrarEntradaValorizadaTx(tx, m, distribuicao, planoEntrada);
     return { id: m.id, operacaoId: operacao.id };
 }
 
@@ -421,7 +444,7 @@ export async function ajustarContagem(input: z.infer<typeof ajusteContagemSchema
   const propriedadeId = input.propriedadeId ?? await escopoPadraoLeitura();
   if (propriedadeId == null) throw new EstoqueError("VALIDACAO", "Selecione uma fazenda para ajustar o estoque.");
   try {
-    return await prisma.$transaction(async tx => {
+    return await transacaoValidada(async tx => {
       const produto = await tx.produto.findFirst({ where: { id: input.produtoId, ativo: true } });
       if (!produto) throw new EstoqueError("NAO_ENCONTRADO", "Produto ativo não encontrado");
       // Mesmo escopo de sítio de listarSaldos (sem propriedade = principal), senão o saldo esperado da tela nunca casaria.
@@ -454,9 +477,10 @@ export async function estornarMovimentoTx(
   opts: { usuarioId?: number | null; observacao?: string; data?: Date; propriedadeId?: number | null } = {},
 ) {
   const filtroPropriedade = opts.propriedadeId != null ? { propriedadeId: opts.propriedadeId } : {};
-  const referencia = await tx.movimentoEstoque.findFirst({ where: { id: movimentoId, ...filtroPropriedade }, select: { operacaoId: true } });
+  const referencia = await tx.movimentoEstoque.findFirst({ where: { id: movimentoId, ...filtroPropriedade }, select: { operacaoId: true, produtoId: true } });
   if (!referencia) throw new EstoqueError("NAO_ENCONTRADO", "movimento não encontrado");
 
+  await travarValorizacaoTx(tx, [referencia.produtoId]);
   // Usa o mesmo lock do cancelamento financeiro. Depois de obtê-lo, relê o
   // movimento para decidir com o estado que venceu a corrida.
   if (referencia.operacaoId != null) {
@@ -470,6 +494,10 @@ export async function estornarMovimentoTx(
   if (mov.revertidoPor || mov.status === "REVERTIDO") throw new EstoqueError("ORIGEM_AUTOMATICA", "movimento já estornado");
   if (mov.reversaoDeId != null) throw new EstoqueError("ORIGEM_AUTOMATICA", "um movimento de estorno não pode ser estornado novamente");
 
+  if (mov.origem === "REPRODUCAO") {
+    const tentativa = await tx.tentativaReprodutiva.findFirst({ where: { movimentoEstoqueId: mov.id, status: "VALIDO" }, select: { id: true } });
+    if (tentativa) throw new EstoqueError("CONFLITO", "Este consumo pertence a uma tentativa reprodutiva válida. Anule a tentativa no fluxo de reprodução antes de estornar o consumo.");
+  }
   const pid = mov.propriedadeId ?? await propriedadePrincipalId();
   if (mov.tipo === "ENTRADA" || (mov.tipo === "AJUSTE" && mov.quantidade.gt(0))) {
     await conferirSaldoEstornoPartidasTx(tx, alocacoes, pid);
@@ -487,6 +515,7 @@ export async function estornarMovimentoTx(
     criadoPorId: opts.usuarioId ?? null,
     ...(alocacoes.length ? { alocacaoPartidaEstoques: { create: alocacoes.map((a) => ({ partidaId: a.partidaId, quantidade: mov.tipo === "AJUSTE" ? a.quantidade.negated() : a.quantidade })) } } : {}),
   } });
+  await registrarInversoValorizadoTx(tx, mov.id, inverso.id);
   await tx.movimentoEstoque.update({ where: { id: movimentoId }, data: { status: "REVERTIDO" } });
   await auditar(tx, { entidade: "MovimentoEstoque", entidadeId: mov.id, acao: "ESTORNO_MOVIMENTO", usuarioId: opts.usuarioId, motivo: opts.observacao,
     antes: { produtoId: mov.produtoId, tipo: mov.tipo, origem: mov.origem, quantidade: mov.quantidade.toNumber(), operacaoId: mov.operacaoId, centroCustoId: mov.centroCustoId },

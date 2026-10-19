@@ -95,4 +95,14 @@ describe("diferencas", () => {
   it("antes e depois nulos: lista vazia", () => {
     expect(diferencas("Lote", null, null)).toEqual([]);
   });
+
+  it("snapshot parcial não prova apagamento de campos omitidos", () => {
+    expect(diferencas("FechamentoConsumo", { inicio: "2026-09-01", fim: "2026-09-30", status: "CONFIRMADO" }, { status: "ESTORNADO", motivo: "Conferência" })).toEqual([
+      { campo: "status", rotulo: "Situação", antes: "CONFIRMADO", depois: "ESTORNADO" },
+    ]);
+  });
+
+  it("objeto malformado num campo conhecido não é convertido em texto ou exposto", () => {
+    expect(diferencas("Animal", null, { nome: { segredo: "privado" }, observacao: ["privado"] })).toEqual([]);
+  });
 });

@@ -1,4 +1,7 @@
 import { SelectCampo } from "@/financeiro/SelectCampo";
+import { RegularizacaoTarefa, rotuloSituacaoTarefa } from "./RegularizacaoTarefa";
+import type { EventoRegularizacao } from "../reproducao/RegularizarOrigem";
+import { DestinoConsumo, administracaoMantida, type SituacaoAdministracao, type DestinoConsumoSanitario } from "./DestinoConsumo";
 import { Button as UiButton } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { SubTabs } from "../../../components/SubTabs";
@@ -64,6 +67,7 @@ type Exame = ExameResultado & {
   tipoExame: { nome: string };
 };
 type Tarefa = {
+  regularizacaoPendente?:boolean; historicoRegularizacao?:EventoRegularizacao[]; propriedadeRegularizacaoId?:number | null;
   id: string;
   etapaId: string;
   propriedadeAtualId?: number | null;
@@ -85,6 +89,7 @@ type Tarefa = {
     rodada?: { id: string; nome: string } | null;
     animal?: { id: string; brinco: string; nome: string | null };
     propriedadeId: number;
+    canceladaEm?:string | null;
     protocolo: { nome: string; versao: number };
   };
 };
@@ -236,6 +241,8 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
   const [tarefaExameId, setTarefaExameId] = useState<string | null>(null);
   const [cadastroId, setCadastroId] = useState("");
   const [data, setData] = useState(hoje());
+  const [administracao, setAdministracao] = useState<SituacaoAdministracao>("");
+  const [destinoConsumo, setDestinoConsumo] = useState<DestinoConsumoSanitario | "">("");
   const [texto, setTexto] = useState("");
   const [dataAdiamento, setDataAdiamento] = useState("");
   const [confirmarSobreposicao, setConfirmarSobreposicao] = useState(false);
@@ -460,6 +467,7 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
   }, [animal?.propriedade?.id]);
   function abrir(p: Painel) {
     if (p.tipo === "ocorrencia" || p.tipo === "exame" || p.tipo === "protocolo") { setNovoFato(p.tipo); setCadastroId(""); setTarefaExameId(null); setAnimalDaAcao(null); return; }
+    setDestinoConsumo(""); setAdministracao("");
     setPainel(p);
     setCadastroId("");
     setTexto("");
@@ -589,6 +597,11 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
         painel.tipo === "dispensar"
           ? { propriedadeId, motivo: texto }
           : { propriedadeId, motivo: texto };
+    }
+    if (painel.tipo === "anular-aplicacao") {
+      if (!destinoConsumo) { setErro("Selecione o destino físico do material."); setOcupado(false); return; }
+      if (destinoConsumo === "MANTER_CONSUMO" && !administracao) { setErro("Informe a situação da administração neste animal."); setOcupado(false); return; }
+      body = {...body, destinoConsumo, ...(destinoConsumo === "MANTER_CONSUMO" && administracao ? {administracaoMantida: administracaoMantida(administracao)} : {})};
     }
     try {
       await reqSanidade(
@@ -725,6 +738,8 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
                   ["REALIZADA", "Realizada"],
                   ["DISPENSADA", "Dispensada"],
                   ["EXECUCAO_CANCELADA", "Execução cancelada"],
+                  ["REGULARIZACAO_PENDENTE", "Regularização pendente"],
+                  ["ENCERRADA_SEM_SUBSTITUICAO", "Encerrada sem substituição"],
                 ]
               : aba === "ocorrencias"
                 ? [
@@ -858,6 +873,7 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
                 { chave: "animal", titulo: "Animal", principal: true, larguraMinima: 160, celula: t => t.execucao.animal ? nomeAnimalSanitario(t.execucao.animal) : nomeAnimal(t.execucao.animalId) },
                 { chave: "protocolo", titulo: "Protocolo / ciclo", larguraMinima: 260, celula: t => <>{t.execucao.protocolo.nome} · v{t.execucao.protocolo.versao}<div className="mt-1 text-xs text-muted-foreground">{t.execucao.rodada?.nome ?? t.rodada?.nome ?? "Sem ciclo"} · {t.parametros.tipoAplicacaoNomeSnapshot ?? (t.parametros.tipo === "APLICACAO" ? "Aplicação" : "Exame")}</div></> },
                 { chave: "prevista", titulo: "Previsão / situação", larguraMinima: 150, celula: t => <div className="sanidade-previsao"><span>{dataSanitaria(t.previstaPara)}</span><EstadoSanitario tom={t.situacao === "PENDENTE" ? (rotuloTarefaSanitaria(t.situacao, t.previstaPara, hojeSanitario) === "Atrasada" ? "alerta" : "atencao") : t.situacao === "REALIZADA" ? "verde" : "neutro"}>{rotuloTarefaSanitaria(t.situacao, t.previstaPara, hojeSanitario)}</EstadoSanitario></div> },
+                { chave:"regularizacao", titulo:"Regularização", larguraMinima:210, celula:t => <RegularizacaoTarefa tarefa={t} podeLancar={podeLancar} onMudou={async()=>setRevisao(v=>v+1)} /> },
                 { chave: "acoes", titulo: "Ações", acoes: true, larguraMinima: 210, celula: t => podeLancar && t.situacao === "PENDENTE" ? <div className="flex items-center gap-2"><Button secondary onClick={() => { setAnimalDaAcao({ animalId: t.execucao.animalId, propriedadeId: t.propriedadeAtualId ?? t.execucao.propriedadeId }); setExecutandoEtapa([{ ...t, parametros: { ...t.parametros, tipo: t.parametros.tipo === "APLICACAO" ? "APLICACAO" : "EXAME" } }]); }}>Executar tarefa</Button><DropdownMenu><DropdownMenuTrigger asChild><UiButton variant="outline" size="icon" aria-label={`Mais ações da tarefa de ${t.execucao.animal ? nomeAnimalSanitario(t.execucao.animal) : nomeAnimal(t.execucao.animalId)}`}><MoreHorizontal aria-hidden /></UiButton></DropdownMenuTrigger><DropdownMenuContent align="end">{([['dispensar', 'Dispensar com motivo'], ['cancelar', 'Cancelar execução'], ['adiar', 'Adiar tarefa']] as const).map(([tipo, rotulo]) => <DropdownMenuItem key={tipo} onSelect={() => { setAnimalDaAcao({ animalId: t.execucao.animalId, propriedadeId: t.propriedadeAtualId ?? t.execucao.propriedadeId }); abrir({ tipo, id: tipo === 'cancelar' ? t.execucaoId : t.id }); }}>{rotulo}</DropdownMenuItem>)}</DropdownMenuContent></DropdownMenu></div> : null },
               ]} />
               {!carregandoAba && !erroAba && !tarefas.length && (
@@ -1023,6 +1039,7 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
             }}
           >
             <ErrorBox erro={erro} />
+            {painel.tipo === "anular-aplicacao" && <DestinoConsumo valor={destinoConsumo} onChange={v => {setDestinoConsumo(v); setAdministracao("");}} administracao={administracao} onAdministracao={setAdministracao} />}
             <p>{animalDaAcao ? nomeAnimal(animalDaAcao.animalId) : animal ? nomeAnimal(animal.id) : "Selecione um animal"}</p>
             {(painel.tipo === "ocorrencia" ||
               painel.tipo === "exame" ||

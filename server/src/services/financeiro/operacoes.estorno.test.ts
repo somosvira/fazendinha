@@ -23,22 +23,26 @@ const mocks = vi.hoisted(() => ({
   aplicacaoFindFirst: vi.fn(),
   exameFindFirst: vi.fn(),
   execucaoFindFirst: vi.fn(),
+  tentativaFindFirst: vi.fn(),
   queryRaw: vi.fn(),
 }));
 
+vi.mock("../estoque/valorizacao.js", () => ({ travarValorizacaoTx: vi.fn(), registrarInversoValorizadoTx: vi.fn(), planejarSaidaTx: vi.fn(), registrarEntradaValorizadaTx: vi.fn(), registrarSaidaValorizadaTx: vi.fn() }));
 vi.mock("../../db.js", () => {
   const tx = {
+      $executeRaw: vi.fn().mockResolvedValue(0),
     periodoFinanceiro: { findUnique: mocks.periodo },
     transacaoFinanceira: { findFirst: mocks.transacaoFindFirst, create: mocks.transacaoCreate, update: mocks.transacaoUpdate },
     compromissoFinanceiro: { findUniqueOrThrow: mocks.compromissoFindUniqueOrThrow, findUnique: mocks.compromissoFindUnique, update: mocks.compromissoUpdate, updateMany: mocks.compromissoUpdateMany },
     liquidacao: { create: mocks.liquidacaoCreate },
     operacao: { findFirst: mocks.operacaoFindFirst, update: mocks.operacaoUpdate },
-    movimentoEstoque: { create: mocks.movimentoEstoqueCreate, update: mocks.movimentoEstoqueUpdate },
+    movimentoEstoque: { findMany: vi.fn().mockResolvedValue([]), create: mocks.movimentoEstoqueCreate, update: mocks.movimentoEstoqueUpdate },
     auditoriaFinanceira: { create: mocks.auditoriaCreate },
     contaFinanceira: { findFirst: mocks.contaFindFirst },
     aplicacaoProduto: { findFirst: mocks.aplicacaoFindFirst },
     exameAnimal: { findFirst: mocks.exameFindFirst },
-    execucaoProtocoloSanitario: { findFirst: mocks.execucaoFindFirst },
+    tentativaReprodutiva: { findFirst: mocks.tentativaFindFirst },
+    participacaoProtocolo: { findFirst: mocks.execucaoFindFirst },
     $queryRaw: mocks.queryRaw,
   };
   mocks.transaction.mockImplementation(async (fn: (t: unknown) => unknown) => fn(tx));
@@ -56,6 +60,7 @@ beforeEach(() => {
   mocks.aplicacaoFindFirst.mockResolvedValue(null);
   mocks.exameFindFirst.mockResolvedValue(null);
   mocks.execucaoFindFirst.mockResolvedValue(null);
+  mocks.tentativaFindFirst.mockResolvedValue(null);
   mocks.transacaoCreate.mockImplementation(async ({ data }: { data: Record<string, unknown> }) => ({ id: uid(900), ...data, movimentos: [] }));
   mocks.transacaoUpdate.mockResolvedValue({});
   mocks.compromissoUpdate.mockResolvedValue({});
@@ -134,6 +139,12 @@ describe("estornarOperacao", () => {
     movimentosEstoque: [{ id: uid(30), status: "CONFIRMADO", tipo: "ENTRADA", produtoId: uid(4), quantidade: decimal("10"), custoUnitario: decimal("5"), valorTotal: decimal("50"), propriedadeId: 1, reversaoDeId: null, revertidoPor: null, alocacaoPartidaEstoques: [] }],
   };
 
+  it("não cancela Serviço que financia tentativa reprodutiva válida", async () => {
+    mocks.operacaoFindFirst.mockResolvedValue({ ...operacaoBase, tipo: "SERVICO" });
+    mocks.tentativaFindFirst.mockResolvedValue({ id: uid(92) });
+    await expect(estornarOperacao(uid(5), "Cancelamento do serviço", { propriedadeId: 1, usuarioId: 1 })).rejects.toMatchObject({ code: "CONFLITO" });
+    expect(mocks.transacaoCreate).not.toHaveBeenCalled(); expect(mocks.movimentoEstoqueCreate).not.toHaveBeenCalled(); expect(mocks.operacaoUpdate).not.toHaveBeenCalled();
+  });
   it("com parcela paga: estorna a transação, reverte o estoque e cancela os compromissos pendentes numa única transação", async () => {
     mocks.operacaoFindFirst.mockResolvedValue(operacaoBase);
     mocks.transacaoFindFirst.mockResolvedValue({
@@ -175,6 +186,18 @@ describe("estornarOperacao", () => {
 });
 
 describe("simularParcelas", () => {
+  it("aceita o contrato HTTP com desconto explícito e itens não elegíveis", async () => {
+    const { simulacaoParcelasSchema } = await import("./schemas.js");
+    const input = simulacaoParcelasSchema.parse({
+      itens: [{ quantidade: 1, valorTotal: 100, elegivelDesconto: false }, { quantidade: 1, valorTotal: 100, elegivelDesconto: true }],
+      descontoComercial: 10, distribuicaoDesconto: [0, 10],
+      quantidadeParcelas: 2, frequencia: "MENSAL", primeiroVencimento: "2026-10-01",
+    });
+    const resultado = simularParcelas(input);
+    expect(resultado.totalOperacao.toFixed(2)).toBe("190.00");
+    expect(resultado.composicaoComercial.map(item => item.valorLiquido.toFixed(2))).toEqual(["100.00", "90.00"]);
+    expect(resultado.parcelas.map(parcela => parcela.valor.toFixed(2))).toEqual(["95.00", "95.00"]);
+  });
   it("em liquidação parcial, divide só o saldo restante depois do valor pago agora", () => {
     const resultado = simularParcelas({ itens: [], valorTotal: 300, valorPagoAgora: 100, quantidadeParcelas: 2, frequencia: "MENSAL", primeiroVencimento: "2026-10-01" });
     expect(resultado.saldoAPrazo.toString()).toBe("200");

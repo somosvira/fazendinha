@@ -14,6 +14,7 @@ import { getUsuario } from "../lib/auth";
 import { Button, dataBR, brl, ErrorBox, PageHeader, PaginaFinanceira, Panel, TabelaFinanceira, Paginacao, Pill, Empty, type ColunaTabela } from "../financeiro/financeiro-ui";
 import { classeInput } from "../financeiro/PainelCadastro";
 import { FormProduto } from "../financeiro/FormProduto";
+import { ValorizacaoProduto } from "./ValorizacaoProduto";
 import { PartidasProduto } from "./PartidasProduto";
 import { nomeLoteProduto } from "./SelecaoPartidas";
 import { destinoDoMovimento, podeAcessarArea, podeAjustarEstoque, abrirAjusteEstoque } from "./navegacao";
@@ -116,6 +117,7 @@ export function ProdutoEstoqueDetalhe({ produtoId, onSelecionarSitio }: { produt
         {total > 0 && <Paginacao pagina={pagina} totalPaginas={Math.max(1, Math.ceil(total / 15))} total={total} porPagina={15} rotulo="Paginação da ficha" substantivo="itens" idSelect="pagina-ficha-produto" onPagina={setPagina} />}
       </Panel>}
     </>}
+    {produto && sitioId && podeAcessarArea("financeiro") && (!!usuario?.dono || !!usuario?.flags.includes("verValores")) && <ValorizacaoProduto produtoId={produtoId} propriedadeId={sitioId} podeEditar={podeEditar} onSalvo={() => setRevisao(r => r+1)} />}
     {renomeando && <DialogFinanceiro titulo="Renomear lote" eyebrow="Estoque" icon={Pencil} onClose={() => { if (!salvando) setRenomeando(null); }} rodape={<><Button secondary disabled={salvando} onClick={() => setRenomeando(null)}>Cancelar</Button><Button type="submit" form="renomear-lote" carregando={salvando} disabled={!nome.trim()}>Salvar nome</Button></>}>
       <form id="renomear-lote" className="grid gap-3 p-5" onSubmit={e => { e.preventDefault(); void salvarNome(); }}><ErrorBox erro={erro} /><label className="text-sm">Novo nome<input required maxLength={160} className={classeInput} value={nome} onChange={e => setNome(e.target.value)} /></label><p className="text-sm text-ink-3">A alteração ficará no histórico de auditoria.</p></form>
     </DialogFinanceiro>}

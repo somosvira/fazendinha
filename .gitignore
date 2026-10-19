@@ -6,6 +6,8 @@ dist/
 *.log
 *.tsbuildinfo
 coverage/
+.playwright-mcp/
+output/qa-pr322/
 .DS_Store
 __pycache__/
 *.pyc
@@ -27,6 +29,7 @@ server/.qa249/
 
 # Estado recuperável do cenário de desenvolvimento e backups locais.
 server/.seedatev3/
+output/seedatev4/
 .backups/
 
 # Carga real da Pecuária v1 (extraída do IDEAGRI) — dado de fazenda, não commitar.

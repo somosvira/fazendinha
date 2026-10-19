@@ -1,0 +1,52 @@
+.secao-recolhivel{min-width:0;margin-top:12px;border:1px solid var(--border);border-radius:10px;background:var(--card);scroll-margin-top:20px;overflow:clip}
+.secao-recolhivel-cabecalho{display:flex;align-items:center;gap:12px;padding:0 16px}
+.secao-recolhivel-cabecalho>h2{flex:1;min-width:0;margin:0;font-family:inherit;font-size:16px;font-weight:650}
+.secao-recolhivel-cabecalho>h2>button{display:flex;justify-content:space-between;align-items:center;gap:16px;width:100%;padding:14px 0;text-align:left;color:var(--ink);cursor:pointer;background:transparent;border:0}
+.secao-recolhivel-cabecalho>h2>button:focus-visible{outline:2px solid var(--ring);outline-offset:3px;border-radius:4px}
+.secao-recolhivel-texto{display:flex;flex-direction:column;min-width:0;gap:3px}
+.secao-recolhivel-resumo{font-size:12px;line-height:1.4;font-weight:400;color:var(--ink-3)}
+.secao-recolhivel-chevron{flex-shrink:0;transition:transform .15s}.secao-recolhivel-chevron.aberta{transform:rotate(180deg)}
+.secao-recolhivel-acoes{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.secao-recolhivel-conteudo{padding:0 14px 14px}.secao-recolhivel-conteudo[hidden]{display:none}
+.ficha-v4 #visao-geral>.h2{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+.ficha-v4 .ficha-resumo{margin-bottom:12px}
+@media(max-width:640px){.secao-recolhivel-cabecalho{padding-inline:12px;flex-wrap:wrap;gap:0}.secao-recolhivel-cabecalho>h2{flex-basis:100%}.secao-recolhivel-acoes{padding-bottom:12px}.secao-recolhivel-conteudo{padding:0 10px 10px}}
+@media(prefers-reduced-motion:reduce){.secao-recolhivel-chevron{transition:none}}
+
+/* O espaço disponível na ficha, inclusive com sidebar, define as colunas. */
+.ficha-peso-conjunto{width:100%;min-width:0;container:ficha-peso / inline-size}
+.ficha-v4 .ficha-peso-manejo{display:grid;grid-template-columns:minmax(0,1fr);gap:0;align-items:stretch;width:100%;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.pecuaria-content .pec-ficha.ficha-v4 .ficha-peso-manejo>.pec-card-ficha{min-width:0;width:100%;max-width:none;grid-column:auto;border:0;border-radius:0;margin:0}
+.pecuaria-content .pec-ficha.ficha-v4 .ficha-peso-manejo>.pec-card-ficha+.pec-card-ficha{border-top:1px solid var(--border)}
+.pecuaria-content .pec-ficha.ficha-v4 .ficha-peso-manejo>.pec-card-ficha>header{flex-wrap:wrap;gap:10px;padding:12px 14px;min-height:60px}
+.pecuaria-content .pec-ficha.ficha-v4 .ficha-peso-manejo>.pec-card-ficha>header+div{padding:14px}
+.ficha-v4 .ficha-curva-peso{display:flex;flex-direction:column;gap:14px;min-width:0;width:100%}
+.ficha-v4 .ficha-curva-peso>*{width:100%;min-width:0}
+.ficha-v4 .ficha-peso-faixa{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:1px solid var(--border);border-radius:6px;padding:12px 0;background:var(--muted)}
+.ficha-v4 .ficha-peso-faixa>div{padding:0 12px;min-width:0}
+.ficha-v4 .ficha-peso-faixa>div+div{border-left:1px solid var(--border)}
+.ficha-v4 .ficha-peso-faixa dt{font-size:12px;color:var(--ink-3)}
+.ficha-v4 .ficha-peso-faixa dd{font-size:16px;font-weight:650;margin-top:4px;overflow-wrap:anywhere}
+.ficha-v4 .ficha-peso-faixa>div:nth-child(2) dd{color:var(--primary)}
+.ficha-v4 .ficha-peso-faixa small{display:block;font-size:11px;color:var(--ink-3);margin-top:4px;line-height:1.4}
+.ficha-v4 .ficha-peso-detalhes{width:100%;margin-top:10px;font-size:13px;border-radius:8px}
+.ficha-v4 .ficha-peso-detalhes .grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+@container ficha-peso (min-width:760px){
+ .ficha-v4 .ficha-peso-manejo{grid-template-columns:minmax(0,1.85fr) minmax(250px,1fr)}
+ .pecuaria-content .pec-ficha.ficha-v4 .ficha-peso-manejo>.pec-card-ficha+.pec-card-ficha{border-top:0;border-left:1px solid var(--border)}
+}
+@container ficha-peso (max-width:420px){
+ .ficha-v4 .ficha-peso-faixa{grid-template-columns:1fr;gap:10px}
+ .ficha-v4 .ficha-peso-faixa>div+div{border-left:0;border-top:1px solid var(--border);padding-top:10px}
+ .ficha-v4 .ficha-peso-detalhes .grid{grid-template-columns:1fr}
+}
+.menu-acoes-ficha-gatilho{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);font-size:13px;font-weight:600;min-height:36px;padding:8px 12px;cursor:pointer}
+.menu-acoes-ficha-gatilho:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+.menu-acoes-ficha-lista{min-width:220px;border-radius:8px}
+
+.ficha-peso-indicadores{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;align-items:stretch}
+.ficha-peso-indicadores>*{min-width:0;height:100%}
+.ficha-peso-distribuicao{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(310px,1fr);gap:16px;align-items:stretch}
+.ficha-peso-distribuicao>.pec-card-ficha{min-width:0;width:100%;height:100%}
+@container ficha-peso (max-width:1000px){.ficha-peso-indicadores{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@container ficha-peso (max-width:760px){.ficha-peso-distribuicao{grid-template-columns:minmax(0,1fr)}}

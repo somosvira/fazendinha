@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { ConfiguracoesFinanceiras } from "./ConfiguracoesFinanceiras";
 import { uid } from "../lib/uid.fixture";
-import { ApiError, atualizarConta, atualizarParceiro, atualizarProduto, criarCategoria, criarCentroCusto, criarConta, criarParceiro, obterConfiguracoesFinanceiras, type ConfiguracoesFinanceiras as Config } from "./novo-api";
+import { ApiError, atualizarGrupoCategoria, criarGrupoCategoria, atualizarCategoria, atualizarConta, atualizarParceiro, atualizarProduto, criarCategoria, criarCentroCusto, criarConta, criarParceiro, obterConfiguracoesFinanceiras, type ConfiguracoesFinanceiras as Config } from "./novo-api";
 import { criarProduto as criarProdutoEstoque, editarProduto as editarProdutoEstoque } from "../estoque/api";
 
 /* Mantém ApiError real (o formulário usa instanceof) e substitui só as chamadas. */
@@ -12,6 +12,7 @@ vi.mock("./novo-api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./novo-api")>()),
   obterConfiguracoesFinanceiras: vi.fn(),
   criarConta: vi.fn(), atualizarConta: vi.fn(), criarParceiro: vi.fn(), atualizarParceiro: vi.fn(),
+  criarGrupoCategoria: vi.fn(), atualizarGrupoCategoria: vi.fn(),
   criarCategoria: vi.fn(), atualizarCategoria: vi.fn(),
   criarCentroCusto: vi.fn(), atualizarCentroCusto: vi.fn(),
   atualizarProduto: vi.fn(),
@@ -25,6 +26,7 @@ vi.mock("../estoque/api", async (importOriginal) => ({
 }));
 
 const config: Config = {
+  gruposCategorias: [{ id: uid(40), nome: "Criação Animal", ativo: true, ordem: 0 }, { id: uid(41), nome: "Grupo antigo", ativo: false, ordem: 1 }],
   contas: [
     { id: uid(1), nome: "Banco principal", tipo: "BANCO", instituicao: "Sicoob", identificacao: "Ag. 1 · C/C 2", agencia: "1", numeroConta: "2", titular: "Fazenda Rio Novo", ordem: 0, saldoAbertura: "1000", dataSaldoAbertura: "2026-09-01", saldoAtual: "1200", incluirNoSaldoGeral: true, ativo: true, temMovimentos: true },
     { id: uid(2), nome: "Gaveta", tipo: "CAIXA", instituicao: null, identificacao: null, saldoAbertura: "0", dataSaldoAbertura: "2026-09-01", saldoAtual: "0", incluirNoSaldoGeral: false, ativo: false, temMovimentos: false },
@@ -406,7 +408,56 @@ describe("ConfiguracoesFinanceiras — categorias e centros de custo", () => {
     await alterarControle(within(painel).getByLabelText("Nome da categoria"), { target: { value: "Ração" } });
     await alterarControle(within(painel).getByLabelText("Classificação"), { target: { value: "CUSTEIO" } });
     fireEvent.click(within(painel).getByRole("button", { name: "Criar categoria" }));
-    await waitFor(() => expect(criarCategoria).toHaveBeenCalledWith({ nome: "Ração", classificacao: "CUSTEIO", ordem: 1 }));
+    await waitFor(() => expect(criarCategoria).toHaveBeenCalledWith({ nome: "Ração", grupoId: null, classificacao: "CUSTEIO", ordem: 1 }));
+  });
+
+  it("associa o grupo no cadastro da categoria e não oferece grupos inativos", async () => {
+    await montar("categorias");
+    fireEvent.click(screen.getByRole("button", { name: "Nova categoria" }));
+    const painel = await screen.findByRole("dialog");
+    await alterarControle(within(painel).getByLabelText("Nome da categoria"), { target: { value: "Ração" } });
+    fireEvent.click(within(painel).getByRole("combobox", { name: "Grupo de categorias" }));
+    expect(screen.queryByRole("option", { name: "Grupo antigo (inativo)" })).toBeNull();
+    fireEvent.click(await screen.findByRole("option", { name: "Criação Animal" }));
+    fireEvent.click(within(painel).getByRole("button", { name: "Criar categoria" }));
+    await waitFor(() => expect(criarCategoria).toHaveBeenCalledWith(expect.objectContaining({ grupoId: uid(40) })));
+  });
+
+  it("conserva grupo inativo na edição e permite deixar a categoria sem grupo", async () => {
+    vi.mocked(obterConfiguracoesFinanceiras).mockResolvedValue({ ...config, categorias: [{ ...config.categorias[0], grupoId: uid(41), grupo: config.gruposCategorias![1] }] });
+    await montar("categorias");
+    fireEvent.click(primeiro("button", "Editar Insumos"));
+    const painel = await screen.findByRole("dialog");
+    expect(within(painel).getByRole("combobox", { name: "Grupo de categorias" }).textContent).toContain("Grupo antigo (inativo)");
+    await escolherSelect(painel, "Grupo de categorias", "Sem grupo");
+    fireEvent.click(within(painel).getByRole("button", { name: "Salvar categoria" }));
+    await waitFor(() => expect(atualizarCategoria).toHaveBeenCalledWith(uid(11), expect.objectContaining({ grupoId: null })));
+  });
+
+  it("cria grupos nas configurações", async () => {
+    await montar();
+    fireEvent.click(screen.getByRole("tab", { name: "Grupos de categorias" }));
+    fireEvent.click(screen.getByRole("button", { name: "Novo grupo" }));
+    const painel = await screen.findByRole("dialog");
+    await alterarControle(within(painel).getByLabelText("Nome do grupo de categorias"), { target: { value: "Administrativo" } });
+    fireEvent.click(within(painel).getByRole("button", { name: "Criar grupo" }));
+    await waitFor(() => expect(criarGrupoCategoria).toHaveBeenCalledWith({ nome: "Administrativo", ordem: 2 }));
+  });
+
+  it("desativa grupo explicando a preservação dos vínculos", async () => {
+    await montar();
+    fireEvent.click(screen.getByRole("tab", { name: "Grupos de categorias" }));
+    fireEvent.click(primeiro("button", "Desativar Criação Animal"));
+    expect(await screen.findByText(/categorias já vinculadas e suas operações permanecem disponíveis/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Desativar" }));
+    await waitFor(() => expect(atualizarGrupoCategoria).toHaveBeenCalledWith(uid(40), { ativo: false }));
+  });
+
+  it("oculta ações dos grupos para acesso de consulta", async () => {
+    render(<ConfiguracoesFinanceiras abaInicial="grupos" podeEditar={false} />);
+    await screen.findAllByText("Criação Animal");
+    expect(screen.queryByRole("button", { name: "Novo grupo" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Editar Criação Animal" })).toBeNull();
   });
 
   it("cria um centro de custo sem natureza financeira", async () => {

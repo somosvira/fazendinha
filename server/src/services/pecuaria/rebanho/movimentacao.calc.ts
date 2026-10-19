@@ -53,13 +53,13 @@ export function planejarMovimentacao(input: {
 
 export interface DestinoAtual {
   aptidao: "LEITE" | "CORTE";
-  papelReprodutivo: "NENHUM" | "RECEPTORA" | "DOADORA";
+  papelReprodutivo: "NENHUM" | "RECEPTORA" | "DOADORA" | null;
   desde: Date | string;
 }
 
 export interface DestinoNovo {
   aptidao: "LEITE" | "CORTE";
-  papelReprodutivo: "NENHUM" | "RECEPTORA" | "DOADORA";
+  papelReprodutivo: "NENHUM" | "RECEPTORA" | "DOADORA" | null;
 }
 
 export type PlanoDestino =
@@ -67,7 +67,7 @@ export type PlanoDestino =
   | {
     tipo: "MOVER";
     fechar: { ate: Date | string } | null;
-    abrir: { aptidao: "LEITE" | "CORTE"; papelReprodutivo: "NENHUM" | "RECEPTORA" | "DOADORA"; desde: Date | string };
+    abrir: { aptidao: "LEITE" | "CORTE"; papelReprodutivo: "NENHUM" | "RECEPTORA" | "DOADORA" | null; desde: Date | string };
   };
 
 // ---------- desfazer (localização ou destino, mesma forma) ----------

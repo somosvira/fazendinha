@@ -97,7 +97,7 @@ describe("aplicação sanitária V3", () => {
     await alterarControle(screen.getByLabelText(/Hora/), { target: { value: "10:00" } });
     expect(screen.getByLabelText(/Serviço de atendimento/).getAttribute("aria-required")).not.toBe("true");
     fireEvent.submit(document.getElementById("form-aplicacao-sanitaria")!);
-    await waitFor(() => expect(reqSanidade).toHaveBeenCalledWith("/aplicacoes/coletivas", expect.any(Object)));
+    await waitFor(() => expect(reqSanidade).toHaveBeenCalledWith("/aplicacoes/coletivas", expect.any(Object), 1));
     const call = vi.mocked(reqSanidade).mock.calls.find(([path]) => path === "/aplicacoes/coletivas")!;
     const payload = JSON.parse(call[1]!.body as string);
     expect(payload.chave).toMatch(/^[a-f0-9-]{36}$/);
@@ -166,7 +166,7 @@ describe("aplicação sanitária V3", () => {
     await screen.findByText("Realização conforme o planejamento.");
     expect(screen.getByLabelText(/^Quantidade aplicada$/)).toHaveProperty("disabled", true);
     submeter();
-    await waitFor(() => expect(reqSanidade).toHaveBeenCalledWith("/tarefas/execucao/confirmacao", expect.any(Object)));
+    await waitFor(() => expect(reqSanidade).toHaveBeenCalledWith("/tarefas/execucao/confirmacao", expect.any(Object), 1));
     const envio = vi.mocked(reqSanidade).mock.calls.find(([path]) => path === "/tarefas/execucao/confirmacao")!;
     expect(JSON.parse(envio[1]!.body as string)).toMatchObject({ fingerprint: "a".repeat(64), itens: [{ tipo: "APLICACAO", tarefaId: "tarefa", nomeProdutoAplicado: "Medicamento teste" }] });
   });
@@ -233,4 +233,35 @@ it("devolve a aplicação criada para atualizar a ficha e abrir o fato salvo", a
   render(<FormAplicacaoServico animalId="animal" propriedadeId={1} onFechar={vi.fn()} onSalvo={onSalvo} />);
   await screen.findByRole("option", { hidden: true, name: "Tratamento personalizado" }); await preencher(); submeter();
   await waitFor(() => expect(onSalvo).toHaveBeenCalledWith("aplicacao-criada", 1));
+});
+
+it("aplicação coordenada pela IATF não solicita outra hora nem fabrica aplicadaEm", async () => {
+  const registrar = vi.fn().mockResolvedValue(undefined);
+  render(<FormAplicacaoServico animalId="animal" propriedadeId={1} momentoIatf="2026-09-10" dataInicial="2026-09-10" onRegistrar={registrar} onFechar={vi.fn()} onSalvo={vi.fn()} />);
+  await screen.findByRole("option", { hidden: true, name: "Tratamento personalizado" });
+  await alterarControle(screen.getByLabelText(/Tipo de aplicação/), {target:{value:"tipo"}});
+  await alterarControle(screen.getByLabelText(/Medicamento do estoque/), {target:{value:"produto"}});
+  await alterarControle(screen.getByLabelText(/^Quantidade aplicada$/), {target:{value:"2"}});
+  const hora=screen.getByLabelText(/Horário não informado na IATF/) as HTMLInputElement;
+  expect(hora.required).toBe(false);expect(hora.disabled).toBe(true);expect(hora.value).toBe("");
+  submeter();
+  await waitFor(()=>expect(registrar).toHaveBeenCalledWith(expect.objectContaining({data:"2026-09-10",aplicadaEm:undefined,dose:"2"})));
+  expect(vi.mocked(reqSanidade).mock.calls.some(([path])=>path==="/aplicacoes/coletivas")).toBe(false);
+});
+
+
+it("preenche parâmetros da visita sem criar vínculo sanitário e conserva sítio explícito", async () => {
+  setPropriedadeAtiva(99);
+  const registrar = vi.fn().mockResolvedValue(undefined);
+  render(<FormAplicacaoServico animalId="animal" propriedadeId={7} momentoIatf="2026-10-14T09:00" dataInicial="2026-10-14"
+    parametrosIniciais={{ produtoId: "produto", tipoAplicacaoId: "tipo", dose: "2.5", unidade: "ML", via: "IM" }}
+    onRegistrar={registrar} onFechar={vi.fn()} onSalvo={vi.fn()} />);
+  await screen.findByRole("option", { hidden: true, name: "Tratamento personalizado" });
+  expect(screen.getByLabelText(/Medicamento do estoque/)).toHaveProperty("value", "produto");
+  expect(screen.getByLabelText(/^Quantidade aplicada$/)).toHaveProperty("value", "2.5");
+  submeter();
+  await waitFor(() => expect(registrar).toHaveBeenCalledWith(expect.objectContaining({ propriedadeId: 7, dose: "2.5", produtoId: "produto", via: "IM", aplicadaEm: "2026-10-14T12:00:00.000Z" })));
+  expect(vi.mocked(registrar).mock.calls[0][0].tarefaId).toBeUndefined();
+  expect(buscarFichaAnimal).toHaveBeenCalledWith("animal", undefined, 7);
+  expect(listarProdutos).toHaveBeenCalledWith({ ativo: true }, 7);
 });

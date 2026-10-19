@@ -1,3 +1,4 @@
+import { nomeCampoExame, type CampoExame, type ObservacaoExame } from "./CamposExame";
 import type { AplicacaoSanitaria } from "./api";
 import { formatarDataBR } from "../lib/rotulos";
 import { UNIDADES, UNIDADES_ORDENADAS } from "../../../lib/unidades";
@@ -20,8 +21,9 @@ export function dataHoraSanitaria(valor: string | null | undefined): string {
 }
 
 export const nomeAnimalSanitario = (animal: { brinco: string; nome: string | null }) => `${animal.brinco}${animal.nome ? ` · ${animal.nome}` : ""}`;
-export function resultadoExameSanitario(exame: { formatoSnapshot: { tipoResultado: string; unidade?: string | null }; resultadoNumero: string | number | null; resultadoTexto: string | null; resultadoOpcao: string | null }): string {
+export function resultadoExameSanitario(exame: { formatoSnapshot: { tipoResultado: string; unidade?: string | null; campos?: CampoExame[] }; resultados?: ObservacaoExame[]; resultadoNumero: string | number | null; resultadoTexto: string | null; resultadoOpcao: string | null }): string {
   const formato = exame.formatoSnapshot;
+  if (formato.tipoResultado === "MULTIPLO") return exame.resultados?.length ? exame.resultados.map(r => { const campo = formato.campos?.find(c => c.codigo === r.campo) ?? { codigo: r.campo }; return `${nomeCampoExame(campo)}: ${typeof r.valor === "boolean" ? r.valor ? "Sim" : "Não" : r.valor}`; }).join(" · ") : "Aguardando resultado";
   const valor = formato.tipoResultado === "NUMERO" ? exame.resultadoNumero : formato.tipoResultado === "OPCAO" ? exame.resultadoOpcao : exame.resultadoTexto;
   if (valor == null || valor === "") return "Aguardando resultado";
   if (formato.tipoResultado !== "NUMERO") return String(valor);

@@ -17,6 +17,10 @@ function app(flags: string[] | null) {
 const headers = { "content-type": "application/json" };
 const prefixo = "/financeiro/operacoes";
 const escritas = [
+  ["POST", "/financeiro/grupos-categorias"],
+  ["PATCH", `/financeiro/grupos-categorias/${uid(1)}`],
+  ["POST", "/financeiro/categorias"],
+  ["PATCH", `/financeiro/categorias/${uid(1)}`],
   ["PUT", `${prefixo}/rascunho`],
   ["DELETE", `${prefixo}/rascunho`],
   ["POST", `${prefixo}/rascunho/confirmacao`],

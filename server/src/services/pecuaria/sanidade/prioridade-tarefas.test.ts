@@ -1,17 +1,15 @@
+import { condicaoSituacaoTarefa } from "../protocolos/situacao.js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ listar: vi.fn(), contar: vi.fn(), transacao: vi.fn() }));
 vi.mock("../../../db.js", () => ({ prisma: {
-  tarefaSanitaria: { findMany: mocks.listar, count: mocks.contar },
+  tarefaProtocolo: { findMany: mocks.listar, count: mocks.contar },
   $transaction: mocks.transacao,
 } }));
 import { consultaSanitariaSchema } from "./consulta.js";
 import { listarTarefas } from "./protocolos.js";
 
-const pendente = {
-  execucao: { canceladaEm: null }, dispensadaEm: null,
-  aplicacoes: { none: { status: "VALIDO" } }, exames: { none: { status: "VALIDO" } },
-};
+const pendente = condicaoSituacaoTarefa("PENDENTE");
 const ordem = [{ previstaPara: "asc" }, { id: "asc" }];
 const tarefa = (id: string, realizada = false) => ({
   id, previstaPara: new Date("2026-10-01"), dispensadaEm: null,
@@ -24,7 +22,7 @@ beforeEach(() => {
   vi.resetAllMocks();
   mocks.contar.mockResolvedValue(0);
   mocks.listar.mockResolvedValue([]);
-  mocks.transacao.mockImplementation((fn) => fn({ tarefaSanitaria: { findMany: mocks.listar, count: mocks.contar } }));
+  mocks.transacao.mockImplementation((fn) => fn({ tarefaProtocolo: { findMany: mocks.listar, count: mocks.contar } }));
 });
 
 describe("prioridade global de tarefas sanitárias", () => {
@@ -66,7 +64,7 @@ describe("prioridade global de tarefas sanitárias", () => {
     const filtro = consultaSanitariaSchema.parse({ ordenacaoTarefas: "prioridade", buscaAnimal: "Aurora", loteId: "00000000-0000-4000-8000-000000000001", situacao: "REALIZADA", de: "2026-09-01", ate: "2026-10-31" });
     await listarTarefas(2, "animal", filtro);
     const base = mocks.contar.mock.calls[0][0].where.AND[0];
-    expect(base).toMatchObject({ execucao: { animalId: "animal", animal: { OR: expect.any(Array), localizacoes: { some: { propriedadeId: 2, loteId: filtro.loteId, ate: null } } } }, previstaPara: { gte: new Date("2026-09-01"), lte: new Date("2026-10-31") }, AND: [expect.objectContaining({ OR: expect.any(Array) })] });
+    expect(base).toMatchObject({ execucao: { animalId: "animal", animal: { OR: expect.any(Array), localizacoes: { some: { propriedadeId: 2, loteId: filtro.loteId, ate: null } } } }, previstaPara: { gte: new Date("2026-09-01"), lte: new Date("2026-10-31") }, AND: expect.arrayContaining([expect.objectContaining({ OR: expect.any(Array) })]) });
     expect(mocks.listar.mock.calls[0][0].where.AND[0]).toEqual(base);
   });
 });

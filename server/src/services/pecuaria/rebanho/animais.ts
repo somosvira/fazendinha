@@ -1,5 +1,8 @@
+import { obterContextosAnimaisNaDataTx } from "../reproducao/contexto-animal.js";
+import { papelReprodutivoNaDataTx, registrarPapelReprodutivoTx, desfazerPapelDoDestinoTx, idsComPapelReprodutivo } from "./papeis.js";
+import { resolverPapelReprodutivo } from "./papel-reprodutivo.calc.js";
 import crypto from "node:crypto";
-import { conferirFatosNaBaixa, conferirHistoricoDosFatos } from "../fatos.js";
+import { conferirAnimalNoFato, conferirCadastroIndevidoSemFatosTx, conferirFatosNaBaixa, conferirHistoricoDosFatos } from "../fatos.js";
 import { transacaoPecuaria } from "../transacao.js";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../../db.js";
@@ -7,22 +10,24 @@ import {
   auditar, dadosAuditoria, exigirAfetadas, hojeFazenda, hojeFazendaDate, traduzirConflitoUnico, travarAnimais, travarBrinco, travarBrincos, travarLoteAtivo,
   RebanhoError, type DbPecuaria,
 } from "./regras.js";
+import { totalPartosCategoria } from "./partos.calc.js";
 import { brincoDisponivel, normalizarBrinco } from "./brinco.calc.js";
 import { validarDatasAnimal, validarDataBaixa, validarDataPesagem, validarDataDestino, planejarAjusteEntrada } from "./datas.calc.js";
 import { validarComposicao, rotuloComposicao, composicaoRespeitaHerdanca, type FracaoRaca } from "./composicao.calc.js";
 import { validarFiliacao, validarIntervaloPartos, genitorEhDescendente, composicaoDosGenitores, type GenitorRef } from "./genetica.calc.js";
 import { planejarDestino, planejarDesfazer, planejarDesfazerMovimentacao, planejarMovimentacaoEmMassa, MovimentacaoError, type LinhaHistorico } from "./movimentacao.calc.js";
 import { avaliarCategoria, faixaNascimentoParaIdade, validarDataCategoriaManual, type RegraCategoria } from "./categoria.calc.js";
-import { carregarRegras, manualDe, SELECT_MANUAL_ABERTA, whereCategoria, whereSemCategoria } from "./categorias.js";
+import { carregarRegras, manualDe, SELECT_MANUAL_ABERTA, SELECT_PARTOS_CATEGORIA, whereCategoria, whereSemCategoria } from "./categorias.js";
 import { planejarBaixa, planejarEstornoBaixa, motivoAceito, mensagemMotivoRecusado, BaixaError } from "./baixa.calc.js";
-import { agregarPainel, mapearAnimalResumo, resumoAuditoria, type AnimalResumo, type AnimalFicha, type ItemComposicaoFicha, type PainelRebanho, type FiliacaoLadoDTO } from "./mappers.js";
+import { agregarPainel, mapearAnimalResumo, mapearContextoProdutivoFicha, resumoAuditoria, type AnimalResumo, type AnimalFicha, type ItemComposicaoFicha, type PainelRebanho, type FiliacaoLadoDTO } from "./mappers.js";
 import { resumoPeso } from "./peso.calc.js";
 import { diferencas, type CampoAlteracao } from "./auditoria.calc.js";
+import { consultarAuditoriaAnimal } from "./auditoria-animal.js";
 import type {
   CadastrarAnimalInput, EditarAnimalInput, MovimentarInput, MudarDestinoInput,
   BaixaInput, EstornoBaixaInput, PesagemInput, EditarPesagemInput, ListarFiltrosInput,
   SubstituirComposicaoInput, CategoriaManualInput, RemoverCategoriaManualInput,
-  DefinirFiliacaoInput,
+  DefinirFiliacaoInput, AuditoriaAnimalQuery,
 } from "./schemas.js";
 
 /** Entidades de cadastro que `/auditoria` (fora do animal) pode consultar. */
@@ -36,7 +41,8 @@ async function localizacaoAberta(db: DbPecuaria, animalId: string) {
 }
 
 async function destinoAberto(db: DbPecuaria, animalId: string) {
-  return db.destinoAnimal.findFirst({ where: { animalId, ate: null }, orderBy: { desde: "desc" } });
+  const destino = await db.destinoAnimal.findFirst({ where: { animalId, ate: null }, orderBy: { desde: "desc" } });
+  return destino ? { ...destino, papelReprodutivo: (await papelReprodutivoNaDataTx(db, animalId, hojeFazendaDate())).papel } : null;
 }
 
 async function baixaAberta(db: DbPecuaria, animalId: string) {
@@ -294,12 +300,14 @@ async function rotularComposicaoCalculada(db: DbPecuaria, itens: FracaoRaca[] | 
 
 // ---------- cadastrar ----------
 
-export async function cadastrar(input: CadastrarAnimalInput, usuarioId: number | null): Promise<AnimalResumo & { avisos: Array<{ campo: string; mensagem: string }> }> {
+export async function cadastrar(input: CadastrarAnimalInput, usuarioId: number | null, contextoTecnico?: { nascimentoHistorico: true }): Promise<AnimalResumo & { avisos: Array<{ campo: string; mensagem: string }> }> {
+  // A exceção existe apenas para preparação técnica de históricos/seeds; não é campo da API.
+  if (input.origem === "NASCIDO" && !contextoTecnico?.nascimentoHistorico) throw new RebanhoError("VALIDACAO", "Registre o parto da matriz para cadastrar as crias nascidas na fazenda", "origem");
   const erosDatas = validarDatasAnimal({ dataNascimento: input.dataNascimento, dataEntrada: input.dataEntrada, origem: input.origem });
   if (erosDatas.length) throw new RebanhoError("VALIDACAO", erosDatas[0].mensagem, erosDatas[0].campo);
 
   // receptora/doadora e partos anteriores só existem em fêmea (R1)
-  if (input.sexo === "M" && input.papelReprodutivo !== "NENHUM") {
+  if (input.sexo === "M" && input.papelReprodutivo && input.papelReprodutivo !== "NENHUM") {
     throw new RebanhoError("VALIDACAO", "Receptora/doadora só se aplica a fêmeas", "papelReprodutivo");
   }
   if (input.sexo === "M" && input.partosAntesDaEntrada > 0) {
@@ -365,9 +373,10 @@ export async function cadastrar(input: CadastrarAnimalInput, usuarioId: number |
       data: { animalId: animal.id, propriedadeId: input.propriedadeId, loteId: input.loteId ?? null, desde: new Date(input.dataEntrada), criadoPorId: usuarioId },
     });
 
-    await tx.destinoAnimal.create({
-      data: { animalId: animal.id, aptidao: input.aptidao, papelReprodutivo: input.papelReprodutivo, desde: new Date(input.dataEntrada), criadoPorId: usuarioId },
+    const destinoInicial = await tx.destinoAnimal.create({
+      data: { animalId: animal.id, aptidao: input.aptidao, desde: new Date(input.dataEntrada), criadoPorId: usuarioId },
     });
+    if (input.papelReprodutivo) await registrarPapelReprodutivoTx(tx, { animalId: animal.id, tipo: input.papelReprodutivo, inicio: new Date(input.dataEntrada), destinoOrigemId: destinoInicial.id, usuarioId });
 
     if (input.composicao.length) {
       await tx.composicaoRacial.createMany({
@@ -476,15 +485,16 @@ export async function editar(id: string, input: EditarAnimalInput, usuarioId: nu
     // destino aberto com papel e abre outro igual (mesma aptidão) com papel NENHUM, e zera os
     // partos — mais amigável do que simplesmente recusar a edição.
     const trocaParaMacho = input.sexo === "M" && input.sexo !== animal.sexo;
-    let ajusteDestino: { fechado: { id: string; aptidao: string; papelReprodutivo: string; desde: Date }; aberto: { id: string; aptidao: string; papelReprodutivo: string; desde: Date } } | null = null;
+    let ajusteDestino: { fechado: { id: string; aptidao: string; papelReprodutivo?: string | null; desde: Date }; aberto: { id: string; aptidao: string; papelReprodutivo?: string | null; desde: Date } } | null = null;
     if (trocaParaMacho) {
       const destinoAtual = await destinoAberto(tx, id);
-      if (destinoAtual && destinoAtual.papelReprodutivo !== "NENHUM") {
+      if (destinoAtual?.papelReprodutivo && destinoAtual.papelReprodutivo !== "NENHUM") {
         const dataFechamento = new Date(hojeFazenda());
         exigirAfetadas(await tx.destinoAnimal.updateMany({ where: { id: destinoAtual.id, ate: null }, data: { ate: dataFechamento } }), 1);
         const novoDestino = await tx.destinoAnimal.create({
-          data: { animalId: id, aptidao: destinoAtual.aptidao, papelReprodutivo: "NENHUM", desde: dataFechamento, criadoPorId: usuarioId },
+          data: { animalId: id, aptidao: destinoAtual.aptidao, desde: dataFechamento, criadoPorId: usuarioId },
         });
+        await registrarPapelReprodutivoTx(tx, { animalId: id, tipo: "NENHUM", inicio: dataFechamento, destinoOrigemId: novoDestino.id, usuarioId });
         ajusteDestino = { fechado: destinoAtual, aberto: novoDestino };
       }
     }
@@ -542,7 +552,10 @@ export async function editar(id: string, input: EditarAnimalInput, usuarioId: nu
     // o histórico que começava na entrada/nascimento antigos acompanha as novas datas
     if (ajuste) {
       if (ajuste.moverLocalizacao) await tx.localizacaoAnimal.update({ where: { id: ajuste.moverLocalizacao }, data: { desde: entradaNova } });
-      if (ajuste.moverDestino) await tx.destinoAnimal.update({ where: { id: ajuste.moverDestino }, data: { desde: entradaNova } });
+      if (ajuste.moverDestino) {
+        await tx.destinoAnimal.update({ where: { id: ajuste.moverDestino }, data: { desde: entradaNova } });
+        await tx.periodoReprodutivoAnimal.updateMany({ where: { destinoOrigemId: ajuste.moverDestino, revogadoEm: null }, data: { inicio: entradaNova } });
+      }
       if (ajuste.moverPesagensEntrada.length) await tx.pesagem.updateMany({ where: { id: { in: ajuste.moverPesagensEntrada } }, data: { data: entradaNova } });
       if (ajuste.moverPesagensNascimento.length) await tx.pesagem.updateMany({ where: { id: { in: ajuste.moverPesagensNascimento } }, data: { data: nascimentoNovo } });
     }
@@ -772,10 +785,10 @@ export async function removerCategoriaManual(animalId: string, input: RemoverCat
 // ---------- ficha ----------
 
 export async function buscarFicha(id: string, propriedadeEscopo: number | null, periodoDias: number | null = 90): Promise<AnimalFicha> {
-  const animal = await prisma.animal.findUnique({ where: { id } });
+  const animal = await prisma.animal.findUnique({ where: { id }, include: { partos: SELECT_PARTOS_CATEGORIA } });
   if (!animal) throw new RebanhoError("NAO_ENCONTRADO", "Animal não encontrado");
 
-  const [localizacoes, destinos, pesagens, baixas, composicao, manuais, regras] = await Promise.all([
+  const [localizacoes, destinos, pesagens, baixas, composicao, manuais, regras, papeis] = await Promise.all([
     prisma.localizacaoAnimal.findMany({ where: { animalId: id }, include: { propriedade: true, lote: true, movimentacao: { select: { motivo: true } } }, orderBy: [{ desde: "desc" }, { criadoEm: "desc" }] }),
     prisma.destinoAnimal.findMany({ where: { animalId: id }, orderBy: [{ desde: "desc" }, { criadoEm: "desc" }] }),
     prisma.pesagem.findMany({ where: { animalId: id }, orderBy: { data: "desc" } }),
@@ -787,6 +800,7 @@ export async function buscarFicha(id: string, propriedadeEscopo: number | null, 
     composicaoDaFicha(prisma, id),
     prisma.categoriaManualAnimal.findMany({ where: { animalId: id }, include: { categoria: { select: { id: true, nome: true } } }, orderBy: [{ desde: "desc" }, { criadoEm: "desc" }] }),
     carregarRegras(),
+    prisma.periodoReprodutivoAnimal.findMany({ where: { animalId: id } }),
   ]);
 
   const [mae, pai, filhosCount] = await Promise.all([
@@ -817,13 +831,14 @@ export async function buscarFicha(id: string, propriedadeEscopo: number | null, 
   const loteFicha = locAtual?.lote
     ? { id: locAtual.lote.id, nome: locAtual.lote.nome }
     : baixaAtual?.localizacaoFechada?.lote ? { id: baixaAtual.localizacaoFechada.lote.id, nome: baixaAtual.localizacaoFechada.lote.nome } : null;
+  const papelAtual = resolverPapelReprodutivo(papeis, hoje, !!baixaAtual);
   const destinoFicha = destinoAtual
-    ? { aptidao: destinoAtual.aptidao, papelReprodutivo: destinoAtual.papelReprodutivo }
-    : baixaAtual?.destinoFechado ? { aptidao: baixaAtual.destinoFechado.aptidao, papelReprodutivo: baixaAtual.destinoFechado.papelReprodutivo } : null;
+    ? { aptidao: destinoAtual.aptidao, papelReprodutivo: papelAtual.papel }
+    : baixaAtual?.destinoFechado ? { aptidao: baixaAtual.destinoFechado.aptidao, papelReprodutivo: papelAtual.papel } : null;
 
   const resumo = mapearAnimalResumo({
     animal,
-    categoria: avaliarCategoria({ sexo: animal.sexo, dataNascimento: animal.dataNascimento, partos: animal.partosAntesDaEntrada }, regras, manualAberta, hoje),
+    categoria: avaliarCategoria({ sexo: animal.sexo, dataNascimento: animal.dataNascimento, partos: totalPartosCategoria(animal, hoje) }, regras, manualAberta, hoje),
     hoje,
     propriedade: propriedadeFicha,
     lote: loteFicha,
@@ -843,8 +858,14 @@ export async function buscarFicha(id: string, propriedadeEscopo: number | null, 
     ateData: baixaAtual ? baixaAtual.data : null,
   });
 
+  const contextoProdutivo = animal.sexo === "F"
+    ? (await obterContextosAnimaisNaDataTx(prisma, [id], hoje)).get(id) ?? null : null;
+
   return {
     ...resumo,
+    contextoProdutivo: contextoProdutivo ? mapearContextoProdutivoFicha(contextoProdutivo) : null,
+    papelReprodutivoEstado: papelAtual.estado,
+    historicoPapeisReprodutivos: papeis.map(p => ({ id: p.id, tipo: p.tipo, inicio: p.inicio.toISOString().slice(0, 10), fim: p.fim?.toISOString().slice(0, 10) ?? null, origem: p.origem, revogado: !!p.revogadoEm })),
     brincoEletronico: animal.brincoEletronico,
     sisbov: animal.sisbov,
     nascimentoEstimado: animal.nascimentoEstimado,
@@ -861,7 +882,7 @@ export async function buscarFicha(id: string, propriedadeEscopo: number | null, 
       movimentacaoId: l.movimentacaoId,
     })),
     historicoDestinos: destinos.map((d) => ({
-      id: d.id, aptidao: d.aptidao, papelReprodutivo: d.papelReprodutivo,
+      id: d.id, aptidao: d.aptidao, papelReprodutivo: resolverPapelReprodutivo(papeis, d.desde).papel,
       desde: d.desde.toISOString().slice(0, 10), ate: d.ate ? d.ate.toISOString().slice(0, 10) : null,
     })),
     historicoCategoriasManuais: manuais.map((m) => ({
@@ -903,15 +924,14 @@ export function whereSituacao(input: {
   propriedadeId?: number | null;
   loteId?: string | null;
   aptidao?: "LEITE" | "CORTE" | null;
-  papelReprodutivo?: "NENHUM" | "RECEPTORA" | "DOADORA" | null;
+  propriedadeIds?: number[]; loteIds?: string[]; aptidoes?: ("LEITE" | "CORTE")[];
 }): Prisma.AnimalWhereInput {
   const lugar = {
-    ...(input.propriedadeId != null ? { propriedadeId: input.propriedadeId } : {}),
-    ...(input.loteId ? { loteId: input.loteId } : {}),
+    ...(input.propriedadeId != null ? { propriedadeId: input.propriedadeId } : input.propriedadeIds?.length ? { propriedadeId: { in: input.propriedadeIds } } : {}),
+    ...(input.loteId ? { loteId: input.loteId } : input.loteIds?.length ? { loteId: { in: input.loteIds } } : {}),
   };
   const destino = {
-    ...(input.aptidao ? { aptidao: input.aptidao } : {}),
-    ...(input.papelReprodutivo ? { papelReprodutivo: input.papelReprodutivo } : {}),
+    ...(input.aptidao ? { aptidao: input.aptidao } : input.aptidoes?.length ? { aptidao: { in: input.aptidoes } } : {}),
   };
   const temDestino = Object.keys(destino).length > 0;
 
@@ -938,7 +958,7 @@ export function whereSituacao(input: {
 // ---------- filtros da lista (tudo no banco: a paginação e o painel usam o mesmo `where`) ----------
 
 type FiltrosAnimal = Pick<ListarFiltrosInput,
-  "sexo" | "origem" | "racaId" | "categoriaOrigem" | "tipoBaixa" | "baixaDe" | "baixaAte" | "situacao">;
+  "sexo" | "origem" | "racaId" | "sexos" | "origens" | "racaIds" | "categoriaOrigem" | "tipoBaixa" | "baixaDe" | "baixaAte" | "situacao">;
 
 /**
  * Filtros de atributo do animal (não dependem de "hoje"). Os da baixa valem para a baixa em
@@ -948,8 +968,11 @@ type FiltrosAnimal = Pick<ListarFiltrosInput,
 export function whereAtributos(f: FiltrosAnimal): Prisma.AnimalWhereInput[] {
   const partes: Prisma.AnimalWhereInput[] = [];
   if (f.sexo) partes.push({ sexo: f.sexo });
+  else if (f.sexos?.length) partes.push({ sexo: { in: f.sexos } });
   if (f.origem) partes.push({ origem: f.origem });
+  else if (f.origens?.length) partes.push({ origem: { in: f.origens } });
   if (f.racaId) partes.push({ composicao: { some: { racaId: f.racaId } } });
+  else if (f.racaIds?.length) partes.push({ composicao: { some: { racaId: { in: f.racaIds } } } });
   if (f.categoriaOrigem === "MANUAL") partes.push({ categoriasManuais: { some: { ate: null } } });
   if (f.situacao !== "ATIVO" && (f.tipoBaixa || f.baixaDe || f.baixaAte)) {
     partes.push({
@@ -1026,11 +1049,13 @@ const ORDEM_HISTORICO = [{ desde: "desc" as const }, { criadoEm: "desc" as const
 const INCLUDE_RESUMO = {
   localizacoes: { orderBy: ORDEM_HISTORICO, take: 1, include: { propriedade: true, lote: true } },
   destinos: { orderBy: ORDEM_HISTORICO, take: 1 },
+  papeisReprodutivos: { where: { revogadoEm: null } },
   baixas: { where: { estornadaEm: null }, take: 1, select: { id: true, data: true, tipo: true } },
   composicao: { include: { raca: true } },
   // 2 mais recentes: a última pesagem (ultimoPeso) e a anterior a ela (gmdRecente)
   pesagens: { orderBy: { data: "desc" as const }, take: 2 },
   categoriasManuais: SELECT_MANUAL_ABERTA,
+  partos: SELECT_PARTOS_CATEGORIA,
 } satisfies Prisma.AnimalInclude;
 
 type AnimalComResumo = Prisma.AnimalGetPayload<{ include: typeof INCLUDE_RESUMO }>;
@@ -1043,11 +1068,12 @@ function resumoDe(animal: AnimalComResumo, regras: RegraCategoria[], hoje: Date)
   const hojeReferencia = baixa ? baixa.data : hoje;
   return mapearAnimalResumo({
     animal,
-    categoria: avaliarCategoria({ sexo: animal.sexo, dataNascimento: animal.dataNascimento, partos: animal.partosAntesDaEntrada }, regras, manualDe(animal.categoriasManuais), hojeReferencia),
+    categoria: avaliarCategoria({ sexo: animal.sexo, dataNascimento: animal.dataNascimento, partos: totalPartosCategoria(animal, hojeReferencia) }, regras, manualDe(animal.categoriasManuais), hojeReferencia),
     hoje: hojeReferencia,
+    papelReprodutivoEstado: resolverPapelReprodutivo(animal.papeisReprodutivos, hojeReferencia, !!baixa).estado,
     propriedade: loc ? { id: loc.propriedade.id, nome: loc.propriedade.nome } : null,
     lote: loc?.lote ? { id: loc.lote.id, nome: loc.lote.nome } : null,
-    destino: destino ? { aptidao: destino.aptidao, papelReprodutivo: destino.papelReprodutivo } : null,
+    destino: destino ? { aptidao: destino.aptidao, papelReprodutivo: resolverPapelReprodutivo(animal.papeisReprodutivos, hojeReferencia, !!baixa).papel } : null,
     composicao: animal.composicao.map((c) => ({ sigla: c.raca.sigla, fracao64: c.fracao64 })),
     ultimoPeso: animal.pesagens[0] ? { pesoKg: Number(animal.pesagens[0].pesoKg), data: animal.pesagens[0].data } : null,
     pesagemAnterior: animal.pesagens[1] ? { pesoKg: Number(animal.pesagens[1].pesoKg), data: animal.pesagens[1].data } : null,
@@ -1064,7 +1090,7 @@ type ListarEntrada = Omit<ListarFiltrosInput, "semCategoria" | "ordenar" | "dire
 
 export async function listar(filtros: ListarEntrada, propriedadeEscopo: number | null): Promise<{ itens: AnimalResumo[]; total: number; painel: PainelRebanho }> {
   // o escopo do request (seletor global de sítio) prevalece; o filtro só refina dentro dele
-  if (propriedadeEscopo != null && filtros.propriedadeId != null && filtros.propriedadeId !== propriedadeEscopo) {
+  if (propriedadeEscopo != null && ((filtros.propriedadeId != null && filtros.propriedadeId !== propriedadeEscopo) || (filtros.propriedadeIds && !filtros.propriedadeIds.includes(propriedadeEscopo)))) {
     return { itens: [], total: 0, painel: agregarPainel([]) };
   }
   const hoje = hojeFazendaDate();
@@ -1077,13 +1103,14 @@ export async function listar(filtros: ListarEntrada, propriedadeEscopo: number |
         propriedadeId: propriedadeEscopo ?? filtros.propriedadeId ?? null,
         loteId: filtros.loteId ?? null,
         aptidao: filtros.aptidao ?? null,
-        papelReprodutivo: filtros.papelReprodutivo ?? null,
+        propriedadeIds: filtros.propriedadeIds, loteIds: filtros.loteIds, aptidoes: filtros.aptidoes,
       }),
       // categoria/sem categoria contam em "hoje" para todos (inclusive baixados), como sempre fez o filtro de categoria
-      whereCategoria(filtros.categoriaId, regras, hoje),
+      filtros.categoriaIds?.length ? { OR: filtros.categoriaIds.map(id => whereCategoria(id, regras, hoje)) } : whereCategoria(filtros.categoriaId, regras, hoje),
       filtros.semCategoria ? whereSemCategoria(regras, hoje) : {},
       ...whereAtributos(filtros),
       await whereIdade(filtros.situacao, hoje, filtros.idadeMinMeses, filtros.idadeMaxMeses),
+      filtros.papelReprodutivo || filtros.papeisReprodutivos?.length ? { id: { in: [...new Set((await Promise.all((filtros.papeisReprodutivos ?? [filtros.papelReprodutivo!]).map(papel => idsComPapelReprodutivo(prisma, papel, hoje)))).flat())] } } : {},
       filtros.busca ? { OR: [
         { brinco: { contains: filtros.busca, mode: "insensitive" } },
         { nome: { contains: filtros.busca, mode: "insensitive" } },
@@ -1108,20 +1135,24 @@ export async function listar(filtros: ListarEntrada, propriedadeEscopo: number |
       select: {
         id: true, brinco: true, nome: true, sexo: true, dataNascimento: true, dataEntrada: true, origem: true, partosAntesDaEntrada: true,
         localizacoes: { orderBy: ORDEM_HISTORICO, take: 1, select: { propriedade: { select: { id: true, nome: true } } } },
-        destinos: { orderBy: ORDEM_HISTORICO, take: 1, select: { aptidao: true, papelReprodutivo: true } },
-        baixas: { where: { estornadaEm: null }, take: 1, select: { id: true } },
+        destinos: { orderBy: ORDEM_HISTORICO, take: 1, select: { aptidao: true } },
+        papeisReprodutivos: { where: { revogadoEm: null } },
+        baixas: { where: { estornadaEm: null }, take: 1, select: { id: true, data: true } },
         categoriasManuais: SELECT_MANUAL_ABERTA,
+        partos: SELECT_PARTOS_CATEGORIA,
+        identificacaoProvisoria: true,
       },
     }),
   ]);
 
   const leves = paraPainel.map((a) => mapearAnimalResumo({
     animal: a,
-    categoria: avaliarCategoria({ sexo: a.sexo, dataNascimento: a.dataNascimento, partos: a.partosAntesDaEntrada }, regras, manualDe(a.categoriasManuais), hoje),
+    papelReprodutivoEstado: resolverPapelReprodutivo(a.papeisReprodutivos, a.baixas[0]?.data ?? hoje, !!a.baixas.length).estado,
+    categoria: avaliarCategoria({ sexo: a.sexo, dataNascimento: a.dataNascimento, partos: totalPartosCategoria(a, hoje) }, regras, manualDe(a.categoriasManuais), hoje),
     hoje,
     propriedade: a.localizacoes[0]?.propriedade ?? null,
     lote: null,
-    destino: a.destinos[0] ?? null,
+    destino: a.destinos[0] ? { ...a.destinos[0], papelReprodutivo: resolverPapelReprodutivo(a.papeisReprodutivos, a.baixas[0]?.data ?? hoje, !!a.baixas.length).papel } : null,
     composicao: [],
     ultimoPeso: null,
     situacao: a.baixas.length ? "BAIXADO" : "ATIVO",
@@ -1248,17 +1279,20 @@ export async function mudarDestino(input: MudarDestinoInput & { animalId: string
     await travarAnimais(tx, [animalId]);
     const animal = await exigirAnimal(tx, animalId);
     // receptora/doadora só se aplica a fêmeas (R1)
-    if (input.papelReprodutivo !== "NENHUM" && animal.sexo === "M") {
+    if (input.papelReprodutivo && input.papelReprodutivo !== "NENHUM" && animal.sexo === "M") {
       throw new RebanhoError("VALIDACAO", "Receptora/doadora só se aplica a fêmeas", "papelReprodutivo");
     }
     const errosData = validarDataDestino({ dataEntrada: animal.dataEntrada, desde: input.data });
     if (errosData.length) throw new RebanhoError("VALIDACAO", errosData[0].mensagem, errosData[0].campo);
 
     await exigirAnimalAtivo(tx, input.animalId);
-    const atual = await destinoAberto(tx, input.animalId);
+    const atualDestino = await destinoAberto(tx, input.animalId);
+    const papel = await papelReprodutivoNaDataTx(tx, input.animalId, new Date(input.data));
+    if (papel.estado === "CONFLITO") throw new RebanhoError("CONFLITO", "Concilie os papéis reprodutivos conflitantes antes de alterar", "papelReprodutivo");
+    const atual = atualDestino ? { ...atualDestino, papelReprodutivo: papel.papel } : null;
     const plano = planejar(() => planejarDestino({
       atual: atual ? { aptidao: atual.aptidao, papelReprodutivo: atual.papelReprodutivo, desde: atual.desde } : null,
-      novo: { aptidao: input.aptidao, papelReprodutivo: input.papelReprodutivo },
+      novo: { aptidao: input.aptidao, papelReprodutivo: input.papelReprodutivo ?? papel.papel },
       data: input.data,
     }));
 
@@ -1268,9 +1302,10 @@ export async function mudarDestino(input: MudarDestinoInput & { animalId: string
       exigirAfetadas(await tx.destinoAnimal.updateMany({ where: { id: atual.id, ate: null }, data: { ate: new Date(plano.fechar.ate) } }), 1);
     }
     const novo = await tx.destinoAnimal.create({
-      data: { animalId: input.animalId, aptidao: plano.abrir.aptidao, papelReprodutivo: plano.abrir.papelReprodutivo, desde: new Date(plano.abrir.desde), criadoPorId: usuarioId },
+      data: { animalId: input.animalId, aptidao: plano.abrir.aptidao, desde: new Date(plano.abrir.desde), criadoPorId: usuarioId },
     });
 
+    if (input.papelReprodutivo && input.papelReprodutivo !== papel.papel) await registrarPapelReprodutivoTx(tx, { animalId: input.animalId, tipo: input.papelReprodutivo, inicio: new Date(plano.abrir.desde), destinoOrigemId: novo.id, usuarioId });
     await auditar(tx, { entidade: "DestinoAnimal", entidadeId: novo.id, animalId: input.animalId, acao: "MUDANCA_DESTINO", usuarioId, antes: atual, depois: novo });
   });
 
@@ -1458,6 +1493,7 @@ export async function desfazerDestino(animalId: string, usuarioId: number | null
     const removida = linhas.find((l) => l.id === plano.remover.id)!;
     const anterior = linhas.find((l) => l.id === plano.reabrir.id)!;
 
+    await desfazerPapelDoDestinoTx(tx, animalId, removida.id, usuarioId);
     exigirAfetadas(await tx.destinoAnimal.deleteMany({ where: { id: removida.id, ate: null } }), 1);
     exigirAfetadas(await tx.destinoAnimal.updateMany({ where: { id: anterior.id, ate: { not: null } }, data: { ate: null } }), 1);
     const reaberta = { ...anterior, ate: null };
@@ -1488,6 +1524,7 @@ export async function darBaixa(input: BaixaInput & { animalId: string }, usuario
     const { carenciaAnimalTx } = await import("../sanidade/aplicacoes.js");
     const carencias = await carenciaAnimalTx(tx, animalId, input.data);
     await conferirFatosNaBaixa(tx, animalId, new Date(input.data));
+    if (input.tipo === "CADASTRO_INDEVIDO") await conferirCadastroIndevidoSemFatosTx(tx, animalId);
     const fimDia = new Date(`${input.data}T00:00:00-03:00`);
     const restricoes = [carencias.leite, carencias.carne].filter((p) => p.estado === "NAO_INFORMADO" || (p.estado === "CONHECIDO" && p.ate > fimDia));
     if (["VENDA", "ABATE"].includes(input.tipo) && restricoes.length && (!input.cienciaSanitaria || !input.justificativaSanitaria?.trim())) throw new RebanhoError("VALIDACAO", "Há carência vigente ou desconhecida. Confirme ciência e justifique a baixa", "justificativaSanitaria");
@@ -1576,21 +1613,26 @@ export async function estornarBaixa(animalId: string, input: EstornoBaixaInput, 
 // Pesagens também travam o animal: a data da pesagem é validada contra a baixa (e a baixa,
 // contra as pesagens), então as duas escritas não podem se cruzar.
 
+/** O chamador valida o sítio/data do fato e trava o animal antes de escrever. */
+export async function registrarPesagemTx(tx: Prisma.TransactionClient, input: PesagemInput & { animalId: string }, usuarioId: number | null) {
+  const animal = await exigirAnimal(tx, input.animalId);
+  const baixa = await baixaAberta(tx, input.animalId);
+  const errosData = validarDataPesagem({ dataNascimento: animal.dataNascimento, dataBaixa: baixa?.data ?? null, dataPesagem: input.data });
+  if (errosData.length) throw new RebanhoError("VALIDACAO", errosData[0].mensagem, errosData[0].campo);
+
+  const criada = await tx.pesagem.create({
+    data: { animalId: input.animalId, data: new Date(input.data), pesoKg: new Prisma.Decimal(input.pesoKg), tipo: input.tipo, origem: input.origem, observacao: input.observacao ?? null, criadoPorId: usuarioId },
+  });
+  await auditar(tx, { entidade: "Pesagem", entidadeId: criada.id, animalId: input.animalId, acao: "REGISTRO", usuarioId, depois: criada });
+  return criada;
+}
+
 export async function registrarPesagem(input: PesagemInput & { animalId: string }, usuarioId: number | null, escopo: number | null = null) {
   await exigirNoEscopo(prisma, input.animalId, escopo);
 
   const pesagem = await prisma.$transaction(async (tx) => {
     await travarAnimais(tx, [input.animalId]);
-    const animal = await exigirAnimal(tx, input.animalId);
-    const baixa = await baixaAberta(tx, input.animalId);
-    const errosData = validarDataPesagem({ dataNascimento: animal.dataNascimento, dataBaixa: baixa?.data ?? null, dataPesagem: input.data });
-    if (errosData.length) throw new RebanhoError("VALIDACAO", errosData[0].mensagem, errosData[0].campo);
-
-    const criada = await tx.pesagem.create({
-      data: { animalId: input.animalId, data: new Date(input.data), pesoKg: new Prisma.Decimal(input.pesoKg), tipo: input.tipo, origem: input.origem, observacao: input.observacao ?? null, criadoPorId: usuarioId },
-    });
-    await auditar(tx, { entidade: "Pesagem", entidadeId: criada.id, animalId: input.animalId, acao: "REGISTRO", usuarioId, depois: criada });
-    return criada;
+    return registrarPesagemTx(tx, input, usuarioId);
   });
 
   return { id: pesagem.id, animalId: pesagem.animalId, data: pesagem.data.toISOString().slice(0, 10), pesoKg: Number(pesagem.pesoKg), tipo: pesagem.tipo, origem: pesagem.origem };
@@ -1602,31 +1644,52 @@ async function exigirPesagem(db: DbPecuaria, id: string) {
   return pesagem;
 }
 
+/** O chamador já trava o animal e valida o sítio do fato. */
+export async function editarPesagemTx(tx: Prisma.TransactionClient, id: string, input: EditarPesagemInput, usuarioId: number | null) {
+  const referencia = await exigirPesagem(tx, id);
+  const animalId = referencia.animalId;
+  const existente = await exigirPesagem(tx, id);
+  const animal = await exigirAnimal(tx, animalId);
+  const baixa = await baixaAberta(tx, animalId);
+  const dataPesagem = input.data ?? existente.data;
+  const errosData = validarDataPesagem({ dataNascimento: animal.dataNascimento, dataBaixa: baixa?.data ?? null, dataPesagem });
+  if (errosData.length) throw new RebanhoError("VALIDACAO", errosData[0].mensagem, errosData[0].campo);
+
+  const vinculos = await tx.vinculoPesagemParto.findMany({
+    where: { pesagemId: id, revogadoEm: null }, include: { parto: true },
+  });
+  const dia = new Date(dataPesagem).getTime();
+  for (const vinculo of vinculos) {
+    if (vinculo.parto.propriedadeId != null)
+      await conferirAnimalNoFato(tx, animalId, vinculo.parto.propriedadeId, new Date(dataPesagem));
+    if (dia < vinculo.parto.data.getTime() || (vinculo.sujeito === "CRIA" &&
+        (dia !== vinculo.parto.data.getTime() || (input.tipo ?? existente.tipo) !== "NASCIMENTO"))) {
+      throw new RebanhoError("VALIDACAO", "Pesagem vinculada ao parto deve preservar a data e o tipo do nascimento; desvincule explicitamente antes de mudar sua finalidade", "data");
+    }
+  }
+
+  const salva = await tx.pesagem.update({
+    where: { id },
+    data: {
+      data: input.data != null ? new Date(input.data) : undefined,
+      pesoKg: input.pesoKg != null ? new Prisma.Decimal(input.pesoKg) : undefined,
+      tipo: input.tipo ?? undefined,
+      origem: input.origem ?? undefined,
+      observacao: input.observacao === undefined ? undefined : input.observacao,
+    },
+  });
+  await auditar(tx, { entidade: "Pesagem", entidadeId: id, animalId, acao: "EDICAO", usuarioId, antes: existente, depois: salva });
+  return salva;
+}
+
 export async function editarPesagem(id: string, input: EditarPesagemInput, usuarioId: number | null, escopo: number | null = null) {
   const { animalId } = await exigirPesagem(prisma, id);
   await exigirNoEscopo(prisma, animalId, escopo);
 
-  const atualizada = await prisma.$transaction(async (tx) => {
-    await travarAnimais(tx, [animalId]);
-    const existente = await exigirPesagem(tx, id);
-    const animal = await exigirAnimal(tx, animalId);
-    const baixa = await baixaAberta(tx, animalId);
-    const dataPesagem = input.data ?? existente.data;
-    const errosData = validarDataPesagem({ dataNascimento: animal.dataNascimento, dataBaixa: baixa?.data ?? null, dataPesagem });
-    if (errosData.length) throw new RebanhoError("VALIDACAO", errosData[0].mensagem, errosData[0].campo);
-
-    const salva = await tx.pesagem.update({
-      where: { id },
-      data: {
-        data: input.data != null ? new Date(input.data) : undefined,
-        pesoKg: input.pesoKg != null ? new Prisma.Decimal(input.pesoKg) : undefined,
-        tipo: input.tipo ?? undefined,
-        origem: input.origem ?? undefined,
-        observacao: input.observacao === undefined ? undefined : input.observacao,
-      },
-    });
-    await auditar(tx, { entidade: "Pesagem", entidadeId: id, animalId, acao: "EDICAO", usuarioId, antes: existente, depois: salva });
-    return salva;
+  const atualizada = await transacaoPecuaria(async (tx) => {
+    const vinculos = await tx.vinculoPesagemParto.findMany({ where: { pesagemId: id, revogadoEm: null }, select: { parto: { select: { animalId: true } } } });
+    await travarAnimais(tx, [animalId, ...vinculos.map(v => v.parto.animalId)]);
+    return editarPesagemTx(tx, id, input, usuarioId);
   });
 
   return { id: atualizada.id, animalId: atualizada.animalId, data: atualizada.data.toISOString().slice(0, 10), pesoKg: Number(atualizada.pesoKg), tipo: atualizada.tipo, origem: atualizada.origem, observacao: atualizada.observacao };
@@ -1639,6 +1702,8 @@ export async function excluirPesagem(id: string, usuarioId: number | null, escop
   await prisma.$transaction(async (tx) => {
     await travarAnimais(tx, [animalId]);
     const existente = await exigirPesagem(tx, id);
+    if (await tx.vinculoPesagemParto.count({ where: { pesagemId: id } }))
+      throw new RebanhoError("VALIDACAO", "Pesagem com histórico de parto deve ser corrigida, preservando o registro", "id");
     await tx.pesagem.delete({ where: { id } });
     await auditar(tx, { entidade: "Pesagem", entidadeId: id, animalId, acao: "EXCLUSAO", usuarioId, antes: existente });
   });
@@ -1681,23 +1746,10 @@ function mapearEntradaAuditoria(e: {
 
 export async function buscarAuditoriaAnimal(
   animalId: string, escopo: number | null = null, page = 1, pageSize = 20,
-): Promise<{ itens: EntradaAuditoriaDTO[]; total: number }> {
+  filtros: Omit<AuditoriaAnimalQuery, "page" | "pageSize"> = {}, verValores = false,
+) {
   await exigirNoEscopo(prisma, animalId, escopo);
-
-  // por animalId: inclui o que já foi apagado (pesagem excluída, movimentação/destino desfeitos)
-  const where = { animalId };
-  const [total, entradas] = await Promise.all([
-    prisma.auditoriaPecuaria.count({ where }),
-    prisma.auditoriaPecuaria.findMany({
-      where,
-      include: { usuario: { select: { nome: true } } },
-      orderBy: { em: "desc" },
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-    }),
-  ]);
-
-  return { itens: entradas.map((e) => mapearEntradaAuditoria(e)), total };
+  return consultarAuditoriaAnimal(animalId, { ...filtros, page, pageSize }, verValores, escopo);
 }
 
 /**

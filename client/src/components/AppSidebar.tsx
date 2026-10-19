@@ -13,7 +13,7 @@
 import "./sidebar-clara.css";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState, type ComponentType, type SVGProps } from "react";
-import { HeartPulse, Leaf, CircleDollarSign, FileText, FilePenLine, Plus, Settings, Wallet } from "lucide-react";
+import { Baby, ClipboardList, HeartPulse, Leaf, CircleDollarSign, FileText, FilePenLine, Plus, Settings, Wallet } from "lucide-react";
 import type { Tab } from "./Shell";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
@@ -47,7 +47,7 @@ type IconeNavegacao = ComponentType<SVGProps<SVGSVGElement>>;
 
 const ICON_FINANCEIRO: Partial<Record<Tab, IconeNavegacao>> = { gastos: CircleDollarSign, caixinha: Wallet, cadastros: Settings, plano: Settings, relatorio: FileText };
 
-const ICON_PECUARIA: Partial<Record<Tab, IconeNavegacao>> = { "pec-rebanho": VacaIcon, "pec-sanidade": HeartPulse, "pec-nutricao": Leaf };
+const ICON_PECUARIA: Partial<Record<Tab, IconeNavegacao>> = { "pec-rebanho": VacaIcon, "pec-sanidade": HeartPulse, "pec-nutricao": Leaf, "pec-reproducao": Baby, "pec-visitas": ClipboardList, "pec-relatorios": FileText };
 
 type AreaTrabalhoId = "pecuaria";
 type NavItem = { id: Tab; label: string };
@@ -72,6 +72,9 @@ const AREAS_TRABALHO: AreaTrabalho[] = [
       { id: "pec-rebanho", label: "Rebanho" },
       { id: "pec-sanidade", label: "Sanidade" },
       { id: "pec-nutricao", label: "Nutrição" },
+      { id: "pec-reproducao", label: "Reprodução" },
+      { id: "pec-visitas", label: "Visitas veterinárias" },
+      { id: "pec-relatorios", label: "Relatórios" },
     ],
   },
 
@@ -414,7 +417,8 @@ export function AppSidebar({
   );
 
   const navBody = (
-    <div className="flex flex-1 flex-col overflow-y-auto overscroll-contain px-3.5 pb-2 pt-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden min-[901px]:max-[1100px]:px-2 min-[901px]:max-[1100px]:pt-2.5 [.side-collapsed_&]:px-2 [.side-collapsed_&]:pt-2.5">
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-3.5 pb-2 pt-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden min-[901px]:max-[1100px]:px-2 min-[901px]:max-[1100px]:pt-2.5 [.side-collapsed_&]:px-2 [.side-collapsed_&]:pt-2.5">
+      {(temAcessoArea(areasEfetivas,"pecuaria") || (temAcessoArea(areasEfetivas,"financeiro") && financeiro.some(t=>t.id==="dashboard"))) && <div className="mb-3"><Item id="gerencial" label="Painel administrativo" current={current} onNav={nav}/></div>}
       {(trabalhoAtivo || trabalhoAtivoRelatorio) && (
         <section role="group" aria-label="Trabalhos ativos" className="mb-3 border-b border-dashed border-[rgba(232,220,196,0.16)] pb-3">
           <h2 className={cn("mb-2 px-2.5 text-[10px] font-semibold uppercase tracking-[0.13em] text-[rgba(232,220,196,0.62)]", RAIL_LABEL)}>Trabalhos ativos</h2>
@@ -505,7 +509,7 @@ export function AppSidebar({
          o hover/focus-within-expande dos filhos na faixa 901–1100px. */}
       <aside
         className={cn(
-          "sidebar-clara group fixed inset-y-0 left-0 z-[11] hidden w-[var(--side-w)] flex-col overflow-hidden bg-mast text-mast-ink print:hidden",
+          "sidebar-clara group fixed inset-y-0 left-0 h-dvh z-[11] hidden w-[var(--side-w)] flex-col overflow-hidden bg-mast text-mast-ink print:hidden",
           "min-[901px]:flex",
           "min-[901px]:max-[1100px]:w-[64px]",
           "min-[901px]:max-[1100px]:transition-[width,box-shadow] min-[901px]:max-[1100px]:duration-[180ms] min-[901px]:max-[1100px]:ease-in-out",
@@ -525,7 +529,7 @@ export function AppSidebar({
         <SheetContent
           side="left"
           showCloseButton={false}
-          className="sidebar-clara max-w-none w-[min(288px,88vw)] gap-0 border-r-0 bg-mast p-0 text-mast-ink shadow-[8px_0_30px_rgba(0,0,0,0.18)] sm:max-w-none min-[901px]:hidden print:hidden"
+          className="sidebar-clara h-dvh max-w-none w-[min(288px,88vw)] gap-0 border-r-0 bg-mast p-0 text-mast-ink shadow-[8px_0_30px_rgba(0,0,0,0.18)] sm:max-w-none min-[901px]:hidden print:hidden"
         >
           <Button variant="ghost" type="button" onClick={() => onMobileToggle(false)} aria-label="Fechar menu" className="absolute right-3 top-3 z-10 grid h-9 w-9 place-items-center rounded-lg text-mast-ink hover:bg-white/5"><svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden><path d="M6 6l12 12"/><path d="M18 6L6 18"/></svg></Button>
           <SheetTitle className="sr-only">Menu de navegação</SheetTitle>
