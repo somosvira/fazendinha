@@ -29,9 +29,9 @@ it("data inválida na URL bloqueia os resultados sem quebrar o seletor",()=>{
 it("limita a dez mesmo ao restaurar URL antiga com cinquenta registros por página", () => {
  window.history.replaceState({},"","/pecuaria/rebanho/animais/a?historicoTamanho=50#reproducao");
  const fatos=Array.from({length:21},(_,i)=>({id:`p${i}`,animalId:"a",propriedadeId:7,data:"2020-01-01",grupo:"Parto",tipo:"DISTOCICO"}));
- render(<HistoricoReprodutivo fatos={fatos} onAbrir={()=>{}} />);
+ render(<HistoricoReprodutivo fatos={fatos} animalId="a" onAbrir={()=>{}} />);
  expect((screen.getByLabelText("Registros por página") as HTMLSelectElement).value).toBe("10");
  expect(within(screen.getByRole("table",{name:"Histórico reprodutivo"})).getAllByRole("button",{name:"Ver detalhes"})).toHaveLength(10);
  expect(within(screen.getByRole("list",{name:"Histórico reprodutivo"})).getAllByRole("listitem")).toHaveLength(10);
- expect(screen.queryByRole("option",{name:"50",exact:true})).toBeNull();
+ expect(screen.queryByRole("option",{name:"50"})).toBeNull();
 });

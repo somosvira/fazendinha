@@ -22,6 +22,7 @@ describe("composição operacional de protocolos", () => {
   it("consulta outra etapa e filtra pendentes na mesma tabela; pagina com teto recebido de dez", () => {
     const p = props(); const tela = render(<EtapasProtocolo {...p} />);
     expect(screen.getByRole("button", { name: "Todos" }).className).toContain("bg-primary");
+    expect(screen.getByRole("button", { name: "Todos" }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByRole("button", { name: "Pendentes" }).className).not.toContain("bg-primary");
     fireEvent.click(screen.getByRole("button", { name: /Dia 7 Retirada/ }));
     expect(p.aoSelecionarEtapa).toHaveBeenCalledWith("e1");
@@ -32,6 +33,7 @@ describe("composição operacional de protocolos", () => {
     expect(screen.getByText("1–10 de 11 animais")).toBeTruthy();
     tela.rerender(<EtapasProtocolo {...p} pendentes />);
     expect(screen.getByRole("button", { name: "Pendentes" }).className).toContain("bg-primary");
+    expect(screen.getByRole("button", { name: "Pendentes" }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByRole("button", { name: "Todos" }).className).not.toContain("bg-primary");
   });
   it("individual usa etapas da participação e ações de cabeçalho não recolhem conteúdo", () => {
