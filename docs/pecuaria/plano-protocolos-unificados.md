@@ -184,6 +184,81 @@ Real = custos de produtos e serviços efetivamente atribuídos aos fatos do reco
 
 Pontos de partida confirmados: `Iatf.tsx`, `ProtocolosAnimal.tsx`, `sanidade/AgendaRodadas.tsx`, `RodadasAnimal.tsx`, `FormRodada.tsx`, `rodadas-api.ts`; backend em `protocolos/`, `sanidade/protocolos.ts`, `sanidade/rodadas.ts`, `reproducao/iatf.ts`, `reproducao/inicio-iatf-visita.ts`, `custos/`, rotas `rodadas.ts` e `reproducao.ts`. O desenho dos componentes novos será ajustado após localizar equivalentes; esses caminhos não autorizam reescrita integral dos módulos.
 
+## Execução por agentes: assertividade e consumo de tokens
+
+**Modo recomendado: coordenador + cinco especialistas, ativados por etapas.** Esta é a distribuição planejada; nenhum agente de implementação foi iniciado por esta atualização. Os nomes de modelos abaixo correspondem às opções disponíveis nesta sessão e devem ser reconferidos no início da execução.
+
+A prioridade é reduzir retrabalho: mais capacidade nas invariantes e transações, contexto limitado para interface e documentação, revisão independente nos riscos que afetam dados. Não estimar porcentagens de acerto nem valores em dinheiro sem medição. Esforço maior não garante correção; os critérios de aceite e testes continuam obrigatórios.
+
+### Alocação recomendada
+
+| Agente | Responsabilidade e pacotes | Modelo | Esforço inicial | Reserva relativa de tokens | Retorno esperado |
+|---|---|---|---|---|---|
+| **C0 — Coordenador e integrador** | Pacote 1; contratos entre agentes, integração e aceite do pacote 7 | `gpt-6.1-sol` | `high` | 12% | Resolve decisões transversais uma vez e evita implementações incompatíveis. |
+| **A1 — Banco e execução** | Pacotes 2 e 4; eventos, calendário, migrations, escritas, estoque e concorrência | `gpt-6.1-sol` | `high` | 30% | Maior investimento onde erro compromete histórico, atendimento ou consumo. |
+| **A2 — Consultas, estados e custos** | Pacote 3 e backend do 6; DTOs, filtros, contagens, autorização e agregação | `gpt-6.1-sol` | `high` | 18% | Mantém equivalência entre lista, pendências, custos e escopo; evita resultados corretos apenas na página visível. |
+| **A3 — Interface compartilhada** | Pacote 5 e interface do 6; quatro entradas, componentes e navegação | `gpt-6.1-sol` | `medium` | 22% | Aproveita o mockup e contratos fechados para implementar sem redesenhar o domínio. |
+| **A4 — Verificação independente** | Parte técnica do pacote 7; regressão funcional, concorrência, acesso e navegador | `gpt-6.1-sol` | `high` | 13% | Procura falhas concretas nos critérios de aceite e devolve contraprovas reproduzíveis. |
+| **A5 — Documentação e diagramas** | Parte documental do pacote 7; contratos, materiais estáticos e links | `gpt-6-luna` | `medium` | 5% | Trabalho delimitado, com decisões e evidências já fornecidas; não decide regras ou migrations. |
+
+As reservas somam 100% e são **pesos de planejamento**, não consumo previsto ou limite automático. Se houver um orçamento total B, distribuir inicialmente B por esses pesos e recalibrar após o primeiro pacote verificável. Não usar um limite de tokens para abandonar requisito obrigatório ou declarar conclusão parcial como completa. Quantidade de tokens não equivale ao preço: modelo, cache, raciocínio e histórico reapresentado afetam a cobrança. Não foi calculado orçamento monetário nesta divisão.
+
+Não usar `max`/`ultra` por padrão. Não usar um modelo de menor capacidade como único responsável por banco, custos ou revisão de concorrência. Também não repetir a análise inteira com um modelo maior “por garantia”.
+
+### Contratos e propriedade dos arquivos
+
+C0 prepara uma passagem de contexto curta antes dos especialistas: matriz de estados, DTOs de entrada/saída, critérios de compatibilidade temporal, nomes definitivos das extensões propostas e propriedade dos arquivos. A definição já documentada no plano não deve ser reaberta por preferência de um agente.
+
+| Agente | Área de escrita exclusiva | Interface com os demais |
+|---|---|---|
+| A1 | `schema.prisma`, novas migrations, serviços de mutação/calendário e testes correspondentes | Publica estrutura, invariantes e assinaturas das ações para A2/A3. Não cria consultas ou UI paralelas. |
+| A2 | Módulos de consulta, projeção de situação, agregação de custos, schemas de leitura e seus testes | Publica contratos paginados e de resumo para A3; combina com A1 o cálculo puro usado na validação das ações. |
+| A3 | Componentes, clientes HTTP e testes de interface do recorte | Usa as ações/DTOs acordados; não acrescenta campos persistidos nem deduz estado clínico no cliente. |
+| A4 | Casos de verificação novos em arquivos acordados, evidências e relatórios de falhas | Não refatora o código do autor em paralelo. Correções voltam ao dono; depois verifica somente a área afetada. |
+| A5 | Contratos e artefatos documentais explicitamente liberados | Atualiza somente comportamento comprovado; mudanças propostas ou testes não executados permanecem identificados. |
+| C0 | Integração das rotas Hono compartilhadas, `client/src/router.ts`, resolução de conflitos e ajustes entre pacotes | Aplica mudanças pequenas acordadas; não reescreve o trabalho dos especialistas nem altera arquivos locais de outras tarefas. |
+
+Arquivos centrais como `reproducao/iatf.ts`, `sanidade/rodadas.ts` e as rotas atuais contêm leitura e escrita juntas. Antes de delegar, C0 atribui um único escritor por arquivo: A1 mantém os executores, A2 adiciona módulos de consulta separados quando justificado e C0 faz o encaixe mínimo. Diretórios diferentes não bastam para provar independência.
+
+O backend de custos fica com A2; os cards e tabelas ficam com A3. A4 revisa permissões, deduplicação e resultados, mas não constitui outro implementador de custos. Todos usam o mesmo contrato de paginação (padrão e teto 10) e de resumo fora da página.
+
+### Ondas de execução
+
+Há quatro slots disponíveis nesta sessão: o coordenador ocupa um; **no máximo três especialistas trabalham simultaneamente**. Cinco papéis não significam cinco execuções paralelas.
+
+1. **Onda 0 — C0.** Conferir checkout, alterações locais, base de testes e interfaces. Fechar DTOs e distribuição de arquivos. Não aplicar migrations nem iniciar escrita no banco apenas para preparar agentes.
+2. **Onda 1 — A1 e A3.** A1 implementa dados e ações. A3 pode construir a composição visual e os estados com os contratos acordados, sem anunciar integração real. Se o contrato necessário ainda estiver indefinido, adiar a abertura de A3 em vez de mantê-lo esperando ou adivinhando endpoints.
+3. **Onda 2 — A2 e A3; A1 apenas quando houver correção delimitada.** Depois que A1 entrega o contrato de estados/dados e o incremento verificável, A2 implementa consultas/custos e A3 integra as ações reais. C0 integra rotas e resolve divergências. Não repetir a exploração inicial em cada agente.
+4. **Onda 3 — A4 e A5.** Após integração, A4 verifica os fluxos; A5 atualiza o que já tem evidência estável. Findings voltam ao especialista responsável. C0 mantém as rodadas de correção pequenas e atualiza A5 quando houver mudança de contrato.
+5. **Onda 4 — C0.** Conferir diffs, testes obrigatórios, documentação e resultados visuais. Executar verificações finais proporcionais; distinguir CI e homologação pendentes. Publicação e aplicação de migrations seguem o escopo autorizado, sem deploy incidental.
+
+Integrações que escrevem no banco local não rodam em paralelo entre agentes. C0 agenda uma execução após revisar fixtures/limpeza e confirmar `fazendinha_seedatev3`. Navegador compartilhado também recebe um responsável por vez. Paralelismo não autoriza criar bancos, recarregar seeds ou duplicar ambientes.
+
+### Passagem de contexto de cada agente
+
+Cada delegação recebe somente: objetivo, arquivos permitidos, trecho relevante deste plano, contrato aceito, critérios de conclusão e evidências já disponíveis. Usar histórico mínimo; evitar copiar toda a conversa, catálogo SQL integral e documentação de módulos não envolvidos.
+
+- **A1:** entregar migration aditiva revisada, eventos/adiamento/primeira execução, preservação do legado e prova de idempotência/concorrência. Demonstrar que não atendimento não gera consumo e que uma etapa de outra versão é recusada.
+- **A2:** entregar consultas com no máximo dez itens, estados equivalentes aos filtros, contagens globais e custo deduplicado. Demonstrar 11/21 itens, valores desconhecidos, escopo e autorização financeira/operacional.
+- **A3:** entregar as quatro combinações no padrão aprovado, seleção persistida entre páginas, detalhes na linha e navegação correta. Demonstrar erro, vazio, carregamento, teclado e ausência de segunda tabela de pendências.
+- **A4:** executar a matriz de aceite por risco e devolver falhas com pré-condição, passos, resultado esperado/observado e evidência. Não gerar uma segunda especificação nem considerar um mockup como homologação.
+- **A5:** atualizar contrato e diagramas a partir do diff final e da evidência fornecida. Validar links e gerador; não afirmar que um teste, migration ou validação de campo ocorreu sem prova.
+
+Retorno padrão, curto: arquivos alterados; decisões que afetam outro agente; verificações executadas e resultado; riscos ou bloqueios concretos. Logs completos ficam no artefato de execução quando necessários, não são retransmitidos a todos os agentes.
+
+### Escalonamento de modelo/esforço
+
+| Situação observada | Ação |
+|---|---|
+| A3 encontra divergência real de estados, acessibilidade complexa ou integração que não se resolve com o contrato | Elevar apenas esse trabalho de `medium` para `high`, mantendo `gpt-6.1-sol`. |
+| A1/A2 têm problema persistente de concorrência, migração histórica ou invariantes, após duas tentativas focadas com evidência nova | C0 delimita a dúvida e usa `xhigh` para a investigação específica; não eleva toda a execução. |
+| A5 identifica conflito entre documentação e código | Devolver a C0/A1/A2 para decisão. Não gastar várias rodadas de Luna tentando escolher uma regra de negócio. |
+| Permanece um impasse arquitetural demonstrado após investigação focada | Consulta pontual e somente leitura a `gpt-6-astra` com esforço `high`, se disponível, levando apenas a contradição, evidências e alternativas. Substitui temporariamente um slot; não cria um revisor permanente adicional. |
+| Verificação obrigatória passou e não houve mudança relacionada | Encerrar o pacote. Não repetir testes, auditoria ou pesquisa só para consumir a reserva. |
+
+Não é possível prometer “assertividade de X%”. O equilíbrio recomendado é concentrar capacidade no backend crítico e na verificação independente, usar esforço médio na UI guiada pelo mockup e reservar o modelo econômico para documentação delimitada. Registrar consumo efetivo por pacote quando a ferramenta disponibilizar essa métrica; se indisponível, informar a limitação em vez de inventar contagens. Comparar custo com requisitos aceitos, defeitos encontrados e retrabalho, não apenas com a extensão da resposta do agente.
+
+
 ## Critérios de aceitação e validação
 
 ### Modelo e fluxos
