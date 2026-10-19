@@ -1,4 +1,4 @@
-.nutricao-pagina { outline: none; }
+.nutricao-pagina { outline: none; min-block-size: calc(100dvh - 64px); }
 .nutricao-abas { display: flex; gap: 1rem; overflow-x: auto; border-bottom: 1px solid var(--border); margin-top: 1.5rem; }
 .nutricao-abas button { white-space: nowrap; padding: .875rem .875rem; border-bottom: 3px solid transparent; color: var(--ink-3); }
 .nutricao-abas button[aria-selected="true"] { border-color: var(--pos); color: var(--pos); font-weight: 600; }
@@ -80,7 +80,7 @@
 .nutricao-card-cabecalho { padding: 14px 18px; gap: 12px; }
 .nutricao-card-cabecalho p,.nutricao-nota,.nutricao-secundario { font-size: 12px; }
 .nutricao-card-corpo { padding: 18px; }
-.nutricao-filtros { align-items: center; gap: 12px; padding: 12px 18px; }
+.nutricao-filtros { align-items: center; gap: 12px; padding: 12px 16px; background: var(--card); }
 .nutricao-filtros > label { max-width: none; }
 .nutricao-filtros > label:not(.busca-lista) { flex: 0 1 240px; }
 .nutricao-filtros label > :is(input,select,button) { margin-top: 0; }

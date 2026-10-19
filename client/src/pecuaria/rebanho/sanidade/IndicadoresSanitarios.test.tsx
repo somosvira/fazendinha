@@ -3,6 +3,12 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { CarenciaIndicador, PrazoCarencia, ContagensEtapa, ResumoPaginaSanitaria, rotuloTarefaSanitaria } from "./IndicadoresSanitarios";
 
 describe("indicadores sanitários de apresentação", () => {
+  it("contagens compactas omitem zeros também no nome acessível e usam singular", () => {
+    const html = renderToStaticMarkup(<ContagensEtapa compacto contagens={{ total: 1, pendentes: 1, realizadas: 0, dispensadas: 0, atrasadas: 1, canceladas: 0 }} />);
+    expect(html).toContain('aria-label="1 prevista · 1 pendente · 1 atrasada"');
+    expect(html).not.toContain("0 realizadas");
+    expect(html).not.toContain("1 previstas");
+  });
   it("atraso é um recorte de tarefas pendentes, nunca de realizadas ou canceladas", () => {
     expect(rotuloTarefaSanitaria("PENDENTE", "2026-10-01", "2026-10-14")).toBe("Atrasada");
     expect(rotuloTarefaSanitaria("PENDENTE", "2026-10-14", "2026-10-14")).toBe("Pendente");

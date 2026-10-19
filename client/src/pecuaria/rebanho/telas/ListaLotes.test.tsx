@@ -68,6 +68,39 @@ async function montar(onAbrirLote: (id: string) => void = vi.fn(), podeLancar = 
 }
 
 describe("Lotes do rebanho", () => {
+  it("pagina 15 lotes sem reduzir o agregado do gráfico e reinicia ao buscar", async () => {
+    vi.mocked(listarLotes).mockResolvedValue(Array.from({ length: 31 }, (_, indice) => ({ ...lotesMock[0], id: `l${indice + 1}`, nome: `Grupo ${String(indice + 1).padStart(2, "0")}`, animaisAtivos: indice + 1 })));
+    render(<ListaLotes onAbrirLote={vi.fn()} podeLancar={false} />, { wrapper: Wrapper });
+    const tabela = await screen.findByRole("table", { name: "Lotes" });
+    await within(tabela).findByText("Grupo 01");
+    expect(within(tabela).getAllByRole("row")).toHaveLength(16);
+    expect(screen.getByText("31 lotes ativos no filtro · até 6 lotes com maior efetivo")).toBeTruthy();
+    const paginacao = screen.getByRole("navigation", { name: "Paginação de lotes" });
+    fireEvent.click(within(paginacao).getByRole("button", { name: "Próxima" }));
+    expect(within(tabela).getByText("Grupo 16")).toBeTruthy();
+    expect(within(tabela).queryByText("Grupo 01")).toBeNull();
+    fireEvent.click(within(paginacao).getByRole("button", { name: "Próxima" }));
+    expect(within(tabela).getAllByRole("row")).toHaveLength(2);
+    fireEvent.change(screen.getByRole("searchbox", { name: "Buscar lote" }), { target: { value: "Grupo 02" } });
+    await waitFor(() => expect(within(tabela).getByText("Grupo 02")).toBeTruthy());
+    expect(within(paginacao).getByRole("button", { name: "Anterior" }).hasAttribute("disabled")).toBe(true);
+  });
+
+  it("ajusta a página quando a recarga reduz a lista", async () => {
+    const muitos = Array.from({ length: 16 }, (_, indice) => ({ ...lotesMock[0], id: `l${indice + 1}`, nome: `Grupo ${indice + 1}` }));
+    vi.mocked(listarLotes).mockResolvedValueOnce(muitos).mockResolvedValue([muitos[0]]);
+    vi.mocked(editarLote).mockResolvedValue(muitos[15]);
+    render(<ListaLotes onAbrirLote={vi.fn()} />, { wrapper: Wrapper });
+    const tabela = await screen.findByRole("table", { name: "Lotes" });
+    await within(tabela).findByText("Grupo 1");
+    const paginacao = screen.getByRole("navigation", { name: "Paginação de lotes" });
+    fireEvent.click(within(paginacao).getByRole("button", { name: "Próxima" }));
+    fireEvent.click(within(tabela).getByRole("button", { name: "Desativar Grupo 16" }));
+    fireEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Desativar" }));
+    await waitFor(() => expect(within(tabela).getByText("Grupo 1")).toBeTruthy());
+    expect(within(paginacao).getByRole("button", { name: "Anterior" }).hasAttribute("disabled")).toBe(true);
+  });
+
   it("lista lotes com sítio, animais ativos e situação", async () => {
     await montar();
     const tabela = screen.getByRole("table", { name: "Lotes" });

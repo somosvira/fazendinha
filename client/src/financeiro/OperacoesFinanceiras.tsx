@@ -6,7 +6,7 @@ import { podeVerValoresFinanceiros } from "./permissoes";
 import { normalizarBuscaFinanceira } from "./ListaCadastroFinanceiro";
 import { AtualizandoFinanceiro } from "./CarregamentoFinanceiro";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ChevronRight, MoreHorizontal, FilePenLine, Layers, Plus, Search } from "lucide-react";
+import { MoreHorizontal, FilePenLine, Layers, Plus, Search } from "lucide-react";
 import { PeriodoFinanceiroControl } from "./PeriodoFinanceiroControl";
 import { periodoInicial } from "./lib/periodo";
 import { entradaDeNovaOperacao, isNovaOperacaoFinanceira, parseOperacaoFinanceiraId, URL_NOVA_OPERACAO } from "../router";
@@ -51,14 +51,13 @@ const ITENS_POR_PAGINA = 15;
 /* Colunas da lista de operações. `alinhamento` vale para o cabeçalho, para a
  * célula e para o valor no cartão — não há como cabeçalho e conteúdo divergirem. */
 const COLUNAS: ColunaTabela<Operacao>[] = [
-  { chave: "data", titulo: "Data", larguraMinima: 100, celula: (operacao) => <span className="whitespace-nowrap text-ink-3">{dataBR(operacao.data)}</span> },
-  { chave: "operacao", titulo: "Operação", larguraMinima: 230, principal: true, celula: (operacao) => <><strong className="break-words">{operacao.descricao || TIPO_OPERACAO[operacao.tipo]}</strong><div className="mt-1 text-xs text-ink-3">{codigoOperacao(operacao.numero)}</div></> },
-  { chave: "tipo", titulo: "Tipo", larguraMinima: 145, celula: (operacao) => <span className="break-words text-ink-2">{TIPO_OPERACAO[operacao.tipo] ?? operacao.tipo}</span> },
-  { chave: "parceiro", titulo: "Parceiro", larguraMinima: 175, celula: (operacao) => <span className="break-words">{operacao.parceiro?.nome ?? "—"}</span> },
-  { chave: "efeitos", titulo: "Efeitos", larguraMinima: 140, celula: (operacao) => <Efeitos operacao={operacao} /> },
-  { chave: "status", titulo: "Status", larguraMinima: 110, celula: (operacao) => <StatusPill status={operacao.status} /> },
-  { chave: "valor", titulo: "Valor", alinhamento: "direita", larguraMinima: 100, celula: (operacao) => <strong className="whitespace-nowrap font-semibold">{operacao.valorTotal == null ? "—" : brl(operacao.valorTotal)}</strong> },
-  { chave: "abrir", titulo: "", alinhamento: "direita", larguraMinima: 44, ocultarNoCartao: true, celula: () => <ChevronRight size={16} className="inline text-ink-3" aria-hidden /> },
+  { chave: "data", titulo: "Data", larguraMinima: 104, celula: (operacao) => <span className="whitespace-nowrap text-ink-3">{dataBR(operacao.data)}</span> },
+  { chave: "operacao", titulo: "Operação", larguraMinima: 175, principal: true, celula: (operacao) => <><strong className="break-words">{operacao.descricao || TIPO_OPERACAO[operacao.tipo]}</strong><div className="mt-1 text-xs text-ink-3">{codigoOperacao(operacao.numero)}</div></> },
+  { chave: "tipo", titulo: "Tipo", larguraMinima: 110, celula: (operacao) => <span className="break-words text-ink-2">{TIPO_OPERACAO[operacao.tipo] ?? operacao.tipo}</span> },
+  { chave: "parceiro", titulo: "Parceiro", larguraMinima: 125, celula: (operacao) => <span className="break-words">{operacao.parceiro?.nome ?? "—"}</span> },
+  { chave: "efeitos", titulo: "Efeitos", larguraMinima: 95, celula: (operacao) => <Efeitos operacao={operacao} /> },
+  { chave: "status", titulo: "Status", larguraMinima: 105, celula: (operacao) => <StatusPill status={operacao.status} /> },
+  { chave: "valor", titulo: "Valor", alinhamento: "direita", larguraMinima: 112, celula: (operacao) => <strong className="whitespace-nowrap font-semibold">{operacao.valorTotal == null ? "—" : brl(operacao.valorTotal)}</strong> },
 ];
 
 export function OperacoesFinanceiras({ podeLancar = true }: { podeLancar?: boolean }) {
@@ -88,7 +87,7 @@ export function OperacoesFinanceiras({ podeLancar = true }: { podeLancar?: boole
   const totalPaginas = Math.max(1, Math.ceil(filtradas.length / ITENS_POR_PAGINA));
   const paginaAtual = Math.min(pagina, totalPaginas);
   const operacoesDaPagina = filtradas.slice((paginaAtual - 1) * ITENS_POR_PAGINA, paginaAtual * ITENS_POR_PAGINA);
-  const colunas: ColunaTabela<Operacao>[] = podeLancar && podeGerenciarProcedimentosServico() ? [...COLUNAS.slice(0, -1), { chave: "acoes", titulo: "", larguraMinima: 48, acoes: true, celula: op => op.tipo === "SERVICO" && op.status === "CONFIRMADA" && op.propriedadeId ? <DropdownMenu><DropdownMenuTrigger asChild><UiButton type="button" variant="ghost" size="icon" aria-label={`Ações ${codigoOperacao(op.numero)}`} onClick={evento => evento.stopPropagation()}><MoreHorizontal /></UiButton></DropdownMenuTrigger><DropdownMenuContent><DropdownMenuItem onClick={evento => evento.stopPropagation()} onSelect={() => setServicoGerenciado(op)}>Gerenciar procedimentos</DropdownMenuItem></DropdownMenuContent></DropdownMenu> : null }] : COLUNAS;
+  const colunas: ColunaTabela<Operacao>[] = podeLancar && podeGerenciarProcedimentosServico() && operacoesDaPagina.some(op => op.tipo === "SERVICO" && op.status === "CONFIRMADA" && op.propriedadeId) ? [...COLUNAS, { chave: "acoes", titulo: "", larguraMinima: 64, acoes: true, celula: op => op.tipo === "SERVICO" && op.status === "CONFIRMADA" && op.propriedadeId ? <DropdownMenu><DropdownMenuTrigger asChild><UiButton type="button" variant="ghost" size="icon" aria-label={`Ações ${codigoOperacao(op.numero)}`} onClick={evento => evento.stopPropagation()}><MoreHorizontal /></UiButton></DropdownMenuTrigger><DropdownMenuContent><DropdownMenuItem onClick={evento => evento.stopPropagation()} onSelect={() => setServicoGerenciado(op)}>Gerenciar procedimentos</DropdownMenuItem></DropdownMenuContent></DropdownMenu> : null }] : COLUNAS;
   useEffect(() => { if (pagina !== paginaAtual) setPagina(paginaAtual); }, [pagina, paginaAtual]);
   const abrirDetalhe = (id: string) => { const origem = retorno ?? (window.location.pathname === "/financeiro/operacoes" ? window.location.pathname + window.location.search : null); window.history.pushState(null, "", linkOperacaoFinanceira(id, origem ?? undefined)); setRetorno(origem); setDetalheId(id); setForm(false); };
   const voltar = () => { if (retorno) { navegarPara(retorno); return; } window.history.pushState(null, "", "/financeiro/operacoes"); setDetalheId(null); };

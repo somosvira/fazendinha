@@ -89,6 +89,23 @@ async function montarMotivos() {
 }
 
 describe("Cadastros do rebanho — permissão de leitura (K7)", () => {
+  it("pagina categorias sem truncar a reordenação entre páginas", async () => {
+    const categorias = Array.from({ length: 16 }, (_, indice) => ({ ...categoriasMock[0], id: `cat-${indice}`, nome: `Regra ${indice + 1}`, ordem: (indice + 1) * 10 }));
+    vi.mocked(listarCategorias).mockResolvedValue({ itens: categorias, semCategoria: 0 });
+    vi.mocked(reordenarCategorias).mockResolvedValue({ ok: true });
+    render(<Cadastros />);
+    const tabela = await screen.findByRole("table", { name: "Categorias" });
+    await within(tabela).findByText("Regra 1");
+    expect(within(tabela).getAllByRole("row")).toHaveLength(16);
+    const descer = within(tabela).getByRole("button", { name: "Mover Regra 15 para baixo" });
+    expect(descer.hasAttribute("disabled")).toBe(false);
+    fireEvent.click(descer);
+    await waitFor(() => expect(reordenarCategorias).toHaveBeenCalled());
+    const ids = vi.mocked(reordenarCategorias).mock.calls[0][0];
+    expect(ids).toHaveLength(16);
+    expect(ids.slice(-2)).toEqual(["cat-15", "cat-14"]);
+    expect(vi.mocked(simularCategorias).mock.calls[0][0]).toHaveLength(16);
+  });
   it("busca motivos por nome ou classe sem acentos e sem nova consulta", async () => {
     vi.mocked(listarMotivosBaixa).mockResolvedValue(motivosMock);
     render(<Cadastros podeLancar={false} cadastro="motivos" embutido />);

@@ -801,11 +801,11 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
           }}
         />
       )}
-      <PageHeader eyebrow=""
-        titulo={aba === "agenda" && visaoAgenda === "rodadas" && rodadaId ? "Ciclo sanitário" : "Sanidade"}
+      {!(aba === "agenda" && visaoAgenda === "rodadas" && rodadaId) && <PageHeader eyebrow=""
+        titulo="Sanidade"
         descricao="Agenda e acompanhamento sanitário do rebanho."
         acao={<div className="flex flex-wrap gap-2"><Button secondary onClick={() => navegarPara("/configuracoes/pecuaria/sanidade/protocolos")}>Gerenciar protocolos</Button>{podeGerenciarServicos && <Button secondary onClick={() => setRateando(true)}>Gerenciar procedimentos</Button>}</div>}
-      />
+      />}
       {!(aba === "agenda" && visaoAgenda === "rodadas" && rodadaId) && <div className="sanidade-navegacao" ref={abasSanidade}>
       <SubTabs variant="financeiro" ariaLabel="Sanidade"
         className="sanidade-abas-principais"

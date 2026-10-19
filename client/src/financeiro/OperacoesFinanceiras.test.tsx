@@ -161,6 +161,18 @@ describe("OperacoesFinanceiras — paginação", () => {
 });
 
 describe("OperacoesFinanceiras — busca por código", () => {
+  it("reserva largura compacta sem coluna de ações vazia", async () => {
+    vi.mocked(listarOperacoes).mockResolvedValue([{
+      id: uid(90), numero: 15, data: "2026-10-01", descricao: "Reposição de estoque", tipo: "COMPRA_ESTOQUE", status: "CONFIRMADA", valorTotal: "200.00",
+      parceiro: null, movimentosEstoque: [], transacoes: [], compromissos: [], itens: [],
+    }] as never);
+    const { container } = render(<OperacoesFinanceiras />);
+    await screen.findAllByText("Reposição de estoque");
+    const tabela = container.querySelector("table")!;
+    expect(tabela.querySelector('[data-fin-coluna="acoes"]')).toBeNull();
+    expect(parseInt(tabela.style.minWidth)).toBeLessThanOrEqual(927);
+    expect(tabela.querySelectorAll("thead th")).toHaveLength(7);
+  });
   it("encontra o número exibido sem depender do UUID ou da descrição", async () => {
     vi.mocked(listarOperacoes).mockResolvedValue([{
       id: uid(91), numero: 16, data: "2026-10-01", descricao: "Compra de ração", tipo: "SERVICO", status: "CONFIRMADA", valorTotal: "200.00",

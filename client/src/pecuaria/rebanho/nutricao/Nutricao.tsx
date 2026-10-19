@@ -1,4 +1,5 @@
 import { SubTabs } from "../../../components/SubTabs";
+import { ConteudoEstavel } from "../../../components/ConteudoEstavel";
 import { useEffect, useRef, useState } from "react";
 import { PageHeader, PaginaFinanceira } from "../../../financeiro/financeiro-ui";
 import { navegarPara } from "../../../router";
@@ -28,9 +29,9 @@ export function Nutricao({ podeLancar }: { podeLancar: boolean }) {
   const operacao = url.acao === "atribuir" || url.acao === "corrigir" || url.acao === "consumo" ? url.acao : null;
   const voltar = () => navegarPara(rotaRetornoNutricional());
   const subpagina = !!operacao || !!url.fechamentoId || (url.aba === "lotes" && !!url.loteId);
-  return <PaginaFinanceira><div className="nutricao-pagina" ref={titulo} tabIndex={-1}>
+  return <PaginaFinanceira><ConteudoEstavel contexto={url.aba}><div className="nutricao-pagina" ref={titulo} tabIndex={-1}>
     {!operacao && !url.formReceita && !(url.aba === "lotes" && url.loteId && !url.fechamentoId) && <PageHeader eyebrow="" titulo="Nutrição" descricao="Dietas, consumo e custos dos lotes em um só contexto." acao={!subpagina && url.aba !== "receitas" && podeLancar ? <LinkNutricional className="nutricao-botao" href={rotaOperacaoNutricional("consumo")}>Conferir consumo</LinkNutricional> : undefined} />}
     {!subpagina && !url.formReceita && <SubTabs variant="financeiro" ariaLabel="Nutrição" tabs={[{ id: "lotes", label: "Visão geral" }, { id: "receitas", label: "Receitas" }, { id: "fechamentos", label: "Fechamentos" }]} active={url.aba} onSelect={aba => navegarPara(rotaNutricao({ aba }))} className="mt-5" />}
     {operacao ? <div className="nutricao-conteudo">{podeLancar ? <FormOperacaoNutricional key={`${operacao}:${url.loteId}:${url.vigenciaId}`} acao={operacao} loteId={url.loteId} vigenciaId={url.vigenciaId} onVoltar={voltar} onSalvo={(loteId) => navegarPara(rotaNutricao({ loteId }))} /> : <p role="alert">Você não tem permissão para lançar alterações.</p>}</div> : url.fechamentoId ? <ConsultaFechamento key={url.fechamentoId} id={url.fechamentoId} podeLancar={podeLancar} estorno={url.acao === "estorno"} onVoltar={voltar} /> : url.aba === "receitas" ? <ReceitasDieta podeLancar={podeLancar} /> : url.aba === "fechamentos" ? <FechamentosNutricao loteId={url.loteId} /> : url.loteId ? <NutricaoLote key={url.loteId} loteId={url.loteId} podeLancar={podeLancar} vista="lotes" /> : <VisaoGeralNutricao />}
-  </div></PaginaFinanceira>;
+  </div></ConteudoEstavel></PaginaFinanceira>;
 }

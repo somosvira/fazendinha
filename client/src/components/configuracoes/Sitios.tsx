@@ -13,6 +13,7 @@ import { editarPropriedade, usePropriedades, type PropriedadeDTO } from "../../a
 import { AcoesLinha, Button, type ColunaTabela, ErrorBox, PageHeader, PaginaFinanceira, Panel, Pill, TabelaFinanceira } from "../../financeiro/financeiro-ui";
 import { FormSitio } from "./FormSitio";
 import { BuscaLista } from "../BuscaLista";
+import { PaginacaoLocal, usePaginacaoLocal } from "../PaginacaoLocal";
 
 type Painel = { modo: "novo" } | { modo: "editar"; id: number } | null;
 
@@ -62,6 +63,7 @@ export function Sitios() {
   const carregando = sitios.loading && sitios.data.length === 0;
   const termo = busca.trim().toLocaleLowerCase("pt-BR");
   const visiveis = sitios.data.filter(s => `${s.nome} ${s.cidade ?? ""} ${s.uf ?? ""}`.toLocaleLowerCase("pt-BR").includes(termo));
+  const paginacao = usePaginacaoLocal(visiveis, `${busca}|${mostrarInativos}`);
 
   return <PaginaFinanceira>
     <PageHeader eyebrow="" titulo="Sítios" descricao="As propriedades da fazenda. Cada animal, lote e lançamento pertence a um sítio."
@@ -76,7 +78,8 @@ export function Sitios() {
             <BuscaLista rotulo="Buscar sítio" placeholder="Buscar sítio ou cidade" valor={busca} onChange={setBusca} />
             <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={mostrarInativos} onChange={(e) => setMostrarInativos(e.target.checked)} />Mostrar inativos</label>
           </div>
-          <TabelaFinanceira rotulo="Sítios" itens={visiveis} colunas={colunas(editar, alternar)} chaveDe={(s) => s.id} onAbrir={editar} classeLinha={(s) => !s.ativo ? "opacity-55" : ""} />
+          <TabelaFinanceira rotulo="Sítios" itens={paginacao.itens} colunas={colunas(editar, alternar)} chaveDe={(s) => s.id} onAbrir={editar} classeLinha={(s) => !s.ativo ? "opacity-55" : ""} />
+          <PaginacaoLocal controles={paginacao.controles} substantivo="sítios" id="pagina-sitios" />
           {!visiveis.length && <p className="p-5 text-sm text-ink-3">{busca ? "Nenhum sítio corresponde à busca." : "Nenhum sítio cadastrado."}</p>}
         </Panel>}
     </fieldset>

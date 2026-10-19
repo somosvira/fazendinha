@@ -19,7 +19,7 @@ export function ListaCadastroFinanceiro<T extends { id: string; nome: string; at
   const porPagina = 15;
   const totalPaginas = Math.max(1, Math.ceil(filtrados.length / porPagina));
   const atual = Math.min(pagina, totalPaginas);
-  return <Panel className="mt-4 overflow-hidden" tom="info">
+  return <Panel className="fin-lista-cadastro mt-4 overflow-hidden" tom="info">
     <div className="fin-filtros-barra flex flex-wrap items-end gap-3 border-b border-border p-4" onChange={() => setPagina(1)}>
       <label className="fin-filtro-busca min-w-0 flex-[1_1_220px] text-sm font-medium">Buscar<span className="relative mt-1 block"><Search size={18} strokeWidth={1.8} aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-3" /><Input aria-label={rotuloBusca ?? `Buscar ${rotulo.toLocaleLowerCase("pt-BR")}`} placeholder={rotulo === "Clientes e fornecedores" ? "Nome, documento ou contato…" : `Nome de ${rotulo.toLocaleLowerCase("pt-BR")}…`} value={busca} onChange={e => { setBusca(e.target.value); setPagina(1); }} className="bg-card pl-10" /></span></label>
       {mostrarSituacao && <label className="fin-filtro-campo text-sm font-medium">Situação<SelectFiltro rotulo={`Situação: ${rotulo}`} valor={situacao} onChange={v => { setSituacao(v); setPagina(1); }} opcoes={[{ valor: "", texto: "Ativos e inativos" }, { valor: "ATIVOS", texto: "Ativos" }, { valor: "INATIVOS", texto: "Inativos" }]} className="mt-1" /></label>}

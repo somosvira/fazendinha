@@ -1,0 +1,117 @@
+[
+  {
+    "antipattern": "side-tab",
+    "name": "Side-tab accent border",
+    "description": "Thick colored border on one side of a card — the most recognizable tell of AI-generated UIs. Use a subtler accent or remove it entirely.",
+    "severity": "warning",
+    "category": "slop",
+    "file": "/home/mathe/fazendinha/client/src/financeiro/CalendarioCompromissos.tsx",
+    "line": 63,
+    "snippet": "border-l-2",
+    "importedBy": [
+      "CalendarioCompromissos.test.tsx",
+      "CompromissosFinanceiros.tsx",
+      "DashboardCalendario.tsx"
+    ]
+  },
+  {
+    "antipattern": "side-tab",
+    "name": "Side-tab accent border",
+    "description": "Thick colored border on one side of a card — the most recognizable tell of AI-generated UIs. Use a subtler accent or remove it entirely.",
+    "severity": "warning",
+    "category": "slop",
+    "file": "/home/mathe/fazendinha/client/src/financeiro/DetalheCategoriaDespesa.tsx",
+    "line": 19,
+    "snippet": "border-l-4",
+    "importedBy": [
+      "AnaliseCategorias.tsx",
+      "RankingCategorias.tsx"
+    ]
+  },
+  {
+    "antipattern": "side-tab",
+    "name": "Side-tab accent border",
+    "description": "Thick colored border on one side of a card — the most recognizable tell of AI-generated UIs. Use a subtler accent or remove it entirely.",
+    "severity": "warning",
+    "category": "slop",
+    "file": "/home/mathe/fazendinha/client/src/pecuaria/pecuaria-refino.css",
+    "line": 71,
+    "snippet": "border-left: 5px solid var(--primary)"
+  },
+  {
+    "antipattern": "side-tab",
+    "name": "Side-tab accent border",
+    "description": "Thick colored border on one side of a card — the most recognizable tell of AI-generated UIs. Use a subtler accent or remove it entirely.",
+    "severity": "warning",
+    "category": "slop",
+    "file": "/home/mathe/fazendinha/client/src/pecuaria/pecuaria-refino.css",
+    "line": 132,
+    "snippet": "border-left: 4px solid var(--primary)"
+  },
+  {
+    "antipattern": "border-accent-on-rounded",
+    "name": "Border accent on rounded element",
+    "description": "Thick accent border on a rounded card — the border clashes with the rounded corners. Remove the border or the border-radius.",
+    "severity": "warning",
+    "category": "slop",
+    "file": "/home/mathe/fazendinha/client/src/pecuaria/pecuaria-refino.css",
+    "line": 106,
+    "snippet": "border-top: 4px solid"
+  },
+  {
+    "antipattern": "border-accent-on-rounded",
+    "name": "Border accent on rounded element",
+    "description": "Thick accent border on a rounded card — the border clashes with the rounded corners. Remove the border or the border-radius.",
+    "severity": "warning",
+    "category": "slop",
+    "file": "/home/mathe/fazendinha/client/src/pecuaria/pecuaria-refino.css",
+    "line": 124,
+    "snippet": "border-top: 4px solid"
+  },
+  {
+    "antipattern": "border-accent-on-rounded",
+    "name": "Border accent on rounded element",
+    "description": "Thick accent border on a rounded card — the border clashes with the rounded corners. Remove the border or the border-radius.",
+    "severity": "warning",
+    "category": "slop",
+    "file": "/home/mathe/fazendinha/client/src/pecuaria/pecuaria-refino.css",
+    "line": 128,
+    "snippet": "border-top: 4px solid"
+  },
+  {
+    "antipattern": "side-tab",
+    "name": "Side-tab accent border",
+    "description": "Thick colored border on one side of a card — the most recognizable tell of AI-generated UIs. Use a subtler accent or remove it entirely.",
+    "severity": "warning",
+    "category": "slop",
+    "file": "/home/mathe/fazendinha/client/src/pecuaria/rebanho/sanidade/sanidade.css",
+    "line": 8,
+    "snippet": "border-left: 2px solid var(--pos)"
+  },
+  {
+    "antipattern": "side-tab",
+    "name": "Side-tab accent border",
+    "description": "Thick colored border on one side of a card — the most recognizable tell of AI-generated UIs. Use a subtler accent or remove it entirely.",
+    "severity": "warning",
+    "category": "slop",
+    "file": "/home/mathe/fazendinha/client/src/styles/acessos.css",
+    "line": 81,
+    "snippet": "border-left: 3px solid var(--warn)",
+    "importedBy": [
+      "main.tsx"
+    ]
+  },
+  {
+    "antipattern": "side-tab",
+    "name": "Side-tab accent border",
+    "description": "Thick colored border on one side of a card — the most recognizable tell of AI-generated UIs. Use a subtler accent or remove it entirely.",
+    "severity": "warning",
+    "category": "slop",
+    "file": "/home/mathe/fazendinha/client/src/styles/base.css",
+    "line": 767,
+    "snippet": "border-left-width: 4px",
+    "importedBy": [
+      "main.tsx"
+    ]
+  }
+]

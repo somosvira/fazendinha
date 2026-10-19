@@ -79,6 +79,13 @@
    na PÁGINA inteira em telas estreitas. Cada área rolável interna
    (overflow-x-auto) continua funcionando; clip não cria contexto de scroll. */
 .app-main { margin-left: var(--side-w); overflow-x: clip; }
+/* Uma largura de leitura estável com páginas curtas, longas e overlays.
+   O gutter já reserva a barra; a compensação extra do Radix não deve duplicá-lo.
+   Navegadores sem suporte mantêm a compensação original da biblioteca. */
+@supports (scrollbar-gutter: stable) {
+  html { scrollbar-gutter: stable; }
+  html body[data-scroll-locked] { margin-right: 0 !important; }
+}
 /* Campos legíveis sem provocar zoom de foco no Safari móvel. */
 @media (max-width: 900px) {
   :root :is(.app-main, [role="dialog"]) :is(input:not([type="checkbox"], [type="radio"], [type="hidden"]), textarea) {

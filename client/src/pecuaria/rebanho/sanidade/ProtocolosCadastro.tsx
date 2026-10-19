@@ -11,6 +11,7 @@ import { listarTiposAplicacao, reqSanidade, type TipoAplicacao } from "./api";
 import { navegarPara } from "../../../router";
 import type { TipoExame } from "./CadastrosSanitarios";
 import { BuscaLista } from "../../../components/BuscaLista";
+import { PaginacaoLocal, usePaginacaoLocal } from "@/components/PaginacaoLocal";
 type Etapa = {
   diaRelativo: number;
   tipo: "APLICACAO" | "EXAME";
@@ -155,6 +156,7 @@ export function ProtocolosCadastro({ podeLancar }: { podeLancar: boolean }) {
   const mudar = (i: number, patch: Partial<Etapa>) =>
     setEtapas((es) => es.map((e, j) => (i === j ? { ...e, ...patch } : e)));
   const visiveis = protocolos.filter(p => p.nome.toLocaleLowerCase("pt-BR").includes(busca.toLocaleLowerCase("pt-BR")));
+  const paginacao = usePaginacaoLocal(visiveis, busca);
   return (
     <section className="pec-protocolos-cadastro">
       <ErrorBox erro={erro} />
@@ -172,7 +174,7 @@ export function ProtocolosCadastro({ podeLancar }: { podeLancar: boolean }) {
       <p className="mb-4 text-sm text-ink-3">Abra o nome para revisar as etapas. Versões publicadas não são editadas: crie uma nova versão para alterar o planejamento. Planejar etapas não movimenta o estoque.</p>
       {carregando ? <p role="status" className="py-4">Carregando protocolos…</p> : <div className="overflow-x-auto rounded border border-border"><table aria-label="Protocolos sanitários" className="w-full text-left text-sm">
         <thead className="bg-surface-2"><tr><th className="p-4">Nome</th><th className="p-4">Tipo</th><th className="p-4">Versão</th><th className="p-4">Situação</th><th className="p-4">Etapas</th><th className="p-4">Ações</th></tr></thead>
-        <tbody className="divide-y divide-border">{visiveis.map((p) => <Fragment key={p.id}>
+        <tbody className="divide-y divide-border">{paginacao.itens.map((p) => <Fragment key={p.id}>
           <tr><td className="p-4"><button type="button" aria-expanded={detalhe?.id === p.id} aria-controls={`protocolo-${p.id}`} aria-label={`Ver etapas de ${p.nome} v${p.versao}`} onClick={() => setDetalhe(detalhe?.id === p.id ? null : p)} className="flex items-center gap-3 text-left">{detalhe?.id === p.id ? <ChevronDown size={16} /> : <ChevronRight size={16} />}<span>{p.nome}</span></button></td>
             <td className="p-4">{p.etapas.every((e) => e.tipo === "EXAME") ? "Protocolo de exames" : "Protocolo sanitário"}</td>
             <td className="whitespace-nowrap p-4">v{p.versao} · <Pill tone={p.publicadoEm ? "blue" : "amber"}>{p.publicadoEm ? "Publicado" : "Rascunho"}</Pill></td>
@@ -196,6 +198,7 @@ export function ProtocolosCadastro({ podeLancar }: { podeLancar: boolean }) {
           </td></tr>}
         </Fragment>)}</tbody>
       </table></div>}
+      {!carregando && !erroLista && <PaginacaoLocal controles={paginacao.controles} substantivo="protocolos" id="pagina-protocolos" />}
       {!carregando && !erroLista && protocolos.length > 0 && !visiveis.length && <p className="p-4 text-sm text-ink-3">Nenhum protocolo corresponde à busca.</p>}
       {!carregando && !erroLista && !protocolos.length && (
         <p className="mt-3 text-sm">

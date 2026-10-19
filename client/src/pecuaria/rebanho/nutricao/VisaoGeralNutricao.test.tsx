@@ -44,6 +44,17 @@ describe("panorama nutricional sem indicadores repetidos", () => {
     expect(params.get("situacaoDieta")).toBe("sem");
     expect(params.get("buscaLote")).toBe("Matrizes");
   });
+  it("abre o lote pelo nome sem ação duplicada e alinha quantidades e custos", async () => {
+    const { container } = render(<VisaoGeralNutricao />);
+    await screen.findByRole("table", { name: "Nutrição por lote" });
+    const tabela = container.querySelector("table")!;
+    expect(screen.queryByText(/Abrir lote →/)).toBeNull();
+    expect(tabela.querySelector('[data-fin-coluna="abrir"]')).toBeNull();
+    expect(tabela.querySelector('th[data-fin-coluna="animais"]')?.className).toContain("text-right");
+    expect(tabela.querySelector('th[data-fin-coluna="custo"]')?.className).toContain("text-right");
+    fireEvent.click(screen.getAllByRole("link", { name: "Matrizes" })[0]);
+    expect(vi.mocked(navegarPara).mock.calls.at(-1)?.[0]).toContain("loteId=mat");
+  });
   it("não apresenta custo mesmo quando há valores no payload sem permissão", async () => {
     vi.mocked(consultarVisaoNutricional).mockResolvedValue({ lotes: [lote("mat", "Matrizes", 5, true)], verValores: false });
     render(<VisaoGeralNutricao />);

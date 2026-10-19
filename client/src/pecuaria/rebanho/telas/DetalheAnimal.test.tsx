@@ -36,6 +36,7 @@ const categoriasMock: CategoriaDTO[] = [
 afterEach(cleanup);
 beforeEach(() => {
   vi.clearAllMocks();
+  window.history.replaceState(null, "", window.location.pathname);
   vi.mocked(buscarAuditoriaAnimal).mockResolvedValue({ itens: [], total: 0 });
   vi.mocked(obterCatalogos).mockResolvedValue({ racas: [], motivosBaixa: [], propriedades: [], lotes: [] } as Catalogos);
   vi.mocked(listarCategorias).mockResolvedValue({ itens: categoriasMock, semCategoria: 0 });
@@ -114,6 +115,7 @@ describe("DetalheAnimal — ações conforme situação", () => {
       historicoDestinos: [...base.historicoDestinos, { id: "dest-0", aptidao: "CORTE", papelReprodutivo: "NENHUM", desde: "2021-01-01", ate: "2022-01-01" }],
     };
     await montar(comHistorico);
+    fireEvent.click(screen.getByRole("link", { name: "Histórico" }));
     expect(screen.getByRole("button", { name: "Desfazer última movimentação" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Desfazer última mudança" })).toBeTruthy();
   });
@@ -248,6 +250,7 @@ describe("DetalheAnimal — pesagens (K1)", () => {
     });
     expect(screen.getByText("Balança descalibrada")).toBeTruthy();
 
+    fireEvent.click(screen.getByRole("link", { name: "Peso e manejo" }));
     fireEvent.click(screen.getByRole("button", { name: /Editar pesagem/ }));
     const painel = await screen.findByRole("dialog");
     expect((within(painel).getByLabelText("Observação") as HTMLTextAreaElement).value).toBe("Balança descalibrada");
@@ -381,6 +384,7 @@ describe("DetalheAnimal — filiação", () => {
         pai: { tipo: "EXTERNO", id: "ext-1", nome: "Touro Reprodutor X", codigo: "TX1", fornecedor: "Central" },
       },
     });
+    fireEvent.click(screen.getByRole("link", { name: "Genética" }));
     expect(screen.getByRole("button", { name: "999 — Estrela" })).toBeTruthy();
     expect(screen.getByText("Touro Reprodutor X")).toBeTruthy();
     expect(screen.getByText("Externo")).toBeTruthy();
@@ -391,18 +395,21 @@ describe("DetalheAnimal — filiação", () => {
       { id: "filho-1", brinco: "500", nome: null, sexo: "M", dataNascimento: "2025-01-10", situacao: "ATIVO" },
     ]);
     await montar({ ...base, filhosCount: 1 });
+    fireEvent.click(screen.getByRole("link", { name: "Genética" }));
     await waitFor(() => expect(listarFilhosAnimal).toHaveBeenCalledWith("animal-1"));
     expect(await screen.findByRole("button", { name: "500" })).toBeTruthy();
   });
 });
 
 
-describe("Ficha contínua", () => {
-  it("mantém todas as seções montadas e agrupa ações secundárias", async () => {
+describe("Ficha por seções", () => {
+  it("mostra uma seção por vez, preserva fragmentos e agrupa ações secundárias", async () => {
     vi.mocked(buscarFichaAnimal).mockResolvedValue(base);
     render(<DetalheAnimal id={base.id} onVoltar={vi.fn()} />, { wrapper: Wrapper });
     await screen.findByRole("heading", { name: "1234 · Mimosa" });
     const nav = screen.getByRole("navigation", { name: "Seções da ficha" });
+    expect(document.getElementById("resumo")?.hidden).toBe(false);
+    expect(document.getElementById("sanidade")?.hidden).toBe(true);
     for (const id of ["resumo", "identificacao-genetica", "sanidade", "peso-manejo", "nutricao", "historico"]) {
       expect(document.getElementById(id)).toBeTruthy();
       expect(nav.querySelector(`a[href="#${id}"]`)).toBeTruthy();
@@ -411,7 +418,21 @@ describe("Ficha contínua", () => {
     fireEvent.click(screen.getByText("Mais ações"));
     expect(screen.getByRole("button", { name: "Editar dados" })).toBeTruthy();
     fireEvent.click(within(nav).getByRole("link", { name: "Peso e manejo" }));
-    expect(within(nav).getByRole("link", { name: "Peso e manejo" }).getAttribute("aria-current")).toBe("location");
+    expect(within(nav).getByRole("link", { name: "Peso e manejo" }).getAttribute("aria-current")).toBe("page");
+    expect(document.getElementById("resumo")?.hidden).toBe(true);
+    expect(document.getElementById("peso-manejo")?.hidden).toBe(false);
+    expect(window.location.hash).toBe("#peso-manejo");
     expect(screen.getByRole("button", { name: "Registrar pesagem" })).toBeTruthy();
+  });
+  it("restaura a seção de um link direto e da navegação pelo histórico", async () => {
+    window.history.replaceState(null, "", "#sanidade");
+    vi.mocked(buscarFichaAnimal).mockResolvedValue(base);
+    render(<DetalheAnimal id={base.id} onVoltar={vi.fn()} />, { wrapper: Wrapper });
+    await screen.findByRole("heading", { name: "1234 · Mimosa" });
+    expect(document.getElementById("sanidade")?.hidden).toBe(false);
+    window.history.replaceState(null, "", "#historico");
+    fireEvent(window, new HashChangeEvent("hashchange"));
+    expect(document.getElementById("historico")?.hidden).toBe(false);
+    expect(document.getElementById("sanidade")?.hidden).toBe(true);
   });
 });

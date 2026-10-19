@@ -2,9 +2,22 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useState } from "react";
-import { brl, emDias, hoje, mesAtual, Modal } from "./financeiro-ui";
+import { brl, emDias, hoje, mesAtual, Modal, TabelaFinanceira } from "./financeiro-ui";
 
 afterEach(() => { cleanup(); vi.useRealTimers(); vi.restoreAllMocks(); });
+
+describe("tabela paginada compartilhada", () => {
+  it("não insere setas nem rolagem vertical interna e mantém abertura por teclado", () => {
+    const abrir = vi.fn();
+    const { container } = render(<TabelaFinanceira compacta rotulo="Cadastros" itens={[{ id: "1", nome: "Cooperativa" }]} chaveDe={item => item.id} onAbrir={abrir} colunas={[{ chave: "nome", titulo: "Nome", principal: true, celula: item => item.nome }]} />);
+    const linha = container.querySelector('tbody tr')!;
+    fireEvent.keyDown(linha, { key: "Enter" });
+    expect(abrir).toHaveBeenCalledWith({ id: "1", nome: "Cooperativa" });
+    expect(container.querySelector('.lucide-chevron-right')).toBeNull();
+    expect(container.innerHTML).not.toContain("overflow-y-auto");
+    expect(container.innerHTML).not.toContain("max-h-");
+  });
+});
 
 describe("datas locais financeiras", () => {
   it("não apresenta valor oculto como zero", () => {

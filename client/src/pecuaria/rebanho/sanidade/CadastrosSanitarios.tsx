@@ -4,6 +4,7 @@ import { Pencil, Power, PowerOff } from "lucide-react";
 import { Button, ErrorBox, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
 import { CampoFormulario, classeInput, PainelCadastro as PainelBase } from "../../../financeiro/PainelCadastro";
 import { BuscaLista } from "@/components/BuscaLista";
+import { PaginacaoLocal, usePaginacaoLocal } from "@/components/PaginacaoLocal";
 import { listarTiposAplicacao, reqSanidade, salvarTipoAplicacao, type TipoAplicacao } from "./api";
 import { ProtocolosCadastro } from "./ProtocolosCadastro";
 
@@ -92,6 +93,7 @@ export function CadastrosSanitarios({ podeLancar, cadastro, embutido = false }: 
   const titulo = abas.find((a) => a.id === aba)!.nome;
   const normalizar = (texto: string) => texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
   const itensExibidos = itens.filter(item => normalizar(item.nome).includes(normalizar(busca.trim())));
+  const paginacao = usePaginacaoLocal(itensExibidos, `${aba}|${busca}`);
   const novo = aba === "aplicacao" ? "Novo tipo de aplicação" : aba === "doenca" ? "Nova doença" : "Novo tipo de exame";
   function salvar() {
     if (!painel) return;
@@ -118,7 +120,7 @@ export function CadastrosSanitarios({ podeLancar, cadastro, embutido = false }: 
           {erro && !painel && <Button secondary disabled={ocupado} onClick={() => setVersao((v) => v + 1)}>Tentar novamente</Button>}
         </div>
         {carregando ? <p role="status" className="p-4">Carregando {titulo.toLowerCase()}…</p> : !erro && !itens.length ? <p className="p-4 text-sm text-ink-3">Nenhum cadastro. {podeLancar ? "Use o botão acima para cadastrar." : ""}</p> : <TabelaFinanceira
-          rotulo={titulo} itens={itensExibidos} chaveDe={(item) => item.id}
+          rotulo={titulo} itens={paginacao.itens} chaveDe={(item) => item.id}
           colunas={[
             { chave: "nome", titulo: "Nome", principal: true, celula: (item) => item.nome },
             ...(aba === "exame" ? [{ chave: "formato", titulo: "Resultado", celula: (item: Item) => "tipoResultado" in item ? `${formatos[item.tipoResultado]}${item.unidade ? ` · ${item.unidade}` : ""}` : "—" }] : []),
@@ -128,6 +130,7 @@ export function CadastrosSanitarios({ podeLancar, cadastro, embutido = false }: 
               <button type="button" aria-label={`${item.ativo ? "Inativar" : "Ativar"} ${item.nome}`} disabled={ocupado} onClick={() => void executar(aba, item.id, { ativo: !item.ativo })} className="rounded-lg p-2 text-ink-2 hover:bg-surface-2 disabled:opacity-45">{item.ativo ? <PowerOff size={16} /> : <Power size={16} />}</button>
             </div> }] : []),
           ]} />}
+        {!carregando && !erro && <PaginacaoLocal controles={paginacao.controles} substantivo={titulo.toLocaleLowerCase("pt-BR")} id={`pagina-cadastro-${aba}`} />}
       </section>}
     </div>
     {painel && podeLancar && <PainelCadastro aberto titulo={painel.tipo === "aplicacao" ? "Tipo de aplicação" : painel.tipo === "doenca" ? "Doença" : "Tipo de exame"} onFechar={() => { if (!ocupado) setPainel(null); }} rodape={<><Button secondary disabled={ocupado} onClick={() => setPainel(null)}>Cancelar</Button><Button type="submit" form="cadastro-sanitario" disabled={ocupado}>{ocupado ? "Salvando…" : "Salvar"}</Button></>}>

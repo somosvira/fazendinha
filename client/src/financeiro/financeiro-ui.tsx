@@ -9,7 +9,7 @@ import { SkeletonListaFinanceira } from "./CarregamentoFinanceiro";
 import "./cores-financeiro.css";
 import { forwardRef, useEffect, useId, useRef, useState, type CSSProperties } from "react";
 import type { LucideIcon } from "lucide-react";
-import { ArrowDown, ArrowUp, Check, ChevronRight, LoaderCircle, Pencil, Power, PowerOff, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, LoaderCircle, Pencil, Power, PowerOff, X } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export const brl = (valor: string | number | null | undefined) => valor == null ? "—" : new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(valor));
@@ -274,12 +274,12 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
     {barraRolagemSuperior && temRolagem && <div ref={barraRef} role="group" aria-label={`Rolagem horizontal: ${rotulo}`} tabIndex={0} onKeyDown={roladaPorTeclado} className="sticky top-0 z-10 hidden overflow-x-auto border-b border-border bg-surface-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#6f7d68]/40 md:block" onScroll={() => sincronizarRolagem("barra")}>
       <div style={{ width: larguraRolagem, height: 1 }} />
     </div>}
-    <div ref={tabelaRef} className={`hidden overflow-x-auto border-t border-border md:block ${compacta ? "max-h-[max(16rem,calc(100dvh-31rem))] overflow-y-auto" : ""} ${barraRolagemSuperior && temRolagem ? "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden" : ""}`} onScroll={() => sincronizarRolagem("tabela")}>
-      <Table semContainer className="fin-tabela w-full text-left text-sm" style={{ minWidth: larguraMinima }}>
+    <div ref={tabelaRef} className={`hidden overflow-x-auto border-t border-border md:block ${barraRolagemSuperior && temRolagem ? "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden" : ""}`} onScroll={() => sincronizarRolagem("tabela")}>
+      <Table semContainer data-fin-compacta={compacta || undefined} className="fin-tabela w-full text-left text-sm" style={{ minWidth: larguraMinima }}>
         <TableCaption className="sr-only">{rotulo}</TableCaption>
         <colgroup>{colunas.map((coluna) => <col key={coluna.chave} style={coluna === flexivel ? undefined : { "--fin-coluna-largura": `${coluna.larguraMinima ?? 120}px` } as CSSProperties} />)}</colgroup>
         <TableHeader className="sticky top-0 z-[1] bg-muted text-[11px] uppercase tracking-[.08em] text-ink-3">
-          <TableRow>{colunas.map((coluna) => <TableHead key={coluna.chave} data-fin-coluna={coluna.chave} scope="col" className={`${compacta ? "px-3 py-2" : "p-4"} font-semibold ${alinhaCelula(coluna.alinhamento)}`}>{coluna.titulo}</TableHead>)}</TableRow>
+          <TableRow>{colunas.map((coluna) => <TableHead key={coluna.chave} data-fin-coluna={coluna.chave} scope="col" className={`${compacta ? "px-3 py-2" : "p-4"} font-semibold ${alinhaCelula(coluna.alinhamento ?? (coluna.acoes ? "direita" : undefined))}`}>{coluna.titulo}</TableHead>)}</TableRow>
         </TableHeader>
         <TableBody className="divide-y divide-border">
           {itens.map((item) => <TableRow
@@ -288,13 +288,13 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
                por role="button" quebraria a semântica de tabela para leitores de tela */
             {...(onAbrir ? { onClick: () => onAbrir(item), tabIndex: 0, onKeyDown: (e: React.KeyboardEvent) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onAbrir(item); } } } : {})}
             className={`${onAbrir ? "cursor-pointer hover:bg-muted" : ""} ${classeLinha?.(item) ?? ""}`}
-          >{colunas.map((coluna) => <TableCell key={coluna.chave} data-fin-coluna={coluna.chave} className={`whitespace-normal ${compacta ? "px-3 py-2" : "p-4"} align-middle ${alinhaCelula(coluna.alinhamento)}`}>{onAbrir && coluna === principal ? <div className="flex items-center gap-3"><div className="min-w-0 flex-1">{coluna.celula(item)}</div><ChevronRight size={16} aria-hidden className="shrink-0 text-muted-foreground" /></div> : coluna.celula(item)}</TableCell>)}</TableRow>)}
+          >{colunas.map((coluna) => <TableCell key={coluna.chave} data-fin-coluna={coluna.chave} className={`whitespace-normal ${compacta ? "px-3 py-2" : "p-4"} align-middle ${alinhaCelula(coluna.alinhamento ?? (coluna.acoes ? "direita" : undefined))}`}>{coluna.celula(item)}</TableCell>)}</TableRow>)}
         </TableBody>
       </Table>
     </div>
 
     {/* <768px — cartões: nada de rolagem lateral, nada de coluna espremida */}
-    <ul className={`divide-y divide-border border-t border-border md:hidden ${compacta ? "max-h-64 overflow-y-auto sm:max-h-[max(16rem,calc(100dvh-31rem))]" : ""}`} tabIndex={compacta ? 0 : undefined} aria-label={rotulo}>
+    <ul className="divide-y divide-border border-t border-border md:hidden" aria-label={rotulo}>
       {itens.map((item) => {
         const corpo = <>
           <div id={`${idCartao}-${chaveDe(item)}`} className="min-w-0 break-words text-left">{principal.celula(item)}</div>

@@ -1,4 +1,6 @@
 import { SelectCampo } from "@/financeiro/SelectCampo";
+import { DatePicker } from "@/components/DatePicker";
+import { Checkbox } from "@/components/ui/checkbox";
 // Lista de lotes — duas seções empilhadas (Lotes · Histórico de movimentações),
 // no padrão das seções de DetalheLote.tsx (Panel com cabeçalho <h2 className=
 // "font-serif text-xl">). Antes eram sub-abas; agora o histórico fica sempre
@@ -11,7 +13,7 @@ import { Loader } from "@/components/Loading";
 import { usePropriedades } from "../../../api/propriedades";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import { AcoesLinha, Button, type ColunaTabela, ErrorBox, PageHeader, PaginaFinanceira, Panel, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
-import { BarraFiltros, useAoMovimentarComToast } from "../ui";
+import { BarraFiltros, Paginacao, useAoMovimentarComToast } from "../ui";
 import { NavRebanho } from "./NavRebanho";
 import { editarLote, listarLotes, listarMovimentacoes, obterCatalogos } from "../api";
 import type { AnimalResumo, Catalogos, Lote } from "../types";
@@ -24,6 +26,7 @@ import { ComparacaoPecuaria } from "../components/DistribuicaoPecuaria";
 import { BuscaLista } from "../../../components/BuscaLista";
 
 type Painel = { modo: "novo" } | { modo: "editar"; id: string } | null;
+const LOTES_POR_PAGINA = 15;
 
 const colunasLotes = (editar: (l: Lote) => void, alternar: (l: Lote) => void): ColunaTabela<Lote>[] => [
   { chave: "lote", titulo: "Lote", larguraMinima: 200, principal: true, celula: (l) => <strong className="break-words">{l.nome}</strong> },
@@ -44,6 +47,7 @@ export function ListaLotes({ podeLancar = true, onAbrirLote }: { podeLancar?: bo
   const [mostrarInativos, setMostrarInativos] = useState(false);
   const [filtroSitio, setFiltroSitio] = useState("");
   const [busca, setBusca] = useState("");
+  const [paginaLotes, setPaginaLotes] = useState(1);
   const [lotes, setLotes] = useState<Lote[] | null>(null);
   const sitios = usePropriedades();
   const [painel, setPainel] = useState<Painel>(null);
@@ -123,6 +127,11 @@ export function ListaLotes({ podeLancar = true, onAbrirLote }: { podeLancar?: bo
 
   const sitiosAtivos = sitios.data.filter((s) => s.ativo);
   const lotesFiltrados = (lotes ?? []).filter(l => (!filtroSitio || String(l.propriedadeId) === filtroSitio) && `${l.nome} ${l.propriedade.nome}`.toLocaleLowerCase("pt-BR").includes(busca.toLocaleLowerCase("pt-BR")));
+  const totalPaginasLotes = Math.max(1, Math.ceil(lotesFiltrados.length / LOTES_POR_PAGINA));
+  const paginaLotesAtual = Math.min(paginaLotes, totalPaginasLotes);
+  const lotesDaPagina = lotesFiltrados.slice((paginaLotesAtual - 1) * LOTES_POR_PAGINA, paginaLotesAtual * LOTES_POR_PAGINA);
+  useEffect(() => { setPaginaLotes(1); }, [busca, filtroSitio, mostrarInativos]);
+  useEffect(() => { setPaginaLotes((pagina) => Math.min(pagina, totalPaginasLotes)); }, [totalPaginasLotes]);
   /* pré-seleciona o sítio ativo no seletor global (comPropriedade), quando houver, na criação de lote */
   const propriedadeInicial = getPropriedadeAtiva() ?? sitiosAtivos[0]?.id ?? null;
 
@@ -139,7 +148,7 @@ export function ListaLotes({ podeLancar = true, onAbrirLote }: { podeLancar?: bo
       {/* filtros ficam fora do fieldset de escrita — quem só pode ver continua podendo filtrar (K7) */}
       <BarraFiltros>
         <BuscaLista rotulo="Buscar lote" placeholder="Buscar lote ou sítio" valor={busca} onChange={setBusca} />
-        <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" disabled={processando} checked={mostrarInativos} onChange={(e) => setMostrarInativos(e.target.checked)} />Mostrar inativos</label>
+          <label className="flex min-h-10 items-center gap-2 text-sm font-medium"><Checkbox disabled={processando} checked={mostrarInativos} onCheckedChange={(valor) => setMostrarInativos(valor === true)} />Mostrar inativos</label>
         <label className="flex items-center gap-2 text-sm font-medium">Sítio
           <SelectCampo aria-label="Filtrar por sítio" disabled={processando} value={filtroSitio} onValueChange={(valorSelecionado) => setFiltroSitio(valorSelecionado)} className="rounded-lg border border-border bg-white p-2 text-sm font-normal">
             <option value="">Todos</option>
@@ -150,8 +159,9 @@ export function ListaLotes({ podeLancar = true, onAbrirLote }: { podeLancar?: bo
       <fieldset disabled={processando || !podeLancar} aria-busy={processando} className="min-w-0">
         {lotes === null
           ? <div className="p-6"><Loader label="Carregando lotes" /></div>
-          : <TabelaFinanceira rotulo="Lotes" itens={lotesFiltrados} colunas={colunasLotes(editar, alternar)} chaveDe={(l) => l.id} onAbrir={(l) => onAbrirLote(l.id)} classeLinha={(l) => !l.ativo ? "opacity-55" : ""} />}
+          : <TabelaFinanceira rotulo="Lotes" itens={lotesDaPagina} colunas={colunasLotes(editar, alternar)} chaveDe={(l) => l.id} onAbrir={(l) => onAbrirLote(l.id)} classeLinha={(l) => !l.ativo ? "opacity-55" : ""} />}
       </fieldset>
+      {lotes !== null && <Paginacao paginaAtual={paginaLotesAtual} totalPaginas={totalPaginasLotes} totalItens={lotesFiltrados.length} itensPorPagina={LOTES_POR_PAGINA} onPaginaChange={setPaginaLotes} rotulo="lotes" idSelect="pagina-lista-lotes" />}
     </Panel>
 
     {lotes && <div className="mt-5"><ComparacaoPecuaria titulo="Distribuição dos animais nos lotes" descricao={`${lotesFiltrados.filter(l => l.ativo).length} lotes ativos no filtro · até 6 lotes com maior efetivo`} itens={[...lotesFiltrados].filter(l => l.ativo).sort((a, b) => b.animaisAtivos - a.animaisAtivos).slice(0, 6).map(l => ({ id: l.id, nome: l.nome, qtd: l.animaisAtivos, href: `/pecuaria/rebanho/lotes/${l.id}` }))} /></div>}
@@ -172,12 +182,12 @@ export function ListaLotes({ podeLancar = true, onAbrirLote }: { podeLancar?: bo
           </SelectCampo>
         </label>
         <label className="flex items-center gap-2 text-sm font-medium">De
-          <input aria-label="Data inicial do histórico" type="date" value={dataDeHistorico} onChange={(e) => setDataDeHistorico(e.target.value)} className="rounded-lg border border-border bg-white p-2 text-sm font-normal" />
+            <DatePicker aria-label="Data inicial do histórico" value={dataDeHistorico} onChange={setDataDeHistorico} className="w-44" />
         </label>
         <label className="flex items-center gap-2 text-sm font-medium">Até
-          <input aria-label="Data final do histórico" type="date" value={dataAteHistorico} onChange={(e) => setDataAteHistorico(e.target.value)} className="rounded-lg border border-border bg-white p-2 text-sm font-normal" />
+            <DatePicker aria-label="Data final do histórico" value={dataAteHistorico} onChange={setDataAteHistorico} className="w-44" />
         </label>
-        <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={mostrarDesfeitas} onChange={(e) => setMostrarDesfeitas(e.target.checked)} />Mostrar desfeitas</label>
+          <label className="flex min-h-10 items-center gap-2 text-sm font-medium"><Checkbox checked={mostrarDesfeitas} onCheckedChange={(valor) => setMostrarDesfeitas(valor === true)} />Mostrar desfeitas</label>
       </BarraFiltros>
       <HistoricoMovimentacoes
         carregar={carregarHistorico}
