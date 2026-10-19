@@ -24,7 +24,7 @@ const padrao = async (url: string, body?: object) => {
 const posts = () => mocks.req.mock.calls.filter(([, body]) => body !== undefined);
 beforeEach(() => { vi.resetAllMocks(); mocks.req.mockImplementation(padrao); });
 afterEach(() => cleanup());
-async function conferirAdocao() { await screen.findByRole("option", { name: /Versão 1/ }); fireEvent.click(screen.getByText("Adotar regra em fatos existentes")); fireEvent.change(screen.getByLabelText("Versão escolhida"), { target: { value: "p1" } }); fireEvent.click(screen.getByRole("button", { name: "Conferir adoção" })); await screen.findByLabelText("Motivo obrigatório"); }
+async function conferirAdocao() { await screen.findByRole("option", { name: /Versão 1/ }); fireEvent.click(screen.getByText("Planejar acompanhamentos faltantes")); fireEvent.change(screen.getByLabelText("Regra para os acompanhamentos novos"), { target: { value: "p1" } }); fireEvent.click(screen.getByRole("button", { name: "Ver prévia" })); await screen.findByLabelText("Motivo obrigatório"); }
 function preencherPolitica() { fireEvent.change(screen.getByLabelText("Vigente desde"), { target: { value: "2026-02-01" } }); fireEvent.click(screen.getByLabelText("Configurar diagnóstico após tentativa")); fireEvent.change(screen.getByLabelText("Dias após a tentativa"), { target: { value: "0" } }); }
 function preencherCopia(nome = "Rascunho da fazenda", versao = "1") { fireEvent.change(screen.getByLabelText("Nome do novo rascunho"), { target: { value: nome } }); fireEvent.change(screen.getByLabelText("Versão do novo rascunho"), { target: { value: versao } }); }
 describe("UI acompanhamento — contraprovas independentes", () => {
@@ -56,9 +56,9 @@ describe("UI acompanhamento — contraprovas independentes", () => {
  });
  it("abrir faz somente leitura e adoção exige prévia e explicação", async () => {
   render(<DemandasAcompanhamento animalId="a" propriedadeId={1} painel={painel("a")} podeLancar onAvaliar={vi.fn()} atualizacao={0}/>);
-  await screen.findByRole("option", { name: /Versão 1/ }); expect(posts()).toHaveLength(0); expect(screen.queryByRole("button", { name: "Confirmar adoção conferida" })).toBeNull();
-  await conferirAdocao(); expect(screen.getByRole("button", { name: "Confirmar adoção conferida" })).toHaveProperty("disabled", true);
-  fireEvent.change(screen.getByLabelText("Motivo obrigatório"), { target: { value: "Adoção explicitamente conferida" } }); fireEvent.click(screen.getByRole("button", { name: "Confirmar adoção conferida" }));
+  await screen.findByRole("option", { name: /Versão 1/ }); expect(posts()).toHaveLength(0); expect(screen.queryByRole("button", { name: "Confirmar criação conferida" })).toBeNull();
+  await conferirAdocao(); expect(screen.getByRole("button", { name: "Confirmar criação conferida" })).toHaveProperty("disabled", true);
+  fireEvent.change(screen.getByLabelText("Motivo obrigatório"), { target: { value: "Adoção explicitamente conferida" } }); fireEvent.click(screen.getByRole("button", { name: "Confirmar criação conferida" }));
   await waitFor(() => expect(posts()).toHaveLength(2)); expect(posts()[1]).toEqual(["/reproducao/acompanhamento/adocao", expect.objectContaining({ propriedadeId: 1, politicaId: "p1", tentativaIds: ["t-a"], motivo: "Adoção explicitamente conferida", revisao: "a".repeat(64), chave: expect.any(String) }), "POST", 1]);
  });
  it("consulta lenta do animalA não substitui demandas do animalB no outro sítio", async () => {
@@ -75,16 +75,16 @@ describe("UI acompanhamento — contraprovas independentes", () => {
  it("adoção pendente deA não trava nem injeta resultado emB", async () => {
   const escrita = adiada<unknown>(); mocks.req.mockImplementation((url, body) => url.endsWith("/adocao") ? escrita.promise : padrao(url, body));
   const { rerender } = render(<DemandasAcompanhamento animalId="a" propriedadeId={1} painel={painel("a")} podeLancar onAvaliar={vi.fn()} atualizacao={0}/>); await conferirAdocao();
-  fireEvent.change(screen.getByLabelText("Motivo obrigatório"), { target: { value: "Adoção conferida para alvoA" } }); fireEvent.click(screen.getByRole("button", { name: "Confirmar adoção conferida" }));
+  fireEvent.change(screen.getByLabelText("Motivo obrigatório"), { target: { value: "Adoção conferida para alvoA" } }); fireEvent.click(screen.getByRole("button", { name: "Confirmar criação conferida" }));
   rerender(<DemandasAcompanhamento animalId="b" propriedadeId={2} painel={painel("b")} podeLancar onAvaliar={vi.fn()} atualizacao={0}/>); await screen.findByRole("option", { name: /Versão 1/ });
-  fireEvent.change(screen.getByLabelText("Versão escolhida"), { target: { value: "p1" } }); expect(screen.getByRole("button", { name: "Conferir adoção" })).toHaveProperty("disabled", false);
+  fireEvent.change(screen.getByLabelText("Regra para os acompanhamentos novos"), { target: { value: "p1" } }); expect(screen.getByRole("button", { name: "Ver prévia" })).toHaveProperty("disabled", false);
   await act(async () => escrita.resolve({})); expect(screen.queryByLabelText("Motivo obrigatório")).toBeNull();
  });
  it("trocar versão durante prévia invalida resposta da versão anterior", async () => {
   const resposta = adiada<unknown>(); mocks.req.mockImplementation((url, body) => url.endsWith("/politicas") ? Promise.resolve([politica(), politica("p2", 2)]) : url.endsWith("/previa") ? resposta.promise : padrao(url, body));
-  render(<DemandasAcompanhamento animalId="a" propriedadeId={1} painel={painel("a")} podeLancar onAvaliar={vi.fn()} atualizacao={0}/>); await screen.findByRole("option", { name: /Versão 1/ }); fireEvent.click(screen.getByText("Adotar regra em fatos existentes"));
-  fireEvent.change(screen.getByLabelText("Versão escolhida"), { target: { value: "p1" } }); fireEvent.click(screen.getByRole("button", { name: "Conferir adoção" })); fireEvent.change(screen.getByLabelText("Versão escolhida"), { target: { value: "p2" } });
-  await act(async () => resposta.resolve(previa())); expect(screen.queryByRole("button", { name: "Confirmar adoção conferida" })).toBeNull(); expect(screen.getByRole("button", { name: "Conferir adoção" })).toHaveProperty("disabled", false);
+  render(<DemandasAcompanhamento animalId="a" propriedadeId={1} painel={painel("a")} podeLancar onAvaliar={vi.fn()} atualizacao={0}/>); await screen.findByRole("option", { name: /Versão 1/ }); fireEvent.click(screen.getByText("Planejar acompanhamentos faltantes"));
+  fireEvent.change(screen.getByLabelText("Regra para os acompanhamentos novos"), { target: { value: "p1" } }); fireEvent.click(screen.getByRole("button", { name: "Ver prévia" })); fireEvent.change(screen.getByLabelText("Regra para os acompanhamentos novos"), { target: { value: "p2" } });
+  await act(async () => resposta.resolve(previa())); expect(screen.queryByRole("button", { name: "Confirmar criação conferida" })).toBeNull(); expect(screen.getByRole("button", { name: "Ver prévia" })).toHaveProperty("disabled", false);
  });
  it("escrita de política pendente não mantém mensagem ou bloqueio no novo sítio", async () => {
   const escrita = adiada<unknown>(); mocks.req.mockImplementation((url, body) => url.endsWith("/politicas") && body ? escrita.promise : padrao(url, body));
@@ -112,7 +112,7 @@ describe("UI acompanhamento — contraprovas independentes", () => {
   rerender(<BibliotecaReprodutiva propriedadeId={2} podeLancar onCopiou={copiou}/>); expect(screen.getByRole("button", { name: "Copiar como rascunho" })).toHaveProperty("disabled", false); await act(async () => escrita.resolve({ id: "copia-antiga" })); expect(copiou).not.toHaveBeenCalled(); expect(screen.queryByText(/Rascunho criado/)).toBeNull();
  });
  it("sem lançar há leitura sem editores nem confirmação", async () => {
-  const a = render(<DemandasAcompanhamento animalId="a" propriedadeId={1} painel={painel("a")} podeLancar={false} onAvaliar={vi.fn()} atualizacao={0}/>); await screen.findByText(/Nenhuma demanda registrada/); expect(screen.queryByText("Adotar regra em fatos existentes")).toBeNull(); a.unmount();
+  const a = render(<DemandasAcompanhamento animalId="a" propriedadeId={1} painel={painel("a")} podeLancar={false} onAvaliar={vi.fn()} atualizacao={0}/>); await screen.findByText(/Nenhum acompanhamento planejado/); expect(screen.queryByText("Planejar acompanhamentos faltantes")).toBeNull(); a.unmount();
   const b = render(<ConfiguracaoAcompanhamento propriedadeId={1} podeLancar={false}/>); await screen.findByText(/Versão 1/); expect(screen.queryByRole("button", { name: "Registrar nova versão" })).toBeNull(); b.unmount();
   render(<BibliotecaReprodutiva propriedadeId={1} podeLancar={false} onCopiou={vi.fn()}/>); await screen.findByText("Referência técnica"); expect(screen.queryByRole("button", { name: "Copiar como rascunho" })).toBeNull(); expect(posts()).toHaveLength(0);
  });

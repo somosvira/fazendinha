@@ -2,13 +2,14 @@ import { Hono } from "hono";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { uid } from "../../lib/uid.fixture.js";
 
-const mocks = vi.hoisted(() => ({ criar: vi.fn(), corrigir: vi.fn(), painel: vi.fn(), salvarRascunho: vi.fn(), detalheVisita: vi.fn(), confirmarAtividade: vi.fn() }));
+const mocks = vi.hoisted(() => ({ detalheParto: vi.fn(), criar: vi.fn(), corrigir: vi.fn(), painel: vi.fn(), salvarRascunho: vi.fn(), detalheVisita: vi.fn(), confirmarAtividade: vi.fn() }));
 vi.mock("../../services/propriedade.js", async original => ({ ...await original<typeof import("../../services/propriedade.js")>(),
   resolverEscopoLeitura: vi.fn().mockResolvedValue(2), resolverEscopoEscrita: vi.fn().mockResolvedValue(2) }));
 vi.mock("../../services/pecuaria/reproducao/registros.js", async original => ({ ...await original<typeof import("../../services/pecuaria/reproducao/registros.js")>(),
   criarParto: mocks.criar, corrigirParto: mocks.corrigir, painelReproducao: mocks.painel }));
 vi.mock("../../services/pecuaria/reproducao/visitas.js", async original => ({ ...await original<typeof import("../../services/pecuaria/reproducao/visitas.js")>(),
   salvarRascunho: mocks.salvarRascunho, detalheVisita: mocks.detalheVisita, confirmarAtividade: mocks.confirmarAtividade }));
+vi.mock("../../services/pecuaria/reproducao/relatorio-partos.js", async original => ({ ...await original<typeof import("../../services/pecuaria/reproducao/relatorio-partos.js")>(), obterPartoOperacional: mocks.detalheParto }));
 import { rebanhoRouter } from "./rebanho.js";
 
 const usuario = { id: 7, dono: false, areas: ["pecuaria"], flags: ["lancar"], abas: [] };
@@ -74,4 +75,12 @@ describe("respostas de parto protegem custos e conservam escore", () => {
       expect(resposta.status).toBe(r.status); expect(await resposta.json()).toEqual(parto());
     }
   });
+});
+
+it("leitor consulta o parto por identidade e escopo sem permissão de lançamento",async()=>{
+ mocks.detalheParto.mockResolvedValue(parto());
+ const resposta=await app({...usuario,flags:[]}).request(`/reproducao/partos/${uid(1)}`);
+ expect(resposta.status).toBe(200);
+ expect(mocks.detalheParto).toHaveBeenCalledWith(uid(1),2);
+ expect(await resposta.json()).toMatchObject({id:uid(1)});
 });

@@ -27,7 +27,7 @@ it("cartão só mostra participação do animal e mantém link operacional e ver
  const g: ProgramacaoIatf = {id:"g",nome:"Turma A",protocoloId:"v2",inicioPrevisto:"2020-01-01",status:"ABERTA",protocolo:{id:"v2",nome:"Protocolo 10 dias",versao:2,publicado:true,etapas:[]},participantes:[participante,{...participante,id:"p2",animalId:"b",inicioEfetivo:"1990-01-01"}]};
  render(<ProtocolosAnimal programacoes={[g]} animalId="a" propriedadeId={4}/>);
  expect(screen.getByText("Protocolo 10 dias · v2")).toBeTruthy();
- expect(screen.getByRole("link",{name:"Ver programação"}).getAttribute("href")).toBe("/pecuaria/reproducao?rotina=programacoes&programacaoId=g&sitio=4");
+ const url=new URL(screen.getByRole("link",{name:"Ver programação"}).getAttribute("href")!,"http://localhost"); expect(url.pathname).toBe("/pecuaria/reproducao/programacoes/g"); expect(url.searchParams.get("sitio")).toBe("4"); expect(url.searchParams.get("retorno")).toBe(window.location.pathname+window.location.search+window.location.hash);
  expect(screen.queryByText(/1990/)).toBeNull();
  expect(screen.getByText(/IA planejada · 02\/01\/2020/)).toBeTruthy();
 });

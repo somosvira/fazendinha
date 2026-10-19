@@ -228,7 +228,7 @@ describe("DetalheLote — histórico e desfazer", () => {
     vi.mocked(listarMovimentacoesDoLote).mockResolvedValue({ itens: [movimentacaoBase], total: 1 });
     vi.mocked(desfazerMovimentacao).mockRejectedValueOnce(new RebanhoApiError("Nada foi desfeito. B401: o animal já foi movimentado de novo", 409, "CONFLITO"));
     await montar();
-    fireEvent.click(await screen.findByRole("button", { name: "Desfazer" }));
+    fireEvent.click((await screen.findAllByRole("button", { name: "Desfazer" }))[0]);
     const modal = await screen.findByRole("dialog");
     fireEvent.change(within(modal).getByLabelText("Motivo"), { target: { value: "Motivo do estorno" } });
     fireEvent.click(within(modal).getByRole("button", { name: "Desfazer movimentação" }));
@@ -240,13 +240,13 @@ describe("DetalheLote — histórico e desfazer", () => {
     vi.mocked(listarMovimentacoesDoLote).mockResolvedValueOnce({ itens: [movimentacaoBase], total: 1 });
     vi.mocked(desfazerMovimentacao).mockResolvedValue({ desfeitos: 2 });
     await montar();
-    fireEvent.click(await screen.findByRole("button", { name: "Desfazer" }));
+    fireEvent.click((await screen.findAllByRole("button", { name: "Desfazer" }))[0]);
     const modal = await screen.findByRole("dialog");
     vi.mocked(listarMovimentacoesDoLote).mockResolvedValueOnce({ itens: [{ ...movimentacaoBase, desfeitaEm: "2026-01-11", desfeitaMotivo: "Motivo do estorno" }], total: 1 });
     fireEvent.change(within(modal).getByLabelText("Motivo"), { target: { value: "Motivo do estorno" } });
     fireEvent.click(within(modal).getByRole("button", { name: "Desfazer movimentação" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     await waitFor(() => expect(listarMovimentacoesDoLote).toHaveBeenCalledTimes(2));
-    expect(await screen.findByText(/Desfeita em/)).toBeTruthy();
+    expect((await screen.findAllByText(/^Desfeita$/))[0]).toBeTruthy();
   });
 });

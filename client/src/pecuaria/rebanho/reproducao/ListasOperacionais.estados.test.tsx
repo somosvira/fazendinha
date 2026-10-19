@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { Visitas } from "./Visitas";
 import { AcompanhamentoReprodutivo } from "./AcompanhamentoReprodutivo";
@@ -48,13 +48,13 @@ it("agenda oculta o sítio anterior enquanto consulta outro e ignora resposta ob
     .mockReturnValueOnce(new Promise(resolve => { resolverSegundo = resolve; }))
     .mockReturnValueOnce(new Promise(resolve => { resolverTerceiro = resolve; }));
   const tela = render(<AcompanhamentoReprodutivo atualizacao={0} propriedadeId={7}/>);
-  await screen.findByText("VACA-7"); expect(screen.getByText("02/11/2026")).toBeTruthy();
+  await screen.findAllByText("02/11/2026");
   tela.rerender(<AcompanhamentoReprodutivo atualizacao={0} propriedadeId={8}/>);
   expect(screen.queryByText("VACA-7")).toBeNull();
   expect(screen.queryByText(/Nenhum retorno/)).toBeNull();
   tela.rerender(<AcompanhamentoReprodutivo atualizacao={0} propriedadeId={9}/>);
   await act(async () => resolverTerceiro(vazio));
-  await screen.findByText("Nenhum retorno ou previsão com os critérios atuais.");
+  await screen.findByText(/Nenhum retorno ou previsão com os critérios atuais/);
   await act(async () => resolverSegundo({ ...vazio, retornos: [{ origem: "PREVISAO_PARTO", origemId: "p2", animalId: "VACA-8", data: "2026-11-02", status: "PREVISTO", propriedadeId: 8 }] }));
   expect(screen.queryByText("VACA-8")).toBeNull();
 });
@@ -64,4 +64,36 @@ it("falha na agenda não é apresentada como agenda vazia", async () => {
   await screen.findByRole("alert");
   expect(screen.queryByText(/Nenhum retorno/)).toBeNull();
   expect(screen.queryByRole("status")).toBeNull();
+});
+
+it("agenda mantém sem previsão ao final nas duas ordens e retorna com contexto", async () => {
+  window.history.replaceState({}, "", "/pecuaria/reproducao?rotina=agenda&sitio=7&agendaInicio=2026-10-01&agendaFim=2026-10-31");
+  vi.mocked(obterSugestoesVisita).mockResolvedValue({ ...vazio, retornos: [
+    { origem: "TAREFA_IATF", origemId: "t1", animalId: "a", data: "2020-01-01", status: "PREVISAO_PENDENTE", propriedadeId: 7, programacaoId: "p" },
+    { origem: "PREVISAO_PARTO", origemId: "g", animalId: "b", data: "2026-10-20", status: "PREVISTO", propriedadeId: 7 },
+  ] });
+  render(<AcompanhamentoReprodutivo atualizacao={0} propriedadeId={7}/>);
+  await screen.findAllByText("20/10/2026");
+  expect(screen.getAllByRole("row")[1].textContent).toContain("20/10/2026");
+  expect(screen.getAllByRole("row")[2].textContent).toContain("Previsão a definir");
+  fireEvent.click(screen.getByRole("button", { name: "Data crescente" }));
+  expect(screen.getAllByRole("row")[2].textContent).toContain("Previsão a definir");
+  expect(new URLSearchParams(window.location.search).get("agendaOrdem")).toBe("desc");
+  fireEvent.click(screen.getAllByRole("button", { name: "Ver ação" })[1]);
+  expect(window.location.pathname).toBe("/pecuaria/reproducao/programacoes/p");
+  const retorno=new URLSearchParams(window.location.search).get("retorno");
+  expect(retorno).toContain("rotina=agenda"); expect(retorno).toContain("agendaOrdem=desc");
+});
+
+it("agenda filtra o dia exibido em São Paulo para HORA e preserva o dia civil para DIA",async()=>{
+ window.history.replaceState({},"","/pecuaria/reproducao?rotina=agenda&agendaInicio=2026-10-18&agendaFim=2026-10-18");
+ vi.mocked(obterSugestoesVisita).mockResolvedValue({...vazio,animais:[],retornos:[
+  {origem:"TAREFA_IATF",origemId:"hora",animalId:"a",data:"2026-10-19T00:30:00Z",precisaoTemporal:"HORA",status:"PENDENTE",propriedadeId:7,programacaoId:"p"},
+  {origem:"TAREFA_IATF",origemId:"dia",animalId:"b",data:"2026-10-18T00:00:00Z",precisaoTemporal:"DIA",status:"PENDENTE",propriedadeId:7,programacaoId:"p"},
+  {origem:"TAREFA_IATF",origemId:"fora",animalId:"c",data:"2026-10-19T00:00:00Z",precisaoTemporal:"DIA",status:"PENDENTE",propriedadeId:7,programacaoId:"p"},
+ ]});
+ render(<AcompanhamentoReprodutivo atualizacao={0} propriedadeId={7}/>);
+ await screen.findAllByText("18/10/2026, 21:30");
+ expect(screen.getAllByRole("row")).toHaveLength(3);
+ expect(screen.getAllByText("18/10/2026 · horário não informado").length).toBeGreaterThan(0);
 });

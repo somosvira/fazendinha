@@ -4,6 +4,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { Reproducao, ReproducaoAnimal } from "./Reproducao";
 import { obterReproducao } from "./api";
 import { setPropriedadeAtiva } from "../../../propriedadeScope";
+import { Iatf } from "./Iatf";
 import { ElegibilidadeAnimal } from "./ElegibilidadeAnimal";
 vi.mock("./IndicadoresReprodutivos", () => ({ IndicadoresReprodutivos: ({ propriedadeId }: { propriedadeId: number }) => <p>Indicadores do sítio {propriedadeId}</p> }));
 vi.mock("./ConfiguracaoReprodutiva", () => ({ ConfiguracaoReprodutiva: ({ propriedadeId }: { propriedadeId: number }) => <p>Política do sítio {propriedadeId}</p> }));
@@ -12,7 +13,7 @@ vi.mock("./ResumoPoliticaReprodutiva", () => ({ ResumoPoliticaReprodutiva: () =>
 vi.mock("../../../api/propriedades", () => ({ listarPropriedades: vi.fn().mockResolvedValue([{ id: 7, nome: "Escola" }, { id: 8, nome: "Destino" }]) }));
 vi.mock("./ElegibilidadeAnimal", () => ({ ElegibilidadeAnimal: vi.fn(({ propriedadeId }: { propriedadeId: number }) => <p>Elegibilidade no sítio {propriedadeId}</p>) }));
 vi.mock("./api", () => ({obterReproducao:vi.fn(),reqV4:vi.fn().mockResolvedValue([])}));
-vi.mock("./Iatf", () => ({Iatf:()=>null}));
+vi.mock("./Iatf", () => ({Iatf:vi.fn(()=>null)}));
 vi.mock("./Exposicoes", () => ({Exposicoes:()=>null}));
 vi.mock("./RegrasSanitarias", () => ({RegrasSanitarias:()=>null}));
 vi.mock("./AcompanhamentoReprodutivo", () => ({AcompanhamentoReprodutivo:()=>null}));
@@ -72,4 +73,14 @@ it("elegibilidade individual recebe localização comprovada mesmo com outro sí
   await screen.findByText("Elegibilidade no sítio 7");
   expect(obterReproducao).toHaveBeenCalledWith("a", 7);
   expect(vi.mocked(ElegibilidadeAnimal).mock.calls.at(-1)?.[0]).toMatchObject({ animalId: "a", propriedadeId: 7, podeLancar: true });
+});
+
+it("link direto da programação recebe painel e animais para adicionar e executar", async()=>{
+ setPropriedadeAtiva(7);
+ const painel={animais:[{animalId:"a",brinco:"M-01",nome:null,situacao:"VAZIA",partos:0,tentativasCiclo:0,gestacao:null,restricoes:[]}],tentativas:[],avaliacoes:[],partos:[],restricoes:[]};
+ vi.mocked(obterReproducao).mockResolvedValue(painel);
+ window.history.replaceState(null,"","/pecuaria/reproducao/programacoes/programacao?sitio=7");
+ render(<Reproducao podeLancar/>);
+ await waitFor(()=>expect(vi.mocked(Iatf).mock.calls.at(-1)?.[0]).toMatchObject({programacaoId:"programacao",painel,animais:painel.animais,propriedadeId:7,podeLancar:true}));
+ expect(obterReproducao).toHaveBeenCalledWith(undefined,7);
 });

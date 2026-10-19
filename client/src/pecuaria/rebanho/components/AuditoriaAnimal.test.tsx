@@ -52,7 +52,7 @@ describe("AuditoriaAnimal", () => {
     vi.mocked(buscarAuditoriaAnimal).mockResolvedValue(resposta([{ ...entrada(), alteracoes: [{ campo: "observacao", rotulo: "Observação", antes: null, depois: "Nova nota" }] }, entrada(2)]));
     render(<AuditoriaAnimal id="animal-1" />);
     await screen.findByText("Identificação 1");
-    const botoes = screen.getAllByRole("button", { name: "Ver alterações" });
+    const botoes = screen.getAllByRole("button", { name: "Ver detalhes" });
     fireEvent.click(botoes[0]);
     expect(screen.getByRole("button", { name: "Ocultar detalhes" }).getAttribute("aria-expanded")).toBe("true");
     expect(botoes[1].getAttribute("aria-expanded")).toBe("false");
@@ -66,7 +66,7 @@ describe("AuditoriaAnimal", () => {
     await screen.findByText("Identificação 1");
     expect(screen.queryByText("Sistema")).toBeNull();
     expect(within(screen.getByRole("table")).getByText("Não informado")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Ver registro" }));
+    fireEvent.click(screen.getByRole("button", { name: "Ver detalhes" }));
     expect(screen.getByText("Sem detalhes de campos disponíveis nesta consulta.")).toBeTruthy();
     expect(screen.getByText(/Registro: animal-1/)).toBeTruthy();
   });

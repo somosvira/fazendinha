@@ -13,7 +13,7 @@ export function periodoPadrao(tipo: TipoConsulta): PeriodoConsulta {
     : new Date(hoje.getFullYear(), hoje.getMonth() - 11, 1);
   return { inicio: isoDate(inicio), fim: isoDate(hoje) };
 }
-function dataValida(valor: string): boolean {
+export function dataValida(valor: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(valor)) return false;
   const data = new Date(valor);
   return Number.isFinite(data.getTime()) && data.toISOString().slice(0, 10) === valor;

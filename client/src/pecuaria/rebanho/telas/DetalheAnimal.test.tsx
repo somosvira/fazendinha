@@ -72,7 +72,7 @@ async function montar(animal: AnimalFicha) {
   await screen.findByText(animal.nome ?? animal.brinco);
   fireEvent.click(screen.getByRole("button", { name: /Identificação e genética/ }));
   fireEvent.click(screen.getByRole("button", { name: /Histórico de manejo e movimentações/ }));
-  fireEvent.click(screen.getByRole("button", { name: /^Pesagens ·/ }));
+  fireEvent.click(screen.getByRole("button", { name: /^Manejo/ }));
   const menu = screen.queryByText("Mais ações");
   if (menu) fireEvent.click(menu);
 }
@@ -474,20 +474,16 @@ it("oferece pesagem na visão geral e reprodução na aba correspondente", async
 });
 
 
-it("mantém pesagens e indicadores detalhados recolhidos ao abrir a visão geral", async () => {
+it("abre indicadores e últimas pesagens junto com peso e mantém manejo compacto", async () => {
   vi.mocked(buscarFichaAnimal).mockResolvedValue(base);
   render(<DetalheAnimal id={base.id} onVoltar={vi.fn()} />, { wrapper: Wrapper });
   await screen.findByRole("heading", { name: "1234 · Mimosa" });
-  const pesagens = screen.getByRole("button", { name: /^Pesagens ·/ });
-  const indicadores = screen.getByRole("button", { name: "Indicadores de ganho" });
-  expect(pesagens.getAttribute("aria-expanded")).toBe("false");
-  expect(indicadores.getAttribute("aria-expanded")).toBe("false");
-  fireEvent.click(pesagens);
-  expect(pesagens.getAttribute("aria-expanded")).toBe("true");
-  expect(screen.getByText("Nenhuma pesagem registrada.")).toBeTruthy();
-  fireEvent.click(screen.getByText("Indicadores de ganho"));
-  expect(indicadores.getAttribute("aria-expanded")).toBe("true");
   expect(screen.getByText("GMD recente")).toBeTruthy();
+  expect(screen.getByText("Nenhuma pesagem registrada.")).toBeTruthy();
+  const manejo=screen.getByRole("button",{name:/^Manejo/});
+  expect(manejo.getAttribute("aria-expanded")).toBe("false");
+  fireEvent.click(manejo);
+  expect(manejo.getAttribute("aria-expanded")).toBe("true");
 });
 
 it("explica indisponibilidade no sítio e permite voltar à lista sem expor outro sítio", async () => {

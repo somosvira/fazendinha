@@ -52,7 +52,7 @@ Serviços atuais: `services/pecuaria/sanidade/`; migrations de V3, catálogos/hi
 
 As superfícies de detalhes e formulários usam os tokens semânticos de cartão e agrupamento, com espaçamento próprio. Listas distinguem carregamento, falha de leitura, ausência de cadastros e filtros sem correspondência; erro não comprova ausência de dados. Nutrição informa resultados em relação ao total de lotes e permite limpar os filtros sem perder o contexto da URL. A agenda sanitária orienta ajustar os critérios quando a consulta filtrada não encontra ciclos, sem sugerir cadastro a leitores.
 
-Reprodução apresenta Partos e pós-parto com os últimos 90 dias e Indicadores com os últimos doze meses até hoje, carregados ao abrir e com filtros de período. Em Consolidado, a própria página oferece seleção de sítio. Filtros completos, exportações e emissões preservadas ficam em Pecuária → Relatórios (`/pecuaria/relatorios`). A política reprodutiva fica em Configurações → Pecuária → Reprodução, com resumo em Ciclos e manejo. Consulte o [contrato de navegação e consultas](reproducao.md#consultas-operacionais-e-navegação).
+Reprodução apresenta Partos e pós-parto com os últimos 90 dias e Indicadores com os últimos doze meses até hoje, carregados ao abrir e com filtros de período. Em Consolidado, a própria página oferece seleção de sítio. Filtros completos, exportações e emissões preservadas ficam em Pecuária → Relatórios (`/pecuaria/relatorios`). A política reprodutiva fica em Configurações → Pecuária → Reprodução, com resumo em Animais e acompanhamentos. Consulte o [contrato de navegação e consultas](reproducao.md#consultas-operacionais-e-navegação).
 
 ## Custos diretos
 
@@ -78,17 +78,27 @@ Serviços atuais: `services/pecuaria/manejo/`, `services/pecuaria/nutricao/`; c�
 
 ## Ficha e auditoria do animal
 
-Quando a ficha não está disponível no sítio selecionado, a interface explica o contexto e oferece retorno à lista, sem revelar a localização em outro sítio. Falhas técnicas continuam sendo apresentadas como erro. Na auditoria, os detalhes usam botões secundários com indicação acessível de expansão.
+Quando a ficha não está disponível no sítio selecionado, a interface explica o contexto e oferece retorno à lista, sem revelar a localização em outro sítio. Falhas técnicas continuam sendo apresentadas como erro. Na auditoria, as linhas usam “Ver detalhes” com indicação acessível de expansão.
 
 A ficha organiza Visão geral, Reprodução, Sanidade e Nutrição; peso, manejo e histórico geral ficam na Visão geral. Os componentes podem ser recolhidos pelo título sem apagar rascunhos. A sidebar usa a altura da janela e permite rolar o menu independentemente do conteúdo. O [contrato reprodutivo](reproducao.md#ficha-e-acompanhamento-individual) detalha protocolos, histórico factual e referência das tentativas.
 
-Os cabeçalhos recolhíveis internos e externos usam título, resumo e chevron com acionamento por teclado; ações no cabeçalho não alternam a seção. Indicadores e pesagens ficam em largura completa abaixo de peso/manejo, cuja distribuição responde à largura do contêiner. Ausência de pesagens não gera curva ou GMD fictícios. Menus agrupam as ações de reprodução e sanidade, mantendo visíveis apenas ações autorizadas. Links para programação, protocolo, detalhes e fechamento conservam semântica de navegação com aparência de botão.
+Os cabeçalhos recolhíveis internos e externos usam título, resumo e chevron com acionamento por teclado; ações no cabeçalho não alternam a seção. Os quatro indicadores de peso/GMD abrem antes da curva. Curva e últimas pesagens ficam lado a lado quando há largura, empilhando em contêiner estreito; manejo fica abaixo em seção compacta recolhível. Ausência de pesagens não gera curva ou GMD fictícios. Menus agrupam as ações de reprodução e sanidade, mantendo visíveis apenas ações autorizadas. Links para programação, protocolo, detalhes e fechamento conservam semântica de navegação com aparência de botão.
 
 Na ficha sanitária, “Protocolos sanitários do animal” identifica participações comprovadas; o nome interno de ciclo permanece compatível. Ocorrências, exames e agenda usam cabeçalhos completos. O fechamento nutricional mantém botão de origem no cabeçalho, quantidades atribuídas e destaque de estorno; não representa ingestão individual medida.
 
 A auditoria apresenta data/hora da alteração, eixo com ícone e nome, ação, registro afetado, autoria e diferenças conhecidas. O período inicial é de trinta dias até hoje, ajustável; filtros por eixo, ação, responsável e busca são aplicados ao conjunto antes da paginação. Autoria ausente permanece não informada. O detalhamento usa campos conhecidos e autorizados, sem expor snapshots crus ou valores financeiros a quem não pode consultá-los.
 
 Eventos de nutrição do fechamento coletivo só entram quando a participação persistida do animal comprova o vínculo. Eventos de programação/lote sem vínculo individual não são atribuídos por suposição. Auditorias antigas sem campos comparáveis permanecem consultáveis com a limitação explícita; o redesign não cria evidência de antes/depois ausente. Histórico operacional descreve fatos do animal; auditoria descreve ações sobre os registros, sem confundir as duas datas.
+
+### Listas, filtros e detalhes operacionais
+
+A largura das páginas de Pecuária acompanha a área útil, sem alterar o limite das páginas financeiras. Colunas de identidade de animais/lotes têm largura contida; outras colunas absorvem o espaço. Filtros selecionados têm espaçamento próprio abaixo da barra. Abas da ficha usam seleção destacada e texto centralizado.
+
+Animais aceita listas em parâmetros repetidos: `propriedadeIds`, `loteIds`, `categoriaIds`, `sexos`, `origens`, `racaIds`, `aptidoes`, `papeisReprodutivos` e `situacoes`. Valores do mesmo campo usam OR; campos distintos usam AND, antes da contagem e paginação. Aliases escalares continuam válidos quando a família plural está ausente; enviar ambos é erro de validação. Sem categoria e categoria manual mantêm seus contratos. O padrão é Ativos; remover todas as situações representa Todos explicitamente, e Limpar filtros restaura Ativos. Os filtros de baixa permanecem, sem coluna redundante de Baixa. Mudar sítios remove lotes e seleção coletiva anterior; a troca global também reinicia a página da lista de animais. Se a população diminuir e a página deixar de existir, a consulta recupera a última página válida, sem afirmar ausência de animais. O escopo autorizado continua sendo aplicado no servidor.
+
+Movimentações usam tabela, filtros de sítios/lotes/período e detalhe em modal central. Os parâmetros `movSitioIds`, `movLoteIds`, `movDe`, `movAte`, `movDesfeitas` e `movPagina` recompõem a consulta; cada filtro alterado reinicia sua página. Uma movimentação desfeita continua consultável; a confirmação de desfazer permanece separada e autorizada.
+
+As tags da ficha só anunciam ocorrência vigente e participação em protocolo comprovadas; programação sem início ou com início futuro difere de protocolo iniciado. Participações com todas as etapas concluídas/dispensadas até a consulta deixam de gerar a tag de protocolo ativo; regularização pendente mantém o alerta de acompanhamento. Falha na leitura não significa ausência ou saúde confirmada. Observações de cadastro ficam em área secundária acessível. Sem consumo atribuído, Nutrição explica a dependência de lote/período e oferece acesso à conferência, sem afirmar que não há dieta definida.
 
 ## Homologação e dados locais
 

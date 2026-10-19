@@ -1,3 +1,4 @@
+import { Button as BotaoUI } from "../../../components/ui/button";
 import { ProtocoloTimeline } from "./ProtocoloTimeline";
 import {BibliotecaReprodutiva} from "./BibliotecaReprodutiva";
 import { CustosDiretos } from "../custos/CustosDiretos";
@@ -16,11 +17,13 @@ import {
   Empty,
   Panel,
   Pill,
+  TabelaFinanceira,
 } from "../../../financeiro/financeiro-ui";
 import {
   classeInput,
   PainelCadastro,
 } from "../../../financeiro/PainelCadastro";
+import { Paginacao } from "../ui";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import { reqV4, type PainelReprodutivo, type AnimalReprodutivo } from "./api";
 import { FormReproducao } from "./FormReproducao";
@@ -139,6 +142,7 @@ export const statusTarefaIatf = (t: TarefaIatf) =>
 export const statusParticipanteIatf = (p: ParticipanteIatf) =>
   p.encerradoEm ? "Encerrada" : p.inicioEfetivo ? "Iniciada" : "Prevista";
 export function Iatf({
+  programacaoId, onAbrirProgramacao, onFecharDetalhe,
   animais = [],
   painel,
   modo = "operacao",
@@ -147,6 +151,9 @@ export function Iatf({
   animaisIndicadosInicialmente,
   propriedadeId,
 }: {
+  programacaoId?: string;
+  onAbrirProgramacao?: (id: string) => void;
+  onFecharDetalhe?: () => void;
   animais?: Array<Pick<AnimalReprodutivo, "animalId" | "brinco" | "nome">>;
   animaisIndicadosInicialmente?: string[];
   propriedadeId?: number;
@@ -182,6 +189,13 @@ export function Iatf({
   const consultaVisivel = consulta?.contexto === contexto ? consulta : null;
   const protocolos = consultaVisivel?.protocolos ?? [];
   const programacoes = consultaVisivel?.programacoes ?? [];
+  const [buscaProgramacao,setBuscaProgramacao]=useState(()=>new URLSearchParams(window.location.search).get("iatfBusca")??"");
+  const [paginaProgramacoes,setPaginaProgramacoes]=useState(()=>Math.max(1,Math.floor(Number(new URLSearchParams(window.location.search).get("iatfPagina"))||1)));
+  useEffect(()=>{if(programacaoId||modo!=="operacao")return;const u=new URL(window.location.href);buscaProgramacao?u.searchParams.set("iatfBusca",buscaProgramacao):u.searchParams.delete("iatfBusca");paginaProgramacoes>1?u.searchParams.set("iatfPagina",String(paginaProgramacoes)):u.searchParams.delete("iatfPagina");window.history.replaceState(window.history.state,"",u.pathname+u.search+u.hash);},[buscaProgramacao,paginaProgramacoes,programacaoId,modo]);
+  useEffect(()=>{const restaurar=()=>{const p=new URLSearchParams(window.location.search);setBuscaProgramacao(p.get("iatfBusca")??"");setPaginaProgramacoes(Math.max(1,Math.floor(Number(p.get("iatfPagina"))||1)));};window.addEventListener("popstate",restaurar);return()=>window.removeEventListener("popstate",restaurar);},[]);
+  const filtradas=programacoes.filter(p=>p.nome.toLocaleLowerCase("pt-BR").includes(buscaProgramacao.toLocaleLowerCase("pt-BR")));
+  const paginasProgramacoes=Math.max(1,Math.ceil(filtradas.length/20));
+  const paginaLista=Math.min(paginaProgramacoes,paginasProgramacoes);
   const carregando = leitura.contexto !== contexto || leitura.carregando;
   const erroConsulta = leitura.contexto === contexto ? leitura.erro : null;
   const sequenciaConsulta = useRef(0);
@@ -341,7 +355,7 @@ export function Iatf({
   );
   useEffect(() => {
     const atualizar = () => {
-      const id = new URLSearchParams(window.location.search).get("programacaoId");
+      const id = programacaoId ?? new URLSearchParams(window.location.search).get("programacaoId");
       if (id) void abrir(id);
       else {
         aberturaAtual.current++;
@@ -355,7 +369,7 @@ export function Iatf({
       aberturaAtual.current++;
       window.removeEventListener("popstate", atualizar);
     };
-  }, [abrir]);
+  }, [abrir, programacaoId]);
   const indicacaoAberta = useRef(false);
   useEffect(() => {
     if (!animaisIndicadosInicialmente?.length || indicacaoAberta.current || !podeLancar) return;
@@ -390,7 +404,7 @@ export function Iatf({
     <div className="space-y-5">
       <ErrorBox erro={erro} />
       {modo !== "operacao" && <BibliotecaReprodutiva propriedadeId={sitioEfetivo} podeLancar={podeLancar} onCopiou={()=>void carregar()}/>}
-      {modo === "operacao" && <Panel>
+      {modo === "operacao" && !programacaoId && <Panel>
         <CabecalhoTabela
           titulo="Programações de IATF"
           acao={
@@ -428,18 +442,16 @@ export function Iatf({
           )}
           <ErrorBox erro={erroConsulta} />
           {erroConsulta && <Button secondary onClick={() => void carregar()}>Tentar novamente</Button>}
-          {programacoes.map((p) => (
-            <button
-              className="flex w-full items-center justify-between text-left border border-border rounded-lg p-3"
-              key={p.id}
-              onClick={() => void abrir(p.id)}
-            >
-              <span>
-                {p.nome} · {horarioIatf(p.inicioPrevisto, p.precisaoTemporal)}
-              </span>
-              <Pill>{p.status}</Pill>
-            </button>
-          ))}
+          <label className="block text-sm">Buscar programação<input className={classeInput} aria-label="Buscar programação" value={buscaProgramacao} onChange={e=>{setBuscaProgramacao(e.target.value);setPaginaProgramacoes(1);}}/></label>
+          <TabelaFinanceira rotulo="Programações IATF" itens={filtradas.slice((paginaLista-1)*20,paginaLista*20)} chaveDe={p=>p.id} colunas={[
+            {chave:"nome",titulo:"Programação",principal:true,larguraMinima:200,larguraFlexivel:true,celula:p=>p.nome},
+            {chave:"inicio",titulo:"Início programado",larguraMinima:180,celula:p=>horarioIatf(p.inicioPrevisto,p.precisaoTemporal)},
+            {chave:"participantes",titulo:"Participantes",larguraMinima:110,celula:p=>p.participantes.length},
+            {chave:"situacao",titulo:"Situação",larguraMinima:120,celula:p=><Pill>{p.status==="ABERTA"?"Aberta":p.status==="ENCERRADA"?"Encerrada":"A conferir"}</Pill>},
+            {chave:"acao",titulo:"Ação",acoes:true,larguraMinima:140,celula:p=><BotaoUI variant="outline" aria-label={`Ver IATF ${p.nome}`} onClick={()=>onAbrirProgramacao?onAbrirProgramacao(p.id):void abrir(p.id)}>Ver IATF</BotaoUI>},
+          ]}/>
+          {filtradas.length>20&&<Paginacao paginaAtual={paginaLista} totalPaginas={paginasProgramacoes} totalItens={filtradas.length} itensPorPagina={20} onPaginaChange={setPaginaProgramacoes} rotulo="programações" idSelect="pagina-programacoes-iatf"/>}
+          {!!programacoes.length&&!filtradas.length&&<Empty>Nenhuma programação encontrada com esta busca.</Empty>}
           {!carregando &&
             !erroConsulta &&
             consultaVisivel &&
@@ -492,8 +504,8 @@ export function Iatf({
           <CabecalhoTabela
             titulo={`${detalhe.nome} · ${detalhe.protocolo?.nome ?? "Protocolo"} v${detalhe.protocolo?.versao ?? ""}`}
             acao={
-              <Button secondary onClick={() => { aberturaAtual.current++; setLeituraDetalhe(null); setDetalhe(null); }}>
-                Fechar detalhes
+              <Button secondary onClick={() => { if(onFecharDetalhe){onFecharDetalhe();return;} aberturaAtual.current++; setLeituraDetalhe(null); setDetalhe(null); }}>
+                {onFecharDetalhe ? "Voltar às programações" : "Fechar detalhes"}
               </Button>
             }
           />

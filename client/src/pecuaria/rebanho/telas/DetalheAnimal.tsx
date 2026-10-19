@@ -37,6 +37,7 @@ import { SanidadeAnimal } from "../sanidade/SanidadeAnimal";
 import { ManejoAnimal } from "../manejo/ManejoAnimal";
 import { IdentificarCria } from "../reproducao/IdentificarCria";
 import { ReproducaoAnimal } from "../reproducao/Reproducao";
+import { StatusOperacionaisAnimal } from "../components/StatusOperacionaisAnimal";
 import { SinaisClinicosAnimal } from "../components/SinaisClinicosAnimal";
 import type { CarenciaAnimal } from "../sanidade/api";
 import { NutricaoAnimal } from "../nutricao/NutricaoAnimal";
@@ -228,14 +229,7 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
       <PageHeader integrado
         titulo={<>{animal.brinco}{animal.nome && <> · <span>{animal.nome}</span></>}</>}
         descricao={`${animal.categoria?.nome ?? "Sem categoria"} · ${animal.propriedade?.nome ?? "Sem sítio"} · ${animal.lote?.nome ?? "Sem lote"}`}
-        contexto={<div className="flex flex-wrap items-center gap-2">
-            <Pill tone={ativo ? "green" : "neutral"}>{rotuloSituacao(animal.situacao)}</Pill>
-            {animal.identificacaoProvisoria && <Pill tone="amber">Brinco pendente · cadastro provisório</Pill>}
-            <CategoriaPill categoria={animal.categoria} categoriaOrigem={animal.categoriaOrigem} categoriaCalculada={animal.categoriaCalculada} />
-            {animal.aptidao && <Pill tone="brown">{rotuloAptidao(animal.aptidao)}{!ativo && " · na baixa"}</Pill>}
-            {animal.papelReprodutivo && animal.papelReprodutivo !== "NENHUM" && <Pill tone="amber">{rotuloPapelReprodutivo(animal.papelReprodutivo)}{!ativo && " · na baixa"}</Pill>}
-            <SinaisClinicosAnimal situacao={animal.sexo === "F" ? situacaoReprodutiva : null} carencia={carenciaResumo} />
-          </div>}
+
         acao={podeLancar && <div className="flex max-w-full flex-wrap gap-2 lg:max-w-[560px] lg:justify-end">
           {ativo ? <>
             {animal.identificacaoProvisoria && <Button secondary onClick={()=>setIdentificandoCria(true)}>Completar identificação</Button>}
@@ -275,6 +269,15 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
       </div>}
 
     </div>
+    <div className="ficha-status">
+            <Pill tone={ativo ? "green" : "neutral"}>{rotuloSituacao(animal.situacao)}</Pill>
+            {animal.identificacaoProvisoria && <Pill tone="amber">Brinco pendente · cadastro provisório</Pill>}
+            <CategoriaPill categoria={animal.categoria} categoriaOrigem={animal.categoriaOrigem} categoriaCalculada={animal.categoriaCalculada} />
+            {animal.aptidao && <Pill tone="brown">{rotuloAptidao(animal.aptidao)}{!ativo && " · na baixa"}</Pill>}
+            {animal.papelReprodutivo && animal.papelReprodutivo !== "NENHUM" && <Pill tone="amber">{rotuloPapelReprodutivo(animal.papelReprodutivo)}{!ativo && " · na baixa"}</Pill>}
+            <StatusOperacionaisAnimal animalId={animal.id} propriedadeId={localizacaoAtual?.propriedade?.id??null} revisao={refreshToken}/>
+            <SinaisClinicosAnimal situacao={animal.sexo === "F" ? situacaoReprodutiva : null} carencia={carenciaResumo} />
+          </div>
     <nav aria-label="Seções da ficha" role="tablist" className="pec-ancoras">
       {[["resumo", "Visão geral"], ["reproducao", "Reprodução"], ["sanidade", "Sanidade"], ["nutricao", "Nutrição"]].filter(([ancora]) => ancora !== "reproducao" || animal.sexo === "F").map(([ancora, rotulo]) => <button type="button" role="tab" id={`aba-${ancora}`} key={ancora} aria-selected={secaoAtiva === ancora} aria-controls={ancora === "resumo" ? "visao-geral" : ancora} onClick={() => selecionarSecao(ancora)} onKeyDown={event => {
         if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
@@ -312,7 +315,7 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
           {animal.contextoProdutivo?.diasPosParto != null && <DadoFicha icon={Baby} rotulo="Dias após parto">{animal.contextoProdutivo.diasPosParto}</DadoFicha>}
 
         </dl>
-        {animal.observacao && <div className="mt-5 flex gap-2.5 rounded-lg border border-border bg-surface-2 px-4 py-3 text-sm text-ink-2"><StickyNote aria-hidden="true" size={16} className="mt-0.5 shrink-0 text-ink-3" /><p className="min-w-0 break-words">{animal.observacao}</p></div>}
+        {animal.observacao && <details className="mt-5 rounded-lg border border-border p-4"><summary className="cursor-pointer font-semibold">Observações do cadastro</summary><div className="mt-3 flex gap-2.5 text-sm text-ink-2"><StickyNote aria-hidden="true" size={16} className="mt-0.5 shrink-0 text-ink-3" /><p className="min-w-0 break-words">{animal.observacao}</p></div></details>}
       </CardFicha>
 
       <CardFicha icon={Dna} titulo="Filiação e composição racial" className="lg:col-span-2">

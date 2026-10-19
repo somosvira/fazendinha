@@ -1,3 +1,4 @@
+import { obterPartoOperacional } from "../../services/pecuaria/reproducao/relatorio-partos.js";
 import {listarBibliotecaReprodutiva,copiarReferenciaSchema,copiarReferenciaReprodutiva} from "../../services/pecuaria/reproducao/biblioteca.js";
 import * as acompanhamento from "../../services/pecuaria/reproducao/acompanhamento.js";
 import * as acompanhamentoSchemas from "../../services/pecuaria/reproducao/acompanhamento.schemas.js";
@@ -141,6 +142,7 @@ export const protegerCustosV4: MiddlewareHandler = async (c, next) => {
 };
 export const reproducaoRouter = new Hono()
   .use("*", protegerCustosV4)
+  .get("/partos/:id", async c => { try { return c.json(apresentarV4(c, await obterPartoOperacional(s.uuid.parse(c.req.param("id")), s.sitio.parse(await resolverEscopoLeitura(c))))); } catch(e) { return falhaV4(c,e); } })
   .get("/biblioteca",c=>{try{return c.json(listarBibliotecaReprodutiva(z.string().max(200).parse(c.req.query("busca")??"")));}catch(e){return falhaV4(c,e);}})
   .post("/biblioteca/:id/copiar",validarV4(copiarReferenciaSchema),async c=>{try{const b=c.req.valid("json");return c.json(await copiarReferenciaReprodutiva(c.req.param("id"),{...b,propriedadeId:await resolverEscopoEscrita(c,b.propriedadeId)},usuarioV4(c)),201);}catch(e){return falhaV4(c,e);}})
   .get("/acompanhamento/politicas", async c=>{try{return c.json(await acompanhamento.listarPoliticasAcompanhamento(s.sitio.parse(await resolverEscopoLeitura(c))));}catch(e){return falhaV4(c,e);}})

@@ -10,7 +10,7 @@ vi.mock("./ElegibilidadeAnimal", () => ({ ElegibilidadeAnimal: () => <input aria
 vi.mock("../custos/CustosDiretos", () => ({ CustosDiretos: ({ finalidadeInicial }: { finalidadeInicial: string }) => <p>Custos {finalidadeInicial}</p> }));
 vi.mock("./DetalheFato", () => ({ DetalheFato: ({ fato, onFechar }: { fato: { id: string }; onFechar: () => void }) => <div><p>Fato {fato.id}</p><button onClick={onFechar}>Fechar fato</button></div> }));
 vi.mock("./FormReproducao", () => ({ FormReproducao: ({ onSalvo }: { onSalvo: () => void }) => <div><p>Formulário preservado</p><button onClick={onSalvo}>Salvar formulário</button></div> }));
-beforeEach(() => { vi.mocked(reqV4).mockResolvedValue([]); });
+beforeEach(() => { window.history.replaceState(null,"","/"); vi.stubGlobal("ResizeObserver",class {observe(){} unobserve(){} disconnect(){}}); Element.prototype.scrollIntoView=vi.fn(); vi.mocked(reqV4).mockResolvedValue([]); });
 afterEach(() => { cleanup(); vi.clearAllMocks(); window.history.replaceState(null, "", "/"); });
 function painel(animalId = "a"): PainelReprodutivo {
  const tentativas = Array.from({ length: 12 }, (_, i) => ({ id: `t${i}`, animalId, data: `2020-09-${String(i + 1).padStart(2, "0")}`, tipo: i === 0 ? "TE" : "IA", ordem: i + 1, status: "VALIDO" }));
@@ -26,7 +26,7 @@ it("integra tentativas ao histórico com paginação e exclui marcos previstos",
  expect(screen.getAllByRole("button", { name: "Ver detalhes" })).toHaveLength(20);
  fireEvent.click(screen.getByRole("button", { name: "Próxima" }));
  expect(screen.getAllByRole("button", { name: "Ver detalhes" })).toHaveLength(6);
- fireEvent.click(screen.getByRole("button", { name: "Avaliações" }));
+ fireEvent.click(screen.getByRole("button",{name:"Tipos de registro"}));fireEvent.click(screen.getByRole("option",{name:"Avaliações"}));fireEvent.keyDown(screen.getByPlaceholderText("Buscar opção…"),{key:"Escape"});
  expect(screen.getByText("Nenhum evento registrado neste período e tipo.")).toBeTruthy();
 });
 it("conserva deep links e detalhes, filtra período e mantém rascunho ao recolher", async () => {
@@ -35,7 +35,7 @@ it("conserva deep links e detalhes, filtra período e mantém rascunho ao recolh
  const { rerender } = render(<ReproducaoIndividual animalId="a" propriedadeId={1} podeLancar={true}/>);
  expect(await screen.findByText("Fato t0")).toBeTruthy();
  fireEvent.click(screen.getByRole("button", { name: "Fechar fato" }));
- expect(window.location.search).toBe("");
+ expect(new URLSearchParams(window.location.search).has("fatoId")).toBe(false);
  fireEvent.click(screen.getByRole("button", { name: /Aptidão hoje/ }));
  const criterio = screen.getByLabelText("Critérios completos") as HTMLInputElement;
  fireEvent.change(criterio, { target: { value: "alterado" } });
@@ -107,7 +107,7 @@ it.each([0,1,2,3])("conserva %s tentativas factuais sem completar lacunas", asyn
  vi.mocked(obterReproducao).mockResolvedValue(dados);
  render(<ReproducaoIndividual animalId="a" podeLancar={false}/>);
  expect(await screen.findByText(`${quantidade} desde o início registrado`)).toBeTruthy();
- fireEvent.click(screen.getByRole("button", {name:"Tentativas"}));
+ fireEvent.click(screen.getByRole("button",{name:"Tipos de registro"}));fireEvent.click(screen.getByRole("option",{name:"Tentativas"}));fireEvent.keyDown(screen.getByPlaceholderText("Buscar opção…"),{key:"Escape"});
  expect(screen.queryAllByRole("button",{name:"Ver detalhes"})).toHaveLength(quantidade*2);
 });
 const demandaPendente = { id:"d", finalidade:"DIAGNOSTICO",ocorrencia:1,tentativaId:"t0",gestacaoId:null,previstaPara:"2020-10-01",estado:"PENDENTE",motivoEncerramento:null,regraSnapshot:{politicaVersao:1},exameResolucaoId:null };
@@ -156,12 +156,12 @@ it("adoção explícita reconsulta o pai e torna demanda avulsa e situação des
   return [];
  });
  render(<ReproducaoIndividual animalId="a" propriedadeId={1} podeLancar/>);
- fireEvent.click(await screen.findByText("Adotar regra em fatos existentes"));
- fireEvent.change(screen.getByLabelText("Versão escolhida"),{target:{value:"regra"}});
- fireEvent.click(screen.getByRole("button",{name:"Conferir adoção"}));
- await screen.findByRole("button",{name:"Confirmar adoção conferida"});
+ fireEvent.click(await screen.findByText("Planejar acompanhamentos faltantes"));
+ fireEvent.change(screen.getByLabelText("Regra para os acompanhamentos novos"),{target:{value:"regra"}});
+ fireEvent.click(screen.getByRole("button",{name:"Ver prévia"}));
+ await screen.findByRole("button",{name:"Confirmar criação conferida"});
  fireEvent.change(screen.getByLabelText("Motivo obrigatório"),{target:{value:"Acompanhamento explicitamente adotado"}});
- fireEvent.click(screen.getByRole("button",{name:"Confirmar adoção conferida"}));
+ fireEvent.click(screen.getByRole("button",{name:"Confirmar criação conferida"}));
  expect(await screen.findByRole("heading",{name:"Acompanhamentos"})).toBeTruthy();
  expect(screen.getByText("Aguardando diagnóstico")).toBeTruthy();
  expect(await screen.findByRole("button",{name:"Registrar avaliação"})).toBeTruthy();

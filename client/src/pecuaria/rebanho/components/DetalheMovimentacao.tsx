@@ -5,7 +5,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Loader } from "../../../components/Loading";
-import { PainelCadastro } from "../../../financeiro/PainelCadastro";
+import { DialogFinanceiro } from "../../../financeiro/DialogFinanceiro";
 import { Button, ErrorBox, Pill } from "../../../financeiro/financeiro-ui";
 import { buscarMovimentacao, RebanhoApiError } from "../api";
 import type { MovimentacaoDetalhe } from "../types";
@@ -54,9 +54,9 @@ export function DetalheMovimentacao({ id, podeLancar = true, onFechar, onMudou }
     navegarPara(`/pecuaria/rebanho/animais/${animalId}`);
   };
 
-  return <PainelCadastro aberto titulo="Movimentação" largura="sm:max-w-3xl" onFechar={onFechar}
+  return <DialogFinanceiro titulo="Movimentação" eyebrow="Rebanho" className="sm:max-w-3xl" onClose={onFechar}
       rodape={<Button secondary onClick={onFechar}>Fechar</Button>}>
-      <ErrorBox erro={erro} />
+      <div className="p-5"><ErrorBox erro={erro} />
       {carregando && !mov ? <Loader label="Carregando movimentação" /> : mov && <div className="grid gap-5">
         <div className="rounded-xl border border-border p-4 text-sm">
           <div className="flex flex-wrap items-center gap-2">
@@ -91,11 +91,11 @@ export function DetalheMovimentacao({ id, podeLancar = true, onFechar, onMudou }
         </div>
       </div>}
 
-      {desfazendo && mov && <ConfirmarDesfazerMovimentacao
+      </div>{desfazendo && mov && <ConfirmarDesfazerMovimentacao
         movimentacaoId={mov.id}
         detalhe={mov}
         onFechar={() => setDesfazendo(false)}
         onConfirmado={() => { setDesfazendo(false); void carregar().then(() => onMudou?.()); }}
       />}
-    </PainelCadastro>;
+    </DialogFinanceiro>;
 }
