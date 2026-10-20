@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useState } from "react";
 import { brl, emDias, hoje, mesAtual, Modal, TabelaFinanceira } from "./financeiro-ui";
 
@@ -17,6 +17,37 @@ describe("tabela paginada compartilhada", () => {
     expect(container.innerHTML).not.toContain("overflow-y-auto");
     expect(container.innerHTML).not.toContain("max-h-");
   });
+});
+
+it("adapta a consulta à largura disponível e preserva a abertura após redimensionar", () => {
+  let avisar = () => {};
+  const observerOriginal = globalThis.ResizeObserver;
+  globalThis.ResizeObserver = class {
+    constructor(callback: () => void) { avisar = callback; }
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  } as unknown as typeof ResizeObserver;
+  try {
+    const abrir = vi.fn();
+    const { container } = render(<TabelaFinanceira rotulo="Teste responsivo" itens={[{ id: "1", nome: "Registro" }]} chaveDe={item => item.id} onAbrir={abrir} colunas={[
+      { chave: "nome", titulo: "Nome", principal: true, larguraMinima: 500, celula: item => item.nome },
+      { chave: "detalhe", titulo: "Detalhe", larguraMinima: 400, celula: () => "Informação" },
+    ]} />);
+    const consulta = container.querySelector<HTMLElement>(".fin-consulta-responsiva")!;
+    let largura = 700;
+    Object.defineProperty(consulta, "clientWidth", { get: () => largura });
+    act(() => avisar());
+    expect(consulta.dataset.finVisualizacao).toBe("cartoes");
+    largura = 1200;
+    act(() => avisar());
+    expect(consulta.dataset.finVisualizacao).toBe("tabela");
+    largura = 500;
+    act(() => avisar());
+    expect(consulta.dataset.finVisualizacao).toBe("cartoes");
+    fireEvent.click(container.querySelector(".fin-tabela-cartoes button")!);
+    expect(abrir).toHaveBeenCalledWith({ id: "1", nome: "Registro" });
+  } finally { globalThis.ResizeObserver = observerOriginal; }
 });
 
 describe("datas locais financeiras", () => {

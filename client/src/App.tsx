@@ -1,3 +1,4 @@
+import { descartarTrabalhoAtivo, type TipoTrabalhoAtivo } from "./financeiro/descarteTrabalhoAtivo";
 /* Rio Novo — raiz.
  * Permissionamento: Marco (dono) é o usuário logado. Ele gerencia acessos e pode
  * "ver como" outra pessoa — a navegação reduz às abas do perfil e os valores em R$
@@ -6,17 +7,19 @@
 
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { type Tab, type NavTab } from "./components/Shell";
-import { abrirRotaNovaOperacao, isNovaOperacaoFinanceira, isSubrotaFinanceira, isSubrotaRebanho, tabToPath, pathToTab, DEFAULT_TAB, navegarPara, normalizarLocalizacaoPecuaria, normalizarRotaPecuaria, isSubrotaPecuaria } from "./router";
+import { abrirRotaNovaOperacao, isNovaOperacaoFinanceira, isNovoRelatorioFinanceiro, isSubrotaFinanceira, isSubrotaRebanho, tabToPath, pathToTab, DEFAULT_TAB, navegarPara, normalizarLocalizacaoPecuaria, normalizarRotaPecuaria, isSubrotaPecuaria } from "./router";
 import { AppSidebar } from "./components/AppSidebar";
 import "./financeiro/financeiro-theme.css";
-import { obterRascunhoOperacao, obterRascunhoRelatorioFinanceiro } from "./financeiro/novo-api";
-import { limparRascunhoAtivo, useRascunhoAtivo } from "./financeiro/rascunhoAtivo";
+import { descartarRascunhoOperacao, descartarRascunhoRelatorioFinanceiro, obterRascunhoOperacao, obterRascunhoRelatorioFinanceiro } from "./financeiro/novo-api";
+import { enfileirarSalvamentoRascunho, limparRascunhoAtivo, useRascunhoAtivo } from "./financeiro/rascunhoAtivo";
 import { resumoRascunho } from "./financeiro/lib/rascunho";
-import { limparRascunhoRelatorioAtivo, useRascunhoRelatorioAtivo } from "./financeiro/rascunhoRelatorioAtivo";
+import { enfileirarSalvamentoRascunhoRelatorio, limparRascunhoRelatorioAtivo, useRascunhoRelatorioAtivo } from "./financeiro/rascunhoRelatorioAtivo";
 import { resumoRascunhoRelatorio } from "./financeiro/lib/rascunho-relatorio";
 import "./pecuaria/pecuaria-theme.css";
 import "./pecuaria/pecuaria-refino.css";
 import "./styles/abas.css";
+import "./styles/identidade-rural.css";
+import "./styles/tabelas-operacionais.css";
 import { setPropriedadeAtiva, getPropriedadeAtiva } from "./propriedadeScope";
 import { executarComGuardaNavegacao } from "./navegacaoGuardada";
 import { parseProdutoEstoqueId } from "./router";
@@ -502,6 +505,17 @@ export function App() {
     [rascunhoRelatorioAtivo.rascunho, rascunhoRelatorioAtivo.recuperacao],
   );
 
+  const excluirTrabalho = async (tipo: TipoTrabalhoAtivo) => {
+    if (token !== getToken() || propAtiva !== getPropriedadeAtiva()) throw new Error("O sítio ou a sessão mudou. Reabra o trabalho antes de excluir.");
+    const origem = window.location.pathname;
+    await descartarTrabalhoAtivo(tipo, validar => tipo === "operacao"
+      ? enfileirarSalvamentoRascunho(() => { validar(); return descartarRascunhoOperacao(); })
+      : enfileirarSalvamentoRascunhoRelatorio(() => { validar(); return descartarRascunhoRelatorioFinanceiro(); }));
+    if (token !== getToken() || propAtiva !== getPropriedadeAtiva() || origem !== window.location.pathname) return;
+    if (tipo === "operacao" && isNovaOperacaoFinanceira(origem)) navegarPara("/financeiro/operacoes");
+    if (tipo === "relatorio" && isNovoRelatorioFinanceiro(origem)) navegarPara("/financeiro/relatorios");
+  };
+
   const canSee = (id: Tab) => visibleTabs.some((t) => t.id === id);
 
   if (authRoute?.kind === "invite" || authRoute?.kind === "reset-password") {
@@ -597,10 +611,10 @@ export function App() {
         // O atalho só aparece depois de se saber se há rascunho, para o "+" não
         // piscar antes de o rascunho existente carregar.
         trabalhoAtivo={podeVerRascunho && (rascunhoAtivo.conhecido || !!rascunhoAtivo.recuperacao)
-          ? { resumo: resumoRascunhoAtivo, ativo: rascunhoAtivo.editando, onAbrir: abrirRascunhoAtivo }
+          ? { resumo: resumoRascunhoAtivo, ativo: rascunhoAtivo.editando, onAbrir: abrirRascunhoAtivo, onExcluir: () => excluirTrabalho("operacao") }
           : null}
         trabalhoAtivoRelatorio={podeVerRascunhoRelatorio && (rascunhoRelatorioAtivo.conhecido || !!rascunhoRelatorioAtivo.recuperacao) && resumoRascunhoRelatorioAtivo
-          ? { resumo: resumoRascunhoRelatorioAtivo, ativo: rascunhoRelatorioAtivo.editando, onAbrir: abrirRascunhoRelatorioAtivo }
+          ? { resumo: resumoRascunhoRelatorioAtivo, ativo: rascunhoRelatorioAtivo.editando, onAbrir: abrirRascunhoRelatorioAtivo, onExcluir: () => excluirTrabalho("relatorio") }
           : null}
       />
       <main id="main-content" className="app-main" {...(mobileOpen ? { inert: "" } : {})}>

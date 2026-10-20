@@ -1,3 +1,4 @@
+import { useFiltrosTabelaLocal } from "@/financeiro/useFiltrosTabelaLocal";
 import { BarraConsulta } from "@/financeiro/BarraConsulta";
 import { SelectCampo } from "@/financeiro/SelectCampo";
 import { reqV4 } from "../reproducao/api";
@@ -101,8 +102,13 @@ export function CadastrosSanitarios({ podeLancar, cadastro, embutido = false, co
   }
   const titulo = abas.find((a) => a.id === aba)!.nome;
   const normalizar = (texto: string) => texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
-  const itensExibidos = itens.filter(item => normalizar(item.nome).includes(normalizar(busca.trim())));
-  const paginacao = usePaginacaoLocal(itensExibidos, `${aba}|${busca}`);
+  const consulta = useFiltrosTabelaLocal<Item>([
+    {chave:"nome", naBarra: true,rotulo:"Nome",tipo:"texto",obter:i=>i.nome},
+    {chave:"situacao",rotulo:"Situação",tipo:"opcoes",obter:i=>i.ativo?"ATIVO":"INATIVO",opcoes:[{valor:"ATIVO",texto:"Ativo"},{valor:"INATIVO",texto:"Inativo"}]},
+    ...(aba==="exame"?[{chave:"formato",rotulo:"Formato do resultado",tipo:"texto" as const,obter:(i: Item)=>"tipoResultado" in i?formatos[i.tipoResultado]:null}]:[]),
+  ]);
+  const itensExibidos = consulta.filtrar(itens).filter(item => normalizar(item.nome).includes(normalizar(busca.trim())));
+  const paginacao = usePaginacaoLocal(itensExibidos, `${aba}|${busca}|${consulta.criterios.map(c=>c.rotulo).join("|")}`);
   const novo = aba === "aplicacao" ? "Novo tipo de aplicação" : aba === "doenca" ? "Nova doença" : "Novo tipo de exame";
   function salvar() {
     if (!painel) return;
@@ -120,13 +126,13 @@ export function CadastrosSanitarios({ podeLancar, cadastro, embutido = false, co
 
         {aba === "aplicacao" && <p className="px-4 pb-4 text-sm text-ink-3">Descrevem a finalidade, sem determinar estoque, Serviço ou carência. Renomear preserva o histórico.</p>}
         {aba === "exame" && <p className="px-4 pb-4 text-sm text-ink-3">Após a primeira coleta, o formato do resultado fica bloqueado, mesmo se a coleta estiver pendente ou anulada. Isso preserva a interpretação do histórico.</p>}
-        <BarraConsulta acao={podeLancar && <Button disabled={ocupado || carregando} onClick={() => abrir(aba)}>{novo}</Button>}><BuscaLista rotulo={`Buscar ${titulo.toLocaleLowerCase("pt-BR")}`} placeholder="Buscar pelo nome" valor={busca} onChange={setBusca} /></BarraConsulta>
+        <BarraConsulta campos={consulta.campos} edicaoFiltros={consulta.edicao} criterios={consulta.criterios} acao={podeLancar && <Button disabled={ocupado || carregando} onClick={() => abrir(aba)}>{novo}</Button>}><BuscaLista rotulo={`Buscar ${titulo.toLocaleLowerCase("pt-BR")}`} placeholder="Buscar pelo nome" valor={busca} onChange={setBusca} /></BarraConsulta>
         {!carregando && !erro && itens.length > 0 && !itensExibidos.length && <p role="status" className="px-4 pb-4 text-sm text-ink-3">Nenhum cadastro corresponde à busca. Altere ou limpe o nome pesquisado.</p>}
         <div className="px-4"><ErrorBox erro={erro} />{aviso && <p role="status" className="py-3 text-sm">{aviso}</p>}
           {ocupado && <p role="status" className="py-3 text-sm">Atualizando cadastro…</p>}
           {erro && !painel && <Button secondary disabled={ocupado} onClick={() => setVersao((v) => v + 1)}>Tentar novamente</Button>}
         </div>
-        {carregando ? <p role="status" className="p-4">Carregando {titulo.toLowerCase()}…</p> : !erro && !itens.length ? <p className="p-4 text-sm text-ink-3">Nenhum cadastro. {podeLancar ? "Use o botão acima para cadastrar." : ""}</p> : <TabelaFinanceira
+        {carregando ? <p role="status" className="p-4">Carregando {titulo.toLowerCase()}…</p> : !erro && !itens.length ? <p className="p-4 text-sm text-ink-3">Nenhum cadastro. {podeLancar ? "Use o botão acima para cadastrar." : ""}</p> : <TabelaFinanceira filtrosColunas={consulta.colunas}
           rotulo={titulo} itens={paginacao.itens} chaveDe={(item) => item.id}
           colunas={[
             { chave: "nome", titulo: "Nome", principal: true, celula: (item) => item.nome },

@@ -1,5 +1,8 @@
+import { Settings2 } from "lucide-react";
+import { filtrosDasColunas, type CampoConsulta } from "@/financeiro/FiltroColunaConsulta";
+import { DatePicker } from "@/components/DatePicker";
 import { BarraConsulta } from "@/financeiro/BarraConsulta";
-import { PainelFiltros } from "@/financeiro/PainelFiltros";
+import { CampoFiltro, GrupoCamposFiltro, PainelFiltros } from "@/financeiro/PainelFiltros";
 import { MultiSelect } from "../../../components/MultiSelect";
 import { DialogFinanceiro } from "../../../financeiro/DialogFinanceiro";
 // Lista de animais — BarraFiltros + TabelaFinanceira + Paginacao (servidor),
@@ -126,10 +129,10 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
   const [pagina, setPagina] = useState(() => Math.max(1, Number(new URLSearchParams(window.location.search).get("page")) || 1));
   const [multiplos, setMultiplos] = useState(lerMultiplos);
   const [rascunho, setRascunho] = useState<RascunhoFiltros | null>(null);
-  const abrirFiltros = () => {
+  const iniciarFiltros = () => {
     setRascunho({ propriedadeId, loteId, categoriaId, aptidao, papelReprodutivo, situacao, sexo, origem, racaId, idadeMinMeses, idadeMaxMeses, tipoBaixa, baixaDe, baixaAte, ordenacao, multiplos, mostrarColunasAdicionais });
-    setFiltrosAbertos(true);
   };
+  const abrirFiltros = () => { iniciarFiltros(); setFiltrosAbertos(true); };
   const editarFiltro = <K extends keyof RascunhoFiltros,>(campo: K, valor: RascunhoFiltros[K]) => setRascunho(r => r && ({ ...r, [campo]: valor }));
   const aplicarFiltros = () => {
     if (!rascunho) return;
@@ -335,6 +338,17 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
       }));
     }}/>;
   };
+  const campoColuna = (chave: string, familia: Familia, rotulo: string, opcoes: {value:string;label:string}[]): CampoConsulta => ({chave,ativo:!!multiplos[familia].length||!!({propriedadeIds:propriedadeId,loteIds:loteId,categoriaIds:categoriaId,aptidoes:aptidao,papeisReprodutivos:papelReprodutivo,situacoes:situacao!=="TODOS"?situacao:"",sexos:sexo,origens:origem,racaIds:racaId}[familia]),conteudo:campoMultiplo(familia,rotulo,opcoes),limpar:()=>setRascunho(r=>r&&({...r,[FAMILIAS[familia]]:familia==="situacoes"?"TODOS":"",multiplos:{...r.multiplos,[familia]:[]}}))});
+  const camposColunas: CampoConsulta[] = [
+    campoColuna("categoria","categoriaIds","Categoria",categorias.map(c=>({value:c.id,label:rotuloOpcaoCategoria(categorias,c)}))),
+    campoColuna("lote","loteIds","Lote",lotesDoSitio.map(l=>({value:l.id,label:l.nome}))),
+    ...(sitioGlobal==null?[campoColuna("sitio","propriedadeIds","Sítio",catalogos?.propriedades.map(p=>({value:String(p.id),label:p.nome}))??[])]:[]),
+    campoColuna("aptidao","aptidoes","Aptidão",[{value:"LEITE",label:"Leite"},{value:"CORTE",label:"Corte"}]),
+    campoColuna("papel","papeisReprodutivos","Papel reprodutivo",[{value:"NENHUM",label:"Nenhum"},{value:"RECEPTORA",label:"Receptora"},{value:"DOADORA",label:"Doadora"}]),
+    campoColuna("situacao","situacoes","Situação",[{value:"ATIVO",label:"Ativos"},{value:"BAIXADO",label:"Baixados"}]),
+    {chave:"idade",ativo:!!idadeMinMeses||!!idadeMaxMeses,limpar:()=>{editarFiltro("idadeMinMeses","");editarFiltro("idadeMaxMeses","");},conteudo:rascunho&&<GrupoCamposFiltro titulo="Idade em meses"><CampoFiltro rotulo="Mínima"><input aria-label="Idade mínima (meses)" type="number" min={0} placeholder="Mínima" value={rascunho.idadeMinMeses} onChange={e=>editarFiltro("idadeMinMeses",e.target.value)}/></CampoFiltro><CampoFiltro rotulo="Máxima"><input aria-label="Idade máxima (meses)" type="number" min={0} placeholder="Máxima" value={rascunho.idadeMaxMeses} onChange={e=>editarFiltro("idadeMaxMeses",e.target.value)}/></CampoFiltro></GrupoCamposFiltro>},
+  ];
+  const filtrosColunas = filtrosDasColunas(camposColunas,{iniciar:iniciarFiltros,aplicar:aplicarFiltros,limpar:limparRascunho});
   const COLUNAS_TODAS: ColunaTabela<AnimalResumo>[] = [
     { chave: "selecionar", titulo: "", larguraMinima: 44, acoes: true, celula: (item) => item.situacao === "ATIVO" ? <label className="flex min-h-11 min-w-11 cursor-pointer items-center justify-center" onClick={(e) => e.stopPropagation()}><input className="h-5 w-5 cursor-pointer accent-[var(--mast)]" type="checkbox" aria-label={`Selecionar ${item.brinco}`} checked={selecionados.has(item.id)} onChange={() => alternarSelecao(item)} /></label> : null },
     { chave: "brinco", titulo: "Brinco / nome", larguraMinima: 180, principal: true, celula: (item) => <><strong className="break-words">{item.brinco}</strong>{item.nome && <div className="mt-1 text-xs text-ink-3">{item.nome}</div>}</> },
@@ -371,7 +385,7 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
     <Panel className="rebanho-lista mt-4 overflow-clip">
       <div className="rebanho-filtros-principais"><BarraConsulta>
         <label className="relative w-full min-w-0 flex-[1_1_240px] sm:w-auto"><Search size={16} className="absolute left-3 top-3 text-ink-3" /><input aria-label="Buscar por brinco ou nome" value={textoBusca} onChange={(e) => setTextoBusca(e.target.value)} placeholder="Buscar por brinco ou nome" className="h-[42px] w-full rounded-lg border border-border bg-white py-2.5 pl-9 pr-3 text-sm" /></label>
-        <Button secondary onClick={abrirFiltros}><SlidersHorizontal size={16} /> Mais filtros</Button>
+        <Button secondary className="consulta-mais-filtros" onClick={abrirFiltros}><Settings2 size={16} /> Filtros</Button>
       </BarraConsulta>
       <div className="flex flex-wrap gap-2 px-4 py-4" aria-label="Filtros selecionados">{(Object.keys(FAMILIAS) as Familia[]).flatMap(f => multiplos[f].map(v => {
         const nomes: Record<Familia,string> = { propriedadeIds:"Sítio",loteIds:"Lote",categoriaIds:"Categoria",aptidoes:"Aptidão",papeisReprodutivos:"Papel",situacoes:"Situação",sexos:"Sexo",origens:"Origem",racaIds:"Raça" };
@@ -385,13 +399,13 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
         {selecionados.size > 0 && <><span className="text-ink-3">{selecionados.size} selecionado{selecionados.size === 1 ? "" : "s"}</span><Button secondary onClick={() => setSelecionados(new Map())}>Limpar seleção</Button>{!pesagem && <Button onClick={() => setMovimentando({ animais: [...selecionados.values()] })}>Movimentar {selecionados.size} {selecionados.size === 1 ? "animal" : "animais"}</Button>}</>}
       </div>}
       {carregando ? <p role="status" className="p-5 text-sm text-ink-3">Atualizando animais…</p> : erro && !itens.length ? <Empty>Não foi possível carregar os animais.</Empty> : itens.length ? <>
-        <TabelaFinanceira rotulo="Animais" itens={itens} colunas={COLUNAS} chaveDe={(item) => item.id} onAbrir={(item) => onAbrirAnimal(item.id)} cartaoComLinks />
+        <TabelaFinanceira filtrosColunas={filtrosColunas} rotulo="Animais" itens={itens} colunas={COLUNAS} chaveDe={(item) => item.id} onAbrir={(item) => onAbrirAnimal(item.id)} cartaoComLinks />
         <Paginacao paginaAtual={pagina} totalPaginas={totalPaginas} totalItens={total} itensPorPagina={ITENS_POR_PAGINA} onPaginaChange={setPagina} rotulo="animais" idSelect="pagina-animais" />
       </> : <Empty>Nenhum animal encontrado com os filtros selecionados.</Empty>}
     </Panel>
 
-    {filtrosAbertos && rascunho && <PainelFiltros aberto onAbertoChange={setFiltrosAbertos} onAplicar={aplicarFiltros} onLimpar={limparRascunho} temFiltros>
-      <div className="pec-filtros-animais grid gap-4 sm:grid-cols-2">
+    {filtrosAbertos && rascunho && <PainelFiltros amplo aberto onAbertoChange={setFiltrosAbertos} onAplicar={aplicarFiltros} onLimpar={limparRascunho} temFiltros>
+      <div className="pec-filtros-animais filtros-modal-grade">
         {sitioGlobal == null && campoMultiplo("propriedadeIds", "Sítio", catalogos?.propriedades.map(p => ({ value: String(p.id), label: p.nome })) ?? [])}
         {campoMultiplo("loteIds", "Lote", lotesDoSitio.map(l => ({ value: l.id, label: l.nome })))}
         {campoMultiplo("categoriaIds", "Categoria", categorias.map(c => ({ value: c.id, label: rotuloOpcaoCategoria(categorias, c) })))}
@@ -400,18 +414,16 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
         {campoMultiplo("origens", "Origem", [{value:"NASCIDO",label:"Nascido"},{value:"COMPRADO",label:"Comprado"}])}
         {campoMultiplo("racaIds", "Raça", catalogos?.racas.map(r => ({value:r.id,label:r.nome})) ?? [])}
         <label className="flex min-w-0 flex-col gap-1.5 text-sm">Critério especial de categoria<SelectCampo aria-label="Critério especial de categoria" value={[CATEGORIA_SEM,CATEGORIA_FORCADA].includes(rascunho.categoriaId) ? rascunho.categoriaId : ""} onValueChange={valorSelecionado => { setRascunho(r => r && ({ ...r, categoriaId: valorSelecionado, multiplos: { ...r.multiplos, categoriaIds: [] } })); }}><option value="">Sem critério especial</option><option value={CATEGORIA_SEM}>Sem categoria</option><option value={CATEGORIA_FORCADA}>Só forçadas</option></SelectCampo></label>
-        <div className="flex min-w-0 flex-col gap-1.5 text-sm sm:col-span-2"><span>Idade em meses</span><div className="flex items-center gap-1.5">
-          <input aria-label="Idade mínima (meses)" type="number" min={0} inputMode="numeric" placeholder="Mínima" value={rascunho.idadeMinMeses} onChange={(e) => editarFiltro("idadeMinMeses", e.target.value)} className="h-[42px] w-full min-w-0 rounded-lg border border-border bg-white px-3 text-sm" />
-          <span className="shrink-0 text-ink-3">–</span>
-          <input aria-label="Idade máxima (meses)" type="number" min={0} inputMode="numeric" placeholder="Máxima" value={rascunho.idadeMaxMeses} onChange={(e) => editarFiltro("idadeMaxMeses", e.target.value)} className="h-[42px] w-full min-w-0 rounded-lg border border-border bg-white px-3 text-sm" />
-        </div></div>
+        <GrupoCamposFiltro titulo="Idade em meses">
+          <CampoFiltro rotulo="Mínima"><input aria-label="Idade mínima (meses)" type="number" min={0} inputMode="numeric" placeholder="Mínima" value={rascunho.idadeMinMeses} onChange={e => editarFiltro("idadeMinMeses", e.target.value)} className="w-full rounded-lg border border-border bg-white px-3" /></CampoFiltro>
+          <CampoFiltro rotulo="Máxima"><input aria-label="Idade máxima (meses)" type="number" min={0} inputMode="numeric" placeholder="Máxima" value={rascunho.idadeMaxMeses} onChange={e => editarFiltro("idadeMaxMeses", e.target.value)} className="w-full rounded-lg border border-border bg-white px-3" /></CampoFiltro>
+        </GrupoCamposFiltro>
         {campoMultiplo("aptidoes", "Aptidão", [{value:"LEITE",label:"Leite"},{value:"CORTE",label:"Corte"}])}
         {campoMultiplo("papeisReprodutivos", "Papel reprodutivo", [{value:"NENHUM",label:"Nenhum"},{value:"RECEPTORA",label:"Receptora"},{value:"DOADORA",label:"Doadora"}])}
 
         {mostrarBaixaRascunho && <>
           <label className="flex min-w-0 flex-col gap-1.5 text-sm">Tipo de baixa<SelectCampo aria-label="Filtrar por tipo de baixa" value={rascunho.tipoBaixa} onValueChange={(valor) => editarFiltro("tipoBaixa", valor as TipoBaixa | "")} className="h-[42px] w-full min-w-0 rounded-lg border border-border bg-white px-3 text-sm"><option value="">Todos os tipos de baixa</option>{TIPOS_BAIXA_FILTRO.map((t) => <option key={t} value={t}>{rotuloTipoBaixa(t)}</option>)}</SelectCampo></label>
-          <label className="flex min-w-0 flex-col gap-1.5 text-sm text-ink-2">Baixa de<input aria-label="Baixa de" type="date" value={rascunho.baixaDe} onChange={(e) => editarFiltro("baixaDe", e.target.value)} className="h-[42px] w-full min-w-0 rounded-lg border border-border bg-white px-2 text-sm" /></label>
-          <label className="flex min-w-0 flex-col gap-1.5 text-sm text-ink-2">até<input aria-label="Baixa até" type="date" value={rascunho.baixaAte} onChange={(e) => editarFiltro("baixaAte", e.target.value)} className="h-[42px] w-full min-w-0 rounded-lg border border-border bg-white px-2 text-sm" /></label>
+          <GrupoCamposFiltro><CampoFiltro rotulo="Baixa de"><DatePicker aria-label="Baixa de" value={rascunho.baixaDe} onChange={valor => editarFiltro("baixaDe", valor)} /></CampoFiltro><CampoFiltro rotulo="Baixa até"><DatePicker aria-label="Baixa até" value={rascunho.baixaAte} onChange={valor => editarFiltro("baixaAte", valor)} /></CampoFiltro></GrupoCamposFiltro>
         </>}
         <label className="flex min-w-0 flex-col gap-1.5 text-sm text-ink-2">Ordenar por
           <SelectCampo aria-label="Ordenar por" value={rascunho.ordenacao} onValueChange={(valor) => editarFiltro("ordenacao", valor)} className="h-[42px] w-full min-w-0 rounded-lg border border-border bg-white px-3 text-sm">

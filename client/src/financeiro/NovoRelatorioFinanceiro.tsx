@@ -1,3 +1,4 @@
+import { useDescarteTrabalhoAtivo } from "./descarteTrabalhoAtivo";
 import { PageHeader } from "./financeiro-ui";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { PaginaFinanceira } from "./financeiro-ui";
@@ -79,6 +80,7 @@ export function NovoRelatorioFinanceiro({ cadastros, rascunho, onVoltar, onGerad
   const cancelarTimer = () => { if (timerRef.current != null) { window.clearTimeout(timerRef.current); timerRef.current = null; } };
 
   useEffect(() => {
+    if (pausadoRef.current) return;
     if (!iniciouRef.current) { iniciouRef.current = true; if (!pendenteRef.current) return; }
     pendenteRef.current = true; guardarEdicaoRascunhoRelatorio(config); setTemRascunho(true); setEstado("ALTERADO");
     cancelarTimer();
@@ -122,6 +124,23 @@ export function NovoRelatorioFinanceiro({ cadastros, rascunho, onVoltar, onGerad
     } catch (falha) { setErro(mensagem(falha)); }
     finally { pausadoRef.current = false; }
   };
+  useDescarteTrabalhoAtivo("relatorio", async () => {
+    if (!mesmoContexto()) throw new Error("O sítio ou a sessão mudou. Reabra o relatório no contexto original.");
+    if (gerando || pausadoRef.current) throw new Error("Aguarde o processamento do relatório antes de excluir o rascunho.");
+    cancelarTimer(); pausadoRef.current = true;
+    try {
+      await enfileirarSalvamentoRascunhoRelatorio(() => {
+        if (!mesmoContexto()) throw new Error("O sítio ou a sessão mudou. Reabra o relatório no contexto original.");
+        return descartarRascunhoRelatorioFinanceiro();
+      });
+      pendenteRef.current = false;
+    } catch (falha) {
+      pausadoRef.current = false;
+      if (mesmoContexto()) { pendenteRef.current = true; guardarEdicaoRascunhoRelatorio(configRef.current); }
+      throw falha;
+    }
+  });
+
   const gerar = async () => {
     if (!podeGerar(config) || gerando) return;
     setErro(null); setGerando(true); cancelarTimer();

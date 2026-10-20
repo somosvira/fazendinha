@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { abrirFiltrosConsulta, aplicarFiltrosConsulta, alterarControle } from "@/lib/controles.fixture";
 import "../../../lib/controles.fixture";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
@@ -24,7 +25,7 @@ describe("panorama nutricional sem indicadores repetidos", () => {
     expect(document.querySelector("details")).toBeNull();
     expect(screen.queryByRole("heading", { name: "Nutrição por lote" })).toBeNull();
     expect(screen.getAllByText(/8 animais ativos nos lotes/)).toHaveLength(1);
-    expect(screen.getByRole("button", { name: "Com dieta (1)" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Filtros" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Anterior" })).toBeNull();
     expect(screen.getByRole("table", { name: "Nutrição por lote" })).toBeTruthy();
     expect(document.querySelector(".nutricao-metricas")).toBeNull();
@@ -35,15 +36,17 @@ describe("panorama nutricional sem indicadores repetidos", () => {
     window.history.replaceState(null, "", "/pecuaria/nutricao?buscaLote=Matrizes");
     render(<VisaoGeralNutricao />);
     await screen.findByLabelText("Efetivo nos lotes");
-    expect(screen.getByRole("button", { name: "Todos (2)", pressed: true })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Filtros" })).toBeTruthy();
     expect(screen.getAllByRole("link", { name: "Matrizes" }).length).toBeGreaterThan(0);
     expect(screen.queryByRole("link", { name: "Recria" })).toBeNull();
     expect(screen.getByText(/8 animais ativos nos lotes/)).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Sem dieta (1)" }));
+    await abrirFiltrosConsulta();
+    await alterarControle(screen.getByRole("combobox",{name:"Situação da dieta"}),{target:{value:"sem"}});
+    await aplicarFiltrosConsulta();
     const params = new URLSearchParams(window.location.search);
     expect(params.get("situacaoDieta")).toBe("sem");
     expect(params.get("buscaLote")).toBe("Matrizes");
-    expect(screen.getByRole("button", { name: "Todos (2)" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Remover filtro: Sem dieta vigente/ })).toBeTruthy();
     expect(screen.getByText("Nenhum lote corresponde aos filtros.")).toBeTruthy();
   });
   it("abre o lote pelo nome sem ação duplicada e alinha quantidades e custos", async () => {

@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { abrirFiltrosConsulta, aplicarFiltrosConsulta } from "@/lib/controles.fixture";
 import { alterarControle } from "../../../lib/controles.fixture";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
@@ -119,18 +120,21 @@ describe("Cadastros do rebanho — permissão de leitura (K7)", () => {
     expect(screen.queryByText("Baixa produção")).toBeNull();
     expect(listarMotivosBaixa).toHaveBeenCalledTimes(1);
   });
-  it("usuário só de leitura mantém os filtros de cada aba utilizáveis, com a tabela desabilitada", async () => {
+  it("usuário só de leitura mantém os filtros de cada aba utilizáveis, sem ações de escrita", async () => {
     const { container } = render(<Cadastros podeLancar={false} />);
     await screen.findAllByText("Vaca");
 
-    const filtroCategorias = screen.getByRole("checkbox", { name: "Mostrar inativas" }) as HTMLInputElement;
+    await abrirFiltrosConsulta();
+    const filtroCategorias = screen.getByRole("checkbox", { name: "Mostrar inativos" }) as HTMLInputElement;
     expect(filtroCategorias.disabled).toBe(false);
     fireEvent.click(filtroCategorias);
+    await aplicarFiltrosConsulta();
     await waitFor(() => expect(within(screen.getByRole("table", { name: "Categorias" })).getByText("Reprodutor")).toBeTruthy());
 
     const fieldsetEscrita = container.querySelector("fieldset");
     expect(fieldsetEscrita).not.toBeNull();
-    expect((fieldsetEscrita as HTMLFieldSetElement).disabled).toBe(true);
+    expect((fieldsetEscrita as HTMLFieldSetElement).disabled).toBe(false);
+    expect(screen.queryByRole("button",{name:/^Editar /})).toBeNull();
 
     expect(screen.queryByRole("button", { name: /Nova categoria/ })).toBeNull();
     expect(screen.queryByRole("button", { name: "Restaurar padrões" })).toBeNull();
@@ -147,7 +151,11 @@ describe("Cadastros do rebanho — categorias", () => {
     expect(within(tabela).getAllByText("Padrão").length).toBeGreaterThan(0);
     expect(within(tabela).queryByText("Reprodutor")).toBeNull();
 
-    fireEvent.click(screen.getByRole("checkbox", { name: "Mostrar inativas" }));
+    await abrirFiltrosConsulta();
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Mostrar inativos" }));
+
+    await aplicarFiltrosConsulta();
     await waitFor(() => expect(within(screen.getByRole("table", { name: "Categorias" })).getByText("Reprodutor")).toBeTruthy());
   });
 
@@ -261,7 +269,7 @@ describe("Cadastros do rebanho — raças", () => {
     fireEvent.change(busca, { target: { value: "hol" } });
     expect(within(screen.getByRole("table", { name: "Raças" })).queryByText("Gir")).toBeNull();
     fireEvent.change(busca, { target: { value: "inexistente" } });
-    expect(screen.getByRole("status").textContent).toContain("Nenhuma raça");
+    expect(screen.getByText("Nenhum registro corresponde aos filtros.")).toBeTruthy();
     fireEvent.change(busca, { target: { value: "" } });
     expect(within(screen.getByRole("table", { name: "Raças" })).getByText("Gir")).toBeTruthy();
     expect(listarRacas).toHaveBeenCalledTimes(chamadas);
@@ -457,7 +465,9 @@ describe("Cadastros do rebanho — genitores externos", () => {
   it("Mostrar inativos traz o genitor inativo, e desativar chama editarGenitor", async () => {
     await montarGenitores();
     vi.mocked(listarGenitores).mockResolvedValue(genitoresMock);
+    await abrirFiltrosConsulta();
     fireEvent.click(screen.getByRole("checkbox", { name: "Mostrar inativos" }));
+    await aplicarFiltrosConsulta();
     await waitFor(() => expect(within(primeiro("table", "Genitores externos")).getByText("Touro Externo B")).toBeTruthy());
 
     vi.mocked(editarGenitor).mockResolvedValue({ ...genitoresMock[0], ativo: false });

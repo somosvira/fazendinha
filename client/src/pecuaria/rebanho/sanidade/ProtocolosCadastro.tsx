@@ -1,3 +1,5 @@
+import { useFiltrosTabelaLocal } from "@/financeiro/useFiltrosTabelaLocal";
+import { FiltroColunaConsulta } from "@/financeiro/FiltroColunaConsulta";
 import { AjudaCampo } from "@/components/Dica";
 import { BarraConsulta } from "@/financeiro/BarraConsulta";
 import { SelectCampo } from "@/financeiro/SelectCampo";
@@ -159,8 +161,14 @@ export function ProtocolosCadastro({ podeLancar }: { podeLancar: boolean }) {
   }
   const mudar = (i: number, patch: Partial<Etapa>) =>
     setEtapas((es) => es.map((e, j) => (i === j ? { ...e, ...patch } : e)));
-  const visiveis = protocolos.filter(p => p.nome.toLocaleLowerCase("pt-BR").includes(busca.toLocaleLowerCase("pt-BR")));
-  const paginacao = usePaginacaoLocal(visiveis, busca);
+  const consulta = useFiltrosTabelaLocal<Protocolo>([
+    {chave:"nome", naBarra: true,rotulo:"Nome",tipo:"texto",obter:p=>p.nome},
+    {chave:"tipo",rotulo:"Tipo",tipo:"opcoes",obter:p=>p.etapas.every(e=>e.tipo==="EXAME")?"EXAMES":"SANITARIO",opcoes:[{valor:"EXAMES",texto:"Protocolo de exames"},{valor:"SANITARIO",texto:"Protocolo sanitário"}]},
+    {chave:"versao",rotulo:"Publicação",tipo:"opcoes",obter:p=>p.publicadoEm?"PUBLICADO":"RASCUNHO",opcoes:[{valor:"PUBLICADO",texto:"Publicado"},{valor:"RASCUNHO",texto:"Rascunho"}]},
+    {chave:"situacao",rotulo:"Situação",tipo:"opcoes",obter:p=>p.ativo?"ATIVO":"INATIVO",opcoes:[{valor:"ATIVO",texto:"Ativo"},{valor:"INATIVO",texto:"Inativo"}]},
+  ]);
+  const visiveis = consulta.filtrar(protocolos).filter(p => p.nome.toLocaleLowerCase("pt-BR").includes(busca.toLocaleLowerCase("pt-BR")));
+  const paginacao = usePaginacaoLocal(visiveis, `${busca}|${consulta.criterios.map(c=>c.rotulo).join("|")}`);
   return (
     <section className="pec-protocolos-cadastro min-w-0 w-full overflow-hidden rounded-xl border border-border bg-card">
       <ErrorBox erro={erro} />
@@ -170,9 +178,9 @@ export function ProtocolosCadastro({ podeLancar }: { podeLancar: boolean }) {
       {ocupado && <p role="status" className="py-3 text-sm">Atualizando protocolo…</p>}
       {(erroLista || erroCatalogos) && <Button secondary disabled={ocupado} onClick={() => setRevisao((v) => v + 1)}>Tentar novamente</Button>}
 
-      <BarraConsulta acao={podeLancar && <Button disabled={ocupado || !catalogosProntos || carregando} onClick={() => editar()}>Novo protocolo</Button>} resumo={<div className="consulta-ajuda flex items-center gap-2">{!carregando && !erroLista && <p className="mt-2 text-xs text-ink-3" aria-label="Resumo dos protocolos">{protocolos.filter(p => p.ativo && p.publicadoEm).length} publicadas e ativas · {protocolos.filter(p => !p.publicadoEm).length} rascunhos</p>}<AjudaCampo rotulo="Sobre versões e etapas dos protocolos" texto="Abra o nome para revisar as etapas. Versões publicadas não são editadas: crie uma nova versão para alterar o planejamento. Planejar etapas não movimenta o estoque." /></div>}><BuscaLista rotulo="Buscar protocolo" placeholder="Buscar protocolo pelo nome" valor={busca} onChange={setBusca} /></BarraConsulta>
+      <BarraConsulta campos={consulta.campos} edicaoFiltros={consulta.edicao} criterios={consulta.criterios} acao={podeLancar && <Button disabled={ocupado || !catalogosProntos || carregando} onClick={() => editar()}>Novo protocolo</Button>} resumo={<div className="consulta-ajuda flex items-center gap-2">{!carregando && !erroLista && <p className="mt-2 text-xs text-ink-3" aria-label="Resumo dos protocolos">{protocolos.filter(p => p.ativo && p.publicadoEm).length} publicadas e ativas · {protocolos.filter(p => !p.publicadoEm).length} rascunhos</p>}<AjudaCampo rotulo="Sobre versões e etapas dos protocolos" texto="Abra o nome para revisar as etapas. Versões publicadas não são editadas: crie uma nova versão para alterar o planejamento. Planejar etapas não movimenta o estoque." /></div>}><BuscaLista rotulo="Buscar protocolo" placeholder="Buscar protocolo pelo nome" valor={busca} onChange={setBusca} /></BarraConsulta>
       {carregando ? <p role="status" className="py-4">Carregando protocolos…</p> : <div className="min-w-0 overflow-x-auto"><table aria-label="Protocolos sanitários" className="w-full text-left text-sm consulta-tabela">
-        <thead className="bg-surface-2"><tr><th className="p-4">Nome</th><th className="p-4">Tipo</th><th className="p-4">Versão</th><th className="p-4">Situação</th><th className="p-4">Etapas</th><th className="p-4">Ações</th></tr></thead>
+        <thead className="bg-surface-2"><tr><th className="p-4">Nome</th><th className="p-4"><FiltroColunaConsulta titulo="Tipo" {...consulta.colunas.tipo}/></th><th className="p-4"><FiltroColunaConsulta titulo="Versão" {...consulta.colunas.versao}/></th><th className="p-4"><FiltroColunaConsulta titulo="Situação" {...consulta.colunas.situacao}/></th><th className="p-4">Etapas</th><th className="p-4">Ações</th></tr></thead>
         <tbody className="divide-y divide-border">{paginacao.itens.map((p) => <Fragment key={p.id}>
           <tr><td className="p-4"><button type="button" aria-expanded={detalhe?.id === p.id} aria-controls={`protocolo-${p.id}`} aria-label={`Ver etapas de ${p.nome} v${p.versao}`} onClick={() => setDetalhe(detalhe?.id === p.id ? null : p)} className="flex items-center gap-3 text-left">{detalhe?.id === p.id ? <ChevronDown size={16} /> : <ChevronRight size={16} />}<span>{p.nome}</span></button></td>
             <td className="p-4">{p.etapas.every((e) => e.tipo === "EXAME") ? "Protocolo de exames" : "Protocolo sanitário"}</td>

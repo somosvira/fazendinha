@@ -1,3 +1,4 @@
+import { FiltroColunaConsulta, type FiltrosColunas } from "@/financeiro/FiltroColunaConsulta";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { MoreHorizontal, CalendarDays } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -17,7 +18,7 @@ import { ContagensEtapa, EstadoSanitario, rotuloTarefaSanitaria } from "./Indica
 import { SkeletonSanitario } from "./SkeletonSanitario";
 const paginaUrl = (chave: string) => Math.max(1, Number(new URLSearchParams(window.location.search).get(chave)) || 1);
 
-export function AgendaRodadas({ filtrosUI, filtros, podeLancar, rodadaId, onAbrir, onExecutar, onAcao, recarregarToken }: { filtrosUI?: ReactNode | ((acao: ReactNode) => ReactNode); filtros: Record<string, string | number | undefined>; podeLancar: boolean; rodadaId: string; onAbrir: (id: string) => void; onExecutar: (tarefas: TarefaRodada[]) => void; onAcao: (acao: "adiar" | "dispensar" | "cancelar" | "consultar", tarefa: TarefaRodada) => void; recarregarToken: number }) {
+export function AgendaRodadas({ filtrosColunas, filtrosUI, filtros, podeLancar, rodadaId, onAbrir, onExecutar, onAcao, recarregarToken }: { filtrosColunas?: FiltrosColunas; filtrosUI?: ReactNode | ((acao: ReactNode) => ReactNode); filtros: Record<string, string | number | undefined>; podeLancar: boolean; rodadaId: string; onAbrir: (id: string) => void; onExecutar: (tarefas: TarefaRodada[]) => void; onAcao: (acao: "adiar" | "dispensar" | "cancelar" | "consultar", tarefa: TarefaRodada) => void; recarregarToken: number }) {
   const [pagina, setPagina] = useState<PaginaSanitaria<RodadaSanitaria> | null>(null);
   const [criando, setCriando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -33,7 +34,7 @@ export function AgendaRodadas({ filtrosUI, filtros, podeLancar, rodadaId, onAbri
     {salvo && <p role="status">Ciclo salvo.</p>}
     {erro && <><ErrorBox erro={erro} /><Button secondary onClick={() => setRevisao((v) => v + 1)}>Tentar novamente</Button></>}
     {carregando ? <SkeletonSanitario estrutura="ciclos" label="Carregando ciclos de protocolos…" /> : !erro && <><div className="sanidade-ciclos">
-      <div className="sanidade-ciclo-linha sanidade-ciclo-cabecalho text-sm text-ink-3" aria-hidden="true"><span>Ciclo</span><span>Protocolo</span><span>Início</span><span>Participantes</span></div>
+      <div className="sanidade-ciclo-linha sanidade-ciclo-cabecalho text-sm text-ink-3"><span>Ciclo</span><span>Protocolo</span><span>{filtrosColunas?.data ? <FiltroColunaConsulta titulo="Início" {...filtrosColunas.data}/> : "Início"}</span><span>Participantes</span></div>
       {(pagina?.itens ?? []).map((r) => <div key={r.id}>
         <div role="button" tabIndex={0} aria-label={`Abrir ciclo ${r.nome}`} onClick={() => onAbrir(r.id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onAbrir(r.id); } }} className={`sanidade-ciclo-linha sanidade-ciclo-clicavel ${rodadaId === r.id ? "sanidade-ciclo-ativo" : ""}`}>
           <span className="font-medium">{r.nome}</span>

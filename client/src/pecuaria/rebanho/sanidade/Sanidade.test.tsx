@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { abrirFiltrosConsulta, aplicarFiltrosConsulta } from "@/lib/controles.fixture";
 import { alterarControle } from "../../../lib/controles.fixture";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
@@ -14,19 +15,19 @@ import { listarAnimais, buscarFichaAnimal } from "../api";
 
 afterEach(() => { cleanup(); vi.clearAllMocks(); vi.mocked(listarAnimais).mockResolvedValue({ itens: [] } as unknown as Awaited<ReturnType<typeof listarAnimais>>); window.history.replaceState(null, "", "/"); });
 describe("busca e atualização da Sanidade", () => {
-  it("abre filtros em painel lateral sem apagar critérios da URL", async () => {
+  it("abre o modal compartilhado sem apagar critérios da URL", async () => {
     mocks.req.mockResolvedValue([]);
     window.history.replaceState(null, "", "/pecuaria/sanidade?aba=agenda&visaoAgenda=tarefas&situacao=ATRASADA&loteId=lote");
     render(<Sanidade podeLancar={false} />);
-    const botao = screen.getByRole("button", { name: /Mais filtros/ });
+    const botao = screen.getByRole("button", { name: /Filtros/ });
     expect(botao.getAttribute("aria-expanded")).toBe("false");
     expect(screen.queryByRole("dialog")).toBeNull();
-    expect(within(screen.getByRole("group", { name: "Situação" })).getByRole("button", { name: "Atrasada" }).getAttribute("aria-pressed")).toBe("true");
-    expect(screen.getByRole("button", { name: /Remover filtro Lote/ })).toBeTruthy();
+    expect(screen.getByRole("button",{name:/Remover filtro: Atrasada/})).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Remover filtro: Lote/ })).toBeTruthy();
     fireEvent.click(botao);
     const painel = await screen.findByRole("dialog", { name: "Filtros" });
     expect(within(painel).getByRole("combobox", { name: "Animal" })).toHaveProperty("value", "");
-    expect(within(painel).queryByRole("combobox", { name: "Situação" })).toBeNull();
+    expect(within(painel).getByRole("combobox", { name: "Filtrar por situação" }).getAttribute("value")).toBe("ATRASADA");
     fireEvent.click(within(painel).getByRole("button", { name: "Aplicar filtros" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(new URLSearchParams(window.location.search).get("situacao")).toBe("ATRASADA");
@@ -37,14 +38,15 @@ describe("busca e atualização da Sanidade", () => {
     mocks.req.mockResolvedValue([]);
     window.history.replaceState(null, "", "/pecuaria/sanidade?aba=agenda&visaoAgenda=tarefas&situacao=DISPENSADA");
     render(<Sanidade podeLancar={false} />);
-    const grupo = within(screen.getByRole("group", { name: "Situação" }));
-    expect(grupo.getByRole("button", { name: "Dispensada" }).className).toContain("sanidade-situacao-outra-ativa");
-    fireEvent.keyDown(grupo.getByRole("button", { name: "Dispensada" }), { key: "ArrowDown" });
-    expect(await screen.findAllByRole("menuitem")).toHaveLength(4);
-    fireEvent.click(screen.getByRole("menuitem", { name: "Execução cancelada" }));
-    await waitFor(() => expect(new URLSearchParams(window.location.search).get("situacao")).toBe("EXECUCAO_CANCELADA"));
-    fireEvent.click(grupo.getByRole("button", { name: "Todos" }));
-    await waitFor(() => expect(new URLSearchParams(window.location.search).has("situacao")).toBe(false));
+    await abrirFiltrosConsulta();
+    const situacao = screen.getByRole("combobox",{name:"Filtrar por situação"});
+    expect(situacao.getAttribute("value")).toBe("DISPENSADA");
+    await alterarControle(situacao,{target:{value:"EXECUCAO_CANCELADA"}});
+    expect(new URLSearchParams(window.location.search).get("situacao")).toBe("DISPENSADA");
+    await aplicarFiltrosConsulta();
+    expect(new URLSearchParams(window.location.search).get("situacao")).toBe("EXECUCAO_CANCELADA");
+    fireEvent.click(screen.getByRole("button",{name:/Remover filtro: Execução cancelada/}));
+    await waitFor(()=>expect(new URLSearchParams(window.location.search).has("situacao")).toBe(false));
   });
 
   it("consulta todos os animais por padrão e mantém o animal somente quando explícito", async () => {
@@ -53,7 +55,7 @@ describe("busca e atualização da Sanidade", () => {
     window.history.replaceState(null, "", "/pecuaria/sanidade?aba=exames");
     render(<Sanidade podeLancar={false} />);
     await waitFor(() => expect(mocks.req).toHaveBeenCalledWith(expect.stringContaining("/exames?")));
-    fireEvent.click(screen.getByRole("button", { name: /Mais filtros/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Filtros/ }));
     const painel = await screen.findByRole("dialog", { name: "Filtros" });
     expect(within(painel).getByRole("combobox", { name: "Animal" })).toHaveProperty("value", "");
     expect(new URLSearchParams(window.location.search).has("animalId")).toBe(false);
@@ -62,7 +64,7 @@ describe("busca e atualização da Sanidade", () => {
     expect(new URLSearchParams(window.location.search).has("animalId")).toBe(false);
     fireEvent.click(within(painel).getByRole("button", { name: "Aplicar filtros" }));
     await waitFor(() => expect(new URLSearchParams(window.location.search).get("animalId")).toBe("primeiro"));
-    fireEvent.click(screen.getByRole("button", { name: /Mais filtros/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Filtros/ }));
     const reaberto = screen.getByRole("dialog", { name: "Filtros" });
     fireEvent.click(within(reaberto).getByRole("button", { name: "Limpar filtros" }));
     expect(new URLSearchParams(window.location.search).get("animalId")).toBe("primeiro");
@@ -139,7 +141,7 @@ describe("busca e atualização da Sanidade", () => {
     render(<Sanidade podeLancar />);
     fireEvent.click(screen.getByRole("button", { name: "Gerenciar procedimentos" }));
     await screen.findByText("Gerenciador aberto");
-    fireEvent.click(screen.getByRole("button", { name: /Mais filtros/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Filtros/ }));
     expect(screen.getByRole("combobox", { name: "Animal" })).toHaveProperty("value", "");
     localStorage.removeItem("rionovo:usuario");
   });

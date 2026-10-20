@@ -1,3 +1,4 @@
+import type { FiltrosColunas } from "@/financeiro/FiltroColunaConsulta";
 // Histórico de movimentações — extraído de DetalheLote.tsx para ser reaproveitado pela aba
 // "Lotes · Histórico" (visão geral, sem lote fixo). Quem chama decide os filtros: passa uma
 // função `carregar(pagina)` já fechada sobre eles (mesmo padrão de `carregarAnimais` em
@@ -24,9 +25,10 @@ function mensagemErro(e: unknown): string {
 }
 
 export function HistoricoMovimentacoes({
-  carregar, mostrarDirecao = false, podeLancar = true, recarregarToken, onAbrir, onMudou, paginaControlada, onPaginaChange,
+  carregar, mostrarDirecao = false, podeLancar = true, recarregarToken, onAbrir, onMudou, paginaControlada, onPaginaChange, filtrosColunas,
 }: {
   /** busca a página informada (1-based) — os filtros já vêm fechados na função de quem chama */
+  filtrosColunas?: FiltrosColunas;
   carregar: (pagina: number) => Promise<{ itens: MovimentacaoResumo[]; total: number }>;
   /** exibe o selo Entrada/Saída — só faz sentido quando a listagem está presa a um lote */
   mostrarDirecao?: boolean;
@@ -72,7 +74,7 @@ export function HistoricoMovimentacoes({
 
   return <>
     {erro && <div role="alert" className="p-5 text-sm text-red-700">{erro}</div>}
-    {itens.length ? <TabelaFinanceira rotulo="Histórico de movimentações" itens={itens} chaveDe={m=>m.id} onAbrir={onAbrir} colunas={[
+    {itens.length ? <TabelaFinanceira filtrosColunas={filtrosColunas} rotulo="Histórico de movimentações" itens={itens} chaveDe={m=>m.id} onAbrir={onAbrir} colunas={[
       {chave:"data",titulo:"Data",larguraMinima:110,principal:true,celula:m=>formatarDataBR(m.data)},
       {chave:"animais",titulo:"Animais",larguraMinima:100,celula:m=>m.quantidade},
       {chave:"origem",titulo:"Origem",larguraMinima:180,larguraFlexivel:true,celula:m=>m.origens.length?m.origens.join("; "):"Não identificada"},

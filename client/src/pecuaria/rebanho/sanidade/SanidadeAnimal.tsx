@@ -1,3 +1,4 @@
+import type { FiltrosColunas } from "@/financeiro/FiltroColunaConsulta";
 import { SelectCampo } from "@/financeiro/SelectCampo";
 import { DestinoConsumo, administracaoMantida, type SituacaoAdministracao, type DestinoConsumoSanitario } from "./DestinoConsumo";
 import { type ReactNode, useEffect, useState } from "react";
@@ -38,7 +39,8 @@ function ConteinerSanidade({ geral, children, acao }: { geral: boolean; children
 function SecaoAplicacoes({ geral, children, somenteCarencias }: { geral: boolean; children: ReactNode; somenteCarencias: boolean }) {
   return geral ? <>{children}</> : <SecaoFicha titulo={<span className="ficha-titulo-com-icone"><Syringe size={20} aria-hidden />{somenteCarencias ? "Prazos por aplicação" : "Aplicações sanitárias"}</span>}>{children}</SecaoFicha>;
 }
-export function SanidadeAnimal({ filtrosUI, resumoUI, animalId, propriedadeId, podeLancar, recarregarToken, lista, onMudou, geral = false, somenteCarencias = false, abrirDetalhe, onCarencia }: {
+export function SanidadeAnimal({ filtrosColunas, filtrosUI, resumoUI, animalId, propriedadeId, podeLancar, recarregarToken, lista, onMudou, geral = false, somenteCarencias = false, abrirDetalhe, onCarencia }: {
+  filtrosColunas?: FiltrosColunas;
   somenteCarencias?: boolean;
   onCarencia?: (carencia: CarenciaAnimal | null) => void;
   animalId: string; propriedadeId: number | null; podeLancar: boolean; recarregarToken: number;
@@ -111,7 +113,7 @@ export function SanidadeAnimal({ filtrosUI, resumoUI, animalId, propriedadeId, p
     {animalId && <CarenciasSanitarias carencia={carencia} integrado={somenteCarencias} />}
     {typeof filtrosUI !== "function" && filtrosUI}
     {!geral && !somenteCarencias && animalId && <RodadasAnimal animalId={animalId} revisao={versao + recarregarToken} />}
-    {<SecaoAplicacoes geral={geral} somenteCarencias={somenteCarencias}>{(geral && lista ? lista : aplicacoes).length ? <TabelaFinanceira rotulo="Aplicações sanitárias" itens={geral && lista ? lista : aplicacoes} chaveDe={(a) => a.id} onAbrir={verDetalhe} colunas={[
+    {<SecaoAplicacoes geral={geral} somenteCarencias={somenteCarencias}>{(geral && lista ? lista : aplicacoes).length ? <TabelaFinanceira filtrosColunas={filtrosColunas} rotulo="Aplicações sanitárias" itens={geral && lista ? lista : aplicacoes} chaveDe={(a) => a.id} onAbrir={verDetalhe} colunas={[
       ...(geral ? [{ chave: "animal", titulo: "Animal", principal: true, larguraMinima: 160, celula: (a: AplicacaoSanitaria) => a.animal ? nomeAnimalSanitario(a.animal) : "Animal não identificado" }] : []),
       { chave: "registro", titulo: "Registro", principal: !geral, larguraMinima: 175, celula: (a) => <><div>{dataAplicacaoSanitaria(a)}</div><div className="text-xs text-ink-3">{tipoSanitario(a)}</div></> },
       { chave: "aplicacao", titulo: "Aplicação", larguraMinima: 260, larguraFlexivel: true, celula: (a) => <><div>{a.nomeProdutoAplicado || a.produto?.nome || "Medicamento não informado"} · {a.dose} {unidadeSanitaria(a.unidadeDose)}</div><div className="text-xs text-ink-3">{origemSanitaria(a.origemInsumo)}{a.produto?.nome ? (a.produto.nome !== a.nomeProdutoAplicado ? ` · Produto vinculado: ${a.produto.nome}` : "") : " · Sem produto vinculado"}</div></> },

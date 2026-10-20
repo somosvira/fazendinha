@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { RelatorioFinanceiroDetalhe } from "./RelatorioFinanceiroDetalhe";
 import { obterRelatorioFinanceiro, salvarPdfRelatorioFinanceiro, type RelatorioFinanceiroDetalhe as Detalhe } from "./novo-api";
 import { uid } from "../lib/uid.fixture";
 
 vi.mock("./novo-api", () => ({ obterRelatorioFinanceiro: vi.fn(), salvarPdfRelatorioFinanceiro: vi.fn() }));
+beforeEach(() => window.history.replaceState(null, "", `/financeiro/relatorios/${uid(12)}`));
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 
 const configuracao = { nome: "Pecuária — agosto", dataInicio: "2026-08-01", dataFim: "2026-08-31", regime: "ambos" as const, tipos: [], status: ["CONFIRMADA"], centroCustoIds: [uid(1)], parceiroIds: [], categoriaIds: [uid(4)], classificacoes: [] };
@@ -34,12 +35,17 @@ describe("detalhe do relatório emitido", () => {
   it("mostra o recorte congelado e a composição por categoria, centro e item", async () => {
     vi.mocked(obterRelatorioFinanceiro).mockResolvedValue(detalhe);
     render(<RelatorioFinanceiroDetalhe id={uid(12)} podeExportar onVoltar={vi.fn()} />);
-    expect(await screen.findByText("Benfeitorias (nome da emissão)")).toBeTruthy();
-    expect(screen.getAllByRole("table", { name: "Compras e serviços por categoria" })[0].textContent).toContain("Benfeitorias");
-    expect(screen.getAllByRole("table", { name: "Compras e serviços por centro de custo" })[0].textContent).toContain("Pecuária");
+    await screen.findByRole("tab", { name: "Resumo" });
+    fireEvent.click(screen.getByRole("button", { name: "Informações do relatório" }));
+    expect(screen.getByText("Benfeitorias (nome da emissão)")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Fechar informações" }));
+    expect(screen.getByRole("region", { name: "Compras por categoria" }).textContent).toContain("Benfeitorias");
+    expect(screen.getByRole("region", { name: "Compras por centro de custo" }).textContent).toContain("Pecuária");
+    fireEvent.mouseDown(screen.getByRole("tab", { name: /^Itens/ }));
     const itens = screen.getAllByRole("table", { name: "Itens das operações" })[0].textContent;
     expect(itens).toContain("Mourões");
     expect(itens).toContain("Investimento");
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Documento" }));
     expect(screen.getByRole("region", { name: "Leitura de caixa e compromissos" }).textContent).toContain("o saldo das contas nunca é filtrado");
   });
 
@@ -65,13 +71,17 @@ it("pagina os itens salvos sem alterar os totais do snapshot", async () => {
   const linhas = Array.from({ length: 31 }, (_, i) => ({ ...snapshot.composicao.linhas[0], item: `Item salvo ${i + 1}` }));
   vi.mocked(obterRelatorioFinanceiro).mockResolvedValue({ ...detalhe, snapshot: { ...snapshot, composicao: { ...snapshot.composicao, linhas, totalLinhas: 31 } } });
   render(<RelatorioFinanceiroDetalhe id={uid(12)} podeExportar onVoltar={vi.fn()} />);
-  const tabela = within(await screen.findByRole("table", { name: "Itens das operações" }));
+  fireEvent.mouseDown(await screen.findByRole("tab", { name: /^Itens/ }));
+  const tabela = within(screen.getByRole("table", { name: "Itens das operações" }));
   expect(tabela.getAllByRole("row")).toHaveLength(16);
   expect(tabela.queryByText("Item salvo 16")).toBeNull();
   fireEvent.click(within(screen.getByRole("navigation", { name: "Paginação dos itens do relatório" })).getByRole("button", { name: "Próxima" }));
   expect(tabela.getByText("Item salvo 16")).toBeTruthy();
   expect(tabela.queryByText("Item salvo 1")).toBeNull();
-  expect(screen.getByText("Compras e serviços").parentElement?.textContent).toContain("500,00");
+  fireEvent.mouseDown(screen.getByRole("tab", { name: "Resumo" }));
+  expect(screen.getByRole("region", { name: "Compras e serviços" }).textContent).toContain("500,00");
+  fireEvent.mouseDown(screen.getByRole("tab", { name: /^Itens/ }));
+  expect(screen.getByRole("table", { name: "Itens das operações" }).textContent).toContain("Item salvo 16");
 });
 
 it("breadcrumb identifica a página e retorna à origem sem nova emissão", async () => {
@@ -83,4 +93,64 @@ it("breadcrumb identifica a página e retorna à origem sem nova emissão", asyn
   fireEvent.click(caminho.getByRole("link", { name: "Relatórios" }));
   expect(voltar).toHaveBeenCalledTimes(1);
   expect(obterRelatorioFinanceiro).toHaveBeenCalledTimes(1);
+});
+
+it("recolhe detalhes e critérios vazios e distingue compras de caixa", async () => {
+  vi.mocked(obterRelatorioFinanceiro).mockResolvedValue(detalhe);
+  render(<RelatorioFinanceiroDetalhe id={uid(12)} podeExportar={false} onVoltar={vi.fn()} />);
+  await screen.findByRole("tab", { name: "Resumo" });
+  expect(screen.getByRole("button", { name: "Informações do relatório" }).getAttribute("aria-expanded")).toBe("false");
+  expect(screen.queryByText("Rafael")).toBeNull();
+  expect(screen.queryByText("Todos")).toBeNull();
+  expect(screen.queryByRole("table", { name: "Itens das operações" })).toBeNull();
+  expect(screen.getByRole("region", { name: "Compras e serviços" }).textContent).toContain("Investimento");
+  expect(screen.getByRole("region", { name: "Pagamentos realizados" }).textContent).toContain("500,00");
+  expect(screen.queryByText(/não devem ser somados/)).toBeNull();
+  expect(screen.queryByText("Relatório salvo na emissão")).toBeNull();
+  expect(screen.queryByRole("button", { name: /composição por classificação/ })).toBeNull();
+  expect(screen.queryByText(/100% das compras/)).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Informações: Pagamentos realizados" }));
+  expect(screen.getByRole("dialog", { name: "Pagamentos realizados" }).textContent).toContain("não devem ser somados");
+  fireEvent.click(screen.getByRole("button", { name: "Fechar informações" }));
+  fireEvent.click(screen.getByRole("button", { name: "Informações do relatório" }));
+  expect(screen.getByText("Rafael")).toBeTruthy();
+  expect(screen.queryByRole("button", { name: /Baixar PDF/ })).toBeNull();
+});
+
+it("preserva a aba no histórico e informa truncamento dos itens", async () => {
+  window.history.replaceState(null, "", `/financeiro/relatorios/${uid(12)}?aba=itens&origem=historico`);
+  vi.mocked(obterRelatorioFinanceiro).mockResolvedValue({ ...detalhe, snapshot: { ...detalhe.snapshot!, composicao: { ...detalhe.snapshot!.composicao, truncado: true, totalLinhas: 2000 } } });
+  render(<RelatorioFinanceiroDetalhe id={uid(12)} podeExportar onVoltar={vi.fn()} />);
+  expect(await screen.findByRole("table", { name: "Itens das operações" })).toBeTruthy();
+  expect(screen.getByText(/As primeiras 1 de 2000/)).toBeTruthy();
+  fireEvent.mouseDown(screen.getByRole("tab", { name: "Documento" }));
+  expect(new URLSearchParams(window.location.search).get("origem")).toBe("historico");
+  expect(new URLSearchParams(window.location.search).get("aba")).toBe("documento");
+  window.history.replaceState(null, "", `/financeiro/relatorios/${uid(12)}?aba=resumo`);
+  fireEvent(window, new PopStateEvent("popstate"));
+  expect(screen.getByRole("tab", { name: "Resumo" }).getAttribute("aria-selected")).toBe("true");
+});
+
+it("mantém a leitura de compromissos e valores não classificados do snapshot", async () => {
+  const snapshot = detalhe.snapshot!;
+  vi.mocked(obterRelatorioFinanceiro).mockResolvedValue({ ...detalhe, snapshot: { ...snapshot, gerencial: { ...snapshot.gerencial, resumo: { ...snapshot.gerencial.resumo, saidas: null, aPagar: 125 } }, composicao: { ...snapshot.composicao, despesas: { ...snapshot.composicao.despesas, semClassificacao: "75.00" } } } });
+  render(<RelatorioFinanceiroDetalhe id={uid(12)} podeExportar onVoltar={vi.fn()} />);
+  const pendente = await screen.findByRole("region", { name: "A pagar" });
+  expect(pendente.textContent).toContain("125,00");
+  expect(screen.queryByRole("region", { name: "Pagamentos realizados" })).toBeNull();
+  const compras = screen.getByRole("region", { name: "Compras e serviços" });
+  expect(compras.textContent).toContain("Não classificada");
+  expect(compras.textContent).toContain("75,00");
+  expect(compras.textContent).toContain("500,00");
+});
+
+it("omite filtros vazios nas informações e conserva a leitura da emissão", async () => {
+  const snapshot = detalhe.snapshot!;
+  vi.mocked(obterRelatorioFinanceiro).mockResolvedValue({ ...detalhe, snapshot: { ...snapshot, filtros: { tipos: [], status: [], centrosCusto: [], parceiros: [], categorias: [], classificacoes: [] } } });
+  render(<RelatorioFinanceiroDetalhe id={uid(12)} podeExportar onVoltar={vi.fn()} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Informações do relatório" }));
+  const info = screen.getByRole("dialog", { name: "Informações do relatório" });
+  expect(info.textContent).toContain("Realizado + compromissos");
+  expect(info.textContent).toContain("Rafael");
+  expect(within(info).queryByText("Filtros utilizados")).toBeNull();
 });

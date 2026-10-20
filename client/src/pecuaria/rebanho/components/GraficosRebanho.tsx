@@ -1,7 +1,7 @@
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, XAxis, YAxis } from "recharts";
 import { ChartContainer, ChartTooltip } from "../../../components/ui/chart";
 
-export const CORES_REBANHO = ["#24493b", "#62846b", "#b08c50", "#537e85", "#9b6655", "#879365", "#6a6989", "#7b8280"];
+export const CORES_REBANHO = ["#006f68", "#88bda0", "#b08c50", "#537e85", "#9b6655", "#879365", "#6a6989", "#7b8280"];
 
 export type DadoDistribuicao = { nome: string; qtd: number; cor: string };
 export function percentualRebanho(qtd: number, total: number): string {

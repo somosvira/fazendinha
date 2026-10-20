@@ -1,5 +1,6 @@
 import { alterarControle } from "../lib/controles.fixture";
 // @vitest-environment jsdom
+import { abrirFiltrosConsulta, aplicarFiltrosConsulta } from "@/lib/controles.fixture";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { ConfiguracoesFinanceiras } from "./ConfiguracoesFinanceiras";
@@ -70,7 +71,7 @@ async function escolherSelect(painel: HTMLElement, rotulo: string, opcao: string
   let consulta = painel;
   let lateral = false;
   if (!within(painel).queryByRole("combobox", { name: rotulo })) {
-    fireEvent.click(screen.getByRole("button", { name: /Mais filtros/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Filtros/ }));
     consulta = await screen.findByRole("dialog", { name: "Filtros" }); lateral = true;
   }
   fireEvent.click(within(consulta).getByRole("combobox", { name: rotulo }));
@@ -318,8 +319,8 @@ describe("ConfiguracoesFinanceiras — produtos", () => {
     await montar("produtos");
     const busca = screen.getByRole("textbox", { name: "Buscar produto" });
     const barra = busca.closest<HTMLElement>(".consulta-barra")!;
-    expect(within(barra).getByRole("group", {name:"Filtrar por situação"})).toBeTruthy();
-    expect(within(barra).getByRole("button", {name:/Mais filtros/})).toBeTruthy();
+    expect(screen.getByRole("button",{name:"Filtrar por situação"})).toBeTruthy();
+    expect(within(barra).getByRole("button", {name:/Filtros/})).toBeTruthy();
     await escolherSelect(barra, "Filtrar por centro de custo", "Sem centro");
     expect(screen.queryByText("Ração 22%")).toBeNull();
     fireEvent.click(within(barra).getByRole("button", { name: "Limpar filtros" }));
@@ -332,7 +333,8 @@ describe("ConfiguracoesFinanceiras — parceiros", () => {
     await montar("parceiros");
     const busca = screen.getByRole("textbox", { name: /Buscar clientes e fornecedores/i });
     const barra = busca.closest<HTMLElement>(".consulta-barra")!;
-    expect(within(barra).getByRole("combobox", { name: "Papel do parceiro" })).toBeTruthy();
+    await abrirFiltrosConsulta(barra);
+    expect(screen.getByRole("combobox", { name: "Filtrar por papel do parceiro" })).toBeTruthy();
   });
 
   it("edita múltiplos papéis e preferências sem reenviar dados que não mudaram", async () => {
@@ -514,4 +516,18 @@ describe("Cadastros financeiros — proteção de alterações", () => {
     expect((within(painel).getByLabelText("Nome de exibição") as HTMLInputElement).value).toBe("Conta em preenchimento");
     expect(criarConta).not.toHaveBeenCalled();
   });
+});
+
+
+it("abre o cadastro exato em consulta pela URL, sem oferecer escrita", async () => {
+  window.history.replaceState(null, "", `/financeiro/configuracoes?aba=parceiros&parceiro=${uid(7)}`);
+  try {
+    render(<ConfiguracoesFinanceiras podeEditar={false} />);
+    const dialogo = await screen.findByRole("dialog", { name: "Cooperativa" });
+    expect(within(dialogo).getByText("11.222.333/0001-81")).toBeTruthy();
+    expect(within(dialogo).getByText("coop@x.com")).toBeTruthy();
+    expect(within(dialogo).queryByRole("button", { name: /Salvar/ })).toBeNull();
+    fireEvent.click(within(dialogo).getByRole("button", { name: "Fechar" }));
+    expect(new URLSearchParams(window.location.search).has("parceiro")).toBe(false);
+  } finally { window.history.replaceState(null, "", "/financeiro/configuracoes"); }
 });

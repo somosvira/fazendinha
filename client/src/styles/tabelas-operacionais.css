@@ -1,0 +1,81 @@
+/* Acabamento de consultas em tela. Documentos e impressão conservam seus layouts. */
+@media screen {
+  .fin-consulta-responsiva { min-width: 0; max-width: 100%; container-type: inline-size; }
+  .fin-consulta-responsiva[data-fin-visualizacao="tabela"] > .fin-tabela-cartoes,
+  .fin-consulta-responsiva[data-fin-visualizacao="cartoes"] > .fin-tabela-desktop { display: none; }
+  .fin-tabela-cartoes { margin: 0; padding: 0; list-style: none; }
+  .fin-tabela-cartoes > li:is(:hover, :focus-within) { background: var(--fin-table-hover); }
+  .fin-tabela-cartoes .fin-cartao-acoes { flex-wrap: wrap; }
+  :root :is(.app-main, .financeiro-colorido) .fin-tabela col { width: var(--fin-coluna-proporcao, var(--fin-coluna-largura, auto)); }
+  :root :is(.app-main, .financeiro-colorido) :is(.fin-tabela, .consulta-tabela, [data-slot="table"]) {
+    border-collapse: collapse;
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.45;
+    color: var(--foreground);
+  }
+  :root :is(.app-main, .financeiro-colorido) table:not(.rg-tabela) > thead > tr > th {
+    height: 48px;
+    padding: 10px 16px;
+    background: var(--fin-table-header);
+    color: var(--fin-table-heading);
+    font-family: var(--sans);
+    font-size: 14px;
+    font-style: normal;
+    font-weight: 600;
+    line-height: 1.4;
+    letter-spacing: 0;
+    text-transform: none;
+    vertical-align: middle;
+    border-bottom: 1px solid var(--fin-table-rule);
+  }
+  :root .pecuaria-content .sanidade-lista .sanidade-ciclo-cabecalho {
+    min-height: 48px;
+    padding: 10px 16px;
+    background: var(--fin-table-header);
+    color: var(--fin-table-heading);
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.4;
+    border-bottom: 1px solid var(--fin-table-rule);
+  }
+  :root :is(.app-main, .financeiro-colorido) :is(.fin-tabela, .consulta-tabela, [data-slot="table"]) > tbody > tr > :is(td, th) {
+    padding: 12px 16px;
+    vertical-align: middle;
+    border-bottom: 1px solid var(--border);
+    overflow-wrap: break-word;
+    font-variant-numeric: tabular-nums;
+  }
+  :root :is(.app-main, .financeiro-colorido) .fin-tabela > tbody > tr > td { height: 64px; }
+  :root :is(.app-main, .financeiro-colorido) :is(.fin-tabela, .consulta-tabela, [data-slot="table"]) > tbody > tr:last-child > :is(td, th) { border-bottom: 0; }
+  :root :is(.app-main, .financeiro-colorido) :is(.fin-tabela, .consulta-tabela, [data-slot="table"]) > tbody > tr:is(:hover, :focus-within) > :is(td, th) { background: var(--fin-table-hover); }
+  :root :is(.app-main, .financeiro-colorido) :is(.fin-tabela, .consulta-tabela, [data-slot="table"]) > tbody > tr[tabindex="0"] { cursor: pointer; }
+  :root :is(.app-main, .financeiro-colorido) :is(.fin-tabela, .consulta-tabela, [data-slot="table"]) > tbody > tr[tabindex="0"]:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }
+  :root :is(.app-main, .financeiro-colorido) .fin-tabela [data-fin-principal] strong { font-weight: 600; }
+  :root :is(.app-main, .financeiro-colorido) .fin-tabela [data-fin-acoes] { white-space: nowrap; }
+  :root :is(.app-main, .financeiro-colorido) .fin-tabela [data-fin-acoes] > div { align-items: center; }
+  :root :is(.app-main, .financeiro-colorido) .fin-selo {
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.35;
+  }
+  :root :is(.app-main, .financeiro-colorido) .fin-selo[data-fin-tom="entrada"] { background: var(--fin-status-positive-bg); color: var(--fin-status-positive-text); border-color: transparent; }
+  :root :is(.app-main, .financeiro-colorido) .fin-selo[data-fin-tom="alerta"] { background: var(--fin-status-danger-bg); color: var(--fin-status-danger-text); border-color: transparent; }
+  :root :is(.app-main, .financeiro-colorido) .fin-efeitos-operacao .fin-selo { background: var(--fin-tag-bg); color: var(--fin-tag-text); border-color: var(--fin-tag-border); }
+  :root :is(.app-main, .financeiro-colorido) .consulta-mais-filtros { border-color: var(--fin-filter-border); background: var(--fin-filter-bg); color: var(--primary); font-weight: 600; }
+  :root :is(.app-main, .financeiro-colorido) .consulta-mais-filtros:hover { border-color: var(--primary); background: var(--fin-filter-hover); }
+  :root :is(.app-main, .financeiro-colorido) .consulta-mais-filtros[aria-expanded="true"] { border-color: var(--primary); background: var(--fin-filter-hover); }
+
+}
+@container (min-width: 640px) {
+  .fin-tabela-cartoes dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px 24px; }
+  .fin-tabela-cartoes dl > div { display: block; margin: 0; }
+  .fin-tabela-cartoes dd { text-align: left; margin: 4px 0 0; }
+  .fin-tabela-cartoes > li > button, .fin-tabela-cartoes > li > div.relative > .pointer-events-none { padding: 16px; }
+}
+
+@media print {
+  .fin-tabela-cartoes { display: none; }
+}

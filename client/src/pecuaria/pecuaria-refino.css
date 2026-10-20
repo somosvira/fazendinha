@@ -68,8 +68,8 @@
 .pecuaria-content .sanidade-lista .pec-resumo-sanitario-inline strong { color: var(--foreground); }
 .pecuaria-content .sanidade-lista .fin-tabela-cabecalho .pec-resumo-sanitario-inline { justify-content: end; }
 .pecuaria-content .sanidade-lista .fin-tabela :is([data-fin-coluna="acoes"],[data-fin-coluna="acao"]) { position: sticky; right: 0; z-index: 2; background: var(--card); box-shadow: -5px 0 8px -6px rgb(36 73 59 / .3); }
-.pecuaria-content .sanidade-lista .fin-tabela th:is([data-fin-coluna="acoes"],[data-fin-coluna="acao"]) { background: var(--muted); }
-.pecuaria-content .sanidade-lista .fin-tabela tr:focus-within td:is([data-fin-coluna="acoes"],[data-fin-coluna="acao"]) { background: var(--muted); }
+.pecuaria-content .sanidade-lista .fin-tabela th:is([data-fin-coluna="acoes"],[data-fin-coluna="acao"]) { background: var(--fin-table-header); }
+.pecuaria-content .sanidade-lista .fin-tabela tr:focus-within td:is([data-fin-coluna="acoes"],[data-fin-coluna="acao"]) { background: var(--fin-table-hover); }
 .pecuaria-content .sanidade-nota-historico { padding: 12px 16px; font-size: 12px; line-height: 1.5; color: var(--muted-foreground); border-top: 1px solid var(--border); }
 .pecuaria-content .sanidade-orientacao-especifica { margin-top: 6px; font-size: 12px; line-height: 1.5; color: var(--muted-foreground); }
 @media (min-width: 900px) { .pecuaria-content .sanidade-lista .pec-filtros-sanidade { grid-template-columns: repeat(5,minmax(0,1fr)); } }
@@ -112,11 +112,11 @@
 .pecuaria-content .pec-form-corpo .pec-form-cabecalho { background: var(--muted); margin: -24px -24px 24px; padding: 24px; border-radius: 16px 16px 0 0; }
 .pecuaria-content .pec-novo-animal aside { border-top: 1px solid var(--border); }
 .pecuaria-content .sanidade-lista .pec-resumo-consulta { margin: 0; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; background: var(--muted); }
-.pecuaria-content .pec-estado { display: inline-flex; align-items: center; gap: 6px; border-radius: 6px; padding: 5px 8px; font-size: 11px; font-weight: 600; line-height: 1.4; }
+.pecuaria-content .pec-estado { display: inline-flex; align-items: center; gap: 6px; border-radius: 6px; padding: 4px 10px; font-size: 13px; font-weight: 500; line-height: 1.35; }
 .pecuaria-content .pec-estado-neutro { background: var(--muted); color: var(--muted-foreground); }
-.pecuaria-content .pec-estado-verde { background: var(--fin-positive-bg); color: var(--primary); }
+.pecuaria-content .pec-estado-verde { background: var(--fin-status-positive-bg); color: var(--fin-status-positive-text); }
 .pecuaria-content .pec-estado-atencao { background: var(--fin-warning-bg); color: var(--warn); }
-.pecuaria-content .pec-estado-alerta { background: var(--fin-danger-bg); color: var(--destructive); }
+.pecuaria-content .pec-estado-alerta { background: var(--fin-status-danger-bg); color: var(--fin-status-danger-text); }
 .pecuaria-content .pec-carencias-grade { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px; margin-top: 12px; }
 .pecuaria-content .pec-carencia-bloco { border: 1px solid var(--border); border-radius: 10px; padding: 14px; background: var(--muted); }
 .pecuaria-content .pec-carencia-bloco strong { display: block; margin-bottom: 10px; }

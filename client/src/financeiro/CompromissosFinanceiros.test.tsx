@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { abrirFiltrosConsulta, aplicarFiltrosConsulta } from "@/lib/controles.fixture";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { CompromissosFinanceiros } from "./CompromissosFinanceiros";
@@ -140,11 +141,13 @@ it("combina situações e filtra vencimentos somente na listagem, mantendo os ca
   expect(tabela.queryByText("Custeio outubro")).toBeNull();
   expect(tabela.queryByText("Receita setembro")).toBeNull();
 
-  fireEvent.click(screen.getByRole("button", { name: "Situação dos compromissos" }));
+  await abrirFiltrosConsulta();
+  fireEvent.click(screen.getByRole("button", { name: "Tipo de compromisso" }));
   fireEvent.click(await screen.findByRole("option", { name: "A receber" }));
+  fireEvent.keyDown(screen.getAllByRole("dialog").at(-1)!, { key: "Escape" });
+  await aplicarFiltrosConsulta();
   expect(tabela.getByText("Custeio setembro")).toBeTruthy();
   expect(tabela.getByText("Receita setembro")).toBeTruthy();
-  fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
   fireEvent.click(screen.getByRole("button", { name: /Período de vencimento/ }));
   fireEvent.click(screen.getByRole("button", { name: "Todo o período" }));
   expect(tabela.getByText("Custeio outubro")).toBeTruthy();
@@ -170,4 +173,78 @@ it("preserva compromissos durante a atualização e mostra erro sem apresentar t
   expect(screen.getByText("Falha de rede")).toBeTruthy();
   expect(screen.queryByRole("table", { name: "Compromissos financeiros" })).toBeNull();
   expect(screen.getByRole("button", { name: "Tentar novamente" })).toBeTruthy();
+});
+
+
+it("abre o compromisso vinculado pela URL e remove o alvo ao fechar", async () => {
+  window.history.replaceState(null, "", `/financeiro/compromissos?situacao=pagar&compromisso=${uid(101)}`);
+  vi.mocked(listarCompromissos).mockResolvedValue([{
+    id: uid(101), seq: 101, tipo: "PAGAR", status: "PENDENTE", valorOriginal: "100", valorLiquidado: "0", saldoPendente: "100", dataVencimento: "2026-10-30", numeroParcela: 1, totalParcelas: 1, parceiro: null,
+    operacao: { id: uid(102), numero: 102, tipo: "SERVICO", descricao: "Consulta veterinária" },
+  }]);
+  render(<CompromissosFinanceiros onNav={vi.fn()} podeLancar={false} />);
+  const dialogo = await screen.findByRole("dialog", { name: "Detalhes do compromisso" });
+  expect(within(dialogo).getByText("Consulta veterinária")).toBeTruthy();
+  expect(within(dialogo).queryByRole("button", { name: "Registrar pagamento" })).toBeNull();
+  fireEvent.click(within(dialogo).getByRole("button", { name: "Fechar" }));
+  expect(new URLSearchParams(window.location.search).get("situacao")).toBe("pagar");
+  expect(new URLSearchParams(window.location.search).has("compromisso")).toBe(false);
+});
+
+const compromissosSelecao = [
+  { id: uid(301), seq: 301, tipo: "PAGAR" as const, status: "PENDENTE" as const, valorOriginal: "100", valorLiquidado: "0", saldoPendente: "100", dataVencimento: "2026-09-15", vencido: true, numeroParcela: 1, totalParcelas: 1, parceiro: null, operacao: { id: uid(401), numero: 401, tipo: "SERVICO", descricao: "Despesa atrasada" } },
+  { id: uid(302), seq: 302, tipo: "RECEBER" as const, status: "PENDENTE" as const, valorOriginal: "70", valorLiquidado: "0", saldoPendente: "70", dataVencimento: "2026-09-16", vencido: true, numeroParcela: 1, totalParcelas: 1, parceiro: null, operacao: { id: uid(402), numero: 402, tipo: "VENDA", descricao: "Receita atrasada" } },
+  { id: uid(303), seq: 303, tipo: "PAGAR" as const, status: "CANCELADO" as const, valorOriginal: "150", valorLiquidado: "0", saldoPendente: "150", dataVencimento: "2026-09-10", vencido: false, numeroParcela: 1, totalParcelas: 1, parceiro: null, operacao: { id: uid(403), numero: 403, tipo: "SERVICO", descricao: "Despesa cancelada" } },
+  { id: uid(304), seq: 304, tipo: "PAGAR" as const, status: "PENDENTE" as const, valorOriginal: "200", valorLiquidado: "0", saldoPendente: "200", dataVencimento: "2026-12-10", vencido: false, numeroParcela: 1, totalParcelas: 1, parceiro: null, operacao: { id: uid(404), numero: 404, tipo: "SERVICO", descricao: "Despesa futura" } },
+];
+
+it("sincroniza cards e seletor de tipo, sem somar entradas e saídas", async () => {
+  vi.mocked(listarCompromissos).mockResolvedValue(compromissosSelecao);
+  render(<CompromissosFinanceiros onNav={vi.fn()} podeLancar={false} />);
+  const tabela = within(await screen.findByRole("table", { name: "Compromissos financeiros" }));
+  expect(tabela.queryByText("Receita atrasada")).toBeNull();
+  expect(tabela.queryByText("Despesa cancelada")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Ver compromissos a receber" }));
+  expect(screen.getByRole("button", { name: "A receber" }).getAttribute("aria-pressed")).toBe("true");
+  expect(tabela.getByText("Receita atrasada")).toBeTruthy();
+  expect(tabela.queryByText("Despesa atrasada")).toBeNull();
+  expect(screen.getByText("Total a receber").parentElement?.textContent).toContain("70,00");
+  fireEvent.click(screen.getByRole("button", { name: "Ver compromissos a pagar" }));
+  expect(screen.getByRole("button", { name: "A pagar" }).getAttribute("aria-pressed")).toBe("true");
+  expect(tabela.getByText("Despesa futura")).toBeTruthy();
+  expect(screen.getByText("Total a pagar").parentElement?.textContent).toContain("300,00");
+  expect(listarCompromissos).toHaveBeenCalledTimes(1);
+});
+
+it("o card de vencidos filtra os dois tipos e mantém os totais separados", async () => {
+  vi.mocked(listarCompromissos).mockResolvedValue(compromissosSelecao);
+  render(<CompromissosFinanceiros onNav={vi.fn()} podeLancar={false} />);
+  const tabela = within(await screen.findByRole("table", { name: "Compromissos financeiros" }));
+  fireEvent.click(screen.getByRole("button", { name: "Ver compromissos vencidos" }));
+  expect(tabela.getByText("Despesa atrasada")).toBeTruthy();
+  expect(tabela.getByText("Receita atrasada")).toBeTruthy();
+  expect(tabela.queryByText("Despesa futura")).toBeNull();
+  expect(tabela.queryByText("Despesa cancelada")).toBeNull();
+  expect(tabela.getAllByText("Vencido")).toHaveLength(2);
+  expect(screen.getByText("Total a pagar").parentElement?.textContent).toContain("100,00");
+  expect(screen.getByText("Total a receber").parentElement?.textContent).toContain("70,00");
+  expect(new URLSearchParams(window.location.search).get("vencidos")).toBe("1");
+});
+
+it("a coluna de situação edita em rascunho e cancelado mostra original sem saldo a pagar", async () => {
+  vi.mocked(listarCompromissos).mockResolvedValue(compromissosSelecao);
+  render(<CompromissosFinanceiros onNav={vi.fn()} podeLancar={false} />);
+  const tabela = within(await screen.findByRole("table", { name: "Compromissos financeiros" }));
+  fireEvent.click(tabela.getByRole("button", { name: "Filtrar por situação, filtro ativo" }));
+  const filtro = within(screen.getByRole("dialog", { name: "Filtro de situação" }));
+  fireEvent.click(filtro.getByRole("checkbox", { name: "Cancelado" }));
+  fireEvent.click(filtro.getByRole("checkbox", { name: "Pendente" }));
+  fireEvent.click(filtro.getByRole("checkbox", { name: "Parcial" }));
+  expect(tabela.queryByText("Despesa cancelada")).toBeNull();
+  fireEvent.click(filtro.getByRole("button", { name: "Aplicar" }));
+  const linha = within(tabela.getByText("Despesa cancelada").closest("tr")!);
+  const celulas = linha.getAllByRole("cell");
+  expect(celulas[4].textContent?.replace(/\s/g, " ")).toContain("R$ 150,00");
+  expect(celulas[5].textContent?.replace(/\s/g, " ")).toContain("R$ 0,00");
+  expect(tabela.queryByText("Despesa atrasada")).toBeNull();
 });

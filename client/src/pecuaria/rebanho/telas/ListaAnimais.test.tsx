@@ -108,7 +108,7 @@ describe("ListaAnimais", () => {
   });
   it("mostra e remove o filtro aplicado no painel", async () => {
     montar();
-    fireEvent.click(await screen.findByRole("button", { name: "Mais filtros" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Filtros" }));
     escolherMultiplo("Sexo", "F");
     fireEvent.click(screen.getByRole("button", { name: "Aplicar filtros" }));
     fireEvent.click(screen.getByRole("button", { name: "Remover filtro: Sexo: Fêmeas" }));
@@ -135,9 +135,9 @@ describe("ListaAnimais", () => {
 
   it("aplicar o filtro dispara uma única busca, já na página 1", async () => {
     montar();
-    await screen.findByRole("button", { name: "Mais filtros" });
+    await screen.findByRole("button", { name: "Filtros" });
     const inicial = vi.mocked(listarAnimais).mock.calls.length;
-    if (!screen.queryByRole("dialog")) fireEvent.click(screen.getByRole("button", { name: "Mais filtros" }));
+    if (!screen.queryByRole("dialog")) fireEvent.click(screen.getByRole("button", { name: "Filtros" }));
     escolherMultiplo("Categoria", "cat-vaca");
     expect(vi.mocked(listarAnimais).mock.calls.length).toBe(inicial);
     fireEvent.click(screen.getByRole("button", { name: "Aplicar filtros" }));
@@ -238,7 +238,7 @@ describe("ListaAnimais", () => {
     // ao loader entre uma troca de filtro e a próxima (K1 — só a tabela recarrega)
     vi.mocked(listarAnimais).mockResolvedValue({ itens: [criarAnimal({})], total: 1, painel: painelVazio });
     montar();
-    fireEvent.click(await screen.findByRole("button", { name: "Mais filtros" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Filtros" }));
     await screen.findByRole("button", {name:"Raça"});
     escolherMultiplo("Sexo", "F");
     escolherMultiplo("Origem", "COMPRADO");
@@ -250,7 +250,7 @@ describe("ListaAnimais", () => {
   it("idade mínima e máxima (em meses) são enviadas como número", async () => {
     vi.mocked(listarAnimais).mockResolvedValue({ itens: [criarAnimal({})], total: 1, painel: painelVazio });
     montar();
-    fireEvent.click(await screen.findByRole("button", { name: "Mais filtros" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Filtros" }));
     await screen.findByLabelText("Idade mínima (meses)");
     await alterarControle(screen.getByLabelText("Idade mínima (meses)"), { target: { value: "12" } });
     await alterarControle(screen.getByLabelText("Idade máxima (meses)"), { target: { value: "24" } });
@@ -261,14 +261,14 @@ describe("ListaAnimais", () => {
   it("categoria \"Sem categoria\" envia semCategoria e \"Só forçadas\" envia categoriaOrigem", async () => {
     vi.mocked(listarAnimais).mockResolvedValue({ itens: [criarAnimal({})], total: 1, painel: painelVazio });
     montar();
-    fireEvent.click(await screen.findByRole("button", { name: "Mais filtros" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Filtros" }));
     const select = await screen.findByLabelText("Critério especial de categoria") as HTMLSelectElement;
     await alterarControle(select, { target: { value: "__sem_categoria__" } });
     fireEvent.click(screen.getByRole("button", { name: "Aplicar filtros" }));
     await waitFor(() => expect(vi.mocked(listarAnimais).mock.calls.at(-1)![0]).toMatchObject({ semCategoria: true }));
     expect(vi.mocked(listarAnimais).mock.calls.at(-1)![0].categoriaId).toBeUndefined();
 
-    fireEvent.click(screen.getByRole("button", { name: "Mais filtros" }));
+    fireEvent.click(screen.getByRole("button", { name: "Filtros" }));
     await alterarControle(screen.getByLabelText("Critério especial de categoria"), { target: { value: "__so_forcadas__" } });
     fireEvent.click(screen.getByRole("button", { name: "Aplicar filtros" }));
     await waitFor(() => expect(vi.mocked(listarAnimais).mock.calls.at(-1)![0]).toMatchObject({ categoriaOrigem: "MANUAL" }));
@@ -276,7 +276,7 @@ describe("ListaAnimais", () => {
 
   it("ordenação troca ordenar e direcao", async () => {
     montar();
-    fireEvent.click(await screen.findByRole("button", { name: "Mais filtros" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Filtros" }));
     const select = await screen.findByLabelText("Ordenar por") as HTMLSelectElement;
     await alterarControle(select, { target: { value: "nascimento-desc" } });
     fireEvent.click(screen.getByRole("button", { name: "Aplicar filtros" }));
@@ -286,7 +286,7 @@ describe("ListaAnimais", () => {
   it("tipo de baixa e período só aparecem com Baixados/Todas e são enviados", async () => {
     vi.mocked(listarAnimais).mockResolvedValue({ itens: [criarAnimal({})], total: 1, painel: painelVazio });
     montar();
-    fireEvent.click(await screen.findByRole("button", { name: "Mais filtros" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Filtros" }));
     await screen.findByRole("button", {name:"Situação"});
     expect(screen.queryByLabelText("Filtrar por tipo de baixa")).toBeNull();
     escolherMultiplo("Situação", "BAIXADO");
@@ -303,7 +303,7 @@ describe("ListaAnimais", () => {
     montar();
     await waitFor(() => expect(listarAnimais).toHaveBeenCalled());
     expect(vi.mocked(listarAnimais).mock.calls[0][0]).toMatchObject({ situacao: "BAIXADO", tipoBaixa: "VENDA", semCategoria: true });
-    fireEvent.click(await screen.findByRole("button", { name: "Mais filtros" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Filtros" }));
     expect(screen.getByRole("button", {name:"Situação"}).textContent).toContain("Baixados");
   });
 
@@ -322,7 +322,7 @@ describe("ListaAnimais", () => {
     await screen.findAllByText("0001");
     expect(screen.queryByText("Venda")).toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: "Mais filtros" }));
+    fireEvent.click(screen.getByRole("button", { name: "Filtros" }));
     escolherMultiplo("Situação", "BAIXADO");
     fireEvent.click(screen.getByRole("button", { name: "Aplicar filtros" }));
     await waitFor(() => expect(listarAnimais).toHaveBeenLastCalledWith(expect.objectContaining({ situacoes: ["ATIVO", "BAIXADO"] })));
@@ -360,7 +360,7 @@ describe("Pesagem e manejo", () => {
     montar();
     await screen.findAllByText("0001");
     expect(screen.queryByRole("columnheader", { name: "Idade" })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Mais filtros" }));
+    fireEvent.click(screen.getByRole("button", { name: "Filtros" }));
     expect(screen.getByRole("button", { name: "Papel reprodutivo" })).toBeTruthy();
     fireEvent.click(screen.getByLabelText("Mostrar todas as colunas"));
     fireEvent.click(screen.getByRole("button", { name: "Aplicar filtros" }));
@@ -404,7 +404,7 @@ describe("rascunho dos filtros de animais", () => {
     await screen.findByText("Nenhum animal encontrado com os filtros selecionados.");
     const inicial = vi.mocked(listarAnimais).mock.calls.length;
     const endereco = window.location.href;
-    fireEvent.click(screen.getByRole("button", { name: "Mais filtros" }));
+    fireEvent.click(screen.getByRole("button", { name: "Filtros" }));
     escolherMultiplo("Sexo", "F");
     await alterarControle(screen.getByLabelText("Idade mínima (meses)"), { target: { value: "12" } });
     await alterarControle(screen.getByLabelText("Idade máxima (meses)"), { target: { value: "24" } });
@@ -423,12 +423,12 @@ describe("rascunho dos filtros de animais", () => {
     montar();
     await screen.findByText("Nenhum animal encontrado com os filtros selecionados.");
     const inicial = vi.mocked(listarAnimais).mock.calls.length;
-    fireEvent.click(screen.getByRole("button", { name: "Mais filtros" }));
+    fireEvent.click(screen.getByRole("button", { name: "Filtros" }));
     await alterarControle(screen.getByLabelText("Idade mínima (meses)"), { target: { value: "12" } });
     fireEvent.click(screen.getByRole("button", { name: acao }));
     expect(vi.mocked(listarAnimais).mock.calls.length).toBe(inicial);
     expect(new URLSearchParams(window.location.search).get("idadeMinMeses")).toBe("6");
-    fireEvent.click(screen.getByRole("button", { name: "Mais filtros" }));
+    fireEvent.click(screen.getByRole("button", { name: "Filtros" }));
     expect((screen.getByLabelText("Idade mínima (meses)") as HTMLInputElement).value).toBe("6");
     fireEvent.click(screen.getByRole("button", { name: "Limpar filtros" }));
     expect((screen.getByLabelText("Idade mínima (meses)") as HTMLInputElement).value).toBe("");

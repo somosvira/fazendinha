@@ -1,3 +1,5 @@
+import { useFiltrosTabelaLocal } from "@/financeiro/useFiltrosTabelaLocal";
+import { BuscaLista } from "@/components/BuscaLista";
 import { BarraConsulta } from "@/financeiro/BarraConsulta";
 import { useEffect, useState } from "react";
 import { Button as BotaoDetalhe } from "../../../components/ui/button";
@@ -32,11 +34,18 @@ export function PartosPosParto({ propriedadeId }: { propriedadeId: number }) {
     return () => { ativo = false; };
   }, [propriedadeId, periodo.inicio, periodo.fim, assinatura, revisao]);
   const visivel = consultaCarregada === assinatura && snapshot?.propriedadeId === propriedadeId ? snapshot : null;
-  const partos = [...(visivel?.partos ?? [])].sort((a, b) => b.data.localeCompare(a.data) || b.id.localeCompare(a.id));
+  const [busca,setBusca] = useState("");
+  const consulta = useFiltrosTabelaLocal<SnapshotRelatorioPartos["partos"][number]>([
+    {chave:"matriz", naBarra: true,rotulo:"Matriz",tipo:"texto",obter:p=>`${p.matriz.brinco} ${p.matriz.nome??""}`},
+    {chave:"desfecho",rotulo:"Desfecho",tipo:"opcoes",obter:p=>p.desfecho,opcoes:[{valor:"NASCIMENTO",texto:"Nascimento"},{valor:"ABORTO",texto:"Aborto"}]},
+    {chave:"rp",rotulo:"Retenção de placenta",tipo:"opcoes",obter:p=>p.retencaoPlacenta===null?"NAO_INFORMADO":p.retencaoPlacenta?"SIM":"NAO",opcoes:[{valor:"SIM",texto:"Sim"},{valor:"NAO",texto:"Não"},{valor:"NAO_INFORMADO",texto:"Não informado"}]},
+  ],()=>setPagina(1));
+  const partos = consulta.filtrar(visivel?.partos ?? []).filter(p=>`${p.matriz.brinco} ${p.matriz.nome??""}`.toLocaleLowerCase("pt-BR").includes(busca.toLocaleLowerCase("pt-BR"))).sort((a, b) => b.data.localeCompare(a.data) || b.id.localeCompare(a.id));
   const paginas=Math.max(1,Math.ceil(partos.length/20)),atual=Math.min(pagina,paginas);
   return <div className="space-y-5">
-    <BarraConsulta resumo={visivel ? <span>{visivel.totalPartos} partos no período</span> : undefined}>
+    <BarraConsulta campos={consulta.campos} edicaoFiltros={consulta.edicao} criterios={consulta.criterios} resumo={visivel ? <span>{visivel.totalPartos} partos no período</span> : undefined}>
 
+      <BuscaLista rotulo="Buscar matriz" placeholder="Brinco ou nome da matriz" valor={busca} onChange={v=>{setBusca(v);setPagina(1);}}/>
       <DateRangePicker value={periodo.range} onChange={r=>{setPagina(1);periodo.alterar(r);}}/>
     </BarraConsulta>
     {periodo.aviso && <p role="status" className="text-sm text-muted-foreground">{periodo.aviso}</p>}
@@ -45,7 +54,7 @@ export function PartosPosParto({ propriedadeId }: { propriedadeId: number }) {
     {carregando && <p role="status">Carregando partos…</p>}
     {!carregando && !erro && visivel && <Panel>
 
-      {!partos.length ? <div className="space-y-3 p-5"><p>Nenhum parto neste período.</p><p className="text-sm text-muted-foreground">Use o filtro de período para consultar outras datas.</p></div> : <TabelaFinanceira
+      {!partos.length ? <div className="space-y-3 p-5"><p>Nenhum parto neste período.</p><p className="text-sm text-muted-foreground">Use o filtro de período para consultar outras datas.</p></div> : <TabelaFinanceira filtrosColunas={consulta.colunas}
         rotulo="Partos recentes" itens={partos.slice((atual-1)*20,atual*20)} chaveDe={p => p.id} colunas={[
           { chave: "data", titulo: "Data", larguraMinima: 110, celula: p => formatBRDateISO(p.data) },
           { chave: "matriz", titulo: "Matriz", principal: true, larguraFlexivel: true, larguraMinima: 260, celula: p => <button className="font-semibold underline" onClick={() => navegarPara(`/pecuaria/rebanho/animais/${p.matriz.id}#reproducao`)}>{p.matriz.brinco}{p.matriz.nome ? ` · ${p.matriz.nome}` : ""}</button> },

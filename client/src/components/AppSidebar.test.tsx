@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { AppSidebar, TrabalhoAtivo } from "./AppSidebar";
 import type { User } from "@/data/acessos";
@@ -159,4 +159,30 @@ describe("AppSidebar — orientação por área", () => {
     renderSidebar({ trabalhoAtivo: { resumo: null, ativo: false, onAbrir: vi.fn() } });
     expect(screen.queryByRole("group", { name: "Trabalhos ativos" })).toBeNull();
   });
+});
+
+
+it("oferece exclusão independente em cada trabalho e só exclui após confirmar", async () => {
+  const abrir = vi.fn(); const excluirOperacao = vi.fn().mockResolvedValue(undefined); const excluirRelatorio = vi.fn().mockResolvedValue(undefined);
+  renderSidebar({ trabalhoAtivo: { resumo, ativo: false, onAbrir: abrir, onExcluir: excluirOperacao }, trabalhoAtivoRelatorio: { resumo: { ...resumo, titulo: "Relatório de custos" }, ativo: false, onAbrir: abrir, onExcluir: excluirRelatorio } });
+  fireEvent.click(screen.getByRole("button", { name: "Excluir trabalho ativo: Ração para o gado" }));
+  expect(screen.getByRole("dialog", { name: "Excluir trabalho ativo?" }).textContent).toContain("Ração para o gado");
+  expect(abrir).not.toHaveBeenCalled(); expect(excluirOperacao).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "Manter trabalho" }));
+  fireEvent.click(screen.getByRole("button", { name: "Excluir trabalho ativo: Relatório de custos" }));
+  fireEvent.click(screen.getByRole("button", { name: "Excluir trabalho" }));
+  await waitFor(() => expect(excluirRelatorio).toHaveBeenCalledOnce());
+  expect(excluirOperacao).not.toHaveBeenCalled(); expect(abrir).not.toHaveBeenCalled();
+});
+
+it("falha na exclusão mantém o trabalho e permite tentar novamente", async () => {
+  const excluir = vi.fn().mockRejectedValueOnce(new Error("Falha ao excluir")).mockResolvedValueOnce(undefined);
+  render(<TrabalhoAtivo resumo={resumo} ativo={false} onAbrir={vi.fn()} onExcluir={excluir} />);
+  fireEvent.click(screen.getByRole("button", { name: "Excluir trabalho ativo: Ração para o gado" }));
+  fireEvent.click(screen.getByRole("button", { name: "Excluir trabalho" }));
+  expect(await screen.findByRole("alert")).toHaveProperty("textContent", "Falha ao excluir");
+  expect(screen.getByText("Ração para o gado")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Excluir trabalho" }));
+  await waitFor(() => expect(screen.queryByRole("dialog", { name: "Excluir trabalho ativo?" })).toBeNull());
+  expect(excluir).toHaveBeenCalledTimes(2);
 });

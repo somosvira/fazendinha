@@ -1,9 +1,17 @@
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Button as Botao } from "@/components/ui/button";
+import { BuscaLista } from "@/components/BuscaLista";
+import { navegarPara } from "../router";
+import { podeVerValoresFinanceiros } from "@/financeiro/permissoes";
+import { useFiltrosTabelaLocal } from "@/financeiro/useFiltrosTabelaLocal";
+import { filtrosDasColunas, type CampoConsulta } from "@/financeiro/FiltroColunaConsulta";
 import { useRascunhoConsulta } from "@/financeiro/useRascunhoConsulta";
 import { BarraConsulta } from "@/financeiro/BarraConsulta";
 import "./estoque-theme.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Boxes, Package, PackagePlus, Plus, Search, SlidersHorizontal, TriangleAlert, History } from "lucide-react";
-import { AjudaCampo, Dica } from "@/components/Dica";
+import { Package, PackagePlus, Plus, Search, SlidersHorizontal, TriangleAlert, History, ArrowLeftRight, ChevronDown } from "lucide-react";
+import { AjudaCampo } from "@/components/Dica";
 import { Loader } from "../components/Loading";
 import { LinkInterno } from "../components/LinkInterno";
 import { rotuloUnidade, type UnidadeMedida } from "../lib/unidades";
@@ -59,8 +67,17 @@ function useMovimentos(f: FiltroMovimentos) {
 }
 
 export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { centroCustoIdInicial?: string | null; titulo?: string; avisoFiltro?: string } = {}) {
-  const urlEstoque = new URLSearchParams(window.location.search);
+  const [consultaUrl, setConsultaUrl] = useState(() => window.location.search);
+  useEffect(() => { const atualizar = () => setConsultaUrl(window.location.search); window.addEventListener("popstate", atualizar); return () => window.removeEventListener("popstate", atualizar); }, []);
+  const urlEstoque = new URLSearchParams(consultaUrl);
   const movimentoId = urlEstoque.get("movimentoId") ?? "";
+  const aba = urlEstoque.get("aba") === "produtos" ? "produtos" : urlEstoque.get("aba") === "movimentacoes" || movimentoId ? "movimentacoes" : "produtos";
+  const mudarAba = (valor: string) => {
+    if (valor !== "produtos" && valor !== "movimentacoes") return;
+    const parametros = new URLSearchParams(window.location.search);
+    parametros.set("aba", valor);
+    navegarPara(`${window.location.pathname}?${parametros}${window.location.hash}`);
+  };
   const consolidado = getPropriedadeAtiva() == null;
   const sitioEfetivo = getPropriedadeAtiva() ?? undefined;
   const sitioHistorico = Number(urlEstoque.get("propriedadeId")) || undefined;
@@ -88,10 +105,10 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
   const movimentos = useMovimentos({ movimentoId: movimentoId || undefined, propriedadeId: sitioMovimento, q: movimentoId ? undefined : buscaMovAplicada, origem: movimentoId ? undefined : origemMov, centroCustoId: movimentoId ? undefined : centroMov, de: movimentoId ? undefined : periodoMov.inicio, ate: movimentoId ? undefined : periodoMov.fim, pagina: paginaMov, porPagina: ITENS_POR_PAGINA });
   const historicoRef = useRef<HTMLElement>(null);
   useEffect(() => {
-    if (!movimentoId || movimentos.loading) return;
+    if (aba !== "movimentacoes" || !movimentoId || movimentos.loading) return;
     historicoRef.current?.scrollIntoView?.({ block: "start", behavior: "smooth" });
     historicoRef.current?.focus({ preventScroll: true });
-  }, [movimentoId, movimentos.loading]);
+  }, [aba, movimentoId, movimentos.loading]);
   const entradas = useMovimentos({ tipo: "ENTRADA", propriedadeId: sitioEfetivo, porPagina: 100 });
   const [paginaSaldos, setPaginaSaldos] = useState(1);
   const [busca, setBusca] = useState("");
@@ -109,9 +126,14 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
 
   useEffect(() => { listarCentrosCusto().then((cs) => { setCentros(cs); setErroCentros(null); }).catch((e) => setErroCentros(e instanceof Error ? e.message : String(e))); }, []);
 
-  const saldosVisiveis = useMemo(() => {
+  const consultaSaldos = useFiltrosTabelaLocal<SaldoDTO>([
+    { chave: "produto", naBarra: true, rotulo: "Produto", tipo: "texto", obter: s => s.nome },
+    { chave: "categoria", naBarra: true, rotulo: "Categoria", tipo: "texto", obter: s => s.categoria?.nome },
+    ...(podeVerValoresFinanceiros() ? [{ chave: "valor", rotulo: "Valor em estoque", tipo: "valor" as const, obter: (s: SaldoDTO) => s.custoMedio == null ? null : s.valor, limiteSugerido: Math.max(1, ...saldos.data.map(s => s.valor ?? 0)) }] : []),
+  ], () => setPaginaSaldos(1));
+  const saldosVisiveis = (() => {
     const termo = busca.trim().toLocaleLowerCase("pt-BR");
-    const filtrados = saldos.data.filter((s) => {
+    const filtrados = consultaSaldos.filtrar(saldos.data).filter((s) => {
       if (soAbaixoMin && !s.abaixoMinimo) return false;
       if (soNegativos && s.saldo >= 0) return false;
       if (!termo) return true;
@@ -122,7 +144,7 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
       if (ordem === "categoria") return (a.categoria?.nome ?? "").localeCompare(b.categoria?.nome ?? "", "pt-BR") || a.nome.localeCompare(b.nome, "pt-BR");
       return a.nome.localeCompare(b.nome, "pt-BR");
     });
-  }, [saldos.data, busca, soAbaixoMin, soNegativos, ordem]);
+  })();
 
   const totalPaginasSaldos = Math.max(1, Math.ceil(saldosVisiveis.length / ITENS_POR_PAGINA));
   const paginaSaldosAtual = Math.min(paginaSaldos, totalPaginasSaldos);
@@ -159,31 +181,31 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
   const recarregarTudo = () => { saldos.recarregar(); movimentos.recarregar(); entradas.recarregar(); };
 
   const colunasSaldos: ColunaTabela<SaldoDTO>[] = [
-    { chave: "produto", titulo: "Produto", larguraMinima: 220, principal: true, celula: (s) => <span className="flex flex-wrap items-center gap-2"><strong className="break-words font-semibold"><a href={`/estoque/produtos/${s.produtoId}`} className="text-primary hover:underline">{s.nome}</a></strong>{s.materialGeneticoId && <LinkInterno href={hrefMaterialGenetico(s.materialGeneticoId)} area="pecuaria">Identidade genética</LinkInterno>}{s.abaixoMinimo && <Dica rotulo="Abaixo do mínimo" conteudo={`Abaixo do mínimo${s.minimoEstoque != null ? ` (${qtd(s.minimoEstoque)} ${rotuloUnidade(s.unidade)})` : ""}`} className="hover:opacity-80"><IconeAbaixoMinimo /></Dica>}</span> },
-    { chave: "categoria", titulo: "Classificação", larguraMinima: 180, larguraFlexivel: true, celula: (s) => <><div>{s.categoria?.nome ?? "Sem categoria"}</div><div className="text-xs text-ink-3">{s.centrosCusto.map((c) => c.nome).join(" · ") || "Sem centro"}</div></> },
-    { chave: "saldo", titulo: "Saldo / mínimo", alinhamento: "direita", larguraMinima: 140, celula: (s) => <><strong className={s.saldo < 0 ? "text-destructive" : s.abaixoMinimo ? "text-[var(--fin-pendente)]" : ""}>{qtd(s.saldo)} {rotuloUnidade(s.unidade)}</strong><div className="text-xs text-ink-3">Mínimo: {s.minimoEstoque != null ? `${qtd(s.minimoEstoque)} ${rotuloUnidade(s.unidade)}` : "não definido"}</div></> },
-    { chave: "valor", titulo: "Valor / custo médio", alinhamento: "direita", larguraMinima: 160, celula: (s) => <><strong className="whitespace-nowrap font-semibold">{s.custoMedio != null ? brl(s.valor ?? 0) : "—"}</strong><div className="text-xs text-ink-3">Médio: {s.custoMedio != null ? fmtMoneyExact(s.custoMedio) : "—"}</div></> },
+    { chave: "produto", titulo: "Produto", larguraMinima: 280, principal: true, celula: (s) => <span className="flex flex-wrap items-center gap-2"><strong className="break-words font-semibold"><a href={`/estoque/produtos/${s.produtoId}`} className="text-primary hover:underline">{s.nome}</a></strong>{s.materialGeneticoId && <LinkInterno href={hrefMaterialGenetico(s.materialGeneticoId)} area="pecuaria">Identidade genética</LinkInterno>}</span> },
+    { chave: "categoria", titulo: "Categoria / centro", larguraMinima: 180, larguraFlexivel: true, celula: (s) => <><div>{s.categoria?.nome ?? "Sem categoria"}</div><div className="text-xs text-ink-3">{s.centrosCusto.map((c) => c.nome).join(" · ") || "Sem centro"}</div></> },
+    { chave: "saldo", titulo: "Disponível", alinhamento: "direita", larguraMinima: 220, celula: (s) => <><strong className={s.saldo < 0 ? "text-destructive" : s.abaixoMinimo ? "text-[var(--fin-pendente)]" : ""}>{qtd(s.saldo)} {rotuloUnidade(s.unidade)}</strong><div className={`text-xs ${s.abaixoMinimo ? "estoque-reposicao" : "text-ink-3"}`}>{s.abaixoMinimo && <><IconeAbaixoMinimo size={13} />Abaixo do mínimo · </>}Mín. {s.minimoEstoque != null ? `${qtd(s.minimoEstoque)} ${rotuloUnidade(s.unidade)}` : "não definido"}</div></> },
+    { chave: "valor", titulo: "Valor em estoque", alinhamento: "direita", larguraMinima: 160, celula: (s) => <><strong className="whitespace-nowrap font-semibold">{s.custoMedio != null ? brl(s.valor ?? 0) : "—"}</strong>{s.custoMedio != null && <div className="text-xs text-ink-3">Médio: {fmtMoneyExact(s.custoMedio)}</div>}</> },
     ...(podeAjustar ? [{ chave: "acoes", titulo: "Ações", alinhamento: "esquerda" as const, larguraMinima: 90, acoes: true, celula: (s: SaldoDTO) => (
       <div className="flex items-center justify-end gap-1">
-        {podeAjustar && <button type="button" onClick={() => abrirAjusteEstoque(s.produtoId)} aria-label={`Ajustar quantidade de ${s.nome}`} title="Ajustar quantidade" className="rounded-lg p-2 text-ink-2 hover:bg-surface-2 hover:text-ink"><SlidersHorizontal size={16} /></button>}
+        {podeAjustar && <button type="button" onClick={() => abrirAjusteEstoque(s.produtoId)} aria-label={`Ajustar quantidade de ${s.nome}`} title="Ajustar quantidade" className="estoque-acao-produto rounded-lg p-2 text-ink-2 hover:bg-surface-2 hover:text-ink"><SlidersHorizontal size={16} /></button>}
       </div>
     ) }] : []),
   ];
 
   const colunasMovimentos: ColunaTabela<MovimentoDTO>[] = [
     { chave: "produto", titulo: "Produto / data", larguraMinima: 220, principal: true, celula: (m) => <><strong className="break-words font-semibold"><a href={`/estoque/produtos/${m.produtoId}`} className="text-primary hover:underline">{m.produto}</a></strong><div className="mt-1 text-xs text-ink-3">{dataBR(m.data)}</div></> },
-    { chave: "tipo", titulo: "Tipo", alinhamento: "esquerda", larguraMinima: 160, celula: (m) => (
+    { chave: "tipo", titulo: "Movimento", alinhamento: "esquerda", larguraMinima: 160, celula: (m) => (
       <span className="flex flex-wrap items-center justify-start gap-1.5">
-        <span title={TIPO_MOV[m.tipo].rotulo}><Pill tone={TIPO_MOV[m.tipo].tom}>{ROTULO_ORIGEM[m.origem] ?? m.origem}</Pill></span>
+        <Pill tone={TIPO_MOV[m.tipo].tom}>{TIPO_MOV[m.tipo].rotulo}</Pill>
         {m.reversaoDeId != null && <Pill tone="red">Estorno</Pill>}
         {m.status === "REVERTIDO" && <Pill tone="red">Estornado</Pill>}
       </span>
     ) },
     { chave: "qtd", titulo: "Qtde", alinhamento: "direita", larguraMinima: 110, celula: (m) => { const un = unidadePorProduto.get(m.produtoId); return <span className="whitespace-nowrap">{qtd(m.quantidade)}{un ? ` ${rotuloUnidade(un)}` : ""}</span>; } },
     { chave: "valor", titulo: "Valor", alinhamento: "direita", larguraMinima: 120, celula: (m) => <span className="whitespace-nowrap">{m.valorTotal == null ? "—" : brl(m.valorTotal)}</span> },
-    { chave: "origem", titulo: "Origem / destino", alinhamento: "esquerda", larguraMinima: 220, larguraFlexivel: true, celula: (m) => {
+    { chave: "origem", titulo: "Origem / vínculo", alinhamento: "esquerda", larguraMinima: 220, larguraFlexivel: true, celula: (m) => {
       const destino = destinoDoMovimento(m);
-      return <><div className="break-words">{destino ? <><LinkInterno href={destino.href} area={destino.area}>{destino.rotulo}</LinkInterno>{m.fornecedor && <span className="text-ink-3"> · {m.fornecedor}</span>}</> : <span className="text-ink-3">{m.fornecedor ?? "—"}</span>}</div><div className="mt-1 flex flex-wrap gap-2 text-xs">
+      return <>{destino?.rotulo !== (ROTULO_ORIGEM[m.origem] ?? m.origem) && <div className="text-xs text-ink-3">{ROTULO_ORIGEM[m.origem] ?? m.origem}</div>}<div className="break-words">{destino ? <><LinkInterno href={destino.href} area={destino.area}>{destino.rotulo}</LinkInterno>{m.fornecedor && <span className="text-ink-3"> · {m.fornecedor}</span>}</> : <span className="text-ink-3">{m.fornecedor ?? "—"}</span>}</div><div className="mt-1 flex flex-wrap gap-2 text-xs">
         {m.estorno && <LinkInterno href={`/estoque?movimentoId=${encodeURIComponent(m.estorno.id)}${m.propriedadeId != null ? `&propriedadeId=${m.propriedadeId}` : ""}`} area="estoque">Ver estorno</LinkInterno>}
         {m.reversaoDeId && <LinkInterno href={`/estoque?movimentoId=${encodeURIComponent(m.reversaoDeId)}${m.propriedadeId != null ? `&propriedadeId=${m.propriedadeId}` : ""}`} area="estoque">Ver movimento original</LinkInterno>}
       </div></>;
@@ -192,27 +214,82 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
 
   const filtrosAtivos = busca.trim() !== "" || soAbaixoMin || soNegativos;
   const acao = <div className="flex flex-wrap gap-2">
-    {podeAjustar && <Button secondary onClick={() => setPerdendo(true)}>Registrar perda</Button>}
-    {podeAjustar && <Button secondary onClick={() => setTransferindo(true)}>Transferir estoque</Button>}
-    {podeAjustar && <Button secondary onClick={() => abrirAjusteEstoque()}><SlidersHorizontal size={16} /> Ajustar quantidade</Button>}
+    {podeAjustar && <DropdownMenu><DropdownMenuTrigger asChild><Botao variant="outline"><ArrowLeftRight size={16} aria-hidden="true" />Movimentar estoque<ChevronDown size={14} aria-hidden="true" /></Botao></DropdownMenuTrigger><DropdownMenuContent align="end" className="estoque-menu-acoes"><DropdownMenuItem onSelect={() => setTransferindo(true)}>Transferir estoque</DropdownMenuItem><DropdownMenuItem onSelect={() => abrirAjusteEstoque()}>Ajustar quantidade</DropdownMenuItem><DropdownMenuItem onSelect={() => setPerdendo(true)}>Registrar perda</DropdownMenuItem></DropdownMenuContent></DropdownMenu>}
     <Button onClick={() => setCadastrandoProduto(true)}><Plus size={16} /> Cadastrar produto</Button>
   </div>;
 
-  const edicaoSaldos = useRascunhoConsulta({ centro: centroFiltro, ordem }, { centro: "", ordem: "nome" as Ordem }, v => { setCentroFiltro(v.centro); setOrdem(v.ordem); });
-  const edicaoHistorico = useRascunhoConsulta({ centro: centroMov }, { centro: "" }, v => { setCentroMov(v.centro); setPaginaMov(1); });
+  const edicaoSaldos = useRascunhoConsulta({ centro: centroFiltro, ordem, abaixo: soAbaixoMin, negativos: soNegativos }, { centro: "", ordem: "nome" as Ordem, abaixo: false, negativos: false }, v => { setCentroFiltro(v.centro); setOrdem(v.ordem); setSoAbaixoMin(v.abaixo); setSoNegativos(v.negativos); setPaginaSaldos(1); });
+  const edicaoCompletaSaldos = { iniciar: () => { edicaoSaldos.iniciar(); consultaSaldos.edicao.iniciar(); }, limpar: () => { edicaoSaldos.limpar(); consultaSaldos.edicao.limpar(); }, aplicar: () => { edicaoSaldos.aplicar(); consultaSaldos.edicao.aplicar(); } };
+  const campoAlertas: CampoConsulta = { chave: "saldo", ativo: soAbaixoMin || soNegativos, limpar: () => { edicaoSaldos.editar("abaixo", false); edicaoSaldos.editar("negativos", false); }, conteudo: <div className="grid gap-3"><label className="flex items-center gap-2"><input type="checkbox" checked={edicaoSaldos.rascunho.abaixo} onChange={e => { edicaoSaldos.editar("abaixo", e.target.checked); edicaoSaldos.editar("negativos", false); }} /><IconeAbaixoMinimo />Só abaixo do mínimo ({nAbaixoMin})</label><label className="flex items-center gap-2"><input type="checkbox" checked={edicaoSaldos.rascunho.negativos} onChange={e => { edicaoSaldos.editar("negativos", e.target.checked); edicaoSaldos.editar("abaixo", false); }} />Saldo negativo ({nNegativos})</label></div> };
+  const camposSaldos = [...consultaSaldos.campos, campoAlertas];
+  const edicaoHistorico = useRascunhoConsulta({ centro: centroMov, origem: origemMov, busca: buscaMov }, { centro: "", origem: "", busca: "" }, v => { setCentroMov(v.centro); setOrigemMov(v.origem); setBuscaMov(v.busca); setPaginaMov(1); });
+  const camposHistorico: CampoConsulta[] = [
+    { chave: "tipo", colunas: ["origem"], ativo: !!origemMov, limpar: () => edicaoHistorico.editar("origem", ""), conteudo: <label>Origem<SelectFiltro rotulo="Filtrar por origem" valor={edicaoHistorico.rascunho.origem} onChange={v => edicaoHistorico.editar("origem", v)} opcoes={[{ valor: "", texto: "Todas as origens" }, ...Object.entries(ROTULO_ORIGEM).map(([valor, texto]) => ({ valor, texto }))]} /></label> },
+    { chave: "produto", naBarra: true, ativo: !!buscaMov, limpar: () => edicaoHistorico.editar("busca", ""), conteudo: <label>Produto, operação ou fornecedor<input aria-label="Buscar movimento no filtro" className={CAMPO} value={edicaoHistorico.rascunho.busca} onChange={e => edicaoHistorico.editar("busca", e.target.value)} /></label> },
+  ];
   return <PaginaFinanceira>
-    <PageHeader eyebrow="" titulo={titulo ?? "Estoque"} descricao="Confira saldos, entradas e movimentações dos produtos em cada sítio." acao={acao} />
+    <PageHeader eyebrow="" titulo={titulo ?? "Estoque"} descricao="Consulte os produtos e acompanhe as movimentações." acao={acao} />
     {avisoFiltro && <p className="mt-4 text-sm text-amber-800">{avisoFiltro}</p>}
     <ErrorBox erro={erroCentros ? `Erro ao carregar centros de custo: ${erroCentros}` : null} />
 
-    {/* Só dados de estoque: valor, alertas e as últimas entradas. */}
-    <Panel className="estoque-panorama mt-5">
-      <div className="estoque-panorama-resumo">
-        <span className="fin-section-icon"><Package aria-hidden="true" /></span>
-        <div><span className="text-xs text-ink-3">{valoresPendentes > 0 && valoresConhecidos > 0 ? "Valor conhecido em estoque (parcial)" : "Valor em estoque"}</span><div className="text-2xl font-semibold">{saldos.loading ? "—" : valoresPendentes > 0 && valoresConhecidos === 0 ? "—" : brl(valorTotal)}</div><p className="mt-1 text-xs text-ink-3">{saldos.loading ? "Consultando saldos…" : `${nEmEstoque} ${nEmEstoque === 1 ? "produto" : "produtos"} em estoque`}</p></div>
-        {valoresPendentes > 0 && valoresConhecidos > 0 && <p className="text-xs text-ink-3" role="status">{valoresPendentes} produto(s) sem valor disponível. O total conhecido é parcial.</p>}
-      </div>
+    <Panel className="estoque-resumo-consulta mt-5">
+      <div className="estoque-resumo-produtos"><Package size={24} aria-hidden="true" /><strong>{saldos.loading ? "Consultando saldos…" : `${nEmEstoque} ${nEmEstoque === 1 ? "produto" : "produtos"} em estoque`}</strong></div>
+      {nAbaixoMin > 0 && <button type="button" className="estoque-resumo-alerta" aria-pressed={soAbaixoMin} onClick={() => { setSoAbaixoMin(!soAbaixoMin); setSoNegativos(false); mudarAba("produtos"); }}><IconeAbaixoMinimo />{nAbaixoMin} abaixo do mínimo</button>}
+      {nNegativos > 0 && <button type="button" className="estoque-resumo-alerta estoque-resumo-negativo" aria-pressed={soNegativos} onClick={() => { setSoNegativos(!soNegativos); setSoAbaixoMin(false); mudarAba("produtos"); }}>{nNegativos} com saldo negativo</button>}
+      <div className="estoque-resumo-valor"><span>{valoresPendentes > 0 && valoresConhecidos > 0 ? "Valor conhecido em estoque (parcial)" : "Valor em estoque"}<AjudaCampo rotulo="Como o valor é calculado" texto="O valor corresponde ao saldo monetário remanescente. Grupos rastreados usam média do saldo; produtos sem rastreio usam aquisições mais antigas. Valores desconhecidos ficam separados." /></span><strong>{saldos.loading ? "—" : saldos.erro ? "Indisponível" : valoresPendentes > 0 && valoresConhecidos === 0 ? "Indisponível" : brl(valorTotal)}</strong>{valoresPendentes > 0 && valoresConhecidos > 0 && <span role="status">{valoresPendentes} produto(s) sem valor disponível. O total conhecido é parcial.</span>}</div>
     </Panel>
+    <Tabs className="estoque-consulta-abas" value={aba} onValueChange={mudarAba}>
+      <TabsList aria-label="Consultas de estoque"><TabsTrigger value="produtos"><Package aria-hidden="true" />Produtos</TabsTrigger><TabsTrigger value="movimentacoes"><History aria-hidden="true" />Movimentações</TabsTrigger></TabsList>
+      <TabsContent value="produtos" forceMount hidden={aba !== "produtos"}>
+
+    <section className="mt-6" aria-label="Saldos de estoque">
+      <Panel className="fin-painel overflow-hidden">
+
+      <BarraConsulta campos={camposSaldos} erroFiltros={consultaSaldos.erro} edicaoFiltros={edicaoCompletaSaldos} adicionais={<><label>Centro de custo<SelectFiltro rotulo="Filtrar por centro de custo" valor={edicaoSaldos.rascunho.centro} onChange={v => edicaoSaldos.editar("centro", v)} opcoes={[{ valor: "", texto: "Todos os centros" }, { valor: SEM_VINCULO, texto: "Sem centro" }, ...centros.map((c) => ({ valor: c.id, texto: c.nome }))]} className="w-full sm:!w-full" /></label>
+<label>Ordenar por<SelectFiltro rotulo="Ordenar por" valor={edicaoSaldos.rascunho.ordem} onChange={v => edicaoSaldos.editar("ordem", v as Ordem)} opcoes={[{ valor: "nome", texto: "Ordenar por nome" }, { valor: "categoria", texto: "Ordenar por categoria" }, { valor: "valor", texto: "Ordenar por maior valor" }]} className="w-full sm:!w-full" /></label>
+</>} criterios={[...consultaSaldos.criterios, ...(soAbaixoMin ? [{id:"abaixo",rotulo:"Só abaixo do mínimo",limpar:()=>setSoAbaixoMin(false)}] : []), ...(soNegativos ? [{id:"negativos",rotulo:"Saldo negativo",limpar:()=>setSoNegativos(false)}] : []), ...(centroFiltro ? [{id:"centro",rotulo:`Centro: ${centros.find(c=>c.id===centroFiltro)?.nome ?? "Sem centro"}`,limpar:()=>setCentroFiltro("")}] : []), ...(ordem !== "nome" ? [{id:"ordem",rotulo:`Ordenação: ${ordem === "valor" ? "Maior valor" : "Categoria"}`,limpar:()=>setOrdem("nome")}] : [])]} onLimpar={()=>{consultaSaldos.limpar();setBusca("");setCentroFiltro("");setOrdem("nome");setSoAbaixoMin(false);setSoNegativos(false);}}>
+        <BuscaLista rotulo="Buscar produto" placeholder="Buscar por produto ou categoria" valor={busca} onChange={setBusca} />
+
+
+      </BarraConsulta>
+      <div className="min-w-0">
+        {saldos.loading ? <div className="p-6"><Loader /></div>
+          : saldos.erro ? <Empty>Não foi possível consultar os saldos: {saldos.erro} <Button secondary onClick={saldos.recarregar}>Tentar novamente</Button></Empty>
+          : saldos.data.length === 0 ? <Empty>Nenhum produto com movimento de estoque. Registre uma compra para estoque ou um inventário inicial.</Empty>
+          : saldosVisiveis.length === 0 ? <Empty>{filtrosAtivos ? "Nenhum produto bate com a busca." : "Nenhum produto para exibir."}</Empty>
+          : <>
+              <TabelaFinanceira compacta filtrosColunas={filtrosDasColunas(camposSaldos, edicaoCompletaSaldos, consultaSaldos.erro)} rotulo="Saldos de estoque" itens={saldosDaPagina} colunas={colunasSaldos} chaveDe={(s) => s.produtoId} classeLinha={s => s.saldo < 0 ? "bg-red-50/40" : s.abaixoMinimo ? "bg-amber-50/40" : ""} />
+              <Paginacao pagina={paginaSaldosAtual} totalPaginas={totalPaginasSaldos} total={saldosVisiveis.length} porPagina={ITENS_POR_PAGINA} rotulo="Paginação de saldos" substantivo={saldosVisiveis.length === 1 ? "produto" : "produtos"} idSelect="pagina-saldos" onPagina={setPaginaSaldos} />
+            </>}
+      </div>
+      </Panel>
+    </section>
+
+      </TabsContent>
+      <TabsContent value="movimentacoes" forceMount hidden={aba !== "movimentacoes"}>
+    <section ref={historicoRef} tabIndex={-1} className="mt-6 scroll-mt-4" aria-label="Histórico de movimentos">
+      <Panel className="fin-painel overflow-hidden">
+
+      {movimentoId && <p className="mt-2 rounded-lg border border-border bg-surface p-3 text-sm">Movimento selecionado · <a href="/estoque" className="underline">Voltar ao histórico completo</a></p>}
+      <BarraConsulta campos={camposHistorico} edicaoFiltros={edicaoHistorico} adicionais={<><label>Centro de custo<SelectFiltro rotulo="Filtrar histórico por centro de custo" valor={edicaoHistorico.rascunho.centro} onChange={v => edicaoHistorico.editar("centro", v)} opcoes={[{ valor: "", texto: "Todos os centros" }, { valor: SEM_VINCULO, texto: "Sem centro" }, ...centros.map((c) => ({ valor: c.id, texto: c.nome }))]} className="min-w-0 flex-[1_1_160px]" /></label>
+</>} criterios={centroMov ? [{id:"centro",rotulo:`Centro: ${centros.find(c=>c.id===centroMov)?.nome ?? "Sem centro"}`,limpar:()=>{setCentroMov("");setPaginaMov(1);}}] : []} onLimpar={()=>{setCentroMov("");setOrigemMov("");setBuscaMov("");setPaginaMov(1);}}>
+        <label className="relative w-full min-w-0 flex-[2_1_260px] sm:w-auto"><Search size={16} className="absolute left-3 top-3 text-ink-3" aria-hidden="true" /><input type="search" aria-label="Buscar movimento" value={buscaMov} onChange={(e) => setBuscaMov(e.target.value)} placeholder="Buscar por produto, operação ou fornecedor…" className={`${CAMPO} w-full pl-9`} /></label>
+
+
+        <PeriodoFinanceiroControl inicio={periodoMov.inicio} fim={periodoMov.fim} allowAll label="Período do histórico" onChange={(periodo) => { setPeriodoMov(periodo); setPaginaMov(1); }} />
+      </BarraConsulta>
+      <div className="min-w-0">
+        {movimentos.loading && movimentos.data.length === 0 ? <div className="p-6"><Loader /></div>
+          : movimentos.erro ? <Empty>Não foi possível consultar os movimentos: {movimentos.erro} <button type="button" className="underline" onClick={movimentos.recarregar}>Tentar novamente</button></Empty>
+          : movimentos.data.length === 0 ? <Empty>{movimentoId ? "Movimento não encontrado neste sítio ou indisponível para seu acesso." : filtrosMovAtivos ? "Nenhum movimento bate com os filtros." : "Nenhum movimento registrado ainda."}</Empty>
+          : <>
+              <TabelaFinanceira compacta filtrosColunas={filtrosDasColunas(camposHistorico, edicaoHistorico)} rotulo="Histórico de movimentos" itens={movimentos.data} colunas={colunasMovimentos} chaveDe={(m) => m.id} classeLinha={(m) => m.id === movimentoId ? "bg-surface-2 outline outline-2 outline-mast -outline-offset-2" : m.status === "REVERTIDO" || m.reversaoDeId != null ? "opacity-60" : ""} />
+              <Paginacao pagina={paginaMovAtual} totalPaginas={totalPaginasMov} total={movimentos.total} porPagina={ITENS_POR_PAGINA} rotulo="Paginação do histórico" substantivo={movimentos.total === 1 ? "movimento" : "movimentos"} idSelect="pagina-movimentos" onPagina={setPaginaMov} />
+            </>}
+      </div>
+      </Panel>
+    </section>
+
     <section className="estoque-entradas mt-3 rounded-xl border border-border bg-card" aria-label="Últimas entradas">
       <h2 className="flex items-center gap-2 px-4 pt-4 text-base font-semibold"><PackagePlus size={17} aria-hidden="true" />Últimas entradas</h2>
       <div className="border-t border-border p-4">
@@ -229,53 +306,8 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
       </div>
     </section>
 
-    <section className="mt-6" aria-label="Saldos de estoque">
-      <Panel className="overflow-hidden">
-      <div className="estoque-secao-cabecalho"><span className="fin-section-icon"><Boxes aria-hidden="true" /></span><h2 className="font-serif text-2xl">Saldos de estoque<AjudaCampo rotulo="Como o valor é calculado" texto="O valor corresponde ao saldo monetário remanescente. Grupos rastreados usam média do saldo; produtos sem rastreio usam aquisições mais antigas. Valores desconhecidos ficam separados." /></h2></div>
-      <BarraConsulta edicaoFiltros={edicaoSaldos} adicionais={<><SelectFiltro rotulo="Filtrar por centro de custo" valor={edicaoSaldos.rascunho.centro} onChange={v => edicaoSaldos.editar("centro", v)} opcoes={[{ valor: "", texto: "Todos os centros" }, { valor: SEM_VINCULO, texto: "Sem centro" }, ...centros.map((c) => ({ valor: c.id, texto: c.nome }))]} className="w-full sm:!w-full" />
-<SelectFiltro rotulo="Ordenar por" valor={edicaoSaldos.rascunho.ordem} onChange={v => edicaoSaldos.editar("ordem", v as Ordem)} opcoes={[{ valor: "nome", texto: "Ordenar por nome" }, { valor: "categoria", texto: "Ordenar por categoria" }, { valor: "valor", texto: "Ordenar por maior valor" }]} className="w-full sm:!w-full" />
-</>} criterios={[...(centroFiltro ? [{id:"centro",rotulo:`Centro: ${centros.find(c=>c.id===centroFiltro)?.nome ?? "Sem centro"}`,limpar:()=>setCentroFiltro("")}] : []), ...(ordem !== "nome" ? [{id:"ordem",rotulo:`Ordenação: ${ordem === "valor" ? "Maior valor" : "Categoria"}`,limpar:()=>setOrdem("nome")}] : [])]} onLimpar={()=>{setBusca("");setCentroFiltro("");setOrdem("nome");setSoAbaixoMin(false);setSoNegativos(false);}}>
-        <label className="relative min-w-0"><Search size={16} className="absolute left-3 top-3 text-ink-3" aria-hidden="true" /><input type="search" aria-label="Buscar produto" value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar por nome ou categoria…" className={`${CAMPO} pl-9`} /></label>
-
-
-        <button type="button" aria-pressed={soAbaixoMin} onClick={() => { setSoAbaixoMin(v => !v); setSoNegativos(false); }} className={`${CAMPO} inline-flex items-center gap-2 whitespace-nowrap font-medium ${soAbaixoMin ? "border-[var(--fin-pendente)] bg-[var(--fin-warning-bg)] text-[var(--fin-pendente)]" : "text-ink-2"}`}><IconeAbaixoMinimo />Só abaixo do mínimo{nAbaixoMin > 0 ? ` (${nAbaixoMin})` : ""}</button>
-        {nNegativos > 0 && <Button secondary aria-pressed={soNegativos} onClick={() => { setSoNegativos(v => !v); setSoAbaixoMin(false); }}><TriangleAlert size={16} aria-hidden />{nNegativos} {nNegativos === 1 ? "produto com saldo negativo" : "produtos com saldo negativo"}</Button>}
-      </BarraConsulta>
-      <div className="min-w-0">
-        {saldos.loading ? <div className="p-6"><Loader /></div>
-          : saldos.erro ? <Empty>Não foi possível consultar os saldos: {saldos.erro} <Button secondary onClick={saldos.recarregar}>Tentar novamente</Button></Empty>
-          : saldos.data.length === 0 ? <Empty>Nenhum produto com movimento de estoque. Registre uma compra para estoque ou um inventário inicial.</Empty>
-          : saldosVisiveis.length === 0 ? <Empty>{filtrosAtivos ? "Nenhum produto bate com a busca." : "Nenhum produto para exibir."}</Empty>
-          : <>
-              <TabelaFinanceira rotulo="Saldos de estoque" itens={saldosDaPagina} colunas={colunasSaldos} chaveDe={(s) => s.produtoId} classeLinha={s => s.saldo < 0 ? "bg-red-50/40" : s.abaixoMinimo ? "bg-amber-50/40" : ""} />
-              <Paginacao pagina={paginaSaldosAtual} totalPaginas={totalPaginasSaldos} total={saldosVisiveis.length} porPagina={ITENS_POR_PAGINA} rotulo="Paginação de saldos" substantivo={saldosVisiveis.length === 1 ? "produto" : "produtos"} idSelect="pagina-saldos" onPagina={setPaginaSaldos} />
-            </>}
-      </div>
-      </Panel>
-    </section>
-
-    <section ref={historicoRef} tabIndex={-1} className="mt-6 scroll-mt-4" aria-label="Histórico de movimentos">
-      <Panel className="overflow-hidden">
-      <div className="estoque-secao-cabecalho"><span className="fin-section-icon"><History aria-hidden="true" /></span><h2 className="font-serif text-2xl">Histórico de movimentos<AjudaCampo rotulo="Origem dos movimentos" texto="Cada movimento leva à operação ou ao fato sanitário/nutricional que o gerou." /></h2></div>
-      {movimentoId && <p className="mt-2 rounded-lg border border-border bg-surface p-3 text-sm">Movimento selecionado · <a href="/estoque" className="underline">Voltar ao histórico completo</a></p>}
-      <BarraConsulta edicaoFiltros={edicaoHistorico} adicionais={<><SelectFiltro rotulo="Filtrar histórico por centro de custo" valor={edicaoHistorico.rascunho.centro} onChange={v => edicaoHistorico.editar("centro", v)} opcoes={[{ valor: "", texto: "Todos os centros" }, { valor: SEM_VINCULO, texto: "Sem centro" }, ...centros.map((c) => ({ valor: c.id, texto: c.nome }))]} className="min-w-0 flex-[1_1_160px]" />
-</>} criterios={centroMov ? [{id:"centro",rotulo:`Centro: ${centros.find(c=>c.id===centroMov)?.nome ?? "Sem centro"}`,limpar:()=>{setCentroMov("");setPaginaMov(1);}}] : []} onLimpar={()=>{setCentroMov("");setOrigemMov("");setBuscaMov("");setPaginaMov(1);}}>
-        <label className="relative w-full min-w-0 flex-[2_1_260px] sm:w-auto"><Search size={16} className="absolute left-3 top-3 text-ink-3" aria-hidden="true" /><input type="search" aria-label="Buscar movimento" value={buscaMov} onChange={(e) => setBuscaMov(e.target.value)} placeholder="Buscar por produto, operação ou fornecedor…" className={`${CAMPO} w-full pl-9`} /></label>
-        <SelectFiltro rotulo="Filtrar por origem" valor={origemMov} onChange={(valor) => { setOrigemMov(valor); setPaginaMov(1); }} opcoes={[{ valor: "", texto: "Todas as origens" }, ...Object.entries(ROTULO_ORIGEM).map(([valor, texto]) => ({ valor, texto }))]} className="min-w-0 flex-[1_1_160px]" />
-
-        <PeriodoFinanceiroControl inicio={periodoMov.inicio} fim={periodoMov.fim} allowAll label="Período do histórico" onChange={(periodo) => { setPeriodoMov(periodo); setPaginaMov(1); }} />
-      </BarraConsulta>
-      <div className="min-w-0">
-        {movimentos.loading && movimentos.data.length === 0 ? <div className="p-6"><Loader /></div>
-          : movimentos.erro ? <Empty>Não foi possível consultar os movimentos: {movimentos.erro} <button type="button" className="underline" onClick={movimentos.recarregar}>Tentar novamente</button></Empty>
-          : movimentos.data.length === 0 ? <Empty>{movimentoId ? "Movimento não encontrado neste sítio ou indisponível para seu acesso." : filtrosMovAtivos ? "Nenhum movimento bate com os filtros." : "Nenhum movimento registrado ainda."}</Empty>
-          : <>
-              <TabelaFinanceira rotulo="Histórico de movimentos" itens={movimentos.data} colunas={colunasMovimentos} chaveDe={(m) => m.id} classeLinha={(m) => m.id === movimentoId ? "bg-surface-2 outline outline-2 outline-mast -outline-offset-2" : m.status === "REVERTIDO" || m.reversaoDeId != null ? "opacity-60" : ""} />
-              <Paginacao pagina={paginaMovAtual} totalPaginas={totalPaginasMov} total={movimentos.total} porPagina={ITENS_POR_PAGINA} rotulo="Paginação do histórico" substantivo={movimentos.total === 1 ? "movimento" : "movimentos"} idSelect="pagina-movimentos" onPagina={setPaginaMov} />
-            </>}
-      </div>
-      </Panel>
-    </section>
+      </TabsContent>
+    </Tabs>
 
     {perdendo && <TransferirEstoque perda onFechar={() => setPerdendo(false)} onSalvo={() => { setPerdendo(false); recarregarTudo(); }} />}
     {transferindo && <TransferirEstoque onFechar={() => setTransferindo(false)} onSalvo={() => { setTransferindo(false); recarregarTudo(); }} />}

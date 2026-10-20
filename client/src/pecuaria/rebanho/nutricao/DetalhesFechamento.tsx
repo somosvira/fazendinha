@@ -1,3 +1,4 @@
+import { TabelaConsultaLocal } from "@/financeiro/TabelaConsultaLocal";
 import { Panel, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
 import { formatarDataBR } from "../lib/rotulos";
 import type { Fechamento } from "./api";
@@ -15,7 +16,10 @@ export function DetalhesFechamento({ fechamento: f }: { fechamento: Fechamento }
     </dl>}
     {f.status === "ESTORNADO" && <p className="nutricao-aviso mx-5 mb-5">Estornado · excluído dos custos atuais do lote. O consumo original permanece no histórico.{f.motivoEstorno && <> Motivo: {f.motivoEstorno}</>}</p>}</Panel>
     <Panel><div className="nutricao-card-cabecalho"><div><h2 className="h3">Consumo e estoque</h2><p>Quantidade prevista, conferida e origem dos ingredientes.</p></div></div>
-      <TabelaFinanceira rotulo="Ingredientes do fechamento" itens={f.itens} chaveDe={(i) => i.produtoId} colunas={[
+      <TabelaConsultaLocal buscarPor={i=>i.produto.nome} definicoes={[
+        {chave:"ingrediente",rotulo:"Ingrediente",tipo:"texto",obter:i=>i.produto.nome},
+        ...(f.verValores?[{chave:"custo",rotulo:"Custo conhecido",tipo:"valor" as const,obter:(i: Fechamento["itens"][number])=>Number(i.quantidadeConfirmada)===0?"0":i.movimentoEstoque?.valorTotal??null,limiteSugerido:Math.max(1,...f.itens.map(i=>Number(i.movimentoEstoque?.valorTotal??0)))}]:[]),
+      ]} rotulo="Ingredientes do fechamento" itens={f.itens} chaveDe={(i) => i.produtoId} colunas={[
         { chave: "ingrediente", titulo: "Ingrediente", principal: true, celula: (i) => <strong>{i.produto.nome}</strong> },
         { chave: "previsto", titulo: "Previsto", celula: (i) => `${quantidadeNutricional(i.quantidadePrevista)} ${i.unidade}` },
         { chave: "conferido", titulo: "Conferido", celula: (i) => `${quantidadeNutricional(i.quantidadeConfirmada)} ${i.unidade}` },
@@ -24,7 +28,10 @@ export function DetalhesFechamento({ fechamento: f }: { fechamento: Fechamento }
       ]} />
     </Panel>
     <Panel><div className="nutricao-card-cabecalho"><div><h2 className="h3">Atribuição aos animais</h2><p>Estimativa proporcional aos dias no lote; não mede a ingestão individual.</p></div><Pill>{f.participacoes.length} animais</Pill></div>
-      <TabelaFinanceira rotulo="Atribuição do consumo aos animais" itens={f.participacoes} chaveDe={(p) => p.animalId} colunas={[
+      <TabelaConsultaLocal buscarPor={p=>p.animal.brinco} definicoes={[
+        {chave:"animal",rotulo:"Animal",tipo:"texto",obter:p=>p.animal.brinco},
+        ...(f.verValores?[{chave:"custo",rotulo:"Custo conhecido",tipo:"valor" as const,obter:(p: Fechamento["participacoes"][number])=>p.custoConhecido,limiteSugerido:Math.max(1,...f.participacoes.map(p=>Number(p.custoConhecido??0)))}]:[]),
+      ]} rotulo="Atribuição do consumo aos animais" itens={f.participacoes} chaveDe={(p) => p.animalId} colunas={[
         { chave: "animal", titulo: "Animal", principal: true, celula: (p) => <LinkNutricional href={`/pecuaria/rebanho/animais/${p.animalId}`}>{p.animal.brinco}</LinkNutricional> },
         { chave: "dias", titulo: "Dias no lote", celula: (p) => p.dias },
         ...(f.verValores ? [

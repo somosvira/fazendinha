@@ -186,7 +186,7 @@ export function buildPresets(today: Date) {
   ];
 }
 
-export function DateRangePicker({ value, onChange, anchor = "left", triggerLabel, triggerClassName, triggerAriaLabel = "Período", showPresets = true, allowAll = false, iconOnly = false }: {
+export function DateRangePicker({ value, onChange, anchor = "left", triggerLabel, triggerClassName, triggerAriaLabel = "Período", showPresets = true, allowAll = false, iconOnly = false, showIcon = false }: {
   value: DateRange;
   onChange: (range: DateRange) => void;
   anchor?: "left" | "right";
@@ -196,6 +196,7 @@ export function DateRangePicker({ value, onChange, anchor = "left", triggerLabel
   showPresets?: boolean;
   allowAll?: boolean;
   iconOnly?: boolean;
+  showIcon?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -247,8 +248,8 @@ export function DateRangePicker({ value, onChange, anchor = "left", triggerLabel
   const textoAplicado = todoPeriodo ? "Todo o período" : matched ? `${matched.label} · ${formatRangeLabel(value)}` : formatRangeLabel(value);
   const nomeAcessivel = triggerLabel && !iconOnly ? triggerAriaLabel : `${triggerAriaLabel}: ${textoAplicado}`;
   return <Popover open={open} onOpenChange={changeOpen}>
-    <PopoverTrigger asChild><button ref={triggerRef} type="button" aria-label={nomeAcessivel} title={iconOnly ? nomeAcessivel : undefined} className={cn("inline-flex min-h-10 max-w-full items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground focus-visible:outline-2 focus-visible:outline-mast", iconOnly && "size-10 min-w-10 shrink-0 justify-center p-0 max-[900px]:size-11 max-[900px]:min-w-11", triggerClassName)}>
-      {iconOnly ? <CalendarDays size={18} strokeWidth={1.8} aria-hidden="true" /> : <><span className="truncate">{rotulo}</span><span aria-hidden="true">▾</span></>}
+    <PopoverTrigger asChild><button ref={triggerRef} data-slot="date-range-trigger" type="button" aria-label={nomeAcessivel} title={iconOnly ? nomeAcessivel : undefined} className={cn("inline-flex min-h-10 max-w-full items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground focus-visible:outline-2 focus-visible:outline-mast", iconOnly && "size-10 min-w-10 shrink-0 justify-center p-0 max-[900px]:size-11 max-[900px]:min-w-11", triggerClassName)}>
+      {iconOnly ? <CalendarDays size={18} strokeWidth={1.8} aria-hidden="true" /> : <>{showIcon && <CalendarDays size={18} strokeWidth={1.8} className="shrink-0" aria-hidden="true" />}<span className="truncate">{rotulo}</span><span aria-hidden="true">▾</span></>}
     </button></PopoverTrigger>
     <PopoverContent onCloseAutoFocus={event => { event.preventDefault(); triggerRef.current?.focus(); }} align={anchor === "right" ? "end" : "start"} className={cn("max-h-[min(680px,85vh)] overflow-y-auto bg-popover p-4", custom ? "w-[min(540px,calc(100vw-24px))]" : "w-[min(280px,calc(100vw-24px))]")}>
       {!custom ? <div className="flex flex-col gap-1" role="group" aria-label="Períodos predefinidos">

@@ -33,9 +33,21 @@ export async function alterarControle(campo: HTMLElement, evento: { target: { va
 /** Abre o painel da consulta indicada e altera um critério adicional como usuário. */
 export async function alterarFiltroAdicional(rotulo: string, valor: string, escopo: HTMLElement = document.body) {
   const { within } = await import("@testing-library/react");
-  fireEvent.click(within(escopo).getByRole("button", { name: /Mais filtros/ }));
+  fireEvent.click(within(escopo).getByRole("button", { name: /^Filtros(?:\s*\(\d+\))?$/ }));
   const painel = await screen.findByRole("dialog", { name: "Filtros" });
   await alterarControle(within(painel).getByLabelText(rotulo), { target: { value: valor } });
   fireEvent.click(within(painel).getByRole("button", { name: "Aplicar filtros" }));
   await waitFor(() => { if (screen.queryByRole("dialog", { name: "Filtros" })) throw new Error("Aguardando fechamento dos filtros"); });
+}
+
+/** Os critérios só mudam ao confirmar o modal compartilhado. */
+export async function abrirFiltrosConsulta(escopo: HTMLElement = document.body, indice = 0) {
+  const { within } = await import("@testing-library/react");
+  fireEvent.click(within(escopo).getAllByRole("button", {name:/^Filtros(?:\s*\(\d+\))?$/})[indice]);
+  return await screen.findByRole("dialog",{name:"Filtros"});
+}
+export async function aplicarFiltrosConsulta() {
+  const { within } = await import("@testing-library/react");
+  fireEvent.click(within(screen.getByRole("dialog",{name:"Filtros"})).getByRole("button",{name:"Aplicar filtros"}));
+  await waitFor(()=>{if(screen.queryByRole("dialog",{name:"Filtros"}))throw new Error("Aguardando aplicar os filtros");});
 }

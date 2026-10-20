@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { abrirFiltrosConsulta, aplicarFiltrosConsulta } from "@/lib/controles.fixture";
 import { alterarControle } from "../../../lib/controles.fixture";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
@@ -119,7 +120,9 @@ describe("Lotes do rebanho", () => {
   it("mostrar inativos refaz a listagem pedindo incluirInativos", async () => {
     await montar();
     expect(listarLotes).toHaveBeenCalledWith({ incluirInativos: false });
+    await abrirFiltrosConsulta();
     fireEvent.click(screen.getByRole("checkbox", { name: "Mostrar inativos" }));
+    await aplicarFiltrosConsulta();
     await waitFor(() => expect(listarLotes).toHaveBeenCalledWith({ incluirInativos: true }));
   });
 
@@ -239,18 +242,22 @@ describe("Lotes do rebanho", () => {
     const { container } = render(<ListaLotes onAbrirLote={vi.fn()} podeLancar={false} />, { wrapper: Wrapper });
     await screen.findAllByText("Lote 1");
 
+    await abrirFiltrosConsulta();
     const checkboxFiltro = screen.getByRole("checkbox", { name: "Mostrar inativos" }) as HTMLInputElement;
     expect(checkboxFiltro.disabled).toBe(false);
     fireEvent.click(checkboxFiltro);
+    await aplicarFiltrosConsulta();
     await waitFor(() => expect(listarLotes).toHaveBeenCalledWith({ incluirInativos: true }));
 
-    const filtroSitio = screen.getByLabelText("Filtrar por sítio") as HTMLSelectElement;
+    await abrirFiltrosConsulta();
+    const filtroSitio = within(screen.getByRole("dialog",{name:"Filtros"})).getByRole("combobox",{name:"Filtrar por sítio"}) as HTMLSelectElement;
     expect(filtroSitio.disabled).toBe(false);
 
     // os controles de escrita (edição/ativação de lote) ficam num fieldset desabilitado à parte dos filtros
     const fieldsetEscrita = container.querySelector("fieldset");
     expect(fieldsetEscrita).not.toBeNull();
-    expect((fieldsetEscrita as HTMLFieldSetElement).disabled).toBe(true);
+    expect((fieldsetEscrita as HTMLFieldSetElement).disabled).toBe(false);
+    expect(screen.queryByRole("button",{name:/^Editar /})).toBeNull();
 
     expect(screen.queryByRole("button", { name: /Novo lote/ })).toBeNull();
     expect(screen.queryByRole("button", { name: /Movimentar animais/ })).toBeNull();
@@ -261,7 +268,7 @@ describe("Lotes — histórico de movimentações (sempre visível)", () => {
   it("consulta o histórico usando sítios e lotes múltiplos", async () => {
     await montar();
     await waitFor(()=>expect(listarMovimentacoes).toHaveBeenCalledWith(expect.objectContaining({page:1,pageSize:20})));
-    fireEvent.click(screen.getByRole("button",{name:"Mais filtros"}));
+    fireEvent.click(screen.getAllByRole("button",{name:"Filtros"}).at(-1)!);
     fireEvent.click(screen.getByRole("button",{name:"Sítios da movimentação"}));
     fireEvent.click(screen.getByRole("option",{name:"Sede"}));
     fireEvent.keyDown(screen.getByPlaceholderText("Buscar opção…"),{key:"Escape"});
@@ -276,7 +283,7 @@ describe("Lotes — histórico de movimentações (sempre visível)", () => {
     window.history.replaceState(null,"","/pecuaria/rebanho/lotes?movSitioIds=1&movLoteIds=l1");
     await montar();
     await waitFor(()=>expect(listarMovimentacoes).toHaveBeenLastCalledWith(expect.objectContaining({loteIds:["l1"]})));
-    fireEvent.click(screen.getByRole("button",{name:"Mais filtros"}));
+    fireEvent.click(screen.getAllByRole("button",{name:"Filtros"}).at(-1)!);
     fireEvent.click(screen.getByRole("button",{name:"Sítios da movimentação"}));
     fireEvent.click(screen.getByRole("option",{name:"Sede"}));
     fireEvent.keyDown(screen.getByPlaceholderText("Buscar opção…"),{key:"Escape"});
@@ -306,7 +313,9 @@ it("restaura os filtros principais sem apagar o recorte do histórico e acompanh
   render(<ListaLotes onAbrirLote={vi.fn()} />, { wrapper: Wrapper });
   await screen.findAllByText("Lote 2");
   expect((screen.getByLabelText("Buscar lote") as HTMLInputElement).value).toBe("2");
+  await abrirFiltrosConsulta();
   expect(screen.getByRole("checkbox", { name: "Mostrar inativos" }).getAttribute("aria-checked")).toBe("true");
+  fireEvent.click(screen.getByRole("button",{name:"Cancelar"}));
   expect(new URLSearchParams(window.location.search).get("movDesfeitas")).toBe("false");
   window.history.replaceState({}, "", "/pecuaria/rebanho/lotes?buscaLote=1&movDesfeitas=false");
   fireEvent(window, new PopStateEvent("popstate"));

@@ -12,8 +12,8 @@
 
 import "./sidebar-clara.css";
 import { Button } from "@/components/ui/button";
-import { useEffect, useState, type ComponentType, type SVGProps } from "react";
-import { Baby, ClipboardList, HeartPulse, Leaf, CircleDollarSign, FileText, FilePenLine, Plus, Settings, Wallet } from "lucide-react";
+import { useEffect, useRef, useState, type ComponentType, type SVGProps } from "react";
+import { Baby, ClipboardList, HeartPulse, Leaf, CircleDollarSign, FileText, FilePenLine, Plus, Settings, Wallet, X } from "lucide-react";
 import type { Tab } from "./Shell";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
@@ -23,6 +23,7 @@ import { VacaIcon } from "./icons/VacaIcon";
 import { SidebarFarmPicker } from "./FarmPicker";
 import { temAcessoArea, temAcessoEstoque } from "@/lib/areas";
 import { PAPEIS, type User } from "@/data/acessos";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { quandoSalvo, type ResumoRascunho } from "@/financeiro/lib/rascunho";
 
 type ResumoTrabalhoAtivo = Pick<ResumoRascunho, "titulo" | "tipo" | "detalhe" | "atualizadoEm">;
@@ -198,7 +199,18 @@ function UserMenu({ user, onAcessos, onSair }: { user: User; onAcessos: () => vo
  *  O `aria-current` fica só com o item "Operações" (a página de fato): o cartão
  *  anuncia o estado no próprio nome, para o leitor de tela não ouvir duas
  *  páginas atuais. */
-export function TrabalhoAtivo({ resumo, ativo, onAbrir, vazio = "Nova operação" }: { resumo: ResumoTrabalhoAtivo | null; ativo: boolean; onAbrir: () => void; vazio?: string }) {
+export function TrabalhoAtivo({ resumo, ativo, onAbrir, onExcluir, vazio = "Nova operação" }: { resumo: ResumoTrabalhoAtivo | null; ativo: boolean; onAbrir: () => void; onExcluir?: () => Promise<void>; vazio?: string }) {
+  const [alvoExclusao, setAlvoExclusao] = useState<{ titulo: string; excluir: () => Promise<void> } | null>(null);
+  const [excluindo, setExcluindo] = useState(false);
+  const [erroExclusao, setErroExclusao] = useState<string | null>(null);
+  const emExclusao = useRef(false);
+  const confirmarExclusao = async () => {
+    if (!alvoExclusao || emExclusao.current) return;
+    emExclusao.current = true; setExcluindo(true); setErroExclusao(null);
+    try { await alvoExclusao.excluir(); setAlvoExclusao(null); }
+    catch (falha) { setErroExclusao(falha instanceof Error ? falha.message : "Não foi possível excluir o trabalho. Tente novamente."); }
+    finally { emExclusao.current = false; setExcluindo(false); }
+  };
   // O "salvo há N min" do tooltip envelhece com a tela parada: re-renderiza a
   // cada minuto. O relógio é lido na renderização, para acompanhar cada autosave.
   const [, setTique] = useState(0);
@@ -211,12 +223,13 @@ export function TrabalhoAtivo({ resumo, ativo, onAbrir, vazio = "Nova operação
     ? `${ativo ? "Rascunho em edição" : "Continuar rascunho"}: ${resumo.titulo}`
     : ativo ? `${vazio} em edição` : vazio;
   return (
+    <div className={cn("trabalho-ativo-linha", resumo && onExcluir && "trabalho-ativo-com-exclusao")}>
     <Button variant="ghost"
       type="button"
       onClick={onAbrir}
       aria-label={rotulo}
       title={[rotulo, resumo?.detalhe, salvo].filter(Boolean).join("\n")}
-      className={cn(
+      className={cn("trabalho-ativo-abrir",
         "flex min-h-[38px] w-full cursor-pointer items-center gap-3 rounded-[7px] border border-[rgba(232,220,196,0.14)] bg-[rgba(232,220,196,0.05)] px-2.5 py-[3px] text-left font-sans text-[var(--mast-ink)]",
         "hover:bg-[rgba(232,220,196,0.09)] [&_svg]:h-[16px] [&_svg]:w-[16px] [&_svg]:flex-none",
         RAIL_ICON_BTN,
@@ -235,6 +248,9 @@ export function TrabalhoAtivo({ resumo, ativo, onAbrir, vazio = "Nova operação
         {resumo?.tipo && <span className="block truncate text-[11px] leading-[14px] text-[var(--side-mute)]">{resumo.tipo}</span>}
       </span>
     </Button>
+    {resumo && onExcluir && <Button type="button" variant="ghost" size="icon" className="trabalho-ativo-excluir" aria-label={`Excluir trabalho ativo: ${resumo.titulo}`} title="Excluir trabalho ativo" onClick={() => { setErroExclusao(null); setAlvoExclusao({ titulo: resumo.titulo, excluir: onExcluir }); }}><X size={14} aria-hidden /></Button>}
+    <ConfirmDialog open={!!alvoExclusao} title="Excluir trabalho ativo?" message={<><p>Tem certeza que deseja excluir “{alvoExclusao?.titulo}”?</p><p className="mt-2">Os dados e eventuais anexos do rascunho serão descartados.</p>{erroExclusao && <p role="alert" className="mt-3 text-destructive">{erroExclusao}</p>}</>} confirmLabel={excluindo ? "Excluindo…" : "Excluir trabalho"} cancelLabel="Manter trabalho" tone="danger" processando={excluindo} onCancel={() => setAlvoExclusao(null)} onConfirm={() => { void confirmarExclusao(); }} />
+    </div>
   );
 }
 
@@ -313,8 +329,8 @@ export function AppSidebar({
   user: User; colapsada: boolean; onToggleColapsar: () => void;
   onAcessos: () => void; onSair?: () => void;
   // Atalhos acima do Financeiro; o item de operação permanece disponível para iniciar uma nova.
-  trabalhoAtivo?: { resumo: ResumoTrabalhoAtivo | null; ativo: boolean; onAbrir: () => void } | null;
-  trabalhoAtivoRelatorio?: { resumo: ResumoTrabalhoAtivo; ativo: boolean; onAbrir: () => void } | null;
+  trabalhoAtivo?: { resumo: ResumoTrabalhoAtivo | null; ativo: boolean; onAbrir: () => void; onExcluir?: () => Promise<void> } | null;
+  trabalhoAtivoRelatorio?: { resumo: ResumoTrabalhoAtivo; ativo: boolean; onAbrir: () => void; onExcluir?: () => Promise<void> } | null;
 }) {
   const areasEfetivas = areas ?? ["pecuaria"];
   const areasVisiveis = AREAS_TRABALHO.filter(
@@ -423,8 +439,8 @@ export function AppSidebar({
         <section role="group" aria-label="Trabalhos ativos" className="mb-3 border-b border-dashed border-[rgba(232,220,196,0.16)] pb-3">
           <h2 className={cn("mb-2 px-2.5 text-[10px] font-semibold uppercase tracking-[0.13em] text-[rgba(232,220,196,0.62)]", RAIL_LABEL)}>Trabalhos ativos</h2>
           <div className="flex flex-col gap-2">
-            {trabalhoAtivo?.resumo && <TrabalhoAtivo resumo={trabalhoAtivo.resumo} ativo={trabalhoAtivo.ativo} onAbrir={() => { trabalhoAtivo.onAbrir(); onMobileToggle(false); }} />}
-            {trabalhoAtivoRelatorio && <TrabalhoAtivo resumo={trabalhoAtivoRelatorio.resumo} ativo={trabalhoAtivoRelatorio.ativo} onAbrir={() => { trabalhoAtivoRelatorio.onAbrir(); onMobileToggle(false); }} />}
+            {trabalhoAtivo?.resumo && <TrabalhoAtivo resumo={trabalhoAtivo.resumo} ativo={trabalhoAtivo.ativo} onExcluir={trabalhoAtivo.onExcluir} onAbrir={() => { trabalhoAtivo.onAbrir(); onMobileToggle(false); }} />}
+            {trabalhoAtivoRelatorio && <TrabalhoAtivo resumo={trabalhoAtivoRelatorio.resumo} ativo={trabalhoAtivoRelatorio.ativo} onExcluir={trabalhoAtivoRelatorio.onExcluir} onAbrir={() => { trabalhoAtivoRelatorio.onAbrir(); onMobileToggle(false); }} />}
           </div>
         </section>
       )}

@@ -67,6 +67,25 @@ describe("OperacaoFinanceiraDetalhe", () => {
     expect(screen.getByRole("link", { name: /Entrada #1/ }).getAttribute("href")).toBe(`/estoque?movimentoId=${uid(1)}`);
     expect(screen.getByText(/Data da operação:/).closest("time")?.getAttribute("dateTime")).toBe("2026-09-02");
   });
+  it("conserva os preços restritos também na tabela e no total dos itens", async () => {
+    obterOperacao.mockResolvedValue({ ...operacao, valorTotal: null, transacoes: [], movimentosEstoque: [], itens: operacao.itens.map(item => ({ ...item, valorUnitario: null, valorTotal: null })) });
+    render(<OperacaoFinanceiraDetalhe operacaoId={uid(6)} onVoltar={vi.fn()} onAbrir={vi.fn()} onCorrigir={vi.fn()} />);
+    const tabela = await screen.findByRole("table", { name: "Itens da operação" });
+    expect(tabela.textContent).toContain("30 kg");
+    expect(tabela.textContent).toContain("—");
+    expect(screen.queryByText(/R\$/)).toBeNull();
+    expect(screen.getByText("Total dos itens").parentElement?.textContent).toContain("—");
+  });
+  it("totaliza os itens em centavos, independentemente do valor global da operação", async () => {
+    obterOperacao.mockResolvedValue({ ...operacao, valorTotal: "1", transacoes: [], itens: [
+      { ...operacao.itens[0], valorTotal: "0.10" },
+      { ...operacao.itens[0], id: uid(2), valorTotal: "0.20" },
+    ] });
+    render(<OperacaoFinanceiraDetalhe operacaoId={uid(6)} onVoltar={vi.fn()} onAbrir={vi.fn()} onCorrigir={vi.fn()} />);
+    await screen.findByRole("heading", { name: "Itens da operação" });
+    expect(screen.getByText("Total dos itens").parentElement?.textContent?.replace(/\s/g, " ")).toContain("R$ 0,30");
+    expect(screen.getByRole("link", { name: /Cooperativa/ }).getAttribute("href")).toContain(`parceiro=${uid(1)}`);
+  });
   const transferencia = {
     ...operacao, tipo: "TRANSFERENCIA_ESTOQUE", descricao: "Reposição entre sítios", valorTotal: "24", itens: [], transacoes: [],
     transferencias: [{ produtoId: uid(1), produtoNome: "Vacina V3", quantidade: "2", unidade: "mL", motivo: "Reposição entre sítios", custoUnitario: "12", valorTotal: "24",

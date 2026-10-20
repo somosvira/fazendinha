@@ -1,27 +1,45 @@
-import type { ReactNode } from "react";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetClose } from "@/components/ui/sheet";
+import { ContextoFiltroColuna } from "@/components/ContextoFiltroColuna";
+import { useContext, useRef, type ReactNode } from "react";
+import { Settings2 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import "./painel-filtros.css";
 import { Button } from "@/components/ui/button";
 
+/** Campos e intervalos seguem a mesma grade, inclusive nos popovers das colunas. */
+export function CampoFiltro({ rotulo, children, inteiro = false }: { rotulo: string; children: ReactNode; inteiro?: boolean }) {
+  const naColuna = useContext(ContextoFiltroColuna);
+  if (naColuna) return <div className="filtros-campo" data-inteiro={inteiro || undefined}><span>{rotulo}</span>{children}</div>;
+  return <label className="filtros-campo" data-inteiro={inteiro || undefined}>{rotulo}{children}</label>;
+}
+export function GrupoCamposFiltro({ children, titulo }: { children: ReactNode; titulo?: string }) {
+  return <div className="filtros-grupo-campos" role={titulo ? "group" : undefined} aria-label={titulo}>
+    {titulo && <span className="filtros-grupo-titulo">{titulo}</span>}{children}
+  </div>;
+}
+
 /** O domínio mantém o rascunho e confirma a consulta por onAplicar quando fornecido. */
-export function PainelFiltros({ aberto, onAbertoChange, children, onLimpar, temFiltros, onAplicar }: {
+export function PainelFiltros({ aberto, onAbertoChange, children, onLimpar, temFiltros, onAplicar, amplo = false, erro }: {
+  erro?: string | null;
   aberto: boolean;
   onAbertoChange: (aberto: boolean) => void;
   children: ReactNode;
   onLimpar: () => void;
   temFiltros: boolean;
   onAplicar?: () => void;
+  amplo?: boolean;
 }) {
-  return <Sheet open={aberto} onOpenChange={onAbertoChange}>
-    <SheetContent aria-describedby={undefined} side="right" overlayClassName="z-[1090]" className="financeiro-colorido z-[1100] flex w-full flex-col gap-0 p-0 sm:max-w-xl">
-      <SheetHeader className="border-b border-border p-5 pr-12"><SheetTitle>Filtros</SheetTitle></SheetHeader>
-      <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-5 [&>label]:grid [&>label]:gap-1 [&>label>button]:mt-0">{children}</div>
-      <SheetFooter className="shrink-0 flex-row flex-wrap gap-2 justify-between border-t border-border p-5">
-        <Button type="button" variant="ghost" disabled={!temFiltros} onClick={onLimpar}>Limpar filtros</Button>
+  const tituloRef = useRef<HTMLHeadingElement>(null);
+  return <Dialog open={aberto} onOpenChange={onAbertoChange}>
+    <DialogContent onOpenAutoFocus={evento => { evento.preventDefault(); tituloRef.current?.focus({ preventScroll: true }); }} aria-describedby={undefined} overlayClassName="z-[1090]" data-amplo={amplo || undefined} className="financeiro-colorido filtros-modal gap-0 p-0">
+      <DialogHeader className="filtros-modal-cabecalho"><DialogTitle ref={tituloRef} tabIndex={-1} className="flex items-center gap-3 outline-none"><Settings2 size={22} className="text-primary" aria-hidden />Filtros</DialogTitle></DialogHeader>
+      <div className="filtros-modal-corpo"><div className="filtros-modal-campos">{children}{erro && <p role="alert" className="col-span-full text-sm text-destructive">{erro}</p>}</div></div>
+      <DialogFooter className="filtros-modal-rodape">
+        <Button type="button" variant="ghost" disabled={!temFiltros} onClick={onLimpar} aria-label="Limpar filtros">Limpar</Button>
         <div className="flex gap-2">
-          {onAplicar && <SheetClose asChild><Button type="button" variant="outline">Cancelar</Button></SheetClose>}
-          {onAplicar ? <Button type="button" onClick={onAplicar}>Aplicar filtros</Button> : <SheetClose asChild><Button type="button">Ver resultados</Button></SheetClose>}
+          {onAplicar && <DialogClose asChild><Button type="button" variant="outline">Cancelar</Button></DialogClose>}
+          {onAplicar ? <Button type="button" disabled={!!erro} onClick={onAplicar}>Aplicar filtros</Button> : <DialogClose asChild><Button type="button">Ver resultados</Button></DialogClose>}
         </div>
-      </SheetFooter>
-    </SheetContent>
-  </Sheet>;
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>;
 }

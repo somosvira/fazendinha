@@ -20,7 +20,7 @@ Preservar módulos, regras, permissões, histórico, escopo por sítio, contrato
 
 ## Brand Commitments
 
-O usuário confirmou preservar a identidade atual e melhorar a organização. Marca Terrano, português do domínio e identidade rural existente. O mockup gerado na conversa não é uma nova direção aprovada. A visão geral financeira atual foi explicitamente aprovada como referência visual; sua composição deve ser preservada.
+A marca Terrano e seu símbolo são preservados. A direção aprovada usa petróleo #006f68 nas ações, turquesa #009c91 nos detalhes, fundo quase branco com gradiente suave, sidebar cinza esverdeada #dce8e5 com seleção petróleo, cards brancos e sombras suaves. Títulos usam Manrope; dados e controles conservam DM Sans. O mockup orienta o estilo, sem substituir conteúdo, contratos ou a composição funcional aprovada da visão geral financeira.
 
 ## Evidence on Hand
 

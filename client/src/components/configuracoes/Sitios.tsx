@@ -1,3 +1,6 @@
+import { useFiltrosTabelaLocal } from "@/financeiro/useFiltrosTabelaLocal";
+import { useRascunhoConsulta } from "@/financeiro/useRascunhoConsulta";
+import { filtrosDasColunas, type CampoConsulta } from "@/financeiro/FiltroColunaConsulta";
 import { BarraConsulta } from "@/financeiro/BarraConsulta";
 // Configurações > Sítios — cadastro das propriedades (sítios) da fazenda.
 // Mora nas configurações gerais porque é estrutura da fazenda, compartilhada por
@@ -63,8 +66,12 @@ export function Sitios() {
   const chavePainel = painel ? (painel.modo === "editar" ? `editar-${painel.id}` : "novo") : "fechado";
   const carregando = sitios.loading && sitios.data.length === 0;
   const termo = busca.trim().toLocaleLowerCase("pt-BR");
-  const visiveis = sitios.data.filter(s => `${s.nome} ${s.cidade ?? ""} ${s.uf ?? ""}`.toLocaleLowerCase("pt-BR").includes(termo));
-  const paginacao = usePaginacaoLocal(visiveis, `${busca}|${mostrarInativos}`);
+  const consulta = useFiltrosTabelaLocal<PropriedadeDTO>([{chave:"sitio", naBarra: true,rotulo:"Sítio",tipo:"texto",obter:s=>s.nome},{chave:"local", naBarra: true,rotulo:"Cidade / UF",tipo:"texto",obter:s=>[s.cidade,s.uf].join(" ")}]);
+  const edicaoSituacao = useRascunhoConsulta({inativos:mostrarInativos},{inativos:false},v=>setMostrarInativos(v.inativos));
+  const edicao = {iniciar:()=>{edicaoSituacao.iniciar();consulta.edicao.iniciar();},limpar:()=>{edicaoSituacao.limpar();consulta.edicao.limpar();},aplicar:()=>{edicaoSituacao.aplicar();consulta.edicao.aplicar();}};
+  const campos: CampoConsulta[] = [...consulta.campos,{chave:"situacao",ativo:mostrarInativos,limpar:edicaoSituacao.limpar,conteudo:<label className="flex items-center gap-2"><input type="checkbox" checked={edicaoSituacao.rascunho.inativos} onChange={e=>edicaoSituacao.editar("inativos",e.target.checked)}/>Mostrar inativos</label>}];
+  const visiveis = consulta.filtrar(sitios.data).filter(s => `${s.nome} ${s.cidade ?? ""} ${s.uf ?? ""}`.toLocaleLowerCase("pt-BR").includes(termo));
+  const paginacao = usePaginacaoLocal(visiveis, `${busca}|${mostrarInativos}|${consulta.criterios.map(c=>c.rotulo).join("|")}`);
 
   return <PaginaFinanceira>
     <PageHeader eyebrow="" titulo="Sítios" descricao="Cadastre os sítios usados para organizar animais, estoque e lançamentos financeiros." acao={<Button onClick={abrirNovo}><Plus size={16} /> Novo sítio</Button>} />
@@ -74,11 +81,10 @@ export function Sitios() {
       {carregando
         ? <div className="mt-5"><Loader label="Carregando sítios" /></div>
         : <Panel className="mt-5 overflow-hidden">
-          <BarraConsulta>
+          <BarraConsulta campos={campos} edicaoFiltros={edicao} criterios={[...consulta.criterios,...(mostrarInativos?[{id:"inativos",rotulo:"Inclui inativos",limpar:()=>setMostrarInativos(false)}]:[])]}>
             <BuscaLista rotulo="Buscar sítio" placeholder="Buscar sítio ou cidade" valor={busca} onChange={setBusca} />
-            <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={mostrarInativos} onChange={(e) => setMostrarInativos(e.target.checked)} />Mostrar inativos</label>
           </BarraConsulta>
-          <TabelaFinanceira rotulo="Sítios" itens={paginacao.itens} colunas={colunas(editar, alternar)} chaveDe={(s) => s.id} onAbrir={editar} classeLinha={(s) => !s.ativo ? "opacity-55" : ""} />
+          <TabelaFinanceira filtrosColunas={filtrosDasColunas(campos,edicao)} rotulo="Sítios" itens={paginacao.itens} colunas={colunas(editar, alternar)} chaveDe={(s) => s.id} onAbrir={editar} classeLinha={(s) => !s.ativo ? "opacity-55" : ""} />
           <PaginacaoLocal controles={paginacao.controles} substantivo="sítios" id="pagina-sitios" />
           {!visiveis.length && <p className="p-5 text-sm text-ink-3">{busca ? "Nenhum sítio corresponde à busca." : "Nenhum sítio cadastrado."}</p>}
         </Panel>}

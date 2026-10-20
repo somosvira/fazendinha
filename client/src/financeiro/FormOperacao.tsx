@@ -1,3 +1,4 @@
+import { useDescarteTrabalhoAtivo } from "./descarteTrabalhoAtivo";
 import { previaDesconto } from "./lib/composicaoCompra";
 import { PageHeader } from "./financeiro-ui";
 import { podeVerValoresFinanceiros } from "./permissoes";
@@ -398,7 +399,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   }, [contextoRascunho]);
 
   useEffect(() => {
-    if (operacaoBase || !podeRascunho) return;
+    if (concluidaRef.current || operacaoBase || !podeRascunho) return;
     if (!iniciouRef.current) { iniciouRef.current = true; if (!recuperacaoInicial) return; }
     // Ajuste de estoque não usa rascunho: o estado dele (produto, contagem, saldo
     // lido) é efêmero — o saldo lido envelhece e restaurá-lo geraria um
@@ -757,6 +758,24 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
     }
     catch (falha) { setErro(falha instanceof Error ? falha.message : String(falha)); setSalvando(false); }
   };
+
+  useDescarteTrabalhoAtivo("operacao", async () => {
+    if (!contextoRascunho()) throw new Error("O sítio ou a sessão mudou. Reabra a operação no contexto original.");
+    if (envioEmCurso.current || salvando || anexosEnviando.length) throw new Error("Aguarde a operação em andamento antes de excluir este rascunho.");
+    concluidaRef.current = true;
+    setSalvando(true);
+    if (autosaveTimerRef.current != null) { window.clearTimeout(autosaveTimerRef.current); autosaveTimerRef.current = null; }
+    try {
+      await enfileirarSalvamentoRascunho(() => {
+        if (!contextoRascunho()) throw new Error("O sítio ou a sessão mudou. Reabra a operação no contexto original.");
+        return descartarRascunhoOperacao();
+      });
+    } catch (falha) {
+      concluidaRef.current = false; setSalvando(false);
+      if (contextoRascunho()) guardarEdicaoRascunho(ultimaEdicaoRef.current.dados);
+      throw falha;
+    }
+  }, !operacaoBase && !ehAjuste && !atalhoAjuste && podeRascunho);
 
   const removerDocumentoSalvo = async (id: string) => {
     try { await removerDocumentoRascunho(id); if (contextoRascunho()) atualizarDocumentosRascunho((atuais) => atuais.filter((documento) => documento.id !== id)); setDocumentosSalvos((atuais) => atuais.filter((documento) => documento.id !== id)); }

@@ -1,3 +1,7 @@
+import { useRascunhoConsulta } from "@/financeiro/useRascunhoConsulta";
+import { filtrosDasColunas, type CampoConsulta } from "@/financeiro/FiltroColunaConsulta";
+import { SelectCampo } from "@/financeiro/SelectCampo";
+import { CampoFiltro } from "@/financeiro/PainelFiltros";
 import { BarraConsulta } from "@/financeiro/BarraConsulta";
 import { useEffect, useState } from "react";
 import { ArrowRight, ClipboardList, FileClock, Search, Stethoscope, TriangleAlert, Venus } from "lucide-react";
@@ -34,7 +38,7 @@ export function ManejoReprodutivo({ propriedadeId, podeLancar, onRegistrarEvento
   useEffect(() => {
     let ativo = true;
     setDados(null); setErro(null); setCarregando(true);
-    if (!propriedadeId) { setCarregando(false); return; }
+  if (!propriedadeId) { setCarregando(false); return; }
     void Promise.all([
       obterReproducao(undefined, propriedadeId),
       consultarIndicadores({ propriedadeId, inicio: hoje, fim: hoje, corte: hoje, deslocamentoTeDias: 7 }),
@@ -68,6 +72,12 @@ export function ManejoReprodutivo({ propriedadeId, podeLancar, onRegistrarEvento
     window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
     setConsulta(proxima);
   }
+    const edicaoFiltros = useRascunhoConsulta({busca:consulta.busca,lote:consulta.lote,ordem:consulta.ordem},{busca:"",lote:"",ordem:"maior-espera" as ConsultaManejo["ordem"]},v=>mudar(v));
+  const campos: CampoConsulta[] = [
+    {chave:"animal", naBarra: true,ativo:!!consulta.busca,limpar:()=>edicaoFiltros.editar("busca",""),conteudo:<CampoFiltro rotulo="Animal"><input className={classeInput} aria-label="Buscar animal no filtro" value={edicaoFiltros.rascunho.busca} onChange={e=>edicaoFiltros.editar("busca",e.target.value)}/></CampoFiltro>},
+    {chave:"lote",ativo:!!consulta.lote,limpar:()=>edicaoFiltros.editar("lote",""),conteudo:<CampoFiltro rotulo="Lote"><SelectCampo aria-label="Filtrar lote" value={edicaoFiltros.rascunho.lote} onValueChange={v=>edicaoFiltros.editar("lote",v)}><option value="">Todos os lotes</option><option value="sem-lote">Sem lote informado</option>{consulta.lote && consulta.lote!=="sem-lote" && !lotes.some(l=>l.id===consulta.lote) && <option value={consulta.lote}>Lote selecionado sem animais nesta consulta</option>}{lotes.map(l=><option key={l.id} value={l.id}>{l.nome}</option>)}</SelectCampo></CampoFiltro>},
+    {chave:"ordem",colunas:[],ativo:consulta.ordem!=="maior-espera",limpar:()=>edicaoFiltros.editar("ordem","maior-espera"),conteudo:<CampoFiltro rotulo="Ordenar por"><SelectCampo aria-label="Ordenar animais" value={edicaoFiltros.rascunho.ordem} onValueChange={v=>edicaoFiltros.editar("ordem",v as ConsultaManejo["ordem"])}><option value="maior-espera">Maior espera</option><option value="menor-espera">Menor espera</option><option value="animal">Identificação do animal</option></SelectCampo></CampoFiltro>},
+  ];
   if (!propriedadeId) return <p className="rounded-xl border p-5">Selecione um sítio para consultar as filas de manejo.</p>;
   return <section className="manejo-v4 space-y-5" aria-label="Manejo reprodutivo">
     {onRegistrarEvento && podeLancar && <div className="manejo-v4-acao flex justify-end"><Button onClick={onRegistrarEvento}>Registrar evento</Button></div>}
@@ -82,15 +92,11 @@ export function ManejoReprodutivo({ propriedadeId, podeLancar, onRegistrarEvento
     <Panel className="overflow-hidden">
       <header className="space-y-4 p-5">
         <div><p className="mt-1 text-muted-foreground">{atual.descricao}</p></div>
-        <div className="grid gap-3 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]">
-          <label className="relative"><Search aria-hidden size={18} className="pointer-events-none absolute left-3 top-3.5 text-muted-foreground"/><input aria-label="Buscar animal" placeholder="Buscar animal" className={`${classeInput} pl-10`} value={consulta.busca} onChange={e => mudar({ busca: e.target.value })}/></label>
-          <select aria-label="Filtrar lote" className={classeInput} value={consulta.lote} onChange={e => mudar({ lote: e.target.value })}><option value="">Todos os lotes</option><option value="sem-lote">Sem lote informado</option>{consulta.lote && consulta.lote !== "sem-lote" && !lotes.some(l => l.id === consulta.lote) && <option value={consulta.lote}>Lote selecionado sem animais nesta consulta</option>}{lotes.map(l => <option key={l.id} value={l.id}>{l.nome}</option>)}</select>
-          <select aria-label="Ordenar animais" className={classeInput} value={consulta.ordem} onChange={e => mudar({ ordem: e.target.value })}><option value="maior-espera">Maior espera</option><option value="menor-espera">Menor espera</option><option value="animal">Identificação do animal</option></select>
-        </div>
+        <BarraConsulta campos={campos} edicaoFiltros={edicaoFiltros} criterios={[...(consulta.lote?[{id:"lote",rotulo:`Lote: ${lotes.find(l=>l.id===consulta.lote)?.nome??"Sem lote informado"}`,limpar:()=>mudar({lote:""})}]:[]),...(consulta.ordem!=="maior-espera"?[{id:"ordem",rotulo:`Ordenação: ${consulta.ordem==="animal"?"Identificação":"Menor espera"}`,limpar:()=>mudar({ordem:"maior-espera"})}]:[])]}><label className="fin-filtro-busca relative"><Search aria-hidden size={18} className="pointer-events-none absolute left-3 top-3.5 text-muted-foreground"/><input aria-label="Buscar animal" placeholder="Buscar animal" className={`${classeInput} pl-10`} value={consulta.busca} onChange={e=>mudar({busca:e.target.value})}/></label></BarraConsulta>
       </header>
       {carregando && <p role="status" className="p-5">Carregando filas de manejo…</p>}
       {visivel && <>
-        <TabelaFinanceira rotulo={atual.titulo} itens={linhas.slice((pagina - 1) * consulta.tamanho, pagina * consulta.tamanho)} chaveDe={a => a.animalId} colunas={[
+        <TabelaFinanceira filtrosColunas={filtrosDasColunas(campos,edicaoFiltros)} rotulo={atual.titulo} itens={linhas.slice((pagina - 1) * consulta.tamanho, pagina * consulta.tamanho)} chaveDe={a => a.animalId} colunas={[
           { chave: "animal", titulo: "Animal", principal: true, larguraMinima: 230, celula: a => <div><p className="font-semibold text-base">{a.brinco}</p>{a.nome && <p className="mt-0.5 text-sm text-muted-foreground">{a.nome}</p>}</div> },
           { chave: "lote", titulo: "Lote", larguraMinima: 170, celula: a => a.lote?.nome ?? "Não informado" },
           { chave: "data", titulo: consulta.fila === "diagnostico" ? "Última tentativa" : "Liberada em", celula: a => a.data ? formatBRDateISO(a.data) : "Não comprovada" },

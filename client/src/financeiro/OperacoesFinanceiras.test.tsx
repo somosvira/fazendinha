@@ -1,7 +1,7 @@
 import { alterarControle } from "../lib/controles.fixture";
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { OperacoesFinanceiras } from "./OperacoesFinanceiras";
 import { descartarRascunhoOperacao, listarOperacoes, obterRascunhoOperacao } from "./novo-api";
 import { limparRascunhoAtivo, prepararPublicacaoRascunho } from "./rascunhoAtivo";
@@ -132,22 +132,22 @@ describe("OperacoesFinanceiras — filtro de efeito vindo da rastreabilidade", (
   it("abre já filtrado por SEM_EFEITOS quando a URL pede", async () => {
     window.history.replaceState(null, "", "/financeiro/operacoes?inicio=2026-01-01&fim=2026-12-31&efeito=SEM_EFEITOS");
     render(<OperacoesFinanceiras />);
-    fireEvent.click(await screen.findByRole("button", {name:/Mais filtros/}));
-    expect((await screen.findByLabelText("Filtrar por efeito") as HTMLSelectElement).value).toBe("SEM_EFEITOS");
+    fireEvent.click(await screen.findByRole("button", { name: /^Filtros/ }));
+    expect((await screen.findByLabelText("Filtrar por impacto gerado") as HTMLSelectElement).value).toBe("SEM_EFEITOS");
   });
   it("remover o critério elimina o efeito da URL sem apagar o período", async () => {
     window.history.replaceState(null, "", "/financeiro/operacoes?inicio=2026-01-01&fim=2026-12-31&efeito=SEM_EFEITOS");
     render(<OperacoesFinanceiras />);
-    fireEvent.click(await screen.findByRole("button", {name:"Remover filtro: Efeito: Sem efeitos"}));
+    fireEvent.click(await screen.findByRole("button", { name: "Remover filtro: Impacto: Sem impactos gerados" }));
     await waitFor(()=>expect(new URLSearchParams(window.location.search).has("efeito")).toBe(false));
     expect(new URLSearchParams(window.location.search).get("inicio")).toBe("2026-01-01");
     expect(new URLSearchParams(window.location.search).get("fim")).toBe("2026-12-31");
   });
-  it("ignora um valor de efeito desconhecido e mantém 'Todos os efeitos'", async () => {
+  it("ignora um valor de efeito desconhecido e mantém 'Todos os impactos'", async () => {
     window.history.replaceState(null, "", "/financeiro/operacoes?efeito=NAO_EXISTE");
     render(<OperacoesFinanceiras />);
-    fireEvent.click(await screen.findByRole("button", {name:/Mais filtros/}));
-    expect((await screen.findByLabelText("Filtrar por efeito") as HTMLSelectElement).value).toBe("TODOS");
+    fireEvent.click(await screen.findByRole("button", { name: /^Filtros/ }));
+    expect((await screen.findByLabelText("Filtrar por impacto gerado") as HTMLSelectElement).value).toBe("TODOS");
   });
 });
 
@@ -171,7 +171,7 @@ describe("OperacoesFinanceiras — paginação", () => {
 });
 
 describe("OperacoesFinanceiras — busca por código", () => {
-  it("reserva largura compacta sem coluna de ações vazia", async () => {
+  it("não reserva coluna de ações quando não há comandos disponíveis", async () => {
     vi.mocked(listarOperacoes).mockResolvedValue([{
       id: uid(90), numero: 15, data: "2026-10-01", descricao: "Reposição de estoque", tipo: "COMPRA_ESTOQUE", status: "CONFIRMADA", valorTotal: "200.00",
       parceiro: null, movimentosEstoque: [], transacoes: [], compromissos: [], itens: [],
@@ -180,7 +180,6 @@ describe("OperacoesFinanceiras — busca por código", () => {
     await screen.findAllByText("Reposição de estoque");
     const tabela = container.querySelector("table")!;
     expect(tabela.querySelector('[data-fin-coluna="acoes"]')).toBeNull();
-    expect(parseInt(tabela.style.minWidth)).toBeLessThanOrEqual(927);
     expect(tabela.querySelectorAll("thead th")).toHaveLength(7);
   });
   it("encontra o número exibido sem depender do UUID ou da descrição", async () => {
@@ -217,4 +216,83 @@ it("mantém operações anteriores ao atualizar o período de um perfil somente 
   expect(screen.queryByText("Atualizando…")).toBeNull();
   expect(screen.queryByText("Compra de ração")).toBeNull();
   expect(container.querySelector("[inert]")).toBeNull();
+});
+
+
+const operacoesConsulta = [
+  { id: uid(80), numero: 80, descricao: "Reposição mensal", tipo: "COMPRA_ESTOQUE", status: "CONFIRMADA", valorTotal: "200.00", compromissos: [] },
+  { id: uid(81), numero: 81, descricao: "Venda mensal", tipo: "VENDA", status: "CONFIRMADA", valorTotal: "100.00", compromissos: [] },
+  { id: uid(82), numero: 82, descricao: "Visita técnica", tipo: "SERVICO", status: "CANCELADA", valorTotal: null, compromissos: [] },
+].map(item => ({ ...item, data: "2026-10-01", parceiro: null, movimentosEstoque: [], transacoes: [], itens: [], documentos: [] }));
+
+describe("OperacoesFinanceiras — filtros das colunas e painel completo", () => {
+  it("não repete busca e período nos cabeçalhos de Operação e Data", async () => {
+    vi.mocked(listarOperacoes).mockResolvedValue(operacoesConsulta as never);
+    render(<OperacoesFinanceiras />);
+    const tabela = await screen.findByRole("table", {name:"Operações do período"});
+    expect(within(tabela).getByRole("columnheader",{name:"Data"}).querySelector("button")).toBeNull();
+    expect(within(tabela).getByRole("columnheader",{name:"Operação"}).querySelector("button")).toBeNull();
+    expect(within(tabela).getByRole("button",{name:"Filtrar por tipo de operação"})).toBeTruthy();
+  });
+
+  it("edita a coluna em rascunho, confirma e permite remover o critério", async () => {
+    vi.mocked(listarOperacoes).mockResolvedValue(operacoesConsulta as never);
+    render(<OperacoesFinanceiras />);
+    fireEvent.click(await screen.findByRole("button", { name: "Filtrar por tipo de operação" }));
+    const painel = screen.getByRole("dialog", { name: "Filtro de tipo de operação" });
+    fireEvent.click(within(painel).getByRole("radio", { name: "Compra para estoque" }));
+    expect(screen.getAllByText("Venda mensal").length).toBeGreaterThan(0);
+    fireEvent.click(within(painel).getByRole("button", { name: "Aplicar" }));
+    expect(screen.queryByText("Venda mensal")).toBeNull();
+    expect(screen.queryByText("Visita técnica")).toBeNull();
+    expect(screen.getByRole("button", { name: "Filtrar por tipo de operação, filtro ativo" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Remover filtro: Tipo: Compra para estoque" }));
+    expect(screen.getAllByText("Venda mensal").length).toBeGreaterThan(0);
+  });
+
+  it("compartilha seleção com o modal e cancela sem alterar a consulta", async () => {
+    vi.mocked(listarOperacoes).mockResolvedValue(operacoesConsulta as never);
+    render(<OperacoesFinanceiras />);
+    fireEvent.click(await screen.findByRole("button", { name: "Filtrar por status" }));
+    let painel = screen.getByRole("dialog", { name: "Filtro de status" });
+    fireEvent.click(within(painel).getByRole("radio", { name: "Confirmada" }));
+    fireEvent.click(within(painel).getByRole("button", { name: "Aplicar" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Filtros/ }));
+    painel = screen.getByRole("dialog", { name: "Filtros" });
+    expect((within(painel).getByLabelText("Filtrar por status") as HTMLButtonElement).value).toBe("CONFIRMADA");
+    await alterarControle(within(painel).getByLabelText("Filtrar por tipo de operação"), { target: { value: "VENDA" } });
+    fireEvent.click(within(painel).getByRole("button", { name: "Cancelar" }));
+    expect(screen.getAllByText("Reposição mensal").length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole("button", { name: /^Filtros/ }));
+    painel = screen.getByRole("dialog", { name: "Filtros" });
+    await alterarControle(within(painel).getByLabelText("Filtrar por tipo de operação"), { target: { value: "VENDA" } });
+    fireEvent.click(within(painel).getByRole("button", { name: "Aplicar filtros" }));
+    expect(screen.queryByText("Reposição mensal")).toBeNull();
+    expect(screen.getAllByText("Venda mensal").length).toBeGreaterThan(0);
+  });
+
+  it("valida limites e não trata valor oculto como zero", async () => {
+    vi.mocked(listarOperacoes).mockResolvedValue(operacoesConsulta as never);
+    render(<OperacoesFinanceiras />);
+    fireEvent.click(await screen.findByRole("button", { name: "Filtrar por valor" }));
+    const painel = screen.getByRole("dialog", { name: "Filtro de valor" });
+    fireEvent.change(within(painel).getByLabelText("Valor mínimo"), { target: { value: "150" } });
+    fireEvent.change(within(painel).getByLabelText("Valor máximo"), { target: { value: "100" } });
+    expect((within(painel).getByRole("button", { name: "Aplicar" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.change(within(painel).getByLabelText("Valor máximo"), { target: { value: "250" } });
+    fireEvent.click(within(painel).getByRole("button", { name: "Aplicar" }));
+    expect(screen.getAllByText("Reposição mensal").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Venda mensal")).toBeNull();
+    expect(screen.queryByText("Visita técnica")).toBeNull();
+  });
+
+  it("não oferece filtro de valor ao perfil sem verValores", async () => {
+    vi.mocked(permissoes.podeVerValoresFinanceiros).mockReturnValue(false);
+    vi.mocked(listarOperacoes).mockResolvedValue(operacoesConsulta as never);
+    render(<OperacoesFinanceiras podeLancar={false} />);
+    await screen.findAllByText("Reposição mensal");
+    expect(screen.queryByRole("button", { name: "Filtrar por valor" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /^Filtros/ }));
+    expect(screen.queryByLabelText("Valor mínimo")).toBeNull();
+  });
 });

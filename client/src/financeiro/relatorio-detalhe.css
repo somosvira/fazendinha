@@ -1,0 +1,67 @@
+ .relatorio-metadados { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.relatorio-data-emissao { font-size: 12px; color: var(--ink-3); }
+.relatorio-metadados .relatorio-info-botao { vertical-align: middle; }
+.relatorio-info-botao.h-auto { display: inline-flex; flex-shrink: 0; width: 28px; height: 28px; padding: 4px; color: var(--ink-3); border-radius: 6px; }
+.relatorio-info-botao:hover, .relatorio-info-botao[data-state="open"] { color: var(--primary); background: var(--accent); }
+.relatorio-info-popover { width: min(360px, calc(100vw - 32px)); max-height: min(560px, 80vh); overflow-y: auto; border-radius: 12px; font-size: 13px; line-height: 1.5; }
+.relatorio-info-titulo { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.relatorio-info-titulo h2 { font-size: 15px; font-weight: 600; }
+.relatorio-info-titulo button { flex-shrink: 0; }
+.relatorio-info-popover .relatorio-criterios { grid-template-columns: 1fr; gap: 12px; }
+.relatorio-info-texto { margin-top: 16px; color: var(--ink-3); }
+.relatorio-info-filtros { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+.relatorio-info-filtros h3 { font-size: 13px; font-weight: 600; margin-bottom: 12px; }
+.relatorio-criterios dt { color: var(--ink-3); font-size: 12px; margin-bottom: 3px; }
+.relatorio-resumo h2 { display: flex; align-items: center; gap: 6px; }
+.relatorio-abas { min-width: 0; gap: 0; }
+.relatorio-abas > [data-slot="tabs-content"] { min-width: 0; }
+.relatorio-abas > [data-slot="tabs-content"] > .fin-painel { margin-top: 0; }
+.relatorio-contagem { padding: 2px 6px; border-radius: 5px; background: var(--muted); font-size: 12px; }
+.relatorio-resumo { overflow: hidden; }
+.relatorio-indicadores { display: grid; grid-template-columns: 1fr 1fr; padding: 24px; gap: 32px; }
+.relatorio-indicador { min-width: 0; }
+.relatorio-indicador + .relatorio-indicador { padding-left: 32px; border-left: 1px solid var(--border); }
+.relatorio-resumo h2 { font-size: 16px; font-weight: 600; }
+.relatorio-indicador > strong { display: block; margin: 8px 0 5px; font-size: clamp(26px, 2.5vw, 32px); font-weight: 600; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.relatorio-classificacao { display: flex; flex-wrap: wrap; gap: 10px 22px; margin-top: 18px; font-size: 13px; }
+.relatorio-classificacao > div { display: flex; flex-wrap: wrap; gap: 7px; }
+.relatorio-classificacao dt { color: var(--ink-3); }
+.relatorio-classificacao dd { font-weight: 500; font-variant-numeric: tabular-nums; }
+.relatorio-distribuicoes { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--border); }
+.relatorio-distribuicao { min-width: 0; padding: 24px; }
+.relatorio-distribuicao + .relatorio-distribuicao { border-left: 1px solid var(--border); }
+.relatorio-distribuicao ul { display: grid; gap: 18px; margin-top: 18px; }
+.relatorio-distribuicao li > div:first-child { display: flex; align-items: baseline; justify-content: flex-start; flex-wrap: wrap; gap: 8px 24px; font-size: 14px; }
+.relatorio-distribuicao li > div:first-child > span { min-width: 0; overflow-wrap: anywhere; }
+.relatorio-distribuicao strong { flex-shrink: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+.relatorio-distribuicao p { margin-top: 8px; color: var(--ink-3); font-size: 12px; }
+.relatorio-barra { height: 6px; margin-top: 10px; background: var(--muted); border-radius: 3px; overflow: hidden; }
+.relatorio-barra span { display: block; height: 100%; background: var(--primary); border-radius: inherit; }
+.relatorio-operacoes { border-top: 1px solid var(--border); }
+.relatorio-secao-titulo { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; padding: 20px 24px; }
+.relatorio-secao-titulo > span { font-size: 12px; color: var(--ink-3); }
+.relatorio-criterios { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; font-size: 13px; }
+.relatorio-criterios dd { overflow-wrap: anywhere; }
+.relatorio-abas [aria-label="Leitura de caixa e compromissos"] { padding: 20px; margin: 0; background: var(--card); border-radius: 0 12px 12px 12px; }
+.relatorio-abas .rg-previa { margin-top: 20px; }
+@media (max-width: 600px) {
+  .relatorio-indicadores, .relatorio-distribuicoes, .relatorio-criterios { grid-template-columns: 1fr; }
+  .relatorio-indicadores { padding: 18px; gap: 20px; }
+  .relatorio-indicador + .relatorio-indicador { padding: 18px 0 0; border-left: 0; border-top: 1px solid var(--border); }
+  .relatorio-distribuicao { padding: 18px; }
+  .relatorio-distribuicao + .relatorio-distribuicao { border-left: 0; border-top: 1px solid var(--border); }
+  .relatorio-secao-titulo { padding: 18px; }
+  :root .app-main .relatorio-abas [role="tablist"].abas-pasta { flex-wrap: nowrap; }
+  :root .app-main .relatorio-abas [role="tablist"].abas-pasta > [role="tab"][aria-selected] { flex: 1 1 auto; min-width: 0; padding: 10px 8px; gap: 5px; font-size: 13px; }
+  :root .app-main .relatorio-abas [role="tablist"].abas-pasta > [role="tab"][aria-selected] svg { width: 16px; height: 16px; }
+}
+
+.relatorio-itens { overflow: hidden; }
+
+@media (max-width: 600px) {
+  .relatorio-data-emissao { width: auto; }
+  .relatorio-info-botao.h-auto { width: 36px; height: 36px; }
+}
+
+:root .app-main .relatorio-operacoes .fin-tabela > tbody > tr > td { height: 48px; padding-top: 8px; padding-bottom: 8px; }
+.relatorio-operacoes .fin-tabela-cartoes > li > div { padding: 12px 16px; }

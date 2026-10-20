@@ -1,5 +1,6 @@
 import { alterarControle, alterarFiltroAdicional } from "../lib/controles.fixture";
 // @vitest-environment jsdom
+import { abrirFiltrosConsulta, aplicarFiltrosConsulta } from "@/lib/controles.fixture";
 import { afterEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { useState } from "react";
@@ -29,11 +30,11 @@ it("combina filtros inclusivos de data, conta e instituição e abre o movimento
   const tabela = within(await screen.findByRole("table", { name: "Extrato geral" }));
   await alterarControle(screen.getByLabelText("Início do teste"), { target: { value: "2026-09-13" } });
   await alterarControle(screen.getByLabelText("Fim do teste"), { target: { value: "2026-09-13" } });
-  await alterarControle(screen.getByLabelText("Conta"), { target: { value: uid(1) } });
-  await alterarFiltroAdicional("Instituição", "Instituição A", document.body);
+  await alterarFiltroAdicional("Filtrar por conta", uid(1), document.body);
+  await alterarFiltroAdicional("Filtrar por instituição", "Instituição A", document.body);
   expect(tabela.queryByText("Compra B")).toBeNull();
   fireEvent.click(tabela.getByText("Venda A")); expect(abrir).toHaveBeenCalledWith(movimentos[0]);
-  await alterarFiltroAdicional("Instituição", "__sem__", document.body);
+  await alterarFiltroAdicional("Filtrar por instituição", "__sem__", document.body);
   expect(screen.getByText(/Nenhuma movimentação encontrada/)).toBeTruthy();
   await alterarControle(screen.getByLabelText("Fim do teste"), { target: { value: "2026-09-11" } });
   expect(screen.getByRole("alert").textContent).toContain("data final");
@@ -80,7 +81,42 @@ it("pagina o extrato depois de filtrar e volta à primeira página ao mudar o fi
   expect(tabela().getByText("Lançamento 31")).toBeTruthy();
   expect(screen.getByRole("navigation", { name: "Paginação do extrato geral" }).textContent).toContain("1–1 de 1");
   fireEvent.change(screen.getByRole("searchbox", { name: "Buscar movimento" }), { target: { value: "" } });
-  await alterarControle(screen.getByLabelText("Conta"), { target: { value: uid(2) } });
+  await alterarFiltroAdicional("Filtrar por conta", uid(2), document.body);
   expect(tabela().getByText("Lançamento 31")).toBeTruthy();
   expect(screen.getByRole("navigation", { name: "Paginação do extrato geral" }).textContent).toContain("1–1 de 1");
+});
+
+it("resume estorno e estornada com detalhes acessíveis sem acionar a linha", () => {
+  const abrir = vi.fn();
+  const estorno: MovimentoGeral = { ...movimentos[0], transacao: { ...movimentos[0].transacao, tipo: "REVERSAO", descricao: "Estorno #16: motivo completo registrado para conferência", reversaoDe: { tipo: "PAGAMENTO", descricao: "Pagamento original" }, operacao: { id: uid(18), numero: 18, descricao: "Visita", tipo: "SERVICO" } } };
+  const original: MovimentoGeral = { ...movimentos[1], transacao: { ...movimentos[1].transacao, status: "REVERTIDA" } };
+  render(<ExtratoControlado itens={[estorno, original]} onAbrir={abrir} />);
+  const tabela = within(screen.getByRole("table", { name: "Extrato geral" }));
+  expect(tabela.queryByText("Instituição A")).toBeNull();
+  expect(tabela.queryByText(estorno.transacao.descricao!)).toBeNull();
+  expect(tabela.getByText("Estorno de pagamento")).toBeTruthy();
+  expect(tabela.getByText("Estornada")).toBeTruthy();
+  expect(tabela.queryByText("Transação avulsa")).toBeNull();
+  fireEvent.click(tabela.getByRole("button", { name: "Detalhes: estorno" }));
+  const detalhe = within(screen.getByRole("dialog", { name: "Detalhes do estorno" }));
+  expect(detalhe.getByText(estorno.transacao.descricao!)).toBeTruthy();
+  expect(detalhe.getByText("Pagamento original")).toBeTruthy();
+  expect(abrir).not.toHaveBeenCalled();
+  fireEvent.keyDown(detalhe.getByRole("button", { name: "Ver movimento" }), { key: "Enter" });
+  expect(abrir).not.toHaveBeenCalled();
+  fireEvent.click(detalhe.getByRole("button", { name: "Ver movimento" }));
+  expect(abrir).toHaveBeenCalledWith(estorno);
+  fireEvent.click(tabela.getByRole("button", { name: "Detalhes: estornada" }));
+  expect(screen.getByRole("dialog", { name: "Detalhes do lançamento estornado" }).textContent).toContain("O movimento original permanece no histórico");
+  fireEvent.click(screen.getByRole("button", { name: "Fechar detalhes" }));
+  expect(screen.queryByRole("dialog")).toBeNull();
+});
+
+it("busca o rótulo visível do estorno e preserva a pesquisa pela descrição registrada", () => {
+  const estorno: MovimentoGeral = { ...movimentos[0], transacao: { ...movimentos[0].transacao, tipo: "REVERSAO", descricao: "Conferência do lançamento 16", reversaoDe: { tipo: "PAGAMENTO" } } };
+  render(<ExtratoControlado itens={[estorno]} />);
+  fireEvent.change(screen.getByRole("searchbox", { name: "Buscar movimento" }), { target: { value: "Estorno de pagamento" } });
+  expect(screen.getByRole("table", { name: "Extrato geral" })).toBeTruthy();
+  fireEvent.change(screen.getByRole("searchbox", { name: "Buscar movimento" }), { target: { value: "Conferência do lançamento 16" } });
+  expect(screen.getByRole("table", { name: "Extrato geral" })).toBeTruthy();
 });

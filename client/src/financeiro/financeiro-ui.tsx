@@ -1,3 +1,4 @@
+import { FiltroColunaConsulta, type FiltrosColunas } from "./FiltroColunaConsulta";
 import "./barra-consulta.css";
 import { SelectCampo } from "./SelectCampo";
 import { getHoje, getHojeISO } from "../lib/hoje";
@@ -29,9 +30,9 @@ export const TIPO_OPERACAO: Record<string, string> = {
 };
 
 export const STATUS: Record<string, string> = {
-  RASCUNHO: "Rascunho", CONFIRMADA: "Confirmada", CANCELADA: "Cancelada",
+  RASCUNHO: "Rascunho", CONFIRMADA: "Confirmada", CONFIRMADO: "Confirmado", CANCELADA: "Cancelada",
   PENDENTE: "Pendente", PARCIAL: "Parcial", LIQUIDADO: "Liquidado", CANCELADO: "Cancelado",
-  REVERTIDA: "Revertida", PROCESSANDO: "Processando", CONCLUIDO: "Concluído", FALHOU: "Falhou",
+  REVERTIDA: "Revertida", REVERTIDO: "Revertido", PROCESSANDO: "Processando", CONCLUIDO: "Concluído", FALHOU: "Falhou",
 };
 
 /* Envelope de toda página financeira. O gutter e o ritmo vertical (inclusive a
@@ -99,7 +100,7 @@ export function Pill({ children, tone = "neutral" }: { children: React.ReactNode
 }
 
 export function StatusPill({ status }: { status: string }) {
-  const tone = status === "CONFIRMADA" || status === "LIQUIDADO" || status === "CONCLUIDO" ? "green" : status === "PENDENTE" || status === "PROCESSANDO" ? "amber" : status === "PARCIAL" ? "blue" : status.includes("CANCEL") || status === "REVERTIDA" || status === "FALHOU" ? "red" : "neutral";
+  const tone = status === "CONFIRMADA" || status === "CONFIRMADO" || status === "LIQUIDADO" || status === "CONCLUIDO" ? "green" : status === "PENDENTE" || status === "PROCESSANDO" ? "amber" : status === "PARCIAL" ? "blue" : status.includes("CANCEL") || status === "REVERTIDA" || status === "REVERTIDO" || status === "FALHOU" ? "red" : "neutral";
   return <Pill tone={tone}>{STATUS[status] ?? status}</Pill>;
 }
 
@@ -193,10 +194,12 @@ export function ReviewLine({ children, tone = "green" }: { children: React.React
 export type ColunaTabela<T> = {
   chave: string;
   titulo: string;
+  /** Controle opcional no cabeçalho; o título textual continua nos cartões. */
+  cabecalho?: React.ReactNode;
   /** governa <th>, <td> e o valor no cartão — não repetir alinhamento na célula */
   alinhamento?: "esquerda" | "centro" | "direita";
   celula: (item: T) => React.ReactNode;
-  /** largura mínima da coluna (px) — a soma vira o min-width da tabela */
+  /** Largura de referência (px): define a proporção e o mínimo total da tabela. */
   larguraMinima?: number;
   /** coluna que vira o título do cartão no mobile (uma por tabela) */
   principal?: boolean;
@@ -211,7 +214,8 @@ export type ColunaTabela<T> = {
 
 const alinhaCelula = (alinhamento?: "esquerda" | "centro" | "direita") => alinhamento === "direita" ? "text-right" : alinhamento === "centro" ? "text-center" : "text-left";
 
-export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLinha, rotulo, ancoraDe, barraRolagemSuperior = false, compacta = false, cartaoComLinks = false }: {
+export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLinha, rotulo, ancoraDe, barraRolagemSuperior = false, compacta = false, cartaoComLinks = false, filtrosColunas }: {
+  filtrosColunas?: FiltrosColunas;
   compacta?: boolean;
   /** Mantém links independentes da área clicável do cartão. */
   cartaoComLinks?: boolean;
@@ -228,9 +232,11 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
   const idCartao = useId();
   const larguraMinima = colunas.reduce((soma, coluna) => soma + (coluna.larguraMinima ?? 120), 0);
   const principal = colunas.find((coluna) => coluna.principal) ?? colunas[0];
-  const flexivel = colunas.find((coluna) => coluna.larguraFlexivel) ?? principal;
+  const flexivel = colunas.find((coluna) => coluna.larguraFlexivel);
   const secundarias = colunas.filter((coluna) => coluna !== principal && !coluna.ocultarNoCartao && !coluna.acoes && coluna.titulo);
   const acoes = colunas.filter((coluna) => coluna.acoes);
+  const consultaRef = useRef<HTMLDivElement>(null);
+  const [modoCartao, setModoCartao] = useState(() => typeof window !== "undefined" && window.innerWidth < 768);
   const tabelaRef = useRef<HTMLDivElement>(null);
   const barraRef = useRef<HTMLDivElement>(null);
   const [temRolagem, setTemRolagem] = useState(false);
@@ -240,11 +246,12 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
   const [larguraRolagem, setLarguraRolagem] = useState(larguraMinima);
 
   useEffect(() => {
-    if (!barraRolagemSuperior) return;
+    const consulta = consultaRef.current;
     const tabela = tabelaRef.current;
-    if (!tabela) return;
+    if (!consulta || !tabela) return;
     const atualizar = () => {
-      setTemRolagem(tabela.scrollWidth > tabela.clientWidth + 1);
+      if (consulta.clientWidth > 0) setModoCartao(consulta.clientWidth < Math.max(640, larguraMinima));
+      setTemRolagem(barraRolagemSuperior && tabela.scrollWidth > tabela.clientWidth + 1);
       setLarguraRolagem(tabela.scrollWidth);
     };
     atualizar();
@@ -253,9 +260,10 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
       return () => window.removeEventListener("resize", atualizar);
     }
     const observador = new ResizeObserver(atualizar);
+    observador.observe(consulta);
     observador.observe(tabela);
     return () => observador.disconnect();
-  }, [barraRolagemSuperior, larguraMinima, itens.length]);
+  }, [barraRolagemSuperior, larguraMinima, itens.length, modoCartao]);
 
   const sincronizarRolagem = (origem: "tabela" | "barra") => {
     const tabela = tabelaRef.current;
@@ -271,17 +279,17 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
     else if (e.key === "ArrowLeft") { barra.scrollLeft -= 96; e.preventDefault(); }
   };
 
-  return <>
-    {/* ≥768px — tabela; a rolagem horizontal fica presa a este wrapper */}
-    {barraRolagemSuperior && temRolagem && <div ref={barraRef} role="group" aria-label={`Rolagem horizontal: ${rotulo}`} tabIndex={0} onKeyDown={roladaPorTeclado} className="sticky top-0 z-10 hidden overflow-x-auto border-b border-border bg-surface-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#6f7d68]/40 md:block" onScroll={() => sincronizarRolagem("barra")}>
+  return <div ref={consultaRef} className="fin-consulta-responsiva" data-fin-visualizacao={modoCartao ? "cartoes" : "tabela"}>
+    {/* A largura disponível determina se todas as colunas cabem. */}
+    {barraRolagemSuperior && temRolagem && !modoCartao && <div ref={barraRef} role="group" aria-label={`Rolagem horizontal: ${rotulo}`} tabIndex={0} onKeyDown={roladaPorTeclado} className="sticky top-0 z-10 hidden overflow-x-auto border-b border-border bg-surface-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#6f7d68]/40 md:block" onScroll={() => sincronizarRolagem("barra")}>
       <div style={{ width: larguraRolagem, height: 1 }} />
     </div>}
-    <div ref={tabelaRef} className={`hidden overflow-x-auto border-t border-border md:block ${barraRolagemSuperior && temRolagem ? "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden" : ""}`} onScroll={() => sincronizarRolagem("tabela")}>
+    <div ref={tabelaRef} className={`fin-tabela-desktop overflow-x-auto border-t border-border ${barraRolagemSuperior && temRolagem ? "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden" : ""}`} onScroll={() => sincronizarRolagem("tabela")}>
       <Table semContainer data-fin-compacta={compacta || undefined} className="fin-tabela w-full text-left text-sm" style={{ minWidth: larguraMinima }}>
         <TableCaption className="sr-only">{rotulo}</TableCaption>
-        <colgroup>{colunas.map((coluna) => <col key={coluna.chave} style={coluna === flexivel ? undefined : { "--fin-coluna-largura": `${coluna.larguraMinima ?? 120}px` } as CSSProperties} />)}</colgroup>
+        <colgroup>{colunas.map((coluna) => <col key={coluna.chave} style={{ "--fin-coluna-largura": coluna === (flexivel ?? principal) ? undefined : `${coluna.larguraMinima ?? 120}px`, "--fin-coluna-proporcao": flexivel ? undefined : `${(coluna.larguraMinima ?? 120) / larguraMinima * 100}%` } as CSSProperties} />)}</colgroup>
         <TableHeader className="sticky top-0 z-[1] bg-muted text-[11px] uppercase tracking-[.08em] text-ink-3">
-          <TableRow>{colunas.map((coluna) => <TableHead key={coluna.chave} data-fin-coluna={coluna.chave} scope="col" className={`${compacta ? "px-3 py-2" : "p-4"} font-semibold ${alinhaCelula(coluna.alinhamento ?? (coluna.acoes ? "direita" : undefined))}`}>{coluna.titulo}</TableHead>)}</TableRow>
+          <TableRow>{colunas.map((coluna) => <TableHead key={coluna.chave} data-fin-coluna={coluna.chave} scope="col" className={`${compacta ? "px-3 py-2" : "p-4"} font-semibold ${alinhaCelula(coluna.alinhamento ?? (coluna.acoes ? "direita" : undefined))}`}>{coluna.cabecalho ?? (filtrosColunas?.[coluna.chave] ? <FiltroColunaConsulta titulo={coluna.titulo} {...filtrosColunas[coluna.chave]} /> : coluna.titulo)}</TableHead>)}</TableRow>
         </TableHeader>
         <TableBody className="divide-y divide-border">
           {itens.map((item) => <TableRow
@@ -290,13 +298,13 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
                por role="button" quebraria a semântica de tabela para leitores de tela */
             {...(onAbrir ? { onClick: () => onAbrir(item), tabIndex: 0, onKeyDown: (e: React.KeyboardEvent) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onAbrir(item); } } } : {})}
             className={`${onAbrir ? "cursor-pointer hover:bg-muted" : ""} ${classeLinha?.(item) ?? ""}`}
-          >{colunas.map((coluna) => <TableCell key={coluna.chave} data-fin-coluna={coluna.chave} className={`whitespace-normal ${compacta ? "px-3 py-2" : "p-4"} align-middle ${alinhaCelula(coluna.alinhamento ?? (coluna.acoes ? "direita" : undefined))}`}>{coluna.celula(item)}</TableCell>)}</TableRow>)}
+          >{colunas.map((coluna) => <TableCell key={coluna.chave} data-fin-coluna={coluna.chave} data-fin-principal={coluna === principal || undefined} data-fin-acoes={coluna.acoes || undefined} className={`whitespace-normal ${compacta ? "px-3 py-2" : "p-4"} align-middle ${alinhaCelula(coluna.alinhamento ?? (coluna.acoes ? "direita" : undefined))}`}>{coluna.celula(item)}</TableCell>)}</TableRow>)}
         </TableBody>
       </Table>
     </div>
 
-    {/* <768px — cartões: nada de rolagem lateral, nada de coluna espremida */}
-    <ul className="divide-y divide-border border-t border-border md:hidden" aria-label={rotulo}>
+    {/* Cartões conservam os mesmos dados, links, seleção e comandos. */}
+    <ul className="fin-tabela-cartoes divide-y divide-border border-t border-border" aria-label={rotulo}>
       {itens.map((item) => {
         const corpo = <>
           <div id={`${idCartao}-${chaveDe(item)}`} className="min-w-0 break-words text-left">{principal.celula(item)}</div>
@@ -307,16 +315,17 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
             </div>)}
           </dl>
         </>;
+        const comandos = acoes.map(coluna => ({ chave: coluna.chave, conteudo: coluna.celula(item) })).filter(comando => comando.conteudo != null && comando.conteudo !== false);
         return <li key={chaveDe(item)} data-ancora={ancoraDe?.(item)} className={classeLinha?.(item) ?? ""}>
           {onAbrir
             ? cartaoComLinks ? <div className="relative">
               <ShadcnButton variant="ghost" type="button" aria-labelledby={`${idCartao}-${chaveDe(item)}`} onClick={() => onAbrir(item)} className="absolute inset-0 h-full w-full rounded-none" />
-              <div className="pointer-events-none relative p-3 [&_a]:pointer-events-auto [&_a]:relative [&_a]:z-10">{corpo}</div>
+              <div className="pointer-events-none relative p-3 [&_a]:pointer-events-auto [&_a]:relative [&_a]:z-10 [&_button]:pointer-events-auto [&_button]:relative [&_button]:z-10">{corpo}</div>
             </div> : <ShadcnButton variant="ghost" type="button" onClick={() => onAbrir(item)} className="block h-auto w-full whitespace-normal p-3 text-left">{corpo}</ShadcnButton>
             : <div className="p-4">{corpo}</div>}
-          {acoes.length > 0 && <div className="flex justify-end gap-2 px-4 pb-4">{acoes.map((coluna) => <div key={coluna.chave}>{coluna.celula(item)}</div>)}</div>}
+          {comandos.length > 0 && <div className="fin-cartao-acoes flex justify-end gap-2 px-4 pb-4">{comandos.map(comando => <div key={comando.chave}>{comando.conteudo}</div>)}</div>}
         </li>;
       })}
     </ul>
-  </>;
+  </div>;
 }

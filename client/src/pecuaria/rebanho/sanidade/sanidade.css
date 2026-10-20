@@ -75,6 +75,6 @@
 /* A linha é o acesso ao detalhe; a coluna fixa acompanha o mesmo estado visual. */
 .sanidade-acoes-linha { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
 .pecuaria-content .sanidade-lista .fin-tabela tbody tr:hover :is(td[data-fin-coluna="acoes"], td[data-fin-coluna="acao"]),
-.pecuaria-content .sanidade-lista .fin-tabela tbody tr:focus-within :is(td[data-fin-coluna="acoes"], td[data-fin-coluna="acao"]) { background: var(--muted); }
+.pecuaria-content .sanidade-lista .fin-tabela tbody tr:focus-within :is(td[data-fin-coluna="acoes"], td[data-fin-coluna="acao"]) { background: var(--fin-table-hover); }
 .sanidade-acao-encerrar:hover { border-color: var(--border); background: var(--muted); color: var(--foreground); }
 .sanidade-acao-anular:hover { border-color: var(--destructive); background: var(--fin-danger-bg); color: var(--destructive); }
