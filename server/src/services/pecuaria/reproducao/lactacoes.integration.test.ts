@@ -26,7 +26,7 @@ suite("lactação histórica sem fabricar parto", () => {
     await prisma.auditoriaPecuaria.deleteMany({ where: { propriedadeId: sitio } });
     if (animalId) {
       await prisma.lactacaoAnimal.deleteMany({ where: { animalId } });
-      await prisma.destinoAnimal.deleteMany({ where: { animalId } });
+      await prisma.finalidadeAnimal.deleteMany({ where: { animalId } });
       await prisma.localizacaoAnimal.deleteMany({ where: { animalId } });
       await prisma.animal.delete({ where: { id: animalId } });
     }

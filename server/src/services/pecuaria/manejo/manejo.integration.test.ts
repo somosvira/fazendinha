@@ -18,7 +18,7 @@ afterAll(async () => {
   await prisma.manejoAnimal.deleteMany({ where: { animalId: { in: animais } } });
   await prisma.pesagem.deleteMany({ where: { animalId: { in: animais } } });
   await prisma.requisicaoPecuaria.deleteMany({ where: { chave: { in: chaves } } });
-  await prisma.periodoReprodutivoAnimal.deleteMany({ where: { animalId: { in: animais } } }); await prisma.destinoAnimal.deleteMany({ where: { animalId: { in: animais } } });
+  await prisma.periodoReprodutivoAnimal.deleteMany({ where: { animalId: { in: animais } } }); await prisma.finalidadeAnimal.deleteMany({ where: { animalId: { in: animais } } });
   await prisma.localizacaoAnimal.deleteMany({ where: { animalId: { in: animais } } });
   await prisma.animal.deleteMany({ where: { id: { in: animais } } });
   await prisma.propriedade.deleteMany({ where: { id: { in: propriedades } } });

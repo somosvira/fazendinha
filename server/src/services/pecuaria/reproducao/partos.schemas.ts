@@ -35,7 +35,7 @@ function validarHorario(v: { ocorridoEm?: string | null; horarioEstimado?: boole
 export const partoAmpliadoSchema = z.object({
   chave: uuid, animalId: uuid, propriedadeId: z.number().int().positive(), data, ...campos,
   iniciarLactacao: z.boolean().default(false),
-  crias: z.array(z.object({ viva: z.boolean(), sexo: z.enum(["F", "M"]), aptidao: z.enum(["LEITE", "CORTE"]), brinco: z.string().trim().min(1).max(39).nullish(), nome: z.string().trim().max(120).nullish(), loteId: uuid.nullish(), pesoKg: peso.nullish() }).strict()).max(10).default([]),
+  crias: z.array(z.object({ viva: z.boolean(), sexo: z.enum(["F", "M"]), aptidao: z.enum(["LEITE", "CORTE", "REPRODUCAO"]), brinco: z.string().trim().min(1).max(39).nullish(), nome: z.string().trim().max(120).nullish(), loteId: uuid.nullish(), pesoKg: peso.nullish() }).strict()).max(10).default([]),
 }).strict().superRefine((v, ctx) => {
   validarHorario(v, ctx);
   if((v.desfecho==="ABORTO"||v.tipo==="ABORTO")&&(v.observacao?.trim().length??0)<5)ctx.addIssue({code:"custom",path:["observacao"],message:"Explique a observação e o contexto do aborto (ao menos 5 caracteres); a causa clínica pode ser desconhecida"});

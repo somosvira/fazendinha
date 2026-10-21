@@ -28,7 +28,7 @@ afterAll(async () => {
   await prisma.partidaProduto.deleteMany({ where: { produtoId: ids.produto, lotePrincipalId: { not: null } } });
   await prisma.partidaProduto.deleteMany({ where: { produtoId: ids.produto } });
   await prisma.produto.deleteMany({ where: { id: ids.produto } });
-  await prisma.periodoReprodutivoAnimal.deleteMany({ where: { animalId: ids.animal } }); await prisma.destinoAnimal.deleteMany({ where: { animalId: ids.animal } });
+  await prisma.periodoReprodutivoAnimal.deleteMany({ where: { animalId: ids.animal } }); await prisma.finalidadeAnimal.deleteMany({ where: { animalId: ids.animal } });
   await prisma.localizacaoAnimal.deleteMany({ where: { animalId: ids.animal } });
   await prisma.animal.deleteMany({ where: { id: ids.animal } });
   await prisma.tipoAplicacaoSanitaria.deleteMany({ where: { id: ids.tipo } });

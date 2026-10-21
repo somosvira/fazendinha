@@ -838,7 +838,7 @@ export async function criarPartoTx(
     });
   if (input.iniciarLactacao) {
     await conferirIntervaloLactacaoTx(tx, input.animalId, data, null);
-    const destino = await tx.destinoAnimal.findFirst({
+    const destino = await tx.finalidadeAnimal.findFirst({
       where: {
         animalId: input.animalId,
         desde: { lte: data },
@@ -847,7 +847,7 @@ export async function criarPartoTx(
     });
     if (destino?.aptidao !== "LEITE")
       erro(
-        "Início de lactação exige aptidão leiteira na data do parto",
+        "Início de lactação exige finalidade Leite na data do parto",
         "iniciarLactacao",
       );
     await tx.lactacaoAnimal.create({

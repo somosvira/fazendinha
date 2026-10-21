@@ -1,4 +1,4 @@
-// Planejamento de fechar/abrir LocalizacaoAnimal e DestinoAnimal (sem I/O).
+// Planejamento de fechar/abrir LocalizacaoAnimal e FinalidadeAnimal (sem I/O).
 
 export class MovimentacaoError extends Error {
   constructor(message: string) {
@@ -52,13 +52,13 @@ export function planejarMovimentacao(input: {
 }
 
 export interface DestinoAtual {
-  aptidao: "LEITE" | "CORTE";
+  aptidao: "LEITE" | "CORTE" | "REPRODUCAO";
   papelReprodutivo: "NENHUM" | "RECEPTORA" | "DOADORA" | null;
   desde: Date | string;
 }
 
 export interface DestinoNovo {
-  aptidao: "LEITE" | "CORTE";
+  aptidao: "LEITE" | "CORTE" | "REPRODUCAO";
   papelReprodutivo: "NENHUM" | "RECEPTORA" | "DOADORA" | null;
 }
 
@@ -67,7 +67,7 @@ export type PlanoDestino =
   | {
     tipo: "MOVER";
     fechar: { ate: Date | string } | null;
-    abrir: { aptidao: "LEITE" | "CORTE"; papelReprodutivo: "NENHUM" | "RECEPTORA" | "DOADORA" | null; desde: Date | string };
+    abrir: { aptidao: "LEITE" | "CORTE" | "REPRODUCAO"; papelReprodutivo: "NENHUM" | "RECEPTORA" | "DOADORA" | null; desde: Date | string };
   };
 
 // ---------- desfazer (localização ou destino, mesma forma) ----------

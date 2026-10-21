@@ -25,12 +25,12 @@ export function registrarLactacaoHistorica(
     if (inicio > hoje || (fim && (fim < inicio || fim > hoje)))
       erro("Informe um intervalo conhecido até a data atual", "inicio");
     await conferirMatrizTx(tx, input.animalId, input.propriedadeId, inicio);
-    const destino = await tx.destinoAnimal.findFirst({ where: {
+    const destino = await tx.finalidadeAnimal.findFirst({ where: {
       animalId: input.animalId, desde: { lte: inicio },
       OR: [{ ate: null }, { ate: { gt: inicio } }],
     } });
     if (destino?.aptidao !== "LEITE")
-      erro("Lactação exige aptidão leiteira na data do início", "inicio");
+      erro("Lactação exige finalidade Leite na data do início", "inicio");
     if (input.partoId) {
       const parto = await tx.partoAnimal.findFirst({ where: {
         id: input.partoId, animalId: input.animalId, status: "VALIDO", data: { lte: inicio },

@@ -53,7 +53,7 @@ function enumRotulo(mapa: Record<string, string>): Formatador {
 
 const ROTULO_SEXO: Record<string, string> = { F: "Fêmea", M: "Macho" };
 const ROTULO_ORIGEM_ANIMAL: Record<string, string> = { NASCIDO: "Nascido", COMPRADO: "Comprado" };
-const ROTULO_APTIDAO: Record<string, string> = { LEITE: "Leite", CORTE: "Corte" };
+const ROTULO_APTIDAO: Record<string, string> = { LEITE: "Leite", CORTE: "Corte", REPRODUCAO: "Reprodução" };
 const ROTULO_PAPEL_REPRODUTIVO: Record<string, string> = { NENHUM: "Nenhum", RECEPTORA: "Receptora", DOADORA: "Doadora" };
 const ROTULO_TIPO_PESAGEM: Record<string, string> = { NASCIMENTO: "Nascimento", ENTRADA: "Entrada", DESMAMA: "Desmama", ROTINA: "Rotina", SAIDA: "Saída" };
 const ROTULO_ORIGEM_PESAGEM: Record<string, string> = { MANUAL: "Manual", BALANCA: "Balança" };
@@ -146,8 +146,8 @@ const CAMPOS_POR_ENTIDADE: Record<string, Record<string, CampoConfig>> = {
     estornadaEm: { rotulo: "Estornada em", formatar: dataHora },
     estornoMotivo: { rotulo: "Motivo do estorno" },
   },
-  DestinoAnimal: {
-    aptidao: { rotulo: "Aptidão", formatar: enumRotulo(ROTULO_APTIDAO) },
+  FinalidadeAnimal: {
+    aptidao: { rotulo: "Finalidade", formatar: enumRotulo(ROTULO_APTIDAO) },
     papelReprodutivo: { rotulo: "Papel reprodutivo", formatar: enumRotulo(ROTULO_PAPEL_REPRODUTIVO) },
     desde: { rotulo: "Desde", formatar: data },
     ate: { rotulo: "Até", formatar: data },
@@ -228,7 +228,8 @@ function comoRegistro(v: unknown): Record<string, unknown> | null {
  * resumo textual (`resumoAuditoria`) já cobre esses casos.
  */
 export function diferencas(entidade: string, antes: unknown, depois: unknown, nomesRacas: Record<string, string> = {}, verValores = false): CampoAlteracao[] {
-  const campos = CAMPOS_POR_ENTIDADE[entidade];
+  // A renomeação da tabela não reescreve snapshots nem entidades já auditadas.
+  const campos = CAMPOS_POR_ENTIDADE[entidade === "DestinoAnimal" ? "FinalidadeAnimal" : entidade];
   if (!campos) return [];
   const registroAntes = comoRegistro(antes);
   const registroDepois = comoRegistro(depois);

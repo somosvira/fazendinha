@@ -169,7 +169,7 @@ async function prepararOrigem(tx: Prisma.TransactionClient, input: AplicacaoInpu
 export async function prepararAplicacaoTx(tx: Prisma.TransactionClient, input: AplicacaoInput, usuarioId: number | null, previa = false) {
     await travarAnimais(tx, [input.animalId]);
     const data = await conferirLocalizacao(tx, input);
-    const destino = await tx.destinoAnimal.findFirst({ where: { animalId: input.animalId, desde: { lte: data }, OR: [{ ate: null }, { ate: { gt: data } }] } });
+    const destino = await tx.finalidadeAnimal.findFirst({ where: { animalId: input.animalId, desde: { lte: data }, OR: [{ ate: null }, { ate: { gt: data } }] } });
     const tipoLegadoId = tipoAplicacaoLegadaId(input.finalidade);
     const tipoAplicacao = await tx.tipoAplicacaoSanitaria.findFirst({ where: {
       id: input.tipoAplicacaoId ?? tipoLegadoId, ativo: true } });
@@ -382,7 +382,7 @@ export async function corrigirCarencia(id: string, propriedadeId: number, input:
       if (!estado || (estado === "INFORMADO" ? horas == null || !Number.isInteger(horas) || horas < 0 : horas != null)) erro("Confira os estados e prazos de carência");
     }
     if (input.estadoCarenciaCarne === "NAO_APLICAVEL" && !input.justificativaCarenciaCarne?.trim()) erro("Justifique a não aplicabilidade para carne");
-    const destino = await tx.destinoAnimal.findFirst({ where: { animalId: original.animalId, ate: null } });
+    const destino = await tx.finalidadeAnimal.findFirst({ where: { animalId: original.animalId, ate: null } });
     const { motivo, ...dados } = input;
     const salva = await tx.aplicacaoProduto.update({ where: { id }, data: { ...dados, aptidaoCarenciaSnapshot: destino?.aptidao ?? original.aptidaoCarenciaSnapshot } });
     await auditar(tx, { entidade: "AplicacaoProduto", entidadeId: id, animalId: original.animalId, propriedadeId, acao: "CARENCIA_CORRIGIDA", usuarioId, antes: original, depois: { ...salva, motivo } });

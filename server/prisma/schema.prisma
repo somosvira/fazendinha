@@ -896,7 +896,7 @@ model Usuario {
   pecMovimentacoesCriadas     Movimentacao[]          @relation("MovimentacaoCriadoPor")
   pecCategoriasCriadas        CategoriaAnimal[]       @relation("CategoriaAnimalCriadoPor")
   pecCategoriasManuaisCriadas CategoriaManualAnimal[] @relation("CategoriaManualAnimalCriadoPor")
-  pecDestinosCriados          DestinoAnimal[]         @relation("DestinoAnimalCriadoPor")
+  pecFinalidadesCriadas       FinalidadeAnimal[]      @relation("FinalidadeAnimalCriadoPor")
   pecBaixasCriadas            BaixaAnimal[]           @relation("BaixaAnimalCriadoPor")
   pecMotivosBaixaCriados      MotivoBaixa[]           @relation("MotivoBaixaCriadoPor")
   pecVinculosPesagemPartoCriados VinculoPesagemParto[] @relation("VinculoPesagemPartoCriadoPor")
@@ -966,6 +966,7 @@ enum OrigemAnimal {
 enum AptidaoAnimal {
   LEITE
   CORTE
+  REPRODUCAO
 
   @@schema("pecuaria")
 }
@@ -1074,7 +1075,7 @@ model Animal {
   composicao                  ComposicaoRacial[]
   localizacoes                LocalizacaoAnimal[]
   papeisReprodutivos PeriodoReprodutivoAnimal[]
-  destinos                    DestinoAnimal[]
+  destinos                    FinalidadeAnimal[]
   baixas                      BaixaAnimal[]
   pesagens                    Pesagem[]
   movimentacoes               MovimentacaoAnimal[]
@@ -1387,9 +1388,9 @@ model MovimentacaoAnimal {
   @@schema("pecuaria")
 }
 
-// Para que o animal serve (aptidão + papel reprodutivo), com histórico. Mudar
-// qualquer um fecha a linha e abre outra.
-model DestinoAnimal {
+// Finalidade do animal, com histórico; mudar fecha a linha e abre outra.
+// O papel reprodutivo independente vem de PeriodoReprodutivoAnimal.
+model FinalidadeAnimal {
   id               String           @id @default(uuid())
   animalId         String
   animal           Animal           @relation(fields: [animalId], references: [id], onDelete: Restrict)
@@ -1398,7 +1399,7 @@ model DestinoAnimal {
   ate              DateTime?        @db.Date
   criadoEm         DateTime         @default(now())
   criadoPorId      Int?
-  criadoPor        Usuario?         @relation("DestinoAnimalCriadoPor", fields: [criadoPorId], references: [id])
+  criadoPor        Usuario?         @relation("FinalidadeAnimalCriadoPor", fields: [criadoPorId], references: [id])
   atualizadoEm     DateTime         @updatedAt
 
   baixasQueFecharam BaixaAnimal[] @relation("BaixaDestinoFechado")
@@ -1428,7 +1429,7 @@ model BaixaAnimal {
   localizacaoFechadaId    String?
   localizacaoFechada      LocalizacaoAnimal? @relation("BaixaLocalizacaoFechada", fields: [localizacaoFechadaId], references: [id], onDelete: SetNull)
   destinoFechadoId        String?
-  destinoFechado          DestinoAnimal?     @relation("BaixaDestinoFechado", fields: [destinoFechadoId], references: [id], onDelete: SetNull)
+  destinoFechado          FinalidadeAnimal?  @relation("BaixaDestinoFechado", fields: [destinoFechadoId], references: [id], onDelete: SetNull)
   criadoEm                DateTime           @default(now())
   criadoPorId             Int?
   criadoPor               Usuario?           @relation("BaixaAnimalCriadoPor", fields: [criadoPorId], references: [id])

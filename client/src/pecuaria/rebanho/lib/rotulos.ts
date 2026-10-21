@@ -4,6 +4,7 @@ import type { Aptidao, CategoriaDTO, ClasseMotivoBaixa, PapelReprodutivo, Situac
 export const ROTULO_APTIDAO: Record<Aptidao, string> = {
   LEITE: "Leite",
   CORTE: "Corte",
+  REPRODUCAO: "Reprodução",
 };
 
 export const ROTULO_PAPEL_REPRODUTIVO: Record<PapelReprodutivo, string> = {

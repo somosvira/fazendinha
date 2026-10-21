@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 660" role="img" aria-labelledby="titulo descricao">
+<title id="titulo">Banco de dados da classificação Finalidade</title>
+<desc id="descricao">Animal tem muitos períodos em FinalidadeAnimal e PeriodoReprodutivoAnimal. FinalidadeAnimal usa o enum AptidaoAnimal, agora com REPRODUCAO. AuditoriaPecuaria registra antes e depois por referências lógicas. Linhas contínuas são chaves estrangeiras; tracejadas são referências sem chave estrangeira.</desc>
+<style>text{font-family:system-ui,sans-serif;fill:#233c33;font-size:15px}.titulo{font-size:19px;font-weight:600}.mono{font-family:ui-monospace,monospace;font-size:14px}.nota{font-size:13px;fill:#51665e}.caixa{fill:#fff;stroke:#b8c9c0;stroke-width:1.3}.cab{fill:#e7f0e9}.novo{fill:#f8edcb}.fk{fill:none;stroke:#527768;stroke-width:2}.logico{fill:none;stroke:#70837b;stroke-width:1.5;stroke-dasharray:7 5}.tipo{fill:none;stroke:#9b7531;stroke-width:1.5;stroke-dasharray:2 4}</style>
+<rect width="1240" height="660" fill="#f5f8f4" rx="12"/>
+<g>
+<rect class="caixa" x="22" y="26" width="274" height="146" rx="8"/><path class="cab" d="M30 26H288Q296 26 296 34V67H22V34Q22 26 30 26"/>
+<text class="titulo" x="38" y="53">AptidaoAnimal</text><text class="nota" x="38" y="88">ENUM · schema pecuaria · não é tabela</text>
+<text class="mono" x="38" y="113">LEITE · CORTE</text><rect class="novo" x="31" y="124" width="256" height="34" rx="4"/><text class="mono" x="38" y="147">+ REPRODUCAO (única adição)</text>
+<rect class="caixa" x="22" y="265" width="274" height="164" rx="8"/><path class="cab" d="M30 265H288Q296 265 296 273V306H22V273Q22 265 30 265"/>
+<text class="titulo" x="38" y="293">Animal</text><text class="mono" x="38" y="333">id: text · PK</text><text class="mono" x="38" y="360">brinco, nome, sexo…</text><text class="nota" x="38" y="390">Identidade do indivíduo.</text><text class="nota" x="38" y="412">Finalidade não é coluna de Animal.</text>
+<rect class="caixa" x="400" y="26" width="382" height="244" rx="8"/><path class="cab" d="M408 26H774Q782 26 782 34V67H400V34Q400 26 408 26"/>
+<text class="titulo" x="416" y="53">FinalidadeAnimal</text><text class="mono" x="416" y="95">id: text · PK</text><text class="mono" x="416" y="122">animalId: text · FK → Animal.id</text><text class="mono" x="416" y="149">aptidao: AptidaoAnimal · obrigatório</text><text class="mono" x="416" y="176">desde: date · ate: date ou NULL</text><text class="mono" x="416" y="203">criadoPorId: int · FK → Usuario.id</text><text class="nota" x="416" y="232">UNIQUE (animalId) WHERE ate IS NULL</text><text class="nota" x="416" y="253">Um período aberto por animal.</text>
+<rect class="caixa" x="400" y="366" width="382" height="260" rx="8"/><path class="cab" d="M408 366H774Q782 366 782 374V407H400V374Q400 366 408 366"/>
+<text class="titulo" x="416" y="393">PeriodoReprodutivoAnimal</text><text class="mono" x="416" y="435">id: text · PK</text><text class="mono" x="416" y="462">animalId: text · FK → Animal.id</text><text class="mono" x="416" y="489">tipo: text · CHECK de papéis</text><text class="mono" x="416" y="516">inicio / fim: date</text><text class="mono" x="416" y="543">destinoOrigemId: text · UNIQUE</text><text class="mono" x="416" y="570">revogadoEm: timestamp ou NULL</text><text class="nota" x="416" y="597">NENHUM / RECEPTORA / DOADORA</text><text class="nota" x="416" y="618">Papel independente da finalidade.</text>
+<rect class="caixa" x="890" y="175" width="328" height="285" rx="8"/><path class="cab" d="M898 175H1210Q1218 175 1218 183V216H890V183Q890 175 898 175"/>
+<text class="titulo" x="906" y="202">AuditoriaPecuaria</text><text class="mono" x="906" y="245">id: text · PK</text><text class="mono" x="906" y="272">entidade / entidadeId: text</text><text class="mono" x="906" y="299">animalId: text ou NULL</text><text class="mono" x="906" y="326">acao: text</text><text class="mono" x="906" y="353">antes / depois: jsonb</text><text class="mono" x="906" y="380">em: timestamp</text><text class="mono" x="906" y="407">usuarioId: int · FK → Usuario</text><text class="nota" x="906" y="437">animalId e entidadeId não são FKs.</text>
+</g>
+<path class="tipo" d="M296 139H340V149H400"/><text class="nota" x="310" y="119">tipo</text>
+<path class="fk" d="M296 321H347V122H400"/><text class="nota" x="308" y="291">1 : 0..N</text>
+<path class="fk" d="M296 373H347V462H400"/><text class="nota" x="300" y="488">1 : 0..N</text>
+<path class="logico" d="M591 270V366"/><text class="nota" x="466" y="308">Proveniência da mudança de papel</text><text class="nota" x="491" y="330">referência lógica · sem FK</text>
+<path class="logico" d="M782 95H841V272H890"/><text class="nota" x="800" y="78">entidadeId</text>
+<text class="nota" x="33" y="548">Linha contínua: FK real.</text><text class="nota" x="33" y="572">Tracejado: vínculo lógico da aplicação.</text><text class="nota" x="33" y="596">Pontilhado: tipo da coluna.</text><text class="nota" x="33" y="620">IDs são text; UUID é o formato gerado.</text>
+<text class="nota" x="890" y="510">Recorte da classificação.</text><text class="nota" x="890" y="534">Outras relações foram omitidas.</text><text class="nota" x="890" y="558">Mesmos registros, IDs e relações.</text><text class="nota" x="890" y="582">Renomeada de DestinoAnimal.</text><text class="nota" x="890" y="606">em 21/10/2026.</text>
+</svg>

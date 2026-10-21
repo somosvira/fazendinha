@@ -4,6 +4,7 @@ import { formatarDataBR, formatarIdade, motivoAceito, rotuloAptidao, rotuloClass
 describe("rotulos", () => {
   it("traduz aptidão, papel reprodutivo, situação e tipo de baixa", () => {
     expect(rotuloAptidao("LEITE")).toBe("Leite");
+    expect(rotuloAptidao("REPRODUCAO")).toBe("Reprodução");
     expect(rotuloAptidao(null)).toBe("—");
     expect(rotuloPapelReprodutivo("RECEPTORA")).toBe("Receptora");
     expect(rotuloPapelReprodutivo("NENHUM")).toBe("—");
