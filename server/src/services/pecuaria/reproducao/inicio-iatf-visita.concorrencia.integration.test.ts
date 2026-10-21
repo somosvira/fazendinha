@@ -36,7 +36,6 @@ async function limparFixture(f: Fixture) {
     await tx.tarefaProtocolo.deleteMany({ where: { execucaoId: { in: participacoes.map(p => p.id) } } });
     await tx.participacaoProtocolo.deleteMany({ where: { id: { in: participacoes.map(p => p.id) } } });
     await tx.programacaoProtocolo.deleteMany({ where: { propriedadeId: f.sitio.id, protocoloId: f.protocolo.id } });
-    await tx.etapaProtocolo.deleteMany({ where: { protocoloId: f.protocolo.id } });
     await tx.protocolo.delete({ where: { id: f.protocolo.id } });
     await tx.localizacaoAnimal.deleteMany({ where: { animalId: { in: animaisIds }, propriedadeId: f.sitio.id } });
     await tx.animal.deleteMany({ where: { id: { in: animaisIds } } });

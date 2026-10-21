@@ -103,14 +103,13 @@ comBanco("IATF data/hora independentes no banco de desenvolvimento", () => {
     await prisma.tarefaProtocolo.deleteMany({where:{execucao:{animalId:{in:animais}}}});
     await prisma.participacaoProtocolo.deleteMany({where:{animalId:{in:animais}}});
     await prisma.programacaoProtocolo.deleteMany({where:{propriedadeId:sitio}});
-    await prisma.etapaProtocolo.deleteMany({where:{protocoloId:{in:protocolos}}});
     await prisma.protocolo.deleteMany({where:{id:{in:protocolos}}});
     await prisma.materialGenetico.deleteMany({where:{produtoId:{in:produtos}}});
     if(genitorId)await prisma.genitorExterno.delete({where:{id:genitorId}});
     await limparMovimentosValorizadosFixture(produtos);
     await prisma.produto.deleteMany({where:{id:{in:produtos}}});
     if(tipoId)await prisma.tipoAplicacaoSanitaria.delete({where:{id:tipoId}});
-    await prisma.destinoAnimal.deleteMany({where:{animalId:{in:animais}}});
+    await prisma.finalidadeAnimal.deleteMany({where:{animalId:{in:animais}}});
     await prisma.localizacaoAnimal.deleteMany({where:{animalId:{in:animais}}});
     await prisma.animal.deleteMany({where:{id:{in:animais}}});
     await prisma.propriedade.delete({where:{id:sitio}});

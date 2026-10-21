@@ -5,6 +5,7 @@ import { Iatf } from './Iatf';
 import { reqV4 } from './api';
 import { setPropriedadeAtiva } from '../../../propriedadeScope';
 
+vi.mock("../protocolos/cadastros-api", () => ({ listarCadastrosProtocolos: vi.fn().mockResolvedValue({ itens: [], total: 0, pagina: 1, porPagina: 10 }) }));
 vi.mock('./api', () => ({ reqV4: vi.fn() }));
 vi.mock('../../../estoque/api', () => ({ listarProdutos: vi.fn().mockResolvedValue([]) }));
 vi.mock('../api', () => ({ listarMaterialGenetico: vi.fn().mockResolvedValue([]) }));
@@ -61,14 +62,10 @@ it('regularização usa o mesmo sítio explícito dos custos e do programa', asy
   expect(await screen.findByTestId('regularizacao-sitio')).toHaveProperty('textContent', '7');
 });
 
-it('execução transmite sítio explícito também no header da API', async () => {
-  const iniciado = { ...programa, participantes: programa.participantes.map(p => ({ ...p, inicioEfetivo: '2026-10-01T00:00:00Z' })) };
-  vi.mocked(reqV4).mockImplementation(async path => path.includes('/programacoes/programa') ? iniciado : path.includes('/programacoes') ? [iniciado] : []);
-  render(<Iatf propriedadeId={7} podeLancar painel={{ animais: [], tentativas: [], avaliacoes: [], partos: [], restricoes: [] }} />);
+it('atendimento comum recebe o sítio explícito da programação', async () => {
+  render(<Iatf propriedadeId={7} podeLancar />);
   fireEvent.click((await screen.findAllByRole('button', { name: /Turma QA/ }))[0]);
   fireEvent.click(await screen.findByRole('button', { name: 'Atender' }));
-  fireEvent.change(screen.getByLabelText('Data realizada'), { target: { value: '2026-10-02' } });
-  await waitFor(() => expect(screen.getByRole('button', { name: 'Continuar' })).toHaveProperty('disabled', false));
-  fireEvent.click(screen.getByRole('button', { name: 'Continuar' }));
-  await waitFor(() => expect(reqV4).toHaveBeenCalledWith('/reproducao/tarefas-iatf/tarefa/execucao', expect.objectContaining({ propriedadeId: 7 }), 'POST', 7));
+  expect(await screen.findByRole('heading', { name: /Registrar manejo protocolar/i })).toBeTruthy();
+  expect(screen.queryByRole('heading', { name: 'Executar Manejo' })).toBeNull();
 });

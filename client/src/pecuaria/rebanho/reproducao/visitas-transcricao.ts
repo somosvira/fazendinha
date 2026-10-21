@@ -15,7 +15,7 @@ export function dadosConfirmacaoVisita(
   tipo: TipoAtividade,
   r: RascunhoVisita,
 ): Record<string, unknown> {
-  if (r.status === "ADIADO" || r.status === "NAO_ATENDIDO") return {};
+  if (r.status === "ADIADO" || r.status === "NAO_ATENDIDO") return r.status === "ADIADO" && r.previstaPara ? { previstaPara: momentoBR(r.previstaPara) } : {};
   const { status: _status, dados, inicioEfetivo, realizadaEm, ...campos } = r;
   if (tipo === "TAREFA_IATF")
     return {

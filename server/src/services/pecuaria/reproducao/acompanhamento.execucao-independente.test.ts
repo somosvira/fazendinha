@@ -52,11 +52,16 @@ function fixture() {
     return { ...exame, ...exame.interpretacao, resultado: "RECONFIRMACAO", gestacaoId,
       gestacaoCriada: false, conduta: null, sexoFetal: null };
   };
+  const tarefaComum=()=>({...tarefa,execucaoId:participacao.id,etapaId:uid(14),previstaPara:tarefa.previstaEm,parametros:tarefa.planejadoSnapshot,
+    etapa:{id:uid(14),tipo:"EXAME",configuracao:{tipo:"AVALIACAO"}},
+    execucao:{...participacaoComum,canceladaEm:null,operacaoServicoId:null,protocolo:{tipo:"REPRODUTIVO",versao:1}},
+    vinculos:[],aplicacoes:[],exames:[],tentativas:[],manejos:[]});
   const db = {
     $executeRaw: vi.fn().mockResolvedValue(1), $queryRaw: vi.fn().mockResolvedValue([]),
     animal: { findMany: vi.fn().mockResolvedValue(animais) }, localizacaoAnimal: { findMany: vi.fn().mockResolvedValue(locais) },
     partoAnimal: vazios(), tentativaReprodutiva: vazios(), lactacaoAnimal: vazios(), situacaoInicialReprodutiva: vazios(),
-    restricaoReprodutiva: vazios(), categoriaAnimal: vazios(), categoriaManualAnimal: vazios(), destinoAnimal: vazios(),
+    materialGenetico:vazios(),produto:vazios(),itemOperacao:vazios(),
+    restricaoReprodutiva: vazios(), categoriaAnimal: vazios(), categoriaManualAnimal: vazios(), finalidadeAnimal: vazios(),
     ocorrenciaSanitaria: vazios(), regraSanitariaReprodutiva: vazios(), periodoReprodutivoAnimal: vazios(),
     gestacaoAnimal: { findMany: vi.fn().mockResolvedValue([gestacao]), findFirst: vi.fn().mockResolvedValue(gestacao) },
     tipoExame: { findUnique: vi.fn().mockResolvedValue(tipo) },
@@ -85,12 +90,11 @@ function fixture() {
       findUniqueOrThrow: vi.fn(async ({ where }) => avaliacao(where.id)),
     },
     interpretacaoReprodutiva: { findUniqueOrThrow: vi.fn(async ({ where }) => exames.find(e => e.interpretacao.id === where.id)!.interpretacao) },
-    tarefaIatf: { findUnique: vi.fn(async () => tarefa), findUniqueOrThrow: vi.fn(async () => tarefa), findMany: vi.fn().mockResolvedValue([]) },
+    tarefaIatf: { findUnique: vi.fn(async () => tarefa), findUniqueOrThrow: vi.fn(async () => ({...tarefa,avaliacaoId:exames.find(e=>e.tarefaId===tarefa.id)?.interpretacao.id??null})), findMany: vi.fn().mockResolvedValue([]) },
     participacaoProtocolo: { findFirst: vi.fn().mockResolvedValue(participacaoComum), findUniqueOrThrow: vi.fn().mockResolvedValue(participacaoComum) },
     participanteIatf: { findUniqueOrThrow: vi.fn().mockResolvedValue(participacao) }, programacaoIatf: { findFirst: vi.fn().mockResolvedValue(programa) },
-    tarefaProtocolo: { findFirst: vi.fn(async ({ where }) => ({ id: where.OR[0].id })),
-      findUniqueOrThrow: vi.fn(async () => ({ ...tarefa, execucaoId: participacao.id, etapa: { tipo: "EXAME" }, execucao: participacaoComum,
-        vinculos: [], aplicacoes: [], exames: [], tentativas: [] })),
+    tarefaProtocolo: { findFirst: vi.fn(async ({ where }) => ({ id: where.OR[0].id })),findMany:vi.fn(async()=>[tarefaComum()]),
+      findUniqueOrThrow: vi.fn(async () => tarefaComum()),
       update: vi.fn(async ({ data: atualizacao }) => { Object.assign(tarefa, atualizacao); return tarefa; }) },
     vinculoTarefaProtocolo: { findMany: vi.fn().mockResolvedValue([]), updateMany: vi.fn(), create: vi.fn(async ({ data: entrada }) => entrada) },
     auditoriaPecuaria: { create: vi.fn(async ({ data: entrada }) => entrada) },

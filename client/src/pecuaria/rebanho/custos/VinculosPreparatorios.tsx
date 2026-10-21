@@ -1,3 +1,4 @@
+import { Paginacao } from "../ui";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "../../../financeiro/financeiro-ui";
 import { classeInput } from "../../../financeiro/PainelCadastro";
@@ -5,6 +6,7 @@ import { escreverCustos, obterPreparatorios, type CustosDTO } from "./api";
 
 type Candidato = Awaited<ReturnType<typeof obterPreparatorios>>["itens"][number];
 type Props = {
+  aoMudarPaginaVinculos?:(pagina:number)=>void;
   dados: CustosDTO | null;
   visivel: boolean;
   propriedadeId: number;
@@ -18,8 +20,9 @@ type Props = {
   gravar: (acao: () => Promise<unknown>) => Promise<void>;
 };
 
-export function VinculosPreparatorios({ dados, visivel, propriedadeId, tentativaId, chave, ocupado, motivo, aoMudarMotivo, aoAlterar, aoErro, gravar }: Props) {
+export function VinculosPreparatorios({ dados, aoMudarPaginaVinculos,visivel, propriedadeId, tentativaId, chave, ocupado, motivo, aoMudarMotivo, aoAlterar, aoErro, gravar }: Props) {
   const [candidatos, setCandidatos] = useState<Candidato[]>([]);
+  const [paginada,setPaginada]=useState({total:0,pagina:1,porPagina:10});
   const [preparo, setPreparo] = useState("");
   const [modo, setModo] = useState("INTEGRAL");
   const [material, setMaterial] = useState("");
@@ -27,11 +30,11 @@ export function VinculosPreparatorios({ dados, visivel, propriedadeId, tentativa
   const sequencia = useRef(0);
   useEffect(() => () => { sequencia.current++; }, []);
 
-  async function carregarPreparos() {
+  async function carregarPreparos(pagina=1) {
     const pedido = ++sequencia.current;
     try {
-      const r = await obterPreparatorios(tentativaId, propriedadeId);
-      if (pedido === sequencia.current) setCandidatos(r.itens);
+      const r = await obterPreparatorios(tentativaId, propriedadeId,pagina);
+      if (pedido === sequencia.current) {setCandidatos(r.itens);setPaginada({total:r.total??r.itens.length,pagina:r.pagina??1,porPagina:r.porPagina??10});setPreparo("");}
     } catch (e) {
       if (pedido === sequencia.current) aoErro(e instanceof Error ? e.message : String(e));
     }
@@ -49,6 +52,7 @@ export function VinculosPreparatorios({ dados, visivel, propriedadeId, tentativa
       <label>Preparatório<select required className={classeInput} value={preparo} onChange={e => setPreparo(e.target.value)}>
         <option value="">Selecione um fato realizado</option>{candidatos.map(f => <option key={`${f.tipo}:${f.id}`} value={`${f.tipo}:${f.id}`}>{f.data} · {f.descricao}</option>)}
       </select></label>
+      <Paginacao paginaAtual={paginada.pagina} totalPaginas={Math.max(1,Math.ceil(paginada.total/10))} totalItens={paginada.total} itensPorPagina={10} onPaginaChange={p=>void carregarPreparos(p)} rotulo="candidatos" idSelect="custos-candidatos-preparo"/>
       <label>Atribuição<select className={classeInput} value={modo} onChange={e => setModo(e.target.value)}>
         <option value="INTEGRAL">Integral, exclusiva desta tentativa</option><option value="PARCELA">Parcelas explícitas compartilhadas</option>
       </select></label>
@@ -70,5 +74,6 @@ export function VinculosPreparatorios({ dados, visivel, propriedadeId, tentativa
         void gravar(() => escreverCustos(`/preparatorios/${v.id}/encerramento`, { chave, propriedadeId, motivo }, propriedadeId));
       }}>Encerrar vínculo com motivo</Button>
     </div>))}
+    {dados.atribuicoesPaginadas&&aoMudarPaginaVinculos&&<Paginacao paginaAtual={dados.atribuicoesPaginadas.pagina} totalPaginas={Math.max(1,Math.ceil(dados.atribuicoesPaginadas.total/10))} totalItens={dados.atribuicoesPaginadas.total} itensPorPagina={10} onPaginaChange={aoMudarPaginaVinculos} rotulo="vínculos" idSelect="custos-vinculos-preparo"/>}
   </details>;
 }

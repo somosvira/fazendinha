@@ -36,6 +36,7 @@ function criarTx() {
     animal: { findFirst: vi.fn().mockResolvedValue({ id: ids.animal }) },
     tentativaReprodutiva: { findFirst: vi.fn().mockResolvedValue({ id: ids.tentativa }), findMany: vi.fn().mockImplementation(async q => selecionar(tentativas,q)) },
     aplicacaoProduto: { findMany: vi.fn().mockImplementation(async q => selecionar(aplicacoes,q)) },
+    manejoAnimal: {findMany:vi.fn().mockResolvedValue([])},
     exameAnimal: { findMany: vi.fn().mockResolvedValue([]) },
     participacaoProtocolo: { findFirst: vi.fn().mockResolvedValue({ id: ids.protocolo }), findMany: vi.fn().mockResolvedValue([]) },
     programacaoProtocolo: { findFirst: vi.fn().mockResolvedValue({ id: uid(11) }) },

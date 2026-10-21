@@ -1,12 +1,14 @@
 import { z } from "zod";
 import { dataOuHorario } from "../reproducao/schemas.js";
-export const situacaoOperacaoSchema = z.enum(["ATENDIDO", "NAO_ATENDIDO", "SEM_REGISTRO", "ADIADO", "PREVISTO", "REGULARIZACAO_PENDENTE", "DISPENSADO", "RETIRADO", "ENCERRADO", "PENDENTES", "ATRASADAS"]);
+export const situacaoOperacaoSchema = z.enum(["ATENDIDO", "NAO_ATENDIDO", "SEM_REGISTRO", "ADIADO", "PREVISTO", "REGULARIZACAO_PENDENTE", "DISPENSADO", "RETIRADO", "ENCERRADO", "PENDENTES", "ATRASADAS", "ACOMPANHAMENTO_PENDENTE"]);
 export const consultaOperacaoSchema = z.object({
+  referenciasPagina: z.coerce.number().int().min(1).max(100000).optional(),
   pagina: z.coerce.number().int().min(1).max(100000).default(1),
   porPagina: z.coerce.number().int().min(1).max(10).default(10),
   busca: z.string().trim().max(160).optional(),
   situacao: situacaoOperacaoSchema.optional(),
   etapaId: z.string().uuid().optional(),
+  momentoId: z.union([z.string().uuid(), z.literal("SEM_MOMENTO")]).optional(),
 }).strict();
 export type ConsultaOperacao = z.infer<typeof consultaOperacaoSchema>;
 export type ContextoOperacao = { programacaoId: string; participacaoId?: never } | { participacaoId: string; programacaoId?: never };
@@ -16,7 +18,7 @@ export const previaParticipacaoIndividualSchema = z.object({
   pagina:z.number().int().positive().default(1),porPagina:z.number().int().min(1).max(10).default(10),
 }).strict();
 export const listaOperacaoSchema = consultaOperacaoSchema.pick({pagina:true,porPagina:true,busca:true}).extend({
-  animalId:z.string().uuid().optional(),tipo:z.enum(["SANITARIO","REPRODUTIVO"]).optional(),
+  programacaoId:z.string().uuid().optional(),animalId:z.string().uuid().optional(),tipo:z.enum(["SANITARIO","REPRODUTIVO"]).optional(),
 });
 export type ListaOperacao = z.infer<typeof listaOperacaoSchema>;
 export const consultaVersoesOperacaoSchema = consultaOperacaoSchema.pick({pagina:true,porPagina:true,busca:true}).extend({

@@ -1,3 +1,4 @@
+import { Paginacao } from "../ui";
 import { LinkInterno } from "../../../components/LinkInterno";
 import { linkOperacaoFinanceira } from "../../../financeiro/navegacao";
 import { Button, brl } from "../../../financeiro/financeiro-ui";
@@ -11,6 +12,7 @@ const rotulos: Record<string, string> = {
 };
 
 function linkFato(c: Componente, propriedadeId: number) {
+  if (c.tipoFonte === "MANEJO") return `/pecuaria/rebanho/animais/${encodeURIComponent(c.animalId)}`;
   if (c.tipoFonte === "NUTRICAO") return `/pecuaria/rebanho/animais/${encodeURIComponent(c.animalId)}#nutricao`;
   const query = new URLSearchParams({ animalId: c.animalId, propriedadeId: String(propriedadeId) });
   if (c.tipoFonte === "TENTATIVA") {
@@ -23,6 +25,7 @@ function linkFato(c: Componente, propriedadeId: number) {
 }
 
 type Props = {
+  aoMudarPaginaPreparos?:(pagina:number)=>void;
   dados: CustosDTO;
   propriedadeId: number;
   porAnimal: boolean;
@@ -32,7 +35,7 @@ type Props = {
   aoMudarPagina: (pagina: number) => void;
 };
 
-export function ResumoCustosDiretos({ dados, propriedadeId, porAnimal, tentativaId, comRecorte, pagina, aoMudarPagina }: Props) {
+export function ResumoCustosDiretos({ dados, aoMudarPaginaPreparos,propriedadeId, porAnimal, tentativaId, comRecorte, pagina, aoMudarPagina }: Props) {
   const vazio = dados.totalComponentes === 0 && dados.situacao !== "OCULTO";
   return <>
     <div className={`rounded-lg border p-4 ${dados.situacao === "OCULTO" ? "border-amber-200 bg-amber-50/50" : "border-border bg-muted/30"}`}>
@@ -65,13 +68,15 @@ export function ResumoCustosDiretos({ dados, propriedadeId, porAnimal, tentativa
       <span>Página {pagina} · {dados.totalComponentes} componentes</span>
       <Button secondary disabled={pagina * dados.limite >= dados.totalComponentes} onClick={() => aoMudarPagina(pagina + 1)}>Próxima</Button>
     </nav>}
-    {dados.atribuicoesPreparos.some(a => a.aAtribuir) && !tentativaId && <section className="space-y-2 rounded-lg border border-border p-3" aria-label="Preparatórios a atribuir">
+    {(dados.atribuicoesPaginadas?.total || dados.atribuicoesPreparos.some(a => a.aAtribuir)) && !tentativaId && <section className="space-y-2 rounded-lg border border-border p-3" aria-label="Preparatórios a atribuir">
       <h4 className="font-semibold">Preparatórios a atribuir</h4>
       <p className="text-xs text-ink-3">O custo permanece nesta visão do protocolo/animal até a atribuição.</p>
       <dl className="divide-y divide-border">{dados.atribuicoesPreparos.filter(a => a.aAtribuir).map(a => <div key={`${a.tipo}:${a.fonteId}`} className="grid gap-1 py-2 text-sm sm:grid-cols-2">
         <dt>{descricaoCusto(a.descricao)}</dt>
         <dd>{dados.situacao === "OCULTO" ? "Valores ocultos" : a.parcelas.filter(p => p.restante != null && Number(p.restante) > 0).map(p => `${p.natureza === "MATERIAL" ? "Material" : "Serviço"}: ${brl(Number(p.restante))} a atribuir`).join(" · ") || "Valor pendente de comprovação ou atribuição"}</dd>
       </div>)}</dl>
+      {!dados.atribuicoesPreparos.some(a=>a.aAtribuir)&&<p>Nenhum preparatório pendente nesta página.</p>}
+      {dados.atribuicoesPaginadas&&aoMudarPaginaPreparos&&<Paginacao paginaAtual={dados.atribuicoesPaginadas.pagina} totalPaginas={Math.max(1,Math.ceil(dados.atribuicoesPaginadas.total/10))} totalItens={dados.atribuicoesPaginadas.total} itensPorPagina={10} onPaginaChange={aoMudarPaginaPreparos} rotulo="preparatórios" idSelect="custos-preparos-pagina"/>}
     </section>}
     <p className="text-xs text-ink-3">{dados.limitacoes.join(". ")}</p>
   </>;

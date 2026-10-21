@@ -1,3 +1,4 @@
+import { associarMomentosAcoesTx, snapshotMomento } from "./momentos.js";
 import { reservarVersaoTx } from "./versoes.js";
 import { vincularFatoTarefaTx, encerrarVinculoAtualTx } from "./vinculos.js";
 import { Prisma, type ProtocoloIatf, type ProgramacaoIatf, type ParticipanteIatf, type TarefaIatf } from "@prisma/client";
@@ -25,6 +26,7 @@ export async function criarProtocoloReprodutivoTx(tx: Tx, { data }: { data: Dado
   const versao = await reservarVersaoTx(tx, "REPRODUTIVO", data.nome.trim(), data.versao);
   const p = await tx.protocolo.create({ data: { id: data.id, tipo: "REPRODUTIVO", nome: data.nome.trim(), descricao: data.descricao, versao,
     publicado: false, referenciaTecnica:data.referenciaTecnica, criadoEm: data.criadoEm, criadoPorId: data.criadoPorId, etapas: { create: etapas } } });
+  await associarMomentosAcoesTx(tx, p.id, Array.isArray(data.etapas) ? data.etapas.map(e => { const { referencias: _referencias, ...campos } = e as Record<string, Prisma.InputJsonValue>; return etapaIatfSchema.parse(campos); }) : []);
   if (data.publicado) await tx.protocolo.update({ where: { id: p.id }, data: { publicado: true, publicadoEm: new Date() } });
   return tx.protocoloIatf.findUniqueOrThrow({ where: { id: p.id } });
 }
@@ -97,9 +99,9 @@ type DadosTarefa = Pick<TarefaIatf, "participanteId" | "etapa" | "tipo" | "nome"
 async function prepararTarefaTx(tx: Tx, data: DadosTarefa): Promise<Prisma.TarefaProtocoloUncheckedCreateInput> {
   const execucaoId = await resolverIdReprodutivoTx(tx, "participacao", data.participanteId);
   const participante = await tx.participacaoProtocolo.findUniqueOrThrow({ where: { id: execucaoId } });
-  const etapa = await tx.etapaProtocolo.findUniqueOrThrow({ where: { protocoloId_ordem: { protocoloId: participante.protocoloId, ordem: data.etapa + 1 } } });
+  const etapa = await tx.etapaProtocolo.findUniqueOrThrow({ where: { protocoloId_ordem: { protocoloId: participante.protocoloId, ordem: data.etapa + 1 } }, include: { momento: true } });
   if (etapa.tipo !== (data.tipo === "AVALIACAO" ? "EXAME" : data.tipo)) throw new RebanhoError("CONFLITO", "A tarefa não corresponde à ação da etapa");
-  return dadosTarefaProtocolo(data, execucaoId, etapa.id);
+  return { ...dadosTarefaProtocolo(data, execucaoId, etapa.id), momentoSnapshot: snapshotMomento(etapa.momento) };
 }
 function dadosTarefaProtocolo(data: DadosTarefa, execucaoId: string, etapaId: string): Prisma.TarefaProtocoloUncheckedCreateInput {
   return { id: data.id, nomeSnapshot: data.nome, execucaoId, etapaId, previstaPara: data.previstaEm, previsaoOriginal: data.previsaoOriginal,
@@ -118,12 +120,12 @@ export async function criarTarefaReprodutivaTx(tx: Tx, { data }: { data: DadosTa
 export async function criarTarefasReprodutivasTx(tx: Tx, { data }: { data: DadosTarefa[] }) {
   if (data.some(t => t.aplicacaoId || t.avaliacaoId || t.tentativaId || t.exameId)) throw new RebanhoError("VALIDACAO", "O planejamento coletivo não vincula fatos realizados");
   const ids = [...new Set(data.map(t => t.participanteId))];
-  const participantes = await tx.participacaoProtocolo.findMany({ where: { protocolo: { tipo: "REPRODUTIVO" }, OR: [{ id: { in: ids } }, { legadoIatfId: { in: ids } }] }, include: { protocolo: { include: { etapas: true } } } });
+  const participantes = await tx.participacaoProtocolo.findMany({ where: { protocolo: { tipo: "REPRODUTIVO" }, OR: [{ id: { in: ids } }, { legadoIatfId: { in: ids } }] }, include: { protocolo: { include: { etapas: { include: { momento: true } } } } } });
   const tarefas = data.map(t => {
     const p = participantes.find(p => p.id === t.participanteId || p.legadoIatfId === t.participanteId);
     const etapa = p?.protocolo.etapas.find(e => e.ordem === t.etapa + 1);
     if (!p || !etapa || etapa.tipo !== (t.tipo === "AVALIACAO" ? "EXAME" : t.tipo)) throw new RebanhoError("CONFLITO", "Etapa incompatível com a participação planejada");
-    return dadosTarefaProtocolo(t, p.id, etapa.id);
+    return { ...dadosTarefaProtocolo(t, p.id, etapa.id), momentoSnapshot: snapshotMomento(etapa.momento) };
   });
   return tx.tarefaProtocolo.createMany({ data: tarefas });
 }

@@ -1,7 +1,10 @@
+import { validarReferenciasCusto } from "../custos/referencias-planejadas.js";
+import { executarManejoDaTarefaIatfTx } from "../protocolos/execucao.manejos.js";
+import { associarMomentosAcoesTx } from "../protocolos/momentos.js";
 import { impactosInicioLegado } from "../protocolos/inicio-legado.calc.js";
 import crypto from "node:crypto";
 import { registrarEventoTarefaTx } from "../protocolos/eventos.js";
-import { reconciliarDemandasAnimalTx } from "./acompanhamento.js";
+import { garantirDemandaProtocoloTx, reconciliarDemandasAnimalTx } from "./acompanhamento.js";
 import { lerDataIatf, diaIatf, anteriorIatf, serializarDataIatf, type PrecisaoIatf } from "./horarios.calc.js";
 import { conferirFormatoReprodutivo } from "../exames/formatos.js";
 import { TIPO_EXAME_REPRODUTIVO } from "../exames/evidencia-reprodutiva.js";
@@ -45,8 +48,9 @@ import {
 import { travarUsosProduto } from "../../estoque/usos.js";
 import { converterQuantidade } from "../../estoque/unidades.js";
 import { operacaoIdempotenteTx } from "./operacoes.js";
+import { condicaoSituacaoTarefa } from "../protocolos/situacao.js";
 import { exigeMotivoExecucao } from "../desvios.calc.js";
-const exameDaTarefaSchema = executarExameEtapaSchema.omit({ tipo: true, tarefaId: true }).extend({ chave: z.string().uuid().optional() });
+const exameDaTarefaSchema = executarExameEtapaSchema.omit({ tipo: true, tarefaId: true }).extend({ chave: z.string().uuid().optional(), observacao: z.string().trim().max(1000).nullish(), formatoExameHash: z.string().regex(/^[a-f0-9]{64}$/).optional() });
 const json = (v: unknown): Prisma.InputJsonValue =>
   JSON.parse(JSON.stringify(v));
 type EtapaFonte = EtapaIatf & { referencias?: Record<string, unknown> };
@@ -95,6 +99,7 @@ async function congelarEtapasTx(
           "etapas",
         );
       }
+      validarReferenciasCusto(e.referenciasCusto, e.planoAplicacao.unidadeDose, true);
       referencias.produto = { id: p.id, nome: p.nome, unidade: p.unidade };
     }
     if (e.planoTentativa) {
@@ -114,6 +119,7 @@ async function congelarEtapasTx(
           `Etapa ${indice + 1}: quantidade exige até três casas decimais`,
           "etapas",
         );
+      validarReferenciasCusto(e.referenciasCusto, m.produto.unidade, true);
       referencias.material = {
         id: m.id,
         tipo: m.tipo,
@@ -219,7 +225,10 @@ export async function editarProtocolo(id: string, input: z.infer<typeof protocol
     const antes = await carregarVersaoTx(tx, identidade, "REPRODUTIVO", true);
     if (input.versao !== antes.versao) erro("A edição de um rascunho conserva o número da versão", "versao");
     const congeladas = await congelarEtapasTx(tx, input.etapas);
+    await tx.etapaProtocolo.deleteMany({ where: { protocoloId: identidade } });
+    await tx.momentoProtocolo.deleteMany({ where: { protocoloId: identidade } });
     await tx.protocolo.update({ where: { id: identidade, tipo: "REPRODUTIVO" }, data: { nome: input.nome, descricao: input.descricao, etapas: { deleteMany: {}, create: etapasReprodutivasDoContrato(json(congeladas)) } } });
+    await associarMomentosAcoesTx(tx, identidade, input.etapas);
     if (input.publicado) await publicarReprodutivoTx(tx, identidade, usuarioId);
     const depois = await tx.protocoloIatf.findUniqueOrThrow({ where: { id: identidade } });
     await auditar(tx, { entidade: "ProtocoloIatf", entidadeId: identidade, acao: "RASCUNHO_EDITADO", usuarioId, antes, depois });
@@ -400,6 +409,7 @@ export async function iniciarParticipanteTx(
   inicioEfetivo: string,
   usuarioId: number | null,
   cienciaSanitaria = false,
+  acaoInicial?: "APLICACAO" | "EXAME" | "AVALIACAO" | "TENTATIVA" | "MANEJO" | "RETIRADA",
 ) {
   id = await resolverIdReprodutivoTx(tx, "participacao", id);
   const referencia = await tx.participanteIatf.findUnique({ where: { id } });
@@ -421,7 +431,8 @@ export async function iniciarParticipanteTx(
       "inicioEfetivo",
     );
   }
-  await conferirDisponibilidadeTx(
+  if (acaoInicial) await conferirMatrizTx(tx, participante.animalId, propriedadeId, dia(temporal.data));
+  else await conferirDisponibilidadeTx(
     tx,
     participante.animalId,
     propriedadeId,
@@ -441,7 +452,7 @@ export async function iniciarParticipanteTx(
         participanteId_etapa: { participanteId: id, etapa: etapa.etapa },
       },
     });
-    if (tarefa.realizadaEm)
+    if (tarefa.realizadaEm && await tx.tarefaProtocolo.count({where:{id:tarefa.id,...condicaoSituacaoTarefa("REALIZADA")}}))
       erro("Há execução anterior ao início efetivo", "inicioEfetivo");
     if (tarefa.dispensadaEm) continue;
     await atualizarTarefaReprodutivaTx(tx, { usuarioId,
@@ -539,7 +550,8 @@ async function impactosInicioExecucaoTx(tx: Prisma.TransactionClient, contexto: 
     tx.protocoloIatf.findUniqueOrThrow({ where: { id: contexto.comum.protocoloId } }),
     tx.tarefaIatf.findMany({ where: { participanteId: contexto.participante.id }, orderBy: [{ etapa: "asc" }, { id: "asc" }] }),
   ]);
-  if (tarefas.some(t => t.realizadaEm)) erro("Há execução anterior ao início efetivo", "inicioEfetivo");
+  const marcadas=tarefas.filter(t=>t.realizadaEm).map(t=>t.id);
+  if (marcadas.length && await tx.tarefaProtocolo.count({where:{id:{in:marcadas},...condicaoSituacaoTarefa("REALIZADA")}})) erro("Há execução anterior ao início efetivo", "inicioEfetivo");
   return { modoLegado, itens: impactosInicioLegado(realizadaEm, protocolo.etapas as EtapaFonte[], tarefas) };
 }
 
@@ -565,7 +577,7 @@ export async function preverInicioExecucaoTarefa(id: string, entrada: EntradaPre
   }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
 }
 
-export async function executarTarefaTx(
+export async function prepararExecucaoTarefaTx(
   tx: Prisma.TransactionClient,
   id: string,
   input: {
@@ -581,20 +593,27 @@ export async function executarTarefaTx(
   const referencia = await contextoTarefaTx(tx, id, input.propriedadeId);
   await travarAnimais(tx, [referencia.participante.animalId]);
   let contexto = await contextoTarefaTx(tx, id, input.propriedadeId);
-  if (contexto.participante.encerradoEm || contexto.tarefa.realizadaEm || contexto.tarefa.dispensadaEm || contexto.programacao.status !== "ABERTA")
+  if (contexto.participante.encerradoEm || contexto.tarefa.dispensadaEm || contexto.programacao.status !== "ABERTA")
     erro("A tarefa exige participação aberta e pendente");
   const comum = await tx.tarefaProtocolo.findUniqueOrThrow({ where: { id: contexto.tarefa.id }, include: {
     vinculos: { include: { aplicacao: true, tentativa: true, exame: true } },
     aplicacoes: { where: { status: "VALIDO" } }, exames: { where: { status: "VALIDO" } }, tentativas: { where: { status: "VALIDO" } },
   } });
-  if (comum.regularizacaoPendente || comum.vinculos.some(v => v.estado === "ENCERRADO" || v.aplicacao?.consumoMantido || v.tentativa?.consumoMantido || v.estado === "ATUAL" && (v.aplicacao?.status === "VALIDO" || v.tentativa?.status === "VALIDO" || v.exame?.status === "VALIDO")) || comum.aplicacoes.length || comum.exames.length || comum.tentativas.length)
+  if (comum.regularizacaoPendente || comum.vinculos.some(v => v.estado === "ENCERRADO" || v.aplicacao?.consumoMantido || v.tentativa?.consumoMantido || v.estado === "ATUAL" && (v.aplicacao?.status === "VALIDO" || v.tentativa?.status === "VALIDO" || (v.exame?.status === "VALIDO" && v.exame.realizacao !== "NAO_REALIZADO"))) || comum.aplicacoes.length || comum.exames.some(e => e.realizacao !== "NAO_REALIZADO") || comum.tentativas.length)
     erro("A tarefa já possui execução ou exige regularização");
+  if (contexto.tarefa.realizadaEm && !comum.exames.some(e => e.realizacao === "NAO_REALIZADO")
+    && !comum.vinculos.some(v => v.estado === "ATUAL" && v.exame?.status === "VALIDO" && v.exame.realizacao === "NAO_REALIZADO"))
+    erro("A tarefa já possui realização registrada");
+  const impactosInicio = !contexto.participante.inicioEfetivo ? await impactosInicioExecucaoTx(tx, contexto, input.realizadaEm) : { modoLegado: contexto.comum.origemCalendario === "INICIO_EFETIVO_LEGADO", itens: [] };
   if (!contexto.participante.inicioEfetivo) {
-    const impactos = await impactosInicioExecucaoTx(tx, contexto, input.realizadaEm);
-    if (impactos.itens.length && input.cienciaRecalendarioLegado !== true)
-      erro("Revise a prévia e confirme ciência das mudanças no calendário legado", "cienciaRecalendarioLegado");
-    await iniciarParticipanteTx(tx, contexto.participante.id, input.propriedadeId, input.realizadaEm, usuarioId, input.dados.cienciaSanitaria === true);
-    contexto = await contextoTarefaTx(tx, id, input.propriedadeId);
+    const impactos = impactosInicio;
+    // Projeta o início e o calendário somente em memória. Esta função nunca
+    // inicia participação, reprograma tarefa ou grava auditoria.
+    const temporalInicio = lerDataIatf(input.realizadaEm);
+    const impacto = impactos.itens.find(i => i.id === contexto.tarefa.id);
+    contexto = { ...contexto,
+      participante: { ...contexto.participante, inicioEfetivo: temporalInicio.instante, precisaoInicioEfetivo: temporalInicio.precisao },
+      tarefa: impacto ? { ...contexto.tarefa, previstaEm: new Date(impacto.previstaNova), precisaoTemporal: impacto.precisaoNova, previsaoPendente: impacto.previsaoPendente } : contexto.tarefa };
   }
   const { tarefa, participante } = contexto;
   const temporal = lerDataIatf(input.realizadaEm);
@@ -602,9 +621,9 @@ export async function executarTarefaTx(
   const data = temporal.data;
   if (anteriorIatf(new Date(), "HORA", realizada, temporal.precisao) || anteriorIatf(realizada, temporal.precisao, participante.inicioEfetivo!, participante.precisaoInicioEfetivo ?? "HORA"))
     erro("Execução deve ocorrer após início efetivo e até agora", "realizadaEm");
-  if (["APLICACAO", "MANEJO", "TENTATIVA"].includes(tarefa.tipo))
+  if (tarefa.tipo === "TENTATIVA")
     await conferirDisponibilidadeTx(
-      tx, participante.animalId, input.propriedadeId, dia(data), "IATF",
+      tx, participante.animalId, input.propriedadeId, dia(data), tentativaSchema.shape.tipo.parse(input.dados.tipo),
       input.dados.cienciaSanitaria === true,
     );
   else
@@ -665,7 +684,7 @@ export async function executarTarefaTx(
       const atual=anterior?await tx.tarefaProtocolo.findUnique({where:{id:anterior.id},include:{vinculos:{where:{estado:"ATUAL"},include:{aplicacao:true,exame:true,tentativa:true}}}}):null;
       const historico=Array.isArray(atual?.historicoRegularizacao)?atual.historicoRegularizacao:[];
       const ultima=historico.at(-1) as {acao?:string}|undefined;
-      const lastro=!!atual&&!atual.regularizacaoPendente&&ultima?.acao!=="ENCERRAR_SEM_SUBSTITUICAO"&&(["MANEJO","RETIRADA"].includes(anterior!.tipo)||atual.vinculos.some(v=>v.aplicacao?.status==="VALIDO"||v.exame?.status==="VALIDO"||v.tentativa?.status==="VALIDO"));
+      const lastro=!!atual&&!atual.regularizacaoPendente&&ultima?.acao!=="ENCERRAR_SEM_SUBSTITUICAO"&&(["MANEJO","RETIRADA"].includes(anterior!.tipo)||atual.vinculos.some(v=>v.aplicacao?.status==="VALIDO"||v.exame?.status==="VALIDO"&&v.exame.realizacao!=="NAO_REALIZADO"||v.tentativa?.status==="VALIDO"));
       plano.referenciaTemporalEfetiva=anterior?.realizadaEm&&lastro?{data:anterior.realizadaEm.toISOString(),precisao:anterior.precisaoRealizacao??"DIA",fatoId:anterior.id}:null;
     }
   }
@@ -730,16 +749,29 @@ export async function executarTarefaTx(
         unidade: p.unidade,
       };
   }
-  if (
-    exigeMotivoExecucao(desvio) &&
-    (!input.motivo || input.motivo.trim().length < 5)
-  )
-    erro(
-      !desvio.aferido
-        ? "Planejamento histórico não aferível: documente motivo antes da execução"
-        : `Execução diverge de ${desvio.diferencas.map((d) => d.campo).join(", ")}; informe motivo`,
-      "motivo",
-    );
+  return { contexto, tarefa, participante, temporal, realizada, data, preparado, desvio, referenciasRealizadas, plano, impactosInicio };
+}
+
+/** Confirmação e prévia usam a mesma preparação; só este limite produz os fatos. */
+export async function executarTarefaTx(
+  tx: Prisma.TransactionClient,
+  id: string,
+  input: Parameters<typeof prepararExecucaoTarefaTx>[2],
+  usuarioId: number | null,
+) {
+  const contextoAcao = await contextoTarefaTx(tx, id, input.propriedadeId);
+  if (["MANEJO", "RETIRADA"].includes(contextoAcao.tarefa.tipo))
+    return executarManejoDaTarefaIatfTx(tx, id, input, usuarioId);
+  let preparacao = await prepararExecucaoTarefaTx(tx, id, input, usuarioId);
+  if (!preparacao.contexto.comum.inicioEfetivo) {
+    if (preparacao.impactosInicio.itens.length && input.cienciaRecalendarioLegado !== true)
+      erro("Revise a prévia e confirme ciência das mudanças no calendário legado", "cienciaRecalendarioLegado");
+    await iniciarParticipanteTx(tx, preparacao.participante.id, input.propriedadeId, input.realizadaEm, usuarioId, input.dados.cienciaSanitaria === true, z.enum(["APLICACAO", "EXAME", "AVALIACAO", "TENTATIVA"]).parse(preparacao.tarefa.tipo));
+    preparacao = await prepararExecucaoTarefaTx(tx, id, input, usuarioId);
+  }
+  const { tarefa, participante, temporal, realizada, preparado, desvio, referenciasRealizadas, plano } = preparacao;
+  if (exigeMotivoExecucao(desvio) && (!input.motivo || input.motivo.trim().length < 5))
+    erro(!desvio.aferido ? "Planejamento histórico não aferível: documente motivo antes da execução" : `Execução diverge de ${desvio.diferencas.map(d => d.campo).join(", ")}; informe motivo`, "motivo");
   let fato: { id: string } | null = null,
     vinculo: {
       aplicacaoId?: string;
@@ -813,6 +845,8 @@ export async function executarTarefaTx(
     antes: tarefa,
     depois: { ...salva, fato },
   });
+  if (tarefa.tipo === "AVALIACAO" && preparado.resultado === "INCONCLUSIVO" && fato)
+    await garantirDemandaProtocoloTx(tx, tarefa.id, fato.id, usuarioId);
   await reconciliarDemandasAnimalTx(tx, participante.animalId, usuarioId);
   return salva;
 }

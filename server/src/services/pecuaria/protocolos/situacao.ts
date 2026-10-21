@@ -3,15 +3,30 @@ export function ultimaAcaoRegularizacao(historico: unknown): string | null {
   const evento = Array.isArray(historico) ? historico.at(-1) : null;
   return evento && typeof evento === "object" && typeof evento.acao === "string" ? evento.acao : null;
 }
-export function situacaoTarefaComum(t: { regularizacaoPendente?: boolean; historicoRegularizacao?: unknown; realizadaEm?: Date | null; dispensadaEm: Date | null; execucao: { canceladaEm: Date | null }; aplicacoes?: { status: string }[]; exames?: { status: string }[]; tentativas?: { status: string }[]; vinculos?: { estado?: string; aplicacao?: {status?: string} | null; exame?: {status?: string} | null; tentativa?: {status?: string} | null }[] }) {
+export function situacaoTarefaComum(t: { regularizacaoPendente?: boolean; historicoRegularizacao?: unknown; realizadaEm?: Date | null; dispensadaEm: Date | null; execucao: { canceladaEm: Date | null }; aplicacoes?: { status: string }[]; exames?: { status: string; realizacao?: string }[]; tentativas?: { status: string }[]; manejos?: { status: string }[]; vinculos?: { estado?: string; aplicacao?: {status?: string} | null; exame?: {status?: string; realizacao?: string} | null; tentativa?: {status?: string} | null; manejo?: {status?:string} | null }[] }) {
   if (t.regularizacaoPendente) return "REGULARIZACAO_PENDENTE";
   if (ultimaAcaoRegularizacao(t.historicoRegularizacao) === "ENCERRAR_SEM_SUBSTITUICAO") return "ENCERRADA_SEM_SUBSTITUICAO";
-  if (t.realizadaEm || t.aplicacoes?.some(a => a.status === "VALIDO") || t.exames?.some(e => e.status === "VALIDO") || t.tentativas?.some(e => e.status === "VALIDO") || t.vinculos?.some(v => v.estado === "ATUAL" && [v.aplicacao,v.exame,v.tentativa].some(f => f?.status === "VALIDO"))) return "REALIZADA";
+  const naoRealizado = t.exames?.some(e => e.status === "VALIDO" && e.realizacao === "NAO_REALIZADO")
+    || t.vinculos?.some(v => v.estado === "ATUAL" && v.exame?.status === "VALIDO" && v.exame.realizacao === "NAO_REALIZADO");
+  if (t.realizadaEm && !naoRealizado || t.aplicacoes?.some(a => a.status === "VALIDO")
+    || t.exames?.some(e => e.status === "VALIDO" && e.realizacao !== "NAO_REALIZADO")
+    || t.tentativas?.some(e => e.status === "VALIDO") || t.manejos?.some(e => e.status === "VALIDO")
+    || t.vinculos?.some(v => v.estado === "ATUAL" && (v.manejo?.status === "VALIDO" || v.aplicacao?.status === "VALIDO" || v.tentativa?.status === "VALIDO" || v.exame?.status === "VALIDO" && v.exame.realizacao !== "NAO_REALIZADO"))) return "REALIZADA";
   return t.execucao.canceladaEm ? "EXECUCAO_CANCELADA" : t.dispensadaEm ? "DISPENSADA" : "PENDENTE";
 }
 export function condicaoSituacaoTarefa(situacao?: string, hoje?: Date): Prisma.TarefaProtocoloWhereInput {
   const encerrada: Prisma.TarefaProtocoloWhereInput = { vinculos: { some: { estado: "ENCERRADO" } } };
-  const realizada: Prisma.TarefaProtocoloWhereInput = { OR: [{ realizadaEm: { not: null } }, { aplicacoes: { some: { status: "VALIDO" } } }, { exames: { some: { status: "VALIDO" } } }, { tentativas: { some: { status: "VALIDO" } } }, { vinculos: { some: { estado: "ATUAL", OR: [{aplicacao:{status:"VALIDO"}},{exame:{status:"VALIDO"}},{tentativa:{status:"VALIDO"}}] } } }] };
+  const exameNaoRealizado: Prisma.TarefaProtocoloWhereInput = { OR: [
+    { exames: { some: { status: "VALIDO", realizacao: "NAO_REALIZADO" } } },
+    { vinculos: { some: { estado: "ATUAL", exame: { status: "VALIDO", realizacao: "NAO_REALIZADO" } } } },
+  ] };
+  const realizada: Prisma.TarefaProtocoloWhereInput = { OR: [
+    { AND: [{ realizadaEm: { not: null } }, { NOT: exameNaoRealizado }] },
+    { aplicacoes: { some: { status: "VALIDO" } } },
+    { exames: { some: { status: "VALIDO", realizacao: { not: "NAO_REALIZADO" } } } },
+    { tentativas: { some: { status: "VALIDO" } } }, { manejos: { some: { status: "VALIDO" } } },
+    { vinculos: { some: { estado: "ATUAL", OR: [{ manejo: { status: "VALIDO" } }, { aplicacao: { status: "VALIDO" } }, { exame: { status: "VALIDO", realizacao: { not: "NAO_REALIZADO" } } }, { tentativa: { status: "VALIDO" } }] } } },
+  ] };
   const livre: Prisma.TarefaProtocoloWhereInput[] = [{ regularizacaoPendente: false }, { NOT: encerrada }];
   if (situacao === "REGULARIZACAO_PENDENTE") return { regularizacaoPendente: true };
   if (situacao === "ENCERRADA_SEM_SUBSTITUICAO") return { AND: [{ regularizacaoPendente: false }, encerrada] };
@@ -23,11 +38,11 @@ export function condicaoSituacaoTarefa(situacao?: string, hoje?: Date): Prisma.T
 }
 
 export const vinculoRegularizacaoSelect = { orderBy: { ordem: "desc" }, take: 1, select: {
-  estado: true, aplicacao: { select: { propriedadeId: true, status: true } }, exame: { select: { propriedadeId: true, status: true } }, tentativa: { select: { propriedadeId: true, status: true } },
+  estado: true, aplicacao: { select: { propriedadeId: true, status: true } }, exame: { select: { propriedadeId: true, status: true } }, manejo: {select:{propriedadeId:true,status:true}}, tentativa: { select: { propriedadeId: true, status: true } },
 } } as const;
-export function propriedadeRegularizacao(t: { vinculos?: { aplicacao?: { propriedadeId: number | null } | null; exame?: { propriedadeId: number | null } | null; tentativa?: { propriedadeId: number | null } | null }[]; execucao: { propriedadeId: number | null } }) {
+export function propriedadeRegularizacao(t: { vinculos?: { aplicacao?: { propriedadeId: number | null } | null; exame?: { propriedadeId: number | null } | null; tentativa?: { propriedadeId: number | null } | null; manejo?: {propriedadeId:number|null}|null }[]; execucao: { propriedadeId: number | null } }) {
   const v = t.vinculos?.[0];
-  return v?.aplicacao?.propriedadeId ?? v?.exame?.propriedadeId ?? v?.tentativa?.propriedadeId ?? t.execucao.propriedadeId;
+  return v?.manejo?.propriedadeId ?? v?.aplicacao?.propriedadeId ?? v?.exame?.propriedadeId ?? v?.tentativa?.propriedadeId ?? t.execucao.propriedadeId;
 }
 
 
@@ -54,15 +69,19 @@ export function sqlSituacaoOperacional(agora: Date) {
   return Prisma.sql`CASE
     WHEN t."regularizacaoPendente" THEN 'REGULARIZACAO_PENDENTE'
     WHEN (t."historicoRegularizacao"->-1->>'acao') = 'ENCERRAR_SEM_SUBSTITUICAO' THEN 'ENCERRADO'
-    WHEN t."realizadaEm" IS NOT NULL
+    WHEN (t."realizadaEm" IS NOT NULL
+      AND NOT EXISTS (SELECT 1 FROM pecuaria."ExameAnimal" f WHERE f."tarefaId"=t.id AND f.status='VALIDO' AND f.realizacao='NAO_REALIZADO')
+      AND NOT EXISTS (SELECT 1 FROM pecuaria."VinculoTarefaProtocolo" v JOIN pecuaria."ExameAnimal" x ON x.id=v."exameId" WHERE v."tarefaId"=t.id AND v.estado='ATUAL' AND x.status='VALIDO' AND x.realizacao='NAO_REALIZADO'))
       OR EXISTS (SELECT 1 FROM pecuaria."AplicacaoProduto" f WHERE f."tarefaId"=t.id AND f.status='VALIDO')
-      OR EXISTS (SELECT 1 FROM pecuaria."ExameAnimal" f WHERE f."tarefaId"=t.id AND f.status='VALIDO')
+      OR EXISTS (SELECT 1 FROM pecuaria."ExameAnimal" f WHERE f."tarefaId"=t.id AND f.status='VALIDO' AND f.realizacao<>'NAO_REALIZADO')
+      OR EXISTS (SELECT 1 FROM pecuaria."ManejoAnimal" f WHERE f."tarefaId"=t.id AND f.status='VALIDO')
       OR EXISTS (SELECT 1 FROM pecuaria."TentativaReprodutiva" f WHERE f."tarefaId"=t.id AND f.status='VALIDO')
       OR EXISTS (SELECT 1 FROM pecuaria."VinculoTarefaProtocolo" v
         LEFT JOIN pecuaria."AplicacaoProduto" a ON a.id=v."aplicacaoId"
         LEFT JOIN pecuaria."ExameAnimal" x ON x.id=v."exameId"
         LEFT JOIN pecuaria."TentativaReprodutiva" r ON r.id=v."tentativaId"
-        WHERE v."tarefaId"=t.id AND v.estado='ATUAL' AND (a.status='VALIDO' OR x.status='VALIDO' OR r.status='VALIDO')) THEN 'ATENDIDO'
+        LEFT JOIN pecuaria."ManejoAnimal" m ON m.id=v."manejoId"
+        WHERE v."tarefaId"=t.id AND v.estado='ATUAL' AND (a.status='VALIDO' OR x.status='VALIDO' AND x.realizacao<>'NAO_REALIZADO' OR r.status='VALIDO' OR m.status='VALIDO')) THEN 'ATENDIDO'
     WHEN p."canceladaEm" IS NOT NULL THEN 'RETIRADO'
     WHEN t."dispensadaEm" IS NOT NULL THEN 'DISPENSADO'
     WHEN (SELECT e.tipo::text FROM pecuaria."EventoTarefaProtocolo" e WHERE e."tarefaId"=t.id AND e.tipo::text <> 'RETIFICACAO_JUSTIFICATIVA' ORDER BY e."registradoEm" DESC,e.id DESC LIMIT 1)='ADIAMENTO' THEN 'ADIADO'

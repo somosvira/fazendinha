@@ -8,7 +8,7 @@ import { aplicarEscorePartoTx } from "./escore-parto.js";
 import { obterContextosAnimaisNaDataTx } from "./contexto-animal.js";
 import { normalizarDetalhesParto, aplicarRetencaoPartoTx, aplicarPesoPartoTx, corrigirPesosCriasTx, lerPartoTx } from "./partos.js";
 import type { CorrecaoPartoAmpliadaInput } from "./partos.schemas.js";
-import { registrarEvidenciaAvaliacaoTx } from "../exames/evidencia-reprodutiva.js";
+import { prepararEvidenciaAvaliacaoTx, registrarEvidenciaAvaliacaoTx } from "../exames/evidencia-reprodutiva.js";
 import { papelReprodutivoNaDataTx } from "../rebanho/papeis.js";
 import crypto from "node:crypto";
 import { Prisma } from "@prisma/client";
@@ -224,7 +224,7 @@ async function genitorTx(
     })),
   };
 }
-export async function criarTentativaTx(
+export async function prepararTentativaTx(
   tx: Prisma.TransactionClient,
   input: TentativaInput,
   usuarioId: number | null,
@@ -300,14 +300,13 @@ export async function criarTentativaTx(
     select: { ordem: true },
   });
   const ordem = Math.max(0, ...existentes.map((e) => e.ordem)) + 1;
-  let movimentoEstoqueId: string | null = null,
-    valorProdutoAtribuido: Prisma.Decimal | null = null;
+  let valorProdutoAtribuido: Prisma.Decimal | null = null;
   let partidaSnapshot: {
     id: string;
     codigo: string;
     validade: Date | null;
   } | null = null;
-  let quantidade: Prisma.Decimal | null =
+  const quantidade: Prisma.Decimal | null =
     input.quantidade == null ? null : new Prisma.Decimal(input.quantidade);
   if (input.tipo === "COBERTURA") {
     if (input.origem === "ESTOQUE" || quantidade || input.partidaId)
@@ -324,8 +323,7 @@ export async function criarTentativaTx(
     const consumo = await consumirEstoqueTx(tx, { produto, propriedadeId: input.propriedadeId, quantidade, campoQuantidade: "quantidade",
       data, partidaId: input.partidaId, cienciaValidadeDesconhecida: input.cienciaValidadeDesconhecida,
       documentacaoExcepcional: input.documentacaoExcepcional, motivoDocumentacaoExcepcional: input.motivoDocumentacaoExcepcional,
-      origem: "REPRODUCAO", observacao: `Tentativa ${input.tipo} ${input.animalId}`, usuarioId });
-    movimentoEstoqueId = consumo.movimentoEstoqueId;
+      origem: "REPRODUCAO", observacao: `Tentativa ${input.tipo} ${input.animalId}`, usuarioId, previa: true });
     valorProdutoAtribuido = consumo.valorProdutoAtribuido;
     partidaSnapshot = consumo.partida ? { id: consumo.partida.id, codigo: consumo.partida.codigo, validade: consumo.partida.validade } : null;
   } else if (input.origem === "SERVICO" && !input.operacaoServicoId)
@@ -361,8 +359,7 @@ export async function criarTentativaTx(
     await exigirPeriodoAberto(tx, input.propriedadeId, data);
   } else if (input.valorServicoAtribuido != null)
     erro("Valor exige vínculo a Serviço", "valorServicoAtribuido");
-  const criada = await tx.tentativaReprodutiva.create({
-    data: {
+  const dadosCriacao: Prisma.TentativaReprodutivaUncheckedCreateInput = {
       animalId: input.animalId,
       propriedadeId: input.propriedadeId,
       data,
@@ -376,7 +373,6 @@ export async function criarTentativaTx(
       quantidade,
       partidaId: input.partidaId,
       operacaoServicoId: input.operacaoServicoId,
-      movimentoEstoqueId,
       valorProdutoAtribuido,
       valorServicoAtribuido:
         input.valorServicoAtribuido == null
@@ -402,8 +398,21 @@ export async function criarTentativaTx(
       responsavel: input.responsavel,
       observacao: input.observacao,
       criadoPorId: usuarioId,
-    },
-  });
+  };
+  return { dadosCriacao, material, matriz, quantidade, data };
+}
+export async function criarTentativaTx(tx: Prisma.TransactionClient, input: TentativaInput, usuarioId: number | null) {
+  const { dadosCriacao, material, matriz, quantidade, data } = await prepararTentativaTx(tx, input, usuarioId);
+  if (input.origem === "ESTOQUE" && material && quantidade) {
+    const consumo = await consumirEstoqueTx(tx, { produto: material.produto, propriedadeId: input.propriedadeId,
+      quantidade, campoQuantidade: "quantidade", data, partidaId: input.partidaId,
+      cienciaValidadeDesconhecida: input.cienciaValidadeDesconhecida, documentacaoExcepcional: input.documentacaoExcepcional,
+      motivoDocumentacaoExcepcional: input.motivoDocumentacaoExcepcional, origem: "REPRODUCAO",
+      observacao: `Tentativa ${input.tipo} ${input.animalId}`, usuarioId });
+    dadosCriacao.movimentoEstoqueId = consumo.movimentoEstoqueId;
+    dadosCriacao.valorProdutoAtribuido = consumo.valorProdutoAtribuido;
+  }
+  const criada = await tx.tentativaReprodutiva.create({ data: dadosCriacao });
   await auditar(tx, {
     entidade: "TentativaReprodutiva",
     entidadeId: criada.id,
@@ -436,7 +445,7 @@ export const criarTentativa = (
     criarTentativaTx,
     (tx, id) => tx.tentativaReprodutiva.findUniqueOrThrow({ where: { id } }),
   );
-export async function criarAvaliacaoTx(
+export async function prepararAvaliacaoTx(
   tx: Prisma.TransactionClient,
   input: AvaliacaoInput,
   usuarioId: number | null,
@@ -444,7 +453,7 @@ export async function criarAvaliacaoTx(
   await travarAnimais(tx, [input.animalId]);
   const data = dia(input.data);
   if (input.sexoFetal && ["NAO_AVALIADO", "NEGATIVO"].includes(input.resultado)) erro("Sexo fetal exige exame realizado com evidência de gestação", "sexoFetal");
-  if ((input.resultado === "SEXAGEM" && input.finalidade && input.finalidade !== "SEXAGEM") || (input.finalidade === "SEXAGEM" && input.resultado !== "SEXAGEM" && input.resultado !== "NAO_AVALIADO") || (input.resultado === "RECONFIRMACAO" && input.finalidade && input.finalidade !== "RECONFIRMACAO")) erro("Finalidade e conclusão incompatíveis", "finalidade");
+  if ((input.resultado === "SEXAGEM" && input.finalidade && input.finalidade !== "SEXAGEM") || (input.finalidade === "SEXAGEM" && !["SEXAGEM", "INCONCLUSIVO", "NAO_AVALIADO"].includes(input.resultado)) || (input.resultado === "RECONFIRMACAO" && input.finalidade && input.finalidade !== "RECONFIRMACAO")) erro("Finalidade e conclusão incompatíveis", "finalidade");
   if (input.resultado !== "NAO_AVALIADO" && ["RECONFIRMACAO", "SEXAGEM"].includes(input.finalidade ?? "") && !input.gestacaoId)
     erro("Vincule a gestação conhecida para esta finalidade", "gestacaoId");
   await conferirMatrizTx(tx, input.animalId, input.propriedadeId, data);
@@ -475,8 +484,7 @@ export async function criarAvaliacaoTx(
     erro("Gestação não pertence ao animal/data", "gestacaoId");
   if (gestacao && tentativa && gestacao.tentativaId !== tentativa.id)
     erro("Gestação e tentativa divergem", "tentativaId");
-  let gestacaoCriada = false,
-    restricaoId: string | null = null;
+  let gestacaoCriada = false;
   if (input.resultado === "POSITIVO") {
     if (!gestacao) {
       if (!tentativa && !input.motivoVinculoDesconhecido)
@@ -488,18 +496,7 @@ export async function criarAvaliacaoTx(
       if (await tx.partoAnimal.count({ where: { animalId: input.animalId, status: "VALIDO", data: { gte: tentativa?.data ?? data } } }))
         erro("O diagnóstico aberto conflita com parto já registrado; reconcilie a cronologia antes", "data");
       gestacaoCriada = true;
-      gestacao = await tx.gestacaoAnimal.create({
-        data: {
-          animalId: input.animalId,
-          propriedadeId: input.propriedadeId,
-          tentativaId: tentativa?.id,
-          inicio: tentativa?.data,
-          origem: tentativa ? "MANUAL" : "DOCUMENTADA",
-          confirmadaEm: data,
-          previsaoParto: input.previsaoParto ? dia(input.previsaoParto) : null,
-          criadoPorId: usuarioId,
-        },
-      });
+
     }
   }
   if (["RECONFIRMACAO", "SEXAGEM"].includes(input.resultado) && !gestacao)
@@ -521,8 +518,49 @@ export async function criarAvaliacaoTx(
   }
   if (input.resultado === "SEXAGEM" && !input.sexoFetal)
     erro("Informe o sexo fetal observado", "sexoFetal");
-  if (input.sexoFetal && !gestacao)
+  if (input.sexoFetal && !gestacao && !gestacaoCriada)
     erro("Sexo fetal exige vínculo a gestação", "sexoFetal");
+  if (input.conduta === "IATF") {
+    if (input.resultado !== "NEGATIVO") erro("Indicação IATF exige avaliação vazia explícita", "resultado");
+    const restricoes = await tx.restricaoReprodutiva.findMany({ where: { animalId: input.animalId, status: "VALIDO", data: { lte: data }, OR: [{ ate: null }, { ate: { gt: data } }], acoes: { has: "IATF" } } });
+    if (restricoes.length) erro(`Indicação IATF bloqueada: ${restricoes.map((r) => r.motivo).join("; ")}`, "conduta");
+    const alertas = await consultaAlertasSanitariosTx(tx, input.animalId, input.propriedadeId, data, "IATF");
+    if (alertas.some((a) => a.efeito === "BLOQUEAR")) erro("Regra sanitária impede indicação IATF", "conduta");
+    if (alertas.length && !input.cienciaSanitaria) erro("Confirme ciência dos alertas sanitários para indicar IATF", "cienciaSanitaria");
+  }
+  if (input.conduta === "DESCARTE") {
+    if (!input.motivo) erro("Descarte exige motivo", "motivo");
+
+  }
+  if (input.retornoEm && dia(input.retornoEm) < data)
+    erro("Retorno não pode anteceder a avaliação", "retornoEm");
+  if (input.previsaoParto && dia(input.previsaoParto) < data)
+    erro("Previsão de parto não pode anteceder o diagnóstico", "previsaoParto");
+  const evidencia = await prepararEvidenciaAvaliacaoTx(tx, {
+    ...input, data, resultado: input.resultado, gestacaoCriada,
+    retornoEm: input.retornoEm ? dia(input.retornoEm) : null,
+  });
+  return { data, tentativa, gestacao, gestacaoCriada, evidencia };
+}
+export async function criarAvaliacaoTx(tx: Prisma.TransactionClient, input: AvaliacaoInput, usuarioId: number | null) {
+  const preparada = await prepararAvaliacaoTx(tx, input, usuarioId);
+  const { data, tentativa, gestacaoCriada } = preparada;
+  let gestacao = preparada.gestacao;
+  let restricaoId: string | null = null;
+  if (gestacaoCriada) {
+      gestacao = await tx.gestacaoAnimal.create({
+        data: {
+          animalId: input.animalId,
+          propriedadeId: input.propriedadeId,
+          tentativaId: tentativa?.id,
+          inicio: tentativa?.data,
+          origem: tentativa ? "MANUAL" : "DOCUMENTADA",
+          confirmadaEm: data,
+          previsaoParto: input.previsaoParto ? dia(input.previsaoParto) : null,
+          criadoPorId: usuarioId,
+        },
+      });
+  }
   if (input.sexoFetal && gestacao) {
     const posterior = await tx.avaliacaoReprodutiva.count({
       where: {
@@ -538,16 +576,7 @@ export async function criarAvaliacaoTx(
         data: { sexoFetal: input.sexoFetal },
       });
   }
-  if (input.conduta === "IATF") {
-    if (input.resultado !== "NEGATIVO") erro("Indicação IATF exige avaliação vazia explícita", "resultado");
-    const restricoes = await tx.restricaoReprodutiva.findMany({ where: { animalId: input.animalId, status: "VALIDO", data: { lte: data }, OR: [{ ate: null }, { ate: { gt: data } }], acoes: { has: "IATF" } } });
-    if (restricoes.length) erro(`Indicação IATF bloqueada: ${restricoes.map((r) => r.motivo).join("; ")}`, "conduta");
-    const alertas = await consultaAlertasSanitariosTx(tx, input.animalId, input.propriedadeId, data, "IATF");
-    if (alertas.some((a) => a.efeito === "BLOQUEAR")) erro("Regra sanitária impede indicação IATF", "conduta");
-    if (alertas.length && !input.cienciaSanitaria) erro("Confirme ciência dos alertas sanitários para indicar IATF", "cienciaSanitaria");
-  }
   if (input.conduta === "DESCARTE") {
-    if (!input.motivo) erro("Descarte exige motivo", "motivo");
     restricaoId = (
       await tx.restricaoReprodutiva.create({
         data: {
@@ -562,10 +591,6 @@ export async function criarAvaliacaoTx(
       })
     ).id;
   }
-  if (input.retornoEm && dia(input.retornoEm) < data)
-    erro("Retorno não pode anteceder a avaliação", "retornoEm");
-  if (input.previsaoParto && dia(input.previsaoParto) < data)
-    erro("Previsão de parto não pode anteceder o diagnóstico", "previsaoParto");
   const criada = await registrarEvidenciaAvaliacaoTx(tx, {
       tipoExameId: input.tipoExameId, formatoExameHash: input.formatoExameHash, responsavel: input.responsavel, finalidade: input.finalidade, resultados: input.resultados,
       animalId: input.animalId,
@@ -838,7 +863,7 @@ export async function criarPartoTx(
     });
   if (input.iniciarLactacao) {
     await conferirIntervaloLactacaoTx(tx, input.animalId, data, null);
-    const destino = await tx.destinoAnimal.findFirst({
+    const destino = await tx.finalidadeAnimal.findFirst({
       where: {
         animalId: input.animalId,
         desde: { lte: data },
@@ -847,7 +872,7 @@ export async function criarPartoTx(
     });
     if (destino?.aptidao !== "LEITE")
       erro(
-        "Início de lactação exige aptidão leiteira na data do parto",
+        "Início de lactação exige finalidade Leite na data do parto",
         "iniciarLactacao",
       );
     await tx.lactacaoAnimal.create({

@@ -9,7 +9,7 @@ import type { TipoExame } from "../sanidade/CadastrosSanitarios";
 import { CamposAvaliacao } from "./CamposAvaliacao";
 import { RegularizarOrigem, consumoMantidoUltimaAnulacao } from "./RegularizarOrigem";
 import { AlertasSanitarios } from "./AlertasSanitarios";
-import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Button,
   ErrorBox,
@@ -25,6 +25,7 @@ import { reqV4, type PainelReprodutivo } from "./api";
 import {
   confirmarVisita,
   obterVisita,
+  listarParticipantesVisita, obterParticipanteVisita, type PaginaParticipantesVisita,
   salvarRascunhoVisita,
   obterSugestoesVisita,
   type SugestoesVisita,
@@ -51,10 +52,10 @@ import { Iatf } from "./Iatf";
 import { AcoesReprodutivas } from "./AcoesReprodutivas";
 import { FormReproducao } from "./FormReproducao";
 import { CabecalhoContextoVisita, CelulasContextoVisita, ContextoInlineVisita, contarColunasContextoVisita } from "./ContextoTabelaVisita";
-import { blocosConfirmacao } from "./visitas-regras";
+type PreviaVisita = { fingerprint: string; participantes: Array<{ participanteId: string; animalId: string; alteracoes: string[] }>; total?: number; pagina?: number; porPagina?: number; totalComAlteracoes?: number; execucaoProtocolos?: { estado: "CONFERIDA" | "DADOS_PENDENTES"; erro?: string; consumos?: Array<{ produtoNome?: string; quantidade?: string; unidade?: string }>; totalConsumos?: number; paginaConsumos?: number; porPaginaConsumos?: number } | null };
 export function Transcricao({
   visita,
-  atividade,
+  atividade: atividadeOriginal,
   podeLancar,
   podeRegularizar = podeLancar,
   onMudou,
@@ -69,6 +70,14 @@ export function Transcricao({
   registrarGuardaSaida?: (guarda: (() => Promise<boolean>) | null) => void;
   onPlanejar?: () => void;
 }) {
+  const [cacheParticipantes, setCacheParticipantes] = useState<Record<string, ParticipanteVisita>>(() => Object.fromEntries(atividadeOriginal.participantes.map(p => [p.id, p])));
+  const atividade = useMemo(() => ({...atividadeOriginal, participantes: atividadeOriginal.totais ? Object.values(cacheParticipantes).sort((a,b)=>a.ordem-b.ordem) : atividadeOriginal.participantes}), [atividadeOriginal, cacheParticipantes]);
+  const paginada = !!atividadeOriginal.totais;
+  const [paginaParticipantes, setPaginaParticipantes] = useState<PaginaParticipantesVisita | null>(null);
+  const [consultandoParticipantes, setConsultandoParticipantes] = useState(false);
+  const [revisaoParticipantes, setRevisaoParticipantes] = useState(0);
+  const totalParticipantes = atividadeOriginal.totais?.totalParticipantes ?? atividade.participantes.length;
+  const integrarParticipantes = (itens: ParticipanteVisita[]) => setCacheParticipantes(atual => ({...atual,...Object.fromEntries(itens.map(p=>[p.id,p]))}));
   const [tiposExame, setTiposExame] = useState<TipoExame[]>([]);
   useEffect(() => {
     let ativo = true;
@@ -79,6 +88,25 @@ export function Transcricao({
   const [alteracoes, setAlteracoes] = useState<
     Array<{ participanteId: string; animalId: string; alteracoes: string[] }>
   >([]);
+  const [previaConferencia, setPreviaConferencia] = useState<PreviaVisita | null>(null);
+  const [recibo, setRecibo] = useState<(PaginaParticipantesVisita & {chave:string}) | null>(null);
+  async function paginarRecibo(pagina:number) { if(!recibo)return;setOcupado(true);try{const p=await reqV4<PaginaParticipantesVisita>(`/visitas/${visita.id}/atividades/${atividade.id}/confirmacoes/${recibo.chave}?pagina=${pagina}&porPagina=10`,undefined,"GET",visita.propriedadeId);setRecibo({...p,chave:recibo.chave});}catch(e){setErro(e instanceof Error?e.message:String(e));}finally{setOcupado(false);}}
+  const [idsPrevia, setIdsPrevia] = useState<string[]>([]);
+  async function consultarPrevia(ids: string[], pagina = 1, paginaConsumos = 1): Promise<PreviaVisita> {
+    const query = new URLSearchParams({ propriedadeId: String(visita.propriedadeId), pagina: String(pagina), porPagina: "10", paginaConsumos: String(paginaConsumos) });
+    ids.forEach(id => query.append("participanteId", id));
+    return reqV4<PreviaVisita>(`/visitas/${visita.id}/atividades/${atividade.id}/previa?${query}`, undefined, "GET", visita.propriedadeId);
+  }
+  async function paginarPrevia(pagina: number, paginaConsumos = previaConferencia?.execucaoProtocolos?.paginaConsumos ?? 1) {
+    setOcupado(true);
+    try {
+      const previa = await consultarPrevia(idsPrevia, pagina, paginaConsumos);
+      const mesma = previa.fingerprint === previaConferencia?.fingerprint;
+      if (!mesma) { setCienciaAlteracoes(false); setErro("O contexto mudou. Confira novamente a prévia antes de confirmar."); }
+      setPreviaConferencia(previa);
+      setAlteracoes(previa.participantes.filter(p => p.alteracoes.length));
+    } catch (e) { setErro(e instanceof Error ? e.message : String(e)); } finally { setOcupado(false); }
+  }
   const [painel, setPainel] = useState<PainelReprodutivo | null>(null);
   const [sugestoes, setSugestoes] = useState<SugestoesVisita | null>(null);
   const sugestoesAtuais = useRef<SugestoesVisita | null>(null);
@@ -112,13 +140,14 @@ export function Transcricao({
     }
   }
   const [revisao, setRevisao] = useState<string[]>([]);
+  const [paginaRevisao, setPaginaRevisao] = useState(1);
+  useEffect(() => setPaginaRevisao(1), [revisao]);
   const revisaoRef = useRef<HTMLElement>(null);
   const [focoPendencia, setFocoPendencia] = useState<string | null>(null);
   useEffect(() => { if (revisao.length) revisaoRef.current?.focus(); }, [revisao]);
   const [confirmadosLocais, setConfirmadosLocais] = useState<string[]>([]);
   const [programarIatf, setProgramarIatf] = useState(false);
   const [avisoConfirmacao, setAvisoConfirmacao] = useState("");
-  const [progressoConfirmacao, setProgressoConfirmacao] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [avisos, setAvisos] = useState<Record<string, string>>({});
   const [ocupado, setOcupado] = useState(false);
@@ -134,8 +163,17 @@ export function Transcricao({
     new URLSearchParams(window.location.search).getAll(prefixo + "motivo"),
   );
   const [pagina, setPagina] = useState(1);
+  useEffect(() => {
+    if (!paginada) return;
+    let vivo = true; setConsultandoParticipantes(true); setErro(null);
+    listarParticipantesVisita(visita.id, atividade.id, visita.propriedadeId, {pagina,busca:q,status,motivos}).then(p => {
+      if(!vivo)return; integrarParticipantes(p.itens); setPaginaParticipantes(p); if(p.pagina!==pagina)setPagina(p.pagina);
+    }).catch(e=>{if(vivo)setErro(e instanceof Error?e.message:String(e));}).finally(()=>{if(vivo)setConsultandoParticipantes(false);});
+    return ()=>{vivo=false;};
+  }, [paginada, visita.id, visita.propriedadeId, atividadeOriginal, pagina, q, status, motivos, revisaoParticipantes]);
   const livre=origemAtividadeVisita(atividade)==="livre";
   const [individual,setIndividual]=useState<string|null>(()=>new URLSearchParams(window.location.search).get(prefixo+"animal"));
+  useEffect(()=>{ if(!paginada || !individual || cacheParticipantes[individual])return; let vivo=true; obterParticipanteVisita(visita.id,individual,visita.propriedadeId).then(p=>{if(vivo)integrarParticipantes([p]);}).catch(e=>{if(vivo)setErro(e.message);});return()=>{vivo=false;};},[individual,paginada,visita.id,visita.propriedadeId,cacheParticipantes]);
   const retornoIndividual=useRef<{scroll:number;rotulo:string}|null>(null);
   const abrirIndividual=(id:string)=>{
     const p=atividade.participantes.find(p=>p.id===id);if(!p)return;
@@ -269,26 +307,40 @@ export function Transcricao({
   const indicadosIatf = atividade.participantes.filter(p => confirmado(p) && !p.regularizacaoPendente &&
     (ehAvaliacaoTarefa(p) ? (rascunhos[p.id]?.dados?.conduta ?? p.rascunho?.dados?.conduta) : (rascunhos[p.id]?.conduta ?? p.rascunho?.conduta)) === "IATF");
   const selecionado=atividade.participantes.find(p=>p.id===individual);
-  const itensListaLivre=filtrarParticipantes(atividade.participantes,{q:"",status,motivos});
-  const itens = livre&&selecionado?atividade.participantes.filter(p=>p.animalId===selecionado.animalId):filtrarParticipantes(atividade.participantes,{q,status,motivos});
-  const itensPagina = livre?selecionado?itens:[]:itens.slice((pagina - 1) * 15, pagina * 15);
+  const itensListaLivre=paginada ? paginaParticipantes?.itens ?? [] : filtrarParticipantes(atividade.participantes,{q:"",status,motivos});
+  const itens = livre&&selecionado?atividade.participantes.filter(p=>p.animalId===selecionado.animalId):paginada ? (paginaParticipantes?.itens ?? []).map(p=>cacheParticipantes[p.id]??p) : filtrarParticipantes(atividade.participantes,{q,status,motivos});
+  const itensPagina = livre ? selecionado ? itens : [] : paginada ? (paginaParticipantes?.itens ?? []).map(p => cacheParticipantes[p.id] ?? p) : itens.slice((pagina - 1) * 10, pagina * 10);
   useEffect(() => { setPagina(1); }, [q, status, motivos]);
   useEffect(() => {
     if (!focoPendencia) return;
     const indice = itens.findIndex(p => p.id === focoPendencia);
-    const paginaAlvo = indice >= 0 ? Math.floor(indice / 15) + 1 : pagina;
-    if (paginaAlvo !== pagina) { setPagina(paginaAlvo); return; }
+    const paginaAlvo = indice >= 0 ? Math.floor(indice / 10) + 1 : pagina;
+    if (!paginada && paginaAlvo !== pagina) { setPagina(paginaAlvo); return; }
     const linha = document.getElementById(`linha-${focoPendencia}`);
     linha?.querySelector<HTMLSelectElement>("select")?.focus();
     setFocoPendencia(null);
   }, [focoPendencia, pagina, itens]);
   function paginacaoAtendimento() {
     if(livre)return null;
-    const paginas = Math.max(1, Math.ceil(itens.length / 15));
+    const total = paginada ? paginaParticipantes?.total ?? 0 : itens.length;
+    const paginas = Math.max(1, Math.ceil(total / 10));
     return <nav aria-label="Paginação dos participantes" className="visita-paginacao">
-      <span>{itens.length ? (pagina - 1) * 15 + 1 : 0}–{Math.min(pagina * 15, itens.length)} de {itens.length} participantes filtrados · 15 por página</span>
+      <span>{total ? (pagina - 1) * 10 + 1 : 0}–{Math.min(pagina * 10, total)} de {total} participantes filtrados · 10 por página</span>
       <div className="flex items-center gap-2"><Button secondary disabled={pagina <= 1} onClick={() => setPagina(p => Math.max(1, p - 1))}>Anterior</Button><span>Página {pagina} de {paginas}</span><Button secondary disabled={pagina >= paginas} onClick={() => setPagina(p => Math.min(paginas, p + 1))}>Próxima</Button></div>
     </nav>;
+  }
+  async function selecionarPendentes() {
+    if(ocupado)return; setOcupado(true); setErro(null);
+    try {
+      const carregados:ParticipanteVisita[]=[]; let proxima=1;
+      do {
+        const p=await listarParticipantesVisita(visita.id,atividade.id,visita.propriedadeId,{pagina:proxima,busca:q,status:"PENDENTE",motivos});
+        carregados.push(...p.itens); if(p.pagina*10>=p.total || carregados.length>=100)break; proxima++;
+      } while(proxima<=10);
+      integrarParticipantes(carregados);
+      setSelecionados(atual=>[...new Set([...atual,...carregados.filter(p=>!p.regularizacaoPendente).map(p=>p.id)])].slice(0,100));
+      setAvisoConfirmacao("Seleção explícita carregou até 100 participantes pendentes. Confira os rascunhos antes de confirmar.");
+    } catch(e) {setErro(e instanceof Error?e.message:String(e));} finally {setOcupado(false);}
   }
   const motivosDisponiveis = Array.from(
     new Set(atividade.participantes.flatMap(motivosParticipante)),
@@ -323,13 +375,13 @@ export function Transcricao({
           const salvo = await salvarRascunhoVisita(visita.id, p.id, visita.propriedadeId,
             snapshot, versoes.current[p.id] ?? 0);
           versoes.current[p.id] = salvo?.versaoRascunho ?? (versoes.current[p.id] ?? 0) + 1;
+          if(paginada)integrarParticipantes([{...p,...salvo,rascunho:snapshot,versaoRascunho:versoes.current[p.id]}]);
           if (JSON.stringify(rascunhosAtuais.current[p.id] ?? {}) === JSON.stringify(snapshot)) rascunhosSujos.current.delete(p.id);
         } catch (e) {
           if (e instanceof RebanhoApiError && e.status === 409) conflitos.current.add(p.id);
           else {
             // A escrita pode ter sido aceita mesmo que a resposta não tenha chegado.
-            const atualizada = await obterVisita(visita.id);
-            const remoto = atualizada.atividades.flatMap(a => a.participantes).find(item => item.id === p.id);
+            const remoto = paginada ? await obterParticipanteVisita(visita.id,p.id,visita.propriedadeId) : (await obterVisita(visita.id)).atividades.flatMap(a => a.participantes).find(item => item.id === p.id);
             if (remoto && JSON.stringify(remoto.rascunho ?? {}) === JSON.stringify(snapshot)) {
               versoes.current[p.id] = remoto.versaoRascunho ?? versoes.current[p.id] ?? 0;
               if (JSON.stringify(rascunhosAtuais.current[p.id] ?? {}) === JSON.stringify(snapshot)) rascunhosSujos.current.delete(p.id);
@@ -359,10 +411,9 @@ export function Transcricao({
     let idsJaConciliados = new Set<string>();
     if (envioPendente.current) {
       try {
-        const atualizada = await obterVisita(visita.id);
         const itensPendentes = envioPendente.current.input.itens;
-        const remotos = atualizada.atividades.flatMap(a => a.participantes);
-        if (itensPendentes.some(item => !conciliadoRemoto(item, remotos.find(p => p.id === item.participanteId)))) {
+        const confirmada = paginada ? (await reqV4<{total:number}>(`/visitas/${visita.id}/atividades/${atividade.id}/confirmacoes/${envioPendente.current.input.chave}?pagina=1&porPagina=10`,undefined,"GET",visita.propriedadeId)).total === itensPendentes.length : await obterVisita(visita.id).then(v=>itensPendentes.every(item=>conciliadoRemoto(item,v.atividades.flatMap(a=>a.participantes).find(p=>p.id===item.participanteId))));
+        if (!confirmada) {
           setErro("Há uma confirmação sem resposta. A visita foi consultada e a confirmação precisa ser retomada nesta atividade antes de sair.");
           return false;
         }
@@ -391,28 +442,21 @@ export function Transcricao({
   async function confirmar(ids: string[]) {
     if(livre)ids=ids.filter(id=>!!selecionado&&atividade.participantes.some(p=>p.id===id&&p.animalId===selecionado.animalId));
     if (!ids.length) return;
-    const blocos = blocosConfirmacao(ids);
+    if (ids.length > 100) { setErro("Selecione até 100 participantes para uma confirmação única. Os demais rascunhos permanecem preservados."); return; }
     setOcupado(true);
-    setProgressoConfirmacao(blocos.length > 1 ? `Preparando ${blocos.length} blocos de até 100 participantes.` : "");
-    try {
-      for (const [indice, bloco] of blocos.entries()) {
-        setProgressoConfirmacao(blocos.length > 1 ? `Confirmando bloco ${indice + 1} de ${blocos.length} (${bloco.length} participantes).` : "");
-        if (!(await confirmarBloco(bloco))) {
-          if (indice > 0) setProgressoConfirmacao(`Parado no bloco ${indice + 1} de ${blocos.length}. Os blocos anteriores foram confirmados; revise e retome os participantes restantes.`);
-          return;
-        }
-      }
-      setProgressoConfirmacao("");
-    } finally {
-      setOcupado(false);
-    }
+    try { await confirmarBloco(ids); } finally { setOcupado(false); }
   }
+
   async function confirmarBloco(ids: string[]): Promise<boolean> {
     const pendencias = ids
       .map((id) => ({
         id,
         erro:
-          atividade.tipo === "AVALIACAO_REPRODUTIVA"
+          atividade.tipo === "TAREFA_IATF" && rascunhosAtuais.current[id]?.status === "ADIADO" && !rascunhosAtuais.current[id]?.previstaPara
+            ? "Informe nova previsão para a tarefa adiada."
+            : atividade.tipo === "TAREFA_IATF" && ["ADIADO", "NAO_ATENDIDO"].includes(rascunhosAtuais.current[id]?.status ?? "")
+              ? pendenciaRascunho(rascunhosAtuais.current[id])
+              : atividade.tipo === "AVALIACAO_REPRODUTIVA"
             ? pendenciaAvaliacao(atividade.participantes.find(p => p.id === id)!, rascunhosAtuais.current[id])
             : atividade.tipo === "TAREFA_IATF" && ehAvaliacaoTarefa(atividade.participantes.find(p => p.id === id)!)
               ? ["ADIADO", "NAO_ATENDIDO"].includes(rascunhosAtuais.current[id]?.status ?? "")
@@ -465,31 +509,17 @@ export function Transcricao({
           throw new Error(
             "Não foi possível salvar todos os rascunhos. Tente novamente.",
           );
-        const previa = await reqV4<{
-          fingerprint: string;
-          participantes: Array<{
-            participanteId: string;
-            animalId: string;
-            alteracoes: string[];
-          }>;
-        }>(
-          `/visitas/${visita.id}/atividades/${atividade.id}/previa?propriedadeId=${visita.propriedadeId}`,
-          undefined, "GET", visita.propriedadeId,
-        );
-        const mudancas = previa.participantes.filter(
-          (p) => ids.includes(p.participanteId) && p.alteracoes.length,
-        );
-        if (
-          mudancas.length &&
-          (!cienciaAlteracoes ||
-            JSON.stringify(mudancas) !== JSON.stringify(alteracoes))
-        ) {
-          setAlteracoes(mudancas);
-          setCienciaAlteracoes(false);
-          setErro(
-            "Revise as mudanças desde a preparação e confirme ciência antes de registrar.",
-          );
-      return false;
+        const previa = await consultarPrevia(ids);
+        const mesma = previa.fingerprint === previaConferencia?.fingerprint && JSON.stringify(ids) === JSON.stringify(idsPrevia);
+        const mudancas = previa.participantes.filter(p => ids.includes(p.participanteId) && p.alteracoes.length);
+        const totalMudancas = previa.totalComAlteracoes ?? mudancas.length;
+        setPreviaConferencia(previa); setIdsPrevia(ids);  setAlteracoes(mudancas);
+        if (!mesma) setCienciaAlteracoes(false);
+        if (previa.execucaoProtocolos?.estado === "DADOS_PENDENTES") throw new Error(previa.execucaoProtocolos.erro ?? "Complete os dados dos procedimentos antes de confirmar.");
+        if (!mesma && previa.execucaoProtocolos) { setErro("Confira os procedimentos e os materiais previstos antes de confirmar o conjunto."); return false; }
+        if (totalMudancas > 0 && (!mesma || !cienciaAlteracoes)) {
+          setErro("Revise as mudanças desde a preparação e confirme ciência antes de registrar.");
+          return false;
         }
         entrada = {
           propriedadeId: visita.propriedadeId,
@@ -500,7 +530,8 @@ export function Transcricao({
         };
         envioPendente.current = { payload, input: entrada };
       }
-      await confirmarVisita(visita.id, atividade.id, entrada);
+      const resposta=await confirmarVisita(visita.id, atividade.id, entrada);
+      if(resposta?.itens)setRecibo({itens:resposta.itens,total:resposta.total??resposta.itens.length,pagina:resposta.pagina??1,porPagina:10,chave:entrada.chave});
       envioPendente.current = null;
       setConfirmadosLocais(anteriores => [...new Set([...anteriores, ...ids.filter(id =>
         !["ADIADO", "NAO_ATENDIDO"].includes(rascunhosAtuais.current[id]?.status ?? ""),
@@ -509,7 +540,8 @@ export function Transcricao({
       setRevisao([]);
       setAvisoConfirmacao(`${ids.length} atendimento(s) confirmado(s). Os demais rascunhos permanecem disponíveis.`);
       setCienciaAlteracoes(false);
-      setAlteracoes([]);
+      setAlteracoes([]); setPreviaConferencia(null);  setIdsPrevia([]);
+      setRevisaoParticipantes(v=>v+1);
       await onMudou();
       return true;
     } catch (e) {
@@ -518,9 +550,9 @@ export function Transcricao({
         if (e.code === "CONFLITO") setCienciaAlteracoes(false);
       } else if (payloadAtual != null && envioPendente.current?.payload === payloadAtual) {
         try {
-          const atualizada = await obterVisita(visita.id);
-          const remotos = atualizada.atividades.flatMap(a => a.participantes);
-          if (envioPendente.current.input.itens.every(item => conciliadoRemoto(item, remotos.find(p => p.id === item.participanteId)))) {
+          const entradaPendente = envioPendente.current.input;
+          const confirmada = paginada ? (await reqV4<{total:number}>(`/visitas/${visita.id}/atividades/${atividade.id}/confirmacoes/${entradaPendente.chave}?pagina=1&porPagina=10`,undefined,"GET",visita.propriedadeId)).total === entradaPendente.itens.length : await obterVisita(visita.id).then(v=>entradaPendente.itens.every(item=>conciliadoRemoto(item,v.atividades.flatMap(a=>a.participantes).find(p=>p.id===item.participanteId))));
+          if (confirmada) {
             const itensConciliados = envioPendente.current.input.itens;
             envioPendente.current = null;
             for (const item of itensConciliados) {
@@ -752,7 +784,7 @@ export function Transcricao({
     via: planoAplicacao?.via ?? tarefaPreparada.via ?? undefined,
     tipoAplicacaoId: tarefaPreparada.tipoAplicacaoId,
   } : undefined;
-  const confirmados = atividade.participantes.filter(confirmado).length;
+  const confirmados = atividadeOriginal.totais?.confirmados ?? atividade.participantes.filter(confirmado).length;
   const idsComResultado = atividade.participantes.filter(p => {
     if (confirmado(p) || p.regularizacaoPendente) return false;
     const r = rascunhos[p.id] ?? {};
@@ -771,26 +803,30 @@ export function Transcricao({
   const referenciaVisivel = comuns.join("; ") || primeiraTarefa?.nome || "Contexto preservado na preparação";
   return (
     <section className="visita-painel visita-transcricao">
-      <div className="visita-painel-cabecalho"><div><h2>{tituloAtividade}</h2><p>{lotesAtividadeVisita(atividade)} · {atividade.participantes.length} animais na lista preparada</p></div><span className="visita-badge">{confirmados} / {atividade.participantes.length} confirmados</span></div>
+      <div className="visita-painel-cabecalho"><div><h2>{tituloAtividade}</h2><p>{lotesAtividadeVisita(atividade)} · {totalParticipantes} animais na lista preparada</p></div><span className="visita-badge">{confirmados} / {totalParticipantes} confirmados</span></div>
       <div className="visita-contexto">{protocoloVisivel !== tituloAtividade && <div><span>Protocolo / seleção</span>{protocoloVisivel}</div>}<div><span>Data do atendimento</span>{visita.data.slice(0,10).split("-").reverse().join("/")}</div>{referenciaVisivel !== tituloAtividade && referenciaVisivel !== protocoloVisivel && <div className="visita-criterio"><span>Referência compartilhada</span>{referenciaVisivel}</div>}</div>
       <div className="visita-aviso suave">{atividade.tipo === "AVALIACAO_REPRODUTIVA" || atividade.participantes.some(ehAvaliacaoTarefa) ? "Conclusão, sexo fetal e conduta são informações distintas. Os complementos aparecem em “Detalhes”." : "O resultado principal fica na linha. Os dados complementares do procedimento ficam em “Detalhes”."}</div>
       <div className="visita-mensagens">
         <ErrorBox erro={erro} />
-        {alteracoes.length > 0 && (
+        {previaConferencia && ((previaConferencia.totalComAlteracoes ?? alteracoes.length) > 0 || (previaConferencia.total ?? 0) > 10 || previaConferencia.execucaoProtocolos) && (
           <div className="rounded-lg border border-border p-4 mb-4">
             <ul className="text-sm space-y-2">
-              {alteracoes.map((a) => (
+              {previaConferencia.participantes.map((a) => (
                 <li key={a.participanteId}>
                   {atividade.participantes.find(
                     (p) => p.id === a.participanteId,
                   )?.snapshot.brinco ?? a.animalId}
-                  : {a.alteracoes.join("; ")}
+                  : {a.alteracoes.length ? a.alteracoes.join("; ") : "Contexto preservado"}
                 </li>
               ))}
             </ul>
+            {(previaConferencia.total ?? 0) > 10 && <div className="flex flex-wrap gap-3"><p>Página {previaConferencia.pagina ?? 1} de {Math.ceil((previaConferencia.total ?? 0) / 10)} · {previaConferencia.totalComAlteracoes ?? 0} animais com contexto alterado.</p><Button secondary disabled={ocupado || (previaConferencia.pagina ?? 1) <= 1} onClick={() => void paginarPrevia((previaConferencia.pagina ?? 1) - 1)}>Contexto anterior</Button><Button secondary disabled={ocupado || (previaConferencia.pagina ?? 1) * 10 >= (previaConferencia.total ?? 0)} onClick={() => void paginarPrevia((previaConferencia.pagina ?? 1) + 1)}>Próximo contexto</Button></div>}
+            {previaConferencia.execucaoProtocolos && <div><p>{previaConferencia.execucaoProtocolos.estado === "CONFERIDA" ? "Procedimentos conferidos no servidor." : previaConferencia.execucaoProtocolos.erro}</p>{previaConferencia.execucaoProtocolos.consumos?.map((c, i) => <p key={i}>{c.produtoNome ?? "Material"}: {c.quantidade} {c.unidade}</p>)}{(previaConferencia.execucaoProtocolos.totalConsumos ?? 0) > 10 && <p>Materiais: página {previaConferencia.execucaoProtocolos.paginaConsumos ?? 1} de {Math.ceil((previaConferencia.execucaoProtocolos.totalConsumos ?? 0) / 10)}.</p>}</div>}
+            {(previaConferencia.execucaoProtocolos?.totalConsumos ?? 0) > 10 && <div className="flex gap-3"><Button secondary disabled={ocupado || (previaConferencia.execucaoProtocolos?.paginaConsumos ?? 1) <= 1} onClick={() => void paginarPrevia(previaConferencia.pagina ?? 1, (previaConferencia.execucaoProtocolos?.paginaConsumos ?? 1) - 1)}>Materiais anteriores</Button><Button secondary disabled={ocupado || (previaConferencia.execucaoProtocolos?.paginaConsumos ?? 1) * 10 >= (previaConferencia.execucaoProtocolos?.totalConsumos ?? 0)} onClick={() => void paginarPrevia(previaConferencia.pagina ?? 1, (previaConferencia.execucaoProtocolos?.paginaConsumos ?? 1) + 1)}>Próximos materiais</Button></div>}
             <ConfirmacaoCiencia
               id={`visita-ciencia-${atividade.id}`}
               checked={cienciaAlteracoes}
+              disabled={ocupado}
               onChange={setCienciaAlteracoes}
             >
               Revisei as mudanças desde a preparação da lista e confirmo estes
@@ -798,16 +834,16 @@ export function Transcricao({
             </ConfirmacaoCiencia>
           </div>
         )}
+        {recibo && <section className="grid gap-3 rounded-lg border border-border p-3" aria-label="Recibo da confirmação"><h3 className="font-semibold">{recibo.total} participantes confirmados em conjunto</h3><ul>{recibo.itens.map(p=><li key={p.id}>{p.snapshot.brinco ?? p.animalId} · {p.status === "CONFIRMADO" ? "Atendido" : p.status === "ADIADO" ? "Adiado" : p.status === "NAO_ATENDIDO" ? "Não atendido" : p.status}<a className="ml-2 underline" href={`/pecuaria/rebanho/animais/${encodeURIComponent(p.animalId)}?sitio=${visita.propriedadeId}${p.snapshot.execucaoProtocolo?.fatoId ? `&fatoId=${encodeURIComponent(p.snapshot.execucaoProtocolo.fatoId)}` : ""}#${atividade.tipo.includes("SANITAR") ? "sanidade" : "reproducao"}`}>Abrir ficha do animal</a></li>)}</ul>{recibo.total>10&&<div className="flex gap-3"><Button secondary disabled={ocupado||recibo.pagina<=1} onClick={()=>void paginarRecibo(recibo.pagina-1)}>Recibo anterior</Button><span>Página {recibo.pagina} de {Math.ceil(recibo.total/10)}</span><Button secondary disabled={ocupado||recibo.pagina*10>=recibo.total} onClick={()=>void paginarRecibo(recibo.pagina+1)}>Próximo recibo</Button></div>}</section>}
         {avisoConfirmacao && <p role="status" className="mb-3 text-sm">{avisoConfirmacao}</p>}
-        {progressoConfirmacao && <p role="status" className="mb-3 text-sm">{progressoConfirmacao}</p>}
-        {atividade.participantes.length > 100 && <p className="text-sm mb-3">
+        {totalParticipantes > 100 && <p className="text-sm mb-3">
           A lista completa está preservada. Cada confirmação registra até 100 animais em conjunto;
           os demais permanecem selecionados para o próximo subconjunto.
         </p>}
         {revisao.length > 0 && <section ref={revisaoRef} tabIndex={-1} aria-label="Revisão do subconjunto" className="visita-confirmacao space-y-3">
           <h3 className="font-semibold">Revisar {revisao.length} atendimento(s)</h3>
           <ul className="max-h-64 overflow-y-auto text-sm space-y-1">
-            {revisao.slice(0, 100).map(id => {
+            {revisao.slice((paginaRevisao - 1) * 10, paginaRevisao * 10).map(id => {
               const p = atividade.participantes.find(item => item.id === id)!;
               const r = rascunhos[id] ?? {};
               return <li key={id}>{p.snapshot.brinco ?? p.animalId}: {r.status === "ADIADO" ? "Adiado"
@@ -820,7 +856,8 @@ export function Transcricao({
               </li>;
             })}
           </ul>
-          {revisao.length > 100 && <p className="text-sm">A confirmação seguirá em blocos de até 100. Após cada bloco concluído, a próxima parte começa; se houver falha, somente os participantes restantes ficam para retomada.</p>}
+          {revisao.length > 10 && <div className="flex gap-3"><Button secondary disabled={paginaRevisao === 1} onClick={() => setPaginaRevisao(p => p - 1)}>Anterior</Button><span>Página {paginaRevisao} de {Math.ceil(revisao.length / 10)}</span><Button secondary disabled={paginaRevisao * 10 >= revisao.length} onClick={() => setPaginaRevisao(p => p + 1)}>Próxima</Button></div>}
+          {revisao.length > 100 && <p className="text-sm">Escolha até 100 animais para uma confirmação única. Volte ao preenchimento para ajustar a seleção.</p>}
           <div className="flex gap-2">
             <Button disabled={ocupado} onClick={() => void confirmar(revisao)}>Confirmar {revisao.length} atendimento(s)</Button>
             <Button secondary disabled={ocupado} onClick={() => setRevisao([])}>Voltar ao preenchimento</Button>
@@ -831,10 +868,11 @@ export function Transcricao({
           <Button secondary disabled={!painel || ocupado} onClick={() => setProgramarIatf(true)}>Programar IATF para indicados ({indicadosIatf.length})</Button>
         </div>}
       </div>
+      {paginada && <div className="flex flex-wrap gap-3"><Button secondary disabled={ocupado || consultandoParticipantes || !podeLancar} onClick={()=>void selecionarPendentes()}>Selecionar até 100 pendentes dos filtros</Button><Button secondary disabled={ocupado || consultandoParticipantes} onClick={()=>setRevisaoParticipantes(v=>v+1)}>Atualizar participantes</Button>{consultandoParticipantes&&<p role="status">Consultando dez participantes…</p>}</div>}
       <FiltrosAtendimentoVisita busca={q} onBusca={setQ} mostrarBusca={!livre || !!individual}
         status={status} onStatus={setStatus} motivos={motivos} motivosDisponiveis={motivosDisponiveis}
         onMotivos={setMotivos} selecionados={selecionadosPendentes.length} />
-      {livre&&!individual&&<div id={`lista-livre-${atividade.id}`}><ListaAnimaisVisita animais={itensListaLivre.map(p=>({id:p.id,animalId:p.animalId,brinco:String(p.snapshot.brinco??p.ordem),nome:p.snapshot.nome,status:confirmado(p)?"CONFIRMADO":p.status,temRascunho:Object.keys(rascunhos[p.id]??{}).length>0}))} busca={q} onBusca={setQ} onAbrir={abrirIndividual} selecionadoId={individual}/></div>}
+      {livre&&!individual&&<div id={`lista-livre-${atividade.id}`}><ListaAnimaisVisita animais={itensListaLivre.map(p=>({id:p.id,animalId:p.animalId,brinco:String(p.snapshot.brinco??p.ordem),nome:p.snapshot.nome,status:confirmado(p)?"CONFIRMADO":p.status,temRascunho:Object.keys(rascunhos[p.id]??{}).length>0}))} busca={q} onBusca={setQ} onAbrir={abrirIndividual} selecionadoId={individual} paginacao={paginada ? {pagina:paginaParticipantes?.pagina ?? pagina,total:paginaParticipantes?.total ?? 0,onPagina:setPagina} : undefined}/></div>}
       {livre&&individual&&<div className="p-4 flex flex-wrap justify-between gap-3"><h3 className="font-semibold">Atendimento individual · {selecionado?.snapshot.brinco??"Animal"}</h3><Button secondary disabled={ocupado} onClick={()=>void voltarListaIndividual()}>Voltar à lista de animais</Button></div>}
       <div hidden={livre&&!individual}>
       {atividade.tipo === "AVALIACAO_REPRODUTIVA" ? tabelaAvaliacao() : <div className="visita-tabela visita-tabela-atendimento" role="region" aria-label="Procedimentos dos animais" tabIndex={0}>
@@ -884,6 +922,7 @@ export function Transcricao({
                       {!!r.dados?.tipoExameId && <CamposResultadoExame campos={(tiposExame.find(t => t.id === r.dados?.tipoExameId)?.campos ?? []).filter(c => !["CONCLUSAO_GESTACIONAL", "SEXO_FETAL"].includes(c.codigo))} valores={(r.dados?.resultados as import("../sanidade/CamposExame").ObservacaoExame[]) ?? []} onChange={resultados => atualizarDados(p, { resultados })} />}
                     </div>
                   </>}
+                  {atividade.tipo === "TAREFA_IATF" && r.status === "ADIADO" && <CampoDataIatf rotulo={`Nova previsão · ${p.snapshot.brinco ?? p.ordem}`} valor={r.previstaPara ?? ""} onChange={v => atualizar(p, "previstaPara", v)} onBlur={() => void persistir(p)} disabled={bloqueado} />}
                   {atividade.tipo === "TAREFA_IATF" && r.status !== "ADIADO" && r.status !== "NAO_ATENDIDO" && <CampoDataIatf rotulo={`Data realizada · ${p.snapshot.brinco ?? p.ordem}`} valor={r.realizadaEm ?? ""} onChange={v => atualizar(p, "realizadaEm", v)} onBlur={() => void persistir(p)} disabled={bloqueado} />}
                   {atividade.tipo === "INICIAR_IATF" && <>
                     <CampoDataIatf rotulo={`Início efetivo · ${p.snapshot.brinco ?? p.ordem}`} valor={r.inicioEfetivo ?? ""} onChange={v => atualizar(p, "inicioEfetivo", v)} onBlur={() => void persistir(p)} disabled={bloqueado} />

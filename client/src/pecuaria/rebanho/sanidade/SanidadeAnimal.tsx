@@ -101,7 +101,7 @@ export function SanidadeAnimal({ filtrosUI, animalId, propriedadeId, podeLancar,
     {carregando && <p>Carregando aplicações…</p>}
     {animalId && <CarenciasSanitarias carencia={carencia} />}
     {filtrosUI}
-    {!geral && animalId && <RodadasAnimal animalId={animalId} revisao={versao + recarregarToken} />}
+    {!geral && animalId && <RodadasAnimal animalId={animalId} revisao={versao + recarregarToken} propriedadeId={propriedadeId??undefined} podeLancar={podeLancar} aoSalvar={()=>{setVersao(v=>v+1);onMudou?.();}} />}
     {<SecaoAplicacoes geral={geral}><TabelaFinanceira rotulo="Aplicações sanitárias" itens={geral && lista ? lista : aplicacoes} chaveDe={(a) => a.id} onAbrir={verDetalhe} barraRolagemSuperior colunas={[
       { chave: "animal", titulo: "Animal", principal: true, celula: (a) => a.animal ? nomeAnimalSanitario(a.animal) : "Animal não identificado" },
       { chave: "data", titulo: "Data e hora", larguraMinima: 170, celula: (a) => dataAplicacaoSanitaria(a) },

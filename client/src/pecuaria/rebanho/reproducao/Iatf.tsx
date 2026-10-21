@@ -1,18 +1,19 @@
+import "../protocolos/protocolos.css";
+import { SeletorCatalogoProtocolo } from "../protocolos/SeletorCatalogoProtocolo";
+import { CamposReferenciasCusto, type ReferenciasCustoCadastro } from "../protocolos/CamposReferenciasCusto";
+import { listarCadastrosProtocolos, obterCadastroProtocolo, type CadastroProtocoloMeta } from "../protocolos/cadastros-api";
+import { AcoesCadastroPersistidas, EditorAcoesCadastro } from "../protocolos/AcoesCadastro";
+import { CamposMomentoAcao, type MomentoCadastro, type SubtipoAplicacaoCadastro } from "../protocolos/CamposMomentoAcao";
 import { GestaoParticipantes } from "../protocolos/GestaoParticipantes";
 import { obterCabecalhoProtocolo, reqProtocolo, consultaProtocolo, type CabecalhoProtocolo } from "../protocolos/api";
 import { SeletorVersaoProtocolo } from "../protocolos/SeletorVersaoProtocolo";
-import { usePreviaInicioExecucao } from "../protocolos/PreviaInicioExecucao";
 import { ListaRascunho } from "../protocolos/ListaRascunho";
 import { SecaoRecolhivel } from "../components/SecaoRecolhivel";
-import type { TarefaOperacional } from "../protocolos/api";
 import { OperacaoProtocolo } from "../protocolos/OperacaoProtocolo";
 import { Button as BotaoUI } from "../../../components/ui/button";
 import {BibliotecaReprodutiva} from "./BibliotecaReprodutiva";
 import { CampoDataIatf, dataHoraISO, horarioIatf, inputHorarioIatf } from "./CampoDataIatf";
 export { dataHoraISO, horarioIatf, inputHorarioIatf } from "./CampoDataIatf";
-import { FormFatoSanitario } from "../sanidade/FormFatoSanitario";
-import type { TipoExame } from "../sanidade/CadastrosSanitarios";
-import { reqSanidade } from "../sanidade/api";
 import { navegarPara } from "../../../router";
 import { RegularizarOrigem, consumoMantidoUltimaAnulacao } from "./RegularizarOrigem";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -32,13 +33,12 @@ import {
 import { Paginacao } from "../ui";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import { reqV4, type PainelReprodutivo, type AnimalReprodutivo } from "./api";
-import { FormReproducao } from "./FormReproducao";
-import { listarProdutos, type ProdutoDTO } from "../../../estoque/api";
-import { listarMaterialGenetico } from "../api";
-import type { MaterialGeneticoDTO } from "../types";
 import { UNIDADES, type UnidadeMedida } from "../../../lib/unidades";
-import { FormAplicacaoServico } from "../sanidade/FormAplicacaoServico";
 export type EtapaIatf = {
+  referenciasCusto?: ReferenciasCustoCadastro;
+  ordem?: number;
+  momento?: MomentoCadastro;
+  subtipo?: SubtipoAplicacaoCadastro;
   nome: string;
   tipo: "APLICACAO" | "MANEJO" | "RETIRADA" | "TENTATIVA" | "AVALIACAO" | "EXAME";
   intervalo: number;
@@ -61,7 +61,9 @@ export type EtapaIatf = {
 /** Projeções de leitura incluem referências congeladas, que não pertencem à entrada de cadastro. */
 export function etapaParaCadastro(e: EtapaIatf): EtapaIatf {
   return {
-    nome: e.nome, tipo: e.tipo, intervalo: e.intervalo, unidade: e.unidade,
+    referenciasCusto:e.referenciasCusto, nome: e.nome, tipo: e.tipo, intervalo: e.intervalo, unidade: e.unidade,
+    ...(e.momento ? { momento: { nome: e.momento.nome, ordem: e.momento.ordem } } : {}),
+    ...(e.tipo === "APLICACAO" && e.subtipo ? { subtipo: e.subtipo } : {}),
     ...(e.orientacaoTemporal ? {orientacaoTemporal:e.orientacaoTemporal} : {}),
     ...(e.planoAplicacao ? { planoAplicacao: { produtoId: e.planoAplicacao.produtoId, dose: e.planoAplicacao.dose, unidadeDose: e.planoAplicacao.unidadeDose, via: e.planoAplicacao.via } } : {}),
     ...(e.planoTentativa ? { planoTentativa: { tipo: e.planoTentativa.tipo, materialId: e.planoTentativa.materialId, quantidade: e.planoTentativa.quantidade } } : {}),
@@ -184,7 +186,8 @@ export function Iatf({
   );
   const [consulta, setConsulta] = useState<{
     contexto: string;
-    protocolos: ProtocoloIatf[];
+    protocolos: CadastroProtocoloMeta[];
+    protocolosTotal: number; protocolosPagina: number;
     programacoes: CabecalhoProtocolo[];
     total: number; pagina: number;
   } | null>(null);
@@ -195,6 +198,12 @@ export function Iatf({
   }>({ contexto, carregando: true, erro: null });
   const consultaVisivel = consulta?.contexto === contexto ? consulta : null;
   const protocolos = consultaVisivel?.protocolos ?? [];
+  const [paginaProtocolos, setPaginaProtocolos] = useState(1);
+  const [buscaProtocolos, setBuscaProtocolos] = useState("");
+  const [situacaoProtocolos, setSituacaoProtocolos] = useState("TODAS");
+  const [versaoExpandida, setVersaoExpandida] = useState<string | null>(null);
+  const [origemCadastro, setOrigemCadastro] = useState<CadastroProtocoloMeta | null>(null);
+  const [acoesCompletas, setAcoesCompletas] = useState(true);
   const programacoes = consultaVisivel?.programacoes ?? [];
   const [buscaProgramacao,setBuscaProgramacao]=useState(()=>new URLSearchParams(window.location.search).get("iatfBusca")??"");
   const [paginaProgramacoes,setPaginaProgramacoes]=useState(()=>Math.max(1,Math.floor(Number(new URLSearchParams(window.location.search).get("iatfPagina"))||1)));
@@ -228,8 +237,6 @@ export function Iatf({
   >(null);
   const [ocupado, setOcupado] = useState(false);
   const [nome, setNome] = useState("");
-  const [produtos, setProdutos] = useState<ProdutoDTO[]>([]);
-  const [materiais, setMateriais] = useState<MaterialGeneticoDTO[]>([]);
   const [cienciaSanitaria, setCienciaSanitaria] = useState(false);
   const [chaveProgramacao, setChaveProgramacao] = useState(() =>
     crypto.randomUUID(),
@@ -242,14 +249,9 @@ export function Iatf({
   const [inicio, setInicio] = useState("");
   const [selecionados, setSelecionados] = useState<string[]>([]);
   const [etapas, setEtapas] = useState<EtapaIatf[]>([
-    { nome: "", tipo: "MANEJO", intervalo: 0, unidade: "DIAS" },
+    { nome: "", tipo: "MANEJO", intervalo: 0, unidade: "DIAS", momento: { nome: "D0", ordem: 1 } },
   ]);
-  const filaOperacao = useRef<TarefaOperacional[]>([]);
   const [operacaoRevisao, setOperacaoRevisao] = useState(0);
-  const [execucao, setExecucao] = useState<{
-    tarefa: TarefaIatf;
-    animalId: string;
-  } | null>(null);
   const [acao, setAcao] = useState<{
     tipo: "inicio" | "revisao" | "retirada";
     id: string;
@@ -257,6 +259,7 @@ export function Iatf({
   const [dataHora, setDataHora] = useState("");
   const [motivo, setMotivo] = useState("");
   const aberturaAtual = useRef(0);
+  const aberturaCadastro = useRef(0);
   const carregar = useCallback(async () => {
     if (contextoAtual.current !== contexto) return;
     const pedido = ++sequenciaConsulta.current;
@@ -265,11 +268,11 @@ export function Iatf({
     setLeitura({ contexto, carregando: true, erro: null });
     try {
       const [protocolos, programacoes] = await Promise.all([
-        modo === "cadastros" ? reqIatf<ProtocoloIatf[]>("/reproducao/protocolos") : Promise.resolve([] as ProtocoloIatf[]),
+        modo === "cadastros" ? listarCadastrosProtocolos("REPRODUTIVO", paginaProtocolos, buscaProtocolos, situacaoProtocolos) : Promise.resolve({ itens: [] as CadastroProtocoloMeta[], total: 0, pagina: 1, porPagina: 10 }),
         modo === "cadastros" || programacaoId ? Promise.resolve({ itens: [] as CabecalhoProtocolo[], total: 0, pagina: 1, porPagina: 10 }) : reqProtocolo<{ itens: CabecalhoProtocolo[]; total: number; pagina: number; porPagina: number }>(`/programacoes${consultaProtocolo({ tipo: "REPRODUTIVO", busca: buscaProgramacao, pagina: paginaProgramacoes })}`, sitioEfetivo ?? undefined),
       ]);
       if (atual()) {
-        setConsulta({ contexto, protocolos, programacoes: programacoes.itens, total: programacoes.total, pagina: programacoes.pagina });
+        setConsulta({ contexto, protocolos: protocolos.itens, protocolosTotal: protocolos.total, protocolosPagina: protocolos.pagina, programacoes: programacoes.itens, total: programacoes.total, pagina: programacoes.pagina });
         if (modo === "operacao" && !programacaoId && programacoes.pagina !== paginaProgramacoes) setPaginaProgramacoes(programacoes.pagina);
         setLeitura({ contexto, carregando: false, erro: null });
       }
@@ -281,12 +284,11 @@ export function Iatf({
           erro: e instanceof Error ? e.message : String(e),
         });
     }
-  }, [contexto, modo, reqIatf, programacaoId, buscaProgramacao, paginaProgramacoes, sitioEfetivo]);
+  }, [contexto, modo, reqIatf, programacaoId, buscaProgramacao, paginaProgramacoes, sitioEfetivo, paginaProtocolos, buscaProtocolos, situacaoProtocolos]);
   useEffect(() => {
     setDetalheCarregado(null);
     setLeituraDetalhe(null);
     setNovo(null);
-    setExecucao(null);
     setAcao(null);
     setErro(null);
     setOcupado(false);
@@ -305,30 +307,6 @@ export function Iatf({
       aberturaAtual.current++;
     };
   }, [carregar]);
-  useEffect(() => {
-    let ativo = true;
-    setProdutos([]);
-    setMateriais([]);
-    void Promise.all([
-      listarProdutos(
-        { uso: "sanitario", ativo: true },
-        sitioEfetivo ?? undefined,
-      ),
-      listarMaterialGenetico({}, sitioEfetivo ?? undefined),
-    ])
-      .then(([p, m]) => {
-        if (ativo) {
-          setProdutos(p);
-          setMateriais(m);
-        }
-      })
-      .catch((e) => {
-        if (ativo) setErro(e instanceof Error ? e.message : String(e));
-      });
-    return () => {
-      ativo = false;
-    };
-  }, [sitioEfetivo]);
   const abrir = useCallback(
     async (id: string) => {
       if (contextoAtual.current !== contexto) return;
@@ -406,8 +384,21 @@ export function Iatf({
       if (contextoAtual.current === contexto) setOcupado(false);
     }
   };
+  const abrirCadastro = async (p: CadastroProtocoloMeta, derivar: boolean) => {
+    if (ocupado || novo === "protocolo") return;
+    setErro(null);
+    const pedido = ++aberturaCadastro.current;
+    const consultaAtual = sequenciaConsulta.current;
+    try {
+      const meta = await obterCadastroProtocolo(p.id);
+      if (contextoAtual.current !== contexto || aberturaCadastro.current !== pedido || sequenciaConsulta.current !== consultaAtual) return;
+      setEditando(derivar ? null : meta.id); setOrigemVersaoId(derivar ? meta.id : null);
+      setNome(meta.nome); setVersao(derivar ? meta.proximaVersao ?? meta.versao + 1 : meta.versao);
+      setOrigemCadastro(meta); setAcoesCompletas(false); setEtapas([]); setPublicado(false); setNovo("protocolo");
+    } catch (e) { if (contextoAtual.current === contexto && aberturaCadastro.current === pedido) setErro(e instanceof Error ? e.message : String(e)); }
+  };
   return (
-    <div className="space-y-5">
+    <div className="protocolos-pagina protocolos-superficie space-y-5">
       <ErrorBox erro={erro} />
       {modo !== "operacao" && <BibliotecaReprodutiva propriedadeId={sitioEfetivo} podeLancar={podeLancar} onCopiou={()=>void carregar()}/>}
       {modo === "operacao" && !programacaoId && <Panel>
@@ -511,7 +502,7 @@ export function Iatf({
           <OperacaoProtocolo programacaoId={detalhe.id} propriedadeId={sitioEfetivo ?? undefined} podeLancar={podeLancar} revisao={operacaoRevisao}
             acoes={podeLancar && sitioEfetivo != null && detalhe.propriedadeId === sitioEfetivo && detalhe.status === "ABERTA" ? <Button secondary onClick={() => { setNovo("participantes"); setChaveProgramacao(crypto.randomUUID()); setInicio(""); setSelecionados([]); setCienciaSanitaria(false); }}>Adicionar ou reintegrar participantes</Button> : undefined}
             gestao={<GestaoParticipantes key={`${detalhe.id}:${sitioEfetivo}`} id={detalhe.id} propriedadeId={sitioEfetivo ?? undefined} podeLancar={podeLancar && sitioEfetivo != null && detalhe.propriedadeId === sitioEfetivo} revisao={operacaoRevisao} aoRetirar={id => { setAcao({ tipo: "retirada", id }); setMotivo(""); }} />}
-            aoExecutar={(tarefas) => { filaOperacao.current = tarefas.slice(1); const t = tarefas[0]; if (t) setExecucao({ tarefa: t.tarefaOrigem, animalId: t.animal.id }); }}
+            aoSalvar={() => { setOperacaoRevisao(v => v + 1); void Promise.all([detalhe ? abrir(detalhe.id) : Promise.resolve(), onMudou?.()]); }}
             regularizacao={(t, aoSalvar) => t.propriedadeId ? <RegularizarOrigem path={`/reproducao/tarefas-iatf/${t.id}/regularizacao`} propriedadeId={t.tarefaOrigem.propriedadeRegularizacaoId ?? t.propriedadeId} consumoMantido={consumoMantidoUltimaAnulacao(t.tarefaOrigem.historicoRegularizacao)} onMudou={async () => { aoSalvar(); await onMudou?.(); }} /> : null}
           />
         </div>
@@ -536,8 +527,10 @@ export function Iatf({
                     setNome("");
                     setVersao(1);
                     setPublicado(false);
+                    aberturaCadastro.current++;
+                    setOrigemCadastro(null); setAcoesCompletas(true);
                     setEtapas([
-                      { nome: "", tipo: "MANEJO", intervalo: 0, unidade: "DIAS" },
+                      { nome: "", tipo: "MANEJO", intervalo: 0, unidade: "DIAS", momento: { nome: "D0", ordem: 1 } },
                     ]);
                     setNovo("protocolo");
                   }}
@@ -558,7 +551,8 @@ export function Iatf({
           )}
           <ErrorBox erro={erroConsulta} />
           {erroConsulta && <Button secondary onClick={() => void carregar()}>Tentar novamente</Button>}
-          {protocolos.length > 0 && <ListaRascunho itens={protocolos} rotulo="versões de protocolo" texto={p => `${p.nome} ${p.versao}`} renderizar={p => (
+          <div className="grid gap-3 sm:grid-cols-2"><label>Buscar protocolos<input type="search" disabled={novo === "protocolo"} className={classeInput} value={buscaProtocolos} onChange={e => { setBuscaProtocolos(e.target.value); setPaginaProtocolos(1); }} /></label><label>Situação<select disabled={novo === "protocolo"} className={classeInput} value={situacaoProtocolos} onChange={e => { setSituacaoProtocolos(e.target.value); setPaginaProtocolos(1); }}><option value="TODAS">Todas</option><option value="RASCUNHO">Rascunhos ativos</option><option value="PUBLICADA">Publicadas ativas</option><option value="INATIVA">Inativas</option></select></label></div>
+          {protocolos.length > 0 && protocolos.map(p => (
             <section
               key={p.id}
               className="text-sm border border-border rounded-lg p-3"
@@ -567,22 +561,19 @@ export function Iatf({
                 {p.nome} · versão {p.versao} ·{" "}
                 {p.ativo === false ? "Inativa" : p.publicado ? "Publicada" : "Rascunho"}
               </h3>
-              <p>
-                {p.etapas
-                  .map(
-                    (e) =>
-                      `${e.nome}: +${e.intervalo} ${e.unidade === "DIAS" ? "dias" : "horas"}`,
-                  )
-                  .join(" · ")}
-              </p>
+              <p>{p.totalEtapas} ações</p>
+              <Button secondary aria-expanded={versaoExpandida === p.id} onClick={() => setVersaoExpandida(versaoExpandida === p.id ? null : p.id)}>{versaoExpandida === p.id ? "Ocultar ações" : "Ver ações"}</Button>
+              {versaoExpandida === p.id && <AcoesCadastroPersistidas<EtapaIatf> key={p.id} origem={p} renderizar={(e, i) => <p key={i}>{e.momento?.nome ?? "Etapa legada sem momento"} · {e.nome}: +{e.intervalo} {e.unidade === "DIAS" ? "dias" : "horas"}{e.subtipo === "INSERCAO_DISPOSITIVO" ? " · Inserção de dispositivo" : ""}</p>} />}
+
               {podeLancar && <div className="mt-3 flex flex-wrap gap-2">
                 {p.referenciaTecnica?.fonte&&<p className="text-sm"><a className="underline" href={p.referenciaTecnica.fonte.url} target="_blank" rel="noreferrer">{p.referenciaTecnica.fonte.titulo}</a> · referência {p.referenciaTecnica.versaoReferencia}</p>}
-                {!p.publicado && !p.utilizada && p.ativo !== false && <><Button secondary disabled={ocupado} onClick={() => { setEditando(p.id); setNome(p.nome); setVersao(p.versao); setEtapas(p.etapas.map(etapaParaCadastro)); setPublicado(false); setNovo("protocolo"); }}>Editar rascunho</Button><Button secondary disabled={ocupado} onClick={() => void executar(async () => { await reqIatf(`/reproducao/protocolos/${p.id}/publicar`, {}); await carregar(); })}>Publicar versão</Button></>}
-                <Button secondary disabled={ocupado} onClick={() => { setEditando(null); setOrigemVersaoId(p.id); setNome(p.nome); setVersao(Math.max(...protocolos.filter(v => v.nome === p.nome).map(v => v.versao)) + 1); setEtapas(p.etapas.map(etapaParaCadastro)); setPublicado(false); setNovo("protocolo"); }}>Nova versão</Button>
+                {!p.publicado && !p.utilizada && p.ativo !== false && <><Button secondary disabled={ocupado} onClick={() => void abrirCadastro(p, false)}>Editar rascunho</Button><Button secondary disabled={ocupado} onClick={() => void executar(async () => { await reqIatf(`/reproducao/protocolos/${p.id}/publicar`, {}); await carregar(); })}>Publicar versão</Button></>}
+                <Button secondary disabled={ocupado} onClick={() => void abrirCadastro(p, true)}>Nova versão</Button>
                 {p.ativo !== false && <Button secondary disabled={ocupado} onClick={() => void executar(async () => { await reqIatf(`/reproducao/protocolos/${p.id}/inativar`, {}); await carregar(); })}>Inativar versão</Button>}
               </div>}
             </section>
-          )} />}
+          ))}
+          {(consultaVisivel?.protocolosTotal ?? 0) > 10 && <Paginacao paginaAtual={consultaVisivel?.protocolosPagina ?? paginaProtocolos} totalPaginas={Math.ceil((consultaVisivel?.protocolosTotal ?? 0) / 10)} totalItens={consultaVisivel?.protocolosTotal ?? 0} itensPorPagina={10} onPaginaChange={p => { if (novo !== "protocolo") setPaginaProtocolos(p); }} rotulo="versões de protocolo" idSelect="pagina-cadastro-iatf" />}
           {!carregando && !erroConsulta && consultaVisivel && !protocolos.length && (
             <Empty>
               <div className="space-y-3">
@@ -614,7 +605,7 @@ export function Iatf({
               <Button secondary onClick={() => setNovo(null)}>
                 Cancelar
               </Button>
-              <Button type="submit" form="novo-iatf" disabled={ocupado}>
+              <Button type="submit" form="novo-iatf" disabled={ocupado || novo === "protocolo" && (!acoesCompletas || etapas.length > 100)}>
                 Salvar
               </Button>
             </>
@@ -625,6 +616,7 @@ export function Iatf({
             className="grid gap-4"
             onSubmit={(e) => {
               e.preventDefault();
+              if (novo === "protocolo" && (!acoesCompletas || etapas.length > 100)) return;
               void executar(async () => {
                 if (novo === "protocolo")
                   await reqIatf(`/reproducao/protocolos${editando ? `/${editando}` : ""}`, {
@@ -703,12 +695,17 @@ export function Iatf({
                   Defina os intervalos desde o início efetivo. Não há doses ou
                   recomendações clínicas predefinidas.
                 </p>
-                {etapas.map((t, i) => (
+                {<EditorAcoesCadastro<EtapaIatf> origem={origemCadastro} itens={etapas} onChange={setEtapas} converter={e => ({ ...etapaParaCadastro(e), ordem: e.ordem, ...(e.momento ? { momento: etapas.find(atual => atual.momento?.ordem === e.momento?.ordem)?.momento ?? e.momento } : {}) })} onCompletoChange={setAcoesCompletas} renderizar={(t, i) => (
                   <fieldset
                     className="grid gap-3 rounded-lg border border-border p-3"
                     key={i}
                   >
-                    <legend>Etapa {i + 1}</legend>
+                    <legend>Ação {i + 1} · {t.momento?.nome ?? "Etapa legada sem momento"}</legend>
+                    <CamposMomentoAcao momento={t.momento} momentos={etapas.flatMap(e => e.momento ? [e.momento] : [])}
+                      onChange={momento => setEtapas(es => es.map((e, j) => j === i ? { ...e, momento } : e))}
+                      onRenomear={nome => setEtapas(es => es.map(e => e.momento && e.momento.ordem === t.momento?.ordem ? { ...e, momento: { ...e.momento, nome } } : e))}
+                      aplicacao={t.tipo === "APLICACAO"} subtipo={t.subtipo}
+                      onSubtipoChange={subtipo => setEtapas(es => es.map((e, j) => j === i ? { ...e, subtipo } : e))} />
                     <label>
                       Nome
                       <input
@@ -735,9 +732,13 @@ export function Iatf({
                               j === i
                                 ? {
                                     nome: x.nome,
+                                    ordem: x.ordem,
+                                    momento: x.momento,
+                                    orientacaoTemporal: x.orientacaoTemporal,
                                     intervalo: x.intervalo,
                                     unidade: x.unidade,
                                     tipo: e.target.value as EtapaIatf["tipo"],
+                                    referenciasCusto:t.referenciasCusto ? {servico:t.referenciasCusto.servico} : undefined,
                                   }
                                 : x,
                             ),
@@ -799,11 +800,11 @@ export function Iatf({
                         <option value="HORAS">Horas</option>
                       </select>
                     </label>
+                    <CamposReferenciasCusto valor={t.referenciasCusto} material={["APLICACAO","TENTATIVA"].includes(t.tipo)} onChange={referenciasCusto => setEtapas(es => es.map((e,j) => j === i ? {...e,referenciasCusto} : e))} />
                     <OrientacaoTemporalEtapa etapa={t} onChange={novo=>setEtapas(etapas.map((x,j)=>j===i?novo:x))}/>
                     <PlanoEtapa
+                      propriedadeId={sitioEfetivo ?? undefined}
                       etapa={t}
-                      produtos={produtos}
-                      materiais={materiais}
                       onChange={(novo) =>
                         setEtapas(etapas.map((x, j) => (j === i ? novo : x)))
                       }
@@ -812,6 +813,7 @@ export function Iatf({
                       <Button
                         secondary
                         type="button"
+                        disabled={!acoesCompletas}
                         onClick={() =>
                           setEtapas(etapas.filter((_, j) => j !== i))
                         }
@@ -820,10 +822,11 @@ export function Iatf({
                       </Button>
                     )}
                   </fieldset>
-                ))}
+                )} />}
                 <Button
                   secondary
                   type="button"
+                  disabled={!acoesCompletas || etapas.length >= 100}
                   onClick={() =>
                     setEtapas([
                       ...etapas,
@@ -832,11 +835,12 @@ export function Iatf({
                         tipo: "MANEJO",
                         intervalo: 0,
                         unidade: "DIAS",
+                        momento: { ...(etapas.at(-1)?.momento ?? { nome: `Momento ${etapas.length + 1}`, ordem: Math.max(0, ...etapas.map(e => e.momento?.ordem ?? 0)) + 1 }) },
                       },
                     ])
                   }
                 >
-                  + Adicionar etapa
+                  + Adicionar ação
                 </Button>
               </>
             ) : (
@@ -970,191 +974,21 @@ export function Iatf({
           </form>
         </PainelCadastro>
       )}
-      {execucao && painel && (
-        <ExecucaoIatf
-          key={`${sitioEfetivo}:${execucao.tarefa.id}`}
-          propriedadeId={sitioEfetivo}
-          tarefa={execucao.tarefa}
-          animalId={execucao.animalId}
-          painel={painel}
-          onFechar={() => { filaOperacao.current = []; setExecucao(null); }}
-          onSalvo={() => {
-            const proxima = filaOperacao.current.shift();
-            setExecucao(proxima ? { tarefa: proxima.tarefaOrigem, animalId: proxima.animal.id } : null);
-            setOperacaoRevisao(v => v + 1);
-            void Promise.all([detalhe ? abrir(detalhe.id) : Promise.resolve(), onMudou?.()]);
-          }}
-        />
-      )}
-    </div>
-  );
-}
 
-export function ExecucaoIatf({
-  propriedadeId,
-  tarefa,
-  animalId,
-  painel,
-  onFechar,
-  onSalvo,
-}: {
-  propriedadeId: number | null;
-  tarefa: TarefaIatf;
-  animalId: string;
-  painel: PainelReprodutivo;
-  onFechar: () => void;
-  onSalvo: () => void;
-}) {
-  const [realizada, setRealizada] = useState("");
-  const [motivo, setMotivo] = useState("");
-  const [preparado, setPreparado] = useState(false);
-  const [erro, setErro] = useState<string | null>(null);
-  const [ocupado, setOcupado] = useState(false);
-  const [chave] = useState(() => crypto.randomUUID());
-  const previaInicio = usePreviaInicioExecucao(tarefa.id, propriedadeId, realizada ? dataHoraISO(realizada) : "");
-  const registrar = async (dados: object) => {
-    if (!propriedadeId) throw new Error("Selecione um sítio.");
-    await reqV4(`/reproducao/tarefas-iatf/${tarefa.id}/execucao`, {
-      propriedadeId,
-      chave,
-      realizadaEm: dataHoraISO(realizada),
-      ...(previaInicio.ciencia ? { cienciaRecalendarioLegado: true } : {}),
-      dados,
-      motivo: motivo || undefined,
-    }, "POST", propriedadeId);
-  };
-  if (preparado && tarefa.tipo === "APLICACAO" && propriedadeId)
-    return (
-      <FormAplicacaoServico
-        animalId={animalId}
-        propriedadeId={propriedadeId}
-        onFechar={onFechar}
-        onSalvo={onSalvo}
-        onRegistrar={registrar}
-        dataInicial={realizada.slice(0, 10)}
-        momentoIatf={realizada}
-        conteudoExtra={
-          <>
-            <DetalheEtapa tarefa={tarefa} />
-            <label className="text-sm">
-              Motivo de desvio, quando alterar data ou parâmetros
-              <input
-                className={classeInput}
-                value={motivo}
-                onChange={(e) => setMotivo(e.target.value)}
-                minLength={5}
-              />
-            </label>
-          </>
-        }
-      />
-    );
-  if (preparado && tarefa.tipo === "EXAME") return <FormFatoSanitario tipo="exame" animalInicial={animalId} fixo onFechar={onFechar} onSalvo={onSalvo} onRegistrar={registrar} dataInicial={realizada.slice(0,10)} conteudoExtra={<><DetalheEtapa tarefa={tarefa} /><label>Motivo do desvio<input className={classeInput} value={motivo} onChange={e => setMotivo(e.target.value)} /></label></>} />;
-  if (preparado && (tarefa.tipo === "TENTATIVA" || tarefa.tipo === "AVALIACAO"))
-    return (
-      <FormReproducao
-        acao={tarefa.tipo === "TENTATIVA" ? "tentativa" : "avaliacao"}
-        painel={painel}
-        animalInicial={animalId}
-        tipoExameInicial={tarefa.planejadoSnapshot?.etapa.planoAvaliacao?.tipoExameId}
-        finalidadeInicial={tarefa.planejadoSnapshot?.etapa.planoAvaliacao?.tipo}
-        onFechar={onFechar}
-        onSalvo={onSalvo}
-        onRegistrar={registrar}
-        dataInicial={realizada.slice(0, 10)}
-        conteudoExtra={
-          <>
-            <DetalheEtapa tarefa={tarefa} />
-            <label className="text-sm">
-              Motivo de desvio, quando alterar data ou parâmetros
-              <input
-                className={classeInput}
-                value={motivo}
-                onChange={(e) => setMotivo(e.target.value)}
-                minLength={5}
-              />
-            </label>
-          </>
-        }
-      />
-    );
-  return (
-    <PainelCadastro
-      aberto
-      titulo={`Executar ${tarefa.nome ?? tarefa.tipo}`}
-      onFechar={onFechar}
-      bloqueado={ocupado}
-      rodape={
-        <>
-          <Button secondary onClick={onFechar}>
-            Cancelar
-          </Button>
-          <Button type="submit" form="execucao-iatf" disabled={ocupado || !previaInicio.podeConfirmar}>
-            Continuar
-          </Button>
-        </>
-      }
-    >
-      <form
-        id="execucao-iatf"
-        className="grid gap-4"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (!previaInicio.podeConfirmar) return;
-          if (["APLICACAO", "TENTATIVA", "AVALIACAO", "EXAME"].includes(tarefa.tipo)) {
-            setPreparado(true);
-            return;
-          }
-          setOcupado(true);
-          registrar({ observacao: motivo || undefined })
-            .then(onSalvo)
-            .catch((e) => setErro(e.message))
-            .finally(() => setOcupado(false));
-        }}
-      >
-        <ErrorBox erro={erro} />
-        <p className="text-sm">
-          Planejado: {tarefa.previsaoPendente ? "Previsão a definir: início sem horário" : horarioIatf(tarefa.previstaEm, tarefa.precisaoTemporal)}.
-        </p>
-        <DetalheEtapa tarefa={tarefa} />
-        <CampoDataIatf rotulo="Data realizada" valor={realizada} onChange={setRealizada} />
-        {previaInicio.conteudo}
-        <label className="text-sm">
-          Motivo do desvio, se houver
-          <input
-            className={classeInput}
-            value={motivo}
-            onChange={(e) => setMotivo(e.target.value)}
-          />
-        </label>
-      </form>
-    </PainelCadastro>
+    </div>
   );
 }
 
 function PlanoEtapa({
   etapa,
-  produtos,
-  materiais,
+  propriedadeId,
   onChange,
 }: {
   etapa: EtapaIatf;
-  produtos: ProdutoDTO[];
-  materiais: MaterialGeneticoDTO[];
+  propriedadeId?: number;
   onChange: (e: EtapaIatf) => void;
 }) {
-  const [exames, setExames] = useState<TipoExame[]>([]);
-  const [erroExames, setErroExames] = useState<string | null>(null);
-  useEffect(() => {
-    let ativo = true;
-    if (["EXAME", "AVALIACAO"].includes(etapa.tipo)) {
-      setExames([]); setErroExames(null);
-      (etapa.tipo === "EXAME" ? reqSanidade<TipoExame[]>("/tipos-exame") : reqV4<TipoExame[]>("/reproducao/tipos-exame"))
-        .then(itens => { if (ativo) setExames(itens); }).catch(e => { if (ativo) setErroExames(e.message); });
-    }
-    return () => { ativo = false; };
-  }, [etapa.tipo]);
-  if (etapa.tipo === "EXAME") return <><ErrorBox erro={erroExames} /><label>Exame sanitário planejado<select className={classeInput} value={etapa.planoExame?.tipoExameId ?? ""} onChange={e => onChange({ ...etapa, planoExame: e.target.value ? { tipoExameId: e.target.value } : undefined })}><option value="">Selecione o exame</option>{exames.map(e => <option key={e.id} value={e.id}>{e.nome}</option>)}</select></label></>;
+  if (etapa.tipo === "EXAME") return <SeletorCatalogoProtocolo propriedadeId={propriedadeId} origem="SANITARIO" opcao="TIPO_EXAME" rotulo="Exame sanitário planejado" valor={etapa.planoExame?.tipoExameId ?? ""} onChange={tipoExameId => onChange({ ...etapa, planoExame: tipoExameId ? { tipoExameId } : undefined })}/>;
   if (etapa.tipo === "APLICACAO") {
     const p = etapa.planoAplicacao;
     const alterar = (
@@ -1176,28 +1010,7 @@ function PlanoEtapa({
           Informe os parâmetros definidos pelo responsável. Planejar não aplica
           nem consome estoque.
         </p>
-        <label>
-          Produto planejado
-          <select
-            className={classeInput}
-            value={p?.produtoId ?? ""}
-            onChange={(e) => {
-              const produto = produtos.find((p) => p.id === e.target.value);
-              if (!produto) {
-                onChange({ ...etapa, planoAplicacao: undefined });
-                return;
-              }
-              alterar({ produtoId: produto.id, unidadeDose: produto.unidade });
-            }}
-          >
-            <option value="">Não definido</option>
-            {produtos.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.nome}
-              </option>
-            ))}
-          </select>
-        </label>
+        <SeletorCatalogoProtocolo propriedadeId={propriedadeId} origem="SANITARIO" opcao="PRODUTO" rotulo="Produto planejado" valor={p?.produtoId ?? ""} onChange={(produtoId, produto) => produtoId ? alterar({ produtoId, unidadeDose: (produto?.unidade ?? p?.unidadeDose ?? "ML") as UnidadeMedida }) : onChange({ ...etapa, planoAplicacao: undefined })}/>
         <label>
           Dose planejada
           <input
@@ -1266,33 +1079,7 @@ function PlanoEtapa({
             <option value="TE">Transferência de embrião</option>
           </select>
         </label>
-        <label>
-          Material planejado
-          <select
-            className={classeInput}
-            value={p?.materialId ?? ""}
-            onChange={(e) => {
-              if (!e.target.value) {
-                onChange({ ...etapa, planoTentativa: undefined });
-                return;
-              }
-              alterar({ materialId: e.target.value });
-            }}
-          >
-            <option value="">Não definido</option>
-            {materiais
-              .filter(
-                (m) =>
-                  m.produto.ativo &&
-                  m.tipo === ((p?.tipo ?? "IA") === "IA" ? "SEMEN" : "EMBRIAO"),
-              )
-              .map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.produto.nome}
-                </option>
-              ))}
-          </select>
-        </label>
+        <SeletorCatalogoProtocolo propriedadeId={propriedadeId} origem="REPRODUTIVO" opcao="MATERIAL" tipoTentativa={p?.tipo ?? "IA"} rotulo="Material planejado" valor={p?.materialId ?? ""} onChange={materialId => materialId ? alterar({ materialId }) : onChange({ ...etapa, planoTentativa: undefined })}/>
         <label>
           Quantidade planejada
           <input
@@ -1311,11 +1098,8 @@ function PlanoEtapa({
   if (etapa.tipo === "AVALIACAO")
     return (
       <div className="col-span-full grid gap-3">
-      <ErrorBox erro={erroExames} />
-      <label>Tipo de exame reprodutivo<select className={classeInput} value={etapa.planoAvaliacao?.tipoExameId ?? ""} onChange={e => onChange({ ...etapa, planoAvaliacao: { tipo: etapa.planoAvaliacao?.tipo ?? "DIAGNOSTICO", tipoExameId: e.target.value || undefined } })}>
-        <option value="">Avaliação reprodutiva padrão (compatibilidade)</option>
-        {exames.filter(t => t.tipoResultado === "MULTIPLO").map(t => <option key={t.id} value={t.id}>{t.nome} · v{t.versaoFormato ?? 1}</option>)}
-      </select></label>
+      <SeletorCatalogoProtocolo propriedadeId={propriedadeId} origem="REPRODUTIVO" opcao="TIPO_EXAME" rotulo="Tipo de exame reprodutivo" valor={etapa.planoAvaliacao?.tipoExameId ?? ""} onChange={tipoExameId => onChange({ ...etapa, planoAvaliacao: { tipo: etapa.planoAvaliacao?.tipo ?? "DIAGNOSTICO", tipoExameId: tipoExameId || undefined } })}/>
+      <p className="text-sm">Sem tipo definido, mantém a avaliação reprodutiva padrão de compatibilidade.</p>
       <label>
         Avaliação planejada
         <select
@@ -1354,110 +1138,6 @@ function PlanoEtapa({
     </p>
   );
 }
-const nomesCampos: Record<string, string> = {
-  dataHora: "Data e hora",
-  data: "Data",
-  produtoId: "Produto",
-  dose: "Dose",
-  unidadeDose: "Unidade",
-  via: "Via",
-  tipoTentativa: "Tentativa",
-  materialId: "Material genético",
-  quantidade: "Quantidade",
-  tipoAvaliacao: "Finalidade do exame",
-  tipoExameId: "Tipo de exame",
-};
-function DetalheEtapa({ tarefa }: { tarefa: TarefaIatf }) {
-  const plano = tarefa.planejadoSnapshot?.etapa;
-  const referencias = tarefa.planejadoSnapshot?.referencias;
-  const produto = referencias?.produto as { nome?: string } | undefined,
-    material = referencias?.material as { produtoNome?: string } | undefined;
-  const exame = referencias?.exame as { id?: string; nome?: string; versao?: number } | undefined;
-  const apresentacao = (campo: string, v: unknown) => {
-    if (v === null || v === undefined) return "Não informado";
-    if (campo === "tipoExameId" && v === exame?.id) return `${exame.nome ?? "Exame planejado"} · v${exame.versao ?? 1}`;
-    if (campo === "dataHora" && typeof v === "string") return horarioIatf(v);
-    return String(v);
-  };
-  return (
-    <details className="w-full min-w-0 text-sm">
-      <summary className="cursor-pointer">Planejamento e execução</summary>
-      <div className="space-y-2 py-2">
-        {plano?.planoAplicacao && (
-          <p>
-            Planejado: {produto?.nome ?? "Produto referenciado"} ·{" "}
-            {plano.planoAplicacao.dose}{" "}
-            {UNIDADES[plano.planoAplicacao.unidadeDose]?.rotulo} · via{" "}
-            {plano.planoAplicacao.via ?? "não informada"}
-          </p>
-        )}
-        {plano?.planoTentativa && (
-          <p>
-            Planejado: {plano.planoTentativa.tipo} ·{" "}
-            {material?.produtoNome ?? "Material referenciado"} · quantidade{" "}
-            {plano.planoTentativa.quantidade}
-          </p>
-        )}
-        {plano?.planoAvaliacao && (
-          <p>
-            Exame previsto: {exame?.nome ?? "Avaliação reprodutiva padrão"}{exame?.versao ? ` · v${exame.versao}` : ""}. Finalidade: {plano.planoAvaliacao.tipo}. O resultado é registrado após atendimento.
-          </p>
-        )}
-        {!plano && (
-          <p>
-            Planejamento histórico não aferível. Execução exige documentação do
-            motivo.
-          </p>
-        )}
-        {tarefa.realizadaEm && (
-          <p>Realizada: {horarioIatf(tarefa.realizadaEm, tarefa.precisaoRealizacao ?? tarefa.realizadoSnapshot?.precisaoRealizacao ?? "HORA")}</p>
-        )}
-        {tarefa.desviosSnapshot?.orientacaoTemporal?.estado==="FORA"&&<p role="status" className="rounded border border-amber-500 p-3">Alerta de intervalo: execução fora da tolerância configurada nesta etapa. Alvo: {tarefa.desviosSnapshot.orientacaoTemporal.previstaPara?horarioIatf(tarefa.desviosSnapshot.orientacaoTemporal.previstaPara,"HORA"):"não informado"}. Esse alerta não altera o calendário.</p>}
-        {tarefa.desviosSnapshot?.orientacaoTemporal?.estado==="NAO_AFERIVEL"&&<p>Intervalo não aferível: a hora da referência válida ou da execução não foi informada.</p>}
-        {tarefa.desviosSnapshot?.horarioAferido === false && !tarefa.desviosSnapshot.orientacaoTemporal && <p>{tarefa.planejadoSnapshot?.previsaoPendente ? "Data prevista e horário não aferidos: início sem horário conhecido." : "Horário não aferido: planejamento ou realização sem horário conhecido."}</p>}
-        {tarefa.desviosSnapshot && (
-          <p>
-            {!tarefa.desviosSnapshot.aferido
-              ? "Desvio não aferido por falta de planejamento completo"
-              : tarefa.desviosSnapshot.diferencas.length
-                ? "Execução com desvio documentado"
-                : tarefa.desviosSnapshot.horarioAferido === false ? "Parâmetros comparáveis sem desvio; horário não aferido" : "Parâmetros realizados conforme planejamento"}
-          </p>
-        )}
-        {!!tarefa.desviosSnapshot?.diferencas.length && (
-          <div className="overflow-auto">
-            <table className="w-full">
-              <thead>
-                <tr>
-                  <th className="text-left">Campo</th>
-                  <th className="text-left">Planejado</th>
-                  <th className="text-left">Realizado</th>
-                </tr>
-              </thead>
-              <tbody>
-                {tarefa.desviosSnapshot.diferencas.map((d) => (
-                  <tr key={d.campo}>
-                    <td>{nomesCampos[d.campo] ?? d.campo}</td>
-                    <td className="break-all">
-                      {apresentacao(d.campo, d.planejado)}
-                    </td>
-                    <td className="break-all">
-                      {apresentacao(d.campo, d.realizado)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-        {tarefa.desviosSnapshot?.motivo && (
-          <p>Motivo: {tarefa.desviosSnapshot.motivo}</p>
-        )}
-      </div>
-    </details>
-  );
-}
-
 function OrientacaoTemporalEtapa({etapa,onChange}:{etapa:EtapaIatf;onChange:(e:EtapaIatf)=>void}){
  const r=etapa.orientacaoTemporal;const mudar=(v:Partial<NonNullable<EtapaIatf["orientacaoTemporal"]>>)=>r&&onChange({...etapa,orientacaoTemporal:{...r,...v}});
  return <fieldset className="space-y-2 rounded border p-3"><legend>Orientação temporal desta etapa</legend><label className="flex gap-2"><input type="checkbox" checked={!!r} onChange={e=>onChange({...etapa,orientacaoTemporal:e.target.checked?{versao:1,efeito:"ALERTA",referencia:"INICIO_EFETIVO",intervaloHoras:etapa.unidade==="HORAS"?etapa.intervalo:etapa.intervalo*24,toleranciaAntesMinutos:0,toleranciaDepoisMinutos:0}:undefined})}/>Configurar alerta de intervalo</label>{r&&<><label>Referência<select className={classeInput} value={r.referencia} onChange={e=>mudar({referencia:e.target.value as typeof r.referencia})}><option value="INICIO_EFETIVO">Início efetivo</option><option value="ETAPA_ANTERIOR">Execução válida da etapa anterior</option></select></label>{([["intervaloHoras","Intervalo (horas)"],["toleranciaAntesMinutos","Tolerância antes (minutos)"],["toleranciaDepoisMinutos","Tolerância depois (minutos)"]] as const).map(([campo,label])=><label key={campo}>{label}<input className={classeInput} type="number" required min={0} step={campo==="intervaloHoras"?"any":1} value={r[campo]} onChange={e=>mudar({[campo]:Number(e.target.value)})}/></label>)}<p className="text-sm">Alerta apenas. Sem a hora da referência ou da execução, o intervalo fica não aferível. A orientação não altera as próximas etapas.</p></>}</fieldset>;

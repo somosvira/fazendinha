@@ -1,3 +1,10 @@
+import "../protocolos/protocolos.css";
+import { SeletorCatalogoProtocolo } from "../protocolos/SeletorCatalogoProtocolo";
+import { CamposReferenciasCusto, type ReferenciasCustoCadastro } from "../protocolos/CamposReferenciasCusto";
+import { CamposMomentoAcao, type MomentoCadastro, type SubtipoAplicacaoCadastro } from "../protocolos/CamposMomentoAcao";
+import { AcoesCadastroPersistidas, EditorAcoesCadastro } from "../protocolos/AcoesCadastro";
+import { listarCadastrosProtocolos, obterCadastroProtocolo, type CadastroProtocoloMeta } from "../protocolos/cadastros-api";
+import { Paginacao } from "../ui";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { ChevronDown, ChevronRight, Pencil, Copy, Send, PowerOff } from "lucide-react";
 import { Button, ErrorBox, Pill } from "../../../financeiro/financeiro-ui";
@@ -5,41 +12,34 @@ import {
   classeInput,
   PainelCadastro,
 } from "../../../financeiro/PainelCadastro";
-import { listarProdutos, type ProdutoDTO } from "../../../estoque/api";
-import { listarTiposAplicacao, reqSanidade, type TipoAplicacao } from "./api";
+import { reqSanidade } from "./api";
 import { navegarPara } from "../../../router";
-import type { TipoExame } from "./CadastrosSanitarios";
 type Etapa = {
+  referenciasCusto?: ReferenciasCustoCadastro;
+  ordem?: number;
+  momento?: MomentoCadastro | null;
+  subtipo?: SubtipoAplicacaoCadastro;
   diaRelativo: number;
-  tipo: "APLICACAO" | "EXAME";
+  tipo: "APLICACAO" | "EXAME" | "MANEJO" | "RETIRADA";
   produtoId: string;
   tipoExameId: string;
   tipoAplicacaoId: string;
   dose: string;
   unidade: string;
 };
-type Protocolo = {
-  id: string;
-  nome: string;
-  descricao: string | null;
-  ativo: boolean;
-  versao: number;
-  publicadoEm: string | null;
-  etapas: Array<
-    Omit<
-      Etapa,
-      "produtoId" | "tipoExameId" | "tipoAplicacaoId" | "dose" | "unidade"
-    > & {
-      produtoId: string | null;
-      tipoExameId: string | null;
-      tipoAplicacaoId: string | null;
-      dose: string | null;
-      unidade: string | null;
-      tipoAplicacaoNomeSnapshot: string | null;
-    }
-  >;
+type Protocolo = CadastroProtocoloMeta;
+type EtapaPersistida = Omit<Etapa, "produtoId" | "tipoExameId" | "tipoAplicacaoId" | "dose" | "unidade"> & {
+  produtoId: string | null; tipoExameId: string | null; tipoAplicacaoId: string | null;
+  dose: string | null; unidade: string | null; tipoAplicacaoNomeSnapshot: string | null;
+  configuracao?: { subtipo?: SubtipoAplicacaoCadastro; referenciasCusto?:ReferenciasCustoCadastro } | null;
 };
-const nova = (): Etapa => ({
+function etapaEditavel(e: EtapaPersistida): Etapa {
+  return { ...e, referenciasCusto:e.configuracao?.referenciasCusto, momento: e.momento ? { nome: e.momento.nome, ordem: e.momento.ordem } : undefined,
+    subtipo: e.tipo === "APLICACAO" ? e.configuracao?.subtipo : undefined,
+    produtoId: e.produtoId ?? "", tipoExameId: e.tipoExameId ?? "", tipoAplicacaoId: e.tipoAplicacaoId ?? "", dose: e.dose ?? "", unidade: e.unidade ?? "ML" };
+}
+const nova = (momento: MomentoCadastro = { nome: "D0", ordem: 1 }): Etapa => ({
+  momento: { ...momento },
   diaRelativo: 0,
   tipo: "APLICACAO",
   produtoId: "",
@@ -50,9 +50,12 @@ const nova = (): Etapa => ({
 });
 export function ProtocolosCadastro({ podeLancar }: { podeLancar: boolean }) {
   const [protocolos, setProtocolos] = useState<Protocolo[]>([]);
-  const [produtos, setProdutos] = useState<ProdutoDTO[]>([]);
-  const [tipos, setTipos] = useState<TipoAplicacao[]>([]);
-  const [exames, setExames] = useState<TipoExame[]>([]);
+  const [paginaProtocolos, setPaginaProtocolos] = useState(1);
+  const [totalProtocolos, setTotalProtocolos] = useState(0);
+  const [busca, setBusca] = useState("");
+  const [situacao, setSituacao] = useState("TODAS");
+  const [origemCadastro, setOrigemCadastro] = useState<Protocolo | null>(null);
+  const [acoesCompletas, setAcoesCompletas] = useState(true);
   const [id, setId] = useState<string | null>(null);
   const [aberto, setAberto] = useState(false);
   const [nome, setNome] = useState("");
@@ -63,11 +66,10 @@ export function ProtocolosCadastro({ podeLancar }: { podeLancar: boolean }) {
   const [revisao, setRevisao] = useState(0);
   const [carregando, setCarregando] = useState(true);
   const [erroLista, setErroLista] = useState<string | null>(null);
-  const [erroCatalogos, setErroCatalogos] = useState<string | null>(null);
-  const [catalogosProntos, setCatalogosProntos] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
   const [detalhe, setDetalhe] = useState<Protocolo | null>(null);
   const trava = useRef(false);
+  const aberturaCadastro = useRef(0);
   const vivoRef = useRef(true);
   const geracao = useRef(0);
   useEffect(() => {
@@ -78,35 +80,12 @@ export function ProtocolosCadastro({ podeLancar }: { podeLancar: boolean }) {
     let vivo = true;
     const atual = ++geracao.current;
     setCarregando(true); setErroLista(null);
-    reqSanidade<Protocolo[]>("/protocolos?incluirInativos=true")
-      .then((p) => { if (vivo && geracao.current === atual) setProtocolos(p); })
+    listarCadastrosProtocolos("SANITARIO", paginaProtocolos, busca, situacao)
+      .then((p) => { if (vivo && geracao.current === atual) { setProtocolos(p.itens); setTotalProtocolos(p.total); setPaginaProtocolos(p.pagina); } })
       .catch((e: unknown) => { if (vivo) setErroLista(e instanceof Error ? e.message : "Não conseguimos carregar os protocolos."); })
       .finally(() => { if (vivo) setCarregando(false); });
     return () => { vivo = false; };
-  }, [revisao]);
-  useEffect(() => {
-    let vivo = true;
-    setCatalogosProntos(false); setErroCatalogos(null);
-    Promise.all([
-      listarProdutos({ ativo: true }),
-      listarTiposAplicacao(),
-      reqSanidade<TipoExame[]>("/tipos-exame?incluirInativos=true"),
-    ])
-      .then(([ps, ts, es]) => {
-        if (vivo) {
-          setProdutos(ps);
-          setTipos(ts.filter((t) => t.ativo));
-          setExames(es);
-          setCatalogosProntos(true);
-        }
-      })
-      .catch((e: unknown) => {
-        if (vivo) setErroCatalogos(e instanceof Error ? e.message : String(e));
-      });
-    return () => {
-      vivo = false;
-    };
-  }, [revisao]);
+  }, [revisao, paginaProtocolos, busca, situacao]);
   async function enviar(path: string, body: object, method = "POST") {
     if (!podeLancar || trava.current) return;
     trava.current = true;
@@ -115,11 +94,10 @@ export function ProtocolosCadastro({ podeLancar }: { podeLancar: boolean }) {
     setAviso(null);
     const atual = geracao.current;
     try {
-      const atualizado = await reqSanidade<Protocolo>(path, { method, body: JSON.stringify(body) });
+      await reqSanidade(path, { method, body: JSON.stringify(body) });
       if (!vivoRef.current || geracao.current !== atual) return;
-      setProtocolos((lista) => lista.some((p) => p.id === atualizado.id)
-        ? lista.map((p) => p.id === atualizado.id ? { ...p, ...atualizado, etapas: atualizado.etapas ?? p.etapas } : p)
-        : [...lista, atualizado]);
+      setRevisao(v => v + 1);
+      setDetalhe(null);
       setAberto(false);
       setAviso(path.endsWith("/publicacao") ? "Versão publicada." : path.endsWith("/inativacao") ? "Versão inativada." : "Rascunho salvo.");
     } catch (e) {
@@ -129,58 +107,53 @@ export function ProtocolosCadastro({ podeLancar }: { podeLancar: boolean }) {
       if (vivoRef.current) setOcupado(false);
     }
   }
-  function editar(p?: Protocolo) {
-    if (!podeLancar || trava.current || !catalogosProntos) return;
+  async function editar(p?: Protocolo) {
+    if (!podeLancar || trava.current || aberto) return;
     setErro(null);
-    setId(p?.publicadoEm ? null : (p?.id ?? null));
-    setNome(p?.nome ?? "");
-    setDescricao(p?.descricao ?? "");
-    setEtapas(
-      p
-        ? p.etapas.map((e) => ({
-            ...e,
-            produtoId: e.produtoId ?? "",
-            tipoExameId: e.tipoExameId ?? "",
-            tipoAplicacaoId: e.tipoAplicacaoId ?? "",
-            dose: e.dose ?? "",
-            unidade: e.unidade ?? "ML",
-          }))
-        : [nova()],
-    );
-    setAberto(true);
+    const pedido = ++aberturaCadastro.current;
+    const listaAtual = geracao.current;
+    try {
+      const meta = p ? await obterCadastroProtocolo(p.id) : null;
+      if (!vivoRef.current || aberturaCadastro.current !== pedido || geracao.current !== listaAtual) return;
+      setId(meta?.publicadoEm || meta?.utilizada ? null : (meta?.id ?? null));
+      setNome(meta?.nome ?? ""); setDescricao(meta?.descricao ?? "");
+      setOrigemCadastro(meta); setAcoesCompletas(!meta);
+      setEtapas(meta ? [] : [nova()]); setAberto(true);
+    } catch (e) { if (vivoRef.current && aberturaCadastro.current === pedido) setErro(e instanceof Error ? e.message : String(e)); }
   }
   const mudar = (i: number, patch: Partial<Etapa>) =>
     setEtapas((es) => es.map((e, j) => (i === j ? { ...e, ...patch } : e)));
   return (
-    <section>
+    <section className="protocolos-pagina protocolos-superficie">
       <ErrorBox erro={erro} />
       <ErrorBox erro={erroLista} />
-      <ErrorBox erro={erroCatalogos} />
       {aviso && <p role="status" className="py-3 text-sm">{aviso}</p>}
       {ocupado && <p role="status" className="py-3 text-sm">Atualizando protocolo…</p>}
-      {(erroLista || erroCatalogos) && <Button secondary disabled={ocupado} onClick={() => setRevisao((v) => v + 1)}>Tentar novamente</Button>}
+      {erroLista && <Button secondary disabled={ocupado} onClick={() => setRevisao((v) => v + 1)}>Tentar novamente</Button>}
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3"><h2 className="h2">Protocolos sanitários</h2>
-        {podeLancar && <Button disabled={ocupado || !catalogosProntos || carregando} onClick={() => editar()}>Novo protocolo</Button>}
+        {podeLancar && <Button disabled={ocupado || carregando} onClick={() => editar()}>Novo protocolo</Button>}
       </div>
+      <div className="mb-4 grid gap-3 sm:grid-cols-2"><label>Buscar protocolos<input type="search" disabled={aberto} className={classeInput} value={busca} onChange={e => { setBusca(e.target.value); setPaginaProtocolos(1); }} /></label><label>Situação<select disabled={aberto} className={classeInput} value={situacao} onChange={e => { setSituacao(e.target.value); setPaginaProtocolos(1); }}><option value="TODAS">Todas</option><option value="RASCUNHO">Rascunhos ativos</option><option value="PUBLICADA">Publicadas ativas</option><option value="INATIVA">Inativas</option></select></label></div>
       {carregando ? <p role="status" className="py-4">Carregando protocolos…</p> : <div className="overflow-x-auto rounded border border-border"><table aria-label="Protocolos sanitários" className="w-full text-left text-sm">
         <thead className="bg-surface-2"><tr><th className="p-4">Nome</th><th className="p-4">Tipo</th><th className="p-4">Versão</th><th className="p-4">Situação</th><th className="p-4">Etapas</th><th className="p-4">Ações</th></tr></thead>
         <tbody className="divide-y divide-border">{protocolos.map((p) => <Fragment key={p.id}>
           <tr><td className="p-4"><button type="button" aria-expanded={detalhe?.id === p.id} aria-controls={`protocolo-${p.id}`} aria-label={`Ver etapas de ${p.nome} v${p.versao}`} onClick={() => setDetalhe(detalhe?.id === p.id ? null : p)} className="flex items-center gap-3 text-left">{detalhe?.id === p.id ? <ChevronDown size={16} /> : <ChevronRight size={16} />}<span>{p.nome}</span></button></td>
-            <td className="p-4">{p.etapas.every((e) => e.tipo === "EXAME") ? "Protocolo de exames" : "Protocolo sanitário"}</td>
+            <td className="p-4">Protocolo sanitário</td>
             <td className="whitespace-nowrap p-4">v{p.versao} · <Pill tone={p.publicadoEm ? "blue" : "amber"}>{p.publicadoEm ? "Publicado" : "Rascunho"}</Pill></td>
-            <td className="p-4"><Pill tone={p.ativo ? "green" : "neutral"}>{p.ativo ? "Ativo" : "Inativo"}</Pill></td><td className="p-4">{p.etapas.length}</td><td className="p-4"><div className="flex justify-end gap-1">            {podeLancar && <>
-              <button type="button" disabled={ocupado || !catalogosProntos} aria-label={`${p.publicadoEm ? "Nova versão de" : "Editar rascunho de"} ${p.nome} v${p.versao}`} onClick={() => editar(p)} className="rounded-lg p-2 text-ink-2 hover:bg-surface-2 disabled:opacity-45">{p.publicadoEm ? <Copy size={16} /> : <Pencil size={16} />}</button>
+            <td className="p-4"><Pill tone={p.ativo ? "green" : "neutral"}>{p.ativo ? "Ativo" : "Inativo"}</Pill></td><td className="p-4">{p.totalEtapas}</td><td className="p-4"><div className="flex justify-end gap-1">            {podeLancar && <>
+              <button type="button" disabled={ocupado} aria-label={`${p.publicadoEm ? "Nova versão de" : "Editar rascunho de"} ${p.nome} v${p.versao}`} onClick={() => editar(p)} className="rounded-lg p-2 text-ink-2 hover:bg-surface-2 disabled:opacity-45">{p.publicadoEm ? <Copy size={16} /> : <Pencil size={16} />}</button>
               {!p.publicadoEm && <button type="button" disabled={ocupado} aria-label={`Publicar ${p.nome} v${p.versao}`} onClick={() => void enviar(`/protocolos/${p.id}/publicacao`, {})} className="rounded-lg p-2 text-ink-2 hover:bg-surface-2 disabled:opacity-45"><Send size={16} /></button>}
               {p.ativo && <button type="button" disabled={ocupado} aria-label={`Inativar ${p.nome} v${p.versao}`} onClick={() => void enviar(`/protocolos/${p.id}/inativacao`, {})} className="rounded-lg p-2 text-ink-2 hover:bg-surface-2 disabled:opacity-45"><PowerOff size={16} /></button>}
             </>}</div></td>
           </tr>
           {detalhe?.id === p.id && <tr><td colSpan={6} id={`protocolo-${p.id}`} className="bg-card p-5">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-4"><div><h3 className="h2">{p.nome} · v{p.versao}</h3><Pill tone={p.publicadoEm ? "green" : "amber"}>{p.publicadoEm ? "Versão publicada" : "Rascunho"}</Pill></div><div className="flex flex-wrap items-center gap-4">{podeLancar && <Button secondary disabled={ocupado || !catalogosProntos} onClick={() => editar(p)}>{p.publicadoEm ? "Criar nova versão" : "Editar rascunho"}</Button>}<a href="/pecuaria/sanidade" className="text-mast underline" onClick={(e) => { if (e.button === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) { e.preventDefault(); navegarPara("/pecuaria/sanidade"); } }}>Abrir agenda sanitária</a></div></div>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-4"><div><h3 className="h2">{p.nome} · v{p.versao}</h3><Pill tone={p.publicadoEm ? "green" : "amber"}>{p.publicadoEm ? "Versão publicada" : "Rascunho"}</Pill></div><div className="flex flex-wrap items-center gap-4">{podeLancar && <Button secondary disabled={ocupado} onClick={() => editar(p)}>{p.publicadoEm ? "Criar nova versão" : "Editar rascunho"}</Button>}<a href="/pecuaria/sanidade" className="text-mast underline" onClick={(e) => { if (e.button === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) { e.preventDefault(); navegarPara("/pecuaria/sanidade"); } }}>Abrir agenda sanitária</a></div></div>
             {p.descricao && <p className="mb-4 text-sm">{p.descricao}</p>}
-            <table aria-label={`Etapas de ${p.nome}`} className="w-full border border-border text-sm"><thead><tr><th className="p-3">Etapa</th><th className="p-3">Tipo e produto ou exame</th><th className="p-3">Dia relativo</th></tr></thead><tbody className="divide-y divide-border">{p.etapas.map((e, i) => <tr key={i}><td className="p-3"><span className="sr-only">Etapa {i + 1} · Dia {e.diaRelativo}</span>{i + 1}</td><td className="p-3">{e.tipoAplicacaoNomeSnapshot ?? (e.tipo === "EXAME" ? "Exame" : "Aplicação")} · {produtos.find((pr) => pr.id === e.produtoId)?.nome ?? exames.find((t) => t.id === e.tipoExameId)?.nome ?? (e.produtoId ? "Produto do histórico" : "Exame do histórico")} {e.dose} {e.unidade}</td><td className="p-3">D{e.diaRelativo}</td></tr>)}</tbody></table>
+            <AcoesCadastroPersistidas<EtapaPersistida> key={p.id} origem={p} renderizar={(e, i) => <p key={i} className="border-b border-border py-3 text-sm"><span className="sr-only">Etapa {i + 1} · Dia {e.diaRelativo}</span><strong>{e.momento?.nome ?? "Etapa legada sem momento"}</strong> · D{e.diaRelativo} · <span>{e.configuracao?.subtipo === "INSERCAO_DISPOSITIVO" ? "Inserção de dispositivo" : e.tipoAplicacaoNomeSnapshot ?? (e.tipo === "EXAME" ? "Exame" : "Aplicação")} · {e.produtoId || e.tipoExameId ? <SeletorCatalogoProtocolo somenteLeitura origem="SANITARIO" opcao={e.produtoId ? "PRODUTO" : "TIPO_EXAME"} rotulo="Referência da ação" valor={e.produtoId ?? e.tipoExameId ?? ""} onChange={()=>{}}/> : "Sem referência de produto ou exame"}</span> {e.dose} {e.unidade}</p>} />
           </td></tr>}
         </Fragment>)}</tbody>
       </table></div>}
+      {totalProtocolos > 10 && <Paginacao paginaAtual={paginaProtocolos} totalPaginas={Math.ceil(totalProtocolos / 10)} totalItens={totalProtocolos} itensPorPagina={10} onPaginaChange={p => { if (!aberto) setPaginaProtocolos(p); }} rotulo="protocolos sanitários" idSelect="pagina-cadastro-protocolos" />}
       {!carregando && !erroLista && !protocolos.length && (
         <p className="mt-3 text-sm">
           Nenhum protocolo. Planejar etapas não baixa medicamentos do estoque.
@@ -193,10 +166,10 @@ export function ProtocolosCadastro({ podeLancar }: { podeLancar: boolean }) {
             id ? "Editar protocolo em rascunho" : "Nova versão de protocolo"
           }
           onFechar={() => {
-            if (!ocupado) setAberto(false);
+            if (!ocupado) { aberturaCadastro.current++; setAberto(false); }
           }}
           rodape={
-            <Button type="submit" form="form-protocolo" disabled={ocupado}>
+            <Button type="submit" form="form-protocolo" disabled={ocupado || !acoesCompletas || etapas.length > 100}>
               {ocupado ? "Salvando…" : "Salvar rascunho"}
             </Button>
           }
@@ -206,6 +179,7 @@ export function ProtocolosCadastro({ podeLancar }: { podeLancar: boolean }) {
             className="grid gap-4"
             onSubmit={(e) => {
               e.preventDefault();
+              if (!acoesCompletas || etapas.length > 100) return;
               void enviar(
                 `/protocolos${id ? `/${id}` : ""}`,
                 {
@@ -214,14 +188,17 @@ export function ProtocolosCadastro({ podeLancar }: { podeLancar: boolean }) {
                   etapas: etapas.map((et) => ({
                     diaRelativo: et.diaRelativo,
                     tipo: et.tipo,
+                    referenciasCusto: et.referenciasCusto,
+                    ...(et.momento ? { momento: { nome: et.momento.nome.trim(), ordem: et.momento.ordem } } : {}),
                     ...(et.tipo === "APLICACAO"
                       ? {
+                          subtipo: et.subtipo ?? "APLICACAO",
                           produtoId: et.produtoId,
                           tipoAplicacaoId: et.tipoAplicacaoId,
                           dose: Number(et.dose),
                           unidade: et.unidade,
                         }
-                      : { tipoExameId: et.tipoExameId }),
+                      : et.tipo === "EXAME" ? { tipoExameId: et.tipoExameId } : {}),
                   })),
                 },
                 id ? "PATCH" : "POST",
@@ -244,12 +221,17 @@ export function ProtocolosCadastro({ podeLancar }: { podeLancar: boolean }) {
               Descrição (opcional)
               <textarea value={descricao} onChange={(e) => setDescricao(e.target.value)} className={classeInput} />
             </label>
-            {etapas.map((et, i) => (
+            {<EditorAcoesCadastro<Etapa> origem={origemCadastro} itens={etapas} onChange={setEtapas} converter={e => ({ ...etapaEditavel(e as EtapaPersistida), ...(e.momento ? { momento: etapas.find(atual => atual.momento?.ordem === e.momento?.ordem)?.momento ?? e.momento } : {}) })} onCompletoChange={setAcoesCompletas} renderizar={(et, i) => (
               <fieldset
                 key={i}
                 className="grid gap-3 rounded-lg border border-border p-3"
               >
-                <legend>Etapa {i + 1}</legend>
+                <legend>Ação {i + 1} · {et.momento?.nome ?? "Etapa legada sem momento"}</legend>
+                <CamposMomentoAcao momento={et.momento} momentos={etapas.flatMap(e => e.momento ? [e.momento] : [])}
+                  onChange={momento => mudar(i, { momento })}
+                  onRenomear={nome => setEtapas(es => es.map(e => e.momento && e.momento.ordem === et.momento?.ordem ? { ...e, momento: { ...e.momento, nome } } : e))}
+                  aplicacao={et.tipo === "APLICACAO"} subtipo={et.subtipo} onSubtipoChange={subtipo => mudar(i, { subtipo })} />
+                <CamposReferenciasCusto valor={et.referenciasCusto} material={et.tipo === "APLICACAO"} onChange={referenciasCusto => mudar(i, {referenciasCusto})} />
                 <label>
                   Dia relativo ao início
                   <input
@@ -269,57 +251,18 @@ export function ProtocolosCadastro({ podeLancar }: { podeLancar: boolean }) {
                   <select
                     value={et.tipo}
                     onChange={(e) =>
-                      mudar(i, { tipo: e.target.value as Etapa["tipo"] })
+                      mudar(i, { tipo: e.target.value as Etapa["tipo"], referenciasCusto:et.referenciasCusto ? {servico:et.referenciasCusto.servico} : undefined })
                     }
                     className={classeInput}
                   >
                     <option value="APLICACAO">Aplicação</option>
-                    <option value="EXAME">Exame</option>
+                    <option value="EXAME">Exame</option><option value="MANEJO">Manejo protocolar</option><option value="RETIRADA">Retirada de dispositivo</option>
                   </select>
                 </label>
                 {et.tipo === "APLICACAO" ? (
                   <>
-                    <label>
-                      Tipo de aplicação
-                      <select
-                        required
-                        value={et.tipoAplicacaoId}
-                        onChange={(e) =>
-                          mudar(i, { tipoAplicacaoId: e.target.value })
-                        }
-                        className={classeInput}
-                      >
-                        <option value="">Selecione</option>
-                        {tipos.map((t) => (
-                          <option key={t.id} value={t.id}>
-                            {t.nome}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label>
-                      Produto
-                      <select
-                        required
-                        value={et.produtoId}
-                        onChange={(e) =>
-                          mudar(i, {
-                            produtoId: e.target.value,
-                            unidade:
-                              produtos.find((p) => p.id === e.target.value)
-                                ?.unidade ?? "ML",
-                          })
-                        }
-                        className={classeInput}
-                      >
-                        <option value="">Selecione</option>
-                        {produtos.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.nome}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
+                    <SeletorCatalogoProtocolo origem="SANITARIO" opcao="TIPO_APLICACAO" rotulo="Tipo de aplicação" valor={et.tipoAplicacaoId} onChange={tipoAplicacaoId => mudar(i, { tipoAplicacaoId })}/>
+                    <SeletorCatalogoProtocolo origem="SANITARIO" opcao="PRODUTO" rotulo="Produto" valor={et.produtoId} onChange={(produtoId, produto) => mudar(i, { produtoId, unidade: produto?.unidade ?? et.unidade })}/>
                     <label>
                       Quantidade prevista ({et.unidade})
                       <input
@@ -333,42 +276,27 @@ export function ProtocolosCadastro({ podeLancar }: { podeLancar: boolean }) {
                       />
                     </label>
                   </>
-                ) : (
-                  <label>
-                    Tipo de exame
-                    <select
-                      required
-                      value={et.tipoExameId}
-                      onChange={(e) =>
-                        mudar(i, { tipoExameId: e.target.value })
-                      }
-                      className={classeInput}
-                    >
-                      <option value="">Selecione</option>
-                      {exames.filter((t) => t.ativo).map((t) => (
-                        <option key={t.id} value={t.id}>
-                          {t.nome}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                )}
+                ) : et.tipo === "EXAME" ? (
+                  <SeletorCatalogoProtocolo origem="SANITARIO" opcao="TIPO_EXAME" rotulo="Tipo de exame" valor={et.tipoExameId} onChange={tipoExameId => mudar(i, { tipoExameId })}/>
+
+                ) : <p className="text-sm">{et.tipo === "RETIRADA" ? "A retirada exige a aplicação de inserção válida do mesmo animal. Não devolve estoque." : "Manejo sem aplicação de produto; cada animal recebe seu próprio fato."}</p>}
                 <Button
                   secondary
-                  disabled={etapas.length === 1}
+                  disabled={!acoesCompletas || etapas.length === 1}
                   onClick={() =>
                     setEtapas((es) => es.filter((_, j) => i !== j))
                   }
                 >
-                  Remover etapa
+                  Remover ação
                 </Button>
               </fieldset>
-            ))}
+            )} />}
             <Button
               secondary
-              onClick={() => setEtapas((es) => [...es, nova()])}
+              disabled={!acoesCompletas || etapas.length >= 100}
+              onClick={() => setEtapas((es) => [...es, nova(es.at(-1)?.momento ?? { nome: `Momento ${es.length + 1}`, ordem: Math.max(0, ...es.map(e => e.momento?.ordem ?? 0)) + 1 })])}
             >
-              Adicionar etapa
+              Adicionar ação
             </Button>
           </form>
         </PainelCadastro>

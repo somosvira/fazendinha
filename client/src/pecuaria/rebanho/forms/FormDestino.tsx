@@ -1,4 +1,4 @@
-// Sheet "Mudar finalidade" (aptidão + papel reprodutivo; no banco, DestinoAnimal) — POST /pecuaria/rebanho/animais/:id/destino.
+// Sheet "Mudar finalidade" (finalidade + papel reprodutivo; no banco, FinalidadeAnimal) — POST /pecuaria/rebanho/animais/:id/destino.
 
 import { type FormEvent, useRef, useState } from "react";
 import { mudarDestinoAnimal, RebanhoApiError } from "../api";
@@ -38,7 +38,7 @@ export function FormDestino({ animal, onSalvo, onFechar }: {
     rodape={<><Button secondary onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form={formId} disabled={salvando}>{salvando ? "Salvando…" : "Salvar finalidade"}</Button></>}>
     <form id={formId} onSubmit={submeter} noValidate className="grid gap-4">
       <ErrorBox erro={erroGeral} />
-      <CampoFormulario id="destino-aptidao" rotulo="Aptidão" obrigatorio>{(p) => <select {...p} required value={aptidao} onChange={(e) => setAptidao(e.target.value as Aptidao)} className={classeInput}><option value="LEITE">Leite</option><option value="CORTE">Corte</option></select>}</CampoFormulario>
+      <CampoFormulario id="destino-aptidao" rotulo="Finalidade" obrigatorio>{(p) => <select {...p} required value={aptidao} onChange={(e) => setAptidao(e.target.value as Aptidao)} className={classeInput}><option value="LEITE">Leite</option><option value="CORTE">Corte</option><option value="REPRODUCAO">Reprodução</option></select>}</CampoFormulario>
       {animal.sexo === "F" && <CampoFormulario id="destino-papel" rotulo="Papel reprodutivo">{(p) => <select {...p} value={papelReprodutivo} onChange={(e) => setPapelReprodutivo(e.target.value as PapelReprodutivo)} className={classeInput}><option value="">Manter papel atual / não informado</option><option value="NENHUM">Nenhum</option><option value="RECEPTORA">Receptora</option><option value="DOADORA">Doadora</option></select>}</CampoFormulario>}
       <CampoFormulario id="destino-data" rotulo="Data da mudança" obrigatorio erro={erroData}>{(p) => <DatePicker {...p} required max={hoje()} value={data} onChange={setData} className="mt-1.5" />}</CampoFormulario>
     </form>

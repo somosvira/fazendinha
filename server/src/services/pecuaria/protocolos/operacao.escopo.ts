@@ -2,8 +2,8 @@ import { Prisma } from "@prisma/client";
 
 export function fatosTarefaNoSitio(propriedadeId: number): Prisma.TarefaProtocoloWhereInput {
   return { OR: [
-    { aplicacoes: { some: { propriedadeId } } }, { exames: { some: { propriedadeId } } }, { tentativas: { some: { propriedadeId } } },
-    { vinculos: { some: { OR: [{ aplicacao: { propriedadeId } }, { exame: { propriedadeId } }, { tentativa: { propriedadeId } }] } } },
+    { aplicacoes: { some: { propriedadeId } } }, { exames: { some: { propriedadeId } } }, { tentativas: { some: { propriedadeId } } }, { manejos: { some: { propriedadeId } } },
+    { vinculos: { some: { OR: [{ manejo: { propriedadeId } }, { aplicacao: { propriedadeId } }, { exame: { propriedadeId } }, { tentativa: { propriedadeId } }] } } },
   ] };
 }
 export function participacaoNoEscopoOperacao(propriedadeId: number | null): Prisma.ParticipacaoProtocoloWhereInput {
@@ -21,10 +21,12 @@ export function sqlTarefaNoEscopoOperacao(propriedadeId: number | null) {
   return Prisma.sql`(p."propriedadeId"=${propriedadeId}
     OR EXISTS (SELECT 1 FROM pecuaria."AplicacaoProduto" f WHERE f."tarefaId"=t.id AND f."propriedadeId"=${propriedadeId})
     OR EXISTS (SELECT 1 FROM pecuaria."ExameAnimal" f WHERE f."tarefaId"=t.id AND f."propriedadeId"=${propriedadeId})
+    OR EXISTS (SELECT 1 FROM pecuaria."ManejoAnimal" f WHERE f."tarefaId"=t.id AND f."propriedadeId"=${propriedadeId})
     OR EXISTS (SELECT 1 FROM pecuaria."TentativaReprodutiva" f WHERE f."tarefaId"=t.id AND f."propriedadeId"=${propriedadeId})
     OR EXISTS (SELECT 1 FROM pecuaria."VinculoTarefaProtocolo" v
       LEFT JOIN pecuaria."AplicacaoProduto" ap ON ap.id=v."aplicacaoId"
       LEFT JOIN pecuaria."ExameAnimal" ex ON ex.id=v."exameId"
       LEFT JOIN pecuaria."TentativaReprodutiva" tr ON tr.id=v."tentativaId"
-      WHERE v."tarefaId"=t.id AND (ap."propriedadeId"=${propriedadeId} OR ex."propriedadeId"=${propriedadeId} OR tr."propriedadeId"=${propriedadeId})))`;
+      LEFT JOIN pecuaria."ManejoAnimal" ma ON ma.id=v."manejoId"
+      WHERE v."tarefaId"=t.id AND (ap."propriedadeId"=${propriedadeId} OR ex."propriedadeId"=${propriedadeId} OR tr."propriedadeId"=${propriedadeId} OR ma."propriedadeId"=${propriedadeId})))`;
 }

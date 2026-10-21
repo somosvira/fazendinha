@@ -22,10 +22,10 @@ function carenciaRevisada(estado: string, horas: number | null): string {
   if (estado === "INFORMADO" && horas != null) return `${horas} h`;
   return "Não informado";
 }
-export function ConferenciaExecucao({ previa, animais }: { previa: PreviaExecucao; animais: Array<{ id: string; brinco: string }> }) {
+export function ConferenciaExecucao({ previa, animais, paginadaNoServidor = false }: { paginadaNoServidor?: boolean; previa: PreviaExecucao; animais: Array<{ id: string; brinco: string }> }) {
   return <section className="grid gap-3" aria-label="Conferência da execução">
     <h3 className="font-semibold">Planejado e realizado</h3>
-    <ListaRascunho itens={previa.itens} rotulo="atendimentos em conferência" texto={i => animais.find(a => a.id === i.animalId)?.brinco ?? i.animalId} renderizar={i => <section key={i.tarefaId} className="rounded-lg border border-border p-3">
+    <ListaRascunho itens={previa.itens} rotulo="atendimentos em conferência" texto={paginadaNoServidor?undefined:i => animais.find(a => a.id === i.animalId)?.brinco ?? i.animalId} renderizar={i => <section key={i.tarefaId} className="rounded-lg border border-border p-3">
       <strong>{animais.find((a) => a.id === i.animalId)?.brinco ?? "Animal não identificado"}</strong>
       {(i.aferido === false || i.referencia === "LEGADO_SEM_SNAPSHOT") && <p>Planejamento antigo sem todos os parâmetros congelados. Conformidade não aferida.</p>}
       {i.diferencas.length ? <ul className="list-inside list-disc">{i.diferencas.map((d) => <li key={d.campo}>{rotulos[d.campo] ?? d.campo}: {valorComparacaoExecucao(d.campo, d.planejado, i.exibicao?.planejado[d.campo])} → {valorComparacaoExecucao(d.campo, d.realizado, i.exibicao?.realizado[d.campo])}</li>)}</ul> : i.aferido !== false && i.referencia !== "LEGADO_SEM_SNAPSHOT" && <p>Realização conforme o planejamento.</p>}

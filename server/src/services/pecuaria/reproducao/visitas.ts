@@ -1,4 +1,8 @@
 import { prepararContextoInicioIatfTx, confirmarInicioIatfVisitaTx } from "./inicio-iatf-visita.js";
+import { prepararProtocolosVisitaTx, executarProtocolosVisitaTx, type LinhaProtocoloVisita } from "./visitas-protocolos.js";
+import { paginaExecucao } from "../protocolos/execucao.calc.js";
+import { paginaSubstitutosTarefa, paginaSubstitutosFatoTx, paginaSubstitutosSchema } from "../protocolos/substitutos.js";
+import { registrarEventoTarefaTx } from "../protocolos/eventos.js";
 import { carregarRetornosNaDataTx, contextoRetornoNaData } from "./contexto-retorno.js";
 import { parametrosSanitariosVisita } from "./parametros-sanitarios-visita.calc.js";
 import { obterContextosAnimaisNaDataTx } from "./contexto-animal.js";
@@ -31,6 +35,7 @@ import {
   confirmacaoVisitaSchema,
   visitaSchema,
   criteriosVisitaSchema,
+  dataOuHorario,
   type CriteriosVisita,
 } from "./schemas.js";
 import { criarAvaliacaoTx, dia, erro, obterEstadosReprodutivosTx } from "./registros.js";
@@ -42,6 +47,7 @@ import { avaliarCategoria } from "../rebanho/categoria.calc.js";
 import { hashDados, operacaoIdempotenteTx } from "./operacoes.js";
 const json = (v: unknown): Prisma.InputJsonValue =>
   JSON.parse(JSON.stringify(v));
+function chaveEventoVisita(chave:string,participanteId:string){const h=hashDados({chave,participanteId});return `${h.slice(0,8)}-${h.slice(8,12)}-4${h.slice(13,16)}-8${h.slice(17,20)}-${h.slice(20,32)}`;}
 async function visitaTx(
   tx: Prisma.TransactionClient,
   id: string,
@@ -377,7 +383,7 @@ export async function confirmarAtividadeTx(
       participantes.map((p) => p.animalId),
     );
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`pec-visita:${id}`}))`;
-    return operacaoIdempotenteTx(
+    const resultado=await operacaoIdempotenteTx(
       tx,
       { ...input, visitaId: id, atividadeId },
       usuarioId,
@@ -390,10 +396,11 @@ export async function confirmarAtividadeTx(
             id,
             atividadeId,
             input.propriedadeId,
+            {participanteIds:ids},
           );
           if (
             !input.fingerprintPrevia ||
-            atual.fingerprint !== input.fingerprintPrevia
+            atual.fingerprint !== input.fingerprintPrevia && (await previaAtividadeTx(tx,id,atividadeId,input.propriedadeId)).fingerprint !== input.fingerprintPrevia
           )
             throw new RebanhoError(
               "CONFLITO",
@@ -429,6 +436,23 @@ export async function confirmarAtividadeTx(
           const dados = i.dados ?? p.rascunho as Record<string, unknown>;
           return typeof dados.tipoExameId === "string" ? dados.tipoExameId : TIPO_EXAME_REPRODUTIVO;
         }));
+        // Confira todos os participantes antes que os executores modifiquem o contexto clínico.
+        const comparacoes=new Map<string,Awaited<ReturnType<typeof compararSnapshotTx>>>();
+        for(const item of input.itens){
+          const p=participantes.find(p=>p.id===item.participanteId)!;
+          if(item.versaoRascunho!=null&&item.versaoRascunho!==p.versaoRascunho)throw new RebanhoError("CONFLITO","O rascunho mudou; recarregue antes de confirmar","versaoRascunho");
+          if(p.status==="CONFIRMADO")erro("Participante já confirmado; use a confirmação original");
+          if(item.status!=="CONFIRMADO"){
+            if(!item.motivo)erro("Adiamento/ausência exige motivo","motivo");
+            if(item.status==="ADIADO"&&p.tarefaId){const bruto=item.dados??p.rascunho as Record<string,unknown>;if(typeof bruto.previstaPara!=="string")erro("Informe nova previsão para adiar a tarefa da visita","previstaPara");dataOuHorario.parse(bruto.previstaPara);}
+            continue;
+          }
+          const contexto=await compararSnapshotTx(tx,p,v.data,input.propriedadeId);comparacoes.set(p.id,contexto);
+          if(contexto.alteracoes.length&&!input.cienciaAlteracoes)throw new RebanhoError("CONFLITO",`Contexto mudou desde a preparação: ${contexto.alteracoes.join("; ")}. Revise a prévia e confirme ciência.`,"cienciaAlteracoes");
+        }
+        const linhasProtocolos:LinhaProtocoloVisita[]=input.itens.flatMap(item=>{const p=participantes.find(p=>p.id===item.participanteId)!;return item.status==="CONFIRMADO"&&p.tarefaId?[{participanteId:p.id,animalId:p.animalId,tarefaId:p.tarefaId,dados:item.dados??p.rascunho as Record<string,unknown>}]:[];});
+        const preparadaProtocolos=await prepararProtocolosVisitaTx(tx,atividade.tipo,linhasProtocolos,input.propriedadeId,v.data.toISOString().slice(0,10));
+        const fatosProtocolos=await executarProtocolosVisitaTx(tx,preparadaProtocolos,usuarioId);
         const resultados = [];
         for (const [indice, item] of input.itens.entries()) {
           try {
@@ -442,6 +466,10 @@ export async function confirmarAtividadeTx(
             if (item.status !== "CONFIRMADO") {
               if (!item.motivo)
                 erro("Adiamento/ausência exige motivo", "motivo");
+              if(p.tarefaId){
+                const bruto=item.dados??p.rascunho as Record<string,unknown>;
+                await registrarEventoTarefaTx(tx,p.tarefaId,{chave:chaveEventoVisita(input.chave,p.id),propriedadeId:input.propriedadeId,tipo:item.status==="ADIADO"?"ADIAMENTO":"NAO_ATENDIDO",ocorridaEm:new Date().toISOString(),motivo:item.motivo,...(item.status==="ADIADO"?{previstaPara:dataOuHorario.parse(bruto.previstaPara)}:{})},usuarioId);
+              }
               resultados.push(
                 await tx.participanteVisita.update({
                   where: { id: p.id },
@@ -450,12 +478,7 @@ export async function confirmarAtividadeTx(
               );
               continue;
             }
-            const { alteracoes } = await compararSnapshotTx(
-              tx,
-              p,
-              v.data,
-              input.propriedadeId,
-            );
+            const { alteracoes } = comparacoes.get(p.id)!;
             if (alteracoes.length && !input.cienciaAlteracoes)
               throw new RebanhoError(
                 "CONFLITO",
@@ -479,7 +502,11 @@ export async function confirmarAtividadeTx(
                 v.data.toISOString().slice(0, 10),
             };
             let fato: { id: string }, fatoTipo: string;
-            if (atividade.tipo === "AVALIACAO_REPRODUTIVA") {
+            const protocoloFeito=fatosProtocolos.get(p.id);
+            if(protocoloFeito){
+              fato={id:atividade.tipo==="TAREFA_IATF"?protocoloFeito.tarefaId:protocoloFeito.id};
+              fatoTipo=atividade.tipo==="TAREFA_IATF"?"TarefaIatf":protocoloFeito.tipo==="APLICACAO"?"AplicacaoProduto":"ExameAnimal";
+            } else if (atividade.tipo === "AVALIACAO_REPRODUTIVA") {
               const salvo = p.rascunho as Record<string, unknown>;
               const acompanhamento=(p.snapshot as Record<string,unknown>).acompanhamento as {id:string;finalidade:string;tentativaId:string|null;gestacaoId:string|null;regraSnapshot:Record<string,unknown>}|undefined;
               if(acompanhamento){
@@ -585,6 +612,7 @@ export async function confirmarAtividadeTx(
                 fatoTipo,
                 fatoId: fato.id,
                 rascunho: json(bruto),
+                ...(protocoloFeito?{snapshot:json({...p.snapshot as Record<string,unknown>,execucaoProtocolo:{versao:1,tarefaId:protocoloFeito.tarefaId,tipo:protocoloFeito.tipo,fatoId:protocoloFeito.id}})}:{}),
               },
             });
             await auditar(tx, {
@@ -628,6 +656,24 @@ export async function confirmarAtividadeTx(
       },
     );
 
+    return paginarConfirmacaoVisita(resultado,input.chave);
+
+}
+function paginarConfirmacaoVisita<T>(resultado:{participantes:T[];status:string},chave:string,consulta:unknown={}) {
+  const f=z.object({pagina:z.coerce.number().int().min(1).max(100000).default(1),porPagina:z.coerce.number().int().min(1).max(10).default(10)}).strict().parse(consulta);
+  const pagina=paginaExecucao(resultado.participantes,f.pagina,f.porPagina);
+  return {...pagina,participantes:pagina.itens,status:resultado.status,chave};
+}
+export async function obterConfirmacaoVisita(id:string,atividadeId:string,chave:string,propriedadeId:number,usuarioId:number|null,consulta:unknown={}) {
+  return prisma.$transaction(async tx=>{
+    await visitaTx(tx,id,propriedadeId);
+    if(!await tx.atividadeVisita.findFirst({where:{id:atividadeId,visitaId:id},select:{id:true}}))throw new RebanhoError("NAO_ENCONTRADO","Atividade não encontrada nesta visita");
+    const requisicao=await tx.requisicaoPecuaria.findFirst({where:{chave:z.string().uuid().parse(chave),propriedadeId,usuarioId,operacao:"CONFIRMACAO_VISITA"}});
+    if(!requisicao)throw new RebanhoError("NAO_ENCONTRADO","Confirmação não encontrada neste sítio e autoria");
+    const resultado=z.object({status:z.string(),participantes:z.array(z.object({id:z.string().uuid(),atividadeId:z.string().uuid(),animalId:z.string().uuid(),status:z.string()}).passthrough())}).parse(requisicao.resultadoIds);
+    if(resultado.participantes.some(p=>p.atividadeId!==atividadeId))throw new RebanhoError("NAO_ENCONTRADO","Confirmação não pertence à atividade");
+    return paginarConfirmacaoVisita(resultado,chave,consulta);
+  },{isolationLevel:Prisma.TransactionIsolationLevel.RepeatableRead});
 }
 export async function encerrarVisita(
   id: string,
@@ -674,7 +720,7 @@ export async function carregarContextosVisitaTx(tx: Prisma.TransactionClient, id
     obterEstadosReprodutivosTx(tx, ids, data),
     tx.categoriaAnimal.findMany({ orderBy: [{ ordem: "asc" }, { nome: "asc" }] }),
     tx.categoriaManualAnimal.findMany({ where: { animalId: { in: ids }, ...periodo }, include: { categoria: true } }),
-    tx.destinoAnimal.findMany({ where: { animalId: { in: ids }, ...periodo } }),
+    tx.finalidadeAnimal.findMany({ where: { animalId: { in: ids }, ...periodo } }),
     tx.ocorrenciaSanitaria.findMany({ where: { animalId: { in: ids }, status: "VALIDO", inicio: { lte: data }, OR: [{ fim: null }, { fim: { gte: data } }] } }),
     tx.regraSanitariaReprodutiva.findMany({ where: { ativo: true }, orderBy: { id: "asc" } }),
     tx.periodoReprodutivoAnimal.findMany({ where: { animalId: { in: ids }, revogadoEm: null } }),
@@ -844,19 +890,18 @@ async function previaAtividadeTx(
   id: string,
   atividadeId: string,
   propriedadeId: number,
+  consulta:unknown={},
 ) {
+  const filtros=z.object({pagina:z.coerce.number().int().min(1).max(100000).default(1),porPagina:z.coerce.number().int().min(1).max(10).default(10),paginaConsumos:z.coerce.number().int().min(1).max(100000).default(1),participanteIds:z.array(z.string().uuid()).min(1).max(100).optional()}).strict().parse(consulta);
   const v = await visitaTx(tx, id, propriedadeId);
-  if (
-    !(await tx.atividadeVisita.count({
-      where: { id: atividadeId, visitaId: id },
-    }))
-  )
+  const atividade=await tx.atividadeVisita.findFirst({where:{id:atividadeId,visitaId:id}});
+  if (!atividade)
     throw new RebanhoError(
       "NAO_ENCONTRADO",
       "Atividade não encontrada nesta visita",
     );
   const participantes = await tx.participanteVisita.findMany({
-    where: { atividadeId, status: { not: "CONFIRMADO" } },
+    where: { atividadeId, status: { not: "CONFIRMADO" },...(filtros.participanteIds?{id:{in:filtros.participanteIds}}:{}) },
     orderBy: { ordem: "asc" },
   });
   const linhas = await Promise.all(
@@ -866,14 +911,28 @@ async function previaAtividadeTx(
       ...(await compararSnapshotTx(tx, p, v.data, propriedadeId)),
     })),
   );
-  return { participantes: linhas, fingerprint: hashDados(linhas) };
+  const vinculados=participantes.filter(p=>p.tarefaId);
+  let execucaoProtocolos:{estado:"CONFERIDA"|"DADOS_PENDENTES";fingerprint?:string;consumos?:unknown[];totalConsumos?:number;paginaConsumos?:number;porPaginaConsumos?:number;erro?:string}|null=null;
+  if(vinculados.length){
+    try{
+      if(vinculados.length>100)throw new RebanhoError("VALIDACAO","Escolha até cem participantes para uma confirmação única");
+      const preparada=await prepararProtocolosVisitaTx(tx,atividade.tipo,vinculados.map(p=>({participanteId:p.id,animalId:p.animalId,tarefaId:p.tarefaId!,dados:p.rascunho as Record<string,unknown>})),propriedadeId,v.data.toISOString().slice(0,10));
+      const totalConsumos=preparada?.consumos.length??0,paginaConsumos=Math.min(filtros.paginaConsumos,Math.max(1,Math.ceil(totalConsumos/10)));
+      execucaoProtocolos={estado:"CONFERIDA",fingerprint:preparada?.fingerprint,consumos:preparada?.consumos.slice((paginaConsumos-1)*10,paginaConsumos*10)??[],totalConsumos,paginaConsumos,porPaginaConsumos:10};
+    }catch(e){if(!(e instanceof RebanhoError)&&!(e instanceof z.ZodError))throw e;execucaoProtocolos={estado:"DADOS_PENDENTES",erro:e instanceof z.ZodError?e.issues[0]?.message??"Complete os dados de execução":e.message};}
+  }
+  const total=linhas.length,pagina=Math.min(filtros.pagina,Math.max(1,Math.ceil(total/filtros.porPagina)));
+  const itens=linhas.slice((pagina-1)*filtros.porPagina,pagina*filtros.porPagina);
+  return {itens,participantes:itens,total,pagina,porPagina:filtros.porPagina,totalComAlteracoes:linhas.filter(l=>l.alteracoes.length>0).length,execucaoProtocolos,
+    fingerprint:hashDados({linhas,rascunhos:participantes.map(p=>({id:p.id,versao:p.versaoRascunho,dados:p.rascunho})),execucao:execucaoProtocolos?.fingerprint??execucaoProtocolos?.erro??null})};
 }
 
 export const previaAtividade = (
   id: string,
   atividadeId: string,
   propriedadeId: number,
-) => previaAtividadeTx(prisma, id, atividadeId, propriedadeId);
+  consulta:unknown={},
+) => transacaoPecuaria(tx=>previaAtividadeTx(tx, id, atividadeId, propriedadeId,consulta));
 
 export async function regularizarParticipanteVisita(id:string, participanteId:string,input:RegularizacaoInput,usuarioId:number|null){
   return transacaoPecuaria(async tx=>{
@@ -908,10 +967,11 @@ export async function regularizarParticipanteVisita(id:string, participanteId:st
   });
 }
 
-export async function substitutosParticipanteVisita(id: string, participanteId: string, propriedadeId: number) {
+export async function substitutosParticipanteVisita(id: string, participanteId: string, propriedadeId: number,consulta?:unknown) {
   await visitaTx(prisma, id, propriedadeId);
   const p = await prisma.participanteVisita.findUnique({ where: { id: participanteId } });
   if (!p || !await prisma.atividadeVisita.count({ where: { id: p.atividadeId, visitaId: id } })) throw new RebanhoError("NAO_ENCONTRADO", "Participante não pertence à visita");
+  if(consulta!==undefined){const f=paginaSubstitutosSchema.parse(consulta);if(!p.regularizacaoPendente)return{itens:[],total:0,pagina:1,porPagina:f.porPagina};if(p.tarefaId)return paginaSubstitutosTarefa(p.tarefaId,propriedadeId,f);return prisma.$transaction(tx=>paginaSubstitutosFatoTx(tx,p.fatoTipo??"",p.fatoId,p.animalId,propriedadeId,f),{isolationLevel:Prisma.TransactionIsolationLevel.RepeatableRead});}
   if (!p.regularizacaoPendente) return [];
   if (p.tarefaId) return substitutosTarefaComum(p.tarefaId, propriedadeId);
   return listarSubstitutosTx(prisma, p.fatoTipo ?? "", p.fatoId, p.animalId, propriedadeId);

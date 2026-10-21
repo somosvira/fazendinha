@@ -17,7 +17,7 @@ beforeEach(()=>{
   vi.resetAllMocks();
   banco.tx.tentativaReprodutiva.findFirst.mockResolvedValue(null);banco.tx.interpretacaoReprodutiva.findFirst.mockResolvedValue(null);banco.tx.exameAnimal.findFirst.mockResolvedValue(null);banco.tx.aplicacaoProduto.findFirst.mockResolvedValue(null);
   banco.tx.programacaoProtocolo.findFirst.mockResolvedValue({id,nome:"Grupo A",propriedadeId:1,inicioReferencia:data,precisaoTemporal:"DIA",status:"ABERTA",protocolo});
-  banco.tx.$queryRaw.mockResolvedValueOnce([{total:1n}]).mockResolvedValueOnce([{id,situacao:"REGULARIZACAO_PENDENTE"}]).mockResolvedValueOnce([{situacao:"REGULARIZACAO_PENDENTE",total:1n,atrasadas:1n}]);
+  banco.tx.$queryRaw.mockResolvedValueOnce([{total:1n}]).mockResolvedValueOnce([{id,situacao:"REGULARIZACAO_PENDENTE"}]).mockResolvedValueOnce([{situacao:"REGULARIZACAO_PENDENTE",total:1n,atrasadas:1n}]).mockResolvedValueOnce([{animaisPendentes:1n,acompanhamentosPendentes:0n}]);
   banco.tx.tarefaProtocolo.findMany.mockResolvedValueOnce([tarefa]).mockResolvedValueOnce([{id,execucao:{propriedadeId:1},vinculos:[{estado:"ATUAL",aplicacao:{propriedadeId:2,status:"ANULADO"},exame:null,tentativa:null}]}]);
 });
 describe("consulta operacional com fato realizado em outro sítio",()=>{

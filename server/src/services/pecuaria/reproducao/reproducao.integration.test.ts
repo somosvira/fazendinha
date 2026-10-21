@@ -178,9 +178,6 @@ afterAll(async () => {
   await prisma.participacaoProtocolo.deleteMany({
     where: { propriedadeId: props },
   });
-  await prisma.etapaProtocolo.deleteMany({
-    where: { protocoloId: { in: protocolos } },
-  });
   await prisma.protocolo.deleteMany({
     where: { id: { in: protocolos } },
   });
@@ -204,7 +201,7 @@ afterAll(async () => {
   await prisma.movimentacaoAnimal.deleteMany({ where: { animalId: ids } });
   await prisma.baixaAnimal.deleteMany({ where: { animalId: ids } });
   await prisma.localizacaoAnimal.deleteMany({ where: { animalId: ids } });
-  await prisma.periodoReprodutivoAnimal.deleteMany({ where: { animalId: ids } }); await prisma.destinoAnimal.deleteMany({ where: { animalId: ids } });
+  await prisma.periodoReprodutivoAnimal.deleteMany({ where: { animalId: ids } }); await prisma.finalidadeAnimal.deleteMany({ where: { animalId: ids } });
   await prisma.pesagem.deleteMany({ where: { animalId: ids } });
   await prisma.composicaoRacial.deleteMany({ where: { animalId: ids } });
   await prisma.animal.updateMany({
@@ -1220,7 +1217,22 @@ suite("reprodução V4 integra fatos, estoque e visita sem duplicação", () => 
     expect(depois.find(p => p.tipo === "RECEPTORA")?.revogadoEm).toBeTruthy();
     expect(depois.find(p => p.tipo === "NENHUM")?.fim).toBeNull();
   });
-  it("receptora importada sem tentativa não se torna mãe genética por falta de DestinoAnimal", async () => {
+  it.each(["NENHUM", "RECEPTORA", "DOADORA", undefined] as const)("mudar para Reprodução e desfazer preserva o papel %s e a auditoria", async papel => {
+    const a = await animal("F", undefined, papel);
+    const papeisAntes = await prisma.periodoReprodutivoAnimal.findMany({ where: { animalId: a }, orderBy: { id: "asc" } });
+    await mudarDestino({ animalId: a, data: "2026-08-01", aptidao: "REPRODUCAO" }, null, propriedadeId);
+    expect(await buscarFicha(a, propriedadeId)).toMatchObject({ aptidao: "REPRODUCAO", papelReprodutivo: papel ?? null });
+    const destinos = await prisma.finalidadeAnimal.findMany({ where: { animalId: a }, orderBy: { desde: "asc" } });
+    expect(destinos.map(d => [d.aptidao, d.desde.toISOString().slice(0, 10), d.ate?.toISOString().slice(0, 10) ?? null])).toEqual([
+      ["LEITE", "2026-01-01", "2026-08-01"], ["REPRODUCAO", "2026-08-01", null],
+    ]);
+    expect(await prisma.periodoReprodutivoAnimal.findMany({ where: { animalId: a }, orderBy: { id: "asc" } })).toEqual(papeisAntes);
+    expect(await desfazerDestino(a, null, propriedadeId)).toMatchObject({ aptidao: "LEITE", papelReprodutivo: papel ?? null });
+    expect(await prisma.periodoReprodutivoAnimal.findMany({ where: { animalId: a }, orderBy: { id: "asc" } })).toEqual(papeisAntes);
+    const auditorias = await prisma.auditoriaPecuaria.findMany({ where: { animalId: a, entidade: "FinalidadeAnimal" } });
+    expect(auditorias.map(auditoria => auditoria.acao)).toEqual(expect.arrayContaining(["MUDANCA_DESTINO", "DESFAZER"]));
+  });
+  it("receptora importada sem tentativa não se torna mãe genética por falta de FinalidadeAnimal", async () => {
     const a = await animal();
     await prisma.periodoReprodutivoAnimal.deleteMany({ where: { animalId: a } });
     await prisma.periodoReprodutivoAnimal.create({ data: { animalId: a, tipo: "RECEPTORA", inicio: new Date("2026-01-01"), origem: "IDEAGRI" } });

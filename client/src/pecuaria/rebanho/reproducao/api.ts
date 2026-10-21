@@ -1,5 +1,6 @@
 import { comPropriedade } from "../../../propriedadeScope";
 import { RebanhoApiError } from "../api";
+import type { Aptidao } from "../types";
 
 export type Gestacao = {
   animal?: { id: string; brinco: string | null; nome: string | null };
@@ -234,7 +235,7 @@ export type AvaliacaoInput = FatoBase & {
 export type CriaInput = {
   viva: boolean;
   sexo: "F" | "M";
-  aptidao: "LEITE" | "CORTE";
+  aptidao: Aptidao;
   brinco?: string;
   nome?: string;
   loteId?: string;

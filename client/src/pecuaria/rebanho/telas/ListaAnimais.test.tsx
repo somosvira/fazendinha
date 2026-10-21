@@ -76,6 +76,30 @@ function escolherMultiplo(label:string, valor:string) {
   fireEvent.keyDown(screen.getByPlaceholderText("Buscar opção…"),{key:"Escape"});
 }
 describe("ListaAnimais", () => {
+  it.each(["aptidao=REPRODUCAO", "aptidoes=LEITE&aptidoes=REPRODUCAO"])("restaura finalidade da URL %s e renderiza Reprodução", async consulta => {
+    window.history.replaceState(null, "", `/pecuaria/rebanho/animais?${consulta}`);
+    vi.mocked(listarAnimais).mockResolvedValue({ itens: [criarAnimal({ aptidao: "REPRODUCAO" })], total: 1, painel: painelVazio });
+    montar();
+    await screen.findAllByText("0001");
+    fireEvent.click(screen.getByRole("button", { name: "Filtros" }));
+    fireEvent.click(screen.getByLabelText("Mostrar todas as colunas"));
+    fireEvent.click(screen.getByRole("button", { name: "Concluir" }));
+    expect(screen.getAllByText("Reprodução").length).toBeGreaterThan(0);
+    const esperado = consulta.startsWith("aptidao=") ? { aptidao: "REPRODUCAO" } : { aptidoes: ["LEITE", "REPRODUCAO"] };
+    expect(vi.mocked(listarAnimais).mock.calls.at(-1)?.[0]).toMatchObject(esperado);
+    expect(screen.getByRole("button", { name: "Remover filtro: Finalidade: Reprodução" })).toBeTruthy();
+    expect(window.location.search).toContain("REPRODUCAO");
+  });
+
+  it("seleciona Reprodução no filtro de finalidade e conserva a chave aptidoes na URL", async () => {
+    montar();
+    fireEvent.click(await screen.findByRole("button", { name: "Filtros" }));
+    escolherMultiplo("Finalidade", "Reprodução");
+    fireEvent.click(screen.getByRole("button", { name: "Concluir" }));
+    await waitFor(() => expect(vi.mocked(listarAnimais).mock.calls.at(-1)?.[0]).toMatchObject({ aptidoes: ["REPRODUCAO"] }));
+    expect(new URLSearchParams(window.location.search).getAll("aptidoes")).toEqual(["REPRODUCAO"]);
+  });
+
   it("seleciona pelo espaço ao redor do checkbox sem abrir a ficha", async () => {
     vi.mocked(listarAnimais).mockResolvedValue({ itens: [criarAnimal({})], total: 1, painel: painelVazio });
     const onAbrirAnimal = vi.fn();

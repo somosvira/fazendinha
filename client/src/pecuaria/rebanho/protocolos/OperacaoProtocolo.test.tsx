@@ -2,13 +2,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { OperacaoProtocolo } from "./OperacaoProtocolo";
-const api = vi.hoisted(() => ({ cabecalho: vi.fn(), etapas: vi.fn(), tarefas: vi.fn(), evento: vi.fn() }));
-vi.mock("./api", async original => ({ ...await original<typeof import("./api")>(), obterCabecalhoProtocolo: api.cabecalho, obterEtapasProtocolo: api.etapas, obterTarefasProtocolo: api.tarefas, registrarEventoProtocolo: api.evento, reqProtocolo: vi.fn().mockResolvedValue({ itens: [], total: 0, pagina: 1, porPagina: 10 }) }));
+const api = vi.hoisted(() => ({ cabecalho: vi.fn(), etapas: vi.fn(), momentos: vi.fn(), tarefas: vi.fn(), evento: vi.fn() }));
+vi.mock("./api", async original => ({ ...await original<typeof import("./api")>(), obterCabecalhoProtocolo: api.cabecalho, obterEtapasProtocolo: api.etapas, obterMomentosProtocolo: api.momentos, obterTarefasProtocolo: api.tarefas, registrarEventoProtocolo: api.evento, reqProtocolo: vi.fn().mockResolvedValue({ itens: [], total: 0, pagina: 1, porPagina: 10 }) }));
 vi.mock("../../../estoque/navegacao", () => ({ podeAcessarArea: () => true }));
 vi.mock("./ProcedimentosProtocolo", () => ({ ProcedimentosProtocolo: () => <section>Procedimentos e custos</section> }));
 const contagens = { total: 21, atendidos: 0, pendentes: 21 };
 const tarefa = (n: number) => ({ id: `t${n}`, tarefaId: `t${n}`, participacaoId: `p${n}`, etapaId: "e1", animal: { id: `a${n}`, brinco: `Animal ${n}`, nome: null }, propriedadeId: 1, situacao: "SEM_REGISTRO", previstaPara: "2026-10-19", precisaoTemporal: "DIA", realizadaEm: null, previsaoIndividual: false, ultimoEvento: null, vinculoAtual: null, acoes: { atender: true, justificar: true, adiar: true, retificar: false, regularizar: false }, tarefaOrigem: {} });
-beforeEach(() => { vi.clearAllMocks(); window.history.replaceState(null, "", "/pecuaria/sanidade?rodadaId=g1"); api.cabecalho.mockResolvedValue({ id: "g1", modo: "COLETIVO", tipo: "SANITARIO", nome: "Turma", protocolo: { id: "p", nome: "Vacinação", versao: 1 }, propriedadeId: 1, inicioReferencia: "2026-10-19", precisaoTemporal: "DIA", contagens }); api.etapas.mockResolvedValue({ itens: [{ id: "e1", nome: "Aplicação", ordem: 1, diaRelativo: 0, previstaPara: "2026-10-19", precisaoTemporal: "DIA", contagens }], pagina: 1, porPagina: 10, total: 1 }); api.tarefas.mockImplementation((_contexto, filtros) => Promise.resolve({ itens: Array.from({ length: filtros.pagina === 3 ? 1 : 10 }, (_, i) => tarefa((filtros.pagina - 1) * 10 + i + 1)), pagina: filtros.pagina, porPagina: 10, total: 21 })); });
+beforeEach(() => { vi.clearAllMocks(); api.momentos.mockResolvedValue({itens:[],total:0,pagina:1,porPagina:10}); window.history.replaceState(null, "", "/pecuaria/sanidade?rodadaId=g1"); api.cabecalho.mockResolvedValue({ id: "g1", modo: "COLETIVO", tipo: "SANITARIO", nome: "Turma", protocolo: { id: "p", nome: "Vacinação", versao: 1 }, propriedadeId: 1, inicioReferencia: "2026-10-19", precisaoTemporal: "DIA", contagens }); api.etapas.mockResolvedValue({ itens: [{ id: "e1", nome: "Aplicação", ordem: 1, diaRelativo: 0, previstaPara: "2026-10-19", precisaoTemporal: "DIA", contagens }], pagina: 1, porPagina: 10, total: 1 }); api.tarefas.mockImplementation((_contexto, filtros) => Promise.resolve({ itens: Array.from({ length: filtros.pagina === 3 ? 1 : 10 }, (_, i) => tarefa((filtros.pagina - 1) * 10 + i + 1)), pagina: filtros.pagina, porPagina: 10, total: 21 })); });
 afterEach(cleanup);
 describe("operação real de protocolos", () => {
   it("preserva seleção entre três páginas e entrega todos os ids ao executor existente", async () => {
@@ -63,4 +63,43 @@ describe("operação real de protocolos", () => {
     expect(link.getAttribute("href")).toContain("detalheTipo=aplicacao&detalheId=aplicacao1&propriedadeId=1&retorno=");
   });
 
+  it("conserva seletor e paginação quando a última página contém somente ações sem momento",async()=>{
+    api.momentos.mockImplementation((_contexto,pagina)=>Promise.resolve({itens:pagina===1?Array.from({length:10},(_,i)=>({id:`m${i}`,nome:`Momento ${i}`,ordem:i+1})):[{id:"SEM_MOMENTO",nome:"Ações sem momento explícito",ordem:null}],total:11,pagina,porPagina:10}));
+    render(<OperacaoProtocolo programacaoId="g1" propriedadeId={1} podeLancar/>);
+    const momentos=await screen.findByRole("region",{name:"Momentos do protocolo"});
+    fireEvent.click(within(momentos).getByRole("button",{name:"Próxima"}));
+    await within(momentos).findByRole("button",{name:"Ações sem momento explícito"});
+    expect(within(momentos).getByRole("button",{name:"Anterior"})).toHaveProperty("disabled",false);
+    fireEvent.click(within(momentos).getByRole("button",{name:"Ações sem momento explícito"}));
+    await waitFor(()=>expect(api.etapas).toHaveBeenLastCalledWith(expect.any(Object),1,1,"SEM_MOMENTO"));
+  });
+
+});
+it("mantém atendimento e acompanhamento separados na mesma tabela e filtro de servidor", async () => {
+  api.tarefas.mockResolvedValue({ itens: [{ ...tarefa(1), situacao: "ATENDIDO", realizadaEm: "2026-10-21", acoes: { atender: false, justificar: false, adiar: false, retificar: false, regularizar: false, reavaliar: true }, tarefaOrigem: { tipo: "AVALIACAO" }, acompanhamentoPendente: true, resultadoProcedimento: { realizacao: "REALIZADO", resultados: [{ campo: "CONCLUSAO_GESTACIONAL", valor: "INCONCLUSIVO" }] } }], total: 1, pagina: 1, porPagina: 10 });
+  render(<OperacaoProtocolo programacaoId="g1" propriedadeId={1} podeLancar />);
+  const linha = (await screen.findByRole("link", { name: "Animal 1" })).closest("tr")!;
+  expect(within(linha).getByText("Atendido")).toBeTruthy();
+  expect(within(linha).getByText("Exame inconclusivo")).toBeTruthy();
+  expect(within(linha).getByText("Acompanhamento pendente")).toBeTruthy();
+  expect(within(linha).getByRole("button", { name: "Reavaliar acompanhamento" })).toBeTruthy();
+  expect(within(linha).queryByRole("button", { name: "Atender" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Acompanhamentos" }));
+  await waitFor(() => expect(api.tarefas).toHaveBeenLastCalledWith(expect.any(Object), expect.objectContaining({ situacao: "ACOMPANHAMENTO_PENDENTE", pagina: 1 }), 1));
+  expect(new URLSearchParams(window.location.search).get("protocoloSituacao")).toBe("ACOMPANHAMENTO_PENDENTE");
+});
+it("coleta aguardando resultado não oferece outra coleta", async () => {
+  api.tarefas.mockResolvedValue({ itens: [{ ...tarefa(1), situacao: "ATENDIDO", realizadaEm: "2026-10-21", acoes: { atender: false, justificar: false, adiar: false, retificar: false, regularizar: false }, tarefaOrigem: { tipo: "EXAME" }, acompanhamentoPendente: true, resultadoProcedimento: { realizacao: "COLETA_REGISTRADA", resultados: [] }, vinculoAtual: { tipo: "EXAME", id: "exame1", origem: "PROTOCOLO" } }], total: 1, pagina: 1, porPagina: 10 });
+  render(<OperacaoProtocolo programacaoId="g1" propriedadeId={1} podeLancar />);
+  const linha = (await screen.findByRole("link", { name: "Animal 1" })).closest("tr")!;
+  expect(within(linha).getByText("Coleta registrada")).toBeTruthy(); expect(within(linha).getByText("Aguardando resultado")).toBeTruthy();
+  expect(within(linha).queryByRole("checkbox")).toBeNull(); expect(within(linha).queryByRole("button", { name: "Atender" })).toBeNull();
+});
+it("conserva registro legado sem inventar fato individual e mostra snapshot histórico", async () => {
+  api.tarefas.mockResolvedValue({ itens: [{ ...tarefa(1), situacao: "ATENDIDO", realizadaEm: "2026-10-21", acoes: { atender: false, justificar: false, adiar: false, retificar: false, regularizar: false }, tarefaOrigem: { tipo: "MANEJO", realizadoSnapshot: { tipo: "MANEJO", realizadaEm: "2026-10-21", dados: { responsavel: "Registro antigo", observacao: "Manejo histórico" } } } }], total: 1, pagina: 1, porPagina: 10 });
+  render(<OperacaoProtocolo programacaoId="g1" propriedadeId={1} podeLancar={false} />);
+  expect(await screen.findByText("Registro legado sem fato individual vinculado")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Ver atendimento" }));
+  expect(screen.getByText("Responsável registrado: Registro antigo")).toBeTruthy();
+  expect(screen.getByText("Observação registrada: Manejo histórico")).toBeTruthy();
 });

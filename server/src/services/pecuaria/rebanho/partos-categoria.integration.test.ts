@@ -19,7 +19,7 @@ afterAll(async () => {
   await prisma.auditoriaPecuaria.deleteMany({ where: { animalId } });
   await prisma.partoAnimal.deleteMany({ where: { animalId } });
   await prisma.localizacaoAnimal.deleteMany({ where: { animalId } });
-  await prisma.periodoReprodutivoAnimal.deleteMany({ where: { animalId } }); await prisma.destinoAnimal.deleteMany({ where: { animalId } });
+  await prisma.periodoReprodutivoAnimal.deleteMany({ where: { animalId } }); await prisma.finalidadeAnimal.deleteMany({ where: { animalId } });
   await prisma.animal.deleteMany({ where: { id: animalId } });
   await prisma.lote.deleteMany({ where: { propriedadeId: { in: propriedades } } });
   await prisma.propriedade.deleteMany({ where: { id: { in: propriedades } } });

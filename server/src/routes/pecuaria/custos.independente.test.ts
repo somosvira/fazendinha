@@ -37,7 +37,7 @@ describe("custos de Pecuária — autorização e contratos HTTP independentes",
  it("leitor consulta preparatórios sem abrir edição ou conceder acesso financeiro",async()=>{
   const resposta=await app(perfil(["pecuaria"],[])).request(`/custos/tentativas/${uid(4)}/preparatorios`);
   expect(resposta.status).toBe(200);
-  expect(mocks.candidatos).toHaveBeenCalledWith(uid(4),1,true);
+  expect(mocks.candidatos).toHaveBeenCalledWith(uid(4),1,true,1,10);
  });
  it("fato de outro sítio segue indisponível ao leitor sem permissão financeira",async()=>{
   mocks.consultar.mockRejectedValue(new RebanhoError("NAO_ENCONTRADO","Tentativa não encontrada neste sítio"));

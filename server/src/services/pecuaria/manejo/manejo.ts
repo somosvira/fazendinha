@@ -79,7 +79,7 @@ export async function registrarManejo(input: Parameters<typeof registrarManejoTx
 }
 
 export async function listarManejos(animalId: string | undefined, propriedadeId: number | null) {
-  return prisma.manejoAnimal.findMany({ where: { ...(animalId ? { animalId } : {}), ...(propriedadeId == null ? {} : { propriedadeId }) },
+  return prisma.manejoAnimal.findMany({ where: { tipo:{in:["DESMAMA","CASTRACAO"]}, ...(animalId ? { animalId } : {}), ...(propriedadeId == null ? {} : { propriedadeId }) },
     include: { pesagem: { select: { id: true, pesoKg: true } } }, orderBy: [{ data: "desc" }, { criadoEm: "desc" }], take: 100 });
 }
 
@@ -87,6 +87,7 @@ export async function anularManejo(id: string, propriedadeId: number, motivo: st
   return transacaoPecuaria(async (tx) => {
     const original = await tx.manejoAnimal.findFirst({ where: { id, propriedadeId, status: "VALIDO" } });
     if (!original) throw new RebanhoError("NAO_ENCONTRADO", "Manejo não encontrado ou já anulado");
+    if(original.tarefaId) throw new RebanhoError("VALIDACAO", "Anule o manejo pelo protocolo, declarando se a realização será mantida");
     await travarAnimais(tx, [original.animalId]);
     const salvo = await tx.manejoAnimal.update({ where: { id }, data: { status: "ANULADO", motivoAnulacao: motivo, anuladoEm: new Date(), pesagemId: null } });
     await auditar(tx, { entidade: "ManejoAnimal", entidadeId: id, animalId: original.animalId, propriedadeId, acao: "ANULACAO", usuarioId, antes: original, depois: salvo });

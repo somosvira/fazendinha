@@ -12,7 +12,7 @@ vi.mock("./ElegibilidadeAnimal", () => ({ ElegibilidadeAnimal: () => <input aria
 vi.mock("../custos/CustosDiretos", () => ({ CustosDiretos: ({ finalidadeInicial }: { finalidadeInicial: string }) => <p>Custos {finalidadeInicial}</p> }));
 vi.mock("./DetalheFato", () => ({ DetalheFato: ({ fato, onFechar }: { fato: { id: string }; onFechar: () => void }) => <div><p>Fato {fato.id}</p><button onClick={onFechar}>Fechar fato</button></div> }));
 vi.mock("./FormReproducao", () => ({ FormReproducao: ({ onSalvo }: { onSalvo: () => void }) => <div><p>Formulário preservado</p><button onClick={onSalvo}>Salvar formulário</button></div> }));
-beforeEach(() => { reqProtocolo.mockResolvedValue({ itens: [], total: 0, pagina: 1, porPagina: 10 }); window.history.replaceState(null,"","/"); vi.stubGlobal("ResizeObserver",class {observe(){} unobserve(){} disconnect(){}}); Element.prototype.scrollIntoView=vi.fn(); vi.mocked(reqV4).mockResolvedValue([]); });
+beforeEach(() => { reqProtocolo.mockResolvedValue({ itens: [], total: 0, pagina: 1, porPagina: 10 }); window.history.replaceState(null,"","/"); vi.stubGlobal("ResizeObserver",class {observe(){} unobserve(){} disconnect(){}}); Element.prototype.scrollIntoView=vi.fn(); vi.mocked(reqV4).mockImplementation(async url => url.startsWith("/reproducao/acompanhamento?") ? paginaDemandas([]) : []); });
 afterEach(() => { cleanup(); vi.clearAllMocks(); window.history.replaceState(null, "", "/"); });
 function painel(animalId = "a"): PainelReprodutivo {
  const tentativas = Array.from({ length: 12 }, (_, i) => ({ id: `t${i}`, animalId, data: `2020-09-${String(i + 1).padStart(2, "0")}`, tipo: i === 0 ? "TE" : "IA", ordem: i + 1, status: "VALIDO" }));
@@ -110,10 +110,11 @@ it.each([0,1,2,3])("conserva %s tentativas factuais sem completar lacunas", asyn
  fireEvent.click(screen.getByRole("button",{name:"Tipos de registro"}));fireEvent.click(screen.getByRole("option",{name:"Tentativas"}));fireEvent.keyDown(screen.getByPlaceholderText("Buscar opção…"),{key:"Escape"});
  expect(screen.queryAllByRole("button",{name:"Ver detalhes"})).toHaveLength(quantidade*2);
 });
+const paginaDemandas = <T extends { estado: string },>(itens: T[]) => ({ itens, total: itens.length, pagina: 1, porPagina: 10, resumo: { total: itens.length, pendentes: itens.filter(d => d.estado === "PENDENTE").length, resolvidas: itens.filter(d => d.estado === "RESOLVIDA").length, encerradas: 0, semData: 0 } });
 const demandaPendente = { id:"d", finalidade:"DIAGNOSTICO",ocorrencia:1,tentativaId:"t0",gestacaoId:null,previstaPara:"2020-10-01",estado:"PENDENTE",motivoEncerramento:null,regraSnapshot:{politicaVersao:1},exameResolucaoId:null };
 it("bloqueia avaliação quando a evidência de origem foi invalidada", async () => {
  vi.mocked(obterReproducao).mockResolvedValue(painel());
- vi.mocked(reqV4).mockImplementation(url => Promise.resolve(url.startsWith("/reproducao/acompanhamento?") ? [{...demandaPendente,pendencias:["EXAME_ORIGEM_INVALIDO"]}] : []));
+ vi.mocked(reqV4).mockImplementation(url => Promise.resolve(url.startsWith("/reproducao/acompanhamento?") ? paginaDemandas([{...demandaPendente,pendencias:["EXAME_ORIGEM_INVALIDO"]}]) : []));
  render(<ReproducaoIndividual animalId="a" propriedadeId={1} podeLancar={true}/>);
  const atalho = await screen.findByRole("button",{name:"Registrar avaliação"});
  expect((atalho as HTMLButtonElement).disabled).toBe(true);
@@ -124,7 +125,7 @@ it("bloqueia avaliação quando a evidência de origem foi invalidada", async ()
 it("reconsulta demandas e protocolos depois de salvar e exibe demanda resolvida", async () => {
  vi.mocked(obterReproducao).mockImplementation(async () => ({...painel()}));
  let resolvida = false;
- vi.mocked(reqV4).mockImplementation(url => Promise.resolve(url.startsWith("/reproducao/acompanhamento?") ? [{...demandaPendente,estado:resolvida?"RESOLVIDA":"PENDENTE"}] : []));
+ vi.mocked(reqV4).mockImplementation(url => Promise.resolve(url.startsWith("/reproducao/acompanhamento?") ? paginaDemandas([{...demandaPendente,estado:resolvida?"RESOLVIDA":"PENDENTE"}]) : []));
  render(<ReproducaoIndividual animalId="a" propriedadeId={1} podeLancar={true}/>);
  fireEvent.click(await screen.findByRole("button",{name:"Registrar avaliação"}));
  expect(screen.getByText("Formulário preservado")).toBeTruthy();
@@ -152,7 +153,7 @@ it("adoção explícita reconsulta o pai e torna demanda avulsa e situação des
   if (url.endsWith("/adocao/previa")) return {revisao:"r",propostas:[{acao:"CRIAR",finalidade:"DIAGNOSTICO",ocorrencia:1,previstaPara:"2020-10-01"}]};
   if (url.endsWith("/adocao")) {adotou=true;return {};}
   if (url.endsWith("/politicas")) return [{id:"regra",versao:1,vigenteDesde:"2020-01-01",parametros:{versao:1,efeito:"ALERTA",diagnostico:{diasAposTentativa:30},reconfirmacoes:[]}}];
-  if (url.startsWith("/reproducao/acompanhamento?")) return adotou ? [demandaPendente] : [];
+  if (url.startsWith("/reproducao/acompanhamento?")) return paginaDemandas(adotou ? [demandaPendente] : []);
   return [];
  });
  render(<ReproducaoIndividual animalId="a" propriedadeId={1} podeLancar/>);
@@ -163,7 +164,7 @@ it("adoção explícita reconsulta o pai e torna demanda avulsa e situação des
  fireEvent.change(screen.getByLabelText("Motivo obrigatório"),{target:{value:"Acompanhamento explicitamente adotado"}});
  fireEvent.click(screen.getByRole("button",{name:"Confirmar criação conferida"}));
  expect(await screen.findByRole("heading",{name:"Acompanhamentos"})).toBeTruthy();
- expect(screen.getByText("Aguardando diagnóstico")).toBeTruthy();
+ expect(screen.getByText(/1 acompanhamento pendente/)).toBeTruthy();
  expect(await screen.findByRole("button",{name:"Registrar avaliação"})).toBeTruthy();
  expect(obterReproducao).toHaveBeenCalledTimes(2);
 });

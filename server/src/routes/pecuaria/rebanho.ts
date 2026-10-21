@@ -22,6 +22,7 @@ import { reproducaoRouter } from "./reproducao.js";
 import { visitasRouter } from "./visitas.js";
 import { custosRouter } from "./custos.js";
 import { protocolosOperacaoRouter } from "./protocolos-operacao.js";
+import { protocolosCadastrosRouter } from "./protocolos-cadastros.js";
 import { nutricaoRouter } from "./nutricao.js";
 import {
   cadastrarAnimalSchema, editarAnimalSchema, movimentarSchema, mudarDestinoSchema,
@@ -422,3 +423,4 @@ rebanhoRouter.route("/visitas", visitasRouter);
 
 rebanhoRouter.route("/custos", custosRouter);
 rebanhoRouter.route("/protocolos/operacao", protocolosOperacaoRouter);
+rebanhoRouter.route("/protocolos/cadastros", protocolosCadastrosRouter);

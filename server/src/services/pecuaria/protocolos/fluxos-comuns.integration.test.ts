@@ -1,3 +1,4 @@
+import { paginaSubstitutosTarefa } from "./substitutos.js";
 import { criarRodada } from "../sanidade/rodadas.js";
 import { obterCabecalhoOperacao, listarEtapasOperacao, listarTarefasOperacao, listarEventosTarefaOperacao, listarParticipacoesOperacao, listarVersoesOperacao, listarParticipantesOperacao, listarOrigensFatoOperacao } from "./operacao.js";
 import { consultaOperacaoSchema, listaOperacaoSchema, consultaVersoesOperacaoSchema, consultaOrigensFatoOperacaoSchema } from "./operacao.schemas.js";
@@ -52,7 +53,6 @@ afterAll(async () => {
   await prisma.tarefaProtocolo.deleteMany({ where: { execucao: { animalId: { in: animais } } } });
   await prisma.participacaoProtocolo.deleteMany({ where: { animalId: { in: animais } } });
   await prisma.programacaoProtocolo.deleteMany({ where: { propriedadeId: sitio } });
-  await prisma.etapaProtocolo.deleteMany({ where: { protocoloId: { in: protocolos } } });
   await prisma.protocolo.deleteMany({ where: { id: { in: protocolos } } });
   await prisma.tipoExame.deleteMany({ where: { id: { in: tipos } } });
   await prisma.materialGenetico.deleteMany({ where: { produtoId: { in: produtos } } });
@@ -60,7 +60,7 @@ afterAll(async () => {
   await limparMovimentosValorizadosFixture(produtos);
   await prisma.produto.deleteMany({ where: { id: { in: produtos } } });
   await prisma.periodoReprodutivoAnimal.deleteMany({ where: { animalId: { in: animais } } });
-  await prisma.destinoAnimal.deleteMany({ where: { animalId: { in: animais } } });
+  await prisma.finalidadeAnimal.deleteMany({ where: { animalId: { in: animais } } });
   await prisma.localizacaoAnimal.deleteMany({ where: { animalId: { in: animais } } });
   await prisma.animal.deleteMany({ where: { id: { in: animais } } });
   await prisma.propriedade.deleteMany({ where: { id: { in: [sitio, ...sitiosExtras] } } });
@@ -119,6 +119,24 @@ comBanco("tarefas, regularização e exames personalizados na base comum", () =>
     await regularizarTarefaSanitaria(t.tarefaId, regularizacao("ENCERRAR_SEM_SUBSTITUICAO"), null);
     expect((await listarTarefas(sitio, t.animalId, consultaSanitariaSchema.parse({ situacao: "ENCERRADA_SEM_SUBSTITUICAO" })))[0].situacao).toBe("ENCERRADA_SEM_SUBSTITUICAO");
     expect(await prisma.vinculoTarefaProtocolo.findMany({ where: { tarefaId: t.tarefaId }, orderBy: { ordem: "asc" } })).toMatchObject([{ exameId: original.id, estado: "SUBSTITUIDO" }, { exameId: substituto.id, estado: "ENCERRADO" }]);
+  });
+  it("substitutos paginados excluem ocupados antes de contar e alcançam o décimo primeiro", async () => {
+    const t=await tarefa();
+    for(let n=0;n<11;n++)await registrarExame({...t,tarefaId:undefined,resultadoNumero:n},null);
+    const outro=await criarProtocolo({nome:`Origem ocupada ${run}`,etapas:[{diaRelativo:0,tipo:"EXAME",tipoExameId:t.tipoExameId}]},null);
+    protocolos.push(outro.id);await publicarProtocolo(outro.id,null);
+    const outra=await iniciarExecucao({protocoloId:outro.id,animalId:t.animalId,propriedadeId:sitio,inicio:data},null);
+    const ocupado=await registrarExame({...t,tarefaId:outra.tarefas[0].id,resultadoNumero:99},null);
+    const original=await registrarExame({...t,resultadoNumero:100},null);
+    await corrigirExame(original.id,sitio,{anular:true,motivo:"Revisão para escolher a evidência correta"},null);
+    const primeira=await paginaSubstitutosTarefa(t.tarefaId,sitio,{},"SANITARIO");
+    const segunda=await paginaSubstitutosTarefa(t.tarefaId,sitio,{pagina:2},"SANITARIO");
+    expect(primeira).toMatchObject({total:11,pagina:1,porPagina:10});expect(primeira.itens).toHaveLength(10);
+    expect(segunda.itens).toHaveLength(1);expect(new Set([...primeira.itens,...segunda.itens].map(i=>i.id)).size).toBe(11);
+    expect([...primeira.itens,...segunda.itens].some(i=>i.id===ocupado.id)).toBe(false);
+    expect(await paginaSubstitutosTarefa(t.tarefaId,sitio,{pagina:99},"SANITARIO")).toMatchObject({total:11,pagina:2});
+    expect(await paginaSubstitutosTarefa(t.tarefaId,sitio,{busca:"Inexistente"},"SANITARIO")).toMatchObject({total:0,pagina:1});
+    await expect(paginaSubstitutosTarefa(t.tarefaId,sitio+10000,{},"SANITARIO")).rejects.toMatchObject({code:"NAO_ENCONTRADO"});
   });
   it("reabertura pela visita preserva impressão, incrementa rascunho e permite somente nova execução", async () => {
     const t = await tarefa(), a = await atividade(t.animalId, "EXAME_SANITARIO", t.tarefaId);

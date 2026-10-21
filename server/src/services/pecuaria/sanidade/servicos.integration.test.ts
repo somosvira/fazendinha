@@ -19,7 +19,8 @@ comBanco("procedimentos de Serviço — integridade PostgreSQL", () => {
     ctx.outroSitio = (await prisma.propriedade.create({ data: { nome: `Outro Serviço ${run}` } })).id;
     ctx.animal = (await cadastrar(cadastrarAnimalSchema.parse({ brinco: `SV${run}`, nome: "Bela", sexo: "F", origem: "COMPRADO", aptidao: "LEITE", propriedadeId: ctx.sitio, dataNascimento: "2020-01-01", dataEntrada: "2026-01-01" }), null)).id;
     ctx.tipo = (await prisma.tipoExame.create({ data: { nome: `Exame histórico ${run}`, tipoResultado: "TEXTO" } })).id;
-    const protocolo = await prisma.protocolo.create({ data: { nome: `Protocolo ${run}`, publicadoEm: new Date(), etapas: { create: { ordem: 1, diaRelativo: 0, tipo: "EXAME", tipoExameId: ctx.tipo } } }, include: { etapas: true } }); ctx.protocolo = protocolo.id; ctx.etapa = protocolo.etapas[0].id;
+    const protocolo = await prisma.protocolo.create({ data: { nome: `Protocolo ${run}`, etapas: { create: { ordem: 1, diaRelativo: 0, tipo: "EXAME", tipoExameId: ctx.tipo } } }, include: { etapas: true } }); ctx.protocolo = protocolo.id; ctx.etapa = protocolo.etapas[0].id;
+    await prisma.protocolo.update({where:{id:protocolo.id},data:{publicadoEm:new Date()}});
   });
   afterAll(async () => {
     if (!ctx.sitio) return;
@@ -28,9 +29,9 @@ comBanco("procedimentos de Serviço — integridade PostgreSQL", () => {
     await prisma.vinculoTarefaProtocolo.deleteMany({ where: { tentativa: { animalId: ctx.animal } } }); await prisma.tentativaReprodutiva.deleteMany({ where: { animalId: ctx.animal } });
     await prisma.vinculoTarefaProtocolo.deleteMany({ where: { aplicacao: { animalId: ctx.animal } } }); await prisma.aplicacaoProduto.deleteMany({ where: { animalId: ctx.animal } }); await prisma.vinculoTarefaProtocolo.deleteMany({ where: { exame: { animalId: ctx.animal } } }); await prisma.exameAnimal.deleteMany({ where: { animalId: ctx.animal } });
     await prisma.tarefaProtocolo.deleteMany({ where: { execucao: { animalId: ctx.animal } } }); await prisma.participacaoProtocolo.deleteMany({ where: { animalId: ctx.animal } });
-    await prisma.etapaProtocolo.deleteMany({ where: { protocoloId: ctx.protocolo } }); await prisma.protocolo.delete({ where: { id: ctx.protocolo } });
+    await prisma.protocolo.deleteMany({ where: { id: ctx.protocolo } });
     await prisma.tipoExame.delete({ where: { id: ctx.tipo } }); await prisma.operacao.deleteMany({ where: { propriedadeId: { in: [ctx.sitio, ctx.outroSitio] } } });
-    await prisma.periodoReprodutivoAnimal.deleteMany({ where: { animalId: ctx.animal } }); await prisma.destinoAnimal.deleteMany({ where: { animalId: ctx.animal } }); await prisma.localizacaoAnimal.deleteMany({ where: { animalId: ctx.animal } }); await prisma.animal.delete({ where: { id: ctx.animal } });
+    await prisma.periodoReprodutivoAnimal.deleteMany({ where: { animalId: ctx.animal } }); await prisma.finalidadeAnimal.deleteMany({ where: { animalId: ctx.animal } }); await prisma.localizacaoAnimal.deleteMany({ where: { animalId: ctx.animal } }); await prisma.animal.delete({ where: { id: ctx.animal } });
     await prisma.propriedade.deleteMany({ where: { id: { in: [ctx.sitio, ctx.outroSitio] } } });
   });
   it("inclui tentativas V4 no atendimento e impede atribuição V3 que ultrapasse o valor conjunto", async () => {

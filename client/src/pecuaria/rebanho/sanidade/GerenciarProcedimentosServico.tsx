@@ -14,9 +14,9 @@ export function podeGerenciarProcedimentosServico() {
 }
 type Escolha = { item: ProcedimentoServico; valor?: string | null };
 const chaveItem = (i: Pick<ProcedimentoServico, "id" | "tipo">) => `${i.tipo}:${i.id}`;
-const rotuloTipo = { APLICACAO: "Aplicação", EXAME: "Exame", PROTOCOLO: "Protocolo", TENTATIVA: "Reprodução" };
+const rotuloTipo = { APLICACAO: "Aplicação", EXAME: "Exame", PROTOCOLO: "Protocolo", TENTATIVA: "Reprodução", MANEJO: "Manejo" };
 export const dataProcedimentoServico = (item: Pick<ProcedimentoServico, "tipo" | "dataHora">) => item.tipo === "APLICACAO" ? dataHoraSanitaria(item.dataHora) : dataSanitaria(item.dataHora);
-export const origemProcedimentoServico = (item: Pick<ProcedimentoServico, "tipo" | "origem">) => item.tipo === "APLICACAO" ? origemSanitaria(item.origem) : item.tipo === "EXAME" ? "Coleta de exame" : item.tipo === "TENTATIVA" ? "Tentativa reprodutiva" : "Execução do protocolo";
+export const origemProcedimentoServico = (item: Pick<ProcedimentoServico, "tipo" | "origem">) => item.tipo === "APLICACAO" ? origemSanitaria(item.origem) : item.tipo === "EXAME" ? "Coleta de exame" : item.tipo === "TENTATIVA" ? "Tentativa reprodutiva" : item.tipo === "MANEJO" ? (item.origem === "RETIRADA_DISPOSITIVO" ? "Retirada de dispositivo" : "Manejo protocolar") : "Execução do protocolo";
 function LinhaProcedimento({ item, escolha, podeLancar, podeValores, salvando, erro, onSelecionar, onValor }: {
   item: ProcedimentoServico; escolha?: Escolha; podeLancar: boolean; podeValores: boolean; salvando: boolean; erro: string | null;
   onSelecionar: (valor: boolean) => void; onValor: (valor: string | null) => void;
@@ -45,7 +45,7 @@ export function GerenciarProcedimentosServico({ servicoId, propriedadeId, onFech
   if (contexto.current.servicoId !== servicoId || contexto.current.propriedadeId !== propriedadeId) contexto.current = { servicoId, propriedadeId };
   const carregar = useCallback(async (signal?: AbortSignal) => {
     const atual = ++leitura.current; setLoading(true); setErro(null);
-    try { const novo = await listarProcedimentosServico(servicoId, propriedadeId, { grupo, animalBusca: busca, tipo, inicio, fim, pagina, limite: 20 }, signal); if (atual === leitura.current) setDados(novo); }
+    try { const novo = await listarProcedimentosServico(servicoId, propriedadeId, { grupo, animalBusca: busca, tipo, inicio, fim, pagina, limite: 10 }, signal); if (atual === leitura.current) setDados(novo); }
     catch (e) { if (atual !== leitura.current || signal?.aborted) return; throw e; }
     finally { if (atual === leitura.current) setLoading(false); }
   }, [servicoId, propriedadeId, grupo, busca, tipo, inicio, fim, pagina]);

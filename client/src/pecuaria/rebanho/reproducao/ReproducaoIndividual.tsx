@@ -1,3 +1,4 @@
+import { listarDemandasAcompanhamento, type ResumoAcompanhamentos } from "./acompanhamento-api";
 import { ParticipacoesIndividuais } from "../protocolos/ParticipacoesIndividuais";
 import { FormParticipacaoIndividual } from "../protocolos/FormParticipacaoIndividual";
 import { navegarPara } from "../../../router";
@@ -8,7 +9,7 @@ import { formatBRDateISO } from "../../../lib/hoje";
 import { CustosDiretos } from "../custos/CustosDiretos";
 import { MenuAcoesFicha } from "../components/MenuAcoesFicha";
 import { SecaoRecolhivel } from "../components/SecaoRecolhivel";
-import { obterReproducao, reqV4, type PainelReprodutivo } from "./api";
+import { obterReproducao, type PainelReprodutivo } from "./api";
 import { AcoesReprodutivas } from "./AcoesReprodutivas";
 import { DetalheFato } from "./DetalheFato";
 import { DemandasAcompanhamento, type DemandaAcompanhamento } from "./DemandasAcompanhamento";
@@ -27,7 +28,8 @@ function ConteudoReproducao({ animalId, propriedadeId, podeLancar, recarregarTok
   const [revisaoProtocolos, setRevisaoProtocolos] = useState(0);
   const [iniciandoProtocolo, setIniciandoProtocolo] = useState(false);
   const [painel, setPainel] = useState<PainelReprodutivo | null>(null);
-  const [demandas, setDemandas] = useState<DemandaAcompanhamento[]>([]);
+  const [resumoDemandas, setResumoDemandas] = useState<ResumoAcompanhamentos | null>(null);
+  const [erroDemandas, setErroDemandas] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [acao, setAcao] = useState<AcaoReprodutiva | null>(() => new URLSearchParams(window.location.search).get("acao") === "parto" && podeLancar ? "parto" : null);
@@ -58,11 +60,10 @@ function ConteudoReproducao({ animalId, propriedadeId, podeLancar, recarregarTok
     abrirUrl(); window.addEventListener("popstate", abrirUrl); return () => window.removeEventListener("popstate", abrirUrl);
   }, [painel]);
   useEffect(() => {
-    let vigente = true; setDemandas([]);
-    if (propriedadeId != null) void reqV4<DemandaAcompanhamento[]>(`/reproducao/acompanhamento?animalId=${encodeURIComponent(animalId)}`, undefined, "GET", propriedadeId).then(d => { if (vigente) setDemandas(d); }).catch(() => undefined);
+    let vigente = true; setResumoDemandas(null); setErroDemandas(null);
+    if (propriedadeId != null) void listarDemandasAcompanhamento(propriedadeId, animalId, 1, "PENDENTE", "", 1).then(d => { if (vigente) setResumoDemandas(d.resumo); }).catch(e => { if (vigente) setErroDemandas(e instanceof Error ? e.message : String(e)); });
     return () => { vigente = false; };
   }, [animalId, propriedadeId, recarregarToken, painel]);
-  const pendentes = demandas.filter(d => d.estado === "PENDENTE");
   const animal = painel?.animais.find(a => a.animalId === animalId);
   useEffect(() => { onSituacao?.(carregando || erro ? null : animal?.situacao ?? "DESCONHECIDA"); }, [onSituacao, animal?.situacao, carregando, erro]);
   const resumo = animal?.resumoAcompanhamento ?? null;
@@ -76,14 +77,15 @@ function ConteudoReproducao({ animalId, propriedadeId, podeLancar, recarregarTok
     {carregando && <p role="status">Carregando reprodução…</p>}
     {painel && <>
       <dl className="repro-ciclo repro-resumo-acompanhamento">
-        <div><Circle aria-hidden="true" size={25}/><div><dt>Situação reprodutiva</dt><dd><Pill tone={animal?.situacao === "GESTANTE" ? "green" : "amber"}>{pendentes.some(d => d.finalidade === "DIAGNOSTICO") ? "Aguardando diagnóstico" : rotulosReprodutivos[animal?.situacao ?? "DESCONHECIDA"] ?? animal?.situacao}</Pill></dd></div></div>
+        <div><Circle aria-hidden="true" size={25}/><div><dt>Situação reprodutiva</dt><dd><Pill tone={animal?.situacao === "GESTANTE" ? "green" : "amber"}>{rotulosReprodutivos[animal?.situacao ?? "DESCONHECIDA"] ?? animal?.situacao}</Pill></dd></div></div>
         <div><Syringe aria-hidden="true" size={25}/><div><dt>Tentativas</dt><dd>{resumo ? <>{resumo.tentativas} {referencia ? referencia.tipo === "SITUACAO_INICIAL" ? "desde o início registrado" : "desde o último parto registrado" : "no histórico disponível"}</> : "Contagem não informada"}</dd></div></div>
         <div><CalendarDays aria-hidden="true" size={25}/><div><dt>Referência</dt><dd>{referencia ? `${referencia.tipo === "SITUACAO_INICIAL" ? "Situação inicial" : referencia.tipo === "ABORTO" ? "Aborto registrado" : "Último parto registrado"} · ${formatBRDateISO(referencia.data)}` : resumo ? "Início não comprovado" : "Referência não informada"}</dd></div></div>
       </dl>
+      {erroDemandas ? <p role="alert">Acompanhamentos não consultados: {erroDemandas}</p> : resumoDemandas && resumoDemandas.pendentes > 0 && <p className="text-sm">{resumoDemandas.pendentes} acompanhamento{resumoDemandas.pendentes === 1 ? " pendente" : "s pendentes"}. Consulte os exames e as próximas avaliações abaixo.</p>}
       <SecaoRecolhivel titulo="Protocolos reprodutivos" id="protocolos-reprodutivos-animal" acoes={podeLancar && propriedadeId != null ? <Button secondary onClick={() => setIniciandoProtocolo(true)}>Iniciar protocolo individual</Button> : undefined}>
         {iniciandoProtocolo && propriedadeId != null && <FormParticipacaoIndividual animalId={animalId} propriedadeId={propriedadeId} onFechar={() => setIniciandoProtocolo(false)} onSalvo={id => { setIniciandoProtocolo(false); navegarPara(`/pecuaria/reproducao/participacoes/${encodeURIComponent(id)}?sitio=${propriedadeId}&retorno=${encodeURIComponent(window.location.pathname + window.location.search)}`); }} />}
-        <ParticipacoesIndividuais animalId={animalId} tipo="REPRODUTIVO" revisao={recarregarToken + revisaoProtocolos} propriedadeId={propriedadeId ?? undefined} />
-        <ProtocolosAnimal animalId={animalId} propriedadeId={propriedadeId} revisao={recarregarToken + revisaoProtocolos}/>
+        <ParticipacoesIndividuais animalId={animalId} tipo="REPRODUTIVO" podeLancar={podeLancar} aoSalvar={()=>{setRevisaoProtocolos(v=>v+1);void carregar();}} revisao={recarregarToken + revisaoProtocolos} propriedadeId={propriedadeId ?? undefined} />
+        <ProtocolosAnimal animalId={animalId} propriedadeId={propriedadeId} podeLancar={podeLancar} aoSalvar={()=>{setRevisaoProtocolos(v=>v+1);void carregar();}} revisao={recarregarToken + revisaoProtocolos}/>
       </SecaoRecolhivel>
       <SecaoRecolhivel titulo="Aptidão hoje" id="aptidao-reprodutiva-animal">
         {propriedadeId != null ? <ElegibilidadeAnimal animalId={animalId} propriedadeId={propriedadeId} painel={painel} podeLancar={podeLancar} onMudou={() => void carregar()}/> : <p>É necessário o sítio comprovado no histórico de localização.</p>}

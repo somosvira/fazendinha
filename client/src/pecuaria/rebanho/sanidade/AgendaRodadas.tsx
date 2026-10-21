@@ -1,3 +1,4 @@
+import "../protocolos/protocolos.css";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import { OperacaoProtocolo } from "../protocolos/OperacaoProtocolo";
 import { SecaoRecolhivel } from "../components/SecaoRecolhivel";
@@ -22,7 +23,7 @@ export function AgendaRodadas({ filtrosUI, filtros, podeLancar, rodadaId, onAbri
   const consulta = consultaRodadas(filtros);
   const temFiltros = ["animalId", "buscaAnimal", "loteId", "de", "ate", "situacao"].some(chave => filtros[chave] !== undefined && filtros[chave] !== "");
   useEffect(() => { let vivo = true; setCarregando(true); setErro(null); listarRodadas(Object.fromEntries(new URLSearchParams(consulta))).then((v) => { if (vivo) setPagina(v); }).catch((e: unknown) => { if (vivo) setErro(`${salvo ? "Ciclo salvo. A consulta não atualizou. " : ""}${e instanceof Error ? e.message : String(e)}`); }).finally(() => { if (vivo) setCarregando(false); }); return () => { vivo = false; }; }, [consulta, revisao, recarregarToken]);
-  return <section className="min-w-0">
+  return <section className="protocolos-pagina protocolos-superficie min-w-0">
     <CabecalhoTabela titulo="Ciclos de protocolos" acao={podeLancar ? <Button onClick={() => setCriando(true)}>Novo ciclo</Button> : undefined} />
     {filtrosUI}
     {salvo && <p role="status">Ciclo salvo.</p>}

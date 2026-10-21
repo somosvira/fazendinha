@@ -1,3 +1,5 @@
+import { validarReferenciasCusto, type ReferenciasCusto } from "../custos/referencias-planejadas.js";
+import { associarMomentosAcoesTx, snapshotMomento, type MomentoAcao } from "../protocolos/momentos.js";
 import crypto from "node:crypto";
 import { registrarEventoTarefaTx } from "../protocolos/eventos.js";
 import { condicaoSituacaoTarefa, situacaoTarefaComum, propriedadeRegularizacao, vinculoRegularizacaoSelect } from "../protocolos/situacao.js";
@@ -14,7 +16,9 @@ import { confirmarFato } from "../idempotencia.js";
 import { travarUsosProduto } from "../../estoque/usos.js";
 
 type Etapa = {
-  diaRelativo: number; tipo: "APLICACAO" | "EXAME"; produtoId?: string | null; tipoExameId?: string | null;
+  referenciasCusto?: ReferenciasCusto;
+  momento?: MomentoAcao | null; subtipo?: "APLICACAO" | "INSERCAO_DISPOSITIVO";
+  diaRelativo: number; tipo: "APLICACAO" | "EXAME" | "MANEJO" | "RETIRADA"; produtoId?: string | null; tipoExameId?: string | null;
   finalidade?: FinalidadeAplicacao | null; dose?: number | null; unidade?: string | null; via?: string | null;
   tipoAplicacaoId?: string | null;
 };
@@ -25,6 +29,7 @@ async function validarEtapas(tx: Prisma.TransactionClient, etapas: Etapa[]) {
   if (!etapas.length) throw new RebanhoError("VALIDACAO", "O protocolo precisa de ao menos uma etapa", "etapas");
   await travarUsosProduto(tx, etapas.flatMap((e) => e.produtoId ? [e.produtoId] : []));
   for (const [indice, e] of etapas.entries()) {
+    e.referenciasCusto = validarReferenciasCusto(e.referenciasCusto, e.unidade ?? null, e.tipo === "APLICACAO");
     if (!Number.isInteger(e.diaRelativo) || e.diaRelativo < 0) throw new RebanhoError("VALIDACAO", "Dia relativo inválido", `etapas.${indice}.diaRelativo`);
     if (e.tipo === "APLICACAO") {
       if (!e.produtoId || (!e.finalidade && !e.tipoAplicacaoId) || !e.dose || e.dose <= 0 || !e.unidade || e.tipoExameId) {
@@ -34,6 +39,8 @@ async function validarEtapas(tx: Prisma.TransactionClient, etapas: Etapa[]) {
       const tipo = await tx.tipoAplicacaoSanitaria.findFirst({ where: { id: e.tipoAplicacaoId ?? (e.finalidade === "VACINA" ? "a0300000-0000-4000-8000-000000000002" : e.finalidade === "VERMIFUGO" ? "a0300000-0000-4000-8000-000000000003" : "a0300000-0000-4000-8000-000000000001"), ativo: true } });
       if (!tipo) throw new RebanhoError("VALIDACAO", "Tipo de aplicação inativo ou inexistente", `etapas.${indice}.tipoAplicacaoId`);
       e.tipoAplicacaoId = tipo.id;
+    } else if (e.tipo === "MANEJO" || e.tipo === "RETIRADA") {
+      if(e.produtoId||e.tipoExameId||e.dose)throw new RebanhoError("VALIDACAO","Manejo não consome produto: configure aplicação separada",`etapas.${indice}`);
     } else if (e.tipo === "EXAME") {
       if (!e.tipoExameId || e.produtoId || e.dose) throw new RebanhoError("VALIDACAO", "Etapa de exame precisa de Tipo de exame, sem Produto", `etapas.${indice}`);
       if (!(await tx.tipoExame.findFirst({ where: { id: e.tipoExameId, ativo: true, contexto: { not: "REPRODUTIVO" } } }))) throw new RebanhoError("VALIDACAO", "Tipo de exame não encontrado", `etapas.${indice}.tipoExameId`);
@@ -42,7 +49,7 @@ async function validarEtapas(tx: Prisma.TransactionClient, etapas: Etapa[]) {
 }
 
 export async function listarProtocolos() {
-  return prisma.protocolo.findMany({ where: { tipo: "SANITARIO" }, include: { etapas: { orderBy: { ordem: "asc" } } }, orderBy: [{ nome: "asc" }, { versao: "desc" }] });
+  return prisma.protocolo.findMany({ where: { tipo: "SANITARIO" }, include: { etapas: { include: { momento: true }, orderBy: { ordem: "asc" } } }, orderBy: [{ nome: "asc" }, { versao: "desc" }] });
 }
 
 export async function criarProtocolo(input: { nome: string; descricao?: string | null; etapas: Etapa[] }, usuarioId: number | null, id?: string) {
@@ -54,21 +61,27 @@ export async function criarProtocolo(input: { nome: string; descricao?: string |
     const versao = existente?.versao ?? await reservarVersaoTx(tx, "SANITARIO", input.nome.trim());
     const dados = { nome: input.nome.trim(),
       descricao: input.descricao?.trim() || null,
-      etapas: { create: input.etapas.map((e, i) => ({ ordem: i + 1, diaRelativo: e.diaRelativo, tipo: e.tipo,
+      etapas: { create: input.etapas.map((e, i) => ({ ordem: i + 1, diaRelativo: e.diaRelativo, tipo: e.tipo, configuracao: { subtipo: e.subtipo ?? "APLICACAO", ...(e.referenciasCusto ? {referenciasCusto:e.referenciasCusto} : {}) },
         produtoId: e.tipo === "APLICACAO" ? e.produtoId : null, tipoExameId: e.tipo === "EXAME" ? e.tipoExameId : null,
         finalidade: e.tipo === "APLICACAO" ? e.finalidade : null, dose: e.tipo === "APLICACAO" ? e.dose : null,
         tipoAplicacaoId: e.tipo === "APLICACAO" ? e.tipoAplicacaoId : null,
         unidade: e.tipo === "APLICACAO" ? e.unidade : null, via: e.via?.trim() || null })) },
     };
-    const novo = existente ? await tx.protocolo.update({ where: { tipo: "SANITARIO", id: existente.id }, data: { ...dados, etapas: { deleteMany: {}, ...dados.etapas } }, include: { etapas: { orderBy: { ordem: "asc" } } } }) : await tx.protocolo.create({ data: { ...dados, versao }, include: { etapas: { orderBy: { ordem: "asc" } } } });
-    await auditar(tx, { entidade: "ProtocoloSanitario", entidadeId: novo.id, acao: existente ? "RASCUNHO_EDITADO" : "VERSAO_CRIADA", usuarioId, ...(existente ? { antes: existente } : {}), depois: novo });
-    return novo;
+    if (existente) {
+      await tx.etapaProtocolo.deleteMany({ where: { protocoloId: existente.id } });
+      await tx.momentoProtocolo.deleteMany({ where: { protocoloId: existente.id } });
+    }
+    const novo = existente ? await tx.protocolo.update({ where: { tipo: "SANITARIO", id: existente.id }, data: { ...dados, etapas: { deleteMany: {}, ...dados.etapas } }, include: { etapas: { include: { momento: true }, orderBy: { ordem: "asc" } } } }) : await tx.protocolo.create({ data: { ...dados, versao }, include: { etapas: { include: { momento: true }, orderBy: { ordem: "asc" } } } });
+    await associarMomentosAcoesTx(tx, novo.id, input.etapas);
+    const atualizado = await tx.protocolo.findUniqueOrThrow({ where: { id: novo.id }, include: { etapas: { include: { momento: true }, orderBy: { ordem: "asc" } } } });
+    await auditar(tx, { entidade: "ProtocoloSanitario", entidadeId: novo.id, acao: existente ? "RASCUNHO_EDITADO" : "VERSAO_CRIADA", usuarioId, ...(existente ? { antes: existente } : {}), depois: atualizado });
+    return atualizado;
   });
 }
 
 export async function publicarProtocolo(id: string, usuarioId: number | null) {
   return prisma.$transaction(async tx => publicarVersaoTx(tx, id, "SANITARIO", usuarioId, async protocolo => {
-    await validarEtapas(tx, protocolo.etapas.map(e => ({ ...e, dose: e.dose?.toNumber() ?? null, tipo: e.tipo as Etapa["tipo"] })));
+    await validarEtapas(tx, protocolo.etapas.map(e => ({ ...e, referenciasCusto: (e.configuracao as {referenciasCusto?:ReferenciasCusto}|null)?.referenciasCusto, dose: e.dose?.toNumber() ?? null, tipo: e.tipo as Etapa["tipo"] })));
     for (const etapa of protocolo.etapas) if (etapa.tipoAplicacaoId) {
       const tipo = await tx.tipoAplicacaoSanitaria.findUniqueOrThrow({ where: { id: etapa.tipoAplicacaoId } });
       await tx.etapaProtocolo.update({ where: { id: etapa.id }, data: { tipoAplicacaoNomeSnapshot: tipo.nome } });
@@ -86,7 +99,7 @@ export async function iniciarExecucaoTx(tx: Prisma.TransactionClient, input: { c
       if (!local || local.animal.baixas.length) throw new RebanhoError("VALIDACAO", "Animal indisponível neste sítio no início do protocolo", "inicio");
     } else await conferirAnimalNoFato(tx, input.animalId, input.propriedadeId, data, "inicio");
     const protocolo = await tx.protocolo.findFirst({ where: { tipo: "SANITARIO", id: input.protocoloId, ativo: true, publicadoEm: { not: null } },
-      include: { etapas: { orderBy: { ordem: "asc" }, include: { produto: { select: { nome: true } }, tipoExame: { select: { nome: true } } } } } });
+      include: { etapas: { orderBy: { ordem: "asc" }, include: { momento: true, produto: { select: { nome: true } }, tipoExame: { select: { nome: true } } } } } });
     if (!protocolo) throw new RebanhoError("VALIDACAO", "Selecione uma versão publicada do protocolo", "protocoloId");
     const simultaneas = await tx.participacaoProtocolo.findMany({ where: { animalId: input.animalId, canceladaEm: null,
       protocolo: { nome: { equals: protocolo.nome, mode: "insensitive" } },
@@ -104,8 +117,8 @@ export async function iniciarExecucaoTx(tx: Prisma.TransactionClient, input: { c
     const execucao = await tx.participacaoProtocolo.create({ data: { protocoloId: protocolo.id,
       animalId: input.animalId, propriedadeId: input.propriedadeId, inicio: data, origemCalendario: "REFERENCIA_PROGRAMADA", criadoPorId: usuarioId,
       ocorrenciaId: input.ocorrenciaId ?? null, operacaoServicoId: input.operacaoServicoId ?? null,
-      tarefas: { create: protocolo.etapas.map((e) => ({ etapaId: e.id, previstaPara: somarDias(data, e.diaRelativo),
-        parametros: { tipo: e.tipo, produtoId: e.produtoId, tipoExameId: e.tipoExameId, finalidade: e.finalidade,
+      tarefas: { create: protocolo.etapas.map((e) => ({ etapaId: e.id, momentoSnapshot: snapshotMomento(e.momento), previstaPara: somarDias(data, e.diaRelativo),
+        parametros: { tipo: e.tipo, configuracao: e.configuracao, produtoId: e.produtoId, tipoExameId: e.tipoExameId, finalidade: e.finalidade,
           produtoNomeSnapshot: e.produto?.nome ?? null, tipoExameNomeSnapshot: e.tipoExame?.nome ?? null,
           tipoAplicacaoId: e.tipoAplicacaoId, tipoAplicacaoNomeSnapshot: e.tipoAplicacaoNomeSnapshot,
           dose: e.dose?.toString() ?? null, unidade: e.unidade, via: e.via } })) },

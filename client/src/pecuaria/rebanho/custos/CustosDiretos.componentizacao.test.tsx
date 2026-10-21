@@ -21,7 +21,7 @@ function abrirPreparatorios() {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(obterCustos).mockResolvedValue(dados());
-  vi.mocked(obterPreparatorios).mockResolvedValue({ itens: [candidato("h")] });
+  vi.mocked(obterPreparatorios).mockResolvedValue({ itens: [candidato("h")],total:1,pagina:1,porPagina:10 });
   vi.mocked(escreverCustos).mockResolvedValue({});
 });
 afterEach(cleanup);
@@ -64,11 +64,11 @@ describe("rascunhos dos editores de custos", () => {
     let rejeitar!: (erro: Error) => void;
     vi.mocked(obterPreparatorios).mockImplementation((id) => id === "a"
       ? new Promise((_resolve, reject) => { rejeitar = reject; })
-      : Promise.resolve({ itens: [candidato("b")] }));
+      : Promise.resolve({ itens: [candidato("b")],total:1,pagina:1,porPagina:10 }));
     const { rerender } = render(<CustosDiretos tentativaId="a" propriedadeId={1} podeLancar />);
     await screen.findByRole("table", { name: "Componentes do custo direto registrado" });
     abrirPreparatorios();
-    await waitFor(() => expect(obterPreparatorios).toHaveBeenCalledWith("a", 1));
+    await waitFor(() => expect(obterPreparatorios).toHaveBeenCalledWith("a", 1,1));
     rerender(<CustosDiretos tentativaId="b" propriedadeId={2} podeLancar />);
     await screen.findByRole("table", { name: "Componentes do custo direto registrado" });
     abrirPreparatorios();

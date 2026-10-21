@@ -1,3 +1,5 @@
+import { referenciasCustoSchema } from "../custos/referencias-planejadas.js";
+import { momentoAcaoSchema } from "../protocolos/momentos.js";
 import { causaClinicaPerdaSchema } from "./acompanhamento.schemas.js";
 import { observacoesExameSchema } from "../exames/formatos.js";
 import { z } from "zod";
@@ -21,7 +23,9 @@ export const planoAplicacaoIatfSchema = z.object({ produtoId: uuid, dose: z.stri
 export const planoTentativaIatfSchema = z.object({ tipo: z.enum(["IA", "TE"]), materialId: uuid, quantidade: z.number().positive().max(99999999) }).strict();
 export const planoAvaliacaoIatfSchema = z.object({ tipoExameId: uuid.optional(), tipo: z.enum(["DIAGNOSTICO", "RECONFIRMACAO", "SEXAGEM"]) }).strict();
 export const orientacaoTemporalSchema = z.object({versao:z.literal(1),referencia:z.enum(["INICIO_EFETIVO","ETAPA_ANTERIOR"]),intervaloHoras:z.number().nonnegative().max(24000),toleranciaAntesMinutos:z.number().int().nonnegative().max(10080),toleranciaDepoisMinutos:z.number().int().nonnegative().max(10080),efeito:z.literal("ALERTA")}).strict();
-export const etapaIatfSchema = z.object({ nome: z.string().trim().min(1).max(120), tipo: z.enum(["APLICACAO", "MANEJO", "RETIRADA", "TENTATIVA", "AVALIACAO", "EXAME"]), intervalo: z.number().nonnegative().max(10000), unidade: z.enum(["DIAS", "HORAS"]), orientacaoTemporal:orientacaoTemporalSchema.optional(), planoAplicacao: planoAplicacaoIatfSchema.optional(), planoTentativa: planoTentativaIatfSchema.optional(), planoExame: z.object({ tipoExameId: uuid }).strict().optional(), planoAvaliacao: planoAvaliacaoIatfSchema.optional() }).strict().superRefine((etapa,ctx)=>{
+export const etapaIatfSchema = z.object({ referenciasCusto: referenciasCustoSchema.optional(), momento: momentoAcaoSchema.optional(), subtipo: z.enum(["APLICACAO", "INSERCAO_DISPOSITIVO"]).optional(), nome: z.string().trim().min(1).max(120), tipo: z.enum(["APLICACAO", "MANEJO", "RETIRADA", "TENTATIVA", "AVALIACAO", "EXAME"]), intervalo: z.number().nonnegative().max(10000), unidade: z.enum(["DIAS", "HORAS"]), orientacaoTemporal:orientacaoTemporalSchema.optional(), planoAplicacao: planoAplicacaoIatfSchema.optional(), planoTentativa: planoTentativaIatfSchema.optional(), planoExame: z.object({ tipoExameId: uuid }).strict().optional(), planoAvaliacao: planoAvaliacaoIatfSchema.optional() }).strict().superRefine((etapa,ctx)=>{
+  if (etapa.referenciasCusto?.material && !["APLICACAO", "TENTATIVA"].includes(etapa.tipo)) ctx.addIssue({code:"custom",path:["referenciasCusto","material"],message:"Ação não utiliza material planejado"});
+  if (etapa.subtipo && etapa.tipo !== "APLICACAO") ctx.addIssue({ code:"custom",path:["subtipo"],message:"Subtipo de aplicação exige ação de aplicação" });
   for(const [campo,tipo] of [["planoExame","EXAME"],["planoAplicacao","APLICACAO"],["planoTentativa","TENTATIVA"],["planoAvaliacao","AVALIACAO"]] as const) if(etapa[campo] && etapa.tipo!==tipo)ctx.addIssue({code:"custom",path:[campo],message:"Planejamento incompatível com a ação da etapa"});
 });
 export const protocoloSchema = z.object({ origemVersaoId:uuid.optional(), descricao: texto, nome: z.string().trim().min(2).max(120), versao: z.number().int().positive(), publicado: z.boolean().default(false), etapas: z.array(etapaIatfSchema).min(1).max(100) }).strict().superRefine((protocolo,ctx)=>{

@@ -1,0 +1,102 @@
+/* Adaptação do mockup aprovado aos tokens de origin/main @ 895ae3d3. */
+:root {
+  --sans: "DM Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --ink: var(--foreground); --green: var(--primary); --canvas: var(--fin-canvas);
+  --line: var(--border); --soft: var(--secondary); --amber: #775930;
+  --amber-bg: var(--fin-warning-bg); --red: var(--destructive);
+}
+body { background: var(--background); color: var(--foreground); font-family: var(--sans); }
+small,.sub,.meta,.breadcrumb,.calendar-label { color: var(--muted-foreground); }
+::selection { background: var(--fin-nav-selected); color: var(--foreground); }
+* { scrollbar-color: #9fb8b2 var(--secondary); scrollbar-width: thin; }
+:is(button,a,input,select,textarea):focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
+h1 { font-family: var(--font-display); font-size: 32px; font-weight: 800; color: var(--fin-heading); }
+h2 { font-size: 18px; font-weight: 650; color: var(--fin-heading); }
+h3 { color: var(--fin-heading); }
+.demo { background: #203c39; min-height: 36px; height: auto; padding-block: 8px; }
+.layout { grid-template-columns: 220px minmax(0,1fr); }
+aside { background: var(--fin-sidebar); border-color: var(--border); padding: 24px 16px; }
+.brand { color: var(--fin-heading); font-family: var(--font-display); font-weight: 750; }
+.farm { border-color: var(--border); border-radius: 8px; }
+.navitem { color: var(--foreground); font-size: 14px; }
+.navitem.active { background: var(--fin-sidebar-selected); color: white; }
+.navitem.active:before { background: currentColor; }
+.navgroup>p { color: var(--muted-foreground); }
+.account { border-color: #bacfc8; }
+.avatar { background: var(--fin-nav-selected); }
+main { max-width: 1600px; padding: 28px 32px 48px; }
+.breadcrumb { font-size: 13px; }
+.titleline { margin-bottom: 24px; }
+.titleline .meta { color: var(--muted-foreground); font-size: 14px; }
+.panel { border-color: var(--border); border-radius: 16px; box-shadow: var(--fin-panel-shadow); }
+.fold { margin-top: 24px; }
+.foldhead { padding-inline: 20px; }
+.fold-toggle { padding-block: 20px; }
+.fold-toggle small { color: var(--muted-foreground); font-size: 13px; }
+.btn { border-color: var(--fin-control-border); border-radius: 8px; min-height: 40px; font-size: 14px; }
+.btn.small { min-height: 36px; font-size: 13px; padding: 6px 12px; }
+.btn:hover { background: var(--secondary); }
+.btn.primary { background: var(--primary); border-color: var(--primary); box-shadow: var(--fin-button-shadow); }
+.btn.primary:hover { background: var(--fin-primary-hover); }
+.textbtn { color: var(--primary); }
+input,select,textarea { border-color: var(--fin-control-border); border-radius: 8px; }
+input::placeholder,textarea::placeholder { color: var(--muted-foreground); opacity: 1; }
+.step { padding: 18px 20px; }
+.unified .step { min-height: 144px; }
+.step:hover { background: var(--fin-table-hover); }
+.step.selected { background: var(--fin-filter-bg); box-shadow: inset 0 3px 0 var(--primary); }
+.step .day,.step .result { color: var(--muted-foreground); font-size: 12px; }
+.step strong { font-size: 16px; }
+.step .date { font-size: 14px; }
+.step.selected .result { color: var(--primary); }
+.unified-toolbar { gap: 16px; padding: 16px; flex-wrap: wrap; }
+.table-controls { flex: 1; justify-content: flex-end; }
+.unified .search { flex: 1; width: auto; max-width: 320px; min-width: 140px; min-height: 40px; font-size: 14px; }
+.segmented { background: var(--secondary); border-color: var(--border); }
+.segmented button { font-size: 13px; min-height: 34px; color: var(--muted-foreground); }
+.segmented button[aria-pressed=true] { color: white; background: var(--primary); }
+.segmented button:hover:not([aria-pressed=true]) { background: var(--fin-filter-hover); }
+.tag { font-size: 12px; padding: 4px 10px; border-radius: 6px; }
+.tag.live { background: var(--fin-status-positive-bg); color: var(--fin-status-positive-text); }
+.tag.gray { background: var(--fin-tag-bg); color: var(--fin-tag-text); }
+.tag.warn { background: var(--fin-warning-bg); color: #775930; }
+.pagination { color: var(--muted-foreground); font-size: 12px; }
+.unified-table .row-actions { gap: 8px; }
+.unified-table tr.expanded-parent,.inline-detail>td,.record-detail,.inline { background: var(--fin-canvas-sage); }
+.inline-workflow,.inline-workflow .foldhead { background: var(--secondary); }
+.costcard { background: var(--secondary); border-color: var(--border); }
+.costcard.actual { background: #e0efec; border-color: #c1dcd5; }
+.costcard strong { color: var(--fin-heading); font-family: var(--font-display); font-size: 28px; font-weight: 800; }
+.costcard span,.footnote,.notice,.formnote,.locked,.savebar p { color: var(--muted-foreground); }
+.notice { background: var(--secondary); }
+.costcard table { font-variant-numeric: tabular-nums; }
+.toast { background: var(--primary); }
+@media(max-width:1100px) {
+  .layout { grid-template-columns: 190px minmax(0,1fr); }
+  main { padding: 24px; }
+  .table-controls { flex-wrap: wrap; }
+  .step { padding: 16px; }
+}
+@media(max-width:760px) {
+  .layout { display: block; }
+  main { padding: 20px 16px 36px; }
+  h1 { font-size: 28px; }
+  .demo { justify-content: flex-start; }
+  .mobile-brand { color: var(--fin-heading); }
+  .table-controls { flex: 1 1 100%; }
+  .unified .search { max-width: none; min-width: 0; }
+  .unified .step { min-height: 148px; }
+  .btn,.btn.small,.segmented button { min-height: 44px; }
+  input,select,textarea { font-size: 16px!important; }
+  :root .app-main .unified-table .fin-tabela>tbody>tr>td { border: 0; height: auto; padding: 8px; }
+  :root .app-main .unified-table table.fin-tabela>tbody>tr>td:not(:last-child) { border-inline-end: 0; }
+  :root .app-main .unified-table .fin-tabela>tbody>tr { border-bottom: 1px solid var(--border); }
+  :root .app-main .unified-table .fin-tabela>tbody>tr:is(:hover,:focus-within) { background: var(--fin-table-hover); }
+  :root .app-main .unified-table .fin-tabela>tbody>tr:is(:hover,:focus-within)>td { background: transparent; }
+  .unified-table .row-actions { flex-wrap: wrap; }
+  .pagination { gap: 12px; }
+  .pagination>div { flex-wrap: wrap; }
+  .costcards { gap: 12px; }
+  #cost-content>.fin-tabela { font-size: 13px; }
+  :root .app-main #cost-content>.fin-tabela :is(td,th) { padding: 10px 8px; }
+}
