@@ -431,7 +431,11 @@ describe("categorias por item e relatórios", () => {
       { produtoId: doisCentros.id, descricao: "Dois, explícito", quantidade: 1, unidade: "un", valorUnitario: 100, estocavel: true, centroCustoId: b.id },
     ] });
     expect(op.itens.map((i) => [i.centroCustoId, i.centroCustoNome])).toEqual([[a.id, a.nome], [null, null], [null, null], [b.id, b.nome]]);
-    expect(op.movimentosEstoque.map((m) => m.centroCustoId)).toEqual([a.id, b.id, b.id, b.id]);
+    // A relação retornada não promete ordem; confira o centro do movimento
+    // vinculado a cada item, sem depender da ordem física das linhas no banco.
+    expect(op.movimentosEstoque).toHaveLength(4);
+    expect(op.itens.map(item => op.movimentosEstoque.find(m => m.itemOperacaoId === item.id)?.centroCustoId))
+      .toEqual([a.id, b.id, b.id, b.id]);
   });
 
   it("serviço sem itens registra categoria e classificação e aceita item avulso sem categoria", async () => {
