@@ -105,9 +105,15 @@ describeComBanco("fechamento nutricional com PostgreSQL", () => {
     expect(await prisma.fechamentoConsumo.count({ where: { loteId: ids.lote } })).toBe(antes + 2);
   });
   it("bloqueia estorno retroativo com dependentes e preserva o custo do último fechamento estornado", async () => {
-    await expect(estornarFechamento(ids.fechamento, ids.propriedade, "Revisão do consumo registrado", null)).rejects.toMatchObject({ code: "CONFLITO" });
-    expect((await prisma.fechamentoConsumo.findUnique({ where: { id: ids.fechamento } }))?.status).toBe("CONFIRMADO");
-    const ultimo = await prisma.fechamentoConsumo.findFirstOrThrow({ where: { loteId: ids.lote, status: "CONFIRMADO" }, orderBy: { fim: "desc" } });
+    // O fechamento original foi estornado no primeiro cenário. O par
+    // confirmado pelo cenário de períodos é que comprova a dependência.
+    const confirmados = await prisma.fechamentoConsumo.findMany({ where: { loteId: ids.lote, status: "CONFIRMADO" }, orderBy: [{ fim: "asc" }, { id: "asc" }] });
+    expect(confirmados).toHaveLength(2);
+    const [primeiro, ultimo] = confirmados;
+    const movimentosAntes = await prisma.movimentoEstoque.count({ where: { produtoId: ids.produto } });
+    await expect(estornarFechamento(primeiro.id, ids.propriedade, "Revisão do consumo registrado", null)).rejects.toMatchObject({ code: "CONFLITO" });
+    expect((await prisma.fechamentoConsumo.findUnique({ where: { id: primeiro.id } }))?.status).toBe("CONFIRMADO");
+    expect(await prisma.movimentoEstoque.count({ where: { produtoId: ids.produto } })).toBe(movimentosAntes);
     const custoAntes = (await detalheFechamento(ultimo.id, ids.propriedade, true)).custoConhecido;
     await estornarFechamento(ultimo.id, ids.propriedade, "Revisão do último consumo registrado", null);
     expect((await prisma.fechamentoConsumo.findUnique({ where: { id: ultimo.id } }))?.status).toBe("ESTORNADO");
