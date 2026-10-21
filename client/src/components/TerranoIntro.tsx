@@ -1,24 +1,21 @@
 /* Terrano — abertura do dashboard.
  *
- * Ao entrar no dashboard, cobre a tela com o fundo desfocado e toca a marca
- * "grande" no centro enquanto a música-piano (musicca-piano-4s.mp3) toca:
+ * Ao entrar no dashboard, cobre a tela com o fundo desfocado e mostra a marca
+ * "grande" no centro:
  *   1. o relevo se desenha e o sol (latão) rola pela colina e salta na ponta
  *      — é a animação-assinatura da marca, portada do handoff "Terrano — Marca";
  *   2. o lockup (símbolo + "Terrano" + "Fazenda Rio Novo") surge por baixo;
- *   3. quando a música acaba, o lockup dá um zoom pra diminuir e voa até o
+ *   3. no fim da abertura, o lockup dá um zoom pra diminuir e voa até o
  *      canto superior esquerdo, pousando exatamente sobre a logo do cabeçalho
  *      (mesmo <TerranoSymbol/>), e o overlay some.
  *
- * Autoplay de áudio pode ser bloqueado pelo navegador (sem gesto do usuário):
- * nesse caso a parte visual roda igual e o fim é dado por um timer. Respeita
- * prefers-reduced-motion (sem rolagem do sol nem voo — só um fade).
+ * Respeita prefers-reduced-motion (sem rolagem do sol nem voo — só um fade).
  */
 
 import { useEffect, useRef, useState } from "react";
 import { TerranoSymbol } from "./TerranoLogo";
 
-const AUDIO_SRC = "/musicca-piano-4s.mp3";
-const HOLD_FALLBACK_MS = 4200; // fim visual quando o áudio não toca / não dispara "ended"
+const HOLD_MS = 4200;
 const FLY_MS = 950; // duração do voo até o canto
 
 function prefereMenosMovimento(): boolean {
@@ -45,7 +42,6 @@ export function TerranoIntro({ onDone }: { onDone: () => void }) {
   const shadowRef = useRef<SVGEllipseElement>(null);
   const lockupRef = useRef<HTMLDivElement>(null);
   const symbolRef = useRef<HTMLSpanElement>(null);
-  const audioRef = useRef<HTMLAudioElement>(null);
 
   // ---- animação do sol rolando + saltando (portada do "Terrano — Marca") ----
   useEffect(() => {
@@ -108,12 +104,11 @@ export function TerranoIntro({ onDone }: { onDone: () => void }) {
     return () => cancelAnimationFrame(raf);
   }, [reduzido]);
 
-  // ---- áudio + orquestração do fim (voo até o canto) ----
+  // ---- orquestração do fim visual (voo até o canto) ----
   useEffect(() => {
     let finalizado = false;
-    let fallback = window.setTimeout(finalizar, HOLD_FALLBACK_MS);
+    const fim = window.setTimeout(finalizar, HOLD_MS);
     let flyTimer = 0;
-    const audio = audioRef.current;
 
     function voarAteOCanto() {
       const lockup = lockupRef.current;
@@ -140,59 +135,14 @@ export function TerranoIntro({ onDone }: { onDone: () => void }) {
     function finalizar() {
       if (finalizado) return;
       finalizado = true;
-      window.clearTimeout(fallback);
-      if (audio) {
-        try {
-          audio.pause();
-        } catch {
-          /* noop */
-        }
-      }
+      window.clearTimeout(fim);
       setSaindo(true);
       voarAteOCanto();
       flyTimer = window.setTimeout(onDone, (reduzido ? 420 : FLY_MS) + 140);
     }
 
-    if (audio) {
-      audio.volume = 0.85;
-      const onEnded = () => finalizar();
-      audio.addEventListener("ended", onEnded);
-      // preferir o fim real da música; se ela tocar, estica a rede de segurança
-      const onPlaying = () => {
-        window.clearTimeout(fallback);
-        const dur = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration * 1000 : 4000;
-        fallback = window.setTimeout(finalizar, dur + 700);
-      };
-      audio.addEventListener("playing", onPlaying, { once: true });
-
-      // Destrava a música no 1º gesto caso o autoplay seja bloqueado (ex.: boot
-      // sem passar pelo login). No fluxo normal — intro logo após o clique de
-      // "Entrar" — a sticky activation do documento já libera e isto nem roda.
-      const destravar = () => audio.play().catch(() => {});
-      const desarmarDestrava = () => {
-        window.removeEventListener("pointerdown", destravar);
-        window.removeEventListener("keydown", destravar);
-      };
-
-      const p = audio.play();
-      if (p && typeof p.catch === "function") {
-        p.catch(() => {
-          /* autoplay bloqueado — tenta de novo no 1º gesto; a parte visual roda igual */
-          window.addEventListener("pointerdown", destravar, { once: true });
-          window.addEventListener("keydown", destravar, { once: true });
-        });
-      }
-      return () => {
-        audio.removeEventListener("ended", onEnded);
-        audio.removeEventListener("playing", onPlaying);
-        desarmarDestrava();
-        window.clearTimeout(fallback);
-        window.clearTimeout(flyTimer);
-      };
-    }
-
     return () => {
-      window.clearTimeout(fallback);
+      window.clearTimeout(fim);
       window.clearTimeout(flyTimer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -247,8 +197,6 @@ export function TerranoIntro({ onDone }: { onDone: () => void }) {
           <span>.</span>
         </span>
       </div>
-
-      <audio ref={audioRef} src={AUDIO_SRC} preload="auto" />
     </div>
   );
 }

@@ -1,0 +1,119 @@
+.san-visual-barra { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:14px 18px; border-bottom:1px solid var(--border); }
+.san-visual-barra > p { color:var(--muted-foreground); font-size:13px; }
+.sanidade-pagina :is(.san-dia-paginas button,.san-ocorrencia-nome,.san-ocorrencias-distribuicao button,.san-tarefa-grupo summary):focus-visible { outline:2px solid var(--ring); outline-offset:3px; }
+.san-ciclos-cartoes { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; padding:18px; background:var(--surface-1,#f6f9f8); }
+.san-ciclo-cartao { min-width:0; display:flex; flex-direction:column; gap:14px; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:20px; }
+.san-ciclo-cartao > header { display:flex; align-items:start; justify-content:space-between; gap:14px; }
+.san-ciclo-cartao h2 { font-size:17px; font-weight:650; line-height:1.35; overflow-wrap:anywhere; }
+.san-ciclo-cartao header p { color:var(--muted-foreground); font-size:13px; margin-top:5px; }
+.san-ciclo-participantes { display:flex; gap:6px; align-items:center; white-space:nowrap; font-size:13px; }
+.san-visual-meta { display:flex; align-items:center; gap:7px; color:var(--muted-foreground); font-size:13px; }
+.san-ciclo-progresso-titulo { display:flex; justify-content:space-between; flex-wrap:wrap; gap:6px; font-size:12px; margin-bottom:9px; color:var(--muted-foreground); }
+.san-ciclo-progresso-titulo strong { color:var(--foreground); }
+.san-ciclo-barra { display:flex; height:9px; border-radius:6px; overflow:hidden; background:var(--muted); margin-bottom:10px; }
+.san-progresso-realizadas { background:#007f78; }.san-progresso-pendentes { background:#b7c7cc; }.san-progresso-atrasadas { background:#c84747; }.san-progresso-outras { background:#e1e7e7; }
+.san-ciclo-progresso .pec-contagens-etapa { font-size:12px; gap:5px 12px; }
+.san-ciclo-etapas-visuais { display:flex; gap:0; min-height:105px; padding-top:8px; margin-top:auto; }
+.san-ciclo-etapas-visuais > div { position:relative; display:flex; flex:1; flex-direction:column; gap:3px; min-width:0; font-size:12px; padding-right:8px; }
+.san-ciclo-etapas-visuais > div:not(:last-of-type)::before { content:""; position:absolute; top:10px; left:18px; right:0; height:1px; background:var(--border); }
+.san-etapa-marca { color:#6a858b; background:var(--card); z-index:1; display:flex; align-items:center; width:22px; height:22px; margin-bottom:6px; }
+.san-etapa-concluida .san-etapa-marca { color:var(--primary); }
+.san-ciclo-etapas-visuais small,.san-etapas-restantes { color:var(--muted-foreground); font-size:11px; }
+.san-ciclo-cartao > button { align-self:stretch; }
+.san-agenda-semanal { padding:18px; background:var(--surface-1,#f6f9f8); }
+.san-semana-navegacao { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px; }
+.san-semana-navegacao h2 { font-size:17px; font-weight:650; }
+.san-semana-navegacao > div { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.san-semana-navegacao strong { font-size:13px; margin-left:8px; }
+.san-semana-corpo { display:grid; grid-template-columns:220px minmax(0,1fr); gap:16px; align-items:start; }
+.san-semana-sem-atrasadas { grid-template-columns:minmax(0,1fr); }
+.san-semana-rolagem { min-width:0; overflow-x:auto; border:1px solid var(--border); border-radius:10px; background:var(--card); }
+.san-semana-grade { display:grid; grid-template-columns:repeat(7,minmax(140px,1fr)); min-width:980px; align-items:start; }
+.san-semana-dia { min-width:0; min-height:360px; border-right:1px solid var(--border); }
+.san-semana-dia:last-child { border-right:0; }
+.san-semana-dia > header { min-height:88px; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:5px; border-bottom:1px solid var(--border); padding:10px; background:var(--surface-1,#f6f9f8); }
+.san-semana-dia > header > div { display:flex; flex-direction:column; align-items:center; font-size:12px; color:var(--muted-foreground); }
+.san-semana-dia h3 { width:30px; height:30px; display:grid; place-items:center; font-size:19px; color:var(--foreground); font-weight:650; }
+.san-semana-dia h3[data-hoje] { background:var(--primary); border-radius:50%; color:var(--primary-foreground); }
+.san-dia-contagem { color:var(--muted-foreground); font-size:11px; }
+.san-semana-atrasadas { padding:12px; border:1px solid #e8bcbc; border-radius:10px; background:#fff6f5; }
+.san-semana-atrasadas > header { display:flex; align-items:center; flex-wrap:wrap; gap:8px; color:#a62828; padding-bottom:10px; font-size:15px; font-weight:650; }
+.san-semana-atrasadas .san-dia-contagem { color:#a62828; }
+.san-tarefa-grupo { margin:9px; border:1px solid var(--border); border-radius:8px; background:var(--card); }
+.san-semana-atrasadas .san-tarefa-grupo { margin:10px 0; border-color:#edcecb; }
+.san-tarefa-grupo summary { cursor:pointer; padding:12px 10px; display:flex; flex-direction:column; gap:5px; list-style:none; }
+.san-tarefa-grupo summary::-webkit-details-marker { display:none; }
+.san-tarefa-grupo summary:hover { background:var(--accent); }
+.san-tarefa-grupo summary strong { font-size:13px; line-height:1.35; }
+.san-tarefa-grupo summary > span,.san-tarefa-grupo summary > time { font-size:12px; }
+.san-tarefa-grupo summary small { font-size:11px; color:var(--muted-foreground); line-height:1.45; overflow-wrap:anywhere; }
+.san-tarefa-grupo .san-grupo-abrir { color:var(--primary); font-weight:600; margin-top:5px; }
+.san-semana-atrasadas summary time { color:#a62828; }
+.san-grupo-detalhes { border-top:1px solid var(--border); }
+.san-grupo-animal { display:flex; flex-direction:column; align-items:start; gap:9px; padding:12px 9px; font-size:12px; overflow-wrap:anywhere; }
+.san-grupo-animal + .san-grupo-animal { border-top:1px solid var(--border); }
+.san-grupo-identificacao { display:flex; align-items:start; gap:7px; }
+.san-grupo-identificacao input { accent-color:var(--primary); width:16px; height:16px; flex-shrink:0; }
+.san-grupo-acoes > div { flex-wrap:wrap; }
+.san-grupo-acoes button { font-size:11px; min-height:34px; padding:6px 8px; white-space:normal; }
+.san-dia-vazio,.san-dia-aviso,.san-dia-erro { padding:20px 12px; font-size:12px; line-height:1.5; color:var(--muted-foreground); }
+.san-dia-aviso { padding:10px; }
+.san-dia-paginas { display:flex; align-items:center; justify-content:center; gap:12px; padding:10px; font-size:12px; }
+.san-dia-paginas button { min-width:30px; height:30px; display:grid; place-items:center; border:1px solid var(--border); border-radius:5px; }
+.san-dia-paginas button:disabled { opacity:.4; }
+.san-ocorrencias-visual { display:grid; grid-template-columns:minmax(0,2fr) minmax(270px,1fr); gap:18px; padding:18px; background:var(--surface-1,#f6f9f8); }
+.san-ocorrencias-cartoes { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; align-content:start; }
+.san-ocorrencia-cartao { display:flex; flex-direction:column; min-width:0; gap:14px; padding:18px; border:1px solid var(--border); border-radius:12px; background:var(--card); }
+.san-ocorrencia-cartao[data-selecionada] { border-color:var(--primary); }
+.san-ocorrencia-cartao > header { display:flex; align-items:start; gap:9px; }
+.san-ocorrencia-cartao > header > div { min-width:0; flex:1; }
+.san-ocorrencia-cartao header h2 { font-size:15px; font-weight:650; margin-top:4px; overflow-wrap:anywhere; }
+.san-ocorrencia-icone { padding:7px; border-radius:8px; background:var(--accent); color:var(--primary); }
+.san-ocorrencia-nome { text-align:left; font-size:12px; color:var(--primary); text-decoration:underline; text-underline-offset:3px; }
+.san-ocorrencia-periodo { display:flex; flex-wrap:wrap; justify-content:space-between; gap:8px; font-size:12px; color:var(--muted-foreground); }
+.san-ocorrencia-periodo > span { display:flex; align-items:center; gap:6px; }
+.san-ocorrencia-periodo > strong { color:var(--foreground); font-weight:500; }
+.san-ocorrencia-intervalo { display:flex; align-items:center; gap:0; margin-top:4px; }
+.san-ocorrencia-intervalo span { width:8px; height:8px; border:1px solid var(--primary); border-radius:50%; background:var(--primary); }
+.san-ocorrencia-intervalo span:last-child { background:var(--card); }
+.san-ocorrencia-intervalo i { flex:1; height:1px; background:var(--border); }
+.san-ocorrencia-datas { display:flex; justify-content:space-between; color:var(--muted-foreground); font-size:11px; margin-top:-8px; }
+.san-ocorrencia-cartao footer { display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-top:auto; padding-top:5px; }
+.san-ocorrencia-cartao footer button { font-size:12px; min-height:36px; padding:6px 9px; }
+.san-ocorrencias-lateral { display:flex; flex-direction:column; gap:16px; min-width:0; }
+.san-ocorrencias-lateral > section { border:1px solid var(--border); border-radius:12px; padding:18px; background:var(--card); }
+.san-ocorrencias-lateral h2 { font-size:16px; font-weight:650; margin-bottom:8px; }
+.san-ocorrencias-lateral p { font-size:12px; color:var(--muted-foreground); line-height:1.5; }
+.san-ocorrencias-distribuicao > button[aria-pressed] { display:grid; grid-template-columns:minmax(80px,1fr) minmax(50px,1fr) 20px; align-items:center; gap:10px; width:100%; text-align:left; margin-top:10px; padding:9px 5px; border-radius:5px; font-size:12px; }
+.san-ocorrencias-distribuicao > button:hover { background:var(--accent); }
+.san-ocorrencias-distribuicao > button[aria-pressed=true] { background:var(--accent); outline:1px solid var(--primary); }
+.san-doenca-barra { background:var(--muted); height:9px; border-radius:3px; overflow:hidden; }
+.san-doenca-barra i { display:block; height:100%; background:var(--primary); }
+.san-ocorrencia-acompanhamento > strong { font-size:13px; }
+.san-ocorrencia-acompanhamento ol { padding-left:16px; margin:20px 0; }
+.san-ocorrencia-acompanhamento li { position:relative; display:flex; flex-direction:column; gap:5px; padding:0 0 22px 17px; border-left:1px solid var(--border); font-size:12px; }
+.san-ocorrencia-acompanhamento li::before { content:""; position:absolute; top:3px; left:-4px; width:7px; height:7px; background:var(--primary); border-radius:50%; }
+.san-ocorrencia-acompanhamento li:last-child { border:0; padding-bottom:0; }
+.san-ocorrencia-acompanhamento time { color:var(--muted-foreground); }
+@media(max-width:1200px) { .san-ocorrencias-visual { grid-template-columns:minmax(0,1fr) 280px; }.san-ocorrencias-cartoes { grid-template-columns:1fr; }.san-ciclo-participantes { white-space:normal; }.san-semana-corpo { grid-template-columns:190px minmax(0,1fr); } }
+@media(max-width:767px) { .san-visual-barra { flex-wrap:wrap; }.san-ciclos-cartoes,.san-ocorrencias-visual { grid-template-columns:1fr; padding:12px; }.san-ocorrencias-cartoes { grid-template-columns:1fr; }.san-semana-corpo { grid-template-columns:1fr; }.san-semana-navegacao { align-items:start; flex-direction:column; }.san-ciclo-cartao { padding:16px; }.san-ciclo-cartao > header { flex-wrap:wrap; }.san-agenda-semanal { padding:12px; } }
+.san-tarefa-abrir { display:flex; flex-direction:column; align-items:start; gap:6px; padding:12px 10px; text-align:left; width:calc(100% - 18px); }
+.san-semana-atrasadas .san-tarefa-abrir { width:100%; }
+.san-tarefa-abrir:hover { background:var(--accent); border-color:var(--primary); }
+.san-tarefa-abrir > strong { font-size:13px; }.san-tarefa-abrir > span,.san-tarefa-abrir > time { font-size:12px; }.san-tarefa-abrir > small { color:var(--muted-foreground); font-size:11px; overflow-wrap:anywhere; }
+.san-tarefa-abrir > time { color:#a62828; }
+.san-semana-grupo-aberto { margin-top:18px; border:1px solid var(--primary); border-radius:10px; background:var(--card); overflow:hidden; }
+.san-semana-grupo-aberto > header { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:16px; background:var(--accent); }
+.san-semana-grupo-aberto h3 { font-weight:650; font-size:16px; }.san-semana-grupo-aberto header p { font-size:12px; margin-top:5px; }
+.san-semana-grupo-aberto > .san-grupo-animal { flex-direction:row; flex-wrap:wrap; align-items:center; gap:16px; padding:14px 16px; }
+.san-semana-grupo-aberto .san-grupo-identificacao { min-width:200px; flex:1; }.san-semana-grupo-aberto .san-grupo-acoes { margin-left:auto; }.san-semana-grupo-aberto .san-grupo-acoes button { font-size:13px; }
+.san-semana-grupo-aberto footer { padding:14px 16px; border-top:1px solid var(--border); }
+.san-visual-barra { padding-top:8px; padding-bottom:8px; }
+.san-ciclo-cartao { gap:12px; }
+.san-ciclo-legenda { display:flex; flex-wrap:wrap; gap:8px 14px; font-size:12px; color:var(--muted-foreground); }
+.san-ciclo-legenda span { display:flex; align-items:center; gap:6px; }
+.san-ciclo-legenda i { width:7px; height:7px; border-radius:50%; }
+.san-ciclo-etapas-visuais { min-height:92px; }
+.san-semana-atrasadas { max-height:510px; overflow-y:auto; }
+.san-semana-grupo-aberto h3:focus { outline:2px solid var(--ring); outline-offset:3px; }
+@media(max-width:767px) { .san-semana-atrasadas { max-height:350px; } }

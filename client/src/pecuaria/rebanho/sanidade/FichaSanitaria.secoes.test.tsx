@@ -13,22 +13,19 @@ it("separa título de protocolo e navegação, preservando filtros do animal", a
   const titulo = screen.getByRole("heading", { name: "Calendário anual · Vacinação · v1" });
   expect(titulo.querySelector("a,button")).toBeNull();
   expect(screen.queryByText("Participações em ciclos")).toBeNull();
-  const recolher = screen.getByRole("button", { name: "Protocolos sanitários do animal" });
-  fireEvent.click(recolher);
-  expect(recolher.getAttribute("aria-expanded")).toBe("false");
-  expect(screen.queryByRole("link", { name: "Ver protocolo" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Protocolos sanitários do animal" })).toBeNull();
+  expect(screen.getByRole("heading", { name: "Protocolos sanitários do animal" })).toBeTruthy();
+  expect(screen.getByRole("link", { name: "Ver protocolo" })).toBeTruthy();
 });
-it("mostra cabeçalhos recolhíveis completos para ocorrências, exames e agenda", async () => {
+it("mostra ocorrências, exames e agenda diretamente, sem acordeões", async () => {
   const { container } = render(<HistoricoSanitario animalId="animal 1" />);
-  await screen.findByRole("button", { name: /Ocorrências.*0 registros/ });
+  await screen.findByRole("heading", { name: /Ocorrências.*0 registros/ });
   for (const nome of [/Ocorrências.*0 registros/, /Exames.*0 registros/, /Agenda.*0 tarefas/]) {
-    expect(screen.getByRole("button", { name: nome }).hasAttribute("aria-controls")).toBe(true);
+    expect(screen.getByRole("heading", { name: nome })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: nome })).toBeNull();
   }
   expect(container.querySelector("summary")).toBeNull();
   const link = screen.getByRole("link", { name: "Abrir sanidade completa" });
   expect(link.getAttribute("href")).toContain("animalId=animal+1");
-  const exames = screen.getByRole("button", { name: /Exames.*0 registros/ });
-  expect(exames.getAttribute("aria-expanded")).toBe("false");
-  fireEvent.click(exames);
   expect(screen.getByText("Nenhum exame registrado.")).toBeTruthy();
 });

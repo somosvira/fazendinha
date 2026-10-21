@@ -17,7 +17,7 @@ describe("painel gerencial", () => {
   it("preserva o mascaramento monetário dos blocos e mantém acompanhamentos autorizados", async () => {
     mocks.consulta.mockResolvedValue(resumoRestrito());
     render(<PainelGerencial propriedadeId={1} onPeriodo={() => {}} />);
-    await screen.findByText(/2 acompanhamentos/);
+    await screen.findByText(/Pendências reprodutivas: 2/);
     expect(screen.getAllByText("Sem permissão monetária").length).toBeGreaterThanOrEqual(5);
     expect(screen.queryByText(/R\$/)).toBeNull();
     expect(screen.queryByText(/10,00|45,00|Sal mineral|Centro aberto/)).toBeNull();
@@ -28,7 +28,7 @@ describe("painel gerencial", () => {
     render(<PainelGerencial propriedadeId={1} onPeriodo={() => {}} />);
     await screen.findByText("Conexão interrompida");
     fireEvent.click(screen.getByText("Tentar novamente"));
-    await screen.findByText(/2 acompanhamentos/);
+    await screen.findByText(/Pendências reprodutivas: 2/);
     expect(mocks.consulta).toHaveBeenCalledTimes(2);
   });
 
@@ -49,6 +49,7 @@ describe("painel gerencial", () => {
     const onPeriodo = vi.fn();
     render(<PainelGerencial propriedadeId={1} onPeriodo={onPeriodo} />);
     await waitFor(() => expect(mocks.consulta).toHaveBeenCalledWith("2026-10-01", "2026-10-17", expect.any(AbortSignal)));
+    fireEvent.click(screen.getByRole("button", { name: "Selecionar período" }));
     fireEvent.change(screen.getByLabelText("Início"), { target: { value: "2026-10-05" } });
     fireEvent.click(screen.getByText("Aplicar período"));
     expect(onPeriodo).toHaveBeenCalledWith({ inicio: "2026-10-05", fim: "2026-10-17" });
@@ -65,10 +66,10 @@ describe("painel gerencial", () => {
     expect(screen.getByRole("heading", { name: "Nutrição registrada" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Custos diretos registrados" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: /Estoque atual em/ })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "Pontos de atenção" })).toBeTruthy();
+    expect(screen.getByRole("complementary", { name: "Prioridades atuais" })).toBeTruthy();
     const compromissos = screen.getByRole("region", { name: "Ainda a pagar" });
     expect(within(compromissos).getByText("R$ 45,00")).toBeTruthy();
-    expect(within(compromissos).getByText("R$ 10,00")).toBeTruthy();
+    expect(within(compromissos).getAllByText("R$ 10,00")).toHaveLength(2);
     expect(within(compromissos).getByText("R$ 35,00")).toBeTruthy();
     const caixa = screen.getByRole("table", { name: "Caixa por mês · * mês parcial" });
     expect(within(caixa).getByRole("row", { name: /2026/ })).toBeTruthy();
@@ -76,7 +77,7 @@ describe("painel gerencial", () => {
     const centros = within(screen.getByRole("region", { name: "Pagamentos por centro de custo" })).getByLabelText("Pagamentos por centro de custo");
     expect(within(centros).getByText("Centro aberto A")).toBeTruthy();
     expect(within(centros).getByText("R$ 4,00")).toBeTruthy();
-    const vencimentos = within(screen.getByRole("region", { name: "Quando vence o saldo a pagar" })).getByLabelText("Saldo a pagar por vencimento");
+    const vencimentos = within(screen.getByRole("region", { name: "Ainda a pagar" })).getByLabelText("Saldo a pagar por vencimento");
     expect(within(vencimentos).getByText("Vencido")).toBeTruthy();
     expect(within(vencimentos).getByText("Até 7 dias")).toBeTruthy();
     expect(within(vencimentos).getByText("De 8 a 30 dias")).toBeTruthy();
@@ -138,6 +139,22 @@ describe("painel gerencial", () => {
     expect(estoque.searchParams.get("propriedadeId")).toBe("1");
     expect(estoque.searchParams.has("inicio")).toBe(false);
     expect(estoque.searchParams.has("fim")).toBe(false);
-    expect(new URL(link("Ver reprodução"), location.origin).searchParams.get("propriedadeId")).toBe("1");
+    expect(new URL(link("Consultar acompanhamentos"), location.origin).searchParams.get("propriedadeId")).toBe("1");
   });
+});
+
+it("preserva transações e tabela mensal com caixa líquido zerado, sem gráfico vazio", async () => {
+  const resumo = resumoGerencial();
+  if (resumo.caixa.estado !== "DISPONIVEL") throw new Error("Fixture inválida");
+  resumo.caixa.dados.entradas = "0.00";
+  resumo.caixa.dados.saidas = "0.00";
+  resumo.caixa.dados.mensal = [{ mes: "2026-10", entradas: "0.00", saidas: "0.00", resultado: "0.00", incompleto: true }];
+  mocks.consulta.mockResolvedValue(resumo);
+  render(<PainelGerencial propriedadeId={1} onPeriodo={() => {}} />);
+  const caixa = await screen.findByRole("region", { name: "Caixa no período" });
+  expect(caixa.textContent).toContain("2 transações no período");
+  const mensal = screen.getByRole("region", { name: "Recebido e pago por mês" });
+  expect(within(mensal).getByText("Entradas e saídas líquidas zeradas neste período.")).toBeTruthy();
+  expect(within(mensal).getByRole("table")).toBeTruthy();
+  expect(mensal.querySelector(".ger-grafico")).toBeNull();
 });

@@ -50,3 +50,10 @@
 .ficha-peso-distribuicao>.pec-card-ficha{min-width:0;width:100%;height:100%}
 @container ficha-peso (max-width:1000px){.ficha-peso-indicadores{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @container ficha-peso (max-width:760px){.ficha-peso-distribuicao{grid-template-columns:minmax(0,1fr)}}
+
+/* Seções principais têm títulos, não controles de esconder conteúdo. */
+.secao-ficha-direta { border: 0; border-radius: 0; margin-top: 24px; overflow: visible; background: transparent; }
+.secao-ficha-direta > .secao-recolhivel-cabecalho { padding: 0 0 12px; border-bottom: 1px solid var(--border); }
+.secao-ficha-direta > .secao-recolhivel-cabecalho > h2 { padding: 0; font-size: 18px; }
+.secao-ficha-direta > .secao-recolhivel-conteudo { padding: 16px 0 0; }
+.secao-ficha-direta > .secao-recolhivel-conteudo > .pec-card-ficha:only-child > header:has(> h2:only-child) { display: none; }

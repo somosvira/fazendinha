@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { alterarControle } from "../../../lib/controles.fixture";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { FormFatoSanitario } from "./FormFatoSanitario";
@@ -12,11 +13,11 @@ beforeEach(() => { vi.clearAllMocks(); vi.mocked(reqSanidade).mockImplementation
 it("mantém o animal fixo e envia sítio histórico e zero numérico", async () => {
   render(<FormFatoSanitario tipo="exame" animalInicial="a" fixo onFechar={vi.fn()} onSalvo={vi.fn()} />);
   await screen.findByText("Contagem");
-  fireEvent.change(screen.getByLabelText("Data"), { target: { value: "2026-09-10" } });
+  await alterarControle(screen.getByLabelText("Data"), { target: { value: "2026-09-10" } });
   await screen.findByText(/Sítio na data: Sítio A/);
   expect(screen.queryByLabelText("Animal")).toBeNull();
-  fireEvent.change(screen.getByLabelText("Tipo de exame"), { target: { value: "tipo" } });
-  fireEvent.change(screen.getByLabelText(/Resultado \(opcional\)/), { target: { value: "0" } });
+  await alterarControle(screen.getByLabelText("Tipo de exame"), { target: { value: "tipo" } });
+  await alterarControle(screen.getByLabelText(/Resultado \(opcional\)/), { target: { value: "0" } });
   fireEvent.submit(document.getElementById("novo-fato-sanitario")!);
   await waitFor(() => expect(vi.mocked(reqSanidade).mock.calls.some(([p]) => p === "/exames/coletivos")).toBe(true));
   const envio = vi.mocked(reqSanidade).mock.calls.find(([p]) => p === "/exames/coletivos")!;
@@ -26,7 +27,9 @@ it("oferece seleção própria sem animal inicial", async () => {
   render(<FormFatoSanitario tipo="exame" onFechar={vi.fn()} onSalvo={vi.fn()} />);
   await screen.findByText("GV3-1");
   expect(screen.getByLabelText("Animal")).toHaveProperty("value", "");
-  fireEvent.change(screen.getByLabelText("Animal"), { target: { value: "a" } });
+  expect(screen.getByText(/Busque por brinco ou nome para reduzir/)).toBeTruthy();
+  expect(screen.getByText(/Registre a coleta agora/)).toBeTruthy();
+  await alterarControle(screen.getByLabelText("Animal"), { target: { value: "a" } });
   await screen.findByText(/Sítio na data: Sítio B/);
 });
 it("formata apenas o resultado correspondente ao snapshot e preserva zero", () => {
@@ -39,7 +42,7 @@ it("associa erro coletivo de tipo inativo ao campo e preserva os dados", async (
   vi.mocked(reqSanidade).mockImplementation(async (path, init) => { if (init?.method === "POST") throw new SanidadeApiError("Tipo de exame inativo. Escolha outro.", "VALIDACAO", "itens.0.tipoExameId"); return consulta(path, init); });
   render(<FormFatoSanitario tipo="exame" animalInicial="a" fixo onFechar={vi.fn()} onSalvo={vi.fn()} />);
   await screen.findByText(/Sítio na data: Sítio B/);
-  fireEvent.change(screen.getByLabelText("Tipo de exame"), { target: { value: "tipo" } });
+  await alterarControle(screen.getByLabelText("Tipo de exame"), { target: { value: "tipo" } });
   fireEvent.submit(document.getElementById("novo-fato-sanitario")!);
   await waitFor(() => expect(screen.getByLabelText("Tipo de exame").getAttribute("aria-invalid")).toBe("true"));
   expect(document.activeElement).toBe(screen.getByLabelText("Tipo de exame"));

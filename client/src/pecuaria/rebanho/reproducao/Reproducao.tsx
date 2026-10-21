@@ -1,3 +1,8 @@
+import { filtrosDasColunas, type CampoConsulta } from "@/financeiro/FiltroColunaConsulta";
+import { useRascunhoConsulta } from "@/financeiro/useRascunhoConsulta";
+import { CampoFiltro } from "@/financeiro/PainelFiltros";
+import { SelectCampo } from "@/financeiro/SelectCampo";
+import { BarraConsulta } from "@/financeiro/BarraConsulta";
 import "./reproducao-v4.css";
 import { ReproducaoIndividual } from "./ReproducaoIndividual";
 import { ManejoReprodutivo } from "./ManejoReprodutivo";
@@ -136,17 +141,11 @@ export function Reproducao({ podeLancar }: { podeLancar: boolean }) {
   return (
     <PaginaFinanceira>
     <div className={`reproducao-v4 ${rotina === "indicadores" ? "reproducao-v4-indicadores" : ""}`}>
-      {rotina !== "indicadores" && <PageHeader
-        eyebrow="Pecuária"
-        titulo="Reprodução"
-        descricao="Organize o manejo e acompanhe a reprodução do rebanho."
-      />}
-      {rotina !== "indicadores" && <SubTabs variant="financeiro" ariaLabel="Rotinas da reprodução" tabs={[...ROTINAS]}
-        active={rotina} onSelect={selecionarRotina} />}
+      <PageHeader titulo="Reprodução" descricao="Acompanhe o manejo reprodutivo, os partos, as programações e os indicadores." />
+      <SubTabs variant="financeiro" ariaLabel="Rotinas da reprodução" tabs={[...ROTINAS]}
+        active={rotina} onSelect={selecionarRotina} />
 
-      {conteudoDaRotina()}
-      {rotina === "indicadores" && <div className="mt-6"><SubTabs variant="financeiro" ariaLabel="Rotinas da reprodução" tabs={[...ROTINAS]}
-        active={rotina} onSelect={selecionarRotina} /></div>}
+      <div className="abas-superficie">{conteudoDaRotina()}</div>
       <div className="mt-5 border-t border-border pt-4 flex flex-wrap gap-4 text-sm"><a className="font-semibold underline" href={urlConsultaComSitio("/pecuaria/relatorios")} onClick={e => { if (!e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey) { e.preventDefault(); navegarConsultaComSitio("/pecuaria/relatorios"); } }}>Relatórios da Pecuária</a><a className="underline" href={urlConsultaComSitio("/configuracoes/pecuaria/reproducao/politica")} onClick={e => { if (!e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey) { e.preventDefault(); navegarConsultaComSitio("/configuracoes/pecuaria/reproducao/politica"); } }}>Política reprodutiva</a></div>
     </div>
     </PaginaFinanceira>
@@ -236,6 +235,11 @@ function ConteudoReproducao({
     setAnimalAcao(id);
     setAcao(tipo);
   };
+  const edicaoConsulta = useRascunhoConsulta({q,situacao},{q:"",situacao:""},v=>{filtro("q",v.q);filtro("situacao",v.situacao);});
+  const camposConsulta: CampoConsulta[] = [
+    {chave:"animal", naBarra: true,ativo:!!q,limpar:()=>edicaoConsulta.editar("q",""),conteudo:<CampoFiltro rotulo="Animal"><input aria-label="Buscar animal no filtro" className={classeInput} value={edicaoConsulta.rascunho.q} onChange={e=>edicaoConsulta.editar("q",e.target.value)}/></CampoFiltro>},
+    {chave:"situacao",ativo:!!situacao,limpar:()=>edicaoConsulta.editar("situacao",""),conteudo:<CampoFiltro rotulo="Situação reprodutiva"><SelectCampo aria-label="Filtrar situação reprodutiva" value={edicaoConsulta.rascunho.situacao} onValueChange={v=>edicaoConsulta.editar("situacao",v)}><option value="">Todas as situações</option>{Array.from(new Set((painel?.animais??[]).map(a=>a.situacao))).map(s=><option key={s} value={s}>{ROTULOS[s]??s}</option>)}</SelectCampo></CampoFiltro>},
+  ];
   const animais = (painel?.animais ?? []).filter(
     (a) =>
       (!animalId || a.animalId === animalId) &&
@@ -279,10 +283,7 @@ function ConteudoReproducao({
         </Button>
       )}
       <Panel>
-        <CabecalhoTabela
-          titulo={animalId ? "Situação reprodutiva" : "Animais e ciclos"}
-          acao={
-            podeLancar && (
+        {animalId && <CabecalhoTabela titulo="Situação reprodutiva" acao={podeLancar && (
               <div className="flex flex-wrap gap-2">
                 {(
                   [
@@ -303,11 +304,30 @@ function ConteudoReproducao({
                   </Button>
                 ))}
               </div>
-            )
-          }
-        />
+            )} />}
         {!animalId && (
-          <div className="flex flex-wrap gap-3 p-4 border-b border-border">
+          <BarraConsulta campos={camposConsulta} edicaoFiltros={edicaoConsulta} criterios={situacao?[{id:"situacao",rotulo:ROTULOS[situacao]??situacao,limpar:()=>filtro("situacao","")}]:[]} acao={podeLancar && (
+              <div className="flex flex-wrap gap-2">
+                {(
+                  [
+                    ["avaliacao", "Avaliar"],
+                    ["tentativa", "Tentativa"],
+                    ["parto", "Parto"],
+                    ["situacao", "Situação inicial"],
+                    ["restricao", "Restrição"],
+                  ] as [AcaoReprodutiva, string][]
+                ).map(([a, r]) => (
+                  <Button
+                    secondary
+                    key={a}
+                    disabled={!painel || carregando}
+                    onClick={() => abrir(a)}
+                  >
+                    {r}
+                  </Button>
+                ))}
+              </div>
+            )}>
             <label className="flex-1 text-sm">
               Buscar animal
               <input
@@ -317,25 +337,7 @@ function ConteudoReproducao({
                 onChange={(e) => filtro("q", e.target.value)}
               />
             </label>
-            <label className="text-sm">
-              Situação
-              <select
-                aria-label="Filtrar situação reprodutiva"
-                className={classeInput}
-                value={situacao}
-                onChange={(e) => filtro("situacao", e.target.value)}
-              >
-                <option value="">Todas</option>
-                {Array.from(
-                  new Set((painel?.animais ?? []).map((a) => a.situacao)),
-                ).map((s) => (
-                  <option key={s} value={s}>
-                    {ROTULOS[s] ?? s}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
+          </BarraConsulta>
         )}
         {carregando && (
           <p role="status" className="p-4">
@@ -343,7 +345,7 @@ function ConteudoReproducao({
           </p>
         )}
         {!carregando && painel && (
-          <TabelaFinanceira
+          <TabelaFinanceira filtrosColunas={filtrosDasColunas(camposConsulta,edicaoConsulta)}
             rotulo="Animais e ciclos reprodutivos"
             itens={animais}
             chaveDe={(a) => a.animalId}

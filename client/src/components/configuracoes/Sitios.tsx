@@ -1,3 +1,7 @@
+import { useFiltrosTabelaLocal } from "@/financeiro/useFiltrosTabelaLocal";
+import { useRascunhoConsulta } from "@/financeiro/useRascunhoConsulta";
+import { filtrosDasColunas, type CampoConsulta } from "@/financeiro/FiltroColunaConsulta";
+import { BarraConsulta } from "@/financeiro/BarraConsulta";
 // Configurações > Sítios — cadastro das propriedades (sítios) da fazenda.
 // Mora nas configurações gerais porque é estrutura da fazenda, compartilhada por
 // todos os módulos, e raramente muda. Mesmo padrão visual dos cadastros do
@@ -12,12 +16,14 @@ import { Loader } from "@/components/Loading";
 import { editarPropriedade, usePropriedades, type PropriedadeDTO } from "../../api/propriedades";
 import { AcoesLinha, Button, type ColunaTabela, ErrorBox, PageHeader, PaginaFinanceira, Panel, Pill, TabelaFinanceira } from "../../financeiro/financeiro-ui";
 import { FormSitio } from "./FormSitio";
+import { BuscaLista } from "../BuscaLista";
+import { PaginacaoLocal, usePaginacaoLocal } from "../PaginacaoLocal";
 
 type Painel = { modo: "novo" } | { modo: "editar"; id: number } | null;
 
 const colunas = (editar: (s: PropriedadeDTO) => void, alternar: (s: PropriedadeDTO) => void): ColunaTabela<PropriedadeDTO>[] => [
   { chave: "sitio", titulo: "Sítio", larguraMinima: 200, principal: true, celula: (s) => <strong className="break-words">{s.nome}</strong> },
-  { chave: "local", titulo: "Cidade", larguraMinima: 160, celula: (s) => <span className="break-words">{[s.cidade, s.uf].filter(Boolean).join(" — ") || "—"}</span> },
+  { chave: "local", titulo: "Cidade", larguraMinima: 220, larguraFlexivel: true, celula: (s) => <span className="break-words">{[s.cidade, s.uf].filter(Boolean).join(" — ") || "—"}</span> },
   { chave: "principal", titulo: "Principal", alinhamento: "centro", larguraMinima: 100, celula: (s) => s.principal ? <Pill tone="blue">Principal</Pill> : "—" },
   { chave: "situacao", titulo: "Situação", alinhamento: "direita", larguraMinima: 100, celula: (s) => <Pill tone={s.ativo ? "green" : "neutral"}>{s.ativo ? "Ativo" : "Inativo"}</Pill> },
   { chave: "acoes", titulo: "Ações", alinhamento: "direita", larguraMinima: 110, acoes: true, celula: (s) => <AcoesLinha nome={s.nome} ativo={s.ativo} onEditar={() => editar(s)} onAlternar={() => alternar(s)} /> },
@@ -25,6 +31,7 @@ const colunas = (editar: (s: PropriedadeDTO) => void, alternar: (s: PropriedadeD
 
 export function Sitios() {
   const [mostrarInativos, setMostrarInativos] = useState(false);
+  const [busca, setBusca] = useState("");
   const sitios = usePropriedades({ incluirInativos: mostrarInativos });
   const [painel, setPainel] = useState<Painel>(null);
   const [confirmando, setConfirmando] = useState<PropriedadeDTO | null>(null);
@@ -58,20 +65,28 @@ export function Sitios() {
   /* key força remount do formulário a cada abertura, zerando o estado local */
   const chavePainel = painel ? (painel.modo === "editar" ? `editar-${painel.id}` : "novo") : "fechado";
   const carregando = sitios.loading && sitios.data.length === 0;
+  const termo = busca.trim().toLocaleLowerCase("pt-BR");
+  const consulta = useFiltrosTabelaLocal<PropriedadeDTO>([{chave:"sitio", naBarra: true,rotulo:"Sítio",tipo:"texto",obter:s=>s.nome},{chave:"local", naBarra: true,rotulo:"Cidade / UF",tipo:"texto",obter:s=>[s.cidade,s.uf].join(" ")}]);
+  const edicaoSituacao = useRascunhoConsulta({inativos:mostrarInativos},{inativos:false},v=>setMostrarInativos(v.inativos));
+  const edicao = {iniciar:()=>{edicaoSituacao.iniciar();consulta.edicao.iniciar();},limpar:()=>{edicaoSituacao.limpar();consulta.edicao.limpar();},aplicar:()=>{edicaoSituacao.aplicar();consulta.edicao.aplicar();}};
+  const campos: CampoConsulta[] = [...consulta.campos,{chave:"situacao",ativo:mostrarInativos,limpar:edicaoSituacao.limpar,conteudo:<label className="flex items-center gap-2"><input type="checkbox" checked={edicaoSituacao.rascunho.inativos} onChange={e=>edicaoSituacao.editar("inativos",e.target.checked)}/>Mostrar inativos</label>}];
+  const visiveis = consulta.filtrar(sitios.data).filter(s => `${s.nome} ${s.cidade ?? ""} ${s.uf ?? ""}`.toLocaleLowerCase("pt-BR").includes(termo));
+  const paginacao = usePaginacaoLocal(visiveis, `${busca}|${mostrarInativos}|${consulta.criterios.map(c=>c.rotulo).join("|")}`);
 
   return <PaginaFinanceira>
-    <PageHeader eyebrow="" titulo="Sítios" descricao="As propriedades da fazenda. Cada animal, lote e lançamento pertence a um sítio."
-      acao={<Button onClick={abrirNovo}><Plus size={16} /> Novo sítio</Button>} />
+    <PageHeader eyebrow="" titulo="Sítios" descricao="Cadastre os sítios usados para organizar animais, estoque e lançamentos financeiros." acao={<Button onClick={abrirNovo}><Plus size={16} /> Novo sítio</Button>} />
     <ErrorBox erro={erro} />
 
     <fieldset disabled={processando} aria-busy={processando} className="min-w-0">
       {carregando
         ? <div className="mt-5"><Loader label="Carregando sítios" /></div>
         : <Panel className="mt-5 overflow-hidden">
-          <div className="flex flex-wrap items-center gap-3 border-b border-border p-4">
-            <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={mostrarInativos} onChange={(e) => setMostrarInativos(e.target.checked)} />Mostrar inativos</label>
-          </div>
-          <TabelaFinanceira rotulo="Sítios" itens={sitios.data} colunas={colunas(editar, alternar)} chaveDe={(s) => s.id} onAbrir={editar} classeLinha={(s) => !s.ativo ? "opacity-55" : ""} />
+          <BarraConsulta campos={campos} edicaoFiltros={edicao} criterios={[...consulta.criterios,...(mostrarInativos?[{id:"inativos",rotulo:"Inclui inativos",limpar:()=>setMostrarInativos(false)}]:[])]}>
+            <BuscaLista rotulo="Buscar sítio" placeholder="Buscar sítio ou cidade" valor={busca} onChange={setBusca} />
+          </BarraConsulta>
+          <TabelaFinanceira filtrosColunas={filtrosDasColunas(campos,edicao)} rotulo="Sítios" itens={paginacao.itens} colunas={colunas(editar, alternar)} chaveDe={(s) => s.id} onAbrir={editar} classeLinha={(s) => !s.ativo ? "opacity-55" : ""} />
+          <PaginacaoLocal controles={paginacao.controles} substantivo="sítios" id="pagina-sitios" />
+          {!visiveis.length && <p className="p-5 text-sm text-ink-3">{busca ? "Nenhum sítio corresponde à busca." : "Nenhum sítio cadastrado."}</p>}
         </Panel>}
     </fieldset>
 

@@ -15,9 +15,25 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 describe("nutrição do lote", () => {
+  it("oferece ações diretas na aba integrada e não abre corpo vazio para consulta", async () => {
+    const tela = render(<NutricaoLote loteId="lote" podeLancar />);
+    const trocar = await screen.findByRole("link", { name: "Trocar dieta" });
+    expect(trocar.getAttribute("href")).toContain("acao=atribuir");
+    expect(screen.getByRole("link", { name: "Conferir consumo" }).getAttribute("href")).toContain("acao=consumo");
+    tela.unmount();
+    vi.mocked(api.consultarResumoNutricional).mockResolvedValue({ ...resumo, vigente: null, programada: null });
+    const consulta = render(<NutricaoLote loteId="lote" podeLancar={false} />);
+    await screen.findByText("Sem dieta");
+    expect(screen.queryByRole("link", { name: "Atribuir dieta" })).toBeNull();
+    expect(consulta.container.querySelector(".nutricao-dieta-vigente .nutricao-card-corpo")).toBeNull();
+  });
   it("mostra custos completos e base histórica, com ligação direta à ficha do lote", async () => {
     render(<NutricaoLote loteId="lote" podeLancar vista="lotes" />);
-    await screen.findByText("Custo total da nutrição");
+    await screen.findByText("Custo conhecido da nutrição");
+    expect(document.querySelector(".nutricao-metricas")).toBeNull();
+    const dieta = screen.getByRole("heading", { name: "Dieta vigente" });
+    const consumo = screen.getByRole("heading", { name: "Consumo confirmado" });
+    expect(dieta.compareDocumentPosition(consumo) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.getByText(/379,50/)).toBeTruthy();
     expect(screen.getByText(/6,90/)).toBeTruthy();
     expect(screen.getByText(/55 animal-dias/)).toBeTruthy();
@@ -39,7 +55,7 @@ describe("nutrição do lote", () => {
     vi.mocked(api.consultarResumoNutricional).mockResolvedValue({ ...resumo, verValores: false });
     render(<NutricaoLote loteId="lote" podeLancar={false} vista="lotes" />);
     await screen.findByText("Em uso");
-    expect(screen.queryByText("Custo total da nutrição")).toBeNull();
+    expect(screen.queryByText("Custo conhecido da nutrição")).toBeNull();
     expect(screen.queryByText(/379,50/)).toBeNull();
     expect(screen.queryByText(/6,90/)).toBeNull();
   });

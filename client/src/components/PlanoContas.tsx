@@ -18,6 +18,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { Button as BotaoFinanceiro, PageHeader, PaginaFinanceira } from "../financeiro/financeiro-ui";
 
 /* Mesmos consts do Lançar (Fase 3 slice 2) — valores finais da typescale
  * pré-migração: label 14/600 (ink-2), input/textarea 16px. */
@@ -357,9 +358,15 @@ export function PlanoContas({ onNav: _onNav }: { onNav: (t: Tab) => void }) {
   };
 
   return (
-    <div className="shell-wide">
-      <div className="flex items-center gap-3 border-b border-border py-[18px]">
-        <div className="flex w-[320px] items-center gap-2 border border-border bg-card px-3 py-[7px]">
+    <PaginaFinanceira>
+      <PageHeader
+        eyebrow="Financeiro"
+        titulo="Categorias"
+        descricao="Organize categorias e subcategorias usadas nos lançamentos e relatórios financeiros."
+        acao={<div className="flex flex-wrap gap-2"><BotaoFinanceiro secondary onClick={handleExport}>Exportar CSV</BotaoFinanceiro><BotaoFinanceiro onClick={() => setShowNew(true)}>Nova categoria</BotaoFinanceiro></div>}
+      />
+      <div className="mt-5 flex items-center gap-3">
+        <div className="flex w-full max-w-[320px] items-center gap-2 border border-border bg-card px-3 py-[7px]">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden className="text-ink-2">
             <circle cx="11" cy="11" r="7"></circle>
             <line x1="16" y1="16" x2="21" y2="21"></line>
@@ -382,17 +389,9 @@ export function PlanoContas({ onNav: _onNav }: { onNav: (t: Tab) => void }) {
             </button>
           )}
         </div>
-        <div className="ml-auto flex gap-2.5 print:hidden">
-          <Button variant="outline" className={BTN_GHOST} onClick={handleExport} title="Baixa um arquivo CSV com todo o plano de contas">
-            Exportar CSV
-          </Button>
-          <Button className={BTN_PRIMARY} onClick={() => setShowNew(true)}>
-            + Nova categoria
-          </Button>
-        </div>
       </div>
 
-      <div className="grid grid-cols-[1.5fr_1fr] gap-9 pb-[60px] pt-6">
+      <div className="grid gap-9 pb-[60px] pt-6 lg:grid-cols-[1.5fr_1fr]">
         <div>
           <div className="caption mb-3.5 italic">
             Toque um grupo para abrir suas categorias. Toque uma categoria para ver as subcategorias.
@@ -514,6 +513,6 @@ export function PlanoContas({ onNav: _onNav }: { onNav: (t: Tab) => void }) {
         }}
         onCancel={() => setPromptSubCat(null)}
       />
-    </div>
+    </PaginaFinanceira>
   );
 }

@@ -121,6 +121,7 @@ export async function iniciarExecucaoColetivo(input: { chave: string; propriedad
   return confirmarColetivo(input, usuarioId, "PROTOCOLO_COLETIVO", iniciarExecucaoTx);
 }
 
+const tarefaPendente: Prisma.TarefaProtocoloWhereInput = condicaoSituacaoTarefa("PENDENTE");
 function whereTarefas(propriedadeId: number | null, animalId?: string, filtro?: ConsultaSanitaria) {
   const where: Prisma.TarefaProtocoloWhereInput = { execucao: { protocolo: { tipo: "SANITARIO" }, ...(animalId ? { animalId } : {}),
     ...(filtro?.rodadaId ? { rodadaId: filtro.rodadaId } : filtro?.semRodada === "true" ? { rodadaId: null } : {}),
@@ -136,10 +137,25 @@ export async function listarTarefasPaginadas(propriedadeId: number | null, anima
 }
 export async function listarTarefas(propriedadeId: number | null, animalId?: string, filtro?: ConsultaSanitaria) {
   const where = whereTarefas(propriedadeId, animalId, filtro);
-  const tarefas = await prisma.tarefaProtocolo.findMany({ where, include: { vinculos: vinculoRegularizacaoSelect,
+  const include = { vinculos: vinculoRegularizacaoSelect,
     execucao: { select: { animalId: true, propriedadeId: true, rodadaId: true, rodada: { select: { id: true, nome: true } }, canceladaEm: true, protocolo: { select: { nome: true, versao: true } }, animal: { select: { id: true, brinco: true, nome: true, localizacoes: { where: { ate: null }, select: { propriedadeId: true } } } } } },
     aplicacoes: { select: { id: true, status: true, propriedadeId: true }, orderBy: { criadoEm: "desc" } }, exames: { select: { id: true, status: true, propriedadeId: true }, orderBy: { criadoEm: "desc" } },
-  }, orderBy: [{ previstaPara: "asc" }, { id: "asc" }], ...limites(filtro) });
+  } satisfies Prisma.TarefaProtocoloInclude;
+  const orderBy: Prisma.TarefaProtocoloOrderByWithRelationInput[] = [{ previstaPara: "asc" }, { id: "asc" }];
+  const { skip, take } = limites(filtro);
+  const tarefas = filtro?.ordenacaoTarefas === "prioridade"
+    ? await prisma.$transaction(async (tx) => {
+      // A ordem é global, antes de paginar: pendentes por previsão (atrasadas
+      // primeiro), depois histórico. Não carregamos todas as tarefas em memória.
+      const wherePendentes: Prisma.TarefaProtocoloWhereInput = { AND: [where, tarefaPendente] };
+      const totalPendentes = await tx.tarefaProtocolo.count({ where: wherePendentes });
+      const pendentes = skip < totalPendentes
+        ? await tx.tarefaProtocolo.findMany({ where: wherePendentes, include, orderBy, skip, take }) : [];
+      const historico = pendentes.length < take
+        ? await tx.tarefaProtocolo.findMany({ where: { AND: [where, { NOT: tarefaPendente }] }, include, orderBy, skip: Math.max(0, skip - totalPendentes), take: take - pendentes.length }) : [];
+      return [...pendentes, ...historico];
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead })
+    : await prisma.tarefaProtocolo.findMany({ where, include, orderBy, skip, take });
   return tarefas.map((t) => {
     const aplicacao = t.aplicacoes.find((a) => a.status === "VALIDO") ?? null;
     const exame = t.exames.find((e) => e.status === "VALIDO") ?? null;

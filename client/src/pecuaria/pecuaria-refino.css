@@ -1,0 +1,266 @@
+/* Refinamento operacional isolado: nunca modifica as telas financeiras. */
+.pecuaria-content .pagina-financeira { padding-bottom: 64px; }
+.pecuaria-content .pec-metricas :is(.font-serif,.pec-valor) { font-size: clamp(23px, 2vw, 32px); font-weight: 650; font-variant-numeric: tabular-nums; line-height: 1.2; }
+.pecuaria-content :is(.pec-metricas,.nutricao-metricas) .fin-metric-icone { display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border-radius: 10px; }
+.pecuaria-content .pec-metricas { margin-block: 20px; }
+.pecuaria-content .pec-metricas-peso .font-serif { font-size: clamp(18px,10cqw,26px); }
+.pecuaria-content .pec-resumo-consulta { display: flex; flex-wrap: wrap; gap: 14px 28px; align-items: center; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px; margin-block: 20px; font-size: 13px; }
+.pecuaria-content .pec-resumo-consulta strong { font-size: 20px; color: var(--primary); font-variant-numeric: tabular-nums; margin-right: 6px; }
+.pecuaria-content .pec-resumo-consulta small { color: var(--muted-foreground); }
+.pecuaria-content .pec-painel-link:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; border-radius: 6px; }
+.pecuaria-content .pec-grafico-cabecalho { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 18px 22px; border-bottom: 1px solid var(--border); }
+.pecuaria-content .pec-grafico-cabecalho h2 { font-size: 17px; font-weight: 600; }
+.pecuaria-content .pec-grafico-cabecalho p { font-size: 12px; line-height: 1.5; margin-top: 5px; color: var(--muted-foreground); }
+.pecuaria-content .pec-distribuicao-painel { min-width: 0; overflow: hidden; }
+.pecuaria-content .pec-graficos-grade { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 20px; margin-block: 24px; }
+.pecuaria-content .pec-distribuicao-corpo { display: grid; grid-template-columns: minmax(0,.9fr) minmax(0,1fr); align-items: center; gap: 16px; padding: 20px; }
+.pecuaria-content .pec-distribuicao-rosca { position: relative; min-width: 0; max-width: 240px; width: 100%; margin: auto; }
+.pecuaria-content .pec-distribuicao-chart { aspect-ratio: auto; height: 220px; width: 100%; }
+.pecuaria-content .pec-rosca-centro { position: absolute; inset: 0; display: flex; justify-content: center; align-items: center; flex-direction: column; pointer-events: none; }
+.pecuaria-content .pec-rosca-centro strong { font-size: 32px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.pecuaria-content .pec-rosca-centro span { font-size: 11px; color: var(--muted-foreground); margin-top: 4px; }
+.pecuaria-content .pec-distribuicao-legenda { min-width: 0; }
+.pecuaria-content .pec-distribuicao-item { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 10px 4px; font-size: 13px; border-radius: 6px; }
+.pecuaria-content button.pec-distribuicao-item:hover { background: var(--muted); }
+.pecuaria-content .pec-distribuicao-item strong { font-weight: 500; overflow-wrap: anywhere; }
+.pecuaria-content .pec-distribuicao-item small { display: block; font-size: 11px; color: var(--muted-foreground); margin-top: 3px; }
+.pecuaria-content .pec-distribuicao-percentual { font-size: 15px; font-weight: 600; white-space: nowrap; }
+.pecuaria-content .pec-legenda-ponto { width: 9px; height: 9px; border-radius: 3px; flex-shrink: 0; }
+.pecuaria-content .pec-comparacao-corpo { padding: 16px 20px; }
+.pecuaria-content .pec-comparacao-chart { width: 100%; aspect-ratio: auto; }
+.pecuaria-content .pec-comparacao-valores { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-top: 12px; font-size: 11px; color: var(--muted-foreground); }
+.pecuaria-content .pec-grafico-vazio { padding: 28px 22px; font-size: 13px; color: var(--muted-foreground); }
+.pecuaria-content .pec-distribuicao-embutida { min-width: 0; overflow: hidden; }
+.pecuaria-content .pec-distribuicao-embutida .pec-grafico-cabecalho { border-bottom: 0; padding-bottom: 0; }
+.pecuaria-content .pec-distribuicao-embutida .pec-grafico-cabecalho h3 { font-size: 15px; font-weight: 600; }
+.pecuaria-content .pec-resumo-sanitario-inline { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; padding: 12px 20px 0; font-size: 13px; color: var(--muted-foreground); }
+.pecuaria-content .pec-resumo-sanitario-inline strong { color: var(--foreground); font-weight: 600; font-variant-numeric: tabular-nums; }
+.pecuaria-content .pec-resumo-sanitario-inline small { font-size: 12px; }
+/* Sanidade: topo compacto e comandos sempre alcançáveis na tabela rolável. */
+.pecuaria-content .sanidade-pagina > .fin-cabecalho-pagina { margin-bottom: 12px; }
+.pecuaria-content .sanidade-pagina .fin-cabecalho-descricao { margin-top: 4px; }
+.pecuaria-content .sanidade-navegacao { margin-top: 0; margin-bottom: 16px; }
+.pecuaria-content .sanidade-abas-principais { min-width: 0; }
+.pecuaria-content .sanidade-abas-principais [role="tablist"] { min-width: 0; max-width: 100%; }
+.pecuaria-content .sanidade-pagina .sanidade-abas-principais .fin-abas [role="tab"] { min-height: 48px; padding: 12px 6px; font-size: 16px; white-space: nowrap; }
+.pecuaria-content .sanidade-agenda-visoes { padding: 12px 16px; border-bottom: 1px solid var(--border); }
+.pecuaria-content .sanidade-agenda-visoes .fin-abas { width: fit-content; gap: 8px; padding: 0; border: 0; }
+.pecuaria-content .sanidade-agenda-visoes .fin-abas [role="tab"] { min-width: 104px; min-height: 40px; padding: 8px 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); color: var(--foreground); }
+.pecuaria-content .sanidade-agenda-visoes .fin-abas [role="tab"]:hover { background: var(--muted); }
+.pecuaria-content .sanidade-agenda-visoes .fin-abas [role="tab"][data-state="active"] { border-color: var(--primary); background: var(--primary); color: var(--primary-foreground); }
+@media (max-width: 900px) {
+  .pecuaria-content .sanidade-agenda-visoes .fin-abas [role="tab"] { min-height: 44px; }
+}
+.pecuaria-content .sanidade-lista .fin-tabela-cabecalho { padding: 12px 16px; }
+.pecuaria-content .sanidade-lista .pec-filtros-sanidade { padding: 12px 16px; gap: 10px; }
+.pecuaria-content .sanidade-lista .pec-filtros-sanidade[hidden] { display: none; }
+.pecuaria-content .sanidade-filtros-busca { display: flex; align-items: end; gap: 12px; padding: 12px 16px; }
+.pecuaria-content .sanidade-filtros-busca .sanidade-campo-busca { position: relative; flex: 1; min-width: 0; }
+.pecuaria-content .sanidade-filtros-busca .sanidade-campo-busca svg { position: absolute; left: 12px; top: 50%; width: 16px; height: 16px; transform: translateY(-50%); color: var(--muted-foreground); pointer-events: none; }
+.pecuaria-content .sanidade-filtros-busca .sanidade-campo-busca input { padding-left: 38px; }
+.pecuaria-content .sanidade-filtros-busca input { height: 40px; }
+.pecuaria-content .sanidade-filtros-busca > button { height: 40px; flex-shrink: 0; }
+.pecuaria-content .sanidade-previsao { display: grid; justify-items: start; gap: 6px; }
+.pecuaria-content .sanidade-lista .pec-filtros-sanidade > label { gap: 4px; font-size: 12px; }
+.pecuaria-content .sanidade-lista .pec-filtros-sanidade > label > :is(input,button,select),
+.pecuaria-content .sanidade-lista .pec-filtros-sanidade > label > div > input { height: 38px; min-height: 38px; font-size: 13px; }
+.pecuaria-content .sanidade-lista .pec-resumo-sanitario-inline { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding: 0; font-size: 12px; color: var(--muted-foreground); }
+.pecuaria-content .sanidade-lista .pec-resumo-sanitario-inline strong { color: var(--foreground); }
+.pecuaria-content .sanidade-lista .fin-tabela-cabecalho .pec-resumo-sanitario-inline { justify-content: end; }
+.pecuaria-content .sanidade-lista .fin-tabela :is([data-fin-coluna="acoes"],[data-fin-coluna="acao"]) { position: sticky; right: 0; z-index: 2; background: var(--card); box-shadow: -5px 0 8px -6px rgb(36 73 59 / .3); }
+.pecuaria-content .sanidade-lista .fin-tabela th:is([data-fin-coluna="acoes"],[data-fin-coluna="acao"]) { background: var(--fin-table-header); }
+.pecuaria-content .sanidade-lista .fin-tabela tr:focus-within td:is([data-fin-coluna="acoes"],[data-fin-coluna="acao"]) { background: var(--fin-table-hover); }
+.pecuaria-content .sanidade-nota-historico { padding: 12px 16px; font-size: 12px; line-height: 1.5; color: var(--muted-foreground); border-top: 1px solid var(--border); }
+.pecuaria-content .sanidade-orientacao-especifica { margin-top: 6px; font-size: 12px; line-height: 1.5; color: var(--muted-foreground); }
+@media (min-width: 900px) { .pecuaria-content .sanidade-lista .pec-filtros-sanidade { grid-template-columns: repeat(5,minmax(0,1fr)); } }
+.pecuaria-content .pec-ficha-organizada { background: transparent; border: 0; box-shadow: none; overflow: visible; }
+.pecuaria-content .pec-ficha-organizada .ficha-animal-cabecalho { border: 1px solid var(--border); border-radius: 16px; background: var(--card); overflow: visible; }
+.pecuaria-content .pec-ficha-organizada .fin-cabecalho-pagina { padding: 24px; margin: 0; }
+.pecuaria-content .pec-ficha-organizada .pec-ancoras { position: static; gap: 4px; margin: 20px 0; padding: 6px; border: 1px solid var(--border); border-radius: 12px; background: var(--card); }
+.pecuaria-content .pec-ficha-organizada > [hidden] { display: none; }
+.pecuaria-content .pec-ficha-organizada .pec-ancoras a { border: 0; border-radius: 8px; padding: 10px 14px; font-size: 13px; }
+.pecuaria-content .pec-ficha-organizada .pec-ancoras a[aria-current] { background: var(--primary); color: white; }
+.pecuaria-content .pec-ficha-organizada .pec-resumo-grade { gap: 14px; margin-bottom: 24px; scroll-margin-top: 85px; }
+.pecuaria-content .pec-resumo-ficha { border: 1px solid var(--border); border-radius: 12px; background: var(--card); padding: 18px; }
+.pecuaria-content .pec-resumo-ficha .font-serif { font-size: 24px; font-weight: 600; }
+.pecuaria-content .pec-ficha-organizada > section { margin-top: 24px; padding: 24px; border: 1px solid var(--border); border-radius: 16px; background: var(--card); scroll-margin-top: 90px; }
+.pecuaria-content .pec-ficha-organizada > section > .h2 { font-size: 20px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+.pecuaria-content .pec-ficha-organizada .pec-card-ficha { min-width: 0; }
+.pecuaria-content .pec-ficha-organizada .pec-card-ficha > header { padding-bottom: 14px; }
+.pecuaria-content .pec-ficha-organizada .pec-card-ficha > header + div { padding-top: 18px; }
+.pecuaria-content .pec-ficha-organizada .pec-card-ficha :is(dl,.pec-dados-grade) { gap: 16px; }
+.pecuaria-content .pec-ficha-organizada .pec-card-ficha dl > div { padding: 12px; background: var(--muted); border-radius: 8px; }
+.pecuaria-content .pec-genetica-grade { display: grid; grid-template-columns: minmax(0,1.1fr) minmax(0,1fr); gap: 24px; align-items: center; }
+.pecuaria-content .pec-genetica-grade .pec-distribuicao-painel { border: 0; box-shadow: none; }
+.pecuaria-content .pec-genetica-grade .pec-grafico-cabecalho { display: none; }
+.pecuaria-content .pec-genetica-grade .pec-distribuicao-corpo { padding: 0; }
+.pecuaria-content .pec-nutricao-animal-grade { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; }
+.pecuaria-content .pec-consumo-animal { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+.pecuaria-content .pec-consumo-animal header { display: flex; justify-content: space-between; align-items: start; gap: 12px; padding: 16px; border-bottom: 1px solid var(--border); background: var(--muted); }
+.pecuaria-content .pec-consumo-animal header h3 { font-size: 14px; font-weight: 600; }
+.pecuaria-content .pec-consumo-animal header p { font-size: 12px; color: var(--muted-foreground); margin-top: 5px; }
+.pecuaria-content .pec-consumo-animal-estornado header { background: var(--fin-warning-bg); }
+.pecuaria-content .pec-consumo-animal-corpo { padding: 16px; }
+.pecuaria-content .pec-consumo-custo { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; font-size: 12px; }
+.pecuaria-content .pec-consumo-custo strong { display: block; font-size: 22px; margin-top: 4px; }
+.pecuaria-content .pec-consumo-ingredientes { display: grid; gap: 10px; }
+.pecuaria-content .pec-consumo-ingredientes li { display: flex; justify-content: space-between; gap: 16px; font-size: 13px; border-top: 1px solid var(--border); padding-top: 10px; }
+.pecuaria-content .pec-consumo-ingredientes small { display: block; font-size: 11px; color: var(--muted-foreground); margin-top: 3px; }
+.pecuaria-content .pec-consumo-ingredientes .pec-quantidade { text-align: right; white-space: nowrap; }
+.pecuaria-content .pec-consumo-link { display: inline-flex; align-items: center; gap: 6px; margin-top: 16px; font-size: 12px; font-weight: 600; }
+.pecuaria-content .pec-form-corpo > h3 { border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-top: 28px; color: var(--primary); }
+.pecuaria-content .pec-form-corpo .pec-form-cabecalho { background: var(--muted); margin: -24px -24px 24px; padding: 24px; border-radius: 16px 16px 0 0; }
+.pecuaria-content .pec-novo-animal aside { border-top: 1px solid var(--border); }
+.pecuaria-content .sanidade-lista .pec-resumo-consulta { margin: 0; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; background: var(--muted); }
+.pecuaria-content .pec-estado { display: inline-flex; align-items: center; gap: 6px; border-radius: 6px; padding: 4px 10px; font-size: 13px; font-weight: 500; line-height: 1.35; }
+.pecuaria-content .pec-estado-neutro { background: var(--muted); color: var(--muted-foreground); }
+.pecuaria-content .pec-estado-verde { background: var(--fin-status-positive-bg); color: var(--fin-status-positive-text); }
+.pecuaria-content .pec-estado-atencao { background: var(--fin-warning-bg); color: var(--warn); }
+.pecuaria-content .pec-estado-alerta { background: var(--fin-status-danger-bg); color: var(--fin-status-danger-text); }
+.pecuaria-content .pec-carencias-grade { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px; margin-top: 12px; }
+.pecuaria-content .pec-carencia-bloco { border: 1px solid var(--border); border-radius: 10px; padding: 14px; background: var(--muted); }
+.pecuaria-content .pec-carencia-bloco strong { display: block; margin-bottom: 10px; }
+.pecuaria-content .sanidade-ciclo-detalhe { border-radius: 12px; margin: 12px 16px 20px; padding: 20px; background: var(--card); }
+.pecuaria-content .sanidade-ciclo-detalhe > div > section { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; padding: 16px; }
+.pecuaria-content .sanidade-ciclo-contexto { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; }
+.pecuaria-content .sanidade-ciclo-contexto > p { margin: 0; font-weight: 600; }
+.pecuaria-content .sanidade-ciclo-contexto > button { margin-left: auto; }
+.pecuaria-content .sanidade-ciclo-abas { min-width: 0; }
+.pecuaria-content .sanidade-ciclo-abas > [role="tablist"] { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); width: 100%; max-width: 440px; height: auto; padding: 4px; margin-bottom: 8px; }
+.pecuaria-content .sanidade-ciclo-abas [role="tab"] { min-width: 0; min-height: 44px; padding: 8px 12px; white-space: normal; }
+.pecuaria-content .sanidade-etapas-compactas { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,210px),1fr)); gap: 8px; margin-top: 10px; }
+.pecuaria-content .sanidade-etapa-escolha { display: grid; align-content: start; gap: 8px; padding: 12px; text-align: left; border: 1px solid var(--border); border-radius: 10px; background: var(--card); }
+.pecuaria-content .sanidade-etapa-escolha:hover { background: var(--muted); }
+.pecuaria-content .sanidade-etapa-escolha[aria-pressed="true"] { background: var(--muted); border-color: var(--foreground); }
+.pecuaria-content .sanidade-etapa-escolha:focus-visible { outline: 2px solid var(--foreground); outline-offset: 3px; }
+.pecuaria-content .sanidade-ciclo-comparacao { margin-top: 10px; }
+.pecuaria-content .sanidade-ciclo-comparacao > summary { cursor: pointer; padding: 8px 0; font-size: 13px; font-weight: 600; }
+.pecuaria-content .sanidade-ciclo-tarefas { min-width: 0; }
+.pecuaria-content .pec-contagens-etapa { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 5px 8px; font-size: 11px; }
+.pecuaria-content .pec-contagens-etapa span { padding: 5px 7px; background: var(--muted); border-radius: 5px; white-space: nowrap; }
+.pecuaria-content .nutricao-metricas .font-serif { font-size: clamp(24px,2vw,32px); font-weight: 650; font-variant-numeric: tabular-nums; }
+.pecuaria-content .nutricao-metricas [data-slot="financeiro-panel"] { padding: 20px; }
+.pecuaria-content .nutricao-filtros { background: var(--card); }
+.pecuaria-content .nutricao-receitas .nutricao-filtros { border: 1px solid var(--border); border-radius: 12px; background: var(--card); }
+.pecuaria-content .nutricao-receita-card { border-top: 1px solid var(--border); }
+.pecuaria-content .nutricao-receita-card .nutricao-ingredientes li { padding: 10px 0; }
+.pecuaria-content .nutricao-receita-card .nutricao-ingredientes small { font-size: 11px; }
+.pecuaria-content .nutricao-receita-card .nutricao-receita-rodape { background: var(--card); justify-content: flex-start; font-size: 12px; }
+.pecuaria-content .nutricao-ajuda { border-top: 1px solid var(--border); }
+.pecuaria-content .nutricao-ajuda dl { background: var(--muted); border-radius: 10px; padding: 16px; }
+.pecuaria-content .nutricao-ingrediente-form { padding: 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--muted); }
+.pecuaria-content .nutricao-formulario .nutricao-card-cabecalho { background: var(--muted); }
+.pecuaria-content .nutricao-dieta-vigente { border-left: 1px solid var(--border); }
+:root:has(.pecuaria-content) [data-slot="sheet-content"] .fin-campos-grid { gap: 18px; }
+:root:has(.pecuaria-content) [data-pec-formulario] { gap: 20px; }
+:root:has(.pecuaria-content) [data-pec-formulario] > label,
+:root:has(.pecuaria-content) [data-pec-formulario] > div > label { display: block; font-size: 13px; font-weight: 500; }
+:root:has(.pecuaria-content) [data-pec-formulario] > p { padding: 12px 14px; background: var(--muted); border: 1px solid var(--border); border-radius: 8px; font-size: 13px; line-height: 1.6; }
+:root:has(.pecuaria-content) [data-pec-formulario] fieldset { min-width: 0; }
+:root:has(.pecuaria-content) [data-pec-formulario] fieldset fieldset { background: var(--muted); padding: 16px; border-radius: 10px; }
+:root:has(.pecuaria-content) [data-pec-formulario] legend { font-size: 13px; font-weight: 600; color: var(--primary); }
+.pecuaria-content .pec-ingredientes-graficos { display: grid; gap: 16px; margin-block: 20px; }
+:root:has(.pecuaria-content) .pec-detalhe-sanitario > p { background: var(--muted); border-radius: 8px; padding: 12px 14px; }
+:root:has(.pecuaria-content) .pec-detalhe-sanitario dl { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px; }
+:root:has(.pecuaria-content) .pec-detalhe-sanitario dl > div { background: var(--muted); border-radius: 8px; padding: 12px; }
+.pecuaria-content .pec-ficha-organizada { scroll-margin-top: 24px; }
+@media (max-width: 1199px) { .pecuaria-content .pec-genetica-grade { grid-template-columns: minmax(0,1fr); } }
+@media (max-width: 900px) {
+  .pecuaria-content :is(.pec-graficos-grade,.pec-nutricao-animal-grade) { grid-template-columns: minmax(0,1fr); }
+  .pecuaria-content .pec-ficha-organizada .pec-ancoras { top: 68px; }
+  .pecuaria-content .pec-ficha-organizada > section { scroll-margin-top: 180px; }
+}
+@media (max-width: 639px) {
+  .pecuaria-content .pec-distribuicao-corpo { grid-template-columns: minmax(0,1fr); }
+  .pecuaria-content .pec-ficha-organizada > section { padding: 18px 14px; scroll-margin-top: 180px; }
+  .pecuaria-content .pec-ficha-organizada .pec-ancoras { gap: 2px; }
+  .pecuaria-content .pec-ficha-organizada .pec-ancoras a { padding: 9px; font-size: 12px; }
+  .pecuaria-content .pec-resumo-ficha { padding: 14px; gap: 8px; }
+  .pecuaria-content .pec-resumo-ficha > span { display: none; }
+  .pecuaria-content .pec-resumo-ficha .font-serif { font-size: 20px; }
+  .pecuaria-content .pec-carencias-grade { grid-template-columns: minmax(0,1fr); }
+  .pecuaria-content .pec-contagens-etapa { grid-template-columns: minmax(0,1fr); }
+}
+.pecuaria-content .pec-protocolos-cadastro > .mb-5,
+.pecuaria-content .pec-catalogo-sanitario {
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--card);
+}
+.pecuaria-content .pec-protocolos-cadastro > .mb-5 { padding: 22px; }
+.pecuaria-content .pec-protocolo-linha-tempo {
+  display: flex; gap: 12px; overflow-x: auto; margin-bottom: 22px;
+  padding: 4px 0 12px; list-style: none;
+}
+.pecuaria-content .pec-protocolo-linha-tempo li {
+  flex: 1 0 140px; display: grid; gap: 7px; padding: 16px;
+  border: 1px solid #d5e1d8; border-radius: 12px; background: #fff;
+}
+.pecuaria-content .pec-protocolo-linha-tempo li > span {
+  width: fit-content; padding: 5px 10px; border-radius: 8px;
+  background: #24493b; color: #fff; font-weight: 700;
+}
+.pecuaria-content .pec-protocolo-linha-tempo small { color: #5a6d63; }
+
+/* Leitura operacional: resumos integrados e mais espaço para listas e ações. */
+.pecuaria-content .fin-cabecalho-pagina { margin-bottom: 12px; }
+.pecuaria-content .fin-abas [role=tab] { min-height: 48px; padding-block: 12px; }
+.pecuaria-content .pec-grafico-cabecalho { padding: 14px 18px; }
+.pecuaria-content .pec-distribuicao-corpo { padding: 14px 18px; }
+.pecuaria-content .pec-distribuicao-rosca { max-width: 170px; }
+.pecuaria-content .pec-distribuicao-chart { height: 170px; }
+.pecuaria-content .pec-distribuicao-item { padding-block: 7px; }
+.pecuaria-content .pec-rosca .pec-rosca-chart { height: 190px; }
+.pecuaria-content .pec-composicao-corpo { padding-block: 14px; }
+.pecuaria-content .pec-composicao-corpo .pec-categoria-linha { padding-block: 8px; }
+.pecuaria-content .pec-ficha-organizada .fin-cabecalho-pagina { padding: 18px 20px; }
+.pecuaria-content .pec-ficha-organizada .pec-ancoras { margin-block: 14px; }
+.pecuaria-content .pec-ficha-organizada .pec-resumo-compacto { margin-bottom: 16px; gap: 0; background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+.pecuaria-content .pec-resumo-compacto > div { border: 0; border-radius: 0; padding: 14px 18px; box-shadow: none; }
+.pecuaria-content .pec-resumo-compacto > div + div { border-left: 1px solid var(--border); }
+.pecuaria-content .pec-ficha-organizada > section { margin-top: 16px; padding: 18px; }
+.pecuaria-content .pec-lote-metricas { gap: 0; border: 1px solid var(--border); border-radius: 12px; background: var(--card); overflow: hidden; }
+.pecuaria-content .pec-lote-metricas > section { border: 0; border-radius: 0; box-shadow: none; padding: 16px; }
+.pecuaria-content .pec-lote-metricas > section + section { border-left: 1px solid var(--border); }
+.pecuaria-content .pec-lote-metricas .font-serif { font-size: clamp(20px,1.8vw,26px); white-space: nowrap; }
+.pecuaria-content .pec-lote-composicao .pec-distribuicao-corpo { grid-template-columns: 160px minmax(0,1fr); }
+.pecuaria-content .pec-lote-composicao .pec-distribuicao-legenda { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); column-gap: 24px; }
+.pecuaria-content .pec-novo-animal { grid-template-columns: minmax(0,1fr) 280px; gap: 18px; }
+.pecuaria-content .pec-novo-animal > .pec-form-corpo { padding: 20px; }
+.pecuaria-content .pec-novo-animal > aside { padding: 20px; }
+.pecuaria-content .pec-novo-animal .pec-form-corpo > h3 { margin-top: 22px; padding-bottom: 9px; }
+.pecuaria-content .pec-protocolos-cadastro > .mb-5 { margin-bottom: 0; border-radius: 12px 12px 0 0; padding: 16px; }
+.pecuaria-content .pec-protocolos-busca { padding: 12px 16px; border-inline: 1px solid var(--border); background: var(--card); }
+.pecuaria-content .pec-protocolos-cadastro > .overflow-x-auto { border-radius: 0 0 12px 12px; }
+.pec-ajuda-recolhida { margin-top: 14px; padding: 12px 16px; border: 1px solid var(--border); background: var(--card); border-radius: 10px; font-size: 13px; }
+.pec-ajuda-recolhida summary { cursor: pointer; font-weight: 500; }
+.pec-config-busca { margin-block: 16px; }
+:is(.pecuaria-content,.cooperativa-content) .pec-config-grid { align-items: start; gap: 16px; }
+:is(.pecuaria-content,.cooperativa-content) .pec-config-grupo { padding: 18px; border-radius: 12px; }
+:is(.pecuaria-content,.cooperativa-content) .pec-config-grupo h2 { margin-bottom: 8px; }
+.pec-config-descricao { margin-bottom: 14px; font-size: 12px; line-height: 1.6; color: var(--muted-foreground); }
+.pec-config-caminho { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-block: 0 18px; font-size: 12px; color: var(--muted-foreground); }
+.pec-config-caminho a { color: var(--primary); }
+.pec-config-caminho a:hover { text-decoration: underline; }
+@media(max-width:1023px) { .pecuaria-content .pec-novo-animal { grid-template-columns: minmax(0,1fr); } }
+@media(max-width:639px) {
+  .pecuaria-content .pec-resumo-compacto { grid-template-columns: minmax(0,1fr); }
+  .pecuaria-content .pec-resumo-compacto > div + div { border-left: 0; border-top: 1px solid var(--border); }
+  .pecuaria-content .pec-lote-composicao .pec-distribuicao-corpo { grid-template-columns: minmax(0,1fr); }
+  .pecuaria-content .pec-lote-composicao .pec-distribuicao-legenda { grid-template-columns: minmax(0,1fr); }
+}
+
+/* Consulta: placeholders precisam conservar contraste sobre campos brancos. */
+.pecuaria-content .pagina-financeira :is(input, textarea)::placeholder,
+[data-pec-formulario] :is(input, textarea)::placeholder,
+:root:has(.pecuaria-content) :is([data-slot="dialog-content"], [data-slot="sheet-content"]) :is(input, textarea)::placeholder {
+  color: var(--muted-foreground);
+  opacity: 1;
+}
+@media (max-width: 900px) {
+  .pecuaria-content .rebanho-content button { min-height: 44px !important; }
+}
+
+@media (max-width: 900px) {
+  .pecuaria-content .sanidade-pagina .fin-abas [role="tab"] { min-height: 44px; }
+}

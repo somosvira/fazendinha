@@ -26,6 +26,7 @@ export function ConfirmDialog({
   onConfirm,
   onCancel,
   onDismiss,
+  dismissLabel,
 }: {
   open: boolean;
   title: string;
@@ -38,6 +39,7 @@ export function ConfirmDialog({
   onConfirm: () => void;
   onCancel: () => void;
   onDismiss?: () => void;
+  dismissLabel?: string;
 }) {
   const confirmRef = useRef<HTMLButtonElement>(null);
 
@@ -65,6 +67,7 @@ export function ConfirmDialog({
           {message}
         </div>
         <DialogFooter className="border-t border-[color:var(--rule-soft)] px-[22px] pb-[18px] pt-3.5">
+          {dismissLabel && onDismiss && <Button variant="ghost" disabled={processando} onClick={onDismiss}>{dismissLabel}</Button>}
           <Button
             variant="outline"
             className={`h-auto px-3 py-1.5 text-xs tracking-[0.04em] ${cancelTone === "safe" ? "border-green-700 bg-green-50 text-green-800 hover:bg-green-100 hover:text-green-900" : ""}`}

@@ -1,0 +1,61 @@
+.operacoes-todos-filtros { margin-left: 0; }
+@media (min-width: 1101px) {
+  .operacoes-consulta .consulta-controles > .fin-filtro-busca { flex: 1 1 260px; max-width: none; }
+}
+.operacoes-filtros-contagem { display: inline-grid; place-items: center; min-width: 24px; height: 24px; padding-inline: 5px; border-radius: 50%; background: var(--primary); color: var(--primary-foreground); font-size: 12px; }
+.operacoes-cabecalho-filtro { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 5px 0; margin: 0; border-radius: 6px; text-align: inherit; font: inherit; color: inherit; cursor: pointer; }
+.operacoes-cabecalho-filtro svg { flex-shrink: 0; opacity: .7; }
+.operacoes-cabecalho-filtro { position: relative; isolation: isolate; transition: color 120ms; }
+.operacoes-cabecalho-filtro::before { content: ""; position: absolute; inset: 0 -6px; z-index: -1; border-radius: inherit; transition: background-color 120ms; }
+.operacoes-cabecalho-filtro:is(:hover, [aria-expanded="true"])::before { background: var(--fin-table-control-hover); }
+.operacoes-cabecalho-icone { display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0; }
+.operacoes-cabecalho-filtro:is(:hover, [aria-expanded="true"], [data-ativo="true"]) svg { color: var(--primary); opacity: 1; }
+.operacoes-cabecalho-indicador { width: 6px; height: 6px; flex-shrink: 0; border-radius: 50%; background: var(--primary); }
+.operacoes-cabecalho-filtro:focus-visible, .operacoes-contexto-trigger:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
+.operacoes-filtro-popover, .operacoes-contexto-popover { padding: 0; width: min(350px, calc(100vw - 32px)); max-height: min(620px, var(--radix-popover-content-available-height)); overflow: auto; border-radius: 12px; background: var(--card); color: var(--foreground); box-shadow: 0 14px 36px #203c3926; text-transform: none; letter-spacing: normal; }
+.operacoes-popover-cabecalho { display: flex; gap: 12px; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+.operacoes-popover-cabecalho h2 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 15px; font-weight: 650; line-height: 1.4; overflow-wrap: anywhere; }
+.operacoes-popover-cabecalho h2 svg { flex-shrink: 0; color: var(--primary); }
+.operacoes-popover-cabecalho > button { flex-shrink: 0; width: 32px; height: 32px; min-height: 32px; }
+.operacoes-filtro-corpo, .operacoes-contexto-corpo { padding: 16px; }
+.operacoes-filtro-corpo { display: grid; gap: 16px; }
+.operacoes-filtro-corpo label { display: flex; flex-direction: column; min-width: 0; gap: 6px; font-size: 14px; }
+.operacoes-filtro-corpo input:not([type=radio]):not([type=checkbox]) { min-height: 44px; width: 100%; }
+.operacoes-filtro-opcoes { display: flex; flex-direction: column; max-height: 275px; overflow-y: auto; gap: 3px; }
+.operacoes-filtro-opcoes label { flex-direction: row; align-items: center; min-height: 40px; padding: 8px; gap: 10px; border-radius: 6px; cursor: pointer; line-height: 1.4; }
+.operacoes-filtro-opcoes label { transition: background-color 120ms, color 120ms; }
+.operacoes-filtro-opcoes label:hover { background: var(--fin-option-hover); color: var(--foreground); }
+.operacoes-filtro-opcoes label[data-selecionada=true] { background: var(--primary); color: var(--primary-foreground); font-weight: 600; }
+.operacoes-filtro-opcoes label[data-selecionada=true]:hover { background: var(--fin-primary-hover); }
+.operacoes-filtro-opcoes label:has(input:focus-visible) { outline: 2px solid var(--ring); outline-offset: 2px; }
+.operacoes-filtro-opcoes label[data-selecionada=true] input { accent-color: var(--primary-foreground); }
+.operacoes-filtro-opcoes input { flex: 0 0 16px; width: 16px; height: 16px; accent-color: var(--primary); cursor: pointer; }
+.operacoes-popover-rodape { display: flex; justify-content: space-between; gap: 12px; border-top: 1px solid var(--border); padding: 12px 16px; }
+.operacoes-contexto-trigger { display: inline-flex; align-items: center; min-height: 30px; gap: 4px; cursor: pointer; border-radius: 6px; text-align: left; line-height: 1.4; font: inherit; }
+.operacoes-parceiro-trigger { color: var(--primary); text-decoration: underline; text-decoration-color: #006f684d; text-underline-offset: 4px; white-space: normal; overflow-wrap: anywhere; }
+.operacoes-parceiro-trigger:hover { text-decoration-color: currentColor; }
+.operacoes-impacto-trigger { border: 1px solid var(--fin-tag-border); padding: 4px 9px; font-size: 13px; color: var(--fin-tag-text); background: var(--fin-tag-bg); }
+.operacoes-impacto-trigger:hover, .operacoes-impacto-trigger[aria-expanded=true] { border-color: var(--primary); background: var(--fin-filter-bg); color: var(--primary); }
+.operacoes-contexto-corpo { font-size: 14px; line-height: 1.5; }
+.operacoes-contexto-corpo > p { margin: 0; color: var(--muted-foreground); }
+.operacoes-contexto-dados { display: grid; gap: 12px; margin: 0; }
+.operacoes-contexto-dados > div { min-width: 0; }
+.operacoes-contexto-dados dt { color: var(--muted-foreground); font-size: 12px; }
+.operacoes-contexto-dados dd { margin: 2px 0 0; overflow-wrap: anywhere; }
+.operacoes-contexto-link { margin-top: 16px; width: 100%; white-space: normal; }
+.operacoes-contexto-lista { margin: 12px 0 0; padding: 0; list-style: none; }
+.operacoes-contexto-lista > li { display: flex; align-items: flex-start; flex-direction: column; gap: 7px; border-top: 1px solid var(--border); padding-top: 12px; margin-top: 12px; }
+.operacoes-contexto-lista strong { font-weight: 600; }
+.operacoes-contexto-lista > li > span { color: var(--muted-foreground); }
+.operacoes-contexto-destino { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; color: var(--primary); text-decoration: underline; text-underline-offset: 3px; }
+@media (max-width: 639px) {
+  .operacoes-filtro-opcoes label { min-height: 44px; }
+  .operacoes-contexto-trigger { min-height: 36px; }
+}
+@media print { .operacoes-cabecalho-filtro svg { display: none; } }
+
+.operacoes-consulta .consulta-criterios { column-gap: 6px; }
+.operacoes-consulta .consulta-criterios button { padding-inline: 10px; }
+
+.operacoes-filtro-opcoes label[data-disabled=true] { opacity: .5; cursor: not-allowed; }
+.operacoes-filtro-opcoes label[data-disabled=true]:hover { background: transparent; color: inherit; }

@@ -5,7 +5,7 @@ vi.mock("../services/financeiro/dashboard.js", () => ({ obterDashboard: mocks.da
 vi.mock("../services/financeiro/operacoes.js", () => ({ listarCompromissos: mocks.compromissos }));
 vi.mock("../services/propriedade.js", () => ({ resolverEscopoLeitura: mocks.leitura, resolverEscopoEscrita: vi.fn() }));
 import { financeiroRouter } from "./financeiro.js";
-const app = new Hono().route("/", financeiroRouter);
+const app = new Hono().use("*", async (c, next) => { c.set("usuario" as never, { dono: false, flags: ["verValores"], areas: ["financeiro"] } as never); await next(); }).route("/", financeiroRouter);
 beforeEach(() => { vi.clearAllMocks(); mocks.dashboard.mockResolvedValue({}); mocks.compromissos.mockResolvedValue([]); mocks.leitura.mockResolvedValue(8); });
 it.each(["dashboard", "compromissos"])("%s passa período inclusivo e escopo autorizado ao serviço", async route => {
   const response = await app.request(`/financeiro/${route}?inicio=2026-09-12&fim=2026-09-15`);

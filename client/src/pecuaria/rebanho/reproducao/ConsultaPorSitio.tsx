@@ -40,7 +40,7 @@ function SelecionarSitio({ children }: { children: (sitioId: number) => ReactNod
           {sitios.map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}
         </select>
       </label>
-      <p id={descricaoId} className="text-xs text-muted-foreground">Seleção local · a visão geral continua em Consolidado.</p>
+      <p id={descricaoId} className="sr-only">Seleção local · a visão geral continua em Consolidado.</p>
       </div>
       {carregando && <p role="status">Carregando sítios…</p>}
       <ErrorBox erro={erro}/>

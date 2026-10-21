@@ -1,5 +1,6 @@
 import { alterarControle } from "../lib/controles.fixture";
 // @vitest-environment jsdom
+import { abrirFiltrosConsulta, aplicarFiltrosConsulta } from "@/lib/controles.fixture";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { ConfiguracoesFinanceiras } from "./ConfiguracoesFinanceiras";
@@ -65,8 +66,17 @@ async function montar(aba: "contas" | "parceiros" | "produtos" | "categorias" | 
 }
 
 async function escolherSelect(painel: HTMLElement, rotulo: string, opcao: string) {
-  fireEvent.click(within(painel).getByRole("combobox", { name: rotulo }));
+  const grupo = within(painel).queryByRole("group", { name: rotulo });
+  if (grupo) { fireEvent.click(within(grupo).getByRole("button", { name: opcao })); return; }
+  let consulta = painel;
+  let lateral = false;
+  if (!within(painel).queryByRole("combobox", { name: rotulo })) {
+    fireEvent.click(screen.getByRole("button", { name: /Filtros/ }));
+    consulta = await screen.findByRole("dialog", { name: "Filtros" }); lateral = true;
+  }
+  fireEvent.click(within(consulta).getByRole("combobox", { name: rotulo }));
   fireEvent.click(await screen.findByRole("option", { name: opcao }));
+  if (lateral) { fireEvent.click(within(consulta).getByRole("button", { name: "Aplicar filtros" })); await waitFor(()=>expect(screen.queryByRole("dialog",{name:"Filtros"})).toBeNull()); }
 }
 
 describe("ConfiguracoesFinanceiras — contas", () => {
@@ -308,10 +318,9 @@ describe("ConfiguracoesFinanceiras — produtos", () => {
   it("mantém busca e filtros na mesma barra e limpa os filtros sem perder a lista", async () => {
     await montar("produtos");
     const busca = screen.getByRole("textbox", { name: "Buscar produto" });
-    const barra = busca.closest<HTMLElement>("div.border-b")!;
-    for (const nome of ["Filtrar por fornecedor", "Filtrar por centro de custo", "Filtrar por uso", "Filtrar por situação"]) {
-      expect(within(barra).getByRole("combobox", { name: nome })).toBeTruthy();
-    }
+    const barra = busca.closest<HTMLElement>(".consulta-barra")!;
+    expect(screen.getByRole("button",{name:"Filtrar por situação"})).toBeTruthy();
+    expect(within(barra).getByRole("button", {name:/Filtros/})).toBeTruthy();
     await escolherSelect(barra, "Filtrar por centro de custo", "Sem centro");
     expect(screen.queryByText("Ração 22%")).toBeNull();
     fireEvent.click(within(barra).getByRole("button", { name: "Limpar filtros" }));
@@ -323,8 +332,9 @@ describe("ConfiguracoesFinanceiras — parceiros", () => {
   it("mantém o filtro de papel junto à busca", async () => {
     await montar("parceiros");
     const busca = screen.getByRole("textbox", { name: /Buscar clientes e fornecedores/i });
-    const barra = busca.closest<HTMLElement>("div.border-b")!;
-    expect(within(barra).getByRole("combobox", { name: "Papel do parceiro" })).toBeTruthy();
+    const barra = busca.closest<HTMLElement>(".consulta-barra")!;
+    await abrirFiltrosConsulta(barra);
+    expect(screen.getByRole("combobox", { name: "Filtrar por papel do parceiro" })).toBeTruthy();
   });
 
   it("edita múltiplos papéis e preferências sem reenviar dados que não mudaram", async () => {
@@ -389,6 +399,8 @@ describe("ConfiguracoesFinanceiras — parceiros", () => {
     await montar("parceiros");
     fireEvent.click(screen.getByRole("button", { name: /Novo parceiro/ }));
     const painel = await screen.findByRole("dialog");
+    expect(within(painel).getByRole("checkbox", { name: "Fornecedor" }).getAttribute("aria-checked")).toBe("false");
+    fireEvent.click(within(painel).getByRole("checkbox", { name: "Fornecedor" }));
     await alterarControle(within(painel).getByLabelText("Nome / razão social"), { target: { value: "Cooperativa 2" } });
     await alterarControle(within(painel).getByLabelText("CPF/CNPJ"), { target: { value: "11.222.333/0001-81" } });
     fireEvent.click(within(painel).getByRole("button", { name: "Criar parceiro" }));
@@ -504,4 +516,18 @@ describe("Cadastros financeiros — proteção de alterações", () => {
     expect((within(painel).getByLabelText("Nome de exibição") as HTMLInputElement).value).toBe("Conta em preenchimento");
     expect(criarConta).not.toHaveBeenCalled();
   });
+});
+
+
+it("abre o cadastro exato em consulta pela URL, sem oferecer escrita", async () => {
+  window.history.replaceState(null, "", `/financeiro/configuracoes?aba=parceiros&parceiro=${uid(7)}`);
+  try {
+    render(<ConfiguracoesFinanceiras podeEditar={false} />);
+    const dialogo = await screen.findByRole("dialog", { name: "Cooperativa" });
+    expect(within(dialogo).getByText("11.222.333/0001-81")).toBeTruthy();
+    expect(within(dialogo).getByText("coop@x.com")).toBeTruthy();
+    expect(within(dialogo).queryByRole("button", { name: /Salvar/ })).toBeNull();
+    fireEvent.click(within(dialogo).getByRole("button", { name: "Fechar" }));
+    expect(new URLSearchParams(window.location.search).has("parceiro")).toBe(false);
+  } finally { window.history.replaceState(null, "", "/financeiro/configuracoes"); }
 });

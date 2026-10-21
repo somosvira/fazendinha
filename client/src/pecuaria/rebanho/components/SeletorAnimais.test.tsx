@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
+import "../../../lib/controles.fixture";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { SeletorAnimais } from "./SeletorAnimais";
 import { listarAnimais, obterCatalogos } from "../api";
 import type { AnimalResumo, Catalogos, ListarFiltros } from "../types";
@@ -48,8 +49,12 @@ describe("SeletorAnimais", () => {
 
     render(<SeletorAnimais onConfirmar={vi.fn()} onCancelar={vi.fn()} />);
     await screen.findAllByText("0001");
-    expect(within(screen.getByLabelText("Filtrar por sítio")).getByRole("option", { name: "Sede" })).toBeTruthy();
+    fireEvent.click(screen.getByLabelText("Filtrar por sítio"));
+    const sede = await screen.findByRole("option", { name: "Sede" });
+    expect(sede).toBeTruthy();
     expect(screen.queryByRole("option", { name: "Apelido antigo" })).toBeNull();
+    fireEvent.keyDown(sede, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
     fireEvent.click(screen.getAllByRole("checkbox", { name: "Selecionar 0001" })[0]);
     expect(await screen.findByText(/1 animal selecionado/)).toBeTruthy();
 
@@ -89,8 +94,9 @@ describe("SeletorAnimais", () => {
     render(<SeletorAnimais excluirLoteId="lote-2" onConfirmar={vi.fn()} onCancelar={vi.fn()} />);
     await screen.findAllByText("0002");
     expect(screen.queryByText("0001")).toBeNull();
-    expect(within(screen.getByLabelText("Filtrar por lote de origem")).queryByRole("option", { name: "Lote B" })).toBeNull();
-    expect(within(screen.getByLabelText("Filtrar por lote de origem")).getByRole("option", { name: "Lote A" })).toBeTruthy();
+    fireEvent.click(screen.getByLabelText("Filtrar por lote de origem"));
+    expect(await screen.findByRole("option", { name: "Lote A" })).toBeTruthy();
+    expect(screen.queryByRole("option", { name: "Lote B" })).toBeNull();
   });
 
   it("mantém a paginação visível mesmo quando a página atual vem vazia, desde que total > 0 (U1)", async () => {

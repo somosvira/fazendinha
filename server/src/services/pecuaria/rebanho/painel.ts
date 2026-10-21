@@ -1,4 +1,4 @@
-import { Prisma, type ClasseMotivoBaixa, type TipoBaixa } from "@prisma/client";
+import { Prisma, type ClasseMotivoBaixa, type SexoBovino, type TipoBaixa } from "@prisma/client";
 import { prisma } from "../../../db.js";
 import { hojeFazendaDate } from "./regras.js";
 import { listar, whereSituacao } from "./animais.js";
@@ -13,10 +13,12 @@ export interface EventoPainel {
 export interface PainelGeralDTO {
   ativos: number;
   /** `categoriaId` nulo = sem categoria */
-  porCategoria: Array<{ categoriaId: string | null; categoria: string; qtd: number }>;
+  porCategoria: Array<{ categoriaId: string | null; categoria: string; sexo: SexoBovino | null; qtd: number }>;
   porSitio: Array<{ propriedadeId: number | null; nome: string; qtd: number }>;
   receptorasPct: number;
-  /** baixas em vigor (não estornadas) nos últimos `periodoDias` dias, sem CADASTRO_INDEVIDO */
+  femeasAtivas: number;
+  receptorasAtivas: number;
+  /** baixas em vigor nos últimos 30 dias, independente do período dos gráficos */
   baixas30d: number;
   baixasPorTipo: Array<{ tipo: TipoBaixa; qtd: number }>;
   baixasPorClasse: Array<{ classe: ClasseMotivoBaixa | "SEM_MOTIVO"; qtd: number }>;
@@ -37,6 +39,8 @@ export async function buscarPainelGeral(escopo: number | null, periodoDias = 30)
   // corte no fuso da fazenda, não em UTC (R3/R6)
   const cutoff = hojeFazendaDate();
   cutoff.setDate(cutoff.getDate() - periodoDias);
+  const cutoff30 = hojeFazendaDate();
+  cutoff30.setDate(cutoff30.getDate() - 30);
 
   // mesmo critério de sítio da lista: ativo pela localização aberta, quem foi baixado pela localização que a baixa fechou
   const animalNoEscopo = whereSituacao({ situacao: "TODOS", propriedadeId: escopo });
@@ -46,12 +50,15 @@ export async function buscarPainelGeral(escopo: number | null, periodoDias = 30)
   const baixaSemCadastroIndevido: Prisma.BaixaAnimalWhereInput = { ...baixaNoEscopo, tipo: { not: "CADASTRO_INDEVIDO" } };
   const baixaNoPeriodo: Prisma.BaixaAnimalWhereInput = { estornadaEm: null, data: { gte: cutoff }, ...baixaSemCadastroIndevido };
 
-  const [baixasNoPeriodo, cadastros, baixas, estornos] = await Promise.all([
-    prisma.baixaAnimal.findMany({ where: baixaNoPeriodo, select: { tipo: true, motivo: { select: { classe: true } } } }),
+  const categoriasIds = painel.porCategoria.flatMap((c) => c.categoria ? [c.categoria.id] : []);
+  const [baixasNoPeriodo, cadastros, baixas, estornos, categorias] = await Promise.all([
+    prisma.baixaAnimal.findMany({ where: baixaNoPeriodo, select: { tipo: true, data: true, motivo: { select: { classe: true } } } }),
     prisma.animal.findMany({ where: animalNoEscopo, orderBy: { criadoEm: "desc" }, take: 10, select: { id: true, brinco: true, criadoEm: true } }),
     prisma.baixaAnimal.findMany({ where: baixaSemCadastroIndevido, orderBy: { criadoEm: "desc" }, take: 10, select: { animalId: true, data: true, criadoEm: true, animal: { select: { brinco: true } } } }),
     prisma.baixaAnimal.findMany({ where: { ...baixaSemCadastroIndevido, estornadaEm: { not: null } }, orderBy: { estornadaEm: "desc" }, take: 10, select: { animalId: true, estornadaEm: true, animal: { select: { brinco: true } } } }),
+    categoriasIds.length ? prisma.categoriaAnimal.findMany({ where: { id: { in: categoriasIds } }, select: { id: true, sexo: true } }) : Promise.resolve([]),
   ]);
+  const sexoPorCategoria = new Map(categorias.map((c) => [c.id, c.sexo]));
 
   const porTipo = new Map<TipoBaixa, number>();
   const porClasse = new Map<ClasseMotivoBaixa | "SEM_MOTIVO", number>();
@@ -73,10 +80,12 @@ export async function buscarPainelGeral(escopo: number | null, periodoDias = 30)
 
   return {
     ativos: painel.totalAtivos,
-    porCategoria: painel.porCategoria.map((c) => ({ categoriaId: c.categoria?.id ?? null, categoria: c.categoria?.nome ?? "Sem categoria", qtd: c.total })),
+    porCategoria: painel.porCategoria.map((c) => ({ categoriaId: c.categoria?.id ?? null, categoria: c.categoria?.nome ?? "Sem categoria", sexo: c.categoria ? sexoPorCategoria.get(c.categoria.id) ?? null : null, qtd: c.total })),
     porSitio: painel.porSitio.map((s) => ({ propriedadeId: s.propriedadeId, nome: s.nome, qtd: s.total })),
     receptorasPct,
-    baixas30d: baixasNoPeriodo.length,
+    femeasAtivas: painel.femeasAtivas,
+    receptorasAtivas: painel.receptorasAtivas,
+    baixas30d: baixasNoPeriodo.filter((b) => b.data >= cutoff30).length,
     baixasPorTipo,
     baixasPorClasse,
     periodoDias,

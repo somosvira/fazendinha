@@ -1,3 +1,6 @@
+import { useFiltrosTabelaLocal } from "@/financeiro/useFiltrosTabelaLocal";
+import { BuscaLista } from "@/components/BuscaLista";
+import { BarraConsulta } from "@/financeiro/BarraConsulta";
 import { Button as BotaoUI } from "../../../components/ui/button";
 import { ProtocoloTimeline } from "./ProtocoloTimeline";
 import {BibliotecaReprodutiva} from "./BibliotecaReprodutiva";
@@ -193,7 +196,11 @@ export function Iatf({
   const [paginaProgramacoes,setPaginaProgramacoes]=useState(()=>Math.max(1,Math.floor(Number(new URLSearchParams(window.location.search).get("iatfPagina"))||1)));
   useEffect(()=>{if(programacaoId||modo!=="operacao")return;const u=new URL(window.location.href);buscaProgramacao?u.searchParams.set("iatfBusca",buscaProgramacao):u.searchParams.delete("iatfBusca");paginaProgramacoes>1?u.searchParams.set("iatfPagina",String(paginaProgramacoes)):u.searchParams.delete("iatfPagina");window.history.replaceState(window.history.state,"",u.pathname+u.search+u.hash);},[buscaProgramacao,paginaProgramacoes,programacaoId,modo]);
   useEffect(()=>{const restaurar=()=>{const p=new URLSearchParams(window.location.search);setBuscaProgramacao(p.get("iatfBusca")??"");setPaginaProgramacoes(Math.max(1,Math.floor(Number(p.get("iatfPagina"))||1)));};window.addEventListener("popstate",restaurar);return()=>window.removeEventListener("popstate",restaurar);},[]);
-  const filtradas=programacoes.filter(p=>p.nome.toLocaleLowerCase("pt-BR").includes(buscaProgramacao.toLocaleLowerCase("pt-BR")));
+  const filtrosProgramacoes = useFiltrosTabelaLocal<ProgramacaoIatf>([
+    {chave:"nome", naBarra: true,rotulo:"Programação",tipo:"texto",obter:p=>p.nome},
+    {chave:"inicio",rotulo:"Início programado",tipo:"data",obter:p=>inputHorarioIatf(p.inicioPrevisto,p.precisaoTemporal)},
+  ],()=>setPaginaProgramacoes(1));
+  const filtradas=filtrosProgramacoes.filtrar(programacoes).filter(p=>p.nome.toLocaleLowerCase("pt-BR").includes(buscaProgramacao.toLocaleLowerCase("pt-BR")));
   const paginasProgramacoes=Math.max(1,Math.ceil(filtradas.length/20));
   const paginaLista=Math.min(paginaProgramacoes,paginasProgramacoes);
   const carregando = leitura.contexto !== contexto || leitura.carregando;
@@ -405,10 +412,7 @@ export function Iatf({
       <ErrorBox erro={erro} />
       {modo !== "operacao" && <BibliotecaReprodutiva propriedadeId={sitioEfetivo} podeLancar={podeLancar} onCopiou={()=>void carregar()}/>}
       {modo === "operacao" && !programacaoId && <Panel>
-        <CabecalhoTabela
-          titulo="Programações de IATF"
-          acao={
-              <div className="flex flex-wrap gap-2">
+        <BarraConsulta campos={filtrosProgramacoes.campos} edicaoFiltros={filtrosProgramacoes.edicao} erroFiltros={filtrosProgramacoes.erro} criterios={filtrosProgramacoes.criterios} acao={<div className="flex flex-wrap gap-2">
                 <Button secondary disabled={carregando} onClick={() => void carregar()}>Atualizar programações</Button>
                 {podeLancar && <>
                 <a className="inline-flex items-center rounded-lg border border-border px-3 py-2 text-sm" href="/configuracoes/pecuaria/reproducao/protocolos" onClick={e => { if (!e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) { e.preventDefault(); navegarPara("/configuracoes/pecuaria/reproducao/protocolos"); } }}>Gerenciar protocolos reprodutivos</a>
@@ -424,9 +428,7 @@ export function Iatf({
                   Nova programação
                 </Button>
                 </>}
-              </div>
-          }
-        />
+              </div>}><BuscaLista rotulo="Buscar programação" placeholder="Buscar programação" valor={buscaProgramacao} onChange={v=>{setBuscaProgramacao(v);setPaginaProgramacoes(1);}}/></BarraConsulta>
         <div className="p-4 space-y-3">
           <p className="text-sm text-ink-3">
             Indicação, programação, início efetivo e execução são fatos
@@ -442,8 +444,7 @@ export function Iatf({
           )}
           <ErrorBox erro={erroConsulta} />
           {erroConsulta && <Button secondary onClick={() => void carregar()}>Tentar novamente</Button>}
-          <label className="block text-sm">Buscar programação<input className={classeInput} aria-label="Buscar programação" value={buscaProgramacao} onChange={e=>{setBuscaProgramacao(e.target.value);setPaginaProgramacoes(1);}}/></label>
-          <TabelaFinanceira rotulo="Programações IATF" itens={filtradas.slice((paginaLista-1)*20,paginaLista*20)} chaveDe={p=>p.id} colunas={[
+          <TabelaFinanceira filtrosColunas={filtrosProgramacoes.colunas} rotulo="Programações IATF" itens={filtradas.slice((paginaLista-1)*20,paginaLista*20)} chaveDe={p=>p.id} colunas={[
             {chave:"nome",titulo:"Programação",principal:true,larguraMinima:200,larguraFlexivel:true,celula:p=>p.nome},
             {chave:"inicio",titulo:"Início programado",larguraMinima:180,celula:p=>horarioIatf(p.inicioPrevisto,p.precisaoTemporal)},
             {chave:"participantes",titulo:"Participantes",larguraMinima:110,celula:p=>p.participantes.length},
@@ -1557,7 +1558,7 @@ function DetalheEtapa({ tarefa }: { tarefa: TarefaIatf }) {
         )}
         {!!tarefa.desviosSnapshot?.diferencas.length && (
           <div className="overflow-auto">
-            <table className="w-full">
+            <table className="w-full consulta-tabela">
               <thead>
                 <tr>
                   <th className="text-left">Campo</th>

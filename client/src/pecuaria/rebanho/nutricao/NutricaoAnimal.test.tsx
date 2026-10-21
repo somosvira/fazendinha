@@ -18,12 +18,9 @@ describe("nutrição individual", () => {
     const link = screen.getByRole("link", { name: /Abrir fechamento do lote/ });
     expect(link.getAttribute("href")).toContain("fechamentoId=fechamento");
     expect(link.closest("header")).toBeTruthy();
-    const recolher = screen.getByRole("button", { name: "Ração · versão 1" });
-    fireEvent.click(recolher);
-    expect(recolher.getAttribute("aria-expanded")).toBe("false");
-    expect(screen.queryByRole("rowheader", { name: "Silagem" })).toBeNull();
-    expect(screen.getByRole("link", { name: /Abrir fechamento do lote/ })).toBeTruthy();
-    fireEvent.click(recolher);
+    expect(screen.getByRole("heading", { name: /Ração · versão 1/ })).toBeTruthy();
+    expect(screen.getByRole("rowheader", { name: "Silagem" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Ração · versão 1/ })).toBeNull();
     fireEvent.click(screen.getByText("Próxima"));
     await waitFor(() => expect(consultarConsumoAnimal).toHaveBeenLastCalledWith("animal", 2));
   });

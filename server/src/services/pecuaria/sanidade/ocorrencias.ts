@@ -36,11 +36,29 @@ export async function criarDoenca(nome: string, motivoBaixaSugeridoId: string | 
   });
 }
 
+export function whereOcorrencias(animalId: string | undefined, propriedadeId: number | null, filtro?: ConsultaSanitaria): Prisma.OcorrenciaSanitariaWhereInput {
+  return { ...filtrosFatos(filtro, "inicio"), ...(filtro?.situacao === "ABERTA" ? { fim: null } : filtro?.situacao === "ENCERRADA" ? { fim: { not: null } } : {}), ...(filtro?.doencaId ? { doencaId: filtro.doencaId } : {}), ...(animalId ? { animalId } : {}), ...(propriedadeId == null ? {} : { propriedadeId }) };
+}
 export async function listarOcorrencias(animalId: string | undefined, propriedadeId: number | null, filtro?: ConsultaSanitaria) {
-  const lista = await prisma.ocorrenciaSanitaria.findMany({ where: { ...filtrosFatos(filtro, "inicio"), ...(filtro?.situacao === "ABERTA" ? { fim: null } : filtro?.situacao === "ENCERRADA" ? { fim: { not: null } } : {}), ...(animalId ? { animalId } : {}), ...(propriedadeId == null ? {} : { propriedadeId }) },
+  const lista = await prisma.ocorrenciaSanitaria.findMany({ where: whereOcorrencias(animalId, propriedadeId, filtro),
     include: { doenca: { select: { id: true, nome: true } }, _count: { select: { aplicacoes: true, exames: true, execucoes: true } } },
-    orderBy: [{ inicio: "desc" }, { criadoEm: "desc" }], ...limites(filtro) });
+    orderBy: [{ inicio: "desc" }, { criadoEm: "desc" }, { id: "asc" }], ...limites(filtro) });
   return lista.map((o) => ({ ...o, doenca: { ...o.doenca, nome: o.doencaNomeSnapshot ?? o.doenca.nome } }));
+}
+/** Contagens do recorte inteiro, sem confundir a página da lista com o panorama. */
+export async function listarOcorrenciasPaginadas(animalId: string | undefined, propriedadeId: number | null, filtro: ConsultaSanitaria) {
+  const where = whereOcorrencias(animalId, propriedadeId, filtro);
+  const [itens, total, abertas, encerradas, anuladas, grupos] = await Promise.all([
+    listarOcorrencias(animalId, propriedadeId, filtro), prisma.ocorrenciaSanitaria.count({ where }),
+    prisma.ocorrenciaSanitaria.count({ where: { AND: [where, { status: "VALIDO", fim: null }] } }),
+    prisma.ocorrenciaSanitaria.count({ where: { AND: [where, { status: "VALIDO", fim: { not: null } }] } }),
+    prisma.ocorrenciaSanitaria.count({ where: { AND: [where, { status: "ANULADO" }] } }),
+    prisma.ocorrenciaSanitaria.groupBy({ by: ["doencaId", "doencaNomeSnapshot"], where: { AND: [where, { status: "VALIDO", fim: null }] }, _count: { _all: true } }),
+  ]);
+  const doencas = grupos.length ? await prisma.doenca.findMany({ where: { id: { in: [...new Set(grupos.map(g => g.doencaId))] } }, select: { id: true, nome: true } }) : [];
+  const nomes = new Map(doencas.map(d => [d.id, d.nome]));
+  const porDoenca = grupos.map(g => ({ id: g.doencaId, nome: g.doencaNomeSnapshot ?? nomes.get(g.doencaId) ?? "Doença não identificada", quantidade: g._count._all })).sort((a, b) => b.quantidade - a.quantidade || a.nome.localeCompare(b.nome));
+  return { itens, total, pagina: filtro.pagina, porPagina: filtro.porPagina, resumo: { abertas, encerradas, anuladas, porDoenca } };
 }
 
 export type CriarOcorrenciaInput = { animalId: string; propriedadeId: number; doencaId: string; inicio: string; observacao?: string | null };

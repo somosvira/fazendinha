@@ -3,7 +3,7 @@ import { getHojeISO } from "../../../lib/hoje";
 import { periodoPadrao, usePeriodoConsulta } from "./periodo-consulta";
 import { PainelIndicadores } from "./PainelIndicadores";
 import { IndicadoresAcompanhamento } from "./IndicadoresAcompanhamento";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
 import { Panel } from "../../../financeiro/financeiro-ui";
@@ -20,6 +20,9 @@ import {
   type PeriodoIndicadores,
   type SnapshotIndicadoresReprodutivos,
 } from "./indicadores-api";
+function GrupoFiltrosIndicadores({ relatorio, children }: { relatorio: boolean; children: ReactNode }) {
+  return relatorio ? <div>{children}</div> : <details><summary className="w-fit cursor-pointer rounded-lg border bg-card px-4 py-2 text-sm font-semibold">Filtros avançados</summary>{children}</details>;
+}
 export const numeroIndicador = (v: number | null) =>
   v === null
     ? "Não calculável"
@@ -273,22 +276,14 @@ export function IndicadoresReprodutivos({
   return (
     <section className="space-y-5">
       <div className="space-y-5 print:hidden">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            {modo === "painel" ? <h1 className="text-3xl font-semibold tracking-tight">Indicadores reprodutivos</h1> : <h2 className="text-2xl font-semibold">Desempenho reprodutivo</h2>}
-            <p className="text-muted-foreground">
-              {modo === "painel"
-                ? "Resultados do rebanho e qualidade dos registros"
-                : "Entenda os resultados e os animais considerados em cada período."}
-            </p>
-          </div>
+        {modo === "painel" && <div className="flex flex-wrap items-center justify-end gap-4">
           {modo === "painel" && (
             <DateRangePicker
               value={periodoConsulta.range}
               onChange={periodoConsulta.alterar}
             />
           )}
-        </div>
+        </div>}
         {modo === "painel" && periodoConsulta.aviso && (
           <p
             role="status"
@@ -307,7 +302,7 @@ export function IndicadoresReprodutivos({
         >
           {modo === "relatorio" && (
             <>
-            <div><h3 className="font-semibold">Filtros da consulta</h3><p className="text-sm text-muted-foreground">Defina o período e o corte dos resultados. Os critérios são aplicados ao confirmar a consulta.</p></div>
+
             <div className="grid gap-3 sm:grid-cols-2">
               <label>
                 Início
@@ -331,16 +326,7 @@ export function IndicadoresReprodutivos({
             </div>
             </>
           )}
-          <details open={modo === "relatorio" ? true : undefined}>
-            <summary
-              className={
-                modo === "painel"
-                  ? "w-fit cursor-pointer rounded-lg border bg-card px-4 py-2 text-sm font-semibold"
-                  : "cursor-pointer font-semibold"
-              }
-            >
-              Filtros avançados
-            </summary>
+          <GrupoFiltrosIndicadores relatorio={modo === "relatorio"}>
             <div className="mt-3 grid gap-3 sm:grid-cols-3">
               <label>
                 Janela de perdas desde o primeiro DG positivo (dias, opcional)
@@ -457,7 +443,7 @@ export function IndicadoresReprodutivos({
                 pendência.
               </p>
             </div>
-          </details>
+          </GrupoFiltrosIndicadores>
         </form>
         {ocupado && <p role="status">Carregando indicadores…</p>}
         {erro && (
@@ -523,7 +509,6 @@ export function IndicadoresReprodutivos({
           </div>
           </Panel>
         )}
-        {modo === "relatorio" && !visivel && !ocupado && <Panel className="p-5"><p className="text-sm text-muted-foreground">{inicio && fim ? "O período inicial já está preenchido. Use Aplicar para consultar os indicadores ou ajuste os critérios acima." : "Defina o período acima e use Aplicar para consultar os indicadores."}</p></Panel>}
         {modo === "painel" && visivel && (
           <PainelIndicadores
             key={JSON.stringify(visivel.filtros)}
@@ -554,7 +539,7 @@ export function IndicadoresReprodutivos({
             <div
               role="tablist"
               aria-label="Conteúdo do relatório"
-              className="flex flex-wrap gap-2 print:hidden"
+              className="abas-pasta print:hidden"
             >
               {[
                 ["resumo", "Resumo por período"],
@@ -626,7 +611,7 @@ export function IndicadoresReprodutivos({
             ) : (
               <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
                 <div className="overflow-x-auto rounded-xl border bg-card">
-                  <table className="w-full text-left text-sm">
+                  <table className="w-full text-left text-sm consulta-tabela">
                     <caption className="p-4 text-left text-lg font-semibold">
                       Desempenho por período de 21 dias
                     </caption>
@@ -876,7 +861,7 @@ function ImpressaoIndicadores({
           {data(s.sobraInicial.fim)} ({s.sobraInicial.dias} dias)
         </p>
       )}
-      <table className="w-full border-collapse text-left text-sm">
+      <table className="w-full border-collapse text-left text-sm consulta-tabela">
         <thead>
           <tr>
             {[

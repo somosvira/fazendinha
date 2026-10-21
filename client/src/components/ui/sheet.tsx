@@ -4,6 +4,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { useRetornoFocoDialogo } from "@/lib/useRetornoFocoDialogo";
 
 const Sheet = SheetPrimitive.Root;
 const SheetTrigger = SheetPrimitive.Trigger;
@@ -55,7 +56,9 @@ interface SheetContentProps
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Content>,
   SheetContentProps
->(({ side = "right", className, children, showCloseButton = true, overlayClassName, ...props }, ref) => (
+>(({ side = "right", className, children, showCloseButton = true, overlayClassName, onOpenAutoFocus, onCloseAutoFocus, ...props }, ref) => {
+  const retornoFoco = useRetornoFocoDialogo(onOpenAutoFocus, onCloseAutoFocus);
+  return (
   <SheetPortal>
     <SheetOverlay className={overlayClassName} />
     <SheetPrimitive.Content
@@ -63,6 +66,7 @@ const SheetContent = React.forwardRef<
       data-slot="sheet-content"
       className={cn(sheetVariants({ side }), className)}
       {...props}
+      {...retornoFoco}
     >
       {children}
       {showCloseButton && (
@@ -76,7 +80,8 @@ const SheetContent = React.forwardRef<
       )}
     </SheetPrimitive.Content>
   </SheetPortal>
-));
+  );
+});
 SheetContent.displayName = SheetPrimitive.Content.displayName;
 
 function SheetHeader({ className, ...props }: React.ComponentProps<"div">) {

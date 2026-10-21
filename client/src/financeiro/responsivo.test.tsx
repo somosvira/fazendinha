@@ -87,16 +87,23 @@ describe("TabelaFinanceira", () => {
     });
   });
 
-  it("oferece cartões no mobile e tabela do md para cima", () => {
-    const { container } = render(<TabelaFinanceira rotulo="Operações" itens={LINHAS} colunas={COLUNAS} chaveDe={(l) => l.id} />);
-    const tabela = container.querySelector("table")!.closest("div")!;
-    const cartoes = container.querySelector("ul")!;
-    expect(tabela.className).toContain("hidden");
-    expect(tabela.className).toContain("md:block");
-    expect(cartoes.className).toContain("md:hidden");
-    // o cartão repete todo o conteúdo da linha — nada fica só na tabela
-    expect(cartoes.textContent).toContain(LINHAS[0].nome);
-    expect(cartoes.textContent).toContain(LINHAS[0].valor);
+  it("adapta cartões e tabela à largura disponível da consulta", () => {
+    const original = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "clientWidth");
+    try {
+      Object.defineProperty(HTMLElement.prototype, "clientWidth", { configurable:true, get:()=>500 });
+      const estreita = render(<TabelaFinanceira rotulo="Operações" itens={LINHAS} colunas={COLUNAS} chaveDe={l=>l.id}/>);
+      expect(estreita.container.querySelector("[data-fin-visualizacao]")?.getAttribute("data-fin-visualizacao")).toBe("cartoes");
+      expect(estreita.container.querySelector("ul")?.textContent).toContain(LINHAS[0].nome);
+      expect(estreita.container.querySelector("ul")?.textContent).toContain(LINHAS[0].valor);
+      estreita.unmount();
+      Object.defineProperty(HTMLElement.prototype, "clientWidth", { configurable:true, get:()=>1600 });
+      const larga = render(<TabelaFinanceira rotulo="Operações" itens={LINHAS} colunas={COLUNAS} chaveDe={l=>l.id}/>);
+      expect(larga.container.querySelector("[data-fin-visualizacao]")?.getAttribute("data-fin-visualizacao")).toBe("tabela");
+      expect(larga.container.querySelectorAll("thead th")).toHaveLength(COLUNAS.length);
+    } finally {
+      if(original) Object.defineProperty(HTMLElement.prototype,"clientWidth",original);
+      else delete (HTMLElement.prototype as unknown as Record<string, unknown>).clientWidth;
+    }
   });
 
   it("mantém a linha acionável pelo teclado quando ela abre um detalhe", () => {
@@ -113,7 +120,7 @@ describe("TabelaFinanceira", () => {
     // jsdom não faz layout: simula overflow via scrollWidth/clientWidth do wrapper.
     const clientWidthOriginal = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "clientWidth");
     const scrollWidthOriginal = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollWidth");
-    Object.defineProperty(HTMLElement.prototype, "clientWidth", { configurable: true, get: () => 400 });
+    Object.defineProperty(HTMLElement.prototype, "clientWidth", { configurable: true, get() { return this.classList.contains("fin-consulta-responsiva") ? 1600 : 400; } });
     Object.defineProperty(HTMLElement.prototype, "scrollWidth", { configurable: true, get: () => 900 });
     try {
       const { container } = render(<TabelaFinanceira rotulo="Operações" itens={LINHAS} colunas={COLUNAS} chaveDe={(l) => l.id} barraRolagemSuperior />);

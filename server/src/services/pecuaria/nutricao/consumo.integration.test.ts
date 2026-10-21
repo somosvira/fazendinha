@@ -6,6 +6,7 @@ import { cadastrar } from "../rebanho/animais.js";
 import { cadastrarAnimalSchema } from "../rebanho/schemas.js";
 import { atribuirDieta, criarDieta, publicarDieta } from "./dietas.js";
 import { confirmarConsumo, confirmarPeriodos, consumoAnimal, detalheFechamento, estornarFechamento, previaConsumo, previaPeriodos } from "./consumo.js";
+import { consultarResumo } from "./resumo.js";
 
 const describeComBanco = process.env.PECUARIA_DB_INTEGRATION === "1" ? describe : describe.skip;
 const run = crypto.randomUUID().slice(0, 8);
@@ -62,6 +63,11 @@ describeComBanco("fechamento nutricional com PostgreSQL", () => {
     expect(movimento?.quantidade.toString()).toBe("28");
     const detalhe = await detalheFechamento(fechamento.id, propriedade.id, true);
     expect(detalhe.custoConhecido).toBe("56.00");
+    const resumo = await consultarResumo(lote.id, propriedade.id, true);
+    expect(resumo.lotes[0].custos).toEqual({ fechamentos: 1, animalDias: 10, custoConhecido: "56.00", custoPorAnimalDia: "5.60", coberturaCustoCompleta: true });
+    expect(resumo.lotes[0].vigente?.id).toBe(vigencia.id);
+    expect((await consultarResumo(lote.id, propriedade.id, false)).lotes[0].custos.custoConhecido).toBeNull();
+    await expect(consultarResumo(lote.id, propriedade.id + 100000, true)).rejects.toThrow("neste sítio");
     expect(detalhe.participacoes[0].itens[0].quantidadeAtribuida).toBe("28.000");
     expect(detalhe.participacoes[0].itens[0].quantidadePorDia).toBe("2.800000");
     const individual = await consumoAnimal(animal.id, propriedade.id, { pagina: 1, limite: 25 }, false);
@@ -73,6 +79,10 @@ describeComBanco("fechamento nutricional com PostgreSQL", () => {
     await prisma.localizacaoAnimal.update({ where: { id: local.id }, data: { ate: new Date("2026-09-15") } });
     await prisma.localizacaoAnimal.update({ where: { id: local.id }, data: { ate: null } });
     await expect(confirmarConsumo({ ...contexto, itens: [{ produtoId: produto.id, modoEstoque: "BAIXA_ESTOQUE" }] }, null)).rejects.toThrow();
+    await estornarFechamento(fechamento.id, propriedade.id, "Revisão do consumo registrado", null);
+    expect((await prisma.fechamentoConsumo.findUnique({ where: { id: fechamento.id } }))?.status).toBe("ESTORNADO");
+    expect((await detalheFechamento(fechamento.id, propriedade.id, true)).custoConhecido).toBe("56.00");
+    expect((await consultarResumo(lote.id, propriedade.id, true)).lotes[0].custos).toMatchObject({ fechamentos: 0, animalDias: 0, custoConhecido: "0.00" });
   });
   it("divide mês, aponta lacunas e confirma atomicamente sem duplicar no reenvio", async () => {
     const contexto = { loteId: ids.lote, propriedadeId: ids.propriedade, inicio: "2026-09-29", fim: "2026-10-02" };
@@ -95,9 +105,15 @@ describeComBanco("fechamento nutricional com PostgreSQL", () => {
     expect(await prisma.fechamentoConsumo.count({ where: { loteId: ids.lote } })).toBe(antes + 2);
   });
   it("bloqueia estorno retroativo com dependentes e preserva o custo do último fechamento estornado", async () => {
-    await expect(estornarFechamento(ids.fechamento, ids.propriedade, "Revisão do consumo registrado", null)).rejects.toMatchObject({ code: "CONFLITO" });
-    expect((await prisma.fechamentoConsumo.findUnique({ where: { id: ids.fechamento } }))?.status).toBe("CONFIRMADO");
-    const ultimo = await prisma.fechamentoConsumo.findFirstOrThrow({ where: { loteId: ids.lote, status: "CONFIRMADO" }, orderBy: { fim: "desc" } });
+    // O fechamento original foi estornado no primeiro cenário. O par
+    // confirmado pelo cenário de períodos é que comprova a dependência.
+    const confirmados = await prisma.fechamentoConsumo.findMany({ where: { loteId: ids.lote, status: "CONFIRMADO" }, orderBy: [{ fim: "asc" }, { id: "asc" }] });
+    expect(confirmados).toHaveLength(2);
+    const [primeiro, ultimo] = confirmados;
+    const movimentosAntes = await prisma.movimentoEstoque.count({ where: { produtoId: ids.produto } });
+    await expect(estornarFechamento(primeiro.id, ids.propriedade, "Revisão do consumo registrado", null)).rejects.toMatchObject({ code: "CONFLITO" });
+    expect((await prisma.fechamentoConsumo.findUnique({ where: { id: primeiro.id } }))?.status).toBe("CONFIRMADO");
+    expect(await prisma.movimentoEstoque.count({ where: { produtoId: ids.produto } })).toBe(movimentosAntes);
     const custoAntes = (await detalheFechamento(ultimo.id, ids.propriedade, true)).custoConhecido;
     await estornarFechamento(ultimo.id, ids.propriedade, "Revisão do último consumo registrado", null);
     expect((await prisma.fechamentoConsumo.findUnique({ where: { id: ultimo.id } }))?.status).toBe("ESTORNADO");

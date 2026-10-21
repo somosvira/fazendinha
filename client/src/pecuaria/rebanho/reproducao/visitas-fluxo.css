@@ -9,7 +9,7 @@
 .visita-breadcrumb a { color:inherit;text-decoration:none; }
 .visita-cabecalho { display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:24px; }
 .visita-eyebrow { text-transform:uppercase;letter-spacing:1.4px;font-size:11px;color:var(--vf-muted);font-weight:700; }
-.visita-cabecalho h1 { font-size:31px;letter-spacing:-.8px;line-height:1.25;margin:7px 0 9px;font-weight:650; }
+.visita-cabecalho h1 { font-size:28px;letter-spacing:-.8px;line-height:1.25;margin:7px 0 9px;font-weight:650; }
 .visita-cabecalho p { margin:0;color:var(--vf-muted);line-height:1.6;max-width:780px; }
 .visita-acoes { display:flex;align-items:center;flex-wrap:wrap;gap:10px; }
 .visita-fluxo .visita-botao { border:1px solid #819287;border-radius:7px;padding:10px 16px;background:white;color:var(--vf-ink);font-size:14px;font-weight:600;min-height:41px;display:inline-flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap; }
@@ -19,11 +19,11 @@
 .visita-fluxo .visita-botao.primario:hover:not(:disabled) { background:#1b3a2e; }
 .visita-fluxo .visita-link { background:none;border:0;padding:8px 3px;text-decoration:underline;text-underline-offset:3px;font-size:13px;color:var(--vf-green); }
 .visita-etapas { display:flex;gap:0;border-bottom:1px solid #c4d1c7;margin-bottom:25px; }
-.visita-etapas button { border:0;border-bottom:3px solid transparent;margin-bottom:-1px;display:flex;gap:10px;align-items:center;background:none;padding:15px 28px 17px 0;margin-right:24px;text-align:left;color:#283c31; }
+.visita-etapas button { border:0;border-bottom:1px solid transparent;margin-bottom:-1px;display:flex;gap:10px;align-items:center;background:none;padding:15px 28px 17px 0;margin-right:24px;text-align:left;color:#283c31; }
 .visita-etapas .visita-etapa-numero { width:27px;height:27px;flex-shrink:0;border-radius:50%;background:#dbe5dc;color:#4d6254;display:grid;place-items:center;font-size:12px;font-weight:750; }
 .visita-etapas strong { display:block;font-size:14px;font-weight:650; }
 .visita-etapas small { display:block;color:#56665f;margin-top:3px;font-size:11px; }
-.visita-etapas [aria-current=step] { border-color:#24493b; }
+.visita-etapas [aria-current=step] { border-color:#24493b;background:#f3f7f2; }
 .visita-etapas [aria-current=step] .visita-etapa-numero { background:#24493b;color:white; }
 .visita-etapas button:disabled { opacity:.45;cursor:not-allowed; }
 .visita-configuracao { display:flex;align-items:center;gap:26px;padding:17px 22px;background:white;border:1px solid var(--vf-line);border-radius:12px;margin-bottom:20px; }
@@ -225,7 +225,7 @@
 .livre-atividades small {display:block;margin-top:5px;color:var(--vf-muted);line-height:1.5;}
 .livre-atividades input {margin-top:4px;accent-color:var(--vf-green);}
 @media(max-width:1100px) {.livre-duas-colunas{grid-template-columns:minmax(0,1fr) 245px}.livre-grid.tres{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:800px) {.livre-duas-colunas{grid-template-columns:1fr}.livre-previa{position:static;order:-1}.livre-previa .livre-corpo{display:none}.livre-contador{font-size:27px;margin:8px 0}.livre-grid,.livre-grid.tres,.visita-escolhas{grid-template-columns:1fr}.visita-escolha{padding:20px}.livre-corpo{padding:16px}.visita-etapas{overflow:auto}.visita-etapas button{flex-shrink:0}.livre-regra{padding:16px}.visita-entrada .visita-cabecalho h1{font-size:26px}}
+@media(max-width:800px) {.livre-duas-colunas{grid-template-columns:1fr}.livre-previa{position:static;order:-1}.livre-previa .livre-corpo{display:none}.livre-contador{font-size:27px;margin:8px 0}.livre-grid,.livre-grid.tres,.visita-escolhas{grid-template-columns:1fr}.visita-escolha{padding:20px}.livre-corpo{padding:16px}.visita-etapas{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;overflow:visible}.visita-etapas button{min-width:0;min-height:44px;margin-right:0;padding:10px 8px}.visita-etapas strong{font-size:13px;overflow-wrap:anywhere}.livre-regra{padding:16px}.visita-entrada .visita-cabecalho h1{font-size:24px}}
 .visita-contexto.livre-criterios {display:block;}
 .livre-criterios>span {display:block;font-size:10px;letter-spacing:.8px;text-transform:uppercase;font-weight:650;color:var(--vf-muted);margin-bottom:10px;}
 .livre-criterios>div {display:flex;gap:8px;flex-wrap:wrap;}
@@ -290,3 +290,5 @@
  .visita-rodape .primario {margin-left:0;}
  .visita-transcricao .visita-tabela p.p-4 {padding:12px;white-space:normal;}
 }
+
+@media(min-width:901px) { .visita-rodape { padding-right:80px; } }

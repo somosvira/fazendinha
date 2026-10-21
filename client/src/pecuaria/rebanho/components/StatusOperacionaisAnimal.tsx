@@ -64,7 +64,7 @@ export function StatusOperacionaisAnimal({
           );
       })
       .catch(() => {
-        if (atual) setFalhas((v) => [...v, "Ocorrências não consultadas"]);
+        if (atual) setFalhas((v) => v.includes("Ocorrências não consultadas") ? v : [...v, "Ocorrências não consultadas"]);
       });
     void reqV4<ProgramacaoIatf[]>(
       `/reproducao/participacoes?animalId=${encodeURIComponent(animalId)}`,
@@ -92,7 +92,7 @@ export function StatusOperacionaisAnimal({
           );
       })
       .catch(() => {
-        if (atual) setFalhas((v) => [...v, "Protocolos não consultados"]);
+        if (atual) setFalhas((v) => v.includes("Protocolos não consultados") ? v : [...v, "Protocolos não consultados"]);
       });
     return () => {
       atual = false;

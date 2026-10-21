@@ -34,7 +34,7 @@ export interface RebTableProps extends React.HTMLAttributes<HTMLTableElement> {
 export function RebTable({ className, wrapClassName, children, ...props }: RebTableProps) {
   return (
     <div className={cn("overflow-x-auto", wrapClassName)}>
-      <table className={cn("overflow-hidden", TABLE_CHROME, className)} {...props}>
+      <table className={cn("consulta-tabela overflow-hidden", TABLE_CHROME, className)} {...props}>
         {children}
       </table>
     </div>

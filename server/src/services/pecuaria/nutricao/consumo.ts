@@ -220,7 +220,7 @@ export function apresentarFechamento(f: Detalhe, verValores: boolean) {
       alocacaoPartidaEstoques: i.movimentoEstoque.alocacaoPartidaEstoques.map((a) => ({ ...a, partida: { ...a.partida, nome: a.partida.lotePrincipal?.nome ?? a.partida.nome, lotePrincipalId: a.partida.lotePrincipalId ?? a.partidaId } })),
       valorTotal: verValores && i.situacaoCusto === "CONHECIDO" ? i.movimentoEstoque.valorTotal : null,
       custoUnitario: verValores && i.situacaoCusto === "CONHECIDO" ? i.movimentoEstoque.custoUnitario : null } : null })),
-    participacoes: atribuicao.participacoes.map((p) => ({ ...p, animal: f.participacoes.find((a) => a.animalId === p.animalId)!.animal,
+    participacoes: atribuicao.participacoes.map((p) => ({ ...p, id: f.participacoes.find((a) => a.animalId === p.animalId)!.id, animal: f.participacoes.find((a) => a.animalId === p.animalId)!.animal,
       custoConhecido: verValores ? p.custoConhecido : null,
       custoConhecidoPorDia: verValores ? p.custoConhecidoPorDia : null,
       itens: p.itens.map((i) => ({ ...i, custoConhecido: verValores ? i.custoConhecido : null })),
@@ -228,8 +228,8 @@ export function apresentarFechamento(f: Detalhe, verValores: boolean) {
   };
 }
 
-export async function listarFechamentos(loteId: string | undefined, propriedadeId: number | null, pagina: PaginaNutricao = { pagina: 1, limite: 25 }, verValores = false, animalId?: string) {
-  const where: Prisma.FechamentoConsumoWhereInput = { ...(loteId ? { loteId } : {}), ...(propriedadeId == null ? {} : { propriedadeId }), ...(animalId ? { participacoes: { some: { animalId } } } : {}) };
+export async function listarFechamentos(loteId: string | undefined, propriedadeId: number | null, pagina: PaginaNutricao = { pagina: 1, limite: 25 }, verValores = false, animalId?: string, status?: "CONFIRMADO" | "ESTORNADO", periodo: {de?:string;ate?:string} = {}) {
+  const where: Prisma.FechamentoConsumoWhereInput = { ...(periodo.de ? {fim:{gte:dia(periodo.de)}} : {}), ...(periodo.ate ? {inicio:{lte:dia(periodo.ate)}} : {}), ...(loteId ? { loteId } : {}), ...(status ? { status } : {}), ...(propriedadeId == null ? {} : { propriedadeId }), ...(animalId ? { participacoes: { some: { animalId } } } : {}) };
   return prisma.$transaction(async (tx) => {
     const [fechamentos, total] = await Promise.all([
       tx.fechamentoConsumo.findMany({ where, include: detalheInclude, orderBy: [{ inicio: "desc" }, { id: "asc" }], skip: (pagina.pagina - 1) * pagina.limite, take: pagina.limite }),
@@ -249,8 +249,8 @@ export async function consumoAnimal(animalId: string, propriedadeId: number | nu
   const animal = await prisma.animal.findFirst({ where: { id: animalId, ...(propriedadeId == null ? {} : { localizacoes: { some: { propriedadeId } } }) }, select: { id: true } });
   if (!animal) throw new RebanhoError("NAO_ENCONTRADO", "Animal não encontrado neste sítio");
   const lista = await listarFechamentos(undefined, propriedadeId, pagina, verValores, animalId);
-  return { ...lista, animalId, verValores, itens: lista.itens.map((f) => ({ id: f.id, inicio: f.inicio, fim: f.fim, status: f.status, lote: f.lote,
-    dieta: f.vigencia.dieta, propriedadeId: f.propriedadeId, ...f.participacoes.find((p) => p.animalId === animalId)!,
+  return { ...lista, animalId, verValores, itens: lista.itens.map((f) => ({ inicio: f.inicio, fim: f.fim, status: f.status, lote: f.lote,
+    dieta: f.vigencia.dieta, propriedadeId: f.propriedadeId, ...f.participacoes.find((p) => p.animalId === animalId)!, participacaoId: f.participacoes.find((p) => p.animalId === animalId)!.id, id: f.id,
     itens: f.participacoes.find((p) => p.animalId === animalId)!.itens.map((i) => ({ ...i, nome: f.itens.find((item) => item.produtoId === i.produtoId)!.produto.nome })),
   })) };
 }

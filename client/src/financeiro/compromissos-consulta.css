@@ -1,0 +1,62 @@
+.compromissos-indicadores { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 16px; }
+.compromissos-indicador { position: relative; min-width: 0; border-radius: 10px; }
+.compromissos-card-acionador { position: absolute; inset: 0; z-index: 1; width: 100%; border-radius: inherit; cursor: pointer; }
+.compromissos-card-acionador:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
+:root .compromissos-indicadores .fin-indicador { height: 100%; border-radius: 10px; transition: background-color 120ms, border-color 120ms; }
+:root .compromissos-indicador:has(> button:hover) .fin-indicador { background: var(--fin-filter-bg); border-color: var(--fin-filter-border); }
+:root .compromissos-indicador:has(> button[aria-pressed=true]) .fin-indicador { background: var(--card); border-color: var(--primary); }
+:root .compromissos-indicador:first-child .fin-metric-icone { background: #fff2db; }
+:root .compromissos-indicador:first-child .fin-metric-icone svg { color: #805819; }
+:root .compromissos-indicador:nth-child(2) .fin-metric-icone { background: #e5f4e9; }
+:root .compromissos-indicador:nth-child(2) .fin-metric-icone svg { color: #246a36; }
+:root .financeiro-colorido .compromissos-indicadores .compromissos-indicador-vencidos .fin-indicador { border-color: #eac4c0; background: #fff8f7; }
+:root .financeiro-colorido .compromissos-indicadores .compromissos-indicador-vencidos .fin-metric-icone { background: #fce1df; }
+:root .financeiro-colorido .compromissos-indicadores .compromissos-indicador-vencidos .fin-metric-icone svg { color: #a3312a; }
+:root .financeiro-colorido .compromissos-indicadores .compromissos-indicador-vencidos:has(> button:is(:hover,[aria-pressed=true])) .fin-indicador { background: #fce9e7; border-color: #a3312a; }
+.compromissos-controles { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding: 18px; border-bottom: 1px solid var(--border); }
+.compromissos-tipos { display: inline-flex; gap: 2px; padding: 3px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); }
+.compromissos-tipos > button { min-width: 110px; }
+.compromissos-abertos { background: var(--fin-filter-bg); color: var(--primary); border-color: transparent; }
+.compromissos-abertos:hover { background: var(--fin-filter-hover); }
+.compromissos-controles-direita { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin-left: auto; }
+.compromissos-totais { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; }
+.compromissos-totais > div { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px; }
+.compromissos-totais span { font-size: 12px; color: var(--muted-foreground); }
+.compromissos-totais strong { font-size: 18px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.compromissos-consulta .consulta-controles > .fin-filtro-busca { flex: 1 1 260px; max-width: none; }
+.compromissos-rodape { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; padding-right: 18px; border-top: 1px solid var(--border); }
+.compromissos-rodape > nav { flex: 1; border: 0; }
+.compromissos-rodape .compromissos-totais { margin-left: auto; }
+.compromissos-rodape .compromissos-totais strong { font-size: 16px; }
+.compromisso-vencimento-atrasado, .compromisso-saldo-vencido { color: #a3312a; }
+.compromisso-vencimento-atrasado > time { font-weight: 650; white-space: nowrap; }
+.compromisso-atraso { display: flex; align-items: center; gap: 5px; margin-top: 6px; font-size: 12px; font-weight: 600; }
+:root .compromissos-consulta .fin-tabela > tbody > tr.compromisso-vencido > td,
+:root .compromissos-consulta .fin-tabela-cartoes > li.compromisso-vencido { background: #fff5f3; }
+:root .compromissos-consulta .fin-tabela > tbody > tr.compromisso-vencido:is(:hover,:focus-within) > td,
+:root .compromissos-consulta .fin-tabela-cartoes > li.compromisso-vencido:is(:hover,:focus-within) { background: #fce5e1; }
+.compromissos-consulta .fin-tabela [data-fin-acoes] button { font-size: 13px; padding-inline: 12px; }
+@media (max-width: 700px) {
+  .compromissos-indicadores { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .compromissos-indicador:last-child { grid-column: 1 / -1; }
+  .compromissos-controles { padding: 16px; }
+  .compromissos-tipos { flex: 1; }
+  .compromissos-tipos > button { flex: 1; min-width: 0; }
+  .compromissos-controles-direita { flex: 1 1 100%; justify-content: space-between; margin-left: 0; }
+  .compromissos-controles-direita > .compromissos-totais { flex: 1 1 100%; }
+  .compromissos-rodape { padding-right: 0; }
+  .compromissos-rodape > nav { flex-basis: 100%; }
+  .compromissos-rodape .compromissos-totais { margin: 0; padding: 0 16px 16px; }
+}
+
+:root .compromissos-consulta .fin-selo[data-fin-tom="info"] { background: #fff0d5; color: #805819; border-color: transparent; }
+@media (max-width: 700px) {
+  .compromissos-consulta .consulta-controles { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
+  :root .compromissos-consulta .consulta-controles > .fin-filtro-busca { grid-column: 1 / -1; min-width: 0; margin-right: 0; }
+  .compromissos-consulta .consulta-controles > .fin-filtro-controle { grid-column: 1; min-width: 0; width: auto; }
+  .compromissos-consulta .consulta-controles > .consulta-mais-filtros { grid-column: 2; margin-left: 0; }
+}
+@media (max-width: 360px) {
+  .compromissos-consulta .consulta-controles { grid-template-columns: minmax(0, 1fr); }
+  .compromissos-consulta .consulta-controles > .consulta-mais-filtros { grid-column: 1; width: 100%; }
+}

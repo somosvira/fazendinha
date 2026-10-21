@@ -11,8 +11,8 @@ export function RelatoriosPecuaria({ podeLancar }: { podeLancar: boolean }) {
   const [tipo, setTipo] = useState(daUrl);
   useEffect(() => { const sync = () => setTipo(daUrl()); window.addEventListener("popstate", sync); return () => window.removeEventListener("popstate", sync); }, []);
   return <PaginaFinanceira>
-    <PageHeader eyebrow="Pecuária" titulo="Relatórios da Pecuária" descricao="Defina o período e os critérios, exporte os resultados ou preserve uma emissão para reimpressão fiel."/>
+    <PageHeader titulo="Relatórios da Pecuária" descricao="Analise partos, pós-parto e indicadores reprodutivos por sítio e período." />
     <SubTabs variant="financeiro" ariaLabel="Tipos de relatório pecuário" tabs={[...TIPOS]} active={tipo} onSelect={valor => { const url = new URL(window.location.href); url.searchParams.set("tipo", valor); navegarPara(url.pathname + url.search + url.hash); }}/>
-    <div className="mt-5"><ConsultaPorSitio>{id => tipo === "partos" ? <RelatorioPartos key={`partos:${id}`} propriedadeId={id} podeLancar={podeLancar}/> : <IndicadoresReprodutivos key={`indicadores:${id}`} propriedadeId={id} podeLancar={podeLancar} modo="relatorio"/>}</ConsultaPorSitio></div>
+    <div className="abas-superficie"><ConsultaPorSitio>{id => tipo === "partos" ? <RelatorioPartos key={`partos:${id}`} propriedadeId={id} podeLancar={podeLancar}/> : <IndicadoresReprodutivos key={`indicadores:${id}`} propriedadeId={id} podeLancar={podeLancar} modo="relatorio"/>}</ConsultaPorSitio></div>
   </PaginaFinanceira>;
 }

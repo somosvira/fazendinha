@@ -1,0 +1,14 @@
+.consulta-visual-alternador{display:inline-flex;flex-shrink:0;gap:3px;padding:3px;border:1px solid var(--border);border-radius:9px;background:var(--card)}
+.consulta-visual-alternador button{display:flex;align-items:center;justify-content:center;gap:7px;min-height:36px;padding:6px 13px;border-radius:6px;font-size:13px;font-weight:600;color:var(--foreground)}
+.consulta-visual-alternador button:hover{background:var(--accent)}
+.consulta-visual-alternador button[aria-pressed=true]{background:var(--primary);color:var(--primary-foreground)}
+.consulta-visual-alternador button:focus-visible{outline:2px solid var(--ring);outline-offset:3px}
+.consulta-visual-barra{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:10px 18px;border-bottom:1px solid var(--border)}
+.consulta-visual-barra>span{font-size:13px;color:var(--muted-foreground)}
+.consulta-cartoes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;padding:18px;background:#f6f9f8}
+.consulta-cartao{display:flex;flex-direction:column;gap:14px;min-width:0;padding:18px;border:1px solid var(--border);border-radius:12px;background:var(--card)}
+.consulta-cartao h2{font-size:17px;line-height:1.35;font-weight:650;overflow-wrap:anywhere}
+.consulta-cartao>header{display:flex;align-items:start;justify-content:space-between;gap:12px}
+.consulta-cartao-meta{display:flex;align-items:center;flex-wrap:wrap;gap:7px;font-size:12px;color:var(--muted-foreground)}
+.consulta-cartao>footer{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-top:auto;padding-top:12px;border-top:1px solid var(--border)}
+@media(max-width:767px){.consulta-cartoes{grid-template-columns:1fr;padding:12px}.consulta-cartao{padding:16px}}

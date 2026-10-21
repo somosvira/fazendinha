@@ -9,6 +9,7 @@ import "./styles/dashboard-v2.css";
 import "./styles/cockpit.css";
 import "./styles/forms.css";
 import "./styles/acessos.css";
+import "./styles/auth.css";
 import "./styles/terrano-intro.css";
 import "./styles/typescale.css"; // override de escala tipográfica — carregado por último (legibilidade 60+)
 

@@ -1,16 +1,10 @@
+import { useFiltrosTabelaLocal } from "@/financeiro/useFiltrosTabelaLocal";
+import { BuscaLista } from "@/components/BuscaLista";
+import { BarraConsulta } from "@/financeiro/BarraConsulta";
 import { getHojeISO as hoje } from "../../../lib/hoje";
 import { horarioIatf, inputHorarioIatf } from "./CampoDataIatf";
 import { useEffect, useState } from "react";
-import {
-  Button,
-  CabecalhoTabela,
-  dataBR,
-  Empty,
-  ErrorBox,
-  Panel,
-  Pill,
-  TabelaFinanceira,
-} from "../../../financeiro/financeiro-ui";
+import { Button, dataBR, Empty, ErrorBox, Panel, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
 import {
   DateRangePicker,
   dateFromIso,
@@ -126,7 +120,13 @@ export function AcompanhamentoReprodutivo({
   const referenciaRetorno = (r: NonNullable<SugestoesVisita["retornos"]>[number]) =>
     r.status === "PREVISAO_PENDENTE" || !r.data ? null
       : r.origem === "TAREFA_IATF" ? inputHorarioIatf(r.data, r.precisaoTemporal) : r.data.slice(0, 10);
-  const retornos = (dados?.retornos ?? [])
+  const [busca,setBusca] = useState("");
+  const consulta = useFiltrosTabelaLocal<NonNullable<SugestoesVisita["retornos"]>[number]>([
+    {chave:"animal", naBarra: true,rotulo:"Animal",tipo:"texto",obter:r=>{const a=animais.find(a=>a.animalId===r.animalId);return `${a?.brinco??""} ${a?.nome??""}`;}},
+    {chave:"origem",rotulo:"Origem",tipo:"opcoes",obter:r=>r.origem,opcoes:Object.entries(origens).map(([valor,texto])=>({valor,texto}))},
+    {chave:"situacao",rotulo:"Situação",tipo:"opcoes",obter:r=>r.status,opcoes:Object.entries(situacoes).map(([valor,texto])=>({valor,texto}))},
+  ],()=>setPagina(1));
+  const retornos = consulta.filtrar(dados?.retornos ?? []).filter(r=>{const a=animais.find(a=>a.animalId===r.animalId);return `${a?.brinco??""} ${a?.nome??""}`.toLocaleLowerCase("pt-BR").includes(busca.toLocaleLowerCase("pt-BR"));})
     .filter(
       (r) =>
         !invalido &&
@@ -160,13 +160,14 @@ export function AcompanhamentoReprodutivo({
   }
   return (
     <Panel>
-      <CabecalhoTabela titulo="Retornos e previsões" />
+
       <div className="p-4 space-y-4">
         <p className="text-sm text-ink-3">
           Datas registradas e ações pendentes. Registros sem previsão ficam ao
           final; ausência de diagnóstico não significa resultado negativo.
         </p>
-        <div className="flex flex-wrap items-center gap-3">
+        <BarraConsulta campos={consulta.campos} edicaoFiltros={consulta.edicao} criterios={consulta.criterios}>
+          <BuscaLista rotulo="Buscar animal na agenda" placeholder="Brinco ou nome" valor={busca} onChange={v=>{setBusca(v);setPagina(1);}}/>
           <DateRangePicker
             value={{
               start: dataValida(inicio) ? dateFromIso(inicio) : null,
@@ -201,7 +202,7 @@ export function AcompanhamentoReprodutivo({
               Limpar período
             </Button>
           )}
-        </div>
+        </BarraConsulta>
         <ErrorBox
           erro={
             erro ??
@@ -218,7 +219,7 @@ export function AcompanhamentoReprodutivo({
         {carregando && <p role="status">Carregando acompanhamento…</p>}
         {!carregando && !erro && dados && (
           <>
-            <TabelaFinanceira
+            <TabelaFinanceira filtrosColunas={consulta.colunas}
               rotulo="Agenda reprodutiva"
               itens={retornos.slice((atual - 1) * 10, atual * 10)}
               chaveDe={(r) => `${r.animalId}:${r.origem}:${r.origemId}`}

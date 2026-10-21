@@ -54,6 +54,38 @@ const operacaoComResumo: Operacao = {
 };
 
 describe("OperacaoFinanceiraDetalhe", () => {
+  it("preserva seções e links sem duplicar contagens e exibe categoria e data no topo", async () => {
+    obterOperacao.mockResolvedValue(operacaoComResumo);
+    render(<OperacaoFinanceiraDetalhe operacaoId={uid(6)} onVoltar={vi.fn()} onAbrir={vi.fn()} onCorrigir={vi.fn()} />);
+    await screen.findByRole("heading", { name: "Compromissos" });
+    expect(screen.queryByRole("heading", { name: "Documentos" })).toBeNull();
+    expect(screen.queryByRole("link", { name: /Compromissos futuros/ })).toBeNull();
+    expect(document.getElementById("compromissos-operacao")).not.toBeNull();
+    expect(screen.queryByRole("link", { name: /Movimentos de estoque/ })).toBeNull();
+    expect(screen.getByText("Categoria").closest("dl")?.textContent).toContain("Sem categoria");
+    expect(document.getElementById("estoque-operacao")).not.toBeNull();
+    expect(screen.getByRole("link", { name: /Entrada #1/ }).getAttribute("href")).toBe(`/estoque?movimentoId=${uid(1)}`);
+    expect(screen.getByText(/Data da operação:/).closest("time")?.getAttribute("dateTime")).toBe("2026-09-02");
+  });
+  it("conserva os preços restritos também na tabela e no total dos itens", async () => {
+    obterOperacao.mockResolvedValue({ ...operacao, valorTotal: null, transacoes: [], movimentosEstoque: [], itens: operacao.itens.map(item => ({ ...item, valorUnitario: null, valorTotal: null })) });
+    render(<OperacaoFinanceiraDetalhe operacaoId={uid(6)} onVoltar={vi.fn()} onAbrir={vi.fn()} onCorrigir={vi.fn()} />);
+    const tabela = await screen.findByRole("table", { name: "Itens da operação" });
+    expect(tabela.textContent).toContain("30 kg");
+    expect(tabela.textContent).toContain("—");
+    expect(screen.queryByText(/R\$/)).toBeNull();
+    expect(screen.getByText("Total dos itens").parentElement?.textContent).toContain("—");
+  });
+  it("totaliza os itens em centavos, independentemente do valor global da operação", async () => {
+    obterOperacao.mockResolvedValue({ ...operacao, valorTotal: "1", transacoes: [], itens: [
+      { ...operacao.itens[0], valorTotal: "0.10" },
+      { ...operacao.itens[0], id: uid(2), valorTotal: "0.20" },
+    ] });
+    render(<OperacaoFinanceiraDetalhe operacaoId={uid(6)} onVoltar={vi.fn()} onAbrir={vi.fn()} onCorrigir={vi.fn()} />);
+    await screen.findByRole("heading", { name: "Itens da operação" });
+    expect(screen.getByText("Total dos itens").parentElement?.textContent?.replace(/\s/g, " ")).toContain("R$ 0,30");
+    expect(screen.getByRole("link", { name: /Cooperativa/ }).getAttribute("href")).toContain(`parceiro=${uid(1)}`);
+  });
   const transferencia = {
     ...operacao, tipo: "TRANSFERENCIA_ESTOQUE", descricao: "Reposição entre sítios", valorTotal: "24", itens: [], transacoes: [],
     transferencias: [{ produtoId: uid(1), produtoNome: "Vacina V3", quantidade: "2", unidade: "mL", motivo: "Reposição entre sítios", custoUnitario: "12", valorTotal: "24",
@@ -69,7 +101,7 @@ describe("OperacaoFinanceiraDetalhe", () => {
     expect(screen.getByText(/Vacina outubro/).closest("li")?.textContent).toMatch(/2 mL · Validade 31\/12\/2026/);
     expect(screen.getByRole("link", { name: "Saída #31 · Confirmada" }).getAttribute("href")).toBe(`/estoque?movimentoId=${uid(31)}&propriedadeId=3`);
     expect(screen.getByRole("link", { name: "Entrada #32 · Confirmada" }).getAttribute("href")).toBe(`/estoque?movimentoId=${uid(32)}&propriedadeId=4`);
-    expect(screen.getByText("Deslocamentos de estoque").nextElementSibling?.textContent).toBe("1");
+    expect(screen.queryByText("Deslocamentos de estoque")).toBeNull();
     expect(screen.getByRole("heading", { name: "Valor do estoque transferido" })).toBeTruthy();
     expect(screen.getByText(/Não gera pagamento nem nova despesa financeira/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Cancelar operação" }));

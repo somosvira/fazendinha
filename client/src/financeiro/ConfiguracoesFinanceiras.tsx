@@ -1,3 +1,4 @@
+import { useRascunhoConsulta } from "./useRascunhoConsulta";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ListaCadastroFinanceiro } from "./ListaCadastroFinanceiro";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -6,6 +7,9 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { atualizarGrupoCategoria, type GrupoCategoria, atualizarCategoria, atualizarCentroCusto, atualizarConta, atualizarParceiro, atualizarProduto, obterConfiguracoesFinanceiras, type Categoria, type CentroCusto, type Conta, type ConfiguracoesFinanceiras as Config, type Parceiro, type Produto } from "./novo-api";
 import { AcoesLinha, brl, Button, type ColunaTabela, dataBR, ErrorBox, PageHeader, PaginaFinanceira, PaginaSemDados, Panel, Pill, SelectFiltro, TabelaFinanceira } from "./financeiro-ui";
 import { FormConta, TIPO_CONTA } from "./FormConta";
+import { podeVerValoresFinanceiros } from "./permissoes";
+import { DetalheParceiroConsulta } from "./ContextoOperacao";
+import "./operacoes-consulta.css";
 import { FormParceiro } from "./FormParceiro";
 import { PAPEIS_PARCEIRO, papeisDoParceiro } from "./lib/parceiros";
 import { formatarDocumento } from "./lib/validacao";
@@ -88,18 +92,19 @@ function mensagemDesativar(confirmacao: NonNullable<Confirmacao>) {
     : `${nome} deixa de aparecer em novas operações. Nenhum registro está ligado a este cadastro.`;
 }
 
-export function ConfiguracoesFinanceiras({ abaInicial = "contas", podeEditar = true }: { abaInicial?: Aba; podeEditar?: boolean }) {
+export function ConfiguracoesFinanceiras({ abaInicial = "contas", podeEditar: permiteEditar = true }: { abaInicial?: Aba; podeEditar?: boolean }) {
   const [config, setConfig] = useState<Config | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [aba, setAba] = useState<Aba>(() => { const alvo = new URLSearchParams(window.location.search).get("aba"); return alvo === "parceiros" || alvo === "produtos" || alvo === "categorias" || alvo === "grupos" || alvo === "centros" ? alvo : abaInicial; });
+  const podeEditar = permiteEditar && (aba !== "contas" || podeVerValoresFinanceiros());
   const [painel, setPainel] = useState<Painel>(null);
+  const [parceiroConsultaId, setParceiroConsultaId] = useState(() => new URLSearchParams(window.location.search).get("parceiro"));
+  const fecharConsultaParceiro = () => { setParceiroConsultaId(null); const url = new URL(window.location.href); url.searchParams.delete("parceiro"); window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash); };
   const [confirmando, setConfirmando] = useState<Confirmacao>(null);
   const [processando, setProcessando] = useState(false);
-  const [filtroPapel, setFiltroPapel] = useState("");
   const [filtroFornecedor, setFiltroFornecedor] = useState("");
   const [filtroCentro, setFiltroCentro] = useState("");
   const [filtroUso, setFiltroUso] = useState("");
-  const [filtroSituacao, setFiltroSituacao] = useState("TODOS");
   const emCurso = useRef(false);
   const executar = async (acao: () => Promise<unknown>) => {
     if (emCurso.current) return;
@@ -108,10 +113,11 @@ export function ConfiguracoesFinanceiras({ abaInicial = "contas", podeEditar = t
     catch (e) { setConfirmando(null); setErro(e instanceof Error ? e.message : String(e)); }
     finally { emCurso.current = false; setProcessando(false); }
   };
-  const carregar = useCallback(() => obterConfiguracoesFinanceiras().then(setConfig).catch((e) => setErro(e.message)), []);
+  const carregar = useCallback(() => { setErro(null); return obterConfiguracoesFinanceiras().then(setConfig).catch((e) => setErro(e.message)); }, []);
   useEffect(() => { carregar(); }, [carregar]);
 
-  if (!config) return <PaginaSemDados titulo="Configurações financeiras" descricao="Cadastros que sustentam as operações. Desativar preserva todo o histórico e permite reativação." label="Carregando configurações financeiras" erro={erro} />;
+  const edicaoProdutos = useRascunhoConsulta({ fornecedor: filtroFornecedor, centro: filtroCentro, uso: filtroUso }, { fornecedor: "", centro: "", uso: "" }, v => { setFiltroFornecedor(v.fornecedor); setFiltroCentro(v.centro); setFiltroUso(v.uso); });
+  if (!config) return <PaginaSemDados titulo="Configurações financeiras" descricao="" label="Carregando configurações financeiras" erro={erro} onTentarNovamente={() => { void carregar(); }} />;
 
   const trocarAba = (nova: Aba) => { setAba(nova); setPainel(null); setConfirmando(null); };
   const abrirNovo = (entidade: EntidadePainel) => { if (podeEditar && !emCurso.current) setPainel({ entidade, modo: "novo" }); };
@@ -161,6 +167,7 @@ export function ConfiguracoesFinanceiras({ abaInicial = "contas", podeEditar = t
   const aoSalvar = async () => { setPainel(null); await carregar(); };
 
   const contaSelecionada = painel?.entidade === "conta" && painel.modo === "editar" ? config.contas.find((c) => c.id === painel.id) ?? null : null;
+  const parceiroEmConsulta = parceiroConsultaId ? config.parceiros.find(p => p.id === parceiroConsultaId) : null;
   const parceiroSelecionado = painel?.entidade === "parceiro" && painel.modo === "editar" ? config.parceiros.find((p) => p.id === painel.id) ?? null : null;
   const produtosCadastro = config.produtosCadastro ?? config.produtos;
   const produtoSelecionado = painel?.entidade === "produto" && painel.modo === "editar" ? produtosCadastro.find((p) => p.id === painel.id) ?? null : null;
@@ -175,10 +182,9 @@ export function ConfiguracoesFinanceiras({ abaInicial = "contas", podeEditar = t
   const produtosFiltrados = produtosCadastro.filter((produto) => {
     const fornecedorOk = filtroFornecedor === "SEM" ? !produto.fornecedores?.length : !filtroFornecedor || produto.fornecedores?.some((f) => f.id === filtroFornecedor);
     const centroOk = filtroCentro === "SEM" ? !produto.centrosCusto?.length : !filtroCentro || produto.centrosCusto?.some((c) => c.id === filtroCentro);
-    const situacaoOk = filtroSituacao === "TODOS" || (filtroSituacao === "ATIVOS" ? produto.ativo !== false : produto.ativo === false);
     const usoOk = !filtroUso || (filtroUso === "SEM" ? !produto.usoGenetico && !produto.usoSanitario && !produto.usoNutricional
       : !!produto[filtroUso as "usoGenetico" | "usoSanitario" | "usoNutricional"]);
-    return fornecedorOk && centroOk && situacaoOk && usoOk;
+    return fornecedorOk && centroOk && usoOk;
   });
   const acao = aba === "categorias"
     ? <Button onClick={() => abrirNovo("categoria")}><Plus size={16} /> Nova categoria</Button>
@@ -186,30 +192,27 @@ export function ConfiguracoesFinanceiras({ abaInicial = "contas", podeEditar = t
     : <Button onClick={() => abrirNovo(aba === "contas" ? "conta" : aba === "parceiros" ? "parceiro" : aba === "produtos" ? "produto" : "centro")}><Plus size={16} /> {aba === "contas" ? "Nova conta" : aba === "parceiros" ? "Novo parceiro" : aba === "produtos" ? "Novo produto" : "Novo centro de custo"}</Button>;
 
   return <PaginaFinanceira colorida>
-    <PageHeader eyebrow="" titulo="Configurações financeiras" descricao="Cadastros que sustentam as operações. Desativar preserva todo o histórico e permite reativação." acao={podeEditar ? acao : undefined} />
+    <PageHeader titulo="Configurações financeiras" descricao="Mantenha contas, parceiros, produtos e classificações usados nos lançamentos." />
     <ErrorBox erro={erro} />
     {!podeEditar && <p className="mt-4 rounded-lg border border-border bg-muted px-4 py-3 text-sm text-ink-3">Você tem acesso de consulta a estes cadastros.</p>}
-    <Tabs value={aba} onValueChange={v => trocarAba(v as Aba)} className="mt-4 min-w-0">
+    <Tabs value={aba} onValueChange={v => trocarAba(v as Aba)} className="min-w-0">
       <TabsList aria-label="Cadastros financeiros" className="fin-abas grid h-auto group-data-[orientation=horizontal]/tabs:h-auto w-full grid-cols-2 gap-1 p-1 sm:grid-cols-3 xl:grid-cols-6">{([["contas", "Contas financeiras", Building2], ["parceiros", "Clientes e fornecedores", Users], ["produtos", "Produtos", Package], ["categorias", "Categorias", Tags], ["grupos", "Grupos de categorias", Tags], ["centros", "Centros de custo", Target]] as const).map(([k, label, Icon]) => <TabsTrigger key={k} value={k} onClick={() => trocarAba(k)} className="min-h-11 whitespace-normal px-3 text-left"><Icon size={16} strokeWidth={1.8} aria-hidden="true" />{label}</TabsTrigger>)}</TabsList>
       <TabsContent value={aba}>
     <fieldset disabled={processando} aria-busy={processando} className="min-w-0">
-      {aba === "contas" && <ListaCadastroFinanceiro key="contas" rotulo="Contas financeiras" itens={config.contas} colunas={colunasContas((c) => editar("conta", c), alternarConta).filter(coluna => podeEditar || !coluna.acoes)} onAbrir={podeEditar ? item => editar("conta", item) : undefined} />}
-      {aba === "parceiros" && <ListaCadastroFinanceiro key="parceiros" rotulo="Clientes e fornecedores" itens={config.parceiros.filter(p => !filtroPapel || papeisDoParceiro(p).includes(filtroPapel as keyof typeof PAPEIS_PARCEIRO))} colunas={colunasParceiros((p) => editar("parceiro", p), alternarParceiro).filter(coluna => podeEditar || !coluna.acoes)} onAbrir={podeEditar ? item => editar("parceiro", item) : undefined} termosDe={p => `${p.nome} ${p.documento ?? ""} ${p.email ?? ""} ${p.telefone ?? ""}`} filtros={<label className="fin-filtro-campo text-sm font-medium">Papel<SelectFiltro rotulo="Papel do parceiro" valor={filtroPapel} onChange={setFiltroPapel} opcoes={[{ valor: "", texto: "Todos os papéis" }, ...Object.entries(PAPEIS_PARCEIRO).map(([valor, texto]) => ({ valor, texto }))]} className="fin-filtro-campo mt-1" /></label>} />}
-      {aba === "produtos" && <ListaCadastroFinanceiro key="produtos" rotulo="Produtos" rotuloBusca="Buscar produto" mostrarSituacao={false} itens={produtosFiltrados} colunas={colunasProdutos((p) => editar("produto", p), alternarProduto, podeEditar)} onAbrir={p => editar("produto", p)} filtros={<>
-        <label className="fin-filtro-campo text-sm font-medium">Fornecedor<SelectFiltro rotulo="Filtrar por fornecedor" valor={filtroFornecedor} onChange={setFiltroFornecedor} opcoes={[{ valor: "", texto: "Todos os fornecedores" }, { valor: "SEM", texto: "Sem fornecedor" }, ...config.parceiros.filter((p) => papeisDoParceiro(p).includes("FORNECEDOR")).map((p) => ({ valor: String(p.id), texto: p.nome }))]} className="fin-filtro-campo mt-1" /></label>
-        <label className="fin-filtro-campo text-sm font-medium">Centro de custo<SelectFiltro rotulo="Filtrar por centro de custo" valor={filtroCentro} onChange={setFiltroCentro} opcoes={[{ valor: "", texto: "Todos os centros" }, { valor: "SEM", texto: "Sem centro" }, ...config.centrosCusto.filter((c) => c.ativo).map((c) => ({ valor: String(c.id), texto: c.nome }))]} className="fin-filtro-campo mt-1" /></label>
-        <label className="fin-filtro-campo text-sm font-medium">Uso<SelectFiltro rotulo="Filtrar por uso" valor={filtroUso} onChange={setFiltroUso} opcoes={[{ valor: "", texto: "Todos os usos" }, { valor: "usoGenetico", texto: "Uso genético" }, { valor: "usoSanitario", texto: "Uso sanitário" }, { valor: "usoNutricional", texto: "Uso nutricional" }, { valor: "SEM", texto: "Sem uso específico" }]} className="fin-filtro-campo mt-1" /></label>
-        <label className="fin-filtro-campo text-sm font-medium">Situação<SelectFiltro rotulo="Filtrar por situação" valor={filtroSituacao} onChange={setFiltroSituacao} opcoes={[{ valor: "TODOS", texto: "Ativos e inativos" }, { valor: "ATIVOS", texto: "Ativos" }, { valor: "INATIVOS", texto: "Inativos" }]} className="fin-filtro-campo mt-1" /></label>
-        {(filtroFornecedor || filtroCentro || filtroUso || filtroSituacao !== "TODOS") && <Button secondary className="shrink-0" onClick={() => { setFiltroFornecedor(""); setFiltroCentro(""); setFiltroUso(""); setFiltroSituacao("TODOS"); }}>Limpar filtros</Button>}
-      </>} />}
-      {aba === "categorias" && <ListaCadastroFinanceiro key="categorias" rotulo="Categorias financeiras" itens={categorias} termosDe={c => `${c.nome} ${c.grupo?.nome ?? "Sem grupo"}`} colunas={colunasCategorias((c) => editar("categoria", c), alternarCategoria).filter(coluna => podeEditar || !coluna.acoes)} onAbrir={podeEditar ? item => editar("categoria", item) : undefined} />}
-      {aba === "grupos" && <ListaCadastroFinanceiro key="grupos" rotulo="Grupos de categorias" itens={grupos} colunas={colunasGrupos(g => editar("grupo", g), alternarGrupo).filter(coluna => podeEditar || !coluna.acoes)} onAbrir={podeEditar ? item => editar("grupo", item) : undefined} />}
-      {aba === "centros" && <ListaCadastroFinanceiro key="centros" rotulo="Centros de custo" itens={config.centrosCusto} colunas={colunasCentros((c) => editar("centro", c), alternarCentro).filter(coluna => podeEditar || !coluna.acoes)} onAbrir={podeEditar ? item => editar("centro", item) : undefined} />}
+      {aba === "contas" && <ListaCadastroFinanceiro acao={podeEditar ? acao : undefined} key="contas" rotulo="Contas financeiras" itens={config.contas} colunas={colunasContas((c) => editar("conta", c), alternarConta).filter(coluna => podeEditar || !coluna.acoes)} onAbrir={podeEditar ? item => editar("conta", item) : undefined} />}
+      {aba === "parceiros" && <ListaCadastroFinanceiro acao={podeEditar ? acao : undefined} key="parceiros" rotulo="Clientes e fornecedores" itens={config.parceiros} camposLocais={[{chave:"papel",rotulo:"Papel do parceiro",tipo:"opcoes",obter:p=>papeisDoParceiro(p),opcoes:Object.entries(PAPEIS_PARCEIRO).map(([valor,texto])=>({valor,texto}))},{chave:"documento",naBarra:true,rotulo:"Documento",tipo:"texto",obter:p=>p.documento},{chave:"contato",naBarra:true,rotulo:"Contato",tipo:"texto",obter:p=>[p.telefone,p.email].filter(Boolean).join(" ")}]} colunas={colunasParceiros((p) => editar("parceiro", p), alternarParceiro).filter(coluna => podeEditar || !coluna.acoes)} onAbrir={podeEditar ? item => editar("parceiro", item) : undefined} termosDe={p => `${p.nome} ${p.documento ?? ""} ${p.email ?? ""} ${p.telefone ?? ""}`} />}
+      {aba === "produtos" && <ListaCadastroFinanceiro acao={podeEditar ? acao : undefined} key="produtos" rotulo="Produtos" rotuloBusca="Buscar produto" itens={produtosFiltrados} colunas={colunasProdutos((p) => editar("produto", p), alternarProduto, podeEditar)} onAbrir={p => editar("produto", p)} edicaoFiltros={edicaoProdutos} filtrosAdicionais={<><label className="fin-filtro-campo text-sm font-medium">Fornecedor<SelectFiltro rotulo="Filtrar por fornecedor" valor={edicaoProdutos.rascunho.fornecedor} onChange={v => edicaoProdutos.editar("fornecedor", v)} opcoes={[{ valor: "", texto: "Todos os fornecedores" }, { valor: "SEM", texto: "Sem fornecedor" }, ...config.parceiros.filter((p) => papeisDoParceiro(p).includes("FORNECEDOR")).map((p) => ({ valor: String(p.id), texto: p.nome }))]} className="fin-filtro-campo mt-1" /></label>
+<label className="fin-filtro-campo text-sm font-medium">Centro de custo<SelectFiltro rotulo="Filtrar por centro de custo" valor={edicaoProdutos.rascunho.centro} onChange={v => edicaoProdutos.editar("centro", v)} opcoes={[{ valor: "", texto: "Todos os centros" }, { valor: "SEM", texto: "Sem centro" }, ...config.centrosCusto.filter((c) => c.ativo).map((c) => ({ valor: String(c.id), texto: c.nome }))]} className="fin-filtro-campo mt-1" /></label>
+<label className="fin-filtro-campo text-sm font-medium">Uso<SelectFiltro rotulo="Filtrar por uso" valor={edicaoProdutos.rascunho.uso} onChange={v => edicaoProdutos.editar("uso", v)} opcoes={[{ valor: "", texto: "Todos os usos" }, { valor: "usoGenetico", texto: "Uso genético" }, { valor: "usoSanitario", texto: "Uso sanitário" }, { valor: "usoNutricional", texto: "Uso nutricional" }, { valor: "SEM", texto: "Sem uso específico" }]} className="fin-filtro-campo mt-1" /></label></>} criteriosAdicionais={[...(filtroFornecedor ? [{id:"fornecedor",rotulo:`Fornecedor: ${config.parceiros.find(p=>String(p.id)===filtroFornecedor)?.nome ?? "Sem fornecedor"}`,limpar:()=>setFiltroFornecedor("")}] : []),...(filtroCentro ? [{id:"centro",rotulo:`Centro: ${config.centrosCusto.find(c=>String(c.id)===filtroCentro)?.nome ?? "Sem centro"}`,limpar:()=>setFiltroCentro("")}] : []),...(filtroUso ? [{id:"uso",rotulo:`Uso: ${{usoGenetico:"Genético",usoSanitario:"Sanitário",usoNutricional:"Nutricional",SEM:"Sem uso específico"}[filtroUso] ?? filtroUso}`,limpar:()=>setFiltroUso("")}] : [])]} onLimparAdicionais={()=>{setFiltroFornecedor("");setFiltroCentro("");setFiltroUso("");}} />}
+      {aba === "categorias" && <ListaCadastroFinanceiro acao={podeEditar ? acao : undefined} key="categorias" rotulo="Categorias financeiras" itens={categorias} termosDe={c => `${c.nome} ${c.grupo?.nome ?? "Sem grupo"}`} colunas={colunasCategorias((c) => editar("categoria", c), alternarCategoria).filter(coluna => podeEditar || !coluna.acoes)} onAbrir={podeEditar ? item => editar("categoria", item) : undefined} />}
+      {aba === "grupos" && <ListaCadastroFinanceiro acao={podeEditar ? acao : undefined} key="grupos" rotulo="Grupos de categorias" itens={grupos} colunas={colunasGrupos(g => editar("grupo", g), alternarGrupo).filter(coluna => podeEditar || !coluna.acoes)} onAbrir={podeEditar ? item => editar("grupo", item) : undefined} />}
+      {aba === "centros" && <ListaCadastroFinanceiro acao={podeEditar ? acao : undefined} key="centros" rotulo="Centros de custo" itens={config.centrosCusto} colunas={colunasCentros((c) => editar("centro", c), alternarCentro).filter(coluna => podeEditar || !coluna.acoes)} onAbrir={podeEditar ? item => editar("centro", item) : undefined} />}
     </fieldset>
       </TabsContent>
     </Tabs>
 
     {painel?.entidade === "conta" && <FormConta key={chavePainel} aberto conta={contaSelecionada} ordemInicial={config.contas.reduce((maior, conta) => Math.max(maior, conta.ordem ?? 0), -1) + 1} onSalvo={aoSalvar} onFechar={() => setPainel(null)} />}
+    {parceiroEmConsulta && <DetalheParceiroConsulta parceiro={parceiroEmConsulta} onFechar={fecharConsultaParceiro} />}
     {painel?.entidade === "parceiro" && <FormParceiro key={chavePainel} aberto parceiro={parceiroSelecionado} onSalvo={aoSalvar} onFechar={() => setPainel(null)} />}
     {painel?.entidade === "produto" && <FormProduto key={chavePainel} somenteLeitura={!podeEditar} produto={produtoSelecionado} parceiros={config.parceiros} categorias={categorias} centros={config.centrosCusto} onSalvo={aoSalvar} onFechar={() => setPainel(null)} />}
     {painel?.entidade === "categoria" && <FormCategoria key={chavePainel} categoria={categoriaSelecionada} grupos={grupos} ordemInicial={categorias.reduce((maior, categoria) => Math.max(maior, categoria.ordem), -1) + 1} onSalvo={aoSalvar} onFechar={() => setPainel(null)} />}

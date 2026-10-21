@@ -1,11 +1,14 @@
+import { useDescarteTrabalhoAtivo } from "./descarteTrabalhoAtivo";
 import { previaDesconto } from "./lib/composicaoCompra";
 import { PageHeader } from "./financeiro-ui";
+import { podeVerValoresFinanceiros } from "./permissoes";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import { Button as UiButton } from "@/components/ui/button";
 import { SelectCampo } from "./SelectCampo";
 import { Textarea } from "@/components/ui/textarea";
+import { DatePicker } from "@/components/DatePicker";
 import { type ChangeEvent, type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { SelecaoPartidas, conferirDistribuicaoPartidas, ErroDistribuicaoPartidas, type DistribuicaoPartida } from "../estoque/SelecaoPartidas";
 import { ArrowUpDown, ChartPie, CircleAlert, FileText, Info, ListChecks, Loader2, Package, Paperclip, Plus, Trash2, Wand2 } from "lucide-react";
@@ -14,7 +17,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "../components/ui/popove
 import { getPropriedadeAtiva } from "../propriedadeScope";
 import { listarPropriedades } from "@/api/propriedades";
 import { anexarDocumentoOperacao, anexarDocumentoRascunho, ApiError, atualizarDocumentoRascunho, confirmarRascunhoOperacao, criarOperacao, descartarRascunhoOperacao, registrarAjusteEstoque, removerDocumentoRascunho, salvarRascunhoOperacao, simularParcelasOperacao, type ConfiguracoesFinanceiras, type DocumentoFinanceiro, type Operacao, type RascunhoOperacao, type SimulacaoParcelas } from "./novo-api";
-import { brl, Button, emDias, ErrorBox, hoje, ReviewLine, TIPO_OPERACAO } from "./financeiro-ui";
+import { brl, Button, emDias, ErrorBox, hoje, TIPO_OPERACAO } from "./financeiro-ui";
+import { LinhaPrevia as ReviewLine } from "./LinhaPrevia";
 import { FORMAS_PAGAMENTO, parceiroCompativel, parcelasSugeridas } from "./lib/parceiros";
 import { deCentavos, paraCentavos, somarParcelas, type FrequenciaParcelas } from "./lib/parcelas";
 import { atualizarDocumentosRascunho, concluirEdicaoRascunho, contextoEdicaoRascunho, enfileirarSalvamentoRascunho, estadoRascunhoAtivo, guardarEdicaoRascunho, marcarEdicaoRascunho } from "./rascunhoAtivo";
@@ -98,8 +102,10 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   // Aberto pelo atalho do Estoque (tipoInicial = ajuste): ignora o conteúdo do
   // rascunho — o ajuste não usa rascunho e não deve herdar/atropelar o dele.
   const atalhoAjuste = !operacaoBase && tipoInicial === TIPO_AJUSTE;
-  const [recuperacaoInicial] = useState(() => !operacaoBase && !atalhoAjuste ? estadoRascunhoAtivo().recuperacao : null);
-  const inicial = (!operacaoBase && !atalhoAjuste ? recuperacaoInicial?.dados.formulario ?? rascunho?.dados.formulario : null) as Partial<EstadoFormulario> | null;
+  const podeRascunho = podeVerValoresFinanceiros();
+  const [confirmarSaida, setConfirmarSaida] = useState(false);
+  const [recuperacaoInicial] = useState(() => podeRascunho && !operacaoBase && !atalhoAjuste ? estadoRascunhoAtivo().recuperacao : null);
+  const inicial = (podeRascunho && !operacaoBase && !atalhoAjuste ? recuperacaoInicial?.dados.formulario ?? rascunho?.dados.formulario : null) as Partial<EstadoFormulario> | null;
   const transacaoBase = operacaoBase?.transacoes.find((item) => item.tipo !== "REVERSAO");
   const temCompromissos = !!operacaoBase?.compromissos.length;
   const condicaoBase: Condicao = inicial?.condicao ?? (!operacaoBase ? condicaoInicial ?? (tipoInicial && !TIPOS_FINANCEIROS.has(tipoInicial) ? "SEM_EFEITO_FINANCEIRO" : "A_VISTA") : transacaoBase && temCompromissos ? "PARCIAL" : temCompromissos ? "A_PRAZO" : transacaoBase ? "A_VISTA" : "SEM_EFEITO_FINANCEIRO");
@@ -110,11 +116,11 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   const [valorOperacao, setValorOperacao] = useState(inicial?.valorOperacao ?? operacaoBase?.valorTotal ?? "");
   // Rascunhos salvos antes do centro de custo por item existir podem trazer
   // `itens` sem `centroCustoId` (campo ausente, não ""): normaliza na
-  // hidratação pra manter os <select> controlados e a validação de "item não
+  // hidratação pra manter os <SelectCampo> controlados e a validação de "item não
   // estocável sem centro efetivo" consistente com o fluxo de edição manual.
   const [itens, setItens] = useState<ItemForm[]>(() => inicial?.itens
     ? inicial.itens.map((item) => ({ ...item, centroCustoId: item.centroCustoId ?? "" }))
-    : (operacaoBase?.itens.length ? operacaoBase.itens.filter(item => !operacaoBase.composicaoComercial?.logistica || item.ordem <= operacaoBase.composicaoComercial.itens.length).map((item) => ({ elegivelDesconto: operacaoBase.composicaoComercial?.itens.find(p => p.ordem === item.ordem)?.elegivel, id: proximoId++, categoriaId: String(item.categoriaId ?? ""), classificacao: item.classificacao ?? "", centroCustoId: String(item.centroCustoId ?? ""), produtoId: item.produtoId ? String(item.produtoId) : "", descricao: item.descricao, quantidade: item.quantidade, unidade: item.unidade, modoValor: operacaoBase.composicaoComercial ? "TOTAL" : "UNITARIO", valorUnitario: item.valorUnitario, valorTotal: operacaoBase.composicaoComercial?.itens.find(p => p.ordem === item.ordem)?.bruto ?? item.valorTotal })) : [novoItem()]));
+    : (operacaoBase?.itens.length ? operacaoBase.itens.filter(item => !operacaoBase.composicaoComercial?.logistica || item.ordem <= operacaoBase.composicaoComercial.itens.length).map((item) => ({ elegivelDesconto: operacaoBase.composicaoComercial?.itens.find(p => p.ordem === item.ordem)?.elegivel, id: proximoId++, categoriaId: String(item.categoriaId ?? ""), classificacao: item.classificacao ?? "", centroCustoId: String(item.centroCustoId ?? ""), produtoId: item.produtoId ? String(item.produtoId) : "", descricao: item.descricao, quantidade: item.quantidade, unidade: item.unidade, modoValor: operacaoBase.composicaoComercial ? "TOTAL" : "UNITARIO", valorUnitario: item.valorUnitario ?? "", valorTotal: operacaoBase.composicaoComercial?.itens.find(p => p.ordem === item.ordem)?.bruto ?? item.valorTotal ?? "" })) : [novoItem()]));
   const [referenciaValor, setReferenciaValor] = useState(inicial?.referenciaValor ?? "");
   const [evidenciaValor, setEvidenciaValor] = useState(inicial?.evidenciaValor ?? "");
   const [descontoComercial, setDescontoComercial] = useState(inicial?.descontoComercial ?? operacaoBase?.composicaoComercial?.descontoComercial ?? "");
@@ -141,13 +147,13 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   const [formaPagamento, setFormaPagamento] = useState(inicial?.formaPagamento ?? transacaoBase?.formaPagamento ?? "PIX");
   const [data, setData] = useState(inicial?.data ?? hoje());
   const [valorAgora, setValorAgora] = useState(inicial?.valorAgora ?? (condicaoBase === "PARCIAL" ? transacaoBase?.valorTotal ?? "" : ""));
-  const [parcelas, setParcelas] = useState<ParcelaForm[]>(() => inicial?.parcelas ?? (operacaoBase?.compromissos.length ? operacaoBase.compromissos.map((item) => ({ id: proximoId++, valor: item.valorOriginal, vencimento: item.dataVencimento.slice(0, 10) })) : [novaParcela()]));
+  const [parcelas, setParcelas] = useState<ParcelaForm[]>(() => inicial?.parcelas ?? (operacaoBase?.compromissos.length ? operacaoBase.compromissos.map((item) => ({ id: proximoId++, valor: item.valorOriginal ?? "", vencimento: item.dataVencimento.slice(0, 10) })) : [novaParcela()]));
   const [geradorParcelas, setGeradorParcelas] = useState(() => {
     const salvo = inicial?.geradorParcelas;
     return {
       quantidade: salvo?.quantidade ?? String(Math.max(1, inicial?.parcelas?.length ?? operacaoBase?.compromissos.length ?? 1)),
       // Rascunhos salvos antes da remoção da frequência "Personalizada" podem
-      // trazer esse valor do banco — o <select> só oferece SEMANAL/MENSAL, e
+      // trazer esse valor do banco — o <SelectCampo> só oferece SEMANAL/MENSAL, e
       // mandar o valor antigo pra API quebra com 422. Valida aqui na volta.
       frequencia: salvo?.frequencia === "SEMANAL" ? "SEMANAL" as const : "MENSAL" as const,
       primeiroVencimento: salvo?.primeiroVencimento ?? inicial?.parcelas?.[0]?.vencimento ?? operacaoBase?.compromissos[0]?.dataVencimento.slice(0, 10) ?? emDias(30),
@@ -160,6 +166,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   }, [rascunho?.documentos, operacaoBase, atalhoAjuste]);
   const [anexosEnviando, setAnexosEnviando] = useState<AnexoEnviando[]>([]);
   const [salvando, setSalvando] = useState(false);
+  const envioEmCurso = useRef(false);
   const [confirmarLimpeza, setConfirmarLimpeza] = useState(false);
   const [confirmarSugestao, setConfirmarSugestao] = useState(false);
   const [estadoSalvamento, setEstadoSalvamento] = useState<"ALTERADO" | "SALVANDO" | "SALVO" | "ERRO">(recuperacaoInicial ? recuperacaoInicial.erro ? "ERRO" : "ALTERADO" : rascunho ? "SALVO" : "ALTERADO");
@@ -351,6 +358,12 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   ), [categoriaId, centroCustoId, contaId, descricao, documentosSalvos.length, itens, parceiroId, parcelas, valorAgora, valorOperacao]);
 
   const contextoRascunho = useRef(contextoEdicaoRascunho()).current;
+  useEffect(() => {
+    if (podeRascunho || !temConteudoRascunho) return;
+    const proteger = (evento: BeforeUnloadEvent) => { evento.preventDefault(); evento.returnValue = ""; };
+    window.addEventListener("beforeunload", proteger);
+    return () => window.removeEventListener("beforeunload", proteger);
+  }, [podeRascunho, temConteudoRascunho]);
   const ultimaEdicaoRef = useRef({ dados: dadosRascunho, salvar: false });
   const concluidaRef = useRef(false);
   const persistirRascunho = async () => {
@@ -377,7 +390,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
 
   const persistirAtualRef = useRef(persistirRascunho);
   persistirAtualRef.current = persistirRascunho;
-  ultimaEdicaoRef.current = { dados: dadosRascunho, salvar: !operacaoBase && !ehAjuste && !atalhoAjuste };
+  ultimaEdicaoRef.current = { dados: dadosRascunho, salvar: podeRascunho && !operacaoBase && !ehAjuste && !atalhoAjuste };
   useEffect(() => () => {
     if (concluidaRef.current || !contextoRascunho() || !ultimaEdicaoRef.current.salvar || estadoRascunhoAtivo().recuperacao?.dados !== ultimaEdicaoRef.current.dados) return;
     if (autosaveTimerRef.current != null) window.clearTimeout(autosaveTimerRef.current);
@@ -386,7 +399,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   }, [contextoRascunho]);
 
   useEffect(() => {
-    if (operacaoBase) return;
+    if (concluidaRef.current || operacaoBase || !podeRascunho) return;
     if (!iniciouRef.current) { iniciouRef.current = true; if (!recuperacaoInicial) return; }
     // Ajuste de estoque não usa rascunho: o estado dele (produto, contagem, saldo
     // lido) é efêmero — o saldo lido envelhece e restaurá-lo geraria um
@@ -401,9 +414,9 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
     return () => { window.clearTimeout(timer); autosaveTimerRef.current = null; };
     // O payload memorizado representa integralmente o estado editavel.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dadosRascunho, operacaoBase, ehAjuste, atalhoAjuste]);
+  }, [dadosRascunho, operacaoBase, ehAjuste, atalhoAjuste, podeRascunho]);
   // Acende o atalho "Trabalho ativo" da sidebar enquanto o rascunho está na tela.
-  useEffect(() => (operacaoBase || ehAjuste || atalhoAjuste ? undefined : marcarEdicaoRascunho()), [operacaoBase, ehAjuste, atalhoAjuste]);
+  useEffect(() => (operacaoBase || ehAjuste || atalhoAjuste || !podeRascunho ? undefined : marcarEdicaoRascunho()), [operacaoBase, ehAjuste, atalhoAjuste, podeRascunho]);
 
   const atualizarItem = (id: number, patch: Partial<ItemForm>) => {
     setItens((atuais) => atuais.map((item) => item.id === id ? { ...item, ...patch } : item));
@@ -457,7 +470,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   // ele ainda estiver vazio ou com o valor da última sugestão aplicada — nunca
   // um valor que o usuário tenha digitado nesse meio-tempo.
   const buscarSugestaoPreco = (itemId: number, produtoId: string, parceiroBusca: string, valorAntesDaBusca: string, sugestaoAnterior?: { produtoId: string; valor: string }) => {
-    if (!SUGERE_ULTIMO_PRECO.has(tipo)) return;
+    if (!podeRascunho || !SUGERE_ULTIMO_PRECO.has(tipo)) return;
     obterUltimoPreco(produtoId, parceiroBusca || undefined).then((ultimo) => {
       if (!ultimo?.valorUnitario) {
         // Sem compra anterior: sem sugestão pra preencher — mostra o custo médio
@@ -656,7 +669,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
 
   const submit = async (evento: FormEvent) => {
     evento.preventDefault();
-    if (anexosEnviando.length || ajusteConsolidado) return;
+    if (envioEmCurso.current || concluidaRef.current || anexosEnviando.length || ajusteConsolidado) return;
     if (!podeConfirmar) {
       const invalido = encontrarPrimeiroCampoInvalido();
       if (invalido) {
@@ -665,6 +678,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
       }
       return;
     }
+    envioEmCurso.current = true;
     setErroConfirmacao(null);
     if (autosaveTimerRef.current != null) { window.clearTimeout(autosaveTimerRef.current); autosaveTimerRef.current = null; }
     setCampoInvalido(null);
@@ -685,7 +699,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
         return;
       }
       let operacao: Operacao;
-      if (operacaoBase) operacao = await criarOperacao(operacaoRascunho);
+      if (operacaoBase || !podeRascunho) operacao = await criarOperacao(operacaoRascunho);
       else {
         let pendente = confirmacaoPendenteRef.current;
         if (pendente?.chave !== operacaoRascunho.chave) {
@@ -722,7 +736,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
         setCampoInvalido(mapeado.campo);
         setFocoPendente(mapeado);
       }
-    } finally { setSalvando(false); }
+    } finally { envioEmCurso.current = false; setSalvando(false); }
   };
 
   const rolarAteCampo = (alvo: HTMLElement) => {
@@ -744,6 +758,24 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
     }
     catch (falha) { setErro(falha instanceof Error ? falha.message : String(falha)); setSalvando(false); }
   };
+
+  useDescarteTrabalhoAtivo("operacao", async () => {
+    if (!contextoRascunho()) throw new Error("O sítio ou a sessão mudou. Reabra a operação no contexto original.");
+    if (envioEmCurso.current || salvando || anexosEnviando.length) throw new Error("Aguarde a operação em andamento antes de excluir este rascunho.");
+    concluidaRef.current = true;
+    setSalvando(true);
+    if (autosaveTimerRef.current != null) { window.clearTimeout(autosaveTimerRef.current); autosaveTimerRef.current = null; }
+    try {
+      await enfileirarSalvamentoRascunho(() => {
+        if (!contextoRascunho()) throw new Error("O sítio ou a sessão mudou. Reabra a operação no contexto original.");
+        return descartarRascunhoOperacao();
+      });
+    } catch (falha) {
+      concluidaRef.current = false; setSalvando(false);
+      if (contextoRascunho()) guardarEdicaoRascunho(ultimaEdicaoRef.current.dados);
+      throw falha;
+    }
+  }, !operacaoBase && !ehAjuste && !atalhoAjuste && podeRascunho);
 
   const removerDocumentoSalvo = async (id: string) => {
     try { await removerDocumentoRascunho(id); if (contextoRascunho()) atualizarDocumentosRascunho((atuais) => atuais.filter((documento) => documento.id !== id)); setDocumentosSalvos((atuais) => atuais.filter((documento) => documento.id !== id)); }
@@ -775,7 +807,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
     {/* noValidate: a validação é 100% nossa (encontrarPrimeiroCampoInvalido) —
      * sem isso, a validação nativa do navegador bloqueia o evento de submit
      * antes do nosso onSubmit rodar sempre que um campo `required` estiver
-     * vazio (ou, pior, quando um <select required> perde a opção selecionada
+     * vazio (ou, pior, quando um <SelectCampo required> perde a opção selecionada
      * — o valor no DOM cai para "" e o navegador trata como vazio), o que
      * impediria exatamente o comportamento de rolar+focar que construímos. */}
     <style>{`.shell-wide.pagina-operacao { box-sizing: border-box; padding-top: 16px; padding-bottom: 16px; overflow: hidden; } @media (max-width: 900px) { .shell-wide.pagina-operacao { padding-top: 56px; } }`}</style>
@@ -788,7 +820,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
           <h3 className="mb-3 flex items-center gap-3 text-sm font-semibold text-ink"><span className="fin-section-icon fin-form-icon"><Info aria-hidden /></span>Identificação</h3>
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             <label className="text-sm font-medium">Tipo de operação<SelectCampo aria-label="Tipo de operação" disabled={atalhoAjuste} className={SELECT} value={tipo} onValueChange={(valor) => alterarTipo(valor)}>{Object.entries(TIPO_OPERACAO).filter(([chave]) => !["TRANSFERENCIA_FINANCEIRA", "TRANSFERENCIA_ESTOQUE", "APORTE", "RETIRADA"].includes(chave)).map(([chave, nome]) => <option key={chave} value={chave}>{nome}</option>)}</SelectCampo>{atalhoAjuste && <span className="mt-1 block text-xs font-normal text-ink-3">Ajuste de estoque — para outro tipo de operação, abra Nova operação.</span>}</label>
-            {!ehAjuste && <label className="text-sm font-medium">Data<Input aria-label="Data" required type="date" className={CAMPO} value={data} onChange={(e) => setData(e.target.value)} /></label>}
+            {!ehAjuste && <label className="text-sm font-medium">Data<DatePicker id="campo-data" aria-label="Data" required className="mt-1.5" value={data} onChange={setData} /></label>}
             {exigeParceiro && <label className="text-sm font-medium">{parceiroLabel(tipo)} *<SelectCampo id="campo-parceiroId" aria-label={parceiroLabel(tipo)} aria-invalid={campoInvalido === "parceiroId" || undefined} aria-describedby={campoInvalido === "parceiroId" ? "erro-parceiroId" : undefined} required className={SELECT + classeCampoErro("parceiroId")} value={parceiroId} onValueChange={(valor) => { setParceiroId(valor); limparCampoInvalido("parceiroId"); }}><option value="">Selecione</option>{parceiros.map((parceiro) => <option key={parceiro.id} value={parceiro.id}>{parceiro.nome}</option>)}</SelectCampo>{campoInvalido === "parceiroId" && <CampoErro id="erro-parceiroId">Selecione um parceiro válido.</CampoErro>}</label>}
             {!ehAjuste && campoDescricao}
           </div>
@@ -820,11 +852,13 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
           <Button type="button" secondary disabled={salvando || (parceiroSelecionado.condicaoPagamentoPreferida === "A_PRAZO" && !sugestaoParcelas.length)} onClick={() => setConfirmarSugestao(true)}>Usar sugestão</Button>
         </div>}
         <EfeitoFinanceiro permite={permiteFinanceiro} condicao={condicao} alterarCondicao={alterarCondicao} contaId={contaId} setContaId={setContaId} formaPagamento={formaPagamento} setFormaPagamento={setFormaPagamento} config={config} valorAgora={valorAgora} setValorAgora={setValorAgora} total={totalFinanceiro} parcelas={parcelas} setParcelas={setParcelas} somaParcelasConfere={somaParcelasConfere} saldoFuturo={saldoFuturoFinanceiro} entradaSimulacao={entradaSimulacao} assinaturaSimulacao={assinaturaSimulacao} onSimulacao={(resultado) => setSimulacao({ assinatura: assinaturaSimulacao, resultado })} geradorParcelas={geradorParcelas} setGeradorParcelas={setGeradorParcelas} campoInvalido={campoInvalido} limparCampoInvalido={limparCampoInvalido} />
-        {!ehAjuste && !atalhoAjuste && <Documentos anexos={anexos} setAnexos={setAnexos} anexosEnviando={anexosEnviando} documentosSalvos={documentosSalvos}atualizarDocumentoSalvo={atualizarDocumentoSalvo} removerDocumentoSalvo={removerDocumentoSalvo} selecionarAnexos={selecionarAnexos} />}
-        <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4"><Button type="button" secondary disabled={salvando} onClick={() => navegarPara("/financeiro/operacoes")}>Voltar para operações</Button>{!operacaoBase && !ehAjuste && !atalhoAjuste && temConteudoRascunho && <Button type="button" secondary disabled={salvando} onClick={() => setConfirmarLimpeza(true)}>Limpar rascunho</Button>}</footer>
+        {podeRascunho && !ehAjuste && !atalhoAjuste && <Documentos anexos={anexos} setAnexos={setAnexos} anexosEnviando={anexosEnviando} documentosSalvos={documentosSalvos}atualizarDocumentoSalvo={atualizarDocumentoSalvo} removerDocumentoSalvo={removerDocumentoSalvo} selecionarAnexos={selecionarAnexos} />}
+        {!podeRascunho && <p role="status" className="rounded-lg bg-muted p-3 text-sm">Você pode registrar os valores informados nesta operação. Seu perfil não consulta valores anteriores, rascunhos ou documentos financeiros. Este formulário não é salvo ao sair.</p>}
+        <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4"><Button type="button" secondary disabled={salvando} onClick={() => { if (!podeRascunho && temConteudoRascunho) { setConfirmarSaida(true); return; } navegarPara("/financeiro/operacoes"); }}>Voltar para operações</Button>{podeRascunho && !operacaoBase && !ehAjuste && !atalhoAjuste && temConteudoRascunho && <Button type="button" secondary disabled={salvando} onClick={() => setConfirmarLimpeza(true)}>Limpar rascunho</Button>}</footer>
       </div>
-      <aside data-testid="resumo-operacao" className="fin-criacao-resumo flex min-h-0 min-w-0 flex-col rounded-2xl border border-border bg-card text-ink"><Collapsible open={resumoAberto} onOpenChange={setResumoAberto} className="max-h-[40dvh] min-h-0 overflow-y-auto lg:max-h-none lg:flex-1"><CollapsibleTrigger asChild><UiButton type="button" variant="ghost" className="w-full justify-between lg:hidden">Revisar efeitos · {brl(total)}</UiButton></CollapsibleTrigger><CollapsibleContent forceMount className="data-[state=closed]:hidden lg:data-[state=closed]:block"><div data-testid="conteudo-resumo-operacao" className="min-h-0 p-4 lg:flex-1 lg:overflow-y-auto"><div className="flex items-center gap-2 text-xs font-semibold text-primary"><span className="fin-section-icon fin-form-icon"><ListChecks aria-hidden /></span>Revisão dos efeitos</div><div className="mt-3 text-3xl font-semibold tabular-nums text-primary">{ehAjuste ? (diferencaMilesimos === null ? "—" : `${fmtDiferenca(diferencaMilesimos / 1000)} ${unidadeAjuste}`) : brl(total)}</div>{ehAjuste && <div className="mt-1 text-xs text-ink-3">Diferença de estoque</div>}{comItens && <div className="mt-3 border-y border-border py-3"><div className="mb-3 flex items-center gap-2 text-xs font-semibold text-primary"><span className="fin-section-icon fin-form-icon"><Package aria-hidden /></span>Itens da operação</div><div className="space-y-2">{itens.map((item) => { const produto = config.produtos.find((produtoAtual) => produtoAtual.id === item.produtoId); return <div key={item.id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 text-xs leading-4"><div className="min-w-0"><div className="truncate font-medium text-ink">{produto?.nome || item.descricao || "Produto não selecionado"}</div><div className="text-ink-3">{Number(item.quantidade || 0).toLocaleString("pt-BR")} {produto ? rotuloUnidade(produto.unidade) : (item.unidade || "un")}</div></div><strong className="self-center whitespace-nowrap text-ink">{brl(totalItem(item))}</strong></div>; })}</div></div>}<div className={ehAjuste ? "hidden" : "mt-4 flex flex-wrap gap-3 text-xs"}><div className="space-y-2"><p className="flex items-center gap-2 font-semibold text-ink-3"><span className="fin-section-icon fin-form-icon"><ChartPie aria-hidden /></span>Valores por categoria</p>{resumoCategorias.map(([nome, centavos]) => <div key={nome} className="flex justify-between gap-3"><span>{nome}</span><strong>{brl(centavos / 100)}</strong></div>)}</div>{porItem && resumoCentros.length > 0 && <div className="space-y-2"><p className="font-semibold text-ink-3">Valores por centro de custo</p>{resumoCentros.map(([nome, centavos]) => <div key={nome} className="flex justify-between gap-3"><span>{nome}</span><strong>{brl(centavos / 100)}</strong></div>)}</div>}</div><div className="mt-3 space-y-2 text-sm leading-5">{compraComComposicao && <ReviewLine>Material líquido {brl(composicaoCompra.liquidos.reduce((s,v)=>s+v,0))}; logística {brl(Number(logisticaValor||0))}. Desconto comercial {brl(Number(descontoComercial||0))}.</ReviewLine>}<ReviewLine>Registrar {TIPO_OPERACAO[tipo]?.toLowerCase()}.</ReviewLine>{ehAjuste && <ReviewLine tone="brown">{saldoProduto && diferencaMilesimos !== null && !ajusteSemDiferenca ? <>Gerar 1 movimento físico de ajuste em {saldoProduto.nome}: saldo de {fmtQuantidade(saldoProduto.saldo)} para {fmtQuantidade(contadaMilesimos / 1000)} {unidadeAjuste}.</> : "Nenhum movimento físico de estoque será gerado."}</ReviewLine>}{movimentaEstoque && <ReviewLine tone="brown">{tipo === "VENDA" || tipo === "DEVOLUCAO" ? "Movimenta o estoque dos produtos que já tiveram entrada nesta fazenda." : movimentosEstoque > 0 ? <>Gerar {movimentosEstoque} movimento{movimentosEstoque === 1 ? "" : "s"} físico{movimentosEstoque === 1 ? "" : "s"} de estoque.</> : "Nenhum movimento físico de estoque será gerado."}</ReviewLine>}{condicao === "A_VISTA" && <ReviewLine>Registrar {entradaFinanceira ? "recebimento" : "pagamento"} integral de {brl(total)}.</ReviewLine>}{condicao === "A_PRAZO" && <ReviewLine tone="amber">Criar {parcelas.length} compromisso{parcelas.length === 1 ? "" : "s"} {entradaFinanceira ? "a receber" : "a pagar"}, totalizando {brl(totalParcelas)}. O saldo não muda agora.</ReviewLine>}{condicao === "PARCIAL" && <><ReviewLine>Registrar {entradaFinanceira ? "recebimento" : "pagamento"} de {brl(realizadoAgora)} agora.</ReviewLine><ReviewLine tone="amber">Criar {parcelas.length} compromisso{parcelas.length === 1 ? "" : "s"} para o saldo de {brl(totalParcelas)}.</ReviewLine></>}{condicao === "SEM_EFEITO_FINANCEIRO" && <ReviewLine tone="neutral">Nenhuma conta financeira ou compromisso será movimentado.</ReviewLine>}{!ehAjuste && (anexos.length + documentosSalvos.length) > 0 && <ReviewLine tone="neutral">Anexar {anexos.length + documentosSalvos.length} documento{anexos.length + documentosSalvos.length === 1 ? "" : "s"} à operação.</ReviewLine>}</div></div></CollapsibleContent></Collapsible><div data-testid="confirmacao-operacao" className="shrink-0 border-t border-border p-4">{erroConfirmacao && <div id="erro-confirmacao" ref={erroConfirmacaoRef} role="alert" tabIndex={-1} className="mb-3 rounded-lg border border-destructive/30 bg-[var(--fin-danger-bg)] p-3 text-sm text-destructive">{erroConfirmacao}</div>}<p className="mb-3 text-center text-[11px] leading-4 text-ink-3">A confirmação cria somente os efeitos descritos acima.</p><Button type="submit" carregando={salvando || anexosEnviando.length > 0} disabled={salvando || anexosEnviando.length > 0 || (ehAjuste && (ajusteSemDiferenca || ajusteConsolidado))} ariaDescribedby={[erroConfirmacao ? "erro-confirmacao" : null, !podeConfirmar ? "motivo-pendencia" : null].filter(Boolean).join(" ") || undefined} className="w-full ">{salvando ? "Confirmando…" : anexosEnviando.length ? "Anexando documento…" : ehAjuste ? "Confirmar ajuste" : "Confirmar operação"}</Button>{!podeConfirmar && <p id="motivo-pendencia" role="status" className="mt-3 flex items-start gap-2 rounded-lg bg-[var(--fin-warning-bg)] p-3 text-xs leading-5 text-[var(--warn)]"><CircleAlert size={14} className="mt-px shrink-0" aria-hidden /><span>{ehAjuste && ajusteSemDiferenca ? "Nenhum ajuste necessário: a quantidade contada é igual ao saldo atual." : "Ainda há campos pendentes ou incompletos nesta operação. Revise os itens destacados para confirmar."}</span></p>}</div></aside>
+      <aside data-testid="resumo-operacao" className="fin-criacao-resumo flex min-h-0 min-w-0 flex-col rounded-2xl border border-border bg-card text-ink"><Collapsible open={resumoAberto} onOpenChange={setResumoAberto} className="max-h-[40dvh] min-h-0 overflow-y-auto lg:max-h-none lg:flex-1"><CollapsibleTrigger asChild><UiButton type="button" variant="ghost" className="w-full justify-between lg:hidden">Revisar efeitos · {brl(total)}</UiButton></CollapsibleTrigger><CollapsibleContent forceMount className="data-[state=closed]:hidden lg:data-[state=closed]:block"><div data-testid="conteudo-resumo-operacao" className="min-h-0 p-4 lg:flex-1 lg:overflow-y-auto"><div className="flex items-center gap-2 text-xs font-semibold text-primary"><span className="fin-section-icon fin-form-icon"><ListChecks aria-hidden /></span>Prévia dos efeitos</div><p className="mt-2 text-xs leading-5 text-ink-3">{podeConfirmar ? "Confira os efeitos previstos antes de confirmar. Nada foi registrado." : "Prévia incompleta. Preencha os campos obrigatórios para revisar os efeitos; nenhum fato foi registrado."}</p><div className="mt-3 text-3xl font-semibold tabular-nums text-primary">{ehAjuste ? (diferencaMilesimos === null ? "—" : `${fmtDiferenca(diferencaMilesimos / 1000)} ${unidadeAjuste}`) : brl(total)}</div>{ehAjuste && <div className="mt-1 text-xs text-ink-3">Diferença de estoque</div>}{comItens && <div className="mt-3 border-y border-border py-3"><div className="mb-3 flex items-center gap-2 text-xs font-semibold text-primary"><span className="fin-section-icon fin-form-icon"><Package aria-hidden /></span>Itens da operação</div><div className="space-y-2">{itens.map((item) => { const produto = config.produtos.find((produtoAtual) => produtoAtual.id === item.produtoId); return <div key={item.id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 text-xs leading-4"><div className="min-w-0"><div className="truncate font-medium text-ink">{produto?.nome || item.descricao || "Produto não selecionado"}</div><div className="text-ink-3">{Number(item.quantidade || 0).toLocaleString("pt-BR")} {produto ? rotuloUnidade(produto.unidade) : (item.unidade || "un")}</div></div><strong className="self-center whitespace-nowrap text-ink">{brl(totalItem(item))}</strong></div>; })}</div></div>}<div className={ehAjuste ? "hidden" : "mt-4 flex flex-wrap gap-3 text-xs"}><div className="space-y-2"><p className="flex items-center gap-2 font-semibold text-ink-3"><span className="fin-section-icon fin-form-icon"><ChartPie aria-hidden /></span>Valores por categoria</p>{resumoCategorias.map(([nome, centavos]) => <div key={nome} className="flex justify-between gap-3"><span>{nome}</span><strong>{brl(centavos / 100)}</strong></div>)}</div>{porItem && resumoCentros.length > 0 && <div className="space-y-2"><p className="font-semibold text-ink-3">Valores por centro de custo</p>{resumoCentros.map(([nome, centavos]) => <div key={nome} className="flex justify-between gap-3"><span>{nome}</span><strong>{brl(centavos / 100)}</strong></div>)}</div>}</div><div className="mt-3 space-y-2 text-sm leading-5">{compraComComposicao && <ReviewLine>Material líquido {brl(composicaoCompra.liquidos.reduce((s,v)=>s+v,0))}; logística {brl(Number(logisticaValor||0))}. Desconto comercial {brl(Number(descontoComercial||0))}.</ReviewLine>}<ReviewLine>Ao confirmar: registrar {TIPO_OPERACAO[tipo]?.toLowerCase()}.</ReviewLine>{ehAjuste && <ReviewLine tone="brown">{saldoProduto && diferencaMilesimos !== null && !ajusteSemDiferenca ? <>Gerar 1 movimento físico de ajuste em {saldoProduto.nome}: saldo de {fmtQuantidade(saldoProduto.saldo)} para {fmtQuantidade(contadaMilesimos / 1000)} {unidadeAjuste}.</> : "Nenhum movimento físico de estoque será gerado."}</ReviewLine>}{movimentaEstoque && <ReviewLine tone="brown">{tipo === "VENDA" || tipo === "DEVOLUCAO" ? "Movimenta o estoque dos produtos que já tiveram entrada nesta fazenda." : movimentosEstoque > 0 ? <>Gerar {movimentosEstoque} movimento{movimentosEstoque === 1 ? "" : "s"} físico{movimentosEstoque === 1 ? "" : "s"} de estoque.</> : !podeConfirmar ? "Preencha os dados da operação para conferir o efeito no estoque." : "Nenhum movimento físico de estoque será gerado."}</ReviewLine>}{condicao === "A_VISTA" && <ReviewLine>Registrar {entradaFinanceira ? "recebimento" : "pagamento"} integral de {brl(total)}.</ReviewLine>}{condicao === "A_PRAZO" && <ReviewLine tone="amber">Criar {parcelas.length} compromisso{parcelas.length === 1 ? "" : "s"} {entradaFinanceira ? "a receber" : "a pagar"}, totalizando {brl(totalParcelas)}. O saldo não muda agora.</ReviewLine>}{condicao === "PARCIAL" && <><ReviewLine>Registrar {entradaFinanceira ? "recebimento" : "pagamento"} de {brl(realizadoAgora)} agora.</ReviewLine><ReviewLine tone="amber">Criar {parcelas.length} compromisso{parcelas.length === 1 ? "" : "s"} para o saldo de {brl(totalParcelas)}.</ReviewLine></>}{condicao === "SEM_EFEITO_FINANCEIRO" && <ReviewLine tone="neutral">Nenhuma conta financeira ou compromisso será movimentado.</ReviewLine>}{!ehAjuste && (anexos.length + documentosSalvos.length) > 0 && <ReviewLine tone="neutral">Anexar {anexos.length + documentosSalvos.length} documento{anexos.length + documentosSalvos.length === 1 ? "" : "s"} à operação.</ReviewLine>}</div></div></CollapsibleContent></Collapsible><div data-testid="confirmacao-operacao" className="shrink-0 border-t border-border p-4">{erroConfirmacao && <div id="erro-confirmacao" ref={erroConfirmacaoRef} role="alert" tabIndex={-1} className="mb-3 rounded-lg border border-destructive/30 bg-[var(--fin-danger-bg)] p-3 text-sm text-destructive">{erroConfirmacao}</div>}<p className="mb-3 text-center text-[11px] leading-4 text-ink-3">A confirmação cria somente os efeitos descritos acima.</p><Button type="submit" carregando={salvando || anexosEnviando.length > 0} disabled={salvando || anexosEnviando.length > 0 || (ehAjuste && (ajusteSemDiferenca || ajusteConsolidado))} ariaDescribedby={[erroConfirmacao ? "erro-confirmacao" : null, !podeConfirmar ? "motivo-pendencia" : null].filter(Boolean).join(" ") || undefined} className="w-full ">{salvando ? "Confirmando…" : anexosEnviando.length ? "Anexando documento…" : ehAjuste ? "Confirmar ajuste" : "Confirmar operação"}</Button>{!podeConfirmar && <p id="motivo-pendencia" role="status" className="mt-3 flex items-start gap-2 rounded-lg bg-[var(--fin-warning-bg)] p-3 text-xs leading-5 text-[var(--warn)]"><CircleAlert size={14} className="mt-px shrink-0" aria-hidden /><span>{ehAjuste && ajusteSemDiferenca ? "Nenhum ajuste necessário: a quantidade contada é igual ao saldo atual." : "Ainda há campos pendentes ou incompletos nesta operação. Revise os itens destacados para confirmar."}</span></p>}</div></aside>
     </form>
+    <ConfirmDialog open={confirmarSaida} title="Sair sem registrar?" message="Este perfil não salva rascunhos financeiros. Os dados deste formulário serão perdidos ao sair." confirmLabel="Sair sem registrar" cancelLabel="Continuar preenchendo" onConfirm={() => navegarPara("/financeiro/operacoes")} onCancel={() => setConfirmarSaida(false)} />
     <ConfirmDialog open={confirmarSugestao} title="Usar a sugestão do parceiro?" message="As condições sugeridas substituirão as condições e parcelas correspondentes já preenchidas. Depois você poderá editá-las livremente." confirmLabel="Aplicar sugestão" onConfirm={aplicarSugestao} onCancel={() => setConfirmarSugestao(false)} />
     <ConfirmDialog
       open={confirmarLimpeza}

@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { alterarControle } from "../../../lib/controles.fixture";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { FormOperacaoNutricional } from "./FormOperacaoNutricional";
@@ -22,11 +23,11 @@ describe("formulários próprios de nutrição", () => {
     render(<FormOperacaoNutricional acao="atribuir" onVoltar={vi.fn()} onSalvo={onSalvo} />);
     await screen.findByLabelText("Lote");
     expect(screen.queryByLabelText("Versão publicada")).toBeNull();
-    fireEvent.change(screen.getByLabelText("Lote"), { target: { value: "lote" } });
+    await alterarControle(screen.getByLabelText("Lote"), { target: { value: "lote" } });
     const versao = await screen.findByLabelText("Versão publicada");
-    expect(screen.queryByRole("option", { name: /Dieta em estudo/ })).toBeNull();
-    fireEvent.change(versao, { target: { value: "publicada" } });
-    fireEvent.change(screen.getByPlaceholderText("dd/mm/aaaa"), { target: { value: "03/10/2026" } });
+    expect(screen.queryByRole("option", { hidden: true,  name: /Dieta em estudo/ })).toBeNull();
+    await alterarControle(versao, { target: { value: "publicada" } });
+    await alterarControle(screen.getByPlaceholderText("dd/mm/aaaa"), { target: { value: "03/10/2026" } });
     fireEvent.click(screen.getByRole("button", { name: "Aplicar ao lote" }));
     await waitFor(() => expect(api.atribuirDieta).toHaveBeenCalledWith({ loteId: "lote", propriedadeId: 2, dietaId: "publicada", desde: "2026-10-03" }));
     await waitFor(() => expect(onSalvo).toHaveBeenCalledWith("lote"));
@@ -36,8 +37,8 @@ describe("formulários próprios de nutrição", () => {
     await screen.findByLabelText("Motivo da correção");
     await waitFor(() => expect(screen.getByPlaceholderText("dd/mm/aaaa")).toHaveProperty("value", "01/09/2026"));
     expect(screen.getByRole("button", { name: "Confirmar correção" }).hasAttribute("disabled")).toBe(true);
-    fireEvent.change(screen.getByPlaceholderText("dd/mm/aaaa"), { target: { value: "02/09/2026" } });
-    fireEvent.change(screen.getByLabelText("Motivo da correção"), { target: { value: "Correção conferida" } });
+    await alterarControle(screen.getByPlaceholderText("dd/mm/aaaa"), { target: { value: "02/09/2026" } });
+    await alterarControle(screen.getByLabelText("Motivo da correção"), { target: { value: "Correção conferida" } });
     fireEvent.click(screen.getByRole("button", { name: "Confirmar correção" }));
     await waitFor(() => expect(api.corrigirVigencia).toHaveBeenCalledWith("v", { propriedadeId: 2, desde: "2026-09-02", motivo: "Correção conferida" }));
   });

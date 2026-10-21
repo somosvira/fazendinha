@@ -1,0 +1,35 @@
+/* Personalidade nos títulos; texto operacional mantém a família de leitura. */
+:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content) :is(h1, h2, h3, h4, .h1, .h2, .h3),
+:root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) :is([data-slot="dialog-title"], [data-slot="sheet-title"]) {
+  font-family: var(--font-display);
+  font-weight: 750;
+  letter-spacing: -.02em;
+  color: var(--fin-heading);
+}
+:root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) .sidebar-clara .ah-brand > span {
+  font-family: var(--font-display);
+  font-weight: 800;
+  letter-spacing: -.02em;
+  color: var(--primary);
+}
+:root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) .sidebar-clara .ah-brand-symbol { color: var(--fin-brand-accent); }
+
+/* Sombras nos agrupamentos independentes, sem elevar cada linha ou célula. */
+:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content) :is(.nutricao-card, .sanidade-card, .pec-config-grupo, .abas-superficie) {
+  box-shadow: var(--fin-panel-shadow);
+}
+:root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) :is([data-slot="button"][data-variant="default"]:not([aria-pressed], [role="tab"]), .nutricao-botao) {
+  box-shadow: var(--fin-button-shadow);
+}
+:root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) :is([data-slot="button"], .nutricao-botao):disabled { box-shadow: none; }
+
+/* Superfícies do navegador também pertencem à paleta. */
+:root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) {
+  scrollbar-color: #9bb8b0 var(--background);
+}
+:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content) ::selection { background: var(--fin-nav-selected); color: var(--fin-heading); }
+:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content) :is(input, textarea) { caret-color: var(--primary); }
+
+@media print {
+  :is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content) :is([data-slot="card"], [data-slot="financeiro-panel"], .nutricao-card, .sanidade-card, .pec-config-grupo, .abas-superficie, [data-slot="button"]) { box-shadow: none; }
+}

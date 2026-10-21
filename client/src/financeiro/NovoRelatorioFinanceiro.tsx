@@ -1,3 +1,4 @@
+import { useDescarteTrabalhoAtivo } from "./descarteTrabalhoAtivo";
 import { PageHeader } from "./financeiro-ui";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { PaginaFinanceira } from "./financeiro-ui";
@@ -16,7 +17,7 @@ import { SEM_VINCULO } from "../lib/ids";
 import { CLASSIFICACOES_RELATORIO, REGIMES_RELATORIO, SEM_CATEGORIA, SEM_CENTRO, STATUS_RELATORIO, TIPOS_RELATORIO, configuracaoPadrao, erroPeriodo, isoLocal, mesclarRascunho, podeGerar, resumoConfiguracao, secoesDoRelatorio } from "./lib/relatorios";
 
 const CAMPO = "mt-1.5 w-full rounded-lg border border-border bg-white px-3 py-2.5 text-sm font-normal";
-const TITULO_SECAO = "mb-3 text-xs font-semibold uppercase tracking-[.12em] text-ink-3";
+const TITULO_SECAO = "mb-3 text-sm font-semibold text-ink";
 const mensagem = (falha: unknown) => falha instanceof Error ? falha.message : String(falha);
 const dateFromIso = (iso: string): Date | null => {
   const [ano, mes, dia] = iso.split("-").map(Number);
@@ -79,6 +80,7 @@ export function NovoRelatorioFinanceiro({ cadastros, rascunho, onVoltar, onGerad
   const cancelarTimer = () => { if (timerRef.current != null) { window.clearTimeout(timerRef.current); timerRef.current = null; } };
 
   useEffect(() => {
+    if (pausadoRef.current) return;
     if (!iniciouRef.current) { iniciouRef.current = true; if (!pendenteRef.current) return; }
     pendenteRef.current = true; guardarEdicaoRascunhoRelatorio(config); setTemRascunho(true); setEstado("ALTERADO");
     cancelarTimer();
@@ -122,6 +124,23 @@ export function NovoRelatorioFinanceiro({ cadastros, rascunho, onVoltar, onGerad
     } catch (falha) { setErro(mensagem(falha)); }
     finally { pausadoRef.current = false; }
   };
+  useDescarteTrabalhoAtivo("relatorio", async () => {
+    if (!mesmoContexto()) throw new Error("O sítio ou a sessão mudou. Reabra o relatório no contexto original.");
+    if (gerando || pausadoRef.current) throw new Error("Aguarde o processamento do relatório antes de excluir o rascunho.");
+    cancelarTimer(); pausadoRef.current = true;
+    try {
+      await enfileirarSalvamentoRascunhoRelatorio(() => {
+        if (!mesmoContexto()) throw new Error("O sítio ou a sessão mudou. Reabra o relatório no contexto original.");
+        return descartarRascunhoRelatorioFinanceiro();
+      });
+      pendenteRef.current = false;
+    } catch (falha) {
+      pausadoRef.current = false;
+      if (mesmoContexto()) { pendenteRef.current = true; guardarEdicaoRascunhoRelatorio(configRef.current); }
+      throw falha;
+    }
+  });
+
   const gerar = async () => {
     if (!podeGerar(config) || gerando) return;
     setErro(null); setGerando(true); cancelarTimer();
@@ -160,7 +179,7 @@ export function NovoRelatorioFinanceiro({ cadastros, rascunho, onVoltar, onGerad
   return <PaginaFinanceira colorida>
     <div className="fin-criacao-layout">
       <div className="fin-criacao-form space-y-5 rounded-[var(--fin-radius-panel)] border border-border bg-card p-4">
-        <PageHeader titulo="Novo relatório" descricao="Escolha o período e o recorte para emitir o documento.">
+        <PageHeader titulo="Novo relatório">
           {temRascunho && <p aria-live="polite" className={`mt-2 text-xs font-medium ${estado === "ERRO" ? "text-red-700" : "text-ink-3"}`}>{estado === "SALVANDO" ? "Salvando…" : estado === "SALVO" ? "Rascunho salvo" : estado === "ERRO" ? "Falha ao salvar" : "Alterações não salvas"}</p>}
         </PageHeader>
         <ErrorBox erro={erro} />
@@ -206,9 +225,9 @@ export function NovoRelatorioFinanceiro({ cadastros, rascunho, onVoltar, onGerad
       <aside aria-label="Resumo do relatório" className="fin-criacao-resumo overflow-hidden rounded-[var(--fin-radius-panel)] border border-border bg-card text-ink">
         <div className="flex flex-col">
           <div className="min-h-0 p-4">
-          <div className="flex items-center gap-3"><span className="fin-section-icon" aria-hidden="true"><FileText /></span><span className="text-[11px] font-semibold uppercase tracking-[.14em] text-ink-3">Resumo do relatório</span></div>
+          <div className="flex items-center gap-3"><span className="fin-section-icon" aria-hidden="true"><FileText /></span><h2 className="text-sm font-semibold text-ink">Resumo do relatório</h2></div>
           <div className="mt-2 break-words font-serif text-xl">{config.nome.trim() || "Sem nome"}</div>
-          <dl className="mt-3 grid grid-cols-2 gap-2 border-y border-border py-3 text-sm">{(destino ? [["Propriedade", destino] as [string, string], ...resumo] : resumo).map(([rotulo, valor]) => <div key={rotulo}><dt className="text-[10px] font-semibold uppercase tracking-[.14em] text-ink-3">{rotulo}</dt><dd className="mt-0.5 break-words leading-5 text-ink">{valor}</dd></div>)}</dl>
+          <dl className="mt-3 grid grid-cols-1 gap-3 border-y border-border py-3 text-sm sm:grid-cols-2 lg:grid-cols-1 2xl:grid-cols-2">{(destino ? [["Propriedade", destino] as [string, string], ...resumo] : resumo).map(([rotulo, valor]) => <div key={rotulo}><dt className="text-xs font-medium text-ink-3">{rotulo}</dt><dd className="mt-0.5 break-words leading-5 text-ink">{valor}</dd></div>)}</dl>
           <div className="mt-3"><SecaoFinanceira titulo="Conteúdo do PDF"><div className="space-y-2 text-sm">{secoesDoRelatorio(config).map(secao => <p key={secao}>{secao}</p>)}</div></SecaoFinanceira></div>
           </div>
           <div className="mt-auto shrink-0 border-t border-border bg-card p-3">

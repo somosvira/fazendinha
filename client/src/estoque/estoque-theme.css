@@ -2,6 +2,15 @@
 .estoque-content .estoque-filtros { padding: 16px; border-bottom: 1px solid var(--border); }
 .estoque-content .estoque-filtros > :is(input,select,button) { min-width: 0; }
 .estoque-content .estoque-escopo { margin-bottom: 0; }
+.estoque-content .estoque-panorama { display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 20px; padding: 20px; }
+.estoque-content .estoque-panorama-resumo { display: flex; align-items: center; gap: 14px; }
+.estoque-content .estoque-panorama-alertas { display: flex; flex-wrap: wrap; gap: 12px; }
+.estoque-content .estoque-alerta { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border: 1px solid var(--border); border-radius: 10px; text-align: left; background: var(--muted); font-size: 13px; cursor: pointer; }
+.estoque-content .estoque-alerta small { display: block; margin-top: 3px; color: var(--muted-foreground); }
+.estoque-content .estoque-alerta-atencao { background: var(--fin-warning-bg); color: var(--fin-pendente); }
+.estoque-content .estoque-alerta-negativo { color: var(--destructive); }
+.estoque-content .estoque-alerta[aria-pressed=true] { outline: 2px solid currentColor; outline-offset: 2px; }
+.estoque-content .estoque-alerta:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
 .estoque-content .estoque-ficha-resumo { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.5fr); gap: 24px; padding: 24px; }
 .estoque-content .estoque-ficha-dados { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); align-items: start; gap: 16px; margin: 0; }
 .estoque-content .estoque-ficha-dados dt { color: var(--muted-foreground); font-size: 12px; }
@@ -18,4 +27,29 @@
  .estoque-content .estoque-ficha-dados > div:first-child { grid-column: 1 / -1; }
  .estoque-content .estoque-filtros > :is(input,select,button,label) { flex-basis: 100%; width: 100%; }
  .estoque-content .estoque-filtro-ficha > label { width: 100%; }
+}
+
+.estoque-content .estoque-resumo-consulta { display: flex; flex-direction: row; justify-content: flex-start; flex-wrap: wrap; align-items: center; gap: 18px 28px; padding: 18px 24px; margin-bottom: 22px; }
+.estoque-resumo-produtos { display: flex; align-items: center; gap: 14px; font-size: 15px; }
+.estoque-resumo-produtos svg { color: var(--primary); flex-shrink: 0; }
+.estoque-resumo-valor { padding-left: 24px; border-left: 1px solid var(--border); display: flex; flex-direction: column; gap: 3px; font-size: 14px; }
+.estoque-resumo-valor > span { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-3); }
+.estoque-resumo-alerta { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid #eed7a8; border-radius: 7px; background: #fff6e6; color: #805114; font-size: 13px; cursor: pointer; }
+.estoque-resumo-alerta:hover { background: #fbe8c5; }
+.estoque-resumo-alerta[aria-pressed="true"] { outline: 2px solid currentColor; outline-offset: 2px; }
+.estoque-resumo-negativo { color: var(--destructive); background: #fff0ef; border-color: #edc6c3; }
+.estoque-consulta-abas { min-width: 0; gap: 0; }
+.estoque-consulta-abas > [data-slot="tabs-content"] { min-width: 0; }
+.estoque-consulta-abas > [data-slot="tabs-content"][hidden] { display: none; }
+.estoque-consulta-abas > [data-slot="tabs-content"] > section:first-child { margin-top: 0; }
+.estoque-content .estoque-reposicao { display: flex; justify-content: flex-end; align-items: center; gap: 4px; color: #805114; margin-top: 4px; }
+.estoque-content .estoque-acao-produto { border: 1px solid var(--border); background: var(--card); }
+.estoque-menu-acoes { min-width: 210px; border-radius: 10px; }
+.estoque-menu-acoes [role="menuitem"] { min-height: 40px; padding: 10px 12px; border-radius: 6px; }
+@media (max-width: 600px) {
+  .estoque-content .estoque-resumo-consulta { padding: 16px; gap: 14px; }
+  .estoque-resumo-valor { width: 100%; padding: 12px 0 0; border-left: 0; border-top: 1px solid var(--border); }
+  .estoque-content .estoque-reposicao { justify-content: flex-start; flex-wrap: wrap; }
+  :root .app-main .estoque-consulta-abas [role="tablist"].abas-pasta { flex-wrap: nowrap; }
+  :root .app-main .estoque-consulta-abas [role="tablist"].abas-pasta > [role="tab"][aria-selected] { flex: 1 1 auto; min-width: 0; padding-inline: 10px; font-size: 14px; }
 }

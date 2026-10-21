@@ -1,7 +1,9 @@
+import { SelectCampo } from "@/financeiro/SelectCampo";
 // Cadastro de lote — sítio é fixado na criação (o servidor não aceita
 // trocar de sítio via PATCH); editar só muda nome/observação/ativo.
 // Mesmo padrão de client/src/financeiro/FormCadastrosGerenciais.tsx.
 
+import { Layers } from "lucide-react";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { listarCentrosCusto, type CentroCusto } from "../../../estoque/api";
 import { criarLote, editarLote, RebanhoApiError } from "../api";
@@ -53,18 +55,18 @@ export function FormLote({ lote, propriedades, propriedadeInicialId, onSalvo, on
   };
 
   const formId = "form-lote";
-  return <PainelCadastro aberto titulo={lote ? `Editar ${lote.nome}` : "Novo lote"} onFechar={() => { if (!emCurso.current) onFechar(); }}
+  return <PainelCadastro compacto aberto icon={Layers} titulo={lote ? `Editar ${lote.nome}` : "Novo lote"} onFechar={() => { if (!emCurso.current) onFechar(); }}
     rodape={<><Button secondary onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form={formId} disabled={salvando}>{salvando ? "Salvando…" : lote ? "Salvar lote" : "Criar lote"}</Button></>}>
-    <form id={formId} onSubmit={submeter} className="grid gap-4" noValidate>
+    <form data-pec-formulario id={formId} onSubmit={submeter} className="grid gap-4" noValidate>
       <ErrorBox erro={erroGeral} />
       <CampoFormulario id="lote-nome" rotulo="Nome do lote" obrigatorio erro={erros.nome}>{(p) => <input {...p} required maxLength={120} value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Lote 1 — Recria" className={classeInput} />}</CampoFormulario>
       {lote
         ? <CampoFormulario id="lote-sitio" rotulo="Sítio" ajuda="O sítio de um lote não pode ser alterado depois de criado.">{(p) => <input {...p} disabled value={lote.propriedade.nome} className={classeInput} />}</CampoFormulario>
-        : <CampoFormulario id="lote-sitio" rotulo="Sítio" obrigatorio erro={erros.propriedadeId}>{(p) => <select {...p} required value={propriedadeId} onChange={(e) => setPropriedadeId(e.target.value)} className={classeInput}>
+        : <CampoFormulario id="lote-sitio" rotulo="Sítio" obrigatorio erro={erros.propriedadeId}>{(p) => <SelectCampo {...p} required value={propriedadeId} onValueChange={(valorSelecionado) => setPropriedadeId(valorSelecionado)} className={classeInput}>
             <option value="">Selecione</option>
             {propriedades.map((prop) => <option key={prop.id} value={prop.id}>{prop.nome}</option>)}
-          </select>}</CampoFormulario>}
-      <CampoFormulario id="lote-centro" rotulo="Centro de custo do consumo" ajuda="Será o padrão dos fechamentos, com possibilidade de substituição na conferência.">{(p) => <select {...p} className={classeInput} value={centroCustoId} onChange={(e) => setCentroCustoId(e.target.value)}><option value="">Não definido</option>{centros.filter((c) => c.ativo || c.id === centroCustoId).map((c) => <option key={c.id} value={c.id} disabled={!c.ativo}>{c.nome}{c.ativo ? "" : " (inativo)"}</option>)}</select>}</CampoFormulario>
+          </SelectCampo>}</CampoFormulario>}
+      <CampoFormulario id="lote-centro" rotulo="Centro de custo do consumo" ajuda="Será o padrão dos fechamentos, com possibilidade de substituição na conferência.">{(p) => <SelectCampo {...p} className={classeInput} value={centroCustoId} onValueChange={(valorSelecionado) => setCentroCustoId(valorSelecionado)}><option value="">Não definido</option>{centros.filter((c) => c.ativo || c.id === centroCustoId).map((c) => <option key={c.id} value={c.id} disabled={!c.ativo}>{c.nome}{c.ativo ? "" : " (inativo)"}</option>)}</SelectCampo>}</CampoFormulario>
       <CampoFormulario id="lote-observacao" rotulo="Observação" erro={erros.observacao}>{(p) => <textarea {...p} maxLength={500} value={observacao} onChange={(e) => setObservacao(e.target.value)} className={classeInput} />}</CampoFormulario>
     </form>
   </PainelCadastro>;

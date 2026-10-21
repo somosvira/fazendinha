@@ -15,13 +15,18 @@ Confira comportamento em rotas/serviços/interface, estrutura no schema e garant
 - Reprodução V4 inclui tentativas, avaliações, gestação, partos/crias, visitas e IATF. Confira `docs/pecuaria/reproducao.md`; produção/qualidade do leite e laboratório/FIV permanecem fora do escopo. Partos, incluindo aborto e natimorto, reiniciam o ciclo de tentativas; genética da doadora não se confunde com a receptora.
 - Protocolos/tarefas e exames usam a base comum descrita em `docs/pecuaria/protocolos-exames.md`. As entidades IATF anteriores são views de leitura; escreva pelo núcleo comum. Papel por data vem de `PeriodoReprodutivoAnimal`, separado da aptidão.
 - O IDEAGRI serve à carga inicial e reconciliação. O Fazendinha é a fonte operacional após importar; não crie sincronização contínua por pressuposto.
-- O assistente está suspenso em `client/src/featureFlags.ts` e `server/src/featureFlags.ts`. Não o reative incidentalmente.
+- O bot anterior, `/ia` e WhatsApp estão suspensos em `client/src/featureFlags.ts` e `server/src/featureFlags.ts`. Não os reative incidentalmente. O novo assistente de consulta é separado: siga [seu contrato](docs/assistente-consulta.md), os gates e o registro de ferramentas de leitura.
+
+## Fluxo de alterações visuais
+
+- Antes de implementar uma página ou mudança de layout, gere um mockup e revise-o com as skills `impeccable` e `frontend-design`. Apresente o resultado para aprovação antes de escrever a interface. Preserve os dados e contratos funcionais no desenho. Na implementação, confira a tela no navegador; mockup e revisão visual não substituem validação funcional. Para os relatórios financeiros deste fluxo, priorize o desktop.
 
 ## Implementação
 
 - Busque componentes, schemas, formatadores e serviços equivalentes antes de criar novos. Use TypeScript estrito e identificadores/mensagens em português consistentes com o domínio.
 - Rotas Hono validam entradas com Zod e delegam aos serviços; cálculos puros ficam separados do acesso ao banco. Imports relativos do backend usam `.js`.
 - Configuração de runtime vem de `server/src/env.ts`. Novas variáveis precisam de validação e exemplo sem segredo.
+- Nos recursos de IA, priorize sempre o modelo de menor custo compatível com o fluxo, conforme preferência do usuário. Verifique preços/disponibilidade na documentação oficial ao trocar ou ampliar o modelo; não crie fallback automático para modelos mais caros. A escolha vigente e sua revisão ficam no [contrato do assistente](docs/assistente-consulta.md#política-de-custo).
 - Preserve histórico, autoria, auditoria, escopo por sítio, localização na data do fato e garantias de idempotência/concorrência. Escritas que afetam múltiplos fatos devem manter a atomicidade do fluxo.
 - Dinheiro usa `Prisma.Decimal` e as regras de `services/financeiro/regras.ts`. Compromisso não movimenta conta; estorno confirmado cria inverso, sem apagar o original. Não contorne período fechado.
 - Autorização é do servidor: sessão, área, ação e escopo. Esconder um botão não protege uma rota. Confira `verValores` também em DTOs de custos e relatórios. `SHARED_ACCESS_TOKEN` é ponte existente, não base para recursos novos.

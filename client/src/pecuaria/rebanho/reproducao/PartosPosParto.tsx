@@ -1,7 +1,10 @@
+import { useFiltrosTabelaLocal } from "@/financeiro/useFiltrosTabelaLocal";
+import { BuscaLista } from "@/components/BuscaLista";
+import { BarraConsulta } from "@/financeiro/BarraConsulta";
 import { useEffect, useState } from "react";
 import { Button as BotaoDetalhe } from "../../../components/ui/button";
 import { DateRangePicker } from "../../../components/DateRangePicker";
-import { Button, CabecalhoTabela, ErrorBox, Panel, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
+import { Button, ErrorBox, Panel, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
 import { formatBRDateISO } from "../../../lib/hoje";
 import { navegarPara } from "../../../router";
 import { reqV4 } from "./api";
@@ -31,20 +34,27 @@ export function PartosPosParto({ propriedadeId }: { propriedadeId: number }) {
     return () => { ativo = false; };
   }, [propriedadeId, periodo.inicio, periodo.fim, assinatura, revisao]);
   const visivel = consultaCarregada === assinatura && snapshot?.propriedadeId === propriedadeId ? snapshot : null;
-  const partos = [...(visivel?.partos ?? [])].sort((a, b) => b.data.localeCompare(a.data) || b.id.localeCompare(a.id));
+  const [busca,setBusca] = useState("");
+  const consulta = useFiltrosTabelaLocal<SnapshotRelatorioPartos["partos"][number]>([
+    {chave:"matriz", naBarra: true,rotulo:"Matriz",tipo:"texto",obter:p=>`${p.matriz.brinco} ${p.matriz.nome??""}`},
+    {chave:"desfecho",rotulo:"Desfecho",tipo:"opcoes",obter:p=>p.desfecho,opcoes:[{valor:"NASCIMENTO",texto:"Nascimento"},{valor:"ABORTO",texto:"Aborto"}]},
+    {chave:"rp",rotulo:"Retenção de placenta",tipo:"opcoes",obter:p=>p.retencaoPlacenta===null?"NAO_INFORMADO":p.retencaoPlacenta?"SIM":"NAO",opcoes:[{valor:"SIM",texto:"Sim"},{valor:"NAO",texto:"Não"},{valor:"NAO_INFORMADO",texto:"Não informado"}]},
+  ],()=>setPagina(1));
+  const partos = consulta.filtrar(visivel?.partos ?? []).filter(p=>`${p.matriz.brinco} ${p.matriz.nome??""}`.toLocaleLowerCase("pt-BR").includes(busca.toLocaleLowerCase("pt-BR"))).sort((a, b) => b.data.localeCompare(a.data) || b.id.localeCompare(a.id));
   const paginas=Math.max(1,Math.ceil(partos.length/20)),atual=Math.min(pagina,paginas);
   return <div className="space-y-5">
-    <div className="flex flex-wrap items-center justify-between gap-3">
-      <h2 className="text-xl font-semibold">Partos e pós-parto</h2>
+    <BarraConsulta campos={consulta.campos} edicaoFiltros={consulta.edicao} criterios={consulta.criterios} resumo={visivel ? <span>{visivel.totalPartos} partos no período</span> : undefined}>
+
+      <BuscaLista rotulo="Buscar matriz" placeholder="Brinco ou nome da matriz" valor={busca} onChange={v=>{setBusca(v);setPagina(1);}}/>
       <DateRangePicker value={periodo.range} onChange={r=>{setPagina(1);periodo.alterar(r);}}/>
-    </div>
+    </BarraConsulta>
     {periodo.aviso && <p role="status" className="text-sm text-muted-foreground">{periodo.aviso}</p>}
     <ErrorBox erro={erro}/>
     {erro && <Button secondary onClick={() => setRevisao(v => v + 1)}>Tentar novamente</Button>}
     {carregando && <p role="status">Carregando partos…</p>}
     {!carregando && !erro && visivel && <Panel>
-      <CabecalhoTabela titulo={`${visivel.totalPartos} partos no período`} descricao="Mais recentes primeiro. O sítio considerado é o local do parto."/>
-      {!partos.length ? <div className="space-y-3 p-5"><p>Nenhum parto neste período.</p><p className="text-sm text-muted-foreground">Use o filtro de período para consultar outras datas.</p></div> : <TabelaFinanceira
+
+      {!partos.length ? <div className="space-y-3 p-5"><p>Nenhum parto neste período.</p><p className="text-sm text-muted-foreground">Use o filtro de período para consultar outras datas.</p></div> : <TabelaFinanceira filtrosColunas={consulta.colunas}
         rotulo="Partos recentes" itens={partos.slice((atual-1)*20,atual*20)} chaveDe={p => p.id} colunas={[
           { chave: "data", titulo: "Data", larguraMinima: 110, celula: p => formatBRDateISO(p.data) },
           { chave: "matriz", titulo: "Matriz", principal: true, larguraFlexivel: true, larguraMinima: 260, celula: p => <button className="font-semibold underline" onClick={() => navegarPara(`/pecuaria/rebanho/animais/${p.matriz.id}#reproducao`)}>{p.matriz.brinco}{p.matriz.nome ? ` · ${p.matriz.nome}` : ""}</button> },

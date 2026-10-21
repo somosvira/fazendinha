@@ -1,5 +1,7 @@
+import { SelectCampo } from "@/financeiro/SelectCampo";
 // Cadastro de motivo de baixa — nome livre + classe (enum ClasseMotivoBaixa, rótulo PT-BR).
 
+import { Archive } from "lucide-react";
 import { FormEvent, useRef, useState } from "react";
 import { criarMotivoBaixa, editarMotivoBaixa, RebanhoApiError } from "../api";
 import type { ClasseMotivoBaixa, MotivoBaixa } from "../types";
@@ -40,14 +42,14 @@ export function FormMotivoBaixa({ motivo, onSalvo, onFechar }: { motivo: MotivoB
   };
 
   const formId = "form-motivo-baixa";
-  return <PainelCadastro aberto titulo={motivo ? `Editar ${motivo.nome}` : "Novo motivo de baixa"} onFechar={() => { if (!emCurso.current) onFechar(); }}
+  return <PainelCadastro aberto icon={Archive} compacto titulo={motivo ? `Editar ${motivo.nome}` : "Novo motivo de baixa"} onFechar={() => { if (!emCurso.current) onFechar(); }}
     rodape={<><Button secondary onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form={formId} disabled={salvando}>{salvando ? "Salvando…" : motivo ? "Salvar motivo" : "Criar motivo"}</Button></>}>
-    <form id={formId} onSubmit={submeter} className="grid gap-4" noValidate>
+    <form data-pec-formulario id={formId} onSubmit={submeter} className="grid gap-4" noValidate>
       <ErrorBox erro={erroGeral} />
       <CampoFormulario id="motivo-nome" rotulo="Nome do motivo" obrigatorio erro={erros.nome}>{(p) => <input {...p} required maxLength={80} value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Venda para abate" className={classeInput} />}</CampoFormulario>
-      <CampoFormulario id="motivo-classe" rotulo="Classe" obrigatorio ajuda={ajudaClasse(classe)}>{(p) => <select {...p} value={classe} onChange={(e) => setClasse(e.target.value as ClasseMotivoBaixa)} className={classeInput}>
+      <CampoFormulario id="motivo-classe" rotulo="Classe" obrigatorio ajuda={ajudaClasse(classe)}>{(p) => <SelectCampo {...p} value={classe} onValueChange={(valorSelecionado) => setClasse(valorSelecionado as ClasseMotivoBaixa)} className={classeInput}>
           {(Object.keys(ROTULO_CLASSE_MOTIVO) as ClasseMotivoBaixa[]).map((c) => <option key={c} value={c}>{ROTULO_CLASSE_MOTIVO[c]}</option>)}
-        </select>}</CampoFormulario>
+        </SelectCampo>}</CampoFormulario>
     </form>
   </PainelCadastro>;
 }

@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { alterarControle } from "../../../lib/controles.fixture";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { ToastProvider } from "@/components/Toast";
@@ -108,6 +109,7 @@ const primeiro = (role: string, name: string | RegExp) => screen.getAllByRole(ro
 
 afterEach(cleanup);
 beforeEach(() => {
+  window.history.replaceState(null, "", "/pecuaria/rebanho/lotes/lote-1");
   vi.clearAllMocks();
   vi.mocked(buscarLote).mockResolvedValue(lote);
   vi.mocked(buscarResumoLote).mockResolvedValue(resumoLote);
@@ -118,6 +120,36 @@ beforeEach(() => {
 });
 
 describe("DetalheLote — animais do lote", () => {
+  it("troca de aba por teclado mantendo foco e fragmento", async () => {
+    await montar();
+    const animais = screen.getByRole("tab", { name: "Animais" });
+    animais.focus();
+    fireEvent.keyDown(animais, { key: "ArrowRight" });
+    const baixas = screen.getByRole("tab", { name: "Baixas" });
+    expect(document.activeElement).toBe(baixas);
+    expect(baixas.getAttribute("aria-selected")).toBe("true");
+    expect(window.location.hash).toBe("#lote-baixas");
+  });
+  it("conserva fragmentos anteriores e restaura a seção pelo histórico", async () => {
+    window.history.replaceState(null, "", "#lote-nutricao");
+    await montar();
+    expect(screen.getByRole("tab", { name: "Nutrição" }).getAttribute("aria-selected")).toBe("true");
+    window.history.replaceState(null, "", "#lote-historico");
+    fireEvent.popState(window);
+    expect(screen.getByRole("tab", { name: "Movimentações" }).getAttribute("aria-selected")).toBe("true");
+    expect(document.getElementById("lote-painel-historico")?.hidden).toBe(false);
+  });
+  it("abre na consulta de animais e troca de seção preservando os links", async () => {
+    await montar();
+    const nav = screen.getByRole("tablist", { name: "Seções da ficha do lote" });
+    expect(within(nav).getAllByRole("tab")).toHaveLength(7);
+    expect(document.getElementById("lote-painel-animais")?.hidden).toBe(false);
+    expect(document.getElementById("lote-painel-nutricao")?.hidden).toBe(true);
+    fireEvent.click(within(nav).getByRole("tab", { name: "Nutrição" }));
+    expect(document.getElementById("lote-painel-nutricao")?.hidden).toBe(false);
+    expect(document.getElementById("lote-painel-animais")?.hidden).toBe(true);
+  });
+
   it("lista os animais ativos do lote", async () => {
     await montar();
     await screen.findAllByText("0001");
@@ -164,7 +196,8 @@ describe("DetalheLote — animais do lote", () => {
 describe("DetalheLote — resumo do lote", () => {
   it("mostra os indicadores calculados a partir do resumo do lote", async () => {
     await montar();
-    await screen.findByText("Resumo do lote");
+    fireEvent.click(screen.getByRole("tab", { name: "Resumo" }));
+    await screen.findByText("Peso médio");
     expect(screen.getAllByText("2").length).toBeGreaterThan(0);
     expect(screen.getByText("2 fêmeas · 0 machos")).toBeTruthy();
     expect(screen.getByText("250 kg")).toBeTruthy();
@@ -176,9 +209,10 @@ describe("DetalheLote — resumo do lote", () => {
 
   it("trocar o período do GMD recarrega o resumo com o novo período", async () => {
     await montar();
-    await screen.findByText("Resumo do lote");
+    fireEvent.click(screen.getByRole("tab", { name: "Resumo" }));
+    await screen.findByText("Peso médio");
     expect(buscarResumoLote).toHaveBeenCalledWith("lote-1", { periodoDias: "entrada" });
-    fireEvent.change(screen.getByLabelText("Período do GMD"), { target: { value: "180" } });
+    await alterarControle(screen.getByLabelText("Período do GMD"), { target: { value: "180" } });
     await waitFor(() => expect(buscarResumoLote).toHaveBeenCalledWith("lote-1", { periodoDias: 180 }));
   });
 });
@@ -186,12 +220,14 @@ describe("DetalheLote — resumo do lote", () => {
 describe("DetalheLote — saíram por baixa", () => {
   it("mostra o estado vazio quando nenhum animal do lote saiu por baixa", async () => {
     await montar();
+    fireEvent.click(screen.getByRole("tab", { name: "Baixas" }));
     expect(await screen.findByText("Nenhum animal deste lote saiu por baixa.")).toBeTruthy();
   });
 
   it("lista os animais baixados com tipo, data e categoria", async () => {
     montarListarAnimais({ baixados: [animalBaixado] });
     await montar();
+    fireEvent.click(screen.getByRole("tab", { name: "Baixas" }));
     await screen.findAllByText("0099");
     expect(screen.getAllByText(/Venda/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/01\/02\/2026/).length).toBeGreaterThan(0);
@@ -202,6 +238,7 @@ describe("DetalheLote — alterações do lote", () => {
   it("expande uma entrada e mostra as alterações antes → depois", async () => {
     vi.mocked(listarAuditoriaCadastro).mockResolvedValue({ itens: [entradaAuditoria1], total: 1 });
     await montar();
+    fireEvent.click(screen.getByRole("tab", { name: "Alterações" }));
     const entrada = await screen.findByText("Editou o lote");
     expect(screen.queryByText("Lote Velho")).toBeNull();
     fireEvent.click(entrada);
@@ -215,6 +252,7 @@ describe("DetalheLote — alterações do lote", () => {
       return Promise.resolve({ itens: [entradaAuditoria1], total: 2 });
     });
     await montar();
+    fireEvent.click(screen.getByRole("tab", { name: "Alterações" }));
     await screen.findByText("Editou o lote");
     fireEvent.click(screen.getByRole("button", { name: "Carregar mais" }));
     await waitFor(() => expect(listarAuditoriaCadastro).toHaveBeenCalledWith("Lote", { entidadeId: "lote-1", page: 2, pageSize: 10 }));
@@ -228,9 +266,10 @@ describe("DetalheLote — histórico e desfazer", () => {
     vi.mocked(listarMovimentacoesDoLote).mockResolvedValue({ itens: [movimentacaoBase], total: 1 });
     vi.mocked(desfazerMovimentacao).mockRejectedValueOnce(new RebanhoApiError("Nada foi desfeito. B401: o animal já foi movimentado de novo", 409, "CONFLITO"));
     await montar();
+    fireEvent.click(screen.getByRole("tab", { name: "Movimentações" }));
     fireEvent.click((await screen.findAllByRole("button", { name: "Desfazer" }))[0]);
     const modal = await screen.findByRole("dialog");
-    fireEvent.change(within(modal).getByLabelText("Motivo"), { target: { value: "Motivo do estorno" } });
+    await alterarControle(within(modal).getByLabelText("Motivo"), { target: { value: "Motivo do estorno" } });
     fireEvent.click(within(modal).getByRole("button", { name: "Desfazer movimentação" }));
     expect(await screen.findByText("Nada foi desfeito. B401: o animal já foi movimentado de novo")).toBeTruthy();
     expect(screen.getByRole("dialog")).toBeTruthy();
@@ -240,10 +279,11 @@ describe("DetalheLote — histórico e desfazer", () => {
     vi.mocked(listarMovimentacoesDoLote).mockResolvedValueOnce({ itens: [movimentacaoBase], total: 1 });
     vi.mocked(desfazerMovimentacao).mockResolvedValue({ desfeitos: 2 });
     await montar();
+    fireEvent.click(screen.getByRole("tab", { name: "Movimentações" }));
     fireEvent.click((await screen.findAllByRole("button", { name: "Desfazer" }))[0]);
     const modal = await screen.findByRole("dialog");
     vi.mocked(listarMovimentacoesDoLote).mockResolvedValueOnce({ itens: [{ ...movimentacaoBase, desfeitaEm: "2026-01-11", desfeitaMotivo: "Motivo do estorno" }], total: 1 });
-    fireEvent.change(within(modal).getByLabelText("Motivo"), { target: { value: "Motivo do estorno" } });
+    await alterarControle(within(modal).getByLabelText("Motivo"), { target: { value: "Motivo do estorno" } });
     fireEvent.click(within(modal).getByRole("button", { name: "Desfazer movimentação" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     await waitFor(() => expect(listarMovimentacoesDoLote).toHaveBeenCalledTimes(2));

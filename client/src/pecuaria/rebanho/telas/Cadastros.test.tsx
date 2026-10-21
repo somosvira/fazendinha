@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+import { abrirFiltrosConsulta, aplicarFiltrosConsulta } from "@/lib/controles.fixture";
+import { alterarControle } from "../../../lib/controles.fixture";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { Cadastros } from "./Cadastros";
@@ -88,18 +90,51 @@ async function montarMotivos() {
 }
 
 describe("Cadastros do rebanho — permissão de leitura (K7)", () => {
-  it("usuário só de leitura mantém os filtros de cada aba utilizáveis, com a tabela desabilitada", async () => {
+  it("pagina categorias sem truncar a reordenação entre páginas", async () => {
+    const categorias = Array.from({ length: 16 }, (_, indice) => ({ ...categoriasMock[0], id: `cat-${indice}`, nome: `Regra ${indice + 1}`, ordem: (indice + 1) * 10 }));
+    vi.mocked(listarCategorias).mockResolvedValue({ itens: categorias, semCategoria: 0 });
+    vi.mocked(reordenarCategorias).mockResolvedValue({ ok: true });
+    render(<Cadastros />);
+    const tabela = await screen.findByRole("table", { name: "Categorias" });
+    await within(tabela).findByText("Regra 1");
+    expect(within(tabela).getAllByRole("row")).toHaveLength(16);
+    const descer = within(tabela).getByRole("button", { name: "Mover Regra 15 para baixo" });
+    expect(descer.hasAttribute("disabled")).toBe(false);
+    fireEvent.click(descer);
+    await waitFor(() => expect(reordenarCategorias).toHaveBeenCalled());
+    const ids = vi.mocked(reordenarCategorias).mock.calls[0][0];
+    expect(ids).toHaveLength(16);
+    expect(ids.slice(-2)).toEqual(["cat-15", "cat-14"]);
+    expect(vi.mocked(simularCategorias).mock.calls[0][0]).toHaveLength(16);
+  });
+  it("busca motivos por nome ou classe sem acentos e sem nova consulta", async () => {
+    vi.mocked(listarMotivosBaixa).mockResolvedValue(motivosMock);
+    render(<Cadastros podeLancar={false} cadastro="motivos" embutido />);
+    await screen.findAllByText("Baixa produção");
+    const busca = screen.getByRole("searchbox", { name: "Buscar motivos de baixa" });
+    fireEvent.change(busca, { target: { value: "PRODUCAO" } });
+    expect(screen.getAllByText("Baixa produção").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Morte por doença")).toBeNull();
+    fireEvent.change(busca, { target: { value: "morte" } });
+    expect(screen.getAllByText("Morte por doença").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Baixa produção")).toBeNull();
+    expect(listarMotivosBaixa).toHaveBeenCalledTimes(1);
+  });
+  it("usuário só de leitura mantém os filtros de cada aba utilizáveis, sem ações de escrita", async () => {
     const { container } = render(<Cadastros podeLancar={false} />);
     await screen.findAllByText("Vaca");
 
-    const filtroCategorias = screen.getByRole("checkbox", { name: "Mostrar inativas" }) as HTMLInputElement;
+    await abrirFiltrosConsulta();
+    const filtroCategorias = screen.getByRole("checkbox", { name: "Mostrar inativos" }) as HTMLInputElement;
     expect(filtroCategorias.disabled).toBe(false);
     fireEvent.click(filtroCategorias);
+    await aplicarFiltrosConsulta();
     await waitFor(() => expect(within(screen.getByRole("table", { name: "Categorias" })).getByText("Reprodutor")).toBeTruthy());
 
     const fieldsetEscrita = container.querySelector("fieldset");
     expect(fieldsetEscrita).not.toBeNull();
-    expect((fieldsetEscrita as HTMLFieldSetElement).disabled).toBe(true);
+    expect((fieldsetEscrita as HTMLFieldSetElement).disabled).toBe(false);
+    expect(screen.queryByRole("button",{name:/^Editar /})).toBeNull();
 
     expect(screen.queryByRole("button", { name: /Nova categoria/ })).toBeNull();
     expect(screen.queryByRole("button", { name: "Restaurar padrões" })).toBeNull();
@@ -116,7 +151,11 @@ describe("Cadastros do rebanho — categorias", () => {
     expect(within(tabela).getAllByText("Padrão").length).toBeGreaterThan(0);
     expect(within(tabela).queryByText("Reprodutor")).toBeNull();
 
-    fireEvent.click(screen.getByRole("checkbox", { name: "Mostrar inativas" }));
+    await abrirFiltrosConsulta();
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Mostrar inativos" }));
+
+    await aplicarFiltrosConsulta();
     await waitFor(() => expect(within(screen.getByRole("table", { name: "Categorias" })).getByText("Reprodutor")).toBeTruthy());
   });
 
@@ -127,7 +166,7 @@ describe("Cadastros do rebanho — categorias", () => {
     });
     await montarCategorias();
     const linhaVaca = within(screen.getByRole("table", { name: "Categorias" })).getByText("Vaca").closest("tr")!;
-    expect(within(linhaVaca).getByText("4")).toBeTruthy();
+    expect(within(linhaVaca).getByText("4 manuais")).toBeTruthy();
   });
 
   it("avisa quando há animais ativos sem categoria", async () => {
@@ -141,7 +180,7 @@ describe("Cadastros do rebanho — categorias", () => {
     fireEvent.click(primeiro("button", "Editar Em crescimento"));
     const painel = await screen.findByRole("dialog");
     expect((within(painel).getByLabelText("Idade mínima (meses)") as HTMLInputElement).value).toBe("");
-    expect((within(painel).getByLabelText("Idade máxima (meses)") as HTMLInputElement).value).toBe("12");
+    expect((within(painel).getByLabelText("Idade máxima exclusiva (meses)") as HTMLInputElement).value).toBe("12");
     expect((within(painel).getByLabelText("Partos") as HTMLSelectElement).value).toBe("SEM");
   });
 
@@ -158,11 +197,11 @@ describe("Cadastros do rebanho — categorias", () => {
     await montarCategorias();
     fireEvent.click(screen.getByRole("button", { name: /Nova categoria/ }));
     const painel = await screen.findByRole("dialog");
-    fireEvent.change(within(painel).getByLabelText("Partos"), { target: { value: "COM" } });
-    fireEvent.change(within(painel).getByLabelText("Sexo"), { target: { value: "M" } });
+    await alterarControle(within(painel).getByLabelText("Partos"), { target: { value: "COM" } });
+    await alterarControle(within(painel).getByLabelText("Sexo"), { target: { value: "M" } });
     expect(within(painel).queryByLabelText("Partos")).toBeNull();
-    fireEvent.change(within(painel).getByLabelText("Nome da categoria"), { target: { value: "Boi" } });
-    fireEvent.change(within(painel).getByLabelText("Idade mínima (meses)"), { target: { value: "24" } });
+    await alterarControle(within(painel).getByLabelText("Nome da categoria"), { target: { value: "Boi" } });
+    await alterarControle(within(painel).getByLabelText("Idade mínima (meses)"), { target: { value: "24" } });
     fireEvent.click(within(painel).getByRole("button", { name: "Criar categoria" }));
     await waitFor(() => expect(criarCategoria).toHaveBeenCalledWith({ nome: "Boi", sexo: "M", automatica: true, idadeMinMeses: 24, idadeMaxMeses: null, partos: "QUALQUER" }));
   });
@@ -172,7 +211,7 @@ describe("Cadastros do rebanho — categorias", () => {
     await montarCategorias();
     fireEvent.click(screen.getByRole("button", { name: /Nova categoria/ }));
     const painel = await screen.findByRole("dialog");
-    fireEvent.change(within(painel).getByLabelText("Nome da categoria"), { target: { value: "Nova" } });
+    await alterarControle(within(painel).getByLabelText("Nome da categoria"), { target: { value: "Nova" } });
     fireEvent.click(within(painel).getByRole("button", { name: "Criar categoria" }));
     await waitFor(() => expect(criarCategoria).toHaveBeenCalledWith({ nome: "Nova", sexo: "F", automatica: true, idadeMinMeses: null, idadeMaxMeses: null, partos: "QUALQUER" }));
     expect(screen.queryByRole("dialog", { name: "Aplicar esta mudança?" })).toBeNull();
@@ -189,7 +228,7 @@ describe("Cadastros do rebanho — categorias", () => {
     await montarCategorias();
     fireEvent.click(screen.getByRole("button", { name: /Nova categoria/ }));
     const painel = await screen.findByRole("dialog");
-    fireEvent.change(within(painel).getByLabelText("Nome da categoria"), { target: { value: "Nova" } });
+    await alterarControle(within(painel).getByLabelText("Nome da categoria"), { target: { value: "Nova" } });
     fireEvent.click(within(painel).getByRole("button", { name: "Criar categoria" }));
 
     const confirmacao = await screen.findByRole("dialog", { name: "Aplicar esta mudança?" });
@@ -223,6 +262,19 @@ describe("Cadastros do rebanho — categorias", () => {
 });
 
 describe("Cadastros do rebanho — raças", () => {
+  it("filtra raças por nome e sigla localmente sem alterar catálogo", async () => {
+    await montarRacas();
+    const chamadas = vi.mocked(listarRacas).mock.calls.length;
+    const busca = screen.getByRole("searchbox", { name: "Buscar raças" });
+    fireEvent.change(busca, { target: { value: "hol" } });
+    expect(within(screen.getByRole("table", { name: "Raças" })).queryByText("Gir")).toBeNull();
+    fireEvent.change(busca, { target: { value: "inexistente" } });
+    expect(screen.getByText("Nenhum registro corresponde aos filtros.")).toBeTruthy();
+    fireEvent.change(busca, { target: { value: "" } });
+    expect(within(screen.getByRole("table", { name: "Raças" })).getByText("Gir")).toBeTruthy();
+    expect(listarRacas).toHaveBeenCalledTimes(chamadas);
+    expect(editarRaca).not.toHaveBeenCalled();
+  });
   it("lista raças com sigla, tipo e situação", async () => {
     await montarRacas();
     const tabela = screen.getByRole("table", { name: "Raças" });
@@ -247,8 +299,8 @@ describe("Cadastros do rebanho — raças", () => {
     fireEvent.click(screen.getByRole("button", { name: /Nova raça/ }));
     const painel = await screen.findByRole("dialog");
     expect((within(painel).getByLabelText(/Raça base/) as HTMLInputElement).checked).toBe(true);
-    fireEvent.change(within(painel).getByLabelText("Nome da raça"), { target: { value: "Girolando" } });
-    fireEvent.change(within(painel).getByLabelText("Sigla"), { target: { value: "gir" } });
+    await alterarControle(within(painel).getByLabelText("Nome da raça"), { target: { value: "Girolando" } });
+    await alterarControle(within(painel).getByLabelText("Sigla"), { target: { value: "gir" } });
     fireEvent.click(within(painel).getByRole("button", { name: "Criar raça" }));
     await waitFor(() => expect(criarRaca).toHaveBeenCalledWith({ nome: "Girolando", sigla: "GIR", base: true }));
   });
@@ -302,8 +354,8 @@ describe("Cadastros do rebanho — motivos de baixa", () => {
     await montarMotivos();
     fireEvent.click(screen.getByRole("button", { name: /Novo motivo de baixa/ }));
     const painel = await screen.findByRole("dialog");
-    fireEvent.change(within(painel).getByLabelText("Nome do motivo"), { target: { value: "Idade avançada" } });
-    fireEvent.change(within(painel).getByLabelText("Classe"), { target: { value: "DESCARTE_INVOLUNTARIO" } });
+    await alterarControle(within(painel).getByLabelText("Nome do motivo"), { target: { value: "Idade avançada" } });
+    await alterarControle(within(painel).getByLabelText("Classe"), { target: { value: "DESCARTE_INVOLUNTARIO" } });
     fireEvent.click(within(painel).getByRole("button", { name: "Criar motivo" }));
     await waitFor(() => expect(criarMotivoBaixa).toHaveBeenCalledWith({ nome: "Idade avançada", classe: "DESCARTE_INVOLUNTARIO" }));
   });
@@ -413,7 +465,9 @@ describe("Cadastros do rebanho — genitores externos", () => {
   it("Mostrar inativos traz o genitor inativo, e desativar chama editarGenitor", async () => {
     await montarGenitores();
     vi.mocked(listarGenitores).mockResolvedValue(genitoresMock);
+    await abrirFiltrosConsulta();
     fireEvent.click(screen.getByRole("checkbox", { name: "Mostrar inativos" }));
+    await aplicarFiltrosConsulta();
     await waitFor(() => expect(within(primeiro("table", "Genitores externos")).getByText("Touro Externo B")).toBeTruthy());
 
     vi.mocked(editarGenitor).mockResolvedValue({ ...genitoresMock[0], ativo: false });
@@ -466,5 +520,28 @@ describe("Cadastros do rebanho — material genético", () => {
     window.history.replaceState(null, "", "/pecuaria/rebanho/cadastros?aba=material-genetico&material=mg1");
     render(<Cadastros />);
     expect((await screen.findAllByText("Editar Sêmen Zeus (sexado fêmea)")).length).toBeGreaterThan(0);
+  });
+
+  it("o link direto encontra material inativo e fechar remove o editor da URL", async () => {
+    const inativo = { ...materiaisMock[0], produto: { ...materiaisMock[0].produto, ativo: false } };
+    vi.mocked(listarMaterialGenetico).mockImplementation(filtro => Promise.resolve(filtro?.incluirInativos ? [inativo] : []));
+    window.history.replaceState({}, "", "/configuracoes/pecuaria/genetica/material-genetico?material=mg1");
+    const tela = render(<Cadastros cadastro="material-genetico" embutido />);
+    await screen.findByRole("heading", { name: "Editar Sêmen Zeus (sexado fêmea)" });
+    expect(listarMaterialGenetico).toHaveBeenCalledWith({ incluirInativos: true });
+    fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+    expect(new URLSearchParams(window.location.search).has("material")).toBe(false);
+    tela.unmount();
+    render(<Cadastros cadastro="material-genetico" embutido />);
+    await screen.findByRole("heading", { name: "Materiais genéticos" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("o link de material não abre formulário de escrita para quem só consulta", async () => {
+    vi.mocked(listarMaterialGenetico).mockResolvedValue(materiaisMock);
+    window.history.replaceState({}, "", "/configuracoes/pecuaria/genetica/material-genetico?material=mg1");
+    render(<Cadastros cadastro="material-genetico" embutido podeLancar={false} />);
+    await screen.findAllByText("Sêmen Zeus (sexado fêmea)");
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 });

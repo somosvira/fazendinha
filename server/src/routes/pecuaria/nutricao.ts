@@ -10,7 +10,8 @@ import { RebanhoError } from "../../services/pecuaria/rebanho/regras.js";
 import { EstoqueError } from "../../services/estoque/estoque.js";
 import * as dietas from "../../services/pecuaria/nutricao/dietas.js";
 import * as consumo from "../../services/pecuaria/nutricao/consumo.js";
-import { listaNutricaoSchema, paginaNutricaoSchema } from "../../services/pecuaria/nutricao/schemas.js";
+import { consultarResumo } from "../../services/pecuaria/nutricao/resumo.js";
+import { consultaFechamentosSchema, listaNutricaoSchema, paginaNutricaoSchema } from "../../services/pecuaria/nutricao/schemas.js";
 
 const uuid = z.string().uuid();
 const data = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
@@ -28,6 +29,10 @@ const contexto = z.object({ loteId: uuid, propriedadeId: z.number().int().positi
 const itemConsumo = z.object({ produtoId: uuid, quantidadeConfirmada: z.number().nonnegative().optional(), motivoAjuste: z.string().trim().max(500).nullish(), modoEstoque: z.enum(["BAIXA_ESTOQUE", "SEM_BAIXA_JUSTIFICADA"]), justificativaSemBaixa: z.string().trim().max(500).nullish(), partidas: z.array(z.object({ partidaId: uuid, quantidade: z.number().positive(), cienciaValidadeDesconhecida: z.boolean().optional() })).optional() }).strict();
 
 export const nutricaoRouter = new Hono()
+  .get("/resumo", validarQuery(z.object({ loteId: uuid.optional() })), async c => {
+    try { return c.json(await consultarResumo(c.req.valid("query").loteId, await resolverEscopoLeitura(c), verValores(c))); }
+    catch (e) { return falha(c, e); }
+  })
   .post("/vigencias/:id/correcao", validar(z.object({ propriedadeId: z.number().int().positive(), desde: data, motivo: z.string().trim().min(5).max(500) }).strict()), async (c) => {
     try { const { propriedadeId: solicitado, ...input } = c.req.valid("json"); const propriedadeId = await resolverEscopoEscrita(c, solicitado);
       return c.json(await dietas.corrigirVigencia(c.req.param("id"), propriedadeId, input, getUsuario(c)?.id ?? null)); } catch (e) { return falha(c, e); }
@@ -43,7 +48,7 @@ export const nutricaoRouter = new Hono()
   .patch("/dietas/:id", validar(z.object({ nome: z.string().trim().min(2).max(160), observacao: z.string().trim().max(500).nullish(), itens: z.array(z.object({ produtoId: uuid, quantidadeCabecaDia: z.number().positive() })).min(1) })), async (c) => {
     try { return c.json(await dietas.criarDieta(c.req.valid("json"), getUsuario(c)?.id ?? null, c.req.param("id"))); } catch (e) { return falha(c, e); }
   })
-  .get("/dietas", async (c) => { try { return c.json(await dietas.listarDietas()); } catch (e) { return falha(c, e); } })
+  .get("/dietas", async (c) => { try { return c.json(await dietas.listarDietas(await resolverEscopoLeitura(c))); } catch (e) { return falha(c, e); } })
   .post("/dietas", validar(z.object({ nome: z.string().trim().min(2).max(160), observacao: z.string().trim().max(500).nullish(),
     itens: z.array(z.object({ produtoId: uuid, quantidadeCabecaDia: z.number().positive() })).min(1) })), async (c) => {
     try { return c.json(await dietas.criarDieta(c.req.valid("json"), getUsuario(c)?.id ?? null), 201); }
@@ -78,9 +83,9 @@ export const nutricaoRouter = new Hono()
       return c.json(await consumo.confirmarConsumo({ ...body, propriedadeId }, getUsuario(c)?.id ?? null), 201); }
     catch (e) { return falha(c, e); }
   })
-  .get("/consumo/fechamentos", validarQuery(listaNutricaoSchema), async (c) => {
-    try { const { loteId, ...pagina } = c.req.valid("query");
-      return c.json(await consumo.listarFechamentos(loteId, await resolverEscopoLeitura(c), pagina, verValores(c))); }
+  .get("/consumo/fechamentos", validarQuery(consultaFechamentosSchema), async (c) => {
+    try { const { loteId, status, de, ate, ...pagina } = c.req.valid("query");
+      return c.json(await consumo.listarFechamentos(loteId, await resolverEscopoLeitura(c), pagina, verValores(c), undefined, status, {de,ate})); }
     catch (e) { return falha(c, e); }
   })
   .get("/consumo/fechamentos/:id", async (c) => {

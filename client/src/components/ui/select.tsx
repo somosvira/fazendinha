@@ -5,13 +5,47 @@
 
 import * as React from "react";
 import * as SelectPrimitive from "@radix-ui/react-select";
-import { Check, ChevronDown, ChevronUp } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, Search } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
 const Select = SelectPrimitive.Root;
 const SelectGroup = SelectPrimitive.Group;
 const SelectValue = SelectPrimitive.Value;
+
+function textoSelect(node: React.ReactNode): string {
+  if (typeof node === "string" || typeof node === "number") return String(node);
+  if (Array.isArray(node)) return node.map(textoSelect).join(" ");
+  if (React.isValidElement<{ children?: React.ReactNode }>(node)) return textoSelect(node.props.children);
+  return "";
+}
+function normalizarBuscaSelect(texto: string) {
+  return texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR").trim();
+}
+/** Filtra os itens renderizados, preservando grupos/fragmentos e valores do Root. */
+export function filtrarItensSelect(children: React.ReactNode, busca: string): React.ReactNode {
+  const termo = normalizarBuscaSelect(busca);
+  // Normaliza as chaves também sem termo, evitando remontar a coleção e perder
+  // o foco ao digitar a primeira letra ou ao limpar o campo.
+  return React.Children.toArray(children).flatMap(child => {
+    if (!React.isValidElement<{ children?: React.ReactNode; hidden?: boolean; style?: React.CSSProperties }>(child)) return [child];
+    if (child.type === SelectItem) {
+      const oculto = child.props.hidden || !normalizarBuscaSelect(textoSelect(child.props.children)).includes(termo);
+      // Mantém o Item montado: Radix conserva o rótulo selecionado e a opção
+      // nativa do formulário mesmo quando ela não corresponde à busca.
+      return [React.cloneElement(child, { hidden: oculto, style: { ...child.props.style, ...(oculto ? { display: "none" } : {}) } })];
+    }
+    if (child.props.children) {
+      const itens = filtrarItensSelect(child.props.children, busca);
+      const oculto = child.type === SelectGroup && !temItensSelect(itens);
+      return [React.cloneElement(child, { children: itens, ...(oculto ? { hidden: true, style: { ...child.props.style, display: "none" } } : {}) })];
+    }
+    return [child];
+  });
+}
+function temItensSelect(children: React.ReactNode): boolean {
+  return React.Children.toArray(children).some(child => React.isValidElement<{ children?: React.ReactNode; hidden?: boolean }>(child) && !child.props.hidden && (child.type === SelectItem || temItensSelect(child.props.children)));
+}
 
 const SelectTrigger = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Trigger>,
@@ -65,10 +99,18 @@ SelectScrollDownButton.displayName = SelectPrimitive.ScrollDownButton.displayNam
 const SelectContent = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content>
->(({ className, children, position = "popper", ...props }, ref) => (
-  <SelectPrimitive.Portal>
+>(({ className, children, position = "popper", onCloseAutoFocus, onKeyDownCapture, ...props }, ref) => {
+  const [busca, setBusca] = React.useState("");
+  const contentRef = React.useRef<React.ElementRef<typeof SelectPrimitive.Content> | null>(null);
+  const buscaRef = React.useRef<HTMLInputElement>(null);
+  const itens = filtrarItensSelect(children, busca);
+  return <SelectPrimitive.Portal>
     <SelectPrimitive.Content
-      ref={ref}
+      ref={elemento => {
+        contentRef.current = elemento;
+        if (typeof ref === "function") ref(elemento);
+        else if (ref) ref.current = elemento;
+      }}
       data-slot="select-content"
       position={position}
       className={cn(
@@ -78,7 +120,36 @@ const SelectContent = React.forwardRef<
         className,
       )}
       {...props}
+      onCloseAutoFocus={event => { setBusca(""); onCloseAutoFocus?.(event); }}
+      onKeyDownCapture={event => {
+        onKeyDownCapture?.(event);
+        if (event.defaultPrevented || event.target === buscaRef.current) return;
+        if (event.key === "Tab" || (event.key.length === 1 && event.key !== " " && !event.ctrlKey && !event.metaKey && !event.altKey) || event.key === "Backspace") {
+          event.preventDefault();
+          event.stopPropagation();
+          if (event.key === "Backspace") setBusca(texto => texto.slice(0, -1));
+          else if (event.key !== "Tab") setBusca(texto => texto + event.key);
+          buscaRef.current?.focus();
+        }
+      }}
     >
+      <div className="flex items-center gap-2 border-b border-border bg-popover px-3 py-2">
+        <Search size={15} className="shrink-0 text-muted-foreground" aria-hidden="true" />
+        <input ref={buscaRef} type="search" aria-label="Buscar opções" placeholder="Buscar opção…" autoComplete="off" value={busca}
+          onChange={event => setBusca(event.target.value)}
+          onPointerDown={event => event.stopPropagation()}
+          onKeyDown={event => {
+            if (event.key === "Escape") return;
+            event.stopPropagation();
+            if (event.key === "ArrowDown" || event.key === "ArrowUp" || event.key === "Tab") {
+              event.preventDefault();
+              const opcoes = contentRef.current?.querySelectorAll<HTMLElement>('[role="option"]:not([data-disabled]):not([hidden])');
+              const indice = event.key === "ArrowUp" || event.shiftKey ? (opcoes?.length ?? 0) - 1 : 0;
+              opcoes?.[indice]?.focus();
+            }
+          }}
+          className="h-8 min-h-0 w-full min-w-0 rounded-md border-0 bg-transparent px-1 text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring" />
+      </div>
       <SelectScrollUpButton />
       <SelectPrimitive.Viewport
         className={cn(
@@ -87,12 +158,13 @@ const SelectContent = React.forwardRef<
             "h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)]",
         )}
       >
-        {children}
+        {itens}
+        {!temItensSelect(itens) && <p role="status" className="px-3 py-5 text-center text-sm text-muted-foreground">Nenhuma opção encontrada.</p>}
       </SelectPrimitive.Viewport>
       <SelectScrollDownButton />
     </SelectPrimitive.Content>
-  </SelectPrimitive.Portal>
-));
+  </SelectPrimitive.Portal>;
+});
 SelectContent.displayName = SelectPrimitive.Content.displayName;
 
 const SelectLabel = React.forwardRef<
