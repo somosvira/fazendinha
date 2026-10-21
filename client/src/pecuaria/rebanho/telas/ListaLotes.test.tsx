@@ -53,7 +53,7 @@ beforeEach(() => {
   setPropriedadeAtiva(null);
   vi.clearAllMocks();
   vi.stubGlobal("ResizeObserver",class {observe(){} unobserve(){} disconnect(){}});
-  window.history.replaceState(null,"","/pecuaria/rebanho/lotes");
+  window.history.replaceState(null,"","/pecuaria/rebanho/lotes?visualLotes=tabela");
   Element.prototype.scrollIntoView = vi.fn();
   vi.mocked(listarLotes).mockResolvedValue(lotesMock);
   vi.mocked(editarLote).mockImplementation((id, patch) => Promise.resolve({ ...lotesMock.find((l) => l.id === id)!, ...patch }));
@@ -280,7 +280,7 @@ describe("Lotes — histórico de movimentações (sempre visível)", () => {
     await waitFor(()=>expect(listarMovimentacoes).toHaveBeenLastCalledWith(expect.objectContaining({propriedadeIds:[1],loteIds:["l1"]})));
   });
   it("trocar sítios invalida os lotes anteriores",async()=>{
-    window.history.replaceState(null,"","/pecuaria/rebanho/lotes?movSitioIds=1&movLoteIds=l1");
+    window.history.replaceState(null,"","/pecuaria/rebanho/lotes?visualLotes=tabela&movSitioIds=1&movLoteIds=l1");
     await montar();
     await waitFor(()=>expect(listarMovimentacoes).toHaveBeenLastCalledWith(expect.objectContaining({loteIds:["l1"]})));
     fireEvent.click(screen.getAllByRole("button",{name:"Filtros"}).at(-1)!);
@@ -301,7 +301,7 @@ describe("Lotes — histórico de movimentações (sempre visível)", () => {
 });
 
 it("data inválida na URL de movimentações mostra erro sem consultar nem quebrar o filtro",async()=>{
- window.history.replaceState({},"","/pecuaria/rebanho/lotes?movDe=2026-02-30&movAte=2026-03-01");
+ window.history.replaceState({},"","/pecuaria/rebanho/lotes?visualLotes=tabela&movDe=2026-02-30&movAte=2026-03-01");
  await montar();
  expect(await screen.findByText("Informe datas válidas para o histórico de movimentações.")).toBeTruthy();
  expect(listarMovimentacoes).not.toHaveBeenCalled();
@@ -309,7 +309,7 @@ it("data inválida na URL de movimentações mostra erro sem consultar nem quebr
 });
 
 it("restaura os filtros principais sem apagar o recorte do histórico e acompanha voltar/avançar", async () => {
-  window.history.replaceState({}, "", "/pecuaria/rebanho/lotes?buscaLote=2&sitioLote=1&lotesInativos=true&movDesfeitas=false");
+  window.history.replaceState({}, "", "/pecuaria/rebanho/lotes?visualLotes=tabela&buscaLote=2&sitioLote=1&lotesInativos=true&movDesfeitas=false");
   render(<ListaLotes onAbrirLote={vi.fn()} />, { wrapper: Wrapper });
   await screen.findAllByText("Lote 2");
   expect((screen.getByLabelText("Buscar lote") as HTMLInputElement).value).toBe("2");
@@ -317,7 +317,7 @@ it("restaura os filtros principais sem apagar o recorte do histórico e acompanh
   expect(screen.getByRole("checkbox", { name: "Mostrar inativos" }).getAttribute("aria-checked")).toBe("true");
   fireEvent.click(screen.getByRole("button",{name:"Cancelar"}));
   expect(new URLSearchParams(window.location.search).get("movDesfeitas")).toBe("false");
-  window.history.replaceState({}, "", "/pecuaria/rebanho/lotes?buscaLote=1&movDesfeitas=false");
+  window.history.replaceState({}, "", "/pecuaria/rebanho/lotes?visualLotes=tabela&buscaLote=1&movDesfeitas=false");
   fireEvent(window, new PopStateEvent("popstate"));
   await screen.findAllByText("Lote 1");
   expect((screen.getByLabelText("Buscar lote") as HTMLInputElement).value).toBe("1");
@@ -325,7 +325,7 @@ it("restaura os filtros principais sem apagar o recorte do histórico e acompanh
 });
 
 it("mantém a página da listagem no reload enquanto aguarda os lotes", async () => {
-  window.history.replaceState({}, "", "/pecuaria/rebanho/lotes?paginaLotes=2");
+  window.history.replaceState({}, "", "/pecuaria/rebanho/lotes?visualLotes=tabela&paginaLotes=2");
   vi.mocked(listarLotes).mockResolvedValue(Array.from({ length: 25 }, (_, indice) => ({ ...lotesMock[0], id: `l-${indice}`, nome: `Grupo ${indice + 1}` })));
   render(<ListaLotes onAbrirLote={vi.fn()} />, { wrapper: Wrapper });
   await screen.findAllByText("Grupo 21");
@@ -335,7 +335,7 @@ it("mantém a página da listagem no reload enquanto aguarda os lotes", async ()
 
 it("usa o sítio global sem oferecer um segundo filtro contraditório", async () => {
   setPropriedadeAtiva(1);
-  window.history.replaceState({}, "", "/pecuaria/rebanho/lotes?sitioLote=2");
+  window.history.replaceState({}, "", "/pecuaria/rebanho/lotes?visualLotes=tabela&sitioLote=2");
   await montar();
   expect(screen.queryByLabelText("Filtrar por sítio")).toBeNull();
   expect(new URLSearchParams(window.location.search).has("sitioLote")).toBe(false);

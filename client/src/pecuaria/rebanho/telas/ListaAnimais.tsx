@@ -1,3 +1,4 @@
+import { OrdenarConsulta } from "@/financeiro/OrdenarConsulta";
 import { Settings2 } from "lucide-react";
 import { filtrosDasColunas, type CampoConsulta } from "@/financeiro/FiltroColunaConsulta";
 import { DatePicker } from "@/components/DatePicker";
@@ -44,7 +45,7 @@ const CATEGORIA_FORCADA = "__so_forcadas__";
 /** tipos de baixa oferecidos no filtro — CADASTRO_INDEVIDO é interno do "excluir cadastro" e não aparece aqui */
 const TIPOS_BAIXA_FILTRO: TipoBaixa[] = ["VENDA", "ABATE", "MORTE", "DOACAO", "EXTRAVIO"];
 
-type OpcaoOrdenacao = { valor: string; ordenar: "brinco" | "nascimento" | "entrada"; direcao: "asc" | "desc"; rotulo: string };
+type OpcaoOrdenacao = { valor: string; ordenar: "brinco" | "nascimento" | "entrada" | "ultimoPeso" | "gmd"; direcao: "asc" | "desc"; rotulo: string };
 const OPCOES_ORDENACAO: OpcaoOrdenacao[] = [
   { valor: "brinco", ordenar: "brinco", direcao: "asc", rotulo: "Brinco" },
   { valor: "nascimento-desc", ordenar: "nascimento", direcao: "desc", rotulo: "Nascimento — mais novos" },
@@ -52,6 +53,13 @@ const OPCOES_ORDENACAO: OpcaoOrdenacao[] = [
   { valor: "entrada-desc", ordenar: "entrada", direcao: "desc", rotulo: "Entrada — recentes" },
   { valor: "entrada-asc", ordenar: "entrada", direcao: "asc", rotulo: "Entrada — antigas" },
 ];
+OPCOES_ORDENACAO.push(
+  { valor: "brinco-desc", ordenar: "brinco", direcao: "desc", rotulo: "Brinco — Z–A" },
+  { valor: "ultimoPeso-asc", ordenar: "ultimoPeso", direcao: "asc", rotulo: "Último peso — menor primeiro" },
+  { valor: "ultimoPeso-desc", ordenar: "ultimoPeso", direcao: "desc", rotulo: "Último peso — maior primeiro" },
+  { valor: "gmd-asc", ordenar: "gmd", direcao: "asc", rotulo: "GMD — menor primeiro" },
+  { valor: "gmd-desc", ordenar: "gmd", direcao: "desc", rotulo: "GMD — maior primeiro" },
+);
 const ORDENACAO_PADRAO = OPCOES_ORDENACAO[0].valor;
 
 function acharOrdenacao(ordenar: string | null, direcao: string | null): string {
@@ -386,6 +394,7 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
       <div className="rebanho-filtros-principais"><BarraConsulta>
         <label className="relative w-full min-w-0 flex-[1_1_240px] sm:w-auto"><Search size={16} className="absolute left-3 top-3 text-ink-3" /><input aria-label="Buscar por brinco ou nome" value={textoBusca} onChange={(e) => setTextoBusca(e.target.value)} placeholder="Buscar por brinco ou nome" className="h-[42px] w-full rounded-lg border border-border bg-white py-2.5 pl-9 pr-3 text-sm" /></label>
         <Button secondary className="consulta-mais-filtros" onClick={abrirFiltros}><Settings2 size={16} /> Filtros</Button>
+        <OrdenarConsulta controle={{ campo: opcaoOrdenacao.ordenar, direcao: opcaoOrdenacao.direcao, campos: [{ chave: "brinco", rotulo: "Brinco", tipo: "texto" }, { chave: "ultimoPeso", rotulo: "Último peso", tipo: "numero" }, { chave: "gmd", rotulo: "GMD", tipo: "numero" }, { chave: "nascimento", rotulo: "Nascimento", tipo: "data" }, { chave: "entrada", rotulo: "Data de entrada", tipo: "data" }], mudar: v => { setOrdenacao(acharOrdenacao(v.campo, v.direcao)); setPagina(1); setSelecionados(new Map()); }, restaurar: () => { setOrdenacao(ORDENACAO_PADRAO); setPagina(1); setSelecionados(new Map()); } }} />
       </BarraConsulta>
       <div className="flex flex-wrap gap-2 px-4 py-4" aria-label="Filtros selecionados">{(Object.keys(FAMILIAS) as Familia[]).flatMap(f => multiplos[f].map(v => {
         const nomes: Record<Familia,string> = { propriedadeIds:"Sítio",loteIds:"Lote",categoriaIds:"Categoria",aptidoes:"Aptidão",papeisReprodutivos:"Papel",situacoes:"Situação",sexos:"Sexo",origens:"Origem",racaIds:"Raça" };
@@ -399,7 +408,7 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
         {selecionados.size > 0 && <><span className="text-ink-3">{selecionados.size} selecionado{selecionados.size === 1 ? "" : "s"}</span><Button secondary onClick={() => setSelecionados(new Map())}>Limpar seleção</Button>{!pesagem && <Button onClick={() => setMovimentando({ animais: [...selecionados.values()] })}>Movimentar {selecionados.size} {selecionados.size === 1 ? "animal" : "animais"}</Button>}</>}
       </div>}
       {carregando ? <p role="status" className="p-5 text-sm text-ink-3">Atualizando animais…</p> : erro && !itens.length ? <Empty>Não foi possível carregar os animais.</Empty> : itens.length ? <>
-        <TabelaFinanceira filtrosColunas={filtrosColunas} rotulo="Animais" itens={itens} colunas={COLUNAS} chaveDe={(item) => item.id} onAbrir={(item) => onAbrirAnimal(item.id)} cartaoComLinks />
+        <TabelaFinanceira ordenacao={{ campo: opcaoOrdenacao.ordenar === "ultimoPeso" ? "peso" : opcaoOrdenacao.ordenar, direcao: opcaoOrdenacao.direcao }} filtrosColunas={filtrosColunas} rotulo="Animais" itens={itens} colunas={COLUNAS} chaveDe={(item) => item.id} onAbrir={(item) => onAbrirAnimal(item.id)} cartaoComLinks />
         <Paginacao paginaAtual={pagina} totalPaginas={totalPaginas} totalItens={total} itensPorPagina={ITENS_POR_PAGINA} onPaginaChange={setPagina} rotulo="animais" idSelect="pagina-animais" />
       </> : <Empty>Nenhum animal encontrado com os filtros selecionados.</Empty>}
     </Panel>

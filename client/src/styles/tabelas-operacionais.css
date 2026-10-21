@@ -15,19 +15,37 @@
     color: var(--foreground);
   }
   :root :is(.app-main, .financeiro-colorido) table:not(.rg-tabela) > thead > tr > th {
-    height: 48px;
-    padding: 10px 16px;
+    height: var(--fin-table-head-height, 36px);
+    padding: var(--fin-table-head-padding, 5px) 16px;
     background: var(--fin-table-header);
     color: var(--fin-table-heading);
     font-family: var(--sans);
-    font-size: 14px;
+    font-size: 12px;
     font-style: normal;
     font-weight: 600;
-    line-height: 1.4;
+    line-height: 1.25;
     letter-spacing: 0;
     text-transform: none;
     vertical-align: middle;
     border-bottom: 1px solid var(--fin-table-rule);
+  }
+  /* O contorno pertence à tabela, mesmo dentro de cards ou áreas de rolagem. */
+  :root :is(.app-main, .financeiro-colorido) table:not(.rg-tabela) {
+    border: 1px solid var(--fin-table-divider, #d8e0e5);
+  }
+  /* Divisórias pertencem à tabela inteira, não a cada página. */
+  :root :is(.app-main, .financeiro-colorido) table:not(.rg-tabela) > :is(thead, tbody, tfoot) > tr > :is(th, td):not(:last-child) {
+    border-inline-end: 1px solid var(--fin-table-divider, #d8e0e5);
+  }
+  :root :is(.app-main, .financeiro-colorido) table:not(.rg-tabela) > thead > tr > :is(th, td):not(:last-child) {
+    border-inline-end-color: var(--fin-table-rule);
+  }
+  :root :is(.app-main, .financeiro-colorido) table:not(.rg-tabela) .operacoes-cabecalho-filtro.h-auto {
+    min-height: 26px;
+    padding-block: 3px;
+  }
+  @media (max-width: 900px) {
+    :root :is(.app-main, .financeiro-colorido) table:not(.rg-tabela) .operacoes-cabecalho-filtro.h-auto { min-height: 36px; }
   }
   :root .pecuaria-content .sanidade-lista .sanidade-ciclo-cabecalho {
     min-height: 48px;
@@ -47,7 +65,7 @@
     font-variant-numeric: tabular-nums;
   }
   :root :is(.app-main, .financeiro-colorido) .fin-tabela > tbody > tr > td { height: 64px; }
-  :root :is(.app-main, .financeiro-colorido) :is(.fin-tabela, .consulta-tabela, [data-slot="table"]) > tbody > tr:last-child > :is(td, th) { border-bottom: 0; }
+  :root :is(.app-main, .financeiro-colorido) :is(.fin-tabela, .consulta-tabela, [data-slot="table"]) > tbody > tr:last-child > :is(td, th) { border-bottom: 1px solid var(--fin-table-divider, #d8e0e5); }
   :root :is(.app-main, .financeiro-colorido) :is(.fin-tabela, .consulta-tabela, [data-slot="table"]) > tbody > tr:is(:hover, :focus-within) > :is(td, th) { background: var(--fin-table-hover); }
   :root :is(.app-main, .financeiro-colorido) :is(.fin-tabela, .consulta-tabela, [data-slot="table"]) > tbody > tr[tabindex="0"] { cursor: pointer; }
   :root :is(.app-main, .financeiro-colorido) :is(.fin-tabela, .consulta-tabela, [data-slot="table"]) > tbody > tr[tabindex="0"]:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }

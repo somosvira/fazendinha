@@ -274,7 +274,7 @@ export type ListarFiltros = {
   tipoBaixa?: TipoBaixa;
   baixaDe?: string;
   baixaAte?: string;
-  ordenar?: "brinco" | "nascimento" | "entrada";
+  ordenar?: "brinco" | "nascimento" | "entrada" | "ultimoPeso" | "gmd";
   direcao?: "asc" | "desc";
   page?: number;
   pageSize?: number;

@@ -17,6 +17,10 @@ Confira comportamento em rotas/serviços/interface, estrutura no schema e garant
 - O IDEAGRI serve à carga inicial e reconciliação. O Fazendinha é a fonte operacional após importar; não crie sincronização contínua por pressuposto.
 - O bot anterior, `/ia` e WhatsApp estão suspensos em `client/src/featureFlags.ts` e `server/src/featureFlags.ts`. Não os reative incidentalmente. O novo assistente de consulta é separado: siga [seu contrato](docs/assistente-consulta.md), os gates e o registro de ferramentas de leitura.
 
+## Fluxo de alterações visuais
+
+- Antes de implementar uma página ou mudança de layout, gere um mockup e revise-o com as skills `impeccable` e `frontend-design`. Apresente o resultado para aprovação antes de escrever a interface. Preserve os dados e contratos funcionais no desenho. Na implementação, confira a tela no navegador; mockup e revisão visual não substituem validação funcional. Para os relatórios financeiros deste fluxo, priorize o desktop.
+
 ## Implementação
 
 - Busque componentes, schemas, formatadores e serviços equivalentes antes de criar novos. Use TypeScript estrito e identificadores/mensagens em português consistentes com o domínio.

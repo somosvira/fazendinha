@@ -1,3 +1,4 @@
+import { useOrdenacaoTabela } from "./OrdenarConsulta";
 import "./compromissos-consulta.css";
 import { useFiltrosTabelaLocal } from "./useFiltrosTabelaLocal";
 import { useRascunhoConsulta } from "./useRascunhoConsulta";
@@ -102,12 +103,14 @@ export function CompromissosFinanceiros({ onNav, podeLancar = true }: { onNav: (
     { chave: "vencidos", colunas: [], ativo: soVencidos, limpar: () => edicaoSituacao.editar("soVencidos", false), conteudo: <label className="flex items-center gap-2"><Checkbox aria-label="Mostrar somente vencidos" checked={edicaoSituacao.rascunho.soVencidos} onCheckedChange={v => edicaoSituacao.editar("soVencidos", v === true)} />Somente vencidos</label> },
   ];
   const campos = [...camposSituacao, ...consultaColunas.campos];
-  const lista = consultaColunas.filtrar(itens)
+  const ordem = useOrdenacaoTabela<Compromisso>([{ chave: "vencimento", rotulo: "Vencimento", tipo: "data", obter: c => c.dataVencimento }, { chave: "original", rotulo: "Valor original", tipo: "numero", obter: c => c.valorOriginal }, { chave: "valor", rotulo: "Saldo pendente", tipo: "numero", obter: c => c.status === "CANCELADO" ? "0" : c.saldoPendente }], "ordemCompromissos", () => setPagina(1));
+  const listaBase = consultaColunas.filtrar(itens)
     .filter(c => !situacoes.length || situacoes.includes(c.tipo))
     .filter(c => !status.length || status.includes(c.status))
     .filter(c => (!periodo.inicio || c.dataVencimento.slice(0, 10) >= periodo.inicio) && (!periodo.fim || c.dataVencimento.slice(0, 10) <= periodo.fim))
     .filter((c) => !soVencidos || c.vencido)
     .filter(c => normalizarBuscaFinanceira(`${tituloCompromisso(c)} ${c.parceiro?.nome ?? ""} ${codigoOperacao(c.operacao.numero)}`).includes(normalizarBuscaFinanceira(busca)));
+  const lista = ordem.ordenar(listaBase);
   const totalPaginas = Math.max(1, Math.ceil(lista.length / 15));
   const paginaAtual = Math.min(pagina, totalPaginas);
   const itensNaVisao = visao === "calendario" ? lista.filter(c => c.dataVencimento.startsWith(mes)) : lista;
@@ -164,14 +167,14 @@ export function CompromissosFinanceiros({ onNav, podeLancar = true }: { onNav: (
         {emAberto && <ShadcnButton variant="outline" className="compromissos-abertos" aria-label="Remover filtro: Em aberto" onClick={() => setStatus([])}>Em aberto<X size={14} aria-hidden /></ShadcnButton>}
         <div className="compromissos-controles-direita">{resumoTotal}<ControleVisaoCompromissos visao={visao} onChange={setVisao} /></div>
       </div>
-      <BarraConsulta campos={campos} edicaoFiltros={edicao} erroFiltros={consultaColunas.erro} criterios={[...consultaColunas.criterios, ...(!emAberto && status.length ? [{id:"status",rotulo:`Situação: ${status.map(v => ({PENDENTE:"Pendente",PARCIAL:"Parcial",LIQUIDADO:"Liquidado",CANCELADO:"Cancelado"}[v] ?? v)).join(", ")}`,limpar:()=>setStatus([])}] : []), ...(soVencidos ? [{id:"vencidos",rotulo:"Somente vencidos",limpar:()=>setSoVencidos(false)}] : [])]}>
+      <BarraConsulta ordenacao={visao === "calendario" ? undefined : ordem.controle} campos={campos} edicaoFiltros={edicao} erroFiltros={consultaColunas.erro} criterios={[...consultaColunas.criterios, ...(!emAberto && status.length ? [{id:"status",rotulo:`Situação: ${status.map(v => ({PENDENTE:"Pendente",PARCIAL:"Parcial",LIQUIDADO:"Liquidado",CANCELADO:"Cancelado"}[v] ?? v)).join(", ")}`,limpar:()=>setStatus([])}] : []), ...(soVencidos ? [{id:"vencidos",rotulo:"Somente vencidos",limpar:()=>setSoVencidos(false)}] : [])]}>
         <label className="fin-filtro-busca min-w-0"><span className="sr-only">Buscar compromisso</span><span className="relative block"><Search aria-hidden="true" size={16} strokeWidth={1.8} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-3" /><Input type="search" placeholder="Descrição, parceiro ou operação…" value={busca} onChange={e => setBusca(e.target.value)} className="w-full bg-card pl-9 font-normal" /></span></label>
         <div className="fin-filtro-controle"><PeriodoFinanceiroControl showIcon inicio={periodo.inicio} fim={periodo.fim} allowAll label="Período de vencimento" onChange={p => { setPeriodo(p); if (p.inicio) setMes(p.inicio.slice(0, 7)); }} /></div>
 
       </BarraConsulta>
       {visao === "calendario" ? <CalendarioCompromissos itens={lista} mes={mes} onChangeMes={setMes} onLiquidar={podeLancar ? setPagando : undefined} /> : <>
       {lista.length ? <>
-        <TabelaFinanceira filtrosColunas={filtrosDasColunas(campos, edicao, consultaColunas.erro)} compacta cartaoComLinks rotulo="Compromissos financeiros" itens={lista.slice((paginaAtual - 1) * 15, paginaAtual * 15)} chaveDe={c => c.id} onAbrir={setSelecionado} classeLinha={c => c.vencido ? "compromisso-vencido" : ""} colunas={[
+        <TabelaFinanceira ordenacao={ordem.controle} filtrosColunas={filtrosDasColunas(campos, edicao, consultaColunas.erro)} compacta cartaoComLinks rotulo="Compromissos financeiros" itens={lista.slice((paginaAtual - 1) * 15, paginaAtual * 15)} chaveDe={c => c.id} onAbrir={setSelecionado} classeLinha={c => c.vencido ? "compromisso-vencido" : ""} colunas={[
           { chave: "descricao", titulo: "Compromisso", principal: true, larguraMinima: 240, larguraFlexivel: true, celula: c => <><strong>{tituloCompromisso(c)}</strong><div className="mt-1 text-xs text-ink-3"><LinkOperacaoFinanceira id={c.operacao.id} numero={c.operacao.numero} /></div></> },
           { chave: "parceiro", titulo: "Parceiro", larguraMinima: 180, celula: c => <ParceiroOperacao parceiro={c.parceiro} /> },
           { chave: "vencimento", titulo: "Vencimento", larguraMinima: 135, celula: c => <div className={c.vencido ? "compromisso-vencimento-atrasado" : ""}><time dateTime={c.dataVencimento}>{dataBR(c.dataVencimento)}</time>{c.vencido && <span className="compromisso-atraso"><CircleAlert size={14} aria-hidden />Vencido</span>}</div> },

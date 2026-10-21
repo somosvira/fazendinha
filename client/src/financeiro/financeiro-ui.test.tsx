@@ -82,3 +82,21 @@ describe("Modal compartilhado", () => {
     await waitFor(() => expect(document.activeElement).toBe(abrir));
   });
 });
+
+
+it("preserva totais explícitos e seus rótulos na tabela e no cartão, sem abrir um registro", () => {
+  const abrir = vi.fn();
+  const { container } = render(<TabelaFinanceira rotulo="Totais preservados" itens={[{ id: "1", nome: "Banco", valor: 125 }]} chaveDe={item => item.id} onAbrir={abrir} rodape={{ nome: "Total", valor: "R$ 500,00", oculto: "—" }} colunas={[
+    { chave: "nome", titulo: "Conta", principal: true, celula: item => item.nome },
+    { chave: "valor", titulo: "Saldo", alinhamento: "direita", celula: item => brl(item.valor) },
+    { chave: "oculto", titulo: "Valor restrito", celula: () => "—" },
+  ]} />);
+  const rodape = container.querySelector("tfoot")!;
+  expect(rodape.textContent).toContain("500,00");
+  expect(rodape.textContent).not.toContain("125,00");
+  fireEvent.click(rodape.querySelector("tr")!);
+  expect(abrir).not.toHaveBeenCalled();
+  const cartao = container.querySelector(".fin-cartao-rodape")!;
+  expect(cartao.textContent).toContain("SaldoR$ 500,00");
+  expect(cartao.textContent).toContain("Valor restrito—");
+});

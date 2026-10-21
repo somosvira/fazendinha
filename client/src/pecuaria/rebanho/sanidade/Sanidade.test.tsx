@@ -15,9 +15,21 @@ import { listarAnimais, buscarFichaAnimal } from "../api";
 
 afterEach(() => { cleanup(); vi.clearAllMocks(); vi.mocked(listarAnimais).mockResolvedValue({ itens: [] } as unknown as Awaited<ReturnType<typeof listarAnimais>>); window.history.replaceState(null, "", "/"); });
 describe("busca e atualização da Sanidade", () => {
+  it("limpa o filtro de doença do gráfico pelo modal somente após aplicar", async () => {
+    mocks.req.mockResolvedValue([]);
+    window.history.replaceState(null,"","/pecuaria/sanidade?aba=ocorrencias&doencaId=f42259e4-3872-4a27-9be0-740418d269db");
+    render(<Sanidade podeLancar={false}/>);
+    let painel=await abrirFiltrosConsulta();
+    expect(within(painel).getByRole("combobox",{name:"Filtrar por doença"})).toBeTruthy();
+    fireEvent.click(within(painel).getByRole("button",{name:"Limpar filtros"}));
+    fireEvent.click(within(painel).getByRole("button",{name:"Cancelar"}));
+    expect(new URLSearchParams(window.location.search).get("doencaId")).toBeTruthy();
+    painel=await abrirFiltrosConsulta();fireEvent.click(within(painel).getByRole("button",{name:"Limpar filtros"}));await aplicarFiltrosConsulta();
+    expect(new URLSearchParams(window.location.search).get("doencaId")).toBeNull();
+  });
   it("abre o modal compartilhado sem apagar critérios da URL", async () => {
     mocks.req.mockResolvedValue([]);
-    window.history.replaceState(null, "", "/pecuaria/sanidade?aba=agenda&visaoAgenda=tarefas&situacao=ATRASADA&loteId=lote");
+    window.history.replaceState(null, "", "/pecuaria/sanidade?visualTarefas=tabela&visualOcorrencias=tabela&aba=agenda&visaoAgenda=tarefas&situacao=ATRASADA&loteId=lote");
     render(<Sanidade podeLancar={false} />);
     const botao = screen.getByRole("button", { name: /Filtros/ });
     expect(botao.getAttribute("aria-expanded")).toBe("false");
@@ -36,7 +48,7 @@ describe("busca e atualização da Sanidade", () => {
 
   it("mantém estados menos frequentes da agenda acessíveis sem duplicar opções", async () => {
     mocks.req.mockResolvedValue([]);
-    window.history.replaceState(null, "", "/pecuaria/sanidade?aba=agenda&visaoAgenda=tarefas&situacao=DISPENSADA");
+    window.history.replaceState(null, "", "/pecuaria/sanidade?visualTarefas=tabela&visualOcorrencias=tabela&aba=agenda&visaoAgenda=tarefas&situacao=DISPENSADA");
     render(<Sanidade podeLancar={false} />);
     await abrirFiltrosConsulta();
     const situacao = screen.getByRole("combobox",{name:"Filtrar por situação"});
@@ -52,7 +64,7 @@ describe("busca e atualização da Sanidade", () => {
   it("consulta todos os animais por padrão e mantém o animal somente quando explícito", async () => {
     vi.mocked(listarAnimais).mockResolvedValue({ itens: [{ id: "primeiro", brinco: "DEV-001", nome: "Aurora" }] } as Awaited<ReturnType<typeof listarAnimais>>);
     mocks.req.mockResolvedValue([]);
-    window.history.replaceState(null, "", "/pecuaria/sanidade?aba=exames");
+    window.history.replaceState(null, "", "/pecuaria/sanidade?visualTarefas=tabela&visualOcorrencias=tabela&aba=exames");
     render(<Sanidade podeLancar={false} />);
     await waitFor(() => expect(mocks.req).toHaveBeenCalledWith(expect.stringContaining("/exames?")));
     fireEvent.click(screen.getByRole("button", { name: /Filtros/ }));
@@ -79,7 +91,7 @@ describe("busca e atualização da Sanidade", () => {
       parametros: { tipo: "APLICACAO", tipoAplicacaoNomeSnapshot: "Vacina" },
       execucao: { animalId: "animal", propriedadeId: 1, animal: { id: "animal", brinco: "DEV-001", nome: "Aurora" }, protocolo: { nome: "Vacinação", versao: 1 }, rodada: { id: "ciclo", nome: "Ciclo de vacinação" } },
     }] } : []));
-    window.history.replaceState(null, "", "/pecuaria/sanidade?aba=agenda&visaoAgenda=tarefas");
+    window.history.replaceState(null, "", "/pecuaria/sanidade?visualTarefas=tabela&visualOcorrencias=tabela&aba=agenda&visaoAgenda=tarefas");
     render(<Sanidade podeLancar />);
     const tabela = within(await screen.findByRole("table", { name: "Tarefas de protocolos" }));
     const estado = await tabela.findByText("Atrasada");
@@ -93,7 +105,7 @@ describe("busca e atualização da Sanidade", () => {
   it("prioriza pendências futuras antes do histórico e omite coluna de regularização vazia", async () => {
     const tarefa = (id: string, situacao: string, previstaPara: string) => ({ id, situacao, previstaPara, parametros: { tipo: "EXAME" }, execucao: { animalId: id, propriedadeId: 1, animal: { id, brinco: id, nome: null }, protocolo: { nome: "Rotina", versao: 1 } } });
     mocks.req.mockImplementation((caminho: string) => Promise.resolve(caminho.startsWith("/tarefas?") ? { total: 3, itens: [tarefa("histórico", "REALIZADA", "2020-01-01"), tarefa("futura", "PENDENTE", "2099-01-01"), tarefa("atrasada", "PENDENTE", "2020-01-01")] } : []));
-    window.history.replaceState(null, "", "/pecuaria/sanidade?aba=agenda&visaoAgenda=tarefas");
+    window.history.replaceState(null, "", "/pecuaria/sanidade?visualTarefas=tabela&visualOcorrencias=tabela&aba=agenda&visaoAgenda=tarefas");
     render(<Sanidade podeLancar={false} />);
     const tabela = await screen.findByRole("table", { name: "Tarefas de protocolos" });
     await within(tabela).findByText("futura");
@@ -107,7 +119,7 @@ describe("busca e atualização da Sanidade", () => {
       id: "tarefa", previstaPara: "2020-01-01", situacao: "PENDENTE", parametros: { tipo: "EXAME" },
       execucao: { animalId: "animal", propriedadeId: 2, animal: { id: "animal", brinco: "DEV-001", nome: "Aurora" }, protocolo: { nome: "Exame", versao: 1 } },
     }] } : []));
-    window.history.replaceState(null, "", "/pecuaria/sanidade?aba=agenda&visaoAgenda=tarefas");
+    window.history.replaceState(null, "", "/pecuaria/sanidade?visualTarefas=tabela&visualOcorrencias=tabela&aba=agenda&visaoAgenda=tarefas");
     render(<Sanidade podeLancar={false} />);
     const tabela = within(await screen.findByRole("table", { name: "Tarefas de protocolos" }));
     await tabela.findByText("Atrasada");
@@ -120,7 +132,7 @@ describe("busca e atualização da Sanidade", () => {
       { animal: { id: "um", brinco: "DEV-001", nome: "Aurora" }, leite: { estado: "NAO_INFORMADO" }, carne: { estado: "NAO_APLICAVEL" } },
       { animal: { id: "dois", brinco: "DEV-002", nome: "Brisa" }, leite: { estado: "CONHECIDO", ate: "2026-09-01T10:00:00Z", prazoZero: true }, carne: { estado: "NENHUMA" }, revisaoLeitePendente: true },
     ] : []));
-    window.history.replaceState(null, "", "/pecuaria/sanidade?aba=carencias");
+    window.history.replaceState(null, "", "/pecuaria/sanidade?visualTarefas=tabela&visualOcorrencias=tabela&aba=carencias");
     render(<Sanidade podeLancar={false} />);
     const tabela = within(await screen.findByRole("table", { name: "Carências sanitárias" }));
     await waitFor(() => expect(tabela.getByText("Prazo desconhecido")).toBeTruthy());
@@ -137,7 +149,7 @@ describe("busca e atualização da Sanidade", () => {
   it("abre gerenciador sem filtro de animal e sem permissão de valores", async () => {
     localStorage.setItem("rionovo:usuario", JSON.stringify({ id: 1, nome: "Operador", dono: false, areas: ["pecuaria", "financeiro"], flags: ["lancar"] }));
     mocks.req.mockResolvedValue([]);
-    window.history.replaceState(null, "", "/pecuaria/rebanho/sanidade?aba=agenda");
+    window.history.replaceState(null, "", "/pecuaria/rebanho/sanidade?visualTarefas=tabela&visualOcorrencias=tabela&aba=agenda");
     render(<Sanidade podeLancar />);
     fireEvent.click(screen.getByRole("button", { name: "Gerenciar procedimentos" }));
     await screen.findByText("Gerenciador aberto");
@@ -153,7 +165,7 @@ describe("busca e atualização da Sanidade", () => {
       if (caminho === "/execucoes/coletivas") return Promise.reject(new Error("Sobreposição: protocolo pendente"));
       return Promise.resolve([]);
     });
-    window.history.replaceState(null, "", "/pecuaria/rebanho/sanidade?aba=agenda");
+    window.history.replaceState(null, "", "/pecuaria/rebanho/sanidade?visualTarefas=tabela&visualOcorrencias=tabela&aba=agenda");
     render(<FormFatoSanitario tipo="protocolo" animalInicial="animal" fixo onFechar={vi.fn()} onSalvo={vi.fn()} />);
     await screen.findByText(/Sítio na data: Sítio B/);
     await alterarControle(screen.getByLabelText(/Protocolo publicado/), { target: { value: "A" } });
@@ -175,7 +187,7 @@ describe("busca e atualização da Sanidade", () => {
   });
   it("restaura busca da URL e envia a todas as abas, reiniciando a página ao editar", async () => {
     mocks.req.mockResolvedValue([]);
-    window.history.replaceState(null, "", "/pecuaria/rebanho/sanidade?aba=agenda&buscaAnimal=Mimosa&pagina=3");
+    window.history.replaceState(null, "", "/pecuaria/rebanho/sanidade?visualTarefas=tabela&visualOcorrencias=tabela&aba=agenda&buscaAnimal=Mimosa&pagina=3");
     render(<Sanidade podeLancar={false} />);
     const busca = screen.getByPlaceholderText("Brinco ou nome");
     expect((busca as HTMLInputElement).value).toBe("Mimosa");
@@ -192,7 +204,7 @@ describe("busca e atualização da Sanidade", () => {
   });
   it("informa escrita salva mesmo quando a atualização da consulta falha", async () => {
     mocks.req.mockResolvedValue([]);
-    window.history.replaceState(null, "", "/pecuaria/rebanho/sanidade?aba=aplicacoes&buscaAnimal=GV3");
+    window.history.replaceState(null, "", "/pecuaria/rebanho/sanidade?visualTarefas=tabela&visualOcorrencias=tabela&aba=aplicacoes&buscaAnimal=GV3");
     render(<Sanidade podeLancar />);
     const salvar = await screen.findByRole("button", { name: "Salvar aplicação de teste" });
     mocks.req.mockImplementation((caminho: string) => caminho.startsWith("/aplicacoes?") ? Promise.reject(new Error("Consulta indisponível")) : Promise.resolve([]));
@@ -207,7 +219,7 @@ describe("busca e atualização da Sanidade", () => {
 it("o link individual de carências identifica o animal e abre somente prazos, sem filtros ou paginação da lista", async () => {
   vi.mocked(listarAnimais).mockResolvedValue({ itens: [{ id: "aurora", brinco: "DEV-001", nome: "Aurora", propriedade: { id: 1 } }] } as Awaited<ReturnType<typeof listarAnimais>>);
   mocks.req.mockResolvedValue([]);
-  window.history.replaceState(null, "", "/pecuaria/sanidade?aba=carencias&animalId=aurora&de=2020-01-01&pagina=3");
+  window.history.replaceState(null, "", "/pecuaria/sanidade?visualTarefas=tabela&visualOcorrencias=tabela&aba=carencias&animalId=aurora&de=2020-01-01&pagina=3");
   render(<Sanidade podeLancar={false} />);
   await screen.findByText("DEV-001 · Aurora");
   expect(screen.getByTestId("consulta-sanitaria").getAttribute("data-somente-carencias")).toBe("true");
@@ -223,7 +235,7 @@ it("o link individual de carências identifica o animal e abre somente prazos, s
 });
 it.each([["aplicacao", "Aplicações"], ["exame", "Exames"], ["ocorrencia", "Ocorrências"], ["execucao", "Agenda"]])("infere a aba do link de detalhe %s sem exigir aba na URL", async (tipo, aba) => {
   mocks.req.mockResolvedValue([]);
-  window.history.replaceState(null, "", `/pecuaria/sanidade?detalheTipo=${tipo}&detalheId=fato&propriedadeId=1`);
+  window.history.replaceState(null, "", `/pecuaria/sanidade?visualTarefas=tabela&visualOcorrencias=tabela&detalheTipo=${tipo}&detalheId=fato&propriedadeId=1`);
   render(<Sanidade podeLancar={false} />);
   const dialogo = await screen.findByRole("dialog");
   fireEvent.keyDown(dialogo, { key: "Escape" });
@@ -233,7 +245,7 @@ it.each([["aplicacao", "Aplicações"], ["exame", "Exames"], ["ocorrencia", "Oco
 });
 it("conserva a aba de participantes do ciclo ao sincronizar a URL", async () => {
   mocks.req.mockRejectedValue(new Error("Consulta indisponível"));
-  window.history.replaceState(null, "", "/pecuaria/sanidade?aba=agenda&rodadaId=ciclo&abaCiclo=participantes");
+  window.history.replaceState(null, "", "/pecuaria/sanidade?visualTarefas=tabela&visualOcorrencias=tabela&aba=agenda&rodadaId=ciclo&abaCiclo=participantes");
   render(<Sanidade podeLancar={false} />);
   await waitFor(() => expect(new URLSearchParams(window.location.search).get("abaCiclo")).toBe("participantes"));
 });

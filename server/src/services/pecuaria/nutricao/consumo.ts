@@ -228,8 +228,8 @@ export function apresentarFechamento(f: Detalhe, verValores: boolean) {
   };
 }
 
-export async function listarFechamentos(loteId: string | undefined, propriedadeId: number | null, pagina: PaginaNutricao = { pagina: 1, limite: 25 }, verValores = false, animalId?: string, status?: "CONFIRMADO" | "ESTORNADO") {
-  const where: Prisma.FechamentoConsumoWhereInput = { ...(loteId ? { loteId } : {}), ...(status ? { status } : {}), ...(propriedadeId == null ? {} : { propriedadeId }), ...(animalId ? { participacoes: { some: { animalId } } } : {}) };
+export async function listarFechamentos(loteId: string | undefined, propriedadeId: number | null, pagina: PaginaNutricao = { pagina: 1, limite: 25 }, verValores = false, animalId?: string, status?: "CONFIRMADO" | "ESTORNADO", periodo: {de?:string;ate?:string} = {}) {
+  const where: Prisma.FechamentoConsumoWhereInput = { ...(periodo.de ? {fim:{gte:dia(periodo.de)}} : {}), ...(periodo.ate ? {inicio:{lte:dia(periodo.ate)}} : {}), ...(loteId ? { loteId } : {}), ...(status ? { status } : {}), ...(propriedadeId == null ? {} : { propriedadeId }), ...(animalId ? { participacoes: { some: { animalId } } } : {}) };
   return prisma.$transaction(async (tx) => {
     const [fechamentos, total] = await Promise.all([
       tx.fechamentoConsumo.findMany({ where, include: detalheInclude, orderBy: [{ inicio: "desc" }, { id: "asc" }], skip: (pagina.pagina - 1) * pagina.limite, take: pagina.limite }),

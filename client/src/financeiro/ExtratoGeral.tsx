@@ -1,3 +1,4 @@
+import { useOrdenacaoTabela } from "./OrdenarConsulta";
 import { BuscaLista } from "@/components/BuscaLista";
 import "./extrato-consulta.css";
 import { ArrowRight, X } from "lucide-react";
@@ -111,15 +112,16 @@ export function ExtratoGeral({ contas, movimentos, filtros, onChangeFiltros, car
   useEffect(() => setPagina(1), [inicio, fim, conta, instituicao, filtros.natureza, filtros.busca, filtros.minimo, filtros.maximo, movimentos]);
   const consulta = useFiltrosExtrato(contas,filtros,onChangeFiltros,Math.max(1,...movimentos.map(m=>Number(m.valor))));
   const intervaloInvalido = !!inicio && !!fim && inicio > fim;
-  const filtrados = filtrarMovimentosExtratoGeral(movimentos, filtros);
+  const ordem = useOrdenacaoTabela<typeof movimentos[number]>([{ chave: "data", rotulo: "Data", tipo: "data", obter: m => m.transacao.data }, { chave: "valor", rotulo: "Valor com sinal", tipo: "numero", obter: m => m.direcao === "SAIDA" ? `-${String(m.valor).replace(/^-/, "")}` : m.valor }], "ordemExtratoGeral", () => setPagina(1));
+  const filtrados = ordem.ordenar(filtrarMovimentosExtratoGeral(movimentos, filtros));
   const totalPaginas = Math.max(1, Math.ceil(filtrados.length / 15));
   const paginaAtual = Math.min(pagina, totalPaginas);
   return <section id="extrato-geral" className="mt-6 min-w-0 scroll-mt-6" aria-label="Extrato geral">
     <Panel tom="info" className="fin-painel overflow-hidden">
-      {!ocultarFiltros && <BarraConsulta campos={consulta.campos} edicaoFiltros={consulta.edicao} erroFiltros={consulta.erro} criterios={consulta.criterios} onLimpar={()=>onChangeFiltros({...filtros,conta:"",instituicao:"",busca:"",minimo:"",maximo:""})}><BuscaLista rotulo="Buscar movimento" placeholder="Buscar descrição, conta ou parceiro" valor={filtros.busca??""} onChange={busca=>onChangeFiltros({...filtros,busca})}/>{controles}</BarraConsulta>}
+      {!ocultarFiltros && <BarraConsulta ordenacao={ordem.controle} campos={consulta.campos} edicaoFiltros={consulta.edicao} erroFiltros={consulta.erro} criterios={consulta.criterios} onLimpar={()=>onChangeFiltros({...filtros,conta:"",instituicao:"",busca:"",minimo:"",maximo:""})}><BuscaLista rotulo="Buscar movimento" placeholder="Buscar descrição, conta ou parceiro" valor={filtros.busca??""} onChange={busca=>onChangeFiltros({...filtros,busca})}/>{controles}</BarraConsulta>}
       {filtros.natureza && <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border p-4 text-sm"><span>{filtros.natureza === "recebimentos" ? "Recebimentos" : "Pagamentos"} realizados, líquidos de estornos · transferências excluídas</span><Button variant="link" onClick={() => onChangeFiltros({ ...filtros, natureza: undefined })}>Mostrar todas as movimentações</Button></div>}
       <ErrorBox erro={erro} />
-      {intervaloInvalido ? <p role="alert" className="p-3">A data final deve ser igual ou posterior à data inicial.</p> : carregando ? <SkeletonListaFinanceira label="Carregando extrato geral" /> : erro ? <p className="p-3">Não foi possível carregar as movimentações.</p> : filtrados.length ? <><TabelaFinanceira filtrosColunas={filtrosDasColunas(consulta.campos,consulta.edicao,consulta.erro)} cartaoComLinks compacta barraRolagemSuperior rotulo="Extrato geral" itens={filtrados.slice((paginaAtual - 1) * 15, paginaAtual * 15)} chaveDe={m => m.id} onAbrir={onAbrir} colunas={[
+      {intervaloInvalido ? <p role="alert" className="p-3">A data final deve ser igual ou posterior à data inicial.</p> : carregando ? <SkeletonListaFinanceira label="Carregando extrato geral" /> : erro ? <p className="p-3">Não foi possível carregar as movimentações.</p> : filtrados.length ? <><TabelaFinanceira ordenacao={ordem.controle} filtrosColunas={filtrosDasColunas(consulta.campos,consulta.edicao,consulta.erro)} cartaoComLinks compacta barraRolagemSuperior rotulo="Extrato geral" itens={filtrados.slice((paginaAtual - 1) * 15, paginaAtual * 15)} chaveDe={m => m.id} onAbrir={onAbrir} colunas={[
         { chave: "data", titulo: "Data", alinhamento: "centro", larguraMinima: 110, celula: m => dataBR(m.transacao.data) },
         { chave: "descricao", titulo: "Movimentação", principal: true, larguraMinima: 260, celula: m => <MovimentacaoExtrato movimento={m} onAbrir={onAbrir} /> },
         { chave: "conta", titulo: "Conta", larguraMinima: 160, celula: m => m.conta.nome },

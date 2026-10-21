@@ -11,7 +11,7 @@ import { EstoqueError } from "../../services/estoque/estoque.js";
 import * as dietas from "../../services/pecuaria/nutricao/dietas.js";
 import * as consumo from "../../services/pecuaria/nutricao/consumo.js";
 import { consultarResumo } from "../../services/pecuaria/nutricao/resumo.js";
-import { listaNutricaoSchema, paginaNutricaoSchema } from "../../services/pecuaria/nutricao/schemas.js";
+import { consultaFechamentosSchema, listaNutricaoSchema, paginaNutricaoSchema } from "../../services/pecuaria/nutricao/schemas.js";
 
 const uuid = z.string().uuid();
 const data = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
@@ -83,9 +83,9 @@ export const nutricaoRouter = new Hono()
       return c.json(await consumo.confirmarConsumo({ ...body, propriedadeId }, getUsuario(c)?.id ?? null), 201); }
     catch (e) { return falha(c, e); }
   })
-  .get("/consumo/fechamentos", validarQuery(listaNutricaoSchema.extend({ status: z.enum(["CONFIRMADO", "ESTORNADO"]).optional() })), async (c) => {
-    try { const { loteId, status, ...pagina } = c.req.valid("query");
-      return c.json(await consumo.listarFechamentos(loteId, await resolverEscopoLeitura(c), pagina, verValores(c), undefined, status)); }
+  .get("/consumo/fechamentos", validarQuery(consultaFechamentosSchema), async (c) => {
+    try { const { loteId, status, de, ate, ...pagina } = c.req.valid("query");
+      return c.json(await consumo.listarFechamentos(loteId, await resolverEscopoLeitura(c), pagina, verValores(c), undefined, status, {de,ate})); }
     catch (e) { return falha(c, e); }
   })
   .get("/consumo/fechamentos/:id", async (c) => {

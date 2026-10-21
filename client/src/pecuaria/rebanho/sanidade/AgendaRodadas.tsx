@@ -1,3 +1,5 @@
+import { CartoesCiclos } from "./CartoesCiclos";
+import { AlternarVisualizacaoSanitaria, useVisualizacaoSanitaria } from "./VisualizacaoSanitaria";
 import { FiltroColunaConsulta, type FiltrosColunas } from "@/financeiro/FiltroColunaConsulta";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { MoreHorizontal, CalendarDays } from "lucide-react";
@@ -19,6 +21,7 @@ import { SkeletonSanitario } from "./SkeletonSanitario";
 const paginaUrl = (chave: string) => Math.max(1, Number(new URLSearchParams(window.location.search).get(chave)) || 1);
 
 export function AgendaRodadas({ filtrosColunas, filtrosUI, filtros, podeLancar, rodadaId, onAbrir, onExecutar, onAcao, recarregarToken }: { filtrosColunas?: FiltrosColunas; filtrosUI?: ReactNode | ((acao: ReactNode) => ReactNode); filtros: Record<string, string | number | undefined>; podeLancar: boolean; rodadaId: string; onAbrir: (id: string) => void; onExecutar: (tarefas: TarefaRodada[]) => void; onAcao: (acao: "adiar" | "dispensar" | "cancelar" | "consultar", tarefa: TarefaRodada) => void; recarregarToken: number }) {
+  const visual = useVisualizacaoSanitaria("visualCiclos");
   const [pagina, setPagina] = useState<PaginaSanitaria<RodadaSanitaria> | null>(null);
   const [criando, setCriando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -31,9 +34,10 @@ export function AgendaRodadas({ filtrosColunas, filtrosUI, filtros, podeLancar, 
   if (rodadaId) return <DetalheRodada key={rodadaId} id={rodadaId} filtros={filtros} podeLancar={podeLancar} onFechar={() => onAbrir("")} onExecutar={onExecutar} onAcao={onAcao} recarregarToken={recarregarToken} onMudou={() => setRevisao((v) => v + 1)} />;
   return <section className="min-w-0">
     {typeof filtrosUI === "function" ? filtrosUI(podeLancar ? <Button onClick={() => setCriando(true)}>Novo ciclo</Button> : undefined) : <div className="flex flex-wrap items-center justify-between gap-3">{filtrosUI}{podeLancar && <Button onClick={() => setCriando(true)}>Novo ciclo</Button>}</div>}
+    <div className="san-visual-barra"><p>Acompanhe as etapas e as tarefas de cada ciclo.</p><AlternarVisualizacaoSanitaria rotulo="Visualização dos ciclos" {...visual}/></div>
     {salvo && <p role="status">Ciclo salvo.</p>}
     {erro && <><ErrorBox erro={erro} /><Button secondary onClick={() => setRevisao((v) => v + 1)}>Tentar novamente</Button></>}
-    {carregando ? <SkeletonSanitario estrutura="ciclos" label="Carregando ciclos de protocolos…" /> : !erro && <><div className="sanidade-ciclos">
+    {carregando ? <SkeletonSanitario estrutura="ciclos" label="Carregando ciclos de protocolos…" /> : !erro && <>{visual.modo === "visual" ? <CartoesCiclos ciclos={pagina?.itens ?? []} onAbrir={onAbrir} revisao={revisao + recarregarToken}/> : <div className="sanidade-ciclos">
       <div className="sanidade-ciclo-linha sanidade-ciclo-cabecalho text-sm text-ink-3"><span>Ciclo</span><span>Protocolo</span><span>{filtrosColunas?.data ? <FiltroColunaConsulta titulo="Início" {...filtrosColunas.data}/> : "Início"}</span><span>Participantes</span></div>
       {(pagina?.itens ?? []).map((r) => <div key={r.id}>
         <div role="button" tabIndex={0} aria-label={`Abrir ciclo ${r.nome}`} onClick={() => onAbrir(r.id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onAbrir(r.id); } }} className={`sanidade-ciclo-linha sanidade-ciclo-clicavel ${rodadaId === r.id ? "sanidade-ciclo-ativo" : ""}`}>
@@ -41,7 +45,7 @@ export function AgendaRodadas({ filtrosColunas, filtrosUI, filtros, podeLancar, 
           <span>{r.protocolo.nome} · v{r.protocolo.versao}</span><span>{dataSanitaria(r.inicioReferencia)}</span><span>{r.participantes ?? "—"} animais</span>
         </div>
       </div>)}
-    </div>{pagina && pagina.total > 0 && <Paginacao paginaAtual={pagina.pagina} totalPaginas={Math.max(1, Math.ceil(pagina.total / pagina.porPagina))} totalItens={pagina.total} itensPorPagina={pagina.porPagina} onPaginaChange={(p) => { const url = new URL(window.location.href); url.searchParams.set("pagina", String(p)); window.history.pushState(null, "", url); window.dispatchEvent(new PopStateEvent("popstate")); }} rotulo="ciclos" idSelect="pagina-rodadas" />}{!pagina?.itens?.length && <Empty>{temFiltros ? "Nenhum ciclo corresponde aos filtros. Ajuste os critérios acima para consultar outros ciclos." : <>Nenhum ciclo encontrado.{podeLancar && " Use Novo ciclo para planejar o cuidado dos animais."}</>}</Empty>}</>}
+    </div>}{pagina && pagina.total > 0 && <Paginacao paginaAtual={pagina.pagina} totalPaginas={Math.max(1, Math.ceil(pagina.total / pagina.porPagina))} totalItens={pagina.total} itensPorPagina={pagina.porPagina} onPaginaChange={(p) => { const url = new URL(window.location.href); url.searchParams.set("pagina", String(p)); window.history.pushState(null, "", url); window.dispatchEvent(new PopStateEvent("popstate")); }} rotulo="ciclos" idSelect="pagina-rodadas" />}{!pagina?.itens?.length && <Empty>{temFiltros ? "Nenhum ciclo corresponde aos filtros. Ajuste os critérios acima para consultar outros ciclos." : <>Nenhum ciclo encontrado.{podeLancar && " Use Novo ciclo para planejar o cuidado dos animais."}</>}</Empty>}</>}
 
     {criando && <FormRodada onFechar={() => setCriando(false)} onSalvo={(id) => { setCriando(false); setSalvo(true); setRevisao((v) => v + 1); onAbrir(id); }} />}
   </section>;

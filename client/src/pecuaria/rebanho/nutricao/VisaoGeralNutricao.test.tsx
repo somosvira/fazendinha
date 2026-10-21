@@ -14,7 +14,7 @@ function lote(id: string, nome: string, animais: number, comDieta: boolean): Res
 }
 beforeEach(() => {
   vi.clearAllMocks();
-  window.history.replaceState(null, "", "/pecuaria/nutricao");
+  window.history.replaceState(null, "", "/pecuaria/nutricao?visualNutricao=tabela");
   vi.mocked(consultarVisaoNutricional).mockResolvedValue({ lotes: [lote("mat", "Matrizes", 5, true), lote("rec", "Recria", 3, false)], verValores: true });
 });
 afterEach(() => { cleanup(); window.history.replaceState(null, "", "/"); });
@@ -23,7 +23,7 @@ describe("panorama nutricional sem indicadores repetidos", () => {
     render(<VisaoGeralNutricao />);
     await screen.findByLabelText("Efetivo nos lotes");
     expect(document.querySelector("details")).toBeNull();
-    expect(screen.queryByRole("heading", { name: "Nutrição por lote" })).toBeNull();
+    expect(screen.getByRole("heading", { name: /Nutrição por lote/ })).toBeTruthy();
     expect(screen.getAllByText(/8 animais ativos nos lotes/)).toHaveLength(1);
     expect(screen.getByRole("button", { name: "Filtros" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Anterior" })).toBeNull();
@@ -75,4 +75,45 @@ describe("panorama nutricional sem indicadores repetidos", () => {
     expect(screen.queryByRole("button", { name: /Com dieta/ })).toBeNull();
     expect(screen.queryByText("0%")).toBeNull();
   });
+});
+
+it("filtra pelo resumo de dietas sem reduzir a base completa nem perder a busca", async () => {
+  window.history.replaceState(null, "", "/pecuaria/nutricao?buscaLote=Matrizes");
+  render(<VisaoGeralNutricao />);
+  const sem = await screen.findByRole("button", { name: "Sem dieta 1" });
+  expect(screen.getByText("1 de 2 lotes")).toBeTruthy();
+  fireEvent.click(sem);
+  expect(new URLSearchParams(window.location.search).get("situacaoDieta")).toBe("sem");
+  expect(new URLSearchParams(window.location.search).get("buscaLote")).toBe("Matrizes");
+  expect(screen.getByText("1 de 2 lotes")).toBeTruthy();
+  expect(screen.getByText("Nenhum lote corresponde aos filtros.")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Sem dieta 1" }));
+  expect(new URLSearchParams(window.location.search).has("situacaoDieta")).toBe(false);
+});
+
+it("alterna cartões e tabela sem perder a busca e oculta custos sem permissão", async () => {
+  window.history.replaceState(null, "", "/pecuaria/nutricao?visualNutricao=visual&buscaLote=Matrizes");
+  vi.mocked(consultarVisaoNutricional).mockResolvedValue({ lotes: [lote("mat", "Matrizes", 5, true),lote("rec","Recria",3,false)], verValores: false });
+  render(<VisaoGeralNutricao />);
+  await screen.findByRole("link", {name:"Matrizes"});
+  expect(screen.queryByRole("table")).toBeNull();
+  expect(screen.queryByText(/379,50/)).toBeNull();
+  expect(screen.getByRole("img",{name:"1 de 2 lotes com dieta vigente"})).toBeTruthy();
+  fireEvent.click(screen.getByRole("button",{name:"Tabela"}));
+  expect(screen.getByRole("table",{name:"Nutrição por lote"})).toBeTruthy();
+  expect(new URLSearchParams(window.location.search).get("buscaLote")).toBe("Matrizes");
+  expect(screen.queryByRole("columnheader",{name:"Custo histórico"})).toBeNull();
+});
+
+it("mantém um único link nativo por cartão, com nome acessível e destino do lote", async () => {
+  window.history.replaceState(null, "", "/pecuaria/nutricao?visualNutricao=visual");
+  const { container } = render(<VisaoGeralNutricao />);
+  await screen.findByRole("link", { name: "Matrizes" });
+  const cartao = container.querySelector(".dietas-cartao")!;
+  expect(cartao.querySelectorAll("a")).toHaveLength(1);
+  const link = cartao.querySelector("a")!;
+  expect(link.className).toContain("dietas-cartao-link");
+  expect(link.getAttribute("href")).toContain("loteId=mat");
+  fireEvent.click(link);
+  expect(vi.mocked(navegarPara).mock.calls.at(-1)?.[0]).toContain("loteId=mat");
 });

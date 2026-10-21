@@ -105,3 +105,20 @@
 .pec-baixas-classificacao strong { font-weight: 500; color: var(--foreground); }
 .pec-painel-rebanho .pec-baixas-rodape { border-top: 1px solid var(--border); padding-top: 8px; }
 @media(max-width:1100px) { .pec-panorama-grid { grid-template-columns: minmax(0,1fr); } }
+
+/* Barras comparáveis: mesmo denominador e valores sempre legíveis. */
+.rebanho-content .pec-painel-rebanho .pec-panorama-grid { grid-template-columns: minmax(0,1.35fr) minmax(0,1fr); gap: 16px; align-items: start; }
+.pec-painel-rebanho .pec-panorama-principal, .pec-painel-rebanho .pec-panorama-contexto { display: contents; }
+.pec-panorama-principal > :first-child { order: 1; }.pec-panorama-contexto > :first-child { order: 2; }.pec-panorama-principal > :nth-child(2) { order: 3; }.pec-panorama-contexto > :last-child { order: 4; }
+.rebanho-content .pec-painel-rebanho .pec-legenda-categorias { grid-template-columns: minmax(0,1fr); gap: 3px; }
+.rebanho-content .pec-painel-rebanho .pec-categoria-linha { display: grid; grid-template-columns: minmax(150px,.95fr) minmax(40px,1fr) 32px 44px 14px; align-items: center; gap: 10px; padding: 10px 8px; }
+.pec-categoria-linha .pec-distribuicao-trilho { margin: 0; height: 12px; }
+.rebanho-content .pec-painel-rebanho .pec-categoria-linha strong { font-size: 15px; }
+.rebanho-content .pec-painel-rebanho .pec-grafico-cabecalho h2, .pec-painel-rebanho .pec-eventos-cabecalho h2 { font-size: 18px; font-weight: 600; }
+.pec-painel-rebanho .pec-composicao-corpo { gap: 12px; }
+.pec-painel-rebanho .pec-efetivo > strong { font-size: 32px; }
+.pec-painel-rebanho .pec-sitios-corpo { padding: 12px 16px; }
+.pec-painel-rebanho .pec-baixas-legenda .pec-participacao { min-width: 38px; text-align: right; }
+.pec-painel-rebanho .pec-painel-link:hover { background: var(--accent); }
+@media(max-width:1100px) { .rebanho-content .pec-painel-rebanho .pec-panorama-grid { grid-template-columns: minmax(0,1fr); } }
+@media(max-width:600px) { .rebanho-content .pec-painel-rebanho .pec-categoria-linha { grid-template-columns: minmax(110px,1fr) minmax(32px,.7fr) 28px 42px 12px; gap: 6px; font-size: 12px; } }

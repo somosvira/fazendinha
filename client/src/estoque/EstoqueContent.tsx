@@ -1,3 +1,6 @@
+import { CartoesProdutos } from "./CartoesProdutos";
+import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "@/components/VisualizacaoConsulta";
+import { useOrdenacaoTabela } from "@/financeiro/OrdenarConsulta";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button as Botao } from "@/components/ui/button";
@@ -67,6 +70,7 @@ function useMovimentos(f: FiltroMovimentos) {
 }
 
 export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { centroCustoIdInicial?: string | null; titulo?: string; avisoFiltro?: string } = {}) {
+  const visual = useVisualizacaoConsulta("visualEstoque");
   const [consultaUrl, setConsultaUrl] = useState(() => window.location.search);
   useEffect(() => { const atualizar = () => setConsultaUrl(window.location.search); window.addEventListener("popstate", atualizar); return () => window.removeEventListener("popstate", atualizar); }, []);
   const urlEstoque = new URLSearchParams(consultaUrl);
@@ -131,7 +135,8 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
     { chave: "categoria", naBarra: true, rotulo: "Categoria", tipo: "texto", obter: s => s.categoria?.nome },
     ...(podeVerValoresFinanceiros() ? [{ chave: "valor", rotulo: "Valor em estoque", tipo: "valor" as const, obter: (s: SaldoDTO) => s.custoMedio == null ? null : s.valor, limiteSugerido: Math.max(1, ...saldos.data.map(s => s.valor ?? 0)) }] : []),
   ], () => setPaginaSaldos(1));
-  const saldosVisiveis = (() => {
+  const ordenacaoSaldos = useOrdenacaoTabela<SaldoDTO>([{chave:"produto",rotulo:"Produto",tipo:"texto",obter:s=>s.nome},{chave:"saldo",rotulo:"Disponível (unidade do produto)",tipo:"numero",obter:s=>s.saldo},...(podeVerValoresFinanceiros()?[{chave:"valor",rotulo:"Valor em estoque",tipo:"numero" as const,obter:(s:SaldoDTO)=>s.custoMedio == null ? null : s.valor}]:[])],"ordemSaldos",()=>setPaginaSaldos(1));
+  const saldosBase = (() => {
     const termo = busca.trim().toLocaleLowerCase("pt-BR");
     const filtrados = consultaSaldos.filtrar(saldos.data).filter((s) => {
       if (soAbaixoMin && !s.abaixoMinimo) return false;
@@ -146,6 +151,7 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
     });
   })();
 
+  const saldosVisiveis = ordenacaoSaldos.ordenar(saldosBase);
   const totalPaginasSaldos = Math.max(1, Math.ceil(saldosVisiveis.length / ITENS_POR_PAGINA));
   const paginaSaldosAtual = Math.min(paginaSaldos, totalPaginasSaldos);
   const saldosDaPagina = saldosVisiveis.slice((paginaSaldosAtual - 1) * ITENS_POR_PAGINA, paginaSaldosAtual * ITENS_POR_PAGINA);
@@ -245,20 +251,21 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
     <section className="mt-6" aria-label="Saldos de estoque">
       <Panel className="fin-painel overflow-hidden">
 
-      <BarraConsulta campos={camposSaldos} erroFiltros={consultaSaldos.erro} edicaoFiltros={edicaoCompletaSaldos} adicionais={<><label>Centro de custo<SelectFiltro rotulo="Filtrar por centro de custo" valor={edicaoSaldos.rascunho.centro} onChange={v => edicaoSaldos.editar("centro", v)} opcoes={[{ valor: "", texto: "Todos os centros" }, { valor: SEM_VINCULO, texto: "Sem centro" }, ...centros.map((c) => ({ valor: c.id, texto: c.nome }))]} className="w-full sm:!w-full" /></label>
+      <BarraConsulta ordenacao={ordenacaoSaldos.controle} campos={camposSaldos} erroFiltros={consultaSaldos.erro} edicaoFiltros={edicaoCompletaSaldos} adicionais={<><label>Centro de custo<SelectFiltro rotulo="Filtrar por centro de custo" valor={edicaoSaldos.rascunho.centro} onChange={v => edicaoSaldos.editar("centro", v)} opcoes={[{ valor: "", texto: "Todos os centros" }, { valor: SEM_VINCULO, texto: "Sem centro" }, ...centros.map((c) => ({ valor: c.id, texto: c.nome }))]} className="w-full sm:!w-full" /></label>
 <label>Ordenar por<SelectFiltro rotulo="Ordenar por" valor={edicaoSaldos.rascunho.ordem} onChange={v => edicaoSaldos.editar("ordem", v as Ordem)} opcoes={[{ valor: "nome", texto: "Ordenar por nome" }, { valor: "categoria", texto: "Ordenar por categoria" }, { valor: "valor", texto: "Ordenar por maior valor" }]} className="w-full sm:!w-full" /></label>
 </>} criterios={[...consultaSaldos.criterios, ...(soAbaixoMin ? [{id:"abaixo",rotulo:"Só abaixo do mínimo",limpar:()=>setSoAbaixoMin(false)}] : []), ...(soNegativos ? [{id:"negativos",rotulo:"Saldo negativo",limpar:()=>setSoNegativos(false)}] : []), ...(centroFiltro ? [{id:"centro",rotulo:`Centro: ${centros.find(c=>c.id===centroFiltro)?.nome ?? "Sem centro"}`,limpar:()=>setCentroFiltro("")}] : []), ...(ordem !== "nome" ? [{id:"ordem",rotulo:`Ordenação: ${ordem === "valor" ? "Maior valor" : "Categoria"}`,limpar:()=>setOrdem("nome")}] : [])]} onLimpar={()=>{consultaSaldos.limpar();setBusca("");setCentroFiltro("");setOrdem("nome");setSoAbaixoMin(false);setSoNegativos(false);}}>
         <BuscaLista rotulo="Buscar produto" placeholder="Buscar por produto ou categoria" valor={busca} onChange={setBusca} />
 
 
       </BarraConsulta>
+      <div className="consulta-visual-barra"><span>{saldosVisiveis.length} produtos no recorte</span><AlternarVisualizacaoConsulta rotulo="Visualização dos produtos" {...visual}/></div>
       <div className="min-w-0">
         {saldos.loading ? <div className="p-6"><Loader /></div>
           : saldos.erro ? <Empty>Não foi possível consultar os saldos: {saldos.erro} <Button secondary onClick={saldos.recarregar}>Tentar novamente</Button></Empty>
           : saldos.data.length === 0 ? <Empty>Nenhum produto com movimento de estoque. Registre uma compra para estoque ou um inventário inicial.</Empty>
           : saldosVisiveis.length === 0 ? <Empty>{filtrosAtivos ? "Nenhum produto bate com a busca." : "Nenhum produto para exibir."}</Empty>
           : <>
-              <TabelaFinanceira compacta filtrosColunas={filtrosDasColunas(camposSaldos, edicaoCompletaSaldos, consultaSaldos.erro)} rotulo="Saldos de estoque" itens={saldosDaPagina} colunas={colunasSaldos} chaveDe={(s) => s.produtoId} classeLinha={s => s.saldo < 0 ? "bg-red-50/40" : s.abaixoMinimo ? "bg-amber-50/40" : ""} />
+              {visual.modo === "visual" ? <CartoesProdutos itens={saldosDaPagina} todos={saldosVisiveis} propriedadeId={sitioEfetivo} verValores={podeVerValoresFinanceiros()} acoes={s=><>{s.materialGeneticoId&&<LinkInterno href={hrefMaterialGenetico(s.materialGeneticoId)} area="pecuaria">Identidade genética</LinkInterno>}{colunasSaldos.find(c=>c.chave==="acoes")?.celula(s)}</>} filtrarReposicao={()=>{setSoAbaixoMin(true);setSoNegativos(false);setPaginaSaldos(1);}}/> : <TabelaFinanceira ordenacao={ordenacaoSaldos.controle} compacta filtrosColunas={filtrosDasColunas(camposSaldos, edicaoCompletaSaldos, consultaSaldos.erro)} rotulo="Saldos de estoque" itens={saldosDaPagina} colunas={colunasSaldos} chaveDe={(s) => s.produtoId} classeLinha={s => s.saldo < 0 ? "bg-red-50/40" : s.abaixoMinimo ? "bg-amber-50/40" : ""} />}
               <Paginacao pagina={paginaSaldosAtual} totalPaginas={totalPaginasSaldos} total={saldosVisiveis.length} porPagina={ITENS_POR_PAGINA} rotulo="Paginação de saldos" substantivo={saldosVisiveis.length === 1 ? "produto" : "produtos"} idSelect="pagina-saldos" onPagina={setPaginaSaldos} />
             </>}
       </div>

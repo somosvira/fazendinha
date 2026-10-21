@@ -1,3 +1,6 @@
+import { CartoesLotes } from "./CartoesLotes";
+import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "@/components/VisualizacaoConsulta";
+import { useOrdenacaoTabela } from "@/financeiro/OrdenarConsulta";
 import { filtrosDasColunas, type CampoConsulta } from "@/financeiro/FiltroColunaConsulta";
 import { CampoFiltro } from "@/financeiro/PainelFiltros";
 import { useRascunhoConsulta } from "@/financeiro/useRascunhoConsulta";
@@ -51,6 +54,7 @@ export function mensagemDesativar(lote: Lote): string {
 }
 
 export function ListaLotes({ podeLancar = true, onAbrirLote }: { podeLancar?: boolean; onAbrirLote: (id: string) => void }) {
+  const visual = useVisualizacaoConsulta("visualLotes");
   const sitioGlobal = getPropriedadeAtiva();
   const [mostrarInativos, setMostrarInativos] = useState(() => new URLSearchParams(window.location.search).get("lotesInativos") === "true");
   const [filtroSitio, setFiltroSitio] = useState(() => sitioGlobal == null ? new URLSearchParams(window.location.search).get("sitioLote") ?? "" : "");
@@ -165,7 +169,9 @@ export function ListaLotes({ podeLancar = true, onAbrirLote }: { podeLancar?: bo
     ...(sitioGlobal == null ? [{chave:"sitio",ativo:!!filtroSitio,limpar:()=>edicaoLotes.editar("sitio",""),conteudo:<CampoFiltro rotulo="Sítio"><SelectCampo aria-label="Filtrar por sítio" value={edicaoLotes.rascunho.sitio} onValueChange={v=>edicaoLotes.editar("sitio",v)}><option value="">Todos os sítios</option>{sitiosAtivos.map(s=><option key={s.id} value={s.id}>{s.nome}</option>)}</SelectCampo></CampoFiltro>}] : []),
     {chave:"situacao",ativo:mostrarInativos,limpar:()=>edicaoLotes.editar("inativos",false),conteudo:<label className="flex items-center gap-2 text-sm"><Checkbox checked={edicaoLotes.rascunho.inativos} onCheckedChange={v=>edicaoLotes.editar("inativos",v===true)}/>Mostrar inativos</label>},
   ];
-  const lotesFiltrados = (lotes ?? []).filter(l => (!filtroSitio || String(l.propriedadeId) === filtroSitio) && `${l.nome} ${l.propriedade.nome}`.toLocaleLowerCase("pt-BR").includes(busca.toLocaleLowerCase("pt-BR")));
+  const ordemLotes = useOrdenacaoTabela<Lote>([{chave:"nome",rotulo:"Lote",tipo:"texto",obter:l=>l.nome},{chave:"animais",rotulo:"Animais ativos",tipo:"numero",obter:l=>l.animaisAtivos}], "ordemLotes", ()=>setPaginaLotes(1));
+  const lotesBase = (lotes ?? []).filter(l => (!filtroSitio || String(l.propriedadeId) === filtroSitio) && `${l.nome} ${l.propriedade.nome}`.toLocaleLowerCase("pt-BR").includes(busca.toLocaleLowerCase("pt-BR")));
+  const lotesFiltrados = ordemLotes.ordenar(lotesBase);
   const totalPaginasLotes = Math.max(1, Math.ceil(lotesFiltrados.length / LOTES_POR_PAGINA));
   const paginaLotesAtual = Math.min(paginaLotes, totalPaginasLotes);
   const lotesDaPagina = lotesFiltrados.slice((paginaLotesAtual - 1) * LOTES_POR_PAGINA, paginaLotesAtual * LOTES_POR_PAGINA);
@@ -181,15 +187,16 @@ export function ListaLotes({ podeLancar = true, onAbrirLote }: { podeLancar?: bo
 
     <Panel className="mt-5 overflow-hidden">
       {/* filtros ficam fora do fieldset de escrita — quem só pode ver continua podendo filtrar (K7) */}
-      <BarraConsulta campos={camposLotes} edicaoFiltros={edicaoLotes} criterios={[...(filtroSitio?[{id:"sitio",rotulo:`Sítio: ${sitiosAtivos.find(s=>String(s.id)===filtroSitio)?.nome ?? "Selecionado"}`,limpar:()=>{setFiltroSitio("");setPaginaLotes(1);}}]:[]),...(mostrarInativos?[{id:"inativos",rotulo:"Inclui inativos",limpar:()=>{setMostrarInativos(false);setPaginaLotes(1);}}]:[])]} acao={podeLancar ? <div className="flex flex-wrap gap-2">
+      <BarraConsulta ordenacao={ordemLotes.controle} campos={camposLotes} edicaoFiltros={edicaoLotes} criterios={[...(filtroSitio?[{id:"sitio",rotulo:`Sítio: ${sitiosAtivos.find(s=>String(s.id)===filtroSitio)?.nome ?? "Selecionado"}`,limpar:()=>{setFiltroSitio("");setPaginaLotes(1);}}]:[]),...(mostrarInativos?[{id:"inativos",rotulo:"Inclui inativos",limpar:()=>{setMostrarInativos(false);setPaginaLotes(1);}}]:[])]} acao={podeLancar ? <div className="flex flex-wrap gap-2">
       <Button secondary onClick={() => setSelecionandoAnimais(true)}><ArrowRightLeft size={16} /> Movimentar animais</Button>
     </div> : undefined}>
         <BuscaLista rotulo="Buscar lote" placeholder="Buscar lote ou sítio" valor={busca} onChange={valor => { setBusca(valor); setPaginaLotes(1); }} />
       </BarraConsulta>
+      <div className="consulta-visual-barra"><span>{lotesFiltrados.length} lotes no recorte</span><AlternarVisualizacaoConsulta rotulo="Visualização dos lotes" {...visual}/></div>
       <fieldset disabled={processando} aria-busy={processando} className="min-w-0">
         {lotes === null
           ? <div className="p-6"><Loader label="Carregando lotes" /></div>
-          : <TabelaFinanceira filtrosColunas={filtrosDasColunas(camposLotes,edicaoLotes)} rotulo="Lotes" itens={lotesDaPagina} colunas={colunasLotes(editar, alternar).filter(c=>podeLancar||!c.acoes)} chaveDe={(l) => l.id} onAbrir={(l) => onAbrirLote(l.id)} classeLinha={(l) => !l.ativo ? "opacity-55" : ""} />}
+          : visual.modo === "visual" ? <CartoesLotes lotes={lotesDaPagina} todos={lotesFiltrados} onAbrir={onAbrirLote} acoes={l=>podeLancar?<AcoesLinha nome={l.nome} ativo={l.ativo} onEditar={()=>editar(l)} onAlternar={()=>alternar(l)}/>:null}/> : <TabelaFinanceira ordenacao={ordemLotes.controle} filtrosColunas={filtrosDasColunas(camposLotes,edicaoLotes)} rotulo="Lotes" itens={lotesDaPagina} colunas={colunasLotes(editar, alternar).filter(c=>podeLancar||!c.acoes)} chaveDe={(l) => l.id} onAbrir={(l) => onAbrirLote(l.id)} classeLinha={(l) => !l.ativo ? "opacity-55" : ""} />}
       </fieldset>
       {lotes !== null && <Paginacao paginaAtual={paginaLotesAtual} totalPaginas={totalPaginasLotes} totalItens={lotesFiltrados.length} itensPorPagina={LOTES_POR_PAGINA} onPaginaChange={setPaginaLotes} rotulo="lotes" idSelect="pagina-lista-lotes" />}
     </Panel>

@@ -53,9 +53,9 @@ export const confirmarConsumo = (body: { loteId: string; propriedadeId: number; 
   itens: Array<{ produtoId: string; quantidadeConfirmada: number; motivoAjuste?: string; modoEstoque: "BAIXA_ESTOQUE" | "SEM_BAIXA_JUSTIFICADA"; justificativaSemBaixa?: string;
     partidas?: Array<{ partidaId: string; quantidade: number; cienciaValidadeDesconhecida?: boolean }> }> }) =>
   post<Pick<Fechamento, "id" | "inicio" | "fim" | "animalDias" | "status">>("/pecuaria/rebanho/nutricao/consumo/confirmacao", body);
-const paginaFechamentos = async (loteId?: string, pagina = 1, status?: Fechamento["status"]): Promise<Pagina<Fechamento>> => {
+const paginaFechamentos = async (loteId?: string, pagina = 1, status?: Fechamento["status"], periodo?: {de?:string;ate?:string}): Promise<Pagina<Fechamento>> => {
   const [resultado, lotes] = await Promise.all([
-    req<Pagina<Fechamento>>(`/pecuaria/rebanho/nutricao/consumo/fechamentos?${loteId ? `loteId=${encodeURIComponent(loteId)}&` : ""}pagina=${pagina}${status ? `&status=${status}` : ""}`),
+    req<Pagina<Fechamento>>(`/pecuaria/rebanho/nutricao/consumo/fechamentos?${loteId ? `loteId=${encodeURIComponent(loteId)}&` : ""}pagina=${pagina}${status ? `&status=${status}` : ""}${periodo?.de ? `&de=${encodeURIComponent(periodo.de)}` : ""}${periodo?.ate ? `&ate=${encodeURIComponent(periodo.ate)}` : ""}`),
     listarLotes({ incluirInativos: true }),
   ]);
   return { ...resultado, itens: resultado.itens.map((f) => ({ ...f, propriedade: f.propriedade ?? lotes.find((l) => l.id === f.lote.id)?.propriedade ?? { id: f.propriedadeId, nome: "Sítio do registro" } })) };

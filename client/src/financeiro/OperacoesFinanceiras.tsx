@@ -1,3 +1,4 @@
+import { useOrdenacaoTabela } from "./OrdenarConsulta";
 import { BarraConsulta, type CriterioConsulta } from "@/financeiro/BarraConsulta";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button as UiButton } from "@/components/ui/button";
@@ -66,6 +67,7 @@ export function OperacoesFinanceiras({ podeLancar = true }: { podeLancar?: boole
   const [servicoGerenciado, setServicoGerenciado] = useState<Operacao | null>(null);
   const [busca, setBusca] = useState(""); const [status, setStatus] = useState("TODOS"); const [tipo, setTipo] = useState("TODOS"); const [efeito, setEfeito] = useState<EfeitoFiltro>(efeitoInicial); const [inicio, setInicio] = useState(() => periodoInicial({ inicio: inicioMes(), fim: hojeLocal() }).inicio); const [fim, setFim] = useState(() => periodoInicial({ inicio: inicioMes(), fim: hojeLocal() }).fim);
   const [pagina, setPagina] = useState(1);
+  const ordem = useOrdenacaoTabela<Operacao>([{ chave: "data", rotulo: "Data", tipo: "data", obter: o => o.data }, { chave: "operacao", rotulo: "Número da operação", tipo: "numero", obter: o => o.numero }, ...(podeRascunho ? [{ chave: "valor", rotulo: "Valor", tipo: "numero" as const, obter: (o: Operacao) => o.valorTotal }] : [])], "ordemOperacoes", () => setPagina(1));
   const [parceiroId, setParceiroId] = useState("TODOS");
   const [minimo, setMinimo] = useState("");
   const [maximo, setMaximo] = useState("");
@@ -110,7 +112,8 @@ export function OperacoesFinanceiras({ podeLancar = true }: { podeLancar?: boole
     };
     window.addEventListener("popstate", onPop); return () => window.removeEventListener("popstate", onPop);
   }, []);
-  const filtradas = useMemo(() => itens.filter((operacao) => (status === "TODOS" || operacao.status === status) && (tipo === "TODOS" || operacao.tipo === tipo) && possuiEfeito(operacao, efeito) && (parceiroId === "TODOS" || (parceiroId === "SEM" ? !operacao.parceiro : operacao.parceiro?.id === parceiroId)) && atendeValorOperacao(operacao.valorTotal, minimo, maximo) && `${operacao.descricao} ${operacao.parceiro?.nome} ${operacao.id} ${operacao.numero} ${codigoOperacao(operacao.numero)}`.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "").includes(normalizarBuscaFinanceira(busca))), [itens, busca, status, tipo, efeito, parceiroId, minimo, maximo]);
+  const filtradasBase = useMemo(() => itens.filter((operacao) => (status === "TODOS" || operacao.status === status) && (tipo === "TODOS" || operacao.tipo === tipo) && possuiEfeito(operacao, efeito) && (parceiroId === "TODOS" || (parceiroId === "SEM" ? !operacao.parceiro : operacao.parceiro?.id === parceiroId)) && atendeValorOperacao(operacao.valorTotal, minimo, maximo) && `${operacao.descricao} ${operacao.parceiro?.nome} ${operacao.id} ${operacao.numero} ${codigoOperacao(operacao.numero)}`.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "").includes(normalizarBuscaFinanceira(busca))), [itens, busca, status, tipo, efeito, parceiroId, minimo, maximo]);
+  const filtradas = ordem.ordenar(filtradasBase);
   const totalPaginas = Math.max(1, Math.ceil(filtradas.length / ITENS_POR_PAGINA));
   const paginaAtual = Math.min(pagina, totalPaginas);
   const operacoesDaPagina = filtradas.slice((paginaAtual - 1) * ITENS_POR_PAGINA, paginaAtual * ITENS_POR_PAGINA);
@@ -160,7 +163,7 @@ export function OperacoesFinanceiras({ podeLancar = true }: { podeLancar?: boole
     <Panel className="operacoes-consulta overflow-clip">
 
       {loading && carregou && <div className="px-4 pt-3"><AtualizandoFinanceiro /></div>}
-      <BarraConsulta criterios={criterios} onLimpar={() => aplicarFiltros({ ...FILTROS_OPERACOES_VAZIOS, inicio, fim })}>
+      <BarraConsulta ordenacao={ordem.controle} criterios={criterios} onLimpar={() => aplicarFiltros({ ...FILTROS_OPERACOES_VAZIOS, inicio, fim })}>
         <label className="fin-filtro-busca relative w-full sm:w-auto"><Search aria-hidden size={16} className="absolute left-3 top-3 text-ink-3" /><Input aria-label="Buscar operações" value={busca} onChange={(e) => { setBusca(e.target.value); setPagina(1); }} placeholder="Buscar por operação, parceiro ou número" className="h-[42px] w-full rounded-lg border border-border bg-white py-2.5 pl-9 pr-3 text-sm" /></label>
         <span aria-hidden="true" className="operacoes-divisor-busca" />
         <PeriodoFinanceiroControl inicio={inicio} fim={fim} allowAll showIcon onChange={(periodo) => { setInicio(periodo.inicio); setFim(periodo.fim); setPagina(1); }} />
@@ -168,7 +171,7 @@ export function OperacoesFinanceiras({ podeLancar = true }: { podeLancar?: boole
 
         <UiButton type="button" variant="outline" className="consulta-mais-filtros operacoes-todos-filtros" aria-haspopup="dialog" aria-expanded={modalFiltros} onClick={() => { edicaoFiltros.iniciar(); setModalFiltros(true); }}><Settings2 size={17} aria-hidden />Filtros{criterios.length > 0 && <span className="operacoes-filtros-contagem">{criterios.length}</span>}</UiButton>
       </BarraConsulta>
-      <div aria-busy={loading} {...(loading ? { inert: "" } : {})}>{erro ? <Empty>Não foi possível carregar as operações.</Empty> : filtradas.length ? <><TabelaFinanceira rotulo="Operações do período" itens={operacoesDaPagina} colunas={colunas} cartaoComLinks chaveDe={(operacao) => operacao.id} onAbrir={(operacao) => abrirDetalhe(operacao.id)} compacta barraRolagemSuperior />
+      <div aria-busy={loading} {...(loading ? { inert: "" } : {})}>{erro ? <Empty>Não foi possível carregar as operações.</Empty> : filtradas.length ? <><TabelaFinanceira ordenacao={ordem.controle} rotulo="Operações do período" itens={operacoesDaPagina} colunas={colunas} cartaoComLinks chaveDe={(operacao) => operacao.id} onAbrir={(operacao) => abrirDetalhe(operacao.id)} compacta barraRolagemSuperior />
         <Paginacao pagina={paginaAtual} totalPaginas={totalPaginas} total={filtradas.length} porPagina={ITENS_POR_PAGINA} rotulo="Paginação de operações" substantivo="operações" idSelect="pagina-operacoes" onPagina={setPagina} /></> : <Empty>Nenhuma operação encontrada no período e filtros selecionados.</Empty>}
     </div></Panel>
     <PainelFiltros aberto={modalFiltros} onAbertoChange={setModalFiltros} temFiltros onLimpar={edicaoFiltros.limpar} onAplicar={() => { if (!erroFiltros) { edicaoFiltros.aplicar(); setModalFiltros(false); } }}>

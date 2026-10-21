@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button as ShadcnButton } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableCaption } from "@/components/ui/table";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableCaption, TableFooter } from "@/components/ui/table";
 import { SkeletonListaFinanceira } from "./CarregamentoFinanceiro";
 import "./cores-financeiro.css";
 import { forwardRef, useEffect, useId, useRef, useState, type CSSProperties } from "react";
@@ -78,10 +78,10 @@ export function PageHeader({ titulo, descricao, acao, extra, contexto, children,
 // forwardRef (não ref-as-prop): um <Button> usado como `asChild` de um
 // PopoverTrigger/DialogTrigger do Radix precisa repassar a ref de verdade
 // para o <button> nativo, senão o Radix não consegue posicionar/focar nele.
-export const Button = forwardRef<HTMLButtonElement, { children: React.ReactNode; onClick?: () => void; type?: "button" | "submit"; disabled?: boolean; carregando?: boolean; danger?: boolean; secondary?: boolean; className?: string; /** id do form a submeter quando o botão vive fora dele (rodapé de painel) */ form?: string; /** associa o botão a uma mensagem de erro/ajuda (ex.: o alerta de confirmação) */ ariaDescribedby?: string }>(
-  ({ children, onClick, type = "button", disabled, carregando = false, danger, secondary, className = "", form, ariaDescribedby }, ref) => {
+export const Button = forwardRef<HTMLButtonElement, { children: React.ReactNode; onClick?: () => void; type?: "button" | "submit"; disabled?: boolean; carregando?: boolean; danger?: boolean; secondary?: boolean; className?: string; /** id do form a submeter quando o botão vive fora dele (rodapé de painel) */ form?: string; /** associa o botão a uma mensagem de erro/ajuda (ex.: o alerta de confirmação) */ ariaDescribedby?: string; "aria-label"?: string }>(
+  ({ children, onClick, type = "button", disabled, carregando = false, danger, secondary, className = "", form, ariaDescribedby, "aria-label": ariaLabel }, ref) => {
     const cor = secondary && !danger ? "border-border bg-card text-foreground hover:bg-muted hover:text-foreground" : "";
-    return <ShadcnButton variant={danger ? "destructive" : secondary ? "outline" : "default"} ref={ref} type={type} form={form} onClick={onClick} disabled={disabled || carregando} aria-busy={carregando || undefined} aria-describedby={ariaDescribedby} className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-45 ${cor} ${className}`}>{carregando && <LoaderCircle aria-hidden="true" className="size-4 animate-spin motion-reduce:animate-none" />}{children}</ShadcnButton>;
+    return <ShadcnButton variant={danger ? "destructive" : secondary ? "outline" : "default"} ref={ref} type={type} form={form} onClick={onClick} disabled={disabled || carregando} aria-busy={carregando || undefined} aria-describedby={ariaDescribedby} aria-label={ariaLabel} className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-45 ${cor} ${className}`}>{carregando && <LoaderCircle aria-hidden="true" className="size-4 animate-spin motion-reduce:animate-none" />}{children}</ShadcnButton>;
   },
 );
 Button.displayName = "Button";
@@ -214,8 +214,13 @@ export type ColunaTabela<T> = {
 
 const alinhaCelula = (alinhamento?: "esquerda" | "centro" | "direita") => alinhamento === "direita" ? "text-right" : alinhamento === "centro" ? "text-center" : "text-left";
 
-export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLinha, rotulo, ancoraDe, barraRolagemSuperior = false, compacta = false, cartaoComLinks = false, filtrosColunas }: {
+export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLinha, rotulo, ancoraDe, barraRolagemSuperior = false, compacta = false, cartaoComLinks = false, filtrosColunas, larguraMinimaParaTabela = 640, rodape, ordenacao }: {
+  ordenacao?: { campo: string; direcao: "asc" | "desc" };
   filtrosColunas?: FiltrosColunas;
+  /** Totais já calculados pelo chamador, associados às chaves das colunas. */
+  rodape?: Partial<Record<string, React.ReactNode>>;
+  /** Limite do contêiner para tabelas curtas em painéis; respeita também a soma das colunas. */
+  larguraMinimaParaTabela?: number;
   compacta?: boolean;
   /** Mantém links independentes da área clicável do cartão. */
   cartaoComLinks?: boolean;
@@ -250,7 +255,7 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
     const tabela = tabelaRef.current;
     if (!consulta || !tabela) return;
     const atualizar = () => {
-      if (consulta.clientWidth > 0) setModoCartao(consulta.clientWidth < Math.max(640, larguraMinima));
+      if (consulta.clientWidth > 0) setModoCartao(consulta.clientWidth < Math.max(larguraMinimaParaTabela, larguraMinima));
       setTemRolagem(barraRolagemSuperior && tabela.scrollWidth > tabela.clientWidth + 1);
       setLarguraRolagem(tabela.scrollWidth);
     };
@@ -263,7 +268,7 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
     observador.observe(consulta);
     observador.observe(tabela);
     return () => observador.disconnect();
-  }, [barraRolagemSuperior, larguraMinima, itens.length, modoCartao]);
+  }, [barraRolagemSuperior, larguraMinima, larguraMinimaParaTabela, itens.length, modoCartao]);
 
   const sincronizarRolagem = (origem: "tabela" | "barra") => {
     const tabela = tabelaRef.current;
@@ -289,7 +294,7 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
         <TableCaption className="sr-only">{rotulo}</TableCaption>
         <colgroup>{colunas.map((coluna) => <col key={coluna.chave} style={{ "--fin-coluna-largura": coluna === (flexivel ?? principal) ? undefined : `${coluna.larguraMinima ?? 120}px`, "--fin-coluna-proporcao": flexivel ? undefined : `${(coluna.larguraMinima ?? 120) / larguraMinima * 100}%` } as CSSProperties} />)}</colgroup>
         <TableHeader className="sticky top-0 z-[1] bg-muted text-[11px] uppercase tracking-[.08em] text-ink-3">
-          <TableRow>{colunas.map((coluna) => <TableHead key={coluna.chave} data-fin-coluna={coluna.chave} scope="col" className={`${compacta ? "px-3 py-2" : "p-4"} font-semibold ${alinhaCelula(coluna.alinhamento ?? (coluna.acoes ? "direita" : undefined))}`}>{coluna.cabecalho ?? (filtrosColunas?.[coluna.chave] ? <FiltroColunaConsulta titulo={coluna.titulo} {...filtrosColunas[coluna.chave]} /> : coluna.titulo)}</TableHead>)}</TableRow>
+          <TableRow>{colunas.map((coluna) => <TableHead key={coluna.chave} data-fin-coluna={coluna.chave} scope="col" aria-sort={ordenacao?.campo === coluna.chave ? ordenacao.direcao === "asc" ? "ascending" : "descending" : undefined} className={`${compacta ? "px-3 py-2" : "p-4"} font-semibold ${alinhaCelula(coluna.alinhamento ?? (coluna.acoes ? "direita" : undefined))}`}><span className="fin-cabecalho-ordem">{coluna.cabecalho ?? (filtrosColunas?.[coluna.chave] ? <FiltroColunaConsulta titulo={coluna.titulo} {...filtrosColunas[coluna.chave]} /> : coluna.titulo)}{ordenacao?.campo === coluna.chave && (ordenacao.direcao === "asc" ? <ArrowUp size={13} aria-hidden /> : <ArrowDown size={13} aria-hidden />)}</span></TableHead>)}</TableRow>
         </TableHeader>
         <TableBody className="divide-y divide-border">
           {itens.map((item) => <TableRow
@@ -300,6 +305,7 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
             className={`${onAbrir ? "cursor-pointer hover:bg-muted" : ""} ${classeLinha?.(item) ?? ""}`}
           >{colunas.map((coluna) => <TableCell key={coluna.chave} data-fin-coluna={coluna.chave} data-fin-principal={coluna === principal || undefined} data-fin-acoes={coluna.acoes || undefined} className={`whitespace-normal ${compacta ? "px-3 py-2" : "p-4"} align-middle ${alinhaCelula(coluna.alinhamento ?? (coluna.acoes ? "direita" : undefined))}`}>{coluna.celula(item)}</TableCell>)}</TableRow>)}
         </TableBody>
+        {rodape && <TableFooter className="fin-tabela-rodape"><TableRow>{colunas.map(coluna => <TableCell key={coluna.chave} className={alinhaCelula(coluna.alinhamento)}>{rodape[coluna.chave] ?? null}</TableCell>)}</TableRow></TableFooter>}
       </Table>
     </div>
 
@@ -326,6 +332,7 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
           {comandos.length > 0 && <div className="fin-cartao-acoes flex justify-end gap-2 px-4 pb-4">{comandos.map(comando => <div key={comando.chave}>{comando.conteudo}</div>)}</div>}
         </li>;
       })}
+      {rodape && <li className="fin-cartao-rodape"><div className="p-4"><strong>{rodape[principal.chave] ?? "Total"}</strong><dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2">{colunas.filter(coluna => coluna !== principal && rodape[coluna.chave] != null).map(coluna => <div key={coluna.chave}><dt className="text-xs text-ink-3">{coluna.titulo}</dt><dd className="font-semibold">{rodape[coluna.chave]}</dd></div>)}</dl></div></li>}
     </ul>
   </div>;
 }

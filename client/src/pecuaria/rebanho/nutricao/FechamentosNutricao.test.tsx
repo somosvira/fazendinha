@@ -7,7 +7,7 @@ import { FechamentosNutricao } from "./FechamentosNutricao";
 import * as api from "./api";
 vi.mock("../api", () => ({ listarLotes: vi.fn().mockResolvedValue([]), buscarLote: vi.fn().mockResolvedValue({ id: "lote", nome: "Matrizes" }) }));
 vi.mock("./api", () => ({ listarFechamentos: vi.fn() }));
-beforeEach(() => { window.history.replaceState(null, "", "/pecuaria/nutricao?aba=fechamentos"); vi.clearAllMocks(); vi.mocked(api.listarFechamentos).mockResolvedValue({ itens: [], total: 51, pagina: 1, limite: 25 }); });
+beforeEach(() => { window.history.replaceState(null, "", "/pecuaria/nutricao?visualFechamentos=tabela&aba=fechamentos"); vi.clearAllMocks(); vi.mocked(api.listarFechamentos).mockResolvedValue({ itens: [], total: 51, pagina: 1, limite: 25 }); });
 afterEach(cleanup);
 describe("fechamentos gerais", () => {
   it("mantém o destino do link do lote independente da abertura da linha", async () => {
@@ -33,7 +33,7 @@ describe("fechamentos gerais", () => {
     await waitFor(() => expect(api.listarFechamentos).toHaveBeenLastCalledWith(undefined, 1, "ESTORNADO"));
   });
   it("restaura lote, situação e página por deep link", async () => {
-    window.history.replaceState(null, "", "/pecuaria/nutricao?aba=fechamentos&filtroLoteId=lote&statusFechamento=CONFIRMADO&paginaFechamentos=2");
+    window.history.replaceState(null, "", "/pecuaria/nutricao?visualFechamentos=tabela&aba=fechamentos&filtroLoteId=lote&statusFechamento=CONFIRMADO&paginaFechamentos=2");
     render(<FechamentosNutricao />);
     await screen.findByText(/Página 2 · 51 fechamentos/);
     expect(api.listarFechamentos).toHaveBeenCalledWith("lote", 2, "CONFIRMADO");

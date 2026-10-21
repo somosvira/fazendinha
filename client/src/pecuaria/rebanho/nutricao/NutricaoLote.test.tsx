@@ -29,7 +29,7 @@ describe("nutrição do lote", () => {
   });
   it("mostra custos completos e base histórica, com ligação direta à ficha do lote", async () => {
     render(<NutricaoLote loteId="lote" podeLancar vista="lotes" />);
-    await screen.findByText("Custo total da nutrição");
+    await screen.findByText("Custo conhecido da nutrição");
     expect(document.querySelector(".nutricao-metricas")).toBeNull();
     const dieta = screen.getByRole("heading", { name: "Dieta vigente" });
     const consumo = screen.getByRole("heading", { name: "Consumo confirmado" });
@@ -55,7 +55,7 @@ describe("nutrição do lote", () => {
     vi.mocked(api.consultarResumoNutricional).mockResolvedValue({ ...resumo, verValores: false });
     render(<NutricaoLote loteId="lote" podeLancar={false} vista="lotes" />);
     await screen.findByText("Em uso");
-    expect(screen.queryByText("Custo total da nutrição")).toBeNull();
+    expect(screen.queryByText("Custo conhecido da nutrição")).toBeNull();
     expect(screen.queryByText(/379,50/)).toBeNull();
     expect(screen.queryByText(/6,90/)).toBeNull();
   });

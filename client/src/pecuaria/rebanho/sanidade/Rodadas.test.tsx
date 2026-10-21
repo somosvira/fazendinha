@@ -19,6 +19,15 @@ beforeEach(() => { window.history.replaceState(null, "", "/pecuaria/sanidade?aba
 afterEach(cleanup);
 async function preparar() { await screen.findByRole("option", { hidden: true,  name: "Protocolo publicado · v2" }); await alterarControle(screen.getByLabelText("Sítio na data de início"), { target: { value: "1" } }); await alterarControle(screen.getByLabelText("Nome do ciclo"), { target: { value: "Campanha de outubro" } }); await alterarControle(screen.getByLabelText("Protocolo publicado"), { target: { value: "p" } }); await alterarControle(screen.getByLabelText("Início de referência"), { target: { value: "2026-10-06" } }); fireEvent.click(screen.getByRole("button", { name: /Selecionar animais/ })); fireEvent.click(screen.getByRole("button", { name: "Usar animais" })); }
 describe("ciclos de protocolos", () => {
+  it("mostra cartões com progresso real e mantém a tabela como alternativa", async () => {
+    window.history.replaceState(null,"","/pecuaria/sanidade?aba=agenda&visualCiclos=visual");
+    mocks.rodadas.mockResolvedValue(pagina([{...rodada,participantes:2,contagens:{total:7,pendentes:5,realizadas:2,atrasadas:1,dispensadas:0}}]));
+    const abrir=vi.fn();render(<AgendaRodadas filtros={{}} podeLancar={false} rodadaId="" recarregarToken={0} onAbrir={abrir} onExecutar={vi.fn()} onAcao={vi.fn()}/>);
+    await screen.findByRole("heading",{name:"Campanha de outubro"});
+    expect(screen.getByText("4 pendentes no prazo")).toBeTruthy();expect(screen.getByText("1 atrasada")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button",{name:"Ver ciclo"}));expect(abrir).toHaveBeenCalledWith("r");
+    fireEvent.click(screen.getByRole("button",{name:"Tabela"}));expect(screen.getByRole("button",{name:"Abrir ciclo Campanha de outubro"})).toBeTruthy();
+  });
   it("agrupa contagens iguais e não renderiza indicadores zerados", async () => {
     const contagens = { total: 2, pendentes: 2, realizadas: 0, dispensadas: 0, atrasadas: 0, canceladas: 0 };
     mocks.etapas.mockResolvedValue(pagina([{ id: "e", ordem: 1, diaRelativo: 0, tipo: "EXAME", contagens, contagensFiltradas: { ...contagens } }]));
@@ -33,6 +42,7 @@ describe("ciclos de protocolos", () => {
     const abrir = vi.fn();
     const props = { filtros: { pagina: 1 }, podeLancar: false, recarregarToken: 0, onAbrir: abrir, onExecutar: vi.fn(), onAcao: vi.fn() };
     const tela = render(<AgendaRodadas {...props} rodadaId="" />);
+    fireEvent.click(screen.getByRole("button", {name:"Tabela"}));
     fireEvent.click(await screen.findByRole("button", { name: "Abrir ciclo Campanha de outubro" }));
     expect(abrir).toHaveBeenCalledWith("r");
     expect(screen.getByRole("button", { name: "Abrir ciclo Campanha de outubro" }).hasAttribute("aria-expanded")).toBe(false);

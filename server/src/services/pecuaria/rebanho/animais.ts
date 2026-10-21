@@ -1,3 +1,4 @@
+import { ordenarPorPeso } from "./ordenacao-peso.calc.js";
 import { obterContextosAnimaisNaDataTx } from "../reproducao/contexto-animal.js";
 import { papelReprodutivoNaDataTx, registrarPapelReprodutivoTx, desfazerPapelDoDestinoTx, idsComPapelReprodutivo } from "./papeis.js";
 import { resolverPapelReprodutivo } from "./papel-reprodutivo.calc.js";
@@ -1035,7 +1036,7 @@ async function whereIdade(situacao: ListarFiltrosInput["situacao"], hoje: Date, 
 const CAMPO_ORDEM = { brinco: "brinco", nascimento: "dataNascimento", entrada: "dataEntrada" } as const;
 
 /** Ordem da lista: o campo escolhido e, para desempate estável entre páginas, brinco e id. */
-export function ordemListagem(ordenar: ListarFiltrosInput["ordenar"], direcao: ListarFiltrosInput["direcao"]): Prisma.AnimalOrderByWithRelationInput[] {
+export function ordemListagem(ordenar: Exclude<ListarFiltrosInput["ordenar"], "ultimoPeso" | "gmd">, direcao: ListarFiltrosInput["direcao"]): Prisma.AnimalOrderByWithRelationInput[] {
   const campo = CAMPO_ORDEM[ordenar];
   return [
     { [campo]: direcao },
@@ -1120,15 +1121,21 @@ export async function listar(filtros: ListarEntrada, propriedadeEscopo: number |
     ],
   };
 
+  async function consultarPagina() {
+    const ordenar = filtros.ordenar ?? "brinco";
+    if (ordenar === "ultimoPeso" || ordenar === "gmd") {
+      const bases = await prisma.animal.findMany({ where, select: { id: true, brinco: true, pesagens: { orderBy: { data: "desc" }, take: 2, select: { data: true, pesoKg: true } } } });
+      const ids = ordenarPorPeso(bases, ordenar, filtros.direcao ?? "asc").slice((filtros.page - 1) * filtros.pageSize, filtros.page * filtros.pageSize).map(a => a.id);
+      if (!ids.length) return [];
+      const detalhes = await prisma.animal.findMany({ where: { AND: [where, { id: { in: ids } }] }, include: INCLUDE_RESUMO });
+      const posicao = new Map(ids.map((id, i) => [id, i]));
+      return detalhes.sort((a, b) => posicao.get(a.id)! - posicao.get(b.id)!);
+    }
+    return prisma.animal.findMany({ where, include: INCLUDE_RESUMO, orderBy: ordemListagem(ordenar, filtros.direcao ?? "asc"), skip: (filtros.page - 1) * filtros.pageSize, take: filtros.pageSize });
+  }
   const [total, pagina, paraPainel] = await Promise.all([
     prisma.animal.count({ where }),
-    prisma.animal.findMany({
-      where,
-      include: INCLUDE_RESUMO,
-      orderBy: ordemListagem(filtros.ordenar ?? "brinco", filtros.direcao ?? "asc"),
-      skip: (filtros.page - 1) * filtros.pageSize,
-      take: filtros.pageSize,
-    }),
+    consultarPagina(),
     // painel sobre TODO o conjunto filtrado, com o mínimo de colunas
     prisma.animal.findMany({
       where,

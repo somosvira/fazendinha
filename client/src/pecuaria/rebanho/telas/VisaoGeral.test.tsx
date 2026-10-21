@@ -71,9 +71,9 @@ describe("VisaoGeral do rebanho", () => {
   });
   it("mostra gráficos e participação no total, com quantidade real de receptoras", async () => {
     await montar();
-    expect(screen.getByRole("img", { name: /Composição por categoria de 120/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Vaca/ })).toBeTruthy();
     expect(screen.queryByRole("img", { name: /Quantidade de baixas por tipo/ })).toBeNull();
-    expect(screen.getByText("66,7%")).toBeTruthy();
+    expect(screen.getAllByText("66,7%").length).toBeGreaterThan(0);
     expect(screen.getByText("40 de 100 fêmeas ativas")).toBeTruthy();
     expect(screen.getByText("83,3% do efetivo")).toBeTruthy();
   });

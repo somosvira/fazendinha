@@ -3,6 +3,7 @@ export const consultaSanitariaSchema = z.object({
   animalId: z.string().uuid().optional(), loteId: z.string().uuid().optional(),
   buscaAnimal: z.string().trim().max(160).optional(),
   rodadaId: z.string().uuid().optional(),
+  doencaId: z.string().uuid().optional(),
   semRodada: z.enum(["true", "false"]).optional(),
   de: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), ate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   situacao: z.enum(["VALIDO", "ANULADO", "REGULARIZACAO_PENDENTE", "ENCERRADA_SEM_SUBSTITUICAO", "PENDENTE", "ATRASADA", "REALIZADA", "DISPENSADA", "EXECUCAO_CANCELADA", "ABERTA", "ENCERRADA", "AGUARDANDO_RESULTADO", "RESULTADO_INFORMADO", "ORIGEM_PENDENTE", "CARÊNCIA_VIGENTE", "CARÊNCIA_DESCONHECIDA"]).optional(),

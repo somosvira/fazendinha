@@ -53,6 +53,8 @@ function mostrarMovimentos() { fireEvent.mouseDown(screen.getByRole("tab", { nam
 
 afterEach(() => { cleanup(); localStorage.clear(); vi.unstubAllGlobals(); setPropriedadeAtiva(null); window.history.replaceState({}, "", "/"); });
 beforeEach(() => {
+  localStorage.setItem("terrano:consultas:sessao:visualEstoque","tabela");
+  localStorage.setItem("terrano:consultas:1:visualEstoque","tabela");
   vi.stubGlobal("fetch", mockFetch());
   if (!HTMLElement.prototype.scrollIntoView) HTMLElement.prototype.scrollIntoView = vi.fn();
 });

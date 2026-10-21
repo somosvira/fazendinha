@@ -169,3 +169,6 @@ export type DiagnosticoValorizacao = { produtoId: string; propriedadeId: number;
 export const consultarValorizacao = (produtoId: string, propriedadeId: number, data: string) => req<DiagnosticoValorizacao>(`/estoque/produtos/${produtoId}/valorizacao${qs({ data })}`, undefined, propriedadeId);
 export const abrirValorEstoque = (produtoId: string, input: { chave: string; propriedadeId: number; data: string; revisao: string; motivo: string; evidencia: string;
   bases: { partidaId: string | null; quantidade: string; valor: string; disponivelDesde: string; referencia: string }[] }) => req<{ salvo: boolean; reenvio: boolean }>(`/estoque/produtos/${produtoId}/valorizacao/abertura`, { method: "POST", body: JSON.stringify(input) }, input.propriedadeId);
+
+/** Grupos canônicos com saldo no escopo atual; aliases não são contados duas vezes. */
+export const listarPartidasProduto = (produtoId: string, propriedadeId?: number) => req<LoteProdutoDTO[]>(`/estoque/partidas${qs({ produtoId })}`, undefined, propriedadeId);
