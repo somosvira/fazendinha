@@ -1,3 +1,7 @@
+import { VacaIcon } from "@/components/icons/VacaIcon";
+import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "@/components/VisualizacaoConsulta";
+import { CartaoConsulta, FatoConsulta } from "@/components/ConsultaVisual";
+import { MapPin, Layers, type LucideProps } from "lucide-react";
 import { OrdenarConsulta } from "@/financeiro/OrdenarConsulta";
 import { Settings2 } from "lucide-react";
 import { filtrosDasColunas, type CampoConsulta } from "@/financeiro/FiltroColunaConsulta";
@@ -36,6 +40,7 @@ import { NavRebanho } from "./NavRebanho";
 import { SelectCampo } from "../../../financeiro/SelectCampo";
 import "./lista-animais.css";
 
+function IconeVaca({ size = 24, ...props }: LucideProps) { return <VacaIcon width={size} height={size} {...props} />; }
 const ITENS_POR_PAGINA = 20;
 
 /** valores sentinela da opção "categoria" — não colidem com uuid de categoria real */
@@ -104,6 +109,7 @@ function pillSituacao(situacao: Situacao) {
 }
 
 export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, variante = "rebanho" }: { onAbrirAnimal: (id: string) => void; onNovoAnimal: () => void; podeLancar?: boolean; variante?: "rebanho" | "pesagem" }) {
+  const visual = useVisualizacaoConsulta("visualAnimais");
   const pesagem = variante === "pesagem";
   const [filtrosAbertos, setFiltrosAbertos] = useState(false);
   const [mostrarColunasAdicionais, setMostrarColunasAdicionais] = useState(false);
@@ -251,6 +257,8 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
   // (o roteamento por aba olha só `window.location.pathname` — ver router.ts)
   useEffect(() => {
     const params = new URLSearchParams();
+    const preferenciaVisual = new URLSearchParams(window.location.search).get("visualAnimais");
+    if (preferenciaVisual === "visual" || preferenciaVisual === "tabela") params.set("visualAnimais", preferenciaVisual);
     if (busca) params.set("busca", busca);
     if (sitioGlobal == null && propriedadeId) params.set("propriedadeId", propriedadeId);
     if (loteId) params.set("loteId", loteId);
@@ -407,8 +415,9 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
         {pesagem && <label className="flex items-center gap-2 font-medium"><input className="h-5 w-5 cursor-pointer accent-[var(--mast)]" type="checkbox" aria-label="Selecionar todos os animais desta página" checked={todosDaPaginaSelecionados} onChange={alternarSelecaoTodos} /> Selecionar todos</label>}
         {selecionados.size > 0 && <><span className="text-ink-3">{selecionados.size} selecionado{selecionados.size === 1 ? "" : "s"}</span><Button secondary onClick={() => setSelecionados(new Map())}>Limpar seleção</Button>{!pesagem && <Button onClick={() => setMovimentando({ animais: [...selecionados.values()] })}>Movimentar {selecionados.size} {selecionados.size === 1 ? "animal" : "animais"}</Button>}</>}
       </div>}
+      {!pesagem && <div className="consulta-visual-barra"><span>{total} animais na consulta</span><AlternarVisualizacaoConsulta {...visual} rotulo="Visualização dos animais" /></div>}
       {carregando ? <p role="status" className="p-5 text-sm text-ink-3">Atualizando animais…</p> : erro && !itens.length ? <Empty>Não foi possível carregar os animais.</Empty> : itens.length ? <>
-        <TabelaFinanceira ordenacao={{ campo: opcaoOrdenacao.ordenar === "ultimoPeso" ? "peso" : opcaoOrdenacao.ordenar, direcao: opcaoOrdenacao.direcao }} filtrosColunas={filtrosColunas} rotulo="Animais" itens={itens} colunas={COLUNAS} chaveDe={(item) => item.id} onAbrir={(item) => onAbrirAnimal(item.id)} cartaoComLinks />
+        {!pesagem && visual.modo === "visual" ? <div className="consulta-entidades consulta-entidades-tres">{itens.map(item => <CartaoConsulta key={item.id} titulo={item.brinco} detalhe={item.nome} icon={IconeVaca} onAbrir={() => onAbrirAnimal(item.id)} selecao={podeLancar ? COLUNAS_TODAS.find(c => c.chave === "selecionar")?.celula(item) : undefined} status={item.situacao !== "ATIVO" ? pillSituacao(item.situacao) : undefined} acoes={podeLancar ? COLUNAS_TODAS.find(c => c.chave === "acoes")?.celula(item) : undefined}><div className="mb-3">{COLUNAS_TODAS.find(c => c.chave === "categoria")?.celula(item)}</div><div className="consulta-fatos"><FatoConsulta rotulo="Sítio"><span className="inline-flex items-center gap-1"><MapPin size={14} aria-hidden />{item.propriedade?.nome ?? "Sem localização"}</span></FatoConsulta><FatoConsulta rotulo="Lote"><span className="inline-flex items-center gap-1"><Layers size={14} aria-hidden />{item.lote?.nome ?? "Sem lote"}</span></FatoConsulta></div><div className="consulta-fatos mt-3"><FatoConsulta rotulo="Último peso"><strong>{item.ultimoPeso ? `${item.ultimoPeso.kg.toLocaleString("pt-BR")} kg` : "—"}</strong><small>{item.ultimoPeso ? formatarDataBR(item.ultimoPeso.data) : "Sem pesagem"}</small></FatoConsulta><FatoConsulta rotulo="GMD recente"><strong>{formatarGmd(item.gmdRecente)}</strong></FatoConsulta></div>{mostrarColunasAdicionais && <div className="consulta-fatos mt-3">{COLUNAS.filter(c => !["selecionar","acoes","brinco","categoria","lote","peso","gmd","situacao"].includes(c.chave)).map(c => <FatoConsulta key={c.chave} rotulo={c.titulo}>{c.celula(item)}</FatoConsulta>)}</div>}</CartaoConsulta>)}</div> : <TabelaFinanceira ordenacao={{ campo: opcaoOrdenacao.ordenar === "ultimoPeso" ? "peso" : opcaoOrdenacao.ordenar, direcao: opcaoOrdenacao.direcao }} filtrosColunas={filtrosColunas} rotulo="Animais" itens={itens} colunas={COLUNAS} chaveDe={(item) => item.id} onAbrir={(item) => onAbrirAnimal(item.id)} cartaoComLinks />}
         <Paginacao paginaAtual={pagina} totalPaginas={totalPaginas} totalItens={total} itensPorPagina={ITENS_POR_PAGINA} onPaginaChange={setPagina} rotulo="animais" idSelect="pagina-animais" />
       </> : <Empty>Nenhum animal encontrado com os filtros selecionados.</Empty>}
     </Panel>

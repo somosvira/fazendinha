@@ -7,7 +7,7 @@ import { formatarGmd, formatarKg } from "../lib/peso";
 import "./lotes-visuais.css";
 const cores=["#007f78","#43aaa4","#90c7c2","#285c6c","#6b929f","#b0cecc"];
 export function corCategoriaLote(nome:string){let h=0;for(const c of nome)h=(h*31+c.charCodeAt(0))>>>0;return cores[h%cores.length];}
-function Composicao({resumo:r}:{resumo:ResumoLote}){
+export function Composicao({resumo:r}:{resumo:ResumoLote}){
  const agrupadas = new Map<string,number>();for(const c of r.porCategoria)agrupadas.set(c.categoria,(agrupadas.get(c.categoria)??0)+c.qtd);const categorias=[...agrupadas].map(([categoria,qtd])=>({categoria,categoriaId:categoria,qtd}));
  const total=categorias.reduce((s,c)=>s+c.qtd,0);let acumulado=0;
  if(!total)return <p className="consulta-cartao-meta">Sem animais ativos para distribuir.</p>;
