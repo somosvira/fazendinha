@@ -7,7 +7,9 @@ import type { AuditoriaAnimalQuery } from "./schemas.js";
 const ENTIDADES = {
   REBANHO: {
     Animal: "Identificação do animal", Pesagem: "Pesagem", ManejoAnimal: "Manejo",
-    BaixaAnimal: "Baixa do animal", ComposicaoRacial: "Composição racial", DestinoAnimal: "Aptidão",
+    BaixaAnimal: "Baixa do animal", ComposicaoRacial: "Composição racial", FinalidadeAnimal: "Finalidade",
+    // Alias para leitura, busca e filtros das auditorias anteriores à renomeação.
+    DestinoAnimal: "Finalidade",
     LocalizacaoAnimal: "Localização", CategoriaManualAnimal: "Categoria manual", Movimentacao: "Movimentação",
   },
   REPRODUCAO: {
@@ -40,7 +42,7 @@ const ACOES: Record<string, string> = {
   RESULTADO_CORRIGIDO: "Correção de resultado", ORIGEM_RECONCILIADA: "Reconciliação da origem", CARENCIA_CORRIGIDA: "Correção de carência",
   ENCERRAMENTO: "Encerramento", DESFAZER: "Desfazer", SUBSTITUICAO: "Substituição", FILIACAO: "Filiação",
   COMPOSICAO: "Composição racial", CORRECAO: "Correção", CRIACAO: "Criação", DEFINICAO: "Definição",
-  BAIXA: "Baixa", MOVIMENTACAO: "Movimentação", MUDANCA_DESTINO: "Mudança de aptidão",
+  BAIXA: "Baixa", MOVIMENTACAO: "Movimentação", MUDANCA_DESTINO: "Mudança de finalidade",
   PAPEL_REGISTRADO: "Registro de papel", ENCERRAMENTO_PAPEL: "Encerramento de papel", DESFAZER_PAPEL: "Desfazer papel",
   HISTORICO_INFORMADO: "Histórico informado", REGULARIZACAO: "Regularização", REVISAO_PREVISAO: "Revisão da previsão",
   IDENTIFICACAO_COMPLETADA: "Identificação completada", NASCIMENTO_POR_PARTO: "Nascimento por parto",

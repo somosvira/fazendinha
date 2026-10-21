@@ -48,6 +48,8 @@ pnpm cf:dev
 
 Esse comando compila a interface e inicia o Worker local. Para Workers Builds, configure o build com instalação das dependências, geração do Prisma Client e `pnpm cf:build`; o deploy command é `sh scripts/cf-deploy.sh`. O script aplica migrations, aborta se falharem e publica com commit/build ID. Quando encontra `APP_BASE_URL` ou a URL retornada pelo Wrangler, confere `/api/health`; sem ambas, informa que pulou essa conferência. Configure `DATABASE_URL`/`DIRECT_URL` também no escopo de build; variáveis de build e runtime são escopos distintos.
 
+A renomeação de `DestinoAnimal` para `FinalidadeAnimal` exige a cadeia completa, incluindo `20261021180000_compatibilidade_destino_animal`. Essa migration cria uma view atualizável com o nome antigo, permitindo que o Worker anterior continue consultando e gravando durante o upload ou se ele falhar. Como o rename e a view têm commits separados, planeje uma janela de manutenção para a primeira aplicação; não há garantia de ausência de interrupção nesse intervalo. Não remova a view enquanto versões antigas puderem atender requisições. Após a adoção de REPRODUCAO, retornar código com enum antigo requer avaliação própria; a view não resolve incompatibilidades de valores.
+
 `pnpm cf:deploy` chama Wrangler diretamente depois do build do client e **não** executa o script de migrations/health. Não trate esses comandos como equivalentes. O repositório não seleciona sozinho a branch conectada ao provedor.
 
 ## CI e conferência após publicação

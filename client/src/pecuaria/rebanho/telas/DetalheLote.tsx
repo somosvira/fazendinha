@@ -147,7 +147,7 @@ export function DetalheLote({ id, podeLancar = true, onVoltar }: { id: string; p
     { chave: "sexo", titulo: "Sexo", larguraMinima: 70, celula: (item) => rotuloSexo(item.sexo) },
     { chave: "categoria", titulo: "Categoria", larguraMinima: 110, celula: (item) => <CategoriaPill categoria={item.categoria} categoriaOrigem={item.categoriaOrigem} categoriaCalculada={item.categoriaCalculada} /> },
     { chave: "idade", titulo: "Idade", larguraMinima: 80, celula: (item) => formatarIdade(item.idadeMeses) },
-    { chave: "papel", titulo: "Aptidão/Papel", larguraMinima: 140, celula: (item) => <>{rotuloAptidao(item.aptidao)}{item.papelReprodutivo && item.papelReprodutivo !== "NENHUM" ? ` · ${rotuloPapelReprodutivo(item.papelReprodutivo)}` : ""}</> },
+    { chave: "papel", titulo: "Finalidade/Papel", larguraMinima: 140, celula: (item) => <>{rotuloAptidao(item.aptidao)}{item.papelReprodutivo && item.papelReprodutivo !== "NENHUM" ? ` · ${rotuloPapelReprodutivo(item.papelReprodutivo)}` : ""}</> },
     { chave: "peso", titulo: "Último peso", larguraMinima: 130, celula: (item) => item.ultimoPeso ? <>{item.ultimoPeso.kg.toLocaleString("pt-BR")} kg<div className="text-xs text-ink-3">{formatarDataBR(item.ultimoPeso.data)}</div></> : "—" },
     { chave: "gmd", titulo: "GMD", larguraMinima: 110, celula: (item) => formatarGmd(item.gmdRecente) },
     { chave: "noLote", titulo: "No lote desde", larguraMinima: 130, celula: (item) => formatarDataBR(item.noLocalDesde) },

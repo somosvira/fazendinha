@@ -289,7 +289,7 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
     ...(!multiplos.racaIds.length && racaId ? [{ rotulo: `Raça: ${catalogos?.racas.find(r => r.id === racaId)?.nome ?? "Selecionada"}`, limpar: () => filtrar(setRacaId)("") }] : []),
     ...(idadeMinMeses ? [{ rotulo: `Idade mínima: ${idadeMinMeses} meses`, limpar: () => filtrar(setIdadeMinMeses)("") }] : []),
     ...(idadeMaxMeses ? [{ rotulo: `Idade máxima: ${idadeMaxMeses} meses`, limpar: () => filtrar(setIdadeMaxMeses)("") }] : []),
-    ...(!multiplos.aptidoes.length && aptidao ? [{ rotulo: `Aptidão: ${rotuloAptidao(aptidao)}`, limpar: () => filtrar(setAptidao)("") }] : []),
+    ...(!multiplos.aptidoes.length && aptidao ? [{ rotulo: `Finalidade: ${rotuloAptidao(aptidao)}`, limpar: () => filtrar(setAptidao)("") }] : []),
     ...(!multiplos.papeisReprodutivos.length && papelReprodutivo ? [{ rotulo: `Papel: ${rotuloPapelReprodutivo(papelReprodutivo)}`, limpar: () => filtrar(setPapelReprodutivo)("") }] : []),
     ...(mostrarBaixa && tipoBaixa ? [{ rotulo: `Baixa: ${rotuloTipoBaixa(tipoBaixa)}`, limpar: () => filtrar(setTipoBaixa)("") }] : []),
     ...(mostrarBaixa && baixaDe ? [{ rotulo: `Baixa de: ${formatarDataBR(baixaDe)}`, limpar: () => filtrar(setBaixaDe)("") }] : []),
@@ -311,7 +311,7 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
     { chave: "lote", titulo: "Lote", larguraMinima: 120, larguraFlexivel: true, celula: (item) => item.lote
       ? <a href={`/pecuaria/rebanho/lotes/${item.lote.id}`} onClick={(e) => { e.stopPropagation(); if(!e.metaKey&&!e.ctrlKey&&!e.shiftKey&&!e.altKey){e.preventDefault();navegarPara(`/pecuaria/rebanho/lotes/${item.lote!.id}`);} }} className="break-words font-semibold text-mast hover:underline">{item.lote.nome}</a>
       : "—" },
-    { chave: "aptidao", titulo: "Aptidão", larguraMinima: 100, celula: (item) => item.aptidao ? <Pill tone="brown">{rotuloAptidao(item.aptidao)}</Pill> : "—" },
+    { chave: "aptidao", titulo: "Finalidade", larguraMinima: 100, celula: (item) => item.aptidao ? <Pill tone="brown">{rotuloAptidao(item.aptidao)}</Pill> : "—" },
     { chave: "papel", titulo: "Papel", larguraMinima: 110, celula: (item) => item.papelReprodutivoEstado === "CONFLITO" ? <Pill tone="amber">Papel em revisão</Pill> : item.papelReprodutivo && item.papelReprodutivo !== "NENHUM" ? <Pill tone="amber">{rotuloPapelReprodutivo(item.papelReprodutivo)}</Pill> : "—" },
     { chave: "peso", titulo: "Último peso", larguraMinima: 130, celula: (item) => item.ultimoPeso ? <>{item.ultimoPeso.kg.toLocaleString("pt-BR")} kg<div className="text-xs text-ink-3">{formatarDataBR(item.ultimoPeso.data)}</div></> : "—" },
     { chave: "gmd", titulo: "GMD", larguraMinima: 110, celula: (item) => formatarGmd(item.gmdRecente) },
@@ -342,8 +342,8 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
         <Button secondary onClick={() => setFiltrosAbertos(true)}><SlidersHorizontal size={16} /> Filtros</Button>
       </BarraFiltros>
       <div className="flex flex-wrap gap-2 px-4 py-4" aria-label="Filtros selecionados">{(Object.keys(FAMILIAS) as Familia[]).flatMap(f => multiplos[f].map(v => {
-        const nomes: Record<Familia,string> = { propriedadeIds:"Sítio",loteIds:"Lote",categoriaIds:"Categoria",aptidoes:"Aptidão",papeisReprodutivos:"Papel",situacoes:"Situação",sexos:"Sexo",origens:"Origem",racaIds:"Raça" };
-        const nome = catalogos?.propriedades.find(p => String(p.id)===v)?.nome ?? catalogos?.lotes.find(l=>l.id===v)?.nome ?? categorias.find(c=>c.id===v)?.nome ?? catalogos?.racas.find(r=>r.id===v)?.nome ?? ({ATIVO:"Ativos",BAIXADO:"Baixados",F:"Fêmeas",M:"Machos",NASCIDO:"Nascido",COMPRADO:"Comprado",LEITE:"Leite",CORTE:"Corte",NENHUM:"Nenhum",DOADORA:"Doadora",RECEPTORA:"Receptora"} as Record<string,string>)[v] ?? "Selecionado";
+        const nomes: Record<Familia,string> = { propriedadeIds:"Sítio",loteIds:"Lote",categoriaIds:"Categoria",aptidoes:"Finalidade",papeisReprodutivos:"Papel",situacoes:"Situação",sexos:"Sexo",origens:"Origem",racaIds:"Raça" };
+        const nome = catalogos?.propriedades.find(p => String(p.id)===v)?.nome ?? catalogos?.lotes.find(l=>l.id===v)?.nome ?? categorias.find(c=>c.id===v)?.nome ?? catalogos?.racas.find(r=>r.id===v)?.nome ?? ({ATIVO:"Ativos",BAIXADO:"Baixados",F:"Fêmeas",M:"Machos",NASCIDO:"Nascido",COMPRADO:"Comprado",LEITE:"Leite",CORTE:"Corte",REPRODUCAO:"Reprodução",NENHUM:"Nenhum",DOADORA:"Doadora",RECEPTORA:"Receptora"} as Record<string,string>)[v] ?? "Selecionado";
         return <button key={f+v} type="button" className="rounded-lg border border-border bg-surface-2 px-3 py-2 text-xs" aria-label={`Remover filtro: ${nomes[f]}: ${nome}`} onClick={()=>{if(f==="propriedadeIds"){setLoteId("");setSelecionados(new Map());}setMultiplos(m=>({...m,[f]:m[f].filter(x=>x!==v),...(f==="propriedadeIds"?{loteIds:[]}: {})}));setPagina(1);}}>{nomes[f]}: {nome} ×</button>;
       }))}{filtrosAtivos.map(f => <button key={f.rotulo} type="button" onClick={f.limpar} aria-label={`Remover filtro: ${f.rotulo}`} className="rounded-lg border border-border bg-surface-2 px-3 py-2 text-xs text-ink-2">{f.rotulo} <span aria-hidden="true">×</span></button>)}</div></div>
       {podeLancar && itensSelecionaveis.length > 0 && <div className="flex flex-wrap items-center gap-3 border-b border-border bg-surface-2 px-4 py-2.5 text-sm">
@@ -372,7 +372,7 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
           <span className="shrink-0 text-ink-3">–</span>
           <input aria-label="Idade máxima (meses)" type="number" min={0} inputMode="numeric" placeholder="Máx. (meses)" value={idadeMaxMeses} onChange={(e) => filtrar(setIdadeMaxMeses)(e.target.value)} className="h-[42px] w-full min-w-0 rounded-lg border border-border bg-white px-3 text-sm" />
         </div></div>
-        {campoMultiplo("aptidoes", "Aptidão", [{value:"LEITE",label:"Leite"},{value:"CORTE",label:"Corte"}], aptidao, () => setAptidao(""))}
+        {campoMultiplo("aptidoes", "Finalidade", [{value:"LEITE",label:"Leite"},{value:"CORTE",label:"Corte"},{value:"REPRODUCAO",label:"Reprodução"}], aptidao, () => setAptidao(""))}
         {campoMultiplo("papeisReprodutivos", "Papel reprodutivo", [{value:"NENHUM",label:"Nenhum"},{value:"RECEPTORA",label:"Receptora"},{value:"DOADORA",label:"Doadora"}], papelReprodutivo, () => setPapelReprodutivo(""))}
 
         {mostrarBaixa && <>

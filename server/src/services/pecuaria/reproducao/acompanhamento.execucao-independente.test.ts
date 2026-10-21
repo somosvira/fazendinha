@@ -54,7 +54,7 @@ function fixture() {
     $executeRaw: vi.fn().mockResolvedValue(1), $queryRaw: vi.fn().mockResolvedValue([]),
     animal: { findMany: vi.fn().mockResolvedValue(animais) }, localizacaoAnimal: { findMany: vi.fn().mockResolvedValue(locais) },
     partoAnimal: vazios(), tentativaReprodutiva: vazios(), lactacaoAnimal: vazios(), situacaoInicialReprodutiva: vazios(),
-    restricaoReprodutiva: vazios(), categoriaAnimal: vazios(), categoriaManualAnimal: vazios(), destinoAnimal: vazios(),
+    restricaoReprodutiva: vazios(), categoriaAnimal: vazios(), categoriaManualAnimal: vazios(), finalidadeAnimal: vazios(),
     ocorrenciaSanitaria: vazios(), regraSanitariaReprodutiva: vazios(), periodoReprodutivoAnimal: vazios(),
     gestacaoAnimal: { findMany: vi.fn().mockResolvedValue([gestacao]), findFirst: vi.fn().mockResolvedValue(gestacao) },
     tipoExame: { findUnique: vi.fn().mockResolvedValue(tipo) },

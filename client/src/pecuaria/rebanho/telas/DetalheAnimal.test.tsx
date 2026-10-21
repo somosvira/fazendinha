@@ -110,6 +110,13 @@ describe("DetalheAnimal — ações conforme situação", () => {
     expect(screen.getByText("Ana")).toBeTruthy();
   });
 
+  it("apresenta finalidade Reprodução no histórico sem substituir o papel", async () => {
+    await montar({ ...base, aptidao: "REPRODUCAO", historicoDestinos: [{ ...base.historicoDestinos[0], aptidao: "REPRODUCAO" }] });
+    expect(screen.getByRole("columnheader", { name: "Finalidade" })).toBeTruthy();
+    expect(screen.getByRole("cell", { name: "Reprodução" })).toBeTruthy();
+    expect(screen.getByRole("cell", { name: "Receptora" })).toBeTruthy();
+  });
+
   it("só oferece desfazer localização/destino quando há pelo menos duas linhas de histórico", async () => {
     await montar(base);
     expect(screen.queryByRole("button", { name: "Desfazer última movimentação" })).toBeNull();

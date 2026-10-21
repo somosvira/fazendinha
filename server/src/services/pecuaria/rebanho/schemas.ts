@@ -57,7 +57,7 @@ export const cadastrarAnimalSchema = z.object({
   observacao: z.string().trim().max(500).nullable().optional(),
   propriedadeId: propriedadeIdObrigatorio,
   loteId: z.string().uuid().nullable().optional(),
-  aptidao: z.enum(["LEITE", "CORTE"]),
+  aptidao: z.enum(["LEITE", "CORTE", "REPRODUCAO"]),
   papelReprodutivo: z.enum(["NENHUM", "RECEPTORA", "DOADORA"]).optional(),
   composicao: z.array(composicaoItemSchema).optional().default([]),
   pesoEntradaKg: pesoKgSchema.nullable().optional(),
@@ -99,7 +99,7 @@ export type MovimentarInput = z.infer<typeof movimentarSchema>;
 
 export const mudarDestinoSchema = z.object({
   animalId: z.string().uuid().optional(),
-  aptidao: z.enum(["LEITE", "CORTE"]),
+  aptidao: z.enum(["LEITE", "CORTE", "REPRODUCAO"]),
   papelReprodutivo: z.enum(["NENHUM", "RECEPTORA", "DOADORA"]).optional(),
   data: dataNaoFutura,
 });
@@ -222,7 +222,7 @@ export const listarFiltrosSchema = z.object({
   sexos: listaQuery(z.enum(["F", "M"])),
   origens: listaQuery(z.enum(["NASCIDO", "COMPRADO"])),
   racaIds: listaQuery(z.string().uuid()),
-  aptidoes: listaQuery(z.enum(["LEITE", "CORTE"])),
+  aptidoes: listaQuery(z.enum(["LEITE", "CORTE", "REPRODUCAO"])),
   papeisReprodutivos: listaQuery(z.enum(["NENHUM", "RECEPTORA", "DOADORA"])),
   situacoes: listaQuery(z.enum(["ATIVO", "BAIXADO"])),
   propriedadeId: propriedadeIdOpcional,
@@ -230,7 +230,7 @@ export const listarFiltrosSchema = z.object({
   /** exclui da lista os animais cuja localização aberta está neste lote (ex.: "Trazer animais") */
   excluirLoteId: z.string().uuid().optional(),
   categoriaId: z.string().uuid().optional(),
-  aptidao: z.enum(["LEITE", "CORTE"]).optional(),
+  aptidao: z.enum(["LEITE", "CORTE", "REPRODUCAO"]).optional(),
   papelReprodutivo: z.enum(["NENHUM", "RECEPTORA", "DOADORA"]).optional(),
   situacao: z.enum(["ATIVO", "BAIXADO", "TODOS"]).optional(),
   busca: z.string().trim().max(120).optional(),

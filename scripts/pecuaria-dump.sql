@@ -132,7 +132,7 @@ ORDER BY p.CDPESO;
  * VALIDAR NA 1ª EXECUÇÃO: ANIMALPERIODO.TIPO (1 Doadora, 2 Receptora, 3 Descarte, conforme o
  * mapa do IDEAGRI) — confirmar que os códigos batem antes de confiar no importador.
  * Só o período ABERTO (DATAFIM IS NULL) interessa à carga inicial: define o papelReprodutivo
- * inicial do DestinoAnimal (a interpretação do TIPO fica com o importador, não com este dump).
+ * inicial do animal (a interpretação do TIPO fica com o importador, não com este dump).
  * Período fechado é histórico e fica para quando a v2 (Reprodução) chegar.
  */
 SELECT '@AP@' || CAST(ap.CDANIMALPERIODO AS VARCHAR(12))

@@ -119,6 +119,11 @@ describe("agregarPainel", () => {
 });
 
 describe("resumoAuditoria", () => {
+  it.each(["DestinoAnimal", "FinalidadeAnimal"])("traduz mudança e desfazer de %s sem reescrever o identificador histórico", entidade => {
+    expect(resumoAuditoria(entidade, "MUDANCA_DESTINO")).toBe("Mudança de finalidade");
+    expect(resumoAuditoria(entidade, "DESFAZER")).toBe("Mudança de finalidade desfeita");
+  });
+
   it("traduz combinações conhecidas de entidade + ação", () => {
     expect(resumoAuditoria("Animal", "CADASTRO")).toBe("Cadastro do animal");
     expect(resumoAuditoria("BaixaAnimal", "BAIXA")).toBe("Baixa registrada");

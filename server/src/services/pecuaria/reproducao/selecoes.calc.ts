@@ -2,7 +2,7 @@ import type { CondicaoSelecao, CriteriosSelecao } from "./selecoes.schemas.js";
 
 export type AnimalSelecao = { animalId: string; [campo: string]: unknown };
 const rotulos: Record<CondicaoSelecao["campo"], string> = {
-  APTIDAO: "Aptidão leite/corte", DIAS_APTIDAO: "Dias desde aptidão", IDADE_DIAS: "Idade em dias", PESO_KG: "Último peso (kg)", SEXO: "Sexo", ORIGEM: "Origem", BUSCA: "Brinco ou nome contém", RACA: "Composição racial contém", PROTOCOLO: "Protocolo ativo", PROTOCOLO_ATIVO: "Participação ativa", NASCIMENTO_ESTIMADO: "Nascimento estimado", HISTORICO_PARTO: "Histórico de parto",
+  APTIDAO: "Finalidade", DIAS_APTIDAO: "Dias desde aptidão", IDADE_DIAS: "Idade em dias", PESO_KG: "Último peso (kg)", SEXO: "Sexo", ORIGEM: "Origem", BUSCA: "Brinco ou nome contém", RACA: "Composição racial contém", PROTOCOLO: "Protocolo ativo", PROTOCOLO_ATIVO: "Participação ativa", NASCIMENTO_ESTIMADO: "Nascimento estimado", HISTORICO_PARTO: "Histórico de parto",
   DEL: "DEL", DIAS_POS_PARTO: "Dias após parto", DIAS_TENTATIVA: "Dias desde tentativa",
   DIAS_CONFIRMACAO: "Dias desde confirmação", IDADE_GESTACIONAL: "Idade gestacional",
   DIAS_ATE_RETORNO: "Dias até retorno agendado", RETORNO_INFORMADO: "Retorno informado", PARTOS: "Partos realizados", TENTATIVAS_CICLO: "Tentativas no ciclo", CATEGORIA: "Categoria",
@@ -41,7 +41,11 @@ function testar(a: AnimalSelecao, c: CondicaoSelecao, incluirDesconhecidos: bool
 }
 export function descreverCondicaoSelecao(c: CondicaoSelecao): string {
   if (c.tipo === "DESCONHECIDO") return `${rotulos[c.campo]} não informado`;
-  if (c.tipo === "VALORES") return `${rotulos[c.campo]}: ${c.valores.join(" ou ")}`;
+  if (c.tipo === "VALORES") {
+    const finalidades: Record<string, string> = { LEITE: "Leite", CORTE: "Corte", REPRODUCAO: "Reprodução" };
+    const valores = c.campo === "APTIDAO" ? c.valores.map(v => finalidades[v] ?? v) : c.valores;
+    return `${rotulos[c.campo]}: ${valores.join(" ou ")}`;
+  }
   return `${rotulos[c.campo]}: ${c.min == null ? "sem mínimo" : `${c.incluirMin ? "≥" : ">"} ${c.min}`} e ${c.max == null ? "sem máximo" : `${c.incluirMax ? "≤" : "<"} ${c.max}`}`;
 }
 export function avaliarSelecaoAnimal(a: AnimalSelecao, c: CriteriosSelecao): { incluido: boolean; motivos: string[] } {

@@ -28,7 +28,7 @@ export interface AnimalResumo {
   origem: "NASCIDO" | "COMPRADO";
   propriedade: { id: number; nome: string } | null;
   lote: { id: string; nome: string } | null;
-  aptidao: "LEITE" | "CORTE" | null;
+  aptidao: "LEITE" | "CORTE" | "REPRODUCAO" | null;
   papelReprodutivo: "NENHUM" | "RECEPTORA" | "DOADORA" | null;
   composicaoRotulo: string;
   ultimoPeso: { kg: number; data: string } | null;
@@ -59,7 +59,7 @@ export function mapearAnimalResumo(input: {
   hoje: Date;
   propriedade: { id: number; nome: string } | null;
   lote: { id: string; nome: string } | null;
-  destino: { aptidao: "LEITE" | "CORTE"; papelReprodutivo: "NENHUM" | "RECEPTORA" | "DOADORA" | null } | null;
+  destino: { aptidao: "LEITE" | "CORTE" | "REPRODUCAO"; papelReprodutivo: "NENHUM" | "RECEPTORA" | "DOADORA" | null } | null;
   composicao: FracaoRaca[];
   ultimoPeso: { pesoKg: number; data: Date } | null;
   /** pesagem imediatamente anterior à última (para `gmdRecente`) — omitido quando não relevante (ex.: painel) */
@@ -162,7 +162,7 @@ export interface AnimalFicha extends AnimalResumo {
   observacao: string | null;
   composicao: ItemComposicaoFicha[];
   historicoLocalizacoes: Array<{ id: string; propriedade: { id: number; nome: string } | null; lote: { id: string; nome: string } | null; desde: string; ate: string | null; motivo: string | null; movimentacaoId: string | null }>;
-  historicoDestinos: Array<{ id: string; aptidao: "LEITE" | "CORTE"; papelReprodutivo: "NENHUM" | "RECEPTORA" | "DOADORA" | null; desde: string; ate: string | null }>;
+  historicoDestinos: Array<{ id: string; aptidao: "LEITE" | "CORTE" | "REPRODUCAO"; papelReprodutivo: "NENHUM" | "RECEPTORA" | "DOADORA" | null; desde: string; ate: string | null }>;
   historicoPesagens: Array<{ id: string; data: string; pesoKg: number; tipo: string; origem: string; observacao: string | null }>;
   historicoCategoriasManuais: Array<{ id: string; categoria: CategoriaRef; desde: string; ate: string | null; motivo: string; motivoEncerramento: string | null }>;
   /** mantido por compatibilidade — a baixa que vale, igual a `AnimalResumo.baixa` mas com id/motivo/observação */
@@ -230,8 +230,8 @@ const RESUMOS_AUDITORIA: Record<string, string> = {
   "LocalizacaoAnimal:DESFAZER": "Movimentação de localização desfeita",
   "Movimentacao:MOVIMENTACAO": "Movimentação registrada",
   "Movimentacao:DESFAZER": "Movimentação desfeita",
-  "DestinoAnimal:MUDANCA_DESTINO": "Mudança de finalidade",
-  "DestinoAnimal:DESFAZER": "Mudança de finalidade desfeita",
+  "FinalidadeAnimal:MUDANCA_DESTINO": "Mudança de finalidade",
+  "FinalidadeAnimal:DESFAZER": "Mudança de finalidade desfeita",
   "BaixaAnimal:BAIXA": "Baixa registrada",
   "BaixaAnimal:ESTORNO": "Baixa estornada",
   "Lote:CADASTRO": "Lote cadastrado",
@@ -253,5 +253,6 @@ const RESUMOS_AUDITORIA: Record<string, string> = {
 
 /** Resumo legível em PT-BR de uma entrada de auditoria; cai num rótulo genérico para combinações não mapeadas. */
 export function resumoAuditoria(entidade: string, acao: string): string {
-  return RESUMOS_AUDITORIA[`${entidade}:${acao}`] ?? `${entidade} — ${acao}`;
+  const entidadeAtual = entidade === "DestinoAnimal" ? "FinalidadeAnimal" : entidade;
+  return RESUMOS_AUDITORIA[`${entidadeAtual}:${acao}`] ?? `${entidade} — ${acao}`;
 }

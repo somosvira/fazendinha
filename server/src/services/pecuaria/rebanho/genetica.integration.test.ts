@@ -70,7 +70,7 @@ afterAll(async () => {
 
   await prisma.auditoriaPecuaria.deleteMany({ where: { OR: [{ animalId }, { entidadeId: { in: entidades } }] } });
   await prisma.composicaoRacial.deleteMany({ where: { animalId } });
-  await prisma.periodoReprodutivoAnimal.deleteMany({ where: { animalId } }); await prisma.destinoAnimal.deleteMany({ where: { animalId } });
+  await prisma.periodoReprodutivoAnimal.deleteMany({ where: { animalId } }); await prisma.finalidadeAnimal.deleteMany({ where: { animalId } });
   await prisma.localizacaoAnimal.deleteMany({ where: { OR: [{ animalId }, { propriedadeId }] } });
   // desfaz a filiação antes de apagar os animais (FK Restrict entre eles)
   await prisma.animal.updateMany({ where: { id: animalId }, data: { maeId: null, paiId: null, maeExternaId: null, paiExternoId: null } });

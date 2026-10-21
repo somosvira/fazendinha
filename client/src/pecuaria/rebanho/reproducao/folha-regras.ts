@@ -27,7 +27,7 @@ const PRODUTIVAS: Record<string, string> = { LACTANTE: "Lactante", SECA: "Seca",
 const PAPEIS: Record<string, string> = { NENHUM: "Sem papel reprodutivo", DOADORA: "Doadora", RECEPTORA: "Receptora", MATRIZ: "Matriz" };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const VALORES_LEGIVEIS: Record<string, Record<string, string>> = {
-  SEXO: {F:"Fêmea",M:"Macho"}, ORIGEM:{NASCIDO:"Nascimento na fazenda",COMPRADO:"Compra"}, APTIDAO:{LEITE:"Leite",CORTE:"Corte"}, NASCIMENTO_ESTIMADO:{SIM:"Sim",NAO:"Não"}, HISTORICO_PARTO:{CONHECIDO:"Com parto conhecido",SEM_REGISTRO:"Sem registro"}, PROTOCOLO_ATIVO:{QUALQUER:"Qualquer domínio",REPRODUTIVO:"Reprodutivo",SANITARIO:"Sanitário",AMBOS:"Ambos",NENHUM:"Sem protocolo ativo"},
+  SEXO: {F:"Fêmea",M:"Macho"}, ORIGEM:{NASCIDO:"Nascimento na fazenda",COMPRADO:"Compra"}, APTIDAO:{LEITE:"Leite",CORTE:"Corte",REPRODUCAO:"Reprodução"}, NASCIMENTO_ESTIMADO:{SIM:"Sim",NAO:"Não"}, HISTORICO_PARTO:{CONHECIDO:"Com parto conhecido",SEM_REGISTRO:"Sem registro"}, PROTOCOLO_ATIVO:{QUALQUER:"Qualquer domínio",REPRODUTIVO:"Reprodutivo",SANITARIO:"Sanitário",AMBOS:"Ambos",NENHUM:"Sem protocolo ativo"},
   SITUACAO: SITUACOES, SITUACAO_PRODUTIVA: PRODUTIVAS, PAPEL_REPRODUTIVO: PAPEIS,
   RP: { SIM: "Sim", NAO: "Não", "NÃO": "Não", DESCONHECIDO: "Não informado" },
   DESCARTE: { SIM: "Sim", NAO: "Não", "NÃO": "Não" },
