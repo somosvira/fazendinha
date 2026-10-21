@@ -104,6 +104,15 @@ describe("registros reprodutivos", () => {
       primeira.chave,
     );
   });
+  it("envia finalidade Reprodução na cria", async () => {
+    vi.mocked(registrarParto).mockResolvedValue({ id: "p", animalId: "a", data: "2026-10-13" });
+    render(<FormReproducao acao="parto" painel={painel} animalInicial="a" onFechar={vi.fn()} onSalvo={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText("Finalidade"), { target: { value: "REPRODUCAO" } });
+    fireEvent.submit(document.getElementById("form-reproducao")!);
+    await waitFor(() => expect(registrarParto).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(registrarParto).mock.calls[0][0].crias).toEqual([{ viva: true, sexo: "F", aptidao: "REPRODUCAO" }]);
+  });
+
   it("envia cria viva sem brinco para cadastro provisório e aborto sem cria", async () => {
     vi.mocked(registrarParto).mockResolvedValue({
       id: "p",

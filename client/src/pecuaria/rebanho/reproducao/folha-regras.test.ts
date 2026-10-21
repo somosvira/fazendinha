@@ -6,6 +6,9 @@ import { FolhaVisita } from "./FolhaVisita";
 import { csvRelatorioPartos, FolhaRelatorioPartos, linhasCriasPartos, type SnapshotRelatorioPartos } from "./RelatorioPartos";
 
 describe("folha de campo congelada", () => {
+  it("imprime a finalidade Reprodução de critérios preservados", () => {
+    expect(criteriosFolha({ selecaoCriterios: { todas: [{ tipo: "VALORES", campo: "APTIDAO", valores: ["LEITE", "REPRODUCAO"] }] } }).join(" ")).toContain("Finalidade: Leite ou Reprodução");
+  });
   it("preserva a escolha de incluir ou excluir descarte nos critérios", () => {
     for (const [valor, rotulo] of [["SIM", "Sim"], ["NAO", "Não"]]) {
       const linhas = criteriosFolha({ selecaoCriterios: { todas: [{ tipo: "VALORES", campo: "DESCARTE", valores: [valor] }] } }).join(" ");

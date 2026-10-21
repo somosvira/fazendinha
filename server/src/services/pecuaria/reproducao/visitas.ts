@@ -673,7 +673,7 @@ export async function carregarContextosVisitaTx(tx: Prisma.TransactionClient, id
     obterEstadosReprodutivosTx(tx, ids, data),
     tx.categoriaAnimal.findMany({ orderBy: [{ ordem: "asc" }, { nome: "asc" }] }),
     tx.categoriaManualAnimal.findMany({ where: { animalId: { in: ids }, ...periodo }, include: { categoria: true } }),
-    tx.destinoAnimal.findMany({ where: { animalId: { in: ids }, ...periodo } }),
+    tx.finalidadeAnimal.findMany({ where: { animalId: { in: ids }, ...periodo } }),
     tx.ocorrenciaSanitaria.findMany({ where: { animalId: { in: ids }, status: "VALIDO", inicio: { lte: data }, OR: [{ fim: null }, { fim: { gte: data } }] } }),
     tx.regraSanitariaReprodutiva.findMany({ where: { ativo: true }, orderBy: { id: "asc" } }),
     tx.periodoReprodutivoAnimal.findMany({ where: { animalId: { in: ids }, revogadoEm: null } }),

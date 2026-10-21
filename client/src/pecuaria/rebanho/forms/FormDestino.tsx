@@ -1,6 +1,6 @@
 import { SelectCampo } from "@/financeiro/SelectCampo";
 import { Target } from "lucide-react";
-// Sheet "Mudar finalidade" (aptidão + papel reprodutivo; no banco, DestinoAnimal) — POST /pecuaria/rebanho/animais/:id/destino.
+// Sheet "Mudar finalidade" (finalidade + papel reprodutivo; no banco, FinalidadeAnimal) — POST /pecuaria/rebanho/animais/:id/destino.
 
 import { type FormEvent, useRef, useState } from "react";
 import { mudarDestinoAnimal, RebanhoApiError } from "../api";
@@ -40,7 +40,7 @@ export function FormDestino({ animal, onSalvo, onFechar }: {
     rodape={<><Button secondary onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form={formId} disabled={salvando}>{salvando ? "Salvando…" : "Salvar finalidade"}</Button></>}>
     <form data-pec-formulario  id={formId} onSubmit={submeter} noValidate className="grid gap-4">
       <ErrorBox erro={erroGeral} />
-      <CampoFormulario id="destino-aptidao" rotulo="Aptidão" obrigatorio>{(p) => <SelectCampo {...p} required value={aptidao} onValueChange={(valorSelecionado) => setAptidao(valorSelecionado as Aptidao)} className={classeInput}><option value="LEITE">Leite</option><option value="CORTE">Corte</option></SelectCampo>}</CampoFormulario>
+      <CampoFormulario id="destino-aptidao" rotulo="Finalidade" obrigatorio>{(p) => <SelectCampo {...p} required value={aptidao} onValueChange={(valorSelecionado) => setAptidao(valorSelecionado as Aptidao)} className={classeInput}><option value="LEITE">Leite</option><option value="CORTE">Corte</option><option value="REPRODUCAO">Reprodução</option></SelectCampo>}</CampoFormulario>
       {animal.sexo === "F" && <CampoFormulario id="destino-papel" rotulo="Papel reprodutivo">{(p) => <SelectCampo {...p} value={papelReprodutivo} onValueChange={(valorSelecionado) => setPapelReprodutivo(valorSelecionado as PapelReprodutivo)} className={classeInput}><option value="">Manter papel atual / não informado</option><option value="NENHUM">Nenhum</option><option value="RECEPTORA">Receptora</option><option value="DOADORA">Doadora</option></SelectCampo>}</CampoFormulario>}
       <CampoFormulario id="destino-data" rotulo="Data da mudança" obrigatorio erro={erroData}>{(p) => <DatePicker {...p} required max={hoje()} value={data} onChange={setData} className="mt-1.5" />}</CampoFormulario>
     </form>

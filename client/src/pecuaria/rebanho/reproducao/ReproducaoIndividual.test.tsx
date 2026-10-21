@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { abrirFiltrosConsulta, aplicarFiltrosConsulta } from "@/lib/controles.fixture";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { getHojeISO } from "../../../lib/hoje";
@@ -26,7 +27,9 @@ it("integra tentativas ao histórico com paginação e exclui marcos previstos",
  expect(screen.getAllByRole("button", { name: "Ver detalhes" })).toHaveLength(20);
  fireEvent.click(screen.getByRole("button", { name: "Próxima" }));
  expect(screen.getAllByRole("button", { name: "Ver detalhes" })).toHaveLength(6);
+ await abrirFiltrosConsulta();
  fireEvent.click(screen.getByRole("button",{name:"Tipos de registro"}));fireEvent.click(screen.getByRole("option",{name:"Avaliações"}));fireEvent.keyDown(screen.getByPlaceholderText("Buscar opção…"),{key:"Escape"});
+ await aplicarFiltrosConsulta();
  expect(screen.getByText("Nenhum evento registrado neste período e tipo.")).toBeTruthy();
 });
 it("conserva deep links e detalhes, filtra período e mantém rascunho ao atualizar", async () => {
@@ -40,7 +43,7 @@ it("conserva deep links e detalhes, filtra período e mantém rascunho ao atuali
  fireEvent.change(criterio, { target: { value: "alterado" } });
  expect((screen.getByLabelText("Critérios completos") as HTMLInputElement).value).toBe("alterado");
  expect(screen.getByText("Não aferido")).toBeTruthy();
- fireEvent.click(screen.getByRole("button", {name:"Personalizar período"}));
+ fireEvent.click(screen.getByRole("button", {name:"Período do histórico reprodutivo"}));
  fireEvent.change(screen.getByLabelText("Data inicial"), { target: { value: "2020-09-10" } });
  fireEvent.click(screen.getByRole("button", {name:"Aplicar período"}));
  expect(screen.getByText("1–3 de 3 registros")).toBeTruthy();
@@ -103,7 +106,9 @@ it.each([0,1,2,3])("conserva %s tentativas factuais sem completar lacunas", asyn
  vi.mocked(obterReproducao).mockResolvedValue(dados);
  render(<ReproducaoIndividual animalId="a" podeLancar={false}/>);
  expect(await screen.findByText(`${quantidade} desde o início registrado`)).toBeTruthy();
+ await abrirFiltrosConsulta();
  fireEvent.click(screen.getByRole("button",{name:"Tipos de registro"}));fireEvent.click(screen.getByRole("option",{name:"Tentativas"}));fireEvent.keyDown(screen.getByPlaceholderText("Buscar opção…"),{key:"Escape"});
+ await aplicarFiltrosConsulta();
  expect(screen.queryAllByRole("button",{name:"Ver detalhes"})).toHaveLength(quantidade*2);
 });
 const demandaPendente = { id:"d", finalidade:"DIAGNOSTICO",ocorrencia:1,tentativaId:"t0",gestacaoId:null,previstaPara:"2020-10-01",estado:"PENDENTE",motivoEncerramento:null,regraSnapshot:{politicaVersao:1},exameResolucaoId:null };

@@ -75,7 +75,7 @@ async function fotografia(animalIds: string[]) {
   const [localizacoes, itens, destinos, baixas] = await Promise.all([
     prisma.localizacaoAnimal.findMany({ where, orderBy: { id: "asc" } }),
     prisma.movimentacaoAnimal.findMany({ where, orderBy: { id: "asc" } }),
-    prisma.destinoAnimal.findMany({ where, orderBy: { id: "asc" } }),
+    prisma.finalidadeAnimal.findMany({ where, orderBy: { id: "asc" } }),
     prisma.baixaAnimal.findMany({ where, orderBy: { id: "asc" } }),
   ]);
   return { localizacoes, itens, destinos, baixas };
@@ -149,7 +149,7 @@ afterAll(async () => {
   await prisma.movimentacaoAnimal.deleteMany({ where: { OR: [{ animalId }, { movimentacaoId: { in: movs.map((m) => m.id) } }] } });
   await prisma.localizacaoAnimal.deleteMany({ where: { OR: [{ animalId }, { propriedadeId }] } });
   await prisma.movimentacao.deleteMany({ where: { id: { in: movs.map((m) => m.id) } } });
-  await prisma.periodoReprodutivoAnimal.deleteMany({ where: { animalId } }); await prisma.destinoAnimal.deleteMany({ where: { animalId } });
+  await prisma.periodoReprodutivoAnimal.deleteMany({ where: { animalId } }); await prisma.finalidadeAnimal.deleteMany({ where: { animalId } });
   await prisma.pesagem.deleteMany({ where: { animalId } });
   await prisma.composicaoRacial.deleteMany({ where: { animalId } });
   await prisma.categoriaManualAnimal.deleteMany({ where: { OR: [{ animalId }, { categoriaId: { in: categoriasCriadas } }] } });
@@ -229,7 +229,7 @@ describeComBanco("pecuária v1 (rebanho) com PostgreSQL", () => {
     expect(depois.map((l) => l.id)).toEqual([movida.id]);
     const linhaInicial = await prisma.localizacaoAnimal.findUniqueOrThrow({ where: { id: inicial.id } });
     expect(iso(linhaInicial.ate!)).toBe(HOJE);
-    expect(await prisma.destinoAnimal.count({ where: { animalId: animal.id, ate: null } })).toBe(1);
+    expect(await prisma.finalidadeAnimal.count({ where: { animalId: animal.id, ate: null } })).toBe(1);
   });
 
   it("baixa e movimentação simultâneas no mesmo animal serializam: histórico íntegro e estorno funciona", async () => {

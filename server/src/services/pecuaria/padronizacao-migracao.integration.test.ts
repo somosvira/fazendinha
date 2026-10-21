@@ -95,6 +95,19 @@ suite("conversão dos dados anteriores à padronização", () => {
       for (const tabela of ["GestacaoAnimal", "PartoAnimal", "TentativaReprodutiva"]) expect((await destino.query(`SELECT count(*)::int AS n FROM pecuaria."${tabela}"`)).rows[0].n).toBe(0);
       expect((await destino.query('SELECT count(*)::int AS n FROM public."MovimentoEstoque"')).rows[0].n).toBe(0);
       await expect(destino.query('UPDATE pecuaria."AvaliacaoReprodutiva" SET resultado=\'NEGATIVO\' WHERE id=\'av-positivo\'')).rejects.toThrow(/cannot update view/);
+
+      // Confere a renomeação sobre registros reais anteriores, somente neste ensaio de CI.
+      for (const nome of migracoes.filter(n => n > "20261014170000_contratos_comuns" && n < "20261021173000")) await aplicar(nome);
+      const finalidadeAntes = (await destino.query('SELECT to_jsonb(d) AS registro FROM pecuaria."DestinoAnimal" d ORDER BY id')).rows;
+      const identidadeAntes = (await destino.query(`SELECT 'pecuaria."DestinoAnimal"'::regclass::oid AS tabela,
+        'pecuaria."DestinoAnimal_animalId_aberto_key"'::regclass::oid AS indice`)).rows[0];
+      for (const nome of migracoes.filter(n => n >= "20261021173000")) await aplicar(nome);
+      expect((await destino.query('SELECT to_jsonb(d) AS registro FROM pecuaria."FinalidadeAnimal" d ORDER BY id')).rows).toEqual(finalidadeAntes);
+      expect((await destino.query('SELECT to_jsonb(d) AS registro FROM pecuaria."DestinoAnimal" d ORDER BY id')).rows).toEqual(finalidadeAntes);
+      expect((await destino.query(`SELECT 'pecuaria."FinalidadeAnimal"'::regclass::oid AS tabela,
+        'pecuaria."FinalidadeAnimal_animalId_aberto_key"'::regclass::oid AS indice`)).rows[0]).toEqual(identidadeAntes);
+      expect((await destino.query(`SELECT confrelid::oid AS tabela FROM pg_constraint
+        WHERE conrelid='pecuaria."BaixaAnimal"'::regclass AND conname='BaixaAnimal_destinoFechadoId_fkey'`)).rows[0].tabela).toBe(identidadeAntes.tabela);
     } finally {
       if (destino) await destino.end();
       if (criado) await admin.query(`DROP DATABASE "${banco}"`);

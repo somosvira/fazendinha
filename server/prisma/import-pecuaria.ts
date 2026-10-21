@@ -3,7 +3,7 @@
 // Consome `server/prisma/pecuaria_v1.json` (gerado por `scripts/build-pecuaria-json.mjs`
 // a partir do dump do IDEAGRI — ver `scripts/pecuaria-dump.sql` / `scripts/extract-pecuaria.sh`)
 // e popula o schema novo `pecuaria` (Animal/Raca/ComposicaoRacial/Lote/LocalizacaoAnimal/
-// DestinoAnimal/BaixaAnimal/MotivoBaixa/Pesagem), sem tocar no legado.
+// FinalidadeAnimal/BaixaAnimal/MotivoBaixa/Pesagem), sem tocar no legado.
 //
 // CARGA ÚNICA (não sincroniza): o IDEAGRI só serve de base para a carga inicial — depois
 // disso todo movimento é feito no próprio sistema. Por isso, animal que já existe (por
@@ -92,7 +92,7 @@ interface AnimalJson {
   papelReprodutivo: "NENHUM" | "RECEPTORA" | "DOADORA";
   /** Reserva (aberto) — só define o papel inicial quando presente; ver papelDoPeriodo(). */
   periodoAberto: PeriodoAbertoJson | null;
-  aptidao: "LEITE" | "CORTE";
+  aptidao: "LEITE" | "CORTE" | "REPRODUCAO";
   composicao: ComposicaoJson[];
   racaTexto?: string | null;
   baixa: BaixaJson | null;
@@ -167,7 +167,7 @@ export function mapBaixaIdeagri(motivoNome: string | null, tipoIdeagri: number |
 const d = (s: string): Date => new Date(`${s}T00:00:00Z`);
 
 /**
- * ANIMALPERIODO.TIPO → papelReprodutivo inicial do DestinoAnimal (C5): 1 Doadora, 2 Receptora.
+ * ANIMALPERIODO.TIPO → papel inicial do animal em PeriodoReprodutivoAnimal (C5): 1 Doadora, 2 Receptora.
  * 3 (Descarte) ainda não tem representação no schema v1 — vira NENHUM por ora (Descarte entra na v4).
  * Tipo desconhecido ou período ausente devolve `null`: quem chama cai no fallback do setor (heurística do builder).
  */
@@ -383,7 +383,7 @@ async function main() {
   let semComposicao = 0;
   let baixasSemMotivo = 0;
   let fracoesRacaPerdidas = 0; // itens de composição com sigla não resolvida (raça não semeada nem no JSON)
-  let papelPorPeriodo = 0; // DestinoAnimal.papelReprodutivo inicial veio do ANIMALPERIODO aberto, não do setor
+  let papelPorPeriodo = 0; // papel inicial veio do ANIMALPERIODO aberto, não do setor
 
   interface Falha { brinco: string; ideagriId: number; mensagem: string }
   const falhas: Falha[] = [];
@@ -488,7 +488,7 @@ async function main() {
         const localizacaoInicial = await tx.localizacaoAnimal.create({
           data: { animalId: animal.id, propriedadeId, loteId, desde: d(a.dataEntrada) },
         });
-        const destinoInicial = await tx.destinoAnimal.create({
+        const destinoInicial = await tx.finalidadeAnimal.create({
           data: { animalId: animal.id, aptidao: a.aptidao, desde: d(a.dataEntrada) },
         });
 
@@ -507,7 +507,7 @@ async function main() {
           if (!motivoId) baixasSemMotivo++;
 
           await tx.localizacaoAnimal.update({ where: { id: localizacaoInicial.id }, data: { ate: d(a.baixa.data) } });
-          await tx.destinoAnimal.update({ where: { id: destinoInicial.id }, data: { ate: d(a.baixa.data) } });
+          await tx.finalidadeAnimal.update({ where: { id: destinoInicial.id }, data: { ate: d(a.baixa.data) } });
 
           await tx.baixaAnimal.create({
             data: {

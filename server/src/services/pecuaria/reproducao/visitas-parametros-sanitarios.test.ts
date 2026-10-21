@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => {
     atividadeVisita: { ...lista(), aggregate: vi.fn(), create: vi.fn(), findFirst: vi.fn() },
     participanteVisita: { ...lista(), createMany: vi.fn(), findUnique: vi.fn() },
     tarefaProtocolo: { ...lista(), findFirst: vi.fn() },
-    animal: lista(), localizacaoAnimal: lista(), categoriaAnimal: lista(), categoriaManualAnimal: lista(), destinoAnimal: lista(),
+    animal: lista(), localizacaoAnimal: lista(), categoriaAnimal: lista(), categoriaManualAnimal: lista(), finalidadeAnimal: lista(),
     ocorrenciaSanitaria: lista(), regraSanitariaReprodutiva: lista(), periodoReprodutivoAnimal: lista(), tarefaIatf: lista(),
     programacaoIatf: lista(), protocolo: lista(), protocoloIatf: lista(), participanteIatf: lista(),
     avaliacaoReprodutiva: lista(), gestacaoAnimal: lista(), tentativaReprodutiva: lista(), auditoriaPecuaria: { create: vi.fn() },

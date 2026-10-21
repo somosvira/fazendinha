@@ -53,6 +53,19 @@ async function montar() {
 }
 
 describe("NovoAnimal", () => {
+  it("cadastra finalidade Reprodução sem alterar papel nem sexo", async () => {
+    vi.mocked(cadastrarAnimal).mockResolvedValue({ id: "repro-1", avisos: [] } as never);
+    await montar();
+    fireEvent.change(screen.getByLabelText("Brinco"), { target: { value: "R1" } });
+    await alterarControle(screen.getByLabelText("Sítio"), { target: { value: "1" } });
+    await alterarControle(screen.getByLabelText("Papel reprodutivo"), { target: { value: "DOADORA" } });
+    await alterarControle(screen.getByLabelText("Finalidade"), { target: { value: "REPRODUCAO" } });
+    expect(screen.getByLabelText("Finalidade").textContent).toContain("Reprodução");
+    expect(screen.getByLabelText("Papel reprodutivo").textContent).toContain("Doadora");
+    fireEvent.click(screen.getByRole("button", { name: "Salvar animal" }));
+    await waitFor(() => expect(cadastrarAnimal).toHaveBeenCalledWith(expect.objectContaining({ aptidao: "REPRODUCAO", papelReprodutivo: "DOADORA", sexo: "F" })));
+  });
+
   it("ao selecionar um pai, fixa a metade herdada e limita a parte informável", async () => {
     vi.mocked(listarGenitores).mockImplementation((filtros) => Promise.resolve(filtros?.sexo === "M" ? [{ id: "pai-1", sexo: "M", nome: "Touro", codigo: null, fornecedor: null, fornecedorId: null, observacao: null, ativo: true, composicao: [], composicaoRotulo: "", filhos: 0 }] : []));
     vi.mocked(preverComposicaoAnimal).mockResolvedValue({ itens: [{ racaId: "raca-1", sigla: "NE", fracao64: 32 }], rotulo: "1/2 NE" });

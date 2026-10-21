@@ -27,7 +27,7 @@ afterAll(async () => {
   await prisma.itemDieta.deleteMany({ where: { dietaId: ids.dieta } });
   await prisma.dieta.deleteMany({ where: { id: ids.dieta } });
   await limparMovimentosValorizadosFixture([ids.produto]);
-  await prisma.periodoReprodutivoAnimal.deleteMany({ where: { animalId: ids.animal } }); await prisma.destinoAnimal.deleteMany({ where: { animalId: ids.animal } });
+  await prisma.periodoReprodutivoAnimal.deleteMany({ where: { animalId: ids.animal } }); await prisma.finalidadeAnimal.deleteMany({ where: { animalId: ids.animal } });
   await prisma.localizacaoAnimal.deleteMany({ where: { animalId: ids.animal } });
   await prisma.animal.deleteMany({ where: { id: ids.animal } });
   await prisma.lote.deleteMany({ where: { id: ids.lote } });

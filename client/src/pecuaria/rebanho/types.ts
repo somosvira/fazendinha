@@ -5,7 +5,7 @@ export type Sexo = "F" | "M";
 /** Referência leve a uma categoria configurável (CategoriaAnimal) — id + nome. */
 export type CategoriaRef = { id: string; nome: string };
 export type CategoriaOrigem = "AUTOMATICA" | "MANUAL" | "SEM_CATEGORIA";
-export type Aptidao = "LEITE" | "CORTE";
+export type Aptidao = "LEITE" | "CORTE" | "REPRODUCAO";
 export type PapelReprodutivo = "NENHUM" | "RECEPTORA" | "DOADORA";
 export type Origem = "NASCIDO" | "COMPRADO";
 export type Situacao = "ATIVO" | "BAIXADO";

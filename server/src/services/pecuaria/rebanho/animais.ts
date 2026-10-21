@@ -42,7 +42,7 @@ async function localizacaoAberta(db: DbPecuaria, animalId: string) {
 }
 
 async function destinoAberto(db: DbPecuaria, animalId: string) {
-  const destino = await db.destinoAnimal.findFirst({ where: { animalId, ate: null }, orderBy: { desde: "desc" } });
+  const destino = await db.finalidadeAnimal.findFirst({ where: { animalId, ate: null }, orderBy: { desde: "desc" } });
   return destino ? { ...destino, papelReprodutivo: (await papelReprodutivoNaDataTx(db, animalId, hojeFazendaDate())).papel } : null;
 }
 
@@ -374,7 +374,7 @@ export async function cadastrar(input: CadastrarAnimalInput, usuarioId: number |
       data: { animalId: animal.id, propriedadeId: input.propriedadeId, loteId: input.loteId ?? null, desde: new Date(input.dataEntrada), criadoPorId: usuarioId },
     });
 
-    const destinoInicial = await tx.destinoAnimal.create({
+    const destinoInicial = await tx.finalidadeAnimal.create({
       data: { animalId: animal.id, aptidao: input.aptidao, desde: new Date(input.dataEntrada), criadoPorId: usuarioId },
     });
     if (input.papelReprodutivo) await registrarPapelReprodutivoTx(tx, { animalId: animal.id, tipo: input.papelReprodutivo, inicio: new Date(input.dataEntrada), destinoOrigemId: destinoInicial.id, usuarioId });
@@ -444,7 +444,7 @@ export async function editar(id: string, input: EditarAnimalInput, usuarioId: nu
 
       const [localizacoes, destinos, pesagens, primeiraBaixa, primeiraCategoriaManual] = await Promise.all([
         tx.localizacaoAnimal.findMany({ where: { animalId: id }, select: { id: true, desde: true, ate: true } }),
-        tx.destinoAnimal.findMany({ where: { animalId: id }, select: { id: true, desde: true, ate: true } }),
+        tx.finalidadeAnimal.findMany({ where: { animalId: id }, select: { id: true, desde: true, ate: true } }),
         tx.pesagem.findMany({ where: { animalId: id }, select: { id: true, data: true, tipo: true } }),
         tx.baixaAnimal.findFirst({ where: { animalId: id, estornadaEm: null }, orderBy: { data: "asc" } }),
         tx.categoriaManualAnimal.findFirst({ where: { animalId: id }, orderBy: { desde: "asc" }, select: { desde: true } }),
@@ -491,8 +491,8 @@ export async function editar(id: string, input: EditarAnimalInput, usuarioId: nu
       const destinoAtual = await destinoAberto(tx, id);
       if (destinoAtual?.papelReprodutivo && destinoAtual.papelReprodutivo !== "NENHUM") {
         const dataFechamento = new Date(hojeFazenda());
-        exigirAfetadas(await tx.destinoAnimal.updateMany({ where: { id: destinoAtual.id, ate: null }, data: { ate: dataFechamento } }), 1);
-        const novoDestino = await tx.destinoAnimal.create({
+        exigirAfetadas(await tx.finalidadeAnimal.updateMany({ where: { id: destinoAtual.id, ate: null }, data: { ate: dataFechamento } }), 1);
+        const novoDestino = await tx.finalidadeAnimal.create({
           data: { animalId: id, aptidao: destinoAtual.aptidao, desde: dataFechamento, criadoPorId: usuarioId },
         });
         await registrarPapelReprodutivoTx(tx, { animalId: id, tipo: "NENHUM", inicio: dataFechamento, destinoOrigemId: novoDestino.id, usuarioId });
@@ -554,7 +554,7 @@ export async function editar(id: string, input: EditarAnimalInput, usuarioId: nu
     if (ajuste) {
       if (ajuste.moverLocalizacao) await tx.localizacaoAnimal.update({ where: { id: ajuste.moverLocalizacao }, data: { desde: entradaNova } });
       if (ajuste.moverDestino) {
-        await tx.destinoAnimal.update({ where: { id: ajuste.moverDestino }, data: { desde: entradaNova } });
+        await tx.finalidadeAnimal.update({ where: { id: ajuste.moverDestino }, data: { desde: entradaNova } });
         await tx.periodoReprodutivoAnimal.updateMany({ where: { destinoOrigemId: ajuste.moverDestino, revogadoEm: null }, data: { inicio: entradaNova } });
       }
       if (ajuste.moverPesagensEntrada.length) await tx.pesagem.updateMany({ where: { id: { in: ajuste.moverPesagensEntrada } }, data: { data: entradaNova } });
@@ -564,7 +564,7 @@ export async function editar(id: string, input: EditarAnimalInput, usuarioId: nu
 
     if (ajusteDestino) {
       await auditar(tx, {
-        entidade: "DestinoAnimal", entidadeId: ajusteDestino.aberto.id, animalId: id, acao: "MUDANCA_DESTINO", usuarioId,
+        entidade: "FinalidadeAnimal", entidadeId: ajusteDestino.aberto.id, animalId: id, acao: "MUDANCA_DESTINO", usuarioId,
         antes: ajusteDestino.fechado, depois: ajusteDestino.aberto,
       });
     }
@@ -791,7 +791,7 @@ export async function buscarFicha(id: string, propriedadeEscopo: number | null, 
 
   const [localizacoes, destinos, pesagens, baixas, composicao, manuais, regras, papeis] = await Promise.all([
     prisma.localizacaoAnimal.findMany({ where: { animalId: id }, include: { propriedade: true, lote: true, movimentacao: { select: { motivo: true } } }, orderBy: [{ desde: "desc" }, { criadoEm: "desc" }] }),
-    prisma.destinoAnimal.findMany({ where: { animalId: id }, orderBy: [{ desde: "desc" }, { criadoEm: "desc" }] }),
+    prisma.finalidadeAnimal.findMany({ where: { animalId: id }, orderBy: [{ desde: "desc" }, { criadoEm: "desc" }] }),
     prisma.pesagem.findMany({ where: { animalId: id }, orderBy: { data: "desc" } }),
     prisma.baixaAnimal.findMany({
       where: { animalId: id },
@@ -924,8 +924,8 @@ export function whereSituacao(input: {
   situacao: "ATIVO" | "BAIXADO" | "TODOS";
   propriedadeId?: number | null;
   loteId?: string | null;
-  aptidao?: "LEITE" | "CORTE" | null;
-  propriedadeIds?: number[]; loteIds?: string[]; aptidoes?: ("LEITE" | "CORTE")[];
+  aptidao?: "LEITE" | "CORTE" | "REPRODUCAO" | null;
+  propriedadeIds?: number[]; loteIds?: string[]; aptidoes?: ("LEITE" | "CORTE" | "REPRODUCAO")[];
 }): Prisma.AnimalWhereInput {
   const lugar = {
     ...(input.propriedadeId != null ? { propriedadeId: input.propriedadeId } : input.propriedadeIds?.length ? { propriedadeId: { in: input.propriedadeIds } } : {}),
@@ -1306,14 +1306,14 @@ export async function mudarDestino(input: MudarDestinoInput & { animalId: string
     if (plano.tipo === "SEM_MUDANCA") return;
 
     if (plano.fechar && atual) {
-      exigirAfetadas(await tx.destinoAnimal.updateMany({ where: { id: atual.id, ate: null }, data: { ate: new Date(plano.fechar.ate) } }), 1);
+      exigirAfetadas(await tx.finalidadeAnimal.updateMany({ where: { id: atual.id, ate: null }, data: { ate: new Date(plano.fechar.ate) } }), 1);
     }
-    const novo = await tx.destinoAnimal.create({
+    const novo = await tx.finalidadeAnimal.create({
       data: { animalId: input.animalId, aptidao: plano.abrir.aptidao, desde: new Date(plano.abrir.desde), criadoPorId: usuarioId },
     });
 
     if (input.papelReprodutivo && input.papelReprodutivo !== papel.papel) await registrarPapelReprodutivoTx(tx, { animalId: input.animalId, tipo: input.papelReprodutivo, inicio: new Date(plano.abrir.desde), destinoOrigemId: novo.id, usuarioId });
-    await auditar(tx, { entidade: "DestinoAnimal", entidadeId: novo.id, animalId: input.animalId, acao: "MUDANCA_DESTINO", usuarioId, antes: atual, depois: novo });
+    await auditar(tx, { entidade: "FinalidadeAnimal", entidadeId: novo.id, animalId: input.animalId, acao: "MUDANCA_DESTINO", usuarioId, antes: atual, depois: novo });
   });
 
   return buscarFicha(animalId, null).then((f) => f as AnimalResumo);
@@ -1490,7 +1490,7 @@ export async function desfazerDestino(animalId: string, usuarioId: number | null
     await travarAnimais(tx, [animalId]);
     await exigirAnimalAtivo(tx, animalId);
 
-    const linhas = await tx.destinoAnimal.findMany({ where: { animalId }, orderBy: [{ desde: "desc" }, { criadoEm: "desc" }] });
+    const linhas = await tx.finalidadeAnimal.findMany({ where: { animalId }, orderBy: [{ desde: "desc" }, { criadoEm: "desc" }] });
     const plano = planejarDesfazerOuFalha(linhas.map((l) => ({ id: l.id, desde: l.desde, ate: l.ate, criadoEm: l.criadoEm })));
 
     // só baixa ativa protege a linha; a estornada perde o vínculo (FK ON DELETE SET NULL)
@@ -1501,11 +1501,11 @@ export async function desfazerDestino(animalId: string, usuarioId: number | null
     const anterior = linhas.find((l) => l.id === plano.reabrir.id)!;
 
     await desfazerPapelDoDestinoTx(tx, animalId, removida.id, usuarioId);
-    exigirAfetadas(await tx.destinoAnimal.deleteMany({ where: { id: removida.id, ate: null } }), 1);
-    exigirAfetadas(await tx.destinoAnimal.updateMany({ where: { id: anterior.id, ate: { not: null } }, data: { ate: null } }), 1);
+    exigirAfetadas(await tx.finalidadeAnimal.deleteMany({ where: { id: removida.id, ate: null } }), 1);
+    exigirAfetadas(await tx.finalidadeAnimal.updateMany({ where: { id: anterior.id, ate: { not: null } }, data: { ate: null } }), 1);
     const reaberta = { ...anterior, ate: null };
 
-    await auditar(tx, { entidade: "DestinoAnimal", entidadeId: removida.id, animalId, acao: "DESFAZER", usuarioId, antes: { removida, anteriorFechada: anterior }, depois: { reaberta } });
+    await auditar(tx, { entidade: "FinalidadeAnimal", entidadeId: removida.id, animalId, acao: "DESFAZER", usuarioId, antes: { removida, anteriorFechada: anterior }, depois: { reaberta } });
   });
 
   return buscarFicha(animalId, null).then((f) => f as AnimalResumo);
@@ -1557,7 +1557,7 @@ export async function darBaixa(input: BaixaInput & { animalId: string }, usuario
       exigirAfetadas(await tx.localizacaoAnimal.updateMany({ where: { id: plano.fecharLocalizacao.id, ate: null }, data: { ate: new Date(plano.fecharLocalizacao.ate) } }), 1);
     }
     if (plano.fecharDestino) {
-      exigirAfetadas(await tx.destinoAnimal.updateMany({ where: { id: plano.fecharDestino.id, ate: null }, data: { ate: new Date(plano.fecharDestino.ate) } }), 1);
+      exigirAfetadas(await tx.finalidadeAnimal.updateMany({ where: { id: plano.fecharDestino.id, ate: null }, data: { ate: new Date(plano.fecharDestino.ate) } }), 1);
     }
 
     const cienciaCarenciaSnapshot = JSON.parse(JSON.stringify({ carencias, restricoes,
@@ -1600,7 +1600,7 @@ export async function estornarBaixa(animalId: string, input: EstornoBaixaInput, 
       exigirAfetadas(await tx.localizacaoAnimal.updateMany({ where: { id: linha.id, ate: { not: null } }, data: { ate: null } }), 1);
     }
     if (plano.reabrirDestino) {
-      exigirAfetadas(await tx.destinoAnimal.updateMany({ where: { id: plano.reabrirDestino.id, ate: { not: null } }, data: { ate: null } }), 1);
+      exigirAfetadas(await tx.finalidadeAnimal.updateMany({ where: { id: plano.reabrirDestino.id, ate: { not: null } }, data: { ate: null } }), 1);
     }
 
     const marcada = await tx.baixaAnimal.updateMany({

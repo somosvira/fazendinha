@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Prisma } from "@prisma/client";
 
 const mocks = vi.hoisted(() => ({
-  tx: { tarefaProtocolo: { findFirst: vi.fn(), findUnique: vi.fn() }, destinoAnimal: { findFirst: vi.fn() }, tipoAplicacaoSanitaria: { findFirst: vi.fn() }, produto: { findUnique: vi.fn() },
+  tx: { tarefaProtocolo: { findFirst: vi.fn(), findUnique: vi.fn() }, finalidadeAnimal: { findFirst: vi.fn() }, tipoAplicacaoSanitaria: { findFirst: vi.fn() }, produto: { findUnique: vi.fn() },
     movimentoEstoque: { findMany: vi.fn(), create: vi.fn() }, aplicacaoProduto: { create: vi.fn() }, $executeRaw: vi.fn() },
   conferir: vi.fn(), travar: vi.fn(), auditar: vi.fn(), periodo: vi.fn(), base: vi.fn(), partida: vi.fn(), saldoPartida: vi.fn(),
 }));

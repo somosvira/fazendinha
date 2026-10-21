@@ -9,7 +9,7 @@
 //                                Seca, Em lactação     [SP_CATEGORIAPRODUTIVA, pela lactação aberta]
 //   - reprodutiva (CREPRODUTIVA) Inseminada/Coberta, Implantada, Gestante, Vazia [SP_REGISTROREPRODUTIVO]
 //   - situação da vazia (SREPRODUTIVA) Liberada, Em atraso, Em PEV [SP_SITUACAOREPRODUTIVA]
-//   - associação  (CASSOCIACAO)  Doadora, Receptora, Descarte [ANIMALPERIODO] — aqui é o DestinoAnimal
+//   - associação  (CASSOCIACAO)  Doadora, Receptora, Descarte [ANIMALPERIODO] — papel em PeriodoReprodutivoAnimal; descarte em RestricaoReprodutiva
 //   - protocolada (CPROTOCOLADA) em protocolo de IATF
 //   - lote        (LOTE)         faixa por dias após a desmama, configurável (CATEGORIALOTE)
 // Hoje o Terrano tem SÓ a dimensão básica, de propósito: as outras dependem de fatos que ainda

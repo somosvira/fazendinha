@@ -37,6 +37,19 @@ beforeEach(() => {
 });
 
 describe("auditoria individual: filtros, cobertura e projeção", () => {
+  it.each(["DestinoAnimal", "FinalidadeAnimal"])("conserva leitura e filtros da finalidade registrada como %s", async entidade => {
+    mocks.tx.auditoriaPecuaria.findMany.mockImplementation(async q => q.include ? [{
+      ...entrada, entidade, acao: "MUDANCA_DESTINO", antes: { aptidao: "LEITE" }, depois: { aptidao: "REPRODUCAO" },
+    }] : opcoes);
+    const r = await consultarAuditoriaAnimal("animal-1", { page: 1, pageSize: 20, eixo: "REBANHO", busca: "Finalidade" }, false);
+    expect(r.itens[0]).toMatchObject({ entidade, eixo: "REBANHO", registro: "Finalidade", resumo: "Mudança de finalidade", alteracoes: [
+      { campo: "aptidao", rotulo: "Finalidade", antes: "Leite", depois: "Reprodução" },
+    ] });
+    const pagina = mocks.tx.auditoriaPecuaria.findMany.mock.calls.find(([q]) => q.include)![0];
+    expect(pagina.where.AND[1]).toEqual({ entidade: { in: expect.arrayContaining(["DestinoAnimal", "FinalidadeAnimal"]) } });
+    expect(pagina.where.AND[2].OR).toContainEqual({ entidade: { in: expect.arrayContaining(["DestinoAnimal", "FinalidadeAnimal"]) } });
+  });
+
   it("filtra a consulta inteira antes de count/skip/take e usa desempate estável", async () => {
     const inicio = "2026-09-19T00:00:00-03:00"; const fim = "2026-10-18T23:59:59-03:00";
     const r = await buscarAuditoriaAnimal("animal-1", 1, 3, 20, { inicio, fim, eixo: "SANIDADE", acao: "RESULTADO_CORRIGIDO", responsavel: 7, busca: "Exame" });

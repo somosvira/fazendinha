@@ -32,6 +32,14 @@ describe("leitura resumida da nutrição", () => {
     expect((await app().request("/consumo/fechamentos?status=INVALIDO")).status).toBe(422);
     expect(mocks.listar).not.toHaveBeenCalled();
     expect((await app().request("/consumo/fechamentos?status=ESTORNADO&pagina=3&limite=10")).status).toBe(200);
-    expect(mocks.listar).toHaveBeenCalledWith(undefined, 7, { pagina: 3, limite: 10 }, true, undefined, "ESTORNADO");
+    expect(mocks.listar).toHaveBeenCalledWith(undefined, 7, { pagina: 3, limite: 10 }, true, undefined, "ESTORNADO", { de: undefined, ate: undefined });
   });
+});
+
+it("valida datas reais e encaminha o intervalo dos fechamentos sem perder o escopo", async () => {
+  expect((await app().request("/consumo/fechamentos?de=2026-02-30")).status).toBe(422);
+  expect((await app().request("/consumo/fechamentos?de=2026-10-31&ate=2026-10-01")).status).toBe(422);
+  expect(mocks.listar).not.toHaveBeenCalled();
+  expect((await app().request("/consumo/fechamentos?de=2026-10-01&ate=2026-10-31")).status).toBe(200);
+  expect(mocks.listar).toHaveBeenCalledWith(undefined,7,expect.any(Object),true,undefined,undefined,{de:"2026-10-01",ate:"2026-10-31"});
 });

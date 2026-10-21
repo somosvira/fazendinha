@@ -25,7 +25,7 @@ export function validarCriterios(c: CriteriosSelecao): string | null {
 }
 export type Opcao = {id: string; nome: string};
 export const enumerados: Partial<Record<CampoValor, Opcao[]>> = {
-  APTIDAO: [{id:"LEITE",nome:"Leite"},{id:"CORTE",nome:"Corte"}],
+  APTIDAO: [{id:"LEITE",nome:"Leite"},{id:"CORTE",nome:"Corte"},{id:"REPRODUCAO",nome:"Reprodução"}],
   SEXO: [{id:"F",nome:"Fêmea"},{id:"M",nome:"Macho"}], ORIGEM: [{id:"NASCIDO",nome:"Nascimento na fazenda"},{id:"COMPRADO",nome:"Compra"}],
   NASCIMENTO_ESTIMADO: [{id:"SIM",nome:"Estimado"},{id:"NAO",nome:"Conhecido"}], HISTORICO_PARTO: [{id:"CONHECIDO",nome:"Com parto registrado"},{id:"SEM_REGISTRO",nome:"Sem registro de parto"}],
   PROTOCOLO_ATIVO: [{id:"QUALQUER",nome:"Qualquer domínio"},{id:"REPRODUTIVO",nome:"Reprodutivo"},{id:"SANITARIO",nome:"Sanitário"},{id:"AMBOS",nome:"Ambos os domínios"},{id:"NENHUM",nome:"Sem protocolo ativo"}],

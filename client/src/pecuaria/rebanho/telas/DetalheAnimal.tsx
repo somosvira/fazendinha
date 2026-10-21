@@ -1,7 +1,7 @@
 import { linkFichaAnimal, linkFichaLote } from "../lib/navegacao";
 // Ficha por domínio; os painéis permanecem montados para preservar rascunhos.
 // Ações principais no cabeçalho; alterações secundárias em Mais ações.
-// Finalidade representa DestinoAnimal (aptidão e papel reprodutivo).
+// Finalidade representa FinalidadeAnimal; o papel reprodutivo tem histórico próprio.
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Plus, ArchiveX, ArrowLeft, ArrowLeftRight, Baby, CalendarDays, Dna, Hash, Home, IdCard, LogIn, MapPin, Mars, Nfc, Scale, Target, Venus, type LucideIcon } from "lucide-react";
@@ -402,7 +402,7 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true, rotuloVoltar = 
 
       <CardFicha icon={Target} titulo="Finalidade" acao={podeLancar && ativo && animal.historicoDestinos.length >= 2 ? <button className="text-xs font-semibold text-green-800" onClick={() => { setErroAcao(null); setDesfazendoDestino(true); }}>Desfazer última mudança</button> : undefined}>
 
-        {animal.historicoDestinos.length > 0 && <div className="mt-4 overflow-x-auto"><table className="w-full text-left text-xs consulta-tabela"><thead className="text-ink-3"><tr><th className="py-1 pr-3 font-semibold">Aptidão</th><th className="py-1 pr-3 font-semibold">Papel reprodutivo</th><th className="py-1 pr-3 font-semibold">Desde</th><th className="py-1 pr-3 font-semibold">Até</th></tr></thead><tbody className="divide-y divide-border">{animal.historicoDestinos.map((dest) => <tr key={dest.id}><td className="py-1.5 pr-3">{rotuloAptidao(dest.aptidao)}</td><td className="py-1.5 pr-3">{rotuloPapelReprodutivo(dest.papelReprodutivo)}</td><td className="py-1.5 pr-3">{formatarDataBR(dest.desde)}</td><td className="py-1.5 pr-3">{dest.ate ? formatarDataBR(dest.ate) : "—"}</td></tr>)}</tbody></table></div>}
+        {animal.historicoDestinos.length > 0 && <div className="mt-4 overflow-x-auto"><table className="w-full text-left text-xs consulta-tabela"><thead className="text-ink-3"><tr><th className="py-1 pr-3 font-semibold">Finalidade</th><th className="py-1 pr-3 font-semibold">Papel reprodutivo</th><th className="py-1 pr-3 font-semibold">Desde</th><th className="py-1 pr-3 font-semibold">Até</th></tr></thead><tbody className="divide-y divide-border">{animal.historicoDestinos.map((dest) => <tr key={dest.id}><td className="py-1.5 pr-3">{rotuloAptidao(dest.aptidao)}</td><td className="py-1.5 pr-3">{rotuloPapelReprodutivo(dest.papelReprodutivo)}</td><td className="py-1.5 pr-3">{formatarDataBR(dest.desde)}</td><td className="py-1.5 pr-3">{dest.ate ? formatarDataBR(dest.ate) : "—"}</td></tr>)}</tbody></table></div>}
       </CardFicha>
 
       {animal.historicoPapeisReprodutivos && <CardFicha icon={Target} titulo="Histórico do papel reprodutivo" className="lg:col-span-2">

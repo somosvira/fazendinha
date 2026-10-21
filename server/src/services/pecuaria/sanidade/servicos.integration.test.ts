@@ -30,7 +30,7 @@ comBanco("procedimentos de Serviço — integridade PostgreSQL", () => {
     await prisma.tarefaProtocolo.deleteMany({ where: { execucao: { animalId: ctx.animal } } }); await prisma.participacaoProtocolo.deleteMany({ where: { animalId: ctx.animal } });
     await prisma.etapaProtocolo.deleteMany({ where: { protocoloId: ctx.protocolo } }); await prisma.protocolo.delete({ where: { id: ctx.protocolo } });
     await prisma.tipoExame.delete({ where: { id: ctx.tipo } }); await prisma.operacao.deleteMany({ where: { propriedadeId: { in: [ctx.sitio, ctx.outroSitio] } } });
-    await prisma.periodoReprodutivoAnimal.deleteMany({ where: { animalId: ctx.animal } }); await prisma.destinoAnimal.deleteMany({ where: { animalId: ctx.animal } }); await prisma.localizacaoAnimal.deleteMany({ where: { animalId: ctx.animal } }); await prisma.animal.delete({ where: { id: ctx.animal } });
+    await prisma.periodoReprodutivoAnimal.deleteMany({ where: { animalId: ctx.animal } }); await prisma.finalidadeAnimal.deleteMany({ where: { animalId: ctx.animal } }); await prisma.localizacaoAnimal.deleteMany({ where: { animalId: ctx.animal } }); await prisma.animal.delete({ where: { id: ctx.animal } });
     await prisma.propriedade.deleteMany({ where: { id: { in: [ctx.sitio, ctx.outroSitio] } } });
   });
   it("inclui tentativas V4 no atendimento e impede atribuição V3 que ultrapasse o valor conjunto", async () => {
