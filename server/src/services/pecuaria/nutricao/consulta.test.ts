@@ -3,7 +3,7 @@ import { Prisma } from "@prisma/client";
 import { apresentarFechamento, consumoAnimal, detalheFechamento, listarFechamentos } from "./consumo.js";
 import { listarVigencias } from "./dietas.js";
 import { prisma } from "../../../db.js";
-vi.mock("../../../db.js", () => ({ prisma: { $transaction: vi.fn(), fechamentoConsumo: { findMany: vi.fn(), findFirst: vi.fn(), count: vi.fn() }, vigenciaDietaLote: { findMany: vi.fn(), findFirst: vi.fn(), count: vi.fn() }, animal: { findFirst: vi.fn() } } }));
+vi.mock("../../../db.js", () => ({ prisma: { fornecimentoNutricionalLeite: { findMany: vi.fn().mockResolvedValue([]) }, $transaction: vi.fn(), fechamentoConsumo: { findMany: vi.fn(), findFirst: vi.fn(), count: vi.fn() }, vigenciaDietaLote: { findMany: vi.fn(), findFirst: vi.fn(), count: vi.fn() }, animal: { findFirst: vi.fn() } } }));
 const d = (s: string) => new Prisma.Decimal(s);
 const detalhe = { id: "fechamento", loteId: "lote", propriedadeId: 1, vigenciaId: "vigencia", inicio: new Date("2026-09-01"), fim: new Date("2026-09-10"), animalDias: 3,
   centroCustoId: "centro", confirmadoEm: new Date(), status: "CONFIRMADO" as const, motivoEstorno: null, estornadoEm: null,

@@ -84,7 +84,7 @@ describeComBanco("rastreio de partidas no estoque único", () => {
     expect(partidas.find((p) => p.id === legado.id)?.saldo).toBe("5");
     const movimentos = await prisma.movimentoEstoque.findMany({ where: { produtoId: produto.id, origem: "IDENTIFICACAO_PARTIDA" } });
     expect(movimentos.reduce((s, m) => s.plus(m.quantidade), new Prisma.Decimal(0)).toString()).toBe("0");
-    expect(movimentos.reduce((s, m) => s.plus(m.valorTotal), new Prisma.Decimal(0)).toString()).toBe("0");
+    expect(movimentos.reduce((s, m) => s.plus(m.valorTotal ?? NaN), new Prisma.Decimal(0)).toString()).toBe("0");
     expect(await obterBaseCusto(prisma, produto.id, propriedade.id)).toEqual(custoAntes);
     const destino = await prisma.propriedade.create({ data: { nome: `Destino V3 ${run}` } }); propriedades.push(destino.id);
     const identificada = partidas.find((p) => p.validade?.toISOString().slice(0, 10) === "2026-12-31")!;

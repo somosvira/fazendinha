@@ -24,6 +24,7 @@ import {
 import { conferirAnimalNoFato } from "../fatos.js";
 import { confirmarFato } from "../idempotencia.js";
 import { transacaoPecuaria } from "../transacao.js";
+import { conferirLactacaoComProducaoTx } from "../leite/guardas.js";
 import { consumirEstoqueTx } from "../consumo.js";
 import { dinheiro, exigirPeriodoAberto } from "../../financeiro/regras.js";
 import { estornarMovimentoTx } from "../../estoque/estoque.js";
@@ -1068,6 +1069,7 @@ export async function encerrarLactacao(
     await travarAnimais(tx, [antes.animalId]);
     await conferirMatrizTx(tx, antes.animalId, propriedadeId, dia(data));
     if (dia(data) < antes.inicio) erro("Encerramento antecede início", "data");
+    await conferirLactacaoComProducaoTx(tx, antes.animalId, id, antes.inicio, dia(data));
     const fato = await tx.lactacaoAnimal.update({
       where: { id },
       data: { encerradaEm: dia(data), motivoEncerramento: motivo, versao: { increment: 1 } },
@@ -1810,6 +1812,7 @@ export async function corrigirLactacao(
         );
     }
     await conferirIntervaloLactacaoTx(tx, referencia.animalId, inicio, fim, id);
+    await conferirLactacaoComProducaoTx(tx, referencia.animalId, id, inicio, fim);
     const salva = await tx.lactacaoAnimal.update({
       where: { id },
       data: {

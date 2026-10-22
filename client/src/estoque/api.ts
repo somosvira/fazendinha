@@ -40,7 +40,7 @@ export interface SaldoDTO { usoGenetico?: boolean; usoSanitario?: boolean; usoNu
   custoMedio: number | null;
   /** saldo × custoMedio (0 quando custoMedio é null). */
   valor: number | null; minimoEstoque: number | null; abaixoMinimo: boolean; }
-export type OrigemMovimento = "COMPRA" | "CONSUMO_DIRETO" | "TRANSFERENCIA" | "PRODUCAO" | "DEVOLUCAO" | "BONIFICACAO" | "INVENTARIO_INICIAL" | "PERDA" | "AJUSTE_INVENTARIO" | "APLICACAO" | "SANIDADE" | "NUTRICAO" | "IDENTIFICACAO_PARTIDA" | "REPRODUCAO";
+export type OrigemMovimento = "COMPRA" | "CONSUMO_DIRETO" | "TRANSFERENCIA" | "PRODUCAO" | "DEVOLUCAO" | "BONIFICACAO" | "INVENTARIO_INICIAL" | "PERDA" | "AJUSTE_INVENTARIO" | "APLICACAO" | "SANIDADE" | "NUTRICAO" | "IDENTIFICACAO_PARTIDA" | "REPRODUCAO" | "RETIRADA_LEITE";
 export type VinculoMovimento =
   | { tipo: "TENTATIVA_REPRODUTIVA"; id: string; animalId: string }
   | { tipo: "APLICACAO_SANITARIA"; id: string; animalId: string }

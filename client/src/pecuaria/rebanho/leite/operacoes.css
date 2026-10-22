@@ -1,0 +1,227 @@
+.leite-modulo {
+  padding: 24px;
+  min-width: 0;
+  color: var(--foreground);
+  font-variant-numeric: tabular-nums;
+}
+.leite-modulo-header { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 24px; }
+.leite-modulo-acoes { flex-shrink: 0; }
+.leite-modulo-header h1 { margin: 0 0 8px; font: 750 32px/1.2 var(--font-display); letter-spacing: -.02em; color: var(--fin-heading); }
+.leite-modulo-header p { margin: 0; color: var(--muted-foreground); font-size: 15px; }
+.leite-subnav { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid var(--border); }
+.leite-subnav > button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 12px 16px; margin-bottom: -1px; border: 1px solid var(--border); border-radius: 8px 8px 0 0; background: var(--muted); color: var(--muted-foreground); font: inherit; font-size: 15px; cursor: pointer; }
+.leite-subnav > button:hover { background: var(--fin-filter-bg); }
+.leite-subnav > :is([aria-current="page"], [data-selecionada="true"]) { position: relative; z-index: 1; background: var(--card); color: var(--primary); border-bottom-color: var(--card); font-weight: 600; }
+.leite-subnav svg { flex-shrink: 0; }
+.leite-menu-rotinas { max-width: calc(100vw - 32px); }
+.leite-menu-rotinas [role="menuitem"] { min-height: 44px; padding: 10px 16px; }
+.leite-menu-rotinas [aria-current="page"] { background: var(--fin-filter-bg); color: var(--primary); }
+.leite-superficie { min-width: 0; background: var(--card); padding: 20px; border-radius: 0 12px 12px 12px; box-shadow: var(--fin-panel-shadow); }
+.leite-superficie > .leite-operacoes + .leite-operacoes { margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border); }
+.leite-modulo :is(h2, h3, legend) { font-family: var(--font-display); color: var(--fin-heading); letter-spacing: -.02em; }
+.leite-modulo .leite-titulo-secao { font-size: 18px; font-weight: 750; line-height: 1.4; margin: 0 0 6px; }
+.leite-operacoes {
+  font-size: 14px;
+  color: var(--foreground);
+  min-width: 0;
+}
+.leite-operacoes h2 {
+  font-size: 18px;
+  font-weight: 650;
+  margin: 26px 0 12px;
+}
+.leite-operacoes p {
+  line-height: 1.6;
+  margin: 10px 0;
+}
+.leite-operacoes label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--foreground);
+}
+.leite-operacoes input,
+.leite-operacoes select,
+.leite-operacoes textarea {
+  border: 1px solid var(--fin-control-border);
+  border-radius: 8px;
+  padding: 9px 12px;
+  background: var(--card);
+  color: var(--foreground);
+  min-height: 42px;
+  font-size: 16px;
+  max-width: 100%;
+  width: 100%;
+}
+.leite-form-inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 16px;
+  margin: 20px 0;
+}
+.leite-form-inline label {
+  flex: 1 1 160px;
+  max-width: 360px;
+}
+.leite-operacoes button {
+  padding: 10px 16px;
+  border: 1px solid var(--primary);
+  border-radius: 8px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  min-height: 42px;
+  cursor: pointer;
+}
+.leite-operacoes button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.leite-operacoes :is(button, input, select, textarea):focus-visible,
+.leite-subnav button:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+}
+.leite-indicadores {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px 32px;
+  margin: 20px 0;
+  padding: 0 0 20px;
+  border-bottom: 1px solid var(--border);
+}
+.leite-indicadores dt {
+  font-size: 14px;
+  color: var(--muted-foreground);
+}
+.leite-indicadores dd {
+  margin: 5px 0 0;
+  font-size: 26px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+.leite-operacoes table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+.leite-operacoes :is(th, td) {
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+.leite-operacoes caption {
+  text-align: left;
+  font-size: 17px;
+  padding: 14px 0;
+  font-weight: 600;
+}
+.leite-operacoes [role="alert"] {
+  color: var(--destructive);
+}
+.leite-operacoes fieldset {
+  border: 0;
+  border-top: 1px solid var(--border);
+  padding: 20px 0;
+  margin-top: 20px;
+}
+.leite-operacoes legend {
+  font-size: 20px;
+  font-weight: 600;
+  padding-right: 14px;
+}
+.leite-operacoes details {
+  border-block: 1px solid var(--border);
+  padding: 16px 0;
+}
+.leite-operacoes summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.leite-operacoes .leite-secondary {
+  color: var(--primary);
+  background: var(--card);
+}
+.leite-tabela-scroll {
+  max-width: 100%;
+  overflow: auto;
+}
+.leite-operacoes small {
+  display: block;
+  color: var(--muted-foreground);
+  margin-top: 8px;
+}
+.leite-operacoes a {
+  color: var(--primary);
+  text-decoration: underline;
+}
+@media (max-width: 640px) {
+    .leite-form-inline label {
+    max-width: 100%;
+  }
+  .leite-indicadores {
+    gap: 20px;
+  }
+  .leite-operacoes :is(th, td) {
+    padding: 10px 8px;
+  }
+}
+
+.leite-operacoes .leite-checkbox {
+  flex-direction: row;
+  align-items: center;
+  margin: 16px 0;
+}
+.leite-operacoes input[type="checkbox"] {
+  width: 20px;
+  min-height: 20px;
+  flex: 0 0 20px;
+}
+.leite-operacoes dl dd {
+  margin-inline-start: 0;
+}
+
+.leite-laudos-tabela {
+  min-width: 720px;
+}
+
+.leite-operacoes button:hover:enabled { background: var(--fin-primary-hover); }
+.leite-operacoes .leite-secondary:hover:enabled { background: var(--fin-table-hover); }
+.leite-operacoes :is(button, input, select, textarea) { font-family: var(--sans); }
+.leite-operacoes table { font-size: 14px; }
+.leite-operacoes th { background: var(--fin-table-header); color: var(--fin-table-heading); font-size: 12px; font-weight: 600; }
+.leite-operacoes tbody tr:hover { background: var(--fin-table-hover); }
+.leite-operacoes :is(input, textarea)::placeholder { color: var(--muted-foreground); opacity: 1; }
+.leite-modulo :is(a, summary, [tabindex="0"]):focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
+.leite-modulo ::selection { background: var(--fin-nav-selected); }
+@media (max-width: 900px) {
+  .leite-modulo { padding: 56px 16px 32px; }
+  .leite-modulo-header h1 { font-size: 26px; }
+  .leite-modulo-header { align-items: flex-start; gap: 12px; }
+  .leite-modulo-acoes .leite-configurar { width: 44px; min-height: 44px; padding: 10px; }
+  .leite-modulo-acoes .leite-configurar span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .leite-subnav > button { padding: 10px 12px; font-size: 14px; }
+  .leite-subnav > button > svg:first-child { display: none; }
+  .leite-superficie { padding: 16px; }
+  .leite-operacoes :is(button, input, select, textarea) { min-height: 44px; }
+  .leite-operacoes :is(input, select, textarea) { font-size: 16px; }
+  .leite-operacoes input[type="checkbox"] { min-height: 20px; }
+}
+@media print {
+  .leite-subnav, .leite-modulo button { display: none; }
+  .leite-modulo, .leite-superficie { padding: 0; box-shadow: none; }
+}
+
+.leite-modulo-acoes .leite-configurar:disabled { cursor: default; opacity: .5; }
+.leite-modulo-acoes .leite-configurar:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
+@media (max-width: 900px) {
+  :root .app-main .leite-operacoes .leite-consulta-cartoes { display: block; border: 0; }
+  .leite-consulta-cartoes caption { display: block; }
+  .leite-consulta-cartoes thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .leite-consulta-cartoes tbody { display: block; }
+  .leite-consulta-cartoes tbody tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; padding: 16px 0; border-block: 1px solid var(--border); }
+  :root .app-main .leite-modulo .leite-operacoes .leite-consulta-cartoes tbody tr td { display: block; padding: 0; border: 0; overflow-wrap: anywhere; }
+  .leite-consulta-cartoes td::before { content: attr(data-rotulo); display: block; color: var(--muted-foreground); font-size: 12px; margin-bottom: 4px; }
+  .leite-consulta-cartoes td:last-child { grid-column: 1 / -1; }
+}

@@ -1,13 +1,13 @@
 // @vitest-environment jsdom
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
-import { consultarVisaoNutricional, consultarResumoNutricional, listarDietas, listarFechamentos, obterVigencia } from "./api";
+import { type Fechamento, type ResumoReferenciaLeite, consultarVisaoNutricional, consultarResumoNutricional, listarDietas, listarFechamentos, obterVigencia } from "./api";
 const lote = { id: "l1", nome: "Matrizes", ativo: true, propriedadeId: 1, propriedade: { id: 1, nome: "Principal" }, animaisAtivos: 3 };
 const dieta = { id: "d1", nome: "Matrizes", versao: 1 };
 const vigente = { id: "v1", desde: "2026-01-01", ate: null, dieta };
-const fechamento = (id: string, custo: string | null, status = "CONFIRMADO", completo = true, verValores = true) => ({ id, lote: { id: "l1", nome: "Matrizes" }, propriedadeId: 1, status, animalDias: 2, custoConhecido: custo, coberturaCustoCompleta: completo, verValores });
+const fechamento = (id: string, custo: string | null, status = "CONFIRMADO", completo = true, verValores = true, itens: Fechamento["itens"] = [], verReferenciasComerciais = false) => ({ itens, verReferenciasComerciais, id, lote: { id: "l1", nome: "Matrizes" }, propriedadeId: 1, status, animalDias: 2, custoConhecido: custo, coberturaCustoCompleta: completo, verValores });
 let fechamentos: ReturnType<typeof fechamento>[];
 let chamadas: string[];
-let resumo: { verValores: boolean; lotes: Array<{ loteId: string; vigente: typeof vigente; programada: null; custos: { custoConhecido: string | null; animalDias: number; fechamentos: number; coberturaCustoCompleta: boolean } }> };
+let resumo: { verValores: boolean; lotes: Array<{ referenciaLeite?: ResumoReferenciaLeite | null; loteId: string; vigente: typeof vigente; programada: null; custos: { custoConhecido: string | null; animalDias: number; fechamentos: number; coberturaCustoCompleta: boolean } }> };
 beforeEach(() => {
   localStorage.clear(); chamadas = [];
   fechamentos = [fechamento("f1", "1.11"), fechamento("f2", "2.22"), fechamento("f3", "500.00", "ESTORNADO")];
@@ -40,6 +40,17 @@ describe("consultas da Nutrição na API V3 existente", () => {
     expect(chamadas).toHaveLength(2);
     expect(chamadas.some(p => p.endsWith("/resumo"))).toBe(true);
     expect(chamadas.every(p => !p.includes("/fechamentos") && !p.includes("/vigencias"))).toBe(true);
+  });
+  it("resume referência do leite separada do custo produtivo, sem soma ou receita interna", async () => {
+    const ref = {id:"r",versao:1,fechamentoId:"venda",precoUnitario:"2.50",valorTotal:"150.00",provisoria:true,periodoInicio:"2026-09-01",periodoFim:"2026-09-30",motivo:"Preço anterior",criadoEm:"2026-10-01",criadoPorId:1};
+    const item: Fechamento["itens"][number] = {produtoId:"leite",quantidadePrevista:"60",quantidadeConfirmada:"60",unidade:"L",situacaoCusto:"CONHECIDO",produto:{nome:"Leite"},movimentoEstoque:null,leite:{id:"leite-f",status:"CONFIRMADO",quantidadeLitros:"60.000",custoProducao:"84.00",referencia:ref,referencias:[ref],movimentos:[],parcelas:[]}};
+    fechamentos = [fechamento("f", "84.00", "CONFIRMADO", true, true, [item], true)];
+    resumo.lotes[0].custos.custoConhecido = "84.00";
+    resumo.lotes[0].referenciaLeite = {quantidadeLitros:"60.000",valorConhecido:"150.00",coberturaCompleta:true,provisorios:1,pendentes:0};
+    const resultado = await consultarResumoNutricional("l1");
+    expect(resultado.custos.custoConhecido).toBe("84.00");
+    expect(chamadas.every(p => !p.includes("/fechamentos"))).toBe(true);
+    expect(resultado.referenciaLeite).toMatchObject({quantidadeLitros:"60.000",valorConhecido:"150.00",provisorios:1,pendentes:0});
   });
   it("não trata custos desconhecidos como zero e sinaliza cobertura parcial", async () => {
     resumo.lotes[0].custos = { custoConhecido: "1.11", animalDias: 4, fechamentos: 2, coberturaCustoCompleta: false };

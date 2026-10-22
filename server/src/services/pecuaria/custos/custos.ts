@@ -3,6 +3,7 @@ import { prisma } from "../../../db.js";
 import { exigirPeriodoAberto } from "../../financeiro/regras.js";
 import { auditar, RebanhoError, travarAnimais } from "../rebanho/regras.js";
 import { transacaoPecuaria } from "../transacao.js";
+import { consultarFornecimentosNutricionaisTx } from "../leite/nutricao.js";
 import { calcularAtribuicao } from "../nutricao/atribuicao.calc.js";
 import { operacaoIdempotenteTx } from "../reproducao/operacoes.js";
 import { componentesDaFonte, aplicarParcelaPreparo, conferirParcelasPreparo, consolidarCustos, type ClassificacaoCusto, type FonteCusto, type TipoFonteCusto } from "./custos.calc.js";
@@ -18,9 +19,9 @@ const chaveFonte = (f: Pick<FonteCusto,"tipo"|"id">) => `${f.tipo}:${f.id}`;
 function traduzirCalculo<T>(executar: () => T): T { try { return executar(); } catch(e) { throw new RebanhoError("CONFLITO", e instanceof Error ? e.message : "Composição incompatível"); } }
 
 /** Só fatos do sítio consultado; localização atual nunca concede leitura de custo de outro sítio. */
-export async function carregarFontesCustoTx(tx: Db, propriedadeId: number, filtro: { animalId?: string; participacaoId?: string; programacaoId?: string; ids?: Partial<Record<TipoFonteCusto,string[]>> } = {}): Promise<FonteCusto[]> {
+export async function carregarFontesCustoTx(tx: Db, propriedadeId: number, filtro: { animalId?: string; animalIds?: string[]; participacaoId?: string; programacaoId?: string; ids?: Partial<Record<TipoFonteCusto,string[]>> } = {}): Promise<FonteCusto[]> {
   const participacoes = filtro.participacaoId ? [filtro.participacaoId] : filtro.programacaoId ? (await tx.participacaoProtocolo.findMany({ where: { propriedadeId, rodadaId: filtro.programacaoId }, select: { id: true } })).map(p=>p.id) : null;
-  const base = { propriedadeId, ...(filtro.animalId ? { animalId: filtro.animalId } : {}) };
+  const base = { propriedadeId, ...(filtro.animalId ? { animalId: filtro.animalId } : filtro.animalIds ? { animalId: { in: filtro.animalIds } } : {}) };
   const vinculo = participacoes ? { OR: [{ tarefa: { execucaoId: { in: participacoes } } }, { vinculosProtocolo: { some: { estado: "ATUAL", tarefa: { execucaoId: { in: participacoes } } } } }] } : {};
   const porId = (tipo: TipoFonteCusto) => filtro.ids ? { id: { in: filtro.ids[tipo] ?? [] } } : {};
   const [tentativas, aplicacoes, exames, protocolos] = await Promise.all([
@@ -31,10 +32,11 @@ export async function carregarFontesCustoTx(tx: Db, propriedadeId: number, filtr
   ]);
   const participacao = (f: { tarefa: { execucaoId: string } | null; vinculosProtocolo: Array<{ tarefa: { execucaoId: string } }> }) => f.tarefa?.execucaoId ?? f.vinculosProtocolo[0]?.tarefa.execucaoId ?? null;
   const nutricao:FonteCusto[]=[];
-  if (!participacoes && (filtro.animalId || filtro.ids?.NUTRICAO?.length)) {
-    const fechamentos=await tx.fechamentoConsumo.findMany({where:{propriedadeId,status:"CONFIRMADO",participacoes:{some:{...(filtro.animalId?{animalId:filtro.animalId}:{}),...(filtro.ids?.NUTRICAO?{id:{in:filtro.ids.NUTRICAO}}:{})}}},include:{participacoes:{include:{classificacaoCusto:true}},itens:{include:{produto:{select:{nome:true}},movimentoEstoque:{select:{valorTotal:true}}}}}});
-    for(const f of fechamentos){const distribuicao=calcularAtribuicao(f.participacoes,f.animalDias,f.itens.map(i=>({produtoId:i.produtoId,unidade:i.unidade,quantidadeConfirmada:i.quantidadeConfirmada,custoConhecido:i.quantidadeConfirmada.isZero()?"0":i.situacaoCusto==="CONHECIDO"?i.movimentoEstoque?.valorTotal??null:null})));
-      for(const p of f.participacoes.filter(p=>(!filtro.animalId||p.animalId===filtro.animalId)&&(!filtro.ids?.NUTRICAO||filtro.ids.NUTRICAO.includes(p.id)))){
+  if (!participacoes && (filtro.animalId || filtro.animalIds?.length || filtro.ids?.NUTRICAO?.length)) {
+    const fechamentos=await tx.fechamentoConsumo.findMany({where:{propriedadeId,status:"CONFIRMADO",participacoes:{some:{...(filtro.animalId?{animalId:filtro.animalId}:filtro.animalIds?{animalId:{in:filtro.animalIds}}:{}),...(filtro.ids?.NUTRICAO?{id:{in:filtro.ids.NUTRICAO}}:{})}}},include:{participacoes:{include:{classificacaoCusto:true}},itens:{include:{produto:{select:{nome:true}},movimentoEstoque:{select:{valorTotal:true}}}}}});
+    const leites = await consultarFornecimentosNutricionaisTx(tx, fechamentos.flatMap(f => f.itens.map(i => i.id)), true);
+    for(const f of fechamentos){const distribuicao=calcularAtribuicao(f.participacoes,f.animalDias,f.itens.map(i=>({produtoId:i.produtoId,unidade:i.unidade,quantidadeConfirmada:i.quantidadeConfirmada,custoConhecido:i.quantidadeConfirmada.isZero()?"0":leites.has(i.id)?leites.get(i.id)!.custoProducao:i.situacaoCusto==="CONHECIDO"?i.movimentoEstoque?.valorTotal??null:null})));
+      for(const p of f.participacoes.filter(p=>(!filtro.animalId||p.animalId===filtro.animalId)&&(!filtro.animalIds||filtro.animalIds.includes(p.animalId))&&(!filtro.ids?.NUTRICAO||filtro.ids.NUTRICAO.includes(p.id)))){
         const atribuicao=distribuicao.participacoes.find(v=>v.animalId===p.animalId)!;
         for(const i of f.itens){const parcela=atribuicao.itens.find(v=>v.produtoId===i.produtoId)!;
           nutricao.push({id:p.id,tipo:"NUTRICAO",animalId:p.animalId,propriedadeId,data:dia(f.fim),descricao:`Nutrição · ${i.produto.nome} · ${dia(f.inicio)} a ${dia(f.fim)}`,estadoFato:f.status,participacaoId:null,origemMaterial:"NUTRICAO",movimentoEstoqueId:i.movimentoEstoqueId,operacaoServicoId:null,valorMaterial:parcela.custoConhecido,valorServico:null,classificacao:classificacao(p.classificacaoCusto),versaoClassificacao:p.classificacaoCusto?.versao??0,componenteId:i.id,periodoConsumo:{inicio:dia(f.inicio),fim:dia(f.fim)}});

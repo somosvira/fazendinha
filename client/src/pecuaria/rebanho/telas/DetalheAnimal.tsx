@@ -31,6 +31,7 @@ import { navegarPara } from "../../../router";
 import { PesoEGanho } from "../components/PesoEGanho";
 import { HistoricoBaixas } from "../components/HistoricoBaixas";
 import { SecaoFicha } from "../components/SecaoRecolhivel";
+import { HistoricoProdutivoLeite } from "../leite/HistoricoProdutivoLeite";
 import { AuditoriaAnimal } from "../components/AuditoriaAnimal";
 import { HistoricoMovimentacoes } from "../components/HistoricoMovimentacoes";
 import { DetalheMovimentacao } from "../components/DetalheMovimentacao";
@@ -47,7 +48,7 @@ const ABAS_FICHA = [["resumo", "Resumo"], ["cadastro", "Cadastro"], ["historico"
 function secaoDaUrl() {
   const hash = window.location.hash.slice(1);
   if (["identificacao-genetica", "categoria"].includes(hash)) return "cadastro";
-  if (hash === "auditoria") return "historico";
+  if (["auditoria", "producao-leite"].includes(hash)) return "historico";
   return ABAS_FICHA.some(([id]) => id === hash) ? hash : "resumo";
 }
 
@@ -426,6 +427,7 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true, rotuloVoltar = 
       </CardFicha>
 
       </div></SecaoFicha>
+      {animal.sexo === "F" && <SecaoFicha id="producao-leite" titulo="Produção de leite" resumo="Ordenhas, lactação e contexto sanitário no período"><HistoricoProdutivoLeite animalId={animal.id} propriedadeId={localizacaoAtual?.propriedade?.id ?? null} recarregarToken={refreshToken} /></SecaoFicha>}
       <SecaoFicha id="auditoria" titulo="Auditoria" resumo="Quem alterou cada registro e quando">
         <AuditoriaAnimal id={animal.id} recarregarToken={refreshToken} />
       </SecaoFicha>

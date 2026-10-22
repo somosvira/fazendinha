@@ -66,7 +66,7 @@ comBanco("perdas físicas — PostgreSQL com fixtures próprias", () => {
     expect(detalhe.itens).toHaveLength(0); expect(detalhe.transacoes).toHaveLength(0); expect(detalhe.compromissos).toHaveLength(0);
     expect(detalhe.movimentosEstoque).toHaveLength(1);
     expect(detalhe.perdas[0]).toMatchObject({ produtoId, produtoNome: `Perdas fixture ${execucao}`, unidade: "mL", sitio: { id: sitioId }, motivo: "Frasco danificado na armazenagem" });
-    expect(detalhe.perdas[0].quantidade.toString()).toBe("3"); expect(detalhe.perdas[0].valorTotal.toString()).toBe("6");
+    expect(detalhe.perdas[0].quantidade.toString()).toBe("3"); expect(detalhe.perdas[0].valorTotal?.toString()).toBe("6");
     expect(detalhe.perdas[0].lotes.map((p) => [p.id, p.quantidade.toString()])).toEqual(expect.arrayContaining([[conhecido.id, "1"], [desconhecido.id, "2"]]));
     expect((await listarPartidas(produtoId, sitioId)).map((p) => p.saldo)).toEqual(["4", "3"]);
     const auditorias = await prisma.auditoriaFinanceira.findMany({ where: { entidadeId: operacaoId, acao: "CONFIRMADA" } });
@@ -76,7 +76,7 @@ comBanco("perdas físicas — PostgreSQL com fixtures próprias", () => {
     expect(cancelada.status).toBe("CANCELADA"); expect(cancelada.perdas).toEqual(detalhe.perdas);
     expect(cancelada.movimentosEstoque).toHaveLength(2);
     const estorno = cancelada.movimentosEstoque.find((m) => m.reversaoDeId)!;
-    expect(estorno.valorTotal.toString()).toBe("6");
+    expect(estorno.valorTotal?.toString()).toBe("6");
     expect(estorno.alocacaoPartidaEstoques.map((p) => [p.partidaId, p.quantidade.toString()])).toEqual(expect.arrayContaining([[conhecido.id, "1"], [desconhecido.id, "2"]]));
     expect((await listarPartidas(produtoId, sitioId)).map((p) => p.saldo)).toEqual(["5", "5"]);
     await expect(estornarOperacao(operacaoId, "Cancelamento repetido", { propriedadeId: sitioId, usuarioId: null })).rejects.toThrow();

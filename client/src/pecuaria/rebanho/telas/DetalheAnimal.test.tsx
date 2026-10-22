@@ -464,12 +464,12 @@ it("preserva autorização histórica da reprodução para matriz baixada", asyn
 });
 
 
-it.each(["peso-manejo", "historico", "identificacao-genetica"])("revela link antigo #%s e respeita a navegação pelo histórico", async (ancora) => {
+it.each(["peso-manejo", "historico", "identificacao-genetica", "producao-leite"])("revela link antigo #%s e respeita a navegação pelo histórico", async (ancora) => {
   window.history.replaceState(null, "", `#${ancora}`);
   vi.mocked(buscarFichaAnimal).mockResolvedValue(base);
   render(<DetalheAnimal id={base.id} onVoltar={vi.fn()} />, { wrapper: Wrapper });
   await screen.findByRole("heading", { name: "1234 · Mimosa" });
-  const nomeAba = ancora === "historico" ? "Histórico" : ancora === "identificacao-genetica" ? "Cadastro" : "Resumo";
+  const nomeAba = ["historico", "producao-leite"].includes(ancora) ? "Histórico" : ancora === "identificacao-genetica" ? "Cadastro" : "Resumo";
   expect(screen.getByRole("tab", { name: nomeAba }).getAttribute("aria-selected")).toBe("true");
   const secao = document.getElementById(ancora)!;
   expect(document.getElementById(`${ancora}-conteudo`)?.hidden).toBe(false);

@@ -98,6 +98,8 @@ export async function registrarSaidaValorizadaTx(tx: Db, movimentoId: string, pl
   await tx.parcelaValorizacaoEstoque.createMany({ data: plano.parcelas.map((p, ordem) => ({ movimentoEstoqueId: movimentoId, baseId: p.baseId, ordem, quantidade: p.quantidade.negated(), valorTotal: p.valorTotal.negated() })) });
 }
 export async function registrarEntradaValorizadaTx(tx: Db, movimento: MovimentoEstoque, distribuicao: DistribuicaoValor[], origemPlano?: PlanoSaida) {
+  if (movimento.valorTotal == null || movimento.custoUnitario == null)
+    throw new ValorizacaoError("VALIDACAO", "Valor pendente é permitido somente pelo fluxo próprio de produção de leite");
   const propriedadeId = movimento.propriedadeId ?? await propriedadePrincipalId();
   if (["INVENTARIO_INICIAL", "BONIFICACAO", "PRODUCAO"].includes(movimento.origem)) {
     const evidencia = movimento.evidenciaValor as { referencia?: unknown; evidencia?: unknown } | null;

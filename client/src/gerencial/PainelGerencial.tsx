@@ -9,6 +9,7 @@ import { classeInput } from "../financeiro/PainelCadastro";
 import { consultarResumo, periodoGerencial, hojeGerencial, type Bloco, type ResumoGerencial } from "./api";
 import "../financeiro/financeiro-theme.css";
 import "./painel-gerencial.css";
+import { ResumoLeitePainel } from "../pecuaria/rebanho/leite/ResumoLeitePainel";
 
 const dinheiro = (v: string | null) => v == null ? "Não apurado" : brl(v);
 const dinheiroDiario = (v: string | null) => v == null ? "Não apurado" : new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 4, maximumFractionDigits: 4 }).format(Number(v));
@@ -130,6 +131,7 @@ export function PainelGerencial({ locationRevision = 0, propriedadeId, onPeriodo
           {e.situacao === "DESCONHECIDO" && <p className="ger-aviso">Valor não apurado: os grupos em estoque não têm valor conhecido.</p>}
           <p className="ger-muted">O estoque usa a data de referência indicada.</p><div className="ger-rodape-link"><LinkOrigem href={propriedadeId == null ? "/estoque" : `/estoque?${new URLSearchParams({propriedadeId:String(propriedadeId)})}`}>Ver estoque</LinkOrigem></div>
         </>}</BlocoPainel>
+        <BlocoPainel titulo="Produção de leite" bloco={dados.clinico}>{() => <ResumoLeitePainel inicio={periodo.inicio} fim={periodo.fim} propriedadeId={propriedadeId} revisao={revisao} />}</BlocoPainel>
         {(dados.clinico.estado === "RESTRITO" || dados.clinico.dados.acompanhamentosPendentes === 0) && <BlocoPainel<{ data: string; acompanhamentosPendentes: number }> titulo="Pontos de atenção" bloco={dados.clinico} className="ger-clinico">{c => <><p>{c.acompanhamentosPendentes} acompanhamentos reprodutivos pendentes até {dataBR(c.data)}.</p><div className="ger-rodape-link"><LinkOrigem href={link("/pecuaria/reproducao")}>Ver reprodução</LinkOrigem></div></>}</BlocoPainel>}
       </div>
       <div className="ger-nota"><AjudaCampo rotulo="Sobre as leituras do painel" texto="Caixa, consumo e estoque representam momentos diferentes e não devem ser somados. Nutrição já integra os custos diretos; não some novamente. Não apurado preserva um valor desconhecido; zero representa zero comprovado." />Sobre as leituras do painel</div>
