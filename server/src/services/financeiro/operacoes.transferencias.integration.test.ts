@@ -48,7 +48,7 @@ comBanco("detalhe de transferências — PostgreSQL isolado", () => {
     expect(detalhe.itens).toEqual([]); expect(detalhe.transacoes).toEqual([]); expect(detalhe.compromissos).toEqual([]);
     const t = detalhe.transferencias[0];
     expect(t).toMatchObject({ produtoId, unidade: "mL", motivo: "Reposição entre sítios", origem: { sitio: { id: origemId } }, destino: { sitio: { id: destinoId } } });
-    expect(t.quantidade.toString()).toBe("3"); expect(t.valorTotal.toString()).toBe("6");
+    expect(t.quantidade.toString()).toBe("3"); expect(t.valorTotal?.toString()).toBe("6");
     expect(t.origem.lotes.map((l) => [l.nome, l.quantidade.toString(), l.validade?.toISOString().slice(0, 10) ?? null])).toEqual(expect.arrayContaining([["Conhecido", "1", "2026-12-31"], ["Desconhecido", "2", null]]));
     expect(t.destino?.lotes).toEqual(t.origem.lotes);
     expect(t.origem.id).toBe(detalhe.movimentosEstoque.find((m) => m.tipo === "SAIDA")?.id);
@@ -69,7 +69,7 @@ comBanco("detalhe de transferências — PostgreSQL isolado", () => {
     expect(t.origem.reversao).toMatchObject({ reversaoDeId: t.origem.id, tipo: "ENTRADA" });
     expect(t.destino?.reversao).toMatchObject({ reversaoDeId: t.destino?.id, tipo: "SAIDA" });
     expect(t.origem.reversao?.id).not.toBe(t.destino?.reversao?.id);
-    expect(t.valorTotal.toString()).toBe("6"); expect(t.quantidade.toString()).toBe("3");
+    expect(t.valorTotal?.toString()).toBe("6"); expect(t.quantidade.toString()).toBe("3");
     expect(cancelada.resumoCancelamento.estoque).toEqual([]);
     for (const ponta of [t.origem, t.destino]) {
       expect(ponta).not.toBeNull();

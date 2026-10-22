@@ -12,6 +12,7 @@ export function RelatoriosPecuaria({ podeLancar }: { podeLancar: boolean }) {
   useEffect(() => { const sync = () => setTipo(daUrl()); window.addEventListener("popstate", sync); return () => window.removeEventListener("popstate", sync); }, []);
   return <PaginaFinanceira>
     <PageHeader titulo="Relatórios da Pecuária" descricao="Analise partos, pós-parto e indicadores reprodutivos por sítio e período." />
+    <p className="mb-4"><a className="underline" href="/pecuaria/leite?leiteSecao=relatorios">Abrir relatórios preservados de produção e qualidade do leite</a></p>
     <SubTabs variant="financeiro" ariaLabel="Tipos de relatório pecuário" tabs={[...TIPOS]} active={tipo} onSelect={valor => { const url = new URL(window.location.href); url.searchParams.set("tipo", valor); navegarPara(url.pathname + url.search + url.hash); }}/>
     <div className="abas-superficie"><ConsultaPorSitio>{id => tipo === "partos" ? <RelatorioPartos key={`partos:${id}`} propriedadeId={id} podeLancar={podeLancar}/> : <IndicadoresReprodutivos key={`indicadores:${id}`} propriedadeId={id} podeLancar={podeLancar} modo="relatorio"/>}</ConsultaPorSitio></div>
   </PaginaFinanceira>;

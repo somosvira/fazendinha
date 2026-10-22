@@ -10,6 +10,7 @@ import { rotuloUnidade } from "./unidades.js";
 import { SEM_VINCULO } from "../../lib/ids.js";
 import { planejarSaidaTx, registrarEntradaValorizadaTx, registrarSaidaValorizadaTx, registrarInversoValorizadoTx, saldosBasesTx, travarValorizacaoTx, ValorizacaoError } from "./valorizacao.js";
 import { conferirSaldoEstornoPartidasTx, idsGrupoPartidaTx, prepararPartidasTx } from "./partidas.js";
+import { METODO_LEITE, valoresMovimentosLeiteTx } from "./leite.js";
 
 export class EstoqueError extends Error {
   constructor(public code: "NAO_ENCONTRADO" | "MES_FECHADO" | "ORIGEM_AUTOMATICA" | "CONFLITO" | "VALIDACAO", m: string, public campo?: string) {
@@ -120,8 +121,9 @@ export async function obterBasesCusto(db: DbCusto, produtoIds: string[], proprie
   // Aberturas entram uma vez por base; parcelas são agregadas no banco, sem
   // transportar o histórico inteiro em cada atualização da lista de estoque.
   const bases = await db.$queryRaw<{ produtoId: string; quantidade: Prisma.Decimal; valor: Prisma.Decimal }[]>(Prisma.sql`
-    SELECT b."produtoId", SUM(b."quantidadeAbertura" + COALESCE(p.quantidade, 0)) AS quantidade,
-      SUM(b."valorAbertura" + COALESCE(p.valor, 0)) AS valor
+    SELECT valor_base."produtoId", SUM(valor_base.quantidade) AS quantidade, SUM(valor_base.valor) AS valor FROM (
+    SELECT b."produtoId", b."quantidadeAbertura" + COALESCE(p.quantidade, 0) AS quantidade,
+      b."valorAbertura" + COALESCE(p.valor, 0) AS valor
     FROM "public"."BaseValorizacaoEstoque" b
     JOIN "public"."Produto" produto ON produto.id = b."produtoId"
     LEFT JOIN LATERAL (SELECT SUM(parcela.quantidade) AS quantidade, SUM(parcela."valorTotal") AS valor
@@ -129,7 +131,30 @@ export async function obterBasesCusto(db: DbCusto, produtoIds: string[], proprie
     WHERE b."produtoId" IN (${Prisma.join([...new Set(produtoIds)])})
       AND b.metodo = CASE WHEN produto."rastrearPartidas" THEN 'MEDIA_SALDO_V1' ELSE 'FIFO_AQUISICAO_V1' END
       ${propriedadeId == null ? Prisma.empty : Prisma.sql`AND b."propriedadeId" = ${propriedadeId}`}
-    GROUP BY b."produtoId"`);
+    UNION ALL
+    SELECT m."produtoId", m.quantidade-COALESCE(consumos.quantidade,0) AS quantidade,
+      ap."valorTotal"-COALESCE(consumos.valor,0) AS valor
+    FROM pecuaria."EntradaProducaoLeite" e JOIN public."MovimentoEstoque" m ON m.id=e."movimentoId"
+    JOIN LATERAL (SELECT a.id,a."valorTotal" FROM pecuaria."ApuracaoValorLeite" a WHERE a."entradaId"=e.id ORDER BY a.versao DESC LIMIT 1) ap ON true
+    LEFT JOIN LATERAL (SELECT SUM(a.quantidade) AS quantidade,SUM(COALESCE(p."valorTotal",a."valorTotal")) AS valor,
+      bool_or(COALESCE(p."valorTotal",a."valorTotal") IS NULL) AS pendente
+      FROM pecuaria."AlocacaoLeiteEstoque" a JOIN public."MovimentoEstoque" sm ON sm.id=a."movimentoId"
+      LEFT JOIN pecuaria."ApropriacaoValorLeite" p ON p."alocacaoId"=a.id AND p."apuracaoId"=ap.id
+      WHERE a."entradaId"=e.id AND sm.status='CONFIRMADO' AND sm."reversaoDeId" IS NULL) consumos ON true
+    WHERE e.status='CONFIRMADA' AND m.status='CONFIRMADO' AND m."produtoId" IN (${Prisma.join([...new Set(produtoIds)])})
+      AND COALESCE(consumos.pendente,false)=false
+      ${propriedadeId == null ? Prisma.empty : Prisma.sql`AND m."propriedadeId" = ${propriedadeId}`}
+    ) valor_base
+    WHERE NOT EXISTS (
+      SELECT 1 FROM pecuaria."EntradaProducaoLeite" pendente
+      JOIN public."MovimentoEstoque" mp ON mp.id=pendente."movimentoId"
+      WHERE pendente.status='CONFIRMADA' AND mp.status='CONFIRMADO' AND mp."produtoId"=valor_base."produtoId"
+        ${propriedadeId == null ? Prisma.empty : Prisma.sql`AND mp."propriedadeId" = ${propriedadeId}`}
+        AND NOT EXISTS (SELECT 1 FROM pecuaria."ApuracaoValorLeite" ap WHERE ap."entradaId"=pendente.id)
+        AND mp.quantidade > COALESCE((SELECT SUM(a.quantidade) FROM pecuaria."AlocacaoLeiteEstoque" a
+          JOIN public."MovimentoEstoque" sm ON sm.id=a."movimentoId"
+          WHERE a."entradaId"=pendente.id AND sm.status='CONFIRMADO' AND sm."reversaoDeId" IS NULL),0)
+    ) GROUP BY valor_base."produtoId"`);
   for (const base of bases) resultado.set(base.produtoId, { quantidade: new Prisma.Decimal(base.quantidade), valor: new Prisma.Decimal(base.valor) });
   return resultado;
 }
@@ -290,7 +315,9 @@ export async function listarMovimentos(f?: FiltroMovimentos) {
   const idsReproducao = [...new Set(ms.filter((m) => m.origem === "REPRODUCAO" || m.reversaoDeId).map((m) => m.reversaoDeId ?? m.id))];
   const tentativas = idsReproducao.length ? await prisma.tentativaReprodutiva.findMany({ where: { movimentoEstoqueId: { in: idsReproducao } }, select: { id: true, animalId: true, movimentoEstoqueId: true } }) : [];
   const tentativaPorMovimento = new Map(tentativas.map((t) => [t.movimentoEstoqueId, t]));
-  const itens = ms.map((m) => {
+  const valoresLeite = await valoresMovimentosLeiteTx(prisma, ms.filter(m => m.metodoValorizacao === METODO_LEITE).map(m => m.id));
+  const itens = ms.map((original) => {
+    const m = valoresLeite.has(original.id) ? { ...original, ...valoresLeite.get(original.id)! } : original;
     const quantidadeConsulta = idsGrupo ? (m.alocacaoPartidaEstoques ?? []).filter((a) => idsGrupo.includes(a.partidaId)).reduce((s, a) => s.plus(a.quantidade), new Prisma.Decimal(0)) : m.quantidade;
     // Apenas recorte de exibição do valor já gravado, sem recalcular o custo médio
     // nem atribuir um método de custeio independente ao lote.
@@ -329,10 +356,10 @@ export async function listarMovimentos(f?: FiltroMovimentos) {
       data: iso(m.data),
       quantidade: Number(quantidadeConsulta),
       quantidadeMovimento: Number(m.quantidade),
-      custoUnitario: Number(m.custoUnitario),
+      custoUnitario: m.custoUnitario == null ? null : Number(m.custoUnitario),
       metodoValorizacao: m.metodoValorizacao ?? "LEGADO",
       valorTotal: valorConsulta == null ? null : Number(valorConsulta),
-      valorTotalMovimento: Number(m.valorTotal),
+      valorTotalMovimento: m.valorTotal == null ? null : Number(m.valorTotal),
       fornecedor: m.tipo === "ENTRADA" && !m.reversaoDeId ? m.operacao?.parceiro?.nome ?? null : null,
       observacao: oculto ? null : m.observacao ?? null,
       /** Operação financeira de origem (compra, ajuste, inventário…); null nas saídas automáticas. */
@@ -494,6 +521,15 @@ export async function estornarMovimentoTx(
   if (mov.revertidoPor || mov.status === "REVERTIDO") throw new EstoqueError("ORIGEM_AUTOMATICA", "movimento já estornado");
   if (mov.reversaoDeId != null) throw new EstoqueError("ORIGEM_AUTOMATICA", "um movimento de estorno não pode ser estornado novamente");
 
+  if (mov.origem === "RETIRADA_LEITE") {
+    throw new EstoqueError("ORIGEM_AUTOMATICA", "Retirada de leite não permite estorno genérico. Correção comercial não devolve litros ao estoque.");
+  }
+
+  if (mov.origem === "NUTRICAO" && mov.metodoValorizacao === "LEITE_FIFO_V1") {
+    const fornecimento = await tx.movimentoFornecimentoNutricionalLeite.findUnique({ where: { movimentoId: mov.id }, select: { id: true } });
+    if (fornecimento) throw new EstoqueError("ORIGEM_AUTOMATICA", "Este leite pertence a um fechamento de Nutrição. Estorne o fechamento para preservar suas origens e atribuições aos animais.");
+  }
+
   if (mov.origem === "REPRODUCAO") {
     const tentativa = await tx.tentativaReprodutiva.findFirst({ where: { movimentoEstoqueId: mov.id, status: "VALIDO" }, select: { id: true } });
     if (tentativa) throw new EstoqueError("CONFLITO", "Este consumo pertence a uma tentativa reprodutiva válida. Anule a tentativa no fluxo de reprodução antes de estornar o consumo.");
@@ -509,7 +545,7 @@ export async function estornarMovimentoTx(
     tipo: mov.tipo === "ENTRADA" ? "SAIDA" : mov.tipo === "SAIDA" ? "ENTRADA" : "AJUSTE",
     origem: "AJUSTE_INVENTARIO", data,
     quantidade: mov.tipo === "AJUSTE" ? mov.quantidade.negated() : mov.quantidade,
-    custoUnitario: mov.custoUnitario, valorTotal: mov.tipo === "AJUSTE" ? mov.valorTotal.negated() : mov.valorTotal,
+    custoUnitario: mov.custoUnitario, valorTotal: mov.tipo === "AJUSTE" ? mov.valorTotal?.negated() ?? null : mov.valorTotal,
     propriedadeId: pid, operacaoId: mov.operacaoId, reversaoDeId: mov.id, centroCustoId: mov.centroCustoId,
     observacao: opts.observacao ?? `Estorno do movimento #${mov.seq}`,
     criadoPorId: opts.usuarioId ?? null,

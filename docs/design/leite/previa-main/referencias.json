@@ -1,0 +1,12 @@
+{
+  "main": "895ae3d3de6a1ce43cf95ceaecdc527375413d3b",
+  "fontes": [
+    "client/DESIGN.md",
+    "client/PRODUCT.md",
+    "docs/design/cooperativa-unificada.md",
+    "client/src/styles/cooperativa-theme.css",
+    "client/src/styles/tabelas-operacionais.css",
+    "client/src/styles/abas.css"
+  ],
+  "tipo": "Mockup descartavel; sem API ou dados reais; nao implementa interface V5."
+}

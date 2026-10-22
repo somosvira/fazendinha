@@ -12,16 +12,24 @@ export type ParticipacaoConsumo = { animalId: string; dias: number; animal: { br
 export type ProdutoNutricional = { id: string; nome: string; unidade: string; rastrearPartidas: boolean };
 export type CentroNutricional = { id: string; nome: string; ativo: boolean };
 export type PartidaNutricional = { id: string; codigo: string; nome?: string; validade: string | null; saldo: string; origemRastreio: string; aliases?: Array<{ id: string; codigo: string }> };
+export type PreviaLeiteNutricional = { quantidadeDisponivelLitros: string; quantidadePrevistaLitros: string; quantidadeAtendivelLitros: string;
+ custoPrevisto: string | null; origens: { entradaId: string; produtoId: string; produtoNome: string; natureza: string; data: string; quantidadeDisponivelLitros: string }[];
+ composicaoPrevista: { entradaId: string; natureza: string; quantidadeLitros: string }[] };
+export type ReferenciaLeiteNutricional = { id: string; versao: number; fechamentoId: string; precoUnitario: string | null; valorTotal: string | null; provisoria: boolean; periodoInicio: string; periodoFim: string; motivo: string | null; criadoEm: string; criadoPorId: number | null };
+export type FornecimentoLeiteNutricional = { id: string; status: string; quantidadeLitros: string; custoProducao: string | null; referencia: ReferenciaLeiteNutricional | null; referencias: ReferenciaLeiteNutricional[];
+ movimentos: { movimentoId: string; entradaId: string; natureza: string; quantidadeLitros: string }[];
+ parcelas: { animalId: string; dias: number; baseQuantidade: string; quantidadeLitros: string; valorGerencial: string | null }[] };
+export type CandidatoReferenciaLeite = { fechamentoId: string; versao: number; comprador: string; periodoInicio: string; periodoFim: string; precoUnitario: string; provisoria: boolean };
 export type Previa = { loteId: string; vigenciaId: string; dieta: { nome: string; versao: number }; inicio: string; fim: string;
   verValores?: boolean;
   centroCustoId: string; animalDias: number; participantes: Array<{ animalId: string; dias: number; brinco: string }>;
   materiaSecaConhecidaKg: string; coberturaMateriaSecaCompleta: boolean;
-  itens: Array<{ produtoId: string; nome: string; unidade: string; quantidadePrevista: string; rastrearPartidas: boolean; saldo: string; materiaSecaKg: string | null; custoPrevisto: string | null }> };
+  itens: Array<{ leite?: PreviaLeiteNutricional | null; produtoId: string; nome: string; unidade: string; quantidadePrevista: string; rastrearPartidas: boolean; saldo: string; materiaSecaKg: string | null; custoPrevisto: string | null }> };
 export type Fechamento = { id: string; inicio: string; fim: string; animalDias: number; status: "CONFIRMADO" | "ESTORNADO";
-  propriedadeId: number; propriedade: { id: number; nome: string }; lote: { id: string; nome: string }; verValores: boolean; custoConhecido: string | null; coberturaCustoCompleta: boolean;
+  propriedadeId: number; propriedade: { id: number; nome: string }; lote: { id: string; nome: string }; verValores: boolean; verReferenciasComerciais?: boolean; custoConhecido: string | null; coberturaCustoCompleta: boolean;
   centroCusto: { nome: string }; vigencia: { dieta: { nome: string; versao: number } }; participacoes: ParticipacaoConsumo[];
   motivoEstorno?: string | null; estornadoEm?: string | null;
-  itens: Array<{ produtoId: string; quantidadePrevista: string; quantidadeConfirmada: string; unidade: string; situacaoCusto: string; produto: { nome: string }; movimentoEstoque: { quantidade: string; valorTotal: string | null; custoUnitario: string | null; alocacaoPartidaEstoques: Array<{ quantidade: string; partida: { codigo: string; nome?: string | null; validade: string | null } }> } | null }> };
+  itens: Array<{ leite?: FornecimentoLeiteNutricional | null; produtoId: string; quantidadePrevista: string; quantidadeConfirmada: string; unidade: string; situacaoCusto: string; produto: { nome: string }; movimentoEstoque: { quantidade: string; valorTotal: string | null; custoUnitario: string | null; alocacaoPartidaEstoques: Array<{ quantidade: string; partida: { codigo: string; nome?: string | null; validade: string | null } }> } | null }> };
 
 async function req<T>(path: string, init?: RequestInit, consolidado = false, propriedadeId?: number): Promise<T> {
   const headers = comPropriedade({ ...(init?.body ? { "content-type": "application/json" } : {}), ...((init?.headers as Record<string, string>) ?? {}) });
@@ -49,8 +57,8 @@ export const atribuirDieta = (body: { loteId: string; propriedadeId: number; die
 export const corrigirVigencia = (id: string, body: { propriedadeId: number; desde: string; motivo: string }) => post<Vigencia>(`/pecuaria/rebanho/nutricao/vigencias/${id}/correcao`, body);
 export const previaConsumo = (body: { loteId: string; propriedadeId: number; inicio: string; fim: string; centroCustoId?: string | null }) =>
   post<Previa>("/pecuaria/rebanho/nutricao/consumo/previa", body);
-export const confirmarConsumo = (body: { loteId: string; propriedadeId: number; inicio: string; fim: string; centroCustoId?: string | null;
-  itens: Array<{ produtoId: string; quantidadeConfirmada: number; motivoAjuste?: string; modoEstoque: "BAIXA_ESTOQUE" | "SEM_BAIXA_JUSTIFICADA"; justificativaSemBaixa?: string;
+export const confirmarConsumo = (body: { chave?: string; loteId: string; propriedadeId: number; inicio: string; fim: string; centroCustoId?: string | null;
+  itens: Array<{ origensLeite?: string[]; produtoId: string; quantidadeConfirmada: number; motivoAjuste?: string; modoEstoque: "BAIXA_ESTOQUE" | "SEM_BAIXA_JUSTIFICADA"; justificativaSemBaixa?: string;
     partidas?: Array<{ partidaId: string; quantidade: number; cienciaValidadeDesconhecida?: boolean }> }> }) =>
   post<Pick<Fechamento, "id" | "inicio" | "fim" | "animalDias" | "status">>("/pecuaria/rebanho/nutricao/consumo/confirmacao", body);
 const paginaFechamentos = async (loteId?: string, pagina = 1, status?: Fechamento["status"], periodo?: {de?:string;ate?:string}): Promise<Pagina<Fechamento>> => {
@@ -73,7 +81,8 @@ export const previaPeriodos = (body: Parameters<typeof previaConsumo>[0]) => pos
 export const confirmarPeriodos = (body: { chave: string; revisao: string; loteId: string; propriedadeId: number; inicio: string; fim: string; centroCustoId?: string | null; periodos: Array<{ inicio: string; fim: string; itens: Parameters<typeof confirmarConsumo>[0]["itens"] }> }) => post("/pecuaria/rebanho/nutricao/consumo/periodos/confirmacao", body);
 
 export type ResumoCusto = { fechamentos: number; animalDias: number; custoConhecido: string | null; custoPorAnimalDia: string | null; coberturaCustoCompleta: boolean };
-export type ResumoNutricional = { lote: Lote; vigente: Vigencia | null; programada: Vigencia | null; verValores: boolean; custos: ResumoCusto };
+export type ResumoReferenciaLeite = { quantidadeLitros: string; valorConhecido: string | null; coberturaCompleta: boolean; provisorios: number; pendentes: number };
+export type ResumoNutricional = { referenciaLeite?: ResumoReferenciaLeite | null; lote: Lote; vigente: Vigencia | null; programada: Vigencia | null; verValores: boolean; custos: ResumoCusto };
 export type VisaoNutricional = { lotes: ResumoNutricional[]; verValores: boolean };
 // Adaptação dos catálogos de leitura; a agregação histórica fica no servidor.
 type ResumosNutricionais = { verValores: boolean; lotes: Array<Omit<ResumoNutricional, "lote" | "verValores"> & { loteId: string }> };
@@ -99,3 +108,6 @@ export async function obterVigencia(id: string, loteId: string): Promise<Vigenci
     pagina++;
   }
 }
+
+export const listarReferenciasLeite = (fornecimentoId: string) => req<{ itens: CandidatoReferenciaLeite[] }>(`/pecuaria/rebanho/nutricao/consumo/leite/${encodeURIComponent(fornecimentoId)}/referencias`);
+export const revisarReferenciaLeite = (fornecimentoId: string, body: { chave: string; propriedadeId: number; fechamentoId: string; versaoEsperada: number; motivo: string }) => post(`/pecuaria/rebanho/nutricao/consumo/leite/${encodeURIComponent(fornecimentoId)}/referencia`, body);

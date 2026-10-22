@@ -12,7 +12,9 @@ export function hashConfirmacao(valor: unknown) {
   return crypto.createHash("sha256").update(JSON.stringify(ordenar(JSON.parse(JSON.stringify(valor))))).digest("hex");
 }
 
+export const versaoComercialLeitePublica = { id: true, retiradaId: true, versao: true, motivo: true, criadoEm: true } as const;
 export const includeOperacaoConfirmada = { itens: true, compromissos: true, transacoes: { include: { movimentos: true } }, movimentosEstoque: true,
+  versaoComercialLeite: { select: versaoComercialLeitePublica },
   documentos: { select: { id: true, tipo: true, nome: true, numero: true, mimeType: true, tamanhoBytes: true, createdAt: true } }, parceiro: true } as const;
 
 export async function conferirReenvioOperacaoTx(tx: Prisma.TransactionClient, input: { chave?: string; propriedadeId: number; usuarioId?: number | null }) {

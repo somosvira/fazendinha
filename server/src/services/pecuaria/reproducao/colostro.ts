@@ -36,7 +36,7 @@ export function normalizarColostro(input: CamposColostro, data: string, anterior
     responsavel: input.responsavel === undefined ? anterior?.responsavel ?? null : input.responsavel,
     observacao: input.observacao === undefined ? anterior?.observacao ?? null : input.observacao };
 }
-async function conferirCriaTx(tx: Prisma.TransactionClient, criaId: string, propriedadeId: number, data: Date, horario?: { ocorridoEm: Date | null; horarioEstimado: boolean }) {
+export async function conferirCriaTx(tx: Prisma.TransactionClient, criaId: string, propriedadeId: number, data: Date, horario?: { ocorridoEm: Date | null; horarioEstimado: boolean }) {
   const cria = await tx.criaParto.findUnique({ where: { id: criaId } });
   if (!cria?.animalId || !cria.viva) erro("Fornecimento exige cria viva cadastrada", "criaId");
   await travarAnimais(tx, [cria.animalId]);
@@ -71,6 +71,11 @@ export async function corrigirColostroTx(tx: Prisma.TransactionClient, id: strin
       const antes = await tx.fornecimentoColostro.findUniqueOrThrow({ where: { id } });
       if (antes.status !== "VALIDO" || antes.versao !== input.versaoEsperada) throw new RebanhoError("CONFLITO", "Fornecimento alterado ou anulado; atualize a consulta");
       const dados = input.anular ? { status: "ANULADO" as const, anuladoEm: new Date(), motivoAnulacao: input.motivo } : normalizarColostro(input, input.data ?? antes.data.toISOString().slice(0, 10), antes);
+      const alteraQuantidade = !input.anular && "quantidadeLitros" in dados &&
+        (antes.quantidadeLitros == null ? dados.quantidadeLitros != null : dados.quantidadeLitros == null || !antes.quantidadeLitros.eq(dados.quantidadeLitros));
+      const alteraData = !input.anular && "data" in dados && antes.data.getTime() !== dados.data.getTime();
+      if ((input.anular || alteraQuantidade || alteraData) && await tx.parcelaDestinoLeite.findFirst({ where: { fornecimentoColostroId: id, ativo: true }, select: { id: true } }))
+        throw new RebanhoError("CONFLITO", "O fornecimento está vinculado à saída de leite; estorne o destino interno antes de corrigir data, quantidade ou anulação");
       if (!input.anular) await conferirCriaTx(tx, antes.criaId, input.propriedadeId, (dados as ReturnType<typeof normalizarColostro>).data, dados as ReturnType<typeof normalizarColostro>);
       const salvo = await tx.fornecimentoColostro.update({ where: { id, versao: antes.versao }, data: { ...dados, versao: { increment: 1 } } });
       await auditar(tx, { entidade: "FornecimentoColostro", entidadeId: id, animalId: cria.animalId, propriedadeId: input.propriedadeId, acao: input.anular ? "ANULACAO" : "CORRECAO", usuarioId, antes, depois: { ...salvo, motivo: input.motivo } });

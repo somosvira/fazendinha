@@ -1,0 +1,281 @@
+// @vitest-environment jsdom
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+import { DestinosLeite } from "./UIDestinosLeite";
+import { consultarLeite } from "./operacoes-api";
+import { setPropriedadeAtiva } from "../../../propriedadeScope";
+import type { DestinoLeiteDTO } from "./destinos-types";
+vi.mock("./operacoes-api", async (original) => ({
+  ...(await original<typeof import("./operacoes-api")>()),
+  consultarLeite: vi.fn(),
+}));
+vi.mock("../../../estoque/api", () => ({
+  listarProdutos: vi
+    .fn()
+    .mockResolvedValue([
+      { id: "produto", nome: "Leite", unidade: "L", rastrearPartidas: false },
+    ]),
+}));
+vi.mock("./modelo", async (original) => ({
+  ...(await original<typeof import("./modelo")>()),
+  hojeOperacional: () => "2026-10-19",
+}));
+const origem = {
+  entradaId: "entrada",
+  sessaoId: "ordenha-1",
+  nomeOrdenha: "Manhã",
+  natureza: "NAO_INFORMADA",
+  produtoId: "produto",
+  data: "2026-10-19",
+  quantidadeDisponivelLitros: 10,
+};
+const historia: DestinoLeiteDTO = {
+  id: "destino",
+  propriedadeId: 2,
+  entradaId: "entrada",
+  sessaoId: "ordenha-1",
+  produtoId: "produto",
+  movimentoId: "mov",
+  data: "2026-10-19",
+  natureza: "LEITE_COMUM",
+  declaracaoOrigem: "Leite comum servido",
+  quantidadeLitros: 7,
+  saldoOrigemAntes: 10,
+  saldoOrigemDepois: 3,
+  responsavel: null,
+  observacao: null,
+  status: "CONFIRMADO",
+  versao: 2,
+  criadoEm: "2026-10-19",
+  criadoPorId: 7,
+  estornadoEm: null,
+  motivoEstorno: null,
+  movimentoEstornoId: null,
+  parcelas: [],
+};
+const fetchMock = vi.fn();
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
+beforeEach(() => {
+  vi.clearAllMocks();
+  sessionStorage.clear();
+  setPropriedadeAtiva(2);
+  vi.stubGlobal("fetch", fetchMock);
+  fetchMock.mockResolvedValue(
+    new Response(JSON.stringify(historia), { status: 201 }),
+  );
+  vi.mocked(consultarLeite).mockImplementation(async (caminho) => {
+    if (caminho.startsWith("/destinos/origens"))
+      return { propriedadeId: 2, itens: [origem] } as never;
+    if (caminho.startsWith("/destinos/crias"))
+      return {
+        itens: [
+          {
+            animalId: "cria-animal",
+            criaId: "cria-real",
+            brinco: "C1",
+            nome: "Cria Aurora",
+            fornecimentos: [
+              {
+                id: "colostro-existente",
+                data: "2026-10-19",
+                quantidadeLitros: 3.5,
+              },
+            ],
+          },
+        ],
+        total: 1,
+        pagina: 1,
+        porPagina: 10,
+      } as never;
+    if (caminho.startsWith("/destinos/candidatos"))
+      return {
+        itens: [
+          { animalId: "a", brinco: "A1", nome: "Aurora" },
+          { animalId: "b", brinco: "B1", nome: "Brisa" },
+        ],
+        total: 2,
+        pagina: 1,
+        porPagina: 10,
+      } as never;
+    return { itens: [], total: 0, pagina: 1, porPagina: 20 } as never;
+  });
+});
+async function prepararOrigem() {
+  fireEvent.change(await screen.findByLabelText("Produto de origem"), {
+    target: { value: "produto" },
+  });
+  await waitFor(() =>
+    expect(
+      screen
+        .getAllByRole("option")
+        .some((o) => o.textContent?.includes("10 L disponíveis")),
+    ).toBe(true),
+  );
+  fireEvent.change(screen.getByLabelText("Origem confirmada"), {
+    target: { value: "entrada" },
+  });
+  fireEvent.change(
+    screen.getByLabelText("Declaração da origem e da prática registrada"),
+    { target: { value: "Leite servido nesta data aos animais identificados" } },
+  );
+}
+describe("destinos internos", () => {
+  it("consulta não oferece escrita ou estorno", async () => {
+    render(<DestinosLeite podeLancar={false} />);
+    await screen.findByText("Nenhum destino registrado no período.");
+    expect(screen.queryByLabelText("Produto de origem")).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: /Confirmar destino/ }),
+    ).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+  it("reparte três e quatro de dez e repete exatamente a tentativa após erro", async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: "Conexão perdida" }), {
+          status: 503,
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(historia), { status: 201 }),
+      );
+    render(<DestinosLeite podeLancar />);
+    await prepararOrigem();
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Adicionar Aurora" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Adicionar Brisa" }));
+    fireEvent.change(screen.getByLabelText("Litros servidos a Aurora"), {
+      target: { value: "3" },
+    });
+    fireEvent.change(screen.getByLabelText("Litros servidos a Brisa"), {
+      target: { value: "4" },
+    });
+    expect(
+      screen.getByRole("button", { name: "Confirmar destino e baixar 7 L" }),
+    ).toBeTruthy();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Confirmar destino e baixar 7 L" }),
+    );
+    await screen.findByText("Conexão perdida");
+    expect(
+      (screen.getByLabelText("Litros servidos a Aurora") as HTMLInputElement)
+        .value,
+    ).toBe("3");
+    const primeiro = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(primeiro).toMatchObject({
+      propriedadeId: 2,
+      entradaId: "entrada",
+      quantidadeDisponivelEsperadaLitros: 10,
+      parcelas: [
+        { animalId: "a", quantidadeLitros: 3 },
+        { animalId: "b", quantidadeLitros: 4 },
+      ],
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Confirmar destino e baixar 7 L" }),
+    );
+    await screen.findByText(
+      "Destino registrado e volume baixado uma vez do estoque.",
+    );
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual(primeiro);
+  });
+  it("não confirma excesso ou zero servido", async () => {
+    render(<DestinosLeite podeLancar />);
+    await prepararOrigem();
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Adicionar Aurora" }),
+    );
+    const input = screen.getByLabelText("Litros servidos a Aurora");
+    fireEvent.change(input, { target: { value: "11" } });
+    await screen.findByText(
+      "As parcelas excedem o saldo da origem. Revise as quantidades.",
+    );
+    expect(
+      (
+        screen.getByRole("button", {
+          name: "Confirmar destino e baixar 11 L",
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(true);
+    fireEvent.change(input, { target: { value: "0" } });
+    expect(
+      (
+        screen.getByRole("button", {
+          name: "Confirmar destino e baixar 0 L",
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(true);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+  it("vincula cria real e fornecimento existente sem inferir quantidade", async () => {
+    render(<DestinosLeite podeLancar />);
+    await prepararOrigem();
+    fireEvent.change(screen.getByLabelText("Natureza declarada"), {
+      target: { value: "COLOSTRO" },
+    });
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Adicionar Cria Aurora" }),
+    );
+    fireEvent.change(
+      screen.getByLabelText("Registro de colostro de Cria Aurora"),
+      { target: { value: "colostro-existente" } },
+    );
+    const input = screen.getByLabelText(
+      "Litros servidos a Cria Aurora",
+    ) as HTMLInputElement;
+    expect(input.value).toBe("3.5");
+    expect(input.disabled).toBe(true);
+    fireEvent.click(
+      screen.getByRole("button", { name: "Confirmar destino e baixar 3,5 L" }),
+    );
+    await screen.findByText(
+      "Destino registrado e volume baixado uma vez do estoque.",
+    );
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).parcelas).toEqual([
+      {
+        animalId: "cria-animal",
+        quantidadeLitros: 3.5,
+        criaId: "cria-real",
+        fornecimentoColostroId: "colostro-existente",
+      },
+    ]);
+  });
+  it("estorna com motivo e versão sem apagar histórico", async () => {
+    vi.mocked(consultarLeite).mockResolvedValue({
+      itens: [historia],
+      total: 1,
+      pagina: 1,
+      porPagina: 20,
+    });
+    render(<DestinosLeite podeLancar={false} />);
+    await screen.findByText("Confirmado");
+    cleanup();
+    render(<DestinosLeite podeLancar />);
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "Estornar destino de 19/10/2026",
+      }),
+    );
+    fireEvent.change(screen.getByLabelText("Motivo do estorno"), {
+      target: { value: "Quantidade informada incorretamente" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar estorno" }));
+    await screen.findByText("Destino estornado. O histórico foi preservado.");
+    expect(fetchMock.mock.calls[0][0]).toContain("/destinos/destino/estorno");
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({
+      propriedadeId: 2,
+      versaoEsperada: 2,
+      motivo: "Quantidade informada incorretamente",
+    });
+  });
+});

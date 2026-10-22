@@ -1,0 +1,15 @@
+.historico-produtivo-filtros { display: flex; flex-wrap: wrap; align-items: end; gap: 1rem; margin-bottom: 1.25rem; }
+.historico-produtivo-filtros label { display: grid; gap: .375rem; min-width: 10rem; flex: 1 1 11rem; }
+.historico-produtivo-resumo { display: flex; flex-wrap: wrap; gap: 1rem 2rem; margin-block: 1rem 1.5rem; }
+.historico-produtivo-resumo strong { font-size: 1.125rem; font-variant-numeric: tabular-nums; }
+.historico-produtivo-tabela { overflow-x: auto; margin-block: 1rem; }
+.historico-produtivo-tabela table { width: 100%; border-collapse: collapse; text-align: left; }
+.historico-produtivo-tabela th, .historico-produtivo-tabela td { padding: .875rem .75rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+.historico-produtivo-tabela th { font-weight: 600; white-space: nowrap; }
+.historico-produtivo-tabela summary { cursor: pointer; min-height: 2rem; }
+.historico-produtivo-tabela li { margin-block: .375rem; }
+.historico-produtivo-paginas { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; margin-block: 1rem; }
+.historico-produtivo-carencia { margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid var(--border); display: grid; gap: .625rem; }
+.historico-produtivo-carencia h3 { font-weight: 600; }
+.historico-produtivo-carencia button { justify-self: start; }
+.historico-produtivo :is(summary, [tabindex="0"]):focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
