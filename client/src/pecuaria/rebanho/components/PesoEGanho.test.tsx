@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { alterarControle } from "../../../lib/controles.fixture";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { PesoEGanho } from "./PesoEGanho";
@@ -33,13 +34,14 @@ describe("PesoEGanho", () => {
     expect(screen.getByRole("status").textContent).toContain("Ainda não há pesagens");
     expect(screen.getByText("Pesagens insuficientes")).toBeTruthy();
     expect(screen.getByText("Últimas pesagens")).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Manejos registrados/ }).getAttribute("aria-expanded")).toBe("false");
-    expect(screen.getByText("Último peso")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Manejos registrados/ })).toBeNull();
+    expect(screen.getByText("Manejo disponível")).toBeTruthy();
+    expect(screen.queryByText("Último peso")).toBeNull();
   });
-  it("preserva ações e seletor com uma pesagem e controles de expansão completos", () => {
+  it("preserva ações e seletor com uma pesagem e controles de expansão completos", async () => {
     const { editar, periodo } = montar({ ...base, historicoPesagens: [pesagem] });
     expect(screen.getByRole("status").textContent).toContain("Uma pesagem ainda não forma uma curva");
-    fireEvent.change(screen.getByLabelText("Período do GMD"), { target: { value: "90" } });
+    await alterarControle(screen.getByLabelText("Período do GMD"), { target: { value: "90" } });
     expect(periodo).toHaveBeenCalledWith(90);
     fireEvent.click(screen.getByRole("button", { name: "Editar pesagem de 01/10/2026" }));
     expect(editar).toHaveBeenCalledWith(expect.objectContaining({ id: "p1", animalId: base.id }));
@@ -50,4 +52,17 @@ describe("PesoEGanho", () => {
     expect(screen.getByRole("table").textContent).toContain("470 kg");
     expect(screen.queryByRole("button", { name: /Editar pesagem/ })).toBeNull();
   });
+  it("mostra um só indicador quando período, recente e entrada usam as mesmas duas pesagens", () => {
+    montar({ ...base, historicoPesagens: [pesagem, { ...pesagem, id: "p0", data: "2026-09-01", pesoKg: 470 }], peso: { ...base.peso, gmdRecente: 0.5, gmdDesdeEntrada: 0.5, gmdPeriodo: { dias: 30, valor: 0.5, pesagens: 2 } } });
+    expect(screen.getAllByText("+0,500 kg/dia")).toHaveLength(1);
+    expect(screen.getByText("GMD recente")).toBeTruthy();
+    expect(screen.getByText("GMD desde a entrada")).toBeTruthy();
+    expect(screen.getByText("Mesmas duas pesagens do período.")).toBeTruthy();
+  });
+  it("não agrupa resultados numericamente iguais quando as bases de cálculo são diferentes", () => {
+    montar({ ...base, historicoPesagens: [pesagem, { ...pesagem, id: "p0", data: "2026-09-01", pesoKg: 470 }, { ...pesagem, id: "p-1", data: "2026-08-01", pesoKg: 450 }], peso: { ...base.peso, gmdRecente: 0.5, gmdDesdeEntrada: 0.5, gmdPeriodo: { dias: 30, valor: 0.5, pesagens: 2 } } });
+    expect(screen.getAllByText("+0,500 kg/dia")).toHaveLength(3);
+    expect(screen.queryByText("Mesmas duas pesagens do período.")).toBeNull();
+  });
+
 });

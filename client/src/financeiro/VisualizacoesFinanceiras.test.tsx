@@ -1,4 +1,4 @@
-import { alterarControle } from "../lib/controles.fixture";
+import { alterarControle, alterarFiltroAdicional, abrirFiltrosConsulta, aplicarFiltrosConsulta } from "../lib/controles.fixture";
 // @vitest-environment jsdom
 import { baseFinanceiraVazia } from "./dashboard.fixture";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -56,42 +56,34 @@ const total = (titulo: string) => screen.getByText(titulo).parentElement!.textCo
 describe("visualizações financeiras integradas", () => {
   it("mantém o gráfico geral independente dos filtros das duas tabelas", async () => {
     render(<ContasFinanceiras onNav={vi.fn()} />);
-    await waitFor(() => expect(total("Receitas no período")).toContain("R$ 160,00"));
-    expect(total("Despesas no período")).toContain("R$ 65,00");
-    // O período pertence ao extrato geral; o fluxo consolidado conserva o ano atual.
-    expect(screen.getByRole("button", { name: /^Período do extrato geral:/ }).textContent).toContain("Ano atual");
-    expect(screen.queryByLabelText("Data inicial")).toBeNull();
-    expect(screen.getByRole("radio", { name: "Linhas" }).getAttribute("aria-checked")).toBe("true");
+    await screen.findByRole("region", { name: "Contas" });
+    await alterarFiltroAdicional("Filtrar tipo de conta", "CAIXA", screen.getByRole("region", {name:"Contas"}));
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Análise" }));
+    await waitFor(() => expect(total("Entradas no período")).toContain("R$ 160,00"));
+    expect(total("Saídas no período")).toContain("R$ 65,00");
     fireEvent.click(screen.getByRole("radio", { name: "Barras" }));
     expect(screen.getByRole("radio", { name: "Barras" }).getAttribute("aria-checked")).toBe("true");
-    fireEvent.click(screen.getByRole("button", { name: /^Período do extrato geral:/ }));
-    fireEvent.click(screen.getByRole("button", { name: "Últimos 3 meses" }));
-    expect(screen.getByRole("button", { name: /^Período do extrato geral:/ }).textContent).toContain("Últimos 3 meses");
-    fireEvent.click(screen.getByRole("button", { name: /^Período do extrato geral:/ }));
-    fireEvent.click(screen.getByRole("button", { name: "Mês atual" }));
-    expect(obterExtratoGeral).toHaveBeenCalledOnce();
-    await alterarControle(screen.getByLabelText("Tipo"), { target: { value: "CAIXA" } });
-    expect(total("Receitas no período")).toContain("R$ 160,00");
-    expect(total("Despesas no período")).toContain("R$ 65,00");
-    const secaoExtrato = screen.getByRole("heading", { name: "Extrato geral" }).closest("section")!;
-    await alterarControle(within(screen.getByRole("region", { name: "Extrato geral" })).getByLabelText("Instituição"), { target: { value: "__sem__" } });
-    expect(total("Receitas no período")).toContain("R$ 160,00");
-    expect(total("Despesas no período")).toContain("R$ 65,00");
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Extrato geral" }));
+    expect(screen.getByRole("button", { name: /^Período do extrato geral:/ }).textContent).toContain("Ano atual");
+    await alterarFiltroAdicional("Filtrar por instituição", "__sem__", screen.getByRole("region", { name: "Extrato geral" }));
     expect(within(screen.getByRole("table", { name: "Extrato geral" })).queryByText("Movimento 1")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: /^Período do extrato geral:/ }));
     fireEvent.click(screen.getByRole("button", { name: "Período personalizado" }));
     await alterarControle(screen.getByLabelText("Data inicial"), { target: { value: "2026-09-15" } });
     await alterarControle(screen.getByLabelText("Data final"), { target: { value: "2026-09-30" } });
     fireEvent.click(screen.getByRole("button", { name: "Aplicar período" }));
-    expect(total("Receitas no período")).toContain("R$ 160,00");
-    expect(total("Despesas no período")).toContain("R$ 65,00");
-    expect(within(secaoExtrato).getByText("Nenhuma movimentação encontrada para os filtros selecionados.")).toBeTruthy();
+    expect(within(screen.getByRole("region", {name:"Extrato geral"})).getByText("Nenhuma movimentação encontrada para os filtros selecionados.")).toBeTruthy();
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Análise" }));
+    expect(total("Entradas no período")).toContain("R$ 160,00");
+    expect(total("Saídas no período")).toContain("R$ 65,00");
+    expect(screen.getByRole("radio", {name:"Barras"}).getAttribute("aria-checked")).toBe("true");
+    expect(obterExtratoGeral).toHaveBeenCalledOnce();
   });
 
   it("mantém um único seletor de período no detalhe da conta, ligado ao gráfico e ao extrato", async () => {
     window.history.replaceState(null, "", `/financeiro/contas/${uid(1)}`);
     render(<ContasFinanceiras onNav={vi.fn()} />);
-    await waitFor(() => expect(total("Receitas no período")).toContain("R$ 210,00"));
+    await waitFor(() => expect(total("Entradas no período")).toContain("R$ 210,00"));
     const controles = screen.getAllByRole("button", { name: /^Período do extrato da conta:/ });
     expect(controles).toHaveLength(1);
     expect(screen.queryByRole("button", { name: /^Período:/ })).toBeNull();
@@ -101,8 +93,8 @@ describe("visualizações financeiras integradas", () => {
     window.history.replaceState(null, "", `/financeiro/contas/${uid(id)}`);
     const onNav = vi.fn();
     render(<ContasFinanceiras onNav={onNav} />);
-    await waitFor(() => expect(total("Receitas no período")).toContain(id === 1 ? "R$ 210,00" : "R$ 50,00"));
-    expect(total("Despesas no período")).toContain(id === 1 ? "R$ 90,00" : "R$ 75,00");
+    await waitFor(() => expect(total("Entradas no período")).toContain(id === 1 ? "R$ 210,00" : "R$ 50,00"));
+    expect(total("Saídas no período")).toContain(id === 1 ? "R$ 90,00" : "R$ 75,00");
     expect(screen.queryByRole("button", { name: "Gerenciar contas" })).toBeNull();
     expect(obterExtratoGeral).not.toHaveBeenCalled();
     fireEvent.click(screen.getAllByRole("link", { name: "OP-0123" })[0]);
@@ -213,22 +205,27 @@ describe("visualizações financeiras integradas", () => {
     render(<CompromissosFinanceiros onNav={vi.fn()} />);
     fireEvent.click(await screen.findByRole("button", { name: "Calendário" }));
     expect(screen.getAllByRole("button", { name: /Compromisso \d, a pagar/ })).toHaveLength(2);
+    await abrirFiltrosConsulta();
     fireEvent.click(screen.getByRole("checkbox", { name: "Mostrar somente vencidos" }));
+    await aplicarFiltrosConsulta();
     expect(screen.queryByRole("button", { name: /Compromisso 2, a pagar/ })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: /Compromisso 1, a pagar/ }));
     fireEvent.click(screen.getByRole("button", { name: "Registrar pagamento" }));
     expect(screen.getByRole("dialog", { name: "Registrar pagamento" }).textContent).toContain("(1/2) Compromisso 1");
     fireEvent.click(screen.getByRole("button", { name: "Fechar" }));
+    await abrirFiltrosConsulta();
     fireEvent.click(screen.getByRole("checkbox", { name: "Mostrar somente vencidos" }));
-    fireEvent.click(screen.getByRole("button", { name: "Situação dos compromissos" }));
-    fireEvent.click(screen.getByRole("option", { name: "A pagar" }));
-    fireEvent.click(screen.getByRole("option", { name: "A receber" }));
-    fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+    await aplicarFiltrosConsulta();
+    fireEvent.click(within(screen.getByRole("group", { name: "Tipo de compromisso" })).getByRole("button", {name:"A receber"}));
     expect(screen.getByRole("button", { name: /Compromisso 3, a receber/ })).toBeTruthy();
+    fireEvent.click(within(screen.getByRole("group", { name: "Tipo de compromisso" })).getByRole("button", {name:"A pagar"}));
+    await abrirFiltrosConsulta();
     fireEvent.click(screen.getByRole("button", { name: "Situação dos compromissos" }));
-    fireEvent.click(screen.getByRole("option", { name: "A receber" }));
-    fireEvent.click(screen.getByRole("option", { name: "Liquidados" }));
-    fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+    fireEvent.click(screen.getByRole("option", { name: "Pendente" }));
+    fireEvent.click(screen.getByRole("option", { name: "Parcial" }));
+    fireEvent.click(screen.getByRole("option", { name: "Liquidado" }));
+    fireEvent.keyDown(screen.getAllByRole("dialog").at(-1)!, { key: "Escape" });
+    await aplicarFiltrosConsulta();
     expect(screen.getByRole("button", { name: /Compromisso 4, a pagar/ })).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Compromisso 5/ })).toBeNull();
   });
@@ -253,18 +250,24 @@ it("o acesso pela rastreabilidade preserva o período e mostra também compromis
   expect(listarCompromissos).toHaveBeenCalledWith();
   expect(screen.getByRole("button", { name: /^Período de vencimento:/ }).textContent).toContain("12–15 set/26");
   expect(within(screen.getByRole("table", { name: "Compromissos financeiros" })).queryByText("Compromisso 3")).toBeNull();
-  expect(screen.getAllByText("Valor original (cancelado)").length).toBeGreaterThan(0);
+  const cancelado = within(screen.getByRole("table", {name:"Compromissos financeiros"})).getByText("Compromisso 2").closest("tr")!;
+  expect(cancelado.querySelectorAll("td")[4]?.textContent?.replace(/\s/g," ")).toContain("100,00");
+  expect(cancelado.querySelectorAll("td")[5]?.textContent?.replace(/\s/g," ")).toContain("0,00");
   expect(within(screen.getByRole("table", { name: "Compromissos financeiros" })).getAllByRole("button", { name: "Registrar pagamento" })).toHaveLength(1);
-  expect(screen.getByText(/Total pendente:/).textContent).toContain("100,00");
+  expect(screen.getAllByText("Total a pagar")[0].parentElement?.textContent).toContain("100,00");
 });
 
 
 it("paginar o extrato mantém os totais e o gráfico do período completo", async () => {
   vi.mocked(obterExtratoGeral).mockResolvedValue(Array.from({ length: 31 }, (_, i) => movimento(100 + i, 1, "120", "ENTRADA", "RECEBIMENTO")));
   render(<ContasFinanceiras onNav={vi.fn()} />);
-  await waitFor(() => expect(total("Receitas no período")).toContain("R$ 3.720,00"));
+  fireEvent.mouseDown(await screen.findByRole("tab", {name:"Análise"}));
+  await waitFor(() => expect(total("Entradas no período")).toContain("R$ 3.720,00"));
+  fireEvent.mouseDown(screen.getByRole("tab", {name:"Extrato geral"}));
   fireEvent.click(within(screen.getByRole("navigation", { name: "Paginação do extrato geral" })).getByRole("button", { name: "Próxima" }));
-  expect(total("Receitas no período")).toContain("R$ 3.720,00");
+  fireEvent.mouseDown(screen.getByRole("tab", {name:"Análise"}));
+  expect(total("Entradas no período")).toContain("R$ 3.720,00");
+  fireEvent.mouseDown(screen.getByRole("tab", {name:"Extrato geral"}));
   expect(within(screen.getByRole("table", { name: "Extrato geral" })).getAllByRole("row")).toHaveLength(16);
 });
 

@@ -38,7 +38,7 @@ describe("custos nutricionais consultados por leitores da Pecuária", () => {
     expect((await app().request(`/nutricao/consumo/fechamentos/${uid(2)}`)).status).toBe(200);
     expect(mocks.detalhe).toHaveBeenCalledWith(uid(2), 2, true);
     expect((await app().request("/nutricao/consumo/fechamentos")).status).toBe(200);
-    expect(mocks.listar).toHaveBeenCalledWith(undefined, 2, expect.any(Object), true);
+    expect(mocks.listar).toHaveBeenCalledWith(undefined, 2, expect.any(Object), true, undefined, undefined, { de: undefined, ate: undefined });
   });
 
   it("mantém sessão, área e o isolamento de fatos de outro sítio", async () => {

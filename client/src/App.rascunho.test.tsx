@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { App } from "./App";
 import { setSessao, type UsuarioSessao } from "./lib/auth";
 import { setPropriedadeAtiva } from "./propriedadeScope";
@@ -8,7 +8,7 @@ import { limparRascunhoAtivo } from "./financeiro/rascunhoAtivo";
 
 const usuarioBase: UsuarioSessao = {
   id: 7, nome: "Ana", email: "ana@exemplo.com", papel: "personalizado", status: "ATIVO", dono: false,
-  abas: ["dashboard", "lancar", "gastos"], areas: ["financeiro"], flags: ["lancar"],
+  abas: ["dashboard", "lancar", "gastos"], areas: ["financeiro"], flags: ["lancar", "verValores"],
 };
 
 let chamadasRascunho: { propriedade: string | null }[] = [];
@@ -17,6 +17,8 @@ let descricaoRascunho: string | null = "Compra de ração";
 let segurarRascunho: Promise<void> | null = null;
 let segurarGravacao: Promise<void> | null = null;
 let falharGravacao = false;
+let falharExclusao = false;
+let exclusoes = 0;
 
 const rascunhoCom = (descricao: string) => ({
   id: 8, versao: 1, updatedAt: new Date().toISOString(), documentos: [],
@@ -37,6 +39,12 @@ function servidor(usuario: UsuarioSessao) {
     if (pathname === "/api/financeiro/operacoes/rascunho") {
       const propriedade = new Headers(init?.headers).get("X-Propriedade-Id");
       const metodo = init?.method ?? "GET";
+      if (metodo === "DELETE") {
+        exclusoes++;
+        if (falharExclusao) return new Response(JSON.stringify({ error: "Falha ao excluir rascunho" }), { status: 503 });
+        descricaoRascunho = null;
+        return new Response(null, { status: 204 });
+      }
       if (metodo === "PUT") {
         const payload = JSON.parse(String(init?.body));
         if (segurarGravacao) await segurarGravacao;
@@ -66,7 +74,7 @@ beforeEach(() => {
   history.replaceState(null, "", "/financeiro/compromissos");
   chamadasRascunho = [];
   descricaoRascunho = "Compra de ração";
-  segurarRascunho = null; segurarGravacao = null; falharGravacao = false;
+  segurarRascunho = null; segurarGravacao = null; falharGravacao = false; falharExclusao = false; exclusoes = 0;
   Object.defineProperty(document, "visibilityState", { configurable: true, get: () => "visible" });
   if (!("ResizeObserver" in globalThis)) vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
 });
@@ -86,21 +94,26 @@ describe("App — trabalho ativo", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Continuar rascunho: Compra de ração" }));
 
     await waitFor(() => expect(location.pathname).toBe("/financeiro/operacoes/nova"));
+    // Mantém o clique durante a importação fria para cobrir a corrida da URL.
+    // Aguarda a transformação real do módulo, sem confundir seu tempo com o
+    // prazo de atualização do formulário e sem ampliar o timeout do findBy.
+    await act(async () => { await import("./financeiro/FinanceiroContent"); });
     expect(await screen.findByRole("heading", { name: "Nova operação" })).toBeTruthy();
     expect(await screen.findByRole("button", { name: "Rascunho em edição: Compra de ração" })).toBeTruthy();
   });
 
-  it("sem rascunho, o atalho vira + Nova operação e abre um formulário novo", async () => {
+  it("sem rascunho, não cria trabalho fictício e inicia operação pela lista", async () => {
     descricaoRascunho = null;
     entrarComo(usuarioBase);
 
-    const atalho = await screen.findByRole("button", { name: "Nova operação" });
-    expect(atalho.querySelector(".lucide-plus")).toBeTruthy();
-    fireEvent.click(atalho);
+    fireEvent.click(await screen.findByRole("button", { name: "Operações" }));
+    await screen.findByRole("heading", { name: "Operações" });
+    expect(screen.queryByRole("group", { name: "Trabalhos ativos" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Nova operação" }));
 
     await waitFor(() => expect(location.pathname).toBe("/financeiro/operacoes/nova"));
     expect(await screen.findByRole("heading", { name: "Nova operação" })).toBeTruthy();
-    expect(await screen.findByRole("button", { name: /em edição/ })).toBeTruthy();
+    expect(screen.queryByRole("group", { name: "Trabalhos ativos" })).toBeNull();
   });
 
   it("não mostra o + enquanto ainda não sabe se há rascunho", async () => {
@@ -121,6 +134,15 @@ describe("App — trabalho ativo", () => {
     expect(await screen.findByRole("heading", { name: "Compromissos" })).toBeTruthy();
     expect(chamadasRascunho).toHaveLength(0);
     expect(screen.queryByRole("group", { name: "Trabalhos ativos" })).toBeNull();
+  });
+
+  it.each([["lancar"], ["verValores"]])("sem a combinação lancar/verValores não consulta nem oferece rascunho (%j)", async (...flags) => {
+    history.replaceState(null, "", "/financeiro/operacoes");
+    entrarComo({ ...usuarioBase, flags });
+    expect(await screen.findByRole("heading", { name: "Operações" })).toBeTruthy();
+    expect(chamadasRascunho).toHaveLength(0);
+    expect(screen.queryByRole("group", { name: "Trabalhos ativos" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Continuar rascunho|Rascunho em edição/ })).toBeNull();
   });
 
   it("busca o rascunho do novo sítio ao trocar de sítio", async () => {
@@ -182,4 +204,49 @@ it.each(["pendente", "falha"])("retoma o trabalho com gravação %s e permite vo
   history.forward();
   expect((await screen.findByLabelText("Descrição") as HTMLTextAreaElement).value).toBe("Edição final recuperável");
   if (estado === "pendente") liberar();
+});
+
+
+it("exclui o trabalho aberto após o PUT em curso, fecha o editor e não recria o rascunho", async () => {
+  let liberar!: () => void;
+  segurarGravacao = new Promise<void>(resolve => { liberar = resolve; });
+  entrarComo(usuarioBase);
+  fireEvent.click(await screen.findByRole("button", { name: "Continuar rascunho: Compra de ração" }));
+  await screen.findByRole("heading", { name: "Nova operação" });
+  fireEvent.change(screen.getByLabelText("Descrição"), { target: { value: "Edição a descartar" } });
+  await waitFor(() => expect(vi.mocked(fetch).mock.calls.some(([, init]) => init?.method === "PUT")).toBe(true), { timeout: 2000 });
+  fireEvent.click(await screen.findByRole("button", { name: "Excluir trabalho ativo: Edição a descartar" }));
+  fireEvent.click(screen.getByRole("button", { name: "Excluir trabalho" }));
+  expect(exclusoes).toBe(0);
+  await act(async () => { liberar(); });
+  await waitFor(() => expect(location.pathname).toBe("/financeiro/operacoes"));
+  expect(await screen.findByRole("heading", { name: "Operações" })).toBeTruthy();
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 900)); });
+  expect(exclusoes).toBe(1); expect(descricaoRascunho).toBeNull();
+  expect(screen.queryByRole("group", { name: "Trabalhos ativos" })).toBeNull();
+});
+
+it("preserva a edição e o atalho se a exclusão falhar", async () => {
+  falharExclusao = true;
+  entrarComo(usuarioBase);
+  fireEvent.click(await screen.findByRole("button", { name: "Continuar rascunho: Compra de ração" }));
+  await screen.findByRole("heading", { name: "Nova operação" });
+  fireEvent.change(screen.getByLabelText("Descrição"), { target: { value: "Edição preservada" } });
+  fireEvent.click(await screen.findByRole("button", { name: "Excluir trabalho ativo: Edição preservada" }));
+  fireEvent.click(screen.getByRole("button", { name: "Excluir trabalho" }));
+  expect(await screen.findByText("Falha ao excluir rascunho")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Manter trabalho" }));
+  expect((screen.getByLabelText("Descrição") as HTMLTextAreaElement).value).toBe("Edição preservada");
+  expect(screen.getByRole("button", { name: "Rascunho em edição: Edição preservada" })).toBeTruthy();
+  expect(location.pathname).toBe("/financeiro/operacoes/nova");
+});
+
+
+it("não exclui em outro sítio se o contexto mudou depois de abrir a confirmação", async () => {
+  entrarComo(usuarioBase);
+  fireEvent.click(await screen.findByRole("button", { name: "Excluir trabalho ativo: Compra de ração" }));
+  setPropriedadeAtiva(2);
+  fireEvent.click(screen.getByRole("button", { name: "Excluir trabalho" }));
+  expect(await screen.findByText("O sítio ou a sessão mudou. Reabra o trabalho antes de excluir.")).toBeTruthy();
+  expect(exclusoes).toBe(0);
 });

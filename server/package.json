@@ -23,6 +23,8 @@
     "seedatev3:qa": "tsx --env-file=.env prisma/seedatev3-qa.ts",
     "seedatev3:planner": "tsx --env-file=.env prisma/seedatev3-planner.ts",
     "seedatev3:typecheck": "tsc -p tsconfig.seedatev3.json",
+    "seed:rio-novo": "tsx --env-file=.env prisma/seed-rio-novo.ts",
+    "seed:rio-novo:typecheck": "tsc -p tsconfig.seed-rio-novo.json",
     "seedatev4": "tsx --env-file=.env prisma/seedatev4.ts",
     "seedatev4:typecheck": "tsc -p tsconfig.seedatev4.json",
     "seed:pecuaria": "tsx --env-file=.env prisma/seed-pecuaria.ts",
@@ -61,6 +63,7 @@
     "prisma": "^6.1.0",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3",
-    "vitest": "^2.1.8"
+    "vitest": "^2.1.8",
+    "xlsx": "0.18.5"
   }
 }

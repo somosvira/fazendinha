@@ -1311,11 +1311,20 @@ export async function painelReproducao(
     !partos.length &&
     !avaliacoes.length &&
     !gestacoes.length
-  )
-    throw new RebanhoError(
+  ) {
+    // A consulta individual também atende a ficha histórica. Ausência na
+    // população atual não torna inexistente uma matriz que passou pelo sítio.
+    const identidadeHistorica = await prisma.animal.findFirst({
+      where: { id: animalId, sexo: "F", ...(propriedadeId == null ? {} : {
+        localizacoes: { some: { propriedadeId, desde: { lte: hoje } } },
+      }) },
+      select: { id: true },
+    });
+    if (!identidadeHistorica) throw new RebanhoError(
       "NAO_ENCONTRADO",
       "Animal não encontrado neste sítio",
     );
+  }
   const idsPartos = partos.map((p) => p.id),
     idsExposicoes = exposicoes.map((e) => e.id);
   const [crias, participacoesExposicao] = await Promise.all([

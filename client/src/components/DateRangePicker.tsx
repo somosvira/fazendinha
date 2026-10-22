@@ -5,6 +5,7 @@ import { getHoje } from "../lib/hoje";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { CalendarDays, Check } from "lucide-react";
 
 export const PT_MONTHS = [
   "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
@@ -185,7 +186,7 @@ export function buildPresets(today: Date) {
   ];
 }
 
-export function DateRangePicker({ value, onChange, anchor = "left", triggerLabel, triggerClassName, triggerAriaLabel = "Período", showPresets = true, allowAll = false }: {
+export function DateRangePicker({ value, onChange, anchor = "left", triggerLabel, triggerClassName, triggerAriaLabel = "Período", showPresets = true, allowAll = false, iconOnly = false, showIcon = false }: {
   value: DateRange;
   onChange: (range: DateRange) => void;
   anchor?: "left" | "right";
@@ -194,6 +195,8 @@ export function DateRangePicker({ value, onChange, anchor = "left", triggerLabel
   triggerAriaLabel?: string;
   showPresets?: boolean;
   allowAll?: boolean;
+  iconOnly?: boolean;
+  showIcon?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -235,22 +238,24 @@ export function DateRangePicker({ value, onChange, anchor = "left", triggerLabel
   // mostra as datas junto (ocultas em telas muito estreitas, onde só o nome
   // já preenche o gatilho) para que o período efetivo fique visível sem abrir.
   const todoPeriodo = !value.start && !value.end && allowAll;
+  const personalizadoSelecionado = !todoPeriodo && !matched && !!(value.start || value.end);
+  const classePeriodo = "justify-between gap-3 aria-pressed:bg-accent aria-pressed:font-semibold aria-pressed:text-primary";
   const rotulo = triggerLabel ?? (todoPeriodo ? "Todo o período"
     : matched ? <>{matched.label}<span className="hidden text-ink-3 sm:inline"> · {formatRangeLabel(value)}</span></>
     : formatRangeLabel(value));
   // O aria-label substitui o texto visível: sem o intervalo aplicado ele deixaria
   // o leitor de tela anunciar só "Período" (WCAG 2.5.3 — Label in Name).
   const textoAplicado = todoPeriodo ? "Todo o período" : matched ? `${matched.label} · ${formatRangeLabel(value)}` : formatRangeLabel(value);
-  const nomeAcessivel = triggerLabel ? triggerAriaLabel : `${triggerAriaLabel}: ${textoAplicado}`;
+  const nomeAcessivel = triggerLabel && !iconOnly ? triggerAriaLabel : `${triggerAriaLabel}: ${textoAplicado}`;
   return <Popover open={open} onOpenChange={changeOpen}>
-    <PopoverTrigger asChild><button ref={triggerRef} type="button" aria-label={nomeAcessivel} className={cn("inline-flex min-h-10 max-w-full items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground focus-visible:outline-2 focus-visible:outline-mast", triggerClassName)}>
-      <span className="truncate">{rotulo}</span><span aria-hidden="true">▾</span>
+    <PopoverTrigger asChild><button ref={triggerRef} data-slot="date-range-trigger" type="button" aria-label={nomeAcessivel} title={iconOnly ? nomeAcessivel : undefined} className={cn("inline-flex min-h-10 max-w-full items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground focus-visible:outline-2 focus-visible:outline-mast", iconOnly && "size-10 min-w-10 shrink-0 justify-center p-0 max-[900px]:size-11 max-[900px]:min-w-11", triggerClassName)}>
+      {iconOnly ? <CalendarDays size={18} strokeWidth={1.8} aria-hidden="true" /> : <>{showIcon && <CalendarDays size={18} strokeWidth={1.8} className="shrink-0" aria-hidden="true" />}<span className="truncate">{rotulo}</span><span aria-hidden="true">▾</span></>}
     </button></PopoverTrigger>
     <PopoverContent onCloseAutoFocus={event => { event.preventDefault(); triggerRef.current?.focus(); }} align={anchor === "right" ? "end" : "start"} className={cn("max-h-[min(680px,85vh)] overflow-y-auto bg-popover p-4", custom ? "w-[min(540px,calc(100vw-24px))]" : "w-[min(280px,calc(100vw-24px))]")}>
       {!custom ? <div className="flex flex-col gap-1" role="group" aria-label="Períodos predefinidos">
-        {allowAll && <Button type="button" variant="ghost" className="justify-start" onClick={() => { onChange({ start: null, end: null }); setOpen(false); }}>Todo o período</Button>}
-        {presets.map(p => <Button type="button" variant="ghost" key={p.id} aria-pressed={matched?.id === p.id} className="justify-start" onClick={() => { onChange(p.range); setOpen(false); }}>{p.label}</Button>)}
-        <Button type="button" variant="outline" onClick={() => { setCustom(true); setDraft(value); setStep("start"); }}>Período personalizado</Button>
+        {allowAll && <Button type="button" variant="ghost" aria-pressed={todoPeriodo} className={classePeriodo} onClick={() => { onChange({ start: null, end: null }); setOpen(false); }}>Todo o período{todoPeriodo && <Check size={16} aria-hidden="true" />}</Button>}
+        {presets.map(p => <Button type="button" variant="ghost" key={p.id} aria-pressed={matched?.id === p.id} className={classePeriodo} onClick={() => { onChange(p.range); setOpen(false); }}>{p.label}{matched?.id === p.id && <Check size={16} aria-hidden="true" />}</Button>)}
+        <Button type="button" variant="outline" aria-pressed={personalizadoSelecionado} className={classePeriodo} onClick={() => { setCustom(true); setDraft(value); setStep("start"); }}>Período personalizado{personalizadoSelecionado && <Check size={16} aria-hidden="true" />}</Button>
       </div> : <div className="space-y-4">
         <div className="flex items-center justify-between gap-2">
           <h3 className="font-serif text-xl">Período personalizado</h3>

@@ -55,7 +55,7 @@ describe("páginas de visita e guarda de rascunho", () => {
   });
   it("trata nova antes de consultar um ID e oferece cadastro em página", async () => {
     window.history.replaceState({}, "", "/pecuaria/visitas/nova"); render(<Visitas podeLancar/>);
-    await screen.findByRole("heading", { name: "Como deseja montar a visita?" }); expect(obterVisita).not.toHaveBeenCalled(); expect(screen.queryByRole("dialog")).toBeNull();
+    await screen.findByRole("heading", { name: /Nova visita|Adicionar grupo/ }); expect(obterVisita).not.toHaveBeenCalled(); expect(screen.queryByRole("dialog")).toBeNull();
   });
   it("não reabre planejamento de uma visita encerrada por query manual", async () => {
     vi.mocked(obterVisita).mockResolvedValue({ ...visita, status: "ENCERRADA" });
@@ -78,7 +78,7 @@ describe("páginas de visita e guarda de rascunho", () => {
 describe("entrada independente de visitas",()=>{
  it("só cria ao continuar e reutiliza a chave após falha de resposta",async()=>{
   window.history.replaceState({},"","/pecuaria/visitas/nova");vi.mocked(criarVisita).mockRejectedValueOnce(new Error("Falha simulada")).mockResolvedValueOnce(visita);
-  render(<Visitas podeLancar/>);await screen.findByRole("heading",{name:"Como deseja montar a visita?"});
+  render(<Visitas podeLancar/>);await screen.findByRole("heading",{name:/Nova visita|Adicionar grupo/});
   expect(document.querySelectorAll('input[type="radio"]:checked')).toHaveLength(0);
   fireEvent.change(screen.getByLabelText("Nome da visita"),{target:{value:"Visita de teste"}});fireEvent.change(screen.getByLabelText("Sítio"),{target:{value:"1"}});
   fireEvent.click(screen.getByRole("radio",{name:/Agenda do dia/}));expect(criarVisita).not.toHaveBeenCalled();
@@ -88,6 +88,6 @@ describe("entrada independente de visitas",()=>{
  });
  it("abre visita vazia sem modo na entrada, sem escolher um caminho",async()=>{
   vi.mocked(obterVisita).mockResolvedValue({...visita,atividades:[]});window.history.replaceState({},"","/pecuaria/visitas/visita");render(<Visitas podeLancar/>);
-  await screen.findByRole("heading",{name:"Como deseja montar a visita?"});expect(location.search).toContain("etapa=entrada");expect(document.querySelectorAll('input[type="radio"]:checked')).toHaveLength(0);
+  await screen.findByRole("heading",{name:/Nova visita|Adicionar grupo/});expect(location.search).toContain("etapa=entrada");expect(document.querySelectorAll('input[type="radio"]:checked')).toHaveLength(0);
  });
 });

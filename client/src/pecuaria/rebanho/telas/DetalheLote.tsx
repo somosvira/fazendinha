@@ -18,7 +18,6 @@ import { formatarGmd, formatarKg, PERIODO_GMD_PADRAO } from "../lib/peso";
 import { navegarPara } from "../../../router";
 import { Button, type ColunaTabela, Empty, ErrorBox, Metric, PageHeader, PaginaFinanceira, Panel, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
 import { CategoriaPill, Paginacao, useAoMovimentarComToast } from "../ui";
-import { NavRebanho } from "./NavRebanho";
 import { mensagemDesativar } from "./ListaLotes";
 import { FormLote } from "../cadastros/FormLote";
 import { FormMovimentar } from "../forms/FormMovimentar";
@@ -29,8 +28,15 @@ import { AlteracoesCadastro } from "../components/AlteracoesCadastro";
 import { DetalheMovimentacao } from "../components/DetalheMovimentacao";
 import { NutricaoLote } from "../nutricao/NutricaoLote";
 import { HistoricoSanitario } from "../sanidade/HistoricoSanitario";
+import { linkFichaAnimal } from "../lib/navegacao";
 
 const ITENS_POR_PAGINA = 20;
+const SECOES_LOTE = [["resumo", "Resumo"], ["animais", "Animais"], ["baixas", "Baixas"], ["historico", "Movimentações"], ["sanidade", "Sanidade"], ["nutricao", "Nutrição"], ["alteracoes", "Alterações"]] as const;
+type SecaoLote = typeof SECOES_LOTE[number][0];
+function secaoLoteDaUrl(): SecaoLote {
+  const fragmento = window.location.hash.replace("#lote-", "");
+  return SECOES_LOTE.find(([id]) => id === fragmento)?.[0] ?? "animais";
+}
 
 function mensagemErro(e: unknown): string {
   return e instanceof RebanhoApiError ? e.message : e instanceof Error ? e.message : String(e);
@@ -44,7 +50,14 @@ type Movimentando = {
   destinoFixo?: { propriedadeId: number; loteId: string | null; rotulo: string };
 } | null;
 
-export function DetalheLote({ id, podeLancar = true, onVoltar }: { id: string; podeLancar?: boolean; onVoltar: () => void }) {
+export function DetalheLote({ id, podeLancar = true, onVoltar, rotuloVoltar = "Lotes" }: { id: string; podeLancar?: boolean; onVoltar: () => void; rotuloVoltar?: string }) {
+  const [secaoAtiva, setSecaoAtiva] = useState<SecaoLote>(secaoLoteDaUrl);
+  useEffect(() => {
+    const restaurar = () => setSecaoAtiva(secaoLoteDaUrl());
+    window.addEventListener("hashchange", restaurar);
+    window.addEventListener("popstate", restaurar);
+    return () => { window.removeEventListener("hashchange", restaurar); window.removeEventListener("popstate", restaurar); };
+  }, []);
   const [lote, setLote] = useState<Lote | null>(null);
   const [catalogos, setCatalogos] = useState<Catalogos | null>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -136,7 +149,7 @@ export function DetalheLote({ id, podeLancar = true, onVoltar }: { id: string; p
     finally { setProcessandoLote(false); }
   };
 
-  if (!lote) return <div className="shell-wide pagina-carregando"><button onClick={onVoltar} className="mt-6 mb-5 inline-flex shrink-0 items-center gap-2 self-start text-sm font-semibold text-ink-2"><ArrowLeft size={17} /> Voltar para lotes</button><ErrorBox erro={erro} />{!erro && <Loader label="Carregando lote" full />}</div>;
+  if (!lote) return <PaginaFinanceira><button onClick={onVoltar} className="rebanho-voltar"><ArrowLeft size={16} /> {rotuloVoltar}</button><PageHeader titulo="Lote" /><ErrorBox erro={erro} />{!erro && <div className="rebanho-carregamento"><Loader label="Carregando lote" /></div>}</PaginaFinanceira>;
 
   const totalPaginasAnimais = Math.max(1, Math.ceil(totalAnimais / ITENS_POR_PAGINA));
   const totalPaginasBaixados = Math.max(1, Math.ceil(totalBaixados / ITENS_POR_PAGINA));
@@ -144,12 +157,9 @@ export function DetalheLote({ id, podeLancar = true, onVoltar }: { id: string; p
   const COLUNAS_ANIMAIS: ColunaTabela<AnimalResumo>[] = [
     ...(podeLancar ? [{ chave: "selecionar", titulo: "", larguraMinima: 44, acoes: true, celula: (item: AnimalResumo) => <label className="flex items-center" onClick={(e: React.MouseEvent) => e.stopPropagation()}><input type="checkbox" aria-label={`Selecionar ${item.brinco}`} checked={selecionados.has(item.id)} onChange={() => alternarSelecao(item)} /></label> }] as ColunaTabela<AnimalResumo>[] : []),
     { chave: "brinco", titulo: "Brinco", larguraMinima: 140, principal: true, celula: (item) => <><strong className="break-words">{item.brinco}</strong>{item.nome && <div className="mt-1 text-xs text-ink-3">{item.nome}</div>}</> },
-    { chave: "sexo", titulo: "Sexo", larguraMinima: 70, celula: (item) => rotuloSexo(item.sexo) },
-    { chave: "categoria", titulo: "Categoria", larguraMinima: 110, celula: (item) => <CategoriaPill categoria={item.categoria} categoriaOrigem={item.categoriaOrigem} categoriaCalculada={item.categoriaCalculada} /> },
-    { chave: "idade", titulo: "Idade", larguraMinima: 80, celula: (item) => formatarIdade(item.idadeMeses) },
+    { chave: "categoria", titulo: "Categoria / perfil", larguraMinima: 150, celula: (item) => <><CategoriaPill categoria={item.categoria} categoriaOrigem={item.categoriaOrigem} categoriaCalculada={item.categoriaCalculada} /><div className="mt-1 text-xs text-ink-3">{rotuloSexo(item.sexo)} · {formatarIdade(item.idadeMeses)}</div></> },
     { chave: "papel", titulo: "Finalidade/Papel", larguraMinima: 140, celula: (item) => <>{rotuloAptidao(item.aptidao)}{item.papelReprodutivo && item.papelReprodutivo !== "NENHUM" ? ` · ${rotuloPapelReprodutivo(item.papelReprodutivo)}` : ""}</> },
-    { chave: "peso", titulo: "Último peso", larguraMinima: 130, celula: (item) => item.ultimoPeso ? <>{item.ultimoPeso.kg.toLocaleString("pt-BR")} kg<div className="text-xs text-ink-3">{formatarDataBR(item.ultimoPeso.data)}</div></> : "—" },
-    { chave: "gmd", titulo: "GMD", larguraMinima: 110, celula: (item) => formatarGmd(item.gmdRecente) },
+    { chave: "peso", titulo: "Peso / GMD", larguraMinima: 160, celula: (item) => <>{item.ultimoPeso ? <>{item.ultimoPeso.kg.toLocaleString("pt-BR")} kg<div className="text-xs text-ink-3">{formatarDataBR(item.ultimoPeso.data)}</div></> : "Sem pesagem"}<div className="mt-1 text-xs text-ink-3">GMD {formatarGmd(item.gmdRecente)}</div></> },
     { chave: "noLote", titulo: "No lote desde", larguraMinima: 130, celula: (item) => formatarDataBR(item.noLocalDesde) },
     ...(podeLancar ? [{ chave: "acoes", titulo: "Ações", alinhamento: "direita" as const, larguraMinima: 96, acoes: true, celula: (item: AnimalResumo) => <div className="flex justify-end" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
       <button type="button" className="rounded-lg p-2 text-ink-2 hover:bg-surface-2 hover:text-ink" aria-label={`Movimentar ${item.brinco}`} title="Movimentar" onClick={() => setMovimentando({ animais: [item], usarLoteAtual: true })}><ArrowRightLeft size={16} /></button>
@@ -163,7 +173,7 @@ export function DetalheLote({ id, podeLancar = true, onVoltar }: { id: string; p
   ];
 
   return <PaginaFinanceira>
-    <nav aria-label="Navegação" className="pec-breadcrumb"><button type="button" onClick={() => navegarPara("/pecuaria/rebanho")}>Rebanho</button><span aria-hidden="true">/</span><button type="button" onClick={onVoltar}>Lotes</button><span aria-hidden="true">/</span><span aria-current="page">{lote.nome}</span></nav>
+    <nav aria-label="Navegação" className="pec-breadcrumb"><button type="button" onClick={() => navegarPara("/pecuaria/rebanho")}>Rebanho</button><span aria-hidden="true">/</span><button type="button" onClick={onVoltar}>{rotuloVoltar}</button><span aria-hidden="true">/</span><span aria-current="page">{lote.nome}</span></nav>
     <PageHeader
       eyebrow=""
       titulo={lote.nome}
@@ -172,32 +182,51 @@ export function DetalheLote({ id, podeLancar = true, onVoltar }: { id: string; p
         <Button secondary onClick={() => setTrazendo(true)}><ArrowRightLeft size={16} /> Trazer animais</Button>
         <Button secondary onClick={() => setEditando(true)}>Editar lote</Button>
         {lote.ativo
-          ? <Button danger onClick={() => setConfirmandoDesativar(true)}>Desativar</Button>
+          ? <Button secondary onClick={() => setConfirmandoDesativar(true)}>Desativar</Button>
           : <Button secondary onClick={() => { void executarAcaoLote(() => editarLote(lote.id, { ativo: true }), () => undefined); }}>Reativar</Button>}
       </div> : undefined}
     />
-    <NavRebanho ativa="lotes" />
+
     <ErrorBox erro={erro ?? erroLote} />
 
+    <nav aria-label="Seções da ficha do lote" role="tablist" className="rebanho-abas-ficha abas-pasta">
+      {SECOES_LOTE.map(([secao, rotulo]) => <a key={secao} role="tab" id={`lote-aba-${secao}`} aria-selected={secaoAtiva === secao} aria-controls={`lote-painel-${secao}`} tabIndex={secaoAtiva === secao ? 0 : -1} href={`#lote-${secao}`} onClick={evento => {
+        evento.preventDefault();
+        setSecaoAtiva(secao);
+        const url = new URL(window.location.href);
+        url.hash = `lote-${secao}`;
+        if (url.hash !== window.location.hash) window.history.pushState(window.history.state, "", url.pathname + url.search + url.hash);
+      }} onKeyDown={evento => {
+        if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(evento.key)) return;
+        evento.preventDefault();
+        const abas = Array.from(evento.currentTarget.parentElement!.querySelectorAll<HTMLAnchorElement>("[role=tab]"));
+        const indice = abas.indexOf(evento.currentTarget);
+        const proxima = evento.key === "Home" ? 0 : evento.key === "End" ? abas.length - 1 : (indice + (evento.key === "ArrowRight" ? 1 : -1) + abas.length) % abas.length;
+        abas[proxima].focus(); abas[proxima].click();
+      }}>{rotulo}</a>)}
+    </nav>
+    <div id="lote-painel-resumo" role="tabpanel" aria-labelledby="lote-aba-resumo" hidden={secaoAtiva !== "resumo"}>
     {resumo && <>
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="font-serif text-xl">Resumo do lote</h2>
+        <span id="lote-resumo" />
         <SeletorPeriodoGmd id="periodo-gmd-lote" valor={periodoGmd} onChange={setPeriodoGmd} />
       </div>
-      <div className="mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="pec-metricas pec-lote-metricas mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Metric label="Animais ativos" valor={resumo.ativos.toLocaleString("pt-BR")} detalhe={`${resumo.porSexo.F} fêmeas · ${resumo.porSexo.M} machos`} icon={Users} />
         <Metric label="Peso médio" valor={formatarKg(resumo.peso.medioKg)} detalhe={`${formatarKg(resumo.peso.minKg)} – ${formatarKg(resumo.peso.maxKg)} · ${resumo.peso.semPeso} sem peso`} icon={Weight} />
         <Metric label="GMD do período" valor={formatarGmd(resumo.gmd.medio)} detalhe={`${resumo.gmd.comGmd} de ${resumo.ativos} animais com pesagem suficiente`} icon={TrendingUp} />
-        <Metric label="Idade média" valor={resumo.idadeMediaMeses != null ? formatarIdade(resumo.idadeMediaMeses) : "—"} detalhe="Média dos animais ativos no lote" icon={Calendar} />
+        <Metric label="Idade média" valor={resumo.idadeMediaMeses != null ? formatarIdade(resumo.idadeMediaMeses) : "—"} icon={Calendar} />
       </div>
-      {resumo.porCategoria.length > 0 && <div className="mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-border bg-white p-4 text-sm">
-        {resumo.porCategoria.map((c) => <Pill key={c.categoriaId ?? "sem-categoria"}>{c.categoria}: {c.qtd}</Pill>)}
-      </div>}
-    </>}
 
+    </>}
+    </div>
+
+
+
+    <div id="lote-painel-animais" role="tabpanel" aria-labelledby="lote-aba-animais" hidden={secaoAtiva !== "animais"}>
     <Panel className="mt-6 overflow-hidden">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-5"><h2 className="font-serif text-xl">Animais no lote</h2></div>
-      {podeLancar && animais.length > 0 && <div className="flex flex-wrap items-center gap-3 border-b border-border bg-surface-2 px-4 py-2.5 text-sm">
+      <span id="lote-animais" />
+      {podeLancar && animais.length > 0 && <div className="flex flex-wrap items-center justify-end gap-3 border-b border-border p-4 text-xs">
         <label className="flex items-center gap-2 font-medium"><input type="checkbox" aria-label="Selecionar todos os animais desta página" checked={todosDaPaginaSelecionados} onChange={alternarSelecaoTodos} /> Selecionar todos</label>
         {selecionados.size > 0 && <><span className="text-ink-3">{selecionados.size} selecionado{selecionados.size === 1 ? "" : "s"}</span>
           <Button secondary onClick={() => setSelecionados(new Map())}>Limpar seleção</Button>
@@ -205,21 +234,25 @@ export function DetalheLote({ id, podeLancar = true, onVoltar }: { id: string; p
         </>}
       </div>}
       {animais.length ? <>
-        <TabelaFinanceira rotulo="Animais do lote" itens={animais} colunas={COLUNAS_ANIMAIS} chaveDe={(item) => item.id} onAbrir={(item) => navegarPara(`/pecuaria/rebanho/animais/${item.id}`)} barraRolagemSuperior />
+        <TabelaFinanceira rotulo="Animais do lote" itens={animais} colunas={COLUNAS_ANIMAIS} chaveDe={(item) => item.id} onAbrir={(item) => navegarPara(linkFichaAnimal(item.id))} />
         <Paginacao paginaAtual={paginaAnimais} totalPaginas={totalPaginasAnimais} totalItens={totalAnimais} itensPorPagina={ITENS_POR_PAGINA} onPaginaChange={setPaginaAnimais} rotulo="animais" idSelect="pagina-animais-lote" />
       </> : <Empty>Nenhum animal ativo neste lote.</Empty>}
     </Panel>
+    </div>
 
+    <div id="lote-painel-baixas" role="tabpanel" aria-labelledby="lote-aba-baixas" hidden={secaoAtiva !== "baixas"}>
     <Panel className="mt-6 overflow-hidden">
-      <div className="border-b border-border p-5"><h2 className="font-serif text-xl">Saíram por baixa</h2></div>
+      <span id="lote-baixas" />
       {baixados.length ? <>
-        <TabelaFinanceira rotulo="Animais que saíram por baixa" itens={baixados} colunas={COLUNAS_BAIXADOS} chaveDe={(item) => item.id} onAbrir={(item) => navegarPara(`/pecuaria/rebanho/animais/${item.id}`)} />
+        <TabelaFinanceira rotulo="Animais que saíram por baixa" itens={baixados} colunas={COLUNAS_BAIXADOS} chaveDe={(item) => item.id} onAbrir={(item) => navegarPara(linkFichaAnimal(item.id))} />
         <Paginacao paginaAtual={paginaBaixados} totalPaginas={totalPaginasBaixados} totalItens={totalBaixados} itensPorPagina={ITENS_POR_PAGINA} onPaginaChange={setPaginaBaixados} rotulo="animais baixados" idSelect="pagina-baixados-lote" />
       </> : <Empty>Nenhum animal deste lote saiu por baixa.</Empty>}
     </Panel>
+    </div>
 
+    <div id="lote-painel-historico" role="tabpanel" aria-labelledby="lote-aba-historico" hidden={secaoAtiva !== "historico"}>
     <Panel className="mt-6 overflow-hidden">
-      <div className="border-b border-border p-5"><h2 className="font-serif text-xl">Histórico</h2></div>
+      <span id="lote-historico" />
       <HistoricoMovimentacoes
         carregar={carregarHistorico}
         mostrarDirecao
@@ -229,14 +262,21 @@ export function DetalheLote({ id, podeLancar = true, onVoltar }: { id: string; p
         onMudou={recarregarTudo}
       />
     </Panel>
+    </div>
 
+    <div id="lote-painel-alteracoes" role="tabpanel" aria-labelledby="lote-aba-alteracoes" hidden={secaoAtiva !== "alteracoes"}>
     <Panel className="mt-6 overflow-hidden">
-      <div className="border-b border-border p-5"><h2 className="font-serif text-xl">Alterações do lote</h2></div>
+      <span id="lote-alteracoes" />
       <AlteracoesCadastro entidade="Lote" entidadeId={lote.id} recarregarToken={alteracoesToken} />
     </Panel>
+    </div>
 
-    <HistoricoSanitario loteId={lote.id} />
-    <NutricaoLote loteId={lote.id} propriedadeId={lote.propriedadeId} podeLancar={podeLancar && lote.ativo} />
+    <div id="lote-painel-sanidade" role="tabpanel" aria-labelledby="lote-aba-sanidade" hidden={secaoAtiva !== "sanidade"}>
+    <div id="lote-sanidade" style={{ scrollMarginTop: 120 }}><HistoricoSanitario loteId={lote.id} /></div>
+    </div>
+    <div id="lote-painel-nutricao" role="tabpanel" aria-labelledby="lote-aba-nutricao" hidden={secaoAtiva !== "nutricao"}>
+    <div id="lote-nutricao" style={{ scrollMarginTop: 120 }}><NutricaoLote loteId={lote.id} propriedadeId={lote.propriedadeId} podeLancar={podeLancar && lote.ativo} /></div>
+    </div>
 
     {editando && <FormLote lote={lote} propriedades={[]} onSalvo={async () => { setEditando(false); await Promise.all([carregarLote(), recarregarResumoEBaixados()]); }} onFechar={() => setEditando(false)} />}
 

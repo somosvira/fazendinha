@@ -402,10 +402,7 @@ export function Iatf({
       <ErrorBox erro={erro} />
       {modo !== "operacao" && <BibliotecaReprodutiva propriedadeId={sitioEfetivo} podeLancar={podeLancar} onCopiou={()=>void carregar()}/>}
       {modo === "operacao" && !programacaoId && <Panel>
-        <CabecalhoTabela
-          titulo="Programações de IATF"
-          acao={
-              <div className="flex flex-wrap gap-2">
+        <CabecalhoTabela titulo="Programações de IATF" acao={<div className="flex flex-wrap gap-2">
                 <Button secondary disabled={carregando} onClick={() => void carregar()}>Atualizar programações</Button>
                 {podeLancar && <>
                 <a className="inline-flex items-center rounded-lg border border-border px-3 py-2 text-sm" href="/configuracoes/pecuaria/reproducao/protocolos" onClick={e => { if (!e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) { e.preventDefault(); navegarPara("/configuracoes/pecuaria/reproducao/protocolos"); } }}>Gerenciar protocolos reprodutivos</a>
@@ -421,9 +418,7 @@ export function Iatf({
                   Nova programação
                 </Button>
                 </>}
-              </div>
-          }
-        />
+              </div>} />
         <div className="p-4 space-y-3">
           <p className="text-sm text-ink-3">
             Indicação, programação, início efetivo e execução são fatos

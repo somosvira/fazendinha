@@ -245,7 +245,8 @@ it("separa filtros editados da emissão preservada e mantém seus dados sem nova
   vi.mocked(listarEmissoesIndicadores).mockResolvedValue([e]);
   vi.mocked(abrirEmissaoIndicadores).mockResolvedValue(e);
   render(<IndicadoresReprodutivos propriedadeId={1} podeLancar={false}/>);
-  expect(screen.getByText(/O período inicial já está preenchido/)).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Aplicar" })).toBeTruthy();
+  expect(screen.queryByText(/O período inicial já está preenchido/)).toBeNull();
   await screen.findByRole("option", { name: /23\/09\/2026/ });
   fireEvent.change(screen.getByLabelText("Emissões preservadas"), { target: { value: "antiga" } });
   await screen.findByText(/Emissão preservada em/);

@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
+import { alterarControle } from "../../../lib/controles.fixture";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { FormBaixa } from "./FormBaixa";
 import { consultarCarencia } from "../sanidade/api";
 import { darBaixaAnimal } from "../api";
@@ -36,45 +37,47 @@ const motivos: CatalogoMotivoBaixa[] = [
   { id: "mm1", nome: "Doença", classe: "MORTE" },
 ];
 
-function grupos(select: HTMLSelectElement) {
-  return Array.from(select.querySelectorAll("optgroup")).map((g) => g.label);
+async function grupos(select: HTMLElement) {
+  fireEvent.click(select);
+  const lista = await screen.findByRole("listbox");
+  return within(lista).getAllByRole("group").map((g) => document.getElementById(g.getAttribute("aria-labelledby")!)?.textContent);
 }
-function opcoesDoGrupo(select: HTMLSelectElement, label: string) {
-  return Array.from(select.querySelectorAll(`optgroup[label="${label}"] option`)).map((o) => o.textContent);
+function opcoesDoGrupo(_select: HTMLElement, label: string) {
+  return within(screen.getByRole("group", { name: label })).getAllByRole("option").map((o) => o.textContent);
 }
 
 describe("FormBaixa", () => {
-  it("Venda (padrão) mostra só motivos de descarte, agrupados por classe", () => {
+  it("Venda (padrão) mostra só motivos de descarte, agrupados por classe", async () => {
     render(<FormBaixa animal={animal} motivos={motivos} onSalvo={vi.fn()} onFechar={vi.fn()} />);
     expect((screen.getByLabelText(/^Tipo/) as HTMLSelectElement).value).toBe("VENDA");
     const select = screen.getByLabelText("Motivo do catálogo") as HTMLSelectElement;
-    expect(grupos(select)).toEqual(["Descarte voluntário", "Descarte involuntário"]);
+    expect(await grupos(select)).toEqual(["Descarte voluntário", "Descarte involuntário"]);
     expect(opcoesDoGrupo(select, "Descarte voluntário")).toEqual(["Baixa produção", "Excesso de animais"]);
     expect(opcoesDoGrupo(select, "Descarte involuntário")).toEqual(["Problema locomotor"]);
     expect(screen.queryByText("Doença")).toBeNull();
   });
 
-  it("Morte mostra só motivos de morte", () => {
+  it("Morte mostra só motivos de morte", async () => {
     render(<FormBaixa animal={animal} motivos={motivos} onSalvo={vi.fn()} onFechar={vi.fn()} />);
-    fireEvent.change(screen.getByLabelText(/^Tipo/), { target: { value: "MORTE" } });
+    await alterarControle(screen.getByLabelText(/^Tipo/), { target: { value: "MORTE" } });
     const select = screen.getByLabelText("Motivo do catálogo") as HTMLSelectElement;
-    expect(grupos(select)).toEqual(["Morte"]);
+    expect(await grupos(select)).toEqual(["Morte"]);
     expect(opcoesDoGrupo(select, "Morte")).toEqual(["Doença"]);
     expect(screen.queryByText("Baixa produção")).toBeNull();
   });
 
-  it("Extravio esconde o campo de motivo", () => {
+  it("Extravio esconde o campo de motivo", async () => {
     render(<FormBaixa animal={animal} motivos={motivos} onSalvo={vi.fn()} onFechar={vi.fn()} />);
-    fireEvent.change(screen.getByLabelText(/^Tipo/), { target: { value: "EXTRAVIO" } });
+    await alterarControle(screen.getByLabelText(/^Tipo/), { target: { value: "EXTRAVIO" } });
     expect(screen.queryByLabelText("Motivo do catálogo")).toBeNull();
   });
 
-  it("trocar o tipo limpa o motivo já selecionado", () => {
+  it("trocar o tipo limpa o motivo já selecionado", async () => {
     render(<FormBaixa animal={animal} motivos={motivos} onSalvo={vi.fn()} onFechar={vi.fn()} />);
     const select = screen.getByLabelText("Motivo do catálogo") as HTMLSelectElement;
-    fireEvent.change(select, { target: { value: "mv1" } });
+    await alterarControle(select, { target: { value: "mv1" } });
     expect(select.value).toBe("mv1");
-    fireEvent.change(screen.getByLabelText(/^Tipo/), { target: { value: "ABATE" } });
+    await alterarControle(screen.getByLabelText(/^Tipo/), { target: { value: "ABATE" } });
     expect((screen.getByLabelText("Motivo do catálogo") as HTMLSelectElement).value).toBe("");
   });
 
@@ -82,10 +85,10 @@ describe("FormBaixa", () => {
     vi.mocked(darBaixaAnimal).mockResolvedValue({ ...animal, situacao: "BAIXADO" });
     const onSalvo = vi.fn();
     render(<FormBaixa animal={animal} motivos={motivos} onSalvo={onSalvo} onFechar={vi.fn()} />);
-    fireEvent.change(screen.getByLabelText(/Data da baixa/), { target: { value: "2026-09-12" } });
-    fireEvent.change(screen.getByLabelText(/^Tipo/), { target: { value: "ABATE" } });
-    fireEvent.change(screen.getByLabelText("Motivo do catálogo"), { target: { value: "mi1" } });
-    fireEvent.change(screen.getByLabelText("Observação"), { target: { value: "Lote de descarte" } });
+    await alterarControle(screen.getByLabelText(/Data da baixa/), { target: { value: "2026-09-12" } });
+    await alterarControle(screen.getByLabelText(/^Tipo/), { target: { value: "ABATE" } });
+    await alterarControle(screen.getByLabelText("Motivo do catálogo"), { target: { value: "mi1" } });
+    await alterarControle(screen.getByLabelText("Observação"), { target: { value: "Lote de descarte" } });
     await waitFor(() => expect((screen.getByRole("button", { name: "Confirmar baixa" }) as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(screen.getByRole("button", { name: "Confirmar baixa" }));
     await waitFor(() => expect(darBaixaAnimal).toHaveBeenCalledWith("animal-1", { data: "2026-09-12", tipo: "ABATE", motivoId: "mi1", observacao: "Lote de descarte" }));
@@ -109,8 +112,8 @@ it("consulta a data da baixa e invalida ciência ao alterar a data", async () =>
   expect(darBaixaAnimal).not.toHaveBeenCalled();
   expect(document.getElementById("baixa-ciencia-erro")).toBeTruthy();
   fireEvent.click(ciencia);
-  fireEvent.change(screen.getByLabelText("Justificativa para a baixa diante das restrições"), { target: { value: "Baixa histórica conferida" } });
-  fireEvent.change(screen.getByLabelText(/Data da baixa/), { target: { value: "2026-09-13" } });
+  await alterarControle(screen.getByLabelText("Justificativa para a baixa diante das restrições"), { target: { value: "Baixa histórica conferida" } });
+  await alterarControle(screen.getByLabelText(/Data da baixa/), { target: { value: "2026-09-13" } });
   await waitFor(() => expect(consultarCarencia).toHaveBeenLastCalledWith("animal-1", "2026-09-13"));
   expect(await screen.findByRole("switch")).toHaveProperty("checked", false);
 });

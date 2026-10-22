@@ -147,7 +147,7 @@ export function PainelIndicadores({
               [indice]?.focus();
           }
         }}
-        className="flex overflow-x-auto border-b border-border"
+        className="abas-pasta"
       >
         {(
           [
@@ -251,7 +251,7 @@ export function PainelIndicadores({
                   </label>
                 </div>
                 <div className="overflow-x-auto">
-                  <table className="w-full whitespace-nowrap text-left text-base">
+                  <table className="w-full whitespace-nowrap text-left text-base consulta-tabela">
                     <thead className="bg-muted/35">
                       <tr>
                         {[
@@ -701,7 +701,7 @@ function TabelaPendencias({
   return (
     <>
       <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm">
+        <table className="w-full text-left text-sm consulta-tabela">
           <caption className="pb-3 text-left font-semibold">
             Animais e participações a conferir
           </caption>

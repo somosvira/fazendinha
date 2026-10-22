@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { abrirFiltrosConsulta, aplicarFiltrosConsulta } from "@/lib/controles.fixture";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { getHojeISO } from "../../../lib/hoje";
@@ -28,28 +29,26 @@ it("integra tentativas ao histórico com paginação e exclui marcos previstos",
  expect(screen.getAllByRole("button", { name: "Ver detalhes" })).toHaveLength(20);
  fireEvent.click(screen.getByRole("button", { name: "Próxima" }));
  expect(screen.getAllByRole("button", { name: "Ver detalhes" })).toHaveLength(6);
+ await abrirFiltrosConsulta();
  fireEvent.click(screen.getByRole("button",{name:"Tipos de registro"}));fireEvent.click(screen.getByRole("option",{name:"Avaliações"}));fireEvent.keyDown(screen.getByPlaceholderText("Buscar opção…"),{key:"Escape"});
+ await aplicarFiltrosConsulta();
  expect(screen.getByText("Nenhum evento registrado neste período e tipo.")).toBeTruthy();
 });
-it("conserva deep links e detalhes, filtra período e mantém rascunho ao recolher", async () => {
+it("conserva deep links e detalhes, filtra período e mantém rascunho ao atualizar", async () => {
  window.history.replaceState(null, "", "/?fatoId=t0#reproducao");
  vi.mocked(obterReproducao).mockResolvedValue(painel());
  const { rerender } = render(<ReproducaoIndividual animalId="a" propriedadeId={1} podeLancar={true}/>);
  expect(await screen.findByText("Fato t0")).toBeTruthy();
  fireEvent.click(screen.getByRole("button", { name: "Fechar fato" }));
  expect(new URLSearchParams(window.location.search).has("fatoId")).toBe(false);
- fireEvent.click(screen.getByRole("button", { name: /Aptidão hoje/ }));
  const criterio = screen.getByLabelText("Critérios completos") as HTMLInputElement;
  fireEvent.change(criterio, { target: { value: "alterado" } });
- fireEvent.click(screen.getByRole("button", { name: /Aptidão hoje/ }));
- fireEvent.click(screen.getByRole("button", { name: /Aptidão hoje/ }));
  expect((screen.getByLabelText("Critérios completos") as HTMLInputElement).value).toBe("alterado");
  expect(screen.getByText("Não aferido")).toBeTruthy();
- fireEvent.click(screen.getByRole("button", {name:"Personalizar período"}));
+ fireEvent.click(screen.getByRole("button", {name:"Período do histórico reprodutivo"}));
  fireEvent.change(screen.getByLabelText("Data inicial"), { target: { value: "2020-09-10" } });
  fireEvent.click(screen.getByRole("button", {name:"Aplicar período"}));
  expect(screen.getByText("1–3 de 3 registros")).toBeTruthy();
- fireEvent.click(screen.getByRole("button", { name: /Custos diretos/ }));
  expect(screen.getByText("Custos REPRODUCAO")).toBeTruthy();
  rerender(<ReproducaoIndividual animalId="a" propriedadeId={1} podeLancar={true} recarregarToken={1}/>);
  await waitFor(() => expect(obterReproducao).toHaveBeenCalledTimes(2));
@@ -107,7 +106,9 @@ it.each([0,1,2,3])("conserva %s tentativas factuais sem completar lacunas", asyn
  vi.mocked(obterReproducao).mockResolvedValue(dados);
  render(<ReproducaoIndividual animalId="a" podeLancar={false}/>);
  expect(await screen.findByText(`${quantidade} desde o início registrado`)).toBeTruthy();
+ await abrirFiltrosConsulta();
  fireEvent.click(screen.getByRole("button",{name:"Tipos de registro"}));fireEvent.click(screen.getByRole("option",{name:"Tentativas"}));fireEvent.keyDown(screen.getByPlaceholderText("Buscar opção…"),{key:"Escape"});
+ await aplicarFiltrosConsulta();
  expect(screen.queryAllByRole("button",{name:"Ver detalhes"})).toHaveLength(quantidade*2);
 });
 const paginaDemandas = <T extends { estado: string },>(itens: T[]) => ({ itens, total: itens.length, pagina: 1, porPagina: 10, resumo: { total: itens.length, pendentes: itens.filter(d => d.estado === "PENDENTE").length, resolvidas: itens.filter(d => d.estado === "RESOLVIDA").length, encerradas: 0, semData: 0 } });
@@ -169,15 +170,25 @@ it("adoção explícita reconsulta o pai e torna demanda avulsa e situação des
  expect(obterReproducao).toHaveBeenCalledTimes(2);
 });
 
-it("agrupa registros no menu e a ação abre o mesmo formulário sem depender de expandir a seção", async () => {
+it("abre registros frequentes diretamente e conserva os secundários no menu", async () => {
  vi.mocked(obterReproducao).mockResolvedValue(painel());
  render(<ReproducaoIndividual animalId="a" propriedadeId={1} podeLancar/>);
- const menu = await screen.findByRole("button", {name:"Ações de reprodução"});
- expect(screen.getByRole("button", {name:"Registros e ações"}).getAttribute("aria-expanded")).toBe("false");
- fireEvent.keyDown(menu, {key:"Enter"});
- expect(await screen.findAllByRole("menuitem")).toHaveLength(5);
- fireEvent.click(screen.getByRole("menuitem", {name:"Registrar tentativa"}));
+ fireEvent.click(await screen.findByRole("button", {name:"Registrar tentativa"}));
  expect(screen.getByText("Formulário preservado")).toBeTruthy();
+ const menu = screen.getByRole("button", {name:"Outros registros"});
+ fireEvent.keyDown(menu, {key:"Enter"});
+ expect(await screen.findAllByRole("menuitem")).toHaveLength(2);
+ expect(screen.getByRole("menuitem", {name:"Registrar situação inicial"})).toBeTruthy();
+ expect(screen.getByRole("menuitem", {name:"Registrar restrição"})).toBeTruthy();
+});
+it("não consulta aptidão de hoje nem acompanhamentos de animal fora do efetivo atual", async () => {
+ const dados = painel(); dados.animais=[]; dados.tentativas=[]; dados.situacoesIniciais=[];
+ vi.mocked(obterReproducao).mockResolvedValue(dados);
+ render(<ReproducaoIndividual animalId="a" propriedadeId={1} podeLancar/>);
+ expect(await screen.findByText(/Consulta histórica neste sítio/)).toBeTruthy();
+ expect(screen.queryByLabelText("Critérios completos")).toBeNull();
+ expect(vi.mocked(reqV4).mock.calls.some(([url])=>url.startsWith("/reproducao/acompanhamento?"))).toBe(false);
+ expect(screen.getByText("Nenhum evento registrado neste período e tipo.")).toBeTruthy();
 });
 
 it("transferência conserva resumo clínico transversal sem acrescentar fatos ao histórico do sítio", async () => {

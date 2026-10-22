@@ -1,4 +1,6 @@
+import { SelectCampo } from "@/financeiro/SelectCampo";
 import { useEffect, useState } from "react";
+import { Syringe } from "lucide-react";
 import { buscarFichaAnimal, listarAnimais } from "../api";
 import type { AnimalResumo } from "../types";
 import { Button, ErrorBox } from "../../../financeiro/financeiro-ui";
@@ -17,5 +19,5 @@ export function FormAplicacaoAnimal({ animalInicial, onFechar, onSalvo }: { anim
   useEffect(() => { let vivo = true; setAnimal(null); if (animalId) buscarFichaAnimal(animalId).then((r) => { if (vivo) setAnimal(r); }).catch((e: unknown) => { if (vivo) setErro(e instanceof Error ? e.message : String(e)); }); return () => { vivo = false; }; }, [animalId]);
   const sitio = animal?.propriedade?.id;
   if (continuar && sitio) return <FormAplicacaoServico animalId={animalId} propriedadeId={sitio} onFechar={onFechar} onSalvo={onSalvo} />;
-  return <PainelCadastro aberto titulo="Registrar aplicação sanitária" onFechar={onFechar} rodape={<Button disabled={!sitio} onClick={() => setContinuar(true)}>Continuar</Button>}><div className="grid gap-4"><ErrorBox erro={erro} /><label>Buscar animal<input className={classeInput} value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Brinco ou nome" /></label><label>Animal<select className={classeInput} value={animalId} onChange={(e) => setAnimalId(e.target.value)}><option value="">Selecione</option>{animal && !animais.some((a) => a.id === animal.id) && <option value={animal.id}>{nomeAnimalSanitario(animal)}</option>}{animais.map((a) => <option key={a.id} value={a.id}>{nomeAnimalSanitario(a)}</option>)}</select></label></div></PainelCadastro>;
+  return <PainelCadastro aberto compacto icon={Syringe} titulo="Registrar aplicação sanitária" onFechar={onFechar} rodape={<Button disabled={!sitio} onClick={() => setContinuar(true)}>Continuar</Button>}><div data-pec-formulario className="grid gap-4"><ErrorBox erro={erro} /><label>Buscar animal<input className={classeInput} value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Brinco ou nome" /></label><label>Animal<SelectCampo className={classeInput} value={animalId} onValueChange={(valorSelecionado) => setAnimalId(valorSelecionado)}><option value="">Selecione</option>{animal && !animais.some((a) => a.id === animal.id) && <option value={animal.id}>{nomeAnimalSanitario(animal)}</option>}{animais.map((a) => <option key={a.id} value={a.id}>{nomeAnimalSanitario(a)}</option>)}</SelectCampo></label></div></PainelCadastro>;
 }

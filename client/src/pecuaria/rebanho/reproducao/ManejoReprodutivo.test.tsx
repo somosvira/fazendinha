@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { abrirFiltrosConsulta, aplicarFiltrosConsulta, alterarControle } from "@/lib/controles.fixture";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { ManejoReprodutivo } from "./ManejoReprodutivo";
@@ -68,12 +69,16 @@ it("filtra contagens globais antes de paginar, muda ordem e preserva URL e taman
   await screen.findByText("1–4 de 6 animais");
   fireEvent.click(screen.getByRole("button", { name: "Próxima" }));
   expect(screen.getByText("5–6 de 6 animais")).toBeTruthy();
-  fireEvent.change(screen.getByLabelText("Filtrar lote"), { target: { value: "l2" } });
+  await abrirFiltrosConsulta();
+  await alterarControle(screen.getByLabelText("Filtrar lote"), { target: { value: "l2" } });
+  await aplicarFiltrosConsulta();
   expect(screen.getByText("1–1 de 1 animais")).toBeTruthy(); expect(screen.getByRole("button", { name: "Liberadas sem serviço 1" })).toBeTruthy();
   expect(screen.queryByText("V4-1")).toBeNull(); expect(screen.getAllByText("V4-2")[0]).toBeTruthy();
   expect(new URLSearchParams(window.location.search).get("pagina")).toBe("1");
-  fireEvent.change(screen.getByLabelText("Filtrar lote"), { target: { value: "" } });
-  fireEvent.change(screen.getByLabelText("Ordenar animais"), { target: { value: "menor-espera" } });
+  await abrirFiltrosConsulta();
+  await alterarControle(screen.getByLabelText("Filtrar lote"), { target: { value: "" } });
+  await alterarControle(screen.getByLabelText("Ordenar animais"), { target: { value: "menor-espera" } });
+  await aplicarFiltrosConsulta();
   const tabela = screen.getByRole("table", { name: "Liberadas sem serviço" });
   expect(within(tabela).getAllByRole("row")[1].textContent).toContain("V4-8");
   fireEvent.change(screen.getByLabelText("Animais por página"), { target: { value: "10" } });

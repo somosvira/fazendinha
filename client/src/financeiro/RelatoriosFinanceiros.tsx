@@ -1,3 +1,5 @@
+import { useFiltrosTabelaLocal } from "./useFiltrosTabelaLocal";
+import { BarraConsulta } from "@/financeiro/BarraConsulta";
 import { enfileirarSalvamentoRascunhoRelatorio, estadoRascunhoRelatorioAtivo, limparRascunhoRelatorioAtivo, useRascunhoRelatorioAtivo } from "./rascunhoRelatorioAtivo";
 import { Input } from "@/components/ui/input";
 import { normalizarBuscaFinanceira } from "./ListaCadastroFinanceiro";
@@ -49,6 +51,12 @@ export function RelatoriosFinanceiros({ podeExportar = true }: { podeExportar?: 
   const [busca, setBusca] = useState("");
   const [pagina, setPagina] = useState(1);
   const [confirmarNovo, setConfirmarNovo] = useState(false);
+  const consultaColunas = useFiltrosTabelaLocal<RelatorioFinanceiro>([
+    { chave: "nome", naBarra: true, rotulo: "Relatório", tipo: "texto", obter: r => r.nome },
+    { chave: "autor", naBarra: true, rotulo: "Autor", tipo: "texto", obter: r => r.autor },
+    { chave: "propriedade", rotulo: "Propriedade", tipo: "texto", obter: r => r.propriedade },
+    { chave: "gerado", naBarra: true, rotulo: "Gerado em", tipo: "data", obter: r => isoDate(new Date(r.geradoEm)) },
+  ], () => setPagina(1));
 
   const carregandoRef = useRef(false);
   const carregar = useCallback(async () => {
@@ -120,7 +128,7 @@ export function RelatoriosFinanceiros({ podeExportar = true }: { podeExportar?: 
   }
   if (!relatorios) return <><PaginaSemDados titulo="Relatórios financeiros" descricao={DESCRICAO} label="Carregando relatórios" erro={erro} />{erro && <PaginaFinanceira><Button secondary disabled={atualizando} onClick={() => void carregar()}>Tentar novamente</Button></PaginaFinanceira>}</>;
 
-  const relatoriosFiltrados = relatorios.filter(r => { const dia = isoDate(new Date(r.geradoEm)); return normalizarBuscaFinanceira(`${r.nome} ${r.autor}`).includes(normalizarBuscaFinanceira(busca)) && (!periodoEmissao.inicio || dia >= periodoEmissao.inicio) && (!periodoEmissao.fim || dia <= periodoEmissao.fim); });
+  const relatoriosFiltrados = consultaColunas.filtrar(relatorios).filter(r => { const dia = isoDate(new Date(r.geradoEm)); return normalizarBuscaFinanceira(`${r.nome} ${r.autor}`).includes(normalizarBuscaFinanceira(busca)) && (!periodoEmissao.inicio || dia >= periodoEmissao.inicio) && (!periodoEmissao.fim || dia <= periodoEmissao.fim); });
   const variasPropriedades = new Set(relatorios.map((r) => r.propriedadeId)).size > 1;
   const totalPaginas = Math.max(1, Math.ceil(relatoriosFiltrados.length / 15));
   const paginaAtual = Math.min(pagina, totalPaginas);
@@ -138,18 +146,18 @@ export function RelatoriosFinanceiros({ podeExportar = true }: { podeExportar?: 
   </div> : undefined;
 
   return <PaginaFinanceira colorida>
-    <PageHeader eyebrow="" titulo="Relatórios financeiros" descricao={DESCRICAO} acao={acoes} />
+    <PageHeader eyebrow="" titulo="Relatórios financeiros" descricao="Consulte relatórios gerados ou prepare uma análise por período e sítio." acao={acoes} />
     <ErrorBox erro={erro} />
     {erro && <Button secondary disabled={atualizando} onClick={() => void carregar()}>Tentar novamente</Button>}
     {aviso && <div role="status" className="mt-4 rounded-lg border border-[color-mix(in_srgb,var(--pos)_30%,var(--card))] bg-[var(--fin-positive-bg)] p-4 text-sm text-[var(--pos)]">{aviso}</div>}
     <Panel className="mt-4 overflow-hidden">
-      <div className="fin-filtros-barra border-b border-border p-4">
+      <BarraConsulta campos={consultaColunas.campos} edicaoFiltros={consultaColunas.edicao} erroFiltros={consultaColunas.erro} criterios={consultaColunas.criterios} onLimpar={consultaColunas.limpar}>
         <label className="fin-filtro-busca text-sm font-medium">Buscar relatório<span className="relative mt-1 block"><Search size={18} strokeWidth={1.8} aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-3" /><Input aria-label="Buscar relatório" placeholder="Nome ou autor…" value={busca} onChange={e => { setBusca(e.target.value); setPagina(1); }} className="pl-10" /></span></label>
         <div className="fin-filtro-controle"><PeriodoFinanceiroControl inicio={periodoEmissao.inicio} fim={periodoEmissao.fim} allowAll label="Período de emissão" onChange={periodo => { setPeriodoEmissao(periodo); setPagina(1); }} /></div>
-      </div>
+      </BarraConsulta>
       {relatoriosFiltrados.length === 0
         ? <Empty>{relatorios.length ? "Nenhum relatório emitido no período selecionado." : "Nenhum relatório foi gerado ainda."}</Empty>
-        : <TabelaFinanceira rotulo="Relatórios gerados" colunas={colunas} compacta itens={relatoriosFiltrados.slice((paginaAtual - 1) * 15, paginaAtual * 15)} chaveDe={(r) => r.id} onAbrir={abrir} classeLinha={(r) => r.id === recente ? "bg-muted" : ""} />}
+        : <TabelaFinanceira filtrosColunas={consultaColunas.colunas} rotulo="Relatórios gerados" colunas={colunas} compacta itens={relatoriosFiltrados.slice((paginaAtual - 1) * 15, paginaAtual * 15)} chaveDe={(r) => r.id} onAbrir={abrir} classeLinha={(r) => r.id === recente ? "bg-muted" : ""} />}
       <Paginacao pagina={paginaAtual} totalPaginas={totalPaginas} total={relatoriosFiltrados.length} porPagina={15} rotulo="Paginação de relatórios" substantivo="relatórios" idSelect="pagina-relatorios" onPagina={setPagina} />
     </Panel>
     <ConfirmDialog
@@ -158,6 +166,7 @@ export function RelatoriosFinanceiros({ podeExportar = true }: { podeExportar?: 
       message="Você já tem um rascunho de relatório em andamento. Para começar outro, o rascunho atual será apagado."
       confirmLabel="Descartar e criar"
       cancelLabel="Continuar rascunho"
+      dismissLabel="Voltar à lista"
       cancelTone="safe"
       tone="danger"
       processando={iniciando}

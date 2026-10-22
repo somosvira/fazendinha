@@ -249,7 +249,7 @@ export const listarFiltrosSchema = z.object({
   tipoBaixa: tipoBaixaSchema.optional(),
   baixaDe: dataISO.optional(),
   baixaAte: dataISO.optional(),
-  ordenar: z.enum(["brinco", "nascimento", "entrada"]).optional().default("brinco"),
+  ordenar: z.enum(["brinco", "nascimento", "entrada", "ultimoPeso", "gmd"]).optional().default("brinco"),
   direcao: z.enum(["asc", "desc"]).optional().default("asc"),
   page: z.coerce.number().int().min(1).optional().default(1),
   pageSize: z.coerce.number().int().min(1).max(200).optional().default(20),

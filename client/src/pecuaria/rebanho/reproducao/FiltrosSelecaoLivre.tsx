@@ -1,3 +1,4 @@
+import { MultiSelect } from "@/components/MultiSelect";
 import type { ReactNode } from "react";
 import { Condicoes, enumerados } from "./EditorSelecaoVisita";
 import type { CampoNumerico, CampoValor, CondicaoSelecao, CriteriosSelecao, OpcoesSelecao } from "./planner-api";
@@ -10,7 +11,7 @@ export function FiltrosSelecaoLivre({ criterios: c, onMudar, opcoes, data, sitio
   const valores = (campo: CampoValor) => {const v=condicao(campo);return v?.tipo==="VALORES"?v.valores:[];};
   const escolhas = {...enumerados,CATEGORIA:opcoes.categorias,LOTE:opcoes.lotes,RACA:opcoes.racas,PROTOCOLO:opcoes.protocolos};
   function seletor(campo: CampoValor, nome: string) {
-    return <fieldset className="livre-opcoes"><legend>{nome}</legend><details><summary>{valores(campo).length ? `${valores(campo).length} selecionados` : "Todos"}</summary><div>{(escolhas[campo]??[]).map(o=><label key={o.id}><input type="checkbox" checked={valores(campo).includes(o.id)} onChange={e=>{const novos=e.target.checked?[...valores(campo),o.id]:valores(campo).filter(v=>v!==o.id);alterar(campo,novos.length?{tipo:"VALORES",campo,valores:novos}:undefined);}}/>{o.nome}</label>)}</div></details></fieldset>;
+    return <MultiSelect compacto label={nome} placeholder="Todos" options={(escolhas[campo] ?? []).map(o => ({ value: o.id, label: o.nome }))} value={valores(campo)} onValueChange={novos => alterar(campo, novos.length ? { tipo: "VALORES", campo, valores: novos } : undefined)} />;
   }
   function faixa(campo: CampoNumerico, nome: string) {
     const v=condicao(campo), f=v?.tipo==="FAIXA"?v:null;

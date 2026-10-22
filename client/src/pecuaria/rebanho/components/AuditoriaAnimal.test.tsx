@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { alterarControle } from "../../../lib/controles.fixture";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AuditoriaAnimal } from "./AuditoriaAnimal";
@@ -75,11 +76,11 @@ describe("AuditoriaAnimal", () => {
     vi.mocked(buscarAuditoriaAnimal).mockResolvedValue(resposta());
     render(<AuditoriaAnimal id="animal-1" />);
     await screen.findByText("Identificação 1");
-    fireEvent.change(screen.getByLabelText("Período"), { target: { value: "todos" } });
-    fireEvent.change(screen.getByLabelText("Eixo"), { target: { value: "NUTRICAO" } });
-    fireEvent.change(screen.getByLabelText("Ação"), { target: { value: "ESTORNO" } });
-    fireEvent.change(screen.getByLabelText("Responsável"), { target: { value: "8" } });
-    fireEvent.change(screen.getByLabelText("Buscar registro"), { target: { value: "Consumo" } });
+    await alterarControle(screen.getByLabelText("Período"), { target: { value: "todos" } });
+    await alterarControle(screen.getByLabelText("Eixo"), { target: { value: "NUTRICAO" } });
+    await alterarControle(screen.getByLabelText("Ação"), { target: { value: "ESTORNO" } });
+    await alterarControle(screen.getByLabelText("Responsável"), { target: { value: "8" } });
+    await alterarControle(screen.getByLabelText("Buscar registro"), { target: { value: "Consumo" } });
     fireEvent.click(screen.getByRole("button", { name: "Buscar registros" }));
     await waitFor(() => expect(buscarAuditoriaAnimal).toHaveBeenLastCalledWith("animal-1", { page: 1, pageSize: 20, eixo: "NUTRICAO", acao: "ESTORNO", responsavel: 8, busca: "Consumo" }));
   });
@@ -99,7 +100,7 @@ describe("AuditoriaAnimal", () => {
     vi.mocked(buscarAuditoriaAnimal).mockResolvedValue(resposta([{ ...entrada(), eixo: null, registro: "Classificação de custo" }]));
     render(<AuditoriaAnimal id="animal-1" />);
     await screen.findByText("Classificação de custo");
-    fireEvent.change(screen.getByLabelText("Eixo"), { target: { value: "NAO_CLASSIFICADO" } });
+    await alterarControle(screen.getByLabelText("Eixo"), { target: { value: "NAO_CLASSIFICADO" } });
     await waitFor(() => expect(buscarAuditoriaAnimal).toHaveBeenLastCalledWith("animal-1", expect.objectContaining({ page: 1, eixo: "NAO_CLASSIFICADO" })));
   });
 
@@ -109,7 +110,7 @@ describe("AuditoriaAnimal", () => {
     render(<AuditoriaAnimal id="animal-1" />);
     await screen.findByText("Identificação 1");
     fireEvent.click(screen.getByRole("button", { name: "Próxima" }));
-    fireEvent.change(screen.getByLabelText("Eixo"), { target: { value: "SANIDADE" } });
+    await alterarControle(screen.getByLabelText("Eixo"), { target: { value: "SANIDADE" } });
     await screen.findByText("Identificação 3");
     await act(async () => antiga.resolver(resposta([entrada(2)], 25)));
     expect(screen.queryByText("Identificação 2")).toBeNull();
@@ -169,12 +170,12 @@ describe("AuditoriaAnimal", () => {
     vi.mocked(buscarAuditoriaAnimal).mockResolvedValue(resposta());
     render(<AuditoriaAnimal id="animal-1" />);
     await screen.findByText("Identificação 1");
-    fireEvent.change(screen.getByLabelText("Período"), { target: { value: "personalizado" } });
-    fireEvent.change(screen.getByLabelText("De"), { target: { value: "2026-01-01" } });
-    fireEvent.change(screen.getByLabelText("Até"), { target: { value: "2026-01-02" } });
+    await alterarControle(screen.getByLabelText("Período"), { target: { value: "personalizado" } });
+    await alterarControle(screen.getByLabelText("De"), { target: { value: "2026-01-01" } });
+    await alterarControle(screen.getByLabelText("Até"), { target: { value: "2026-01-02" } });
     await waitFor(() => expect(buscarAuditoriaAnimal).toHaveBeenLastCalledWith("animal-1", expect.objectContaining({ inicio: new Date("2026-01-01T00:00:00").toISOString(), fim: new Date("2026-01-02T23:59:59.999").toISOString() })));
     const chamadas = vi.mocked(buscarAuditoriaAnimal).mock.calls.length;
-    fireEvent.change(screen.getByLabelText("De"), { target: { value: "2026-02-01" } });
+    await alterarControle(screen.getByLabelText("De"), { target: { value: "2026-02-01" } });
     await screen.findByRole("alert");
     expect(buscarAuditoriaAnimal).toHaveBeenCalledTimes(chamadas);
   });

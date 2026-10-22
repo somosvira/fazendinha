@@ -24,7 +24,7 @@ Acessos fictícios exclusivos desse ambiente; senha inicial: `SeedateV3!Local202
 | Consulta | `seedatev3.consulta@example.test` | Consulta das duas áreas, sem lançamento |
 | Operador | `seedatev3.operador@example.test` | Lançamento nas duas áreas, sem `verValores` |
 
-O perfil de operador não deve ser tratado como protegido para valores financeiros: há mascaramento incompleto na API, descrito no [contrato financeiro](financeiro-rebuild-contrato.md#permissões-e-documentos). O seed configura permissões, mas não corrige essa limitação.
+O operador sem `verValores` recebe valores monetários nulos nos DTOs de operações/estoque e 403 nas consultas monetárias agregadas, relatórios, documentos e rascunhos financeiros. Pode criar uma nova operação com preços manuais por envio direto, sem autosave/retomada de rascunho, e registrar fatos físicos autorizados. Correção/cancelamento/estorno/liquidação e contas exigem visibilidade de valores. Para validar esse perfil, confira resposta da API além da interface, compare dono/consulta/operador e teste o sítio nos links diretos; veja o [contrato financeiro](financeiro-rebuild-contrato.md#permissões-e-documentos). O seed configura permissões e dados demonstrativos; não comprova homologação.
 
 ## Retomada e verificação
 
@@ -180,6 +180,25 @@ Os utilitários mantidos formam a cadeia existente de Rebanho/Genética:
 5. `validar:pecuaria`: conciliação da carga.
 
 A importação não sincroniza alterações do IDEAGRI: animal já importado é ignorado; a passada de genética preenche lados vazios sem sobrescrever filiação editada. O importador trata animais em transações individuais e relata falhas; execução parcial não significa carga integral concluída. A carga histórica de Sanidade/Nutrição V3 ainda não está entregue.
+
+### Ensaio opcional de volume nutricional
+
+`server/src/services/pecuaria/nutricao/volume.integration.test.ts` é um ensaio sintético de leitura com milhares de lotes, receitas, vigências e fechamentos. Exige `PECUARIA_DB_INTEGRATION=1` e `NUTRICAO_VOLUME_INTEGRATION=1`; antes de escrever, valida que `DATABASE_URL` aponta para localhost e banco `qa_volume_` com sufixo hexadecimal. Prepare um banco novo com migrations completas e descarte somente esse banco ao terminar, inclusive em falha. Nunca aponte o ensaio para seed, banco operacional ou banco de outra tarefa.
+
+O teste registra tempo de serviço, bytes JSON e quantidade de statements SQL reais do Prisma, incluindo transação e relações. Confere escopo por sítio, custos desconhecidos/zero/mascarados, exclusão de estornos e páginas profundas. Não mede HTTP, Workers/Neon, concorrência ou rede, nem define SLA. A flag adicional evita executar o cenário de volume em toda suíte de integração comum.
+
+## Carga financeira Rio Novo
+
+`server/prisma/seed-rio-novo.ts` importa os fatos liquidados da aba `RN_SICOOB PJ` do relatório Rio Novo. A carga lê somente a tabela detalhada: não interpreta abas de projeção ou consolidações como novos fatos. Ela cria o sítio `Rio Novo`, a conta `BB MAGC`, os centros, categorias e parceiros necessários, preservando data, sentido, valor, categoria, centro de custo, parceiro e referência documental disponível.
+
+Use primeiro a conferência sem escrita e depois a importação em um banco local de desenvolvimento com migrations aplicadas e um dono ativo:
+
+```bash
+pnpm --filter rionovo-server run seed:rio-novo -- "/mnt/c/caminho/Relatório Rio Novo 2026.05.04.xlsx" --verificar
+pnpm --filter rionovo-server run seed:rio-novo -- "/mnt/c/caminho/Relatório Rio Novo 2026.05.04.xlsx"
+```
+
+O seed só aceita PostgreSQL local, usa uma chave determinística por linha do relatório e pode ser reexecutado sem duplicar operações. Transferências, saldo inicial, ajustes, estornos, aplicações e valores ainda a identificar são importados como aporte/retirada, pois a planilha não informa uma contraparte interna suficiente para criar transferência entre contas. Os demais créditos viram vendas sem estoque e os débitos viram serviços sem estoque; não se inferem quantidades, produtos, lotes ou compromissos a partir do extrato.
 
 Seeds de demonstração por módulo/PR e a massa do Excel anterior foram retirados. Fixtures dos testes, catálogos das migrations e importador atual continuam disponíveis.
 

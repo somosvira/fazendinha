@@ -1,3 +1,4 @@
+import { descartarTrabalhoAtivo } from "./descarteTrabalhoAtivo";
 import { limparRascunhoRelatorioAtivo, estadoRascunhoRelatorioAtivo, prepararPublicacaoRascunhoRelatorio } from "./rascunhoRelatorioAtivo";
 import { alterarControle } from "../lib/controles.fixture";
 // @vitest-environment jsdom
@@ -212,4 +213,18 @@ it("reabrir usa a versão confirmada em memória em vez de uma leitura atrasada"
   prepararPublicacaoRascunhoRelatorio("escrita")({ ...rascunho, versao: 5, configuracao: { ...configuracao, nome: "Confirmado após a saída" } });
   renderizar(rascunho);
   expect(screen.getByLabelText<HTMLInputElement>("Nome do relatório").value).toBe("Confirmado após a saída");
+});
+
+
+it("o descarte da sidebar cancela autosave e não salva novamente ao desmontar o relatório", async () => {
+  vi.mocked(descartarRascunhoRelatorioFinanceiro).mockResolvedValue(undefined);
+  const { unmount } = render(<NovoRelatorioFinanceiro cadastros={cadastros} rascunho={rascunho} onVoltar={vi.fn()} onGerado={vi.fn()} />);
+  fireEvent.change(screen.getByLabelText("Nome do relatório"), { target: { value: "Rascunho a excluir" } });
+  const semEditor = vi.fn();
+  await act(async () => { await descartarTrabalhoAtivo("relatorio", semEditor); });
+  unmount();
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 850)); });
+  expect(descartarRascunhoRelatorioFinanceiro).toHaveBeenCalledOnce();
+  expect(salvarRascunhoRelatorioFinanceiro).not.toHaveBeenCalled();
+  expect(semEditor).not.toHaveBeenCalled();
 });

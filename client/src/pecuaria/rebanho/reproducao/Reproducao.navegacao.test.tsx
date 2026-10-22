@@ -12,7 +12,7 @@ vi.mock("./PartosPosParto", () => ({ PartosPosParto: ({ propriedadeId, podeLanca
 vi.mock("./ResumoPoliticaReprodutiva", () => ({ ResumoPoliticaReprodutiva: () => null }));
 vi.mock("../../../api/propriedades", () => ({ listarPropriedades: vi.fn().mockResolvedValue([{ id: 7, nome: "Escola" }, { id: 8, nome: "Destino" }]) }));
 vi.mock("./ElegibilidadeAnimal", () => ({ ElegibilidadeAnimal: vi.fn(({ propriedadeId }: { propriedadeId: number }) => <p>Elegibilidade no sítio {propriedadeId}</p>) }));
-vi.mock("./api", () => ({obterReproducao:vi.fn(),reqV4:vi.fn().mockResolvedValue([])}));
+vi.mock("./api", () => ({obterReproducao:vi.fn(),reqV4:vi.fn().mockImplementation(async (url:string)=>url.startsWith("/reproducao/acompanhamento?")?{itens:[],total:0,pagina:1,porPagina:10,resumo:{total:0,pendentes:0,resolvidas:0,encerradas:0,semData:0}}:[])}));
 vi.mock("./Iatf", () => ({Iatf:vi.fn(()=>null)}));
 vi.mock("./Exposicoes", () => ({Exposicoes:()=>null}));
 vi.mock("./RegrasSanitarias", () => ({RegrasSanitarias:()=>null}));
@@ -68,7 +68,8 @@ it.each(["partos", "indicadores"])("consolidado oferece seletor dentro da págin
 it("elegibilidade individual recebe localização comprovada mesmo com outro sítio ativo", async () => {
   setPropriedadeAtiva(99);
   window.history.replaceState(null, "", "/pecuaria/rebanho/animais/a#reproducao");
-  vi.mocked(obterReproducao).mockResolvedValue({ animais: [], tentativas: [], avaliacoes: [], partos: [], restricoes: [] });
+  // A aptidão de hoje pertence ao efetivo atual; a fixture precisa conter a matriz.
+  vi.mocked(obterReproducao).mockResolvedValue({ animais: [{ animalId: "a", brinco: "M-01", nome: null, situacao: "VAZIA", partos: 0, tentativasCiclo: 0, gestacao: null, restricoes: [] }], tentativas: [], avaliacoes: [], partos: [], restricoes: [] });
   render(<ReproducaoAnimal animalId="a" propriedadeId={7} podeLancar />);
   await screen.findByText("Elegibilidade no sítio 7");
   expect(obterReproducao).toHaveBeenCalledWith("a", 7);

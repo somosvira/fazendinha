@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { alterarControle } from "../../../lib/controles.fixture";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { FormFiliacao } from "./FormFiliacao";
@@ -60,7 +61,7 @@ describe("FormFiliacao", () => {
 
     fireEvent.click(screen.getAllByRole("button", { name: "Genitor externo" })[1]);
     await screen.findByText("Touro X");
-    fireEvent.change(screen.getByLabelText(/Selecionar pai entre os genitores externos/), { target: { value: "ext-1" } });
+    await alterarControle(screen.getByLabelText(/Selecionar pai entre os genitores externos/), { target: { value: "ext-1" } });
     fireEvent.click(screen.getByRole("button", { name: /Salvar filiação/ }));
 
     await waitFor(() => expect(onSalvo).toHaveBeenCalled());

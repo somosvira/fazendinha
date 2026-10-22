@@ -199,7 +199,9 @@ export const sanidadeRouter = new Hono()
     try {
       const animalId = c.req.query("animalId");
       if (animalId && !uuid.safeParse(animalId).success) return c.json({ error: "Animal inválido", code: "VALIDACAO" }, 422);
-      return c.json(await ocorrencias.listarOcorrencias(animalId, await escopoDetalhe(c), consultaSanitariaSchema.parse(c.req.query())));
+      const filtro = consultaSanitariaSchema.parse(c.req.query());
+      const sitio = await escopoDetalhe(c);
+      return c.json(filtro.paginado === "true" ? await ocorrencias.listarOcorrenciasPaginadas(animalId, sitio, filtro) : await ocorrencias.listarOcorrencias(animalId, sitio, filtro));
     } catch (e) { return falha(c, e); }
   })
   .post("/ocorrencias", validar(z.object({ animalId: uuid, propriedadeId: z.number().int().positive(), doencaId: uuid,

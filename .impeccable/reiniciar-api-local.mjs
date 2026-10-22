@@ -1,0 +1,13 @@
+import { readFileSync, readlinkSync, openSync } from 'node:fs';
+import { spawn } from 'node:child_process';
+const pid = 109048;
+const cwd = readlinkSync(`/proc/${pid}/cwd`);
+const args = readFileSync(`/proc/${pid}/cmdline`, 'utf8').split('\0').filter(Boolean);
+const env = Object.fromEntries(readFileSync(`/proc/${pid}/environ`, 'utf8').split('\0').filter(Boolean).map(v => { const i=v.indexOf('='); return [v.slice(0,i),v.slice(i+1)]; }));
+if (cwd !== '/home/mathe/fazendinha/server' || !args.includes('src/index.ts') || env.PORT !== '41873') throw new Error('Processo não corresponde à API local esperada.');
+const log = openSync('/home/mathe/fazendinha/.impeccable/api-local-atualizada.log','a');
+process.kill(pid, 'SIGTERM');
+await new Promise(resolve => setTimeout(resolve,500));
+const filho = spawn(args[0],args.slice(1),{cwd,env,stdio:['ignore',log,log]});
+filho.on('exit',code=>process.exit(code ?? 1));
+filho.on('error',()=>process.exit(1));

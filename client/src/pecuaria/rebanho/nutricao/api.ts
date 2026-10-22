@@ -1,7 +1,5 @@
 import type { Lote } from "../types";
 import { buscarLote, listarLotes } from "../api";
-import { getUsuario } from "../../../lib/auth";
-import { temAcessoArea } from "../../../lib/areas";
 import { comPropriedade } from "../../../propriedadeScope";
 
 export type Ingrediente = { produtoId: string; quantidadeCabecaDia: string; unidade: string; materiaSecaPercentualSnapshot?: string | null; produto?: { nome: string } };
@@ -39,11 +37,7 @@ const post = <T>(path: string, body: unknown) => req<T>(path, { method: "POST", 
 export const listarProdutosNutricionais = () => req<ProdutoNutricional[]>("/estoque/produtos?uso=nutricional&ativo=true");
 export const listarCentrosNutricionais = () => req<CentroNutricional[]>("/estoque/centros-custo");
 export const listarPartidasNutricionais = (produtoId: string, propriedadeId?: number | null) => req<PartidaNutricional[]>(`/estoque/partidas?produtoId=${encodeURIComponent(produtoId)}${propriedadeId == null ? "" : `&propriedadeId=${propriedadeId}`}`, undefined, propriedadeId === null, propriedadeId ?? undefined);
-export const listarDietas = async (): Promise<Dieta[]> => {
-  const [dietas, lotes] = await Promise.all([req<Dieta[]>("/pecuaria/rebanho/nutricao/dietas"), listarLotes()]);
-  const vigencias = await mapearLotes(lotes, async (lote) => ({ lote, ...(await listarVigencias(lote.id)) }));
-  return dietas.map((dieta) => ({ ...dieta, lotesEmUso: vigencias.filter((r) => r.vigente?.dieta.id === dieta.id).map((r) => ({ id: r.lote.id, nome: r.lote.nome, propriedade: r.lote.propriedade })) }));
-};
+export const listarDietas = (): Promise<Dieta[]> => req<Dieta[]>("/pecuaria/rebanho/nutricao/dietas");
 export const criarDieta = (body: { nome: string; itens: Array<{ produtoId: string; quantidadeCabecaDia: number }> }) =>
   post<Dieta>("/pecuaria/rebanho/nutricao/dietas", body);
 export const publicarDieta = (id: string) => post<Dieta>(`/pecuaria/rebanho/nutricao/dietas/${id}/publicacao`, {});
@@ -59,27 +53,21 @@ export const confirmarConsumo = (body: { loteId: string; propriedadeId: number; 
   itens: Array<{ produtoId: string; quantidadeConfirmada: number; motivoAjuste?: string; modoEstoque: "BAIXA_ESTOQUE" | "SEM_BAIXA_JUSTIFICADA"; justificativaSemBaixa?: string;
     partidas?: Array<{ partidaId: string; quantidade: number; cienciaValidadeDesconhecida?: boolean }> }> }) =>
   post<Pick<Fechamento, "id" | "inicio" | "fim" | "animalDias" | "status">>("/pecuaria/rebanho/nutricao/consumo/confirmacao", body);
-const paginaFechamentos = async (loteId?: string, pagina = 1): Promise<Pagina<Fechamento>> => {
+const paginaFechamentos = async (loteId?: string, pagina = 1, status?: Fechamento["status"], periodo?: {de?:string;ate?:string}): Promise<Pagina<Fechamento>> => {
   const [resultado, lotes] = await Promise.all([
-    req<Pagina<Fechamento>>(`/pecuaria/rebanho/nutricao/consumo/fechamentos?${loteId ? `loteId=${encodeURIComponent(loteId)}&` : ""}pagina=${pagina}`),
+    req<Pagina<Fechamento>>(`/pecuaria/rebanho/nutricao/consumo/fechamentos?${loteId ? `loteId=${encodeURIComponent(loteId)}&` : ""}pagina=${pagina}${status ? `&status=${status}` : ""}${periodo?.de ? `&de=${encodeURIComponent(periodo.de)}` : ""}${periodo?.ate ? `&ate=${encodeURIComponent(periodo.ate)}` : ""}`),
     listarLotes({ incluirInativos: true }),
   ]);
   return { ...resultado, itens: resultado.itens.map((f) => ({ ...f, propriedade: f.propriedade ?? lotes.find((l) => l.id === f.lote.id)?.propriedade ?? { id: f.propriedadeId, nome: "Sítio do registro" } })) };
 };
-export const listarFechamentos = async (loteId?: string, pagina = 1, status?: Fechamento["status"]): Promise<Pagina<Fechamento>> => {
-  if (!status) return paginaFechamentos(loteId, pagina);
-  // Esta API V3 ainda não filtra por status; filtrar antes da paginação evita contagens falsas.
-  const { itens, limite } = await todosFechamentos(loteId);
-  const filtrados = itens.filter((f) => f.status === status);
-  return { itens: filtrados.slice((pagina - 1) * limite, pagina * limite), total: filtrados.length, pagina, limite };
-};
+export const listarFechamentos = paginaFechamentos;
 export const obterFechamento = async (id: string): Promise<Fechamento> => {
   const fechamento = await req<Fechamento>(`/pecuaria/rebanho/nutricao/consumo/fechamentos/${encodeURIComponent(id)}`);
   if (fechamento.propriedade) return fechamento;
   const lote = await buscarLote(fechamento.lote.id);
   return { ...fechamento, propriedade: lote.propriedade };
 };
-export type ConsumoAnimal = Omit<ParticipacaoConsumo, "itens"> & { id: string; inicio: string; fim: string; status: Fechamento["status"]; lote: Fechamento["lote"]; dieta: Fechamento["vigencia"]["dieta"]; propriedadeId: number; itens: Array<ParcelaConsumo & { nome: string }> };
+export type ConsumoAnimal = Omit<ParticipacaoConsumo, "itens"> & { id: string; participacaoId?: string; inicio: string; fim: string; status: Fechamento["status"]; lote: Fechamento["lote"]; dieta: Fechamento["vigencia"]["dieta"]; propriedadeId: number; itens: Array<ParcelaConsumo & { nome: string }> };
 export const consultarConsumoAnimal = (animalId: string, pagina = 1) => req<Pagina<ConsumoAnimal> & { verValores: boolean }>(`/pecuaria/rebanho/nutricao/consumo/animais/${encodeURIComponent(animalId)}?pagina=${pagina}`);
 export const previaPeriodos = (body: Parameters<typeof previaConsumo>[0]) => post<{ revisao: string; periodos: Previa[]; lacunas: Array<{ inicio: string; fim: string }> }>("/pecuaria/rebanho/nutricao/consumo/periodos/previa", body);
 export const confirmarPeriodos = (body: { chave: string; revisao: string; loteId: string; propriedadeId: number; inicio: string; fim: string; centroCustoId?: string | null; periodos: Array<{ inicio: string; fim: string; itens: Parameters<typeof confirmarConsumo>[0]["itens"] }> }) => post("/pecuaria/rebanho/nutricao/consumo/periodos/confirmacao", body);
@@ -87,62 +75,19 @@ export const confirmarPeriodos = (body: { chave: string; revisao: string; loteId
 export type ResumoCusto = { fechamentos: number; animalDias: number; custoConhecido: string | null; custoPorAnimalDia: string | null; coberturaCustoCompleta: boolean };
 export type ResumoNutricional = { lote: Lote; vigente: Vigencia | null; programada: Vigencia | null; verValores: boolean; custos: ResumoCusto };
 export type VisaoNutricional = { lotes: ResumoNutricional[]; verValores: boolean };
-// Adaptadores de leitura para a API da branch atual. Não criam endpoints nem alteram o domínio.
-async function mapearLotes<T>(lotes: Lote[], consultar: (lote: Lote) => Promise<T>): Promise<T[]> {
-  const resultado: T[] = new Array(lotes.length);
-  let proximo = 0;
-  await Promise.all(Array.from({ length: Math.min(4, lotes.length) }, async () => {
-    while (proximo < lotes.length) { const indice = proximo++; resultado[indice] = await consultar(lotes[indice]); }
-  }));
-  return resultado;
-}
-async function todosFechamentos(loteId?: string) {
-  const primeira = await paginaFechamentos(loteId);
-  const itens = [...primeira.itens];
-  for (let pagina = 2; itens.length < primeira.total; pagina++) {
-    const proxima = await paginaFechamentos(loteId, pagina);
-    if (!proxima.itens.length) throw new Error("O histórico mudou durante a consulta. Recarregue para conferir os custos.");
-    itens.push(...proxima.itens);
-  }
-  return { ...primeira, itens };
-}
-function podeVerCustos(fechamentos: Fechamento[]) {
-  if (fechamentos.length) return fechamentos.every((f) => f.verValores);
-  const u = getUsuario();
-  return !!u && temAcessoArea(u.areas, "pecuaria", u.dono);
-}
-function centavosDe(valor: string): bigint {
-  const match = /^(-?)(\d+)(?:\.(\d+))?$/.exec(valor);
-  if (!match) throw new Error("Custo inválido na consulta nutricional.");
-  const fracao = (match[3] ?? "").padEnd(3, "0");
-  const absoluto = BigInt(match[2]) * 100n + BigInt(fracao.slice(0, 2)) + (fracao[2] >= "5" ? 1n : 0n);
-  return match[1] ? -absoluto : absoluto;
-}
-function textoCentavos(valor: bigint): string {
-  const absoluto = valor < 0n ? -valor : valor;
-  return `${valor < 0n ? "-" : ""}${absoluto / 100n}.${String(absoluto % 100n).padStart(2, "0")}`;
-}
-function resumirCustos(fechamentos: Fechamento[], verValores: boolean): ResumoCusto {
-  const confirmados = fechamentos.filter((f) => f.status === "CONFIRMADO");
-  const animalDias = confirmados.reduce((s, f) => s + f.animalDias, 0);
-  const conhecidos = confirmados.filter((f) => f.custoConhecido != null);
-  const centavos = conhecidos.reduce((s, f) => s + centavosDe(f.custoConhecido!), 0n);
-  const custo = verValores && (!confirmados.length || conhecidos.length) ? textoCentavos(centavos) : null;
-  return { fechamentos: confirmados.length, animalDias, custoConhecido: custo, custoPorAnimalDia: custo == null || !animalDias ? null : textoCentavos((centavos + BigInt(animalDias) / 2n) / BigInt(animalDias)), coberturaCustoCompleta: confirmados.every((f) => f.coberturaCustoCompleta) };
-}
+// Adaptação dos catálogos de leitura; a agregação histórica fica no servidor.
+type ResumosNutricionais = { verValores: boolean; lotes: Array<Omit<ResumoNutricional, "lote" | "verValores"> & { loteId: string }> };
+const consultarResumos = (loteId?: string) => req<ResumosNutricionais>(`/pecuaria/rebanho/nutricao/resumo${loteId ? `?loteId=${encodeURIComponent(loteId)}` : ""}`);
 export async function consultarVisaoNutricional(): Promise<VisaoNutricional> {
-  const [lotes, historico] = await Promise.all([listarLotes(), todosFechamentos()]);
-  const verValores = podeVerCustos(historico.itens);
-  const resumos = await mapearLotes(lotes.filter((l) => l.ativo), async (lote) => {
-    const { vigente, programada } = await listarVigencias(lote.id);
-    return { lote, vigente, programada, verValores, custos: resumirCustos(historico.itens.filter((f) => f.lote.id === lote.id), verValores) };
-  });
-  return { lotes: resumos, verValores };
+  const [lotes, resumo] = await Promise.all([listarLotes(), consultarResumos()]);
+  const porLote = new Map(resumo.lotes.map(r => [r.loteId, r]));
+  return { verValores: resumo.verValores, lotes: lotes.filter(l => l.ativo && porLote.has(l.id)).map(lote => ({ ...porLote.get(lote.id)!, lote, verValores: resumo.verValores })) };
 }
 export async function consultarResumoNutricional(loteId: string): Promise<ResumoNutricional> {
-  const [lote, vigencias, historico] = await Promise.all([buscarLote(loteId), listarVigencias(loteId), todosFechamentos(loteId)]);
-  const verValores = podeVerCustos(historico.itens);
-  return { lote, vigente: vigencias.vigente, programada: vigencias.programada, verValores, custos: resumirCustos(historico.itens, verValores) };
+  const [lote, resumo] = await Promise.all([buscarLote(loteId), consultarResumos(loteId)]);
+  const dados = resumo.lotes.find(r => r.loteId === loteId);
+  if (!dados) throw new Error("Lote não encontrado neste sítio.");
+  return { ...dados, lote, verValores: resumo.verValores };
 }
 export async function obterVigencia(id: string, loteId: string): Promise<Vigencia & { loteId: string }> {
   let pagina = 1;

@@ -46,6 +46,8 @@ const aba = exigeAba("relatorio");
 const exportar = exigePermissao("exportar");
 
 export const relatoriosFinanceirosRouter = new Hono()
+  .use("/financeiro/relatorios", exigePermissao("verValores"))
+  .use("/financeiro/relatorios/*", exigePermissao("verValores"))
   .get("/financeiro/relatorios", aba, async (c) => {
     try { return c.json(await relatorios.listarRelatorios(await resolverEscopoLeitura(c))); } catch (e) { return falha(c, e); }
   })

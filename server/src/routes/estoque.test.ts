@@ -61,6 +61,12 @@ function appCom(usuario: unknown) {
 }
 
 const ontem = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+it("resposta de movimento físico também oculta custo sem verValores e conserva quantidade", async () => {
+  mocks.registrarMovimento.mockResolvedValue({ id: uid(8), quantidade: "-2", custoUnitario: "987.65", valorTotal: "1975.30" });
+  const resposta = await appCom(comLancar).request("/estoque/movimentos", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ produtoId: uid(1), tipo: "AJUSTE", data: ontem, quantidade: -2, observacao: "Contagem conferida" }) });
+  expect(resposta.status).toBe(201);
+  expect(await resposta.json()).toMatchObject({ id: uid(8), quantidade: "-2", custoUnitario: null, valorTotal: null });
+});
 const json = { "content-type": "application/json" };
 const escritas = [
   { nome: "POST /estoque/ajustes", req: () => ["/estoque/ajustes", { method: "POST", headers: json, body: JSON.stringify({ produtoId: uid(1), quantidadeContada: 5, saldoEsperado: 10, observacao: "Contagem física" }) }] as const, svc: mocks.ajustarContagem },

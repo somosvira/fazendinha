@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { alterarControle } from "../../../lib/controles.fixture";
 import { FormDestino } from "./FormDestino";
 import { mudarDestinoAnimal } from "../api";
 import type { AnimalFicha } from "../types";
@@ -15,7 +16,7 @@ describe("mudança de finalidade", () => {
     vi.mocked(mudarDestinoAnimal).mockResolvedValue(atualizado);
     const onSalvo = vi.fn();
     render(<FormDestino animal={animal} onSalvo={onSalvo} onFechar={vi.fn()} />);
-    fireEvent.change(screen.getByLabelText("Finalidade"), { target: { value: "REPRODUCAO" } });
+    await alterarControle(screen.getByLabelText("Finalidade"), { target: { value: "REPRODUCAO" } });
     fireEvent.click(screen.getByRole("button", { name: "Salvar finalidade" }));
     await waitFor(() => expect(onSalvo).toHaveBeenCalledWith(atualizado));
     expect(mudarDestinoAnimal).toHaveBeenLastCalledWith("a1", expect.objectContaining({ aptidao: "REPRODUCAO", papelReprodutivo: "NENHUM" }));

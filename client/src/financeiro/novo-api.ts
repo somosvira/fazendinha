@@ -1,4 +1,5 @@
 import { comPropriedade } from "../propriedadeScope";
+import { mensagemErroHttp } from "../lib/erroHttp";
 import type { RelatorioGerencialDTO } from "../components/relatorio-gerencial/types";
 import { prepararPublicacaoRascunho } from "./rascunhoAtivo";
 import { prepararPublicacaoRascunhoRelatorio } from "./rascunhoRelatorioAtivo";
@@ -64,8 +65,8 @@ export type DadosParceiro = {
   formaPagamentoPreferida?: string | null; condicaoPagamentoPreferida?: "A_VISTA" | "A_PRAZO" | null; prazosPagamento?: number[];
 };
 export type TipoParceiro = "CLIENTE" | "FORNECEDOR" | "AMBOS" | "FUNCIONARIO" | "PROPRIETARIO" | "OUTRO";
-export type ContaBase = { id: string; nome: string; tipo: TipoConta; instituicao: string | null; identificacao: string | null; saldoAbertura: string; dataSaldoAbertura: string; incluirNoSaldoGeral: boolean; ativo: boolean };
-export type Conta = ContaBase & DadosConta & { saldoAtual: string; temMovimentos: boolean; ultimaOperacao?: { data: string; descricao: string | null; tipo: string } | null };
+export type ContaBase = { id: string; nome: string; tipo: TipoConta; instituicao: string | null; identificacao: string | null; saldoAbertura: string | null; dataSaldoAbertura: string; incluirNoSaldoGeral: boolean; ativo: boolean };
+export type Conta = ContaBase & DadosConta & { saldoAtual: string | null; temMovimentos: boolean; ultimaOperacao?: { data: string; descricao: string | null; tipo: string } | null };
 export type ParceiroBase = { id: string; nome: string; documento: string | null; tipo: TipoParceiro; telefone: string | null; email: string | null; ativo: boolean };
 export type Parceiro = ParceiroBase & DadosParceiro & { referencias: number };
 export type ContaInput = { nome: string; tipo: TipoConta; instituicao?: string | null; identificacao?: string | null; saldoAbertura: number; dataSaldoAbertura: string; incluirNoSaldoGeral: boolean };
@@ -100,11 +101,11 @@ export type ProdutoInput = {
 export type ConfiguracoesFinanceiras = { gruposCategorias?: GrupoCategoria[]; contas: Conta[]; parceiros: Parceiro[]; categorias: Categoria[]; centrosCusto: CentroCusto[]; produtos: Produto[]; produtosCadastro?: Produto[] };
 export type ContaHistorico = { id: string; nome: string };
 export type ReferenciaReversao = { id: string; tipo: string; status: string; data: string; descricao: string | null };
-export type MovimentoOperacao = { id: string; seq: number; contaId: string; direcao: "ENTRADA" | "SAIDA"; valor: string; conta: ContaHistorico };
-export type TransacaoOperacao = { id: string; seq: number; tipo: string; status: string; data: string; valorTotal: string; formaPagamento: string | null; movimentos: MovimentoOperacao[]; reversaoDe?: ReferenciaReversao | null; revertidaPor?: ReferenciaReversao | null; operacaoId?: string | null };
-export type Liquidacao = { id: string; valor: string; transacao: TransacaoOperacao };
-export type Compromisso = { id: string; seq: number; tipo: "PAGAR" | "RECEBER"; status: string; valorOriginal: string; valorLiquidado: string; saldoPendente: string; saldoExigivel?: string; dataVencimento: string; numeroParcela: number | null; totalParcelas: number | null; vencido?: boolean; parceiro: ParceiroBase | null; operacao: { id: string; numero: number; tipo: string; descricao: string | null }; liquidacoes?: Liquidacao[] };
-export type ItemOperacao = { categoriaId?: string | null; categoriaNome?: string | null; classificacao?: "CUSTEIO" | "INVESTIMENTO" | null; centroCustoId?: string | null; centroCustoNome?: string | null; id: string; ordem: number; descricao: string; quantidade: string; unidade: string; valorUnitario: string; valorTotal: string; estocavel: boolean; produtoId: string | null };
+export type MovimentoOperacao = { id: string; seq: number; contaId: string; direcao: "ENTRADA" | "SAIDA"; valor: string | null; conta: ContaHistorico };
+export type TransacaoOperacao = { id: string; seq: number; tipo: string; status: string; data: string; valorTotal: string | null; formaPagamento: string | null; movimentos: MovimentoOperacao[]; reversaoDe?: ReferenciaReversao | null; revertidaPor?: ReferenciaReversao | null; operacaoId?: string | null };
+export type Liquidacao = { id: string; valor: string | null; transacao: TransacaoOperacao };
+export type Compromisso = { id: string; seq: number; tipo: "PAGAR" | "RECEBER"; status: string; valorOriginal: string | null; valorLiquidado: string | null; saldoPendente: string | null; saldoExigivel?: string | null; dataVencimento: string; numeroParcela: number | null; totalParcelas: number | null; vencido?: boolean; parceiro: ParceiroBase | null; operacao: { id: string; numero: number; tipo: string; descricao: string | null }; liquidacoes?: Liquidacao[] };
+export type ItemOperacao = { categoriaId?: string | null; categoriaNome?: string | null; classificacao?: "CUSTEIO" | "INVESTIMENTO" | null; centroCustoId?: string | null; centroCustoNome?: string | null; id: string; ordem: number; descricao: string; quantidade: string; unidade: string; valorUnitario: string | null; valorTotal: string | null; estocavel: boolean; produtoId: string | null };
 export type MovimentoEstoqueOperacao = { id: string; seq: number; tipo: string; status: string; quantidade: string; valorTotal: string | null; produtoId: string; reversaoDeId?: string | null; revertidoPor?: { id: string } | null };
 export type PerdaOperacao = { movimentoId: string; produtoId: string; produtoNome: string; quantidade: string; unidade: string; sitio: { id: number; nome: string } | null; motivo: string | null; custoUnitario: string | null; valorTotal: string | null; lotes: { id: string; codigo: string; nome: string | null; validade: string | null; quantidade: string }[] };
 export type MovimentoTransferencia = { id: string; seq: number; tipo: string; status: string; data: string; reversaoDeId: string | null };
@@ -113,7 +114,7 @@ export type TransferenciaOperacao = { produtoId: string; produtoNome: string; qu
 export type DocumentoFinanceiro = { id: string; tipo: string; nome: string; numero: string | null; mimeType: string | null; tamanhoBytes: number | null };
 export type RascunhoOperacao = { id: string; dados: { formulario?: Record<string, unknown>; operacao?: Record<string, unknown> }; versao: number; updatedAt: string; documentos: DocumentoFinanceiro[] };
 export type SimulacaoParcelas = { totalOperacao: string; valorPagoAgora: string; saldoAPrazo: string; parcelas: { valor: string; dataVencimento: string }[] };
-export type ResumoCancelamento = { compromissos: { id: string; numeroParcela: number | null; status: string; valorOriginal: string; valorLiquidado: string; saldoExigivel: string }[]; transacoes: { id: string; seq: number; tipo: string; data: string; valorTotal: string; movimentos: (MovimentoOperacao & { direcaoInversa: "ENTRADA" | "SAIDA" })[] }[]; estoque: { id: string; produtoId: string; produtoNome: string; quantidade: string; unidade: string; tipo: string }[]; impactosPorConta: { conta: ContaHistorico; entrada: string; saida: string }[]; documentosPreservados: number };
+export type ResumoCancelamento = { compromissos: { id: string; numeroParcela: number | null; status: string; valorOriginal: string | null; valorLiquidado: string | null; saldoExigivel: string | null }[]; transacoes: { id: string; seq: number; tipo: string; data: string; valorTotal: string | null; movimentos: (MovimentoOperacao & { direcaoInversa: "ENTRADA" | "SAIDA" })[] }[]; estoque: { id: string; produtoId: string; produtoNome: string; quantidade: string; unidade: string; tipo: string }[]; impactosPorConta: { conta: ContaHistorico; entrada: string | null; saida: string | null }[]; documentosPreservados: number };
 export type ComposicaoComercial = { versao: number; descontoComercial: string; itens: { ordem: number; bruto: string; desconto: string; liquido: string; elegivel: boolean }[]; logistica: { valor: string; descricao: string; categoriaId?: string; centroCustoId?: string } | null };
 export type Operacao = { composicaoComercial?: ComposicaoComercial | null; propriedadeId?: number; procedimentosServico?: ProcedimentoServico[]; categoriaNome?: string | null; classificacao?: "CUSTEIO" | "INVESTIMENTO" | null; id: string; numero: number; tipo: string; status: string; data: string; descricao: string | null; valorTotal: string | null; parceiro: ParceiroBase | null; parceiroId?: string | null; categoriaId?: string | null; centroCustoId?: string | null; centroCusto?: { id: string; nome: string } | null; corrigeOperacaoId?: string | null; corrigeOperacao?: { id: string; numero: number; descricao: string | null } | null; correcoes?: { id: string; numero: number; descricao: string | null; status: string }[]; itens: ItemOperacao[]; compromissos: Compromisso[]; transacoes: TransacaoOperacao[]; movimentosEstoque: MovimentoEstoqueOperacao[]; perdas?: PerdaOperacao[]; transferencias?: TransferenciaOperacao[]; documentos: DocumentoFinanceiro[]; resumoCancelamento?: ResumoCancelamento };
 export type MovimentoConta = { id: string; seq: number; contaId?: string; direcao: "ENTRADA" | "SAIDA"; valor: string; transacao: { id: string; seq: number; tipo: string; status: string; data: string; descricao: string | null; formaPagamento: string | null; parceiro: ParceiroBase | null; operacao: { id: string; numero: number; descricao: string | null; tipo: string } | null; reversaoDe?: { id?: string; tipo: string; descricao?: string | null; operacaoId?: string | null } | null } };
@@ -156,9 +157,12 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
   const resposta = await fetch(`/api${path}`, {
     ...init,
     headers: comPropriedade({ ...(init?.body ? { "content-type": "application/json" } : {}), ...((init?.headers as Record<string, string>) ?? {}) }),
+  }).catch((erro: unknown) => {
+    if (erro instanceof Error && erro.name === "AbortError") throw erro;
+    throw new ApiError("Falha de conexão. Confira sua internet e tente novamente.", 0);
   });
   const corpo = await resposta.json().catch(() => ({}));
-  if (!resposta.ok) throw new ApiError(corpo.error ?? `Erro HTTP ${resposta.status}`, resposta.status, corpo.code, corpo.campo);
+  if (!resposta.ok) throw new ApiError(corpo.error ?? mensagemErroHttp(resposta.status), resposta.status, corpo.code, corpo.campo);
   return corpo as T;
 }
 

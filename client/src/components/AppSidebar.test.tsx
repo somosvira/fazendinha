@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { AppSidebar, TrabalhoAtivo } from "./AppSidebar";
 import type { User } from "@/data/acessos";
@@ -26,8 +26,8 @@ function renderSidebar(props: Partial<ComponentProps<typeof AppSidebar>> = {}) {
     propAtiva: null, onTrocarProp: vi.fn(), user: usuario, colapsada: false, onToggleColapsar: vi.fn(), onAcessos: vi.fn(),
   };
   const final = { ...base, ...props };
-  render(<AppSidebar {...final} />);
-  return final;
+  const view = render(<AppSidebar {...final} />);
+  return { ...final, rerender: view.rerender };
 }
 
 describe("AppSidebar — trabalho ativo", () => {
@@ -140,4 +140,49 @@ describe("TrabalhoAtivo", () => {
     rerender(<TrabalhoAtivo resumo={{ ...antigo, atualizadoEm: new Date(2026, 8, 14, 14, 53, 30).toISOString() }} ativo={false} onAbrir={vi.fn()} />);
     expect(screen.getByRole("button", { name: /Continuar rascunho/ }).getAttribute("title")).toContain("Rascunho salvo há 7 min");
   });
+});
+
+
+describe("AppSidebar — orientação por área", () => {
+  it("ao trocar de área abre o grupo atual e recolhe o anterior", () => {
+    const { rerender, ...props } = renderSidebar({ areas: ["financeiro", "pecuaria"] });
+    expect(screen.getByRole("button", { name: "Recolher Financeiro" }).getAttribute("aria-expanded")).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: "Expandir Pecuária" }));
+    expect(screen.getByRole("button", { name: "Recolher Pecuária" })).toBeTruthy();
+    rerender(<AppSidebar {...props} current="pec-rebanho" />);
+    expect(screen.getByRole("button", { name: "Expandir Financeiro" }).getAttribute("aria-expanded")).toBe("false");
+    expect(screen.getByRole("button", { name: "Rebanho" }).getAttribute("aria-current")).toBe("page");
+    fireEvent.click(screen.getByRole("button", { name: "Expandir Financeiro" }));
+    expect(screen.getByRole("button", { name: "Recolher Financeiro" })).toBeTruthy();
+  });
+  it("atalho de nova operação sem rascunho não é trabalho ativo", () => {
+    renderSidebar({ trabalhoAtivo: { resumo: null, ativo: false, onAbrir: vi.fn() } });
+    expect(screen.queryByRole("group", { name: "Trabalhos ativos" })).toBeNull();
+  });
+});
+
+
+it("oferece exclusão independente em cada trabalho e só exclui após confirmar", async () => {
+  const abrir = vi.fn(); const excluirOperacao = vi.fn().mockResolvedValue(undefined); const excluirRelatorio = vi.fn().mockResolvedValue(undefined);
+  renderSidebar({ trabalhoAtivo: { resumo, ativo: false, onAbrir: abrir, onExcluir: excluirOperacao }, trabalhoAtivoRelatorio: { resumo: { ...resumo, titulo: "Relatório de custos" }, ativo: false, onAbrir: abrir, onExcluir: excluirRelatorio } });
+  fireEvent.click(screen.getByRole("button", { name: "Excluir trabalho ativo: Ração para o gado" }));
+  expect(screen.getByRole("dialog", { name: "Excluir trabalho ativo?" }).textContent).toContain("Ração para o gado");
+  expect(abrir).not.toHaveBeenCalled(); expect(excluirOperacao).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "Manter trabalho" }));
+  fireEvent.click(screen.getByRole("button", { name: "Excluir trabalho ativo: Relatório de custos" }));
+  fireEvent.click(screen.getByRole("button", { name: "Excluir trabalho" }));
+  await waitFor(() => expect(excluirRelatorio).toHaveBeenCalledOnce());
+  expect(excluirOperacao).not.toHaveBeenCalled(); expect(abrir).not.toHaveBeenCalled();
+});
+
+it("falha na exclusão mantém o trabalho e permite tentar novamente", async () => {
+  const excluir = vi.fn().mockRejectedValueOnce(new Error("Falha ao excluir")).mockResolvedValueOnce(undefined);
+  render(<TrabalhoAtivo resumo={resumo} ativo={false} onAbrir={vi.fn()} onExcluir={excluir} />);
+  fireEvent.click(screen.getByRole("button", { name: "Excluir trabalho ativo: Ração para o gado" }));
+  fireEvent.click(screen.getByRole("button", { name: "Excluir trabalho" }));
+  expect(await screen.findByRole("alert")).toHaveProperty("textContent", "Falha ao excluir");
+  expect(screen.getByText("Ração para o gado")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Excluir trabalho" }));
+  await waitFor(() => expect(screen.queryByRole("dialog", { name: "Excluir trabalho ativo?" })).toBeNull());
+  expect(excluir).toHaveBeenCalledTimes(2);
 });

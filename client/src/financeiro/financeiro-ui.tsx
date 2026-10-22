@@ -1,8 +1,12 @@
+import { FiltroColunaConsulta, type FiltrosColunas } from "./FiltroColunaConsulta";
+import "./barra-consulta.css";
 import { SelectCampo } from "./SelectCampo";
+import { getHoje, getHojeISO } from "../lib/hoje";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button as ShadcnButton } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableCaption } from "@/components/ui/table";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableCaption, TableFooter } from "@/components/ui/table";
 import { SkeletonListaFinanceira } from "./CarregamentoFinanceiro";
 import "./cores-financeiro.css";
 import { forwardRef, useEffect, useId, useRef, useState, type CSSProperties } from "react";
@@ -10,11 +14,11 @@ import type { LucideIcon } from "lucide-react";
 import { ArrowDown, ArrowUp, Check, LoaderCircle, Pencil, Power, PowerOff, X } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-export const brl = (valor: string | number | null | undefined) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(valor ?? 0));
+export const brl = (valor: string | number | null | undefined) => valor == null ? "—" : new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(valor));
 export const dataBR = (valor: string) => new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" }).format(new Date(valor));
-export const hoje = () => new Date().toISOString().slice(0, 10);
-export const emDias = (dias: number) => { const d = new Date(); d.setDate(d.getDate() + dias); return d.toISOString().slice(0, 10); };
-export const mesAtual = () => new Date().toISOString().slice(0, 7);
+export const hoje = getHojeISO;
+export const emDias = (dias: number) => { const d = getHoje(); d.setDate(d.getDate() + dias); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+export const mesAtual = () => getHojeISO().slice(0, 7);
 export const limitesMes = (mes: string) => { const [ano, numero] = mes.split("-").map(Number); return { inicio: `${mes}-01`, fim: new Date(Date.UTC(ano, numero, 0, 23, 59, 59)).toISOString() }; };
 
 export const TIPO_OPERACAO: Record<string, string> = {
@@ -26,9 +30,9 @@ export const TIPO_OPERACAO: Record<string, string> = {
 };
 
 export const STATUS: Record<string, string> = {
-  RASCUNHO: "Rascunho", CONFIRMADA: "Confirmada", CANCELADA: "Cancelada",
+  RASCUNHO: "Rascunho", CONFIRMADA: "Confirmada", CONFIRMADO: "Confirmado", CANCELADA: "Cancelada",
   PENDENTE: "Pendente", PARCIAL: "Parcial", LIQUIDADO: "Liquidado", CANCELADO: "Cancelado",
-  REVERTIDA: "Revertida", PROCESSANDO: "Processando", CONCLUIDO: "Concluído", FALHOU: "Falhou",
+  REVERTIDA: "Revertida", REVERTIDO: "Revertido", PROCESSANDO: "Processando", CONCLUIDO: "Concluído", FALHOU: "Falhou",
 };
 
 /* Envelope de toda página financeira. O gutter e o ritmo vertical (inclusive a
@@ -50,9 +54,9 @@ export function PaginaCarregando({ label, estrutura = "lista" }: { label: string
  * que uma falha no fetch nunca deixe a tela girando para sempre — o guard
  * `if (!dados) return <PaginaCarregando/>` sozinho engole o erro, porque os
  * dados continuam nulos e o ErrorBox lá embaixo nunca é alcançado. */
-export function PaginaSemDados({ titulo, descricao, label, erro }: { titulo: string; descricao: string; label: string; erro: string | null }) {
+export function PaginaSemDados({ titulo, descricao, label, erro, onTentarNovamente }: { titulo: string; descricao: string; label: string; erro: string | null; onTentarNovamente?: () => void }) {
   if (!erro) return <PaginaCarregando label={label} />;
-  return <PaginaFinanceira><PageHeader eyebrow="" titulo={titulo} descricao={descricao} /><ErrorBox erro={erro} /></PaginaFinanceira>;
+  return <PaginaFinanceira><PageHeader eyebrow="" titulo={titulo} descricao={descricao} /><ErrorBox erro={erro} />{onTentarNovamente && <Button secondary className="mt-4" onClick={onTentarNovamente}>Tentar novamente</Button>}</PaginaFinanceira>;
 }
 
 export function PageHeader({ titulo, descricao, acao, extra, contexto, children, eyebrow = "", integrado = false }: { titulo: React.ReactNode; descricao?: React.ReactNode; acao?: React.ReactNode; extra?: React.ReactNode; contexto?: React.ReactNode; children?: React.ReactNode; eyebrow?: string; integrado?: boolean }) {
@@ -74,10 +78,10 @@ export function PageHeader({ titulo, descricao, acao, extra, contexto, children,
 // forwardRef (não ref-as-prop): um <Button> usado como `asChild` de um
 // PopoverTrigger/DialogTrigger do Radix precisa repassar a ref de verdade
 // para o <button> nativo, senão o Radix não consegue posicionar/focar nele.
-export const Button = forwardRef<HTMLButtonElement, { children: React.ReactNode; onClick?: () => void; type?: "button" | "submit"; disabled?: boolean; carregando?: boolean; danger?: boolean; secondary?: boolean; className?: string; /** id do form a submeter quando o botão vive fora dele (rodapé de painel) */ form?: string; /** associa o botão a uma mensagem de erro/ajuda (ex.: o alerta de confirmação) */ ariaDescribedby?: string } & Pick<React.AriaAttributes, "aria-pressed" | "aria-expanded">>(
-  ({ children, onClick, type = "button", disabled, carregando = false, danger, secondary, className = "", form, ariaDescribedby, "aria-pressed": pressionado, "aria-expanded": expandido }, ref) => {
+export const Button = forwardRef<HTMLButtonElement, { children: React.ReactNode; onClick?: () => void; type?: "button" | "submit"; disabled?: boolean; carregando?: boolean; danger?: boolean; secondary?: boolean; className?: string; /** id do form a submeter quando o botão vive fora dele (rodapé de painel) */ form?: string; /** associa o botão a uma mensagem de erro/ajuda (ex.: o alerta de confirmação) */ ariaDescribedby?: string; "aria-label"?: string } & Pick<React.AriaAttributes, "aria-pressed" | "aria-expanded">>(
+  ({ children, onClick, type = "button", disabled, carregando = false, danger, secondary, className = "", form, ariaDescribedby, "aria-pressed": pressionado, "aria-expanded": expandido, "aria-label": ariaLabel }, ref) => {
     const cor = secondary && !danger ? "border-border bg-card text-foreground hover:bg-muted hover:text-foreground" : "";
-    return <ShadcnButton aria-pressed={pressionado} aria-expanded={expandido} variant={danger ? "destructive" : secondary ? "outline" : "default"} ref={ref} type={type} form={form} onClick={onClick} disabled={disabled || carregando} aria-busy={carregando || undefined} aria-describedby={ariaDescribedby} className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-45 ${cor} ${className}`}>{carregando && <LoaderCircle aria-hidden="true" className="size-4 animate-spin motion-reduce:animate-none" />}{children}</ShadcnButton>;
+    return <ShadcnButton aria-pressed={pressionado} aria-expanded={expandido} aria-label={ariaLabel} variant={danger ? "destructive" : secondary ? "outline" : "default"} ref={ref} type={type} form={form} onClick={onClick} disabled={disabled || carregando} aria-busy={carregando || undefined} aria-describedby={ariaDescribedby} className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-45 ${cor} ${className}`}>{carregando && <LoaderCircle aria-hidden="true" className="size-4 animate-spin motion-reduce:animate-none" />}{children}</ShadcnButton>;
   },
 );
 Button.displayName = "Button";
@@ -96,7 +100,7 @@ export function Pill({ children, tone = "neutral" }: { children: React.ReactNode
 }
 
 export function StatusPill({ status }: { status: string }) {
-  const tone = status === "CONFIRMADA" || status === "LIQUIDADO" || status === "CONCLUIDO" ? "green" : status === "PENDENTE" || status === "PROCESSANDO" ? "amber" : status === "PARCIAL" ? "blue" : status.includes("CANCEL") || status === "REVERTIDA" || status === "FALHOU" ? "red" : "neutral";
+  const tone = status === "CONFIRMADA" || status === "CONFIRMADO" || status === "LIQUIDADO" || status === "CONCLUIDO" ? "green" : status === "PENDENTE" || status === "PROCESSANDO" ? "amber" : status === "PARCIAL" ? "blue" : status.includes("CANCEL") || status === "REVERTIDA" || status === "REVERTIDO" || status === "FALHOU" ? "red" : "neutral";
   return <Pill tone={tone}>{STATUS[status] ?? status}</Pill>;
 }
 
@@ -112,6 +116,7 @@ export function Paginacao({ pagina, totalPaginas, total, porPagina, rotulo, subs
   /** aria-label da <nav> */ rotulo: string; substantivo: string; idSelect: string;
   onPagina: (pagina: number) => void;
 }) {
+  if (total === 0 && totalPaginas <= 1) return null;
   return <nav aria-label={rotulo} className="fin-paginacao flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3 text-sm">
     <span className="text-ink-3">{total ? (pagina - 1) * porPagina + 1 : 0}–{Math.min(pagina * porPagina, total)} de {total} {substantivo}</span>
     {(!ocultarControlesPaginaUnica || totalPaginas > 1) && <div className="flex items-center gap-2">
@@ -132,7 +137,7 @@ const FILTRO_TODOS = "__todos__";
 export function SelectFiltro({ rotulo, valor, onChange, opcoes, className = "" }: { rotulo: string; valor: string; onChange: (valor: string) => void; opcoes: { valor: string; texto: string }[]; className?: string }) {
   return <Select value={valor === "" ? FILTRO_TODOS : valor} onValueChange={(v) => onChange(v === FILTRO_TODOS ? "" : v)}>
     <SelectTrigger aria-label={rotulo} title={opcoes.find((o) => o.valor === valor)?.texto} className={`h-10 w-full justify-between rounded-lg bg-white px-3 text-left text-sm font-normal sm:w-auto sm:w-44 [&>span]:whitespace-nowrap ${className}`}><SelectValue /></SelectTrigger>
-    <SelectContent>{opcoes.map((o) => <SelectItem key={o.valor || FILTRO_TODOS} value={o.valor === "" ? FILTRO_TODOS : o.valor}>{o.texto}</SelectItem>)}</SelectContent>
+    <SelectContent className="z-[1300]">{opcoes.map((o) => <SelectItem key={o.valor || FILTRO_TODOS} value={o.valor === "" ? FILTRO_TODOS : o.valor}>{o.texto}</SelectItem>)}</SelectContent>
   </Select>;
 }
 
@@ -162,7 +167,10 @@ export function Empty({ children }: { children: React.ReactNode }) {
 }
 
 export function Modal({ titulo, eyebrow, onClose, children, width = "max-w-xl", semCabecalho = false, colorida = false, tom = "info" }: { titulo: string; eyebrow: string; onClose: () => void; children: React.ReactNode; width?: string; semCabecalho?: boolean; colorida?: boolean; tom?: TomFinanceiro }) {
-  return <div data-fin-tom={tom} className={`fixed inset-0 z-[1100] grid place-items-center bg-black/45 p-4 ${colorida ? "financeiro-colorido" : ""}`} role="dialog" aria-modal="true" aria-label={titulo}><Panel className={`${semCabecalho ? "h-[92vh] overflow-hidden" : "max-h-[92vh] overflow-auto"} w-full ${width}`}>{!semCabecalho && <div className="fin-modal-cabecalho sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-border bg-muted p-5"><div className="min-w-0"><div className="eyebrow">{eyebrow}</div><h2 className="mt-1 break-words font-serif text-2xl">{titulo}</h2></div><ShadcnButton variant="ghost" size="icon" onClick={onClose} aria-label="Fechar" className="shrink-0 rounded-lg p-2 hover:bg-white"><X size={18} /></ShadcnButton></div>}{children}</Panel></div>;
+  const [origem] = useState(() => document.activeElement instanceof HTMLElement ? document.activeElement : null);
+  return <Dialog open onOpenChange={open => { if (!open) onClose(); }}><DialogContent aria-describedby={undefined} onCloseAutoFocus={event => { event.preventDefault(); if (origem?.isConnected) origem.focus({ preventScroll: true }); }} showCloseButton={false} overlayClassName="z-[1190]" data-fin-scroll={semCabecalho ? undefined : "conteudo"} data-fin-tom={tom} className={`z-[1200] w-[calc(100%-2rem)] rounded-xl ${semCabecalho ? "h-[92dvh] overflow-hidden" : "max-h-[92dvh] overflow-auto"} ${width} ${colorida ? "financeiro-colorido" : ""}`}>
+    {semCabecalho ? <DialogTitle className="sr-only">{titulo}</DialogTitle> : <div className="fin-modal-cabecalho sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-border bg-muted p-5"><div className="min-w-0"><DialogTitle className="break-words font-sans text-xl font-semibold">{titulo}</DialogTitle><p className="mt-1 text-sm text-muted-foreground">{eyebrow}</p></div><ShadcnButton variant="ghost" size="icon" onClick={onClose} aria-label="Fechar" className="shrink-0 rounded-lg p-2 hover:bg-white"><X size={18} /></ShadcnButton></div>}
+    {children}</DialogContent></Dialog>;
 }
 
 export function ReviewLine({ children, tone = "green" }: { children: React.ReactNode; tone?: "green" | "amber" | "brown" | "neutral" }) {
@@ -186,10 +194,12 @@ export function ReviewLine({ children, tone = "green" }: { children: React.React
 export type ColunaTabela<T> = {
   chave: string;
   titulo: string;
+  /** Controle opcional no cabeçalho; o título textual continua nos cartões. */
+  cabecalho?: React.ReactNode;
   /** governa <th>, <td> e o valor no cartão — não repetir alinhamento na célula */
   alinhamento?: "esquerda" | "centro" | "direita";
   celula: (item: T) => React.ReactNode;
-  /** largura mínima da coluna (px) — a soma vira o min-width da tabela */
+  /** Largura de referência (px): define a proporção e o mínimo total da tabela. */
   larguraMinima?: number;
   /** coluna que vira o título do cartão no mobile (uma por tabela) */
   principal?: boolean;
@@ -204,7 +214,13 @@ export type ColunaTabela<T> = {
 
 const alinhaCelula = (alinhamento?: "esquerda" | "centro" | "direita") => alinhamento === "direita" ? "text-right" : alinhamento === "centro" ? "text-center" : "text-left";
 
-export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLinha, rotulo, ancoraDe, barraRolagemSuperior = false, compacta = false, cartaoComLinks = false }: {
+export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLinha, rotulo, ancoraDe, barraRolagemSuperior = false, compacta = false, cartaoComLinks = false, filtrosColunas, larguraMinimaParaTabela = 640, rodape, ordenacao }: {
+  ordenacao?: { campo: string; direcao: "asc" | "desc" };
+  filtrosColunas?: FiltrosColunas;
+  /** Totais já calculados pelo chamador, associados às chaves das colunas. */
+  rodape?: Partial<Record<string, React.ReactNode>>;
+  /** Limite do contêiner para tabelas curtas em painéis; respeita também a soma das colunas. */
+  larguraMinimaParaTabela?: number;
   compacta?: boolean;
   /** Mantém links independentes da área clicável do cartão. */
   cartaoComLinks?: boolean;
@@ -221,9 +237,11 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
   const idCartao = useId();
   const larguraMinima = colunas.reduce((soma, coluna) => soma + (coluna.larguraMinima ?? 120), 0);
   const principal = colunas.find((coluna) => coluna.principal) ?? colunas[0];
-  const flexivel = colunas.find((coluna) => coluna.larguraFlexivel) ?? principal;
+  const flexivel = colunas.find((coluna) => coluna.larguraFlexivel);
   const secundarias = colunas.filter((coluna) => coluna !== principal && !coluna.ocultarNoCartao && !coluna.acoes && coluna.titulo);
   const acoes = colunas.filter((coluna) => coluna.acoes);
+  const consultaRef = useRef<HTMLDivElement>(null);
+  const [modoCartao, setModoCartao] = useState(() => typeof window !== "undefined" && window.innerWidth < 768);
   const tabelaRef = useRef<HTMLDivElement>(null);
   const barraRef = useRef<HTMLDivElement>(null);
   const [temRolagem, setTemRolagem] = useState(false);
@@ -233,11 +251,12 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
   const [larguraRolagem, setLarguraRolagem] = useState(larguraMinima);
 
   useEffect(() => {
-    if (!barraRolagemSuperior) return;
+    const consulta = consultaRef.current;
     const tabela = tabelaRef.current;
-    if (!tabela) return;
+    if (!consulta || !tabela) return;
     const atualizar = () => {
-      setTemRolagem(tabela.scrollWidth > tabela.clientWidth + 1);
+      if (consulta.clientWidth > 0) setModoCartao(consulta.clientWidth < Math.max(larguraMinimaParaTabela, larguraMinima));
+      setTemRolagem(barraRolagemSuperior && tabela.scrollWidth > tabela.clientWidth + 1);
       setLarguraRolagem(tabela.scrollWidth);
     };
     atualizar();
@@ -246,9 +265,10 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
       return () => window.removeEventListener("resize", atualizar);
     }
     const observador = new ResizeObserver(atualizar);
+    observador.observe(consulta);
     observador.observe(tabela);
     return () => observador.disconnect();
-  }, [barraRolagemSuperior, larguraMinima, itens.length]);
+  }, [barraRolagemSuperior, larguraMinima, larguraMinimaParaTabela, itens.length, modoCartao]);
 
   const sincronizarRolagem = (origem: "tabela" | "barra") => {
     const tabela = tabelaRef.current;
@@ -264,17 +284,17 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
     else if (e.key === "ArrowLeft") { barra.scrollLeft -= 96; e.preventDefault(); }
   };
 
-  return <>
-    {/* ≥768px — tabela; a rolagem horizontal fica presa a este wrapper */}
-    {barraRolagemSuperior && temRolagem && <div ref={barraRef} role="group" aria-label={`Rolagem horizontal: ${rotulo}`} tabIndex={0} onKeyDown={roladaPorTeclado} className="sticky top-0 z-10 hidden overflow-x-auto border-b border-border bg-surface-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#6f7d68]/40 md:block" onScroll={() => sincronizarRolagem("barra")}>
+  return <div ref={consultaRef} className="fin-consulta-responsiva" data-fin-visualizacao={modoCartao ? "cartoes" : "tabela"}>
+    {/* A largura disponível determina se todas as colunas cabem. */}
+    {barraRolagemSuperior && temRolagem && !modoCartao && <div ref={barraRef} role="group" aria-label={`Rolagem horizontal: ${rotulo}`} tabIndex={0} onKeyDown={roladaPorTeclado} className="sticky top-0 z-10 hidden overflow-x-auto border-b border-border bg-surface-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#6f7d68]/40 md:block" onScroll={() => sincronizarRolagem("barra")}>
       <div style={{ width: larguraRolagem, height: 1 }} />
     </div>}
-    <div ref={tabelaRef} className={`hidden overflow-x-auto border-t border-border md:block ${compacta ? "max-h-[max(16rem,calc(100dvh-31rem))] overflow-y-auto" : ""} ${barraRolagemSuperior && temRolagem ? "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden" : ""}`} onScroll={() => sincronizarRolagem("tabela")}>
-      <Table semContainer className="fin-tabela w-full text-left text-sm" style={{ minWidth: larguraMinima }}>
+    <div ref={tabelaRef} className={`fin-tabela-desktop overflow-x-auto border-t border-border ${barraRolagemSuperior && temRolagem ? "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden" : ""}`} onScroll={() => sincronizarRolagem("tabela")}>
+      <Table semContainer data-fin-compacta={compacta || undefined} className="fin-tabela w-full text-left text-sm" style={{ minWidth: larguraMinima }}>
         <TableCaption className="sr-only">{rotulo}</TableCaption>
-        <colgroup>{colunas.map((coluna) => <col key={coluna.chave} style={coluna === flexivel ? undefined : { "--fin-coluna-largura": `${coluna.larguraMinima ?? 120}px` } as CSSProperties} />)}</colgroup>
+        <colgroup>{colunas.map((coluna) => <col key={coluna.chave} style={{ "--fin-coluna-largura": coluna === (flexivel ?? principal) ? undefined : `${coluna.larguraMinima ?? 120}px`, "--fin-coluna-proporcao": flexivel ? undefined : `${(coluna.larguraMinima ?? 120) / larguraMinima * 100}%` } as CSSProperties} />)}</colgroup>
         <TableHeader className="sticky top-0 z-[1] bg-muted text-[11px] uppercase tracking-[.08em] text-ink-3">
-          <TableRow>{colunas.map((coluna) => <TableHead key={coluna.chave} data-fin-coluna={coluna.chave} scope="col" className={`${compacta ? "px-3 py-2" : "p-4"} font-semibold ${alinhaCelula(coluna.alinhamento)}`}>{coluna.titulo}</TableHead>)}</TableRow>
+          <TableRow>{colunas.map((coluna) => <TableHead key={coluna.chave} data-fin-coluna={coluna.chave} scope="col" aria-sort={ordenacao?.campo === coluna.chave ? ordenacao.direcao === "asc" ? "ascending" : "descending" : undefined} className={`${compacta ? "px-3 py-2" : "p-4"} font-semibold ${alinhaCelula(coluna.alinhamento ?? (coluna.acoes ? "direita" : undefined))}`}><span className="fin-cabecalho-ordem">{coluna.cabecalho ?? (filtrosColunas?.[coluna.chave] ? <FiltroColunaConsulta titulo={coluna.titulo} {...filtrosColunas[coluna.chave]} /> : coluna.titulo)}{ordenacao?.campo === coluna.chave && (ordenacao.direcao === "asc" ? <ArrowUp size={13} aria-hidden /> : <ArrowDown size={13} aria-hidden />)}</span></TableHead>)}</TableRow>
         </TableHeader>
         <TableBody className="divide-y divide-border">
           {itens.map((item) => <TableRow
@@ -283,13 +303,14 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
                por role="button" quebraria a semântica de tabela para leitores de tela */
             {...(onAbrir ? { onClick: () => onAbrir(item), tabIndex: 0, onKeyDown: (e: React.KeyboardEvent) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onAbrir(item); } } } : {})}
             className={`${onAbrir ? "cursor-pointer hover:bg-muted" : ""} ${classeLinha?.(item) ?? ""}`}
-          >{colunas.map((coluna) => <TableCell key={coluna.chave} data-fin-coluna={coluna.chave} className={`whitespace-normal ${compacta ? "px-3 py-2" : "p-4"} align-middle ${alinhaCelula(coluna.alinhamento)}`}>{coluna.celula(item)}</TableCell>)}</TableRow>)}
+          >{colunas.map((coluna) => <TableCell key={coluna.chave} data-fin-coluna={coluna.chave} data-fin-principal={coluna === principal || undefined} data-fin-acoes={coluna.acoes || undefined} className={`whitespace-normal ${compacta ? "px-3 py-2" : "p-4"} align-middle ${alinhaCelula(coluna.alinhamento ?? (coluna.acoes ? "direita" : undefined))}`}>{coluna.celula(item)}</TableCell>)}</TableRow>)}
         </TableBody>
+        {rodape && <TableFooter className="fin-tabela-rodape"><TableRow>{colunas.map(coluna => <TableCell key={coluna.chave} className={alinhaCelula(coluna.alinhamento)}>{rodape[coluna.chave] ?? null}</TableCell>)}</TableRow></TableFooter>}
       </Table>
     </div>
 
-    {/* <768px — cartões: nada de rolagem lateral, nada de coluna espremida */}
-    <ul className={`divide-y divide-border border-t border-border md:hidden ${compacta ? "max-h-64 overflow-y-auto sm:max-h-[max(16rem,calc(100dvh-31rem))]" : ""}`} tabIndex={compacta ? 0 : undefined} aria-label={rotulo}>
+    {/* Cartões conservam os mesmos dados, links, seleção e comandos. */}
+    <ul className="fin-tabela-cartoes divide-y divide-border border-t border-border" aria-label={rotulo}>
       {itens.map((item) => {
         const corpo = <>
           <div id={`${idCartao}-${chaveDe(item)}`} className="min-w-0 break-words text-left">{principal.celula(item)}</div>
@@ -300,16 +321,18 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
             </div>)}
           </dl>
         </>;
+        const comandos = acoes.map(coluna => ({ chave: coluna.chave, conteudo: coluna.celula(item) })).filter(comando => comando.conteudo != null && comando.conteudo !== false);
         return <li key={chaveDe(item)} data-ancora={ancoraDe?.(item)} className={classeLinha?.(item) ?? ""}>
           {onAbrir
             ? cartaoComLinks ? <div className="relative">
               <ShadcnButton variant="ghost" type="button" aria-labelledby={`${idCartao}-${chaveDe(item)}`} onClick={() => onAbrir(item)} className="absolute inset-0 h-full w-full rounded-none" />
-              <div className="pointer-events-none relative p-3 [&_a]:pointer-events-auto [&_a]:relative [&_a]:z-10">{corpo}</div>
+              <div className="pointer-events-none relative p-3 [&_a]:pointer-events-auto [&_a]:relative [&_a]:z-10 [&_button]:pointer-events-auto [&_button]:relative [&_button]:z-10">{corpo}</div>
             </div> : <ShadcnButton variant="ghost" type="button" onClick={() => onAbrir(item)} className="block h-auto w-full whitespace-normal p-3 text-left">{corpo}</ShadcnButton>
             : <div className="p-4">{corpo}</div>}
-          {acoes.length > 0 && <div className="flex justify-end gap-2 px-4 pb-4">{acoes.map((coluna) => <div key={coluna.chave}>{coluna.celula(item)}</div>)}</div>}
+          {comandos.length > 0 && <div className="fin-cartao-acoes flex justify-end gap-2 px-4 pb-4">{comandos.map(comando => <div key={comando.chave}>{comando.conteudo}</div>)}</div>}
         </li>;
       })}
+      {rodape && <li className="fin-cartao-rodape"><div className="p-4"><strong>{rodape[principal.chave] ?? "Total"}</strong><dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2">{colunas.filter(coluna => coluna !== principal && rodape[coluna.chave] != null).map(coluna => <div key={coluna.chave}><dt className="text-xs text-ink-3">{coluna.titulo}</dt><dd className="font-semibold">{rodape[coluna.chave]}</dd></div>)}</dl></div></li>}
     </ul>
-  </>;
+  </div>;
 }

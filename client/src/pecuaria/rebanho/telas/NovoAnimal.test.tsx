@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { alterarControle } from "../../../lib/controles.fixture";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { NovoAnimal } from "./NovoAnimal";
@@ -47,8 +48,8 @@ async function montar() {
   render(<NovoAnimal onVoltar={vi.fn()} />);
   await screen.findByRole("heading", { name: "Novo animal" });
   await screen.findByLabelText("Sítio");
-  expect(screen.getByRole("option", { name: "Sede" })).toBeTruthy();
-  expect(screen.queryByRole("option", { name: "Apelido antigo" })).toBeNull();
+  expect(screen.getByRole("option", { hidden: true,  name: "Sede" })).toBeTruthy();
+  expect(screen.queryByRole("option", { hidden: true,  name: "Apelido antigo" })).toBeNull();
 }
 
 describe("NovoAnimal", () => {
@@ -56,10 +57,11 @@ describe("NovoAnimal", () => {
     vi.mocked(cadastrarAnimal).mockResolvedValue({ id: "repro-1", avisos: [] } as never);
     await montar();
     fireEvent.change(screen.getByLabelText("Brinco"), { target: { value: "R1" } });
-    fireEvent.change(screen.getByLabelText("Sítio"), { target: { value: "1" } });
-    fireEvent.change(screen.getByLabelText("Papel reprodutivo"), { target: { value: "DOADORA" } });
-    fireEvent.change(screen.getByLabelText("Finalidade"), { target: { value: "REPRODUCAO" } });
-    expect(screen.getByText("Finalidade: Reprodução · Doadora.")).toBeTruthy();
+    await alterarControle(screen.getByLabelText("Sítio"), { target: { value: "1" } });
+    await alterarControle(screen.getByLabelText("Papel reprodutivo"), { target: { value: "DOADORA" } });
+    await alterarControle(screen.getByLabelText("Finalidade"), { target: { value: "REPRODUCAO" } });
+    expect(screen.getByLabelText("Finalidade").textContent).toContain("Reprodução");
+    expect(screen.getByLabelText("Papel reprodutivo").textContent).toContain("Doadora");
     fireEvent.click(screen.getByRole("button", { name: "Salvar animal" }));
     await waitFor(() => expect(cadastrarAnimal).toHaveBeenCalledWith(expect.objectContaining({ aptidao: "REPRODUCAO", papelReprodutivo: "DOADORA", sexo: "F" })));
   });
@@ -69,10 +71,10 @@ describe("NovoAnimal", () => {
     vi.mocked(preverComposicaoAnimal).mockResolvedValue({ itens: [{ racaId: "raca-1", sigla: "NE", fracao64: 32 }], rotulo: "1/2 NE" });
     vi.mocked(cadastrarAnimal).mockResolvedValue({ id: "filho-1", avisos: [] } as never);
     await montar();
-    fireEvent.change(screen.getByLabelText("Brinco"), { target: { value: "filho-1" } });
-    fireEvent.change(screen.getByLabelText("Sítio"), { target: { value: "1" } });
+    await alterarControle(screen.getByLabelText("Brinco"), { target: { value: "filho-1" } });
+    await alterarControle(screen.getByLabelText("Sítio"), { target: { value: "1" } });
     fireEvent.click(screen.getAllByRole("button", { name: "Genitor externo" })[1]);
-    fireEvent.change(await screen.findByLabelText("Selecionar pai entre os genitores externos"), { target: { value: "pai-1" } });
+    await alterarControle(await screen.findByLabelText("Selecionar pai entre os genitores externos"), { target: { value: "pai-1" } });
     expect(await screen.findByText(/Parcela fixa dos genitores: 1\/2 NE \(32\/64\)/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Salvar animal" }));
     await waitFor(() => expect(cadastrarAnimal).toHaveBeenCalledWith(expect.objectContaining({ composicao: [{ racaId: "raca-1", fracao64: 32 }] })));
@@ -87,10 +89,11 @@ describe("NovoAnimal", () => {
 
   it("cadastra somente compra e encaminha nascimento para o parto da mãe", async () => {
     await montar();
-    expect((screen.getByLabelText("Origem") as HTMLSelectElement).value).toBe("COMPRADO");
+    expect(screen.getByText("Animal comprado")).toBeTruthy();
+    expect(screen.queryByLabelText("Origem")).toBeNull();
     expect((screen.getByLabelText("Data de entrada") as HTMLInputElement).disabled).toBe(false);
     expect(screen.queryByRole("option", { name: "Nascido na propriedade" })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Registrar parto e cadastrar cria" }));
+    fireEvent.click(screen.getByRole("button", { name: "Registrar nascimento pelo parto" }));
     expect(navegarPara).toHaveBeenCalledWith("/pecuaria/reproducao?acao=parto");
     expect(cadastrarAnimal).not.toHaveBeenCalled();
   });
@@ -113,16 +116,16 @@ describe("NovoAnimal", () => {
     await montar();
     // fêmea: papel e partos aparecem; troca o papel antes de trocar de sexo
     expect(screen.getByLabelText("Papel reprodutivo")).toBeTruthy();
-    fireEvent.change(screen.getByLabelText("Papel reprodutivo"), { target: { value: "RECEPTORA" } });
-    fireEvent.change(screen.getByLabelText("Partos antes da entrada"), { target: { value: "2" } });
+    await alterarControle(screen.getByLabelText("Papel reprodutivo"), { target: { value: "RECEPTORA" } });
+    await alterarControle(screen.getByLabelText("Partos antes da entrada"), { target: { value: "2" } });
 
-    fireEvent.change(screen.getByLabelText("Sexo"), { target: { value: "M" } });
+    await alterarControle(screen.getByLabelText("Sexo"), { target: { value: "M" } });
     expect(screen.queryByLabelText("Papel reprodutivo")).toBeNull();
     expect(screen.queryByLabelText("Partos antes da entrada")).toBeNull();
 
-    fireEvent.change(screen.getByLabelText("Brinco"), { target: { value: "boi-1" } });
-    fireEvent.change(screen.getByLabelText("Data de nascimento"), { target: { value: "2026-01-01" } });
-    fireEvent.change(screen.getByLabelText("Sítio"), { target: { value: "1" } });
+    await alterarControle(screen.getByLabelText("Brinco"), { target: { value: "boi-1" } });
+    await alterarControle(screen.getByLabelText("Data de nascimento"), { target: { value: "2026-01-01" } });
+    await alterarControle(screen.getByLabelText("Sítio"), { target: { value: "1" } });
     fireEvent.click(screen.getByRole("button", { name: "Salvar animal" }));
     await waitFor(() => expect(cadastrarAnimal).toHaveBeenCalledWith(expect.objectContaining({
       sexo: "M", papelReprodutivo: "NENHUM", partosAntesDaEntrada: 0,
@@ -145,26 +148,26 @@ describe("NovoAnimal", () => {
       avisos: [],
     });
     await montar();
-    fireEvent.change(screen.getByLabelText("Brinco"), { target: { value: "1234" } });
-    fireEvent.change(screen.getByLabelText("Data de nascimento"), { target: { value: "2026-01-01" } });
-    fireEvent.change(screen.getByLabelText("Data de entrada"), { target: { value: "2026-02-01" } });
-    fireEvent.change(screen.getByLabelText("Sítio"), { target: { value: "1" } });
-    expect(screen.getByRole("option", { name: "Lote A" })).toBeTruthy();
-    fireEvent.change(screen.getByLabelText("Lote"), { target: { value: "lote-1" } });
+    await alterarControle(screen.getByLabelText("Brinco"), { target: { value: "1234" } });
+    await alterarControle(screen.getByLabelText("Data de nascimento"), { target: { value: "2026-01-01" } });
+    await alterarControle(screen.getByLabelText("Data de entrada"), { target: { value: "2026-02-01" } });
+    await alterarControle(screen.getByLabelText("Sítio"), { target: { value: "1" } });
+    expect(screen.getByRole("option", { hidden: true, name: "Lote A" })).toBeTruthy();
+    await alterarControle(screen.getByLabelText("Lote"), { target: { value: "lote-1" } });
     fireEvent.click(screen.getByRole("button", { name: "Salvar animal" }));
     await waitFor(() => expect(cadastrarAnimal).toHaveBeenCalledWith(expect.objectContaining({
       brinco: "1234", dataNascimento: "2026-01-01", dataEntrada: "2026-02-01", origem: "COMPRADO", propriedadeId: 1, loteId: "lote-1", aptidao: "LEITE",
     })));
-    expect(navegarPara).toHaveBeenCalledWith("/pecuaria/rebanho/animais/animal-1");
+    expect(navegarPara).toHaveBeenCalledWith("/pecuaria/rebanho/animais/animal-1?retorno=%2Fpecuaria%2Frebanho%2Fanimais");
   });
 
   it("mostra o aviso de filiação devolvido ao salvar sem bloquear o cadastro", async () => {
     vi.mocked(cadastrarAnimal).mockResolvedValue({ id: "animal-aviso", avisos: [{ campo: "maeId", mensagem: "A mãe teria menos de 15 meses de idade no parto" }] } as never);
     await montar();
-    fireEvent.change(screen.getByLabelText("Brinco"), { target: { value: "B2" } });
-    fireEvent.change(screen.getByLabelText("Sítio"), { target: { value: "1" } });
+    await alterarControle(screen.getByLabelText("Brinco"), { target: { value: "B2" } });
+    await alterarControle(screen.getByLabelText("Sítio"), { target: { value: "1" } });
     fireEvent.click(screen.getByRole("button", { name: "Salvar animal" }));
     await waitFor(() => expect(toastMocks.warn).toHaveBeenCalledWith("Animal salvo com aviso", "A mãe teria menos de 15 meses de idade no parto"));
-    expect(navegarPara).toHaveBeenCalledWith("/pecuaria/rebanho/animais/animal-aviso");
+    expect(navegarPara).toHaveBeenCalledWith("/pecuaria/rebanho/animais/animal-aviso?retorno=%2Fpecuaria%2Frebanho%2Fanimais");
   });
 });

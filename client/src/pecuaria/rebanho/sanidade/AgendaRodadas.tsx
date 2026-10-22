@@ -1,46 +1,56 @@
 import "../protocolos/protocolos.css";
-import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import { OperacaoProtocolo } from "../protocolos/OperacaoProtocolo";
 import { SecaoRecolhivel } from "../components/SecaoRecolhivel";
+import { CartoesCiclos } from "./CartoesCiclos";
+import { AlternarVisualizacaoSanitaria, useVisualizacaoSanitaria } from "./VisualizacaoSanitaria";
+import { FiltroColunaConsulta, type FiltrosColunas } from "@/financeiro/FiltroColunaConsulta";
+import { type ReactNode, useEffect, useRef, useState } from "react";
+import { MoreHorizontal, CalendarDays } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Button, ErrorBox, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
 import { RegularizacaoTarefa, rotuloSituacaoTarefa } from "./RegularizacaoTarefa";
-import { Fragment, type ReactNode, useEffect, useRef, useState } from "react";
-import { Button, CabecalhoTabela, Empty, ErrorBox, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
+import { Empty } from "../../../financeiro/financeiro-ui";
 import { classeInput } from "../../../financeiro/PainelCadastro";
 import { Paginacao } from "../ui";
+import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import { reqSanidade } from "./api";
 import { FormRodada } from "./FormRodada";
-import { consultaRodadas, consultarRodada, listarParticipantesRodada, listarRodadas, removerParticipante, type PaginaSanitaria, type ParticipanteRodada, type RodadaSanitaria, type TarefaRodada } from "./rodadas-api";
-import { dataSanitaria, nomeAnimalSanitario } from "./rotulos";
+import { consultaRodadas, consultarRodada, listarEtapasRodada, listarParticipantesRodada, listarRodadas, listarTarefasEtapa, removerParticipante, type EtapaRodada, type PaginaSanitaria, type ParticipanteRodada, type RodadaSanitaria, type TarefaRodada } from "./rodadas-api";
+import { dataSanitaria, nomeAnimalSanitario, unidadeSanitaria } from "./rotulos";
+import { ContagensEtapa, EstadoSanitario, rotuloTarefaSanitaria } from "./IndicadoresSanitarios";
+import { SkeletonSanitario } from "./SkeletonSanitario";
 const paginaUrl = (chave: string) => Math.max(1, Number(new URLSearchParams(window.location.search).get(chave)) || 1);
 
-export function AgendaRodadas({ filtrosUI, filtros, podeLancar, rodadaId, onAbrir, onExecutar, onAcao, recarregarToken }: { filtrosUI?: ReactNode; filtros: Record<string, string | number | undefined>; podeLancar: boolean; rodadaId: string; onAbrir: (id: string) => void; onExecutar: (tarefas: TarefaRodada[]) => void; onAcao: (acao: "adiar" | "dispensar" | "cancelar" | "consultar", tarefa: TarefaRodada) => void; recarregarToken: number }) {
+export function AgendaRodadas({ filtrosColunas, filtrosUI, filtros, podeLancar, rodadaId, onAbrir, onExecutar, onAcao, recarregarToken }: { filtrosColunas?: FiltrosColunas; filtrosUI?: ReactNode | ((acao: ReactNode) => ReactNode); filtros: Record<string, string | number | undefined>; podeLancar: boolean; rodadaId: string; onAbrir: (id: string) => void; onExecutar: (tarefas: TarefaRodada[]) => void; onAcao: (acao: "adiar" | "dispensar" | "cancelar" | "consultar", tarefa: TarefaRodada) => void; recarregarToken: number }) {
+  const visual = useVisualizacaoSanitaria("visualCiclos");
   const [pagina, setPagina] = useState<PaginaSanitaria<RodadaSanitaria> | null>(null);
   const [criando, setCriando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [revisao, setRevisao] = useState(0);
   const [salvo, setSalvo] = useState(false);
-  const consulta = consultaRodadas(filtros);
+  const consulta = consultaRodadas({ ...filtros, porPagina: 10 });
   const temFiltros = ["animalId", "buscaAnimal", "loteId", "de", "ate", "situacao"].some(chave => filtros[chave] !== undefined && filtros[chave] !== "");
-  useEffect(() => { let vivo = true; setCarregando(true); setErro(null); listarRodadas(Object.fromEntries(new URLSearchParams(consulta))).then((v) => { if (vivo) setPagina(v); }).catch((e: unknown) => { if (vivo) setErro(`${salvo ? "Ciclo salvo. A consulta não atualizou. " : ""}${e instanceof Error ? e.message : String(e)}`); }).finally(() => { if (vivo) setCarregando(false); }); return () => { vivo = false; }; }, [consulta, revisao, recarregarToken]);
+  useEffect(() => { if (rodadaId) return; let vivo = true; setCarregando(true); setErro(null); listarRodadas(Object.fromEntries(new URLSearchParams(consulta))).then((v) => { if (vivo) setPagina(v); }).catch((e: unknown) => { if (vivo) setErro(`${salvo ? "Ciclo salvo. A consulta não atualizou. " : ""}${e instanceof Error ? e.message : String(e)}`); }).finally(() => { if (vivo) setCarregando(false); }); return () => { vivo = false; }; }, [consulta, revisao, recarregarToken, rodadaId]);
+  if (rodadaId) return <div className="protocolos-pagina protocolos-superficie"><DetalheRodada key={rodadaId} id={rodadaId} filtros={filtros} podeLancar={podeLancar} onFechar={() => onAbrir("")} onExecutar={onExecutar} onAcao={onAcao} recarregarToken={recarregarToken} onMudou={() => setRevisao((v) => v + 1)} /></div>;
   return <section className="protocolos-pagina protocolos-superficie min-w-0">
-    <CabecalhoTabela titulo="Ciclos de protocolos" acao={podeLancar ? <Button onClick={() => setCriando(true)}>Novo ciclo</Button> : undefined} />
-    {filtrosUI}
+    {typeof filtrosUI === "function" ? filtrosUI(podeLancar ? <Button onClick={() => setCriando(true)}>Novo ciclo</Button> : undefined) : <div className="flex flex-wrap items-center justify-between gap-3">{filtrosUI}{podeLancar && <Button onClick={() => setCriando(true)}>Novo ciclo</Button>}</div>}
+    <div className="san-visual-barra"><p>Acompanhe as etapas e as tarefas de cada ciclo.</p><AlternarVisualizacaoSanitaria rotulo="Visualização dos ciclos" {...visual}/></div>
     {salvo && <p role="status">Ciclo salvo.</p>}
     {erro && <><ErrorBox erro={erro} /><Button secondary onClick={() => setRevisao((v) => v + 1)}>Tentar novamente</Button></>}
-    {carregando ? <p role="status" className="p-4">Carregando ciclos…</p> : !erro && <><div className="sanidade-ciclos">
-      <div className="sanidade-ciclo-linha sanidade-ciclo-cabecalho text-sm text-ink-3" aria-hidden="true"><span>Ciclo</span><span>Protocolo</span><span>Início</span><span>Participantes</span><span>Ação</span></div>
-      {(pagina?.itens ?? []).map((r) => <Fragment key={r.id}>
-        <div className={`sanidade-ciclo-linha cursor-pointer ${rodadaId === r.id ? "sanidade-ciclo-ativo" : ""}`} onClick={e => { if (!(e.target as HTMLElement).closest("a,button,input,select,textarea")) onAbrir(rodadaId === r.id ? "" : r.id); }}>
-          <a className="text-left underline" href={`${window.location.pathname}?${new URLSearchParams({ ...Object.fromEntries(new URLSearchParams(window.location.search)), aba: "agenda", visaoAgenda: "rodadas", rodadaId: r.id })}`} aria-expanded={rodadaId === r.id} aria-controls={`ciclo-${r.id}`} onClick={e => { if (!e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey && e.button === 0) { e.preventDefault(); onAbrir(rodadaId === r.id ? "" : r.id); } }}>{rodadaId === r.id ? "⌄" : "›"} {r.nome}</a>
+    {carregando ? <SkeletonSanitario estrutura="ciclos" label="Carregando ciclos de protocolos…" /> : !erro && <>{visual.modo === "visual" ? <CartoesCiclos ciclos={pagina?.itens ?? []} onAbrir={onAbrir} revisao={revisao + recarregarToken}/> : <div className="sanidade-ciclos">
+      <div className="sanidade-ciclo-linha sanidade-ciclo-cabecalho text-sm text-ink-3"><span>Ciclo</span><span>Protocolo</span><span>{filtrosColunas?.data ? <FiltroColunaConsulta titulo="Início" {...filtrosColunas.data}/> : "Início"}</span><span>Participantes</span></div>
+      {(pagina?.itens ?? []).map((r) => <div key={r.id}>
+        <div role="button" tabIndex={0} aria-label={`Abrir ciclo ${r.nome}`} onClick={() => onAbrir(r.id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onAbrir(r.id); } }} className={`sanidade-ciclo-linha sanidade-ciclo-clicavel ${rodadaId === r.id ? "sanidade-ciclo-ativo" : ""}`}>
+          <span className="font-medium">{r.nome}</span>
           <span>{r.protocolo.nome} · v{r.protocolo.versao}</span><span>{dataSanitaria(r.inicioReferencia)}</span><span>{r.participantes ?? "—"} animais</span>
-          <span aria-hidden="true">{rodadaId === r.id ? "⌄" : "›"}</span>
         </div>
-        {rodadaId === r.id && <div id={`ciclo-${r.id}`} className="sanidade-ciclo-ativo"><DetalheRodada id={rodadaId} filtros={filtros} podeLancar={podeLancar} onFechar={() => onAbrir("")} onExecutar={onExecutar} onAcao={onAcao} recarregarToken={recarregarToken} onMudou={() => setRevisao((v) => v + 1)} /></div>}
-      </Fragment>)}
-    </div>{pagina && pagina.total > 0 && <Paginacao paginaAtual={pagina.pagina} totalPaginas={Math.max(1, Math.ceil(pagina.total / pagina.porPagina))} totalItens={pagina.total} itensPorPagina={pagina.porPagina} onPaginaChange={(p) => { const url = new URL(window.location.href); url.searchParams.set("pagina", String(p)); window.history.pushState(null, "", url); window.dispatchEvent(new PopStateEvent("popstate")); }} rotulo="ciclos" idSelect="pagina-rodadas" />}{!pagina?.itens?.length && <Empty>{temFiltros ? "Nenhum ciclo corresponde aos filtros. Ajuste os critérios acima para consultar outros ciclos." : <>Nenhum ciclo encontrado.{podeLancar && " Use Novo ciclo para planejar o cuidado dos animais."}</>}</Empty>}</>}
+      </div>)}
+    </div>}{pagina && pagina.total > 0 && <Paginacao paginaAtual={pagina.pagina} totalPaginas={Math.max(1, Math.ceil(pagina.total / pagina.porPagina))} totalItens={pagina.total} itensPorPagina={pagina.porPagina} onPaginaChange={(p) => { const url = new URL(window.location.href); url.searchParams.set("pagina", String(p)); window.history.pushState(null, "", url); window.dispatchEvent(new PopStateEvent("popstate")); }} rotulo="ciclos" idSelect="pagina-rodadas" />}{!pagina?.itens?.length && <Empty>{temFiltros ? "Nenhum ciclo corresponde aos filtros. Ajuste os critérios acima para consultar outros ciclos." : <>Nenhum ciclo encontrado.{podeLancar && " Use Novo ciclo para planejar o cuidado dos animais."}</>}</Empty>}</>}
+
     {criando && <FormRodada onFechar={() => setCriando(false)} onSalvo={(id) => { setCriando(false); setSalvo(true); setRevisao((v) => v + 1); onAbrir(id); }} />}
-    {rodadaId && !pagina?.itens.some((r) => r.id === rodadaId) && <DetalheRodada id={rodadaId} filtros={filtros} podeLancar={podeLancar} onFechar={() => onAbrir("")} onExecutar={onExecutar} onAcao={onAcao} recarregarToken={recarregarToken} onMudou={() => setRevisao((v) => v + 1)} />}
   </section>;
 }
 
@@ -75,7 +85,7 @@ function DetalheRodada({ id, filtros, podeLancar, onFechar, onExecutar, onMudou,
   const podeGerirRodada = podeLancar && sitioConsultado != null && rodada?.propriedadeId === sitioConsultado;
   if (adicionando && rodada) return <FormRodada rodada={rodada} onFechar={() => setAdicionando(false)} onSalvo={() => { setAdicionando(false); atualizar(true); }} />;
   return <section className="sanidade-ciclo-detalhe" aria-label={rodada?.nome ?? "Ciclo de protocolo"}>
-    <div className="mb-4 flex justify-end"><Button secondary onClick={onFechar} disabled={ocupado}>Fechar</Button></div>
+    <div className="mb-4 flex justify-end"><Button secondary onClick={onFechar} disabled={ocupado}>Voltar para ciclos</Button></div>
     <ErrorBox erro={erro} />{alteracaoSalva && <p role="status">Alteração salva.</p>}{erro && <Button secondary onClick={() => atualizar()}>Atualizar consulta</Button>}
     {carregando ? <p>Carregando ciclo…</p> : rodada && <div className="grid gap-5">
       <OperacaoProtocolo acoes={podeGerirRodada && <div className="flex flex-wrap gap-2"><Button secondary onClick={() => setAdicionando(true)}>Adicionar participantes</Button><Button secondary onClick={() => { chave.current = crypto.randomUUID(); setNovoNome(rodada.nome); setRenomeando(true); }}>Renomear ciclo</Button><Button secondary onClick={() => { chave.current = crypto.randomUUID(); void abrirAssociacao(); }}>Associar execuções existentes</Button></div>} programacaoId={id} propriedadeId={sitioConsultado} podeLancar={podeLancar} revisao={revisao + recarregarToken} aoExecutar={(tarefas) => onExecutar(tarefas.map(t => t.tarefaOrigem))} regularizacao={(t, atualizarOperacao) => <RegularizacaoTarefa tarefa={t.tarefaOrigem} podeLancar={podeLancar} onMudou={async () => { atualizarOperacao(); onMudou(); }} />} gestao={<>

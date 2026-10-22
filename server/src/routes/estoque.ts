@@ -19,6 +19,7 @@ import { listarParceiros } from "../services/financeiro/parceiros.js";
 import { FinanceiroError } from "../services/financeiro/regras.js";
 import { resolverEscopoLeitura, resolverEscopoEscrita } from "../services/propriedade.js";
 import { exigePermissao, getUsuario } from "../middleware/permissao.js";
+import { apresentarValores, valoresMovimentoEstoque } from "../services/financeiro/visibilidade.js";
 import { temArea, temPermissao } from "../services/auth/papeis.js";
 import { SEM_VINCULO } from "../lib/ids.js";
 
@@ -120,7 +121,7 @@ export const estoqueRouter = new Hono()
     try {
       const input = c.req.valid("json");
       const propriedadeId = await resolverEscopoEscrita(c, input.propriedadeId ?? null);
-      return c.json(await svc.registrarMovimento({ ...input, propriedadeId, usuarioId: usuarioId(c) }), 201);
+      return c.json(apresentarValores(c, await svc.registrarMovimento({ ...input, propriedadeId, usuarioId: usuarioId(c) }), valoresMovimentoEstoque), 201);
     }
     catch (e) { const { status, body } = fail(e); return c.json(body, status); }
   })

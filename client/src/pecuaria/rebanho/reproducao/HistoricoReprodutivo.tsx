@@ -1,3 +1,8 @@
+import { BarraConsulta } from "@/financeiro/BarraConsulta";
+import { useRascunhoConsulta } from "@/financeiro/useRascunhoConsulta";
+import { filtrosDasColunas, type CampoConsulta } from "@/financeiro/FiltroColunaConsulta";
+import { DatePicker } from "@/components/DatePicker";
+import { BuscaLista } from "@/components/BuscaLista";
 import { useEffect, useRef, useState } from "react";
 import { dataValida } from "./periodo-consulta";
 import { navegarPara } from "../../../router";
@@ -28,16 +33,24 @@ export function HistoricoReprodutivo({ fatos, animalId, propriedadeId, onAbrir }
   const primeiro = [...fatos].filter(f => f.data && f.data.slice(0, 10) <= hoje).sort((a,b) => a.data.localeCompare(b.data))[0]?.data.slice(0,10) ?? "";
   const de = inicio ?? primeiro, ate = fim ?? hoje;
   const invalido = !!de&&!dataValida(de)||!!ate&&!dataValida(ate)||!!de && !!ate && de > ate;
-  const selecionados = invalido ? [] : fatos.filter(f => (!tipos.length || tipos.includes(f.grupo)) && (!f.data ? inicio == null && fim == null : (!de || f.data.slice(0,10) >= de) && (!ate || f.data.slice(0,10) <= ate)));
+  const [busca,setBusca] = useState("");
+  const edicao = useRascunhoConsulta({tipos,inicio:de,fim:ate},{tipos:[] as string[],inicio:"",fim:""},v=>{setTipos(v.tipos);setInicio(v.inicio);setFim(v.fim);setPagina(1);});
+  const campos: CampoConsulta[] = [
+    {chave:"evento",ativo:!!tipos.length,limpar:()=>edicao.editar("tipos",[]),conteudo:<MultiSelect compacto label="Tipos de registro" placeholder="Todos os tipos" options={filtros.filter(([,v])=>v).map(([label,value])=>({label,value}))} value={edicao.rascunho.tipos} onValueChange={v=>edicao.editar("tipos",v)}/>},
+    {chave:"data", naBarra: true,ativo:inicio!=null||fim!=null,limpar:()=>{edicao.editar("inicio","");edicao.editar("fim","");},conteudo:<div className="filtros-grupo-campos"><label>De<DatePicker value={edicao.rascunho.inicio} onChange={v=>edicao.editar("inicio",v)}/></label><label>Até<DatePicker value={edicao.rascunho.fim} onChange={v=>edicao.editar("fim",v)}/></label></div>},
+  ];
+  const erroFiltro = edicao.rascunho.inicio&&edicao.rascunho.fim&&edicao.rascunho.inicio>edicao.rascunho.fim?"A data inicial deve ser igual ou anterior à final.":null;
+  const selecionados = invalido ? [] : fatos.filter(f => `${tituloFato(f)} ${f.resultado??""} ${f.status??""}`.toLocaleLowerCase("pt-BR").includes(busca.toLocaleLowerCase("pt-BR")) && (!tipos.length || tipos.includes(f.grupo)) && (!f.data ? inicio == null && fim == null : (!de || f.data.slice(0,10) >= de) && (!ate || f.data.slice(0,10) <= ate)));
   const totalPaginas = Math.max(1, Math.ceil(selecionados.length / tamanho));
   const paginaAtual = Math.min(pagina, totalPaginas);
 
   return <div className="repro-historico">
-    <div className="repro-historico-periodo"><span className="text-ink-3">Período</span><div ref={periodo}><DateRangePicker value={{start:dataValida(de)?dateFromIso(de):null,end:dataValida(ate)?dateFromIso(ate):null}} onChange={range => { setInicio(range.start ? isoDate(range.start) : ""); setFim(range.end ? isoDate(range.end) : ""); setPagina(1); }} showPresets={false} triggerAriaLabel="Período do histórico reprodutivo" triggerLabel={<span className="inline-flex items-center gap-3"><CalendarDays size={18} aria-hidden="true"/>{inicio == null && fim == null ? primeiro ? `Desde o início registrado · ${formatBRDateISO(primeiro)}–${formatBRDateISO(hoje)}` : "Início não informado" : `${de ? formatBRDateISO(de) : "Sem início"}–${ate ? formatBRDateISO(ate) : "Sem fim"}`}</span>}/></div><Button variant="outline" className="repro-personalizar-periodo" onClick={() => periodo.current?.querySelector("button")?.click()}>Personalizar período</Button>{(inicio != null || fim != null) && <Button variant="outline" onClick={() => { setInicio(null); setFim(null); setPagina(1); }}>Restaurar período</Button>}</div>
+    <BarraConsulta campos={campos} edicaoFiltros={edicao} erroFiltros={erroFiltro} criterios={tipos.map(t=>({id:t,rotulo:filtros.find(([,v])=>v===t)?.[0]??"Tipo selecionado",limpar:()=>{setTipos(v=>v.filter(x=>x!==t));setPagina(1);}}))}>
+      <BuscaLista rotulo="Buscar evento" placeholder="Evento ou resultado" valor={busca} onChange={v=>{setBusca(v);setPagina(1);}}/>
+      <DateRangePicker value={{start:dataValida(de)?dateFromIso(de):null,end:dataValida(ate)?dateFromIso(ate):null}} onChange={range => { setInicio(range.start ? isoDate(range.start) : ""); setFim(range.end ? isoDate(range.end) : ""); setPagina(1); }} showPresets={false} triggerAriaLabel="Período do histórico reprodutivo" triggerLabel={<span className="inline-flex items-center gap-3"><CalendarDays size={18} aria-hidden="true"/>{inicio == null && fim == null ? primeiro ? `Desde o início registrado · ${formatBRDateISO(primeiro)}–${formatBRDateISO(hoje)}` : "Início não informado" : `${de ? formatBRDateISO(de) : "Sem início"}–${ate ? formatBRDateISO(ate) : "Sem fim"}`}</span>}/>
+    </BarraConsulta>
     {invalido && <p role="alert">O início deve ser anterior ou igual ao fim do período.</p>}
-    <div className="repro-historico-filtros"><MultiSelect compacto label="Tipos de registro" placeholder="Todos os tipos" options={filtros.filter(([,v])=>v).map(([label,value])=>({label,value}))} value={tipos} onValueChange={v=>{setTipos(v);setPagina(1);}}/></div>
-    {tipos.length>0&&<div className="flex flex-wrap gap-2 pb-4" aria-label="Tipos selecionados">{tipos.map(t=><Button variant="outline" key={t} onClick={()=>{setTipos(v=>v.filter(x=>x!==t));setPagina(1);}}>{filtros.find(([,v])=>v===t)?.[0]??"Tipo selecionado"} ×</Button>)}</div>}
-    <TabelaFinanceira rotulo="Histórico reprodutivo" itens={selecionados.slice((paginaAtual-1)*tamanho, paginaAtual*tamanho)} chaveDe={f => f.chaveHistorico ?? `${f.grupo}:${f.id}`} colunas={[
+    <TabelaFinanceira filtrosColunas={filtrosDasColunas(campos,edicao,erroFiltro)} rotulo="Histórico reprodutivo" itens={selecionados.slice((paginaAtual-1)*tamanho, paginaAtual*tamanho)} chaveDe={f => f.chaveHistorico ?? `${f.grupo}:${f.id}`} colunas={[
       { chave: "data", titulo: "Data", principal: true, celula: f => f.data ? formatBRDateISO(f.data) : "Não informada" },
       { chave: "evento", titulo: "Evento", larguraFlexivel: true, celula: tituloFato },
       { chave: "protocolo", titulo: "Protocolo / programação", celula: f => f.grupo === "Tentativa" || f.grupo === "Avaliação" ? <OrigensFatoProtocolo animalId={animalId} fatoId={f.id} exameId={f.exame?.id} propriedadeId={propriedadeId}/> : "Sem vínculo registrado" },
@@ -45,7 +58,7 @@ export function HistoricoReprodutivo({ fatos, animalId, propriedadeId, onAbrir }
       { chave: "acao", titulo: "Ação", acoes: true, celula: f => <Button variant="outline" size="sm" onClick={() => f.grupo === "Parto" ? navegarPara(`/pecuaria/reproducao/partos/${f.id}?retorno=${encodeURIComponent(window.location.pathname+window.location.search+window.location.hash)}${f.propriedadeId != null ? `&sitio=${f.propriedadeId}` : ""}`) : onAbrir(f)}>Ver detalhes</Button> },
     ]}/>
     {!selecionados.length && <p className="p-4 text-ink-3">Nenhum evento registrado neste período e tipo.</p>}
-    <div className="repro-historico-tamanho"><label>Por página <select aria-label="Registros por página" value={tamanho} onChange={e => { setTamanho(Number(e.target.value)); setPagina(1); }}>{[5,10].map(n => <option key={n}>{n}</option>)}</select></label></div>
-    <Paginacao paginaAtual={paginaAtual} totalPaginas={totalPaginas} totalItens={selecionados.length} itensPorPagina={tamanho} onPaginaChange={setPagina} rotulo="registros" idSelect="pagina-historico-animal"/>
+    {selecionados.length > 0 && <><div className="repro-historico-tamanho"><label>Por página <select aria-label="Registros por página" value={tamanho} onChange={e => { setTamanho(Number(e.target.value)); setPagina(1); }}>{[5,10].map(n => <option key={n}>{n}</option>)}</select></label></div>
+    <Paginacao paginaAtual={paginaAtual} totalPaginas={totalPaginas} totalItens={selecionados.length} itensPorPagina={tamanho} onPaginaChange={setPagina} rotulo="registros" idSelect="pagina-historico-animal"/></>}
   </div>;
 }

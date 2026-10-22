@@ -2,6 +2,7 @@
 // entra no cálculo de composição racial (raças compostas, como Girolando, não
 // participam — elas já SÃO a combinação de raças base).
 
+import { Dna } from "lucide-react";
 import { FormEvent, useRef, useState } from "react";
 import { criarRaca, editarRaca, RebanhoApiError } from "../api";
 import type { Raca } from "../types";
@@ -39,9 +40,9 @@ export function FormRaca({ raca, onSalvo, onFechar }: { raca: Raca | null; onSal
   };
 
   const formId = "form-raca";
-  return <PainelCadastro aberto titulo={raca ? `Editar ${raca.nome}` : "Nova raça"} onFechar={() => { if (!emCurso.current) onFechar(); }}
+  return <PainelCadastro aberto icon={Dna} compacto titulo={raca ? `Editar ${raca.nome}` : "Nova raça"} onFechar={() => { if (!emCurso.current) onFechar(); }}
     rodape={<><Button secondary onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form={formId} disabled={salvando}>{salvando ? "Salvando…" : raca ? "Salvar raça" : "Criar raça"}</Button></>}>
-    <form id={formId} onSubmit={submeter} className="grid gap-4" noValidate>
+    <form data-pec-formulario id={formId} onSubmit={submeter} className="grid gap-4" noValidate>
       <ErrorBox erro={erroGeral} />
       <CampoFormulario id="raca-nome" rotulo="Nome da raça" obrigatorio erro={erros.nome}>{(p) => <input {...p} required maxLength={80} value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Girolando" className={classeInput} />}</CampoFormulario>
       <CampoFormulario id="raca-sigla" rotulo="Sigla" obrigatorio erro={erros.sigla} ajuda="2 ou 3 letras, usada na composição racial (ex.: GIR, HOL).">{(p) => <input {...p} required maxLength={3} value={sigla} onChange={(e) => setSigla(e.target.value.toUpperCase())} placeholder="Ex.: GIR" className={`${classeInput} uppercase`} />}</CampoFormulario>

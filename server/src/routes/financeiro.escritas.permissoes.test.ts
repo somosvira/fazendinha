@@ -55,12 +55,14 @@ describe("escritas financeiras exigem lancar antes de validar ou acessar dados",
     const resposta = await app(null).request(`${prefixo}/rascunho/confirmacao`, { method: "POST", headers, body: "{}" });
     expect(resposta.status).toBe(401); expect(mocks.confirmar).not.toHaveBeenCalled();
   });
-  it("leitura do próprio rascunho continua disponível", async () => {
-    const resposta = await app([]).request(`${prefixo}/rascunho`);
+  it("leitura do próprio rascunho exige valores para não sobrescrever campos ocultos", async () => {
+    expect((await app([]).request(`${prefixo}/rascunho`)).status).toBe(403);
+    expect(mocks.obter).not.toHaveBeenCalled();
+    const resposta = await app(["verValores"]).request(`${prefixo}/rascunho`);
     expect(resposta.status).toBe(200); expect(mocks.obter).toHaveBeenCalledWith(3, 7);
   });
   it("operador salva, confirma e descarta o próprio rascunho", async () => {
-    const operador = app(["lancar"]);
+    const operador = app(["lancar", "verValores"]);
     expect((await operador.request(`${prefixo}/rascunho`, { method: "PUT", headers, body: JSON.stringify({ dados: { formulario: {} } }) })).status).toBe(200);
     expect(mocks.salvar).toHaveBeenCalledWith({ dados: { formulario: {} }, propriedadeId: 3, usuarioId: 7 });
     const chave = uid(9);

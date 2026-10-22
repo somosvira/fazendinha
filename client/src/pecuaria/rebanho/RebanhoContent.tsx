@@ -1,3 +1,4 @@
+import "./rebanho-layout.css";
 // Entrypoint do módulo Rebanho. A aba "pec-rebanho" é única — as cinco telas
 // abaixo vivem todas sob o mesmo path canônico /pecuaria/rebanho e a navegação
 // entre elas é só pushState + popstate (mesmo padrão de OperacoesFinanceiras),
@@ -23,6 +24,7 @@ import { DetalheLote } from "./telas/DetalheLote";
 import { Cadastros } from "./telas/Cadastros";
 import { Sanidade } from "./sanidade/Sanidade";
 import { Nutricao } from "./nutricao/Nutricao";
+import { linkFichaAnimal, linkFichaLote, linkNovoAnimal, retornoRebanhoDaUrl, rotuloRetornoRebanho } from "./lib/navegacao";
 
 type Tela =
   | { tipo: "visao-geral" }
@@ -49,11 +51,10 @@ function telaDaUrl(pathname: string): TelaV3 {
 }
 
 const URL_ANIMAIS = "/pecuaria/rebanho/animais";
-const URL_NOVO_ANIMAL = "/pecuaria/rebanho/animais/novo";
 const URL_LOTES = "/pecuaria/rebanho/lotes";
 
 /** `podeLancar`: sem a flag `lancar` o módulo é só consulta — as telas escondem toda ação de escrita. */
-export function RebanhoContent({ podeLancar = true }: { podeLancar?: boolean }) {
+function TelasRebanho({ podeLancar = true }: { podeLancar?: boolean }) {
   const [tela, setTela] = useState<TelaV3>(() => telaDaUrl(window.location.pathname));
 
   useEffect(() => {
@@ -65,21 +66,21 @@ export function RebanhoContent({ podeLancar = true }: { podeLancar?: boolean }) 
   if (tela.tipo === "animais") {
     return <ListaAnimais
       podeLancar={podeLancar}
-      onAbrirAnimal={(id) => navegarPara(`${URL_ANIMAIS}/${id}`)}
-      onNovoAnimal={() => navegarPara(URL_NOVO_ANIMAL)}
+      onAbrirAnimal={(id) => navegarPara(linkFichaAnimal(id))}
+      onNovoAnimal={() => navegarPara(linkNovoAnimal())}
     />;
   }
   if (tela.tipo === "novo-animal") {
-    return <NovoAnimal podeLancar={podeLancar} onVoltar={() => navegarPara(URL_ANIMAIS)} />;
+    return <NovoAnimal podeLancar={podeLancar} onVoltar={() => navegarPara(retornoRebanhoDaUrl(URL_ANIMAIS))} />;
   }
   if (tela.tipo === "detalhe-animal") {
-    return <DetalheAnimal id={tela.id} podeLancar={podeLancar} onVoltar={() => navegarPara(URL_ANIMAIS)} />;
+    return <DetalheAnimal id={tela.id} podeLancar={podeLancar} rotuloVoltar={rotuloRetornoRebanho(retornoRebanhoDaUrl(URL_ANIMAIS))} onVoltar={() => navegarPara(retornoRebanhoDaUrl(URL_ANIMAIS))} />;
   }
   if (tela.tipo === "lotes") {
-    return <ListaLotes podeLancar={podeLancar} onAbrirLote={(id) => navegarPara(`${URL_LOTES}/${id}`)} />;
+    return <ListaLotes podeLancar={podeLancar} onAbrirLote={(id) => navegarPara(linkFichaLote(id))} />;
   }
   if (tela.tipo === "detalhe-lote") {
-    return <DetalheLote id={tela.id} podeLancar={podeLancar} onVoltar={() => navegarPara(URL_LOTES)} />;
+    return <DetalheLote id={tela.id} podeLancar={podeLancar} rotuloVoltar={rotuloRetornoRebanho(retornoRebanhoDaUrl(URL_LOTES))} onVoltar={() => navegarPara(retornoRebanhoDaUrl(URL_LOTES))} />;
   }
   if (tela.tipo === "cadastros") {
     return <Cadastros podeLancar={podeLancar} />;
@@ -87,4 +88,8 @@ export function RebanhoContent({ podeLancar = true }: { podeLancar?: boolean }) 
   if (tela.tipo === "sanidade") return <Sanidade podeLancar={podeLancar} />;
   if (tela.tipo === "nutricao") return <Nutricao podeLancar={podeLancar} />;
   return <VisaoGeral podeLancar={podeLancar} />;
+}
+
+export function RebanhoContent(props: { podeLancar?: boolean }) {
+  return <div className="rebanho-content"><TelasRebanho {...props} /></div>;
 }

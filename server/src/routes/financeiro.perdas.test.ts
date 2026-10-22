@@ -41,6 +41,7 @@ describe("custos no detalhe da perda", () => {
   it.each([{ flags: ["lancar"], valorTotal: null }, { flags: ["lancar", "verValores"], valorTotal: "8" }])("estorno respeita visibilidade de custos ($flags)", async ({ flags, valorTotal }) => {
     mocks.obter.mockResolvedValue({ ...dados, status: "CANCELADA", movimentosEstoque: [...dados.movimentosEstoque, { id: uid(9), origem: "AJUSTE_INVENTARIO", quantidade: "2", custoUnitario: "4", valorTotal: "8", reversaoDeId: uid(1) }] });
     const resposta = await app(["financeiro"], flags).request(`/financeiro/operacoes/${uid(4)}/estorno`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ motivo: "Perda lançada incorretamente" }) });
+    if (!flags.includes("verValores")) { expect(resposta.status).toBe(403); expect(mocks.estornar).not.toHaveBeenCalled(); return; }
     expect(resposta.status).toBe(201);
     expect(await resposta.json()).toMatchObject({ status: "CANCELADA", valorTotal, perdas: [{ produtoNome: "Vacina", quantidade: "2", valorTotal, custoUnitario: valorTotal == null ? null : "4" }], movimentosEstoque: [{ valorTotal }, { valorTotal }] });
     expect(mocks.estornar).toHaveBeenCalledWith(uid(4), "Perda lançada incorretamente", { propriedadeId: 3, usuarioId: 7 });

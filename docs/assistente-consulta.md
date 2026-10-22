@@ -1,0 +1,60 @@
+# Assistente de consulta — primeira versão
+
+## Escopo implementado
+
+Chat autenticado do Terrano com leitura financeira e ajuda de uso revisada. Há consultas de resumo realizado, saldo **atual**, compromissos a pagar/a receber por vencimento (saldo pendente após liquidações) e despesas por categoria. Períodos são inclusivos, limitados a 366 dias; sem período, utiliza o mês atual em America/Sao_Paulo. Resumo e categorias reutilizam `obterDashboard`; contas usam `resumoSaldos`; compromissos usam `listarCompromissos` e dinheiro em Decimal. Transferências/estornos seguem as regras desses serviços.
+
+O assistente não grava fatos, executa SQL livre, faz aconselhamento financeiro, compara períodos, aplica filtros por parceiro/produto/categoria específica, calcula saldo histórico ou consulta os dados de Estoque/Rebanho. A ajuda desses dois módulos está disponível para os perfis com acesso, respeitando os limites operacionais atuais. Pedidos não instrumentados recebem uma resposta de indisponibilidade, sem trocar silenciosamente a pergunta por um total geral.
+
+## Interpretação e fontes
+
+`services/assistente/agente.ts` usa a Responses API com function calling estrito, uma única chamada de interpretação, sem retry automático, timeout de 20 segundos, até 600 tokens de saída e `store: false`. O servidor permite apenas ferramentas registradas, valida seus argumentos com Zod e aplica autorização novamente na execução. Nunca apresenta texto livre do modelo como resposta: dados são formatados pelas ferramentas e ajuda vem de artigos revisados. Essa fronteira limita a resposta aos conteúdos e consultas implementados mesmo diante de tentativas de mudar as instruções.
+
+Perguntas anteriores (até seis), pergunta atual, pathname, catálogo de ajuda permitido e o print anexado à **pergunta atual** vão para a OpenAI. Resultados das consultas financeiras, identidade, credenciais e histórico de respostas não são enviados pelo backend. Texto, áudio e prints enviados pelo usuário podem conter informações pessoais/financeiras e são processados pelo provedor. A interface informa esse uso junto dos controles de envio. Não há pesquisa na internet, ferramentas externas ou acesso ao código pelo modelo.
+
+Cada resposta tem `modo`, `resposta`, `fontes`, `consultadoEm` e `escopo`. Fontes são URLs internas definidas em código, com período quando pertinente. Saldo é explicitamente atual; resultado de um período não é apresentado como saldo histórico. Detalhes truncados avisam o limite; totais usam a base completa da consulta. Falhas de consulta não viram zero nem ausência de registros. Uma seleção incorreta de ferramenta/período pelo modelo continua possível: o usuário deve poder conferir o recorte na fonte. Não há homologação de acurácia do modelo implícita nos testes com mocks.
+
+## Acesso e memória
+
+O novo canal exige usuário real ativo resolvido pela sessão. O dono sintético de `SHARED_ACCESS_TOKEN`/bootstrap incompleto não acessa o assistente. Sítio vem do resolvedor de leitura; ID explícito inexistente/inativo é rejeitado. A IA não recebe parâmetro para escolher sítio ou usuário.
+
+Ferramentas financeiras exigem área Financeiro e aba correspondente (`dashboard` para resumo/categorias; `caixinha` para saldo; `gastos` para compromissos), além de `verValores`, `verInvestimento` e `verSalarios` — dono passa nos gates. **Limitação deliberada da primeira versão:** os agregados atuais não oferecem mascaramento granular confiável por salário/investimento. Perfis sem qualquer uma dessas flags recebem somente ajuda, sem consultar ou enviar os dados restritos ao modelo. Não reutilizar a exposição incompleta das rotas antigas como autorização do assistente.
+
+Ajuda respeita área/aba e só expõe artigos autorizados. Permissão de consultar não implica permissão de lançar/exportar: artigos informam essas exigências. Conversa vive apenas no estado da interface, sem localStorage nem tabelas de WhatsApp. Reinicia ao trocar sessão, usuário, sítio ou permissões conhecidas pela interface; requests são abortadas na desmontagem. Reabrir revalida o catálogo e limpa conversa se o acesso mudou. Uma resposta de acesso negado também limpa resultados anteriores. O backend revalida toda requisição; a interface não é a barreira de autorização.
+
+## API e operação
+
+- `GET /api/assistente/configuracao`: disponibilidade da conversa livre, sítio, consultas e artigos permitidos.
+- `POST /api/assistente/consultar`: **uma** entrada entre `{pergunta, historico?, pagina?, imagem?}`, `{artigoId}` ou `{consulta: {visao, inicio, fim}}`. Schemas estritos rejeitam campos adicionais/roles/identidades. Corpo máximo de 3.000.000 bytes, pergunta de até 2.000 caracteres e até seis perguntas anteriores. `imagem` é um único data URL inline PNG/JPEG/WebP, até 2 MiB e 1600 × 1600 pixels; URLs externas e SVG são rejeitados antes da chamada ao provedor.
+- `POST /api/assistente/transcrever`: multipart com somente `audio`, WAV canônico PCM mono/16-bit/16 kHz de 0,1 a 60 segundos. O servidor valida assinatura, formato, tamanho e duração pelos bytes antes de chamar o provedor. Retorna `{texto}` para revisão; não consulta nem grava fatos financeiros automaticamente. Compartilha gates, validação de sítio e limite por usuário com o chat.
+- Erros: 401 sem identidade real ativa; 422 parâmetros/escopo inválidos; 429 limite; 503 canal desativado, chave ausente ou serviço indisponível. Negação de ferramenta é resposta `modo=acesso_negado`, sem dados.
+
+`ASSISTENTE_CONSULTA_ENABLED` aceita `true`/`false`, padrão `true`. `OPENAI_API_KEY` e `OPENAI_MODEL` são configurações server-side existentes; sem chave, consultas rápidas e artigos continuam funcionando e a interface informa que a conversa livre não está configurada. Local usa o runtime Node existente; produção continua no mesmo Cloudflare Worker, Neon e R2. Configure secrets no ambiente autorizado; nunca exponha a chave no client. Bot antigo, rota `/ia` e WhatsApp permanecem suspensos pelas flags existentes.
+
+## Áudio e prints
+
+O microfone só é solicitado ao clicar em Gravar. Parar transcreve; Descartar cancela. Há parada automática aos 60 segundos. Fechar o chat, trocar contexto ou desmontar libera as tracks/timers e aborta a transcrição da interface; permissão concedida tardiamente não inicia uma gravação órfã. Também há seletor de arquivo de áudio. O navegador decodifica o arquivo e converte para o WAV canônico; uploads acima de 60 segundos são recusados, e a gravação automática é limitada a esse teto. O original é limitado a 8 MiB. Formatos decodificáveis dependem do navegador; falha de codec/permissão recebe orientação explícita. A transcrição entra no campo editável e só vira consulta ao pressionar Enviar. Não há geração de voz para as respostas nesta entrega.
+
+Print pode ser selecionado ou colado no campo da pergunta. Antes de enviar, o usuário vê a prévia e pode removê-lo. O navegador reduz a maior dimensão a 1600 pixels, converte para JPEG e remove metadados. Original acima de 8 MiB ou imagem acima de 40 milhões de pixels é recusado; o servidor revalida formato/dimensões/tamanho. É enviado somente o print atual, com `input_image`/`detail=low`, sem reenviar imagens no histórico. A imagem é pista para identificar tela/campo, não fonte autorizada de valores nem de instruções. Valores pedidos continuam vindo dos serviços do servidor. Sem texto, a pergunta padrão pede a explicação da tela/campo. Conteúdos fora do sistema seguem recusados. Não há captura automática da tela do usuário.
+
+Áudio e prints ficam somente na memória do fluxo e não são gravados no banco, em disco, R2 ou Files API. Transcrição tem uma chamada com timeout de 20 segundos e sem retries; `OPENAI_TRANSCRIBE_MODEL` é validado no `env.ts`, padrão `gpt-4o-mini-transcribe`. Cada transcrição consome uma consulta da janela; enviar o texto consome outra. Abortar a interface não garante cancelar uma chamada que o provedor já aceitou.
+
+O canal limita doze consultas por usuário por minuto com `LimiteFixo` existente. Esse limite é **por processo/isolate**, não quota global distribuída: Workers pode executar vários isolates. Limites de gasto do provedor e limitação na borda precisam ser configurados para uma liberação pública em escala; esta entrega local não altera configurações externas nem faz deploy. Guias não têm chamadas ao provedor. Requests/respostas não são persistidas como logs de conversa pelo serviço.
+
+### Política de custo
+
+Por decisão do usuário, priorizar sempre o modelo de menor custo compatível com as ferramentas e o fluxo. O padrão e o exemplo de `OPENAI_MODEL` são `gpt-5-nano`, com `reasoning.effort=minimal`, `service_tier=default`, uma chamada de interpretação e teto de 600 tokens de saída (inclui raciocínio). Não há fallback automático para modelo mais caro nem retry automático; guias e consultas rápidas continuam sem chamada à IA.
+
+Áudio usa o [modelo econômico de transcrição](https://developers.openai.com/api/docs/models/gpt-4o-mini-transcribe), com estimativa oficial de US$ 0,003/minuto conferida em 14/10/2026. Prints usam o mesmo modelo de interpretação e contam como tokens de imagem; reduzir dimensões e limitar a um print por pergunta controla a entrada. Nenhum desses caminhos escala automaticamente para um modelo mais caro.
+
+Seleção conferida na [documentação oficial](https://developers.openai.com/api/docs/models/gpt-5-nano) em 14/10/2026: US$ 0,05 por milhão de tokens de entrada e US$ 0,40 de saída, sem contar descontos de cache. Esses preços unitários não garantem o menor custo por pergunta: consumo real de tokens e falhas também afetam a cobrança. O modelo ainda está disponível, mas tem [desativação anunciada para 11/12/2026](https://developers.openai.com/api/docs/deprecations). Antes dessa data ou ao ampliar as ferramentas, revisar disponibilidade, preços e comportamento com o modelo mais barato compatível; não migrar por pressuposto para uma opção mais cara. Esta configuração fixa o modelo atual, não consulta preços nem troca de provedor automaticamente em cada pergunta.
+
+## Como ampliar para Estoque e Rebanho
+
+`services/assistente/registro.ts` é o único registro de ferramentas. `FerramentaAssistente` exige domínio, spec estrito, gate e execução com `ContextoAssistente` resolvido fora do modelo. Uma expansão adiciona um adaptador de leitura por domínio que chama os serviços operacionais, conserva unidades/Decimal, idempotência dos fatos consultados, localização na data e mascaramento de custos. Deve retornar fonte, recorte e limites explícitos; registrar uma ferramenta nunca concede acesso automaticamente.
+
+Atualize `ARTIGOS_AJUDA` junto da funcionalidade e de seu contrato. Cada artigo tem ID, assunto, texto, URL e gate. Não carregar planos antigos, o repo inteiro ou anexos de usuário como verdade sobre funcionalidades. Novos artigos ficam no catálogo da interface e na ferramenta de ajuda. Novas ferramentas entram no mesmo protocolo sem criar outro chat nem liberar o bot legado. Não adicionar ferramentas de gravação como efeito colateral desta extensão.
+
+## Validação
+
+Testes unitários devem verificar gates antes do acesso a dados, schemas, períodos inclusivos e timezone, reuso dos serviços financeiros, liquidações parciais, fontes/filtros, falhas sem números fictícios, ferramentas desconhecidas, saídas livres ignoradas e separação do legado. Testes da interface cobrem envio, fonte, ausência de chave, erro recuperável e aborto/troca de contexto. Builds conferem os dois workspaces; testes com provider mockado não equivalem a homologação do modelo real. A validação local não exige seed/reset/migrations nem escritas financeiras.

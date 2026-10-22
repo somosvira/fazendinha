@@ -287,10 +287,13 @@ export function pontosEntradaSaida(data: EntradaSaidaPoint[], tipo: ChartType) {
 }
 
 /** Receitas e despesas em reais, com valores exatos no tooltip. */
-export function EntradaSaidaChart({ data, tipo = "line", compacto = false }: { data: EntradaSaidaPoint[]; tipo?: ChartType; compacto?: boolean }) {
+export function EntradaSaidaChart({ data, tipo = "line", compacto = false, vocabulario = "receitas-despesas" }: { data: EntradaSaidaPoint[]; tipo?: ChartType; compacto?: boolean; vocabulario?: "receitas-despesas" | "entradas-saidas" }) {
+  const entradas = vocabulario === "entradas-saidas" ? "Entradas" : "Receitas";
+  const saidas = vocabulario === "entradas-saidas" ? "Saídas" : "Despesas";
+  const config = { receitas: { ...fluxoConfig.receitas, label: entradas }, despesas: { ...fluxoConfig.despesas, label: saidas } };
   const pontos = pontosEntradaSaida(data, tipo);
   return <>
-    <ChartContainer config={fluxoConfig} className={`${compacto ? "h-[210px]" : "h-[300px]"} w-full aspect-auto overflow-hidden`} role="img" aria-label={tipo === "line" ? "Totais acumulados de receitas e despesas por dia ou mês" : "Entradas e saídas por dia ou mês, apresentadas como receitas e despesas em reais"}>
+    <ChartContainer config={config} className={`${compacto ? "h-[210px]" : "h-[300px]"} w-full aspect-auto overflow-hidden`} role="img" aria-label={vocabulario === "entradas-saidas" ? (tipo === "line" ? "Totais acumulados de entradas e saídas por dia ou mês" : "Entradas e saídas por dia ou mês em reais") : (tipo === "line" ? "Totais acumulados de receitas e despesas por dia ou mês" : "Entradas e saídas por dia ou mês, apresentadas como receitas e despesas em reais")}>
       <ComposedChart data={pontos} margin={{ top: 18, right: 18, bottom: 8, left: 24 }} accessibilityLayer>
         <CartesianGrid vertical={false} stroke="var(--rule-soft)" />
         <XAxis dataKey="rotuloEixo" minTickGap={18} interval="preserveStartEnd" {...axisProps} />
@@ -298,15 +301,15 @@ export function EntradaSaidaChart({ data, tipo = "line", compacto = false }: { d
         <ChartTooltip labelFormatter={(_label, payload) => payload?.[0]?.payload?.rotuloTooltip ?? ""} formatter={tooltipMoney} />
         <ChartLegend />
         {tipo === "line" ? <>
-          <Line type="linear" dataKey="entradas" name="Receitas" stroke="var(--color-receitas)" strokeWidth={2.5} dot={pontos.length <= 31 ? { r: 2.5 } : false} activeDot={{ r: 5 }} isAnimationActive={false} />
-          <Line type="linear" dataKey="saidas" name="Despesas" stroke="var(--color-despesas)" strokeDasharray="5 4" strokeWidth={2.5} dot={pontos.length <= 31 ? { r: 2.5 } : false} activeDot={{ r: 5 }} isAnimationActive={false} />
+          <Line type="linear" dataKey="entradas" name={entradas} stroke="var(--color-receitas)" strokeWidth={2.5} dot={pontos.length <= 31 ? { r: 2.5 } : false} activeDot={{ r: 5 }} isAnimationActive={false} />
+          <Line type="linear" dataKey="saidas" name={saidas} stroke="var(--color-despesas)" strokeDasharray="5 4" strokeWidth={2.5} dot={pontos.length <= 31 ? { r: 2.5 } : false} activeDot={{ r: 5 }} isAnimationActive={false} />
         </> : <>
-          <Bar dataKey="entradas" name="Receitas" fill="var(--color-receitas)" radius={[3, 3, 0, 0]} isAnimationActive={false} />
-          <Bar dataKey="saidas" name="Despesas" fill="var(--color-despesas)" radius={[3, 3, 0, 0]} isAnimationActive={false} />
+          <Bar dataKey="entradas" name={entradas} fill="var(--color-receitas)" radius={[3, 3, 0, 0]} isAnimationActive={false} />
+          <Bar dataKey="saidas" name={saidas} fill="var(--color-despesas)" radius={[3, 3, 0, 0]} isAnimationActive={false} />
         </>}
       </ComposedChart>
     </ChartContainer>
-    <ul className="sr-only" aria-label={tipo === "line" ? "Totais acumulados do gráfico" : "Valores do gráfico"}>{pontos.map((ponto) => <li key={ponto.data}>{ponto.rotulo ?? ponto.data} — Receitas: {fmtMoneyExact(ponto.entradas)}; Despesas: {fmtMoneyExact(ponto.saidas)}</li>)}</ul>
+    <ul className="sr-only" aria-label={tipo === "line" ? "Totais acumulados do gráfico" : "Valores do gráfico"}>{pontos.map((ponto) => <li key={ponto.data}>{ponto.rotulo ?? ponto.data} — {entradas}: {fmtMoneyExact(ponto.entradas)}; {saidas}: {fmtMoneyExact(ponto.saidas)}</li>)}</ul>
   </>;
 }
 

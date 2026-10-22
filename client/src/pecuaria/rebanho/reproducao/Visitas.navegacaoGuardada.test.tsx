@@ -40,7 +40,7 @@ describe("intenções concorrentes de navegação da visita", () => {
   it("retorna à escolha do percurso com guarda quando a origem antiga é desconhecida", async () => {
     render(<Visitas podeLancar/>); await screen.findByText("Atendimento ativo a1");
     fireEvent.click(screen.getByRole("button", {name:"Rever grupo"}));
-    await screen.findByRole("heading",{name:"Como deseja montar a visita?"});
+    await screen.findByRole("heading",{name:/Nova visita|Adicionar grupo/});
     expect(mocks.guarda).toHaveBeenCalledOnce();
     expect(screen.queryByText("Formulário inline de atividade extra")).toBeNull();
     expect(document.querySelectorAll('input[type="radio"]:checked')).toHaveLength(0);

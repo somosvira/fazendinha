@@ -1,37 +1,73 @@
+/* Manrope variável, hospedada junto da aplicação (SIL Open Font License). */
+@font-face {
+  font-family: "Manrope";
+  src: url("/fonts/manrope/manrope-variable.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+}
+
 /* O escopo no root alcança os portais Radix e restaura as outras áreas ao sair. */
 :root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) {
   --radius: .5rem;
   --radius-btn: .5rem;
   --fin-radius-panel: 1rem;
-  --fin-heading: #22352c;
-  --fin-canvas: #edf2ed;
-  --fin-sidebar: #e1e9e2;
-  --fin-nav-selected: #ccdcce;
-  --fin-primary-hover: #1b3a2e;
-  --fin-positive-bg: #eaf3ed;
+  --fin-heading: #203c39;
+  --fin-canvas: #f7f8fa;
+  --fin-canvas-light: #fcfdfe;
+  --fin-canvas-sage: #edf5f4;
+  --fin-canvas-end: #f7f8fa;
+  --fin-sidebar: #dce8e5;
+  --fin-nav-hover: #cfe0dc;
+  --fin-nav-selected: #c5ded8;
+  --fin-sidebar-selected: #2f7570;
+  --fin-sidebar-selected-ink: #ffffff;
+  --fin-primary-hover: #005d57;
+  --fin-positive-bg: #ebf4e6;
   --fin-danger-bg: #fbefec;
   --fin-warning-bg: #f6f0e5;
-  --fin-control-border: #7b8d81;
-  --fin-overlay: rgba(34,53,44,.38);
-  --fin-shadow: 0 2px 8px rgba(34,53,44,.04);
-  --fin-dialog-shadow: 0 12px 32px rgba(34,53,44,.12);
-  --fin-skeleton: #d8e2da;
+  --fin-control-border: #7a928d;
+  --fin-overlay: rgba(32,60,57,.38);
+  --font-display: "Manrope", var(--sans);
+  --fin-brand-accent: #009c91;
+  --fin-shadow: 0 3px 12px rgba(32,60,57,.045);
+  --fin-panel-shadow: 0 4px 18px rgba(32,60,57,.065), 0 1px 3px rgba(32,60,57,.025);
+  --fin-button-shadow: 0 2px 5px rgba(32,60,57,.14);
+  --fin-popover-shadow: 0 8px 24px rgba(32,60,57,.12), 0 2px 5px rgba(32,60,57,.04);
+  --fin-dialog-shadow: 0 16px 48px rgba(32,60,57,.18), 0 4px 12px rgba(32,60,57,.05);
+  --fin-skeleton: #d8e4e0;
   --background: var(--fin-canvas);
-  --foreground: #283c31;
+  --foreground: #263e3b;
   --card: #ffffff;
   --card-foreground: var(--foreground);
   --popover: var(--card);
   --popover-foreground: var(--foreground);
-  --primary: #24493b;
+  --primary: #006f68;
   --primary-foreground: #ffffff;
-  --secondary: #f3f6f3;
+  --secondary: #f1f5f4;
   --secondary-foreground: var(--foreground);
   --muted: var(--secondary);
   --fin-surface-subtle: var(--secondary);
-  --muted-foreground: #56665f;
+  --fin-table-header: #e2e7ea;
+  --fin-table-heading: #34434b;
+  --fin-table-rule: #bdc8cf;
+  --fin-table-control-hover: #cdd8dc;
+  --fin-filter-bg: #e0efec;
+  --fin-filter-border: #80b4ac;
+  --fin-filter-hover: #cee5e0;
+  --fin-option-hover: #c5e4df;
+  --fin-tag-bg: #eef1f3;
+  --fin-tag-text: #425563;
+  --fin-tag-border: #d9e1e6;
+  --fin-status-positive-bg: #ddf3e1;
+  --fin-status-positive-text: #246a36;
+  --fin-status-danger-bg: #fce1df;
+  --fin-status-danger-text: #a3312a;
+  --fin-table-hover: #edf5f3;
+  --muted-foreground: #526863;
   --accent: var(--muted);
   --accent-foreground: var(--foreground);
-  --border: #d8e2da;
+  --border: #dfe7e5;
   --input: var(--fin-control-border);
   --ring: var(--primary);
   --bg: var(--background);
@@ -42,7 +78,7 @@
   --ink: var(--foreground);
   --ink-2: var(--foreground);
   --ink-3: var(--muted-foreground);
-  --lucro: #2d664d;
+  --lucro: #32683b;
   --pos: var(--lucro);
   --prejuizo: #8d3931;
   --neg: var(--prejuizo);
@@ -52,7 +88,7 @@
   --rural: #80634e;
   --fin-entrada: var(--pos);
   --fin-saida: var(--foreground);
-  --fin-chart-entrada: #2d664d;
+  --fin-chart-entrada: #32683b;
   --fin-chart-saida: #806343;
   --fin-alerta: var(--destructive);
   --fin-info: var(--foreground);
@@ -64,4 +100,27 @@
   --outros: #818568;
   --cafe-2: #ac987e;
   --outros-2: #aab0a6;
+}
+
+/* Escolha persistente e navegação por hover/teclado têm estados distintos. */
+:root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) :is([data-slot="select-item"], .multiselect-opcao) {
+  border-radius: 6px;
+  transition: background-color 120ms, color 120ms;
+}
+:root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) :is([data-slot="select-item"][data-highlighted], .multiselect-opcao[data-selected="true"]) {
+  background: var(--fin-option-hover);
+  color: var(--foreground);
+}
+:root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) :is([data-slot="select-item"]:is([data-state="checked"], [data-escolhida="true"]), .multiselect-opcao[data-marcado="true"]) {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-weight: 600;
+}
+:root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) :is([data-slot="select-item"]:is([data-state="checked"], [data-escolhida="true"])[data-highlighted], .multiselect-opcao[data-marcado="true"][data-selected="true"]) {
+  background: var(--fin-primary-hover);
+}
+:root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) .multiselect-opcao[data-marcado="true"] > span:first-child {
+  border-color: currentColor;
+  background: transparent;
+  color: inherit;
 }

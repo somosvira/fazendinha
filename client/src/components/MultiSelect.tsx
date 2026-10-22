@@ -1,4 +1,6 @@
-import { useId, useMemo, useState } from "react";
+import { ContextoFiltroColuna } from "./ContextoFiltroColuna";
+import { ListaOpcoesFiltro } from "./ListaOpcoesFiltro";
+import { useContext, useId, useMemo, useState } from "react";
 import { Check, ChevronsUpDown, X } from "lucide-react";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -45,6 +47,7 @@ export function MultiSelect<T extends MultiSelectValue>({
   /** Uma linha de seleção para barras de filtros; mantém as opções múltiplas. */
   compacto?: boolean;
 }) {
+  const naColuna = useContext(ContextoFiltroColuna);
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const helpId = useId();
@@ -63,6 +66,8 @@ export function MultiSelect<T extends MultiSelectValue>({
     setOpen(next);
     if (!next) setSearch("");
   };
+
+  if (naColuna) return <ListaOpcoesFiltro rotulo={label} opcoes={options.map(o => ({ valor: String(o.value), texto: o.label, disabled: o.disabled }))} valores={value.map(String)} onChange={v => { const opcao = options.find(o => String(o.value) === v); if (opcao) toggle(opcao.value); }} multipla disabled={disabled} />;
 
   return (
     <div>
@@ -130,7 +135,8 @@ export function MultiSelect<T extends MultiSelectValue>({
                       aria-label={option.label}
                       aria-selected={checked}
                       onSelect={() => toggle(option.value)}
-                      className="cursor-pointer py-2.5"
+                      className="multiselect-opcao cursor-pointer py-2.5"
+                      data-marcado={checked}
                     >
                       <span className={cn("flex size-4 shrink-0 items-center justify-center rounded-[3px] border", checked ? "border-primary bg-primary text-primary-foreground" : "border-input bg-white")}>
                         {checked ? <Check className="size-3" aria-hidden="true" /> : null}

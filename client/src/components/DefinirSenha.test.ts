@@ -4,10 +4,9 @@ import { renderToString } from "react-dom/server";
 import { DefinirSenha } from "./DefinirSenha";
 
 describe("DefinirSenha", () => {
-  it("oferece mostrar senha nos dois campos de convite/reset", () => {
+  it("aguarda validar o link antes de oferecer campos de senha", () => {
     const html = renderToString(h(DefinirSenha, { modo: "senha", token: "fixture-token", onPronto: () => {} }));
-    expect(html.match(/aria-label="Mostrar senha"/g)).toHaveLength(2);
-    expect(html.match(/title="Mostrar senha"/g)).toHaveLength(2);
-    expect(html.match(/type="password"/g)).toHaveLength(2);
+    expect(html).toContain("Verificando seu link");
+    expect(html).not.toContain('type="password"');
   });
 });

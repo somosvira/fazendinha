@@ -53,3 +53,9 @@
 
 .secao-recolhivel-recolher{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;min-height:44px;min-width:40px;margin-left:auto;color:var(--ink);cursor:pointer;border:0;background:transparent}.secao-recolhivel-recolher:focus-visible{outline:2px solid var(--ring);outline-offset:2px;border-radius:4px}.secao-recolhivel-cabecalho:has(>.secao-recolhivel-recolher)>h2{padding-block:14px}
 @media(max-width:640px){.secao-recolhivel-cabecalho:has(>.secao-recolhivel-recolher)>h2{flex-basis:calc(100% - 52px)}.secao-recolhivel-cabecalho:has(>.secao-recolhivel-recolher)>.secao-recolhivel-acoes{order:2;padding-bottom:12px;width:100%}.secao-recolhivel-cabecalho>.secao-recolhivel-recolher{align-self:flex-start;margin-top:7px}}
+/* Seções principais têm títulos, não controles de esconder conteúdo. */
+.secao-ficha-direta { border: 0; border-radius: 0; margin-top: 24px; overflow: visible; background: transparent; }
+.secao-ficha-direta > .secao-recolhivel-cabecalho { padding: 0 0 12px; border-bottom: 1px solid var(--border); }
+.secao-ficha-direta > .secao-recolhivel-cabecalho > h2 { padding: 0; font-size: 18px; }
+.secao-ficha-direta > .secao-recolhivel-conteudo { padding: 16px 0 0; }
+.secao-ficha-direta > .secao-recolhivel-conteudo > .pec-card-ficha:only-child > header:has(> h2:only-child) { display: none; }

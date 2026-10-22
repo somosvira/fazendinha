@@ -1,3 +1,4 @@
+import { SelectCampo } from "@/financeiro/SelectCampo";
 // Campo "Mãe"/"Pai" compartilhado por FormFiliacao (ficha do animal) e NovoAnimal
 // (cadastro): três modos — animal da fazenda, genitor externo ou desconhecida/o.
 // Emite o resultado já no formato de FiliacaoInput (um dos dois lados, ou nenhum).
@@ -84,15 +85,15 @@ export function CampoGenitor({ rotulo, sexo, ladoInicial, excluirAnimalId, valor
       onSelecionar={(a) => definir(a ? { tipo: "ANIMAL", id: a.id, brinco: a.brinco, nome: a.nome } : { tipo: "ANIMAL", id: "", brinco: "", nome: null })}
     />}
 
-    {modo === "EXTERNO" && <select
+    {modo === "EXTERNO" && <SelectCampo
       aria-label={`Selecionar ${rotulo.toLowerCase()} entre os genitores externos`}
       value={atual.tipo === "EXTERNO" ? atual.id : ""}
-      onChange={(e) => definir({ tipo: "EXTERNO", id: e.target.value })}
+      onValueChange={(valorSelecionado) => definir({ tipo: "EXTERNO", id: valorSelecionado })}
       className={classeInput}
     >
       <option value="">Selecione</option>
       {(genitoresExternos ?? []).map((g) => <option key={g.id} value={g.id}>{g.nome}{g.fornecedor ? ` (${g.fornecedor})` : ""}</option>)}
-    </select>}
+    </SelectCampo>}
 
     {modo === "NENHUM" && <p className="text-xs text-ink-3">{sexo === "F" ? `${rotulo} não informada.` : `${rotulo} não informado.`}</p>}
     {erro && <p role="alert" className="text-sm text-red-600">{erro}</p>}

@@ -2,7 +2,7 @@ import { limparRascunhoRelatorioAtivo, estadoRascunhoRelatorioAtivo } from "./ra
 import { alterarControle } from "../lib/controles.fixture";
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within, waitFor } from "@testing-library/react";
 import { RelatoriosFinanceiros } from "./RelatoriosFinanceiros";
 import { descartarRascunhoRelatorioFinanceiro, listarRelatoriosFinanceiros, obterConfiguracoesFinanceiras, obterRascunhoRelatorioFinanceiro, obterRelatorioFinanceiro, salvarPdfRelatorioFinanceiro, salvarRascunhoRelatorioFinanceiro, type RelatorioFinanceiro } from "./novo-api";
 import { SEM_VINCULO } from "../lib/ids";
@@ -51,7 +51,7 @@ describe("central de relatórios financeiros", () => {
     vi.mocked(salvarPdfRelatorioFinanceiro).mockResolvedValue(undefined);
     render(<RelatoriosFinanceiros />);
     const tabela = (await screen.findAllByRole("table", { name: "Relatórios gerados" }))[0];
-    const botoes = tabela.querySelectorAll("button");
+    const botoes = within(tabela).getAllByRole("button",{name:"Baixar PDF"});
     expect(botoes).toHaveLength(1);
     fireEvent.click(botoes[0]);
     await waitFor(() => expect(salvarPdfRelatorioFinanceiro).toHaveBeenCalledWith(relatorios[0]));

@@ -1,3 +1,4 @@
+import { SelectCampo } from "@/financeiro/SelectCampo";
 // Modal "Dar baixa" — POST /pecuaria/rebanho/animais/:id/baixa. Ação
 // irreversível (mas estornável) com caixa de impacto, no padrão do
 // cancelamento de OperacaoFinanceiraDetalhe.tsx — por isso é um Modal, não
@@ -76,20 +77,18 @@ export function FormBaixa({ animal, motivos, onSalvo, onFechar }: {
   return <Modal titulo="Dar baixa" eyebrow={`Animal ${animal.brinco}`} onClose={() => { if (!salvando) onFechar(); }} width="max-w-2xl">
     <div className="p-6">
       <ErrorBox erro={erroGeral} />
-      {requerConferencia && <section className="mt-3 grid gap-2 rounded-lg border border-border p-3 text-sm"><h3 className="font-semibold">Carências na data da baixa</h3>{erroConsulta ? <><p role="alert">{erroConsulta}</p><Button secondary onClick={() => setTentativa((v) => v + 1)}>Tentar novamente</Button></> : carencias ? (["leite", "carne"] as const).map((destino) => <p key={destino}>{destino === "leite" ? "Leite" : "Abate/carne"}: {destino === "leite" && carencias.revisaoLeitePendente ? "Aplicabilidade pendente — revisar" : resumoCarencia(carencias[destino], referencia)}</p>) : <p>Consultando carências…</p>}{(restricoes || !!errosCampos["baixa-ciencia"] || !!errosCampos["baixa-justificativa"]) && <><ConfirmacaoCiencia id="baixa-ciencia" obrigatorio erro={errosCampos["baixa-ciencia"]} checked={ciente} onChange={setCiente}>Estou ciente das restrições sanitárias apresentadas.</ConfirmacaoCiencia><CampoFormulario id="baixa-justificativa" rotulo="Justificativa para a baixa diante das restrições" obrigatorio erro={errosCampos["baixa-justificativa"]}>{(p) => <textarea {...p} maxLength={500} minLength={5} value={justificativa} onChange={(e) => setJustificativa(e.target.value)} className={classeInput} />}</CampoFormulario></>}<p className="text-xs text-ink-3">As carências serão revalidadas na confirmação. A ciência e a justificativa ficam na auditoria.</p></section>}
-      <div className="mt-2 space-y-2 rounded-xl border border-red-200 bg-red-50/60 p-4 text-sm text-red-950">
-        <p>• O animal {animal.brinco} deixará de ser contado como ativo no rebanho.</p>
-        <p>• A baixa pode ser estornada depois, reabrindo o animal.</p>
-      </div>
+
+      <p className="text-sm text-ink-2">{animal.brinco} deixará o efetivo ativo. A baixa pode ser estornada para reabrir o animal.</p>
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
         <label className="text-sm font-medium">Data da baixa *<DatePicker id="baixa-data" required aria-label="Data da baixa" max={hoje()} value={data} onChange={setData} aria-invalid={erroData ? true : undefined} aria-describedby={erroData ? "baixa-data-erro" : undefined} className="mt-1.5" />{erroData && <p id="baixa-data-erro" role="alert" className="mt-1 text-xs font-normal text-red-700">{erroData}</p>}</label>
-        <label className="text-sm font-medium">Tipo *<select required value={tipo} onChange={(e) => mudarTipo(e.target.value as TipoBaixa)} className={classeInput}>{TIPOS_BAIXA.map((t) => <option key={t} value={t}>{rotuloTipoBaixa(t)}</option>)}</select></label>
-        {grupos.length > 0 && <label className="text-sm font-medium sm:col-span-2">Motivo do catálogo<select value={motivoId} onChange={(e) => setMotivoId(e.target.value)} className={classeInput}>
+        <label className="text-sm font-medium">Tipo *<SelectCampo required value={tipo} onValueChange={(valorSelecionado) => mudarTipo(valorSelecionado as TipoBaixa)} className={classeInput}>{TIPOS_BAIXA.map((t) => <option key={t} value={t}>{rotuloTipoBaixa(t)}</option>)}</SelectCampo></label>
+        {grupos.length > 0 && <label className="text-sm font-medium sm:col-span-2">Motivo do catálogo<SelectCampo value={motivoId} onValueChange={(valorSelecionado) => setMotivoId(valorSelecionado)} className={classeInput}>
           <option value="">Sem motivo específico</option>
           {grupos.map((grupo) => <optgroup key={grupo.classe} label={rotuloClasseMotivo(grupo.classe)}>{grupo.motivos.map((motivo) => <option key={motivo.id} value={motivo.id}>{motivo.nome}</option>)}</optgroup>)}
-        </select></label>}
+        </SelectCampo></label>}
         <label className="text-sm font-medium sm:col-span-2">Observação<textarea maxLength={500} value={observacao} onChange={(e) => setObservacao(e.target.value)} className={classeInput} /></label>
       </div>
+      {requerConferencia && <section className="mt-3 grid gap-2 rounded-lg border border-border p-3 text-sm"><h3 className="font-semibold">Carências na data da baixa</h3>{erroConsulta ? <><p role="alert">{erroConsulta}</p><Button secondary onClick={() => setTentativa((v) => v + 1)}>Tentar novamente</Button></> : carencias ? (["leite", "carne"] as const).map((destino) => <p key={destino}>{destino === "leite" ? "Leite" : "Abate/carne"}: {destino === "leite" && carencias.revisaoLeitePendente ? "Aplicabilidade pendente — revisar" : resumoCarencia(carencias[destino], referencia)}</p>) : <p>Consultando carências…</p>}{(restricoes || !!errosCampos["baixa-ciencia"] || !!errosCampos["baixa-justificativa"]) && <><ConfirmacaoCiencia id="baixa-ciencia" obrigatorio erro={errosCampos["baixa-ciencia"]} checked={ciente} onChange={setCiente}>Estou ciente das restrições sanitárias apresentadas.</ConfirmacaoCiencia><CampoFormulario id="baixa-justificativa" rotulo="Justificativa para a baixa diante das restrições" obrigatorio erro={errosCampos["baixa-justificativa"]}>{(p) => <textarea {...p} maxLength={500} minLength={5} value={justificativa} onChange={(e) => setJustificativa(e.target.value)} className={classeInput} />}</CampoFormulario></>}<p className="text-xs text-ink-3">As carências serão revalidadas na confirmação. A ciência e a justificativa ficam na auditoria.</p></section>}
       <div className="mt-5 flex justify-end gap-2">
         <Button secondary disabled={salvando} onClick={onFechar}>Manter animal ativo</Button>
         <Button danger disabled={salvando || requerConferencia && (!carencias || !!erroConsulta)} onClick={() => { void confirmar(); }}>{salvando ? "Salvando…" : "Confirmar baixa"}</Button>

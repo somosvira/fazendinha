@@ -1,0 +1,73 @@
+.consulta-barra { min-width: 0; background: var(--card); border-bottom: 1px solid var(--border); }
+.consulta-linha { display: flex; align-items: flex-end; gap: 24px; padding: 16px; }
+.consulta-controles { display: flex; flex: 1; min-width: 0; flex-wrap: wrap; align-items: flex-end; gap: 8px; }
+.consulta-controles > :is(label,div) { min-width: 0; }
+.consulta-controles > label { display: flex; flex-direction: column; gap: 4px; margin: 0; font-size: 12px; font-weight: 500; }
+.consulta-controles > :is(.fin-filtro-busca,.consulta-busca) { flex: 1 1 220px; min-width: 180px; max-width: 360px; }
+.consulta-controles :is(input:not([type=checkbox]),button[role=combobox]) { height: 40px; min-height: 40px; margin-top: 0; }
+.consulta-controles > button { flex-shrink: 0; width: auto; min-height: 40px; }
+.consulta-controles > label > span.relative { margin-top: 0; }
+.consulta-controles > .fin-filtro-controle { flex: 0 1 auto; width: auto; min-width: 160px; max-width: 240px; }
+.consulta-acoes { display: flex; flex: 0 0 auto; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 12px; font-size: 12px; }
+.consulta-acoes button { min-height: 40px; }
+.consulta-situacoes { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.consulta-situacoes button { min-height: 40px; height: auto; white-space: normal; }
+.consulta-criterios { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 0 16px 12px; }
+.consulta-criterios button { height: auto; min-height: 32px; white-space: normal; text-align: left; }
+@media (max-width:1100px) {
+  .consulta-linha { flex-direction: column; align-items: stretch; gap: 12px; }
+  .consulta-acoes { order: -1; justify-content: flex-end; }
+  .consulta-controles > :is(.fin-filtro-busca,.consulta-busca) { max-width: none; }
+  :root .consulta-controles > :is(.fin-filtro-busca, .consulta-busca, label:has(input[type="search"], input[aria-label^="Buscar"], input[placeholder^="Buscar"], input[placeholder^="Brinco"])) { flex: 1 1 100%; width: 100%; min-width: 0; max-width: none; }
+  .consulta-controles > [data-slot="date-range-trigger"] { order: 1; }
+  .consulta-controles > .consulta-mais-filtros { order: 2; margin-left: auto; }
+  .consulta-controles > .consulta-situacoes { order: 3; }
+}
+@media (max-width:639px) {
+  .consulta-controles > [data-slot="date-range-trigger"] { order: 1; }
+  .consulta-controles > .consulta-mais-filtros { order: 2; }
+  .consulta-controles > .consulta-situacoes { order: 3; flex: 1 1 100%; display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); }
+  .consulta-controles > .consulta-situacoes button { width: 100%; height: 100%; }
+}
+@media (max-width:900px) {
+  .consulta-barra :is(input:not([type=checkbox]),button) { min-height: 44px; }
+  .consulta-controles > :is(.fin-filtro-busca,.consulta-busca) { flex-basis: 100%; }
+  .consulta-controles > .fin-filtro-controle { flex: 1 1 160px; max-width: none; }
+  .consulta-acoes { gap: 8px; }
+}
+@media screen {
+  .consulta-tabela { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .consulta-tabela thead { background: var(--muted); color: var(--foreground); }
+  .consulta-tabela th { padding: 10px 16px; font-size: 12px; font-weight: 600; line-height: 1.4; }
+  .consulta-tabela td { padding: 12px 16px; line-height: 1.5; vertical-align: top; border-bottom: 1px solid var(--border); }
+  .consulta-tabela tbody tr:last-child td { border-bottom: 0; }
+}
+
+.consulta-controles > label:has(:is(input[type=checkbox],[role=checkbox])) { flex-direction: row; align-items: center; min-height: 40px; gap: 8px; }
+.consulta-controles > label:has(input[type=search]) { flex: 1 1 220px; min-width: 180px; max-width: 360px; }
+@media(max-width:900px) { .consulta-controles > label:has(input[type=search]) { flex-basis: 100%; max-width: none; } }
+.consulta-barra, .consulta-linha, .consulta-acoes { min-width: 0; max-width: 100%; }
+.consulta-acoes > :not(button) { min-width: 0; }
+
+.consulta-ajuda > p { margin: 0; }
+.consulta-ajuda button { min-width: 40px; }
+@media(max-width:900px) { .consulta-ajuda button { min-width: 44px; } }
+
+
+.operacoes-divisor-busca { flex: 0 0 1px; align-self: center; width: 1px; height: 28px; margin-inline: 4px; background: var(--border); }
+@media (max-width: 1100px) { .operacoes-divisor-busca { display: none; } }
+
+/* Composição única das consultas: busca elástica e controles à direita. */
+@media (min-width: 1101px) {
+  .consulta-controles > :is(.fin-filtro-busca,.consulta-busca,.busca-lista,label:has(input[type="search"],input[aria-label^="Buscar"])) { flex: 1 1 260px; max-width: none; }
+  .consulta-controles > :is(.fin-filtro-busca,.consulta-busca,.busca-lista,label:has(input[type="search"],input[aria-label^="Buscar"])):not(:last-child) { position: relative; margin-right: 12px; }
+  .consulta-controles > :is(.fin-filtro-busca,.consulta-busca,.busca-lista,label:has(input[type="search"],input[aria-label^="Buscar"])):not(:last-child)::after { content: ""; position: absolute; right: -11px; bottom: 8px; width: 1px; height: 28px; background: var(--border); pointer-events: none; }
+  .operacoes-consulta .consulta-controles > .fin-filtro-busca { margin-right: 0; }
+  .operacoes-consulta .consulta-controles > .fin-filtro-busca::after { display: none; }
+}
+@media (max-width: 1100px) {
+  .consulta-controles > .busca-lista { flex: 1 1 100%; width: 100%; }
+}
+.operacoes-filtro-corpo label:has(input[type="checkbox"]) { flex-direction: row; align-items: center; gap: 8px; }
+.operacoes-filtro-corpo input[type="checkbox"] { min-height: 16px; width: 16px; accent-color: var(--primary); }
+@media print { .consulta-barra { display: none !important; } }

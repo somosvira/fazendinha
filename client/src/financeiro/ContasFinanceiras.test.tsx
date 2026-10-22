@@ -1,5 +1,6 @@
-import { alterarControle } from "../lib/controles.fixture";
+import { alterarControle, alterarFiltroAdicional } from "../lib/controles.fixture";
 // @vitest-environment jsdom
+import { abrirFiltrosConsulta, aplicarFiltrosConsulta } from "@/lib/controles.fixture";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, within, waitFor } from "@testing-library/react";
 import { ContasFinanceiras } from "./ContasFinanceiras";
@@ -61,12 +62,12 @@ describe("ContasFinanceiras — cadastros ativos", () => {
     expect(within(tabela()!).getByText("Banco principal")).toBeTruthy();
     expect(within(tabela()!).queryByText("Caixa auxiliar")).toBeNull();
     await alterarControle(within(secao).getByLabelText("Buscar conta"), { target: { value: "" } });
-    await alterarControle(within(secao).getByLabelText("Tipo"), { target: { value: "CAIXA" } });
+    await alterarFiltroAdicional("Filtrar tipo de conta", "CAIXA", secao);
     expect(within(tabela()!).getByText("Caixa auxiliar")).toBeTruthy();
-    await alterarControle(within(secao).getByLabelText("Tipo"), { target: { value: "" } });
-    await alterarControle(within(secao).getByLabelText("Instituição"), { target: { value: "Banco A" } });
+    await alterarFiltroAdicional("Filtrar tipo de conta", "", secao);
+    await alterarFiltroAdicional("Filtrar por instituição", "Banco A", secao);
     expect(within(tabela()!).getByText("Banco principal")).toBeTruthy();
-    await alterarControle(within(secao).getByLabelText("Situação"), { target: { value: "INATIVA" } });
+    await alterarFiltroAdicional("Filtrar situação da conta", "INATIVA", secao);
     expect(within(secao).getByText("Nenhuma conta encontrada para os filtros selecionados.")).toBeTruthy();
   });
 });
@@ -154,16 +155,20 @@ it("mantém fluxo consolidado independente dos filtros dentro do extrato", async
     { id: uid(72), seq: 72, contaId: uid(2), conta: config.contas[1], direcao: "ENTRADA", valor: "10", transacao: { ...transacao, id: uid(73), descricao: "Recebimento no caixa" } },
   ]);
   render(<ContasFinanceiras onNav={vi.fn()} />);
-  const grafico = await screen.findByRole("region", { name: "Gráfico de receitas e despesas" });
-  const contas = screen.getByRole("region", { name: "Contas" });
-  expect(grafico.compareDocumentPosition(contas) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  await screen.findByRole("region", { name: "Contas" });
+  expect(screen.queryByRole("region", { name: "Gráfico de entradas e saídas" })).toBeNull();
+  fireEvent.mouseDown(screen.getByRole("tab", { name: "Análise" }));
+  const grafico = await screen.findByRole("region", { name: "Gráfico de entradas e saídas" });
   expect(screen.queryByRole("button", { name: "Mostrar receitas e despesas" })).toBeNull();
   expect(screen.getByText(/Todas as contas da fazenda; inclui contas/)).toBeTruthy();
-  await alterarControle(screen.getByLabelText("Conta"), { target: { value: uid(1) } });
-  expect(screen.getByLabelText("Conta").closest("#extrato-geral")).toBeTruthy();
+  fireEvent.mouseDown(screen.getByRole("tab", { name: "Extrato geral" }));
+  const secaoExtrato = document.getElementById("extrato-geral")!;
+  await alterarFiltroAdicional("Filtrar por conta", uid(1), secaoExtrato);
   const extrato = within(screen.getByRole("table", { name: "Extrato geral" }));
   expect(extrato.queryByText("Recebimento no caixa")).toBeNull();
+  fireEvent.mouseDown(screen.getByRole("tab", { name: "Análise" }));
   await waitFor(() => expect(within(grafico).getByRole("list", { name: "Totais acumulados do gráfico" }).textContent).toContain("35,00"));
+  fireEvent.mouseDown(screen.getByRole("tab", { name: /^Contas$/ }));
   expect(within(screen.getByRole("navigation", { name: "Paginação das contas" })).queryByRole("button", { name: "Próxima" })).toBeNull();
 });
 
@@ -193,4 +198,49 @@ it("confirma a transferência pelo rodapé associado ao formulário", async () =
     contaOrigemId: uid(1), contaDestinoId: uid(2), valor: 25, data: "2026-09-10", descricao: "Transferência entre contas",
   }));
   await waitFor(() => expect(screen.queryByRole("dialog", { name: "Nova transferência" })).toBeNull());
+});
+
+it("mantém o saldo geral independente da consulta e preserva busca ao alternar abas", async () => {
+  render(<ContasFinanceiras onNav={vi.fn()} />);
+  const saldo = await screen.findByRole("region", { name: "Saldo geral atual" });
+  expect(saldo.textContent).toContain("150,00");
+  expect(screen.getByText("Saldo da consulta · 3 contas").parentElement?.textContent).toContain("170,00");
+  await alterarControle(screen.getByLabelText("Buscar conta"), { target: { value: "Caixa" } });
+  expect(screen.getByText("Saldo da consulta · 1 conta").parentElement?.textContent).toContain("50,00");
+  expect(saldo.textContent).toContain("150,00");
+  fireEvent.mouseDown(screen.getByRole("tab", { name: "Extrato geral" }));
+  expect(new URLSearchParams(window.location.search).get("aba")).toBe("extrato");
+  expect(screen.queryByRole("region", { name: "Contas" })).toBeNull();
+  fireEvent.mouseDown(screen.getByRole("tab", { name: /^Contas$/ }));
+  expect((screen.getByLabelText("Buscar conta") as HTMLInputElement).value).toBe("Caixa");
+  expect(screen.getByText("Saldo da consulta · 1 conta")).toBeTruthy();
+});
+
+it("abre links de natureza no extrato e acompanha a aba no histórico", async () => {
+  window.history.replaceState(null, "", "/financeiro/contas?natureza=pagamentos&inicio=&fim=");
+  render(<ContasFinanceiras onNav={vi.fn()} />);
+  await screen.findByRole("heading", { name: "Contas e extratos" });
+  expect(screen.getByRole("tab", { name: "Extrato geral" }).getAttribute("aria-selected")).toBe("true");
+  fireEvent.mouseDown(screen.getByRole("tab", { name: "Análise" }));
+  expect(new URLSearchParams(window.location.search).get("natureza")).toBe("pagamentos");
+  expect(new URLSearchParams(window.location.search).get("inicio")).toBe("");
+  window.history.replaceState(null, "", "/financeiro/contas?aba=contas");
+  fireEvent(window, new PopStateEvent("popstate"));
+  expect(screen.getByRole("tab", { name: /^Contas$/ }).getAttribute("aria-selected")).toBe("true");
+});
+
+it("retorna à aba do extrato com período e movimento preservados", async () => {
+  window.history.replaceState(null, "", "/financeiro/contas?aba=extrato&inicio=2026-09-01&fim=2026-09-30");
+  const config = await obterConfiguracoesFinanceiras();
+  const movimento = { id: uid(81), seq: 81, direcao: "ENTRADA" as const, valor: "25", transacao: { id: uid(80), seq: 80, tipo: "RECEBIMENTO", status: "CONFIRMADA", data: "2026-09-13", descricao: "Movimento da consulta geral", formaPagamento: null, parceiro: null, operacao: null } };
+  vi.mocked(obterExtratoGeral).mockResolvedValue([{ ...movimento, contaId: uid(1), conta: config.contas[0] }]);
+  vi.mocked(obterExtratoConta).mockResolvedValue([movimento]);
+  render(<ContasFinanceiras onNav={vi.fn()} />);
+  const tabela = await screen.findByRole("table", { name: "Extrato geral" });
+  fireEvent.click(within(tabela).getByText("Movimento da consulta geral"));
+  await waitFor(() => expect(obterExtratoConta).toHaveBeenLastCalledWith(uid(1)));
+  expect(window.location.hash).toBe(`#movimento-${uid(81)}`);
+  expect(new URLSearchParams(window.location.search).get("inicio")).toBe("2026-09-01");
+  fireEvent.click(screen.getByRole("link", { name: "Voltar para contas" }));
+  expect(screen.getByRole("tab", { name: "Extrato geral" }).getAttribute("aria-selected")).toBe("true");
 });

@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { abrirFiltrosConsulta, aplicarFiltrosConsulta } from "@/lib/controles.fixture";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { Sitios } from "./Sitios";
@@ -38,10 +39,12 @@ describe("Configurações > Sítios", () => {
     expect(within(tabela).getByText("Inativo")).toBeTruthy();
   });
 
-  it("mostrar inativos pede a listagem com incluirInativos", () => {
+  it("mostrar inativos pede a listagem com incluirInativos", async () => {
     render(<Sitios />);
     expect(usePropriedades).toHaveBeenLastCalledWith({ incluirInativos: false });
+    await abrirFiltrosConsulta();
     fireEvent.click(screen.getByRole("checkbox", { name: "Mostrar inativos" }));
+    await aplicarFiltrosConsulta();
     expect(usePropriedades).toHaveBeenLastCalledWith({ incluirInativos: true });
   });
 

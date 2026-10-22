@@ -1,3 +1,4 @@
+import { Dna } from "lucide-react";
 // Sheet "Editar composição racial" — PUT /pecuaria/rebanho/animais/:id/composicao
 // (substitui a composição inteira). Reusa CampoComposicao de ../ui.tsx.
 
@@ -67,9 +68,9 @@ export function FormComposicao({ animal, racas, onSalvo, onFechar }: {
   };
 
   const formId = "form-composicao-animal";
-  return <PainelCadastro aberto titulo={`Composição de ${animal.brinco}`} onFechar={() => { if (!salvando) onFechar(); }}
+  return <PainelCadastro compacto icon={Dna} aberto titulo={`Composição de ${animal.brinco}`} onFechar={() => { if (!salvando) onFechar(); }}
     rodape={<><Button secondary onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form={formId} disabled={salvando}>{salvando ? "Salvando…" : "Salvar composição"}</Button></>}>
-    <form id={formId} onSubmit={submeter} noValidate className="grid gap-4">
+    <form data-pec-formulario  id={formId} onSubmit={submeter} noValidate className="grid gap-4">
       <ErrorBox erro={erroGeral} />
       {carregando ? <p className="text-sm text-ink-3">Calculando a parcela herdada…</p> : <>
         {herdada && <p className="text-sm text-ink-3">Parcela fixa dos genitores: {herdada.rotulo} ({somaFracoes(fixos)}/64). {limite ? `Pode informar até ${limite}/64 da parte desconhecida.` : "Composição completa."}</p>}

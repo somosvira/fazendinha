@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { ConsultaFechamento } from "./ConsultaFechamento";
 import * as api from "./api";
 vi.mock("./api", () => ({ obterFechamento: vi.fn(), estornarConsumo: vi.fn() }));
@@ -8,6 +8,16 @@ const fechamento: api.Fechamento = { id: "f", inicio: "2026-10-01", fim: "2026-1
 beforeEach(() => { vi.clearAllMocks(); vi.mocked(api.obterFechamento).mockResolvedValue(fechamento); });
 afterEach(cleanup);
 describe("detalhe e formulário de estorno", () => {
+  it("impede estornos simultâneos antes do próximo render", async () => {
+    vi.mocked(api.estornarConsumo).mockImplementationOnce(() => new Promise(() => {}));
+    render(<ConsultaFechamento id="f" estorno podeLancar onVoltar={vi.fn()} />);
+    const motivo = await screen.findByLabelText("Motivo do estorno");
+    fireEvent.change(motivo, { target: { value: "Consumo conferido" } });
+    const form = motivo.closest("form")!;
+    act(() => { fireEvent.submit(form); fireEvent.submit(form); });
+    expect(api.estornarConsumo).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: "Estornando…" }).hasAttribute("disabled")).toBe(true);
+  });
   it("abre revisão própria sem os cards de consulta e conserva o motivo ao falhar", async () => {
     vi.mocked(api.estornarConsumo).mockRejectedValueOnce(new Error("Período financeiro fechado"));
     render(<ConsultaFechamento id="f" estorno podeLancar onVoltar={vi.fn()} />);

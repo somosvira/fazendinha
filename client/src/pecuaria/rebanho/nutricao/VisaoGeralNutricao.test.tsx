@@ -1,210 +1,119 @@
 // @vitest-environment jsdom
-import {
-  act,
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  within,
-} from "@testing-library/react";
-import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { abrirFiltrosConsulta, aplicarFiltrosConsulta, alterarControle } from "@/lib/controles.fixture";
+import "../../../lib/controles.fixture";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { VisaoGeralNutricao } from "./VisaoGeralNutricao";
-import {
-  consultarVisaoNutricional,
-  type ResumoNutricional,
-  type VisaoNutricional,
-} from "./api";
-import { setPropriedadeAtiva } from "../../../propriedadeScope";
+import { consultarVisaoNutricional, type ResumoNutricional } from "./api";
+import { navegarPara } from "../../../router";
+
 vi.mock("./api", () => ({ consultarVisaoNutricional: vi.fn() }));
-const resumo: ResumoNutricional = {
-  lote: {
-    id: "lote-1",
-    nome: "Matrizes",
-    propriedadeId: 1,
-    propriedade: { id: 1, nome: "Fazenda Escola" },
-    ativo: true,
-    animaisAtivos: 5,
-    observacao: null,
-  },
-  vigente: {
-    id: "vigencia",
-    desde: "2026-01-01",
-    ate: null,
-    dieta: { id: "dieta", nome: "Dieta de matrizes", versao: 1 },
-  },
-  programada: null,
-  verValores: true,
-  custos: {
-    custoConhecido: "200.00",
-    custoPorAnimalDia: "2.00",
-    animalDias: 100,
-    fechamentos: 1,
-    coberturaCustoCompleta: true,
-  },
-};
-const dados: VisaoNutricional = {
-  verValores: true,
-  lotes: [
-    resumo,
-    {
-      ...resumo,
-      lote: { ...resumo.lote, id: "lote-2", nome: "Novilhas" },
-      vigente: null,
-    },
-  ],
-};
-function pendente<T>() {
-  let resolver!: (v: T) => void;
-  let rejeitar!: (e: Error) => void;
-  const promessa = new Promise<T>((resolve, reject) => {
-    resolver = resolve;
-    rejeitar = reject;
-  });
-  return { promessa, resolver, rejeitar };
+vi.mock("../../../router", () => ({ navegarPara: vi.fn() }));
+function lote(id: string, nome: string, animais: number, comDieta: boolean): ResumoNutricional {
+  return { lote: { id, nome, propriedadeId: 1, propriedade: { id: 1, nome: "Principal" }, ativo: true, animaisAtivos: animais, observacao: null }, vigente: comDieta ? { id: "v", desde: "2026-09-01", ate: null, dieta: { id: "d", nome: "Dieta atual", versao: 1 } } : null, programada: null, verValores: true, custos: { custoConhecido: "379.50", custoPorAnimalDia: "6.90", animalDias: 55, fechamentos: 1, coberturaCustoCompleta: true } };
 }
 beforeEach(() => {
   vi.clearAllMocks();
-  setPropriedadeAtiva(1);
-  window.history.replaceState(null, "", "/pecuaria/nutricao");
-  vi.mocked(consultarVisaoNutricional).mockResolvedValue(dados);
+  window.history.replaceState(null, "", "/pecuaria/nutricao?visualNutricao=tabela");
+  vi.mocked(consultarVisaoNutricional).mockResolvedValue({ lotes: [lote("mat", "Matrizes", 5, true), lote("rec", "Recria", 3, false)], verValores: true });
 });
-afterEach(() => {
-  cleanup();
-  setPropriedadeAtiva(null);
-});
-it("aguarda sucesso e apresenta resultados versus total sem declarar ausência antes", async () => {
-  const leitura = pendente<VisaoNutricional>();
-  vi.mocked(consultarVisaoNutricional).mockReturnValue(leitura.promessa);
-  render(<VisaoGeralNutricao />);
-  expect(screen.getByRole("status").textContent).toBe("Carregando nutrição…");
-  expect(screen.queryByText(/Nenhum lote/)).toBeNull();
-  await act(async () => leitura.resolver(dados));
-  expect(screen.getByText("2 de 2 lotes")).toBeTruthy();
-  expect(screen.getByRole("table", { name: "Nutrição por lote" })).toBeTruthy();
-});
-it("erro oferece retry e não declara contexto sem lotes", async () => {
-  const leitura = pendente<VisaoNutricional>();
-  vi.mocked(consultarVisaoNutricional)
-    .mockReturnValueOnce(leitura.promessa)
-    .mockResolvedValueOnce(dados);
-  render(<VisaoGeralNutricao />);
-  await act(async () => leitura.rejeitar(new Error("Falha de leitura")));
-  expect(screen.getByRole("alert").textContent).toContain("Falha de leitura");
-  expect(screen.queryByText(/Nenhum lote/)).toBeNull();
-  fireEvent.click(screen.getByRole("button", { name: "Tentar novamente" }));
-  await screen.findByText("2 de 2 lotes");
-  expect(screen.queryByRole("alert")).toBeNull();
-});
-it("limpar filtros restaura resultados, conserva total real e outros parâmetros/hash/estado", async () => {
-  window.history.replaceState(
-    { origem: "consulta" },
-    "",
-    "/pecuaria/nutricao?aba=lotes&buscaLote=inexistente&situacaoDieta=com&sitio=1&outro=mantido#consulta",
-  );
-  render(<VisaoGeralNutricao />);
-  await screen.findByText("0 de 2 lotes");
-  expect(screen.getByText("Nenhum lote corresponde aos filtros.")).toBeTruthy();
-  fireEvent.click(screen.getByRole("button", { name: "Limpar filtros" }));
-  expect(screen.getByText("2 de 2 lotes")).toBeTruthy();
-  expect(screen.getByLabelText("Buscar lote ou sítio")).toHaveProperty(
-    "value",
-    "",
-  );
-  expect(screen.getByLabelText("Situação da dieta")).toHaveProperty(
-    "value",
-    "",
-  );
-  const url = new URL(window.location.href);
-  expect(url.searchParams.has("buscaLote")).toBe(false);
-  expect(url.searchParams.has("situacaoDieta")).toBe(false);
-  expect(url.searchParams.get("aba")).toBe("lotes");
-  expect(url.searchParams.get("sitio")).toBe("1");
-  expect(url.searchParams.get("outro")).toBe("mantido");
-  expect(url.hash).toBe("#consulta");
-  expect(window.history.state).toEqual({ origem: "consulta" });
-  expect(consultarVisaoNutricional).toHaveBeenCalledTimes(1);
-});
-it("conta somente resultados do filtro e restaura filtro pela navegação", async () => {
-  render(<VisaoGeralNutricao />);
-  await screen.findByText("2 de 2 lotes");
-  fireEvent.change(screen.getByLabelText("Situação da dieta"), {
-    target: { value: "sem" },
+afterEach(() => { cleanup(); window.history.replaceState(null, "", "/"); });
+describe("panorama nutricional sem indicadores repetidos", () => {
+  it("reúne cobertura e efetivo no mesmo painel sem quatro cards de métricas", async () => {
+    render(<VisaoGeralNutricao />);
+    await screen.findByLabelText("Efetivo nos lotes");
+    expect(document.querySelector("details")).toBeNull();
+    expect(screen.getByRole("heading", { name: /Nutrição por lote/ })).toBeTruthy();
+    expect(screen.getAllByText(/8 animais ativos nos lotes/)).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Filtros" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Anterior" })).toBeNull();
+    expect(screen.getByRole("table", { name: "Nutrição por lote" })).toBeTruthy();
+    expect(document.querySelector(".nutricao-metricas")).toBeNull();
+    expect(screen.queryByText("Animais nos lotes")).toBeNull();
+    expect(screen.getByText(/8 animais ativos nos lotes/)).toBeTruthy();
   });
-  expect(screen.getByText("1 de 2 lotes")).toBeTruthy();
-  expect(
-    within(screen.getByRole("table", { name: "Nutrição por lote" })).getByRole(
-      "link",
-      { name: "Novilhas" },
-    ),
-  ).toBeTruthy();
-  await act(async () => {
-    window.history.replaceState(
-      null,
-      "",
-      "/pecuaria/nutricao?buscaLote=Matrizes&situacaoDieta=com",
-    );
-    window.dispatchEvent(new PopStateEvent("popstate"));
+  it("mantém o contexto inteiro no panorama e preserva a busca ao refinar a dieta", async () => {
+    window.history.replaceState(null, "", "/pecuaria/nutricao?buscaLote=Matrizes");
+    render(<VisaoGeralNutricao />);
+    await screen.findByLabelText("Efetivo nos lotes");
+    expect(screen.getByRole("button", { name: "Filtros" })).toBeTruthy();
+    expect(screen.getAllByRole("link", { name: "Matrizes" }).length).toBeGreaterThan(0);
+    expect(screen.queryByRole("link", { name: "Recria" })).toBeNull();
+    expect(screen.getByText(/8 animais ativos nos lotes/)).toBeTruthy();
+    await abrirFiltrosConsulta();
+    await alterarControle(screen.getByRole("combobox",{name:"Situação da dieta"}),{target:{value:"sem"}});
+    await aplicarFiltrosConsulta();
+    const params = new URLSearchParams(window.location.search);
+    expect(params.get("situacaoDieta")).toBe("sem");
+    expect(params.get("buscaLote")).toBe("Matrizes");
+    expect(screen.getByRole("button", { name: /Remover filtro: Sem dieta vigente/ })).toBeTruthy();
+    expect(screen.getByText("Nenhum lote corresponde aos filtros.")).toBeTruthy();
   });
-  expect(screen.getByLabelText("Buscar lote ou sítio")).toHaveProperty(
-    "value",
-    "Matrizes",
-  );
-  expect(
-    within(screen.getByRole("table", { name: "Nutrição por lote" })).getByRole(
-      "link",
-      { name: "Matrizes" },
-    ),
-  ).toBeTruthy();
-});
-it("sucesso sem lotes distingue ausência de cadastro de filtro sem correspondência", async () => {
-  vi.mocked(consultarVisaoNutricional).mockResolvedValue({
-    lotes: [],
-    verValores: false,
-  });
-  render(<VisaoGeralNutricao />);
-  await screen.findByText("0 de 0 lotes");
-  expect(screen.getByText("Nenhum lote ativo neste contexto.")).toBeTruthy();
-  expect(
-    screen.getByRole("link", { name: "Ver lotes do rebanho" }),
-  ).toBeTruthy();
-  expect(screen.queryByRole("button", { name: "Limpar filtros" })).toBeNull();
-});
-it.each(["resolver", "rejeitar"] as const)(
-  "remontagem por sítio descarta resposta antiga ao %s fora de ordem",
-  async (desfecho) => {
-    const antiga = pendente<VisaoNutricional>();
-    vi.mocked(consultarVisaoNutricional)
-      .mockReturnValueOnce(antiga.promessa)
-      .mockResolvedValueOnce({
-        ...dados,
-        lotes: [
-          {
-            ...resumo,
-            lote: {
-              ...resumo.lote,
-              nome: "Lote do sítio atual",
-              propriedadeId: 2,
-            },
-          },
-        ],
-      });
-    // App isola o conteúdo por key={propAtiva ?? "all"} na troca global de sítio.
-    const { rerender } = render(<VisaoGeralNutricao key={1} />);
-    setPropriedadeAtiva(2);
-    rerender(<VisaoGeralNutricao key={2} />);
+  it("abre o lote pelo nome sem ação duplicada e alinha quantidades e custos", async () => {
+    const { container } = render(<VisaoGeralNutricao />);
     await screen.findByRole("table", { name: "Nutrição por lote" });
-    expect(
-      within(
-        screen.getByRole("table", { name: "Nutrição por lote" }),
-      ).getByRole("link", { name: "Lote do sítio atual" }),
-    ).toBeTruthy();
-    await act(async () =>
-      desfecho === "resolver"
-        ? antiga.resolver(dados)
-        : antiga.rejeitar(new Error("Erro anterior")),
-    );
-    expect(screen.queryByRole("link", { name: "Matrizes" })).toBeNull();
-    expect(screen.queryByText("Erro anterior")).toBeNull();
-    expect(screen.getByText("1 de 1 lotes")).toBeTruthy();
-  },
-);
+    const tabela = container.querySelector("table")!;
+    expect(screen.queryByText(/Abrir lote →/)).toBeNull();
+    expect(tabela.querySelector('[data-fin-coluna="abrir"]')).toBeNull();
+    expect(tabela.querySelector('th[data-fin-coluna="animais"]')?.className).toContain("text-right");
+    expect(tabela.querySelector('th[data-fin-coluna="custo"]')?.className).toContain("text-right");
+    fireEvent.click(screen.getAllByRole("link", { name: "Matrizes" })[0]);
+    expect(vi.mocked(navegarPara).mock.calls.at(-1)?.[0]).toContain("loteId=mat");
+  });
+  it("não apresenta custo mesmo quando há valores no payload sem permissão", async () => {
+    vi.mocked(consultarVisaoNutricional).mockResolvedValue({ lotes: [lote("mat", "Matrizes", 5, true)], verValores: false });
+    render(<VisaoGeralNutricao />);
+    await screen.findByLabelText("Efetivo nos lotes");
+    expect(screen.queryByRole("columnheader", { name: "Custo histórico" })).toBeNull();
+    expect(screen.queryByText(/379,50/)).toBeNull();
+    expect(screen.queryByRole("button", { name: "Sobre o custo histórico" })).toBeNull();
+  });
+  it("sem lotes mantém o estado vazio sem fabricar cobertura", async () => {
+    vi.mocked(consultarVisaoNutricional).mockResolvedValue({ lotes: [], verValores: false });
+    render(<VisaoGeralNutricao />);
+    await screen.findByText(/Nenhum lote ativo neste contexto/);
+    expect(screen.queryByRole("button", { name: /Com dieta/ })).toBeNull();
+    expect(screen.queryByText("0%")).toBeNull();
+  });
+});
+
+it("filtra pelo resumo de dietas sem reduzir a base completa nem perder a busca", async () => {
+  window.history.replaceState(null, "", "/pecuaria/nutricao?buscaLote=Matrizes");
+  render(<VisaoGeralNutricao />);
+  const sem = await screen.findByRole("button", { name: "Sem dieta 1" });
+  expect(screen.getByText("1 de 2 lotes")).toBeTruthy();
+  fireEvent.click(sem);
+  expect(new URLSearchParams(window.location.search).get("situacaoDieta")).toBe("sem");
+  expect(new URLSearchParams(window.location.search).get("buscaLote")).toBe("Matrizes");
+  expect(screen.getByText("1 de 2 lotes")).toBeTruthy();
+  expect(screen.getByText("Nenhum lote corresponde aos filtros.")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Sem dieta 1" }));
+  expect(new URLSearchParams(window.location.search).has("situacaoDieta")).toBe(false);
+});
+
+it("alterna cartões e tabela sem perder a busca e oculta custos sem permissão", async () => {
+  window.history.replaceState(null, "", "/pecuaria/nutricao?visualNutricao=visual&buscaLote=Matrizes");
+  vi.mocked(consultarVisaoNutricional).mockResolvedValue({ lotes: [lote("mat", "Matrizes", 5, true),lote("rec","Recria",3,false)], verValores: false });
+  render(<VisaoGeralNutricao />);
+  await screen.findByRole("link", {name:"Matrizes"});
+  expect(screen.queryByRole("table")).toBeNull();
+  expect(screen.queryByText(/379,50/)).toBeNull();
+  expect(screen.getByRole("img",{name:"1 de 2 lotes com dieta vigente"})).toBeTruthy();
+  fireEvent.click(screen.getByRole("button",{name:"Tabela"}));
+  expect(screen.getByRole("table",{name:"Nutrição por lote"})).toBeTruthy();
+  expect(new URLSearchParams(window.location.search).get("buscaLote")).toBe("Matrizes");
+  expect(screen.queryByRole("columnheader",{name:"Custo histórico"})).toBeNull();
+});
+
+it("mantém um único link nativo por cartão, com nome acessível e destino do lote", async () => {
+  window.history.replaceState(null, "", "/pecuaria/nutricao?visualNutricao=visual");
+  const { container } = render(<VisaoGeralNutricao />);
+  await screen.findByRole("link", { name: "Matrizes" });
+  const cartao = container.querySelector(".dietas-cartao")!;
+  expect(cartao.querySelectorAll("a")).toHaveLength(1);
+  const link = cartao.querySelector("a")!;
+  expect(link.className).toContain("dietas-cartao-link");
+  expect(link.getAttribute("href")).toContain("loteId=mat");
+  fireEvent.click(link);
+  expect(vi.mocked(navegarPara).mock.calls.at(-1)?.[0]).toContain("loteId=mat");
+});

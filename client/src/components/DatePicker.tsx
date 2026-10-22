@@ -1,3 +1,4 @@
+import { SelectCampo } from "@/financeiro/SelectCampo";
 /* Seletor de data única no visual do DateRangePicker: campo digitável (dd/mm/aaaa, com as
  * barras inseridas sozinhas) + botão que abre o mesmo calendário, com selects de mês e ano
  * para saltar longe (data de nascimento de anos atrás). Substitui o <input type="date">
@@ -123,12 +124,12 @@ export function DatePicker({ id, value, onChange, min, max, disabled = false, re
       <PopoverContent align="end" className="w-[min(300px,calc(100vw-24px))] bg-background p-4">
         <div className="mb-3 flex items-center gap-1.5">
           <Button type="button" variant="ghost" size="icon" aria-label="Mês anterior" onClick={() => mudarVista(vista.getFullYear(), vista.getMonth() - 1)}><ChevronLeft size={16} /></Button>
-          <select aria-label="Mês" value={vista.getMonth()} onChange={(e) => mudarVista(vista.getFullYear(), Number(e.target.value))} className="min-w-0 flex-1 rounded-md border border-border bg-card px-1.5 py-1 font-serif text-[15px]">
+          <SelectCampo aria-label="Mês" value={vista.getMonth()} onValueChange={(valorSelecionado) => mudarVista(vista.getFullYear(), Number(valorSelecionado))} className="min-w-0 flex-1 rounded-md border border-border bg-card px-1.5 py-1 font-serif text-[15px]">
             {PT_MONTHS.map((nome, i) => <option key={nome} value={i}>{nome}</option>)}
-          </select>
-          <select aria-label="Ano" value={vista.getFullYear()} onChange={(e) => mudarVista(Number(e.target.value), vista.getMonth())} className="rounded-md border border-border bg-card px-1.5 py-1 font-serif text-[15px] tabular-nums">
+          </SelectCampo>
+          <SelectCampo aria-label="Ano" value={vista.getFullYear()} onValueChange={(valorSelecionado) => mudarVista(Number(valorSelecionado), vista.getMonth())} className="rounded-md border border-border bg-card px-1.5 py-1 font-serif text-[15px] tabular-nums">
             {anos.map((a) => <option key={a} value={a}>{a}</option>)}
-          </select>
+          </SelectCampo>
           <Button type="button" variant="ghost" size="icon" aria-label="Próximo mês" onClick={() => mudarVista(vista.getFullYear(), vista.getMonth() + 1)}><ChevronRight size={16} /></Button>
         </div>
         <div data-calendars>

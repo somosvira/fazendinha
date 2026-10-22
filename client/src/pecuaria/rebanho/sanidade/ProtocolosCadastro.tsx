@@ -124,7 +124,7 @@ export function ProtocolosCadastro({ podeLancar }: { podeLancar: boolean }) {
   const mudar = (i: number, patch: Partial<Etapa>) =>
     setEtapas((es) => es.map((e, j) => (i === j ? { ...e, ...patch } : e)));
   return (
-    <section className="protocolos-pagina protocolos-superficie">
+    <section className="protocolos-pagina protocolos-superficie pec-protocolos-cadastro min-w-0 w-full">
       <ErrorBox erro={erro} />
       <ErrorBox erro={erroLista} />
       {aviso && <p role="status" className="py-3 text-sm">{aviso}</p>}
@@ -141,9 +141,9 @@ export function ProtocolosCadastro({ podeLancar }: { podeLancar: boolean }) {
             <td className="p-4">Protocolo sanitário</td>
             <td className="whitespace-nowrap p-4">v{p.versao} · <Pill tone={p.publicadoEm ? "blue" : "amber"}>{p.publicadoEm ? "Publicado" : "Rascunho"}</Pill></td>
             <td className="p-4"><Pill tone={p.ativo ? "green" : "neutral"}>{p.ativo ? "Ativo" : "Inativo"}</Pill></td><td className="p-4">{p.totalEtapas}</td><td className="p-4"><div className="flex justify-end gap-1">            {podeLancar && <>
-              <button type="button" disabled={ocupado} aria-label={`${p.publicadoEm ? "Nova versão de" : "Editar rascunho de"} ${p.nome} v${p.versao}`} onClick={() => editar(p)} className="rounded-lg p-2 text-ink-2 hover:bg-surface-2 disabled:opacity-45">{p.publicadoEm ? <Copy size={16} /> : <Pencil size={16} />}</button>
-              {!p.publicadoEm && <button type="button" disabled={ocupado} aria-label={`Publicar ${p.nome} v${p.versao}`} onClick={() => void enviar(`/protocolos/${p.id}/publicacao`, {})} className="rounded-lg p-2 text-ink-2 hover:bg-surface-2 disabled:opacity-45"><Send size={16} /></button>}
-              {p.ativo && <button type="button" disabled={ocupado} aria-label={`Inativar ${p.nome} v${p.versao}`} onClick={() => void enviar(`/protocolos/${p.id}/inativacao`, {})} className="rounded-lg p-2 text-ink-2 hover:bg-surface-2 disabled:opacity-45"><PowerOff size={16} /></button>}
+              <button type="button" disabled={ocupado} aria-label={`${p.publicadoEm ? "Nova versão de" : "Editar rascunho de"} ${p.nome} v${p.versao}`} onClick={() => editar(p)} className="rounded-lg p-2 text-ink-2 hover:bg-surface-2 disabled:opacity-45">{p.publicadoEm ? <Copy size={16} /> : <Pencil size={16} />}{p.publicadoEm ? "Nova versão" : "Editar"}</button>
+              {!p.publicadoEm && <button type="button" disabled={ocupado} aria-label={`Publicar ${p.nome} v${p.versao}`} onClick={() => void enviar(`/protocolos/${p.id}/publicacao`, {})} className="rounded-lg p-2 text-ink-2 hover:bg-surface-2 disabled:opacity-45"><Send size={16} />Publicar</button>}
+              {p.ativo && <button type="button" disabled={ocupado} aria-label={`Inativar ${p.nome} v${p.versao}`} onClick={() => void enviar(`/protocolos/${p.id}/inativacao`, {})} className="rounded-lg p-2 text-ink-2 hover:bg-surface-2 disabled:opacity-45"><PowerOff size={16} />Inativar</button>}
             </>}</div></td>
           </tr>
           {detalhe?.id === p.id && <tr><td colSpan={6} id={`protocolo-${p.id}`} className="bg-card p-5">
