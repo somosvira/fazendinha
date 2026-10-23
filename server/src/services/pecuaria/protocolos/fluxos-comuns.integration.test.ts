@@ -50,6 +50,7 @@ afterAll(async () => {
   await prisma.interpretacaoReprodutiva.deleteMany({ where: { exame: { animalId: { in: animais } } } });
   await prisma.exameAnimal.deleteMany({ where: { animalId: { in: animais } } });
   await prisma.aplicacaoProduto.deleteMany({ where: { animalId: { in: animais } } });
+  await prisma.classificacaoCustoPecuaria.deleteMany({ where: { manejo: { animalId: { in: animais } } } });
   await prisma.manejoAnimal.deleteMany({ where: { animalId: { in: animais } } });
   await prisma.tarefaProtocolo.deleteMany({ where: { execucao: { animalId: { in: animais } } } });
   await prisma.participacaoProtocolo.deleteMany({ where: { animalId: { in: animais } } });
@@ -278,7 +279,9 @@ comBanco("tarefas, regularização e exames personalizados na base comum", () =>
     expect(atual).toMatchObject({ inicioEfetivo: new Date("2026-09-16"), precisaoInicioEfetivo: "DIA" });
     expect((await prisma.tarefaIatf.findUniqueOrThrow({ where: { id: tarefas[1].id } })).previstaEm).toEqual(tarefas[1].previstaEm);
     await expect(iatf.executarTarefa(tarefas[0].id, { ...executar, chave: chave() }, null)).rejects.toMatchObject({ code: "CONFLITO" });
-    expect(await prisma.auditoriaPecuaria.count({ where: { entidadeId: tarefas[0].id, acao: "EXECUCAO" } })).toBe(1);
+    const manejos = await prisma.manejoAnimal.findMany({ where: { tarefaId: tarefas[0].id } });
+    expect(manejos).toHaveLength(1);
+    expect(await prisma.auditoriaPecuaria.count({ where: { entidade: "ManejoAnimal", entidadeId: manejos[0].id, acao: "REGISTRO_PROTOCOLO" } })).toBe(1);
     await iatf.retirarParticipante(part.id, sitio, "Retirada do protocolo individual", null);
     expect((await prisma.participacaoProtocolo.findUniqueOrThrow({ where: { id: part.id } })).canceladaEm).not.toBeNull();
   });

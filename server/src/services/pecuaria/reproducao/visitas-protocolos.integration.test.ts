@@ -79,7 +79,9 @@ suite("visita e protocolo compartilham fatos e confirmação atômica",()=>{
  it("14aplicações da visita aparecem na ficha e protocolo com o mesmo ID,28mL e recibo/retry sem duplicação",async()=>{
   const f=await fixture(14,100);
   const atividade=await adicionarAtividade(f.visita.id,{propriedadeId:f.sitio.id,tipo:"APLICACAO_SANITARIA",nome:"Aplicações",extra:false,contexto:{},participantes:f.participacoes.map(p=>({animalId:p.animalId,tarefaSanitariaId:p.tarefas[0].id}))},null);
-  const salvos=await Promise.all(atividade.participantes.map(p=>salvarRascunho(f.visita.id,p.id,f.sitio.id,f.aplicacao,null,0)));
+  // A preparação não é o cenário de concorrência: cada rascunho tem sua própria transação Serializable.
+  const salvos=[];
+  for(const p of atividade.participantes)salvos.push(await salvarRascunho(f.visita.id,p.id,f.sitio.id,f.aplicacao,null,0));
   const resumo=await resumoVisita(f.visita.id,f.sitio.id);
   expect(resumo).toMatchObject({totalAnimais:14,totalParticipantes:14,atividades:[{totais:{pendentes:14}}]});expect(resumo.atividades[0]).not.toHaveProperty("participantes");
   const paginaParticipantes=await listarParticipantesAtividade(f.visita.id,atividade.id,f.sitio.id,{pagina:2,status:"PENDENTE",motivos:["Tarefa sanitária pendente"]});expect(paginaParticipantes).toMatchObject({total:14,pagina:2,porPagina:10});expect(paginaParticipantes.itens).toHaveLength(4);

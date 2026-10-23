@@ -102,6 +102,7 @@ comBanco("IATF data/hora independentes no banco de desenvolvimento", () => {
     await prisma.eventoTarefaProtocolo.deleteMany({where:{tarefa:{execucao:{animalId:{in:animais}}}}});
     await prisma.aplicacaoProduto.deleteMany({where:{animalId:{in:animais}}});
     await prisma.tentativaReprodutiva.deleteMany({where:{animalId:{in:animais}}});
+    await prisma.classificacaoCustoPecuaria.deleteMany({where:{manejo:{animalId:{in:animais}}}});
     await prisma.manejoAnimal.deleteMany({where:{animalId:{in:animais}}});
     await prisma.tarefaProtocolo.deleteMany({where:{execucao:{animalId:{in:animais}}}});
     await prisma.participacaoProtocolo.deleteMany({where:{animalId:{in:animais}}});
