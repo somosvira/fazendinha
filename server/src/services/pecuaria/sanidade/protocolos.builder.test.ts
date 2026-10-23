@@ -74,3 +74,9 @@ it("derivação sanitária preserva identidade da base e rejeita mudar o nome", 
   await expect(criarProtocolo({ ...entrada("MANUAL"), origemVersaoId: produtoId }, null)).rejects.toThrow("preservar o protocolo-base");
   expect(db.protocolo.create).not.toHaveBeenCalled();
 });
+
+it("aceita e conserva o nome opcional do procedimento sanitário", async () => {
+  const input = entrada("MANUAL");
+  await criarProtocolo({ ...input, etapas: input.etapas.map(e => ({ ...e, nome: "Aplicação inicial" })) }, null);
+  expect(db.protocolo.create.mock.calls[0][0].data.etapas.create[0].nome).toBe("Aplicação inicial");
+});

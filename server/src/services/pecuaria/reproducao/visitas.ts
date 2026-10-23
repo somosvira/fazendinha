@@ -438,9 +438,9 @@ export async function confirmarAtividadeTx(
         }));
         // Confira todos os participantes antes que os executores modifiquem o contexto clínico.
         const comparacoes=new Map<string,Awaited<ReturnType<typeof compararSnapshotTx>>>();
-        for(const item of input.itens){
+        for(const [indice,item] of input.itens.entries()){
           const p=participantes.find(p=>p.id===item.participanteId)!;
-          if(item.versaoRascunho!=null&&item.versaoRascunho!==p.versaoRascunho)throw new RebanhoError("CONFLITO","O rascunho mudou; recarregue antes de confirmar","versaoRascunho");
+          if(item.versaoRascunho!=null&&item.versaoRascunho!==p.versaoRascunho)throw new RebanhoError("CONFLITO","O rascunho mudou; recarregue antes de confirmar",`itens.${indice}.versaoRascunho`);
           if(p.status==="CONFIRMADO")erro("Participante já confirmado; use a confirmação original");
           if(item.status!=="CONFIRMADO"){
             if(!item.motivo)erro("Adiamento/ausência exige motivo","motivo");

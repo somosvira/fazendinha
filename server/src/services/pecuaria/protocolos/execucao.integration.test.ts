@@ -53,7 +53,13 @@ async function fixture(quantidade: number, saldo: number) {
   const itens: Array<Extract<ExecucaoProtocoloInput["itens"][number],{tipo:"APLICACAO"}>> = [];
   for (let n = 0; n < quantidade; n++) {
     const animal = await cadastrar(cadastrarAnimalSchema.parse({ brinco: `AC${run}${n}`, sexo: "F", origem: "COMPRADO", aptidao: "LEITE", dataNascimento: "2024-01-01", dataEntrada: "2026-08-01", propriedadeId: sitio.id }), null); animais.push(animal.id);
-    const participacao = await iniciarExecucao({ animalId: animal.id, propriedadeId: sitio.id, protocoloId: protocolo.id, inicio: antes(2) }, null);
+    const inicio = { chave: crypto.randomUUID(), animalId: animal.id, propriedadeId: sitio.id, protocoloId: protocolo.id, inicio: antes(2) };
+    const participacao = await iniciarExecucao(inicio, null);
+    expect(participacao.tarefas.map(t => t.etapaId)).toEqual(protocolo.etapas.map(e => e.id));
+    if (n === 0) {
+      const reenvio = await iniciarExecucao(inicio, null);
+      expect(reenvio.tarefas.map(t => t.id)).toEqual(participacao.tarefas.map(t => t.id));
+    }
     await prisma.participacaoProtocolo.update({ where: { id: participacao.id }, data: { rodadaId: programacao.id } });
     itens.push({ tipo: "APLICACAO", tarefaId: participacao.tarefas[0].id, animalId: animal.id, propriedadeId: sitio.id, data: antes(2), aplicadaEm: `${antes(2)}T14:00:00-03:00`, produtoId: produto.id, nomeProdutoAplicado: produto.nome, finalidade: "TRATAMENTO", dose: "2", unidadeDose: "ML", origemInsumo: "BAIXA_ESTOQUE", estadoCarenciaLeite: "INFORMADO", estadoCarenciaCarne: "INFORMADO", carenciaLeiteHoras: 0, carenciaCarneHoras: 0 });
   }

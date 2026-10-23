@@ -13,8 +13,9 @@ async function criarFixture(tx: Prisma.TransactionClient) {
   const animais: Animal[] = [];
   for (let i = 0; i < 4; i++) animais.push(await tx.animal.create({ data: { brinco: `IVC-${token}-${i}`, sexo: "F", origem: "COMPRADO",
     dataNascimento: new Date("2020-01-01"), dataEntrada: new Date("2024-01-01"), localizacoes: { create: { propriedadeId: sitio.id, desde: new Date("2024-01-01") } } } }));
-  const protocolo = await tx.protocolo.create({ data: { nome: `Corrida IATF ${token}`, versao: 1, tipo: "REPRODUTIVO", publicado: true, publicadoEm: new Date(),
+  const estrutura = await tx.protocolo.create({ data: { nome: `Corrida IATF ${token}`, versao: 1, tipo: "REPRODUTIVO",
     etapas: { create: { nome: "Retirada", ordem: 1, tipo: "RETIRADA", diaRelativo: 1, configuracao: { nome: "Retirada", tipo: "RETIRADA", intervalo: 1, unidade: "DIAS" } } } } });
+  const protocolo = await tx.protocolo.update({where:{id:estrutura.id},data:{publicado:true,publicadoEm:new Date()}});
   const visita = await criarVisitaTx(tx, { propriedadeId: sitio.id, data: "2026-10-14", nome: `Visita ${token}` }, null);
   const atividade = await adicionarAtividadeTx(tx, visita.id, atividadeSchema.parse({ propriedadeId: sitio.id, nome: "Turma concorrente", tipo: "INICIAR_IATF",
     contexto: { protocoloId: protocolo.id }, participantes: animais.map(a => ({ animalId: a.id })) }), null);

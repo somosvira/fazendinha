@@ -22,6 +22,7 @@ export const protocoloCadastroSchema = z.object({
   nome: z.string().trim().min(2).max(160), descricao: z.string().trim().max(500).nullish(), finalidade: z.literal("SANITARIO").nullish(),
   versao: z.number().int().positive().optional(), publicado: z.boolean().optional(), origemVersaoId: z.string().uuid().optional(),
   etapas: z.array(z.object({
+    nome: z.string().trim().min(1).max(160).optional(),
     referenciasCusto: referenciasCustoSchema.optional(), momento: momentoAcaoSchema.nullish(), subtipo: z.enum(["APLICACAO", "INSERCAO_DISPOSITIVO"]).optional(),
     diaRelativo: z.number().int("O calendário sanitário por data exige dias inteiros; conserve o modelo original").nonnegative(), unidadeIntervalo: z.literal("DIAS").optional(),
     tipo: z.enum(["APLICACAO", "EXAME", "MANEJO", "RETIRADA"]), produtoId: z.string().uuid().nullish(), tipoExameId: z.string().uuid().nullish(), tipoAplicacaoId: z.string().uuid().nullish(),
@@ -81,7 +82,7 @@ export async function criarProtocolo(input: z.infer<typeof protocoloCadastroSche
     const versao = existente?.versao ?? await reservarVersaoTx(tx, "SANITARIO", input.nome.trim(), input.versao);
     const dados = { nome: input.nome.trim(), finalidade: input.finalidade,
       descricao: input.descricao?.trim() || null,
-      etapas: { create: etapas.map((e, i) => ({ ordem: i + 1, diaRelativo: e.diaRelativo, tipo: e.tipo, configuracao: { subtipo: e.subtipo ?? "APLICACAO", ...(e.produtoSnapshot ? { produtoSnapshot: e.produtoSnapshot } : {}), ...(e.referenciasCusto ? {referenciasCusto:e.referenciasCusto} : {}) },
+      etapas: { create: etapas.map((e, i) => ({ nome: e.nome, ordem: i + 1, diaRelativo: e.diaRelativo, tipo: e.tipo, configuracao: { subtipo: e.subtipo ?? "APLICACAO", ...(e.produtoSnapshot ? { produtoSnapshot: e.produtoSnapshot } : {}), ...(e.referenciasCusto ? {referenciasCusto:e.referenciasCusto} : {}) },
         produtoId: e.tipo === "APLICACAO" ? e.produtoId : null, tipoExameId: e.tipo === "EXAME" ? e.tipoExameId : null,
         finalidade: e.tipo === "APLICACAO" ? e.finalidade : null, dose: e.tipo === "APLICACAO" ? e.dose : null,
         tipoAplicacaoId: e.tipo === "APLICACAO" ? e.tipoAplicacaoId : null,
@@ -152,7 +153,7 @@ export async function iniciarExecucaoTx(tx: Prisma.TransactionClient, input: { c
           produtoNomeSnapshot: e.produto?.nome ?? null, tipoExameNomeSnapshot: e.tipoExame?.nome ?? null,
           tipoAplicacaoId: e.tipoAplicacaoId, tipoAplicacaoNomeSnapshot: e.tipoAplicacaoNomeSnapshot,
           dose: e.dose?.toString() ?? null, unidade: e.unidade, via: e.via } })) },
-    }, include: { tarefas: { orderBy: { previstaPara: "asc" } } } });
+    }, include: { tarefas: { orderBy: [{ previstaPara: "asc" }, { etapa: { ordem: "asc" } }, { id: "asc" }] } } });
     await auditar(tx, { entidade: "ExecucaoProtocoloSanitario", entidadeId: execucao.id, animalId: input.animalId,
       propriedadeId: input.propriedadeId, acao: "INICIO", usuarioId, depois: { ...execucao,
         ...(simultaneas.length ? { sobreposicao: { execucaoIds: simultaneas.map((e) => e.id), justificativa: input.justificativaSobreposicao!.trim(), confirmada: true } } : {}) } });
@@ -160,7 +161,7 @@ export async function iniciarExecucaoTx(tx: Prisma.TransactionClient, input: { c
 }
 
 export async function iniciarExecucao(input: Parameters<typeof iniciarExecucaoTx>[1], usuarioId: number | null) {
-  return confirmarFato(input, usuarioId, "PROTOCOLO", iniciarExecucaoTx, (tx, id) => tx.participacaoProtocolo.findUniqueOrThrow({ where: { id }, include: { tarefas: { orderBy: { previstaPara: "asc" } } } }));
+  return confirmarFato(input, usuarioId, "PROTOCOLO", iniciarExecucaoTx, (tx, id) => tx.participacaoProtocolo.findUniqueOrThrow({ where: { id }, include: { tarefas: { orderBy: [{ previstaPara: "asc" }, { etapa: { ordem: "asc" } }, { id: "asc" }] } } }));
 }
 export async function iniciarExecucaoColetivo(input: { chave: string; propriedadeId: number; itens: Parameters<typeof iniciarExecucaoTx>[1][] }, usuarioId: number | null) {
   return confirmarColetivo(input, usuarioId, "PROTOCOLO_COLETIVO", iniciarExecucaoTx);
