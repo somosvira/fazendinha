@@ -629,6 +629,11 @@ export async function prepararExecucaoTarefaTx(
       tx, participante.animalId, input.propriedadeId, dia(data), tentativaSchema.shape.tipo.parse(input.dados.tipo),
       input.dados.cienciaSanitaria === true,
     );
+  else if (tarefa.tipo === "APLICACAO")
+    await conferirDisponibilidadeTx(
+      tx, participante.animalId, input.propriedadeId, dia(data), "IATF",
+      input.dados.cienciaSanitaria === true,
+    );
   else
     await conferirMatrizTx(tx, participante.animalId, input.propriedadeId, dia(data));
   const planoOriginal = tarefa.planejadoSnapshot as SnapshotIatf | null;
